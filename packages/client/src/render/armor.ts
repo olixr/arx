@@ -16030,15 +16030,15 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
   }
 
   if (st.kind === 'tidehat') {
-    // THE TIDEHAT — tidecaller's own head, third forging: the sea
-    // agreed to be a HAT. The brim is water — a circling swell rides
-    // it round and round on the tide, breaking past the leading tip
-    // as it comes. The cone is the wave that stood up: a drawn
-    // current climbs its pitch, and the very tip curls over into a
-    // crest that has been about to fall for a hundred years — at
-    // the break it finally sheds its droplet onto the brim. A pearl
-    // band keeps the count, and off the trailing edge the sea
-    // quietly pours away. All on THE TIDE clock, procession offsets.
+    // THE TIDEWEAVER'S HAT — the master water-weaver's crown piece.
+    // The spire is WOVEN: three water courses cross it as flat
+    // planes, their seams foam-stitched, the middle course alive
+    // with the tide; the tip pinches and curls like a wave about to
+    // land, shedding its droplet at the break. One swell circles
+    // the brim forever as a bulge in the brim itself, the rim's one
+    // bright edge flowing over it unbroken. At the base the cone
+    // stands in a pooled basin ringed in foam, and the band carries
+    // the pearl count under a crown pearl in a silver crescent.
     const t = profileK;
     const front = backK <= 0.55;
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
@@ -16046,16 +16046,16 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     const k = tideK(f.nowMs, 0.06);
     const brk = tideBreakK(f.nowMs, 0.06);
     const bandY = headY - hh * 0.55;
-    const sway = Math.sin(f.nowMs * 0.0016) * hw * 0.06;
+    const u = -lead;
+    const sway = Math.sin(f.nowMs * 0.0017) * hw * 0.09;
+    const tipX = headX + u * (hw * 1.38 + sway);
+    const tipY = bandY - hh * 1.72;
     const oTop = headY - hh * 0.6;
     const oBot = headY + hh * 0.84;
-    const seaC = shade(st.color, -10);
     const foamC = st.trim;
-    // The cone leans FORWARD (a curling crest is a face-side device
-    // — it may lead) and stands taller as the swell rises.
-    const tipX = headX + lead * (hw * (1.02 + 0.1 * k) + sway);
-    const tipY = bandY - hh * (1.38 + 0.1 * k);
-    // THE MANTLE FIRST (hats need napes), face window CUT.
+    // THE MANTLE: the tide court covers its head — cloth to the
+    // shoulders, risen to meet the band at every facing, its face
+    // window CUT (evenodd).
     const mantle = (): void => {
       ctx.moveTo(headX - hw * 1.18, headY + hh * 1.1);
       ctx.quadraticCurveTo(headX - hw * 1.26, headY - hh * 0.34, headX - hw * 1.02, bandY - hh * 0.44);
@@ -16073,8 +16073,7 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     if (front) opening();
     ctx.fill('evenodd');
     if (!hurt && !front) {
-      // The back read: soaked center seam, drape tail light over
-      // the shaded back (a hanging piece reads by light over dark).
+      // The back read: soaked center seam, tail light over dark.
       ctx.fillStyle = shade(st.color, -12);
       ctx.beginPath();
       ctx.moveTo(headX - hw * 0.4, headY + hh * 0.7);
@@ -16090,185 +16089,239 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.closePath();
       ctx.fill();
     }
-    // THE CIRCLING SWELL, far pass: one wave rides the brim round on
-    // the tide — a full lap per cycle. On the far half it peeks over
-    // the far rim BEFORE the cone and brim paint (occlusion split).
+    // THE CIRCLING SWELL, far hint: rounding the back rim it shows
+    // only its foam over the edge — painted before the spire so the
+    // hat occludes it honestly.
     const wa = ((f.nowMs / 6800) % 1) * Math.PI * 2;
-    const wxc = headX + Math.cos(wa) * hw * 1.5;
-    const nearSide = Math.sin(wa) > 0;
-    // Rounding the tips the wave is edge-on — fade it there.
-    const tipFade = Math.min(1, Math.max(0, (0.86 - Math.abs(Math.cos(wa))) / 0.24));
-    const crest = (px: number, py: number, scale2: number): void => {
-      // The traveling wave: a swell bump with two foam rolls and a
-      // lit face — the tide made visible on the brim.
-      ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, 2);
-      ctx.beginPath();
-      ctx.ellipse(px, py, hw * 0.42 * scale2, hh * 0.2 * scale2, 0, Math.PI, Math.PI * 2);
-      ctx.fill();
-      if (!hurt) {
-        ctx.fillStyle = shade(st.color, 16);
-        ctx.beginPath();
-        ctx.ellipse(px + hw * 0.08 * scale2, py - hh * 0.02 * scale2, hw * 0.26 * scale2, hh * 0.13 * scale2, 0, Math.PI, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = foamC;
-        for (const [fu, fr] of [[-0.2, 0.11], [0.14, 0.09]] as const) {
-          ctx.beginPath();
-          ctx.arc(px + hw * fu * scale2, py - hh * 0.16 * scale2, hw * fr * scale2 * (1 + 0.3 * brk), Math.PI * 0.94, Math.PI * 2.06);
-          ctx.closePath();
-          ctx.fill();
-        }
-      }
-    };
-    if (!nearSide && tipFade > 0.05) {
-      ctx.save();
+    const swellX = headX + Math.cos(wa) * hw * 1.55;
+    const nearSwell = Math.sin(wa) > 0;
+    const tipFade = Math.min(1, Math.max(0, (0.88 - Math.abs(Math.cos(wa))) / 0.26));
+    if (!hurt && !nearSwell && tipFade > 0.05) {
       ctx.globalAlpha = tipFade;
-      crest(wxc, bandY - hh * 0.16, 0.62);
-      ctx.restore();
-    }
-    // THE CONE: the standing wave — swept, planed, alive.
-    ctx.fillStyle = mc;
-    ctx.beginPath();
-    ctx.moveTo(headX - lead * hw * 0.8, bandY);
-    ctx.quadraticCurveTo(headX - lead * hw * 0.52, bandY - hh * 0.9, headX - lead * hw * 0.1, bandY - hh * 1.34);
-    ctx.quadraticCurveTo(headX + lead * hw * 0.34, bandY - hh * (1.68 + 0.1 * k), tipX, tipY - hh * 0.1);
-    // The curl: the tip hooks over and DOWN — a crest mid-break.
-    ctx.quadraticCurveTo(tipX + lead * hw * 0.2, tipY + hh * 0.08, tipX - lead * hw * 0.02, tipY + hh * 0.26);
-    ctx.quadraticCurveTo(headX + lead * hw * 0.48, bandY - hh * 1.18, headX + lead * hw * 0.58, bandY - hh * 0.7);
-    ctx.quadraticCurveTo(headX + lead * hw * 0.72, bandY - hh * 0.3, headX + lead * hw * 0.8, bandY);
-    ctx.closePath();
-    ctx.fill();
-    if (!hurt) {
-      // Leeward fold dark; the windward pitch keeps the sea light.
-      ctx.fillStyle = shade(st.color, -14);
+      ctx.fillStyle = foamC;
       ctx.beginPath();
-      ctx.moveTo(headX + lead * hw * 0.06, bandY);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.1, bandY - hh * 0.86, headX + lead * hw * 0.2, bandY - hh * 1.3);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.44, bandY - hh * (1.62 + 0.1 * k), tipX, tipY - hh * 0.08);
-      ctx.quadraticCurveTo(tipX + lead * hw * 0.18, tipY + hh * 0.08, tipX - lead * hw * 0.02, tipY + hh * 0.24);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.48, bandY - hh * 1.16, headX + lead * hw * 0.58, bandY - hh * 0.68);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.72, bandY - hh * 0.3, headX + lead * hw * 0.8, bandY);
+      ctx.arc(swellX, bandY - hh * 0.18, hw * 0.14, Math.PI * 0.95, Math.PI * 2.05);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = shade(st.color, 15);
-      ctx.lineWidth = Math.max(1.5, s * 0.016);
+      ctx.fillStyle = shade(st.color, 10);
       ctx.beginPath();
-      ctx.moveTo(headX - lead * hw * 0.32, bandY - hh * 0.42);
-      ctx.quadraticCurveTo(headX - lead * hw * 0.02, bandY - hh * 1.02, headX + lead * hw * 0.3, bandY - hh * 1.46);
-      ctx.stroke();
-      // THE CLIMBING CURRENT: the drawn water winding up the pitch,
-      // foam riding it — the hat is still filling itself.
-      tideStream(
-        ctx,
-        headX - lead * hw * 0.34, bandY - hh * 0.26,
-        tipX - lead * hw * 0.1, tipY + hh * 0.18,
-        f.nowMs, 2.6, hw * 0.065,
-        shade(st.color, -22), foamC, 0.9, Math.max(1, s * 0.016),
-        1 + brk,
-      );
-      // THE TIP CREST: foam curling off the hook — and at the break
-      // it finally sheds: a droplet falls to the brim below.
-      ctx.fillStyle = foamC;
-      for (const [fu, fr] of [[0, 0.1], [0.5, 0.08], [0.95, 0.062]] as const) {
-        const gx = tipX - lead * hw * (0.02 + fu * 0.2);
-        const gy = tipY - hh * (0.06 - fu * 0.2);
+      ctx.ellipse(swellX, bandY - hh * 0.12, hw * 0.3, hh * 0.08, 0, Math.PI, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    // THE SPIRE: the magus climb — lean concave windward edge, a
+    // hard committed crook, a pinched dropped point.
+    const spire = (): void => {
+      ctx.moveTo(headX - u * hw * 0.78, bandY);
+      ctx.quadraticCurveTo(headX - u * hw * 0.42, bandY - hh * 1.0, headX - u * hw * 0.1, bandY - hh * 1.58);
+      ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 2.02, tipX, tipY - hh * 0.22);
+      ctx.quadraticCurveTo(tipX + u * hw * 0.18, tipY - hh * 0.04, tipX + u * hw * 0.02, tipY + hh * 0.14);
+      ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.38, headX + u * hw * 0.56, bandY - hh * 0.9);
+      ctx.quadraticCurveTo(headX + u * hw * 0.72, bandY - hh * 0.4, headX + u * hw * 0.78, bandY);
+      ctx.closePath();
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    spire();
+    ctx.fill();
+    if (!hurt) {
+      // THE WOVEN COURSES: the cone is water, woven — three courses
+      // crossing the spire as flat planes, clipped to the cloth, so
+      // the weave lives IN the silhouette and never on it.
+      ctx.save();
+      ctx.beginPath();
+      spire();
+      ctx.clip();
+      // The spine the weave follows.
+      const spx = (v: number): number =>
+        (1 - v) * (1 - v) * headX + 2 * (1 - v) * v * (headX + u * hw * 0.12) + v * v * tipX;
+      const spy = (v: number): number =>
+        (1 - v) * (1 - v) * (bandY - hh * 0.1) + 2 * (1 - v) * v * (bandY - hh * 1.3) + v * v * (tipY + hh * 0.1);
+      const wof = (v: number): number => hw * (0.85 - 0.68 * v);
+      for (const [i, [v0, v1, dv]] of [
+        [0, [0.02, 0.3, -11]], [1, [0.3, 0.62, 8]], [2, [0.62, 0.98, -9]],
+      ] as const) {
+        // Each course leans into the wind — the seams run diagonal.
+        const skew = 0.09 * (i % 2 === 0 ? 1 : -1);
+        ctx.fillStyle = shade(st.color, dv);
         ctx.beginPath();
-        ctx.arc(gx, gy, hw * fr * (1 + 0.35 * brk), Math.PI * 0.9, Math.PI * 2.1);
+        ctx.moveTo(spx(v0) - wof(v0) * 1.2, spy(v0 + skew * 0.5));
+        ctx.lineTo(spx(v0) + wof(v0) * 1.2, spy(Math.max(0, v0 - skew * 0.5)));
+        ctx.lineTo(spx(v1) + wof(v1) * 1.2, spy(Math.max(0, v1 - skew * 0.5)));
+        ctx.lineTo(spx(v1) - wof(v1) * 1.2, spy(Math.min(1, v1 + skew * 0.5)));
         ctx.closePath();
         ctx.fill();
       }
+      // The foam stitching at the two course seams — the weaver's
+      // hand made visible. The lower seam is the LIVING one: its
+      // stitch light breathes with the tide.
+      ctx.lineCap = 'round';
+      for (const [sv, alive] of [[0.3, 1], [0.62, 0]] as const) {
+        const skew = 0.09;
+        ctx.strokeStyle = foamC;
+        ctx.globalAlpha = alive ? 0.3 + 0.45 * k + 0.25 * brk : 0.3;
+        ctx.lineWidth = Math.max(1, s * (alive ? 0.009 : 0.007));
+        ctx.beginPath();
+        ctx.moveTo(spx(sv) - wof(sv) * 1.2, spy(Math.min(1, sv + skew * 0.5)));
+        ctx.lineTo(spx(sv) + wof(sv) * 1.2, spy(Math.max(0, sv - skew * 0.5)));
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      // Two stitch beads travelling the living seam at the water's
+      // constant pace, born and dying at nothing (the seamless law).
+      const sv = 0.3;
+      const sx0 = spx(sv) - wof(sv) * 1.2;
+      const sy0 = spy(Math.min(1, sv + 0.045));
+      const sx1 = spx(sv) + wof(sv) * 1.2;
+      const sy1 = spy(Math.max(0, sv - 0.045));
+      ctx.fillStyle = foamC;
+      for (const bp of [0, 0.5] as const) {
+        const ub = ((f.nowMs * 0.00016 + bp) % 1 + 1) % 1;
+        const life = Math.sin(ub * Math.PI);
+        ctx.globalAlpha = life * 0.9;
+        ctx.beginPath();
+        ctx.arc(sx0 + (sx1 - sx0) * ub, sy0 + (sy1 - sy0) * ub, s * 0.009 * (0.6 + 0.6 * life), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      // The crook side folds dark over the weave — the magus's own
+      // shading grammar, so the courses stay cloth, not stripes.
+      ctx.fillStyle = shade(st.color, -14);
+      ctx.globalAlpha = 0.55;
+      ctx.beginPath();
+      ctx.moveTo(headX, bandY);
+      ctx.quadraticCurveTo(headX + u * hw * 0.04, bandY - hh * 0.95, headX - u * hw * 0.01, bandY - hh * 1.52);
+      ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 1.94, tipX, tipY - hh * 0.2);
+      ctx.quadraticCurveTo(tipX + u * hw * 0.16, tipY - hh * 0.03, tipX + u * hw * 0.02, tipY + hh * 0.12);
+      ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.36, headX + u * hw * 0.56, bandY - hh * 0.88);
+      ctx.quadraticCurveTo(headX + u * hw * 0.72, bandY - hh * 0.4, headX + u * hw * 0.78, bandY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      // The windward ridge takes the light — the one bright line the
+      // magus keeps, and the weave keeps it too.
+      ctx.strokeStyle = shade(st.color, 16);
+      ctx.lineWidth = Math.max(1.5, s * 0.018);
+      ctx.beginPath();
+      ctx.moveTo(headX - u * hw * 0.26, bandY - hh * 0.5);
+      ctx.quadraticCurveTo(headX - u * hw * 0.05, bandY - hh * 1.22, headX + u * hw * 0.26, bandY - hh * 1.66);
+      ctx.stroke();
+      // One crease under the crook.
+      ctx.strokeStyle = shade(st.color, -24);
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(headX + u * hw * 0.14, bandY - hh * 1.4);
+      ctx.quadraticCurveTo(headX + u * hw * 0.5, bandY - hh * 1.52, tipX - u * hw * 0.1, tipY + hh * 0.02);
+      ctx.stroke();
+      // THE CURL TIP: the pinched point curls like a wave about to
+      // land — one foam roll at the pinch, and at the break it
+      // finally sheds: a droplet falls the spire's whole height.
+      ctx.fillStyle = foamC;
+      ctx.beginPath();
+      ctx.arc(tipX + u * hw * 0.03, tipY + hh * 0.14, hw * (0.075 + 0.02 * brk), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = shade(foamC, 22);
+      ctx.beginPath();
+      ctx.arc(tipX + u * hw * 0.03, tipY + hh * 0.14, hw * (0.058 + 0.014 * brk), Math.PI * 1.06, Math.PI * 1.94);
+      ctx.closePath();
+      ctx.fill();
       if (brk > 0.08) {
         const du = 1 - brk;
         ctx.globalAlpha = (1 - du) * 0.95;
         ctx.beginPath();
-        ctx.arc(tipX + lead * hw * 0.02, tipY + hh * (0.3 + du * 1.1), hw * 0.055 * (1 - du * 0.35), 0, Math.PI * 2);
+        ctx.arc(tipX + u * hw * 0.04, tipY + hh * (0.24 + du * 1.5), hw * 0.05 * (1 - du * 0.35), 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1;
       }
     }
-    // THE BRIM SEA: the brim IS water — waved wide, leading tip
-    // lifted by the swell coming round, foam standing on its lip.
-    const bLead = lead;
-    ctx.fillStyle = hurt ? '#ffffff' : seaC;
+    // THE BRIM: the magus slab — full waved span, tips up, argued
+    // with weather and won.
+    ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, 4);
     ctx.beginPath();
-    ctx.moveTo(headX + bLead * hw * (2.44 + 0.12 * k), bandY - hh * (0.16 + 0.06 * k));
-    ctx.quadraticCurveTo(headX + bLead * hw * 1.7, bandY + hh * 0.24, headX + bLead * hw * 0.9, bandY - hh * 0.1);
-    ctx.quadraticCurveTo(headX, bandY - hh * 0.3, headX - bLead * hw * 0.9, bandY - hh * 0.1);
-    ctx.quadraticCurveTo(headX - bLead * hw * 1.72, bandY + hh * 0.26, headX - bLead * hw * 2.26, bandY - hh * 0.02);
-    ctx.quadraticCurveTo(headX - bLead * hw * 1.6, bandY + hh * 0.44, headX, bandY + hh * 0.4);
-    ctx.quadraticCurveTo(headX + bLead * hw * 1.6, bandY + hh * 0.46, headX + bLead * hw * (2.44 + 0.12 * k), bandY - hh * (0.16 + 0.06 * k));
+    ctx.moveTo(headX - hw * 2.45, bandY - hh * 0.06);
+    ctx.quadraticCurveTo(headX - hw * 1.7, bandY + hh * 0.26, headX - hw * 0.9, bandY - hh * 0.1);
+    ctx.quadraticCurveTo(headX, bandY - hh * 0.3, headX + hw * 0.9, bandY - hh * 0.1);
+    ctx.quadraticCurveTo(headX + hw * 1.7, bandY + hh * 0.26, headX + hw * 2.45, bandY - hh * 0.06);
+    ctx.quadraticCurveTo(headX + hw * 1.6, bandY + hh * 0.44, headX, bandY + hh * 0.4);
+    ctx.quadraticCurveTo(headX - hw * 1.6, bandY + hh * 0.44, headX - hw * 2.45, bandY - hh * 0.06);
     ctx.closePath();
     ctx.fill();
     if (!hurt) {
-      // The under-swell: deep water beneath the lip.
+      // Brim underside — the sea's own dark beneath the slab.
       ctx.fillStyle = shade(st.color, -26);
       ctx.beginPath();
-      ctx.moveTo(headX + bLead * hw * 2.3, bandY - hh * 0.08);
-      ctx.quadraticCurveTo(headX, bandY + hh * 0.48, headX - bLead * hw * 2.14, bandY + hh * 0.04);
-      ctx.quadraticCurveTo(headX - bLead * hw * 1.5, bandY + hh * 0.38, headX, bandY + hh * 0.36);
-      ctx.quadraticCurveTo(headX + bLead * hw * 1.5, bandY + hh * 0.4, headX + bLead * hw * 2.3, bandY - hh * 0.08);
+      ctx.moveTo(headX - hw * 2.3, bandY + hh * 0.02);
+      ctx.quadraticCurveTo(headX, bandY + hh * 0.48, headX + hw * 2.3, bandY + hh * 0.02);
+      ctx.quadraticCurveTo(headX + hw * 1.5, bandY + hh * 0.38, headX, bandY + hh * 0.36);
+      ctx.quadraticCurveTo(headX - hw * 1.5, bandY + hh * 0.38, headX - hw * 2.3, bandY + hh * 0.02);
       ctx.closePath();
       ctx.fill();
-      // The lit sea plane riding the near brim — the water's own
-      // light between lip and band.
-      ctx.fillStyle = shade(st.color, 7);
-      ctx.beginPath();
-      ctx.moveTo(headX + bLead * hw * 1.9, bandY + hh * 0.02);
-      ctx.quadraticCurveTo(headX, bandY + hh * 0.3, headX - bLead * hw * 1.78, bandY + hh * 0.1);
-      ctx.quadraticCurveTo(headX - bLead * hw * 1.2, bandY + hh * 0.34, headX, bandY + hh * 0.32);
-      ctx.quadraticCurveTo(headX + bLead * hw * 1.3, bandY + hh * 0.36, headX + bLead * hw * 1.9, bandY + hh * 0.02);
-      ctx.closePath();
-      ctx.fill();
-      // THE SURF LIP: foam crescents seated along the near rim — the
-      // brim's edge is where the sea keeps breaking.
-      ctx.fillStyle = foamC;
-      for (const [lu, fr] of [[-0.88, 0.075], [-0.45, 0.06], [0.0, 0.07], [0.45, 0.06], [0.88, 0.075]] as const) {
-        const px = headX + bLead * hw * lu * 1.9;
-        const py = bandY + hh * (0.36 - 0.05 * Math.abs(lu));
+      // THE CIRCLING SWELL, near pass: a bulge IN the brim — same
+      // cloth, fused to the slab, foam standing on its crest.
+      if (nearSwell && tipFade > 0.05) {
+        ctx.globalAlpha = tipFade;
+        ctx.fillStyle = shade(st.color, 4);
         ctx.beginPath();
-        ctx.arc(px, py, hw * fr * (1 + 0.25 * brk), Math.PI * 0.92, Math.PI * 2.08);
-        ctx.closePath();
+        ctx.ellipse(swellX, bandY + hh * 0.3, hw * 0.52, hh * (0.15 + 0.04 * k), 0, Math.PI, Math.PI * 2);
         ctx.fill();
+        ctx.fillStyle = shade(st.color, 14);
+        ctx.beginPath();
+        ctx.ellipse(swellX + hw * 0.1, bandY + hh * 0.28, hw * 0.3, hh * 0.09, 0, Math.PI, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = foamC;
+        for (const [fu, fr] of [[-0.18, 0.085], [0.16, 0.07]] as const) {
+          ctx.beginPath();
+          ctx.arc(swellX + hw * fu, bandY + hh * (0.15 - 0.04 * k), hw * fr * (1 + 0.3 * brk), Math.PI * 0.94, Math.PI * 2.06);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
       }
-      // The leading tip's own break: where the circling swell rounds
-      // the point, foam piles.
-      ctx.beginPath();
-      ctx.arc(headX + bLead * hw * (2.34 + 0.12 * k), bandY - hh * (0.12 + 0.06 * k), hw * (0.09 + 0.03 * brk), Math.PI * 0.9, Math.PI * 2.1);
-      ctx.closePath();
-      ctx.fill();
-      // THE POURING RILL: off the trailing edge the sea quietly
-      // leaves — a thin falling stream, beads dropping away, twice
-      // the water at the break.
-      const rillX = headX - bLead * hw * 2.02;
-      const rillY = bandY + hh * 0.14;
+      // THE ONE BRIGHT EDGE: the rim line flows over slab AND swell
+      // unbroken — one continuous stroke says one continuous water.
       ctx.strokeStyle = shade(st.color, 26);
-      ctx.lineWidth = Math.max(1, s * 0.011);
-      ctx.lineCap = 'round';
-      ctx.globalAlpha = 0.7 + 0.3 * brk;
+      ctx.lineWidth = Math.max(1, s * 0.013);
       ctx.beginPath();
-      ctx.moveTo(rillX, rillY);
-      ctx.quadraticCurveTo(rillX - bLead * hw * 0.04, rillY + hh * 0.2, rillX - bLead * hw * 0.02, rillY + hh * (0.34 + 0.12 * brk));
+      ctx.moveTo(headX - hw * 2.45, bandY - hh * 0.06);
+      ctx.quadraticCurveTo(headX - hw * 1.7, bandY + hh * 0.26, headX - hw * 0.9, bandY - hh * 0.1);
+      ctx.quadraticCurveTo(headX, bandY - hh * 0.3, headX + hw * 0.9, bandY - hh * 0.1);
+      ctx.quadraticCurveTo(headX + hw * 1.7, bandY + hh * 0.26, headX + hw * 2.45, bandY - hh * 0.06);
+      ctx.stroke();
+      if (nearSwell && tipFade > 0.05) {
+        ctx.globalAlpha = tipFade;
+        ctx.beginPath();
+        ctx.arc(swellX, bandY + hh * 0.32, hw * 0.5, Math.PI * 1.08, Math.PI * 1.92);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      // THE BASIN COLLAR: the spire stands in pooled sea — a ring of
+      // lit water at the cone's base, foam at its lip, rippling as
+      // the swell passes (the basin law: lit water, never a hole).
+      ctx.fillStyle = shade(st.color, 10);
+      ctx.beginPath();
+      ctx.ellipse(headX, bandY - hh * 0.04, hw * 0.86, hh * 0.13, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = shade(st.color, -6);
+      ctx.beginPath();
+      ctx.ellipse(headX, bandY - hh * 0.06, hw * 0.62, hh * 0.08, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = shade(st.color, 22);
+      ctx.globalAlpha = 0.35 + 0.4 * k;
+      ctx.lineWidth = Math.max(1, s * 0.007);
+      ctx.beginPath();
+      ctx.ellipse(headX, bandY - hh * 0.05, hw * 0.86 * (0.55 + 0.45 * k), hh * 0.12 * (0.55 + 0.45 * k), 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.globalAlpha = 1;
       ctx.fillStyle = foamC;
-      for (const rp of [0, 0.45] as const) {
-        const ru = ((f.nowMs * 0.00055 + rp) % 1 + 1) % 1;
-        ctx.globalAlpha = (1 - ru) * (0.6 + 0.4 * brk);
+      for (const [ru, rr] of [[-0.8, 0.055], [0.85, 0.05]] as const) {
         ctx.beginPath();
-        ctx.arc(rillX - bLead * hw * 0.02 + Math.sin(ru * 9) * hw * 0.02, rillY + hh * (0.1 + ru * 0.62), hw * 0.05 * (1 - ru * 0.3), 0, Math.PI * 2);
+        ctx.arc(headX + hw * ru, bandY - hh * 0.02, hw * rr, Math.PI * 0.92, Math.PI * 2.08);
+        ctx.closePath();
         ctx.fill();
       }
-      ctx.globalAlpha = 1;
-    }
-    // THE CIRCLING SWELL, near pass: over the brim's face.
-    if (nearSide && !hurt && tipFade > 0.05) {
-      ctx.save();
-      ctx.globalAlpha = tipFade;
-      crest(wxc, bandY + hh * 0.18, 1);
-      ctx.restore();
-    }
-    if (!hurt) {
-      // THE PEARL BAND: the count, worn where a hatband goes — one
-      // glimmer walking, the whole strand lit at the break.
+      // THE BAND AND THE COUNT: dark band, four pearls walking, and
+      // THE CROWN PEARL front and center in its silver crescent.
       ctx.fillStyle = shade(st.color, -30);
       ctx.fillRect(headX - hw * 0.9, bandY - hh * 0.4, hw * 1.8, hh * 0.22);
       if (front && st.pearls) {
@@ -16276,15 +16329,54 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         const walk = Math.floor(f.nowMs / 700) % 5;
         for (let i = 0; i < 5; i++) {
           const du = -0.56 + i * 0.28;
+          const center = i === 2;
           const lit = i === walk || brk > 0.5;
-          ctx.fillStyle = lit ? shade(pc, Math.round(18 + 18 * Math.max(k, brk))) : pc;
+          const pr = headR * (center ? 0.088 : lit ? 0.058 : 0.048);
+          const px = cx + du * headR * 1.16;
+          const py = bandY - hh * 0.29;
+          if (center) {
+            // The silver crescent setting under the crown pearl.
+            ctx.strokeStyle = shade(pc, -18);
+            ctx.lineWidth = Math.max(1, s * 0.009);
+            ctx.beginPath();
+            ctx.arc(px, py + headR * 0.015, pr * 1.22, Math.PI * 0.12, Math.PI * 0.88);
+            ctx.stroke();
+          }
+          ctx.fillStyle = lit || center ? shade(pc, Math.round(14 + 20 * Math.max(k, brk))) : pc;
           ctx.beginPath();
-          ctx.arc(cx + du * headR * 1.16, bandY - hh * 0.29, headR * (lit ? 0.062 : 0.05), 0, Math.PI * 2);
+          ctx.arc(px, py, pr, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(pc, 55);
+          ctx.beginPath();
+          ctx.arc(px - pr * 0.3, py - pr * 0.32, pr * 0.32, 0, Math.PI * 2);
           ctx.fill();
         }
       }
+      // THE POURING RILL: off the trailing edge the sea quietly
+      // leaves — beads falling, twice the water at the break.
+      const rillX = headX - lead * hw * 2.02;
+      const rillY = bandY + hh * 0.14;
+      ctx.strokeStyle = shade(st.color, 26);
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.lineCap = 'round';
+      ctx.globalAlpha = 0.7 + 0.3 * brk;
+      ctx.beginPath();
+      ctx.moveTo(rillX, rillY);
+      ctx.quadraticCurveTo(rillX - lead * hw * 0.04, rillY + hh * 0.2, rillX - lead * hw * 0.02, rillY + hh * (0.34 + 0.12 * brk));
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = foamC;
+      for (const rp of [0, 0.45] as const) {
+        const ru = ((f.nowMs * 0.00055 + rp) % 1 + 1) % 1;
+        const life = Math.sin(ru * Math.PI);
+        ctx.globalAlpha = life * (0.6 + 0.4 * brk);
+        ctx.beginPath();
+        ctx.arc(rillX - lead * hw * 0.02 + Math.sin(ru * 9) * hw * 0.02, rillY + hh * (0.1 + ru * 0.62), hw * 0.05 * (0.6 + 0.5 * life), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
       if (front) {
-        // THE CAST VEIL: the brim's shade thrown down the window.
+        // THE CAST VEIL under the brim, and the window's frame.
         ctx.save();
         ctx.beginPath();
         opening();
@@ -16300,8 +16392,6 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     }
     return;
   }
-
-
 
   if (st.kind === 'depthcrown') {
     // THE BELL CROWN — the abyss's head: darkness wearing its one
