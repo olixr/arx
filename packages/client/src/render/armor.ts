@@ -15338,15 +15338,15 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     // the foot flares wide into the brim, no vertical edge (the
     // Black Mage read; the square-step base is dead family-wide).
     const spire = (): void => {
-      ctx.moveTo(headX - u * hw * 1.06, bandY + hh * 0.06);
-      ctx.quadraticCurveTo(headX - u * hw * 0.72, bandY - hh * 0.34, headX - u * hw * 0.44, bandY - hh * 0.9);
+      ctx.moveTo(headX - u * hw * 1.14, bandY + hh * 0.06);
+      ctx.quadraticCurveTo(headX - u * hw * 0.82, bandY - hh * 0.36, headX - u * hw * 0.46, bandY - hh * 0.9);
       ctx.quadraticCurveTo(headX - u * hw * 0.18, bandY - hh * 1.46, headX - u * hw * 0.02, bandY - hh * 1.68);
       // Over the crook — the spire commits harder than the cone does.
       ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 2.08, tipX, tipY - hh * 0.22);
       // A pinched, dropped point — road-worn, never a wisp.
       ctx.quadraticCurveTo(tipX + u * hw * 0.18, tipY - hh * 0.04, tipX + u * hw * 0.02, tipY + hh * 0.14);
       ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.4, headX + u * hw * 0.56, bandY - hh * 0.9);
-      ctx.quadraticCurveTo(headX + u * hw * 0.86, bandY - hh * 0.3, headX + u * hw * 1.06, bandY + hh * 0.06);
+      ctx.quadraticCurveTo(headX + u * hw * 0.92, bandY - hh * 0.32, headX + u * hw * 1.14, bandY + hh * 0.06);
       ctx.closePath();
     };
     ctx.fillStyle = mc;
@@ -15362,7 +15362,7 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 2.0, tipX, tipY - hh * 0.2);
       ctx.quadraticCurveTo(tipX + u * hw * 0.16, tipY - hh * 0.03, tipX + u * hw * 0.02, tipY + hh * 0.12);
       ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.38, headX + u * hw * 0.56, bandY - hh * 0.88);
-      ctx.quadraticCurveTo(headX + u * hw * 0.86, bandY - hh * 0.3, headX + u * hw * 1.06, bandY + hh * 0.06);
+      ctx.quadraticCurveTo(headX + u * hw * 0.92, bandY - hh * 0.32, headX + u * hw * 1.14, bandY + hh * 0.06);
       ctx.closePath();
       ctx.fill();
       ctx.strokeStyle = shade(st.color, 16);
@@ -16237,9 +16237,12 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     // every facing (the nape law), face window CUT, never filled.
     const mantle = (): void => {
       ctx.moveTo(headX - hw * 1.18, headY + hh * 1.1);
-      ctx.quadraticCurveTo(headX - hw * 1.26, headY - hh * 0.34, headX - hw * 1.02, bandY - hh * 0.44);
-      ctx.lineTo(headX + hw * 1.02, bandY - hh * 0.44);
-      ctx.quadraticCurveTo(headX + hw * 1.26, headY - hh * 0.34, headX + hw * 1.18, headY + hh * 1.1);
+      // The top corners tuck IN under the cone (the skull is narrow
+      // up there): a mantle corner wider than the bell's foot peeks
+      // past it above the brim and reads as a squared skull.
+      ctx.quadraticCurveTo(headX - hw * 1.24, bandY + hh * 0.12, headX - hw * 0.64, bandY - hh * 0.44);
+      ctx.lineTo(headX + hw * 0.64, bandY - hh * 0.44);
+      ctx.quadraticCurveTo(headX + hw * 1.24, bandY + hh * 0.12, headX + hw * 1.18, headY + hh * 1.1);
       ctx.quadraticCurveTo(headX, headY + hh * 1.38, headX - hw * 1.18, headY + hh * 1.1);
       ctx.closePath();
     };
@@ -16276,13 +16279,13 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     // part of its edge ever runs vertical — the Black Mage read:
     // the hat and the head are one thing.
     const spire = (): void => {
-      ctx.moveTo(headX - u * hw * 1.06, bandY + hh * 0.06);
-      ctx.quadraticCurveTo(headX - u * hw * 0.72, bandY - hh * 0.34, headX - u * hw * 0.44, bandY - hh * 0.9);
+      ctx.moveTo(headX - u * hw * 1.14, bandY + hh * 0.06);
+      ctx.quadraticCurveTo(headX - u * hw * 0.82, bandY - hh * 0.36, headX - u * hw * 0.46, bandY - hh * 0.9);
       ctx.quadraticCurveTo(headX - u * hw * 0.18, bandY - hh * 1.42, headX - u * hw * 0.02, bandY - hh * 1.64);
       ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 2.02, tipX, tipY - hh * 0.22);
       ctx.quadraticCurveTo(tipX + u * hw * 0.18, tipY - hh * 0.04, tipX + u * hw * 0.02, tipY + hh * 0.14);
       ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.38, headX + u * hw * 0.56, bandY - hh * 0.9);
-      ctx.quadraticCurveTo(headX + u * hw * 0.86, bandY - hh * 0.3, headX + u * hw * 1.06, bandY + hh * 0.06);
+      ctx.quadraticCurveTo(headX + u * hw * 0.92, bandY - hh * 0.32, headX + u * hw * 1.14, bandY + hh * 0.06);
       ctx.closePath();
     };
     ctx.fillStyle = mc;
@@ -16312,7 +16315,7 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 1.94, tipX, tipY - hh * 0.2);
       ctx.quadraticCurveTo(tipX + u * hw * 0.16, tipY - hh * 0.03, tipX + u * hw * 0.02, tipY + hh * 0.12);
       ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.36, headX + u * hw * 0.56, bandY - hh * 0.88);
-      ctx.quadraticCurveTo(headX + u * hw * 0.86, bandY - hh * 0.3, headX + u * hw * 1.06, bandY + hh * 0.06);
+      ctx.quadraticCurveTo(headX + u * hw * 0.92, bandY - hh * 0.32, headX + u * hw * 1.14, bandY + hh * 0.06);
       ctx.closePath();
       ctx.fill();
       ctx.globalAlpha = 1;
@@ -17052,9 +17055,10 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     // the chin below the mystery is the wearer's own.
     const mantle = (): void => {
       ctx.moveTo(headX - hw * 1.18, headY + hh * 1.1);
-      ctx.quadraticCurveTo(headX - hw * 1.24, headY - hh * 0.3, headX - hw * 0.94, bandY - hh * 0.1);
-      ctx.lineTo(headX + hw * 0.94, bandY - hh * 0.1);
-      ctx.quadraticCurveTo(headX + hw * 1.24, headY - hh * 0.3, headX + hw * 1.18, headY + hh * 1.1);
+      // Top corners tucked IN under the cone (the squared-skull fix).
+      ctx.quadraticCurveTo(headX - hw * 1.24, headY - hh * 0.26, headX - hw * 0.72, bandY - hh * 0.1);
+      ctx.lineTo(headX + hw * 0.72, bandY - hh * 0.1);
+      ctx.quadraticCurveTo(headX + hw * 1.24, headY - hh * 0.26, headX + hw * 1.18, headY + hh * 1.1);
       ctx.quadraticCurveTo(headX, headY + hh * 1.38, headX - hw * 1.18, headY + hh * 1.1);
       ctx.closePath();
     };
@@ -17087,13 +17091,13 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     // THE ONE SWEEP (a single unbroken bell from brim to crook; the
     // foot flares wide into the brim, no vertical edge anywhere).
     const spire = (): void => {
-      ctx.moveTo(headX - u * hw * 1.1, bandY + hh * 0.06);
-      ctx.quadraticCurveTo(headX - u * hw * 0.76, bandY - hh * 0.32, headX - u * hw * 0.48, bandY - hh * 0.88);
+      ctx.moveTo(headX - u * hw * 1.18, bandY + hh * 0.06);
+      ctx.quadraticCurveTo(headX - u * hw * 0.86, bandY - hh * 0.34, headX - u * hw * 0.5, bandY - hh * 0.88);
       ctx.quadraticCurveTo(headX - u * hw * 0.2, bandY - hh * 1.36, headX - u * hw * 0.04, bandY - hh * 1.56);
       ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 1.98, tipX, tipY - hh * 0.2);
       ctx.quadraticCurveTo(tipX + u * hw * 0.18, tipY - hh * 0.02, tipX + u * hw * 0.02, tipY + hh * 0.14);
       ctx.quadraticCurveTo(headX + u * hw * 0.5, bandY - hh * 1.32, headX + u * hw * 0.6, bandY - hh * 0.84);
-      ctx.quadraticCurveTo(headX + u * hw * 0.9, bandY - hh * 0.28, headX + u * hw * 1.1, bandY + hh * 0.06);
+      ctx.quadraticCurveTo(headX + u * hw * 0.96, bandY - hh * 0.3, headX + u * hw * 1.18, bandY + hh * 0.06);
       ctx.closePath();
     };
     ctx.fillStyle = mc;
@@ -17110,7 +17114,7 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 1.9, tipX, tipY - hh * 0.18);
       ctx.quadraticCurveTo(tipX + u * hw * 0.16, tipY - hh * 0.01, tipX + u * hw * 0.02, tipY + hh * 0.12);
       ctx.quadraticCurveTo(headX + u * hw * 0.5, bandY - hh * 1.3, headX + u * hw * 0.6, bandY - hh * 0.82);
-      ctx.quadraticCurveTo(headX + u * hw * 0.9, bandY - hh * 0.28, headX + u * hw * 1.1, bandY + hh * 0.06);
+      ctx.quadraticCurveTo(headX + u * hw * 0.96, bandY - hh * 0.3, headX + u * hw * 1.18, bandY + hh * 0.06);
       ctx.closePath();
       ctx.fill();
       ctx.strokeStyle = shade(st.color, 15);
@@ -17849,9 +17853,12 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     // window CUT (evenodd).
     const mantle = (): void => {
       ctx.moveTo(headX - hw * 1.18, headY + hh * 1.1);
-      ctx.quadraticCurveTo(headX - hw * 1.26, headY - hh * 0.34, headX - hw * 1.02, bandY - hh * 0.44);
-      ctx.lineTo(headX + hw * 1.02, bandY - hh * 0.44);
-      ctx.quadraticCurveTo(headX + hw * 1.26, headY - hh * 0.34, headX + hw * 1.18, headY + hh * 1.1);
+      // The top corners tuck IN under the cone (the skull is narrow
+      // up there): a mantle corner wider than the bell's foot peeks
+      // past it above the brim and reads as a squared skull.
+      ctx.quadraticCurveTo(headX - hw * 1.24, bandY + hh * 0.12, headX - hw * 0.64, bandY - hh * 0.44);
+      ctx.lineTo(headX + hw * 0.64, bandY - hh * 0.44);
+      ctx.quadraticCurveTo(headX + hw * 1.24, bandY + hh * 0.12, headX + hw * 1.18, headY + hh * 1.1);
       ctx.quadraticCurveTo(headX, headY + hh * 1.38, headX - hw * 1.18, headY + hh * 1.1);
       ctx.closePath();
     };
@@ -17906,13 +17913,13 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     // part of its edge ever runs vertical — the Black Mage read:
     // the hat and the head are one thing.
     const spire = (): void => {
-      ctx.moveTo(headX - u * hw * 1.06, bandY + hh * 0.06);
-      ctx.quadraticCurveTo(headX - u * hw * 0.72, bandY - hh * 0.34, headX - u * hw * 0.44, bandY - hh * 0.9);
+      ctx.moveTo(headX - u * hw * 1.14, bandY + hh * 0.06);
+      ctx.quadraticCurveTo(headX - u * hw * 0.82, bandY - hh * 0.36, headX - u * hw * 0.46, bandY - hh * 0.9);
       ctx.quadraticCurveTo(headX - u * hw * 0.18, bandY - hh * 1.42, headX - u * hw * 0.02, bandY - hh * 1.64);
       ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 2.02, tipX, tipY - hh * 0.22);
       ctx.quadraticCurveTo(tipX + u * hw * 0.18, tipY - hh * 0.04, tipX + u * hw * 0.02, tipY + hh * 0.14);
       ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.38, headX + u * hw * 0.56, bandY - hh * 0.9);
-      ctx.quadraticCurveTo(headX + u * hw * 0.86, bandY - hh * 0.3, headX + u * hw * 1.06, bandY + hh * 0.06);
+      ctx.quadraticCurveTo(headX + u * hw * 0.92, bandY - hh * 0.32, headX + u * hw * 1.14, bandY + hh * 0.06);
       ctx.closePath();
     };
     ctx.fillStyle = mc;
@@ -17989,7 +17996,7 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.quadraticCurveTo(headX + u * hw * 0.3, bandY - hh * 1.94, tipX, tipY - hh * 0.2);
       ctx.quadraticCurveTo(tipX + u * hw * 0.16, tipY - hh * 0.03, tipX + u * hw * 0.02, tipY + hh * 0.12);
       ctx.quadraticCurveTo(headX + u * hw * 0.46, bandY - hh * 1.36, headX + u * hw * 0.56, bandY - hh * 0.88);
-      ctx.quadraticCurveTo(headX + u * hw * 0.86, bandY - hh * 0.3, headX + u * hw * 1.06, bandY + hh * 0.06);
+      ctx.quadraticCurveTo(headX + u * hw * 0.92, bandY - hh * 0.32, headX + u * hw * 1.14, bandY + hh * 0.06);
       ctx.closePath();
       ctx.fill();
       ctx.globalAlpha = 1;
