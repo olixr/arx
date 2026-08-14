@@ -1624,7 +1624,7 @@ function voidwhisperSet(): EquipmentDef[] {
     { stat: 'herbalism' },
     { stat: 'regen' },
   ];
-  const color = '#453a5c';
+  const color = '#2a2140';
   const piece = (
     id: string, name: string, slot: 'head' | 'body' | 'legs' | 'gloves' | 'boots',
     level: number, armor: number, value: number, code: string, desc: string,
@@ -1635,15 +1635,15 @@ function voidwhisperSet(): EquipmentDef[] {
   });
   return [
     piece('voidwhisper_cowl', 'Voidwhisper cowl', 'head', 27, 3, 580, 'Vh',
-      'Masked to the eyes. The dark finishes your sentences now.'),
+      'The peak was taken; it hovers where it was. The hood is full of nothing, and somewhere in the nothing a light is walking.'),
     piece('voidwhisper_robe', 'Voidwhisper robe', 'body', 28, 5, 790, 'Vr',
-      'An unblinking eye on ink-violet cloth. It reads you back.'),
+      'The void took pieces of this robe and kept them. They hang exactly where they were, and will not be returned.'),
     piece('voidwhisper_skirts', 'Voidwhisper skirts', 'legs', 27, 3, 680, 'Vk',
       'Stitched from the quiet between two heartbeats.'),
     piece('voidwhisper_slippers', 'Voidwhisper slippers', 'boots', 27, 2, 600, 'Vp',
       'They touch the floor out of politeness, nothing more.'),
     piece('voidwhisper_gloves', 'Voidwhisper gloves', 'gloves', 27, 2, 610, 'Vu',
-      'An eye in each palm. Applaud carefully.'),
+      'Reach into the dark. Keep whatever agrees to come back with you.'),
   ];
 }
 

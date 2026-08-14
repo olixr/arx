@@ -382,6 +382,126 @@ function emberCrack(
   ctx.restore();
 }
 
+/**
+ * THE HUSH — the void whisper's clock: the FIFTH grammar in the
+ * court. The fen trades watches, the storm shares one sky, the tide
+ * processes, the cinder breathes as one bed — THE VOID HOLDS STILL.
+ * For most of the cycle the cloth sits at a low rim-light (the
+ * hush), then THE WHISPER passes: every torn edge brightens on the
+ * same beat, the taken pieces stir, and the dark closes back over
+ * it. Same `off` convention as tideK.
+ */
+function voidK(nowMs: number, off = 0): number {
+  const u = ((nowMs / 7800 - off) % 1 + 1) % 1;
+  const sm = (kk: number): number => {
+    const c = Math.min(1, Math.max(0, kk));
+    return c * c * (3 - 2 * c);
+  };
+  if (u < 0.58) return 0.25;
+  const v = (u - 0.58) / 0.42;
+  if (v < 0.45) return 0.25 + 0.75 * sm(v / 0.45);
+  return 1 - 0.75 * sm((v - 0.45) / 0.55);
+}
+
+/**
+ * THE ARRIVAL — the void does not travel, it ARRIVES. A light that
+ * lives at a ring of fixed seats: it wakes at one, brightens, dies,
+ * and is next seen at the NEXT seat — never on the road between.
+ * One constant pace forever (the seamless law); a whisper speaks
+ * only through brightness, never through hurry. Returns the current
+ * seat index and its life 0..1.
+ */
+function voidWink(
+  nowMs: number, seed: number, seats: number,
+): { i: number; a: number } {
+  const t = nowMs / 2600 + seed;
+  const visit = Math.floor(t);
+  return {
+    i: ((visit % seats) + seats) % seats,
+    a: Math.pow(Math.sin((t - visit) * Math.PI), 1.4),
+  };
+}
+
+/**
+ * THE DRAWN RIFT — void as an absence with a lit edge (the drawn-
+ * light family's void verse: THE VOID IS AN ABSENCE — a tear's
+ * interior is the garment's DARKEST value, plasma lives ONLY on the
+ * torn edge, and no device is ever filled with its own light). A
+ * fixed lens-shaped tear between two points: edges jagged and
+ * deterministic in the seed (a rift never re-rolls), the interior
+ * void, the rim a violet casing under a pale core, both riding the
+ * hush `k`. In the deep, one tiny star ARRIVES at fixed seats down
+ * the spine — seen, then elsewhere, never in between.
+ */
+function voidRift(
+  ctx: CanvasRenderingContext2D,
+  x0: number, y0: number, x1: number, y1: number,
+  seed: number, w: number,
+  casing: string, core: string, voidCol: string,
+  nowMs: number, k: number, lw: number,
+): void {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const len = Math.hypot(dx, dy);
+  if (len < 0.0001) return;
+  const nx = -dy / len;
+  const ny = dx / len;
+  const segs = 7;
+  const edge = (side: number): Array<[number, number]> => {
+    const pts: Array<[number, number]> = [];
+    for (let i = 0; i <= segs; i++) {
+      const v = i / segs;
+      const bulge = Math.sin(v * Math.PI) * w;
+      const j = 0.3 * w * Math.sin(seed * (side > 0 ? 41.3 : 27.7) + i * 73.1);
+      pts.push([
+        x0 + dx * v + nx * (side * bulge + j),
+        y0 + dy * v + ny * (side * bulge + j),
+      ]);
+    }
+    return pts;
+  };
+  const a = edge(1);
+  const b = edge(-1);
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  // The absence itself — darker than any cloth around it.
+  ctx.fillStyle = voidCol;
+  ctx.beginPath();
+  ctx.moveTo(a[0]![0], a[0]![1]);
+  for (let i = 1; i < a.length; i++) ctx.lineTo(a[i]![0], a[i]![1]);
+  for (let i = b.length - 2; i >= 1; i--) ctx.lineTo(b[i]![0], b[i]![1]);
+  ctx.closePath();
+  ctx.fill();
+  // The torn edge wears the only light.
+  const rim = (pts: Array<[number, number]>): void => {
+    ctx.beginPath();
+    ctx.moveTo(pts[0]![0], pts[0]![1]);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i]![0], pts[i]![1]);
+    ctx.stroke();
+  };
+  ctx.strokeStyle = casing;
+  ctx.globalAlpha = 0.3 + 0.5 * k;
+  ctx.lineWidth = lw * 2;
+  rim(a);
+  rim(b);
+  ctx.strokeStyle = core;
+  ctx.globalAlpha = 0.25 + 0.6 * k;
+  ctx.lineWidth = lw;
+  rim(a);
+  rim(b);
+  // The star in the deep: it arrives, it does not cross.
+  ctx.fillStyle = core;
+  const wk = voidWink(nowMs, seed * 0.37, 3);
+  const sv = 0.25 + 0.25 * wk.i;
+  ctx.globalAlpha = wk.a * (0.35 + 0.65 * k);
+  ctx.beginPath();
+  ctx.arc(x0 + dx * sv, y0 + dy * sv, lw * (0.7 + 0.6 * wk.a), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
 
 /**
  * Visual equipment styles — the CAPE_STYLES pattern extended to every
@@ -469,6 +589,13 @@ export interface BodyStyle {
     // cinder clock), and at the flare each vents a drawn flame lick
     // and lets its sparks rise. Fire sworn, not displayed.
     | 'brazierpaul'
+    // THE TAKEN SHARDS — voidwhisper's MATCHED pair: a bite torn
+    // from each cap's crown, true void showing inside the wound,
+    // and the missing shard still HOVERING above it, torn edges
+    // rim-lit in plasma. The pair shares the hush (one whisper
+    // brightens both) while each shard bobs on its own time (the
+    // clockwork law). The void does not return what it takes.
+    | 'sunderpaul'
     // THE FOUR SHADOWS' SHOULDERS — cutpurse's guild offices, one
     // owner per LOT, pairs asymmetric (one shoulder for the guild,
     // one for the work): `shadowdrape` the notched half-mantle and
@@ -927,9 +1054,21 @@ export interface BodyStyle {
   /** Abyss lot: THE JELLY FRINGE — oral-arm streamers off the
    *  shoulder line, swaying, lume-tipped. */
   jellyfringe?: { color: string; lume: string };
-  /** Voidwhisper: three staggered ink panels hanging down the robe —
-   *  depth as flat value steps, the way the crypt keeps its layers. */
-  inkpanels?: { color: string };
+  /** Voidwhisper: THE WHISPER RIFT — one grand tear leaning across
+   *  the torso where the void took a strip of the robe (a diagonal
+   *  kills the tube). Interior = the garment's darkest value, plasma
+   *  only on the torn edge (THE VOID IS AN ABSENCE). Read by
+   *  sunderpaul for its rim light (the cross-read pattern). */
+  voidrift?: { casing: string; core: string; void: string };
+  /** Voidwhisper: THE ARRIVALS — pale star-points living at fixed
+   *  seats scattered down the skirt: each wakes, brightens, dies,
+   *  and is next seen at its NEXT seat. Nothing ever travels. */
+  winkmotes?: { color: string };
+  /** Voidwhisper: THE SUNDERED HEM — the robe's last hem course is
+   *  SEVERED: it floats below the skirt with a band of true void
+   *  between, both torn edges rim-lit, drifting on the hush. The
+   *  band is silhouette — structure — it holds white in the flash. */
+  sunderhem?: { color: string };
   /** Cindersworn: THE OATH SEAMS — drawn fissures where the char
    *  split and the fire looked out; the ember crawl walks them.
    *  Read by brazierpaul for its coal-bed light (the cross-read
@@ -1096,14 +1235,16 @@ export interface HelmStyle {
     // thistledown rolled-brim working hood, `mothcowl` the mothwing
     // tufted moth's head,
     // `hedgehat`
-    // the hedgemage patched twice-bent cone, `whispercowl` the voidwhisper
-    // tippet cowl with the embroidered eye, `oathcowl` the
+    // the hedgemage patched twice-bent cone, `hushcowl` the
+    // voidwhisper cowl whose peak the void took — the severed tip
+    // still hovers over the gap (whispercowl and its embroidered eye
+    // are dead — the void keeps only what it takes), `oathcowl` the
     // cindersworn char-tiered watch cowl under the one sworn coal
     // (cinderhood is dead — the fire keeps only what it re-forges),
     // `stardiadem` the starweaver woven silver band under its turning
     // ring of stars.
     | 'fieldhood' | 'mothcowl'
-    | 'hedgehat' | 'whispercowl' | 'oathcowl'
+    | 'hedgehat' | 'hushcowl' | 'oathcowl'
     | 'stardiadem'
     // THE STORM COURT'S HEADS — stormwoven's four weathers, one
     // owner each, the lots-override-kind law (the vigils precedent):
@@ -1369,9 +1510,12 @@ export interface HelmStyle {
   /** Maelcowl: spume — the flecks the streamer tears off at the
    *  break. */
   spume?: { color: string };
-  /** Whispercowl: the embroidered unblinking eye on the brow — flat
-   *  stitchwork, and a pale glint that rarely, slowly, looks at you. */
-  broweye?: { color: string; iris: string };
+  /** Hushcowl: THE RIFT LIGHT — the void's three values worn at the
+   *  head: plasma casing and pale core on every torn edge, and the
+   *  true void behind them (darker than any cloth on the garment).
+   *  Feeds the severed peak's rims, the shell tear, and the
+   *  wandering light in the doorway dark. */
+  riftlight?: { casing: string; core: string; void: string };
   /** Oathcowl: THE OATH COAL — the one sworn ember, set in an iron
    *  shrine at the brow. It has never once gone out. Breathes with
    *  the drawn breath; at the flare it remembers, and lets go one
@@ -1728,12 +1872,18 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     tidemoon: { color: '#e8e2d4' },
   },
   voidwhisper_robe: {
-    color: '#453a5c', trim: '#b8a8d8', cls: 'cloth',
-    silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'eye',
-    skirt: 0.34, skirtSlit: true, sash: '#2e2740', sleeves: 'full',
-    underskirt: '#332b47', motes: '#9a86c8', folds: true,
-    stole: { color: '#2e2740', trim: '#b8a8d8' },
-    inkpanels: { color: '#3d3352' }, emblemScale: 1.25,
+    // THE VOID WHISPER: near-dark ink violet. Three values — the ink,
+    // the pale lavender worn only as lit rims, and the plasma pair on
+    // the torn edges over true void (the absence law). Nothing on
+    // this robe travels; it arrives.
+    color: '#2a2140', trim: '#b8a8d8', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'sunderpaul', pauldronColor: '#251d38',
+    pauldronTrim: '#6a5a8c', pauldronScale: 1.15, chest: 'none',
+    skirt: 0.34, sash: '#1a1428', sleeves: 'full', mantle: '#221a34',
+    underskirt: '#1d1730', folds: true,
+    voidrift: { casing: '#7a3df0', core: '#e8dcff', void: '#0a0714' },
+    winkmotes: { color: '#e8dcff' },
+    sunderhem: { color: '#241d36' },
   },
   cindersworn_robe: {
     // THE CINDER OATH: near-black char; the fire shows only in the
@@ -2302,8 +2452,8 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     pearls: { color: '#e8e2d4' },
   },
   voidwhisper_cowl: {
-    color: '#453a5c', trim: '#b8a8d8', kind: 'whispercowl',
-    mask: '#5a4e78', broweye: { color: '#b8a8d8', iris: '#2a2238' },
+    color: '#2a2140', trim: '#b8a8d8', kind: 'hushcowl',
+    riftlight: { casing: '#7a3df0', core: '#e8dcff', void: '#0a0714' },
   },
   cindersworn_hood: {
     color: '#251a16', trim: '#d96a2c', kind: 'oathcowl',
@@ -2598,7 +2748,7 @@ export const LEG_STYLES: Record<string, LegStyle> = {
   stormwoven_skirts: { kind: 'pants', thigh: '#3c4660' },
   hedgemage_skirts: { kind: 'pants', thigh: '#4e5c33' },
   tidecaller_skirts: { kind: 'pants', thigh: '#245562' },
-  voidwhisper_skirts: { kind: 'pants', thigh: '#332b47' },
+  voidwhisper_skirts: { kind: 'pants', thigh: '#241d36' },
   cindersworn_skirts: { kind: 'pants', thigh: '#1f1511' },
   starweaver_skirts: { kind: 'pants', thigh: '#232850' },
   hareswift_chaps: {
@@ -2690,7 +2840,7 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   stormwoven_slippers: { color: '#3c4660', height: 0.09, cuff: { color: '#e8d878' } },
   hedgemage_slippers: { color: '#8a7a3c', height: 0.07, curl: true },
   tidecaller_slippers: { color: '#1f4a55', height: 0.08, cuff: { color: '#bfe8e0' } },
-  voidwhisper_slippers: { color: '#2e2740', height: 0.08, cuff: { color: '#b8a8d8' } },
+  voidwhisper_slippers: { color: '#1d1730', height: 0.08, cuff: { color: '#8a76b8' } },
   cindersworn_slippers: { color: '#180f0b', height: 0.08, cuff: { color: '#c8511f' } },
   starweaver_slippers: { color: '#232850', height: 0.08, curl: true, cuff: { color: '#c8cee8' } },
   hareswift_boots: { color: '#a88f60', height: 0.1, fur: { color: '#e8e2d4' } },
@@ -2837,9 +2987,9 @@ export const GLOVE_STYLES: Record<string, GloveStyle> = {
     knuckle: { color: '#e8e2d4', kind: 'gem' },
   },
   voidwhisper_gloves: {
-    color: '#352c48', hand: 'glove', bracer: '#2e2740',
+    color: '#241d36', hand: 'glove', bracer: '#1d1730',
     cuff: { color: '#6a5a8c', kind: 'band' },
-    knuckle: { color: '#b8a8d8', kind: 'gem' },
+    knuckle: { color: '#7a68a8', kind: 'gem' },
   },
   cindersworn_gloves: {
     color: '#1c130f', hand: 'glove', bracer: '#291c17',
@@ -4898,6 +5048,45 @@ export function drawTorsoGarment(
         }
         ctx.globalAlpha = 1;
       }
+      if (st.winkmotes) {
+        // THE ARRIVALS: voidwhisper's skirt lights — pale stars
+        // living at FIXED seats down the cloth. Each wakes where it
+        // sits, brightens, dies, and is next seen at its next seat.
+        // Nothing travels; nothing drifts; the void arrives. The
+        // whisper feeds them all on the one hush.
+        const wmCol = st.winkmotes.color;
+        const kV = voidK(nowMs, 0);
+        for (const [wi, seedW] of [[0, 0.15], [1, 0.52], [2, 0.83]] as const) {
+          const wk = voidWink(nowMs, seedW, 3);
+          const seats: Array<[number, number]> = [
+            [-0.62 + wi * 0.18, 0.38 + wi * 0.16],
+            [0.5 - wi * 0.3, 0.6 - wi * 0.14],
+            [-0.1 + wi * 0.44, 0.82 - wi * 0.2],
+          ];
+          const [su2, sv2] = seats[wk.i]!;
+          ctx.fillStyle = wmCol;
+          ctx.globalAlpha = wk.a * (0.35 + 0.55 * kV);
+          ctx.beginPath();
+          ctx.arc(
+            su2 * ww, y0 + (hemY - y0) * sv2,
+            0.0075 * s * (0.6 + 0.5 * wk.a), 0, Math.PI * 2,
+          );
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        // One small fixed slit low on the trailing cloth — the
+        // skirt's own wound, quiet until the whisper finds it.
+        if (st.voidrift) {
+          voidRift(
+            ctx,
+            -ww * 0.42, y0 + (hemY - y0) * 0.52,
+            -ww * 0.3, y0 + (hemY - y0) * 0.86,
+            9.4, 0.02 * s,
+            st.voidrift.casing, st.voidrift.core, st.voidrift.void,
+            nowMs, kV, Math.max(1, s * 0.006),
+          );
+        }
+      }
       if (st.undertow) {
         // THE UNDERTOW's own verse: the motes that fall — born in
         // the waist shadow, gone below the hem, each one fading as
@@ -5151,6 +5340,109 @@ export function drawTorsoGarment(
           );
           ctx.fill();
         }
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // THE SUNDERED HEM: outside the hurt guard on purpose — the
+    // floating course changes the garment's OUTLINE, so it is
+    // structure and holds white in the flash. The robe's last hem
+    // course is SEVERED: the cloth's cut edge wears a plasma lip, a
+    // strip of open dark crosses where the course was, and the
+    // course itself hovers below — a hair wider than the cloth
+    // above (the taken piece breaks the tube's line), its lower
+    // edge torn, drifting on the hush. The void does not return
+    // what it takes; it holds it exactly where it was.
+    if (st.sunderhem) {
+      const shm = st.sunderhem;
+      const kS2 = voidK(nowMs, 0);
+      const vrS = st.voidrift;
+      const hemAtS = (u: number): { x: number; y: number } => {
+        const fu = ((u + 1) / 2) * 4;
+        const i0 = Math.min(3, Math.floor(fu));
+        const fr2 = fu - i0;
+        return {
+          x: hem[i0]!.x + (hem[i0 + 1]!.x - hem[i0]!.x) * fr2,
+          y: hem[i0]!.y + (hem[i0 + 1]!.y - hem[i0]!.y) * fr2,
+        };
+      };
+      const hov = Math.sin(nowMs * 0.0008) * 0.007 * s;
+      const dft = Math.sin(nowMs * 0.0005 + 2.1) * 0.008 * s;
+      const gapH = 0.036 * s + 0.016 * s * kS2 + hov;
+      const bandH = 0.052 * s;
+      const uu = [-1, -0.5, 0, 0.5, 1] as const;
+      const jagB = (i: number): number =>
+        0.013 * s * Math.sin(i * 2.6 + 0.8) * (i % 2 === 0 ? 1 : -0.6);
+      // THE FLOATING COURSE.
+      ctx.fillStyle = hurt ? '#ffffff' : shm.color;
+      ctx.beginPath();
+      {
+        const p0 = hemAtS(-1);
+        ctx.moveTo(p0.x * 1.06 + dft, p0.y + gapH);
+        for (let i = 1; i < uu.length; i++) {
+          const p = hemAtS(uu[i]!);
+          ctx.lineTo(p.x * 1.06 + dft, p.y + gapH);
+        }
+        for (let i = uu.length - 1; i >= 0; i--) {
+          const p = hemAtS(uu[i]!);
+          ctx.lineTo(p.x * 1.06 + dft, p.y + gapH + bandH + jagB(i));
+        }
+      }
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // The course keeps the robe's own trailing shadow — a
+        // severed piece is still the same cloth under the same sun.
+        ctx.fillStyle = shade(shm.color, -14);
+        ctx.beginPath();
+        {
+          const pm = hemAtS(0);
+          const p1 = hemAtS(1);
+          ctx.moveTo(pm.x + dft, pm.y + gapH);
+          ctx.lineTo(p1.x * 1.06 + dft, p1.y + gapH);
+          ctx.lineTo(p1.x * 1.06 + dft, p1.y + gapH + bandH + jagB(4));
+          ctx.lineTo(pm.x + dft, pm.y + gapH + bandH + jagB(2));
+        }
+        ctx.closePath();
+        ctx.fill();
+        // THE TORN LIPS wear the only light: the cloth's cut edge
+        // above and the course's top lip below, on the one hush.
+        ctx.save();
+        ctx.lineCap = 'round';
+        const lip = (dy: number, scaleX: number, dx: number): void => {
+          ctx.beginPath();
+          const p0 = hemAtS(-1);
+          ctx.moveTo(p0.x * scaleX + dx, p0.y + dy);
+          for (let i = 1; i < uu.length; i++) {
+            const p = hemAtS(uu[i]!);
+            ctx.lineTo(p.x * scaleX + dx, p.y + dy);
+          }
+          ctx.stroke();
+        };
+        ctx.strokeStyle = vrS?.casing ?? shade(st.trim, -14);
+        ctx.globalAlpha = 0.26 + 0.46 * kS2;
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        lip(-0.004 * s, 1, 0);
+        lip(gapH, 1.06, dft);
+        ctx.strokeStyle = vrS?.core ?? st.trim;
+        ctx.globalAlpha = 0.2 + 0.55 * kS2;
+        ctx.lineWidth = Math.max(1, s * 0.0055);
+        lip(-0.004 * s, 1, 0);
+        lip(gapH, 1.06, dft);
+        ctx.restore();
+        // THE ARRIVAL in the gap: one star, three fixed seats along
+        // the severance — seen, then elsewhere.
+        const wkH = voidWink(nowMs, 0.31, 3);
+        const seatU2 = [-0.55, 0.12, 0.62][wkH.i]!;
+        const sp = hemAtS(seatU2);
+        ctx.fillStyle = vrS?.core ?? st.trim;
+        ctx.globalAlpha = wkH.a * (0.4 + 0.6 * kS2);
+        ctx.beginPath();
+        ctx.arc(
+          sp.x, sp.y + gapH * 0.5,
+          0.007 * s * (0.6 + 0.5 * wkH.a), 0, Math.PI * 2,
+        );
+        ctx.fill();
         ctx.globalAlpha = 1;
       }
     }
@@ -6496,28 +6788,46 @@ export function drawTorsoGarment(
       frontPlaneOff();
     }
 
-    // ---- THE INK PANELS: voidwhisper's own layer — three staggered
-    // flat panels hanging down the robe front, each one value step
-    // apart: the crypt's way of keeping depth without a single line.
-    if (st.inkpanels && !hurt && !back) {
-      frontPlaneOn();
-      const iCol = st.inkpanels.color;
-      for (const [u, drop, dv] of [
-        [-0.52, 0.62, -6], [0.04, 0.86, -14], [0.56, 0.5, -2],
-      ] as const) {
-        const px = u * tw;
-        const w = tw * 0.26;
-        ctx.fillStyle = shade(iCol, dv);
-        ctx.beginPath();
-        ctx.moveTo(px - w, -th * 0.98);
-        ctx.lineTo(px + w, -th * 0.98);
-        ctx.lineTo(px + w, -th * (0.98 - drop) - th * 0.06);
-        ctx.lineTo(px, -th * (0.98 - drop));
-        ctx.lineTo(px - w, -th * (0.98 - drop) - th * 0.06);
-        ctx.closePath();
-        ctx.fill();
+    // ---- THE WHISPER RIFT: voidwhisper's chest — ONE grand tear
+    // leaning across the torso where the void took a strip of the
+    // robe (a diagonal kills the tube; the ink panels are dead). The
+    // interior is the garment's darkest value, plasma only on the
+    // torn lips (THE VOID IS AN ABSENCE), and a smaller echo opens
+    // near the waist. The back wears its own verse — the void does
+    // not care which way the wearer faces.
+    if (st.voidrift && !hurt) {
+      const vrT = st.voidrift;
+      const kV = voidK(nowMs, 0);
+      const lwT = Math.max(1, s * 0.009);
+      if (!back) {
+        frontPlaneOn();
+        voidRift(
+          ctx,
+          f.lead * tw * 0.58, -th * 0.9,
+          -f.lead * tw * 0.5, -th * 0.32,
+          2.9, tw * 0.11,
+          vrT.casing, vrT.core, vrT.void,
+          nowMs, kV, lwT,
+        );
+        voidRift(
+          ctx,
+          -f.lead * tw * 0.12, -th * 0.26,
+          -f.lead * tw * 0.58, -th * 0.08,
+          8.2, tw * 0.05,
+          vrT.casing, vrT.core, vrT.void,
+          nowMs, kV, Math.max(1, s * 0.006),
+        );
+        frontPlaneOff();
+      } else {
+        voidRift(
+          ctx,
+          -tw * 0.5, -th * 0.78,
+          tw * 0.4, -th * 0.3,
+          5.7, tw * 0.08,
+          vrT.casing, vrT.core, vrT.void,
+          nowMs, kV, Math.max(1, s * 0.007),
+        );
       }
-      frontPlaneOff();
     }
 
     // ---- THE CHAR YOKE: cindersworn's mantle — the first cinder
@@ -11550,6 +11860,143 @@ export function drawPauldron(
       ctx.globalAlpha = Math.sin(mu * Math.PI) * (0.25 + 0.3 * k);
       ctx.beginPath();
       ctx.arc(bx + Math.sin(mu * 7 + ph) * 0.014 * s, by - bry - mu * 0.055 * s, 0.005 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (st.pauldron === 'sunderpaul') {
+    // THE TAKEN SHARDS — voidwhisper's MATCHED pair: each cap wears
+    // a low angular crest with a BITE torn from its top edge — the
+    // wound full of true void (the absence law: the dark inside is
+    // deeper than any cloth) — and the missing shard still HOVERS
+    // over the cut, torn edges rim-lit in plasma, a smaller chip
+    // adrift beside it. The pair shares the hush (one whisper
+    // brightens both wounds together) while every held piece bobs
+    // on its own side-phase (the clockwork law). Now and then a
+    // pale star arrives in the gap: seen, then elsewhere. The void
+    // does not return what it takes.
+    const vr = st.voidrift;
+    const casing = vr?.casing ?? shade(trim, -14);
+    const core = vr?.core ?? trim;
+    const voidCol = vr?.void ?? '#0a0714';
+    const k = voidK(nowMs, 0);
+    const ph = side > 0 ? 0 : 2.3;
+    seat(0.105 * s, 0.087 * s, hurt ? '#ffffff' : col, trim);
+    const px = (u: number): number => side * u * s;
+    // THE CREST: an angular standing plate riding the cap's crown —
+    // a step LIGHTER than the cap (dark-on-dark is invisible; the
+    // stormspire lesson), its top edge broken by the bite. It is
+    // structure: it holds white in the flash.
+    ctx.fillStyle = hurt ? '#ffffff' : shade(col, 8);
+    ctx.beginPath();
+    ctx.moveTo(px(-0.082), -0.048 * s);
+    ctx.lineTo(px(-0.062), -0.092 * s);
+    ctx.lineTo(px(-0.012), -0.088 * s);
+    ctx.lineTo(px(0.008), -0.062 * s);
+    ctx.lineTo(px(0.036), -0.094 * s);
+    ctx.lineTo(px(0.07), -0.082 * s);
+    ctx.lineTo(px(0.088), -0.044 * s);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // The 2.5D read: lit top facets either side of the wound.
+      ctx.fillStyle = shade(col, 26);
+      ctx.beginPath();
+      ctx.moveTo(px(-0.062), -0.092 * s);
+      ctx.lineTo(px(-0.012), -0.088 * s);
+      ctx.lineTo(px(-0.016), -0.078 * s);
+      ctx.lineTo(px(-0.058), -0.082 * s);
+      ctx.closePath();
+      ctx.moveTo(px(0.036), -0.094 * s);
+      ctx.lineTo(px(0.07), -0.082 * s);
+      ctx.lineTo(px(0.066), -0.072 * s);
+      ctx.lineTo(px(0.038), -0.083 * s);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // THE WOUND: the bite is full of void — painted always; in the
+    // flash the dark notch keeps the sundered silhouette honest.
+    ctx.fillStyle = voidCol;
+    ctx.beginPath();
+    ctx.moveTo(px(-0.012), -0.088 * s);
+    ctx.lineTo(px(0.008), -0.062 * s);
+    ctx.lineTo(px(0.036), -0.094 * s);
+    ctx.closePath();
+    ctx.fill();
+    // THE SHARD: the piece the void kept, hovering over the bite on
+    // its own slow time — and the chip it shed, further out. Both
+    // are silhouette: they hold white in the flash.
+    const gapP = 0.028 * s + 0.016 * s * k;
+    const bob = Math.sin(nowMs * 0.0011 + ph) * 0.008 * s;
+    const driftS = Math.sin(nowMs * 0.0007 + ph + 1.1) * 0.006 * s;
+    const sx = px(0.012) + side * driftS;
+    const sy = -0.096 * s - gapP + bob;
+    ctx.fillStyle = hurt ? '#ffffff' : shade(col, 20);
+    ctx.beginPath();
+    ctx.moveTo(sx, sy + 0.018 * s);
+    ctx.lineTo(sx - side * 0.032 * s, sy - 0.016 * s);
+    ctx.lineTo(sx - side * 0.01 * s, sy - 0.056 * s);
+    ctx.lineTo(sx + side * 0.028 * s, sy - 0.022 * s);
+    ctx.closePath();
+    ctx.fill();
+    const cbob = Math.sin(nowMs * 0.0011 + ph + 2.1) * 0.006 * s;
+    const cx2 = px(0.058);
+    const cy2 = -0.118 * s + cbob;
+    ctx.fillStyle = hurt ? '#ffffff' : shade(col, 6);
+    ctx.beginPath();
+    ctx.moveTo(cx2, cy2 + 0.008 * s);
+    ctx.lineTo(cx2 - side * 0.011 * s, cy2 - 0.009 * s);
+    ctx.lineTo(cx2 + side * 0.01 * s, cy2 - 0.012 * s);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // The shard's lit facet — the same sky lights every piece.
+      ctx.fillStyle = shade(col, 34);
+      ctx.beginPath();
+      ctx.moveTo(sx - side * 0.032 * s, sy - 0.016 * s);
+      ctx.lineTo(sx - side * 0.01 * s, sy - 0.056 * s);
+      ctx.lineTo(sx - side * 0.005 * s, sy - 0.04 * s);
+      ctx.lineTo(sx - side * 0.022 * s, sy - 0.014 * s);
+      ctx.closePath();
+      ctx.fill();
+      // THE TORN EDGES wear the only light: plasma on the bite's two
+      // lips and along the shard's under-edge, all on the one hush.
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      const lips = (): void => {
+        ctx.beginPath();
+        ctx.moveTo(px(-0.012), -0.088 * s);
+        ctx.lineTo(px(0.008), -0.062 * s);
+        ctx.lineTo(px(0.036), -0.094 * s);
+        ctx.moveTo(sx - side * 0.032 * s, sy - 0.016 * s);
+        ctx.lineTo(sx, sy + 0.018 * s);
+        ctx.lineTo(sx + side * 0.028 * s, sy - 0.022 * s);
+        ctx.stroke();
+      };
+      ctx.strokeStyle = casing;
+      ctx.globalAlpha = 0.28 + 0.5 * k;
+      ctx.lineWidth = Math.max(1, s * 0.013);
+      lips();
+      ctx.strokeStyle = core;
+      ctx.globalAlpha = 0.22 + 0.58 * k;
+      ctx.lineWidth = Math.max(1, s * 0.006);
+      lips();
+      ctx.restore();
+      // THE ARRIVAL: a pale star at one of three fixed seats around
+      // the gap — it wakes, is seen, and is next seen at another.
+      const wk = voidWink(nowMs, 0.9 + ph * 0.17, 3);
+      const seats: Array<[number, number]> = [
+        [-0.024, -0.104], [0.03, -0.124], [0.002, -0.086],
+      ];
+      const [wu, wv] = seats[wk.i]!;
+      ctx.fillStyle = core;
+      ctx.globalAlpha = wk.a * (0.4 + 0.6 * k);
+      ctx.beginPath();
+      ctx.arc(px(wu), wv * s, 0.006 * s * (0.6 + 0.5 * wk.a), 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
     }
@@ -17885,40 +18332,59 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     return;
   }
 
-  if (st.kind === 'whispercowl') {
-    // THE WHISPERCOWL — voidwhisper's own head: the cowl that keeps
-    // its dark. The face opening sinks into real shadow — deeper than
-    // any road hood — over the half-mask; the peak runs LONG, wrapping
-    // the throat as a tippet scarf ending in a tassel; and on the brow
-    // rides the embroidered unblinking eye. Now and then, slowly, its
-    // glint crosses the stitching: it read you.
+  if (st.kind === 'hushcowl') {
+    // THE HUSHCOWL — voidwhisper's own head: the cowl the void has
+    // already claimed. The vigils triangle stands as ever, except
+    // its PEAK IS GONE — severed clean, and THE TAKEN TIP still
+    // hovers over the wound, torn edges rim-lit in plasma, the cut
+    // itself full of a dark deeper than any cloth (THE VOID IS AN
+    // ABSENCE). Down the leading pitch the cloth is torn open on one
+    // fixed rift. The opening is framed like a shrine door, and
+    // inside it there is NOTHING — no chin, no mask, no eye — only
+    // the deepest dark in the wardrobe, where a single pale light
+    // arrives, is seen, and is next seen somewhere else. It never
+    // crosses the space between. Nobody has watched it long enough
+    // to be sure it is alone.
     const t = profileK;
     const front = backK <= 0.55;
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
-    const ohw = hw * 0.72 * (1 - 0.5 * t);
+    const ohw = hw * 0.74 * (1 - 0.5 * t);
     const oTop = headY - hh * 0.58;
     const oBot = headY + hh * 0.84;
-    const sway = Math.sin(f.nowMs * 0.0013) * hw * 0.04;
-    const apexX = headX - lead * hw * (0.32 + t * 0.16);
-    const apexY = headY - hh * 1.52;
-    const tipX = headX - lead * (hw * (1.5 + t * 0.5) + sway);
-    const tipY = headY - hh * 0.7;
+    const k = voidK(f.nowMs, 0);
+    const casing = st.riftlight?.casing ?? shade(st.trim, -18);
+    const core = st.riftlight?.core ?? st.trim;
+    const voidCol = st.riftlight?.void ?? '#0a0714';
+    // THE SEVERED LINE: where the void cut. Fixed jagged geometry (a
+    // wound never re-rolls); only the light on its edges moves. The
+    // cut leans with the old peak's pitch.
+    const sevPts: Array<[number, number]> = [
+      [0.92, -1.1], [0.44, -1.0], [0.06, -1.1], [-0.38, -0.98], [-0.86, -1.04],
+    ];
     const shell = () => {
-      ctx.moveTo(headX + lead * hw * 1.24, headY + hh * 1.18);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.32, headY + hh * 0.2, headX + lead * hw * 1.16, headY - hh * 0.48);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.24, headY - hh * 0.84, headX + lead * hw * 0.84, headY - hh * 1.14);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.3, headY - hh * 1.44, apexX, apexY);
-      // The long peak: past the skull, dipping toward the shoulder.
-      ctx.quadraticCurveTo(headX - lead * hw * (1.0 + t * 0.3), apexY + hh * 0.02, tipX, tipY);
-      ctx.quadraticCurveTo(headX - lead * hw * (1.06 + t * 0.26), headY - hh * 0.36, headX - lead * hw * (1.26 + t * 0.36), headY - hh * 0.08);
-      ctx.quadraticCurveTo(headX - lead * hw * (1.38 + t * 0.32), headY + hh * 0.38, headX - lead * hw * 1.3, headY + hh * 1.18);
-      ctx.quadraticCurveTo(headX, headY + hh * 1.46, headX + lead * hw * 1.24, headY + hh * 1.18);
+      ctx.moveTo(headX + lead * hw * 1.22, headY + hh * 1.18);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.3, headY + hh * 0.16, headX + lead * hw * 1.1, headY - hh * 0.5);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.04, headY - hh * 0.88, headX + lead * hw * sevPts[0]![0], headY + hh * sevPts[0]![1]);
+      // the cut crosses the crown — hard steps, fixed
+      for (let i = 1; i < sevPts.length; i++) {
+        ctx.lineTo(headX + lead * hw * sevPts[i]![0], headY + hh * sevPts[i]![1]);
+      }
+      ctx.quadraticCurveTo(headX - lead * hw * (1.12 + t * 0.24), headY - hh * 0.6, headX - lead * hw * (1.26 + t * 0.3), headY - hh * 0.02);
+      ctx.quadraticCurveTo(headX - lead * hw * 1.34, headY + hh * 0.6, headX - lead * hw * 1.26, headY + hh * 1.2);
+      // The hem: heavy quiet cloth — the hush has no rags.
+      ctx.quadraticCurveTo(headX - lead * hw * 0.6, headY + hh * 1.44, headX, headY + hh * 1.42);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.7, headY + hh * 1.38, headX + lead * hw * 1.22, headY + hh * 1.18);
       ctx.closePath();
     };
     const opening = () => {
       chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
     };
+    // The base cap FIRST: cloth between skull and crown at every
+    // facing, so the wound can never show scalp (the nape law).
     ctx.fillStyle = mc;
+    ctx.beginPath();
+    ctx.ellipse(headX, headY - hh * 0.5, hw * 1.04, hh * 0.54, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.beginPath();
     shell();
     if (front) opening();
@@ -17929,133 +18395,205 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       shell();
       if (front) opening();
       ctx.clip('evenodd');
-      ctx.fillStyle = shade(st.color, -13);
-      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
-      // Ink panels on the cloth itself: two flat value steps down the
-      // trailing drape — the crypt keeps its layers.
-      ctx.fillStyle = shade(st.color, -20);
+      // Folded dark: the trailing third in hard shadow.
+      ctx.fillStyle = shade(st.color, -12);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.7, hw * 2.4, hh * 3.5);
+      // Two hush seams: the tailoring the void left alone — fixed
+      // fold lines falling from the cut toward the hem.
+      ctx.strokeStyle = shade(st.color, -22);
+      ctx.lineWidth = Math.max(1, s * 0.006);
       ctx.beginPath();
-      ctx.moveTo(headX - lead * hw * 0.5, headY - hh * 0.9);
-      ctx.quadraticCurveTo(headX - lead * hw * 0.9, headY - hh * 0.1, headX - lead * hw * 0.8, headY + hh * 1.05);
-      ctx.lineTo(headX - lead * hw * 1.1, headY + hh * 1.08);
-      ctx.quadraticCurveTo(headX - lead * hw * 1.2, headY - hh * 0.06, headX - lead * hw * 0.72, headY - hh * 0.94);
+      ctx.moveTo(headX - lead * hw * 0.5, headY - hh * 0.92);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.72, headY - hh * 0.1, headX - lead * hw * 0.66, headY + hh * 1.1);
+      ctx.moveTo(headX + lead * hw * 0.12, headY - hh * 1.02);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.1, headY - hh * 0.2, headX - lead * hw * 0.02, headY + hh * 1.2);
+      ctx.stroke();
+      // The cold arris: one faint lit plane down the leading pitch —
+      // pale lavender light, not warmth; the void has no forge.
+      ctx.fillStyle = shade(st.color, 8);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 0.56, headY - hh * 0.98);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.94, headY - hh * 0.56, headX + lead * hw * 1.02, headY - hh * 0.08);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.7, headY - hh * 0.42, headX + lead * hw * 0.44, headY - hh * 0.88);
       ctx.closePath();
       ctx.fill();
+      // THE SHELL RIFT: the one tear in the cloth itself, down the
+      // leading pitch, clipped in the shell — a fixed wound whose
+      // edges light on the hush and whose star arrives, never walks.
+      voidRift(
+        ctx,
+        headX + lead * hw * 0.34, headY - hh * 0.78,
+        headX + lead * hw * 1.0, headY + hh * 0.62,
+        4.3, hw * 0.055,
+        casing, core, voidCol,
+        f.nowMs, k, Math.max(1, s * 0.0085),
+      );
       ctx.restore();
-      // THE TIPPET: the peak's tail wraps the throat — a scarf band
-      // crossing under the chin to the leading shoulder, ending in a
-      // tassel. Cloth with weight; it sways a hair on the clock.
-      const tSway = Math.sin(f.nowMs * 0.0017 + 0.8) * hw * 0.04;
+    }
+    // THE TAKEN TIP: the peak the void kept. It hovers over the cut
+    // with open AIR between — the sky through the wound is what says
+    // SEVERED — on its own slow time (suspension, not travel), a
+    // step lighter than the shell so the fragment reads as its own
+    // mass. Silhouette: it holds white in the flash on every facing.
+    // The gap must be WIDER than it looks: the outline shader halos
+    // both lips, and a narrow wound gets swallowed whole by its own
+    // outlines. Sky must survive between them.
+    const gap = hh * (0.38 + 0.12 * k);
+    const hover = Math.sin(f.nowMs * 0.0009) * hh * 0.06;
+    const drift = Math.sin(f.nowMs * 0.0006 + 1.7) * hw * 0.03;
+    const fpx = headX + drift;
+    const fbY = headY - hh * 1.04 - gap + hover;
+    const apexFX = fpx - lead * hw * (0.34 + t * 0.12);
+    const apexFY = fbY - hh * 0.42;
+    const tipFX = fpx - lead * hw * (0.54 + t * 0.14);
+    const tipFY = apexFY + hh * 0.24;
+    const tipPath = (): void => {
+      ctx.moveTo(fpx + lead * hw * 0.58, fbY + hh * 0.01);
+      ctx.quadraticCurveTo(fpx + lead * hw * 0.14, fbY - hh * 0.3, apexFX, apexFY);
+      // the fold: pinch, and the point drops back TOWARD the gap it
+      // was cut from — the void keeps things where it found them.
+      ctx.quadraticCurveTo(fpx - lead * hw * (0.58 + t * 0.14), apexFY + hh * 0.04, tipFX, tipFY);
+      ctx.quadraticCurveTo(fpx - lead * hw * 0.54, apexFY + hh * 0.34, fpx - lead * hw * 0.56, fbY - hh * 0.02);
+      // the torn base: the mirror of the cut below it
+      ctx.lineTo(fpx - lead * hw * 0.28, fbY + hh * 0.07);
+      ctx.lineTo(fpx - lead * hw * 0.02, fbY - hh * 0.03);
+      ctx.lineTo(fpx + lead * hw * 0.3, fbY + hh * 0.08);
+      ctx.closePath();
+    };
+    ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, 5);
+    ctx.beginPath();
+    tipPath();
+    ctx.fill();
+    if (!hurt) {
+      // The tip keeps its folded dark — the same trailing shadow the
+      // shell wears; a severed piece is still the same cloth.
+      ctx.save();
+      ctx.beginPath();
+      tipPath();
+      ctx.clip();
       ctx.fillStyle = shade(st.color, -8);
+      ctx.fillRect(lead === 1 ? fpx - hw * 2 : fpx, fbY - hh * 0.9, hw * 2, hh * 1.4);
+      ctx.restore();
+      // THE TORN EDGES wear the only light: plasma rims on both lips
+      // of the wound — the tip's base and the shell's cut — riding
+      // the hush together (one whisper brightens both).
+      const rimPath = (pts: Array<[number, number]>): void => {
+        ctx.beginPath();
+        ctx.moveTo(pts[0]![0], pts[0]![1]);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i]![0], pts[i]![1]);
+        ctx.stroke();
+      };
+      const cutLip: Array<[number, number]> = sevPts.map(
+        ([u, dy]) => [headX + lead * hw * u, headY + hh * (dy + 0.02)],
+      );
+      const tipLip: Array<[number, number]> = [
+        [fpx + lead * hw * 0.58, fbY + hh * 0.01],
+        [fpx + lead * hw * 0.3, fbY + hh * 0.08],
+        [fpx - lead * hw * 0.02, fbY - hh * 0.03],
+        [fpx - lead * hw * 0.28, fbY + hh * 0.07],
+        [fpx - lead * hw * 0.56, fbY - hh * 0.02],
+      ];
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = casing;
+      ctx.globalAlpha = 0.28 + 0.5 * k;
+      ctx.lineWidth = Math.max(1, s * 0.016);
+      rimPath(cutLip);
+      rimPath(tipLip);
+      ctx.strokeStyle = core;
+      ctx.globalAlpha = 0.22 + 0.58 * k;
+      ctx.lineWidth = Math.max(1, s * 0.008);
+      rimPath(cutLip);
+      rimPath(tipLip);
+      ctx.restore();
+      // A star ARRIVES in the wound — one of three fixed seats along
+      // the gap; brighter when the whisper passes. It does not cross.
+      const wk = voidWink(f.nowMs, 1.3, 3);
+      const seatU = [-0.52, 0.08, 0.6][wk.i]!;
+      ctx.fillStyle = core;
+      ctx.globalAlpha = wk.a * (0.4 + 0.6 * k);
       ctx.beginPath();
-      ctx.moveTo(tipX, tipY);
-      ctx.quadraticCurveTo(headX - lead * hw * 1.3, headY + hh * 0.5, headX - lead * hw * 0.4, headY + hh * 1.18);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.5, headY + hh * 1.62, headX + lead * hw * (1.2 + tSway / hw), headY + hh * 1.3);
-      ctx.lineTo(headX + lead * hw * (1.08 + tSway / hw), headY + hh * 1.56);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.3, headY + hh * 1.88, headX - lead * hw * 0.6, headY + hh * 1.42);
-      ctx.quadraticCurveTo(headX - lead * hw * 1.5, headY + hh * 0.6, tipX - lead * hw * 0.14, tipY + hh * 0.16);
-      ctx.closePath();
+      ctx.arc(
+        headX + lead * hw * seatU,
+        headY - hh * 1.04 - gap * 0.5 + hover * 0.5,
+        headR * 0.035 * (0.6 + 0.5 * wk.a), 0, Math.PI * 2,
+      );
       ctx.fill();
-      // The tassel at the tippet's end.
-      const tax = headX + lead * hw * (1.14 + tSway / hw);
-      const tay = headY + hh * 1.44;
-      ctx.fillStyle = st.trim;
-      ctx.beginPath();
-      ctx.moveTo(tax - hw * 0.06, tay);
-      ctx.lineTo(tax + hw * 0.06, tay);
-      ctx.lineTo(tax + hw * 0.04 + tSway * 0.5, tay + hh * 0.3);
-      ctx.lineTo(tax - hw * 0.04 + tSway * 0.5, tay + hh * 0.3);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = shade(st.trim, -20);
-      ctx.fillRect(tax - hw * 0.07, tay - hh * 0.02, hw * 0.14, hh * 0.06);
+      ctx.globalAlpha = 1;
       if (front) {
-        // THE DEEP DARK: the opening sinks further than any road
-        // hood — the gradient runs past the eye line, and a veil of
-        // ink sits over the whole window. The mask below is the only
-        // landmark the dark allows.
+        // THE DOORWAY DARK: the deepest hold in the wardrobe — the
+        // whole window, opaque, no chin, no landmark (opaque fills
+        // are gremlin-safe in a clip; the void needs no grading).
         ctx.save();
         ctx.beginPath();
         opening();
         ctx.clip();
-        ctx.fillStyle = 'rgba(20, 12, 26, 0.34)';
-        ctx.fillRect(cx - ohw, oTop, ohw * 2, oBot - oTop);
-        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.5);
-        shGrad.addColorStop(0, 'rgba(14, 8, 20, 0.78)');
-        shGrad.addColorStop(1, 'rgba(14, 8, 20, 0)');
-        ctx.fillStyle = shGrad;
-        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 1.2);
+        ctx.fillStyle = voidCol;
+        ctx.fillRect(cx - ohw, oTop + cut * 0.2, ohw * 2, oBot - (oTop + cut * 0.2));
         ctx.restore();
-        if (st.mask) {
-          const mw = ohw * 0.98;
-          ctx.fillStyle = st.mask;
+        // THE SHRINE DOOR: a quiet frame in cold lavender-grey — the
+        // door wears no light of its own (the absence law holds at
+        // the door too); an inner dark line, two small bosses.
+        const doorCol = shade(st.trim, -34);
+        ctx.strokeStyle = doorCol;
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        opening();
+        ctx.stroke();
+        ctx.strokeStyle = '#150e22';
+        ctx.lineWidth = Math.max(1, s * 0.005);
+        ctx.beginPath();
+        chamferRect(ctx, cx - ohw * 0.9, oTop + (oBot - oTop) * 0.04, ohw * 1.8, (oBot - oTop) * 0.92, cut * 0.7);
+        ctx.stroke();
+        ctx.fillStyle = shade(st.trim, -24);
+        for (const bu of [-0.82, 0.82] as const) {
           ctx.beginPath();
-          ctx.moveTo(cx - mw, headY + hh * 0.22);
-          ctx.lineTo(cx + mw, headY + hh * 0.22);
-          ctx.lineTo(cx + mw * 0.72, headY + hh * 0.62);
-          ctx.lineTo(cx, headY + hh * 0.82);
-          ctx.lineTo(cx - mw * 0.72, headY + hh * 0.62);
-          ctx.closePath();
+          ctx.arc(cx + ohw * bu, oBot - cut * 0.5, headR * 0.034, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillStyle = shade(st.mask, 12);
-          ctx.fillRect(cx - mw, headY + hh * 0.22, mw * 2, hh * 0.07);
         }
-        if (st.broweye) {
-          // THE UNBLINKING EYE: embroidered on the brow — an almond
-          // of stitched thread, tick lashes raying out, the iris a
-          // flat disc. On a rare slow beat a pale glint crosses it.
-          const ec = st.broweye.color;
-          const ic = st.broweye.iris;
-          const ex = cx;
-          const ey = oTop - headR * 0.02;
-          const ew = ohw * 0.6;
-          const eh = headR * 0.17;
-          ctx.strokeStyle = ec;
-          ctx.lineWidth = Math.max(1, s * 0.012);
-          ctx.beginPath();
-          ctx.moveTo(ex - ew, ey);
-          ctx.quadraticCurveTo(ex, ey - eh * 1.6, ex + ew, ey);
-          ctx.quadraticCurveTo(ex, ey + eh * 1.6, ex - ew, ey);
-          ctx.closePath();
-          ctx.stroke();
-          for (const du of [-0.75, -0.35, 0.35, 0.75] as const) {
-            ctx.beginPath();
-            ctx.moveTo(ex + du * ew, ey - eh * (1.1 - Math.abs(du) * 0.5));
-            ctx.lineTo(ex + du * ew * 1.2, ey - eh * (1.7 - Math.abs(du) * 0.5));
-            ctx.stroke();
-          }
-          ctx.fillStyle = ic;
-          ctx.beginPath();
-          ctx.arc(ex, ey, eh * 0.72, 0, Math.PI * 2);
-          ctx.fill();
-          const look = Math.sin(f.nowMs * 0.00042);
-          if (look > 0.86) {
-            const lk = (look - 0.86) / 0.14;
-            ctx.globalAlpha = Math.sin(lk * Math.PI);
-            ctx.fillStyle = shade(ec, 40);
-            ctx.beginPath();
-            ctx.arc(ex + (lk - 0.5) * ew * 0.9, ey - eh * 0.1, eh * 0.24, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.globalAlpha = 1;
-          }
-        }
+        // THE WANDERING LIGHT: one pale point in the doorway dark.
+        // Three fixed seats where a face has no business being; it
+        // wakes at one, dies, and is next seen at another. The only
+        // tenant the dark allows — and the whisper feeds it.
+        const dw = voidWink(f.nowMs, 0.45, 3);
+        const seats: Array<[number, number]> = [
+          [-0.36, -0.16], [0.4, 0.14], [-0.06, 0.5],
+        ];
+        const [su, sv] = seats[dw.i]!;
+        const lx = cx + ohw * su;
+        const ly = headY + hh * sv;
+        ctx.strokeStyle = casing;
+        ctx.globalAlpha = dw.a * 0.34 * (0.5 + 0.5 * k);
+        ctx.lineWidth = Math.max(1, s * 0.009);
+        ctx.beginPath();
+        ctx.arc(lx, ly, headR * 0.085, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = core;
+        ctx.globalAlpha = dw.a * (0.5 + 0.5 * k);
+        ctx.beginPath();
+        ctx.arc(lx, ly, headR * 0.055 * (0.6 + 0.5 * dw.a), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
       } else {
-        // From behind: a second ink panel and the drape tail — the
-        // crypt keeps its layers on every side.
-        ctx.fillStyle = shade(st.color, -16);
+        // From behind: the drape tail, and the back verse of the
+        // rift — the void does not care which way the wearer faces.
+        ctx.fillStyle = st.color;
         ctx.beginPath();
-        ctx.moveTo(headX + hw * 0.14, headY - hh * 0.8);
-        ctx.quadraticCurveTo(headX + hw * 0.5, headY - hh * 0.05, headX + hw * 0.42, headY + hh * 1.0);
-        ctx.lineTo(headX + hw * 0.12, headY + hh * 1.05);
+        ctx.moveTo(headX - hw * 0.3, headY + hh * 0.82);
+        ctx.lineTo(headX + hw * 0.28, headY + hh * 0.82);
+        ctx.lineTo(headX + hw * 0.1, headY + hh * 1.9);
+        ctx.lineTo(headX - hw * 0.14, headY + hh * 1.9);
         ctx.closePath();
         ctx.fill();
-        ctx.fillStyle = shade(st.color, -10);
-        ctx.beginPath();
-        ctx.moveTo(headX - hw * 0.34, headY + hh * 0.9);
-        ctx.lineTo(headX + hw * 0.34, headY + hh * 0.9);
-        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 1.92);
-        ctx.closePath();
-        ctx.fill();
+        voidRift(
+          ctx,
+          headX - hw * 0.02, headY + hh * 0.94,
+          headX + hw * 0.04, headY + hh * 1.76,
+          6.1, hw * 0.04,
+          casing, core, voidCol,
+          f.nowMs, k, Math.max(1, s * 0.0065),
+        );
       }
     }
     return;
