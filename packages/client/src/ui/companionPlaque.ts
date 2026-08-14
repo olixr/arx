@@ -6,17 +6,22 @@ import { petPlaquePortraitUrl } from '../render/petPortrait.js';
 import { ringGauge, type RingGauge } from './kit/ring.js';
 
 /**
- * THE COMPANION PLAQUE — the friend at your heel, promoted out of the
- * buff-chip tray into a standing piece of the HUD: a crest medallion
- * carrying the animal's painted portrait on its suede bed, a cut-plate
- * nameplate with the level gem, a bold ink-rimmed vigor gauge with a
- * trailing damage ghost, and one state ring that speaks whichever
- * truth matters now — the rest clock draining blue, or the reopened
- * bond breathing gold beside the treat it is asking for.
+ * THE QUIET CREST — the friend at your heel, worn small in the top-left
+ * corner where the ally frame belongs: out of the action band above the
+ * hotbar it used to tower over, and clear of the chat (bottom-left) and
+ * the errand tracker (top-right). A smoked-glass capsule in the quiet
+ * console's material carries the crest medallion with the painted
+ * portrait, the name with its level gem, and a slim vigor sliver with
+ * the trailing damage ghost. The state word speaks only when it has
+ * something to say — downed, resting, or catching up swap in where the
+ * name sits; a plain heel says nothing at all. The one state ring
+ * still tells the truth that matters now: the rest clock draining
+ * blue, or the reopened bond breathing gold beside the treat it asks
+ * for. No idle motion — the crest moves only when something happens.
  *
- * One companion, one plaque (the heel friend, or the nearest resting
+ * One companion, one crest (the heel friend, or the nearest resting
  * one). DOM writes land only on change — the perf law of the HUD.
- * Clicking the plaque is still the pat (THE QUIET HEEL).
+ * Clicking the crest is still the pat (THE QUIET HEEL).
  */
 export class CompanionPlaque {
   private readonly root = document.createElement('button');
@@ -46,22 +51,24 @@ export class CompanionPlaque {
       if ((ev as AnimationEvent).animationName === 'comp-hurt') this.root.classList.remove('hurt');
     });
 
-    // The nameplate card: name and level gem over the vigor gauge over
-    // the state word. The medallion overhangs its left edge.
+    // The card: one head row (the name — or the state word, when it
+    // speaks — beside the level gem) over the vigor sliver. Two lines,
+    // always two lines: the state swaps in for the name instead of
+    // stacking under it, so the capsule never changes height.
     const card = document.createElement('div');
     card.className = 'comp-card';
     const head = document.createElement('div');
     head.className = 'comp-head';
     this.nameEl.className = 'comp-name';
+    this.stateEl.className = 'comp-state';
     this.lvlEl.className = 'comp-lvl';
-    head.append(this.nameEl, this.lvlEl);
+    head.append(this.nameEl, this.stateEl, this.lvlEl);
     const gauge = document.createElement('div');
     gauge.className = 'comp-hp';
     this.hpGhost.className = 'comp-hp-ghost';
     this.hpFill.className = 'comp-hp-fill';
     gauge.append(this.hpGhost, this.hpFill);
-    this.stateEl.className = 'comp-state';
-    card.append(head, gauge, this.stateEl);
+    card.append(head, gauge);
 
     // The medallion: portrait in the crest, state ring riding the brass.
     const medal = document.createElement('div');
@@ -122,7 +129,9 @@ export class CompanionPlaque {
     this.root.style.setProperty('--comp-vigor', String(Math.round(frac * 1000) / 1000));
     this.root.dataset['vigor'] = frac <= 0.25 ? 'dire' : frac <= 0.5 ? 'worn' : 'hale';
 
-    // One state class, one state word.
+    // One state class, one state word — and the word only exists when
+    // it has news. At heel the name holds the line alone (THE QUIET
+    // CREST: the steady state is silence).
     this.root.classList.toggle('state-downed', active.state === 'downed');
     this.root.classList.toggle('state-resting', active.state === 'resting');
     this.root.classList.toggle('state-trailing', active.state === 'trailing');
@@ -134,7 +143,7 @@ export class CompanionPlaque {
           ? `Rests · ${Math.max(1, active.restSec ?? 0)}s`
           : active.state === 'trailing'
             ? 'Catching up'
-            : 'At heel';
+            : '';
 
     // The state ring: a resting friend's clock drains blue around the
     // crest; a reopened bond wears the ring full and breathing gold.

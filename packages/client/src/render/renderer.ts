@@ -53,7 +53,7 @@ import {
   type Vec2,
   isFishingTile,
 } from '@arx/shared';
-import { COMPOST_BATCH_WORTH, abilityDef, bandDy, enchantDef, instanceName, isCropTile, itemDef, npcDef, npcHitHeight } from '@arx/content';
+import { COMPOST_BATCH_WORTH, abilityDef, bandDy, enchantDef, instanceName, isCropTile, itemDef, npcDef, npcHitHeight, tameDef } from '@arx/content';
 import { farmApiaries, farmBins, farmJobs, farmPlots, farmTroughs, predictedGrade } from '../game/farmCare.js';
 import { shortestAngle } from '../net/interpolation.js';
 import type { ClientGame } from '../game/clientGame.js';
@@ -140,7 +140,7 @@ import {
   type PrintKind,
   type WornLight,
 } from './wornLight.js';
-import { buildableIconUrl, DYE_SWATCHES } from './icons.js';
+import { buildableIconUrl, DYE_SWATCHES, itemIconUrl } from './icons.js';
 import { radialGlowSprite } from './glowSprite.js';
 import { Birds, type Bird, type BirdEnv } from './birds.js';
 import { GrassSystem, windAtInto, windScalarAt, type Disturber, type WindSample } from './grass.js';
@@ -31637,6 +31637,138 @@ export class Renderer {
     }
   }
 
+  /** Baked lure-icon images for the tame badge, keyed by item id. */
+  private readonly lureIcons = new Map<string, HTMLImageElement>();
+
+  /** How far the asking is shown — a step past the cast's own reach,
+   *  so the treat appears while the keeper is still closing in. */
+  private static readonly LURE_BADGE_RANGE = 9;
+
+  /**
+   * THE ASKING SHOWN — a thought bubble over a tamable wild beast:
+   * the very treat it wants, floating where the animal thinks. The
+   * pip on the bubble's shoulder says the rest without a word of
+   * chat: green check = the asking would land, red cross = the treat
+   * is missing from the pack, amber bang = the beast's wild level
+   * still outreaches the keeper's beastcraft. The treat itself stays
+   * full color in every state — identification is its whole job.
+   * Appears only while Gentle the Wild is seated (the
+   * badge is courting-mode dress, never standing world clutter) and
+   * only within courting range. The game client owns the truth
+   * (ClientGame.tameBadge); this painter owns the picture.
+   */
+  private drawLureBadge(
+    x: number,
+    topY: number,
+    defId: string,
+    meta: { level?: number; ownerEid?: number },
+    s: { x: number; y: number; hpPct: number },
+    seed: number,
+  ): void {
+    if (!tameDef(defId)) return; // cheap gate before any game-state work
+    const game = this.game;
+    if (!game || s.hpPct === 0) return;
+    const pos = game.predictor.pos;
+    const dx = s.x - pos.x;
+    const dy = s.y - pos.y;
+    if (dx * dx + dy * dy > Renderer.LURE_BADGE_RANGE * Renderer.LURE_BADGE_RANGE) return;
+    const badge = game.tameBadge(defId, meta.level, meta.ownerEid);
+    if (!badge) return;
+
+    let img = this.lureIcons.get(badge.lure);
+    if (!img) {
+      img = new Image();
+      img.src = itemIconUrl(badge.lure, 40);
+      this.lureIcons.set(badge.lure, img);
+    }
+
+    const ctx = this.ctx;
+    const scale = this.camera.scale;
+    const R = Math.max(13, scale * 0.3);
+    // A soft per-beast bob — the bubble floats, desynced by seed so a
+    // pack never pumps in lockstep.
+    const bob = Math.sin(performance.now() / 520 + seed * 1.7) * scale * 0.022;
+    // Clear the name line, then the thought-trail dots, then the bubble.
+    const nameH = Math.max(10, scale * 0.26);
+    const cy = topY - nameH - R * 1.55 + bob;
+
+    ctx.save();
+
+    // The thought trail: two shrinking dots falling toward the head.
+    ctx.fillStyle = 'rgba(22, 17, 11, 0.78)';
+    ctx.strokeStyle = 'rgba(8, 6, 3, 0.9)';
+    ctx.lineWidth = 1;
+    for (const [k, dr] of [
+      [0.62, 0.2],
+      [0.86, 0.12],
+    ] as const) {
+      ctx.beginPath();
+      ctx.arc(x - R * 0.5 * (k - 0.55), cy + R + (topY - nameH * 0.4 - (cy + R)) * k, R * dr, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // The bubble: smoked glass of the quiet console, dark rim outside,
+    // one whisper of brass inside — and the ready state warms the
+    // brass to the collar's bond green.
+    ctx.beginPath();
+    ctx.arc(x, cy, R, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(22, 17, 11, 0.82)';
+    ctx.fill();
+    ctx.lineWidth = Math.max(1.25, scale * 0.03);
+    ctx.strokeStyle = 'rgba(8, 6, 3, 0.9)';
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x, cy, R - Math.max(1.5, scale * 0.035), 0, Math.PI * 2);
+    ctx.lineWidth = Math.max(1, scale * 0.022);
+    ctx.strokeStyle = badge.state === 'ready' ? 'rgba(159, 211, 154, 0.75)' : 'rgba(222, 190, 128, 0.3)';
+    ctx.stroke();
+
+    // The treat itself — always at full color. Identification is the
+    // icon's whole job (the kid has to see WHAT to fetch precisely
+    // when it is missing); the pip and the ring carry the verdict.
+    if (img.complete && img.naturalWidth > 0) {
+      const iw = R * 1.34;
+      ctx.drawImage(img, x - iw / 2, cy - iw / 2, iw, iw);
+    }
+
+    // The pip on the bubble's shoulder: the one-glance verdict.
+    const pr = Math.max(5.5, R * 0.4);
+    const px = x + R * 0.78;
+    const py = cy + R * 0.78;
+    ctx.beginPath();
+    ctx.arc(px, py, pr, 0, Math.PI * 2);
+    ctx.fillStyle = badge.state === 'ready' ? '#3f9d54' : badge.state === 'lure' ? '#b23b30' : '#c8892e';
+    ctx.fill();
+    ctx.lineWidth = 1.25;
+    ctx.strokeStyle = 'rgba(8, 6, 3, 0.9)';
+    ctx.stroke();
+    ctx.strokeStyle = '#f6ecd4';
+    ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(1.5, pr * 0.3);
+    ctx.beginPath();
+    if (badge.state === 'ready') {
+      // Check.
+      ctx.moveTo(px - pr * 0.42, py + pr * 0.02);
+      ctx.lineTo(px - pr * 0.1, py + pr * 0.36);
+      ctx.lineTo(px + pr * 0.44, py - 0.34 * pr);
+    } else if (badge.state === 'lure') {
+      // Cross.
+      ctx.moveTo(px - pr * 0.34, py - pr * 0.34);
+      ctx.lineTo(px + pr * 0.34, py + pr * 0.34);
+      ctx.moveTo(px + pr * 0.34, py - pr * 0.34);
+      ctx.lineTo(px - pr * 0.34, py + pr * 0.34);
+    } else {
+      // Bang.
+      ctx.moveTo(px, py - pr * 0.42);
+      ctx.lineTo(px, py + pr * 0.08);
+      ctx.moveTo(px, py + pr * 0.4);
+      ctx.lineTo(px, py + pr * 0.41);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
   /** Eight-tap alpha dilate → tinted ring under the sprite. */
   private static readonly OUTLINE_TAPS: ReadonlyArray<readonly [number, number]> = [
     [1, 0],
@@ -32774,6 +32906,7 @@ export class Renderer {
         if (s.hpPct < 255 || ((s.status ?? 0) & STATUS_AMBIENCE_MASK) !== 0) {
           this.drawMiniHp(p.x, p.y - r * 2.45, r * 2, s.hpPct, s.status);
         }
+        this.drawLureBadge(p.x, p.y - r * 2.6, defId, meta, s, eid);
       },
     };
   }
@@ -32787,7 +32920,7 @@ export class Renderer {
   private leglessItem(
     eid: number,
     defId: string,
-    meta: { name?: string; level?: number },
+    meta: { name?: string; level?: number; ownerEid?: number },
     s: { x: number; y: number; dir: number; hpPct: number; pose: number; status?: number },
     hurt: boolean,
     nameInk?: string,
@@ -32855,6 +32988,7 @@ export class Renderer {
         if (s.hpPct < 255 || ((s.status ?? 0) & STATUS_AMBIENCE_MASK) !== 0) {
           this.drawMiniHp(p.x, labelTop + 0.12 * scale, r * 2, s.hpPct, s.status);
         }
+        this.drawLureBadge(p.x, labelTop, defId, meta, s, eid);
       },
     };
   }
@@ -32952,6 +33086,7 @@ export class Renderer {
         if (s.hpPct < 255 || ((s.status ?? 0) & STATUS_AMBIENCE_MASK) !== 0) {
           this.drawMiniHp(p.x, labelTop + 0.12 * scale, r * 2, s.hpPct, s.status);
         }
+        this.drawLureBadge(p.x, labelTop, defId, meta, s, eid);
       },
     };
   }

@@ -2549,6 +2549,32 @@ export class ClientGame {
     return lure !== undefined && this.inventory.some((s) => s !== null && s.item === lure && s.qty > 0);
   }
 
+  /**
+   * THE ASKING SHOWN — the overhead lure badge's one truth source.
+   * While Gentle the Wild is seated, a wild living tamable wears the
+   * very treat it wants above its head, marked with what the words in
+   * the chat could only spell out: an amber bang when its wild level
+   * still outreaches the keeper's beastcraft (fetching the treat
+   * would not help yet), a red cross when the treat is missing from
+   * the pack, a green check when the asking would land. Little
+   * keepers read the picture, never the refusal line.
+   */
+  tameBadge(
+    defId: string,
+    level: number | undefined,
+    ownerEid: number | undefined,
+  ): { lure: string; state: 'ready' | 'lure' | 'level' } | null {
+    if (ownerEid !== undefined) return null; // already somebody's friend
+    if (!this.techniques.includes('gentle_the_wild')) return null;
+    const td = tameDef(defId);
+    if (!td) return null;
+    if ((level ?? 1) > levelForXp(this.skills['beastcraft'] ?? 0)) {
+      return { lure: td.lure, state: 'level' };
+    }
+    const packed = this.inventory.some((sl) => sl !== null && sl.item === td.lure && sl.qty > 0);
+    return { lure: td.lure, state: packed ? 'ready' : 'lure' };
+  }
+
   /** Is the bond moment open for this stall? (Counts down locally.) */
   petBondReady(slot: number): boolean {
     return Date.now() >= (this.petBondReadyAt.get(slot) ?? 0);

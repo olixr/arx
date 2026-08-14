@@ -173,8 +173,7 @@ export const STROKE: Record<string, string> = {
 export const LANES: Record<string, string> = {
   'lane-hotbar': '0.875rem' /* 14 — the hotbar's rest */,
   'lane-chips': '1.125rem' /* 18 — buff/status chip row beside the hotbar */,
-  'lane-plaque': '4.0625rem' /* 65 — companion plaque above the chips */,
-  'lane-strip': '5.75rem' /* 92 — the action strip above it */,
+  'lane-strip': '5.75rem' /* 92 — the action strip above the chips (the companion crest left this stack for the top-left corner — THE QUIET CREST) */,
   'lane-loot': '6rem' /* 96 — loot tray's floor */,
   'lane-sign': '7.5rem' /* 120 — sign tray's floor */,
   'lane-build': '11rem' /* 176 — build tray above the pinned strip */,
