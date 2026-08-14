@@ -601,11 +601,14 @@ function ironBody(ctx: CanvasRenderingContext2D, gol: GolemLook, f: GolemBodyFra
   ctx.restore();
   // THE HELD SHRAPNEL: three small pieces hovering just off the body,
   // quivering in the field — the read that says none of this is
-  // stacked; all of it is HELD.
+  // stacked; all of it is HELD. These are STATIC seeded hovers, so
+  // the air gap must out-wide both outline halos combined (the
+  // dilate bridges any parked near-miss into a black tether): radial
+  // 1.38·tw+ and clamped BELOW the shoulder-chunk band.
   for (let i = 0; i < 3; i++) {
     const a = hash(seed, 150 + i) * Math.PI * 2;
-    const hx = Math.cos(a) * tw * (1.06 + 0.1 * hash(seed, 154 + i));
-    const hy = -th * (0.3 + 0.55 * hash(seed, 158 + i)) + Math.sin(nowMs / 210 + i * 2.1) * s * 0.012 + qv(i + 6) * 2;
+    const hx = Math.cos(a) * tw * (1.38 + 0.1 * hash(seed, 154 + i));
+    const hy = -th * (0.3 + 0.32 * hash(seed, 158 + i)) + Math.sin(nowMs / 210 + i * 2.1) * s * 0.012 + qv(i + 6) * 2;
     ctx.fillStyle = shade(gol.shell, -18);
     if (i % 2 === 0) {
       ctx.beginPath();
