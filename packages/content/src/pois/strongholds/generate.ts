@@ -1,6 +1,6 @@
 import { Rng, TILE_DEFS, TILE_SKIP, Tile, hashCoords, hashString } from '@arx/shared';
 import type { PrefabDef } from '../../maps/prefab.js';
-import type { StrongholdDef, StrongholdKnot, StrongholdWard } from './types.js';
+import type { KnotPost, StrongholdDef, StrongholdKnot, StrongholdWard } from './types.js';
 import { KNOT_SPACING, STRONGHOLD_BODIES_MAX, STRONGHOLD_BODIES_MIN } from './types.js';
 import { WARD_PIECES, type WardPiece } from './pieces.js';
 
@@ -57,6 +57,13 @@ export interface StrongholdSpec {
   sizeClass: StrongholdSizeClass;
   /** Boss champion name pool (the roster/bench supplies it). */
   bossNames: readonly string[];
+  /**
+   * THE MANY BANNERS (Third Charter): a per-layout piece pool bias —
+   * the tent city, the graveyard court, and the warg pens are
+   * different HOLDS of one family, not different seeds. Absent = the
+   * family's full shelf.
+   */
+  pieces?: readonly string[];
 }
 
 export interface StrongholdProposal {
@@ -83,10 +90,14 @@ interface FamilyStyle {
   sentinel: KnotMenuEntry;
   /** The chief's honor guard. */
   guard: KnotMenuEntry;
+  /** THE CAPTAIN LAW: the one body a titled post composes (band 1). */
+  captain: KnotMenuEntry;
   bossNpc: string;
   bossOffset: number;
   /** Courtyard scatter accents. */
   accents: readonly Tile[];
+  /** THE CLUSTERED GROUND: what accumulates around the hearths. */
+  hearthGear: readonly Tile[];
 }
 
 /**
@@ -118,9 +129,11 @@ export const FAMILY_STYLES: ReadonlyMap<string, FamilyStyle> = new Map<string, F
       ],
       sentinel: { npc: 'goblin_thrower', band: [1, 2] },
       guard: { npc: 'goblin', band: [2, 3] },
+      captain: { npc: 'goblin_firecaller', band: [1, 1] },
       bossNpc: 'goblin',
       bossOffset: 5,
       accents: [Tile.SkullPile, Tile.BonePile, Tile.WarBanner],
+      hearthGear: [Tile.CookPot, Tile.MeatRack, Tile.MeatSpit, Tile.WarDrum, Tile.SkullPile],
     },
   ],
   [
@@ -144,9 +157,11 @@ export const FAMILY_STYLES: ReadonlyMap<string, FamilyStyle> = new Map<string, F
       ],
       sentinel: { npc: 'gnoll', band: [1, 2] },
       guard: { npc: 'gnoll', band: [2, 3] },
+      captain: { npc: 'gnoll', band: [1, 1] },
       bossNpc: 'gnoll_champion',
       bossOffset: 3,
       accents: [Tile.SkullPile, Tile.BonePile],
+      hearthGear: [Tile.MeatSpit, Tile.MeatRack, Tile.BonePile, Tile.SkullPile],
     },
   ],
   [
@@ -171,9 +186,11 @@ export const FAMILY_STYLES: ReadonlyMap<string, FamilyStyle> = new Map<string, F
       ],
       sentinel: { npc: 'brigand_archer', band: [1, 2] },
       guard: { npc: 'brigand', band: [2, 3] },
+      captain: { npc: 'brigand_reaver', band: [1, 1] },
       bossNpc: 'brigand_reaver',
       bossOffset: 5,
       accents: [Tile.Crate, Tile.Barrel, Tile.PlunderSacks],
+      hearthGear: [Tile.CookPot, Tile.Barrel, Tile.Crate, Tile.PlunderSacks, Tile.MeatSpit],
     },
   ],
   [
@@ -197,9 +214,11 @@ export const FAMILY_STYLES: ReadonlyMap<string, FamilyStyle> = new Map<string, F
       ],
       sentinel: { npc: 'worg', band: [1, 1], minTier: 4 },
       guard: { npc: 'wolf', band: [2, 3] },
+      captain: { npc: 'worg', band: [1, 1] },
       bossNpc: 'dire_wolf',
       bossOffset: 4,
       accents: [Tile.BonePile, Tile.SkullPile],
+      hearthGear: [Tile.BonePile, Tile.SkullPile, Tile.HideFrame],
     },
   ],
   [
@@ -224,9 +243,11 @@ export const FAMILY_STYLES: ReadonlyMap<string, FamilyStyle> = new Map<string, F
       ],
       sentinel: { npc: 'skeleton_archer', band: [1, 1] },
       guard: { npc: 'skeleton_guard', band: [2, 3] },
+      captain: { npc: 'skeleton_guard', band: [1, 1] },
       bossNpc: 'skeleton_champion',
       bossOffset: 2,
       accents: [Tile.BonePile, Tile.CaveRubble],
+      hearthGear: [Tile.Brazier, Tile.BonePile, Tile.CaveRubble, Tile.Rock],
     },
   ],
 ]);
@@ -308,6 +329,10 @@ interface Placed {
   name?: string;
   /** Explicit key hint (chord watches, pickets). */
   keyHint?: string;
+  /** The chord gate a chordwatch ward wardens (route synthesis). */
+  chordGate?: { x: number; y: number };
+  /** The hull gate a picket watches (road-route synthesis). */
+  roadGate?: Gate;
 }
 
 export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdProposal {
@@ -566,6 +591,7 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
       band: bandOf(r.y + (r.h >> 1)),
       name: ci === 0 && citadel ? 'the high gate' : 'the inner gate',
       keyHint: ci === 0 && citadel ? 'high_gate' : 'inner_gate',
+      chordGate: { x: cg.x, y: cg.y },
     });
   });
 
@@ -707,7 +733,9 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
 
   // The wards proper — dealt per district so every band reads
   // occupied, sampled wide (gap 4 — THE BREATHING LAW).
-  const pool = [...style.wardPieces];
+  // THE MANY BANNERS: a layout may bias its shelf (the tent city
+  // deals tents; the grave court deals graves).
+  const pool = [...(spec.pieces ?? style.wardPieces)];
   for (let i = pool.length - 1; i > 0; i--) {
     const j = rWard.int(0, i);
     [pool[i], pool[j]] = [pool[j]!, pool[i]!];
@@ -740,6 +768,8 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
   // real feet wear a yard. Lanes only ever paint transparent cells
   // inside the walls.
   const laneCellsByBand: Array<Array<[number, number]>> = Array.from({ length: nBands }, () => []);
+  /** The processional + outer roads — the torch line and the patrols read these. */
+  const roadCells: Array<[number, number]> = [];
   const lane = (
     band: number,
     fx: number,
@@ -752,6 +782,7 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
     const cells = laneCellsByBand[band]!;
     const paint = (x: number, y: number): void => {
       if (!insideHull(x, y, 1)) return;
+      if (wide) roadCells.push([x, y]);
       if (at(x, y) === TILE_SKIP) {
         put(x, y, Tile.Dirt);
         cells.push([x, y]);
@@ -835,6 +866,7 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
     let x = g.x + g.ox;
     let y = g.y + g.oy;
     while (x >= 1 && y >= 1 && x < pw - 1 && y < ph - 1) {
+      roadCells.push([x, y]);
       if (at(x, y) === TILE_SKIP) put(x, y, Tile.Dirt);
       if (wide) {
         const sx = x + Math.abs(g.oy);
@@ -881,6 +913,7 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
       band: -1,
       name: `the ${EDGE_BEARING[g.edge]} road picket`,
       keyHint: `picket_${EDGE_BEARING[g.edge]}`,
+      roadGate: g,
     });
   }
 
@@ -958,18 +991,27 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
   }
   const plans: WardPlan[] = placed.map((p) => ({ placed: p, knots: [] }));
 
+  interface KnotExtra {
+    levelOffset?: number;
+    hours?: { from: number; to: number };
+    post?: KnotPost;
+    title?: string;
+  }
   const mkKnot = (
     entry: KnotMenuEntry,
     anchor: [number, number],
     role: 'holdfast' | 'sentry',
-    levelOffset?: number,
+    extra: KnotExtra = {},
   ): StrongholdKnot => ({
     at: anchor,
     npc: entry.npc,
     band: entry.band,
     role,
     ...(entry.minTier !== undefined ? { minTier: entry.minTier } : {}),
-    ...(levelOffset !== undefined ? { levelOffset } : {}),
+    ...(extra.levelOffset !== undefined ? { levelOffset: extra.levelOffset } : {}),
+    ...(extra.hours !== undefined ? { hours: extra.hours } : {}),
+    ...(extra.post !== undefined ? { post: extra.post } : {}),
+    ...(extra.title !== undefined ? { title: extra.title } : {}),
   });
 
   // Honor guard first — the last stand always stands.
@@ -978,7 +1020,7 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
     const anchor = anchorIn(bossRect, 40, [bossAt[0], bossAt[1], 5]) ?? anchorIn(bossRect, 40);
     if (!anchor) throw new Error(`${spec.id}: no ground for the honor guard (seed ${seed})`);
     claim(anchor[0], anchor[1]);
-    bossPlan.knots.push(mkKnot(style.guard, anchor, 'holdfast', 2));
+    bossPlan.knots.push(mkKnot(style.guard, anchor, 'holdfast', { levelOffset: 2, post: 'watch' }));
     const second = anchorIn(bossPlan.placed.rect, 25);
     if (second) {
       claim(second[0], second[1]);
@@ -990,12 +1032,26 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
         const apron = anchorIn(summit.rect, 30);
         if (!apron) break;
         claim(apron[0], apron[1]);
-        bossPlan.knots.push(mkKnot(style.menu[i % style.menu.length]!, apron, 'holdfast', 1));
+        bossPlan.knots.push(mkKnot(style.menu[i % style.menu.length]!, apron, 'holdfast', { levelOffset: 1, post: 'watch' }));
       }
     }
   }
-  // Gate sentries at the watch yards and chord gates; picket watches
-  // on the roads; ward knots everywhere else.
+  // THE POST LAW: the signature furniture a body works at, and the
+  // hours it keeps — the camp reads differently at noon and midnight.
+  const POST_SIGNS: Array<{
+    match: readonly Tile[];
+    post: KnotPost;
+    hours?: { from: number; to: number };
+  }> = [
+    { match: [Tile.CookPot, Tile.MeatSpit, Tile.Campfire], post: 'cook' },
+    { match: [Tile.TargetDummy, Tile.SpearRack, Tile.WeaponRack], post: 'drill', hours: { from: 6, to: 20 } },
+    { match: [Tile.TentHide, Tile.TentWar], post: 'rest', hours: { from: 19, to: 7 } },
+    { match: [Tile.SkullTotem, Tile.Brazier, Tile.WarDrum], post: 'vigil' },
+    { match: [Tile.PrisonCage, Tile.BeastNest], post: 'keeper' },
+  ];
+
+  // Gate captains and wardens (THE CAPTAIN LAW), picket watches on
+  // the roads, post-anchored knots in the wards.
   for (const plan of plans) {
     const p = plan.placed;
     if (p.kind === 'boss') continue;
@@ -1005,21 +1061,107 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
         anchorIn(p.rect, 30, [g.x - g.ox * 3, g.y - g.oy * 3, 4]) ?? anchorIn(p.rect, 30);
       if (anchor) {
         claim(anchor[0], anchor[1]);
-        plan.knots.push(mkKnot(style.sentinel, anchor, 'sentry'));
+        // The great gate keeps a TITLED captain; lesser doors keep
+        // plain sentinels.
+        if (g.edge === 'bottom') {
+          plan.knots.push(
+            mkKnot(style.captain, anchor, 'sentry', {
+              levelOffset: 3,
+              post: 'watch',
+              title: 'Captain of the Great Gate',
+            }),
+          );
+        } else {
+          plan.knots.push(mkKnot(style.sentinel, anchor, 'sentry', { post: 'watch' }));
+        }
       }
       continue;
     }
-    if (p.kind === 'chordwatch' || p.kind === 'picket') {
+    if (p.kind === 'chordwatch') {
       const anchor = anchorIn(p.rect, 30);
       if (anchor) {
         claim(anchor[0], anchor[1]);
-        plan.knots.push(mkKnot(style.sentinel, anchor, 'sentry'));
+        const title =
+          p.keyHint === 'high_gate' ? 'Warden of the High Gate' : 'Warden of the Inner Gate';
+        plan.knots.push(
+          mkKnot(style.captain, anchor, 'sentry', { levelOffset: 3, post: 'watch', title }),
+        );
+      }
+      continue;
+    }
+    if (p.kind === 'picket') {
+      const anchor = anchorIn(p.rect, 30);
+      if (anchor) {
+        claim(anchor[0], anchor[1]);
+        plan.knots.push(mkKnot(style.sentinel, anchor, 'sentry', { post: 'watch' }));
       }
       continue;
     }
     const area = p.rect.w * p.rect.h;
     const wanted = 1 + (area >= 78 ? 1 : 0) + (area >= 160 ? 1 : 0);
-    for (let ki = 0; ki < wanted; ki++) {
+    // A body stands where its work is: post anchors first, from the
+    // ward's own stamped furniture; random footing is the fallback.
+    const posts: Array<{ x: number; y: number; post: KnotPost; hours?: { from: number; to: number } }> = [];
+    for (const sign of POST_SIGNS) {
+      if (posts.length >= wanted) break;
+      let found: [number, number] | null = null;
+      for (let yy = p.rect.y; yy < p.rect.y + p.rect.h && !found; yy++) {
+        for (let xx = p.rect.x; xx < p.rect.x + p.rect.w && !found; xx++) {
+          if (!(sign.match as readonly number[]).includes(at(xx, yy))) continue;
+          for (const [nx, ny] of [
+            [xx, yy + 1],
+            [xx + 1, yy],
+            [xx - 1, yy],
+            [xx, yy - 1],
+            [xx + 1, yy + 1],
+            [xx - 1, yy + 1],
+          ] as const) {
+            if (passable(at(nx, ny)) && spaced(nx, ny)) {
+              found = [nx, ny];
+              break;
+            }
+          }
+        }
+      }
+      if (found) {
+        // Claim NOW — two posts found in one scan must keep THE PULL
+        // LAW against each other, not only against earlier wards.
+        claim(found[0], found[1]);
+        // The beast families keep their clock through the den: a
+        // thicket-wall nest is a DAY rest (nocturnal denners), not a
+        // keeper's pen.
+        const denRest = sign.post === 'keeper' && style.wall === 'thicket';
+        // The dead keep the opposite clock: a cairn vigil STIRS at
+        // night — grave rows crowded at midnight, quiet at noon.
+        const graveVigil = sign.post === 'vigil' && style.wall === 'cairn';
+        posts.push({
+          x: found[0],
+          y: found[1],
+          post: denRest ? 'rest' : sign.post,
+          ...(denRest
+            ? { hours: { from: 7, to: 19 } }
+            : graveVigil
+              ? { hours: { from: 18, to: 6 } }
+              : sign.hours
+                ? { hours: sign.hours }
+                : {}),
+        });
+      }
+    }
+    let ki = 0;
+    for (const post of posts) {
+      const suggestion = p.piece?.knots?.[ki];
+      const entry: KnotMenuEntry =
+        suggestion ?? (ki === 0 ? style.menu[0]! : style.menu[rKnot.int(1, Math.max(1, style.menu.length - 1))]!);
+      plan.knots.push(
+        mkKnot(entry, [post.x, post.y], 'holdfast', {
+          post: post.post,
+          ...(post.hours ? { hours: post.hours } : {}),
+        }),
+      );
+      ki++;
+    }
+    for (; ki < wanted; ki++) {
       const anchor = anchorIn(p.rect, 30);
       if (!anchor) break;
       claim(anchor[0], anchor[1]);
@@ -1054,6 +1196,13 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
   }
 
   // ---- 8. THE DRESSING ------------------------------------------------
+  // No dressing may land on a mustered anchor (the validator's
+  // anchor-on-solid refusal was this race, seed-lucky until now).
+  const anchorCells = new Set(allAnchors.map(([kx, ky]) => ky * pw + kx));
+  const dress = (dx2: number, dy2: number, t: Tile): void => {
+    if (anchorCells.has(dy2 * pw + dx2)) return;
+    put(dx2, dy2, t);
+  };
   if (style.wall === 'palisade') {
     let cadence = rDress.int(0, 6);
     for (const c of wallCells) {
@@ -1061,7 +1210,7 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
       if (cadence % 8 !== 0) continue;
       const ix = c.x + Math.sign(cx - c.x);
       const iy = c.y + Math.sign(Math.floor((y0 + y1) / 2) - c.y);
-      if (at(ix, iy) === TILE_SKIP) put(ix, iy, Tile.StandingTorch);
+      if (at(ix, iy) === TILE_SKIP) dress(ix, iy, Tile.StandingTorch);
     }
     for (const g of gates) {
       const lx = g.oy; // lateral unit
@@ -1069,15 +1218,15 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
       for (const side of [-1, 1]) {
         const bx = g.x + lx * side - g.ox;
         const by = g.y + ly * side - g.oy;
-        if (at(bx, by) === TILE_SKIP) put(bx, by, Tile.WarBanner);
+        if (at(bx, by) === TILE_SKIP) dress(bx, by, Tile.WarBanner);
         const sx = g.x + lx * side * 2 + g.ox;
         const sy = g.y + ly * side * 2 + g.oy;
-        if (at(sx, sy) === TILE_SKIP) put(sx, sy, Tile.SpikeBarrier);
+        if (at(sx, sy) === TILE_SKIP) dress(sx, sy, Tile.SpikeBarrier);
       }
     }
     for (const cg of chordGates) {
       for (const side of [-1, 1]) {
-        if (at(cg.x + side, cg.y - 1) === TILE_SKIP) put(cg.x + side, cg.y - 1, Tile.WarBanner);
+        if (at(cg.x + side, cg.y - 1) === TILE_SKIP) dress(cg.x + side, cg.y - 1, Tile.WarBanner);
       }
     }
   } else {
@@ -1088,19 +1237,69 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
       for (const side of [-1, 1]) {
         const sx = g.x + lx * side * 2 + g.ox;
         const sy = g.y + ly * side * 2 + g.oy;
-        if (at(sx, sy) === TILE_SKIP) put(sx, sy, flank);
+        if (at(sx, sy) === TILE_SKIP) dress(sx, sy, flank);
       }
     }
   }
-  // Litter scales with the yard — a citadel's ground carries a
-  // citadel's clutter.
-  const accentCount = Math.max(14, Math.round((wallW * wallH) / 340)) + rDress.int(0, 8);
+  // THE CLUSTERED GROUND: life accumulates where the living are —
+  // cook gear ringing the hearths, the family's litter at ward rims,
+  // never a uniform sprinkle.
+  const clusterAt = (ax: number, ay: number, radius: number, count: number, vocab: readonly Tile[]): void => {
+    for (let i = 0; i < count; i++) {
+      for (let tries = 0; tries < 8; tries++) {
+        const dx = rDress.int(-radius, radius);
+        const dy = rDress.int(-radius, radius);
+        if (dx * dx + dy * dy > radius * radius) continue;
+        const x = ax + dx;
+        const y = ay + dy;
+        if (!insideHull(x, y, 2)) continue;
+        if (at(x, y) !== TILE_SKIP) continue;
+        dress(x, y, vocab[rDress.int(0, vocab.length - 1)]!);
+        break;
+      }
+    }
+  };
+  for (const h of hearts) clusterAt(h.x, h.y, 6, rDress.int(4, 7), style.hearthGear);
+  for (const pl of placed) {
+    if (pl.kind !== 'ward') continue;
+    const edge = rDress.int(0, 3);
+    const ex =
+      edge === 0 ? pl.rect.x - 2 : edge === 1 ? pl.rect.x + pl.rect.w + 1 : pl.rect.x + (pl.rect.w >> 1);
+    const ey =
+      edge === 2 ? pl.rect.y - 2 : edge === 3 ? pl.rect.y + pl.rect.h + 1 : pl.rect.y + (pl.rect.h >> 1);
+    clusterAt(ex, ey, 4, rDress.int(2, 4), style.accents);
+  }
+  // Banners flank the summit stair — the processional is announced.
+  if (summit) {
+    const flag =
+      style.wall === 'palisade' ? Tile.WarBanner : style.wall === 'cairn' ? Tile.PillarStone : Tile.SkullPile;
+    for (const side of [-2, summit.rampW + 1]) {
+      const x = summit.rampX + side;
+      const y = summit.rect.y + summit.rect.h + 1;
+      if (at(x, y) === TILE_SKIP) dress(x, y, flag);
+    }
+  }
+  // The roads are LIT (family-voiced): a marker line paces the
+  // processional and the outer roads.
+  const roadMark =
+    style.wall === 'palisade' ? Tile.StandingTorch : style.wall === 'cairn' ? Tile.Brazier : Tile.SkullPile;
+  for (let i = rDress.int(0, 5); i < roadCells.length; i += 11) {
+    const [rx, ry] = roadCells[i]!;
+    for (const [mx, my] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      if (at(rx + mx, ry + my) === TILE_SKIP) {
+        dress(rx + mx, ry + my, roadMark);
+        break;
+      }
+    }
+  }
+  // A thin wilderness sprinkle stays — the seasoning, never the meal.
+  const accentCount = Math.max(10, Math.round((wallW * wallH) / 520)) + rDress.int(0, 8);
   for (let i = 0; i < accentCount; i++) {
     const ax = rDress.int(x0 + 3, x1 - 3);
     const ay = rDress.int(y0 + 3, y1 - 3);
     if (!insideHull(ax, ay, 3)) continue;
     if (at(ax, ay) !== TILE_SKIP) continue;
-    put(ax, ay, style.accents[rDress.int(0, style.accents.length - 1)]!);
+    dress(ax, ay, style.accents[rDress.int(0, style.accents.length - 1)]!);
   }
 
   // ---- 8b. THE CLAIMED YARD (Second Charter) -------------------------
@@ -1121,6 +1320,69 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
   }
 
   // ---- 9. THE DEF -----------------------------------------------------
+  // THE ROADS ARE WALKED: patrol routes sampled along the ACTUAL worn
+  // ground (the ground is final here — every waypoint is checked
+  // against what was painted, and a hop never exceeds the law).
+  const routeAlong = (
+    fx: number,
+    fy: number,
+    tx: number,
+    ty: number,
+    xFirst: boolean,
+  ): Array<[number, number]> => {
+    const cells: Array<[number, number]> = [];
+    let x = fx;
+    let y = fy;
+    if (xFirst) {
+      for (; x !== tx; x += Math.sign(tx - x)) cells.push([x, y]);
+      for (; y !== ty; y += Math.sign(ty - y)) cells.push([x, y]);
+    } else {
+      for (; y !== ty; y += Math.sign(ty - y)) cells.push([x, y]);
+      for (; x !== tx; x += Math.sign(tx - x)) cells.push([x, y]);
+    }
+    cells.push([tx, ty]);
+    const pts: Array<[number, number]> = [];
+    for (let i = 0; i < cells.length; i += 4) {
+      const c = cells[i]!;
+      if (passable(at(c[0], c[1]))) pts.push(c);
+    }
+    const last = cells[cells.length - 1]!;
+    if (passable(at(last[0], last[1])) && (pts.length === 0 || pts[pts.length - 1]![0] !== last[0] || pts[pts.length - 1]![1] !== last[1])) {
+      pts.push(last);
+    }
+    return pts;
+  };
+  const lawfulRoute = (pts: Array<[number, number]>): Array<[number, number]> | undefined => {
+    const out: Array<[number, number]> = [];
+    for (const pt of pts) {
+      const prev = out[out.length - 1];
+      if (prev) {
+        const dx = pt[0] - prev[0];
+        const dy = pt[1] - prev[1];
+        if (dx * dx + dy * dy > 12 * 12) break; // a patrol walks, never teleports
+        if (dx === 0 && dy === 0) continue;
+      }
+      out.push(pt);
+    }
+    return out.length >= 3 ? out : undefined;
+  };
+  const chordRoute = (cg: { x: number; y: number }): Array<[number, number]> | undefined => {
+    const [sx, sy] = bandTarget(bandOf(cg.y + 1));
+    const [nx, ny] = bandTarget(bandOf(cg.y - 1));
+    const south = routeAlong(cg.x, cg.y + 1, sx, sy, false).reverse();
+    const north = routeAlong(cg.x, cg.y - 1, nx, ny, false);
+    return lawfulRoute([...south, ...north]);
+  };
+  const roadRoute = (g: Gate): Array<[number, number]> | undefined => {
+    let ex = g.x + g.ox;
+    let ey = g.y + g.oy;
+    while (ex + g.ox >= 2 && ey + g.oy >= 2 && ex + g.ox < pw - 2 && ey + g.oy < ph - 2) {
+      ex += g.ox;
+      ey += g.oy;
+    }
+    return lawfulRoute(routeAlong(g.x + g.ox, g.y + g.oy, ex, ey, g.ox !== 0));
+  };
+
   const fortCy = (y0 + y1) >> 1;
   const usedKeys = new Set<string>();
   const wards: StrongholdWard[] = plans.map((plan) => {
@@ -1145,9 +1407,19 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
     const patrol =
       p.kind === 'watch' || p.kind === 'chordwatch'
         ? { patrol: 'wall' as const }
-        : p.kind === 'ward' && rWard.chance(0.22)
+        : p.kind === 'picket'
           ? { patrol: 'lane' as const }
-          : {};
+          : p.kind === 'ward' && rWard.chance(0.22)
+            ? { patrol: 'lane' as const }
+            : {};
+    // THE ROADS ARE WALKED: wardens pace the processional between the
+    // district hearts; pickets pace the road they watch.
+    const route =
+      p.kind === 'chordwatch' && p.chordGate
+        ? chordRoute(p.chordGate)
+        : p.kind === 'picket' && p.roadGate
+          ? roadRoute(p.roadGate)
+          : undefined;
     return {
       key,
       name,
@@ -1155,6 +1427,7 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
       knots: plan.knots,
       ...optional,
       ...patrol,
+      ...(route ? { route } : {}),
     };
   });
 

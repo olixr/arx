@@ -844,3 +844,125 @@ Shipped as designed; deviations and laws learned:
   full-assault proving still needs a real input rig (the Phase 6
   recipe stands); middle-district accents read sparse at studio zoom
   (player zoom is the design target — revisit only if play agrees).
+
+---
+
+# The Third Charter — The Hold Comes Alive (2026-08-13)
+
+The walls are the right size; the user's verdict now is about LIFE:
+"flush with life, not just generic procedural elements… patrols walking
+down the roads… chieftains and captains properly placed… enemies
+interacting… looking like they're actually living in this area…
+skeleton bone yards and graveyards that are themed… warg settlements…
+different variances… layers and layers of depth." Curation through
+LAYERED procedural systems that cluster naturally — never a pasted city.
+
+## The laws of the charter
+
+- **THE POST LAW** — a body stands WHERE ITS WORK IS: the muster reads
+  the stamped furniture and anchors knots at it (the cook at the cook
+  pot, the drill line at the dummies, the resters by the tents, the
+  vigil at the totem, the keeper at the pens). A knot carries its
+  `post` so the bench and the ward-break fiction both know WHY that
+  body is there. Random anchors are the fallback, never the plan.
+- **THE CAMP KEEPS A CLOCK** — drill posts man by day, tent rows fill
+  by night (the existing `hours` grammar, finally dealt by the
+  generator). The same walls read differently at noon and midnight —
+  alive, not looping.
+- **THE CAPTAIN LAW** — authority is placed, named, and worth killing:
+  every district entrance keeps a TITLED captain ("Warden of the Inner
+  Gate", "Captain of the Great Gate") — a knot with `title`, composed
+  into a named spawn the way the chief already is. The hierarchy reads
+  on sight: pickets → gate captains → district wardens → the chief.
+- **THE ROADS ARE WALKED** — patrols follow the ACTUAL lane network:
+  the generator emits waypoint `route`s sampled along the worn ground
+  it painted (processional between district gates, outer road to the
+  picket), and the composer deals them to sentry knots verbatim.
+  Synthetic ellipses remain only for wall rounds.
+- **THE CLUSTERED GROUND** — decor accumulates where life happens:
+  scatter seeds at hearths, ward rims, gates, and stair feet with
+  falloff (cook gear by fires, racks by tents, banners up the
+  processional, torches pacing the roads), plus a thin wilderness
+  scatter. Uniform sprinkle is the seasoning, never the meal.
+- **THE MANY BANNERS** — variance is authored at three levels: family
+  (the atlas), LAYOUT THEME (a per-layout piece pool bias — the tent
+  city, the graveyard court, the warg pens are different HOLDS, not
+  different seeds), and seed. The dead keep themed grave fields; the
+  wolfkin keep warg settlements; the goblins keep encampments beside
+  their citadels.
+
+## Phase 8 — The Living Muster + The Many Banners
+
+- Grammar (types.ts): `StrongholdKnot.post?` (cook|drill|rest|vigil|
+  keeper|watch), `StrongholdKnot.title?` (the named-captain law),
+  `StrongholdWard.route?: [x,y][]` (authored patrol waypoints).
+  Validator vets all three (route: ≥3 in-prefab passable waypoints,
+  hops ≤ 12 tiles).
+- Generator: post scan per stamped ward (signature tiles → adjacent
+  spaced anchors, hours for drill/rest); titled captains at the chord
+  gates and great gate; routes sampled every ~6 cells along the
+  processional and outer roads; clustered decor per THE CLUSTERED
+  GROUND; road torch cadence (family-voiced: torch/brazier/bone).
+- Compose (server): `knot.title` → named spawn; `ward.route` → world
+  patrol (paceable-checked, degrade to post); hours already ride.
+- Content breadth: new themed pieces (grave field, warg pens, war
+  tents) + `pieces` bias per roster entry + FOUR new layouts —
+  dead grave-court citadel, wolfkin warg-camp hold, goblin tent-city
+  encampment hold, gnoll great-fort citadel (roster 9 → 13). Seeds
+  swept, baselines regenerated.
+- Tests: post/title/route laws by name; compose deals named captains
+  and road patrols; shelf sweep covers the new thirteen. Live-prove
+  on rig lane 6: named captain at a chord gate, a patrol walking the
+  processional, themed decor clusters on screen.
+
+### Phase 8 as-built (2026-08-13 — THE HOLD COMES ALIVE)
+
+Shipped as designed; deviations and laws learned:
+
+- **THE POST LAW ships as a furniture scan, not authored coordinates**:
+  signature tiles (cook pot/spit/fire → cook; dummy/racks → drill day
+  6-20; tents → rest night 19-7; totem/brazier/drum → vigil;
+  cage/nest → keeper) found in each ward's stamped ground, anchored
+  on adjacent passable spaced cells. **The claim-at-selection lesson**:
+  posts spaced-checked but claimed after the scan let two posts land
+  inside PULL LAW range — a peer session's blanked art sheets found
+  it in minutes (the shared-tree throw law, again). Claim NOW.
+- **The clock is family-voiced**: beast families keep it through the
+  den (thicket nests = day-rest 7-19, nocturnal denners), the dead
+  keep the OPPOSITE clock (cairn vigils stir 18-6 — grave rows
+  crowded at midnight, quiet at noon). One scan, three fictions.
+- **THE CAPTAIN LAW**: titled knots are ONE body by validator law
+  (a named spawn of count 2 is nonsense); Captain of the Great Gate
+  + a Warden per chord gate, family captain entries, +3 levels.
+  The pre-existing compose test found the chief via "any named
+  spawn" — captains broke it; the chief is now the named spawn from
+  the BOSS pool.
+- **THE ROADS ARE WALKED**: routes sampled every 4th cell along the
+  L-paths the lanes actually painted, passability-filtered, hop law
+  ≤ 12 enforced at build AND validated; chord wardens walk heart →
+  gate → heart (25-28 waypoints live), pickets walk their road.
+  Synthetic ellipses remain for wall rounds only.
+- **THE CLUSTERED GROUND**: hearthGear vocab per family ringing the
+  hearths, accents clustered at ward rims, banners flanking the
+  summit stair, a marker line pacing every road (torch/brazier/
+  skull by family), thin wilderness sprinkle kept. **The dressing-
+  on-anchors race** (accents could land ON a mustered anchor —
+  seed-lucky since Phase 1) closed with an anchorCells guard.
+- **THE MANY BANNERS**: spec.pieces per-layout pool bias; grave rows
+  / warg pens / war tents pieces; FOUR new layouts (dead grave-court
+  citadel, wolfkin warg camp, goblin encampment, gnoll great-fort) —
+  roster 13, every layout 2-3 titled captains, 4-16 posts, 1-3
+  routes.
+- **The lever honors the hand**: /stronghold here forced gravecourt
+  but stood barrowcourt — materializeCapital's epoch re-deal cannot
+  reproduce a hand-picked layoutId; exactLayout now rides the dev
+  path only. Also fixed: the compose test's seat-rect/zone-origin
+  conflation (the mask is NOT the zone).
+- **Live-proven** (rig lane 6, 'The Sunken Rows' at 1900,-300):
+  decode showed Captain of the Great Gate L47, Wardens of the High/
+  Inner Gates L47/L41, The Grave Warden L50, patrols of 25 and 28
+  waypoints on the processional, four skeleton@18-6 night vigils;
+  night shot: the processional way lit brazier-by-brazier, the road
+  marker line glowing across the dark yard. The garrison killed the
+  scout during standing (three accounts dead across two charters —
+  the muster defends itself). 1,569 workspace tests green.

@@ -402,6 +402,64 @@ const ddCairnfield = piece('ward', 'ward_dd_cairnfield', 'cairn field', [
   '__________________',
 ]);
 
+/**
+ * THE MANY BANNERS (Third Charter) — themed pieces so a family deals
+ * different HOLDS, not different seeds: the dead keep proper grave
+ * rows, the wolfkin keep warg pens, the goblins keep a tent city.
+ */
+const ddGravefield = piece('ward', 'ward_dd_gravefield', 'grave rows', [
+  '__________________',
+  '__P::R:R:R:R::P___',
+  '_:,.R,R.R,R.R,:___',
+  '_::::::::::::::,__',
+  '_:,R.R,R.R,R.,:___',
+  '_:::::::::::::,___',
+  '_:,R.R,R.R,R.::___',
+  '_::::::::::::::___',
+  '__P::b::::b::P____',
+  '___,____,_________',
+  '__________________',
+]);
+
+const wkWargpens = piece(
+  'ward',
+  'ward_wk_wargpens',
+  'warg pens',
+  [
+    '__________________',
+    '_F;F:F;F:_F;F:F___',
+    '_F......F_F....F__',
+    '_F.;..;.F_F.;..F__',
+    '_F......F_F....F__',
+    '_FF..FF.F_FF.FFF__',
+    '_:::::::,_,::::,__',
+    '_,:o::::::::0::___',
+    '__::;:::`:::::____',
+    '___,___o_____,____',
+    '__________________',
+    '__________________',
+  ],
+  [
+    { npc: 'worg', band: [1, 2] },
+    { npc: 'worg', band: [1, 2] },
+    { npc: 'wolf', band: [2, 3] },
+  ],
+);
+
+const gsWartents = piece('ward', 'ward_gs_wartents', 'war tents', [
+  '_________________',
+  '_^_m_^__^_m_^____',
+  '_:::::::::::::,__',
+  '_:.....,......:__',
+  '_^:::"::::f:::m__',
+  '_:............:__',
+  '_:::::::::::::,__',
+  '_^_m_^__^_m_^____',
+  '__,____.____,____',
+  '_________________',
+  '_________________',
+]);
+
 /** Every piece, by id — the Foundry's shelf. */
 export const WARD_PIECES: ReadonlyMap<string, WardPiece> = new Map(
   [
@@ -434,5 +492,8 @@ export const WARD_PIECES: ReadonlyMap<string, WardPiece> = new Map(
     wkGreatboneyard,
     ddProcessional,
     ddCairnfield,
+    ddGravefield,
+    wkWargpens,
+    gsWartents,
   ].map((p) => [p.prefab.id, p]),
 );

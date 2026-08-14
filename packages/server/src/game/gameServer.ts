@@ -8418,15 +8418,18 @@ export class GameServer {
     }
   }
 
-  private materializeCapital(seat: CapitalSeat): void {
+  private materializeCapital(seat: CapitalSeat, opts: { exactLayout?: boolean } = {}): void {
     const key = capitalKey(seat.gx, seat.gy);
     const preRow = this.strongholdLedger.get(key);
     // A resting seat raises nothing — the fallow holds until the
     // clock lifts it (approach alone never hurries an age).
     if (preRow?.fallowUntil !== null && preRow?.fallowUntil !== undefined) return;
     // THE LONG WAR: the epoch deals the layout — returning players
-    // find new walls on the old ground.
+    // find new walls on the old ground. The dev lever's forced seats
+    // carry a hand-picked layoutId the epoch roll cannot reproduce —
+    // exactLayout honors the hand.
     const layout =
+      (opts.exactLayout ? STRONGHOLD_DEFS.get(seat.layoutId) : undefined) ??
       layoutForSeat(config.worldSeed, seat, preRow?.epoch ?? 0, [...STRONGHOLD_DEFS.values()]) ??
       STRONGHOLD_DEFS.get(seat.layoutId);
     const prefab = layout ? this.poiPrefabs?.get(layout.prefab) : undefined;
@@ -23633,7 +23636,7 @@ export class GameServer {
           tier,
           layoutId: layout.id,
         };
-        this.materializeCapital(forced);
+        this.materializeCapital(forced, { exactLayout: true });
         say(`'${layout.id}' stands at ${px},${py} (tier ${tier}) — dev-forced.`);
         return;
       }

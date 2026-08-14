@@ -16,6 +16,13 @@
  * pinned seeds, validated at build and walked by the test suite.
  */
 
+/**
+ * THE POST LAW (Third Charter): what a body is DOING where it stands.
+ * The generator derives posts from the stamped furniture; the bench
+ * and the ward fiction both read them.
+ */
+export type KnotPost = 'cook' | 'drill' | 'rest' | 'vigil' | 'keeper' | 'watch';
+
 export interface StrongholdKnot {
   /** Anchor, prefab-local. The knot's bodies scatter ≤2.5 around it. */
   at: readonly [number, number];
@@ -37,6 +44,13 @@ export interface StrongholdKnot {
   levelOffset?: number;
   /** Activity window, game hours [0, 24), from > to wraps midnight. */
   hours?: { from: number; to: number };
+  /** THE POST LAW: the work this knot stands at (bench + fiction). */
+  post?: KnotPost;
+  /**
+   * THE CAPTAIN LAW: a titled knot composes as a NAMED spawn ("Warden
+   * of the Inner Gate") — placed authority, worth killing.
+   */
+  title?: string;
 }
 
 export interface StrongholdWard {
@@ -63,6 +77,13 @@ export interface StrongholdWard {
    * knots keep their posts.
    */
   patrol?: 'wall' | 'lane';
+  /**
+   * THE ROADS ARE WALKED (Third Charter): authored patrol waypoints,
+   * prefab-local, sampled along the ACTUAL worn lanes — the composer
+   * deals these verbatim to the ward's sentry knots. Absent = the
+   * patrol kind's synthetic loop (wall rounds) serves.
+   */
+  route?: ReadonlyArray<readonly [number, number]>;
 }
 
 export interface StrongholdBoss {

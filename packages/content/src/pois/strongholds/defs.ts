@@ -32,6 +32,8 @@ interface RosterEntry {
   bossNames: readonly string[];
   /** Seat-name pool (Phase 5) — the world knows the place by these. */
   titles: readonly string[];
+  /** THE MANY BANNERS (Third Charter): per-layout piece pool bias. */
+  pieces?: readonly string[];
 }
 
 const ROSTER: readonly RosterEntry[] = [
@@ -133,6 +135,61 @@ const ROSTER: readonly RosterEntry[] = [
     seed: 1,
     bossNames: ['Yipmaw the Loud', 'Gash the Grinner', 'Half-Laugh', 'Rekka Boneshaker'],
     titles: ["The Cackle Fort", "The Loud Fort", "The Grinning Ring"],
+  },
+  {
+    id: 'stronghold_dead_gravecourt',
+    name: 'Walled grave-court',
+    description:
+      'A graveyard that learned to defend itself: fenced rows of old graves, cold braziers between them, and a warden who counts the resting.',
+    family: 'dead',
+    tiers: [4, 5],
+    weight: 2,
+    sizeClass: 'citadel',
+    seed: 3,
+    bossNames: ['The Grave Warden', 'The Pale Sexton', 'The Roll Keeper', 'He Who Closes the Earth'],
+    titles: ['The Sunken Rows', 'The Counted Field', 'The Long Rest'],
+    pieces: ['ward_dd_gravefield', 'ward_dd_graves', 'ward_dd_stones', 'ward_dd_cairnfield', 'ward_dd_processional'],
+  },
+  {
+    id: 'stronghold_wolfkin_wargcamp',
+    name: 'Warg camp',
+    description:
+      'A settlement built around its pens: wargs behind rails, wolves between them, and a pen mother nothing rides.',
+    family: 'wolfkin',
+    tiers: [3, 5],
+    weight: 2,
+    sizeClass: 'hold',
+    seed: 0,
+    bossNames: ['Ironhide', 'The Pen Mother', 'Blackgirth', 'The Unbroken Warg'],
+    titles: ['The Warg Yard', 'The Howling Pens', 'The Saddle Bones'],
+    pieces: ['ward_wk_wargpens', 'ward_wk_nests', 'ward_wk_racks', 'ward_wk_hollowfield'],
+  },
+  {
+    id: 'stronghold_goblin_encampment',
+    name: 'Goblin encampment',
+    description:
+      'A tent city on the march that stopped marching: rows on rows of hide and drum, more cook fires than sense.',
+    family: 'goblin',
+    tiers: [3, 4],
+    weight: 2,
+    sizeClass: 'hold',
+    seed: 0,
+    bossNames: ['Vex Halfspear', 'Grubbin the Loud', 'Nakka of the Tents', 'Skiv Firstpole'],
+    titles: ['The Sprawl of Tents', 'The Loud Field', 'The Marching Ground'],
+    pieces: ['ward_gs_wartents', 'ward_gs_tents', 'ward_gs_cookyard', 'ward_gs_greatring', 'ward_gs_muster'],
+  },
+  {
+    id: 'stronghold_gnoll_greatfort',
+    name: 'Gnoll great-fort',
+    description:
+      'The cackle-fort grown up: a full citadel of the hyena-folk, laughter on every wall and a champion who has stopped laughing.',
+    family: 'gnoll',
+    tiers: [4, 5],
+    weight: 2,
+    sizeClass: 'citadel',
+    seed: 3,
+    bossNames: ['Rakkash the Greatlaugh', 'Old Bonebreaker', 'Yezza Longgrin', 'The Last Laugh'],
+    titles: ['The Greatlaugh Fort', 'The Howl Keep', 'The Long Grin'],
   },
   {
     id: 'stronghold_dead_barrowcourt',

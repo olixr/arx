@@ -397,7 +397,13 @@ export function composeStronghold(
     // THE FREQUENCY LAW at citadel scale: boldness RE-MANS the empty
     // wards (stage 3 mans everything) — busier, never deadlier.
     if (ward.optional && hashCoords(musterBase, wi, 0xd1) % 100 >= 65 + stage * 12) return;
-    const loop = ward.patrol ? patrolLoop(ward) : [];
+    // THE ROADS ARE WALKED (Third Charter): an authored route deals
+    // verbatim (offset to the world, paceability re-proven against
+    // the composed ground); the synthetic loop serves the rest.
+    const authored = (ward.route ?? [])
+      .filter(([lx, ly]) => paceable(lx, ly))
+      .map(([lx, ly]) => ({ x: originX + lx, y: originY + ly }));
+    const loop = authored.length >= 3 ? authored : ward.patrol ? patrolLoop(ward) : [];
     ward.knots.forEach((knot, ki) => {
       if (knot.minTier !== undefined && seat.tier < knot.minTier) return;
       const span = knot.band[1] - knot.band[0] + 1;
@@ -411,10 +417,12 @@ export function composeStronghold(
         x: originX + knot.at[0],
         y: originY + knot.at[1],
         npc: knot.npc,
-        count: count + bolder,
+        // THE CAPTAIN LAW: a titled body is ONE body with ONE name.
+        count: knot.title ? 1 : count + bolder,
         radius: 2.5,
         level: rollLevel(wi * 31 + ki, 0xa1, knot.levelOffset ?? 0),
         wing: wi,
+        ...(knot.title ? { name: knot.title } : {}),
         ...(knot.role === 'sentry' && loop.length > 0 ? { patrol: loop } : {}),
         ...(knot.hours ? { hours: knot.hours } : {}),
       });

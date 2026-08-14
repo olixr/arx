@@ -238,6 +238,20 @@ export function validateStronghold(
         hours = { from: h.from, to: h.to };
       }
     }
+    // THE POST LAW + THE CAPTAIN LAW (Third Charter).
+    const POSTS = ['cook', 'drill', 'rest', 'vigil', 'keeper', 'watch'] as const;
+    const post =
+      g.post === undefined
+        ? undefined
+        : (POSTS as readonly string[]).includes(g.post as string)
+          ? (g.post as (typeof POSTS)[number])
+          : (errors.push(`${at}: post '${String(g.post)}' unknown (${POSTS.join('|')})`), undefined);
+    const title =
+      g.title === undefined
+        ? undefined
+        : typeof g.title === 'string' && g.title.trim()
+          ? g.title
+          : (errors.push(`${at}: title must be a non-empty string (the named-captain law)`), undefined);
     if (!role) return null;
     return {
       at: anchor,
@@ -247,6 +261,8 @@ export function validateStronghold(
       ...(minTier !== undefined ? { minTier } : {}),
       ...(levelOffset !== undefined ? { levelOffset } : {}),
       ...(hours !== undefined ? { hours } : {}),
+      ...(post !== undefined ? { post } : {}),
+      ...(title !== undefined ? { title } : {}),
     };
   };
 
@@ -307,6 +323,25 @@ export function validateStronghold(
           : w.patrol === 'wall' || w.patrol === 'lane'
             ? w.patrol
             : (errors.push(`${at}: patrol must be 'wall' or 'lane'`), undefined);
+      // THE ROADS ARE WALKED: an authored route is ≥3 waypoints with
+      // sane hops; the geometry half (in-prefab, passable) runs with
+      // the prefab below.
+      let route: Array<[number, number]> | undefined;
+      if (w.route !== undefined) {
+        if (!Array.isArray(w.route) || w.route.length < 3 || !w.route.every(isIntPair)) {
+          errors.push(`${at}: route must be ≥3 [x, y] integer waypoints (or absent)`);
+        } else {
+          route = (w.route as Array<[number, number]>).map((p) => [p[0], p[1]]);
+          for (let i = 1; i < route.length; i++) {
+            const dx = route[i]![0] - route[i - 1]![0];
+            const dy = route[i]![1] - route[i - 1]![1];
+            if (dx * dx + dy * dy > 12 * 12) {
+              errors.push(`${at}: route hop ${i} is ${Math.sqrt(dx * dx + dy * dy).toFixed(1)} tiles (≤ 12 — a patrol walks, never teleports)`);
+              break;
+            }
+          }
+        }
+      }
       wards.push({
         key: WARD_KEY_RE.test(key) ? key : `ward_${wi}`,
         name: wname,
@@ -314,6 +349,7 @@ export function validateStronghold(
         knots,
         ...(optional !== undefined ? { optional } : {}),
         ...(patrol !== undefined ? { patrol } : {}),
+        ...(route !== undefined ? { route } : {}),
       });
     }
     if (raw.wards.length < STRONGHOLD_WARDS_MIN || raw.wards.length > STRONGHOLD_WARDS_MAX) {
@@ -559,6 +595,18 @@ export function validateStronghold(
       const r = w.rect;
       if (r.x < 0 || r.y < 0 || r.x + r.w > pw || r.y + r.h > ph) {
         errors.push(`ward '${w.key}' rect outside the prefab`);
+      }
+    }
+    // THE ROADS ARE WALKED, geometry half: every waypoint stands on
+    // walkable ground inside the prefab.
+    for (const w of wards) {
+      if (!w.route) continue;
+      for (const [ri, [rx, ry]] of w.route.entries()) {
+        if (rx < 0 || ry < 0 || rx >= pw || ry >= ph) {
+          errors.push(`ward '${w.key}' route[${ri}] ${rx},${ry} outside the prefab`);
+        } else if (!passable(ground[ry * pw + rx]!)) {
+          errors.push(`ward '${w.key}' route[${ri}] ${rx},${ry} stands on solid ground`);
+        }
       }
     }
     // THE BREATHING LAW (Second Charter), both halves: a ward is a

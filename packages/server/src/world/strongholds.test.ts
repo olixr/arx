@@ -163,7 +163,9 @@ test('composeStronghold deals a lawful zone: muster in bands, the chief crowned,
   // Muster: every knot within its band, levels inside the tier band
   // plus offsets, the chief named from the pool.
   const spawns = zone.spawns ?? [];
-  const bossSpawn = spawns.find((s) => s.name !== undefined);
+  // Captains are named too (Third Charter) — the chief is the named
+  // spawn whose name comes from the BOSS pool.
+  const bossSpawn = spawns.find((s) => s.name !== undefined && layout.boss.names.includes(s.name));
   assert.ok(bossSpawn, 'the chief must be crowned');
   assert.ok(layout.boss.names.includes(bossSpawn.name!), 'the name comes from the pool');
   assert.equal(bossSpawn.npc, layout.boss.npc);
@@ -174,6 +176,19 @@ test('composeStronghold deals a lawful zone: muster in bands, the chief crowned,
     1,
   );
   assert.ok(bodies >= 1 && bodies <= maxBodies, `muster ${bodies} outside 1..${maxBodies}`);
+  // THE CAPTAIN LAW composes: at least one titled captain stands as a
+  // single named body beside the chief.
+  const captains = spawns.filter((s) => s.name !== undefined && !layout.boss.names.includes(s.name));
+  assert.ok(captains.length >= 1, 'no titled captains composed');
+  for (const c of captains) assert.equal(c.count, 1, 'a titled body is ONE body');
+  // THE ROADS ARE WALKED composes: some spawn patrols an authored
+  // route — more waypoints than the synthetic loops ever deal, laid
+  // along the worn ground.
+  const routedWard = layout.wards.find((w) => w.route && w.route.length >= 3);
+  if (routedWard) {
+    const routed = spawns.filter((s) => (s.patrol?.length ?? 0) >= 3);
+    assert.ok(routed.length >= 1, 'no routed patrols composed');
+  }
   // THE CHAPTERS: every spawn wears its ward tag; manned wards keep
   // every eligible knot at its authored anchor; optional wards that
   // rolled empty this epoch contribute nothing at all.
@@ -182,9 +197,11 @@ test('composeStronghold deals a lawful zone: muster in bands, the chief crowned,
     if (ward.optional && wardSpawns.length === 0) continue; // rolled empty
     for (const knot of ward.knots) {
       if (knot.minTier !== undefined && seat.tier < knot.minTier) continue;
+      // The zone stands on ITS OWN dims — the seat rect is the MASK
+      // (pool max), so anchors offset from zone.origin, never rect.
       assert.ok(
         wardSpawns.some(
-          (sp) => sp.x === seat.rect.x + knot.at[0] && sp.y === seat.rect.y + knot.at[1],
+          (sp) => sp.x === zone.origin.x + knot.at[0] && sp.y === zone.origin.y + knot.at[1],
         ),
         `${ward.key} knot at ${knot.at[0]},${knot.at[1]} lost its post`,
       );

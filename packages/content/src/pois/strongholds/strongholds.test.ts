@@ -317,6 +317,42 @@ test('every shipped layout validates against its own prefab (the repository swee
   }
 });
 
+test('THE POST LAW, CAPTAIN LAW, and ROADS ARE WALKED are generated true (Third Charter)', () => {
+  for (const def of STRONGHOLD_DEFS.values()) {
+    const prefab = STRONGHOLD_PREFABS.get(def.prefab)!;
+    const knots = def.wards.flatMap((w) => [...w.knots]);
+    // Placed authority: every layout keeps ≥2 titled captains, each a
+    // single named body.
+    const titled = knots.filter((k) => k.title);
+    assert.ok(titled.length >= 2, `${def.id}: only ${titled.length} titled captains`);
+    for (const k of titled) {
+      assert.deepEqual([...k.band], [1, 1], `${def.id}: a titled knot must be ONE body`);
+    }
+    // Bodies stand where the work is: a healthy share of the muster
+    // carries a post, and every post anchor touches its furniture's
+    // ward ground (validator holds passability; here we pin presence).
+    const posted = knots.filter((k) => k.post);
+    assert.ok(posted.length >= 4, `${def.id}: only ${posted.length} posted knots`);
+    // The camp keeps a clock: at least one day post or night post.
+    assert.ok(
+      knots.some((k) => k.hours),
+      `${def.id}: no hour-keeping knots (the camp reads the same at noon and midnight)`,
+    );
+    // The roads are walked: at least one authored route, every
+    // waypoint on walkable composed ground with lawful hops.
+    const routed = def.wards.filter((w) => w.route);
+    assert.ok(routed.length >= 1, `${def.id}: no walked routes`);
+    for (const w of routed) {
+      assert.ok(w.route!.length >= 3, `${def.id}/${w.key}: route too short`);
+      for (const [rx, ry] of w.route!) {
+        const t = prefab.ground[ry * prefab.width + rx]!;
+        const solid = t !== TILE_SKIP && (TILE_DEFS[t as Tile]?.solid ?? true);
+        assert.ok(!solid, `${def.id}/${w.key}: waypoint ${rx},${ry} on solid ground`);
+      }
+    }
+  }
+});
+
 test('shipped knots keep THE PULL LAW with margin visible in the data', () => {
   for (const def of STRONGHOLD_DEFS.values()) {
     const anchors: Array<readonly [number, number]> = [];
