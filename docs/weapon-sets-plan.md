@@ -112,14 +112,18 @@ they share a button honestly). Wire: `InputButton.Swap = 1 << 11`. The glyph
 surfaces (HUD well badge, controls table, tooltips) speak through
 padGlyph/kbLabel — never a hardcoded letter.
 
-**LAW 6 — THE BACK TELLS THE TRUTH.** The stowed pair is ALWAYS drawn on the body,
-for you and for everyone else: back sling for bow/staff/great, far-hip scabbard
-for blades, riding the existing sheath.ts spots. When the active weapon is also
-sheathed and both want the back, the two cross at ranked angles (the stowed set
-takes the deeper, lower rank) — the crossed-back silhouette is the feature's
-badge. `AppearanceData.equip` carries the new slots so remote players and
-portraits wear the whole kit. Cap by construction: at most two back-slung pieces
-plus the quiver.
+**LAW 6 — THE QUIET BACK** *(USER-AMENDED 2026-08-14; the original law — THE
+BACK TELLS THE TRUTH, always-drawn waiting set, crossed-back badge — shipped
+for one commit and was retired on the user's verdict: physically honest, but
+the body read as compacted and overstuffed, and sheathing the active set
+piled scabbards onto scabbards. The genre's leaders show the active set only,
+and so do we.)* Only the ACTIVE set is drawn on the body — in the hands, or
+at its own sheathe spots when stowed. The swap simply changes what is shown:
+the incoming set materializes at the trade's handoff, under the beat's
+choreography. The SLEEPING STEEL exclusion is total: `AppearanceData` does
+NOT carry the stowed slots (nothing renders them, so nothing carries them);
+the stowed pair's one visible home is the UI (LAW 7's swap well, LAW 8's
+rack).
 
 **LAW 7 — THE SHOWN PAIR.** The HUD seats one **swap well** on the hotbar beside
 the belt: it shows the WAITING set (weapon icon, offhand mini-icon tucked at the
@@ -240,9 +244,20 @@ STOW_HANDOFF, mispredict reconciles like the predicted blow); stow/draw sfx pair
 THE SAFETY interplay (combat press during the beat buffers, fires when the lock
 lifts). Riglab transition rows for the trade.
 
-**Phase 3 — THE VISIBLE BACK (the body wears both). SHIPPED 2026-08-14.**
+**Phase 3 — THE VISIBLE BACK (the body wears both). SHIPPED 2026-08-14 —
+RETIRED SAME DAY BY USER VERDICT (see LAW 6, THE QUIET BACK).**
 
-*As-built:* sheath.ts grew the REST VOCABULARY beside the active spots (ADD
+*Superseded:* the phase shipped complete (1c3bed7 + the rig hunks that rode
+5cb1e60 in the index race) and was reverted surgically in THE QUIET BACK
+commit after the user judged the always-worn waiting set overstuffed — the
+double-sheathe pile-up was the deciding read. The rest vocabulary
+(restBack/restBlade/restShield), the rest paint bands, the RigPose stow
+fields, and pairlab were removed whole; the appearance rail now EXCLUDES the
+stowed slots (the SLEEPING STEEL exclusion went total). The as-built below
+stands as the historical record of what was built and why it read wrong —
+do not rebuild it without a fresh user verdict.
+
+*As-built (retired):* sheath.ts grew the REST VOCABULARY beside the active spots (ADD
 only — no active number moved): `restBack` = THE CROSS, authored numbers not a
 mere mirror (first cut composed `stowBack(-side)` and the waiting bow vanished
 inside a sheathed greatblade's silhouette — the lab caught it; the shipped
@@ -292,8 +307,10 @@ Device-swap glyphs throughout via seatChip/kbBadge.
 **Phase 5 — THE PROVING.** `prove:weapon-sets` live lane (fresh-world law):
 swap under fire receipts (beat lock honest — press→refusal→first legal swing
 measured), cast-death receipt, combo-death receipt, empty-refusal line, relog
-persistence, second-client remote-visibility receipt (the other session SEES the
-crossed back), pad hold-vs-tap receipt on a fake pad with advancing timestamps.
+persistence, second-client receipt (the other session sees the ACTIVE set
+change on the swap, and never sees the stowed slots in appearance — THE QUIET
+BACK's wire half), pad hold-vs-tap receipt on a fake pad with advancing
+timestamps.
 
 ## Part 4 — Do not change
 

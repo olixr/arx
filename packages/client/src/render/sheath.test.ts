@@ -1,14 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  STOW_HANDOFF,
-  restBack,
-  restBlade,
-  restShield,
-  sheathePhases,
-  stowBack,
-  stowBlade,
-} from './sheath.js';
+import { STOW_HANDOFF, sheathePhases, stowBack, stowBlade } from './sheath.js';
 
 test('the handoff can never pop: grab lands exactly at the anchor', () => {
   // At t=0 nothing has moved; at the handoff the hand is fully AT the
@@ -132,99 +124,5 @@ test('the bow mirror law: left-lean is the reflection of right-lean', () => {
     const sum = r.angle + l.angle;
     assert.ok(Math.abs(sum + Math.PI) < 1e-9, `mirror broken at side=${side}: sum=${sum}`);
     assert.ok(Math.abs(l.dx + r.dx) < 1e-9, 'anchor tweak mirrors');
-  }
-});
-
-// ------------------------------------------------- the second grip
-
-test('THE CROSS: the waiting sling leans opposite, harder, one rank down', () => {
-  for (const kind of ['bow', 'staff', 'great'] as const) {
-    for (const side of [-1, -0.5, 0.5, 1]) {
-      const active = stowBack(kind, side);
-      const rest = restBack(kind, side);
-      assert.ok(rest.dx * active.dx < 0, 'anchored past the OPPOSITE shoulder');
-      assert.ok(Math.abs(rest.dx) > Math.abs(active.dx), 'and further out than the live sling');
-      assert.ok(rest.dy > active.dy + 0.05, 'the waiting rank rides visibly lower');
-      if (kind !== 'bow') {
-        // Staff and great lean as tilt off their own vertical: the
-        // waiting tilt must CROSS the active one, and lean harder —
-        // a rest sling that only mirrors a big active blade vanishes
-        // inside its silhouette (the lab receipt behind the law).
-        const vertical = kind === 'staff' ? -Math.PI / 2 : Math.PI / 2;
-        const activeTilt = active.angle - vertical;
-        const restTilt = rest.angle - vertical;
-        assert.ok(restTilt * activeTilt < 0, 'the two long axes cross');
-        assert.ok(Math.abs(restTilt) > Math.abs(activeTilt), 'the waiting lean is the harder one');
-      } else {
-        // The bow keeps the mirror STRUCTURE: its rest angle lives in
-        // the reflected family (same branch stowBack takes for the
-        // opposite side), so the belly still faces outward.
-        const mirrored = stowBack('bow', -side);
-        const sameBranch =
-          (rest.angle <= 0 && rest.angle > -Math.PI / 2 && mirrored.angle <= 0 && mirrored.angle > -Math.PI / 2) ||
-          (rest.angle <= -Math.PI / 2 && mirrored.angle <= -Math.PI / 2);
-        assert.ok(sameBranch, 'the waiting bow is a reflection, never a rotation');
-      }
-    }
-  }
-});
-
-test('THE SECOND ROW: waiting blades hang lower, wider, nearer vertical', () => {
-  for (const hand of ['main', 'off'] as const) {
-    for (const side of [-1, 1]) {
-      const live = stowBlade(hand, side, side * 0.9);
-      const rest = restBlade(hand, side, side * 0.9);
-      assert.ok(rest.dy > live.dy + 0.05, 'the waiting row hangs below the live one');
-      assert.ok(Math.abs(rest.dx) > Math.abs(live.dx), 'and a touch wider on the belt');
-      assert.ok(rest.dx * live.dx > 0, 'without ever crossing to the other hip');
-      assert.ok(
-        Math.abs(rest.angle - Math.PI / 2) < Math.abs(live.angle - Math.PI / 2),
-        'relaxing toward the vertical hang — a quiet row, not a second war belt',
-      );
-    }
-  }
-});
-
-test('the second row keeps the tip-down law', () => {
-  for (const hand of ['main', 'off'] as const) {
-    for (let rake = -1; rake <= 1.0001; rake += 0.25) {
-      for (const sit of [0, 0.5, 1]) {
-        const spot = restBlade(hand, Math.sign(rake) || 1, rake, sit);
-        assert.ok(
-          spot.angle > 0 && spot.angle < Math.PI,
-          `waiting steel points down too: hand=${hand} rake=${rake} sit=${sit}`,
-        );
-      }
-    }
-  }
-});
-
-test('the rest channels stay continuous through the side flip', () => {
-  const probe = (f: (side: number) => number): void => {
-    let prev = f(-0.4);
-    for (let side = -0.4; side <= 0.4001; side += 0.02) {
-      const v = f(side);
-      assert.ok(Math.abs(v - prev) < 0.2, `discontinuity near side=${side.toFixed(2)}`);
-      prev = v;
-    }
-  };
-  probe((sd) => restBlade('main', sd, sd).dx);
-  probe((sd) => restBlade('main', sd, sd).angle);
-  probe((sd) => restBlade('off', sd, sd, 0.5).angle);
-  probe((sd) => restBack('staff', sd).dx);
-  probe((sd) => restBack('staff', sd).angle);
-  probe((sd) => restBack('bow', sd).dx);
-  probe((sd) => restShield(sd).dx);
-  probe((sd) => restShield(sd).tilt);
-  // restBack('bow').angle inherits the mirror-law exemption above.
-});
-
-test('THE SLUNG WALL: the waiting shield hangs square below the sling line', () => {
-  for (const side of [-1, -0.4, 0.4, 1]) {
-    const perch = restShield(side);
-    assert.ok(perch.dy > stowBack('bow', side).dy, 'deepest rank: everything paints over the wall');
-    const mirror = restShield(-side);
-    assert.ok(Math.abs(mirror.dx + perch.dx) < 1e-9, 'the perch mirrors with the body');
-    assert.ok(Math.abs(mirror.tilt + perch.tilt) < 1e-9, 'and so does its lean');
   }
 });

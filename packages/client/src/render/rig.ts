@@ -51,16 +51,7 @@ import {
   type StrikeFrame,
   type StrikeTrail,
 } from './carriage.js';
-import {
-  REST_BACK_DEPTH,
-  STOW_HANDOFF,
-  restBack,
-  restBlade,
-  restShield,
-  sheathePhases,
-  stowBack,
-  stowBlade,
-} from './sheath.js';
+import { STOW_HANDOFF, sheathePhases, stowBack, stowBlade } from './sheath.js';
 import {
   BOW_PLANE_SOFT,
   GREAT_FINISHER_PHASES,
@@ -93,7 +84,6 @@ import {
 } from './wield.js';
 import {
   drawShield,
-  drawShieldAt,
   drawShieldStraps,
   isShieldKind,
   shieldStyle,
@@ -308,19 +298,6 @@ export interface RigPose {
   glovesItem?: string;
   /** Equipped offhand — shield on the arm, quiver on the back, etc. */
   offhandItem?: string;
-  /**
-   * THE VISIBLE BACK (weapon sets): the WAITING pair, worn at
-   * permanent rest — a blade on the belt's second row, a bow/staff/
-   * greatblade crossed one rank deeper on the back, a shield slung
-   * square on its guige. Never touches the hands or the sheathe blend;
-   * the swap verb trades these with the two fields above.
-   */
-  stowWeaponItem?: string;
-  stowOffhandItem?: string;
-  /** The waiting pair's enchants — bonded steel burns even at rest
-   *  (the flaming-blade law: appearance rides the wire to everyone). */
-  stowWeaponEnch?: string;
-  stowOffhandEnch?: string;
   /** A cape is worn — back-mounted gear drops to the hip to clear it. */
   hasCape?: boolean;
   /** Player-chosen base look (skin/hair/beard/cloth palettes). */
@@ -6326,44 +6303,6 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     const spot = stowBlade('off', sideS, sideW, chairSit ? sit * 0.15 : sit);
     offStow = { x: rig.x + spot.dx * s * wS, y: hipY + spot.dy * s, angle: spot.angle };
   }
-
-  // ---- THE VISIBLE BACK: the WAITING weapon set rides the body at
-  // permanent rest — no blend, no hands, just worn. Belt blades take
-  // the second row; bows/staffs/greatblades cross one rank deeper on
-  // the back (the bare-back paint lives in the ladder below; under a
-  // cape drawBackGear owns it); a shield hangs square on its guige; a
-  // quiver perches beside its bow. Tomes and orbs rest inside the
-  // pack roll — deliberately undrawn, the same silence the active
-  // sheathe keeps for them. Spots live in sheath.ts beside the active
-  // vocabulary; the same one wieldClass detection rules here too.
-  const restWDef = itemDef(rig.stowWeaponItem ?? '');
-  const restWKind = restWDef !== undefined ? wieldClass(restWDef.id) : 'none';
-  const restWBack = restWKind === 'bow' || restWKind === 'staff' || restWKind === 'great';
-  let restWSpot: { x: number; y: number; angle: number } | null = null;
-  if (restWDef) {
-    if (restWBack) {
-      const spot = restBack(restWKind as 'bow' | 'staff' | 'great', sideS);
-      restWSpot = {
-        x: rig.x - fx * 0.14 * (1 + REST_BACK_DEPTH) * s + spot.dx * s * wS,
-        y: shoulderY + spot.dy * s,
-        angle: spot.angle,
-      };
-    } else {
-      const spot = restBlade('main', sideS, sideW, chairSit ? sit * 0.15 : sit);
-      restWSpot = { x: rig.x + spot.dx * s * wS, y: hipY + spot.dy * s, angle: spot.angle };
-    }
-  }
-  const restODef = itemDef(rig.stowOffhandItem ?? '');
-  const restOSt = rig.stowOffhandItem ? offhandStyle(rig.stowOffhandItem) : null;
-  let restOSpot: { x: number; y: number; angle: number } | null = null;
-  if (restODef && restOSt?.kind === 'weapon') {
-    const spot = restBlade('off', sideS, sideW, chairSit ? sit * 0.15 : sit);
-    restOSpot = { x: rig.x + spot.dx * s * wS, y: hipY + spot.dy * s, angle: spot.angle };
-  }
-  const restShieldSt: ShieldStyle | null =
-    restOSt && rig.stowOffhandItem && isShieldKind(restOSt.kind)
-      ? shieldStyle(rig.stowOffhandItem, restOSt.kind, restOSt.color, restOSt.trim, restOSt.boss)
-      : null;
   if (sheath > 0 && mainStow) {
     const ph = sheathePhases(sheath);
     if (!stowed) {
@@ -6864,66 +6803,6 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     paintScabbard(offStow, rig.offhandItem);
     paintFrog(offStow);
   };
-  // ---- the WAITING set's paint (THE VISIBLE BACK). The quiet row
-  // shares the live gear's depth bands and always paints FIRST inside
-  // its band, so live steel layers over waiting steel and the two rows
-  // read as one deliberately dressed body — never a pile.
-  const paintRestBeltMain = (): void => {
-    if (!restWSpot || !restWDef || restWBack) return;
-    drawHeldItem(ctx, restWDef.id, restWDef.color, restWSpot.x, restWSpot.y, restWSpot.angle, s, rig, {
-      ench: rig.stowWeaponEnch,
-      grip: 0.5,
-    });
-    paintScabbard(restWSpot, restWDef.id);
-    paintFrog(restWSpot);
-  };
-  const paintRestBeltOff = (): void => {
-    if (!restOSpot || !restODef) return;
-    drawHeldItem(ctx, restODef.id, restODef.color, restOSpot.x, restOSpot.y, restOSpot.angle, s, rig, {
-      ench: rig.stowOffhandEnch,
-    });
-    paintScabbard(restOSpot, restODef.id);
-    paintFrog(restOSpot);
-  };
-  // The back rank on a bare back (a cape hands this whole call to
-  // drawBackGear so gear straps over the cloth): the slung wall
-  // deepest, then the waiting quiver, then the crossed sling — every
-  // active back item paints after, and over, all of it.
-  const paintRestBack = (): void => {
-    if (rig.hasCape) return;
-    if (restShieldSt) {
-      const perch = restShield(sideS);
-      drawShieldAt(ctx, restShieldSt, {
-        cx: rig.x - fx * 0.14 * (1 + REST_BACK_DEPTH) * s + perch.dx * s * wS,
-        cy: shoulderY + perch.dy * s,
-        size: 0.32 * s,
-        theta: 0,
-        tilt: perch.tilt,
-        oside: lead,
-        hurt: rig.hurt,
-        nowMs: rig.nowMs,
-      });
-    }
-    if (restOSt?.kind === 'quiver') {
-      drawQuiver(
-        ctx,
-        restOSt,
-        rig.x - fx * 0.14 * (1 + REST_BACK_DEPTH) * s,
-        shoulderY + 0.07 * s,
-        s,
-        lead,
-        rig.hurt,
-        rig.nowMs,
-      );
-    }
-    if (restWSpot && restWDef && restWBack) {
-      drawHeldItem(ctx, restWDef.id, restWDef.color, restWSpot.x, restWSpot.y, restWSpot.angle, s, rig, {
-        ench: rig.stowWeaponEnch,
-        carry: restWKind === 'bow' ? 1 : 0,
-        grip: 0.5,
-      });
-    }
-  };
   // Back slings share the quiver's depth law: behind the torso facing
   // the camera, over it facing away. With a cape the renderer owns the
   // call (drawBackGear) so the sling straps over the cloth. Belt gear
@@ -7268,10 +7147,6 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Belt scabbards + the back quiver lie over the legs, under the
   // torso — exactly the layer they held when the legs painted early.
   const beltBehind = bandFlag(mem, 'beltBehind', profileK, 0.68, 0.56);
-  // The waiting row enters each band FIRST — live steel over waiting.
-  if (!slingFront) paintRestBack();
-  if (!beltBehind) paintRestBeltOff();
-  if (beltBehind) paintRestBeltMain();
   if (!quiverFront) paintQuiver();
   if (stowed && offWorn && !beltBehind) paintStowedOff();
   if (stowed && !wornBack && beltBehind) paintStowedMain();
@@ -8277,10 +8152,6 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   ctx.restore();
 
   // A back-facing quiver reads over the torso, like a cape's front side.
-  // The waiting row keeps its first-in-band law up here too.
-  if (slingFront) paintRestBack();
-  if (!beltBehind) paintRestBeltMain();
-  if (beltBehind) paintRestBeltOff();
   if (quiverFront) paintQuiver();
   // Stowed gear on the near side of the body paints over the torso —
   // the back sling when facing away, the belt pieces face-on, and the
@@ -8324,16 +8195,7 @@ export function drawBackGear(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const stowedBow = stowedKind === 'bow';
   const stowedStaff = stowedKind === 'staff';
   const sling = (rig.sheathT ?? 0) >= STOW_HANDOFF && (stowedBow || stowedStaff || stowedGreat);
-  // The waiting rank claims this layer too: a resting back weapon, a
-  // waiting quiver, or the slung wall each earn the call on their own.
-  const restKind = wieldClass(rig.stowWeaponItem ?? '');
-  const restBackKind = restKind === 'bow' || restKind === 'staff' || restKind === 'great';
-  const restOff = rig.stowOffhandItem ? offhandStyle(rig.stowOffhandItem) : null;
-  const hasRest =
-    (rig.stowWeaponItem !== undefined && restBackKind) ||
-    restOff?.kind === 'quiver' ||
-    (restOff !== null && isShieldKind(restOff.kind));
-  if (st?.kind !== 'quiver' && !sling && !hasRest) return;
+  if (st?.kind !== 'quiver' && !sling) return;
   const k = rig.size ?? 1;
   const s = rig.scale * k;
   const fx = Math.cos(rig.dir);
@@ -8349,61 +8211,12 @@ export function drawBackGear(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const th = TORSO_RISE_S * s * (1 - 0.12 * crouch);
   const shoulderY = hipY - th * hScale + SHOULDER_Y_DROP_S * s;
   const lead = fx >= 0 ? 1 : -1;
-  const side = rig.depthMemory?.side ?? (Math.sign(fx) || 1);
-  // THE VISIBLE BACK over a cape: the waiting rank straps over the
-  // cloth exactly like the quiver, and paints FIRST — the slung wall
-  // deepest, then the waiting quiver, the crossed sling, and only
-  // then the live gear over all of it (the same first-in-band law the
-  // bare-back ladder keeps).
-  const restW = itemDef(rig.stowWeaponItem ?? '');
-  const restWKind = restKind;
-  const restWBack = restBackKind;
-  const restOSt = restOff;
-  if (restOSt && rig.stowOffhandItem && isShieldKind(restOSt.kind)) {
-    const wall = shieldStyle(rig.stowOffhandItem, restOSt.kind, restOSt.color, restOSt.trim, restOSt.boss);
-    const perch = restShield(side);
-    drawShieldAt(ctx, wall, {
-      cx: rig.x - fx * 0.14 * (1 + REST_BACK_DEPTH) * s + perch.dx * s * wS,
-      cy: shoulderY + perch.dy * s,
-      size: 0.32 * s,
-      theta: 0,
-      tilt: perch.tilt,
-      oside: lead,
-      hurt: rig.hurt,
-      nowMs: rig.nowMs,
-    });
-  }
-  if (restOSt?.kind === 'quiver') {
-    drawQuiver(
-      ctx,
-      restOSt,
-      rig.x - fx * 0.14 * (1 + REST_BACK_DEPTH) * s,
-      shoulderY + 0.07 * s,
-      s,
-      lead,
-      rig.hurt,
-      rig.nowMs,
-    );
-  }
-  if (restW && restWBack) {
-    const spot = restBack(restWKind as 'bow' | 'staff' | 'great', side);
-    drawHeldItem(
-      ctx,
-      restW.id,
-      restW.color,
-      rig.x - fx * 0.14 * (1 + REST_BACK_DEPTH) * s + spot.dx * s * wS,
-      shoulderY + spot.dy * s,
-      spot.angle,
-      s,
-      rig,
-      { ench: rig.stowWeaponEnch, carry: restWKind === 'bow' ? 1 : 0, grip: 0.5 },
-    );
-  }
   if (st?.kind === 'quiver') {
     drawQuiver(ctx, st, rig.x - fx * 0.14 * s, shoulderY - 0.02 * s, s, lead, rig.hurt, rig.nowMs);
   }
   // A stowed bow/staff straps over the cape exactly like the quiver.
   if (sling && worn) {
+    const side = rig.depthMemory?.side ?? (Math.sign(fx) || 1);
     const spot = stowBack(stowedBow ? 'bow' : stowedGreat ? 'great' : 'staff', side);
     drawHeldItem(
       ctx,

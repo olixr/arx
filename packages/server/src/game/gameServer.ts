@@ -25592,13 +25592,17 @@ export class GameServer {
       // Appearance carries item IDS only — rendering never needs rolls.
       // Enchants are the exception: they change how gear LOOKS, so the
       // enchanted slots ride along (ids only, still no rolls).
-      // THE BACK TELLS THE TRUTH: the stowed pair rides along HERE on
-      // purpose — the one place sleeping steel speaks is the body that
-      // carries it (LAW 6, weapon-sets plan). Never exclude it.
+      // THE QUIET BACK (user verdict, 2026-08-14, amends LAW 6): only
+      // the ACTIVE set shows on the body — the waiting pair drew as a
+      // crossed back rank for one commit and read as overstuffed, and
+      // double-sheathing piled scabbards on scabbards. The SLEEPING
+      // STEEL exclusion is total now: stowed slots leave the wire here
+      // too (nothing renders them, so nothing should carry them).
       const equip: Partial<Record<EquipSlot, string>> = {};
       let ench: Partial<Record<EquipSlot, string>> | undefined;
       for (const [slot, worn] of Object.entries(player.equipment)) {
         if (!worn) continue;
+        if (isStowedSlot(slot as EquipSlot)) continue;
         equip[slot as EquipSlot] = worn.id;
         if (worn.roll?.ench) {
           ench ??= {};
