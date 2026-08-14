@@ -1,0 +1,64 @@
+{
+ "id": "lorn_assay",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "assayer_lorn"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "voice": "lorn_assay__greet",
+   "text": "Set it on the counter. Everything gets weighed before it gets believed.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "voice": "lorn_assay__hub",
+   "text": "What is your business with the scales?",
+   "choices": [
+    {
+     "text": "What do you do here?",
+     "next": "work"
+    },
+    {
+     "text": "What's ore worth these days?",
+     "next": "worth"
+    },
+    {
+     "text": "Why so strict about it?",
+     "next": "strict"
+    },
+    {
+     "text": "Nothing to weigh.",
+     "next": "bye"
+    }
+   ]
+  },
+  {
+   "id": "work",
+   "voice": "lorn_assay__work",
+   "text": "Every load out of the delf and every stone out of the burn crosses this counter. I stamp what is true. The stamp is why a Kingsdelf bar sells in Amberford without an argument. Towns run on bread. Trade runs on stamps.",
+   "next": "hub"
+  },
+  {
+   "id": "worth",
+   "voice": "lorn_assay__worth",
+   "text": "Mithril holds steady, the Charter sees to that. Adamant is worth your sweat. Obsidian is worth other people's sweat, which is why it is priced like it. And starfall is worth whatever the buyer's eyes say before their mouth starts lying.",
+   "next": "hub"
+  },
+  {
+   "id": "strict",
+   "voice": "lorn_assay__strict",
+   "text": "In Amberford, years ago, a man in a hurry talked me into passing a load I doubted. A bridge cracked. Nobody died, and I hear the word nobody in my sleep, because it was luck, not judgment. The scales do not hurry. Neither do I. Not anymore.",
+   "next": "hub"
+  },
+  {
+   "id": "bye",
+   "voice": "lorn_assay__bye",
+   "text": "Honest weight to you."
+  }
+ ]
+}

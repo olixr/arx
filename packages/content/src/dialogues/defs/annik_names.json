@@ -1,0 +1,80 @@
+{
+ "id": "annik_names",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "sealkeeper_annik"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "voice": "annik_names__greet",
+   "text": "Mind the braziers, child. The names are never read in the dark. Not while I keep them.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "voice": "annik_names__hub",
+   "text": "You may ask. The old ones like being asked.",
+   "choices": [
+    {
+     "text": "What is this door?",
+     "next": "door"
+    },
+    {
+     "text": "What are the names?",
+     "next": "names"
+    },
+    {
+     "text": "Somebody said there's an extra mark.",
+     "next": "mark"
+    },
+    {
+     "text": "You look different from other folk.",
+     "next": "blood"
+    }
+   ]
+  },
+  {
+   "id": "door",
+   "voice": "annik_names__door",
+   "text": "The way down to the deep workings. Sealed the day the Brand woke, a hundred and fifty years gone, with the night shift still below. The Guild made the seal. The mountain has been knocking on it ever since, soft, like a neighbor who knows you are home.",
+   "next": "hub"
+  },
+  {
+   "id": "names",
+   "voice": "annik_names__names",
+   "text": "Two hundred and fourteen. The whole night shift, cut into stone by the survivors before they walked north. My grandmother's sister is fourth row, second name. We read them aloud on the founding day, every year, and the mountain listens.",
+   "next": "hub"
+  },
+  {
+   "id": "mark",
+   "voice": "annik_names__mark",
+   "text": "Count them yourself. Two hundred and fourteen names. Two hundred and fifteen marks. The last one is scratched, not carved, and it was made after. I was nine when I found it. I am not nine now, and nobody has ever explained it to me.",
+   "choices": [
+    {
+     "text": "Who could have made it?",
+     "next": "who"
+    },
+    {
+     "text": "I'll think on it.",
+     "next": "hub"
+    }
+   ]
+  },
+  {
+   "id": "who",
+   "voice": "annik_names__who",
+   "text": "Someone who came out after the door was shut. Or someone who went back in. Either way, child, somebody wanted to be counted, and the stone is the only one who knows which side of the seal they stood on.",
+   "next": "hub"
+  },
+  {
+   "id": "blood",
+   "voice": "annik_names__blood",
+   "text": "Moonpale. The old blood, thinned. My grandmother had it stronger, and her grandmother stronger still, back to the folk who built the old realm. Veyle at the Focus House has it whole, ears and years and all. Ask her. She remembers more than stone does.",
+   "next": "hub"
+  }
+ ]
+}

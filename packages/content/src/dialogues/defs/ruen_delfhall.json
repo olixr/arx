@@ -1,0 +1,64 @@
+{
+ "id": "ruen_delfhall",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "delfmaster_ruen"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "voice": "ruen_delfhall__greet",
+   "text": "The Delfhall. Grievances go in the shift book, wonders go in the shift book, everything goes in the shift book. What have you got?",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "voice": "ruen_delfhall__hub",
+   "text": "Ask it plain.",
+   "choices": [
+    {
+     "text": "Who runs this town?",
+     "next": "runs"
+    },
+    {
+     "text": "What do you dig here?",
+     "next": "digs"
+    },
+    {
+     "text": "Does the Crown know about this place?",
+     "next": "crown"
+    },
+    {
+     "text": "Nothing today.",
+     "next": "bye"
+    }
+   ]
+  },
+  {
+   "id": "runs",
+   "voice": "ruen_delfhall__runs",
+   "text": "I do, the way a foreman runs a shift. Not because I am grand. Because I count. Everyone who goes out gets counted out, and everyone gets counted back, and the day that stops being true, you may have my chair.",
+   "next": "hub"
+  },
+  {
+   "id": "digs",
+   "voice": "ruen_delfhall__digs",
+   "text": "Mithril, here inside the walls, safe as digging ever gets. Adamant for those with arms for it. The obsidian and the starfall are out in the burn, and the burn sets its own wages. Talk to Lorn at the assay before you go believing anything shiny.",
+   "next": "hub"
+  },
+  {
+   "id": "crown",
+   "voice": "ruen_delfhall__crown",
+   "text": "I have written to Silverfall three times. Three polite silences came back. And yet somebody up there reads Hedda's maps, doesn't he. The Crown knows us the way you know a debt you would rather not name.",
+   "next": "hub"
+  },
+  {
+   "id": "bye",
+   "voice": "ruen_delfhall__bye",
+   "text": "Mind the horn. It is not a suggestion."
+  }
+ ]
+}

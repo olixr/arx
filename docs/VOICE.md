@@ -473,6 +473,83 @@ it dictates sentence shape. (Pooled actors share one card.)
 - **Herders** (pooled): wind-cracked, count-stick practical. Beast-first
   talk, short.
 
+### Kingsdelf — the delf that made the crown
+
+The town's ONE spice-carrier is **Mirena**; everyone else speaks plainly.
+Trail-off "..." is granted to **Veyle** alone (the old blood drifts between
+centuries mid-sentence). The town's shared registers: shift-talk (counted
+out, counted back), road-talk (lit and unlit miles), and the careful way
+everyone does NOT talk about the seal unless Annik is doing the talking.
+
+- **Ruen** (Delfmaster). Want: the town outlasts her. Wound: three unanswered
+  letters to a Crown that reads her surveyor's maps. Quirk: taps stone twice
+  before trusting it. Cadence: work orders. "Count your crew before the burn,
+  not after."
+- **Venn** (Factor). Want: the venture pays and keeps paying. Wound: chose the
+  ledger over a family; the ledger is the family now. Quirk: counts in threes,
+  aloud. Cadence: precise, warm underneath, money-words. "Weighed, stamped,
+  banked."
+- **Annik** (Sealkeeper). Want: the names read aloud yearly until someone
+  answers for them. Wound: counted 215 marks at age nine; no adult would
+  explain. Quirk: touches the names-stone before answering about the past.
+  Cadence: slow, exact, calls everyone child. "The names are never read in
+  the dark."
+- **Brekka** (Innkeep). Want: nobody unrecorded. Wound: a brother who went
+  out unrecorded, up north, one spring. Quirk: no second cup till you sign
+  the book. Cadence: brisk host warmth. "Names out, names in."
+- **Orin** (Stablemaster). Want: no beast lost to the burn. Wound: the colt
+  the Old Road took his first year. Quirk: talks to beasts mid-sentence with
+  people. Cadence: unhurried, few words. "Easy now. Not you, traveler."
+- **Ferrun** (Smith). Want: to work starfall before his hands give out.
+  Wound: the masterwork that cracked at the quench, worn on a cord. Quirk:
+  never names a blade before the water. Cadence: slow, fire-words.
+- **Mirena** (Glasswright). THE SPICE. Want: a lens to look at the Brand
+  without weeping. Wound: a master who said glass was a small craft. Quirk:
+  holds everything up to the light. Cadence: quick, bright, earns her one
+  aphorism per talk. "Starfall glass takes light the way a good listener
+  takes bad news."
+- **Veyle** (Enchanter, the old folk whole). Want: to read the seal's
+  working. Wound: exiled for one question the Arcanum could not bear.
+  Quirk: writes in the air while thinking. Cadence: soft, precise, drifts
+  granted ("I watched the Processional built, child..."). Never frightened,
+  which is itself unsettling.
+- **Lorn** (Assayer). Want: a fair stamp on every load. Wound: the load he
+  passed and the bridge that cracked; the word nobody. Quirk: weighs words
+  like loads ("that claim is light"). Cadence: dry, exact.
+- **Soren** (Lampwright). Want: the Old Road lit, lamp by lamp. Wound:
+  forty one dark miles his feet still count. Quirk: trims every wick he
+  passes. Cadence: patient road-faith. "The lamp holds."
+- **Liv** (Waykeeper envoy). Want: to be wrong about the doctrine. Wound:
+  the order's loneliest post; reports that answer slowly. Quirk: always
+  positioned to see the gate. Cadence: formal, thawing by the month.
+- **Hedda** (Crown surveyor). Want: the truth of the exodus for a king who
+  cannot ask. Wound: paid to be doubted. Quirk: corrects distances
+  mid-sentence. Cadence: clipped, measured. "Four thousand paces."
+- **Etta** (Provisioner). Want: a full shelf in a town that grows nothing.
+  Wound: being the villain of every hard winter's prices; eats last. Quirk:
+  apologizes for prices unprompted. Cadence: soft, quick, generous.
+- **Cass** (Outfitter). Want: nobody frozen for vanity. Wound: the thin
+  coat and the polite frostbite. Quirk: sizes you on sight, says the
+  number. Cadence: blunt, kind underneath. "Wool first, pride second."
+- **Ida** (Salvewright). Want: a cure for ash-lung, not a comfort. Wound:
+  the failure list, long and honest. Quirk: diagnoses in passing. Cadence:
+  brisk bedside. "Breathe for me. In. Out."
+- **Denna** (Fisher, the coast's old-blood ears). Want: to know what the
+  mere holds, from a safe distance. Wound: what the net held once. Quirk:
+  never turns her back to the water. Cadence: low weather-talk that stops
+  at one particular subject.
+- **Slate** (Dealer in sundries; the Company's counter, unstated). Want:
+  the unwatched road to stay unwatched. Wound: the name he set down on the
+  road. Quirk: answers questions with prices. Cadence: flat, amiable,
+  frictionless. "Asking costs."
+- **The Delfwatch** (pooled): a miner or glasshand in a Charter coat.
+  Cadence: rota-flat. "The horn means in. The Overband does not knock
+  first."
+- **Delvers** (pooled): tally-string practical, basket-tired. "Knot going
+  down, knot coming up."
+- **Glasshands** (pooled): kiln-squint careful. "You never look straight
+  into the kiln. You learn that once."
+
 ---
 
 ## 5. Surface rules

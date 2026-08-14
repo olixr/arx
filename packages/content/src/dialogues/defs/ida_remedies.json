@@ -1,0 +1,69 @@
+{
+ "id": "ida_remedies",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "salvewright_ida"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "voice": "ida_remedies__greet",
+   "text": "Breathe in for me. Out. You will live, which is my whole trade. What else?",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "voice": "ida_remedies__hub",
+   "text": "Sit if you are tired. Ask if you are not.",
+   "choices": [
+    {
+     "text": "What do you treat here?",
+     "next": "treat"
+    },
+    {
+     "text": "What's on the shelf?",
+     "next": "browse"
+    },
+    {
+     "text": "Somebody said you keep a failure list.",
+     "next": "list"
+    },
+    {
+     "text": "I'm well, thanks.",
+     "next": "bye"
+    }
+   ]
+  },
+  {
+   "id": "treat",
+   "voice": "ida_remedies__treat",
+   "text": "Burns, ash-lung, quench scalds, and hearts that stopped being careful. The ash gets into a miner's chest a breath at a time. My draughts buy years. I want a cure, and a cure is somewhere in the moonbell family, I can smell it. Almost.",
+   "next": "hub"
+  },
+  {
+   "id": "list",
+   "voice": "ida_remedies__list",
+   "text": "Every remedy that failed, written plain, dated, no excuses. My teacher Elowen, the sage at the ford, taught me that a failure recorded is a door marked tried. The list is long. It is also a map, and maps end somewhere.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "voice": "ida_remedies__browse",
+   "text": "Tinctures, salves, and the honest herbs. Take the draught before the dust, not after.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "ida_remedies"
+    }
+   ]
+  },
+  {
+   "id": "bye",
+   "voice": "ida_remedies__bye",
+   "text": "Drink water. Yes, you."
+  }
+ ]
+}

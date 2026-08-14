@@ -233,6 +233,24 @@ import qPatrolTurnin from './defs/q_the_last_patrol_turnin.json';
  * and fails if a file is missing from this roster.
  */
 import ashildMoot from './defs/ashild_moot.json';
+// Kingsdelf — the town speaks (the Kingsdelf epic).
+import ruenDelfhall from './defs/ruen_delfhall.json';
+import vennCounting from './defs/venn_counting.json';
+import annikNames from './defs/annik_names.json';
+import brekkaRest from './defs/brekka_rest.json';
+import orinBeastyard from './defs/orin_beastyard.json';
+import ferrunForge from './defs/ferrun_forge.json';
+import mirenaGlass from './defs/mirena_glass.json';
+import veyleFocus from './defs/veyle_focus.json';
+import lornAssay from './defs/lorn_assay.json';
+import sorenFlame from './defs/soren_flame.json';
+import livPost from './defs/liv_post.json';
+import heddaSurvey from './defs/hedda_survey.json';
+import ettaGoods from './defs/etta_goods.json';
+import cassOutfitting from './defs/cass_outfitting.json';
+import idaRemedies from './defs/ida_remedies.json';
+import dennaQuay from './defs/denna_quay.json';
+import slateSundries from './defs/slate_sundries.json';
 import maevaSpring from './defs/maeva_spring.json';
 import kolgrimHorn from './defs/kolgrim_horn.json';
 import sunnFell from './defs/sunn_fell.json';
@@ -493,6 +511,23 @@ const SOURCES: readonly unknown[] = [
   qPatrolActive,
   qPatrolTurnin,
   ashildMoot,
+  ruenDelfhall,
+  vennCounting,
+  annikNames,
+  brekkaRest,
+  orinBeastyard,
+  ferrunForge,
+  mirenaGlass,
+  veyleFocus,
+  lornAssay,
+  sorenFlame,
+  livPost,
+  heddaSurvey,
+  ettaGoods,
+  cassOutfitting,
+  idaRemedies,
+  dennaQuay,
+  slateSundries,
   maevaSpring,
   kolgrimHorn,
   sunnFell,

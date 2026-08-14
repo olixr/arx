@@ -1,0 +1,91 @@
+{
+ "id": "veyle_focus",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "enchanter_veyle"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "voice": "veyle_focus__greet",
+   "text": "Come in. Shut the door softly, the table is listening.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "voice": "veyle_focus__hub",
+   "text": "You have questions. The young always do. It is one of your better habits.",
+   "choices": [
+    {
+     "text": "What are you? If that's polite to ask.",
+     "next": "folk"
+    },
+    {
+     "text": "What is the Focus House?",
+     "next": "house"
+    },
+    {
+     "text": "Why did the Arcanum send you away?",
+     "next": "arcanum"
+    },
+    {
+     "text": "Can I see your wares?",
+     "next": "browse"
+    }
+   ]
+  },
+  {
+   "id": "folk",
+   "voice": "veyle_focus__folk",
+   "text": "It is polite enough. I am of the old folk, the people who raised the realm before the roads. Long ears, long years, long memories. Most of us thinned into your bloodlines ages ago... you have met Annik. A few of us stayed whole. I am a few of a few.",
+   "choices": [
+    {
+     "text": "Are there others like you?",
+     "next": "others"
+    },
+    {
+     "text": "Long years? How long?",
+     "next": "years"
+    }
+   ]
+  },
+  {
+   "id": "others",
+   "voice": "veyle_focus__others",
+   "text": "Scattered. Quiet. The old folk learned quiet the year the mountain woke, and we are excellent students. Look for moonpale skin and ears that remember. The coast kept some. The crown of Silverfall keeps more than it admits, in its own line, though I did not say so.",
+   "next": "hub"
+  },
+  {
+   "id": "years",
+   "voice": "veyle_focus__years",
+   "text": "I watched the Processional built, child. I watched it swept, and I watched it emptied... Forgive me. The number would only frighten one of us, and it is not me.",
+   "next": "hub"
+  },
+  {
+   "id": "house",
+   "voice": "veyle_focus__house",
+   "text": "The second enchanting table in the Dawnlands, and the older art it studies. The seal on the Stair was made with craft the Arcanum has never held. My people lit the old realm's lamps. I am here to finish reading what we left.",
+   "next": "hub"
+  },
+  {
+   "id": "arcanum",
+   "voice": "veyle_focus__arcanum",
+   "text": "I asked what their first focus was made from. Solvei, who keeps their table now, writes to me monthly. Polite letters. The answer to my question is not in any of them, which tells me she does not know either... or knows exactly.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "voice": "veyle_focus__browse",
+   "text": "Folios and workings. Handle the dust with respect, it is older than your language.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "veyle_craft"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,69 @@
+{
+ "id": "slate_sundries",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "broker_slate"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "voice": "slate_sundries__greet",
+   "text": "Rope, tallow, keys. Other things by asking. Asking costs.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "voice": "slate_sundries__hub",
+   "text": "Buying or browsing? Both are fine. One is finer.",
+   "choices": [
+    {
+     "text": "What have you got?",
+     "next": "browse"
+    },
+    {
+     "text": "What kind of things fall off wagons?",
+     "next": "wagons"
+    },
+    {
+     "text": "Slate's an odd name.",
+     "next": "name"
+    },
+    {
+     "text": "Neither, today.",
+     "next": "bye"
+    }
+   ]
+  },
+  {
+   "id": "wagons",
+   "voice": "slate_sundries__wagons",
+   "text": "Useful things. Unclaimed things. Things whose owners lost interest at exactly the moment I gained it. Commerce is a river, friend. I am just a man standing where it bends.",
+   "next": "hub"
+  },
+  {
+   "id": "name",
+   "voice": "slate_sundries__name",
+   "text": "It is a good name. Writes easy, wipes clean. The one before it got heavy, so I set it down somewhere on the road and have never once gone back for it. You can buy most things at this crate. Not that.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "voice": "slate_sundries__browse",
+   "text": "Take a look. No questions is the house specialty, and it goes both ways.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "slate_sundries"
+    }
+   ]
+  },
+  {
+   "id": "bye",
+   "voice": "slate_sundries__bye",
+   "text": "You know where the crate is."
+  }
+ ]
+}

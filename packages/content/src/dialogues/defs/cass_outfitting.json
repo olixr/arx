@@ -1,0 +1,69 @@
+{
+ "id": "cass_outfitting",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "outfitter_cass"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "voice": "cass_outfitting__greet",
+   "text": "Forty two across the shoulders, boots a size hopeful. Come in anyway.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "voice": "cass_outfitting__hub",
+   "text": "What do you need against the weather?",
+   "choices": [
+    {
+     "text": "Show me your stock.",
+     "next": "browse"
+    },
+    {
+     "text": "How do you size people so fast?",
+     "next": "eye"
+    },
+    {
+     "text": "Any advice for the burn?",
+     "next": "advice"
+    },
+    {
+     "text": "Just looking.",
+     "next": "bye"
+    }
+   ]
+  },
+  {
+   "id": "eye",
+   "voice": "cass_outfitting__eye",
+   "text": "One season at sea. On a boat you learn to read a body in one look, because the sea reads it too, and she grades harshly. The sea and I agreed to disagree, so now I use the eye for coats. Coats argue less.",
+   "next": "hub"
+  },
+  {
+   "id": "advice",
+   "voice": "cass_outfitting__advice",
+   "text": "Wool first, pride second. I sold a thin coat once to a man in a hurry, and I spent a bad week wondering. He came back frostbit and polite about it, which was worse than shouting. The burn does not care what you paid. It cares what you wore.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "voice": "cass_outfitting__browse",
+   "text": "Leathers that fit, capes that mean it. Do not argue with the number, forty two.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "cass_outfitting"
+    }
+   ]
+  },
+  {
+   "id": "bye",
+   "voice": "cass_outfitting__bye",
+   "text": "Layers, traveler. Layers."
+  }
+ ]
+}

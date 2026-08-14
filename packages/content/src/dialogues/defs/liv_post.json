@@ -1,0 +1,64 @@
+{
+ "id": "liv_post",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "waykeeper_liv"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "voice": "liv_post__greet",
+   "text": "Waykeeper Liv. Yes, the only one for three hundred miles. The order is aware of the irony.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "voice": "liv_post__hub",
+   "text": "Say your piece. I watch the gate while you do.",
+   "choices": [
+    {
+     "text": "Why won't the order light the Old Road?",
+     "next": "no"
+    },
+    {
+     "text": "Do you agree with them?",
+     "next": "agree"
+    },
+    {
+     "text": "What are you here for, then?",
+     "next": "post"
+    },
+    {
+     "text": "Watch well.",
+     "next": "bye"
+    }
+   ]
+  },
+  {
+   "id": "no",
+   "voice": "liv_post__no",
+   "text": "A lamp we cannot tend is a lie in glass. A traveler trusts the light, walks the dark mile past it, and dies believing the road was watched. That is the doctrine, and it is not cruel. It was written by people who buried the ones who trusted.",
+   "next": "hub"
+  },
+  {
+   "id": "agree",
+   "voice": "liv_post__agree",
+   "text": "I have written the doctrine out nine times, once for every year I have served. I believed it all nine. Then I watched Soren trim his lamps every night for two winters, and now I write my reports very slowly, and the word no takes longer each month.",
+   "next": "hub"
+  },
+  {
+   "id": "post",
+   "voice": "liv_post__post",
+   "text": "To carry the order's answer and to count this road's dead. In two years I have counted none inside the town's light and too many past it. The marshal reads my counts. Counts are how doctrine changes, when it changes. It changes slow.",
+   "next": "hub"
+  },
+  {
+   "id": "bye",
+   "voice": "liv_post__bye",
+   "text": "Stay on the lit side of the wall after the horn."
+  }
+ ]
+}

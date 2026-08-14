@@ -1,0 +1,69 @@
+{
+ "id": "etta_goods",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "provisioner_etta"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "voice": "etta_goods__greet",
+   "text": "Welcome, welcome. The prices are the road's fault, I only write them down.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "voice": "etta_goods__hub",
+   "text": "What can I get you?",
+   "choices": [
+    {
+     "text": "Let's see the shelves.",
+     "next": "browse"
+    },
+    {
+     "text": "Why is everything so dear?",
+     "next": "dear"
+    },
+    {
+     "text": "Where are you from?",
+     "next": "fen"
+    },
+    {
+     "text": "Another time.",
+     "next": "bye"
+    }
+   ]
+  },
+  {
+   "id": "dear",
+   "voice": "etta_goods__dear",
+   "text": "Every loaf on that shelf walked forty miles of unlit road in a wagon that pays guards. Bread is cheap. Getting bread here is not. The day they light that road, I will paint the new prices myself, singing.",
+   "next": "hub"
+  },
+  {
+   "id": "fen",
+   "voice": "etta_goods__fen",
+   "text": "The Fenside Crofts, on the First Road waist, where the water does the farming for you. Out here the ash does the opposite. I miss the reeds. I do not miss being twelve leagues from anything worth selling to.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "voice": "etta_goods__browse",
+   "text": "Grain from the ford, salt from the coast, and cake for the brave.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "etta_goods"
+    }
+   ]
+  },
+  {
+   "id": "bye",
+   "voice": "etta_goods__bye",
+   "text": "Eat something. You look like a long road."
+  }
+ ]
+}

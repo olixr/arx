@@ -1,0 +1,70 @@
+{
+ "id": "orin_beastyard",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "stablemaster_orin"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "voice": "orin_beastyard__greet",
+   "text": "Easy, easy. Not you, traveler, the mule. Welcome to the Beastyard.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "voice": "orin_beastyard__hub",
+   "text": "What do you need?",
+   "choices": [
+    {
+     "text": "How do the stalls work?",
+     "next": "stalls"
+    },
+    {
+     "text": "Show me the stock.",
+     "next": "browse"
+    },
+    {
+     "text": "Can a beast survive the burn?",
+     "next": "burn"
+    },
+    {
+     "text": "Where did you learn beasts?",
+     "next": "osa"
+    }
+   ]
+  },
+  {
+   "id": "stalls",
+   "voice": "orin_beastyard__stalls",
+   "text": "Three stalls, because three is what a whistle can hold. Bring me a friend you have gentled and I will keep it fed, brushed, and out of the ash. Call it out whenever you like. The pen does the remembering, I just do the caring.",
+   "next": "hub"
+  },
+  {
+   "id": "burn",
+   "voice": "orin_beastyard__burn",
+   "text": "A seasoned beast, with a seasoned rider, on the road, in daylight. Change any one of those words and you are gambling with a heart that trusts you. The Hewers do not chase, but the burn does not need to chase. It waits.",
+   "next": "hub"
+  },
+  {
+   "id": "osa",
+   "voice": "orin_beastyard__osa",
+   "text": "Under Osa, the hostler at the Silverfall caravanserai. She can calm a courser with one hand and a carter with the other, and I never learned which trick is harder. When the Charter offered me my own yard, she said go. So I went.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "voice": "orin_beastyard__browse",
+   "text": "Coursers off the Charter freight, a garron bred for cold roads, and honest tack.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "orin_stable"
+    }
+   ]
+  }
+ ]
+}

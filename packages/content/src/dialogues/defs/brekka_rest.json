@@ -1,0 +1,69 @@
+{
+ "id": "brekka_rest",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "innkeep_brekka"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "voice": "brekka_rest__greet",
+   "text": "The Foreman's Rest. Sign the book first. Going out or coming home, everyone signs.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "voice": "brekka_rest__hub",
+   "text": "Now then. Food, a bed, or talk?",
+   "choices": [
+    {
+     "text": "What's the book for?",
+     "next": "book"
+    },
+    {
+     "text": "What's good today?",
+     "next": "browse"
+    },
+    {
+     "text": "You're not from here, are you?",
+     "next": "north"
+    },
+    {
+     "text": "Just passing.",
+     "next": "bye"
+    }
+   ]
+  },
+  {
+   "id": "book",
+   "voice": "brekka_rest__book",
+   "text": "Names out, names in. When the burn keeps somebody past dark, I take the book to the wardroom and the watch goes looking with a page instead of a guess. Every name in my book has come home so far. I mean to keep the record clean.",
+   "next": "hub"
+  },
+  {
+   "id": "north",
+   "voice": "brekka_rest__north",
+   "text": "Fell country, past the treeline, where Hartfell keeps its warm water. I walked south with drover's pay and a brother who was going to follow in the spring. Springs are liars up north. Sign the book, traveler. That is all I will say about why.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "voice": "brekka_rest__browse",
+   "text": "Stew that has met real beef, bread that is younger than you, and the day's pour.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "brekka_board"
+    }
+   ]
+  },
+  {
+   "id": "bye",
+   "voice": "brekka_rest__bye",
+   "text": "Door bars at the horn. Be on the right side of it."
+  }
+ ]
+}

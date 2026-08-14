@@ -1,0 +1,69 @@
+{
+ "id": "mirena_glass",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "glasswright_mirena"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "voice": "mirena_glass__greet",
+   "text": "Careful where you stand, the floor has opinions. Welcome to the Glasshouse.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "voice": "mirena_glass__hub",
+   "text": "Ask quick, the kilns are jealous.",
+   "choices": [
+    {
+     "text": "What do you make here?",
+     "next": "make"
+    },
+    {
+     "text": "What are you selling?",
+     "next": "browse"
+    },
+    {
+     "text": "How did a glassmaker end up out here?",
+     "next": "here"
+    },
+    {
+     "text": "Back to it, then.",
+     "next": "bye"
+    }
+   ]
+  },
+  {
+   "id": "make",
+   "voice": "mirena_glass__make",
+   "text": "Lamp lenses for six towns, focus glass for the enchanters, and once a year something for nobody but me. Starfall glass takes light the way a good listener takes bad news: all of it, without flinching.",
+   "next": "hub"
+  },
+  {
+   "id": "here",
+   "voice": "mirena_glass__here",
+   "text": "I grew up on the salt coast, where sand is free and fire is a family argument. My old master called glass a small craft. Now his town reads by my lenses at night. I did not come here to prove him wrong. That was extra.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "voice": "mirena_glass__browse",
+   "text": "The burn's stones, cut and clean. Hold them to the light before you pay, I insist on it.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "mirena_wares"
+    }
+   ]
+  },
+  {
+   "id": "bye",
+   "voice": "mirena_glass__bye",
+   "text": "Go on. Glass waits for no one, and neither do I."
+  }
+ ]
+}

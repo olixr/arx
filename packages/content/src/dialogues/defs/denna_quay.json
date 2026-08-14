@@ -1,0 +1,70 @@
+{
+ "id": "denna_quay",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "fisher_denna"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "voice": "denna_quay__greet",
+   "text": "Mind the nets. And stand where I can see the water past you, if you would.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "voice": "denna_quay__hub",
+   "text": "Ask, then. The fish are patient. Mostly.",
+   "choices": [
+    {
+     "text": "What do you catch out there?",
+     "next": "catch"
+    },
+    {
+     "text": "What's for sale?",
+     "next": "browse"
+    },
+    {
+     "text": "May I ask about your ears?",
+     "next": "ears"
+    },
+    {
+     "text": "Why never turn your back to it?",
+     "next": "water"
+    }
+   ]
+  },
+  {
+   "id": "catch",
+   "voice": "denna_quay__catch",
+   "text": "Pale fish, blind as stones and sweeter than they have any right to be. They school against the drowned galleries, where the old workings flooded. Down there it is all doorways, traveler. Doorways and stairs, under sixty feet of gray water.",
+   "next": "hub"
+  },
+  {
+   "id": "ears",
+   "voice": "denna_quay__ears",
+   "text": "You may, you asked kindly. My mother's line, back along the coast, back and back to the old folk. The coast kept the ears and lost the rest, the years, the moonpale, all of it. Veyle at the Focus House says I am a word the old language left behind. She means it friendly. I think.",
+   "next": "hub"
+  },
+  {
+   "id": "water",
+   "voice": "denna_quay__water",
+   "text": "Because once my net came up heavy, and what was in it was not a fish, and I threw it back before my eyes finished arguing with my hands. It went down slow. Like it was deciding. So no, I do not turn my back to the water, and no, that is all you get.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "voice": "denna_quay__browse",
+   "text": "The pale catch, smoked or fresh, and the gear to try your own luck.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "denna_catch"
+    }
+   ]
+  }
+ ]
+}

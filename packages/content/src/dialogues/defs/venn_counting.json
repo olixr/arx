@@ -1,0 +1,64 @@
+{
+ "id": "venn_counting",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "factor_venn"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "voice": "venn_counting__greet",
+   "text": "The Countinghouse of the Amberford Charter, Kingsdelf seat. One, two, three: weighed, stamped, banked. How may the Charter serve?",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "voice": "venn_counting__hub",
+   "text": "Speak. The ledger waits.",
+   "choices": [
+    {
+     "text": "How does the bank work?",
+     "next": "bank"
+    },
+    {
+     "text": "Why did the Charter come out here?",
+     "next": "why"
+    },
+    {
+     "text": "Where did you learn the trade?",
+     "next": "learn"
+    },
+    {
+     "text": "That's all.",
+     "next": "bye"
+    }
+   ]
+  },
+  {
+   "id": "bank",
+   "voice": "venn_counting__bank",
+   "text": "You put your goods in the chest, and the chest remembers you, and any Charter chest anywhere will give them back. That is the whole miracle, and it took better men than me a hundred years to make it boring.",
+   "next": "hub"
+  },
+  {
+   "id": "why",
+   "voice": "venn_counting__why",
+   "text": "Ore. Glass. A road nobody else wanted. The Charter believes in exactly one thing, friend, and that thing rolls downhill in a wagon and jingles.",
+   "next": "hub"
+  },
+  {
+   "id": "learn",
+   "voice": "venn_counting__learn",
+   "text": "Under old Cormund, at the ford bank in Amberford. He taught me that a ledger is a promise book. You do not break promises. You carry them, in threes, where you cannot drop them.",
+   "next": "hub"
+  },
+  {
+   "id": "bye",
+   "voice": "venn_counting__bye",
+   "text": "One, two, three. Safe road."
+  }
+ ]
+}

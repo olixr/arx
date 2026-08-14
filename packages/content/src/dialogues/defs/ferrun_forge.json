@@ -1,0 +1,69 @@
+{
+ "id": "ferrun_forge",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "smith_ferrun"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "voice": "ferrun_forge__greet",
+   "text": "Mind the quench trough. The Starfall Forge, at your service, once this edge is drawn.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "voice": "ferrun_forge__hub",
+   "text": "Speak up. The fire is loud.",
+   "choices": [
+    {
+     "text": "What can you make?",
+     "next": "browse"
+    },
+    {
+     "text": "What's special about the metal here?",
+     "next": "metal"
+    },
+    {
+     "text": "What's that shard around your neck?",
+     "next": "shard"
+    },
+    {
+     "text": "Work well.",
+     "next": "bye"
+    }
+   ]
+  },
+  {
+   "id": "metal",
+   "voice": "ferrun_forge__metal",
+   "text": "The delf's own mithril, the seam the old realm never found. The kingsmen out on the old roads carry blades of it, forged before your family had a name. My work will be judged against dead men's work. I find that fair.",
+   "next": "hub"
+  },
+  {
+   "id": "shard",
+   "voice": "ferrun_forge__shard",
+   "text": "My first masterwork. It sang all the way to the quench and cracked in the water. Balla, the forgemistress up in Silverfall, made me keep a piece. She said pride needs a pocket to keep its receipts in. A blade gets its name after the water. Never before.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "voice": "ferrun_forge__browse",
+   "text": "Guild schematics, same folios Bretta keeps at the ford, without the six hundred mile walk.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "ferrun_commissions"
+    }
+   ]
+  },
+  {
+   "id": "bye",
+   "voice": "ferrun_forge__bye",
+   "text": "Keep your edge dry and your name earned."
+  }
+ ]
+}

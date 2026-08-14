@@ -1,0 +1,64 @@
+{
+ "id": "hedda_survey",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "surveyor_hedda"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "voice": "hedda_survey__greet",
+   "text": "You are standing on my sightline. Two paces left. Thank you.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "voice": "hedda_survey__hub",
+   "text": "Ask. I chart faster than I chat.",
+   "choices": [
+    {
+     "text": "What are you mapping?",
+     "next": "maps"
+    },
+    {
+     "text": "Do you work for the King?",
+     "next": "king"
+    },
+    {
+     "text": "What's out there in the burn?",
+     "next": "burn"
+    },
+    {
+     "text": "Carry on.",
+     "next": "bye"
+    }
+   ]
+  },
+  {
+   "id": "maps",
+   "voice": "hedda_survey__maps",
+   "text": "The burn, the old roads, the crater fields. The best charts of this country since the old realm fell, if I say it myself, and I do, because it is a measurement, not a boast. Measurements are the only sentences that cannot lie to you.",
+   "next": "hub"
+  },
+  {
+   "id": "king",
+   "voice": "hedda_survey__king",
+   "text": "I survey for the Crown. Whether the King reads my charts personally is not written on any document, and neither am I. Let me say it this way: somebody in Silverfall asks very good questions about a town that officially is not here.",
+   "next": "hub"
+  },
+  {
+   "id": "burn",
+   "voice": "hedda_survey__burn",
+   "text": "Quarries that are still being worked and nobody working them. Paved roads swept by nobody. A gatehouse maintained by nobody, guarding a door to nowhere. I write nobody in my notes a great deal, and I have begun to dislike the word. It is not a league to the crater, by the way. Four thousand paces.",
+   "next": "hub"
+  },
+  {
+   "id": "bye",
+   "voice": "hedda_survey__bye",
+   "text": "Mind the distances. They mind you."
+  }
+ ]
+}

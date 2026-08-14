@@ -1,0 +1,69 @@
+{
+ "id": "soren_flame",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "lampwright_soren"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "voice": "soren_flame__greet",
+   "text": "Mind the flame there. She came a long way to be here, and so, I suppose, did you.",
+   "next": "hub"
+  },
+  {
+   "id": "hub",
+   "voice": "soren_flame__hub",
+   "text": "Warm yourself. Ask what you like.",
+   "choices": [
+    {
+     "text": "What's special about this fire?",
+     "next": "flame"
+    },
+    {
+     "text": "Why is the Old Road dark?",
+     "next": "road"
+    },
+    {
+     "text": "What do you sell?",
+     "next": "browse"
+    },
+    {
+     "text": "Keep the light, then.",
+     "next": "bye"
+    }
+   ]
+  },
+  {
+   "id": "flame",
+   "voice": "soren_flame__flame",
+   "text": "She is a daughter of the mother-flame, from the Silver Shrine on the mountain. Sella, the shrinekeeper up there, lit my pilgrim lamp with her own taper, and I carried it south on foot, the whole unlit way. Forty one dark miles. The lamp never went out. I checked at every step.",
+   "next": "hub"
+  },
+  {
+   "id": "road",
+   "voice": "soren_flame__road",
+   "text": "Because the Waykeepers will not light a road they cannot patrol, and they cannot patrol this far. Liv will tell you it is doctrine, and she is right. I am building lamps anyway. Doctrine is how the faith protects the flame. Lamps are what the flame is for.",
+   "next": "hub"
+  },
+  {
+   "id": "browse",
+   "voice": "soren_flame__browse",
+   "text": "Oil, coal, and the stones that hold a light steady. The lamps themselves are not for sale. They are for the road.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "soren_lamps"
+    }
+   ]
+  },
+  {
+   "id": "bye",
+   "voice": "soren_flame__bye",
+   "text": "The lamp holds. Walk safe."
+  }
+ ]
+}
