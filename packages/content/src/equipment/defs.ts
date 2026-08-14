@@ -2147,8 +2147,8 @@ function earlyLeatherDefs(): EquipmentDef[] {
         desc: 'The Latch. Gutter grey, an iron keyhole, borrowed keys. No door argues long.' },
       { key: 'moonless', dye: 'Moonless', color: '#33303c',
         desc: 'The Unseen. Wound ink and one lit slit. On the real nights there is no face at all.' },
-      { key: 'redhand', dye: 'Redhand', color: '#6e3a34',
-        desc: 'The Knife. Oxblood lacquer, a knot for every job. Caught once, never twice.' },
+      { key: 'redhand', dye: 'Redhand', color: '#8e2a22',
+        desc: 'The Knife. A shroud cut to bleed crimson, red hands, and a knot for every job. Caught once, never twice.' },
     ]),
     // -------- Trapline: rawhide and fir hung with a toggled bandolier,
     // snare-cord wraps and a fur-ruffed hood. The trapper's craft line —

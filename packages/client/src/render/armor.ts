@@ -868,6 +868,16 @@ export interface BodyStyle {
   /** Redhand: crossed crimson cords over the chest, knotted at the
    *  heart — the red hand's harness; the mark is the binding. */
   redharness?: { cord: string; knot: string };
+  /** Redhand: THE BLOOD SHROUD — layered tiers of night cloth
+   *  draped off the trailing shoulder, every cut edge showing the
+   *  crimson `lining`; the `edge` is the one arterial tick per
+   *  tier. Back read = the layered half-cape. The armor bleeds by
+   *  design. */
+  bloodshroud?: { cloth: string; lining: string; edge: string };
+  /** Redhand: THE WRIT — the contract in a slim black case at the
+   *  trailing hip, sealed in blood-dark wax with cut ribbon ends.
+   *  Matte on purpose: paper kills quieter than steel shines. */
+  writkit?: { case: string; seal: string; ribbon: string };
   /** Trapline: the working bandolier — strap, bone toggles, a coiled
    *  snare wire, and a hanging lure that swings on the stride. Every
    *  loop has caught something. */
@@ -1246,7 +1256,7 @@ export interface HelmStyle {
   slitglow?: { color: string };
   /** Redmask: the lacquered mask — two facets on a bright ridge,
    *  and the old groove the lacquer never fills. */
-  lacquer?: { color: string; lit: string; scar?: string };
+  lacquer?: { color: string; lit: string; scar?: string; ember?: string };
   /** Drake: the slain drake's skull — `horn` the bone of the trailing
    *  horn pair and the fangs, `ember` the banked fire in the crest
    *  roots and the watching eyes, `maw` the furnace-dark void inside
@@ -3444,15 +3454,27 @@ registerColorways(BODY_STYLES, 'cutpurse_jerkin', {
     cutkit: { pouch: '#262330', blade: '#8890ac', coin: '#a8b0cc', glint: '#e8ecff' },
     smokeflasks: { glass: '#1e1b26', cork: '#6e6050', wisp: '#a8b0cc' },
   },
+  // THE VERDICT: the Knife re-founded. Near-black charcoal-plum
+  // layers, and everywhere the cloth is CUT the crimson lining
+  // shows — the armor bleeds by design. The Purse's gold is GONE
+  // (brass buys silence; the Knife never pays); the only metal is
+  // blackened steel, and the only warmth is red.
   redhand: {
-    color: '#6e3a34', trim: '#c9a23c', metal: '#8a6a4a',
-    pauldron: 'knifespaul', pauldronColor: '#582e28', pauldronTrim: '#c9a23c',
+    // Trim runs DEEP blood, not guild crimson — the jerkin's own
+    // edging furniture must whisper so the cords, linings, mask and
+    // hands keep the bright red to themselves.
+    color: '#382c33', trim: '#6e1f1a', metal: '#4b4752',
+    pauldron: 'knifespaul', pauldronColor: '#2b222a', pauldronTrim: '#8a8e96',
     pauldronScale: 1.18,
-    yoke: { color: '#582e28' }, lace: '#442420',
-    belt: { color: '#442420', buckle: '#c9a23c' },
+    yoke: { color: '#2b222a' }, lace: '#1f181d',
+    belt: { color: '#1f181d', buckle: '#4b4752' },
     cointether: undefined,
+    // The Knife is not a purse-snatcher — the kit dies with the
+    // office (explicit undefined kills the inherited word).
+    cutkit: undefined,
+    bloodshroud: { cloth: '#2b222a', lining: '#a83228', edge: '#d04434' },
     redharness: { cord: '#a83228', knot: '#6e1f1a' },
-    cutkit: { pouch: '#4e2a26', blade: '#b8ae9a', coin: '#c9a23c', glint: '#ffe9a8' },
+    writkit: { case: '#1f181d', seal: '#6e1f1a', ribbon: '#a83228' },
     tallycord: { cord: '#a83228', knot: '#6e1f1a' },
   },
 });
@@ -3466,8 +3488,8 @@ registerColorways(HELM_STYLES, 'cutpurse_cowl', {
     slitglow: { color: '#cfd8ff' },
   },
   redhand: {
-    color: '#6e3a34', trim: '#c9a23c', kind: 'redmask',
-    lacquer: { color: '#9e3a30', lit: '#c05040', scar: '#3c1512' },
+    color: '#382c33', trim: '#a83228', kind: 'redmask',
+    lacquer: { color: '#8e2a22', lit: '#b8382a', scar: '#3c1512', ember: '#d04434' },
   },
 });
 registerColorways(LEG_STYLES, 'cutpurse_leggings', {
@@ -3475,12 +3497,12 @@ registerColorways(LEG_STYLES, 'cutpurse_leggings', {
   // The Unseen carries no picks and the Knife carries no picks — an
   // explicit undefined KILLS the inherited roll (spread law).
   moonless: { thigh: '#33303c', shin: '#28252f', kneeColor: '#4e4a5c', pickroll: undefined, shadewrap: { color: '#201d28', tie: '#a8b0cc' } },
-  redhand: { thigh: '#6e3a34', shin: '#582e28', kneeColor: '#8a5a4a', pickroll: undefined, thighsheath: { sheath: '#442420', pommel: '#c9a23c' } },
+  redhand: { thigh: '#382c33', shin: '#2b222a', kneeColor: '#4b4752', pickroll: undefined, thighsheath: { sheath: '#1f181d', pommel: '#8a8e96' } },
 });
 registerColorways(BOOT_STYLES, 'cutpurse_boots', {
   alleyrat: { color: '#4a4a44', cuff: { color: '#767670' } },
   moonless: { color: '#28252f', cuff: { color: '#4e4a5c' } },
-  redhand: { color: '#582e28', cuff: { color: '#8a5a4a' } },
+  redhand: { color: '#2b222a', cuff: { color: '#463840' } },
 });
 
 // Trapline dye lots: the bone toggles and snare cords stay bone —
@@ -3771,7 +3793,16 @@ registerColorways(GLOVE_STYLES, 'kingfisher_gloves', {
 registerColorways(GLOVE_STYLES, 'cutpurse_gloves', {
   alleyrat: { color: '#5c5c56', bracer: '#53534d', cuff: { color: '#767670', kind: 'band' } },
   moonless: { color: '#33303c', bracer: '#2c2935', cuff: { color: '#4e4a5c', kind: 'band' } },
-  redhand: { color: '#6e3a34', bracer: '#62342e', cuff: { color: '#8a5a4a', kind: 'band' } },
+  // THE RED HANDS THEMSELVES: the one piece that wears the name
+  // literally — hands BOUND in arterial wraps to the fingertip
+  // (the guild's cord language carried to the fist), near-black
+  // bracers so the hands float out of the dark. The base kit's
+  // fingerless cut and brass studs die here: no skin, no gold —
+  // at ten paces the set is a shadow with a red face and red hands.
+  redhand: {
+    color: '#7e2820', hand: 'wrap', fingerless: undefined, bracer: '#2b222a',
+    cuff: { color: '#6e1f1a', kind: 'band' }, knuckle: undefined,
+  },
 });
 registerColorways(GLOVE_STYLES, 'trapline_gloves', {
   juniper: { color: '#4e6a52', bracer: '#3e5642' },
@@ -7545,6 +7576,126 @@ export function drawTorsoGarment(
       }
     }
 
+    // ---- THE BLOOD SHROUD: the Knife arrives dressed for the
+    // eulogy. Three tiers of night cloth drape off the TRAILING
+    // shoulder and sweep steeply toward the leading hip — a drape,
+    // never a stripe: the diagonal IS the garment. Every tier is
+    // cut to hanging points, and every cut edge shows the crimson
+    // lining. The back read is a layered half-cape lifted a value
+    // step off the jerkin (a dark panel on a dark ground is
+    // invisible — only its lap edges and its one cut would float,
+    // the twice-learned lesson). Painted BEFORE the harness — the
+    // cords pin the cloth, so the cloth must already be there.
+    if (st.bloodshroud) {
+      const bs = st.bloodshroud;
+      const ld2 = f.lead;
+      if (!back) {
+        for (let k = 0; k < 3; k++) {
+          const xin = -ld2 * ww * (0.7 - 0.02 * k);
+          const yin = -th * (1.0 - 0.26 * k);
+          const xout = ld2 * ww * (0.04 + 0.1 * k);
+          const yout = yin + th * 0.34;
+          const dep = th * 0.22;
+          const kick = f.strideSw * 0.008 * s * (k === 2 ? 1 : 0.4);
+          ctx.fillStyle = hurt ? '#ffffff' : shade(bs.cloth, 6 - 8 * k);
+          ctx.beginPath();
+          ctx.moveTo(xin, yin);
+          ctx.lineTo(xout, yout);
+          // The hem: three hanging points per tier, tall enough to
+          // carry cloth weight (short zigzags read as diamond trim).
+          for (const [u, dv] of [[0.84, 1.0], [0.52, 0.7], [0.18, 0.92]] as const) {
+            const hx = xin + (xout - xin) * (u + 0.08);
+            const hy = yin + (yout - yin) * (u + 0.08) + dep;
+            const tx2 = xin + (xout - xin) * u + kick * u;
+            const ty2 = yin + (yout - yin) * u + dep + th * 0.15 * dv;
+            ctx.lineTo(hx, hy);
+            ctx.lineTo(tx2, ty2);
+          }
+          ctx.lineTo(xin, yin + dep + th * 0.08);
+          ctx.closePath();
+          ctx.fill();
+          if (!hurt) {
+            // The lap line along the tier's top edge — light over
+            // dark is what makes a layer read.
+            ctx.strokeStyle = shade(bs.cloth, 10 - 4 * k);
+            ctx.lineWidth = Math.max(1, s * 0.008);
+            ctx.beginPath();
+            ctx.moveTo(xin, yin);
+            ctx.lineTo(xout, yout);
+            ctx.stroke();
+            // THE BLEED: crimson lining standing at the cut, raked
+            // with the hem — short and partial on purpose.
+            ctx.strokeStyle = bs.lining;
+            ctx.lineWidth = Math.max(1, s * 0.008);
+            const u0 = 0.66;
+            ctx.beginPath();
+            ctx.moveTo(xin + (xout - xin) * (u0 + 0.1), yin + (yout - yin) * (u0 + 0.1) + dep * 0.9);
+            ctx.lineTo(xin + (xout - xin) * u0, yin + (yout - yin) * u0 + dep + th * 0.05);
+            ctx.stroke();
+            // The one arterial tick rides the lowest tier's leading
+            // tooth — the brightest red the cloth ever admits.
+            if (k === 2) {
+              ctx.strokeStyle = bs.edge;
+              ctx.beginPath();
+              ctx.moveTo(xin + (xout - xin) * 0.9, yin + (yout - yin) * 0.9 + dep * 0.94);
+              ctx.lineTo(xin + (xout - xin) * 0.84 + kick * 0.84, yin + (yout - yin) * 0.84 + dep + th * 0.13);
+              ctx.stroke();
+            }
+          }
+        }
+      } else {
+        // THE HALF-CAPE: two layered panels down the trailing half
+        // of the back, long points drifting on the slow clock, one
+        // raked cut bleeding lining mid-panel. The outer panel
+        // stands a value step ABOVE the jerkin's back — the cape
+        // reads as cloth first, cuts second.
+        const drift = Math.sin(nowMs * 0.0009) * 0.012 * s;
+        ctx.fillStyle = hurt ? '#ffffff' : shade(bs.cloth, -10);
+        ctx.beginPath();
+        ctx.moveTo(-ld2 * ww * 0.72, -th * 0.96);
+        ctx.lineTo(ld2 * ww * 0.16, -th * 0.88);
+        ctx.lineTo(ld2 * ww * 0.1 + drift * 0.4, -0.04 * s);
+        ctx.lineTo(-ld2 * ww * 0.12, -0.085 * s);
+        ctx.lineTo(-ld2 * ww * 0.48 + drift, 0.015 * s);
+        ctx.lineTo(-ld2 * ww * 0.74, -0.055 * s);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = hurt ? '#ffffff' : shade(bs.cloth, 6);
+        ctx.beginPath();
+        ctx.moveTo(-ld2 * ww * 0.72, -th * 0.96);
+        ctx.lineTo(ld2 * ww * 0.04, -th * 0.9);
+        ctx.lineTo(-ld2 * ww * 0.04 + drift * 0.6, -0.088 * s);
+        ctx.lineTo(-ld2 * ww * 0.34 + drift, -0.015 * s);
+        ctx.lineTo(-ld2 * ww * 0.7, -0.095 * s);
+        ctx.closePath();
+        ctx.fill();
+        if (!hurt) {
+          // The lap along the outer panel's leading edge.
+          ctx.strokeStyle = shade(bs.cloth, 18);
+          ctx.lineWidth = Math.max(1, s * 0.009);
+          ctx.beginPath();
+          ctx.moveTo(ld2 * ww * 0.04, -th * 0.9);
+          ctx.lineTo(-ld2 * ww * 0.04 + drift * 0.6, -0.088 * s);
+          ctx.stroke();
+          // THE CUT, carried to the back — groove then lining, ONE
+          // wound on this read (the hood's nape cut keeps it
+          // company; nothing else bleeds back here).
+          ctx.strokeStyle = shade(bs.cloth, -26);
+          ctx.lineWidth = Math.max(1.5, s * 0.012);
+          ctx.beginPath();
+          ctx.moveTo(-ld2 * ww * 0.18, -th * 0.6);
+          ctx.lineTo(-ld2 * ww * 0.5, -th * 0.3);
+          ctx.stroke();
+          ctx.strokeStyle = bs.lining;
+          ctx.lineWidth = Math.max(1, s * 0.008);
+          ctx.beginPath();
+          ctx.moveTo(-ld2 * ww * 0.22, -th * 0.56);
+          ctx.lineTo(-ld2 * ww * 0.46, -th * 0.34);
+          ctx.stroke();
+        }
+      }
+    }
+
     // ---- THE TALLY CORD: a crimson cord riding above the belt, one
     // knot per job that ended the only way the Knife's jobs end. The
     // tail hangs at the leading hip, frayed, kicking on the stride.
@@ -7582,6 +7733,52 @@ export function drawTorsoGarment(
         ctx.lineTo(f.lead * ww * 0.62 + kick, 0.028 * s);
         ctx.stroke();
       }
+    }
+
+    // ---- THE WRIT: the contract at the trailing hip — a slim
+    // black case, a blood-wax seal, two cut ribbon ends. MATTE on
+    // purpose: paper kills quieter than steel shines, and the one
+    // rare-glint budget on this body already belongs to the fan.
+    if (st.writkit && !back) {
+      const wk = st.writkit;
+      const wxx = -f.lead * ww * 0.6;
+      ctx.save();
+      ctx.translate(wxx, 0.016 * s);
+      ctx.rotate(-f.lead * 0.42);
+      ctx.fillStyle = hurt ? '#ffffff' : wk.case;
+      ctx.beginPath();
+      ctx.moveTo(-0.012 * s, -0.052 * s);
+      ctx.lineTo(0.012 * s, -0.052 * s);
+      ctx.lineTo(0.012 * s, 0.05 * s);
+      ctx.lineTo(-0.012 * s, 0.05 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // End caps in blackened steel — bands, not shine.
+        ctx.fillStyle = shade(wk.case, 22);
+        ctx.fillRect(-0.012 * s, -0.052 * s, 0.024 * s, 0.011 * s);
+        ctx.fillRect(-0.012 * s, 0.04 * s, 0.024 * s, 0.01 * s);
+        // THE SEAL: blood-dark wax, a darker stamp sunk in it.
+        ctx.fillStyle = wk.seal;
+        ctx.beginPath();
+        ctx.arc(0, -0.006 * s, 0.014 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(wk.seal, -18);
+        ctx.beginPath();
+        ctx.arc(0, -0.006 * s, 0.007 * s, 0, Math.PI * 2);
+        ctx.fill();
+        // The ribbon ends, cut short — nothing on this body waves
+        // for attention.
+        ctx.strokeStyle = wk.ribbon;
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        ctx.moveTo(-0.004 * s, 0.006 * s);
+        ctx.lineTo(-0.011 * s, 0.032 * s);
+        ctx.moveTo(0.005 * s, 0.006 * s);
+        ctx.lineTo(0.01 * s, 0.03 * s);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
 
     // ---- THE PRY BAR: slung flat across the housebreaker's back —
@@ -12407,30 +12604,34 @@ export function drawPauldron(
     return;
   }
   if (st.pauldron === 'knifespaul') {
-    // THE KNIFESPAUL — the Knife's shoulders: a hard spaulder plate
-    // with three sheathed throwing blades fanned behind it, pommels
-    // up — counted, not displayed; the middle one glints on the rare
-    // clock. The other shoulder is bound in crimson cord: the red
-    // hand's mark, worn where the sleeve can't hide it.
+    // THE KNIFESPAUL REBUILT — the Knife's shoulders, asymmetric by
+    // office (one shoulder for the work, one for the guild).
+    // Lead: THE FAN — three lapped blackened-steel plates, each
+    // swept back into a raked spike (folded at rest, hugging the
+    // deltoid — never up-raked), crimson lining standing in the lap
+    // gaps, and the counted throwing knives rising behind the steel.
+    // Off: THE BOUND OATH — layered shroud tabs cut to bleed their
+    // lining, three wraps of crimson cord, the tally tail, and one
+    // quiet barb so both shoulders speak steel.
+    const steel = st.metal ?? shade(base, 26);
+    const lining = st.bloodshroud?.lining ?? st.tallycord?.cord ?? '#a83228';
     if (side > 0) {
       seat(0.115 * s, 0.088 * s, shade(base, -10), shade(base, 4));
-      const trim2 = st.pauldronTrim ?? shade(base, 30);
+      const pommel = st.pauldronTrim ?? shade(steel, 30);
       if (!hurt) {
-        // THE FAN: three grips rising behind the plate line, angles
-        // staggered, sheath tips peeking under the plate's hem.
+        // THE COUNT: four grips rising behind the plate line —
+        // counted, not displayed; one pommel wakes on the rare,
+        // uneven clock (a metronome flash is jewelry).
         const wake = nowMs % 2600 < 280;
         const grips: Array<[number, number, number]> = [
-          [-0.072, -0.092, -0.34], [-0.026, -0.118, -0.12],
-          [0.026, -0.122, 0.1], [0.072, -0.09, 0.32],
+          [-0.052, -0.082, -0.3], [-0.006, -0.108, -0.06],
+          [0.044, -0.098, 0.22],
         ];
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 3; i++) {
           const [gx, gy, tl] = grips[i]!;
           ctx.save();
           ctx.translate(gx * s, -0.04 * s);
           ctx.rotate(tl);
-          // The grip: leather-wrapped, WIDE enough to be a handle —
-          // a thin stick under a bead reads as an antenna. Two wrap
-          // ticks say somebody's hand knows this shape.
           ctx.fillStyle = shade(base, -24);
           ctx.fillRect(-0.013 * s, gy * s + 0.036 * s, 0.026 * s, 0.068 * s);
           ctx.strokeStyle = shade(base, -36);
@@ -12441,62 +12642,150 @@ export function drawPauldron(
             ctx.lineTo(0.013 * s, gy * s + 0.036 * s + wy * s);
             ctx.stroke();
           }
-          const lit = i === 2 && wake;
-          ctx.fillStyle = lit ? shade(trim2, 30) : trim2;
+          const lit = i === 1 && wake;
+          ctx.fillStyle = lit ? shade(pommel, 30) : pommel;
           ctx.beginPath();
-          ctx.arc(0, gy * s + 0.028 * s, 0.017 * s, 0, Math.PI * 2);
+          ctx.arc(0, gy * s + 0.028 * s, 0.014 * s, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillStyle = shade(trim2, -26);
+          ctx.fillStyle = shade(pommel, -26);
           ctx.beginPath();
           ctx.arc(0, gy * s + 0.028 * s, 0.006 * s, 0, Math.PI * 2);
           ctx.fill();
           if (lit) {
             ctx.globalAlpha = 0.35;
-            ctx.fillStyle = shade(trim2, 30);
+            ctx.fillStyle = shade(pommel, 30);
             ctx.beginPath();
-            ctx.arc(0, gy * s + 0.028 * s, 0.032 * s, 0, Math.PI * 2);
+            ctx.arc(0, gy * s + 0.028 * s, 0.03 * s, 0, Math.PI * 2);
             ctx.fill();
             ctx.globalAlpha = 1;
           }
           ctx.restore();
         }
       }
-      // THE PLATE: angular top facet with a rolled rim — it reads
-      // over the grips, the knives live BEHIND the armor.
-      ctx.fillStyle = hurt ? '#ffffff' : shade(base, 6);
+      // THE SPIKED SPAULDER: three plates painted bottom-up so each
+      // upper laps the last, every plate swept to a raked barb that
+      // points DOWN the arm — a spike that rakes skyward reads as a
+      // costume; one that follows the deltoid reads as a threat.
+      const plates: Array<[number, number, number, number]> = [
+        // [topY, botY, tipX, tipY] — the stack sits OUTBOARD of the
+        // seat and rakes down the arm; a spaulder that spans inboard
+        // reads as a plaque hung on the chest, not armor on a
+        // shoulder (first-cut verdict).
+        [0.018, 0.064, 0.148, 0.088],
+        [-0.014, 0.032, 0.138, 0.056],
+        [-0.046, 0.0, 0.124, 0.024],
+      ];
+      for (let r = 0; r < 3; r++) {
+        const [ty2, by2, tpx, tpy] = plates[r]!;
+        const inx = -0.062 + r * 0.01;
+        ctx.fillStyle = hurt ? '#ffffff' : shade(steel, -4 + r * 5);
+        ctx.beginPath();
+        ctx.moveTo(inx * s, ty2 * s);
+        ctx.lineTo(0.066 * s, (ty2 - 0.022) * s);
+        ctx.lineTo(tpx * s, tpy * s);
+        ctx.lineTo(0.052 * s, by2 * s);
+        ctx.lineTo((inx + 0.006) * s, by2 * s);
+        ctx.closePath();
+        ctx.fill();
+        if (!hurt) {
+          // The lit top plane — the lap edge catching the sky —
+          // and the dark rolled under-edge.
+          ctx.fillStyle = shade(steel, 14 + r * 4);
+          ctx.beginPath();
+          ctx.moveTo(inx * s, ty2 * s);
+          ctx.lineTo(0.066 * s, (ty2 - 0.022) * s);
+          ctx.lineTo(0.06 * s, (ty2 - 0.01) * s);
+          ctx.lineTo((inx + 0.004) * s, (ty2 + 0.01) * s);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = shade(steel, -26);
+          ctx.lineWidth = Math.max(1, s * 0.008);
+          ctx.beginPath();
+          ctx.moveTo(0.052 * s, by2 * s);
+          ctx.lineTo((inx + 0.006) * s, by2 * s);
+          ctx.stroke();
+          // The barb's under-facet: the spike is TWO planes, not a
+          // flat sticker — its belly falls into shadow.
+          ctx.fillStyle = shade(steel, -18);
+          ctx.beginPath();
+          ctx.moveTo(0.066 * s, (ty2 - 0.022) * s);
+          ctx.lineTo(tpx * s, tpy * s);
+          ctx.lineTo(0.052 * s, by2 * s);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      if (!hurt) {
+        // THE CUT IN THE STEEL: crimson lining standing in the two
+        // lap gaps — short, raked WITH the plates, a bleed never a
+        // pinstripe.
+        ctx.strokeStyle = lining;
+        ctx.lineWidth = Math.max(1, s * 0.007);
+        for (const gy2 of [0.018, -0.014]) {
+          ctx.beginPath();
+          ctx.moveTo(-0.008 * s, (gy2 + 0.002) * s);
+          ctx.lineTo(0.05 * s, (gy2 - 0.014) * s);
+          ctx.stroke();
+        }
+      }
+    } else {
+      // THE BOUND OATH.
+      seat(0.105 * s, 0.08 * s, shade(base, -12), shade(base, 2));
+      const cord = st.tallycord?.cord ?? lining;
+      // The shroud tabs: three layered points off the outer seat,
+      // staggered lengths, each cut edge bleeding its lining. They
+      // are garment-scale structure — hurt paints them white.
+      const tabs: Array<[number, number, number]> = [
+        // [rootX, tipY, value]
+        [-0.02, 0.135, 0],
+        [-0.058, 0.115, -8],
+        [-0.09, 0.088, -16],
+      ];
+      for (const [rx2, tipY2, val] of tabs) {
+        ctx.fillStyle = hurt ? '#ffffff' : shade(base, val);
+        ctx.beginPath();
+        ctx.moveTo(rx2 * s - 0.034 * s, 0.012 * s);
+        ctx.lineTo(rx2 * s + 0.034 * s, 0.006 * s);
+        ctx.lineTo(rx2 * s + 0.024 * s, tipY2 * s * 0.6);
+        ctx.lineTo(rx2 * s - 0.004 * s, tipY2 * s);
+        ctx.lineTo(rx2 * s - 0.03 * s, tipY2 * s * 0.55);
+        ctx.closePath();
+        ctx.fill();
+        if (!hurt) {
+          ctx.strokeStyle = shade(base, 8);
+          ctx.lineWidth = Math.max(1, s * 0.008);
+          ctx.beginPath();
+          ctx.moveTo(rx2 * s - 0.034 * s, 0.012 * s);
+          ctx.lineTo(rx2 * s + 0.034 * s, 0.006 * s);
+          ctx.stroke();
+          // The bleed at the cut edge.
+          ctx.strokeStyle = lining;
+          ctx.lineWidth = Math.max(1, s * 0.007);
+          ctx.beginPath();
+          ctx.moveTo(rx2 * s + 0.02 * s, tipY2 * s * 0.62);
+          ctx.lineTo(rx2 * s - 0.002 * s, tipY2 * s * 0.94);
+          ctx.stroke();
+        }
+      }
+      // ONE quiet barb off the seat crown — swept back and DOWN,
+      // the fan side's echo at a whisper. Structure: holds white.
+      ctx.fillStyle = hurt ? '#ffffff' : shade(steel, -14);
       ctx.beginPath();
-      ctx.moveTo(-0.1 * s, -0.028 * s);
-      ctx.lineTo(-0.02 * s, -0.062 * s);
-      ctx.lineTo(0.085 * s, -0.048 * s);
-      ctx.lineTo(0.108 * s, 0.03 * s);
-      ctx.lineTo(0.02 * s, 0.062 * s);
-      ctx.lineTo(-0.09 * s, 0.042 * s);
+      ctx.moveTo(-0.028 * s, -0.062 * s);
+      ctx.lineTo(-0.108 * s, -0.028 * s);
+      ctx.lineTo(-0.04 * s, -0.03 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = hurt ? '#ffffff' : shade(steel, 8);
+      ctx.beginPath();
+      ctx.moveTo(-0.028 * s, -0.062 * s);
+      ctx.lineTo(-0.108 * s, -0.028 * s);
+      ctx.lineTo(-0.056 * s, -0.046 * s);
       ctx.closePath();
       ctx.fill();
       if (!hurt) {
-        ctx.fillStyle = shade(base, 16);
-        ctx.beginPath();
-        ctx.moveTo(-0.1 * s, -0.028 * s);
-        ctx.lineTo(-0.02 * s, -0.062 * s);
-        ctx.lineTo(0.085 * s, -0.048 * s);
-        ctx.lineTo(0.07 * s, -0.02 * s);
-        ctx.lineTo(-0.03 * s, -0.034 * s);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = shade(base, -22);
-        ctx.lineWidth = Math.max(1, s * 0.01);
-        ctx.beginPath();
-        ctx.moveTo(0.108 * s, 0.03 * s);
-        ctx.lineTo(0.02 * s, 0.062 * s);
-        ctx.lineTo(-0.09 * s, 0.042 * s);
-        ctx.stroke();
-      }
-    } else {
-      // THE BOUND SHOULDER: three wraps of crimson cord over bare
-      // leather, tail knotted and hanging — the mark itself.
-      seat(0.105 * s, 0.08 * s, shade(base, -12), shade(base, 2));
-      const cord = st.tallycord?.cord ?? '#a83228';
-      if (!hurt) {
+        // Three wraps of crimson cord over the tabs — the mark,
+        // worn where the sleeve can't hide it.
         ctx.strokeStyle = cord;
         ctx.lineWidth = Math.max(1.5, s * 0.013);
         ctx.beginPath();
@@ -12511,7 +12800,7 @@ export function drawPauldron(
         ctx.beginPath();
         ctx.arc(-0.062 * s, 0.03 * s, 0.011 * s, 0, Math.PI * 2);
         ctx.fill();
-        // The tail falls LONG, a tally knot at each drop — the
+        // The tally tail falls LONG, a knot at each drop — the
         // count travels with the arm that earned it.
         ctx.strokeStyle = shade(cord, -8);
         ctx.lineWidth = Math.max(1, s * 0.01);
@@ -19117,30 +19406,42 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     return;
   }
   if (st.kind === 'redmask') {
-    // THE REDMASK — redhand's head: the wet work wears lacquer. A
-    // snug hood swept to a short nape point, and where a face would
-    // be, a full lacquered mask falling to a blade-point chin — two
-    // flat facets split on a center ridge, the leading facet lit,
-    // ONE bright arris down the split. Two eye notches of dark. One
-    // old groove through the leading notch, lacquered over, never
-    // filled. Caught once. Never twice.
+    // THE HOODED VERDICT — redhand's head rebuilt. The hood is TWO
+    // layers now, and the silhouette says so: the outer shell falls
+    // to a high trailing knife-point, the inner hood to a second,
+    // lower one — a stepped double blade off the nape. The face is
+    // a RECESSED void (rim, dark, deepest corner — three planes in)
+    // and the lacquered mask floats INSET within it, never wall to
+    // wall: the gap between mask edge and hood rim is where the
+    // mystery lives. Two raked eye slits hold a banked ember that
+    // breathes on one clock — one gaze, never two lamps — and
+    // flares once in a long while. Everywhere the cloth is cut, the
+    // crimson lining shows. Caught once. Never twice.
     const t = profileK;
     const front = backK <= 0.55;
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
     const ohw = hw * 0.76 * (1 - 0.5 * t);
-    const tipX = headX - lead * (hw * (1.55 + t * 0.4));
-    const tipY = headY - hh * 0.34;
+    // The stepped trail: outer shell point high, inner layer point
+    // low — both TRAIL (orientation clause: a drooped point anchors
+    // at the trailing crown).
+    const tipX = headX - lead * hw * (1.62 + t * 0.42);
+    const tipY = headY - hh * 0.4;
+    const notchX = headX - lead * hw * 1.0;
+    const notchY = headY - hh * 0.26;
+    const tip2X = headX - lead * hw * (1.36 + t * 0.3);
+    const tip2Y = headY + hh * 0.16;
     const shell = () => {
       ctx.moveTo(headX + lead * hw * 1.14, headY + hh * 1.12);
       ctx.quadraticCurveTo(headX + lead * hw * 1.24, headY + hh * 0.2, headX + lead * hw * 1.08, headY - hh * 0.5);
-      // The brow ledge overhangs the mask — a hard rim of hood.
+      // The brow ledge overhangs the void — a hard rim of hood.
       ctx.lineTo(headX + lead * hw * 1.12, headY - hh * 0.78);
       ctx.quadraticCurveTo(headX + lead * hw * 0.5, headY - hh * 1.26, headX - lead * hw * 0.24, headY - hh * 1.3);
-      // THE NAPE POINT: short, high-raked — a knife at rest, not
-      // nightveil's long blade.
+      // Outer point, the step back in, then the inner layer's point.
       ctx.lineTo(tipX, tipY);
-      ctx.lineTo(headX - lead * hw * (1.12 + t * 0.24), headY + hh * 0.06);
-      ctx.quadraticCurveTo(headX - lead * hw * (1.26 + t * 0.26), headY + hh * 0.5, headX - lead * hw * 1.2, headY + hh * 1.12);
+      ctx.lineTo(notchX, notchY);
+      ctx.lineTo(tip2X, tip2Y);
+      ctx.lineTo(headX - lead * hw * (1.12 + t * 0.24), headY + hh * 0.44);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.24 + t * 0.26), headY + hh * 0.72, headX - lead * hw * 1.18, headY + hh * 1.12);
       ctx.quadraticCurveTo(headX, headY + hh * 1.4, headX + lead * hw * 1.14, headY + hh * 1.12);
       ctx.closePath();
     };
@@ -19153,14 +19454,34 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.beginPath();
       shell();
       ctx.clip();
+      // Trailing half steps down — the turned-garment ground.
       ctx.fillStyle = shade(st.color, -13);
-      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
-      // The nape point's under-fold — deeper plane, no curve.
-      ctx.fillStyle = shade(st.color, -22);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.6 : headX, headY - hh * 1.6, hw * 2.6, hh * 3.2);
+      // THE INNER LAYER: everything below the step notch belongs to
+      // the second hood — its own darker plane, and a light-over-
+      // dark lap stroke along its top edge so the layer READS (a
+      // dark panel on a dark ground is invisible; the lap line is
+      // the layer).
+      ctx.fillStyle = shade(st.color, -20);
+      ctx.beginPath();
+      ctx.moveTo(notchX, notchY);
+      ctx.lineTo(tip2X, tip2Y);
+      ctx.lineTo(headX - lead * hw * (1.12 + t * 0.24), headY + hh * 0.44);
+      ctx.lineTo(headX - lead * hw * 0.4, headY + hh * 0.3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = shade(st.color, 8);
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.beginPath();
+      ctx.moveTo(notchX, notchY);
+      ctx.lineTo(tip2X, tip2Y);
+      ctx.stroke();
+      // The outer point's under-fold — deeper plane, no curve.
+      ctx.fillStyle = shade(st.color, -26);
       ctx.beginPath();
       ctx.moveTo(headX - lead * hw * 0.3, headY - hh * 1.22);
       ctx.lineTo(tipX + lead * hw * 0.1, tipY - hh * 0.02);
-      ctx.lineTo(headX - lead * hw * 1.04, headY + hh * 0.0);
+      ctx.lineTo(notchX, notchY - hh * 0.06);
       ctx.closePath();
       ctx.fill();
       // The lit rake off the brow ledge.
@@ -19172,40 +19493,85 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.lineTo(headX + lead * hw * 1.1, headY - hh * 0.62);
       ctx.closePath();
       ctx.fill();
+      // THE CROWN CUT: the set's one cell — a raked slit through
+      // the crown panel, crimson lining standing in the wound.
+      // Front reads only: at profile the trailing crown rides the
+      // silhouette edge and a red line there floats off the cloth
+      // (the antenna sin); the back facings carry the nape cut
+      // instead — one cut per read, never a scatter.
+      if (backK <= 0.55 && t < 0.65) {
+        ctx.strokeStyle = shade(st.color, -34);
+        ctx.lineWidth = Math.max(1.5, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(headX - lead * hw * 0.2, headY - hh * 1.04);
+        ctx.lineTo(headX - lead * hw * 0.56, headY - hh * 0.66);
+        ctx.stroke();
+        ctx.strokeStyle = st.trim;
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        ctx.moveTo(headX - lead * hw * 0.24, headY - hh * 1.0);
+        ctx.lineTo(headX - lead * hw * 0.52, headY - hh * 0.7);
+        ctx.stroke();
+      }
       ctx.restore();
       if (front) {
         const lac = st.lacquer;
         if (lac) {
-          // THE MASK: brow to blade-point chin, two flat facets on a
-          // center ridge — lacquer, not skin; the ridge leans with
-          // the facing like the nose it replaces.
-          const mTop = headY - hh * 0.64;
-          // THE RIDGE LIVES ON THE TURN: frontal it splits the mask
-          // near center; side-on it slides hard toward the leading
-          // edge — the lit facet narrows to a rim of light and the
-          // deep facet owns the cheek, exactly how a faceted plate
-          // reads in the world. A centered ridge at profile is the
-          // sticker sin.
-          const chinX = cx + lead * ohw * (0.08 + t * 0.5);
-          const chinY = headY + hh * 1.04;
-          const ridgeX = cx + lead * ohw * (0.14 + t * 0.55);
-          // Trailing facet first (deep), then leading (lit). The mask
-          // CLAIMS the face wall to wall — a sliver of hood past its
-          // cheek edge reads as bare skin at ten paces.
+          // THE VOID: three planes in — the hood's rim band, the
+          // dark, and the deepest corner on the trailing side. The
+          // mask will float INSIDE this; the visible ring of void
+          // around it is the recess.
+          const mTop = headY - hh * 0.6;
+          const vTop = mTop - hh * 0.1;
+          ctx.fillStyle = shade(st.color, -26);
+          ctx.beginPath();
+          ctx.moveTo(cx - ohw * 1.1, vTop + hh * 0.04);
+          ctx.lineTo(cx + ohw * 1.1, vTop + hh * 0.04);
+          ctx.lineTo(cx + ohw * 1.14, headY + hh * 0.2);
+          ctx.lineTo(cx + ohw * 0.24, headY + hh * 1.14);
+          ctx.lineTo(cx - ohw * 0.24, headY + hh * 1.14);
+          ctx.lineTo(cx - ohw * 1.14, headY + hh * 0.2);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = '#191013';
+          ctx.beginPath();
+          ctx.moveTo(cx - ohw * 1.02, vTop + hh * 0.1);
+          ctx.lineTo(cx + ohw * 1.02, vTop + hh * 0.1);
+          ctx.lineTo(cx + ohw * 1.06, headY + hh * 0.18);
+          ctx.lineTo(cx + ohw * 0.2, headY + hh * 1.08);
+          ctx.lineTo(cx - ohw * 0.2, headY + hh * 1.08);
+          ctx.lineTo(cx - ohw * 1.06, headY + hh * 0.18);
+          ctx.closePath();
+          ctx.fill();
+          // Deepest corner: the trailing upper hollow.
+          ctx.fillStyle = '#0f0a0c';
+          ctx.beginPath();
+          ctx.moveTo(cx - lead * ohw * 1.0, vTop + hh * 0.12);
+          ctx.lineTo(cx - lead * ohw * 0.3, vTop + hh * 0.16);
+          ctx.lineTo(cx - lead * ohw * 0.96, headY + hh * 0.1);
+          ctx.closePath();
+          ctx.fill();
+          // THE MASK, inset — two lacquer facets on a sliding
+          // ridge, blade-point chin. The ridge lives on the turn:
+          // near center frontal, hard toward the leading edge at
+          // profile. The LEADING facet takes the light.
+          const mw = ohw * 0.88;
+          const chinX = cx + lead * mw * (0.08 + t * 0.5);
+          const chinY = headY + hh * 1.02;
+          const ridgeX = cx + lead * mw * (0.14 + t * 0.55);
           ctx.fillStyle = lac.color;
           ctx.beginPath();
           ctx.moveTo(ridgeX, mTop);
-          ctx.lineTo(cx - ohw * 1.02, mTop + hh * 0.06);
-          ctx.lineTo(cx - ohw * 1.08, headY + hh * 0.14);
+          ctx.lineTo(cx - lead * mw * 1.02, mTop + hh * 0.06);
+          ctx.lineTo(cx - lead * mw * 1.06, headY + hh * 0.14);
           ctx.lineTo(chinX, chinY);
-          ctx.lineTo(ridgeX, mTop);
           ctx.closePath();
           ctx.fill();
           ctx.fillStyle = lac.lit;
           ctx.beginPath();
           ctx.moveTo(ridgeX, mTop);
-          ctx.lineTo(cx + ohw * 1.02, mTop + hh * 0.06);
-          ctx.lineTo(cx + ohw * 1.08, headY + hh * 0.14);
+          ctx.lineTo(cx + lead * mw * 1.02, mTop + hh * 0.06);
+          ctx.lineTo(cx + lead * mw * 1.06, headY + hh * 0.14);
           ctx.lineTo(chinX, chinY);
           ctx.closePath();
           ctx.fill();
@@ -19216,88 +19582,123 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
           ctx.moveTo(ridgeX, mTop + hh * 0.02);
           ctx.lineTo(chinX, chinY - hh * 0.02);
           ctx.stroke();
-          // THE EYE NOTCHES: two narrow darks at the eye line — cut
-          // into the lacquer, holding nothing.
-          ctx.fillStyle = '#1c1214';
-          for (const [ux, w2] of [[0.48, 0.5], [-0.42, 0.42]] as const) {
-            const ex = cx + lead * ohw * ux;
+          // THE EYE SLITS: two raked cuts, outer corners HIGH — the
+          // glare is part of the geometry. Inside each, the banked
+          // ember: one breath clock for both eyes (one gaze), tone
+          // STEPPED between flat values (never a gradient), and the
+          // rare flare when it decides it has seen you.
+          const ember = lac.ember ?? lac.lit;
+          const br = 0.5 + 0.5 * Math.sin(f.nowMs * 0.0011);
+          const flare = f.nowMs % 5200 < 240;
+          const tone = flare ? shade(ember, 30)
+            : br < 0.35 ? shade(ember, -24)
+            : br < 0.72 ? shade(ember, -6) : shade(ember, 10);
+          for (const [ux, w2] of [[0.52, 0.4], [-0.4, 0.34]] as const) {
+            const ex = cx + lead * mw * ux;
+            const ew = mw * w2;
+            const rake = hh * 0.1 * (ux > 0 ? 1 : 0.7);
+            ctx.fillStyle = '#160f12';
             ctx.beginPath();
-            ctx.moveTo(ex - ohw * w2 * 0.5, headY - hh * 0.3);
-            ctx.lineTo(ex + ohw * w2 * 0.5, headY - hh * 0.34);
-            ctx.lineTo(ex + ohw * w2 * 0.5, headY - hh * 0.22);
-            ctx.lineTo(ex - ohw * w2 * 0.5, headY - hh * 0.18);
+            ctx.moveTo(ex - ew, headY - hh * 0.32);
+            ctx.lineTo(ex + ew, headY - hh * 0.32 - rake * lead);
+            ctx.lineTo(ex + ew, headY - hh * 0.14 - rake * lead);
+            ctx.lineTo(ex - ew, headY - hh * 0.14);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = tone;
+            ctx.beginPath();
+            ctx.moveTo(ex - ew * 0.68, headY - hh * 0.285);
+            ctx.lineTo(ex + ew * 0.68, headY - hh * 0.285 - rake * 0.68 * lead);
+            ctx.lineTo(ex + ew * 0.68, headY - hh * 0.175 - rake * 0.68 * lead);
+            ctx.lineTo(ex - ew * 0.68, headY - hh * 0.175);
             ctx.closePath();
             ctx.fill();
           }
-          // THE GROOVE: one old SLASH past the leading notch's outer
-          // corner, lacquered over — raked hard off the vertical (a
-          // plumb groove through a level notch reads as a crosshair,
-          // the round-1 verdict).
+          // THE GROOVE: the one old slash past the leading slit,
+          // lacquered over, raked hard off the vertical.
           if (lac.scar) {
             ctx.strokeStyle = lac.scar;
             ctx.lineWidth = Math.max(1, s * 0.011);
             ctx.beginPath();
-            ctx.moveTo(cx + lead * ohw * 0.78, headY - hh * 0.52);
-            ctx.lineTo(cx + lead * ohw * 0.34, headY + hh * 0.16);
+            ctx.moveTo(cx + lead * mw * 0.8, headY - hh * 0.5);
+            ctx.lineTo(cx + lead * mw * 0.36, headY + hh * 0.18);
             ctx.stroke();
           }
           // THE HOOD'S CAST: folded dark along the mask's top edge —
-          // the lacquer sits IN the hood, not on a bare head. OPAQUE
-          // (translucent fills no-op in this paint path): a deep
-          // lacquer tone, not a tint.
+          // the lacquer sits DOWN in the hood. Opaque planes only
+          // (translucent fills no-op in this paint path).
           ctx.fillStyle = shade(lac.color, -34);
           ctx.beginPath();
-          ctx.moveTo(cx - ohw * 1.02, mTop + hh * 0.06);
-          ctx.lineTo(cx + ohw * 1.02, mTop + hh * 0.06);
-          ctx.lineTo(cx + ohw * 0.84, mTop + hh * 0.24);
-          ctx.lineTo(cx - lead * ohw * 0.1, mTop + hh * 0.18);
-          ctx.lineTo(cx - ohw * 0.82, mTop + hh * 0.3);
+          ctx.moveTo(cx - mw * 1.02, mTop + hh * 0.06);
+          ctx.lineTo(cx + mw * 1.02, mTop + hh * 0.06);
+          ctx.lineTo(cx + mw * 0.84, mTop + hh * 0.24);
+          ctx.lineTo(cx - lead * mw * 0.1, mTop + hh * 0.18);
+          ctx.lineTo(cx - mw * 0.82, mTop + hh * 0.3);
           ctx.closePath();
           ctx.fill();
-          // THE CIRCLET: the nape cord's language carried forward —
-          // one crimson cord binding the hood above the mask, its
-          // knot at the trailing temple. The mask is TIED on; the
-          // Knife does not trust clasps. (The tally crimson — the
-          // helm can't read the body's tallycord, so the cord states
-          // the guild color itself.)
-          const cord2 = '#a83228';
+          // THE BINDING: one crimson cord ties the mask into the
+          // hood — knot at the trailing temple, two cut ends. The
+          // Knife does not trust clasps.
+          const cord2 = st.trim;
           ctx.strokeStyle = cord2;
           ctx.lineWidth = Math.max(1.5, s * 0.013);
           ctx.beginPath();
           ctx.moveTo(headX + lead * hw * 1.08, headY - hh * 0.68);
           ctx.quadraticCurveTo(headX + lead * hw * 0.2, headY - hh * 0.88, headX - lead * hw * (0.98 + t * 0.2), headY - hh * 0.6);
           ctx.stroke();
+          const knX = headX - lead * hw * (0.9 + t * 0.18);
           ctx.fillStyle = shade(cord2, -14);
           ctx.beginPath();
-          ctx.arc(headX - lead * hw * (0.9 + t * 0.18), headY - hh * 0.6, headR * 0.05, 0, Math.PI * 2);
+          ctx.arc(knX, headY - hh * 0.6, headR * 0.05, 0, Math.PI * 2);
           ctx.fill();
+          ctx.strokeStyle = shade(cord2, -8);
+          ctx.lineWidth = Math.max(1, s * 0.009);
+          ctx.beginPath();
+          ctx.moveTo(knX, headY - hh * 0.56);
+          ctx.lineTo(knX - lead * hw * 0.1, headY - hh * 0.38);
+          ctx.moveTo(knX, headY - hh * 0.56);
+          ctx.lineTo(knX - lead * hw * 0.02, headY - hh * 0.34);
+          ctx.stroke();
           // THE CHIN CAP: dulled steel sheathing the blade point —
           // the one metal the lacquer admits, and it never glints.
           ctx.fillStyle = '#8a8e96';
           ctx.beginPath();
-          ctx.moveTo(chinX - ohw * 0.2, chinY - hh * 0.26);
-          ctx.lineTo(chinX + ohw * 0.2, chinY - hh * 0.26);
+          ctx.moveTo(chinX - mw * 0.2, chinY - hh * 0.26);
+          ctx.lineTo(chinX + mw * 0.2, chinY - hh * 0.26);
           ctx.lineTo(chinX, chinY);
           ctx.closePath();
           ctx.fill();
           ctx.fillStyle = shade('#8a8e96', -22);
           ctx.beginPath();
           ctx.moveTo(chinX, chinY - hh * 0.26);
-          ctx.lineTo(chinX + ohw * 0.2, chinY - hh * 0.26);
+          ctx.lineTo(chinX + mw * 0.2, chinY - hh * 0.26);
           ctx.lineTo(chinX, chinY);
           ctx.closePath();
           ctx.fill();
         }
       } else {
-        // Back read: hood panels and the red cord knotted at the
-        // nape, two short tails drifting on the slow clock.
+        // Back read: the two hood layers lap down the back — center
+        // seam, light-over-dark lap lines — and THE NAPE CUT bleeds
+        // its lining beside the knot of the binding cord, whose two
+        // tails drift on the slow clock.
         ctx.strokeStyle = shade(st.color, -24);
         ctx.lineWidth = Math.max(1, s * 0.012);
         ctx.beginPath();
         ctx.moveTo(headX, headY - hh * 1.18);
         ctx.lineTo(headX + lead * hw * 0.06, headY + hh * 0.9);
         ctx.stroke();
-        const cord = st.lacquer?.color ?? st.trim;
+        ctx.strokeStyle = shade(st.color, 8);
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        for (const px of [-0.52, 0.5]) {
+          ctx.beginPath();
+          ctx.moveTo(headX + px * hw, headY - hh * 0.98);
+          ctx.quadraticCurveTo(headX + px * hw * 1.18, headY - hh * 0.2, headX + px * hw * 1.02, headY + hh * 0.7);
+          ctx.stroke();
+        }
+        // No nape cut back here — the body's half-cape carries the
+        // back's ONE wound; a second red mark beside the cord knot
+        // read as floating scratches, not design (round-2 verdict).
+        const cord = st.trim;
         const drift = Math.sin(f.nowMs * 0.0012) * hw * 0.08;
         ctx.strokeStyle = cord;
         ctx.lineWidth = Math.max(1.5, s * 0.014);
