@@ -267,6 +267,49 @@ limbs, and feet swap wholesale per BUILD.
 - Full suites: content, client, server green before each commit. Shared-file
   staging is SURGICAL (stage only own hunks; check git status first).
 
-## As built
+## As built (2026-08-13, four commits: 0e1c75e → 40cf073 → 8c26fca → c7dee88)
 
-(appended at ship)
+Shipped exactly as planned, with these deltas and lessons:
+
+- **Engine**: `splashRadius` joined AbilityDef and the projectile comp
+  (castAbility's projectile_fan case). The SIGNATURE LAW now reads
+  both ways: an NPC ability projectile broadcasts its `blast` at the
+  wound AND at a missed landing (wall/range death) — a dodged boulder
+  still lands somewhere, and standing near the miss still costs the
+  splash. That is what dodging means.
+- **The painter** is `render/golems.ts`, the CONSTRUCT dialect (fourth
+  beside bone/scale/fur): new-file-first kept the rig.ts co-edit
+  surface to ~12 small hunks (import, RigPose slot, leg widths/colors,
+  foot switch, tw/ww, lean, drawArm param + branch, hair guard, torso
+  branch, head geometry + switch). drawArm gained a `gol` param the
+  way it carries `gno`.
+- **Sheet lessons (round one)**: a thick glow polyline at a bent elbow
+  throws a MITER SPIKE a full arm past the joint — lineJoin round on
+  any wide stroked chain; a high-contrast under-box between body
+  masses reads as CLOTHING, never as depth (step it toward the shell
+  and contain it); chamferRect with a negative width is broken
+  geometry (west-leading toe caps); labs must reset ctx.lineWidth
+  before per-cell chrome (figures leave fat widths behind).
+- **Golem heads sink INTO the shoulder line** (headY ≈ −th − 0.08·headR)
+  — the neckless construct proportion, opposite argument to the
+  kobold/gnoll oversize.
+- **The alert glyph** takes a `sizeK` lift for tall biped mobs — the
+  flat radius math parked "!" inside a 1.7-size crown.
+- **Live-proving lessons**: `/xp` levels do NOT heal (a 99-vitality
+  observer still stands at fresh-char hp — regen is 1hp/5s); a
+  leveled body must walk INTO the close ring before a low golem
+  commits (SEEING-IS-NOT-CHARGING held perfectly); ephemeral
+  /spawnmob strays haunt the hearth roads until the next server
+  bounce — spawn provings far out and expect earlier strays.
+- **Deferred by design**: golem champions (the sovereign tier is its
+  own epic — loot NAMED-set seats reserved), the `family: 'golem'`
+  territory chain (needs a MAJOR golem POI to declare it — a "waking
+  quarry" POI is the natural follow-up), mine-dungeon iron garrisons,
+  and a stone matter material (dust carries the earth voice fine).
+- Proof: content 467 / server 416 / client 483 green at each commit;
+  riglab THE GOLEM SHEET (4 builds × 5 modes × 8 facings + cluster
+  spread + body rulers) audited by screenshot; all nine signatures
+  shot in-engine via the phase-fan rig (five clock-pinned wires + one
+  free-run aftermath per art); live proving caught the quarry ring
+  standing up around the observer with the engage glyph and charge
+  running — the full server→client conversation in one frame.
