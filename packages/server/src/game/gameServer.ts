@@ -21774,6 +21774,23 @@ export class GameServer {
   }
 
   /**
+   * THE SPOKEN AIR — the one mouth for words said aloud in the world.
+   * Player chat, an actor's bark, a faction's refusal, a mark's cry:
+   * anything a body SAYS leaves through here as local chat carrying
+   * the speaker's eid, delivered to the speaker and to everyone whose
+   * interest set holds them. One wire, two voices on the client: the
+   * line lands in the log AND stands up in a bubble over the head
+   * that said it — the eid is what lets the bubble find the head.
+   */
+  private sayAloud(eid: EntityId, from: string, text: string): void {
+    for (const s of this.sessions) {
+      if (s.playerEid === eid || s.knownEntities.has(eid)) {
+        s.sendJson({ t: 'chat', channel: 'local', from, eid, text });
+      }
+    }
+  }
+
+  /**
    * The cry itself: a bark everyone nearby reads in local chat, a
    * rally that carries a bit past the ordinary pack answer (a scream
    * travels), and straight back into the chase through npcAggro.
@@ -21960,23 +21977,6 @@ export class GameServer {
     npc.huntWaitUntilTick = 0;
     npc.standTicks = 0;
     // "HE WENT THAT WAY": project the last-seen point along the
-  /**
-   * THE SPOKEN AIR — the one mouth for words said aloud in the world.
-   * Player chat, an actor's bark, a faction's refusal, a mark's cry:
-   * anything a body SAYS leaves through here as local chat carrying
-   * the speaker's eid, delivered to the speaker and to everyone whose
-   * interest set holds them. One wire, two voices on the client: the
-   * line lands in the log AND stands up in a bubble over the head
-   * that said it — the eid is what lets the bubble find the head.
-   */
-  private sayAloud(eid: EntityId, from: string, text: string): void {
-    for (const s of this.sessions) {
-      if (s.playerEid === eid || s.knownEntities.has(eid)) {
-        s.sendJson({ t: 'chat', channel: 'local', from, eid, text });
-      }
-    }
-  }
-
     // quarry's last-seen stride (capped ~4 tiles), so the hunt
     // carries past the corner instead of stopping dead at it. A
     // projection that lands inside a solid falls back by halves.
