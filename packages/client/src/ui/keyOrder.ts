@@ -18,6 +18,7 @@ import {
   type DungeonSpec,
   type DungeonTheme,
   type ItemRoll,
+  type KeyLore,
   type RarityTier,
 } from '@arx/shared';
 
@@ -84,6 +85,87 @@ export function filterKeys(
       k.spec.tier.includes(q)
     );
   });
+}
+
+/**
+ * A ledger row with its derived story: the door's spec, the reader's
+ * label, and whether a copy currently hangs on the ring (the client's
+ * own cross-read — the wire never repeats what the ring already says).
+ */
+export interface FiledLore {
+  seed: number;
+  spec: DungeonSpec;
+  label?: string;
+  /** A copy of this door currently hangs on the ring. */
+  held: boolean;
+}
+
+/** Derive each ledger row's story once (paint-time). */
+export function fileLore(known: ReadonlyArray<KeyLore>, ringSeeds: ReadonlySet<number>): FiledLore[] {
+  return known.map((l) => {
+    const roll: ItemRoll = { rar: l.rar, seed: l.seed };
+    if (l.pwr !== undefined) roll.pwr = l.pwr;
+    return {
+      seed: l.seed >>> 0,
+      spec: dungeonSpecFromRoll(roll),
+      ...(l.label !== undefined ? { label: l.label } : {}),
+      held: ringSeeds.has(l.seed >>> 0),
+    };
+  });
+}
+
+/**
+ * The ledger answers the same rails and the same pen as the ring —
+ * tier, theme, and a search that also reads the reader's own labels
+ * (the first thing a collector will look for).
+ */
+export function filterLore(
+  rows: ReadonlyArray<FiledLore>,
+  tier: KeyTierFilter,
+  theme: DungeonTheme | 'all',
+  search: string,
+): FiledLore[] {
+  const q = search.trim().toLowerCase();
+  return rows.filter((r) => {
+    if (tier !== 'all' && r.spec.tier !== tier) return false;
+    if (theme !== 'all' && r.spec.theme !== theme) return false;
+    if (q.length === 0) return true;
+    return (
+      r.spec.name.toLowerCase().includes(q) ||
+      r.spec.sigil.toLowerCase().includes(q) ||
+      r.spec.theme.includes(q) ||
+      r.spec.tier.includes(q) ||
+      (r.label?.toLowerCase().includes(q) ?? false)
+    );
+  });
+}
+
+/**
+ * Order ledger rows. The ring's sorts carry over where they make
+ * sense; 'newest' reads first-held order (the wire's order), and
+ * 'uses' has no meaning on knowledge, so it falls back to power.
+ */
+export function orderLore(rows: ReadonlyArray<FiledLore>, mode: KeySort): FiledLore[] {
+  const sorted = [...rows];
+  const az = (a: FiledLore, b: FiledLore): number =>
+    (a.label ?? a.spec.name).localeCompare(b.label ?? b.spec.name) ||
+    a.spec.sigil.localeCompare(b.spec.sigil);
+  sorted.sort((a, b) => {
+    switch (mode) {
+      case 'power':
+      case 'uses':
+        return b.spec.power - a.spec.power || az(a, b);
+      case 'tier':
+        return rarityIndex(b.spec.tier) - rarityIndex(a.spec.tier) || b.spec.power - a.spec.power || az(a, b);
+      case 'az':
+        return az(a, b);
+      case 'newest':
+        // The wire arrives in first-held order — newest doors last, so
+        // the freshest memory leads when reversed.
+        return rows.indexOf(b) - rows.indexOf(a);
+    }
+  });
+  return sorted;
 }
 
 /** Order filed keys for the shelf. Does not mutate its input. */

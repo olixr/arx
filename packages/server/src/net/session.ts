@@ -487,6 +487,18 @@ export class Session {
         this.game.keyDrop(this.playerEid, msg.key);
         return;
       }
+      case 'keylabel': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.keyLabel(this.playerEid, msg.seed, msg.label);
+        return;
+      }
+      case 'keyforge': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.keyForge(this.playerEid, msg.seed);
+        return;
+      }
       case 'dlgadv': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

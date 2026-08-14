@@ -1,0 +1,36 @@
+{
+ "id": "keywright_orla",
+ "name": "Orla",
+ "title": "the Keywright",
+ "examine": "Iron filings in the seams of her hands and a loupe on a neck-cord. She files rift-keys by ear — a true cut hums, she says, and a false one only shines. Keeps a ledger of every door she has ever heard.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 2,
+   "hair": 7,
+   "hairColor": 6,
+   "beard": 0,
+   "eyes": 1,
+   "ears": 0,
+   "feature": 2,
+   "shirt": 1,
+   "pants": 1
+  }
+ },
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 40
+  },
+  {
+   "item": "iron_bar",
+   "qty": 2
+  }
+ ],
+ "lines": [
+  "A key is a song the rock agreed to once. I only remind it.",
+  "Worn through is not gone. Nothing your hands have known is gone.",
+  "The delvers bring me broken wards to weep over. I charge them for the weeping."
+ ]
+}

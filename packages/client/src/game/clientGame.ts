@@ -57,6 +57,7 @@ import {
   type BuildOrient,
   type InvSlot,
   type ItemRoll,
+  type KeyLore,
   honedAbility,
   levelForXp,
   masteryXp,
@@ -228,6 +229,10 @@ export interface GameEvents {
   onRiftgate?(live?: { seed: number; tier: string; power: number }, partyRuns?: PartyRunWire[]): void;
   /** THE KEY RING's full mirror arrived — repaint whatever shows keys. */
   onKeyRing?(keys: Array<{ id: number; roll: ItemRoll }>): void;
+  /** THE KEY LEDGER's mirror arrived — repaint the ledger wing. */
+  onKeyLore?(known: KeyLore[]): void;
+  /** The Keywright's bench opened — raise the ledger with the forge lit. */
+  onKeyForgeOpen?(): void;
   /** A board's words arrived or changed — repaint whatever shows them. */
   onSignChanged?(tx: number, ty: number): void;
   /** Crossed into a dungeon — everything the entry banner tells. */
@@ -372,6 +377,8 @@ export class ClientGame {
   inventory: InvSlot[] = [];
   /** THE KEY RING mirror — every dungeon key held, outside the pack. */
   keyRing: Array<{ id: number; roll: ItemRoll }> = [];
+  /** THE KEY LEDGER mirror — every door ever held, with margin notes. */
+  keyLore: KeyLore[] = [];
   skills: SkillXp = {};
   /** Recipes known beyond the core set (server-owned; see 'recipes'). */
   knownRecipes: ReadonlySet<string> = new Set();
@@ -1666,6 +1673,15 @@ export class ClientGame {
       case 'keyring': {
         this.keyRing = msg.keys;
         this.events.onKeyRing?.(msg.keys);
+        break;
+      }
+      case 'keylore': {
+        this.keyLore = msg.known;
+        this.events.onKeyLore?.(msg.known);
+        break;
+      }
+      case 'keyforgeopen': {
+        this.events.onKeyForgeOpen?.();
         break;
       }
       case 'skills': {
@@ -3217,6 +3233,16 @@ export class ClientGame {
   /** Set a key from the ring down at your feet (the trade verb). */
   keyDropSend(key: number): void {
     this.conn?.send({ t: 'keydrop', key });
+  }
+
+  /** Write (or clear) the margin note on a ledgered door. */
+  keyLabelSend(seed: number, label: string | undefined): void {
+    this.conn?.send({ t: 'keylabel', seed, label });
+  }
+
+  /** Pay the Keywright to cut a remembered door again. */
+  keyForgeSend(seed: number): void {
+    this.conn?.send({ t: 'keyforge', seed });
   }
 
   /** Confirm character creation (optimistic — the server locks it). */

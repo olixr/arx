@@ -973,6 +973,21 @@ const MIGRATIONS: string[] = [
     uses INTEGER,
     PRIMARY KEY (character_id, ord)
   );`,
+  // v34: THE KEY LEDGER — a door once held is known forever. One row
+  // per (character, seed): the key's identity plus the reader's own
+  // margin note. Knowledge, not property — no uses column on purpose
+  // (lore opens nothing; the Keywright re-mints from it at a price).
+  // Rows only ever upsert; nothing prunes them, even when the key
+  // crumbles — forgetting is exactly what this table forbids.
+  `CREATE TABLE IF NOT EXISTS key_memory (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    seed BIGINT NOT NULL,
+    rar TEXT NOT NULL,
+    pwr INTEGER,
+    label TEXT,
+    first_held_at BIGINT NOT NULL,
+    PRIMARY KEY (character_id, seed)
+  );`,
 ];
 
 /**

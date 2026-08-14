@@ -2343,16 +2343,17 @@ test('kingsdelf: the delf town holds its stone, its glass, and three ways in', (
   assert.equal(at(45, 86), Tile.GateGarrison, 'the water gate opens to the quay');
   // The spawn is the round beside the Stone: the south-west's hearth.
   assert.deepEqual(z.spawn, { x: KINGSDELF_RECT.x + 62.5, y: KINGSDELF_RECT.y + 65.5 });
-  // The cast: seventeen named, four on the rota, three below, two at
-  // the kilns — and every keeper keeps hours.
+  // The cast: eighteen named, four on the rota, three below, two at
+  // the kilns — and every keeper keeps hours (the Keywright alone
+  // holds a still bench, the Alda precedent).
   const actors = z.actorSpawns ?? [];
-  assert.equal(actors.length, 26, 'Kingsdelf lost residents');
+  assert.equal(actors.length, 27, 'Kingsdelf lost residents');
   for (const slug of [
     'delfmaster_ruen', 'factor_venn', 'sealkeeper_annik', 'innkeep_brekka',
     'stablemaster_orin', 'smith_ferrun', 'glasswright_mirena', 'enchanter_veyle',
     'assayer_lorn', 'lampwright_soren', 'waykeeper_liv', 'surveyor_hedda',
     'provisioner_etta', 'outfitter_cass', 'salvewright_ida', 'fisher_denna',
-    'broker_slate',
+    'broker_slate', 'keywright_orla',
   ]) {
     assert.ok(actors.some((a) => a.actor === slug), `${slug} missing from Kingsdelf`);
   }

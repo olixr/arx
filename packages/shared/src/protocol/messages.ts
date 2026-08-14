@@ -2,6 +2,7 @@ import { EQUIP_SLOTS } from '../entities.js';
 import { DYE_COUNT } from '../world/tiles.js';
 import type { CarryStyle, EntityId, EntityMeta, EquipSlot, GripHand } from '../entities.js';
 import { sanitizeLook, type Look } from '../look.js';
+import type { KeyLore } from '../dungeon/key.js';
 import type { ItemRoll } from '../rarity.js';
 import type { InputFrame } from '../sim/input.js';
 import type { SkillId, SkillXp } from '../skills.js';
@@ -453,6 +454,30 @@ export interface C2SKeyDrop {
   key: number;
 }
 
+/**
+ * THE KEY LEDGER's margin note: name (or clear) a remembered door.
+ * Addressed by seed — the ledger's identity axis. The server re-runs
+ * the shared sanitizer whatever the client showed; an absent/empty
+ * label clears the note.
+ */
+export interface C2SKeyLabel {
+  t: 'keylabel';
+  seed: number;
+  label?: string;
+}
+
+/**
+ * THE KEYWRIGHT CLOSES THE LOOP: pay the fee, cut a ledgered door
+ * again. Only heard while standing with the Keywright; the server
+ * prices by tier (keyForgePrice), refuses while a copy of the seed
+ * still hangs on the ring (THE ONE COPY), and mints the re-cut key
+ * with its full fresh budget of turns.
+ */
+export interface C2SKeyForge {
+  t: 'keyforge';
+  seed: number;
+}
+
 /** Interact with a living NPC (talk to an actor, milk a cow, ...). */
 export interface C2SInteractNpc {
   t: 'interactnpc';
@@ -715,6 +740,8 @@ export type C2SMessage =
   | C2SCarryStyle
   | C2SUseKey
   | C2SKeyDrop
+  | C2SKeyLabel
+  | C2SKeyForge
   | C2SDialogueAdvance
   | C2SDialogueChoose
   | C2SDialogueEnd
@@ -1365,6 +1392,28 @@ export interface S2CKeyRing {
   keys: Array<{ id: number; roll: ItemRoll }>;
 }
 
+/**
+ * THE KEY LEDGER (full mirror, sent at login and on any change):
+ * every door this character has ever held, with their margin notes.
+ * Knowledge, not property — lore rows carry no uses and open
+ * nothing; whether a copy currently hangs on the ring is the
+ * client's own cross-read against its ring mirror.
+ */
+export interface S2CKeyLore {
+  t: 'keylore';
+  known: KeyLore[];
+}
+
+/**
+ * The Keywright's bench answered an interact (the conversation ended
+ * well on the forge hook): open the key ledger with the forge lit.
+ * The client keeps the forge lit only while this visit's screen
+ * stays open — walking off and coming back asks the Keywright again.
+ */
+export interface S2CKeyForgeOpen {
+  t: 'keyforgeopen';
+}
+
 /** One live run a party member holds open. */
 export interface PartyRunWire {
   /** The party member whose run stands open. */
@@ -1883,6 +1932,8 @@ export type S2CMessage =
   | S2CPet
   | S2CRiftgate
   | S2CKeyRing
+  | S2CKeyLore
+  | S2CKeyForgeOpen
   | S2CDungeonEnter
   | S2CSigns
   | S2CDialogueOpen
@@ -2202,6 +2253,21 @@ export function parseC2S(raw: string): C2SMessage | null {
         return null;
       }
       return { t: 'keydrop', key: msg.key };
+    }
+    case 'keylabel': {
+      if (!isFiniteNum(msg.seed) || !Number.isInteger(msg.seed) || msg.seed < 0 || msg.seed > 0xffffffff) {
+        return null;
+      }
+      if (msg.label !== undefined && (typeof msg.label !== 'string' || msg.label.length > 64)) {
+        return null;
+      }
+      return { t: 'keylabel', seed: msg.seed, label: msg.label };
+    }
+    case 'keyforge': {
+      if (!isFiniteNum(msg.seed) || !Number.isInteger(msg.seed) || msg.seed < 0 || msg.seed > 0xffffffff) {
+        return null;
+      }
+      return { t: 'keyforge', seed: msg.seed };
     }
     case 'pickup': {
       if (!isFiniteNum(msg.eid) || !Number.isInteger(msg.eid) || msg.eid < 0) return null;

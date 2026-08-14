@@ -210,9 +210,13 @@ function validateHooks(
         continue;
       }
       out.push({ kind: h.kind, quest: h.quest });
+    } else if (h.kind === 'keyforge') {
+      // Carries nothing — the shop-hook pattern: armed on the walk,
+      // the forge lights when the conversation ends well.
+      out.push({ kind: 'keyforge' });
     } else {
       errors.push(
-        `${where}.hooks[${i}].kind must be 'flag', 'give', 'shop', 'bounty', 'standing', 'fine', 'quest_offer', 'quest_accept', or 'quest_turnin'`,
+        `${where}.hooks[${i}].kind must be 'flag', 'give', 'shop', 'bounty', 'standing', 'fine', 'quest_offer', 'quest_accept', 'quest_turnin', or 'keyforge'`,
       );
     }
   }

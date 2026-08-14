@@ -1,5 +1,5 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
-import { isRarityTier, sanitizeLook, type ItemRoll, type Look, type PetState } from '@arx/shared';
+import { isRarityTier, sanitizeLook, type ItemRoll, type KeyLore, type Look, type PetState } from '@arx/shared';
 import type { Db } from './db.js';
 
 /**
@@ -1578,6 +1578,48 @@ export class AccountStore {
         );
       }
     });
+  }
+
+  /**
+   * THE KEY LEDGER — row ops, never delete-all: lore rows are append-
+   * only knowledge keyed by (character, seed), and nothing ever prunes
+   * them (forgetting is what the table forbids). Upsert keeps the
+   * FIRST identity and clock; only the label moves after that.
+   */
+  async loadKeyLore(characterId: number): Promise<KeyLore[]> {
+    const rows = await this.db.query<{
+      seed: number;
+      rar: string;
+      pwr: number | null;
+      label: string | null;
+    }>('SELECT seed, rar, pwr, label FROM key_memory WHERE character_id = ? ORDER BY first_held_at', [
+      characterId,
+    ]);
+    const out: KeyLore[] = [];
+    for (const row of rows) {
+      if (!isRarityTier(row.rar)) continue;
+      const lore: KeyLore = { seed: Number(row.seed) >>> 0, rar: row.rar };
+      if (row.pwr != null) lore.pwr = row.pwr;
+      if (row.label != null) lore.label = row.label;
+      out.push(lore);
+    }
+    return out;
+  }
+
+  upsertKeyLore(characterId: number, lore: KeyLore): void {
+    this.db.fire(
+      'INSERT INTO key_memory (character_id, seed, rar, pwr, label, first_held_at) VALUES (?, ?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (character_id, seed) DO NOTHING',
+      [characterId, lore.seed, lore.rar, lore.pwr ?? null, lore.label ?? null, Date.now()],
+    );
+  }
+
+  labelKeyLore(characterId: number, seed: number, label: string | null): void {
+    this.db.fire('UPDATE key_memory SET label = ? WHERE character_id = ? AND seed = ?', [
+      label,
+      characterId,
+      seed,
+    ]);
   }
 
   async loadLook(characterId: number): Promise<Look | null> {

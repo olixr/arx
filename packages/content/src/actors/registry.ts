@@ -165,6 +165,7 @@ import stablemasterOrin from './defs/stablemaster_orin.json';
 import smithFerrun from './defs/smith_ferrun.json';
 import glasswrightMirena from './defs/glasswright_mirena.json';
 import enchanterVeyle from './defs/enchanter_veyle.json';
+import keywrightOrla from './defs/keywright_orla.json';
 import assayerLorn from './defs/assayer_lorn.json';
 import lampwrightSoren from './defs/lampwright_soren.json';
 import waykeeperLiv from './defs/waykeeper_liv.json';
@@ -326,6 +327,7 @@ const SOURCES: readonly unknown[] = [
   smithFerrun,
   glasswrightMirena,
   enchanterVeyle,
+  keywrightOrla,
   assayerLorn,
   lampwrightSoren,
   waykeeperLiv,

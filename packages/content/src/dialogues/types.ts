@@ -67,6 +67,16 @@ export interface DialogueHookShop {
 }
 
 /**
+ * THE KEYWRIGHT'S BENCH: open the key ledger with the forge lit when
+ * this conversation ENDS WELL (the shop-hook law: terminal node or a
+ * farewell, never Esc or an interrupt). Carries nothing — the ledger
+ * is the player's own; the hook only lights the forge over it.
+ */
+export interface DialogueHookKeyForge {
+  kind: 'keyforge';
+}
+
+/**
  * THE ASK MADE CONCRETE (living-frontier Phase 3.2): the speaker points
  * the player at the nearest standing trouble within their watch. The
  * server picks the offending cell, plants the player's waypoint at its
@@ -154,7 +164,8 @@ export type DialogueHook =
   | DialogueHookFine
   | DialogueHookQuestOffer
   | DialogueHookQuestAccept
-  | DialogueHookQuestTurnin;
+  | DialogueHookQuestTurnin
+  | DialogueHookKeyForge;
 
 /** One answer the player may pick (at most 4 per node). */
 export interface DialogueChoice {

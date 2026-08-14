@@ -9,8 +9,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { dungeonSpecFromRoll, keyUsesForTier } from '@arx/shared';
-import type { ItemRoll } from '@arx/shared';
-import { fileKeys, filterKeys, orderKeys, type RingKey } from './keyOrder.js';
+import type { ItemRoll, KeyLore } from '@arx/shared';
+import { fileKeys, fileLore, filterKeys, filterLore, orderKeys, orderLore, type RingKey } from './keyOrder.js';
 
 let nextId = 1;
 function key(rar: ItemRoll['rar'], seed: number, pwr?: number, uses?: number): RingKey {
@@ -97,5 +97,50 @@ describe('filterKeys', () => {
     assert.equal(filterKeys(filed, 'all', 'all', k.spec.sigil.toLowerCase()).length, 1);
     assert.equal(filterKeys(filed, 'all', 'all', 'epic').length, 1);
     assert.equal(filterKeys(filed, 'all', 'all', 'zzzz-never').length, 0);
+  });
+});
+
+describe('the key ledger (fileLore / filterLore / orderLore)', () => {
+  const LORE: KeyLore[] = [
+    { seed: 10, rar: 'common', pwr: 5 },
+    { seed: 20, rar: 'legendary', pwr: 68, label: 'The Money Run' },
+    { seed: 30, rar: 'rare', pwr: 30 },
+  ];
+
+  it('derives specs and cross-reads held from the ring seeds', () => {
+    const rows = fileLore(LORE, new Set([20]));
+    assert.equal(rows.length, 3);
+    assert.equal(rows[1]!.held, true);
+    assert.equal(rows[0]!.held, false);
+    assert.equal(rows[1]!.label, 'The Money Run');
+    assert.equal(rows[2]!.spec.name, dungeonSpecFromRoll({ rar: 'rare', seed: 30, pwr: 30 }).name);
+  });
+
+  it('search answers the reader\'s own label first of all', () => {
+    const rows = fileLore(LORE, new Set());
+    assert.equal(filterLore(rows, 'all', 'all', 'money').length, 1);
+    assert.equal(filterLore(rows, 'all', 'all', 'money')[0]!.seed, 20);
+    assert.equal(filterLore(rows, 'legendary', 'all', '').length, 1);
+  });
+
+  it('power leads and the label wins the alphabet when present', () => {
+    const rows = fileLore(LORE, new Set());
+    const byPower = orderLore(rows, 'power');
+    assert.deepEqual(
+      byPower.map((r) => r.spec.power),
+      [68, 30, 5],
+    );
+    // 'uses' has no meaning on knowledge — falls back to power.
+    assert.deepEqual(
+      orderLore(rows, 'uses').map((r) => r.spec.power),
+      [68, 30, 5],
+    );
+    const az = orderLore(rows, 'az');
+    assert.equal(az.findIndex((r) => r.seed === 20) >= 0, true);
+  });
+
+  it('newest reads the wire backwards — the freshest memory leads', () => {
+    const rows = fileLore(LORE, new Set());
+    assert.equal(orderLore(rows, 'newest')[0]!.seed, 30);
   });
 });

@@ -161,7 +161,17 @@
 // addressing — a v30 client would turn keys by pack slots the server
 // no longer honors and show a pack the server never fills with keys —
 // so the handshake turns the old client away.
-export const PROTOCOL_VERSION = 31;
+// v32 — THE KEY LEDGER: a door once held is known forever. S2CKeyLore
+// mirrors the ledger, C2SKeyLabel writes the reader's margin note,
+// C2SKeyForge buys a re-cut door at the Keywright, and S2CKeyForgeOpen
+// lights the forge. Strictly additive JSON both ways — a v31 client
+// would drop the unknown records and merely lack the ledger wing.
+// Bumped anyway (the v26 judgment): the Keywright's whole counter
+// rides these messages, and a v31 client at her bench would watch the
+// conversation end well and then NOTHING happen — a working NPC whose
+// service silently never opens reads as a broken town, not a missing
+// nicety, so the handshake keeps the shards honest.
+export const PROTOCOL_VERSION = 32;
 
 /** The most souls one party can hold. */
 export const PARTY_CAP = 10;

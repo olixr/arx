@@ -694,6 +694,9 @@ export function buildKingsdelf(): ZoneDef {
   b.actor('kingsdelf_delver', 15, 32, W, 'kd_delver_a');
   b.actor('kingsdelf_delver', 18, 31, N, 'kd_delver_b');
   b.actor('kingsdelf_delver', 13, 38, W, 'kd_delver_c');
+  // THE KEYWRIGHT keeps her bench in the delvers' quarter — the ones
+  // who wear keys out are the ones who need doors remembered.
+  b.actor('keywright_orla', 17, 34, N);
   b.actor('kingsdelf_glasshand', 98, 63, W, 'kd_glasshand_a');
   b.actor('kingsdelf_glasshand', 98, 66, W, 'kd_glasshand_b');
 

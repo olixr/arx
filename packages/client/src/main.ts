@@ -874,9 +874,13 @@ const nav = new UiNav(input, {
       questLog.inspectQuest(key.slice('quest:'.length));
       return false;
     }
-    // The key ring's bench lights on focus the same way.
+    // The key ring's bench lights on focus the same way — both wings.
     if (key?.startsWith('keyrow:')) {
       keyRingPanel.inspectKey(Number(key.slice('keyrow:'.length)));
+      return false;
+    }
+    if (key?.startsWith('lorerow:')) {
+      keyRingPanel.inspectLore(Number(key.slice('lorerow:'.length)));
       return false;
     }
     return panels.showCardFor(el);
@@ -934,6 +938,8 @@ document.addEventListener('pointerover', (e) => {
   if (questRow) questLog.inspectQuest((questRow as HTMLElement).dataset.navkey!.slice('quest:'.length));
   const keyRow = target?.closest?.('.key-row[data-navkey^="keyrow:"]');
   if (keyRow) keyRingPanel.inspectKey(Number((keyRow as HTMLElement).dataset.navkey!.slice('keyrow:'.length)));
+  const loreRow = target?.closest?.('.key-row[data-navkey^="lorerow:"]');
+  if (loreRow) keyRingPanel.inspectLore(Number((loreRow as HTMLElement).dataset.navkey!.slice('lorerow:'.length)));
   panels.hideCard();
   const el = target?.closest?.('[data-tipname]');
   if (el) nav.showTooltipFor(el as HTMLElement);
@@ -1509,6 +1515,15 @@ const game = new ClientGame(input, {
     // (each is a no-op while closed).
     keyRingPanel.refresh();
     riftgate.refresh();
+  },
+  onKeyLore: () => {
+    // THE KEY LEDGER's mirror moved — the ledger wing repaints.
+    keyRingPanel.refresh();
+  },
+  onKeyForgeOpen: () => {
+    // The Keywright's bench: a server-driven door, through the one gate.
+    closeAllUi();
+    keyRingPanel.openForge();
   },
   onDialogueOpen: (o) => {
     // A conversation takes the whole stage: every screen closes, the

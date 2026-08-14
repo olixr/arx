@@ -564,14 +564,17 @@ import {
   dangerAt,
   dungeonSpecFromRoll,
   hashCoords,
+  keyForgePrice,
   keyUsesForTier,
   keyUsesLeft,
   mintKeyPower,
+  sanitizeKeyLabel,
   persistRegion,
   u8ToB64,
   type DangerAnchor,
   type DiscoveryWire,
   type DungeonSpec,
+  type KeyLore,
   type QuestAvailWire,
   type QuestDoneWire,
   type QuestRewardsWire,
@@ -1089,6 +1092,8 @@ interface ActiveDialogue {
    * offer chaining; it fires at the final close.
    */
   shop?: string;
+  /** The Keywright's bench, armed the same way (the shop-hook law). */
+  keyforge?: true;
 }
 
 interface DropComp {
@@ -1497,6 +1502,13 @@ interface PlayerComp {
    */
   keyRing: Array<{ id: number; roll: ItemRoll }>;
   keyRingDirty: boolean;
+  /**
+   * THE KEY LEDGER: every door this character has ever held, by seed —
+   * knowledge, not property. Written the moment a key lands on the
+   * ring, never pruned (crumbling forgets nothing), labeled by the
+   * reader alone. The Keywright re-mints from it at a price.
+   */
+  keyLore: Map<number, KeyLore>;
   equipment: Partial<Record<EquipSlot, EquippedItem>>;
   /**
    * Everything worn gear does, aggregated ONCE per equipment change —
@@ -3265,6 +3277,21 @@ export class GameServer {
         this.accounts.saveKeyRing(character.id, keyRing.map((k) => k.roll));
       }
     }
+    // THE KEY LEDGER — load the lore, then backfill: any door already
+    // hanging on the ring that predates the ledger writes itself in
+    // (first touch fixes identity; nothing is ever pruned).
+    const keyLore = new Map<number, KeyLore>();
+    if (character.id > 0) {
+      for (const lore of await this.accounts.loadKeyLore(character.id)) keyLore.set(lore.seed, lore);
+    }
+    for (const row of keyRing) {
+      const seed = row.roll.seed >>> 0;
+      if (keyLore.has(seed)) continue;
+      const lore: KeyLore = { seed, rar: row.roll.rar };
+      if (row.roll.pwr !== undefined) lore.pwr = row.roll.pwr;
+      keyLore.set(seed, lore);
+      if (character.id > 0) this.accounts.upsertKeyLore(character.id, lore);
+    }
 
     // Rescue characters saved somewhere that no longer exists — a delve
     // instance that died with the server, or any solid tile.
@@ -3384,6 +3411,7 @@ export class GameServer {
       bankDirty: false,
       keyRing,
       keyRingDirty: false,
+      keyLore,
       equipment,
       gear,
       attackCooldown: 0,
@@ -3571,6 +3599,7 @@ export class GameServer {
     session.sendJson({ t: 'recipes', known: [...player.knownRecipes] });
     session.sendJson({ t: 'inv', slots: player.inventory });
     session.sendJson({ t: 'keyring', keys: player.keyRing });
+    session.sendJson({ t: 'keylore', known: [...player.keyLore.values()] });
     // A run never survives a restart, so a spent key's last door is
     // closed by definition at login — crumble it now, spoken.
     this.sweepWornKeys(player);
@@ -11362,8 +11391,112 @@ export class GameServer {
     const row = { id: this.nextKeyRingId++, roll: roll ? { ...roll } : this.mintFreshKeyRoll() };
     player.keyRing.push(row);
     player.keyRingDirty = true;
+    // THE KEY LEDGER: the moment a door is held, it is known forever.
+    this.recordKeyLore(player, row.roll, sync);
     if (sync) this.sendKeyRing(player);
     return row;
+  }
+
+  /** Push the full ledger mirror down the wire (sent on any change). */
+  private sendKeyLore(player: PlayerComp): void {
+    player.session?.sendJson({ t: 'keylore', known: [...player.keyLore.values()] });
+  }
+
+  /**
+   * Write a held key into the ledger. First touch fixes the identity
+   * (seed/tier/power) and the clock; later touches change nothing —
+   * only the reader's own label ever moves after that (keyLabel).
+   */
+  private recordKeyLore(player: PlayerComp, roll: ItemRoll, sync = true): void {
+    const seed = roll.seed >>> 0;
+    if (player.keyLore.has(seed)) return;
+    const lore: KeyLore = { seed, rar: roll.rar };
+    if (roll.pwr !== undefined) lore.pwr = roll.pwr;
+    player.keyLore.set(seed, lore);
+    if (player.characterId > 0) this.accounts.upsertKeyLore(player.characterId, lore);
+    if (sync) this.sendKeyLore(player);
+  }
+
+  /**
+   * THE MARGIN NOTE: name (or clear) a ledgered door. The label is the
+   * reader's own — it never rides a traded key, and the server re-runs
+   * the shared sanitizer whatever the client showed.
+   */
+  keyLabel(eid: EntityId, seed: number, label: string | undefined): void {
+    const player = this.players.get(eid);
+    if (!player) return;
+    const lore = player.keyLore.get(seed >>> 0);
+    if (!lore) return;
+    const clean = label === undefined || label.trim() === '' ? null : sanitizeKeyLabel(label);
+    if (clean === null && label !== undefined && label.trim() !== '') {
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: 'That label will not take — 2 to 24 plain characters.',
+      });
+      return;
+    }
+    if (clean === null) delete lore.label;
+    else lore.label = clean;
+    if (player.characterId > 0) this.accounts.labelKeyLore(player.characterId, lore.seed, clean);
+    this.sendKeyLore(player);
+  }
+
+  /** The Keywright within working reach of this player, or null. */
+  private keywrightNear(eid: EntityId): boolean {
+    const pos = this.positions.get(eid);
+    if (!pos) return false;
+    for (const [actorEid, comp] of this.actors) {
+      if (comp.actor.id !== 'keywright_orla') continue;
+      const apos = this.positions.get(actorEid);
+      if (!apos) continue;
+      if (Math.hypot(apos.x - pos.x, apos.y - pos.y) <= 6) return true;
+    }
+    return false;
+  }
+
+  /**
+   * THE KEYWRIGHT CLOSES THE LOOP: pay the fee, and a ledgered door is
+   * cut again — full fresh budget of turns, the same halls to the last
+   * stalagmite (the seed IS the dungeon). Refusals are spoken: away
+   * from the bench, an unknown door, a copy still on the ring (THE ONE
+   * COPY — the forge is a safety net, never a duplicator), or a light
+   * purse. The wear economy stands; a loved door is only expensive,
+   * never lost.
+   */
+  keyForge(eid: EntityId, seed: number): void {
+    const player = this.players.get(eid);
+    if (!player || player.session === null) return;
+    if (!this.keywrightNear(eid)) {
+      this.speak(player, 'Needs the Keywright', 'Only the Keywright can cut a remembered door.');
+      return;
+    }
+    const lore = player.keyLore.get(seed >>> 0);
+    if (!lore) {
+      this.speak(player, 'Unknown door', 'You have never held that key — the ledger holds only what your hands have known.');
+      return;
+    }
+    if (player.keyRing.some((k) => (k.roll.seed >>> 0) === lore.seed)) {
+      this.speak(player, 'Already on your ring', 'That key still hangs on your ring — the forge cuts lost doors, not copies.');
+      return;
+    }
+    const price = keyForgePrice(lore.rar);
+    const coins = countItem(player.inventory, 'coins');
+    if (coins < price) {
+      this.speak(player, `Needs ${price} coins`, `The Keywright asks ${price} coins for that cut — you carry ${coins}.`);
+      return;
+    }
+    removeItem(player.inventory, 'coins', price);
+    const roll: ItemRoll = { rar: lore.rar, seed: lore.seed, uses: keyUsesForTier(lore.rar) };
+    if (lore.pwr !== undefined) roll.pwr = lore.pwr;
+    this.addKeyToRing(player, roll);
+    player.session.sendJson({ t: 'inv', slots: player.inventory });
+    const spec = dungeonSpecFromRoll(roll);
+    player.session.sendJson({
+      t: 'chat',
+      channel: 'system',
+      text: `The Keywright's file sings. ${spec.name} (${spec.sigil}) hangs whole on your ring again — ${price} coins, fairly cut.`,
+    });
   }
 
   /**
@@ -14758,10 +14891,12 @@ export class GameServer {
       // opens as the frame drops — "have a look, then" becomes the shelf.
       if (this.dialogueChainOffer(eid, player)) return;
       const shop = dlg.shop;
+      const keyforge = dlg.keyforge;
       this.dialogueClose(player);
       if (shop !== undefined) {
         player.session?.sendJson({ t: 'shopopen', shop, priceMult: this.shopPriceMultFor(player, shop) });
       }
+      if (keyforge) player.session?.sendJson({ t: 'keyforgeopen' });
     }
   }
 
@@ -14781,10 +14916,12 @@ export class GameServer {
       this.setPlayerFlag(player, dialogueDoneFlag(dlg.def.id));
       if (this.dialogueChainOffer(eid, player)) return;
       const shop = dlg.shop;
+      const keyforge = dlg.keyforge;
       this.dialogueClose(player);
       if (shop !== undefined) {
         player.session?.sendJson({ t: 'shopopen', shop, priceMult: this.shopPriceMultFor(player, shop) });
       }
+      if (keyforge) player.session?.sendJson({ t: 'keyforgeopen' });
     }
   }
 
@@ -14873,6 +15010,10 @@ export class GameServer {
       case 'shop':
         // Armed now, fired at a good ending (see dialogueAdvance).
         if (player.dialogue) player.dialogue.shop = hook.shop;
+        break;
+      case 'keyforge':
+        // The Keywright's bench: same arming law as the shop.
+        if (player.dialogue) player.dialogue.keyforge = true;
         break;
       case 'bounty':
         this.postBounty(eid, player);

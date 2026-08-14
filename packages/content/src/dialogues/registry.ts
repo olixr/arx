@@ -153,6 +153,7 @@ import halePost from './defs/hale_post.json';
 import nixCart from './defs/nix_cart.json';
 import hettyCart from './defs/hetty_cart.json';
 import coffCart from './defs/coff_cart.json';
+import orlaKeywright from './defs/orla_keywright.json';
 import haleWatchUneasy from './defs/hale_watch_uneasy.json';
 import haleWatchUrgent from './defs/hale_watch_urgent.json';
 import haleWatchRelief from './defs/hale_watch_relief.json';
@@ -447,6 +448,7 @@ const SOURCES: readonly unknown[] = [
   nixCart,
   hettyCart,
   coffCart,
+  orlaKeywright,
   // THE QUEST LEDGER: per-quest offer trees (priority 5 — world news
   // and once-intros outrank a job pitch) and turn-in trees (21 — a
   // finished errand is the player's earned moment), all gated on the

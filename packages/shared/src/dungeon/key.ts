@@ -220,3 +220,55 @@ export function keyUsesLeft(roll: ItemRoll | undefined): number {
   const tier: RarityTier = roll?.rar ?? 'common';
   return roll?.uses ?? keyUsesForTier(tier);
 }
+
+// ---------------------------------------------------------------- lore
+
+/**
+ * THE KEY LEDGER: a door once held is known forever. The moment a key
+ * lands on a character's ring, its identity (seed/tier/power — the
+ * whole dungeon, by the seed-is-the-dungeon law) is written into that
+ * character's ledger and never leaves it, even after the key crumbles
+ * or trades away. The ledger is KNOWLEDGE, not property: it holds no
+ * uses, opens no doors, and its labels are the reader's own margin
+ * notes (they never ride a traded key).
+ *
+ * THE KEYWRIGHT CLOSES THE LOOP: a ledgered door can be cut again by
+ * the Keywright for a steep price — the wear economy stands (keys
+ * still die), but a door you loved is never lost forever, only
+ * expensive. Priced off the tier's vendor value so the ladder's
+ * arithmetic carries through.
+ */
+export interface KeyLore {
+  seed: number;
+  rar: RarityTier;
+  pwr?: number;
+  /** The reader's own margin note; absent = unlabeled. */
+  label?: string;
+}
+
+/**
+ * The Keywright's fee: steep enough that finding keys stays the road
+ * and the forge stays the safety net — three keys' worth of coin for
+ * one re-cut door, at every rung.
+ */
+export const KEY_FORGE_PRICE_MULT = 3;
+
+export function keyForgePrice(tier: RarityTier): number {
+  return DUNGEON_TIER_LAWS[tier].value * KEY_FORGE_PRICE_MULT;
+}
+
+/**
+ * A margin-note label: 2–24 characters, letters/digits with inner
+ * spaces, apostrophes, or hyphens, starting and ending on a letter or
+ * digit. Whitespace collapses. Returns the cleaned label, or null
+ * when nothing worthy of ink remains — both sides run the same rule
+ * (the pet collar-tag law), so the pen can refuse before the wire
+ * ever hears about it.
+ */
+export function sanitizeKeyLabel(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const clean = raw.replace(/\s+/g, ' ').trim();
+  if (clean.length < 2 || clean.length > 24) return null;
+  if (!/^[A-Za-z0-9][A-Za-z0-9 '-]*[A-Za-z0-9]$/.test(clean)) return null;
+  return clean;
+}
