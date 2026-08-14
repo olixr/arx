@@ -3541,15 +3541,22 @@ export function paintGoblinHead(
   const drawEar = (side: number, depth: number): void => {
     const el = hh * (1.02 + 0.3 * hv) * depth;
     const bw = hh * 0.19 * (0.9 + 0.2 * hv);
-    const ex = headX - fx * gw * 0.3 + side * gw * 0.74;
-    const ey = crTop + hh * 0.46;
+    // PERSPECTIVE: the roots walk to the OCCIPUT as the head turns —
+    // face-on the ears root wide on the skull sides; at profile both
+    // converge at the back of the skull, where a turned head keeps
+    // them. The lateral spread collapses on the same blend.
+    const ex = headX - fx * gw * (0.3 + 0.42 * profileK) + side * gw * 0.74 * (1 - 0.7 * profileK);
+    const ey = crTop + hh * (0.46 - 0.06 * profileK);
     const sway = hurt ? 0 : 0.05 * Math.sin(f.nowMs / 640 + side * 1.7);
-    // The pin-back: gape drives the cant outward-down — flattened
-    // ears, the animal grammar every player already knows.
-    const cant = 0.6 + sway + gape * 0.5;
+    // The cant blends with the facing too: out-cant to the sides
+    // face-on, raked BACKWARD off the facing at profile — an ear
+    // never folds over the face. The gape pin-back and the listening
+    // sway ride the same blended direction.
+    const flat = side * (1 - profileK) - fx * profileK;
+    const cant = flat * (0.6 + 0.3 * profileK + gape * 0.5 + sway);
     ctx.save();
     ctx.translate(ex, ey);
-    ctx.rotate(side * cant);
+    ctx.rotate(cant);
     ctx.fillStyle = hurt ? '#ffffff' : shade(gb.hide, back ? -14 : -6);
     const notched = gb.scarred && side === nearSide;
     ctx.beginPath();
