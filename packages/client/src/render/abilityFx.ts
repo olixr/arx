@@ -535,6 +535,8 @@ export const FX_STYLES: Record<string, FxStyle> = {
   ravening_cackle: SHADOW({ mid: '#c9a44a', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.65, wash: 0.3 }),
   // Moon-pale over shadow: the scream is a spike, the answer is eyes.
   hushing_screech: SHADOW({ mid: '#b8c4d8', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.6, wash: 0.32 }),
+  // Ember over shadow: the keen is a needle, the answer is flags.
+  vixens_scream: SHADOW({ mid: '#d97a35', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.6, wash: 0.3 }),
 
   // --------------------- THE VOICES (enemy arts, docs/enemy-arts-plan.md)
   // Every kit ability wears an AUTHORED face — the fallback grammar is

@@ -1,4 +1,4 @@
-import { shade, type GnollLook, type LynxLook } from './rig.js';
+import { shade, type FoxLook, type GnollLook, type LynxLook } from './rig.js';
 
 /**
  * THE TAIL IS A SIMULATION, NOT A POSE — the cape contract in muscle.
@@ -475,6 +475,146 @@ export function drawBobtail(
   // The quiet contour that separates the stub from same-fur flanks.
   ctx.strokeStyle = shade(look.coat, -24);
   ctx.lineWidth = Math.max(1, wk * 0.012);
+  silhouette();
+  ctx.stroke();
+}
+
+export interface FoxBrushDrawOpts {
+  hurt: boolean;
+  /**
+   * True when the facing points up-screen: the brush swings against
+   * the fox's own back, so its fill steps to the pale underfur — a
+   * same-coat plume over the body read as the body grown a tumor.
+   */
+  back: boolean;
+}
+
+/**
+ * Paint the projected BRUSH — the fox's flag, the biggest tail any
+ * beast in the wood carries: a full plume swelling past mid-length and
+ * HOLDING its volume almost to the end, the darker root third grown
+ * in (never a banded raccoon), and the flag tip — white on the wild
+ * skulk, smoke over one ember ring on the matriarch. Pale underfur
+ * rides the low edge; a quiet contour separates the plume from
+ * same-coat flanks. Plain path calls — no Path2D — so node-side
+ * painter tests can walk every coordinate.
+ */
+export function drawFoxBrush(
+  ctx: CanvasRenderingContext2D,
+  pts: Array<{ x: number; y: number }>,
+  look: FoxLook,
+  wk: number,
+  opts: FoxBrushDrawOpts,
+): void {
+  const n = pts.length;
+  // The root-third and flag overlays walk fixed knuckles — the brush
+  // needs the full TailSim chain, not a stub.
+  if (n < 5) return;
+  const queen = look.champion === true;
+  const left: Array<{ x: number; y: number }> = [];
+  const right: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[Math.max(0, i - 1)]!;
+    const b = pts[Math.min(n - 1, i + 1)]!;
+    let tx = b.x - a.x;
+    let ty = b.y - a.y;
+    const tl = Math.hypot(tx, ty) || 1;
+    tx /= tl;
+    ty /= tl;
+    const t = i / (n - 1);
+    // The plume profile: a slim rooted neck, then volume that swells
+    // fast and HOLDS — pow flattens the sine's peak so the brush
+    // carries fat past mid-length instead of dieting to a whip.
+    const w =
+      (0.02 + 0.078 * Math.pow(Math.sin(Math.min(1, t * 1.06) * Math.PI), 0.65)) *
+      (queen ? 1.2 : 1) *
+      wk;
+    left.push({ x: pts[i]!.x + ty * w, y: pts[i]!.y - tx * w });
+    right.push({ x: pts[i]!.x - ty * w, y: pts[i]!.y + tx * w });
+  }
+
+  const silhouette = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(left[0]!.x, left[0]!.y);
+    for (let i = 1; i < n; i++) ctx.lineTo(left[i]!.x, left[i]!.y);
+    const tipX = pts[n - 1]!.x + (pts[n - 1]!.x - pts[n - 2]!.x) * 0.5;
+    const tipY = pts[n - 1]!.y + (pts[n - 1]!.y - pts[n - 2]!.y) * 0.5;
+    ctx.quadraticCurveTo(tipX, tipY, right[n - 1]!.x, right[n - 1]!.y);
+    for (let i = n - 2; i >= 0; i--) ctx.lineTo(right[i]!.x, right[i]!.y);
+    ctx.closePath();
+  };
+
+  ctx.lineJoin = 'round';
+  // The back view shows underfur, but DIMMED toward the coat — raw
+  // cream painted plume-wide read as a balloon over the body.
+  ctx.fillStyle = opts.hurt ? '#ffffff' : opts.back ? shade(look.under, -22) : shade(look.coat, -3);
+  silhouette();
+  ctx.fill();
+  if (opts.hurt) return;
+
+  ctx.save();
+  silhouette();
+  ctx.clip();
+  // The darker root third, grown in along the chain — volume shading,
+  // never a ring.
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = opts.back ? shade(look.under, -34) : look.brushRoot;
+  ctx.beginPath();
+  ctx.moveTo(left[0]!.x, left[0]!.y);
+  ctx.lineTo(left[1]!.x, left[1]!.y);
+  ctx.lineTo(left[2]!.x + (left[3]!.x - left[2]!.x) * 0.4, left[2]!.y + (left[3]!.y - left[2]!.y) * 0.4);
+  ctx.lineTo(right[2]!.x + (right[3]!.x - right[2]!.x) * 0.4, right[2]!.y + (right[3]!.y - right[2]!.y) * 0.4);
+  ctx.lineTo(right[1]!.x, right[1]!.y);
+  ctx.lineTo(right[0]!.x, right[0]!.y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  // THE FLAG: the last knuckle and a half dips in the tip — white for
+  // the skulk, smoke for the queen. The read that survives any zoom.
+  ctx.fillStyle = look.tip;
+  ctx.beginPath();
+  const fl = n - 2;
+  ctx.moveTo(left[fl]!.x + (left[fl - 1]!.x - left[fl]!.x) * 0.35, left[fl]!.y + (left[fl - 1]!.y - left[fl]!.y) * 0.35);
+  for (let i = fl; i < n; i++) ctx.lineTo(left[i]!.x, left[i]!.y);
+  const capX = pts[n - 1]!.x + (pts[n - 1]!.x - pts[n - 2]!.x) * 0.55;
+  const capY = pts[n - 1]!.y + (pts[n - 1]!.y - pts[n - 2]!.y) * 0.55;
+  ctx.quadraticCurveTo(capX, capY, right[n - 1]!.x, right[n - 1]!.y);
+  for (let i = n - 2; i >= fl; i--) ctx.lineTo(right[i]!.x, right[i]!.y);
+  ctx.lineTo(right[fl]!.x + (right[fl - 1]!.x - right[fl]!.x) * 0.35, right[fl]!.y + (right[fl - 1]!.y - right[fl]!.y) * 0.35);
+  ctx.closePath();
+  ctx.fill();
+  // The queen's ember ring, banded hot below the smoke — her one
+  // bright mark, where the whole skulk's flag burns white.
+  if (queen && look.ember) {
+    ctx.fillStyle = look.ember;
+    const la = left[n - 3]!;
+    const lb = left[n - 2]!;
+    const ra = right[n - 3]!;
+    const rb = right[n - 2]!;
+    ctx.beginPath();
+    ctx.moveTo(la.x + (lb.x - la.x) * 0.5, la.y + (lb.y - la.y) * 0.5);
+    ctx.lineTo(la.x + (lb.x - la.x) * 0.82, la.y + (lb.y - la.y) * 0.82);
+    ctx.lineTo(ra.x + (rb.x - ra.x) * 0.82, ra.y + (rb.y - ra.y) * 0.82);
+    ctx.lineTo(ra.x + (rb.x - ra.x) * 0.5, ra.y + (rb.y - ra.y) * 0.5);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Pale underfur along the DOWN-SCREEN edge — the plume's low side.
+  let leftDown = 0;
+  for (let i = 1; i < n - 1; i++) leftDown += left[i]!.y - right[i]!.y;
+  const low = leftDown >= 0 ? left : right;
+  ctx.strokeStyle = shade(look.under, -6);
+  ctx.lineWidth = Math.max(1, wk * 0.018);
+  ctx.beginPath();
+  ctx.moveTo(low[1]!.x, low[1]!.y);
+  for (let i = 2; i <= n - 2; i++) ctx.lineTo(low[i]!.x, low[i]!.y);
+  ctx.stroke();
+
+  // The quiet contour separating the brush from same-coat flanks.
+  ctx.strokeStyle = shade(look.coat, -24);
+  ctx.lineWidth = Math.max(1, wk * 0.014);
   silhouette();
   ctx.stroke();
 }

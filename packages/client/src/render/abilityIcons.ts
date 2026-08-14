@@ -4066,6 +4066,64 @@ Object.assign(PLATES, {
     // The ember eye — the champion tier reads through it.
     dot(c, '#ff9a3d', -0.15, -0.07, 0.032);
   },
+  // Vixen's Scream — the matriarch's snipe muzzle to the sky under
+  // one enormous standing ear, the keen rising as a single wavering
+  // thread — never the howl's smooth rings, never the cackle's broken
+  // barks. (NPC special: bestiary/staging.)
+  vixens_scream: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    // THE KEEN: one thin thread wavering up and away from the muzzle.
+    c.strokeStyle = st.mid;
+    c.lineCap = 'round';
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(0.16, -0.24);
+    for (let k = 1; k <= 8; k++) {
+      const u = k / 8;
+      c.lineTo(0.16 + u * 0.22 + Math.sin(u * Math.PI * 3) * 0.045, -0.24 - u * 0.34);
+    }
+    c.stroke();
+    // Vixen head in profile, muzzle to the sky: the fine snipe raised
+    // (needle-thin against the wolf plate's wedge), the throat line
+    // dropping into the great ruff's chopped fall-away, and the
+    // outsize triangular ear STANDING — the matriarch screams
+    // ears-up where the wolf howls ears-back.
+    c.fillStyle = st.deep;
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(0.18, -0.26); // snipe tip, raised needle-fine
+    c.lineTo(0.02, -0.12); // long jawline down
+    c.lineTo(-0.06, 0.04); // throat
+    c.lineTo(-0.12, 0.14); // ruff chop 1
+    c.lineTo(-0.08, 0.2); // ruff notch
+    c.quadraticCurveTo(-0.12, 0.34, -0.3, 0.4); // chest fall-away
+    c.lineTo(-0.34, 0.12); // back of shoulder
+    c.lineTo(-0.25, -0.02); // nape
+    c.lineTo(-0.32, -0.3); // the great ear, standing tall
+    c.lineTo(-0.2, -0.32); // ear tip breadth
+    c.lineTo(-0.14, -0.14); // ear front down to the crown
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The soot ear-back: a dark inner line seaming the standing ear.
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.02;
+    c.beginPath();
+    c.moveTo(-0.27, -0.26);
+    c.lineTo(-0.18, -0.1);
+    c.stroke();
+    // The smoke brush curled at her feet, flag up — one white tip.
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(-0.28, 0.42);
+    c.quadraticCurveTo(0.02, 0.46, 0.16, 0.32);
+    c.stroke();
+    dot(c, '#efe8d8', 0.17, 0.31, 0.036);
+    // The cold jade eye — the matriarch reads through it.
+    dot(c, '#9fd8a8', -0.08, -0.08, 0.032);
+  },
   // Ravening Cackle — the packlord's muzzle thrown back, the laugh
   // breaking up in stuttered barks. (NPC special: bestiary/staging.)
   ravening_cackle: (st) => (c) => {

@@ -1467,6 +1467,74 @@ const defs: NpcDef[] = [
       { ability: 'rending_lunge', cooldownTicks: 180, windupTicks: 10, minRange: 1.5, maxRange: 4 },
     ],
   },
+  // ------------------------------------------------------- the red skulk
+  {
+    id: 'fox',
+    name: 'Fox',
+    level: 10,
+    maxHp: 30,
+    damage: 3,
+    attackRange: 1.0,
+    // The quickest snap in the wood: dart in, nip, gone — nothing
+    // hits softer or oftener.
+    attackCooldownTicks: 32,
+    aggroRange: 5,
+    // The wary one: near-round awareness — you do not walk up behind
+    // a fox. Cunning as a sight arc.
+    sightArc: 300,
+    leashRange: 26,
+    // The fastest ground in the low wood — you do not run a fox down.
+    speed: 5.0,
+    xpReward: 100,
+    loot: ['fox', 'heirlooms'],
+    respawnSec: 40,
+    color: '#b4622a',
+    radius: 0.28,
+    hitHeight: 0.85,
+    // The nip: needle teeth, quick and shallow — it costs you to be
+    // touched, never to stand there.
+    attackStatus: { status: 'bleed', power: 1, durationTicks: 40 },
+    pounce: true,
+    pack: 'foxkin',
+  },
+  // THE DIRE FOX — the smokebrush vixen, the matriarch of the skulk.
+  // Never the dire wolf's wall: she is RANGY and faster than anything
+  // her size, and the champion fight is the HEDGE closing around you
+  // — her scream brings the skulk in silent.
+  {
+    id: 'fox_champion',
+    name: 'Smokebrush vixen',
+    level: 18,
+    maxHp: 78,
+    damage: 5,
+    attackRange: 1.0,
+    // The matriarch presses the fastest tempo of any champion.
+    attackCooldownTicks: 30,
+    aggroRange: 7,
+    sightArc: 320,
+    // A roaming matriarch ranges wide of any one earth.
+    leashRange: 36,
+    speed: 5.2,
+    xpReward: 275,
+    loot: ['fox_champion', 'heirlooms'],
+    respawnSec: 90,
+    color: '#6b3226',
+    radius: 0.4,
+    hitHeight: 1.25,
+    // The matriarch's teeth go deeper and stay open longer.
+    attackStatus: { status: 'bleed', power: 2, durationTicks: 60 },
+    pounce: true,
+    pack: 'foxkin',
+    kit: [
+      // The scream: the night opens, blood runs cold, and the skulk
+      // comes silent through the hedges — never the duskruff's kit,
+      // and never a duel.
+      { ability: 'vixens_scream', cooldownTicks: 150, maxRange: 4.5, rally: true },
+      // The dart: through you and past — the feint that bleeds. She
+      // spends it to break the kiting orbit, not to commit.
+      { ability: 'shrilling_dart', cooldownTicks: 110, minRange: 1.3, maxRange: 3.2 },
+    ],
+  },
   {
     id: 'great_owl',
     name: 'Great owl',

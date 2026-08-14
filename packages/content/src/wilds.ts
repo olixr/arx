@@ -155,6 +155,24 @@ export const WILD_ROSTER: readonly WildEntry[] = [
     habitat: 'den',
     family: 'lynxkin',
   },
+  // The red skulk: foxes work the hedge-country where wood meets
+  // grass — singles and pairs by day, bolder bands after dark, and in
+  // the deep tiers the night skulk runs behind the smokebrush vixen.
+  // No family yet: the territory chain law wants a POI to declare
+  // 'foxkin' before the wilds may lean on it (the golem precedent).
+  { npc: 'fox', weight: 1.5, tiers: [1, 4], biomes: ['forest', 'grass'], band: [1, 2], spread: 2, habitat: 'den' },
+  { npc: 'fox', weight: 2, tiers: [2, 5], biomes: ['forest', 'grass'], hours: NIGHT, band: [2, 3], spread: 2, habitat: 'den' },
+  {
+    npc: 'fox',
+    weight: 1.5,
+    tiers: [4, 5],
+    biomes: ['forest'],
+    hours: NIGHT,
+    band: [2, 3],
+    spread: 3,
+    lead: { npc: 'fox_champion' },
+    habitat: 'den',
+  },
   { npc: 'cave_bat', weight: 2, tiers: [2, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 3], spread: 2 },
   { npc: 'giant_spider', weight: 1.5, tiers: [3, 5], biomes: ['forest'], hours: NIGHT },
   { npc: 'skeleton', weight: 1, tiers: [3, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 3], habitat: 'barrow', family: 'dead' },

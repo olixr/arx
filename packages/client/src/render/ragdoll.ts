@@ -57,6 +57,9 @@ import {
   drawWorgHead,
   enchantedStyle,
   lynxLook,
+  foxLook,
+  paintFoxBody,
+  drawFoxHead,
   owlWingFan,
   paintBearBody,
   paintBeetleBody,
@@ -1668,6 +1671,43 @@ export function drawBeastRagdoll(
     ctx.beginPath();
     facetCircle(ctx, tx, tipY, s * (champ ? 0.04 : 0.032), 5, spineA);
     ctx.fill();
+  } else if (look.defId.startsWith('fox')) {
+    // The great brush lies limp along the ground — the flag still
+    // honest on the dead: white on the skulk, the queen's smoke tip
+    // with its ember ring gone cold but not dark.
+    const fl = foxLook(look.defId, look.seed);
+    const queen = fl.champion === true;
+    const tx = rear.x - Math.cos(spineA) * len * (queen ? 0.66 : 0.62);
+    const tipY = f.ay + g[0]!.floor * f.s + s * 0.02;
+    const brush = taperedSpinePath(
+      rear.x,
+      rear.y,
+      (rear.x + tx) / 2,
+      Math.max(rear.y, tipY) + s * 0.035,
+      tx,
+      tipY,
+      (t) => s * (queen ? 1.15 : 1) * (0.024 + 0.062 * Math.sin(Math.PI * Math.pow(t, 0.8))),
+    );
+    ctx.fillStyle = shade(fl.coat, -5);
+    ctx.fill(brush);
+    ctx.fillStyle = fl.brushRoot;
+    ctx.beginPath();
+    facetCircle(ctx, rear.x + (tx - rear.x) * 0.22, rear.y + (tipY - rear.y) * 0.22 + s * 0.02, s * 0.045, 5, spineA * 0.7);
+    ctx.fill();
+    if (queen && fl.ember) {
+      ctx.strokeStyle = fl.ember;
+      ctx.lineWidth = Math.max(1.4, s * 0.026);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(rear.x + (tx - rear.x) * 0.72, rear.y + (tipY - rear.y) * 0.72 + s * 0.02);
+      ctx.lineTo(rear.x + (tx - rear.x) * 0.82, rear.y + (tipY - rear.y) * 0.82 + s * 0.01);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
+    ctx.fillStyle = fl.tip;
+    ctx.beginPath();
+    facetCircle(ctx, tx, tipY, s * (queen ? 0.046 : 0.04), 5, spineA);
+    ctx.fill();
   } else if (look.defId === 'worg') {
     // The ratty crook drops dead straight — no kink left in it.
     const tx = rear.x - Math.cos(spineA) * len * 0.5;
@@ -1767,6 +1807,23 @@ export function drawBeastRagdoll(
     // The corpse keeps its coat CLUSTER — resolved from the raw eid,
     // the gnoll corpse-coat law spoken feline.
     paintLynxBody(ctx, spec, lynxLook(look.defId, look.seed), {
+      bx: midX,
+      gy: midY + r * 0.4,
+      s,
+      fx: Math.cos(spineA),
+      fy: Math.sin(spineA),
+      ys: 1,
+      seed: look.seed,
+      hurt: false,
+      bob: 0,
+      roll: 0,
+      topScale: 0.55,
+      botH: 0.02,
+    });
+  } else if (look.defId.startsWith('fox')) {
+    // The corpse keeps its coat CLUSTER — resolved from the raw eid,
+    // the gnoll corpse-coat law spoken vulpine.
+    paintFoxBody(ctx, spec, foxLook(look.defId, look.seed), {
       bx: midX,
       gy: midY + r * 0.4,
       s,
@@ -2067,6 +2124,18 @@ export function drawBeastRagdoll(
   } else if (look.defId.startsWith('lynx')) {
     // Tufts and ruff stay; the gold-green lamps go out — dead-eyes law.
     drawLynxHead(ctx, lynxLook(look.defId, look.seed), {
+      x: head.x,
+      y: head.y,
+      s,
+      fx: Math.cos(neckA),
+      fy: Math.sin(neckA),
+      ys: 1,
+      dead: true,
+    });
+  } else if (look.defId.startsWith('fox')) {
+    // Soot ears and stockings stay; the amber lamps and their slit
+    // pupils go out — dead-eyes law.
+    drawFoxHead(ctx, foxLook(look.defId, look.seed), {
       x: head.x,
       y: head.y,
       s,

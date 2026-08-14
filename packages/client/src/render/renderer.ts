@@ -82,6 +82,7 @@ import {
   gnollLook,
   goblinLook,
   lynxLook,
+  foxLook,
   owlHoverHeight,
   owlLook,
   skeletonLook,
@@ -176,7 +177,7 @@ import {
 } from './reveal.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
-import { BobtailSim, TailSim, drawBobtail, drawTail } from './tail.js';
+import { BobtailSim, TailSim, drawBobtail, drawFoxBrush, drawTail } from './tail.js';
 import { EarSim } from './earPhysics.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
@@ -619,6 +620,10 @@ interface AnimState {
   ears?: EarSim;
   /** The lynx bobtail sim — present only on the tufted shadows. */
   bobtail?: BobtailSim;
+  /** THE BRUSH IS A SIMULATION: the fox's full plume — its own slot,
+   *  beside the gnoll's humanoid-lane `tail`, so neither lane's
+   *  lifecycle evicts the other's appendage. */
+  foxBrush?: TailSim;
   /** THE FLEECE TELLS THE TIME: last seen shorn state on a sheep —
    *  the false→true edge is the shear moment and puffs the tufts. */
   shornSeen?: boolean;
@@ -32838,6 +32843,42 @@ export class Renderer {
     } else if (anim.bobtail) {
       anim.bobtail = undefined;
     }
+    // THE BRUSH IS A SIMULATION (tail.ts): the fox's plume rides the
+    // full TailSim chain — nearly the body's own length, streaming
+    // out at a lope, settling into the soft low arc at rest — and
+    // paints through drawFoxBrush inside drawBeast's depth seam.
+    let brushSim: TailSim | null = null;
+    if (defId.startsWith('fox')) {
+      const queenB = defId === 'fox_champion';
+      if (!anim.foxBrush) {
+        anim.foxBrush = new TailSim(queenB ? 1.15 : 0.9, eid);
+      }
+      brushSim = anim.foxBrush;
+      brushSim.update(
+        s.x,
+        s.y,
+        // The hip height: the brush roots off the rump line, riding
+        // the gait bob.
+        (queenB ? 0.46 : 0.33) + legPose.bob * 0.35,
+        legPose.dir,
+        this.frameDt,
+        performance.now() / 1000,
+        queenB ? 1.3 : 0.95,
+      );
+      const look = foxLook(defId, eid);
+      paintBob = () => {
+        const pts = brushSim!.nodes.map((nd) => {
+          const sp = this.camera.worldToScreen(nd.x, nd.y, this.w, this.h);
+          return { x: sp.x, y: sp.y - this.renderLift(nd.x, nd.y) * scale - nd.z * scale };
+        });
+        drawFoxBrush(this.ctx, pts, look, scale, {
+          hurt,
+          back: Math.sin(legPose.dir) < -0.2,
+        });
+      };
+    } else if (anim.foxBrush) {
+      anim.foxBrush = undefined;
+    }
     // THE FLEECE TELLS THE TIME: the false→true edge on the meta's
     // shorn flag IS the shear landing — puff the fleece off the body.
     const shorn = meta.shorn === true;
@@ -32860,7 +32901,10 @@ export class Renderer {
       performance.now() - anim.poseStartedAt < 900 ||
       // A restless bob (moving cat, or a tip still flicking after a
       // stop) re-bakes at full rate; a calm one waits on the cadence.
-      (bobSim !== null && bobSim.restless);
+      (bobSim !== null && bobSim.restless) ||
+      // The fox's brush earns the same full-rate courtesy — a settling
+      // plume that snaps between cache frames reads as a dropped sim.
+      (brushSim !== null && brushSim.restless);
     const olDyn = fullDyn || (locomotion && (this.frameNo + eid) % 2 === 0);
     return {
       sortY: s.y,
@@ -32936,7 +32980,7 @@ export class Renderer {
         // antlers ride a raised neck and clip at the top edge without
         // their own headroom (user-flagged walking up-screen).
         const headroom =
-          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : 0;
+          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : defId === 'fox' ? 0.35 : defId === 'fox_champion' ? 0.5 : 0;
         const top = (spec.bodyRise + (def?.radius ?? 0.3) * 2.2 + headroom) * scale + r;
         const bottom = (spec.rig.legLen + 0.7) * scale;
         return { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom };

@@ -1426,6 +1426,115 @@ const rallying_howl: AbilitySig = {
 };
 
 /**
+ * VIXENS_SCREAM — "the flags come up."
+ * The matriarch's scream is a NEEDLE where the howl is a horn: one
+ * thin keening line wavers itself around the rim — smooth, rising and
+ * falling, never the cackle's jagged cardiogram — and where it
+ * passes, BRUSH FLAGS flick up out of the hedge-dark: curved
+ * white-tipped strokes, the skulk answering with the only part of a
+ * fox you ever see. Ember-and-white paired grains hold the ring for
+ * eight seconds. The hedges are full and you knew it too late.
+ */
+const vixens_scream: AbilitySig = {
+  spawn(c) {
+    const rand = srand(c.seed ^ 0x5c21);
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2 + rand() * 0.35;
+      lay(c, c.wx + Math.cos(a) * c.radius * 0.92 - 0.04, c.wy + Math.sin(a) * c.radius * 0.92,
+        '#d97a35', { life: 8, size: 0.045 });
+      lay(c, c.wx + Math.cos(a) * c.radius * 0.92 + 0.05, c.wy + Math.sin(a) * c.radius * 0.92 + 0.02,
+        '#efe8d8', { life: 8, size: 0.038 });
+    }
+  },
+  ground(c) {
+    const { ctx, st, t, sc, px, rPx } = c;
+    const rand = srand(c.seed ^ 0x5c22);
+    const fade = t < 0.7 ? 1 : (1 - t) / 0.3;
+    const a0 = (c.seed % 7) * 0.9;
+    const written = cl(t / 0.55);
+    ctx.save();
+    // THE KEENING LINE: one thin wavering thread written around the
+    // rim — smooth swells, no spikes: a scream held, not barked.
+    ctx.globalAlpha = 0.9 * fade;
+    ctx.strokeStyle = st.mid;
+    ctx.lineWidth = Math.max(1.5, sc * 0.032);
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    const N = 30;
+    let started = false;
+    for (let k = 0; k <= N * written; k++) {
+      const f = k / N;
+      const a = a0 + f * Math.PI * 2;
+      const wob = Math.sin(f * Math.PI * 7 + a0) * 0.09 + Math.sin(f * Math.PI * 3) * 0.05;
+      const p = pt(c, rPx * (0.94 + wob * 0.12), a);
+      if (!started) {
+        ctx.moveTo(p.x, p.y);
+        started = true;
+      } else ctx.lineTo(p.x, p.y);
+    }
+    ctx.stroke();
+    // THE FLAGS: white-tipped brushes flicking up out of the dark at
+    // the rim, each on its own clock as the keen reaches it — the
+    // only part of a fox you ever see, and now it is all of them.
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2 + rand() * 0.3;
+      const born = 0.12 + (k % 3) * 0.13;
+      const u = cl((t - born) / 0.16);
+      const sink = cl((t - born - 0.4) / 0.22);
+      if (u <= 0 || sink >= 1) continue;
+      const p = pt(c, rPx * 0.94, a);
+      const H = sc * 0.2 * u * (1 - sink);
+      const lean = Math.sign(p.x - px) || 1;
+      ctx.globalAlpha = 0.95 * fade;
+      ctx.strokeStyle = '#a1522a';
+      ctx.lineWidth = Math.max(2.2, sc * 0.055);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.quadraticCurveTo(p.x + lean * sc * 0.045, p.y - H * 0.6, p.x + lean * sc * 0.02, p.y - H);
+      ctx.stroke();
+      // The white tip — the flag's whole point.
+      ctx.fillStyle = '#efe8d8';
+      ctx.beginPath();
+      ctx.arc(p.x + lean * sc * 0.02, p.y - H, Math.max(1.6, sc * 0.036) * (0.6 + 0.4 * u), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineCap = 'butt';
+    }
+    ctx.restore();
+  },
+  air(c) {
+    const { ctx, st, t, sc, px, py } = c;
+    const fade = t < 0.6 ? 1 : (1 - t) / 0.4;
+    ctx.save();
+    // THE KEEN: a single needle thread climbing off the raised
+    // muzzle, wavering as it rises — never the howl's breath column.
+    const H = sc * 1.5 * cl(t / 0.28);
+    ctx.globalAlpha = 0.85 * fade;
+    ctx.strokeStyle = st.core;
+    ctx.lineWidth = Math.max(1.4, sc * 0.028);
+    ctx.beginPath();
+    const steps = 8;
+    for (let k = 0; k <= steps; k++) {
+      const u = k / steps;
+      const x = px + Math.sin(u * Math.PI * 3 + t * 9) * sc * 0.06 * u;
+      const y = py - sc * 0.7 - H * u;
+      if (k === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    // One ember spark riding the thread's top.
+    const sx = px + Math.sin(Math.PI * 3 + t * 9) * sc * 0.06;
+    ctx.globalAlpha = 0.9 * fade;
+    ctx.fillStyle = st.mid;
+    ctx.beginPath();
+    ctx.arc(sx, py - sc * 0.7 - H, Math.max(1.6, sc * 0.03), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    if (t < 0.15) c.glow(c.wx, c.wy, c.radius * 0.65, 0.35 * (1 - t / 0.15));
+  },
+};
+
+/**
  * RAVENING_CACKLE — "the joke goes round."
  * The packlord's laugh travels the warband: a jagged cardiogram of
  * cackling writes itself around the rim segment by segment, and
@@ -1628,6 +1737,7 @@ export const RELIC_SIGS: Record<string, AbilitySig> = {
   bone_tempest,
   ground_slam,
   rallying_howl,
+  vixens_scream,
   ravening_cackle,
   hushing_screech,
 };

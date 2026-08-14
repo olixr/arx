@@ -3580,6 +3580,19 @@ const defs: AbilityDef[] = [
     // The hush runs cold: rooted legs while every owl in earshot stoops.
     status: { status: 'chill', power: 1, durationTicks: 50 },
   },
+  {
+    id: 'vixens_scream',
+    name: "Vixen's Scream",
+    desc: 'The matriarch screams the night open. Blood runs cold, and the skulk comes silent through the hedges.',
+    color: '#d97a35',
+    code: 'Vs',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'nova',
+    damage: 2, // the scream barely bruises — the SKULK is the payload
+    radius: 2.6,
+    // The same cold dread as the howl, keener and thinner.
+    status: { status: 'chill', power: 1, durationTicks: 50 },
+  },
 
   // -------------------- THE VOICES (enemy arts, docs/enemy-arts-plan.md
   // Phase 3): the bestiary's kit abilities. Every entry keeps

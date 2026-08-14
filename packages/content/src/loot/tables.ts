@@ -1156,6 +1156,44 @@ const defs: LootTableDef[] = [
       ...setDrops('emberfox', 0.006, { colorway: 'silverfox' }),
     ],
   },
+  // ------------------------------------------------------- the red skulk
+  {
+    id: 'fox',
+    desc: 'What the henhouse raider leaves: the flagged pelt, and somebody\'s missing chicken.',
+    entries: [
+      { item: 'bones' },
+      { item: 'fox_pelt', chance: 0.9 },
+      // Every fox is three fences from a coop it knows the way into.
+      { item: 'raw_chicken', chance: 0.25 },
+      { item: 'egg', chance: 0.15 },
+      { item: 'scrap_hide', qty: [1, 2], chance: 0.3 },
+      { item: 'crimson_essence', qty: [1, 2], chance: 0.12 },
+      { item: 'verdant_essence', chance: 0.1 },
+      { item: 'verdant_totem', chance: 0.02 },
+      { item: 'bloomstone', chance: 0.01 },
+    ],
+  },
+  {
+    id: 'fox_champion',
+    desc: 'The smokebrush vixen pays like the matriarch she is: the ember-dark pelt, and everything the skulk ever stole, buried where only she remembered.',
+    rarityBonus: 3,
+    entries: [
+      { item: 'bones' },
+      { item: 'smokebrush_pelt', chance: 0.9 },
+      { item: 'fox_pelt', qty: [1, 2], chance: 0.6 },
+      // A fox caches what it cannot carry. The matriarch cached for
+      // nine winters.
+      { item: 'coins', qty: [30, 80], chance: 0.7 },
+      { item: 'crimson_essence', qty: [1, 3], chance: 0.35 },
+      { item: 'verdant_totem', chance: 0.1 },
+      { item: 'bloomstone', chance: 0.04 },
+      { item: 'brass_key', chance: 0.08 },
+      { item: 'dungeon_key', chance: 0.04 },
+      // The set that carries her name comes home to her: the tanners
+      // who cut the first emberfox jerkin cut it from her line.
+      ...setDrops('emberfox', 0.006),
+    ],
+  },
   // ------------------------------------------------------ the parliament
   {
     id: 'great_owl',

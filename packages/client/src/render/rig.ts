@@ -9678,6 +9678,54 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     legColor: '#3a3746',
     segSplit: [0.53, 0.58],
   },
+  // THE FOX: the lightest hunter in the wood — a narrow-tracked frame
+  // (a fox trots its feet nearly on one line) with the highest step of
+  // any canid: the prance IS the gait read. Dainty bones, fast turn,
+  // and the fastest ground speed in the low wood — you do not run a
+  // fox down, it runs YOU down and thinks better of it.
+  fox: {
+    rig: {
+      legs: quadLegs(0.24, 0.09),
+      legLen: 0.36,
+      rise: 0.3,
+      liftAmp: 0.13,
+      runSpeed: 5.0,
+      turnRate: 11,
+    },
+    bodyLen: 0.31,
+    bodyRise: 0.35,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.055,
+    foot: 'paw',
+    // The slightly long forearm over a fine pastern, the long thigh
+    // behind — the featherweight spring, lighter than the cat's.
+    segSplit: [0.52, 0.57],
+  },
+  // The dire fox: never a scaled fox and never the dire wolf's mass —
+  // she is RANGY: legs longer than her body says they should be, a
+  // deep but narrow chest, and the whole frame carried on the same
+  // dainty feet. Where the dire wolf is a wall, the matriarch is a
+  // blade's edge moving faster than anything her size.
+  fox_champion: {
+    rig: {
+      legs: quadLegs(0.3, 0.12),
+      legLen: 0.48,
+      rise: 0.4,
+      liftAmp: 0.12,
+      runSpeed: 5.2,
+      turnRate: 10,
+    },
+    bodyLen: 0.42,
+    bodyRise: 0.48,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.07,
+    foot: 'paw',
+    segSplit: [0.52, 0.57],
+  },
   rat: {
     rig: {
       legs: quadLegs(0.19, 0.13),
@@ -16652,6 +16700,595 @@ export function drawLynxHead(
   }
 }
 
+/**
+ * THE FOX — the cunning made flesh, and none of it borrowed: not the
+ * wolf's slab skull, not the lynx's flat plate, not the worg's slope.
+ * Four reads own the species. THE BRUSH: a tail nearly the body's own
+ * length ending in the white flag — the one mark that survives any
+ * zoom, any coat, any light. THE SOOT EARS: oversized triangles,
+ * black-backed, so the fox reads from BEHIND by its ears alone. THE
+ * SNIPE: a fine tapering muzzle under amber eyes cut with the vertical
+ * pupil — the only canid in the wood wearing a cat's eye. THE
+ * STOCKINGS: dark legs under a warm coat, the fox stepping in soot.
+ */
+export interface FoxLook {
+  coat: string;
+  /** Cream bib, underbelly, and the pale side of every mark. */
+  under: string;
+  /** The dark stockings — a fox walks in soot to the knee. */
+  sock: string;
+  /** Soot backing the oversized ears — the from-behind read. */
+  earBack: string;
+  earIn: string;
+  eye: string;
+  nose: string;
+  /** The brush flag: white for the wild skulk, smoke for the queen. */
+  tip: string;
+  /** The brush's darker root third — volume, not a banded raccoon. */
+  brushRoot: string;
+  /**
+   * The cross-fox mark: a dark dorsal stripe crossed by a shoulder
+   * bar. One wild cluster wears it faint; the matriarch wears it
+   * burned deep — the cross writ large.
+   */
+  mantle?: string;
+  /** Silver ticking — the sable cluster's frost, the queen's winters. */
+  grizzle?: string;
+  bodyW: number;
+  backH: number;
+  /** A modest wither rise — the fox carries its head HIGH and alert. */
+  shoulderH: number;
+  /** The light spring coiled behind — well under the lynx's ramp. */
+  haunchH: number;
+  chestH: number;
+  /** High tuck: the leggy waist that says featherweight at any zoom. */
+  tuckH: number;
+  headW: number;
+  headH: number;
+  /**
+   * The matriarch dresses further: the great pale ruff collar, the
+   * silvered mask, the ember ring on her smoke brush. Champions never
+   * roll a cluster — the vixen is a DESIGN (the packlord law).
+   */
+  champion?: boolean;
+  /** The queen's ember ring, banded below her smoke tip. */
+  ember?: string;
+  /** The great ruff collar — pale, chest-deep, no lean fox carries it. */
+  ruff?: string;
+  seed?: number;
+}
+
+export const FOX_LOOKS: Record<string, FoxLook> = {
+  fox: {
+    coat: '#b4622a',
+    under: '#ead9bf',
+    sock: '#33241c',
+    earBack: '#2c1f18',
+    earIn: '#d8b992',
+    eye: '#e8a83c',
+    nose: '#241a16',
+    tip: '#efe8d8',
+    brushRoot: '#8a4b22',
+    bodyW: 0.13,
+    backH: 0.42,
+    shoulderH: 0.05,
+    haunchH: 0.055,
+    chestH: 0.22,
+    tuckH: 0.33,
+    headW: 0.24,
+    headH: 0.2,
+  },
+  // THE DIRE FOX — the smokebrush vixen, the matriarch. Never a scaled
+  // fox and never the dire wolf's wall of meat: she is RANGY, an
+  // ember-dark blade on legs too long for her shadow. Her marks are
+  // her own: the cross-fox mantle burned charcoal-deep, a silvered
+  // mask (her winters, worn on the face), the great pale ruff collar,
+  // cold jade eyes where the dire wolf burns ember — and THE SMOKE
+  // BRUSH: her flag ends DARK with one ember-bright ring where the
+  // whole skulk's ends white. The inversion detail, kept.
+  fox_champion: {
+    coat: '#6b3226',
+    under: '#b9a68f',
+    sock: '#221a1e',
+    earIn: '#a08a80',
+    eye: '#9fd8a8',
+    nose: '#1f181a',
+    tip: '#2c2430',
+    // The worg lesson: ears in the coat's own value VANISH — the
+    // queen's soot runs frost-plum, two full steps lighter than her
+    // head, so the blades stand against her at every band.
+    earBack: '#5a4750',
+    brushRoot: '#542a22',
+    mantle: '#3a2830',
+    grizzle: '#b8aab4',
+    bodyW: 0.16,
+    backH: 0.54,
+    shoulderH: 0.06,
+    haunchH: 0.07,
+    chestH: 0.25,
+    tuckH: 0.43,
+    headW: 0.3,
+    headH: 0.24,
+    champion: true,
+    ember: '#d97a35',
+    ruff: '#cbb9a4',
+  },
+};
+
+/**
+ * THE COAT CLUSTERS (the gnoll law, spoken vulpine): four curated wild
+ * colorways a spawned skulk spreads across — the ember red, the frost
+ * white, the dusk cross, and the sable silver. Never a random hue
+ * roll; always one of the four coats the wood actually breeds.
+ */
+const FOX_CLUSTERS: ReadonlyArray<
+  Pick<FoxLook, 'coat' | 'under' | 'sock' | 'brushRoot' | 'tip' | 'mantle' | 'grizzle'>
+> = [
+  // Ember — the classic red, soot to the knee.
+  { coat: '#b4622a', under: '#ead9bf', sock: '#33241c', brushRoot: '#8a4b22', tip: '#efe8d8' },
+  // Frost — the white fox of the high snows; even its soot runs pale.
+  { coat: '#d9d2c1', under: '#f2ede1', sock: '#8d8478', brushRoot: '#a89f8e', tip: '#f8f4ea' },
+  // Dusk — the cross fox: bracken brown wearing the faint dark cross.
+  {
+    coat: '#8a5c38',
+    under: '#d9c8ac',
+    sock: '#2c211b',
+    brushRoot: '#6b3f26',
+    tip: '#e8dfc9',
+    mantle: '#4a3526',
+  },
+  // Sable — the silver fox: near-black ticked in frost, the white
+  // flag popping hardest of all four.
+  {
+    coat: '#45414c',
+    under: '#8f8a96',
+    sock: '#26232c',
+    brushRoot: '#37333e',
+    tip: '#f0ece2',
+    grizzle: '#9a95a4',
+  },
+];
+
+const FOX_LOOK_CACHE = new Map<string, FoxLook>();
+
+export function foxLook(defId: string, seed = 0): FoxLook {
+  const base = FOX_LOOKS[defId] ?? FOX_LOOKS['fox']!;
+  const key = `${defId}|${seed & 0xff}`;
+  const hit = FOX_LOOK_CACHE.get(key);
+  if (hit) return hit;
+  let look: FoxLook;
+  if (defId === 'fox') {
+    // Hash the seed before picking: skulk members spawn with
+    // CONSECUTIVE eids, and raw high bits would dress a whole earth
+    // in one coat — the hash spreads the litter across the clusters
+    // (the gnoll lesson, kept).
+    const h = (seed * 2654435761) | 0;
+    const cl = FOX_CLUSTERS[(h >>> 8) & 3]!;
+    const jit = (((h >>> 12) & 7) - 3) * 2;
+    look = {
+      ...base,
+      coat: shade(cl.coat, jit),
+      under: cl.under,
+      sock: cl.sock,
+      brushRoot: shade(cl.brushRoot, jit),
+      tip: cl.tip,
+      mantle: cl.mantle,
+      grizzle: cl.grizzle,
+      seed,
+    };
+  } else {
+    // The smokebrush vixen holds her authored design.
+    look = { ...base, seed };
+  }
+  FOX_LOOK_CACHE.set(key, look);
+  return look;
+}
+
+export function paintFoxBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: FoxLook,
+  f: BeastBlockFrame,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  // The fox's footprint: neither the wolf's chest keel nor the cat's
+  // wide rump — a slim winter-coat barrel carrying its width MIDSHIP
+  // and tapering neat at both ends, the chest a shade leader. What
+  // says fox at world zoom is how little body rides how much brush.
+  const foot: Array<[number, number]> = [
+    [hl, -hw * 0.68],
+    [hl, hw * 0.68],
+    [hl * 0.45, hw * 0.95],
+    [-hl * 0.3, hw],
+    [-hl, hw * 0.62],
+    [-hl, -hw * 0.62],
+    [-hl * 0.3, -hw],
+    [hl * 0.45, -hw * 0.95],
+  ];
+  // Skulk variance: each fox's coat sits a step off the cluster tone.
+  const coat = shade(look.coat, (((f.seed >>> 5) & 7) - 3) * 2);
+  paintBlockBody(
+    ctx,
+    f,
+    foot,
+    // THE LEVEL TOPLINE, carried alert: a modest wither rise toward
+    // the high-held neck root (the fox listens UP where the lynx
+    // prowls DOWN), a shallow spine dip, and a light haunch spring —
+    // present, coiled, but well under the cat's loaded ramp.
+    (X) =>
+      look.backH +
+      look.shoulderH * Math.max(0, (X / hl - 0.15) / 0.85) -
+      0.025 * Math.max(0, 1 - Math.abs(X / hl + 0.05) / 0.55) +
+      look.haunchH * Math.max(0, (-X / hl - 0.15) / 0.65),
+    // The deep little chest into the HIGH tuck — the leggy waist.
+    (X) => look.chestH + (look.tuckH - look.chestH) * Math.min(1, Math.max(0, (0.45 - X / hl) / 1.0)),
+    coat,
+    (gx, gyy, lift) => {
+      const s = f.s;
+      const tk = f.topScale ?? 1;
+      const bh = look.backH * tk * s;
+      // THE CROSS: the dark dorsal stripe with its shoulder bar — the
+      // dusk cluster wears it faint, the matriarch wears it burned.
+      // Laid FIRST so ticking and bib read against it.
+      if (look.mantle && !f.hurt) {
+        ctx.save();
+        ctx.translate(gx(0, 0), gyy(0, 0) - bh * 0.96 - lift);
+        ctx.rotate(Math.atan2(f.fy * f.ys, f.fx));
+        ctx.fillStyle = look.mantle;
+        // The spine stripe, nape to brush root.
+        ctx.beginPath();
+        facetBlob(ctx, -hl * s * 0.06, 0, hl * s * 0.78, f.seed | 1, 9, (hw * 0.3) / (hl * 0.78), 0.3);
+        ctx.fill();
+        // The bar across the shoulders — the second stroke of the
+        // cross, drawn in its own quarter-turned frame.
+        ctx.save();
+        ctx.translate(hl * s * 0.42, 0);
+        ctx.rotate(Math.PI / 2);
+        ctx.beginPath();
+        facetBlob(ctx, 0, 0, hw * s * 0.92, f.seed ^ 0x2b, 7, 0.32, 0.4);
+        ctx.fill();
+        ctx.restore();
+        ctx.restore();
+      }
+      // Silver ticking riding the saddle line — STROKES, never fills
+      // (the fur-dialect law): the sable cluster's frost, and the
+      // matriarch's winters worn down her back.
+      if (look.grizzle && !f.hurt) {
+        ctx.strokeStyle = look.grizzle;
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.lineCap = 'round';
+        for (let k = 0; k < 6; k++) {
+          const rr = ((((f.seed >>> (k % 11)) * 2654435761 + k * 131) >>> 0) % 1000) / 1000;
+          const X = (-0.6 + 0.24 * k + (rr - 0.5) * 0.12) * hl;
+          const Y = ((k & 1) === 0 ? 1 : -1) * hw * (0.12 + 0.2 * rr);
+          const sx = gx(X, Y);
+          const sy = gyy(X, Y) - bh * (0.9 + 0.06 * rr) - lift;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(sx - f.fx * s * 0.03, sy + s * 0.028);
+          ctx.stroke();
+        }
+        ctx.lineCap = 'butt';
+      }
+      // THE BIB: the fox's white front — bigger and brighter than the
+      // wolf's, the second-surest read after the flag. Only while the
+      // chest can actually face the camera.
+      if (f.fy > -0.15 && !f.hurt) {
+        ctx.fillStyle = look.under;
+        ctx.beginPath();
+        facetBlob(
+          ctx,
+          gx(hl * 0.84, 0),
+          gyy(hl * 0.84, 0) - (look.chestH + 0.09) * s,
+          hw * s * 0.92,
+          f.seed ^ 0x33,
+          7,
+          0.85,
+          1.7,
+        );
+        ctx.fill();
+      }
+    },
+  );
+}
+
+/**
+ * The fox head: a compact near-round skull (deeper chamfers than the
+ * wolf slab, shy of the cat's circle) crowned by the SOOT EARS —
+ * triangles taller than any canid's, black-backed so the species reads
+ * from behind — over THE SNIPE: a fine tapering muzzle, pale-jawed,
+ * dotted with the small black nose. The eyes are the fox's secret:
+ * amber almonds cut with the VERTICAL pupil — a cat's eye in a canid
+ * face, the cunning made visible. `snarl` pins the ears and gapes the
+ * needle jaw through the pounce telegraph; corpses pass `dead`.
+ */
+export function drawFoxHead(
+  ctx: CanvasRenderingContext2D,
+  look: FoxLook,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    dead?: boolean;
+    /** 0..1 through the attack telegraph. */
+    snarl?: number;
+    /** 0..1 quick idle ear twitch. */
+    flick?: number;
+  },
+): void {
+  const { x: cx, y: cy, s, fx, fy, ys } = o;
+  const px = -fy;
+  const py = fx;
+  const w = look.headW * s;
+  const h = look.headH * s;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : c);
+  const snarl = o.snarl ?? 0;
+  const queen = look.champion === true;
+
+  // THE GREAT RUFF: the matriarch's pale collar, laid down before the
+  // ears so skull and ears both lap it — a full frame of layered chops
+  // around the lower skull, chest-deep. No lean fox carries it.
+  if (queen && look.ruff && !o.hurt && fy > -0.5) {
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.8 && es * py < 0) continue;
+      for (let i = 0; i < 3; i++) {
+        const spread = 0.34 + i * 0.16;
+        const rx = cx + px * es * w * spread - fx * w * 0.04;
+        const ry = cy + (py * es * w * spread - fy * w * 0.04) * ys + h * (0.1 + i * 0.08);
+        const drop = h * (0.5 - i * 0.08);
+        ctx.fillStyle = C(shade(look.ruff, -i * 5));
+        ctx.beginPath();
+        ctx.moveTo(rx - px * es * w * 0.2, ry - h * 0.18);
+        ctx.lineTo(rx + px * es * w * (0.2 + i * 0.04), ry - h * 0.02);
+        ctx.lineTo(rx + px * es * w * 0.02, ry + drop);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  }
+
+  // THE SOOT EARS: oversized triangles set high, taller than the
+  // wolf's or the lynx's — pinned flat mid-snarl, the near one
+  // twitching at idle. The along-facing stagger keeps the pair from
+  // collapsing into one sliver at full profile. Seen from behind the
+  // fills go SOOT — two black triangles over a warm coat are the
+  // fox's whole from-behind identity.
+  const earSeen = fy > 0.05;
+  const earPk = faceProfileK(fx);
+  for (const es of [-1, 1]) {
+    const bxr = cx + px * es * w * 0.3 + fx * es * w * 0.09;
+    const byr = cy + (py * es * w * 0.3 + fy * es * w * 0.09) * ys - h * 0.34;
+    const pin = Math.min(1, snarl * 0.7 + (es > 0 ? (o.flick ?? 0) * 0.35 : 0));
+    // SILHOUETTE HIERARCHY (the goblin lesson): at profile the EAR
+    // GROWS — its breadth walks off the collapsing lateral axis onto
+    // the facing axis, so the standing triangle never thins to a
+    // sliver at E/W. The ears ARE the fox; they never yield.
+    const ubx = px * es * (1 - 0.7 * earPk) + fx * 0.9 * earPk;
+    const uby = py * es * (1 - 0.7 * earPk) * ys;
+    // The matriarch's blades run bigger still — on the great-eared
+    // queen, scale IS identity.
+    const earK = queen ? 1.14 : 1;
+    const tx = bxr + px * es * w * 0.14 + fx * earPk * w * 0.1 - fx * w * 0.26 * pin;
+    const ty = byr - h * (1.0 - 0.4 * pin) * earK - fy * w * 0.26 * pin * ys;
+    ctx.fillStyle = C(earSeen ? shade(look.coat, -4) : look.earBack);
+    ctx.beginPath();
+    ctx.moveTo(bxr - ubx * w * 0.17 * earK, byr - uby * w * 0.17 * earK + h * 0.05);
+    ctx.lineTo(tx, ty);
+    ctx.lineTo(bxr + ubx * w * 0.19 * earK, byr + uby * w * 0.19 * earK + h * 0.11);
+    ctx.closePath();
+    ctx.fill();
+    if (earSeen && !o.hurt && !o.dead) {
+      // The pale inner fan filling most of the shell.
+      ctx.fillStyle = look.earIn;
+      ctx.beginPath();
+      ctx.moveTo(bxr - px * es * w * 0.07, byr + h * 0.02);
+      ctx.lineTo(bxr + (tx - bxr) * 0.6, byr + (ty - byr) * 0.6);
+      ctx.lineTo(bxr + px * es * w * 0.12, byr + h * 0.07);
+      ctx.closePath();
+      ctx.fill();
+      // The soot edge: the ear's dark back peeking past the outer
+      // rim, so the black ear read never fully leaves the face view.
+      ctx.strokeStyle = C(look.earBack);
+      ctx.lineWidth = Math.max(1.2, w * 0.055);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(bxr - px * es * w * 0.15, byr + h * 0.04);
+      ctx.lineTo(tx, ty);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
+    // The queen's silver rims — her winters, worn high: the FULL
+    // leading edge, base to tip, so the silver reads as the ear's
+    // own edge and never a floating wire.
+    if (queen && look.grizzle && !o.hurt && !o.dead) {
+      ctx.strokeStyle = look.grizzle;
+      ctx.lineWidth = Math.max(1, w * 0.035);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(bxr - ubx * w * 0.15 * earK, byr - uby * w * 0.15 * earK + h * 0.04);
+      ctx.lineTo(tx, ty);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
+  }
+
+  // The skull: compact and fine-boned — chamfers deeper than the wolf
+  // slab, shy of the cat's full round. A fox's head is a small neat
+  // thing under two enormous ears.
+  ctx.fillStyle = C(look.coat);
+  ctx.beginPath();
+  chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.3, w * 0.3, w * 0.34, w * 0.34]);
+  ctx.fill();
+  if (!o.hurt) {
+    ctx.save();
+    ctx.beginPath();
+    chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.3, w * 0.3, w * 0.34, w * 0.34]);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(255, 244, 220, 0.15)';
+    ctx.fillRect(cx - w / 2, cy - h / 2, w, h * 0.2);
+    // The pale lower face: cheek and jaw in the under tone — the
+    // white-cheeked mask every fox wears.
+    ctx.fillStyle = C(look.under);
+    ctx.fillRect(cx - w / 2, cy + h * 0.16, w, h * 0.34);
+    ctx.restore();
+  }
+
+  // THE CHEEK FLARES: short fur chops flaring OUT at the jaw line —
+  // sideways, where the lynx's ruff hangs down. They widen the small
+  // skull into the fox's heart-shaped face without borrowing the
+  // cat's frame. Far side yields at profile; gone from behind.
+  if (!o.hurt && fy > -0.3) {
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.75 && es * py < 0) continue;
+      for (let i = 0; i < 2; i++) {
+        const rx = cx + px * es * w * (0.42 + i * 0.1) + fx * w * 0.02;
+        const ry = cy + (py * es * w * (0.42 + i * 0.1) + fy * w * 0.02) * ys + h * (0.14 + i * 0.09);
+        ctx.fillStyle = C(i === 0 ? look.under : shade(look.coat, -4));
+        ctx.beginPath();
+        ctx.moveTo(rx - px * es * w * 0.14, ry - h * 0.1);
+        ctx.lineTo(rx + px * es * w * 0.16, ry + h * (0.0 + i * 0.03));
+        ctx.lineTo(rx - px * es * w * 0.02, ry + h * 0.14);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  }
+
+  // The queen's silvered mask: frost ticks across brow and muzzle
+  // root — her winters, worn on the face. Strokes, per the law.
+  if (queen && look.grizzle && !o.hurt && !o.dead && fy > -0.2) {
+    ctx.strokeStyle = look.grizzle;
+    ctx.lineWidth = Math.max(1, w * 0.024);
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 4; i++) {
+      const es = i < 2 ? -1 : 1;
+      if (Math.abs(fx) > 0.7 && es * py < 0) continue;
+      const sx0 = cx + px * es * w * (0.14 + (i % 2) * 0.12) + fx * w * 0.1;
+      const sy0 = cy + (py * es * w * (0.14 + (i % 2) * 0.12) + fy * w * 0.1) * ys - h * (0.22 - (i % 2) * 0.3);
+      ctx.beginPath();
+      ctx.moveTo(sx0, sy0);
+      ctx.lineTo(sx0 + fx * w * 0.09, sy0 + h * 0.07 + fy * w * 0.09 * ys);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  }
+
+  // ---- THE SNIPE: the fine tapering muzzle pushed along the facing —
+  // longer and narrower than the wolf's wedge, turning with the head,
+  // gone from behind (the muzzle law). Its underside runs pale: the
+  // white jaw is half the fox's face.
+  if (fy > -0.3) {
+    const profileK = faceProfileK(fx);
+    const bx0 = cx + fx * w * 0.24;
+    const by0 = cy + fy * w * 0.24 * ys + h * 0.14;
+    const sl = w * (0.36 + 0.34 * profileK);
+    const tx = bx0 + fx * sl;
+    // The tip drops below the bridge line — a fox noses DOWN; a level
+    // snipe read as a bill.
+    const ty = by0 + fy * sl * ys + h * (0.09 + 0.07 * profileK);
+    const axv = tx - bx0;
+    const ayv = ty - by0;
+    const al = Math.hypot(axv, ayv) || 1e-4;
+    const nx = -ayv / al;
+    const ny = axv / al;
+    const hb = w * 0.15 * (1 - profileK * 0.2);
+    const ht = hb * 0.48;
+    // The snipe wears the COAT — a lightened wedge read as a beak at
+    // profile (the duck-bill lesson); the pale jaw below carries the
+    // white, the coat carries the bridge.
+    ctx.fillStyle = C(shade(look.coat, -2));
+    ctx.beginPath();
+    ctx.moveTo(bx0 + nx * hb, by0 + ny * hb);
+    ctx.lineTo(tx + nx * ht, ty + ny * ht);
+    ctx.lineTo(tx - nx * ht, ty - ny * ht);
+    ctx.lineTo(bx0 - nx * hb, by0 - ny * hb);
+    ctx.closePath();
+    ctx.fill();
+    // The pale jaw: the muzzle's DOWN-SCREEN edge in the under tone —
+    // the white lip line that carries the mask onto the snipe. A
+    // PROFILE read: face-on it ran down the wedge's center as a white
+    // drip, so it waits for the head to turn.
+    if (!o.hurt && profileK > 0.25) {
+      const low = ny >= 0 ? 1 : -1;
+      ctx.strokeStyle = C(look.under);
+      ctx.lineWidth = Math.max(1.2, w * 0.055);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(bx0 + nx * hb * 0.72 * low, by0 + ny * hb * 0.72 * low);
+      ctx.lineTo(tx + nx * ht * 0.6 * low, ty + ny * ht * 0.6 * low);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      // The whisker smudge: one dark dash on the muzzle's near side —
+      // the fox's spotted lip, a stroke, small on purpose.
+      ctx.strokeStyle = C(shade(look.sock, 12));
+      ctx.lineWidth = Math.max(1, w * 0.03);
+      ctx.beginPath();
+      ctx.moveTo(bx0 + axv * 0.42 - nx * hb * 0.3 * low, by0 + ayv * 0.42 - ny * hb * 0.3 * low);
+      ctx.lineTo(bx0 + axv * 0.56 - nx * hb * 0.24 * low, by0 + ayv * 0.56 - ny * hb * 0.24 * low);
+      ctx.stroke();
+    }
+    // Snarl: the needle jaw gapes below the snipe — fangs finer than
+    // any wolf's, the quick nip that bleeds.
+    if (snarl > 0.15 && !o.dead && !o.hurt) {
+      const gape = h * 0.3 * Math.min(1, snarl);
+      ctx.fillStyle = '#2a1420';
+      ctx.beginPath();
+      ctx.moveTo(tx - nx * ht * 0.9, ty - ny * ht * 0.9);
+      ctx.lineTo(tx + nx * ht * 0.9, ty + ny * ht * 0.9);
+      ctx.lineTo(tx + (axv / al) * ht * 0.4, ty + gape);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#efe9d8';
+      for (const ts of [-0.5, 0.4]) {
+        ctx.beginPath();
+        ctx.moveTo(tx + nx * ht * ts - w * 0.014, ty + ny * ht * ts);
+        ctx.lineTo(tx + nx * ht * ts + w * 0.014, ty + ny * ht * ts);
+        ctx.lineTo(tx + nx * ht * ts, ty + ny * ht * ts + gape * 0.5);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    // The small black nose, seated on the tip — pulled back along the
+    // axis so it overlaps the wedge instead of floating at profile.
+    ctx.fillStyle = C(look.nose);
+    ctx.beginPath();
+    facetCircle(ctx, tx - (axv / al) * w * 0.015, ty - (ayv / al) * w * 0.015, w * 0.058, 5, fx);
+    ctx.fill();
+  }
+
+  // THE CUNNING EYE: amber almonds cut with the VERTICAL pupil — the
+  // cat's eye in the canid face, the one detail that says fox and
+  // nothing else at close zoom. Dark-lined, one light chip. The far
+  // one hides as the head goes profile; none from behind, none dead.
+  if (!o.dead && fy > -0.45) {
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.6 && es * py < 0) continue;
+      const ex = cx + fx * w * 0.12 + px * es * w * 0.27;
+      const ey = cy + (fy * w * 0.12 + py * es * w * 0.27) * ys - h * 0.1;
+      ctx.save();
+      ctx.translate(ex, ey);
+      ctx.rotate(es * (0.34 + snarl * 0.25));
+      // The soot liner first, then the iris inside it.
+      ctx.fillStyle = C(look.earBack);
+      ctx.fillRect(-w * 0.092, -h * 0.056, w * 0.184, h * 0.112);
+      ctx.fillStyle = C(look.eye);
+      ctx.fillRect(-w * 0.078, -h * 0.044, w * 0.156, h * 0.088);
+      if (!o.hurt) {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(-w * 0.016, -h * 0.044, w * 0.032, h * 0.088);
+        ctx.fillStyle = 'rgba(255, 250, 235, 0.85)';
+        ctx.fillRect(w * 0.028, -h * 0.036, w * 0.024, h * 0.028);
+      }
+      ctx.restore();
+    }
+  }
+}
+
 export function drawBeast(
   ctx: CanvasRenderingContext2D,
   opts: {
@@ -16760,10 +17397,27 @@ export function drawBeast(
   // look resolves here (cached) so the bespoke limb painter can dress
   // muscle, not strokes.
   const lynxLegL = opts.defId.startsWith('lynx') ? lynxLook(opts.defId, opts.seed ?? 0) : undefined;
-  const legBase = lynxLegL ? lynxLegL.coat : opts.color;
-  const legColor = opts.hurt ? '#ffffff' : (spec.legColor ?? shade(legBase, -35));
-  const shinColor = opts.hurt ? '#ffffff' : (spec.legColor ?? shade(legBase, -22));
-  const footColor = opts.hurt ? '#ffffff' : shade(spec.legColor ?? legBase, -55);
+  // THE STOCKING LAW: a fox's legs wear its rolled cluster — thigh in
+  // the coat, shin in the soot sock, paw darkest — so the dark
+  // stockings read under a warm body at every zoom. An ember fox on
+  // def-color stockings walked on a stranger's legs.
+  const foxLegL = opts.defId.startsWith('fox') ? foxLook(opts.defId, opts.seed ?? 0) : undefined;
+  const legBase = lynxLegL ? lynxLegL.coat : foxLegL ? foxLegL.coat : opts.color;
+  const legColor = opts.hurt
+    ? '#ffffff'
+    : foxLegL
+      ? shade(foxLegL.coat, -10)
+      : (spec.legColor ?? shade(legBase, -35));
+  const shinColor = opts.hurt
+    ? '#ffffff'
+    : foxLegL
+      ? foxLegL.sock
+      : (spec.legColor ?? shade(legBase, -22));
+  const footColor = opts.hurt
+    ? '#ffffff'
+    : foxLegL
+      ? shade(foxLegL.sock, -22)
+      : shade(spec.legColor ?? legBase, -55);
   const drawLeg = (i: number): void => {
     const foot = opts.feet[i];
     const leg = spec.rig.legs[i];
@@ -16949,6 +17603,9 @@ export function drawBeast(
   // The tufted shadows: wild cats roll a coat CLUSTER from the spawn
   // eid; the duskruff holds her authored design.
   const lynxL = opts.defId.startsWith('lynx') ? lynxLook(opts.defId, opts.seed ?? 0) : undefined;
+  // The skulk rolls the four wild coats; the smokebrush vixen holds
+  // hers. (Already resolved for the stocking law — the cache pays.)
+  const foxL = foxLegL;
   const bearL = opts.defId === 'bear' ? BEAR_LOOK : undefined;
   const crabL = opts.defId === 'mudcrab' ? CRAB_LOOK : undefined;
   const beetleL = opts.defId === 'giant_beetle' ? BEETLE_LOOK : undefined;
@@ -16969,6 +17626,10 @@ export function drawBeast(
   const paintBody = (): void => {
     if (lynxL) {
       paintLynxBody(ctx, spec, lynxL, blockFrame());
+      return;
+    }
+    if (foxL) {
+      paintFoxBody(ctx, spec, foxL, blockFrame());
       return;
     }
     if (wolfL) {
@@ -17258,6 +17919,65 @@ export function drawBeast(
         ctx.stroke();
       }
       drawCourserHead(ctx, courserL, { x: chx, y: chy, s, fx, fy, ys, hurt: opts.hurt });
+      return;
+    }
+    if (foxL) {
+      // THE LISTENING CARRIAGE: the fox is the wood's one HIGH-headed
+      // hunter — the skull rides alert above the topline on a slender
+      // rising neck (the lynx hangs low off a slope, the wolf's neck
+      // is a thick climbing keel; the fox PERKS). A run streamlines
+      // it toward level, and the pounce windup drops it nose-down
+      // into the mousing dive — the head telegraphs the leap the way
+      // the whole species hunts: ears up, then straight down.
+      const hl = spec.bodyLen * s;
+      const hw2 = foxL.headW * s;
+      const nod = opts.pose.bob * 0.35 * s;
+      const run = opts.pose.poleStrength;
+      const dive = at > 0 ? Math.min(1, at / 0.7) * (foxL.champion ? 0.16 : 0.13) * s : 0;
+      const perk = (foxL.champion ? 0.2 : 0.16) * (1 - run * 0.45) * s;
+      const reach = hl * 0.98 + hw2 * 0.3;
+      const chx = bx + fx * reach;
+      const chy =
+        by + fy * reach * ys - (foxL.backH + foxL.shoulderH) * s - perk - nod + dive;
+      // The neck: a SLENDER rising wedge — never the wolf's keel.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(foxL.coat, -5);
+      ctx.beginPath();
+      const nb = (foxL.backH + foxL.shoulderH * 0.6) * s + opts.pose.bob * 0.35 * s;
+      const nwx = px * foxL.bodyW * 0.62 * s;
+      const nwy = py * foxL.bodyW * 0.62 * s;
+      ctx.moveTo(bx + fx * hl * 0.55 + nwx, by + (fy * hl * 0.55 + nwy) * ys - nb);
+      ctx.lineTo(bx + fx * hl * 0.55 - nwx, by + (fy * hl * 0.55 - nwy) * ys - nb);
+      ctx.lineTo(chx - px * hw2 * 0.36, chy - py * hw2 * 0.36 * ys + foxL.headH * s * 0.32);
+      ctx.lineTo(chx + px * hw2 * 0.36, chy + py * hw2 * 0.36 * ys + foxL.headH * s * 0.32);
+      ctx.closePath();
+      ctx.fill();
+      // The pale throat riding the neck's front — the bib climbing to
+      // the chin, camera-facing bands only.
+      if (fy > -0.1 && !opts.hurt) {
+        ctx.fillStyle = foxL.under;
+        ctx.beginPath();
+        ctx.moveTo(bx + fx * hl * 0.62 + nwx * 0.5, by + (fy * hl * 0.62 + nwy * 0.5) * ys - nb * 0.9);
+        ctx.lineTo(bx + fx * hl * 0.62 - nwx * 0.5, by + (fy * hl * 0.62 - nwy * 0.5) * ys - nb * 0.9);
+        ctx.lineTo(chx - px * hw2 * 0.18, chy - py * hw2 * 0.18 * ys + foxL.headH * s * 0.4);
+        ctx.lineTo(chx + px * hw2 * 0.18, chy + py * hw2 * 0.18 * ys + foxL.headH * s * 0.4);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // Idle ear flick: a rare quick pulse, never a metronome — the
+      // fox flicks oftener than the cat (it is ALL ears).
+      const flick =
+        now > 0 ? (Math.max(0, Math.sin(now * 0.0026 + seed) - 0.92) / 0.08) * idle : 0;
+      drawFoxHead(ctx, foxL, {
+        x: chx,
+        y: chy,
+        s,
+        fx,
+        fy,
+        ys,
+        hurt: opts.hurt,
+        snarl: at > 0 ? Math.min(1, at * 2.2) : 0,
+        flick,
+      });
       return;
     }
     if (lynxL) {
@@ -17677,6 +18397,69 @@ export function drawBeast(
         5,
         seed * 0.4,
       );
+      ctx.fill();
+      return;
+    }
+    if (foxL) {
+      // THE SIMULATED BRUSH: the live game runs the verlet plume
+      // (TailSim + drawFoxBrush) — physics, not pose. The analytic
+      // brush below survives only for sim-less callers.
+      if (opts.tail) {
+        opts.tail();
+        return;
+      }
+      // THE BRUSH: nearly the body's own length, the biggest tail any
+      // beast in the wood carries — a soft low arc off the rump,
+      // streaming out level at a run, ending in the flag: white for
+      // the skulk, smoke-over-ember for the queen. The read that
+      // names the species at any zoom.
+      const hl = spec.bodyLen * s;
+      const lift = opts.pose.bob * 0.35 * s;
+      const run = opts.pose.poleStrength;
+      const sway = now > 0 ? Math.sin(now * 0.0016 + seed * 0.7) * 0.22 * (1 - run * 0.7) : 0;
+      const tbx = bx - fx * hl * 0.96;
+      const tby = by - fy * hl * 0.96 * ys - foxL.backH * 0.62 * s - lift;
+      const backA = Math.atan2(-fy * ys, -fx);
+      const len = s * (foxL.champion ? 0.52 : 0.44);
+      // Droop: a soft hanging arc at rest, lifting level for the run.
+      const droop = (1 - run * 0.85) * 0.34;
+      const cxq = tbx + Math.cos(backA + sway * 0.3) * len * 0.5;
+      const cyq = tby + Math.sin(backA + sway * 0.3) * len * 0.5 * ys + len * droop;
+      const tipx = tbx + Math.cos(backA + sway) * len;
+      // The tip curls gently back UP out of the arc's low point.
+      const tipy = cyq + len * (droop * 0.35) - len * 0.1 * (1 - run);
+      const wk = s * (foxL.champion ? 0.066 : 0.056);
+      const brush = taperedSpinePath(tbx, tby, cxq, cyq, tipx, tipy, (t) =>
+        wk * (0.5 + 0.85 * Math.sin(Math.min(1, t * 1.08) * Math.PI)),
+      );
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(foxL.coat, -4);
+      ctx.fill(brush);
+      if (!opts.hurt) {
+        // The darker root third — volume, never a banded raccoon.
+        ctx.strokeStyle = foxL.brushRoot;
+        ctx.lineWidth = wk * 1.1;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(tbx + (cxq - tbx) * 0.12, tby + (cyq - tby) * 0.12);
+        ctx.lineTo(tbx + (cxq - tbx) * 0.6, tby + (cyq - tby) * 0.6);
+        ctx.stroke();
+        ctx.lineCap = 'butt';
+        // The queen's ember ring, banded below her smoke tip.
+        if (foxL.champion && foxL.ember) {
+          ctx.strokeStyle = foxL.ember;
+          ctx.lineWidth = Math.max(1.4, s * 0.03);
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(cxq + (tipx - cxq) * 0.5, cyq + (tipy - cyq) * 0.5);
+          ctx.lineTo(cxq + (tipx - cxq) * 0.66, cyq + (tipy - cyq) * 0.66);
+          ctx.stroke();
+          ctx.lineCap = 'butt';
+        }
+      }
+      // The flag — the read that survives any zoom.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : foxL.tip;
+      ctx.beginPath();
+      facetCircle(ctx, tipx, tipy, s * (foxL.champion ? 0.05 : 0.044), 5, seed * 0.5);
       ctx.fill();
       return;
     }
