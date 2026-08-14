@@ -14,21 +14,88 @@
 
 // ------------------------------------------------------------- status
 
-export type StatusId = 'burn' | 'chill' | 'shock' | 'bleed' | 'venom';
+export type StatusId = 'burn' | 'chill' | 'shock' | 'bleed' | 'venom' | 'sunder';
 
-export const STATUS_IDS: readonly StatusId[] = ['burn', 'chill', 'shock', 'bleed', 'venom'];
+export const STATUS_IDS: readonly StatusId[] = [
+  'burn',
+  'chill',
+  'shock',
+  'bleed',
+  'venom',
+  'sunder',
+];
 
-/** Snapshot wire bits (u8 bitfield per entity). Bits 4-5 belong to sneak. */
+/**
+ * THE TWO LANES (buildcraft Phase 1). Statuses split by what they ARE:
+ *
+ * - SPARKS (burn/chill/shock) are volatile charges. They keep the
+ *   reaction grammar AMONG THEMSELVES: a different spark landing on a
+ *   charged body detonates (the table below). Two sparks can never
+ *   coexist on one body — the invariant the reaction law rests on.
+ * - AFFLICTIONS (bleed/venom) are persistent wounds. They ride through
+ *   anything, never detonate and are never detonated, and they stack
+ *   PER SOURCE so a second hunter is never worthless. These are the
+ *   states that gear reads (the vs-state grammar, Phase 2).
+ * - `sunder` is the game's ONE amplifier mark: cracked guard, a flat
+ *   "takes more" percentage. A single entry per body, highest wins,
+ *   never self-stacks, deliberately short. It is engineering, not a
+ *   curse: the armor is broken and everything gets in.
+ */
+export const SPARKS: readonly StatusId[] = ['burn', 'chill', 'shock'];
+export const AFFLICTIONS: readonly StatusId[] = ['bleed', 'venom'];
+
+export function isSpark(id: StatusId): boolean {
+  return SPARKS.includes(id);
+}
+
+export function isAffliction(id: StatusId): boolean {
+  return AFFLICTIONS.includes(id);
+}
+
+/**
+ * Snapshot wire bits (u16 bitfield per entity since protocol v29).
+ * The low byte is the historic u8 layout UNCHANGED — bits 4-5 belong
+ * to sneak, bit 7 to the sheathe — so every pre-v29 reader's mask
+ * still means what it always meant. New states climb the high byte.
+ */
 export const STATUS_BIT: Record<StatusId, number> = {
   burn: 1 << 0,
   chill: 1 << 1,
   shock: 1 << 2,
   bleed: 1 << 3,
   venom: 1 << 6,
+  sunder: 1 << 8,
 };
 
-/** Mask of the DoT/CC bits above — ambience particles must not react to the sneak bits. */
-export const STATUS_AMBIENCE_MASK = 0x4f;
+/** Mask of the state bits above — ambience particles must not react to the sneak bits. */
+export const STATUS_AMBIENCE_MASK = 0x14f;
+
+/**
+ * Bits 9-12: how many affliction entries ride this body (per-source
+ * stacks, clamped to 15). Own-target nameplate fuel — the count is on
+ * the wire from Phase 1 so the Phase 5 HUD needs no protocol change.
+ */
+export const AFFLICTION_STACKS_SHIFT = 9;
+export const AFFLICTION_STACKS_MASK = 0xf << AFFLICTION_STACKS_SHIFT;
+
+/** Read the per-source affliction stack count out of a status bitfield. */
+export function afflictionStacksOf(bits: number): number {
+  return (bits & AFFLICTION_STACKS_MASK) >> AFFLICTION_STACKS_SHIFT;
+}
+
+/**
+ * The most entries ONE affliction id may hold on one body — a
+ * per-source cap, never a shared cap (a shared cap makes the second
+ * hunter worthless). At the cap a new source folds into the weakest
+ * entry by the max rules, so no landed apply is ever eaten.
+ */
+export const AFFLICTION_SOURCE_CAP = 5;
+
+/**
+ * The ceiling on sunder's power (a flat percent of damage taken).
+ * The Phase 2 seam clamps here no matter what authored a bigger mark.
+ */
+export const SUNDER_MAX_PCT = 20;
 
 /** Snapshot bit: this entity is fully hidden (only ever seen on your OWN entity). */
 export const SNEAK_HIDDEN_BIT = 1 << 4;
@@ -47,7 +114,10 @@ export const SHEATHED_BIT = 1 << 7;
 /** A status being applied by an ability or attack. */
 export interface StatusApply {
   status: StatusId;
-  /** Magnitude — DoT tick damage for burn/bleed/venom, unused for chill/shock. */
+  /**
+   * Magnitude — DoT tick damage for burn/bleed/venom, the flat
+   * "takes more" percent for sunder, unused for chill/shock.
+   */
   power: number;
   durationTicks: number;
 }
@@ -77,10 +147,24 @@ export const SHOCK_MAX_TICKS = 14;
 // ---------------------------------------------------------- reactions
 
 /**
- * The one reaction law: applying a DIFFERENT status to a target that
- * already carries one DETONATES the old status — burst damage plus a
- * combined effect. Order doesn't matter (pairs are symmetric), so the
- * table has one entry per unordered pair.
+ * The reaction law, as amended by THE TWO LANES: applying a DIFFERENT
+ * SPARK to a body that already carries one DETONATES the riding spark
+ * — burst damage plus the pair's combined effect. Order doesn't
+ * matter (pairs are symmetric), so the table has one entry per
+ * unordered spark pair. Afflictions and sunder ride through a
+ * detonation untouched and never fuel one.
+ *
+ * THE RETIREMENT (recorded 2026-08-14, buildcraft Phase 1): the seven
+ * spark-affliction and affliction-affliction pairs — Immolate,
+ * Frostbite, Arc Surge, Caustic Blaze, Congeal, Nerve Jolt, Contagion
+ * — left the table when afflictions became persistent riders. A wound
+ * that detonated on the next spark could never be the state that gear
+ * reads ("venomed foes take more from this edge"), and the persistent
+ * lane is worth more than seven bursts. The names are parked here on
+ * purpose: set words and consume verbs (Phase 2+) may deliberately
+ * re-open the best of them as AUTHORED payoffs, never as the ambient
+ * law. The `chain` and `spread` effects below survive for exactly
+ * that door.
  */
 export type ReactionEffect =
   /** Extra burst on the target only. */
@@ -126,62 +210,12 @@ const REACTION_TABLE: Record<string, ReactionDef> = {
     radius: 0,
     color: '#ff8a3c',
   },
-  [pairKey('burn', 'bleed')]: {
-    name: 'Immolate',
-    mult: 1.8,
-    effect: 'spread',
-    radius: 2.6,
-    color: '#ff6a4a',
-  },
   [pairKey('chill', 'shock')]: {
     name: 'Shatter',
     mult: 2.4,
     effect: 'stun',
     radius: 0,
     color: '#a8e4ff',
-  },
-  [pairKey('chill', 'bleed')]: {
-    name: 'Frostbite',
-    mult: 2.0,
-    effect: 'burst',
-    radius: 0,
-    color: '#c8ecff',
-  },
-  [pairKey('shock', 'bleed')]: {
-    name: 'Arc Surge',
-    mult: 1.6,
-    effect: 'chain',
-    radius: 3.2,
-    color: '#e8e06a',
-  },
-  [pairKey('venom', 'burn')]: {
-    name: 'Caustic Blaze',
-    mult: 2.0,
-    effect: 'aoe',
-    radius: 2.0,
-    color: '#c8e04a',
-  },
-  [pairKey('venom', 'chill')]: {
-    name: 'Congeal',
-    mult: 2.6,
-    effect: 'burst',
-    radius: 0,
-    color: '#9adcc8',
-  },
-  [pairKey('venom', 'shock')]: {
-    name: 'Nerve Jolt',
-    mult: 2.2,
-    effect: 'stun',
-    radius: 0,
-    color: '#d8e86a',
-  },
-  [pairKey('venom', 'bleed')]: {
-    name: 'Contagion',
-    mult: 1.8,
-    effect: 'spread',
-    radius: 2.4,
-    color: '#a0c050',
-    spreadStatus: 'venom',
   },
 };
 

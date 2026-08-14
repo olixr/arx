@@ -57,6 +57,13 @@ function statusValue(s: StatusApply | undefined): number {
     case 'chill':
     case 'shock':
       return secs * 0.9 * horizon;
+    case 'sunder':
+      // The mark deals nothing itself — its worth is the damage it
+      // lets through. Scored like the control statuses, scaled by the
+      // amp percent against the ledger's flat 15 baseline, so a
+      // bigger crack prices higher and the cap (SUNDER_MAX_PCT)
+      // bounds it near chill's utility weight.
+      return secs * (s.power / 15) * horizon;
   }
 }
 

@@ -34411,8 +34411,11 @@ export class Renderer {
 
   /**
    * Ambient status VFX riding an entity: embers for burn, drifting
-   * frost for chill, spark jitter for shock, falling drips for bleed.
-   * Spawn rates are frame-time scaled so effect density is fps-stable.
+   * frost for chill, spark jitter for shock, falling drips for bleed,
+   * rising blebs for venom, shaken stone chips for sunder. Every
+   * state owns a distinct PLACE and RHYTHM (the anti-mush law) so two
+   * riding together still read as two things. Spawn rates are
+   * frame-time scaled so effect density is fps-stable.
    */
   private statusAmbience(x: number, y: number, bits: number): void {
     // Stealth bits ride the same byte — only DoT/CC bits make weather.
@@ -34471,6 +34474,20 @@ export class Renderer {
           life: 0.6,
           size: 0.07,
           gravity: -1.2,
+        });
+      }
+    }
+    if (bits & STATUS_BIT.sunder) {
+      // Cracked guard: dull stone-grey chips shaken loose off the
+      // shoulders, dropping FAST. Deliberately no glow — the mark is
+      // broken matter, not energy, and the dead palette plus the
+      // hard fall keeps it apart from bleed's slow red drips.
+      if (Math.random() < dt * 7) {
+        this.particles.burst(x + (Math.random() - 0.5) * 0.5, y - 0.55, 1, ['#b8b2a6', '#8a8478', '#6a6458'], {
+          speed: 0.4,
+          life: 0.4,
+          size: 0.07,
+          gravity: 5.0,
         });
       }
     }

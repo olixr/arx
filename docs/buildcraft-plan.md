@@ -163,6 +163,62 @@ missing is not foundations — it is the connective tissue between them.
 
 ### Phase 1 — THE TWO LANES (status coexistence rework)
 
+**SHIPPED 2026-08-14. As-built:**
+
+- Shared core (`sim/abilities.ts`): `StatusId` + `'sunder'`; `SPARKS` /
+  `AFFLICTIONS` rosters + `isSpark`/`isAffliction`; `STATUS_BIT` u16 —
+  **the low byte is the historic u8 layout unchanged forever**
+  (test-pinned wire archaeology), sunder = bit 8, affliction stack
+  nibble = bits 9-12 (`AFFLICTION_STACKS_SHIFT/MASK`,
+  `afflictionStacksOf`); `AFFLICTION_SOURCE_CAP = 5`;
+  `SUNDER_MAX_PCT = 20` (the Phase 2 seam's clamp, exported now).
+- **THE RETIREMENT recorded in the table doc**: the 7 spark-affliction
+  and affliction pairs (Immolate, Frostbite, Arc Surge, Caustic Blaze,
+  Congeal, Nerve Jolt, Contagion) left `REACTION_TABLE`; Thermal
+  Shock / Combust / Shatter survive. The `chain`/`spread` reaction
+  effects and their server branches stay alive ON PURPOSE — the door
+  for set words to re-open retired pairs as authored payoffs.
+- Wire: snapshot `status` u8 -> u16 (record reshape), buffer estimate
+  17 -> 18/entity, **protocol v29** with the judgment comment in
+  constants.ts; roundtrip test walks the full u16.
+- Server (`applyStatusToNpc`): three-lane door. Afflictions stack per
+  source keyed on `(sourceEid, fromPet)` — a pet is its own hand; the
+  same hand refreshes its own wound by max, never self-stacks; at the
+  cap the new source FOLDS INTO THE WEAKEST entry by the max rules so
+  no landed apply is eaten. Sunder = one entry, highest power wins,
+  duration by max. Sparks keep the exact pre-lanes reaction path, but
+  the detonation search and splice are spark-scoped: wounds and the
+  mark ride through the flash. Both sparks are still consumed
+  (pre-lanes law, re-pinned). Resist/weak answer every lane at the
+  door, unchanged.
+- **`applyStatusToPlayer` deliberately keeps the one-entry-per-id
+  refresh-max shape**: five wolves are still one bleed. Player-side
+  per-source stacking would raise damage TAKEN — priced by the
+  ledger, not smuggled in with a refactor.
+- `statusBits` packs the affliction count into the high nibble
+  (clamped 15) — the Phase 5 nameplate reads stacks with no further
+  protocol change.
+- `tickStatuses` untouched: multiple same-id entries each tick their
+  own DoT by construction of the existing loop; sunder is not a DoT
+  and ticks nothing.
+- Client: `statusAmbience` gains the sunder voice — dull stone-grey
+  chips shaken loose, hard fall, NO glow (broken matter, not energy;
+  the dead palette + fast fall keeps it apart from bleed's slow red
+  drips). Anti-mush law restated in the fn doc.
+- Content: `ladderModel.statusValue` prices sunder (control-weight
+  scaled by amp percent over the flat-15 baseline) — found by the
+  compiler via the exhaustive switch, exactly why the union grew
+  rather than a parallel enum.
+- Dev lever: `/status <id> [power] [durTicks]` lays a status on the
+  nearest foe (or self) through the REAL apply doors, so resists,
+  weaknesses, lanes, and reactions all answer honestly in a live
+  session.
+- Laws pinned in `server/src/game/statusLanes.test.ts` (11 tests) +
+  reworked shared pins (lane partition, spark-only reactions, u16
+  layout, nibble collision). Full suite 1585 green. ZERO tuning
+  constants moved; solo damage shape identical (multi-source
+  affliction credit is the sanctioned possibility change).
+
 The keystone everything else reads. Split the five statuses into two lanes:
 
 - **SPARKS** (`burn`, `chill`, `shock`): keep the reaction grammar among

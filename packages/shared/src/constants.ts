@@ -130,7 +130,14 @@
 // so the discovery ceremony can speak the site's story from content.
 // Additive — a client that ignores it shows the plainer banner and
 // corrupts nothing. Recorded on purpose.)
-export const PROTOCOL_VERSION = 28;
+// v29 — THE TWO LANES (buildcraft Phase 1): the snapshot entity's
+// status field widens u8 → u16 (sunder joins the states, and the
+// affliction stack nibble rides the high byte). This is a BINARY
+// record reshape: every field after `status` shifts one byte, so a
+// v28 client would decode smeared positions and garbage alerts for
+// every body on screen — the snapshot itself changed shape, so the
+// handshake turns the old client away.
+export const PROTOCOL_VERSION = 29;
 
 /** The most souls one party can hold. */
 export const PARTY_CAP = 10;

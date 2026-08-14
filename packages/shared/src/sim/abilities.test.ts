@@ -1,34 +1,52 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  AFFLICTIONS,
+  AFFLICTION_STACKS_MASK,
+  AFFLICTION_STACKS_SHIFT,
   HASTE_FULL_DRAW_TICKS,
   HASTE_ON_HIT_TICKS,
   SHEATHED_BIT,
   SNEAK_DETECTED_BIT,
   SNEAK_HIDDEN_BIT,
+  SPARKS,
   STATUS_AMBIENCE_MASK,
   STATUS_BIT,
   STATUS_IDS,
+  afflictionStacksOf,
   groundAimRange,
   groundAimed,
   hasteOnHit,
+  isAffliction,
+  isSpark,
   reactionDamage,
   reactionFor,
 } from './abilities.js';
 import { sanitizeInputFrame } from './input.js';
 
-test('every distinct status pair has a reaction; same-status has none', () => {
+test('THE TWO LANES: every distinct spark pair reacts; nothing else ever does', () => {
   for (const a of STATUS_IDS) {
     for (const b of STATUS_IDS) {
       const r = reactionFor(a, b);
-      if (a === b) {
-        assert.equal(r, null, `${a}+${b} must not react`);
-      } else {
+      if (a !== b && isSpark(a) && isSpark(b)) {
         assert.ok(r, `${a}+${b} needs a reaction entry`);
         assert.ok(r.mult > 0 && r.name.length > 0);
+      } else {
+        assert.equal(r, null, `${a}+${b} must not react`);
       }
     }
   }
+});
+
+test('THE TWO LANES: the rosters partition the statuses exactly', () => {
+  const seen = new Set<string>();
+  for (const id of [...SPARKS, ...AFFLICTIONS, 'sunder' as const]) {
+    assert.ok(!seen.has(id), `${id} sits in two lanes`);
+    seen.add(id);
+  }
+  assert.equal(seen.size, STATUS_IDS.length, 'every status has exactly one lane');
+  for (const id of STATUS_IDS) assert.ok(seen.has(id), `${id} has no lane`);
+  assert.ok(!isSpark('sunder') && !isAffliction('sunder'), 'the mark stands alone');
 });
 
 test('reactions are symmetric — detonation order does not matter', () => {
@@ -44,7 +62,8 @@ test('area reactions carry a radius; single-target ones do not', () => {
   for (const a of STATUS_IDS) {
     for (const b of STATUS_IDS) {
       if (a === b) continue;
-      const r = reactionFor(a, b)!;
+      const r = reactionFor(a, b);
+      if (!r) continue;
       if (r.effect === 'aoe' || r.effect === 'chain' || r.effect === 'spread') {
         assert.ok(r.radius > 0, `${r.name} needs a radius`);
       } else {
@@ -75,15 +94,38 @@ test('passive metadata is complete for every passive id', async () => {
   }
 });
 
-test('status wire bits are distinct single bits that fit a u8', () => {
+test('status wire bits are distinct single bits that fit the u16', () => {
   const seen = new Set<number>();
   for (const id of STATUS_IDS) {
     const bit = STATUS_BIT[id];
-    assert.ok(bit > 0 && bit <= 0xff);
+    assert.ok(bit > 0 && bit <= 0xffff);
     assert.equal(bit & (bit - 1), 0, 'single bit');
     assert.ok(!seen.has(bit));
     seen.add(bit);
   }
+});
+
+test('the low byte is the historic u8 layout, unchanged forever', () => {
+  // Wire archaeology: pre-v29 readers masked these exact positions.
+  // A moved bit would make an old capture read as a different fight.
+  assert.equal(STATUS_BIT.burn, 1 << 0);
+  assert.equal(STATUS_BIT.chill, 1 << 1);
+  assert.equal(STATUS_BIT.shock, 1 << 2);
+  assert.equal(STATUS_BIT.bleed, 1 << 3);
+  assert.equal(SNEAK_HIDDEN_BIT, 1 << 4);
+  assert.equal(SNEAK_DETECTED_BIT, 1 << 5);
+  assert.equal(STATUS_BIT.venom, 1 << 6);
+  assert.equal(SHEATHED_BIT, 1 << 7);
+  assert.equal(STATUS_BIT.sunder, 1 << 8, 'new states climb the high byte');
+});
+
+test('the affliction stack nibble collides with no flag bit', () => {
+  let flags = SNEAK_HIDDEN_BIT | SNEAK_DETECTED_BIT | SHEATHED_BIT;
+  for (const id of STATUS_IDS) flags |= STATUS_BIT[id];
+  assert.equal(flags & AFFLICTION_STACKS_MASK, 0, 'the nibble owns its bits alone');
+  assert.ok(AFFLICTION_STACKS_MASK <= 0xffff, 'the nibble fits the u16');
+  assert.equal(afflictionStacksOf(3 << AFFLICTION_STACKS_SHIFT), 3);
+  assert.equal(afflictionStacksOf(STATUS_BIT.sunder | STATUS_BIT.bleed), 0, 'flags never read as stacks');
 });
 
 test('the ambience mask covers exactly the statuses and never the sneak bits', () => {
@@ -92,15 +134,18 @@ test('the ambience mask covers exactly the statuses and never the sneak bits', (
   assert.equal(mask, STATUS_AMBIENCE_MASK, 'mask must track STATUS_BIT exactly');
   assert.equal(mask & (SNEAK_HIDDEN_BIT | SNEAK_DETECTED_BIT), 0, 'stealth bits leaked in');
   assert.equal(mask & SHEATHED_BIT, 0, 'the sheathe bit leaked into the ambience mask');
+  assert.equal(mask & AFFLICTION_STACKS_MASK, 0, 'the stack nibble leaked into the weather');
 });
 
 test('spread reactions always spread a real DoT', () => {
+  // No spread pair survives THE RETIREMENT today; the law stands
+  // guard for the day a set word deliberately re-opens one.
   const dots = ['burn', 'bleed', 'venom'];
   for (const a of STATUS_IDS) {
     for (const b of STATUS_IDS) {
       if (a === b) continue;
-      const r = reactionFor(a, b)!;
-      if (r.effect !== 'spread') continue;
+      const r = reactionFor(a, b);
+      if (!r || r.effect !== 'spread') continue;
       assert.ok(dots.includes(r.spreadStatus ?? 'burn'), `${r.name} spreads a non-DoT`);
     }
   }

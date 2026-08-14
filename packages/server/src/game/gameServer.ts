@@ -516,6 +516,11 @@ import {
   VOLLEY_SPREAD,
   reactionDamage,
   reactionFor,
+  isSpark,
+  isAffliction,
+  AFFLICTION_SOURCE_CAP,
+  AFFLICTION_STACKS_SHIFT,
+  STATUS_IDS,
   snapShot,
   type AbilityDef,
   type AbilitySlot,
@@ -17791,10 +17796,26 @@ export class GameServer {
   // ----------------------------------------------------------- statuses
 
   /**
-   * Apply a status to an NPC — the reaction law lives here. A different
-   * status already riding the target DETONATES: burst damage plus the
-   * pair's combined effect, and both statuses are consumed. Same status
-   * refreshes. Resists shrug it off; weaknesses double it.
+   * Apply a status to an NPC — THE TWO LANES law lives here.
+   *
+   * SPARKS (burn/chill/shock) keep the reaction grammar among
+   * themselves: a DIFFERENT spark already riding DETONATES — burst
+   * damage plus the pair's combined effect, both sparks consumed.
+   * Afflictions and sunder on the same body ride through the flash
+   * untouched; they are wounds, not charges.
+   *
+   * AFFLICTIONS (bleed/venom) never detonate and are never detonated.
+   * They stack PER SOURCE — each attacker holds one entry per
+   * affliction id, so a second hunter is never worthless, while the
+   * same hand re-applying only refreshes its own wound (no self-
+   * stacking by spam). At AFFLICTION_SOURCE_CAP the newest source
+   * folds into the weakest entry by the max rules: the wound deepens,
+   * no landed apply is ever eaten.
+   *
+   * SUNDER is the one amplifier mark: a single entry, highest power
+   * wins, never self-stacks.
+   *
+   * Resists shrug any lane off; weaknesses double it.
    */
   private applyStatusToNpc(
     npcEid: EntityId,
@@ -17831,7 +17852,56 @@ export class GameServer {
     }
 
     const list = this.statuses.get(npcEid) ?? [];
-    const other = list.find((s) => s.id !== apply.status);
+
+    // ------------------------------------------------ the affliction lane
+    if (isAffliction(apply.status)) {
+      const own = list.find(
+        (s) =>
+          s.id === apply.status && s.sourceEid === sourceEid && (s.fromPet ?? false) === fromPet,
+      );
+      if (own) {
+        // The same hand re-opening its own wound: refresh, never stack.
+        own.ticksLeft = Math.max(own.ticksLeft, duration);
+        own.power = Math.max(own.power, power);
+      } else {
+        const riding = list.filter((s) => s.id === apply.status);
+        if (riding.length >= AFFLICTION_SOURCE_CAP) {
+          // The body is at the cap: the new wound folds into the
+          // weakest riding entry, so the blow still counts for
+          // something and no source's credit is silently dropped.
+          const weakest = riding.reduce((a, b) => (a.power <= b.power ? a : b));
+          weakest.ticksLeft = Math.max(weakest.ticksLeft, duration);
+          weakest.power = Math.max(weakest.power, power);
+        } else {
+          list.push({
+            id: apply.status,
+            power,
+            ticksLeft: duration,
+            sourceEid,
+            ...(fromPet ? { fromPet: true } : {}),
+          });
+        }
+      }
+      this.statuses.set(npcEid, list);
+      return;
+    }
+
+    // ------------------------------------------------------ the mark lane
+    if (apply.status === 'sunder') {
+      const same = list.find((s) => s.id === 'sunder');
+      if (same) {
+        // Highest wins; a lesser mark still keeps the crack open.
+        same.power = Math.max(same.power, power);
+        same.ticksLeft = Math.max(same.ticksLeft, duration);
+      } else {
+        list.push({ id: 'sunder', power, ticksLeft: duration, sourceEid });
+      }
+      this.statuses.set(npcEid, list);
+      return;
+    }
+
+    // ----------------------------------------------------- the spark lane
+    const other = list.find((s) => s.id !== apply.status && isSpark(s.id));
     const reaction = other ? reactionFor(other.id, apply.status) : null;
 
     if (other && reaction) {
@@ -17925,7 +17995,14 @@ export class GameServer {
     this.statuses.set(npcEid, list);
   }
 
-  /** Players only receive simple statuses (wolf bleed) — no reactions. */
+  /**
+   * Players only receive simple statuses (wolf bleed) — no reactions,
+   * and DELIBERATELY no per-source affliction stacking: one entry per
+   * id, refresh by max, exactly the pre-lanes shape. A pack of five
+   * wolves stacking five bleeds would raise damage TAKEN, and Phase 1
+   * moves no numbers — the player-side stacking question waits for
+   * the ledger (buildcraft plan, Part 3) to price it.
+   */
   private applyStatusToPlayer(eid: EntityId, apply: StatusApply, sourceEid: EntityId): void {
     const list = this.statuses.get(eid) ?? [];
     const same = list.find((s) => s.id === apply.status);
@@ -17941,7 +18018,16 @@ export class GameServer {
   private statusBits(eid: EntityId): number {
     let bits = 0;
     const list = this.statuses.get(eid);
-    if (list) for (const s of list) bits |= STATUS_BIT[s.id];
+    if (list) {
+      let stacks = 0;
+      for (const s of list) {
+        bits |= STATUS_BIT[s.id];
+        if (isAffliction(s.id)) stacks++;
+      }
+      // The per-source affliction count rides the high nibble so the
+      // Phase 5 nameplate can read stacks with no protocol change.
+      bits |= Math.min(stacks, 15) << AFFLICTION_STACKS_SHIFT;
+    }
     // Stealth bits ride the same byte. Snapshots for a hidden player only
     // ever reach their own session (interest suppression), so HIDDEN is
     // effectively owner-only; DETECTED drives the own eye chip.
@@ -23050,6 +23136,38 @@ export class GameServer {
         },
         { x: tp?.x ?? pos.x, y: tp?.y ?? pos.y, targetEid: target, style: 'arx' },
       );
+      return;
+    }
+    if (config.devCommands && text.startsWith('/status')) {
+      // /status <id> [power] [durTicks] — lay a status on the nearest
+      // foe (or on yourself when nothing stands near).
+      //
+      // THE TWO LANES ships sunder and coexistence ahead of their
+      // sources, so this is how the lanes are walked in a live
+      // session: stack venom from two hands, land a spark on a
+      // wounded body and watch the wound ride through the flash. It
+      // calls the real apply doors, so resists/weaknesses and the
+      // reaction law all answer honestly; the lane laws themselves
+      // are pinned by statusLanes.test.ts.
+      const [, idRaw, powRaw, durRaw] = text.split(/\s+/);
+      const pos = this.positions.get(eid);
+      const id = STATUS_IDS.find((s) => s === idRaw);
+      if (!pos || !id) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `Statuses: ${STATUS_IDS.join(', ')}`,
+        });
+        return;
+      }
+      const power = Math.max(0, Number(powRaw) || 3);
+      const durationTicks = Math.max(1, Number(durRaw) || 200);
+      const target = this.npcsWithin(pos.x, pos.y, 8)[0];
+      if (target !== undefined) {
+        this.applyStatusToNpc(target, { status: id, power, durationTicks }, eid, 'arx');
+      } else {
+        this.applyStatusToPlayer(eid, { status: id, power, durationTicks }, eid);
+      }
       return;
     }
     if (config.devCommands && text.startsWith('/mount')) {
