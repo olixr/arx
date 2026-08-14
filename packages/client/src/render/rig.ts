@@ -3575,11 +3575,11 @@ export function paintGoblinHead(
     const ey = crTop + hh * (0.46 - 0.06 * profileK);
     const sway = hurt ? 0 : 0.05 * Math.sin(f.nowMs / 640 + side * 1.7);
     // The cant blends with the facing too: out-cant to the sides
-    // face-on, raked BACKWARD off the facing at profile — an ear
+    // face-on, tilted BACKWARD off the facing at profile — an ear
     // never folds over the face. The gape pin-back and the listening
     // sway ride the same blended direction.
     const flat = side * (1 - profileK) - fx * profileK;
-    const cant = flat * (0.6 + 0.3 * profileK + gape * 0.5 + sway);
+    const cant = flat * (0.6 + 0.12 * profileK + gape * 0.5 + sway);
     ctx.save();
     ctx.translate(ex, ey);
     ctx.rotate(cant);
