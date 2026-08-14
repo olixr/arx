@@ -45,14 +45,21 @@ function fenlightK(nowMs: number, off = 0): number {
 }
 
 /**
- * THE STORMBOLT clock — the storm court's one sky, shared by the
- * hood bolt, the robe inlay, the shoulder devices, the charge beads
- * and the ground flash. A 7.2s cycle: a long banked CHARGE climbing
- * to a watchful glow, then THE STRIKE — two hard flashes with a dark
- * breath between — and a fast decay. Unlike the fen court's lights,
- * the strike is NOT staggered: lightning is one event, and every
- * bolt on the set whites out on the same beat (ONE SKY LAW). Only
- * charge-level accents (beads, coils) may read the level early.
+ * THE STORMBOLT clock — the storm court's sky. A 7.2s cycle: a long
+ * banked CHARGE climbing to a watchful glow, then THE STRIKE — two
+ * hard flashes with a dark breath between — and a fast decay.
+ * THE ROLLING SKY (user-amended from the old one-beat ONE SKY law):
+ * worn as a full set, the strike is a DISCHARGE that travels the
+ * body — it lands at the crown and drains to earth: helm, near
+ * shoulder, far shoulder, chest bank, waist beads, skirt brand, hem
+ * sparks, hem fog, ground — each piece ~0.7s behind the last via
+ * its `off` phase, so static circulates instead of camera-flashing.
+ * WITHIN one piece every bolt still shares that piece's beat.
+ * Offsets are start-times: a piece with off=o strikes at global
+ * phase 0.78-o (mod 1). The worn ripple order (crown → ground):
+ * helm 0, near pauldron 0.9, far pauldron 0.8, thunderbank 0.72,
+ * chargebeads 0.64, boltbrand 0.54, staticcourt 0.46, stormshroud
+ * 0.38, groundflash 0.3 — sunpatch drifts at 0.6, off the chain.
  */
 function stormboltK(nowMs: number, off = 0): number {
   const u = ((nowMs / 7200 + off) % 1 + 1) % 1;
@@ -4936,7 +4943,7 @@ export function drawTorsoGarment(
         // THE SUN PATCH: sunshower's own — one warm window of light
         // sliding across the cloth as the clouds shift overhead.
         // The luck is that it keeps finding you.
-        const k = stormboltK(nowMs);
+        const k = stormboltK(nowMs, 0.6);
         const px = Math.sin(nowMs * 0.00019) * ww * 0.5;
         ctx.globalAlpha = 0.12 + 0.1 * k;
         ctx.fillStyle = st.sunpatch.color;
@@ -4953,8 +4960,10 @@ export function drawTorsoGarment(
         // THE BOLT BRAND: the storm's mark inlaid down the skirt's
         // leading side — a forged fork in its own dark channel,
         // charging on THE STORMBOLT clock and burning white on the
-        // strike. Garment-scale: an heirloom, not a stitch.
-        const k = stormboltK(nowMs);
+        // strike. Garment-scale: an heirloom, not a stitch. Sixth
+        // station of the rolling sky: the skirt takes the discharge
+        // after the waist.
+        const k = stormboltK(nowMs, 0.54);
         const strike = k > 0.92;
         const bCol = st.boltbrand.color;
         const pr = 0.15 * s;
@@ -5053,7 +5062,7 @@ export function drawTorsoGarment(
         // the strike. The storm's answer to the fen's wisps: these
         // lights do not float, they RISE.
         const scC = st.staticcourt.color;
-        const k = stormboltK(nowMs);
+        const k = stormboltK(nowMs, 0.46);
         const strike = k > 0.92;
         for (let i = 0; i < 3; i++) {
           const u = [-1.18, 1.22, 0.1][i]!;
@@ -5083,7 +5092,7 @@ export function drawTorsoGarment(
         // THE STORM SHROUD: the weather that will not leave — three
         // low fog banks sliding around the hem on their own winds,
         // and for one beat after the strike, lit from within.
-        const kS = stormboltK(nowMs);
+        const kS = stormboltK(nowMs, 0.38);
         const strikeS = kS > 0.92;
         const drift = (nowMs * 0.00013) % 1;
         for (let i = 0; i < 3; i++) {
@@ -5105,9 +5114,10 @@ export function drawTorsoGarment(
         ctx.globalAlpha = 1;
       }
       if (st.groundflash) {
-        // THE GROUND FLASH: thunderhead's own — when the strike
-        // lands, the world under the hem answers for one beat.
-        const k = stormboltK(nowMs);
+        // THE GROUND FLASH: thunderhead's own — the discharge's last
+        // station: when the ripple reaches earth, the world under
+        // the hem answers for one beat.
+        const k = stormboltK(nowMs, 0.3);
         if (k > 0.92) {
           ctx.globalAlpha = 0.3;
           ctx.fillStyle = st.groundflash.color;
@@ -6232,7 +6242,7 @@ export function drawTorsoGarment(
     // visible — and white out together on the strike.
     if (st.chargebeads && !hurt && !back) {
       const cb = st.chargebeads;
-      const ck = stormboltK(nowMs);
+      const ck = stormboltK(nowMs, 0.64);
       const cstrike = ck > 0.92;
       ctx.strokeStyle = cb.cord;
       ctx.lineWidth = Math.max(1.5, s * 0.013);
@@ -7016,7 +7026,7 @@ export function drawTorsoGarment(
     if (st.thunderbank && !hurt && !back) {
       frontPlaneOn();
       const tb = st.thunderbank;
-      const bk = stormboltK(nowMs);
+      const bk = stormboltK(nowMs, 0.72);
       const bstrike = bk > 0.92;
       for (const [ri, yy0, dv] of [[0, -0.86, -12], [1, -0.58, -2]] as const) {
         for (let i = 0; i < 3; i++) {
@@ -11172,11 +11182,12 @@ export function drawPauldron(
     // into two-tone puffs mid-passage, then sheared flat and
     // swallowed to leeward, every rebirth rolling a new silhouette.
     // ONE WIND: both shoulders drift the same world direction, never
-    // mirrored. ONE SKY: the banked charge breathes between the
-    // lobes and the strike lights every cloud FROM WITHIN on the
-    // shared beat — sheet lightning, never a badge.
+    // mirrored. THE ROLLING SKY: the strike reaches this shoulder on
+    // its own station of the body's discharge (near before far,
+    // crown before both) and lights every cloud FROM WITHIN — sheet
+    // lightning, never a badge.
     const ember = st.chargebeads?.bead ?? trim;
-    const k = stormboltK(nowMs);
+    const k = stormboltK(nowMs, side > 0 ? 0.9 : 0.8);
     const strike = k > 0.92;
     const lit = strike ? 24 : 0;
     // The two shoulders share the wind but not the weather: the far
@@ -11292,9 +11303,11 @@ export function drawPauldron(
     // the far side lies low and wide (the low storm), each with its
     // own seeds, phases and cradle. Electricity is constant — the
     // 460ms pulse speaks eye-bolt / crawl / sheet in rotation, and
-    // the shared ONE SKY strike takes everything at once.
+    // the strike arrives on this shoulder's own station of the
+    // rolling sky — within the piece it still takes everything at
+    // once.
     const seamC = st.thunderbank?.glow ?? trim;
-    const k = stormboltK(nowMs);
+    const k = stormboltK(nowMs, side > 0 ? 0.9 : 0.8);
     const strike = k > 0.92;
     const near2 = side > 0;
     const sOff = near2 ? 0 : 0.41;
@@ -11495,7 +11508,7 @@ export function drawPauldron(
     // swinging off the hem, and a drop that lets go on the beat.
     const sunC = st.sunpatch?.color ?? trim;
     const rainC = st.rainhem?.color ?? trim;
-    const k = stormboltK(nowMs);
+    const k = stormboltK(nowMs, side > 0 ? 0.9 : 0.8);
     seat(0.112 * s, 0.09 * s, hurt ? '#ffffff' : col, trim);
     if (side > 0) {
       // The cloud lobe the sun looks over.
@@ -16911,6 +16924,7 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     const ohw = hw * 0.74 * (1 - 0.5 * t);
     const oTop = headY - hh * 0.6;
     const oBot = headY + hh * 0.84;
+    // The rolling sky's first station: the crown leads (off 0).
     const k = stormboltK(f.nowMs);
     const strike = k > 0.92;
     const wreath = st.cloudwreath?.color ?? shade(st.color, 14);
@@ -17167,6 +17181,7 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     const front = backK <= 0.55;
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
     const ohw = hw * 0.74 * (1 - 0.5 * t);
+    // The rolling sky's first station: the crown leads (off 0).
     const k = stormboltK(f.nowMs);
     const strike = k > 0.92;
     const seamC = st.boltjewel?.seam ?? st.trim;
@@ -17435,6 +17450,7 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     const ohw = hw * 0.74 * (1 - 0.5 * t);
     const oTop = headY - hh * 0.6;
     const oBot = headY + hh * 0.84;
+    // The rolling sky's first station: the crown leads (off 0).
     const k = stormboltK(f.nowMs);
     const sunC = st.showerluck?.sun ?? st.trim;
     const beadC = st.showerluck?.bead ?? '#eaf4ff';
