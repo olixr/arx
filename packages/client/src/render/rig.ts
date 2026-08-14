@@ -13803,6 +13803,8 @@ export interface LynxLook {
   /** Ear-tuft and tail-tip ink. Tufts are STROKES (the fur-dialect law). */
   tuft: string;
   eye: string;
+  /** Nose-leather ink — the downward triangle every cat face carries. */
+  nose: string;
   bodyW: number;
   backH: number;
   /** The cat carries its mass BEHIND: extra height ramped over the haunches. */
@@ -13833,6 +13835,7 @@ export const LYNX_LOOKS: Record<string, LynxLook> = {
     earIn: '#3d3226',
     tuft: '#332e2a',
     eye: '#cfd97a',
+    nose: '#7a4448',
     bodyW: 0.15,
     backH: 0.47,
     haunchH: 0.12,
@@ -13855,6 +13858,7 @@ export const LYNX_LOOKS: Record<string, LynxLook> = {
     earIn: '#322d3c',
     tuft: '#332e3a',
     eye: '#ffd24d',
+    nose: '#403a4c',
     bodyW: 0.2,
     backH: 0.58,
     haunchH: 0.17,
@@ -14303,75 +14307,165 @@ export function drawLynxHead(
     }
   }
 
-  // Short broad muzzle — it barely leaves the skull (the feline read),
-  // longer only as the profile deepens. Gone from behind.
+  // ---- THE CAT FACE. No canid wedge, ever: a cat's face is FLAT.
+  // The pale muzzle PLATE with its split whisker pads sits ON the
+  // skull and barely leaves it at profile — the one read that says
+  // feline before anything else. Gone from behind (the muzzle law).
   if (fy > -0.3) {
     const profileK = faceProfileK(fx);
-    const bx0 = cx + fx * w * 0.2;
-    const by0 = cy + fy * w * 0.2 * ys + h * 0.12;
-    const sl = w * (0.13 + 0.12 * profileK);
-    const tx = bx0 + fx * sl;
-    const ty = by0 + fy * sl * ys + h * 0.05;
-    const axv = tx - bx0;
-    const ayv = ty - by0;
-    const al = Math.hypot(axv, ayv) || 1e-4;
-    const nx = -ayv / al;
-    const ny = axv / al;
-    const hb = w * 0.19 * (1 - profileK * 0.15);
-    const ht = hb * 0.82;
-    ctx.fillStyle = C(shade(look.coat, 6));
+    // The plate slides toward the leading edge as the head turns and
+    // narrows — the flat face holding its read side-on.
+    const sl = w * (0.08 + 0.08 * profileK);
+    const mx = cx + fx * (w * 0.2 + sl);
+    const my = cy + fy * (w * 0.2 + sl) * ys + h * 0.17;
+    const prx = w * 0.23 * (1 - 0.3 * profileK);
+    const pry = h * 0.185;
+    ctx.fillStyle = C(look.under);
     ctx.beginPath();
-    ctx.moveTo(bx0 + nx * hb, by0 + ny * hb);
-    ctx.lineTo(tx + nx * ht, ty + ny * ht);
-    ctx.lineTo(tx - nx * ht, ty - ny * ht);
-    ctx.lineTo(bx0 - nx * hb, by0 - ny * hb);
+    ctx.ellipse(mx, my, prx, pry, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // The whisker pads: two bumps splitting the upper lip.
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.7 && es * py < 0) continue;
+      ctx.fillStyle = C(shade(look.under, 7));
+      ctx.beginPath();
+      ctx.ellipse(
+        mx + px * es * prx * 0.42,
+        my - pry * 0.28,
+        prx * 0.42,
+        pry * 0.5,
+        0,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+    }
+    // The nose leather: the downward triangle, seated where the pads
+    // meet.
+    const nx = mx;
+    const ny = my - pry * 0.62;
+    const nw = w * 0.075 * (1 - 0.2 * profileK);
+    ctx.fillStyle = C(look.nose);
+    ctx.beginPath();
+    ctx.moveTo(nx - nw, ny - h * 0.035);
+    ctx.lineTo(nx + nw, ny - h * 0.035);
+    ctx.lineTo(nx, ny + h * 0.05);
     ctx.closePath();
     ctx.fill();
-    // Snarl: the jaw drops open below the muzzle, fangs bared.
+    // The philtrum: nose to lip split — a stroke, per the law.
+    if (!o.hurt) {
+      ctx.strokeStyle = look.ruffDark;
+      ctx.lineWidth = Math.max(1, w * 0.022);
+      ctx.beginPath();
+      ctx.moveTo(nx, ny + h * 0.05);
+      ctx.lineTo(nx, my + pry * 0.5);
+      ctx.stroke();
+    }
+    // The chin drop below the plate, front-facing only.
+    if (fy > 0) {
+      ctx.fillStyle = C(shade(look.under, -4));
+      ctx.beginPath();
+      ctx.ellipse(mx, my + pry * 1.05, prx * 0.4, pry * 0.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Whiskers: sheet-zoom detail off the pads; they vanish quietly
+    // at world zoom.
+    if (!o.hurt && !o.dead && s > 110 && fy > 0.05) {
+      ctx.strokeStyle = 'rgba(238, 232, 214, 0.75)';
+      ctx.lineWidth = Math.max(0.8, w * 0.012);
+      for (const es of [-1, 1]) {
+        for (const wa of [0.12, 0.3]) {
+          ctx.beginPath();
+          ctx.moveTo(mx + px * es * prx * 0.55, my - pry * 0.2 + wa * pry);
+          ctx.lineTo(
+            mx + px * es * (prx * 0.55 + w * 0.3),
+            my - pry * 0.1 + wa * pry * 2.4,
+          );
+          ctx.stroke();
+        }
+      }
+    }
+    // Snarl: the jaw gapes below the plate, fangs bared.
     if (snarl > 0.15 && !o.dead && !o.hurt) {
-      const gape = h * 0.32 * Math.min(1, snarl);
+      const gape = h * 0.34 * Math.min(1, snarl);
       ctx.fillStyle = '#2a1420';
       ctx.beginPath();
-      ctx.moveTo(tx - nx * ht * 0.9, ty - ny * ht * 0.9);
-      ctx.lineTo(tx + nx * ht * 0.9, ty + ny * ht * 0.9);
-      ctx.lineTo(tx + (axv / al) * ht * 0.4, ty + gape);
+      ctx.moveTo(mx - prx * 0.72, my + pry * 0.5);
+      ctx.lineTo(mx + prx * 0.72, my + pry * 0.5);
+      ctx.lineTo(mx + fx * prx * 0.2, my + pry * 0.5 + gape);
       ctx.closePath();
       ctx.fill();
       ctx.fillStyle = '#efe9d8';
-      for (const ts of [-0.5, 0.4]) {
+      for (const ts of [-0.5, 0.5]) {
+        const fx0 = mx + ts * prx * 0.66;
         ctx.beginPath();
-        ctx.moveTo(tx + nx * ht * ts - w * 0.018, ty + ny * ht * ts);
-        ctx.lineTo(tx + nx * ht * ts + w * 0.018, ty + ny * ht * ts);
-        ctx.lineTo(tx + nx * ht * ts, ty + ny * ht * ts + gape * 0.5);
+        ctx.moveTo(fx0 - w * 0.02, my + pry * 0.5);
+        ctx.lineTo(fx0 + w * 0.02, my + pry * 0.5);
+        ctx.lineTo(fx0, my + pry * 0.5 + gape * 0.55);
         ctx.closePath();
         ctx.fill();
       }
     }
-    // Dark nose leather seated on the tip.
-    ctx.fillStyle = C(look.earIn);
-    ctx.beginPath();
-    facetCircle(ctx, tx - (axv / al) * w * 0.02, ty - (ayv / al) * w * 0.02 - h * 0.03, w * 0.06, 5, fx);
-    ctx.fill();
   }
 
-  // Slanted hunter's eyes — gold-green slits with the vertical cat
-  // pupil; the duskruff's burn lamp-gold. The far one hides as the
-  // head goes profile; none from behind, none dead.
+  // Crown stripes between the ears — the lynx's written forehead.
+  if (!o.hurt && fy > -0.2) {
+    ctx.strokeStyle = C(look.ruffDark);
+    ctx.lineWidth = Math.max(1, w * 0.028);
+    ctx.lineCap = 'round';
+    for (const es of [-1, 0, 1]) {
+      if (es !== 0 && Math.abs(fx) > 0.7 && es * py < 0) continue;
+      const sx0 = cx + px * es * w * 0.13 + fx * w * (es === 0 ? -0.02 : -0.05);
+      const sy0 = cy + py * es * w * 0.13 * ys - h * 0.42;
+      ctx.beginPath();
+      ctx.moveTo(sx0, sy0);
+      ctx.lineTo(sx0 + px * es * w * 0.03 + fx * w * 0.1, sy0 + h * 0.16 + fy * w * 0.1 * ys);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  }
+
+  // Almond hunter's eyes: lined in dark, gold-green with the vertical
+  // cat pupil and one fixed light chip — set forward on the flat
+  // face. The far one hides as the head goes profile; none from
+  // behind, none dead.
   if (!o.dead && fy > -0.45) {
     for (const es of [-1, 1]) {
       if (Math.abs(fx) > 0.6 && es * py < 0) continue;
-      const ex = cx + fx * w * 0.1 + px * es * w * 0.28;
-      const ey = cy + (fy * w * 0.1 + py * es * w * 0.28) * ys - h * 0.1;
+      const ex = cx + fx * w * 0.12 + px * es * w * 0.26;
+      const ey = cy + (fy * w * 0.12 + py * es * w * 0.26) * ys - h * 0.11;
       ctx.save();
       ctx.translate(ex, ey);
-      ctx.rotate(es * (0.26 + snarl * 0.25));
+      ctx.rotate(es * (0.3 + snarl * 0.25));
+      // The liner rim first, then the iris inside it.
+      ctx.fillStyle = C(look.ruffDark);
+      ctx.fillRect(-w * 0.1, -h * 0.062, w * 0.2, h * 0.124);
       ctx.fillStyle = C(look.eye);
-      ctx.fillRect(-w * 0.075, -h * 0.05, w * 0.15, h * 0.1);
+      ctx.fillRect(-w * 0.085, -h * 0.048, w * 0.17, h * 0.096);
       if (!o.hurt) {
         ctx.fillStyle = OUTLINE;
-        ctx.fillRect(-w * 0.016, -h * 0.05, w * 0.032, h * 0.1);
+        ctx.fillRect(-w * 0.018, -h * 0.048, w * 0.036, h * 0.096);
+        ctx.fillStyle = 'rgba(255, 250, 235, 0.85)';
+        ctx.fillRect(w * 0.03, -h * 0.04, w * 0.026, h * 0.03);
       }
       ctx.restore();
+      // The tear-line: the dark streak from the inner eye down the
+      // muzzle's side — the lynx's war-paint, its signature stripe.
+      if (!o.hurt && fy > -0.15) {
+        ctx.strokeStyle = C(look.ruffDark);
+        ctx.lineWidth = Math.max(1, w * 0.026);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(ex - px * es * w * 0.06, ey + h * 0.05);
+        ctx.quadraticCurveTo(
+          ex - px * es * w * 0.02 + fx * w * 0.04,
+          ey + h * 0.16,
+          ex - px * es * w * 0.05 + fx * w * 0.07,
+          ey + h * 0.26,
+        );
+        ctx.stroke();
+        ctx.lineCap = 'butt';
+      }
     }
   }
 }
