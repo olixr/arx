@@ -34,12 +34,29 @@ class Client {
   msgs: Msg[] = [];
   stamps: number[] = [];
   seq = 1;
+  /**
+   * THE HEARTBEAT: a real client's fixed-step loop sends one frame per
+   * 50ms tick whether or not anything changed, repeating the held
+   * buttons — and the seq-domain beat locks (ONE LAW, TWO MIRRORS)
+   * count in exactly those frames. A harness that only speaks when it
+   * has something to say under-advances the seq clock and reads every
+   * beat as still armed; this timer makes the fake client walk the
+   * wire like the live one.
+   */
+  private lastButtons = 0;
+  private lastAim = 0;
+  private lastFrameAt = 0;
+  private beat: ReturnType<typeof setInterval> | null = null;
   open(): Promise<void> {
     this.ws = new WebSocket(URL);
     this.ws.on('message', (d: Buffer, isBinary: boolean) => {
       if (isBinary) return;
       this.msgs.push(JSON.parse(d.toString()));
       this.stamps.push(Date.now());
+    });
+    this.ws.on('close', () => {
+      if (this.beat) clearInterval(this.beat);
+      this.beat = null;
     });
     return new Promise((res, rej) => {
       this.ws.on('open', () => res());
@@ -50,6 +67,26 @@ class Client {
     this.ws.send(JSON.stringify(m));
   }
   frame(buttons: number, aim = 0): void {
+    this.lastButtons = buttons;
+    this.lastAim = aim;
+    this.lastFrameAt = Date.now();
+    // The heartbeat wakes on the first deliberate frame — after the
+    // script has logged in and entered the world, never before — and
+    // only FILLS GAPS: it never stacks on a script that is already
+    // speaking at tick rate (the session's input budget is 25/s; a
+    // real client sends exactly 20). The cadence must be TRUE 20/s:
+    // the seq-domain beat locks translate frames to wall time, so an
+    // under-rate heartbeat stretches every beat and reads locks as
+    // still armed past their honest 600ms.
+    this.beat ??= setInterval(() => {
+      if (this.ws.readyState !== this.ws.OPEN) return;
+      if (Date.now() - this.lastFrameAt < 45) return;
+      this.lastFrameAt = Date.now();
+      this.send({
+        t: 'input',
+        frame: { seq: this.seq++, mx: 0, my: 0, aim: this.lastAim, buttons: this.lastButtons },
+      });
+    }, 10);
     this.send({ t: 'input', frame: { seq: this.seq++, mx: 0, my: 0, aim, buttons } });
   }
   async press(buttons: number): Promise<void> {
@@ -243,7 +280,12 @@ const main = async () => {
 
   // --- R: the drawn arrow dies with the trade (the cast-family kill:
   // drawTicks zeroes exactly where casts cancel). Draw with the bow,
-  // trade mid-draw, release — the quiver must not lighten.
+  // trade mid-draw, release — the quiver must not lighten. The R3
+  // beat must drain FIRST: this receipt is about a LEGAL trade
+  // killing a live draw — inside the beat the trade is refused, the
+  // draw-lock keeps the string from ever drawing, and the receipt
+  // passes vacuously (the old under-sending harness hid exactly that).
+  await sleep(700);
   const arrowsBefore = packCount(a, 'arrow');
   for (let i = 0; i < 8; i++) {
     a.frame(ATTACK);
@@ -259,9 +301,20 @@ const main = async () => {
     `${arrowsBefore} arrows before and after`,
   );
 
-  // --- R: the beat is honest — the sword just traded in; attack held
+  // The mid-draw trade above left the SWORD in the hands. Return the
+  // bow first, so the beat measure below trades the SWORD back in —
+  // exactly as its receipt reads. (The heartbeat walks the wire at a
+  // real client's tick rate now, so the mid-draw trade lands inside
+  // its authored window instead of being quietly beaten — the old
+  // under-sending harness never advanced the seq clock past the R3
+  // beat, and this receipt passed on a draw that had never started.)
+  await sleep(700); // the mid-draw trade's own beat drains
+  await a.press(SWAP); // the bow returns to the hands
+  await sleep(800);
+
+  // --- R: the beat is honest — the sword trades in; attack held
   // through the beat lands its FIRST swing only after the lock lifts.
-  await sleep(800); // the mid-draw trade's own beat drains fully
+  await sleep(200); // the bow trade's beat drains fully below
   const eqIdx = a.mark();
   const tradeAt = a.indexOf((m) => m.t === 'equip', eqIdx - 30); // anchor below
   mark = a.mark();

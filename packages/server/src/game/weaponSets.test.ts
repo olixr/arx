@@ -47,7 +47,9 @@ interface FakePlayer {
   action: { kind: string } | null;
   sheathed: boolean;
   drawTicks: number;
+  drawLockUntilSeq: number;
   drawLockUntilTick: number;
+  swapLockUntilSeq: number;
   swapLockUntilTick: number;
   perks?: unknown;
 }
@@ -64,7 +66,9 @@ function mkPlayer(over: Partial<FakePlayer> = {}): FakePlayer {
     action: null,
     sheathed: false,
     drawTicks: 0,
+    drawLockUntilSeq: 0,
     drawLockUntilTick: 0,
+    swapLockUntilSeq: 0,
     swapLockUntilTick: 0,
     ...over,
   };
@@ -186,7 +190,7 @@ test('THE HONEST TRADE: one atomic exchange, the beat paid once', () => {
     },
   });
   const { self, calls } = slate(player, 100);
-  self.swapWeaponSets.call(self, 1, player);
+  self.swapWeaponSets.call(self, 1, player, 100);
   assert.equal(player.equipment.weapon?.id, 'shortbow');
   assert.equal(player.equipment.offhand?.id, 'frost_quiver');
   assert.equal(player.equipment.stowWeapon?.id, 'bronze_sword');
@@ -196,20 +200,25 @@ test('THE HONEST TRADE: one atomic exchange, the beat paid once', () => {
     'the instance travels whole, roll and all',
   );
   assert.equal(player.equipment.stowOffhand?.id, 'oak_kiteshield');
-  assert.equal(player.swapLockUntilTick, 112, 'the beat is 12 ticks');
-  assert.equal(player.drawLockUntilTick, 112, 'attacks wait behind the standing draw lock');
+  // ONE LAW, TWO CLOCKS: the beat locks in INPUT-SEQ units (the clock
+  // the client's fire mirrors share) AND in server ticks (the wall
+  // clock a hostile seq counter cannot inflate away).
+  assert.equal(player.swapLockUntilSeq, 112, 'the beat is 12 ticks of input seq');
+  assert.equal(player.swapLockUntilTick, 112, 'and 12 ticks of server clock');
+  assert.equal(player.drawLockUntilSeq, 112, 'attacks wait behind the standing draw lock');
+  assert.equal(player.drawLockUntilTick, 112, 'on both clocks');
   assert.equal(player.combo.stage, 0, 'the traded string is a dropped string');
   assert.equal(player.pendingStrike, null, 'the traded blow never lands');
   assert.ok(calls.includes('cancelcast'), 'traded steel casts nothing');
   assert.ok(calls.includes('equipchange'), 'the standing rail ran');
 
   // Re-press inside the beat: swallowed whole, nothing moves.
-  self.swapWeaponSets.call(self, 1, player);
+  self.swapWeaponSets.call(self, 1, player, 106);
   assert.equal(player.equipment.weapon?.id, 'shortbow', 'the beat swallows the re-press');
 
-  // Past the beat, the trade returns everything to its first arrangement.
+  // Past the beat on BOTH clocks, the trade returns everything.
   self.tickCount = 112;
-  self.swapWeaponSets.call(self, 1, player);
+  self.swapWeaponSets.call(self, 1, player, 112);
   assert.equal(player.equipment.weapon?.id, 'bronze_sword');
   assert.equal(player.equipment.offhand?.id, 'oak_kiteshield');
   assert.equal(player.equipment.stowWeapon?.id, 'shortbow');
@@ -221,7 +230,7 @@ test('a one-sided trade leaves honest empties, never ghost keys', () => {
     equipment: { weapon: { id: 'iron_greatblade' }, stowWeapon: { id: 'bronze_sword' } },
   });
   const { self } = slate(player);
-  self.swapWeaponSets.call(self, 1, player);
+  self.swapWeaponSets.call(self, 1, player, 50);
   assert.equal(player.equipment.weapon?.id, 'bronze_sword');
   assert.equal(player.equipment.stowWeapon?.id, 'iron_greatblade');
   assert.ok(!('offhand' in player.equipment), 'an empty hand stays an absent key');
@@ -231,9 +240,10 @@ test('a one-sided trade leaves honest empties, never ghost keys', () => {
 test('EMPTY HANDS REFUSE QUIETLY: no stowed set, no beat paid', () => {
   const player = mkPlayer({ equipment: { weapon: { id: 'bronze_sword' } } });
   const { self, sent, calls } = slate(player);
-  self.swapWeaponSets.call(self, 1, player);
+  self.swapWeaponSets.call(self, 1, player, 50);
   assert.equal(player.equipment.weapon?.id, 'bronze_sword', 'nothing moves');
-  assert.equal(player.swapLockUntilTick, 0, 'no beat is paid for a refusal');
+  assert.equal(player.swapLockUntilSeq, 0, 'no beat is paid for a refusal');
+  assert.equal(player.swapLockUntilTick, 0, 'on either clock');
   assert.ok(
     sent.some((m) => m.t === 'chat' && String(m.text).includes('Nothing waits')),
     'the refusal is spoken',
@@ -247,7 +257,7 @@ test('the swap speaks the dual-wield ceremony when two blades reach the hands', 
     skills: { onehand: xpForLevel(12) },
   });
   const { self, sent, calls } = slate(player);
-  self.swapWeaponSets.call(self, 1, player);
+  self.swapWeaponSets.call(self, 1, player, 50);
   assert.equal(player.skills.dualwield, 0, 'the hidden skill wakes at the hands');
   assert.ok(calls.includes('xp:dualwield'), 'the first spark of the school');
   assert.ok(
@@ -262,7 +272,7 @@ test('a channel dies with the trade', () => {
     action: { kind: 'channel' },
   });
   const { self, calls } = slate(player);
-  self.swapWeaponSets.call(self, 1, player);
+  self.swapWeaponSets.call(self, 1, player, 50);
   assert.ok(calls.includes('cancelaction:cancelled'), 'the note breaks with the trade');
 });
 
@@ -279,9 +289,9 @@ test('THE SLEEPING STEEL wakes no passives', () => {
   );
 });
 
-// TWIN LAW (the STRIKE_CLOCKS precedent): the server locks in ticks,
-// the client clamps and choreographs in ms — one beat, two units.
-// This pin outlives the constants: change both or neither.
+// TWIN LAW (the STRIKE_CLOCKS precedent): both sides lock in input-seq
+// units and choreograph in ms — one beat, two units. This pin outlives
+// the constants: change both or neither.
 test('the swap beat twins agree across the tick clock', () => {
   assert.equal(SWAP_BEAT_TICKS * TICK_MS, SWAP_BEAT_MS, 'tick and ms twins must stay byte-equal');
 });

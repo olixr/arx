@@ -29678,24 +29678,27 @@ export class Renderer {
           break;
         }
         case EntityKind.Projectile: {
-          // Tracer handoff (v9): on this entity's FIRST draw, measure
-          // the FULL-STATE gap — position offset and heading delta —
-          // between where the predicted tracer flew and where the
-          // authoritative shot is, then decay both together (~120ms):
-          // the arrow STEERS onto its true ray, nose leading the turn,
-          // instead of snapping to a new angle mid-air. The ballistic
+          // Tracer handoff (v10): on this entity's FIRST draw, measure
+          // the gap between where the predicted tracer flew and where
+          // the authoritative shot is, then SPLIT IT BY AXIS. The
+          // cross-track offset and the heading delta decay together in
+          // ~120ms — the v9 steer, nose leading the turn. The
+          // along-track lead (spawn latency the pre-fly didn't cover)
+          // is REPAID LINEARLY over the flight remaining at capture:
+          // a one-beat 120ms decay of a tick or two of lead was the
+          // visible brake-then-sprint; spread over the whole flight it
+          // is a few percent of speed no eye can read, and the shot
+          // still lands exactly on the server's impact. The ballistic
           // sample is consistent from sample one, so the capture and
-          // every later frame measure on the same timeline (v8
-          // captured against a frozen spawn sample and lurched half a
-          // transit forward when pair extrapolation switched on).
+          // every later frame measure on the same timeline.
           let sp = s;
           const h = game.projHandoffs.get(eid);
           if (h) {
             if (h.capturedAt === 0) {
               const age = (now - h.shot.bornAt) / 1000;
               const flown = Math.min(h.shot.speed * age, h.shot.range, h.shot.wallAt);
-              h.ox = h.shot.x + h.shot.dirX * flown - s.x;
-              h.oy = h.shot.y + h.shot.dirY * flown - s.y;
+              const gx = h.shot.x + h.shot.dirX * flown - s.x;
+              const gy = h.shot.y + h.shot.dirY * flown - s.y;
               h.od = shortestAngle(s.dir, h.shot.dir);
               h.capturedAt = now;
               // The tracer already fired this shot's muzzle flash.
@@ -29703,17 +29706,40 @@ export class Renderer {
               // A gap this wide is a true misprediction (cadence
               // drift, a swallowed cast, a wall the tracer sailed
               // past): truth outranks the glide — snap once.
-              if (Math.hypot(h.ox, h.oy) > 2.5 || Math.abs(h.od) > 0.9) {
+              if (Math.hypot(gx, gy) > 2.5 || Math.abs(h.od) > 0.9) {
                 h.ox = 0;
                 h.oy = 0;
                 h.od = 0;
+                h.along = 0;
+                h.repayMs = 0;
+              } else {
+                const dx = Math.cos(s.dir);
+                const dy = Math.sin(s.dir);
+                h.along = gx * dx + gy * dy;
+                h.ox = gx - h.along * dx;
+                h.oy = gy - h.along * dy;
+                const remaining = Math.max(0, Math.min(h.shot.range, h.shot.wallAt) - flown);
+                h.repayMs =
+                  h.shot.speed > 0
+                    ? Math.max(250, Math.min(1200, (remaining / h.shot.speed) * 1000))
+                    : 250;
               }
             }
             const k = Math.exp(-(now - h.capturedAt) / 120);
-            if (k < 0.02) {
+            const kAlong = h.repayMs > 0 ? Math.max(0, 1 - (now - h.capturedAt) / h.repayMs) : 0;
+            if (k < 0.02 && kAlong <= 0) {
               game.projHandoffs.delete(eid);
             } else {
-              sp = { ...s, x: s.x + h.ox * k, y: s.y + h.oy * k, dir: s.dir + h.od * k };
+              // The lead rides the CURRENT authoritative heading, so a
+              // homing curve carries its repayment through the turn.
+              const dx = Math.cos(s.dir);
+              const dy = Math.sin(s.dir);
+              sp = {
+                ...s,
+                x: s.x + h.ox * k + dx * h.along * kAlong,
+                y: s.y + h.oy * k + dy * h.along * kAlong,
+                dir: s.dir + h.od * k,
+              };
             }
           }
           // No shot pierces a wall while its death notice is in

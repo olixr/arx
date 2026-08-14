@@ -441,6 +441,7 @@ import {
   DUALWIELD_UNLOCK_ONEHAND,
   HIDDEN_SKILLS,
   SWAP_BEAT_TICKS,
+  DRAW_LOCK_TICKS,
   OFFHAND_DELAY_TICKS,
   offhandDamageFactor,
   sneakDetectionFactor,
@@ -1463,7 +1464,12 @@ interface PlayerComp {
   token: string;
   session: Session | null;
   disconnectedAt: number | null;
-  inputQueue: InputFrame[];
+  /**
+   * Frames waiting for the paced drain, each stamped with the tick it
+   * arrived — the wait it actually served is what THE SHOT REMEMBERS
+   * ITS PRESS repays at the projectile's spawn (never an estimate).
+   */
+  inputQueue: Array<{ frame: InputFrame; arrivedTick: number }>;
   lastProcessedSeq: number;
   /** THE STEADY HAND: consecutive ticks the input queue has held a
    *  standing 2-frame cushion — drives the slow bleed back to 1. */
@@ -1635,13 +1641,28 @@ interface PlayerComp {
    * pull-out has visibly played.
    */
   sheathed: boolean;
-  /** No attacks or casts until this tick — the weapon is mid-draw. */
+  /**
+   * ONE LAW, TWO CLOCKS: no attacks or casts until this INPUT SEQ and
+   * its tick twin below have BOTH passed — the weapon is mid-draw.
+   * The seq half is the clock the client's fire mirrors share by
+   * construction, so the gate expires on the same press for both no
+   * matter how the input queue drains (a tick-only lock lagged the
+   * mirror by the dejitter cushion and silently refused presses the
+   * mirror had already fired tracers for). The tick half is the
+   * server's own wall clock: seq numbers are client-authored, so a
+   * seq-only beat could be skipped outright by inflating them, and
+   * the drain's 2-per-tick catch-up would compress it honestly too.
+   * An honest 20Hz client sees both halves expire on the same frame.
+   */
+  drawLockUntilSeq: number;
   drawLockUntilTick: number;
   /**
    * THE SECOND GRIP: re-presses of the swap verb are swallowed until
-   * this tick — the honest trade's beat. The attack/cast side of the
-   * same beat rides drawLockUntilTick (one gate, zero new seams).
+   * this input seq (and its tick twin) — the honest trade's beat. The
+   * attack/cast side of the same beat rides the draw lock pair (one
+   * gate, zero new seams).
    */
+  swapLockUntilSeq: number;
   swapLockUntilTick: number;
   /** Consecutive ticks without movement while sneaking. */
   sneakStillTicks: number;
@@ -1993,15 +2014,19 @@ const SAVE_INTERVAL_TICKS = 600; // 30s
 /** World-y extent of the player's visual body above its ground point
  * (screen height ÷ camera pitch) — NPC shots test the feet→crown band. */
 const PLAYER_HIT_HEIGHT = 1.9;
+// THE SAFETY's beat (DRAW_LOCK_TICKS) and THE HONEST TRADE's beat
+// (SWAP_BEAT_TICKS) both live in shared/sim/combat beside the ms twin —
+// the client's fire mirrors and these locks must read the same law from
+// the same file. The beat IS the cooldown (LAW 4, weapon-sets plan).
 /**
- * Ticks between a combat press drawing a stowed weapon and the first
- * swing it will honor (~0.5s) — the pull-out visibly plays before any
- * damage can happen, so an accidental click can never be an attack.
+ * THE SHOT REMEMBERS ITS PRESS: a player's basic projectile pre-flies
+ * up to this many ticks at spawn — the uplink + queue wait its press
+ * actually served — through the same per-tick step door (walls and
+ * hits included), so the authoritative shot marries the shooter's
+ * tracer instead of trailing it by the wire. 4 ticks = 200ms of
+ * favor-the-shooter, the cap on how far a shot can be born downrange.
  */
-const DRAW_LOCK_TICKS = 10;
-// THE HONEST TRADE's beat (SWAP_BEAT_TICKS) lives in shared/sim/combat
-// beside its ms twin — the client's mirror clocks and this lock must
-// read the same clock. The beat IS the cooldown (LAW 4, plan).
+const PROJ_CATCHUP_MAX_TICKS = 4;
 
 /**
  * Damage roll with a 10% base crit chance (guaranteed heavy hit).
@@ -3325,7 +3350,9 @@ export class GameServer {
       petXpDirty: false,
       petBondAt: new Map(),
       sheathed: false,
+      drawLockUntilSeq: 0,
       drawLockUntilTick: 0,
+      swapLockUntilSeq: 0,
       swapLockUntilTick: 0,
       sneakStillTicks: 0,
       hidden: false,
@@ -3423,6 +3450,10 @@ export class GameServer {
     // old high-water mark would silently drop all of its movement.
     player.lastProcessedSeq = 0;
     player.lastDodgeSeq = -999;
+    // The seq-domain beat locks belong to the OLD numbering — a stale
+    // lock against a restarted clock would refuse combat for hours.
+    player.drawLockUntilSeq = 0;
+    player.swapLockUntilSeq = 0;
     player.drawTicks = 0;
     // The rejoining client's toggles start fresh — stale prevButtons would
     // phantom-latch the held sneak bit (and eat the first ability edge).
@@ -3888,9 +3919,9 @@ export class GameServer {
     if (viewMs !== undefined) player.viewMs = viewMs;
     if (frame.seq <= player.lastProcessedSeq) return;
     const q = player.inputQueue;
-    if (q.length > 0 && frame.seq <= q[q.length - 1]!.seq) return;
+    if (q.length > 0 && frame.seq <= q[q.length - 1]!.frame.seq) return;
     if (q.length >= MAX_QUEUED_INPUTS) q.shift();
-    q.push(frame);
+    q.push({ frame, arrivedTick: this.tickCount });
   }
 
   /**
@@ -15744,8 +15775,8 @@ export class GameServer {
    * legal by construction (the equip act enforces each row's laws), so
    * the exchange itself never needs the pack and never fails halfway.
    */
-  private swapWeaponSets(eid: EntityId, player: PlayerComp): void {
-    if (this.tickCount < player.swapLockUntilTick) return;
+  private swapWeaponSets(eid: EntityId, player: PlayerComp, seq: number): void {
+    if (seq < player.swapLockUntilSeq || this.tickCount < player.swapLockUntilTick) return;
     const stowW = player.equipment.stowWeapon;
     const stowO = player.equipment.stowOffhand;
     // LAW 9: EMPTY HANDS REFUSE QUIETLY — no beat paid, nothing moves.
@@ -15767,7 +15798,9 @@ export class GameServer {
     else delete player.equipment.stowWeapon;
     if (offOut) player.equipment.stowOffhand = offOut;
     else delete player.equipment.stowOffhand;
+    player.swapLockUntilSeq = seq + SWAP_BEAT_TICKS;
     player.swapLockUntilTick = this.tickCount + SWAP_BEAT_TICKS;
+    player.drawLockUntilSeq = Math.max(player.drawLockUntilSeq, player.swapLockUntilSeq);
     player.drawLockUntilTick = Math.max(player.drawLockUntilTick, player.swapLockUntilTick);
     player.sheathed = false; // a trade is made to fight: the incoming set draws
     player.drawTicks = 0; // the bowstring lets down
@@ -16053,6 +16086,7 @@ export class GameServer {
     aim: number,
     seq: number,
     tapped = false,
+    pressLagTicks = 0,
   ): void {
     if (player.attackCooldown > 0) return;
     const equipped = this.equippedWeapon(player);
@@ -16114,7 +16148,14 @@ export class GameServer {
     // damage, same rhythm stage; the delivery answers the range, and
     // the pose speaks steel so the pole choreography plays.
     const pos = this.positions.must(eid);
-    const guard = moveset.style === 'arx' && this.foeWithin(pos, GUARD_SWEEP_RANGE);
+    // THE SWEEP JUDGES WHAT YOU SAW: the doorstep is measured against
+    // the foe positions the shooter's screen was showing at the press
+    // (the same rewind law melee hit tests ride) — the client's guard
+    // mirror reads its interpolated view, which IS that rewound state,
+    // so bolt-vs-pole stops flickering against a strafing foe.
+    const guard =
+      moveset.style === 'arx' &&
+      this.foeWithin(pos, GUARD_SWEEP_RANGE, this.viewRewindTicks(player));
     // THE STRIKE CLOCK + THE POSE ALTERNATION LAW: any string length
     // rides the existing pose bytes, adjacent beats never repeating
     // (a guard beat between bolts still flips the byte — steel vs
@@ -16156,7 +16197,10 @@ export class GameServer {
             ? { status: 'burn', power: 1, durationTicks: 60 }
             : undefined,
       });
-      this.updateChunkMembership(proj);
+      // THE SHOT REMEMBERS ITS PRESS: fly the wire's worth of ticks
+      // now, through the same step door — the bolt is born where the
+      // shooter's tracer already is.
+      this.preFlyProjectile(proj, pressLagTicks);
       return;
     }
 
@@ -16210,13 +16254,18 @@ export class GameServer {
     }
   }
 
-  /** A living foe (never a companion) inside `range` of this body. */
-  private foeWithin(pos: { x: number; y: number }, range: number): boolean {
+  /**
+   * A living foe (never a companion) inside `range` of this body.
+   * `rewindTicks` > 0 measures against the foe's REWOUND position —
+   * what the asking player's screen showed — via the same history
+   * ring melee lag comp reads.
+   */
+  private foeWithin(pos: { x: number; y: number }, range: number, rewindTicks = 0): boolean {
     for (const [npcEid, npc] of this.npcs) {
       if (this.pets.has(npcEid)) continue;
       const hp = this.healths.get(npcEid);
       if (!hp || hp.hp <= 0) continue;
-      const npos = this.positions.get(npcEid);
+      const npos = this.npcPosAt(npcEid, rewindTicks);
       if (!npos) continue;
       if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius <= range) return true;
     }
@@ -18733,318 +18782,354 @@ export class GameServer {
   private tickProjectiles(): void {
     for (const [eid, proj] of this.projectiles) {
       const pos = this.positions.must(eid);
-      const step = proj.speed * TICK_DT;
-      // Sub-step the advance so the shot dies AT the wall face, not up
-      // to a full step past it (fast arrows cover >1 tile per tick and
-      // could tunnel straight through a thin wall). pointHitsSolid is
-      // shape-aware: a shot crossing a tree's tile only dies on the
-      // TRUNK — grazes slip past the canopy corners.
-      // Boomerangs home on the owner's LIVE position on the way back.
-      if (proj.returning) {
-        const opos = this.positions.get(proj.ownerEid);
-        if (opos) {
-          const hx = opos.x - pos.x;
-          const hy = opos.y - pos.y;
-          const hd = Math.hypot(hx, hy);
-          if (hd < 0.6) {
-            // Caught: the shot's journey ends in the caster's hand.
-            this.removeFromChunks(eid);
-            this.ecs.destroy(eid);
-            continue;
-          }
-          proj.dirX = hx / hd;
-          proj.dirY = hy / hd;
-          pos.dir = Math.atan2(proj.dirY, proj.dirX);
-        }
-      }
-      // Homing law: steer toward the mark with a capped turn rate — a
-      // curve you can read, not a teleport. A dead mark hands the shot
-      // to the nearest living foe within seek range; with nobody to
-      // hunt it flies straight and dies at range like any other shot.
-      if (proj.homingTurn && !proj.returning && !proj.fromNpc) {
-        let tpos =
-          proj.targetEid !== undefined && this.npcs.has(proj.targetEid)
-            ? this.positions.get(proj.targetEid)
-            : undefined;
-        if (!tpos) {
-          proj.targetEid = undefined;
-          let bestD = HOMING_SEEK_RANGE;
-          for (const [npcEid, npc] of this.npcs) {
-            if (proj.hitEids?.has(npcEid)) continue;
-            // A homing shot never hunts a companion.
-            if (this.pets.has(npcEid)) continue;
-            const npos = this.positions.get(npcEid);
-            if (!npos) continue;
-            const d = Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius;
-            if (d < bestD) {
-              bestD = d;
-              proj.targetEid = npcEid;
-              tpos = npos;
-            }
-          }
-        }
-        if (tpos) {
-          const want = Math.atan2(tpos.y - pos.y, tpos.x - pos.x);
-          const cur = Math.atan2(proj.dirY, proj.dirX);
-          let diff = want - cur;
-          while (diff > Math.PI) diff -= Math.PI * 2;
-          while (diff < -Math.PI) diff += Math.PI * 2;
-          const maxTurn = proj.homingTurn * TICK_DT;
-          const turned = cur + Math.max(-maxTurn, Math.min(maxTurn, diff));
-          proj.dirX = Math.cos(turned);
-          proj.dirY = Math.sin(turned);
-          pos.dir = turned;
-        }
-      }
-      const subs = Math.max(1, Math.ceil(step / 0.25));
-      let dead = false;
-      for (let i = 0; i < subs && !dead; i++) {
-        pos.x += proj.dirX * (step / subs);
-        pos.y += proj.dirY * (step / subs);
-        // Return legs ghost through walls — a boomerang that dies on the
-        // doorframe it left through reads as a bug, not a mechanic.
-        if (!proj.returning && pointHitsSolid(this.world, pos.x, pos.y)) {
-          dead = true;
-          // A player's shot spends itself bursting the crate it
-          // struck — the arrow's last act is the smash.
-          if (!proj.fromNpc) {
-            const stx = Math.floor(pos.x);
-            const sty = Math.floor(pos.y);
-            const g = this.world.groundAt(stx, sty);
-            const dinfo = g === undefined ? null : destructibleInfo(g);
-            if (dinfo) {
-              this.hitProp(stx, sty, g as Tile, dinfo, Math.atan2(proj.dirY, proj.dirX));
-            }
-          }
-        }
-      }
-      proj.distLeft -= step;
-      dead = dead || proj.distLeft <= 0;
-
-      // The turn: instead of dying at range or a wall, come back armed.
-      if (dead && proj.returns && !proj.returning) {
-        dead = false;
-        proj.returning = true;
-        proj.distLeft = 40; // generous — the catch check is what ends it
-        proj.hitEids?.clear();
-        proj.pierce = true; // the return leg cuts through the whole line
-      }
-
-      // A dodged foe shot still LANDS somewhere: an ability projectile
-      // that dies on a wall or at range speaks its landing there — the
-      // golem's boulder lies in the ground it hit, and anyone standing
-      // close to the miss still pays the splash. That is what dodging
-      // means: not being near where it comes down.
-      if (dead && proj.fromNpc && proj.abilityId) {
-        this.broadcastFx({
-          t: 'fx',
-          kind: 'blast',
-          x: pos.x,
-          y: pos.y,
-          radius: proj.splashRadius ?? 0.55,
-          id: proj.abilityId,
-          color: proj.abilityColor,
-        });
-        if (proj.splashRadius) {
-          const splashHit = Math.max(1, Math.round(proj.maxHit * 0.5));
-          for (const [playerEid, player] of this.players) {
-            if (player.session === null && player.disconnectedAt !== null) continue;
-            const ppos = this.positions.get(playerEid);
-            if (!ppos) continue;
-            if (Math.hypot(ppos.x - pos.x, ppos.y - pos.y) > proj.splashRadius) continue;
-            this.damagePlayer(playerEid, Math.floor(Math.random() * (splashHit + 1)), {
-              status: proj.status,
-              attackerLevel: proj.attackerLevel,
-              sourceEid: proj.ownerEid,
-            });
-          }
-        }
-      }
-
-      if (!dead && proj.fromNpc) {
-        // NPC shots seek players (and straw decoys, which exist to eat them).
-        for (const [playerEid, player] of this.players) {
-          if (player.session === null && player.disconnectedAt !== null) continue;
-          const ppos = this.positions.get(playerEid);
-          if (!ppos) continue;
-          const dx = ppos.x - pos.x;
-          const dy = bandDy(pos.y, ppos.y, PLAYER_HIT_HEIGHT);
-          if (dx * dx + dy * dy < 0.45 ** 2) {
-            this.damagePlayer(playerEid, Math.floor(Math.random() * (proj.maxHit + 1)), {
-              status: proj.status,
-              attackerLevel: proj.attackerLevel,
-              sourceEid: proj.ownerEid,
-            });
-            // THE SIGNATURE LAW reads both ways: a foe's ability shot
-            // announces its landing too, so the receiving-end
-            // signature speaks at the wound (the golem's boulder lies
-            // where it fell). Basic ranged shafts stay quiet.
-            if (proj.abilityId) {
-              this.broadcastFx({
-                t: 'fx',
-                kind: 'blast',
-                x: pos.x,
-                y: pos.y,
-                radius: proj.splashRadius ?? 0.55,
-                id: proj.abilityId,
-                color: proj.abilityColor,
-              });
-            }
-            // The burst is part of the same landing: everyone else
-            // standing close pays half the direct hit.
-            if (proj.splashRadius) {
-              const splashHit = Math.max(1, Math.round(proj.maxHit * 0.5));
-              for (const [otherEid, other] of this.players) {
-                if (otherEid === playerEid) continue;
-                if (other.session === null && other.disconnectedAt !== null) continue;
-                const opos = this.positions.get(otherEid);
-                if (!opos) continue;
-                if (Math.hypot(opos.x - pos.x, opos.y - pos.y) > proj.splashRadius) continue;
-                this.damagePlayer(otherEid, Math.floor(Math.random() * (splashHit + 1)), {
-                  status: proj.status,
-                  attackerLevel: proj.attackerLevel,
-                  sourceEid: proj.ownerEid,
-                });
-              }
-            }
-            dead = true;
-            break;
-          }
-        }
-        if (!dead) {
-          for (const [sumEid, sum] of this.summons) {
-            if (sum.kind !== 'decoy') continue;
-            const spos = this.positions.get(sumEid);
-            if (!spos) continue;
-            const dx = spos.x - pos.x;
-            const dy = spos.y - pos.y;
-            if (dx * dx + dy * dy < 0.5 ** 2) {
-              this.damageSummon(sumEid, Math.floor(Math.random() * (proj.maxHit + 1)));
-              dead = true;
-              break;
-            }
-          }
-        }
-        if (!dead) {
-          // A mob's shaft finds a companion body in its line — the
-          // arrow is physical; being unseen never made it a ghost.
-          for (const [petEid] of this.pets) {
-            const ppos = this.positions.get(petEid);
-            const pnpc = this.npcs.get(petEid);
-            if (!ppos || !pnpc) continue;
-            const dx = ppos.x - pos.x;
-            const dy = bandDy(pos.y, ppos.y, npcHitHeight(pnpc.def));
-            if (dx * dx + dy * dy < 0.5 ** 2) {
-              this.damagePet(petEid, Math.floor(Math.random() * (proj.maxHit + 1)), {
-                status: proj.status,
-                attackerLevel: proj.attackerLevel,
-                sourceEid: proj.ownerEid,
-              });
-              dead = true;
-              break;
-            }
-          }
-        }
-      } else if (!dead) {
-        for (const [npcEid, npc] of this.npcs) {
-          if (proj.hitEids?.has(npcEid)) continue;
-          // Arrows fly past a companion — it neither blocks nor bleeds.
-          if (this.pets.has(npcEid)) continue;
-          const npos = this.positions.get(npcEid);
-          if (!npos) continue;
-          const dx = npos.x - pos.x;
-          // The visual body rises north of the ground point — test the
-          // feet→crown band so a shot crossing the chest or head lands.
-          const dy = bandDy(pos.y, npos.y, npcHitHeight(npc.def));
-          if (dx * dx + dy * dy < (npc.def.radius + 0.25) ** 2) {
-            // The surge is read where the shaft LANDS, not where it was
-            // loosed: a working that woke mid-flight still sharpens the
-            // arrow already in the air. Cheaper than stamping every
-            // projectile, and it reads the same in the hand. Basic
-            // shots fold the damage surge here too (abilities folded
-            // it at cast — see castAbility's gearMult — so only the
-            // basic shaft would otherwise never feel it), under the
-            // melee door's own rounding law.
-            const shooter = this.players.get(proj.ownerEid);
-            const critPct = shooter ? shooter.gear.critPct + surgeCritPct(shooter) : 0;
-            const maxHit =
-              proj.basic && shooter
-                ? Math.max(1, Math.round(proj.maxHit * surgeDmgMult(shooter)))
-                : proj.maxHit;
-            const roll = proj.basic ? rollBasic(maxHit, critPct) : rollDamage(maxHit, critPct);
-            const dmg = this.executeAdjust(npcEid, roll.dmg, proj.executeBelow);
-            const crit = roll.crit;
-            this.damageNpc(npcEid, dmg, proj.ownerEid, proj.style, {
-              crit,
-              basic: proj.basic,
-              fullDraw: proj.fullDraw,
-              status: proj.status,
-              vs: proj.vs,
-              knockbackMult: proj.heavy ? HEAVY_BOLT_KNOCKBACK : proj.fullDraw ? 1.4 : 1,
-            });
-            this.drainHeal(proj.ownerEid, dmg, proj.drainFrac);
-            // THE SIGNATURE LAW: an ability's shot announces its
-            // impact — the client's bespoke signature fires at the
-            // wound, not just where the arrow left the string. Basic
-            // attacks stay quiet; heavy wand bolts keep their old
-            // anonymous burst.
-            if (proj.abilityId && !proj.basic) {
-              this.broadcastFx({
-                t: 'fx',
-                kind: 'blast',
-                x: pos.x,
-                y: pos.y,
-                radius: proj.splashRadius ?? 0.55,
-                id: proj.abilityId,
-                color: proj.abilityColor,
-              });
-            } else if (proj.splashRadius) {
-              this.broadcastFx({
-                t: 'fx',
-                kind: 'blast',
-                x: pos.x,
-                y: pos.y,
-                radius: proj.splashRadius,
-                color: '#b49af0',
-              });
-            }
-            // Heavy orbs burst on impact, splashing everything close.
-            // The splash is part of the same landing, so it reads the
-            // same surge-folded maxHit the direct hit rolled from.
-            if (proj.splashRadius) {
-              const splashHit = Math.max(1, Math.round(maxHit * 0.5));
-              for (const [otherEid, other] of this.npcs) {
-                if (otherEid === npcEid) continue;
-                const opos = this.positions.get(otherEid);
-                if (!opos) continue;
-                if (Math.hypot(opos.x - pos.x, opos.y - pos.y) - other.def.radius > proj.splashRadius) {
-                  continue;
-                }
-                const roll = rollDamage(splashHit);
-                this.damageNpc(otherEid, roll.dmg, proj.ownerEid, proj.style, {
-                  crit: roll.crit,
-                  status: proj.status,
-                  vs: proj.vs,
-                });
-              }
-            }
-            if (proj.pierce) {
-              (proj.hitEids ??= new Set()).add(npcEid);
-            } else {
-              dead = true;
-              break;
-            }
-          }
-        }
-      }
-
-      if (dead) {
+      if (this.stepProjectile(eid, proj, pos)) {
         this.removeFromChunks(eid);
         this.ecs.destroy(eid);
       } else {
         this.updateChunkMembership(eid);
       }
     }
+  }
+
+  /**
+   * THE SHOT REMEMBERS ITS PRESS: a fresh player shot flies its press
+   * lag at spawn — each catch-up tick walks the SAME step door as live
+   * flight (walls, hits, splash, pierce), so being born downrange can
+   * never skip a body or a wall the honest flight would have met.
+   * Clamped to leave two ticks of visible flight: a shot that would
+   * die inside its own catch-up spends what lag it can and keeps the
+   * rest — the kill lands next tick, where every watcher can see it.
+   */
+  private preFlyProjectile(eid: EntityId, ticks: number): void {
+    const proj = this.projectiles.get(eid);
+    if (!proj) return;
+    const pos = this.positions.must(eid);
+    const step = proj.speed * TICK_DT;
+    const maxUseful = Math.max(0, Math.floor(proj.distLeft / step) - 2);
+    const n = Math.min(ticks, maxUseful);
+    for (let i = 0; i < n; i++) {
+      if (this.stepProjectile(eid, proj, pos)) {
+        this.removeFromChunks(eid);
+        this.ecs.destroy(eid);
+        return;
+      }
+    }
+    this.updateChunkMembership(eid);
+  }
+
+  /**
+   * ONE STEP OF FLIGHT — one tick of a single projectile's life:
+   * homing, the sub-stepped advance, wall death, range, splash, and
+   * the hit scan. Returns true when the shot is spent (the caller owns
+   * the chunk bookkeeping and the destroy). Extracted whole from the
+   * old tickProjectiles loop body so live flight and spawn catch-up
+   * (preFlyProjectile) can never drift apart.
+   */
+  private stepProjectile(eid: EntityId, proj: ProjectileComp, pos: PositionComp): boolean {
+    const step = proj.speed * TICK_DT;
+    // Sub-step the advance so the shot dies AT the wall face, not up
+    // to a full step past it (fast arrows cover >1 tile per tick and
+    // could tunnel straight through a thin wall). pointHitsSolid is
+    // shape-aware: a shot crossing a tree's tile only dies on the
+    // TRUNK — grazes slip past the canopy corners.
+    // Boomerangs home on the owner's LIVE position on the way back.
+    if (proj.returning) {
+      const opos = this.positions.get(proj.ownerEid);
+      if (opos) {
+        const hx = opos.x - pos.x;
+        const hy = opos.y - pos.y;
+        const hd = Math.hypot(hx, hy);
+        if (hd < 0.6) {
+          // Caught: the shot's journey ends in the caster's hand.
+          return true; // the caller owns the destroy
+        }
+        proj.dirX = hx / hd;
+        proj.dirY = hy / hd;
+        pos.dir = Math.atan2(proj.dirY, proj.dirX);
+      }
+    }
+    // Homing law: steer toward the mark with a capped turn rate — a
+    // curve you can read, not a teleport. A dead mark hands the shot
+    // to the nearest living foe within seek range; with nobody to
+    // hunt it flies straight and dies at range like any other shot.
+    if (proj.homingTurn && !proj.returning && !proj.fromNpc) {
+      let tpos =
+        proj.targetEid !== undefined && this.npcs.has(proj.targetEid)
+          ? this.positions.get(proj.targetEid)
+          : undefined;
+      if (!tpos) {
+        proj.targetEid = undefined;
+        let bestD = HOMING_SEEK_RANGE;
+        for (const [npcEid, npc] of this.npcs) {
+          if (proj.hitEids?.has(npcEid)) continue;
+          // A homing shot never hunts a companion.
+          if (this.pets.has(npcEid)) continue;
+          const npos = this.positions.get(npcEid);
+          if (!npos) continue;
+          const d = Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius;
+          if (d < bestD) {
+            bestD = d;
+            proj.targetEid = npcEid;
+            tpos = npos;
+          }
+        }
+      }
+      if (tpos) {
+        const want = Math.atan2(tpos.y - pos.y, tpos.x - pos.x);
+        const cur = Math.atan2(proj.dirY, proj.dirX);
+        let diff = want - cur;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        const maxTurn = proj.homingTurn * TICK_DT;
+        const turned = cur + Math.max(-maxTurn, Math.min(maxTurn, diff));
+        proj.dirX = Math.cos(turned);
+        proj.dirY = Math.sin(turned);
+        pos.dir = turned;
+      }
+    }
+    const subs = Math.max(1, Math.ceil(step / 0.25));
+    let dead = false;
+    for (let i = 0; i < subs && !dead; i++) {
+      pos.x += proj.dirX * (step / subs);
+      pos.y += proj.dirY * (step / subs);
+      // Return legs ghost through walls — a boomerang that dies on the
+      // doorframe it left through reads as a bug, not a mechanic.
+      if (!proj.returning && pointHitsSolid(this.world, pos.x, pos.y)) {
+        dead = true;
+        // A player's shot spends itself bursting the crate it
+        // struck — the arrow's last act is the smash.
+        if (!proj.fromNpc) {
+          const stx = Math.floor(pos.x);
+          const sty = Math.floor(pos.y);
+          const g = this.world.groundAt(stx, sty);
+          const dinfo = g === undefined ? null : destructibleInfo(g);
+          if (dinfo) {
+            this.hitProp(stx, sty, g as Tile, dinfo, Math.atan2(proj.dirY, proj.dirX));
+          }
+        }
+      }
+    }
+    proj.distLeft -= step;
+    dead = dead || proj.distLeft <= 0;
+
+    // The turn: instead of dying at range or a wall, come back armed.
+    if (dead && proj.returns && !proj.returning) {
+      dead = false;
+      proj.returning = true;
+      proj.distLeft = 40; // generous — the catch check is what ends it
+      proj.hitEids?.clear();
+      proj.pierce = true; // the return leg cuts through the whole line
+    }
+
+    // A dodged foe shot still LANDS somewhere: an ability projectile
+    // that dies on a wall or at range speaks its landing there — the
+    // golem's boulder lies in the ground it hit, and anyone standing
+    // close to the miss still pays the splash. That is what dodging
+    // means: not being near where it comes down.
+    if (dead && proj.fromNpc && proj.abilityId) {
+      this.broadcastFx({
+        t: 'fx',
+        kind: 'blast',
+        x: pos.x,
+        y: pos.y,
+        radius: proj.splashRadius ?? 0.55,
+        id: proj.abilityId,
+        color: proj.abilityColor,
+      });
+      if (proj.splashRadius) {
+        const splashHit = Math.max(1, Math.round(proj.maxHit * 0.5));
+        for (const [playerEid, player] of this.players) {
+          if (player.session === null && player.disconnectedAt !== null) continue;
+          const ppos = this.positions.get(playerEid);
+          if (!ppos) continue;
+          if (Math.hypot(ppos.x - pos.x, ppos.y - pos.y) > proj.splashRadius) continue;
+          this.damagePlayer(playerEid, Math.floor(Math.random() * (splashHit + 1)), {
+            status: proj.status,
+            attackerLevel: proj.attackerLevel,
+            sourceEid: proj.ownerEid,
+          });
+        }
+      }
+    }
+
+    if (!dead && proj.fromNpc) {
+      // NPC shots seek players (and straw decoys, which exist to eat them).
+      for (const [playerEid, player] of this.players) {
+        if (player.session === null && player.disconnectedAt !== null) continue;
+        const ppos = this.positions.get(playerEid);
+        if (!ppos) continue;
+        const dx = ppos.x - pos.x;
+        const dy = bandDy(pos.y, ppos.y, PLAYER_HIT_HEIGHT);
+        if (dx * dx + dy * dy < 0.45 ** 2) {
+          this.damagePlayer(playerEid, Math.floor(Math.random() * (proj.maxHit + 1)), {
+            status: proj.status,
+            attackerLevel: proj.attackerLevel,
+            sourceEid: proj.ownerEid,
+          });
+          // THE SIGNATURE LAW reads both ways: a foe's ability shot
+          // announces its landing too, so the receiving-end
+          // signature speaks at the wound (the golem's boulder lies
+          // where it fell). Basic ranged shafts stay quiet.
+          if (proj.abilityId) {
+            this.broadcastFx({
+              t: 'fx',
+              kind: 'blast',
+              x: pos.x,
+              y: pos.y,
+              radius: proj.splashRadius ?? 0.55,
+              id: proj.abilityId,
+              color: proj.abilityColor,
+            });
+          }
+          // The burst is part of the same landing: everyone else
+          // standing close pays half the direct hit.
+          if (proj.splashRadius) {
+            const splashHit = Math.max(1, Math.round(proj.maxHit * 0.5));
+            for (const [otherEid, other] of this.players) {
+              if (otherEid === playerEid) continue;
+              if (other.session === null && other.disconnectedAt !== null) continue;
+              const opos = this.positions.get(otherEid);
+              if (!opos) continue;
+              if (Math.hypot(opos.x - pos.x, opos.y - pos.y) > proj.splashRadius) continue;
+              this.damagePlayer(otherEid, Math.floor(Math.random() * (splashHit + 1)), {
+                status: proj.status,
+                attackerLevel: proj.attackerLevel,
+                sourceEid: proj.ownerEid,
+              });
+            }
+          }
+          dead = true;
+          break;
+        }
+      }
+      if (!dead) {
+        for (const [sumEid, sum] of this.summons) {
+          if (sum.kind !== 'decoy') continue;
+          const spos = this.positions.get(sumEid);
+          if (!spos) continue;
+          const dx = spos.x - pos.x;
+          const dy = spos.y - pos.y;
+          if (dx * dx + dy * dy < 0.5 ** 2) {
+            this.damageSummon(sumEid, Math.floor(Math.random() * (proj.maxHit + 1)));
+            dead = true;
+            break;
+          }
+        }
+      }
+      if (!dead) {
+        // A mob's shaft finds a companion body in its line — the
+        // arrow is physical; being unseen never made it a ghost.
+        for (const [petEid] of this.pets) {
+          const ppos = this.positions.get(petEid);
+          const pnpc = this.npcs.get(petEid);
+          if (!ppos || !pnpc) continue;
+          const dx = ppos.x - pos.x;
+          const dy = bandDy(pos.y, ppos.y, npcHitHeight(pnpc.def));
+          if (dx * dx + dy * dy < 0.5 ** 2) {
+            this.damagePet(petEid, Math.floor(Math.random() * (proj.maxHit + 1)), {
+              status: proj.status,
+              attackerLevel: proj.attackerLevel,
+              sourceEid: proj.ownerEid,
+            });
+            dead = true;
+            break;
+          }
+        }
+      }
+    } else if (!dead) {
+      for (const [npcEid, npc] of this.npcs) {
+        if (proj.hitEids?.has(npcEid)) continue;
+        // Arrows fly past a companion — it neither blocks nor bleeds.
+        if (this.pets.has(npcEid)) continue;
+        const npos = this.positions.get(npcEid);
+        if (!npos) continue;
+        const dx = npos.x - pos.x;
+        // The visual body rises north of the ground point — test the
+        // feet→crown band so a shot crossing the chest or head lands.
+        const dy = bandDy(pos.y, npos.y, npcHitHeight(npc.def));
+        if (dx * dx + dy * dy < (npc.def.radius + 0.25) ** 2) {
+          // The surge is read where the shaft LANDS, not where it was
+          // loosed: a working that woke mid-flight still sharpens the
+          // arrow already in the air. Cheaper than stamping every
+          // projectile, and it reads the same in the hand. Basic
+          // shots fold the damage surge here too (abilities folded
+          // it at cast — see castAbility's gearMult — so only the
+          // basic shaft would otherwise never feel it), under the
+          // melee door's own rounding law.
+          const shooter = this.players.get(proj.ownerEid);
+          const critPct = shooter ? shooter.gear.critPct + surgeCritPct(shooter) : 0;
+          const maxHit =
+            proj.basic && shooter
+              ? Math.max(1, Math.round(proj.maxHit * surgeDmgMult(shooter)))
+              : proj.maxHit;
+          const roll = proj.basic ? rollBasic(maxHit, critPct) : rollDamage(maxHit, critPct);
+          const dmg = this.executeAdjust(npcEid, roll.dmg, proj.executeBelow);
+          const crit = roll.crit;
+          this.damageNpc(npcEid, dmg, proj.ownerEid, proj.style, {
+            crit,
+            basic: proj.basic,
+            fullDraw: proj.fullDraw,
+            status: proj.status,
+            vs: proj.vs,
+            knockbackMult: proj.heavy ? HEAVY_BOLT_KNOCKBACK : proj.fullDraw ? 1.4 : 1,
+          });
+          this.drainHeal(proj.ownerEid, dmg, proj.drainFrac);
+          // THE SIGNATURE LAW: an ability's shot announces its
+          // impact — the client's bespoke signature fires at the
+          // wound, not just where the arrow left the string. Basic
+          // attacks stay quiet; heavy wand bolts keep their old
+          // anonymous burst.
+          if (proj.abilityId && !proj.basic) {
+            this.broadcastFx({
+              t: 'fx',
+              kind: 'blast',
+              x: pos.x,
+              y: pos.y,
+              radius: proj.splashRadius ?? 0.55,
+              id: proj.abilityId,
+              color: proj.abilityColor,
+            });
+          } else if (proj.splashRadius) {
+            this.broadcastFx({
+              t: 'fx',
+              kind: 'blast',
+              x: pos.x,
+              y: pos.y,
+              radius: proj.splashRadius,
+              color: '#b49af0',
+            });
+          }
+          // Heavy orbs burst on impact, splashing everything close.
+          // The splash is part of the same landing, so it reads the
+          // same surge-folded maxHit the direct hit rolled from.
+          if (proj.splashRadius) {
+            const splashHit = Math.max(1, Math.round(maxHit * 0.5));
+            for (const [otherEid, other] of this.npcs) {
+              if (otherEid === npcEid) continue;
+              const opos = this.positions.get(otherEid);
+              if (!opos) continue;
+              if (Math.hypot(opos.x - pos.x, opos.y - pos.y) - other.def.radius > proj.splashRadius) {
+                continue;
+              }
+              const roll = rollDamage(splashHit);
+              this.damageNpc(otherEid, roll.dmg, proj.ownerEid, proj.style, {
+                crit: roll.crit,
+                status: proj.status,
+                vs: proj.vs,
+              });
+            }
+          }
+          if (proj.pierce) {
+            (proj.hitEids ??= new Set()).add(npcEid);
+          } else {
+            dead = true;
+            break;
+          }
+        }
+      }
+    }
+
+    return dead;
   }
 
   // ====================================================== THE DEEPER SIGIL
@@ -25369,7 +25454,18 @@ export class GameServer {
     }
     let frames = 0;
     while (frames < budget && player.inputQueue.length > 0) {
-      const frame = player.inputQueue.shift()!;
+      const { frame, arrivedTick } = player.inputQueue.shift()!;
+      // THE SHOT REMEMBERS ITS PRESS: how long this press traveled —
+      // the queue wait it truly served plus the uplink half of the
+      // socket RTT, in ticks. A projectile born of this frame pre-flies
+      // that many steps through the same simulation door, so the
+      // authoritative shot is where the shooter's tracer already is.
+      // Clamped small: favor-the-shooter, never a wall-hack's budget.
+      const pressLagTicks = Math.min(
+        PROJ_CATCHUP_MAX_TICKS,
+        Math.max(0, this.tickCount - arrivedTick) +
+          Math.round((player.session?.viewRttMs ?? 0) / 2 / TICK_MS),
+      );
       const casting = this.tickCount < player.castFreezeUntilTick;
       // Moving cancels any in-progress gather.
       if (player.action && (Math.abs(frame.mx) > 0.01 || Math.abs(frame.my) > 0.01)) {
@@ -25440,7 +25536,7 @@ export class GameServer {
       }
       // THE SECOND GRIP: one press trades the hands with the stowed
       // pair through the honest beat (refusals and swallows inside).
-      if (pressed & InputButton.Swap) this.swapWeaponSets(eid, player);
+      if (pressed & InputButton.Swap) this.swapWeaponSets(eid, player, frame.seq);
       const abilityPressed =
         pressed &
         (InputButton.Ability1 | InputButton.Ability2 | InputButton.Ability3 | InputButton.Ability4);
@@ -25454,9 +25550,13 @@ export class GameServer {
       // the hand is back off the hip.
       if (player.sheathed && (abilityPressed || pressed & InputButton.Attack)) {
         player.sheathed = false;
+        player.drawLockUntilSeq = frame.seq + DRAW_LOCK_TICKS;
         player.drawLockUntilTick = this.tickCount + DRAW_LOCK_TICKS;
       }
-      const weaponsAway = player.sheathed || this.tickCount < player.drawLockUntilTick;
+      const weaponsAway =
+        player.sheathed ||
+        frame.seq < player.drawLockUntilSeq ||
+        this.tickCount < player.drawLockUntilTick;
       if (!weaponsAway) {
         // THE HELD SIGIL: a frame may carry the aimed ground point the
         // client's held ring settled on. sanitizeInputFrame already
@@ -25531,7 +25631,7 @@ export class GameServer {
         this.dismount(eid, player); // no mounted combat, ever
       }
       if (style === 'archery') {
-        this.tickBowDraw(eid, player, equipped!, attackHeld, frame.aim, frame.seq);
+        this.tickBowDraw(eid, player, equipped!, attackHeld, frame.aim, frame.seq, pressLagTicks);
       } else if (attackHeld || attackBuffered) {
         // THE BRANCH reads the trigger: a fresh press edge or a spent
         // buffer is a TAP (the rhythm hand); the held bit flowing on
@@ -25541,7 +25641,7 @@ export class GameServer {
           (pressed & InputButton.Attack) !== 0 ||
           (player.attackCooldown === 0 && attackBuffered);
         if (player.attackCooldown === 0) player.attackBufferedUntilTick = 0;
-        this.tryPlayerAttack(eid, player, frame.aim, frame.seq, tapped);
+        this.tryPlayerAttack(eid, player, frame.aim, frame.seq, tapped, pressLagTicks);
       }
       frames++;
     }
@@ -25629,6 +25729,7 @@ export class GameServer {
     attackHeld: boolean,
     aim: number,
     seq: number,
+    pressLagTicks = 0,
   ): void {
     const { id: weaponId, weapon } = equipped;
     if (attackHeld) {
@@ -25681,7 +25782,9 @@ export class GameServer {
             ? { status: 'chill', power: 1, durationTicks: 80 }
             : undefined,
       });
-      this.updateChunkMembership(proj);
+      // THE SHOT REMEMBERS ITS PRESS: the release travels the wire's
+      // worth of flight now — the shaft is born where the tracer flies.
+      this.preFlyProjectile(proj, pressLagTicks);
     };
 
     if (ticks < DRAW_MIN_TICKS) {

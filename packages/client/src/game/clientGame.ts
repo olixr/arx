@@ -12,6 +12,7 @@ import {
   InputButton,
   SWAP_BEAT_MS,
   SWAP_BEAT_TICKS,
+  DRAW_LOCK_TICKS,
   hasButton,
   PLAYER_SPEED,
   PROTOCOL_VERSION,
@@ -136,7 +137,7 @@ export type InteractTarget =
   | { kind: 'sign'; tx: number; ty: number; mine: boolean; blank: boolean };
 import { STATUS_INK } from '../render/statusFx.js';
 import { Connection } from '../net/connection.js';
-import { InterpBuffer } from '../net/interpolation.js';
+import { InterpBuffer, shortestAngle } from '../net/interpolation.js';
 import { Predictor } from '../net/prediction.js';
 import type { InputManager } from '../input/inputManager.js';
 
@@ -449,13 +450,25 @@ export class ClientGame {
   readonly ownShots: OwnShot[] = [];
   /**
    * Matched tracer → entity handoffs. The renderer captures the visual
-   * gap — position offset AND heading delta (v9) — on the entity's
-   * first draw and decays both together (~120ms), so the predicted
-   * flight STEERS onto the authoritative ray instead of snapping.
+   * gap on the entity's first draw and splits it by axis (v10, THE
+   * LEAD IS REPAID IN FLIGHT): the cross-track offset `ox/oy` and the
+   * heading delta `od` decay together in ~120ms — the v9 steer, nose
+   * leading the turn — while the along-track lead `along` is repaid
+   * LINEARLY over `repayMs` (the flight remaining at capture), so the
+   * spawn latency never reads as a brake-then-sprint; the shot flies a
+   * hair slow the whole way and lands exactly on the server's impact.
    */
   readonly projHandoffs = new Map<
     EntityId,
-    { shot: OwnShot; ox: number; oy: number; od: number; capturedAt: number }
+    {
+      shot: OwnShot;
+      ox: number;
+      oy: number;
+      od: number;
+      along: number;
+      repayMs: number;
+      capturedAt: number;
+    }
   >();
   /**
    * Local staff-cadence mirror (bolt-bolt-HEAVY, same shared laws).
@@ -623,6 +636,45 @@ export class ClientGame {
   /** Weapons stowed on the body (own snapshot bit, server-owned). */
   get isSheathed(): boolean {
     return (this.ownStatus & SHEATHED_BIT) !== 0;
+  }
+
+  /**
+   * ONE LAW, TWO MIRRORS — the predicted sheathe state. The snapshot
+   * bit is a round trip stale; a fire mirror reading it would happily
+   * loose a tracer for the press the server spends DRAWING (THE
+   * SAFETY converts a sheathed combat press into a draw, no shot).
+   * Toggles are deterministic per press, so the mirror leads and the
+   * snapshot confirms: null = trust the server bit; a set value wins
+   * until the bit agrees (or the claim goes stale — a dropped frame —
+   * and the server bit takes back the truth).
+   */
+  private ownSheathed: boolean | null = null;
+  /** performance.now() when ownSheathed was last asserted. */
+  private ownSheathedAt = 0;
+  /**
+   * No local swing/bolt/draw/cast until this input seq — the mirror of
+   * the server's drawLockUntilSeq, fed by the same three verbs (the
+   * sheathed combat press's auto-draw, and the swap beat). The server
+   * gates on this seq AND its own tick twin (ONE LAW, TWO CLOCKS);
+   * for a healthy 20Hz stream both expire on the same press. When a
+   * jitter catch-up briefly holds the server's tick floor past this
+   * mirror, the press rides the held bit / armBuffer a tick or two
+   * and the tracer marriage's ±2 window + angle fallback absorb it.
+   */
+  private drawLockUntilSeq = 0;
+
+  /** The sheathe state the fire mirrors must judge by. */
+  private effectiveSheathed(): boolean {
+    return this.ownSheathed ?? this.isSheathed;
+  }
+
+  /**
+   * The server's weaponsAway gate, mirrored: stowed steel or a
+   * mid-draw lock refuses every fire mirror — no tracer, no predicted
+   * swing, no radial, exactly the presses the server refuses.
+   */
+  private weaponsAway(seq: number): boolean {
+    return this.effectiveSheathed() || seq < this.drawLockUntilSeq;
   }
 
   /** Tap-to-move autopilot; cancelled by any manual movement input. */
@@ -863,6 +915,10 @@ export class ClientGame {
     }
     for (const [bit, slot] of slots) {
       if (!(pressed & bit)) continue;
+      // ONE LAW, TWO MIRRORS: while the weapons are away the server
+      // spends this press drawing steel (THE SAFETY) — no cast fires,
+      // so no radial starts and no cooldown is paid locally either.
+      if (this.weaponsAway(frame.seq)) continue;
       // THE DRAWN BREATH, mirrored: a second press of the winding slot
       // is the cancel; any other slot is refused while the breath holds.
       if (this.ownCast) {
@@ -906,6 +962,43 @@ export class ClientGame {
    * stale local view plays a beat over nothing and touches no
    * authority. Dodge stays free through the beat, like the server.
    */
+  /**
+   * THE SAFETY, mirrored — the sheathe toggle and the auto-draw. The
+   * server flips `sheathed` on the Sheathe press edge and converts a
+   * sheathed combat press into a DRAW behind DRAW_LOCK_TICKS; the
+   * mirror plays both on the same edges so no fire mirror ever
+   * predicts a shot for a press the server spends pulling steel.
+   * Runs FIRST in the frame pipeline (the server reads its buttons in
+   * this order too: sheathe → swap → auto-draw → casts → attacks).
+   */
+  private trackOwnSheathe(frame: InputFrame, now: number): void {
+    const pressed = frame.buttons & ~this.prevLocalButtons;
+    if (pressed & InputButton.Sheathe) {
+      const stowing = !this.effectiveSheathed();
+      this.ownSheathed = stowing;
+      this.ownSheathedAt = now;
+      if (stowing) {
+        this.drawStartAt = 0; // the string lets down
+        this.ownCast = null; // stowed steel casts nothing
+        resetCombo(this.comboLocal); // the stowed string is a dropped string
+      }
+    }
+    const combatPressed =
+      pressed &
+      (InputButton.Attack |
+        InputButton.Ability1 |
+        InputButton.Ability2 |
+        InputButton.Ability3 |
+        InputButton.Ability4);
+    if (combatPressed && this.effectiveSheathed()) {
+      // The press is spent drawing — the weapon comes out and the
+      // lock holds every mirror until the pull-out has played.
+      this.ownSheathed = false;
+      this.ownSheathedAt = now;
+      this.drawLockUntilSeq = Math.max(this.drawLockUntilSeq, frame.seq + DRAW_LOCK_TICKS);
+    }
+  }
+
   private trackOwnSwap(frame: InputFrame, now: number): void {
     if (!hasButton(frame.buttons, InputButton.Swap)) return;
     if (!this.equipment.stowWeapon && !this.equipment.stowOffhand) return;
@@ -913,6 +1006,11 @@ export class ClientGame {
     this.ownSwapAt = now;
     this.drawStartAt = 0; // the string lets down with the trade
     this.ownCast = null; // traded steel casts nothing — the bar agrees
+    // A trade is made to fight: the incoming set draws (server law),
+    // and the beat rides the same seq-domain lock the server holds.
+    this.ownSheathed = false;
+    this.ownSheathedAt = now;
+    this.drawLockUntilSeq = Math.max(this.drawLockUntilSeq, frame.seq + SWAP_BEAT_TICKS);
     this.meleeReadySeq = Math.max(this.meleeReadySeq, frame.seq + SWAP_BEAT_TICKS);
     this.staffReadySeq = Math.max(this.staffReadySeq, frame.seq + SWAP_BEAT_TICKS);
     this.drawReadyAt = Math.max(this.drawReadyAt, now + SWAP_BEAT_MS);
@@ -930,11 +1028,23 @@ export class ClientGame {
       return;
     }
     const held = hasButton(frame.buttons, InputButton.Attack);
+    const hasAmmo =
+      !weapon.ammo ||
+      this.inventory.some((s) => s !== null && s.item === weapon.ammo && s.qty > 0);
     if (held) {
-      const hasAmmo =
-        !weapon.ammo ||
-        this.inventory.some((s) => s !== null && s.item === weapon.ammo && s.qty > 0);
-      if (this.drawStartAt === 0 && now >= this.drawReadyAt && hasAmmo) {
+      // ONE LAW, TWO MIRRORS: the server's draw machine only runs
+      // when the weapons are out and no breath holds the hands
+      // (weaponsAway / stillCasting) — the mirror starts no draw the
+      // server won't.
+      if (
+        this.drawStartAt === 0 &&
+        now >= this.drawReadyAt &&
+        hasAmmo &&
+        !this.weaponsAway(frame.seq) &&
+        this.ownCast === null &&
+        frame.seq >= this.castFreezeUntilSeq &&
+        !this.action?.ability
+      ) {
         this.drawStartAt = now;
       }
       return;
@@ -943,6 +1053,9 @@ export class ClientGame {
     const heldMs = now - this.drawStartAt;
     const charge = this.ownDrawT;
     this.drawStartAt = 0;
+    // The server re-checks the quiver at release and bails silently —
+    // the mirror looses no tracer for an arrow that isn't there.
+    if (!hasAmmo) return;
     const speed = weapon.projectileSpeed ?? 12;
     if (heldMs >= DRAW_MIN_TICKS * TICK_MS) {
       this.drawReadyAt = now + weapon.cooldownTicks * TICK_MS;
@@ -980,6 +1093,14 @@ export class ClientGame {
     const worn = this.equipment.weapon;
     const weapon = this.equippedWeaponDef();
     if (!worn || !weapon || weapon.style !== 'arx') return;
+    // ONE LAW, TWO MIRRORS: stowed steel, a mid-draw lock, a winding
+    // breath, or a held note fires nothing on the server — so nothing
+    // arms, advances, or flies here either. (The server checks
+    // weaponsAway and stillCasting before both the buffer and the
+    // attack door; the mirror gates in the same place.)
+    if (this.weaponsAway(frame.seq)) return;
+    if (this.ownCast !== null) return;
+    if (this.action?.ability) return;
     // THE HELD INTENT, mirrored for the wand lane too.
     if ((frame.buttons & ~this.prevLocalButtons) & InputButton.Attack) {
       const armed = armBuffer(this.staffReadySeq - frame.seq, frame.seq);
@@ -1026,7 +1147,10 @@ export class ClientGame {
     const worn = this.equipment.weapon;
     const weapon = this.equippedWeaponDef();
     if (!worn || !weapon || (weapon.style !== 'onehand' && weapon.style !== 'twohand')) return;
-    if (this.isSheathed) return; // the stowed hand swings nothing
+    // ONE LAW, TWO MIRRORS: the predicted sheathe + the seq-domain
+    // draw lock — never the snapshot bit alone (a round trip stale;
+    // it predicted swings the server's SAFETY was busy refusing).
+    if (this.weaponsAway(frame.seq)) return;
     if (this.ownCast !== null || frame.seq < this.castFreezeUntilSeq) return;
     // An action carrying an ability is THE HELD NOTE — singing hands
     // swing nothing (crafting/gathering actions carry a recipe instead
@@ -1259,6 +1383,11 @@ export class ClientGame {
         this.prevLocalButtons = 0;
         this.castFreezeUntilSeq = 0;
         this.ownCast = null;
+        // The seq-domain lock and the sheathe claim belong to the OLD
+        // input numbering — the server reset its twins the same way.
+        this.drawLockUntilSeq = 0;
+        this.ownSheathed = null;
+        this.ownSheathedAt = 0;
         this.clockOffset = null;
         this.reconnectDelay = 500;
         this.emitStatus('ingame');
@@ -1340,36 +1469,60 @@ export class ClientGame {
             meta.ownerEid === this.ownEid &&
             meta.seq !== undefined
           ) {
+            // THE VOLLEY MARRIES BY ANGLE: seq distance ranks first,
+            // heading closeness breaks the tie — the overcharge fan's
+            // three shafts share one seq, and each entity now finds
+            // the tracer that flew ITS ray instead of all three
+            // fighting over the first. (The snap-fan's second arrow
+            // stays honestly unpredicted: its tracer was already
+            // claimed by the first marriage, and an unclaimed candidate
+            // 0.14 rad off still beats no candidate at all.)
             let best: OwnShot | null = null;
             let bestIdx = -1;
+            let bestScore = Infinity;
             for (let i = 0; i < this.ownShots.length; i++) {
               const shot = this.ownShots[i]!;
               const d = Math.abs(shot.seq - meta.seq);
               if (d > 2) continue;
-              if (!best || d < Math.abs(best.seq - meta.seq)) {
+              const a = meta.dir !== undefined ? Math.abs(shortestAngle(shot.dir, meta.dir)) : 0;
+              const score = d * 10 + a;
+              if (score < bestScore) {
                 best = shot;
                 bestIdx = i;
+                bestScore = score;
               }
             }
-            // Staff fallback: a server input-queue stall drops frames and
-            // permanently shifts the seq↔tick mapping, pushing every later
-            // bolt outside the ±2 window. Both streams are ordered, so
-            // marry the oldest unclaimed tracer of the same bolt kind
-            // rather than draw the shot twice. Arx only — the archery
-            // snap-fan's second arrow shares a seq and must stay
-            // unpredicted.
-            if (!best && meta.defId?.startsWith('arx')) {
+            // Ordered-stream fallback: a server input-queue stall drops
+            // frames and permanently shifts the seq↔tick mapping,
+            // pushing every later shot outside the ±2 window. Both
+            // streams are ordered, so marry the oldest unclaimed tracer
+            // of the same kind whose heading agrees rather than draw
+            // the shot twice — arrows included now (the heading gate is
+            // what the old arx-only rule was missing: it keeps a
+            // cross-seq marriage from pairing shots aimed apart).
+            if (!best && meta.defId) {
               for (let i = 0; i < this.ownShots.length; i++) {
-                if (this.ownShots[i]!.defId === meta.defId) {
-                  best = this.ownShots[i]!;
-                  bestIdx = i;
-                  break;
+                const shot = this.ownShots[i]!;
+                if (shot.defId !== meta.defId) continue;
+                if (meta.dir !== undefined && Math.abs(shortestAngle(shot.dir, meta.dir)) > 0.6) {
+                  continue;
                 }
+                best = shot;
+                bestIdx = i;
+                break;
               }
             }
             if (best) {
               this.ownShots.splice(bestIdx, 1);
-              this.projHandoffs.set(meta.eid, { shot: best, ox: 0, oy: 0, od: 0, capturedAt: 0 });
+              this.projHandoffs.set(meta.eid, {
+                shot: best,
+                ox: 0,
+                oy: 0,
+                od: 0,
+                along: 0,
+                repayMs: 0,
+                capturedAt: 0,
+              });
             }
           }
         }
@@ -3036,6 +3189,15 @@ export class ClientGame {
         if (this.ownSwing && e.pose === this.ownSwing.pose) this.ownSwing = null;
         this.ownPose = e.pose;
         this.ownStatus = e.status;
+        // The sheathe mirror retires the moment the server bit agrees
+        // (same-value handover, the PREDICTED BLOW pattern); a claim
+        // the server never confirms — a dropped frame — goes stale
+        // after 1.5s and the bit takes back the truth.
+        if (this.ownSheathed !== null) {
+          const serverBit = (e.status & SHEATHED_BIT) !== 0;
+          if (serverBit === this.ownSheathed) this.ownSheathed = null;
+          else if (performance.now() - this.ownSheathedAt > 1500) this.ownSheathed = null;
+        }
         // The server-confirmed facing: normally the aim echoes back,
         // but a body mounted on furniture is dir-locked to the seat —
         // the renderer reads this instead of the live aim while
@@ -3149,12 +3311,18 @@ export class ClientGame {
         buttons: this.input.buttons(),
       };
       this.groundAim?.filterFrame(frame);
+      // The mirrors read the frame in the SERVER'S button order:
+      // sheathe/auto-draw and the swap set the weapons-away law first,
+      // then casts, then the fire lanes — so the very press that draws
+      // steel is refused by every mirror downstream of it, exactly as
+      // the server will refuse it.
+      this.trackOwnSheathe(frame, now);
+      this.trackOwnSwap(frame, now);
       this.trackOwnCasts(frame);
       // viewMs (v8): report the live interp delay so melee lag comp
       // rewinds by what this screen is ACTUALLY showing.
       this.conn.send({ t: 'input', frame, viewMs: Math.round(this.interpDelayMs) });
       this.predictor.applyInput(frame);
-      this.trackOwnSwap(frame, now);
       this.trackOwnDraw(frame, now);
       this.trackOwnStaff(frame);
       this.trackOwnMelee(frame, now);
@@ -3204,10 +3372,12 @@ export class ClientGame {
       const age = nowMs - shot.bornAt;
       if (age > 550 || (age / 1000) * shot.speed > shot.range + 1) this.ownShots.splice(i, 1);
     }
-    // Handoffs whose entity left before the blend finished.
+    // Handoffs whose entity left before the blend finished. The age
+    // cap covers the longest along-track repay (1200ms) plus slack —
+    // culling a live repay early would snap the remaining lead back.
     if (this.projHandoffs.size > 0) {
       for (const [eid, h] of this.projHandoffs) {
-        if (!this.entities.has(eid) || (h.capturedAt > 0 && nowMs - h.capturedAt > 500)) {
+        if (!this.entities.has(eid) || (h.capturedAt > 0 && nowMs - h.capturedAt > 1500)) {
           this.projHandoffs.delete(eid);
         }
       }

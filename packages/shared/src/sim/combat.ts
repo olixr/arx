@@ -359,11 +359,30 @@ export function offhandDamageFactor(dualwieldLevel: number): number {
 // ---------------------------------------------------- the second grip
 
 /**
- * THE HONEST TRADE: the swap verb's beat. The server locks attacks and
- * casts for the tick count; the client plays the stow-and-draw and
- * clamps its mirror clocks on the ms twin. TWIN LAW (the STRIKE_CLOCKS
- * precedent): these two must stay byte-equal through TICK_MS = 50 —
- * the outlives-law test pins it, change both or neither.
+ * THE HONEST TRADE: the swap verb's beat. ONE LAW, TWO CLOCKS: the
+ * server holds the beat until the frame's own INPUT SEQ and its own
+ * tick count have BOTH walked it out. The seq half is the clock the
+ * client's fire mirrors share by construction, so the lock expires on
+ * the same press for both no matter how the input queue drains (a
+ * tick-only lock lagged the mirror by the dejitter cushion and
+ * refused the honest first shot after a trade). The tick half is
+ * server-authoritative wall time: seqs are client-authored, so a
+ * seq-only beat could be inflated away by a hostile client — and the
+ * drain's catch-up would compress it honestly too. An honest 20Hz
+ * client sees both halves expire together. The client plays the
+ * stow-and-draw choreography on the ms twin. TWIN LAW (the
+ * STRIKE_CLOCKS precedent): these two must stay byte-equal through
+ * TICK_MS = 50 — the outlives-law test pins it, change both or neither.
  */
 export const SWAP_BEAT_TICKS = 12;
 export const SWAP_BEAT_MS = 600;
+
+/**
+ * THE SAFETY's beat: a combat press while sheathed DRAWS instead of
+ * striking, and the first real swing waits this long behind the same
+ * two-clock gate (drawLockUntilSeq + drawLockUntilTick) the swap beat
+ * rides. Shared so the client's fire mirrors refuse exactly the
+ * presses the server refuses — a tracer must never fly for a shot
+ * that only drew steel.
+ */
+export const DRAW_LOCK_TICKS = 10;

@@ -31,6 +31,7 @@ const proto = GameServer.prototype as unknown as {
   creditMark: AnyFn;
   tickStatuses: AnyFn;
   tickProjectiles: AnyFn;
+  stepProjectile: AnyFn;
   executeAdjust: AnyFn;
   runProc: AnyFn;
   npcsWithin: AnyFn;
@@ -296,6 +297,9 @@ test('a live surge sharpens the basic shaft where it lands', () => {
     updateChunkMembership: () => {},
     ecs: { destroy: () => {} },
     tickProjectiles: proto.tickProjectiles,
+    // ONE STEP OF FLIGHT: the loop body lives in its own door now, so
+    // live flight and spawn catch-up can never drift apart.
+    stepProjectile: proto.stepProjectile,
   };
   // Scripted rolls: no crit, then a max damage roll — deterministic.
   withRolls([0.99, 0.999], () => call(proto.tickProjectiles, s));

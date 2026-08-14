@@ -95,6 +95,10 @@ function mkRig(weaponId: string) {
     landStrike: proto.landStrike,
     resolvePendingStrike: proto.resolvePendingStrike,
     foeWithin: () => false,
+    // The slate has no wire and no history ring: the shooter sees the
+    // live world (rewind 0) and a spawned shot pre-flies nothing.
+    viewRewindTicks: () => 0,
+    preFlyProjectile: () => undefined,
     revealPlayer: () => undefined,
     effectiveLevel: () => 10,
     setPose: (_eid: unknown, pose: number, ticks: number) => poses.push({ pose, ticks }),
