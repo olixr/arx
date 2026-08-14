@@ -146,6 +146,7 @@ import { paintTree, saplingModel,
 import { dust } from './matter/dust.js';
 import { fire } from './matter/fire.js';
 import { frost } from './matter/frost.js';
+import { smoke } from './matter/smoke.js';
 import { storm } from './matter/storm.js';
 import { asMatter } from './matter/index.js';
 import { speakBreath } from './breathFx.js';
@@ -32331,7 +32332,7 @@ export class Renderer {
               });
             }
             break;
-          case 'iron':
+          case 'iron': {
             // The spark hiss speaks only when the pistons work.
             if (walking && Math.random() < this.frameDt * 0.8) {
               storm.deployments.crackle!(host, s.x + (Math.random() - 0.5) * 0.4, s.y - 0.6, {
@@ -32339,31 +32340,63 @@ export class Renderer {
                 scale: 0.3,
               });
             }
-            break;
-          case 'fire': {
-            if (Math.random() < this.frameDt * (walking ? 1 : 0.55)) {
-              fire.deployments.plume!(host, s.x + (Math.random() - 0.5) * 0.5, s.y - 0.9, {
-                scale: 0.2,
-              });
+            // The chimney: one thin wisp off the crest fin on a slow
+            // clock — the furnace behind the visor never quite sleeps.
+            if (Math.random() < this.frameDt * 0.25) {
+              smoke.deployments.plume!(host, s.x, s.y - 2.2, { scale: 0.16 });
             }
-            if (walking && Math.random() < this.frameDt * 0.3) {
-              fire.deployments.gobbets!(host, s.x, s.y + 0.1, { scale: 0.16 });
-            }
-            // The banked light is carried, not painted: the furnace
-            // throws its own glow on the ground it stands on.
-            this.queueGlow(s.x, s.y, 1.3, '255, 150, 70', 0.14);
             break;
           }
-          case 'ice':
-            if (walking && Math.random() < this.frameDt * 0.8) {
-              frost.deployments.fog!(host, s.x, s.y + 0.05, { radius: 0.4, scale: 0.28 });
-            } else if (Math.random() < rate * 0.4) {
-              frost.deployments.bloom!(host, s.x + (Math.random() - 0.5) * 0.4, s.y - 0.4, {
-                radius: 0.2,
-                scale: 0.2,
+          case 'fire': {
+            // FLAMES BOUND INTO A FORM: the ember radiation is the
+            // body's constant weather — rising off the crown and the
+            // shoulder vents, thicker on the move.
+            if (Math.random() < this.frameDt * (walking ? 1.6 : 0.9)) {
+              fire.deployments.plume!(host, s.x + (Math.random() - 0.5) * 0.6, s.y - 1.0, {
+                scale: 0.22,
               });
             }
+            if (walking && Math.random() < this.frameDt * 0.35) {
+              fire.deployments.gobbets!(host, s.x, s.y + 0.1, { scale: 0.16 });
+            }
+            // The carried light BREATHES with the furnace — never a
+            // flat lamp, always the banked-coal swell.
+            const fb = 0.12 + 0.05 * Math.sin(performance.now() / 640);
+            this.queueGlow(s.x, s.y, 1.35, '255, 150, 70', fb);
+            this.queueGlow(s.x, s.y - 2.0, 0.7, '255, 180, 100', fb * 0.7);
             break;
+          }
+          case 'ice': {
+            if (walking && Math.random() < this.frameDt * 0.8) {
+              frost.deployments.fog!(host, s.x, s.y + 0.05, { radius: 0.4, scale: 0.28 });
+            }
+            // THE SNOWFALL AURA: winter falls around the body always
+            // — a personal weather one bodylength wide, single soft
+            // grains sifting down and dying at the ground.
+            if (Math.random() < this.frameDt * 2.2) {
+              this.particles.burst(
+                s.x + (Math.random() - 0.5) * 1.6,
+                s.y - 1.4 - Math.random() * 1.2,
+                1,
+                ['#f0fbff', '#d8f2ff'],
+                {
+                  speed: 0.06,
+                  life: 1.6,
+                  size: 0.032,
+                  gravity: 0.35,
+                  drag: 2.2,
+                  fade: '#d8f2ff',
+                  fadeAt: 0.6,
+                },
+              );
+            }
+            // The cold breath: a small fog sigh off the head on a
+            // slow clock.
+            if (Math.random() < this.frameDt * 0.22) {
+              frost.deployments.fog!(host, s.x, s.y - 2.0, { radius: 0.25, scale: 0.2 });
+            }
+            break;
+          }
         }
       }
       return this.humanoidItem({

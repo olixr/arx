@@ -190,6 +190,62 @@ function stoneMass(
   ctx.restore();
 }
 
+/**
+ * THE BINDING'S GRAVITY — the rock golem's orbiting stones: two or
+ * three small crags held circling the shoulder line by whatever force
+ * stacked the cairn. Analytic orbits off nowMs (no per-frame random),
+ * seed-phased so no two golems swing in step. Positions are torso-
+ * local; sin(angle) picks front/behind the masses. The orbit radius
+ * clears the outline ring's bridge distance at nearest approach.
+ */
+function rockOrbs(
+  gol: GolemLook,
+  f: GolemBodyFrame,
+): Array<{ x: number; y: number; r: number; front: boolean }> {
+  // (The hurt flash keeps them — the silhouette owns its satellites.)
+  const seed = gol.seed ?? 0;
+  const out: Array<{ x: number; y: number; r: number; front: boolean }> = [];
+  const n = 2 + (((seed * 2654435761) >>> 10) & 1);
+  for (let k = 0; k < n; k++) {
+    const phase = hash(seed, 80 + k) * Math.PI * 2;
+    const speed = 0.45 + 0.18 * hash(seed, 84 + k);
+    const ang = phase + (f.nowMs / 1000) * speed * (k % 2 === 0 ? 1 : -1);
+    out.push({
+      x: Math.cos(ang) * f.tw * 1.7,
+      y: -f.th * (0.82 + 0.1 * hash(seed, 88 + k)) + Math.sin(ang) * f.tw * 0.28,
+      r: f.s * (0.032 + 0.02 * hash(seed, 92 + k)),
+      front: Math.sin(ang) > 0,
+    });
+  }
+  return out;
+}
+
+/** One orbiting crag: shell chip with a lit crown fleck. */
+function drawOrb(
+  ctx: CanvasRenderingContext2D,
+  gol: GolemLook,
+  o: { x: number; y: number; r: number },
+  hurt: boolean,
+): void {
+  ctx.fillStyle = hurt ? '#ffffff' : shade(gol.shell, -4);
+  ctx.beginPath();
+  ctx.moveTo(o.x - o.r, o.y + o.r * 0.5);
+  ctx.lineTo(o.x - o.r * 0.7, o.y - o.r * 0.8);
+  ctx.lineTo(o.x + o.r * 0.6, o.y - o.r);
+  ctx.lineTo(o.x + o.r, o.y + o.r * 0.4);
+  ctx.closePath();
+  ctx.fill();
+  if (!hurt) {
+    ctx.fillStyle = gol.lit;
+    ctx.beginPath();
+    ctx.moveTo(o.x - o.r * 0.7, o.y - o.r * 0.8);
+    ctx.lineTo(o.x + o.r * 0.6, o.y - o.r);
+    ctx.lineTo(o.x + o.r * 0.2, o.y - o.r * 0.4);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
 export function paintGolemBody(
   ctx: CanvasRenderingContext2D,
   gol: GolemLook,
@@ -227,6 +283,10 @@ function rockBody(ctx: CanvasRenderingContext2D, gol: GolemLook, f: GolemBodyFra
   ctx.beginPath();
   chamferRect(ctx, -tw * 0.78, -th * 0.98, tw * 1.56, th * 0.96, s * 0.05);
   ctx.fill();
+  // The far half of the binding's gravity: orbiting crags swing
+  // BEHIND the stack first.
+  const orbs = rockOrbs(gol, f);
+  for (const o of orbs) if (!o.front) drawOrb(ctx, gol, o, hurt);
   // The hip stone: squat and DEEP — it swallows the thigh roots so
   // the legs read short and planted under the mass.
   const hipOff = (hash(seed, 2) - 0.5) * tw * 0.2;
@@ -265,7 +325,37 @@ function rockBody(ctx: CanvasRenderingContext2D, gol: GolemLook, f: GolemBodyFra
       ctx.globalAlpha = 1;
     }
   }
+  // The near half of the gravity: crags crossing IN FRONT of the mass.
+  for (const o of orbs) if (o.front) drawOrb(ctx, gol, o, hurt);
   if (hurt) return;
+  // THE BINDING SHOWS: whatever stacked the cairn still runs in its
+  // seams — thin amber energy between the stones, banked at rest,
+  // waking bright through the wind of every art. Thin LINES between
+  // masses, never wide gaps (the fire golem owns the gaping crack;
+  // the rock golem's force is a mason's mortar).
+  const bindA = 0.5 + 0.5 * f.flare + 0.06 * Math.sin(nowMs / 780);
+  ctx.save();
+  ctx.lineCap = 'round';
+  const seams: ReadonlyArray<readonly [number, number, number, number]> = [
+    [-0.5, -0.32, 0.34, -0.36],
+    [-0.44, -0.68, 0.5, -0.64],
+    [-0.72, -0.86, -0.52, -0.72],
+    [0.55, -0.88, 0.7, -0.74],
+  ];
+  // The CONTRAST LAW: the pale energy rides a deep under-stroke — a
+  // bare amber line vanished into the khaki stone at rest.
+  for (const pass of [0, 1] as const) {
+    ctx.globalAlpha = pass === 0 ? Math.min(1, bindA) * 0.6 : Math.min(1, bindA);
+    ctx.strokeStyle = pass === 0 ? '#3a352c' : '#e8c878';
+    ctx.lineWidth = Math.max(1, s * (pass === 0 ? 0.034 : 0.018 + 0.014 * f.flare));
+    for (const [x0, y0, x1, y1] of seams) {
+      ctx.beginPath();
+      ctx.moveTo(tw * x0 + hipOff * 0.4, th * y0 + settle(1) * 0.5);
+      ctx.lineTo(tw * x1 + bellyOff * 0.4, th * y1 + settle(2) * 0.5);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
   // Moss saddles: the accent, laid on two crowns only (a cairn old
   // enough to walk grew a garden). Seed picks which stones.
   ctx.fillStyle = gol.accent;
@@ -307,17 +397,36 @@ function ironBody(ctx: CanvasRenderingContext2D, gol: GolemLook, f: GolemBodyFra
     // and married. From behind it becomes the spine ridge.
     ctx.fillStyle = gol.deep;
     ctx.fillRect(-tw * 0.07 - fx * tw * 0.18, -th * 1.02, tw * 0.14, th * 0.76);
+    // THE FORGE WAKES: heat stands at the seam's base — the furnace
+    // behind the plates, banked to a coal-dim breath at rest, climbing
+    // the seam as the piston winds. Iron's whole identity is
+    // CONTAINMENT: the light never escapes the seam's own plane.
+    const forge = 0.42 + 0.14 * Math.sin(f.nowMs / 560) + 0.5 * f.flare;
+    const climb = th * (0.2 + 0.34 * f.flare);
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, forge) * 0.85;
+    ctx.fillStyle = gol.glow;
+    ctx.fillRect(-tw * 0.055 - fx * tw * 0.18, -th * 0.26 - climb, tw * 0.11, climb);
+    ctx.fillStyle = '#fff3d0';
+    ctx.globalAlpha = Math.min(1, forge) * 0.5;
+    ctx.fillRect(-tw * 0.03 - fx * tw * 0.18, -th * 0.26 - climb * 0.5, tw * 0.06, climb * 0.5);
+    ctx.restore();
     // ONE BRIGHT EDGE: the leading arris takes the light.
     ctx.fillStyle = gol.lit;
     ctx.fillRect(lead * tw * 0.76, -th * 1.0, tw * 0.08, th * 0.66);
     // Rivet tick-marks down both plate edges — the tick-mark law:
-    // countable, evenly spaced, never noise.
-    ctx.fillStyle = shade(gol.shell, -18);
+    // countable, evenly spaced, never noise. Through the wind, ONE
+    // glint travels the row: the forge-light finding each rivet head
+    // in turn.
+    const glintAt = f.flare > 0.05 ? Math.floor(f.flare * 5.9) % 6 : -1;
+    let rv = 0;
     for (const side of [-1, 1] as const) {
       for (let i = 0; i < 3; i++) {
+        ctx.fillStyle = rv === glintAt ? '#fff3d0' : shade(gol.shell, -18);
         ctx.beginPath();
         ctx.arc(side * tw * 0.66 - fx * tw * 0.1, -th * (0.42 + i * 0.22), s * 0.02, 0, Math.PI * 2);
         ctx.fill();
+        rv++;
       }
     }
     if (backK < 0.55) {
@@ -368,6 +477,45 @@ function ironBody(ctx: CanvasRenderingContext2D, gol: GolemLook, f: GolemBodyFra
       ctx.fill();
     }
   }
+}
+
+/**
+ * THE BOUND FLAME — one licking tongue: a two-tone teardrop with a
+ * white heart, leaning and breathing on its own phase clock. Every
+ * flame on the fire golem routes through here so the whole body
+ * burns in one dialect (deterministic — phase comes from placement,
+ * time from nowMs, never from random).
+ */
+function flameTongue(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  h: number,
+  w: number,
+  phase: number,
+  nowMs: number,
+  accent: string,
+  vigor = 1,
+): void {
+  const lick = Math.sin(nowMs / 92 + phase * 5.1);
+  const swell = 0.82 + 0.18 * Math.sin(nowMs / 143 + phase * 3.3);
+  const tall = h * swell * vigor;
+  if (tall < h * 0.15) return;
+  const lean = lick * w * 0.55;
+  ctx.beginPath();
+  ctx.fillStyle = accent;
+  ctx.moveTo(x - w, y);
+  ctx.quadraticCurveTo(x - w * 0.5 + lean * 0.3, y - tall * 0.55, x + lean, y - tall);
+  ctx.quadraticCurveTo(x + w * 0.5 + lean * 0.3, y - tall * 0.55, x + w, y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.fillStyle = '#fff3d0';
+  ctx.moveTo(x - w * 0.42, y);
+  ctx.quadraticCurveTo(x + lean * 0.5, y - tall * 0.5, x + lean * 0.6, y - tall * 0.62);
+  ctx.quadraticCurveTo(x + w * 0.3, y - tall * 0.3, x + w * 0.42, y);
+  ctx.closePath();
+  ctx.fill();
 }
 
 /**
@@ -450,8 +598,19 @@ function fireBody(ctx: CanvasRenderingContext2D, gol: GolemLook, f: GolemBodyFra
       ctx.ellipse(vx, vy, tw * 0.05, th * 0.016, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
+      // THE VENTS SPEAK FLAME: a live tongue stands on each shoulder
+      // crater — small at rest, roaring through the wind. The fire
+      // golem is not stone that glows; it is fire wearing stone.
+      flameTongue(ctx, vx, vy - th * 0.01, th * (0.22 + 0.26 * flare), tw * 0.08,
+        side * 1.7, nowMs, gol.glow, 0.8 + 0.5 * flare);
     }
   }
+  // Seam jets: two small tongues escaping the plate gaps where the
+  // crack network runs widest — the containment is imperfect, and
+  // that imperfection is the menace.
+  const jetK = 0.5 + 0.7 * flare;
+  flameTongue(ctx, -tw * 0.06, -th * 0.36, th * 0.16, tw * 0.055, 0.7, nowMs, gol.accent, jetK);
+  flameTongue(ctx, tw * 0.3, -th * 0.7, th * 0.14, tw * 0.05, 2.3, nowMs, gol.accent, jetK);
 }
 
 /**
@@ -557,6 +716,57 @@ function iceBody(ctx: CanvasRenderingContext2D, gol: GolemLook, f: GolemBodyFram
       ctx.closePath();
       ctx.fill();
     }
+  }
+  // THE COLD DRIPS: icicles hang under the chest slab's seam — grown,
+  // not placed: seeded lengths, thickest mid-body where the melt
+  // gathers. One of them carries a live drop crawling to its tip on
+  // a slow clock (the renderer's joint voice releases the fall).
+  for (let i = 0; i < 4; i++) {
+    const ix = -tw * 0.44 + (i / 3) * tw * 0.92 + (hash(seed, 100 + i) - 0.5) * tw * 0.1;
+    const mid = 1 - Math.abs(i / 3 - 0.5) * 1.1;
+    const len = th * (0.1 + 0.14 * mid * (0.7 + 0.6 * hash(seed, 104 + i)));
+    const iw = s * 0.022;
+    ctx.fillStyle = shade(gol.shell, 6);
+    ctx.beginPath();
+    ctx.moveTo(ix - iw, -th * 0.3);
+    ctx.lineTo(ix, -th * 0.3 + len);
+    ctx.lineTo(ix + iw, -th * 0.3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = gol.lit;
+    ctx.beginPath();
+    ctx.moveTo(ix - iw * 0.5, -th * 0.3);
+    ctx.lineTo(ix - iw * 0.1, -th * 0.3 + len * 0.7);
+    ctx.lineTo(ix + iw * 0.1, -th * 0.3);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // The crawling melt-drop on the longest icicle.
+  const dripT = ((f.nowMs / 2600 + hash(seed, 108)) % 1);
+  if (dripT < 0.7) {
+    const ix = -tw * 0.44 + (1 / 3) * tw * 0.92 + (hash(seed, 101) - 0.5) * tw * 0.1;
+    ctx.fillStyle = gol.glow;
+    ctx.beginPath();
+    ctx.arc(ix, -th * 0.3 + th * 0.22 * (dripT / 0.7), s * 0.013, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // THE FACETS TWINKLE: two glint stars living on the slab planes,
+  // each blinking on its own slow phase — trapped light, not sparkle
+  // dust. Gated hard so at most one usually shows.
+  for (let i = 0; i < 2; i++) {
+    const tw2 = Math.sin(f.nowMs / 900 + hash(seed, 112 + i) * 9);
+    if (tw2 < 0.86) continue;
+    const gx = tw * (hash(seed, 116 + i) - 0.5) * 1.1;
+    const gy = -th * (0.5 + 0.4 * hash(seed, 120 + i));
+    const gs = s * 0.028;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = Math.max(1, s * 0.012);
+    ctx.beginPath();
+    ctx.moveTo(gx - gs, gy);
+    ctx.lineTo(gx + gs, gy);
+    ctx.moveTo(gx, gy - gs);
+    ctx.lineTo(gx, gy + gs);
+    ctx.stroke();
   }
 }
 
@@ -774,6 +984,14 @@ function fireHead(ctx: CanvasRenderingContext2D, gol: GolemLook, f: GolemHeadFra
     ctx.ellipse(headX - fx * gw * 0.12, headY - gh * 0.76, gw * 0.4, gh * 0.09, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
+    // THE CROWN BURNS: three tongues stand out of the crucible pool —
+    // the tallest at the center, all leaning together in the same
+    // wind, roaring up through the flare. This is the read that says
+    // FLAMES BOUND INTO A FORM before anything else on the body does.
+    const roar = 0.85 + 0.65 * flare;
+    flameTongue(ctx, headX - gw * 0.34, headY - gh * 0.78, gh * 0.44, gw * 0.14, 0.3, nowMs, gol.glow, roar * 0.8);
+    flameTongue(ctx, headX + fx * gw * 0.08, headY - gh * 0.82, gh * 0.66, gw * 0.18, 1.6, nowMs, gol.glow, roar);
+    flameTongue(ctx, headX + gw * 0.36, headY - gh * 0.78, gh * 0.38, gw * 0.12, 2.9, nowMs, gol.accent, roar * 0.75);
   } else {
     ctx.fillStyle = gol.accent;
     ctx.globalAlpha = 0.7;
