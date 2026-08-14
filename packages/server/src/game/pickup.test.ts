@@ -14,7 +14,7 @@ import type { InvSlot } from '@arx/shared';
  */
 
 type Fn = (...a: unknown[]) => unknown;
-const proto = GameServer.prototype as unknown as { pickupDrop: Fn; tickDrops: Fn };
+const proto = GameServer.prototype as unknown as { pickupDrop: Fn; tickDrops: Fn; speak: Fn };
 
 interface Drop {
   item: string;
@@ -42,6 +42,7 @@ function slate(inventory: InvSlot[], drop: Drop, opts: { sneaking?: boolean } = 
     session: { sendJson: (m: Record<string, unknown>) => sent.push(m) },
   };
   return {
+    speak: proto.speak,
     players: new Map([[1, player]]),
     drops: new Map([[9, drop]]),
     graves: new Map(),
@@ -85,7 +86,7 @@ test('explicit pickup takes a partial fit and leaves the rest', () => {
   assert.equal(drop.qty, 7, 'remainder stays on the ground');
   assert.equal(s.destroyed.length, 0, 'pile entity survives a partial take');
   assert.ok(
-    s.sent.some((m) => m['t'] === 'chat' && String(m['text']).includes('the rest stays')),
+    s.sent.some((m) => m['t'] === 'notice' && String(m['text']).includes('the rest stays')),
     'the quartermaster says so',
   );
 });

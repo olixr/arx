@@ -159,6 +159,24 @@ export interface Floaty {
   sizeMul?: number;
 }
 
+/**
+ * THE RISEN WORD: an interaction's answer standing in the world —
+ * "LOCKED" over the chest, "PACK FULL" over your head — so nobody has
+ * to read the corner log to learn why nothing happened. A separate
+ * lane from damage floaties: words live longer, rise slower, and obey
+ * the dedupe law (mashing the verb re-bumps the standing word instead
+ * of stacking copies into mush).
+ */
+export interface RisenWord {
+  x: number;
+  y: number;
+  word: string;
+  tone: 'deny' | 'note' | 'good';
+  bornAt: number;
+  /** Re-asks while alive; the renderer re-pops instead of stacking. */
+  bumpedAt: number;
+}
+
 export interface ChatLine {
   channel: 'local' | 'system' | 'xp';
   from?: string;
@@ -167,6 +185,9 @@ export interface ChatLine {
   eid?: EntityId;
   text: string;
 }
+
+/** One word-life — shared by the dedupe law and the renderer's prune. */
+export const WORD_LIFE_MS = 1400;
 
 /** A combat effect in flight (nova ring, telegraph, blast, reaction). */
 export interface ActiveFx {
@@ -417,6 +438,8 @@ export class ClientGame {
   ownBuilt: ReadonlySet<string> = new Set();
   /** Damage numbers floating up; pruned by the renderer. */
   readonly floaties: Floaty[] = [];
+  /** Overhead interaction words (THE RISEN WORD); pruned by the renderer. */
+  readonly words: RisenWord[] = [];
   /**
    * Projectiles that just ended flight (hit, expired, or left view) —
    * consumed by the renderer for impact bursts and stuck arrows.
@@ -1386,6 +1409,29 @@ export class ClientGame {
       }
       case 'chat': {
         this.events.onChat({ channel: msg.channel, from: msg.from, eid: msg.eid, text: msg.text });
+        break;
+      }
+      case 'notice': {
+        // ONE MESSAGE, TWO VOICES: the sentence keeps the log honest,
+        // the word stands up where the refusal happened.
+        this.events.onChat({ channel: 'system', text: msg.text });
+        const own = this.predictor.renderPos();
+        const x = msg.x ?? own.x;
+        const y = msg.y ?? own.y;
+        const now = performance.now();
+        // THE DEDUPE LAW: mashing the verb re-bumps the standing word
+        // (the renderer re-pops it) — never a stack of copies.
+        const standing = this.words.find(
+          (w) => w.word === msg.word && Math.hypot(w.x - x, w.y - y) < 0.75 && now - w.bornAt < WORD_LIFE_MS,
+        );
+        if (standing) {
+          standing.bornAt = now;
+          standing.bumpedAt = now;
+          standing.x = x;
+          standing.y = y;
+        } else {
+          this.words.push({ x, y, word: msg.word, tone: msg.tone ?? 'deny', bornAt: now, bumpedAt: now });
+        }
         break;
       }
       case 'pong': {

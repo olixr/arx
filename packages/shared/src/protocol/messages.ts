@@ -811,6 +811,26 @@ export interface S2CChat {
   text: string;
 }
 
+/**
+ * THE RISEN WORD: a refusal (or note) that stands up IN THE WORLD as
+ * a short overhead word — "Locked", "Pack full" — while its full
+ * sentence still lands in the system log. One message, two voices:
+ * the client fans `text` into the chat log and raises `word` at the
+ * anchor. No anchor means "over the speaker's own head."
+ */
+export interface S2CNotice {
+  t: 'notice';
+  /** The full sentence for the system log (the log keeps its voice). */
+  text: string;
+  /** The short word that rises in the world (2–3 words at most). */
+  word: string;
+  /** World anchor — a chest, a door, a beast. Absent = own player. */
+  x?: number;
+  y?: number;
+  /** Ink: a refusal, a neutral note, or a small yes. Default deny. */
+  tone?: 'deny' | 'note' | 'good';
+}
+
 export interface S2CPong {
   t: 'pong';
   ct: number;
@@ -1794,6 +1814,7 @@ export type S2CMessage =
   | S2CEnter
   | S2CLeave
   | S2CChat
+  | S2CNotice
   | S2CPong
   | S2CInventory
   | S2CSkills

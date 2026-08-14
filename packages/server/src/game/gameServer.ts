@@ -2661,6 +2661,26 @@ export class GameServer {
   }
 
   /**
+   * THE RISEN WORD — the one door for every interaction answer that
+   * should stand up IN THE WORLD instead of only landing in the corner
+   * log. One send, two voices: the client logs `text` on the system
+   * channel exactly as before AND raises the short `word` overhead —
+   * at the anchor (a chest lid, a stubborn door) or over the player's
+   * own head when no anchor is given. Use it wherever a press would
+   * otherwise fail in silence: locked lids, full packs, short levels,
+   * a beast that noses your pack and finds nothing.
+   */
+  private speak(
+    player: { session: Session | null } | undefined,
+    word: string,
+    text: string,
+    at?: { x: number; y: number },
+    tone: 'deny' | 'note' | 'good' = 'deny',
+  ): void {
+    player?.session?.sendJson({ t: 'notice', text, word, x: at?.x, y: at?.y, tone });
+  }
+
+  /**
    * Rewrite a board. THE HAND THAT RAISED IT HOLDS THE PEN: only the
    * character who built the post may write on it, and the world's own
    * authored signage answers to nobody in play — it is edited in Map
@@ -3978,7 +3998,11 @@ export class GameServer {
 
     const level = this.effectiveLevel(player, node.skill);
     if (level < node.levelReq) {
-      sys(`You need ${node.skill} level ${node.levelReq} for this ${node.name.toLowerCase()}.`);
+      this.speak(
+        player,
+        `Needs ${node.skill} ${node.levelReq}`,
+        `You need ${node.skill} level ${node.levelReq} for this ${node.name.toLowerCase()}.`,
+      );
       return;
     }
     // The tool belt counts: an equipped tool works alongside anything
@@ -3991,7 +4015,11 @@ export class GameServer {
       }
     }
     if (!tool) {
-      sys(`You need a ${node.tool} to work this ${node.name.toLowerCase()}.`);
+      this.speak(
+        player,
+        `Needs a ${node.tool}`,
+        `You need a ${node.tool} to work this ${node.name.toLowerCase()}.`,
+      );
       return;
     }
     // Metal-tier gate: a cheap tool can't bite hard material, whatever
@@ -4000,14 +4028,16 @@ export class GameServer {
     if (node.tool && tool.power < minPower) {
       const tier = (TOOL_TIER_NAMES[minPower] ?? `power-${minPower}`).toLowerCase();
       const article = /^[aeiou]/.test(tier) ? 'an' : 'a';
-      sys(
+      this.speak(
+        player,
+        `Needs ${tier} ${node.tool}`,
         `Your ${itemDef(tool.item)?.name.toLowerCase() ?? node.tool} can't bite this ` +
           `${node.name.toLowerCase()} — you need ${article} ${tier} ${node.tool} or better.`,
       );
       return;
     }
     if (!hasSpaceFor(player.inventory, node.yieldItem)) {
-      sys('Your pack is full.');
+      this.speak(player, 'Pack full', 'Your pack is full.');
       return;
     }
 
@@ -4043,7 +4073,13 @@ export class GameServer {
     sys: (text: string) => void,
   ): void {
     if (chest.open) {
-      sys('Empty — nothing left but the smell of old air.');
+      this.speak(
+        player,
+        'Empty',
+        'Empty — nothing left but the smell of old air.',
+        { x: tx + 0.5, y: ty + 0.5 },
+        'note',
+      );
       return;
     }
     const law = GameServer.CHEST_LAWS[chest.kind];
@@ -4057,17 +4093,31 @@ export class GameServer {
         : this.poiGarrisonStands(over.cell)
       : false;
     if (wardStands) {
-      sys('The lid will not lift — the ward holds while its keeper stands.');
+      this.speak(
+        player,
+        'Warded',
+        'The lid will not lift — the ward holds while its keeper stands.',
+        { x: tx + 0.5, y: ty + 0.5 },
+      );
       return;
     }
     if (law.key) {
       if (countItem(player.inventory, law.key) < 1) {
-        sys('Locked fast. The hasp wants a brass key.');
+        this.speak(player, 'Locked', 'Locked fast. The hasp wants a brass key.', {
+          x: tx + 0.5,
+          y: ty + 0.5,
+        });
         return;
       }
       removeItem(player.inventory, law.key, 1);
       player.session?.sendJson({ t: 'inv', slots: player.inventory });
-      sys('The key turns once, and stays turned.');
+      this.speak(
+        player,
+        'Unlocked',
+        'The key turns once, and stays turned.',
+        { x: tx + 0.5, y: ty + 0.5 },
+        'good',
+      );
     }
     const pos = this.positions.get(eid);
     if (!pos) return;
@@ -4255,7 +4305,12 @@ export class GameServer {
           // The latch is worked — fall through and swing it open.
         }
       } else {
-        sys(gate ? 'Locked — the gate holds fast.' : 'Locked — the door holds fast.');
+        this.speak(
+          player,
+          'Locked',
+          gate ? 'Locked — the gate holds fast.' : 'Locked — the door holds fast.',
+          { x: unit.ax + 0.5, y: unit.ay + 0.5 },
+        );
       }
       if (this.doorLocks.has(lockKey)) {
         this.broadcastFx({
@@ -4565,11 +4620,7 @@ export class GameServer {
     // slots. Beasts do not go down the stairs. UNDERGROUND_Y covers
     // both bands (512 <= 8192).
     if (pos.y >= UNDERGROUND_Y) {
-      player.session?.sendJson({
-        t: 'chat',
-        channel: 'system',
-        text: 'No room to ride down here.',
-      });
+      this.speak(player, 'Not down here', 'No room to ride down here.', undefined, 'note');
       return;
     }
     this.standUp(eid, player, pos);
@@ -4820,11 +4871,16 @@ export class GameServer {
 
     if (stage === 2) {
       if (state.owner !== player.characterId) {
-        sys(`This ${state.def.name.toLowerCase()} patch isn't yours to harvest.`);
+        this.speak(
+          player,
+          'Not yours',
+          `This ${state.def.name.toLowerCase()} patch isn't yours to harvest.`,
+          { x: tx + 0.5, y: ty + 0.5 },
+        );
         return;
       }
       if (!hasSpaceFor(player.inventory, state.def.yield.item)) {
-        sys('Your pack is full.');
+        this.speak(player, 'Pack full', 'Your pack is full.');
         return;
       }
       const ticks = Math.max(10, Math.round(15 / this.gatherSpeedOf(player)));
@@ -5233,12 +5289,22 @@ export class GameServer {
     const key = `${tx},${ty}`;
     const existing = this.farmJobs.get(key);
     if (existing && existing.qty > 0) {
-      sys('The station is already working. Collect first.');
+      this.speak(
+        player,
+        'Still working',
+        'The station is already working. Collect first.',
+        { x: tx + 0.5, y: ty + 0.5 },
+        'note',
+      );
       return;
     }
     const level = this.effectiveLevel(player, recipe.skill);
     if (level < recipe.levelReq) {
-      sys(`You need ${recipe.skill} level ${recipe.levelReq} for ${recipe.name.toLowerCase()}.`);
+      this.speak(
+        player,
+        `Needs ${recipe.skill} ${recipe.levelReq}`,
+        `You need ${recipe.skill} level ${recipe.levelReq} for ${recipe.name.toLowerCase()}.`,
+      );
       return;
     }
     const batch = Math.min(qty, WORK_BATCH_CAP);
@@ -5550,11 +5616,15 @@ export class GameServer {
     }
     const level = this.effectiveLevel(player, 'beastcraft');
     if (level < ldef.levelReq) {
-      sys(`You need beastcraft level ${ldef.levelReq} to keep a ${ldef.name.toLowerCase()}.`);
+      this.speak(
+        player,
+        `Needs beastcraft ${ldef.levelReq}`,
+        `You need beastcraft level ${ldef.levelReq} to keep a ${ldef.name.toLowerCase()}.`,
+      );
       return;
     }
     if (this.livestockCountFor(player.characterId) >= LIVESTOCK_CAP) {
-      sys('Your yards are full. Lead one away first.');
+      this.speak(player, 'Yards full', 'Your yards are full. Lead one away first.');
       return;
     }
     if (this.livestockAtTrough(trough.tx, trough.ty) >= TROUGH_STOCK_CAP) {
@@ -5631,13 +5701,18 @@ export class GameServer {
     const row = comp.row;
     const ldef = LIVESTOCK.get(row.species)!;
     if (row.characterId !== player.characterId) {
-      sys(`${row.name} belongs to another yard.`);
+      this.speak(
+        player,
+        'Not yours',
+        `${row.name} belongs to another yard.`,
+        this.positions.get(targetEid) ?? undefined,
+      );
       return;
     }
     const now = Date.now();
     if (now >= npc.nextProduceAt) {
       if (!hasSpaceFor(player.inventory, ldef.produce.item)) {
-        sys('Your pack is full.');
+        this.speak(player, 'Pack full', 'Your pack is full.');
         return;
       }
       const pos = this.positions.get(eid);
@@ -5756,7 +5831,10 @@ export class GameServer {
     const key = `${tx},${ty}`;
     const trough = this.farmTroughs.get(key) ?? { tx, ty, feed: 0 };
     if (trough.feed >= TROUGH_FEED_CAP) {
-      sys('The manger is heaped full.');
+      this.speak(player, 'Manger full', 'The manger is heaped full.', {
+        x: tx + 0.5,
+        y: ty + 0.5,
+      });
       return;
     }
     const held = player.inventory[slot];
@@ -5767,7 +5845,13 @@ export class GameServer {
     }
     const worth = feedWorthOf(held.item, gradeOf, (base) => GRADED_PRODUCE.has(base));
     if (worth === null) {
-      sys('The herd has no use for that.');
+      this.speak(
+        player,
+        "Won't eat that",
+        'The herd has no use for that.',
+        { x: tx + 0.5, y: ty + 0.5 },
+        'note',
+      );
       return;
     }
     takeSlot(player.inventory, slot, 1);
@@ -5873,7 +5957,7 @@ export class GameServer {
         return;
       }
     } else if (ground !== Tile.Tilled && ground !== Tile.GrowingFrame) {
-      sys('Seeds need a tilled garden plot.');
+      this.speak(player, 'Needs tilled soil', 'Seeds need a tilled garden plot.');
       return;
     }
     if (def.recurring && ground === Tile.GrowingFrame) {
@@ -5882,7 +5966,11 @@ export class GameServer {
     }
     const level = this.effectiveLevel(player, 'farming');
     if (level < def.levelReq) {
-      sys(`You need farming level ${def.levelReq} to plant ${def.name.toLowerCase()}.`);
+      this.speak(
+        player,
+        `Needs farming ${def.levelReq}`,
+        `You need farming level ${def.levelReq} to plant ${def.name.toLowerCase()}.`,
+      );
       return;
     }
     if (removeItem(player.inventory, seed, 1) === 0) return;
@@ -6542,21 +6630,26 @@ export class GameServer {
     // THE RECIPE IS KNOWLEDGE: core is everyone's; the rest must have
     // been learned (trainer scroll or a chest find) before any craft.
     if (recipe.unlock !== 'core' && !player.knownRecipes.has(recipe.id)) {
-      sys("You don't know how to make that yet.");
+      this.speak(player, 'Not learned yet', "You don't know how to make that yet.");
       return;
     }
     const level = this.effectiveLevel(player, recipe.skill);
     if (level < recipe.levelReq) {
-      sys(`You need ${recipe.skill} level ${recipe.levelReq} to make that.`);
+      this.speak(
+        player,
+        `Needs ${recipe.skill} ${recipe.levelReq}`,
+        `You need ${recipe.skill} level ${recipe.levelReq} to make that.`,
+      );
       return;
     }
     if (recipe.station && !this.nearTile(eid, STATION_TILES[recipe.station])) {
       // 'tanning_rack' → "tanning rack": speak the station's name, not its key.
-      sys(`You need to stand by a ${recipe.station.replace(/_/g, ' ')} for that.`);
+      const station = recipe.station.replace(/_/g, ' ');
+      this.speak(player, `Needs a ${station}`, `You need to stand by a ${station} for that.`);
       return;
     }
     if (!this.hasInputs(player, recipe)) {
-      sys("You don't have the materials.");
+      this.speak(player, 'No materials', "You don't have the materials.");
       return;
     }
     const craftTicks = this.craftTicks(player, recipe);
@@ -6707,14 +6800,18 @@ export class GameServer {
     if (dx * dx + dy * dy > 3 * 3) return;
     // Can't build under your own feet or anyone else's.
     if (dx * dx + dy * dy < 0.8 * 0.8) {
-      sys('Step back a little first.');
+      this.speak(player, 'Step back', 'Step back a little first.', undefined, 'note');
       return;
     }
 
     const skill = def.skill ?? 'construction';
     const level = this.effectiveLevel(player, skill);
     if (level < def.levelReq) {
-      sys(`You need ${skill} level ${def.levelReq} for a ${def.name.toLowerCase()}.`);
+      this.speak(
+        player,
+        `Needs ${skill} ${def.levelReq}`,
+        `You need ${skill} level ${def.levelReq} for a ${def.name.toLowerCase()}.`,
+      );
       return;
     }
     this.world.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
@@ -6770,12 +6867,18 @@ export class GameServer {
     if (pieceTile === undefined) return;
     const ground = this.world.groundAt(tx, ty);
     if (ground === undefined || !buildableGround(def).includes(ground as Tile)) {
-      sys("You can't build there.");
+      this.speak(player, 'Not here', "You can't build there.", { x: tx + 0.5, y: ty + 0.5 });
       return;
     }
     // Nobody standing on the target tile.
     if (this.tileHoldsBody(tx, ty)) {
-      sys('Someone is in the way.');
+      this.speak(
+        player,
+        'In the way',
+        'Someone is in the way.',
+        { x: tx + 0.5, y: ty + 0.5 },
+        'note',
+      );
       return;
     }
     // THE OUTWARD FACE: an awning bolts to the wall behind it — the
@@ -6784,12 +6887,15 @@ export class GameServer {
     if (awningInfo(pieceTile) !== null) {
       const host = this.world.groundAt(tx, ty - 1);
       if (host === undefined || !AWNING_HOST_TILES.has(host as Tile)) {
-        sys('An awning needs a wall behind it.');
+        this.speak(player, 'Needs a wall', 'An awning needs a wall behind it.', {
+          x: tx + 0.5,
+          y: ty + 0.5,
+        });
         return;
       }
     }
     if (!def.materials.every((m) => countItem(player.inventory, m.item) >= m.qty)) {
-      sys("You don't have the materials.");
+      this.speak(player, 'No materials', "You don't have the materials.");
       return;
     }
 
@@ -7111,7 +7217,10 @@ export class GameServer {
     const ownTile = !!built && built.owner === player.characterId;
     if (!ownHanging && !ownTile) {
       if (built || hung) {
-        player.session.sendJson({ t: 'chat', channel: 'system', text: "That isn't yours to tear down." });
+        this.speak(player, 'Not yours', "That isn't yours to tear down.", {
+          x: tx + 0.5,
+          y: ty + 0.5,
+        });
       }
       return;
     }
@@ -7133,7 +7242,10 @@ export class GameServer {
         player.session.sendJson({ t: 'chat', channel: 'system', text: 'You grub the old wood out. The plot stands ready.' });
         return;
       }
-      player.session.sendJson({ t: 'chat', channel: 'system', text: 'Harvest the crop first.' });
+      this.speak(player, 'Harvest first', 'Harvest the crop first.', {
+        x: tx + 0.5,
+        y: ty + 0.5,
+      });
       return;
     }
     // THE LIVING SOIL: a bin holding scraps or a working batch will
@@ -7141,7 +7253,10 @@ export class GameServer {
     {
       const bin = this.farmBins.get(`${tx},${ty}`);
       if (!ownHanging && bin && (bin.fill > 0 || bin.startedAt !== 0)) {
-        player.session.sendJson({ t: 'chat', channel: 'system', text: 'Empty the bin first.' });
+        this.speak(player, 'Empty it first', 'Empty the bin first.', {
+          x: tx + 0.5,
+          y: ty + 0.5,
+        });
         return;
       }
     }
@@ -7150,7 +7265,10 @@ export class GameServer {
     {
       const job = this.farmJobs.get(`${tx},${ty}`);
       if (!ownHanging && job && job.qty > 0) {
-        player.session.sendJson({ t: 'chat', channel: 'system', text: 'The batch still works. Collect it first.' });
+        this.speak(player, 'Collect first', 'The batch still works. Collect it first.', {
+          x: tx + 0.5,
+          y: ty + 0.5,
+        });
         return;
       }
       if (!ownHanging && this.world.groundAt(tx, ty) === Tile.Apiary && this.farmApiaries.has(`${tx},${ty}`)) {
@@ -7165,11 +7283,17 @@ export class GameServer {
     // let them eat it empty first.
     if (!ownHanging && this.world.groundAt(tx, ty) === Tile.FeedTrough) {
       if (this.livestockAtTrough(tx, ty) > 0) {
-        player.session.sendJson({ t: 'chat', channel: 'system', text: 'The herd still answers to this trough.' });
+        this.speak(player, 'Herd needs it', 'The herd still answers to this trough.', {
+          x: tx + 0.5,
+          y: ty + 0.5,
+        });
         return;
       }
       if ((this.farmTroughs.get(`${tx},${ty}`)?.feed ?? 0) > 0) {
-        player.session.sendJson({ t: 'chat', channel: 'system', text: 'The manger still holds feed.' });
+        this.speak(player, 'Still holds feed', 'The manger still holds feed.', {
+          x: tx + 0.5,
+          y: ty + 0.5,
+        });
         return;
       }
     }
@@ -7492,11 +7616,7 @@ export class GameServer {
             // flush it ahead of the 30s cadence.
             this.accounts.saveInventory(player.characterId, player.inventory);
           } else {
-            player.session.sendJson({
-              t: 'chat',
-              channel: 'system',
-              text: 'Your pack has no room for that.',
-            });
+            this.speak(player, 'Pack full', 'Your pack has no room for that.');
           }
         }
       }
@@ -7611,7 +7731,7 @@ export class GameServer {
       const coins = countItem(player.inventory, 'coins');
       const affordable = Math.min(qty, Math.floor(coins / price));
       if (affordable === 0) {
-        sys("You can't afford that.");
+        this.speak(player, "Can't afford it", "You can't afford that.");
         return;
       }
       removeItem(player.inventory, 'coins', affordable * price);
@@ -7626,7 +7746,7 @@ export class GameServer {
       if (added < affordable) {
         // Pack filled up — refund what didn't fit.
         addItem(player.inventory, 'coins', (affordable - added) * price);
-        sys('Your pack is full.');
+        this.speak(player, 'Pack full', 'Your pack is full.');
       }
     } else {
       if (item === 'coins') return;
@@ -11103,7 +11223,7 @@ export class GameServer {
       player.session!.sendJson({ t: 'chat', channel: 'system', text });
     const gate = this.riftgateNear(pos);
     if (!gate) {
-      sys('You need to stand at a Riftgate to turn a dungeon key.');
+      this.speak(player, 'Needs a Riftgate', 'You need to stand at a Riftgate to turn a dungeon key.');
       return;
     }
     const held = player.inventory[slot];
@@ -11390,7 +11510,11 @@ export class GameServer {
     if (!def) return;
 
     if (!this.nearTile(eid, STATION_TILES.enchanting_table)) {
-      sys('You need to stand by an enchanting table to take something apart.');
+      this.speak(
+        player,
+        'Needs a table',
+        'You need to stand by an enchanting table to take something apart.',
+      );
       return;
     }
     if (!canUnmake(slot.item)) {
@@ -11411,7 +11535,7 @@ export class GameServer {
     // failure this action must never have.
     for (const y of result.yields) {
       if (!hasSpaceFor(player.inventory, y.item)) {
-        sys('Your pack is too full to catch what comes out of it.');
+        this.speak(player, 'Pack full', 'Your pack is too full to catch what comes out of it.');
         return;
       }
     }
@@ -11505,7 +11629,7 @@ export class GameServer {
       : (packRef ?? undefined);
     if (!target) return;
     if (!this.nearTile(eid, STATION_TILES.enchanting_table)) {
-      sys('You need to stand by an enchanting table for that.');
+      this.speak(player, 'Needs a table', 'You need to stand by an enchanting table for that.');
       return;
     }
     // NO LAUNDERING: the unmaking door refuses stolen goods and this
@@ -11939,7 +12063,7 @@ export class GameServer {
     if (def.heals) {
       const health = this.healths.must(eid);
       if (health.hp >= health.maxHp) {
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: 'You are at full health.' });
+        this.speak(player, 'Full health', 'You are at full health.', undefined, 'note');
         return;
       }
       // Eat what was clicked, slot-addressed: the effect lands only if
@@ -11991,11 +12115,11 @@ export class GameServer {
       // the same: what waits at the ready must be yours to wield.
       const req = effectiveReq(slot.item, slot.roll);
       if (req && levelForXp(player.skills[req.skill] ?? 0) < req.level) {
-        player.session?.sendJson({
-          t: 'chat',
-          channel: 'system',
-          text: `You need ${req.skill} level ${req.level} to equip that.`,
-        });
+        this.speak(
+          player,
+          `Needs ${req.skill} ${req.level}`,
+          `You need ${req.skill} level ${req.level} to equip that.`,
+        );
         return;
       }
       // DUAL WIELD — the secret is the act itself. A second one-handed
@@ -12049,13 +12173,13 @@ export class GameServer {
         const empties =
           player.inventory.filter((s) => s === null).length + 1 - (worn ? 1 : 0);
         if (empties < 1) {
-          player.session?.sendJson({
-            t: 'chat',
-            channel: 'system',
-            text: `You need a free pack slot to stow your ${
+          this.speak(
+            player,
+            'Pack full',
+            `You need a free pack slot to stow your ${
               itemDef(player.equipment[shedSlot]!.id)?.name.toLowerCase() ?? 'other hand'
             } first.`,
-          });
+          );
           return;
         }
       }
@@ -12354,11 +12478,17 @@ export class GameServer {
     const now = Date.now();
     if (now < npc.nextProduceAt) {
       const secs = Math.ceil((npc.nextProduceAt - now) / 1000);
-      sys(`The ${npc.def.name.toLowerCase()} has nothing to give yet (${secs}s).`);
+      this.speak(
+        player,
+        'Not yet',
+        `The ${npc.def.name.toLowerCase()} has nothing to give yet (${secs}s).`,
+        npos,
+        'note',
+      );
       return;
     }
     if (!hasSpaceFor(player.inventory, produce.item)) {
-      sys('Your pack is full.');
+      this.speak(player, 'Pack full', 'Your pack is full.');
       return;
     }
     // Milking is handwork with a rhythm, not a vending machine: settle
@@ -12405,7 +12535,13 @@ export class GameServer {
     const sys = (text: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text });
     // Raced by another milker mid-squeeze: the udder ran dry first.
     if (Date.now() < npc.nextProduceAt) {
-      sys(`The ${npc.def.name.toLowerCase()} has nothing left to give.`);
+      this.speak(
+        player,
+        'Nothing left',
+        `The ${npc.def.name.toLowerCase()} has nothing left to give.`,
+        npos,
+        'note',
+      );
       this.cancelAction(eid, player, 'gone');
       return;
     }
@@ -12534,22 +12670,37 @@ export class GameServer {
     // keeper; a hard one makes anybody wait.
     const bc = levelForXp(player.skills.beastcraft ?? 0);
     if (bc < npc.def.level) {
-      sys(`It is a level ${npc.def.level} beast, and your beastcraft is ${bc}. It will not answer you yet.`);
+      this.speak(
+        player,
+        `Needs beastcraft ${npc.def.level}`,
+        `It is a level ${npc.def.level} beast, and your beastcraft is ${bc}. It will not answer you yet.`,
+      );
       return;
     }
     if (player.pets.length >= PET_CAP) {
-      sys('Your stalls are full. Three is a household.');
+      this.speak(player, 'Stalls full', 'Your stalls are full. Three is a household.');
       return;
     }
     // You may finish a fight it started with you — never steal one it
     // is having with somebody else.
     if (npc.state === 'chase' && npc.targetEid !== null && npc.targetEid !== eid) {
-      sys('Its eyes are on someone else.');
+      this.speak(
+        player,
+        'Eyes elsewhere',
+        'Its eyes are on someone else.',
+        { x: best.x, y: best.y },
+        'note',
+      );
       return;
     }
     const lureName = itemDef(tame.lure)?.name.toLowerCase() ?? tame.lure;
     if (countItem(player.inventory, tame.lure) < 1) {
-      sys(`It noses your pack for ${lureName} and finds none.`);
+      this.speak(
+        player,
+        `Needs ${lureName}`,
+        `It noses your pack for ${lureName} and finds none.`,
+        { x: best.x, y: best.y },
+      );
       return;
     }
     const health = this.healths.get(targetEid);
@@ -12633,12 +12784,16 @@ export class GameServer {
     const sys = (text: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text });
     // Re-checked at the finish line: the kneel is long enough to race.
     if (player.pets.length >= PET_CAP) {
-      sys('Your stalls are full. Three is a household.');
+      this.speak(player, 'Stalls full', 'Your stalls are full. Three is a household.');
       this.cancelAction(eid, player, 'gone');
       return;
     }
     if (removeItem(player.inventory, tame.lure, 1) < 1) {
-      sys('The lure left your pack mid-kneel. The beast wanders off, unimpressed.');
+      this.speak(
+        player,
+        'Lure gone',
+        'The lure left your pack mid-kneel. The beast wanders off, unimpressed.',
+      );
       this.cancelAction(eid, player, 'gone');
       return;
     }
@@ -13046,7 +13201,7 @@ export class GameServer {
         }
         const ppos = this.positions.get(petEid);
         if (!ppos || Math.hypot(ppos.x - pos.x, ppos.y - pos.y) > (ab.range ?? 8)) {
-          sys('Your friend is too far for the throw.');
+          this.speak(player, 'Too far', 'Your friend is too far for the throw.');
           return;
         }
         this.payKeeperCast(eid, player, slot, ab);
@@ -15546,7 +15701,7 @@ export class GameServer {
     const worn = player.equipment[slot];
     if (!worn) return;
     if (!hasSpaceFor(player.inventory, worn.id)) {
-      player.session?.sendJson({ t: 'chat', channel: 'system', text: 'Your pack is full.' });
+      this.speak(player, 'Pack full', 'Your pack is full.');
       return;
     }
     addItem(player.inventory, worn.id, 1, worn.roll);
@@ -23153,18 +23308,21 @@ export class GameServer {
     const now = Date.now();
     const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
     if (drop.ownerEid !== null && drop.ownerEid !== eid && drop.ownerUntil > now) {
-      sys('That spoil belongs to another for a moment yet.');
+      this.speak(player, 'Not yours yet', 'That spoil belongs to another for a moment yet.', {
+        x: pos.x,
+        y: pos.y,
+      });
       return;
     }
     if (!hasSpaceFor(player.inventory, drop.item, drop.stolen)) {
-      sys('Your pack has no room for that.');
+      this.speak(player, 'Pack full', 'Your pack has no room for that.');
       return;
     }
     // A non-stackable pile can be bigger than the pack's free slots —
     // take what fits and leave the rest lying where it was.
     const got = addItem(player.inventory, drop.item, drop.qty, drop.roll, drop.stolen);
     if (got === 0) {
-      sys('Your pack has no room for that.');
+      this.speak(player, 'Pack full', 'Your pack has no room for that.');
       return;
     }
     if (drop.xpOnPickup) {
@@ -23174,7 +23332,7 @@ export class GameServer {
     player.session.sendJson({ t: 'inv', slots: player.inventory });
     if (got < drop.qty) {
       drop.qty -= got;
-      sys('Your pack is full — the rest stays where it fell.');
+      this.speak(player, 'Pack full', 'Your pack is full — the rest stays where it fell.');
       return;
     }
     this.removeFromChunks(dropEid);

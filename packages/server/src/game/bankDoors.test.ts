@@ -19,7 +19,7 @@ import { addItem, countItem, emptyInventory } from './inventory.js';
  */
 
 type AnyFn = (...args: never[]) => unknown;
-const proto = GameServer.prototype as unknown as { bankOp: AnyFn };
+const proto = GameServer.prototype as unknown as { bankOp: AnyFn; speak: AnyFn };
 
 const bankOp = (self: unknown, ...args: unknown[]): Promise<void> =>
   (proto.bankOp as (...a: unknown[]) => Promise<void>).call(self, ...args);
@@ -38,12 +38,15 @@ function slate(opts: {
     bankDirty: false,
     inventory: emptyInventory(),
     session: {
+      // THE RISEN WORD sends refusals as 'notice' (log line + overhead
+      // word); the harness reads both voices as spoken lines.
       sendJson: (m: { t: string; text?: string }) => {
-        if (m.t === 'chat' && m.text) lines.push(m.text);
+        if ((m.t === 'chat' || m.t === 'notice') && m.text) lines.push(m.text);
       },
     },
   };
   const s = {
+    speak: proto.speak,
     players: new Map([[1, player]]),
     positions: new Map([[1, { x: 0, y: 0, dir: 0 }]]),
     nearTile: () => true,

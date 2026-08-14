@@ -22,6 +22,7 @@ const proto = GameServer.prototype as unknown as {
   useItem: AnyFn;
   sunder: AnyFn;
   shopOp: AnyFn;
+  speak: AnyFn;
 };
 
 const call = (fn: AnyFn, self: unknown, ...args: unknown[]): unknown =>
@@ -39,12 +40,15 @@ function useSlate(opts: { hp?: number } = {}) {
     buffs: [],
     knownRecipes: new Set(),
     session: {
+      // THE RISEN WORD sends refusals as 'notice' (log line + overhead
+      // word); the harness reads both voices as spoken lines.
       sendJson: (m: { t: string; text?: string }) => {
-        if (m.t === 'chat' && m.text) lines.push(m.text);
+        if ((m.t === 'chat' || m.t === 'notice') && m.text) lines.push(m.text);
       },
     },
   };
   const s = {
+    speak: proto.speak,
     players: new Map([[1, player]]),
     healths: { must: () => health, get: () => health },
     positions: new Map([[1, { x: 0, y: 0, dir: 0 }]]),

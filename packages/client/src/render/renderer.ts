@@ -57,6 +57,7 @@ import { COMPOST_BATCH_WORTH, abilityDef, bandDy, enchantDef, instanceName, isCr
 import { farmApiaries, farmBins, farmJobs, farmPlots, farmTroughs, predictedGrade } from '../game/farmCare.js';
 import { shortestAngle } from '../net/interpolation.js';
 import type { ClientGame } from '../game/clientGame.js';
+import { WORD_LIFE_MS } from '../game/clientGame.js';
 import {
   ANVIL_CYCLE_MS,
   CATTLE_LOOKS,
@@ -4112,6 +4113,7 @@ export class Renderer {
     this.drawActionProgress(game);
     this.drawComboBeat(game);
     this.drawFloaties(game);
+    this.drawWords(game);
     this.drawLootLabels(game);
     this.drawHpBar(game);
     this.drawVignette();
@@ -39097,6 +39099,67 @@ export class Renderer {
       ctx.fillText(f.text, p.x + 2, p.y + 2);
       ctx.fillStyle = f.color;
       ctx.fillText(f.text, p.x, p.y);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /**
+   * THE RISEN WORD: interaction answers standing in the world —
+   * "LOCKED" over the chest, "PACK FULL" over your own head. A
+   * different voice from damage numbers on purpose: capitals, letter
+   * air, the full eight-tap ink ring (the icons' outline dialect), a
+   * settle instead of a flight. A deny-toned word is born with a short
+   * head-shake — the shape of "no" you can read before the letters.
+   * Words live on game.words under the dedupe law (a re-ask re-pops
+   * the standing word via its refreshed bornAt).
+   */
+  private drawWords(game: ClientGame): void {
+    if (game.words.length === 0) return;
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const now = performance.now();
+    for (let i = game.words.length - 1; i >= 0; i--) {
+      const w = game.words[i]!;
+      const age = now - w.bornAt;
+      if (age > WORD_LIFE_MS) {
+        game.words.splice(i, 1);
+        continue;
+      }
+      const frac = age / WORD_LIFE_MS;
+      // The settle: barely drifts while it speaks, then leaves upward.
+      const rise = 0.5 * frac * frac;
+      const p = this.liftedWTS(w.x, w.y - 0.95 - rise);
+      // Landing pop — overshoot big, settle fast (same law the damage
+      // numbers obey, softened: a word is said, not struck).
+      const pop = 1 + 0.4 * Math.max(0, 1 - age / 150);
+      // The head-shake: deny words shiver side-to-side for the first
+      // beat — a "no" that reads from across the room.
+      const shake =
+        w.tone === 'deny' && age < 260
+          ? Math.sin(age / 26) * 3.2 * (1 - age / 260)
+          : 0;
+      const alpha = frac < 0.65 ? 1 : Math.pow(1 - (frac - 0.65) / 0.35, 1.2);
+      const text = w.word.toUpperCase();
+      // Long words yield a little so "NEEDS MINING 20" stays composed.
+      const fit = text.length > 10 ? 0.82 : 1;
+      const px = Math.max(12, s * 0.3 * fit * pop);
+      ctx.globalAlpha = alpha;
+      ctx.font = `800 ${px}px 'Trebuchet MS', sans-serif`;
+      ctx.textAlign = 'center';
+      const cx = p.x + shake;
+      // The full ink ring — the same eight-tap silhouette the world's
+      // sprites wear, so the word belongs to the scene it stands in.
+      const r = Math.max(1.5, px * 0.09);
+      ctx.fillStyle = 'rgba(24, 14, 32, 0.92)';
+      for (let t = 0; t < 8; t++) {
+        const a = (t * Math.PI) / 4;
+        ctx.fillText(text, cx + Math.cos(a) * r, p.y + Math.sin(a) * r);
+      }
+      // The grounding tap: a hard south-east drop so it sits, not floats.
+      ctx.fillText(text, cx + r * 1.4, p.y + r * 1.4);
+      ctx.fillStyle =
+        w.tone === 'deny' ? '#ff9b8a' : w.tone === 'good' ? '#7dc46a' : '#f0e6cf';
+      ctx.fillText(text, cx, p.y);
       ctx.globalAlpha = 1;
     }
   }
