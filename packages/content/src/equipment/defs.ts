@@ -2052,7 +2052,7 @@ function fenwalkerSet(): EquipmentDef[] {
   });
   return [
     piece('fenwalker_hood', 'Fenwalker hood', 'head', 14, 2, 280, 'Fh',
-      'A caged wisp hangs from the peak and will not be put out. It lights the fen, never your face.'),
+      'The weald grows up it, vine into leaf, and the newest frond rides the peak still curled. Wear it low. The fen keeps your face.'),
     piece('fenwalker_robe', 'Fenwalker robe', 'body', 16, 4, 390, 'Fr',
       'Three fen lights circle the hem in slow court. A waterline is stitched where the deep gave up.'),
     piece('fenwalker_skirts', 'Fenwalker skirts', 'legs', 15, 3, 330, 'Fk',

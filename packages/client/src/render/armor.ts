@@ -654,7 +654,7 @@ export interface BodyStyle {
     | 'bonemaw' | 'boneridge' | 'thorncrest' | 'lionhead'
     | 'gonfalon' | 'rampart' | 'sunfan' | 'veilwing'
     | 'stormspire' | 'charbrand' | 'wardcrest' | 'aethercrest'
-    | 'gateshard' | 'mothpile' | 'dawncrest' | 'fenlantern'
+    | 'gateshard' | 'mothpile' | 'dawncrest' | 'boughmantle'
     // The fen court's other shoulders — one owner each, and the
     // lots-override-pauldron law (the leviathans precedent) running
     // on cloth: `orchidpaul` mirebloom's bloom-and-bud, `cattailpaul`
@@ -1421,12 +1421,12 @@ export interface HelmStyle {
     // `umbrahood` the eclipse's void with its crowned corona.
     | 'orisoncowl' | 'vespercowl' | 'zenithhat' | 'umbrahood'
     // THE FEN COURT — fenwalker's four waters each wear their OWN
-    // head now (fenhood is dead): `lanterncowl` the forward-peaked
-    // cowl under its caged wisp, `bloomcrown` the mire orchid worn
-    // closed, `sedgehat` the low woven brim under its perched
-    // darter, `heroncowl` the gray sweep that sheds the fog it was
-    // cut from.
-    | 'lanterncowl' | 'bloomcrown' | 'sedgehat' | 'heroncowl';
+    // head now (fenhood and lanterncowl are dead): `wealdcowl` the
+    // deep triangular leaf-fold worn low under its fiddlehead crest,
+    // `bloomcrown` the mire orchid worn closed, `sedgehat` the low
+    // woven brim under its perched darter, `heroncowl` the gray
+    // sweep that sheds the fog it was cut from.
+    | 'wealdcowl' | 'bloomcrown' | 'sedgehat' | 'heroncowl';
   visor?: 'slit' | 'cross';
   plume?: { color: string };
   /** `curl` bends the sweep into a ram's spiral beside the temples;
@@ -1568,10 +1568,11 @@ export interface HelmStyle {
     phase?: 'rising' | 'setting' | 'noon' | 'eclipse';
     ring?: string;
   };
-  /** Lanterncowl: the caged wisp — a reed-cage lantern hung off the
-   *  forward peak, and the fen light inside it breathing on THE
-   *  FENLIGHT clock. It gutters, it rallies; it never goes out. */
-  wisplantern?: { cage: string; wisp: string };
+  /** Wealdcowl: the living green — the vine that seams the leading
+   *  flank, the leaf it breaks into, and the growth light riding the
+   *  fiddlehead's tip on THE FENLIGHT clock. It swells, it gutters;
+   *  it never goes out. */
+  verdance?: { vine: string; leaf: string; glow: string };
   /** Bloomcrown: the orchid's keeping — the heart burning between
    *  the standards as the crown breathes open, dew at the fall
    *  tips, and pale petal `tails` streaming off the back (MUST
@@ -2071,7 +2072,7 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   // emblem: the fen speaks its own words or none.
   fenwalker_robe: {
     color: '#3a5648', trim: '#b8d0a8', cls: 'cloth',
-    silhouette: 'robe', pauldron: 'fenlantern', pauldronColor: '#35503f',
+    silhouette: 'robe', pauldron: 'boughmantle', pauldronColor: '#35503f',
     pauldronTrim: '#b8d0a8', pauldronScale: 1.12, chest: 'none',
     skirt: 0.34, sleeves: 'full', underskirt: '#2c443a', folds: true,
     capelet: { color: '#334e42', hem: 'point', trim: '#7a9a5c' },
@@ -2611,8 +2612,8 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     sundisc: { color: '#e8b54a', phase: 'rising' },
   },
   fenwalker_hood: {
-    color: '#3a5648', trim: '#b8d0a8', kind: 'lanterncowl',
-    wisplantern: { cage: '#8a9a6c', wisp: '#9ae8c8' },
+    color: '#3a5648', trim: '#b8d0a8', kind: 'wealdcowl',
+    verdance: { vine: '#7a9a5c', leaf: '#8fbf6e', glow: '#9ae8c8' },
   },
   stormwoven_hood: {
     color: '#4e5a78', trim: '#c9d4e8', kind: 'shroudcowl',
@@ -10810,124 +10811,162 @@ export function drawPauldron(
     ctx.restore();
     return;
   }
-  if (st.pauldron === 'fenlantern') {
-    // THE FENLANTERN — the fenwalker shoulders, second forging, and
-    // the first ASYMMETRIC pair in the wardrobe: the shoulders
-    // answer each other instead of repeating each other. The right
-    // carries THE LANTERN RIG — a carved gallows post off the seat
-    // with the reed-cage light hung outboard; the left carries THE
-    // RUSH KEEP — stacked thatch with a soft moss-light banked under
-    // its hem. Two lights still trading watches on THE FENLIGHT
-    // clock; only their housings differ.
+  if (st.pauldron === 'boughmantle') {
+    // THE BOUGH MANTLE — the fenwalker shoulders, third forging, and
+    // the base court's pair comes home MATCHED: mastery of the green
+    // reads as symmetry (user-amended; the asymmetric-answer law
+    // still stands for the species lots). Each shoulder is a living
+    // hillock — leaf-lapped tiers cupping the arm, a grown bough
+    // arcing outboard whose bud unfurls as the green charge swells,
+    // grass standing at the crown, and the fen light banked under
+    // the hem. Life rises off the mantle one mote at a time; both
+    // shoulders keep ONE watch while the hood keeps the other.
     const wisp = st.wispcourt?.color ?? trim;
-    seat(0.112 * s, 0.09 * s, hurt ? '#ffffff' : col, trim);
+    seat(0.116 * s, 0.09 * s, hurt ? '#ffffff' : col, trim);
+    const k = fenlightK(nowMs, 0.5);
+    // THE LIVING BOUGH is garment-scale STRUCTURE: it holds white in
+    // the hurt flash so the silhouette never pops. One tapered limb,
+    // grown from the crown, arcing out and up — never a stroke.
+    // The bough ducks as the body turns: at a profile the near cap
+    // rides below the jaw, and a full-height limb would cross the
+    // face — the rise gives back a third of itself with depth.
+    const duck = 1 - 0.35 * Math.abs(depthK);
+    const bx0 = side * 0.004 * s;
+    const by0 = -0.028 * s;
+    const bcx = side * 0.058 * s;
+    const bcy = -0.102 * s * duck;
+    const bxT = side * 0.142 * s + Math.sin(nowMs * 0.0014) * 0.005 * s;
+    const byT = -0.072 * s * duck;
+    const bN = 8;
+    const bOut: Array<[number, number]> = [];
+    const bIn: Array<[number, number]> = [];
+    for (let i = 0; i <= bN; i++) {
+      const u = i / bN;
+      const mx = (1 - u) * (1 - u) * bx0 + 2 * (1 - u) * u * bcx + u * u * bxT;
+      const my = (1 - u) * (1 - u) * by0 + 2 * (1 - u) * u * bcy + u * u * byT;
+      const tx = 2 * (1 - u) * (bcx - bx0) + 2 * u * (bxT - bcx);
+      const ty = 2 * (1 - u) * (bcy - by0) + 2 * u * (byT - bcy);
+      const tl = Math.hypot(tx, ty) || 1;
+      const w = s * (0.022 - 0.014 * u);
+      bOut.push([mx - (ty / tl) * w, my + (tx / tl) * w]);
+      bIn.push([mx + (ty / tl) * w, my - (tx / tl) * w]);
+    }
+    const boughCol = hurt ? '#ffffff' : shade(trim, -36);
+    ctx.fillStyle = boughCol;
+    ctx.beginPath();
+    ctx.moveTo(bOut[0]![0], bOut[0]![1]);
+    for (const [px2, py2] of bOut) ctx.lineTo(px2, py2);
+    for (let i = bIn.length - 1; i >= 0; i--) ctx.lineTo(bIn[i]![0], bIn[i]![1]);
+    ctx.closePath();
+    ctx.fill();
     if (!hurt) {
-      // The rush laps both shoulders share — the family ground.
-      for (const [ti, ly, dv] of [[0, -0.038, 8], [1, 0.002, -8]] as const) {
+      // The bough's lit top edge — the sun side of the limb.
+      ctx.fillStyle = shade(trim, -16);
+      ctx.beginPath();
+      ctx.moveTo(bOut[1]![0], bOut[1]![1]);
+      for (let i = 1; i <= 6; i++) ctx.lineTo(bOut[i]![0], bOut[i]![1]);
+      for (let i = 6; i >= 1; i--) {
+        const o = bOut[i]!; const n = bIn[i]!;
+        ctx.lineTo(o[0] * 0.55 + n[0] * 0.45, o[1] * 0.55 + n[1] * 0.45);
+      }
+      ctx.closePath();
+      ctx.fill();
+      // THE BUD at the bough's tip: three leaflets parting with the
+      // charge, the fen light burning in the part. It never opens
+      // whole and never dies — the growth is the animation.
+      const part = 0.16 + 0.58 * k;
+      const budA = -Math.PI * 0.42;
+      for (const dj of [-1, 0, 1] as const) {
+        const la = budA + side * dj * part;
+        const ll = 0.06 * s * (dj === 0 ? 1.12 : 0.88);
+        ctx.fillStyle = shade(trim, dj === 0 ? 2 : -14);
+        ctx.beginPath();
+        ctx.moveTo(bxT, byT);
+        ctx.quadraticCurveTo(bxT + Math.cos(la - 0.4) * ll, byT + Math.sin(la - 0.4) * ll, bxT + Math.cos(la) * ll, byT + Math.sin(la) * ll);
+        ctx.quadraticCurveTo(bxT + Math.cos(la + 0.4) * ll, byT + Math.sin(la + 0.4) * ll, bxT, byT);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.globalAlpha = 0.2 + 0.32 * k;
+      ctx.fillStyle = wisp;
+      ctx.beginPath();
+      ctx.arc(bxT, byT - 0.012 * s, 0.026 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.5 + 0.5 * k;
+      ctx.fillStyle = shade(wisp, 28);
+      ctx.beginPath();
+      ctx.arc(bxT, byT - 0.012 * s, 0.009 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      // THE GRASS AT THE CROWN: three filled blades behind the
+      // bough's root, bending in the same slow air.
+      for (const [gi, gu, gh] of [[0, -0.056, 0.062], [1, -0.02, 0.084]] as const) {
+        const gx = side * gu * s;
+        const gsw = Math.sin(nowMs * 0.0017 + gi * 2.1) * 0.008 * s;
+        ctx.fillStyle = shade(col, gi === 1 ? 14 : -4);
+        ctx.beginPath();
+        ctx.moveTo(gx - 0.008 * s, -0.05 * s);
+        ctx.quadraticCurveTo(gx + gsw * 0.5 - 0.002 * s, -0.05 * s - gh * s * 0.6, gx + gsw + side * 0.006 * s, -0.05 * s - gh * s);
+        ctx.quadraticCurveTo(gx + gsw * 0.5 + 0.006 * s, -0.05 * s - gh * s * 0.55, gx + 0.008 * s, -0.048 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // THE LEAF LAPS: three tiers of pointed leaves shingling the
+      // seat — the family ground, grown not thatched. Each tier a
+      // value step; alternate leaves carry a lit midrib.
+      for (const [ti, ly, dv] of [[0, -0.052, 14], [1, -0.012, -2], [2, 0.028, -13]] as const) {
         ctx.fillStyle = shade(col, dv);
         ctx.beginPath();
-        ctx.moveTo(-0.112 * s, ly * s);
-        ctx.lineTo(0.112 * s, ly * s);
-        for (let i = 4; i >= 0; i--) {
-          const u = -1 + (i / 4) * 2;
-          const drop = (0.026 + 0.012 * Math.sin(i * 2.3 + ti * 1.7)) * s;
-          ctx.lineTo(u * 0.098 * s + 0.012 * s, ly * s + 0.014 * s);
-          ctx.lineTo(u * 0.098 * s, ly * s + drop);
+        ctx.moveTo(-0.116 * s, ly * s);
+        ctx.lineTo(0.116 * s, ly * s);
+        for (let i = 3; i >= 0; i--) {
+          const u = -1 + (i / 3) * 2;
+          const px2 = u * 0.088 * s;
+          const drop = (0.03 + 0.006 * Math.sin(i * 2.7 + ti * 1.3)) * s;
+          ctx.lineTo(px2 + 0.032 * s, ly * s + 0.012 * s);
+          ctx.quadraticCurveTo(px2 + 0.011 * s, ly * s + drop * 0.9, px2, ly * s + drop);
+          ctx.quadraticCurveTo(px2 - 0.011 * s, ly * s + drop * 0.9, px2 - 0.032 * s, ly * s + 0.012 * s);
         }
         ctx.closePath();
         ctx.fill();
-      }
-      const k = fenlightK(nowMs, side < 0 ? 0.18 : 0.68);
-      if (side > 0) {
-        // THE LANTERN RIG: the gallows post rises FROM the seat, the
-        // arm reaches outboard, the cage rides under its tip.
-        const cage = shade(col, -18);
-        ctx.fillStyle = cage;
-        ctx.beginPath();
-        ctx.moveTo(side * 0.012 * s, -0.05 * s);
-        ctx.lineTo(side * 0.036 * s, -0.052 * s);
-        ctx.lineTo(side * 0.05 * s, -0.128 * s);
-        ctx.lineTo(side * 0.148 * s, -0.118 * s);
-        ctx.lineTo(side * 0.146 * s, -0.096 * s);
-        ctx.lineTo(side * 0.066 * s, -0.102 * s);
-        ctx.lineTo(side * 0.036 * s, -0.028 * s);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = shade(col, -30);
-        ctx.fillRect(side * 0.04 * s - 0.008 * s, -0.09 * s, 0.016 * s, 0.02 * s);
-        const lx = side * 0.146 * s;
-        const ly2 = -0.04 * s + Math.sin(nowMs * 0.0016 + side) * 0.006 * s;
-        ctx.strokeStyle = shade(col, -24);
-        ctx.lineWidth = Math.max(1, s * 0.009);
-        ctx.beginPath();
-        ctx.moveTo(side * 0.147 * s, -0.098 * s);
-        ctx.lineTo(lx, ly2 - 0.044 * s);
-        ctx.stroke();
-        // The glow first, past the ribs.
-        ctx.globalAlpha = 0.24 + 0.34 * k;
-        ctx.fillStyle = wisp;
-        ctx.beginPath();
-        ctx.arc(lx, ly2, 0.052 * s, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 0.4 + 0.3 * k;
-        ctx.beginPath();
-        ctx.arc(lx, ly2, 0.03 * s, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 0.66 + 0.34 * k;
-        ctx.fillStyle = shade(wisp, 30);
-        ctx.beginPath();
-        ctx.arc(lx, ly2, 0.014 * s, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = shade(trim, -8);
-        ctx.fillRect(lx - 0.028 * s, ly2 - 0.044 * s, 0.056 * s, 0.012 * s);
-        ctx.fillRect(lx - 0.023 * s, ly2 + 0.033 * s, 0.046 * s, 0.01 * s);
-        ctx.strokeStyle = trim;
-        ctx.lineWidth = Math.max(1, s * 0.011);
-        ctx.beginPath();
-        ctx.moveTo(lx - 0.02 * s, ly2 - 0.033 * s);
-        ctx.lineTo(lx - 0.02 * s, ly2 + 0.033 * s);
-        ctx.moveTo(lx + 0.02 * s, ly2 - 0.033 * s);
-        ctx.lineTo(lx + 0.02 * s, ly2 + 0.033 * s);
-        ctx.moveTo(lx, ly2 - 0.038 * s);
-        ctx.lineTo(lx, ly2 + 0.038 * s);
-        ctx.stroke();
-      } else {
-        // THE RUSH KEEP: a crown tuft of standing reeds over the
-        // stack, and the moss-light BANKED under the hem — a glow
-        // with no cage, the fen light that moved in on its own.
-        for (const [ri, ru, rh] of [[0, -0.03, 0.1], [1, 0.015, 0.125], [2, 0.055, 0.095]] as const) {
-          const bx = side * ru * s * -1;
-          const swayR = Math.sin(nowMs * 0.0018 + ri * 1.9) * 0.006 * s;
-          ctx.strokeStyle = shade(col, ri === 1 ? 14 : -2);
-          ctx.lineWidth = Math.max(1.5, s * 0.013);
-          ctx.beginPath();
-          ctx.moveTo(bx, -0.055 * s);
-          ctx.quadraticCurveTo(bx + swayR * 0.6 + side * 0.01 * s, -0.055 * s - rh * s * 0.6, bx + swayR + side * 0.02 * s, -0.055 * s - rh * s);
-          ctx.stroke();
-          ctx.fillStyle = shade(col, 20);
-          ctx.beginPath();
-          ctx.ellipse(bx + swayR + side * 0.02 * s, -0.055 * s - rh * s - 0.012 * s, 0.007 * s, 0.016 * s, 0, 0, Math.PI * 2);
-          ctx.fill();
+        if (ti === 1) {
+          ctx.fillStyle = shade(col, dv + 16);
+          for (let i = 0; i < 4; i++) {
+            const px2 = (-1 + (i / 3) * 2) * 0.088 * s;
+            ctx.fillRect(px2 - 0.004 * s, ly * s + 0.008 * s, 0.008 * s, 0.02 * s);
+          }
         }
-        // The banked moss-light under the hem's outboard edge.
-        ctx.globalAlpha = 0.2 + 0.3 * k;
+      }
+      // THE BANKED LIGHT: the fen light living under the hem — a
+      // soft pool, no cage, the green that moved in on its own.
+      ctx.globalAlpha = 0.14 + 0.22 * k;
+      ctx.fillStyle = wisp;
+      ctx.beginPath();
+      ctx.ellipse(side * 0.072 * s, 0.06 * s, 0.036 * s, 0.017 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.4 + 0.3 * k;
+      ctx.fillStyle = shade(wisp, 26);
+      ctx.beginPath();
+      ctx.ellipse(side * 0.074 * s, 0.06 * s, 0.014 * s, 0.007 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      // LIFE RISING: two motes climbing off the mantle, staggered on
+      // the watch — spores going home upward.
+      for (const mi of [0, 1] as const) {
+        const rise = ((nowMs * 0.00042) + mi * 0.5) % 1;
+        const mAlpha = 0.55 * k * Math.sin(rise * Math.PI);
+        if (mAlpha < 0.03) continue;
+        ctx.globalAlpha = mAlpha;
         ctx.fillStyle = wisp;
         ctx.beginPath();
-        ctx.ellipse(side * 0.096 * s, 0.052 * s, 0.05 * s, 0.026 * s, 0, 0, Math.PI * 2);
+        ctx.arc(
+          side * (0.05 + mi * 0.045) * s + Math.sin(rise * Math.PI * 2 + mi * 2) * 0.012 * s,
+          0.04 * s - rise * 0.16 * s,
+          (0.0095 - mi * 0.002) * s, 0, Math.PI * 2,
+        );
         ctx.fill();
-        ctx.globalAlpha = 0.5 + 0.35 * k;
-        ctx.fillStyle = shade(wisp, 26);
-        ctx.beginPath();
-        ctx.ellipse(side * 0.098 * s, 0.052 * s, 0.02 * s, 0.011 * s, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        // The bundle pin holding the thatch: a bound reed toggle.
-        ctx.fillStyle = shade(trim, -10);
-        ctx.fillRect(-side * 0.02 * s - 0.026 * s, -0.048 * s, 0.052 * s, 0.014 * s);
-        ctx.fillStyle = shade(trim, 14);
-        ctx.fillRect(-side * 0.02 * s - 0.008 * s, -0.052 * s, 0.016 * s, 0.022 * s);
       }
+      ctx.globalAlpha = 1;
     }
     ctx.restore();
     return;
@@ -23036,226 +23075,316 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     return;
   }
 
-  if (st.kind === 'lanterncowl') {
-    // THE WARDEN'S GALLOWS — the fen court's first head, second
-    // forging: a fitted forward-peaked cowl whose apex carries a
-    // carved gallows crook, arcing out over the brow, and from the
-    // crook's hook the reed-cage lantern rides ahead of its wearer —
-    // the fen's own light walking point. Three rush tiers ridge the
-    // crown, a reed-scale mantle laps the base, and the face keeps
-    // its dark: the light is for the road, never the wearer.
+  if (st.kind === 'wealdcowl') {
+    // THE DEEP WEALD — the fen court's first head, third forging: the
+    // gallows and its lantern are gone; the green itself is the
+    // regalia now. The cowl is cut as one great leaf folded about the
+    // skull — broad at the jaw, flanks converging to a single
+    // standing peak — worn LOW, its front hem dropping a dark beak
+    // between the eyes so the fen keeps its walker's face. A living
+    // vine seams the leading flank and breaks into leaf as it
+    // climbs; at the peak the newest growth rides curled — a
+    // fiddlehead crest that unfurls as the green charge swells and
+    // curls home as it gutters. Moss banks the trailing flank, and
+    // one leaf at a time falls home to the fen.
     const t = profileK;
     const front = backK <= 0.55;
-    const cx = headX + fx * headR * (0.34 + 0.24 * t);
-    const ohw = hw * 0.68 * (1 - 0.5 * t);
-    const oTop = headY - hh * 0.56;
-    const oBot = headY + hh * 0.88;
-    const sway = Math.sin(f.nowMs * 0.0014) * hw * 0.03;
-    const apexX = headX + lead * hw * (0.28 + t * 0.08) + sway;
-    const apexY = headY - hh * 1.48;
+    const vd = st.verdance;
+    const gk = fenlightK(f.nowMs);
+    const sway = Math.sin(f.nowMs * 0.0012) * hw * 0.025;
+    const apexX = headX - lead * hw * 0.08 + sway;
+    const apexY = headY - hh * 1.62;
+    const cx = headX + fx * headR * (0.3 + 0.22 * t);
+    const ohw = hw * 0.72 * (1 - 0.46 * t);
+    const oTop = headY - hh * 0.46;
+    // The door slims to a slit at a profile: the chin window is a
+    // front-read privilege.
+    const oBot = headY + hh * (0.92 - 0.52 * t);
     const shell = () => {
-      ctx.moveTo(headX + lead * hw * 1.2, headY + hh * 1.16);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.3, headY + hh * 0.14, headX + lead * hw * 1.06, headY - hh * 0.56);
-      // The leading flank climbs close to the skull into the peak.
-      ctx.quadraticCurveTo(headX + lead * hw * 0.96, headY - hh * 1.1, apexX, apexY);
-      // Behind the peak the crown steps down in a ridge.
-      ctx.quadraticCurveTo(apexX - lead * hw * 0.26, apexY - hh * 0.02, headX - lead * hw * 0.3, headY - hh * 1.2);
-      // The trailing flank falls fitted into the drape.
-      ctx.quadraticCurveTo(headX - lead * hw * (0.9 + t * 0.22), headY - hh * 0.72, headX - lead * hw * (1.1 + t * 0.3), headY - hh * 0.04);
-      ctx.quadraticCurveTo(headX - lead * hw * (1.24 + t * 0.28), headY + hh * 0.44, headX - lead * hw * 1.22, headY + hh * 1.16);
-      ctx.quadraticCurveTo(headX, headY + hh * 1.46, headX + lead * hw * 1.2, headY + hh * 1.16);
+      ctx.moveTo(headX + lead * hw * 1.32, headY + hh * 1.08);
+      // The leading flank: one straight climb from jaw to peak — the
+      // triangle IS the silhouette, no drape bulge on the way up.
+      ctx.quadraticCurveTo(headX + lead * hw * 1.42, headY + hh * 0.3, headX + lead * hw * (1.14 + t * 0.1), headY - hh * 0.3);
+      // The flanks bow OUT on the way to the peak — the cowl is cut
+      // big and worn heavy, and the skull never breaks the cloth.
+      ctx.quadraticCurveTo(headX + lead * hw * 0.98, headY - hh * 1.06, apexX + lead * hw * 0.15, apexY + hh * 0.12);
+      // The peak: a short blunt ridge, not a spike (blunt-tip law).
+      ctx.quadraticCurveTo(apexX + lead * hw * 0.01, apexY - hh * 0.08, apexX - lead * hw * 0.13, apexY + hh * 0.1);
+      ctx.quadraticCurveTo(headX - lead * hw * 1.04, headY - hh * 1.02, headX - lead * hw * (1.14 + t * 0.16), headY - hh * 0.24);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.38 + t * 0.2), headY + hh * 0.34, headX - lead * hw * 1.34, headY + hh * 1.08);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.44, headX + lead * hw * 1.32, headY + hh * 1.08);
       ctx.closePath();
     };
     const opening = () => {
-      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.7);
+      // The shadow door: a low window under the brow hem, its lintel
+      // split by THE BEAK — the cowl's own point dropping past the
+      // brow. The face below stays the wearer's; the eyes go to the
+      // weald.
+      ctx.moveTo(cx - ohw, oTop + hh * 0.16);
+      ctx.lineTo(cx - ohw * 0.46, oTop);
+      ctx.lineTo(cx, oTop + hh * 0.62);
+      ctx.lineTo(cx + ohw * 0.46, oTop);
+      ctx.lineTo(cx + ohw, oTop + hh * 0.16);
+      ctx.lineTo(cx + ohw * 0.9, oBot - hh * 0.12);
+      ctx.quadraticCurveTo(cx, oBot + hh * 0.1, cx - ohw * 0.9, oBot - hh * 0.12);
+      ctx.closePath();
     };
     ctx.fillStyle = mc;
     ctx.beginPath();
     shell();
     if (front) opening();
     ctx.fill('evenodd');
-    // THE GALLOWS CROOK is STRUCTURE, not fx — it holds its place in
-    // the hurt flash so the silhouette never pops.
-    const crook = (dx: number, dy: number) => ({ x: apexX + lead * hw * dx, y: apexY + hh * dy });
-    const cTip = crook(1.06, 0.46);
-    ctx.fillStyle = hurt ? '#ffffff' : shade(st.wisplantern?.cage ?? st.trim, -6);
+    // THE FIDDLEHEAD CREST is garment-scale STRUCTURE: it holds its
+    // white in the hurt flash so the silhouette never pops. The
+    // spiral unwinds with the green charge — curled tight at the
+    // gutter, lifting open at the swell — drawn as one tapered
+    // ribbon, never a stroked wire.
+    const curlN = 11;
+    const sweep = (1.7 - 0.75 * gk) * Math.PI;
+    const a0 = Math.PI * 0.5;
+    const ccx = apexX - lead * hw * 0.02;
+    const ccy = apexY - hh * 0.34;
+    const cr0 = headR * 0.5;
+    const spOut: Array<[number, number]> = [];
+    const spIn: Array<[number, number]> = [];
+    for (let i = 0; i <= curlN; i++) {
+      const u = i / curlN;
+      const a = a0 - lead * u * sweep;
+      const r = cr0 * (1 - 0.72 * u);
+      const w = headR * (0.15 - 0.1 * u);
+      const px2 = ccx + Math.cos(a) * r;
+      const py2 = ccy + Math.sin(a) * r * (0.94 - 0.1 * t);
+      spOut.push([px2 + Math.cos(a) * w, py2 + Math.sin(a) * w]);
+      spIn.push([px2 - Math.cos(a) * w, py2 - Math.sin(a) * w]);
+    }
+    ctx.fillStyle = hurt ? '#ffffff' : (vd?.vine ?? st.trim);
     ctx.beginPath();
-    ctx.moveTo(apexX - lead * hw * 0.02, apexY - hh * 0.08);
-    ctx.quadraticCurveTo(crook(0.56, -0.3).x, crook(0.56, -0.3).y, crook(0.95, -0.04).x, crook(0.95, -0.04).y);
-    ctx.quadraticCurveTo(crook(1.16, 0.12).x, crook(1.16, 0.12).y, cTip.x, cTip.y);
-    ctx.lineTo(crook(0.94, 0.44).x, crook(0.94, 0.44).y);
-    ctx.quadraticCurveTo(crook(0.98, 0.18).x, crook(0.98, 0.18).y, crook(0.8, 0.1).x, crook(0.8, 0.1).y);
-    ctx.quadraticCurveTo(crook(0.5, -0.1).x, crook(0.5, -0.1).y, apexX, apexY + hh * 0.1);
+    ctx.moveTo(spOut[0]![0], spOut[0]![1]);
+    for (const [px2, py2] of spOut) ctx.lineTo(px2, py2);
+    for (let i = spIn.length - 1; i >= 0; i--) ctx.lineTo(spIn[i]![0], spIn[i]![1]);
     ctx.closePath();
     ctx.fill();
     if (!hurt) {
+      // The curl's lit spine — the young side of the growth.
+      ctx.fillStyle = shade(vd?.vine ?? st.trim, 16);
+      ctx.beginPath();
+      ctx.moveTo(spOut[1]![0], spOut[1]![1]);
+      for (let i = 1; i <= 5; i++) ctx.lineTo(spOut[i]![0], spOut[i]![1]);
+      for (let i = 5; i >= 1; i--) {
+        const o = spOut[i]!; const n = spIn[i]!;
+        ctx.lineTo(o[0] * 0.6 + n[0] * 0.4, o[1] * 0.6 + n[1] * 0.4);
+      }
+      ctx.closePath();
+      ctx.fill();
+      // The growth light rides the curl's tip.
+      const tip = spIn[curlN]!;
+      ctx.globalAlpha = 0.2 + 0.3 * gk;
+      ctx.fillStyle = vd?.glow ?? st.trim;
+      ctx.beginPath();
+      ctx.arc(tip[0], tip[1], headR * 0.13, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.55 + 0.45 * gk;
+      ctx.fillStyle = shade(vd?.glow ?? st.trim, 28);
+      ctx.beginPath();
+      ctx.arc(tip[0], tip[1], headR * 0.05, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
       ctx.save();
       ctx.beginPath();
       shell();
       if (front) opening();
       ctx.clip('evenodd');
-      // Two planar facets meeting at the ridge — folded, not blown.
+      // Two planar facets meeting under the peak — folded, not blown.
       ctx.fillStyle = shade(st.color, -13);
-      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 2.1, hw * 2.4, hh * 3.8);
-      ctx.fillStyle = shade(st.color, 9);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.6 : headX, headY - hh * 2.2, hw * 2.6, hh * 4.0);
+      // The lit ridge plane climbing the leading flank.
+      ctx.fillStyle = shade(st.color, 10);
       ctx.beginPath();
-      ctx.moveTo(headX + lead * hw * 1.0, headY - hh * 0.54);
-      ctx.lineTo(apexX + lead * hw * 0.04, apexY + hh * 0.08);
-      ctx.lineTo(apexX - lead * hw * 0.1, apexY + hh * 0.26);
-      ctx.lineTo(headX + lead * hw * 0.52, headY - hh * 0.44);
+      ctx.moveTo(headX + lead * hw * 1.08, headY - hh * 0.26);
+      ctx.lineTo(apexX + lead * hw * 0.1, apexY + hh * 0.16);
+      ctx.lineTo(apexX - lead * hw * 0.06, apexY + hh * 0.34);
+      ctx.lineTo(headX + lead * hw * 0.6, headY - hh * 0.16);
       ctx.closePath();
       ctx.fill();
-      // THE RUSH TIERS: three lapped bands ridging the crown, hems
-      // ragged in reed points, each a value step — layered thatch
-      // worn as regalia, not roofing.
-      for (const [ti, y0b, dv] of [[0, -1.16, -22], [1, -0.78, 6], [2, -0.42, -8]] as const) {
-        const baseY = headY + hh * y0b;
-        ctx.fillStyle = shade(st.color, dv);
+      // THE LIVING SEAM: the vine climbs the leading flank in three
+      // tapered reaches — filled limbs, never strokes — and breaks
+      // into leaf at each joint. The weald grows UP the wearer.
+      const seam = (u: number) => ({
+        x: headX + lead * hw * (1.06 - 0.98 * u) + sway * u,
+        y: headY - hh * (0.3 + 1.18 * u),
+      });
+      ctx.fillStyle = shade(vd?.vine ?? st.trim, -4);
+      for (let i2 = 0; i2 < 3; i2++) {
+        const p0 = seam(i2 / 3);
+        const p1 = seam((i2 + 1) / 3);
+        const wob = lead * hw * 0.05 * (i2 % 2 === 0 ? 1 : -1);
+        const vw = hw * (0.075 - i2 * 0.018);
         ctx.beginPath();
-        ctx.moveTo(headX + lead * hw * 1.2, baseY - hh * 0.24);
-        ctx.lineTo(headX - lead * hw * 1.4, baseY - hh * 0.38);
-        ctx.lineTo(headX - lead * hw * 1.4, baseY + hh * 0.04);
-        for (let i = 0; i < 6; i++) {
-          const u = -1.4 + (i / 5) * 2.6;
-          const drop = hh * (0.15 + 0.09 * Math.sin(i * 2.1 + ti * 1.7));
-          ctx.lineTo(headX + lead * hw * (u + 0.12), baseY + drop);
-          ctx.lineTo(headX + lead * hw * (u + 0.24), baseY - hh * 0.02);
-        }
+        ctx.moveTo(p0.x - vw, p0.y);
+        ctx.quadraticCurveTo((p0.x + p1.x) / 2 + wob - vw * 0.6, (p0.y + p1.y) / 2, p1.x - vw * 0.55, p1.y);
+        ctx.lineTo(p1.x + vw * 0.55, p1.y);
+        ctx.quadraticCurveTo((p0.x + p1.x) / 2 + wob + vw * 0.6, (p0.y + p1.y) / 2, p0.x + vw, p0.y);
         ctx.closePath();
         ctx.fill();
-        ctx.fillStyle = shade(st.color, dv - 13);
-        ctx.fillRect(headX - hw * 1.4, baseY - hh * 0.24, hw * 2.6, hh * 0.06);
       }
-      // THE SCALE MANTLE: a row of lapped reed scales across the
-      // cowl's base — the hood handing itself to the shoulders.
-      for (let i = 0; i < 5; i++) {
-        const u = -0.84 + i * 0.42;
-        ctx.fillStyle = shade(st.color, i % 2 === 0 ? -18 : -6);
+      // The vine's leaves: one at each joint, alternating sides,
+      // each a filled lens with a lit midrib wedge.
+      for (let i2 = 0; i2 < 3; i2++) {
+        const p = seam(0.18 + i2 * 0.33);
+        const side2 = i2 % 2 === 0 ? 1 : -1;
+        const la = -Math.PI * 0.5 + lead * side2 * Math.PI * 0.42;
+        const ll = headR * (0.34 - i2 * 0.05);
+        const lx2 = p.x + Math.cos(la) * ll;
+        const ly2 = p.y + Math.sin(la) * ll;
+        const pw = headR * 0.13;
+        ctx.fillStyle = shade(vd?.leaf ?? st.trim, i2 === 1 ? 8 : -4);
         ctx.beginPath();
-        ctx.moveTo(headX + hw * (u - 0.2), headY + hh * 1.02);
-        ctx.quadraticCurveTo(headX + hw * u, headY + hh * 1.44, headX + hw * (u + 0.2), headY + hh * 1.02);
+        ctx.moveTo(p.x, p.y);
+        ctx.quadraticCurveTo(p.x + Math.cos(la - 0.6) * ll * 0.7 + pw * 0.4, p.y + Math.sin(la - 0.6) * ll * 0.7, lx2, ly2);
+        ctx.quadraticCurveTo(p.x + Math.cos(la + 0.6) * ll * 0.7 - pw * 0.4, p.y + Math.sin(la + 0.6) * ll * 0.7, p.x, p.y);
         ctx.closePath();
         ctx.fill();
+        ctx.fillStyle = shade(vd?.leaf ?? st.trim, 20);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x + Math.cos(la) * ll * 0.78 + Math.cos(la + Math.PI / 2) * pw * 0.16, p.y + Math.sin(la) * ll * 0.78 + Math.sin(la + Math.PI / 2) * pw * 0.16);
+        ctx.lineTo(p.x + Math.cos(la) * ll * 0.78 - Math.cos(la + Math.PI / 2) * pw * 0.16, p.y + Math.sin(la) * ll * 0.78 - Math.sin(la + Math.PI / 2) * pw * 0.16);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // THE MOSS BANK: soft-edged growth pooled low on the trailing
+      // flank — two lapped tones and a scatter of lit lichen flecks.
+      ctx.fillStyle = shade(st.color, -20);
+      ctx.beginPath();
+      ctx.moveTo(headX - lead * hw * 1.3, headY + hh * 0.4);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.9, headY + hh * 0.12, headX - lead * hw * 0.5, headY + hh * 0.5);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.86, headY + hh * 0.86, headX - lead * hw * 1.34, headY + hh * 0.78);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(st.color, -8);
+      ctx.beginPath();
+      ctx.moveTo(headX - lead * hw * 1.24, headY + hh * 0.46);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.94, headY + hh * 0.26, headX - lead * hw * 0.68, headY + hh * 0.52);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.96, headY + hh * 0.7, headX - lead * hw * 1.26, headY + hh * 0.64);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(vd?.leaf ?? st.trim, 14);
+      for (const [mu, mv] of [[-1.12, 0.5], [-0.86, 0.38], [-0.72, 0.56]] as const) {
+        ctx.beginPath();
+        ctx.arc(headX + lead * hw * mu, headY + hh * mv, headR * 0.045, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // THE LEAF MANTLE: lapped pointed leaves across the cowl's
+      // base — the hood handing itself to the shoulders in the same
+      // green it grew.
+      for (let i2 = 0; i2 < 5; i2++) {
+        const u = -0.84 + i2 * 0.42;
+        ctx.fillStyle = shade(st.color, i2 % 2 === 0 ? -17 : -5);
+        ctx.beginPath();
+        ctx.moveTo(headX + hw * (u - 0.24), headY + hh * 1.0);
+        ctx.quadraticCurveTo(headX + hw * (u - 0.1), headY + hh * 1.3, headX + hw * u, headY + hh * 1.46);
+        ctx.quadraticCurveTo(headX + hw * (u + 0.1), headY + hh * 1.3, headX + hw * (u + 0.24), headY + hh * 1.0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = shade(st.color, i2 % 2 === 0 ? -28 : -16);
+        ctx.fillRect(headX + hw * (u - 0.016), headY + hh * 1.04, hw * 0.032, hh * 0.3);
       }
       ctx.restore();
-      // The crook's binding wraps: two dark reed ties.
-      ctx.fillStyle = shade(st.wisplantern?.cage ?? st.trim, -26);
-      for (const bu of [0.3, 0.62] as const) {
-        const b = crook(bu, -0.16 + bu * 0.18);
-        ctx.fillRect(b.x - hw * 0.045, b.y - hh * 0.02, hw * 0.09, hh * 0.13);
-      }
       if (front) {
-        // THE DEEP DOOR: shadow past the eye line — the fen keeps
-        // its walkers' faces.
+        // The shadow door pours PAST the eye line — a thin band does
+        // not read as mystery, and the rig's eyes sit LOWER than
+        // they look. OPAQUE flat planes only: translucent fills
+        // no-op in this paint path (the opaque-mystery law).
         ctx.save();
         ctx.beginPath();
         opening();
         ctx.clip();
-        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.32);
-        shGrad.addColorStop(0, 'rgba(14, 20, 18, 0.76)');
-        shGrad.addColorStop(1, 'rgba(14, 20, 18, 0)');
-        ctx.fillStyle = shGrad;
-        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 1.0);
+        // Planes span far past the door on purpose — the clip owns
+        // the shape; the rect only owns the value.
+        ctx.fillStyle = '#0e1512';
+        ctx.fillRect(cx - ohw * 2.2, oTop - hh * 0.1, ohw * 4.4, hh * 0.1 + (headY + hh * 0.24 - oTop));
+        ctx.fillStyle = '#22322a';
+        ctx.fillRect(cx - ohw * 2.2, headY + hh * 0.24, ohw * 4.4, hh * 0.22);
         ctx.restore();
-        // THE REED-CORD FRAME: two woven lines, knot beads at the
-        // corners, and a hanging tie cord swinging off each — the
-        // shrine door, tied shut.
-        ctx.strokeStyle = st.trim;
-        ctx.lineWidth = Math.max(1.5, s * 0.016);
+        // THE BEAK reads as a folded point, not a notch: a lit lead
+        // face and a shadowed trail face meeting at the drop.
+        ctx.fillStyle = shade(st.color, 8);
         ctx.beginPath();
-        opening();
-        ctx.stroke();
-        ctx.strokeStyle = shade(st.color, -24);
-        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.moveTo(cx - ohw * 0.46, oTop);
+        ctx.lineTo(cx, oTop + hh * 0.62);
+        ctx.lineTo(cx - lead * hw * 0.02, oTop - hh * 0.04);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = shade(st.color, -14);
         ctx.beginPath();
-        chamferRect(ctx, cx - ohw + s * 0.012, oTop + s * 0.012, (ohw - s * 0.012) * 2, oBot - oTop - s * 0.024, cut * 0.6);
+        ctx.moveTo(cx + ohw * 0.46, oTop);
+        ctx.lineTo(cx, oTop + hh * 0.62);
+        ctx.lineTo(cx - lead * hw * 0.02, oTop - hh * 0.04);
+        ctx.closePath();
+        ctx.fill();
+        // The beak's edges wear the trim — the one bright line on the
+        // dark door — and a dewdrop rides the point.
+        ctx.strokeStyle = shade(st.trim, -6);
+        ctx.lineWidth = Math.max(1.5, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(cx - ohw * 0.46, oTop + hh * 0.02);
+        ctx.lineTo(cx, oTop + hh * 0.62);
+        ctx.lineTo(cx + ohw * 0.46, oTop + hh * 0.02);
         ctx.stroke();
-        for (const u of [-1, 1] as const) {
-          const bx = cx + u * ohw * 0.92;
-          const by = oBot - headR * 0.05;
-          ctx.fillStyle = shade(st.trim, -14);
-          ctx.beginPath();
-          ctx.arc(bx, by, headR * 0.05, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = shade(st.trim, 22);
-          ctx.beginPath();
-          ctx.arc(bx - headR * 0.014, by - headR * 0.014, headR * 0.02, 0, Math.PI * 2);
-          ctx.fill();
-          const tSway = Math.sin(f.nowMs * 0.0024 + u * 1.7) * headR * 0.03;
-          ctx.strokeStyle = shade(st.trim, -10);
-          ctx.lineWidth = Math.max(1, s * 0.009);
-          ctx.beginPath();
-          ctx.moveTo(bx, by + headR * 0.04);
-          ctx.quadraticCurveTo(bx + tSway, by + headR * 0.14, bx + tSway * 1.4, by + headR * 0.22);
-          ctx.stroke();
-        }
+        const dewY = oTop + hh * 0.64 + Math.sin(f.nowMs * 0.0021) * hh * 0.02;
+        ctx.globalAlpha = 0.4 + 0.5 * gk;
+        ctx.fillStyle = vd?.glow ?? st.trim;
+        ctx.beginPath();
+        ctx.arc(cx, dewY + headR * 0.05, headR * 0.075, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.8;
+        ctx.fillStyle = shade(vd?.glow ?? st.trim, 30);
+        ctx.beginPath();
+        ctx.arc(cx - headR * 0.02, dewY + headR * 0.03, headR * 0.03, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
       } else {
-        // From behind: the drape tail and the ridge keep falling.
+        // From behind: the drape falls in two leaf points, and the
+        // vine seam shows where it crossed over the crown.
         ctx.fillStyle = shade(st.color, -10);
+        for (const u of [-0.42, 0.38] as const) {
+          ctx.beginPath();
+          ctx.moveTo(headX + hw * (u - 0.3), headY + hh * 0.9);
+          ctx.lineTo(headX + hw * (u + 0.3), headY + hh * 0.9);
+          ctx.quadraticCurveTo(headX + hw * (u + 0.06), headY + hh * 1.5, headX + hw * u, headY + hh * 1.82);
+          ctx.quadraticCurveTo(headX + hw * (u - 0.06), headY + hh * 1.5, headX + hw * (u - 0.3), headY + hh * 0.9);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.fillStyle = shade(vd?.vine ?? st.trim, -10);
         ctx.beginPath();
-        ctx.moveTo(headX - hw * 0.34, headY + hh * 0.9);
-        ctx.lineTo(headX + hw * 0.34, headY + hh * 0.9);
-        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 1.9);
+        ctx.moveTo(headX - lead * hw * 0.5, headY + hh * 0.66);
+        ctx.quadraticCurveTo(headX - lead * hw * 0.1, headY + hh * 0.3, apexX - lead * hw * 0.04, apexY + hh * 0.5);
+        ctx.lineTo(apexX + lead * hw * 0.05, apexY + hh * 0.56);
+        ctx.quadraticCurveTo(headX + lead * hw * 0.02, headY + hh * 0.42, headX - lead * hw * 0.38, headY + hh * 0.74);
         ctx.closePath();
         ctx.fill();
       }
-      if (st.wisplantern) {
-        // THE CAGED WISP: hung from the crook's hook, riding ahead
-        // of the brow at every facing — bigger now, a lantern worn
-        // like a standard. It gutters, it rallies; it never goes
-        // out, and it sheds one mote at a time home to the fen.
-        const wl = st.wisplantern;
-        const k = fenlightK(f.nowMs);
-        const flick = k > 0.72 ? Math.sin(f.nowMs * 0.029) * 0.09 : 0;
-        const bob = Math.sin(f.nowMs * 0.0016) * hh * 0.045;
-        const lSwing = Math.sin(f.nowMs * 0.0011) * hw * 0.07;
-        const lx = cTip.x + lead * hw * 0.06 + lSwing;
-        const ly = cTip.y + hh * 0.62 + bob;
-        const cw = headR * 0.28;
-        ctx.strokeStyle = shade(wl.cage, -18);
-        ctx.lineWidth = Math.max(1, s * 0.01);
+      // One leaf falling home to the fen — born at the peak, gone at
+      // the mantle, one at a time.
+      const fall = (f.nowMs * 0.00028) % 1;
+      if (fall < 0.92) {
+        const fx2 = apexX + lead * hw * (0.3 + 0.5 * fall) + Math.sin(fall * Math.PI * 3) * hw * 0.14;
+        const fy2 = apexY + hh * (0.4 + 2.1 * fall);
+        const fr = Math.sin(f.nowMs * 0.004) * 0.9;
+        ctx.globalAlpha = 0.75 * (1 - fall * 0.7);
+        ctx.fillStyle = shade(vd?.leaf ?? st.trim, 6);
+        ctx.save();
+        ctx.translate(fx2, fy2);
+        ctx.rotate(fr);
         ctx.beginPath();
-        ctx.moveTo(cTip.x, cTip.y);
-        ctx.lineTo(lx, ly - cw * 1.35);
-        ctx.stroke();
-        // The glow first, past the ribs — light owns the cage.
-        ctx.globalAlpha = 0.24 + 0.32 * (k + flick);
-        ctx.fillStyle = wl.wisp;
-        ctx.beginPath();
-        ctx.arc(lx, ly, cw * 1.6, 0, Math.PI * 2);
+        ctx.moveTo(0, -headR * 0.09);
+        ctx.quadraticCurveTo(headR * 0.08, 0, 0, headR * 0.09);
+        ctx.quadraticCurveTo(-headR * 0.08, 0, 0, -headR * 0.09);
+        ctx.closePath();
         ctx.fill();
-        ctx.globalAlpha = 0.4 + 0.3 * k;
-        ctx.beginPath();
-        ctx.arc(lx, ly, cw * 0.92, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 0.7 + 0.3 * Math.min(1, k + flick);
-        ctx.fillStyle = shade(wl.wisp, 30);
-        ctx.beginPath();
-        ctx.arc(lx, ly, cw * 0.4, 0, Math.PI * 2);
-        ctx.fill();
-        // One mote falling home.
-        const fall = (f.nowMs * 0.00035) % 1;
-        ctx.globalAlpha = 0.5 * k * (1 - fall);
-        ctx.beginPath();
-        ctx.arc(lx + Math.sin(f.nowMs * 0.0012) * cw * 0.4, ly + cw * (0.9 + fall * 1.6), cw * 0.13, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.restore();
         ctx.globalAlpha = 1;
-        // The cage: cap, hanger, foot and three ribs.
-        ctx.fillStyle = wl.cage;
-        ctx.fillRect(lx - cw * 0.85, ly - cw * 1.28, cw * 1.7, cw * 0.4);
-        ctx.fillRect(lx - cw * 0.7, ly + cw * 0.92, cw * 1.4, cw * 0.34);
-        ctx.fillStyle = shade(wl.cage, 16);
-        ctx.fillRect(lx - cw * 0.28, ly - cw * 1.56, cw * 0.56, cw * 0.32);
-        ctx.strokeStyle = shade(wl.cage, 12);
-        ctx.lineWidth = Math.max(1, s * 0.013);
-        ctx.beginPath();
-        ctx.moveTo(lx - cw * 0.62, ly - cw * 0.92);
-        ctx.lineTo(lx - cw * 0.62, ly + cw * 0.94);
-        ctx.moveTo(lx + cw * 0.62, ly - cw * 0.92);
-        ctx.lineTo(lx + cw * 0.62, ly + cw * 0.94);
-        ctx.moveTo(lx, ly - cw * 1.0);
-        ctx.lineTo(lx, ly + cw * 1.0);
-        ctx.stroke();
       }
     }
     return;
