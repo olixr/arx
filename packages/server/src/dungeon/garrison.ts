@@ -39,6 +39,9 @@ const ROSTERS: Record<DungeonTheme, ThemeRoster> = {
       { npc: 'slime', w: 2 },
       { npc: 'adder', w: 2 },
       { npc: 'mudcrab', w: 1, maxPower: 25 },
+      // THE HILL COMES DOWN: deep caverns are giant country — an ogre
+      // moved in where the ceiling finally fit it.
+      { npc: 'ogre', w: 1, minPower: 35 },
     ],
     elite: 'giant_spider',
     bosses: [{ npc: 'giant_spider', name: 'The Broodmother' }],

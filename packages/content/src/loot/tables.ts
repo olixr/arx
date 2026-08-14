@@ -1619,6 +1619,56 @@ const defs: LootTableDef[] = [
       { item: 'northlight', chance: 0.006 },
     ],
   },
+
+  // ------------------------------------------------------------------
+  // THE HILL COMES DOWN (docs/ogres-plan.md): the ogre sacks. A giant
+  // carries everything it owns — coin it can't count, supper it was
+  // saving, and hide nothing smaller could wear.
+  {
+    id: 'ogre',
+    desc: 'The sack, spilled: junk coin, tomorrow\'s supper, and a tooth that mattered.',
+    entries: [
+      { item: 'coins', qty: [20, 60], chance: 0.85 },
+      { item: 'ogre_tooth', chance: 0.35 },
+      // The belt larder: an ogre never walks far from its next meal.
+      { item: 'raw_beef', qty: [1, 2], chance: 0.4 },
+      { item: 'leather', qty: [1, 2], chance: 0.35 },
+      { item: 'scrap_hide', qty: [2, 4], chance: 0.4 },
+    ],
+  },
+  {
+    id: 'ogre_hurler',
+    desc: 'The thrower\'s cart, tipped: what was ammunition and what was lunch.',
+    entries: [
+      { item: 'coins', qty: [25, 65], chance: 0.85 },
+      { item: 'ogre_tooth', chance: 0.3 },
+      { item: 'raw_beef', qty: [1, 2], chance: 0.35 },
+      { item: 'leather', qty: [1, 2], chance: 0.35 },
+    ],
+  },
+  {
+    id: 'ogre_bellower',
+    desc: 'The singer\'s effects: supper mostly, and the voice\'s worth in coin.',
+    entries: [
+      { item: 'coins', qty: [30, 70], chance: 0.85 },
+      // The belt haunches — the bellower carries the camp's larder.
+      { item: 'raw_beef', qty: [2, 3], chance: 0.6 },
+      { item: 'ogre_tooth', chance: 0.3 },
+      { item: 'arcane_dust', qty: [1, 2], chance: 0.15 },
+    ],
+  },
+  {
+    id: 'ogre_champion',
+    desc: 'The Bonegrinder\'s estate: the girdle, the sack, and everything the camp owed it.',
+    rarityBonus: 3,
+    entries: [
+      { item: 'coins', qty: [60, 140], chance: 0.9 },
+      { item: 'bonegrinder_girdle', chance: 0.9 },
+      { item: 'ogre_tooth', qty: [1, 2], chance: 0.5 },
+      { item: 'raw_beef', qty: [2, 4], chance: 0.5 },
+      { item: 'leather', qty: [2, 3], chance: 0.4 },
+    ],
+  },
 ];
 
 /**

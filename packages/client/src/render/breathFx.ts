@@ -36,6 +36,7 @@ import {
   frost,
   radiance,
   shadow,
+  smoke,
   storm,
   venom,
   water,
@@ -444,6 +445,50 @@ export const BREATH_DIALECTS: Record<string, BreathDialect> = {
   winters_floor: {
     charge: (c, x, y, o) =>
       frost.deployments.fog!(c, x, y, { radius: o.radius * 0.65, scale: 0.55, dur: 0.8 }),
+  },
+
+  // ------------------- THE HILL COMES DOWN (ogre arts): a giant's
+  // wind is WEIGHT SHIFTING — the stance is the tell. The feet dig,
+  // the ground admits it, and only the meal bleeds instead.
+  // Skull Toll: the club goes up, the stance goes DOWN — both heels
+  // kick grit as the whole hill leans into the lift.
+  skull_toll: {
+    charge: (c, x, y, o) =>
+      dust.deployments.kick!(c, x, y, { radius: o.radius * 0.6, scale: 0.65, dur: 0.8 }),
+  },
+  // Tantrum: the drumming starts before the aim does — the ground
+  // takes the first blows and everything near it learns.
+  ogre_tantrum: {
+    charge: (c, x, y, o) =>
+      dust.deployments.slam!(c, x, y, { radius: o.radius * 0.5, scale: 0.6, dur: 0.6 }),
+  },
+  // Millstone Toss: the wheel comes UP through its own settled dust —
+  // a hundredweight leaving the ground announces itself.
+  millstone_toss: {
+    charge: (c, x, y, o) =>
+      dust.deployments.billow!(c, x, y, { radius: o.radius * 0.7, scale: 0.6, dur: 0.9 }),
+  },
+  // Gravel Rake: the hand DRAGS the road — a gouge you can hear.
+  gravel_rake: {
+    charge: (c, x, y, o) =>
+      dust.deployments.gouge!(c, x, y, { radius: o.radius * 0.5, scale: 0.5, dur: 0.7 }),
+  },
+  // Hill Bellow: the gut fills like a bellows — the breath fogs, the
+  // chest swells, and the valley braces.
+  hill_bellow: {
+    charge: (c, x, y, o) =>
+      smoke.deployments.billow!(c, x, y, { radius: o.radius * 0.6, scale: 0.55, dur: 0.9 }),
+  },
+  // Shaken Stones: the chant stamps — the ground shivers where the
+  // verse will land its stones.
+  shaken_stones: {
+    charge: (c, x, y, o) =>
+      dust.deployments.skirt!(c, x, y, { radius: o.radius * 0.7, scale: 0.5, dur: 0.7 }),
+  },
+  // Haunch Gnaw: supper, loudly — the juice runs while the great jaw
+  // works, and the wound forgets itself.
+  haunch_gnaw: {
+    charge: (c, x, y) => blood.deployments.drip!(c, x, y, { scale: 0.55, dur: 0.9 }),
   },
 };
 

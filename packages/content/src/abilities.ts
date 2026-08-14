@@ -3933,6 +3933,116 @@ const defs: AbilityDef[] = [
     status: { status: 'chill', power: 2, durationTicks: 80 },
   },
 
+  // -------------------------------- THE HILL COMES DOWN (ogre arts,
+  // docs/ogres-plan.md): the giant-kin's whole vocabulary is WEIGHT.
+  // Every big die announced long and loud off the slow heavy basic —
+  // an ogre never surprises you; it simply keeps being an ogre at you.
+  {
+    id: 'skull_toll',
+    name: 'Skull Toll',
+    desc: 'The club goes up in both hands and stays up a long, bad moment. Where it lands, the ground rings.',
+    color: '#b3985e',
+    code: 'Sk',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'ground_aoe',
+    // The family's biggest word, priced at the full premium: sixteen
+    // ticks of raised club plus the fuse. You were told.
+    damage: 17,
+    range: 0,
+    radius: 1.7,
+    fuseTicks: 16,
+    knockback: 2,
+  },
+  {
+    id: 'ogre_tantrum',
+    name: 'Tantrum',
+    desc: 'Past its patience, an ogre stops aiming. Fists, club, elbows — everything, everywhere, until nothing near it stands.',
+    color: '#a4552e',
+    code: 'Tt',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'flurry',
+    // Each blow is only the basic — the tantrum's threat is that
+    // there are THREE of them and no thought behind any of it.
+    damage: 7,
+    hits: 3,
+    pulseEveryTicks: 6, // heavy blows land on a giant's clock, not a duelist's
+    range: 2.5,
+    arc: 1.1,
+    knockback: 1,
+  },
+  {
+    id: 'millstone_toss',
+    name: 'Millstone Toss',
+    desc: 'Two hands, three staggering steps, and a hundredweight of quarried wheel in the air. It keeps rolling.',
+    color: '#8f8672',
+    code: 'Mt',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'projectile_fan',
+    damage: 14,
+    projectiles: 1,
+    // Slow, flat, and enormous — the whole arc is legible; the splash
+    // is the lesson about ALMOST dodging.
+    projectileSpeed: 7,
+    range: 10,
+    element: 'stone',
+    splashRadius: 1.4,
+  },
+  {
+    id: 'gravel_rake',
+    name: 'Gravel Rake',
+    desc: 'A fistful of the road itself, thrown flat. The scatter punishes the sideways answer.',
+    color: '#9a8a68',
+    code: 'Gv',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'projectile_fan',
+    damage: 6,
+    projectiles: 3,
+    spreadArc: 0.55,
+    projectileSpeed: 9,
+    range: 8,
+    element: 'stone',
+  },
+  {
+    id: 'hill_bellow',
+    name: 'Hill Bellow',
+    desc: 'The great gut fills like a bellows, and what comes out lays the grass down flat — and you with it.',
+    color: '#7e7f74',
+    code: 'Hb',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'nova',
+    damage: 12,
+    radius: 3.2,
+    // The knockback IS the art: the bellow is a spacing argument, and
+    // an ogre wins every spacing argument it is allowed to finish.
+    knockback: 2,
+  },
+  {
+    id: 'shaken_stones',
+    name: 'Shaken Stones',
+    desc: 'The bellow does not stop at the grass. Overhead, the hillside lets go — where you are going to be.',
+    color: '#8a8164',
+    code: 'Sn',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'ground_aoe',
+    damage: 10,
+    range: 0, // staked where the caster's aim law puts it
+    radius: 2.2,
+    fuseTicks: 18,
+  },
+  {
+    id: 'haunch_gnaw',
+    name: 'Haunch Gnaw',
+    desc: 'Wounded deep, an ogre remembers supper: a mutton haunch off the belt, gnawed to the bone mid-fight.',
+    color: '#a4763e',
+    code: 'Hg',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'self_buff',
+    damage: 0,
+    // A third of the great body back, unless the meal is broken —
+    // the long loud chew is the interrupt lesson, giant-sized.
+    self: { healFrac: 0.3, durationTicks: 1 },
+  },
+
   // -------------------------------- beastcraft arts (THE WILD ANSWERS
   // THE CALL, docs/beastcraft-arts-plan.md): the keeper's school joins
   // the technique pool. The tame is a survival channel, not a strike —

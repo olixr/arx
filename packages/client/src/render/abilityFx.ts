@@ -574,6 +574,18 @@ export const FX_STYLES: Record<string, FxStyle> = {
   calving_volley: FROST({ mid: '#9ad4e8', ring: 'shards', debris: 'ice', decal: 'rime', punch: 0.45, wash: 0.35 }),
   winters_floor: FROST({ mid: '#7ab8d8', ring: 'frost', debris: 'ice', decal: 'rime', motif: 'spikes', punch: 0.6, wash: 0.45 }),
 
+  // ------------------- THE HILL COMES DOWN (ogre arts, docs/ogres-plan.md)
+  // The giant-kin speak OLD HIDE AND HILL-EARTH: tallow and dun
+  // steels, thrown rock everywhere, and punches near the ceiling —
+  // when a giant speaks, the ground repeats it. Only the meal is soft.
+  skull_toll: STEEL({ mid: '#b3985e', deep: '#5c4c2e', spark: '#ecdcae', glow: '178, 152, 96', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'quake', punch: 0.8, wash: 0.45 }),
+  ogre_tantrum: STEEL({ mid: '#a4552e', deep: '#5a2c18', spark: '#e8b48a', glow: '164, 92, 52', ring: 'shards', debris: 'rock', decal: 'cracks', motif: 'wave', punch: 0.75, wash: 0.4 }),
+  millstone_toss: STEEL({ mid: '#8f8672', deep: '#4c463a', spark: '#d8d0ba', glow: '146, 136, 112', ring: 'shards', debris: 'rock', decal: 'cracks', punch: 0.6, wash: 0.35 }),
+  gravel_rake: STEEL({ mid: '#9a8a68', deep: '#54492f', spark: '#d8c8a0', glow: '150, 136, 100', ring: 'shards', debris: 'rock', decal: undefined, punch: 0.4, wash: 0.25 }),
+  hill_bellow: STEEL({ mid: '#7e7f74', deep: '#3e4038', spark: '#c8cabb', glow: '128, 130, 118', ring: 'halo', debris: 'rock', decal: undefined, motif: 'echo', punch: 0.7, wash: 0.4 }),
+  shaken_stones: STEEL({ mid: '#7d7154', deep: '#403a28', spark: '#cfc4a2', glow: '128, 116, 86', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'rain', punch: 0.65, wash: 0.4 }),
+  haunch_gnaw: BLOOD({ mid: '#a4763e', deep: '#5a3a1e', spark: '#e8c89a', glow: '164, 120, 66', ring: 'halo', debris: 'blood', decal: 'stain', punch: 0.15, wash: 0.2 }),
+
   // ---------------------------------------------------- beastcraft arts
   // THE KEEPER'S TONGUE — the school speaks LIVING GREEN AND HIDE:
   // bond-greens, herb and grain, one russet howl and one horn-gold

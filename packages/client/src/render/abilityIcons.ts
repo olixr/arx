@@ -4724,6 +4724,181 @@ Object.assign(PLATES, {
     star4(c, 0.2, -0.14, 0.05, st.core);
   },
 
+  // ---------------------------- THE HILL COMES DOWN (ogre arts,
+  // docs/ogres-plan.md). Every plate is the moment BEFORE the weight
+  // lands — a giant's art is all warning.
+  // Skull Toll — the club at the top of its arc, the floor already
+  // ringing where it will land.
+  skull_toll: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    ground(c, 0, 0.4, st);
+    // The greatclub, up in both hands: haft low, mass high.
+    c.strokeStyle = st.deep;
+    c.lineCap = 'round';
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(-0.1, 0.06);
+    c.lineTo(0.08, -0.3);
+    c.stroke();
+    poly(c, st.mid, [
+      [0.02, -0.28], [0.2, -0.46], [0.34, -0.4], [0.36, -0.22], [0.22, -0.12], [0.08, -0.18],
+    ], 0.036);
+    // The lit top plane, and the one iron stud it grew.
+    fill(c, st.spark, [[0.02, -0.28], [0.2, -0.46], [0.26, -0.4], [0.1, -0.26]]);
+    dot(c, st.deep, 0.24, -0.26, 0.028);
+    // Drop chevrons: it is coming DOWN, and the first ring knows.
+    chevrons(c, -0.16, -0.1, Math.PI / 2, st, 2, 0.9);
+    ringDot(c, st.core, 0, 0.06, 0.26, 0.03);
+  },
+  // Tantrum — both fists and no thought: the flail mid-swing, the
+  // impact stars already everywhere.
+  ogre_tantrum: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // Two ham fists on wide arcs.
+    poly(c, st.mid, [[-0.34, -0.14], [-0.2, -0.24], [-0.08, -0.14], [-0.14, 0.0], [-0.3, 0.0]], 0.034);
+    poly(c, st.mid, [[0.12, 0.04], [0.26, -0.06], [0.38, 0.04], [0.32, 0.18], [0.16, 0.18]], 0.034);
+    fill(c, st.spark, [[-0.34, -0.14], [-0.2, -0.24], [-0.16, -0.16], [-0.3, -0.08]]);
+    fill(c, st.spark, [[0.12, 0.04], [0.26, -0.06], [0.3, 0.02], [0.16, 0.1]]);
+    // Knuckle ticks.
+    dot(c, st.deep, -0.22, -0.06, 0.024);
+    dot(c, st.deep, 0.24, 0.1, 0.024);
+    // The swing arcs crossing — no plan, all directions.
+    c.strokeStyle = st.deep;
+    c.lineCap = 'round';
+    c.lineWidth = 0.036;
+    c.beginPath();
+    c.moveTo(-0.42, 0.16);
+    c.quadraticCurveTo(-0.3, 0.32, -0.06, 0.3);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(0.42, -0.18);
+    c.quadraticCurveTo(0.3, -0.34, 0.06, -0.32);
+    c.stroke();
+    // What already got hit.
+    star4(c, -0.02, -0.02, 0.06, st.core);
+    star4(c, 0.34, -0.24, 0.045, st.spark);
+    star4(c, -0.36, 0.28, 0.045, st.spark);
+  },
+  // Millstone Toss — the quarried wheel mid-flight, eye showing,
+  // still turning. It keeps rolling.
+  millstone_toss: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // The heaved arc behind it.
+    c.strokeStyle = st.deep;
+    c.lineCap = 'round';
+    c.lineWidth = 0.045;
+    c.beginPath();
+    c.moveTo(-0.4, 0.3);
+    c.quadraticCurveTo(-0.24, 0.02, -0.04, -0.06);
+    c.stroke();
+    // The wheel: a fat disc with its center eye.
+    c.fillStyle = st.mid;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.036;
+    c.beginPath();
+    c.ellipse(0.12, -0.1, 0.26, 0.24, -0.3, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    // The lit rim plane and the turning spoke-shadow.
+    fill(c, st.spark, [[-0.08, -0.26], [0.18, -0.32], [0.3, -0.22], [0.04, -0.16]]);
+    ringDot(c, st.deep, 0.12, -0.1, 0.07, 0.03);
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(0.12, -0.32);
+    c.lineTo(0.12, -0.18);
+    c.stroke();
+    // Grit shed off the spin.
+    dot(c, st.spark, -0.2, 0.14, 0.024);
+    dot(c, st.deep, -0.3, 0.24, 0.02);
+  },
+  // Gravel Rake — the fistful of road, already open, already wide.
+  gravel_rake: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // Three flight lanes fanning out.
+    c.strokeStyle = st.deep;
+    c.lineCap = 'round';
+    c.lineWidth = 0.032;
+    for (const [ex, ey] of [[0.36, -0.26], [0.4, 0.0], [0.34, 0.24]] as const) {
+      c.beginPath();
+      c.moveTo(-0.3, 0.06);
+      c.quadraticCurveTo(0.0, (ey - 0.06) * 0.4, ex, ey);
+      c.stroke();
+    }
+    // The stones themselves, mismatched on purpose.
+    poly(c, st.mid, [[0.28, -0.32], [0.38, -0.28], [0.36, -0.18], [0.26, -0.2]], 0.028);
+    poly(c, st.mid, [[0.32, -0.06], [0.44, -0.02], [0.4, 0.08], [0.3, 0.04]], 0.028);
+    poly(c, st.mid, [[0.24, 0.18], [0.34, 0.2], [0.32, 0.3], [0.22, 0.28]], 0.028);
+    fill(c, st.spark, [[0.28, -0.32], [0.38, -0.28], [0.32, -0.26]]);
+    fill(c, st.spark, [[0.32, -0.06], [0.44, -0.02], [0.36, 0.0]]);
+    // The hand that let go.
+    poly(c, st.deep, [[-0.42, -0.04], [-0.28, -0.12], [-0.2, 0.02], [-0.28, 0.16], [-0.42, 0.1]], 0.03);
+  },
+  // Hill Bellow — the shout itself: the open maw and the rings the
+  // whole valley is about to hear.
+  hill_bellow: (st) => (c) => {
+    c.translate(0.42, 0.5);
+    // The maw: underbite open to full gape, two lower teeth proud.
+    poly(c, st.mid, [[-0.3, -0.18], [0.0, -0.26], [0.08, -0.06], [0.02, 0.18], [-0.26, 0.22], [-0.36, 0.0]], 0.036);
+    fill(c, st.deep, [[-0.24, -0.06], [0.0, -0.1], [0.0, 0.1], [-0.22, 0.12]]);
+    // The lower teeth standing up out of the jaw.
+    poly(c, st.spark, [[-0.2, 0.12], [-0.16, -0.02], [-0.12, 0.12]], 0.022);
+    poly(c, st.spark, [[-0.08, 0.1], [-0.04, -0.04], [0.0, 0.1]], 0.022);
+    // The voice, ringing out in widening arcs.
+    c.strokeStyle = st.core;
+    c.lineCap = 'round';
+    for (const [r, w] of [[0.2, 0.04], [0.32, 0.034], [0.44, 0.028]] as const) {
+      c.lineWidth = w;
+      c.beginPath();
+      c.arc(0.1, 0.0, r, -0.7, 0.7);
+      c.stroke();
+    }
+  },
+  // Shaken Stones — the hillside letting go: rocks in the air over
+  // the ground that was promised to them.
+  shaken_stones: (st) => (c) => {
+    c.translate(0.5, 0.58);
+    ground(c, 0, 0.38, st);
+    // Falling stones, each with its lit crown still up.
+    for (const [x, y, r] of [[-0.22, -0.34, 0.09], [0.08, -0.44, 0.07], [0.28, -0.26, 0.08]] as const) {
+      poly(c, st.mid, [[x - r, y], [x - r * 0.4, y - r], [x + r * 0.7, y - r * 0.8], [x + r, y + r * 0.3], [x, y + r * 0.5]], 0.028);
+      fill(c, st.spark, [[x - r * 0.4, y - r], [x + r * 0.7, y - r * 0.8], [x, y - r * 0.3]]);
+    }
+    // Drop chevrons between stone and shadow.
+    chevrons(c, -0.2, -0.12, Math.PI / 2, st, 2, 0.8);
+    chevrons(c, 0.26, -0.06, Math.PI / 2, st, 2, 0.7);
+    ringDot(c, st.deep, 0, 0.0, 0.3, 0.026);
+  },
+  // Haunch Gnaw — supper, mid-fight: the belt haunch with a bite
+  // already gone and the bone showing through.
+  haunch_gnaw: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // The haunch: meat mass tapering to the shank bone.
+    poly(c, st.mid, [
+      [-0.3, -0.18], [0.0, -0.28], [0.2, -0.16], [0.22, 0.06], [0.04, 0.18], [-0.24, 0.1],
+    ], 0.036);
+    fill(c, st.spark, [[-0.3, -0.18], [0.0, -0.28], [0.02, -0.16], [-0.24, -0.08]]);
+    // The bite gone from the flank — the crescent of teeth that took it.
+    c.fillStyle = st.deep;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.arc(0.16, -0.06, 0.11, -1.9, 1.6);
+    c.fill();
+    c.stroke();
+    // The shank bone, knuckled at the end.
+    c.strokeStyle = st.core;
+    c.lineCap = 'round';
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(0.02, 0.16);
+    c.lineTo(0.3, 0.32);
+    c.stroke();
+    dot(c, st.core, 0.34, 0.34, 0.045);
+    // The mend it buys, rising quiet.
+    star4(c, -0.3, -0.32, 0.05, st.spark);
+  },
+
   // ---------------------------- beastcraft arts (THE WILD ANSWERS THE
   // CALL). Gentle the Wild — the asking: a beast's neck bowing to an
   // open hand, the collar waiting between them, the working calm above.

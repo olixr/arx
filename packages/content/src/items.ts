@@ -944,6 +944,10 @@ const defs: ItemDef[] = [
   { id: 'forgeplate_scrap', name: 'Forgeplate scrap', stackable: true, maxStack: 10, value: 95, desc: 'An old riveted plate pulled from the lodestone\'s gathered body. Some smith made it once. The golem only kept it.', color: '#6f665e', code: 'Fs' },
   { id: 'molten_slag', name: 'Molten slag', stackable: true, maxStack: 10, value: 110, desc: 'Furnace-melt gone hard, black outside, ember-veined within. It never quite cools.', color: '#d84c1e', code: 'Mg' },
   { id: 'everfrost_shard', name: 'Everfrost shard', stackable: true, maxStack: 10, value: 130, desc: 'A faceted slab of old winter. It does not melt, and the room it sits in forgets summer.', color: '#9ad4e8', code: 'Ev' },
+  // THE HILL COMES DOWN — the ogre drops (docs/ogres-plan.md). A
+  // giant's hoard is a sack of dented junk with one true prize in it.
+  { id: 'ogre_tooth', name: 'Ogre tooth', stackable: true, maxStack: 10, value: 48, desc: 'A lower tooth the size of a hand axe, worn flat from grinding bones. The underbite is quieter now.', color: '#e3d7b4', code: 'Ot' },
+  { id: 'bonegrinder_girdle', name: 'Bonegrinder girdle', stackable: true, maxStack: 5, value: 150, desc: 'A rope-and-hide belt off the biggest gut in the camp, trophies still knotted on. It took two hands to carry it home.', color: '#96685a', code: 'Bg' },
 
   // Quest items — worthless by law (the flood law's price for
   // quest-gated drops), stackable so an errand rides one slot.

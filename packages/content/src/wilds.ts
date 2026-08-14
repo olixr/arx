@@ -221,6 +221,24 @@ export const WILD_ROSTER: readonly WildEntry[] = [
     habitat: 'den',
     family: 'gnoll',
   },
+  // THE HILL COMES DOWN (docs/ogres-plan.md): ogres walk in ones and
+  // twos by day — a giant needs no escort — and the camp's muscle
+  // strolls at night behind the Bonegrinder, dragging the club.
+  { npc: 'ogre', weight: 0.7, tiers: [4, 5], biomes: ['grass', 'forest'], hours: DAY, band: [1, 2], spread: 3, habitat: 'den', family: 'ogre' },
+  {
+    // The night forage: the camp walks out together, and the ground
+    // tells you long before your eyes do.
+    npc: 'ogre',
+    weight: 0.9,
+    tiers: [5, 6],
+    biomes: ['grass', 'forest'],
+    hours: NIGHT,
+    band: [1, 2],
+    spread: 4,
+    lead: { npc: 'ogre_champion' },
+    habitat: 'den',
+    family: 'ogre',
+  },
 ];
 
 /**

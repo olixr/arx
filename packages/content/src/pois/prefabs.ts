@@ -354,6 +354,81 @@ const gnollDenhall = sketch(
   gnollMarks,
 );
 
+const ogreMarks: Record<string, Marker> = {
+  // A giant wanders wide of its post — the radius is the read.
+  '1': { npc: 'ogre', radius: 3, under: Tile.Dirt },
+  '2': { npc: 'ogre', radius: 3, under: Tile.Dirt },
+  '3': { npc: 'ogre_hurler', radius: 3, under: Tile.Dirt },
+  '4': { npc: 'ogre_bellower', radius: 3.5, under: Tile.Dirt },
+  '5': { npc: 'ogre', radius: 2.5, under: Tile.Dirt },
+};
+
+/**
+ * THE HILL COMES DOWN (docs/ogres-plan.md): the ogre grounds. Ogres
+ * build nothing and repair less — a camp is a great fire, a bone
+ * midden, and whatever stood there before minus its corners. Every
+ * ogre prefab is scaled to its tenants: wide clearings, wide gaps
+ * where walls used to meet, and furniture-sized litter everywhere.
+ */
+const ogreCamp = sketch(
+  'poi_ogre_camp',
+  'Ogre fire-ring',
+  [
+    '______,,,,______',
+    '__,::::::::::,__',
+    '_,:.r..0...r.:,_',
+    '_,:.1..@..2..:,_',
+    '_,::...-....::,_',
+    '_,:.${..).X..:,_',
+    '_,:..3....o..:,_',
+    ',::....?....::,_',
+    '_,::::::::::,,__',
+    '____,,,,,,______',
+  ],
+  ogreMarks,
+);
+
+/** The kill-ground: a midden of gnawed bone around the totem. */
+const ogreMidden = sketch(
+  'poi_ogre_midden',
+  'Ogre bone-midden',
+  [
+    '____,,,,,,____',
+    '__,::::::::,__',
+    '_,:o..0..o.:,_',
+    '_,:.1..?.2.:,_',
+    ',::..o.f.o.::,',
+    '_,:.o..X..o:,_',
+    '_,:..0...o.:,_',
+    '__,::::::::,__',
+    '____,,,,______',
+  ],
+  ogreMarks,
+);
+
+/**
+ * The crushed steading: somebody's barn, minus every corner an ogre
+ * ever walked through. The champion seats here — no doorway survives
+ * a tenant who never learned to duck.
+ */
+const ogreSteading = sketch(
+  'poi_ogre_steading',
+  'Crushed steading',
+  [
+    '______,,,,______',
+    '__,::::::::::,__',
+    '_,:##..##..##:,_',
+    '_,:#.5....)..:,_',
+    '_,:....@....#:,_',
+    '_,:#.$...X..#:,_',
+    '_,:##..##..##:,_',
+    ',::...-...0.::,_',
+    '_,::::"":::,,___',
+    '____,,,,________',
+  ],
+  ogreMarks,
+);
+
 const ruinMarks: Record<string, Marker> = {
   '1': { npc: 'skeleton', radius: 2, under: Tile.StoneFloor },
   '2': { npc: 'skeleton_guard', radius: 2, under: Tile.StoneFloor },
@@ -1730,6 +1805,10 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     gnollSquat,
     gnollBoneyard,
     gnollDenhall,
+    // THE HILL COMES DOWN (the giant-kin grounds):
+    ogreCamp,
+    ogreMidden,
+    ogreSteading,
     // The tufted shadows (lynx of the deep wood):
     lairLedge,
     lairDeadfall,

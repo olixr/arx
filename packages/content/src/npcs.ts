@@ -1920,6 +1920,154 @@ const defs: NpcDef[] = [
       defeatBark: 'The hum... runs out.',
     },
   },
+
+  // ------------------------------------------------------------------
+  // THE HILL COMES DOWN (docs/ogres-plan.md): the giant-kin. The first
+  // TRUE giants — twice a waker's height and more, the biggest walking
+  // silhouettes in the game. Slow, dim, monstrous, and honest about
+  // all three: narrow sight (the sneak window a giant owes), heavy
+  // telegraphed dies, and a temper straight out of the old stories —
+  // wound one deep and it stops fighting to THROW A TANTRUM.
+  {
+    // The hill bully: a gut that leads the body, a club that was
+    // lately a tree, and a sack of dented junk it calls treasure.
+    // Ogres walk in ones and twos and hit like falling timber.
+    id: 'ogre',
+    name: 'Ogre',
+    level: 22,
+    maxHp: 170,
+    damage: 7,
+    // A greatclub's reach: long arms swing a long tree.
+    attackRange: 1.6,
+    attackCooldownTicks: 58, // the slow heavy basic every premium prices off
+    aggroRange: 6,
+    // Small eyes under a heavy brow: an ogre sees its supper and
+    // little else. The wide flank is the whole approach plan.
+    sightArc: 140,
+    leashRange: 28,
+    // Quicker than a golem — a giant's stride covers ground even
+    // strolling — and still the slowest thing that will ever chase you.
+    speed: 2.9,
+    xpReward: 460,
+    loot: ['ogre', 'heirlooms'],
+    respawnSec: 90,
+    color: '#b3985e',
+    radius: 0.5,
+    hitHeight: 3.6,
+    pack: 'ogre',
+    kit: [
+      // The overhead drop: both hands, full stretch, the ground rings
+      // like a struck bell. Everything about it says LEAVE.
+      { ability: 'skull_toll', cooldownTicks: 190, windupTicks: 16, maxRange: 4 },
+      // The old stories are true: bloody an ogre past its patience
+      // and it stops aiming — it just SMASHES until nothing's left.
+      { ability: 'ogre_tantrum', cooldownTicks: 240, windupTicks: 12, maxRange: 2.5, hpBelow: 0.35 },
+    ],
+  },
+  {
+    // The javelin arm: an ogre that learned the one clever thing an
+    // ogre ever learns — that everything is a throwing stone if you
+    // are strong enough. Holds its ground and empties the cart.
+    id: 'ogre_hurler',
+    name: 'Ogre hurler',
+    level: 24,
+    maxHp: 160,
+    damage: 6,
+    attackRange: 1.5,
+    attackCooldownTicks: 56,
+    aggroRange: 7,
+    sightArc: 140,
+    leashRange: 28,
+    speed: 2.9,
+    xpReward: 440,
+    loot: ['ogre_hurler', 'heirlooms'],
+    respawnSec: 90,
+    color: '#8f6f4e',
+    radius: 0.5,
+    hitHeight: 3.5,
+    // Sharpened fence posts, thrown flat and hard.
+    ranged: { range: 9, projectileSpeed: 8 },
+    pack: 'ogre',
+    // THE STANDOFF GIANT: it plants its feet and lets the arm speak.
+    standoff: 6,
+    kit: [
+      // The millstone: two hands, three staggering steps, and a
+      // hundredweight of quarried wheel in the air. It keeps rolling.
+      { ability: 'millstone_toss', cooldownTicks: 200, windupTicks: 24, minRange: 3, maxRange: 9 },
+      // A fistful of the road itself — the scatter that punishes the
+      // sideways answer the millstone taught you.
+      { ability: 'gravel_rake', cooldownTicks: 130, windupTicks: 12, minRange: 2, maxRange: 7 },
+    ],
+  },
+  {
+    // The bellower: the closest thing ogre-kind has to a caster — a
+    // voice. It fills the great gut like a bellows and what comes out
+    // moves the ground, lays the grass flat, and shakes the stones
+    // loose over your head. Between verses it EATS.
+    id: 'ogre_bellower',
+    name: 'Ogre bellower',
+    level: 26,
+    maxHp: 150,
+    damage: 5,
+    attackRange: 1.5,
+    attackCooldownTicks: 56,
+    aggroRange: 7,
+    sightArc: 140,
+    leashRange: 28,
+    speed: 3.0,
+    xpReward: 420,
+    loot: ['ogre_bellower', 'heirlooms'],
+    respawnSec: 100,
+    color: '#7e7f74',
+    radius: 0.52,
+    hitHeight: 3.7,
+    pack: 'ogre',
+    standoff: 5.5,
+    kit: [
+      // The bellow: a wall of voice and spittle that knocks a waker
+      // clean off their feet. The long fill is the whole warning.
+      { ability: 'hill_bellow', cooldownTicks: 210, windupTicks: 28, maxRange: 3 },
+      // The verse lands where you are GOING — the orbit-breaker.
+      { ability: 'shaken_stones', cooldownTicks: 170, windupTicks: 8, maxRange: 7, aim: 'lead' },
+      // Wounded deep, it remembers supper: a mutton haunch off the
+      // belt, gnawed to the bone mid-fight. Break the meal or fight
+      // a third of it twice.
+      { ability: 'haunch_gnaw', cooldownTicks: 600, windupTicks: 22, hpBelow: 0.5, aim: 'self' },
+    ],
+  },
+  {
+    // BONEGRINDER: the camp's master, named the way ogres name
+    // everything — for what it does. Half again the bulk of the
+    // rank-and-file, a double trophy belt, and the family temper
+    // grown into a doctrine: the toll, the tantrum, and the bellow
+    // that brings the whole camp's clubs up.
+    id: 'ogre_champion',
+    name: 'Bonegrinder ogre',
+    level: 28,
+    maxHp: 260,
+    damage: 8,
+    attackRange: 1.7,
+    attackCooldownTicks: 56,
+    aggroRange: 7,
+    sightArc: 160,
+    leashRange: 32,
+    speed: 3.1,
+    xpReward: 700,
+    loot: ['ogre_champion', 'heirlooms'],
+    respawnSec: 130,
+    color: '#96685a',
+    radius: 0.56,
+    hitHeight: 4.2,
+    pack: 'ogre',
+    kit: [
+      { ability: 'skull_toll', cooldownTicks: 180, windupTicks: 16, maxRange: 4, weight: 2 },
+      // The master's bellow is a muster: every ogre in earshot
+      // answers it. The champion fight is the CAMP.
+      { ability: 'hill_bellow', cooldownTicks: 220, windupTicks: 28, maxRange: 3, rally: true },
+      { ability: 'ogre_tantrum', cooldownTicks: 220, windupTicks: 12, maxRange: 2.5, hpBelow: 0.35 },
+      { ability: 'haunch_gnaw', cooldownTicks: 650, windupTicks: 22, hpBelow: 0.4, aim: 'self' },
+    ],
+  },
 ];
 
 // THE MARKED WORLD: combat-lane temperaments join their bodies here —

@@ -1,0 +1,160 @@
+{
+  "id": "ogre_camp",
+  "name": "Ogre camp",
+  "description": "You smell the fire first, then the midden, then you feel the footsteps through your boots. Giants live here — the drag-furrows in the grass all point home, and nothing that made them ever learned to share.",
+  "tiers": [
+    4,
+    6
+  ],
+  "weight": 1.2,
+  "prefabs": [
+    "poi_ogre_camp",
+    "poi_ogre_midden",
+    "poi_ogre_steading"
+  ],
+  "garrison": [
+    {
+      "npc": "ogre",
+      "count": [
+        1,
+        2
+      ],
+      "role": "holdfast"
+    },
+    {
+      "npc": "ogre_hurler",
+      "count": [
+        1,
+        1
+      ],
+      "role": "sentry",
+      "patrol": true,
+      "minTier": 4
+    },
+    {
+      "npc": "ogre_bellower",
+      "count": [
+        1,
+        1
+      ],
+      "role": "holdfast",
+      "minTier": 5
+    },
+    {
+      "npc": "ogre_champion",
+      "count": [
+        1,
+        1
+      ],
+      "role": "holdfast",
+      "minTier": 5,
+      "levelOffset": 2,
+      "names": [
+        "Bonegrinder",
+        "Kettlebelly",
+        "Threeteeth",
+        "Old Thunderfoot"
+      ]
+    }
+  ],
+  "chestTierBonus": 1,
+  "clearedFlag": "poi_ogre_camp_broken",
+  "cues": {
+    "clearing": 5,
+    "approachPath": true,
+    "scatter": [
+      {
+        "tile": "BonePile",
+        "count": 2
+      },
+      {
+        "tile": "SkullPile",
+        "count": 1
+      }
+    ]
+  },
+  "boldness": {
+    "stages": [
+      {
+        "garrison": [
+          {
+            "npc": "ogre",
+            "count": [
+              1,
+              1
+            ],
+            "role": "holdfast"
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "ogre",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          },
+          {
+            "npc": "ogre_hurler",
+            "count": [
+              1,
+              1
+            ],
+            "role": "sentry",
+            "patrol": true
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "ogre",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          },
+          {
+            "npc": "ogre_champion",
+            "count": [
+              1,
+              1
+            ],
+            "role": "holdfast",
+            "minTier": 5,
+            "names": [
+              "Bonegrinder",
+              "Kettlebelly",
+              "Threeteeth",
+              "Old Thunderfoot"
+            ]
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "SkullPile",
+            "count": 1
+          }
+        ]
+      }
+    ],
+    "satellites": true
+  },
+  "family": "ogre"
+}

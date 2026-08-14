@@ -69,6 +69,7 @@ const BONES: NpcLanes = { resist: ['archery'], weak: ['twohand'] };
 const STONE: NpcLanes = { resist: ['onehand'], weak: ['arx'] };
 const FORMLESS: NpcLanes = { resist: ['archery'], weak: ['arx'] };
 const CARAPACE: NpcLanes = { resist: ['onehand'], weak: ['twohand'] };
+const GIANT: NpcLanes = { resist: ['onehand'], weak: ['archery'] };
 
 export const NPC_LANES: Record<string, NpcLanes> = {
   // Bones turn arrows; the great blade cracks them.
@@ -90,4 +91,10 @@ export const NPC_LANES: Record<string, NpcLanes> = {
   // Carapace turns the edge and cracks under crush.
   giant_beetle: CARAPACE,
   mudcrab: CARAPACE,
+  // A hand of fat and hide shrugs the short edge; a body that big
+  // cannot dodge the aimed shaft.
+  ogre: GIANT,
+  ogre_hurler: GIANT,
+  ogre_bellower: GIANT,
+  ogre_champion: GIANT,
 };

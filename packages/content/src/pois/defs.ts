@@ -8,6 +8,7 @@ import wolfkinGreatden from './defs/wolfkin_greatden.json';
 import championsTor from './defs/champions_tor.json';
 import forestRuin from './defs/forest_ruin.json';
 import gnollSquat from './defs/gnoll_squat.json';
+import ogreCamp from './defs/ogre_camp.json';
 import goblinWarcamp from './defs/goblin_warcamp.json';
 import koboldDigs from './defs/kobold_digs.json';
 import lastLamp from './defs/last_lamp.json';
@@ -62,6 +63,7 @@ const SOURCES: readonly unknown[] = [
   championsTor,
   forestRuin,
   gnollSquat,
+  ogreCamp,
   goblinWarcamp,
   koboldDigs,
   lastLamp,

@@ -452,6 +452,7 @@ export class WorldView {
     kobold: 'rgba(190, 170, 80, 0.16)',
     dead: 'rgba(150, 110, 190, 0.16)',
     gnoll: 'rgba(190, 90, 110, 0.16)',
+    ogre: 'rgba(179, 152, 94, 0.16)',
   };
 
   // --------------------------------------------------------- render
@@ -749,6 +750,7 @@ export class WorldView {
       wolfkin: '#8a94a8',
       gnoll: '#c9a34c',
       dead: '#9a7fc9',
+      ogre: '#b3985e',
     };
     for (const cap of this.ws.capitals) {
       const x = this.sx(cap.x);

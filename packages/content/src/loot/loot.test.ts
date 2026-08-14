@@ -275,6 +275,8 @@ test('every foe’s tables preserve its signature loot — reserved pieces stay 
     fox: ['fox_pelt', 'raw_chicken'],
     fox_champion: ['smokebrush_pelt', 'fox_pelt', 'emberfox_jerkin'],
     iron_golem: ['forgeplate_scrap', 'golem_core', 'lodestone'],
+    ogre: ['ogre_tooth', 'raw_beef'],
+    ogre_champion: ['bonegrinder_girdle', 'ogre_tooth'],
     skeleton: ['aegis_stone', 'iron_helm', 'nightveil_cowl', 'voidwhisper_skirts', 'sentinel_gauntlets_bloodwatch', 'dawnsworn_robe_eclipse', 'gravewhisper', 'boneharrow'],
     skeleton_champion: ['sigil_fallen_champion', 'storm_coil', 'cape_champion', 'cape_phoenix', 'dreadforge_platebody', 'nightveil_jerkin', 'voidwhisper_robe', 'sentinel_greaves_daybreak', 'emberfox_hood_shadowfox', 'oathkeeper', 'last_word', 'skyrender', 'worldsplinter', 'frostplate_platebody'],
     wolf: ['wolf_fur', 'bramble_band', 'wolfhide_hood', 'wolfstalker_chaps', 'emberfox_gloves_dawnfox', 'mothwing_wraps_luna', 'frostplate_helm', 'wolffang', 'glacierbite'],
@@ -293,6 +295,8 @@ test('every foe’s tables preserve its signature loot — reserved pieces stay 
   // goblin camp, never the common crews.
   assert.ok(!reach.get('goblin_thrower')!.has('cutpurse_jerkin_redhand'), 'redhand leaked to throwers');
   assert.ok(!reach.get('brigand')!.has('cutpurse_jerkin_redhand'), 'redhand leaked to the crews');
+  // The Bonegrinder's girdle hangs on the Bonegrinder alone.
+  assert.ok(!reach.get('ogre')!.has('bonegrinder_girdle'), 'girdle leaked to the rank-and-file');
 });
 
 test('the flood law: every foe’s per-kill expectation stays under its station’s ceiling', () => {
@@ -301,7 +305,7 @@ test('the flood law: every foe’s per-kill expectation stays under its station�
   // couple of stacks and treat gear as an event; named foes pay richer;
   // the Champion alone showers. A retune (code or CMS) that breaks a
   // ceiling is a flood, not a balance pass.
-  const NAMED = new Set(['kobold_digmaster', 'brigand_reaver', 'dire_wolf', 'gnoll_champion', 'goblin_champion', 'lynx_champion', 'fox_champion', 'elder_great_owl']);
+  const NAMED = new Set(['kobold_digmaster', 'brigand_reaver', 'dire_wolf', 'gnoll_champion', 'goblin_champion', 'lynx_champion', 'fox_champion', 'elder_great_owl', 'ogre_champion']);
   // The crownsguard is the Ashen Court's champion body (the Kingsdelf
   // epic): a minTier-6 singleton that walks only after dusk, carrying
   // the champion's whole purse at the Overband's level. Boss station

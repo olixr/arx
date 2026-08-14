@@ -37,6 +37,10 @@ const VOCABS: ReadonlyArray<[RegExp, Vocab]> = [
   [/^poi_(bandit|stockade|raider|barrow_diggers|wardline)/, { litter: [Tile.Crate, Tile.Barrel, Tile.CaveRubble], pocket: [Tile.TentHide, Tile.Crate, Tile.PlunderSacks], fire: Tile.Campfire }],
   [/^poi_(den|greatden)/, { litter: [Tile.BonePile, Tile.SkullPile], pocket: [Tile.BeastNest, Tile.BonePile, Tile.HideFrame] }],
   [/^poi_(gnoll)/, { litter: [Tile.BonePile, Tile.SkullPile], pocket: [Tile.TentHide, Tile.MeatSpit, Tile.SkullPile], fire: Tile.Campfire }],
+  // Ogre litter is FURNITURE-sized: whole middens, whole skulls, the
+  // meat economy of a body that eats a cow a day. The fire is the
+  // great bonfire — an ogre camp reads from a hilltop away.
+  [/^poi_(ogre)/, { litter: [Tile.BonePile, Tile.SkullPile, Tile.MeatRack], pocket: [Tile.SkullPile, Tile.MeatSpit, Tile.PlunderSacks], fire: Tile.Bonfire }],
   [/^poi_(fell|barrow_ring|watchtower|ruin|riftgate|hoargate|champions)/, { litter: [Tile.CaveRubble, Tile.Rock, Tile.BonePile], pocket: [Tile.PillarStone, Tile.Rock, Tile.CaveRubble] }],
   [/^poi_(digs)/, { litter: [Tile.CaveRubble, Tile.Rock], pocket: [Tile.Rock, Tile.CaveRubble, Tile.Barrel] }],
   [/^poi_(lair)/, { litter: [Tile.BonePile, Tile.Rock], pocket: [Tile.Rock, Tile.BonePile] }],
