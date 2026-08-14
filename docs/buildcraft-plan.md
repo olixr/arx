@@ -1,0 +1,327 @@
+# BUILDCRAFT — THE THINKING BLADE
+
+Proposal, 2026-08-14. Status: **AWAITING GREEN-LIGHT.**
+
+The brief (user, 2026-08-14): combat reads as hack-and-slash — hold the attack
+button, blast abilities. We want strategic buildcraft: enough variance in gear
+abilities and stats that combinations feel empowering; **set bonuses (which do
+not exist at all today)**; proc effects (chance to poison, burn, stun); and
+**stacking buff/debuff synergies** — "you have a chance of poisoning a target,
+and then any poisoned target takes 1.5x damage from these sorts of abilities."
+Core foundational effects that stack on one another, emergent behavior, unique
+play styles, end-game depth and repeatability. Research industry standards
+(WoW et al.) and design a fully encompassing layer.
+
+This plan is the audit of what stands, the industry findings, the laws, and
+six phases. Nothing here is implemented.
+
+---
+
+## Part 0 — The audit (what stands today, receipts verified 2026-08-14)
+
+The surprise of the audit: **most of the machinery already shipped.** What is
+missing is not foundations — it is the connective tissue between them.
+
+### Already built and load-bearing
+
+- **A full proc engine** (enchanting v2, THE DEEPER SIGIL). Trigger x response
+  with rest timers: 10 trigger doors (`hit/crit/kill/hurt/block/cast/lowHp/
+  cadence/stacks/gather/stride`), 10 actions (`status/nova/bolt/chain/ward/
+  heal/surge/cleanse/yield/reveal`), pure arbitration in
+  `content/equipment/enchants.ts` (`procWakes`, line ~1752), ONE ID = ONE
+  TIMER = ONE METER, whiff-0 sacred, charge meters on the wire (S2CCharges).
+  34 procs live — but **only on enchant scrolls**. Zero weapons or armor
+  carry a native proc (`grep "kind: 'proc'" defs.ts` = 0).
+- **A status system with reactions.** Five statuses (`burn/chill/shock/bleed/
+  venom`, shared/sim/abilities.ts:17) and a 10-pair `REACTION_TABLE`
+  (line 114): applying a DIFFERENT status detonates the riding one
+  (burst/aoe/chain/stun/spread). This is a real emergent layer — but it is
+  hardcoded, closed, and **structurally forbids coexistence**: a target
+  carries at most one status, so "poisoned targets take 1.5x from your burn
+  arts" is impossible today (the burn would detonate the venom).
+- **A per-piece counting engine.** `aggregateGearStats` (content/equipment/
+  roll.ts:303) already counts `classCounts` across the 5 armor slots and
+  `perPiece` Callings scale off it — this IS a set-bonus engine minus the
+  set identity.
+- **A buff array that coexists freely** (`PlayerBuff[]`, gameServer.ts:1702)
+  with per-field fold rules (crit additive, dmgMult additive-of-excess,
+  regen best-wins) — but no ids, no stacks, and combat buffs are invisible
+  to the client (only food/tonic chips reach the HUD).
+- **Chance-on-hit outside enchants exists**: 18 weapon defs carry native
+  `onHitStatus`, coatings ride the instance, `PlayerBuff.onHitStatus`
+  covers stances.
+- **Conditional payoffs exist in exactly one authored form**: `executeBelow`
+  (16 abilities) plus a handful of hardcoded perks (`greatExecute`,
+  `stillArmor`). `winters_fall`'s chilled-kill deed gate is the ONLY
+  "X while target has Y" line in the codebase.
+
+### The gaps (every one verified absent)
+
+1. **No mechanical set notion.** No `set` field anywhere; families exist only
+   as id naming (`family_piece[_lot]`), erased at compile. 31 named chase
+   sets, 15 themed sets, 60 early-family lots — all pure stat sticks.
+2. **No target-state reads.** `isShocked`/`isChilled` are the engine's only
+   two target predicates. No proc trigger, ability field, gear effect, or
+   moveset beat can ask "is this body poisoned."
+3. **One status per body.** `applyStatusToNpc` (gameServer.ts:17799)
+   detonate-on-different, refresh-max-on-same. No stacks, no coexistence.
+4. **No consume verb.** Nothing can spend a status, a buff, or a combo run.
+   Finishers cannot know what rides the body they hit (StrikeDef branches
+   on input only).
+5. **Player->NPC damage has no modifier stage.** `damageNpc` receives a
+   finished number. (The one honest seam: top of damageNpc ~18936, where
+   `this.statuses.get(npcEid)` is in scope and every path funnels through —
+   basics, arts, projectiles, procs, reaction bursts. Mirror seam at
+   damagePlayer:19536 beside `mitigate`.)
+6. **Armor carries zero effects.** 0 of ~129 armor defs use `effects` —
+   every crit/thorns/speed/element effect in the game comes from weapons,
+   enchants, or Callings. Two same-level sets with the same affix pool are
+   mechanically identical.
+7. **Dead stat channels**: `elementDmg` is dead for 3 of 4 combat styles
+   (only staves carry an element); rolled `regen` is overwritten by any
+   food (best-wins); `EquipmentDef.passive` is plumbed and never authored;
+   no crit-damage, no haste, no vulnerability/amplifier stat exists;
+   `armor` + `maxHp` are the entire defensive vocabulary.
+8. **The status wire is saturated**: snapshot `status` is a u8 with all 8
+   bits spoken for (5 statuses + hidden/detected/sheathed). New states or
+   stack counts need a protocol change.
+
+### Industry findings that bind this design (full survey in session record)
+
+- **WoW/ESO threshold economy**: 2pc = boring cumulative stat line, 4pc =
+  the named behavioral mechanic, on 5-piece sets — the free 5th slot
+  preserves mix-and-match and lets a second set's 2pc ride.
+- **The D3 boundary**: set bonuses that exceed the stat budget by orders of
+  magnitude made sets mandatory and killed buildcraft. A full set must be
+  worth roughly ONE extra item (~5-8% throughput), never more than ~15%.
+- **OSRS's law**: behavioral bonuses (Dharok's low-HP ramp, Guthan's
+  sustain, Void's tradeoff) create identity; "+X damage" creates
+  checklists.
+- **GW2's two disasters**: a shared per-target condition cap made a second
+  condition player worthless (stacking must be per-source); combo fields
+  whose resolution is invisible degenerate into rote memorization
+  (synergies must be printed on the tooltip and visible on the body).
+- **PoE's math constitution**: additive within a bucket, buckets multiply;
+  amplifier states never self-stack (highest wins); debuff-layer count is
+  itself a purchasable build stat.
+- **Proc feel**: rate-normalized (per swing/cast, never per target hit),
+  ICD mandatory on chance-when-hit, bad-luck protection, two loudness
+  tiers, and a proc that only exists in a damage log is too small to exist.
+- **FFXIV's lesson**: enemy-side "takes more damage" debuffs invite
+  ownership ambiguity in parties — keep them rare, flat, and singular;
+  prefer payoffs conditional on the attacker's OWN build ("YOUR fire deals
+  1.5x to poisoned"), which are self-limiting.
+- **Classless identity** (Albion/OSRS): the anti-convergence engine is
+  CONTEXT — per-enemy typed weaknesses mean "best build" has no answer
+  without "against what." This multiplies viable builds with zero balance
+  work.
+
+---
+
+## Part 1 — The laws
+
+1. **TWO BUCKETS AND NO MORE.** All gear/stat damage bonuses fold additively
+   into one bucket. All state payoffs (vs-status multipliers, amplifier
+   marks) fold into a second bucket, highest-wins per state. The two buckets
+   multiply. Nothing else multiplies. This is the whole anti-D3 constitution
+   and it fits in a tooltip.
+2. **A STATE IS A THING YOU CAN SEE.** Every state has an on-body visual and
+   one nameplate icon; every signature proc has bespoke FX and a sound. If
+   an effect cannot earn a channel, it is too small to exist. (FLOURISH
+   CONTRACT precedent, techniques v2.)
+3. **THE SET IS WORTH ONE EXTRA ITEM.** 2pc ~= 2-3% throughput-equivalent,
+   4pc ~= 5-7%. A set bonus never outbids the stats of the slots it rides.
+   The balance ledger test (Part 3) pins this the way epic.test.ts pins
+   enchants.
+4. **BEHAVIOR OVER NUMBERS.** Every 4pc bonus and every signature weapon
+   proc is a mechanic (a state applied, a window opened, a tradeoff taken),
+   never a bare percentage. Bare percentages live in 2pc lines and affixes.
+5. **PROCS NEVER BEGET PROCS.** Already true by construction (proc damage
+   never sets `opts.basic`); becomes written law. Chance-when-hurt keeps
+   its ICD (enemy attack speed is not the player's to normalize). Whiff-0
+   stays sacred.
+6. **HIGHEST WINS, PER SOURCE.** Same-name amplifiers never stack; DoT
+   states stack per-source so a second player is never worthless; the
+   number of distinct amplifier layers a target can carry is capped and the
+   cap is visible.
+7. **THE CRAFT LANE KEEPS ITS EDGE.** Craft-only families (6 leather + 6
+   cloth, CRAFT-LANE SYMMETRY law) get real set words too — the crafter's
+   edge is control and availability; the loudest proc mechanics stay on
+   dropped/heirloom chase sets. Acquisition routes move NOWHERE (loot audit
+   2026-08-14 stands).
+8. **NO BORROWED POWER.** Every new power lives on items and states the
+   player owns and keeps. No seasonal meters, no expiring currencies.
+9. **THE AFFIX INDEX IS UNTOUCHABLE.** Set words are a NEW channel beside
+   affix pools. Editing pool entries/weights/order re-rolls every live
+   instance (documented drift law, roll.ts:26) — this epic never touches a
+   pool's composition.
+10. **ONE SEAM.** Target-conditional damage resolves at exactly one function
+    per direction (top of damageNpc; beside mitigate in damagePlayer). No
+    call site ever pre-multiplies for a state.
+
+## Part 2 — The six phases
+
+### Phase 1 — THE TWO LANES (status coexistence rework)
+
+The keystone everything else reads. Split the five statuses into two lanes:
+
+- **SPARKS** (`burn`, `chill`, `shock`): keep the reaction grammar among
+  THEMSELVES (3 pairs survive: Steamveil, Thunderflash, Glassbreak names
+  carry over). Sparks still detonate each other — elemental play keeps its
+  shipped feel.
+- **AFFLICTIONS** (`bleed`, `venom`): become persistent riders. They coexist
+  with anything, never detonate and are never detonated, stack per-source
+  in power up to an authored cap, tick as today. These are the states that
+  gear reads. The 7 retired spark-affliction reaction pairs are the one
+  real feel change (Part 4, question 1).
+- **One new state: `sunder`** — the game's single amplifier mark ("takes
+  +N% damage from everything", flat, highest-wins, never self-stacks,
+  short). Applied only by deliberate sources (heavy finishers, some 4pc
+  words, a few NPC arts against players). This is the FFXIV-lesson shape:
+  rare, flat, singular.
+- **Wire**: snapshot `status` u8 -> u16 (protocol bump), freeing bits for
+  `sunder` + stack-count nibble for the own-target nameplate. Ambience mask
+  extends; `statusBits` refactors.
+- `applyStatusToNpc` rework: lane-aware apply; `applyStatusToPlayer` gains
+  afflictions-coexist too (players still get no reactions).
+
+### Phase 2 — THE READING EDGE (target-conditional grammar)
+
+The user's exact sentence becomes authorable data:
+
+- **The seam**: `stateMult(targetStatuses, attacker)` folded once at the top
+  of `damageNpc` and beside `mitigate` in `damagePlayer` (law 10). DoT
+  ticks ride the same seam.
+- **Vocabulary additions** (all in the shared/content layer, one interpreter
+  serves players, NPCs, relics, sigils, secrets):
+  - `EnchantEffect` gains `vsState { status, pct }` — gear that reads the
+    body: "Venomed foes take half again from this edge."
+  - `AbilityDef` gains `vs?: { status, mult, consume?: boolean }` —
+    abilities with a payoff clause; `consume` spends the state for a
+    bigger, louder answer (the missing consume verb).
+  - `EnchantTrigger` gains `{ on: 'hitState', status, chance }` — procs
+    that wake on striking a marked body (`procMismatch` validator extends
+    to keep it honest).
+  - `StrikeDef` gains `consumes?: { status, mult }` — finisher beats that
+    spend an affliction. The finisher branch (gameServer ~15715) has the
+    target in hand downstream; movesets finally read the world.
+- **Tooltip law**: every vs/consume clause prints as one sentence on the
+  card. No hidden math (GW2 lesson).
+- Rank steps and secret-art rank IVs may upgrade `vs` clauses — Rank IV
+  flourishes gain a synergy axis without new schema.
+
+### Phase 3 — THE HOUSE WORD (set bonuses)
+
+- `EquipmentDef.set?: string` survives compile into `GearInfo`; colorway
+  lots share the family's set id. Explicit field, never name-parsing.
+- `SET_WORDS` registry in content: per set id, thresholds
+  `{ pieces: 2 | 4, name, desc, effects: EnchantEffect[] }`. Cumulative
+  (2pc stays live at 4). Effects reuse the ENTIRE existing vocabulary —
+  including procs (ONE ID law already dedupes a matched set) and Phase 2's
+  `vsState`. Zero new effect plumbing: `setCounts` lands beside
+  `classCounts` in `aggregateGearStats` and folds through `foldEffect` at
+  the same recompute site.
+- **Structure**: sets are 5 pieces; words at 2 and 4; the free 5th slot is
+  design (mix-and-match, a second set's 2pc can ride).
+- **Wave 1 coverage**: the 31 named chase sets (behavioral 4pc words — the
+  louder procs and vs-clauses), the 15 themed mid sets (modest words), and
+  the 12 craft-only families (law 7: strong flat 2pc lines + quieter
+  utility 4pc). Early-game lots get NO words (identity starts where the
+  chase starts, and 60 word-sets would drown the ledger).
+- Item card grows a set block: pieces worn, each word lit/unlit (slotGate
+  pattern), the sentence printed.
+- Examples of the register (names illustrative): Barrowking 4pc "your
+  shield block sunders for 3s"; Adderfang 4pc "your arrows afflict venom,
+  and your venom ticks can crit"; Moonbell 4pc "casting a chilled foe's
+  reaction refunds half the cooldown"; Dharok-shaped risk set on fellbone
+  "below half health, your edge gains up to +30%".
+
+### Phase 4 — THE WEAPON'S TEMPER (native weapon identity)
+
+- The 35 masterworks/regalia (+ select chase bows) each gain ONE native
+  effect through the already-live `effects` channel — mostly `kind:'proc'`
+  (zero exist today) or a `vsState` clause that completes a set's combo.
+  Two loudness tiers: minor temper (state appliers, synergy triggers,
+  short ICD) and signature temper (1-3 wakes per fight, long ICD, bespoke
+  FX + sound; the KINGSBANE precedent — one weapon fighting its own fight
+  — extended to the whole honor roll).
+- Rate law: strike procs already roll per landed swing (never per target);
+  chance-when-hurt keeps ICDs; printed expected-rate on the card.
+- Dead-channel cleanup rides along: melee/archery masterworks may carry
+  `element` so `elementDmg` stops being a 3-of-4-styles dead stat, or the
+  stat is retired from non-caster affix pools (decision at implementation);
+  `EquipmentDef.passive` either gets its first armor authorings via set
+  words or is folded away.
+
+### Phase 5 — THE VISIBLE FIGHT (legibility layer)
+
+- **Buff registry**: `PlayerBuff` gains `id`; `sendBuffs` carries combat
+  buffs (wards, surges, momentum, set states) with a HUD cap of ~6 chips,
+  own-effects first. The invisible-buff era ends.
+- **States on the body**: per-state tint/particle grammar extending
+  `statusAmbience` (venom drip, bleed bead, sunder cracks); own target's
+  nameplate shows state icons + affliction stack count (the u16 nibble);
+  cap 4 icons, yours highlighted (ESO lesson).
+- Reaction/proc/word FX ride the existing `S2CFx` channels; every 4pc word
+  and signature temper lands a SIGNATURES face (FLOURISH CONTRACT).
+- VOICE.md governs every word name, desc, and card sentence. Dash ban.
+  No occult vocabulary anywhere (content-boundaries law); sunder is
+  engineering, afflictions are venom and steel, never curses.
+
+### Phase 6 — THE MARKED WORLD (contextual meta + the ledger)
+
+- `NpcDef.resist`/`weak` (statuses only today) extend to typed DAMAGE
+  lanes: per-family style/element weaknesses (`weakTo`/`resists` on
+  damage), folded at the same seam, surfaced in bestiary/codex copy so
+  players can PLAN a patrol ("the fen prefers fire; bring the cinder
+  edge"). This is the anti-convergence engine: best-build becomes
+  per-target, which multiplies viable builds with zero balance passes.
+- **THE LEDGER**: a balance test in the epic.test.ts mold scores every set
+  word, temper, and vs-clause in throughput-equivalent terms (uptime x
+  magnitude, one currency), pins law 3's ceilings, asserts no set exceeds
+  one-extra-item power, no amplifier stacks, and the two-bucket law holds
+  structurally (a grep-proof that no second multiplicative fold exists).
+
+## Part 3 — The power ledger (starting numbers, tune at ship)
+
+| Channel | Budget (throughput-equivalent) |
+|---|---|
+| 2pc word | 2-3%, flat stat line |
+| 4pc word | 5-7%, behavioral |
+| Full set (2+4) | ~one extra item; hard ceiling 12% |
+| Minor temper | 2-3% |
+| Signature temper | 3-5% (uptime x magnitude) |
+| vs-state payoff | up to 50% conditional, highest-wins, one per state |
+| sunder mark | flat 15-20%, short, never self-stacks |
+
+Conditional payoffs price high on purpose: the player pays in build
+assembly (an applier + a reader across different slots) and the two-bucket
+law caps compounding. TTK brackets remain the merge gate; Phase 1 alone
+must move ZERO numbers (coexistence changes possibility, not damage).
+
+## Part 4 — Open questions (answer at green-light)
+
+1. **The 7 retired spark-affliction reactions.** Clean retire (afflictions
+   ride, sparks react — recommended, one sentence of rules), or keep them
+   reachable behind explicit `consume` verbs only ("Ignition arts detonate
+   bleed")? Retire-then-selectively-restore via set words is the reversible
+   path.
+2. **Buildup meters vs chance application.** The research strongly favors
+   Elden-Ring-style visible buildup (deterministic, earned, telegraphed)
+   over per-hit RNG — but it is a large rework of every applier. Proposal:
+   ship chance-based (already the house grammar), pilot a buildup bar on
+   `sunder` only, revisit.
+3. **Chooseable craft words.** Should the crafter PICK the 2pc stat line at
+   the bench (the ESO crafted-control edge), or are fixed words enough for
+   wave 1? (Fixed recommended for v1; chooseable is a clean follow-on.)
+4. **Resource economy.** Combo points/charges ("spend 3 marks") stay OUT of
+   scope — cooldowns + states + meters are the whole economy. Confirm.
+5. **Wave-1 breadth.** 58 word-sets (31 chase + 15 themed + 12 craft) is a
+   big authoring surface. Ship whole, or chase-sets-first?
+
+---
+
+Related law files this plan defers to: enchanting-v2-plan.md (proc engine),
+combat-v2-plan.md (moveset book, finisher branch), techniques-v2-plan.md
+(Callings/FLOURISH), loot-audit 2026-08-14 (acquisition routes frozen),
+VOICE.md, content boundaries.
