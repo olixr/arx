@@ -184,6 +184,17 @@ export interface WorldSnapshot {
   credits: number;
   calm: Array<{ cellX: number; cellY: number; calmUntil: number }>;
   claimRings: Array<{ x: number; y: number; r: number }>;
+  capitals: Array<{
+    gx: number;
+    gy: number;
+    x: number;
+    y: number;
+    layoutId: string;
+    family: string | null;
+    stage: number;
+    wardsCleared: number;
+    state: 'standing' | 'broken' | 'ember' | 'fallow' | 'unstood';
+  }>;
   /** THE FORESTER'S GLASS: the wild-harvest ledger, one read. */
   growth?: Array<{
     tx: number;

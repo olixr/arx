@@ -44,6 +44,10 @@ export interface FrontierDef {
   strongholdEmberMs: FrontierRange;
   /** The seat rests before new walls rise (long — a capital is an age). */
   strongholdFallowMs: FrontierRange;
+  /** Countries whose heart reads below this tier keep no capital. */
+  capitalTierFloor: number;
+  /** Rough-ground fraction the relaxed capital siting tolerates. */
+  capitalRoughMax: number;
   territoryBias: number;
 }
 
@@ -227,6 +231,8 @@ export const FRONTIER: FrontierDef = {
   holdEmberMs: [15 * 60_000, 20 * 60_000],
   strongholdEmberMs: [25 * 60_000, 35 * 60_000],
   strongholdFallowMs: [12 * 60 * 60_000, 24 * 60 * 60_000],
+  capitalTierFloor: 3,
+  capitalRoughMax: 0.15,
   /**
    * THE TERRITORY FIELD (lived-in-land Phase 5): how hard the land
    * leans toward its country's family — a matching archetype's pick
@@ -434,6 +440,8 @@ export function validateFrontier(raw: unknown): ValidateFrontierResult {
     holdEmberMs: range('holdEmberMs', MIN, 2 * HOUR),
     strongholdEmberMs: range('strongholdEmberMs', MIN, 4 * HOUR),
     strongholdFallowMs: range('strongholdFallowMs', HOUR, 7 * DAY),
+    capitalTierFloor: num('capitalTierFloor', 3, 5, true),
+    capitalRoughMax: num('capitalRoughMax', 0, 0.5),
     territoryBias: num('territoryBias', 1, 10),
   };
   // Unknown keys are refused loudly — a typoed dial must never sit in

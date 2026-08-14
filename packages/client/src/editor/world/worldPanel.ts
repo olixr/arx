@@ -784,6 +784,7 @@ function buildLenses(root: HTMLElement, deps: WorldPanelDeps): void {
   lens('anchors', 'Hearths');
   lens('cells', 'Frontier');
   lens('rings', 'Claims');
+  lens('capitals', 'Capitals');
   lens('danger', 'Danger');
   lens('standing', 'Standing');
   lens('territory', 'Territory');

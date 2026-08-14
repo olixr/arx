@@ -27,6 +27,8 @@ import {
   type PrefabJson,
   type StrongholdDef,
   type StrongholdKnot,
+  KNOT_SPACING,
+  validateStronghold,
 } from '@arx/content';
 import { itemIconUrl } from '../render/icons.js';
 import { iconImg } from '../editor/editorIcons.js';
@@ -37,7 +39,7 @@ import { creatureRender } from './gameRender.js';
 import { lookDesigner } from './lookDesigner.js';
 import { actorBust, actorFigure } from './portraits.js';
 import { entryShare, simulate, type SimAggregate } from './simulate.js';
-import { fetchPrefab, generateStronghold, stagePoi, surveyFrontier } from './api.js';
+import { fetchPrefab, generateStronghold, previewStronghold, stagePoi, surveyFrontier } from './api.js';
 import {
   drawPreviewPins,
   prefabLayers,
@@ -3711,6 +3713,32 @@ function poiDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
         }
         surveyBox.appendChild(tierRow);
       }
+      // THE FULL LADDER closes (strongholds Phase 6): the capital
+      // sweep over the same window — seats, families, and the ground
+      // the ONE-CELL DEBT actually costs.
+      if (stats.capitals) {
+        const capRow = el('div', 'hero-pills');
+        capRow.appendChild(
+          pill(
+            `${stats.capitals.seats} capitals · ${stats.capitals.quietCountries} quiet countries`,
+            'the pure seat sweep over the scan window (settled and layout-less countries lawfully keep none)',
+            'brass',
+          ),
+        );
+        capRow.appendChild(
+          pill(
+            `${stats.capitals.maskedCells} cells masked`,
+            'ground the capitals claim from the site and finds layers — the ONE-CELL DEBT observed',
+          ),
+        );
+        for (const [fam, n] of Object.entries(stats.capitals.byFamily).sort((a, b) => b[1] - a[1])) {
+          capRow.appendChild(pill(`${fam}: ${n}`, 'seats by country family'));
+        }
+        for (const [lid, n] of Object.entries(stats.capitals.byLayout).sort((a, b) => b[1] - a[1])) {
+          capRow.appendChild(pill(`${lid.replace(/^stronghold_/, '')}: ${n}`, 'layout share', 'ink'));
+        }
+        surveyBox.appendChild(capRow);
+      }
       // THE WHOLE LAND (Phase 6): the same scan's finds, holds, and
       // countries — observed, never computed.
       if (stats.finds) {
@@ -4080,6 +4108,24 @@ function strongholdDetail(body: HTMLElement, linkage: HTMLElement, id: string): 
         );
       }
       ctx.globalAlpha = 1;
+      // THE LINT (Phase 6): the one validator, run right here — a
+      // violating knot pair paints HOT RED on the map (parity with
+      // the save gate by construction: it IS the same function).
+      const lint = validateStronghold(draft, { prefab });
+      const violating = new Set<string>();
+      const anchors: Array<readonly [number, number]> = draft.wards.flatMap((w) =>
+        w.knots.map((k) => k.at),
+      );
+      for (let a = 0; a < anchors.length; a++) {
+        for (let b = a + 1; b < anchors.length; b++) {
+          const dx = anchors[a]![0] - anchors[b]![0];
+          const dy = anchors[a]![1] - anchors[b]![1];
+          if (dx * dx + dy * dy < KNOT_SPACING * KNOT_SPACING) {
+            violating.add(`${anchors[a]![0]},${anchors[a]![1]}`);
+            violating.add(`${anchors[b]![0]},${anchors[b]![1]}`);
+          }
+        }
+      }
       drawPreviewPins(
         canvas,
         layers,
@@ -4088,13 +4134,23 @@ function strongholdDetail(body: HTMLElement, linkage: HTMLElement, id: string): 
             w.knots.map((k) => ({
               dx: k.at[0],
               dy: k.at[1],
-              color: k.role === 'sentry' ? '#6fb2d9' : '#d96f6f',
+              color: violating.has(`${k.at[0]},${k.at[1]}`)
+                ? '#ff3b30'
+                : k.role === 'sentry'
+                  ? '#6fb2d9'
+                  : '#d96f6f',
             })),
           ),
           { dx: draft.boss.at[0], dy: draft.boss.at[1], color: '#e8d44c' },
         ],
         380,
       );
+      if (!lint.ok) {
+        const lintBox = el('div', 'muted');
+        lintBox.appendChild(el('b', '', 'The laws refuse this draft:'));
+        for (const err of lint.errors.slice(0, 8)) lintBox.appendChild(el('p', 'muted', err));
+        mapWrap.appendChild(lintBox);
+      }
       mapWrap.innerHTML = '';
       mapWrap.appendChild(canvas);
       const cap = el('div', 'hero-pills');
@@ -4117,8 +4173,51 @@ function strongholdDetail(body: HTMLElement, linkage: HTMLElement, id: string): 
   body.appendChild(
     sect(
       'The war-map',
-      'walls, gates, wards, and every pull — ward boxes outlined, the last stand in gold',
+      'walls, gates, wards, and every pull — ward boxes outlined, the last stand in gold; law violations paint hot red',
       mapWrap,
+    ),
+  );
+
+  // ---------------------------------------------- the stage ladder
+  const ladderWrap = el('div', 'poi-stage-ladder');
+  void (async () => {
+    for (let stage = 0; stage <= 3; stage++) {
+      try {
+        const shown = await previewStronghold(draft.id, stage);
+        const z = zoneFromJson(shown.zone);
+        const zl: PreviewLayers = {
+          width: z.width,
+          height: z.height,
+          ground: z.ground,
+          detail: z.detail,
+          elev: z.elev,
+        };
+        const col = el('div', 'poi-stage-col');
+        const canvas = renderLayersPreview(zl, 168);
+        drawPreviewPins(
+          canvas,
+          zl,
+          (z.spawns ?? []).map((sp) => ({
+            dx: Math.floor(sp.x - z.origin.x),
+            dy: Math.floor(sp.y - z.origin.y),
+            color: sp.patrol ? '#6fb2d9' : '#d96f6f',
+          })),
+          168,
+        );
+        col.appendChild(canvas);
+        const bodies = (z.spawns ?? []).reduce((n, sp) => n + sp.count, 0);
+        col.appendChild(pill(`stage ${stage} · ${bodies} bodies`, 'the re-manned watch, composed for real'));
+        ladderWrap.appendChild(col);
+      } catch {
+        // A draft not yet saved has no ladder — the bench stays calm.
+      }
+    }
+  })();
+  body.appendChild(
+    sect(
+      'The stage ladder',
+      'the SAME walls at rungs 0..3 — boldness re-mans the optional wards and thickens the watch, never moves a wall (seen, not trusted)',
+      ladderWrap,
     ),
   );
 
@@ -4508,7 +4607,7 @@ function frontierDetail(body: HTMLElement, linkage: HTMLElement): void {
   const bandDial = (
     label: string,
     hint: string,
-    key: 'emberLingerMs' | 'fallowMs' | 'stageMs' | 'scatterLingerMs' | 'creepMs' | 'peddlerLingerMs' | 'holdEmberMs',
+    key: 'emberLingerMs' | 'fallowMs' | 'stageMs' | 'scatterLingerMs' | 'creepMs' | 'peddlerLingerMs' | 'holdEmberMs' | 'strongholdEmberMs' | 'strongholdFallowMs',
     unitMs: number,
     lo: number,
     hi: number,
@@ -4577,6 +4676,10 @@ function frontierDetail(body: HTMLElement, linkage: HTMLElement): void {
         () => `dissolves in ${humanMs(draft.emberLingerMs[0])}–${humanMs(draft.emberLingerMs[1])}`),
       bandDial('hold ember', 'a broken WAR-GROUND stands longer (minutes)', 'holdEmberMs', MINU, 1, 120,
         () => `a felled hold savors ${humanMs(draft.holdEmberMs[0])}–${humanMs(draft.holdEmberMs[1])}`),
+      bandDial('capital ember', 'a broken CAPITAL is savored longest (minutes)', 'strongholdEmberMs', MINU, 1, 240,
+        () => `a felled capital stands ${humanMs(draft.strongholdEmberMs[0])}–${humanMs(draft.strongholdEmberMs[1])}`),
+      bandDial('capital fallow', 'the seat rests between ages (hours)', 'strongholdFallowMs', HOUR, 1, 168,
+        () => `new walls rise after ${humanMs(draft.strongholdFallowMs[0])}–${humanMs(draft.strongholdFallowMs[1])}`),
       bandDial('fallow rest', 'the meadow heals (hours)', 'fallowMs', HOUR, 0.02, 336,
         () => `may host again in ${humanMs(draft.fallowMs[0])}–${humanMs(draft.fallowMs[1])}`),
       numDial('dignity', 'no stand/dissolve within this many tiles of anyone', 'dignityTiles', 8, 256, 1,

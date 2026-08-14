@@ -466,3 +466,37 @@ test('stage re-mans and thickens: bolder capitals muster more, never deadlier', 
   assert.equal(maxLevel(bold), maxLevel(calm), 'busier, never deadlier (THE FREQUENCY LAW)');
   assert.deepEqual(bold.ground, calm.ground, 'boldness never moves a wall');
 });
+
+// ---- THE SURVEYOR'S GLASS II (Phase 6) -------------------------------
+
+import { simulateLandSteps } from './finds.js';
+
+test('the density survey walks the full ladder: capitals swept, mask observed, deterministic', () => {
+  const ctx: PoiContext = {
+    anchors: SETTLED_ANCHORS,
+    zoneRects: [{ x: -96, y: 16, w: 96, h: 64 }],
+    claimRings: [],
+    defs: [...POI_DEFS.values()],
+    minors: [...MINOR_DEFS.values()],
+    prefabs,
+    capitals: [],
+  };
+  const run = () => {
+    const gen = simulateLandSteps(SEED, ctx, 260);
+    let step = gen.next();
+    while (!step.done) step = gen.next();
+    return step.value;
+  };
+  const a = run();
+  const b = run();
+  assert.deepEqual(a, b, 'the survey is deterministic');
+  assert.ok(a.capitals.seats >= 2, `only ${a.capitals.seats} capitals in the sweep`);
+  assert.ok(a.capitals.maskedCells >= 1, 'the ONE-CELL DEBT must be visible');
+  assert.ok(a.capitals.quietCountries >= 1, 'some countries lawfully keep no capital');
+  let byLayoutTotal = 0;
+  for (const n of Object.values(a.capitals.byLayout)) byLayoutTotal += n;
+  assert.equal(byLayoutTotal, a.capitals.seats, 'every seat names its layout');
+  // The mask holds inside the sim: sites + masked cells + empty account
+  // for every evaluated cell.
+  assert.equal(a.sites + a.empty + a.capitals.maskedCells, a.evaluated);
+});

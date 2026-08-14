@@ -98,6 +98,7 @@ import {
 } from '../db/voice.js';
 import { saveVoiceFile, unlinkVoiceFile } from '../voice/store.js';
 import { previewPoi } from '../world/pois.js';
+import { composeStronghold } from '../world/strongholds.js';
 import { simulateLandSteps, type LandSimStats } from '../world/finds.js';
 import type { GameServer } from '../game/gameServer.js';
 
@@ -1153,6 +1154,45 @@ export function createMapsApi(
           sendJson(res, 200, { ok: true, outcome });
           return true;
         }
+      }
+
+      if (url.pathname === '/dev/strongholds/preview' && req.method === 'POST') {
+        // THE STAGE LADDER (Phase 6): compose a real capital at the
+        // asked stage/epoch on a synthetic seat — the re-manned wards
+        // and thickened watch SEEN, not trusted.
+        let body: { id?: string; stage?: number; epoch?: number };
+        try {
+          body = JSON.parse(await readBody(req)) as { id?: string; stage?: number; epoch?: number };
+        } catch (err) {
+          sendJson(res, 400, { error: (err as Error).message });
+          return true;
+        }
+        const def = STRONGHOLD_DEFS.get(String(body.id ?? ''));
+        const prefab = def ? game.poiPrefab(def.prefab) : undefined;
+        if (!def || !prefab) {
+          sendJson(res, 404, { error: `no layout '${String(body.id)}' on the shelf` });
+          return true;
+        }
+        const seat = {
+          gx: 0,
+          gy: 0,
+          x: Math.floor(prefab.width / 2),
+          y: Math.floor(prefab.height / 2),
+          rect: { x: 0, y: 0, w: prefab.width, h: prefab.height },
+          family: def.family,
+          tier: def.tiers[1],
+          layoutId: def.id,
+        };
+        const zone = composeStronghold(
+          config.worldSeed,
+          seat,
+          def,
+          prefab,
+          Math.max(0, Math.floor(body.epoch ?? 0)),
+          Math.max(0, Math.min(3, Math.floor(body.stage ?? 0))),
+        );
+        sendJson(res, 200, { zone: zoneToJson(zone) });
+        return true;
       }
 
       if (url.pathname === '/dev/strongholds/generate' && req.method === 'POST') {

@@ -93,3 +93,22 @@ test('replaceFrontier swaps in place — same object, new weather, live jitters'
   }
   assert.equal(emberLingerFor(1337, 5, 5, 0), before);
 });
+
+test('the capital dials refuse out-of-law values by name (strongholds Phase 6)', () => {
+  const bad1 = { ...AUTHORED_FRONTIER, strongholdEmberMs: [1000, 500] as [number, number] };
+  const r1 = validateFrontier(bad1);
+  assert.ok(!r1.ok && r1.errors.some((e) => e.includes('strongholdEmberMs')));
+  const bad2 = { ...AUTHORED_FRONTIER, capitalTierFloor: 2 };
+  const r2 = validateFrontier(bad2);
+  assert.ok(!r2.ok && r2.errors.some((e) => e.includes('capitalTierFloor')));
+  const bad3 = { ...AUTHORED_FRONTIER, capitalRoughMax: 0.9 };
+  const r3 = validateFrontier(bad3);
+  assert.ok(!r3.ok && r3.errors.some((e) => e.includes('capitalRoughMax')));
+  // The cross-law: a capital is savored longer than a hold.
+  const bad4 = {
+    ...AUTHORED_FRONTIER,
+    strongholdEmberMs: [60_000, 90_000] as [number, number],
+  };
+  const r4 = validateFrontier(bad4);
+  assert.ok(!r4.ok && r4.errors.some((e) => e.includes('savored longer than a hold')));
+});

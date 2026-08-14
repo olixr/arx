@@ -9179,6 +9179,18 @@ export class GameServer {
     credits: number;
     calm: Array<{ cellX: number; cellY: number; calmUntil: number }>;
     claimRings: Array<{ x: number; y: number; r: number }>;
+    /** THE CAPITALS (strongholds Phase 6): every known seat, one read. */
+    capitals: Array<{
+      gx: number;
+      gy: number;
+      x: number;
+      y: number;
+      layoutId: string;
+      family: string | null;
+      stage: number;
+      wardsCleared: number;
+      state: 'standing' | 'broken' | 'ember' | 'fallow' | 'unstood';
+    }>;
     /** THE FORESTER'S GLASS (second-growth Phase 6): every wild
      *  harvest still healing — the regrowth wave, one read. */
     growth: Array<{
@@ -9229,6 +9241,28 @@ export class GameServer {
       credits: this.frontierCredits,
       calm,
       claimRings: this.claimRings().map((r) => ({ ...r })),
+      capitals: [...(this.strongholdLedger ?? new Map<string, never>())].map(([key, row]) => {
+        const [gxs, gys] = key.split(',');
+        return {
+          gx: Number(gxs),
+          gy: Number(gys),
+          x: row.anchorX,
+          y: row.anchorY,
+          layoutId: row.layoutId,
+          family: STRONGHOLD_DEFS.get(row.layoutId)?.family ?? null,
+          stage: row.stage,
+          wardsCleared: row.wardsCleared,
+          state: row.fallowUntil
+            ? ('fallow' as const)
+            : row.emberUntil
+              ? ('ember' as const)
+              : this.strongholdLive.has(key)
+                ? this.strongholdGarrisonStands(key)
+                  ? ('standing' as const)
+                  : ('broken' as const)
+                : ('unstood' as const),
+        };
+      }),
       growth: [...this.world.growthLedger.values()].map((r) => ({
         tx: r.tx,
         ty: r.ty,

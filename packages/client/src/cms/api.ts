@@ -328,6 +328,17 @@ export async function generateStronghold(body: {
   ).json()) as StrongholdRoll;
 }
 
+/** THE STAGE LADDER: a real capital composed at a stage, for the bench. */
+export async function previewStronghold(id: string, stage: number): Promise<{ zone: ZoneJson }> {
+  return (await (
+    await request('/dev/strongholds/preview', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id, stage }),
+    })
+  ).json()) as { zone: ZoneJson };
+}
+
 /** Bank a rolled layout prefab into the shared library (save order: prefab, then def). */
 export async function savePrefabJson(prefab: PrefabJson): Promise<void> {
   await request(`/dev/prefabs/${prefab.id}`, {
@@ -406,6 +417,14 @@ export interface PoiSimStats {
   /** Promotion runs UNGATED in a fresh scan — the upper bound, and the bench says so. */
   holds: { sites: number; byDef: Record<string, number> };
   territory: Record<string, { sites: number; familyTrue: number }>;
+  /** THE CAPITALS, observed (strongholds Phase 6). */
+  capitals?: {
+    seats: number;
+    byLayout: Record<string, number>;
+    byFamily: Record<string, number>;
+    quietCountries: number;
+    maskedCells: number;
+  };
 }
 
 /** The observed panel: the server runs the REAL scaffold over a fresh scan. */

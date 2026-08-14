@@ -64,6 +64,7 @@ export class WorldState {
   credits = 0;
   calm: WorldSnapshot['calm'] = [];
   claimRings: WorldSnapshot['claimRings'] = [];
+  capitals: WorldSnapshot['capitals'] = [];
   zones: MapListEntry[] = [];
   poiDefs: WorldSnapshot['poiDefs'] = [];
   /** Server-side advisory warnings from the last read/save. */
@@ -92,6 +93,8 @@ export class WorldState {
     grid: false,
     /** Claimed-hearth yards — the exclusion mask, drawn honest. */
     rings: false,
+    /** THE CAPITALS (strongholds Phase 6) — seats, states, and mask. */
+    capitals: true,
     /** The political map (factions Phase 6) — marches and counters. */
     standing: false,
     /** THE COUNTRY wash (lived-in-land Phase 5/6) — whose land is whose. */
@@ -148,6 +151,7 @@ export class WorldState {
     this.credits = snap.credits;
     this.calm = snap.calm;
     this.claimRings = snap.claimRings;
+    this.capitals = snap.capitals ?? [];
     this.poiDefs = snap.poiDefs;
     this.families = snap.families ?? [];
     this.growth = snap.growth ?? [];

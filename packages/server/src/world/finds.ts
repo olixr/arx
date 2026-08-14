@@ -19,6 +19,7 @@ import {
   type ZoneSpawn,
 } from '@arx/content';
 import { roadBearingAt } from '@arx/content';
+import { capitalMasked, strongholdLayouts, strongholdSeat } from './strongholds.js';
 import {
   POI_CELL,
   intersectsRings,
@@ -429,6 +430,20 @@ export interface LandSimStats {
   holds: { sites: number; byDef: Record<string, number> };
   /** THE COUNTRY, observed: sites standing in each family's own land. */
   territory: Record<string, { sites: number; familyTrue: number }>;
+  /**
+   * THE CAPITALS, observed (strongholds Phase 6): the pure seat sweep
+   * over the scan's lattice window, and what it costs the cell layers
+   * (the ONE-CELL DEBT made visible).
+   */
+  capitals: {
+    seats: number;
+    byLayout: Record<string, number>;
+    byFamily: Record<string, number>;
+    /** Countries in the window whose heart lawfully keeps no capital. */
+    quietCountries: number;
+    /** Cells the standing seats mask out of the site/finds layers. */
+    maskedCells: number;
+  };
 }
 
 /**
@@ -456,8 +471,39 @@ export function* simulateLandSteps(
     finds: { total: 0, histogram: {}, byDef: {} },
     holds: { sites: 0, byDef: {} },
     territory: {},
+    capitals: { seats: 0, byLayout: {}, byFamily: {}, quietCountries: 0, maskedCells: 0 },
   };
   const atlas = familiesOf(ctx.defs);
+  // THE CAPITAL SWEEP runs FIRST: the seats mask the cell layers, so
+  // the survey must know them before a single cell rolls (the same
+  // order the live server keeps via the lazy poiCtx computation).
+  const seatCtx = {
+    anchors: ctx.anchors,
+    zoneRects: ctx.zoneRects,
+    claimRings: ctx.claimRings,
+    layouts: strongholdLayouts(),
+    prefabs: ctx.prefabs,
+    families: atlas,
+  };
+  const capitalRects: Array<{ x: number; y: number; w: number; h: number }> = [];
+  {
+    const latticeR = Math.ceil((64 * POI_CELL) / 384) + 1;
+    for (let gy = -latticeR; gy <= latticeR; gy++) {
+      for (let gx = -latticeR; gx <= latticeR; gx++) {
+        const seat = strongholdSeat(seed, gx, gy, seatCtx);
+        if (!seat) {
+          stats.capitals.quietCountries++;
+          continue;
+        }
+        stats.capitals.seats++;
+        stats.capitals.byLayout[seat.layoutId] = (stats.capitals.byLayout[seat.layoutId] ?? 0) + 1;
+        stats.capitals.byFamily[seat.family] = (stats.capitals.byFamily[seat.family] ?? 0) + 1;
+        capitalRects.push(seat.rect);
+      }
+      yield;
+    }
+  }
+  const surveyCtx: PoiContext = { ...ctx, capitals: capitalRects };
   for (const { cx, cy } of poiScanOrder(64)) {
     if (stats.evaluated >= maxCells) break;
     const centerX = cx * POI_CELL + POI_CELL / 2;
@@ -468,8 +514,12 @@ export function* simulateLandSteps(
       continue;
     }
     stats.evaluated++;
+    if (capitalMasked(cx * POI_CELL, cy * POI_CELL, POI_CELL, POI_CELL, capitalRects)) {
+      stats.capitals.maskedCells++;
+      continue; // a capital's ground deals nothing — count it and move on
+    }
     if (stats.evaluated % batch === 0) yield;
-    const site = poiForCell(seed, cx, cy, epoch, ctx, undefined, true);
+    const site = poiForCell(seed, cx, cy, epoch, surveyCtx, undefined, true);
     if (site) {
       stats.sites++;
       const rec = (stats.byDef[site.defId] ??= { count: 0, tiers: {}, prefabs: {} });
@@ -495,7 +545,7 @@ export function* simulateLandSteps(
       cx,
       cy,
       epoch,
-      ctx,
+      surveyCtx,
       site ? { x: site.anchorX, y: site.anchorY } : null,
     );
     stats.finds.total += finds.length;

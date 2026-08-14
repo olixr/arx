@@ -573,6 +573,7 @@ export class WorldView {
     }
 
     this.drawClaimRings(ctx);
+    this.drawCapitals(ctx);
     this.drawGrowth(ctx);
     this.drawFamilyLines(ctx);
     this.drawCells(ctx, t0.x, t0.y, t1.x, t1.y);
@@ -731,6 +732,70 @@ export class WorldView {
       ctx.arc(x, y, 2.5, 0, Math.PI * 2);
       ctx.fillStyle = '#6fb2d9';
       ctx.fill();
+    }
+  }
+
+  /**
+   * THE CAPITALS (strongholds Phase 6): every known seat drawn as the
+   * landmark it is — the biggest diamond on the map, family-colored,
+   * with the ONE-CELL DEBT's mask washed under it and the lifecycle
+   * spoken in the poi dialect (ember dashed, fallow hollow).
+   */
+  private drawCapitals(ctx: CanvasRenderingContext2D): void {
+    if (!this.ws.show.capitals) return;
+    const FAMILY_INK: Record<string, string> = {
+      goblin: '#6fae4a',
+      brigand: '#c2703e',
+      wolfkin: '#8a94a8',
+      gnoll: '#c9a34c',
+      dead: '#9a7fc9',
+    };
+    for (const cap of this.ws.capitals) {
+      const x = this.sx(cap.x);
+      const y = this.sy(cap.y);
+      if (x < -80 || y < -80 || x > this.canvas.clientWidth + 80 || y > this.canvas.clientHeight + 80) {
+        continue;
+      }
+      const ink = FAMILY_INK[cap.family ?? ''] ?? '#d9c7a0';
+      // The mask wash: the ground the capital claims from the layers.
+      const half = (120 / 2 + 24) * this.scale;
+      ctx.fillStyle = 'rgba(217, 164, 65, 0.05)';
+      ctx.fillRect(x - half, y - half, half * 2, half * 2);
+      const r = 9; // the biggest diamond the map draws — a landmark
+      ctx.beginPath();
+      ctx.moveTo(x, y - r);
+      ctx.lineTo(x + r, y);
+      ctx.lineTo(x, y + r);
+      ctx.lineTo(x - r, y);
+      ctx.closePath();
+      if (cap.state === 'fallow') {
+        ctx.setLineDash([]);
+        ctx.strokeStyle = ink;
+        ctx.lineWidth = 1.5;
+        ctx.stroke(); // hollow ghost: the seat rests
+      } else {
+        ctx.fillStyle = ink;
+        ctx.fill();
+        if (cap.state === 'ember' || cap.state === 'broken') {
+          ctx.setLineDash([4, 3]);
+          ctx.strokeStyle = '#e8823d';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+      // Stage pips under the diamond (the chart's own dialect).
+      for (let i = 0; i < cap.stage; i++) {
+        ctx.fillStyle = ink;
+        ctx.fillRect(x - 6 + i * 5, y + r + 3, 3, 2);
+      }
+      // Broken-ward ticks over it: the chapters already taken.
+      let broken = 0;
+      for (let b = cap.wardsCleared; b > 0; b >>= 1) broken += b & 1;
+      for (let i = 0; i < Math.min(broken, 9); i++) {
+        ctx.fillStyle = '#e8d44c';
+        ctx.fillRect(x - 10 + i * 3, y - r - 5, 2, 3);
+      }
     }
   }
 

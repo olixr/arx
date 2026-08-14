@@ -9,6 +9,7 @@ import {
   type PrefabDef,
   type StrongholdDef,
   type ZoneDef,
+  FRONTIER,
 } from '@arx/content';
 import {
   TILE_DEFS,
@@ -55,9 +56,6 @@ export const CAPITAL_CLEARANCE = 24;
 
 /** Sampled probe stride over the footprint. */
 const PROBE_STRIDE = 4;
-
-/** Fraction of sampled probes allowed to refuse (water/rock pockets). */
-const ROUGH_GROUND_MAX = 0.15;
 
 /** Jittered anchor candidates per seat. */
 const SEAT_TRIES = 8;
@@ -106,7 +104,7 @@ export function strongholdSeat(
   const family = territoryLatticeFamily(hash, ctx.families);
   if (!family) return null;
   const tier = dangerAt(seed, Math.round(px), Math.round(py), ctx.anchors);
-  if (tier < 3) return null;
+  if (tier < FRONTIER.capitalTierFloor) return null;
   const pool = ctx.layouts.filter(
     (d) => d.family === family && d.weight > 0 && tier >= d.tiers[0] && tier <= d.tiers[1],
   );
@@ -161,7 +159,7 @@ export function strongholdSeat(
         if (probe !== 'grass' && probe !== 'forest') rough++;
       }
     }
-    if (rough / probes > ROUGH_GROUND_MAX) continue;
+    if (rough / probes > FRONTIER.capitalRoughMax) continue;
     // THE FOUND DOOR, honored by the land: every gate apron walkable.
     let apronsOk = true;
     for (const g of gates) {
