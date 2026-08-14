@@ -8022,8 +8022,9 @@ export interface GreatStyle {
   blade?: GreatbladeKind;
   /** Head silhouette (greataxe dialect). Default 'crescent'. */
   head?: GreataxeHead;
-  /** Maul head build. Default 'block'; 'bell' is a cast bell. */
-  maul?: 'block' | 'bell';
+  /** Maul head build. Default 'block'; 'bell' is a cast bell; 'club'
+   *  is THE TORN LIMB — a knotted greatclub that was lately a tree. */
+  maul?: 'block' | 'bell' | 'club';
   /** Steel / head color. */
   color: string;
   /** Lit edge or top plane; defaults shade(+34). */
@@ -8213,6 +8214,16 @@ export const GREAT_STYLES: Record<string, GreatStyle> = {
     guardColor: '#4a4554', grip: '#5b4028', len: 0.96,
   },
 
+  // ---- THE TORN LIMB (docs/ogres-plan.md): the ogre's greatclub —
+  // a knotted young oak, torn up, trimmed by teeth, studded with
+  // whatever iron was in the sack. Wound rawhide where the fists go.
+  // The one two-hander in the game no smith will admit to.
+  ogre_greatclub: {
+    kind: 'maul', maul: 'club', len: 1.08, color: '#8a6a42', edge: '#b8946a',
+    fuller: '#4e3a24', guardColor: '#565046', grip: '#8a6a42', wrap: '#a08a5c',
+    notched: true,
+  },
+
   // ---- THE VAULT OF NAMES: the chase two-handers. Every one of these
   // is a story first and a weapon second — the details are the plot.
   // The blade that broke the toll-bar: road-iron scarred by the work,
@@ -8325,6 +8336,80 @@ export function drawGreatweapon(
   const gripC = hurt ? '#ffffff' : (st.grip ?? '#4a3a2a');
 
   if (st.kind === 'maul') {
+    if (st.maul === 'club') {
+      // THE TORN LIMB — the greatclub: no smith ever touched it. One
+      // continuous timber, thin at the fists and swelling to a knotted
+      // head, a snapped branch-fork for a horn, iron studs somebody
+      // hammered in the flat way. The whole silhouette is a taper —
+      // the anti-maul: mass grown, not mounted.
+      const w0 = 0.032 * s;
+      const w1 = 0.108 * s;
+      const headAt = tip - 0.3 * LEN;
+      ctx.fillStyle = steel;
+      ctx.beginPath();
+      ctx.moveTo(butt, -w0);
+      // The shaft swells with two growth knots on the top edge.
+      ctx.lineTo(butt + 0.3 * LEN, -w0 - 0.012 * s);
+      ctx.lineTo(butt + 0.36 * LEN, -w0 - 0.03 * s);
+      ctx.lineTo(butt + 0.42 * LEN, -w0 - 0.014 * s);
+      ctx.lineTo(headAt, -w1 * 0.82);
+      ctx.lineTo(tip - 0.05 * s, -w1);
+      ctx.lineTo(tip, -w1 * 0.5);
+      ctx.lineTo(tip, w1 * 0.55);
+      ctx.lineTo(tip - 0.06 * s, w1);
+      ctx.lineTo(headAt + 0.04 * s, w1 * 0.86);
+      ctx.lineTo(butt + 0.5 * LEN, w0 + 0.026 * s);
+      ctx.lineTo(butt, w0);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // The snapped fork: the branch that didn't come along whole.
+        ctx.fillStyle = steel;
+        ctx.beginPath();
+        ctx.moveTo(headAt + 0.03 * s, -w1 * 0.7);
+        ctx.lineTo(headAt + 0.085 * s, -w1 - 0.055 * s);
+        ctx.lineTo(headAt + 0.125 * s, -w1 - 0.04 * s);
+        ctx.lineTo(headAt + 0.085 * s, -w1 * 0.55);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = dark;
+        ctx.beginPath();
+        ctx.ellipse(headAt + 0.105 * s, -w1 - 0.046 * s, 0.014 * s, 0.009 * s, -0.4, 0, Math.PI * 2);
+        ctx.fill();
+        // The lit top plane of the head mass — the camera's law.
+        ctx.fillStyle = edge;
+        ctx.beginPath();
+        ctx.moveTo(headAt, -w1 * 0.78);
+        ctx.lineTo(tip - 0.05 * s, -w1 * 0.96);
+        ctx.lineTo(tip - 0.02 * s, -w1 * 0.6);
+        ctx.lineTo(headAt + 0.03 * s, -w1 * 0.44);
+        ctx.closePath();
+        ctx.fill();
+        // The bark seam — one dark grain line down the shaft.
+        ctx.strokeStyle = dark;
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.beginPath();
+        ctx.moveTo(butt + 0.14 * LEN, w0 * 0.4);
+        ctx.quadraticCurveTo(butt + 0.55 * LEN, w0 * 1.3, headAt + 0.05 * s, w1 * 0.4);
+        ctx.stroke();
+        // Iron studs, hammered in the flat way — the one smithing the
+        // owner ever did. guard-toned so they read as metal.
+        ctx.fillStyle = guard;
+        for (const t of [0.76, 0.85, 0.93] as const) {
+          ctx.beginPath();
+          ctx.arc(butt + t * LEN, -w1 * 0.2, Math.max(1.2, 0.016 * s), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // The rawhide grip station.
+        if (st.wrap) {
+          ctx.fillStyle = st.wrap;
+          ctx.fillRect(butt + 0.08 * LEN, -w0 - 0.006 * s, 0.02 * s, 2 * w0 + 0.012 * s);
+          ctx.fillRect(butt + 0.16 * LEN, -w0 - 0.008 * s, 0.02 * s, 2 * w0 + 0.016 * s);
+        }
+      }
+      if (!hurt && st.fx) drawBladeFx(ctx, st, headAt, tip, s, nowMs);
+      return;
+    }
     // The war haft: butt to collar, wearing the same furniture the
     // rest of the school earns — wrap stations and a real pommel.
     const collar = tip - 0.28 * LEN;

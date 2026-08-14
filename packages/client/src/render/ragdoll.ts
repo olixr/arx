@@ -87,6 +87,7 @@ import {
   type SkeletonLook,
 } from './rig.js';
 import { type GolemLook } from './golems.js';
+import { type OgreLook } from './ogre.js';
 
 const BOOT = '#4a3324';
 
@@ -490,6 +491,9 @@ export interface HumanoidCorpseLook {
   /** Set = this corpse is a golem: the construct comes APART — the
    *  stack slides, the plates spring, the furnace goes out. */
   gol?: GolemLook;
+  /** Set = this corpse is an ogre: THE FELLED HILL — the gut is the
+   *  mound, the jaw still juts, the club lies by the open hand. */
+  ogr?: OgreLook;
   /** Worn equipment — the corpse keeps everything it died in. */
   gear?: CorpseGear;
 }
@@ -549,6 +553,10 @@ export function drawHumanoidRagdoll(
   }
   if (look.gol) {
     drawGolemRagdoll(ctx, rag, f, look.size, look.gol);
+    return;
+  }
+  if (look.ogr) {
+    drawOgreRagdoll(ctx, rag, f, look.size, look.ogr, look.gear, nowMs);
     return;
   }
   const s = f.s * look.size;
@@ -1538,6 +1546,179 @@ export interface BeastCorpseLook {
  * as the live drawBeast, hanging off the simulated spine — half the
  * legs behind the mass, half in front, tail limp on the ground.
  */
+/**
+ * THE FELLED HILL — the ogre's fall (docs/ogres-plan.md). No collapse
+ * of parts: one great body down whole. The gut is the mound the whole
+ * sprawl drapes off, the jaw still juts skyward with its tusk, the
+ * hair mat spills, the wrap and rope stay cinched, and the greatclub
+ * lies along the open hand — a hill the road will grow around.
+ */
+function drawOgreRagdoll(
+  ctx: CanvasRenderingContext2D,
+  rag: Ragdoll,
+  f: RagFrame,
+  size: number,
+  ogr: OgreLook,
+  gear: CorpseGear | undefined,
+  nowMs: number,
+): void {
+  const s = f.s * size;
+  const g = rag.pts;
+  const pelvis = P(f, g[H.pelvis]!);
+  const chest = P(f, g[H.chest]!);
+  const head = P(f, g[H.head]!);
+  const seed = ogr.seed ?? 0;
+  let ux = chest.x - pelvis.x;
+  let uy = chest.y - pelvis.y;
+  const ul = Math.hypot(ux, uy) || 1e-4;
+  ux /= ul;
+  uy /= ul;
+  const nx = -uy;
+  const ny = ux;
+  const hide = ogr.hide;
+  const legW = s * 0.15;
+  const shinW = s * 0.13;
+  const armW = s * 0.125;
+  const foreW = s * 0.14; // the inverted taper survives the fall
+
+  // Far limbs behind the mound.
+  const drawLegO = (knee: number, foot: number, hipSide: number): void => {
+    const hip = { x: pelvis.x + nx * hipSide * s * 0.1, y: pelvis.y + ny * hipSide * s * 0.1 };
+    const k = P(f, g[knee]!);
+    const ft = P(f, g[foot]!);
+    limb(ctx, hip, k, ft, shade(hide, -5), shade(hide, -13), legW, shinW);
+    // The bare slab foot.
+    chip(ctx, ft, k, s * 0.15, s * 0.09, shade(hide, -4));
+  };
+  const drawArmO = (elbow: number, hand: number, side: number): void => {
+    const sh = { x: chest.x + nx * side * s * 0.17, y: chest.y + ny * side * s * 0.17 };
+    const el = P(f, g[elbow]!);
+    const hd = P(f, g[hand]!);
+    limb(ctx, sh, el, hd, shade(hide, -3), hide, armW, foreW);
+    // The ham fist, open at last.
+    chip(ctx, hd, el, s * 0.13, s * 0.11, shade(hide, 2));
+  };
+  drawLegO(H.kneeL, H.footL, -1);
+  drawArmO(H.elbowL, H.handL, -1);
+
+  // THE MOUND: the gut spans pelvis to chest, rotated to the trunk's
+  // own axis — the widest thing in the sprawl, as in life.
+  const gx = (pelvis.x + chest.x) / 2;
+  const gy = (pelvis.y + chest.y) / 2;
+  const trunkAng = Math.atan2(uy, ux);
+  ctx.save();
+  ctx.translate(gx, gy);
+  ctx.rotate(trunkAng);
+  ctx.fillStyle = hide;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, ul * 0.72, s * 0.3 * (0.92 + 0.16 * ogr.heavy), 0, 0, Math.PI * 2);
+  ctx.fill();
+  // The belly plane rolled up; the sky still lights the summit.
+  ctx.fillStyle = ogr.belly;
+  ctx.beginPath();
+  ctx.ellipse(ul * 0.06, -s * 0.07, ul * 0.44, s * 0.15, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Two warts survive the fall (seed-laid, same as in life).
+  ctx.fillStyle = shade(hide, -14);
+  for (let i = 0; i < 2; i++) {
+    const wx2 = (((seed >> (i * 3)) & 7) / 7 - 0.5) * ul * 0.9;
+    const wy2 = (((seed >> (i * 3 + 8)) & 7) / 7 - 0.5) * s * 0.3;
+    ctx.beginPath();
+    ctx.arc(wx2, wy2, s * 0.016, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // The wrap and its rope, still cinched at the pelvis end.
+  ctx.fillStyle = ogr.wrap;
+  ctx.beginPath();
+  chamferRect(ctx, -ul * 0.72, -s * 0.2, ul * 0.3, s * 0.4, s * 0.05);
+  ctx.fill();
+  ctx.strokeStyle = ogr.rope;
+  ctx.lineWidth = Math.max(1.5, s * 0.024);
+  ctx.beginPath();
+  ctx.moveTo(-ul * 0.44, -s * 0.22);
+  ctx.quadraticCurveTo(-ul * 0.5, 0, -ul * 0.44, s * 0.22);
+  ctx.stroke();
+  ctx.restore();
+
+  // Near limbs over the mound.
+  drawLegO(H.kneeR, H.footR, 1);
+
+  // THE HEAD, sideways: the slope runs into the ground, the jaw still
+  // juts with one tusk standing — the profile grammar, fallen over.
+  let hx2 = head.x - chest.x;
+  let hy2 = head.y - chest.y;
+  const hl = Math.hypot(hx2, hy2) || 1e-4;
+  hx2 /= hl;
+  hy2 /= hl;
+  const hr = s * 0.15;
+  ctx.save();
+  ctx.translate(head.x, head.y);
+  ctx.rotate(Math.atan2(hy2, hx2));
+  ctx.fillStyle = hide;
+  ctx.beginPath();
+  // One closed silhouette: occiput → slope → brow → jaw jut.
+  ctx.moveTo(-hr * 0.9, -hr * 0.2);
+  ctx.lineTo(-hr * 0.4, -hr * 0.75);
+  ctx.lineTo(hr * 0.55, -hr * 0.5);
+  ctx.lineTo(hr * 0.75, -hr * 0.1);
+  ctx.lineTo(hr * 1.15, hr * 0.35);
+  ctx.lineTo(hr * 0.9, hr * 0.7);
+  ctx.lineTo(-hr * 0.7, hr * 0.6);
+  ctx.closePath();
+  ctx.fill();
+  // The hair mat spills off the occiput.
+  ctx.fillStyle = ogr.hair;
+  ctx.beginPath();
+  ctx.moveTo(-hr * 0.5, -hr * 0.7);
+  ctx.quadraticCurveTo(-hr * 1.3, -hr * 0.5, -hr * 1.15, hr * 0.35);
+  ctx.lineTo(-hr * 0.7, hr * 0.4);
+  ctx.closePath();
+  ctx.fill();
+  // The tusk, still proud of the fallen jaw.
+  ctx.fillStyle = ogr.teeth;
+  ctx.beginPath();
+  ctx.moveTo(hr * 0.82, hr * 0.28);
+  ctx.lineTo(hr * 0.95, -hr * 0.12);
+  ctx.lineTo(hr * 1.08, hr * 0.34);
+  ctx.closePath();
+  ctx.fill();
+  // The closed eye — one dark seam under the brow.
+  ctx.strokeStyle = shade(hide, -24);
+  ctx.lineWidth = Math.max(1, s * 0.014);
+  ctx.beginPath();
+  ctx.moveTo(hr * 0.18, -hr * 0.16);
+  ctx.lineTo(hr * 0.46, -hr * 0.1);
+  ctx.stroke();
+  ctx.restore();
+
+  drawArmO(H.elbowR, H.handR, 1);
+
+  // The trophy thong, thrown loose beside the hip.
+  const tx = pelvis.x + nx * s * 0.24;
+  const ty = pelvis.y + ny * s * 0.24 + s * 0.06;
+  ctx.strokeStyle = shade(ogr.rope, -6);
+  ctx.lineWidth = Math.max(1, s * 0.014);
+  ctx.beginPath();
+  ctx.moveTo(pelvis.x, pelvis.y);
+  ctx.quadraticCurveTo((pelvis.x + tx) / 2, ty - s * 0.05, tx, ty);
+  ctx.stroke();
+  ctx.fillStyle = ogr.teeth;
+  ctx.beginPath();
+  ctx.arc(tx, ty, s * 0.03, 0, Math.PI * 2);
+  ctx.fill();
+
+  // The greatclub, along the open hand — the argument over.
+  if (gear?.weapon) {
+    const el = P(f, g[H.elbowR]!);
+    const hd = P(f, g[H.handR]!);
+    ctx.save();
+    ctx.translate(hd.x, hd.y);
+    ctx.rotate(Math.atan2(hd.y - el.y, hd.x - el.x));
+    drawFallenWeapon(ctx, gear.weapon, s, nowMs, gear.weaponEnch);
+    ctx.restore();
+  }
+}
+
 export function drawBeastRagdoll(
   ctx: CanvasRenderingContext2D,
   rag: Ragdoll,
@@ -1645,9 +1826,9 @@ export function drawBeastRagdoll(
       tipY,
       (t) => s * (0.038 + 0.056 * Math.sin(Math.PI * Math.pow(t, 0.9))),
     );
-    ctx.fillStyle = shade(DIREWOLF_LOOK.coat, -6);
+    ctx.fillStyle = shade(dlk.coat, -6);
     ctx.fill(brush);
-    ctx.fillStyle = DIREWOLF_LOOK.grizzle;
+    ctx.fillStyle = dlk.grizzle;
     ctx.beginPath();
     facetCircle(ctx, tx, tipY, s * 0.044, 5, spineA);
     ctx.fill();

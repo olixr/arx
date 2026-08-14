@@ -18,6 +18,7 @@ import {
   skeletonLook,
   type RigPose,
 } from '../render/rig.js';
+import { ogreLook } from '../render/ogre.js';
 import { TailSim, drawTail } from '../render/tail.js';
 
 /**
@@ -124,6 +125,8 @@ const MOB_EQUIP: Record<string, MobEquip> = {
   },
   gnoll: { weapon: 'rustbite' },
   gnoll_champion: { weapon: 'iron_greatblade' },
+  ogre: { weapon: 'ogre_greatclub' },
+  ogre_champion: { weapon: 'ogre_greatclub' },
   skeleton: { weapon: 'iron_sword' },
   skeleton_archer: { weapon: 'marrowpoint', offhand: 'hunters_quiver' },
   skeleton_guard: { weapon: 'iron_sword', offhand: 'oak_kiteshield', head: 'iron_helm' },
@@ -163,6 +166,11 @@ const MOB_SIZE: Record<string, number> = {
   brigand: 1.0,
   brigand_archer: 0.97,
   brigand_reaver: 1.1,
+  // THE HILL COMES DOWN: the giant-kin card auto-shrinks hardest.
+  ogre: 2.15,
+  ogre_hurler: 2.1,
+  ogre_bellower: 2.25,
+  ogre_champion: 2.5,
 };
 
 /** Road tans for the human outlaws (the renderer's BRIGAND_SKIN twin). */
@@ -179,6 +187,7 @@ function isHumanoidMob(defId: string): boolean {
     defId.startsWith('kobold') ||
     defId.startsWith('brigand') ||
     defId.startsWith('gnoll') ||
+    defId.startsWith('ogre') ||
     defId === 'troll'
   );
 }
@@ -196,6 +205,9 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
   const gno = def.id.startsWith('gnoll') ? gnollLook(def.id, 0) : undefined;
   // The goblin card pins the moss cluster the same way.
   const gob = def.id.startsWith('goblin') ? goblinLook(def.id, 0) : undefined;
+  // The ogre card pins the tallow hide; the gut and trophy paint THE
+  // ONE REST (no sims on a still card — the same settled silhouette).
+  const ogr = def.id.startsWith('ogre') ? ogreLook(def.id, 0) : undefined;
   if (gno) {
     // The tail is a simulation in the world (tail.ts); the poster runs
     // it to rest at a pinned moment and paints the settled brush
@@ -239,7 +251,7 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
     // A pinned poster is deliberately STATELESS: no depthMemory, so
     // the rig runs its single-frame fallbacks — fine for a still.
     kneeMemory: [0, 0],
-    bodyColor: gob?.hide ?? def.color,
+    bodyColor: gob?.hide ?? ogr?.hide ?? def.color,
     hurt: false,
     isOwn: false,
     weaponItem: eq.weapon,
@@ -251,12 +263,13 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
     skinColor:
       def.id === 'troll'
         ? '#6a7d5c'
-        : (gob?.hide ?? kob?.hide ?? gno?.fur ?? MOB_SKIN[def.id]),
+        : (gob?.hide ?? kob?.hide ?? gno?.fur ?? ogr?.hide ?? MOB_SKIN[def.id]),
     size: sizeK,
     skeletal: skel,
     kobold: kob,
     gnoll: gno,
     goblin: gob,
+    ogre: ogr,
     gatherPhase: 0,
     craftKind: null,
   };

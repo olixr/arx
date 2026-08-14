@@ -97,6 +97,7 @@ import {
   type SkeletonLook,
 } from './rig.js';
 import { golemLook, type GolemLook } from './golems.js';
+import { GutSim, PendantSim, ogreLook, type OgreLook } from './ogre.js';
 import { LegRig, type LegPose } from './legs.js';
 import { FINISHER_PHASES, strikePhases } from './carriage.js';
 import { GREAT_FINISHER_PHASES, GREAT_PHASES } from './wield.js';
@@ -630,6 +631,12 @@ interface AnimState {
   /** The canid elastic ear pair — beside the goblin's `ears`, its own
    *  slot for the same no-cross-lane-eviction reason. */
   canidEars?: EarSim;
+  /** THE GUT KEEPS ITS OWN TIME: the ogre's belly-mass spring —
+   *  rig-ticked inside drawHumanoid at the true torso anchor; the
+   *  renderer owns only lifecycle and the re-bake cue. */
+  ogreGut?: GutSim;
+  /** The ogre's belt-trophy pendant verlet — same contract. */
+  ogrePendant?: PendantSim;
   /** THE FLEECE TELLS THE TIME: last seen shorn state on a sheep —
    *  the false→true edge is the shear moment and puffs the tufts. */
   shornSeen?: boolean;
@@ -29648,7 +29655,9 @@ export class Renderer {
             s,
             remote.meta.appearance !== undefined,
             npcDef(remote.meta.defId ?? '')?.radius ?? 0.45,
-            Renderer.GOLEM_SIZE[remote.meta.defId ?? ''] ?? 1,
+            Renderer.GOLEM_SIZE[remote.meta.defId ?? ''] ??
+              Renderer.OGRE_SIZE[remote.meta.defId ?? ''] ??
+              1,
           );
           if (alertItem) {
             alertItem.strat = eStrat;
@@ -30393,6 +30402,8 @@ export class Renderer {
     goblin?: GoblinLook;
     /** Construct-dialect override: this humanoid is a golem. */
     golem?: GolemLook;
+    /** Giant-dialect override: this humanoid is an ogre. */
+    ogre?: OgreLook;
     /** Weapons stowed on the body (snapshot SHEATHED_BIT). */
     sheathed?: boolean;
     /**
@@ -30908,6 +30919,17 @@ export class Renderer {
     } else if (anim.ears) {
       anim.ears = undefined;
     }
+    // THE GUT AND THE TROPHY JOIN THE SAME LAW: the ogre's belly mass
+    // and belt pendant are sims on the anim map — the rig ticks them
+    // at its true torso anchor; only lifecycle and the restless cue
+    // live here (per-species slots so no lane evicts another's).
+    if (e.ogre) {
+      anim.ogreGut ??= new GutSim(typeof e.eid === 'number' ? e.eid : 7);
+      anim.ogrePendant ??= new PendantSim(typeof e.eid === 'number' ? e.eid : 7);
+    } else if (anim.ogreGut || anim.ogrePendant) {
+      anim.ogreGut = undefined;
+      anim.ogrePendant = undefined;
+    }
     // Paint side follows the FACING (the beast head/tail convention):
     // the back — and the cloth on it — is toward the camera only when
     // facing up-screen. Hysteresis in front() keeps the flip steady.
@@ -30940,6 +30962,10 @@ export class Renderer {
       // Restless wing ears too — the elastic pair settling after a
       // turn, a stop, or a jeer keeps the body at full rate.
       (anim.ears !== undefined && anim.ears.restless) ||
+      // A restless gut or swinging trophy keeps the giant at full
+      // rate — the jiggle IS the read; a cadence-sampled bounce skips.
+      (anim.ogreGut !== undefined && anim.ogreGut.restless) ||
+      (anim.ogrePendant !== undefined && anim.ogrePendant.restless) ||
       (sitK > 0 && sitK < 1) ||
       (lieK > 0 && lieK < 1) ||
       (rideK > 0 && rideK < 1) ||
@@ -30959,6 +30985,10 @@ export class Renderer {
       // The golem's build + seed: stone layout, crack runs, and facet
       // shears are all seed-laid — same-cluster bodies never share.
       e.golem ? `G${e.golem.build}${(e.golem.seed ?? 0) & 0xff}` : ''
+    }${
+      // The ogre's design + seed: hide cluster, warts, scar, and the
+      // belt trophy all hash the spawn — no two sprites may collide.
+      e.ogre ? `O${e.ogre.design}${(e.ogre.seed ?? 0) & 0xff}` : ''
     }${seat ? `|${seat.kind}${seat.head ?? ''}` : ''}${riding ? `|m${anim.mountKey}` : ''}`;
 
     const capeFront = capeSim !== null && capeSim.front(Math.sin(dir));
@@ -31227,6 +31257,9 @@ export class Renderer {
           goblin: e.goblin,
           earSim: anim.ears,
           golem: e.golem,
+          ogre: e.ogre,
+          ogreGut: anim.ogreGut,
+          ogrePendant: anim.ogrePendant,
           gatherPhase: now / 1000,
           craftKind: station?.kind ?? null,
           foraging: gather?.kind === 'forage',
@@ -31439,11 +31472,16 @@ export class Renderer {
           ry = Math.max(ry, 1.0);
           rb = Math.max(rb, 0.2);
         }
+        // THE GIANT CLEARS THE SCRATCH: the rect never knew rig size —
+        // at 1.7 the golems rode the armed slack; a 2.5 ogre's crown,
+        // club, and slab feet all crop at the scratch edge without the
+        // fold. Players (size 1) pay nothing.
+        const gk = Math.max(1, e.size ?? 1);
         return {
-          x: p.x - (1.55 + rx) * s * capeK,
-          y: p.y - (1.75 + ry) * s * capeK,
-          w: (3.1 + rx * 2) * s * capeK,
-          h: (2.7 + ry + rb) * s * capeK,
+          x: p.x - (1.55 + rx) * s * capeK * gk,
+          y: p.y - (1.75 + ry) * s * capeK * gk,
+          w: (3.1 + rx * 2) * s * capeK * gk,
+          h: (2.7 + ry + rb) * s * capeK * gk,
         };
       })(),
       drawLabel: () => {
@@ -32413,6 +32451,28 @@ export class Renderer {
   };
 
   /**
+   * THE HILL COMES DOWN: the giant-kin break the stature ceiling by
+   * design — the smallest ogre stands over the tallest golem, and the
+   * Bonegrinder over everything that walks. Twice a waker and more.
+   */
+  private static readonly OGRE_SIZE: Record<string, number> = {
+    ogre: 2.15,
+    ogre_hurler: 2.1,
+    ogre_bellower: 2.25,
+    ogre_champion: 2.5,
+  };
+
+  /**
+   * The giant's kit: the greatclub and nothing else — hurlers throw
+   * what they carry loose and the bellower IS its own instrument.
+   * Every listed piece really drops (the loot-story law).
+   */
+  private static readonly OGRE_EQUIP: Record<string, Partial<Record<string, string>>> = {
+    ogre: { weapon: 'ogre_greatclub' },
+    ogre_champion: { weapon: 'ogre_greatclub' },
+  };
+
+  /**
    * The road-thieves' kit — leathers and honest iron, every piece a
    * real drop from the wearer's table (the loot-story law). The
    * archer slings a shortbow and quiver; the reaver fights sword-and-
@@ -32618,6 +32678,7 @@ export class Renderer {
       defId.startsWith('brigand') ||
       defId.startsWith('gnoll') ||
       defId.endsWith('_golem') ||
+      defId.startsWith('ogre') ||
       defId === 'troll'
     ) {
       const def = npcDef(defId);
@@ -32633,6 +32694,20 @@ export class Renderer {
       // The rock golem rolls its stone cluster the same way; the other
       // builds are designs whose seed varies layout, never palette.
       const gol = defId.endsWith('_golem') ? golemLook(defId, eid) : undefined;
+      // Rank-and-file ogres roll the hide cluster; the bellower and
+      // the Bonegrinder are designs (THE GIANT DIALECT).
+      const ogr = defId.startsWith('ogre') ? ogreLook(defId, eid) : undefined;
+      if (ogr) {
+        // THE GROUND ADMITS THE WEIGHT: a walking giant kicks dust at
+        // every stride — the one ambient voice a body of flesh earns,
+        // frameDt-gated like the golems' so a standing ogre is quiet.
+        const walking = s.pose === PoseState.Walk;
+        if (walking && Math.random() < this.frameDt * 1.4) {
+          dust.deployments.kick!({ particles: this.particles }, s.x + (Math.random() - 0.5) * 0.6, s.y + 0.12, {
+            scale: 0.42,
+          });
+        }
+      }
       if (gol) {
         // THE JOINT VOICE (docs/golems-plan.md): a golem sheds its own
         // material as it moves — pebbles grind off the cairn, sparks
@@ -32730,11 +32805,11 @@ export class Renderer {
         equip:
           // Static per defId — a fresh literal here would churn the
           // body-sprite signature's identity ids every frame.
-          Renderer.GOBLIN_EQUIP[defId] ?? Renderer.GNOLL_EQUIP[defId] ?? Renderer.KOBOLD_EQUIP[defId] ?? Renderer.SKELETON_EQUIP[defId] ?? Renderer.BRIGAND_EQUIP[defId] ?? Renderer.NO_EQUIP,
+          Renderer.GOBLIN_EQUIP[defId] ?? Renderer.GNOLL_EQUIP[defId] ?? Renderer.KOBOLD_EQUIP[defId] ?? Renderer.SKELETON_EQUIP[defId] ?? Renderer.BRIGAND_EQUIP[defId] ?? Renderer.OGRE_EQUIP[defId] ?? Renderer.NO_EQUIP,
         // The goblin's garment ground is its own rolled hide — the
         // tunic block under the pot-gut overpaint must never flash a
         // different green at the silhouette edge.
-        color: gob?.hide ?? def?.color ?? '#999',
+        color: gob?.hide ?? ogr?.hide ?? def?.color ?? '#999',
         skinColor:
           defId === 'troll'
             ? '#6a7d5c'
@@ -32746,7 +32821,9 @@ export class Renderer {
                   ? gno.fur
                   : gol
                     ? gol.shell
-                    : Renderer.BRIGAND_SKIN[defId],
+                    : ogr
+                      ? ogr.hide
+                      : Renderer.BRIGAND_SKIN[defId],
         size:
           Renderer.KOBOLD_SIZE[defId] ??
           Renderer.GNOLL_SIZE[defId] ??
@@ -32754,6 +32831,7 @@ export class Renderer {
           Renderer.SKELETON_SIZE[defId] ??
           Renderer.BRIGAND_SIZE[defId] ??
           Renderer.GOLEM_SIZE[defId] ??
+          Renderer.OGRE_SIZE[defId] ??
           (defId === 'troll' ? 1.4 : 0.85),
         nameInk,
         skeletal: skel,
@@ -32761,6 +32839,7 @@ export class Renderer {
         gnoll: gno,
         goblin: gob,
         golem: gol,
+        ogre: ogr,
       });
     }
 
@@ -34375,6 +34454,7 @@ export class Renderer {
       death.defId.startsWith('brigand') ||
       death.defId.startsWith('gnoll') ||
       death.defId.endsWith('_golem') ||
+      death.defId.startsWith('ogre') ||
       death.defId === 'troll';
     let rag: Ragdoll;
     let look: (typeof this.corpses)[number]['look'];
@@ -34419,6 +34499,7 @@ export class Renderer {
         Renderer.SKELETON_SIZE[death.defId] ??
         Renderer.BRIGAND_SIZE[death.defId] ??
         Renderer.GOLEM_SIZE[death.defId] ??
+        Renderer.OGRE_SIZE[death.defId] ??
         (death.defId === 'troll' ? 1.4 : 0.85);
       const corpseKob = death.defId.startsWith('kobold')
         ? koboldLook(death.defId)
@@ -34436,7 +34517,11 @@ export class Renderer {
       const corpseGol = death.defId.endsWith('_golem')
         ? golemLook(death.defId, death.eid)
         : undefined;
-      const bodyColor = corpseGob?.hide ?? def.color ?? '#999';
+      // The felled hill keeps its rolled hide, warts and all.
+      const corpseOgr = death.defId.startsWith('ogre')
+        ? ogreLook(death.defId, death.eid)
+        : undefined;
+      const bodyColor = corpseGob?.hide ?? corpseOgr?.hide ?? def.color ?? '#999';
       rag = buildHumanoidRagdoll(size, seed);
       rag.launch(sx, sy, sev, HUMANOID_UPPER, HUMANOID_FEET);
       look = {
@@ -34450,6 +34535,7 @@ export class Renderer {
                 corpseGno?.fur ??
                 corpseGob?.hide ??
                 corpseGol?.shell ??
+                corpseOgr?.hide ??
                 Renderer.BRIGAND_SKIN[death.defId] ??
                 '#7aa74a'),
           hairColor: shade(bodyColor, -24),
@@ -34466,6 +34552,7 @@ export class Renderer {
           gno: corpseGno,
           gob: corpseGob,
           gol: corpseGol,
+          ogr: corpseOgr,
         },
       };
     } else {

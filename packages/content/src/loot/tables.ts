@@ -1634,6 +1634,8 @@ const defs: LootTableDef[] = [
       { item: 'raw_beef', qty: [1, 2], chance: 0.4 },
       { item: 'leather', qty: [1, 2], chance: 0.35 },
       { item: 'scrap_hide', qty: [2, 4], chance: 0.4 },
+      // The club it swung at you — the loot-story law, giant-sized.
+      { item: 'ogre_greatclub', chance: 0.012 },
     ],
   },
   {
@@ -1667,6 +1669,9 @@ const defs: LootTableDef[] = [
       { item: 'ogre_tooth', qty: [1, 2], chance: 0.5 },
       { item: 'raw_beef', qty: [2, 4], chance: 0.5 },
       { item: 'leather', qty: [2, 3], chance: 0.4 },
+      // The Bonegrinder's own timber, better odds — the master keeps
+      // the best argument in the camp.
+      { item: 'ogre_greatclub', chance: 0.04 },
     ],
   },
 ];

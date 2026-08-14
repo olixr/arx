@@ -1,15 +1,20 @@
-// TEMPORARY rig verification harness (checked-in tooling): THE GNOLL
-// SHEET — the fur-dialect head rework audit. Both warband bodies
-// (skulker / packlord) across the eight facing bands at idle, walk,
-// and the looping strike (the cackle gape must read), plus the hurt
-// flash; a COAT CLUSTER row proving eight consecutive spawn eids
-// scatter the warband across all four coats; and BODY-RULER cells
-// standing the player rig, the goblin, and the kobold beside the
-// gnolls so the stature ladder (seven feet carried low) reads at a
-// glance. Each figure owns a live LegSolver, so feet plant and knee
-// hysteresis run exactly as in game. Levers:
+// TEMPORARY rig verification harness (checked-in tooling): THE OGRE
+// SHEET — the giant-dialect audit (docs/ogres-plan.md). All four
+// bodies (brute / hurler / bellower / Bonegrinder) across the eight
+// facing bands at idle, walk, and the looping strike (the ROAR must
+// read — jaw drop, brow knit, skull tip), the bellower's cast row,
+// and the hurt flash; a HIDE CLUSTER row proving eight consecutive
+// spawn eids scatter a camp across all four hides; BODY-RULER cells
+// standing the player rig, the gnoll packlord, and the goblin beside
+// the giants so the broken stature ceiling reads at a glance; and a
+// bare close-up band with no club in the fist. Each figure owns a
+// live LegSolver AND live GutSim/PendantSim — the sheet plays the
+// same physics the game does: walk rows breathe and bounce, strike
+// rows throw the gut through the lunge, stops settle in one bounce.
+// Levers:
 //   ?s=px       cell scale (px per tile)
 //   ?rows=a-b   draw only sheet rows a..b (screenshot banding)
+//   ?cols=a-b   column banding (E/W close-ups)
 //   ?det=1      DETERMINISTIC mode: fixed 60Hz steps run synchronously
 //               on the first frame; ?detn=N sets the step count.
 import {
@@ -17,20 +22,19 @@ import {
   drawHumanoid,
   goblinLook,
   gnollLook,
-  koboldLook,
   type RigPose,
 } from '../render/rig.js';
+import { GutSim, PendantSim, ogreLook } from '../render/ogre.js';
 import { PoseState } from '@arx/shared';
-import { EarSim } from '../render/earPhysics.js';
 
 const canvas = document.getElementById('lab') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 
 const q = new URLSearchParams(location.search);
-const S = Math.max(60, parseInt(q.get('s') ?? '110', 10) || 110); // scale px per tile (?s= zoom lever)
+const S = Math.max(50, parseInt(q.get('s') ?? '90', 10) || 90); // scale px per tile (?s= zoom lever)
 const YS = 0.6; // camera y foreshorten (world-y tile → screen), renderer's yScale
 
-const WALK_SPEED = 1.3;
+const WALK_SPEED = 1.45; // an ogre's stroll still covers ground
 
 const DIRS = [
   ['S', Math.PI / 2],
@@ -48,22 +52,24 @@ const BODIES: Record<
   string,
   {
     size: number;
-    kind: 'goblin' | 'gnoll' | 'kobold' | 'player';
+    kind: 'ogre' | 'gnoll' | 'goblin' | 'player';
     equip?: { weapon?: string; offhand?: string; head?: string; body?: string };
   }
 > = {
-  gnoll: { size: 1.18, kind: 'gnoll', equip: { weapon: 'rustbite' } },
+  ogre: { size: 2.15, kind: 'ogre', equip: { weapon: 'ogre_greatclub' } },
+  ogre_hurler: { size: 2.1, kind: 'ogre' },
+  ogre_bellower: { size: 2.25, kind: 'ogre' },
+  ogre_champion: { size: 2.5, kind: 'ogre', equip: { weapon: 'ogre_greatclub' } },
+  ogre_bare: { size: 2.15, kind: 'ogre' },
   gnoll_champion: { size: 1.42, kind: 'gnoll', equip: { weapon: 'iron_greatblade' } },
-  gnoll_bare: { size: 1.18, kind: 'gnoll' },
   goblin: { size: 0.72, kind: 'goblin' },
-  kobold: { size: 0.75, kind: 'kobold' },
   player: { size: 1, kind: 'player' },
 };
 
 /** Bare-body cells alias the real defs so the head is never occluded. */
-const DEF_ALIAS: Record<string, string> = { gnoll_bare: 'gnoll' };
+const DEF_ALIAS: Record<string, string> = { ogre_bare: 'ogre' };
 
-type Mode = 'idle' | 'walk' | 'strike' | 'hurt';
+type Mode = 'idle' | 'walk' | 'strike' | 'cast' | 'hurt';
 
 interface Fig {
   label: string;
@@ -82,10 +88,11 @@ interface Fig {
   manLegs?: LegSolver;
   manKnee?: number[];
   manDepth?: RigPose['depthMemory'];
-  /** THE EAR IS A SIMULATION: live elastic pair per goblin fig, so
-   *  the sheet shows the same physics the game plays — walk rows
-   *  flap with the bob, strike rows pin back through the jeer. */
-  ears?: EarSim;
+  /** THE GUT KEEPS ITS OWN TIME: live belly spring per ogre fig — the
+   *  walk rows bounce with the bob exactly as in game. */
+  gut?: GutSim;
+  /** The belt-trophy pendant verlet — swings the stride, settles the stop. */
+  pendant?: PendantSim;
 }
 
 const figs: Fig[] = [];
@@ -93,36 +100,48 @@ const row = (label: string, defId: string, mode: Mode, seed = 5): void => {
   for (const [lbl, dir] of DIRS) figs.push({ label: `${label} ${lbl}`, defId, dir, mode, seed });
 };
 
-// Sheet rows, top to bottom — idle/walk/strike per body (the strike
-// row is where the cackle gape reads), hurt for the skulker.
-row('skulker idle', 'gnoll', 'idle');
-row('skulker walk', 'gnoll', 'walk');
-row('skulker strike', 'gnoll', 'strike');
-row('packlord idle', 'gnoll_champion', 'idle');
-row('packlord walk', 'gnoll_champion', 'walk');
-row('packlord strike', 'gnoll_champion', 'strike');
-row('skulker hurt', 'gnoll', 'hurt');
-// THE COAT CLUSTER SPREAD: eight consecutive spawn eids facing the
-// camera — the hash must scatter a warband across all four coats.
+// Sheet rows, top to bottom — the strike rows are where the ROAR
+// reads; the bellower's cast row winds the bellows.
+row('brute idle', 'ogre', 'idle');
+row('brute walk', 'ogre', 'walk');
+row('brute strike', 'ogre', 'strike');
+row('hurler idle', 'ogre_hurler', 'idle');
+row('hurler walk', 'ogre_hurler', 'walk');
+row('bellower idle', 'ogre_bellower', 'idle');
+row('bellower cast', 'ogre_bellower', 'cast');
+row('Bonegrinder idle', 'ogre_champion', 'idle');
+row('Bonegrinder walk', 'ogre_champion', 'walk');
+row('Bonegrinder strike', 'ogre_champion', 'strike');
+row('brute hurt', 'ogre', 'hurt');
+// THE HIDE CLUSTER SPREAD: eight consecutive spawn eids facing the
+// camera — the hash must scatter a camp across all four hides, and
+// no two trophies or wart-fields may match.
 for (let k = 0; k < 8; k++) {
-  figs.push({ label: `warband eid ${400 + k}`, defId: 'gnoll', dir: Math.PI / 2, mode: 'idle', seed: 400 + k });
+  figs.push({ label: `camp eid ${700 + k}`, defId: 'ogre', dir: Math.PI / 2, mode: 'idle', seed: 700 + k });
 }
-// THE BODY RULER: the player rig beside the skulker and the packlord,
-// then the goblin and the kobold for the bestiary's stature neighbors
-// (the gnoll stands over a man even hunched).
-figs.push({ label: 'ruler: player+skulker', defId: 'gnoll', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
-figs.push({ label: 'ruler: player+packlord', defId: 'gnoll_champion', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
+// THE BODY RULER: the player rig beside the brute and the Bonegrinder
+// (the 2x-and-more claim proven on screen), then the packlord and the
+// goblin — the whole stature ladder in one row.
+figs.push({ label: 'ruler: player+brute', defId: 'ogre', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
+figs.push({ label: 'ruler: player+Bonegrinder', defId: 'ogre_champion', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
+figs.push({ label: 'packlord (reference)', defId: 'gnoll_champion', dir: Math.PI / 2, mode: 'idle', seed: 5 });
 figs.push({ label: 'goblin (reference)', defId: 'goblin', dir: Math.PI / 2, mode: 'idle', seed: 5 });
-figs.push({ label: 'kobold (reference)', defId: 'kobold', dir: Math.PI / 2, mode: 'idle', seed: 5 });
-// Bare close-up band: no weapon in the hand, the head unoccluded.
-figs.push({ label: 'bare S (face)', defId: 'gnoll_bare', dir: Math.PI / 2, mode: 'idle', seed: 5 });
-figs.push({ label: 'bare E (profile)', defId: 'gnoll_bare', dir: 0, mode: 'idle', seed: 5 });
-figs.push({ label: 'bare SW (3/4)', defId: 'gnoll_bare', dir: (3 * Math.PI) / 4, mode: 'idle', seed: 5 });
-figs.push({ label: 'bare N (back)', defId: 'gnoll_bare', dir: -Math.PI / 2, mode: 'idle', seed: 5 });
+// Bare close-up band: no club in the fist, the head unoccluded — the
+// quarter bands are where seams hide.
+figs.push({ label: 'bare S (face)', defId: 'ogre_bare', dir: Math.PI / 2, mode: 'idle', seed: 5 });
+figs.push({ label: 'bare SE (3/4)', defId: 'ogre_bare', dir: Math.PI / 4, mode: 'idle', seed: 5 });
+figs.push({ label: 'bare E (profile)', defId: 'ogre_bare', dir: 0, mode: 'idle', seed: 5 });
+figs.push({ label: 'bare NE (turn)', defId: 'ogre_bare', dir: -Math.PI / 4, mode: 'idle', seed: 5 });
+figs.push({ label: 'bare N (back)', defId: 'ogre_bare', dir: -Math.PI / 2, mode: 'idle', seed: 5 });
+figs.push({ label: 'bare W (profile)', defId: 'ogre_bare', dir: Math.PI, mode: 'idle', seed: 5 });
+figs.push({ label: 'bare roar S', defId: 'ogre_bare', dir: Math.PI / 2, mode: 'strike', seed: 5 });
+figs.push({ label: 'bare roar E', defId: 'ogre_bare', dir: 0, mode: 'strike', seed: 5 });
 
 const COLS = 8;
-const CW = Math.round(S * 2.1);
-const CH = Math.round(S * 2.9);
+// Giant cells: a 2.5-size body plus a raised club needs headroom the
+// gnoll sheet never did.
+const CW = Math.round(S * 3.2);
+const CH = Math.round(S * 4.6);
 
 let rowFrom = 0;
 let rowTo = Math.ceil(figs.length / COLS) - 1;
@@ -203,13 +222,20 @@ function drawBody(
     y: y + (ft.y - wy) * S * YS,
     lift: ft.lift,
   }));
-  // The looping strike beat, slow enough that the jeer's gape and the
-  // ear pin-back both read.
-  const strikeT = mode === 'strike' ? (now * 0.0014) % 1 : 0;
-  const pose = mode === 'strike' ? PoseState.Attack : moving ? PoseState.Walk : PoseState.Idle;
-  const gob = info.kind === 'goblin' ? goblinLook(lookId, seed) : undefined;
+  // The looping beat, slow enough that the roar's jaw drop and the
+  // gut's follow-through both read.
+  const beatT = mode === 'strike' || mode === 'cast' ? (now * 0.0012) % 1 : 0;
+  const pose =
+    mode === 'strike'
+      ? PoseState.Attack
+      : mode === 'cast'
+        ? PoseState.Cast
+        : moving
+          ? PoseState.Walk
+          : PoseState.Idle;
+  const ogr = info.kind === 'ogre' ? ogreLook(lookId, seed) : undefined;
   const gno = info.kind === 'gnoll' ? gnollLook(lookId, seed) : undefined;
-  const kob = info.kind === 'kobold' ? koboldLook(lookId) : undefined;
+  const gob = info.kind === 'goblin' ? goblinLook(lookId, seed) : undefined;
   const eq = info.equip ?? {};
   drawHumanoid(ctx, {
     x,
@@ -218,7 +244,7 @@ function drawBody(
     size: info.size,
     dir,
     pose,
-    poseT: mode === 'strike' ? strikeT : 1,
+    poseT: mode === 'strike' || mode === 'cast' ? beatT : 1,
     drawT: 0,
     restT: mode === 'idle' || mode === 'hurt' ? 1 : 0,
     nowMs: now,
@@ -233,8 +259,8 @@ function drawBody(
     align: lp.align,
     kneeMemory: knee,
     depthMemory: depth,
-    bodyColor: gob?.hide ?? gno?.fur ?? kob?.hide ?? '#3f5d8e',
-    skinColor: gob?.hide ?? gno?.fur ?? kob?.hide ?? undefined,
+    bodyColor: ogr?.hide ?? gno?.fur ?? gob?.hide ?? '#3f5d8e',
+    skinColor: ogr?.hide ?? gno?.fur ?? gob?.hide ?? undefined,
     hurt: mode === 'hurt',
     isOwn: false,
     gatherPhase: 0,
@@ -245,10 +271,13 @@ function drawBody(
     offhandItem: eq.offhand,
     headItem: eq.head,
     bodyItem: eq.body,
-    goblin: gob,
-    earSim: gob ? (f.ears ??= new EarSim(f.seed)) : undefined,
+    ogre: ogr,
+    // THE GUT AND THE TROPHY are live sims per fig — the sheet plays
+    // the game's own physics, never a pose of it.
+    ogreGut: ogr ? (f.gut ??= new GutSim(seed)) : undefined,
+    ogrePendant: ogr ? (f.pendant ??= new PendantSim(seed)) : undefined,
     gnoll: gno,
-    kobold: kob,
+    goblin: gob,
   });
 }
 
@@ -264,25 +293,25 @@ function drawSheet(now: number, dt: number): void {
     const sheetCol = i % COLS;
     if (sheetCol < colFrom || sheetCol > colTo) return;
     const homeX = CW / 2 + (sheetCol - colFrom) * CW;
-    const homeY = Math.round(S * 2.3) + (sheetRow - rowFrom) * CH;
+    const homeY = Math.round(S * 3.9) + (sheetRow - rowFrom) * CH;
     ctx.strokeStyle = 'rgba(232, 228, 216, 0.18)';
     ctx.lineWidth = 1; // figures leave fat stroke widths behind
     ctx.beginPath();
-    ctx.moveTo(homeX - 0.9 * S, homeY);
-    ctx.lineTo(homeX + 0.9 * S, homeY);
+    ctx.moveTo(homeX - 1.3 * S, homeY);
+    ctx.lineTo(homeX + 1.3 * S, homeY);
     ctx.stroke();
 
-    // Ruler cells: the player stands a stride west of the goblin.
+    // Ruler cells: the player stands a stride west of the giant.
     if (f.ruler) {
-      drawBody(f, 'player', homeX - 0.78 * S, homeY, Math.PI / 2, 'idle', 5, now, dt, 'ruler');
-      drawBody(f, f.defId, homeX + 0.34 * S, homeY, f.dir, f.mode, f.seed, now, dt, 'main');
+      drawBody(f, 'player', homeX - 1.1 * S, homeY, Math.PI / 2, 'idle', 5, now, dt, 'ruler');
+      drawBody(f, f.defId, homeX + 0.5 * S, homeY, f.dir, f.mode, f.seed, now, dt, 'main');
     } else {
       drawBody(f, f.defId, homeX, homeY, f.dir, f.mode, f.seed, now, dt, 'main');
     }
     ctx.fillStyle = '#e8e4d8';
     ctx.font = '13px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(f.label, homeX, homeY - 2.2 * S);
+    ctx.fillText(f.label, homeX, homeY - 3.7 * S);
   });
   if (DET) {
     ctx.fillStyle = '#e8e4d8';

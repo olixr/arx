@@ -642,7 +642,7 @@ test('early-game leather sets: four dye lots each, colorways mirror their base',
 test('blade roster: 20 designs, metal ladders climb, arts resolve, rarity gates hold', async () => {
   const { ABILITIES } = await import('./abilities.js');
   const weapons = EQUIPMENT_DEFS.filter((d) => d.slot === 'weapon');
-  assert.equal(weapons.length, 249, 'swords 66 + daggers 58 + bows 41 + staves 55 + greatweapons 29');
+  assert.equal(weapons.length, 250, 'swords 66 + daggers 58 + bows 41 + staves 55 + greatweapons 30');
   const swords = weapons.filter((d) => d.weapon?.style === 'onehand');
   assert.equal(swords.length, 124, 'swords 66 + daggers 58');
   for (const s of swords) {
@@ -687,12 +687,13 @@ test('colossus roster: 28 greatweapons, both hands, ladders climb, heirlooms leg
     // Axes: the double-headed line, the owned finds, the heirloom.
     'bronze_greataxe', 'iron_greataxe', 'steel_greataxe', 'adamant_greataxe',
     'gobmangler', 'barrowmaw', 'forgewrath', 'stormhewer', 'moonhewn', 'mountains_end',
-    // The chase mauls: the mountain-breaker and the barrow kerb.
-    'stonebreaker_maul', 'kerbstone',
+    // The chase mauls: the mountain-breaker and the barrow kerb —
+    // and THE TORN LIMB, the club the giant-kin swing and drop.
+    'stonebreaker_maul', 'kerbstone', 'ogre_greatclub',
     // THE VAULT OF NAMES: the chase finds, drop-only, story-seated.
     'tollbreaker', 'fens_lantern', 'riftglass', 'bearspine', 'seamsplitter', 'last_bell',
   ];
-  assert.equal(greats.length, 29, 'the 23-piece armory + the vault’s 6 chase finds');
+  assert.equal(greats.length, 30, 'the 24-piece armory + the vault’s 6 chase finds');
   for (const id of greats) {
     const d = byId.get(id);
     assert.ok(d, `${id} exists`);

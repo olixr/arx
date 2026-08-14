@@ -25,6 +25,16 @@ import {
   type GolemLook,
 } from './golems.js';
 import {
+  GUT_REST,
+  drawOgreArm,
+  paintOgreBody,
+  paintOgreFoot,
+  paintOgreHead,
+  type GutSim,
+  type OgreLook,
+  type PendantSim,
+} from './ogre.js';
+import {
   LegRig,
   chooseLimbSign,
   solveLimb,
@@ -366,6 +376,18 @@ export interface RigPose {
    * garment and hold no weapon; the body IS the wardrobe.
    */
   golem?: GolemLook;
+  /**
+   * THE GIANT DIALECT (docs/ogres-plan.md): the ogre — small sloped
+   * skull, underbitten jaw, and a torso authored as a projected 3D
+   * carriage whose gut is a live simulation. Ogres keep the weapon
+   * lane (a greatclub is the point) but wear no tailored garment.
+   */
+  ogre?: OgreLook;
+  /** Caller-owned gut mass sim — the rig ticks it at the true torso
+   *  anchor; absent (posters, sheets, corpses) THE ONE REST paints. */
+  ogreGut?: GutSim;
+  /** Caller-owned belt-trophy pendant sim — same contract. */
+  ogrePendant?: PendantSim;
   /** Time-based swing driver for the gather pose. */
   gatherPhase: number;
   /**
@@ -629,6 +651,10 @@ function drawArm(
    *  too big for them — overrides the cloth/glove branches the way
    *  bone does; goblin tailoring stops at the rope belt. */
   gob?: GoblinLook | null,
+  /** Giant dialect: THE KNUCKLE HANG — unequal bones (short upper,
+   *  LONG forearm) solved right here, inverted taper, ham fists.
+   *  Overrides everything the way bone does. */
+  ogr?: OgreLook | null,
 ): { ex: number; ey: number; kx: number; ky: number } {
   // THE REMEMBERED ELBOW: the arms carry the same side-choice
   // hysteresis the knees have had since the quadruped rig — score the
@@ -657,10 +683,20 @@ function drawArm(
   }
   // Hot path: every visible humanoid solves two arms a frame — reuse
   // one scratch (destructured immediately) instead of allocating.
-  const { ex, ey, kx, ky } = solveLimbInto(ARM_SOLVE, sx, sy, hx, hy, ARM_LEN * s, 1.08, prefX, prefY);
+  // THE KNUCKLE HANG: the ogre alone solves UNEQUAL bones — a short
+  // heavy upper arm over a LONG forearm (total reach past the knee),
+  // so the rest hang crooks at the elbow like an ape's, not a man's.
+  const { ex, ey, kx, ky } = ogr
+    ? solveLimb2Into(ARM_SOLVE, sx, sy, hx, hy, ARM_LEN * 0.88 * s, ARM_LEN * 1.26 * s, 1.08, prefX, prefY)
+    : solveLimbInto(ARM_SOLVE, sx, sy, hx, hy, ARM_LEN * s, 1.08, prefX, prefY);
 
   if (gol) {
     drawGolemArm(ctx, gol, sx, sy, kx, ky, ex, ey, s, hurt ?? false, nowMs ?? 0);
+    return { ex, ey, kx, ky };
+  }
+
+  if (ogr) {
+    drawOgreArm(ctx, ogr, sx, sy, kx, ky, ex, ey, s, hurt ?? false, nowMs ?? 0);
     return { ex, ey, kx, ky };
   }
 
@@ -4890,6 +4926,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const gno = rig.gnoll ?? null;
   const gob = rig.goblin ?? null;
   const gol = rig.golem ?? null;
+  const ogr = rig.ogre ?? null;
   const skin = rig.hurt
     ? '#ffffff'
     : (skel?.bone ?? rig.skinColor ?? (rig.look ? SKIN_TONES[rig.look.skin]! : SKIN));
@@ -5034,9 +5071,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
               ? shade(gob.hide, -6)
               : gol
                 ? shade(gol.shell, -4)
-                : rig.look
-                  ? shade(CLOTH_COLORS[rig.look.pants]!, -8)
-                  : shade(bodyColor, -28);
+                : ogr
+                  ? shade(ogr.hide, -5)
+                  : rig.look
+                    ? shade(CLOTH_COLORS[rig.look.pants]!, -8)
+                    : shade(bodyColor, -28);
       const thighCol = rig.hurt ? '#ffffff' : (legSt?.thigh ?? baseLeg);
       const shinCol = rig.hurt
         ? '#ffffff'
@@ -5050,7 +5089,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
                 ? shade(gob.hide, -15)
                 : gol
                   ? shade(gol.shell, -12)
-                  : (legSt?.shin ?? legSt?.thigh ?? baseLeg);
+                  : ogr
+                    ? shade(ogr.hide, -13)
+                    : (legSt?.shin ?? legSt?.thigh ?? baseLeg);
       // THE FOOT CAPS THE LEG: the shin stroke ends at the ANKLE — the
       // endpoint pulled back up the bone so its round cap tucks inside
       // the footwear painted below. Stroked all the way to the sole, the
@@ -5063,9 +5104,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // where the hunched species carries it.
       // The goblin shank is a SPINDLE: the bandy-leg read lives in the
       // taper — a little haunch up top over a shin two sizes too thin.
+      // The ogre shank: a tree-trunk column — the one shin in the
+      // game thicker than a hero's whole thigh, because the body it
+      // holds up out-weighs three of them.
       const shinLW = Math.max(
         2,
-        s * (skel ? 0.052 * skel.heavy : bootSt ? 0.1 : gno ? 0.078 : gob ? 0.062 : gol ? 0.128 : 0.09),
+        s * (skel ? 0.052 * skel.heavy : bootSt ? 0.1 : gno ? 0.078 : gob ? 0.062 : gol ? 0.128 : ogr ? 0.145 : 0.09),
       );
       const ankPull = shinLW * 0.55;
       const ankX = fxx - aux * ankPull;
@@ -5082,18 +5126,20 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
                 ? 0.098 * (0.85 + 0.2 * gob.heavy)
                 : gol
                   ? 0.165 * (0.9 + 0.2 * gol.heavy)
-                  : 0.09),
+                  : ogr
+                    ? 0.185 * (0.9 + 0.2 * ogr.heavy)
+                    : 0.09),
       );
       ctx.beginPath();
       ctx.moveTo(hipX, hipY);
       ctx.lineTo(kx, ky);
-      if (shinCol === thighCol && !skel && !gno && !gob && !gol) {
+      if (shinCol === thighCol && !skel && !gno && !gob && !gol && !ogr) {
         ctx.lineTo(ankX, ankY);
         ctx.stroke();
       } else {
         ctx.stroke();
         ctx.strokeStyle = shinCol;
-        if (skel || gno || gob || gol) ctx.lineWidth = shinLW;
+        if (skel || gno || gob || gol || ogr) ctx.lineWidth = shinLW;
         ctx.beginPath();
         ctx.moveTo(kx, ky);
         ctx.lineTo(ankX, ankY);
@@ -5119,6 +5165,18 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         ctx.beginPath();
         ctx.arc(kx, ky, Math.max(1.6, s * 0.036 * (0.9 + 0.2 * gob.heavy)), 0, Math.PI * 2);
         ctx.fill();
+      }
+      if (ogr && !rig.hurt) {
+        // The knee fold: flesh creases where a joint would knob — one
+        // dark seam across the column, the articulation mark of a leg
+        // wrapped in its own weight.
+        ctx.strokeStyle = shade(ogr.hide, -16);
+        ctx.lineWidth = Math.max(1, s * 0.018);
+        ctx.beginPath();
+        ctx.moveTo(kx - s * 0.055, ky + s * 0.004);
+        ctx.lineTo(kx + s * 0.055, ky - s * 0.004);
+        ctx.stroke();
+        ctx.lineWidth = shinLW;
       }
       if (skel) {
         // Knee condyle: the joint knob, wider than either shaft, with a
@@ -5676,6 +5734,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         // block, riveted sabaton, cracked pad, or faceted wedge per
         // build. A golem stands on its own architecture.
         paintGolemFoot(ctx, gol, fxx, fyy, s, lead, rig.hurt);
+      } else if (ogr && !bootSt) {
+        // The giant footing: the widest bare slab in the game — four
+        // toe seams and worn ivory nails. No boot was ever the size.
+        paintOgreFoot(ctx, ogr, fxx, fyy, s, lead, rig.hurt);
       } else if (gob && !bootSt) {
         // The bare goblin foot: a FLAP a size too big for the spindle
         // shank above it — wide, flat, pale-soled, with two toe seams
@@ -5866,8 +5928,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // whole carriage broadens for free).
   // The goblin inverts the gnoll's argument: NARROW hunched shoulders
   // over a waist swollen past them — all gut, no chest.
-  const tw = SHOULDER_HALF_S * s * (gno ? 1.28 : gob ? 0.92 : gol ? 1.4 * (0.94 + 0.12 * gol.heavy) : 1); // shoulder half-width
-  const ww = WAIST_HALF_S * s * (gno ? 1.06 : gob ? 1.16 + 0.14 * gob.heavy : gol ? 1.22 : 1); // waist half-width
+  // THE GIANT INVERSION: the ogre's waist multiplier tops every body's
+  // — the gut station in paintOgreBody widens it further still, so the
+  // silhouette triangle points UP (heroes and golems point down).
+  const tw = SHOULDER_HALF_S * s * (gno ? 1.28 : gob ? 0.92 : gol ? 1.4 * (0.94 + 0.12 * gol.heavy) : ogr ? 1.32 * (0.94 + 0.1 * ogr.heavy) : 1); // shoulder half-width
+  const ww = WAIST_HALF_S * s * (gno ? 1.06 : gob ? 1.16 + 0.14 * gob.heavy : gol ? 1.22 : ogr ? 1.4 + 0.12 * ogr.heavy : 1); // waist half-width
   const th = TORSO_RISE_S * s * (1 - 0.12 * crouch); // hip line → shoulders
 
   // Melee combo stages — THE CUT LIVES IN THE WORLD (strikes.ts, the
@@ -7478,6 +7543,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       gno,
       gol,
       gob,
+      ogr,
     );
     if (shieldSt && shieldFr) {
       if (shieldBehindArm) drawShieldStraps(ctx, shieldSt, shieldFr, rig.hurt);
@@ -7613,6 +7679,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       gno,
       gol,
       gob,
+      ogr,
     );
   };
   // ---- THE BILLBOARD SOCKET: pauldrons sit on the rig's SHOULDER
@@ -8000,6 +8067,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // The construct stands like a tower — no hunch. Only the rock golem
   // carries a lean: a stacked cairn was never plumb.
   if (gol) lean += (gol.build === 'rock' ? 0.06 : 0.015) * fx * (1 - sit);
+  // The giant's stoop: the heaviest carriage in the game leads with
+  // its brow — the gut hangs, the hump rises, the head arrives last.
+  if (ogr) lean += 0.2 * fx * (1 - sit);
 
   // Seated drape info for the garment painter: the ground line and the
   // solved knees mapped into the torso local frame (translate → lean
@@ -8167,9 +8237,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // of the body's whole read on the smallest frame that walks. It
   // sits LOW on the hunched shoulders with only a slight forward jut:
   // the wing ears carry the silhouette, so the skull needn't reach.
-  const headR = 0.15 * s * (kob ? 1.16 : gno ? 1.22 : gob ? 1.34 : gol ? 1.04 : 1);
+  // THE SLOPE (the giant inversion): the ogre's skull is the SMALLEST
+  // proportion on the biggest frame that walks — a 0.98 head sunk
+  // near-neckless in front of the hump. Nothing else says "giant" as
+  // loudly as a head the body dwarfs.
+  const headR = 0.15 * s * (kob ? 1.16 : gno ? 1.22 : gob ? 1.34 : gol ? 1.04 : ogr ? 0.98 : 1);
   const headX =
-    kob ? fx * 0.14 * s : gno ? fx * 0.19 * s : gob ? fx * 0.1 * s : gol ? fx * 0.08 * s : fx * 0.05 * s;
+    kob ? fx * 0.14 * s : gno ? fx * 0.19 * s : gob ? fx * 0.1 * s : gol ? fx * 0.08 * s : ogr ? fx * 0.12 * s : fx * 0.05 * s;
   const headY =
     kob
       ? -th - headR * 0.48
@@ -8179,7 +8253,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           ? -th - headR * 0.42
           : gol
             ? -th - headR * 0.08
-            : -th - headR * 0.82;
+            : ogr
+              ? -th - headR * 0.34
+              : -th - headR * 0.82;
   const hw = headR * 1.04; // half-width
   const hh = headR * 1.0; // half-height
   const cut = headR * 0.34;
@@ -8232,7 +8308,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   };
   // The bone, scale, fur, and greenskin dialects replace head, hair,
   // and face wholesale.
-  if (!skel && !kob && !gno && !gob && !gol) drawHairBack(ctx, hairFrame, hairIx, cover);
+  if (!skel && !kob && !gno && !gob && !gol && !ogr) drawHairBack(ctx, hairFrame, hairIx, cover);
 
   // Torso garment: the styled body (robe, jerkin, brigandine, cuirass,
   // pauldrons) — the bare `tunic` default is the original silhouette.
@@ -8273,6 +8349,41 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         meleeStage >= 0 || rig.pose === PoseState.Cast
           ? Math.sin(Math.min(1, rig.poseT) * Math.PI)
           : 0,
+    });
+  } else if (ogr) {
+    // THE GIANT wears its own hide — gut, hump, wrap, and trophy are
+    // one projected carriage (ogre.ts). The sims tick HERE, at the
+    // rig's true torso anchor (the ear law: the part-owner ticks the
+    // sim; the renderer owns only lifecycle). The anchor rides the
+    // hip line, so every bob, lunge, and hard stop the legs produce
+    // arrives at the gut as honest inertia.
+    const gutAnchorX = rig.x;
+    const gutAnchorY = hipY - th * 0.4;
+    const gut = rig.ogreGut
+      ? rig.ogreGut.update(gutAnchorX, gutAnchorY, s, rig.nowMs)
+      : GUT_REST;
+    const pendant = rig.ogrePendant
+      ? rig.ogrePendant.update(gutAnchorX, gutAnchorY, s * 0.16, rig.nowMs)
+      : null;
+    paintOgreBody(ctx, ogr, {
+      s,
+      tw,
+      ww,
+      th,
+      fx,
+      fy,
+      profileK,
+      backK,
+      lead,
+      hurt: rig.hurt,
+      nowMs: rig.nowMs,
+      runF: rig.runF,
+      flare:
+        meleeStage >= 0 || rig.pose === PoseState.Cast
+          ? Math.sin(Math.min(1, rig.poseT) * Math.PI)
+          : 0,
+      gut,
+      pendant,
     });
   } else {
     drawTorsoGarment(
@@ -8539,6 +8650,35 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         flare,
       },
       gol.seed ?? 0,
+    );
+  } else if (ogr) {
+    // THE GIANT DIALECT head: the slope, the brow ledge, and the
+    // underbite — the strike beat is a ROAR (the jaw drops, the brow
+    // knits, the skull tips back), never a nibble.
+    const gape =
+      meleeStage >= 0 || rig.pose === PoseState.Cast
+        ? Math.sin(Math.min(1, rig.poseT) * Math.PI)
+        : 0;
+    paintOgreHead(
+      ctx,
+      ogr,
+      {
+        s,
+        headX,
+        headY,
+        hw,
+        hh,
+        cut,
+        fx,
+        fy,
+        profileK,
+        backK,
+        lead,
+        hurt: rig.hurt,
+        nowMs: rig.nowMs,
+        gape,
+      },
+      ogr.seed ?? 0,
     );
   } else {
   ctx.fillStyle = skin;

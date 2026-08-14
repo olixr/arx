@@ -3003,6 +3003,20 @@ function greatweaponDefs(): EquipmentDef[] {
       desc: 'Two stolen plow-blades bent around one haft. No two swings land the same, which the goblins consider a feature.',
     },
     {
+      // THE TORN LIMB (docs/ogres-plan.md): the ogre's own greatclub —
+      // the loot-story law wants the wearer's weapon on the wearer's
+      // table, and the giant's table has exactly one entry that
+      // matters. Slow past even the maul; the range is the tree's.
+      id: 'ogre_greatclub', name: 'Ogre greatclub', slot: 'weapon',
+      levelReq: { skill: 'twohand', level: 18 },
+      weapon: { style: 'twohand', damage: 6, cooldownTicks: 15, range: 2.4, art: 'quakefall' },
+      affixPool: COLOSSUS_POOL,
+      rarities: ['uncommon', 'rare', 'epic'],
+      acquisition: { drop: true },
+      value: 380, color: '#8a6a42', code: 'Oc',
+      desc: 'A young oak, torn up and argued into a weapon. The teeth marks around the grip are from the trimming.',
+    },
+    {
       id: 'barrowmaw', name: 'Barrowmaw', slot: 'weapon',
       levelReq: { skill: 'twohand', level: 25 },
       weapon: { style: 'twohand', damage: 6, cooldownTicks: 14, range: 2.4, art: 'barrow_bite' },
