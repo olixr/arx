@@ -139,3 +139,112 @@ test('validator: THE KIT — floors, bands, fractions, and the aim words', () =>
     ),
   );
 });
+
+test('validator: THE DREAD CROWN — the boss block laws', () => {
+  const base = npcDef('goblin')!;
+  const refs = { lootTables: new Set(base.loot), npcIds: new Set(['goblin']) };
+  const kit = [
+    { ability: 'ground_slam', cooldownTicks: 150 },
+    { ability: 'rallying_howl', cooldownTicks: 150 },
+  ];
+  const ok = (boss: unknown): string[] => validateNpcDef({ ...base, kit, boss }, refs);
+  // The lawful crown, every dial authored.
+  assert.deepEqual(
+    ok({
+      title: 'Warden of the Test Court',
+      phases: [
+        { name: 'The Opening' },
+        {
+          hpBelow: 0.6,
+          name: 'The Breaking',
+          bark: 'Enough of this.',
+          entry: 'ground_slam',
+          cdMult: 0.8,
+          speedMult: 1.1,
+        },
+        { hpBelow: 0.25 },
+      ],
+      knockbackMult: 0.25,
+      stunMult: 0.5,
+      arenaR: 18,
+      engageBark: 'Come, then.',
+      defeatBark: 'So... it ends.',
+    }),
+    [],
+  );
+  // A crowned foe with no voices is a contradiction.
+  assert.ok(
+    validateNpcDef({ ...base, boss: { phases: [{}] } }, refs).some((e) => e.includes('kit')),
+  );
+  // The opening stance carries no gate; later rungs strictly descend.
+  assert.ok(ok({ phases: [{ hpBelow: 0.5 }] }).some((e) => e.includes('opening stance')));
+  assert.ok(
+    ok({ phases: [{}, { hpBelow: 0.3 }, { hpBelow: 0.6 }] }).some((e) => e.includes('descending')),
+  );
+  // The phase turn fires through the kit, never past it.
+  assert.ok(ok({ phases: [{}, { hpBelow: 0.5, entry: 'meteor' }] }).some((e) => e.includes('kit-mate')));
+  // Dials stay in their bands.
+  assert.ok(ok({ phases: [{}], knockbackMult: 3 }).some((e) => e.includes('knockbackMult')));
+  assert.ok(ok({ phases: [{}], stunMult: -1 }).some((e) => e.includes('stunMult')));
+  assert.ok(ok({ phases: [{}], arenaR: 2 }).some((e) => e.includes('arenaR')));
+  assert.ok(ok({ phases: [{}, { hpBelow: 0.5, cdMult: 0.2 }] }).some((e) => e.includes('cdMult')));
+  assert.ok(
+    ok({ phases: [{}, { hpBelow: 0.5, speedMult: 3 }] }).some((e) => e.includes('speedMult')),
+  );
+  // Five rungs is a serial, not a fight.
+  assert.ok(
+    ok({
+      phases: [{}, { hpBelow: 0.8 }, { hpBelow: 0.6 }, { hpBelow: 0.4 }, { hpBelow: 0.2 }],
+    }).some((e) => e.includes('phases')),
+  );
+});
+
+test('validator: THE CHAIN — links land on kit-mates, no loops, no scripts', () => {
+  const base = npcDef('goblin')!;
+  const refs = { lootTables: new Set(base.loot), npcIds: new Set(['goblin']) };
+  const boss = { phases: [{}] };
+  const ok = (kit: unknown): string[] => validateNpcDef({ ...base, kit, boss }, refs);
+  // A lawful two-beat combo.
+  assert.deepEqual(
+    ok([
+      { ability: 'ground_slam', cooldownTicks: 150, then: 'rallying_howl' },
+      { ability: 'rallying_howl', cooldownTicks: 150 },
+    ]),
+    [],
+  );
+  // A link must land on a kit-mate.
+  assert.ok(
+    ok([{ ability: 'ground_slam', cooldownTicks: 150, then: 'meteor' }]).some((e) =>
+      e.includes('names no kit-mate'),
+    ),
+  );
+  // No loops — combos must end.
+  assert.ok(
+    ok([
+      { ability: 'a', cooldownTicks: 150, then: 'b' },
+      { ability: 'b', cooldownTicks: 150, then: 'a' },
+    ]).some((e) => e.includes('loops')),
+  );
+  // No scripts — a combo runs at most 3 links.
+  assert.ok(
+    ok([
+      { ability: 'a', cooldownTicks: 150, then: 'b' },
+      { ability: 'b', cooldownTicks: 150, then: 'c' },
+      { ability: 'c', cooldownTicks: 150, then: 'd' },
+      { ability: 'd', cooldownTicks: 150, then: 'e' },
+      { ability: 'e', cooldownTicks: 150 },
+    ]).some((e) => e.includes('3 links')),
+  );
+  // Phase gates and chains are boss laws — bare defs may not wear them.
+  assert.ok(
+    validateNpcDef(
+      { ...base, kit: [{ ability: 'a', cooldownTicks: 150, phase: 1 }] },
+      refs,
+    ).some((e) => e.includes('boss')),
+  );
+  // A crown may carry up to 10 voices (phase bands keep each hand small).
+  assert.deepEqual(
+    ok(Array.from({ length: 10 }, (_, i) => ({ ability: `v${i}`, cooldownTicks: 150 }))),
+    [],
+  );
+});

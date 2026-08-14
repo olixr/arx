@@ -577,6 +577,16 @@ import {
   type Vec2,
 } from '@arx/shared';
 import { AUTHORED_LOCKS, geographySnapshot, scaleNpcDef } from '@arx/content';
+import {
+  bossCdMult,
+  bossChainIndex,
+  bossKitGateHolds,
+  bossKnockMult,
+  bossPhaseFor,
+  bossRecencyFold,
+  bossSpeedMult,
+  bossStunTicks,
+} from './bossMind.js';
 import { addItem, bestTool, countItem, emptyInventory, hasSpaceFor, removeItem, takeSlot } from './inventory.js';
 import { DEATH_SPILL_TTL_MS, DROP_MERGE_RADIUS, canMergeDrop, spillInventory } from './drops.js';
 import { SocialSystem } from './social.js';
@@ -912,6 +922,20 @@ interface NpcComp {
    * live out their ephemeral lives.
    */
   summonedEids?: EntityId[];
+  /**
+   * THE DREAD CROWN (docs/boss-system-plan.md): the phase rung this
+   * body has climbed to (absent = 0, the opening stance). One-way —
+   * only the arena reset walks it back down. Optional-bank idiom.
+   */
+  bossPhase?: number;
+  /**
+   * THE CHAIN: kit index queued to cast next (cooldown waived, its
+   * own windup still telegraphs), or null. A broken breath breaks
+   * the combo. Optional-bank idiom.
+   */
+  bossChainIdx?: number | null;
+  /** THE UNREPEATED HAND: last kit index fired — its weight quarters on the next pick. */
+  bossLastKitIdx?: number;
   /** Livestock: earliest wall-clock ms this animal may be milked again. */
   nextProduceAt: number;
   /** Hands on the flank: the idle wander stands still until this tick. */
@@ -18351,7 +18375,9 @@ export class GameServer {
               power: 0,
               ticksLeft: SHOCK_MAX_TICKS,
               sourceEid,
-              stunLeft: SHOCK_MAX_TICKS,
+              // THE STUBBORN CROWN: a crowned body's hard stagger is
+              // dialed (the status itself rides on as reaction fuel).
+              stunLeft: bossStunTicks(npc.def, SHOCK_MAX_TICKS),
             });
             break;
           }
@@ -18368,7 +18394,10 @@ export class GameServer {
       same.ticksLeft = Math.max(same.ticksLeft, duration);
       same.power = Math.max(same.power, power);
       if (apply.status === 'shock') {
-        same.stunLeft = Math.max(same.stunLeft ?? 0, Math.min(duration, SHOCK_MAX_TICKS));
+        same.stunLeft = Math.max(
+          same.stunLeft ?? 0,
+          bossStunTicks(npc.def, Math.min(duration, SHOCK_MAX_TICKS)),
+        );
       }
     } else {
       list.push({
@@ -18377,7 +18406,11 @@ export class GameServer {
         ticksLeft: duration,
         sourceEid,
         // The stagger is brief; the charge rides on as reaction fodder.
-        stunLeft: apply.status === 'shock' ? Math.min(duration, SHOCK_MAX_TICKS) : undefined,
+        // (A crowned body's stagger is dialed — THE STUBBORN CROWN.)
+        stunLeft:
+          apply.status === 'shock'
+            ? bossStunTicks(npc.def, Math.min(duration, SHOCK_MAX_TICKS))
+            : undefined,
         ...(fromPet ? { fromPet: true } : {}),
       });
     }
@@ -19693,7 +19726,9 @@ export class GameServer {
 
     const npos = this.positions.get(npcEid);
     if (npos && (kx !== 0 || ky !== 0)) {
-      const push = (crit ? 0.55 : 0.35) * knockbackMult;
+      // THE STUBBORN CROWN: a crowned body is shoved a step, never
+      // juggled — the boss dial scales every landed knockback.
+      const push = (crit ? 0.55 : 0.35) * knockbackMult * bossKnockMult(npc.def);
       const nx = npos.x + kx * push;
       const ny = npos.y + ky * push;
       if (!circleHitsSolid(this.world, nx, ny, npc.def.radius)) {
@@ -19833,6 +19868,11 @@ export class GameServer {
     if (!this.ecs.isAlive(npcEid)) return;
     const pos = this.positions.get(npcEid);
     if (!pos) return;
+    // THE DREAD CROWN: last words leave the body while the watchers'
+    // interest sets still hold it — spoken BEFORE the death burst.
+    if (npc.def.boss?.defeatBark) {
+      this.sayAloud(npcEid, npc.def.name, npc.def.boss.defeatBark);
+    }
     // Everyone watching sees the death burst.
     for (const s of this.sessions) {
       if (s.playerEid === npcEid || s.knownEntities.has(npcEid)) {
@@ -21782,6 +21822,12 @@ export class GameServer {
         }
       }
     }
+    // THE DREAD CROWN: the moment the fight truly opens (a body not
+    // already mid-chase marking a player), the crown speaks — once
+    // per engagement; retargets inside a running fight stay quiet.
+    if (npc.state !== 'chase' && npc.def.boss?.engageBark && this.players.has(targetEid)) {
+      this.sayAloud(eid, npc.def.name, npc.def.boss.engageBark);
+    }
     npc.state = 'chase';
     // A retarget mid-breath drops the old working (new quarry, new
     // choices — the stale cast would fire at the wrong feet).
@@ -22300,6 +22346,8 @@ export class GameServer {
     if (!kit || !cds) return -1;
     const hp = this.healths.get(eid);
     const frac = hp && hp.maxHp > 0 ? hp.hp / hp.maxHp : 1;
+    const crowned = npc.def.boss !== undefined;
+    const phase = npc.bossPhase ?? 0;
     const eligible: number[] = [];
     const weights: number[] = [];
     let total = 0;
@@ -22312,8 +22360,11 @@ export class GameServer {
       if (k.maxRange !== undefined && dist > k.maxRange) continue;
       if (k.hpBelow !== undefined && frac > k.hpBelow) continue;
       if (k.hpAbove !== undefined && frac < k.hpAbove) continue;
+      // THE TURNING gates the crown's voices to their phase band.
+      if (crowned && !bossKitGateHolds(k, phase)) continue;
       if (!abilityDef(k.ability)) continue;
-      const w = k.weight ?? 1;
+      // THE UNREPEATED HAND: the voice that just spoke waits its turn.
+      const w = crowned ? bossRecencyFold(k.weight ?? 1, i, npc.bossLastKitIdx) : (k.weight ?? 1);
       eligible.push(i);
       weights.push(w);
       total += w;
@@ -22384,6 +22435,16 @@ export class GameServer {
     const ab = abilityDef(entry.ability);
     if (!ab) return;
     npc.kitCds[idx] = entry.cooldownTicks;
+    const boss = npc.def.boss;
+    if (boss) {
+      // The phase's tempo: same voice, drawn breath, shorter rest.
+      npc.kitCds[idx] = Math.round(entry.cooldownTicks * bossCdMult(boss, npc.bossPhase ?? 0));
+      npc.bossLastKitIdx = idx;
+      // THE CHAIN: the fired voice queues its combo-mate (cooldown
+      // waived at the pick; every link still telegraphs itself).
+      const link = npc.def.kit ? bossChainIndex(npc.def.kit, idx) : -1;
+      npc.bossChainIdx = link >= 0 ? link : null;
+    }
     const pos = this.positions.must(eid);
     const aim = Math.atan2(tpos.y - pos.y, tpos.x - pos.x);
     pos.dir = aim;
@@ -22479,6 +22540,8 @@ export class GameServer {
     if (!npc.casting) return;
     const idx = npc.casting.idx;
     npc.casting = null;
+    // A broken breath breaks the combo — the crown re-deals its hand.
+    if (npc.def.boss) npc.bossChainIdx = null;
     if (npc.kitCds && idx >= 0 && idx < npc.kitCds.length) {
       npc.kitCds[idx] = Math.max(npc.kitCds[idx] ?? 0, GameServer.NPC_CAST_RETRY_TICKS);
     }
@@ -22500,6 +22563,41 @@ export class GameServer {
         id: ab.id,
         color: ab.color,
       });
+    }
+  }
+
+  /**
+   * THE TURNING (docs/boss-system-plan.md): the crown reads its wound
+   * and climbs the one-way ladder. A new rung speaks its bark aloud
+   * (log + bubble, the public voice) and fires its FREE entry cast
+   * through the one engine — cooldown waived, the entry's own windup
+   * still telegraphing; a routine breath in flight yields to the turn
+   * (the broken breath pays only retry, as every broken breath does).
+   * Runs each chase tick: HP only moves in a fight, so the turn lands
+   * within a tick of the crossing wound. A blow deep enough to cross
+   * two gates at once turns straight to the deepest rung and speaks
+   * only that rung's ceremony — the fight is past the skipped one.
+   */
+  private tickBossCrown(eid: EntityId, npc: NpcComp, tpos: { x: number; y: number }): void {
+    const boss = npc.def.boss;
+    if (!boss) return;
+    const hp = this.healths.get(eid);
+    const frac = hp && hp.maxHp > 0 ? hp.hp / hp.maxHp : 1;
+    const cur = npc.bossPhase ?? 0;
+    const next = bossPhaseFor(boss, frac, cur);
+    if (next === cur) return;
+    npc.bossPhase = next;
+    const rung = boss.phases[next];
+    if (!rung) return;
+    if (rung.bark) this.sayAloud(eid, npc.def.name, rung.bark);
+    if (rung.entry && npc.def.kit && npc.kitCds) {
+      const idx = npc.def.kit.findIndex((k) => k.ability === rung.entry);
+      if (idx >= 0) {
+        if (npc.casting) this.cancelNpcCast(eid, npc);
+        npc.kitCds[idx] = 0;
+        npc.windupTicks = 0;
+        this.beginNpcCast(eid, npc, idx, tpos);
+      }
     }
   }
 
@@ -22625,7 +22723,9 @@ export class GameServer {
             sightBroke = true;
           }
         }
-        if (fromOrigin > npc.def.leashRange) {
+        // THE ARENA LAW: a crowned foe's fight has authored bounds —
+        // arenaR outranks the def's leash when the crown wears one.
+        if (fromOrigin > (npc.def.boss?.arenaR ?? npc.def.leashRange)) {
           npc.state = 'return';
           npc.targetEid = null;
           npc.windupTicks = 0;
@@ -22642,6 +22742,10 @@ export class GameServer {
           const dy = tpos.y - pos.y;
           const dist = Math.hypot(dx, dy);
 
+          // THE TURNING: the crown reads its wound before choosing a
+          // voice — the phase turn outranks every routine cast.
+          if (npc.def.boss) this.tickBossCrown(eid, npc, tpos);
+
           // THE KIT: when the hands are free and the quarry stands in
           // view (no casting at ghosts — the basic-swing law), pick an
           // eligible voice. Wind-up entries plant the body below;
@@ -22652,8 +22756,16 @@ export class GameServer {
             npc.def.kit &&
             this.tickCount - npc.alertSeenTick <= GameServer.PERCEPTION_PERIOD
           ) {
-            const pick = this.pickKitEntry(eid, npc, dist);
-            if (pick >= 0) this.beginNpcCast(eid, npc, pick, tpos);
+            // THE CHAIN outranks the weighted pick: a queued combo
+            // link fires next, cooldown waived, its own windup honest.
+            const link = npc.bossChainIdx ?? null;
+            if (link !== null && npc.def.kit[link]) {
+              npc.bossChainIdx = null;
+              this.beginNpcCast(eid, npc, link, tpos);
+            } else {
+              const pick = this.pickKitEntry(eid, npc, dist);
+              if (pick >= 0) this.beginNpcCast(eid, npc, pick, tpos);
+            }
           }
 
           if (npc.casting) {
@@ -22973,6 +23085,16 @@ export class GameServer {
           // A fresh life makes the craven choice fresh too.
           npc.helpCalled = false;
           npc.helpEid = null;
+          // THE ARENA LAW's other half: the walk home resets the
+          // crown — opening stance, chain dropped, cooldowns
+          // re-seeded (the lazy-seed idiom). No door-cheesing a
+          // half-dead boss: the next challenger meets the whole fight.
+          if (npc.def.boss) {
+            npc.bossPhase = 0;
+            npc.bossChainIdx = null;
+            npc.bossLastKitIdx = undefined;
+            npc.kitCds = undefined;
+          }
           // The walk home cools the blood: the meter settles under
           // the suspicious line, so the next sighting climbs the
           // ladder honestly instead of detonating a stale 100.
@@ -23197,6 +23319,9 @@ export class GameServer {
         else if (npc.state === 'search') speed = npc.def.speed * 0.85;
         else if (npc.state === 'investigate') speed = npc.def.speed * 0.7;
         if (this.isChilled(eid)) speed *= CHILL_SPEED_FACTOR;
+        // The phase's stride: a turned crown may quicken (or slow to
+        // a deliberate, dreadful walk — both are authored dials).
+        if (npc.def.boss) speed *= bossSpeedMult(npc.def.boss, npc.bossPhase ?? 0);
         // The polite step-aside: converging packmates fan out around
         // a target instead of stacking into one sprite; a returning
         // wanderer eases around whoever it meets.

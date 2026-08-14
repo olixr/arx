@@ -40,12 +40,93 @@ export interface NpcKitEntry {
   minLevel?: number;
   /** Fire also rallies the pack (bounded), the old howl behavior — authored, not implied. */
   rally?: boolean;
+  /**
+   * THE DREAD CROWN (docs/boss-system-plan.md): entry wakes at this
+   * boss phase and after (0-based; absent = 0, the opening stance).
+   * Only meaningful on a def that wears a `boss` block.
+   */
+  phase?: number;
+  /** ...and retires after this phase — an early voice the crown outgrows. */
+  phaseMax?: number;
+  /**
+   * THE CHAIN: after this entry fires, the kit entry carrying the
+   * named ability is queued next — cooldown waived, its OWN windup
+   * still telegraphs (every link in a combo is honest). Chains are
+   * acyclic and cap at 3 links, validator-enforced. Boss-only.
+   */
+  then?: string;
 }
 
 /** Thrown/shot basic attack instead of a melee lunge. */
 export interface NpcRanged {
   range: number;
   projectileSpeed: number;
+}
+
+/**
+ * THE DREAD CROWN — one rung of a boss's phase ladder
+ * (docs/boss-system-plan.md LAW 3, THE TURNING). The ladder is
+ * one-way: healing never demotes, and a full leash reset is the only
+ * road back to the opening stance.
+ */
+export interface BossPhaseDef {
+  /**
+   * The fight turns when the live HP fraction crosses under this.
+   * Absent only on the first rung (the opening stance); later rungs
+   * author strictly descending fractions in (0, 1).
+   */
+  hpBelow?: number;
+  /** "The Breaking" — the client's phase reveal line. */
+  name?: string;
+  /** Said aloud on entry (sayAloud: log + bubble — the public voice). */
+  bark?: string;
+  /**
+   * Ability cast FREE on phase entry (cooldown waived). Must name an
+   * ability carried by one of this def's own kit entries — the turn
+   * fires through the one cast engine, and the entry's own windup
+   * still telegraphs it. The phase turn is loud, never cheap.
+   */
+  entry?: string;
+  /**
+   * Kit cooldown scale while this phase holds (0.5..1) — the fight
+   * accelerates honestly: same voices, drawn breath, shorter rests.
+   */
+  cdMult?: number;
+  /** Movement scale while this phase holds (0.75..1.5). */
+  speedMult?: number;
+}
+
+/**
+ * THE DREAD CROWN (docs/boss-system-plan.md): the boss block. A LAYER
+ * on the kit rail, never a second brain — remove it and the def
+ * degrades to a lawful champion. Phases gate kit entries, chains give
+ * authored combo beats, the CC dials end stun-locks and knockback
+ * juggling without silencing statuses, and the arena law walks a
+ * cheesed boss home to a full heal and a reset crown.
+ */
+export interface NpcBossDef {
+  /** "Warden of the Sunken Court" — the nameplate's second line. */
+  title?: string;
+  /** 1..4 rungs; the first is the opening stance (no hpBelow). */
+  phases: BossPhaseDef[];
+  /**
+   * Scales every knockback landed on this body (0 = immovable,
+   * 1 = ordinary flesh). Default 0.25 — a crowned foe is shoved a
+   * step, not juggled. Above 1 is an authored WEAKNESS.
+   */
+  knockbackMult?: number;
+  /**
+   * Scales shock's hard-stagger ticks (0 = immune, 1 = ordinary).
+   * Default 0.5. The status itself still LANDS and still fuels
+   * reactions — only the hard control is dialed.
+   */
+  stunMult?: number;
+  /** Leash override in tiles; the break walks home, heals, resets the crown. */
+  arenaR?: number;
+  /** Said aloud the moment the fight truly opens. */
+  engageBark?: string;
+  /** Last words, said at the kill. */
+  defeatBark?: string;
 }
 
 export interface NpcDef {
@@ -142,7 +223,20 @@ export interface NpcDef {
    * gets its dim all-round peripheral sense.
    */
   sightArc?: number;
+  /**
+   * THE DREAD CROWN (docs/boss-system-plan.md): phases, chains, CC
+   * dials, arena law, and the spoken fight. Requires a kit — a boss
+   * with no voices is a contradiction the validator refuses.
+   */
+  boss?: NpcBossDef;
 }
+
+/** Bosses may carry more voices than trash — phase gates keep each moment's hand small. */
+export const BOSS_KIT_MAX = 10;
+/** A crowned foe is shoved a step, not juggled (default knockback scale). */
+export const BOSS_KNOCKBACK_MULT = 0.25;
+/** ...and staggered a beat, not stun-chained (default shock-stagger scale). */
+export const BOSS_STUN_MULT = 0.5;
 
 /** How far a pack answers a packmate's aggro (tiles). */
 export const PACK_RALLY_RANGE = 7;
@@ -1498,8 +1592,9 @@ export function validateNpcDef(
     errors.push("special is retired — author kit: [{ability, cooldownTicks, ...}] (docs/enemy-arts-plan.md)");
   }
   if (d.kit !== undefined) {
-    if (!Array.isArray(d.kit) || d.kit.length === 0 || d.kit.length > 6) {
-      errors.push('kit must be an array of 1..6 entries');
+    const kitMax = d.boss !== undefined ? BOSS_KIT_MAX : 6;
+    if (!Array.isArray(d.kit) || d.kit.length === 0 || d.kit.length > kitMax) {
+      errors.push(`kit must be an array of 1..${kitMax} entries`);
     } else {
       d.kit.forEach((raw, i) => {
         const k = raw as Record<string, unknown>;
@@ -1533,7 +1628,146 @@ export function validateNpcDef(
         ) {
           errors.push(`${at}: minRange must not exceed maxRange`);
         }
+        for (const f of ['phase', 'phaseMax'] as const) {
+          if (
+            k?.[f] !== undefined &&
+            (typeof k[f] !== 'number' || !Number.isInteger(k[f] as number) ||
+              (k[f] as number) < 0 || (k[f] as number) > 3)
+          ) {
+            errors.push(`${at}.${f} must be an integer phase index in [0, 3]`);
+          }
+        }
+        if ((k?.phase !== undefined || k?.phaseMax !== undefined || k?.then !== undefined) && d.boss === undefined) {
+          errors.push(`${at}: phase/phaseMax/then are boss laws — the def wears no boss block`);
+        }
+        if (
+          typeof k?.phase === 'number' && typeof k?.phaseMax === 'number' &&
+          (k.phase as number) > (k.phaseMax as number)
+        ) {
+          errors.push(`${at}: phase must not exceed phaseMax`);
+        }
+        if (k?.then !== undefined && typeof k.then !== 'string') {
+          errors.push(`${at}.then must be an ability id string`);
+        }
       });
+      // THE CHAIN's shape laws: every link lands on a kit-mate, no
+      // entry chains to itself, no cycle, no combo past 3 links.
+      if (d.boss !== undefined) {
+        const kit = d.kit as Array<Record<string, unknown>>;
+        const idxOf = new Map<string, number>();
+        kit.forEach((k, i) => {
+          if (typeof k?.ability === 'string') idxOf.set(k.ability as string, i);
+        });
+        kit.forEach((k, i) => {
+          if (typeof k?.then !== 'string') return;
+          const at = `kit[${i}]`;
+          if (!idxOf.has(k.then as string)) {
+            errors.push(`${at}.then '${String(k.then)}' names no kit-mate of this def`);
+            return;
+          }
+          let hops = 0;
+          let cur: number | undefined = i;
+          const seen = new Set<number>();
+          while (cur !== undefined && typeof kit[cur]?.then === 'string') {
+            if (seen.has(cur)) {
+              errors.push(`${at}: chain loops — combos must end`);
+              return;
+            }
+            seen.add(cur);
+            cur = idxOf.get(kit[cur]!.then as string);
+            if (++hops > 3) {
+              errors.push(`${at}: chain runs past 3 links — a combo, not a script`);
+              return;
+            }
+          }
+        });
+      }
+    }
+  }
+  if (d.boss !== undefined) {
+    const b = d.boss as Record<string, unknown>;
+    if (typeof b !== 'object' || b === null) {
+      errors.push('boss must be an object');
+    } else {
+      if (d.kit === undefined) {
+        errors.push('boss requires a kit — a crowned foe with no voices is a contradiction');
+      }
+      if (!Array.isArray(b.phases) || b.phases.length === 0 || b.phases.length > 4) {
+        errors.push('boss.phases must be an array of 1..4 rungs');
+      } else {
+        const kitAbilities = new Set(
+          Array.isArray(d.kit)
+            ? (d.kit as Array<Record<string, unknown>>)
+                .map((k) => k?.ability)
+                .filter((a): a is string => typeof a === 'string')
+            : [],
+        );
+        let prev = 1;
+        (b.phases as unknown[]).forEach((raw, i) => {
+          const p = raw as Record<string, unknown>;
+          const at = `boss.phases[${i}]`;
+          if (i === 0) {
+            if (p?.hpBelow !== undefined) {
+              errors.push(`${at}.hpBelow must be absent — the first rung is the opening stance`);
+            }
+          } else if (
+            typeof p?.hpBelow !== 'number' || (p.hpBelow as number) <= 0 || (p.hpBelow as number) >= prev
+          ) {
+            errors.push(`${at}.hpBelow must be a fraction in (0, 1), strictly descending the ladder`);
+          } else {
+            prev = p.hpBelow as number;
+          }
+          for (const f of ['name', 'bark', 'entry'] as const) {
+            if (p?.[f] !== undefined && typeof p[f] !== 'string') {
+              errors.push(`${at}.${f} must be a string`);
+            }
+          }
+          for (const f of ['name', 'bark'] as const) {
+            if (typeof p?.[f] === 'string' && (p[f] as string).length > 200) {
+              errors.push(`${at}.${f} must be 200 chars or fewer`);
+            }
+          }
+          if (typeof p?.entry === 'string' && !kitAbilities.has(p.entry as string)) {
+            errors.push(`${at}.entry '${String(p.entry)}' names no kit-mate — the turn fires through the kit`);
+          }
+          if (
+            p?.cdMult !== undefined &&
+            (typeof p.cdMult !== 'number' || (p.cdMult as number) < 0.5 || (p.cdMult as number) > 1)
+          ) {
+            errors.push(`${at}.cdMult must be a number in [0.5, 1]`);
+          }
+          if (
+            p?.speedMult !== undefined &&
+            (typeof p.speedMult !== 'number' || (p.speedMult as number) < 0.75 || (p.speedMult as number) > 1.5)
+          ) {
+            errors.push(`${at}.speedMult must be a number in [0.75, 1.5]`);
+          }
+        });
+      }
+      if (b.title !== undefined && typeof b.title !== 'string') errors.push('boss.title must be a string');
+      for (const f of ['engageBark', 'defeatBark'] as const) {
+        if (b[f] !== undefined && (typeof b[f] !== 'string' || (b[f] as string).length > 200)) {
+          errors.push(`boss.${f} must be a string of 200 chars or fewer`);
+        }
+      }
+      if (
+        b.knockbackMult !== undefined &&
+        (typeof b.knockbackMult !== 'number' || (b.knockbackMult as number) < 0 || (b.knockbackMult as number) > 1.5)
+      ) {
+        errors.push('boss.knockbackMult must be a number in [0, 1.5]');
+      }
+      if (
+        b.stunMult !== undefined &&
+        (typeof b.stunMult !== 'number' || (b.stunMult as number) < 0 || (b.stunMult as number) > 2)
+      ) {
+        errors.push('boss.stunMult must be a number in [0, 2]');
+      }
+      if (
+        b.arenaR !== undefined &&
+        (typeof b.arenaR !== 'number' || (b.arenaR as number) < 4 || (b.arenaR as number) > 40)
+      ) {
+        errors.push('boss.arenaR must be a number in [4, 40] tiles');
+      }
     }
   }
   if (d.ranged !== undefined) {
