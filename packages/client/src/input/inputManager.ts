@@ -543,6 +543,15 @@ export class InputManager {
     return b;
   }
 
+  /**
+   * THE SECOND GRIP's one door for UI presses (the hotbar swap well,
+   * the rack's Draw/Trade): queue the swap verb exactly as the key
+   * does — one frame carries the bit, the server owns the trade.
+   */
+  queueSwap(): void {
+    this.swapQueued = true;
+  }
+
   /** The pad's Interact button (Ⓐ default) — polled for edge detection. */
   padInteractPressed(): boolean {
     if (this.uiCapture || this.buildCapture) return false;

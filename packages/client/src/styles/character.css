@@ -384,6 +384,58 @@
   top: 0.1875rem;
 }
 
+/* THE RACK (THE SECOND GRIP): the waiting pair on a shelf under the
+   stand — one register quieter than the hands. THE QUIET BACK moved
+   the second set's whole visible life here, so the row must read as a
+   real place: same sockets, dimmed steel that wakes on the hand's
+   attention, a breath of shelf gap above. */
+.equip-cell.rack-cell {
+  margin-top: 0.625rem;
+}
+
+.rack-cell .inv-item {
+  filter: saturate(0.72) brightness(0.86);
+  transition: filter 120ms ease;
+}
+
+.rack-cell:hover .inv-item,
+.rack-cell.nav-focus .inv-item {
+  filter: none;
+}
+
+/* The trade button between the waiting pair: the word and the live
+   key chip stacked on the bench-verb chrome. Dim when nothing waits
+   (still pressable — the server speaks the refusal). */
+#rack-swap {
+  margin-top: 0.625rem;
+  align-self: center;
+  justify-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1875rem;
+  padding: 0.375rem 0.625rem;
+}
+
+#rack-swap.cant {
+  opacity: 0.55;
+}
+
+#rack-swap .rack-word {
+  font-size: 0.78125rem;
+  letter-spacing: 0.04em;
+}
+
+/* The manifest's rack rows: named and placed, promising nothing —
+   THE SLEEPING STEEL shows no figure it does not grant. */
+.worn-row.rack-row {
+  opacity: 0.72;
+}
+
+.worn-row.rack-row .worn-row-note {
+  font-style: italic;
+}
+
 /* The stand: sockets hung where they sit on the body — head over
    chest over legs over boots down the spine, weapon hand left,
    shield hand right, cape at the shoulder, tools on the belt. */
@@ -395,7 +447,8 @@
     'cape   head  sigil'
     'weapon body  offhand'
     'gloves legs  relic'
-    'tool   boots .';
+    'tool   boots .'
+    'stowWeapon rackSwap stowOffhand';
   /* A breath wider than the pack's gap: the straps show through. */
   gap: 0.6875rem;
   align-content: start;

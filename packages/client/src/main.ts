@@ -13,6 +13,7 @@ import { Renderer } from './render/renderer.js';
 import type { SmashKind } from './render/debris.js';
 import { ChatUI } from './ui/chat.js';
 import { Hotbar } from './ui/hotbar.js';
+import { SwapSlot } from './ui/swapSlot.js';
 import { BeltSlot, resolveBelt, beltPin } from './ui/beltSlot.js';
 import { CompanionPlaque } from './ui/companionPlaque.js';
 import { Panels, SKILL_FACE, SKILL_STORY } from './ui/panels.js';
@@ -822,6 +823,11 @@ const panels = new Panels(
     } else if (action === 'sell') {
       sfx.coins();
       game.shopSend('sell', item.item, 1, slot, stationPanels.openShopId ?? undefined);
+    } else if (action === 'stow') {
+      // THE SECOND GRIP: hand gear to the ready row. The server holds
+      // every gate; the stow sound is the honest local echo.
+      sfx.stow();
+      game.useSlot(slot, true);
     } else {
       useSlotGuarded(slot);
     }
@@ -833,6 +839,9 @@ const panels = new Panels(
   () => ({ name: game.ownName }),
   () => toggleScreen('arts'),
   (calling, on) => game.sendCalling(calling, on),
+  // THE SECOND GRIP: the rack's Draw/Trade fires the same one-frame
+  // queue the backquote press does — one door, every surface.
+  () => input.queueSwap(),
 );
 
 /** Drop a whole pack slot onto the ground (drag-out / pad Ⓨ). */
@@ -1813,6 +1822,8 @@ hotbar.onReady = () => sfx.abilityReady();
 // THE BELT: the fifth well — one press eats the belt's consumable
 // (1 on keys, d-pad ▼ on a pad, or pressing the well itself).
 const belt = new BeltSlot(() => quickUseBelt());
+// THE SWAP WELL rides beside the belt — DOM order is bar order.
+const swapWell = new SwapSlot(() => input.queueSwap());
 // THE COMPANION PLAQUE: the friend at your heel as a standing HUD
 // piece. THE QUIET HEEL holds — pressing it pats the friend at your
 // side; the server range-gates the press, so a far body just no-ops.
@@ -3615,6 +3626,7 @@ function frame(now: number): void {
   renderer.render(game, frameDt);
   hotbar.update(game);
   belt.update(game);
+  swapWell.update(game);
   companionPlaque.update(game);
 
   // The world's voice: zone-weighted music and ambience follow the

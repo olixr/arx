@@ -6637,6 +6637,10 @@ export function slotGlyphUrl(slot: string, size = 40): string {
     boots: 'boots',
     weapon: 'sword',
     offhand: 'shield',
+    // THE RACK: the ready row's empty sockets speak the same purpose
+    // glyphs as the hands they trade with.
+    stowWeapon: 'sword',
+    stowOffhand: 'shield',
     tool: 'axe',
     relic: 'gem',
     sigil: 'skull',

@@ -2353,8 +2353,10 @@ export class ClientGame {
   }
 
   /** Use (equip/eat) the item in an inventory slot. */
-  useSlot(slot: number): void {
-    this.conn?.send({ t: 'use', slot });
+  useSlot(slot: number, stow = false): void {
+    // THE SECOND GRIP's stow destination rides the standing use verb —
+    // literal true only, mirroring the parse gate.
+    this.conn?.send(stow ? { t: 'use', slot, stow: true } : { t: 'use', slot });
   }
 
   /** Set one fist's grip style (optimistic; server confirms). */

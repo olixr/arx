@@ -299,7 +299,44 @@ stowed share the back; far-hip rank for a second blade; AppearanceData carries
 the slots (remote + portraits + CMS bestiary unaffected). Riglab: THE CARRIED
 PAIR rows — every wield-class pairing at all 8 facings, det-stable.
 
-**Phase 4 — THE SHOWN PAIR (HUD + character room).** The swap well (hotbar,
+**Phase 4 — THE SHOWN PAIR (HUD + character room). SHIPPED 2026-08-14.**
+
+*As-built:* with THE QUIET BACK in force this phase became the waiting set's
+WHOLE visible life, and shipped to that bar. THE SWAP WELL (ui/swapSlot.ts on
+the belt well's exact discipline): rides beside the belt, shows the WAITING
+mainhand large with its offhand tucked at the corner (the belt count's perch
+mirrored), dormant register that wakes on hover/focus, live `swapSets` key
+chip, honest tooltip naming both sets in plain words ("At the ready: Shortbow.
+Trades with your bronze sword.") — PROMISE NOTHING law: no figures, THE
+SLEEPING STEEL shows no stat it does not grant; empty = ghost well + one
+sentence. Through the beat the well wears `.trading` and the icon dips to the
+belt line and rises (the body's handoff told in the well; translate channel,
+dies with no-ui-motion). THE RACK: the anatomy grid grew a fifth row
+(`stowWeapon rackSwap stowOffhand`), rack cells one register quieter
+(desaturated steel that wakes on attention), plain names ("ready weapon" /
+"ready off hand" — never wire ids; SLOT_NAMES map), filled-cell primary act =
+DRAW (the trade is the row's point; Remove lives on the menu, never one
+mispress away), Trade act-btn between the pair wearing seatChip('swapSets'),
+dimmed `.cant` when nothing waits but still pressable (the server's spoken
+refusal is the honest teacher — the codex Answer precedent). Verbs: pack menu
+"Stow at the ready" (+ the gate's words when short, the Equip pattern), bench
+"Stow" (short word, band above tells the story), rack menu "Draw · trade
+sets" + "Remove", grips stay off the rack (a grip belongs to a HAND). Worn
+manifest: rack rows italic "at the ready", no damage figure (the manifest
+must not lie about the fold). Plumbing: SlotAction 'stow' → main sends
+{t:'use',slot,stow:true} with the stow sfx; InputManager.queueSwap() = the
+ONE door for UI presses (well, rack cell, Trade button all queue the same
+one-frame bit the backquote does); Panels ctor grew onSwapSets (last param);
+slotGlyphUrl maps the rack's empty sockets to the hands' purpose glyphs.
+LIVE RECEIPTS (lane-7 rig, fresh DB): menu shows Equip/Stow-at-the-ready/
+Drop and the verb lands the bow at the ready over the wire; the room shows
+the rack row + Trade chip + manifest at-the-ready rows (screenshot-audited);
+the well press trades, wears `.trading` through the beat, and its tooltip
+flips to the new arrangement; the rack cell reads acta=Draw with tipname
+"Bronze sword · at the ready" and its click trades back. 1668 workspace
+tests green, typecheck clean.
+
+*Original scope:* The swap well (hotbar,
 after the belt; LAW 7); THE RACK band + Stow verb + Draw verb + Swap button
 (LAW 8); pad verb wheel entries; controls table row; item card state suffix.
 Device-swap glyphs throughout via seatChip/kbBadge.

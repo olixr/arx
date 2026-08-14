@@ -10,6 +10,7 @@ import {
   dungeonSpecFromRoll,
   focusBudget,
   honedAbility,
+  isStowedSlot,
   levelForXp,
   rankLevel,
   masteryXp,
@@ -204,10 +205,21 @@ const EQUIP_SLOTS: EquipSlot[] = [
   'relic',
   'tool',
   'boots',
+  // THE RACK (THE SECOND GRIP): the waiting pair hangs a quiet band
+  // under the stand — the feature's home now that the body shows only
+  // the active set (THE QUIET BACK).
+  'stowWeapon',
+  'stowOffhand',
 ];
 
+/** The rack's sockets speak plain names, never their wire ids. */
+const SLOT_NAMES: Partial<Record<EquipSlot, string>> = {
+  stowWeapon: 'ready weapon',
+  stowOffhand: 'ready off hand',
+};
+
 /** Explicit verbs the item context menu can dispatch. */
-export type SlotAction = 'use' | 'deposit' | 'sell' | 'drop';
+export type SlotAction = 'use' | 'stow' | 'deposit' | 'sell' | 'drop';
 
 /**
  * The character screen + skills hall (DOM overlay UI), plus the two
@@ -337,6 +349,8 @@ export class Panels {
     private readonly onOpenArts: () => void = () => {},
     /** Answer or set down a Calling (server enforces THE FOCUS LAW). */
     private readonly onCalling: (calling: string, on: boolean) => void = () => {},
+    /** THE SECOND GRIP: fire the swap verb (the rack's Draw/Trade). */
+    private readonly onSwapSets: () => void = () => {},
   ) {
     // Dock buttons are wired in main through the one screen-exclusivity
     // gate — no panel opens itself anymore.
@@ -746,12 +760,24 @@ export class Panels {
             act: () => this.onSlotAction(idx, 'use'),
             gated: gate !== null,
           });
+          // THE SECOND GRIP: the bench offers the ready row too. Short
+          // word — the gate band above already tells the story.
+          if (!gate && (def.equipSlot === 'weapon' || def.equipSlot === 'offhand')) {
+            verbs.push({ label: 'Stow', act: () => this.onSlotAction(idx, 'stow') });
+          }
         } else if (def?.heals) verbs.push({ label: 'Eat', act: () => this.onSlotAction(idx, 'use') });
         verbs.push({ label: 'Drop', act: () => this.onSlotAction(idx, 'drop'), danger: true });
       }
     } else if (src?.kind === 'equip') {
       const worn = this.lastEquipment[src.slot];
-      if (worn) verbs.push({ label: 'Remove', act: () => this.onUnequip(src.slot as EquipSlot) });
+      if (worn && isStowedSlot(src.slot as EquipSlot)) {
+        // The rack's bench: Draw trades the sets; Remove sends the
+        // piece back to the pack.
+        verbs.push({ label: 'Draw', act: () => this.onSwapSets() });
+        verbs.push({ label: 'Remove', act: () => this.onUnequip(src.slot as EquipSlot) });
+      } else if (worn) {
+        verbs.push({ label: 'Remove', act: () => this.onUnequip(src.slot as EquipSlot) });
+      }
     }
     for (const v of verbs) {
       const b = document.createElement('button');
@@ -1388,6 +1414,15 @@ export class Panels {
           act: () => this.onSlotAction(idx, 'use'),
           gated: gate !== null,
         });
+        // THE SECOND GRIP: hand gear can wait at the ready instead —
+        // same gate, same words (what waits must be yours to wield).
+        if (def.equipSlot === 'weapon' || def.equipSlot === 'offhand') {
+          entries.push({
+            label: gate ? `Stow at the ready · needs ${affixName(gate.skill)} ${gate.level}` : 'Stow at the ready',
+            act: () => this.onSlotAction(idx, 'stow'),
+            gated: gate !== null,
+          });
+        }
       } else if (def?.heals) entries.push({ label: 'Eat', act: () => this.onSlotAction(idx, 'use') });
       else if (def?.buff) entries.push({ label: 'Drink', act: () => this.onSlotAction(idx, 'use') });
       // THE BELT: any consumable can be pinned as the quick-use pick.
@@ -1408,6 +1443,9 @@ export class Panels {
       const slot = el.dataset.equipslot as EquipSlot;
       const worn = this.lastEquipment[slot];
       if (!worn) return false;
+      // THE RACK: a waiting piece leads with the trade; a grip belongs
+      // to a HAND, so the rack offers none.
+      if (isStowedSlot(slot)) entries.push({ label: 'Draw · trade sets', act: () => this.onSwapSets() });
       entries.push({ label: 'Remove', act: () => this.onUnequip(slot) });
       // Every melee blade rides the blade carriage (daggers included),
       // so they all earn the grip preference — id substrings can't keep
@@ -1672,9 +1710,14 @@ export class Panels {
   private equipCell(slot: EquipSlot, equipment: Partial<Record<string, EquippedItem>>): HTMLElement {
     const cell = document.createElement('div');
     cell.className = 'inv-slot equip-cell';
+    // THE RACK: the waiting pair's sockets ride one register quieter —
+    // the same stand, a shelf below, never mistaken for the hands.
+    const rack = isStowedSlot(slot);
+    if (rack) cell.classList.add('rack-cell');
     cell.style.gridArea = slot;
     cell.dataset.equipslot = slot;
     const worn = equipment[slot];
+    const plainName = SLOT_NAMES[slot] ?? slot;
     if (worn) {
       cell.classList.add('clickable', 'equipped');
       const tier = rarityOfInstance(worn.id, worn.roll);
@@ -1695,9 +1738,13 @@ export class Panels {
       cell.dataset.filled = '1';
       cell.dataset.nav = '';
       cell.dataset.navkey = `equip:${slot}`;
-      cell.dataset.tipname = instanceName(worn.id, worn.roll);
-      cell.dataset.acta = 'Remove';
-      cell.addEventListener('click', () => this.onUnequip(slot));
+      cell.dataset.tipname = rack
+        ? `${instanceName(worn.id, worn.roll)} · at the ready`
+        : instanceName(worn.id, worn.roll);
+      // A rack socket's press DRAWS — the trade is the point of the
+      // row; Remove waits on the verb menu, never one mispress away.
+      cell.dataset.acta = rack ? 'Draw' : 'Remove';
+      cell.addEventListener('click', () => (rack ? this.onSwapSets() : this.onUnequip(slot)));
       cell.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         this.openMenuFor(cell, { x: e.clientX, y: e.clientY });
@@ -1713,7 +1760,7 @@ export class Panels {
       // on the stand, worn or waiting.
       cell.dataset.nav = '';
       cell.dataset.navkey = `equip:${slot}`;
-      cell.dataset.tipname = slot.charAt(0).toUpperCase() + slot.slice(1);
+      cell.dataset.tipname = plainName.charAt(0).toUpperCase() + plainName.slice(1);
       const ghost = document.createElement('img');
       ghost.className = 'slot-ghost';
       ghost.src = slotGlyphUrl(slot, 64);
@@ -1723,7 +1770,7 @@ export class Panels {
     // Every socket wears its name — full or empty, you know the place.
     const label = document.createElement('span');
     label.className = 'slot-label';
-    label.textContent = slot;
+    label.textContent = plainName;
     cell.appendChild(label);
     return cell;
   }
@@ -1739,6 +1786,30 @@ export class Panels {
     for (const slot of EQUIP_SLOTS) {
       this.equipAnatomy.appendChild(this.equipCell(slot, equipment));
     }
+    // THE RACK's trade button sits between the waiting pair, wearing
+    // the live key chip — dim when nothing waits (still pressable; the
+    // server speaks the refusal, the honest teacher).
+    const trade = document.createElement('button');
+    trade.id = 'rack-swap';
+    trade.className = 'act-btn';
+    trade.type = 'button';
+    trade.style.gridArea = 'rackSwap';
+    const hasWaiting =
+      equipment.stowWeapon !== undefined || equipment.stowOffhand !== undefined;
+    if (!hasWaiting) trade.classList.add('cant');
+    trade.dataset.nav = '';
+    trade.dataset.navkey = 'rack:trade';
+    trade.dataset.acta = 'Trade';
+    trade.title = hasWaiting
+      ? 'Trade weapon sets. The waiting pair comes to your hands.'
+      : 'Nothing waits at the ready. Stow a weapon from your pack.';
+    const word = document.createElement('span');
+    word.className = 'rack-word';
+    word.textContent = 'Trade';
+    trade.appendChild(word);
+    trade.appendChild(seatChip('swapSets'));
+    trade.addEventListener('click', () => this.onSwapSets());
+    this.equipAnatomy.appendChild(trade);
 
     this.renderGearStrip();
     this.renderWornManifest(equipment);
@@ -1872,18 +1943,26 @@ export class Panels {
         tick.textContent = '◆';
         name.appendChild(tick);
       }
-      // The headline: the piece's one most honest figure.
+      // The headline: the piece's one most honest figure. A RACK piece
+      // says only where it stands — THE SLEEPING STEEL grants nothing,
+      // so its row must promise nothing (a damage figure here would be
+      // the manifest lying about the fold).
       const note = document.createElement('span');
       note.className = 'worn-row-note';
-      const relicArt = def.relic ? abilityDef(def.relic)?.name : undefined;
-      const sigilArt = def.sigil ? abilityDef(def.sigil)?.name : undefined;
-      const passive = def.passive ? PASSIVES[def.passive]?.name : undefined;
-      note.textContent =
-        stats?.damage !== undefined && stats.damage > 0
-          ? `${Math.floor(stats.damage)} dmg${stats.affixes.length > 0 ? ` · ${stats.affixes.length}✦` : ''}`
-          : stats && stats.armor > 0
-            ? `${stats.armor} armor${stats.affixes.length > 0 ? ` · ${stats.affixes.length}✦` : ''}`
-            : (relicArt ?? sigilArt ?? passive ?? (def.armor ? `${def.armor} armor` : slot));
+      if (isStowedSlot(slot)) {
+        row.classList.add('rack-row');
+        note.textContent = 'at the ready';
+      } else {
+        const relicArt = def.relic ? abilityDef(def.relic)?.name : undefined;
+        const sigilArt = def.sigil ? abilityDef(def.sigil)?.name : undefined;
+        const passive = def.passive ? PASSIVES[def.passive]?.name : undefined;
+        note.textContent =
+          stats?.damage !== undefined && stats.damage > 0
+            ? `${Math.floor(stats.damage)} dmg${stats.affixes.length > 0 ? ` · ${stats.affixes.length}✦` : ''}`
+            : stats && stats.armor > 0
+              ? `${stats.armor} armor${stats.affixes.length > 0 ? ` · ${stats.affixes.length}✦` : ''}`
+              : (relicArt ?? sigilArt ?? passive ?? (def.armor ? `${def.armor} armor` : slot));
+      }
       row.append(img, name, note);
       rows.push(row);
     }
