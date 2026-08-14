@@ -88,6 +88,7 @@ import {
   type KoboldLook,
   type SkeletonLook,
 } from './rig.js';
+import { golemLook, type GolemLook } from './golems.js';
 import { LegRig, type LegPose } from './legs.js';
 import { FINISHER_PHASES, strikePhases } from './carriage.js';
 import { GREAT_FINISHER_PHASES, GREAT_PHASES } from './wield.js';
@@ -143,6 +144,9 @@ import { GrassSystem, windAtInto, windScalarAt, type Disturber, type WindSample 
 import { paintTree, saplingModel,
   treeModel, type TreeModel } from './trees.js';
 import { dust } from './matter/dust.js';
+import { fire } from './matter/fire.js';
+import { frost } from './matter/frost.js';
+import { storm } from './matter/storm.js';
 import { asMatter } from './matter/index.js';
 import { speakBreath } from './breathFx.js';
 import {
@@ -29592,6 +29596,7 @@ export class Renderer {
             s,
             remote.meta.appearance !== undefined,
             npcDef(remote.meta.defId ?? '')?.radius ?? 0.45,
+            Renderer.GOLEM_SIZE[remote.meta.defId ?? ''] ?? 1,
           );
           if (alertItem) {
             alertItem.strat = eStrat;
@@ -30297,6 +30302,8 @@ export class Renderer {
     kobold?: KoboldLook;
     /** Fur-dialect override: this humanoid is a gnoll. */
     gnoll?: GnollLook;
+    /** Construct-dialect override: this humanoid is a golem. */
+    golem?: GolemLook;
     /** Weapons stowed on the body (snapshot SHEATHED_BIT). */
     sheathed?: boolean;
     /**
@@ -30847,6 +30854,10 @@ export class Renderer {
       // The gnoll's coat cluster AND spot field ride the spawn seed —
       // the seed byte keeps same-fur bodies from sharing spot sprites.
       e.gnoll ? `g${(e.gnoll.seed ?? 0) & 0xff}` : ''
+    }${
+      // The golem's build + seed: stone layout, crack runs, and facet
+      // shears are all seed-laid — same-cluster bodies never share.
+      e.golem ? `G${e.golem.build}${(e.golem.seed ?? 0) & 0xff}` : ''
     }${seat ? `|${seat.kind}${seat.head ?? ''}` : ''}${riding ? `|m${anim.mountKey}` : ''}`;
 
     const capeFront = capeSim !== null && capeSim.front(Math.sin(dir));
@@ -31112,6 +31123,7 @@ export class Renderer {
           skeletal: e.skeletal,
           kobold: e.kobold,
           gnoll: e.gnoll,
+          golem: e.golem,
           gatherPhase: now / 1000,
           craftKind: station?.kind ?? null,
           foraging: gather?.kind === 'forage',
@@ -31372,6 +31384,9 @@ export class Renderer {
     s: { x: number; y: number },
     humanoid: boolean,
     radius: number,
+    /** Rig-size multiplier for tall biped mobs (golems) — lifts the
+     *  glyph clear of a crown the flat radius math never knew. */
+    sizeK = 1,
   ): DrawItem | null {
     const prev = this.alertAnim.get(eid);
     if (icon === ALERT_ICON_NONE) {
@@ -31390,7 +31405,11 @@ export class Renderer {
         const p = this.liftedWTS(s.x, s.y);
         // Clear of the nameplate: a body's label caps ~1.32 body-
         // heights up; the glyph floats a step above it.
-        const topY = humanoid ? p.y - 1.62 * sc : p.y - (radius * 2.6 + 0.55) * sc;
+        const topY = humanoid
+          ? p.y - 1.62 * sc
+          : sizeK > 1
+            ? p.y - 1.62 * sc * sizeK
+            : p.y - (radius * 2.6 + 0.55) * sc;
         // Pop-in: 180ms ease-out-back — the snap of a head coming up.
         const k = Math.min(1, (performance.now() - since) / 180);
         const c1 = 1.70158;
@@ -32071,6 +32090,18 @@ export class Renderer {
   };
 
   /**
+   * Golem stature: the tallest walking bodies in the game — every
+   * build stands over the troll, and the ice golem over all of them
+   * (docs/golems-plan.md THE EARTH STANDS UP).
+   */
+  private static readonly GOLEM_SIZE: Record<string, number> = {
+    rock_golem: 1.55,
+    iron_golem: 1.6,
+    fire_golem: 1.6,
+    ice_golem: 1.7,
+  };
+
+  /**
    * The road-thieves' kit — leathers and honest iron, every piece a
    * real drop from the wearer's table (the loot-story law). The
    * archer slings a shortbow and quiver; the reaver fights sword-and-
@@ -32271,6 +32302,7 @@ export class Renderer {
       defId.startsWith('kobold') ||
       defId.startsWith('brigand') ||
       defId.startsWith('gnoll') ||
+      defId.endsWith('_golem') ||
       defId === 'troll'
     ) {
       const def = npcDef(defId);
@@ -32279,6 +32311,61 @@ export class Renderer {
       // The gnoll look rolls its coat cluster from the spawn eid — a
       // warband sorts into families instead of stamping one body.
       const gno = defId.startsWith('gnoll') ? gnollLook(defId, eid) : undefined;
+      // The rock golem rolls its stone cluster the same way; the other
+      // builds are designs whose seed varies layout, never palette.
+      const gol = defId.endsWith('_golem') ? golemLook(defId, eid) : undefined;
+      if (gol) {
+        // THE JOINT VOICE (docs/golems-plan.md): a golem sheds its own
+        // material as it moves — pebbles grind off the cairn, sparks
+        // hiss at the piston stops, embers rise off the crust, frost
+        // creeps out of every footfall. FrameDt-gated so a standing
+        // golem is near-silent and the emitter budget never feels it.
+        const walking = s.pose === PoseState.Walk;
+        const host = { particles: this.particles };
+        const rate = this.frameDt * (walking ? 1 : 0.22);
+        switch (gol.build) {
+          case 'rock':
+            if (Math.random() < rate * 1.1) {
+              dust.deployments.kick!(host, s.x + (Math.random() - 0.5) * 0.5, s.y + 0.1, {
+                scale: 0.32,
+              });
+            }
+            break;
+          case 'iron':
+            // The spark hiss speaks only when the pistons work.
+            if (walking && Math.random() < this.frameDt * 0.8) {
+              storm.deployments.crackle!(host, s.x + (Math.random() - 0.5) * 0.4, s.y - 0.6, {
+                radius: 0.25,
+                scale: 0.3,
+              });
+            }
+            break;
+          case 'fire': {
+            if (Math.random() < this.frameDt * (walking ? 1 : 0.55)) {
+              fire.deployments.plume!(host, s.x + (Math.random() - 0.5) * 0.5, s.y - 0.9, {
+                scale: 0.2,
+              });
+            }
+            if (walking && Math.random() < this.frameDt * 0.3) {
+              fire.deployments.gobbets!(host, s.x, s.y + 0.1, { scale: 0.16 });
+            }
+            // The banked light is carried, not painted: the furnace
+            // throws its own glow on the ground it stands on.
+            this.queueGlow(s.x, s.y, 1.3, '255, 150, 70', 0.14);
+            break;
+          }
+          case 'ice':
+            if (walking && Math.random() < this.frameDt * 0.8) {
+              frost.deployments.fog!(host, s.x, s.y + 0.05, { radius: 0.4, scale: 0.28 });
+            } else if (Math.random() < rate * 0.4) {
+              frost.deployments.bloom!(host, s.x + (Math.random() - 0.5) * 0.4, s.y - 0.4, {
+                radius: 0.2,
+                scale: 0.2,
+              });
+            }
+            break;
+        }
+      }
       return this.humanoidItem({
         eid,
         x: s.x,
@@ -32306,17 +32393,21 @@ export class Renderer {
                 ? kob.hide
                 : gno
                   ? gno.fur
-                  : Renderer.BRIGAND_SKIN[defId],
+                  : gol
+                    ? gol.shell
+                    : Renderer.BRIGAND_SKIN[defId],
         size:
           Renderer.KOBOLD_SIZE[defId] ??
           Renderer.GNOLL_SIZE[defId] ??
           Renderer.SKELETON_SIZE[defId] ??
           Renderer.BRIGAND_SIZE[defId] ??
+          Renderer.GOLEM_SIZE[defId] ??
           (defId === 'troll' ? 1.4 : 0.85),
         nameInk,
         skeletal: skel,
         kobold: kob,
         gnoll: gno,
+        golem: gol,
       });
     }
 
@@ -33839,6 +33930,7 @@ export class Renderer {
       death.defId.startsWith('kobold') ||
       death.defId.startsWith('brigand') ||
       death.defId.startsWith('gnoll') ||
+      death.defId.endsWith('_golem') ||
       death.defId === 'troll';
     let rag: Ragdoll;
     let look: (typeof this.corpses)[number]['look'];
@@ -33881,6 +33973,7 @@ export class Renderer {
         Renderer.GNOLL_SIZE[death.defId] ??
         Renderer.SKELETON_SIZE[death.defId] ??
         Renderer.BRIGAND_SIZE[death.defId] ??
+        Renderer.GOLEM_SIZE[death.defId] ??
         (death.defId === 'troll' ? 1.4 : 0.85);
       const bodyColor = def.color ?? '#999';
       const corpseKob = death.defId.startsWith('kobold')
@@ -33891,6 +33984,10 @@ export class Renderer {
       const corpseGno = death.defId.startsWith('gnoll')
         ? gnollLook(death.defId, death.eid)
         : undefined;
+      // The golem wreck keeps its stone cluster the same way.
+      const corpseGol = death.defId.endsWith('_golem')
+        ? golemLook(death.defId, death.eid)
+        : undefined;
       rag = buildHumanoidRagdoll(size, seed);
       rag.launch(sx, sy, sev, HUMANOID_UPPER, HUMANOID_FEET);
       look = {
@@ -33900,17 +33997,23 @@ export class Renderer {
           skinColor:
             death.defId === 'troll'
               ? '#6a7d5c'
-              : (corpseKob?.hide ?? corpseGno?.fur ?? Renderer.BRIGAND_SKIN[death.defId] ?? '#7aa74a'),
+              : (corpseKob?.hide ??
+                corpseGno?.fur ??
+                corpseGol?.shell ??
+                Renderer.BRIGAND_SKIN[death.defId] ??
+                '#7aa74a'),
           hairColor: shade(bodyColor, -24),
           size,
           // Skeleton corpses keep the bone dialect — crown and all;
           // kobold corpses keep the scale dialect — horns and tail;
-          // gnoll corpses keep the fur dialect — muzzle, crest, coat.
+          // gnoll corpses keep the fur dialect — muzzle, crest, coat;
+          // golem corpses keep the construct dialect — the collapse.
           skel: death.defId.startsWith('skeleton')
             ? skeletonLook(death.defId)
             : undefined,
           kob: corpseKob,
           gno: corpseGno,
+          gol: corpseGol,
         },
       };
     } else {

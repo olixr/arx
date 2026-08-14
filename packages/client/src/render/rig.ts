@@ -18,6 +18,13 @@ import {
 } from './weapons.js';
 import { drawTool, toolStyle } from './tools.js';
 import {
+  drawGolemArm,
+  paintGolemBody,
+  paintGolemFoot,
+  paintGolemHead,
+  type GolemLook,
+} from './golems.js';
+import {
   LegRig,
   chooseLimbSign,
   solveLimb,
@@ -317,6 +324,14 @@ export interface RigPose {
    * carriage, and facing bands keep working untouched.
    */
   gnoll?: GnollLook;
+  /**
+   * THE CONSTRUCT DIALECT (docs/golems-plan.md): swap head, torso,
+   * limbs, and feet for one of the four golem builds — stacked stone,
+   * forged plate, cracked crust, sheared ice — while the rig,
+   * carriage, and facing bands keep working untouched. Golems wear no
+   * garment and hold no weapon; the body IS the wardrobe.
+   */
+  golem?: GolemLook;
   /** Time-based swing driver for the gather pose. */
   gatherPhase: number;
   /**
@@ -572,6 +587,10 @@ function drawArm(
    *  overrides the cloth/glove branches the way bone does; a gnoll
    *  never owned a sleeve. */
   gno?: GnollLook | null,
+  /** Construct dialect: stone, plate, crust, or ice — the whole limb
+   *  machine swaps per build (golems.ts). Overrides everything the
+   *  way bone does; a golem's arm IS its armor. */
+  gol?: GolemLook | null,
 ): { ex: number; ey: number; kx: number; ky: number } {
   // THE REMEMBERED ELBOW: the arms carry the same side-choice
   // hysteresis the knees have had since the quadruped rig — score the
@@ -601,6 +620,11 @@ function drawArm(
   // Hot path: every visible humanoid solves two arms a frame — reuse
   // one scratch (destructured immediately) instead of allocating.
   const { ex, ey, kx, ky } = solveLimbInto(ARM_SOLVE, sx, sy, hx, hy, ARM_LEN * s, 1.08, prefX, prefY);
+
+  if (gol) {
+    drawGolemArm(ctx, gol, sx, sy, kx, ky, ex, ey, s, hurt ?? false, nowMs ?? 0);
+    return { ex, ey, kx, ky };
+  }
 
   if (bone) {
     const hv = bone.heavy;
@@ -3202,6 +3226,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const skel = rig.skeletal ?? null;
   const kob = rig.kobold ?? null;
   const gno = rig.gnoll ?? null;
+  const gol = rig.golem ?? null;
   const skin = rig.hurt
     ? '#ffffff'
     : (skel?.bone ?? rig.skinColor ?? (rig.look ? SKIN_TONES[rig.look.skin]! : SKIN));
@@ -3342,9 +3367,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           ? shade(kob.hide, -5)
           : gno
             ? shade(gno.fur, -5)
-            : rig.look
-              ? shade(CLOTH_COLORS[rig.look.pants]!, -8)
-              : shade(bodyColor, -28);
+            : gol
+              ? shade(gol.shell, -4)
+              : rig.look
+                ? shade(CLOTH_COLORS[rig.look.pants]!, -8)
+                : shade(bodyColor, -28);
       const thighCol = rig.hurt ? '#ffffff' : (legSt?.thigh ?? baseLeg);
       const shinCol = rig.hurt
         ? '#ffffff'
@@ -3354,7 +3381,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
             ? shade(kob.hide, -12)
             : gno
               ? shade(gno.fur, -14)
-              : (legSt?.shin ?? legSt?.thigh ?? baseLeg);
+              : gol
+                ? shade(gol.shell, -12)
+                : (legSt?.shin ?? legSt?.thigh ?? baseLeg);
       // THE FOOT CAPS THE LEG: the shin stroke ends at the ANKLE — the
       // endpoint pulled back up the bone so its round cap tucks inside
       // the footwear painted below. Stroked all the way to the sole, the
@@ -3367,7 +3396,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // where the hunched species carries it.
       const shinLW = Math.max(
         2,
-        s * (skel ? 0.052 * skel.heavy : bootSt ? 0.1 : gno ? 0.078 : 0.09),
+        s * (skel ? 0.052 * skel.heavy : bootSt ? 0.1 : gno ? 0.078 : gol ? 0.115 : 0.09),
       );
       const ankPull = shinLW * 0.55;
       const ankX = fxx - aux * ankPull;
@@ -3375,18 +3404,25 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ctx.strokeStyle = thighCol;
       ctx.lineWidth = Math.max(
         2,
-        s * (skel ? 0.066 * skel.heavy : gno ? 0.126 * (0.9 + 0.2 * gno.heavy) : 0.09),
+        s *
+          (skel
+            ? 0.066 * skel.heavy
+            : gno
+              ? 0.126 * (0.9 + 0.2 * gno.heavy)
+              : gol
+                ? 0.15 * (0.9 + 0.2 * gol.heavy)
+                : 0.09),
       );
       ctx.beginPath();
       ctx.moveTo(hipX, hipY);
       ctx.lineTo(kx, ky);
-      if (shinCol === thighCol && !skel && !gno) {
+      if (shinCol === thighCol && !skel && !gno && !gol) {
         ctx.lineTo(ankX, ankY);
         ctx.stroke();
       } else {
         ctx.stroke();
         ctx.strokeStyle = shinCol;
-        if (skel || gno) ctx.lineWidth = shinLW;
+        if (skel || gno || gol) ctx.lineWidth = shinLW;
         ctx.beginPath();
         ctx.moveTo(kx, ky);
         ctx.lineTo(ankX, ankY);
@@ -3956,6 +3992,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
             ctx.fill();
           }
         }
+      } else if (gol && !bootSt) {
+        // The construct footing: a slab wider than any boot — stone
+        // block, riveted sabaton, cracked pad, or faceted wedge per
+        // build. A golem stands on its own architecture.
+        paintGolemFoot(ctx, gol, fxx, fyy, s, lead, rig.hurt);
       } else if (kob && !bootSt) {
         // The bare kobold foot: a scaled chip, slightly narrow, with
         // pale claw ticks raking off the leading edge — no kobold ever
@@ -4105,8 +4146,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // THE FRONT-HEAVY FRAME: the fur dialect widens the shoulder line
   // and barely the waist — the gnoll's mass lives in its upper torso
   // (arms anchor off tw, so the wider carriage propagates for free).
-  const tw = SHOULDER_HALF_S * s * (gno ? 1.28 : 1); // shoulder half-width
-  const ww = WAIST_HALF_S * s * (gno ? 1.06 : 1); // waist half-width
+  // THE CONSTRUCT FRAME widens further than the fur dialect ever did:
+  // a golem's mass IS its shoulder line (arms anchor off tw, so the
+  // whole carriage broadens for free).
+  const tw = SHOULDER_HALF_S * s * (gno ? 1.28 : gol ? 1.4 * (0.94 + 0.12 * gol.heavy) : 1); // shoulder half-width
+  const ww = WAIST_HALF_S * s * (gno ? 1.06 : gol ? 1.22 : 1); // waist half-width
   const th = TORSO_RISE_S * s * (1 - 0.12 * crouch); // hip line → shoulders
 
   // Melee combo stages — THE TWO SCHOOLS (carriage.ts strike
@@ -5599,6 +5643,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       elbowEaseHold,
       rig.nowMs,
       gno,
+      gol,
     );
     if (shieldSt && shieldFr) {
       if (shieldBehindArm) drawShieldStraps(ctx, shieldSt, shieldFr, rig.hurt);
@@ -5732,6 +5777,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       elbowEaseHold,
       rig.nowMs,
       gno,
+      gol,
     );
   };
   // ---- THE BILLBOARD SOCKET: pauldrons sit on the rig's SHOULDER
@@ -6069,6 +6115,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // standing tip than the kobold's (the lore's stoop), easing out
   // when seated.
   if (gno) lean += 0.18 * fx * (1 - sit);
+  // The construct stands like a tower — no hunch. Only the rock golem
+  // carries a lean: a stacked cairn was never plumb.
+  if (gol) lean += (gol.build === 'rock' ? 0.06 : 0.015) * fx * (1 - sit);
 
   // Seated drape info for the garment painter: the ground line and the
   // solved knees mapped into the torso local frame (translate → lean
@@ -6145,9 +6194,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // shoulders, and oversized so the jaw mass reads at distance: the
   // head is the predator's whole argument and the hunch is the pose
   // that presents it.
-  const headR = 0.15 * s * (kob ? 1.16 : gno ? 1.22 : 1);
-  const headX = kob ? fx * 0.14 * s : gno ? fx * 0.19 * s : fx * 0.05 * s;
-  const headY = kob ? -th - headR * 0.48 : gno ? -th - headR * 0.3 : -th - headR * 0.82;
+  // The golem head is SMALL for its frame and sunk INTO the shoulder
+  // line — the neckless construct proportion: massive body, deep-set
+  // capstone. The opposite argument to the kobold/gnoll oversize.
+  const headR = 0.15 * s * (kob ? 1.16 : gno ? 1.22 : gol ? 1.04 : 1);
+  const headX = kob ? fx * 0.14 * s : gno ? fx * 0.19 * s : gol ? fx * 0.08 * s : fx * 0.05 * s;
+  const headY =
+    kob ? -th - headR * 0.48 : gno ? -th - headR * 0.3 : gol ? -th - headR * 0.08 : -th - headR * 0.82;
   const hw = headR * 1.04; // half-width
   const hh = headR * 1.0; // half-height
   const cut = headR * 0.34;
@@ -6169,8 +6222,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       : helmKind === 'wizard'
         ? 'brim'
         : helmKind === 'hood' || helmKind === 'guildcowl' ||
-            helmKind === 'latchhood' || helmKind === 'veilwrap' ||
-            helmKind === 'redmask'
+            helmKind === 'latchhood' || helmKind === 'veilwrap'
           ? 'cloth'
           : 'sealed';
   const hairCol = rig.hurt
@@ -6194,7 +6246,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     hurt: rig.hurt,
   };
   // The bone, scale, and fur dialects replace head, hair, and face wholesale.
-  if (!skel && !kob && !gno) drawHairBack(ctx, hairFrame, hairIx, cover);
+  if (!skel && !kob && !gno && !gol) drawHairBack(ctx, hairFrame, hairIx, cover);
 
   // Torso garment: the styled body (robe, jerkin, brigandine, cuirass,
   // pauldrons) — the bare `tunic` default is the original silhouette.
@@ -6212,6 +6264,29 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       profileK,
       backK,
       hurt: rig.hurt,
+    });
+  } else if (gol) {
+    // THE CONSTRUCT wears no garment — the stacked stone, forged
+    // plate, cracked crust, or sheared ice IS the torso. The flare
+    // input is the menace ramp: cracks gape and visors burn through
+    // the wind of every art.
+    paintGolemBody(ctx, gol, {
+      s,
+      tw,
+      ww,
+      th,
+      fx,
+      fy,
+      profileK,
+      backK,
+      lead,
+      hurt: rig.hurt,
+      nowMs: rig.nowMs,
+      runF: rig.runF,
+      flare:
+        meleeStage >= 0 || rig.pose === PoseState.Cast
+          ? Math.sin(Math.min(1, rig.poseT) * Math.PI)
+          : 0,
     });
   } else {
     drawTorsoGarment(
@@ -6391,6 +6466,35 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         gape,
       },
       gno.seed ?? 0,
+    );
+  } else if (gol) {
+    // THE CONSTRUCT DIALECT head: capstone, helm block, crucible, or
+    // sheared prism — the strike beat FLARES instead of biting (a
+    // visor burns, a capstone nods, a pool surges, a crack flashes).
+    const flare =
+      meleeStage >= 0 || rig.pose === PoseState.Cast
+        ? Math.sin(Math.min(1, rig.poseT) * Math.PI)
+        : 0;
+    paintGolemHead(
+      ctx,
+      gol,
+      {
+        s,
+        headX,
+        headY,
+        hw,
+        hh,
+        cut,
+        fx,
+        fy,
+        profileK,
+        backK,
+        lead,
+        hurt: rig.hurt,
+        nowMs: rig.nowMs,
+        flare,
+      },
+      gol.seed ?? 0,
     );
   } else {
   ctx.fillStyle = skin;

@@ -81,6 +81,7 @@ import {
   type OwlLook,
   type SkeletonLook,
 } from './rig.js';
+import { type GolemLook } from './golems.js';
 
 const BOOT = '#4a3324';
 
@@ -479,6 +480,9 @@ export interface HumanoidCorpseLook {
   kob?: KoboldLook;
   /** Set = this corpse is a gnoll: muzzle, crest, and coat stay. */
   gno?: GnollLook;
+  /** Set = this corpse is a golem: the construct comes APART — the
+   *  stack slides, the plates spring, the furnace goes out. */
+  gol?: GolemLook;
   /** Worn equipment — the corpse keeps everything it died in. */
   gear?: CorpseGear;
 }
@@ -534,6 +538,10 @@ export function drawHumanoidRagdoll(
 ): void {
   if (look.skel) {
     drawSkeletonRagdoll(ctx, rag, f, look.size, look.skel);
+    return;
+  }
+  if (look.gol) {
+    drawGolemRagdoll(ctx, rag, f, look.size, look.gol);
     return;
   }
   const s = f.s * look.size;
@@ -991,6 +999,212 @@ export function drawHumanoidRagdoll(
  * with the kill), jaw slack, crown still seated on royalty. A pile of
  * bones you can read the variant from.
  */
+/**
+ * THE CONSTRUCT COMES APART (docs/golems-plan.md): a golem's corpse
+ * is a collapse, not a sprawl — the trunk masses slide off the stack
+ * axis, the head stone rolls past the skull point, and every build
+ * dies in its own key: the cairn spills, the plates spring their
+ * rivets, THE FURNACE GOES OUT (dead cracks, no glow anywhere — the
+ * one light this game honestly extinguishes), the ice loses its sheen
+ * and keeps its heart frozen in the wreck.
+ */
+function drawGolemRagdoll(
+  ctx: CanvasRenderingContext2D,
+  rag: Ragdoll,
+  f: RagFrame,
+  size: number,
+  gol: GolemLook,
+): void {
+  const s = f.s * size;
+  const g = rag.pts;
+  const pelvis = P(f, g[H.pelvis]!);
+  const chest = P(f, g[H.chest]!);
+  const head = P(f, g[H.head]!);
+  const seed = gol.seed ?? 0;
+  const slide = ((seed & 7) / 7 - 0.5) * 2; // which way the stack spilled
+  let ux = chest.x - pelvis.x;
+  let uy = chest.y - pelvis.y;
+  const ul = Math.hypot(ux, uy) || 1e-4;
+  ux /= ul;
+  uy /= ul;
+  const nx = -uy;
+  const ny = ux;
+  const shell = gol.shell;
+  const legW = s * 0.13;
+  const shinW = s * 0.105;
+  // Limbs first: broken columns in the construct's own material, the
+  // fist blocks still on them.
+  const drawLegG = (knee: number, foot: number, hipSide: number): void => {
+    const hip = { x: pelvis.x + nx * hipSide * s * 0.09, y: pelvis.y + ny * hipSide * s * 0.09 };
+    const k = P(f, g[knee]!);
+    const ft = P(f, g[foot]!);
+    limb(ctx, hip, k, ft, shade(shell, -4), shade(shell, -12), legW, shinW);
+    chip(ctx, ft, k, s * 0.13, s * 0.1, shade(shell, -3));
+  };
+  const drawArmG = (elbow: number, hand: number, side: number): void => {
+    const sh = { x: chest.x + nx * side * s * 0.16, y: chest.y + ny * side * s * 0.16 };
+    const el = P(f, g[elbow]!);
+    const hd = P(f, g[hand]!);
+    limb(ctx, sh, el, hd, shell, shade(shell, -8), s * 0.12, s * 0.095);
+    chip(ctx, hd, el, s * 0.12, s * 0.11, shade(shell, 2));
+  };
+  drawLegG(H.kneeL, H.footL, -1);
+  drawArmG(H.elbowL, H.handL, -1);
+  // The trunk: two masses SLID apart across the stack axis — the
+  // collapse read. Each keeps its lit crown; the light does not care
+  // that the machine stopped.
+  const drawMass = (
+    cx: number,
+    cy: number,
+    w: number,
+    h: number,
+    tone: number,
+  ): void => {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(Math.atan2(uy, ux) + Math.PI / 2);
+    ctx.fillStyle = shade(shell, tone);
+    ctx.beginPath();
+    chamferRect(ctx, -w, -h, w * 2, h * 2, Math.min(w, h) * (gol.build === 'ice' ? 0.16 : 0.5));
+    ctx.fill();
+    ctx.fillStyle = gol.lit;
+    ctx.globalAlpha = gol.build === 'fire' ? 0.35 : 0.85;
+    ctx.fillRect(-w * 0.8, -h, w * 1.6, h * 0.5);
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  };
+  const hipM = {
+    x: pelvis.x + ux * ul * 0.22 - nx * slide * s * 0.1,
+    y: pelvis.y + uy * ul * 0.22 - ny * slide * s * 0.1,
+  };
+  const chestM = {
+    x: pelvis.x + ux * ul * 0.68 + nx * slide * s * 0.14,
+    y: pelvis.y + uy * ul * 0.68 + ny * slide * s * 0.14,
+  };
+  drawMass(hipM.x, hipM.y, s * 0.21, s * 0.13, -6);
+  drawMass(chestM.x, chestM.y, s * 0.27, s * 0.16, 0);
+  // Build keys on the wreck.
+  if (gol.build === 'rock') {
+    // The spill: loose stones shed past the trunk on the slide side.
+    ctx.fillStyle = shade(shell, -10);
+    for (let i = 0; i < 3; i++) {
+      const t = ((seed >> (i * 3)) & 7) / 7;
+      ctx.beginPath();
+      ctx.arc(
+        chestM.x + nx * slide * s * (0.24 + t * 0.2) + ux * (t - 0.5) * s * 0.3,
+        chestM.y + ny * slide * s * (0.24 + t * 0.2) + uy * (t - 0.5) * s * 0.3 + s * 0.04,
+        s * (0.035 + t * 0.03),
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+    }
+    ctx.fillStyle = gol.accent;
+    ctx.beginPath();
+    ctx.ellipse(chestM.x, chestM.y - s * 0.1, s * 0.09, s * 0.035, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (gol.build === 'iron') {
+    // Sprung plates: the chest seam gapes dark; rivets still count.
+    ctx.fillStyle = gol.under;
+    ctx.fillRect(chestM.x - s * 0.035, chestM.y - s * 0.14, s * 0.07, s * 0.26);
+    ctx.fillStyle = shade(shell, -20);
+    for (const [ox, oy] of [[-0.16, -0.08], [0.16, -0.08], [-0.16, 0.08], [0.16, 0.08]] as const) {
+      ctx.beginPath();
+      ctx.arc(chestM.x + ox * s, chestM.y + oy * s, s * 0.016, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = gol.accent;
+    ctx.fillRect(hipM.x - s * 0.14, hipM.y - s * 0.02, s * 0.28, s * 0.035);
+  } else if (gol.build === 'fire') {
+    // THE FURNACE GOES OUT: the crack network survives as DEAD seams —
+    // deep, cold, and honest. No glow anywhere on this corpse.
+    ctx.strokeStyle = gol.under;
+    ctx.lineWidth = Math.max(1, s * 0.022);
+    ctx.lineCap = 'round';
+    for (const [x0, y0, x1, y1] of [
+      [-0.2, -0.1, 0.14, 0.02],
+      [-0.04, -0.14, 0.06, 0.12],
+      [0.1, -0.12, 0.22, -0.02],
+    ] as const) {
+      ctx.beginPath();
+      ctx.moveTo(chestM.x + x0 * s, chestM.y + y0 * s);
+      ctx.lineTo(chestM.x + x1 * s, chestM.y + y1 * s);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  } else {
+    // Ice: shattered facet chips around the wreck; the heart stays.
+    ctx.fillStyle = gol.lit;
+    for (let i = 0; i < 3; i++) {
+      const t = ((seed >> (i * 4)) & 15) / 15;
+      const bx = chestM.x + nx * (t - 0.5) * s * 0.6 + ux * (t - 0.3) * s * 0.4;
+      const by = chestM.y + ny * (t - 0.5) * s * 0.6 + uy * (t - 0.3) * s * 0.4 + s * 0.05;
+      ctx.beginPath();
+      ctx.moveTo(bx - s * 0.03, by);
+      ctx.lineTo(bx + s * 0.012, by - s * 0.05);
+      ctx.lineTo(bx + s * 0.035, by + s * 0.012);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.fillStyle = '#1c2e3c';
+    ctx.beginPath();
+    ctx.ellipse(chestM.x, chestM.y, s * 0.075, s * 0.055, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // The head stone: rolled PAST the skull point along the fall, each
+  // build's own block — sockets dark, visor dead, crucible cold,
+  // prism cracked.
+  const hx = head.x + ux * s * 0.1 + nx * slide * s * 0.12;
+  const hy = head.y + uy * s * 0.1 + ny * slide * s * 0.12 + s * 0.02;
+  ctx.save();
+  ctx.translate(hx, hy);
+  ctx.rotate(slide * 0.5);
+  const hwR = s * 0.14;
+  if (gol.build === 'ice') {
+    ctx.fillStyle = shell;
+    ctx.beginPath();
+    ctx.moveTo(-hwR, hwR * 0.5);
+    ctx.lineTo(-hwR * 0.7, -hwR * 0.7);
+    ctx.lineTo(hwR * 0.4, -hwR);
+    ctx.lineTo(hwR, hwR * 0.3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = gol.under;
+    ctx.lineWidth = Math.max(1, s * 0.016);
+    ctx.beginPath();
+    ctx.moveTo(-hwR * 0.6, -hwR * 0.2);
+    ctx.lineTo(hwR * 0.5, 0);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = gol.build === 'fire' ? shade(shell, -4) : shell;
+    ctx.beginPath();
+    chamferRect(ctx, -hwR, -hwR * 0.8, hwR * 2, hwR * 1.6, hwR * (gol.build === 'iron' ? 0.3 : 0.55));
+    ctx.fill();
+    if (gol.build === 'rock') {
+      ctx.fillStyle = gol.under;
+      for (const ox of [-0.4, 0.28]) {
+        ctx.beginPath();
+        chamferRect(ctx, hwR * ox, -hwR * 0.24, hwR * 0.32, hwR * 0.36, hwR * 0.1);
+        ctx.fill();
+      }
+    } else if (gol.build === 'iron') {
+      // The visor: dark and DEAD — the one line that never lights again.
+      ctx.fillStyle = gol.under;
+      ctx.fillRect(-hwR * 0.7, -hwR * 0.16, hwR * 1.4, hwR * 0.3);
+    } else {
+      // The crucible mouth, cold: a dark pool where the light lived.
+      ctx.fillStyle = gol.under;
+      ctx.beginPath();
+      ctx.ellipse(0, -hwR * 0.5, hwR * 0.7, hwR * 0.22, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+  // Near-side limbs over the wreck — the sprawl layering law kept.
+  drawLegG(H.kneeR, H.footR, 1);
+  drawArmG(H.elbowR, H.handR, 1);
+}
+
 function drawSkeletonRagdoll(
   ctx: CanvasRenderingContext2D,
   rag: Ragdoll,
