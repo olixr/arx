@@ -2485,13 +2485,14 @@ export interface GnollLook {
 
 export const GNOLL_LOOKS: Record<string, GnollLook> = {
   // The rank-and-file skulker: a dusty, dirt-matted coat over umber
-  // hide, a dark hyena mask, hungry amber eyes — brave in fours.
+  // hide, a dark hyena mask, a rust-brown roach, hungry amber eyes —
+  // brave in fours.
   gnoll: {
     fur: '#7f6d4c',
     underfur: '#bfae87',
     skin: '#8a7358',
     spot: '#4c4030',
-    mane: '#332a1e',
+    mane: '#5c3d22',
     mask: '#42372a',
     eye: '#f2a93a',
     nose: '#241d17',
@@ -2523,10 +2524,12 @@ export const GNOLL_LOOKS: Record<string, GnollLook> = {
 const GNOLL_CLUSTERS: ReadonlyArray<
   Pick<GnollLook, 'fur' | 'underfur' | 'spot' | 'mane' | 'mask'>
 > = [
-  { fur: '#7f6d4c', underfur: '#bfae87', spot: '#4c4030', mane: '#332a1e', mask: '#42372a' }, // dust
-  { fur: '#65625a', underfur: '#a19e92', spot: '#37342e', mane: '#33343a', mask: '#35352f' }, // ash
-  { fur: '#785a3c', underfur: '#b49e7c', spot: '#44342a', mane: '#3a2b1e', mask: '#3d3026' }, // russet
-  { fur: '#8a8164', underfur: '#c6bb9a', spot: '#4e4736', mane: '#453d2e', mask: '#443c30' }, // bone-pale
+  // The roach runs WARM against every coat (the reference hyena's
+  // rust crest) — value-separated from the fur so it reads at scale.
+  { fur: '#7f6d4c', underfur: '#bfae87', spot: '#4c4030', mane: '#5c3d22', mask: '#42372a' }, // dust
+  { fur: '#65625a', underfur: '#a19e92', spot: '#37342e', mane: '#4a4a54', mask: '#35352f' }, // ash
+  { fur: '#785a3c', underfur: '#b49e7c', spot: '#44342a', mane: '#63351f', mask: '#3d3026' }, // russet
+  { fur: '#8a8164', underfur: '#c6bb9a', spot: '#4e4736', mane: '#6b5330', mask: '#443c30' }, // bone-pale
 ];
 
 const GNOLL_LOOK_CACHE = new Map<string, GnollLook>();
@@ -2592,12 +2595,13 @@ export function paintGnollHead(
   const back = backK > 0.55;
   const nearSide = lead;
 
-  // --- the skull box: broad and LOW — all jaw and ear, the brow sunk
-  // between the shoulders. Wider than the old cut (the hyena's cheek
-  // mass), crown chamfers heavier than the jaw's.
-  const gw = hw * 1.16;
-  const crTop = headY - hh * 0.62;
-  const crBot = headY + hh * 0.6;
+  // --- the skull box: broad and LOW — all jaw and cheek, the brow
+  // sunk between the shoulders. Wider than the old cut (the hyena's
+  // cheek mass); the crown chamfers run HEAVY so the forehead reads
+  // as the dome the Roman muzzle line falls away from.
+  const gw = hw * 1.2;
+  const crTop = headY - hh * 0.66;
+  const crBot = headY + hh * 0.58;
 
   // --- THE MANE HOOD, laid down FIRST so the skull laps its base: a
   // connected sawtooth ridge breaking off the crown and pouring back
@@ -2605,8 +2609,10 @@ export function paintGnollHead(
   // pasted thorns. Face-on it reads end-on as a bristle halo behind
   // the crown; at profile the full ridge runs crown → nape; from
   // behind it owns the whole occiput (drawn again there, wider).
-  const hoodSpread = gw * (0.62 - 0.38 * profileK) * (1 - backK * 0.2) + backK * gw * 0.3;
-  const hoodTall = hh * (0.42 + 0.5 * (hv - 1)) * (1 + 0.15 * profileK);
+  const hoodSpread = gw * (0.6 - 0.36 * profileK) * (1 - backK * 0.2) + backK * gw * 0.3;
+  // Taller than the first cut: the roach is half the hyena's
+  // silhouette — it must read from every band, not just profile.
+  const hoodTall = hh * (0.62 + 0.58 * (hv - 1)) * (1 + 0.12 * profileK);
   const drawHood = (baseYLift: number, teeth: number): void => {
     const bx = (t: number): number =>
       headX + (1 - 2 * t) * hoodSpread - fx * gw * (0.08 + 0.9 * t) * (1 - backK);
@@ -2623,18 +2629,23 @@ export function paintGnollHead(
       const centerBias = 1 - 0.45 * (1 - profileK) * Math.abs(t - 0.5) * 2;
       const tall = hoodTall * (0.72 + 0.38 * Math.sin(i * 2.3 + 1.1)) * centerBias;
       ctx.lineTo(bx(t) - fx * gw * 0.24 + (0.5 - t) * gw * 0.12, by(t) - tall);
-      ctx.lineTo(bx(Math.min(1, t + 0.75 / (teeth - 1))), by(t) + hh * 0.04);
+      // The valley between bristles holds HALF the ridge height — the
+      // roach is one bristled MOUND with a torn edge, never a picket
+      // fence of separate thorns over a bare crown.
+      ctx.lineTo(bx(Math.min(1, t + 0.75 / (teeth - 1))), by(t) - tall * 0.45);
     }
     // The nape skirt: the ridge falls off the trailing edge toward
-    // the shoulder hump instead of ending in mid-air.
-    ctx.lineTo(bx(1) - fx * gw * 0.28, crBot + hh * 0.26 * (1 - backK * 0.5));
+    // the shoulder hump in ragged locks — never one flat-edged slab.
+    ctx.lineTo(bx(1) - fx * gw * 0.3, crBot + hh * 0.1 * (1 - backK * 0.5));
+    ctx.lineTo(bx(0.82) - fx * gw * 0.2, crBot - hh * 0.08);
+    ctx.lineTo(bx(0.62), crBot + hh * 0.18 * (1 - backK * 0.5));
     ctx.lineTo(bx(0.5), crBot - hh * 0.05);
     ctx.closePath();
     ctx.fill();
   };
   if (!hurt) {
     ctx.fillStyle = gn.mane;
-    drawHood(0, 5);
+    drawHood(0, 6);
     if (gn.scarred) {
       // The packlord's frost: pale tips over the iron ridge — age worn
       // as rank. A second, smaller sawtooth inset into the first.
@@ -2656,27 +2667,33 @@ export function paintGnollHead(
     }
   }
 
-  // --- tall round ears riding high and wide, out-canted like a
-  // listening hyena, BEFORE the skull so the cranium laps their
-  // roots. Far ear steps smaller and higher at the three-quarter
-  // bands (the cheap perspective cue); both read from behind as
-  // backs — the inner dish faces forward only.
+  // --- ROUND ears set LOW and WIDE — the hyena's dish, never the
+  // wolf's point or the bear's upright button: a short stem under a
+  // round blade, canted HARD off the skull's top corners, drawn
+  // BEFORE the skull so the cranium laps their roots. Far ear steps
+  // smaller at the three-quarter bands (the cheap perspective cue);
+  // both read from behind as backs — the inner dish faces forward
+  // only.
   const drawEar = (side: number, depth: number): void => {
-    const er = hh * 0.3 * (0.9 + 0.18 * hv) * depth;
-    const dh = hh * (0.78 + 0.16 * hv) * depth;
-    const ex = headX - fx * gw * 0.26 + side * gw * 0.8;
-    const baseY = crTop + hh * 0.16;
+    const er = hh * 0.32 * (0.95 + 0.15 * hv) * depth;
+    const dh = hh * 0.54 * (0.92 + 0.16 * hv) * depth;
+    const ex = headX - fx * gw * 0.22 + side * gw * 0.98;
+    // The roots ride the skull's upper corners and LIFT toward the
+    // turned bands — rooted at mid-face, a trailing ear read as a
+    // droop on the cheek at three-quarter.
+    const baseY = crTop + hh * (0.46 - 0.08 * profileK);
     const notched = gn.scarred && side === nearSide;
     ctx.save();
     ctx.translate(ex, baseY);
-    // The out-cant: the whole ear leans off vertical away from the
-    // skull center — alert, not teddy-bear upright.
-    ctx.rotate(side * (0.16 + 0.08 * (1 - profileK)));
+    // The hard out-cant: the dish roots on the skull's SIDE and leans
+    // toward ten-and-two — the listening tilt that says hyena. Ears
+    // perched upright on the crown corners were the teddy-bear tell.
+    ctx.rotate(side * (0.58 + 0.08 * (1 - profileK)));
     // Front ears sit a value under the crown so they never glow; the
-    // backs go darker still — pale lollipop ears were the plush tell.
+    // backs go darker still.
     ctx.fillStyle = hurt ? '#ffffff' : shade(gn.fur, back ? -16 : -8);
     ctx.beginPath();
-    ctx.moveTo(-er, 0);
+    ctx.moveTo(-er * 0.92, 0);
     ctx.lineTo(-er, -dh + er);
     ctx.arc(0, -dh + er, er, Math.PI, notched ? Math.PI * 1.6 : Math.PI * 2);
     if (notched) {
@@ -2684,33 +2701,30 @@ export function paintGnollHead(
       ctx.lineTo(er * 0.34, -dh + er * 0.66);
       ctx.lineTo(er, -dh + er * 0.94);
     }
-    ctx.lineTo(er, 0);
+    ctx.lineTo(er * 0.92, 0);
     ctx.closePath();
     ctx.fill();
     if (!hurt) {
-      ctx.strokeStyle = shade(gn.fur, -28);
-      ctx.lineWidth = Math.max(1, er * 0.18);
+      ctx.strokeStyle = shade(gn.fur, -20);
+      ctx.lineWidth = Math.max(1, er * 0.13);
       ctx.stroke();
       if (!back) {
-        // The inner dish: a deep dark cavity rimmed low with underfur.
-        ctx.fillStyle = shade(gn.skin, -34);
+        // The inner dish: a deep dark cavity FILLING the round blade —
+        // concentric bright/dark rings read as a ring toy, so the
+        // shadow owns the ear and only a soft rim of fur survives.
+        ctx.fillStyle = shade(gn.skin, -40);
         ctx.beginPath();
-        ctx.ellipse(fx * er * 0.14, -dh + er + er * 0.62, er * 0.52, er * 0.94, 0, 0, Math.PI * 2);
+        ctx.ellipse(fx * er * 0.1, -dh + er * 0.96, er * 0.8, er * 0.84, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = shade(gn.underfur, -12);
-        ctx.lineWidth = Math.max(1, er * 0.12);
-        ctx.beginPath();
-        ctx.ellipse(fx * er * 0.14, -dh + er + er * 0.62, er * 0.52, er * 0.94, 0, Math.PI * 0.7, Math.PI * 1.6);
-        ctx.stroke();
         if (!notched) {
           // Every skulker's ears carry a scrap-fight nick — a dark
           // wedge bitten into the outer rim, seeded per body.
-          const nickT = 0.3 + 0.3 * (((seed >>> (side > 0 ? 3 : 9)) & 7) / 7);
+          const nickT = 0.34 + 0.3 * (((seed >>> (side > 0 ? 3 : 9)) & 7) / 7);
           ctx.fillStyle = mask;
           ctx.beginPath();
           ctx.moveTo(side * er * 1.02, -dh * nickT);
-          ctx.lineTo(side * er * 0.5, -dh * nickT - er * 0.22);
-          ctx.lineTo(side * er * 1.02, -dh * nickT - er * 0.42);
+          ctx.lineTo(side * er * 0.52, -dh * nickT - er * 0.2);
+          ctx.lineTo(side * er * 1.02, -dh * nickT - er * 0.38);
           ctx.closePath();
           ctx.fill();
         }
@@ -2720,7 +2734,7 @@ export function paintGnollHead(
         ctx.lineWidth = Math.max(1, er * 0.1);
         ctx.beginPath();
         ctx.moveTo(0, -er * 0.3);
-        ctx.lineTo(0, -dh + er * 0.5);
+        ctx.lineTo(0, -dh + er * 0.6);
         ctx.stroke();
       }
     }
@@ -2729,17 +2743,17 @@ export function paintGnollHead(
   if (profileK < 0.72 || back) drawEar(-nearSide, back ? 1 : 0.84);
   drawEar(nearSide, 1);
 
-  // --- cranium block.
+  // --- cranium block: heavy crown chamfers dome the forehead.
   ctx.fillStyle = fur;
   ctx.beginPath();
-  chamferRect(ctx, headX - gw, crTop, gw * 2, crBot - crTop, [cut * 1.3, cut * 1.3, cut * 0.6, cut * 0.6]);
+  chamferRect(ctx, headX - gw, crTop, gw * 2, crBot - crTop, [cut * 1.7, cut * 1.7, cut * 0.55, cut * 0.55]);
   ctx.fill();
   if (!hurt) {
     // THE FORM SPLIT restated for fur: hard shade right half, lit
     // crown band, jaw under-shade — the block reads as mass.
     ctx.save();
     ctx.beginPath();
-    chamferRect(ctx, headX - gw, crTop, gw * 2, crBot - crTop, [cut * 1.3, cut * 1.3, cut * 0.6, cut * 0.6]);
+    chamferRect(ctx, headX - gw, crTop, gw * 2, crBot - crTop, [cut * 1.7, cut * 1.7, cut * 0.55, cut * 0.55]);
     ctx.clip();
     ctx.fillStyle = shade(gn.fur, -10);
     ctx.fillRect(headX, crTop, gw, crBot - crTop);
@@ -2756,7 +2770,9 @@ export function paintGnollHead(
       const sxr = ((h & 15) / 15) * 2 - 1;
       const syr = (((h >> 4) & 15) / 15) * 2 - 1;
       const bx = headX - fx * gw * 0.34 + sxr * gw * 0.52;
-      const by = crTop + (crBot - crTop) * (0.3 + 0.32 * (syr * 0.5 + 0.5));
+      // Crown and temples only — the muzzle repaints the lower face,
+      // and a spot under it would vanish anyway.
+      const by = crTop + (crBot - crTop) * (0.18 + 0.3 * (syr * 0.5 + 0.5));
       const br = hh * (0.055 + 0.03 * (((h >> 8) & 3) / 3));
       ctx.beginPath();
       ctx.ellipse(bx, by, br * 1.25, br, 0, 0, Math.PI * 2);
@@ -2769,26 +2785,26 @@ export function paintGnollHead(
   // the sideburn wedges that break the clean box and read "wild
   // animal" from every band. Far ruff first so the near one laps it.
   const drawRuff = (side: number, depth: number): void => {
-    const rx0 = headX - fx * gw * 0.08 + side * gw * 0.84;
-    const reach = gw * 0.4 * depth * (0.9 + 0.2 * hv);
+    const rx0 = headX - fx * gw * 0.06 + side * gw * 0.88;
+    const reach = gw * 0.36 * depth * (0.9 + 0.2 * hv);
     ctx.fillStyle = hurt ? '#ffffff' : shade(gn.fur, -5);
     ctx.beginPath();
-    ctx.moveTo(rx0, headY - hh * 0.16);
-    ctx.lineTo(rx0 + side * reach, headY + hh * 0.02);
-    ctx.lineTo(rx0 + side * gw * 0.06, headY + hh * 0.14);
-    ctx.lineTo(rx0 + side * reach * 0.86, headY + hh * 0.34);
-    ctx.lineTo(rx0 + side * gw * 0.04, headY + hh * 0.4);
-    ctx.lineTo(rx0 + side * reach * 0.55, headY + hh * 0.6);
-    ctx.lineTo(rx0 - side * gw * 0.08, headY + hh * 0.56);
+    ctx.moveTo(rx0, headY - hh * 0.08);
+    ctx.lineTo(rx0 + side * reach, headY + hh * 0.1);
+    ctx.lineTo(rx0 + side * gw * 0.06, headY + hh * 0.22);
+    ctx.lineTo(rx0 + side * reach * 0.86, headY + hh * 0.42);
+    ctx.lineTo(rx0 + side * gw * 0.04, headY + hh * 0.48);
+    ctx.lineTo(rx0 + side * reach * 0.55, headY + hh * 0.66);
+    ctx.lineTo(rx0 - side * gw * 0.08, headY + hh * 0.6);
     ctx.closePath();
     ctx.fill();
     if (!hurt) {
       // One mask-dark tooth in the ruff keeps it ratty, not fluffy.
       ctx.fillStyle = mask;
       ctx.beginPath();
-      ctx.moveTo(rx0 + side * gw * 0.02, headY + hh * 0.18);
-      ctx.lineTo(rx0 + side * reach * 0.7, headY + hh * 0.4);
-      ctx.lineTo(rx0 + side * gw * 0.01, headY + hh * 0.44);
+      ctx.moveTo(rx0 + side * gw * 0.02, headY + hh * 0.26);
+      ctx.lineTo(rx0 + side * reach * 0.7, headY + hh * 0.46);
+      ctx.lineTo(rx0 + side * gw * 0.01, headY + hh * 0.5);
       ctx.closePath();
       ctx.fill();
     }
@@ -2861,85 +2877,119 @@ export function paintGnollHead(
     return;
   }
 
-  // --- the muzzle: BLUNT and DEEP — the bone-cracker. Face-on it
-  // hangs as a heavy box under the brow; at profile it runs out to
-  // barely half the wolf's reach but twice the depth. FUR to the lip
-  // with the dark mask riding the bridge — the old bare green box
-  // read plush; a hyena's muzzle is coat, then black.
-  const jawDrop = f.gape * hh * 0.42;
-  const snLen = gw * (0.4 + 0.6 * profileK);
-  const rootX = headX + fx * gw * 0.26;
+  // --- THE MUZZLE: SHORT, DEEP, BLUNT — the bone-cracker, never the
+  // wolf's plank. The top edge is the hyena's ROMAN SLOPE: it leaves
+  // the brow high and falls convex to a blunt tip barely past the
+  // cheek, while the jaw beneath runs DEEP. Face-on the box is most
+  // of the face; at profile it reads dome-then-drop. The long
+  // horizontal box with a ball nose was the wolf tell.
+  const jawDrop = f.gape * hh * 0.46;
+  const snLen = gw * (0.34 + 0.36 * profileK);
+  const rootX = headX + fx * gw * 0.24;
   const tipX = rootX + fx * snLen;
-  const snHw = gw * (0.46 - 0.12 * profileK);
+  const snHw = gw * (0.52 - 0.18 * profileK);
   const x0 = Math.min(rootX, tipX) - snHw * (1 - profileK);
   const x1 = Math.max(rootX, tipX) + snHw * (1 - profileK);
-  const topY = headY - hh * (0.16 - 0.05 * profileK);
+  const fxs = fx >= 0 ? 1 : -1;
+  const xa = fxs > 0 ? x0 : x1; // rear edge, toward the skull
+  const xb = fxs > 0 ? x1 : x0; // fore edge, the blunt tip
+  const topRearY = headY - hh * (0.1 + 0.26 * profileK);
+  const topForeY = headY - hh * (0.1 - 0.18 * profileK);
   // Face-on the box runs DEEP — the bone-cracker jaw is most of the
-  // face; a shallow muzzle under the pale chin read plush, not gnoll.
-  const botY = headY + hh * (0.76 + 0.22 * (1 - profileK));
-  const muzC = hurt ? '#ffffff' : shade(gn.fur, -4);
+  // face; a shallow muzzle under a pale chin read plush, not gnoll.
+  const botY = headY + hh * (0.88 - 0.26 * profileK);
+  const cc = cut * 0.6;
+  const muzzlePath = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(xa, topRearY);
+    // The convex bow on the slope — the Roman line. Face-on the two
+    // top corners level out and the bow vanishes.
+    ctx.quadraticCurveTo(
+      (xa + xb) / 2,
+      Math.min(topRearY, topForeY) - hh * 0.05 * profileK,
+      xb - fxs * cc,
+      topForeY,
+    );
+    ctx.lineTo(xb, topForeY + cc); // the blunt front: straight down,
+    ctx.lineTo(xb, botY - cc * 1.3); // no taper, no point
+    ctx.lineTo(xb - fxs * cc * 1.5, botY);
+    ctx.lineTo(xa + fxs * cc * 1.5 * (1 - profileK), botY);
+    ctx.lineTo(xa, botY - cc * 1.3 * (1 - profileK));
+    ctx.closePath();
+  };
+  // A value LIGHTER than the skull — the muzzle must separate as its
+  // own volume from every band, or the face reads as one flat slab.
+  const muzC = hurt ? '#ffffff' : shade(gn.fur, 7);
   ctx.fillStyle = muzC;
-  ctx.beginPath();
-  chamferRect(ctx, x0, topY, x1 - x0, botY - topY, [cut * 0.5, cut * 0.5, cut * 0.7, cut * 0.7]);
+  muzzlePath();
   ctx.fill();
   if (!hurt) {
-    // The mask bridge, the form-split shade, and the deep jowl shadow
-    // — the muzzle must read as a BOX with weight, never a snout
-    // spike, and the dark saddle over it is the hyena's face.
+    // The saddle, the form-split shade, and the deep jowl shadow —
+    // the muzzle must read as a WEIGHTED box, and every mark inside
+    // clips to the Roman slope so nothing paints past the bridge.
     ctx.save();
-    ctx.beginPath();
-    chamferRect(ctx, x0, topY, x1 - x0, botY - topY, [cut * 0.5, cut * 0.5, cut * 0.7, cut * 0.7]);
+    muzzlePath();
     ctx.clip();
     ctx.fillStyle = shade(gn.fur, -12);
     const shX = headX > (x0 + x1) / 2 ? (x0 + x1) / 2 : headX;
-    ctx.fillRect(shX, topY, x1 - shX, botY - topY);
-    // The bridge: mask ink along the top of the box — at profile a
-    // full saddle running out the snout; face-on a CENTER column down
-    // to the nose, so the dark bridge, the brow, and the sockets stay
-    // three separate marks instead of merging into one blob.
-    const brCx = (x0 + x1) / 2 + fx * (x1 - x0) * 0.08;
-    const brHw = ((x1 - x0) / 2) * (0.52 + 0.48 * profileK);
+    ctx.fillRect(shX, topRearY - hh * 0.32, x1 - shX, botY - topRearY + hh * 0.32);
+    // THE BRIDGE SADDLE: mask ink riding the slope — at profile the
+    // full run of the bridge; face-on a CENTER blaze down to the
+    // nose, so saddle, brow, and sockets stay three separate marks.
+    const brCx = (x0 + x1) / 2 + fx * (x1 - x0) * 0.06;
+    const brHw = ((x1 - x0) / 2) * (0.42 + 0.58 * profileK);
+    const brTop = Math.min(topRearY, topForeY) - hh * 0.08;
+    // The blaze STOPS short of the nose — saddle, fur gap, then the
+    // pad, or the two merge into one black T across the face.
+    const brBot = headY + hh * (-0.08 + 0.24 * profileK);
     ctx.fillStyle = mask;
-    ctx.fillRect(brCx - brHw, topY, brHw * 2, (botY - topY) * 0.3);
+    ctx.fillRect(brCx - brHw, brTop, brHw * 2, brBot - brTop);
     ctx.fillStyle = shade(gn.mask, -10);
-    ctx.fillRect(brCx - brHw, topY, brHw * 2, (botY - topY) * 0.12);
+    ctx.fillRect(brCx - brHw, brTop, brHw * 2, Math.max(0, headY - hh * 0.18 - brTop));
     // Jowl under-shade seats the jaw.
     ctx.fillStyle = shade(gn.fur, -20);
-    ctx.fillRect(x0, botY - hh * 0.14, x1 - x0, hh * 0.14);
+    ctx.fillRect(Math.min(x0, x1), botY - hh * 0.15, Math.abs(x1 - x0), hh * 0.15);
     ctx.restore();
   }
 
-  // --- the nose: broad and flat on the blunt tip, wider than tall.
-  const nx = rootX + fx * snLen * 0.9;
-  const ny = headY + hh * (0.08 * profileK) + (1 - profileK) * (botY - headY - hh * 0.34) - hh * 0.06;
-  const nr = hh * 0.18 * (0.9 + 0.2 * hv);
+  // --- the nose: a broad squared PAD wrapping the blunt tip — wider
+  // than tall face-on, turned onto the front plane at profile. Never
+  // a ball on a stick (the second wolf tell).
+  const noseX =
+    ((x0 + x1) / 2) * (1 - profileK) + (xb - fxs * hh * 0.16) * profileK + fx * gw * 0.02;
+  const noseY = (headY + hh * 0.17) * (1 - profileK) + (topForeY + hh * 0.2) * profileK;
+  const nw = snHw * (0.42 - 0.14 * profileK);
+  const nh = hh * 0.14 * (0.95 + 0.15 * hv);
   ctx.fillStyle = hurt ? '#ffffff' : gn.nose;
   ctx.beginPath();
-  ctx.ellipse(nx, ny, nr * 1.3, nr * 0.9, 0, 0, Math.PI * 2);
+  chamferRect(ctx, noseX - nw, noseY - nh, nw * 2, nh * 2, Math.min(cc, nw * 0.5));
   ctx.fill();
   if (!hurt) {
-    ctx.fillStyle = shade(gn.nose, 22);
+    // One lit facet on the lead top corner keeps the pad a form.
+    ctx.fillStyle = shade(gn.nose, 24);
     ctx.beginPath();
-    ctx.ellipse(nx - nr * 0.34, ny - nr * 0.3, nr * 0.42, nr * 0.26, 0, 0, Math.PI * 2);
+    ctx.ellipse(noseX - nw * 0.4 + fx * nw * 0.2, noseY - nh * 0.4, nw * 0.34, nh * 0.3, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // --- the mouth: mandible in pale underfur, dropping with the gape,
-  // and THE UNDERBITE — lower teeth proud of the lip even shut, the
-  // gnoll signature no other dialect carries (the skeleton grins, the
-  // kobold bucks, the gnoll juts).
-  // Narrow chin under the wide box — the mandible is a strap, never a
-  // bib (the too-wide pale chin was the first cut's plush-toy tell).
-  const mdHw = snHw * 0.56;
-  const mdX = rootX + fx * snLen * 0.4;
-  const mdTop = botY - hh * 0.06 + jawDrop;
+  // --- THE GRIN: the hyena's whole argument. A bold dark seam runs
+  // the muzzle's width and RISES toward the cheek corners, the lips
+  // pulled off a meshed tooth row; the lower canines jut PROUD of the
+  // seam even shut — the gnoll signature no other dialect carries
+  // (the skeleton grins, the kobold bucks, the gnoll juts). The gape
+  // drops the mandible off the seam into the open maw: the cackle.
+  const mdHw = snHw * 0.58;
+  const mdX = noseX * (1 - profileK) + (rootX + fx * snLen * 0.34) * profileK;
+  const mouthY = (headY + hh * 0.46) * (1 - profileK) + (botY - hh * 0.42) * profileK;
+  const mdTop = botY - hh * 0.1 + jawDrop;
+  const lipInk = shade(gn.nose, -4);
   if (jawDrop > hh * 0.03) {
     // The open maw behind the dropped jaw — dark red meat, a tongue,
     // and the UPPER tooth row hanging into it: the cackle is a threat
     // display, and teeth are the whole message.
     ctx.fillStyle = hurt ? '#241a2e' : '#2e1418';
     ctx.beginPath();
-    chamferRect(ctx, mdX - mdHw * 1.1, botY - hh * 0.1, mdHw * 2.2, mdTop - botY + hh * 0.16, cut * 0.25);
+    chamferRect(ctx, mdX - mdHw * 1.05, mouthY - hh * 0.06, mdHw * 2.1, mdTop - mouthY + hh * 0.12, cut * 0.25);
     ctx.fill();
     if (!hurt) {
       ctx.fillStyle = '#7c3234';
@@ -2948,95 +2998,129 @@ export function paintGnollHead(
       ctx.fill();
       ctx.fillStyle = '#efe6cf';
       for (const off of [-0.62, -0.05, 0.55]) {
-        const ixT = mdX + fx * mdHw * 0.4 + off * mdHw * 0.72 * (1 - profileK * 0.4);
+        const ixT = mdX + fx * mdHw * 0.3 + off * mdHw * 0.78 * (1 - profileK * 0.4);
         ctx.beginPath();
-        ctx.moveTo(ixT - hh * 0.045, botY - hh * 0.06);
-        ctx.lineTo(ixT, botY - hh * 0.06 + hh * (off === -0.05 ? 0.13 : 0.2) + jawDrop * 0.2);
-        ctx.lineTo(ixT + hh * 0.045, botY - hh * 0.06);
+        ctx.moveTo(ixT - hh * 0.05, mouthY - hh * 0.03);
+        ctx.lineTo(ixT, mouthY - hh * 0.03 + hh * (off === -0.05 ? 0.14 : 0.22) + jawDrop * 0.2);
+        ctx.lineTo(ixT + hh * 0.05, mouthY - hh * 0.03);
         ctx.closePath();
         ctx.fill();
       }
     }
-  }
-  ctx.fillStyle = hurt ? '#ffffff' : shade(gn.underfur, -16);
-  ctx.beginPath();
-  chamferRect(ctx, mdX - mdHw, mdTop, mdHw * 2, hh * 0.22, [0, 0, cut * 0.5, cut * 0.5]);
-  ctx.fill();
-  if (!hurt && jawDrop <= hh * 0.03) {
-    // The shut-mouth seam: a dark lip line across the jaw so the maw
-    // reads even at rest — a hyena's mouth is never NOT a threat.
-    ctx.strokeStyle = mask === '#ffffff' ? mask : shade(gn.mask, -18);
-    ctx.lineWidth = Math.max(1, hh * 0.055);
+  } else if (!hurt) {
+    // The shut-mouth GRIN SEAM: wide, sagging under the nose, rising
+    // hard into the cheek corners — drawn as strokes (never fills:
+    // the back-band ink law) with the tooth row meshed across it.
+    ctx.strokeStyle = lipInk;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(1.2, hh * 0.075);
     ctx.beginPath();
-    ctx.moveTo(mdX - mdHw * 0.9, mdTop + hh * 0.01);
-    ctx.lineTo(mdX + mdHw * 0.9 + fx * mdHw * 0.3, mdTop + hh * 0.01);
+    if (profileK <= 0.55) {
+      // Face-on: one wide swoop, both corners rising.
+      ctx.moveTo(mdX - mdHw * 1.5, mouthY - hh * 0.14);
+      ctx.quadraticCurveTo(mdX - mdHw * 0.8, mouthY + hh * 0.07, mdX, mouthY + hh * 0.06);
+      ctx.quadraticCurveTo(mdX + mdHw * 0.8, mouthY + hh * 0.07, mdX + mdHw * 1.5, mouthY - hh * 0.14);
+    } else {
+      // Profile: the seam leaves the blunt tip, sags, and rises past
+      // the muzzle root into the cheek — the grin runs DEEP.
+      ctx.moveTo(xb - fxs * hh * 0.04, mouthY + hh * 0.02);
+      ctx.quadraticCurveTo(
+        (xb + rootX) / 2,
+        mouthY + hh * 0.12,
+        rootX - fxs * gw * 0.12,
+        mouthY - hh * 0.18,
+      );
+    }
     ctx.stroke();
-  }
-  if (!hurt) {
-    // THE UPPER CANINES: two down-hooked fangs proud of the lip
-    // corners even with the mouth shut — the first thing the eye
-    // finds, and the single loudest "predator" cue on the whole body.
+    ctx.lineCap = 'butt';
+    // The meshed rows: upper teeth hang OFF the seam, lower canines
+    // jut UP past it near the corners — shut, and still a threat.
     ctx.fillStyle = '#e8dcc0';
-    for (const sd of [-1, 1]) {
-      if (sd !== nearSide && profileK > 0.78) continue;
-      const ux = mdX + fx * mdHw * 0.5 + sd * mdHw * 1.02 * (1 - profileK * 0.45);
-      const uy = mdTop + hh * 0.005;
+    const grinX = (t: number): number =>
+      profileK <= 0.55 ? mdX + t * mdHw * 1.3 : xb - fxs * hh * 0.04 + (rootX - fxs * gw * 0.06 - (xb - fxs * hh * 0.04)) * (t * 0.5 + 0.5);
+    const grinY = (t: number): number =>
+      profileK <= 0.55
+        ? mouthY + hh * 0.05 - Math.abs(t) * Math.abs(t) * hh * 0.16
+        : mouthY + hh * 0.06 - (t * 0.5 + 0.5) * (t * 0.5 + 0.5) * hh * 0.2;
+    for (const t of [-0.72, -0.24, 0.24, 0.72]) {
+      const txx = grinX(t);
+      const tyy = grinY(t);
+      ctx.beginPath();
+      ctx.moveTo(txx - hh * 0.045, tyy);
+      ctx.lineTo(txx, tyy + hh * 0.12 * (1 + 0.2 * (hv - 1)));
+      ctx.lineTo(txx + hh * 0.045, tyy);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.fillStyle = '#efe6cf';
+    for (const t of [-0.95, 0.95]) {
+      if (profileK > 0.55 && t < 0) continue; // one canine at profile
+      const txx = grinX(t * 0.92);
+      const tyy = grinY(t * 0.92) + hh * 0.06;
       const fang = hh * 0.2 * (1 + 0.3 * (hv - 1));
       ctx.beginPath();
-      ctx.moveTo(ux - hh * 0.055, uy - hh * 0.04);
-      ctx.lineTo(ux + sd * hh * 0.02, uy + fang);
-      ctx.lineTo(ux + hh * 0.055, uy - hh * 0.04);
+      ctx.moveTo(txx - hh * 0.055, tyy);
+      ctx.lineTo(txx + fx * hh * 0.015, tyy - fang);
+      ctx.lineTo(txx + hh * 0.055, tyy);
       ctx.closePath();
       ctx.fill();
     }
-    // The underbite row: up-pointing tusks off the mandible's leading
-    // edge, riding the jaw as it drops. Taller than the first cut —
-    // teeth are cheap to draw and expensive to ignore.
+  }
+  // The mandible chin strap: pale underfur under the grin, dropping
+  // with the gape — a strap, never a bib (the wide pale chin was the
+  // first cut's plush-toy tell).
+  ctx.fillStyle = hurt ? '#ffffff' : shade(gn.underfur, -16);
+  ctx.beginPath();
+  chamferRect(ctx, mdX - mdHw, mdTop, mdHw * 2, hh * 0.18, [0, 0, cut * 0.5, cut * 0.5]);
+  ctx.fill();
+  if (!hurt && jawDrop > hh * 0.03) {
+    // The underbite row rides the dropped jaw's leading edge.
     ctx.fillStyle = '#efe6cf';
-    const tRootY = mdTop + hh * 0.02;
     for (const [off, tall] of [[-0.55, 0.2], [0, 0.28], [0.55, 0.2]] as const) {
-      const ix = mdX + fx * mdHw * 0.5 + off * mdHw * 0.5 * (1 - profileK * 0.4);
+      const ix = mdX + fx * mdHw * 0.3 + off * mdHw * 0.6 * (1 - profileK * 0.4);
       ctx.beginPath();
-      ctx.moveTo(ix - hh * 0.05, tRootY);
-      ctx.lineTo(ix + fx * hh * 0.02, tRootY - hh * tall * (1 + 0.25 * (hv - 1)));
-      ctx.lineTo(ix + hh * 0.05, tRootY);
+      ctx.moveTo(ix - hh * 0.05, mdTop + hh * 0.02);
+      ctx.lineTo(ix + fx * hh * 0.02, mdTop + hh * 0.02 - hh * tall * (1 + 0.25 * (hv - 1)));
+      ctx.lineTo(ix + hh * 0.05, mdTop + hh * 0.02);
       ctx.closePath();
       ctx.fill();
     }
+  }
+  if (!hurt && f.gape > 0.25) {
     // Snarl creases: the bridge wrinkles up when the jaw drops — the
     // gape is a SNARL, not a yawn.
-    if (f.gape > 0.25) {
-      ctx.strokeStyle = mask === '#ffffff' ? mask : shade(gn.mask, -14);
-      ctx.lineWidth = Math.max(1, hh * 0.04);
-      for (const o of [0.16, 0.34]) {
-        ctx.beginPath();
-        ctx.moveTo(rootX + fx * snLen * o - snHw * 0.34 * (1 - profileK), topY + hh * (0.1 + o * 0.5));
-        ctx.quadraticCurveTo(
-          rootX + fx * snLen * (o + 0.16),
-          topY + hh * (0.02 + o * 0.4),
-          rootX + fx * snLen * o + snHw * 0.34 * (1 - profileK),
-          topY + hh * (0.1 + o * 0.5),
-        );
-        ctx.stroke();
-      }
+    ctx.strokeStyle = shade(gn.mask, -14);
+    ctx.lineWidth = Math.max(1, hh * 0.04);
+    for (const o of [0.2, 0.42]) {
+      const wy = topRearY + (topForeY - topRearY) * o + hh * (0.16 + o * 0.3);
+      ctx.beginPath();
+      ctx.moveTo(rootX + fx * snLen * o - snHw * 0.32 * (1 - profileK), wy);
+      ctx.quadraticCurveTo(
+        rootX + fx * snLen * (o + 0.14),
+        wy - hh * 0.1,
+        rootX + fx * snLen * o + snHw * 0.32 * (1 - profileK) + fx * hh * 0.06,
+        wy,
+      );
+      ctx.stroke();
     }
   }
 
   // --- the muzzle scar: the packlord's ledger, a pale seam raked
-  // across the bridge on the near side.
+  // down the slope on the near side.
   if (gn.scarred && !hurt) {
     ctx.strokeStyle = shade(gn.fur, 52);
     ctx.lineWidth = Math.max(1.5, hh * 0.07);
-    const scx = rootX + fx * snLen * 0.5 + nearSide * snHw * 0.2;
+    const scx = rootX + fx * snLen * 0.45 + nearSide * snHw * 0.16;
+    const scTop = topRearY + (topForeY - topRearY) * 0.45;
     ctx.beginPath();
-    ctx.moveTo(scx - hh * 0.12, topY + hh * 0.06);
-    ctx.lineTo(scx + hh * 0.1, topY + hh * 0.54);
+    ctx.moveTo(scx - hh * 0.12, scTop + hh * 0.1);
+    ctx.lineTo(scx + hh * 0.1, scTop + hh * 0.58);
     ctx.stroke();
     // Two stitch ticks across it — an old wound, badly closed.
     ctx.lineWidth = Math.max(1, hh * 0.035);
     for (const t of [0.3, 0.62]) {
-      const px0 = scx - hh * 0.12 + (hh * 0.22) * t;
-      const py0 = topY + hh * (0.06 + 0.48 * t);
+      const px0 = scx - hh * 0.12 + hh * 0.22 * t;
+      const py0 = scTop + hh * (0.1 + 0.48 * t);
       ctx.beginPath();
       ctx.moveTo(px0 - hh * 0.06, py0 + hh * 0.03);
       ctx.lineTo(px0 + hh * 0.06, py0 - hh * 0.03);
@@ -3048,9 +3132,9 @@ export function paintGnollHead(
   // the muzzle root — two wedges meeting in a V. This single mark
   // flips the face from curious to predatory; it paints OVER the
   // muzzle root so the brow visibly hoods the eyes.
-  const eyeY = headY - hh * 0.26;
-  const pairX = headX + fx * gw * 0.38;
-  const eyeDx = gw * 0.37 * (1 - profileK * 0.5);
+  const eyeY = headY - hh * 0.3;
+  const pairX = headX + fx * gw * 0.36;
+  const eyeDx = gw * 0.34 * (1 - profileK * 0.5);
   if (!hurt) {
     ctx.fillStyle = mask;
     for (const sd of [-1, 1]) {
@@ -3059,8 +3143,8 @@ export function paintGnollHead(
       const outX = pairX + sd * (eyeDx + gw * 0.3);
       ctx.beginPath();
       ctx.moveTo(inX, eyeY + hh * 0.02);
-      ctx.lineTo(outX, eyeY - hh * 0.24);
-      ctx.lineTo(outX + sd * gw * 0.02, eyeY - hh * 0.06);
+      ctx.lineTo(outX, eyeY - hh * 0.26);
+      ctx.lineTo(outX + sd * gw * 0.02, eyeY - hh * 0.08);
       ctx.lineTo(inX + sd * gw * 0.02, eyeY + hh * 0.16);
       ctx.closePath();
       ctx.fill();
@@ -3079,23 +3163,24 @@ export function paintGnollHead(
       // The socket: a mask-dark pocket the bead burns inside.
       ctx.fillStyle = shade(gn.mask, -12);
       ctx.beginPath();
-      ctx.ellipse(ex, eyY, hh * 0.13, hh * 0.1, 0, 0, Math.PI * 2);
+      ctx.ellipse(ex, eyY, hh * 0.125, hh * 0.095, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.globalAlpha = 0.3;
+      // A faint burn, not a halo — a wide bright ring read cartoon.
+      ctx.globalAlpha = 0.22;
       ctx.fillStyle = gn.eye;
       ctx.beginPath();
-      ctx.arc(ex, eyY, hh * 0.19, 0, Math.PI * 2);
+      ctx.arc(ex, eyY, hh * 0.14, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
     }
     ctx.fillStyle = hurt ? '#241a2e' : gn.eye;
     ctx.beginPath();
-    ctx.arc(ex, eyY, hh * 0.095, 0, Math.PI * 2);
+    ctx.arc(ex, eyY, hh * 0.09, 0, Math.PI * 2);
     ctx.fill();
     if (!hurt) {
       ctx.fillStyle = '#241a2e';
       ctx.beginPath();
-      ctx.arc(ex + fx * hh * 0.025, eyY + hh * 0.015, hh * 0.048, 0, Math.PI * 2);
+      ctx.arc(ex + fx * hh * 0.022, eyY + hh * 0.014, hh * 0.046, 0, Math.PI * 2);
       ctx.fill();
     }
   }

@@ -1,13 +1,13 @@
-// TEMPORARY rig verification harness (checked-in tooling): THE GOBLIN
-// SHEET — the greenskin-dialect audit. All five warband bodies
-// (chopper / thrower / firecaller / gloomcaller / warboss) across the
-// eight facing bands at idle, walk, the looping strike, and the hurt
-// flash; a HIDE CLUSTER row proving eight consecutive spawn eids
-// scatter the rank-and-file across all four greens; and BODY-RULER
-// cells standing the player rig, the kobold, and the gnoll skulker
-// beside the goblins so the stature ladder (knee-high menace, warboss
-// under a man) reads at a glance. Each figure owns a live LegSolver,
-// so feet plant and knee hysteresis run exactly as in game. Levers:
+// TEMPORARY rig verification harness (checked-in tooling): THE GNOLL
+// SHEET — the fur-dialect head rework audit. Both warband bodies
+// (skulker / packlord) across the eight facing bands at idle, walk,
+// and the looping strike (the cackle gape must read), plus the hurt
+// flash; a COAT CLUSTER row proving eight consecutive spawn eids
+// scatter the warband across all four coats; and BODY-RULER cells
+// standing the player rig, the goblin, and the kobold beside the
+// gnolls so the stature ladder (seven feet carried low) reads at a
+// glance. Each figure owns a live LegSolver, so feet plant and knee
+// hysteresis run exactly as in game. Levers:
 //   ?s=px       cell scale (px per tile)
 //   ?rows=a-b   draw only sheet rows a..b (screenshot banding)
 //   ?det=1      DETERMINISTIC mode: fixed 60Hz steps run synchronously
@@ -52,19 +52,16 @@ const BODIES: Record<
     equip?: { weapon?: string; offhand?: string; head?: string; body?: string };
   }
 > = {
-  goblin: { size: 0.72, kind: 'goblin', equip: { weapon: 'bronze_sword' } },
-  goblin_thrower: { size: 0.7, kind: 'goblin' },
-  goblin_firecaller: { size: 0.74, kind: 'goblin' },
-  goblin_gloomcaller: { size: 0.76, kind: 'goblin' },
-  goblin_champion: {
-    size: 0.98,
-    kind: 'goblin',
-    equip: { weapon: 'gobmangler', offhand: 'gobnail_warboard', body: 'leather_body' },
-  },
-  gnoll: { size: 1.18, kind: 'gnoll' },
+  gnoll: { size: 1.18, kind: 'gnoll', equip: { weapon: 'rustbite' } },
+  gnoll_champion: { size: 1.42, kind: 'gnoll', equip: { weapon: 'iron_greatblade' } },
+  gnoll_bare: { size: 1.18, kind: 'gnoll' },
+  goblin: { size: 0.72, kind: 'goblin' },
   kobold: { size: 0.75, kind: 'kobold' },
   player: { size: 1, kind: 'player' },
 };
+
+/** Bare-body cells alias the real defs so the head is never occluded. */
+const DEF_ALIAS: Record<string, string> = { gnoll_bare: 'gnoll' };
 
 type Mode = 'idle' | 'walk' | 'strike' | 'hurt';
 
@@ -96,36 +93,32 @@ const row = (label: string, defId: string, mode: Mode, seed = 5): void => {
   for (const [lbl, dir] of DIRS) figs.push({ label: `${label} ${lbl}`, defId, dir, mode, seed });
 };
 
-// Sheet rows, top to bottom — idle/walk/strike per body, hurt for the
-// chopper and the warboss (the flash is shared plumbing).
-row('chopper idle', 'goblin', 'idle');
-row('chopper walk', 'goblin', 'walk');
-row('chopper strike', 'goblin', 'strike');
-row('thrower idle', 'goblin_thrower', 'idle');
-row('thrower walk', 'goblin_thrower', 'walk');
-row('firecaller idle', 'goblin_firecaller', 'idle');
-row('firecaller strike', 'goblin_firecaller', 'strike');
-row('gloomcaller idle', 'goblin_gloomcaller', 'idle');
-row('warboss idle', 'goblin_champion', 'idle');
-row('warboss walk', 'goblin_champion', 'walk');
-row('warboss strike', 'goblin_champion', 'strike');
-row('chopper hurt', 'goblin', 'hurt');
-// THE HIDE CLUSTER SPREAD: eight consecutive spawn eids facing the
-// camera — the hash must scatter the camp across all four greens.
+// Sheet rows, top to bottom — idle/walk/strike per body (the strike
+// row is where the cackle gape reads), hurt for the skulker.
+row('skulker idle', 'gnoll', 'idle');
+row('skulker walk', 'gnoll', 'walk');
+row('skulker strike', 'gnoll', 'strike');
+row('packlord idle', 'gnoll_champion', 'idle');
+row('packlord walk', 'gnoll_champion', 'walk');
+row('packlord strike', 'gnoll_champion', 'strike');
+row('skulker hurt', 'gnoll', 'hurt');
+// THE COAT CLUSTER SPREAD: eight consecutive spawn eids facing the
+// camera — the hash must scatter a warband across all four coats.
 for (let k = 0; k < 8; k++) {
-  figs.push({ label: `camp eid ${400 + k}`, defId: 'goblin', dir: Math.PI / 2, mode: 'idle', seed: 400 + k });
+  figs.push({ label: `warband eid ${400 + k}`, defId: 'gnoll', dir: Math.PI / 2, mode: 'idle', seed: 400 + k });
 }
-// THE BODY RULER: the player rig beside the rabble and the warboss,
-// then the kobold and the gnoll skulker for the bestiary's stature
-// neighbors (goblin over the kobold, warboss under them all).
-figs.push({ label: 'ruler: player+chopper', defId: 'goblin', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
-figs.push({ label: 'ruler: player+warboss', defId: 'goblin_champion', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
+// THE BODY RULER: the player rig beside the skulker and the packlord,
+// then the goblin and the kobold for the bestiary's stature neighbors
+// (the gnoll stands over a man even hunched).
+figs.push({ label: 'ruler: player+skulker', defId: 'gnoll', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
+figs.push({ label: 'ruler: player+packlord', defId: 'gnoll_champion', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
+figs.push({ label: 'goblin (reference)', defId: 'goblin', dir: Math.PI / 2, mode: 'idle', seed: 5 });
 figs.push({ label: 'kobold (reference)', defId: 'kobold', dir: Math.PI / 2, mode: 'idle', seed: 5 });
-figs.push({ label: 'gnoll (reference)', defId: 'gnoll', dir: Math.PI / 2, mode: 'idle', seed: 5 });
-figs.push({ label: 'chopper E (profile)', defId: 'goblin', dir: 0, mode: 'idle', seed: 5 });
-figs.push({ label: 'warboss E (profile)', defId: 'goblin_champion', dir: 0, mode: 'idle', seed: 5 });
-figs.push({ label: 'chopper N (back)', defId: 'goblin', dir: -Math.PI / 2, mode: 'idle', seed: 5 });
-figs.push({ label: 'warboss N (back)', defId: 'goblin_champion', dir: -Math.PI / 2, mode: 'idle', seed: 5 });
+// Bare close-up band: no weapon in the hand, the head unoccluded.
+figs.push({ label: 'bare S (face)', defId: 'gnoll_bare', dir: Math.PI / 2, mode: 'idle', seed: 5 });
+figs.push({ label: 'bare E (profile)', defId: 'gnoll_bare', dir: 0, mode: 'idle', seed: 5 });
+figs.push({ label: 'bare SW (3/4)', defId: 'gnoll_bare', dir: (3 * Math.PI) / 4, mode: 'idle', seed: 5 });
+figs.push({ label: 'bare N (back)', defId: 'gnoll_bare', dir: -Math.PI / 2, mode: 'idle', seed: 5 });
 
 const COLS = 8;
 const CW = Math.round(S * 2.1);
@@ -179,6 +172,7 @@ function drawBody(
   slot: 'main' | 'ruler',
 ): void {
   const info = BODIES[defId]!;
+  const lookId = DEF_ALIAS[defId] ?? defId;
   let legs = slot === 'main' ? f.legs : f.manLegs;
   if (!legs) {
     legs = new LegSolver();
@@ -213,9 +207,9 @@ function drawBody(
   // ear pin-back both read.
   const strikeT = mode === 'strike' ? (now * 0.0014) % 1 : 0;
   const pose = mode === 'strike' ? PoseState.Attack : moving ? PoseState.Walk : PoseState.Idle;
-  const gob = info.kind === 'goblin' ? goblinLook(defId, seed) : undefined;
-  const gno = info.kind === 'gnoll' ? gnollLook(defId, seed) : undefined;
-  const kob = info.kind === 'kobold' ? koboldLook(defId) : undefined;
+  const gob = info.kind === 'goblin' ? goblinLook(lookId, seed) : undefined;
+  const gno = info.kind === 'gnoll' ? gnollLook(lookId, seed) : undefined;
+  const kob = info.kind === 'kobold' ? koboldLook(lookId) : undefined;
   const eq = info.equip ?? {};
   drawHumanoid(ctx, {
     x,
