@@ -1,6 +1,8 @@
 import { DUNGEON_MIN_Y } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
 import type { Renderer } from '../render/renderer.js';
+import { INK } from './kit/tokens.js';
+import { WAYPOINT_INK } from './map/markers.js';
 
 /**
  * THE WAYFINDER — the one waypoint's live compass on the HUD.
@@ -28,23 +30,29 @@ export class WaypointHud {
     cnv.width = 28;
     cnv.height = 28;
     const ctx = cnv.getContext('2d')!;
-    // A monoline chevron arrow pointing RIGHT (rotation 0), sky ink —
-    // the waypoint's color everywhere on the chart.
-    ctx.lineCap = 'round';
+    // A SOLID chevron arrow pointing RIGHT (rotation 0), sky ink in
+    // the world's ink ring — the waypoint's color everywhere on the
+    // chart, filled like every mark on it.
+    const arrow = (): void => {
+      ctx.beginPath();
+      ctx.moveTo(7, 5.5);
+      ctx.lineTo(23, 14);
+      ctx.lineTo(7, 22.5);
+      ctx.lineTo(11.5, 14);
+      ctx.closePath();
+    };
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = 'rgba(12, 9, 5, 0.6)';
-    ctx.lineWidth = 4.5;
-    ctx.beginPath();
-    ctx.moveTo(8, 7.5);
-    ctx.lineTo(21, 14);
-    ctx.lineTo(8, 20.5);
-    ctx.stroke();
-    ctx.strokeStyle = '#7ec8e3';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(7, 7);
-    ctx.lineTo(20, 13.5);
-    ctx.lineTo(7, 20);
+    ctx.save();
+    ctx.translate(1, 1.2);
+    arrow();
+    ctx.fillStyle = 'rgba(12, 9, 5, 0.5)';
+    ctx.fill();
+    ctx.restore();
+    arrow();
+    ctx.fillStyle = WAYPOINT_INK;
+    ctx.fill();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 2;
     ctx.stroke();
     this.arrowWrap.appendChild(cnv);
 

@@ -1,8 +1,9 @@
+import { DANGER_LAWS } from '@arx/content';
 import type { ClientGame } from '../../game/clientGame.js';
 import { padGlyph, padGlyphInline } from '../../input/bindings.js';
 import { dressPanel } from '../panel.js';
 import { dockGlyphUrl } from '../../render/icons.js';
-import { MapView } from './mapView.js';
+import { MapView, TIER_WASH } from './mapView.js';
 
 /**
  * THE CHART TABLE — the fullscreen map (M). One canvas wearing the
@@ -10,10 +11,34 @@ import { MapView } from './mapView.js';
  * game renderer never pays for a closed map). Drag pans, wheel zooms,
  * a click plants the one waypoint, a click on the flag lifts it.
  *
- * The pad reads the same chart: left stick pans (UiNav lends the
- * stick), LT/RT zoom, Ⓨ plants or lifts the waypoint under the
- * reticle, Ⓧ centers on you; the rail chips stay d-pad + Ⓐ stops.
+ * THE TABLE TAKES THE HAND: while the chart is open the whole hand
+ * adapts to reading — WASD and the arrows pan, + and − zoom, the rail
+ * carries a Find me stop and a held zoom cluster, and the danger lens
+ * unfolds a level-band legend. The pad reads the same chart: left
+ * stick pans (UiNav lends the stick), LT/RT zoom, Ⓨ plants or lifts
+ * the waypoint under the reticle, Ⓧ centers on you; the rail chips
+ * stay d-pad + Ⓐ stops.
  */
+
+/** Reading-hand keys while the chart is open (screen grammar, not
+ *  gameplay bindings — gameplay keys are swallowed by any open screen). */
+const PAN_KEYS: Record<string, readonly [number, number]> = {
+  KeyW: [0, 1],
+  ArrowUp: [0, 1],
+  KeyS: [0, -1],
+  ArrowDown: [0, -1],
+  KeyA: [1, 0],
+  ArrowLeft: [1, 0],
+  KeyD: [-1, 0],
+  ArrowRight: [-1, 0],
+};
+const ZOOM_KEYS: Record<string, number> = {
+  Equal: 1,
+  NumpadAdd: 1,
+  Minus: -1,
+  NumpadSubtract: -1,
+};
+
 export class MapScreen {
   private readonly panel = document.getElementById('map-panel')!;
   private readonly canvas: HTMLCanvasElement;
@@ -27,10 +52,15 @@ export class MapScreen {
   private lastBand = 'surface';
   private readonly coordsEl: HTMLElement;
   private readonly reticle: HTMLElement;
+  private readonly legend: HTMLElement;
   private readonly setHint: (text: string) => void;
   private hintMode: 'kb' | 'pad' | '' = '';
   private padPrev = new Set<number>();
-  private readonly hintDefault = 'Click to plant your waypoint · click the flag to lift it · drag to pan · wheel to zoom';
+  private readonly keys = new Set<string>();
+  private zoomHold = 0;
+  private zoomHeldSince = 0;
+  private readonly hintDefault =
+    'Click plants your waypoint · click the flag lifts it · drag or WASD pans · wheel or + − zooms';
   /** Built fresh each show — the letters follow the live pad's markings. */
   private get hintPad(): string {
     return `Stick pans · ${padGlyph(6).text} / ${padGlyph(7).text} zoom · ${padGlyphInline(3)} plants or lifts the waypoint · ${padGlyphInline(2)} centers on you`;
@@ -54,9 +84,20 @@ export class MapScreen {
     this.canvas.className = 'map-canvas';
     stage.appendChild(this.canvas);
 
-    // The chart's rail: lenses left, whereabouts right.
+    // The chart's rail: the reader's verbs left, whereabouts right.
     const rail = document.createElement('div');
     rail.className = 'map-rail';
+    const centerChip = document.createElement('button');
+    centerChip.className = 'sort-chip map-find';
+    centerChip.textContent = 'Find me';
+    centerChip.title = 'Center the chart on where you stand';
+    centerChip.dataset.nav = '';
+    centerChip.dataset.navkey = 'map:center';
+    centerChip.dataset.acta = 'Center';
+    centerChip.addEventListener('click', () => this.centerOnPlayer());
+    const zoomOut = this.zoomChip('−', 'map:zoomout', -1, 'Zoom out');
+    const zoomIn = this.zoomChip('+', 'map:zoomin', 1, 'Zoom in');
+    this.legend = this.buildLegend();
     const dangerChip = document.createElement('button');
     dangerChip.className = 'sort-chip';
     dangerChip.textContent = 'Danger';
@@ -67,18 +108,11 @@ export class MapScreen {
     dangerChip.addEventListener('click', () => {
       this.view.showDanger = !this.view.showDanger;
       dangerChip.classList.toggle('active', this.view.showDanger);
+      this.legend.classList.toggle('hidden', !this.view.showDanger);
     });
-    const centerChip = document.createElement('button');
-    centerChip.className = 'sort-chip';
-    centerChip.textContent = 'On me';
-    centerChip.title = 'Center the chart on where you stand';
-    centerChip.dataset.nav = '';
-    centerChip.dataset.navkey = 'map:center';
-    centerChip.dataset.acta = 'Center';
-    centerChip.addEventListener('click', () => this.centerOnPlayer());
     this.coordsEl = document.createElement('span');
     this.coordsEl.className = 'map-coords';
-    rail.append(dangerChip, centerChip, this.coordsEl);
+    rail.append(centerChip, zoomOut, zoomIn, dangerChip, this.legend, this.coordsEl);
     // The pad's reading spot: a quiet reticle at the chart's center —
     // where Ⓨ plants the flag. CSS shows it in pad mode only.
     this.reticle = document.createElement('div');
@@ -89,6 +123,113 @@ export class MapScreen {
 
     this.view = new MapView(this.canvas, game, effectiveDpr);
     this.wireInput();
+
+    // THE READING HAND: chart-local keys. Down-guards keep them off
+    // text inputs; keyup always releases so a key never sticks after
+    // the chart folds mid-press.
+    window.addEventListener('keydown', (e) => {
+      if (!this.isOpen || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t.isContentEditable)) return;
+      if (!(e.code in PAN_KEYS) && !(e.code in ZOOM_KEYS)) return;
+      e.preventDefault();
+      this.keys.add(e.code);
+    });
+    window.addEventListener('keyup', (e) => this.keys.delete(e.code));
+  }
+
+  /** A held zoom stop: tap steps, holding glides. */
+  private zoomChip(glyph: string, navkey: string, dir: number, title: string): HTMLButtonElement {
+    const b = document.createElement('button');
+    b.className = 'sort-chip map-zoom';
+    b.textContent = glyph;
+    b.title = title;
+    b.dataset.nav = '';
+    b.dataset.navkey = navkey;
+    b.dataset.acta = title;
+    let downAt = -1;
+    b.addEventListener('pointerdown', () => {
+      downAt = performance.now();
+      this.zoomHold = dir;
+      this.zoomHeldSince = downAt;
+    });
+    const release = (): void => {
+      this.zoomHold = 0;
+    };
+    b.addEventListener('pointerup', release);
+    b.addEventListener('pointerleave', release);
+    b.addEventListener('click', () => {
+      // A quick tap (or a pad/keyboard press) steps; a long hold
+      // already glided in the loop and owes no extra jump.
+      if (downAt < 0 || performance.now() - downAt < 260) this.stepZoom(dir);
+    });
+    return b;
+  }
+
+  private stepZoom(dir: number): void {
+    const cx = this.canvas.clientWidth / 2;
+    const cy = this.canvas.clientHeight / 2;
+    this.view.zoomAt(cx, cy, dir > 0 ? 1.45 : 1 / 1.45);
+  }
+
+  /**
+   * THE DANGER LEGEND — the lens explained in one strip: a swatch per
+   * tier wearing the wash's true ink, each naming its creature levels,
+   * bookended by the plain words. Hidden until the lens is on.
+   */
+  private buildLegend(): HTMLElement {
+    const el = document.createElement('span');
+    el.className = 'map-legend hidden';
+    const safe = document.createElement('span');
+    safe.textContent = 'Safe';
+    el.appendChild(safe);
+    const cells = document.createElement('span');
+    cells.className = 'map-legend-cells';
+    TIER_WASH.forEach((wash, i) => {
+      const cell = document.createElement('span');
+      cell.className = 'map-legend-cell';
+      // The wash is translucent over parchment on the chart; the chip
+      // pre-blends the same pair so the legend tells no second color.
+      const m = /rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/.exec(wash);
+      if (m) {
+        const a = parseFloat(m[4]!) * 2.2;
+        const mix = (c: number, p: number): number => Math.round(c * a + p * (1 - a));
+        cell.style.background = `rgb(${mix(+m[1]!, 205)}, ${mix(+m[2]!, 188)}, ${mix(+m[3]!, 148)})`;
+      }
+      const law = DANGER_LAWS[Math.min(i, DANGER_LAWS.length - 1)]!;
+      cell.title = `Creatures around level ${law.npcLevel[0]} to ${law.npcLevel[1]}`;
+      cells.appendChild(cell);
+    });
+    el.appendChild(cells);
+    const deadly = document.createElement('span');
+    deadly.textContent = 'Deadly';
+    el.appendChild(deadly);
+    return el;
+  }
+
+  /** Per-frame: apply the held reading keys and the held zoom stops. */
+  private drive(now: number): void {
+    let dx = 0;
+    let dy = 0;
+    let zk = 0;
+    for (const code of this.keys) {
+      const pan = PAN_KEYS[code];
+      if (pan) {
+        dx += pan[0];
+        dy += pan[1];
+      }
+      zk += ZOOM_KEYS[code] ?? 0;
+    }
+    if (dx !== 0 || dy !== 0) {
+      this.view.panX += dx * 13;
+      this.view.panY += dy * 13;
+    }
+    const cx = this.canvas.clientWidth / 2;
+    const cy = this.canvas.clientHeight / 2;
+    if (zk !== 0) this.view.zoomAt(cx, cy, zk > 0 ? 1.03 : 1 / 1.03);
+    if (this.zoomHold !== 0 && now - this.zoomHeldSince > 260) {
+      this.view.zoomAt(cx, cy, this.zoomHold > 0 ? 1.025 : 1 / 1.025);
+    }
   }
 
   get isOpen(): boolean {
@@ -111,6 +252,7 @@ export class MapScreen {
         this.lastBand = this.view.band();
         this.centerOnPlayer();
       }
+      this.drive(now);
       this.view.render(now);
       const pos = this.game.predictor.pos;
       this.coordsEl.textContent = `${Math.round(pos.x)}, ${Math.round(pos.y)}`;
@@ -122,6 +264,8 @@ export class MapScreen {
   close(): void {
     this.panel.classList.add('hidden');
     cancelAnimationFrame(this.raf);
+    this.keys.clear();
+    this.zoomHold = 0;
   }
 
   private centerOnPlayer(): void {

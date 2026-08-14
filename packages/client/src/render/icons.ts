@@ -6492,13 +6492,20 @@ const ICON_TAPS: ReadonlyArray<readonly [number, number]> = [
  * edges and the dilate ring land antialiased instead of stair-stepped. */
 const SS = 3;
 
-function renderIcon(icon: string, color: string, size: number): string {
-  const key = `${icon}|${color}|${size}`;
-  const hit = cache.get(key);
-  if (hit) return hit;
-
-  const painter = PAINTERS[icon] ?? PAINTERS.burnt!;
-
+/**
+ * The bare pipeline as a reusable baker: paint a unit-box painter at
+ * supersample, ring it with the eight-tap outline shader, drop the
+ * hard shadow off the ringed silhouette, downscale once — and hand
+ * back the CANVAS (map sigils stamp these straight onto the chart;
+ * the dataURL wrapper below serves the `<img>` lanes). `ringFrac`
+ * scales the ring against the sprite size — chart marks read at map
+ * distance and wear a bolder ring than a pack icon needs.
+ */
+export function bakeOutlinedSprite(
+  painter: (ctx: CanvasRenderingContext2D) => void,
+  size: number,
+  ringFrac = 0.03,
+): HTMLCanvasElement {
   // 1. Paint the art at supersample resolution. Painters draw in a
   // 0..1 unit box; a small inset leaves apron for the ring to grow
   // outward without clipping at the canvas edge.
@@ -6511,13 +6518,13 @@ function renderIcon(icon: string, color: string, size: number): string {
   actx.save();
   actx.translate(inset, inset);
   actx.scale(px - inset * 2, px - inset * 2);
-  painter(actx, color);
+  painter(actx);
   actx.restore();
 
   // 2. The outline shader: eight-tap alpha dilate of the art, tinted
   // the world's outline color. Radius matches the world pass's feel
   // (max(1.25, scale*0.04)) at this icon's effective scale.
-  const r = Math.max(1.25 * SS, px * 0.03);
+  const r = Math.max(1.25 * SS, px * ringFrac);
   const ri = Math.max(1, Math.round(r));
   const rd = Math.max(1, Math.round(r * 0.71));
   const ring = document.createElement('canvas');
@@ -6561,8 +6568,15 @@ function renderIcon(icon: string, color: string, size: number): string {
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(big, 0, 0, size, size);
+  return canvas;
+}
 
-  const url = canvas.toDataURL();
+function renderIcon(icon: string, color: string, size: number): string {
+  const key = `${icon}|${color}|${size}`;
+  const hit = cache.get(key);
+  if (hit) return hit;
+  const painter = PAINTERS[icon] ?? PAINTERS.burnt!;
+  const url = bakeOutlinedSprite((c) => painter(c, color), size).toDataURL();
   cache.set(key, url);
   return url;
 }

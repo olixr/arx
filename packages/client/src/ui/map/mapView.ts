@@ -20,11 +20,17 @@ import {
 import type { ClientGame } from '../../game/clientGame.js';
 import { FogLayer, parchmentCanvas } from './fog.js';
 import {
+  DEATH_INK,
+  PLAYER_INK,
+  WAYPOINT_INK,
+  drawCompassRose,
   drawDiscoveryMarker,
+  drawEdgePointer,
   drawMapLabel,
   drawDeathMark,
   drawPartyToken,
   drawPlayerToken,
+  drawScaleBar,
   drawSearchRing,
   drawWaypointFlag,
   partyColor,
@@ -62,8 +68,9 @@ function tileColor(t: number): string {
   return c;
 }
 
-/** Danger tier → overlay wash (index = tier) — the studio's palette. */
-const TIER_WASH = [
+/** Danger tier → overlay wash (index = tier) — the studio's palette.
+ *  Exported for the chart rail's legend, which must speak the same ink. */
+export const TIER_WASH = [
   'rgba(110, 190, 130, 0.16)',
   'rgba(180, 200, 90, 0.14)',
   'rgba(220, 190, 70, 0.16)',
@@ -368,7 +375,11 @@ export class MapView {
       }
     }
     wanted.sort((a, b) => a.d - b.d);
-    lctx.imageSmoothingEnabled = this.scale < 1;
+    // THE PAINTED GROUND: smooth the tile bake at reading distance —
+    // the chart is a painting of the land, not a screenshot of the
+    // grid. From 4px a tile up the authored town art carries real
+    // shapes, and crispness starts telling truth instead of stairs.
+    lctx.imageSmoothingEnabled = this.scale < 4;
     for (const { bx, by } of wanted) {
       const key = `${bx},${by}:${fine ? 'f' : 'c'}`;
       let block = this.blocks.get(key);
@@ -465,7 +476,7 @@ export class MapView {
     }
 
     if (band === 'surface') {
-      const markerR = this.overlay ? 6.5 : Math.max(7, Math.min(13, this.scale * 2.4));
+      const markerR = this.overlay ? 7 : Math.max(10, Math.min(16, this.scale * 2.8));
       for (const d of this.game.discoveries.values()) {
         const x = this.sx(d.x + 0.5);
         const y = this.sy(d.y + 0.5);
@@ -473,9 +484,9 @@ export class MapView {
         drawDiscoveryMarker(ctx, d, x, y, markerR, this.hover?.id === d.id);
         const showLabel = this.overlay
           ? d.kind === 'town'
-          : this.hover?.id === d.id || (d.kind === 'town' && this.scale >= 0.9) || this.scale >= 5;
+          : this.hover?.id === d.id || (d.kind === 'town' && this.scale >= 0.7) || this.scale >= 5;
         if (showLabel) {
-          const size = d.kind === 'town' ? 13 : 11.5;
+          const size = d.kind === 'town' ? 13.5 : 11.5;
           drawMapLabel(ctx, x, y - markerR - 4, d.faded ? `${d.name}?` : d.name, d.faded ? '#9a8f78' : '#ece4d0', size);
         }
       }
@@ -484,7 +495,12 @@ export class MapView {
     const wp = this.game.waypoint;
     if (wp && band === 'surface') {
       const pulse = (nowMs % 1600) / 1600;
-      drawWaypointFlag(ctx, this.sx(wp.x + 0.5), this.sy(wp.y + 0.5), Math.max(7, Math.min(12, this.scale * 2.2)), pulse);
+      const wx = this.sx(wp.x + 0.5);
+      const wy = this.sy(wp.y + 0.5);
+      drawWaypointFlag(ctx, wx, wy, Math.max(10.5, Math.min(15, this.scale * 2.6)), pulse);
+      if (!this.overlay && (wx < 0 || wy < 0 || wx > cw || wy > ch)) {
+        drawEdgePointer(ctx, cw, ch, wx, wy, WAYPOINT_INK, 'Waypoint');
+      }
     }
 
     // Where the reader last fell — the spilled pack's skull. Always a
@@ -494,14 +510,16 @@ export class MapView {
     if (dm && band === 'surface' && dm.until > Date.now()) {
       const x = this.sx(dm.x);
       const y = this.sy(dm.y);
+      const remain = dm.until - Date.now();
+      const pulse = (nowMs % 2200) / 2200;
+      ctx.save();
+      ctx.globalAlpha = remain < 120_000 ? 0.45 + 0.55 * (remain / 120_000) : 1;
       if (x > -30 && y > -30 && x < cw + 30 && y < ch + 30) {
-        const remain = dm.until - Date.now();
-        const pulse = (nowMs % 2200) / 2200;
-        ctx.save();
-        ctx.globalAlpha = remain < 120_000 ? 0.45 + 0.55 * (remain / 120_000) : 1;
-        drawDeathMark(ctx, x, y, this.overlay ? 6 : Math.max(6.5, Math.min(11, this.scale * 2.1)), pulse);
-        ctx.restore();
+        drawDeathMark(ctx, x, y, this.overlay ? 7.5 : Math.max(9.5, Math.min(14, this.scale * 2.5)), pulse);
+      } else if (!this.overlay) {
+        drawEdgePointer(ctx, cw, ch, x, y, DEATH_INK, 'Fell here');
       }
+      ctx.restore();
     }
 
     // Party members — kin-dots in identity ink, drawn under the
@@ -513,7 +531,7 @@ export class MapView {
       const x = this.sx(f.x);
       const y = this.sy(f.y);
       if (x < -30 || y < -30 || x > cw + 30 || y > ch + 30) continue;
-      const pr = this.overlay ? 4.5 : Math.max(4.5, Math.min(8, this.scale * 1.5));
+      const pr = this.overlay ? 5 : Math.max(5, Math.min(8.5, this.scale * 1.5));
       drawPartyToken(ctx, x, y, pr, partyColor(f.name));
       if (!this.overlay && this.scale >= 1.2) drawMapLabel(ctx, x, y - pr - 4, f.name, '#cfe7f2', 11);
     }
@@ -521,7 +539,23 @@ export class MapView {
     const pos = this.game.predictor.pos;
     const inBand = band === 'dungeon' ? pos.y >= DUNGEON_MIN_Y : pos.y < DUNGEON_MIN_Y;
     if (inBand) {
-      drawPlayerToken(ctx, this.sx(pos.x), this.sy(pos.y), Math.max(5, Math.min(9, this.scale * 1.6)), this.game.aim);
+      const px = this.sx(pos.x);
+      const py = this.sy(pos.y);
+      const r = this.overlay ? 7 : Math.max(8.5, Math.min(12, this.scale * 2));
+      const pulse = (nowMs % 2200) / 2200;
+      drawPlayerToken(ctx, px, py, r, this.game.aim, pulse, this.overlay);
+      // THE READER IS NEVER LOST: panned away from yourself, the chart
+      // points back at you from its edge.
+      if (!this.overlay && (px < 0 || py < 0 || px > cw || py > ch)) {
+        drawEdgePointer(ctx, cw, ch, px, py, PLAYER_INK, 'You');
+      }
+    }
+
+    // The chart's standing instruments — north said out loud, distance
+    // made honest. The glass stays bare (the quiet-HUD decree).
+    if (!this.overlay) {
+      drawCompassRose(ctx, cw - 38, 44, 18);
+      drawScaleBar(ctx, 14, ch - 14, this.scale);
     }
   }
 
