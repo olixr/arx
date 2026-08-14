@@ -131,6 +131,40 @@ function stormArc(
 }
 
 /**
+ * THE WORLD'S OWN CLOUD — one puff traced in the game's canopy/pool
+ * blob idiom (the renderer's foam-mound language): seven noise-bumped
+ * radii smoothed through vertex midpoints, the silhouette boiling
+ * gently on its own air. Straight edges here would read as ice floes,
+ * not vapour — the curves are load-bearing. Traces the closed path
+ * only, so one caller can lay a wash base, a dark belly and a lit
+ * cap from the same language.
+ */
+function cloudPuff(
+  ctx: CanvasRenderingContext2D,
+  cx: number, cy: number, rx: number, ry: number,
+  seed: number, nowMs: number, boil = 1,
+): void {
+  const B = 7;
+  const px: number[] = [];
+  const py: number[] = [];
+  for (let i = 0; i < B; i++) {
+    const a = (i / B) * Math.PI * 2;
+    const h = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
+    const rr = 1 + ((h - Math.floor(h)) - 0.5) * 0.42 +
+      boil * 0.09 * Math.sin(nowMs * 0.0021 + seed + i * 2.4);
+    px.push(cx + Math.cos(a) * rx * rr);
+    py.push(cy + Math.sin(a) * ry * rr);
+  }
+  ctx.beginPath();
+  ctx.moveTo((px[B - 1]! + px[0]!) / 2, (py[B - 1]! + py[0]!) / 2);
+  for (let i = 0; i < B; i++) {
+    const j = (i + 1) % B;
+    ctx.quadraticCurveTo(px[i]!, py[i]!, (px[i]! + px[j]!) / 2, (py[i]! + py[j]!) / 2);
+  }
+  ctx.closePath();
+}
+
+/**
  * THE CAST VEIL — the face's mystery as a true falloff: stacked
  * wide translucent STROKES (fills gutter inside clipped paint
  * paths; strokes do not), near-solid from the brow to the eye
@@ -11128,124 +11162,114 @@ export function drawPauldron(
     return;
   }
   if (st.pauldron === 'cloudbank') {
-    // THE CLOUD BANK — stormwoven's shoulders, second forging: the
-    // shoulders ARE weather. A cloth seat under the hover (the
-    // aethercrest law), then living fog: the right shoulder carries
-    // THE ROLLING BANK — three lobes drifting on their own winds
-    // with a banked gold charge glowing between them; the left
-    // carries THE LOW FOG — a flatter shelf sliding slow, trailing
-    // wisp tails. The charge trades watches; the STRIKE is shared,
-    // and it lights the clouds FROM WITHIN — sheet lightning, never
-    // a badge.
+    // THE CLOUD BANK — stormwoven's shoulders, third forging: the
+    // generic seat is GONE. Each shoulder is a small working sky
+    // painted in the world's own cloud language (cloudPuff — the
+    // canopy/pool blob idiom), and the sky DOES ITS WORK: under
+    // everything THE STRATUS, a permanent flat-bellied shelf, hugs
+    // the shoulder and carries the mass; over it runs THE
+    // PROCESSION — clouds born small and dark to windward, swelling
+    // into two-tone puffs mid-passage, then sheared flat and
+    // swallowed to leeward, every rebirth rolling a new silhouette.
+    // ONE WIND: both shoulders drift the same world direction, never
+    // mirrored. ONE SKY: the banked charge breathes between the
+    // lobes and the strike lights every cloud FROM WITHIN on the
+    // shared beat — sheet lightning, never a badge.
     const ember = st.chargebeads?.bead ?? trim;
     const k = stormboltK(nowMs);
     const strike = k > 0.92;
-    seat(0.108 * s, 0.088 * s, hurt ? '#ffffff' : col, trim);
-    const lit = strike ? 26 : 0;
-    if (!hurt && side > 0) {
-      // The back row: darker mass behind the rolling front — the
-      // bank has WEATHER behind it.
-      for (const [dxB, dyB, rrB] of [[-0.078, -0.078, 0.04], [0.088, -0.092, 0.035]] as const) {
-        ctx.fillStyle = shade(col, -24 + (strike ? 18 : 0));
-        ctx.beginPath();
-        ctx.arc(side * dxB * s, dyB * s, rrB * s, 0, Math.PI * 2);
+    const lit = strike ? 24 : 0;
+    // The two shoulders share the wind but not the weather: the far
+    // sky runs a phase-shifted procession, so no cloud has a twin.
+    const sOff = side > 0 ? 0 : 0.37;
+    if (!hurt) {
+      // THE BACK ROW: dim weather far behind the working sky.
+      for (const [bi, dxB, dyB, rxB] of [[0, -0.062, -0.115, 0.036], [1, 0.058, -0.124, 0.03]] as const) {
+        const drB = Math.sin(nowMs * 0.00019 + bi * 2.6) * 0.014 * s;
+        ctx.fillStyle = shade(col, -34 + (strike ? 14 : 0));
+        cloudPuff(ctx, dxB * s + drB, dyB * s, rxB * s, rxB * 0.6 * s, 407 + bi * 29 + sOff * 100, nowMs, 0.6);
         ctx.fill();
       }
     }
-    if (side > 0) {
-      // THE ROLLING BANK: each lobe on its own slow wind.
-      const d0 = Math.sin(nowMs * 0.00042) * 0.011 * s;
-      const d1 = Math.sin(nowMs * 0.00042 + 2.1) * 0.009 * s;
-      const d2 = Math.sin(nowMs * 0.00042 + 4.4) * 0.012 * s;
-      // The banked charge FIRST — light inside the cloud, seen
+    // THE STRATUS: the permanent shelf — dark belly, mid body, lit
+    // crown, all in the one blob language — the mass that keeps the
+    // shoulder covered while the procession lives and dies above it.
+    // Garment-scale structure: it holds white in the hurt flash.
+    ctx.fillStyle = hurt ? '#ffffff' : shade(col, -4 + lit);
+    cloudPuff(ctx, 0.004 * s, -0.03 * s, 0.116 * s, 0.054 * s, 91 + sOff * 100, nowMs, 1);
+    ctx.fill();
+    if (!hurt) {
+      ctx.fillStyle = shade(col, -30 + lit);
+      cloudPuff(ctx, 0.012 * s, 0.006 * s, 0.09 * s, 0.03 * s, 137 + sOff * 100, nowMs, 0.7);
+      ctx.fill();
+      ctx.fillStyle = shade(col, 15 + lit);
+      cloudPuff(ctx, -0.022 * s, -0.052 * s, 0.066 * s, 0.032 * s, 53 + sOff * 100, nowMs, 1);
+      ctx.fill();
+      // THE BANKED CHARGE: gold light living inside the bank, read
       // through the gaps (alpha accents are proven in this path:
       // the heronwing mist precedent).
-      if (!hurt) {
-        ctx.globalAlpha = 0.2 + 0.4 * k + (strike ? 0.25 : 0);
-        ctx.fillStyle = ember;
-        ctx.beginPath();
-        ctx.ellipse(side * 0.02 * s + d0 * 0.5, -0.075 * s, 0.055 * s, 0.032 * s, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-      }
-      for (const [ui, dx, dy, rr, dv] of [
-        [0, -0.045 + 0, -0.052, 0.048, -12],
-        [1, 0.052, -0.066, 0.056, -4],
-        [2, 0.012, -0.098, 0.042, 4],
-      ] as const) {
-        const drift = ui === 0 ? d0 : ui === 1 ? d1 : d2;
-        const bx = side * dx * s + drift;
-        const by = dy * s + Math.sin(nowMs * 0.0009 + ui * 2.3) * 0.005 * s;
-        ctx.fillStyle = hurt ? '#ffffff' : shade(col, dv + lit);
-        ctx.beginPath();
-        ctx.arc(bx, by, rr * s, 0, Math.PI * 2);
-        ctx.fill();
-        if (!hurt) {
-          ctx.fillStyle = shade(col, dv + 13 + lit);
-          ctx.beginPath();
-          ctx.arc(bx, by, rr * s * 0.78, Math.PI * 1.06, Math.PI * 1.94);
-          ctx.closePath();
-          ctx.fill();
-        }
-      }
-      if (!hurt) {
-        // The wisp tail the wind pulls off the bank, outboard.
-        const wob = Math.sin(nowMs * 0.0017 + 1.1) * 0.008 * s;
-        ctx.fillStyle = shade(col, -8 + lit);
-        ctx.beginPath();
-        ctx.moveTo(side * 0.09 * s, -0.06 * s);
-        ctx.quadraticCurveTo(side * 0.15 * s, -0.055 * s + wob, side * 0.185 * s, -0.04 * s + wob * 1.6);
-        ctx.quadraticCurveTo(side * 0.15 * s, -0.03 * s + wob, side * 0.095 * s, -0.036 * s);
-        ctx.closePath();
-        ctx.fill();
-        if (strike) {
-          const fr = Math.floor(nowMs / 90);
-          // Lightning CRAWLS the bank: lobe to lobe, then down to
-          // the seat rim.
-          stormArc(ctx, side * -0.045 * s + d0, -0.052 * s, side * 0.012 * s + d2, -0.098 * s, fr * 9 + side, s * 0.02, ember, 0.85, Math.max(1, s * 0.007));
-          stormArc(ctx, side * 0.052 * s + d1, -0.066 * s, side * 0.06 * s, 0.05 * s, fr * 9 + side + 1, s * 0.018, ember, 0.7, Math.max(1, s * 0.006), false);
-        } else if (k > 0.45 && (nowMs % 1300) < 120) {
-          stormArc(ctx, side * -0.02 * s + d0, -0.06 * s, side * 0.04 * s + d1, -0.075 * s, Math.floor(nowMs / 1300) + side, s * 0.012, ember, 0.5, Math.max(1, s * 0.005), false);
-        }
-      }
-    } else if (!hurt) {
-      // THE LOW FOG: a flat shelf sliding on two opposed winds.
-      const s0 = Math.sin(nowMs * 0.00038) * 0.014 * s;
-      const s1 = Math.sin(nowMs * 0.00038 + Math.PI) * 0.01 * s;
-      ctx.globalAlpha = 0.16 + 0.32 * k + (strike ? 0.22 : 0);
+      ctx.globalAlpha = 0.16 + 0.38 * k + (strike ? 0.24 : 0);
       ctx.fillStyle = ember;
       ctx.beginPath();
-      ctx.ellipse(side * 0.01 * s, -0.045 * s, 0.05 * s, 0.024 * s, 0, 0, Math.PI * 2);
+      ctx.ellipse(0.005 * s, -0.08 * s, 0.058 * s, 0.03 * s, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
-      for (const [dx, dy, rx, ry, dv, dr] of [
-        [-0.02, -0.05, 0.075, 0.032, -10, 1],
-        [0.03, -0.028, 0.062, 0.026, 0, -1],
-      ] as const) {
-        const bx = side * dx * s + (dr > 0 ? s0 : s1);
-        ctx.fillStyle = shade(col, dv + lit);
-        ctx.beginPath();
-        ctx.ellipse(bx, dy * s, rx * s, ry * s, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = shade(col, dv + 12 + lit);
-        ctx.beginPath();
-        ctx.ellipse(bx - rx * s * 0.14, dy * s - ry * s * 0.4, rx * s * 0.62, ry * s * 0.5, 0, Math.PI, Math.PI * 2);
+    }
+    // THE PROCESSION: four cloud lives per shoulder, staggered so
+    // the sky always holds forming, full and dying weather at once.
+    // floor(cycle) re-rolls each slot's silhouette at rebirth, so no
+    // cloud ever forms twice.
+    const P = 10400;
+    const live: Array<[number, number, number]> = [];
+    for (const [i, laneY, rBase] of [
+      [0, -0.062, 0.052], [1, -0.108, 0.045], [2, -0.036, 0.042], [3, -0.088, 0.048],
+    ] as const) {
+      const u = nowMs / P + i / 4 + sOff;
+      const ph = ((u % 1) + 1) % 1;
+      const seed = 613 + i * 53 + Math.floor(u) * 17 + sOff * 100;
+      const cx = (-0.098 + 0.193 * ph) * s;
+      const cy = laneY * s + Math.sin(nowMs * 0.0009 + i * 2.3) * 0.004 * s;
+      const g = ph < 0.3 ? ph / 0.3 : 1;
+      const d = ph > 0.66 ? (ph - 0.66) / 0.34 : 0;
+      const gs = g * g * (3 - 2 * g);
+      // Forming clouds bud off the shelf dark and swell as they
+      // climb; dying clouds flatten, darken and are swallowed BACK
+      // into the bank — they never waste to a whisker in open air
+      // (blunt-tip law: too small or too thin is SKIPPED, and the
+      // travel ends over the stratus so the last breath overlaps it).
+      const rx = rBase * s * (0.3 + 0.7 * gs) * (1 + 0.45 * d);
+      const ry = rBase * 0.72 * s * (0.3 + 0.7 * gs) * (1 - 0.78 * d);
+      if (ry < 0.017 * s) continue;
+      const dvB = -20 + 26 * gs - 32 * d;
+      ctx.fillStyle = hurt ? '#ffffff' : shade(col, dvB + lit);
+      cloudPuff(ctx, cx, cy, rx, ry, seed, nowMs, 1);
+      ctx.fill();
+      if (!hurt && gs > 0.72 && d < 0.42) {
+        // The lit cap arrives only on a fully formed cloud — the
+        // two-tone read (wash base under a lit crown) the world's
+        // own canopies and foam mounds wear.
+        ctx.fillStyle = shade(col, dvB + 22 + lit);
+        cloudPuff(ctx, cx - rx * 0.18, cy - ry * 0.34, rx * 0.58, ry * 0.56, seed + 31, nowMs, 1);
         ctx.fill();
       }
-      // Two wisp tails trailing off the shelf.
-      for (const [dy, ln, ph] of [[-0.04, 0.08, 0.3], [-0.016, 0.06, 2.4]] as const) {
-        const wob = Math.sin(nowMs * 0.0017 + ph) * 0.007 * s;
-        ctx.fillStyle = shade(col, -14 + lit);
-        ctx.beginPath();
-        ctx.moveTo(side * 0.075 * s, dy * s);
-        ctx.quadraticCurveTo(side * (0.075 + ln * 0.6) * s, dy * s + wob, side * (0.075 + ln) * s, dy * s + 0.012 * s + wob);
-        ctx.lineTo(side * (0.075 + ln * 0.55) * s, dy * s + 0.018 * s);
-        ctx.closePath();
-        ctx.fill();
-      }
-      if (strike) {
+      if (!hurt && d < 0.5) live.push([cx, cy, gs - d]);
+    }
+    if (!hurt) {
+      if (strike && live.length >= 1) {
         const fr = Math.floor(nowMs / 90);
-        stormArc(ctx, side * -0.06 * s + s0, -0.05 * s, side * 0.07 * s + s1, -0.03 * s, fr * 11 + 3, s * 0.014, ember, 0.7, Math.max(1, s * 0.006), false);
+        // Lightning CRAWLS the sky on the shared beat: the two most
+        // alive clouds trade the arc, and one leader jumps down off
+        // the bank into the cloth.
+        live.sort((a2, b2) => b2[2] - a2[2]);
+        const l0 = live[0]!;
+        const l1 = live.length > 1 ? live[1]! : ([0.004 * s, -0.03 * s, 1] as [number, number, number]);
+        stormArc(ctx, l0[0], l0[1], l1[0], l1[1], fr * 9 + side, s * 0.02, ember, 0.85, Math.max(1, s * 0.007));
+        stormArc(ctx, l0[0], l0[1], 0.02 * s, 0.06 * s, fr * 9 + side + 1, s * 0.017, ember, 0.7, Math.max(1, s * 0.006), false);
+      } else if (k > 0.45 && (nowMs % 1300) < 120 && live.length >= 1) {
+        // The charge crackles early — a filament testing the air
+        // between the shelf and whichever cloud is passing.
+        const l0 = live[0]!;
+        stormArc(ctx, 0, -0.045 * s, l0[0], l0[1], Math.floor(nowMs / 1300) + side, s * 0.012, ember, 0.5, Math.max(1, s * 0.005), false);
       }
     }
     ctx.restore();
