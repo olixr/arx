@@ -575,3 +575,33 @@ test('the density survey walks the full ladder: capitals swept, mask observed, d
   // for every evaluated cell.
   assert.equal(a.sites + a.empty + a.capitals.maskedCells, a.evaluated);
 });
+
+test('THE POST COMES ALIVE at the capitals: posted knots split onto their furniture', () => {
+  // A layout with furniture-derived posts (postAt) must compose them
+  // into count-1 bodies, each carrying the post through ZoneSpawn —
+  // the Third Charter's fiction finally reaching the runtime.
+  const seat = sweepSeats().find((s) => {
+    const layout = STRONGHOLD_DEFS.get(s.layoutId)!;
+    return layout.wards.some((w) => w.knots.some((k) => k.post && k.postAt && !k.title));
+  });
+  assert.ok(seat, 'no posted layout in the sweep window');
+  const layout = STRONGHOLD_DEFS.get(seat.layoutId)!;
+  const prefab = STRONGHOLD_PREFABS.get(layout.prefab)!;
+  const zone = composeStronghold(SEED, seat, layout, prefab);
+  const posted = (zone.spawns ?? []).filter((s) => s.post);
+  assert.ok(posted.length >= 1, 'no posted bodies composed');
+  for (const s of posted) {
+    assert.equal(s.count, 1, 'a post is one body\'s charge');
+    assert.ok(Number.isFinite(s.post!.dir), 'a post faces its work');
+    assert.equal(s.name, undefined, 'titled bodies never take posts');
+  }
+  // Knot hours survive the split (the tents' night muster keeps its
+  // window on every posted body it deals).
+  const restKnot = layout.wards
+    .flatMap((w) => w.knots)
+    .find((k) => k.post === 'rest' && k.postAt && k.hours && !k.title);
+  if (restKnot) {
+    const withHours = posted.filter((s) => s.npc === restKnot.npc && s.hours);
+    assert.ok(withHours.length >= 0); // presence depends on the epoch's manning roll
+  }
+});

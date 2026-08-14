@@ -10,6 +10,28 @@ export interface PortalDef {
   delve?: boolean;
 }
 
+/**
+ * THE PEOPLED LANDMARKS — the post vocabulary, shared by both compose
+ * lanes (ordinary POIs derive posts from stamped furniture; stronghold
+ * knots carry them authored). The kind picks the held behavior at the
+ * spot; it never changes combat.
+ */
+export type PostKind = 'cook' | 'drill' | 'rest' | 'vigil' | 'keeper' | 'watch';
+
+/**
+ * A patrol waypoint — THE ROUND HAS STATIONS: a stop may hold the
+ * walker for a spell (`dwell`, ticks) and seat it (`sit`) — the round
+ * that walks, sits down at the fire, and moves on.
+ */
+export interface PatrolPt {
+  x: number;
+  y: number;
+  /** Linger at this stop, in ticks (absent = the short default linger). */
+  dwell?: number;
+  /** Take a seat for the linger — the fireside stop. */
+  sit?: boolean;
+}
+
 export interface ZoneSpawn {
   npc: string;
   x: number;
@@ -30,7 +52,16 @@ export interface ZoneSpawn {
    * ever — the round resumes when they let go. Only meaningful with
    * count 1 (each patroller gets its own rotated loop).
    */
-  patrol?: ReadonlyArray<{ x: number; y: number }>;
+  patrol?: ReadonlyArray<PatrolPt>;
+  /**
+   * THE POST COMES ALIVE: a furniture-anchored idle behavior — walk
+   * to the spot, plant, face `dir`, hold the kind's pose (cook seats
+   * and stirs, drill swings at the dummy, vigil stands its ground).
+   * `hours` gates the BEHAVIOR, never existence: off-window the body
+   * falls through to the ordinary wander. Only meaningful with
+   * count 1 (a post is one body's charge).
+   */
+  post?: { kind: PostKind; x: number; y: number; dir: number; hours?: { from: number; to: number } };
   /**
    * Activity window in game-clock hours [0, 24), from > to wrapping
    * midnight (the routine-slot law). Outside it the point neither

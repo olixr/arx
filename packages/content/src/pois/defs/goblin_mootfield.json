@@ -1,0 +1,38 @@
+{
+  "id": "goblin_mootfield",
+  "name": "The drum moot",
+  "description": "The goblin country's feast ground: nobody lives here and everybody comes here. Drums round a bonfire that never quite dies, trestles that have seen a thousand suppers, and a chief's tent that watches it all get eaten.",
+  "tiers": [2, 4],
+  "weight": 2,
+  "prefabs": ["poi_goblin_mootfield"],
+  "garrison": [
+    { "npc": "goblin", "count": [5, 7], "role": "holdfast" },
+    { "npc": "goblin", "count": [2, 3], "role": "sentry", "patrol": true },
+    { "npc": "goblin_thrower", "count": [2, 3], "role": "holdfast" },
+    { "npc": "goblin_firecaller", "count": [1, 2], "role": "holdfast", "minTier": 3 },
+    { "npc": "worg", "count": [1, 1], "role": "holdfast", "minTier": 3 },
+    {
+      "npc": "goblin",
+      "count": [1, 1],
+      "role": "holdfast",
+      "levelOffset": 5,
+      "names": ["Moot-Keeper Gnash", "Drumboss Ekka", "Loudest Yeg", "Three-Supper Brol"]
+    }
+  ],
+  "chestTierBonus": 0,
+  "cues": {
+    "clearing": 5,
+    "approachPath": true,
+    "scatter": [
+      { "tile": "SkullPile", "count": 2 },
+      { "tile": "WarBanner", "count": 3 }
+    ]
+  },
+  "signs": [
+    {
+      "title": "THE MOOT",
+      "lines": ["all bands welcome", "no fighting at supper"]
+    }
+  ],
+  "family": "goblin"
+}

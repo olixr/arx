@@ -1,0 +1,38 @@
+{
+  "id": "dead_kingsrow",
+  "name": "The kings' row",
+  "description": "Five great cairns of an older crown laid in a line, offering-lights burning before every door, and an honor guard that still changes at each one. Whose kings? Theirs. Whose land? That question is why the guard still stands.",
+  "tiers": [4, 5],
+  "weight": 2,
+  "prefabs": ["poi_dead_kingsrow"],
+  "garrison": [
+    { "npc": "skeleton_guard", "count": [3, 5], "role": "holdfast" },
+    { "npc": "skeleton_archer", "count": [2, 3], "role": "holdfast" },
+    { "npc": "skeleton_archer", "count": [1, 2], "role": "sentry", "patrol": true },
+    { "npc": "skeleton_chanter", "count": [1, 2], "role": "holdfast" },
+    { "npc": "skeleton_guard", "count": [1, 1], "role": "holdfast", "levelOffset": 4, "minTier": 5 },
+    {
+      "npc": "skeleton_champion",
+      "count": [1, 1],
+      "role": "holdfast",
+      "levelOffset": 5,
+      "names": ["The Third King", "The Crownless", "The Row's Herald", "She Who Was Buried First"]
+    }
+  ],
+  "chestTierBonus": 1,
+  "cues": {
+    "clearing": 4,
+    "approachPath": true,
+    "scatter": [
+      { "tile": "Rock", "count": 4 },
+      { "tile": "BonePile", "count": 2 }
+    ]
+  },
+  "signs": [
+    {
+      "title": "OLD CROWN",
+      "lines": ["the row is watched", "kneel or keep walking"]
+    }
+  ],
+  "family": "dead"
+}

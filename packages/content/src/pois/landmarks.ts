@@ -1,5 +1,24 @@
-import { Rng, TILE_SKIP, Tile, hashString } from '@arx/shared';
+import { TILE_SKIP, Tile } from '@arx/shared';
 import type { PrefabDef } from '../maps/prefab.js';
+import { at, blob, canvas, finish, put, route, ruinRect, scatter, seedOf, track } from './canvas.js';
+import {
+  beastPen,
+  brazierWalk,
+  cageRow,
+  cairn,
+  drillYard,
+  drumRing,
+  feastTrestles,
+  fireCircle,
+  kerbMound,
+  ossuaryRun,
+  spoilYard,
+  standardRow,
+  tentCluster,
+  totemRow,
+  trenchScar,
+  watchKnoll,
+} from './modules.js';
 
 /**
  * THE LANDMARKS (the hybrid charter) — expansive pre-authored POIs,
@@ -20,111 +39,8 @@ import type { PrefabDef } from '../maps/prefab.js';
  * composed semantically (holdfasts inside, sentries on the approach).
  */
 
-interface Canvas {
-  w: number;
-  h: number;
-  g: Uint16Array;
-}
-
-const canvas = (w: number, h: number): Canvas => ({ w, h, g: new Uint16Array(w * h).fill(TILE_SKIP) });
-
-const put = (c: Canvas, x: number, y: number, t: Tile): void => {
-  if (x < 1 || y < 1 || x >= c.w - 1 || y >= c.h - 1) return; // skip perimeter law
-  c.g[y * c.w + x] = t;
-};
-
-const at = (c: Canvas, x: number, y: number): number =>
-  x >= 0 && y >= 0 && x < c.w && y < c.h ? c.g[y * c.w + x]! : TILE_SKIP;
-
-/** Irregular filled disc — the organic ground blob under everything. */
-const blob = (c: Canvas, cx: number, cy: number, r: number, tile: Tile, rng: Rng, holes = 0): void => {
-  for (let dy = -r; dy <= r; dy++) {
-    for (let dx = -r; dx <= r; dx++) {
-      const d = Math.sqrt(dx * dx + dy * dy);
-      if (d > r - 0.5 + rng.range(-1.2, 1.2)) continue;
-      if (holes > 0 && rng.chance(holes)) continue;
-      if (at(c, cx + dx, cy + dy) === TILE_SKIP) put(c, cx + dx, cy + dy, tile);
-    }
-  }
-};
-
-/** Worn track between two points, painted only over ground already laid. */
-const track = (c: Canvas, x0: number, y0: number, x1: number, y1: number, rng: Rng): void => {
-  let x = x0;
-  let y = y0;
-  for (let guard = 0; guard < 400 && (x !== x1 || y !== y1); guard++) {
-    const t = at(c, x, y);
-    if (t === Tile.Grass || t === Tile.GrassTall || t === TILE_SKIP) put(c, x, y, Tile.Dirt);
-    if (x !== x1 && (y === y1 || rng.chance(0.55))) x += Math.sign(x1 - x);
-    else if (y !== y1) y += Math.sign(y1 - y);
-  }
-};
-
-/** Scatter tiles over already-painted walkable ground near a point. */
-const scatter = (
-  c: Canvas,
-  cx: number,
-  cy: number,
-  r: number,
-  count: number,
-  tiles: readonly Tile[],
-  rng: Rng,
-): void => {
-  for (let i = 0; i < count; i++) {
-    for (let tries = 0; tries < 10; tries++) {
-      const x = cx + rng.int(-r, r);
-      const y = cy + rng.int(-r, r);
-      const t = at(c, x, y);
-      if (t !== Tile.Grass && t !== Tile.GrassTall && t !== Tile.Dirt) continue;
-      put(c, x, y, tiles[rng.int(0, tiles.length - 1)]!);
-      break;
-    }
-  }
-};
-
-/** A broken rectangular run — old walls remember being walls. */
-const ruinRect = (
-  c: Canvas,
-  x0: number,
-  y0: number,
-  x1: number,
-  y1: number,
-  wall: Tile,
-  rubble: Tile,
-  rng: Rng,
-  gapChance: number,
-): void => {
-  const cell = (x: number, y: number): void => {
-    if (rng.chance(gapChance)) {
-      if (rng.chance(0.5)) put(c, x, y, rubble);
-      return;
-    }
-    put(c, x, y, wall);
-  };
-  for (let x = x0; x <= x1; x++) {
-    cell(x, y0);
-    cell(x, y1);
-  }
-  for (let y = y0 + 1; y < y1; y++) {
-    cell(x0, y);
-    cell(x1, y);
-  }
-};
-
-const finish = (c: Canvas, id: string, name: string): PrefabDef => ({
-  id,
-  name,
-  width: c.w,
-  height: c.h,
-  ground: c.g,
-  detail: new Uint16Array(c.w * c.h),
-  elev: new Int8Array(c.w * c.h),
-  portals: [],
-  spawns: [],
-  actorSpawns: [],
-});
-
-const seedOf = (id: string): Rng => new Rng(hashString(id) ^ 0x1a4d);
+// The painting toolkit lives on the shared canvas (canvas.ts) since
+// THE PEOPLED LANDMARKS — the module shelf draws with the same hand.
 
 // --------------------------------------------------------------------
 // THE GREAT BARROWFIELD (dead) — rows of kerbed mounds on open turf, a
@@ -168,15 +84,37 @@ function buildBarrowfield(): PrefabDef {
   put(c, 33, 20, Tile.ChestIron);
   put(c, 30, 20, Tile.Brazier);
   put(c, 36, 20, Tile.Brazier);
-  // The processional: pillar pairs walking from the south fringe.
+  // The processional: pillar pairs walking from the south fringe —
+  // and the wardens' watch-lights burning between them (vigil posts:
+  // the peopled charter gives the rows their grave-watch).
   for (const py of [46, 41, 36, 31] as const) {
     put(c, 30, py, Tile.PillarStone);
     put(c, 36, py, Tile.PillarStone);
   }
+  put(c, 30, 38, Tile.Brazier);
+  put(c, 36, 33, Tile.Brazier);
+  put(c, 14, 20, Tile.Brazier);
+  put(c, 52, 30, Tile.Brazier);
   track(c, 33, 47, 33, 28, rng);
   // Tracks wander mound to mound — grave-tenders kept their rounds.
   for (const [mx, my] of mounds) if (rng.chance(0.6)) track(c, mx, my + 3, 33, 34, rng);
   scatter(c, 33, 25, 26, 14, [Tile.BonePile, Tile.Rock], rng);
+  // The round the wardens still keep: up the processional, along the
+  // rows, standing a spell at the kerbs — the dead don't sit.
+  route(c, [
+    { dx: 33, dy: 46 },
+    { dx: 33, dy: 40 },
+    { dx: 33, dy: 32, dwell: 60 },
+    { dx: 36, dy: 28 },
+    { dx: 44, dy: 26 },
+    { dx: 50, dy: 20, dwell: 80 },
+    { dx: 40, dy: 16 },
+    { dx: 28, dy: 13, dwell: 60 },
+    { dx: 16, dy: 16 },
+    { dx: 12, dy: 24, dwell: 80 },
+    { dx: 18, dy: 34 },
+    { dx: 27, dy: 41 },
+  ]);
   return finish(c, 'poi_barrowfield_great', 'The great barrowfield');
 }
 
@@ -216,11 +154,36 @@ function buildGreatkeep(): PrefabDef {
   put(c, 35, 15, Tile.Brazier);
   put(c, 26, 21, Tile.PillarStone);
   put(c, 36, 21, Tile.PillarStone);
+  // The garrison's old racks still stand their wall — the unrelieved
+  // watch drills against nobody (the peopled charter's drill posts).
+  put(c, 26, 18, Tile.WeaponRack);
+  put(c, 36, 18, Tile.SpearRack);
+  // Gate-lights on the south breach: the watch keeps its door lit.
+  put(c, 27, 38, Tile.Brazier);
+  put(c, 35, 38, Tile.Brazier);
   // The gate the road remembers: a gap in the south run, rubble-flanked.
   for (const gx of [29, 30, 31, 32, 33] as const) put(c, gx, 40, Tile.Dirt);
   track(c, 31, 45, 31, 25, rng);
   scatter(c, 31, 24, 20, 18, [Tile.CaveRubble, Tile.Rock, Tile.BonePile], rng);
   scatter(c, 31, 30, 14, 8, [Tile.GrassTall], rng);
+  // The unrelieved watch: the courtyard circuit past every breach,
+  // held longest at the gate and the keep door.
+  route(c, [
+    { dx: 31, dy: 44 },
+    { dx: 31, dy: 38, dwell: 60 },
+    { dx: 31, dy: 28 },
+    { dx: 24, dy: 26 },
+    { dx: 14, dy: 24, dwell: 80 },
+    { dx: 13, dy: 12 },
+    { dx: 24, dy: 11 },
+    { dx: 31, dy: 11, dwell: 60 },
+    { dx: 38, dy: 11 },
+    { dx: 48, dy: 13 },
+    { dx: 49, dy: 25, dwell: 80 },
+    { dx: 44, dy: 36 },
+    { dx: 37, dy: 38 },
+    { dx: 31, dy: 39 },
+  ]);
   return finish(c, 'poi_ruin_greatkeep', 'The fallen keep');
 }
 
@@ -264,6 +227,24 @@ function buildGoblinSprawl(): PrefabDef {
   put(c, 48, 23, Tile.BeastNest);
   track(c, 48, 27, heart[0], heart[1], rng);
   scatter(c, 34, 25, 28, 20, [Tile.SkullPile, Tile.BonePile, Tile.WarBanner, Tile.MeatSpit], rng);
+  // The sprawl's gossip round: camp to camp, a squat at every fire —
+  // the patrol that eats five suppers a night.
+  route(c, [
+    { dx: 34, dy: 32 },
+    { dx: 36, dy: 41, dwell: 100, sit: true },
+    { dx: 26, dy: 38 },
+    { dx: 16, dy: 35, dwell: 120, sit: true },
+    { dx: 15, dy: 24 },
+    { dx: 15, dy: 13, dwell: 100, sit: true },
+    { dx: 24, dy: 12 },
+    { dx: 34, dy: 18 },
+    { dx: 44, dy: 13 },
+    { dx: 50, dy: 12, dwell: 100, sit: true },
+    { dx: 56, dy: 20 },
+    { dx: 56, dy: 31, dwell: 100, sit: true },
+    { dx: 46, dy: 30 },
+    { dx: 34, dy: 26, dwell: 80 },
+  ]);
   return finish(c, 'poi_goblin_sprawl', 'The goblin sprawl');
 }
 
@@ -304,6 +285,23 @@ function buildKillfield(): PrefabDef {
   }
   put(c, 32, 20, Tile.ChestIron);
   scatter(c, 32, 24, 26, 16, [Tile.BonePile, Tile.SkullPile], rng);
+  // The pack walks its bounds: den to den, drift to drift, nose down
+  // at every kill — no fires on this round.
+  route(c, [
+    { dx: 32, dy: 30 },
+    { dx: 24, dy: 26, dwell: 60 },
+    { dx: 16, dy: 22 },
+    { dx: 12, dy: 14 },
+    { dx: 24, dy: 12, dwell: 80 },
+    { dx: 36, dy: 12 },
+    { dx: 44, dy: 14, dwell: 60 },
+    { dx: 52, dy: 22 },
+    { dx: 52, dy: 30, dwell: 80 },
+    { dx: 42, dy: 34 },
+    { dx: 32, dy: 36, dwell: 60 },
+    { dx: 22, dy: 36 },
+    { dx: 22, dy: 32 },
+  ]);
   return finish(c, 'poi_wolfkin_killfield', 'The kill-field');
 }
 
@@ -339,18 +337,531 @@ function buildWaystead(): PrefabDef {
   }
   blob(c, 38, 27, 4, Tile.Dirt, rng, 0.15);
   put(c, 38, 27, Tile.Campfire);
+  // Supper hangs by the fire — a road-agent's larder (cook posts).
+  put(c, 40, 25, Tile.MeatSpit);
   // The watch-mound: high ground by the gate, torch and banner.
   blob(c, 44, 13, 4, Tile.Dirt, rng, 0);
   put(c, 44, 12, Tile.StandingTorch);
   put(c, 46, 14, Tile.WarBanner);
   put(c, 42, 14, Tile.TargetDummy);
+  put(c, 46, 12, Tile.SpearRack);
   // The gate gap the road still finds.
   for (const gx of [28, 29, 30, 31] as const) put(c, gx, 38, Tile.Dirt);
   track(c, 29, 43, 29, 30, rng);
   track(c, 29, 30, 38, 27, rng);
   track(c, 29, 30, 20, 21, rng);
   scatter(c, 30, 23, 22, 12, [Tile.Crate, Tile.Barrel, Tile.CaveRubble], rng);
+  // The waystead's round: gate, fire (a long sit with supper), the
+  // watch-mound, the stores — a road-agent's honest working night.
+  route(c, [
+    { dx: 29, dy: 42 },
+    { dx: 29, dy: 36, dwell: 60 },
+    { dx: 36, dy: 30 },
+    { dx: 39, dy: 28, dwell: 120, sit: true },
+    { dx: 44, dy: 22 },
+    { dx: 44, dy: 14, dwell: 100 },
+    { dx: 36, dy: 14 },
+    { dx: 26, dy: 16, dwell: 60 },
+    { dx: 16, dy: 22 },
+    { dx: 20, dy: 28 },
+    { dx: 28, dy: 32 },
+  ]);
   return finish(c, 'poi_brigand_waystead', 'The lost waystead');
+}
+
+// --------------------------------------------------------------------
+// THE WARREN DOOR (goblin) — a warren dug into a rock hummock: the
+// door is a cave mouth, and everything the warren does — sorting,
+// cooking, keeping the unlucky — happens in the yard outside it.
+function buildGoblinWarren(): PrefabDef {
+  const c = canvas(54, 44);
+  const rng = seedOf('poi_goblin_warren');
+  blob(c, 27, 22, 24, Tile.Grass, rng, 0);
+  // The hummock: a rock mass with one dug mouth, spoil fanning out.
+  for (let y = 6; y <= 13; y++) {
+    for (let x = 21; x <= 37; x++) {
+      const d = Math.hypot(x - 29, y - 9);
+      if (d < 6.5 + rng.range(-1, 1)) put(c, x, y, Tile.CaveWall);
+    }
+  }
+  // The mouth: floor pocket, a cracked back wall (the warren goes on).
+  for (let y = 10; y <= 14; y++) for (let x = 27; x <= 31; x++) put(c, x, y, Tile.CaveFloor);
+  put(c, 29, 9, Tile.CrackedCaveWall);
+  put(c, 29, 11, Tile.ChestIron);
+  put(c, 27, 11, Tile.Brazier);
+  // Spoil heaps below the door — a warren never stops digging.
+  blob(c, 24, 17, 3, Tile.Dirt, rng, 0.2);
+  blob(c, 34, 17, 3, Tile.Dirt, rng, 0.2);
+  scatter(c, 24, 17, 3, 4, [Tile.CaveRubble, Tile.Rock], rng);
+  scatter(c, 34, 17, 3, 4, [Tile.CaveRubble, Tile.Rock], rng);
+  // The door keeps its wards.
+  put(c, 25, 14, Tile.SkullTotem);
+  put(c, 33, 14, Tile.SkullTotem);
+  // The yard: cook terrace, sorting ground, the cage row, the pen.
+  fireCircle(c, 20, 22, rng, { pot: true, spit: true });
+  spoilYard(c, 38, 22, rng);
+  cageRow(c, 16, 30, 2, rng);
+  beastPen(c, 38, 30, 46, 36, 2, rng);
+  // Watch stakes flank the south walk.
+  put(c, 25, 36, Tile.StandingTorch);
+  put(c, 31, 36, Tile.StandingTorch);
+  track(c, 28, 42, 28, 15, rng);
+  track(c, 28, 24, 21, 22, rng);
+  track(c, 28, 26, 37, 23, rng);
+  track(c, 28, 30, 18, 30, rng);
+  track(c, 30, 30, 41, 32, rng);
+  scatter(c, 27, 24, 22, 14, [Tile.SkullPile, Tile.BonePile, Tile.CaveRubble], rng);
+  // The warren round: stakes, the fire (a squat), the cages, the
+  // sorting yard, the pen — the yard walked the way it is worked.
+  route(c, [
+    { dx: 28, dy: 38 },
+    { dx: 28, dy: 30, dwell: 60 },
+    { dx: 21, dy: 24, dwell: 100, sit: true },
+    { dx: 17, dy: 28, dwell: 80 },
+    { dx: 24, dy: 33 },
+    { dx: 34, dy: 33 },
+    { dx: 40, dy: 29, dwell: 60 },
+    { dx: 38, dy: 20 },
+    { dx: 29, dy: 16, dwell: 80 },
+    { dx: 28, dy: 24 },
+    { dx: 28, dy: 31 },
+  ]);
+  return finish(c, 'poi_goblin_warren', 'The warren door');
+}
+
+// --------------------------------------------------------------------
+// THE DRUM MOOT (goblin) — the country's feast ground: nobody lives
+// here, everybody comes here. Drums round a bonfire, trestles that
+// have seen a thousand suppers, and the chief's tent watching it all.
+function buildGoblinMoot(): PrefabDef {
+  const c = canvas(62, 48);
+  const rng = seedOf('poi_goblin_mootfield');
+  blob(c, 31, 24, 28, Tile.Grass, rng, 0);
+  // The heart: the drum ring and the great fire.
+  drumRing(c, 31, 21, 5, rng);
+  put(c, 31, 21, Tile.Bonfire);
+  put(c, 28, 17, Tile.SkullTotem);
+  put(c, 34, 17, Tile.SkullTotem);
+  // The feast: trestles drawn up south of the ring.
+  feastTrestles(c, 31, 31, 8, rng);
+  // The meat row — a moot is fed.
+  put(c, 20, 28, Tile.MeatSpit);
+  put(c, 18, 30, Tile.MeatRack);
+  put(c, 20, 32, Tile.MeatSpit);
+  blob(c, 19, 30, 3, Tile.Dirt, rng, 0.2);
+  // The brew corner: a stolen keg and the barrels it earned.
+  blob(c, 44, 30, 3, Tile.Dirt, rng, 0.15);
+  put(c, 44, 29, Tile.BrewKeg);
+  put(c, 42, 31, Tile.Barrel);
+  put(c, 46, 31, Tile.Barrel);
+  put(c, 45, 33, Tile.Barrel);
+  // The chief presides from the east rise; his take sits beside him.
+  tentCluster(c, 46, 18, 3, rng, { war: true });
+  put(c, 44, 16, Tile.ChestIron);
+  // Visiting camps on the fringes — the moot draws the bands in.
+  tentCluster(c, 14, 14, 3, rng);
+  fireCircle(c, 12, 18, rng, {});
+  tentCluster(c, 16, 38, 3, rng);
+  fireCircle(c, 20, 40, rng, { spit: true });
+  // The processional: totems walking the south approach to the ring.
+  totemRow(c, 31, 44, 31, 30, 5, rng);
+  track(c, 31, 46, 31, 24, rng);
+  track(c, 31, 28, 20, 29, rng);
+  track(c, 31, 28, 43, 30, rng);
+  track(c, 31, 24, 45, 19, rng);
+  track(c, 28, 24, 14, 16, rng);
+  track(c, 28, 30, 18, 39, rng);
+  scatter(c, 31, 24, 26, 18, [Tile.SkullPile, Tile.WarBanner, Tile.BonePile], rng);
+  // The moot round: up the processional, a long squat at the fire, a
+  // seat at the trestles, a horn at the keg, the chief's door, home.
+  route(c, [
+    { dx: 30, dy: 43 },
+    { dx: 31, dy: 36 },
+    { dx: 33, dy: 26, dwell: 120, sit: true },
+    { dx: 31, dy: 33, dwell: 100, sit: true },
+    { dx: 22, dy: 30, dwell: 60 },
+    { dx: 14, dy: 18, dwell: 80, sit: true },
+    { dx: 24, dy: 20 },
+    { dx: 36, dy: 20 },
+    { dx: 44, dy: 27, dwell: 100 },
+    { dx: 45, dy: 20, dwell: 60 },
+    { dx: 38, dy: 28 },
+    { dx: 31, dy: 38 },
+  ]);
+  return finish(c, 'poi_goblin_mootfield', 'The drum moot');
+}
+
+// --------------------------------------------------------------------
+// THE GRUB FARM (goblin) — goblins aping the field-life they raid:
+// crooked rows of stolen crops, a scarecrow in a looted helm, penned
+// boars, and a granary tent guarded like a war-chest.
+function buildGoblinGrubfarm(): PrefabDef {
+  const c = canvas(56, 44);
+  const rng = seedOf('poi_goblin_grubfarm');
+  blob(c, 28, 22, 25, Tile.Grass, rng, 0);
+  // The crooked rows: nothing here grows straight.
+  for (const [rx, ry, len] of [
+    [13, 12, 12],
+    [14, 15, 11],
+    [12, 18, 13],
+  ] as const) {
+    let wob = 0;
+    for (let i = 0; i < len; i++) {
+      wob += rng.int(-1, 1);
+      const y = ry + Math.max(-1, Math.min(1, wob));
+      put(c, rx + i, y, Tile.Tilled);
+      if (rng.chance(0.55)) {
+        put(c, rx + i, y, rng.chance(0.6) ? Tile.CabbageMid : Tile.PumpkinMid);
+      }
+    }
+  }
+  put(c, 19, 9, Tile.Scarecrow);
+  // Shade logs by the west hedge — even goblins learn the dark bed.
+  put(c, 11, 24, Tile.MushroomLog);
+  put(c, 14, 26, Tile.MushroomLog);
+  put(c, 12, 28, Tile.MushroomLog);
+  // The boar pen: stolen stock, kept fatter than the keepers.
+  beastPen(c, 34, 12, 44, 20, 0, rng);
+  put(c, 39, 16, Tile.FeedTrough);
+  c.spawns.push(
+    { dx: 37, dy: 15, npc: 'boar', radius: 2, count: 1, level: 3 },
+    { dx: 41, dy: 17, npc: 'boar', radius: 2, count: 1, level: 3 },
+  );
+  // The granary: the war tent repurposed, the take of the harvest.
+  tentCluster(c, 42, 28, 2, rng, { war: true });
+  put(c, 40, 26, Tile.ChestIron);
+  put(c, 44, 30, Tile.CrateGoods);
+  put(c, 40, 31, Tile.HayBale);
+  put(c, 46, 27, Tile.HayBale);
+  // The farmhands' corner and their fire.
+  tentCluster(c, 16, 34, 3, rng);
+  fireCircle(c, 24, 32, rng, { pot: true });
+  track(c, 28, 42, 28, 24, rng);
+  track(c, 28, 30, 25, 32, rng);
+  track(c, 28, 28, 40, 28, rng);
+  track(c, 28, 24, 39, 18, rng);
+  track(c, 26, 24, 18, 16, rng);
+  track(c, 26, 30, 17, 35, rng);
+  scatter(c, 28, 22, 23, 10, [Tile.BonePile, Tile.Crate, Tile.SkullPile], rng);
+  // The farmer's round: the rows inspected, the pen slopped, the
+  // granary counted, a seat at the pot — husbandry, goblin-fashion.
+  route(c, [
+    { dx: 28, dy: 38 },
+    { dx: 27, dy: 28 },
+    { dx: 20, dy: 21, dwell: 80 },
+    { dx: 15, dy: 13, dwell: 100 },
+    { dx: 25, dy: 12 },
+    { dx: 35, dy: 13 },
+    { dx: 39, dy: 21, dwell: 100 },
+    { dx: 41, dy: 25, dwell: 80 },
+    { dx: 34, dy: 31 },
+    { dx: 25, dy: 33, dwell: 120, sit: true },
+    { dx: 27, dy: 37 },
+  ]);
+  return finish(c, 'poi_goblin_grubfarm', 'The grub farm');
+}
+
+// --------------------------------------------------------------------
+// THE RAID MUSTER (goblin) — the staging ground: banner avenue, drill
+// yard, worg pickets, a plunder depot, and the signal pyre that will
+// someday light. The mean one — this camp is going somewhere.
+function buildGoblinWarstage(): PrefabDef {
+  const c = canvas(64, 46);
+  const rng = seedOf('poi_goblin_warstage');
+  blob(c, 32, 23, 28, Tile.Grass, rng, 0);
+  // Palisade stubs: they never finish anything, but they started.
+  for (let x = 18; x <= 34; x++) if (rng.chance(0.7)) put(c, x, 10, Tile.Palisade);
+  for (let y = 12; y <= 22; y++) if (rng.chance(0.6)) put(c, 12, y, Tile.Palisade);
+  // The banner avenue: the way in, dressed to be feared.
+  standardRow(c, 29, 42, 29, 30, 4, rng);
+  standardRow(c, 35, 42, 35, 30, 4, rng);
+  track(c, 32, 44, 32, 24, rng);
+  put(c, 27, 38, Tile.SpikeBarrier);
+  put(c, 37, 38, Tile.SpikeBarrier);
+  // The drill yard — the muster keeps its edge.
+  drillYard(c, 24, 20, rng);
+  put(c, 20, 18, Tile.TargetDummy);
+  // The signal pyre on its mound, waiting for its night.
+  blob(c, 47, 14, 4, Tile.Dirt, rng, 0);
+  put(c, 47, 13, Tile.Bonfire);
+  put(c, 49, 15, Tile.WarBanner);
+  // Worg pickets west; the depot east; the chief's tent southeast.
+  beastPen(c, 13, 26, 21, 32, 2, rng);
+  spoilYard(c, 43, 27, rng);
+  put(c, 45, 25, Tile.PlunderSacks);
+  tentCluster(c, 50, 35, 3, rng, { war: true });
+  put(c, 52, 33, Tile.ChestIron);
+  tentCluster(c, 15, 13, 3, rng);
+  // The muster's fire — even a war camp eats.
+  fireCircle(c, 32, 27, rng, { spit: true, rack: true });
+  track(c, 32, 28, 25, 21, rng);
+  track(c, 32, 28, 44, 28, rng);
+  track(c, 32, 24, 46, 15, rng);
+  track(c, 30, 26, 17, 29, rng);
+  track(c, 34, 30, 49, 36, rng);
+  scatter(c, 32, 23, 26, 16, [Tile.SkullPile, Tile.WarBanner, Tile.BonePile, Tile.SpikeBarrier], rng);
+  // The war-round: avenue, drill (a real spell of it), the pyre, the
+  // depot, the pickets, one squat at the fire — then round again.
+  route(c, [
+    { dx: 32, dy: 40 },
+    { dx: 32, dy: 30, dwell: 60 },
+    { dx: 25, dy: 23, dwell: 120 },
+    { dx: 30, dy: 17 },
+    { dx: 40, dy: 16 },
+    { dx: 47, dy: 17, dwell: 100 },
+    { dx: 44, dy: 25, dwell: 60 },
+    { dx: 48, dy: 33, dwell: 60 },
+    { dx: 38, dy: 30 },
+    { dx: 33, dy: 29, dwell: 100, sit: true },
+    { dx: 22, dy: 29, dwell: 80 },
+    { dx: 26, dy: 35 },
+    { dx: 30, dy: 40 },
+  ]);
+  return finish(c, 'poi_goblin_warstage', 'The raid muster');
+}
+
+// --------------------------------------------------------------------
+// THE SUNKEN CHAPEL (dead) — a sanctum half under the turf. The pews
+// still face the lectern; the congregation never took the hint.
+function buildDeadChapel(): PrefabDef {
+  const c = canvas(56, 46);
+  const rng = seedOf('poi_dead_chapel');
+  blob(c, 28, 23, 25, Tile.Grass, rng, 0);
+  // The nave: walls that mostly held, a floor the turf is losing.
+  ruinRect(c, 18, 12, 38, 30, Tile.WallStone, Tile.CaveRubble, rng, 0.22);
+  for (let y = 13; y <= 29; y++) for (let x = 19; x <= 37; x++) put(c, x, y, Tile.StoneFloor);
+  put(c, 28, 30, Tile.DoorwayStone);
+  // The office: lectern and the watch-lights.
+  put(c, 28, 15, Tile.Lectern);
+  put(c, 24, 15, Tile.Brazier);
+  put(c, 32, 15, Tile.Brazier);
+  // The pews: rows still drawn up — the seated dead keep the office.
+  for (const py of [19, 22, 25] as const) {
+    for (let x = 22; x <= 34; x += 2) {
+      if (rng.chance(0.75)) put(c, x, py, Tile.Bench);
+    }
+  }
+  // The aisles remember their relics: bone stacked along the walls —
+  // and the reliquary LAST, so no bone pass buries the prize.
+  ossuaryRun(c, 19, 13, 37, 13, rng);
+  ossuaryRun(c, 19, 28, 25, 28, rng);
+  put(c, 28, 13, Tile.ChestIron);
+  // The garth: kerbed graves east, the bell mound west.
+  kerbMound(c, 46, 16, rng, rng.chance(0.4));
+  kerbMound(c, 45, 26, rng, rng.chance(0.4));
+  kerbMound(c, 46, 36, rng, true);
+  cairn(c, 11, 16, 3, rng);
+  // The processional: brazier pairs walking the door south.
+  brazierWalk(c, 28, 44, 28, 31, 5, rng);
+  scatter(c, 28, 23, 24, 14, [Tile.BonePile, Tile.CaveRubble, Tile.Rock], rng);
+  scatter(c, 28, 36, 12, 6, [Tile.GrassTall], rng);
+  // The verger's round: the processional, the nave, the graves, the
+  // bell — the offices kept to the hour, forever.
+  route(c, [
+    { dx: 28, dy: 43 },
+    { dx: 28, dy: 33, dwell: 60 },
+    { dx: 28, dy: 27 },
+    { dx: 28, dy: 17, dwell: 100 },
+    { dx: 34, dy: 21 },
+    { dx: 36, dy: 31 },
+    { dx: 45, dy: 30, dwell: 80 },
+    { dx: 46, dy: 21, dwell: 80 },
+    { dx: 40, dy: 12 },
+    { dx: 29, dy: 10 },
+    { dx: 17, dy: 10 },
+    { dx: 11, dy: 12, dwell: 80 },
+    { dx: 13, dy: 22 },
+    { dx: 18, dy: 32 },
+    { dx: 24, dy: 38 },
+  ]);
+  return finish(c, 'poi_dead_chapel', 'The sunken chapel');
+}
+
+// --------------------------------------------------------------------
+// THE OLD MUSTER (dead) — a battlefield where the ranks re-form every
+// night: trench scars, fallen standards, a drill line still drilling,
+// and the command knoll that never stood down.
+function buildDeadMuster(): PrefabDef {
+  const c = canvas(66, 48);
+  const rng = seedOf('poi_dead_muster');
+  blob(c, 33, 24, 30, Tile.Grass, rng, 0);
+  // The scars: where the lines held, and where they broke.
+  trenchScar(c, 10, 18, 30, 14, rng);
+  trenchScar(c, 36, 12, 56, 18, rng);
+  trenchScar(c, 14, 34, 34, 38, rng);
+  // Palisade teeth along the north — the works that failed.
+  for (let x = 20; x <= 46; x++) if (rng.chance(0.25)) put(c, x, 10, Tile.Palisade);
+  // The standards that fell, in the order they fell.
+  standardRow(c, 16, 24, 48, 26, 6, rng);
+  // The drill line: the dead keep their edge too.
+  drillYard(c, 40, 32, rng);
+  put(c, 34, 30, Tile.SpearRack);
+  put(c, 46, 30, Tile.WeaponRack);
+  // The command knoll — the war is still being run from here.
+  watchKnoll(c, 54, 22, rng);
+  put(c, 54, 20, Tile.ChestIron);
+  put(c, 52, 24, Tile.WarBanner);
+  // The field keeps its count.
+  scatter(c, 33, 24, 28, 24, [Tile.BonePile, Tile.SkullPile, Tile.CaveRubble, Tile.Rock], rng);
+  scatter(c, 24, 24, 12, 6, [Tile.GrassTall], rng);
+  track(c, 33, 46, 33, 30, rng);
+  track(c, 33, 34, 40, 33, rng);
+  track(c, 33, 30, 22, 26, rng);
+  track(c, 36, 30, 53, 23, rng);
+  // The muster round: the whole line walked end to end, held longest
+  // at the drill and the knoll — the army that never disbanded.
+  route(c, [
+    { dx: 33, dy: 44 },
+    { dx: 33, dy: 34 },
+    { dx: 24, dy: 36, dwell: 60 },
+    { dx: 16, dy: 32 },
+    { dx: 12, dy: 22 },
+    { dx: 20, dy: 16, dwell: 80 },
+    { dx: 30, dy: 14 },
+    { dx: 40, dy: 13 },
+    { dx: 50, dy: 16, dwell: 80 },
+    { dx: 55, dy: 24, dwell: 100 },
+    { dx: 48, dy: 30 },
+    { dx: 41, dy: 34, dwell: 120 },
+    { dx: 36, dy: 40 },
+  ]);
+  return finish(c, 'poi_dead_muster', 'The old muster');
+}
+
+// --------------------------------------------------------------------
+// THE COLD CLOISTER (dead) — a monastery the mountain forgot: the
+// garth's colonnade, the refectory where the brothers still sit at
+// table, and the bell mound that keeps the hours nobody hears.
+function buildDeadCloister(): PrefabDef {
+  const c = canvas(58, 46);
+  const rng = seedOf('poi_dead_cloister');
+  blob(c, 29, 23, 26, Tile.Grass, rng, 0);
+  // The garth: a colonnade square round kept turf, the trough at its
+  // heart — the one green the dead still tend.
+  for (let x = 20; x <= 36; x += 4) {
+    put(c, x, 14, Tile.PillarStone);
+    put(c, x, 30, Tile.PillarStone);
+  }
+  for (let y = 18; y <= 26; y += 4) {
+    put(c, 20, y, Tile.PillarStone);
+    put(c, 36, y, Tile.PillarStone);
+  }
+  for (let y = 16; y <= 28; y++) {
+    for (let x = 22; x <= 34; x++) {
+      if (at(c, x, y) === Tile.Grass && rng.chance(0.25)) put(c, x, y, Tile.GrassTall);
+    }
+  }
+  put(c, 28, 22, Tile.Basin);
+  // The refectory: the long table, the brothers seated, grace unsaid.
+  ruinRect(c, 40, 16, 54, 26, Tile.WallStone, Tile.CaveRubble, rng, 0.18);
+  for (let y = 17; y <= 25; y++) for (let x = 41; x <= 53; x++) put(c, x, y, Tile.StoneFloor);
+  put(c, 40, 21, Tile.DoorwayStone);
+  for (let x = 44; x <= 50; x++) put(c, x, 21, Tile.Table);
+  for (let x = 44; x <= 50; x += 2) {
+    put(c, x, 20, Tile.Bench);
+    put(c, x, 22, Tile.Bench);
+  }
+  put(c, 52, 18, Tile.ChestIron);
+  put(c, 42, 18, Tile.Brazier);
+  // The chapel stub: mostly down, the office kept anyway.
+  ruinRect(c, 14, 32, 28, 40, Tile.WallStone, Tile.CaveRubble, rng, 0.35);
+  for (let y = 33; y <= 39; y++) for (let x = 15; x <= 27; x++) {
+    if (rng.chance(0.7)) put(c, x, y, Tile.StoneFloor);
+  }
+  put(c, 21, 35, Tile.Lectern);
+  put(c, 18, 35, Tile.Brazier);
+  // The bell mound, and the graves of the quieter brothers.
+  cairn(c, 44, 34, 3, rng);
+  kerbMound(c, 11, 16, rng, false);
+  kerbMound(c, 11, 24, rng, true);
+  brazierWalk(c, 29, 44, 29, 31, 5, rng);
+  track(c, 29, 32, 29, 22, rng);
+  track(c, 32, 26, 40, 22, rng);
+  track(c, 26, 28, 20, 34, rng);
+  track(c, 34, 28, 44, 33, rng);
+  scatter(c, 29, 23, 24, 12, [Tile.BonePile, Tile.CaveRubble, Tile.Rock], rng);
+  // The office round: chapel, garth corners, refectory (a long sit
+  // at table), the bell — the day's hours, kept cold.
+  route(c, [
+    { dx: 29, dy: 43 },
+    { dx: 27, dy: 36, dwell: 100 },
+    { dx: 18, dy: 37, dwell: 80 },
+    { dx: 14, dy: 28 },
+    { dx: 12, dy: 20, dwell: 60 },
+    { dx: 18, dy: 13 },
+    { dx: 28, dy: 12 },
+    { dx: 38, dy: 14 },
+    { dx: 45, dy: 20, dwell: 120, sit: true },
+    { dx: 46, dy: 28 },
+    { dx: 45, dy: 31, dwell: 80 },
+    { dx: 36, dy: 34 },
+    { dx: 30, dy: 38 },
+  ]);
+  return finish(c, 'poi_dead_cloister', 'The cold cloister');
+}
+
+// --------------------------------------------------------------------
+// THE KINGS' ROW (dead) — five great cairns of an older crown laid in
+// a line, offering-lights before each, and an honor guard that still
+// changes at every door. The high band's landmark.
+function buildDeadKingsrow(): PrefabDef {
+  const c = canvas(60, 46);
+  const rng = seedOf('poi_dead_kingsrow');
+  blob(c, 30, 23, 27, Tile.Grass, rng, 0);
+  // The row: four lords and, center, the king's greater ring.
+  cairn(c, 14, 18, 3, rng);
+  cairn(c, 22, 18, 3, rng);
+  cairn(c, 30, 17, 4, rng);
+  cairn(c, 38, 18, 3, rng);
+  cairn(c, 46, 18, 3, rng);
+  // The offering-lights: a brazier before every door.
+  for (const bx of [14, 22, 38, 46] as const) put(c, bx, 23, Tile.Brazier);
+  // The king takes his tribute at the arch; the take is warded.
+  put(c, 30, 26, Tile.ArchStone);
+  put(c, 30, 23, Tile.ChestIron);
+  put(c, 28, 24, Tile.Brazier);
+  put(c, 32, 24, Tile.Brazier);
+  // The processional walks in from the south hem.
+  brazierWalk(c, 30, 44, 30, 28, 6, rng);
+  // Toppled pillars: the colonnade the centuries took.
+  for (const [px, py] of [
+    [18, 30], [24, 33], [37, 32], [43, 30], [12, 26], [48, 27],
+  ] as const) {
+    if (rng.chance(0.6)) put(c, px, py, Tile.PillarStone);
+    else {
+      put(c, px, py, Tile.CaveRubble);
+      put(c, px + 1, py, Tile.CaveRubble);
+    }
+  }
+  // The lesser rows: the household, buried at their lords' feet.
+  kerbMound(c, 16, 38, rng, rng.chance(0.5));
+  kerbMound(c, 30, 39, rng, rng.chance(0.5));
+  kerbMound(c, 44, 38, rng, true);
+  // The high turf keeps old bone.
+  scatter(c, 30, 23, 26, 16, [Tile.BonePile, Tile.Rock, Tile.CaveRubble], rng);
+  scatter(c, 30, 12, 20, 8, [Tile.GrassTall], rng);
+  track(c, 30, 30, 16, 22, rng);
+  track(c, 30, 30, 44, 22, rng);
+  // The changing of the guard: the row walked door to door, a stand
+  // at every king, the arch held longest — the watch that outlived
+  // the kingdom it kept.
+  route(c, [
+    { dx: 30, dy: 42 },
+    { dx: 30, dy: 32 },
+    { dx: 30, dy: 28, dwell: 120 },
+    { dx: 22, dy: 24, dwell: 80 },
+    { dx: 14, dy: 24, dwell: 80 },
+    { dx: 10, dy: 15 },
+    { dx: 22, dy: 13 },
+    { dx: 30, dy: 11, dwell: 60 },
+    { dx: 38, dy: 13 },
+    { dx: 47, dy: 14 },
+    { dx: 46, dy: 24, dwell: 80 },
+    { dx: 38, dy: 24, dwell: 80 },
+    { dx: 34, dy: 30 },
+    { dx: 31, dy: 38, dwell: 60 },
+  ]);
+  return finish(c, 'poi_dead_kingsrow', "The kings' row");
 }
 
 /** The landmark shelf — built once at module load, pinned forever. */
@@ -360,4 +871,12 @@ export const LANDMARK_PREFABS: readonly PrefabDef[] = [
   buildGoblinSprawl(),
   buildKillfield(),
   buildWaystead(),
+  buildGoblinWarren(),
+  buildGoblinMoot(),
+  buildGoblinGrubfarm(),
+  buildGoblinWarstage(),
+  buildDeadChapel(),
+  buildDeadMuster(),
+  buildDeadCloister(),
+  buildDeadKingsrow(),
 ];

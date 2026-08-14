@@ -418,6 +418,45 @@ export function composeStronghold(
       const bolder =
         knot.role === 'sentry' && stage > 0 && sentryBoosts < stage && count < 3 ? 1 : 0;
       if (bolder > 0) sentryBoosts++;
+      // THE POST COMES ALIVE (the peopled landmarks): a furniture-
+      // anchored knot splits into count-1 bodies seated round its
+      // work — each walks to its own paceable spot beside the sign
+      // and holds the post's pose. The fiction finally made flesh.
+      if (knot.post && knot.postAt && !knot.title) {
+        const [fx, fy] = knot.postAt;
+        const total = count + bolder;
+        const spots: Array<[number, number]> = [];
+        for (const [nx, ny] of [
+          [knot.at[0], knot.at[1]],
+          [fx, fy + 1], [fx + 1, fy], [fx - 1, fy], [fx, fy - 1],
+          [fx + 1, fy + 1], [fx - 1, fy + 1], [fx + 1, fy - 1], [fx - 1, fy - 1],
+        ] as const) {
+          if (spots.length >= total) break;
+          if (!paceable(nx, ny)) continue;
+          if (spots.some(([sx, sy]) => sx === nx && sy === ny)) continue;
+          spots.push([nx, ny]);
+        }
+        for (let bi = 0; bi < total; bi++) {
+          const [sx, sy] = spots[bi] ?? knot.at;
+          spawns.push({
+            x: originX + sx,
+            y: originY + sy,
+            npc: knot.npc,
+            count: 1,
+            radius: 1.2,
+            level: rollLevel(wi * 31 + ki, 0xa1, knot.levelOffset ?? 0),
+            wing: wi,
+            post: {
+              kind: knot.post,
+              x: originX + sx,
+              y: originY + sy,
+              dir: Math.atan2(fy - sy, fx - sx),
+            },
+            ...(knot.hours ? { hours: knot.hours } : {}),
+          });
+        }
+        return;
+      }
       spawns.push({
         x: originX + knot.at[0],
         y: originY + knot.at[1],

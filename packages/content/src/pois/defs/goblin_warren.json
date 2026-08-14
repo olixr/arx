@@ -1,0 +1,38 @@
+{
+  "id": "goblin_warren",
+  "name": "The warren door",
+  "description": "A warren dug into a rock hummock: one black doorway, spoil heaps that never stop growing, and a yard where everything the warren does happens in the open — the digging, the cooking, the keeping of the unlucky.",
+  "tiers": [2, 4],
+  "weight": 2,
+  "prefabs": ["poi_goblin_warren"],
+  "garrison": [
+    { "npc": "goblin", "count": [4, 6], "role": "holdfast" },
+    { "npc": "goblin", "count": [2, 3], "role": "sentry", "patrol": true },
+    { "npc": "goblin_thrower", "count": [2, 3], "role": "holdfast" },
+    { "npc": "worg", "count": [1, 2], "role": "holdfast", "minTier": 3 },
+    { "npc": "goblin_gloomcaller", "count": [1, 1], "role": "holdfast", "minTier": 3 },
+    {
+      "npc": "goblin",
+      "count": [1, 1],
+      "role": "holdfast",
+      "levelOffset": 5,
+      "names": ["Digmother Hab", "Old Undertooth", "Warrenboss Skug", "Nib the Deepest"]
+    }
+  ],
+  "chestTierBonus": 0,
+  "cues": {
+    "clearing": 4,
+    "approachPath": true,
+    "scatter": [
+      { "tile": "CaveRubble", "count": 3 },
+      { "tile": "SkullPile", "count": 2 }
+    ]
+  },
+  "signs": [
+    {
+      "title": "DIG DEEP",
+      "lines": ["the door is ours", "go around"]
+    }
+  ],
+  "family": "goblin"
+}

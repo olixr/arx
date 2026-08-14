@@ -1,0 +1,38 @@
+{
+  "id": "dead_muster",
+  "name": "The old muster",
+  "description": "A battlefield where the ranks re-form every night: trench scars, standards fallen in the order they fell, a drill line still drilling against nobody, and a command knoll running a war that ended before your grandmother's grandmother. The line holds. It's all it remembers.",
+  "tiers": [3, 5],
+  "weight": 2,
+  "prefabs": ["poi_dead_muster"],
+  "garrison": [
+    { "npc": "skeleton", "count": [4, 6], "role": "holdfast" },
+    { "npc": "skeleton_archer", "count": [2, 3], "role": "holdfast" },
+    { "npc": "skeleton_archer", "count": [1, 2], "role": "sentry", "patrol": true },
+    { "npc": "skeleton_guard", "count": [2, 3], "role": "holdfast", "minTier": 4 },
+    {
+      "npc": "skeleton_champion",
+      "count": [1, 1],
+      "role": "holdfast",
+      "minTier": 4,
+      "levelOffset": 3,
+      "names": ["The Standard-Bearer", "The Unrelieved Sergeant", "He Who Holds the Line", "The Last Levy"]
+    }
+  ],
+  "chestTierBonus": 1,
+  "cues": {
+    "clearing": 5,
+    "approachPath": true,
+    "scatter": [
+      { "tile": "BonePile", "count": 4 },
+      { "tile": "CaveRubble", "count": 2 }
+    ]
+  },
+  "signs": [
+    {
+      "title": "THE LINE",
+      "lines": ["it held", "it holds"]
+    }
+  ],
+  "family": "dead"
+}

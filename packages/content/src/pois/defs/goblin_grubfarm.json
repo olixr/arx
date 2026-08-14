@@ -1,0 +1,36 @@
+{
+  "id": "goblin_grubfarm",
+  "name": "The grub farm",
+  "description": "Goblins aping the field-life they used to raid: crooked rows of stolen crops, a scarecrow in a looted helm, boars fatter than their keepers, and a granary tent guarded like a war-chest. It would be almost sweet if they'd grown any of it.",
+  "tiers": [2, 3],
+  "weight": 2,
+  "prefabs": ["poi_goblin_grubfarm"],
+  "garrison": [
+    { "npc": "goblin", "count": [3, 5], "role": "holdfast" },
+    { "npc": "goblin", "count": [1, 2], "role": "sentry", "patrol": true },
+    { "npc": "goblin_thrower", "count": [1, 2], "role": "holdfast" },
+    {
+      "npc": "goblin",
+      "count": [1, 1],
+      "role": "holdfast",
+      "levelOffset": 4,
+      "names": ["Farmer Wurt", "Sowmother Grib", "Old Turnipfist", "Hoe-King Namble"]
+    }
+  ],
+  "chestTierBonus": 0,
+  "cues": {
+    "clearing": 4,
+    "approachPath": true,
+    "scatter": [
+      { "tile": "HayBale", "count": 2 },
+      { "tile": "BonePile", "count": 2 }
+    ]
+  },
+  "signs": [
+    {
+      "title": "GRUB",
+      "lines": ["ours grows", "yours taken"]
+    }
+  ],
+  "family": "goblin"
+}

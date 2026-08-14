@@ -1096,3 +1096,91 @@ surroundings, room to pick pulls apart. Shipped:
   measure — if play wants influence there, it must come from
   compose-time cues (which don't consume pinned ground), not prefab
   growth.
+
+---
+
+# THE PEOPLED LANDMARKS (2026-08-14)
+
+The user's charter: the goblin and the dead lanes carry the game's
+repeatable hostile content — they need a LIBRARY of authored
+landmarks, not one apiece. And the places must be ALIVE: bodies
+gathered round a fire cooking, others at their own work, patrols
+that walk a round, sit down, do something, and move on. Built as
+modules — curated set-pieces that interplace into other grounds —
+so the systems compose: posts + routes + modules + landmarks stack
+into a lived-in world.
+
+## The audit's verdict
+
+- `ZoneSpawn.patrol` already flows end-to-end (authored stronghold
+  routes prove it); the AI lingers 2-7s per waypoint and re-pins
+  origin. Routes for ordinary POIs are compose-work only.
+- **`knot.post` was FICTION**: strongholds' cook/drill/rest/vigil
+  posts never reached runtime — composeStronghold reads every knot
+  field except `post`. Only the derived hours survived. No hostile
+  body in the game has ever walked to a fire.
+- `PoseState.Sit`/`Lie` already ship for any entity (one byte, the
+  routine ticker proves the client render) — zero wire work.
+- Ordinary-POI holdfasts wander a 3-tile drift; the only "post"
+  concept is friendly-actor hearth/watch seats in composePoi.
+
+## The design — four rungs
+
+1. **THE POST COMES ALIVE** (server runtime): `ZoneSpawn.post`
+   {kind, x, y, dir, hours?} → NpcComp → a new idle branch (after
+   patrol, before wander): walk to the post spot, plant, face the
+   anchor, and hold the post's pose — cook = seated at the fire
+   with Craft pulses (the campfire IS a cooking station; the client
+   choreography is free), rest = seated at the tent, drill = Idle
+   with Attack pulses at the dummy, vigil/keeper = held stance
+   facing the charge. `poseUntilTick` guards the held pose against
+   the end-of-tick Idle write. Post hours gate BEHAVIOR, not
+   existence: off-window the same body falls through to wander —
+   the camp changes with the clock without despawning anyone.
+2. **THE SIGNS READ EVERYWHERE**: the strongholds' POST_SIGNS
+   furniture scan ports into composePoi — every ordinary POI's
+   stamped fires, tents, dummies, totems, cages become claimed
+   posts, and a measured share of the holdfast muster splits into
+   count-1 posted spawns (fires seat several; the rest one each).
+   Every existing POI + every influence-pocket fire lights up with
+   zero prefab changes. Strongholds pass `knot.post` through the
+   same ZoneSpawn seam — the fiction finally made flesh.
+3. **THE ROUND HAS STATIONS**: patrol waypoints grow optional
+   {dwell, sit} — a route can seat its walker at the fire for a
+   real spell before the next leg. `PrefabDef.routes` carries
+   authored routes (validated in-bounds, hop-capped); composePoi
+   deals them to patrol sentries before falling back to the
+   synthetic ring — the strongholds' authored-route preference
+   walked down the shelf.
+4. **THE MODULE SHELF + EIGHT LANDMARKS** (content/pois/canvas.ts
+   + modules.ts + landmarks.ts): the painting toolkit becomes a
+   shared canvas library, curated set-piece modules (fire circle,
+   feast trestles, totem processional, drum ring, cage row, watch
+   knoll, warg pen, spoil yard, ossuary run, kerb row, cairn,
+   trench scar, standard row) — and eight new landmarks built from
+   them, four per lane:
+   - **goblin**: the warren door (dug into rock, spoil + sorting
+     yard + cages), the drum moot (feast ground: drum ring, moot
+     fire, trestles, brew corner), the grub farm (goblins aping
+     agriculture: crooked crops, looted-helm scarecrow, boar pen),
+     the raid muster (staging ground: barriers, drill yard, banner
+     avenue, worg pickets, signal pyre).
+   - **dead**: the sunken chapel (bone-lined nave, lectern, garth
+     graves), the old muster (a battlefield where the ranks never
+     disbanded: trench scars, fallen standards, drill lines), the
+     cold cloister (colonnade garth, refectory where the dead
+     still sit at table, bell mound), the kings' row (great cairn
+     crown, offering slabs, brazier processional, toppled pillars).
+   The five founding landmarks retrofit authored routes; posts
+   arrive free via the compose scan. Loot law holds: one modest
+   iron cache each — strongholds keep the big chests.
+
+## Laws
+
+- **A POST IS A BEHAVIOR, NEVER A CAGE**: combat always interrupts
+  (the branch lives in the idle flow); return walks home and the
+  post resumes. The dead keep unwindowed posts (the dead don't
+  keep hours); goblins keep the strongholds' clock (drill 6-20,
+  rest 19-7, vigil 18-6).
+- **ONE SEAM**: ZoneSpawn is the single choke point — both lanes
+  (ordinary compose + stronghold compose) light the same runtime.

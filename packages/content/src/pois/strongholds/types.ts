@@ -1,3 +1,5 @@
+import type { PostKind } from '../../maps/types.js';
+
 /**
  * THE STRONGHOLD GRAMMAR (docs/strongholds-plan.md Phase 1) — what a
  * capital IS, as data.
@@ -19,9 +21,12 @@
 /**
  * THE POST LAW (Third Charter): what a body is DOING where it stands.
  * The generator derives posts from the stamped furniture; the bench
- * and the ward fiction both read them.
+ * and the ward fiction read them — and since THE PEOPLED LANDMARKS,
+ * the RUNTIME does too: compose passes the post through ZoneSpawn and
+ * the idle brain walks the body to its work. One vocabulary, both
+ * lanes (maps/types.ts owns it).
  */
-export type KnotPost = 'cook' | 'drill' | 'rest' | 'vigil' | 'keeper' | 'watch';
+export type KnotPost = PostKind;
 
 export interface StrongholdKnot {
   /** Anchor, prefab-local. The knot's bodies scatter ≤2.5 around it. */
@@ -44,8 +49,15 @@ export interface StrongholdKnot {
   levelOffset?: number;
   /** Activity window, game hours [0, 24), from > to wraps midnight. */
   hours?: { from: number; to: number };
-  /** THE POST LAW: the work this knot stands at (bench + fiction). */
+  /** THE POST LAW: the work this knot stands at (bench + runtime). */
   post?: KnotPost;
+  /**
+   * The furniture cell the post serves (prefab-local) — the fire the
+   * cook faces, the dummy the drill swings at. Compose aims the
+   * body's held facing here. Absent = the body faces its anchor's
+   * outward bearing.
+   */
+  postAt?: readonly [number, number];
   /**
    * THE CAPTAIN LAW: a titled knot composes as a NAMED spawn ("Warden
    * of the Inner Gate") — placed authority, worth killing.

@@ -995,6 +995,7 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
     levelOffset?: number;
     hours?: { from: number; to: number };
     post?: KnotPost;
+    postAt?: readonly [number, number];
     title?: string;
   }
   const mkKnot = (
@@ -1011,6 +1012,7 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
     ...(extra.levelOffset !== undefined ? { levelOffset: extra.levelOffset } : {}),
     ...(extra.hours !== undefined ? { hours: extra.hours } : {}),
     ...(extra.post !== undefined ? { post: extra.post } : {}),
+    ...(extra.postAt !== undefined ? { postAt: extra.postAt } : {}),
     ...(extra.title !== undefined ? { title: extra.title } : {}),
   });
 
@@ -1101,10 +1103,17 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
     const wanted = 1 + (area >= 78 ? 1 : 0) + (area >= 160 ? 1 : 0);
     // A body stands where its work is: post anchors first, from the
     // ward's own stamped furniture; random footing is the fallback.
-    const posts: Array<{ x: number; y: number; post: KnotPost; hours?: { from: number; to: number } }> = [];
+    const posts: Array<{
+      x: number;
+      y: number;
+      at: [number, number];
+      post: KnotPost;
+      hours?: { from: number; to: number };
+    }> = [];
     for (const sign of POST_SIGNS) {
       if (posts.length >= wanted) break;
       let found: [number, number] | null = null;
+      let furniture: [number, number] | null = null;
       for (let yy = p.rect.y; yy < p.rect.y + p.rect.h && !found; yy++) {
         for (let xx = p.rect.x; xx < p.rect.x + p.rect.w && !found; xx++) {
           if (!(sign.match as readonly number[]).includes(at(xx, yy))) continue;
@@ -1118,12 +1127,13 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
           ] as const) {
             if (passable(at(nx, ny)) && spaced(nx, ny)) {
               found = [nx, ny];
+              furniture = [xx, yy];
               break;
             }
           }
         }
       }
-      if (found) {
+      if (found && furniture) {
         // Claim NOW — two posts found in one scan must keep THE PULL
         // LAW against each other, not only against earlier wards.
         claim(found[0], found[1]);
@@ -1137,6 +1147,7 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
         posts.push({
           x: found[0],
           y: found[1],
+          at: furniture,
           post: denRest ? 'rest' : sign.post,
           ...(denRest
             ? { hours: { from: 7, to: 19 } }
@@ -1156,6 +1167,7 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
       plan.knots.push(
         mkKnot(entry, [post.x, post.y], 'holdfast', {
           post: post.post,
+          postAt: post.at,
           ...(post.hours ? { hours: post.hours } : {}),
         }),
       );

@@ -32,6 +32,7 @@ import {
   type MinorDef,
   type PoiDef,
   type PoiGarrisonEntry,
+  type PostKind,
   type PrefabDef,
   type ZoneActorSpawn,
   type ZoneDef,
@@ -949,6 +950,100 @@ export function composePoi(
     return null;
   };
   const holdSplit = knotSplitAt(site.anchorX, site.anchorY, 0x1);
+
+  // THE SIGNS READ EVERYWHERE (the peopled landmarks): the stamped
+  // furniture claims posts — a measured share of the holdfast muster
+  // splits into count-1 bodies that walk to the fire, the dummy, the
+  // tent, the totem, and HOLD that work. Post hours gate behavior,
+  // never existence (off-window the body wanders the camp as ever);
+  // the dead keep unwindowed posts — the dead don't keep hours.
+  const openCell = (zx: number, zy: number): boolean => {
+    if (zx < 1 || zy < 1 || zx >= zw - 1 || zy >= zh - 1) return false;
+    const t = ground[zy * zw + zx]!;
+    if (t === TILE_SKIP) {
+      const cls = groundProbeAt(seed, originX + zx, originY + zy);
+      return cls === 'grass' || cls === 'forest';
+    }
+    return TILE_DEFS[t as Tile]?.solid === false;
+  };
+  interface PostSeat {
+    x: number;
+    y: number;
+    dir: number;
+    kind: PostKind;
+    hours?: { from: number; to: number };
+  }
+  const postSeats: PostSeat[] = [];
+  {
+    const beastFam = def.family === 'wolfkin' || def.family === 'lynxkin';
+    const POI_POST_SIGNS: Array<{
+      match: readonly Tile[];
+      kind: PostKind;
+      seats: number;
+      hours?: { from: number; to: number };
+    }> = [
+      // The fire seats a circle — the gathered camp, cooking.
+      { match: [Tile.CookPot, Tile.MeatSpit, Tile.Bonfire, Tile.Campfire], kind: 'cook', seats: 3 },
+      { match: [Tile.TargetDummy, Tile.SpearRack, Tile.WeaponRack], kind: 'drill', seats: 1, hours: { from: 6, to: 20 } },
+      { match: [Tile.TentHide, Tile.TentWar], kind: 'rest', seats: 1, hours: { from: 19, to: 7 } },
+      // A bench or chair is a seat kept — the refectory the dead
+      // never left, the wayside bench a brigand loafs on.
+      { match: [Tile.Bench, Tile.Chair], kind: 'rest', seats: 1 },
+      { match: [Tile.SkullTotem, Tile.Brazier, Tile.WarBrazier, Tile.StandingTorch], kind: 'vigil', seats: 1, hours: { from: 18, to: 6 } },
+      { match: [Tile.PrisonCage, Tile.BeastNest], kind: 'keeper', seats: 1 },
+    ];
+    const claimed: Array<[number, number]> = [];
+    for (const sign of POI_POST_SIGNS) {
+      for (let zy = 1; zy < zh - 1; zy++) {
+        for (let zx = 1; zx < zw - 1; zx++) {
+          if (!(sign.match as readonly number[]).includes(ground[zy * zw + zx]!)) continue;
+          // One post per neighborhood — the spacing law keeps pulls
+          // apart; a fire circle's several seats ring ONE anchor.
+          if (claimed.some(([cx, cy]) => Math.max(Math.abs(cx - zx), Math.abs(cy - zy)) < 5)) continue;
+          const spots: Array<[number, number]> = [];
+          for (const [nx, ny] of [
+            [zx, zy + 1], [zx + 1, zy], [zx - 1, zy], [zx, zy - 1],
+            [zx + 1, zy + 1], [zx - 1, zy + 1], [zx + 1, zy - 1], [zx - 1, zy - 1],
+          ] as const) {
+            if (spots.length >= sign.seats) break;
+            if (openCell(nx, ny)) spots.push([nx, ny]);
+          }
+          if (spots.length === 0) continue;
+          claimed.push([zx, zy]);
+          // The beast families keep their clock through the den: the
+          // nest is a DAY rest (nocturnal denners), never a pen.
+          const denRest = sign.kind === 'keeper' && beastFam;
+          const hours =
+            def.family === 'dead'
+              ? undefined
+              : denRest
+                ? { from: 7, to: 19 }
+                : sign.hours;
+          for (const [sx, sy] of spots) {
+            postSeats.push({
+              x: originX + sx + 0.5,
+              y: originY + sy + 0.5,
+              dir: Math.atan2(zy - sy, zx - sx),
+              kind: denRest ? 'rest' : sign.kind,
+              ...(hours ? { hours } : {}),
+            });
+          }
+        }
+      }
+    }
+  }
+  // The measured share: posts take at most 3-in-5 of the holdfast
+  // muster — a camp with every back turned to the road reads staged,
+  // and the wanderers are the ones a scout meets first.
+  let holdTotal = 0;
+  for (const [gi, g] of def.garrison.entries()) {
+    if (g.role !== 'holdfast') continue;
+    if (g.minTier !== undefined && site.tier < g.minTier) continue;
+    holdTotal += g.count[0] + (hashCoords(musterBase, gi, 13) % (g.count[1] - g.count[0] + 1));
+  }
+  let postBudget = Math.min(postSeats.length, Math.ceil(holdTotal * 0.6));
+  let seatNext = 0;
+
   const sentryWants: Array<{
     npc: string;
     level: number;
@@ -976,17 +1071,47 @@ export function composePoi(
       ? g.names[hashCoords(musterBase, gi, 41) % g.names.length]
       : g.name;
     if (g.role === 'holdfast') {
-      const knotB = gi % 2 === 1 && !g.names ? holdSplit : null;
-      spawns.push({
-        npc: g.npc,
-        x: (knotB ? knotB.x : site.anchorX) + 0.5,
-        y: (knotB ? knotB.y : site.anchorY) + 0.5,
-        radius: knotB ? 2.5 : holdR,
-        count,
-        level: levelRoll(n++) + (g.levelOffset ?? 0),
-        name: gname,
-        hours: g.hours,
-      });
+      const level = levelRoll(n++) + (g.levelOffset ?? 0);
+      // Posted bodies peel off first — never the named champion, and
+      // never an hour-windowed entry (its existence window IS its
+      // fiction; a post's window would fight it).
+      let posted = 0;
+      if (!gname && !g.hours) {
+        while (posted < count && postBudget > 0 && seatNext < postSeats.length) {
+          const seat = postSeats[seatNext++]!;
+          postBudget--;
+          posted++;
+          spawns.push({
+            npc: g.npc,
+            x: seat.x,
+            y: seat.y,
+            radius: 1.2,
+            count: 1,
+            level,
+            post: {
+              kind: seat.kind,
+              x: seat.x,
+              y: seat.y,
+              dir: seat.dir,
+              ...(seat.hours ? { hours: seat.hours } : {}),
+            },
+          });
+        }
+      }
+      const remain = count - posted;
+      if (remain > 0) {
+        const knotB = gi % 2 === 1 && !g.names ? holdSplit : null;
+        spawns.push({
+          npc: g.npc,
+          x: (knotB ? knotB.x : site.anchorX) + 0.5,
+          y: (knotB ? knotB.y : site.anchorY) + 0.5,
+          radius: knotB ? 2.5 : holdR,
+          count: remain,
+          level,
+          name: gname,
+          hours: g.hours,
+        });
+      }
     } else {
       for (let i = 0; i < count; i++) {
         sentryWants.push({
@@ -1054,10 +1179,53 @@ export function composePoi(
         hours: want.hours,
       });
     }
+    // THE ROUND HAS STATIONS: authored prefab routes deal to the
+    // patrollers first, in order — walkability re-proven against the
+    // composed ground, dwell and sit stops carried verbatim. The
+    // synthetic ring serves whoever the authored rounds don't cover.
+    const authoredRoutes = (prefab.routes ?? [])
+      .map((r) =>
+        r.pts
+          .filter((p) => openCell(px0 + p.dx, py0 + p.dy))
+          // The ring's own probe law reaches authored rounds — but
+          // ONLY on TRANSPARENT sketch cells, where procgen shows
+          // through: a sentry no more paces beach sand or scree than
+          // posts on it (seed-lucky since the routes landed; the
+          // atlas re-deal surfaced it). A point on an AUTHORED tile
+          // walks authored intent — the blind field probe has no
+          // standing there.
+          .filter(
+            (p) =>
+              prefab.ground[p.dy * prefab.width + p.dx] !== TILE_SKIP ||
+              standable(groundProbeAt(seed, originX + px0 + p.dx, originY + py0 + p.dy)),
+          )
+          .map((p) => ({
+            x: originX + px0 + p.dx + 0.5,
+            y: originY + py0 + p.dy + 0.5,
+            ...(p.dwell !== undefined ? { dwell: p.dwell } : {}),
+            ...(p.sit ? { sit: true } : {}),
+          })),
+      )
+      .filter((pts) => pts.length >= 3);
     // Patrollers pace the whole ring; a loop needs at least 3 honest
     // waypoints or the round degrades to a static townward post.
     for (let i = 0; i < patrollers.length; i++) {
       const want = patrollers[i]!;
+      const authored = authoredRoutes[i];
+      if (authored) {
+        spawns.push({
+          npc: want.npc,
+          x: authored[0]!.x,
+          y: authored[0]!.y,
+          radius: 1.2,
+          count: 1,
+          level: want.level,
+          name: want.name,
+          patrol: authored,
+          hours: want.hours,
+        });
+        continue;
+      }
       if (ring.length < 3) {
         const spot = byScore[(watchers.length + i) % Math.max(1, byScore.length)];
         if (!spot) break;

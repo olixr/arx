@@ -973,8 +973,31 @@ interface NpcComp {
    * leg, linger, move on). Combat/chase own the body as ever; each
    * reached waypoint re-pins origin, so a leash walks the body back
    * to its ROUND, not the morning post (the routine-origin law).
+   * THE ROUND HAS STATIONS: a stop may dwell longer and seat the
+   * walker (`sitting` holds the pose until the linger lets go).
    */
-  patrol?: { pts: ReadonlyArray<{ x: number; y: number }>; idx: number; waitUntilTick: number };
+  patrol?: {
+    pts: ReadonlyArray<{ x: number; y: number; dwell?: number; sit?: boolean }>;
+    idx: number;
+    waitUntilTick: number;
+    sitting?: boolean;
+  };
+  /**
+   * THE POST COMES ALIVE (the peopled landmarks): a furniture-anchored
+   * idle behavior — walk to the spot, plant, face `dir`, hold the
+   * kind's pose. Hours gate the BEHAVIOR (off-window the body falls
+   * through to wander); combat always interrupts, and the post
+   * resumes when the fight lets the body go.
+   */
+  post?: {
+    kind: 'cook' | 'drill' | 'rest' | 'vigil' | 'keeper' | 'watch';
+    x: number;
+    y: number;
+    dir: number;
+    hours?: { from: number; to: number };
+  };
+  /** Next tick the held post pulses its work pose (stir, swing). */
+  postPulseTick: number;
 }
 
 /**
@@ -1262,11 +1285,19 @@ interface SpawnState {
   /** Display-name override (named bosses, hidden-room wardens). */
   name?: string;
   /** Idle waypoint loop (POI sentry rounds) — survives respawns. */
-  patrol?: ReadonlyArray<{ x: number; y: number }>;
+  patrol?: ReadonlyArray<{ x: number; y: number; dwell?: number; sit?: boolean }>;
   /** Activity window (game hours, midnight-wrapping) — see ZoneSpawn.hours. */
   hours?: { from: number; to: number };
   /** THE WAR-GROUND: which wing of a compound hold this body defends. */
   wing?: number;
+  /** THE POST COMES ALIVE: the held idle work — survives respawns. */
+  post?: {
+    kind: 'cook' | 'drill' | 'rest' | 'vigil' | 'keeper' | 'watch';
+    x: number;
+    y: number;
+    dir: number;
+    hours?: { from: number; to: number };
+  };
 }
 
 /** One placed actor's post — exact spot, no scatter, no count. */
@@ -2686,9 +2717,16 @@ export class GameServer {
       count: number;
       level?: number;
       name?: string;
-      patrol?: ReadonlyArray<{ x: number; y: number }>;
+      patrol?: ReadonlyArray<{ x: number; y: number; dwell?: number; sit?: boolean }>;
       hours?: { from: number; to: number };
       wing?: number;
+      post?: {
+        kind: 'cook' | 'drill' | 'rest' | 'vigil' | 'keeper' | 'watch';
+        x: number;
+        y: number;
+        dir: number;
+        hours?: { from: number; to: number };
+      };
     }>,
     zoneId?: string,
   ): number[] {
@@ -2711,6 +2749,7 @@ export class GameServer {
           patrol: spawn.patrol,
           hours: spawn.hours,
           wing: spawn.wing,
+          post: spawn.post,
         });
       }
     }
@@ -20168,7 +20207,7 @@ export class GameServer {
           break;
         }
       }
-      spawn.eid = this.spawnNpc(def, x, y, i, spawn.patrol);
+      spawn.eid = this.spawnNpc(def, x, y, i, spawn.patrol, spawn.post);
     }
 
     // Placed actors stand back up the same way beasts do.
@@ -20470,7 +20509,14 @@ export class GameServer {
     x: number,
     y: number,
     spawnIndex: number,
-    patrol?: ReadonlyArray<{ x: number; y: number }>,
+    patrol?: ReadonlyArray<{ x: number; y: number; dwell?: number; sit?: boolean }>,
+    post?: {
+      kind: 'cook' | 'drill' | 'rest' | 'vigil' | 'keeper' | 'watch';
+      x: number;
+      y: number;
+      dir: number;
+      hours?: { from: number; to: number };
+    },
   ): EntityId {
     const eid = this.ecs.create();
     this.kinds.set(eid, EntityKind.Npc);
@@ -20527,6 +20573,8 @@ export class GameServer {
         patrol && patrol.length >= 2
           ? { pts: patrol, idx: 0, waitUntilTick: 0 }
           : undefined,
+      post,
+      postPulseTick: 0,
     });
     this.updateChunkMembership(eid);
     return eid;
@@ -20653,6 +20701,7 @@ export class GameServer {
         // A guard at peace keeps the blade on the hip; hostiles walk
         // with steel out. The bit derives from this + a peacetime state.
         sheathePref: actor.disposition !== 'hostile',
+        postPulseTick: 0,
       });
     }
     this.updateChunkMembership(eid);
@@ -22698,6 +22747,7 @@ export class GameServer {
         // chase leashes back to the round, not the morning post.
         const p = npc.patrol;
         if (this.tickCount >= p.waitUntilTick) {
+          p.sitting = false;
           const wp = p.pts[p.idx]!;
           const dx = wp.x - pos.x;
           const dy = wp.y - pos.y;
@@ -22705,8 +22755,13 @@ export class GameServer {
           if (dist < 0.6) {
             npc.originX = wp.x;
             npc.originY = wp.y;
+            // THE ROUND HAS STATIONS: a marked stop holds the walker
+            // for its own spell and may seat it — the round that
+            // walks, sits down at the fire, and moves on.
+            p.sitting = wp.sit === true;
             p.idx = (p.idx + 1) % p.pts.length;
-            p.waitUntilTick = this.tickCount + 40 + Math.floor(Math.random() * 100);
+            p.waitUntilTick =
+              this.tickCount + (wp.dwell ?? 40 + Math.floor(Math.random() * 100));
             npc.navBest = Infinity;
             npc.navStuck = 0;
           } else {
@@ -22728,6 +22783,73 @@ export class GameServer {
               npc.navBest = Infinity;
               npc.navStuck = 0;
             }
+          }
+        } else if (p.sitting) {
+          // Seated at the station: the pose holds till the linger
+          // lets go (poseUntilTick fences the end-of-tick Idle write).
+          this.poses.set(eid, PoseState.Sit);
+          npc.poseUntilTick = this.tickCount + 2;
+        }
+      } else if (
+        npc.post &&
+        (!npc.post.hours ||
+          slotContains(
+            npc.post.hours.from,
+            npc.post.hours.to,
+            clockHoursAtTick(this.tickCount, this.timeOfsTicks),
+          ))
+      ) {
+        // THE POST COMES ALIVE (the peopled landmarks): walk to the
+        // work, plant, face it, and HOLD it — the cook seated at the
+        // fire with a stir now and then, the drill swinging at its
+        // dummy, the vigil standing its ground. Idle-body law holds:
+        // combat interrupts, and the post resumes when the fight lets
+        // the body go. Post hours gate BEHAVIOR only — off-window the
+        // body falls through to the ordinary camp wander.
+        const post = npc.post;
+        const dist = Math.hypot(post.x - pos.x, post.y - pos.y);
+        if (dist > 0.5) {
+          const h = this.npcNavToward(npc, pos, post.x, post.y, true);
+          moveX = h.mx;
+          moveY = h.my;
+          const prog = this.navProgressDist(npc, pos, post.x, post.y);
+          if (prog.freshLane) npc.navBest = Infinity;
+          if (prog.dist < npc.navBest - 0.15) {
+            npc.navBest = prog.dist;
+            npc.navStuck = 0;
+          } else if (++npc.navStuck >= GameServer.RETURN_STALL_TICKS) {
+            // A wedged walk to work snaps the last stride — the post
+            // stands inside the body's own camp (the return-branch law).
+            pos.x = post.x;
+            pos.y = post.y;
+            this.updateChunkMembership(eid);
+            npc.navBest = Infinity;
+            npc.navStuck = 0;
+          }
+        } else {
+          // Planted: the post is the origin — a chase leashes the
+          // body back to its WORK, not the morning scatter point.
+          npc.originX = post.x;
+          npc.originY = post.y;
+          pos.dir = post.dir;
+          if (this.tickCount >= npc.postPulseTick) {
+            // The work shows its hands: a stir at the pot, a swing at
+            // the dummy — poseUntilTick owns the pulse's whole run.
+            if (post.kind === 'cook' && Math.random() < 0.5) {
+              this.poses.set(eid, PoseState.Gather);
+              npc.poseUntilTick = this.tickCount + 14;
+            } else if (post.kind === 'drill' && Math.random() < 0.6) {
+              this.poses.set(eid, PoseState.Attack);
+              npc.poseUntilTick = this.tickCount + 10;
+            }
+            npc.postPulseTick = this.tickCount + 80 + Math.floor(Math.random() * 120);
+          }
+          if (this.tickCount >= npc.poseUntilTick) {
+            this.poses.set(
+              eid,
+              post.kind === 'cook' || post.kind === 'rest' ? PoseState.Sit : PoseState.Idle,
+            );
+            npc.poseUntilTick = this.tickCount + 2;
           }
         }
       } else if (this.tickCount < npc.holdUntilTick) {

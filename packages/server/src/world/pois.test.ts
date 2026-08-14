@@ -198,17 +198,23 @@ test('the planned rects join the clearance list and flag stale sites', () => {
 });
 
 test('the frontier hosts POIs and every rollable archetype occurs', () => {
-  // Epic 3 grew the roster to 13 rollable archetypes — the coverage
-  // sweep widens with it (a fixed small window under-samples the
-  // rarer weights). Weight-0 defs are authored-only and must NOT
+  // Epic 3 grew the roster to 13 rollable archetypes, and THE MARCH
+  // (the Kingsdelf epic) grew it again — the coverage sweep widens
+  // with the roster (a fixed small window under-samples the rarer
+  // weights; four wide epochs where two once served — the sprawl's
+  // 68-tile landmark seats seldom, and the golem family's arrival
+  // re-dealt the countries under everyone's feet). Weight-0 defs are authored-only and must NOT
   // appear (asserted in the Last Lamp test below).
   // The scan window is almost all tier-4/5 country — the tier-1..3
   // rings near the hearths are only ~15 cells, so low-tier archetypes
   // (the hamlet, the warcamp) need those thin rings swept over MANY
   // epochs to sample fairly (epochs are the fallow machinery's own
   // re-roll lever, not a synthetic trick). Far cells get two.
+  // THE PEOPLED LANDMARKS grew the roster by eight more weight-2
+  // landmark archetypes (landmark seats accept ~1-in-4 grounds), so
+  // the wide window deepens again: six epochs where four served.
   const sites: PoiSite[] = [];
-  for (let epoch = 0; epoch < 2; epoch++) {
+  for (let epoch = 0; epoch < 6; epoch++) {
     for (let cy = -16; cy <= 16; cy++) {
       for (let cx = -16; cx <= 16; cx++) {
         const site = poiForCell(SEED, cx, cy, epoch, CTX);
@@ -217,7 +223,7 @@ test('the frontier hosts POIs and every rollable archetype occurs', () => {
     }
   }
   // The hearth-adjacent ring again, deep: 12 epochs over the ±3 cells.
-  for (let epoch = 2; epoch < 12; epoch++) {
+  for (let epoch = 4; epoch < 14; epoch++) {
     for (let cy = -3; cy <= 3; cy++) {
       for (let cx = -3; cx <= 3; cx++) {
         const site = poiForCell(SEED, cx, cy, epoch, CTX);
@@ -455,11 +461,27 @@ test('patrol sentries walk a real ring and watchers hold the townward post', () 
       assert.equal(s.y, s.patrol[0]!.y);
       const prefab = POI_PREFABS.get(site.prefabId)!;
       const ringR = Math.max(prefab.width, prefab.height) / 2 + 5;
+      // An AUTHORED round (it carries dwell/sit stops — synthetic
+      // rings never do) may walk the compound's own interior, heart
+      // included: that is the ROADS-ARE-WALKED intent. The ring's
+      // stand-off law binds only the synthetic loops. (The atlas
+      // re-deal stood the sprawl at a scanned cell and proved the
+      // old blanket bound wrong against the sprawl's own processional.)
+      const authored = s.patrol.some((p) => p.dwell !== undefined || p.sit);
       for (const wp of s.patrol) {
         const d = Math.hypot(wp.x - (site.anchorX + 0.5), wp.y - (site.anchorY + 0.5));
-        assert.ok(d > 2 && d < ringR + 6, `${zone.id} waypoint off the ring (d=${d.toFixed(1)})`);
-        const cls = groundProbeAt(SEED, Math.floor(wp.x), Math.floor(wp.y));
-        assert.ok(cls === 'grass' || cls === 'forest', `${zone.id} waypoint on '${cls}'`);
+        assert.ok(
+          (authored || d > 2) && d < ringR + 6,
+          `${zone.id} waypoint off the ring (d=${d.toFixed(1)})`,
+        );
+        // The class law is field-blind (authored tiles are invisible
+        // to the probe), so it binds only the synthetic rings too —
+        // an authored round's interior points stand on the compound's
+        // own lanes, which openCell already proved walkable.
+        if (!authored) {
+          const cls = groundProbeAt(SEED, Math.floor(wp.x), Math.floor(wp.y));
+          assert.ok(cls === 'grass' || cls === 'forest', `${zone.id} waypoint on '${cls}'`);
+        }
       }
     }
   }
@@ -668,4 +690,107 @@ test('the Last Lamp composes with its lamps, its keeper, and its watch', async (
   // A weight-0 archetype never rolls on its own anywhere.
   const stats = simulatePois(SEED, ctx, 600);
   assert.equal(stats.byDef['last_lamp'], undefined, 'the Last Lamp rolled procedurally');
+});
+
+test('THE POST COMES ALIVE: composed camps split posted bodies onto their furniture', () => {
+  // Universal post laws over every naturally-decided site: posted
+  // spawns are count-1, carry a lawful kind, stand on open ground,
+  // and never outnumber 3-in-5 of the holdfast muster.
+  const KINDS = new Set(['cook', 'drill', 'rest', 'vigil', 'keeper', 'watch']);
+  let postedAnywhere = 0;
+  for (const site of scanSites()) {
+    const def = POI_DEFS.get(site.defId)!;
+    const zone = composePoi(SEED, site, CTX)!;
+    let posted = 0;
+    let holdBodies = 0;
+    for (const s of zone.spawns ?? []) {
+      if (s.post) {
+        posted++;
+        assert.equal(s.count, 1, `${zone.id}: a post is one body's charge`);
+        assert.ok(KINDS.has(s.post.kind), `${zone.id}: unknown post kind '${s.post.kind}'`);
+        assert.ok(Number.isFinite(s.post.dir), `${zone.id}: post facing must aim somewhere`);
+        // The dead keep unwindowed posts; the living keep the clock.
+        if (def.family === 'dead') {
+          assert.equal(s.post.hours, undefined, `${zone.id}: the dead keep no hours`);
+        }
+        // The spot stands inside the zone on non-solid ground (or the
+        // transparent fringe the live probe will vet).
+        const zx = Math.floor(s.post.x - zone.origin.x);
+        const zy = Math.floor(s.post.y - zone.origin.y);
+        assert.ok(zx >= 0 && zy >= 0 && zx < zone.width && zy < zone.height, `${zone.id}: post outside the zone`);
+        const t = zone.ground[zy * zone.width + zx]!;
+        assert.ok(
+          t === TILE_SKIP || TILE_DEFS[t as Tile]?.solid === false,
+          `${zone.id}: post stands in furniture (tile ${t})`,
+        );
+      }
+      // A named body never takes a post — placed authority stays put.
+      if (s.name && def.garrison.some((g) => g.names?.includes(s.name!))) {
+        assert.equal(s.post, undefined, `${zone.id}: the champion '${s.name}' got posted`);
+      }
+    }
+    for (const [gi, g] of def.garrison.entries()) {
+      if (g.role !== 'holdfast') continue;
+      if (g.minTier !== undefined && site.tier < g.minTier) continue;
+      holdBodies += g.count[0];
+    }
+    if (holdBodies > 0) {
+      assert.ok(
+        posted <= Math.ceil((holdBodies + def.garrison.length * 2) * 0.6) + 1,
+        `${zone.id}: ${posted} posted of ~${holdBodies} holdfasts — the camp reads staged`,
+      );
+    }
+    postedAnywhere += posted;
+  }
+  // The scan must actually exercise the law somewhere — a frontier
+  // full of fires and tents that posts nobody means the scan is dead.
+  assert.ok(postedAnywhere >= 3, `only ${postedAnywhere} posted bodies across the whole scan`);
+});
+
+test('THE ROUND HAS STATIONS: authored landmark routes reach the composed patrol verbatim', () => {
+  // Force a landmark to stand via a landmark-only context, then prove
+  // the authored round (dwell and sit stops included) reached the
+  // patrol sentry translated, not re-derived.
+  const landmarkDefs = [...POI_DEFS.values()].filter((d) =>
+    ['goblin_mootfield', 'dead_chapel', 'goblin_warren', 'dead_muster'].includes(d.id),
+  );
+  assert.equal(landmarkDefs.length, 4, 'landmark defs missing from the registry');
+  const ctx: PoiContext = { ...CTX, defs: landmarkDefs };
+  let proved = 0;
+  outer: for (let cy = -SCAN; cy <= SCAN && proved < 2; cy++) {
+    for (let cx = -SCAN; cx <= SCAN && proved < 2; cx++) {
+      const site = poiForCell(SEED, cx, cy, 0, ctx);
+      if (!site) continue;
+      const prefab = POI_PREFABS.get(site.prefabId)!;
+      if (!prefab.routes || prefab.routes.length === 0) continue;
+      const zone = composePoi(SEED, site, ctx);
+      if (!zone) continue;
+      const patrollers = (zone.spawns ?? []).filter((s) => s.patrol && s.patrol.length >= 3);
+      if (patrollers.length === 0) continue;
+      const authored = prefab.routes[0]!.pts;
+      const px0 = site.anchorX - Math.floor(prefab.width / 2);
+      const py0 = site.anchorY - Math.floor(prefab.height / 2);
+      // The first patroller walks the first authored round: every
+      // composed waypoint must be one of the authored stops shifted
+      // to the world (drops allowed — walkability re-proving), and
+      // dwell/sit must survive the trip.
+      const first = patrollers[0]!;
+      const authoredWorld = authored.map((pt) => ({
+        x: px0 + pt.dx + 0.5,
+        y: py0 + pt.dy + 0.5,
+        dwell: pt.dwell,
+        sit: pt.sit,
+      }));
+      for (const wp of first.patrol!) {
+        const match = authoredWorld.find((a) => a.x === wp.x && a.y === wp.y);
+        assert.ok(match, `${zone.id}: patrol waypoint ${wp.x},${wp.y} is not an authored stop`);
+        assert.equal(wp.dwell, match!.dwell, `${zone.id}: dwell lost in composition`);
+        assert.equal(wp.sit ?? undefined, match!.sit ?? undefined, `${zone.id}: sit lost in composition`);
+      }
+      assert.ok(first.patrol!.length >= Math.ceil(authored.length * 0.6), `${zone.id}: too many stops dropped`);
+      proved++;
+      continue outer;
+    }
+  }
+  assert.ok(proved >= 1, 'no landmark stood anywhere in the scan — siting law suspect');
 });

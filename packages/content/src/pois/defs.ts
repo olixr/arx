@@ -35,6 +35,15 @@ import goblinSprawl from './defs/goblin_sprawl.json';
 import wolfkinKillfield from './defs/wolfkin_killfield.json';
 import brigandWaystead from './defs/brigand_waystead.json';
 
+import goblinWarren from './defs/goblin_warren.json';
+import goblinMootfield from './defs/goblin_mootfield.json';
+import goblinGrubfarm from './defs/goblin_grubfarm.json';
+import goblinWarstage from './defs/goblin_warstage.json';
+import deadChapel from './defs/dead_chapel.json';
+import deadMuster from './defs/dead_muster.json';
+import deadCloister from './defs/dead_cloister.json';
+import deadKingsrow from './defs/dead_kingsrow.json';
+
 /**
  * Every authored POI archetype JSON, registered here. A def that isn't
  * listed doesn't exist — pois.test.ts walks the defs/ directory and
@@ -77,6 +86,16 @@ const SOURCES: readonly unknown[] = [
   goblinSprawl,
   wolfkinKillfield,
   brigandWaystead,
+  // THE PEOPLED LANDMARKS: the goblin and dead landmark libraries —
+  // module-built grounds with posts and walked rounds.
+  goblinWarren,
+  goblinMootfield,
+  goblinGrubfarm,
+  goblinWarstage,
+  deadChapel,
+  deadMuster,
+  deadCloister,
+  deadKingsrow,
 ];
 
 function buildRegistry(): ReadonlyMap<string, PoiDef> {

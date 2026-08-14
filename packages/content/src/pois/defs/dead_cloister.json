@@ -1,0 +1,38 @@
+{
+  "id": "dead_cloister",
+  "name": "The cold cloister",
+  "description": "A monastery the mountain forgot: a colonnade round kept turf, a refectory where the brothers still sit at a table laid with nothing, and a bell mound keeping hours nobody living hears. The garth is the only green thing the dead still tend.",
+  "tiers": [3, 5],
+  "weight": 2,
+  "prefabs": ["poi_dead_cloister"],
+  "garrison": [
+    { "npc": "skeleton", "count": [3, 5], "role": "holdfast" },
+    { "npc": "skeleton", "count": [2, 3], "role": "holdfast", "hours": { "from": 18, "to": 6 } },
+    { "npc": "skeleton_archer", "count": [1, 2], "role": "sentry", "patrol": true },
+    { "npc": "skeleton_chanter", "count": [1, 2], "role": "holdfast", "minTier": 4 },
+    { "npc": "skeleton_guard", "count": [1, 2], "role": "holdfast", "minTier": 4 },
+    {
+      "npc": "skeleton_guard",
+      "count": [1, 1],
+      "role": "holdfast",
+      "levelOffset": 4,
+      "names": ["The Cold Prior", "Brother Hush", "The Bell-Keeper", "He Who Says No Grace"]
+    }
+  ],
+  "chestTierBonus": 1,
+  "cues": {
+    "clearing": 4,
+    "approachPath": true,
+    "scatter": [
+      { "tile": "Rock", "count": 3 },
+      { "tile": "BonePile", "count": 2 }
+    ]
+  },
+  "signs": [
+    {
+      "title": "THE HOURS",
+      "lines": ["kept cold", "kept anyway"]
+    }
+  ],
+  "family": "dead"
+}

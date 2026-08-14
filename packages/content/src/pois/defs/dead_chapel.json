@@ -1,0 +1,38 @@
+{
+  "id": "dead_chapel",
+  "name": "The sunken chapel",
+  "description": "A sanctum half under the turf: the pews still face the lectern, the braziers are still lit, and the congregation never took the hint. Bone is stacked along the aisles with terrible neatness. Keep silence, or don't — they'll stand either way.",
+  "tiers": [3, 5],
+  "weight": 2,
+  "prefabs": ["poi_dead_chapel"],
+  "garrison": [
+    { "npc": "skeleton", "count": [3, 5], "role": "holdfast" },
+    { "npc": "skeleton", "count": [2, 3], "role": "holdfast", "hours": { "from": 18, "to": 6 } },
+    { "npc": "skeleton_archer", "count": [1, 2], "role": "sentry", "patrol": true },
+    { "npc": "skeleton_guard", "count": [2, 3], "role": "holdfast", "minTier": 4 },
+    { "npc": "skeleton_chanter", "count": [1, 1], "role": "holdfast", "minTier": 4 },
+    {
+      "npc": "skeleton_guard",
+      "count": [1, 1],
+      "role": "holdfast",
+      "levelOffset": 4,
+      "names": ["The Last Verger", "He Who Keeps the Office", "The Candle Warden", "The Silent Sexton"]
+    }
+  ],
+  "chestTierBonus": 1,
+  "cues": {
+    "clearing": 4,
+    "approachPath": true,
+    "scatter": [
+      { "tile": "CaveRubble", "count": 3 },
+      { "tile": "BonePile", "count": 3 }
+    ]
+  },
+  "signs": [
+    {
+      "title": "KEEP SILENCE",
+      "lines": ["the office is read", "the seats are kept"]
+    }
+  ],
+  "family": "dead"
+}

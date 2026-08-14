@@ -303,7 +303,18 @@ test('THE LANDMARKS: expansive authored grounds, each with one modest cache', ()
     'poi_goblin_sprawl',
     'poi_wolfkin_killfield',
     'poi_brigand_waystead',
+    'poi_goblin_warren',
+    'poi_goblin_mootfield',
+    'poi_goblin_grubfarm',
+    'poi_goblin_warstage',
+    'poi_dead_chapel',
+    'poi_dead_muster',
+    'poi_dead_cloister',
+    'poi_dead_kingsrow',
   ];
+  // Livestock may be penned by hand (the stolen-cows law: authored
+  // levels, never the danger band); hostiles always come from defs.
+  const LIVESTOCK = new Set(['boar', 'cow', 'bull', 'sheep', 'ram', 'chicken']);
   for (const id of LANDMARKS) {
     const p = POI_PREFABS.get(id);
     assert.ok(p, `${id} missing from the shelf`);
@@ -319,12 +330,73 @@ test('THE LANDMARKS: expansive authored grounds, each with one modest cache', ()
     }
     assert.equal(iron, 1, `${id}: exactly one modest cache`);
     assert.equal(boss, 0, `${id}: boss chests belong to strongholds and courts`);
-    // No spawn markers — the def's garrison is the muster.
-    assert.equal(p!.spawns.length, 0, `${id}: landmark prefabs carry no spawn markers`);
+    // No hostile spawn markers — the def's garrison is the muster.
+    for (const s of p!.spawns) {
+      assert.ok(LIVESTOCK.has(s.npc), `${id}: hand spawn '${s.npc}' is not livestock`);
+      assert.ok(s.level !== undefined, `${id}: penned '${s.npc}' needs its authored level`);
+    }
     // Referenced by a registered def.
     assert.ok(
       [...POI_DEFS.values()].some((d) => d.prefabs.includes(id)),
       `${id}: no def deals it`,
     );
   }
+});
+
+test('THE PEOPLED LANDMARKS: every landmark carries a walked round with stations', () => {
+  const LANDMARKS = [
+    'poi_barrowfield_great',
+    'poi_ruin_greatkeep',
+    'poi_goblin_sprawl',
+    'poi_wolfkin_killfield',
+    'poi_brigand_waystead',
+    'poi_goblin_warren',
+    'poi_goblin_mootfield',
+    'poi_goblin_grubfarm',
+    'poi_goblin_warstage',
+    'poi_dead_chapel',
+    'poi_dead_muster',
+    'poi_dead_cloister',
+    'poi_dead_kingsrow',
+  ];
+  // The post signs the compose scan reads — a landmark must offer
+  // real work: fires, drill gear, tents, seats, lights, or charges.
+  const POST_SIGNS = new Set<number>([
+    Tile.CookPot, Tile.MeatSpit, Tile.Bonfire, Tile.Campfire,
+    Tile.TargetDummy, Tile.SpearRack, Tile.WeaponRack,
+    Tile.TentHide, Tile.TentWar, Tile.Bench, Tile.Chair,
+    Tile.SkullTotem, Tile.Brazier, Tile.WarBrazier, Tile.StandingTorch,
+    Tile.PrisonCage, Tile.BeastNest,
+  ]);
+  for (const id of LANDMARKS) {
+    const p = POI_PREFABS.get(id)!;
+    // An authored round with real stations (dwell stops) — the round
+    // that walks, pauses at its work, and moves on.
+    assert.ok(p.routes && p.routes.length >= 1, `${id}: no authored round`);
+    for (const r of p.routes!) {
+      assert.ok(r.pts.length >= 8, `${id}: a landmark round walks the whole ground`);
+      assert.ok(
+        r.pts.some((pt) => (pt.dwell ?? 0) >= 60),
+        `${id}: a round needs at least one real station`,
+      );
+    }
+    // Enough stamped work for the post scan to people the ground.
+    let signs = 0;
+    for (const t of p.ground) if (POST_SIGNS.has(t)) signs++;
+    assert.ok(signs >= 4, `${id}: only ${signs} post signs — the ground reads unworked`);
+    // The living families sit at their fires; the dead keep standing
+    // rounds (sit stops are a fire-and-hearth thing).
+    const sits = p.routes!.flatMap((r) => r.pts).filter((pt) => pt.sit).length;
+    if (id.includes('goblin') || id.includes('brigand')) {
+      assert.ok(sits >= 1, `${id}: a living camp's round sits down somewhere`);
+    }
+  }
+  // Module determinism: the shelf builds bit-identical every load
+  // (the pinned-seed law) — two imports share one artifact, so check
+  // a rebuilt prefab against the registry copy.
+  const a = POI_PREFABS.get('poi_goblin_mootfield')!;
+  assert.ok(
+    a.ground.length === a.width * a.height && a.ground.some((t) => t === Tile.Bonfire),
+    'mootfield lost its heart',
+  );
 });

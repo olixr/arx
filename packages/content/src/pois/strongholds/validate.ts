@@ -252,6 +252,22 @@ export function validateStronghold(
         : typeof g.title === 'string' && g.title.trim()
           ? g.title
           : (errors.push(`${at}: title must be a non-empty string (the named-captain law)`), undefined);
+    // THE POST COMES ALIVE: the furniture cell a post serves. Only
+    // meaningful WITH a post; a bare postAt is an authoring error.
+    let postAt: readonly [number, number] | undefined;
+    if (g.postAt !== undefined) {
+      if (
+        !Array.isArray(g.postAt) ||
+        g.postAt.length !== 2 ||
+        !g.postAt.every((v) => Number.isInteger(v))
+      ) {
+        errors.push(`${at}: postAt must be an [x, y] integer pair`);
+      } else if (post === undefined) {
+        errors.push(`${at}: postAt without a post serves nothing`);
+      } else {
+        postAt = [g.postAt[0] as number, g.postAt[1] as number];
+      }
+    }
     if (!role) return null;
     return {
       at: anchor,
@@ -262,6 +278,7 @@ export function validateStronghold(
       ...(levelOffset !== undefined ? { levelOffset } : {}),
       ...(hours !== undefined ? { hours } : {}),
       ...(post !== undefined ? { post } : {}),
+      ...(postAt !== undefined ? { postAt } : {}),
       ...(title !== undefined ? { title } : {}),
     };
   };

@@ -105,6 +105,15 @@ const EXEMPT = new Set([
   'poi_goblin_sprawl',
   'poi_wolfkin_killfield',
   'poi_brigand_waystead',
+  // THE PEOPLED LANDMARKS: born expansive, born peopled.
+  'poi_goblin_warren',
+  'poi_goblin_mootfield',
+  'poi_goblin_grubfarm',
+  'poi_goblin_warstage',
+  'poi_dead_chapel',
+  'poi_dead_muster',
+  'poi_dead_cloister',
+  'poi_dead_kingsrow',
 ]);
 
 export function expandInfluence(prefab: PrefabDef): PrefabDef {
@@ -226,5 +235,8 @@ export function expandInfluence(prefab: PrefabDef): PrefabDef {
     spawns: prefab.spawns.map((sp) => ({ ...sp, dx: sp.dx + hx0, dy: sp.dy + hy0 })),
     portals: prefab.portals.map((pt) => ({ ...pt, dx: pt.dx + hx0, dy: pt.dy + hy0 })),
     actorSpawns: prefab.actorSpawns.map((asp) => ({ ...asp, dx: asp.dx + hx0, dy: asp.dy + hy0 })),
+    ...(prefab.routes
+      ? { routes: prefab.routes.map((r) => ({ pts: r.pts.map((p) => ({ ...p, dx: p.dx + hx0, dy: p.dy + hy0 })) })) }
+      : {}),
   };
 }
