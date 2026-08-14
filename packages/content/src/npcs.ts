@@ -356,6 +356,34 @@ const defs: NpcDef[] = [
     ],
   },
   {
+    // THE WARBOSS: the one goblin the others stand behind — the
+    // war-hold's named heart and the stronghold court's crown.
+    // Tusked, scarred, and better armored than any greenskin has a
+    // right to be. The fight is the CAMP: the pack tag brings the
+    // whole warband, and the slam clears the room it rallies into.
+    id: 'goblin_champion',
+    name: 'Goblin warboss',
+    level: 15,
+    maxHp: 70,
+    damage: 4,
+    attackRange: 1.15,
+    attackCooldownTicks: 42,
+    aggroRange: 7,
+    sightArc: 240,
+    leashRange: 30,
+    speed: 3.9,
+    xpReward: 250,
+    loot: ['goblin_champion', 'goblin_arms', 'heirlooms'],
+    respawnSec: 90,
+    color: '#4e7a38',
+    radius: 0.4,
+    hitHeight: 2.2,
+    // Tusk gore: the wound keeps arguing after the hit lands.
+    attackStatus: { status: 'bleed', power: 1, durationTicks: 60 },
+    pack: 'goblin',
+    kit: [{ ability: 'ground_slam', cooldownTicks: 170, maxRange: 4.5, weight: 2 }],
+  },
+  {
     // The wilds' first HUMAN enemies — deserters and toll-thieves who
     // haunt the roads between the hearths. They ride the player rig
     // with real gear (the loot-story law: every piece they wear

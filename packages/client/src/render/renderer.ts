@@ -79,6 +79,7 @@ import {
   shade,
   koboldLook,
   gnollLook,
+  goblinLook,
   lynxLook,
   owlHoverHeight,
   owlLook,
@@ -86,6 +87,7 @@ import {
   type RigPose,
   type BeastSpec,
   type GnollLook,
+  type GoblinLook,
   type KoboldLook,
   type SkeletonLook,
 } from './rig.js';
@@ -30330,6 +30332,8 @@ export class Renderer {
     kobold?: KoboldLook;
     /** Fur-dialect override: this humanoid is a gnoll. */
     gnoll?: GnollLook;
+    /** Greenskin-dialect override: this humanoid is a goblin. */
+    goblin?: GoblinLook;
     /** Construct-dialect override: this humanoid is a golem. */
     golem?: GolemLook;
     /** Weapons stowed on the body (snapshot SHEATHED_BIT). */
@@ -31151,6 +31155,7 @@ export class Renderer {
           skeletal: e.skeletal,
           kobold: e.kobold,
           gnoll: e.gnoll,
+          goblin: e.goblin,
           golem: e.golem,
           gatherPhase: now / 1000,
           craftKind: station?.kind ?? null,
@@ -32137,8 +32142,36 @@ export class Renderer {
     skeleton_crownsguard: { weapon: 'mithril_greatblade', cape: 'cape_champion' },
   };
 
+  /**
+   * Goblin kit — the loot-story law: every carried piece really drops
+   * from the wearer's table. The chopper swings camp bronze; the
+   * warboss hauls the double-axe behind the nail-studded warboard,
+   * scavenged iron on its head and stolen leather on its back — the
+   * best-armored goblin that ever stood, which is not saying much.
+   */
   private static readonly GOBLIN_EQUIP: Record<string, Partial<Record<string, string>>> = {
     goblin: { weapon: 'bronze_sword' },
+    // No helm on the warboss — THE FORGE LAW makes all metal
+    // full-face, and a bucket over this head would delete the tusks,
+    // the war-knot, and the ears: the whole reason it has a face.
+    goblin_champion: {
+      weapon: 'gobmangler',
+      offhand: 'gobnail_warboard',
+      body: 'leather_body',
+    },
+  };
+
+  /**
+   * Goblin stature: the shortest fighting bodies in the game carried
+   * on the biggest heads — knee-high menace in numbers. The warboss
+   * stands a full head over the rabble and still under a man.
+   */
+  private static readonly GOBLIN_SIZE: Record<string, number> = {
+    goblin: 0.72,
+    goblin_thrower: 0.7,
+    goblin_firecaller: 0.74,
+    goblin_gloomcaller: 0.76,
+    goblin_champion: 0.98,
   };
 
   /**
@@ -32386,6 +32419,10 @@ export class Renderer {
       // The gnoll look rolls its coat cluster from the spawn eid — a
       // warband sorts into families instead of stamping one body.
       const gno = defId.startsWith('gnoll') ? gnollLook(defId, eid) : undefined;
+      // The goblin look rolls its hide cluster the same way — a camp
+      // of individuals from one stock, never one body stamped five
+      // times (THE GREENSKIN DIALECT).
+      const gob = defId.startsWith('goblin') ? goblinLook(defId, eid) : undefined;
       // The rock golem rolls its stone cluster the same way; the other
       // builds are designs whose seed varies layout, never palette.
       const gol = defId.endsWith('_golem') ? golemLook(defId, eid) : undefined;
@@ -32487,12 +32524,15 @@ export class Renderer {
           // Static per defId — a fresh literal here would churn the
           // body-sprite signature's identity ids every frame.
           Renderer.GOBLIN_EQUIP[defId] ?? Renderer.GNOLL_EQUIP[defId] ?? Renderer.KOBOLD_EQUIP[defId] ?? Renderer.SKELETON_EQUIP[defId] ?? Renderer.BRIGAND_EQUIP[defId] ?? Renderer.NO_EQUIP,
-        color: def?.color ?? '#999',
+        // The goblin's garment ground is its own rolled hide — the
+        // tunic block under the pot-gut overpaint must never flash a
+        // different green at the silhouette edge.
+        color: gob?.hide ?? def?.color ?? '#999',
         skinColor:
           defId === 'troll'
             ? '#6a7d5c'
-            : defId.startsWith('goblin')
-              ? '#7aa74a'
+            : gob
+              ? gob.hide
               : kob
                 ? kob.hide
                 : gno
@@ -32503,6 +32543,7 @@ export class Renderer {
         size:
           Renderer.KOBOLD_SIZE[defId] ??
           Renderer.GNOLL_SIZE[defId] ??
+          Renderer.GOBLIN_SIZE[defId] ??
           Renderer.SKELETON_SIZE[defId] ??
           Renderer.BRIGAND_SIZE[defId] ??
           Renderer.GOLEM_SIZE[defId] ??
@@ -32511,6 +32552,7 @@ export class Renderer {
         skeletal: skel,
         kobold: kob,
         gnoll: gno,
+        goblin: gob,
         golem: gol,
       });
     }
@@ -34075,11 +34117,11 @@ export class Renderer {
       const size =
         Renderer.KOBOLD_SIZE[death.defId] ??
         Renderer.GNOLL_SIZE[death.defId] ??
+        Renderer.GOBLIN_SIZE[death.defId] ??
         Renderer.SKELETON_SIZE[death.defId] ??
         Renderer.BRIGAND_SIZE[death.defId] ??
         Renderer.GOLEM_SIZE[death.defId] ??
         (death.defId === 'troll' ? 1.4 : 0.85);
-      const bodyColor = def.color ?? '#999';
       const corpseKob = death.defId.startsWith('kobold')
         ? koboldLook(death.defId)
         : undefined;
@@ -34088,10 +34130,15 @@ export class Renderer {
       const corpseGno = death.defId.startsWith('gnoll')
         ? gnollLook(death.defId, death.eid)
         : undefined;
+      // The goblin corpse keeps its rolled hide the same way.
+      const corpseGob = death.defId.startsWith('goblin')
+        ? goblinLook(death.defId, death.eid)
+        : undefined;
       // The golem wreck keeps its stone cluster the same way.
       const corpseGol = death.defId.endsWith('_golem')
         ? golemLook(death.defId, death.eid)
         : undefined;
+      const bodyColor = corpseGob?.hide ?? def.color ?? '#999';
       rag = buildHumanoidRagdoll(size, seed);
       rag.launch(sx, sy, sev, HUMANOID_UPPER, HUMANOID_FEET);
       look = {
@@ -34103,6 +34150,7 @@ export class Renderer {
               ? '#6a7d5c'
               : (corpseKob?.hide ??
                 corpseGno?.fur ??
+                corpseGob?.hide ??
                 corpseGol?.shell ??
                 Renderer.BRIGAND_SKIN[death.defId] ??
                 '#7aa74a'),
@@ -34111,12 +34159,14 @@ export class Renderer {
           // Skeleton corpses keep the bone dialect — crown and all;
           // kobold corpses keep the scale dialect — horns and tail;
           // gnoll corpses keep the fur dialect — muzzle, crest, coat;
+          // goblin corpses keep the greenskin dialect — ears and tusks;
           // golem corpses keep the construct dialect — the collapse.
           skel: death.defId.startsWith('skeleton')
             ? skeletonLook(death.defId)
             : undefined,
           kob: corpseKob,
           gno: corpseGno,
+          gob: corpseGob,
           gol: corpseGol,
         },
       };

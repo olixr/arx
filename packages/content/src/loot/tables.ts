@@ -258,6 +258,28 @@ const defs: LootTableDef[] = [
     { item: 'dowser', chance: 0.012 },
   ]),
   {
+    // THE WARBOSS PAYS LIKE A CHAMPION: the tusk trophy, the hoard
+    // under the boss-court floor, and every worn piece really drops
+    // (the loot-story law: the leather on its back lands here, the
+    // gobmangler and the warboard ride the goblin_arms rack beside
+    // this table).
+    id: 'goblin_champion',
+    desc: 'The warboss pays for the whole camp: its tusk, its stolen leather, and the hoard it bullied together.',
+    rarityBonus: 3,
+    entries: [
+      { item: 'bones' },
+      { item: 'warboss_tusk', chance: 0.9 },
+      { item: 'coins', qty: [30, 80], chance: 0.7 },
+      { item: 'crimson_essence', qty: [1, 3], chance: 0.35 },
+      { item: 'brass_key', chance: 0.08 },
+      { item: 'dungeon_key', chance: 0.04 },
+      { item: 'leather_body', chance: 0.02 },
+      // The camp crowns its boss in stolen briar-iron — the chase lot
+      // the wardrobe rack teases lands heavier on the boss itself.
+      ...setDrops('briarplate', 0.012, { colorway: 'bloodbriar' }),
+    ],
+  },
+  {
     // THE GRAND ARCANUM: the first voice of the fire carries the
     // last word of the scripture. (Held to 0.002: a lvl 7 caster
     // guarding a lvl 45 legendary is the longest hunt on the road —

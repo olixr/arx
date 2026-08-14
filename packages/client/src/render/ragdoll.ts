@@ -77,6 +77,7 @@ import {
   taperedSpinePath,
   type BeastSpec,
   type GnollLook,
+  type GoblinLook,
   type KoboldLook,
   type OwlLook,
   type SkeletonLook,
@@ -480,6 +481,8 @@ export interface HumanoidCorpseLook {
   kob?: KoboldLook;
   /** Set = this corpse is a gnoll: muzzle, crest, and coat stay. */
   gno?: GnollLook;
+  /** Set = this corpse is a goblin: wing ears, hook nose, and tusks stay. */
+  gob?: GoblinLook;
   /** Set = this corpse is a golem: the construct comes APART — the
    *  stack slides, the plates spring, the furnace goes out. */
   gol?: GolemLook;
@@ -564,18 +567,24 @@ export function drawHumanoidRagdoll(
     ? shade(look.kob.hide, -5)
     : look.gno
       ? shade(look.gno.fur, -5)
-      : (legSt?.thigh ?? shade(look.bodyColor, -28));
+      : look.gob
+        ? shade(look.gob.hide, -6)
+        : (legSt?.thigh ?? shade(look.bodyColor, -28));
   const shinCol = look.kob
     ? shade(look.kob.hide, -12)
     : look.gno
       ? shade(look.gno.fur, -14)
-      : (legSt?.shin ?? legCol);
+      : look.gob
+        ? shade(look.gob.hide, -15)
+        : (legSt?.shin ?? legCol);
   const sleeveCol = bodySt?.sleeve ?? shade(cloth, -10);
   const footCol = look.kob
     ? shade(look.kob.hide, -8)
     : look.gno
       ? shade(look.gno.skin, -6)
-      : (bootSt?.color ?? BOOT);
+      : look.gob
+        ? shade(look.gob.hide, -4)
+        : (bootSt?.color ?? BOOT);
   const mittCol = gloveSt?.color ?? look.skinColor;
   const foreCol = gloveSt ? (gloveSt.bracer ?? shade(gloveSt.color, -8)) : look.skinColor;
 
@@ -945,6 +954,74 @@ export function drawHumanoidRagdoll(
     ctx.beginPath();
     ctx.ellipse(hw * 1.5, -hh * 0.02, hh * 0.18, hh * 0.13, 0, 0, Math.PI * 2);
     ctx.fill();
+  } else if (look.gob) {
+    // The goblin corpse head in profile: one wing ear flopped slack
+    // behind the skull (the listening days are over), the low broad
+    // cranium, the hook nose out one side over the slack pale
+    // mandible with its needles — and the warboss tusks still proud
+    // of a jaw that argues with nobody now. Identity by silhouette.
+    const gb = look.gob;
+    const hv = gb.heavy;
+    // The fallen ear: the wing folded down against the ground.
+    ctx.fillStyle = shade(gb.hide, -10);
+    ctx.beginPath();
+    ctx.moveTo(-hw * 0.4, -hh * 0.5);
+    ctx.quadraticCurveTo(-hw * (1.3 + 0.2 * hv), -hh * 0.95, -hw * (1.7 + 0.3 * hv), -hh * 0.3);
+    ctx.quadraticCurveTo(-hw * 1.1, -hh * 0.28, -hw * 0.4, -hh * 0.12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = shade(gb.hide, -26);
+    ctx.lineWidth = Math.max(1, hh * 0.05);
+    ctx.stroke();
+    // Low broad cranium — the oversized skull reads even in a heap.
+    ctx.fillStyle = gb.hide;
+    ctx.beginPath();
+    chamferRect(ctx, -hw * 1.05, -hh * 0.66, hw * 2.1, hh * 1.28, [cut * 1.2, cut * 1.2, cut * 0.8, cut * 0.8]);
+    ctx.fill();
+    // The war-knot flops over the crown on the warboss.
+    if (gb.topknot) {
+      ctx.fillStyle = gb.topknot;
+      ctx.beginPath();
+      ctx.moveTo(-hw * 0.3, -hh * 0.6);
+      ctx.lineTo(-hw * 0.85, -hh * (1.0 + 0.1 * (hv - 1)));
+      ctx.lineTo(-hw * 0.05, -hh * 0.52);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // The hook nose out the +x side, drooped in the fall.
+    ctx.fillStyle = shade(gb.hide, 7);
+    ctx.beginPath();
+    ctx.moveTo(hw * 0.7, -hh * 0.34);
+    ctx.quadraticCurveTo(hw * 1.5, -hh * 0.3, hw * 1.56, hh * 0.16);
+    ctx.quadraticCurveTo(hw * 1.2, hh * 0.08, hw * 0.72, hh * 0.02);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = shade(gb.hide, -24);
+    ctx.lineWidth = Math.max(1, hh * 0.045);
+    ctx.stroke();
+    // Slack pale mandible under the grin line.
+    ctx.fillStyle = gb.belly;
+    ctx.beginPath();
+    chamferRect(ctx, hw * 0.2, hh * 0.46, hw * 0.9, hh * 0.24, [0, 0, cut * 0.4, cut * 0.4]);
+    ctx.fill();
+    // Needles resting on the slack jaw; the warboss tusk still stands.
+    ctx.fillStyle = '#e9e0c6';
+    for (const off of [0.4, 0.68, 0.94]) {
+      ctx.beginPath();
+      ctx.moveTo(hw * off - hh * 0.04, hh * 0.46);
+      ctx.lineTo(hw * off, hh * 0.46 - hh * 0.14);
+      ctx.lineTo(hw * off + hh * 0.04, hh * 0.46);
+      ctx.closePath();
+      ctx.fill();
+    }
+    if (gb.tusks) {
+      ctx.beginPath();
+      ctx.moveTo(hw * 0.3 - hh * 0.07, hh * 0.5);
+      ctx.quadraticCurveTo(hw * 0.16, hh * 0.1, hw * 0.34, -hh * 0.12);
+      ctx.lineTo(hw * 0.44, hh * 0.5);
+      ctx.closePath();
+      ctx.fill();
+    }
   } else {
     ctx.fillStyle = look.skinColor;
     ctx.beginPath();

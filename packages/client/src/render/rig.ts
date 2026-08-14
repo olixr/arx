@@ -325,6 +325,13 @@ export interface RigPose {
    */
   gnoll?: GnollLook;
   /**
+   * THE GREENSKIN DIALECT: swap the flesh head for the goblin's wing
+   * ears, hook nose, and needle grin, swell the pot gut over bandy
+   * shanks, and bare the knuckly hands and flap feet — while the rig,
+   * carriage, and facing bands keep working untouched.
+   */
+  goblin?: GoblinLook;
+  /**
    * THE CONSTRUCT DIALECT (docs/golems-plan.md): swap head, torso,
    * limbs, and feet for one of the four golem builds — stacked stone,
    * forged plate, cracked crust, sheared ice — while the rig,
@@ -591,6 +598,10 @@ function drawArm(
    *  machine swaps per build (golems.ts). Overrides everything the
    *  way bone does; a golem's arm IS its armor. */
   gol?: GolemLook | null,
+  /** Greenskin dialect: wiry bare hide arms ending in knuckly hands
+   *  too big for them — overrides the cloth/glove branches the way
+   *  bone does; goblin tailoring stops at the rope belt. */
+  gob?: GoblinLook | null,
 ): { ex: number; ey: number; kx: number; ky: number } {
   // THE REMEMBERED ELBOW: the arms carry the same side-choice
   // hysteresis the knees have had since the quadruped rig — score the
@@ -761,6 +772,76 @@ function drawArm(
         ctx.moveTo(0.088 * s, oy * pawW - 0.016 * s);
         ctx.lineTo(0.148 * s, oy * pawW + 0.008 * s);
         ctx.lineTo(0.088 * s, oy * pawW + 0.02 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+    return { ex, ey, kx, ky };
+  }
+
+  if (gob) {
+    // THE GREENSKIN arm: overlong and WIRY — a thin hide limb with a
+    // bony elbow knob, ending in a knuckly hand a size too big. The
+    // mismatch is the anatomy argument: goblins are all hands, ears,
+    // and appetite; the mass never reaches the limbs.
+    const hv = gob.heavy;
+    const hideC = hurt ? '#ffffff' : shade(gob.hide, -3);
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = hideC;
+    ctx.lineWidth = Math.max(2, s * 0.064 * (0.9 + 0.2 * hv));
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(kx, ky);
+    ctx.stroke();
+    ctx.strokeStyle = hurt ? '#ffffff' : shade(gob.hide, -11);
+    ctx.lineWidth = Math.max(2, s * 0.055 * (0.9 + 0.2 * hv));
+    ctx.beginPath();
+    ctx.moveTo(kx, ky);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+    if (!hurt) {
+      // The elbow knob: the joint wider than either shaft — a bony
+      // arm articulates at its lumps.
+      ctx.fillStyle = shade(gob.hide, -9);
+      ctx.beginPath();
+      ctx.arc(kx, ky, Math.max(1.5, s * 0.032 * (0.9 + 0.2 * hv)), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // The hand: a broad knuckly mitt wider than the wrist feeding it,
+    // split by finger seams, with short dark claws past the leading
+    // edge — the grabbing hand of a thing that owns nothing long.
+    ctx.save();
+    ctx.translate(ex, ey);
+    ctx.rotate(Math.atan2(ey - ky, ex - kx));
+    const handW = s * 0.072 * (0.92 + 0.16 * hv);
+    ctx.fillStyle = hurt ? '#ffffff' : shade(gob.hide, 2);
+    ctx.beginPath();
+    chamferRect(ctx, -0.044 * s, -handW, 0.138 * s, handW * 2, 0.028 * s);
+    ctx.fill();
+    if (!hurt) {
+      // The pale palm heel lapping the wrist.
+      ctx.fillStyle = shade(gob.belly, -8);
+      ctx.beginPath();
+      chamferRect(ctx, -0.052 * s, -handW * 0.72, 0.036 * s, handW * 1.44, 0.014 * s);
+      ctx.fill();
+      // Knuckle seams: two dark ticks splitting the mitt into fingers.
+      ctx.strokeStyle = shade(gob.hide, -26);
+      ctx.lineWidth = Math.max(1, 0.012 * s);
+      for (const oy of [-0.34, 0.34]) {
+        ctx.beginPath();
+        ctx.moveTo(0.036 * s, oy * handW);
+        ctx.lineTo(0.084 * s, oy * handW * 0.8);
+        ctx.stroke();
+      }
+      // Short claws: a scrapper's nails, not a predator's hooks.
+      ctx.fillStyle = shade(gob.ink, 6);
+      for (const oy of [-0.6, 0, 0.6]) {
+        ctx.beginPath();
+        ctx.moveTo(0.08 * s, oy * handW - 0.012 * s);
+        ctx.lineTo(0.122 * s, oy * handW + 0.006 * s);
+        ctx.lineTo(0.08 * s, oy * handW + 0.016 * s);
         ctx.closePath();
         ctx.fill();
       }
@@ -3243,6 +3324,695 @@ export function paintGnollBody(
   }
 }
 
+/**
+ * THE GREENSKIN DIALECT — the goblin, done at last as its own species.
+ * Fifth head-swap dialect after bone, scale, fur, and construct: it
+ * swaps head, hair, and face wholesale and reshapes the body's ARGUMENT
+ * — the biggest head in the game on the smallest frame, a pot gut over
+ * bandy shanks, overlong arms ending in knuckly hands — while the IK
+ * rig, carriage, and facing bands keep working untouched. Where the
+ * skeleton grins, the kobold bucks, and the gnoll juts, the goblin
+ * FLARES: enormous back-swept wing ears wider than the shoulders, the
+ * one silhouette that reads goblin at any distance. Each variant is a
+ * DESIGN, never a scale-up; the rank-and-file additionally roll a HIDE
+ * CLUSTER from the spawn seed so a warband reads as family, never as
+ * one body stamped five times.
+ */
+export interface GoblinLook {
+  /** Hide base — the green that names the species. */
+  hide: string;
+  /** Pale underhide: the pot gut, jaw, palms, and the ear membranes. */
+  belly: string;
+  /** The dark face ink: pupils, nostrils, maw, claw ticks, the scowl. */
+  ink: string;
+  /** The lit eye bead — bright, mean, and too small for the head. */
+  eye: string;
+  /**
+   * The casters' ragged half-cowl and shawl; undefined = the bare
+   * chest and scrap belt of the rank-and-file.
+   */
+  garb?: string;
+  /** The warboss war-knot: a rag-tied bristle spike on the crown. */
+  topknot?: string;
+  /** Paired up-tusks proud of the lip — the warboss jaw. */
+  tusks?: boolean;
+  /** Battle-worn: a notched ear and a cheek scar — rank as ledger. */
+  scarred?: boolean;
+  /** Frame multiplier: jaw mass, ear reach, gut swell. */
+  heavy: number;
+  /** Spawn seed carried on the resolved look — per-body wear marks. */
+  seed?: number;
+}
+
+/** Needle teeth and tusk bone — one tone for every goblin mouth. */
+const GOBLIN_TOOTH = '#e9e0c6';
+
+export const GOBLIN_LOOKS: Record<string, GoblinLook> = {
+  // The rank-and-file chopper: moss hide over a pale gut, sulfur eyes
+  // under a scowl it was born wearing — brave only in a crowd.
+  goblin: {
+    hide: '#6f9a44',
+    belly: '#b9cb8c',
+    ink: '#2a2416',
+    eye: '#ffd84a',
+    heavy: 1,
+  },
+  // The thrower: a wirier build a shade toward olive — the arm that
+  // lives at the back of every scrap, pockets full of river stones.
+  goblin_thrower: {
+    hide: '#7f9540',
+    belly: '#c4c690',
+    ink: '#2a2416',
+    eye: '#ffd84a',
+    heavy: 0.88,
+  },
+  // The firecaller: sallow hide under an ember-dyed rag cowl — the
+  // camp's fire carried in a shawl that never stopped smouldering.
+  goblin_firecaller: {
+    hide: '#8a9a4a',
+    belly: '#cbc892',
+    ink: '#2b2214',
+    eye: '#ffb23a',
+    garb: '#b85c26',
+    heavy: 1,
+  },
+  // The gloomcaller: bog-dark hide in a murk-green cowl, eyes lit the
+  // sick green of its own bile — even the warband walks around it.
+  goblin_gloomcaller: {
+    hide: '#5f7d3f',
+    belly: '#a8bd82',
+    ink: '#232a18',
+    eye: '#b9e04a',
+    garb: '#333f2a',
+    heavy: 1.05,
+  },
+  // The warboss: deep war-green bulk under scavenged iron, true tusks
+  // proud of the lip, a rag-tied war-knot and a cheek that lost an
+  // argument once — the one goblin the others stand behind.
+  goblin_champion: {
+    hide: '#4e7a38',
+    belly: '#9cb478',
+    ink: '#241f14',
+    eye: '#ff9a3a',
+    topknot: '#33251a',
+    tusks: true,
+    scarred: true,
+    heavy: 1.35,
+  },
+};
+
+/**
+ * THE HIDE CLUSTERS — four curated greens for the rank-and-file,
+ * picked by spawn seed so a camp sorts into family groups (the gnoll
+ * coat-cluster law, kept): moss, olive, bog, and the sallow runt.
+ * Casters and the warboss never roll — a named goblin is a DESIGN.
+ */
+const GOBLIN_CLUSTERS: ReadonlyArray<Pick<GoblinLook, 'hide' | 'belly'>> = [
+  { hide: '#6f9a44', belly: '#b9cb8c' }, // moss
+  { hide: '#847b38', belly: '#cabf8a' }, // olive-brown
+  { hide: '#47713e', belly: '#96b47e' }, // bog-dark
+  { hide: '#a5ad58', belly: '#ded9a4' }, // the sallow runt
+];
+
+const GOBLIN_LOOK_CACHE = new Map<string, GoblinLook>();
+
+/**
+ * Variant lookup with the rank-and-file as the unknown-id fallback.
+ * The seed (spawn eid) rolls the chopper's and the thrower's hide
+ * cluster plus a small shade jitter; named looks (the casters, the
+ * warboss) hold their authored design. Resolved looks are cached —
+ * this runs per body per frame.
+ */
+export function goblinLook(defId: string, seed = 0): GoblinLook {
+  const base = GOBLIN_LOOKS[defId] ?? GOBLIN_LOOKS['goblin']!;
+  const key = `${defId}|${seed & 0xff}`;
+  const hit = GOBLIN_LOOK_CACHE.get(key);
+  if (hit) return hit;
+  let look: GoblinLook;
+  if (defId === 'goblin' || defId === 'goblin_thrower') {
+    // Hash the seed before picking: warband members spawn with
+    // CONSECUTIVE eids, and raw high bits dressed a whole camp in one
+    // hide — the hash spreads a spawned warband across the clusters.
+    const h = (seed * 2654435761) | 0;
+    const cl = GOBLIN_CLUSTERS[(h >>> 8) & 3]!;
+    const jit = (((h >>> 12) & 7) - 3) * 2;
+    look = { ...base, hide: shade(cl.hide, jit), belly: cl.belly, seed };
+  } else {
+    // Named looks hold their authored design — only the wear marks
+    // stay the body's own.
+    look = { ...base, seed };
+  }
+  GOBLIN_LOOK_CACHE.set(key, look);
+  return look;
+}
+
+/**
+ * The goblin head, drawn in the head block's own frame. Reads goblin
+ * by SILHOUETTE first: WING EARS swept back and out past the shoulder
+ * line — the widest thing on the body — over a low broad cranium with
+ * no chin to speak of, a HOOKED nose leading the facing, beady bright
+ * eyes under a born scowl, and the needle grin ear to ear. The jaw
+ * drops through every strike beat and the ears PIN BACK with it: the
+ * goblin JEERS as it swings. From behind there is no face — occiput
+ * hide, the nape wedge, the ears' backs, and the warboss war-knot.
+ */
+export function paintGoblinHead(
+  ctx: CanvasRenderingContext2D,
+  gb: GoblinLook,
+  f: KoboldHeadFrame,
+): void {
+  const { headX, headY, hw, hh, cut, fx, profileK, backK, lead, hurt } = f;
+  const hv = gb.heavy;
+  const hide = hurt ? '#ffffff' : gb.hide;
+  const belly = hurt ? '#ffffff' : gb.belly;
+  const back = backK > 0.55;
+  const nearSide = lead;
+  const gape = f.gape;
+
+  // --- the skull box: broad and LOW — all ears and jaw under a flat
+  // crown, the cranium of a thing that plans nothing past dinner.
+  const gw = hw * 1.1;
+  const crTop = headY - hh * 0.62;
+  const crBot = headY + hh * 0.56;
+
+  // --- THE WAR-KNOT, laid down first so the crown laps its root: a
+  // rag-cinched bristle spike — the warboss banner the whole camp
+  // rallies to. It reads from every band, the back included.
+  if (gb.topknot && !hurt) {
+    const kx = headX - fx * gw * 0.18;
+    ctx.fillStyle = gb.topknot;
+    ctx.beginPath();
+    ctx.moveTo(kx - gw * 0.2, crTop + hh * 0.1);
+    ctx.lineTo(kx - gw * 0.08, crTop - hh * (0.52 + 0.1 * (hv - 1)));
+    ctx.lineTo(kx + gw * 0.04, crTop - hh * 0.22);
+    ctx.lineTo(kx + gw * 0.16, crTop - hh * (0.42 + 0.1 * (hv - 1)));
+    ctx.lineTo(kx + gw * 0.24, crTop + hh * 0.1);
+    ctx.closePath();
+    ctx.fill();
+    // The rag tie: a worn red cinch at the root — the one dyed thing
+    // a goblin owns.
+    ctx.strokeStyle = '#8a4030';
+    ctx.lineWidth = Math.max(1.5, hh * 0.09);
+    ctx.beginPath();
+    ctx.moveTo(kx - gw * 0.16, crTop + hh * 0.02);
+    ctx.lineTo(kx + gw * 0.18, crTop - hh * 0.02);
+    ctx.stroke();
+  }
+
+  // --- THE WING EARS, before the cranium so the skull laps their
+  // roots: long tapered membranes swept up and out, canted wider than
+  // any shoulder — the species' whole silhouette argument. They are
+  // ALIVE: a slow listening sway at rest, and they PIN BACK as the
+  // jaw gapes — anger you can read before the swing lands. Far ear
+  // steps smaller at the three-quarter bands (the cheap perspective
+  // cue); both read from behind as backs — membranes face forward.
+  const drawEar = (side: number, depth: number): void => {
+    const el = hh * (1.02 + 0.3 * hv) * depth;
+    const bw = hh * 0.19 * (0.9 + 0.2 * hv);
+    const ex = headX - fx * gw * 0.3 + side * gw * 0.74;
+    const ey = crTop + hh * 0.46;
+    const sway = hurt ? 0 : 0.05 * Math.sin(f.nowMs / 640 + side * 1.7);
+    // The pin-back: gape drives the cant outward-down — flattened
+    // ears, the animal grammar every player already knows.
+    const cant = 0.6 + sway + gape * 0.5;
+    ctx.save();
+    ctx.translate(ex, ey);
+    ctx.rotate(side * cant);
+    ctx.fillStyle = hurt ? '#ffffff' : shade(gb.hide, back ? -14 : -6);
+    const notched = gb.scarred && side === nearSide;
+    ctx.beginPath();
+    ctx.moveTo(-bw, 0);
+    // Outer edge bows out; the tip hooks a touch back down — a wing,
+    // not a bunny spike.
+    ctx.quadraticCurveTo(-bw * 1.7, -el * 0.5, -bw * 0.1, -el);
+    if (notched) {
+      // The notch: a bite taken out of the trailing edge, healed ragged.
+      ctx.lineTo(bw * 0.12, -el * 0.66);
+      ctx.lineTo(bw * 0.5, -el * 0.74);
+    }
+    // Inner edge runs home concave — the membrane's sag.
+    ctx.quadraticCurveTo(bw * 0.3, -el * 0.34, bw, 0);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      ctx.strokeStyle = shade(gb.hide, -26);
+      ctx.lineWidth = Math.max(1, bw * 0.22);
+      ctx.stroke();
+      if (!back) {
+        // The lit membrane: pale skin stretched between ribs — two
+        // fanned rib strokes keep it a wing, never a paddle.
+        ctx.fillStyle = shade(belly, -6);
+        ctx.beginPath();
+        ctx.moveTo(-bw * 0.4, -el * 0.12);
+        ctx.quadraticCurveTo(-bw * 1.05, -el * 0.5, -bw * 0.08, -el * 0.86);
+        ctx.quadraticCurveTo(bw * 0.16, -el * 0.34, bw * 0.4, -el * 0.1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(gb.hide, -16);
+        ctx.lineWidth = Math.max(1, bw * 0.12);
+        for (const rib of [-0.5, 0.1] as const) {
+          ctx.beginPath();
+          ctx.moveTo(bw * 0.1, -el * 0.1);
+          ctx.quadraticCurveTo(rib * bw, -el * 0.5, rib * bw * 0.9, -el * 0.8);
+          ctx.stroke();
+        }
+      } else {
+        // Ear back: one cartilage seam keeps it a volume.
+        ctx.strokeStyle = shade(gb.hide, -18);
+        ctx.lineWidth = Math.max(1, bw * 0.14);
+        ctx.beginPath();
+        ctx.moveTo(-bw * 0.2, -el * 0.14);
+        ctx.quadraticCurveTo(-bw * 0.7, -el * 0.5, -bw * 0.1, -el * 0.84);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  };
+  if (profileK < 0.72 || back) drawEar(-nearSide, back ? 1 : 0.82);
+  drawEar(nearSide, 1);
+
+  // --- cranium block.
+  ctx.fillStyle = hide;
+  ctx.beginPath();
+  chamferRect(ctx, headX - gw, crTop, gw * 2, crBot - crTop, [cut * 1.2, cut * 1.2, cut * 0.9, cut * 0.9]);
+  ctx.fill();
+  if (!hurt) {
+    // THE FORM SPLIT restated for hide: hard shade right half, lit
+    // crown band, jaw under-shade — the block reads as mass.
+    ctx.save();
+    ctx.beginPath();
+    chamferRect(ctx, headX - gw, crTop, gw * 2, crBot - crTop, [cut * 1.2, cut * 1.2, cut * 0.9, cut * 0.9]);
+    ctx.clip();
+    ctx.fillStyle = shade(gb.hide, -10);
+    ctx.fillRect(headX, crTop, gw, crBot - crTop);
+    ctx.fillStyle = shade(gb.hide, 9);
+    ctx.fillRect(headX - gw, crTop, gw * 2, hh * 0.14);
+    ctx.fillStyle = shade(gb.hide, -16);
+    ctx.fillRect(headX - gw, crBot - hh * 0.1, gw * 2, hh * 0.1);
+    ctx.restore();
+  }
+
+  if (back) {
+    // --- the occiput: no face from behind. Hide courses, the nape
+    // wedge where the skull sinks toward the hunch, and the ear roots
+    // reading as knobs off the skull sides.
+    if (!hurt) {
+      ctx.strokeStyle = shade(gb.hide, -13);
+      ctx.lineWidth = Math.max(1, hh * 0.05);
+      for (const t of [0.34, 0.6]) {
+        ctx.beginPath();
+        ctx.moveTo(headX - gw * 0.58, crTop + (crBot - crTop) * t);
+        ctx.lineTo(headX + gw * 0.58, crTop + (crBot - crTop) * t);
+        ctx.stroke();
+      }
+      ctx.fillStyle = shade(gb.hide, -20);
+      ctx.beginPath();
+      chamferRect(ctx, headX - gw * 0.4, crBot - hh * 0.18, gw * 0.8, hh * 0.18, cut * 0.3);
+      ctx.fill();
+      if (gb.scarred) {
+        // The warboss keeps its ledger on the back of its head too: a
+        // pale old crease across the occiput.
+        ctx.strokeStyle = shade(gb.hide, 26);
+        ctx.lineWidth = Math.max(1, hh * 0.05);
+        ctx.beginPath();
+        ctx.moveTo(headX - gw * 0.34, crTop + hh * 0.4);
+        ctx.lineTo(headX + gw * 0.2, crTop + hh * 0.52);
+        ctx.stroke();
+      }
+    }
+    return;
+  }
+
+  // --- the born scowl: one heavy brow ledge angling down toward the
+  // nose root — the goblin is angry before anything has happened.
+  const eyeY = headY - hh * 0.14;
+  const eCx = headX + fx * gw * 0.16;
+  if (!hurt) {
+    ctx.strokeStyle = gb.ink;
+    ctx.lineWidth = Math.max(1.5, hh * 0.09);
+    for (const side of [-1, 1] as const) {
+      if (profileK > 0.72 && side !== nearSide) continue;
+      const bx = eCx + side * gw * 0.4 * (1 - 0.3 * profileK);
+      ctx.beginPath();
+      ctx.moveTo(bx + side * gw * 0.2, eyeY - hh * 0.3);
+      ctx.lineTo(bx - side * gw * 0.1, eyeY - hh * 0.16);
+      ctx.stroke();
+    }
+  }
+
+  // --- beady eyes on the fixed eye line: a bright bead with a slit
+  // pupil, far eye slipping around the corner at profile.
+  for (const side of [-1, 1] as const) {
+    if (profileK > 0.72 && side !== nearSide) continue;
+    const ex = eCx + side * gw * 0.36 * (1 - 0.32 * profileK);
+    ctx.fillStyle = hurt ? '#ffffff' : gb.eye;
+    ctx.beginPath();
+    ctx.ellipse(ex, eyeY, hh * 0.115, hh * 0.1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (!hurt) {
+      ctx.fillStyle = gb.ink;
+      ctx.beginPath();
+      ctx.ellipse(ex + fx * hh * 0.03, eyeY + hh * 0.01, hh * 0.038, hh * 0.075, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // --- the warboss ledger: an old claw scar raking the near cheek.
+  if (gb.scarred && !hurt && profileK < 0.9) {
+    ctx.strokeStyle = shade(gb.hide, 26);
+    ctx.lineWidth = Math.max(1, hh * 0.045);
+    for (const o of [0, 0.14] as const) {
+      ctx.beginPath();
+      ctx.moveTo(eCx + nearSide * gw * (0.5 + o * 0.3), eyeY + hh * (0.14 + o));
+      ctx.lineTo(eCx + nearSide * gw * (0.28 + o * 0.3), eyeY + hh * (0.42 + o));
+      ctx.stroke();
+    }
+  }
+
+  // --- the mouth: the needle grin, ear to ear with the corners up —
+  // and the jaw beneath it, a RECEDING chin narrower than the skull.
+  // The gape drops the pale mandible, opens the dark maw, and bares
+  // the needles; the warboss tusks ride the jaw through all of it.
+  const mouthY = headY + hh * 0.3;
+  const mCx = headX + fx * gw * 0.12;
+  const mHw = gw * (0.72 - 0.22 * profileK);
+  const jawDrop = gape * hh * 0.52;
+  if (gape > 0.05) {
+    // The maw: ink first, so teeth and jaw read against it.
+    ctx.fillStyle = hurt ? '#ffffff' : gb.ink;
+    ctx.beginPath();
+    chamferRect(ctx, mCx - mHw * 0.86, mouthY - hh * 0.04, mHw * 1.72, jawDrop + hh * 0.1, cut * 0.4);
+    ctx.fill();
+  }
+  // The mandible: pale, narrow, and slung under — the weak chin that
+  // makes the cranium read all the bigger.
+  ctx.fillStyle = belly;
+  ctx.beginPath();
+  chamferRect(
+    ctx,
+    mCx - mHw * 0.78,
+    mouthY + jawDrop,
+    mHw * 1.56,
+    hh * 0.24,
+    [cut * 0.2, cut * 0.2, cut * 0.7, cut * 0.7],
+  );
+  ctx.fill();
+  if (!hurt) {
+    ctx.strokeStyle = shade(gb.hide, -24);
+    ctx.lineWidth = Math.max(1, hh * 0.045);
+    ctx.beginPath();
+    chamferRect(
+      ctx,
+      mCx - mHw * 0.78,
+      mouthY + jawDrop,
+      mHw * 1.56,
+      hh * 0.24,
+      [cut * 0.2, cut * 0.2, cut * 0.7, cut * 0.7],
+    );
+    ctx.stroke();
+    // The grin seam: corners UP — a goblin's resting face is a jeer.
+    ctx.strokeStyle = gb.ink;
+    ctx.lineWidth = Math.max(1, hh * 0.055);
+    ctx.beginPath();
+    ctx.moveTo(mCx - mHw, mouthY - hh * 0.1);
+    ctx.quadraticCurveTo(mCx, mouthY + hh * 0.06, mCx + mHw, mouthY - hh * 0.1);
+    ctx.stroke();
+    // Needle teeth: snaggled ticks hanging off the seam — never a
+    // tidy row (a goblin's dentist is a rock).
+    ctx.fillStyle = GOBLIN_TOOTH;
+    for (const [u, len] of [
+      [-0.66, 0.14],
+      [-0.3, 0.1],
+      [0.12, 0.15],
+      [0.52, 0.09],
+    ] as const) {
+      const tx = mCx + u * mHw;
+      const ty = mouthY + hh * 0.02 - u * u * hh * 0.1;
+      ctx.beginPath();
+      ctx.moveTo(tx - hh * 0.035, ty);
+      ctx.lineTo(tx + hh * 0.005, ty + hh * len + jawDrop * 0.12);
+      ctx.lineTo(tx + hh * 0.045, ty);
+      ctx.closePath();
+      ctx.fill();
+    }
+    if (gape > 0.05) {
+      // Lower needles rise off the dropped jaw to meet them.
+      for (const u of [-0.48, 0.02, 0.42] as const) {
+        const tx = mCx + u * mHw;
+        const ty = mouthY + jawDrop + hh * 0.02;
+        ctx.beginPath();
+        ctx.moveTo(tx - hh * 0.035, ty);
+        ctx.lineTo(tx + hh * 0.005, ty - hh * 0.11 - jawDrop * 0.15);
+        ctx.lineTo(tx + hh * 0.045, ty);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  }
+  // --- THE TUSKS: paired up-hooks proud of the lip, riding the
+  // mandible through the gape — the warboss argument, drawn as filled
+  // curved mass with an outline (the ram's-horn law), never strokes.
+  if (gb.tusks && !hurt) {
+    for (const side of [-1, 1] as const) {
+      if (profileK > 0.72 && side !== nearSide) continue;
+      const bx = mCx + side * mHw * 0.62;
+      const by = mouthY + jawDrop + hh * 0.1;
+      scaleRibbon(
+        ctx,
+        bx,
+        by,
+        bx + side * gw * 0.22,
+        by - hh * 0.28,
+        bx + side * gw * 0.16,
+        by - hh * (0.52 + 0.08 * (hv - 1)),
+        hh * 0.15,
+        GOBLIN_TOOTH,
+        shade(GOBLIN_TOOTH, -38),
+      );
+    }
+  }
+
+  // --- THE HOOK NOSE, last so it overhangs the grin: a down-hooked
+  // wedge leading the facing — a narrow drop face-on, run out long at
+  // profile — ending in a bulbed tip with one ink nostril. Filled
+  // form with an outline, never a stroke chain.
+  const nl = gw * (0.26 + 0.58 * profileK);
+  const nRootY = eyeY + hh * 0.04;
+  const tipX = headX + fx * (gw * 0.24 + nl);
+  // Face-on the hook drops PAST the grin seam — the overhanging beak
+  // that names the profile even when there is no profile to read.
+  const tipY = mouthY + hh * 0.08 - hh * 0.12 * profileK;
+  ctx.fillStyle = hurt ? '#ffffff' : shade(gb.hide, 7);
+  ctx.beginPath();
+  ctx.moveTo(headX + fx * gw * 0.16 - gw * 0.17, nRootY);
+  ctx.quadraticCurveTo(
+    headX + fx * (gw * 0.2 + nl * 0.8) - gw * 0.02,
+    nRootY - hh * 0.05,
+    tipX,
+    tipY,
+  );
+  ctx.quadraticCurveTo(
+    headX + fx * (gw * 0.16 + nl * 0.35),
+    tipY + hh * 0.02,
+    headX + fx * gw * 0.16 + gw * 0.17,
+    nRootY,
+  );
+  ctx.closePath();
+  ctx.fill();
+  if (!hurt) {
+    ctx.strokeStyle = shade(gb.hide, -26);
+    ctx.lineWidth = Math.max(1, hh * 0.05);
+    ctx.stroke();
+    // The tip bulb and its one dark nostril.
+    ctx.fillStyle = shade(gb.hide, 12);
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, hh * 0.09, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = shade(gb.hide, -26);
+    ctx.lineWidth = Math.max(1, hh * 0.04);
+    ctx.stroke();
+    ctx.fillStyle = gb.ink;
+    ctx.beginPath();
+    ctx.ellipse(tipX - fx * hh * 0.02, tipY + hh * 0.06, hh * 0.036, hh * 0.025, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+/** Torso-local frame for the goblin body overpaint. */
+export interface GoblinBodyFrame {
+  s: number;
+  tw: number;
+  ww: number;
+  th: number;
+  fx: number;
+  fy: number;
+  profileK: number;
+  backK: number;
+  lead: number;
+  hurt: boolean;
+}
+
+/**
+ * THE POT GUT — the goblin's torso overpaint, drawn in the torso's
+ * local frame AFTER the garment quad (which paints in plain hide) and
+ * gated OFF whenever a real body item is worn (the warboss keeps its
+ * scavenged iron; nothing here may cover gear that drops). It turns
+ * the flat tunic block into a body: the low-slung belly with its lit
+ * pale panel and navel, the crease shading under the overhang, a
+ * crude rope belt cinched UNDER the gut with the scrap pouch on the
+ * hip — and for the casters, the ragged half-shawl with its torn hem
+ * over the shoulders. Species dressing painted on, never equipment.
+ */
+export function paintGoblinTorso(
+  ctx: CanvasRenderingContext2D,
+  gb: GoblinLook,
+  f: GoblinBodyFrame,
+): void {
+  const { s, tw, ww, th, fx, fy, backK, lead, hurt } = f;
+  const back = backK > 0.55;
+  const frontK = Math.max(0, Math.min(1, (fy - 0.1) / 0.35));
+  const hv = gb.heavy;
+  if (hurt) return; // the hurt flash keeps the silhouette clean
+  // --- the gut: a low-slung swell wider than the hips, leading the
+  // facing a touch — mass a body earns by eating everything it finds.
+  const gx = fx * ww * 0.12;
+  const gy = -th * 0.3;
+  const grx = ww * (0.94 + 0.14 * (hv - 1) * 2);
+  const gry = th * 0.33 * (1 + 0.3 * (hv - 1));
+  ctx.fillStyle = gb.hide;
+  ctx.beginPath();
+  ctx.ellipse(gx, gy, grx, gry, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(gx, gy, grx, gry, 0, 0, Math.PI * 2);
+  ctx.clip();
+  // Form split: shade the trailing half, light the top of the swell.
+  ctx.fillStyle = shade(gb.hide, -9);
+  ctx.fillRect(gx, gy - gry, grx, gry * 2);
+  ctx.fillStyle = shade(gb.hide, 8);
+  ctx.fillRect(gx - grx, gy - gry, grx * 2, gry * 0.42);
+  if (!back && frontK > 0.05) {
+    // The pale panel: underhide belly with its navel tick — inside
+    // the gut's own silhouette, never past it.
+    ctx.globalAlpha = Math.min(1, frontK * 1.4);
+    ctx.fillStyle = gb.belly;
+    ctx.beginPath();
+    ctx.ellipse(gx, gy + gry * 0.16, grx * 0.62, gry * 0.68, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = shade(gb.belly, -26);
+    ctx.beginPath();
+    ctx.ellipse(gx + fx * grx * 0.1, gy + gry * 0.34, gry * 0.07, gry * 0.11, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  if (back) {
+    // The sway back: a spine groove and two shoulder-blade ticks —
+    // the gut read from behind is the bowed spine that carries it.
+    ctx.strokeStyle = shade(gb.hide, -16);
+    ctx.lineWidth = Math.max(1.5, s * 0.02);
+    ctx.beginPath();
+    ctx.moveTo(0, -th * 0.9);
+    ctx.quadraticCurveTo(-fx * ww * 0.2, gy, 0, gy + gry * 0.7);
+    ctx.stroke();
+    for (const side of [-1, 1] as const) {
+      ctx.beginPath();
+      ctx.moveTo(side * tw * 0.42, -th * 0.78);
+      ctx.lineTo(side * tw * 0.6, -th * 0.6);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+  // The crease: one dark arc under the overhang seats the gut on the
+  // hips — the line that makes the swell read as weight, not balloon.
+  ctx.strokeStyle = shade(gb.hide, -22);
+  ctx.lineWidth = Math.max(1.5, s * 0.018);
+  ctx.beginPath();
+  ctx.ellipse(gx, gy + gry * 0.5, grx * 0.66, gry * 0.5, 0, Math.PI * 0.22, Math.PI * 0.78);
+  ctx.stroke();
+  // --- the rope belt, cinched UNDER the gut so the swell overhangs
+  // it, with the scrap pouch riding the lead hip. The rank-and-file's
+  // whole wardrobe: a rope, a pouch, and optimism.
+  const beltY = gy + gry * 0.72;
+  ctx.strokeStyle = '#7a5c34';
+  ctx.lineWidth = Math.max(2, s * 0.035);
+  ctx.beginPath();
+  ctx.moveTo(-ww * 0.92, beltY + s * 0.008);
+  ctx.quadraticCurveTo(gx, beltY + s * 0.03, ww * 0.92, beltY + s * 0.008);
+  ctx.stroke();
+  ctx.strokeStyle = shade('#7a5c34', -22);
+  ctx.lineWidth = Math.max(1, s * 0.012);
+  ctx.beginPath();
+  ctx.moveTo(-ww * 0.92, beltY + s * 0.016);
+  ctx.quadraticCurveTo(gx, beltY + s * 0.038, ww * 0.92, beltY + s * 0.016);
+  ctx.stroke();
+  if (!back) {
+    // The knot: a lump with two rope ends flopped loose.
+    const kx = gx - fx * ww * 0.3;
+    ctx.fillStyle = '#7a5c34';
+    ctx.beginPath();
+    ctx.arc(kx, beltY + s * 0.012, s * 0.024, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#6b4f2c';
+    ctx.lineWidth = Math.max(1, s * 0.014);
+    for (const o of [-0.02, 0.016] as const) {
+      ctx.beginPath();
+      ctx.moveTo(kx, beltY + s * 0.02);
+      ctx.lineTo(kx + o * s, beltY + s * 0.06);
+      ctx.stroke();
+    }
+  }
+  // The scrap pouch: on the hip, behind the belt line.
+  const px = lead * ww * 0.66;
+  ctx.fillStyle = '#6b4a2e';
+  ctx.beginPath();
+  chamferRect(ctx, px - s * 0.045, beltY - s * 0.006, s * 0.09, s * 0.075, s * 0.02);
+  ctx.fill();
+  ctx.strokeStyle = shade('#6b4a2e', -24);
+  ctx.lineWidth = Math.max(1, s * 0.01);
+  ctx.beginPath();
+  ctx.moveTo(px - s * 0.04, beltY + s * 0.022);
+  ctx.lineTo(px + s * 0.04, beltY + s * 0.022);
+  ctx.stroke();
+  // --- the casters' half-shawl: a ragged drape over the shoulders
+  // with a torn sawtooth hem — dyed in the school's color, ending
+  // well above the gut so the body still reads goblin under it.
+  if (gb.garb) {
+    const hemY = -th * 0.42;
+    ctx.fillStyle = gb.garb;
+    ctx.beginPath();
+    ctx.moveTo(-tw * 1.06, -th * 0.98);
+    ctx.lineTo(tw * 1.06, -th * 0.98);
+    ctx.lineTo(tw * 0.94, hemY);
+    for (let i = 4; i >= 0; i--) {
+      const u = i / 4;
+      const bx = -tw * 0.94 + u * 2 * tw * 0.94;
+      const drop = th * 0.14 * (0.6 + 0.5 * Math.sin(i * 2.6 + 0.8));
+      ctx.lineTo(bx + tw * 0.12, hemY);
+      ctx.lineTo(bx, hemY + drop);
+    }
+    ctx.closePath();
+    ctx.fill();
+    // Form split + the collar roll at the throat.
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(-tw * 1.06, -th * 0.98);
+    ctx.lineTo(tw * 1.06, -th * 0.98);
+    ctx.lineTo(tw * 0.94, hemY + th * 0.14);
+    ctx.lineTo(-tw * 0.94, hemY + th * 0.14);
+    ctx.closePath();
+    ctx.clip();
+    ctx.fillStyle = shade(gb.garb, -12);
+    ctx.fillRect(0, -th, tw * 1.1, th);
+    ctx.restore();
+    ctx.strokeStyle = shade(gb.garb, -20);
+    ctx.lineWidth = Math.max(1.5, s * 0.02);
+    ctx.beginPath();
+    ctx.ellipse(-fx * tw * 0.2, -th * 0.94, tw * 0.4, th * 0.09, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
 
 export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void {
   const k = rig.size ?? 1;
@@ -3250,6 +4020,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const skel = rig.skeletal ?? null;
   const kob = rig.kobold ?? null;
   const gno = rig.gnoll ?? null;
+  const gob = rig.goblin ?? null;
   const gol = rig.golem ?? null;
   const skin = rig.hurt
     ? '#ffffff'
@@ -3391,11 +4162,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           ? shade(kob.hide, -5)
           : gno
             ? shade(gno.fur, -5)
-            : gol
-              ? shade(gol.shell, -4)
-              : rig.look
-                ? shade(CLOTH_COLORS[rig.look.pants]!, -8)
-                : shade(bodyColor, -28);
+            : gob
+              ? shade(gob.hide, -6)
+              : gol
+                ? shade(gol.shell, -4)
+                : rig.look
+                  ? shade(CLOTH_COLORS[rig.look.pants]!, -8)
+                  : shade(bodyColor, -28);
       const thighCol = rig.hurt ? '#ffffff' : (legSt?.thigh ?? baseLeg);
       const shinCol = rig.hurt
         ? '#ffffff'
@@ -3405,9 +4178,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
             ? shade(kob.hide, -12)
             : gno
               ? shade(gno.fur, -14)
-              : gol
-                ? shade(gol.shell, -12)
-                : (legSt?.shin ?? legSt?.thigh ?? baseLeg);
+              : gob
+                ? shade(gob.hide, -15)
+                : gol
+                  ? shade(gol.shell, -12)
+                  : (legSt?.shin ?? legSt?.thigh ?? baseLeg);
       // THE FOOT CAPS THE LEG: the shin stroke ends at the ANKLE — the
       // endpoint pulled back up the bone so its round cap tucks inside
       // the footwear painted below. Stroked all the way to the sole, the
@@ -3418,9 +4193,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // The gnoll leg TAPERS: a heavy furred haunch over a leaner
       // shank — the digitigrade read on a two-bone rig, mass up top
       // where the hunched species carries it.
+      // The goblin shank is a SPINDLE: the bandy-leg read lives in the
+      // taper — a little haunch up top over a shin two sizes too thin.
       const shinLW = Math.max(
         2,
-        s * (skel ? 0.052 * skel.heavy : bootSt ? 0.1 : gno ? 0.078 : gol ? 0.128 : 0.09),
+        s * (skel ? 0.052 * skel.heavy : bootSt ? 0.1 : gno ? 0.078 : gob ? 0.062 : gol ? 0.128 : 0.09),
       );
       const ankPull = shinLW * 0.55;
       const ankX = fxx - aux * ankPull;
@@ -3433,20 +4210,22 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
             ? 0.066 * skel.heavy
             : gno
               ? 0.126 * (0.9 + 0.2 * gno.heavy)
-              : gol
-                ? 0.165 * (0.9 + 0.2 * gol.heavy)
-                : 0.09),
+              : gob
+                ? 0.098 * (0.85 + 0.2 * gob.heavy)
+                : gol
+                  ? 0.165 * (0.9 + 0.2 * gol.heavy)
+                  : 0.09),
       );
       ctx.beginPath();
       ctx.moveTo(hipX, hipY);
       ctx.lineTo(kx, ky);
-      if (shinCol === thighCol && !skel && !gno && !gol) {
+      if (shinCol === thighCol && !skel && !gno && !gob && !gol) {
         ctx.lineTo(ankX, ankY);
         ctx.stroke();
       } else {
         ctx.stroke();
         ctx.strokeStyle = shinCol;
-        if (skel || gno || gol) ctx.lineWidth = shinLW;
+        if (skel || gno || gob || gol) ctx.lineWidth = shinLW;
         ctx.beginPath();
         ctx.moveTo(kx, ky);
         ctx.lineTo(ankX, ankY);
@@ -3463,6 +4242,14 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         ctx.lineTo(kx + outX * 0.095 * s * (0.9 + 0.2 * gno.heavy), ky + 0.01 * s);
         ctx.lineTo(kx + outX * 0.015 * s, ky + 0.04 * s);
         ctx.closePath();
+        ctx.fill();
+      }
+      if (gob && !rig.hurt) {
+        // The knobby knee: a joint knob wider than the spindle shank
+        // below it — the bandy-leg articulation mark, hide-toned.
+        ctx.fillStyle = shade(gob.hide, -12);
+        ctx.beginPath();
+        ctx.arc(kx, ky, Math.max(1.6, s * 0.036 * (0.9 + 0.2 * gob.heavy)), 0, Math.PI * 2);
         ctx.fill();
       }
       if (skel) {
@@ -3505,7 +4292,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // Each paints ON the limb's own solved geometry (segments and
       // normals), so it rides every gait for free. One-sided words
       // pick the outward side the way the gnoll hock does.
-      if (legSt && !rig.hurt && !skel && !kob && !gno) {
+      if (legSt && !rig.hurt && !skel && !kob && !gno && !gob) {
         const outX = Math.abs(fx) > 0.35 ? -Math.sign(fx) : i === 0 ? -1 : 1;
         // Thigh segment frame (hip→knee) for thigh-mounted words.
         const tLen = Math.hypot(kx - hipX, ky - hipY) || 1;
@@ -4021,6 +4808,42 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         // block, riveted sabaton, cracked pad, or faceted wedge per
         // build. A golem stands on its own architecture.
         paintGolemFoot(ctx, gol, fxx, fyy, s, lead, rig.hurt);
+      } else if (gob && !bootSt) {
+        // The bare goblin foot: a FLAP a size too big for the spindle
+        // shank above it — wide, flat, pale-soled, with two toe seams
+        // and dark claw ticks off the leading edge. A goblin's boots
+        // are the calluses it was born with.
+        const gv = 0.9 + 0.18 * gob.heavy;
+        ctx.fillStyle = rig.hurt ? '#ffffff' : shade(gob.hide, -4);
+        ctx.beginPath();
+        chamferRect(ctx, fxx - 0.088 * s * gv, fyy - 0.03 * s, 0.176 * s * gv, 0.06 * s, 0.022 * s);
+        ctx.fill();
+        if (!rig.hurt) {
+          // The ankle knuckle seats the spindle on the flap.
+          ctx.fillStyle = shade(gob.hide, -10);
+          ctx.beginPath();
+          ctx.arc(fxx - lead * 0.02 * s, fyy - 0.034 * s, 0.026 * s, 0, Math.PI * 2);
+          ctx.fill();
+          // Toe seams split the flap — a foot with anatomy.
+          ctx.strokeStyle = shade(gob.hide, -24);
+          ctx.lineWidth = Math.max(1, 0.012 * s);
+          for (const o of [-0.01, 0.018]) {
+            ctx.beginPath();
+            ctx.moveTo(fxx + lead * 0.04 * s, fyy + o * s - 0.008 * s);
+            ctx.lineTo(fxx + lead * 0.078 * s * gv, fyy + o * s);
+            ctx.stroke();
+          }
+          // Claw ticks past the leading edge.
+          ctx.fillStyle = shade(gob.ink, 6);
+          for (const o of [-0.022, 0.002, 0.024]) {
+            ctx.beginPath();
+            ctx.moveTo(fxx + lead * 0.076 * s * gv, fyy + o * s - 0.007 * s);
+            ctx.lineTo(fxx + lead * 0.116 * s * gv, fyy + o * s + 0.004 * s);
+            ctx.lineTo(fxx + lead * 0.076 * s * gv, fyy + o * s + 0.012 * s);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
       } else if (kob && !bootSt) {
         // The bare kobold foot: a scaled chip, slightly narrow, with
         // pale claw ticks raking off the leading edge — no kobold ever
@@ -4173,8 +4996,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // THE CONSTRUCT FRAME widens further than the fur dialect ever did:
   // a golem's mass IS its shoulder line (arms anchor off tw, so the
   // whole carriage broadens for free).
-  const tw = SHOULDER_HALF_S * s * (gno ? 1.28 : gol ? 1.4 * (0.94 + 0.12 * gol.heavy) : 1); // shoulder half-width
-  const ww = WAIST_HALF_S * s * (gno ? 1.06 : gol ? 1.22 : 1); // waist half-width
+  // The goblin inverts the gnoll's argument: NARROW hunched shoulders
+  // over a waist swollen past them — all gut, no chest.
+  const tw = SHOULDER_HALF_S * s * (gno ? 1.28 : gob ? 0.92 : gol ? 1.4 * (0.94 + 0.12 * gol.heavy) : 1); // shoulder half-width
+  const ww = WAIST_HALF_S * s * (gno ? 1.06 : gob ? 1.16 + 0.14 * gob.heavy : gol ? 1.22 : 1); // waist half-width
   const th = TORSO_RISE_S * s * (1 - 0.12 * crouch); // hip line → shoulders
 
   // Melee combo stages — THE TWO SCHOOLS (carriage.ts strike
@@ -5668,6 +6493,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       rig.nowMs,
       gno,
       gol,
+      gob,
     );
     if (shieldSt && shieldFr) {
       if (shieldBehindArm) drawShieldStraps(ctx, shieldSt, shieldFr, rig.hurt);
@@ -5802,6 +6628,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       rig.nowMs,
       gno,
       gol,
+      gob,
     );
   };
   // ---- THE BILLBOARD SOCKET: pauldrons sit on the rig's SHOULDER
@@ -6139,6 +6966,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // standing tip than the kobold's (the lore's stoop), easing out
   // when seated.
   if (gno) lean += 0.18 * fx * (1 - sit);
+  // The goblin hunch: between the kobold's and the gnoll's — the
+  // slouch of a body led everywhere by its own nose, easing out when
+  // seated.
+  if (gob) lean += 0.14 * fx * (1 - sit);
   // The construct stands like a tower — no hunch. Only the rock golem
   // carries a lean: a stacked cairn was never plumb.
   if (gol) lean += (gol.build === 'rock' ? 0.06 : 0.015) * fx * (1 - sit);
@@ -6221,10 +7052,23 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // The golem head is SMALL for its frame and sunk INTO the shoulder
   // line — the neckless construct proportion: massive body, deep-set
   // capstone. The opposite argument to the kobold/gnoll oversize.
-  const headR = 0.15 * s * (kob ? 1.16 : gno ? 1.22 : gol ? 1.04 : 1);
-  const headX = kob ? fx * 0.14 * s : gno ? fx * 0.19 * s : gol ? fx * 0.08 * s : fx * 0.05 * s;
+  // The goblin head is the BIGGEST proportion in the game — a third
+  // of the body's whole read on the smallest frame that walks. It
+  // sits LOW on the hunched shoulders with only a slight forward jut:
+  // the wing ears carry the silhouette, so the skull needn't reach.
+  const headR = 0.15 * s * (kob ? 1.16 : gno ? 1.22 : gob ? 1.34 : gol ? 1.04 : 1);
+  const headX =
+    kob ? fx * 0.14 * s : gno ? fx * 0.19 * s : gob ? fx * 0.1 * s : gol ? fx * 0.08 * s : fx * 0.05 * s;
   const headY =
-    kob ? -th - headR * 0.48 : gno ? -th - headR * 0.3 : gol ? -th - headR * 0.08 : -th - headR * 0.82;
+    kob
+      ? -th - headR * 0.48
+      : gno
+        ? -th - headR * 0.3
+        : gob
+          ? -th - headR * 0.42
+          : gol
+            ? -th - headR * 0.08
+            : -th - headR * 0.82;
   const hw = headR * 1.04; // half-width
   const hh = headR * 1.0; // half-height
   const cut = headR * 0.34;
@@ -6275,8 +7119,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     col: hairCol,
     hurt: rig.hurt,
   };
-  // The bone, scale, and fur dialects replace head, hair, and face wholesale.
-  if (!skel && !kob && !gno && !gol) drawHairBack(ctx, hairFrame, hairIx, cover);
+  // The bone, scale, fur, and greenskin dialects replace head, hair,
+  // and face wholesale.
+  if (!skel && !kob && !gno && !gob && !gol) drawHairBack(ctx, hairFrame, hairIx, cover);
 
   // Torso garment: the styled body (robe, jerkin, brigandine, cuirass,
   // pauldrons) — the bare `tunic` default is the original silhouette.
@@ -6393,6 +7238,23 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       hurt: rig.hurt,
     });
   }
+  // The goblin's pot gut and rope belt overpaint the garment quad —
+  // but never real armor: a warboss in scavenged iron keeps its iron
+  // (everything it wears really drops, and nothing may cover that).
+  if (gob && !bodySt) {
+    paintGoblinTorso(ctx, gob, {
+      s,
+      tw,
+      ww,
+      th,
+      fx,
+      fy,
+      profileK,
+      backK,
+      lead,
+      hurt: rig.hurt,
+    });
+  }
 
   // ---- THE HEAD SITS UPON THE SHOULDERS: at a settled, empty-handed
   // rest the torso frame closes here so the hanging arms can paint in
@@ -6497,6 +7359,31 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       },
       gno.seed ?? 0,
     );
+  } else if (gob) {
+    // THE GREENSKIN DIALECT head replaces head, hair, and face
+    // wholesale — the hook nose leads the facing, the jaw drops
+    // through every strike beat and the wing ears pin back with it:
+    // the goblin JEERS as it swings.
+    const gape =
+      meleeStage >= 0 || rig.pose === PoseState.Cast
+        ? Math.sin(Math.min(1, rig.poseT) * Math.PI)
+        : 0;
+    paintGoblinHead(ctx, gob, {
+      s,
+      headX,
+      headY,
+      hw,
+      hh,
+      cut,
+      fx,
+      fy,
+      profileK,
+      backK,
+      lead,
+      hurt: rig.hurt,
+      nowMs: rig.nowMs,
+      gape,
+    });
   } else if (gol) {
     // THE CONSTRUCT DIALECT head: capstone, helm block, crucible, or
     // sheared prism — the strike beat FLARES instead of biting (a

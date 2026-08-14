@@ -12,6 +12,7 @@ import {
   drawSnake,
   koboldLook,
   gnollLook,
+  goblinLook,
   owlHoverHeight,
   owlLook,
   skeletonLook,
@@ -116,6 +117,11 @@ interface MobEquip {
 }
 const MOB_EQUIP: Record<string, MobEquip> = {
   goblin: { weapon: 'bronze_sword' },
+  goblin_champion: {
+    weapon: 'gobmangler',
+    offhand: 'gobnail_warboard',
+    body: 'leather_body',
+  },
   gnoll: { weapon: 'rustbite' },
   gnoll_champion: { weapon: 'iron_greatblade' },
   skeleton: { weapon: 'iron_sword' },
@@ -140,6 +146,11 @@ const MOB_EQUIP: Record<string, MobEquip> = {
   },
 };
 const MOB_SIZE: Record<string, number> = {
+  goblin: 0.72,
+  goblin_thrower: 0.7,
+  goblin_firecaller: 0.74,
+  goblin_gloomcaller: 0.76,
+  goblin_champion: 0.98,
   gnoll: 1.18,
   gnoll_champion: 1.42,
   skeleton: 0.95,
@@ -183,6 +194,8 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
   // The portrait sits for the DESIGN: seed 0 pins the dust-coat
   // cluster so the bestiary card never flickers between colorways.
   const gno = def.id.startsWith('gnoll') ? gnollLook(def.id, 0) : undefined;
+  // The goblin card pins the moss cluster the same way.
+  const gob = def.id.startsWith('goblin') ? goblinLook(def.id, 0) : undefined;
   if (gno) {
     // The tail is a simulation in the world (tail.ts); the poster runs
     // it to rest at a pinned moment and paints the settled brush
@@ -226,7 +239,7 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
     // A pinned poster is deliberately STATELESS: no depthMemory, so
     // the rig runs its single-frame fallbacks — fine for a still.
     kneeMemory: [0, 0],
-    bodyColor: def.color,
+    bodyColor: gob?.hide ?? def.color,
     hurt: false,
     isOwn: false,
     weaponItem: eq.weapon,
@@ -238,13 +251,12 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
     skinColor:
       def.id === 'troll'
         ? '#6a7d5c'
-        : def.id.startsWith('goblin')
-          ? '#7aa74a'
-          : (kob?.hide ?? gno?.fur ?? MOB_SKIN[def.id]),
+        : (gob?.hide ?? kob?.hide ?? gno?.fur ?? MOB_SKIN[def.id]),
     size: sizeK,
     skeletal: skel,
     kobold: kob,
     gnoll: gno,
+    goblin: gob,
     gatherPhase: 0,
     craftKind: null,
   };
