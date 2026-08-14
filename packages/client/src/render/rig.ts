@@ -2667,6 +2667,307 @@ export function paintGnollHead(
     }
   }
 
+  // ==================== THE TRUE PROFILE ====================
+  // The E/W bands get an AUTHORED side view (the goblin law, spoken
+  // fur): every blended feature extrapolated to profileK 1.0 read as
+  // a squashed front view wearing a snout — the skull box kept its
+  // face-on width, so the muzzle never even cleared the cheek. Past
+  // 0.9 the whole head swaps for a bespoke silhouette instead: ONE
+  // long skull-to-muzzle outline (occiput → domed crown → brow step →
+  // ROMAN SLOPE → proud blunt tip → deep masseter jaw), ONE
+  // rear-rooted ear, ONE hooded eye, ONE grin rising to its cheek
+  // corner. The blends below only ever serve the three-quarter bands;
+  // NOTHING extrapolates here.
+  if (profileK > 0.9 && !back) {
+    const fwd = fx >= 0 ? 1 : -1;
+    const pJaw = f.gape * hh * 0.46;
+    const occX = headX - fwd * gw * 0.95; // the occiput wall
+    const browX = headX + fwd * gw * 0.36; // the forehead step
+    const tipPX = headX + fwd * gw * 1.3; // the blunt tip, PROUD of the cheek
+    const browPY = headY - hh * 0.34;
+    const nosePY = headY + hh * 0.02;
+    // The chin runs DEEP — a shallow chin under the slope drifts the
+    // read back toward the wolf's spike.
+    const chinY = headY + hh * 0.56;
+    const jawPY = headY + hh * 0.7;
+    const ccp = cut * 0.6;
+
+    // ONE ear at the occiput, leaning BACK off the crown — the dish
+    // reads three-quarter from the side, never a floating ring.
+    {
+      const er = hh * 0.33 * (0.95 + 0.15 * hv);
+      const dh = hh * 0.55 * (0.92 + 0.16 * hv);
+      const notched = !!gn.scarred;
+      ctx.save();
+      ctx.translate(occX + fwd * gw * 0.3, crTop + hh * 0.14);
+      ctx.rotate(-fwd * 0.46);
+      ctx.fillStyle = hurt ? '#ffffff' : shade(gn.fur, -8);
+      ctx.beginPath();
+      ctx.moveTo(-er * 0.92, 0);
+      ctx.lineTo(-er, -dh + er);
+      ctx.arc(0, -dh + er, er, Math.PI, notched ? Math.PI * 1.6 : Math.PI * 2);
+      if (notched) {
+        ctx.lineTo(er * 0.34, -dh + er * 0.66);
+        ctx.lineTo(er, -dh + er * 0.94);
+      }
+      ctx.lineTo(er * 0.92, 0);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        ctx.strokeStyle = shade(gn.fur, -20);
+        ctx.lineWidth = Math.max(1, er * 0.13);
+        ctx.stroke();
+        // The cavity sits OBLIQUE — narrowed and pushed toward the
+        // face side, the way a turned dish forecloses.
+        ctx.fillStyle = shade(gn.skin, -46);
+        ctx.beginPath();
+        ctx.ellipse(fwd * er * 0.24, -dh + er * 0.96, er * 0.56, er * 0.84, 0, 0, Math.PI * 2);
+        ctx.fill();
+        if (!notched) {
+          const nickT = 0.34 + 0.3 * (((seed >>> 3) & 7) / 7);
+          ctx.fillStyle = mask;
+          ctx.beginPath();
+          ctx.moveTo(-er * 1.02, -dh * nickT);
+          ctx.lineTo(-er * 0.52, -dh * nickT - er * 0.2);
+          ctx.lineTo(-er * 1.02, -dh * nickT - er * 0.38);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+
+    // The side silhouette: ONE closed outline, skull through muzzle —
+    // longer than it is tall, the way a hyena's head actually reads.
+    const headPath = (): void => {
+      ctx.beginPath();
+      ctx.moveTo(occX, jawPY - cut); // rear jaw chamfer
+      ctx.lineTo(occX, crTop + cut * 1.4); // the occiput wall
+      ctx.quadraticCurveTo(occX, crTop, occX + fwd * cut * 1.6, crTop);
+      // The crown DOMES forward and falls to the brow step...
+      ctx.quadraticCurveTo(headX - fwd * gw * 0.08, crTop - hh * 0.07, browX - fwd * cut * 0.8, crTop + hh * 0.03);
+      ctx.lineTo(browX, browPY);
+      // ...then THE ROMAN SLOPE: convex, brow to nose, one fall.
+      ctx.quadraticCurveTo((browX + tipPX) / 2, browPY + (nosePY - browPY) * 0.26, tipPX - fwd * ccp, nosePY);
+      ctx.lineTo(tipPX, nosePY + ccp); // the blunt front: straight down
+      ctx.lineTo(tipPX, chinY - ccp);
+      ctx.lineTo(tipPX - fwd * ccp * 1.6, chinY); // the chin corner
+      // The throat line rises back into the DEEP masseter jaw.
+      ctx.lineTo(headX + fwd * gw * 0.4, jawPY);
+      ctx.lineTo(occX + fwd * cut * 1.2, jawPY);
+      ctx.closePath();
+    };
+    ctx.fillStyle = fur;
+    headPath();
+    ctx.fill();
+    if (!hurt) {
+      ctx.save();
+      headPath();
+      ctx.clip();
+      // The muzzle wedge forward of the brow is the LIGHTER volume.
+      ctx.fillStyle = shade(gn.fur, 7);
+      ctx.fillRect(Math.min(browX, tipPX), browPY - hh * 0.14, Math.abs(tipPX - browX), jawPY - browPY + hh * 0.2);
+      // Rear form shade seats the occiput...
+      ctx.fillStyle = shade(gn.fur, -10);
+      ctx.fillRect(Math.min(occX, occX + fwd * gw * 0.4), crTop, gw * 0.4, jawPY - crTop);
+      // ...a lit band tops the dome...
+      ctx.fillStyle = shade(gn.fur, 9);
+      ctx.fillRect(Math.min(occX, browX), crTop, Math.abs(browX - occX), hh * 0.12);
+      // ...and the jowl under-shade carries the jaw's weight.
+      ctx.fillStyle = shade(gn.fur, -20);
+      ctx.fillRect(Math.min(occX, tipPX), jawPY - hh * 0.14, Math.abs(tipPX - occX), hh * 0.14);
+      // THE BRIDGE SADDLE rides the slope and stops before the pad.
+      ctx.fillStyle = mask;
+      ctx.beginPath();
+      ctx.moveTo(browX - fwd * cut * 0.5, browPY + hh * 0.02);
+      ctx.lineTo(tipPX - fwd * hh * 0.24, nosePY + hh * 0.03);
+      ctx.lineTo(tipPX - fwd * hh * 0.24, nosePY + hh * 0.22);
+      ctx.lineTo(browX - fwd * cut * 0.5, browPY + hh * 0.3);
+      ctx.closePath();
+      ctx.fill();
+      // The spot field walks the cheek and neck.
+      ctx.fillStyle = shade(gn.spot, 0);
+      for (let i = 0; i < 4; i++) {
+        const h2 = ((seed >>> (i * 3)) ^ (seed * 41 + i * 97)) | 0;
+        const sxr = (h2 & 15) / 15;
+        const syr = ((h2 >> 4) & 15) / 15;
+        const bx2 = occX + fwd * gw * (0.2 + 0.62 * sxr);
+        const by2 = crTop + (jawPY - crTop) * (0.3 + 0.4 * syr);
+        const br = hh * (0.055 + 0.03 * (((h2 >> 8) & 3) / 3));
+        ctx.beginPath();
+        ctx.ellipse(bx2, by2, br * 1.25, br, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // The cheek ruff flares BACK off the jaw hinge — the sideburn.
+    if (!hurt) {
+      const rx0 = occX + fwd * gw * 0.3;
+      ctx.fillStyle = shade(gn.fur, -5);
+      ctx.beginPath();
+      ctx.moveTo(rx0, headY - hh * 0.06);
+      ctx.lineTo(rx0 - fwd * gw * 0.34, headY + hh * 0.12);
+      ctx.lineTo(rx0 - fwd * gw * 0.04, headY + hh * 0.24);
+      ctx.lineTo(rx0 - fwd * gw * 0.3, headY + hh * 0.44);
+      ctx.lineTo(rx0 - fwd * gw * 0.02, headY + hh * 0.5);
+      ctx.lineTo(rx0 - fwd * gw * 0.2, headY + hh * 0.66);
+      ctx.lineTo(rx0 + fwd * gw * 0.08, headY + hh * 0.6);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // THE BROW LEDGE hoods the one eye, angled down the slope.
+    const eX = browX - fwd * gw * 0.04;
+    const eY = browPY + hh * 0.18;
+    if (!hurt) {
+      ctx.fillStyle = mask;
+      ctx.beginPath();
+      ctx.moveTo(browX - fwd * gw * 0.34, browPY - hh * 0.14);
+      ctx.lineTo(browX + fwd * cut * 0.9, browPY - hh * 0.03);
+      ctx.lineTo(browX + fwd * cut * 0.9, browPY + hh * 0.12);
+      ctx.lineTo(browX - fwd * gw * 0.36, browPY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(gn.mask, -12);
+      ctx.beginPath();
+      ctx.ellipse(eX, eY, hh * 0.12, hh * 0.09, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = gn.eye;
+      ctx.beginPath();
+      ctx.arc(eX, eY, hh * 0.13, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    ctx.fillStyle = hurt ? '#241a2e' : gn.eye;
+    ctx.beginPath();
+    ctx.arc(eX, eY, hh * 0.085, 0, Math.PI * 2);
+    ctx.fill();
+    if (!hurt) {
+      ctx.fillStyle = '#241a2e';
+      ctx.beginPath();
+      ctx.arc(eX + fwd * hh * 0.024, eY + hh * 0.012, hh * 0.044, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // THE NOSE PAD wraps the blunt front — taller than wide, seen on.
+    ctx.fillStyle = hurt ? '#ffffff' : gn.nose;
+    ctx.beginPath();
+    chamferRect(ctx, Math.min(tipPX - fwd * hh * 0.28, tipPX + fwd * hh * 0.01), nosePY - hh * 0.02, hh * 0.29, hh * 0.36, ccp * 0.8);
+    ctx.fill();
+    if (!hurt) {
+      ctx.fillStyle = shade(gn.nose, 24);
+      ctx.beginPath();
+      ctx.ellipse(tipPX - fwd * hh * 0.16, nosePY + hh * 0.06, hh * 0.07, hh * 0.05, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // THE MOUTH: the shut grin, or the forward-gaping cackle.
+    const mouthPY = headY + hh * 0.34;
+    if (pJaw > hh * 0.03) {
+      ctx.fillStyle = hurt ? '#241a2e' : '#2e1418';
+      ctx.beginPath();
+      ctx.moveTo(tipPX - fwd * hh * 0.04, mouthPY - hh * 0.02);
+      ctx.lineTo(headX + fwd * gw * 0.34, mouthPY + hh * 0.04);
+      ctx.lineTo(headX + fwd * gw * 0.4, mouthPY + hh * 0.16 + pJaw * 0.55);
+      ctx.lineTo(tipPX - fwd * hh * 0.01, mouthPY + hh * 0.12 + pJaw);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        ctx.fillStyle = '#7c3234';
+        ctx.beginPath();
+        ctx.ellipse(headX + fwd * gw * 0.75, mouthPY + hh * 0.1 + pJaw * 0.5, gw * 0.2, hh * 0.06 + pJaw * 0.14, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // The upper row hangs into the maw...
+        ctx.fillStyle = '#efe6cf';
+        for (const t of [0.2, 0.5, 0.78]) {
+          const txx = tipPX + (headX + fwd * gw * 0.34 - tipPX) * t;
+          const tyy = mouthPY - hh * 0.01 + hh * 0.05 * t;
+          ctx.beginPath();
+          ctx.moveTo(txx - hh * 0.05, tyy);
+          ctx.lineTo(txx, tyy + hh * (t === 0.5 ? 0.13 : 0.2) + pJaw * 0.18);
+          ctx.lineTo(txx + hh * 0.05, tyy);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // ...and the dropped mandible answers with the underbite.
+        ctx.fillStyle = shade(gn.underfur, -16);
+        ctx.beginPath();
+        chamferRect(
+          ctx,
+          Math.min(headX + fwd * gw * 0.3, tipPX - fwd * hh * 0.02),
+          mouthPY + hh * 0.1 + pJaw,
+          Math.abs(tipPX - fwd * hh * 0.02 - (headX + fwd * gw * 0.3)),
+          hh * 0.17,
+          [0, 0, cut * 0.4, cut * 0.4],
+        );
+        ctx.fill();
+        ctx.fillStyle = '#efe6cf';
+        const cx2 = tipPX - fwd * hh * 0.16;
+        ctx.beginPath();
+        ctx.moveTo(cx2 - hh * 0.055, mouthPY + hh * 0.12 + pJaw);
+        ctx.lineTo(cx2 + fwd * hh * 0.015, mouthPY + hh * 0.12 + pJaw - hh * 0.24 * (1 + 0.25 * (hv - 1)));
+        ctx.lineTo(cx2 + hh * 0.055, mouthPY + hh * 0.12 + pJaw);
+        ctx.closePath();
+        ctx.fill();
+      }
+    } else if (!hurt) {
+      // The shut grin: the seam leaves the tip, sags, and RISES past
+      // the muzzle root into its one cheek corner.
+      ctx.strokeStyle = shade(gn.nose, -4);
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(1.2, hh * 0.075);
+      ctx.beginPath();
+      ctx.moveTo(tipPX - fwd * hh * 0.05, mouthPY);
+      ctx.quadraticCurveTo(headX + fwd * gw * 0.85, mouthPY + hh * 0.12, headX + fwd * gw * 0.16, mouthPY - hh * 0.2);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      // The meshed row rides the seam...
+      ctx.fillStyle = '#e8dcc0';
+      for (const t of [0.16, 0.42, 0.68]) {
+        const txx = tipPX + (headX + fwd * gw * 0.16 - tipPX) * t;
+        const tyy = mouthPY + hh * (0.1 - 0.28 * t * t);
+        ctx.beginPath();
+        ctx.moveTo(txx - hh * 0.045, tyy);
+        ctx.lineTo(txx, tyy + hh * 0.12 * (1 + 0.2 * (hv - 1)));
+        ctx.lineTo(txx + hh * 0.045, tyy);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // ...and ONE canine juts UP proud near the tip.
+      ctx.fillStyle = '#efe6cf';
+      const cx2 = tipPX - fwd * hh * 0.18;
+      ctx.beginPath();
+      ctx.moveTo(cx2 - hh * 0.055, mouthPY + hh * 0.1);
+      ctx.lineTo(cx2 + fwd * hh * 0.015, mouthPY + hh * 0.1 - hh * 0.22 * (1 + 0.3 * (hv - 1)));
+      ctx.lineTo(cx2 + hh * 0.055, mouthPY + hh * 0.1);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // The packlord's ledger: the scar rakes DOWN the slope.
+    if (gn.scarred && !hurt) {
+      ctx.strokeStyle = shade(gn.fur, 52);
+      ctx.lineWidth = Math.max(1.5, hh * 0.07);
+      const scx = headX + fwd * gw * 0.78;
+      ctx.beginPath();
+      ctx.moveTo(scx - hh * 0.1, browPY + hh * 0.12);
+      ctx.lineTo(scx + hh * 0.1, browPY + hh * 0.58);
+      ctx.stroke();
+      ctx.lineWidth = Math.max(1, hh * 0.035);
+      for (const t of [0.32, 0.64]) {
+        const px0 = scx - hh * 0.1 + hh * 0.2 * t;
+        const py0 = browPY + hh * (0.12 + 0.46 * t);
+        ctx.beginPath();
+        ctx.moveTo(px0 - hh * 0.06, py0 + hh * 0.03);
+        ctx.lineTo(px0 + hh * 0.06, py0 - hh * 0.03);
+        ctx.stroke();
+      }
+    }
+    return;
+  }
+
   // --- ROUND ears set LOW and WIDE — the hyena's dish, never the
   // wolf's point or the bear's upright button: a short stem under a
   // round blade, canted HARD off the skull's top corners, drawn
