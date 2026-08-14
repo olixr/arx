@@ -11277,62 +11277,44 @@ export function drawPauldron(
   }
 
   if (st.pauldron === 'anvilpaul') {
-    // THE THUNDER HEART — thunderhead's shoulders, second forging:
-    // the seat, the slab and the coil are DEAD. Each shoulder is a
-    // CONTAINED STORM: five dark cloud lobes (cloudPuff — the
-    // world's own blob language) orbiting a near-black heart on a
-    // slow elliptical swirl — back lobes pass BEHIND the heart,
-    // front lobes in front, so the containment reads in true 2.5D —
-    // seated in a dark stormbed shelf that keeps the shoulder
-    // covered. Electricity is CONSTANT: every beat the storm speaks
-    // in one of three forms — a heart bolt radiating out, a rim
-    // crawl across the cluster, a sheet flicker lighting one lobe
-    // from within — drawn arcs dancing on the 90ms re-roll, never
-    // glowed. A forged gold BINDING arc sweeps with the orbit: the
-    // one made thing holding the storm to the shoulder. ONE SKY
-    // holds — on the shared strike the whole heart lets go at once,
-    // and only then does a leader leave the cluster for the cloth.
+    // THE THUNDER HEART — thunderhead's shoulders, third forging:
+    // built to be READ. Each shoulder is a small thunderhead with a
+    // visible anatomy: THE STORMBED (a shelf in the world's blob
+    // language whose dark belly is CLIPPED inside its body — the
+    // belly-inside-the-body law: a detached darkest blob once
+    // rendered as a floating black egg), three NAMED cloud masses —
+    // crown and two flanks — arranged as weather, two small RUNNER
+    // lobes swirling through front and back for motion, and at the
+    // center THE EYE: a near-black core ringed by broken arcs of
+    // storm-light — the orb of contained energy, dark where the
+    // charge lives, lit only at its edge. The two shoulders are a
+    // PAIR, not copies: the near side stacks tall (the storm crown),
+    // the far side lies low and wide (the low storm), each with its
+    // own seeds, phases and cradle. Electricity is constant — the
+    // 460ms pulse speaks eye-bolt / crawl / sheet in rotation, and
+    // the shared ONE SKY strike takes everything at once.
     const seamC = st.thunderbank?.glow ?? trim;
     const k = stormboltK(nowMs);
     const strike = k > 0.92;
-    // The two shoulders share the sky but not the swirl: the far
-    // heart runs a phase-shifted orbit and beat, so no bolt twins.
-    const sOff = side > 0 ? 0 : 0.41;
-    // THE STORMBED: a flat-bellied dark shelf in the blob language —
-    // coverage without a dome. Near-black lot: value steps WIDENED.
-    ctx.fillStyle = hurt ? '#ffffff' : shade(col, -8);
-    cloudPuff(ctx, 0.002 * s, -0.024 * s, 0.112 * s, 0.05 * s, 211 + sOff * 100, nowMs, 0.8);
-    ctx.fill();
-    if (!hurt) {
-      ctx.fillStyle = shade(col, -32);
-      cloudPuff(ctx, 0.012 * s, 0.01 * s, 0.086 * s, 0.027 * s, 263 + sOff * 100, nowMs, 0.6);
-      ctx.fill();
-    }
-    // THE ORBIT: five lobes on an elliptical swirl about the heart —
-    // the same spin direction on both shoulders (one sky, one spin).
-    const hx = 0.005 * s;
-    const hy = -0.088 * s;
-    const spin = nowMs * 0.00021 + sOff * Math.PI * 2;
-    type Lobe = [number, number, number, number, boolean];
-    const lobes: Lobe[] = [];
-    for (let i = 0; i < 5; i++) {
-      const a = spin + (i / 5) * Math.PI * 2;
-      const h = Math.sin(i * 78.233 + 407.1 + sOff * 91) * 43758.5453;
-      const orad = (0.056 + ((h - Math.floor(h)) - 0.5) * 0.02 + Math.sin(nowMs * 0.0006 + i * 2.1) * 0.006) * s;
-      const lx = hx + Math.cos(a) * orad;
-      const ly = hy + Math.sin(a) * orad * 0.58;
-      const rr = (0.045 + ((h - Math.floor(h * 1.7)) % 1) * 0.009) * s;
-      lobes.push([lx, ly, rr, i, Math.sin(a) >= 0]);
-    }
-    // THE PULSE: a 460ms beat clock, three forms in rotation. The
-    // struck lobe lights FROM WITHIN for the life of its beat.
+    const near2 = side > 0;
+    const sOff = near2 ? 0 : 0.41;
+    const sd = near2 ? 0 : 500;
+    // The per-side build: [x, y, r] for crown, flankL, flankR; the
+    // eye; the bed; the cradle span. Near = tall, far = low + wide.
+    const CROWN = near2 ? [-0.012, -0.124, 0.052] : [-0.004, -0.106, 0.046];
+    const FLANKL = near2 ? [-0.062, -0.076, 0.043] : [-0.066, -0.064, 0.045];
+    const FLANKR = near2 ? [0.058, -0.082, 0.045] : [0.062, -0.068, 0.042];
+    const EYE = near2 ? [0.004, -0.084, 0.026] : [0, -0.074, 0.023];
+    const statics = [CROWN, FLANKL, FLANKR] as const;
+    // THE PULSE CLOCK: three forms in rotation, targets walking the
+    // named masses, the bolt guttering out at the end of its beat.
     const BEAT = 460;
     const bt = nowMs / BEAT + sOff * 3;
     const bi2 = Math.floor(bt);
     const bu = bt - bi2;
     const form = ((bi2 % 3) + 3) % 3;
-    const tgt = (((bi2 * 2) % 5) + 5) % 5;
-    const tgt2 = (tgt + 2) % 5;
+    const tgt = (((bi2 * 2) % 3) + 3) % 3;
+    const tgt2 = (tgt + 1) % 3;
     const beatA = bu < 0.7 ? 1 : (1 - bu) / 0.3;
     const litOf = (i: number): number => {
       if (strike) return 30;
@@ -11341,78 +11323,163 @@ export function drawPauldron(
       if (form === 0) return i === tgt ? 20 : 0;
       return i === tgt || i === tgt2 ? 16 : 0;
     };
-    const drawLobe = (lb: Lobe, front: boolean): void => {
-      const dvB = (front ? -4 : -16) + litOf(lb[3]);
-      ctx.fillStyle = hurt ? '#ffffff' : shade(col, dvB);
-      cloudPuff(ctx, lb[0], lb[1], lb[2] * (front ? 1 : 0.88), lb[2] * 0.78 * (front ? 1 : 0.88), 331 + lb[3] * 47 + Math.floor(sOff * 10), nowMs, 1);
+    // THE STORMBED: body first, then the belly clipped INSIDE it —
+    // the darkest tone can shade the shelf but never leave it.
+    const bedLit = strike ? 14 : 0;
+    const bx0 = 0.002 * s;
+    const by0 = (near2 ? -0.02 : -0.016) * s;
+    const brx = (near2 ? 0.118 : 0.122) * s;
+    const bry = (near2 ? 0.052 : 0.048) * s;
+    ctx.fillStyle = hurt ? '#ffffff' : shade(col, -8 + bedLit);
+    cloudPuff(ctx, bx0, by0, brx, bry, 211 + sd, nowMs, 0.8);
+    ctx.fill();
+    if (!hurt) {
+      ctx.save();
+      cloudPuff(ctx, bx0, by0, brx, bry, 211 + sd, nowMs, 0.8);
+      ctx.clip();
+      ctx.fillStyle = shade(col, -28 + bedLit);
+      cloudPuff(ctx, bx0 + 0.01 * s, by0 + bry * 0.72, brx * 0.94, bry * 0.66, 263 + sd, nowMs, 0.6);
       ctx.fill();
-      if (!hurt && front && litOf(lb[3]) === 0) {
-        // Unlit front lobes keep a dim crown — dark thunderheads,
-        // lit only when the storm says so.
-        ctx.fillStyle = shade(col, 10);
-        cloudPuff(ctx, lb[0] - lb[2] * 0.16, lb[1] - lb[2] * 0.3, lb[2] * 0.5, lb[2] * 0.36, 361 + lb[3] * 47, nowMs, 1);
+      ctx.restore();
+    }
+    // THE RUNNERS: two small lobes swirling through the storm — the
+    // same spin on both shoulders (one sky, one turn), the far side
+    // on its own phase so no runner twins.
+    const spin = nowMs * 0.00023 + sOff * Math.PI * 2;
+    const runners: Array<[number, number, number, boolean]> = [];
+    for (let i = 0; i < 2; i++) {
+      const a = spin + i * Math.PI;
+      const rx2 = (near2 ? 0.074 : 0.082) * s;
+      const ry2 = (near2 ? 0.034 : 0.028) * s;
+      runners.push([
+        EYE[0]! * s + Math.cos(a) * rx2,
+        EYE[1]! * s + Math.sin(a) * ry2,
+        (i === 0 ? 0.029 : 0.025) * s,
+        Math.sin(a) >= 0,
+      ]);
+    }
+    for (const [rx3, ry3, rr3, front] of runners) {
+      if (front) continue;
+      ctx.fillStyle = hurt ? '#ffffff' : shade(col, -20 + (strike ? 22 : 0));
+      cloudPuff(ctx, rx3, ry3, rr3 * 0.85, rr3 * 0.68, 601 + sd + Math.round(rr3), nowMs, 1);
+      ctx.fill();
+    }
+    // THE NAMED MASSES: flanks low, crown on top — a thunderhead's
+    // build, not a ring of samey lobes. Each lights FROM WITHIN when
+    // the pulse speaks its name.
+    for (const [i, mass] of [[1, FLANKL], [2, FLANKR], [0, CROWN]] as const) {
+      const dvB = (i === 0 ? 2 : -6) + litOf(i);
+      ctx.fillStyle = hurt ? '#ffffff' : shade(col, dvB);
+      cloudPuff(ctx, mass[0]! * s, mass[1]! * s, mass[2]! * s, mass[2]! * 0.78 * s, 331 + i * 47 + sd, nowMs, 1);
+      ctx.fill();
+      if (!hurt && i === 0 && litOf(0) === 0) {
+        // Day still touches the crown's shoulder — the one dim lit
+        // cap on an otherwise charged-dark sky.
+        ctx.fillStyle = shade(col, 16);
+        cloudPuff(ctx, (mass[0]! - mass[2]! * 0.18) * s, (mass[1]! - mass[2]! * 0.32) * s, mass[2]! * 0.5 * s, mass[2]! * 0.34 * s, 361 + sd, nowMs, 1);
         ctx.fill();
       }
-    };
-    for (const lb of lobes) if (!lb[4]) drawLobe(lb, false);
-    // THE CHARGE EMBER: gold breathing in the heart's shadow.
+    }
+    // THE EYE: the orb of contained energy — a near-black core the
+    // storm-light only ever RINGS. Charge lives where light doesn't;
+    // the broken arcs turning at its edge are what make it readable.
+    const ex = EYE[0]! * s;
+    const ey = EYE[1]! * s;
+    const er = EYE[2]! * s;
     if (!hurt) {
-      ctx.globalAlpha = 0.14 + 0.36 * k + (strike ? 0.26 : 0);
+      // A breathing gold ember bleeds out from behind the core.
+      ctx.globalAlpha = 0.12 + 0.3 * k + (strike ? 0.24 : 0);
       ctx.fillStyle = seamC;
       ctx.beginPath();
-      ctx.ellipse(hx, hy + 0.012 * s, 0.05 * s, 0.026 * s, 0, 0, Math.PI * 2);
+      ctx.ellipse(ex, ey, er * 1.7, er * 0.9, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
     }
-    // THE HEART: the darkest mass in the whole set — charge lives
-    // where light doesn't.
-    ctx.fillStyle = hurt ? '#ffffff' : shade(col, strike ? -4 : -36);
-    cloudPuff(ctx, hx, hy, 0.036 * s, 0.03 * s, 499 + sOff * 100, nowMs, 1);
+    ctx.fillStyle = hurt ? '#ffffff' : shade(col, strike ? -6 : -38);
+    cloudPuff(ctx, ex, ey, er, er * 0.86, 499 + sd, nowMs, 1);
     ctx.fill();
-    for (const lb of lobes) if (lb[4]) drawLobe(lb, true);
     if (!hurt) {
-      // THE BINDING: the one forged thing — a fixed gold cradle
-      // holding the storm to the shoulder, riveted at both tips. It
-      // does not move; the storm moves inside it. (A rotating arc
-      // read as a loose curl, not a mount.)
+      // The eclipse rim: two broken arcs of different radii turning
+      // slowly about the core, and one hot pale tip — energy drawn
+      // at the edge of the dark, never a glow.
+      const a0 = spin * 1.6;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = strike ? '#ffffff' : seamC;
+      ctx.globalAlpha = 0.55 + 0.35 * k;
+      ctx.lineWidth = Math.max(1, s * 0.007);
+      ctx.beginPath();
+      ctx.arc(ex, ey, er * 1.32, a0, a0 + Math.PI * 0.9);
+      ctx.stroke();
+      ctx.globalAlpha = 0.4 + 0.3 * k;
+      ctx.lineWidth = Math.max(1, s * 0.005);
+      ctx.beginPath();
+      ctx.arc(ex, ey, er * 1.12, a0 + Math.PI * 1.2, a0 + Math.PI * 1.7);
+      ctx.stroke();
+      ctx.strokeStyle = strike ? '#ffffff' : '#f4f8ff';
+      ctx.globalAlpha = (0.3 + 0.4 * k) * (0.5 + 0.5 * beatA);
+      ctx.lineWidth = Math.max(1, s * 0.0045);
+      ctx.beginPath();
+      ctx.arc(ex, ey, er * 1.32, a0 + Math.PI * 0.62, a0 + Math.PI * 0.9);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    for (const [rx3, ry3, rr3, front] of runners) {
+      if (!front) continue;
+      ctx.fillStyle = hurt ? '#ffffff' : shade(col, -8 + (strike ? 26 : 0));
+      cloudPuff(ctx, rx3, ry3, rr3, rr3 * 0.78, 601 + sd + Math.round(rr3), nowMs, 1);
+      ctx.fill();
+    }
+    if (!hurt) {
+      // THE BINDING: the one forged thing — a fixed gold cradle,
+      // riveted at both tips, sized to its own shoulder's storm. It
+      // does not move; the storm moves inside it.
+      const crx = (near2 ? 0.074 : 0.08) * s;
+      const cry = (near2 ? 0.047 : 0.042) * s;
       ctx.globalAlpha = 0.55 + 0.35 * k;
       ctx.strokeStyle = strike ? '#ffffff' : seamC;
       ctx.lineWidth = Math.max(1, s * 0.009);
       ctx.beginPath();
-      ctx.ellipse(hx, hy, 0.072 * s, 0.046 * s, 0, Math.PI * 0.16, Math.PI * 0.84);
+      ctx.ellipse(ex, ey, crx, cry, 0, Math.PI * 0.16, Math.PI * 0.84);
       ctx.stroke();
       ctx.globalAlpha = 1;
       for (const sgn of [-1, 1] as const) {
-        const rvx = hx + Math.cos(Math.PI * (sgn > 0 ? 0.16 : 0.84)) * 0.072 * s;
-        const rvy = hy + Math.sin(Math.PI * (sgn > 0 ? 0.16 : 0.84)) * 0.046 * s;
+        const rvx = ex + Math.cos(Math.PI * (sgn > 0 ? 0.16 : 0.84)) * crx;
+        const rvy = ey + Math.sin(Math.PI * (sgn > 0 ? 0.16 : 0.84)) * cry;
         ctx.fillStyle = strike ? '#ffffff' : shade(seamC, -10);
         ctx.beginPath();
         ctx.arc(rvx, rvy, Math.max(1.2, 0.009 * s), 0, Math.PI * 2);
         ctx.fill();
       }
-      // THE CONSTANT PULSE: drawn lightning, alive every beat.
+      // THE CONSTANT PULSE: drawn lightning, alive every beat, every
+      // endpoint a named feature — bolts you can follow.
       const fr = Math.floor(nowMs / 90);
-      const aPulse = (0.4 + 0.35 * k) * beatA;
-      const lt = lobes[tgt]!;
-      const lt2 = lobes[tgt2]!;
+      const aPulse = (0.45 + 0.35 * k) * beatA;
+      const tx2 = statics[tgt]![0]! * s;
+      const ty2 = statics[tgt]![1]! * s;
+      const ux2 = statics[tgt2]![0]! * s;
+      const uy2 = statics[tgt2]![1]! * s;
       if (strike) {
-        // THE LET-GO: the heart takes every lobe at once, and the
-        // leader leaves the cluster for the cloth — the only bolt
-        // that ever escapes the binding.
-        stormArc(ctx, hx, hy, lt[0], lt[1], fr * 9 + side, s * 0.016, seamC, 0.9, Math.max(1, s * 0.006));
-        stormArc(ctx, hx, hy, lt2[0], lt2[1], fr * 9 + side + 3, s * 0.016, seamC, 0.85, Math.max(1, s * 0.006), false);
-        stormArc(ctx, hx, hy + 0.02 * s, 0.024 * s, 0.07 * s, fr * 9 + side + 5, s * 0.02, seamC, 0.8, Math.max(1, s * 0.007));
+        // THE LET-GO: the eye takes crown and both flanks at once,
+        // and the leader leaves the storm for the cloth — the only
+        // bolt that ever escapes the binding.
+        stormArc(ctx, ex, ey, CROWN[0]! * s, CROWN[1]! * s, fr * 9 + side, s * 0.015, seamC, 0.9, Math.max(1, s * 0.006));
+        stormArc(ctx, ex, ey, FLANKL[0]! * s, FLANKL[1]! * s, fr * 9 + side + 3, s * 0.014, seamC, 0.85, Math.max(1, s * 0.0055), false);
+        stormArc(ctx, ex, ey, FLANKR[0]! * s, FLANKR[1]! * s, fr * 9 + side + 4, s * 0.014, seamC, 0.85, Math.max(1, s * 0.0055), false);
+        stormArc(ctx, ex, ey + 0.02 * s, 0.026 * s, 0.068 * s, fr * 9 + side + 5, s * 0.02, seamC, 0.8, Math.max(1, s * 0.007));
       } else if (beatA > 0.05) {
         if (form === 0) {
-          // Form I — THE HEART BOLT: charge radiating outward.
-          stormArc(ctx, hx, hy, lt[0], lt[1], fr * 7 + bi2, s * 0.014, seamC, aPulse, Math.max(1, s * 0.005));
+          // Form I — THE EYE BOLT: the core reaches out and names a
+          // mass.
+          stormArc(ctx, ex, ey, tx2, ty2, fr * 7 + bi2, s * 0.013, seamC, aPulse, Math.max(1, s * 0.0058));
         } else if (form === 1) {
-          // Form II — THE RIM CRAWL: charge walking the cluster.
-          stormArc(ctx, lt[0], lt[1], lt2[0], lt2[1], fr * 7 + bi2, s * 0.017, seamC, aPulse, Math.max(1, s * 0.005), false);
+          // Form II — THE CRAWL: charge walking mass to mass across
+          // the storm.
+          stormArc(ctx, tx2, ty2, ux2, uy2, fr * 7 + bi2, s * 0.016, seamC, aPulse, Math.max(1, s * 0.0055), false);
         } else {
-          // Form III — THE SHEET: one lobe lit from within, the
-          // filament buried in the cloud itself.
-          stormArc(ctx, lt[0] - lt[2] * 0.5, lt[1] + lt[2] * 0.2, lt[0] + lt[2] * 0.5, lt[1] - lt[2] * 0.25, fr * 7 + bi2, s * 0.01, seamC, aPulse * 0.8, Math.max(1, s * 0.004), false);
+          // Form III — THE SHEET: the filament buried inside the lit
+          // mass itself.
+          const mr = statics[tgt]![2]! * s;
+          stormArc(ctx, tx2 - mr * 0.5, ty2 + mr * 0.18, tx2 + mr * 0.5, ty2 - mr * 0.22, fr * 7 + bi2, s * 0.009, seamC, aPulse * 0.8, Math.max(1, s * 0.0045), false);
         }
       }
     }
