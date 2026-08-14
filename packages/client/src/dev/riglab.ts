@@ -1,28 +1,29 @@
-// TEMPORARY rig verification harness (checked-in tooling): THE LYNX
-// SHEET — the tufted-shadow audit. Both cats (lynx + duskruff
-// champion) across all eight facing bands at idle, walk, run, the
-// looping pounce, and the hurt flash; a CLUSTER SPREAD row proving a
-// spawned tribe rolls all four coats (never a rubber stamp); and
-// BODY-RULER cells standing the player rig and the wolf family beside
-// the cats so scale reads at a glance. Each figure owns a real LegRig
-// and a drifting world position, so feet plant and knee hysteresis
-// runs exactly as in game. Levers:
+// TEMPORARY rig verification harness (checked-in tooling): THE GOLEM
+// SHEET — the construct-dialect audit (docs/golems-plan.md). All four
+// builds (rock / iron / fire / ice) across the eight facing bands at
+// idle, walk, the looping strike, the looping cast wind, and the hurt
+// flash; a STONE CLUSTER row proving eight consecutive spawn eids
+// scatter the rock golem across all four quarries; and BODY-RULER
+// cells standing the player rig, the troll, and the gnoll packlord
+// beside each golem so the tallest-walking-body claim reads at a
+// glance. Each figure owns a live LegSolver, so feet plant and knee
+// hysteresis run exactly as in game. Levers:
+//   ?s=px       cell scale (px per tile)
 //   ?rows=a-b   draw only sheet rows a..b (screenshot banding)
 //   ?det=1      DETERMINISTIC mode: fixed 60Hz steps run synchronously
 //               on the first frame; ?detn=N sets the step count.
-import { LegSolver, drawHumanoid, beastSpec, drawBeast, lynxLook, type RigPose } from '../render/rig.js';
-import { LegRig } from '../render/legs.js';
-import { BobtailSim, drawBobtail } from '../render/tail.js';
+import { LegSolver, drawHumanoid, gnollLook, type RigPose } from '../render/rig.js';
+import { golemLook } from '../render/golems.js';
 import { PoseState } from '@arx/shared';
 
 const canvas = document.getElementById('lab') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 
 const q = new URLSearchParams(location.search);
-const S = Math.max(60, parseInt(q.get('s') ?? '150', 10) || 150); // scale px per tile (?s= zoom lever)
+const S = Math.max(60, parseInt(q.get('s') ?? '110', 10) || 110); // scale px per tile (?s= zoom lever)
 const YS = 0.6; // camera y foreshorten (world-y tile → screen), renderer's yScale
 
-const WALK_SPEED = 1.5;
+const WALK_SPEED = 1.3;
 
 const DIRS = [
   ['S', Math.PI / 2],
@@ -36,15 +37,17 @@ const DIRS = [
 ] as const;
 
 /** The bestiary rows this sheet audits (content defs, mirrored). */
-const BEASTS: Record<string, { radius: number; color: string; speed: number }> = {
-  lynx: { radius: 0.36, color: '#9c7f55', speed: 4.7 },
-  lynx_young: { radius: 0.3, color: '#9c7f55', speed: 4.6 },
-  lynx_champion: { radius: 0.44, color: '#565064', speed: 4.9 },
-  wolf: { radius: 0.34, color: '#6a6f7d', speed: 4.6 },
-  dire_wolf: { radius: 0.44, color: '#4b4854', speed: 4.8 },
+const BODIES: Record<string, { size: number; color: string; skin?: string; kind: 'golem' | 'troll' | 'gnoll' | 'player' }> = {
+  rock_golem: { size: 1.55, color: '#8a8164', kind: 'golem' },
+  iron_golem: { size: 1.6, color: '#6a7280', kind: 'golem' },
+  fire_golem: { size: 1.6, color: '#3a2c26', kind: 'golem' },
+  ice_golem: { size: 1.7, color: '#9ec8dc', kind: 'golem' },
+  troll: { size: 1.4, color: '#6a7d5c', skin: '#6a7d5c', kind: 'troll' },
+  gnoll_champion: { size: 1.42, color: '#4e463c', kind: 'gnoll' },
+  player: { size: 1, color: '#3f5d8e', kind: 'player' },
 };
 
-type Mode = 'idle' | 'walk' | 'move' | 'pounce' | 'hurt';
+type Mode = 'idle' | 'walk' | 'strike' | 'cast' | 'hurt';
 
 interface Fig {
   label: string;
@@ -52,15 +55,14 @@ interface Fig {
   dir: number;
   mode: Mode;
   seed: number;
-  /** Ruler cells stand the player rig beside the beast. */
+  /** Ruler cells stand the player rig beside the subject. */
   ruler?: boolean;
   // live sim state
-  legs?: LegRig;
-  bob?: BobtailSim;
   wx?: number;
   wy?: number;
-  wp?: number;
-  kneeMemory?: number[];
+  legs?: LegSolver;
+  knee?: number[];
+  depth?: RigPose['depthMemory'];
   manLegs?: LegSolver;
   manKnee?: number[];
   manDepth?: RigPose['depthMemory'];
@@ -71,35 +73,38 @@ const row = (label: string, defId: string, mode: Mode, seed = 5): void => {
   for (const [lbl, dir] of DIRS) figs.push({ label: `${label} ${lbl}`, defId, dir, mode, seed });
 };
 
-// Sheet rows, top to bottom.
-row('lynx idle', 'lynx', 'idle'); // 0
-row('lynx walk', 'lynx', 'walk'); // 1
-row('lynx run', 'lynx', 'move'); // 2
-row('lynx pounce', 'lynx', 'pounce'); // 3
-row('lynx hurt', 'lynx', 'hurt'); // 4
-row('duskruff idle', 'lynx_champion', 'idle'); // 5
-row('duskruff run', 'lynx_champion', 'move'); // 6
-row('duskruff pounce', 'lynx_champion', 'pounce'); // 7
-// THE CLUSTER SPREAD: eight consecutive spawn eids facing camera —
-// the hash must scatter the tribe across all four coats.
-for (let k = 0; k < 8; k++) {
-  figs.push({ label: `tribe eid ${400 + k}`, defId: 'lynx', dir: Math.PI / 2, mode: 'idle', seed: 400 + k }); // 8
+// Sheet rows, top to bottom — five rows per build.
+for (const [id, tag] of [
+  ['rock_golem', 'rock'],
+  ['iron_golem', 'iron'],
+  ['fire_golem', 'fire'],
+  ['ice_golem', 'ice'],
+] as const) {
+  row(`${tag} idle`, id, 'idle');
+  row(`${tag} walk`, id, 'walk');
+  row(`${tag} strike`, id, 'strike');
+  row(`${tag} cast`, id, 'cast');
+  row(`${tag} hurt`, id, 'hurt');
 }
-// THE BODY RULER: the player rig and the wolf family beside the cats.
-figs.push({ label: 'ruler: player+lynx', defId: 'lynx', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
-figs.push({ label: 'ruler: player+duskruff', defId: 'lynx_champion', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
-figs.push({ label: 'wolf (reference)', defId: 'wolf', dir: Math.PI / 2, mode: 'idle', seed: 5 });
-figs.push({ label: 'lynx (beside)', defId: 'lynx', dir: Math.PI / 2, mode: 'idle', seed: 5 });
-figs.push({ label: 'dire wolf (reference)', defId: 'dire_wolf', dir: Math.PI / 2, mode: 'idle', seed: 5 });
-figs.push({ label: 'duskruff (beside)', defId: 'lynx_champion', dir: Math.PI / 2, mode: 'idle', seed: 5 });
-figs.push({ label: 'lynx E (profile)', defId: 'lynx', dir: 0, mode: 'idle', seed: 5 });
-figs.push({ label: 'duskruff E (profile)', defId: 'lynx_champion', dir: 0, mode: 'idle', seed: 5 }); // 9
-// The year's litter: cub proportions across the bands.
-row('young idle', 'lynx_young', 'idle'); // 10
+// THE STONE CLUSTER SPREAD: eight consecutive spawn eids facing the
+// camera — the hash must scatter the quarry across all four stones.
+for (let k = 0; k < 8; k++) {
+  figs.push({ label: `quarry eid ${400 + k}`, defId: 'rock_golem', dir: Math.PI / 2, mode: 'idle', seed: 400 + k });
+}
+// THE BODY RULER: the player rig beside each golem, then the troll
+// and the packlord for the bestiary's old height records.
+figs.push({ label: 'ruler: player+rock', defId: 'rock_golem', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
+figs.push({ label: 'ruler: player+iron', defId: 'iron_golem', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
+figs.push({ label: 'ruler: player+fire', defId: 'fire_golem', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
+figs.push({ label: 'ruler: player+ice', defId: 'ice_golem', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
+figs.push({ label: 'troll (reference)', defId: 'troll', dir: Math.PI / 2, mode: 'idle', seed: 5 });
+figs.push({ label: 'packlord (reference)', defId: 'gnoll_champion', dir: Math.PI / 2, mode: 'idle', seed: 5 });
+figs.push({ label: 'rock E (profile)', defId: 'rock_golem', dir: 0, mode: 'idle', seed: 5 });
+figs.push({ label: 'ice E (profile)', defId: 'ice_golem', dir: 0, mode: 'idle', seed: 5 });
 
 const COLS = 8;
-const CW = Math.round(S * 1.6);
-const CH = Math.round(S * 2.2);
+const CW = Math.round(S * 2.1);
+const CH = Math.round(S * 2.9);
 
 let rowFrom = 0;
 let rowTo = Math.ceil(figs.length / COLS) - 1;
@@ -124,25 +129,67 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 
-/** The player rig at rest — the unit of measure (the body-ruler law). */
-function drawRulerMan(f: Fig, x: number, y: number, now: number, dt: number): void {
-  if (!f.manLegs) {
-    f.manLegs = new LegSolver();
-    f.manKnee = [0, 0];
-    f.manDepth = { mainBehind: false };
+/** One biped figure through drawHumanoid with a live leg solver. */
+function drawBody(
+  f: Fig,
+  defId: string,
+  x: number,
+  y: number,
+  dir: number,
+  mode: Mode,
+  seed: number,
+  now: number,
+  dt: number,
+  slot: 'main' | 'ruler',
+): void {
+  const info = BODIES[defId]!;
+  const store = slot === 'main' ? f : (f as Required<Fig>);
+  let legs = slot === 'main' ? f.legs : f.manLegs;
+  if (!legs) {
+    legs = new LegSolver();
+    if (slot === 'main') {
+      f.legs = legs;
+      f.knee = [0, 0];
+      f.depth = { mainBehind: false };
+      f.wx = 0;
+      f.wy = 0;
+    } else {
+      f.manLegs = legs;
+      f.manKnee = [0, 0];
+      f.manDepth = { mainBehind: false };
+    }
   }
-  const lp = f.manLegs.update(0, 0, Math.PI / 2, dt);
-  const feet = lp.feet.map((ft) => ({ x: x + ft.x * S, y: y + ft.y * S * YS, lift: ft.lift }));
+  const knee = slot === 'main' ? f.knee! : f.manKnee!;
+  const depth = slot === 'main' ? f.depth : f.manDepth;
+  const moving = slot === 'main' && mode === 'walk';
+  if (moving) {
+    f.wx! += Math.cos(dir) * WALK_SPEED * dt;
+    f.wy! += Math.sin(dir) * WALK_SPEED * dt;
+  }
+  const wx = slot === 'main' ? f.wx! : 0;
+  const wy = slot === 'main' ? f.wy! : 0;
+  const lp = legs.update(wx, wy, dir, dt);
+  const feet = lp.feet.map((ft) => ({
+    x: x + (ft.x - wx) * S,
+    y: y + (ft.y - wy) * S * YS,
+    lift: ft.lift,
+  }));
+  // Looping beats: the strike on a slow 700ms-ish loop, the cast wind
+  // held longer so the flare ramp reads.
+  const strikeT = mode === 'strike' ? (now * 0.0014) % 1 : 0;
+  const castT = mode === 'cast' ? (now * 0.0008) % 1 : 0;
+  const pose =
+    mode === 'strike' ? PoseState.Attack : mode === 'cast' ? PoseState.Cast : moving ? PoseState.Walk : PoseState.Idle;
   drawHumanoid(ctx, {
     x,
     y,
     scale: S,
-    size: 1,
-    dir: Math.PI / 2,
-    pose: PoseState.Idle,
-    poseT: 1,
+    size: info.size,
+    dir,
+    pose,
+    poseT: mode === 'strike' ? strikeT : mode === 'cast' ? castT : 1,
     drawT: 0,
-    restT: 1,
+    restT: mode === 'idle' || mode === 'hurt' ? 1 : 0,
     nowMs: now,
     feet,
     bob: lp.bob,
@@ -153,14 +200,18 @@ function drawRulerMan(f: Fig, x: number, y: number, now: number, dt: number): vo
     poleStrength: lp.poleStrength,
     runF: lp.runF,
     align: lp.align,
-    kneeMemory: f.manKnee!,
-    depthMemory: f.manDepth,
-    bodyColor: '#3f5d8e',
-    hurt: false,
+    kneeMemory: knee,
+    depthMemory: depth,
+    bodyColor: info.color,
+    skinColor: info.kind === 'golem' ? golemLook(defId, seed).shell : info.skin,
+    hurt: mode === 'hurt',
     isOwn: false,
     gatherPhase: 0,
     sheathT: 0,
+    golem: info.kind === 'golem' ? golemLook(defId, seed) : undefined,
+    gnoll: info.kind === 'gnoll' ? gnollLook(defId, seed) : undefined,
   });
+  void store;
 }
 
 function drawSheet(now: number, dt: number): void {
@@ -173,99 +224,25 @@ function drawSheet(now: number, dt: number): void {
     const sheetRow = Math.floor(i / COLS);
     if (sheetRow < rowFrom || sheetRow > rowTo) return;
     const homeX = CW / 2 + (i % COLS) * CW;
-    const homeY = Math.round(S * 1.67) + (sheetRow - rowFrom) * CH;
+    const homeY = Math.round(S * 2.3) + (sheetRow - rowFrom) * CH;
     ctx.strokeStyle = 'rgba(232, 228, 216, 0.18)';
+    ctx.lineWidth = 1; // figures leave fat stroke widths behind
     ctx.beginPath();
-    ctx.moveTo(homeX - 0.72 * S, homeY);
-    ctx.lineTo(homeX + 0.72 * S, homeY);
+    ctx.moveTo(homeX - 0.9 * S, homeY);
+    ctx.lineTo(homeX + 0.9 * S, homeY);
     ctx.stroke();
 
-    const info = BEASTS[f.defId]!;
-    const spec = beastSpec(f.defId, info.radius, info.speed);
-    if (!f.legs) {
-      f.legs = new LegRig(spec.rig);
-      f.wx = 0;
-      f.wy = 0;
-      f.wp = 0;
-      f.kneeMemory = new Array(spec.rig.legs.length).fill(0);
+    // Ruler cells: the player stands a stride west of the golem.
+    if (f.ruler) {
+      drawBody(f, 'player', homeX - 0.78 * S, homeY, Math.PI / 2, 'idle', 5, now, dt, 'ruler');
+      drawBody(f, f.defId, homeX + 0.34 * S, homeY, f.dir, f.mode, f.seed, now, dt, 'main');
+    } else {
+      drawBody(f, f.defId, homeX, homeY, f.dir, f.mode, f.seed, now, dt, 'main');
     }
-    const moving = f.mode === 'move' || f.mode === 'walk';
-    const speed = f.mode === 'walk' ? WALK_SPEED : info.speed;
-    if (moving) {
-      f.wx! += Math.cos(f.dir) * speed * dt;
-      f.wy! += Math.sin(f.dir) * speed * dt;
-      f.wp! += speed * dt * 0.9;
-    }
-    const lp = f.legs.update(f.wx!, f.wy!, f.dir, dt);
-    // World → cell: body pinned at the cell home, feet ride their
-    // world offsets under the renderer's own y squash.
-    const feet = lp.feet.map((ft) => ({
-      x: homeX + (ft.x - f.wx!) * S,
-      y: homeY + (ft.y - f.wy!) * S * YS,
-      lift: ft.lift,
-    }));
-    // The pounce loop: crouch → strike on the renderer's 420ms clock,
-    // held in a slow loop so the sheet shows every beat.
-    const attackT = f.mode === 'pounce' ? ((now * 0.0014) % 1) : 0;
-    // THE SIMULATED BOB: lynx figs run the live verlet stub exactly
-    // as the game does — ticked here, painted through drawBeast's
-    // depth seam.
-    let tailFn: (() => void) | undefined;
-    if (f.defId.startsWith('lynx')) {
-      const champ = f.defId === 'lynx_champion';
-      if (!f.bob) f.bob = new BobtailSim(champ ? 1.35 : 1, f.seed);
-      f.bob.update(
-        f.wx!,
-        f.wy!,
-        (champ ? 0.68 : 0.53) + lp.bob * 0.35,
-        lp.dir,
-        dt,
-        now / 1000,
-        1,
-        attackT > 0 && attackT < 0.7 ? 1 : 0,
-      );
-      const look = lynxLook(f.defId, f.seed);
-      const bob = f.bob;
-      const bodyDx = f.ruler ? 0.28 * S : 0;
-      tailFn = () => {
-        const pts = bob.nodes.map((nd) => ({
-          x: homeX + bodyDx + (nd.x - f.wx!) * S,
-          y: homeY + (nd.y - f.wy!) * S * YS - nd.z * S,
-        }));
-        drawBobtail(ctx, pts, look, S, {
-          hurt: f.mode === 'hurt',
-          back: Math.sin(lp.dir) < -0.2,
-        });
-      };
-    }
-    // Ruler cells: the player stands a body-width west of the beast.
-    if (f.ruler) drawRulerMan(f, homeX - 0.62 * S, homeY, now, dt);
-    drawBeast(ctx, {
-      x: homeX + (f.ruler ? 0.28 * S : 0),
-      y: homeY,
-      scale: S,
-      dir: lp.dir,
-      radius: info.radius,
-      color: info.color,
-      defId: f.defId,
-      spec,
-      pose: lp,
-      feet: f.ruler ? feet.map((ft) => ({ ...ft, x: ft.x + 0.28 * S })) : feet,
-      yScale: YS,
-      walkPhase: f.wp!,
-      // Constant white for the silhouette-gap audit (never a flicker
-      // lottery for the capture).
-      hurt: f.mode === 'hurt',
-      kneeMemory: f.kneeMemory!,
-      attackT,
-      seed: f.seed,
-      nowMs: now,
-      tail: tailFn,
-    });
     ctx.fillStyle = '#e8e4d8';
     ctx.font = '13px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(f.label, homeX, homeY - 1.62 * S);
+    ctx.fillText(f.label, homeX, homeY - 2.2 * S);
   });
   if (DET) {
     ctx.fillStyle = '#e8e4d8';

@@ -220,14 +220,17 @@ function rockBody(ctx: CanvasRenderingContext2D, gol: GolemLook, f: GolemBodyFra
     hurt ? 0 : Math.sin(nowMs / 860 + ph * 2.1) * amp;
   // Which side carries the bigger shoulder: the cairn is lopsided.
   const bigSide = hash(seed, 1) > 0.5 ? 1 : -1;
-  // The gap color under everything: seams read as depth, not holes.
-  ctx.fillStyle = hurt ? '#ffffff' : gol.under;
+  // The gap color under everything: seams read as depth, not holes —
+  // a soft step down from the shell, never a black vest (the first
+  // sheet's lesson: a high-contrast under-box reads as CLOTHING).
+  ctx.fillStyle = hurt ? '#ffffff' : shade(gol.shell, -24);
   ctx.beginPath();
-  chamferRect(ctx, -tw * 0.88, -th * 1.02, tw * 1.76, th * 1.06, s * 0.05);
+  chamferRect(ctx, -tw * 0.78, -th * 0.98, tw * 1.56, th * 0.96, s * 0.05);
   ctx.fill();
-  // The hip stone: squat, a little offset — the stack leans.
+  // The hip stone: squat and DEEP — it swallows the thigh roots so
+  // the legs read short and planted under the mass.
   const hipOff = (hash(seed, 2) - 0.5) * tw * 0.2;
-  stoneMass(ctx, hipOff, -th * 0.18 + settle(0), tw * 0.62, th * 0.24, s * 0.045,
+  stoneMass(ctx, hipOff, -th * 0.16 + settle(0), tw * 0.64, th * 0.3, s * 0.045,
     gol.shell, gol.lit, gol.deep, hurt);
   // The belly stone: the biggest single mass, rolled to one side.
   const bellyOff = (hash(seed, 3) - 0.5) * tw * 0.3;
@@ -240,9 +243,9 @@ function rockBody(ctx: CanvasRenderingContext2D, gol: GolemLook, f: GolemBodyFra
   // that makes the silhouette a hill. Near side bigger; both crowned.
   for (const side of [-1, 1] as const) {
     const big = side === bigSide;
-    const r = tw * (big ? 0.4 : 0.3) * (0.92 + 0.16 * hv);
-    const bx = side * tw * (big ? 0.72 : 0.66);
-    const by = -th * 0.92 + settle(side + 3) - (big ? th * 0.04 : 0);
+    const r = tw * (big ? 0.46 : 0.36) * (0.92 + 0.16 * hv);
+    const bx = side * tw * (big ? 0.76 : 0.68);
+    const by = -th * 0.94 + settle(side + 3) - (big ? th * 0.06 : 0);
     ctx.fillStyle = hurt ? '#ffffff' : shade(gol.shell, big ? 2 : -4);
     ctx.beginPath();
     ctx.ellipse(bx, by, r, r * 0.82, side * 0.2, 0, Math.PI * 2);
@@ -385,8 +388,6 @@ function fireBody(ctx: CanvasRenderingContext2D, gol: GolemLook, f: GolemBodyFra
   // The furnace breath: the glow pulses slowly at rest, hard and
   // bright through the flare. Analytic — one clock, no randomness.
   const breath = 0.55 + 0.15 * Math.sin(nowMs / 640) + 0.45 * flare;
-  // Crack gape: how much crust the seams give back to the light.
-  const gape = 1 + 1.3 * flare;
   // 1) The molten interior — slightly inset from the silhouette so
   // the outline ring always lands on crust, never on light.
   ctx.fillStyle = gol.glow;
@@ -404,15 +405,17 @@ function fireBody(ctx: CanvasRenderingContext2D, gol: GolemLook, f: GolemBodyFra
   // flare shrinks them (the seams widen; the plates never move).
   const plates: ReadonlyArray<[number, number, number, number, number]> = [
     // [cx, cy(in th), half-w(in tw), half-h(in th), salt]
-    [0, -0.16, 0.68, 0.2, 21],
-    [-0.36, -0.52, 0.4, 0.2, 22],
-    [0.4, -0.5, 0.36, 0.18, 23],
-    [-0.3, -0.88, 0.44, 0.18, 24],
-    [0.38, -0.9, 0.38, 0.16, 25],
+    [0, -0.16, 0.7, 0.21, 21],
+    [-0.36, -0.52, 0.42, 0.21, 22],
+    [0.4, -0.5, 0.38, 0.19, 23],
+    [-0.3, -0.88, 0.46, 0.19, 24],
+    [0.38, -0.9, 0.4, 0.17, 25],
   ];
   for (const [pcx, pcy, phw, phh, salt] of plates) {
     const jx = (hash(seed, salt) - 0.5) * tw * 0.08;
-    const shrink = 1 - 0.055 * gape;
+    // At rest the seams are banked-coal thin; the flare opens them
+    // wide — the menace ramp is the crust giving the light back.
+    const shrink = 1 - 0.025 - 0.085 * flare;
     const w = tw * phw * shrink;
     const h = th * phh * shrink;
     const x = tw * pcx + jx;
@@ -468,29 +471,27 @@ function iceBody(ctx: CanvasRenderingContext2D, gol: GolemLook, f: GolemBodyFram
       '#ffffff', '#ffffff', '#ffffff', true);
     return;
   }
-  // The deep water color grounds the whole stack.
-  ctx.fillStyle = gol.under;
+  // The deep water color grounds the stack — CONTAINED, so it reads
+  // as depth inside the ice, never as dark clothing at the hips (the
+  // first sheet's lesson).
+  ctx.fillStyle = '#3d5a70';
   ctx.beginPath();
-  chamferRect(ctx, -tw * 0.86, -th * 1.04, tw * 1.72, th * 1.08, s * 0.03);
+  chamferRect(ctx, -tw * 0.7, -th * 1.0, tw * 1.4, th * 0.94, s * 0.03);
   ctx.fill();
-  // THE HEART — only when the chest faces us at all.
+  // THE HEART — only when the chest faces us at all. Painted big and
+  // near-black so it survives the slab laid over it.
   const heartK = backK < 0.4 && fy > -0.15 ? 1 : 0;
   if (heartK > 0) {
-    ctx.fillStyle = '#1c2e3c';
+    ctx.fillStyle = '#141f2a';
     ctx.beginPath();
-    ctx.ellipse(-fx * tw * 0.16, -th * 0.62, tw * 0.2, th * 0.16, 0.2, 0, Math.PI * 2);
-    ctx.fill();
-    // One pale glint on the old thing — it is not quite asleep.
-    ctx.fillStyle = gol.glow;
-    ctx.beginPath();
-    ctx.arc(-fx * tw * 0.16 + tw * 0.06, -th * 0.66, s * 0.014, 0, Math.PI * 2);
+    ctx.ellipse(-fx * tw * 0.16, -th * 0.62, tw * 0.24, th * 0.19, 0.2, 0, Math.PI * 2);
     ctx.fill();
   }
   // The slabs: three sheared planes, each a polygon with one straight
   // shear seam — seed tilts the shears. Laid at 0.84 alpha so the
   // heart and the depth read THROUGH the ice.
   const tilt = (hash(seed, 31) - 0.5) * 0.16;
-  ctx.globalAlpha = 0.84;
+  ctx.globalAlpha = 0.8;
   // Hip wedge.
   ctx.fillStyle = shade(gol.shell, -5);
   ctx.beginPath();
@@ -533,8 +534,19 @@ function iceBody(ctx: CanvasRenderingContext2D, gol: GolemLook, f: GolemBodyFram
   ctx.globalAlpha = 1;
   // Hoar collars: crystalline fringe at the neck and hip seams — the
   // accent, drawn as countable teeth, never fuzz.
+  // The heart's cold halo, read THROUGH the slab — one thin ring so
+  // the dark old thing registers at gameplay zoom.
+  if (heartK > 0) {
+    ctx.strokeStyle = gol.glow;
+    ctx.globalAlpha = 0.35;
+    ctx.lineWidth = Math.max(1, s * 0.014);
+    ctx.beginPath();
+    ctx.ellipse(-fx * tw * 0.16, -th * 0.62, tw * 0.26, th * 0.21, 0.2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
   ctx.fillStyle = gol.accent;
-  for (const [yBand, n, sz] of [[-1.02, 5, 0.05], [-0.3, 4, 0.04]] as const) {
+  for (const [yBand, n, sz] of [[-1.02, 5, 0.05], [-0.26, 3, 0.035]] as const) {
     for (let i = 0; i < n; i++) {
       const hx = -tw * 0.62 + (i / (n - 1)) * tw * 1.24 + (hash(seed, 40 + i) - 0.5) * tw * 0.08;
       const hs = s * sz * (0.8 + 0.5 * hash(seed, 50 + i));
@@ -981,11 +993,11 @@ export function drawGolemArm(
         ctx.beginPath();
         ctx.arc(kx, ky, Math.max(1.8, s * 0.052), 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = gol.accent;
-        ctx.lineWidth = Math.max(1, s * 0.016);
+        // The brass pivot: a filled stud, never a floating hoop.
+        ctx.fillStyle = gol.accent;
         ctx.beginPath();
-        ctx.arc(kx, ky, Math.max(1.8, s * 0.052) * 0.72, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.arc(kx, ky, Math.max(1.2, s * 0.026), 0, Math.PI * 2);
+        ctx.fill();
       }
       // The fist: a chamfered block with knuckle rivets.
       ctx.save();
@@ -1012,6 +1024,9 @@ export function drawGolemArm(
       // Crust segments with the light at the joints: the glow leaks
       // exactly where the arm articulates — the machine admits it.
       if (!hurt) {
+        // lineJoin stays round or the sharp elbow miter throws a
+        // glowing spike a full arm past the joint (the flag bug).
+        ctx.lineJoin = 'round';
         ctx.strokeStyle = gol.glow;
         ctx.lineWidth = Math.max(2, s * 0.125 * (0.9 + 0.2 * hv));
         ctx.beginPath();
@@ -1019,6 +1034,7 @@ export function drawGolemArm(
         ctx.lineTo(kx, ky);
         ctx.lineTo(ex, ey);
         ctx.stroke();
+        ctx.lineJoin = 'miter';
       }
       ctx.strokeStyle = shell;
       ctx.lineWidth = Math.max(2, s * 0.115 * (0.9 + 0.2 * hv));
@@ -1160,7 +1176,16 @@ export function paintGolemFoot(
         ctx.fillRect(fxx - 0.075 * s * gv, fyy - 0.036 * s, 0.15 * s * gv, 0.02 * s);
         ctx.fillStyle = gol.accent;
         ctx.beginPath();
-        chamferRect(ctx, fxx + lead * 0.05 * s, fyy - 0.03 * s, lead * 0.05 * s * gv, 0.06 * s, 0.014 * s);
+        // Chamfer geometry needs a positive width whichever way the
+        // toe leads.
+        chamferRect(
+          ctx,
+          lead > 0 ? fxx + 0.05 * s : fxx - (0.05 + 0.05 * gv) * s,
+          fyy - 0.03 * s,
+          0.05 * s * gv,
+          0.06 * s,
+          0.014 * s,
+        );
         ctx.fill();
         ctx.fillStyle = shade(gol.shell, -20);
         ctx.beginPath();

@@ -3396,7 +3396,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // where the hunched species carries it.
       const shinLW = Math.max(
         2,
-        s * (skel ? 0.052 * skel.heavy : bootSt ? 0.1 : gno ? 0.078 : gol ? 0.115 : 0.09),
+        s * (skel ? 0.052 * skel.heavy : bootSt ? 0.1 : gno ? 0.078 : gol ? 0.128 : 0.09),
       );
       const ankPull = shinLW * 0.55;
       const ankX = fxx - aux * ankPull;
@@ -3410,7 +3410,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
             : gno
               ? 0.126 * (0.9 + 0.2 * gno.heavy)
               : gol
-                ? 0.15 * (0.9 + 0.2 * gol.heavy)
+                ? 0.165 * (0.9 + 0.2 * gol.heavy)
                 : 0.09),
       );
       ctx.beginPath();
