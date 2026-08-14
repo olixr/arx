@@ -188,6 +188,71 @@ Commit order (the golem precedent): ① content (defs/abilities/loot/spawns/
 tests) · ② render/ogre.ts + wiring · ③ sheet + polish rounds · ④
 fxSigsOgres + breath dialects + plates.
 
-## As built
+## As built (2026-08-14, three commits)
 
-*(to be written at ship)*
+**① 1f303f6 THE HILL COMES DOWN (content)** — 20 files, 1089 lines.
+Four defs at the npcs.ts tail (ogre L22 170hp/460xp, hurler L24
+standoff 6, bellower L26 standoff 5.5, Bonegrinder L28 260hp/700xp —
+all ratios 2.6–2.8); GIANT lane `{resist:['onehand'], weak:['archery']}`;
+seven arts (all premium-verified: toll 32t warning, millstone 24t,
+bellow 28t, stones 26t; tantrum flurry per-hit = basic; gnaw
+healFrac .3 windup 22 = the interrupt lesson); ogre/tooth/girdle items
++ four sack tables + NAMED seat + girdle leak-guard; wilds day pairs
+[4,5] + night forage [5,6] behind the champion; ogre_camp POI
+(fire-ring / bone-midden / crushed steading prefabs, tiers [4,6],
+boldness 3 stages, Bonegrinder name pool); cavern garrison minPower 35;
+influence litter row (Bonfire fire); editor tint/dot; FX faces +
+plates + breath dialects for all seven (OLD HIDE AND HILL-EARTH:
+rock debris everywhere, echo/rain/quake motifs, the one blood-stained
+meal).
+
+**② b7e4030 THE GIANT DIALECT (render)** — 12 files, 2241 lines.
+`render/ogre.ts` NEW-FILE-FIRST: THE CARRIAGE IS A PROJECTION
+(P(fwd,lat,z) through YK 0.6 — hump/hair/chest/gut/wrap/trophy are
+depth-sorted stations; the first walking torso on the projection law);
+GutSim (anchor-local tile-space spring, 0.085 cap = THE STRENGTH LAW
+adipose, one-bounce damping, wall-clock dt, snap-to-rest, restless);
+PendantSim (2-seg verlet thong, ±1.15 rad never-climbs cap, ONE REST
+twin pendantRest); paintOgreHead (SLOPE skull polygon, brow-ledge
+−24, pig eyes, UNDERBITE jaw at shade +6 with root-seamed teeth, roar
+= gape drops jaw + knits brow + tips skull 0.28hh; AUTHORED TRUE
+PROFILE past 0.9 — jut to 1.34hw past the nose plumb, ONE tall tusk);
+drawOgreArm (solveLimb2Into UNEQUAL BONES 0.88/1.26 — the ape crook;
+inverted taper, ham fists at −6 so the far fist reads past the gut);
+paintOgreFoot slabs. rig.ts 20 hunks (alias→arm→legs→lean→head→torso
+branches; sims ticked at the rig's true torso anchor per the ear
+law). renderer.ts 21 hunks (OGRE_SIZE 2.1–2.5 breaks the stature
+ceiling, OGRE_EQUIP greatclub, anim slots + fullDyn restless folds +
+olSig `O<design><seed>`, **the body-rect e.size fold** (the scratch
+never knew rig size — players pay nothing), **alert glyph OGRE_SIZE**,
+corpse chain, THE GROUND ADMITS THE WEIGHT walk dust). THE TORN LIMB:
+weapons.ts maul build 'club' (knotted taper, snapped fork, studs) +
+`ogre_greatclub` def dropping from wearer tables (loot-story law) +
+census pins 249→250. drawOgreRagdoll = THE FELLED HILL. CMS poster +
+riglab = THE OGRE SHEET (live Gut/Pendant sims, roar rows, cluster
+row, the stature-ladder rulers). ogre.test.ts 9 law pins.
+
+**③ fxSigsOgres.ts** — seven signatures, grammar = WEIGHT ARRIVING:
+the bell under the hill / the ground loses the argument / the wheel
+comes to rest (it lands edge-on, ROLLS, falls flat, and stays) / the
+road thrown back / the grass lies down (the combed lawn) / the
+hillside lets go (true-altitude drops racing their shadows) / the
+bone hits the ground.
+
+**Audit rounds:** sheet pass 1 caught the empty face, the crown-lid
+band, the floating knuckle ticks (the far fist merging into the gut),
+the white-bar arm ring, the drifting pauldron, and det-frame roar
+phase (detn=126 pins gape≈1). THE FACE ROUND fixed all six; pass 2
+close-ups verified the profile jut, the roar, the hurt silhouette
+(one clean white mass), and the ruler cells (player at the brute's
+hip). **The commit-② standalone check caught two foreign features
+(THE SEATED PLANT, THE FIST IS ONE FLESH) and one (THE FAIR HOUSE
+ELF palette) swept into my blobs by live neighbor edits between
+census and tree-build — hunk-filtered out; the census must be
+re-run at tree-build time, not before.**
+
+**Deferred by design:** the ogre crown (the cavern boss seat "The
+Broodmother" is a renamed spider — an honest ogre crown could claim
+it, per the Dread Crown session); the war-drum idle bark; live-lane
+dilate audit (pendant/club verified connected by geometry — riglab
+never runs the dilate); ogre stronghold family.

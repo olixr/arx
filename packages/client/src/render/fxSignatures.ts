@@ -53,6 +53,7 @@ import { FLIGHTS_SIGS } from './fxSigsFlights.js';
 import { BEASTCRAFT_SIGS } from './fxSigsBeastcraft.js';
 import { FOES_SIGS } from './fxSigsFoes.js';
 import { GOLEM_SIGS } from './fxSigsGolems.js';
+import { OGRE_SIGS } from './fxSigsOgres.js';
 
 // --------------------------------------------------------------- ctx
 
@@ -1244,4 +1245,5 @@ export const SIGNATURES: Record<string, AbilitySig> = {
   ...BEASTCRAFT_SIGS,
   ...FOES_SIGS,
   ...GOLEM_SIGS,
+  ...OGRE_SIGS,
 };
