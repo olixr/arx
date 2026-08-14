@@ -1184,3 +1184,57 @@ into a lived-in world.
   rest 19-7, vigil 18-6).
 - **ONE SEAM**: ZoneSpawn is the single choke point — both lanes
   (ordinary compose + stronghold compose) light the same runtime.
+
+## Shipped (b66b3df, 2026-08-14)
+
+- **All four rungs landed in one train**: post runtime (NpcComp.post
+  + idle branch, pose held via poseUntilTick fencing, Gather pulses
+  at cook posts / Attack pulses at drill posts, post = leash origin
+  when planted); composePoi POST scan (fires seat up to 3, ≤3-in-5
+  of holdfasts split to count-1 posted spawns, named champions and
+  hour-windowed entries exempt); patrol {dwell, sit} + PrefabDef
+  .routes (validated: ≥3 stops, in-bounds, hop ≤12 incl. closing
+  leg) dealt to patrol sentries first; canvas.ts + modules.ts (17
+  modules) + EIGHT new landmarks + all five founders retrofit with
+  authored rounds and post furniture.
+- **THE VALIDATOR STRIPS WHAT IT DOESN'T KNOW**: stronghold knots
+  pass through vetKnot's field whitelist — postAt silently vanished
+  from the shipped roster until validate.ts learned it. Any new
+  knot field MUST join vetKnot or it is fiction (the WHITELIST
+  LESSON's stronghold cousin).
+- **THE SWEEP GUARD**: finish() sweeps route stops clear of litter
+  (Rock/BonePile/SkullPile/CaveRubble → Dirt) that random scatter
+  dressed; stops on REAL furniture stay an authoring error the
+  audit catches. The audit rig (scratchpad audit-landmarks.ts)
+  caught: 4 sit-stops authored ON campfires, a chest eaten by a
+  later ossuary pass (paint the prize LAST), 2 hop-cap breaches,
+  and the founders' post-sign poverty (barrowfield/greatkeep/
+  waystead enriched — grave-lights, the garrison's old racks, the
+  road-agent's larder).
+- **Roster dilution is real**: 8 more weight-2 archetypes pushed
+  'every rollable archetype occurs' under-sampled — the coverage
+  sweep widens with the roster (4→6 epochs), the test's own law.
+  Same mechanism later thinned Kingsdelf's territory lean scan
+  (landmark deals refuse ground a small camp would take — honest
+  absence starves fixed site-count floors; widen scans, never
+  recalibrate weights around it).
+- **Live-proven (rig 6, DB refreshed so content re-seeds)**: the
+  drum moot at -944,-179 — three goblins HOLDING the bonfire circle
+  across an 18s lapse while the round walked (firecaller to the
+  benches, walkers mid-track), Three-Supper Brol by his tent-chest
+  with his worg; the sunken chapel at 954,-585 — six seated dead
+  keeping their pews to the tile, The Silent Sexton mid-office, the
+  Bone Chanter at the bell cairn, the archer's round walking the
+  brazier processional into the nave. 1,631 workspace tests green.
+- **Incident logged**: a peer's `git stash` swept four sessions'
+  uncommitted WIP mid-charter (restored byte-for-byte from
+  stash@{0}; one raced hunk re-applied by hand). Standing rule
+  banked tree-wide: no stash, no checkout of unowned paths, commit
+  own hunks by explicit path. defs.ts landed via the swap dance
+  (commit HEAD+own-hunk, restore peer WIP after).
+- **Debts**: stronghold post spots derive at compose from knot.at +
+  postAt ring (paceable-checked) but live capitals need their DB
+  stronghold docs refreshed to carry postAt (old docs = DB WINS —
+  the rig needed db:refresh --content); goblin_warren unproven live
+  (spot list exhausted — validated + composed in tests); Map Studio
+  editors don't yet draw PrefabDef.routes (patrol loops only).
