@@ -6706,9 +6706,43 @@ type DockGlyphPainter = (c: CanvasRenderingContext2D) => void;
 /** The one ink every dock sigil is engraved in. */
 const GLYPH_INK = '#d8c08c';
 
-export type DockGlyph = 'pack' | 'skills' | 'arts' | 'handiwork' | 'build' | 'sound' | 'social' | 'attack' | 'map' | 'quest' | 'rep';
+export type DockGlyph = 'pack' | 'skills' | 'arts' | 'handiwork' | 'build' | 'sound' | 'social' | 'attack' | 'map' | 'quest' | 'rep' | 'keys';
 
 const DOCK_GLYPHS: Record<DockGlyph, DockGlyphPainter> = {
+  // The key ring: an iron carry-ring with two rift-keys hung from it,
+  // bows through the band, teeth splayed — the doors you own, worn at
+  // the belt.
+  keys: (c) => {
+    c.lineWidth = 0.055;
+    // The carry ring, with its clasp nick at the top.
+    c.beginPath();
+    c.arc(0.5, 0.32, 0.17, Math.PI * -0.38, Math.PI * 1.38);
+    c.stroke();
+    // Left key: bow hung on the band, stem down, two teeth outward.
+    c.beginPath();
+    c.arc(0.39, 0.5, 0.06, 0, Math.PI * 2);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(0.39, 0.56);
+    c.lineTo(0.39, 0.8);
+    c.moveTo(0.39, 0.8);
+    c.lineTo(0.3, 0.8);
+    c.moveTo(0.39, 0.71);
+    c.lineTo(0.32, 0.71);
+    c.stroke();
+    // Right key, hung a beat shorter, teeth to its own side.
+    c.beginPath();
+    c.arc(0.63, 0.48, 0.06, 0, Math.PI * 2);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(0.63, 0.54);
+    c.lineTo(0.63, 0.75);
+    c.moveTo(0.63, 0.75);
+    c.lineTo(0.71, 0.75);
+    c.moveTo(0.63, 0.665);
+    c.lineTo(0.7, 0.665);
+    c.stroke();
+  },
   // Standing: a hanging banner — pole ring, swallow-tailed cloth, and
   // the mark stitched at its heart. The name you carry, on display.
   rep: (c) => {

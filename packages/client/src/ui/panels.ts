@@ -11,6 +11,8 @@ import {
   focusBudget,
   honedAbility,
   isStowedSlot,
+  keyUsesForTier,
+  keyUsesLeft,
   levelForXp,
   rankLevel,
   masteryXp,
@@ -1119,11 +1121,19 @@ export class Panels {
       this.card.appendChild(row);
     };
 
-    // The key's fine print: the trade name, then what kind of halls
-    // wait behind the veil. (Power already leads the headline.)
+    // The key's fine print: the trade name, what kind of halls wait
+    // behind the veil, and THE WORN WARD — a ground-drop key tells its
+    // remaining turns before anyone stoops for it. (Power already
+    // leads the headline; a picked-up key lands on the ring.)
     if (dungeon) {
       stat('Sigil', dungeon.sigil, '#8f7bd9');
       stat('Theme', dungeon.theme.charAt(0).toUpperCase() + dungeon.theme.slice(1), '#c4b590');
+      const left = keyUsesLeft(roll);
+      stat(
+        'Turns left',
+        `${left} of ${keyUsesForTier(dungeon.tier)}`,
+        left <= 0 ? '#ff9b8a' : left === 1 ? '#e8b64c' : '#9db7d6',
+      );
     }
 
     const w = def.weapon;

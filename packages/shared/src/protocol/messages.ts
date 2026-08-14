@@ -431,13 +431,26 @@ export interface S2CStockCeremony {
 }
 
 /**
- * Turn a dungeon key at a Riftgate: the pack slot names WHICH key
- * (instance-addressing law — the roll in that slot is the dungeon).
- * Only valid while standing at a riftgate portal.
+ * Turn a dungeon key at a Riftgate: the ring id names WHICH key
+ * (instance-addressing law — the roll on that ring row is the
+ * dungeon). Only valid while standing at a riftgate portal.
  */
 export interface C2SUseKey {
   t: 'usekey';
-  slot: number;
+  /** Key-ring row id (S2CKeyRing.keys[].id), never a pack slot. */
+  key: number;
+}
+
+/**
+ * THE KEY LEAVES THE RING: drop a dungeon key at the feet as an
+ * ordinary ground item — the ONE way keys trade hands. The parcel
+ * carries the full roll (seed, tier, power, worn uses), so a
+ * half-spent key is honestly a half-spent key in the next hand.
+ */
+export interface C2SKeyDrop {
+  t: 'keydrop';
+  /** Key-ring row id of the key to drop. */
+  key: number;
 }
 
 /** Interact with a living NPC (talk to an actor, milk a cow, ...). */
@@ -701,6 +714,7 @@ export type C2SMessage =
   | C2SSetLook
   | C2SCarryStyle
   | C2SUseKey
+  | C2SKeyDrop
   | C2SDialogueAdvance
   | C2SDialogueChoose
   | C2SDialogueEnd
@@ -1322,15 +1336,33 @@ export interface S2CPet {
 
 /**
  * The Riftgate answered an interact: show the key panel. The client
- * reads key details from its own inventory (slots carry rolls); this
- * message just opens the gate's side of the conversation.
+ * reads the keys themselves from its own ring mirror (S2CKeyRing);
+ * this message just opens the gate's side of the conversation and
+ * names the caller's standing run, if one is still cut.
  */
 export interface S2CRiftgate {
   t: 'riftgate';
-  /** Pack slot indexes currently holding dungeon keys. */
-  keySlots: number[];
+  /**
+   * The caller's live run, if their dungeon still stands. A worn-out
+   * key (0 uses) can still re-enter the run it already paid for — the
+   * door is open — so the client needs to know which seed that is.
+   */
+  live?: { seed: number; tier: string; power: number };
   /** Party members' live runs this gate can carry you into. */
   partyRuns?: PartyRunWire[];
+}
+
+/**
+ * THE KEY RING (full mirror, sent on any change): every dungeon key
+ * the character holds, outside and beyond the pack. The ring has no
+ * cap — a key found in the field always has a place to land — and it
+ * never spills on death. Each row's roll IS the dungeon (seed/tier/
+ * power) plus its worn uses; `id` is the stable handle every key verb
+ * addresses (usekey/keydrop), immune to sort order and re-syncs.
+ */
+export interface S2CKeyRing {
+  t: 'keyring';
+  keys: Array<{ id: number; roll: ItemRoll }>;
 }
 
 /** One live run a party member holds open. */
@@ -1850,6 +1882,7 @@ export type S2CMessage =
   | S2CRide
   | S2CPet
   | S2CRiftgate
+  | S2CKeyRing
   | S2CDungeonEnter
   | S2CSigns
   | S2CDialogueOpen
@@ -2159,10 +2192,16 @@ export function parseC2S(raw: string): C2SMessage | null {
     case 'dlgend':
       return { t: 'dlgend' };
     case 'usekey': {
-      if (!isFiniteNum(msg.slot) || !Number.isInteger(msg.slot) || msg.slot < 0 || msg.slot > 63) {
+      if (!isFiniteNum(msg.key) || !Number.isInteger(msg.key) || msg.key < 0 || msg.key > 0x7fffffff) {
         return null;
       }
-      return { t: 'usekey', slot: msg.slot };
+      return { t: 'usekey', key: msg.key };
+    }
+    case 'keydrop': {
+      if (!isFiniteNum(msg.key) || !Number.isInteger(msg.key) || msg.key < 0 || msg.key > 0x7fffffff) {
+        return null;
+      }
+      return { t: 'keydrop', key: msg.key };
     }
     case 'pickup': {
       if (!isFiniteNum(msg.eid) || !Number.isInteger(msg.eid) || msg.eid < 0) return null;

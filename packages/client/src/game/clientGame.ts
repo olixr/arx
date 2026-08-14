@@ -224,8 +224,10 @@ export interface GameEvents {
   onXp(msg: { skill: string; gained: number; level: number; levelledUp: boolean }): void;
   onEquipment(equipment: Partial<Record<string, EquippedItem>>): void;
   onBank(items: Record<string, number>, gear?: Array<{ id: number; item: string; roll: ItemRoll }>): void;
-  /** The Riftgate answered an interact — open the key panel over these pack slots. */
-  onRiftgate?(keySlots: number[], partyRuns?: PartyRunWire[]): void;
+  /** The Riftgate answered an interact — open the key panel (keys come from the ring mirror). */
+  onRiftgate?(live?: { seed: number; tier: string; power: number }, partyRuns?: PartyRunWire[]): void;
+  /** THE KEY RING's full mirror arrived — repaint whatever shows keys. */
+  onKeyRing?(keys: Array<{ id: number; roll: ItemRoll }>): void;
   /** A board's words arrived or changed — repaint whatever shows them. */
   onSignChanged?(tx: number, ty: number): void;
   /** Crossed into a dungeon — everything the entry banner tells. */
@@ -368,6 +370,8 @@ export class ClientGame {
   timeOfs = 0;
 
   inventory: InvSlot[] = [];
+  /** THE KEY RING mirror — every dungeon key held, outside the pack. */
+  keyRing: Array<{ id: number; roll: ItemRoll }> = [];
   skills: SkillXp = {};
   /** Recipes known beyond the core set (server-owned; see 'recipes'). */
   knownRecipes: ReadonlySet<string> = new Set();
@@ -1659,6 +1663,11 @@ export class ClientGame {
         this.events.onInventory(msg.slots);
         break;
       }
+      case 'keyring': {
+        this.keyRing = msg.keys;
+        this.events.onKeyRing?.(msg.keys);
+        break;
+      }
       case 'skills': {
         this.skills = msg.xp;
         this.events.onSkills(msg.xp);
@@ -1831,9 +1840,10 @@ export class ClientGame {
         break;
       }
       case 'riftgate': {
-        // The gate names the slots; the panel reads the keys' rolls
-        // from our own pack (instance-addressing law).
-        this.events.onRiftgate?.(msg.keySlots, msg.partyRuns);
+        // The gate opens the panel; the keys themselves come from our
+        // ring mirror (instance-addressing law). `live` marks the run
+        // still standing so a spent key can re-enter its open door.
+        this.events.onRiftgate?.(msg.live, msg.partyRuns);
         break;
       }
       case 'dungeon': {
@@ -3199,9 +3209,14 @@ export class ClientGame {
     this.conn?.send({ t: 'dropitem', slot, qty });
   }
 
-  /** Turn the dungeon key in this pack slot — only heard at a riftgate. */
-  useKeySend(slot: number): void {
-    this.conn?.send({ t: 'usekey', slot });
+  /** Turn a key by ring id — only heard at a riftgate. */
+  useKeySend(key: number): void {
+    this.conn?.send({ t: 'usekey', key });
+  }
+
+  /** Set a key from the ring down at your feet (the trade verb). */
+  keyDropSend(key: number): void {
+    this.conn?.send({ t: 'keydrop', key });
   }
 
   /** Confirm character creation (optimistic — the server locks it). */

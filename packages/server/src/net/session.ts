@@ -478,7 +478,13 @@ export class Session {
       case 'usekey': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;
-        this.game.useKey(this.playerEid, msg.slot);
+        this.game.useKey(this.playerEid, msg.key);
+        return;
+      }
+      case 'keydrop': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.keyDrop(this.playerEid, msg.key);
         return;
       }
       case 'dlgadv': {

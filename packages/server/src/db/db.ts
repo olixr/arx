@@ -956,6 +956,23 @@ const MIGRATIONS: string[] = [
   // v32: THE LONG WAR (strongholds Phase 5) — the boldness clock's
   // armed timestamp joins the capital ledger.
   `ALTER TABLE world_strongholds ADD COLUMN stage_at BIGINT;`,
+  // v33: THE KEY RING — dungeon keys leave the pack (and the bank) for
+  // a container of their own: uncapped, death-safe, keys only. One row
+  // per key; ord preserves the order keys were won in; the roll rides
+  // exploded (rar/seed/pwr) like every other instance table, plus the
+  // WORN WARD's remaining uses. Legacy keys still sitting in
+  // inventory_slots / bank_gear / bank_items are swept onto the ring
+  // at each character's next login — a lazy migration, so no bulk walk
+  // here.
+  `CREATE TABLE IF NOT EXISTS key_ring (
+    character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    ord INTEGER NOT NULL,
+    rar TEXT NOT NULL,
+    seed BIGINT NOT NULL,
+    pwr INTEGER,
+    uses INTEGER,
+    PRIMARY KEY (character_id, ord)
+  );`,
 ];
 
 /**

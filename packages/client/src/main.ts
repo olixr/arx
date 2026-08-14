@@ -33,6 +33,7 @@ import { WaypointHud } from './ui/waypointHud.js';
 import { PartyHud } from './ui/partyHud.js';
 import { showDiscovery } from './ui/discoveryBanner.js';
 import { QuestLog } from './ui/questLog.js';
+import { KeyRingPanel } from './ui/keyRing.js';
 import { RepScreen } from './ui/repScreen.js';
 import { showRepBanner } from './ui/repBanner.js';
 import { ObjectiveTracker } from './ui/objectiveTracker.js';
@@ -108,6 +109,7 @@ const DOCK_BUTTONS = [
   ['btn-social', 'social', 'Social', 'screenSocial', 'social'],
   ['btn-quests', 'quest', 'Journal', 'screenQuests', 'quests'],
   ['btn-rep', 'rep', 'Standing', 'screenRep', 'rep'],
+  ['btn-keys', 'keys', 'Key Ring', 'screenKeys', 'keys'],
   ['btn-map', 'map', 'Map', 'screenMap', 'map'],
   ['btn-audio', 'sound', 'Settings', 'screenSettings', 'audio'],
 ] as const;
@@ -398,7 +400,13 @@ renderer.waterFxFull = localStorage.getItem('arx.waterfx') !== 'basic';
   paint();
 }
 input.setTypingCheck(
-  () => chat.isTyping || looks.open || socialPanel.isTyping || signHud.isTyping || petNaming.isTyping,
+  () =>
+    chat.isTyping ||
+    looks.open ||
+    socialPanel.isTyping ||
+    signHud.isTyping ||
+    petNaming.isTyping ||
+    keyRingPanel.isTyping,
 );
 let buildMode: string | null = null;
 /** THE TRUE GHOST's dial: the chosen mass for an orientable corner. */
@@ -866,6 +874,11 @@ const nav = new UiNav(input, {
       questLog.inspectQuest(key.slice('quest:'.length));
       return false;
     }
+    // The key ring's bench lights on focus the same way.
+    if (key?.startsWith('keyrow:')) {
+      keyRingPanel.inspectKey(Number(key.slice('keyrow:'.length)));
+      return false;
+    }
     return panels.showCardFor(el);
   },
   onItemMenu: (el): void => {
@@ -919,6 +932,8 @@ document.addEventListener('pointerover', (e) => {
   if (inspectable) panels.showCardFor(inspectable as HTMLElement);
   const questRow = target?.closest?.('.quest-row[data-navkey^="quest:"]');
   if (questRow) questLog.inspectQuest((questRow as HTMLElement).dataset.navkey!.slice('quest:'.length));
+  const keyRow = target?.closest?.('.key-row[data-navkey^="keyrow:"]');
+  if (keyRow) keyRingPanel.inspectKey(Number((keyRow as HTMLElement).dataset.navkey!.slice('keyrow:'.length)));
   panels.hideCard();
   const el = target?.closest?.('[data-tipname]');
   if (el) nav.showTooltipFor(el as HTMLElement);
@@ -952,11 +967,12 @@ function closeAllUi(): void {
   mapScreen.close();
   questLog.close();
   repScreen.close();
+  keyRingPanel.close();
   signHud.close();
 }
 
 function toggleScreen(
-  which: 'inv' | 'skills' | 'arts' | 'craft' | 'build' | 'audio' | 'loot' | 'social' | 'map' | 'quests' | 'rep',
+  which: 'inv' | 'skills' | 'arts' | 'craft' | 'build' | 'audio' | 'loot' | 'social' | 'map' | 'quests' | 'rep' | 'keys',
 ): void {
   // A conversation owns the stage: no screen may open over it, from
   // any device — hotkeys, dock clicks, and pad shortcuts all pass
@@ -983,7 +999,9 @@ function toggleScreen(
                       ? questLog.isOpen
                       : which === 'rep'
                         ? repScreen.isOpen
-                        : lootPanel.isOpen;
+                        : which === 'keys'
+                          ? keyRingPanel.isOpen
+                          : lootPanel.isOpen;
   closeAllUi();
   if (wasOpen) return;
   switch (which) {
@@ -1018,6 +1036,9 @@ function toggleScreen(
       document.getElementById('btn-rep')?.classList.remove('has-new');
       repScreen.open();
       break;
+    case 'keys':
+      keyRingPanel.open();
+      break;
     case 'loot':
       if (game.nearbyLoot(2.4).length > 0) lootPanel.open();
       break;
@@ -1040,6 +1061,7 @@ function currentScreen(): (typeof SCREEN_ORDER)[number] | null {
   if (socialPanel.isOpen) return 'social';
   if (questLog.isOpen) return 'quests';
   if (repScreen.isOpen) return 'rep';
+  if (keyRingPanel.isOpen) return 'keys';
   if (mapScreen.isOpen) return 'map';
   if (audioMenu.isOpen) return 'audio';
   return null;
@@ -1078,6 +1100,7 @@ function screenAction(id: ActionId): void {
     screenMap: 'map',
     screenQuests: 'quests',
     screenRep: 'rep',
+    screenKeys: 'keys',
     screenSettings: 'audio',
     screenLoot: 'loot',
   };
@@ -1095,6 +1118,7 @@ document.getElementById('btn-social')!.addEventListener('click', () => toggleScr
 document.getElementById('btn-map')!.addEventListener('click', () => toggleScreen('map'));
 document.getElementById('btn-quests')!.addEventListener('click', () => toggleScreen('quests'));
 document.getElementById('btn-rep')!.addEventListener('click', () => toggleScreen('rep'));
+document.getElementById('btn-keys')!.addEventListener('click', () => toggleScreen('keys'));
 
 function showLoginError(text: string): void {
   loginError.textContent = text;
@@ -1475,10 +1499,16 @@ const game = new ClientGame(input, {
       panels.showInventory();
     }
   },
-  onRiftgate: (keySlots, partyRuns) => {
+  onRiftgate: (live, partyRuns) => {
     // A server-driven screen, like the vault: through the one gate.
     closeAllUi();
-    riftgate.open(keySlots, partyRuns);
+    riftgate.open(live, partyRuns);
+  },
+  onKeyRing: () => {
+    // THE KEY RING's mirror moved — both rooms that show keys repaint
+    // (each is a no-op while closed).
+    keyRingPanel.refresh();
+    riftgate.refresh();
   },
   onDialogueOpen: (o) => {
     // A conversation takes the whole stage: every screen closes, the
@@ -1714,6 +1744,7 @@ const partyHud = new PartyHud();
 // THE JOURNAL and its HUD face: the log screen, and the tracked
 // errand's card (tracking is client-local — pure presentation).
 const questLog = new QuestLog(game);
+const keyRingPanel = new KeyRingPanel(game);
 // THE ERRAND POINTS AT THE CHART: one door for the journal's and the
 // errand card's "show me" — open the chart (through the one screen
 // gate) and frame the ask's neighborhood.
@@ -2633,6 +2664,7 @@ const KB_SCREEN_ACTIONS: readonly ActionId[] = [
   'screenSocial',
   'screenQuests',
   'screenRep',
+  'screenKeys',
   'screenMap',
   'screenSettings',
   'screenLoot',
@@ -2649,6 +2681,7 @@ window.addEventListener('keydown', (e) => {
     socialPanel.isTyping ||
     signHud.isTyping ||
     petNaming.isTyping ||
+    keyRingPanel.isTyping ||
     looks.open ||
     game.ownEid === null
   ) {

@@ -1,4 +1,4 @@
-import { RARITY_TIERS, mintKeyPower, rarityIndex, type ItemRoll, type RarityTier } from '@arx/shared';
+import { RARITY_TIERS, keyUsesForTier, mintKeyPower, rarityIndex, type ItemRoll, type RarityTier } from '@arx/shared';
 import { itemDef } from '../items.js';
 import { dropRarityWeights } from '../equipment/tables.js';
 import { heirloomFor, makeRoll, pickRarity } from '../equipment/roll.js';
@@ -118,7 +118,10 @@ function stampRoll(
     const weights = dropRarityWeights(ctx.level + (table.rarityBonus ?? 0) + (ctx.rarityBonus ?? 0));
     const rar = pickRarity(weights, allowed, ctx.rand);
     const seed = Math.floor(ctx.rand() * 0x100000000) >>> 0;
-    return { rar, seed, pwr: mintKeyPower(rar, seed) };
+    // THE WORN WARD: born whole — a fresh key carries its full tier
+    // budget of turns, stamped explicitly so the wire never has to
+    // guess whether a key predates wear.
+    return { rar, seed, pwr: mintKeyPower(rar, seed), uses: keyUsesForTier(rar) };
   }
   const gear = def.gear;
   const rollable = force || gear?.acquisition.drop || def.relic || def.sigil;

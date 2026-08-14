@@ -564,6 +564,8 @@ import {
   dangerAt,
   dungeonSpecFromRoll,
   hashCoords,
+  keyUsesForTier,
+  keyUsesLeft,
   mintKeyPower,
   persistRegion,
   u8ToB64,
@@ -1480,6 +1482,15 @@ interface PlayerComp {
   /** Bank contents; null for guests (no persistence, no bank). */
   bank: Record<string, number> | null;
   bankDirty: boolean;
+  /**
+   * THE KEY RING: every dungeon key this character holds, OUTSIDE the
+   * pack — uncapped, death-safe, keys only. Each row's roll IS the
+   * dungeon (seed/tier/power) plus its worn uses; `id` is the stable
+   * session-scoped handle the wire addresses (usekey/keydrop), minted
+   * from nextKeyRingId at load/land and never reused.
+   */
+  keyRing: Array<{ id: number; roll: ItemRoll }>;
+  keyRingDirty: boolean;
   equipment: Partial<Record<EquipSlot, EquippedItem>>;
   /**
    * Everything worn gear does, aggregated ONCE per equipment change —
@@ -2300,6 +2311,15 @@ export class GameServer {
   /** Active per-character dungeon instances. */
   private readonly dungeons = new Map<number, DungeonInstance>();
   private nextDungeonSlot = 0;
+
+  /**
+   * THE KEY RING's id mint: session-scoped, monotonic, never reused.
+   * Every ring row gets one at load or landing; the wire addresses
+   * keys by it (usekey/keydrop), so it must stay stable for as long
+   * as the row lives in memory — and it does, because rows only ever
+   * append or splice, never renumber.
+   */
+  private nextKeyRingId = 1;
 
   // ------------------------------------------------- procedural POIs
 
@@ -3193,6 +3213,53 @@ export class GameServer {
     // the vitality SKILL power actions, never HP — no double-dipping).
     const maxHp = levelForXp(skills.vitality ?? 0) + gear.maxHp;
 
+    // THE KEY RING — load the ring, then the LAZY MIGRATION SWEEP:
+    // any dungeon key still sitting in the pack, the bank's gear rows,
+    // or the bank's counted stacks (the pre-roll shop-key era) walks
+    // onto the ring at this login. Roll-less legacy keys mint a fresh
+    // seed each — a shelf of seed-0 twins becomes real, distinct
+    // dungeons — and every migrated key starts with its full use
+    // budget (absent `uses` reads as whole; THE WORN WARD's grace).
+    const keyRing: Array<{ id: number; roll: ItemRoll }> = [];
+    let keyRingSwept = false;
+    const bank = character.id > 0 ? await this.accounts.loadBank(character.id) : null;
+    if (character.id > 0) {
+      for (const roll of await this.accounts.loadKeyRing(character.id)) {
+        keyRing.push({ id: this.nextKeyRingId++, roll });
+      }
+      let packSwept = false;
+      for (let i = 0; i < inventory.length; i++) {
+        const slot = inventory[i];
+        if (!slot || !itemDef(slot.item)?.dungeonKey) continue;
+        for (let n = 0; n < Math.max(1, slot.qty); n++) {
+          keyRing.push({ id: this.nextKeyRingId++, roll: slot.roll ? { ...slot.roll } : this.mintFreshKeyRoll() });
+        }
+        inventory[i] = null;
+        packSwept = true;
+      }
+      if (packSwept) this.accounts.saveInventory(character.id, inventory);
+      for (const row of await this.accounts.loadBankGear(character.id)) {
+        if (!itemDef(row.item)?.dungeonKey) continue;
+        if (await this.accounts.deleteBankGear(row.id, character.id)) {
+          keyRing.push({ id: this.nextKeyRingId++, roll: { ...row.roll } });
+          keyRingSwept = true;
+        }
+      }
+      const banked = bank?.[DUNGEON_KEY_ITEM] ?? 0;
+      if (bank && banked > 0) {
+        for (let n = 0; n < banked; n++) {
+          keyRing.push({ id: this.nextKeyRingId++, roll: this.mintFreshKeyRoll() });
+        }
+        delete bank[DUNGEON_KEY_ITEM];
+        this.accounts.saveBank(character.id, bank);
+        keyRingSwept = true;
+      }
+      keyRingSwept ||= packSwept;
+      if (keyRingSwept) {
+        this.accounts.saveKeyRing(character.id, keyRing.map((k) => k.roll));
+      }
+    }
+
     // Rescue characters saved somewhere that no longer exists — a delve
     // instance that died with the server, or any solid tile.
     let spawnX = character.x;
@@ -3307,8 +3374,10 @@ export class GameServer {
       skills,
       inventory,
       action: null,
-      bank: character.id > 0 ? await this.accounts.loadBank(character.id) : null,
+      bank,
       bankDirty: false,
+      keyRing,
+      keyRingDirty: false,
       equipment,
       gear,
       attackCooldown: 0,
@@ -3495,6 +3564,10 @@ export class GameServer {
     session.sendJson({ t: 'skills', xp: player.skills });
     session.sendJson({ t: 'recipes', known: [...player.knownRecipes] });
     session.sendJson({ t: 'inv', slots: player.inventory });
+    session.sendJson({ t: 'keyring', keys: player.keyRing });
+    // A run never survives a restart, so a spent key's last door is
+    // closed by definition at login — crumble it now, spoken.
+    this.sweepWornKeys(player);
     session.sendJson({ t: 'equip', equipment: player.equipment, carry: player.carryStyle, carryOff: player.carryOff });
     this.sendTechniques(player);
     // Answered Callings ride in after the skills that budget them; the
@@ -3772,6 +3845,12 @@ export class GameServer {
     if (player.bank && player.bankDirty) {
       this.accounts.saveBank(player.characterId, player.bank);
       player.bankDirty = false;
+    }
+    // THE KEY RING rides the bankDirty pattern — whole rewrite, only
+    // when a key landed, left, or wore down.
+    if (player.keyRingDirty) {
+      this.accounts.saveKeyRing(player.characterId, player.keyRing.map((k) => k.roll));
+      player.keyRingDirty = false;
     }
     // Dirty-region chart flush (the bankDirty pattern). Instance-band
     // rows never reach the DB — a dungeon is re-charted every run.
@@ -7807,18 +7886,26 @@ export class GameServer {
         return;
       }
       removeItem(player.inventory, 'coins', affordable * price);
-      // The shop is never a slot machine: bought gear is always the
-      // fixed common baseline instance.
-      const added = addItem(
-        player.inventory,
-        item,
-        affordable,
-        def.gear ? { rar: 'common', seed: 0 } : undefined,
-      );
-      if (added < affordable) {
-        // Pack filled up — refund what didn't fit.
-        addItem(player.inventory, 'coins', (affordable - added) * price);
-        this.speak(player, 'Pack full', 'Your pack is full.');
+      if (def.dungeonKey) {
+        // THE KEY RING: a bought key lands on the ring, never the
+        // pack, and every one mints a REAL fresh dungeon (the shop's
+        // old roll-less keys were all the same seed-0 common — dead).
+        for (let i = 0; i < affordable; i++) this.addKeyToRing(player, this.mintFreshKeyRoll(), false);
+        this.sendKeyRing(player);
+      } else {
+        // The shop is never a slot machine: bought gear is always the
+        // fixed common baseline instance.
+        const added = addItem(
+          player.inventory,
+          item,
+          affordable,
+          def.gear ? { rar: 'common', seed: 0 } : undefined,
+        );
+        if (added < affordable) {
+          // Pack filled up — refund what didn't fit.
+          addItem(player.inventory, 'coins', (affordable - added) * price);
+          this.speak(player, 'Pack full', 'Your pack is full.');
+        }
       }
     } else {
       if (item === 'coins') return;
@@ -11234,30 +11321,131 @@ export class GameServer {
     this.updateChunkMembership(eid);
   }
 
+  // ------------------------------------------------- THE KEY RING
+
+  /**
+   * Mint a whole fresh key roll: common tier, a dungeon nobody has
+   * ever walked, full use budget. The landing place for every legacy
+   * roll-less key (pre-ring shop stock, /give, counted bank stacks) —
+   * a shelf of seed-0 twins becomes real, distinct dungeons.
+   */
+  private mintFreshKeyRoll(): ItemRoll {
+    const seed = Math.floor(Math.random() * 0x100000000) >>> 0;
+    return { rar: 'common', seed, pwr: mintKeyPower('common', seed), uses: keyUsesForTier('common') };
+  }
+
+  /** Push the full ring mirror down the wire (sent on any change). */
+  private sendKeyRing(player: PlayerComp): void {
+    player.session?.sendJson({ t: 'keyring', keys: player.keyRing });
+  }
+
+  /**
+   * A dungeon key lands on the ring — never in the pack. The ring has
+   * no cap, so this cannot fail: a key found in the field always has
+   * a place to go. Returns the new ring row.
+   */
+  private addKeyToRing(
+    player: PlayerComp,
+    roll: ItemRoll | undefined,
+    sync = true, // batch callers land many, then send the mirror once
+  ): { id: number; roll: ItemRoll } {
+    const row = { id: this.nextKeyRingId++, roll: roll ? { ...roll } : this.mintFreshKeyRoll() };
+    player.keyRing.push(row);
+    player.keyRingDirty = true;
+    if (sync) this.sendKeyRing(player);
+    return row;
+  }
+
+  /**
+   * THE WORN WARD's last beat: a key at zero uses crumbles once the
+   * run it paid for no longer stands. Called after every teardown and
+   * at login (a run never survives a restart). Spares the key whose
+   * seed matches the character's LIVE instance — the door it opened
+   * is still open, and it must keep working until that door closes.
+   */
+  private sweepWornKeys(player: PlayerComp): void {
+    const liveSeed = this.dungeons.get(player.characterId)?.seed;
+    let crumbled = 0;
+    for (let i = player.keyRing.length - 1; i >= 0; i--) {
+      const row = player.keyRing[i]!;
+      if (keyUsesLeft(row.roll) > 0) continue;
+      if (row.roll.seed === liveSeed) continue;
+      player.keyRing.splice(i, 1);
+      crumbled++;
+    }
+    if (crumbled === 0) return;
+    player.keyRingDirty = true;
+    this.sendKeyRing(player);
+    this.speak(
+      player,
+      crumbled === 1 ? 'A key crumbles' : `${crumbled} keys crumble`,
+      crumbled === 1
+        ? 'A worn-through dungeon key crumbles from your ring — its last door has closed.'
+        : `${crumbled} worn-through dungeon keys crumble from your ring — their last doors have closed.`,
+    );
+  }
+
+  /**
+   * THE KEY LEAVES THE RING: drop a key at the feet as an ordinary
+   * ground item — the ONE way keys trade hands. The parcel carries
+   * the full roll, worn uses included; whoever picks it up receives
+   * it straight onto their own ring.
+   */
+  keyDrop(eid: EntityId, keyId: number): void {
+    const player = this.players.get(eid);
+    const pos = this.positions.get(eid);
+    if (!player || !pos) return;
+    const idx = player.keyRing.findIndex((k) => k.id === keyId);
+    if (idx === -1) return;
+    const [row] = player.keyRing.splice(idx, 1);
+    player.keyRingDirty = true;
+    this.sendKeyRing(player);
+    // Land the key a step ahead of the player, dropItem's own grammar —
+    // a wall in the way puts it at their feet instead of in the masonry.
+    let dx = pos.x + Math.cos(pos.dir) * 0.9;
+    let dy = pos.y + Math.sin(pos.dir) * 0.9;
+    if (this.world.isSolid(Math.floor(dx), Math.floor(dy))) {
+      dx = pos.x;
+      dy = pos.y;
+    }
+    this.placeDrop(DUNGEON_KEY_ITEM, 1, dx, dy, {
+      ownerEid: null,
+      ownerUntil: 0,
+      despawnAt: Date.now() + 12 * 60_000,
+      pickupAfter: Date.now() + 2000,
+      roll: row!.roll,
+    });
+    const spec = dungeonSpecFromRoll(row!.roll);
+    player.session?.sendJson({
+      t: 'chat',
+      channel: 'system',
+      text: `You set down the key to ${spec.name} (${spec.sigil}).`,
+    });
+  }
+
   /**
    * The Riftgate answers an interact by opening the key panel — the
-   * client lists the keys from its own pack; `usekey` names one.
+   * client lists the keys from its own ring mirror; `usekey` names
+   * one by ring id. `live` marks the caller's standing run so a
+   * worn-out key can still re-enter the door it already paid for.
    */
   private openRiftgate(eid: EntityId, player: PlayerComp): void {
-    const keySlots: number[] = [];
-    for (let i = 0; i < player.inventory.length; i++) {
-      if (player.inventory[i]?.item === DUNGEON_KEY_ITEM) keySlots.push(i);
-    }
+    const inst = this.dungeons.get(player.characterId);
     // The gates are one network: any fellow's live run stands open here.
     const partyRuns: Array<{ name: string; dungeon: string; tier: string; power: number }> = [];
     for (const fellowId of this.party.fellowsOf(player.characterId)) {
-      const inst = this.dungeons.get(fellowId);
-      if (!inst) continue;
+      const fellowInst = this.dungeons.get(fellowId);
+      if (!fellowInst) continue;
       const name = this.accounts.characterName(fellowId);
       if (!name) continue;
-      partyRuns.push({ name, dungeon: inst.name, tier: inst.tier, power: inst.power });
+      partyRuns.push({ name, dungeon: fellowInst.name, tier: fellowInst.tier, power: fellowInst.power });
     }
     player.session?.sendJson({
       t: 'riftgate',
-      keySlots,
+      live: inst ? { seed: inst.seed, tier: inst.tier, power: inst.power } : undefined,
       partyRuns: partyRuns.length > 0 ? partyRuns : undefined,
     });
-    if (keySlots.length === 0 && partyRuns.length === 0) {
+    if (player.keyRing.length === 0 && partyRuns.length === 0) {
       player.session?.sendJson({
         t: 'chat',
         channel: 'system',
@@ -11282,12 +11470,15 @@ export class GameServer {
   }
 
   /**
-   * Turn the key in the named pack slot. The key is never consumed —
-   * a key IS a place, and places keep. Same live key: walk back into
-   * the run. A different key: the old instance dies, the new one is
-   * cut fresh from the seed.
+   * Turn the key named by ring id. Re-entering the run this key
+   * already paid for is free — the door is open. A different key (or
+   * a fresh turn of the same key after its run closed) is a FRESH
+   * CUT: the old instance dies, the new one is cut from the seed, and
+   * THE WORN WARD spends one use. A key at zero uses can only walk
+   * back through its own standing door; once that door closes, it
+   * crumbles (sweepWornKeys).
    */
-  useKey(eid: EntityId, slot: number): void {
+  useKey(eid: EntityId, keyId: number): void {
     const player = this.players.get(eid);
     const pos = this.positions.get(eid);
     if (!player || !pos || player.session === null) return;
@@ -11298,12 +11489,23 @@ export class GameServer {
       this.speak(player, 'Needs a Riftgate', 'You need to stand at a Riftgate to turn a dungeon key.');
       return;
     }
-    const held = player.inventory[slot];
-    if (!held || held.item !== DUNGEON_KEY_ITEM) {
-      sys('That slot holds no dungeon key.');
+    const row = player.keyRing.find((k) => k.id === keyId);
+    if (!row) {
+      sys('That key is not on your ring.');
       return;
     }
-    const spec = dungeonSpecFromRoll(held.roll);
+    const spec = dungeonSpecFromRoll(row.roll);
+    const inst = this.dungeons.get(player.characterId);
+    const reenter =
+      !!inst && inst.seed === spec.seed && inst.tier === spec.tier && inst.power === spec.power;
+    if (!reenter && keyUsesLeft(row.roll) <= 0) {
+      this.speak(
+        player,
+        'The key is spent',
+        `The key to ${spec.name} is worn through — its ward has nothing left to open.`,
+      );
+      return;
+    }
     // A gate a key has turned at is a place worth keeping: pin it on
     // the map forever. The threshold banner is the ceremony here — the
     // client shows no discovery splash for the 'dungeon' kind.
@@ -11318,6 +11520,16 @@ export class GameServer {
       });
     }
     this.enterDungeon(eid, player, spec, { x: pos.x, y: pos.y });
+    if (!reenter) {
+      // THE WORN WARD: the fresh cut spends one use, stamped onto the
+      // roll so the wear rides every save, drop, and trade.
+      row.roll.uses = Math.max(0, keyUsesLeft(row.roll) - 1);
+      player.keyRingDirty = true;
+      this.sendKeyRing(player);
+      // The key swap tore the previous run down — any key that was
+      // only alive because that door stood open crumbles now.
+      this.sweepWornKeys(player);
+    }
   }
 
   private enterDungeon(
@@ -11405,6 +11617,13 @@ export class GameServer {
     }
     this.world.removeZone(dungeon.zoneId);
     this.dungeons.delete(characterId);
+    // THE WORN WARD's last beat rides every door-close: a spent key
+    // that was only standing because this run stood crumbles now.
+    const ownerEid = this.characterEids.get(characterId);
+    if (ownerEid !== undefined) {
+      const owner = this.players.get(ownerEid);
+      if (owner) this.sweepWornKeys(owner);
+    }
   }
 
   /** The live instance whose x-band holds this tile, if any. */
@@ -14630,6 +14849,18 @@ export class GameServer {
         this.questTurnIn(eid, player, hook.quest);
         break;
       case 'give': {
+        // THE KEY RING: a gifted key clips onto the ring, minted whole.
+        if (itemDef(hook.item)?.dungeonKey) {
+          for (let i = 0; i < hook.qty; i++) this.addKeyToRing(player, this.mintFreshKeyRoll(), false);
+          this.sendKeyRing(player);
+          const name = itemDef(hook.item)?.name ?? hook.item;
+          player.session?.sendJson({
+            t: 'chat',
+            channel: 'system',
+            text: `You receive ${hook.qty > 1 ? `${hook.qty} × ` : ''}${name}.`,
+          });
+          break;
+        }
         const added = addItem(player.inventory, hook.item, hook.qty);
         if (added > 0) {
           player.session?.sendJson({ t: 'inv', slots: player.inventory });
@@ -15021,6 +15252,22 @@ export class GameServer {
     const pos = this.positions.get(eid);
     const grant = (item: string, qty: number, rarity?: string): void => {
       const idef = itemDef(item);
+      // THE KEY RING: a rewarded key mints a real dungeon at the
+      // authored tier and clips onto the ring — never the pack, so a
+      // full pack can never spill a quest's key at the giver's feet.
+      if (idef?.dungeonKey) {
+        const rar = isRarityTier(rarity ?? '') ? (rarity as ItemRoll['rar']) : 'common';
+        for (let i = 0; i < qty; i++) {
+          const seed = Math.floor(Math.random() * 0x100000000) >>> 0;
+          this.addKeyToRing(
+            player,
+            { rar, seed, pwr: mintKeyPower(rar, seed), uses: keyUsesForTier(rar) },
+            false,
+          );
+        }
+        this.sendKeyRing(player);
+        return;
+      }
       // Gear, relics, and sigils are INSTANCES: each piece mints its
       // own roll at the authored tier (the /give precedent) — a bare
       // addItem would land a roll-less husk. Overflow keeps its roll
@@ -15571,7 +15818,8 @@ export class GameServer {
       return;
     }
     const row = rows[Math.floor(Math.random() * rows.length)]!;
-    if (!hasSpaceFor(player.inventory, row.item)) {
+    // Keys land on the ring — no pack room needed.
+    if (!itemDef(row.item)?.dungeonKey && !hasSpaceFor(player.inventory, row.item)) {
       sys('Your pack has no room for other folk’s goods.');
       return;
     }
@@ -15582,6 +15830,16 @@ export class GameServer {
       const coins = row.item === 'coins';
       const qty = coins ? Math.min(row.qty, FACTIONS.theft.coinCap) : 1;
       const def = itemDef(row.item);
+      // THE KEY RING: a lifted key clips onto the ring minted whole
+      // (common — theft never mints rarity, the flood law's border).
+      // The ring takes no stolen facet: a key opens ITS dungeon and
+      // nothing else, so there is nothing to launder through it.
+      if (def?.dungeonKey) {
+        this.addKeyToRing(player, this.mintFreshKeyRoll());
+        sys(`You slip away with: ${def.name}.`);
+        this.grantXp(eid, player, 'sneak', 8 + markLevel);
+        return;
+      }
       // Skimmed gear wears the shop-counter baseline — theft never
       // mints rarity (the flood law keeps its border here too).
       const roll = def && !def.stackable ? { rar: 'common' as const, seed: 0 } : undefined;
@@ -23662,6 +23920,18 @@ export class GameServer {
       });
       return;
     }
+    // THE KEY RING: a dungeon key never enters the pack — it lands on
+    // the ring, which has no cap, so a full pack can never turn a key
+    // find into a heartbreak. One key per drop by the no-stack law.
+    if (itemDef(drop.item)?.dungeonKey) {
+      // Twin keys can merge into one pile — every one finds the ring.
+      for (let n = 0; n < Math.max(1, drop.qty); n++) this.addKeyToRing(player, drop.roll);
+      const spec = dungeonSpecFromRoll(drop.roll);
+      sys(`The key to ${spec.name} (${spec.sigil}) clips onto your key ring.`);
+      this.removeFromChunks(dropEid);
+      this.ecs.destroy(dropEid);
+      return;
+    }
     if (!hasSpaceFor(player.inventory, drop.item, drop.stolen)) {
       this.speak(player, 'Pack full', 'Your pack has no room for that.');
       return;
@@ -23710,6 +23980,20 @@ export class GameServer {
         const dx = ppos.x - pos.x;
         const dy = ppos.y - pos.y;
         if (dx * dx + dy * dy > 0.55 * 0.55) continue;
+        // THE KEY RING: the walk-over vacuum clips keys straight onto
+        // the ring — free collecting in the field, no pack juggling.
+        if (itemDef(drop.item)?.dungeonKey) {
+          for (let n = 0; n < Math.max(1, drop.qty); n++) this.addKeyToRing(player, drop.roll);
+          const spec = dungeonSpecFromRoll(drop.roll);
+          player.session.sendJson({
+            t: 'chat',
+            channel: 'system',
+            text: `The key to ${spec.name} (${spec.sigil}) clips onto your key ring.`,
+          });
+          this.removeFromChunks(eid);
+          this.ecs.destroy(eid);
+          break;
+        }
         if (!hasSpaceFor(player.inventory, drop.item, drop.stolen)) continue;
         // Partial fits leave the remainder on the ground — the vacuum
         // must never destroy more than the pack actually held.
@@ -24305,8 +24589,21 @@ export class GameServer {
           ? pwrParsed
           : undefined;
       const ench = enchantDef(enchRaw)?.id;
-      if (def && hasSpaceFor(player.inventory, def.id)) {
-        if (def.gear || def.relic || def.sigil) {
+      if (def && (def.dungeonKey || hasSpaceFor(player.inventory, def.id))) {
+        if (def.dungeonKey) {
+          // Keys land on the ring with a REAL minted roll each — the
+          // seed-0 roll-less twin defect is dead.
+          const tier = rar ?? 'common';
+          for (let i = 0; i < qty; i++) {
+            const seed = Math.floor(Math.random() * 0x100000000) >>> 0;
+            this.addKeyToRing(
+              player,
+              { rar: tier, seed, pwr: pwr ?? mintKeyPower(tier, seed), uses: keyUsesForTier(tier) },
+              false,
+            );
+          }
+          this.sendKeyRing(player);
+        } else if (def.gear || def.relic || def.sigil) {
           for (let i = 0; i < qty; i++) {
             const roll = makeRoll(rar ?? 'common');
             roll.pwr = pwr;
@@ -24750,13 +25047,10 @@ export class GameServer {
       const pwr = Number.isFinite(powerNum) && powerNum >= 1
         ? Math.min(99, powerNum)
         : mintKeyPower(tier, seed);
-      const got = addItem(player.inventory, DUNGEON_KEY_ITEM, 1, { rar: tier, seed, pwr });
-      if (got === 0) {
-        player.session?.sendJson({ t: 'chat', channel: 'system', text: 'Pack is full.' });
-        return;
-      }
-      const spec = dungeonSpecFromRoll({ rar: tier, seed, pwr });
-      player.session?.sendJson({ t: 'inv', slots: player.inventory });
+      // Minted straight onto the ring — keys never touch the pack.
+      const roll: ItemRoll = { rar: tier, seed, pwr, uses: keyUsesForTier(tier) };
+      this.addKeyToRing(player, roll);
+      const spec = dungeonSpecFromRoll(roll);
       player.session?.sendJson({
         t: 'chat',
         channel: 'system',

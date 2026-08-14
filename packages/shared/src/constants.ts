@@ -153,7 +153,15 @@
 // on every phase turn and arena reset. Additive — a client that
 // ignores the key shows plain nameplates and corrupts nothing.
 // Recorded on purpose.)
-export const PROTOCOL_VERSION = 30;
+// v31 — THE KEY RING: dungeon keys leave the pack for a container of
+// their own. S2CKeyRing mirrors the ring, C2SKeyDrop trades a key back
+// into the world, C2SUseKey re-addresses from pack slot to ring id,
+// S2CRiftgate drops keySlots for the optional `live` run marker, and
+// ItemRoll grows `uses` (THE WORN WARD). The key verbs changed their
+// addressing — a v30 client would turn keys by pack slots the server
+// no longer honors and show a pack the server never fills with keys —
+// so the handshake turns the old client away.
+export const PROTOCOL_VERSION = 31;
 
 /** The most souls one party can hold. */
 export const PARTY_CAP = 10;

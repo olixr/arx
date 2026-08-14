@@ -88,6 +88,7 @@
         <button id="btn-social" title="Social (U)"></button>
         <button id="btn-quests" title="Journal (J)"></button>
         <button id="btn-rep" title="Standing (L)"></button>
+        <button id="btn-keys" title="Key Ring (;)"></button>
         <button id="btn-map" title="Map (M)"></button>
         <button id="btn-audio" title="Settings (O)"></button>
       </div>
@@ -291,6 +292,12 @@
       <div id="riftgate-panel" class="ui-screen screen-riftgate hidden">
         <h3>The Riftgate</h3>
         <div id="riftgate-list" data-region></div>
+      </div>
+
+      <!-- THE KEY RING — every dungeon key on its own ring (K).
+           Shelf left, bench right; the body is built by ui/keyRing.ts. -->
+      <div id="keyring-panel" class="ui-screen screen-keyring hidden">
+        <h3>Key Ring</h3>
       </div>
 
       <!-- THE BOARD — the deliberate read of a sign, and the pen for

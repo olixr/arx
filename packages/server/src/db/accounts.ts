@@ -1539,6 +1539,47 @@ export class AccountStore {
     return res.rowCount > 0;
   }
 
+  /**
+   * THE KEY RING — every dungeon key the character holds, in the order
+   * they were won. The DB `ord` is a storage detail only: the server
+   * mints fresh session-scoped wire ids on load and rewrites the rows
+   * whole on save (fire-and-forget, the pack's own pattern), so the
+   * hot pickup path never awaits a row-op. A roll here carries seed /
+   * tier / power / worn uses and nothing else — keys take no coats,
+   * no enchants, no stolen facet.
+   */
+  async loadKeyRing(characterId: number): Promise<ItemRoll[]> {
+    const rows = await this.db.query<{
+      rar: string;
+      seed: number;
+      pwr: number | null;
+      uses: number | null;
+    }>('SELECT rar, seed, pwr, uses FROM key_ring WHERE character_id = ? ORDER BY ord', [
+      characterId,
+    ]);
+    const out: ItemRoll[] = [];
+    for (const row of rows) {
+      const roll = rowRoll(row.rar, row.seed, row.pwr);
+      if (!roll) continue;
+      if (row.uses != null) roll.uses = row.uses;
+      out.push(roll);
+    }
+    return out;
+  }
+
+  saveKeyRing(characterId: number, keys: readonly ItemRoll[]): void {
+    this.db.fireTransaction(async (tx) => {
+      await tx.run('DELETE FROM key_ring WHERE character_id = ?', [characterId]);
+      for (let i = 0; i < keys.length; i++) {
+        const k = keys[i]!;
+        await tx.run(
+          'INSERT INTO key_ring (character_id, ord, rar, seed, pwr, uses) VALUES (?, ?, ?, ?, ?, ?)',
+          [characterId, i, k.rar, k.seed, k.pwr ?? null, k.uses ?? null],
+        );
+      }
+    });
+  }
+
   async loadLook(characterId: number): Promise<Look | null> {
     const row = await this.db.get<{ look: string | null }>(
       'SELECT look FROM characters WHERE id = ?',

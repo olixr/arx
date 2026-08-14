@@ -94,6 +94,17 @@ export interface ItemRoll {
   ench2?: string;
   /** The art's own inscription quality. Absent reads as QUALITY_BASE. */
   q2?: number;
+  /**
+   * THE WORN WARD (dungeon keys only): turns left in this key. Every
+   * fresh cut of the key's dungeon spends one; at zero the ward is worn
+   * through and the key crumbles when its last dungeon tears down. The
+   * budget is minted by tier (keyUsesForTier in dungeon/key.ts) and the
+   * count RIDES THE ROLL so a dropped or traded key carries its wear
+   * with it — a half-spent key is honestly a half-spent key in anyone's
+   * hands. Absent on a key reads as a FULL fresh budget (legacy grace:
+   * every key minted before wear shipped starts whole, never broken).
+   */
+  uses?: number;
 }
 
 /** Sanity ceiling for wire/DB power values (above every skill cap). */
@@ -146,6 +157,11 @@ export function isItemRoll(v: unknown): v is ItemRoll {
   }
   // An art without a seat is a roll that could never have been made.
   if (r.ench2 !== undefined && r.deep !== true) return false;
+  if (r.uses !== undefined) {
+    if (typeof r.uses !== 'number' || !Number.isInteger(r.uses) || r.uses < 0 || r.uses > 99) {
+      return false;
+    }
+  }
   return true;
 }
 
@@ -160,6 +176,7 @@ export function sameRoll(a?: ItemRoll, b?: ItemRoll): boolean {
     (a.q ?? QUALITY_BASE) === (b.q ?? QUALITY_BASE) &&
     (a.ench2 ?? '') === (b.ench2 ?? '') &&
     (a.q2 ?? QUALITY_BASE) === (b.q2 ?? QUALITY_BASE) &&
-    !a.deep === !b.deep
+    !a.deep === !b.deep &&
+    (a.uses ?? -1) === (b.uses ?? -1)
   );
 }

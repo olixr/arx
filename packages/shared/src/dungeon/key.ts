@@ -177,3 +177,38 @@ export function mintKeyPower(tier: RarityTier, seed: number): number {
   const law = DUNGEON_TIER_LAWS[tier];
   return clampPower(law.power + (hashCoords(seed, 41, 43) % 7) - 3);
 }
+
+// ---------------------------------------------------------------- wear
+
+/**
+ * THE WORN WARD: how many turns a fresh key of each tier holds. Every
+ * fresh cut of the key's dungeon spends one (re-entering a run that
+ * still stands is free — the door is already open); at zero the ward
+ * is worn through and the key crumbles when its dungeon tears down.
+ * THE THREE TURNS (user decree, 2026-08-14): every key holds exactly
+ * three, whatever its tier — the allure is the same scarce arithmetic
+ * at every rung, and a legendary is precious for what it opens, not
+ * for how often.
+ */
+export const KEY_USES_LAWS: Record<RarityTier, number> = {
+  common: 3,
+  uncommon: 3,
+  rare: 3,
+  epic: 3,
+  legendary: 3,
+};
+
+/** The use budget a fresh key of this tier is minted with. */
+export function keyUsesForTier(tier: RarityTier): number {
+  return KEY_USES_LAWS[tier];
+}
+
+/**
+ * Turns left in a key. Absent reads as the FULL tier budget — every
+ * key minted before wear shipped starts whole (legacy grace), and the
+ * wire never has to carry a field for an unworn key.
+ */
+export function keyUsesLeft(roll: ItemRoll | undefined): number {
+  const tier: RarityTier = roll?.rar ?? 'common';
+  return roll?.uses ?? keyUsesForTier(tier);
+}
