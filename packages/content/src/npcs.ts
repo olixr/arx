@@ -1203,6 +1203,127 @@ const defs: NpcDef[] = [
     // PARLIAMENT, not the duel.
     kit: [{ ability: 'hushing_screech', cooldownTicks: 150, maxRange: 4.5, rally: true }],
   },
+
+  // ------------------------------------------------------------------
+  // THE EARTH STANDS UP (docs/golems-plan.md): the golem bestiary.
+  // Four constructs, each a CHARACTER — the biggest walking bodies in
+  // the game, the slowest, and the most honest. No pack, no rally: a
+  // golem stands alone, and the fight it teaches is spacing. Narrow
+  // sightArcs on purpose — a construct watches its front, and the slow
+  // turn is the sneak window.
+  {
+    // The hill that walks: a dry-stacked cairn come to life. It tears
+    // stones from its own shoulder and throws them, and its slam
+    // stands the ground up in a ring around your feet.
+    id: 'rock_golem',
+    name: 'Rock golem',
+    level: 18,
+    maxHp: 120,
+    damage: 5,
+    attackRange: 1.4,
+    attackCooldownTicks: 54, // the slow heavy basic every premium prices off
+    aggroRange: 5,
+    sightArc: 150,
+    leashRange: 30,
+    speed: 2.6, // no golem hurries — pressure is reach, not chase
+    xpReward: 320,
+    loot: ['rock_golem', 'heirlooms'],
+    respawnSec: 120,
+    color: '#8a8164',
+    radius: 0.46,
+    hitHeight: 3.0,
+    resist: ['bleed', 'venom'], // stone has no blood to spill or spoil
+    kit: [
+      { ability: 'hillstone_throw', cooldownTicks: 170, windupTicks: 24, minRange: 2.5, maxRange: 8 },
+      { ability: 'quarry_ring', cooldownTicks: 210, windupTicks: 12, maxRange: 4.5 },
+    ],
+  },
+  {
+    // The forge's debt: riveted plates and a furnace-slit visor, armor
+    // with nobody inside. The one golem with no ranged art — the
+    // walker. Its menace is that it keeps coming.
+    id: 'iron_golem',
+    name: 'Iron golem',
+    level: 26,
+    maxHp: 190,
+    damage: 7,
+    attackRange: 1.4,
+    attackCooldownTicks: 58, // the slowest basic in the bestiary
+    aggroRange: 5.5,
+    sightArc: 130, // the visor slit sees least — and hits hardest
+    leashRange: 30,
+    speed: 2.3,
+    xpReward: 520,
+    loot: ['iron_golem', 'heirlooms'],
+    respawnSec: 140,
+    color: '#6a7280',
+    radius: 0.48,
+    hitHeight: 3.1,
+    resist: ['bleed', 'venom'],
+    weak: ['shock'], // forged iron carries the storm to its joints
+    kit: [
+      { ability: 'anvil_fall', cooldownTicks: 220, windupTicks: 22, maxRange: 3.5 },
+      { ability: 'drawn_bolt', cooldownTicks: 180, windupTicks: 14, minRange: 2.5, maxRange: 6 },
+    ],
+  },
+  {
+    // The banked furnace: black basalt crust over a molten core, and
+    // the light comes from inside. At night the glow owns the dark.
+    id: 'fire_golem',
+    name: 'Fire golem',
+    level: 31,
+    maxHp: 220,
+    damage: 8,
+    attackRange: 1.4,
+    attackCooldownTicks: 52,
+    aggroRange: 6,
+    sightArc: 170,
+    leashRange: 30,
+    speed: 2.6,
+    xpReward: 600,
+    loot: ['fire_golem', 'heirlooms'],
+    respawnSec: 150,
+    color: '#3a2c26',
+    radius: 0.48,
+    hitHeight: 3.1,
+    resist: ['burn', 'bleed'],
+    weak: ['chill'], // winter is the one argument the furnace loses
+    kit: [
+      { ability: 'slag_gobbet', cooldownTicks: 150, windupTicks: 16, minRange: 2, maxRange: 8 },
+      { ability: 'vent_ring', cooldownTicks: 240, windupTicks: 14, maxRange: 7, aim: 'lead' },
+      // Below the half the shell stops holding: once a fight, priced
+      // on the longest wind it owns.
+      { ability: 'crust_burst', cooldownTicks: 500, windupTicks: 26, hpBelow: 0.5, aim: 'self' },
+    ],
+  },
+  {
+    // The winter that remembers: faceted glacial slabs with a dark old
+    // heart frozen visible in the chest. It creaks when it leans, and
+    // the ground stays rimed where it walked.
+    id: 'ice_golem',
+    name: 'Ice golem',
+    level: 36,
+    maxHp: 260,
+    damage: 8,
+    attackRange: 1.5, // the longest golem reach — the slab arms are long
+    attackCooldownTicks: 56,
+    aggroRange: 5.5,
+    sightArc: 140,
+    leashRange: 30,
+    speed: 2.4,
+    xpReward: 700,
+    loot: ['ice_golem', 'heirlooms'],
+    respawnSec: 160,
+    color: '#9ec8dc',
+    radius: 0.5,
+    hitHeight: 3.3,
+    resist: ['chill', 'bleed'],
+    weak: ['burn'],
+    kit: [
+      { ability: 'calving_volley', cooldownTicks: 170, windupTicks: 16, minRange: 2, maxRange: 8 },
+      { ability: 'winters_floor', cooldownTicks: 260, windupTicks: 14, maxRange: 7, aim: 'lead' },
+    ],
+  },
 ];
 
 export const NPCS: ReadonlyMap<string, NpcDef> = new Map(defs.map((d) => [d.id, d]));

@@ -3784,6 +3784,142 @@ const defs: AbilityDef[] = [
     status: { status: 'bleed', power: 1, durationTicks: 50 },
   },
 
+  // -------------------------------- THE EARTH STANDS UP (golem arts,
+  // docs/golems-plan.md): four constructs, and every big die bought at
+  // the telegraph premium off a slow heavy basic. A golem's art is
+  // always announced; the fight it teaches is spacing.
+  {
+    id: 'hillstone_throw',
+    name: 'Hillstone Throw',
+    desc: 'The golem tears a stone from its own shoulder and puts it through the air. Watch it come.',
+    color: '#8a8164',
+    code: 'Hw',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'projectile_fan',
+    damage: 10,
+    projectiles: 1,
+    // The slowest flight in the game. The dodge IS the read: you can
+    // watch the whole arc and simply not be under it.
+    projectileSpeed: 6,
+    range: 9,
+    element: 'stone',
+    splashRadius: 1.2,
+  },
+  {
+    id: 'quarry_ring',
+    name: 'Quarry Ring',
+    desc: 'The golem strikes the ground, and the ground stands up around you.',
+    color: '#9a8f72',
+    code: 'Qr',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'ground_aoe',
+    damage: 9,
+    range: 0, // staked where the caster's aim law puts it
+    radius: 2.4,
+    fuseTicks: 20,
+    knockback: 1.5,
+  },
+  {
+    id: 'anvil_fall',
+    name: 'Anvil Fall',
+    desc: 'Both fists over its head, held a long breath. Where they land, the floor rings like a struck anvil.',
+    color: '#aab2c0',
+    code: 'Av',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'ground_aoe',
+    // The biggest telegraphed die below the boss tier, and the most
+    // warning: 22t of raised fists plus the fuse.
+    damage: 16,
+    range: 0,
+    radius: 2.0,
+    fuseTicks: 18,
+    knockback: 2.5,
+  },
+  {
+    id: 'drawn_bolt',
+    name: 'Drawn Bolt',
+    desc: 'The golem leans, the joints hiss, and it comes through you shoulder first.',
+    color: '#c8b06a',
+    code: 'Dw',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'dash_strike',
+    damage: 10,
+    dashTiles: 5, // the orbit-breaker — circling feet meet the shoulder
+  },
+  {
+    id: 'slag_gobbet',
+    name: 'Slag Gobbet',
+    desc: 'A fistful of its own melt, lobbed burning. It clings where it lands.',
+    color: '#ff7a2e',
+    code: 'Sb',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'projectile_fan',
+    damage: 11,
+    projectiles: 1,
+    projectileSpeed: 7,
+    range: 9,
+    element: 'ember',
+    splashRadius: 1.0,
+    status: { status: 'burn', power: 1, durationTicks: 70 },
+  },
+  {
+    id: 'vent_ring',
+    name: 'Vent Ring',
+    desc: 'The golem stakes the ground under your running feet, and the ground learns to breathe fire.',
+    color: '#d84c1e',
+    code: 'Vt',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'ground_aoe',
+    damage: 12,
+    range: 0,
+    radius: 2.0,
+    fuseTicks: 22, // a long fuse — the vents hiss before they speak
+    status: { status: 'burn', power: 1, durationTicks: 80 },
+  },
+  {
+    id: 'crust_burst',
+    name: 'Crust Burst',
+    desc: 'The shell cannot hold the furnace forever. Once a fight, it stops trying.',
+    color: '#ffb03a',
+    code: 'Cu',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'nova',
+    damage: 15,
+    radius: 2.6,
+    knockback: 1.5,
+    status: { status: 'burn', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'calving_volley',
+    name: 'Calving Volley',
+    desc: 'Three shards shear off the golem and fly. Winter travels in straight lines.',
+    color: '#9ad4e8',
+    code: 'Cy',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'projectile_fan',
+    damage: 9,
+    projectiles: 3,
+    spreadArc: 0.5,
+    projectileSpeed: 8,
+    range: 9,
+    element: 'frost',
+    status: { status: 'chill', power: 1, durationTicks: 50 },
+  },
+  {
+    id: 'winters_floor',
+    name: "Winter's Floor",
+    desc: 'The golem breathes out and marks the ground ahead of you. The mark freezes over.',
+    color: '#7ab8d8',
+    code: 'Wt',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'ground_aoe',
+    damage: 14,
+    range: 0,
+    radius: 2.2,
+    fuseTicks: 24, // the longest golem fuse — the pane grows slowly shut
+    status: { status: 'chill', power: 2, durationTicks: 80 },
+  },
+
   // -------------------------------- beastcraft arts (THE WILD ANSWERS
   // THE CALL, docs/beastcraft-arts-plan.md): the keeper's school joins
   // the technique pool. The tame is a survival channel, not a strike —

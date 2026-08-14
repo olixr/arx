@@ -556,6 +556,22 @@ export const FX_STYLES: Record<string, FxStyle> = {
   rending_lunge: BLOOD({ mid: '#c9a44a', ring: 'shards', debris: 'blood', decal: 'stain', punch: 0.55, wash: 0.3 }),
   shrilling_dart: SHADOW({ mid: '#8a7458', ring: 'halo', debris: 'spark', decal: undefined, punch: 0.35, wash: 0.2 }),
 
+  // ------------------- THE EARTH STANDS UP (golem arts, docs/golems-plan.md)
+  // Four constructs, four material voices: the rock arts speak dry
+  // hillstone (earthed STEEL, dust-pale sparks), the iron arts forged
+  // plate with the one brass accent, the fire arts the banked furnace,
+  // the ice arts old glacier blue. Heavy punches everywhere — a golem
+  // never taps.
+  hillstone_throw: STEEL({ mid: '#8a8164', deep: '#4e463c', spark: '#d8ccb0', glow: '160, 148, 110', ring: 'shards', debris: 'rock', decal: 'cracks', punch: 0.6, wash: 0.35 }),
+  quarry_ring: STEEL({ mid: '#9a8f72', deep: '#544a38', spark: '#d8ccb0', glow: '160, 148, 110', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'quake', punch: 0.7, wash: 0.4 }),
+  anvil_fall: STEEL({ mid: '#aab2c0', ring: 'teeth', debris: 'spark', decal: 'cracks', motif: 'quake', punch: 0.85, wash: 0.45 }),
+  drawn_bolt: STEEL({ mid: '#c8b06a', spark: '#ffe8a0', ring: 'shards', debris: 'spark', decal: undefined, punch: 0.55, wash: 0.3 }),
+  slag_gobbet: EMBER({ mid: '#ff7a2e', ring: 'teeth', debris: 'ember', decal: 'scorch', punch: 0.5, wash: 0.5 }),
+  vent_ring: EMBER({ mid: '#d84c1e', ring: 'teeth', debris: 'ember', decal: 'scorch', motif: 'pillar', punch: 0.75, wash: 0.55 }),
+  crust_burst: EMBER({ mid: '#ffb03a', ring: 'halo', debris: 'rock', decal: 'scorch', motif: 'wave', punch: 0.9, wash: 0.65 }),
+  calving_volley: FROST({ mid: '#9ad4e8', ring: 'shards', debris: 'ice', decal: 'rime', punch: 0.45, wash: 0.35 }),
+  winters_floor: FROST({ mid: '#7ab8d8', ring: 'frost', debris: 'ice', decal: 'rime', motif: 'spikes', punch: 0.6, wash: 0.45 }),
+
   // ---------------------------------------------------- beastcraft arts
   // THE KEEPER'S TONGUE — the school speaks LIVING GREEN AND HIDE:
   // bond-greens, herb and grain, one russet howl and one horn-gold

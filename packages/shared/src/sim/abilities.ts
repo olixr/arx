@@ -423,6 +423,13 @@ export interface AbilityDef {
   /** Total fan spread in radians. */
   spreadArc?: number;
   projectileSpeed?: number;
+  /**
+   * Projectiles burst on impact, splashing everything within this
+   * radius (tiles) for half the direct hit — the heavy-orb law made
+   * authorable (the wand's heavy bolt pioneered the machinery). An
+   * NPC's splash hits players; a player's splash hits NPCs.
+   */
+  splashRadius?: number;
   /** Projectiles punch through targets instead of stopping. */
   pierce?: boolean;
   /**

@@ -925,6 +925,13 @@ const defs: ItemDef[] = [
   { id: 'scrap_hide', name: 'Scrap hide', stackable: true, value: 3, desc: 'Small pelts and offcuts. Three make an honest leather.', color: '#8a6f52', code: 'Sh' },
   { id: 'owl_plume', name: 'Owl plume', stackable: true, value: 26, desc: 'A flight feather longer than your forearm. It fell without a sound.', color: '#d8ccae', code: 'Op' },
   { id: 'elder_plume', name: 'Elder plume', stackable: true, maxStack: 5, value: 140, desc: 'Moon-pale at the edge, storm-dark at the root. The wood is louder now.', color: '#5a5e70', code: 'Ep' },
+  // THE EARTH STANDS UP — the golem drops (docs/golems-plan.md). One
+  // shared heart plus a signature piece per build.
+  { id: 'golem_core', name: 'Golem core', stackable: true, maxStack: 10, value: 160, desc: 'A fist of grey stone, worked all over with a mason\'s marks. It is still faintly warm, and nobody taught it to be.', color: '#9a94a8', code: 'Go' },
+  { id: 'hillstone_heart', name: 'Hillstone heart', stackable: true, maxStack: 10, value: 60, desc: 'The keystone off a walking cairn, moss still in the seams. Heavier than honest rock has any right to be.', color: '#8a8164', code: 'Hh' },
+  { id: 'forgeplate_scrap', name: 'Forgeplate scrap', stackable: true, maxStack: 10, value: 95, desc: 'A riveted plate hammered by no smith living. The seams are too straight and the iron is too old.', color: '#6a7280', code: 'Fs' },
+  { id: 'molten_slag', name: 'Molten slag', stackable: true, maxStack: 10, value: 110, desc: 'Furnace-melt gone hard, black outside, ember-veined within. It never quite cools.', color: '#d84c1e', code: 'Mg' },
+  { id: 'everfrost_shard', name: 'Everfrost shard', stackable: true, maxStack: 10, value: 130, desc: 'A faceted slab of old winter. It does not melt, and the room it sits in forgets summer.', color: '#9ad4e8', code: 'Ev' },
 
   // Quest items — worthless by law (the flood law's price for
   // quest-gated drops), stackable so an errand rides one slot.

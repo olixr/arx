@@ -397,6 +397,54 @@ export const BREATH_DIALECTS: Record<string, BreathDialect> = {
   ground_slam: {
     charge: (c, x, y) => dust.deployments.billow!(c, x, y, { radius: 0.7, scale: 0.45, dur: 0.7 }),
   },
+
+  // ------------------- THE EARTH STANDS UP (golem arts): a construct's
+  // wind is its material waking up. Rock grinds, iron sparks, fire
+  // breathes IN, ice fogs at the feet — the element is legible before
+  // the pip half-fills.
+  // Hillstone Throw: the shoulder gives — grit gouges off the torn seam.
+  hillstone_throw: {
+    charge: (c, x, y, o) =>
+      dust.deployments.gouge!(c, x, y, { radius: o.radius * 0.55, scale: 0.55, dur: 0.8 }),
+  },
+  // Quarry Ring: the whole yard trembles UNDER the golem first.
+  quarry_ring: {
+    charge: (c, x, y, o) =>
+      dust.deployments.billow!(c, x, y, { radius: o.radius * 0.75, scale: 0.55, dur: 0.7 }),
+  },
+  // Anvil Fall: the long lift — grit rains off the rising fists while
+  // the stance grinds deeper.
+  anvil_fall: {
+    charge: (c, x, y, o) =>
+      dust.deployments.skirt!(c, x, y, { radius: o.radius * 0.6, scale: 0.6, dur: 0.9 }),
+  },
+  // Drawn Bolt: the joints hiss — sparks crackle at the leaning shoulder.
+  drawn_bolt: {
+    charge: (c, x, y) => storm.deployments.crackle!(c, x, y, { radius: 0.5, scale: 0.4, dur: 0.6 }),
+  },
+  // Slag Gobbet: the fist melts — gobbets gather dripping at the hand.
+  slag_gobbet: {
+    charge: (c, x, y) => fire.deployments.gobbets!(c, x, y, { scale: 0.4, dur: 0.7 }),
+  },
+  // Vent Ring: the furnace draws breath — the plume leans INTO the seams.
+  vent_ring: {
+    charge: (c, x, y) => fire.deployments.plume!(c, x, y, { scale: 0.55, dur: 0.8 }),
+  },
+  // Crust Burst: the shell overfills — the pool of light spreads under
+  // the crust with nowhere left to go.
+  crust_burst: {
+    charge: (c, x, y, o) =>
+      fire.deployments.pool!(c, x, y, { radius: o.radius * 0.6, scale: 0.6, dur: 0.9 }),
+  },
+  // Calving Volley: the shoulder rimes over before it shears.
+  calving_volley: {
+    charge: (c, x, y) => frost.deployments.bloom!(c, x, y, { radius: 0.55, scale: 0.5, dur: 0.7 }),
+  },
+  // Winter's Floor: cold pools at the feet — fog before the pane.
+  winters_floor: {
+    charge: (c, x, y, o) =>
+      frost.deployments.fog!(c, x, y, { radius: o.radius * 0.65, scale: 0.55, dur: 0.8 }),
+  },
 };
 
 /**

@@ -178,6 +178,15 @@ export const WILD_ROSTER: readonly WildEntry[] = [
     family: 'parliament',
   },
   { npc: 'troll', weight: 0.5, tiers: [5, 5], biomes: ['forest'], hours: NIGHT },
+  // THE EARTH STANDS UP (docs/golems-plan.md): golems stand alone,
+  // day and night — a construct does not sleep, and a sighting is an
+  // event, not a lawn. No family yet: the territory chain law wants a
+  // POI to declare 'golem' before the wilds may lean on it.
+  { npc: 'rock_golem', weight: 0.5, tiers: [3, 4], biomes: ['grass', 'forest'] },
+  { npc: 'iron_golem', weight: 0.4, tiers: [4, 4], biomes: ['grass', 'forest'] },
+  // The banked furnace walks at night, when the glow owns the dark.
+  { npc: 'fire_golem', weight: 0.5, tiers: [4, 5], biomes: ['grass', 'forest'], hours: NIGHT },
+  { npc: 'ice_golem', weight: 0.4, tiers: [5, 5], biomes: ['grass', 'forest'] },
   // Daylight gnolls range in scavenging pairs, wide of the squat.
   { npc: 'gnoll', weight: 1.5, tiers: [3, 4], biomes: ['grass', 'forest'], hours: DAY, band: [1, 2], spread: 3, habitat: 'den', family: 'gnoll' },
   {

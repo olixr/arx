@@ -1491,6 +1491,62 @@ const defs: LootTableDef[] = [
       { item: 'redquarry', chance: 0.01 },
     ],
   },
+
+  // ------------------------------------------------------------------
+  // THE EARTH STANDS UP (docs/golems-plan.md): the golem hoards. No
+  // bones ever — a construct leaves masonry, not marrow. Each pays its
+  // own heart, its build's signature piece, and the element it was.
+  {
+    id: 'rock_golem',
+    desc: 'What a fallen cairn is: stones, and one that mattered.',
+    entries: [
+      { item: 'coins', qty: [15, 50], chance: 0.85 },
+      { item: 'hillstone_heart', qty: [1, 2], chance: 0.6 },
+      { item: 'golem_core', chance: 0.3 },
+      { item: 'arcane_dust', qty: [1, 2], chance: 0.2 },
+      // A hafted seal-slab. It stood among its own kind here.
+      { item: 'quarryheart', chance: 0.012 },
+    ],
+  },
+  {
+    id: 'iron_golem',
+    desc: 'The forge\'s debt, paid out in plate and ore.',
+    entries: [
+      { item: 'coins', qty: [25, 70], chance: 0.85 },
+      { item: 'forgeplate_scrap', qty: [1, 2], chance: 0.6 },
+      { item: 'iron_ore', qty: [1, 3], chance: 0.5 },
+      { item: 'golem_core', chance: 0.35 },
+      { item: 'coal', qty: [1, 2], chance: 0.3 },
+      // The storm lives in forged joints, and sometimes it stays.
+      { item: 'storm_essence', chance: 0.15 },
+    ],
+  },
+  {
+    id: 'fire_golem',
+    desc: 'A banked furnace raked out at last.',
+    entries: [
+      { item: 'coins', qty: [30, 80], chance: 0.85 },
+      { item: 'molten_slag', qty: [1, 2], chance: 0.6 },
+      { item: 'golem_core', chance: 0.35 },
+      { item: 'ember_essence', qty: [1, 2], chance: 0.35 },
+      { item: 'coal', qty: [2, 4], chance: 0.4 },
+      // The burning bough suits a body that never stopped burning.
+      { item: 'ashgarden', chance: 0.008 },
+    ],
+  },
+  {
+    id: 'ice_golem',
+    desc: 'Old winter, quarried where it fell.',
+    entries: [
+      { item: 'coins', qty: [30, 90], chance: 0.85 },
+      { item: 'everfrost_shard', qty: [1, 2], chance: 0.6 },
+      { item: 'golem_core', chance: 0.4 },
+      { item: 'frost_essence', qty: [1, 2], chance: 0.35 },
+      // The tower of ice answers to the winter that outlasted it.
+      { item: 'winterspire', chance: 0.008 },
+      { item: 'northlight', chance: 0.006 },
+    ],
+  },
 ];
 
 /**

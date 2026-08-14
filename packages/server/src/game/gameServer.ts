@@ -17239,6 +17239,7 @@ export class GameServer {
             distLeft: ab.range ?? 7,
             status: ab.status,
             pierce: ab.pierce,
+            splashRadius: ab.splashRadius,
             fromNpc,
             attackerLevel: fromNpc ? level : undefined,
             element: projElement,
@@ -18266,6 +18267,37 @@ export class GameServer {
         proj.pierce = true; // the return leg cuts through the whole line
       }
 
+      // A dodged foe shot still LANDS somewhere: an ability projectile
+      // that dies on a wall or at range speaks its landing there — the
+      // golem's boulder lies in the ground it hit, and anyone standing
+      // close to the miss still pays the splash. That is what dodging
+      // means: not being near where it comes down.
+      if (dead && proj.fromNpc && proj.abilityId) {
+        this.broadcastFx({
+          t: 'fx',
+          kind: 'blast',
+          x: pos.x,
+          y: pos.y,
+          radius: proj.splashRadius ?? 0.55,
+          id: proj.abilityId,
+          color: proj.abilityColor,
+        });
+        if (proj.splashRadius) {
+          const splashHit = Math.max(1, Math.round(proj.maxHit * 0.5));
+          for (const [playerEid, player] of this.players) {
+            if (player.session === null && player.disconnectedAt !== null) continue;
+            const ppos = this.positions.get(playerEid);
+            if (!ppos) continue;
+            if (Math.hypot(ppos.x - pos.x, ppos.y - pos.y) > proj.splashRadius) continue;
+            this.damagePlayer(playerEid, Math.floor(Math.random() * (splashHit + 1)), {
+              status: proj.status,
+              attackerLevel: proj.attackerLevel,
+              sourceEid: proj.ownerEid,
+            });
+          }
+        }
+      }
+
       if (!dead && proj.fromNpc) {
         // NPC shots seek players (and straw decoys, which exist to eat them).
         for (const [playerEid, player] of this.players) {
@@ -18280,6 +18312,38 @@ export class GameServer {
               attackerLevel: proj.attackerLevel,
               sourceEid: proj.ownerEid,
             });
+            // THE SIGNATURE LAW reads both ways: a foe's ability shot
+            // announces its landing too, so the receiving-end
+            // signature speaks at the wound (the golem's boulder lies
+            // where it fell). Basic ranged shafts stay quiet.
+            if (proj.abilityId) {
+              this.broadcastFx({
+                t: 'fx',
+                kind: 'blast',
+                x: pos.x,
+                y: pos.y,
+                radius: proj.splashRadius ?? 0.55,
+                id: proj.abilityId,
+                color: proj.abilityColor,
+              });
+            }
+            // The burst is part of the same landing: everyone else
+            // standing close pays half the direct hit.
+            if (proj.splashRadius) {
+              const splashHit = Math.max(1, Math.round(proj.maxHit * 0.5));
+              for (const [otherEid, other] of this.players) {
+                if (otherEid === playerEid) continue;
+                if (other.session === null && other.disconnectedAt !== null) continue;
+                const opos = this.positions.get(otherEid);
+                if (!opos) continue;
+                if (Math.hypot(opos.x - pos.x, opos.y - pos.y) > proj.splashRadius) continue;
+                this.damagePlayer(otherEid, Math.floor(Math.random() * (splashHit + 1)), {
+                  status: proj.status,
+                  attackerLevel: proj.attackerLevel,
+                  sourceEid: proj.ownerEid,
+                });
+              }
+            }
             dead = true;
             break;
           }

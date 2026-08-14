@@ -4477,6 +4477,195 @@ Object.assign(PLATES, {
     dot(c, st.spark, 0.02, 0.04, 0.022);
   },
 
+  // ------------------- THE EARTH STANDS UP — the golem arts' plates.
+  // Hillstone Throw — the torn-out boulder mid-flight, dust behind it.
+  hillstone_throw: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // The flight line it already crossed.
+    c.strokeStyle = st.deep;
+    c.lineCap = 'round';
+    c.lineWidth = 0.045;
+    c.beginPath();
+    c.moveTo(-0.4, 0.28);
+    c.quadraticCurveTo(-0.2, 0.1, 0.0, -0.02);
+    c.stroke();
+    // The boulder: faceted mass, lit top plane, shadowed cheek.
+    poly(c, st.mid, [
+      [0.02, -0.3], [0.24, -0.24], [0.34, -0.06], [0.26, 0.14],
+      [0.04, 0.2], [-0.12, 0.06], [-0.1, -0.16],
+    ], 0.036);
+    fill(c, st.spark, [[0.02, -0.3], [0.24, -0.24], [0.12, -0.12], [-0.06, -0.18]]);
+    fill(c, st.deep, [[0.26, 0.14], [0.34, -0.06], [0.2, 0.0], [0.16, 0.12]]);
+    // Grit shaken loose along the arc.
+    dot(c, st.spark, -0.3, 0.2, 0.024);
+    dot(c, st.deep, -0.18, 0.1, 0.02);
+  },
+  // Quarry Ring — the ground stands up: raised slabs round a sunken heart.
+  quarry_ring: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    ground(c, 0, 0.42, st);
+    // Standing stones heaved up on the rim, mismatched on purpose.
+    for (const [x, y, w, h] of [
+      [-0.32, -0.02, 0.13, 0.3],
+      [-0.06, -0.12, 0.15, 0.38],
+      [0.22, -0.05, 0.12, 0.32],
+    ] as const) {
+      poly(c, st.mid, [
+        [x - w / 2, y], [x - w / 2 + 0.02, y - h], [x + w / 2 - 0.01, y - h - 0.04], [x + w / 2, y],
+      ], 0.03);
+      // Each slab's lit crown — the top plane the camera owns.
+      fill(c, st.spark, [[x - w / 2 + 0.02, y - h], [x + w / 2 - 0.01, y - h - 0.04], [x + w / 2 - 0.03, y - h + 0.03], [x - w / 2 + 0.04, y - h + 0.05]]);
+    }
+    ringDot(c, st.deep, 0, 0.02, 0.3, 0.028);
+  },
+  // Anvil Fall — the anvil already falling, the floor about to ring.
+  anvil_fall: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    ground(c, 0, 0.4, st);
+    // The anvil: horn, face, and waist, dropping point-down.
+    poly(c, st.mid, [
+      [-0.26, -0.44], [0.3, -0.44], [0.22, -0.32], [0.1, -0.3],
+      [0.12, -0.16], [-0.14, -0.16], [-0.12, -0.3], [-0.34, -0.34],
+    ], 0.034);
+    fill(c, st.spark, [[-0.26, -0.44], [0.3, -0.44], [0.26, -0.38], [-0.28, -0.38]]);
+    // Drop chevrons under the waist — it is coming DOWN.
+    chevrons(c, 0, -0.04, Math.PI / 2, st, 2, 0.9);
+    // The first ring of the strike, already spreading.
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.036;
+    c.beginPath();
+    c.ellipse(0, 0.12, 0.3, 0.1, 0, 0, Math.PI * 2);
+    c.stroke();
+  },
+  // Drawn Bolt — the shoulder leading, speed lines off the plates.
+  drawn_bolt: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // The pauldron slab, riveted, driving right.
+    poly(c, st.mid, [
+      [-0.18, -0.26], [0.18, -0.3], [0.32, -0.1], [0.28, 0.12], [-0.08, 0.18], [-0.24, -0.04],
+    ], 0.036);
+    fill(c, st.spark, [[-0.18, -0.26], [0.18, -0.3], [0.14, -0.18], [-0.14, -0.16]]);
+    // Rivet tick-marks.
+    dot(c, st.deep, -0.06, -0.06, 0.028);
+    dot(c, st.deep, 0.12, -0.08, 0.028);
+    dot(c, st.deep, 0.04, 0.06, 0.028);
+    // The lane it is about to own.
+    chevrons(c, -0.34, 0.02, 0, st, 2, 1.1);
+    c.strokeStyle = st.deep;
+    c.lineCap = 'round';
+    c.lineWidth = 0.04;
+    c.beginPath();
+    c.moveTo(-0.4, 0.3);
+    c.lineTo(0.3, 0.26);
+    c.stroke();
+  },
+  // Slag Gobbet — a fistful of melt, flying and shedding.
+  slag_gobbet: (st) => (c) => {
+    c.translate(0.5, 0.48);
+    // The lobbed arc behind it.
+    c.strokeStyle = st.deep;
+    c.lineCap = 'round';
+    c.lineWidth = 0.042;
+    c.beginPath();
+    c.moveTo(-0.38, 0.32);
+    c.quadraticCurveTo(-0.22, -0.06, 0.02, -0.08);
+    c.stroke();
+    // The gobbet: black crust lobes over a burning core.
+    poly(c, st.deep, [
+      [0.0, -0.26], [0.2, -0.2], [0.3, -0.02], [0.18, 0.16], [-0.04, 0.14], [-0.14, -0.06],
+    ], 0.034);
+    flame(c, 0.08, -0.2, 0.34, st, 0.16);
+    dot(c, st.core, 0.08, -0.04, 0.07);
+    // Drips that will not make it to the landing.
+    droplet(c, -0.26, 0.34, 0.22, st);
+    dot(c, st.spark, -0.14, 0.2, 0.024);
+  },
+  // Vent Ring — staked ground learning to breathe fire.
+  vent_ring: (st) => (c) => {
+    c.translate(0.5, 0.58);
+    ground(c, 0, 0.42, st);
+    // Three vent slits cut into the patch.
+    c.fillStyle = st.deep;
+    for (const [x, y] of [[-0.24, 0.04], [0.02, 0.1], [0.26, 0.02]] as const) {
+      c.beginPath();
+      c.ellipse(x, y, 0.08, 0.028, 0, 0, Math.PI * 2);
+      c.fill();
+    }
+    // Two already speaking, one still drawing breath.
+    flame(c, -0.24, -0.02, 0.3, st, 0.06);
+    flame(c, 0.26, -0.04, 0.26, st, -0.08);
+    dot(c, st.spark, 0.02, 0.0, 0.03);
+    ringDot(c, st.mid, 0, 0.0, 0.36, 0.026);
+  },
+  // Crust Burst — the shell stops trying: plates blown off the heart.
+  crust_burst: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // The bared core.
+    dot(c, st.core, 0, 0, 0.13);
+    ringDot(c, st.mid, 0, 0, 0.2, 0.04);
+    // Crust plates mid-flight, dark outside, lit on the torn face.
+    for (const [ang, d] of [[-2.4, 0.34], [-0.9, 0.38], [0.4, 0.34], [1.7, 0.36], [2.9, 0.32]] as const) {
+      const x = Math.cos(ang) * d;
+      const y = Math.sin(ang) * d * 0.8;
+      poly(c, st.deep, [
+        [x - 0.09, y - 0.05], [x + 0.05, y - 0.1], [x + 0.1, y + 0.04], [x - 0.03, y + 0.09],
+      ], 0.028);
+      dot(c, st.spark, x - Math.cos(ang) * 0.08, y - Math.sin(ang) * 0.07, 0.025);
+    }
+    star4(c, 0, 0, 0.09, st.spark, 0.4);
+  },
+  // Calving Volley — three shards shorn off, flying in a fan.
+  calving_volley: (st) => (c) => {
+    c.translate(0.5, 0.6);
+    for (const [ang, len] of [[-0.45, 0.6], [0, 0.68], [0.45, 0.6]] as const) {
+      const dx = Math.sin(ang);
+      const dy = -Math.cos(ang);
+      // Each shard is a faceted lance: dark body, one bright facet.
+      poly(c, st.mid, [
+        [dx * 0.12 - dy * 0.05, dy * 0.12 + dx * 0.05],
+        [dx * len, dy * len],
+        [dx * 0.12 + dy * 0.05, dy * 0.12 - dx * 0.05],
+      ], 0.026);
+      fill(c, st.core, [
+        [dx * 0.14 - dy * 0.02, dy * 0.14 + dx * 0.02],
+        [dx * len, dy * len],
+        [dx * 0.16, dy * 0.16],
+      ]);
+    }
+    // The shorn shoulder they left behind.
+    poly(c, st.deep, [[-0.14, 0.08], [0.14, 0.08], [0.1, 0.2], [-0.1, 0.2]], 0.028);
+    dot(c, st.spark, 0.2, -0.08, 0.024);
+    dot(c, st.spark, -0.2, -0.06, 0.02);
+  },
+  // Winter's Floor — the marked ground freezing shut.
+  winters_floor: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    // The pane: a frozen ellipse with facet seams.
+    c.fillStyle = st.mid;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.ellipse(0, 0.08, 0.4, 0.16, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    fill(c, st.core, [[-0.3, 0.02], [-0.02, -0.04], [0.12, 0.04], [-0.16, 0.1]]);
+    // The one crack, closing from the rim.
+    c.strokeStyle = st.deep;
+    c.lineCap = 'round';
+    c.lineWidth = 0.026;
+    c.beginPath();
+    c.moveTo(-0.34, 0.12);
+    c.lineTo(-0.1, 0.08);
+    c.lineTo(0.04, 0.12);
+    c.lineTo(0.24, 0.06);
+    c.stroke();
+    // Hoar spikes standing on the rim.
+    for (const [x, h] of [[-0.3, 0.16], [0.3, 0.14], [0.06, 0.12]] as const) {
+      poly(c, st.spark, [[x - 0.045, 0.0], [x, -h], [x + 0.045, 0.0]], 0.022);
+    }
+    star4(c, 0.2, -0.14, 0.05, st.core);
+  },
+
   // ---------------------------- beastcraft arts (THE WILD ANSWERS THE
   // CALL). Gentle the Wild — the asking: a beast's neck bowing to an
   // open hand, the collar waiting between them, the working calm above.
