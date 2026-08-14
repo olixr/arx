@@ -355,3 +355,15 @@ export const OFFHAND_DMG_PER_LEVEL = 0.005;
 export function offhandDamageFactor(dualwieldLevel: number): number {
   return Math.min(0.85, OFFHAND_DMG_BASE + (Math.max(1, dualwieldLevel) - 1) * OFFHAND_DMG_PER_LEVEL);
 }
+
+// ---------------------------------------------------- the second grip
+
+/**
+ * THE HONEST TRADE: the swap verb's beat. The server locks attacks and
+ * casts for the tick count; the client plays the stow-and-draw and
+ * clamps its mirror clocks on the ms twin. TWIN LAW (the STRIKE_CLOCKS
+ * precedent): these two must stay byte-equal through TICK_MS = 50 —
+ * the outlives-law test pins it, change both or neither.
+ */
+export const SWAP_BEAT_TICKS = 12;
+export const SWAP_BEAT_MS = 600;

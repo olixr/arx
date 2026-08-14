@@ -35,6 +35,7 @@ export type ActionId =
   | 'buildRotate'
   | 'sit'
   | 'sheathe'
+  | 'swapSets'
   | 'mount'
   | 'walkToggle'
   | 'sneakToggle'
@@ -67,10 +68,11 @@ export interface ActionDef {
 
 /**
  * The shipped layout. Keyboard: WASD moves, Space attacks, QERT casts,
- * F uses, Shift dodges, 1 swallows the belt's meal; the stance row is
- * Z walk / X sit / C sneak; screens live on I K V N B U M O G. Pad:
- * RT (or Ⓧ) attacks, Ⓐ uses, Ⓑ dodges, LB/LT/RB/▲ cast, Ⓨ names the
- * loot; d-pad ▼ eats off the belt, ◀ sheathes, ▶ raises the glass;
+ * F uses, Shift dodges, 1 swallows the belt's meal, backquote trades
+ * weapon sets; the stance row is Z walk / X sit / C sneak; screens
+ * live on I K V N B U M O G. Pad: RT (or Ⓧ) attacks, Ⓐ uses, Ⓑ
+ * dodges, LB/LT/RB/▲ cast, Ⓨ names the loot; d-pad ▼ eats off the
+ * belt, ◀ sheathes (HELD ◀ trades weapon sets), ▶ raises the glass;
  * L3 sneaks, R3 steps the camera; Start is the pack, Select the chart.
  *
  * THE PAIRED HAND: the two technique seats ride TOGETHER — Q and E on
@@ -104,6 +106,12 @@ export const ACTIONS: readonly ActionDef[] = [
   // d-pad ▼ is the genre's item button and the panic hand finds it.
   { id: 'quickUse', label: 'Belt consumable', group: 'Combat', kb: ['Digit1'], pad: [13] },
   { id: 'sheathe', label: 'Sheathe weapons', group: 'Combat', kb: ['KeyH'], pad: [14] },
+  // THE SECOND GRIP: one press trades the hands with the stowed pair.
+  // Pad ships unbound BY DESIGN — all sixteen buttons answer elsewhere,
+  // so the pad's door is HOLDING sheathe (◀), split in the input
+  // manager (tap sheathes on release, a 220ms hold trades). The edge
+  // path is wired so a direct rebind Just Works (the mount precedent).
+  { id: 'swapSets', label: 'Trade weapon sets', group: 'Combat', kb: ['Backquote'], pad: [] },
 
   { id: 'interact', label: 'Use / talk', group: 'World', kb: ['KeyF'], pad: [0] },
   { id: 'lootReveal', label: 'Name the loot', group: 'World', kb: ['AltLeft', 'AltRight'], pad: [3] },

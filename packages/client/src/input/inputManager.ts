@@ -11,6 +11,14 @@ import {
 const STICK_DEADZONE = 0.22;
 
 /**
+ * THE HOLD SPLIT threshold on the pad's sheathe button: under this is
+ * a tap (sheathe), crossing it while held is the weapon-set trade.
+ * 220ms is the Screen Ring's proven hold — one number the thumb
+ * already knows.
+ */
+const SWAP_HOLD_MS = 220;
+
+/**
  * Action-mapping input layer: keyboard/mouse, Gamepad API, and touch
  * (virtual joystick) all write into one shared action state that the
  * game samples once per network tick.
@@ -83,6 +91,21 @@ export class InputManager {
    */
   private sheatheQueued = false;
   private padSheatheWasDown = false;
+  /**
+   * THE SECOND GRIP's swap verb (backquote; pad = HELD sheathe ◀, or
+   * a direct rebind) — the sit protocol: one frame carries the bit,
+   * the server trades the sets and owns the beat.
+   */
+  private swapQueued = false;
+  private padSwapWasDown = false;
+  /**
+   * THE HOLD SPLIT on the pad's sheathe button: press starts this
+   * clock; release under SWAP_HOLD_MS is the tap (sheathe fires on
+   * RELEASE — the deliberate cost of the split), crossing SWAP_HOLD_MS
+   * while held fires the trade once and eats the release.
+   */
+  private padSheatheDownAt: number | null = null;
+  private padSheatheHeldSwap = false;
   private padSneakWasDown = false;
   /**
    * One queued mount-toggle press (P; pad unbound by default) — the
@@ -155,6 +178,7 @@ export class InputManager {
         if (!this.buildCapture) {
           if (bindings.kbMatches('sit', e.code)) this.sitQueued = true;
           if (bindings.kbMatches('sheathe', e.code)) this.sheatheQueued = true;
+          if (bindings.kbMatches('swapSets', e.code)) this.swapQueued = true;
           if (bindings.kbMatches('mount', e.code)) this.mountQueued = true;
         }
       }
@@ -382,6 +406,8 @@ export class InputManager {
     if (this.cinemaCapture) {
       this.sitQueued = false;
       this.sheatheQueued = false;
+      this.swapQueued = false;
+      this.padSheatheDownAt = null;
       this.mountQueued = false;
       return 0;
     }
@@ -393,6 +419,8 @@ export class InputManager {
     if (this.buildCapture) {
       this.sitQueued = false;
       this.sheatheQueued = false;
+      this.swapQueued = false;
+      this.padSheatheDownAt = null;
       this.mountQueued = false;
       if (bindings.kbDown('dodge', this.keys)) b |= InputButton.Dodge;
       if (this.sneakMode) b |= InputButton.Sneak;
@@ -440,16 +468,52 @@ export class InputManager {
       b |= InputButton.Sit;
       this.sitQueued = false;
     }
-    // Sheathe: pad edge (d-pad ◀ default) or the queued key press.
+    // Sheathe / trade — THE HOLD SPLIT on the pad's sheathe button
+    // (d-pad ◀ default): the press starts a clock; a release under
+    // SWAP_HOLD_MS is the tap and sheathes (on RELEASE — the split's
+    // deliberate cost, the keyboard's H keeps its press edge), and
+    // crossing the threshold while held trades the weapon sets once,
+    // eating the release so a hold never also sheathes.
     const padSheathe = bindings.padHeld('sheathe', snap);
     if (padSheathe && !this.padSheatheWasDown) {
-      this.sheatheQueued = true;
+      this.padSheatheDownAt = performance.now();
+      this.padSheatheHeldSwap = false;
       this.padUsed = true;
+    }
+    if (
+      padSheathe &&
+      this.padSheatheDownAt !== null &&
+      !this.padSheatheHeldSwap &&
+      performance.now() - this.padSheatheDownAt >= SWAP_HOLD_MS
+    ) {
+      this.swapQueued = true;
+      this.padSheatheHeldSwap = true;
+    }
+    if (!padSheathe && this.padSheatheWasDown) {
+      // Only a REAL release is a tap — a pad vanishing into a menu
+      // capture (snap === null) must not sheathe on the way out.
+      if (snap && this.padSheatheDownAt !== null && !this.padSheatheHeldSwap) {
+        this.sheatheQueued = true;
+      }
+      this.padSheatheDownAt = null;
     }
     this.padSheatheWasDown = padSheathe;
     if (this.sheatheQueued) {
       b |= InputButton.Sheathe;
       this.sheatheQueued = false;
+    }
+    // Trade weapon sets: unbound on pads by default (the hold above is
+    // the shipped door), but the direct edge path is wired so a rebind
+    // Just Works; the backquote press queues like sit.
+    const padSwap = bindings.padHeld('swapSets', snap);
+    if (padSwap && !this.padSwapWasDown) {
+      this.swapQueued = true;
+      this.padUsed = true;
+    }
+    this.padSwapWasDown = padSwap;
+    if (this.swapQueued) {
+      b |= InputButton.Swap;
+      this.swapQueued = false;
     }
     // Mount: unbound on pads by default, but the edge path is wired so
     // a rebind Just Works; the key press queues like sit.

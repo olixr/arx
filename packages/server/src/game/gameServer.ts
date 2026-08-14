@@ -440,6 +440,7 @@ import {
   BACKSTAB_XP_BASE,
   DUALWIELD_UNLOCK_ONEHAND,
   HIDDEN_SKILLS,
+  SWAP_BEAT_TICKS,
   OFFHAND_DELAY_TICKS,
   offhandDamageFactor,
   sneakDetectionFactor,
@@ -1974,13 +1975,9 @@ const PLAYER_HIT_HEIGHT = 1.9;
  * damage can happen, so an accidental click can never be an attack.
  */
 const DRAW_LOCK_TICKS = 10;
-/**
- * THE HONEST TRADE: the swap verb's beat, in ticks (~600ms). For the
- * whole beat attacks and casts wait behind the standing draw-lock gate
- * and re-presses of the verb are swallowed. The beat IS the cooldown —
- * no timer rides on top of it, by design (LAW 4, weapon-sets plan).
- */
-const SWAP_BEAT_TICKS = 12;
+// THE HONEST TRADE's beat (SWAP_BEAT_TICKS) lives in shared/sim/combat
+// beside its ms twin — the client's mirror clocks and this lock must
+// read the same clock. The beat IS the cooldown (LAW 4, plan).
 
 /**
  * Damage roll with a 10% base crit chance (guaranteed heavy hit).

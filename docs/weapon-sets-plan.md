@@ -191,7 +191,48 @@ refusal. Protocol bump + changelog. Slate tests: swap atomicity, two-hands law i
 the stowed row, dual-wield gate in the stowed row, stat/count/loan exclusion
 census, combo+cast death on swap, empty refusal, persistence round-trip.
 
-**Phase 2 — THE QUICK HAND (input + choreography).** `swapSets` action + kb
+**Phase 2 — THE QUICK HAND (input + choreography). SHIPPED 2026-08-14.**
+
+*As-built:* `swapSets` joined the ONE KEYMAP (kb Backquote; pad DELIBERATELY
+unbound — every button answers elsewhere, pinned in bindings.test.ts — with the
+direct edge path wired so a rebind Just Works, the mount precedent). THE HOLD
+SPLIT lives in inputManager's buttons(): the pad's sheathe button starts a
+clock on press; release under `SWAP_HOLD_MS` (220, the Screen Ring's proven
+hold) taps the sheathe — which now fires on RELEASE on the pad, the split's
+deliberate cost, keyboard H keeps its press edge — and crossing the threshold
+held fires the trade once and eats the release. A pad vanishing into a menu
+capture mid-hold is NOT a tap (the snap-null guard). The beat's clock twinned:
+`SWAP_BEAT_TICKS`/`SWAP_BEAT_MS` moved to shared/sim/combat.ts beside the dual
+wield laws, TWIN LAW pinned in weaponSets.test.ts (ticks × TICK_MS === ms —
+change both or neither); the server's local constant died. THE PREDICTED TRADE
+(clientGame.trackOwnSwap): on a Swap-bit frame with something locally at the
+back, `ownSwapAt` stamps the press edge, the string lets down, the cast bar
+bails, and the three mirror clocks clamp FORWARD (meleeReadySeq/staffReadySeq
++SWAP_BEAT_TICKS, drawReadyAt +SWAP_BEAT_MS) so the predicted body never
+swings into the server's refusal; dodge stays free, matching the server.
+Choreography = the PREDICTED BLOW insight applied to the sheathe ease: the
+renderer ORs `game.swapStowing(now)` into the own body's sheathed flag for the
+beat's first half — the standing ease rides the weapon to the hip, the equip
+echo lands while the hand is down there, and the same ease falling home draws
+the incoming set; zero new animation plumbing. The voice is the sheathe's own
+pair on the predicted edge: weaponStow at the press, weaponDraw at the
+handoff (SWAP_BEAT_MS/2); a swap begun SHEATHED stays quiet locally and the
+server's sheathed-bit falling plays the one honest draw. LIVE RECEIPTS (lane-7
+rig 5183/8800, fresh DB arx_swap_proof): stow verb over the wire; Backquote
+trade atomic both directions; choreography edge inside 120ms; in-beat re-press
+swallowed (exactly one trade); `unequip stowWeapon` through the standing
+whitelist; empty back row speaks "Nothing waits at your back." and trades
+nothing. Full suite green except quests.test.ts's `the_count_below` /
+sealkeeper_annik failure — verified PRE-EXISTING at clean HEAD in a fresh
+worktree (the Kingsdelf ERRANDS lane, owners notified cross-session; my files
+green in isolation, the secret-arts concurrent-session precedent). Riglab
+trade rows DEFERRED to Phase 3 deliberately: the trade's rig motion is the
+standing sheathe ease both ways — there is no NEW geometry to audit until the
+visible back exists. THE SAFETY interplay recorded as verified behavior: attack
+is a held button, so a press held through the beat fires the tick the lock
+lifts; the 8-tick armBuffer stands untouched (combat-v2 law).
+
+*Original scope:* `swapSets` action + kb
 default; pad hold-sheathe split (tap-on-release ≤220ms = sheathe, hold = swap —
 bindings.test padRequired updated deliberately); `InputButton.Swap`; client
 predicted beat (press-edge choreography on the sheathT clock, items trade at

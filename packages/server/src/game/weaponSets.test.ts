@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { InputButton, xpForLevel } from '@arx/shared';
+import { InputButton, SWAP_BEAT_MS, SWAP_BEAT_TICKS, TICK_MS, xpForLevel } from '@arx/shared';
 import { itemDef } from '@arx/content';
 import { GameServer } from './gameServer.js';
 
@@ -277,6 +277,13 @@ test('THE SLEEPING STEEL wakes no passives', () => {
     [itemDef('frost_quiver')!.passive],
     'the same quiver worn in earnest speaks',
   );
+});
+
+// TWIN LAW (the STRIKE_CLOCKS precedent): the server locks in ticks,
+// the client clamps and choreographs in ms — one beat, two units.
+// This pin outlives the constants: change both or neither.
+test('the swap beat twins agree across the tick clock', () => {
+  assert.equal(SWAP_BEAT_TICKS * TICK_MS, SWAP_BEAT_MS, 'tick and ms twins must stay byte-equal');
 });
 
 test('the swap verb owns a fresh input bit', () => {

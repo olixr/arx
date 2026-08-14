@@ -1,6 +1,6 @@
 import { procShape } from './render/wornLight.js';
 import { deckFillAt, fillContains } from './render/terrain.js';
-import { AWNING_HOST_TILES, AWNING_SHAPES, EntityKind, FENCE_TILES, GARRISON_TILES, HANGABLE_WALL_TILES, PoseState, ROCK_TILES, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo, type EntityMeta } from '@arx/shared';
+import { AWNING_HOST_TILES, AWNING_SHAPES, EntityKind, FENCE_TILES, GARRISON_TILES, HANGABLE_WALL_TILES, PoseState, ROCK_TILES, SWAP_BEAT_MS, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo, type EntityMeta } from '@arx/shared';
 import { BUILDABLES, DYE_PIGMENTS, ELEMENT_COLORS, RECIPES, SIGN_MOTIFS, TRELLIS_SPECIES, buildableForTile, buildableGround, enchantDef, isDaggerStats, itemDef, npcActor, npcDef, resonanceShift, type BuildableDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { farmBins, farmJobs, farmKey } from './game/farmCare.js';
@@ -2845,6 +2845,7 @@ let invCaseMeasuredW = -1;
 let lastDrawT = 0;
 let lastOvercharged = false;
 let lastSheathed = false;
+let lastSwapAt = 0;
 /** Pad button state last frame — build-mode verbs edge off this. */
 let padPrevBtns = new Set<number>();
 let lastWalkMode = false;
@@ -3026,6 +3027,20 @@ function frame(now: number): void {
       else sfx.weaponDraw();
     }
     lastSheathed = game.isSheathed;
+  }
+
+  // THE HONEST TRADE wears the sheathe's own voice: steel home at the
+  // press, steel out at the handoff — two real sounds, no new
+  // material. Predicted edge (ownSwapAt), matching the predicted
+  // choreography. A swap begun SHEATHED stays quiet here: nothing
+  // audibly stows, and the server's sheathed-bit falling plays the one
+  // honest draw through the edge above.
+  if (game.ownSwapAt !== lastSwapAt) {
+    if (!game.isSheathed) {
+      sfx.weaponStow();
+      window.setTimeout(() => sfx.weaponDraw(), Math.round(SWAP_BEAT_MS / 2));
+    }
+    lastSwapAt = game.ownSwapAt;
   }
 
   // Bow-draw tension: creak when the string starts back, a tight click

@@ -67,6 +67,19 @@ test('the two art seats ride together by default', () => {
   assert.deepEqual([...def('ability2').pad], [5]); // RB
 });
 
+// THE SECOND GRIP: the swap verb ships on backquote, and DELIBERATELY
+// pad-unbound — every pad button answers elsewhere (ONE KEYMAP), so
+// the pad's door is HOLDING sheathe ◀, split in the input manager.
+// A future session adding a pad default here must first find it a
+// genuinely free button, which does not exist today.
+test('the swap verb rides backquote, and the pad trades by holding sheathe', () => {
+  const def = ACTIONS.find((a) => a.id === 'swapSets')!;
+  assert.deepEqual([...def.kb], ['Backquote']);
+  assert.deepEqual([...def.pad], [], 'pad-unbound by design: hold-sheathe is the door');
+  const sheathe = ACTIONS.find((a) => a.id === 'sheathe')!;
+  assert.deepEqual([...sheathe.pad], [14], 'the hold-split lives on d-pad left');
+});
+
 test('rebinding steals the key from its old owner', () => {
   const b = new Bindings();
   b.resetAll();

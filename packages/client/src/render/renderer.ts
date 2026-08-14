@@ -29839,7 +29839,11 @@ export class Renderer {
           ? CLOTH_COLORS[game.ownLook.shirt]!
           : PLAYER_COLORS[hashString(game.ownName) % PLAYER_COLORS.length]!,
         drawTOverride: game.ownDrawT,
-        sheathed: game.isSheathed,
+        // THE PREDICTED TRADE: through the swap beat's first half the
+        // own body stows — the standing sheathe ease plays the ride to
+        // the hip, the equip echo lands while the hand is down there,
+        // and the same ease falling home draws the incoming set.
+        sheathed: game.isSheathed || game.swapStowing(now),
         mount: game.ownMount ?? undefined,
       });
       // Only WE see ourselves while stealthed — a ghost of our own body.

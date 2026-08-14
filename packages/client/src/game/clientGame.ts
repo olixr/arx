@@ -10,6 +10,8 @@ import {
   INTERP_DELAY_MS,
   b64ToU8,
   InputButton,
+  SWAP_BEAT_MS,
+  SWAP_BEAT_TICKS,
   hasButton,
   PLAYER_SPEED,
   PROTOCOL_VERSION,
@@ -610,6 +612,26 @@ export class ClientGame {
    *  mounted on furniture; the live aim everywhere else. */
   ownDirServer = 0;
 
+  /**
+   * THE PREDICTED TRADE: performance.now() when the local swap verb
+   * last fired with something waiting at the back; 0 = never. The
+   * renderer stows the own body through the beat's first half off this
+   * clock, and main.ts hangs the stow/draw voice on its edge. Cosmetic
+   * only — the server's exchange and beat lock are the authority.
+   */
+  ownSwapAt = 0;
+
+  /**
+   * True through the first half of the local swap beat — the outgoing
+   * weapon riding to its rest. The back half is the standing sheathe
+   * ease falling home with the incoming set (the equip echo lands
+   * while the hand is at the hip, so the trade reads as one motion).
+   */
+  swapStowing(now = performance.now()): boolean {
+    // Half the beat = the STOW_HANDOFF moment (sheath.ts) on the clock.
+    return this.ownSwapAt > 0 && now < this.ownSwapAt + SWAP_BEAT_MS / 2;
+  }
+
   /** Dodge FX hook (the predictor's onDodge is owned internally). */
   onDodgeFx: ((x: number, y: number, mx: number, my: number) => void) | null = null;
   /**
@@ -845,6 +867,29 @@ export class ClientGame {
       );
       this.onCastFx?.(slot, ab);
     }
+  }
+
+  /**
+   * THE PREDICTED TRADE: the swap's choreography starts on the press
+   * edge (the PREDICTED BLOW insight — feed the stow early, let the
+   * standing sheathe ease play it), and the mirror clocks clamp
+   * FORWARD so the predicted body never swings a blow the server's
+   * beat lock will refuse. Fires only when the local pack knows
+   * something waits at the back — the empty press stays silent here
+   * and the server speaks the refusal. Cosmetic on mispredict: a
+   * stale local view plays a beat over nothing and touches no
+   * authority. Dodge stays free through the beat, like the server.
+   */
+  private trackOwnSwap(frame: InputFrame, now: number): void {
+    if (!hasButton(frame.buttons, InputButton.Swap)) return;
+    if (!this.equipment.stowWeapon && !this.equipment.stowOffhand) return;
+    if (now < this.ownSwapAt + SWAP_BEAT_MS) return; // the beat swallows re-presses
+    this.ownSwapAt = now;
+    this.drawStartAt = 0; // the string lets down with the trade
+    this.ownCast = null; // traded steel casts nothing — the bar agrees
+    this.meleeReadySeq = Math.max(this.meleeReadySeq, frame.seq + SWAP_BEAT_TICKS);
+    this.staffReadySeq = Math.max(this.staffReadySeq, frame.seq + SWAP_BEAT_TICKS);
+    this.drawReadyAt = Math.max(this.drawReadyAt, now + SWAP_BEAT_MS);
   }
 
   /**
@@ -3032,6 +3077,7 @@ export class ClientGame {
       // rewinds by what this screen is ACTUALLY showing.
       this.conn.send({ t: 'input', frame, viewMs: Math.round(this.interpDelayMs) });
       this.predictor.applyInput(frame);
+      this.trackOwnSwap(frame, now);
       this.trackOwnDraw(frame, now);
       this.trackOwnStaff(frame);
       this.trackOwnMelee(frame, now);
