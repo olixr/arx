@@ -615,6 +615,48 @@ observed, not asserted.
 - Tests: dial refusals by name; survey determinism; bench smoke via the cms
   harness; lint parity with the validator (one law, two surfaces).
 
+### Phase 6 as-built (2026-08-13, commit ffd4a4a — THE SURVEYOR'S GLASS II; THE EPIC IS COMPLETE)
+
+Shipped as designed; deviations and laws learned:
+
+- **The dials that closed**: capitalTierFloor [3,5] and capitalRoughMax
+  [0,0.5] joined FRONTIER (the seat reads both at call time); breach
+  counts stayed layout-curated (a Foundry knob, not world weather —
+  deviation from the plan's candidate list, deliberate). The Weather
+  bench's bandDial key union is HAND-LISTED — the capital ember and
+  fallow bands joined it (the lived-in-land lesson, honored).
+- **The survey's order is the law**: the pure seat sweep runs FIRST
+  and masks the cell simulation, mirroring the live server's
+  lazy-poiCtx ordering — a survey that rolled cells before seats
+  would overcount the frontier. Live numbers: 233 capitals across the
+  ±23-country window, 1976 quiet countries (ocean, settled, and
+  layout-less families), 26 of 300 surveyed cells masked (~9% — the
+  ONE-CELL DEBT priced).
+- **Lint is the validator, verbatim**: the bench runs
+  validateStronghold client-side (content ships to the client), so
+  parity with the save gate is structural; PULL-LAW pairs paint hot
+  red via a direct distance pass.
+- **The stage ladder previews through a synthetic seat** at the
+  layout's top tier — and surfaced the titles live ('The Shouting
+  Ring' at stage 3 · 30 bodies, from 28 at stage 0, walls
+  bit-identical).
+- **World Studio**: capitals ride worldSnapshot (defensively read —
+  the slate law now has three case studies), drawn as the map's
+  largest diamonds with family ink, the mask washed beneath, stage
+  pips below, broken-ward ticks above, behind a default-on Capitals
+  lens.
+- **Proving-pass gotchas**: text-content matchers lie about rendered
+  DOM (the ladder 'failed' until probed structurally); the cms
+  hash-router deep-links known sections but a mid-HMR load can
+  render partial rails — networkidle + patience before verdicts.
+- **THE ONE STANDING DEBT** (carried, explicit): the timed full solo
+  assault with pull-count audit needs a real input rig — recipe: rig
+  worlds per war-camp (PORT/DB_DATABASE isolated), `/xp <skill>
+  <amount>` (onehand + defence), a real pointer for the mouse-hold
+  combat lane, count pulls via the wing-tagged aggro chains, target
+  6-10 min at-band and 8-14 pulls on the flagship. Capital chart
+  pips and epoch-stale discovery names ride the same future pass.
+
 ## Sequencing and safety
 
 Order is pipeline-first: Phase 1 exists so that every later phase has
