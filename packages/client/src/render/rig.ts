@@ -3813,53 +3813,68 @@ export function paintGoblinHead(
       ctx.stroke();
     }
 
-    // --- THE CROOK NOSE, last so it overhangs everything: the bridge
-    // arcs UP off the brow root, crests, and the tip curls decisively
-    // DOWN past the grin line. A down-curling hook can never be read
-    // as an ear — and the ear behind the skull out-stands it anyway
-    // (SILHOUETTE HIERARCHY).
-    const reach = gw * 0.62;
+    // --- THE NOSE, last so it overhangs everything: THE SAME broad
+    // wedge the face-on band wears, simply turned side-on — flat
+    // planes and a bony knuckle (FLAT FORGE LAW), never a rounded
+    // tube. The bridge runs nearly straight off the brow, BREAKS at
+    // the knuckle on the eye line, tapers to the pointed tip, and the
+    // point turns DOWN past the grin; the underside is one flat plane
+    // stepping back through the nostril. Always shorter than the
+    // standing ear behind it (SILHOUETTE HIERARCHY).
+    const reach = gw * 0.58;
     const nRootX = face - F * gw * 0.02;
-    const crestX = face + F * reach * 0.62;
-    const crestY = pEyeY - hh * 0.34;
+    const rootTopY = pEyeY - hh * 0.12;
+    const knX = face + F * reach * 0.5;
+    const knY = pEyeY - hh * 0.02;
     const tipX = face + F * reach;
-    const tipY = pMouthY - hh * 0.1;
-    const hookX = face + F * reach * 0.78;
-    const hookY = pMouthY + hh * 0.1;
+    const tipY = pMouthY - hh * 0.16;
+    const hookX = face + F * reach * 0.84;
+    const hookY = pMouthY + hh * 0.08;
+    const underX = face + F * reach * 0.6;
+    const underY = pMouthY - hh * 0.1;
+    const nostX = face + F * gw * 0.12;
+    const nostY = pMouthY - hh * 0.18;
     ctx.fillStyle = hurt ? '#ffffff' : shade(gb.hide, 5);
     ctx.beginPath();
-    ctx.moveTo(nRootX, pEyeY - hh * 0.14);
-    ctx.quadraticCurveTo(crestX, crestY, tipX, tipY);
-    ctx.quadraticCurveTo(tipX + F * gw * 0.02, tipY + hh * 0.12, hookX, hookY);
-    ctx.quadraticCurveTo(face + F * reach * 0.5, pMouthY - hh * 0.02, face + F * gw * 0.06, pMouthY - hh * 0.16);
-    ctx.quadraticCurveTo(face - F * gw * 0.06, pMouthY - hh * 0.2, nRootX, pEyeY + hh * 0.12);
+    ctx.moveTo(nRootX, rootTopY);
+    ctx.lineTo(knX, knY);
+    ctx.lineTo(tipX, tipY);
+    ctx.lineTo(hookX, hookY);
+    ctx.lineTo(underX, underY);
+    ctx.lineTo(nostX, nostY);
+    ctx.quadraticCurveTo(face - F * gw * 0.05, pMouthY - hh * 0.2, nRootX, pEyeY + hh * 0.1);
     ctx.closePath();
     ctx.fill();
     if (!hurt) {
       ctx.strokeStyle = shade(gb.hide, -26);
       ctx.lineWidth = Math.max(1, hh * 0.045);
       ctx.stroke();
-      // The lit facet rides the crest of the arc — never a straight
-      // sliver to the tip (a straight bright edge re-spears the hook).
+      // The lit plane rides the bridge and breaks with the knuckle —
+      // an angular facet, exactly the face-on wedge's bright top.
       ctx.fillStyle = shade(gb.hide, 14);
       ctx.beginPath();
-      ctx.moveTo(nRootX - F * hh * 0.01, pEyeY - hh * 0.1);
-      ctx.quadraticCurveTo(crestX - F * gw * 0.04, crestY + hh * 0.05, tipX - F * gw * 0.1, tipY - hh * 0.04);
-      ctx.quadraticCurveTo(face + F * reach * 0.42, pEyeY + hh * 0.08, nRootX, pEyeY + hh * 0.02);
+      ctx.moveTo(nRootX, rootTopY + hh * 0.03);
+      ctx.lineTo(knX - F * hh * 0.02, knY + hh * 0.04);
+      ctx.lineTo(tipX - F * hh * 0.05, tipY + hh * 0.07);
+      ctx.lineTo(knX - F * hh * 0.04, knY + hh * 0.11);
+      ctx.lineTo(nRootX, pEyeY + hh * 0.01);
       ctx.closePath();
       ctx.fill();
-      // The underside shade seats the hook over the mouth...
+      // The underside plane holds the shade that seats the wedge
+      // over the mouth...
       ctx.fillStyle = shade(gb.hide, -14);
       ctx.beginPath();
       ctx.moveTo(hookX, hookY);
-      ctx.quadraticCurveTo(tipX - F * gw * 0.05, tipY + hh * 0.08, face + F * gw * 0.12, pMouthY - hh * 0.14);
-      ctx.quadraticCurveTo(face + F * reach * 0.5, pMouthY + hh * 0.01, hookX, hookY);
+      ctx.lineTo(underX, underY);
+      ctx.lineTo(nostX, nostY);
+      ctx.lineTo(nostX + F * hh * 0.04, nostY + hh * 0.05);
+      ctx.lineTo(underX + F * hh * 0.02, underY + hh * 0.05);
       ctx.closePath();
       ctx.fill();
       // ...and the ONE visible nostril flares off its base.
       ctx.fillStyle = gb.ink;
       ctx.beginPath();
-      ctx.ellipse(face + F * gw * 0.1, pMouthY - hh * 0.17, hh * 0.05, hh * 0.032, F * 0.5, 0, Math.PI * 2);
+      ctx.ellipse(nostX - F * hh * 0.02, nostY + hh * 0.03, hh * 0.05, hh * 0.032, F * 0.5, 0, Math.PI * 2);
       ctx.fill();
     }
     return;
