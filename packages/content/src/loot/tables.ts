@@ -401,6 +401,9 @@ const defs: LootTableDef[] = [
   },
   rack('thrower_wardrobe', 'Coast plunder and trampled-fen cloth.', 0.04, [
     ...setDrops('tidecaller', 0.02),
+    // The maelstrom lot: the raiders row THROUGH the weather that
+    // makes it, and some of them row back out wearing it.
+    ...setDrops('tidecaller', 0.012, { colorway: 'maelstrom' }),
     ...setDrops('fenwalker', 0.014, { colorway: 'mirebloom' }),
     ...setDrops('cutpurse', 0.012, { colorway: 'redhand' }),
     ...setDrops('briarplate', 0.009, { colorway: 'nightbriar' }),
@@ -500,6 +503,9 @@ const defs: LootTableDef[] = [
       ...setDrops('voidwhisper', 0.02, { skip: ['robe'] }),
       ...setDrops('mothwing', 0.016, { colorway: 'dusk' }),
       ...setDrops('fenwalker', 0.012, { colorway: 'graymist' }),
+      // The abyss lot: cut from water no sun has reached — the crypt
+      // is the one dark deep enough to have kept it.
+      ...setDrops('tidecaller', 0.01, { colorway: 'abyss' }),
       ...setDrops('dawnsworn', 0.012, { colorway: 'eclipse' }),
       ...setDrops('briarplate', 0.009, { colorway: 'bonebriar' }),
       ...setDrops('cutpurse', 0.012, { colorway: 'moonless' }),
@@ -1086,6 +1092,39 @@ const defs: LootTableDef[] = [
       { item: 'winterspire', chance: 0.008 },
     ],
   },
+  // ------------------------------------------------------ the tufted shadows
+  {
+    id: 'lynx',
+    desc: 'What the ambusher leaves: the spotted pelt, and its last quiet meal.',
+    entries: [
+      { item: 'bones' },
+      { item: 'lynx_pelt', chance: 0.9 },
+      // A cat caches its kills — sometimes you find the cache.
+      { item: 'raw_chicken', chance: 0.2 },
+      { item: 'scrap_hide', qty: [1, 2], chance: 0.3 },
+      { item: 'crimson_essence', qty: [1, 2], chance: 0.12 },
+      { item: 'verdant_essence', chance: 0.1 },
+      { item: 'verdant_totem', chance: 0.02 },
+      { item: 'bloomstone', chance: 0.01 },
+    ],
+  },
+  {
+    id: 'lynx_champion',
+    desc: 'The duskruff pays like the champion she is: the great grey pelt, and every shining thing dragged back to the lair.',
+    rarityBonus: 3,
+    entries: [
+      { item: 'bones' },
+      { item: 'duskruff_pelt', chance: 0.9 },
+      { item: 'lynx_pelt', qty: [1, 2], chance: 0.6 },
+      // Cats keep what glitters. The lair floor pays out.
+      { item: 'coins', qty: [30, 80], chance: 0.7 },
+      { item: 'crimson_essence', qty: [1, 3], chance: 0.35 },
+      { item: 'verdant_totem', chance: 0.1 },
+      { item: 'bloomstone', chance: 0.04 },
+      { item: 'brass_key', chance: 0.08 },
+      { item: 'dungeon_key', chance: 0.04 },
+    ],
+  },
   // ------------------------------------------------------ the parliament
   {
     id: 'great_owl',
@@ -1209,6 +1248,9 @@ const defs: LootTableDef[] = [
       // An angler's lure the size of a boathook. The crabs cannot
       // decide whether they worship it or resent it.
       { item: 'merelight', chance: 0.01 },
+      // The lagoon lot: the shallows dress their own. The crabs have
+      // been sitting on a warm-water wardrobe all along.
+      ...setDrops('tidecaller', 0.008, { colorway: 'lagoon' }),
     ],
   },
   {

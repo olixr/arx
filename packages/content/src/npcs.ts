@@ -1064,6 +1064,64 @@ const defs: NpcDef[] = [
     kit: [{ ability: 'rallying_howl', cooldownTicks: 150, maxRange: 4.5, rally: true }],
   },
   {
+    id: 'lynx',
+    name: 'Lynx',
+    level: 15,
+    maxHp: 50,
+    damage: 5,
+    attackRange: 1.0,
+    // The cat strikes on a shorter breath than the wolf — rake, reset,
+    // rake. The ambusher's rhythm.
+    attackCooldownTicks: 36,
+    aggroRange: 6,
+    sightArc: 240,
+    leashRange: 30,
+    speed: 4.7,
+    xpReward: 170,
+    loot: ['lynx', 'heirlooms'],
+    respawnSec: 45,
+    color: '#9c7f55',
+    radius: 0.36,
+    hitHeight: 1.1,
+    // The rake: four claws deep and fast — it bleeds harder than a
+    // wolf bite but the wound closes sooner. Ambush arithmetic.
+    attackStatus: { status: 'bleed', power: 2, durationTicks: 40 },
+    pounce: true,
+    pack: 'lynxkin',
+  },
+  {
+    id: 'lynx_champion',
+    name: 'Duskruff lynx',
+    level: 21,
+    maxHp: 100,
+    damage: 6,
+    attackRange: 1.1,
+    // The duskruff presses the kill faster than her shadows.
+    attackCooldownTicks: 34,
+    aggroRange: 7,
+    sightArc: 240,
+    // The old cat ranges wide of any one lair.
+    leashRange: 36,
+    speed: 4.9,
+    xpReward: 360,
+    loot: ['lynx_champion', 'heirlooms'],
+    respawnSec: 90,
+    color: '#565064',
+    radius: 0.44,
+    hitHeight: 1.5,
+    // Duskruff claws open you to the bone.
+    attackStatus: { status: 'bleed', power: 2, durationTicks: 70 },
+    pounce: true,
+    pack: 'lynxkin',
+    kit: [
+      // The scream: every tufted shadow in the wood answers her —
+      // the champion fight is the AMBUSH, not the duel.
+      { ability: 'rallying_howl', cooldownTicks: 150, maxRange: 4.5, rally: true },
+      // The lunge: claws-first THROUGH you when you try to open the gap.
+      { ability: 'rending_lunge', cooldownTicks: 180, windupTicks: 10, minRange: 1.5, maxRange: 4 },
+    ],
+  },
+  {
     id: 'great_owl',
     name: 'Great owl',
     level: 16,

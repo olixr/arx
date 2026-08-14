@@ -918,6 +918,8 @@ const defs: ItemDef[] = [
   { id: 'wolf_fur', name: 'Wolf fur', stackable: true, maxStack: 10, value: 20, desc: 'Thick winter fur, smoke-grey and warm.', color: '#6a6f7d', code: 'Wf' },
   { id: 'direwolf_pelt', name: 'Dire wolf pelt', stackable: true, maxStack: 5, value: 110, desc: 'Broad as a bedroll, storm-dark and frost-tipped — her winters written in the scars.', color: '#4b4854', code: 'Dp' },
   { id: 'worg_fang', name: 'Worg fang', stackable: true, maxStack: 10, value: 38, desc: 'An up-hooked lower fang, long as a skinning knife. The goblins drill them for war-charms.', color: '#d8ccb0', code: 'Wg' },
+  { id: 'lynx_pelt', name: 'Lynx pelt', stackable: true, maxStack: 10, value: 24, desc: 'Rosette-spotted and soft as ash. The ear tufts are still on it — furriers pay for the tufts.', color: '#9c7f55', code: 'Lx' },
+  { id: 'duskruff_pelt', name: 'Duskruff pelt', stackable: true, maxStack: 5, value: 120, desc: 'Storm-grey with silver rosettes, the great ruff intact. It was the wood\'s quietest killer, and now it is a coat.', color: '#565064', code: 'Dk' },
   { id: 'gnoll_hide', name: 'Gnoll hide', stackable: true, maxStack: 10, value: 26, desc: 'Speckled gray-brown fur over dull green skin. Smells of old camps and older kills.', color: '#8a7a58', code: 'Gh' },
   { id: 'packlord_mane', name: 'Packlord mane', stackable: true, maxStack: 5, value: 120, desc: 'A bristled crest cut from the biggest back in the warband. The cackling stopped when it fell.', color: '#4e4034', code: 'Pm' },
   { id: 'scrap_hide', name: 'Scrap hide', stackable: true, value: 3, desc: 'Small pelts and offcuts. Three make an honest leather.', color: '#8a6f52', code: 'Sh' },

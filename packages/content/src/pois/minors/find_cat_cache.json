@@ -1,0 +1,25 @@
+{
+  "id": "find_cat_cache",
+  "name": "Cat cache",
+  "description": "A dragged kill wedged under a leaning rock, half-buried the way a cat leaves its larder. The owner is close.",
+  "tiers": [
+    3,
+    5
+  ],
+  "weight": 2,
+  "prefabs": [
+    "find_cat_cache"
+  ],
+  "habitat": "den",
+  "garrison": [
+    {
+      "npc": "lynx",
+      "count": [
+        1,
+        2
+      ]
+    }
+  ],
+  "clearing": 1,
+  "family": "lynxkin"
+}

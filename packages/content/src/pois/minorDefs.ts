@@ -3,6 +3,7 @@ import { validateMinorDef } from './minorValidate.js';
 
 import findBarrow from './minors/find_barrow.json';
 import findBonePile from './minors/find_bone_pile.json';
+import findCatCache from './minors/find_cat_cache.json';
 import findDenMouth from './minors/find_den_mouth.json';
 import findGlade from './minors/find_glade.json';
 import findHuntersRest from './minors/find_hunters_rest.json';
@@ -24,6 +25,7 @@ import findWreckedCart from './minors/find_wrecked_cart.json';
 const SOURCES: readonly unknown[] = [
   findBarrow,
   findBonePile,
+  findCatCache,
   findDenMouth,
   findGlade,
   findHuntersRest,

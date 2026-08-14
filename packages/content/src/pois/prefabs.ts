@@ -828,6 +828,54 @@ const denHollow = sketch(
   wolfMarks,
 );
 
+const lynxMarks: Record<string, Marker> = {
+  '1': { npc: 'lynx', radius: 2.5, under: Tile.Grass },
+};
+
+/**
+ * The lair on the ledge: a rock shelf the cats den under, the floor
+ * below strewn with dropped bones — and the iron chest of the last
+ * climber, dragged halfway to the cache before it stopped shining.
+ */
+const lairLedge = sketch(
+  'poi_lair_ledge',
+  'Lynx lair',
+  [
+    '_____,,,_______',
+    '__,,......,,___',
+    '_,.rrr..o..,,__',
+    '_,rrXr...1..,__',
+    '_,.rR;......,__',
+    '_,.o...t..1.,__',
+    '_,..u..o....,__',
+    '__,..,,...,,___',
+    '____,,,________',
+  ],
+  lynxMarks,
+);
+
+/**
+ * The deadfall cache: a storm-thrown tangle of stumps the cats hunt
+ * from, kills wedged in the roots. Everything here was dragged in;
+ * nothing here walked out.
+ */
+const lairDeadfall = sketch(
+  'poi_lair_deadfall',
+  'Deadfall cache',
+  [
+    '____,,,_______',
+    '__,u.....t,___',
+    '_,.,,o.,,.,,__',
+    '_,t.1...;.u,__',
+    '_,.o..rX...,__',
+    '_,....ru.1.,__',
+    '_,u...o....,__',
+    '__,o......,___',
+    '____,,,_______',
+  ],
+  lynxMarks,
+);
+
 const owlMarks: Record<string, Marker> = {
   '1': { npc: 'great_owl', radius: 3, under: Tile.Grass },
 };
@@ -1330,6 +1378,14 @@ const findDenMouth = sketch('find_den_mouth', 'Den mouth', [
   '_,...,_',
 ]);
 
+/** A dragged kill wedged under a leaning rock — the cat's larder. */
+const findCatCache = sketch('find_cat_cache', 'Cat cache', [
+  '_,rr,_',
+  ',rR:o,',
+  ',.:o.,',
+  '_,..,_',
+]);
+
 /** Burrow mouths in trampled earth. */
 const findWarren = sketch('find_warren', 'Warren', [
   '_,..,_',
@@ -1509,6 +1565,9 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     gnollSquat,
     gnollBoneyard,
     gnollDenhall,
+    // The tufted shadows (lynx of the deep wood):
+    lairLedge,
+    lairDeadfall,
     // The parliament (great owls of the deep wood):
     roostShadewood,
     roostPinehollow,
@@ -1518,6 +1577,7 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     findWaymarkCairn,
     findBonePile,
     findDenMouth,
+    findCatCache,
     findWarren,
     findGlade,
     findStandingStone,

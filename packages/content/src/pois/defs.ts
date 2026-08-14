@@ -27,6 +27,7 @@ import wayshrine from './defs/wayshrine.json';
 import waystation from './defs/waystation.json';
 import wildGrove from './defs/wild_grove.json';
 import wolfkinDen from './defs/wolfkin_den.json';
+import lynxkinLair from './defs/lynxkin_lair.json';
 import owlRoost from './defs/owl_roost.json';
 
 /**
@@ -63,6 +64,7 @@ const SOURCES: readonly unknown[] = [
   barrowDiggers,
   wildGrove,
   wolfkinDen,
+  lynxkinLair,
   owlRoost,
 ];
 

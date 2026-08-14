@@ -48,6 +48,7 @@ import {
   drawBoarHead,
   drawCattleHead,
   drawDireWolfHead,
+  drawLynxHead,
   drawOwlHead,
   drawRamHead,
   drawRatHead,
@@ -55,6 +56,7 @@ import {
   drawWolfHead,
   drawWorgHead,
   enchantedStyle,
+  lynxLook,
   owlWingFan,
   paintBearBody,
   paintBeetleBody,
@@ -62,6 +64,7 @@ import {
   paintCattleBody,
   paintCrabBody,
   paintDireWolfBody,
+  paintLynxBody,
   paintOwlBody,
   paintRamBody,
   paintRatBody,
@@ -1333,6 +1336,28 @@ export function drawBeastRagdoll(
     ctx.beginPath();
     facetCircle(ctx, tx, tipY, s * 0.044, 5, spineA);
     ctx.fill();
+  } else if (look.defId === 'lynx' || look.defId === 'lynx_champion') {
+    // The bobtail lies flat on the rump — no perk left in it, the
+    // black tip still honest on the dead.
+    const ll = lynxLook(look.defId, look.seed);
+    const champ = ll.champion === true;
+    const tx = rear.x - Math.cos(spineA) * len * 0.32;
+    const tipY = f.ay + g[0]!.floor * f.s + s * 0.018;
+    const stub = taperedSpinePath(
+      rear.x,
+      rear.y,
+      (rear.x + tx) / 2,
+      Math.max(rear.y, tipY) + s * 0.02,
+      tx,
+      tipY,
+      (t) => s * (champ ? 0.05 : 0.04) * (1 - t * 0.25),
+    );
+    ctx.fillStyle = shade(ll.coat, -3);
+    ctx.fill(stub);
+    ctx.fillStyle = ll.tuft;
+    ctx.beginPath();
+    facetCircle(ctx, tx, tipY, s * (champ ? 0.04 : 0.032), 5, spineA);
+    ctx.fill();
   } else if (look.defId === 'worg') {
     // The ratty crook drops dead straight — no kink left in it.
     const tx = rear.x - Math.cos(spineA) * len * 0.5;
@@ -1426,6 +1451,23 @@ export function drawBeastRagdoll(
       bob: 0,
       roll: 0,
       topScale: 0.5,
+      botH: 0.02,
+    });
+  } else if (look.defId === 'lynx' || look.defId === 'lynx_champion') {
+    // The corpse keeps its coat CLUSTER — resolved from the raw eid,
+    // the gnoll corpse-coat law spoken feline.
+    paintLynxBody(ctx, spec, lynxLook(look.defId, look.seed), {
+      bx: midX,
+      gy: midY + r * 0.4,
+      s,
+      fx: Math.cos(spineA),
+      fy: Math.sin(spineA),
+      ys: 1,
+      seed: look.seed,
+      hurt: false,
+      bob: 0,
+      roll: 0,
+      topScale: 0.55,
       botH: 0.02,
     });
   } else if (look.defId === 'worg') {
@@ -1704,6 +1746,17 @@ export function drawBeastRagdoll(
   } else if (look.defId === 'dire_wolf') {
     // The ember goes out — dead eyes law, notch and fangs stay.
     drawDireWolfHead(ctx, DIREWOLF_LOOK, {
+      x: head.x,
+      y: head.y,
+      s,
+      fx: Math.cos(neckA),
+      fy: Math.sin(neckA),
+      ys: 1,
+      dead: true,
+    });
+  } else if (look.defId === 'lynx' || look.defId === 'lynx_champion') {
+    // Tufts and ruff stay; the gold-green lamps go out — dead-eyes law.
+    drawLynxHead(ctx, lynxLook(look.defId, look.seed), {
       x: head.x,
       y: head.y,
       s,

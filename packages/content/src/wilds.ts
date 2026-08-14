@@ -135,6 +135,22 @@ export const WILD_ROSTER: readonly WildEntry[] = [
     habitat: 'den',
     family: 'wolfkin',
   },
+  // The tufted shadows: lynx hunt the deep wood in mated pairs by
+  // day — and at night the tribes run behind a duskruff, the ambush
+  // that answers the wolf pack's chase.
+  { npc: 'lynx', weight: 1.5, tiers: [3, 5], biomes: ['forest'], band: [1, 2], spread: 2, habitat: 'den', family: 'lynxkin' },
+  {
+    npc: 'lynx',
+    weight: 1.5,
+    tiers: [4, 5],
+    biomes: ['forest'],
+    hours: NIGHT,
+    band: [2, 3],
+    spread: 3,
+    lead: { npc: 'lynx_champion' },
+    habitat: 'den',
+    family: 'lynxkin',
+  },
   { npc: 'cave_bat', weight: 2, tiers: [2, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 3], spread: 2 },
   { npc: 'giant_spider', weight: 1.5, tiers: [3, 5], biomes: ['forest'], hours: NIGHT },
   { npc: 'skeleton', weight: 1, tiers: [3, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 3], habitat: 'barrow', family: 'dead' },

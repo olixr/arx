@@ -1,0 +1,124 @@
+{
+  "id": "lynxkin_lair",
+  "name": "Lynxkin lair",
+  "description": "The cats' ground, and you were heard crossing onto it three fields ago. Bones under the ledge, a cache in the roots — and the iron chest of the last visitor, dragged exactly as far as it stayed interesting.",
+  "tiers": [
+    3,
+    5
+  ],
+  "weight": 2,
+  "prefabs": [
+    "poi_lair_ledge",
+    "poi_lair_deadfall"
+  ],
+  "garrison": [
+    {
+      "npc": "lynx",
+      "count": [
+        2,
+        3
+      ],
+      "role": "holdfast"
+    },
+    {
+      "npc": "lynx",
+      "count": [
+        1,
+        2
+      ],
+      "role": "sentry",
+      "patrol": true
+    },
+    {
+      "npc": "lynx_champion",
+      "count": [
+        1,
+        1
+      ],
+      "role": "holdfast",
+      "minTier": 4,
+      "levelOffset": 3,
+      "names": [
+        "Softstep",
+        "Ashwhisker",
+        "Gloamtuft",
+        "The Hush"
+      ]
+    }
+  ],
+  "chestTierBonus": 0,
+  "clearedFlag": "poi_lair_broken",
+  "cues": {
+    "clearing": 2,
+    "scatter": [
+      {
+        "tile": "BonePile",
+        "count": 2
+      }
+    ]
+  },
+  "boldness": {
+    "stages": [
+      {
+        "garrison": [
+          {
+            "npc": "lynx",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "lynx",
+            "count": [
+              1,
+              1
+            ],
+            "role": "sentry",
+            "patrol": true
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "lynx",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          },
+          {
+            "npc": "lynx",
+            "count": [
+              1,
+              1
+            ],
+            "role": "sentry",
+            "patrol": true
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 2
+          }
+        ]
+      }
+    ],
+    "satellites": true
+  },
+  "family": "lynxkin"
+}

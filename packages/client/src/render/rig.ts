@@ -3597,24 +3597,36 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           }
         }
         if (legSt.scalerows) {
-          // Lapped scale scallops down the thigh — the torso's rows
-          // continued, tempered edge riding each crown.
-          for (const k of [0.3, 0.55, 0.8]) {
-            const cxx = hipX + tux * tLen * k;
+          // THE SCALED THIGH: three lapped scute bands riding the
+          // solved thigh, hip to knee, painted bottom-up so uppers
+          // lap lowers — the plastron's language carried down, in
+          // the legs' muted register (bright edges on small leg
+          // devices read as floating teeth; the glint budget lives
+          // on the torso and head).
+          const srw = legSt.scalerows;
+          for (const [bi, k] of [[2, 0.78], [1, 0.52], [0, 0.26]] as const) {
+            const cxx = hipX + tux * tLen * k + outX * 0.006 * s;
             const cyy = hipY + tuy * tLen * k;
-            ctx.fillStyle = legSt.scalerows.color;
+            const w = 0.062 * s * (1 - bi * 0.12);
+            const h = 0.05 * s;
+            ctx.fillStyle = shade(srw.plate, -4 - bi * 7);
             ctx.beginPath();
-            ctx.arc(cxx - 0.026 * s, cyy, 0.026 * s, 0, Math.PI);
-            ctx.arc(cxx + 0.026 * s, cyy, 0.026 * s, 0, Math.PI);
+            ctx.moveTo(cxx - w, cyy - h * 0.5);
+            ctx.lineTo(cxx + w, cyy - h * 0.5);
+            ctx.lineTo(cxx + w * 0.86, cyy + h * 0.34);
+            ctx.quadraticCurveTo(cxx, cyy + h * 0.62, cxx - w * 0.86, cyy + h * 0.34);
+            ctx.closePath();
             ctx.fill();
-            ctx.strokeStyle = legSt.scalerows.edge;
+            // The under-lap shadow line — never a bright rim.
+            ctx.strokeStyle = shade(srw.plate, -26);
             ctx.lineWidth = Math.max(1, s * 0.01);
             ctx.beginPath();
-            ctx.moveTo(cxx - 0.045 * s, cyy + 0.012 * s);
-            ctx.quadraticCurveTo(cxx - 0.026 * s, cyy + 0.03 * s, cxx - 0.007 * s, cyy + 0.012 * s);
-            ctx.moveTo(cxx + 0.007 * s, cyy + 0.012 * s);
-            ctx.quadraticCurveTo(cxx + 0.026 * s, cyy + 0.03 * s, cxx + 0.045 * s, cyy + 0.012 * s);
+            ctx.moveTo(cxx - w * 0.86, cyy + h * 0.36);
+            ctx.quadraticCurveTo(cxx, cyy + h * 0.64, cxx + w * 0.86, cyy + h * 0.36);
             ctx.stroke();
+            // One keel tick per band — the forge seam continued.
+            ctx.fillStyle = shade(srw.plate, -18);
+            ctx.fillRect(cxx - 0.006 * s, cyy - h * 0.4, 0.012 * s, h * 0.66);
           }
         }
         if (legSt.shadewrap) {
@@ -7454,6 +7466,47 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     legW: 0.085,
     foot: 'paw',
     legColor: '#4e4436',
+  },
+  // The tufted shadow: a short body slung between legs LONGER than a
+  // wolf's — the stilted, light-footed carriage that reads "cat" the
+  // moment it moves. High-stepping lift, the quickest turn in the wood.
+  lynx: {
+    rig: {
+      legs: quadLegs(0.26, 0.11),
+      legLen: 0.4,
+      rise: 0.34,
+      liftAmp: 0.11,
+      runSpeed: 4.7,
+      turnRate: 9,
+    },
+    bodyLen: 0.36,
+    bodyRise: 0.42,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.07,
+    foot: 'paw',
+  },
+  // The duskruff: never a scaled lynx — a long low stalker whose mass
+  // hangs between heavy shoulders and heavier haunches, on legs that
+  // clear deadfall the pack goes around.
+  lynx_champion: {
+    rig: {
+      legs: quadLegs(0.32, 0.14),
+      legLen: 0.5,
+      rise: 0.42,
+      liftAmp: 0.12,
+      runSpeed: 4.9,
+      turnRate: 8,
+    },
+    bodyLen: 0.48,
+    bodyRise: 0.52,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.09,
+    foot: 'paw',
+    legColor: '#3a3746',
   },
   rat: {
     rig: {
@@ -13720,6 +13773,469 @@ export function drawSabercatHead(
   }
 }
 
+/**
+ * The lynx: the tufted shadow of the deep wood, designed around FOUR
+ * reads no other beast owns — black EAR TUFTS spiking off triangular
+ * ears, the pale facial RUFF framing the face in fur chops, a
+ * black-tipped BOBTAIL perched high, and a RUMP-HIGH topline on legs
+ * longer than a wolf's (the cat's mass sits over its haunches, the
+ * inverse of the wolf's shoulder keel). Rosette spots write the coat.
+ */
+export interface LynxLook {
+  coat: string;
+  /** Rosette ink — the spots that name the cat. */
+  rosette: string;
+  under: string;
+  /** Dark streaks seaming the pale ruff chops. */
+  ruffDark: string;
+  earIn: string;
+  /** Ear-tuft and tail-tip ink. Tufts are STROKES (the fur-dialect law). */
+  tuft: string;
+  eye: string;
+  bodyW: number;
+  backH: number;
+  /** The cat carries its mass BEHIND: extra height ramped over the haunches. */
+  haunchH: number;
+  /** A modest shoulder rise — always below the haunch line. */
+  shoulderH: number;
+  chestH: number;
+  tuckH: number;
+  headW: number;
+  headH: number;
+  /**
+   * The duskruff dresses further: the storm mantle, silver grizzle,
+   * and the old scar rake. Champions never roll a cluster — the
+   * duskruff is a DESIGN (the packlord law).
+   */
+  champion?: boolean;
+  grizzle?: string;
+  scar?: string;
+  seed?: number;
+}
+
+export const LYNX_LOOKS: Record<string, LynxLook> = {
+  lynx: {
+    coat: '#9c7f55',
+    rosette: '#5d4a33',
+    under: '#d8cdb4',
+    ruffDark: '#4a3c2c',
+    earIn: '#3d3226',
+    tuft: '#332e2a',
+    eye: '#cfd97a',
+    bodyW: 0.15,
+    backH: 0.47,
+    haunchH: 0.12,
+    shoulderH: 0.045,
+    chestH: 0.24,
+    tuckH: 0.35,
+    headW: 0.27,
+    headH: 0.225,
+  },
+  // The duskruff: storm-slate where the pack runs tawny, and marked in
+  // SILVER rosettes — the inverse of the pack's dark spots, the way
+  // the dire wolf's brush ends pale where the pack's ends dark. Her
+  // ONE silhouette element is THE GREAT RUFF: a storm collar of
+  // layered fur chops no lean lynx carries.
+  lynx_champion: {
+    coat: '#565064',
+    rosette: '#8d8a9c',
+    under: '#9d99a8',
+    ruffDark: '#3a3546',
+    earIn: '#322d3c',
+    tuft: '#332e3a',
+    eye: '#ffd24d',
+    bodyW: 0.2,
+    backH: 0.58,
+    haunchH: 0.17,
+    shoulderH: 0.06,
+    chestH: 0.27,
+    tuckH: 0.42,
+    headW: 0.34,
+    headH: 0.27,
+    champion: true,
+    grizzle: '#8f8c9e',
+    scar: '#8a8494',
+  },
+};
+
+/**
+ * THE COAT CLUSTERS (the gnoll law, spoken feline): four curated wild
+ * colorways a spawned tribe spreads across — never a random hue roll,
+ * always one of the four coats the wood actually breeds.
+ */
+const LYNX_CLUSTERS: ReadonlyArray<Pick<LynxLook, 'coat' | 'under' | 'rosette' | 'ruffDark'>> = [
+  // Dun — the common tawny.
+  { coat: '#9c7f55', under: '#d8cdb4', rosette: '#5d4a33', ruffDark: '#4a3c2c' },
+  // Ash — the grey shade of the old burns.
+  { coat: '#8a8a80', under: '#cfcabb', rosette: '#54514a', ruffDark: '#45423c' },
+  // Rufous — the red cats of the bracken slopes.
+  { coat: '#a4744a', under: '#d9c4a4', rosette: '#66452c', ruffDark: '#523823' },
+  // Frost — the pale winter-born.
+  { coat: '#b0a98f', under: '#e2dcc8', rosette: '#6a5f4c', ruffDark: '#57503f' },
+];
+
+const LYNX_LOOK_CACHE = new Map<string, LynxLook>();
+
+export function lynxLook(defId: string, seed = 0): LynxLook {
+  const base = LYNX_LOOKS[defId] ?? LYNX_LOOKS['lynx']!;
+  const key = `${defId}|${seed & 0xff}`;
+  const hit = LYNX_LOOK_CACHE.get(key);
+  if (hit) return hit;
+  let look: LynxLook;
+  if (defId === 'lynx') {
+    // Hash the seed before picking: knot members spawn with
+    // CONSECUTIVE eids, and raw high bits would dress a whole tribe
+    // in one coat — the hash spreads a spawned ambush across the
+    // clusters (the gnoll lesson, kept).
+    const h = (seed * 2654435761) | 0;
+    const cl = LYNX_CLUSTERS[(h >>> 8) & 3]!;
+    const jit = (((h >>> 12) & 7) - 3) * 2;
+    look = {
+      ...base,
+      coat: shade(cl.coat, jit),
+      under: cl.under,
+      rosette: shade(cl.rosette, jit),
+      ruffDark: cl.ruffDark,
+      seed,
+    };
+  } else {
+    // The duskruff holds her authored design.
+    look = { ...base, seed };
+  }
+  LYNX_LOOK_CACHE.set(key, look);
+  return look;
+}
+
+export function paintLynxBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: LynxLook,
+  f: BeastBlockFrame,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  // The cat's wedge runs BACKWARD: the rump carries the width and the
+  // chest tapers — the inverse of the wolf's chest keel, and the
+  // second thing (after the topline) that says feline at world zoom.
+  const foot: Array<[number, number]> = [
+    [hl, -hw * 0.74],
+    [hl, hw * 0.74],
+    [hl * 0.5, hw * 0.92],
+    [-hl * 0.35, hw],
+    [-hl, hw * 0.8],
+    [-hl, -hw * 0.8],
+    [-hl * 0.35, -hw],
+    [hl * 0.5, -hw * 0.92],
+  ];
+  // Tribe variance: each cat's coat sits a step off the cluster tone.
+  const coat = shade(look.coat, (((f.seed >>> 5) & 7) - 3) * 2);
+  paintBlockBody(
+    ctx,
+    f,
+    foot,
+    // THE RUMP-HIGH TOPLINE: a modest shoulder rise forward, a shallow
+    // spine dip, then the haunches SWELL PAST the shoulder line — the
+    // coiled-spring rear that fires the pounce.
+    (X) =>
+      look.backH +
+      look.shoulderH * Math.max(0, X / hl - 0.25) -
+      0.035 * Math.max(0, 1 - Math.abs(X / hl - 0.1) / 0.5) +
+      look.haunchH * Math.max(0, (-X / hl - 0.05) / 0.75),
+    (X) => look.chestH + (look.tuckH - look.chestH) * Math.min(1, Math.max(0, (0.5 - X / hl) / 1.05)),
+    coat,
+    (gx, gyy, lift) => {
+      const s = f.s;
+      const tk = f.topScale ?? 1;
+      const bh = look.backH * tk * s;
+      // The duskruff's storm mantle: a darker cape over shoulders and
+      // spine, laid FIRST so her silver reads against it.
+      if (look.champion && !f.hurt) {
+        ctx.save();
+        ctx.translate(gx(hl * 0.05, 0), gyy(hl * 0.05, 0) - bh * 0.94 - lift);
+        ctx.rotate(Math.atan2(f.fy * f.ys, f.fx));
+        ctx.fillStyle = shade(coat, -12);
+        ctx.beginPath();
+        facetBlob(ctx, 0, 0, hl * s * 0.8, f.seed | 1, 9, (hw * 1.2) / (hl * 0.8), 0.35);
+        ctx.fill();
+        ctx.restore();
+      }
+      // THE ROSETTES: seeded spot rows riding the back and upper
+      // flanks — big enough to survive daylight at world zoom, never
+      // a stipple. Each cat's spots land differently.
+      if (!f.hurt) {
+        ctx.fillStyle = look.champion ? (look.grizzle ?? look.rosette) : look.rosette;
+        for (let k = 0; k < 8; k++) {
+          const rr = ((((f.seed >>> (k % 13)) * 2654435761 + k * 197) >>> 0) % 1000) / 1000;
+          const X = (-0.78 + 0.22 * k + (rr - 0.5) * 0.1) * hl;
+          const Y = ((k & 1) === 0 ? 1 : -1) * hw * (0.2 + 0.34 * rr);
+          const sx = gx(X, Y);
+          const sy = gyy(X, Y) - bh * (0.82 + 0.1 * rr) - lift;
+          ctx.beginPath();
+          facetCircle(ctx, sx, sy, s * (0.024 + 0.014 * rr), 5, (f.seed >>> k) | 1);
+          ctx.fill();
+        }
+        // The scar rake: three pale lines across the duskruff's near
+        // haunch — the seasons she's won, fur that never grew back.
+        if (look.champion && look.scar) {
+          ctx.strokeStyle = look.scar;
+          ctx.lineWidth = Math.max(1, s * 0.016);
+          ctx.lineCap = 'round';
+          for (let i = 0; i < 3; i++) {
+            const sx = gx(-hl * (0.5 + 0.06 * i), hw * 0.5);
+            const sy = gyy(-hl * (0.5 + 0.06 * i), hw * 0.5) - bh * (0.5 - 0.05 * i) - lift;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(sx - f.fx * s * 0.02 + s * 0.012, sy + s * 0.075);
+            ctx.stroke();
+          }
+          ctx.lineCap = 'butt';
+        }
+      }
+      // Pale bib at the chest — the wolf's law: only while the chest
+      // can actually face the camera.
+      if (f.fy > -0.15 && !f.hurt) {
+        ctx.fillStyle = look.under;
+        ctx.beginPath();
+        facetBlob(
+          ctx,
+          gx(hl * 0.86, 0),
+          gyy(hl * 0.86, 0) - (look.chestH + 0.1) * s,
+          hw * s * 0.8,
+          f.seed ^ 0x33,
+          7,
+          0.85,
+          1.7,
+        );
+        ctx.fill();
+      }
+    },
+  );
+}
+
+/**
+ * The lynx head: a round feline skull wearing the THREE face reads —
+ * tall triangular ears firing black TUFTS off their tips, the pale
+ * RUFF chops framing the jaw like a layered beard, and slanted
+ * gold-green eyes. The muzzle barely leaves the skull (the feline
+ * law); mid-snarl the ears pin, the tufts rake back, the jaw gapes.
+ */
+export function drawLynxHead(
+  ctx: CanvasRenderingContext2D,
+  look: LynxLook,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    dead?: boolean;
+    /** 0..1 through the attack telegraph. */
+    snarl?: number;
+    /** 0..1 quick idle ear twitch. */
+    flick?: number;
+  },
+): void {
+  const { x: cx, y: cy, s, fx, fy, ys } = o;
+  const px = -fy;
+  const py = fx;
+  const w = look.headW * s;
+  const h = look.headH * s;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : c);
+  const snarl = o.snarl ?? 0;
+  const great = look.champion === true;
+
+  // Tall triangular ears set high on the crown, pinned flat mid-snarl,
+  // the near one twitching at idle. The along-facing stagger keeps the
+  // pair from collapsing into one sliver at full profile.
+  for (const es of [-1, 1]) {
+    const bxr = cx + px * es * w * 0.3 + fx * es * w * 0.09;
+    const byr = cy + (py * es * w * 0.3 + fy * es * w * 0.09) * ys - h * 0.36;
+    const pin = Math.min(1, snarl * 0.7 + (es > 0 ? (o.flick ?? 0) * 0.35 : 0));
+    const tx = bxr + px * es * w * 0.12 - fx * w * 0.24 * pin;
+    const ty = byr - h * (0.72 - 0.34 * pin) - fy * w * 0.24 * pin * ys;
+    ctx.fillStyle = C(shade(look.coat, -6));
+    ctx.beginPath();
+    ctx.moveTo(bxr - px * es * w * 0.16, byr + h * 0.05);
+    ctx.lineTo(tx, ty);
+    ctx.lineTo(bxr + px * es * w * 0.18, byr + h * 0.11);
+    ctx.closePath();
+    ctx.fill();
+    // THE TUFT: the black spike off the ear tip — a stroke, never a
+    // fill (the fur-dialect law), riding the ear's own axis so it
+    // pins and rakes with the snarl.
+    if (!o.dead) {
+      const al = Math.hypot(tx - bxr, ty - byr) || 1e-4;
+      const ux = (tx - bxr) / al;
+      const uy = (ty - byr) / al;
+      const tlen = w * (great ? 0.38 : 0.3);
+      ctx.strokeStyle = C(look.tuft);
+      ctx.lineWidth = Math.max(1.4, w * 0.09);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(tx + ux * tlen, ty + uy * tlen);
+      ctx.stroke();
+      // The duskruff's tufts end SILVER — her winters, worn high.
+      if (great && !o.hurt && look.grizzle) {
+        ctx.strokeStyle = look.grizzle;
+        ctx.lineWidth = Math.max(1, w * 0.05);
+        ctx.beginPath();
+        ctx.moveTo(tx + ux * tlen * 0.72, ty + uy * tlen * 0.72);
+        ctx.lineTo(tx + ux * tlen, ty + uy * tlen);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+    }
+    if (fy > 0.05 && !o.hurt && !o.dead) {
+      ctx.fillStyle = look.earIn;
+      ctx.beginPath();
+      ctx.moveTo(bxr - px * es * w * 0.05, byr + h * 0.01);
+      ctx.lineTo(bxr + (tx - bxr) * 0.58, byr + (ty - byr) * 0.58);
+      ctx.lineTo(bxr + px * es * w * 0.1, byr + h * 0.06);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // Round skull: the cat's circle — deep chamfers, no canid slab.
+  ctx.fillStyle = C(look.coat);
+  ctx.beginPath();
+  chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.34, w * 0.34, w * 0.38, w * 0.38]);
+  ctx.fill();
+  if (!o.hurt) {
+    ctx.save();
+    ctx.beginPath();
+    chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.34, w * 0.34, w * 0.38, w * 0.38]);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(255, 244, 220, 0.14)';
+    ctx.fillRect(cx - w / 2, cy - h / 2, w, h * 0.2);
+    ctx.fillStyle = C(look.under);
+    ctx.fillRect(cx - w / 2, cy + h * 0.18, w, h * 0.32);
+    ctx.restore();
+  }
+
+  // THE RUFF: layered fur chops hanging off the skull's lower sides —
+  // the framed face that reads "lynx" before the tufts do. Broad
+  // overlapping wedges, never fang-thin spikes; a FACE frame, so it
+  // hides as the head turns away (from behind it read as tusks). The
+  // duskruff's great ruff runs a third chop per side and wider.
+  if (!o.hurt && fy > -0.35) {
+    const chops = great ? 3 : 2;
+    for (const es of [-1, 1]) {
+      // At full profile the far side's ruff hides behind the skull.
+      if (Math.abs(fx) > 0.75 && es * py < 0) continue;
+      for (let i = 0; i < chops; i++) {
+        const spread = 0.3 + i * (great ? 0.18 : 0.22);
+        const rx = cx + px * es * w * spread + fx * w * 0.06;
+        const ry = cy + (py * es * w * spread + fy * w * 0.06) * ys + h * (0.16 + i * 0.05);
+        const drop = h * (great ? 0.42 - i * 0.07 : 0.34 - i * 0.06);
+        ctx.fillStyle = C(look.under);
+        ctx.beginPath();
+        ctx.moveTo(rx - px * es * w * 0.18, ry - h * 0.14);
+        ctx.lineTo(rx + px * es * w * (0.17 + i * 0.03), ry - h * 0.02);
+        ctx.lineTo(rx + px * es * w * 0.04, ry + drop);
+        ctx.closePath();
+        ctx.fill();
+        // The dark seam streaking each chop — a stroke, per the law.
+        ctx.strokeStyle = C(look.ruffDark);
+        ctx.lineWidth = Math.max(1, w * 0.035);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(rx, ry - h * 0.04);
+        ctx.lineTo(rx + px * es * w * 0.02, ry + drop * 0.62);
+        ctx.stroke();
+        ctx.lineCap = 'butt';
+      }
+    }
+    // The chin beard — short and broad, front-facing only.
+    if (fy > -0.1) {
+      const bx0 = cx + fx * w * 0.18;
+      const by0 = cy + fy * w * 0.18 * ys + h * 0.32;
+      ctx.fillStyle = C(look.under);
+      ctx.beginPath();
+      ctx.moveTo(bx0 - w * 0.13, by0 - h * 0.08);
+      ctx.lineTo(bx0 + w * 0.13, by0 - h * 0.08);
+      ctx.lineTo(bx0, by0 + h * (great ? 0.22 : 0.18));
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // Short broad muzzle — it barely leaves the skull (the feline read),
+  // longer only as the profile deepens. Gone from behind.
+  if (fy > -0.3) {
+    const profileK = faceProfileK(fx);
+    const bx0 = cx + fx * w * 0.2;
+    const by0 = cy + fy * w * 0.2 * ys + h * 0.12;
+    const sl = w * (0.13 + 0.12 * profileK);
+    const tx = bx0 + fx * sl;
+    const ty = by0 + fy * sl * ys + h * 0.05;
+    const axv = tx - bx0;
+    const ayv = ty - by0;
+    const al = Math.hypot(axv, ayv) || 1e-4;
+    const nx = -ayv / al;
+    const ny = axv / al;
+    const hb = w * 0.19 * (1 - profileK * 0.15);
+    const ht = hb * 0.82;
+    ctx.fillStyle = C(shade(look.coat, 6));
+    ctx.beginPath();
+    ctx.moveTo(bx0 + nx * hb, by0 + ny * hb);
+    ctx.lineTo(tx + nx * ht, ty + ny * ht);
+    ctx.lineTo(tx - nx * ht, ty - ny * ht);
+    ctx.lineTo(bx0 - nx * hb, by0 - ny * hb);
+    ctx.closePath();
+    ctx.fill();
+    // Snarl: the jaw drops open below the muzzle, fangs bared.
+    if (snarl > 0.15 && !o.dead && !o.hurt) {
+      const gape = h * 0.32 * Math.min(1, snarl);
+      ctx.fillStyle = '#2a1420';
+      ctx.beginPath();
+      ctx.moveTo(tx - nx * ht * 0.9, ty - ny * ht * 0.9);
+      ctx.lineTo(tx + nx * ht * 0.9, ty + ny * ht * 0.9);
+      ctx.lineTo(tx + (axv / al) * ht * 0.4, ty + gape);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#efe9d8';
+      for (const ts of [-0.5, 0.4]) {
+        ctx.beginPath();
+        ctx.moveTo(tx + nx * ht * ts - w * 0.018, ty + ny * ht * ts);
+        ctx.lineTo(tx + nx * ht * ts + w * 0.018, ty + ny * ht * ts);
+        ctx.lineTo(tx + nx * ht * ts, ty + ny * ht * ts + gape * 0.5);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    // Dark nose leather seated on the tip.
+    ctx.fillStyle = C(look.earIn);
+    ctx.beginPath();
+    facetCircle(ctx, tx - (axv / al) * w * 0.02, ty - (ayv / al) * w * 0.02 - h * 0.03, w * 0.06, 5, fx);
+    ctx.fill();
+  }
+
+  // Slanted hunter's eyes — gold-green slits with the vertical cat
+  // pupil; the duskruff's burn lamp-gold. The far one hides as the
+  // head goes profile; none from behind, none dead.
+  if (!o.dead && fy > -0.45) {
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.6 && es * py < 0) continue;
+      const ex = cx + fx * w * 0.1 + px * es * w * 0.28;
+      const ey = cy + (fy * w * 0.1 + py * es * w * 0.28) * ys - h * 0.1;
+      ctx.save();
+      ctx.translate(ex, ey);
+      ctx.rotate(es * (0.26 + snarl * 0.25));
+      ctx.fillStyle = C(look.eye);
+      ctx.fillRect(-w * 0.075, -h * 0.05, w * 0.15, h * 0.1);
+      if (!o.hurt) {
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(-w * 0.016, -h * 0.05, w * 0.032, h * 0.1);
+      }
+      ctx.restore();
+    }
+  }
+}
+
 export function drawBeast(
   ctx: CanvasRenderingContext2D,
   opts: {
@@ -13808,9 +14324,14 @@ export function drawBeast(
   // Far-side legs draw behind the body mass, near-side in front.
   const L = (spec.rig.legLen / 2) * s;
   const stretch = spec.rig.stretch ?? 1.15;
-  const legColor = opts.hurt ? '#ffffff' : (spec.legColor ?? shade(opts.color, -35));
-  const shinColor = opts.hurt ? '#ffffff' : (spec.legColor ?? shade(opts.color, -22));
-  const footColor = opts.hurt ? '#ffffff' : shade(spec.legColor ?? opts.color, -55);
+  // A lynx's legs wear its ROLLED cluster coat, not the def color —
+  // an ash cat on tawny stockings read as a stranger's legs.
+  const legBase = opts.defId.startsWith('lynx')
+    ? lynxLook(opts.defId, opts.seed ?? 0).coat
+    : opts.color;
+  const legColor = opts.hurt ? '#ffffff' : (spec.legColor ?? shade(legBase, -35));
+  const shinColor = opts.hurt ? '#ffffff' : (spec.legColor ?? shade(legBase, -22));
+  const footColor = opts.hurt ? '#ffffff' : shade(spec.legColor ?? legBase, -55);
   const drawLeg = (i: number): void => {
     const foot = opts.feet[i];
     const leg = spec.rig.legs[i];
@@ -13965,6 +14486,9 @@ export function drawBeast(
   const sabercatL = opts.defId.startsWith('sabercat')
     ? (SABERCAT_LOOKS[opts.defId] ?? SABERCAT_LOOKS.sabercat_night)
     : undefined;
+  // The tufted shadows: wild cats roll a coat CLUSTER from the spawn
+  // eid; the duskruff holds her authored design.
+  const lynxL = opts.defId.startsWith('lynx') ? lynxLook(opts.defId, opts.seed ?? 0) : undefined;
   const bearL = opts.defId === 'bear' ? BEAR_LOOK : undefined;
   const crabL = opts.defId === 'mudcrab' ? CRAB_LOOK : undefined;
   const beetleL = opts.defId === 'giant_beetle' ? BEETLE_LOOK : undefined;
@@ -13983,6 +14507,10 @@ export function drawBeast(
     roll,
   });
   const paintBody = (): void => {
+    if (lynxL) {
+      paintLynxBody(ctx, spec, lynxL, blockFrame());
+      return;
+    }
     if (wolfL) {
       paintWolfBody(ctx, spec, wolfL, blockFrame());
       return;
@@ -14270,6 +14798,50 @@ export function drawBeast(
         ctx.stroke();
       }
       drawCourserHead(ctx, courserL, { x: chx, y: chy, s, fx, fy, ys, hurt: opts.hurt });
+      return;
+    }
+    if (lynxL) {
+      // The lynx carries its head low and forward off the shoulders —
+      // and through the pounce windup the whole front end SINKS while
+      // the high haunches stay coiled: the stalk, the cat's tell.
+      const hl = spec.bodyLen * s;
+      const hw2 = lynxL.headW * s;
+      const nod = opts.pose.bob * 0.4 * s;
+      const stalk = at > 0 ? Math.min(1, at / 0.7) * (lynxL.champion ? 0.12 : 0.09) * s : 0;
+      const chx = bx + fx * (hl * 0.95 + hw2 * 0.3);
+      const chy =
+        by +
+        fy * (hl * 0.95 + hw2 * 0.3) * ys -
+        (lynxL.backH + lynxL.shoulderH + 0.16) * s -
+        nod +
+        stalk;
+      // Neck: a coat wedge from the shoulder top into the head sides —
+      // short and thick; the ruff does the rest at the skull.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(lynxL.coat, -5);
+      ctx.beginPath();
+      const nb = (lynxL.backH + lynxL.shoulderH * 0.8) * s + opts.pose.bob * 0.35 * s;
+      const nwx = px * lynxL.bodyW * (lynxL.champion ? 0.9 : 0.78) * s;
+      const nwy = py * lynxL.bodyW * (lynxL.champion ? 0.9 : 0.78) * s;
+      ctx.moveTo(bx + fx * hl * 0.6 + nwx, by + (fy * hl * 0.6 + nwy) * ys - nb);
+      ctx.lineTo(bx + fx * hl * 0.6 - nwx, by + (fy * hl * 0.6 - nwy) * ys - nb);
+      ctx.lineTo(chx - px * hw2 * 0.4, chy - py * hw2 * 0.4 * ys + lynxL.headH * s * 0.34);
+      ctx.lineTo(chx + px * hw2 * 0.4, chy + py * hw2 * 0.4 * ys + lynxL.headH * s * 0.34);
+      ctx.closePath();
+      ctx.fill();
+      // Idle ear flick: a rare quick pulse, never a metronome.
+      const flick =
+        now > 0 ? (Math.max(0, Math.sin(now * 0.0023 + seed) - 0.94) / 0.06) * idle : 0;
+      drawLynxHead(ctx, lynxL, {
+        x: chx,
+        y: chy,
+        s,
+        fx,
+        fy,
+        ys,
+        hurt: opts.hurt,
+        snarl: at > 0 ? Math.min(1, at * 2.2) : 0,
+        flick,
+      });
       return;
     }
     if (sabercatL) {
@@ -14642,6 +15214,56 @@ export function drawBeast(
         seed * 0.4,
       );
       ctx.fill();
+      return;
+    }
+    if (lynxL) {
+      // THE BOBTAIL: a stub perched HIGH on the raised rump, black at
+      // the tip — nothing like the wolf's hanging brush or the
+      // sabercat's long sweep. It flicks upright when the cat is
+      // wound (idle interest, the pounce crouch), and tucks flat at a
+      // flat run.
+      const hl = spec.bodyLen * s;
+      const lift = opts.pose.bob * 0.35 * s;
+      const run = opts.pose.poleStrength;
+      const rumpH = (lynxL.backH + lynxL.haunchH) * s;
+      const flickT = now > 0 ? Math.max(0, Math.sin(now * 0.0017 + seed * 0.8) - 0.5) * 2 : 0;
+      // Perk: upright at idle and through the crouch, flat at speed.
+      const perk = Math.min(1, (1 - run * 0.85) + at * 0.8) * (0.55 + 0.3 * flickT);
+      const tbx = bx - fx * hl * 0.98;
+      const tby = by - fy * hl * 0.98 * ys - rumpH * 0.9 - lift;
+      const backA = Math.atan2(-fy * ys, -fx);
+      const len = s * (lynxL.champion ? 0.17 : 0.14);
+      const sway = now > 0 ? Math.sin(now * 0.0021 + seed) * 0.2 * (1 - run) : 0;
+      // The stub rides back-and-UP: its tip lifts with the perk.
+      const tipx = tbx + Math.cos(backA + sway) * len * (1 - perk * 0.45);
+      const tipy =
+        tby + Math.sin(backA + sway) * len * (1 - perk * 0.45) * ys - len * (0.45 + perk * 0.75);
+      const cxq = tbx + Math.cos(backA) * len * 0.5;
+      const cyq = tby + Math.sin(backA) * len * 0.5 * ys - len * perk * 0.3;
+      const stub = taperedSpinePath(tbx, tby, cxq, cyq, tipx, tipy, (t) =>
+        s * (lynxL.champion ? 0.052 : 0.042) * (1 - t * 0.25),
+      );
+      // Walking away the perked stub stands against the cat's own
+      // back — show its pale UNDERSIDE there, or the dark tip reads
+      // as a hole punched in the coat.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : fy < -0.2 ? lynxL.under : shade(lynxL.coat, -3);
+      ctx.fill(stub);
+      // The black tip — the read that survives any zoom.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : lynxL.tuft;
+      ctx.beginPath();
+      facetCircle(ctx, tipx, tipy, s * (lynxL.champion ? 0.042 : 0.034), 5, seed * 0.4);
+      ctx.fill();
+      // The duskruff banded in silver below her black tip.
+      if (lynxL.champion && !opts.hurt && lynxL.grizzle) {
+        ctx.strokeStyle = lynxL.grizzle;
+        ctx.lineWidth = Math.max(1.4, s * 0.03);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(tbx + (tipx - tbx) * 0.55, tby + (tipy - tby) * 0.55);
+        ctx.lineTo(tbx + (tipx - tbx) * 0.72, tby + (tipy - tby) * 0.72);
+        ctx.stroke();
+        ctx.lineCap = 'butt';
+      }
       return;
     }
     if (sabercatL) {

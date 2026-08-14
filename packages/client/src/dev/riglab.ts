@@ -1,32 +1,26 @@
-// TEMPORARY rig verification harness (checked-in tooling): THE ARMS
-// SHEET — the procedural-arm audit. Every carry class the game knows
-// (bare fists, sword standard + rogue, dual blades, sword-and-board,
-// greatblade, staff, bow, arm-carried offhand) across all eight facing
-// bands, at idle AND at a live simulated gait: each figure owns a real
-// LegSolver and a drifting world position, so feet plant, poles pump,
-// and every depth/side hysteresis runs exactly as in game. Levers:
+// TEMPORARY rig verification harness (checked-in tooling): THE LYNX
+// SHEET — the tufted-shadow audit. Both cats (lynx + duskruff
+// champion) across all eight facing bands at idle, walk, run, the
+// looping pounce, and the hurt flash; a CLUSTER SPREAD row proving a
+// spawned tribe rolls all four coats (never a rubber stamp); and
+// BODY-RULER cells standing the player rig and the wolf family beside
+// the cats so scale reads at a glance. Each figure owns a real LegRig
+// and a drifting world position, so feet plant and knee hysteresis
+// runs exactly as in game. Levers:
 //   ?rows=a-b   draw only sheet rows a..b (screenshot banding)
-//   ?gait=walk  run rows amble at walk speed instead of sprinting
-//   ?det=1      DETERMINISTIC mode: all 240 fixed 60Hz steps run
-//               SYNCHRONOUSLY on the first frame (every step drawn, so
-//               the caller-owned memories evolve exactly as live) and
-//               the settled 4s state stays on canvas — headless
-//               capture fires at "page idle", which is only ~4 rAF
-//               frames in (measured), so an async det loop would hand
-//               it an unsettled gait. Refactor passes byte-compare
-//               before/after screenshots with this (the "zero pixels
-//               changed" proof); the frame stamp says what you got.
-import { LegSolver, drawHumanoid, type RigPose } from '../render/rig.js';
+//   ?det=1      DETERMINISTIC mode: fixed 60Hz steps run synchronously
+//               on the first frame; ?detn=N sets the step count.
+import { LegSolver, drawHumanoid, beastSpec, drawBeast, type RigPose } from '../render/rig.js';
+import { LegRig } from '../render/legs.js';
 import { PoseState } from '@arx/shared';
 
 const canvas = document.getElementById('lab') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 
-const S = 150; // scale px per tile
+const q = new URLSearchParams(location.search);
+const S = Math.max(60, parseInt(q.get('s') ?? '150', 10) || 150); // scale px per tile (?s= zoom lever)
 const YS = 0.6; // camera y foreshorten (world-y tile → screen), renderer's yScale
 
-const q = new URLSearchParams(location.search);
-const GAIT_SPEED = q.get('gait') === 'walk' ? 1.5 : 4.6; // tiles/sec
 const WALK_SPEED = 1.5;
 
 const DIRS = [
@@ -40,126 +34,68 @@ const DIRS = [
   ['SW', (3 * Math.PI) / 4],
 ] as const;
 
-interface Loadout {
-  key: string;
-  weapon?: string;
-  off?: string;
-  carry?: 'normal' | 'rogue';
-  carryOff?: 'normal' | 'rogue';
-}
-
-const LOADOUTS: Record<string, Loadout> = {
-  bare: { key: 'bare' },
-  sword: { key: 'sword', weapon: 'bronze_sword' },
-  rogue: { key: 'rogue', weapon: 'bronze_dagger', carry: 'rogue' },
-  dual: { key: 'dual', weapon: 'bronze_sword', off: 'bronze_dagger', carryOff: 'rogue' },
-  board: { key: 'board', weapon: 'bronze_sword', off: 'oak_kiteshield' },
-  great: { key: 'great', weapon: 'iron_greatblade' },
-  staff: { key: 'staff', weapon: 'apprentice_staff' },
-  bow: { key: 'bow', weapon: 'stickbow' },
-  tome: { key: 'tome', weapon: 'bronze_sword', off: 'tome_of_embers' },
-  axe: { key: 'axe', weapon: 'bronze_axe' },
-  pick: { key: 'pick', weapon: 'bronze_pickaxe' },
+/** The bestiary rows this sheet audits (content defs, mirrored). */
+const BEASTS: Record<string, { radius: number; color: string; speed: number }> = {
+  lynx: { radius: 0.36, color: '#9c7f55', speed: 4.7 },
+  lynx_champion: { radius: 0.44, color: '#565064', speed: 4.9 },
+  wolf: { radius: 0.34, color: '#6a6f7d', speed: 4.6 },
+  dire_wolf: { radius: 0.44, color: '#4b4854', speed: 4.8 },
 };
 
-type Mode = 'idle' | 'move' | 'walk' | 'strafe' | 'draw' | 'stowed' | 'pose' | 'flip';
-
-/** Transition probes: the det frame where 'flip' rows enter Attack. */
-const FLIP_AT = 120;
+type Mode = 'idle' | 'walk' | 'move' | 'pounce' | 'hurt';
 
 interface Fig {
   label: string;
-  dir: number; // facing
-  travel?: number; // travel heading when it differs (strafe row)
+  defId: string;
+  dir: number;
   mode: Mode;
-  load: Loadout;
-  /** mode 'pose': explicit pose/blend overrides — frozen strike
-   *  samples, casts, seats, mid-sheathe states. All det-stable. */
-  pose?: PoseState;
-  poseT?: number;
-  sitT?: number;
-  sitStyle?: RigPose['sitStyle'];
-  seatH?: number;
-  sitVariant?: 0 | 1;
-  sheathT?: number;
+  seed: number;
+  /** Ruler cells stand the player rig beside the beast. */
+  ruler?: boolean;
   // live sim state
-  legs?: LegSolver;
+  legs?: LegRig;
   wx?: number;
   wy?: number;
+  wp?: number;
   kneeMemory?: number[];
-  depthMemory?: RigPose['depthMemory'];
-  /** flip rows: emulated renderer rest clock (entry ramp/exit glide). */
-  restfulSinceMs?: number;
-  restK?: number;
+  manLegs?: LegSolver;
+  manKnee?: number[];
+  manDepth?: RigPose['depthMemory'];
 }
 
 const figs: Fig[] = [];
-const row = (label: string, load: Loadout, mode: Mode): void => {
-  for (const [lbl, dir] of DIRS) figs.push({ label: `${label} ${lbl}`, dir, mode, load });
+const row = (label: string, defId: string, mode: Mode, seed = 5): void => {
+  for (const [lbl, dir] of DIRS) figs.push({ label: `${label} ${lbl}`, defId, dir, mode, seed });
 };
 
-// Sheet rows, top to bottom. Idle-then-gait per class so each carry's
-// two stances sit stacked for judging.
-row('bare idle', LOADOUTS.bare!, 'idle'); // 0
-row('bare run', LOADOUTS.bare!, 'move'); // 1
-row('sword idle', LOADOUTS.sword!, 'idle'); // 2
-row('sword walk', LOADOUTS.sword!, 'walk'); // 3
-row('sword run', LOADOUTS.sword!, 'move'); // 4
-row('rogue idle', LOADOUTS.rogue!, 'idle'); // 5
-row('dual idle', LOADOUTS.dual!, 'idle'); // 6
-row('dual run', LOADOUTS.dual!, 'move'); // 7
-row('board idle', LOADOUTS.board!, 'idle'); // 8
-row('board run', LOADOUTS.board!, 'move'); // 9
-row('great idle', LOADOUTS.great!, 'idle'); // 10
-row('great run', LOADOUTS.great!, 'move'); // 11
-row('staff idle', LOADOUTS.staff!, 'idle'); // 12
-row('staff walk', LOADOUTS.staff!, 'walk'); // 13
-row('staff run', LOADOUTS.staff!, 'move'); // 14
-row('bow idle', LOADOUTS.bow!, 'idle'); // 15
-row('bow run', LOADOUTS.bow!, 'move'); // 16
-row('bow draw', LOADOUTS.bow!, 'draw'); // 17
-// Strafe row: the body FACES south (camera) while traveling all eight
-// headings — the aim/travel disagreement that folded elbows historically.
-for (const [lbl, trav] of DIRS) {
-  figs.push({ label: `strafe→${lbl}`, dir: Math.PI / 2, travel: trav, mode: 'strafe', load: LOADOUTS.sword! }); // 18
+// Sheet rows, top to bottom.
+row('lynx idle', 'lynx', 'idle'); // 0
+row('lynx walk', 'lynx', 'walk'); // 1
+row('lynx run', 'lynx', 'move'); // 2
+row('lynx pounce', 'lynx', 'pounce'); // 3
+row('lynx hurt', 'lynx', 'hurt'); // 4
+row('duskruff idle', 'lynx_champion', 'idle'); // 5
+row('duskruff run', 'lynx_champion', 'move'); // 6
+row('duskruff pounce', 'lynx_champion', 'pounce'); // 7
+// THE CLUSTER SPREAD: eight consecutive spawn eids facing camera —
+// the hash must scatter the tribe across all four coats.
+for (let k = 0; k < 8; k++) {
+  figs.push({ label: `tribe eid ${400 + k}`, defId: 'lynx', dir: Math.PI / 2, mode: 'idle', seed: 400 + k }); // 8
 }
-row('stowed idle', LOADOUTS.dual!, 'stowed'); // 19
-row('tome idle', LOADOUTS.tome!, 'idle'); // 20
-
-// ---- THE ASSEMBLY ROWS (arms-v3 Phase 2): every non-gait state the
-// one-mouth assembly owns, frozen at its most readable beat so the
-// det harness can byte-compare the whole cascade, not just carries.
-const poseRow = (label: string, load: Loadout, o: Partial<Fig>): void => {
-  for (const [lbl, dir] of DIRS) {
-    figs.push({ label: `${label} ${lbl}`, dir, mode: 'pose', load, ...o });
-  }
-};
-poseRow('sword cut', LOADOUTS.sword!, { pose: PoseState.Attack, poseT: 0.48 }); // 21
-poseRow('rogue rake', LOADOUTS.rogue!, { pose: PoseState.Attack, poseT: 0.42 }); // 22
-poseRow('dual cut', LOADOUTS.dual!, { pose: PoseState.Attack, poseT: 0.55 }); // 23
-poseRow('great fell', LOADOUTS.great!, { pose: PoseState.Attack, poseT: 0.55 }); // 24
-poseRow('staff sweep', LOADOUTS.staff!, { pose: PoseState.Attack, poseT: 0.45 }); // 25
-poseRow('sword ram', LOADOUTS.sword!, { pose: PoseState.Attack3, poseT: 0.55 }); // 26
-poseRow('staff cast', LOADOUTS.staff!, { pose: PoseState.Cast, poseT: 0.25 }); // 27
-poseRow('sit floor', LOADOUTS.sword!, { pose: PoseState.Sit, sitT: 1, sitVariant: 1 }); // 28
-poseRow('sit chair', LOADOUTS.sword!, { pose: PoseState.Sit, sitT: 1, sitStyle: 'chair', seatH: 0.34 }); // 29
-poseRow('sheathe 30%', LOADOUTS.dual!, { sheathT: 0.3 }); // 30
-poseRow('sheathe 70%', LOADOUTS.dual!, { sheathT: 0.7 }); // 31
-poseRow('chop', LOADOUTS.axe!, { pose: PoseState.Gather }); // 32
-poseRow('mine', LOADOUTS.pick!, { pose: PoseState.Gather }); // 33
-// THE TRANSITION PROBES: rest→combat pose flips at det frame 120,
-// with the RENDERER'S rest clock emulated per figure (280ms entry
-// ramp, exponential exit glide) — capture frames around the flip via
-// ?detn=N and measure per-frame pixel deltas to PROVE the exit is a
-// glide, not a snap. Row 34 sword, row 35 staff (the grip channel).
-for (const [lbl, dir] of DIRS) figs.push({ label: `flip-sword ${lbl}`, dir, mode: 'flip', load: LOADOUTS.sword! }); // 34
-for (const [lbl, dir] of DIRS) figs.push({ label: `flip-staff ${lbl}`, dir, mode: 'flip', load: LOADOUTS.staff! }); // 35
+// THE BODY RULER: the player rig and the wolf family beside the cats.
+figs.push({ label: 'ruler: player+lynx', defId: 'lynx', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
+figs.push({ label: 'ruler: player+duskruff', defId: 'lynx_champion', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
+figs.push({ label: 'wolf (reference)', defId: 'wolf', dir: Math.PI / 2, mode: 'idle', seed: 5 });
+figs.push({ label: 'lynx (beside)', defId: 'lynx', dir: Math.PI / 2, mode: 'idle', seed: 5 });
+figs.push({ label: 'dire wolf (reference)', defId: 'dire_wolf', dir: Math.PI / 2, mode: 'idle', seed: 5 });
+figs.push({ label: 'duskruff (beside)', defId: 'lynx_champion', dir: Math.PI / 2, mode: 'idle', seed: 5 });
+figs.push({ label: 'lynx E (profile)', defId: 'lynx', dir: 0, mode: 'idle', seed: 5 });
+figs.push({ label: 'duskruff E (profile)', defId: 'lynx_champion', dir: 0, mode: 'idle', seed: 5 }); // 9
 
 const COLS = 8;
-const CW = 240;
-const CH = 330;
+const CW = Math.round(S * 1.6);
+const CH = Math.round(S * 2.2);
 
-// Row banding lever for screenshots: ?rows=0-9
 let rowFrom = 0;
 let rowTo = Math.ceil(figs.length / COLS) - 1;
 const rowsQ = q.get('rows');
@@ -183,6 +119,45 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 
+/** The player rig at rest — the unit of measure (the body-ruler law). */
+function drawRulerMan(f: Fig, x: number, y: number, now: number, dt: number): void {
+  if (!f.manLegs) {
+    f.manLegs = new LegSolver();
+    f.manKnee = [0, 0];
+    f.manDepth = { mainBehind: false };
+  }
+  const lp = f.manLegs.update(0, 0, Math.PI / 2, dt);
+  const feet = lp.feet.map((ft) => ({ x: x + ft.x * S, y: y + ft.y * S * YS, lift: ft.lift }));
+  drawHumanoid(ctx, {
+    x,
+    y,
+    scale: S,
+    size: 1,
+    dir: Math.PI / 2,
+    pose: PoseState.Idle,
+    poseT: 1,
+    drawT: 0,
+    restT: 1,
+    nowMs: now,
+    feet,
+    bob: lp.bob,
+    rise: lp.rise,
+    wScale: lp.wScale,
+    poleX: lp.poleX,
+    poleY: lp.poleY,
+    poleStrength: lp.poleStrength,
+    runF: lp.runF,
+    align: lp.align,
+    kneeMemory: f.manKnee!,
+    depthMemory: f.manDepth,
+    bodyColor: '#3f5d8e',
+    hurt: false,
+    isOwn: false,
+    gatherPhase: 0,
+    sheathT: 0,
+  });
+}
+
 function drawSheet(now: number, dt: number): void {
   const nRows = rowTo - rowFrom + 1;
   canvas.width = COLS * CW;
@@ -193,29 +168,28 @@ function drawSheet(now: number, dt: number): void {
     const sheetRow = Math.floor(i / COLS);
     if (sheetRow < rowFrom || sheetRow > rowTo) return;
     const homeX = CW / 2 + (i % COLS) * CW;
-    const homeY = 250 + (sheetRow - rowFrom) * CH;
-    // Cell furniture: a ground line under the feet and the label at the
-    // TOP of the cell so it can never overlap a neighboring figure.
+    const homeY = Math.round(S * 1.67) + (sheetRow - rowFrom) * CH;
     ctx.strokeStyle = 'rgba(232, 228, 216, 0.18)';
     ctx.beginPath();
     ctx.moveTo(homeX - 0.72 * S, homeY);
     ctx.lineTo(homeX + 0.72 * S, homeY);
     ctx.stroke();
 
-    // Lazy per-fig sim state.
+    const info = BEASTS[f.defId]!;
+    const spec = beastSpec(f.defId, info.radius, info.speed);
     if (!f.legs) {
-      f.legs = new LegSolver();
+      f.legs = new LegRig(spec.rig);
       f.wx = 0;
       f.wy = 0;
-      f.kneeMemory = [0, 0];
-      f.depthMemory = { mainBehind: false };
+      f.wp = 0;
+      f.kneeMemory = new Array(spec.rig.legs.length).fill(0);
     }
-    const moving = f.mode === 'move' || f.mode === 'walk' || f.mode === 'strafe';
-    const speed = f.mode === 'walk' ? WALK_SPEED : GAIT_SPEED;
-    const heading = f.travel ?? f.dir;
+    const moving = f.mode === 'move' || f.mode === 'walk';
+    const speed = f.mode === 'walk' ? WALK_SPEED : info.speed;
     if (moving) {
-      f.wx! += Math.cos(heading) * speed * dt;
-      f.wy! += Math.sin(heading) * speed * dt;
+      f.wx! += Math.cos(f.dir) * speed * dt;
+      f.wy! += Math.sin(f.dir) * speed * dt;
+      f.wp! += speed * dt * 0.9;
     }
     const lp = f.legs.update(f.wx!, f.wy!, f.dir, dt);
     // World → cell: body pinned at the cell home, feet ride their
@@ -225,77 +199,37 @@ function drawSheet(now: number, dt: number): void {
       y: homeY + (ft.y - f.wy!) * S * YS,
       lift: ft.lift,
     }));
-    const drawing = f.mode === 'draw';
-    // Pose rows are NON-restful states (Attack/Cast/Sit/Gather):
-    // restT 0, exactly as the renderer's restful-set law feeds them.
-    // The mid-sheathe rows keep Idle + restT 1 (the real stow case).
-    const posed = f.pose !== undefined;
-    // Flip rows: Idle → Attack at FLIP_AT, with the renderer's own
-    // rest-clock law emulated (280ms entry ramp, exp exit glide) so
-    // the transition probe exercises exactly what the game feeds.
-    let flipPose: PoseState | undefined;
-    let flipPoseT = 1;
-    let flipRest = 1;
-    if (f.mode === 'flip') {
-      const frameNo = now / (1000 / 60);
-      const restful = frameNo < FLIP_AT;
-      flipPose = restful ? PoseState.Idle : PoseState.Attack;
-      flipPoseT = restful ? 1 : Math.min(1, ((frameNo - FLIP_AT) * (1000 / 60)) / 280);
-      if (restful) f.restfulSinceMs ??= now;
-      else f.restfulSinceMs = undefined;
-      const target = restful ? Math.min(1, (now - (f.restfulSinceMs ?? now)) / 280) : 0;
-      let rk = f.restK ?? target;
-      if (target >= rk) rk = target;
-      else rk += (target - rk) * (1 - Math.exp(-12 * dt));
-      if (rk < 0.004) rk = 0;
-      f.restK = rk;
-      flipRest = rk;
-    }
-    const rig: RigPose = {
-      x: homeX,
+    // The pounce loop: crouch → strike on the renderer's 420ms clock,
+    // held in a slow loop so the sheet shows every beat.
+    const attackT = f.mode === 'pounce' ? ((now * 0.0014) % 1) : 0;
+    // Ruler cells: the player stands a body-width west of the beast.
+    if (f.ruler) drawRulerMan(f, homeX - 0.62 * S, homeY, now, dt);
+    drawBeast(ctx, {
+      x: homeX + (f.ruler ? 0.28 * S : 0),
       y: homeY,
       scale: S,
-      size: 1,
-      dir: f.dir,
-      pose:
-        flipPose ?? f.pose ?? (drawing ? PoseState.Draw : moving ? PoseState.Walk : PoseState.Idle),
-      poseT: f.mode === 'flip' ? flipPoseT : (f.poseT ?? 1),
-      drawT: drawing ? 0.95 : 0,
-      restT: f.mode === 'flip' ? flipRest : drawing || posed ? 0 : 1,
-      nowMs: now,
-      feet,
-      bob: lp.bob,
-      rise: lp.rise,
-      wScale: lp.wScale,
-      poleX: lp.poleX,
-      poleY: lp.poleY,
-      poleStrength: lp.poleStrength,
-      runF: lp.runF,
-      align: lp.align,
+      dir: lp.dir,
+      radius: info.radius,
+      color: info.color,
+      defId: f.defId,
+      spec,
+      pose: lp,
+      feet: f.ruler ? feet.map((ft) => ({ ...ft, x: ft.x + 0.28 * S })) : feet,
+      yScale: YS,
+      walkPhase: f.wp!,
+      // Constant white for the silhouette-gap audit (never a flicker
+      // lottery for the capture).
+      hurt: f.mode === 'hurt',
       kneeMemory: f.kneeMemory!,
-      depthMemory: f.depthMemory,
-      bodyColor: '#3f5d8e',
-      hurt: false,
-      isOwn: false,
-      gatherPhase: 0,
-      weaponItem: f.load.weapon,
-      offhandItem: f.load.off,
-      carryStyle: f.load.carry,
-      carryOff: f.load.carryOff,
-      sheathT: f.mode === 'stowed' ? 1 : (f.sheathT ?? 0),
-      sitT: f.sitT,
-      sitStyle: f.sitStyle,
-      seatH: f.seatH,
-      sitVariant: f.sitVariant,
-    };
-    drawHumanoid(ctx, rig);
+      attackT,
+      seed: f.seed,
+      nowMs: now,
+    });
     ctx.fillStyle = '#e8e4d8';
     ctx.font = '13px monospace';
     ctx.textAlign = 'center';
     ctx.fillText(f.label, homeX, homeY - 1.62 * S);
   });
-  // The stamp PROVES which sim state a screenshot captured (headless
-  // capture timing is not obvious — measured at ~4 rAF frames in).
   if (DET) {
     ctx.fillStyle = '#e8e4d8';
     ctx.font = '16px monospace';
@@ -306,13 +240,6 @@ function drawSheet(now: number, dt: number): void {
 }
 
 if (DET) {
-  // All 240 steps synchronously, every step drawn — the caller-owned
-  // memories (side ease, elbows, layer hysteresis) evolve exactly as
-  // they would live, and the settled 4s state waits on the canvas for
-  // however late (or early) the capture fires. Deferred into the first
-  // rAF: running it at module init blocked the LOAD event and headless
-  // capture fired on a blank page; inside a frame callback the busy
-  // main thread instead makes the capture wait for completion.
   requestAnimationFrame(() => {
     for (let i = 0; i < DET_FRAMES; i++) drawSheet(i * (1000 / 60), 1 / 60);
   });
