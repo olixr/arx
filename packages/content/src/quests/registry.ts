@@ -68,6 +68,12 @@ import theEmptyFold from './defs/the_empty_fold.json';
 import theUnansweredTithe from './defs/the_unanswered_tithe.json';
 import theOpenedBarrow from './defs/the_opened_barrow.json';
 import tallowForTheLamps from './defs/tallow_for_the_lamps.json';
+// Kingsdelf — the errands (the Kingsdelf epic).
+import theCountBelow from './defs/the_count_below.json';
+import lightTheOldRoad from './defs/light_the_old_road.json';
+import theCrownAsks from './defs/the_crown_asks.json';
+import aStallInAsh from './defs/a_stall_in_ash.json';
+import whatTheNetHeld from './defs/what_the_net_held.json';
 import theFifteenthName from './defs/the_fifteenth_name.json';
 
 const SOURCES: readonly unknown[] = [
@@ -139,6 +145,11 @@ const SOURCES: readonly unknown[] = [
   theUnansweredTithe,
   theOpenedBarrow,
   tallowForTheLamps,
+  theCountBelow,
+  lightTheOldRoad,
+  theCrownAsks,
+  aStallInAsh,
+  whatTheNetHeld,
   theFifteenthName,
 ];
 

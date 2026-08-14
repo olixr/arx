@@ -1,0 +1,40 @@
+{
+ "id": "what_the_net_held",
+ "name": "What the Net Held",
+ "giver": "fisher_denna",
+ "stages": [
+  {
+   "id": "the_old_word",
+   "journal": "Denna has decided, after years of not deciding, that she wants a name for the thing her net brought up. Not the story. Just the name, so it stops being every shape at once when she closes her eyes. Take her description to *Veyle*, exactly as she says it: heavy, patient, and it went down slow, like it was deciding.",
+   "objectives": [
+    {
+     "kind": "talk",
+     "actor": "enchanter_veyle"
+    }
+   ]
+  },
+  {
+   "id": "the_answer",
+   "journal": "Veyle knew the word at once and would not translate it, which is itself a translation. She says the old realm used stormpearls to listen to deep water, and that Denna's line, coast-blooded as it is, may hear more than most. Bring Denna a *stormpearl*. What she does with the listening is hers.",
+   "objectives": [
+    {
+     "kind": "collect",
+     "item": "stormpearl",
+     "count": 1
+    }
+   ]
+  }
+ ],
+ "rewards": {
+  "coins": 350,
+  "xp": [
+   {
+    "skill": "fishing",
+    "amount": 500
+   }
+  ],
+  "flags": [
+   "the_net_named"
+  ]
+ }
+}

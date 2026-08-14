@@ -1,0 +1,41 @@
+{
+ "id": "light_the_old_road",
+ "name": "Light the Old Road",
+ "giver": "lampwright_soren",
+ "repeat": {
+  "cooldownHours": 18
+ },
+ "stages": [
+  {
+   "id": "a_lamp_at_a_time",
+   "journal": "A road lamp wants three things: fat for the tallow, a stone to steady the flame, and somebody stubborn enough to stand it up in the dark. Soren has the stubbornness on hand. Bring him rendering fat off the wild boar country and an emberstone for the heart, and one more mile of the Old Road stops being the Waykeepers' argument and starts being lit.",
+   "objectives": [
+    {
+     "kind": "collect",
+     "item": "raw_beef",
+     "count": 4
+    },
+    {
+     "kind": "collect",
+     "item": "emberstone",
+     "count": 1
+    }
+   ]
+  }
+ ],
+ "rewards": {
+  "coins": 260,
+  "xp": [
+   {
+    "skill": "cooking",
+    "amount": 250
+   }
+  ],
+  "standing": [
+   {
+    "faction": "waykeepers",
+    "delta": 4
+   }
+  ]
+ }
+}

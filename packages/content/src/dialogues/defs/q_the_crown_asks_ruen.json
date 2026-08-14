@@ -1,0 +1,21 @@
+{
+ "id": "q_the_crown_asks_ruen",
+ "start": "scene",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "delfmaster_ruen",
+   "priority": 6
+  }
+ ],
+ "nodes": [
+  {
+   "id": "scene",
+   "voice": "q_the_crown_asks_ruen__scene",
+   "text": "Show me. Mm. Distances, grades, water. And between the lines, in the same tidy hand, questions about the sealing that only one man in the Dawnlands is allowed to want answered.\n\nSo. The Crown that will not answer my letters sends its questions through my gate in a saddlebag. Give her the pages. I mean it. A town built on not asking cannot start lying too. But you tell Hedda from me: the next question comes to the Delfhall first, or it walks home."
+  }
+ ],
+ "requires": [
+  "quest:the_crown_asks:stage:the_two_hands"
+ ]
+}

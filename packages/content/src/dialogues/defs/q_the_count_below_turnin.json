@@ -1,0 +1,27 @@
+{
+ "id": "q_the_count_below_turnin",
+ "start": "paid",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "sealkeeper_annik",
+   "priority": 21
+  }
+ ],
+ "nodes": [
+  {
+   "id": "paid",
+   "voice": "q_the_count_below_turnin__paid",
+   "text": "The foreman's ring. The ring that sealed my grandmother's sister behind that door.\n\nIt was outside when the door shut, child. Every account agrees. So either the first king's own hand went back into the burn after the sealing, or something came out and took it from him. The mark on my stone is one of those two people. Thank you. I am ninety one years old and I finally have a question worth the candles.",
+   "hooks": [
+    {
+     "kind": "quest_turnin",
+     "quest": "the_count_below"
+    }
+   ]
+  }
+ ],
+ "requires": [
+  "quest:the_count_below:ready"
+ ]
+}

@@ -1,0 +1,53 @@
+{
+ "id": "q_what_the_net_held_offer",
+ "start": "hub",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "fisher_denna",
+   "priority": 5
+  }
+ ],
+ "nodes": [
+  {
+   "id": "hub",
+   "voice": "q_what_the_net_held_offer__hub",
+   "text": "I have decided something, and I need a person for it who is not from the quay.\n\nYears ago my net came up holding a thing I threw back. I do not want the story told. I want a NAME for it, so it stops being every shape at once when I close my eyes. Take my words to Veyle. Exactly these words: heavy, patient, and it went down slow, like it was deciding.",
+   "choices": [
+    {
+     "text": "I'll carry it exactly.",
+     "next": "go"
+    },
+    {
+     "text": "Why not ask her yourself?",
+     "next": "why"
+    }
+   ],
+   "hooks": [
+    {
+     "kind": "quest_offer",
+     "quest": "what_the_net_held"
+    }
+   ]
+  },
+  {
+   "id": "why",
+   "voice": "q_what_the_net_held_offer__why",
+   "text": "Because she will look at my ears and my mother's line and tell me the truth, all of it, and I only want the front of the truth. You she will give the short version. Go on.",
+   "choices": [
+    {
+     "text": "I'll carry it exactly.",
+     "next": "go"
+    }
+   ]
+  },
+  {
+   "id": "go",
+   "voice": "q_what_the_net_held_offer__go",
+   "text": "Exactly those words, mind. The mere listens."
+  }
+ ],
+ "requires": [
+  "quest:what_the_net_held:available"
+ ]
+}

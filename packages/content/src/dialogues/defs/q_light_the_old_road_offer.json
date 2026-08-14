@@ -1,0 +1,53 @@
+{
+ "id": "q_light_the_old_road_offer",
+ "start": "hub",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "lampwright_soren",
+   "priority": 5
+  }
+ ],
+ "nodes": [
+  {
+   "id": "hub",
+   "voice": "q_light_the_old_road_offer__hub",
+   "text": "You want to do something that matters and looks like nothing? Lamps. Fat for tallow, an emberstone for the heart. I build the lamp, I stand it one dark mile up the road, and the argument gets one mile shorter.",
+   "choices": [
+    {
+     "text": "I'll bring what you need.",
+     "next": "go"
+    },
+    {
+     "text": "Does the order know?",
+     "next": "order"
+    }
+   ],
+   "hooks": [
+    {
+     "kind": "quest_offer",
+     "quest": "light_the_old_road"
+    }
+   ]
+  },
+  {
+   "id": "order",
+   "voice": "q_light_the_old_road_offer__order",
+   "text": "Liv watches me carry every one out the gate, and writes it down, and says nothing. That is how a no dies, friend. Slowly, in front of witnesses.",
+   "choices": [
+    {
+     "text": "I'll bring what you need.",
+     "next": "go"
+    }
+   ]
+  },
+  {
+   "id": "go",
+   "voice": "q_light_the_old_road_offer__go",
+   "text": "The road thanks you in the only way it can. It gets shorter after dark."
+  }
+ ],
+ "requires": [
+  "quest:light_the_old_road:available"
+ ]
+}

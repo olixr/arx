@@ -251,6 +251,20 @@ import cassOutfitting from './defs/cass_outfitting.json';
 import idaRemedies from './defs/ida_remedies.json';
 import dennaQuay from './defs/denna_quay.json';
 import slateSundries from './defs/slate_sundries.json';
+// Kingsdelf — the errand trees (offer 5 / scene 6 / turn-in 21).
+import qTheCountBelowOffer from './defs/q_the_count_below_offer.json';
+import qTheCountBelowVeyle from './defs/q_the_count_below_veyle.json';
+import qTheCountBelowTurnin from './defs/q_the_count_below_turnin.json';
+import qLightTheOldRoadOffer from './defs/q_light_the_old_road_offer.json';
+import qLightTheOldRoadTurnin from './defs/q_light_the_old_road_turnin.json';
+import qTheCrownAsksOffer from './defs/q_the_crown_asks_offer.json';
+import qTheCrownAsksRuen from './defs/q_the_crown_asks_ruen.json';
+import qTheCrownAsksTurnin from './defs/q_the_crown_asks_turnin.json';
+import qAStallInAshOffer from './defs/q_a_stall_in_ash_offer.json';
+import qAStallInAshTurnin from './defs/q_a_stall_in_ash_turnin.json';
+import qWhatTheNetHeldOffer from './defs/q_what_the_net_held_offer.json';
+import qWhatTheNetHeldVeyle from './defs/q_what_the_net_held_veyle.json';
+import qWhatTheNetHeldTurnin from './defs/q_what_the_net_held_turnin.json';
 import maevaSpring from './defs/maeva_spring.json';
 import kolgrimHorn from './defs/kolgrim_horn.json';
 import sunnFell from './defs/sunn_fell.json';
@@ -528,6 +542,19 @@ const SOURCES: readonly unknown[] = [
   idaRemedies,
   dennaQuay,
   slateSundries,
+  qTheCountBelowOffer,
+  qTheCountBelowVeyle,
+  qTheCountBelowTurnin,
+  qLightTheOldRoadOffer,
+  qLightTheOldRoadTurnin,
+  qTheCrownAsksOffer,
+  qTheCrownAsksRuen,
+  qTheCrownAsksTurnin,
+  qAStallInAshOffer,
+  qAStallInAshTurnin,
+  qWhatTheNetHeldOffer,
+  qWhatTheNetHeldVeyle,
+  qWhatTheNetHeldTurnin,
   maevaSpring,
   kolgrimHorn,
   sunnFell,

@@ -1,0 +1,27 @@
+{
+ "id": "q_what_the_net_held_turnin",
+ "start": "paid",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "fisher_denna",
+   "priority": 21
+  }
+ ],
+ "nodes": [
+  {
+   "id": "paid",
+   "voice": "q_what_the_net_held_turnin__paid",
+   "text": "A stormpearl. And a word she would not say. That is Veyle all over, kind sideways.\n\nYou know what? I am keeping the pearl in my pocket, not my ear. Some days the not-knowing is the floor you stand on. But it has a name now, somewhere, in somebody's mouth, and tonight I will turn my back to the water for one whole minute. Thank you.",
+   "hooks": [
+    {
+     "kind": "quest_turnin",
+     "quest": "what_the_net_held"
+    }
+   ]
+  }
+ ],
+ "requires": [
+  "quest:what_the_net_held:ready"
+ ]
+}

@@ -1,0 +1,21 @@
+{
+ "id": "q_what_the_net_held_veyle",
+ "start": "scene",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "enchanter_veyle",
+   "priority": 6
+  }
+ ],
+ "nodes": [
+  {
+   "id": "scene",
+   "voice": "q_what_the_net_held_veyle__scene",
+   "text": "Heavy. Patient. Went down slow, like it was deciding...\n\nYes. There is a word for that, in the old tongue, and I will not translate it, and my not translating it is the kindest sentence I have said this year. Tell Denna this instead: bring a stormpearl to her quay. My people used them to listen to deep water. Her line may hear more than most, and what she does with the listening is hers."
+  }
+ ],
+ "requires": [
+  "quest:what_the_net_held:stage:the_old_word"
+ ]
+}

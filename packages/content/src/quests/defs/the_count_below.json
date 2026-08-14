@@ -1,0 +1,64 @@
+{
+ "id": "the_count_below",
+ "name": "The Count Below",
+ "giver": "sealkeeper_annik",
+ "stages": [
+  {
+   "id": "the_extra_mark",
+   "journal": "Two hundred and fourteen names on the stone. Two hundred and fifteen marks. Annik has waited seventy years for somebody to care, and she has chosen you, which is either an honor or a sentence. Only one soul in Kingsdelf is older than the question. Ask *Veyle* at the Focus House what the old folk remember about the sealing.",
+   "objectives": [
+    {
+     "kind": "talk",
+     "actor": "enchanter_veyle"
+    }
+   ]
+  },
+  {
+   "id": "the_order_of_march",
+   "journal": "Veyle says the Ashen Court still keeps the old realm's musters: every soldier holds his place in the order of march, and a gap in the line is a name that left it. Walk the old roads after dark and thin the *kingsmen of the procession*. Watch how they close ranks. Count the gap they leave open. Somebody's place is being kept.",
+   "objectives": [
+    {
+     "kind": "kill",
+     "npc": "skeleton_kingsman",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "the_ring",
+   "journal": "There is a gap in the order of march, and the Court defends it like a wound. Whatever walks foremost in the procession carries something that is not a weapon. The foreman's seal ring closed the deep workings from the outside, a hundred and fifty years ago. Bring Annik the ring, and bring her the question that comes with it: what is it doing out in the burn?",
+   "objectives": [
+    {
+     "kind": "collect",
+     "item": "seal_ring",
+     "count": 1
+    }
+   ]
+  }
+ ],
+ "questDrops": [
+  {
+   "npc": "skeleton_crownsguard",
+   "item": "seal_ring",
+   "chance": 1
+  }
+ ],
+ "rewards": {
+  "coins": 1200,
+  "xp": [
+   {
+    "skill": "combat",
+    "amount": 2400
+   }
+  ],
+  "flags": [
+   "the_count_stands"
+  ],
+  "standing": [
+   {
+    "faction": "fordgate",
+    "delta": 6
+   }
+  ]
+ }
+}

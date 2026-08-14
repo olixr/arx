@@ -1,0 +1,53 @@
+{
+ "id": "q_the_count_below_offer",
+ "start": "hub",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "sealkeeper_annik",
+   "priority": 5
+  }
+ ],
+ "nodes": [
+  {
+   "id": "hub",
+   "voice": "q_the_count_below_offer__hub",
+   "text": "Seventy years I have kept this door, child, and nobody has ever asked the stone's question like they meant to answer it. You mean to. I can tell by how you stand.\n\nFind out who made the two hundred and fifteenth mark. Start with Veyle. She was alive when the door was shut, and she has never once said so out loud.",
+   "choices": [
+    {
+     "text": "I'll ask her.",
+     "next": "go"
+    },
+    {
+     "text": "Why me?",
+     "next": "why"
+    }
+   ],
+   "hooks": [
+    {
+     "kind": "quest_offer",
+     "quest": "the_count_below"
+    }
+   ]
+  },
+  {
+   "id": "why",
+   "voice": "q_the_count_below_offer__why",
+   "text": "Because you are not from here. Everyone born in this town learned not to ask before they learned to walk. You never learned it. Do not start now.",
+   "choices": [
+    {
+     "text": "Then I'll ask her.",
+     "next": "go"
+    }
+   ]
+  },
+  {
+   "id": "go",
+   "voice": "q_the_count_below_offer__go",
+   "text": "Take a lamp. The question lives in dark places."
+  }
+ ],
+ "requires": [
+  "quest:the_count_below:available"
+ ]
+}

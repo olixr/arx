@@ -1,0 +1,27 @@
+{
+ "id": "q_a_stall_in_ash_turnin",
+ "start": "paid",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "stablemaster_orin",
+   "priority": 21
+  }
+ ],
+ "nodes": [
+  {
+   "id": "paid",
+   "voice": "q_a_stall_in_ash_turnin__paid",
+   "text": "Feed and leather. Good. The bag goes on the same stone at the same hour until the same hour means something to somebody with four legs.\n\nHere, the lead is yours. If a gray mare with one white ear ever follows you home, you did that, and I will only be a little jealous.",
+   "hooks": [
+    {
+     "kind": "quest_turnin",
+     "quest": "a_stall_in_ash"
+    }
+   ]
+  }
+ ],
+ "requires": [
+  "quest:a_stall_in_ash:ready"
+ ]
+}

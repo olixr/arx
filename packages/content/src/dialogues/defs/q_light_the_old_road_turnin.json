@@ -1,0 +1,27 @@
+{
+ "id": "q_light_the_old_road_turnin",
+ "start": "paid",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "lampwright_soren",
+   "priority": 21
+  }
+ ],
+ "nodes": [
+  {
+   "id": "paid",
+   "voice": "q_light_the_old_road_turnin__paid",
+   "text": "Good fat, good stone. This one goes up at the third milestone, where the dark is oldest. Forty one dark miles when I walked it. Fewer now. Come back when your pack is heavy again.",
+   "hooks": [
+    {
+     "kind": "quest_turnin",
+     "quest": "light_the_old_road"
+    }
+   ]
+  }
+ ],
+ "requires": [
+  "quest:light_the_old_road:ready"
+ ]
+}

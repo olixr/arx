@@ -1,0 +1,52 @@
+{
+ "id": "a_stall_in_ash",
+ "name": "A Stall in Ash",
+ "giver": "stablemaster_orin",
+ "stages": [
+  {
+   "id": "the_wild_string",
+   "journal": "A string of wild garrons runs the ash hem south of the road, the last horses in the world that drink this country's water and live. Worgs have found the string, and worgs do not leave a herd, they finish it. Orin does not ask you to bring the horses in. He asks you to make the ash safe enough that they stay wild. Thin the *worgs* off the hem.",
+   "objectives": [
+    {
+     "kind": "kill",
+     "npc": "worg",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "feed_and_iron",
+   "journal": "The string is safe, and now Orin means to earn its trust the slow way: feed left at the same stone at the same hour until the same hour means something. Bring him wheat for the feed bag and leather for the headstalls he is making against the day one of them decides to be gentled. His hands are already talking to a horse that has not arrived yet.",
+   "objectives": [
+    {
+     "kind": "collect",
+     "item": "wheat",
+     "count": 6
+    },
+    {
+     "kind": "collect",
+     "item": "leather",
+     "count": 2
+    }
+   ]
+  }
+ ],
+ "rewards": {
+  "coins": 500,
+  "xp": [
+   {
+    "skill": "beastcraft",
+    "amount": 900
+   }
+  ],
+  "items": [
+   {
+    "item": "drovers_lead",
+    "qty": 1
+   }
+  ],
+  "flags": [
+   "the_string_stands"
+  ]
+ }
+}

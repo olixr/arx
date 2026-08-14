@@ -1,0 +1,27 @@
+{
+ "id": "q_the_crown_asks_turnin",
+ "start": "paid",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "surveyor_hedda",
+   "priority": 21
+  }
+ ],
+ "nodes": [
+  {
+   "id": "paid",
+   "voice": "q_the_crown_asks_turnin__paid",
+   "text": "Ash-stained, spoil-crushed, unread. Two of those three are the burn's fault.\n\nYou told Ruen. I know, because you walk like someone carrying a message with corners. Good. Kings should be seen asking. That is my whole treasonous opinion, and this is your pay, and neither of us said anything.",
+   "hooks": [
+    {
+     "kind": "quest_turnin",
+     "quest": "the_crown_asks"
+    }
+   ]
+  }
+ ],
+ "requires": [
+  "quest:the_crown_asks:ready"
+ ]
+}

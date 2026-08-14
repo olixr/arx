@@ -1,0 +1,62 @@
+{
+ "id": "the_crown_asks",
+ "name": "The Crown Asks",
+ "giver": "surveyor_hedda",
+ "stages": [
+  {
+   "id": "the_lost_pages",
+   "journal": "Hedda's survey mule bolted on the quarry road and her cipher pages went into the burn with the wreck. The Hewers clear wrecks the way they clear everything: into the spoil, squared and stacked. The pages are measurements, she says. Only measurements. She says it twice, which is once too many. Break the *waking quarry's* shift and bring the pages back.",
+   "objectives": [
+    {
+     "kind": "kill",
+     "npc": "rock_golem",
+     "count": 2
+    },
+    {
+     "kind": "collect",
+     "item": "survey_pages",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "the_two_hands",
+   "journal": "The pages are not only measurements. Between the distances, in the same neat cipher, are questions about the sealing, the kind a king asks when he cannot ask. Ruen runs this town, and the town was built on not asking. Tell the *Delfmaster* what you are carrying before you decide whose hands it ends in.",
+   "objectives": [
+    {
+     "kind": "talk",
+     "actor": "delfmaster_ruen"
+    }
+   ]
+  }
+ ],
+ "questDrops": [
+  {
+   "npc": "rock_golem",
+   "item": "survey_pages",
+   "chance": 1
+  }
+ ],
+ "rewards": {
+  "coins": 800,
+  "xp": [
+   {
+    "skill": "combat",
+    "amount": 1600
+   }
+  ],
+  "flags": [
+   "the_crown_read"
+  ],
+  "standing": [
+   {
+    "faction": "crown",
+    "delta": 8
+   },
+   {
+    "faction": "fordgate",
+    "delta": -4
+   }
+  ]
+ }
+}

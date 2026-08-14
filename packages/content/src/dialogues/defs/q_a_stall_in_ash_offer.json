@@ -1,0 +1,53 @@
+{
+ "id": "q_a_stall_in_ash_offer",
+ "start": "hub",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "stablemaster_orin",
+   "priority": 5
+  }
+ ],
+ "nodes": [
+  {
+   "id": "hub",
+   "voice": "q_a_stall_in_ash_offer__hub",
+   "text": "Come here. Quietly. Look south, past the hem, where the ash thins. Wild garrons. The last string in the world that drinks this country and lives, and worgs have found them.\n\nI am not asking you to bring them in. A horse you drag home is a prisoner. I am asking you to make the ash safe enough that staying wild stays possible.",
+   "choices": [
+    {
+     "text": "I'll deal with the worgs.",
+     "next": "go"
+    },
+    {
+     "text": "Why not just catch one?",
+     "next": "why"
+    }
+   ],
+   "hooks": [
+    {
+     "kind": "quest_offer",
+     "quest": "a_stall_in_ash"
+    }
+   ]
+  },
+  {
+   "id": "why",
+   "voice": "q_a_stall_in_ash_offer__why",
+   "text": "Because the day one of them walks up that road on its own and puts its head over my gate, it will be worth ten of anything caught. Trust is the only tack that never breaks.",
+   "choices": [
+    {
+     "text": "Then I'll deal with the worgs.",
+     "next": "go"
+    }
+   ]
+  },
+  {
+   "id": "go",
+   "voice": "q_a_stall_in_ash_offer__go",
+   "text": "Watch the wind. Worgs read it better than you do."
+  }
+ ],
+ "requires": [
+  "quest:a_stall_in_ash:available"
+ ]
+}

@@ -1,0 +1,21 @@
+{
+ "id": "q_the_count_below_veyle",
+ "start": "scene",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "enchanter_veyle",
+   "priority": 6
+  }
+ ],
+ "nodes": [
+  {
+   "id": "scene",
+   "voice": "q_the_count_below_veyle__scene",
+   "text": "Annik sent you. Good. She has been circling that question since she was nine, and I have been waiting for her to send somebody braver than my silence...\n\nThe Court keeps the old musters. Every dead soldier holds his place in the order of march, and they have held ONE place open for a hundred and fifty years. Walk the processions after dark. Count the gap. Then look at what the foremost one carries, and come back when your hands have stopped shaking."
+  }
+ ],
+ "requires": [
+  "quest:the_count_below:stage:the_extra_mark"
+ ]
+}

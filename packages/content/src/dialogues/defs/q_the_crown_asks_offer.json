@@ -1,0 +1,53 @@
+{
+ "id": "q_the_crown_asks_offer",
+ "start": "hub",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "surveyor_hedda",
+   "priority": 5
+  }
+ ],
+ "nodes": [
+  {
+   "id": "hub",
+   "voice": "q_the_crown_asks_offer__hub",
+   "text": "I need hands that do not report to anybody, which in this town narrows the field to you. My mule bolted on the quarry road. My cipher pages went into the burn with the wreck, and the Hewers will have squared the wreck into their spoil by now. They are measurements. Bring them back unread.",
+   "choices": [
+    {
+     "text": "Just measurements?",
+     "next": "just"
+    },
+    {
+     "text": "I'll get them.",
+     "next": "go"
+    }
+   ],
+   "hooks": [
+    {
+     "kind": "quest_offer",
+     "quest": "the_crown_asks"
+    }
+   ]
+  },
+  {
+   "id": "just",
+   "voice": "q_the_crown_asks_offer__just",
+   "text": "That is twice I have said it, and you counted, and now we understand each other. Bring them back anyway.",
+   "choices": [
+    {
+     "text": "I'll get them.",
+     "next": "go"
+    }
+   ]
+  },
+  {
+   "id": "go",
+   "voice": "q_the_crown_asks_offer__go",
+   "text": "The quarry works a day shift that never ends. Interrupt it politely. With something heavy."
+  }
+ ],
+ "requires": [
+  "quest:the_crown_asks:available"
+ ]
+}
