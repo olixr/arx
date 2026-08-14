@@ -19791,7 +19791,11 @@ export class Renderer {
         const grow = this.growthOf(tx, ty, 0.35, 1, 1400);
         return {
           sortY: ty + 0.7,
-          body: this.treeBody(tile, h, p.x, p.y),
+          // Settled saplings carry the ring baked into their cached
+          // sprite exactly like mature trees — a body here would send
+          // the already-ringed blit through paintOutlined and dilate
+          // the ring a second time (a doubled, twice-thick stroke).
+          body: grow < 1 ? this.treeBody(tile, h, p.x, p.y) : undefined,
           drawShadow: () => this.drawTreeShadow(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, grow),
           draw: () => this.drawTree(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, undefined, grow),
         };
