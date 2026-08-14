@@ -3976,10 +3976,7 @@ export class GameServer {
     const over = this.poiChests.get(`${tx},${ty}`);
     const wardStands = over?.warded
       ? over.cell.startsWith('sh:')
-        ? this.strongholdGarrisonStands(
-            over.cell.slice(3),
-            this.strongholdBossWard(over.cell.slice(3)),
-          )
+        ? this.strongholdCacheWarded(over.cell.slice(3))
         : this.poiGarrisonStands(over.cell)
       : false;
     if (wardStands) {
@@ -8238,6 +8235,35 @@ export class GameServer {
     return false;
   }
 
+  /**
+   * THE CAPTAIN'S KEY: does the cache's keeper still stand? A cell of
+   * `key:wardIdx` reads that ward's TITLED body alone — kill the
+   * captain and the lid lifts, no matter who else mans the yard. A
+   * bare `key` is the chief's cache: the last stand must fall.
+   */
+  private strongholdCacheWarded(spec: string): boolean {
+    const sep = spec.lastIndexOf(':');
+    if (sep > 0) {
+      const key = spec.slice(0, sep);
+      const wing = Number(spec.slice(sep + 1));
+      if (Number.isInteger(wing)) return this.strongholdCaptainStands(key, wing);
+    }
+    return this.strongholdGarrisonStands(spec, this.strongholdBossWard(spec));
+  }
+
+  /** Any TITLED body of this wing still fighting (captain caches). */
+  private strongholdCaptainStands(key: string, wing: number): boolean {
+    const live = this.strongholdLive.get(key);
+    if (!live) return false;
+    for (const i of live.spawnIdx) {
+      const sp = this.spawnPoints[i];
+      if (!sp?.active || sp.eid === null || !this.poiSpawnFights(sp)) continue;
+      if (sp.wing !== wing || sp.name === undefined) continue;
+      return true;
+    }
+    return false;
+  }
+
   /** The last-stand ward index of a standing capital's layout. */
   private strongholdBossWard(key: string): number | undefined {
     const live = this.strongholdLive.get(key);
@@ -8482,14 +8508,30 @@ export class GameServer {
         if (downed.length > 0) this.standDownGarrison(downed);
       }
     }
-    // The cache: warded while any fighter stands (the capital dialect
-    // of the chest-ward law — Phase 4 narrows it to the last stand).
+    // The caches (THE CAPTAIN'S KEY): the chief's chest stays warded
+    // by the LAST STAND; a chest inside a titled captain's ward is
+    // warded by THAT CAPTAIN alone — `sh:key:wardIdx` names the
+    // keeper, and killing them lifts the lid without clearing the
+    // yard.
     for (let i = 0; i < zone.ground.length; i++) {
       const info = chestInfo(zone.ground[i]!);
       if (!info || info.open) continue;
-      const wx = zone.origin.x + (i % zone.width);
-      const wy = zone.origin.y + Math.floor(i / zone.width);
-      this.poiChests.set(`${wx},${wy}`, { cell: `sh:${key}`, warded: true });
+      const lx = i % zone.width;
+      const ly = Math.floor(i / zone.width);
+      const wi = layout.wards.findIndex(
+        (w) =>
+          lx >= w.rect.x && ly >= w.rect.y && lx < w.rect.x + w.rect.w && ly < w.rect.y + w.rect.h,
+      );
+      const captained =
+        wi >= 0 &&
+        layout.wards[wi]!.key !== layout.boss.ward &&
+        layout.wards[wi]!.knots.some((k) => k.title);
+      const wx = zone.origin.x + lx;
+      const wy = zone.origin.y + ly;
+      this.poiChests.set(`${wx},${wy}`, {
+        cell: captained ? `sh:${key}:${wi}` : `sh:${key}`,
+        warded: true,
+      });
     }
     this.strongholdLive.set(key, { zoneId: zone.id, seat, layoutId: layout.id, spawnIdx });
     if (!this.strongholdLedger.has(key)) {
@@ -8702,7 +8744,7 @@ export class GameServer {
     this.unloadZone(live.zoneId);
     for (const i of live.spawnIdx) this.strongholdSpawnCells.delete(i);
     for (const [tileKey, over] of this.poiChests) {
-      if (over.cell === `sh:${key}`) this.poiChests.delete(tileKey);
+      if (over.cell === `sh:${key}` || over.cell.startsWith(`sh:${key}:`)) this.poiChests.delete(tileKey);
     }
     this.strongholdLive.delete(key);
   }

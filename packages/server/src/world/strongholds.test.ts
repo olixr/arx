@@ -10,6 +10,7 @@ import {
   familiesOf,
   territoryAt,
 } from '@arx/content';
+import { chestInfo } from '@arx/shared';
 import { POI_CELL, poiForCell, type PoiContext } from './pois.js';
 import { findsForCell } from './finds.js';
 import {
@@ -181,6 +182,20 @@ test('composeStronghold deals a lawful zone: muster in bands, the chief crowned,
   const captains = spawns.filter((s) => s.name !== undefined && !layout.boss.names.includes(s.name));
   assert.ok(captains.length >= 1, 'no titled captains composed');
   for (const c of captains) assert.equal(c.count, 1, 'a titled body is ONE body');
+  // THE CAPTAIN'S KEY composes: 2-3 captain caches beside the ONE
+  // chief's cache, the chief's always the harder kind.
+  {
+    let bossKind = 0;
+    let lesser = 0;
+    for (const t of zone.ground) {
+      const info = chestInfo(t);
+      if (!info || info.open) continue;
+      if (info.kind === 'boss') bossKind++;
+      else lesser++;
+    }
+    assert.ok(bossKind <= 1, `${bossKind} boss-kind chests (the summit's prize is singular)`);
+    assert.ok(lesser >= 2 && lesser <= 3, `${lesser} captain caches outside 2..3`);
+  }
   // THE ROADS ARE WALKED composes: some spawn patrols an authored
   // route — more waypoints than the synthetic loops ever deal, laid
   // along the worn ground.
@@ -236,6 +251,8 @@ const chapterProto = GameServer.prototype as unknown as {
   noteStrongholdKill: (this: unknown, spawnIndex: number, killerEid?: number) => void;
   strongholdGarrisonStands: (this: unknown, key: string, ward?: number) => boolean;
   strongholdBossWard: (this: unknown, key: string) => number | undefined;
+  strongholdCacheWarded: (this: unknown, spec: string) => boolean;
+  strongholdCaptainStands: (this: unknown, key: string, wing: number) => boolean;
   poiSpawnFights: (s: unknown) => boolean;
 };
 
@@ -349,6 +366,47 @@ const warProto = GameServer.prototype as unknown as {
   playerWithin: (this: unknown, x: number, y: number, r: number) => boolean;
   calmNear: (this: unknown, cx: number, cy: number, now: number) => boolean;
 };
+
+test("THE CAPTAIN'S KEY: a captain cache unlocks on the captain's death alone", () => {
+  const layoutId = 'stronghold_goblin_moot';
+  const layout = STRONGHOLD_DEFS.get(layoutId)!;
+  const wi = layout.wards.findIndex(
+    (w) => w.key !== layout.boss.ward && w.knots.some((k) => k.title),
+  );
+  assert.ok(wi >= 0, 'the flagship keeps a titled ward');
+  const bossWi = layout.wards.findIndex((w) => w.key === layout.boss.ward);
+  const key = '7,7';
+  const spawnPoints = [
+    // The captain — titled, named, ONE body.
+    { npc: 'goblin_firecaller', eid: 1, active: true, wing: wi, name: 'Warden of the Inner Gate', x: 0, y: 0, radius: 1, respawnAt: 0 },
+    // A line goblin in the same ward — its survival must NOT hold the lid.
+    { npc: 'goblin', eid: 2, active: true, wing: wi, x: 5, y: 0, radius: 1, respawnAt: 0 },
+    // The chief's court still fully manned.
+    { npc: 'goblin', eid: 3, active: true, wing: bossWi, x: 9, y: 9, radius: 1, respawnAt: 0 },
+  ];
+  const slate = {
+    spawnPoints,
+    strongholdLive: new Map([
+      [key, { zoneId: `stronghold:${key}`, seat: { gx: 7, gy: 7, x: 0, y: 0, rect: { x: 0, y: 0, w: 1, h: 1 }, family: 'goblin', tier: 4, layoutId }, layoutId, spawnIdx: [0, 1, 2] }],
+    ]),
+    poiSpawnFights: chapterProto.poiSpawnFights,
+    strongholdGarrisonStands: chapterProto.strongholdGarrisonStands,
+    strongholdCaptainStands: chapterProto.strongholdCaptainStands,
+    strongholdBossWard: chapterProto.strongholdBossWard,
+  };
+  // The captain stands: the captain cache holds, the chief's cache holds.
+  assert.equal(chapterProto.strongholdCacheWarded.call(slate, `${key}:${wi}`), true);
+  assert.equal(chapterProto.strongholdCacheWarded.call(slate, key), true);
+  // The captain falls; the line goblin still mans the yard — the
+  // captain cache OPENS anyway (kill the keeper, not the crowd), and
+  // the chief's cache still holds.
+  spawnPoints[0]!.eid = null as unknown as number;
+  assert.equal(chapterProto.strongholdCacheWarded.call(slate, `${key}:${wi}`), false);
+  assert.equal(chapterProto.strongholdCacheWarded.call(slate, key), true);
+  // The last stand falls: the chief's cache opens too.
+  spawnPoints[2]!.eid = null as unknown as number;
+  assert.equal(chapterProto.strongholdCacheWarded.call(slate, key), false);
+});
 
 function warSlate(row: {
   clearedAt?: number | null;

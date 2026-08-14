@@ -1292,6 +1292,34 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
       }
     }
   }
+  // THE CAPTAIN'S KEY (loot charter): each titled captain keeps a
+  // lesser cache NESTLED at their post — tucked against the ward's
+  // wall-side rim, nearest the captain, deep enough that reaching it
+  // means fighting through the district. Won by killing the captain
+  // (the server's ward reads the title), never by sneaking a corner.
+  for (const plan of plans) {
+    const p = plan.placed;
+    if (p.kind === 'boss') continue; // the chief's cache is the boss chest
+    const captain = plan.knots.find((k) => k.title);
+    if (!captain) continue;
+    const rim: Array<[number, number]> = [];
+    for (let xx = p.rect.x; xx < p.rect.x + p.rect.w; xx++) {
+      rim.push([xx, p.rect.y + p.rect.h - 1], [xx, p.rect.y]);
+    }
+    rim.sort((a, b) => {
+      const da = (a[0] - captain.at[0]) ** 2 + (a[1] - captain.at[1]) ** 2;
+      const db = (b[0] - captain.at[0]) ** 2 + (b[1] - captain.at[1]) ** 2;
+      return da - db;
+    });
+    for (const [cxx, cyy] of rim) {
+      if (!insideHull(cxx, cyy, 2)) continue;
+      if (at(cxx, cyy) !== TILE_SKIP) continue;
+      if (anchorCells.has(cyy * pw + cxx)) continue;
+      put(cxx, cyy, Tile.ChestIron);
+      break;
+    }
+  }
+
   // A thin wilderness sprinkle stays — the seasoning, never the meal.
   const accentCount = Math.max(10, Math.round((wallW * wallH) / 520)) + rDress.int(0, 8);
   for (let i = 0; i < accentCount; i++) {

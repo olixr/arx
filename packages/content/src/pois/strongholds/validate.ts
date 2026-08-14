@@ -507,6 +507,19 @@ export function validateStronghold(
         }
       } else if (t === Tile.ChestWood || t === Tile.ChestIron) {
         lesserChests++;
+        // THE CAPTAIN'S KEY: a lesser cache is always somebody's
+        // charge — it must sit inside a ward kept by a TITLED knot
+        // (the server unlocks it by that captain's death alone).
+        const x = i % pw;
+        const y = Math.floor(i / pw);
+        const owner = wards.find(
+          (w) => x >= w.rect.x && y >= w.rect.y && x < w.rect.x + w.rect.w && y < w.rect.y + w.rect.h,
+        );
+        if (!owner || !owner.knots.some((k) => k.title)) {
+          errors.push(
+            `lesser chest at ${x},${y} is nobody's charge (THE CAPTAIN'S KEY: a cache belongs to a titled captain's ward)`,
+          );
+        }
       }
     }
     if (bossChests !== 1) errors.push(`${bossChests} boss chests (exactly one — the cache law)`);

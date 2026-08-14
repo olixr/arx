@@ -353,6 +353,31 @@ test('THE POST LAW, CAPTAIN LAW, and ROADS ARE WALKED are generated true (Third 
   }
 });
 
+test("THE CAPTAIN'S KEY: every lesser cache is a titled ward's charge", () => {
+  for (const def of STRONGHOLD_DEFS.values()) {
+    const prefab = STRONGHOLD_PREFABS.get(def.prefab)!;
+    let caches = 0;
+    for (let i = 0; i < prefab.ground.length; i++) {
+      const t = prefab.ground[i]!;
+      if (t !== Tile.ChestIron && t !== Tile.ChestWood) continue;
+      caches++;
+      const x = i % prefab.width;
+      const y = Math.floor(i / prefab.width);
+      const owner = def.wards.find(
+        (w) => x >= w.rect.x && y >= w.rect.y && x < w.rect.x + w.rect.w && y < w.rect.y + w.rect.h,
+      );
+      assert.ok(owner, `${def.id}: cache at ${x},${y} in no ward`);
+      assert.ok(
+        owner!.knots.some((k) => k.title),
+        `${def.id}: cache at ${x},${y} in an untitled ward`,
+      );
+    }
+    // Two or three well-earned caches per stronghold beside the boss
+    // chest — one per captain, never a scatter of freebies.
+    assert.ok(caches >= 2 && caches <= 3, `${def.id}: ${caches} captain caches outside 2..3`);
+  }
+});
+
 test('shipped knots keep THE PULL LAW with margin visible in the data', () => {
   for (const def of STRONGHOLD_DEFS.values()) {
     const anchors: Array<readonly [number, number]> = [];

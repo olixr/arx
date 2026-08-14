@@ -966,3 +966,33 @@ Shipped as designed; deviations and laws learned:
   marker line glowing across the dark yard. The garrison killed the
   scout during standing (three accounts dead across two charters —
   the muster defends itself). 1,569 workspace tests green.
+
+### Phase 9 as-built (2026-08-13 — THE CAPTAIN'S KEY)
+
+The loot charter, shipped same-day on Phase 8's captains:
+
+- **THE CAPTAIN'S KEY**: each titled captain keeps ONE lesser cache
+  nestled at their post — the generator tucks it against the ward's
+  wall-side rim nearest the captain (the chord wall's defended side,
+  the gate yard's corner). Kill THE CAPTAIN and the lid lifts — the
+  yard's other bodies never hold it (the crowd is the fight, the
+  keeper is the lock). The chief's cache keeps the last-stand ward
+  law unchanged. Citadels: 3 captain caches + the boss chest; holds:
+  2 + 1 — well earned, never a scatter of freebies (2..3 test-pinned,
+  validator refuses a lesser chest in an untitled ward by name).
+- **The kind ladder is clamped**: the chief pays one law up (min
+  tier+1, 5); a captain pays the tier's law CLAMPED to 4 — the live
+  decode caught tier-5 captains re-keying to boss-kind (four boss
+  chests per citadel). Now: one boss chest at the summit, gilded at
+  the captains' posts (live decode: ChestBoss at the court, three
+  ChestGilded down the processional).
+- **Server plumbing**: chest cells now carry their keeper —
+  `sh:key:wardIdx` for captained wards (bare `sh:key` = the chief's);
+  strongholdCacheWarded parses the suffix, strongholdCaptainStands
+  reads the wing's NAMED body alone; retireCapital sweeps both cell
+  forms. Slate-tested: captain falls while a line goblin still mans
+  the yard → the captain cache opens, the chief's holds; the last
+  stand falls → the chief's opens.
+- **Smaller camps unchanged**: POI camps keep their own chest laws —
+  the strongholds are where the big chests live, and every one of
+  them is somebody's charge. 1,571 workspace tests green.

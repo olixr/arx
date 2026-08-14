@@ -341,13 +341,18 @@ export function composeStronghold(
     0x9c1,
   );
 
-  // The cache: re-keyed one law up (a capital pays above its tier's
-  // camps — gilded at 3, boss at 4+), warded by the standing garrison
-  // (the gameServer wires the ward to this zone's fighters).
-  const cacheKind = dangerLaw(Math.min(seat.tier + 1, 5)).chest;
+  // The caches: the CHIEF'S pays one law up (a capital pays above its
+  // tier's camps — gilded at 3, boss at 4+); a CAPTAIN'S cache pays
+  // the tier's own law CLAMPED BELOW the boss kind (THE CAPTAIN'S
+  // KEY — well earned, always one rung under the summit's prize, or
+  // a tier-5 capital would deal four boss chests). The gameServer
+  // wires each ward to its keeper.
+  const bossCacheKind = dangerLaw(Math.min(seat.tier + 1, 5)).chest;
+  const captainCacheKind = dangerLaw(Math.min(seat.tier, 4)).chest;
   for (let i = 0; i < ground.length; i++) {
     const info = chestInfo(ground[i]!);
-    if (info && !info.open) ground[i] = closedChestTile(cacheKind);
+    if (!info || info.open) continue;
+    ground[i] = closedChestTile(info.kind === 'boss' ? bossCacheKind : captainCacheKind);
   }
 
   const spawns: ZoneDef['spawns'] = [];
