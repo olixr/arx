@@ -13,6 +13,7 @@ import { emptyInventory, addItem, countItem } from './inventory.js';
 type AnyFn = (...args: never[]) => unknown;
 const proto = GameServer.prototype as unknown as {
   pickpocket: AnyFn;
+  sayAloud: AnyFn;
   theftWitnesses: AnyFn;
   chargeTheft: AnyFn;
   creditDeed: AnyFn;
@@ -74,6 +75,9 @@ function slate(opts: {
     grantXp: () => {},
     revealPlayer: () => {},
     pickpocket: proto.pickpocket,
+    // THE SPOKEN AIR: the caught cry leaves through the public door
+    // now — the slate's empty sessions list keeps it a dry run.
+    sayAloud: proto.sayAloud,
     theftWitnesses: proto.theftWitnesses,
     chargeTheft: proto.chargeTheft,
     creditDeed: proto.creditDeed,

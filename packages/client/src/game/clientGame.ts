@@ -162,6 +162,9 @@ export interface Floaty {
 export interface ChatLine {
   channel: 'local' | 'system' | 'xp';
   from?: string;
+  /** The speaker's entity, when the line was said aloud IN the world —
+   *  what lets THE SPOKEN AIR stand the words over the right head. */
+  eid?: EntityId;
   text: string;
 }
 
@@ -1382,7 +1385,7 @@ export class ClientGame {
         break;
       }
       case 'chat': {
-        this.events.onChat({ channel: msg.channel, from: msg.from, text: msg.text });
+        this.events.onChat({ channel: msg.channel, from: msg.from, eid: msg.eid, text: msg.text });
         break;
       }
       case 'pong': {

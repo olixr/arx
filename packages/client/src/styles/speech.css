@@ -1,0 +1,117 @@
+/* ---- THE SPOKEN AIR: overhead speech bubbles ---- */
+
+/* The stage: one fixed sheet over the world for every spoken word.
+   z 41 — a step above the interact prompt (40) and the sign plaque
+   (39) so a line is never cut by the chrome it floats beside, and
+   well under the dialogue cinema (52) and every ceremony. A read,
+   not a screen: no pointer, no focus, no input. */
+#speech-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 41;
+  pointer-events: none;
+  overflow: clip;
+  transition: opacity 0.18s ease;
+}
+
+/* An open screen or the cinema veils the air; clocks keep running. */
+#speech-layer.veiled {
+  opacity: 0;
+}
+
+/* The anchor: positioned by transform only (the SignHud law — never
+   left/top, never a layout write per frame). */
+.speech-bubble {
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: 16rem;
+  transition: opacity 0.22s ease;
+}
+
+.speech-bubble.bowing {
+  opacity: 0;
+}
+
+.speech-bubble.hidden {
+  display: none;
+}
+
+/* The card: parchment wearing the world's own ink ring — the black
+   outline shader as UI material, so a spoken word and the head it
+   floats over speak one visual language. Eased corners carry a REAL
+   border (Corner Truth, legal dressing #2); the shadow is the punch
+   family, sharp and offset, never blurred. */
+.speech-card {
+  position: relative;
+  padding: 0.3125rem 0.6875rem 0.4375rem;
+  background: var(--parchment);
+  border: var(--rule) solid var(--outline);
+  border-radius: var(--r-case);
+  color: var(--sheet-ink);
+  font-size: var(--t-label);
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  overflow-wrap: anywhere;
+  filter: drop-shadow(0.125rem 0.1875rem 0 var(--shadow));
+  transform-origin: 50% 100%;
+}
+
+/* The snap of a voice starting up — scale channel only, from the
+   tail's root, so the bubble grows out of the speaker's head. */
+body:not(.no-ui-motion) .speech-card {
+  animation: speech-pop 0.18s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .speech-card {
+    animation: none !important;
+  }
+}
+
+@keyframes speech-pop {
+  from {
+    scale: 0.55;
+    opacity: 0;
+  }
+}
+
+/* The bow-out drifts up a breath — translate channel, never transform
+   (transform is the anchor's; the channels never fight). */
+.speech-bubble.bowing .speech-card {
+  translate: 0 -0.25rem;
+  transition: translate 0.22s ease;
+}
+
+/* The tail: a rotated ink-lined diamond whose fill opens the card's
+   own border where they meet — one continuous parchment silhouette
+   pointing at the mouth it belongs to. Slides along the bottom edge
+   (style.left, set per frame) to keep pointing at a speaker whose
+   card is hugging a viewport edge. */
+.speech-tail {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: var(--sp-5);
+  height: var(--sp-5);
+  background: var(--parchment);
+  border-right: var(--rule) solid var(--outline);
+  border-bottom: var(--rule) solid var(--outline);
+  border-bottom-right-radius: var(--r-chip);
+  translate: -50% 52%;
+  rotate: 45deg;
+}
+
+/* A vertically clamped card floats free of its speaker — a tail that
+   points at nothing lies (the sign plaque's law). */
+.speech-bubble.clamped .speech-tail {
+  display: none;
+}
+
+/* Your own words wear a warm gold wash — you always know which of
+   the square's voices was yours. Tail matches or the seam shows. */
+.speech-bubble[data-voice='own'] .speech-card,
+.speech-bubble[data-voice='own'] .speech-tail {
+  background: var(--gold-hot);
+}

@@ -12187,7 +12187,7 @@ export class GameServer {
           if (refusals.length > 0) {
             const line = refusals[(targetEid + this.tickCount) % refusals.length]!;
             npos.dir = Math.atan2(pos.y - npos.y, pos.x - npos.x);
-            sys(`${actorComp.actor.name}: "${line}"`);
+            this.sayAloud(targetEid, actorComp.actor.name, line);
           }
           return;
         }
@@ -12260,7 +12260,7 @@ export class GameServer {
           rc.pauseUntilTick = this.tickCount + 80;
           rc.holdFacing = false;
         }
-        sys(`${actorComp.actor.name}: "${line}"`);
+        this.sayAloud(targetEid, actorComp.actor.name, line);
         // THE THROAT CLEARS: a bark may carry its spoken breath — the
         // bark slot through the same rationed quip memory, spatial at
         // the speaker's spot. Cosmetic 'vq'; a deaf client loses air.
@@ -15356,12 +15356,7 @@ export class GameServer {
     this.revealPlayer(eid, player);
     npos.dir = Math.atan2(pos.y - npos.y, pos.x - npos.x);
     const cries = ['Hey — my pocket!', 'Thief! A thief!', 'Hands! I felt hands!'];
-    const text = cries[(targetEid + this.tickCount) % cries.length]!;
-    for (const s of this.sessions) {
-      if (s.knownEntities.has(targetEid)) {
-        s.sendJson({ t: 'chat', channel: 'local', from: actorComp.actor.name, eid: targetEid, text });
-      }
-    }
+    this.sayAloud(targetEid, actorComp.actor.name, cries[(targetEid + this.tickCount) % cries.length]!);
     sys('The grab misses.');
     const witnesses = this.theftWitnesses(pos.x, pos.y, targetEid);
     const markFid = factionOfActor(actorComp.actor.id);
@@ -21785,12 +21780,7 @@ export class GameServer {
    */
   private npcCryHelp(eid: EntityId, npc: NpcComp, targetEid: EntityId): void {
     const cries = ['Help! Help!', 'To me! To me!', 'Get them off me!'];
-    const text = cries[eid % cries.length]!;
-    for (const s of this.sessions) {
-      if (s.knownEntities.has(eid)) {
-        s.sendJson({ t: 'chat', channel: 'local', from: npc.def.name, eid, text });
-      }
-    }
+    this.sayAloud(eid, npc.def.name, cries[eid % cries.length]!);
     npc.helpEid = null;
     // The crier was already in the fight — a wound put it there, so
     // the re-entry and the scream both carry the blow's force.
@@ -21970,6 +21960,23 @@ export class GameServer {
     npc.huntWaitUntilTick = 0;
     npc.standTicks = 0;
     // "HE WENT THAT WAY": project the last-seen point along the
+  /**
+   * THE SPOKEN AIR — the one mouth for words said aloud in the world.
+   * Player chat, an actor's bark, a faction's refusal, a mark's cry:
+   * anything a body SAYS leaves through here as local chat carrying
+   * the speaker's eid, delivered to the speaker and to everyone whose
+   * interest set holds them. One wire, two voices on the client: the
+   * line lands in the log AND stands up in a bubble over the head
+   * that said it — the eid is what lets the bubble find the head.
+   */
+  private sayAloud(eid: EntityId, from: string, text: string): void {
+    for (const s of this.sessions) {
+      if (s.playerEid === eid || s.knownEntities.has(eid)) {
+        s.sendJson({ t: 'chat', channel: 'local', from, eid, text });
+      }
+    }
+  }
+
     // quarry's last-seen stride (capped ~4 tiles), so the hunt
     // carries past the corner instead of stopping dead at it. A
     // projection that lands inside a solid falls back by halves.
@@ -24887,11 +24894,7 @@ export class GameServer {
       player.session?.sendJson({ t: 'chat', channel: 'system', text: 'No open ground nearby.' });
       return;
     }
-    for (const s of this.sessions) {
-      if (s.playerEid === eid || s.knownEntities.has(eid)) {
-        s.sendJson({ t: 'chat', channel: 'local', from: player.name, eid, text });
-      }
-    }
+    this.sayAloud(eid, player.name, text);
   }
 
   private systemChatAll(text: string): void {

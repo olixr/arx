@@ -56,6 +56,7 @@ import { installTokens } from './ui/kit/tokens.js';
 import { installScale, setUiSize, uiSize, UI_SIZES } from './ui/kit/scale.js';
 import { bigButton, dressPanel } from './ui/panel.js';
 import { SignHud } from './ui/signs.js';
+import { SpeechBubbles } from './ui/speechBubbles.js';
 import { PetNamingCard } from './ui/petNaming.js';
 import { LookCreator } from './ui/lookCreator.js';
 import { DialogueCinema } from './ui/dialogueCinema.js';
@@ -1142,7 +1143,13 @@ function flushXpPool(): void {
 }
 
 const game = new ClientGame(input, {
-  onChat: (line) => chat.addLine(line),
+  onChat: (line) => {
+    chat.addLine(line);
+    // ONE LINE, TWO VOICES: a line that knows its speaker also stands
+    // up over that head — the log keeps the record, the bubble the
+    // moment. System lines carry no eid and stay in the log.
+    if (line.eid !== undefined) speech.say(line.eid, line.text);
+  },
   onNeedLook: () => looks.show(),
   // The own-built ledger feeds the overlay: glints + armed preview.
   onOwnBuilt: (keys) => renderer.setOwnBuilt(keys),
@@ -1698,6 +1705,10 @@ const repScreen = new RepScreen(game);
 // Signage: the approach plaque over every board, and the sheet that
 // opens when you stop to read one properly.
 const signHud = new SignHud(game);
+
+// THE SPOKEN AIR: every line said aloud in the world — chat, barks,
+// refusals, cries — stands up as a bubble over its speaker's head.
+const speech = new SpeechBubbles(game, renderer);
 
 // THE NAMING — the gentling's last beat: a fresh tame asks its collar
 // tag once, through the one modal card.
@@ -3079,6 +3090,9 @@ function frame(now: number): void {
   // opened screen (the chart included) supersedes them.
   mapOverlay.update(now, uiOpen || cinema.open);
   waypointHud.update(game, renderer, uiOpen || cinema.open || buildMode !== null);
+  // Spoken words ride the live world: any screen or the cinema veils
+  // them (their clocks keep running); logged out, there is no air.
+  speech.update(now, uiOpen || cinema.open || game.ownEid === null);
   objectiveTracker.update(uiOpen || cinema.open || buildMode !== null);
   craftHud.duck(uiOpen || cinema.open);
   partyHud.update(game, renderer, uiOpen || cinema.open || buildMode !== null);
