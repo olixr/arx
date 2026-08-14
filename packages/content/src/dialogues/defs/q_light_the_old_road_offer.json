@@ -44,7 +44,13 @@
   {
    "id": "go",
    "voice": "q_light_the_old_road_offer__go",
-   "text": "The road thanks you in the only way it can. It gets shorter after dark."
+   "text": "The road thanks you in the only way it can. It gets shorter after dark.",
+   "hooks": [
+    {
+     "kind": "quest_accept",
+     "quest": "light_the_old_road"
+    }
+   ]
   }
  ],
  "requires": [

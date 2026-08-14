@@ -44,7 +44,13 @@
   {
    "id": "go",
    "voice": "q_what_the_net_held_offer__go",
-   "text": "Exactly those words, mind. The mere listens."
+   "text": "Exactly those words, mind. The mere listens.",
+   "hooks": [
+    {
+     "kind": "quest_accept",
+     "quest": "what_the_net_held"
+    }
+   ]
   }
  ],
  "requires": [

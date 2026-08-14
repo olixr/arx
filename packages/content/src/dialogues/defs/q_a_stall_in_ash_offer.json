@@ -44,7 +44,13 @@
   {
    "id": "go",
    "voice": "q_a_stall_in_ash_offer__go",
-   "text": "Watch the wind. Worgs read it better than you do."
+   "text": "Watch the wind. Worgs read it better than you do.",
+   "hooks": [
+    {
+     "kind": "quest_accept",
+     "quest": "a_stall_in_ash"
+    }
+   ]
   }
  ],
  "requires": [

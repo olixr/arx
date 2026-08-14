@@ -4,8 +4,18 @@
  "giver": "surveyor_hedda",
  "stages": [
   {
+   "id": "the_word_first",
+   "journal": "Hedda's survey mule bolted on the quarry road and her cipher pages went into the burn with the wreck, into spoil the Hewers will have squared and stacked by now. She wants them back unread, and she wants it quiet, and quiet is exactly what she cannot have: nobody breaks a quarry shift in this town without the Delfhall hearing first. Tell the *Delfmaster* what you mean to do and why.",
+   "objectives": [
+    {
+     "kind": "talk",
+     "actor": "delfmaster_ruen"
+    }
+   ]
+  },
+  {
    "id": "the_lost_pages",
-   "journal": "Hedda's survey mule bolted on the quarry road and her cipher pages went into the burn with the wreck. The Hewers clear wrecks the way they clear everything: into the spoil, squared and stacked. The pages are measurements, she says. Only measurements. She says it twice, which is once too many. Break the *waking quarry's* shift and bring the pages back.",
+   "journal": "Ruen gave her blessing with a price on it: the pages come back through the gate in open daylight, and the next Crown question knocks at the Delfhall first, or it walks home. Now the hard half. The waking quarry does not pause its shift for the living. Break it, dig the wreck out of the spoil, and bring Hedda her measurements, and whatever is written between them.",
    "objectives": [
     {
      "kind": "kill",
@@ -16,16 +26,6 @@
      "kind": "collect",
      "item": "survey_pages",
      "count": 1
-    }
-   ]
-  },
-  {
-   "id": "the_two_hands",
-   "journal": "The pages are not only measurements. Between the distances, in the same neat cipher, are questions about the sealing, the kind a king asks when he cannot ask. Ruen runs this town, and the town was built on not asking. Tell the *Delfmaster* what you are carrying before you decide whose hands it ends in.",
-   "objectives": [
-    {
-     "kind": "talk",
-     "actor": "delfmaster_ruen"
     }
    ]
   }

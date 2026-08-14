@@ -44,7 +44,13 @@
   {
    "id": "go",
    "voice": "q_the_count_below_offer__go",
-   "text": "Take a lamp. The question lives in dark places."
+   "text": "Take a lamp. The question lives in dark places.",
+   "hooks": [
+    {
+     "kind": "quest_accept",
+     "quest": "the_count_below"
+    }
+   ]
   }
  ],
  "requires": [
