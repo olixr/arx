@@ -2148,7 +2148,7 @@ function earlyLeatherDefs(): EquipmentDef[] {
       { key: 'moonless', dye: 'Moonless', color: '#33303c',
         desc: 'The Unseen. Wound ink and one lit slit. On the real nights there is no face at all.' },
       { key: 'redhand', dye: 'Redhand', color: '#8e2a22',
-        desc: 'The Knife. A shroud cut to bleed crimson, red hands, and a knot for every job. Caught once, never twice.' },
+        desc: 'The Knife. A shroud that bleeds crimson, and the red right hand itself clamped over a faceless dark. Caught once, never twice.' },
     ]),
     // -------- Trapline: rawhide and fir hung with a toggled bandolier,
     // snare-cord wraps and a fur-ruffed hood. The trapper's craft line —
