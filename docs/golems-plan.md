@@ -306,6 +306,19 @@ Shipped exactly as planned, with these deltas and lessons:
   territory chain (needs a MAJOR golem POI to declare it — a "waking
   quarry" POI is the natural follow-up), mine-dungeon iron garrisons,
   and a stone matter material (dust carries the earth voice fine).
+**THE ELEMENTS WAKE (c90350c, 2026-08-14)** — the ascension pass, per
+user mandate ("elemental beings bound by energy, never reskins"):
+rock = binding seam-light (amber over deep under-strokes, CONTRAST
+LAW) + orbiting crags (analytic orbits, front/behind by sin(angle),
+orbit radius clears the outline bridge distance); iron = forge heat
+climbing the chest seam + traveling rivet glint + chimney wisp
+(containment as identity); fire = flameTongue() shared primitive
+(two-tone teardrop, white heart, phase-deterministic flicker) at
+crown/vents/seam-jets + thicker ember weather + breathing carried
+glow; ice = seeded icicles with a crawling melt-drop + the snowfall
+aura (personal weather, plain particles.burst) + blinking facet
+glints + cold head-sigh. Secondary-element budget stays frameDt-gated.
+
 - Proof: content 467 / server 416 / client 483 green at each commit;
   riglab THE GOLEM SHEET (4 builds × 5 modes × 8 facings + cluster
   spread + body rulers) audited by screenshot; all nine signatures
