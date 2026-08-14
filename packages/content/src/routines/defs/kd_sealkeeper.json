@@ -1,0 +1,58 @@
+{
+ "id": "kd_sealkeeper",
+ "base": {
+  "kind": "post",
+  "dir": 1.5707963,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 18.5,
+   "to": 20,
+   "task": {
+    "kind": "path",
+    "speed": 1.35,
+    "waypoints": [
+     {
+      "x": 19,
+      "y": -22,
+      "waitSec": 240,
+      "dir": 1.5707963
+     },
+     {
+      "x": 24,
+      "y": -22,
+      "waitSec": 240,
+      "dir": 1.5707963
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 1.5707963
+     }
+    ]
+   }
+  },
+  {
+   "from": 21,
+   "to": 5.5,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": -13,
+      "y": 5
+     },
+     {
+      "x": -13,
+      "y": 4,
+      "lie": true
+     }
+    ],
+    "mode": "once"
+   }
+  }
+ ]
+}

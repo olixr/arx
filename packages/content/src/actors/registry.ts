@@ -156,6 +156,27 @@ import buyerHallward from './defs/buyer_hallward.json';
 import pedlarGrimm from './defs/pedlar_grimm.json';
 import hartfellWatch from './defs/hartfell_watch.json';
 import hartfellHerder from './defs/hartfell_herder.json';
+// Kingsdelf — the town in the King's Delf (the Kingsdelf epic).
+import delfmasterRuen from './defs/delfmaster_ruen.json';
+import factorVenn from './defs/factor_venn.json';
+import sealkeeperAnnik from './defs/sealkeeper_annik.json';
+import innkeepBrekka from './defs/innkeep_brekka.json';
+import stablemasterOrin from './defs/stablemaster_orin.json';
+import smithFerrun from './defs/smith_ferrun.json';
+import glasswrightMirena from './defs/glasswright_mirena.json';
+import enchanterVeyle from './defs/enchanter_veyle.json';
+import assayerLorn from './defs/assayer_lorn.json';
+import lampwrightSoren from './defs/lampwright_soren.json';
+import waykeeperLiv from './defs/waykeeper_liv.json';
+import surveyorHedda from './defs/surveyor_hedda.json';
+import provisionerEtta from './defs/provisioner_etta.json';
+import outfitterCass from './defs/outfitter_cass.json';
+import salvewrightIda from './defs/salvewright_ida.json';
+import fisherDenna from './defs/fisher_denna.json';
+import brokerSlate from './defs/broker_slate.json';
+import kingsdelfWatch from './defs/kingsdelf_watch.json';
+import kingsdelfDelver from './defs/kingsdelf_delver.json';
+import kingsdelfGlasshand from './defs/kingsdelf_glasshand.json';
 
 const SOURCES: readonly unknown[] = [
   reeveHalla,
@@ -297,6 +318,26 @@ const SOURCES: readonly unknown[] = [
   buyerHallward,
   pedlarGrimm,
   hartfellWatch,
+  delfmasterRuen,
+  factorVenn,
+  sealkeeperAnnik,
+  innkeepBrekka,
+  stablemasterOrin,
+  smithFerrun,
+  glasswrightMirena,
+  enchanterVeyle,
+  assayerLorn,
+  lampwrightSoren,
+  waykeeperLiv,
+  surveyorHedda,
+  provisionerEtta,
+  outfitterCass,
+  salvewrightIda,
+  fisherDenna,
+  brokerSlate,
+  kingsdelfWatch,
+  kingsdelfDelver,
+  kingsdelfGlasshand,
   hartfellHerder,
 ];
 

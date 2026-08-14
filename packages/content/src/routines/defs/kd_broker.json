@@ -1,0 +1,32 @@
+{
+ "id": "kd_broker",
+ "base": {
+  "kind": "post",
+  "dir": 1.5707963,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 9,
+   "to": 19,
+   "task": {
+    "kind": "path",
+    "speed": 1.35,
+    "waypoints": [
+     {
+      "x": -31,
+      "y": -18,
+      "waitSec": 900,
+      "dir": 3.1415926
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 1.5707963
+     }
+    ]
+   }
+  }
+ ]
+}

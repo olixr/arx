@@ -712,6 +712,128 @@ const defs: ShopDef[] = [
       { item: 'dun_courser', price: 3500 },
     ],
   },
+  // ---- KINGSDELF — the town in the King's Delf (the Kingsdelf epic).
+  // Ore and glass and light; everything else walked here up the unlit
+  // road, and the prices say so. The limits are the town: no loom, no
+  // crops, no masterwork sold over any counter.
+  // Brekka feeds the shifts; the day-book is free, the stew is not.
+  {
+    id: 'brekka_board',
+    name: "The Foreman's Rest",
+    stock: [
+      { item: 'bread', price: 6 },
+      { item: 'fried_egg', price: 10 },
+      { item: 'hearty_stew', price: 20 },
+      { item: 'cooked_beef', price: 16 },
+      { item: 'milk', price: 6 },
+    ],
+  },
+  // Orin trades in known stock the Charter freights down: a beast you
+  // can trust on a road you cannot. (A delf-bred mount is a debt the
+  // Beastyard means to pay.)
+  {
+    id: 'orin_stable',
+    name: 'The Beastyard',
+    stock: [
+      { item: 'bay_courser', price: 3600 },
+      { item: 'grey_courser', price: 3600 },
+      { item: 'hoargate_garron', price: 3600 },
+      { item: 'drovers_lead', price: 45 },
+    ],
+  },
+  // Ferrun sells the forge's knowledge at the far end of the ladder's
+  // road: the same guild schematics as the ford, without the walk.
+  { id: 'ferrun_commissions', name: 'Starfall Commissions', stock: trainerStock(['smithing']) },
+  // Veyle sells the Arcanum's own folios, which annoys the Arcanum,
+  // which is not why she does it. Mostly.
+  { id: 'veyle_craft', name: 'The Focus House', stock: trainerStock(['enchanting']) },
+  // Mirena sells the burn's stones, cut and clean: the glasswork's
+  // raw heart, priced for people who know what they are holding.
+  {
+    id: 'mirena_wares',
+    name: 'The Glasshouse',
+    stock: [
+      { item: 'emberstone', price: 95 },
+      { item: 'frostshard', price: 95 },
+      { item: 'arcane_dust', price: 60 },
+      { item: 'stormpearl', price: 130 },
+    ],
+  },
+  // Soren sells what a lamp eats. The lamps themselves he gives to
+  // the road, one by one, which is the whole argument.
+  {
+    id: 'soren_lamps',
+    name: 'The Flamehouse',
+    stock: [
+      { item: 'firepitch_oil', price: 28 },
+      { item: 'coal', price: 9 },
+      { item: 'emberstone', price: 98 },
+    ],
+  },
+  // Etta apologizes for the prices. The road does not.
+  {
+    id: 'etta_goods',
+    name: 'The Provisioner',
+    stock: [
+      { item: 'bread', price: 7 },
+      { item: 'flour', price: 9 },
+      { item: 'salt', price: 7 },
+      { item: 'berries', price: 6 },
+      { item: 'wheat', price: 6 },
+      { item: 'cake', price: 34 },
+    ],
+  },
+  // Cass sells warmth first and looks second, and will tell you so.
+  {
+    id: 'cass_outfitting',
+    name: 'The Outfitter',
+    stock: [
+      { item: 'leather_body', price: 60 },
+      { item: 'leather_chaps', price: 48 },
+      { item: 'leather_boots', price: 36 },
+      { item: 'leather_gloves', price: 30 },
+      { item: 'leather_hood', price: 34 },
+      { item: 'cape_traveler', price: 90 },
+    ],
+  },
+  // Ida's shelf: what works, priced so the shifts can afford it.
+  {
+    id: 'ida_remedies',
+    name: 'The Dispensary',
+    stock: [
+      { item: 'healing_tincture', price: 32 },
+      { item: 'mending_salve', price: 26 },
+      { item: 'ironbark_tonic', price: 42 },
+      { item: 'gatherers_brew', price: 26 },
+      { item: 'moonbell', price: 20 },
+      { item: 'sagewort', price: 9 },
+    ],
+  },
+  // Denna sells the mere's pale catch and the means to try your own.
+  {
+    id: 'denna_catch',
+    name: 'The Quay',
+    stock: [
+      { item: 'raw_trout', price: 9 },
+      { item: 'smoked_trout', price: 20 },
+      { item: 'salmon', price: 16 },
+      { item: 'fishing_rod', price: 60 },
+      { item: 'fishers_pot', price: 48 },
+    ],
+  },
+  // Slate sells rope, keys, and no questions. The Company's counter
+  // in all but name, which is the name's whole job.
+  {
+    id: 'slate_sundries',
+    name: 'Sundries',
+    stock: [
+      { item: 'twine', price: 5 },
+      { item: 'snare_kit', price: 260 },
+      { item: 'leadfoot_oil', price: 48 },
+      { item: 'straw_decoy', price: 38 },
+      { item: 'brass_key', price: 250 },
+    ],
+  },
   // Bretta sells the forge's knowledge: every guild-taught schematic
   // in the smithing line, jewellery to platebodies.
   { id: 'trainer_smithing', name: 'Ironhewn Schematics', stock: trainerStock(['smithing']) },

@@ -1,0 +1,32 @@
+{
+ "id": "kingsdelf_glasshand",
+ "name": "A Glasshand",
+ "title": "Of the Kilns",
+ "examine": "Forearms scarred smooth by old splashes, eyes narrowed by kiln light. The kilns never cool, so the glasshands work turn and turn about, and sleep like the dead.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 1,
+   "hair": 3,
+   "hairColor": 1,
+   "beard": 0,
+   "eyes": 1,
+   "ears": 0,
+   "feature": 4,
+   "shirt": 1,
+   "pants": 2
+  }
+ },
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 12
+  }
+ ],
+ "lines": [
+  "Mind the carry poles. Hot glass forgives nothing and neither does Mirena.",
+  "You never look straight into the kiln. You learn that once.",
+  "Turn and turn about. The fire sleeps when I do, which is never."
+ ]
+}

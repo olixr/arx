@@ -1,0 +1,51 @@
+{
+ "id": "kd_watch_wicket_night",
+ "base": {
+  "kind": "post",
+  "dir": 4.7123889,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 6.5,
+   "to": 13.5,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 53,
+      "y": 63
+     },
+     {
+      "x": 54,
+      "y": 63,
+      "lie": true
+     }
+    ],
+    "mode": "once"
+   }
+  },
+  {
+   "from": 13.5,
+   "to": 21.75,
+   "task": {
+    "kind": "path",
+    "speed": 1.35,
+    "waypoints": [
+     {
+      "x": 52,
+      "y": 65,
+      "waitSec": 600,
+      "dir": 4.7123889
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60
+     }
+    ]
+   }
+  }
+ ]
+}

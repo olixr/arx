@@ -1,0 +1,58 @@
+{
+ "id": "kd_stablemaster",
+ "base": {
+  "kind": "post",
+  "dir": 3.1415926,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 9,
+   "to": 10.5,
+   "task": {
+    "kind": "path",
+    "speed": 1.3,
+    "waypoints": [
+     {
+      "x": -10,
+      "y": 2,
+      "waitSec": 120,
+      "dir": 3.1415926
+     },
+     {
+      "x": 13,
+      "y": 2,
+      "waitSec": 120,
+      "dir": 0.0
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 3.1415926
+     }
+    ]
+   }
+  },
+  {
+   "from": 21.5,
+   "to": 5.5,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 10,
+      "y": -1
+     },
+     {
+      "x": 11,
+      "y": -1,
+      "lie": true
+     }
+    ],
+    "mode": "once"
+   }
+  }
+ ]
+}

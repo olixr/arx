@@ -1,0 +1,33 @@
+{
+ "id": "glasswright_mirena",
+ "name": "Mirena",
+ "title": "Glasswright",
+ "examine": "Salt-coast born, where sand meets fire. Her old master called glasswork a small craft. Her lenses light six towns. She holds everything up to the light first.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 5,
+   "hair": 4,
+   "hairColor": 0,
+   "beard": 0,
+   "eyes": 3,
+   "ears": 0,
+   "feature": 0,
+   "shirt": 1,
+   "pants": 2
+  }
+ },
+ "shop": "mirena_wares",
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 12
+  }
+ ],
+ "lines": [
+  "Hold it to the light. Everything true has a light it agrees with.",
+  "Sand, fire, and patience. Two of those can be bought.",
+  "The kilns do not cool. Neither do I, ask anyone."
+ ]
+}

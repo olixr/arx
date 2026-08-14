@@ -1,0 +1,33 @@
+{
+ "id": "provisioner_etta",
+ "name": "Etta",
+ "title": "Provisioner",
+ "examine": "Fen-born, from the crofts on the First Road waist. Everything on her shelves walked here up the unlit road, and the prices say so. She apologizes for them before you ask.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 2,
+   "hair": 0,
+   "hairColor": 3,
+   "beard": 0,
+   "eyes": 2,
+   "ears": 0,
+   "feature": 5,
+   "shirt": 2,
+   "pants": 3
+  }
+ },
+ "shop": "etta_goods",
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 12
+  }
+ ],
+ "lines": [
+  "The prices are the road's fault. I only write them down.",
+  "Grain from the ford, salt from the coast, apples when the carts are brave.",
+  "Nobody leaves my counter hungry. Broke, sometimes. Hungry, no."
+ ]
+}

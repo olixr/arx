@@ -1,0 +1,30 @@
+{
+ "id": "kd_glasshand_b",
+ "base": {
+  "kind": "post",
+  "dir": 3.1415926,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 9,
+   "to": 19,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 5,
+      "y": 12
+     },
+     {
+      "x": 6,
+      "y": 12,
+      "lie": true
+     }
+    ],
+    "mode": "once"
+   }
+  }
+ ]
+}

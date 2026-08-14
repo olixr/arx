@@ -1,0 +1,32 @@
+{
+ "id": "assayer_lorn",
+ "name": "Lorn",
+ "title": "Assayer",
+ "examine": "Fordgate-trained, scales-honest. Once passed a load he should have failed; a bridge cracked; he left. Nothing leaves the delf unweighed now.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 0,
+   "hair": 3,
+   "hairColor": 4,
+   "beard": 1,
+   "eyes": 1,
+   "ears": 0,
+   "feature": 0,
+   "shirt": 3,
+   "pants": 1
+  }
+ },
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 12
+  }
+ ],
+ "lines": [
+  "That claim is light. Bring me the rest of it.",
+  "The scales do not care who is waiting. That is what makes them scales.",
+  "I failed a load once by passing it. Never again."
+ ]
+}

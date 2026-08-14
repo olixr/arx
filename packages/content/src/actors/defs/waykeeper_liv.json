@@ -1,0 +1,32 @@
+{
+ "id": "waykeeper_liv",
+ "name": "Liv",
+ "title": "Waykeeper Envoy",
+ "examine": "Sent by Marshal Kestrel to say no: the order lights no road it cannot walk. Two years of saying it, from the loneliest post the lamp-faith keeps, and the no keeps getting quieter.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 2,
+   "hair": 0,
+   "hairColor": 2,
+   "beard": 0,
+   "eyes": 1,
+   "ears": 0,
+   "feature": 0,
+   "shirt": 7,
+   "pants": 6
+  }
+ },
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 12
+  }
+ ],
+ "lines": [
+  "The order's answer is still no. My answer is getting complicated.",
+  "A lamp you cannot tend is a lie in glass. That is doctrine. I wrote it out nine times.",
+  "I watch the gate. Somebody from the order ought to."
+ ]
+}

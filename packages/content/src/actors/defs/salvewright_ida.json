@@ -1,0 +1,33 @@
+{
+ "id": "salvewright_ida",
+ "name": "Ida",
+ "title": "Salvewright",
+ "examine": "Trained on Elowen's folios, came south for what ash does to a miner's chest. Keeps a list of every remedy that failed. It is long, and it is also a map.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 1,
+   "hair": 4,
+   "hairColor": 6,
+   "beard": 0,
+   "eyes": 0,
+   "ears": 0,
+   "feature": 0,
+   "shirt": 5,
+   "pants": 4
+  }
+ },
+ "shop": "ida_remedies",
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 12
+  }
+ ],
+ "lines": [
+  "Breathe for me. In. Out. You will live, which is my whole trade.",
+  "Salve for burns, draught for the lungs, and sleep for most of the rest.",
+  "My list of failures is long. It is also a map."
+ ]
+}

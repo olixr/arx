@@ -1,0 +1,52 @@
+{
+ "id": "kd_waykeeper",
+ "base": {
+  "kind": "post",
+  "dir": 0.0,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 16,
+   "to": 17.5,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": -18,
+      "y": 0,
+      "waitSec": 240,
+      "dir": 1.5707963
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 0.0
+     }
+    ]
+   }
+  },
+  {
+   "from": 22.5,
+   "to": 6.25,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": -37,
+      "y": 32
+     },
+     {
+      "x": -36,
+      "y": 32,
+      "lie": true
+     }
+    ],
+    "mode": "once"
+   }
+  }
+ ]
+}

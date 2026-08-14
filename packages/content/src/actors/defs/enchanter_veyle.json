@@ -1,0 +1,33 @@
+{
+ "id": "enchanter_veyle",
+ "name": "Veyle",
+ "title": "Enchanter of the Focus House",
+ "examine": "Old blood, whole: moonpale, upswept ears, an age nobody asks about twice. The Arcanum sent her away for a question. The seal on the Stair is older craft, and she means to read it.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 12,
+   "hair": 4,
+   "hairColor": 7,
+   "beard": 0,
+   "eyes": 0,
+   "ears": 2,
+   "feature": 0,
+   "shirt": 5,
+   "pants": 5
+  }
+ },
+ "shop": "veyle_craft",
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 12
+  }
+ ],
+ "lines": [
+  "The seal on the Stair is older work than mine. That is not a small thing to say.",
+  "Solvei writes to me every month. The letters are very polite. So is my silence.",
+  "My people built the old realm's lights. I am only finishing the shift."
+ ]
+}

@@ -1,0 +1,48 @@
+{
+ "id": "kingsdelf_watch",
+ "name": "The Delfwatch",
+ "title": "On the Wall",
+ "examine": "A miner or a glasshand in a Charter coat, keeping the rota. The orders are short: the horn means in, the bar means barred, nobody walks the burn alone.",
+ "disposition": "neutral",
+ "protection": "invulnerable",
+ "combat": {
+  "level": 52,
+  "respawnSec": 90,
+  "stats": {
+   "maxHp": 300,
+   "damage": 20,
+   "speed": 3.4,
+   "leashRange": 10
+  }
+ },
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 3,
+   "hair": 2,
+   "hairColor": 2,
+   "beard": 3,
+   "eyes": 1,
+   "ears": 0,
+   "feature": 0,
+   "shirt": 7,
+   "pants": 6
+  }
+ },
+ "equipment": {
+  "body": "leather_body",
+  "boots": "leather_boots",
+  "weapon": "mithril_sword"
+ },
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 16
+  }
+ ],
+ "lines": [
+  "The horn means in. The Overband does not knock first.",
+  "Walk the burn in company or not at all.",
+  "Charter pays my wage. The wall earns it."
+ ]
+}

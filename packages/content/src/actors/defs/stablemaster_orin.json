@@ -1,0 +1,33 @@
+{
+ "id": "stablemaster_orin",
+ "name": "Orin",
+ "title": "Stablemaster of the Beastyard",
+ "examine": "Kept stalls under Osa at the Silverfall caravanserai before this yard. Talks to beasts mid-sentence. Lost a colt on the Old Road the year he came, and none since.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 2,
+   "hair": 1,
+   "hairColor": 3,
+   "beard": 6,
+   "eyes": 0,
+   "ears": 0,
+   "feature": 0,
+   "shirt": 4,
+   "pants": 6
+  }
+ },
+ "shop": "orin_stable",
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 12
+  }
+ ],
+ "lines": [
+  "Easy now. Not you, traveler. The mule.",
+  "Three stalls, three friends. That is as many as a whistle can hold.",
+  "The burn is no place for a green colt. Nor a green rider, but you will go anyway."
+ ]
+}

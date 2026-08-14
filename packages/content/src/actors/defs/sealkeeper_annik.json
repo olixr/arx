@@ -1,0 +1,32 @@
+{
+ "id": "sealkeeper_annik",
+ "name": "Annik",
+ "title": "Sealkeeper",
+ "examine": "The oldest returner, moonpale with the old blood. She feeds the braziers so the names are never read in the dark. She counted the marks at nine. She is still asking about the extra one.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 12,
+   "hair": 4,
+   "hairColor": 7,
+   "beard": 0,
+   "eyes": 0,
+   "ears": 0,
+   "feature": 0,
+   "shirt": 5,
+   "pants": 5
+  }
+ },
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 12
+  }
+ ],
+ "lines": [
+  "Two hundred and fourteen names. Count the marks yourself, child.",
+  "The lamp by the door stays lit. That is not a rule. That is a promise.",
+  "My grandmother had the old blood, and the old blood remembers what stone forgets."
+ ]
+}

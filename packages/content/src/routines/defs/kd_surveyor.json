@@ -1,0 +1,52 @@
+{
+ "id": "kd_surveyor",
+ "base": {
+  "kind": "post",
+  "dir": 1.5707963,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 17.5,
+   "to": 19,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 5,
+      "y": 48,
+      "waitSec": 400,
+      "dir": 3.1415926
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 1.5707963
+     }
+    ]
+   }
+  },
+  {
+   "from": 22.75,
+   "to": 6.5,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 7,
+      "y": 48
+     },
+     {
+      "x": 7,
+      "y": 49,
+      "lie": true
+     }
+    ],
+    "mode": "once"
+   }
+  }
+ ]
+}

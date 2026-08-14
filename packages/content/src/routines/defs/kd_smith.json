@@ -1,0 +1,52 @@
+{
+ "id": "kd_smith",
+ "base": {
+  "kind": "post",
+  "dir": 3.1415926,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 15,
+   "to": 15.75,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 2,
+      "y": 1,
+      "waitSec": 200,
+      "dir": 1.5707963
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 3.1415926
+     }
+    ]
+   }
+  },
+  {
+   "from": 21.75,
+   "to": 5.75,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 79,
+      "y": -4
+     },
+     {
+      "x": 79,
+      "y": -5,
+      "lie": true
+     }
+    ],
+    "mode": "once"
+   }
+  }
+ ]
+}

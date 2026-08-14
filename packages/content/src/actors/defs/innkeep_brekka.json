@@ -1,0 +1,33 @@
+{
+ "id": "innkeep_brekka",
+ "name": "Brekka",
+ "title": "Keeper of the Foreman's Rest",
+ "examine": "Fell-country born. Her day-book records who went out to the burn and who came home. Her brother went out unrecorded once, up north. The book is her answer.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 4,
+   "hair": 0,
+   "hairColor": 0,
+   "beard": 0,
+   "eyes": 2,
+   "ears": 0,
+   "feature": 5,
+   "shirt": 2,
+   "pants": 3
+  }
+ },
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 12
+  }
+ ],
+ "lines": [
+  "Sign the book before you drink. Going out or coming home, sign it.",
+  "Soup is what the road brought us. Some days that is a long story.",
+  "Every name in my book came home. I mean to keep it that way."
+ ],
+ "shop": "brekka_board"
+}

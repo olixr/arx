@@ -1,0 +1,33 @@
+{
+ "id": "broker_slate",
+ "name": "Slate",
+ "title": "Dealer in Sundries",
+ "examine": "A gray, agreeable man with a corner stall and no history he will admit to. Answers most questions with prices. Slate is what was left after he dropped the other name on the road.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 2,
+   "hair": 2,
+   "hairColor": 1,
+   "beard": 6,
+   "eyes": 1,
+   "ears": 0,
+   "feature": 0,
+   "shirt": 3,
+   "pants": 3
+  }
+ },
+ "shop": "slate_sundries",
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 40
+  }
+ ],
+ "lines": [
+  "Rope, tallow, keys. Other things by asking. Asking costs.",
+  "I buy odd lots. No questions is the house specialty.",
+  "Everything on this crate has a price. Most things off it, too."
+ ]
+}

@@ -1,0 +1,33 @@
+{
+ "id": "outfitter_cass",
+ "name": "Cass",
+ "title": "Outfitter",
+ "examine": "Salt-coast born, sailed one season, walked inland. Sizes you with one look and says the number out loud. He sold a thin coat once. The burn taught them both.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 5,
+   "hair": 1,
+   "hairColor": 0,
+   "beard": 0,
+   "eyes": 0,
+   "ears": 0,
+   "feature": 0,
+   "shirt": 0,
+   "pants": 0
+  }
+ },
+ "shop": "cass_outfitting",
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 12
+  }
+ ],
+ "lines": [
+  "You are a forty-two across the shoulders. Do not argue with a tailor.",
+  "The burn does not care what you paid. It cares what you wore.",
+  "Wool first, pride second. Pride does not hold warmth."
+ ]
+}

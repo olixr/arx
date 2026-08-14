@@ -1,0 +1,52 @@
+{
+ "id": "kd_enchanter",
+ "base": {
+  "kind": "post",
+  "dir": 1.5707963,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 0,
+   "to": 1.5,
+   "task": {
+    "kind": "path",
+    "speed": 1.25,
+    "waypoints": [
+     {
+      "x": -3,
+      "y": 9,
+      "waitSec": 600,
+      "dir": 1.5707963
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 1.5707963
+     }
+    ]
+   }
+  },
+  {
+   "from": 4.5,
+   "to": 10.5,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 5,
+      "y": -1
+     },
+     {
+      "x": 5,
+      "y": 0,
+      "lie": true
+     }
+    ],
+    "mode": "once"
+   }
+  }
+ ]
+}

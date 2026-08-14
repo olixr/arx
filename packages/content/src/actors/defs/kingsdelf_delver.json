@@ -1,0 +1,32 @@
+{
+ "id": "kingsdelf_delver",
+ "name": "A Delver",
+ "title": "Of the Day-Shift",
+ "examine": "Ash on the boots, chalk on the hands, a tally string with a knot for every trip below. Paid by the basket. The baskets are heavy.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 4,
+   "hair": 2,
+   "hairColor": 0,
+   "beard": 6,
+   "eyes": 0,
+   "ears": 0,
+   "feature": 4,
+   "shirt": 6,
+   "pants": 6
+  }
+ },
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 12
+  }
+ ],
+ "lines": [
+  "Mithril day. You can smell it, sweet, like rain on a griddle.",
+  "Knot on the string going down, knot coming up. Even knots is a good life.",
+  "The Hewers never stopped working. Some mornings I know just how they feel."
+ ]
+}

@@ -1,0 +1,32 @@
+{
+ "id": "surveyor_hedda",
+ "name": "Hedda",
+ "title": "Crown Surveyor",
+ "examine": "Maps for the King, which no document will confirm. Her charts of the burn are the best since the old realm fell. She corrects distances mid-sentence, including yours.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 0,
+   "hair": 3,
+   "hairColor": 1,
+   "beard": 0,
+   "eyes": 1,
+   "ears": 0,
+   "feature": 0,
+   "shirt": 4,
+   "pants": 4
+  }
+ },
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 25
+  }
+ ],
+ "lines": [
+  "It is not a league to the crater. It is four thousand paces. Words matter.",
+  "I draw what is there. What it means is above my pay.",
+  "The Crown does not ask about Kingsdelf. It merely reads everything I send."
+ ]
+}

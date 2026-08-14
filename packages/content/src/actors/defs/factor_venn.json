@@ -1,0 +1,32 @@
+{
+ "id": "factor_venn",
+ "name": "Venn",
+ "title": "Factor of the Charter",
+ "examine": "Amberford-born, trained under old Cormund at the ford bank. Counts everything in threes, out loud, and has never once been short.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 1,
+   "hair": 2,
+   "hairColor": 1,
+   "beard": 2,
+   "eyes": 0,
+   "ears": 0,
+   "feature": 0,
+   "shirt": 3,
+   "pants": 1
+  }
+ },
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 30
+  }
+ ],
+ "lines": [
+  "One, two, three. Weighed, stamped, banked. That is the whole religion.",
+  "The Charter believes in Kingsdelf. I have the paper that says so.",
+  "Ore pays for grain. Grain feeds the miners. Miners dig the ore. Round it goes."
+ ]
+}

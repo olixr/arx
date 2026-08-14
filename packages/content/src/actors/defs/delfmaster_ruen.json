@@ -1,0 +1,32 @@
+{
+ "id": "delfmaster_ruen",
+ "name": "Ruen",
+ "title": "Delfmaster",
+ "examine": "Sixty years of reading stone. Her grandmother's name is on the names-stone, eleventh row. She runs the town like a good shift: everyone counted out, everyone counted back.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 3,
+   "hair": 3,
+   "hairColor": 7,
+   "beard": 0,
+   "eyes": 1,
+   "ears": 0,
+   "feature": 4,
+   "shirt": 6,
+   "pants": 2
+  }
+ },
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 12
+  }
+ ],
+ "lines": [
+  "Count your crew before the burn, not after.",
+  "The Crown never answers my letters. The mountain always answers my knock.",
+  "Grievances go in the shift book. Miracles too, if you have any."
+ ]
+}

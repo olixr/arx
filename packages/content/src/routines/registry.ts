@@ -135,6 +135,33 @@ import waystationKeeper from './defs/waystation_keeper.json';
  * import is a test failure, not a silent hole in someone's day.
  */
 import hartSpeaker from './defs/hart_speaker.json';
+// Kingsdelf — the town keeps hours (the Kingsdelf epic).
+import kdDelfmaster from './defs/kd_delfmaster.json';
+import kdFactor from './defs/kd_factor.json';
+import kdSealkeeper from './defs/kd_sealkeeper.json';
+import kdInnkeep from './defs/kd_innkeep.json';
+import kdStablemaster from './defs/kd_stablemaster.json';
+import kdSmith from './defs/kd_smith.json';
+import kdGlasswright from './defs/kd_glasswright.json';
+import kdEnchanter from './defs/kd_enchanter.json';
+import kdAssayer from './defs/kd_assayer.json';
+import kdLampwright from './defs/kd_lampwright.json';
+import kdWaykeeper from './defs/kd_waykeeper.json';
+import kdSurveyor from './defs/kd_surveyor.json';
+import kdProvisioner from './defs/kd_provisioner.json';
+import kdOutfitter from './defs/kd_outfitter.json';
+import kdSalvewright from './defs/kd_salvewright.json';
+import kdFisher from './defs/kd_fisher.json';
+import kdBroker from './defs/kd_broker.json';
+import kdWatchEastDay from './defs/kd_watch_east_day.json';
+import kdWatchEastNight from './defs/kd_watch_east_night.json';
+import kdWatchWicketDay from './defs/kd_watch_wicket_day.json';
+import kdWatchWicketNight from './defs/kd_watch_wicket_night.json';
+import kdDelverA from './defs/kd_delver_a.json';
+import kdDelverB from './defs/kd_delver_b.json';
+import kdDelverC from './defs/kd_delver_c.json';
+import kdGlasshandA from './defs/kd_glasshand_a.json';
+import kdGlasshandB from './defs/kd_glasshand_b.json';
 import hartSpringkeeper from './defs/hart_springkeeper.json';
 import hartHuntmaster from './defs/hart_huntmaster.json';
 import hartGuide from './defs/hart_guide.json';
@@ -284,6 +311,32 @@ const SOURCES: readonly unknown[] = [
   wardenRounds,
   waystationKeeper,
   hartSpeaker,
+  kdDelfmaster,
+  kdFactor,
+  kdSealkeeper,
+  kdInnkeep,
+  kdStablemaster,
+  kdSmith,
+  kdGlasswright,
+  kdEnchanter,
+  kdAssayer,
+  kdLampwright,
+  kdWaykeeper,
+  kdSurveyor,
+  kdProvisioner,
+  kdOutfitter,
+  kdSalvewright,
+  kdFisher,
+  kdBroker,
+  kdWatchEastDay,
+  kdWatchEastNight,
+  kdWatchWicketDay,
+  kdWatchWicketNight,
+  kdDelverA,
+  kdDelverB,
+  kdDelverC,
+  kdGlasshandA,
+  kdGlasshandB,
   hartSpringkeeper,
   hartHuntmaster,
   hartGuide,

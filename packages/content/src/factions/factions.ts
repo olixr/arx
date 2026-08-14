@@ -60,12 +60,30 @@ export const FACTIONS: FactionsDef = {
         'farmer_hobb',
         'tinker_fen',
         'young_pip',
+        // Kingsdelf — the Charter's far venture: the Returning banked
+        // on Charter coin, and the watch wears the Charter's coat.
+        'delfmaster_ruen',
+        'factor_venn',
+        'sealkeeper_annik',
+        'innkeep_brekka',
+        'stablemaster_orin',
+        'smith_ferrun',
+        'glasswright_mirena',
+        'assayer_lorn',
+        'provisioner_etta',
+        'outfitter_cass',
+        'salvewright_ida',
+        'fisher_denna',
+        'kingsdelf_watch',
+        'kingsdelf_delver',
+        'kingsdelf_glasshand',
       ],
-      enforcers: ['amberford_watch', 'captain_aldis', 'warden_bryn', 'dawnmead_ward'],
+      enforcers: ['amberford_watch', 'captain_aldis', 'warden_bryn', 'dawnmead_ward', 'kingsdelf_watch'],
       npcPrefixes: [],
       anchors: [
         { x: -64, y: 48 },
         { x: 352, y: 24 },
+        { x: -256, y: 288 }, // Kingsdelf — the Charter's far seat
       ],
       refusals: [
         'Walk on. The watch knows your face.',
@@ -102,6 +120,7 @@ export const FACTIONS: FactionsDef = {
         'fletcher_haki',
         'silversmith_vigdis',
         'scrivener_tove',
+        'surveyor_hedda', // the Crown's quiet eyes in the delf
         'innkeep_ragna',
         'galleria_trader',
         'gate_monger',
@@ -152,6 +171,8 @@ export const FACTIONS: FactionsDef = {
       members: [
         'marshal_kestrel',
         'waykeeper_hale',
+        'waykeeper_liv',
+        'lampwright_soren',
         'waykeeper_odessa',
         'waykeeper_brant',
         'wayward_watch',
@@ -190,6 +211,8 @@ export const FACTIONS: FactionsDef = {
       enforcers: [
         'marshal_kestrel',
         'waykeeper_hale',
+        'waykeeper_liv',
+        'lampwright_soren',
         'waykeeper_odessa',
         'waykeeper_brant',
         'wayward_watch',
@@ -231,6 +254,8 @@ export const FACTIONS: FactionsDef = {
         'quartermaster_yeva',
         'company_blade',
         'company_runner',
+      
+        'broker_slate', // the sixth counter (fence-by-construction)
       ],
       enforcers: ['company_blade'],
       npcPrefixes: ['brigand'],

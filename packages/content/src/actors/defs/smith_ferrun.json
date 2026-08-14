@@ -1,0 +1,33 @@
+{
+ "id": "smith_ferrun",
+ "name": "Ferrun",
+ "title": "Smith of the Starfall Forge",
+ "examine": "Mountain-born, Balla's journeyman once. Wears a shard of his first masterwork on a cord: it cracked at the quench. He will not name a blade before the water.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 3,
+   "hair": 2,
+   "hairColor": 2,
+   "beard": 3,
+   "eyes": 1,
+   "ears": 0,
+   "feature": 4,
+   "shirt": 7,
+   "pants": 6
+  }
+ },
+ "shop": "ferrun_commissions",
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 12
+  }
+ ],
+ "lines": [
+  "The delf's own mithril. The old realm swung this metal. Now you do.",
+  "A blade gets its name after the quench. Not before. Ask my necklace why.",
+  "Balla taught me the fire. The mountain taught me respect."
+ ]
+}

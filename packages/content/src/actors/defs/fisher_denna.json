@@ -1,0 +1,33 @@
+{
+ "id": "fisher_denna",
+ "name": "Denna",
+ "title": "Fisher of the Quay",
+ "examine": "Old Peld's kin, with the pointed ears her line never lost and never explains. She fishes the drowned workings and never turns her back to the water. Once the net held something else.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 4,
+   "hair": 0,
+   "hairColor": 0,
+   "beard": 0,
+   "eyes": 2,
+   "ears": 1,
+   "feature": 0,
+   "shirt": 2,
+   "pants": 6
+  }
+ },
+ "shop": "denna_catch",
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 12
+  }
+ ],
+ "lines": [
+  "The pale fish bite at dusk. Other things bite later.",
+  "My ears? My mother's mother's mothers. The coast keeps what it likes.",
+  "The mere holds the old galleries. The old galleries hold their breath."
+ ]
+}

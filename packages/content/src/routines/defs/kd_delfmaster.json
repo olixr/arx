@@ -1,0 +1,80 @@
+{
+ "id": "kd_delfmaster",
+ "base": {
+  "kind": "post",
+  "dir": 3.1415926,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 11,
+   "to": 12.5,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": -27,
+      "y": -2,
+      "waitSec": 180,
+      "dir": 1.5707963
+     },
+     {
+      "x": -7,
+      "y": 16,
+      "waitSec": 120,
+      "dir": 3.1415926
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 3.1415926
+     }
+    ]
+   }
+  },
+  {
+   "from": 18,
+   "to": 19.5,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 19,
+      "y": 30,
+      "waitSec": 240,
+      "dir": 4.7123889
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 3.1415926
+     }
+    ]
+   }
+  },
+  {
+   "from": 21.5,
+   "to": 6,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 3,
+      "y": 0
+     },
+     {
+      "x": 3,
+      "y": -1,
+      "lie": true
+     }
+    ],
+    "mode": "once"
+   }
+  }
+ ]
+}

@@ -662,6 +662,41 @@ export function buildKingsdelf(): ZoneDef {
     'what the net holds, the assay sees',
   ], Tile.Signpost);
 
+  // ---------------------------------------------------------------
+  // THE PEOPLE — every placement keeps hours (the routine law); the
+  // roster and its reasons live in the header contract above.
+  // ---------------------------------------------------------------
+  const N = 1.5707963;
+  const S = 4.7123889;
+  const E = 0.0;
+  const W = 3.1415926;
+  b.actor('delfmaster_ruen', 43, 36, W, 'kd_delfmaster');
+  b.actor('factor_venn', 89, 24, S, 'kd_factor');
+  b.actor('sealkeeper_annik', 39, 27, N, 'kd_sealkeeper');
+  b.actor('innkeep_brekka', 78, 47, S, 'kd_innkeep');
+  b.actor('stablemaster_orin', 106, 12, W, 'kd_stablemaster');
+  b.actor('smith_ferrun', 36, 52, W, 'kd_smith');
+  b.actor('glasswright_mirena', 99, 64, W, 'kd_glasswright');
+  b.actor('enchanter_veyle', 41, 18, N, 'kd_enchanter');
+  b.actor('assayer_lorn', 53, 51, N, 'kd_assayer');
+  b.actor('lampwright_soren', 16, 18, N, 'kd_lampwright');
+  b.actor('waykeeper_liv', 118, 22, E, 'kd_waykeeper');
+  b.actor('surveyor_hedda', 82, 5, N, 'kd_surveyor');
+  b.actor('provisioner_etta', 50, 75, N, 'kd_provisioner');
+  b.actor('outfitter_cass', 62, 75, N, 'kd_outfitter');
+  b.actor('salvewright_ida', 104, 37, W, 'kd_salvewright');
+  b.actor('fisher_denna', 40, 89, S, 'kd_fisher');
+  b.actor('broker_slate', 104, 84, N, 'kd_broker');
+  b.actor('kingsdelf_watch', 120, 19, E, 'kd_watch_east_day');
+  b.actor('kingsdelf_watch', 120, 21, E, 'kd_watch_east_night');
+  b.actor('kingsdelf_watch', 59, 4, N, 'kd_watch_wicket_day');
+  b.actor('kingsdelf_watch', 61, 4, N, 'kd_watch_wicket_night');
+  b.actor('kingsdelf_delver', 15, 32, W, 'kd_delver_a');
+  b.actor('kingsdelf_delver', 18, 31, N, 'kd_delver_b');
+  b.actor('kingsdelf_delver', 13, 38, W, 'kd_delver_c');
+  b.actor('kingsdelf_glasshand', 98, 63, W, 'kd_glasshand_a');
+  b.actor('kingsdelf_glasshand', 98, 66, W, 'kd_glasshand_b');
+
   // Spawn on the round beside the Stone — the south-west's hearth.
   b.spawn(62.5, 65.5);
 

@@ -2315,6 +2315,25 @@ test('kingsdelf: the delf town holds its stone, its glass, and three ways in', (
   assert.equal(at(45, 86), Tile.GateGarrison, 'the water gate opens to the quay');
   // The spawn is the round beside the Stone: the south-west's hearth.
   assert.deepEqual(z.spawn, { x: KINGSDELF_RECT.x + 62.5, y: KINGSDELF_RECT.y + 65.5 });
+  // The cast: seventeen named, four on the rota, three below, two at
+  // the kilns — and every keeper keeps hours.
+  const actors = z.actorSpawns ?? [];
+  assert.equal(actors.length, 26, 'Kingsdelf lost residents');
+  for (const slug of [
+    'delfmaster_ruen', 'factor_venn', 'sealkeeper_annik', 'innkeep_brekka',
+    'stablemaster_orin', 'smith_ferrun', 'glasswright_mirena', 'enchanter_veyle',
+    'assayer_lorn', 'lampwright_soren', 'waykeeper_liv', 'surveyor_hedda',
+    'provisioner_etta', 'outfitter_cass', 'salvewright_ida', 'fisher_denna',
+    'broker_slate',
+  ]) {
+    assert.ok(actors.some((a) => a.actor === slug), `${slug} missing from Kingsdelf`);
+  }
+  assert.equal(actors.filter((a) => a.actor === 'kingsdelf_watch').length, 4);
+  assert.equal(actors.filter((a) => a.actor === 'kingsdelf_delver').length, 3);
+  assert.equal(actors.filter((a) => a.actor === 'kingsdelf_glasshand').length, 2);
+  assert.equal(actors.filter((a) => a.routine).length, 26, 'every keeper keeps hours');
+  // The hatch pairs with the Low Hall (the sixth-door law).
+  assert.equal((z.portals ?? []).length, 1, 'the shadow keeps its one way down');
   assert.ok((z.signs ?? []).length >= 18, 'the town lost its boards');
   // The elevation layer round-trips (the Silverfall law, not the flat one).
   const json = zoneToJson(z);

@@ -1,0 +1,33 @@
+{
+ "id": "lampwright_soren",
+ "name": "Soren",
+ "title": "Lampwright of the Flamehouse",
+ "examine": "Carried the daughter-flame south in a pilgrim lamp, on foot, down the whole unlit road. Trims every wick he passes. He is building lamps for that road, one by one.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 1,
+   "hair": 2,
+   "hairColor": 5,
+   "beard": 2,
+   "eyes": 0,
+   "ears": 0,
+   "feature": 0,
+   "shirt": 6,
+   "pants": 5
+  }
+ },
+ "shop": "soren_lamps",
+ "inventory": [
+  {
+   "item": "coins",
+   "qty": 12
+  }
+ ],
+ "lines": [
+  "The flame came south in my two hands. It can go up the road the same way.",
+  "A lamp is a promise you have to keep every night.",
+  "Forty one dark miles. I counted them with my feet. I mean to uncount them."
+ ]
+}
