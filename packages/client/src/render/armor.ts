@@ -335,13 +335,15 @@ export interface BodyStyle {
     // STORMBOLT clock.
     | 'cloudbank' | 'anvilpaul' | 'showerpaul' | 'aurorapaul'
     // THE TIDE COURT'S SHOULDERS — tidecaller's four waters, one
-    // owner each, every pair ASYMMETRIC: `surfpaul` the breaker
-    // and the eddy (the water rushes AROUND the wearer), `deeppaul`
-    // the medusa and the mote fall, `coralpaul` the cove and the
-    // oyster, `vortexpaul` the whirl and the wash. All on THE TIDE
-    // clock, each device offset by its place down the garment (THE
-    // TRAVELING SWELL law).
-    | 'surfpaul' | 'deeppaul' | 'coralpaul' | 'vortexpaul'
+    // owner each: `tideorbs` the base's MATCHED elemental pair —
+    // levitating orbs of living seawater over wet seats (inner
+    // swirls, ring current, droplet satellites, rising trickle,
+    // surge crown on the beat; surfpaul is dead); `deeppaul` the
+    // medusa and the mote fall, `coralpaul` the cove and the
+    // oyster, `vortexpaul` the whirl and the wash — those pairs
+    // stay ASYMMETRIC. All on THE TIDE clock, each device offset
+    // by its place down the garment (THE TRAVELING SWELL law).
+    | 'tideorbs' | 'deeppaul' | 'coralpaul' | 'vortexpaul'
     // THE FOUR SHADOWS' SHOULDERS — cutpurse's guild offices, one
     // owner per LOT and every pair ASYMMETRIC (one shoulder for the
     // guild, one for the work): `shadowdrape` the notched half-mantle
@@ -1526,7 +1528,7 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   },
   tidecaller_robe: {
     color: '#2f6a78', trim: '#bfe8e0', cls: 'cloth',
-    silhouette: 'robe', pauldron: 'surfpaul', pauldronColor: '#2a5f6c',
+    silhouette: 'robe', pauldron: 'tideorbs', pauldronColor: '#2a5f6c',
     pauldronTrim: '#bfe8e0', pauldronScale: 1.15, chest: 'none',
     skirt: 0.34, sleeves: 'full',
     underskirt: '#1f4a55', folds: true,
@@ -10231,125 +10233,189 @@ export function drawPauldron(
     return;
   }
 
-  if (st.pauldron === 'surfpaul') {
-    // THE CRASHING WAVES — tidecaller's shoulders, second forging:
-    // the water rushes IN. Both shoulders carry the same wave (a
-    // matched pair — the sea does not pick a side), rolling inboard:
-    // it climbs from the outboard edge with the swell, stands,
-    // curls over the cap toward the wearer, and CRASHES on the tide
-    // clock's beat — foam mane swelling, spray flying in against
-    // the hood, wash foaming at the seat hem. In the slack it draws
-    // back to a low rolling swell and starts again.
+  if (st.pauldron === 'tideorbs') {
     const foam = st.streamwrap?.foam ?? trim;
     const k = tideK(nowMs, 0.14);
     const brk = tideBreakK(nowMs, 0.14);
-    seat(0.112 * s, 0.09 * s, hurt ? '#ffffff' : col, trim);
-    // Local space: +x*side = OUTWARD, so inboard = -side.
-    const rise = (0.075 + 0.06 * k) * s;
-    const reach = (0.055 + 0.065 * k) * s;
-    const crownX = side * 0.03 * s;
-    const baseY = 0.012 * s;
-    const lipX = crownX - side * (0.02 * s + reach);
-    const lipY = -rise * (0.6 + 0.12 * k);
-    // The wave body: outboard slope up, over the crown, curling
-    // inboard — the barrel's mouth hangs toward the wearer.
-    ctx.fillStyle = hurt ? '#ffffff' : shade(col, -12);
-    ctx.beginPath();
-    ctx.moveTo(side * 0.13 * s, baseY);
-    ctx.quadraticCurveTo(side * 0.135 * s, -rise * 0.55, crownX + side * 0.035 * s, -rise * 0.94);
-    ctx.quadraticCurveTo(crownX - side * 0.02 * s, -rise * (1.06 + 0.06 * k), lipX + side * 0.02 * s, lipY - rise * 0.16);
-    // The lip hooks DOWN — mid-crash.
-    ctx.quadraticCurveTo(lipX - side * 0.016 * s, lipY - rise * 0.02, lipX + side * 0.014 * s, lipY + rise * 0.2);
-    // The barrel's underside back to the cap.
-    ctx.quadraticCurveTo(crownX - side * 0.01 * s, -rise * 0.5, crownX - side * 0.055 * s, baseY);
-    ctx.closePath();
-    ctx.fill();
+    seat(0.094 * s, 0.076 * s, hurt ? '#ffffff' : col, trim);
+    // Per-side ornament phase: the surge is shared, the details
+    // are not (clockwork law).
+    const ph = side > 0 ? 0 : 2.4;
+    // THE ORB: it swells with the tide, bobs on its own water, and
+    // SQUASHES at the break — the surge made visible.
+    const bob = Math.sin(nowMs * 0.0014 + ph) * 0.007 * s;
+    const orx0 = 0.07 * s * (1 + 0.12 * k);
+    const squash = 1 + 0.28 * brk;
+    const orx = orx0 * squash;
+    const ory = orx0 * (2 - squash) * 0.94;
+    const ox = side * 0.06 * s;
+    const oy = -0.118 * s + bob + brk * 0.014 * s;
     if (!hurt) {
-      // The wave face: lit on the outboard slope where it stands.
-      ctx.fillStyle = shade(col, 20);
+      // THE BASIN: the seat cups the water the orb rose from — a
+      // lit surface, never a dark hole, foam standing at its rim,
+      // and a ripple crossing it as the swell passes.
+      ctx.fillStyle = shade(col, 6);
       ctx.beginPath();
-      ctx.moveTo(side * 0.105 * s, baseY - 0.004 * s);
-      ctx.quadraticCurveTo(side * 0.105 * s, -rise * 0.5, crownX + side * 0.028 * s, -rise * 0.86);
-      ctx.quadraticCurveTo(crownX + side * 0.005 * s, -rise * 0.5, side * 0.05 * s, baseY - 0.004 * s);
-      ctx.closePath();
+      ctx.ellipse(ox, -0.05 * s, 0.055 * s, 0.017 * s, 0, 0, Math.PI * 2);
       ctx.fill();
-      // THE BARREL: the dark tube under the curl, facing the wearer.
-      ctx.fillStyle = shade(col, -30);
+      ctx.strokeStyle = shade(col, 20);
+      ctx.lineWidth = Math.max(1, s * 0.006);
+      ctx.globalAlpha = 0.4 + 0.4 * k;
       ctx.beginPath();
-      ctx.moveTo(lipX + side * 0.02 * s, lipY + rise * 0.1);
-      ctx.quadraticCurveTo(crownX - side * 0.025 * s, -rise * 0.72, crownX + side * 0.005 * s, -rise * 0.88);
-      ctx.quadraticCurveTo(crownX - side * 0.03 * s, -rise * 0.6, lipX + side * 0.03 * s, lipY + rise * 0.2);
-      ctx.closePath();
-      ctx.fill();
-      // THE FOAM MANE: one connected band riding the curl from the
-      // crown over the lip and down to the falling roll — a mane,
-      // never a bead row — swelling as the wave breaks.
-      const swell = 1 + 0.25 * brk;
-      const crownTopY = -rise * (1.0 + 0.12 * k);
-      ctx.strokeStyle = foam;
-      ctx.lineCap = 'round';
-      ctx.lineWidth = s * 0.03 * swell;
-      ctx.beginPath();
-      ctx.moveTo(crownX + side * 0.035 * s, crownTopY + rise * 0.06);
-      ctx.quadraticCurveTo(crownX - side * 0.01 * s, crownTopY - rise * 0.06, lipX + side * 0.018 * s, lipY - rise * 0.1);
-      ctx.quadraticCurveTo(lipX - side * 0.008 * s, lipY + rise * 0.02, lipX + side * 0.01 * s, lipY + rise * 0.12);
+      ctx.ellipse(ox, -0.05 * s, 0.055 * s * (0.5 + 0.5 * k), 0.017 * s * (0.5 + 0.5 * k), 0, 0, Math.PI * 2);
       ctx.stroke();
-      // Two crescent rolls seated ON the band, and the falling roll
-      // at its end.
-      ctx.fillStyle = shade(foam, 22);
-      for (const [gx, gy, gr] of [
-        [crownX + side * 0.012 * s, crownTopY - rise * 0.015, 0.024],
-        [lipX + side * 0.02 * s, lipY - rise * 0.08, 0.019],
-      ] as const) {
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = foam;
+      for (const [ru, rr] of [[-0.85, 0.011], [0.9, 0.01]] as const) {
         ctx.beginPath();
-        ctx.arc(gx, gy, s * gr * swell, Math.PI * 1.02, Math.PI * 1.98);
+        ctx.arc(ox + ru * 0.05 * s, -0.05 * s + 0.006 * s, s * rr, Math.PI * 0.92, Math.PI * 2.08);
         ctx.closePath();
         ctx.fill();
       }
+      // THE TRICKLE: the orb gathers its water — beads drawn up off
+      // the pool into the underside, fading as they arrive.
+      ctx.fillStyle = foam;
+      for (const tp of [0, 0.5] as const) {
+        const tu = ((nowMs * 0.0005 + tp + ph * 0.1) % 1 + 1) % 1;
+        ctx.globalAlpha = Math.sin(tu * Math.PI) * 0.85;
+        ctx.beginPath();
+        ctx.arc(
+          ox + Math.sin(tu * 6 + ph) * 0.012 * s,
+          -0.05 * s - tu * (Math.abs(oy) - 0.05 * s - ory * 0.6),
+          0.0085 * s * (1 - tu * 0.3), 0, Math.PI * 2,
+        );
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      // Droplet satellites, far pass: behind the orb they dim and
+      // shrink (depth-split law).
+      for (const [sp, sr, srr] of [[0, 1.42, 0.013], [2.1, 1.62, 0.01], [4.3, 1.5, 0.011]] as const) {
+        const a = nowMs * 0.0011 + sp + ph;
+        if (Math.sin(a) >= 0) continue;
+        ctx.fillStyle = shade(col, 26);
+        ctx.beginPath();
+        ctx.arc(ox + Math.cos(a) * orx * sr, oy + Math.sin(a) * ory * 0.7, s * srr * 0.75, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    // THE ORB BODY: a sphere of deep water — structure, so it holds
+    // white in the hurt flash.
+    ctx.fillStyle = hurt ? '#ffffff' : shade(col, -6);
+    ctx.beginPath();
+    ctx.ellipse(ox, oy, orx, ory, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(ox, oy, orx, ory, 0, 0, Math.PI * 2);
+      ctx.clip();
+      // The deep at the bottom of the sphere.
+      ctx.fillStyle = shade(col, -28);
+      ctx.beginPath();
+      ctx.ellipse(ox, oy + ory * 0.55, orx * 0.95, ory * 0.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // THE INNER CURRENTS: two swirls turning inside the water,
+      // opposed, forever — the churn seen through the surface.
+      ctx.lineCap = 'round';
+      for (const [ri, sp2, dv] of [[0.62, 1, 30], [0.36, -1.5, 44]] as const) {
+        const a0 = nowMs * 0.0009 * sp2 + ph;
+        ctx.strokeStyle = shade(col, dv);
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.beginPath();
+        ctx.ellipse(ox, oy + ory * 0.08, orx * ri, ory * ri * 0.66, 0, a0, a0 + Math.PI * 1.1);
+        ctx.stroke();
+      }
+      // A drop of light caught mid-swirl.
+      const ga = nowMs * 0.0009 + ph + 1.2;
       ctx.fillStyle = foam;
       ctx.beginPath();
-      ctx.arc(lipX + side * 0.008 * s, lipY + rise * 0.14, s * 0.026 * swell, 0, Math.PI * 2);
+      ctx.arc(ox + Math.cos(ga) * orx * 0.5, oy + ory * 0.08 + Math.sin(ga) * ory * 0.35, s * 0.0095, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = shade(foam, 22);
+      ctx.restore();
+      // The lit cap: the sphere read — light stands on the crown.
+      ctx.fillStyle = shade(col, 30);
       ctx.beginPath();
-      ctx.arc(lipX + side * 0.008 * s, lipY + rise * 0.14, s * 0.02 * swell, Math.PI * 1.06, Math.PI * 1.94);
-      ctx.closePath();
+      ctx.ellipse(ox - orx * 0.18, oy - ory * 0.42, orx * 0.5, ory * 0.3, -0.3, 0, Math.PI * 2);
       ctx.fill();
-      // THE SPRAY: at the crash, droplets fly IN against the hood.
+      ctx.fillStyle = shade(col, 44);
+      ctx.beginPath();
+      ctx.ellipse(ox - orx * 0.3, oy - ory * 0.5, orx * 0.18, ory * 0.11, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+      // THE RING CURRENT: water orbiting the orb — casing under a
+      // pale core, a rope of sea circling its keeper. Split at the
+      // orb: the far arc paints dim, the near arc bright.
+      const ra = nowMs * 0.0007 * (side > 0 ? 1 : -1) + ph;
+      const ringy = oy + ory * 0.1;
+      for (const [pass, aa0, aa1] of [[0, Math.PI, Math.PI * 2], [1, 0, Math.PI]] as const) {
+        const bright = pass === 1;
+        ctx.save();
+        if (!bright) {
+          // The far half hides behind the orb body: paint it, then
+          // the orb repaints over — approximated by dimming hard.
+          ctx.globalAlpha = 0.3;
+        }
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = shade(col, -12);
+        ctx.lineWidth = Math.max(1, s * (bright ? 0.018 : 0.012));
+        ctx.beginPath();
+        ctx.ellipse(ox, ringy, orx * 1.38, ory * 0.5, -0.16 * side, ra + aa0, ra + aa1);
+        ctx.stroke();
+        ctx.strokeStyle = '#dff4ef';
+        ctx.globalAlpha = bright ? 0.8 : 0.22;
+        ctx.lineWidth = Math.max(1, s * (bright ? 0.007 : 0.005));
+        ctx.beginPath();
+        ctx.ellipse(ox, ringy, orx * 1.38, ory * 0.5, -0.16 * side, ra + aa0 + 0.12, ra + aa1 - 0.12);
+        ctx.stroke();
+        ctx.restore();
+      }
+      // The ring's own foam bead riding the near arc.
+      const ba = ra + Math.PI * 1.5;
+      ctx.fillStyle = foam;
+      ctx.beginPath();
+      ctx.arc(ox + Math.cos(ba) * orx * 1.38, ringy + Math.sin(ba) * ory * 0.5, s * 0.011, 0, Math.PI * 2);
+      ctx.fill();
+      // Droplet satellites, near pass: bright and whole.
+      for (const [sp, sr, srr] of [[0, 1.42, 0.013], [2.1, 1.62, 0.01], [4.3, 1.5, 0.011]] as const) {
+        const a = nowMs * 0.0011 + sp + ph;
+        if (Math.sin(a) < 0) continue;
+        const dx2 = ox + Math.cos(a) * orx * sr;
+        const dy2 = oy + Math.sin(a) * ory * 0.7;
+        ctx.fillStyle = shade(col, 30);
+        ctx.beginPath();
+        ctx.arc(dx2, dy2, s * srr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = foam;
+        ctx.beginPath();
+        ctx.arc(dx2 - s * srr * 0.3, dy2 - s * srr * 0.35, s * srr * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // THE SURGE CROWN: at the break the orb throws its water — a
+      // ring of spray leaps and falls back to the pool.
       if (brk > 0.05) {
         const fly = 1 - brk;
         ctx.fillStyle = foam;
-        for (const [dph, dsc] of [[0, 1], [0.2, 0.7], [0.36, 0.5]] as const) {
+        for (const [dph, dxu, dsc] of [[0, -0.8, 1], [0.14, 0.6, 0.8], [0.28, -0.2, 0.65], [0.4, 1.0, 0.5]] as const) {
           const du = Math.min(1, fly + dph);
           if (du >= 1) continue;
           ctx.globalAlpha = (1 - du) * 0.9;
           ctx.beginPath();
           ctx.arc(
-            lipX - side * du * 0.055 * s,
-            lipY - Math.sin(du * Math.PI) * 0.035 * s + du * du * 0.07 * s,
-            0.013 * s * dsc * (1 - du * 0.4), 0, Math.PI * 2,
+            ox + dxu * orx * (0.5 + du * 0.9),
+            oy - ory * 0.7 - Math.sin(du * Math.PI) * 0.045 * s + du * du * 0.085 * s,
+            0.011 * s * dsc * (1 - du * 0.35), 0, Math.PI * 2,
           );
           ctx.fill();
         }
         ctx.globalAlpha = 1;
-      }
-      // THE WASH: foam standing along the seat hem where the wave
-      // keeps arriving, and the rush current circling beneath.
-      ctx.fillStyle = foam;
-      for (const [wu, wr] of [[-0.07, 0.017], [0.0, 0.02], [0.075, 0.016]] as const) {
+        // The pool answers the splash.
+        ctx.strokeStyle = foam;
+        ctx.globalAlpha = brk * 0.5;
+        ctx.lineWidth = Math.max(1, s * 0.006);
         ctx.beginPath();
-        ctx.arc(wu * s + side * 0.01 * s, 0.052 * s - Math.abs(wu) * 0.14 * s, s * wr * (1 + 0.3 * brk), Math.PI * 0.9, Math.PI * 2.1);
-        ctx.closePath();
-        ctx.fill();
+        ctx.ellipse(ox, -0.052 * s, 0.062 * s * (0.7 + 0.5 * (1 - brk)), 0.02 * s * (0.7 + 0.5 * (1 - brk)), 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
       }
-      tideStream(
-        ctx,
-        -side * 0.1 * s, 0.028 * s,
-        side * 0.12 * s, 0.05 * s,
-        nowMs, side * 2.1, 0.02 * s,
-        shade(col, -18), foam, 0.8, Math.max(1, s * 0.013),
-        1 + brk,
-      );
     }
     ctx.restore();
     return;
