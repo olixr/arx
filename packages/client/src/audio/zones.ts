@@ -34,6 +34,7 @@ const TOWNS = [
   { x: 356, y: 292, full: 34, fade: 52 }, // Saltmere — the town at the water's end
   { x: 584, y: -136, full: 30, fade: 48 }, // Pinewatch — the wood's muster town
   { x: 848, y: -392, full: 30, fade: 48 }, // Hartfell — the town past the treeline
+  { x: -256, y: 288, full: 34, fade: 52 }, // Kingsdelf — the town in the King's Delf
 ] as const;
 /** The dark band: worldgen's underground begins here. */
 export const UNDERGROUND_Y = 512;

@@ -169,15 +169,22 @@ march capped at 5. The Overband is one carefully-scoped change:
 - **The march never changes.** Base stays `min(5, 1 + floor(edge/56))`
   and the classic clamped law answers everywhere — every existing tile
   in the world keeps its tier, byte for byte.
-- **Only a full dread-3 heart crosses the old ceiling** (AS SHIPPED,
-  Phase 2): a tile reads tier 6 only where the march alone (base +
-  jitter − relief, pre-dread) already saturates at 5 AND the tile
-  stands INSIDE the safeR of a dread ≥ 3 anchor. Rims never cross;
-  dread-2 country (the Blackpine — whose heart already saturates 5
-  today) never crosses; a dread-3 heart near a town never crosses. No
-  dread-3 anchor exists until the Brand lands in Phase 3, so Phase 2
-  changes nothing anywhere (proven: existing dread tests pin exact
-  values and stay green).
+- **Only a full dread-3 heart crosses the old ceiling** (AS SHIPPED —
+  Phase 2, gate widened in Phase 3): a tile reads tier 6 only where
+  ALL THREE hold — the un-jittered march stands within one band of its
+  ceiling (base ≥ 4, so noise can never fake remoteness and a dread-3
+  heart in base ≤ 3 town country can never open it), the wobbled march
+  also reads ≥ 4 (no tier-3 pocket ever jumps three tiers in a step),
+  and the tile stands INSIDE the safeR of a dread ≥ 3 anchor. Rims
+  never cross; dread-2 country (the Blackpine — whose heart already
+  saturates 5 today) never crosses. Phase-3 finding that forced the
+  widening: the Brand's heart is base-4 country (262 tiles from
+  Dawnmead — the march genuinely never saturates there), and the
+  widened gate is the dread thesis kept honest: distance was never
+  the whole truth about the mountain. Live effect: the burn deepens
+  AWAY from the lamps — Overband pockets on the town-facing skirt,
+  dense tier 6 in the deep heart. All pinned in danger.test +
+  geography.test.
 - **`DANGER_LAWS[6]`**: npcLevel **[44, 60]**, chest `boss`, rarityBonus
   8, wildDensity at the tier-5 rate. Itemization needs nothing (power
   rolls, heirlooms, and rarity weights already scale past 50 — verified).

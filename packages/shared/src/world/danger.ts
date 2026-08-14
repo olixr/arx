@@ -69,17 +69,23 @@ export const DANGER_MAX = 5;
  * farther is just farther. What lies past the far dark is not farther —
  * it is named country so wrong the map keeps a separate word for it.
  *
- * The law: a tile reads DANGER_OVER only where BOTH hold —
- *   1. the march itself (base + jitter − relief, before any dread)
- *      already reads DANGER_MAX, and
- *   2. the tile stands INSIDE the safe radius (the full heart, not the
+ * The law: a tile reads DANGER_OVER only where ALL THREE hold —
+ *   1. the un-jittered march (base, from distance alone) stands within
+ *      one band of its ceiling: base >= DANGER_MAX − 1. The noise can
+ *      never fake remoteness — a dread-3 heart planted near a town
+ *      (base <= 3 country) can never open the Overband, ever;
+ *   2. the wobbled march (base + jitter − relief, before any dread)
+ *      also reads DANGER_MAX − 1 or better — so no jitter-dipped
+ *      pocket ever jumps three tiers in one step; and
+ *   3. the tile stands INSIDE the safe radius (the full heart, not the
  *      graded rim) of an anchor with dread >= OVERBAND_DREAD.
  * Everywhere else the classic clamped law answers, byte for byte. A
- * dread-2 wood (the Blackpine) can never deal it; a dread-3 heart near
- * a town can never deal it; the rim of a dread-3 heart never deals it.
- * Only the deep frontier's own worst ground crosses the old ceiling —
- * and the jitter still wanders tier-5 pockets through it, because band
- * borders wander everywhere in this world.
+ * dread-2 wood (the Blackpine) can never deal it, and the rim of a
+ * dread-3 heart never deals it. The jitter still wanders tier-5
+ * pockets through an open heart — band borders wander everywhere in
+ * this world — and on the heart's town-facing skirt (base one band
+ * softer) the Overband thins before the classic law takes over: the
+ * burn deepens AWAY from the lamps, which is what a burn does.
  */
 export const DANGER_OVER = DANGER_MAX + 1;
 
@@ -140,11 +146,14 @@ export function dangerAt(
   // Slow wobble bends band borders by at most one tier either way.
   const j = fbm(seed ^ JITTER_SALT, tx * 0.011, ty * 0.011, 2);
   const jitter = j > 0.62 ? 1 : j < 0.38 ? -1 : 0;
-  // THE OVERBAND (see DANGER_OVER): where the march alone already
-  // saturates AND the tile stands in a full dread-3 heart, the field
-  // crosses the old ceiling. Everywhere else, the classic clamped law
-  // answers exactly as it always has.
+  // THE OVERBAND (see DANGER_OVER): where the march runs within one
+  // band of its ceiling — by honest distance AND after the wobble —
+  // and the tile stands in a full dread-3 heart, the field crosses
+  // the old ceiling. Everywhere else, the classic clamped law answers
+  // exactly as it always has.
   const marched = Math.max(1, Math.min(DANGER_MAX, base + jitter - relief));
-  if (dreadCore >= OVERBAND_DREAD && marched === DANGER_MAX) return DANGER_OVER;
+  if (dreadCore >= OVERBAND_DREAD && base >= DANGER_MAX - 1 && marched >= DANGER_MAX - 1) {
+    return DANGER_OVER;
+  }
   return Math.max(1, Math.min(DANGER_MAX, base + jitter - relief + dread));
 }

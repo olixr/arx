@@ -293,6 +293,7 @@ export function createMapsApi(
             fens: AUTHORED_GEOGRAPHY.fens.map((f) => ({ ...f })),
             meres: AUTHORED_GEOGRAPHY.meres.map((m) => ({ ...m })),
             pinelands: AUTHORED_GEOGRAPHY.pinelands.map((p) => ({ ...p })),
+            scorches: AUTHORED_GEOGRAPHY.scorches.map((s) => ({ ...s })),
             planned: AUTHORED_GEOGRAPHY.planned.map((p) => ({ ...p })),
           });
           console.log(`[content] geography ${outcome} — shipped plan stands`);

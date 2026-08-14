@@ -56,6 +56,11 @@ export const GAZETTEER: Readonly<Record<string, GazetteerEntry>> = {
     line: 'A warm ring of walls where the fells run to the far dark.',
     country: 5,
   },
+  kingsdelf: {
+    epithet: 'The delf that made the crown',
+    line: 'The Returning keeps a town in the old quarry bowl, under the mountain that still burns.',
+    country: 6,
+  },
   undercroft: {
     epithet: 'The buried works',
     line: 'Old mason halls under the mountain, dug deep and left to the dark.',

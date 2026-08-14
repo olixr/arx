@@ -22,6 +22,7 @@ import {
   pinelandAt,
   roadDistanceAt,
   roadHitAt,
+  scorchAt,
   thornveilAt,
 } from './geography.js';
 import {
@@ -205,7 +206,11 @@ export function moistureAt(seed: number, tx: number, ty: number): number {
     // A pineland is damp as well as cold: the taiga hearts close
     // their own canopy, and where the noise dips the stand opens
     // into the clearings a logging country needs.
-    pinelandAt(tx, ty) * 0.3;
+    pinelandAt(tx, ty) * 0.3 -
+    // A scorch is the pineland run backwards: the burn country reads
+    // as open dead heath — canopy starved out, herb layer gone dry —
+    // sparser than meadow, never painted black (the density lesson).
+    scorchAt(tx, ty) * 0.45;
   // The edge-harmony law: an authored tree line keeps going as wild
   // forest; a road stub leaving a gate dries into an open clearing.
   return edgeBlendMoisture(seed, tx, ty, m);
@@ -681,6 +686,34 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
         }
       }
 
+      // THE SCORCH — the burn country re-reads the deal (the Ashmarch,
+      // the Kingsdelf epic). The moisture pull upstream already starves
+      // the canopy; here the burn dresses what survived: stands die to
+      // charred stubs, the herb and berry layer gives out, the ground
+      // goes to ash-gravel — and on the deep-burn knolls the fire's
+      // one gift shows: obsidian, at Overband prices. Sparser than
+      // meadow, never painted black (the density lesson); the road
+      // carve below still keeps the last word on the surface.
+      const scorch = scorchAt(tx, ty);
+      if (scorch > 0.12 && elevation >= 0.4) {
+        const s = Math.min(1, (scorch - 0.12) / 0.55);
+        if (SCORCH_STANDS.has(ground)) {
+          ground = roll < 0.3 + s * 0.4 ? Tile.Stump : Tile.GrassTall;
+          detail = Detail.None;
+        } else if (
+          (ground === Tile.BerryBush || ground === Tile.FibrePlant || ground === Tile.WildMoonbell) &&
+          roll < s * 0.9
+        ) {
+          ground = Tile.GrassTall;
+          detail = Detail.None;
+        } else if ((ground === Tile.RockCopper || ground === Tile.RockTin) && s > 0.5 && roll < 0.3) {
+          ground = Tile.RockObsidian;
+        }
+        if (ground === Tile.Grass) {
+          detail = roll > 0.82 ? Detail.Pebbles : Detail.None;
+        }
+      }
+
       // The road carve, last word on the surface: the trodden track
       // becomes Path (Bridge over water — the road narrows to a span
       // while the graded verge stays wet), and the shoulder is felled
@@ -727,4 +760,13 @@ const ROAD_FELLED: ReadonlySet<number> = new Set([
   Tile.TreePine,
   Tile.Rock,
   Tile.ChestWood,
+]);
+
+/** What the burn kills where it still stands: the living canopy. */
+const SCORCH_STANDS: ReadonlySet<number> = new Set([
+  Tile.Tree,
+  Tile.TreeOak,
+  Tile.TreeWillow,
+  Tile.TreeYew,
+  Tile.TreePine,
 ]);

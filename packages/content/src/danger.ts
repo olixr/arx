@@ -64,6 +64,21 @@ export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
   // into a hearth). Nobody put this here; the wood was always like
   // this, and the Timber Road's whole existence is the argument.
   { x: 440, y: -96, safeR: 88, dread: 2 },
+  // Kingsdelf — the town in the King's Delf, and the fifth HAVEN. Its
+  // lamp keeps the quarry bowl tier 0 and the relief grades the
+  // walk-out; past the relief the whole south-west is tier-5 country
+  // by plain distance — the town is ~307 tiles from Dawnmead, the
+  // only hearth that reaches. A level-50 town needs no dial: the land
+  // was already the far dark, and the Returning built inside it.
+  { x: -256, y: 288, safeR: 64, haven: true },
+  // THE BRAND — the burned mountain, and the first dread-3 heart in
+  // the Dawnlands: the key that opens the OVERBAND (tier 6, the
+  // lampless dark — shared/world/danger.ts owns the law). The march
+  // out here already saturates at 5, so the heart reads 6 across the
+  // burn while the rim keeps the classic law; the reach (safeR + 48)
+  // clears Kingsdelf's north wall — the town lives BESIDE the
+  // furnace, never in it. Nobody put this here either; a star did.
+  { x: -320, y: 104, safeR: 96, dread: 3 },
 ];
 
 /**

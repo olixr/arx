@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dangerAt, type DangerAnchor } from '@arx/shared';
+import { DANGER_OVER, dangerAt, type DangerAnchor } from '@arx/shared';
 import { POI_DEFS } from './pois/defs.js';
 import {
   AMBERFORD_RECT,
@@ -16,6 +16,7 @@ import {
   geographySnapshot,
   geographyWarnings,
   massifAt,
+  scorchAt,
   nearRoads,
   replaceGeography,
   roadBearingAt,
@@ -100,6 +101,7 @@ test('the fields fall off to honest zero in the far frontier', () => {
   assert.equal(massifAt(2000, 2000), 0);
   assert.equal(thornveilAt(2000, 2000), 0);
   assert.equal(fenAt(2000, 2000), 0);
+  assert.equal(scorchAt(2000, 2000), 0);
   assert.equal(fieldApronAt(2000, 2000, 64), 0);
   assert.equal(roadDistanceAt(1337, 2000, 2000), Infinity);
   assert.equal(nearRoads(1900, 1900, 2100, 2100), false);
@@ -372,4 +374,44 @@ test("Hartfell's relief grades the walk-out and the far fell stays at the ceilin
   // is calm to SPAWNS (worldgen's ROAD_CALM), never to the field.
   const midway = dangerAt(1337, 800, -240, anchors);
   assert.ok(midway >= 4, `the drove's long middle must stay earned, got ${midway}`);
+});
+
+// ------------------------------------------------------------------
+// KINGSDELF — the Overband onion. The town is the fifth haven in
+// tier-5 country by plain distance; the Brand's dread-3 heart is the
+// first ground in the game that reads tier 6 (the lampless dark),
+// and the rim keeps the classic law. That is the entire level-50-60
+// promise, so it is pinned.
+// ------------------------------------------------------------------
+
+test("Kingsdelf's bowl is calm, and the Brand's heart reads the Overband", () => {
+  const anchors = AUTHORED_GEOGRAPHY.anchors.map((a) => ({ ...a }));
+  assert.equal(dangerAt(1337, -256, 288, anchors), 0, 'the delf floor is a hearth');
+  assert.equal(dangerAt(1337, -230, 270, anchors), 0, 'the benches stand inside the lamp');
+  // The Brand's full heart: the march runs within a band of its
+  // ceiling out here, so the dread-3 core crosses it. Sample a ring
+  // inside safeR — the town-facing arc is one band softer and the
+  // jitter wanders tier-5 pockets everywhere (band borders wander in
+  // this world), but the Overband must genuinely open.
+  let overs = 0;
+  for (let i = 0; i < 200; i++) {
+    const ang = (i / 200) * Math.PI * 2;
+    const tier = dangerAt(
+      1337,
+      Math.round(-320 + Math.cos(ang) * 60),
+      Math.round(104 + Math.sin(ang) * 60),
+      anchors,
+    );
+    assert.ok(tier >= 5 && tier <= DANGER_OVER, `burn heart read ${tier}`);
+    if (tier === DANGER_OVER) overs++;
+  }
+  assert.ok(overs > 60, `the Overband barely opened: ${overs}/200`);
+  // The dread reach clears the town's north wall: beside the furnace,
+  // never in it.
+  const northWall = dangerAt(1337, -256, 240, anchors);
+  assert.ok(northWall <= 5, `the north wall must stay under the Overband, got ${northWall}`);
+  // The Old Road's last league grades in under the haven's relief —
+  // an artery, not a gauntlet; the burn is where the 44-60 band lives.
+  const lastLeague = dangerAt(1337, -178, 259, anchors);
+  assert.ok(lastLeague >= 1 && lastLeague <= 4, `the last league should read 1-4, got ${lastLeague}`);
 });

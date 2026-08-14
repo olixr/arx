@@ -232,6 +232,60 @@ export const CAIRNFELL = { x: 800, y: -580, r: 110 } as const;
  */
 export const RIMEWARD_RECT: ZoneRect = { x: -400, y: -448, w: 128, h: 96 };
 
+/**
+ * Kingsdelf — the town in the King's Delf (the seventh town, the
+ * Kingsdelf epic; docs/kingsdelf-plan.md). Centre (-256, 288): ~307
+ * tiles from Dawnmead's hearth, deep in the tier-5 base band, which is
+ * the design — the FIFTH haven's relief grades the walk-out, the far
+ * country stays 32-48, and the Brand's dread heart north-west is the
+ * first ground in the game that reads the Overband (tier 6, 44-60).
+ * The quarry bowl that cut the Old Crown's stone, and the town the
+ * Returning built inside it.
+ */
+export const KINGSDELF_RECT: ZoneRect = { x: -320, y: 240, w: 128, h: 96 };
+
+/**
+ * THE OLDCROWN — ground RESERVED, not built (the Rimeward law: a road
+ * that ends nowhere is a road the plan is lying about). The buried
+ * capital of the realm before the Silver Line, behind the Brand's west
+ * shoulder; the Processional has to end at a door, and this is the
+ * door a future delve epic gets to open. Deliberately NOT aproned —
+ * the ash keeps the old streets until somebody sweeps them.
+ */
+export const OLDCROWN_RECT: ZoneRect = { x: -520, y: 96, w: 96, h: 64 };
+
+/**
+ * THE BRAND — the burned mountain of the south-west. A star fell on
+ * the old realm's quarry-mountain a hundred and fifty years ago and it
+ * has smoldered ever since: crag country over the old high workings,
+ * ember-light in the seams at night, and the reason the Old Crown is a
+ * memory. The massif formalizes the crag knot the base noise already
+ * deals north-west of the delf; the matching dread-3 anchor (danger.ts)
+ * opens the Overband over its heart — the one tier-6 ground in the
+ * Dawnlands, and the whole reason a level-50 character walks south.
+ */
+export const THE_BRAND = { x: -320, y: 104, r: 110 } as const;
+
+/**
+ * THE ASHMERE — the drowned lower workings. When the Brandfall ended
+ * the delf, the deepest old pits flooded grey; the lake keeps its
+ * galleries and its silt and, the fishers say, some of its tools. The
+ * heart sits OFF the zone rect (the Amberfen heart law): the town
+ * authors its own sump and quay, and the border's edge class carries
+ * the water out to the true shore.
+ */
+export const ASHMERE = { x: -368, y: 368, r: 80 } as const;
+
+/**
+ * THE ASHMARCH — the burn country: the Brand's skirt of ash, where the
+ * wind salts the ground and the stands die standing. A SCORCH landform
+ * (the pineland's opposite): worldgen pulls moisture DOWN across it so
+ * the march reads as open dead heath — sparser than meadow, never
+ * painted black (the density lesson) — and the chunk dresser converts
+ * canopy to standing dead wood at a scorch-scaled rate.
+ */
+export const ASHMARCH = { x: -296, y: 176, r: 150 } as const;
+
 export interface RoadRoute {
   id: string;
   name: string;
@@ -292,6 +346,14 @@ export interface GeographyDef {
    * authored as a forest and not as two coincidences.
    */
   pinelands: Landform[];
+  /**
+   * Burn hearts — the pineland's opposite. Moisture pulled DOWN so a
+   * named burn reads as open dead country on every seed; the chunk
+   * dresser kills canopy across it at a scorch-scaled rate. One
+   * landform carries the pair so a burn is authored as a burn and not
+   * as two coincidences (the pineland's own law, run backwards).
+   */
+  scorches: Landform[];
   planned: PlannedRect[];
 }
 
@@ -543,6 +605,73 @@ const AUTHORED_PLAN: GeographyDef = {
       ],
     },
     {
+      id: 'old_road',
+      name: 'The Old Road',
+      kind: 'road',
+      // Dawnmead's south hem to Kingsdelf's east gate: the road the
+      // quarrymen fled up a hundred and fifty years ago, walked the
+      // other way. Built by the Old Crown — which is why it is a ROAD
+      // and not a trail: the grade and the bones of the paving are
+      // older than every other road on this map — and UNLIT, because
+      // the Waykeepers never accepted it (the one dark road in the
+      // Dawnlands; the town's standing grievance, and a quest lamp by
+      // lamp). It drops south through the open meadow country, swings
+      // west of the crag knots, threads the corridor between the
+      // drowned finger-lake and the east woods, and turns west for
+      // the gate with the water on the right hand and the burn beyond
+      // it — the toll-camp story, retold at tier 4-5. The band march
+      // does the rest: tier 1 at Dawnmead's hem, 5 before the walls.
+      pts: [
+        { x: -64, y: 80 },
+        { x: -76, y: 96 },
+        { x: -92, y: 112 },
+        { x: -104, y: 130 },
+        { x: -112, y: 148 },
+        { x: -124, y: 160 },
+        { x: -136, y: 178 },
+        { x: -150, y: 192 },
+        { x: -164, y: 202 },
+        { x: -166, y: 218 },
+        { x: -166, y: 234 },
+        { x: -164, y: 248 },
+        { x: -162, y: 257 },
+        { x: -178, y: 259 },
+        { x: -194, y: 260 },
+      ],
+    },
+    {
+      id: 'processional',
+      name: 'The Processional',
+      kind: 'trail',
+      // The old realm's paved approach to its own capital, ash-buried
+      // and unwalked — by the living. It leaves Kingsdelf's north
+      // wicket, runs the corridor between the Brand's east face and
+      // the drowned finger, crosses the burn THROUGH the dread heart
+      // (the first tier-6 walk in the game — the trail is passable
+      // because a route calms its own ribbon; everything beside it is
+      // the Overband, which is the point), rounds the mountain's
+      // north shoulder past the little tarn, and comes down to the
+      // Oldcrown's buried east gate. The dead walk it home by night.
+      pts: [
+        { x: -260, y: 240 },
+        { x: -252, y: 214 },
+        { x: -248, y: 188 },
+        { x: -252, y: 162 },
+        { x: -262, y: 128 },
+        { x: -272, y: 100 },
+        { x: -282, y: 76 },
+        { x: -288, y: 62 },
+        { x: -300, y: 48 },
+        { x: -316, y: 46 },
+        { x: -336, y: 46 },
+        { x: -360, y: 48 },
+        { x: -388, y: 60 },
+        { x: -408, y: 76 },
+        { x: -424, y: 92 },
+        { x: -436, y: 110 },
+      ],
+    },
+    {
       id: 'hunters_trail',
       name: "The Hunter's Trail",
       kind: 'trail',
@@ -649,6 +778,7 @@ const AUTHORED_PLAN: GeographyDef = {
     { id: 'spinewall_east', ...SPINEWALL_EAST },
     { id: 'spinewall_south', ...SPINEWALL_SOUTH },
     { id: 'cairnfell', ...CAIRNFELL },
+    { id: 'the_brand', ...THE_BRAND },
   ],
   veils: [{ id: 'thornveil', ...THORNVEIL }],
   fens: [
@@ -660,11 +790,13 @@ const AUTHORED_PLAN: GeographyDef = {
     { id: 'kingswater', ...KINGSWATER },
     { id: 'coldtarn', ...COLDTARN },
     { id: 'glasswater', ...GLASSWATER },
+    { id: 'ashmere', ...ASHMERE },
   ],
   pinelands: [
     { id: 'pinereach', ...PINEREACH },
     { id: 'pinereach_south', ...PINEREACH_SOUTH },
   ],
+  scorches: [{ id: 'ashmarch', ...ASHMARCH }],
   planned: [
     { id: 'dawnmead', name: 'Dawnmead', ...DAWNMEAD_RECT },
     { id: 'amberford', name: 'Amberford', ...AMBERFORD_RECT, apron: true },
@@ -674,6 +806,8 @@ const AUTHORED_PLAN: GeographyDef = {
     { id: 'hartfell', name: 'Hartfell', ...HARTFELL_RECT, apron: true },
     { id: 'barrowdeep', name: 'The Barrowdeep', ...BARROWDEEP_RECT },
     { id: 'rimeward', name: 'The Rimeward', ...RIMEWARD_RECT },
+    { id: 'kingsdelf', name: 'Kingsdelf', ...KINGSDELF_RECT, apron: true },
+    { id: 'oldcrown', name: 'The Oldcrown', ...OLDCROWN_RECT },
   ],
 };
 export const AUTHORED_GEOGRAPHY: GeographyDef = Object.freeze(AUTHORED_PLAN);
@@ -691,6 +825,7 @@ const VEILS: Landform[] = [];
 const FENS: Landform[] = [];
 const MERES: Landform[] = [];
 const PINELANDS: Landform[] = [];
+const SCORCHES: Landform[] = [];
 
 interface RouteBounds {
   route: RoadRoute;
@@ -721,6 +856,7 @@ export function geographySnapshot(): GeographyDef {
     fens: FENS.map((f) => ({ ...f })),
     meres: MERES.map((m) => ({ ...m })),
     pinelands: PINELANDS.map((p) => ({ ...p })),
+    scorches: SCORCHES.map((s) => ({ ...s })),
     planned: PLANNED_ZONE_RECTS.map((p) => ({ ...p })),
   };
 }
@@ -740,6 +876,7 @@ export function replaceGeography(def: GeographyDef): void {
   refill(FENS, (def.fens ?? []).map((f) => ({ ...f })));
   refill(MERES, (def.meres ?? []).map((m) => ({ ...m })));
   refill(PINELANDS, (def.pinelands ?? []).map((p) => ({ ...p })));
+  refill(SCORCHES, (def.scorches ?? []).map((s) => ({ ...s })));
   replaceSettledAnchors(def.anchors);
   ROAD_BOUNDS = ROAD_ROUTES.map((route) => {
     let x0 = Infinity;
@@ -934,7 +1071,7 @@ export function validateGeographyDef(
   }
 
   const landforms = (
-    kind: 'massifs' | 'veils' | 'fens' | 'meres' | 'pinelands',
+    kind: 'massifs' | 'veils' | 'fens' | 'meres' | 'pinelands' | 'scorches',
     optional = false,
   ): Landform[] => {
     const out: Landform[] = [];
@@ -967,6 +1104,7 @@ export function validateGeographyDef(
   const fens = landforms('fens', true);
   const meres = landforms('meres', true);
   const pinelands = landforms('pinelands', true);
+  const scorches = landforms('scorches', true);
 
   const planned: PlannedRect[] = [];
   const seenPlanned = new Set<string>();
@@ -999,7 +1137,7 @@ export function validateGeographyDef(
   if (errors.length > 0) return { ok: false, errors };
   return {
     ok: true,
-    def: { routes, sites, anchors, massifs, veils, fens, meres, pinelands, planned },
+    def: { routes, sites, anchors, massifs, veils, fens, meres, pinelands, scorches, planned },
   };
 }
 
@@ -1363,6 +1501,24 @@ export function pinelandAt(tx: number, ty: number): number {
   let s = 0;
   for (const p of PINELANDS) {
     const v = 1 - Math.hypot(tx - p.x, ty - p.y) / p.r;
+    if (v > s) s = v;
+  }
+  return s;
+}
+
+/**
+ * Radial falloff for the scorches (1 at a heart, 0 past every rim).
+ * The pineland run backwards: worldgen pulls moisture DOWN by it (a
+ * burn is open dead country, sparser than meadow — the density
+ * lesson), and the chunk dresser reads it again to kill canopy at a
+ * scorch-scaled rate. Authored zones still own their ground: the zone
+ * stamps its own tiles, and the edge-harmony blend carries the border's
+ * intention outward exactly as it does for every moisture consumer.
+ */
+export function scorchAt(tx: number, ty: number): number {
+  let s = 0;
+  for (const b of SCORCHES) {
+    const v = 1 - Math.hypot(tx - b.x, ty - b.y) / b.r;
     if (v > s) s = v;
   }
   return s;
