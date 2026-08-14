@@ -136,6 +136,17 @@ if (rowsQ) {
     rowTo = parseInt(m[2]!, 10);
   }
 }
+// ?cols=a-b — column banding for close-up screenshots (E/W cells).
+let colFrom = 0;
+let colTo = COLS - 1;
+const colsQ = q.get('cols');
+if (colsQ) {
+  const m = colsQ.match(/^(\d+)-(\d+)$/);
+  if (m) {
+    colFrom = parseInt(m[1]!, 10);
+    colTo = parseInt(m[2]!, 10);
+  }
+}
 
 const DET = q.get('det') === '1';
 const DET_FRAMES = Math.max(1, parseInt(q.get('detn') ?? '240', 10) || 240);
@@ -243,14 +254,16 @@ function drawBody(
 
 function drawSheet(now: number, dt: number): void {
   const nRows = rowTo - rowFrom + 1;
-  canvas.width = COLS * CW;
+  canvas.width = (colTo - colFrom + 1) * CW;
   canvas.height = nRows * CH;
   ctx.fillStyle = '#2a3b2f';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   figs.forEach((f, i) => {
     const sheetRow = Math.floor(i / COLS);
     if (sheetRow < rowFrom || sheetRow > rowTo) return;
-    const homeX = CW / 2 + (i % COLS) * CW;
+    const sheetCol = i % COLS;
+    if (sheetCol < colFrom || sheetCol > colTo) return;
+    const homeX = CW / 2 + (sheetCol - colFrom) * CW;
     const homeY = Math.round(S * 2.3) + (sheetRow - rowFrom) * CH;
     ctx.strokeStyle = 'rgba(232, 228, 216, 0.18)';
     ctx.lineWidth = 1; // figures leave fat stroke widths behind

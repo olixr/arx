@@ -3636,11 +3636,15 @@ export function paintGoblinHead(
   // and wide — the fed-on-anything face. Far jowl steps smaller at
   // the three-quarter bands; both read from behind as skull width.
   const drawJowl = (side: number, depth: number): void => {
-    const jx = headX - fx * gw * 0.08 + side * gw * 0.8;
+    // The jowl retreats toward the jaw's REAR as the head turns — a
+    // cheek mass in front of the mouth at profile reads as a flap
+    // folded over the face, never as anatomy.
+    const jx = headX - fx * gw * (0.08 + 0.52 * profileK) + side * gw * 0.8 * (1 - 0.6 * profileK);
     const jy = headY + hh * 0.24;
+    const jk = depth * (1 - 0.22 * profileK);
     ctx.fillStyle = hurt ? '#ffffff' : shade(gb.hide, side === (fx >= 0 ? 1 : -1) ? -2 : -9);
     ctx.beginPath();
-    ctx.ellipse(jx, jy, gw * 0.3 * depth, hh * 0.3 * depth, 0, 0, Math.PI * 2);
+    ctx.ellipse(jx, jy, gw * 0.3 * jk, hh * 0.3 * jk, 0, 0, Math.PI * 2);
     ctx.fill();
   };
   if (profileK < 0.72 || back) drawJowl(-nearSide, back ? 0.9 : 0.78);
@@ -3684,7 +3688,7 @@ export function paintGoblinHead(
   const eyeY = headY - hh * 0.14;
   const eCx = headX + fx * gw * 0.16;
   if (!hurt && !back) {
-    const blW = gw * 0.82 * (1 - 0.2 * profileK);
+    const blW = gw * 0.82 * (1 - 0.38 * profileK);
     const blTop = eyeY - hh * 0.42;
     ctx.fillStyle = shade(gb.hide, -12);
     ctx.beginPath();
@@ -3879,12 +3883,15 @@ export function paintGoblinHead(
   // off the brow root, hooking down to a pointed tip past the grin
   // seam — wide nostril flares at the underside, a lit bridge plane
   // on top. Carved planes with an outline, never a stick and a ball.
-  const nl = gw * (0.3 + 0.54 * profileK);
+  // At profile the hook runs out LEVEL and long, clear of the face
+  // silhouette — a drooped tip hugging the cheek reads as a folded
+  // flap, not a nose. Face-on it still drops past the grin seam.
+  const nl = gw * (0.3 + 0.62 * profileK);
   const nRootX = headX + fx * gw * 0.16;
   const nRootY = eyeY + hh * 0.02;
   const rootW = gw * 0.2;
   const tipX = headX + fx * (gw * 0.24 + nl);
-  const tipY = mouthY + hh * 0.1 - hh * 0.14 * profileK;
+  const tipY = mouthY + hh * 0.1 - hh * 0.3 * profileK;
   const flareY = mouthY - hh * 0.22;
   const flareW = gw * 0.3 * (1 - 0.4 * profileK);
   ctx.fillStyle = hurt ? '#ffffff' : shade(gb.hide, 5);
