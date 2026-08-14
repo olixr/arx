@@ -223,11 +223,17 @@ function tideStream(
   const nx = -dy / len;
   const ny = dx / len;
   const segs = 11;
-  const run = nowMs * 0.0042 * flow;
+  // THE SEAMLESS RUN: the phase NEVER rides a changing rate —
+  // absolute time × a time-varying `flow` teleports the whole
+  // pattern the moment the flow changes (the pulse-honesty law's
+  // cousin). Speed stays constant forever; the surge speaks through
+  // amplitude, weight and foam instead, and the loop has no seam.
+  const surge = Math.max(0, flow - 1);
+  const run = nowMs * 0.0042;
   const pts: Array<[number, number]> = [];
   for (let i = 0; i <= segs; i++) {
     const v = i / segs;
-    const off = Math.sin(v * Math.PI * 2.3 - run + phase) * amp * Math.sin(v * Math.PI);
+    const off = Math.sin(v * Math.PI * 2.3 - run + phase) * amp * (1 + 0.35 * surge) * Math.sin(v * Math.PI);
     pts.push([x0 + dx * v + nx * off, y0 + dy * v + ny * off]);
   }
   const trace = (): void => {
@@ -239,30 +245,34 @@ function tideStream(
   ctx.save();
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  // The casing: the deep water, wide and soft.
-  ctx.globalAlpha = alpha * 0.55;
+  // The casing: the deep water, wide and soft — heavier in a surge.
+  ctx.globalAlpha = Math.min(1, alpha * 0.55 * (1 + 0.2 * surge));
   ctx.strokeStyle = col;
-  ctx.lineWidth = lw * 2.2;
+  ctx.lineWidth = lw * 2.2 * (1 + 0.18 * surge);
   trace();
   // The core: the light the water carries.
-  ctx.globalAlpha = alpha;
+  ctx.globalAlpha = Math.min(1, alpha * (1 + 0.15 * surge));
   ctx.strokeStyle = '#dff4ef';
-  ctx.lineWidth = lw;
+  ctx.lineWidth = lw * (1 + 0.22 * surge);
   trace();
-  // Foam riding the flow: two beads travelling the rope, swelling
-  // mid-run — the current made visible even in a still frame.
-  ctx.globalAlpha = 1;
+  // Foam riding the flow: two beads travelling the rope at the
+  // water's own constant pace, born and dying at nothing — they
+  // swell mid-run and FADE OUT at both ends, so the wrap from rope's
+  // end back to its start is never seen.
   ctx.fillStyle = foam;
   for (let j = 0; j < 2; j++) {
-    const ub = ((nowMs * 0.00019 * flow + phase * 0.37 + j * 0.5) % 1 + 1) % 1;
+    const ub = ((nowMs * 0.00019 + phase * 0.37 + j * 0.5) % 1 + 1) % 1;
     const i0 = Math.min(segs - 1, Math.floor(ub * segs));
     const fr2 = ub * segs - i0;
     const bx = pts[i0]![0] + (pts[i0 + 1]![0] - pts[i0]![0]) * fr2;
     const by = pts[i0]![1] + (pts[i0 + 1]![1] - pts[i0]![1]) * fr2;
+    const life = Math.sin(ub * Math.PI);
+    ctx.globalAlpha = life;
     ctx.beginPath();
-    ctx.arc(bx, by, lw * (0.75 + 0.5 * Math.sin(ub * Math.PI)), 0, Math.PI * 2);
+    ctx.arc(bx, by, lw * (0.55 + 0.65 * life) * (1 + 0.3 * surge), 0, Math.PI * 2);
     ctx.fill();
   }
+  ctx.globalAlpha = 1;
   ctx.restore();
 }
 
