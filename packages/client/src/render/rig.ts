@@ -6971,7 +6971,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // the passes so the outline can never show a hairline gap.
   const SPLIT_EPS = 0.03;
   const STAFF_SPLIT_AT = -0.05;
-  const GREAT_SPLIT_AT = 0.38;
+  // AT THE FIST (the staff's own law, mirrored): the hilt, the pommel
+  // and both fists stay front; EVERYTHING above the fist — cross and
+  // blade — may hide behind the head and torso, so the shoulder rest
+  // can never paint steel across the face (the user's screenshot
+  // verdict on the 0.38 station, whose near segment crossed the eyes
+  // at the toward-camera facings). A split seam only shows where body
+  // mass paints BETWEEN the passes — over open air the two clipped
+  // passes butt-join exactly — so the seam belongs inside the fist
+  // mass, the one station guaranteed to be covered.
+  const GREAT_SPLIT_AT = 0.02;
   /** Item-local x range (units of s) the FRONT pass keeps. */
   let splitNear: readonly [number, number] | null = null;
   /** Item-local x range the BEHIND pass keeps (painted pre-torso). */
