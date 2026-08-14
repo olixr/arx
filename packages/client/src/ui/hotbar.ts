@@ -310,6 +310,7 @@ export class Hotbar {
           // title so hovering a coin tells what it does, not just its
           // name.
           chip.title = b.desc ? `${b.name}: ${b.desc}` : b.name;
+          chip.dataset.tipname = chip.title;
           const glyph = document.createElement('span');
           glyph.className = 'coin-glyph';
           glyph.textContent = b.name
@@ -321,6 +322,7 @@ export class Hotbar {
           chip.append(glyph, secs);
         } else {
           chip.title = `${b.name}: ${b.desc ?? (b.channel === 'food' ? 'well fed' : 'tonic')}`;
+          chip.dataset.tipname = chip.title;
           const img = document.createElement('img');
           img.src = itemIconUrl(b.id, 34);
           img.draggable = false;

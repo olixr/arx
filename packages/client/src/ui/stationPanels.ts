@@ -33,6 +33,7 @@ import {
   larderOrder,
   type WorkRecipeDef,
   type WorkStation,
+  aggregateGearStats,
   buildableGround,
   canUnmake,
   effectiveReq,
@@ -2100,6 +2101,28 @@ export class StationPanels {
         seal.className = 'req-seal';
         seal.textContent = String(req.level);
         cell.appendChild(seal);
+      }
+      // THE PACK KNOWS THE HOUSE, vault edition (visible-buildcraft
+      // V4): a stored piece whose family the body wears, where
+      // wearing it would raise the count, carries the same gold pip
+      // as the pack — the armory tells what advances the build.
+      const vDef = itemDef(opts.item);
+      const set = vDef?.gear?.set;
+      if (set && vDef?.equipSlot) {
+        const equipment = this.getEquipment();
+        const counts = aggregateGearStats(
+          equipment as Parameters<typeof aggregateGearStats>[0],
+        ).setCounts;
+        const count = counts[set] ?? 0;
+        const worn = equipment[vDef.equipSlot];
+        const wornSet = worn ? itemDef(worn.id)?.gear?.set : undefined;
+        if (count >= 1 && count < 5 && wornSet !== set) {
+          cell.classList.add('house-callin');
+          const pip = document.createElement('span');
+          pip.className = 'house-pip';
+          pip.textContent = '◆';
+          cell.appendChild(pip);
+        }
       }
     }
     cell.addEventListener('click', opts.onPick);
