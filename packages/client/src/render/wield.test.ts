@@ -22,8 +22,6 @@ import {
   projectStrike,
   staffWield,
   STAFF_PLANT_LEAN,
-  staffStrikeFrame,
-  staffStrikeTrail,
   bowWield,
 } from './wield.js';
 
@@ -336,51 +334,8 @@ test('staff planted hand sits out the pump, the run carry pumps with the arm', (
   assert.equal(staffWield(facingFrame(0, 1), 1, 1, 0, 1).pumpK, 1, 'run carry: the arm swings with the gait');
 });
 
-// ---- the pole school ----
-
-test('pole school: every channel neutral at both ends of the beat', () => {
-  for (const stage of [0, 1] as const) {
-    for (const t of [0, 1]) {
-      const f = staffStrikeFrame(stage, t);
-      assert.ok(Math.abs(f.arm - 0.5) < 1e-6, `arm rests (s${stage} t${t})`);
-      assert.ok(Math.abs(f.spin) < 1e-6, `spin unwinds (s${stage} t${t})`);
-      assert.ok(Math.abs(f.reach - 1) < 1e-6, `reach home (s${stage} t${t})`);
-      assert.ok(Math.abs(f.lift) < 1e-6 && Math.abs(f.lean) < 1e-6, `lift/lean home (s${stage} t${t})`);
-    }
-  }
-});
-
-test('pole school: the shaft rides tangent through the cut', () => {
-  for (const stage of [0, 1] as const) {
-    const f = staffStrikeFrame(stage, 0.36); // mid-snap
-    assert.ok(
-      Math.abs(Math.abs(f.spin) - Math.PI / 2) < 0.6,
-      `s${stage}: a turning bar, not a swung radius (spin ${f.spin.toFixed(2)})`,
-    );
-    assert.ok(Math.abs(f.grip - 0.5) < 0.01, 'sweeps pivot at the middle');
-  }
-});
-
-test('pole school: stages alternate direction and line', () => {
-  const a = STAFFDIR(0);
-  const b = STAFFDIR(1);
-  assert.ok(a * b < 0, 'the moulinet and the butt cut sweep opposite ways');
-  const s0 = staffStrikeFrame(0, 0.24);
-  const s1 = staffStrikeFrame(1, 0.24);
-  assert.ok(s0.lift < 0 && s1.lift > 0, 'high coil answers low coil');
-  function STAFFDIR(stage: 0 | 1): number {
-    const f0 = staffStrikeFrame(stage, 0.24);
-    const f1 = staffStrikeFrame(stage, 0.42);
-    return f1.arm - f0.arm;
-  }
-});
-
-test('pole school: the trail lives from the loosing through the extension', () => {
-  assert.equal(staffStrikeTrail(0, 0.1), null, 'no trail in the windup');
-  const mid = staffStrikeTrail(0, 0.4);
-  assert.ok(mid !== null && mid.alpha > 0.9, 'full through the cut');
-  assert.equal(staffStrikeTrail(0, 0.7), null, 'gone after the extension');
-});
+// (The pole school's strike pins moved to strikes.test.ts — THE CUT
+// LIVES IN THE WORLD owns every school's cut choreography now.)
 
 // ---- the bow ----
 
@@ -419,8 +374,6 @@ import {
   GREAT_PHASES,
   greatFinisherLean,
   greatFinisherPath,
-  greatStrikeFrame,
-  greatStrikeTrail,
   greatWield,
 } from './wield.js';
 import { strikePhases } from './carriage.js';
@@ -462,45 +415,6 @@ test('the second fist: the run calls the off hand back to the hilt', () => {
   assert.ok(run > 0.95, 'a sprint welds both hands on');
 });
 
-test('great cuts: every channel neutral at both ends — blend-safe', () => {
-  for (const stage of [0, 1] as const) {
-    for (const t of [0, 1]) {
-      const f = greatStrikeFrame(stage, t);
-      assert.ok(Math.abs(f.arm - 0.5) < 1e-9, `stage ${stage} arm rests`);
-      assert.ok(Math.abs(f.spin) < 1e-9, `stage ${stage} spin unwinds`);
-      assert.ok(Math.abs(f.reach - 1) < 1e-9, `stage ${stage} reach home`);
-      assert.ok(Math.abs(f.lift) < 1e-9, `stage ${stage} lift home`);
-      assert.ok(Math.abs(f.lean) < 1e-9, `stage ${stage} lean home`);
-    }
-  }
-});
-
-test('the anticipation law: a HELD coil, wrist cocked against the coming cut', () => {
-  for (const stage of [0, 1] as const) {
-    const P = GREAT_PHASES;
-    const atCoil = greatStrikeFrame(stage, P.coil + 1e-6);
-    const midHold = greatStrikeFrame(stage, (P.coil + P.hold) / 2);
-    // The hold is frozen — the eye's registration frame.
-    assert.ok(Math.abs(atCoil.arm - midHold.arm) < 1e-6, 'the coil holds');
-    // Cocked against the sweep: spin sign opposes the arm's travel.
-    const impact = greatStrikeFrame(stage, P.impact);
-    const sweep = Math.sign(impact.arm - atCoil.arm);
-    assert.ok(Math.sign(midHold.spin) === -sweep, 'wrist lags the coming cut');
-    assert.ok(Math.abs(midHold.spin) > 0.7, 'the lag is HEAVY — mass answers late');
-  }
-});
-
-test('the plane law: the felling stroke drops, the wide reap runs level, directions alternate', () => {
-  const P = GREAT_PHASES;
-  const fell = greatStrikeFrame(0, P.coil);
-  const reap = greatStrikeFrame(1, P.coil);
-  assert.ok(fell.lift < -0.3, 'the felling stroke coils HIGH overhead');
-  assert.ok(Math.abs(reap.lift) < 0.15, 'the reap coils on the level line');
-  const fellSweep = Math.sign(greatStrikeFrame(0, P.impact).arm - fell.arm);
-  const reapSweep = Math.sign(greatStrikeFrame(1, P.impact).arm - reap.arm);
-  assert.ok(fellSweep !== reapSweep, 'consecutive cuts alternate direction');
-});
-
 test('the slow-beat law: the great phases run later than the sword school at every beat', () => {
   const S = strikePhases('normal');
   assert.ok(GREAT_PHASES.coil > S.coil && GREAT_PHASES.hold > S.hold, 'a longer gather');
@@ -509,17 +423,7 @@ test('the slow-beat law: the great phases run later than the sword school at eve
   assert.ok(GREAT_PHASES.impact - GREAT_PHASES.hold <= 0.15, 'the cut is still a snap');
 });
 
-test('great trail: silent through the coil, alive through the cut, dead after the extension', () => {
-  for (const stage of [0, 1] as const) {
-    const P = GREAT_PHASES;
-    assert.equal(greatStrikeTrail(stage, P.coil / 2), null);
-    const mid = greatStrikeTrail(stage, (P.hold + P.impact) / 2);
-    assert.ok(mid !== null && mid.alpha > 0.9, 'full through the cut');
-    const late = greatStrikeTrail(stage, (P.impact + P.ext) / 2);
-    assert.ok(late !== null && late.alpha < 1, 'dying through the extension');
-    assert.equal(greatStrikeTrail(stage, P.ext + 0.05), null);
-  }
-});
+// (The great school's cut pins moved to strikes.test.ts.)
 
 test('the mountain falls: overhead poise, the longest telegraph, then the bury', () => {
   const F = GREAT_FINISHER_PHASES;

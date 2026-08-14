@@ -156,6 +156,33 @@ poseRow('mine', LOADOUTS.pick!, { pose: PoseState.Gather }); // 33
 for (const [lbl, dir] of DIRS) figs.push({ label: `flip-sword ${lbl}`, dir, mode: 'flip', load: LOADOUTS.sword! }); // 34
 for (const [lbl, dir] of DIRS) figs.push({ label: `flip-staff ${lbl}`, dir, mode: 'flip', load: LOADOUTS.staff! }); // 35
 
+// ---- THE STRIKE SWEEP (?strike=<loadout>&stage=<0|1|2>): the whole
+// beat, frame by frame — rows are TIME (poseT 0.02→0.98), columns the
+// eight facings, one loadout+stage per sheet. This is the standing way
+// to judge a cut's anticipation/snap/impact/follow-through at every
+// heading; combine with ?det=1 for byte-stable captures.
+const strikeQ = q.get('strike');
+if (strikeQ && LOADOUTS[strikeQ]) {
+  const stageQ = parseInt(q.get('stage') ?? '0', 10);
+  const pose =
+    stageQ === 2 ? PoseState.Attack3 : stageQ === 1 ? PoseState.Attack2 : PoseState.Attack;
+  figs.length = 0;
+  const SWEEP_N = 12;
+  for (let k = 0; k < SWEEP_N; k++) {
+    const t = 0.02 + (0.96 * k) / (SWEEP_N - 1);
+    for (const [lbl, dir] of DIRS) {
+      figs.push({
+        label: `${strikeQ}${stageQ} t=${t.toFixed(2)} ${lbl}`,
+        dir,
+        mode: 'pose',
+        load: LOADOUTS[strikeQ]!,
+        pose,
+        poseT: t,
+      });
+    }
+  }
+}
+
 const COLS = 8;
 const CW = 240;
 const CH = 330;

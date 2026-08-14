@@ -16,8 +16,6 @@
  * offsets in units of the rig scale `s` with x pre-squash.
  */
 
-import { STRIKE_REST_ARM } from './carriage.js';
-
 /**
  * THE GROUND LAW's foreshortening factor: one unit of world-forward
  * travel shows as ~0.52 units of screen-vertical. Everything in this
@@ -579,156 +577,10 @@ export function staffWield(
  */
 export const STAFF_GUARD_CHOKE_S = 0.2;
 
-// ------------------------------------------- the staff's own strikes
-//
-// THE POLE SCHOOL: a staff is not a long sword — it fights from the
-// middle, both hands on the wood, and its cuts are SWEEPS: the shaft
-// rides TANGENT to the arc (a turning bar, not a swung radius). Two
-// stages plus the ram: the MOULINET, a level two-handed sweep across
-// the front; the BUTT CUT, the reverse sweep on a low line led by the
-// iron ferrule; and the finisher keeps the existing two-hand RAM
-// (thrustPath) — a spear-drive with the crown. Same readability laws
-// as the blade schools: ease into a cocked coil, HOLD it, snap the
-// sweep with overshoot, hold the landed extension, recover to the
-// guard. Every channel neutral at both ends, blend-safe.
-
-export interface StaffStrikeFrame {
-  /** Arm-angle offset from the aim (radians); rests at 0.5 like blades. */
-  arm: number;
-  /** Staff angle relative to the arm ray — ±π/2 is the tangent hold. */
-  spin: number;
-  /** Reach multiplier (1 at both ends). */
-  reach: number;
-  /** Vertical hand offset, units of s (negative = raised). */
-  lift: number;
-  /** Torso lean along the sweep. */
-  lean: number;
-  /** Shaft fraction behind the fist — sweeps pivot at the middle. */
-  grip: number;
-}
-
-const STAFF_PHASES = { coil: 0.24, hold: 0.3, impact: 0.42, ext: 0.58 };
-
-interface StaffSpec {
-  coilArm: number;
-  impactArm: number;
-  /** Tangent side: +1 crown leads the sweep, −1 the butt leads. */
-  tan: number;
-  coilLift: number;
-  impactLift: number;
-  coilReach: number;
-  impactReach: number;
-  lean: number;
-}
-
-const STAFF_SPECS: [StaffSpec, StaffSpec] = [
-  // THE MOULINET: wide level sweep, crown leading.
-  {
-    coilArm: -1.55, impactArm: 1.6, tan: 1,
-    coilLift: -0.07, impactLift: 0.03,
-    coilReach: 0.6, impactReach: 1.05,
-    lean: 0.13,
-  },
-  // THE BUTT CUT: reverse sweep, low line, ferrule leading.
-  {
-    coilArm: 1.4, impactArm: -1.45, tan: -1,
-    coilLift: 0.08, impactLift: -0.03,
-    coilReach: 0.55, impactReach: 1.0,
-    lean: 0.12,
-  },
-];
-
-// The rest arm offset every school's strikes leave from and land on is
-// carriage.ts's STRIKE_REST_ARM — one constant, one meaning. (This file
-// used to keep two private duplicates of the same 0.5; the arms-v3
-// audit retired them.)
-
-export function staffStrikeFrame(stage: 0 | 1, t: number): StaffStrikeFrame {
-  const K = STAFF_SPECS[stage];
-  const P = STAFF_PHASES;
-  const sgn = Math.sign(K.impactArm - K.coilArm);
-  // The tangent hold: through the cut the shaft lies across the arc
-  // (±π/2 off the arm ray), cocked a little PAST tangent at the coil
-  // and whipping a little short of it at impact — the turning-bar
-  // read. It unwinds to zero at both ends so the guard blend is safe.
-  const tanHold = K.tan * sgn * (Math.PI / 2);
-  const cock = K.tan * sgn * 0.5;
-  const ov = sgn * 0.1;
-  if (t < P.coil) {
-    const e = smooth(t / P.coil);
-    return {
-      arm: STRIKE_REST_ARM + (K.coilArm - STRIKE_REST_ARM) * e,
-      spin: (tanHold + cock) * e,
-      reach: 1 + (K.coilReach - 1) * e,
-      lift: K.coilLift * e,
-      lean: -sgn * K.lean * 0.6 * e,
-      grip: 0.34 + 0.16 * e,
-    };
-  }
-  if (t < P.hold) {
-    return {
-      arm: K.coilArm,
-      spin: tanHold + cock,
-      reach: K.coilReach,
-      lift: K.coilLift,
-      lean: -sgn * K.lean * 0.6,
-      grip: 0.5,
-    };
-  }
-  if (t < P.impact) {
-    const e = smooth((t - P.hold) / (P.impact - P.hold));
-    return {
-      arm: K.coilArm + (K.impactArm + ov - K.coilArm) * e,
-      spin: tanHold + cock - (cock + K.tan * sgn * 0.4) * e,
-      reach: K.coilReach + (K.impactReach - K.coilReach) * e,
-      lift: K.coilLift + (K.impactLift - K.coilLift) * e,
-      lean: -sgn * K.lean * 0.6 + sgn * K.lean * 1.6 * e,
-      grip: 0.5,
-    };
-  }
-  if (t < P.ext) {
-    const e = smooth((t - P.impact) / (P.ext - P.impact));
-    return {
-      arm: K.impactArm + ov * (1 - e),
-      spin: tanHold - K.tan * sgn * 0.4 * (1 - 0.3 * e),
-      reach: K.impactReach,
-      lift: K.impactLift,
-      lean: sgn * K.lean * (1 - 0.25 * e),
-      grip: 0.5,
-    };
-  }
-  const e = smooth((t - P.ext) / (1 - P.ext));
-  return {
-    arm: K.impactArm + (STRIKE_REST_ARM - K.impactArm) * e,
-    spin: (tanHold - K.tan * sgn * 0.28) * (1 - e),
-    reach: K.impactReach + (1 - K.impactReach) * e,
-    lift: K.impactLift * (1 - e),
-    lean: sgn * K.lean * 0.75 * (1 - e),
-    grip: 0.5 - 0.16 * e,
-  };
-}
-
-export interface StaffTrail {
-  from: number;
-  to: number;
-  alpha: number;
-  lift: number;
-}
-
-/** The sweep's crescent, alive from the loosing through the extension. */
-export function staffStrikeTrail(stage: 0 | 1, t: number): StaffTrail | null {
-  const P = STAFF_PHASES;
-  if (t < P.hold || t > P.ext) return null;
-  const K = STAFF_SPECS[stage];
-  const f = staffStrikeFrame(stage, t);
-  const alpha = t <= P.impact ? 1 : 1 - smooth((t - P.impact) / (P.ext - P.impact));
-  return {
-    from: K.coilArm,
-    to: f.arm,
-    alpha,
-    lift: (K.coilLift + K.impactLift) / 2,
-  };
-}
+// The staff's own strike choreography (the moulinet, the butt cut,
+// their tangent-bar law and trails) moved into strikes.ts — THE CUT
+// LIVES IN THE WORLD. The carries, the guard, and the choke constants
+// below remain the pole school's rest-side law source.
 
 // ---------------------------------------------------- the great school
 //
@@ -851,144 +703,13 @@ export const GREAT_GUARD_PITCH = Math.PI - 0.55;
 /** Off-fist seat: this far BEHIND the main fist along the grip. */
 export const GREAT_POMMEL_CHOKE_S = 0.13;
 
-// ------------------------------------------- the great school's cuts
-//
-// Three beats, all slower than any sword's (the renderer clocks this
-// school longer): THE FELLING STROKE, an overhead cleave that starts
-// above the head and ends in the ground's opinion; THE WIDE REAP, a
-// level full-circle harvest on the return plane; and the finisher,
-// THE MOUNTAIN FALLS — both hands haul the blade straight overhead,
-// POISE there longer than any telegraph in the game, and bring it
-// down. Same readability laws as every school: ease to a coil, HOLD,
-// snap with overshoot, hold the landed extension, recover. Every
-// channel neutral at both ends — blend-safe.
-
-export interface GreatStrikeFrame {
-  /** Arm-angle offset from the aim; rests at 0.5 like the blades. */
-  arm: number;
-  /** Weapon angle relative to the arm ray — the heavy wrist lag. */
-  spin: number;
-  /** Reach multiplier (1 at both ends). */
-  reach: number;
-  /** Vertical hand offset, units of s (negative = raised). */
-  lift: number;
-  /** Torso lean along the cut. */
-  lean: number;
-  /** Weapon fraction behind the fist — cuts slide toward mid-grip. */
-  grip: number;
-}
+// The great school's cut choreography (the felling stroke, the wide
+// reap, the heavy wrist lag) moved into strikes.ts — THE CUT LIVES IN
+// THE WORLD. The beat table stays here because the renderer's own
+// choreography clock reads it alongside the finisher's.
 
 /** The great school's beat: long gather, LONG poise, honest snap. */
 export const GREAT_PHASES = { coil: 0.3, hold: 0.42, impact: 0.52, ext: 0.72 };
-
-interface GreatSpec {
-  coilArm: number;
-  impactArm: number;
-  coilLift: number;
-  impactLift: number;
-  coilReach: number;
-  impactReach: number;
-  /** Wrist cock against the sweep at the coil — heavy, the mass lags. */
-  cock: number;
-  /** Wrist lead at impact — small; a lever this long barely whips. */
-  lead: number;
-  lean: number;
-}
-
-const GREAT_SPECS: [GreatSpec, GreatSpec] = [
-  // THE FELLING STROKE: hauled high over the shoulder, crashed down
-  // across the front — the vertical plane, read by the LIFT drop.
-  {
-    coilArm: -1.15, impactArm: 1.0,
-    coilLift: -0.44, impactLift: 0.16,
-    coilReach: 0.5, impactReach: 1.4,
-    cock: 1.05, lead: 0.32, lean: 0.2,
-  },
-  // THE WIDE REAP: coiled far around the other side, a level harvest
-  // dragged the whole way across — the horizontal plane.
-  {
-    coilArm: 1.7, impactArm: -1.55,
-    coilLift: 0.1, impactLift: -0.06,
-    coilReach: 0.62, impactReach: 1.3,
-    cock: 0.95, lead: 0.3, lean: 0.16,
-  },
-];
-
-export function greatStrikeFrame(stage: 0 | 1, t: number): GreatStrikeFrame {
-  const K = GREAT_SPECS[stage];
-  const P = GREAT_PHASES;
-  const sgn = Math.sign(K.impactArm - K.coilArm);
-  const ov = sgn * 0.08;
-  if (t < P.coil) {
-    const e = smooth(t / P.coil);
-    return {
-      arm: STRIKE_REST_ARM + (K.coilArm - STRIKE_REST_ARM) * e,
-      spin: -sgn * K.cock * e,
-      reach: 1 + (K.coilReach - 1) * e,
-      lift: K.coilLift * e,
-      lean: -sgn * K.lean * 0.6 * e,
-      grip: 0.2 + 0.1 * e,
-    };
-  }
-  if (t < P.hold) {
-    // The gathered mass — the longest cocked hold of any school.
-    return {
-      arm: K.coilArm,
-      spin: -sgn * K.cock,
-      reach: K.coilReach,
-      lift: K.coilLift,
-      lean: -sgn * K.lean * 0.6,
-      grip: 0.3,
-    };
-  }
-  if (t < P.impact) {
-    const e = smooth((t - P.hold) / (P.impact - P.hold));
-    return {
-      arm: K.coilArm + (K.impactArm + ov - K.coilArm) * e,
-      spin: -sgn * K.cock + sgn * (K.cock + K.lead) * e,
-      reach: K.coilReach + (K.impactReach - K.coilReach) * e,
-      lift: K.coilLift + (K.impactLift - K.coilLift) * e,
-      lean: -sgn * K.lean * 0.6 + sgn * K.lean * 1.7 * e,
-      grip: 0.3,
-    };
-  }
-  if (t < P.ext) {
-    // The landed weight, held — a greatblow STAYS landed.
-    const e = smooth((t - P.impact) / (P.ext - P.impact));
-    return {
-      arm: K.impactArm + ov * (1 - e),
-      spin: sgn * K.lead * (1 - 0.3 * e),
-      reach: K.impactReach,
-      lift: K.impactLift,
-      lean: sgn * K.lean * (1 - 0.2 * e),
-      grip: 0.3,
-    };
-  }
-  const e = smooth((t - P.ext) / (1 - P.ext));
-  return {
-    arm: K.impactArm + (STRIKE_REST_ARM - K.impactArm) * e,
-    spin: sgn * K.lead * 0.7 * (1 - e),
-    reach: K.impactReach + (1 - K.impactReach) * e,
-    lift: K.impactLift * (1 - e),
-    lean: sgn * K.lean * 0.8 * (1 - e),
-    grip: 0.3 - 0.1 * e,
-  };
-}
-
-/** The great sweep's crescent — alive loosing→extension, like the pole's. */
-export function greatStrikeTrail(stage: 0 | 1, t: number): StaffTrail | null {
-  const P = GREAT_PHASES;
-  if (t < P.hold || t > P.ext) return null;
-  const K = GREAT_SPECS[stage];
-  const f = greatStrikeFrame(stage, t);
-  const alpha = t <= P.impact ? 1 : 1 - smooth((t - P.impact) / (P.ext - P.impact));
-  return {
-    from: K.coilArm,
-    to: f.arm,
-    alpha,
-    lift: (K.coilLift + K.impactLift) / 2,
-  };
-}
 
 /**
  * THE MOUNTAIN FALLS — the finisher. Both hands haul the blade

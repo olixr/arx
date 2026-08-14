@@ -35,22 +35,29 @@ import {
   type LimbSolve,
 } from './legs.js';
 import {
-  ECHO_START,
   FINISHER_PHASES,
   FLOURISH_OFF_PHASE_MS,
   bladeCarriage,
-  echoFrame,
-  echoTrail,
   finisherLean,
   icepickPath,
   idleFlourish,
-  strikeFrame,
-  strikeTrail,
   thrustPath,
   type Grip,
-  type StrikeFrame,
-  type StrikeTrail,
 } from './carriage.js';
+import {
+  ECHO_START,
+  echoWake,
+  resolveEcho,
+  resolveStrike,
+  schoolPhases,
+  strikeGhosts,
+  strikeWake,
+  variantCount,
+  type EchoFrame,
+  type ResolvedStrike,
+  type StrikeSchool,
+  type StrikeWake,
+} from './strikes.js';
 import { STOW_HANDOFF, sheathePhases, stowBack, stowBlade } from './sheath.js';
 import {
   EarSim,
@@ -79,15 +86,10 @@ import {
   projectAim,
   greatFinisherLean,
   greatFinisherPath,
-  greatStrikeFrame,
-  greatStrikeTrail,
   greatWield,
   projectCarry,
-  projectStrike,
   runnerLift,
   settleElbowPole,
-  staffStrikeFrame,
-  staffStrikeTrail,
   staffWield,
 } from './wield.js';
 import {
@@ -276,6 +278,15 @@ export interface RigPose {
      * through the dead zone between its enter/exit thresholds.
      */
     bands?: Record<string, boolean>;
+    /**
+     * THE LATCHED SWING (strikes.ts): the pose byte this swing latched
+     * on, the swing counter (variant picker), and the mirror side —
+     * all frozen at the beat's first frame so a mid-swing turn can
+     * never flip the arc and a combo string walks its variants.
+     */
+    strikePose?: number;
+    strikeSeq?: number;
+    strikeSide?: 1 | -1;
   };
   bodyColor: string;
   hurt: boolean;
@@ -5405,28 +5416,27 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const ww = WAIST_HALF_S * s * (gno ? 1.06 : gob ? 1.16 + 0.14 * gob.heavy : gol ? 1.22 : 1); // waist half-width
   const th = TORSO_RISE_S * s * (1 - 0.12 * crouch); // hip line → shoulders
 
-  // Melee combo stages — THE TWO SCHOOLS (carriage.ts strike
-  // vocabulary): every strike is coil → cocked hold → snap →
-  // held extension → recover, and the grip picks the choreography.
-  // Standard: cleave / rising return / lunge thrust. Rogue: cross
-  // rake (pull-in) / backslash (fling-out) / icepick plunge.
-  let swingOffset = 0.5 + gatherSwing;
+  // Melee combo stages — THE CUT LIVES IN THE WORLD (strikes.ts, the
+  // one strike engine): every cut is authored as a world-space arc —
+  // yaw sweep × height track × radius track — projected through the
+  // ONE GROUND law, so the fist, the steel, and the wake share a
+  // single geometry at every heading. THE MIRROR LAW reflects the
+  // whole arc across the facing axis (a cleave lands down-forward on
+  // BOTH sides — the old adds-a-rotation model inverted the vertical
+  // at west). Variants ride the swing counter, so a combo string
+  // reads as combinations, not a metronome.
+  let swingOffset = 0.5 + gatherSwing; // work cycles' arm channel (chop/mine/gather)
   let thrustR: number | null = null; // finisher: radial thrust (tiles)
-  // Strike channels beyond the arm angle: reach multiplier, screen
-  // lift (the cut's vertical plane), and the blade's wrist-law angle.
-  let strikeReachK = 1;
-  let strikeLiftS = 0;
-  let strikeBladeRel: number | null = null;
-  // THE POLE SCHOOL: a struck staff rides TANGENT to its sweep — its
-  // own wrist channel, never the blade's — and pivots at the middle.
-  let staffSpin: number | null = null;
-  let staffStrikeGrip: number | null = null;
-  let mainTrail: StrikeTrail | null = null;
+  let strikeRes: ResolvedStrike | null = null;
+  let strikeSchool: StrikeSchool | null = null;
+  let strikeVariant = 0;
+  let strikeSide: 1 | -1 = 1;
+  let mainWake: StrikeWake | null = null;
   // Dual-wield echo: the off blade's own cut on the back of the beat
-  // (the ONE-TWO law) — channels + a ramp weight blending it out of
-  // and back into the combat guard.
-  let echoF: StrikeFrame | null = null;
-  let echoTr: StrikeTrail | null = null;
+  // (the ONE-TWO law) — resolved through the same world engine, with
+  // a ramp weight blending it out of and back into the combat guard.
+  let echoRes: EchoFrame | null = null;
+  let echoWk: StrikeWake | null = null;
   let echoW = 0;
   // Sneaking hunches forward along facing; no other pose branch runs in
   // Sneak, so this baseline survives to the torso draw.
@@ -5441,49 +5451,41 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           : -1;
   // Icepick finisher path (reverse grip only) — set in stage 2 below.
   let ice: { r: number; lift: number } | null = null;
+  // Finisher-only channels: the piston lift and the mountain's grip.
+  let finLiftS = 0;
+  let greatFinGrip: number | null = null;
   // THE MOUNTAIN FALLS (great finisher): the blade's world pitch
   // through the overhead haul — projected for heldAngle below.
   let greatFinPitch: number | null = null;
   // The shoulder carry's run-claim on the off fist (greatWield).
   let greatRunClaim = 0;
-  if (meleeStage === 0 || meleeStage === 1) {
-    const t = rig.poseT;
-    if (isStaff) {
-      // THE POLE SCHOOL: the staff fights from the middle — the
-      // moulinet sweep and the butt cut, shaft tangent to the arc,
-      // both hands on the wood (the guard claim below rides the same
-      // choke through the whole beat).
-      const f = staffStrikeFrame(meleeStage as 0 | 1, t);
-      swingOffset = f.arm;
-      strikeReachK = f.reach;
-      strikeLiftS = f.lift;
-      staffSpin = f.spin;
-      staffStrikeGrip = f.grip;
-      lean = f.lean;
-      mainTrail = staffStrikeTrail(meleeStage as 0 | 1, t);
-    } else if (isGreat) {
-      // THE GREAT SCHOOL: the felling stroke and the wide reap —
-      // swung RADII with a heavy wrist lag (the mass answers late),
-      // both fists welded to the grip through the whole beat (the
-      // second-fist claim below), on the renderer's long clock. The
-      // wrist channel rides the same projection as the pole school's.
-      const f = greatStrikeFrame(meleeStage as 0 | 1, t);
-      swingOffset = f.arm;
-      strikeReachK = f.reach;
-      strikeLiftS = f.lift;
-      staffSpin = f.spin;
-      staffStrikeGrip = f.grip;
-      lean = f.lean;
-      mainTrail = greatStrikeTrail(meleeStage as 0 | 1, t);
+  // THE LATCHED SWING: the beat's variant and mirror side freeze at
+  // the swing's first frame (a mid-swing turn can never flip the arc,
+  // and the variant counter walks one step per pose-byte change — the
+  // POSE ALTERNATION law guarantees every beat is a value change).
+  // Stateless callers (CMS portraits) take variant 0 on the raw side.
+  if (meleeStage >= 0) {
+    strikeSchool = isStaff ? 'staff' : isGreat ? 'great' : rogueMelee ? 'rogue' : 'sword';
+    const smem = rig.depthMemory;
+    if (smem) {
+      if (smem.strikePose !== rig.pose) {
+        smem.strikePose = rig.pose;
+        smem.strikeSeq = (smem.strikeSeq ?? -1) + 1;
+        smem.strikeSide = (smem.side ?? (Math.sign(fx) || 1)) >= 0 ? 1 : -1;
+      }
+      strikeSide = smem.strikeSide ?? 1;
+      strikeVariant = smem.strikeSeq ?? 0;
     } else {
-      const f = strikeFrame(rogueMelee ? 'rogue' : 'normal', meleeStage as 0 | 1, t);
-      swingOffset = f.arm;
-      strikeReachK = f.reach;
-      strikeLiftS = f.lift;
-      if (isSword) strikeBladeRel = f.blade;
-      lean = f.lean;
-      mainTrail = strikeTrail(rogueMelee ? 'rogue' : 'normal', meleeStage as 0 | 1, t);
+      strikeSide = (Math.sign(fx) || 1) >= 0 ? 1 : -1;
     }
+  }
+  if ((meleeStage === 0 || meleeStage === 1) && strikeSchool) {
+    const t = rig.poseT;
+    const v = strikeVariant % variantCount(strikeSchool, meleeStage as 0 | 1);
+    strikeVariant = v;
+    strikeRes = resolveStrike(strikeSchool, meleeStage as 0 | 1, v, t, strikeSide, rig.dir);
+    lean = strikeRes.lean;
+    mainWake = strikeWake(strikeSchool, meleeStage as 0 | 1, v, t, strikeSide, rig.dir);
   } else if (meleeStage === 2) {
     // Finisher. Standard grip: haul the blade to the hip — tip on the
     // mark — then RAM it down the aim and hold it buried. Reverse
@@ -5502,13 +5504,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // is authored in the world and projected below.
       const gp = greatFinisherPath(t);
       thrustR = gp.r;
-      strikeLiftS = gp.lift;
+      finLiftS = gp.lift;
       greatFinPitch = gp.pitch;
-      staffStrikeGrip = 0.26;
+      greatFinGrip = 0.26;
     } else {
       const tp = thrustPath(t);
       thrustR = tp.r;
-      strikeLiftS = tp.lift;
+      finLiftS = tp.lift;
     }
     lean = (isGreat ? greatFinisherLean(t) : finisherLean(t)) * Math.sign(fx || 1); // tip the torso along the strike
   }
@@ -5519,15 +5521,15 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // and back to guard by the beat's end, so nothing ever pops.
   if (offBlade && meleeStage >= 0) {
     const t = rig.poseT;
-    echoF = echoFrame(offGrip, meleeStage as 0 | 1 | 2, t);
-    echoTr = echoTrail(offGrip, meleeStage as 0 | 1 | 2, t);
-    if (echoF) {
+    echoRes = resolveEcho(offGrip, meleeStage as 0 | 1 | 2, t, strikeVariant, strikeSide, rig.dir);
+    echoWk = echoWake(offGrip, meleeStage as 0 | 1 | 2, t, strikeVariant, strikeSide, rig.dir);
+    if (echoRes) {
       const inU = Math.min(1, (t - ECHO_START) / 0.1);
       const outU = Math.max(0, Math.min(1, (t - 0.92) / 0.08));
       echoW = inU * inU * (3 - 2 * inU) * (1 - outU * outU * (3 - 2 * outU));
       // The body answers the second cut — a smaller counter-lean on
       // the echo's own clock, layered over the main lean's recovery.
-      lean += echoF.lean * 0.5 * echoW;
+      lean += echoRes.lean * 0.5 * echoW;
     }
   }
 
@@ -5777,13 +5779,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // a fixed circle — two arms in the fight, not one. An off BLADE
   // never counter-swings: it braces in guard, then its shoulder and
   // elbow follow the echo cut on the echo's own ramp.
-  let offAngle =
-    meleeStage === 0 || meleeStage === 1 ? rig.dir - swingOffset * 0.55 : rig.dir - 0.55;
+  let offAngle = strikeRes ? rig.dir + strikeRes.counterYaw : rig.dir - 0.55;
   if (offBlade && meleeStage >= 0) {
     offAngle = rig.dir - 0.9;
-    if (echoF && echoW > 0) {
-      offAngle += angleDelta(offAngle, rig.dir + echoF.arm) * echoW;
-    }
   }
   // THE AIM IS A GROUND VECTOR (arms-v3 Phase 3): every radial reach
   // down the aim rides the projected unit direction — its depth
@@ -5798,17 +5796,20 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   let mainY: number;
   if (thrustR !== null) {
     mainX = rig.x + aim.px * thrustR * s * wS;
-    mainY = armY + aim.py * thrustR * s + strikeLiftS * s;
+    mainY = armY + aim.py * thrustR * s + finLiftS * s;
   } else if (ice) {
     // Icepick: the fist rides its coil-high/drive-down path.
     mainX = rig.x + aim.px * ice.r * s * wS;
     mainY = armY + aim.py * ice.r * s + ice.lift * s;
+  } else if (strikeRes) {
+    // THE CUT LIVES IN THE WORLD: the fist rides the resolved arc —
+    // the same ground ellipse the blade angle and the wake project
+    // through, the whole reason they can never disagree again.
+    mainX = rig.x + strikeRes.fistDX * s * wS;
+    mainY = armY + strikeRes.fistDY * s;
   } else {
-    // Strike channels ride here: the reach breathes with the cut
-    // (collapsing through a rogue pull, extending through a cleave)
-    // and the lift carries the cut's vertical plane at every facing.
-    mainX = rig.x + Math.cos(mainAngle) * reach * strikeReachK * wS;
-    mainY = armY + Math.sin(mainAngle) * reach * strikeReachK + strikeLiftS * s;
+    mainX = rig.x + Math.cos(mainAngle) * reach * wS;
+    mainY = armY + Math.sin(mainAngle) * reach;
     // Foraging reaches DOWN into the plant regardless of facing.
     if (foraging) mainY += forageDrop * s;
     // Milking pulls DOWN on its half of the beat at every facing.
@@ -5832,10 +5833,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       gx = rig.x - fx * 0.17 * s * wS;
       gy = armY + 0.09 * s;
     }
-    if (echoF && echoW > 0) {
-      const eAngle = rig.dir + echoF.arm;
-      const ex = rig.x + Math.cos(eAngle) * reach * echoF.reach * wS;
-      const ey = armY + Math.sin(eAngle) * reach * echoF.reach + echoF.lift * s;
+    if (echoRes && echoW > 0) {
+      // The echo fist rides its own resolved arc — same world engine,
+      // the off blade's own grip and mirror side.
+      const ex = rig.x + echoRes.fistDX * s * wS;
+      const ey = armY + echoRes.fistDY * s;
       offX = gx + (ex - gx) * echoW;
       offY = gy + (ey - gy) * echoW;
     } else {
@@ -5902,19 +5904,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // heldAngle's writers #1 and #2 is now a single resolved input to
   // the assembly below.
   const strikeHeld = ((): { angle: number; fore: number } => {
-    if (strikeBladeRel !== null) {
-      // THE WRIST LAW (strikeFrame's blade channel): the blade lags
-      // the arm cocked through the coil and the hold, whips to a lead
-      // at impact, settles straight — a whip-crack cut, not a
-      // windshield wiper. The reverse grip runs the same beat around
-      // its π reversal, tight and locked — the grip never lies. The
-      // cut sweeps the GROUND plane, so the strike projection bends
-      // the screen angle and shortens the steel along the depth axis.
-      return projectStrike(mainAngle + strikeBladeRel);
-    }
-    if (staffSpin !== null) {
-      // THE POLE SCHOOL's tangent hold, through the same projection.
-      return projectStrike(mainAngle + staffSpin);
+    if (strikeRes) {
+      // THE CUT LIVES IN THE WORLD: blade angle and foreshortening
+      // come out of the same resolved arc the fist rides — the wrist
+      // law (radial schools), the tangent bar (the pole school), and
+      // the rogue lock all live inside the resolver.
+      return { angle: strikeRes.bladeAngle, fore: strikeRes.fore };
     }
     if (ice) {
       // The reversed blade stays pointed at the strike mark all the
@@ -5946,7 +5941,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   let offFore = 1;
   let heldAngle = strikeHeld.angle;
   let staffGrip = 0.34; // combat default: gripped low, business end forward
-  if (staffStrikeGrip !== null) staffGrip = staffStrikeGrip;
+  if (strikeRes?.grip != null) staffGrip = strikeRes.grip;
+  if (greatFinGrip !== null) staffGrip = greatFinGrip;
   let armSwingK = 1;
   let restSettle = 0;
   const restSide = Math.sign(fx) || 1;
@@ -6005,11 +6001,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // The echo cut steers the off blade through its own wrist law —
   // blended on the same ramp weight as the fist, so the blade and the
   // hand leave (and rejoin) the guard together.
-  if (echoF && echoW > 0) {
-    // The echo cut sweeps the same ground plane — same projection.
-    const ep = projectStrike(rig.dir + echoF.arm + echoF.blade);
-    offBladeAngle += angleDelta(offBladeAngle, ep.angle) * echoW;
-    offFore = 1 + (ep.fore - 1) * echoW;
+  if (echoRes && echoW > 0) {
+    // The echo blade rides its own resolved arc — one world engine.
+    offBladeAngle += angleDelta(offBladeAngle, echoRes.bladeAngle) * echoW;
+    offFore = 1 + (echoRes.fore - 1) * echoW;
   }
   // THE SETTLE OUTLIVES THE POSE (arms-v3 Phase 2): the rest stage
   // used to gate on the restful POSES, so the first frame of a strike
@@ -6551,8 +6546,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     if (claim > 0) {
       // The choke rides the drawn shaft — mainFore keeps the second
       // fist on the foreshortened wood at the camera-line facings.
+      // Screen-space along the drawn art (heldAngle is post-squash):
+      // no wScale here, or the fist slides off the wood at N/S.
       const chokeS = STAFF_GUARD_CHOKE_S * mainFore;
-      const cx = mainX + Math.cos(heldAngle) * chokeS * s * wS;
+      const cx = mainX + Math.cos(heldAngle) * chokeS * s;
       const cy = mainY + Math.sin(heldAngle) * chokeS * s + 0.02 * s;
       offX += (cx - offX) * claim;
       offY += (cy - offY) * claim;
@@ -6573,8 +6570,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     claim *= (1 - sit) * (1 - castPunch);
     claim *= 1 - sheathePhases(sheath).grabK;
     if (claim > 0) {
+      // Same screen-space law as the staff choke: the pommel fist
+      // sits ON the drawn grip at every facing.
       const chokeS = GREAT_POMMEL_CHOKE_S * mainFore;
-      const cx = mainX - Math.cos(heldAngle) * chokeS * s * wS;
+      const cx = mainX - Math.cos(heldAngle) * chokeS * s;
       const cy = mainY - Math.sin(heldAngle) * chokeS * s + 0.03 * s;
       offX += (cx - offX) * claim;
       offY += (cy - offY) * claim;
@@ -6628,48 +6627,95 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // ===================== THE ONE MOUTH ENDS =====================
   // Everything below READS the assembled channels; nothing writes.
 
-  // Slash trails: a crisp crescent chasing each blade through its cut,
-  // centered on the cut's plane (a high cleave rings high, a rising
-  // return rings low) and fading through the held extension. The echo
-  // draws its own smaller, fainter crescent — the second beat of the
-  // one-two. The finishers fire a piston streak down the aim instead.
-  // THE GROUND-ARC LAW: a cut sweeps the ground plane around the
-  // body, so its trail is an ELLIPSE on screen — full width across,
-  // foreshortened along the depth axis — not a screen circle. A
-  // circular trail was the one element still telling the eye the
-  // fight happened on a flat card.
-  // THE ONE GROUND: the trail sweeps the same ellipse the fist travels.
-  const TRAIL_K = WIELD_GROUND_K;
-  const drawCrescent = (tr: StrikeTrail, r0: number, k: number): void => {
-    const a = Math.max(0, Math.min(1, tr.alpha)) * k;
-    if (a <= 0) return;
-    const cy = armY + tr.lift * s * 0.6;
-    const from = rig.dir + tr.from;
-    const to = rig.dir + tr.to;
-    const ccw = to < from;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = `rgba(244, 239, 228, ${0.28 * a})`;
-    ctx.lineWidth = 0.16 * s * k;
+  // THE WAKE IS THE BLADE'S — the swoosh is a tapered ribbon built by
+  // re-sampling the SAME resolved arc the fist and the steel ride, so
+  // it passes through the blade at every frame of the sweep (the old
+  // crescent was a fixed-radius ellipse centered on the torso — a
+  // hula hoop that crossed the face at north and floated free at
+  // south). The ribbon spans the blade's leading half: full width at
+  // the leading edge, pinched to the tip line at the tail — the
+  // classic hand-keyed smear. Two voices, the art style's pair: a
+  // broad soft wash and a hot core hugging the last of the tip path.
+  const drawWake = (wk: StrikeWake, k: number): void => {
+    const a = Math.max(0, Math.min(1, wk.alpha)) * k;
+    if (a <= 0 || wk.samples.length < 2) return;
+    const pts = wk.samples.map((sm) => {
+      const hx = rig.x + sm.dx * s * wS;
+      const hy = armY + sm.dy * s;
+      const cA = Math.cos(sm.angle);
+      const sA = Math.sin(sm.angle);
+      return {
+        tx: hx + cA * wk.tipS * s * sm.fore,
+        ty: hy + sA * wk.tipS * s * sm.fore,
+        mx: hx + cA * wk.midS * s * sm.fore,
+        my: hy + sA * wk.midS * s * sm.fore,
+      };
+    });
+    const n = pts.length;
     ctx.beginPath();
-    ctx.ellipse(rig.x, cy, r0, r0 * TRAIL_K, 0, from, to, ccw);
-    ctx.stroke();
-    ctx.strokeStyle = `rgba(255, 252, 240, ${0.75 * a})`;
-    ctx.lineWidth = 0.055 * s * k;
-    ctx.beginPath();
-    ctx.ellipse(rig.x, cy, r0 + 0.09 * s, (r0 + 0.09 * s) * TRAIL_K, 0, from, to, ccw);
-    ctx.stroke();
-    ctx.lineCap = 'butt';
+    ctx.moveTo(pts[0]!.tx, pts[0]!.ty);
+    for (let i = 1; i < n; i++) ctx.lineTo(pts[i]!.tx, pts[i]!.ty);
+    for (let i = n - 1; i >= 0; i--) {
+      // The tail pinches: the inner edge walks out to meet the tip
+      // line as the sample ages, so the ribbon dies to a point.
+      const age = 1 - i / (n - 1);
+      ctx.lineTo(
+        pts[i]!.mx + (pts[i]!.tx - pts[i]!.mx) * age,
+        pts[i]!.my + (pts[i]!.ty - pts[i]!.my) * age,
+      );
+    }
+    ctx.closePath();
+    ctx.fillStyle = `rgba(244, 239, 228, ${0.22 * a})`;
+    ctx.fill();
+    // The hot core: the freshest stretch of the tip path — alive only
+    // through the snap (its own envelope), so a landed cut never
+    // leaves a glow-stick lying where the blade stopped.
+    const coreA = a * wk.core;
+    if (coreA > 0.02) {
+      const start = Math.max(0, n - 4);
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = `rgba(255, 252, 240, ${0.68 * coreA})`;
+      ctx.lineWidth = 0.05 * s * (0.7 + 0.3 * k);
+      ctx.beginPath();
+      ctx.moveTo(pts[start]!.tx, pts[start]!.ty);
+      for (let i = start + 1; i < n; i++) ctx.lineTo(pts[i]!.tx, pts[i]!.ty);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
   };
-  if (mainTrail && (weapon?.weapon?.style === 'onehand' || weapon?.weapon?.style === 'twohand' || isStaff)) {
-    // A staff's WEAPON range is its spell reach — the sweep is an
-    // arm's-length fact, so the crescent radius caps at melee reach.
-    // A greatweapon's range IS its reach: the crescent earns the
-    // school's whole horizon (the biggest arcs in the game).
-    drawCrescent(mainTrail, Math.min(weapon?.weapon?.range ?? 1.6, isGreat ? 2.8 : 2) * 0.27 * s, 1);
+  if (mainWake && (weapon?.weapon?.style === 'onehand' || weapon?.weapon?.style === 'twohand' || isStaff)) {
+    drawWake(mainWake, 1);
   }
-  if (echoTr && offBlade) {
-    const offRange = itemDef(rig.offhandItem!)?.weapon?.range ?? 1.5;
-    drawCrescent(echoTr, offRange * 0.27 * s * 0.8, 0.7);
+  if (echoWk && offBlade) drawWake(echoWk, 0.7);
+  // THE CONTACT SNAP: a two-breath starburst at the blade tip on the
+  // impact frame — the cut's own landing word, riding the same arc
+  // (the target's hit sparks are main.ts's; this one belongs to the
+  // swing and fires whether or not anything was there to catch it).
+  if (strikeRes && strikeSchool && mainWake && (meleeStage === 0 || meleeStage === 1)) {
+    const P = schoolPhases(strikeSchool);
+    const u = (rig.poseT - P.impact) / 0.09;
+    if (u >= 0 && u <= 1) {
+      const hx = rig.x + strikeRes.fistDX * s * wS;
+      const hy = armY + strikeRes.fistDY * s;
+      const tipX = hx + Math.cos(strikeRes.bladeAngle) * mainWake.tipS * s * strikeRes.fore;
+      const tipY = hy + Math.sin(strikeRes.bladeAngle) * mainWake.tipS * s * strikeRes.fore;
+      const fade = 1 - u;
+      const rr = 0.08 * s + 0.1 * s * u;
+      // A spark FAN thrown forward off the edge — three short rays
+      // spread around the blade's own direction, never a symmetric
+      // cross (a cross at the feet read as a dropped white knife).
+      ctx.strokeStyle = `rgba(255, 252, 240, ${0.7 * fade})`;
+      ctx.lineWidth = 0.03 * s;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (let i = -1; i <= 1; i++) {
+        const a2 = strikeRes.bladeAngle + i * 0.55;
+        ctx.moveTo(tipX + Math.cos(a2) * rr * 0.5, tipY + Math.sin(a2) * rr * 0.5 * WIELD_GROUND_K);
+        ctx.lineTo(tipX + Math.cos(a2) * rr, tipY + Math.sin(a2) * rr * WIELD_GROUND_K);
+      }
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
   }
   if (meleeStage === 2 && isGreat) {
     // THE MOUNTAIN FALLS leaves its own mark: a vertical smash streak
@@ -6696,6 +6742,28 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ctx.lineTo(tx, ty);
       ctx.stroke();
       ctx.lineCap = 'butt';
+    }
+    // THE GROUND ANSWERS: the bury drives a shock ring out across the
+    // GROUND PLANE — an expanding ellipse under the strike point,
+    // foreshortened by the one ground law. Nothing sells the world's
+    // floor like the floor itself reacting.
+    if (t >= P.drive && t < P.buried + 0.1) {
+      const q = Math.min(1, (t - P.drive) / (P.buried + 0.1 - P.drive));
+      const reach2 = Math.min(weapon?.weapon?.range ?? 2.4, 2.8) * 0.3 * s;
+      const gx2 = rig.x + aim.px * reach2 * wS;
+      const gy2 = armY + aim.py * reach2 + 0.3 * s;
+      const rr = (0.12 + 0.55 * q) * s;
+      const fade2 = (1 - q) * (1 - q);
+      ctx.strokeStyle = `rgba(244, 239, 228, ${0.5 * fade2})`;
+      ctx.lineWidth = 0.05 * s * (1 - 0.5 * q);
+      ctx.beginPath();
+      ctx.ellipse(gx2, gy2, rr, rr * WIELD_GROUND_K, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(255, 252, 240, ${0.35 * fade2})`;
+      ctx.lineWidth = 0.028 * s;
+      ctx.beginPath();
+      ctx.ellipse(gx2, gy2, rr * 0.72, rr * 0.72 * WIELD_GROUND_K, 0, 0, Math.PI * 2);
+      ctx.stroke();
     }
   }
   if (meleeStage === 2 && weapon?.weapon?.style === 'onehand') {
@@ -6884,7 +6952,15 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Aiming up-and-away still puts the whole gear layer behind the
   // body (the splits live on the toward-camera half — the bands are
   // exclusive by construction).
-  const weaponBehind = awayDeep && !greatRestFront;
+  // THE SWEEP EARNS ITS LAYER: mid-strike the layer decision belongs
+  // to the RESOLVED ARC, not the facing bands — when the fist's world
+  // yaw crosses to the away side, the weapon and the striking arm
+  // paint behind the torso, so a cut through the north arc passes
+  // BEHIND the head instead of slicing across the face. The band is
+  // deterministic in the sweep (one crossing per arc, at the station
+  // where the steel is most foreshortened), so it needs no hysteresis.
+  const strikeSweepBehind = strikeRes !== null && strikeRes.depthSin < -0.32;
+  const weaponBehind = (awayDeep && !greatRestFront && strikeRes === null) || strikeSweepBehind;
   const cuff = bodySt?.sleeves === 'full' ? sleeve : undefined;
   const paintOffArm = (): void => {
     // DUAL WIELD: the off blade is the real weapon, carried by the off
@@ -7313,6 +7389,35 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         fore: 1 - BOW_PLANE_SOFT * (1 - aimDraw.fore),
       });
     } else {
+      // THE SPEED GHOSTS: through the snap the steel outruns the eye —
+      // two after-images at earlier beat times, dying fast, repainted
+      // through the same resolver (the multi-exposure smear of a
+      // hand-keyed action frame). Enchant fx sit the ghosts out.
+      if (strikeRes && strikeSchool && (meleeStage === 0 || meleeStage === 1)) {
+        for (const g of strikeGhosts(strikeSchool, rig.poseT)) {
+          const gr = resolveStrike(
+            strikeSchool,
+            meleeStage as 0 | 1,
+            strikeVariant,
+            g.t,
+            strikeSide,
+            rig.dir,
+          );
+          ctx.globalAlpha = g.alpha;
+          drawHeldItem(
+            ctx,
+            weapon.id,
+            weapon.color,
+            rig.x + gr.fistDX * s * wS,
+            armY + gr.fistDY * s,
+            gr.bladeAngle,
+            s,
+            rig,
+            { grip: gr.grip ?? staffGrip, flip: mainFlip, fore: gr.fore },
+          );
+          ctx.globalAlpha = 1;
+        }
+      }
       drawHeldItem(ctx, weapon.id, weapon.color, mainX, mainY, heldAngle, s, rig, {
         grip: staffGrip,
         // THE BOW IS HELD BY THE WOOD — always. The old restSettle

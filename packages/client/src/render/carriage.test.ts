@@ -1,21 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  ECHO_START,
   FINISHER_PHASES,
   FLOURISH_MS,
   FLOURISH_OFF_PHASE_MS,
   FLOURISH_PERIOD_MS,
-  STRIKE_REST_ARM,
   bladeCarriage,
-  echoFrame,
-  echoStage,
   finisherLean,
   icepickPath,
   idleFlourish,
-  strikeFrame,
-  strikePhases,
-  strikeTrail,
   thrustPath,
   type Grip,
 } from './carriage.js';
@@ -212,198 +205,8 @@ test('compact (knife) carriage rides tighter and steeper, same laws', () => {
   }
 });
 
-// ---- The strike vocabulary: the readability laws of the two schools.
-
-const STAGES = [0, 1] as const;
-
-/** The cut's direction sign — from the coil toward the impact pose. */
-function cutSign(grip: Grip, stage: 0 | 1): number {
-  const P = strikePhases(grip);
-  const coil = strikeFrame(grip, stage, P.coil);
-  const impact = strikeFrame(grip, stage, P.ext);
-  return Math.sign(impact.arm - coil.arm);
-}
-
-test('strike frames: every channel continuous, neutral at both ends — blend-safe', () => {
-  for (const grip of GRIPS) {
-    for (const stage of STAGES) {
-      const start = strikeFrame(grip, stage, 0);
-      const end = strikeFrame(grip, stage, 1);
-      const base = grip === 'rogue' ? Math.PI : 0;
-      for (const f of [start, end]) {
-        assert.ok(Math.abs(f.arm - STRIKE_REST_ARM) < 1e-9, `${grip}/${stage} arm neutral`);
-        assert.ok(Math.abs(f.blade - base) < 1e-9, `${grip}/${stage} blade neutral`);
-        assert.ok(Math.abs(f.reach - 1) < 1e-9, `${grip}/${stage} reach neutral`);
-        assert.ok(Math.abs(f.lift) < 1e-9 && Math.abs(f.lean) < 1e-9, 'lift/lean neutral');
-      }
-      let prev = start;
-      for (let t = 0.005; t <= 1.0001; t += 0.005) {
-        const cur = strikeFrame(grip, stage, t);
-        assert.ok(Math.abs(cur.arm - prev.arm) < 0.16, `${grip}/${stage} arm cont. t=${t.toFixed(3)}`);
-        assert.ok(Math.abs(cur.blade - prev.blade) < 0.1, `${grip}/${stage} blade cont.`);
-        assert.ok(Math.abs(cur.reach - prev.reach) < 0.06, `${grip}/${stage} reach cont.`);
-        assert.ok(Math.abs(cur.lift - prev.lift) < 0.04, `${grip}/${stage} lift cont.`);
-        assert.ok(Math.abs(cur.lean - prev.lean) < 0.04, `${grip}/${stage} lean cont.`);
-        prev = cur;
-      }
-    }
-  }
-});
-
-test('the anticipation law: a held coil, cocked opposite the cut, before every strike', () => {
-  for (const grip of GRIPS) {
-    for (const stage of STAGES) {
-      const P = strikePhases(grip);
-      const sgn = cutSign(grip, stage);
-      const coil = strikeFrame(grip, stage, P.coil);
-      // The coil winds AGAINST the coming cut, far enough to read.
-      assert.ok(sgn * (coil.arm - STRIKE_REST_ARM) < -0.5, `${grip}/${stage} coils opposite`);
-      // The wrist cocks against the sweep too.
-      const base = grip === 'rogue' ? Math.PI : 0;
-      assert.ok(sgn * (coil.blade - base) < -0.25, `${grip}/${stage} wrist cocked`);
-      // And the coil HOLDS — a frozen anticipation frame the eye can
-      // register, not a direction flip in passing.
-      assert.ok(P.hold - P.coil >= 0.05, 'the hold window exists');
-      for (let t = P.coil; t <= P.hold; t += 0.01) {
-        const f = strikeFrame(grip, stage, t);
-        assert.ok(Math.abs(f.arm - coil.arm) < 0.02, `${grip}/${stage} holds the coil`);
-      }
-    }
-  }
-});
-
-test('the snap law: a fast strike phase landing in a held extension', () => {
-  for (const grip of GRIPS) {
-    for (const stage of STAGES) {
-      const P = strikePhases(grip);
-      // The cut itself is a snap — a sliver of the beat.
-      assert.ok(P.impact - P.hold <= 0.15, `${grip}/${stage} strike phase is fast`);
-      // Peak arm speed in the strike dwarfs the windup's — slow in,
-      // fast out, the whip-crack shape.
-      const speedAt = (t: number): number =>
-        Math.abs(strikeFrame(grip, stage, t + 0.004).arm - strikeFrame(grip, stage, t).arm);
-      let windupPeak = 0;
-      for (let t = 0; t < P.coil - 0.004; t += 0.004) windupPeak = Math.max(windupPeak, speedAt(t));
-      let strikePeak = 0;
-      for (let t = P.hold; t < P.impact - 0.004; t += 0.004)
-        strikePeak = Math.max(strikePeak, speedAt(t));
-      assert.ok(strikePeak > windupPeak * 2.5, `${grip}/${stage} cut snaps (${strikePeak.toFixed(3)} vs ${windupPeak.toFixed(3)})`);
-      // The landed cut HOLDS its extension — the readable kill frame.
-      const impact = strikeFrame(grip, stage, P.impact);
-      for (let t = P.impact; t <= P.ext; t += 0.01) {
-        const f = strikeFrame(grip, stage, t);
-        assert.ok(Math.abs(f.arm - impact.arm) < 0.12, `${grip}/${stage} holds the extension`);
-      }
-    }
-  }
-});
-
-test('the plane law: consecutive stages alternate direction and plane — no repeated silhouette', () => {
-  for (const grip of GRIPS) {
-    // Opposite sweep directions.
-    assert.equal(cutSign(grip, 0), -cutSign(grip, 1), `${grip} stages cut opposite ways`);
-    const P = strikePhases(grip);
-    const c0 = strikeFrame(grip, 0, P.coil);
-    const i0 = strikeFrame(grip, 0, P.ext);
-    const c1 = strikeFrame(grip, 1, P.coil);
-    const i1 = strikeFrame(grip, 1, P.ext);
-    // Stage 0 cuts downward from a raised coil; stage 1 answers upward.
-    assert.ok(c0.lift < -0.1 && i0.lift > c0.lift, `${grip} stage 0 falls`);
-    assert.ok(c1.lift > 0 && i1.lift < c1.lift, `${grip} stage 1 rises`);
-  }
-  // The swordsman extends THROUGH both cuts; the assassin's signature
-  // is the PULL — the cross rake collapses its reach through the cut,
-  // then the backslash flings back out.
-  const sp = strikePhases('normal');
-  assert.ok(strikeFrame('normal', 0, sp.ext).reach > 1.2, 'the cleave extends');
-  assert.ok(strikeFrame('normal', 1, sp.ext).reach > 1.2, 'the return extends');
-  const rp = strikePhases('rogue');
-  const rake = strikeFrame('rogue', 0, rp.coil).reach - strikeFrame('rogue', 0, rp.ext).reach;
-  assert.ok(rake > 0.3, 'the cross rake PULLS in — reach collapses through the cut');
-  const flick = strikeFrame('rogue', 1, rp.ext).reach - strikeFrame('rogue', 1, rp.coil).reach;
-  assert.ok(flick > 0.3, 'the backslash flings back out');
-});
-
-test('the assassin school: tighter arcs, earlier beats, locked reversed wrist throughout', () => {
-  for (const stage of STAGES) {
-    const sp = strikePhases('normal');
-    const rp = strikePhases('rogue');
-    const stdSpan = Math.abs(
-      strikeFrame('normal', stage, sp.ext).arm - strikeFrame('normal', stage, sp.coil).arm,
-    );
-    const rgSpan = Math.abs(
-      strikeFrame('rogue', stage, rp.ext).arm - strikeFrame('rogue', stage, rp.coil).arm,
-    );
-    assert.ok(rgSpan < stdSpan * 0.75, 'the assassin cut is narrower');
-    assert.ok(rp.impact < sp.impact, 'and lands earlier in the beat');
-    // GRIP TRUTH: the blade stays reversed through the WHOLE cut —
-    // never swings out to a forward point (the grip never lies).
-    for (let t = 0; t <= 1.0001; t += 0.02) {
-      const rel = strikeFrame('rogue', stage, t).blade - Math.PI;
-      assert.ok(Math.abs(rel) < 0.6, `locked wrist stays tight at t=${t.toFixed(2)}`);
-    }
-  }
-});
-
-test('slash trail: silent through the coil, chasing the cut, dying through the extension', () => {
-  for (const grip of GRIPS) {
-    for (const stage of STAGES) {
-      const P = strikePhases(grip);
-      assert.equal(strikeTrail(grip, stage, P.coil / 2), null, 'no trail in the windup');
-      assert.equal(strikeTrail(grip, stage, 0.98), null, 'no trail in the recover');
-      const mid = strikeTrail(grip, stage, (P.hold + P.impact) / 2);
-      assert.ok(mid && mid.alpha === 1, 'full trail through the cut');
-      // The crescent starts at the coil and chases the arm.
-      const coil = strikeFrame(grip, stage, P.coil);
-      assert.ok(Math.abs(mid!.from - coil.arm) < 1e-9, 'trail roots at the coil');
-      // Fading monotonically through the extension hold.
-      let prevA = 1;
-      for (let t = P.impact; t <= P.ext; t += 0.02) {
-        const tr = strikeTrail(grip, stage, t);
-        assert.ok(tr && tr.alpha <= prevA + 1e-9, 'trail fades through the extension');
-        prevA = tr!.alpha;
-      }
-    }
-  }
-});
-
-test('the one-two law: the echo cuts the opposite plane, entirely after the main impact', () => {
-  // The echo answers on the opposite plane.
-  assert.equal(echoStage(0), 1);
-  assert.equal(echoStage(1), 0);
-  assert.equal(echoStage(2), 1);
-  for (const mainGrip of GRIPS) {
-    for (const offGrip of GRIPS) {
-      for (const mainStage of [0, 1, 2] as const) {
-        // Silent until the echo beat begins.
-        assert.equal(echoFrame(offGrip, mainStage, ECHO_START - 0.01), null);
-        assert.equal(echoFrame(offGrip, mainStage, 0), null);
-        // The echo's strike window lands entirely after the main
-        // blade's impact — one blade owns the eye at any instant.
-        const mainP = strikePhases(mainGrip);
-        const echoP = strikePhases(offGrip);
-        const span = 1 - ECHO_START;
-        const echoStrikeStart = ECHO_START + span * echoP.hold;
-        assert.ok(
-          echoStrikeStart > mainP.impact + 0.05,
-          `echo cut (${echoStrikeStart.toFixed(2)}) waits for the main impact (${mainP.impact})`,
-        );
-        // Opposite direction to the main cut (scissor, not parallel).
-        if (mainStage !== 2) {
-          const es = echoStage(mainStage);
-          assert.equal(
-            cutSign(offGrip, es),
-            -cutSign(offGrip, mainStage as 0 | 1),
-            'the echo scissors',
-          );
-        }
-        // And the echo lands neutral by the beat's end.
-        const end = echoFrame(offGrip, mainStage, 1)!;
-        assert.ok(Math.abs(end.arm - STRIKE_REST_ARM) < 1e-6, 'echo lands neutral');
-      }
-    }
-  }
-});
+// (The strike vocabulary's readability-law pins moved to strikes.test.ts
+// — THE CUT LIVES IN THE WORLD owns every school's cut choreography.)
 
 test('finishers: coil, POISED hold, snap drive, buried hold — continuous, telegraphed, landed', () => {
   const P = FINISHER_PHASES;

@@ -142,19 +142,6 @@ export function bladeCarriage(
 // - BLEND SAFETY: every channel starts and ends neutral, so the stage
 //   blends cleanly out of and back into the carriage.
 
-export interface StrikeFrame {
-  /** Arm-angle offset from the aim (radians). STRIKE_REST_ARM at both ends. */
-  arm: number;
-  /** Blade angle relative to the arm ray (the rogue base π included). */
-  blade: number;
-  /** Reach multiplier of the base combat reach (1 at both ends). */
-  reach: number;
-  /** Vertical hand offset, units of s (negative = raised). 0 at both ends. */
-  lift: number;
-  /** Torso lean, signed along the cut direction. 0 at both ends. */
-  lean: number;
-}
-
 /** The combat-guard arm offset every strike starts from and lands on. */
 export const STRIKE_REST_ARM = 0.5;
 
@@ -181,216 +168,17 @@ export function strikePhases(grip: Grip): StrikePhases {
     : { coil: 0.24, hold: 0.3, impact: 0.44, ext: 0.6 };
 }
 
-interface StrikeSpec {
-  coilArm: number;
-  impactArm: number;
-  coilLift: number;
-  impactLift: number;
-  coilReach: number;
-  impactReach: number;
-  /** Wrist cock against the sweep at the coil. */
-  cock: number;
-  /** Wrist lead past the arm at impact. */
-  lead: number;
-  /** Peak torso lean into the cut. */
-  lean: number;
-}
-
-/**
- * The choreography table. Standard: the CLEAVE (stage 0) coils the
- * fist high over the shoulder (raised, pulled in) and cuts down-
- * forward to a long low extension — an angular sweep AND a vertical
- * drop, so the diagonal reads from every facing. The RETURN (stage 1)
- * runs the opposite plane: coiled low by the hip, carving back up
- * across the body. Rogue: the CROSS RAKE (stage 0) reaches the fist
- * out high and PULLS it in across the body — the collapsing reach is
- * the "hand pull" signature — and the BACKSLASH (stage 1) flings back
- * out from the tucked hip on a lower line. Rogue arcs run ~60% of the
- * standard span: an assassin slices close, never windmills.
- */
-const STRIKE_SPECS: Record<Grip, [StrikeSpec, StrikeSpec]> = {
-  normal: [
-    // The cleave: over-the-shoulder coil, diagonal cut down-forward.
-    {
-      coilArm: -1.35, impactArm: 1.35,
-      coilLift: -0.3, impactLift: 0.12,
-      coilReach: 0.55, impactReach: 1.45,
-      cock: 0.85, lead: 0.5, lean: 0.14,
-    },
-    // The rising return: low coil at the hip, backhand carving up.
-    {
-      coilArm: 1.35, impactArm: -1.25,
-      coilLift: 0.14, impactLift: -0.18,
-      coilReach: 0.6, impactReach: 1.3,
-      cock: 0.85, lead: 0.5, lean: 0.14,
-    },
-  ],
-  rogue: [
-    // The cross rake: reach out at the shoulder line, PULL in across
-    // the body (a raised coil rode the fist in front of the face).
-    {
-      coilArm: -0.95, impactArm: 0.85,
-      coilLift: -0.14, impactLift: 0.1,
-      coilReach: 1.0, impactReach: 0.55,
-      cock: 0.4, lead: 0.3, lean: 0.1,
-    },
-    // The backslash: fling back out from the tucked hip, lower line.
-    {
-      coilArm: 1.05, impactArm: -0.75,
-      coilLift: 0.1, impactLift: -0.04,
-      coilReach: 0.5, impactReach: 1.05,
-      cock: 0.4, lead: 0.3, lean: 0.1,
-    },
-  ],
-};
-
 function easeOut(u: number): number {
   const v = Math.max(0, Math.min(1, u));
   return 1 - (1 - v) * (1 - v);
 }
 
-/** Overshoot past the impact pose the extension settles back from. */
-const IMPACT_OVERSHOOT = 0.09;
-
-/**
- * One melee strike, every channel, as a pure function of the beat
- * clock. Phases: ease into the coil, HOLD cocked, snap the cut with a
- * hair of overshoot, hold the extension, recover to neutral. The blade
- * channel runs the wrist law inside the same clock — cocked against
- * the sweep through the coil, whipping to a lead at impact, settling
- * straight — around the rogue grip's constant π reversal.
- */
-export function strikeFrame(grip: Grip, stage: 0 | 1, t: number): StrikeFrame {
-  const K = STRIKE_SPECS[grip][stage];
-  const P = strikePhases(grip);
-  const base = grip === 'rogue' ? Math.PI : 0;
-  const sgn = Math.sign(K.impactArm - K.coilArm);
-  const ov = sgn * IMPACT_OVERSHOOT;
-  if (t < P.coil) {
-    // Windup: ease in AND out to the coil — a slow gather that makes
-    // the snap read three times faster than anything before it.
-    const e = smooth(t / P.coil);
-    return {
-      arm: STRIKE_REST_ARM + (K.coilArm - STRIKE_REST_ARM) * e,
-      blade: base - sgn * K.cock * e,
-      reach: 1 + (K.coilReach - 1) * e,
-      lift: K.coilLift * e,
-      lean: -sgn * K.lean * 0.6 * e,
-    };
-  }
-  if (t < P.hold) {
-    // The cocked hold — the anticipation frame the eye registers.
-    return {
-      arm: K.coilArm,
-      blade: base - sgn * K.cock,
-      reach: K.coilReach,
-      lift: K.coilLift,
-      lean: -sgn * K.lean * 0.6,
-    };
-  }
-  if (t < P.impact) {
-    // The cut: the whole arc crossed in one snap, wrist whipping from
-    // its cocked lag through to a lead.
-    const e = smooth((t - P.hold) / (P.impact - P.hold));
-    return {
-      arm: K.coilArm + (K.impactArm + ov - K.coilArm) * e,
-      blade: base - sgn * K.cock + sgn * (K.cock + K.lead) * e,
-      reach: K.coilReach + (K.impactReach - K.coilReach) * e,
-      lift: K.coilLift + (K.impactLift - K.coilLift) * e,
-      lean: -sgn * K.lean * 0.6 + sgn * K.lean * 1.6 * e,
-    };
-  }
-  if (t < P.ext) {
-    // The held extension: overshoot settles onto the impact pose and
-    // STAYS — the landed cut, readable at a distance.
-    const e = smooth((t - P.impact) / (P.ext - P.impact));
-    return {
-      arm: K.impactArm + ov * (1 - e),
-      blade: base + sgn * K.lead * (1 - 0.35 * e),
-      reach: K.impactReach,
-      lift: K.impactLift,
-      lean: sgn * K.lean * (1 - 0.25 * e),
-    };
-  }
-  // Recover: ease everything home to neutral.
-  const e = smooth((t - P.ext) / (1 - P.ext));
-  return {
-    arm: K.impactArm + (STRIKE_REST_ARM - K.impactArm) * e,
-    blade: base + sgn * K.lead * 0.65 * (1 - e),
-    reach: K.impactReach + (1 - K.impactReach) * e,
-    lift: K.impactLift * (1 - e),
-    lean: sgn * K.lean * 0.75 * (1 - e),
-  };
-}
-
-export interface StrikeTrail {
-  /** Arm angle (offset from aim) the crescent starts from — the coil. */
-  from: number;
-  /** Arm angle the crescent has swept to — the current arm. */
-  to: number;
-  /** 0..1 fade — full through the cut, dying through the extension. */
-  alpha: number;
-  /** Vertical offset for the crescent's center, units of s. */
-  lift: number;
-}
-
-/**
- * The slash trail as a pure channel: alive from the moment the cut is
- * loosed, chasing the blade to the impact pose, fading through the
- * held extension. The lift centers the crescent on the cut's plane, so
- * a high cleave rings high and a rising return rings low.
- */
-export function strikeTrail(grip: Grip, stage: 0 | 1, t: number): StrikeTrail | null {
-  const P = strikePhases(grip);
-  if (t < P.hold || t > P.ext) return null;
-  const K = STRIKE_SPECS[grip][stage];
-  const f = strikeFrame(grip, stage, t);
-  const alpha = t <= P.impact ? 1 : 1 - smooth((t - P.impact) / (P.ext - P.impact));
-  return {
-    from: K.coilArm,
-    to: f.arm,
-    alpha,
-    lift: (K.coilLift + K.impactLift) / 2,
-  };
-}
-
-// ------------------------------------------------------------- echo
-//
-// THE ONE-TWO LAW (dual wield): the off blade NEVER moves during the
-// main blade's strike phase — one blade owns the eye at any instant.
-// The echo coils while the main blade cuts, and cuts while the main
-// recovers, always on the OPPOSITE plane (stage 0 answers with the
-// stage-1 shape and vice versa) so the pair reads as a scissor — a
-// deliberate one-two, not two arms flailing in parallel.
-
-/** Main-beat t where the off blade's echo beat begins. */
-export const ECHO_START = 0.34;
-
-/** The echo always answers on the opposite plane (the finisher's
- * straight drive is answered by the rising stage-1 cut). */
-export function echoStage(mainStage: 0 | 1 | 2): 0 | 1 {
-  return mainStage === 1 ? 0 : 1;
-}
-
-/**
- * The off blade's echo cut, in MAIN-beat time. Null until the echo
- * begins; then the full strike vocabulary (the off fist's own grip)
- * compressed into the back of the beat. Because the echo reuses the
- * strike specs, every readability law rides along for free — and its
- * strike window lands entirely after the main impact (test-pinned).
- */
-export function echoFrame(grip: Grip, mainStage: 0 | 1 | 2, t: number): StrikeFrame | null {
-  if (t <= ECHO_START) return null;
-  const u = Math.min(1, (t - ECHO_START) / (1 - ECHO_START));
-  return strikeFrame(grip, echoStage(mainStage), u);
-}
-
-/** The echo's slash trail, in main-beat time. */
-export function echoTrail(grip: Grip, mainStage: 0 | 1 | 2, t: number): StrikeTrail | null {
-  if (t <= ECHO_START) return null;
-  const u = Math.min(1, (t - ECHO_START) / (1 - ECHO_START));
-  return strikeTrail(grip, echoStage(mainStage), u);
-}
+// The per-grip cut choreography (specs, frames, trails, the dual echo)
+// moved WHOLE into strikes.ts — THE CUT LIVES IN THE WORLD — where
+// every school's arcs are authored in world space and share one
+// projection with the wake and the layer law. This module keeps what
+// a cut leaves from and lands on: the carriages, the beat tables
+// (strikePhases), the finisher paths below, and the flourishes.
 
 // -------------------------------------------------------- finishers
 
