@@ -85,6 +85,7 @@ import {
   foxLook,
   WOLF_LOOK,
   DIREWOLF_LOOK,
+  OLDFANG_LOOK,
   owlHoverHeight,
   owlLook,
   skeletonLook,
@@ -32875,6 +32876,9 @@ export class Renderer {
       fox_champion: { rootOff: 0.4, rumpH: 0.46, sizeK: 1.3, heavy: 1.15 },
       wolf: { rootOff: 0.38, rumpH: 0.44, sizeK: 1.0, heavy: 1.0 },
       dire_wolf: { rootOff: 0.5, rumpH: 0.52, sizeK: 1.2, heavy: 1.25 },
+      // Old Fang: the crown's brush — dire-rooted, a shade lighter
+      // in the sim (old and rangy), streaming hardest at THE LOPE.
+      wolf_oldfang: { rootOff: 0.48, rumpH: 0.5, sizeK: 1.15, heavy: 1.2 },
     };
     const canid = CANID[defId];
     if (canid) {
@@ -32914,7 +32918,11 @@ export class Renderer {
         ? undefined
         : defId === 'dire_wolf'
           ? { coat: DIREWOLF_LOOK.coat, under: DIREWOLF_LOOK.under, tip: DIREWOLF_LOOK.grizzle, heavy: 1.15 }
-          : { coat: WOLF_LOOK.coat, under: WOLF_LOOK.under, tip: WOLF_LOOK.saddle, heavy: 1.0 };
+          : defId === 'wolf_oldfang'
+            ? // The old king's brush goes WHITE at the tip — the frost
+              // ticking carried all the way out the tail.
+              { coat: OLDFANG_LOOK.coat, under: OLDFANG_LOOK.under, tip: OLDFANG_LOOK.grizzle, heavy: 1.12 }
+            : { coat: WOLF_LOOK.coat, under: WOLF_LOOK.under, tip: WOLF_LOOK.saddle, heavy: 1.0 };
       paintBob = () => {
         const pts = brushSim!.nodes.map((nd) => {
           const sp = this.camera.worldToScreen(nd.x, nd.y, this.w, this.h);
@@ -33037,7 +33045,7 @@ export class Renderer {
         // antlers ride a raised neck and clip at the top edge without
         // their own headroom (user-flagged walking up-screen).
         const headroom =
-          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : defId === 'fox' ? 0.35 : defId === 'fox_champion' ? 0.5 : 0;
+          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'wolf_oldfang' ? 0.32 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : defId === 'fox' ? 0.35 : defId === 'fox_champion' ? 0.5 : 0;
         const top = (spec.bodyRise + (def?.radius ?? 0.3) * 2.2 + headroom) * scale + r;
         const bottom = (spec.rig.legLen + 0.7) * scale;
         return { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom };
@@ -34596,7 +34604,7 @@ export class Renderer {
             ? 0.3
             : c.look.b.defId === 'mudcrab'
               ? 0.35
-              : c.look.b.defId === 'dire_wolf' || c.look.b.defId === 'worg'
+              : c.look.b.defId === 'dire_wolf' || c.look.b.defId === 'wolf_oldfang' || c.look.b.defId === 'worg'
                 ? 0.25
                 // The thrown wing splays a full span past the spine.
                 : c.look.b.defId === 'elder_great_owl'

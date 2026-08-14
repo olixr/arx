@@ -4505,6 +4505,72 @@ Object.assign(PLATES, {
     droplet(c, -0.12, 0.32, 0.24, st);
     dot(c, st.deep, 0.08, 0.24, 0.03);
   },
+  // THE BROTHERHOOD (the wolf crown) — three plates, one sentence.
+  // Hamstring Bite — the low cut: the standing leg nicked above the heel.
+  hamstring_bite: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // The leg that was planted a moment ago.
+    c.strokeStyle = st.mid;
+    c.lineCap = 'round';
+    c.lineWidth = 0.055;
+    c.beginPath();
+    c.moveTo(0.04, -0.4);
+    c.lineTo(-0.04, 0.32);
+    c.stroke();
+    // The bite: a fang wedge in LOW, under everything.
+    poly(c, st.core, [[-0.44, 0.16], [-0.1, 0.24], [-0.32, 0.4]], 0.024);
+    // The slow: cold drag chevrons where the stride used to be.
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.03;
+    for (const d of [0.12, 0.26] as const) {
+      c.beginPath();
+      c.moveTo(0.08 + d, 0.08);
+      c.lineTo(0.2 + d, 0.3);
+      c.stroke();
+    }
+    droplet(c, -0.16, 0.44, 0.18, st);
+  },
+  // Call the Brotherhood — the muzzle thrown up, and the eyes that answer.
+  call_the_brotherhood: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    // The call leaving the raised muzzle in nested rings.
+    c.strokeStyle = st.mid;
+    c.lineCap = 'round';
+    c.lineWidth = 0.032;
+    for (const r of [0.16, 0.27, 0.38] as const) {
+      c.beginPath();
+      c.arc(0.06, -0.08, r, -Math.PI * 0.75, -Math.PI * 0.15);
+      c.stroke();
+    }
+    // The muzzle: a wedge thrown skyward.
+    poly(c, st.core, [[-0.3, 0.3], [-0.02, -0.1], [0.1, 0.2]], 0.024);
+    // The brotherhood answers: paired eyes opening in the dark.
+    dot(c, st.spark, -0.36, -0.24, 0.032);
+    dot(c, st.spark, -0.28, -0.26, 0.032);
+    dot(c, st.spark, -0.4, 0.0, 0.032);
+    dot(c, st.spark, -0.32, -0.02, 0.032);
+  },
+  // Throat Lunge — the flat silent return, straight through where you stand.
+  throat_lunge: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // The line of the run: dead level — no arc, no warning.
+    c.strokeStyle = st.mid;
+    c.lineCap = 'round';
+    c.lineWidth = 0.06;
+    c.beginPath();
+    c.moveTo(-0.44, 0.04);
+    c.lineTo(0.3, 0.0);
+    c.stroke();
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(-0.44, 0.16);
+    c.lineTo(-0.02, 0.12);
+    c.stroke();
+    // Jaws open at the head of the line.
+    poly(c, st.core, [[0.22, -0.04], [0.48, -0.22], [0.34, 0.0]], 0.024);
+    poly(c, st.core, [[0.2, 0.06], [0.5, 0.16], [0.3, 0.12]], 0.024);
+    droplet(c, -0.2, 0.3, 0.2, st);
+  },
   // Shrilling Dart — the bat folded into its scream-dive.
   shrilling_dart: (st) => (c) => {
     c.translate(0.5, 0.46);

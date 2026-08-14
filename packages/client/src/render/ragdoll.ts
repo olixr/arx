@@ -37,6 +37,7 @@ import {
   CATTLE_LOOKS,
   CRAB_LOOK,
   DIREWOLF_LOOK,
+  OLDFANG_LOOK,
   RAM_LOOK,
   RAT_LOOK,
   SPIDER_LOOK,
@@ -1630,7 +1631,8 @@ export function drawBeastRagdoll(
     ctx.beginPath();
     facetCircle(ctx, tx, tipY, s * 0.038, 5, spineA);
     ctx.fill();
-  } else if (look.defId === 'dire_wolf') {
+  } else if (look.defId === 'dire_wolf' || look.defId === 'wolf_oldfang') {
+    const dlk = look.defId === 'wolf_oldfang' ? OLDFANG_LOOK : DIREWOLF_LOOK;
     // The great brush lies limp, the frost tip still pale on the dead.
     const tx = rear.x - Math.cos(spineA) * len * 0.58;
     const tipY = f.ay + g[0]!.floor * f.s + s * 0.02;
@@ -1786,10 +1788,10 @@ export function drawBeastRagdoll(
       topScale: 0.5,
       botH: 0.02,
     });
-  } else if (look.defId === 'dire_wolf') {
+  } else if (look.defId === 'dire_wolf' || look.defId === 'wolf_oldfang') {
     // The hackle ridge keeps the corpse's identity — paintDireWolfBody
     // draws it outside the hull, so it survives the collapse.
-    paintDireWolfBody(ctx, spec, DIREWOLF_LOOK, {
+    paintDireWolfBody(ctx, spec, look.defId === 'wolf_oldfang' ? OLDFANG_LOOK : DIREWOLF_LOOK, {
       bx: midX,
       gy: midY + r * 0.4,
       s,
@@ -2110,9 +2112,9 @@ export function drawBeastRagdoll(
       ys: 1,
       dead: true,
     });
-  } else if (look.defId === 'dire_wolf') {
+  } else if (look.defId === 'dire_wolf' || look.defId === 'wolf_oldfang') {
     // The ember goes out — dead eyes law, notch and fangs stay.
-    drawDireWolfHead(ctx, DIREWOLF_LOOK, {
+    drawDireWolfHead(ctx, look.defId === 'wolf_oldfang' ? OLDFANG_LOOK : DIREWOLF_LOOK, {
       x: head.x,
       y: head.y,
       s,

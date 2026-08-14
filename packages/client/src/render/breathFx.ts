@@ -389,6 +389,22 @@ export const BREATH_DIALECTS: Record<string, BreathDialect> = {
   rending_lunge: {
     charge: (c, x, y) => dust.deployments.kick!(c, x, y, { scale: 0.45, dur: 0.6 }),
   },
+  // THE BROTHERHOOD (the wolf crown) — three breaths, one sentence.
+  // Hamstring Bite: he drops LOW — a skirt of grit shivers out under
+  // the crouch before the cut.
+  hamstring_bite: {
+    charge: (c, x, y) => dust.deployments.skirt!(c, x, y, { scale: 0.4, dur: 0.5 }),
+  },
+  // Call the Brotherhood: he sets his feet on ground he trusts and
+  // the dusk gathers — the call is coming, and so are they.
+  call_the_brotherhood: {
+    charge: (c, x, y) => shadow.deployments.bloom!(c, x, y, { scale: 0.5, dur: 0.8 }),
+  },
+  // Throat Lunge: the haunches coil for the flat return — dirt kicks
+  // harder than any first strike; he is coming back THROUGH you.
+  throat_lunge: {
+    charge: (c, x, y) => dust.deployments.kick!(c, x, y, { scale: 0.55, dur: 0.55 }),
+  },
   // Shrilling Dart: dusk gathers on the folded wings.
   shrilling_dart: {
     charge: (c, x, y) => shadow.deployments.bloom!(c, x, y, { scale: 0.35, dur: 0.6 }),

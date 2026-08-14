@@ -556,6 +556,13 @@ export const FX_STYLES: Record<string, FxStyle> = {
   gnawed_mending: VERDANT({ mid: '#7ac46a', ring: 'halo', debris: 'leaf', decal: undefined, motif: 'bloom', punch: 0.4, wash: 0.3 }),
   marrow_chill: FROST({ mid: '#b8c4d8', ring: 'frost', debris: 'ice', decal: 'rime', motif: 'echo', punch: 0.6, wash: 0.4 }),
   rending_lunge: BLOOD({ mid: '#c9a44a', ring: 'shards', debris: 'blood', decal: 'stain', punch: 0.55, wash: 0.3 }),
+  // THE BROTHERHOOD (the wolf crown) — winter-iron over blood: the
+  // hamstring is a low cold cut, the call is the howl family's echo
+  // in frost-grey, the return lunge is the gnoll's word gone pale
+  // and silent (moon-steel mid where the packlord runs amber).
+  hamstring_bite: BLOOD({ mid: '#8f96a8', ring: 'shards', debris: 'blood', decal: 'stain', punch: 0.45, wash: 0.25 }),
+  call_the_brotherhood: SHADOW({ mid: '#8a94b8', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.65, wash: 0.35 }),
+  throat_lunge: BLOOD({ mid: '#b8bfd4', ring: 'shards', debris: 'blood', decal: 'stain', punch: 0.6, wash: 0.3 }),
   shrilling_dart: SHADOW({ mid: '#8a7458', ring: 'halo', debris: 'spark', decal: undefined, punch: 0.35, wash: 0.2 }),
 
   // ------------------- THE EARTH STANDS UP (golem arts, docs/golems-plan.md)

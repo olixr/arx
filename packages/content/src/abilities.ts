@@ -3784,6 +3784,53 @@ const defs: AbilityDef[] = [
     dashTiles: 3,
     status: { status: 'bleed', power: 2, durationTicks: 70 },
   },
+  // ------------------------------------------------------------------
+  // THE BROTHERHOOD (docs/boss-system-plan.md, the wolf crown): the
+  // old wolf's three words — the hamstring that slows you, the call
+  // that is spoken FROM DISTANCE (the lope carries him away first),
+  // and the flat silent return. Together they are one sentence:
+  // harry, break, call, come back through you.
+  // ------------------------------------------------------------------
+  {
+    id: 'hamstring_bite',
+    name: 'Hamstring Bite',
+    desc: 'He goes low, under everything, for the tendon above the heel. You will keep standing — just not quickly.',
+    color: '#8f96a8',
+    code: 'Hb',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'melee_arc',
+    damage: 3,
+    range: 1.6,
+    arc: 0.9,
+    // THE SLOW: heavier cold than any howl — the whole point of the bite.
+    status: { status: 'chill', power: 2, durationTicks: 80 },
+  },
+  {
+    id: 'call_the_brotherhood',
+    name: 'Call the Brotherhood',
+    desc: 'He breaks away, sets his feet on ground he trusts, and calls. The answer comes on four legs, from every shadow at once.',
+    color: '#8a94b8',
+    code: 'Cb',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'summon',
+    damage: 0,
+    // THE BROTHERHOOD LANE: real wolves, capped alive, born into his
+    // fight — and scaled to HIS spawned level, so the pack grows with
+    // the court that holds him.
+    summonNpc: { npc: 'wolf', count: 2, capAlive: 3, levelDelta: -4 },
+  },
+  {
+    id: 'throat_lunge',
+    name: 'Throat Lunge',
+    desc: 'The return of the wolf that ran: flat, silent, and straight through where you stand.',
+    color: '#b8bfd4',
+    code: 'Tl',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'dash_strike',
+    damage: 5,
+    dashTiles: 4,
+    status: { status: 'bleed', power: 2, durationTicks: 80 },
+  },
   {
     id: 'shrilling_dart',
     name: 'Shrilling Dart',

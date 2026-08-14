@@ -12,7 +12,7 @@
   ],
   "garrison": [
     {
-      "npc": "dire_wolf",
+      "npc": "wolf_oldfang",
       "count": [
         1,
         1
@@ -20,9 +20,9 @@
       "role": "holdfast",
       "levelOffset": 4,
       "names": [
+        "Old Fang",
         "Greyjaw",
         "Hollowhowl",
-        "The Pale Mother",
         "Snagtooth",
         "Ashpelt",
         "The Long Shadow"

@@ -9626,6 +9626,27 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     foot: 'paw',
     legColor: '#3e3a48',
   },
+  // OLD FANG: the crown's carriage — longer-strided than the wolf,
+  // leaner than the dire, built around THE LOPE (the break-away
+  // sprint is his signature move, and the legs must sell it).
+  wolf_oldfang: {
+    rig: {
+      legs: quadLegs(0.32, 0.14),
+      legLen: 0.45,
+      rise: 0.38,
+      liftAmp: 0.105,
+      runSpeed: 4.8,
+      turnRate: 8,
+    },
+    bodyLen: 0.5,
+    bodyRise: 0.46,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.09,
+    foot: 'paw',
+    legColor: '#5a5448',
+  },
   // The war-hound: front legs longer than the rear carriage suggests —
   // the hyena slope on the move, fast and wrong-looking.
   worg: {

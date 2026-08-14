@@ -41,6 +41,16 @@ export interface NpcKitEntry {
   /** Fire also rallies the pack (bounded), the old howl behavior — authored, not implied. */
   rally?: boolean;
   /**
+   * THE LOPE (docs/boss-system-plan.md, the wolf crown): this voice is
+   * spoken FROM DISTANCE — picked in close, the body breaks away at a
+   * sprint and opens the gap to `minRange` before the wind begins
+   * (cornered at a wall or timed out, the word is spoken where it
+   * stands). minRange is the DESTINATION, not an eligibility gate, so
+   * a lope entry stays pickable at any closer range. Requires
+   * minRange > 0. The hit-and-run verb: harry, break, call, return.
+   */
+  lope?: boolean;
+  /**
    * THE DREAD CROWN (docs/boss-system-plan.md): entry wakes at this
    * boss phase and after (0-based; absent = 0, the opening stance).
    * Only meaningful on a def that wears a `boss` block.
@@ -1526,6 +1536,82 @@ const defs: NpcDef[] = [
     kit: [{ ability: 'rallying_howl', cooldownTicks: 150, maxRange: 4.5, rally: true }],
   },
   {
+    // OLD FANG (docs/boss-system-plan.md, the wolf crown): the
+    // entry-level crown — the first boss most hunters meet, and the
+    // one that TEACHES what a crown is. His whole fight is one lived
+    // sentence: the hamstring slows you, the basics tear you, then
+    // THE LOPE — he breaks away at a dead sprint, calls the
+    // brotherhood from ground he trusts, and comes back through you
+    // flat and silent. Nothing about him needs a mastered school:
+    // knockback and stun both land near-whole (the lesson boss), the
+    // call is loud and interruptible if you can run him down, and
+    // every summoned brother scales with the court that holds him —
+    // the same crown grows harder up the stronghold tiers.
+    id: 'wolf_oldfang',
+    name: 'Old Fang',
+    level: 16,
+    maxHp: 110,
+    damage: 4,
+    attackRange: 1.1,
+    attackCooldownTicks: 36,
+    aggroRange: 7,
+    sightArc: 240,
+    leashRange: 32,
+    speed: 4.8,
+    xpReward: 460,
+    loot: ['dire_wolf', 'wolf_wardrobe', 'wolf_arms', 'champion_armory', 'heirlooms'],
+    respawnSec: 120,
+    color: '#7a7468',
+    radius: 0.44,
+    hitHeight: 1.5,
+    // Old jaws still tear — running from him keeps costing you.
+    attackStatus: { status: 'bleed', power: 1, durationTicks: 60 },
+    pounce: true,
+    pack: 'wolfkin',
+    resist: ['chill'], // winter-born: the cold is his country
+    weak: ['burn'],
+    kit: [
+      // The opener: low, under everything, for the tendon — the slow
+      // that makes the whole sentence land.
+      { ability: 'hamstring_bite', cooldownTicks: 160, windupTicks: 10, maxRange: 1.8, weight: 2 },
+      // THE LOPE: picked in close, he breaks AWAY first — the call is
+      // spoken at five tiles, loud and honest, and the brotherhood
+      // answers. The chain is the return: flat, silent, through you.
+      { ability: 'call_the_brotherhood', cooldownTicks: 380, windupTicks: 18, minRange: 5, maxRange: 30, lope: true, rally: true, then: 'throat_lunge' },
+      // The return lunge also stands alone once a gap opens — kiting
+      // him is never free ground.
+      { ability: 'throat_lunge', cooldownTicks: 200, windupTicks: 12, minRange: 2, maxRange: 6 },
+    ],
+    boss: {
+      title: 'First of the Brotherhood',
+      phases: [
+        { name: 'The Circling' },
+        {
+          hpBelow: 0.65,
+          name: 'The Call',
+          bark: 'Brothers! To me!',
+          entry: 'call_the_brotherhood',
+          cdMult: 0.9,
+        },
+        {
+          hpBelow: 0.3,
+          name: 'Red Snow',
+          bark: 'The wood buries what it starves.',
+          entry: 'throat_lunge',
+          cdMult: 0.75,
+          speedMult: 1.2,
+        },
+      ],
+      // The lesson boss: hard control lands near-whole on purpose —
+      // this crown teaches the loop, it does not demand a school.
+      knockbackMult: 0.8,
+      stunMult: 1,
+      arenaR: 18, // room enough for the lope to breathe
+      engageBark: 'This wood is ours, little hunter.',
+      defeatBark: 'The brotherhood... runs on without me...',
+    },
+  },
+  {
     id: 'lynx_young',
     name: 'Young lynx',
     level: 8,
@@ -2172,6 +2258,13 @@ export function validateNpcDef(
         }
         if (k?.rally !== undefined && typeof k.rally !== 'boolean') {
           errors.push(`${at}.rally must be a boolean`);
+        }
+        if (k?.lope !== undefined) {
+          if (typeof k.lope !== 'boolean') {
+            errors.push(`${at}.lope must be a boolean`);
+          } else if (k.lope && (typeof k.minRange !== 'number' || (k.minRange as number) <= 0)) {
+            errors.push(`${at}.lope requires minRange > 0 (the gap the body opens before it speaks)`);
+          }
         }
         if (
           typeof k?.minRange === 'number' && typeof k?.maxRange === 'number' &&

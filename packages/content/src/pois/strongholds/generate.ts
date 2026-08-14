@@ -221,7 +221,11 @@ export const FAMILY_STYLES: ReadonlyMap<string, FamilyStyle> = new Map<string, F
       sentinel: { npc: 'worg', band: [1, 1], minTier: 4 },
       guard: { npc: 'wolf', band: [2, 3] },
       captain: { npc: 'worg', band: [1, 1] },
-      bossNpc: 'dire_wolf',
+      // THE DREAD CROWN: the denheart belongs to Old Fang — the
+      // entry crown whose whole fight is THE LOPE (harry, break,
+      // call the brotherhood, return). Scales up the tiers with the
+      // fort that holds him.
+      bossNpc: 'wolf_oldfang',
       bossOffset: 4,
       accents: [Tile.BonePile, Tile.SkullPile],
       hearthGear: [Tile.BonePile, Tile.SkullPile, Tile.HideFrame],

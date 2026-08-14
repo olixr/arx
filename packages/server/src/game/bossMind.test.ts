@@ -28,6 +28,7 @@ type Fn = (...a: unknown[]) => unknown;
 const proto = GameServer.prototype as unknown as {
   pickKitEntry: Fn;
   beginNpcCast: Fn;
+  beginOrLope: Fn;
   fireNpcCast: Fn;
   cancelNpcCast: Fn;
   tickBossCrown: Fn;
@@ -63,6 +64,8 @@ interface FakeNpc {
   bossPhase?: number;
   bossChainIdx?: number | null;
   bossLastKitIdx?: number;
+  lopeIdx?: number | null;
+  lopeUntilTick?: number;
 }
 
 function mkBossNpc(kit: NpcKitEntry[], boss: NpcBossDef = LADDER, over: Partial<FakeNpc> = {}): FakeNpc {
@@ -99,6 +102,7 @@ function slate(opts: { hp?: { hp: number; maxHp: number } } = {}) {
     rallyPack: () => {},
     sayAloud: (_eid: number, _from: string, text: string) => said.push(text),
     beginNpcCast: proto.beginNpcCast,
+    beginOrLope: proto.beginOrLope,
     fireNpcCast: proto.fireNpcCast,
     cancelNpcCast: proto.cancelNpcCast,
   };
@@ -204,18 +208,52 @@ test('the turning: a crossed gate barks, waives the entry, and winds it honestly
 });
 
 test('the arena holds the crown: a rim-bound retreat plants instead of self-leashing', () => {
+  // The slate carries the seat table too — a stamped court's own
+  // arenaR override outranks the authored radius (the delve law).
+  const arenaSlate = { spawnPoints: [] };
   const npc = mkBossNpc([{ ...GS }], { ...LADDER, arenaR: 10 });
   const rim = (dx: number, x: number): boolean =>
-    (proto.bossAtArenaRim as Fn).call({}, npc, { x, y: 0 }, dx, 0) as boolean;
+    (proto.bossAtArenaRim as Fn).call(arenaSlate, npc, { x, y: 0 }, dx, 0) as boolean;
   assert.ok(rim(1, 9.5), 'walking outward at the rim is refused');
   assert.ok(!rim(1, 4), 'a mid-arena retreat is free ground');
   assert.ok(!rim(-1, 9.5), 'walking INWARD at the rim is always free');
   const flesh = mkBossNpc([{ ...GS }]);
   flesh.def.boss = undefined;
   assert.ok(
-    !((proto.bossAtArenaRim as Fn).call({}, flesh, { x: 9.5, y: 0 }, 1, 0) as boolean),
+    !((proto.bossAtArenaRim as Fn).call(arenaSlate, flesh, { x: 9.5, y: 0 }, 1, 0) as boolean),
     'plain flesh never planted — the rim is a crown law',
   );
+});
+
+test('THE LOPE: minRange gates nothing at the pick — the gap is opened, not required', () => {
+  const { self } = slate();
+  const kit: NpcKitEntry[] = [
+    { ability: 'rallying_howl', cooldownTicks: 150, minRange: 5, maxRange: 30, lope: true },
+  ];
+  const npc = mkBossNpc(kit);
+  assert.equal((proto.pickKitEntry as Fn).call(self, 7, npc, 1.2), 0, 'picked point-blank');
+  const plain: NpcKitEntry[] = [{ ability: 'rallying_howl', cooldownTicks: 150, minRange: 5 }];
+  const still = mkBossNpc(plain);
+  assert.equal(
+    (proto.pickKitEntry as Fn).call(self, 7, still, 1.2),
+    -1,
+    'an unloped band still gates — the lope is authored, never implied',
+  );
+});
+
+test('THE LOPE: picked in close the body runs before it speaks; at the gap the wind begins', () => {
+  const { self } = slate();
+  const kit: NpcKitEntry[] = [
+    { ability: 'rallying_howl', cooldownTicks: 150, windupTicks: 12, minRange: 5, maxRange: 30, lope: true },
+  ];
+  const npc = mkBossNpc(kit);
+  (proto.beginOrLope as Fn).call(self, 7, npc, 0, 1.2, { x: 11, y: 10 });
+  assert.equal(npc.lopeIdx, 0, 'the run is queued, not the cast');
+  assert.equal(npc.casting, null, 'no wind yet — the flight comes first');
+  assert.ok((npc.lopeUntilTick ?? 0) > 200, 'the honesty clock is set');
+  npc.lopeIdx = null;
+  (proto.beginOrLope as Fn).call(self, 7, npc, 0, 6, { x: 16, y: 10 });
+  assert.ok(npc.casting, 'standing at the gap, the same gate winds on the spot');
 });
 
 test('the turning is idempotent: a standing rung turns no ceremony twice', () => {

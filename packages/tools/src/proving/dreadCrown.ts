@@ -666,6 +666,72 @@ async function main(): Promise<void> {
     JSON.stringify(anvil.meta.boss),
   );
 
+  // ================================================================
+  // S5 — THE BROTHERHOOD: the wolf crown's whole sentence, live.
+  // Harry (the hamstring tells), the TURN, then THE LOPE — the body
+  // must be far from the prover when the call leaves it (he RAN
+  // before he spoke), the brotherhood must be real bodies, and the
+  // chained return must wind. This is the fight the crown was
+  // designed around; the receipts walk its exact loop.
+  // ================================================================
+  // Claim fresh ground FIRST — S4 left three standing crowns at the
+  // old court, and a meal eaten mid-mauling never fills the bar.
+  await claimCourt();
+  await eatToFull(a);
+  const fang = await spawnCrown(a, 'wolf_oldfang');
+  receipt(
+    "THE FIRST BROTHER: the wolf crown rides the wire whole",
+    fang.meta.boss?.phases === 3 &&
+      fang.meta.boss?.title === 'First of the Brotherhood' &&
+      JSON.stringify(fang.meta.boss?.gates) === '[0.65,0.3]',
+    JSON.stringify(fang.meta.boss),
+  );
+  await woundTo(a, fang.eid, 250); // first blood opens the fight
+  await a.waitFor(
+    (m) => m.t === 'fx' && m.kind === 'charge' && m.eid === fang.eid && m.id === 'hamstring_bite',
+    'the hamstring tell',
+    25_000,
+    0, // eid+id-scoped: the harry may lawfully open before the mark
+  );
+  receipt('THE HARRY: the hamstring winds low and honest', true);
+  const preTurnMark = a.mark();
+  await woundTo(a, fang.eid, pct(0.65)); // cross the first gate
+  await a.waitFor(
+    (m) => m.t === 'chat' && m.eid === fang.eid && /Brothers/i.test(m.text ?? ''),
+    'the call bark',
+    10_000,
+    0,
+  );
+  const callFx = await a.waitFor(
+    (m) => m.t === 'fx' && m.kind === 'summon' && m.id === 'call_the_brotherhood',
+    'the call itself',
+    25_000,
+    preTurnMark,
+  );
+  const me = a.own();
+  const callDist = Math.hypot((callFx.x ?? 0) - me.x, (callFx.y ?? 0) - me.y);
+  receipt(
+    'THE LOPE: he ran before he called — the word leaves him tiles away',
+    callDist >= 3.5,
+    `called at ${callDist.toFixed(1)} tiles`,
+  );
+  await a.waitFor(
+    (m) =>
+      (m.t === 'enter' || m.t === 'update') &&
+      m.entities?.some((e: Msg) => e.defId === 'wolf'),
+    'the brotherhood arriving',
+    10_000,
+    preTurnMark,
+  );
+  receipt('THE BROTHERHOOD COMES: real wolves answer the call', true);
+  await a.waitFor(
+    (m) => m.t === 'fx' && m.kind === 'charge' && m.eid === fang.eid && m.id === 'throat_lunge',
+    'the chained return',
+    20_000,
+    preTurnMark,
+  );
+  receipt('THE RETURN: the flat lunge winds — the chain brings him back through you', true);
+
   console.log(`\nTHE PROVING STANDS: ${passed} receipts, every one honest.`);
   process.exit(0);
 }

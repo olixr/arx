@@ -942,6 +942,16 @@ interface NpcComp {
   bossChainIdx?: number | null;
   /** THE UNREPEATED HAND: last kit index fired — its weight quarters on the next pick. */
   bossLastKitIdx?: number;
+  /**
+   * THE LOPE (docs/boss-system-plan.md, the wolf crown): kit index the
+   * body is opening distance FOR — it sprints away from its quarry
+   * until the entry's minRange gap stands (or the run times out, or
+   * an arena rim plants it), then the wind begins. Null/absent = not
+   * loping. Optional-bank idiom.
+   */
+  lopeIdx?: number | null;
+  /** The lope's honesty clock: at this tick the word is spoken where it stands. */
+  lopeUntilTick?: number;
   /** Livestock: earliest wall-clock ms this animal may be milked again. */
   nextProduceAt: number;
   /** Hands on the flank: the idle wander stands still until this tick. */
@@ -21427,7 +21437,14 @@ export class GameServer {
       navStuck: 0,
       navRefX: Infinity,
       navRefY: Infinity,
-      noAggroUntilTick: 0,
+      // THE FIRST BREATH: a body new to the world takes one second
+      // before its eyes open. Nobody legitimate ever notices (real
+      // placements spawn with no players near), but it closes the
+      // dev-spawn race where a fresh boss's first perception tick
+      // could open the fight — and speak its engage bark — before
+      // any watcher's interest set held the body. Forced aggro
+      // (a landed blow, a summoner's call) bypasses this untouched.
+      noAggroUntilTick: this.tickCount + 20,
       helpEid: null,
       helpUntilTick: 0,
       helpCalled: false,
@@ -21556,7 +21573,7 @@ export class GameServer {
         navStuck: 0,
         navRefX: Infinity,
         navRefY: Infinity,
-        noAggroUntilTick: 0,
+        noAggroUntilTick: this.tickCount + 20, // THE FIRST BREATH (see spawnNpc)
         helpEid: null,
         helpUntilTick: 0,
         helpCalled: false,
@@ -22773,6 +22790,7 @@ export class GameServer {
     npc.targetEid = null;
     npc.windupTicks = 0;
     this.cancelNpcCast(eid, npc);
+    npc.lopeIdx = null; // a lost quarry ends the run — nothing to call over
     npc.helpEid = null;
     npc.huntUntilTick = this.tickCount + GameServer.SEARCH_TICKS;
     npc.huntWps = null;
@@ -22942,6 +22960,32 @@ export class GameServer {
    * so a champion with three voices never sings a fixed order.
    * Returns the kit index, or -1 when nothing is ready.
    */
+  /** THE LOPE's honesty clock: past this many ticks of flight, the word is spoken where the body stands. */
+  private static readonly LOPE_MAX_TICKS = 70;
+  /** The lope is a dead sprint — the break-away outruns the walk that follows. */
+  private static readonly LOPE_SPRINT_MULT = 1.3;
+
+  /**
+   * THE LOPE gate: a lope entry picked inside its gap sends the body
+   * away first (the sprint is the entry fee and the tell); everything
+   * else winds on the spot through the one cast door.
+   */
+  private beginOrLope(
+    eid: EntityId,
+    npc: NpcComp,
+    idx: number,
+    dist: number,
+    tpos: { x: number; y: number },
+  ): void {
+    const entry = npc.def.kit?.[idx];
+    if (entry?.lope && entry.minRange !== undefined && dist < entry.minRange) {
+      npc.lopeIdx = idx;
+      npc.lopeUntilTick = this.tickCount + GameServer.LOPE_MAX_TICKS;
+      return;
+    }
+    this.beginNpcCast(eid, npc, idx, tpos);
+  }
+
   private pickKitEntry(eid: EntityId, npc: NpcComp, dist: number): number {
     const kit = npc.def.kit;
     const cds = npc.kitCds;
@@ -22958,7 +23002,10 @@ export class GameServer {
       if (!k) continue;
       if ((cds[i] ?? 1) > 0) continue;
       if (k.minLevel !== undefined && npc.def.level < k.minLevel) continue;
-      if (k.minRange !== undefined && dist < k.minRange) continue;
+      // THE LOPE: minRange is the gap the body will OPEN, not an
+      // eligibility gate — a lope voice is pickable from any closer
+      // range (the sprint away is the entry fee).
+      if (!k.lope && k.minRange !== undefined && dist < k.minRange) continue;
       if (k.maxRange !== undefined && dist > k.maxRange) continue;
       if (k.hpBelow !== undefined && frac > k.hpBelow) continue;
       if (k.hpAbove !== undefined && frac < k.hpAbove) continue;
@@ -23224,7 +23271,13 @@ export class GameServer {
         if (npc.casting) this.cancelNpcCast(eid, npc);
         npc.kitCds[idx] = 0;
         npc.windupTicks = 0;
-        this.beginNpcCast(eid, npc, idx, tpos);
+        npc.lopeIdx = null; // the turn re-deals every pending run
+        // THE LOPE holds at the turn too: a from-distance entry still
+        // breaks away before it speaks — free of cooldown, never of
+        // the flight (the run IS the ceremony for a hit-and-run crown).
+        const tpos2b = this.positions.get(eid);
+        const d = tpos2b ? Math.hypot(tpos.x - tpos2b.x, tpos.y - tpos2b.y) : Infinity;
+        this.beginOrLope(eid, npc, idx, d, tpos);
       }
     }
   }
@@ -23383,6 +23436,7 @@ export class GameServer {
           npc.targetEid = null;
           npc.windupTicks = 0;
           this.cancelNpcCast(eid, npc);
+          npc.lopeIdx = null;
           npc.navBest = Infinity;
           npc.navStuck = 0;
         } else if (!tpos || sightBroke) {
@@ -23402,10 +23456,12 @@ export class GameServer {
           // THE KIT: when the hands are free and the quarry stands in
           // view (no casting at ghosts — the basic-swing law), pick an
           // eligible voice. Wind-up entries plant the body below;
-          // windup-0 entries fire on the spot (the old special).
+          // windup-0 entries fire on the spot (the old special). A
+          // body mid-lope is already committed to its word.
           if (
             !npc.casting &&
             npc.windupTicks === 0 &&
+            npc.lopeIdx == null &&
             npc.def.kit &&
             this.tickCount - npc.alertSeenTick <= GameServer.PERCEPTION_PERIOD
           ) {
@@ -23414,14 +23470,40 @@ export class GameServer {
             const link = npc.bossChainIdx ?? null;
             if (link !== null && npc.def.kit[link]) {
               npc.bossChainIdx = null;
-              this.beginNpcCast(eid, npc, link, tpos);
+              this.beginOrLope(eid, npc, link, dist, tpos);
             } else {
               const pick = this.pickKitEntry(eid, npc, dist);
-              if (pick >= 0) this.beginNpcCast(eid, npc, pick, tpos);
+              if (pick >= 0) this.beginOrLope(eid, npc, pick, dist, tpos);
             }
           }
 
-          if (npc.casting) {
+          if (npc.lopeIdx != null && !npc.casting && npc.windupTicks === 0) {
+            // THE LOPE: the picked word is spoken from distance — the
+            // body breaks away at a dead sprint until the gap stands.
+            // The honesty clock and the arena rim both end the run
+            // where it is: cornered or out of time, the word is
+            // spoken at the wall. The flight itself is the tell.
+            const idx = npc.lopeIdx;
+            const entry = npc.def.kit?.[idx];
+            if (!entry?.lope) {
+              npc.lopeIdx = null; // the def moved under him — drop the run
+            } else if (
+              dist >= (entry.minRange ?? 0) ||
+              this.tickCount >= (npc.lopeUntilTick ?? 0)
+            ) {
+              npc.lopeIdx = null;
+              this.beginNpcCast(eid, npc, idx, tpos);
+            } else {
+              moveX = -dx / dist;
+              moveY = -dy / dist;
+              // He RUNS — head down the flight line, never a backpedal.
+              pos.dir = Math.atan2(-dy, -dx);
+              if (npc.def.boss && this.bossAtArenaRim(npc, pos, moveX, moveY)) {
+                npc.lopeIdx = null;
+                this.beginNpcCast(eid, npc, idx, tpos);
+              }
+            }
+          } else if (npc.casting) {
             // THE FOE'S BREATH: planted, eyes tracking the quarry,
             // counting the wind down. The plant IS the counterplay
             // window — wail on it, shock it, or leave the ring it is
@@ -23760,6 +23842,7 @@ export class GameServer {
             npc.bossPhase = 0;
             npc.bossChainIdx = null;
             npc.bossLastKitIdx = undefined;
+            npc.lopeIdx = null;
             npc.kitCds = undefined;
             // The banner walks back to the opening stance with the body.
             this.broadcastMetaUpdate(eid);
@@ -23991,6 +24074,9 @@ export class GameServer {
         // The phase's stride: a turned crown may quicken (or slow to
         // a deliberate, dreadful walk — both are authored dials).
         if (npc.def.boss) speed *= bossSpeedMult(npc.def.boss, npc.bossPhase ?? 0);
+        // THE LOPE is a dead sprint — the break-away visibly outruns
+        // the stalk, so the flight reads as intent, not retreat.
+        if (npc.lopeIdx != null) speed *= GameServer.LOPE_SPRINT_MULT;
         // The polite step-aside: converging packmates fan out around
         // a target instead of stacking into one sprite; a returning
         // wanderer eases around whoever it meets.

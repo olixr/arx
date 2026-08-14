@@ -138,6 +138,15 @@ test('validator: THE KIT — floors, bands, fractions, and the aim words', () =>
       e.includes('kit'),
     ),
   );
+  // THE LOPE: a from-distance voice must name the gap it opens.
+  assert.deepEqual(ok([{ ability: 'ground_slam', cooldownTicks: 150, minRange: 5, lope: true }]), []);
+  assert.ok(ok([{ ability: 'x', cooldownTicks: 150, lope: 'yes' }]).some((e) => e.includes('lope')));
+  assert.ok(ok([{ ability: 'x', cooldownTicks: 150, lope: true }]).some((e) => e.includes('lope')));
+  assert.ok(
+    ok([{ ability: 'x', cooldownTicks: 150, lope: true, minRange: 0 }]).some((e) =>
+      e.includes('lope'),
+    ),
+  );
 });
 
 test('validator: THE DREAD CROWN — the boss block laws', () => {

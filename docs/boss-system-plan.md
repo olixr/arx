@@ -297,6 +297,67 @@ cavern's "Broodmother" (giant_spider — needs spider voices before a
 lawful crown), stronghold-theme dungeon's "Hold-Warden" (troll), the
 brigand/wolfkin stronghold seats (brigand_reaver / dire_wolf).
 
+## THE BROTHERHOOD — the wolf crown and THE LOPE (2026-08-14, third session)
+
+The user's mandate: a wolf boss with strategy and life to him — attack,
+slow the player, make them bleed, then RUN BACK and call his wolf
+brotherhood; a great entry-level boss that grows with the levels.
+
+**THE LOPE (new kit-rail verb, engine law).** `NpcKitEntry.lope` marks
+a voice spoken FROM DISTANCE: picked in close, the body does not wind —
+it breaks away at a dead sprint (LOPE_SPRINT_MULT 1.3, head down the
+flight line, never a backpedal) until the entry's `minRange` gap stands,
+then plants and winds honestly. `minRange` on a lope entry is the
+DESTINATION, not an eligibility gate (pickKitEntry skips the min-band
+for lope voices; validator: lope requires minRange > 0). The honesty
+clock (LOPE_MAX_TICKS 70) and the arena rim both end the run where it
+stands — cornered or out of time, the word is spoken at the wall. The
+turn's free entry honors the lope too (the run IS the ceremony for a
+hit-and-run crown); a lost quarry, the leash, and the crown reset all
+drop a pending run. State: NpcComp.lopeIdx/lopeUntilTick, optional-bank.
+Composable by ANY body, boss or not — the hit-and-run species verb.
+
+**Three new wolf voices** (full faces per LAW 8: FX style + spell-plate
++ breath dialect each): `hamstring_bite` (melee_arc, chill 2×80 — THE
+SLOW), `call_the_brotherhood` (summon: wolf ×2, capAlive 3, levelDelta
+−4 — and the summon lane scales adds to the CASTER'S spawned level, so
+the brotherhood grows with the court), `throat_lunge` (dash_strike 4
+tiles, bleed 2×80 — the flat silent return).
+
+**`wolf_oldfang` — Old Fang, First of the Brotherhood** (L16, the
+entry crown, the lesson boss): kit = hamstring (windup 10 — never
+slips the charge emitter's 10-tick cadence), call (lope minRange 5,
+rally, `then` throat_lunge), lunge standalone. The whole fight is one
+lived sentence: harry → slow → bleed → break away → call → come back
+through you. CC lands near-whole on purpose (knockback 0.8 / stun 1)
+— this crown teaches the loop, it does not demand a school. Phases:
+The Circling → The Call @0.65 (entry call, 'Brothers! To me!') → Red
+Snow @0.3 (entry lunge, speed 1.2). Seats: wolfkin stronghold `bossNpc`
+(tiers 3–5 — the same crown grows harder up the forts) + the wolfkin
+great den POI (name pool led by 'Old Fang'). Look: OLDFANG_LOOK on the
+dire-wolf painter (aged iron-grey, HEAVY frost ticking, old-gold eyes,
+white-tipped brush), own BEAST_SPECS carriage, CANID-lane TailSim/
+EarSim row, ragdoll dies in his own coat.
+
+**THE FIRST BREATH (engine law, proving-found).** A freshly spawned
+body's eyes open one second late (noAggroUntilTick = spawn + 20, both
+spawn literals). Real placements never notice (bosses spawn with no
+players near); the law closes the dev-spawn race where a fresh boss's
+first staggered perception tick could open the fight — and spend its
+once-per-engagement bark — before any watcher's interest set held the
+body (the crouch never fully closes the floored point-blank ring, so
+the old sneak-through-spawns lesson was probabilistic, not a fix).
+Forced aggro (a landed blow, a summoner's call) bypasses it untouched.
+
+**Proving = 25 receipts ×2 fresh worlds** (S5 THE BROTHERHOOD): the
+wire receipt, THE HARRY (hamstring charge), THE LOPE — the call fx
+leaves him ≥3.5 tiles from the prover (measured 5.3: he RAN before he
+spoke), THE BROTHERHOOD COMES (real wolf bodies), THE RETURN (the
+chained lunge winds). Lane lessons re-banked: receipt() demands the
+explicit ok argument; S4's three standing crowns mean S5 must claim
+fresh ground BEFORE eating; never rerun diagnostics against a dirtied
+world — capture the log instead.
+
 ## Open questions (recommendation first; proceeding on recommendations)
 
 - **Enrage timers?** REC: no — tempo (`cdMult`) is the honest pressure; a
