@@ -6506,31 +6506,6 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // Seated breath — the resting hands are never a freeze-frame.
     mainY += Math.sin(rig.nowMs * 0.0017) * 0.008 * s * sit;
     offY += Math.sin(rig.nowMs * 0.0017 + 1.4) * 0.008 * s * sit;
-    // THE SEATED PLANT: the seat moved the FIST (to a knee, a prop
-    // behind the hip, a chair arm) but a held blade used to keep its
-    // STANDING carriage rake — from the new, low anchor that rammed
-    // the steel through the shins and the floor, and read as a sword
-    // floating beside empty hands (the user's screenshots). Seated, a
-    // blade RESTS: it rotates to point from wherever the fist settled
-    // toward the ground just outside the sitter — tip grounded beside
-    // the body, the resting warrior's plant. Screen-plane, so the
-    // fore relaxes home. The off blade plants on its own side.
-    if (isSword) {
-      const plantA = Math.atan2(
-        rig.y - mainY,
-        rig.x + (Math.sign(sideS) || 1) * 0.6 * s * wS - mainX,
-      );
-      heldAngle += angleDelta(heldAngle, plantA) * sit;
-      mainFore += (1 - mainFore) * sit;
-    }
-    if (offBlade) {
-      const plantO = Math.atan2(
-        rig.y - offY,
-        rig.x - (Math.sign(sideS) || 1) * 0.6 * s * wS - offX,
-      );
-      offBladeAngle += angleDelta(offBladeAngle, plantO) * sit;
-      offFore += (1 - offFore) * sit;
-    }
     // THE PROP LEAN belongs to the floor sit's planted arms; a chair
     // sit keeps the spine over the hips (the throne dead-upright).
     if (!chairSit) lean += -sideS * profileK * (kneeUpSit ? 0.1 : 0.2) * sit;
@@ -7027,31 +7002,6 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const rootRoll = 0.012 * s * rig.runF * Math.min(1, rig.poleStrength);
   const mainShY = shoulderY + rootB * 0.008 * s + rootSw * rootRoll * mainSideSign;
   const offShY = shoulderY + rootB2 * 0.009 * s - rootSw * rootRoll * mainSideSign;
-  // THE FIST IS ONE FLESH (read-only derivation, post-assembly): the
-  // arm solve clamps its chord to the anatomy (solveLimbInto's
-  // L·2·stretch), so the drawn mitt can stop SHORT of the requested
-  // hand target — and the held weapon, anchored on the raw target,
-  // floated past the hand (the walk/run "gripping the blade" and the
-  // detached-hilt reads). The weapon paints at the SAME clamped fist
-  // the arm ends on: identical formula, identical roots, so steel and
-  // mitt are one point by construction. Inside reach this is the
-  // identity — strikes and draws pass through untouched.
-  const fistClamp = (
-    rx: number,
-    ry: number,
-    tx: number,
-    ty: number,
-  ): { x: number; y: number } => {
-    const dx2 = tx - rx;
-    const dy2 = ty - ry;
-    const d2 = Math.hypot(dx2, dy2);
-    const max2 = ARM_LEN * s * 2 * 1.08;
-    if (d2 <= max2) return { x: tx, y: ty };
-    const k2 = max2 / d2;
-    return { x: rx + dx2 * k2, y: ry + dy2 * k2 };
-  };
-  const mainFistPt = fistClamp(mainShX, mainShY, mainX, mainY);
-  const offFistPt = fistClamp(offShX, offShY, offX, offY);
   if (RIG_DEBUG.on) {
     RIG_DEBUG.x = rig.x;
     RIG_DEBUG.hipY = hipY;
@@ -7149,7 +7099,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // of the hand.
     const offWeapon = offSt?.kind === 'weapon' && rig.offhandItem !== undefined && !archer;
     if (offWeapon && offSt) {
-      drawHeldItem(ctx, rig.offhandItem!, offSt.color, offFistPt.x, offFistPt.y, offBladeAngle, s, rig, {
+      drawHeldItem(ctx, rig.offhandItem!, offSt.color, offX, offY, offBladeAngle, s, rig, {
         ench: rig.offhandEnch,
         flip: offFlip,
         fore: offFore,
@@ -7596,7 +7546,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           ctx.globalAlpha = 1;
         }
       }
-      drawHeldItem(ctx, weapon.id, weapon.color, mainFistPt.x, mainFistPt.y, heldAngle, s, rig, {
+      drawHeldItem(ctx, weapon.id, weapon.color, mainX, mainY, heldAngle, s, rig, {
         grip: staffGrip,
         // THE BOW IS HELD BY THE WOOD — always. The old restSettle
         // blend slid the fist onto the string line whenever the settle

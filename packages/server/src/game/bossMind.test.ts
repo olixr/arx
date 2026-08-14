@@ -31,6 +31,7 @@ const proto = GameServer.prototype as unknown as {
   fireNpcCast: Fn;
   cancelNpcCast: Fn;
   tickBossCrown: Fn;
+  bossAtArenaRim: Fn;
 };
 
 const LADDER: NpcBossDef = {
@@ -57,6 +58,8 @@ interface FakeNpc {
   alertVelY: number;
   poseUntilTick: number;
   windupTicks: number;
+  originX: number;
+  originY: number;
   bossPhase?: number;
   bossChainIdx?: number | null;
   bossLastKitIdx?: number;
@@ -72,6 +75,8 @@ function mkBossNpc(kit: NpcKitEntry[], boss: NpcBossDef = LADDER, over: Partial<
     alertVelY: 0,
     poseUntilTick: 0,
     windupTicks: 0,
+    originX: 0,
+    originY: 0,
     ...over,
   };
 }
@@ -196,6 +201,21 @@ test('the turning: a crossed gate barks, waives the entry, and winds it honestly
   assert.deepEqual(npc.casting, { idx: 0, ticksLeft: 14, total: 14 }, 'the free entry still winds — the turn is loud, never cheap');
   assert.deepEqual(metaSends, [7], 'the banner turns with the crown (the one meta door)');
   assert.ok(fx.some((f) => f.kind === 'summon'), 'the turn gets its moment in the world');
+});
+
+test('the arena holds the crown: a rim-bound retreat plants instead of self-leashing', () => {
+  const npc = mkBossNpc([{ ...GS }], { ...LADDER, arenaR: 10 });
+  const rim = (dx: number, x: number): boolean =>
+    (proto.bossAtArenaRim as Fn).call({}, npc, { x, y: 0 }, dx, 0) as boolean;
+  assert.ok(rim(1, 9.5), 'walking outward at the rim is refused');
+  assert.ok(!rim(1, 4), 'a mid-arena retreat is free ground');
+  assert.ok(!rim(-1, 9.5), 'walking INWARD at the rim is always free');
+  const flesh = mkBossNpc([{ ...GS }]);
+  flesh.def.boss = undefined;
+  assert.ok(
+    !((proto.bossAtArenaRim as Fn).call({}, flesh, { x: 9.5, y: 0 }, 1, 0) as boolean),
+    'plain flesh never planted — the rim is a crown law',
+  );
 });
 
 test('the turning is idempotent: a standing rung turns no ceremony twice', () => {

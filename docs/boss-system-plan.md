@@ -188,6 +188,50 @@ and bone, goblinkind fire and cunning. Content-boundary rule holds.
    extensions + `prove:boss` live receipts (phase turn, chain, immunity,
    arena reset, bark, banner meta).
 
+## As built (2026-08-14, one session — the canonical record)
+
+**ALL FOUR PHASES SHIPPED** (ee1cbcb THE CROWN AND THE TURNING →
+cda58cc THE DREAD BANNER + THE FIRST CROWNS → the proving commit).
+`npm run prove:boss -w @arx/tools` = **17 live receipts, run twice on
+fresh worlds** (PORT 8796 + fresh DB_DATABASE per run — THE FRESH
+WORLD LAW; a spent court keeps its leftovers and a reset boss is
+eternal by the arena law, so each fight section claims its own court).
+
+Phase 1 as authored, plus deltas learned in the field:
+- `tickBossCrown` broadcasts the meta re-send and a `summon`-ring
+  moment at the turn (Phase 2 pulled forward into the turn site).
+- **THE ARENA HOLDS THE CROWN** (proving finding, live): a standoff
+  crown's own backpedal marched it over its arena rim — self-leash,
+  full heal, crown reset, mid-fight. `bossAtArenaRim` now plants a
+  crowned body at the rim guard band (outward-bound steps only;
+  inward retreat is always free; plain flesh never planted). Both
+  retreat sites (standoff + thrower backpedal) fold it.
+- Meta: `EntityMeta.boss {title?, phases, phase, phaseName?}` —
+  additive, still v30, changelog-recorded; re-sent through
+  `broadcastMetaUpdate` (the one meta door) on turn and arena reset.
+- Client: `ui/bossBanner.ts` + `styles/boss.css` (tokens only; felled
+  beat 2.2s; reveal rides `phaseName`; QUIET-WIRE-tolerant hp read).
+- Crowns: `skeleton_fallen_king` (crypt seat, sweep→slam chain,
+  raise-the-fallen court) + `goblin_flame_tyrant` (goblin capital
+  seat, cinder-ring rally, stunMult 1 = the authored weakness). Both
+  wear bespoke dialect looks (rig.ts ladders) — the goblin/skeleton
+  look contract tests enforce this for every future crown.
+- Loot: the flood law learned `npc.boss !== undefined` = boss station.
+- Tests: bossMind.test.ts 13 engine pins, npcs.test.ts crown+chain
+  validator pins, content.test.ts DREAD CROWN contract (authored
+  crowns walk the CMS validator whole).
+
+**Proving lessons banked** (they will bite again): `t:'use'` not
+'useItem' (the whitelist drops unknowns silently); THE QUIET WIRE
+means staleness is silence, never absence — jiggle to re-read a still
+row; a vitality grant raises the CEILING not the blood (eat to full);
+defence is the armor half that keeps a prover standing; the engage
+bark can race a spawn-side perception tick before any interest set
+holds the body — crouch through dev spawns (real placements never
+race: bosses spawn with no players near); the 20Hz gap-filling
+heartbeat (weapon-sets pattern) is required or seq-domain clocks
+stretch.
+
 ## Open questions (recommendation first; proceeding on recommendations)
 
 - **Enrage timers?** REC: no — tempo (`cdMult`) is the honest pressure; a

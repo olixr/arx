@@ -22759,6 +22759,31 @@ export class GameServer {
     }
   }
 
+  /**
+   * THE ARENA HOLDS THE CROWN: would this retreat heading carry a
+   * crowned body toward its own arena rim? A boss that backpedals
+   * itself over the line self-leashes — full heal, crown reset — and
+   * a kiting player watches a half-dead fight erase itself (the
+   * proving found it live). At the rim the body plants and fights.
+   */
+  private bossAtArenaRim(
+    npc: NpcComp,
+    pos: { x: number; y: number },
+    mx: number,
+    my: number,
+  ): boolean {
+    const boss = npc.def.boss;
+    if (!boss) return false;
+    const r = (boss.arenaR ?? npc.def.leashRange) - 1.2;
+    const cur = Math.hypot(pos.x - npc.originX, pos.y - npc.originY);
+    const nx = pos.x + mx * 0.6;
+    const ny = pos.y + my * 0.6;
+    const next = Math.hypot(nx - npc.originX, ny - npc.originY);
+    // Only an OUTWARD-bound step past the guard band is refused — an
+    // inward retreat is always free ground, wherever it starts.
+    return next > cur && next > r;
+  }
+
   private tickNpcs(now: number): void {
     this.pathfindsLeft = GameServer.MAX_PATHFINDS_PER_TICK;
     for (const [eid, npc] of this.npcs) {
@@ -23023,6 +23048,15 @@ export class GameServer {
             if (dist < npc.def.standoff - 0.5) {
               moveX = -dx / dist;
               moveY = -dy / dist;
+              // THE ARENA HOLDS THE CROWN (proving finding): a crowned
+              // caster's own backpedal must never carry it over its own
+              // arena rim — self-leashing reset a half-dead boss mid-
+              // fight. At the wall it plants and fights: the cornered-
+              // caster counterplay, made architectural.
+              if (npc.def.boss && this.bossAtArenaRim(npc, pos, moveX, moveY)) {
+                moveX = 0;
+                moveY = 0;
+              }
             }
             if (npc.def.ranged && npc.attackCooldown === 0 && dist <= npc.def.attackRange + 0.3) {
               npc.attackCooldown = npc.def.attackCooldownTicks;
@@ -23038,6 +23072,11 @@ export class GameServer {
             pos.dir = Math.atan2(dy, dx);
             moveX = -dx / dist;
             moveY = -dy / dist;
+            // THE ARENA HOLDS THE CROWN: same rim law as the standoff.
+            if (npc.def.boss && this.bossAtArenaRim(npc, pos, moveX, moveY)) {
+              moveX = 0;
+              moveY = 0;
+            }
             if (npc.attackCooldown === 0 && dist <= npc.def.attackRange + 0.3) {
               npc.attackCooldown = npc.def.attackCooldownTicks;
               npc.windupTicks = 8;

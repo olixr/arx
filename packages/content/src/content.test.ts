@@ -44,7 +44,7 @@ import {
 import { ABILITIES, TECHNIQUES, abilityDef } from './abilities.js';
 import { SECRET_ARTS, secretArtDef } from './secretArts.js';
 import { ITEMS, LEGACY_RECIPE_SCROLLS } from './items.js';
-import { NPCS, TOWN_SPAWNS } from './npcs.js';
+import { NPCS, TOWN_SPAWNS, validateNpcDef } from './npcs.js';
 import { LOOT_TABLES } from './loot/tables.js';
 import { RECIPES, recipesForStation } from './recipes.js';
 import { NODES } from './nodes.js';
@@ -170,6 +170,34 @@ test('npc loot, kits, and spawns all resolve — THE KIT contract', () => {
   for (const spawn of TOWN_SPAWNS) {
     assert.ok(NPCS.has(spawn.npc), `spawn '${spawn.npc}' missing`);
   }
+});
+
+test('every crowned foe stands lawful — THE DREAD CROWN contract', () => {
+  // Authored bosses walk the SAME validator gate CMS docs walk, whole:
+  // ladder shape, entry-through-the-kit, chain acyclicity, CC dials in
+  // band. A crown that fails the gate fails the build, loudly.
+  const refs = { lootTables: new Set(LOOT_TABLES.keys()), npcIds: new Set(NPCS.keys()) };
+  let crowned = 0;
+  for (const [id, npc] of NPCS) {
+    if (!npc.boss) continue;
+    crowned++;
+    const errors = validateNpcDef(npc, refs);
+    assert.deepEqual(errors, [], `${id}: ${errors.join('; ')}`);
+    assert.ok(npc.kit && npc.kit.length >= 3, `${id}: a crown carries at least three voices`);
+    // Every rung's entry and every chain link resolves to a living
+    // ability (the validator proves kit membership; this proves the
+    // ability registry holds them too).
+    for (const p of npc.boss.phases) {
+      if (p.entry) assert.ok(abilityDef(p.entry), `${id}: entry '${p.entry}' missing`);
+    }
+    for (const k of npc.kit ?? []) {
+      if (k.then) assert.ok(abilityDef(k.then), `${id}: chain link '${k.then}' missing`);
+    }
+  }
+  // The first crowns hold their seats.
+  assert.ok(crowned >= 2, 'the world fields at least the king and the tyrant');
+  assert.ok(NPCS.get('skeleton_fallen_king')?.boss, 'the crypt seat is crowned');
+  assert.ok(NPCS.get('goblin_flame_tyrant')?.boss, 'the stronghold court is crowned');
 });
 
 test('techniques resolve, ladder is sane, and each style has a tree', () => {
