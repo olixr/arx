@@ -9729,8 +9729,8 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
       runSpeed: 5.0,
       turnRate: 11,
     },
-    // Longer and lower: the arrow body, not a box on stilts.
-    bodyLen: 0.34,
+    // A touch shorter in the chest: the body defers to the brush.
+    bodyLen: 0.32,
     bodyRise: 0.33,
     kneeFwd: [1, 1, -1, -1],
     hipFwd: 0.88,
@@ -9755,7 +9755,7 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
       runSpeed: 5.2,
       turnRate: 10,
     },
-    bodyLen: 0.45,
+    bodyLen: 0.43,
     bodyRise: 0.45,
     kneeFwd: [1, 1, -1, -1],
     hipFwd: 0.88,
@@ -16813,8 +16813,11 @@ export const FOX_LOOKS: Record<string, FoxLook> = {
     haunchH: 0.055,
     chestH: 0.22,
     tuckH: 0.33,
-    headW: 0.24,
-    headH: 0.2,
+    // The head carries a fuller share of the animal than the first
+    // cut gave it — proportional to the body, and broad enough that
+    // the ear roots seat ON the skull at every band.
+    headW: 0.27,
+    headH: 0.22,
   },
   // THE DIRE FOX — the smokebrush vixen, the matriarch. Never a scaled
   // fox and never the dire wolf's wall of meat: she is RANGY, an
@@ -16845,8 +16848,8 @@ export const FOX_LOOKS: Record<string, FoxLook> = {
     haunchH: 0.07,
     chestH: 0.25,
     tuckH: 0.43,
-    headW: 0.3,
-    headH: 0.24,
+    headW: 0.33,
+    headH: 0.26,
     champion: true,
     ember: '#d97a35',
     ruff: '#cbb9a4',
@@ -16936,15 +16939,18 @@ export function paintFoxBody(
   // root. Neither the wolf's keel-and-slab nor the cat's wide-rumped
   // wedge: the taper is the species. What says fox at world zoom is
   // how little body rides how much brush.
+  // The widest station sits just AHEAD of midship and the rump holds
+  // its width — a lithe barrel, never a dart: the first cut's
+  // chest-widest linear taper read as a triangle.
   const foot: Array<[number, number]> = [
-    [hl, -hw * 0.72],
-    [hl, hw * 0.72],
-    [hl * 0.55, hw],
-    [-hl * 0.2, hw * 0.86],
-    [-hl, hw * 0.5],
-    [-hl, -hw * 0.5],
-    [-hl * 0.2, -hw * 0.86],
-    [hl * 0.55, -hw],
+    [hl, -hw * 0.7],
+    [hl, hw * 0.7],
+    [hl * 0.35, hw],
+    [-hl * 0.35, hw * 0.88],
+    [-hl, hw * 0.58],
+    [-hl, -hw * 0.58],
+    [-hl * 0.35, -hw * 0.88],
+    [hl * 0.35, -hw],
   ];
   // Skulk variance: each fox's coat sits a step off the cluster tone.
   const coat = shade(look.coat, (((f.seed >>> 5) & 7) - 3) * 2);
@@ -17088,9 +17094,12 @@ export function drawFoxHead(
   const pin = Math.min(1, snarl * 0.75);
   const carr: EarCarriage = {
     azimuth: 2.1,
-    rootR: look.headW * 0.3,
-    rootLift: look.headH * 0.58,
-    length: look.headW * (queen ? 1.05 : 0.95),
+    // Roots tucked DOWN and IN onto the skull: at the quarter bands
+    // the old high wide orbit projected the root past the drawn
+    // skull's edge and the blades floated free of the head.
+    rootR: look.headW * 0.24,
+    rootLift: look.headH * 0.46,
+    length: look.headW * (queen ? 0.95 : 0.85),
     spread: 0.5,
     rise: 1.3,
     curl: [0, 0.05, 0.12],

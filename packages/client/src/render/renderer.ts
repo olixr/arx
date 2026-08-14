@@ -32868,7 +32868,7 @@ export class Renderer {
         // Root the plume at the RUMP, not the humanoid hip line — a
         // quadruped's tail seated at the default offset roots inside
         // the torso and hangs between the legs.
-        anim.foxBrush = new TailSim(queenB ? 1.15 : 0.9, eid, queenB ? 0.42 : 0.32);
+        anim.foxBrush = new TailSim(queenB ? 1.15 : 0.9, eid, queenB ? 0.4 : 0.3);
       }
       brushSim = anim.foxBrush;
       // THE TAIL RIDES THE POUNCE: drawBeast lunges the painted body

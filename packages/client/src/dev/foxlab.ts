@@ -192,7 +192,7 @@ function drawQuad(
   let ears: EarSim | undefined;
   if (f.defId.startsWith('fox')) {
     const queen = f.defId === 'fox_champion';
-    f.brush ??= new TailSim(queen ? 1.15 : 0.9, seed, queen ? 0.42 : 0.32);
+    f.brush ??= new TailSim(queen ? 1.15 : 0.9, seed, queen ? 0.4 : 0.3);
     let lunge = 0;
     if (attackT > 0) {
       lunge =
