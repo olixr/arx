@@ -42,6 +42,7 @@ const DOOR_UP = {
   saltmere: { x: 367.5, y: 292.5 }, // the pocket by the Pilot's Cot
   pinewatch: { x: 534.5, y: -140.5 }, // the reed bank at the millrace
   hartfell: { x: 845.5, y: -382.5 }, // the yard behind the Speaker's house
+  kingsdelf: { x: -216.5, y: 322.5 }, // the shadow behind the delvers' barracks
 } as const;
 
 export function buildLowhall(): ZoneDef {
@@ -57,16 +58,19 @@ export function buildLowhall(): ZoneDef {
   b.fillRect(5, 19, 5, 6, Tile.StoneFloor); // Silverfall, northwest
   b.fillRect(5, 32, 5, 6, Tile.StoneFloor); // Saltmere, southwest
   b.fillRect(15, 37, 5, 6, Tile.StoneFloor); // Pinewatch, south
+  b.fillRect(23, 34, 5, 7, Tile.StoneFloor); // Kingsdelf, southeast (the sixth door)
   b.portal(17, 15, Tile.PortalUp, DOOR_UP.amberford);
   b.portal(25, 16, Tile.PortalUp, DOOR_UP.hartfell);
   b.portal(7, 20, Tile.PortalUp, DOOR_UP.silverfall);
   b.portal(7, 36, Tile.PortalUp, DOOR_UP.saltmere);
   b.portal(17, 41, Tile.PortalUp, DOOR_UP.pinewatch);
+  b.portal(25, 39, Tile.PortalUp, DOOR_UP.kingsdelf);
   b.sign(19, 16, 'THE AMBERFORD DOOR', ['the ford road', 'mind the miller']);
   b.sign(27, 17, 'THE HARTFELL DOOR', ['the fell road', 'wear wool']);
   b.sign(5, 21, 'THE SILVERFALL DOOR', ['the crown road', 'mind the Magpie\'s rent']);
   b.sign(5, 37, 'THE SALTMERE DOOR', ['the salt road', 'wipe your boots']);
   b.sign(19, 42, 'THE PINEWATCH DOOR', ['the timber road', 'quiet past the boom']);
+  b.sign(27, 36, 'THE KINGSDELF DOOR', ['the unlit road', 'ask for Slate, buy something']);
   b.set(15, 19, Tile.Brazier).set(23, 20, Tile.Brazier);
   b.set(9, 24, Tile.Brazier).set(9, 33, Tile.Brazier).set(15, 38, Tile.Brazier);
   // The Company mark at the ring's heart.

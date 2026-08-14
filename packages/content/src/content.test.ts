@@ -2381,7 +2381,7 @@ test('kingsdelf: every door, stall and stone walks from the Unfinished Stone', (
   }
 });
 
-test('lowhall: the Red Company keeps five doors, a hearth, and clean books', () => {
+test('lowhall: the Red Company keeps six doors, a hearth, and clean books', () => {
   const z = buildLowhall();
   assert.equal(z.id, 'lowhall');
   assert.ok(z.origin.y >= 512, 'the Low Hall must sit below DARK_BAND_Y');
@@ -2392,12 +2392,14 @@ test('lowhall: the Red Company keeps five doors, a hearth, and clean books', () 
   const counts = new Map<number, number>();
   for (const t of z.ground) counts.set(t, (counts.get(t) ?? 0) + 1);
   const n = (t: Tile): number => counts.get(t) ?? 0;
-  // THE FIVE DOORS: one up-portal per city, each landing inside its
+  // THE SIX DOORS: one up-portal per city, each landing inside its
   // own town's rect — and each town's hatch drops back inside the
-  // hall. The web is the whole point.
+  // hall. The web is the whole point. (Kingsdelf cut the sixth door
+  // when the Returning gave the Company an unwatched road worth a
+  // cellar; Dawnmead still keeps none, by Ravna's first rule.)
   const ups = (z.portals ?? []).filter((p) => p.dest);
-  assert.equal(ups.length, 5, 'the ring keeps five doors');
-  const towns = [buildAmberford(), buildSilverfall(), buildSaltmere(), buildPinewatch(), buildHartfell()];
+  assert.equal(ups.length, 6, 'the ring keeps six doors');
+  const towns = [buildAmberford(), buildSilverfall(), buildSaltmere(), buildPinewatch(), buildHartfell(), buildKingsdelf()];
   for (const town of towns) {
     const landed = ups.some(
       (p) =>
@@ -2469,7 +2471,7 @@ test('lowhall: the Red Company keeps five doors, a hearth, and clean books', () 
   }
   // The editor round trip holds (flat zones compare without elev).
   const json = zoneToJson(z);
-  assert.equal(json.portals?.length, 5, 'the five doors must serialize');
+  assert.equal(json.portals?.length, 6, 'the six doors must serialize');
   const { elev: _rt, ...back } = zoneToJson(zoneFromJson(json));
   const { elev: _src, ...src } = json;
   assert.deepEqual(back, src);

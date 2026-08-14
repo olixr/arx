@@ -279,6 +279,10 @@ export function buildKingsdelf(): ZoneDef {
   b.set(39, 36, Tile.Chair).set(42, 36, Tile.Chair).set(44, 38, Tile.Chair).set(40, 38, Tile.Chair);
   b.set(42, 35, Tile.Lectern); // the shift book
   b.set(36, 34, Tile.Hearth).set(48, 34, Tile.Hearth);
+  // The Delfmaster's alcove: Ruen sleeps an arm's reach from the
+  // shift book, which tells you everything about how she runs a town.
+  b.set(45, 34, Tile.WallStone).set(45, 35, Tile.WallStone).set(45, 36, Tile.DoorwayStone);
+  b.set(46, 35, Tile.Bed).set(47, 36, Tile.Cabinet);
   b.setDetail(41, 39, Detail.Rug).setDetail(42, 39, Detail.Rug);
   b.setDetail(38, 34, Detail.WallBanner).setDetail(46, 34, Detail.WallBanner);
   b.sign(44, 42, 'THE DELFHALL', [
@@ -324,6 +328,7 @@ export function buildKingsdelf(): ZoneDef {
   b.set(56, 50, Tile.Lectern); // the assay ledger
   b.set(51, 52, Tile.Vault); // the sample strongroom
   b.set(56, 52, Tile.Crate).set(57, 52, Tile.Crate);
+  b.set(56, 53, Tile.Bed); // Lorn sleeps beside the scales
   b.setDetail(54, 48, Detail.Doormat);
   b.sign(56, 47, 'THE ASSAY', ['weighed, stamped, argued about']);
 
@@ -478,6 +483,7 @@ export function buildKingsdelf(): ZoneDef {
     windows: [{ side: 'e', at: 3 }],
   });
   b.set(98, 76, Tile.Bed).set(100, 76, Tile.Bed).set(102, 76, Tile.Bed);
+  b.set(104, 76, Tile.Bed).set(104, 78, Tile.Bed); // the glasshands' pair
   b.set(98, 79, Tile.Table).set(99, 79, Tile.Chair).set(103, 79, Tile.Crate);
   b.setDetail(101, 74, Detail.Doormat).setDetail(100, 78, Detail.Straw);
 
@@ -497,6 +503,7 @@ export function buildKingsdelf(): ZoneDef {
   b.set(14, 19, Tile.Workbench).set(19, 19, Tile.Workbench); // the lamp benches
   b.set(22, 16, Tile.Crate).set(22, 15, Tile.Crate); // glasshouse lenses, hartfell tallow
   b.set(14, 15, Tile.Lectern); // the flame-book
+  b.set(13, 18, Tile.Bed); // Soren sleeps where he can hear the wick
   b.setDetail(24, 17, Detail.Doormat);
   b.sign(25, 19, 'THE FLAMEHOUSE', [
     'the flame came south in a pilgrim lamp',
@@ -573,6 +580,18 @@ export function buildKingsdelf(): ZoneDef {
   b.set(52, 89, Tile.Bed).set(50, 92, Tile.Table);
   b.set(43, 89, Tile.Crate).set(43, 91, Tile.Barrel);
   b.set(52, 87, Tile.DryingRack).set(55, 89, Tile.DryingRack);
+
+  // ---------------------------------------------------------------
+  // THE SHADOW BEHIND THE BARRACKS — a dirt pocket the lamps skip,
+  // where a dealer in sundries keeps his crates and, under the loose
+  // boards nobody mentions, the Company keeps its sixth door. No
+  // lamp, no sign, no name (the town-hatch law): if you know, you
+  // know, and if you don't, it's a storage corner.
+  // ---------------------------------------------------------------
+  b.fillRect(101, 82, 5, 3, Tile.Dirt);
+  b.portal(103, 83, Tile.PortalDown, { x: 224.5, y: 591.5 });
+  b.set(105, 83, Tile.Crate).set(101, 84, Tile.Barrel);
+  b.set(106, 82, Tile.CrateGoods); // Slate's stock, such as it is
 
   // ---------------------------------------------------------------
   // THE LAMPS — starfall glass over town flame. The streets are lit
