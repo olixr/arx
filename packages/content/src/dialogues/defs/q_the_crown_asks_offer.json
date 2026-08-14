@@ -44,7 +44,13 @@
   {
    "id": "go",
    "voice": "q_the_crown_asks_offer__go",
-   "text": "The quarry works a day shift that never ends. Interrupt it politely. With something heavy."
+   "text": "The quarry works a day shift that never ends. Interrupt it politely. With something heavy.",
+   "hooks": [
+    {
+     "kind": "quest_accept",
+     "quest": "the_crown_asks"
+    }
+   ]
   }
  ],
  "requires": [
