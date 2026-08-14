@@ -32394,11 +32394,11 @@ export class Renderer {
         s.y,
         // The RUMP-TOP height: the stub roots off the raised haunch
         // line, riding the gait bob.
-        (champ ? 0.68 : 0.53) + legPose.bob * 0.35,
+        (champ ? 0.68 : defId === 'lynx_young' ? 0.44 : 0.53) + legPose.bob * 0.35,
         legPose.dir,
         this.frameDt,
         performance.now() / 1000,
-        1,
+        defId === 'lynx_young' ? 0.8 : 1,
         attackT > 0 && attackT < 0.7 ? 1 : 0,
       );
       const look = lynxLook(defId, eid);
@@ -32513,7 +32513,7 @@ export class Renderer {
         // antlers ride a raised neck and clip at the top edge without
         // their own headroom (user-flagged walking up-screen).
         const headroom =
-          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_champion' ? 0.45 : 0;
+          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : 0;
         const top = (spec.bodyRise + (def?.radius ?? 0.3) * 2.2 + headroom) * scale + r;
         const bottom = (spec.rig.legLen + 0.7) * scale;
         return { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom };

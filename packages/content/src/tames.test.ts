@@ -138,7 +138,7 @@ test('BRACKET: the leash holds the ladder — beastcraft caps the climb', () => 
 });
 
 test('THE SPECIES SPEAK: the whole roster stands', () => {
-  assert.equal(TAME_DEFS.length, 11, 'entry trio through the worg capstone');
+  assert.equal(TAME_DEFS.length, 13, 'entry trio through the worg capstone');
 });
 
 test('kits are the species\' own teeth re-aimed, never an invented spellbook', () => {
@@ -156,12 +156,15 @@ test('kits are the species\' own teeth re-aimed, never an invented spellbook', (
   assert.equal(tameDef('bear')?.kit, undefined);
   assert.equal(tameDef('cave_bat')?.kit, undefined);
   assert.equal(tameDef('giant_spider')?.kit, undefined);
+  assert.equal(tameDef('lynx')?.kit, undefined);
+  assert.equal(tameDef('lynx_young')?.kit, undefined);
   assert.ok(NPCS.get('wolf')?.attackStatus, 'the wolf bleeds on its own');
   assert.ok(NPCS.get('bear')?.attackStatus, 'the bear mauls on its own');
   assert.ok(NPCS.get('cave_bat')?.attackStatus, 'the bat bleeds on its own');
   assert.ok(NPCS.get('giant_spider')?.attackStatus, 'the spider envenoms on its own');
+  assert.ok(NPCS.get('lynx')?.attackStatus, 'the lynx rakes on its own');
   // Pounce openers are anatomy, not kit: the chargers were born leaping.
-  for (const sp of ['boar', 'bear', 'great_owl', 'worg', 'giant_spider']) {
+  for (const sp of ['boar', 'bear', 'great_owl', 'worg', 'giant_spider', 'lynx']) {
     assert.ok(NPCS.get(sp)?.pounce, `${sp} pounces as it was born to`);
   }
 });

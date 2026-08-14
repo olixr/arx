@@ -10,7 +10,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LOOT_TABLES, NPCS } from '@arx/content';
+import { LOOT_TABLES, NPCS, TAMES } from '@arx/content';
 import { LYNX_LOOKS, lynxLook } from './rig.js';
 
 test('every lynx NPC has its own authored look', () => {
@@ -60,6 +60,14 @@ test('the tribe hunts as one pack and the duskruff screams', () => {
   assert.ok(cat.pounce && boss.pounce, 'a cat kills from the crouch');
   assert.equal(boss.kit?.[0]?.ability, 'rallying_howl', 'the scream that raises the wood');
   assert.ok(cat.level < boss.level && cat.maxHp < boss.maxHp);
+});
+
+test('the keeper may court the cat, never the crown', () => {
+  // The lynx answers the gentling (raw chicken, its own cached prey);
+  // the duskruff is a sovereign and stays wild by construction.
+  assert.ok(TAMES.has('lynx'), 'the lynx joined the ladder of trust');
+  assert.equal(TAMES.get('lynx')?.lure, 'raw_chicken');
+  assert.ok(!TAMES.has('lynx_champion'), 'the duskruff kneels for no one');
 });
 
 test('the loot-story law: the pelts the cats wear really drop', () => {

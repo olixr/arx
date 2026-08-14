@@ -108,6 +108,22 @@ export const TAME_DEFS: readonly TameDef[] = [
     flavor: 'It runs where you look. The pack was practice for you.',
   },
   {
+    species: 'lynx_young',
+    lure: 'raw_chicken',
+    tameXp: 110,
+    // THE FIRST CAT: no kit — even young, the rake bleeds on its own.
+    // Court it at the forest edge and it grows into the keeper's hand.
+    flavor: 'Still growing into its paws, and already certain they are yours to feed.',
+  },
+  {
+    species: 'lynx',
+    lure: 'raw_chicken',
+    tameXp: 180,
+    // THE TUFTED SHADOW: no kit — the wild rake already bleeds and
+    // the pounce was born in it, the wolf and bear precedent kept.
+    flavor: 'It walks one step behind your shadow and hears the mouse under the snow.',
+  },
+  {
     species: 'bear',
     lure: 'raw_beef',
     tameXp: 190,

@@ -7497,6 +7497,27 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     // slightly long upper arm in front — the crouch-and-spring frame.
     segSplit: [0.53, 0.58],
   },
+  // The year's litter: cub proportions are their own design — a short
+  // body still catching up to its oversized paws and ears, never a
+  // scaled-down adult.
+  lynx_young: {
+    rig: {
+      legs: quadLegs(0.22, 0.1),
+      legLen: 0.33,
+      rise: 0.28,
+      liftAmp: 0.11,
+      runSpeed: 4.6,
+      turnRate: 10,
+    },
+    bodyLen: 0.29,
+    bodyRise: 0.35,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    legW: 0.07,
+    foot: 'paw',
+    segSplit: [0.53, 0.58],
+  },
   // The duskruff: never a scaled lynx — a long low stalker whose mass
   // hangs between heavy shoulders and heavier haunches, on legs that
   // clear deadfall the pack goes around.
@@ -13845,6 +13866,26 @@ export const LYNX_LOOKS: Record<string, LynxLook> = {
     headW: 0.27,
     headH: 0.225,
   },
+  // The year's litter: the head and paws lead the body — cub
+  // proportions, rolled into the same coat clusters as the tribe.
+  lynx_young: {
+    coat: '#9c7f55',
+    rosette: '#5d4a33',
+    under: '#d8cdb4',
+    ruffDark: '#4a3c2c',
+    earIn: '#3d3226',
+    tuft: '#332e2a',
+    eye: '#cfd97a',
+    nose: '#7a4448',
+    bodyW: 0.125,
+    backH: 0.39,
+    haunchH: 0.1,
+    shoulderH: 0.035,
+    chestH: 0.19,
+    tuckH: 0.29,
+    headW: 0.25,
+    headH: 0.21,
+  },
   // The duskruff: storm-slate where the pack runs tawny, and marked in
   // SILVER rosettes — the inverse of the pack's dark spots, the way
   // the dire wolf's brush ends pale where the pack's ends dark. Her
@@ -13897,7 +13938,7 @@ export function lynxLook(defId: string, seed = 0): LynxLook {
   const hit = LYNX_LOOK_CACHE.get(key);
   if (hit) return hit;
   let look: LynxLook;
-  if (defId === 'lynx') {
+  if (defId === 'lynx' || defId === 'lynx_young') {
     // Hash the seed before picking: knot members spawn with
     // CONSECUTIVE eids, and raw high bits would dress a whole tribe
     // in one coat — the hash spreads a spawned ambush across the

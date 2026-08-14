@@ -38,6 +38,7 @@ const DIRS = [
 /** The bestiary rows this sheet audits (content defs, mirrored). */
 const BEASTS: Record<string, { radius: number; color: string; speed: number }> = {
   lynx: { radius: 0.36, color: '#9c7f55', speed: 4.7 },
+  lynx_young: { radius: 0.3, color: '#9c7f55', speed: 4.6 },
   lynx_champion: { radius: 0.44, color: '#565064', speed: 4.9 },
   wolf: { radius: 0.34, color: '#6a6f7d', speed: 4.6 },
   dire_wolf: { radius: 0.44, color: '#4b4854', speed: 4.8 },
@@ -93,6 +94,8 @@ figs.push({ label: 'dire wolf (reference)', defId: 'dire_wolf', dir: Math.PI / 2
 figs.push({ label: 'duskruff (beside)', defId: 'lynx_champion', dir: Math.PI / 2, mode: 'idle', seed: 5 });
 figs.push({ label: 'lynx E (profile)', defId: 'lynx', dir: 0, mode: 'idle', seed: 5 });
 figs.push({ label: 'duskruff E (profile)', defId: 'lynx_champion', dir: 0, mode: 'idle', seed: 5 }); // 9
+// The year's litter: cub proportions across the bands.
+row('young idle', 'lynx_young', 'idle'); // 10
 
 const COLS = 8;
 const CW = Math.round(S * 1.6);

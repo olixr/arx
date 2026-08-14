@@ -1336,7 +1336,7 @@ export function drawBeastRagdoll(
     ctx.beginPath();
     facetCircle(ctx, tx, tipY, s * 0.044, 5, spineA);
     ctx.fill();
-  } else if (look.defId === 'lynx' || look.defId === 'lynx_champion') {
+  } else if (look.defId.startsWith('lynx')) {
     // The bobtail lies flat on the rump — no perk left in it, the
     // black tip still honest on the dead.
     const ll = lynxLook(look.defId, look.seed);
@@ -1453,7 +1453,7 @@ export function drawBeastRagdoll(
       topScale: 0.5,
       botH: 0.02,
     });
-  } else if (look.defId === 'lynx' || look.defId === 'lynx_champion') {
+  } else if (look.defId.startsWith('lynx')) {
     // The corpse keeps its coat CLUSTER — resolved from the raw eid,
     // the gnoll corpse-coat law spoken feline.
     paintLynxBody(ctx, spec, lynxLook(look.defId, look.seed), {
@@ -1754,7 +1754,7 @@ export function drawBeastRagdoll(
       ys: 1,
       dead: true,
     });
-  } else if (look.defId === 'lynx' || look.defId === 'lynx_champion') {
+  } else if (look.defId.startsWith('lynx')) {
     // Tufts and ruff stay; the gold-green lamps go out — dead-eyes law.
     drawLynxHead(ctx, lynxLook(look.defId, look.seed), {
       x: head.x,

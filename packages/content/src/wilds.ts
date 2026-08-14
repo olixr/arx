@@ -135,10 +135,14 @@ export const WILD_ROSTER: readonly WildEntry[] = [
     habitat: 'den',
     family: 'wolfkin',
   },
-  // The tufted shadows: lynx hunt the deep wood in mated pairs by
-  // day — and at night the tribes run behind a duskruff, the ambush
-  // that answers the wolf pack's chase.
-  { npc: 'lynx', weight: 1.5, tiers: [3, 5], biomes: ['forest'], band: [1, 2], spread: 2, habitat: 'den', family: 'lynxkin' },
+  // The tufted shadows: lynx hunt the wood in mated pairs by day —
+  // young cats prowl the nearer forest from tier 2 (the keeper's
+  // courting ground), and at night the deep-wood tribes run behind
+  // a duskruff, the ambush that answers the wolf pack's chase.
+  { npc: 'lynx', weight: 1.5, tiers: [2, 5], biomes: ['forest'], band: [1, 2], spread: 2, habitat: 'den', family: 'lynxkin' },
+  // The year's litter: young lynx hunt the forest edge alone or in
+  // sibling pairs — the keeper's first cat is courted here.
+  { npc: 'lynx_young', weight: 1.5, tiers: [1, 3], biomes: ['forest'], band: [1, 2], spread: 2, habitat: 'den', family: 'lynxkin' },
   {
     npc: 'lynx',
     weight: 1.5,
