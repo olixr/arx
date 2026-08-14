@@ -682,3 +682,99 @@ payout is the chapter bounty on existing tier tables, analyzer-recorded; all
 player-facing lines through docs/VOICE.md; the chart marker economy pays one
 new ceremony (the capital's) and the QUIET CHART LAW holds below it; no
 witches, no demons — the dead keep barrow-courts and the goblins keep moots.
+
+---
+
+# The Second Charter — The Walls Widen (2026-08-13)
+
+The user's verdict on the first charter's capitals: right laws, wrong scale.
+The encampments must be BIGGER and MORE SPACIOUS — "so big it doesn't even
+fit on the whole entire screen when you're zoomed out," an entire zone you
+explore and clear with layers, tiers, and depths, "procedural dungeon
+crawling on the overworld." Not a small encampment that's one-and-done: a
+main aspect of gameplay.
+
+## Ground truth (measured 2026-08-13)
+
+- **The screen**: 40 px/tile at zoom 1, player zoom-out floor 0.85, camera
+  yScale 0.6 → a 1080p screen shows **48×45 tiles at default zoom, ~57×53 at
+  max zoom-out** (renderer.ts:627-668, 5121-5133). Today's flagship citadel
+  (108×101) is barely two screens; the user reads it as one compact camp.
+- **The density truth**: shipped layouts are already 93-96% open ground —
+  "compacted" is NOT ground clutter. It is (a) footprint vs screen, (b) small
+  ward pieces (9-14 tiles) so all content clusters in blobs, (c) a 32-body
+  muster cleared in a few minutes, (d) ONE flat enclosure — no layered
+  progression. Baseline tilesPerBody: 172-307.
+- The elevation plane already speaks 0..3 (FENCED HEIGHT + SOUTH STAIR laws
+  are level-generic); the validator's reachability flood, gate scan, and
+  PULL LAW are all size-generic. The grammar scales; the generator must.
+
+## The laws of the charter
+
+- **THE ZONE LAW** — a citadel-class capital is a ZONE, not a camp: walls
+  2.5-3 screens across at max zoom-out (≥ 140 tiles), interior organized so
+  no single screen ever shows the whole story. A hold is 1.5-2 screens — big
+  enough to explore, small enough to stay the lesser sibling.
+- **THE DISTRICT LAW** — depth is structural: internal walls partition the
+  interior into districts (outer bailey → inner bailey → summit), each
+  entered through its own found gate in its own wall. The assault is a
+  PROGRESSION of enclosures, not a walk across one yard. Every district
+  keeps its own hearth, lane network, and chapters.
+- **THE STEPPED SUMMIT** — the last stand climbs in steps: a level-1 high
+  ward (broad apron, its own knots) and the level-2 boss court above it,
+  each behind its own cliff fence and camera-facing stair. The chief is
+  VISIBLE work from below and hidden detail until the stairs are won.
+- **THE BREATHING LAW** — spaciousness is enforced, not hoped for: piece
+  gap ≥ 4 (was 2), one plaza per district, open-ground floor validated
+  (≥ 78% of the interior stays walkable meadow/dirt), and pieces grow
+  internal courtyards — a ward is a PLACE you walk through, not a stamp.
+- **THE OUTER WORKS** — the fight starts before the walls: pickets, spike
+  lines, and banner posts stand in the approach ground outside the gates
+  (fringe widens to carry them). The first pull happens on the road; the
+  gate is found by fighting toward it.
+- **THE PULL LAW, UNCHANGED** — knots stay 1-3 bodies at ≥ 10 tiles; scale
+  adds MORE knots across MORE ground, never denser ones. A citadel's clear
+  is ~20-30 deliberate pulls (5-10+ minutes), not a denser brawl.
+
+## Phase 7 — The Wide Walls (the hold becomes a zone)
+
+Everything rides the existing grammar — this phase re-teaches the generator
+and re-pins the shelf; the validator learns the new laws so curation keeps
+the bar.
+
+- **Scale envelope** (types.ts): hold walls 84-108 (was 58-80), citadel
+  walls 136-164 (was 86-108); FRINGE 3 → 8 (approach ground);
+  STRONGHOLD_MAX_DIM 120 → 184, MIN 48 → 64; WARDS_MAX 9 → 16;
+  BODIES_MAX 60 → 84; citadel musterMark 32 → 52, hold 24 → 32.
+- **Districts** (generate.ts): citadels cut 2 chord walls (three bands),
+  holds 1 (two bands), in the family's wall material, each pierced by its
+  own gate (2-wide on citadels) + a 45% postern gap; lanes become
+  per-district dendritic networks seeded from that district's gates and
+  hearth; wards place within their band's ring; gate/breach y-ranges
+  respect the chords (no door opening into a wall's back).
+- **The stepped summit**: generalize the terrace blit to N steps — citadel:
+  level-1 high-ward apron (pad 5-7, own knots) + level-2 boss court; hold:
+  single step as today. Cliff rings per step, SOUTH stairs (2-wide citadel),
+  stair-foot landings, summit paths.
+- **Outer works**: per gate, 55% a picket — sentry knot 6-10 tiles out on
+  the road bearing + torch/banner + spike scatter; pickets are optional
+  wards ("the south road picket") so epochs can leave a road unwatched.
+- **The shelf grows** (pieces.ts): 8-12 new LARGE pieces (14×10..20×14)
+  with internal courtyards — great tent ring, drill yard, twin pens, long
+  larder, bone garden, cairn field — so a big ward reads as a neighborhood.
+- **Validator** (validate.ts): open-ground floor (THE BREATHING LAW);
+  district reachability already held by the flood + gate scan (chord gates
+  pierce, so strongholdGates counts them); lesser-chest cap scales with
+  ground (≤ 2, ≤ 4 when interior ≥ 110² — a zone's exploration pays in
+  found caches, texture is still not treasure).
+- **Roster re-pin** (defs.ts): sweep seeds under the new generator, keep
+  ids/titles/boss pools, regenerate data/prefabs baselines. The bench
+  sizeClass heuristic and stage-ladder preview follow the new envelopes.
+- **Server scale dials** (same train — a bigger pool must compose the day
+  it ships): CAPITAL_PAD_TILES and the seat mask follow pool max dims;
+  materialization budget re-derived for ~180² zones; patrol loops knit
+  districts through their gates; slate-law defensive reads audited.
+- Tests: new-envelope determinism + law refusals by name; every re-pinned
+  layout swept; compose invariants at the new scale. Live prove: stand a
+  citadel via /stronghold here, walk gate → district gate → stairs → chief,
+  screenshot the zoomed-out truth (walls overflowing the frame).

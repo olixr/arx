@@ -275,13 +275,23 @@ test('validator refuses elevation on transparent cells and near the border', () 
 
 test('every terraced shipped layout raises its chief behind a south stair', () => {
   let terraced = 0;
+  let stepped = 0;
   for (const def of STRONGHOLD_DEFS.values()) {
     const prefab = STRONGHOLD_PREFABS.get(def.prefab)!;
     const raised = prefab.elev.some((e) => e !== 0);
     if (!raised) continue;
     terraced++;
     const bi = def.boss.at[1] * prefab.width + def.boss.at[0];
-    assert.equal(prefab.elev[bi], 1, `${def.id}: the chief stands on the hill`);
+    assert.ok(prefab.elev[bi]! >= 1, `${def.id}: the chief stands on the hill`);
+    // THE STEPPED SUMMIT (Second Charter): a level-2 court means a
+    // level-1 high ward beneath it — count the two-step summits.
+    if (prefab.elev[bi] === 2) {
+      stepped++;
+      assert.ok(
+        prefab.elev.some((e) => e === 1),
+        `${def.id}: a level-2 court needs its level-1 high ward`,
+      );
+    }
     let ramps = 0;
     for (let i = 0; i < prefab.ground.length; i++) if (prefab.ground[i] === Tile.Ramp) ramps++;
     assert.ok(ramps >= 1, `${def.id}: a hill needs its stair`);
@@ -291,6 +301,7 @@ test('every terraced shipped layout raises its chief behind a south stair', () =
     assert.ok(res.ok, `${def.id}: ${res.ok ? '' : res.errors.join('; ')}`);
   }
   assert.ok(terraced >= 6, `only ${terraced} terraced layouts on the shelf`);
+  assert.ok(stepped >= 4, `only ${stepped} stepped summits (every citadel climbs twice)`);
 });
 
 // ---- The shipped shelf, swept ---------------------------------------

@@ -1,6 +1,7 @@
 import {
   DARK_BAND_Y,
   STRONGHOLD_DEFS,
+  STRONGHOLD_MAX_DIM,
   dangerLaw,
   groundProbeAt,
   strongholdGates,
@@ -54,11 +55,18 @@ export const CAPITAL_PAD_TILES = 192;
 /** Mask reach around a capital's rect (the intersectsZones dialect). */
 export const CAPITAL_CLEARANCE = 24;
 
-/** Sampled probe stride over the footprint. */
-const PROBE_STRIDE = 4;
+/**
+ * Sampled probe stride over the footprint — scaled so a zone-size
+ * prefab (Second Charter, up to 184/axis) costs the same probe budget
+ * a 120 footprint did at stride 4.
+ */
+const probeStride = (dim: number): number => Math.max(4, Math.round(dim / 30));
 
-/** Jittered anchor candidates per seat. */
-const SEAT_TRIES = 8;
+/** Jittered anchor candidates per seat (12 — big walls miss more). */
+const SEAT_TRIES = 12;
+
+/** A seat anchor wanders at most this far from its lattice point. */
+const SEAT_JITTER = 40;
 
 export interface CapitalSeat {
   gx: number;
@@ -137,9 +145,51 @@ export function strongholdSeat(
   }
   const gates = strongholdGates(prefab);
 
+  // THE NEIGHBOR LAW (Second Charter): zone-scale walls can reach a
+  // neighboring country's seat envelope. When two envelopes could
+  // collide, the lower lattice hash keeps its seat and the other
+  // country lawfully yields — deterministic from the same purity both
+  // countries already share, with zero probes spent on the neighbor.
+  const stride = probeStride(Math.max(prefab.width, prefab.height));
+  const yieldToNeighbor = (rect: { x: number; y: number; w: number; h: number }): boolean => {
+    for (let dgy = -1; dgy <= 1; dgy++) {
+      for (let dgx = -1; dgx <= 1; dgx++) {
+        if (dgx === 0 && dgy === 0) continue;
+        const n = territoryLatticePoint(seed, gx + dgx, gy + dgy);
+        if (n.hash >= hash) continue; // we outrank them — stand
+        const nFamily = territoryLatticeFamily(n.hash, ctx.families);
+        if (!nFamily) continue;
+        const nPool = ctx.layouts.filter((d) => d.family === nFamily && d.weight > 0);
+        if (nPool.length === 0) continue;
+        let nw = 0;
+        let nh = 0;
+        for (const d of nPool) {
+          const pp = ctx.prefabs.get(d.prefab);
+          if (!pp) continue;
+          if (pp.width > nw) nw = pp.width;
+          if (pp.height > nh) nh = pp.height;
+        }
+        if (nw === 0) continue;
+        const envX = Math.round(n.px) - SEAT_JITTER - Math.floor(nw / 2);
+        const envY = Math.round(n.py) - SEAT_JITTER - Math.floor(nh / 2);
+        const envW = nw + SEAT_JITTER * 2;
+        const envH = nh + SEAT_JITTER * 2;
+        if (
+          rect.x < envX + envW + CAPITAL_CLEARANCE &&
+          envX - CAPITAL_CLEARANCE < rect.x + rect.w &&
+          rect.y < envY + envH + CAPITAL_CLEARANCE &&
+          envY - CAPITAL_CLEARANCE < rect.y + rect.h
+        ) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
   for (let attempt = 0; attempt < SEAT_TRIES; attempt++) {
-    const jx = attempt === 0 ? 0 : (hashCoords(base, attempt, 3) % 81) - 40;
-    const jy = attempt === 0 ? 0 : (hashCoords(base, attempt, 7) % 81) - 40;
+    const jx = attempt === 0 ? 0 : (hashCoords(base, attempt, 3) % (SEAT_JITTER * 2 + 1)) - SEAT_JITTER;
+    const jy = attempt === 0 ? 0 : (hashCoords(base, attempt, 7) % (SEAT_JITTER * 2 + 1)) - SEAT_JITTER;
     const ax = Math.round(px) + jx;
     const ay = Math.round(py) + jy;
     const x0 = ax - halfW;
@@ -149,11 +199,21 @@ export function strongholdSeat(
       continue;
     }
     if (intersectsRings(x0, y0, prefab.width, prefab.height, ctx.claimRings)) continue;
+    if (
+      yieldToNeighbor({
+        x: ax - Math.floor(maskW / 2),
+        y: ay - Math.floor(maskH / 2),
+        w: maskW,
+        h: maskH,
+      })
+    ) {
+      continue;
+    }
     // The sampled grid: the wall conforms to the land, but only so far.
     let probes = 0;
     let rough = 0;
-    for (let sy = 0; sy < prefab.height; sy += PROBE_STRIDE) {
-      for (let sx = 0; sx < prefab.width; sx += PROBE_STRIDE) {
+    for (let sy = 0; sy < prefab.height; sy += stride) {
+      for (let sx = 0; sx < prefab.width; sx += stride) {
         probes++;
         const probe = groundProbeAt(seed, x0 + sx, y0 + sy);
         if (probe !== 'grass' && probe !== 'forest') rough++;
@@ -232,9 +292,11 @@ export function capitalLatticeRange(
   h: number,
 ): { gx0: number; gy0: number; gx1: number; gy1: number } {
   const SPAN = 384;
-  // A seat wanders ≤ ~40 from its lattice point, plus half a 120
-  // footprint, plus the clearance: 40 + 60 + 24 < 128 of padding.
-  const reach = 128;
+  // A seat wanders ≤ SEAT_JITTER from its lattice point, plus half
+  // the widest layout the shelf can raise, plus the clearance —
+  // DERIVED, not remembered: the Second Charter's zone-scale walls
+  // broke the old hand-pinned 128.
+  const reach = SEAT_JITTER + Math.ceil(STRONGHOLD_MAX_DIM / 2) + CAPITAL_CLEARANCE;
   return {
     gx0: Math.floor((x - reach) / SPAN),
     gy0: Math.floor((y - reach) / SPAN),

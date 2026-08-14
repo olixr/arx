@@ -123,20 +123,40 @@ export const KNOT_SPACING = 10;
 /** A knot is 1..3 bodies — busier is more knots, never bigger ones. */
 export const KNOT_BAND_MAX = 3;
 
-/** Layout prefab dimension envelope: a stronghold, not a camp. */
-export const STRONGHOLD_MIN_DIM = 48;
-export const STRONGHOLD_MAX_DIM = 120;
+/**
+ * Layout prefab dimension envelope — THE ZONE LAW (Second Charter): a
+ * citadel is 2.5-3 max-zoom-out screens across (~57 tiles each), a
+ * hold 1.5-2. The prefab carries the approach ground too (outer
+ * works), so the ceiling sits above the wall envelope.
+ */
+export const STRONGHOLD_MIN_DIM = 64;
+export const STRONGHOLD_MAX_DIM = 184;
 
 /**
  * Lawful muster envelope, counted in maximum bodies (knot band maxes
  * + the boss): below it the walls outsize the war; above it the tick
- * pays for a parade. Shipped layouts aim for 25-45.
+ * pays for a parade. Shipped citadels aim for ~45-60 (a 20-30 pull
+ * clear), holds ~28-38.
  */
 export const STRONGHOLD_BODIES_MIN = 16;
-export const STRONGHOLD_BODIES_MAX = 60;
+export const STRONGHOLD_BODIES_MAX = 84;
 
-/** Ward count envelope. */
+/** Ward count envelope (districts + pickets grew the ceiling). */
 export const STRONGHOLD_WARDS_MIN = 2;
-export const STRONGHOLD_WARDS_MAX = 9;
+export const STRONGHOLD_WARDS_MAX = 16;
+
+/**
+ * THE BREATHING LAW (Second Charter), in its two enforceable halves:
+ * every ward rect keeps ≥ this share of its cells walkable (a ward is
+ * a place you walk THROUGH, not a stamp)…
+ */
+export const STRONGHOLD_WARD_OPEN_FLOOR = 0.55;
+
+/**
+ * …and the ward rects together may claim at most this share of the
+ * prefab's ground (the stamps never crowd the yard — the zone is
+ * mostly open country inside walls).
+ */
+export const STRONGHOLD_WARD_AREA_SHARE_MAX = 0.3;
 
 export const STRONGHOLD_ID_RE = /^stronghold_[a-z0-9_]{1,50}$/;

@@ -16,6 +16,8 @@ import {
   STRONGHOLD_ID_RE,
   STRONGHOLD_MAX_DIM,
   STRONGHOLD_MIN_DIM,
+  STRONGHOLD_WARD_AREA_SHARE_MAX,
+  STRONGHOLD_WARD_OPEN_FLOOR,
   STRONGHOLD_WARDS_MAX,
   STRONGHOLD_WARDS_MIN,
 } from './types.js';
@@ -472,7 +474,12 @@ export function validateStronghold(
       }
     }
     if (bossChests !== 1) errors.push(`${bossChests} boss chests (exactly one — the cache law)`);
-    if (lesserChests > 2) errors.push(`${lesserChests} lesser chests (≤ 2 — texture is not treasure)`);
+    // A zone-scale layout pays exploration in found caches — the cap
+    // grows with the ground, texture is still not treasure.
+    const lesserCap = Math.min(pw, ph) >= 126 ? 4 : 2;
+    if (lesserChests > lesserCap) {
+      errors.push(`${lesserChests} lesser chests (≤ ${lesserCap} — texture is not treasure)`);
+    }
     if (gates.length === 0) {
       errors.push('no gate tile found (THE FOUND DOOR: players search for an entrance that exists)');
     }
@@ -553,6 +560,31 @@ export function validateStronghold(
       if (r.x < 0 || r.y < 0 || r.x + r.w > pw || r.y + r.h > ph) {
         errors.push(`ward '${w.key}' rect outside the prefab`);
       }
+    }
+    // THE BREATHING LAW (Second Charter), both halves: a ward is a
+    // place you walk THROUGH — most of its ground stays passable…
+    for (const w of wards) {
+      const r = w.rect;
+      let open = 0;
+      let total = 0;
+      for (let y = Math.max(0, r.y); y < Math.min(ph, r.y + r.h); y++) {
+        for (let x = Math.max(0, r.x); x < Math.min(pw, r.x + r.w); x++) {
+          total++;
+          if (passable(ground[y * pw + x]!)) open++;
+        }
+      }
+      if (total > 0 && open / total < STRONGHOLD_WARD_OPEN_FLOOR) {
+        errors.push(
+          `ward '${w.key}' is ${Math.round((open / total) * 100)}% walkable (THE BREATHING LAW: ≥ ${Math.round(STRONGHOLD_WARD_OPEN_FLOOR * 100)}% — a ward is walked through, not a stamp)`,
+        );
+      }
+    }
+    // …and the stamps never crowd the yard.
+    const wardArea = wards.reduce((n, w) => n + w.rect.w * w.rect.h, 0);
+    if (wardArea > pw * ph * STRONGHOLD_WARD_AREA_SHARE_MAX) {
+      errors.push(
+        `ward rects claim ${Math.round((wardArea / (pw * ph)) * 100)}% of the ground (THE BREATHING LAW: ≤ ${Math.round(STRONGHOLD_WARD_AREA_SHARE_MAX * 100)}% — the zone is open country inside walls)`,
+      );
     }
     // REACHABILITY: flood from the transparent fringe over passable
     // ground; every chapter must be walkable from outside the walls.

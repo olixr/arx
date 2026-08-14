@@ -359,6 +359,7 @@ import {
   type PoiSite,
 } from '../world/pois.js';
 import {
+  CAPITAL_CLEARANCE,
   CAPITAL_PAD_TILES,
   capitalKey,
   layoutForSeat,
@@ -8190,7 +8191,13 @@ export class GameServer {
       const py = pos.y;
       if (py >= DARK_BAND_Y) continue;
       const px = pos.x;
-      const reach = CAPITAL_PAD_TILES + 168;
+      // Any POI decision a player can force happens within the pois
+      // tick reach (128) of them, over a cell (128) whose compound-
+      // hold check pads by regionCells × POI_CELL (256) — a capital
+      // mask can matter ~512 tiles out. Scan generously (the Second
+      // Charter's zone-scale masks outgrew the old hand-pinned pad);
+      // cachedSeat makes the extra lattice cells free.
+      const reach = 512 + CAPITAL_CLEARANCE;
       const r = capitalLatticeRange(px - reach, py - reach, reach * 2, reach * 2);
       for (let gy = r.gy0; gy <= r.gy1; gy++) {
         for (let gx = r.gx0; gx <= r.gx1; gx++) {

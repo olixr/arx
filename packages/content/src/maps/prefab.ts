@@ -66,7 +66,13 @@ export interface PrefabJson {
   actorSpawns?: PrefabActor[];
 }
 
-export const PREFAB_MAX_DIM = 128;
+/**
+ * Raised 128 → 256 for the stronghold Second Charter (THE ZONE LAW):
+ * a citadel-class layout prefab runs to ~180/axis. Every consumer
+ * (sketch, boot loading, Map Studio PUT, the client editor) reads
+ * this one constant.
+ */
+export const PREFAB_MAX_DIM = 256;
 export const PREFAB_ID_RE = /^[a-z][a-z0-9_-]{0,63}$/;
 
 export function validatePrefab(p: PrefabDef): string[] {

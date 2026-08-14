@@ -28,6 +28,7 @@ import {
   type StrongholdDef,
   type StrongholdKnot,
   KNOT_SPACING,
+  STRONGHOLD_ROSTER,
   validateStronghold,
 } from '@arx/content';
 import { itemIconUrl } from '../render/icons.js';
@@ -4033,11 +4034,18 @@ function strongholdDetail(body: HTMLElement, linkage: HTMLElement, id: string): 
   }
   const draft = shDraftDefs.get(id)!;
   if (!shRollParams.has(id)) {
-    // A big ward roster reads as citadel scale — the chip starts on
-    // the class the layout actually is, not a blind default.
+    // The pinned roster knows each shipped layout's true class; a
+    // bench-born layout falls back to its muster ceiling (Second
+    // Charter citadels muster 40+, holds under it — ward COUNT lies
+    // now that holds carry pickets and gate watches too).
+    const pinned = STRONGHOLD_ROSTER.find((r) => r.id === id)?.sizeClass;
+    const ceiling = row.def.wards.reduce(
+      (n, w) => n + w.knots.reduce((m, k) => m + k.band[1], 0),
+      1,
+    );
     shRollParams.set(id, {
       seed: 1,
-      sizeClass: row.def.wards.length >= 8 ? 'citadel' : 'hold',
+      sizeClass: pinned ?? (ceiling >= 40 ? 'citadel' : 'hold'),
     });
   }
   const params = shRollParams.get(id)!;

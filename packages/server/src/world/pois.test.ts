@@ -4,7 +4,6 @@ import { TILE_DEFS, TILE_SKIP, Tile, chestInfo, closedChestTile } from '@arx/sha
 import {
   AMBERFORD_RECT,
   MINOR_DEFS,
-  STRONGHOLD_PREFABS,
   PLANNED_ZONE_RECTS,
   POI_DEFS,
   POI_PREFABS,
@@ -51,18 +50,44 @@ function scanSites(): PoiSite[] {
 }
 
 test('a height-bearing prefab stamps its terraces through the composer', () => {
-  // THE RAISED GROUND (strongholds Phase 2): the wolfkin bone-ring
-  // ships a cliff-fenced boss terrace — ride it through the REAL
-  // scaffold via a probe archetype and prove the zone carries the
-  // height (and that ordinary flat sites still compose with
-  // elev undefined, the cheap old truth).
-  const terracedPrefab = STRONGHOLD_PREFABS.get('stronghold_wolfkin_bonering')!;
+  // THE RAISED GROUND (strongholds Phase 2): ride a cliff-fenced
+  // terrace through the REAL scaffold via a probe archetype and prove
+  // the zone carries the height (and that ordinary flat sites still
+  // compose with elev undefined, the cheap old truth). The probe
+  // carries its own small terraced prefab: the shipped stronghold
+  // layouts outgrew the ordinary POI cell (Second Charter — capitals
+  // seat through strongholdSeat, never poiForCell).
+  const tw = 24;
+  const th = 24;
+  const tg = new Uint16Array(tw * th).fill(TILE_SKIP);
+  const te = new Int8Array(tw * th);
+  for (let y = 8; y < 16; y++) {
+    for (let x = 8; x < 16; x++) {
+      te[y * tw + x] = 1;
+      const ring = x === 8 || x === 15 || y === 8 || y === 15;
+      const ramp = y === 15 && x === 11;
+      tg[y * tw + x] = ramp ? Tile.Ramp : ring ? Tile.Cliff : Tile.Grass;
+    }
+  }
+  tg[16 * tw + 11] = Tile.Dirt; // the stair's landing
+  const terracedPrefab = {
+    id: 'terrace_probe_prefab',
+    name: 'Terrace probe prefab',
+    width: tw,
+    height: th,
+    ground: tg,
+    detail: new Uint16Array(tw * th),
+    elev: te,
+    portals: [],
+    spawns: [],
+    actorSpawns: [],
+  };
   const probeDef = {
     id: 'terrace_probe',
     name: 'Terrace probe',
     tiers: [1, 5] as const,
     weight: 5,
-    prefabs: ['stronghold_wolfkin_bonering'],
+    prefabs: ['terrace_probe_prefab'],
     garrison: [],
   } as unknown as (typeof CTX.defs)[number];
   const prefabs = new Map(POI_PREFABS);

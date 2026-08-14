@@ -267,6 +267,141 @@ const ddCourt = piece('boss', 'ward_dd_court', 'barrow court', [
   '_____________',
 ]);
 
+/**
+ * THE LARGE SHELF (Second Charter, THE BREATHING LAW) — neighborhood-
+ * scale pieces (15-18 wide) whose hearts are open ground: a big ward
+ * reads as a place you walk through, not a stamp. Content clusters at
+ * the rim; the middle breathes.
+ */
+const gsGreatring = piece('ward', 'ward_gs_greatring', 'great tent ring', [
+  '__________________',
+  '__^___^___^___^___',
+  '_::::::::::::::,__',
+  '_:.....,......::__',
+  '_^:.::::::::::.^__',
+  '_::.::":::f::.,:__',
+  '_^:.::::::::::.^__',
+  '_:.............::_',
+  '_::::::::::::::,__',
+  '__^___^___^___^___',
+  '__,____.____,_____',
+  '__________________',
+]);
+
+const gsDrillyard = piece('ward', 'ward_gs_drillyard', 'drill yard', [
+  '________________',
+  '_(::::(:::::]___',
+  '_::::::::::::,__',
+  '_:.:.:.::.:.:___',
+  '_]::::::::::(___',
+  '_:.:.:.::.:.,___',
+  '_::::::::::::___',
+  '_(::::(:::::]___',
+  '_,____,_________',
+  '________________',
+]);
+
+const gsTwinpens = piece(
+  'ward',
+  'ward_gs_twinpens',
+  'twin pens',
+  [
+    '__________________',
+    '_F;F:FF__FF:F;F___',
+    '_F.....F_F.....F__',
+    '_F;...;F_F..;..F__',
+    '_F..F.FF_FF.F..F__',
+    '_F....F___F....F__',
+    '_FF.FF:___:FF.FF__',
+    '_::::::,_,::::::__',
+    '__:0:::::::::[:___',
+    '___,____,_____,___',
+    '__________________',
+  ],
+  [
+    { npc: 'worg', band: [1, 2] },
+    { npc: 'worg', band: [1, 2] },
+  ],
+);
+
+const brWagonyard = piece('ward', 'ward_br_wagonyard', 'wagon yard', [
+  '_________________',
+  '__a:c::::::c:a___',
+  '_::::::::::::::__',
+  '_:c$::......::$:_',
+  '_::::.:....,::::_',
+  '_:G:::......::G:_',
+  '_::::,.....::::,_',
+  '_:$::::::::::c:__',
+  '__a::c::c:::a____',
+  '___,_____,_______',
+  '_________________',
+]);
+
+const brSparring = piece('ward', 'ward_br_sparring', 'sparring yard', [
+  '_______________',
+  '_(::::::::(____',
+  '_:::.....:::,__',
+  '_:K:.....:]:___',
+  '_::::::::::::__',
+  '_:]:.....:K:___',
+  '_:::,....:::___',
+  '_(::::::::(____',
+  '__,_____,______',
+  '_______________',
+]);
+
+const wkHollowfield = piece('ward', 'ward_wk_hollowfield', 'hollow field', [
+  '__________________',
+  '__;____,____;_____',
+  '_,:::::::::::,____',
+  '_::.;......;.::___',
+  '_:...,..o......,__',
+  '_;:.....;.....:;__',
+  '_::..o......o.::__',
+  '_:,......;....::__',
+  '__:::;::::::;::___',
+  '___,____o____,____',
+  '__________________',
+]);
+
+const wkGreatboneyard = piece('ward', 'ward_wk_greatboneyard', 'great boneyard', [
+  '________________',
+  '__o::0:::o:0____',
+  '_,::::::::::o___',
+  '_:0:..o...::0___',
+  '_::..0..o..:,___',
+  '_:o:..o..0.::___',
+  '_::::::::::o____',
+  '__0:o::0::,_____',
+  '___,___o________',
+  '________________',
+]);
+
+const ddProcessional = piece('ward', 'ward_dd_processional', 'processional way', [
+  '_________________',
+  '__P::b::::b::P___',
+  '_:SSSSSSSSSSSS:__',
+  '_:S..........S:__',
+  '_:SSSSSSSSSSSS:__',
+  '__P::b::::b::P___',
+  '___,________,____',
+  '_________________',
+]);
+
+const ddCairnfield = piece('ward', 'ward_dd_cairnfield', 'cairn field', [
+  '__________________',
+  '__r:o:R::r::o_____',
+  '_,::::::::::::r___',
+  '_:R:..r...o..:::__',
+  '_::..o..R...:R,___',
+  '_:r:..:..o..::____',
+  '_::::R::::::r:____',
+  '__o::r::R::o::____',
+  '___,_____,________',
+  '__________________',
+]);
+
 /** Every piece, by id — the Foundry's shelf. */
 export const WARD_PIECES: ReadonlyMap<string, WardPiece> = new Map(
   [
@@ -290,5 +425,14 @@ export const WARD_PIECES: ReadonlyMap<string, WardPiece> = new Map(
     ddGraves,
     ddShrine,
     ddCourt,
+    gsGreatring,
+    gsDrillyard,
+    gsTwinpens,
+    brWagonyard,
+    brSparring,
+    wkHollowfield,
+    wkGreatboneyard,
+    ddProcessional,
+    ddCairnfield,
   ].map((p) => [p.prefab.id, p]),
 );
