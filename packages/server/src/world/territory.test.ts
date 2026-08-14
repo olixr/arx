@@ -36,10 +36,17 @@ function withBias<T>(bias: number, fn: () => T): T {
   }
 }
 
-function scan(max = 140): PoiSite[] {
+// The window widens with the roster (the coverage-sweep precedent,
+// pois.test.ts): every big-footprint archetype that joins the pool —
+// the peopled landmarks, the March's grounds — honestly converts some
+// cells from 'small camp stands' to 'landmark dealt, ground refused,
+// cell empty'. A 140-cell walk starved the flat floor; 240 cells at
+// radius 12 keeps both scans fat enough that single-cell conversions
+// stay inside the whisper.
+function scan(max = 240): PoiSite[] {
   const out: PoiSite[] = [];
   let looked = 0;
-  for (const { cx, cy } of poiScanOrder(9)) {
+  for (const { cx, cy } of poiScanOrder(12)) {
     if (looked >= max) break;
     looked++;
     const site = poiForCell(SEED, cx, cy, 0, CTX);
