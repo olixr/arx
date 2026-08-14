@@ -208,6 +208,128 @@ function stormVeil(
 }
 
 /**
+ * THE SUBSTORM clock — the aurora's own sky, the court's SIXTH
+ * grammar (the fen trades watches, the storm rolls its discharge,
+ * the tide processes, the cinder breathes as one bed, the void
+ * arrives — the aurora DANCES): the polar night hangs in a low
+ * breathing shimmer for most of its 9.6s watch, then the sky breaks
+ * into THE DANCE — a fast bloom, a shimmering hold, a graceful ease
+ * home. The aurora lot secedes from the rolling discharge BY
+ * DESIGN: this is the one weather that never strikes. `off`
+ * staggers the dance down the body (corona 0, near shoulder 0.07,
+ * far shoulder 0.12, streams 0.18, great curtain 0.28, snowline
+ * 0.4) so the lights visibly travel crown to earth. Surges speak
+ * through amplitude, width and alpha only — the phase runs at one
+ * constant rate forever (pulse honesty).
+ */
+function auroraK(nowMs: number, off = 0): number {
+  const u = ((nowMs / 9600 - off) % 1 + 1) % 1;
+  const sm = (kk: number): number => {
+    const c = Math.min(1, Math.max(0, kk));
+    return c * c * (3 - 2 * c);
+  };
+  if (u < 0.64) {
+    // The quiet arc: two slow breaths, never out.
+    const b = 0.5 + 0.5 * Math.sin((u / 0.64) * Math.PI * 4 - Math.PI / 2);
+    return 0.18 + 0.18 * b;
+  }
+  const v = (u - 0.64) / 0.36;
+  if (v < 0.18) return 0.18 + 0.7 * sm(v / 0.18);
+  if (v < 0.66) return 0.88 + 0.12 * Math.abs(Math.sin(((v - 0.18) / 0.48) * Math.PI * 5));
+  return 0.18 + 0.7 * (1 - sm((v - 0.66) / 0.34));
+}
+
+/**
+ * THE DRAWN CURTAIN — one fold of the aurora worn as a GARMENT
+ * device (the drawn-light family's sky verse: light is never a
+ * body's fill). The fold's silk is night cloth; the light lives
+ * only on the drawn lower hem — casing under a hot pale core — and
+ * in the rays combed up from it, and every stroke is CLIPPED INTO
+ * the silk so the outline dilate never fans a whisker. `pts` is the
+ * lower hem in the caller's space; the body rises `hgt` above it on
+ * a wavering top edge that morphs at one constant pace. The silk is
+ * garment-scale structure: pass `hurt` and it holds white whole.
+ */
+function auroraCurtain(
+  ctx: CanvasRenderingContext2D,
+  pts: Array<{ x: number; y: number }>,
+  hgt: number, silk: string, edge: string, core: string,
+  k: number, nowMs: number, ph: number, lw: number, hurt: boolean,
+): void {
+  if (pts.length < 2) return;
+  const top = pts.map((p, i) => ({
+    x: p.x + Math.sin(nowMs * 0.00058 + ph + i * 0.9) * hgt * 0.12,
+    y: p.y - hgt * (0.74 + 0.26 * Math.sin(nowMs * 0.00073 + ph + i * 1.1)),
+  }));
+  const body = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(pts[0]!.x, pts[0]!.y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i]!.x, pts[i]!.y);
+    for (let i = top.length - 1; i >= 0; i--) ctx.lineTo(top[i]!.x, top[i]!.y);
+    ctx.closePath();
+  };
+  ctx.fillStyle = hurt ? '#ffffff' : silk;
+  body();
+  ctx.fill();
+  if (hurt) return;
+  ctx.save();
+  body();
+  ctx.clip();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  // The rays: combed UP from the hem, waking with the sky.
+  for (let i = 0; i < pts.length - 1; i++) {
+    const rw = 0.5 + 0.5 * Math.sin(nowMs * 0.0011 + ph * 1.3 + i * 2.3);
+    const a = (0.16 + 0.5 * k) * (0.4 + 0.6 * rw);
+    if (a < 0.14) continue;
+    const bx = (pts[i]!.x + pts[i + 1]!.x) / 2;
+    const by = (pts[i]!.y + pts[i + 1]!.y) / 2;
+    const ty = (top[i]!.y + top[i + 1]!.y) / 2;
+    ctx.globalAlpha = a;
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = lw * 1.5;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx + (top[i]!.x - pts[i]!.x) * 0.3, ty + (by - ty) * 0.18);
+    ctx.stroke();
+  }
+  // The bright lower hem: the curtain's own light, casing under
+  // core, half-buried in the silk by the clip — lit from within.
+  const hemTrace = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(pts[0]!.x, pts[0]!.y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i]!.x, pts[i]!.y);
+    ctx.stroke();
+  };
+  ctx.globalAlpha = 0.4 + 0.5 * k;
+  ctx.strokeStyle = edge;
+  ctx.lineWidth = lw * 2.4;
+  hemTrace();
+  ctx.globalAlpha = 0.55 + 0.45 * k;
+  ctx.strokeStyle = core;
+  ctx.lineWidth = lw;
+  hemTrace();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+/** One four-point star prick — path only; the caller fills. */
+function starPrick(
+  ctx: CanvasRenderingContext2D, px: number, py: number, rr: number,
+): void {
+  ctx.beginPath();
+  ctx.moveTo(px, py - rr);
+  ctx.lineTo(px + rr * 0.3, py - rr * 0.3);
+  ctx.lineTo(px + rr, py);
+  ctx.lineTo(px + rr * 0.3, py + rr * 0.3);
+  ctx.lineTo(px, py + rr);
+  ctx.lineTo(px - rr * 0.3, py + rr * 0.3);
+  ctx.lineTo(px - rr, py);
+  ctx.lineTo(px - rr * 0.3, py - rr * 0.3);
+  ctx.closePath();
+}
+
+/**
  * THE TIDE clock — the tide court's one water, shared by the crest,
  * the shoulders, the surf tiers and the moon. A 6.8s cycle: the
  * swell BUILDS long and patient, stands for a breath, BREAKS fast,
@@ -667,9 +789,11 @@ export interface BodyStyle {
     // bank and the low fog (the shoulders ARE weather, lit from
     // within on the strike), `anvilpaul` the storm shelf and the
     // charge coil, `showerpaul` the sunbreak and the drip veil,
-    // `aurorapaul` the curtain and the nightfield. All on THE
-    // STORMBOLT clock.
-    | 'cloudbank' | 'anvilpaul' | 'showerpaul' | 'aurorapaul'
+    // `aurorafall` the banked night drifts under their contained,
+    // morphing lights (a MATCHED-grammar pair with per-side builds).
+    // Three ride THE STORMBOLT clock; the aurora dances on THE
+    // SUBSTORM instead — it never strikes.
+    | 'cloudbank' | 'anvilpaul' | 'showerpaul' | 'aurorafall'
     // THE TIDE COURT'S SHOULDERS — tidecaller's four waters, one
     // owner each: `tideorbs` the base's MATCHED elemental pair —
     // levitating orbs of living seawater over wet seats (inner
@@ -1112,9 +1236,25 @@ export interface BodyStyle {
   /** Sunshower lot: one warm window of light sliding across the
    *  cloth as the clouds shift. The luck is that it finds you. */
   sunpatch?: { color: string };
-  /** Aurora lot: the night curtain riding the living hem in its
-   *  three colors, each band waking on its own watch. */
-  curtainhem?: { colors: string[] };
+  /** Aurora lot: THE GREAT CURTAIN — the lot's heirloom (the bolt
+   *  brand's seat re-founded for the weather that never strikes):
+   *  folds of night `silk` descending the skirt's trailing side,
+   *  each hem a drawn line of light with rays combed up into the
+   *  cloth, waking top to bottom as THE DANCE travels the body. */
+  greatcurtain?: { colors: string[]; silk: string };
+  /** Aurora lot: THE AURORA STREAMS — the wardrobe's fourth floating
+   *  regalia (crown ring, glyphs, the eddy, now the lights loose):
+   *  two curtain ribbons chasing each other around the hips on the
+   *  glyph ring's occlusion law, undulating at one constant pace,
+   *  surging by amplitude alone. */
+  auroraband?: { colors: string[] };
+  /** Aurora lot: stars scattered down the skirt cloth, one waking
+   *  at a time — the night the lights need behind them. */
+  starfield?: { color: string };
+  /** Aurora lot: THE SNOWLINE — a frost band riding the living hem;
+   *  at the dance's last station the snow answers the sky in the
+   *  curtain's own colors, drawn dashes, never a wash. */
+  frosthem?: { color: string; glow: string };
   /** Hedgemage: herb bundles and a seed pouch hung off the sash cord,
    *  swinging on the stride — the garden carried along. */
   herbgirdle?: { cord: string; leaf: string };
@@ -1375,10 +1515,12 @@ export interface HelmStyle {
     // by the orbiting fog shroud, `thunderhat` thunderhead's waved
     // wide-brim storm-wizard hat on the magus chassis with the bolt
     // jewel off the trailing tip, `showerhat` sunshower's
-    // rain-slicked luck brim under its prism arc, `aurorapeak`
-    // aurora's folded midnight peak flying the night curtains. All
-    // four keep THE STORMBOLT clock.
-    | 'shroudcowl' | 'thunderhat' | 'showerhat' | 'aurorapeak'
+    // rain-slicked luck brim under its prism arc, `coronacowl`
+    // aurora's folded midnight cowl under the zenith's ray crown,
+    // its horizon mantle handing the hood to the shoulder line.
+    // Three keep THE STORMBOLT clock; the aurora seceded to THE
+    // SUBSTORM — the one weather that never strikes.
+    | 'shroudcowl' | 'thunderhat' | 'showerhat' | 'coronacowl'
     // THE TIDE COURT'S HEADS — tidecaller's four waters, one owner
     // each (tidehood and crestcowl are dead): `tidehat` the base's
     // water-wizard hat — the brim is a circling sea, a drawn
@@ -1599,10 +1741,10 @@ export interface HelmStyle {
   /** Showerhat: the prism arc off the trailing brim — the rainbow
    *  only this weather owns, waking with the charge. */
   prismarc?: { colors: string[] };
-  /** Aurorapeak: the night curtains streaming off the apex — three
-   *  luminous silks waking in sequence — and the `star` pricks in
-   *  the cloth. */
-  nightcurtain?: { colors: string[]; star?: string };
+  /** Coronacowl: THE CORONA — the zenith's crown of drawn rays at
+   *  the peak, asleep to a frost seed through the quiet arc and
+   *  erupting on the substorm; `star` is the pricks in the cloth. */
+  corona?: { colors: string[]; star: string };
   /** Tidehat: the pearl hat band — one glimmer walks it, and the
    *  whole strand catches the light when the wave breaks. */
   pearls?: { color: string };
@@ -3658,14 +3800,27 @@ registerColorways(BODY_STYLES, 'stormwoven_robe', {
     sunpatch: { color: '#ffe9a8' },
   },
   aurora: {
-    color: '#3e7a6a', trim: '#b8e8d0', mantle: '#326256', underskirt: '#326256',
-    pauldron: 'aurorapaul', pauldronColor: '#2e5248', pauldronTrim: '#b8e8d0',
-    thunderbank: { color: '#37695c', glow: '#b8e8d0' },
-    boltbrand: { color: '#c8a8e8' },
-    rainhem: { color: '#b8e8d0' },
-    staticcourt: { color: '#c8a8e8' },
-    chargebeads: { cord: '#326256', bead: '#c8a8e8' },
-    curtainhem: { colors: ['#9ae8c0', '#6ad0c0', '#c8a8e8'] },
+    // THE AURORA SOVEREIGN: the polar night worn walking. The
+    // ground is near-midnight (a dancing sky only reads against
+    // dark — value steps widened, the anvilcrown lesson), frost
+    // silver the one bright cold edge, and the lights themselves
+    // live only as DRAWN devices. The robe is the WATER COLUMN
+    // pattern: the storm's bolt words are explicitly removed —
+    // this weather seceded from the discharge — and the column is
+    // re-clothed in its own registers: horizon (helm mantle),
+    // streams (hips), great curtain (skirt), snowline (hem).
+    color: '#1d2f3a', trim: '#9fbdb6', mantle: '#17252f', underskirt: '#141f29',
+    pauldron: 'aurorafall', pauldronColor: '#1e3240', pauldronTrim: '#c8e4dc',
+    thunderbank: undefined,
+    boltbrand: undefined,
+    rainhem: undefined,
+    staticcourt: undefined,
+    chargebeads: undefined,
+    stormshroud: undefined,
+    greatcurtain: { colors: ['#7df2b0', '#54dcd0', '#b08cf0'], silk: '#35635a' },
+    auroraband: { colors: ['#7df2b0', '#54dcd0', '#b08cf0'] },
+    starfield: { color: '#e8f4ee' },
+    frosthem: { color: '#c8e4dc', glow: '#7df2b0' },
   },
 });
 registerColorways(HELM_STYLES, 'stormwoven_hood', {
@@ -3679,19 +3834,19 @@ registerColorways(HELM_STYLES, 'stormwoven_hood', {
     prismarc: { colors: ['#e8a0a0', '#ffe9a8', '#a0d8c8'] },
   },
   aurora: {
-    color: '#2e5248', trim: '#b8e8d0', kind: 'aurorapeak',
-    nightcurtain: { colors: ['#9ae8c0', '#6ad0c0', '#c8a8e8'], star: '#eaf4e8' },
+    color: '#1d2f3a', trim: '#c8e4dc', kind: 'coronacowl',
+    corona: { colors: ['#7df2b0', '#54dcd0', '#b08cf0'], star: '#e8f4ee' },
   },
 });
 registerColorways(LEG_STYLES, 'stormwoven_skirts', {
   thunderhead: { thigh: '#2e323e' },
   sunshower: { thigh: '#a8894a' },
-  aurora: { thigh: '#326256' },
+  aurora: { thigh: '#131f28' },
 });
 registerColorways(BOOT_STYLES, 'stormwoven_slippers', {
   thunderhead: { color: '#2e323e', cuff: { color: '#e8c04c' } },
   sunshower: { color: '#a8894a', cuff: { color: '#f4ecd0' } },
-  aurora: { color: '#326256', cuff: { color: '#b8e8d0' } },
+  aurora: { color: '#131f28', cuff: { color: '#c8e4dc' } },
 });
 
 // Tidecaller dye lots — THE TIDE COURT: each water wears its OWN
@@ -4247,7 +4402,7 @@ registerColorways(GLOVE_STYLES, 'tidecaller_gloves', {
 registerColorways(GLOVE_STYLES, 'stormwoven_wraps', {
   thunderhead: { color: '#3a3f4e', bracer: '#333744', cuff: { color: '#e8c04c', kind: 'band' }, knuckle: { color: '#e8c04c', kind: 'studs' } },
   sunshower: { color: '#c9a85c', bracer: '#bb9b52', cuff: { color: '#f4ecd0', kind: 'band' }, knuckle: { color: '#f4ecd0', kind: 'studs' } },
-  aurora: { color: '#4e8a7a', bracer: '#467d6e', cuff: { color: '#b8e8d0', kind: 'band' }, knuckle: { color: '#b8e8d0', kind: 'studs' } },
+  aurora: { color: '#22343e', bracer: '#1b2b34', cuff: { color: '#c8e4dc', kind: 'band' }, knuckle: { color: '#5e5080', kind: 'studs' } },
 });
 registerColorways(GLOVE_STYLES, 'hareswift_gloves', {
   clover: { color: '#7a9a58', bracer: '#6e8c4f', cuff: { color: '#e8f0d8', kind: 'fur' } },
@@ -5033,27 +5188,174 @@ export function drawTorsoGarment(
         ctx.stroke();
         ctx.globalAlpha = 1;
       }
-      if (st.curtainhem) {
-        // THE CURTAIN HEM: aurora's own — the night sky's curtain
-        // rides the living hem in its three colors, each band waking
-        // on its own watch. It never strikes; it breathes.
-        const colors = st.curtainhem.colors;
-        for (let bi = 0; bi < colors.length; bi++) {
-          const lift0 = (0.03 + bi * 0.032) * s;
-          const wake = 0.5 + 0.5 * Math.sin(nowMs * 0.00052 + bi * 2.1);
-          ctx.globalAlpha = 0.42 + 0.44 * wake;
-          ctx.strokeStyle = colors[bi]!;
-          ctx.lineWidth = Math.max(1.5, s * (0.026 - bi * 0.005));
-          ctx.beginPath();
-          for (let i = 0; i <= 4; i++) {
-            const p = hem[i]!;
-            const wob = Math.sin(nowMs * 0.0014 - i * 1.5 + bi * 1.1) * 0.012 * s;
-            const x = p.x * (1 - bi * 0.02);
-            const y = p.y - lift0 + wob;
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
+      if (st.starfield && !back) {
+        // THE STARFIELD: the night the lights need behind them —
+        // five stars seated in the skirt cloth, one waking at a
+        // time. Asleep is SKIPPED whole (the dilate bar), never a
+        // faint fly on the hem.
+        for (let i = 0; i < 5; i++) {
+          const [sx3, sy3] = ([[-0.72, 0.24], [0.55, 0.16], [-0.3, 0.52], [0.78, 0.62], [0.08, 0.36]] as const)[i]!;
+          const tw2 = Math.sin(nowMs * 0.00034 + i * 2.51);
+          if (tw2 < 0.25) continue;
+          ctx.globalAlpha = 0.3 + 0.55 * ((tw2 - 0.25) / 0.75);
+          ctx.fillStyle = st.starfield.color;
+          starPrick(ctx, sx3 * ww, y0 + (hemY - y0) * sy3, (0.011 + 0.007 * tw2) * s);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+      if (st.greatcurtain) {
+        // THE GREAT CURTAIN: the aurora lot's heirloom — the bolt
+        // brand's seat re-founded for the one weather that never
+        // strikes. Three folds of night silk descend the skirt's
+        // trailing side (a hung device TRAILS), every hem a drawn
+        // line of light with rays combed up into the cloth, and the
+        // wake walks top to bottom as THE DANCE passes the waist.
+        const gcW = st.greatcurtain;
+        const foldsG: ReadonlyArray<readonly [number, number, number, number, number]> =
+          // [u0 down the skirt, trailing offset, half-width, height, color]
+          [[0.46, 0.16, 1.42, 0.15, 0], [0.72, 0.34, 1.06, 0.1, 2]];
+        for (let j = 0; j < foldsG.length; j++) {
+          const [u0, off0, wSpan, hgt, ci] = foldsG[j]!;
+          const kG = auroraK(nowMs, 0.28 + j * 0.06);
+          const xj = -f.lead * ww * off0;
+          const yj = y0 + (hemY - y0) * u0 + 0.04 * s;
+          const wj = ww * wSpan;
+          const ptsG: Array<{ x: number; y: number }> = [];
+          for (let i = 0; i <= 5; i++) {
+            const u = i / 5;
+            ptsG.push({
+              x: xj - f.lead * wj * 0.5 + f.lead * wj * u,
+              y: yj + Math.sin(u * 4.6 - nowMs * 0.0019 + j * 1.9) * (0.012 + 0.016 * kG) * s +
+                (u - 0.5) * 0.05 * s * (j === 0 ? 1 : -0.7) * f.lead,
+            });
           }
-          ctx.stroke();
+          auroraCurtain(
+            ctx, ptsG, hgt * s, gcW.silk,
+            gcW.colors[ci % gcW.colors.length]!, '#e8fff4',
+            kG, nowMs, j * 2.1, Math.max(1, s * 0.009), false,
+          );
+        }
+      }
+      if (st.auroraband) {
+        // THE AURORA STREAMS: the wardrobe's fourth floating regalia
+        // — after the crown ring, the glyphs and the eddy, the
+        // lights themselves come loose: two curtain ribbons chasing
+        // each other around the hips on the glyph ring's occlusion
+        // law (skipped where the body honestly hides them, dim and
+        // thin past its far edge, sweeping in FRONT of the cloth on
+        // the near pass — the streams believe the turn). The
+        // undulation travels at one constant pace forever; the
+        // substorm speaks only through amplitude, width and light.
+        // Floating light, not garment: the hurt guard owns it.
+        const ab = st.auroraband;
+        const kA = auroraK(nowMs, 0.18);
+        const cyA = 0.05 * s;
+        const rxA = ww * 1.7;
+        const ryA = 0.07 * s;
+        const spinA = nowMs * 0.00024;
+        const segsA = 22;
+        ctx.lineCap = 'round';
+        for (let ri = 0; ri < 2; ri++) {
+          const colR = ab.colors[ri % ab.colors.length]!;
+          const baseA = spinA + ri * Math.PI;
+          const spanA = Math.PI * 0.82;
+          let run: Array<{ x: number; y: number; a: number; far: boolean }> = [];
+          const flush = (): void => {
+            for (let q = 0; q + 1 < run.length; q++) {
+              const p0 = run[q]!;
+              const p1 = run[q + 1]!;
+              const aa = ((p0.a + p1.a) / 2) * (0.5 + 0.5 * kA);
+              if (aa < 0.08) continue;
+              const wF = p0.far ? 0.72 : 1;
+              ctx.globalAlpha = Math.min(1, aa) * 0.55;
+              ctx.strokeStyle = colR;
+              ctx.lineWidth = Math.max(1.4, s * 0.023) * wF;
+              ctx.beginPath();
+              ctx.moveTo(p0.x, p0.y);
+              ctx.lineTo(p1.x, p1.y);
+              ctx.stroke();
+              ctx.globalAlpha = Math.min(1, aa);
+              ctx.strokeStyle = '#e8fff4';
+              ctx.lineWidth = Math.max(1, s * 0.009) * wF;
+              ctx.beginPath();
+              ctx.moveTo(p0.x, p0.y);
+              ctx.lineTo(p1.x, p1.y);
+              ctx.stroke();
+              // The combed rays ride only the bright near passage —
+              // a faint floating stroke is skipped whole (dilate
+              // bar), never dimmed into a whisker.
+              const rw = 0.5 + 0.5 * Math.sin(nowMs * 0.0011 + q * 2.3 + ri * 3.1);
+              const ra = Math.min(1, aa) * (0.3 + 0.5 * rw);
+              if (!p0.far && ra >= 0.3 && q % 2 === 0) {
+                ctx.globalAlpha = ra * 0.8;
+                ctx.strokeStyle = colR;
+                ctx.lineWidth = Math.max(1.2, s * 0.011);
+                ctx.beginPath();
+                ctx.moveTo(p0.x, p0.y);
+                ctx.lineTo(p0.x + Math.sin(nowMs * 0.0009 + q) * 0.01 * s, p0.y - (0.045 + 0.05 * kA) * s);
+                ctx.stroke();
+              }
+            }
+            run = [];
+          };
+          for (let i = 0; i <= segsA; i++) {
+            const tU = i / segsA;
+            const aAng = baseA + tU * spanA;
+            const px = Math.cos(aAng) * rxA;
+            const farA = Math.sin(aAng) < 0;
+            if (!back && farA && Math.abs(px) < ww * 1.2) {
+              flush();
+              continue;
+            }
+            const wave = Math.sin(tU * 4.2 - nowMs * 0.0021 + ri * 2.7) * (0.008 + 0.013 * kA) * s;
+            run.push({
+              x: px,
+              y: cyA + Math.sin(aAng) * ryA + wave,
+              a: Math.sin(tU * Math.PI) * (farA ? 0.5 : 1),
+              far: farA,
+            });
+          }
+          flush();
+        }
+        ctx.globalAlpha = 1;
+      }
+      if (st.frosthem) {
+        // THE SNOWLINE: the frost under a dancing sky — a pale band
+        // riding the living hem, breathing cold; when the dance
+        // reaches its last station the snow ANSWERS, the curtain's
+        // own colors walking the hem as short drawn dashes, never a
+        // wash and never a glow.
+        const fh = st.frosthem;
+        const kF = auroraK(nowMs, 0.4);
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = fh.color;
+        ctx.globalAlpha = 0.5 + 0.2 * kF;
+        ctx.lineWidth = Math.max(1.5, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(hem[0]!.x, hem[0]!.y - 0.012 * s);
+        for (let i = 1; i <= 4; i++) ctx.lineTo(hem[i]!.x, hem[i]!.y - 0.012 * s);
+        ctx.stroke();
+        if (kF > 0.66) {
+          const ans = (kF - 0.66) / 0.34;
+          const colsF = st.greatcurtain?.colors ?? st.auroraband?.colors ?? [fh.glow];
+          const walkF = nowMs * 0.00042;
+          for (let i = 0; i < 4; i++) {
+            const uD = ((walkF + i * 0.29) % 1 + 1) % 1;
+            const aD = (0.32 + 0.5 * ans * (0.5 + 0.5 * Math.sin(nowMs * 0.0013 + i * 1.9))) * Math.sin(Math.PI * uD);
+            if (aD < 0.3) continue;
+            const p0 = hem[i]!;
+            const p1 = hem[i + 1]!;
+            const dxD = p0.x + (p1.x - p0.x) * uD;
+            const dyD = p0.y + (p1.y - p0.y) * uD - 0.024 * s;
+            ctx.globalAlpha = aD;
+            ctx.strokeStyle = colsF[i % colsF.length]!;
+            ctx.lineWidth = Math.max(1.2, s * 0.011);
+            ctx.beginPath();
+            ctx.moveTo(dxD - 0.016 * s, dyD + 0.006 * s);
+            ctx.lineTo(dxD + 0.016 * s, dyD - 0.006 * s);
+            ctx.stroke();
+          }
         }
         ctx.globalAlpha = 1;
       }
@@ -11640,84 +11942,99 @@ export function drawPauldron(
     return;
   }
 
-  if (st.pauldron === 'aurorapaul') {
-    // THE AURORA PAULDRON — the night sky's shoulders, asymmetric.
-    // The right flies THE CURTAIN: three short luminous ribbons off
-    // the crest streaming outboard, waking in sequence — the head's
-    // sky at shoulder scale. The left is THE NIGHTFIELD: the dark
-    // seat holding its stars, with one pale arc banked low along
-    // the hem, breathing.
-    const curt = st.curtainhem?.colors ?? [trim];
-    seat(0.112 * s, 0.09 * s, hurt ? '#ffffff' : col, trim);
-    if (side > 0) {
-      // THE CURTAIN: garment-scale, holds hurt-white.
-      for (let i = 0; i < 3; i++) {
-        const rootX = side * (0.012 + i * 0.03) * s;
-        const rootY = -0.08 * s + i * 0.012 * s;
-        const len = (0.165 - i * 0.025) * s;
-        const wake = 0.5 + 0.5 * Math.sin(nowMs * 0.00052 + i * 2.1 + 0.8);
-        ctx.globalAlpha = hurt ? 1 : 0.55 + 0.4 * wake;
-        ctx.fillStyle = hurt ? '#ffffff' : curt[i % curt.length] ?? trim;
-        ctx.beginPath();
-        for (let sgm = 0; sgm <= 3; sgm++) {
-          const v = sgm / 3;
-          const px = rootX + side * v * 0.075 * s + side * Math.sin(nowMs * 0.0016 - v * 2.4 + i * 1.3) * 0.014 * s * v;
-          const py = rootY + v * len;
-          const wv = 0.019 * s * (1 - v * 0.5);
-          if (sgm === 0) ctx.moveTo(px - side * wv, py);
-          else ctx.lineTo(px - side * wv, py);
-        }
-        for (let sgm = 3; sgm >= 0; sgm--) {
-          const v = sgm / 3;
-          const px = rootX + side * v * 0.075 * s + side * Math.sin(nowMs * 0.0016 - v * 2.4 + i * 1.3) * 0.014 * s * v;
-          const py = rootY + v * len;
-          const wv = 0.019 * s * (1 - v * 0.5);
-          ctx.lineTo(px + side * wv, py);
-        }
-        ctx.closePath();
+  if (st.pauldron === 'aurorafall') {
+    // THE AURORA FALL — the sovereign's shoulders, re-founded: no
+    // dome, no badge, no bolt. Each shoulder is a banked NIGHT
+    // DRIFT — deep cloth in the mantle's own dark carrying the mass,
+    // the frost rim on its under-hem saying WORN — and standing off
+    // its crest THE CONTAINED LIGHTS: folds of drawn aurora,
+    // abstract and morphing at one constant pace, brightest at the
+    // hems where they meet the drift (the sky kept at shoulder
+    // scale, never a circle, never an orb). A PAIR, not copies: the
+    // near shoulder raises one tall dancing fold behind a low echo;
+    // the far lays two long laps low along its crest. Both take THE
+    // DANCE at their own stations, shoulders after crown.
+    const ac = st.auroraband?.colors ?? [trim, trim, trim];
+    const silkP = st.greatcurtain?.silk ?? shade(col, 12);
+    const kP = auroraK(nowMs, side > 0 ? 0.07 : 0.12);
+    // Duck by depth, HARD: at a profile the near cap seats low over
+    // the chest — a tall fold there climbs the face. The lights also
+    // lean OUTBOARD as the body turns, away from the jaw.
+    const duck = 1 - 0.5 * Math.abs(depthK);
+    const outb = side * 0.03 * Math.abs(depthK);
+    const ph = side > 0 ? 0.4 : 2.9;
+    const drift = (): void => {
+      ctx.beginPath();
+      ctx.moveTo(-0.116 * s, 0.05 * s);
+      ctx.quadraticCurveTo(-0.13 * s, -0.028 * s, -0.05 * s, -0.06 * s);
+      ctx.quadraticCurveTo(side * 0.014 * s, -0.088 * s, 0.07 * s, -0.054 * s);
+      ctx.quadraticCurveTo(0.126 * s, -0.024 * s, 0.114 * s, 0.048 * s);
+      ctx.quadraticCurveTo(0, 0.094 * s, -0.116 * s, 0.05 * s);
+      ctx.closePath();
+    };
+    // THE NIGHT DRIFT FIRST: the mass the lights stand on.
+    // Structure — it holds white.
+    ctx.fillStyle = hurt ? '#ffffff' : col;
+    drift();
+    ctx.fill();
+    if (!hurt) {
+      ctx.save();
+      drift();
+      ctx.clip();
+      // The belly lives inside the body (the egg lesson) — a shade,
+      // never a hole.
+      ctx.fillStyle = shade(col, -12);
+      ctx.beginPath();
+      ctx.ellipse(0.008 * s, 0.072 * s, 0.115 * s, 0.036 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // The lit crest plane: snow under the lights (2.5D top read).
+      ctx.fillStyle = shade(col, 30);
+      ctx.beginPath();
+      ctx.ellipse(side * 0.012 * s, -0.052 * s, 0.082 * s, 0.024 * s, side * -0.1, 0, Math.PI * 2);
+      ctx.fill();
+      // Stars seated in the drift, one awake at a time.
+      ctx.fillStyle = st.starfield?.color ?? trim;
+      for (const [ui, sx2, sy2] of [[0, -0.052, -0.004], [1, 0.046, -0.022]] as const) {
+        const tw2 = Math.sin(nowMs * 0.00034 + ui * 2.51 + ph);
+        if (tw2 < 0.25) continue;
+        ctx.globalAlpha = 0.3 + 0.5 * ((tw2 - 0.25) / 0.75);
+        starPrick(ctx, sx2 * s, sy2 * s, (0.009 + 0.005 * tw2) * s);
         ctx.fill();
       }
       ctx.globalAlpha = 1;
-      if (!hurt) {
-        // The clasp where the curtains root — cloth needs a mount.
-        ctx.fillStyle = shade(col, -20);
-        ctx.fillRect(side * 0.002 * s, -0.085 * s, side * 0.082 * s, 0.02 * s);
-        ctx.fillStyle = shade(trim, 6);
-        ctx.beginPath();
-        ctx.arc(side * 0.042 * s, -0.075 * s, 0.009 * s, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    } else if (!hurt) {
-      // THE NIGHTFIELD: stars in the cloth, one awake at a time,
-      // and the banked arc breathing along the hem.
-      const starC = st.curtainhem?.colors?.[0] ?? trim;
-      for (const [ui, sx, sy] of [[0, -0.045, -0.055], [1, 0.03, -0.02], [2, -0.01, 0.015]] as const) {
-        const tw2 = 0.3 + 0.7 * Math.max(0, Math.sin(nowMs * 0.0009 + ui * 2.6 + 1.4));
-        ctx.globalAlpha = 0.35 + 0.45 * tw2;
-        ctx.fillStyle = starC;
-        const px = sx * s;
-        const py = sy * s;
-        const rr = (0.008 + 0.005 * tw2) * s;
-        ctx.beginPath();
-        ctx.moveTo(px, py - rr);
-        ctx.lineTo(px + rr * 0.3, py - rr * 0.3);
-        ctx.lineTo(px + rr, py);
-        ctx.lineTo(px + rr * 0.3, py + rr * 0.3);
-        ctx.lineTo(px, py + rr);
-        ctx.lineTo(px - rr * 0.3, py + rr * 0.3);
-        ctx.lineTo(px - rr, py);
-        ctx.lineTo(px - rr * 0.3, py - rr * 0.3);
-        ctx.closePath();
-        ctx.fill();
-      }
-      const breathe = 0.5 + 0.5 * Math.sin(nowMs * 0.00052 + 3.2);
-      ctx.globalAlpha = 0.25 + 0.4 * breathe;
-      ctx.strokeStyle = curt[1 % curt.length] ?? starC;
+      ctx.restore();
+      // The frost rim: the one bright line that says WORN.
+      ctx.strokeStyle = trim;
       ctx.lineWidth = Math.max(1, s * 0.013);
       ctx.beginPath();
-      ctx.arc(0, 0.16 * s, 0.13 * s, Math.PI * 1.28, Math.PI * 1.72);
+      ctx.moveTo(-0.106 * s, 0.052 * s);
+      ctx.quadraticCurveTo(0, 0.092 * s, 0.104 * s, 0.05 * s);
       ctx.stroke();
-      ctx.globalAlpha = 1;
+    }
+    // THE CONTAINED LIGHTS — folds standing ON the crest, hems
+    // seated right at the drift's edge (brightest where sky meets
+    // snow); the fold BODIES are night silk clearly lighter than
+    // the drift (a device darker than its cap reads as insignia),
+    // the light drawn only on the hem and in the rays.
+    const folds: ReadonlyArray<readonly [number, number, number, number, number]> =
+      side > 0
+        ? [[-0.034, -0.062, 0.09, 0.06, 1], [0.018, -0.068, 0.13, 0.115, 0]]
+        : [[-0.048, -0.064, 0.1, 0.06, 0], [0.03, -0.06, 0.09, 0.075, 2]];
+    for (const [fx0, fy0, fw, fh2, ci] of folds) {
+      const pts: Array<{ x: number; y: number }> = [];
+      for (let i = 0; i <= 3; i++) {
+        const u = i / 3;
+        pts.push({
+          x: (fx0 + outb + (u - 0.5) * fw) * s,
+          y: (fy0 + 0.008 * Math.sin(u * Math.PI)) * s +
+            Math.sin(u * 3.8 - nowMs * 0.0019 + ph) * 0.007 * s * (1 + 0.8 * kP),
+        });
+      }
+      auroraCurtain(
+        ctx, pts, fh2 * s * duck * (0.8 + 0.45 * kP), silkP,
+        ac[ci % ac.length]!, '#e8fff4', kP, nowMs, ph + ci,
+        Math.max(1, s * 0.0095), hurt,
+      );
     }
     ctx.restore();
     return;
@@ -17703,79 +18020,158 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     return;
   }
 
-  if (st.kind === 'aurorapeak') {
-    // THE NIGHT CURTAIN — aurora's own head: a folded midnight peak
-    // flying the sky it was cut from. Three luminous silk curtains
-    // stream off the apex and PAST the silhouette, rippling on
-    // traveling waves and waking in sequence — the aurora does not
-    // strike, it breathes. Hard folded planes keep the peak angular;
-    // faint stars sit in the cloth; the face stays in the deepest
-    // dark the wardrobe owns.
+  if (st.kind === 'coronacowl') {
+    // THE CORONA COWL — the aurora sovereign's head: the zenith,
+    // worn. A folded midnight cowl on the vigils triangle whose peak
+    // carries THE CORONA — the crown of rays the sky only shows
+    // straight overhead — asleep to a single frost seed through the
+    // quiet arc and erupting when the substorm lands (the dance's
+    // first station). Beneath it a wide HORIZON MANTLE hands the
+    // hood to the shoulder line, and along its hem lies the quiet
+    // arc every dancing sky stands up from — the same horizon the
+    // shoulder drifts rise off. The face keeps the wardrobe's
+    // deepest dark: the lights dance for the sky, never the door.
     const t = profileK;
     const front = backK <= 0.55;
+    const kC = auroraK(f.nowMs, 0);
+    const kM = auroraK(f.nowMs, 0.05);
+    const cor = st.corona?.colors ?? [st.trim, st.trim, st.trim];
+    const starC = st.corona?.star ?? '#e8f4ee';
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
-    const ohw = hw * 0.74 * (1 - 0.5 * t);
-    const oTop = headY - hh * 0.6;
+    const ohw = hw * 0.72 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.58;
     const oBot = headY + hh * 0.84;
-    const sway = Math.sin(f.nowMs * 0.0012) * hw * 0.03;
-    const apexX = headX - lead * hw * (0.22 + t * 0.1) + sway;
-    const apexY = headY - hh * 1.44;
-    const curt = st.nightcurtain?.colors ?? [st.trim, st.trim, st.trim];
-    // THE CURTAINS FIRST — they live behind the peak, trailing, and
-    // they are garment-scale STRUCTURE: hurt holds them white.
-    for (let i = 0; i < 3; i++) {
-      const rootX = apexX - lead * hw * (0.02 + i * 0.13);
-      const rootY = apexY + hh * (0.06 + i * 0.13);
-      const len = hh * (2.35 - i * 0.4);
-      const w0 = hw * (0.25 - i * 0.045);
-      const wake = 0.5 + 0.5 * Math.sin(f.nowMs * 0.00052 + i * 2.1);
-      ctx.globalAlpha = hurt ? 1 : 0.52 + 0.4 * wake;
-      ctx.fillStyle = hurt ? '#ffffff' : curt[i % curt.length] ?? st.trim;
+    const sway = Math.sin(f.nowMs * 0.0011) * hw * 0.024;
+    const apexX = headX - lead * hw * (0.26 + t * 0.1) + sway;
+    const apexY = headY - hh * 1.46;
+    // THE NAPE FIRST: cap the skull before any shell (the cap law) —
+    // no facing may show scalp between cloth and crown.
+    ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, -8);
+    ctx.beginPath();
+    ctx.ellipse(headX, headY - hh * 0.24, hw * 1.02, hh * 0.98, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // THE HORIZON MANTLE: wide banded shoulders, top tucked in under
+    // the cowl (the bell owns the head), the hem swept in one slack
+    // arc. Garment-scale structure: it holds white in the hurt flash.
+    const mantle = (): void => {
       ctx.beginPath();
-      for (let sgm = 0; sgm <= 4; sgm++) {
-        const v = sgm / 4;
-        const px = rootX - lead * (hw * 0.55 + v * hw * (0.85 + i * 0.2)) + lead * Math.sin(f.nowMs * 0.0016 - v * 2.6 + i * 1.4) * hw * 0.16 * v + lead * hw * 0.55;
-        const py = rootY + v * len;
-        const wv = w0 * (1 - v * 0.6);
-        if (sgm === 0) ctx.moveTo(px - lead * wv, py);
-        else ctx.lineTo(px - lead * wv, py);
-      }
-      for (let sgm = 4; sgm >= 0; sgm--) {
-        const v = sgm / 4;
-        const px = rootX - lead * (hw * 0.55 + v * hw * (0.85 + i * 0.2)) + lead * Math.sin(f.nowMs * 0.0016 - v * 2.6 + i * 1.4) * hw * 0.16 * v + lead * hw * 0.55;
-        const py = rootY + v * len;
-        const wv = w0 * (1 - v * 0.6);
-        ctx.lineTo(px + lead * wv, py);
-      }
+      ctx.moveTo(headX - hw * 0.64, headY + hh * 0.12);
+      ctx.quadraticCurveTo(headX - hw * 1.58, headY + hh * 0.7, headX - hw * 1.42, headY + hh * 2.2);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.2, headY + hh * (2.62 + 0.08 * t), headX + hw * 1.44, headY + hh * 2.14);
+      ctx.quadraticCurveTo(headX + hw * 1.56, headY + hh * 0.68, headX + hw * 0.64, headY + hh * 0.12);
+      ctx.closePath();
+    };
+    ctx.fillStyle = hurt ? '#ffffff' : shade(st.color, -14);
+    mantle();
+    ctx.fill();
+    if (!hurt) {
+      ctx.save();
+      mantle();
+      ctx.clip();
+      // The trailing side folds dark — hard planes, cloth's shadow.
+      ctx.fillStyle = shade(st.color, -24);
+      ctx.beginPath();
+      ctx.moveTo(headX - lead * hw * 1.52, headY + hh * 0.48);
+      ctx.lineTo(headX - lead * hw * 0.5, headY + hh * 0.3);
+      ctx.lineTo(headX - lead * hw * 0.66, headY + hh * 2.6);
+      ctx.lineTo(headX - lead * hw * 1.5, headY + hh * 2.45);
       ctx.closePath();
       ctx.fill();
-      if (!hurt) {
-        // The bright core thread of each curtain.
-        ctx.globalAlpha = 0.62 + 0.38 * wake;
-        ctx.strokeStyle = shade(curt[i % curt.length] ?? st.trim, 24);
-        ctx.lineWidth = Math.max(1, s * 0.008);
+      // THE QUIET ARC: the aurora lying along the horizon hem — a
+      // drawn casing under a pale core with rays combed up into the
+      // cloth, brightening and rippling as the dance passes. Every
+      // stroke lives inside the mantle clip; the dilate never sees
+      // a whisker. The hem drapes BELOW the shoulder caps, so the
+      // arc stays in the open at every facing.
+      const arcPts: Array<{ x: number; y: number }> = [];
+      for (let i = 0; i <= 6; i++) {
+        const u = i / 6;
+        arcPts.push({
+          x: headX - hw * 1.32 + u * hw * 2.64,
+          y: headY + hh * (2.06 + 0.34 * Math.sin(Math.PI * u)) +
+            Math.sin(f.nowMs * 0.0017 + u * 4.6) * hh * (0.016 + 0.05 * kM),
+        });
+      }
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 6; i++) {
+        const rw = 0.5 + 0.5 * Math.sin(f.nowMs * 0.0011 + i * 2.3);
+        const aA = (0.14 + 0.5 * kM) * (0.4 + 0.6 * rw);
+        if (aA < 0.14) continue;
+        const bx = (arcPts[i]!.x + arcPts[i + 1]!.x) / 2;
+        const by = (arcPts[i]!.y + arcPts[i + 1]!.y) / 2;
+        ctx.globalAlpha = aA;
+        ctx.strokeStyle = cor[i % cor.length]!;
+        ctx.lineWidth = Math.max(1.2, s * 0.012);
         ctx.beginPath();
-        for (let sgm = 0; sgm <= 4; sgm++) {
-          const v = sgm / 4;
-          const px = rootX - lead * (v * hw * (0.85 + i * 0.2)) + lead * Math.sin(f.nowMs * 0.0016 - v * 2.6 + i * 1.4) * hw * 0.16 * v;
-          const py = rootY + v * len;
-          if (sgm === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-        }
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx + Math.sin(f.nowMs * 0.0009 + i) * hw * 0.05, by - hh * (0.16 + 0.14 * kM));
+        ctx.stroke();
+      }
+      const arcTrace = (): void => {
+        ctx.beginPath();
+        ctx.moveTo(arcPts[0]!.x, arcPts[0]!.y);
+        for (let i = 1; i < arcPts.length; i++) ctx.lineTo(arcPts[i]!.x, arcPts[i]!.y);
+        ctx.stroke();
+      };
+      ctx.globalAlpha = 0.35 + 0.5 * kM;
+      ctx.strokeStyle = cor[0]!;
+      ctx.lineWidth = Math.max(1.6, s * 0.02);
+      arcTrace();
+      ctx.globalAlpha = 0.5 + 0.5 * kM;
+      ctx.strokeStyle = '#e8fff4';
+      ctx.lineWidth = Math.max(1, s * 0.009);
+      arcTrace();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+    // THE CORONA: rooted just under the peak so the rays read as
+    // coming out of the cloth, drawn BEFORE the shell so the shell's
+    // edge grounds them. Quiet sky: the frost seed alone. Substorm:
+    // the crown of rays stands up, colors walking green, teal,
+    // violet — every ray a drawn stroke, never a halo.
+    const wakeC = Math.max(0, (kC - 0.42) / 0.58);
+    if (!hurt) {
+      // THE FROST SEED: the one forged thing — a star seated at the
+      // peak, always awake; the corona erupts from it at the dance.
+      ctx.fillStyle = starC;
+      ctx.globalAlpha = 0.85;
+      starPrick(ctx, apexX, apexY + hh * 0.1, headR * (0.05 + 0.02 * wakeC));
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    if (!hurt && wakeC > 0.02) {
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 5; i++) {
+        const aR = -Math.PI / 2 + (i - 2) * 0.42 - lead * 0.14;
+        const wob = Math.sin(f.nowMs * 0.0016 + i * 2.1);
+        const lenR = hh * (0.3 + 0.26 * wakeC + 0.07 * wob) * (1 - Math.abs(i - 2) * 0.14);
+        const aA = wakeC * (0.5 + 0.36 * (0.5 + 0.5 * wob));
+        if (aA < 0.3) continue;
+        ctx.globalAlpha = aA;
+        ctx.strokeStyle = cor[i % cor.length]!;
+        ctx.lineWidth = Math.max(1.4, s * (0.016 - Math.abs(i - 2) * 0.002));
+        ctx.beginPath();
+        ctx.moveTo(apexX, apexY + hh * 0.12);
+        ctx.lineTo(apexX + Math.cos(aR) * lenR, apexY + hh * 0.12 + Math.sin(aR) * lenR);
         ctx.stroke();
       }
       ctx.globalAlpha = 1;
     }
     const shell = (): void => {
-      ctx.moveTo(headX + lead * hw * 1.22, headY + hh * 1.12);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.34, headY + hh * 0.18, headX + lead * hw * 1.14, headY - hh * 0.46);
-      // Hard folded planes: the peak is CUT, not draped.
-      ctx.lineTo(headX + lead * hw * 0.92, headY - hh * 1.02);
-      ctx.lineTo(headX + lead * hw * 0.34, headY - hh * 1.3);
-      ctx.lineTo(apexX, apexY);
-      ctx.lineTo(headX - lead * hw * 0.72, headY - hh * 1.16);
-      ctx.lineTo(headX - lead * hw * (1.1 + t * 0.24), headY - hh * 0.52);
-      ctx.quadraticCurveTo(headX - lead * hw * (1.36 + t * 0.28), headY + hh * 0.3, headX - lead * hw * 1.28, headY + hh * 1.12);
-      ctx.quadraticCurveTo(headX, headY + hh * 1.4, headX + lead * hw * 1.22, headY + hh * 1.12);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 1.18, headY + hh * 1.08);
+      // Convex flanks: the cloth stands proud of the skull (straight
+      // converging flanks let the skull break the cloth).
+      ctx.quadraticCurveTo(headX + lead * hw * 1.4, headY + hh * 0.1, headX + lead * hw * 1.0, headY - hh * 0.58);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.72, headY - hh * 1.08, headX + lead * hw * 0.18, headY - hh * 1.28);
+      // The peak, pinched and swept a hair to the trail.
+      ctx.quadraticCurveTo(apexX + lead * hw * 0.2, apexY + hh * 0.1, apexX, apexY);
+      // The dropped tip ends on a short vertical edge (blunt tip).
+      ctx.lineTo(apexX - lead * hw * 0.15, apexY + hh * 0.1);
+      ctx.lineTo(apexX - lead * hw * 0.13, apexY + hh * 0.22);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.64, headY - hh * 1.16, headX - lead * hw * (1.06 + t * 0.22), headY - hh * 0.5);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.34 + t * 0.26), headY + hh * 0.28, headX - lead * hw * 1.24, headY + hh * 1.08);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.36, headX + lead * hw * 1.18, headY + hh * 1.08);
       ctx.closePath();
     };
     const opening = (): void => {
@@ -17793,82 +18189,122 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       if (front) opening();
       ctx.clip('evenodd');
       // FOLDED DARK: hard planar shadows, never gradients.
-      ctx.fillStyle = shade(st.color, -16);
+      ctx.fillStyle = shade(st.color, -18);
       ctx.beginPath();
       ctx.moveTo(apexX, apexY);
-      ctx.lineTo(headX - lead * hw * 0.72, headY - hh * 1.16);
-      ctx.lineTo(headX - lead * hw * 1.2, headY - hh * 0.4);
-      ctx.lineTo(headX - lead * hw * 1.34, headY + hh * 1.2);
-      ctx.lineTo(headX - lead * hw * 0.1, headY + hh * 1.3);
-      ctx.lineTo(headX - lead * hw * 0.2, headY - hh * 0.9);
+      ctx.lineTo(headX - lead * hw * 0.64, headY - hh * 1.16);
+      ctx.lineTo(headX - lead * hw * 1.2, headY - hh * 0.38);
+      ctx.lineTo(headX - lead * hw * 1.32, headY + hh * 1.16);
+      ctx.lineTo(headX - lead * hw * 0.12, headY + hh * 1.28);
+      ctx.lineTo(headX - lead * hw * 0.2, headY - hh * 0.88);
       ctx.closePath();
       ctx.fill();
-      // The lit leading plane.
+      // The lit leading plane under the peak.
       ctx.fillStyle = shade(st.color, 8);
       ctx.beginPath();
       ctx.moveTo(apexX, apexY);
-      ctx.lineTo(headX + lead * hw * 0.34, headY - hh * 1.3);
-      ctx.lineTo(headX + lead * hw * 0.7, headY - hh * 0.7);
-      ctx.lineTo(headX + lead * hw * 0.18, headY - hh * 0.62);
+      ctx.lineTo(headX + lead * hw * 0.32, headY - hh * 1.28);
+      ctx.lineTo(headX + lead * hw * 0.66, headY - hh * 0.68);
+      ctx.lineTo(headX + lead * hw * 0.16, headY - hh * 0.6);
       ctx.closePath();
       ctx.fill();
-      // One crease line where the planes meet.
+      // ONE BRIGHT EDGE: frost light finds the leading arris — a
+      // rim stroke clipped INTO the shell (the dilate bar).
+      ctx.strokeStyle = shade(st.trim, -6);
+      ctx.globalAlpha = 0.7;
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 1.36, headY + hh * 0.2);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.06, headY - hh * 0.5, headX + lead * hw * 0.24, headY - hh * 1.24);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      // One crease where the folded planes meet.
       ctx.strokeStyle = shade(st.color, -26);
       ctx.lineWidth = Math.max(1, s * 0.009);
       ctx.beginPath();
       ctx.moveTo(apexX, apexY + hh * 0.06);
-      ctx.lineTo(headX + lead * hw * 0.16, headY - hh * 0.6);
+      ctx.lineTo(headX + lead * hw * 0.14, headY - hh * 0.58);
       ctx.stroke();
-      // THE STARS IN THE CLOTH: faint four-point pricks, one of them
-      // awake at a time.
-      const starC = st.nightcurtain?.star ?? '#eaf4e8';
-      for (const [ui, sx, sy] of [[0, -0.52, -0.9], [1, 0.36, -1.02], [2, -0.12, -0.42]] as const) {
+      // THE STARS IN THE CLOTH: four-point pricks, one awake at a
+      // time — the night the crown needs behind it.
+      for (const [ui, sx, sy] of [[0, -0.5, -0.92], [1, 0.34, -1.04], [2, -0.1, -0.44]] as const) {
         const tw2 = 0.3 + 0.7 * Math.max(0, Math.sin(f.nowMs * 0.0009 + ui * 2.4));
         ctx.globalAlpha = 0.25 + 0.45 * tw2;
         ctx.fillStyle = starC;
-        const px = headX + hw * sx;
-        const py = headY + hh * sy;
-        const rr = headR * (0.035 + 0.02 * tw2);
-        ctx.beginPath();
-        ctx.moveTo(px, py - rr);
-        ctx.lineTo(px + rr * 0.3, py - rr * 0.3);
-        ctx.lineTo(px + rr, py);
-        ctx.lineTo(px + rr * 0.3, py + rr * 0.3);
-        ctx.lineTo(px, py + rr);
-        ctx.lineTo(px - rr * 0.3, py + rr * 0.3);
-        ctx.lineTo(px - rr, py);
-        ctx.lineTo(px - rr * 0.3, py - rr * 0.3);
-        ctx.closePath();
+        starPrick(ctx, headX + hw * sx, headY + hh * sy, headR * (0.035 + 0.02 * tw2));
         ctx.fill();
       }
       ctx.globalAlpha = 1;
+      // THE VISITOR: once in a long while a star crosses the crown
+      // cloth — a short drawn streak, clipped in, gone in a breath.
+      const muV = (f.nowMs % 26800) / 26800;
+      if (muV > 0.9 && muV < 0.945) {
+        const pV = (muV - 0.9) / 0.045;
+        const vx = headX - lead * hw * (0.72 - 1.5 * pV);
+        const vy = headY - hh * (1.12 - 0.5 * pV);
+        const aV = 0.75 * Math.sin(Math.PI * pV);
+        if (aV >= 0.3) {
+          ctx.globalAlpha = aV;
+          ctx.strokeStyle = starC;
+          ctx.lineCap = 'round';
+          ctx.lineWidth = Math.max(1, s * 0.009);
+          ctx.beginPath();
+          ctx.moveTo(vx - lead * hw * 0.18, vy + hh * 0.06);
+          ctx.lineTo(vx, vy);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+      }
       ctx.restore();
       if (front) {
-        // THE CAST VEIL — the night's own falloff, deepest of the
-        // four, clipped inside the opening.
+        // THE CAST VEIL — the deepest dark the wardrobe owns. The
+        // hold zone is one OPAQUE plane (stroke-band veils SEAM
+        // against a lit face — the oath cowl's lesson); stormVeil
+        // grades only the chin below it.
         ctx.save();
         ctx.beginPath();
         opening();
         ctx.clip();
-        stormVeil(ctx, cx, ohw, oTop + cut * 0.2, headY + hh * 0.2, headY + hh * 0.72, '#070c0c');
+        ctx.fillStyle = '#060a0e';
+        ctx.fillRect(cx - ohw * 1.1, oTop - headR * 0.05, ohw * 2.2, (headY + hh * 0.3) - oTop + headR * 0.05);
+        stormVeil(ctx, cx, ohw * 1.05, headY + hh * 0.28, headY + hh * 0.34, headY + hh * 0.8, '#060a0e');
         ctx.restore();
-        ctx.strokeStyle = shade(st.color, 20);
+        // The shrine-door frame: frost border, inner dark line, and
+        // the brow bar that seats the cowl on the face.
+        ctx.strokeStyle = shade(st.trim, -10);
         ctx.lineWidth = Math.max(1, s * 0.013);
         ctx.beginPath();
         opening();
         ctx.stroke();
+        ctx.strokeStyle = shade(st.color, -30);
+        ctx.lineWidth = Math.max(1, s * 0.007);
+        ctx.beginPath();
+        chamferRect(ctx, cx - ohw * 0.9, oTop + headR * 0.06, ohw * 1.8, (oBot - oTop) - headR * 0.12, cut * 0.7);
+        ctx.stroke();
         ctx.fillStyle = shade(st.color, -22);
         ctx.fillRect(cx - ohw * 0.98, oTop - headR * 0.045, ohw * 1.96, headR * 0.09);
       } else {
-        // From behind the curtains already carry the read; add the
-        // drape tail and the crease going home.
+        // The back read: the drape tail going home, the center seam,
+        // and one hem star — the corona above already says who.
         ctx.fillStyle = shade(st.color, -12);
         ctx.beginPath();
-        ctx.moveTo(headX - hw * 0.36, headY + hh * 0.86);
-        ctx.lineTo(headX + hw * 0.36, headY + hh * 0.86);
+        ctx.moveTo(headX - hw * 0.36, headY + hh * 0.84);
+        ctx.lineTo(headX + hw * 0.36, headY + hh * 0.84);
         ctx.lineTo(headX + lead * hw * 0.06, headY + hh * 1.84);
         ctx.closePath();
         ctx.fill();
+        ctx.strokeStyle = shade(st.color, -26);
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        ctx.moveTo(apexX, apexY + hh * 0.3);
+        ctx.quadraticCurveTo(headX - lead * hw * 0.1, headY - hh * 0.2, headX + lead * hw * 0.04, headY + hh * 0.8);
+        ctx.stroke();
+        const twB = 0.3 + 0.7 * Math.max(0, Math.sin(f.nowMs * 0.0009 + 4.1));
+        ctx.globalAlpha = 0.25 + 0.4 * twB;
+        ctx.fillStyle = starC;
+        starPrick(ctx, headX - lead * hw * 0.42, headY + hh * 0.34, headR * 0.04);
+        ctx.fill();
+        ctx.globalAlpha = 1;
       }
     }
     return;

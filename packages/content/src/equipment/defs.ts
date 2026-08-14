@@ -1888,8 +1888,8 @@ function earlyClothDefs(): EquipmentDef[] {
         desc: 'Anvil-dark under a wide waved brim. Count the seconds.' },
       { key: 'sunshower', dye: 'Sunshower', color: '#c9a85c', dyeInput: { item: 'sunflower', qty: 2 },
         desc: 'Rain with the sun still out. Luck, worn with a brim.' },
-      { key: 'aurora', dye: 'Aurora', color: '#4e8a7a', dyeInput: { item: 'moonbell', qty: 1 },
-        desc: 'The night curtain itself, cut and hemmed. It has not stopped moving.' },
+      { key: 'aurora', dye: 'Aurora', color: '#1d2f3a', dyeInput: { item: 'moonbell', qty: 1 },
+        desc: 'The polar night, cut and hemmed. Once a watch, the whole sky remembers to dance.' },
     ]),
   ];
 }
