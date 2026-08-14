@@ -10,8 +10,9 @@
 //   ?rows=a-b   draw only sheet rows a..b (screenshot banding)
 //   ?det=1      DETERMINISTIC mode: fixed 60Hz steps run synchronously
 //               on the first frame; ?detn=N sets the step count.
-import { LegSolver, drawHumanoid, beastSpec, drawBeast, type RigPose } from '../render/rig.js';
+import { LegSolver, drawHumanoid, beastSpec, drawBeast, lynxLook, type RigPose } from '../render/rig.js';
 import { LegRig } from '../render/legs.js';
+import { BobtailSim, drawBobtail } from '../render/tail.js';
 import { PoseState } from '@arx/shared';
 
 const canvas = document.getElementById('lab') as HTMLCanvasElement;
@@ -54,6 +55,7 @@ interface Fig {
   ruler?: boolean;
   // live sim state
   legs?: LegRig;
+  bob?: BobtailSim;
   wx?: number;
   wy?: number;
   wp?: number;
@@ -202,6 +204,37 @@ function drawSheet(now: number, dt: number): void {
     // The pounce loop: crouch → strike on the renderer's 420ms clock,
     // held in a slow loop so the sheet shows every beat.
     const attackT = f.mode === 'pounce' ? ((now * 0.0014) % 1) : 0;
+    // THE SIMULATED BOB: lynx figs run the live verlet stub exactly
+    // as the game does — ticked here, painted through drawBeast's
+    // depth seam.
+    let tailFn: (() => void) | undefined;
+    if (f.defId.startsWith('lynx')) {
+      const champ = f.defId === 'lynx_champion';
+      if (!f.bob) f.bob = new BobtailSim(champ ? 1.35 : 1, f.seed);
+      f.bob.update(
+        f.wx!,
+        f.wy!,
+        (champ ? 0.68 : 0.53) + lp.bob * 0.35,
+        lp.dir,
+        dt,
+        now / 1000,
+        1,
+        attackT > 0 && attackT < 0.7 ? 1 : 0,
+      );
+      const look = lynxLook(f.defId, f.seed);
+      const bob = f.bob;
+      const bodyDx = f.ruler ? 0.28 * S : 0;
+      tailFn = () => {
+        const pts = bob.nodes.map((nd) => ({
+          x: homeX + bodyDx + (nd.x - f.wx!) * S,
+          y: homeY + (nd.y - f.wy!) * S * YS - nd.z * S,
+        }));
+        drawBobtail(ctx, pts, look, S, {
+          hurt: f.mode === 'hurt',
+          back: Math.sin(lp.dir) < -0.2,
+        });
+      };
+    }
     // Ruler cells: the player stands a body-width west of the beast.
     if (f.ruler) drawRulerMan(f, homeX - 0.62 * S, homeY, now, dt);
     drawBeast(ctx, {
@@ -224,6 +257,7 @@ function drawSheet(now: number, dt: number): void {
       attackT,
       seed: f.seed,
       nowMs: now,
+      tail: tailFn,
     });
     ctx.fillStyle = '#e8e4d8';
     ctx.font = '13px monospace';

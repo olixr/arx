@@ -563,6 +563,54 @@ export function solveLimbInto(
 }
 
 /**
+ * Unequal-bone variant of the one IK: a limb whose upper and lower
+ * segments differ in length (a cat's long thigh over its short hock).
+ * Law-of-cosines joint placement; reduces exactly to solveLimbInto at
+ * L1 === L2. Same allocation-free scratch contract, same side
+ * preference, same stretch law (past full reach the joint rides the
+ * chord at its bone fraction, so a stretched pounce leg stays honest).
+ */
+export function solveLimb2Into(
+  out: LimbSolve,
+  sx: number,
+  sy: number,
+  hx: number,
+  hy: number,
+  L1: number,
+  L2: number,
+  stretch: number,
+  prefX: number,
+  prefY: number,
+): LimbSolve {
+  let dx = hx - sx;
+  let dy = hy - sy;
+  let d = Math.hypot(dx, dy) || 1e-4;
+  const dMax = (L1 + L2) * stretch;
+  // Below the fold limit the joint direction degenerates — hold the
+  // target just outside it.
+  const dMin = Math.abs(L1 - L2) * 1.02 + 1e-4;
+  if (d > dMax) {
+    dx *= dMax / d;
+    dy *= dMax / d;
+    d = dMax;
+  } else if (d < dMin) {
+    dx *= dMin / d;
+    dy *= dMin / d;
+    d = dMin;
+  }
+  const along = Math.min(d, (d * d + L1 * L1 - L2 * L2) / (2 * d));
+  const bend = Math.sqrt(Math.max(0, L1 * L1 - along * along));
+  const cx = -dy / d;
+  const cy = dx / d;
+  const sign = cx * prefX + cy * prefY >= 0 ? 1 : -1;
+  out.ex = sx + dx;
+  out.ey = sy + dy;
+  out.kx = sx + (dx / d) * along + cx * sign * bend;
+  out.ky = sy + (dy / d) * along + cy * sign * bend;
+  return out;
+}
+
+/**
  * Pure two-bone limb solve, the one IK in the game: clamps the target
  * into reach and places the joint on whichever side of the root→target
  * line the preference vector points. Legs, arms, whatever bends.

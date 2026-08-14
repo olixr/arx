@@ -78,6 +78,7 @@ import {
   shade,
   koboldLook,
   gnollLook,
+  lynxLook,
   owlHoverHeight,
   owlLook,
   skeletonLook,
@@ -165,7 +166,7 @@ import {
 } from './reveal.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
-import { TailSim, drawTail } from './tail.js';
+import { BobtailSim, TailSim, drawBobtail, drawTail } from './tail.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
@@ -601,6 +602,8 @@ interface AnimState {
   capeKey?: string;
   /** The fur dialect's tail sim — present only on tailed species. */
   tail?: TailSim;
+  /** The lynx bobtail sim — present only on the tufted shadows. */
+  bobtail?: BobtailSim;
   /** THE FLEECE TELLS THE TIME: last seen shorn state on a sheep —
    *  the false→true edge is the shear moment and puffs the tufts. */
   shornSeen?: boolean;
@@ -32373,6 +32376,45 @@ export class Renderer {
       s.pose === PoseState.Attack
         ? Math.min(1, (performance.now() - anim.poseStartedAt) / 420)
         : 0;
+    // THE BOBTAIL IS A SIMULATION (tail.ts): the lynx's stub is the
+    // cape contract in muscle — a verlet chain on the anim map,
+    // ticked once per frame and painted through drawBeast's own
+    // depth law (the tail seam). Perk 1 through the pounce crouch:
+    // the stub stands while the body coils.
+    let bobSim: BobtailSim | null = null;
+    let paintBob: (() => void) | undefined;
+    if (defId.startsWith('lynx')) {
+      if (!anim.bobtail) {
+        anim.bobtail = new BobtailSim(defId === 'lynx_champion' ? 1.35 : 1, eid);
+      }
+      bobSim = anim.bobtail;
+      const champ = defId === 'lynx_champion';
+      bobSim.update(
+        s.x,
+        s.y,
+        // The RUMP-TOP height: the stub roots off the raised haunch
+        // line, riding the gait bob.
+        (champ ? 0.68 : 0.53) + legPose.bob * 0.35,
+        legPose.dir,
+        this.frameDt,
+        performance.now() / 1000,
+        1,
+        attackT > 0 && attackT < 0.7 ? 1 : 0,
+      );
+      const look = lynxLook(defId, eid);
+      paintBob = () => {
+        const pts = bobSim!.nodes.map((nd) => {
+          const sp = this.camera.worldToScreen(nd.x, nd.y, this.w, this.h);
+          return { x: sp.x, y: sp.y - this.renderLift(nd.x, nd.y) * scale - nd.z * scale };
+        });
+        drawBobtail(this.ctx, pts, look, scale, {
+          hurt,
+          back: Math.sin(legPose.dir) < -0.2,
+        });
+      };
+    } else if (anim.bobtail) {
+      anim.bobtail = undefined;
+    }
     // THE FLEECE TELLS THE TIME: the false→true edge on the meta's
     // shorn flag IS the shear landing — puff the fleece off the body.
     const shorn = meta.shorn === true;
@@ -32392,7 +32434,10 @@ export class Renderer {
     const fullDyn =
       (s.pose !== PoseState.Idle && s.pose !== PoseState.Walk) ||
       hurt ||
-      performance.now() - anim.poseStartedAt < 900;
+      performance.now() - anim.poseStartedAt < 900 ||
+      // A restless bob (moving cat, or a tip still flicking after a
+      // stop) re-bakes at full rate; a calm one waits on the cadence.
+      (bobSim !== null && bobSim.restless);
     const olDyn = fullDyn || (locomotion && (this.frameNo + eid) % 2 === 0);
     return {
       sortY: s.y,
@@ -32433,6 +32478,7 @@ export class Renderer {
           // stays on whether the keeper is online or not (the stock
           // marker is the durable fact; ownerEid comes and goes).
           collar: meta.stock ? '#8a6234' : meta.ownerEid !== undefined ? '#6e4a26' : undefined,
+          tail: paintBob,
           shorn,
         });
         // The shear moment: loosed tufts drift up and away off the

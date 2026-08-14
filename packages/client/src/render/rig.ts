@@ -21,6 +21,7 @@ import {
   LegRig,
   chooseLimbSign,
   solveLimb,
+  solveLimb2Into,
   solveLimbInto,
   type LegPose,
   type LegRigConfig,
@@ -7360,6 +7361,12 @@ export interface BeastSpec {
   foot: 'hoof' | 'paw' | 'claw' | 'bearpaw';
   /** Bare shanks (chicken) instead of body-shaded legs. */
   legColor?: string;
+  /**
+   * Unequal limb bones: the UPPER bone's fraction of the total leg
+   * length, [front, hind]. A cat carries a long thigh over a short
+   * hock; absent = the equal-bone solve every other species runs.
+   */
+  segSplit?: [number, number];
 }
 
 /** Diagonal trot pairs: FL+BR swing together, FR+BL together. */
@@ -7484,8 +7491,11 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     kneeFwd: [1, 1, -1, -1],
     hipFwd: 0.9,
     hipSide: 0.55,
-    legW: 0.07,
+    legW: 0.085,
     foot: 'paw',
+    // The cat's bones: a long thigh over a short hock behind, a
+    // slightly long upper arm in front — the crouch-and-spring frame.
+    segSplit: [0.53, 0.58],
   },
   // The duskruff: never a scaled lynx — a long low stalker whose mass
   // hangs between heavy shoulders and heavier haunches, on legs that
@@ -7504,9 +7514,10 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     kneeFwd: [1, 1, -1, -1],
     hipFwd: 0.9,
     hipSide: 0.55,
-    legW: 0.09,
+    legW: 0.105,
     foot: 'paw',
     legColor: '#3a3746',
+    segSplit: [0.53, 0.58],
   },
   rat: {
     rig: {
@@ -14013,6 +14024,135 @@ export function paintLynxBody(
 }
 
 /**
+ * THE MUSCLED LIMB: the lynx's leg is drawn as MASS, never as stick
+ * strokes — a filled haunch ball feeding a tapered thigh, a slim hock,
+ * and the oversized paw a snow-cat actually stands on. Every shape is
+ * built in the solved bones' own frames (hip→knee, knee→paw), so the
+ * masses articulate honestly through all eight facing bands, the
+ * pounce stretch, and every mid-turn joint memory — flat value planes
+ * per the forge law, one coat family per cluster.
+ */
+export function drawCatLimb(
+  ctx: CanvasRenderingContext2D,
+  o: {
+    hipX: number;
+    hipY: number;
+    kx: number;
+    ky: number;
+    ex: number;
+    ey: number;
+    /** Upper-leg thickness in px (spec.legW × scale). */
+    w: number;
+    s: number;
+    hind: boolean;
+    coat: string;
+    champion: boolean;
+    /** Far-side legs step into shadow so pairs never merge mid-stride. */
+    far: boolean;
+    hurt: boolean;
+  },
+): void {
+  const { hipX, hipY, kx, ky, ex, ey, w, s, hind } = o;
+  const dim = o.far ? -13 : 0;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : shade(c, dim));
+  // Segment frames.
+  const u1x = kx - hipX;
+  const u1y = ky - hipY;
+  const l1 = Math.hypot(u1x, u1y) || 1e-4;
+  const p1x = -u1y / l1;
+  const p1y = u1x / l1;
+  const u2x = ex - kx;
+  const u2y = ey - ky;
+  const l2 = Math.hypot(u2x, u2y) || 1e-4;
+  const p2x = -u2y / l2;
+  const p2y = u2x / l2;
+
+  // The thigh (or upper arm): a tapered quad, broad at the body and
+  // pulling in toward the joint. The hind thigh is the biggest muscle
+  // on the animal; the foreleg column runs leaner.
+  const wHip = w * (hind ? 1.35 : 1.05);
+  const wKnee = w * (hind ? 0.62 : 0.58);
+  ctx.fillStyle = C(shade(o.coat, hind ? -10 : -14));
+  ctx.beginPath();
+  ctx.moveTo(hipX + p1x * wHip, hipY + p1y * wHip);
+  ctx.lineTo(kx + p1x * wKnee, ky + p1y * wKnee);
+  ctx.lineTo(kx - p1x * wKnee, ky - p1y * wKnee);
+  ctx.lineTo(hipX - p1x * wHip, hipY - p1y * wHip);
+  ctx.closePath();
+  ctx.fill();
+
+  // The shank: hock or forearm, slim and tapering to the ankle.
+  const wShin = w * 0.55;
+  const wAnkle = w * 0.4;
+  ctx.fillStyle = C(shade(o.coat, -22));
+  ctx.beginPath();
+  ctx.moveTo(kx + p2x * wShin, ky + p2y * wShin);
+  ctx.lineTo(ex + p2x * wAnkle, ey + p2y * wAnkle);
+  ctx.lineTo(ex - p2x * wAnkle, ey - p2y * wAnkle);
+  ctx.lineTo(kx - p2x * wShin, ky - p2y * wShin);
+  ctx.closePath();
+  ctx.fill();
+
+  // Joint fill: a disc bridging the two quads so the knee/hock never
+  // opens a wedge of daylight mid-stride.
+  ctx.fillStyle = C(shade(o.coat, -16));
+  ctx.beginPath();
+  ctx.arc(kx, ky, w * 0.58, 0, Math.PI * 2);
+  ctx.fill();
+
+  // THE HAUNCH BALL (hind) / shoulder chip (fore): the muscle mass
+  // seated over the limb's root, riding the thigh's own angle so it
+  // rolls with the stride instead of sticking to the body like a
+  // decal. This is what makes the leg read FED, not scrawny.
+  const massR = w * (hind ? 1.6 : 1.1);
+  const mx = hipX + (u1x / l1) * l1 * (hind ? 0.2 : 0.16);
+  const my = hipY + (u1y / l1) * l1 * (hind ? 0.2 : 0.16);
+  ctx.fillStyle = C(shade(o.coat, hind ? -5 : -9));
+  ctx.save();
+  ctx.translate(mx, my);
+  ctx.rotate(Math.atan2(u1y, u1x));
+  ctx.beginPath();
+  ctx.ellipse(0, 0, massR, massR * 0.76, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // One quiet under-edge on the mass — a stroke, never a bright rim —
+  // so the muscle separates from the flank it overlaps.
+  if (!o.hurt) {
+    ctx.strokeStyle = shade(o.coat, -30 + dim);
+    ctx.lineWidth = Math.max(1, s * 0.014);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, massR, massR * 0.76, 0, Math.PI * 0.15, Math.PI * 0.85);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // THE PAW: broad and snowshoe-big, seated square on the shank's own
+  // axis, with the toe cleft seams that read at the sheet zoom and
+  // vanish quietly at world zoom.
+  const pw = w * 0.95;
+  const shinA = Math.atan2(ey - ky, ex - kx);
+  ctx.save();
+  ctx.translate(ex, ey);
+  ctx.rotate(shinA - Math.PI / 2);
+  ctx.fillStyle = C(shade(o.coat, -32));
+  ctx.beginPath();
+  ctx.ellipse(0, pw * 0.1, pw * 0.72, pw * 0.52, 0, 0, Math.PI * 2);
+  ctx.fill();
+  if (!o.hurt && s > 100) {
+    ctx.strokeStyle = shade(o.coat, -48 + dim);
+    ctx.lineWidth = Math.max(1, s * 0.012);
+    ctx.lineCap = 'round';
+    for (const t of [-0.3, 0.3]) {
+      ctx.beginPath();
+      ctx.moveTo(t * pw * 0.4, pw * 0.22);
+      ctx.lineTo(t * pw * 0.48, pw * 0.5);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  }
+  ctx.restore();
+}
+
+/**
  * The lynx head: a round feline skull wearing the THREE face reads —
  * tall triangular ears firing black TUFTS off their tips, the pale
  * RUFF chops framing the jaw like a layered beard, and slanted
@@ -14272,6 +14412,14 @@ export function drawBeast(
      */
     rider?: () => void;
     /**
+     * THE SIMULATED TAIL: when the caller ticks a physics tail
+     * (BobtailSim on its anim map), this paints the projected nodes.
+     * drawBeast keeps the depth law (tailFront) and skips its
+     * analytic stub; callers without a sim (portraits, the CMS
+     * viewport) fall back to the analytic pose.
+     */
+    tail?: () => void;
+    /**
      * THE COLLAR TELLS THE TALE (beastcraft v2): strap color for a
      * tamed body — worn gear in the saddle's tradition, never a
      * palette swap. Absent on every wild thing.
@@ -14324,11 +14472,19 @@ export function drawBeast(
   // Far-side legs draw behind the body mass, near-side in front.
   const L = (spec.rig.legLen / 2) * s;
   const stretch = spec.rig.stretch ?? 1.15;
+  // The stable per-entity seed, hoisted above the legs: the lynx limb
+  // painter jitters its muscle coat off the SAME hash the body wears.
+  let seed = 0;
+  for (let i = 0; i < opts.defId.length; i++) {
+    seed = (seed * 31 + opts.defId.charCodeAt(i)) | 0;
+  }
+  seed = (seed ^ ((opts.seed ?? 0) * 2654435761)) | 0;
   // A lynx's legs wear its ROLLED cluster coat, not the def color —
-  // an ash cat on tawny stockings read as a stranger's legs.
-  const legBase = opts.defId.startsWith('lynx')
-    ? lynxLook(opts.defId, opts.seed ?? 0).coat
-    : opts.color;
+  // an ash cat on tawny stockings read as a stranger's legs. The full
+  // look resolves here (cached) so the bespoke limb painter can dress
+  // muscle, not strokes.
+  const lynxLegL = opts.defId.startsWith('lynx') ? lynxLook(opts.defId, opts.seed ?? 0) : undefined;
+  const legBase = lynxLegL ? lynxLegL.coat : opts.color;
   const legColor = opts.hurt ? '#ffffff' : (spec.legColor ?? shade(legBase, -35));
   const shinColor = opts.hurt ? '#ffffff' : (spec.legColor ?? shade(legBase, -22));
   const footColor = opts.hurt ? '#ffffff' : shade(spec.legColor ?? legBase, -55);
@@ -14366,17 +14522,48 @@ export function drawBeast(
     const cyn = ddx / dd;
     const sign = chooseLimbSign(cxn, cyn, prefX, prefY, opts.kneeMemory[i] ?? 0);
     opts.kneeMemory[i] = sign;
-    const { ex, ey, kx, ky } = solveLimbInto(
-      LEG_SOLVE,
-      hipX,
-      hipY,
-      foot.x,
-      footY,
-      L,
-      stretch,
-      cxn * sign,
-      cyn * sign,
-    );
+    // Species with authored bone proportions run the unequal solve —
+    // the cat's long thigh over its short hock is a SKELETON fact,
+    // not a paint trick, so the joint sits where the anatomy puts it.
+    const split = spec.segSplit ? (leg.fwd >= 0 ? spec.segSplit[0] : spec.segSplit[1]) : 0.5;
+    const { ex, ey, kx, ky } =
+      split === 0.5
+        ? solveLimbInto(LEG_SOLVE, hipX, hipY, foot.x, footY, L, stretch, cxn * sign, cyn * sign)
+        : solveLimb2Into(
+            LEG_SOLVE,
+            hipX,
+            hipY,
+            foot.x,
+            footY,
+            L * 2 * split,
+            L * 2 * (1 - split),
+            stretch,
+            cxn * sign,
+            cyn * sign,
+          );
+
+    // THE MUSCLED LIMB: the lynx never wears the stick strokes — its
+    // legs are filled masses riding the solved bones at every facing.
+    if (lynxLegL) {
+      drawCatLimb(ctx, {
+        hipX,
+        hipY,
+        kx,
+        ky,
+        ex,
+        ey,
+        w: spec.legW * s,
+        s,
+        hind: leg.fwd < 0,
+        coat: shade(lynxLegL.coat, (((seed >>> 5) & 7) - 3) * 2),
+        champion: lynxLegL.champion === true,
+        // The far pair steps into shadow: without the tone step, two
+        // same-coat legs mid-stride merge into one blob at profile.
+        far: (opts.feet[i]?.y ?? opts.y) < opts.y,
+        hurt: opts.hurt,
+      });
+      return;
+    }
 
     ctx.lineCap = 'round';
     ctx.strokeStyle = legColor;
@@ -14462,12 +14649,9 @@ export function drawBeast(
   for (let i = 0; i < spec.rig.legs.length; i++) {
     ((opts.feet[i]?.y ?? opts.y) < opts.y ? farLegs : nearLegs).push(i);
   }
-  // ---- paint closures, composed in true depth order below.
-  let seed = 0;
-  for (let i = 0; i < opts.defId.length; i++) {
-    seed = (seed * 31 + opts.defId.charCodeAt(i)) | 0;
-  }
-  seed = (seed ^ ((opts.seed ?? 0) * 2654435761)) | 0;
+  // ---- paint closures, composed in true depth order below. (The
+  // per-entity seed hash is hoisted above the legs — the limb painter
+  // shares it.)
   const cattle = CATTLE_LOOKS[opts.defId];
   const wolfL = opts.defId === 'wolf' ? WOLF_LOOK : undefined;
   const direL = opts.defId === 'dire_wolf' ? DIREWOLF_LOOK : undefined;
@@ -15217,6 +15401,13 @@ export function drawBeast(
       return;
     }
     if (lynxL) {
+      // THE SIMULATED BOB: the live game runs the verlet stub
+      // (BobtailSim) — physics, not pose. The analytic stub below
+      // survives only for sim-less callers.
+      if (opts.tail) {
+        opts.tail();
+        return;
+      }
       // THE BOBTAIL: a stub perched HIGH on the raised rump, black at
       // the tip — nothing like the wolf's hanging brush or the
       // sabercat's long sweep. It flicks upright when the cat is
