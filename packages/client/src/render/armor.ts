@@ -789,11 +789,12 @@ export interface BodyStyle {
     // bank and the low fog (the shoulders ARE weather, lit from
     // within on the strike), `anvilpaul` the storm shelf and the
     // charge coil, `showerpaul` the sunbreak and the drip veil,
-    // `aurorafall` the banked night drifts under their contained,
-    // morphing lights (a MATCHED-grammar pair with per-side builds).
-    // Three ride THE STORMBOLT clock; the aurora dances on THE
-    // SUBSTORM instead — it never strikes.
-    | 'cloudbank' | 'anvilpaul' | 'showerpaul' | 'aurorafall'
+    // `aurorabind` the shoulder that IS the aurora — no shell at
+    // all: ribbon streams of drawn light orbiting a torn night
+    // heart, held by one still frost bind (per-side builds, one
+    // wind). Three ride THE STORMBOLT clock; the aurora dances on
+    // THE SUBSTORM instead — it never strikes.
+    | 'cloudbank' | 'anvilpaul' | 'showerpaul' | 'aurorabind'
     // THE TIDE COURT'S SHOULDERS — tidecaller's four waters, one
     // owner each: `tideorbs` the base's MATCHED elemental pair —
     // levitating orbs of living seawater over wet seats (inner
@@ -3810,7 +3811,7 @@ registerColorways(BODY_STYLES, 'stormwoven_robe', {
     // re-clothed in its own registers: horizon (helm mantle),
     // streams (hips), great curtain (skirt), snowline (hem).
     color: '#1d2f3a', trim: '#9fbdb6', mantle: '#17252f', underskirt: '#141f29',
-    pauldron: 'aurorafall', pauldronColor: '#1e3240', pauldronTrim: '#c8e4dc',
+    pauldron: 'aurorabind', pauldronColor: '#152836', pauldronTrim: '#c8e4dc',
     thunderbank: undefined,
     boltbrand: undefined,
     rainhem: undefined,
@@ -11942,99 +11943,200 @@ export function drawPauldron(
     return;
   }
 
-  if (st.pauldron === 'aurorafall') {
-    // THE AURORA FALL — the sovereign's shoulders, re-founded: no
-    // dome, no badge, no bolt. Each shoulder is a banked NIGHT
-    // DRIFT — deep cloth in the mantle's own dark carrying the mass,
-    // the frost rim on its under-hem saying WORN — and standing off
-    // its crest THE CONTAINED LIGHTS: folds of drawn aurora,
-    // abstract and morphing at one constant pace, brightest at the
-    // hems where they meet the drift (the sky kept at shoulder
-    // scale, never a circle, never an orb). A PAIR, not copies: the
-    // near shoulder raises one tall dancing fold behind a low echo;
-    // the far lays two long laps low along its crest. Both take THE
-    // DANCE at their own stations, shoulders after crown.
+  if (st.pauldron === 'aurorabind') {
+    // THE BOUND LIGHTS — the sovereign's shoulders, second forging:
+    // the drift is DEAD, and with it every worn shell. There is no
+    // pauldron under the aurora — the aurora IS the pauldron: three
+    // ribbon streams of drawn light wrapping the shoulder in a true
+    // 2.5D orbit (back passes behind, front passes in front — paint
+    // order and value are the containment), bent around THE NIGHT
+    // HEART, a small torn piece of polar sky that swirls with them,
+    // and held by THE SORCERER'S BIND — one still frost cradle, the
+    // only forged thing (the binding law: the containment holds
+    // still while the storm moves inside it). A PAIR, not copies:
+    // the near shoulder stands a tall upright vortex, the far lies
+    // a low wide swirl; both spin the same screen direction (one
+    // wind), each on its own phase (the clockwork law). Surges ride
+    // amplitude, width and light alone — the spin never changes
+    // rate.
     const ac = st.auroraband?.colors ?? [trim, trim, trim];
-    const silkP = st.greatcurtain?.silk ?? shade(col, 12);
     const kP = auroraK(nowMs, side > 0 ? 0.07 : 0.12);
-    // Duck by depth, HARD: at a profile the near cap seats low over
-    // the chest — a tall fold there climbs the face. The lights also
-    // lean OUTBOARD as the body turns, away from the jaw.
     const duck = 1 - 0.5 * Math.abs(depthK);
-    const outb = side * 0.03 * Math.abs(depthK);
-    const ph = side > 0 ? 0.4 : 2.9;
-    const drift = (): void => {
-      ctx.beginPath();
-      ctx.moveTo(-0.116 * s, 0.05 * s);
-      ctx.quadraticCurveTo(-0.13 * s, -0.028 * s, -0.05 * s, -0.06 * s);
-      ctx.quadraticCurveTo(side * 0.014 * s, -0.088 * s, 0.07 * s, -0.054 * s);
-      ctx.quadraticCurveTo(0.126 * s, -0.024 * s, 0.114 * s, 0.048 * s);
-      ctx.quadraticCurveTo(0, 0.094 * s, -0.116 * s, 0.05 * s);
-      ctx.closePath();
+    const shrink = 1 - 0.24 * Math.abs(depthK);
+    const outb = side * 0.036 * Math.abs(depthK);
+    const sOff = side > 0 ? 0.55 : 2.75;
+    const upright = side > 0;
+    const cx0 = (side * 0.018 + outb) * s;
+    const cy0 = -0.042 * s;
+    // The swirl's own frame: near = steep standing vortex, far =
+    // low banked swirl; both lean outboard off the arm.
+    const rot = side * (upright ? -0.24 : -0.1);
+    const cosR = Math.cos(rot);
+    const sinR = Math.sin(rot);
+    type Seg = { x: number; y: number; a: number; u: number };
+    type Ribbon = { front: Seg[][]; back: Seg[][]; col: string };
+    const ribbons: Ribbon[] = [];
+    for (let r = 0; r < 3; r++) {
+      const rx0 = (0.076 + r * 0.019) * s * shrink;
+      const ry0 = rx0 * (upright ? 0.52 : 0.4) * duck;
+      const base = nowMs * 0.00046 + r * 2.35 + sOff;
+      const span = Math.PI * (1.32 + 0.14 * r);
+      const segs = 16;
+      const front: Seg[][] = [[]];
+      const back: Seg[][] = [[]];
+      for (let i = 0; i <= segs; i++) {
+        const tU = i / segs;
+        const aAng = base + tU * span;
+        // The undulation travels the ribbon at one constant pace;
+        // the dance widens it, never hurries it.
+        const wob = Math.sin(tU * 4.4 - nowMs * 0.0021 + r * 1.7 + sOff) *
+          (0.007 + 0.009 * kP) * s;
+        // The stream breathes in and out of its orbit as it flows —
+        // energy, not wire (constant rates, the seamless law).
+        const flow = 1 + 0.12 * Math.sin(tU * 3.1 + nowMs * 0.0013 + r * 2.2 + sOff);
+        const ex = Math.cos(aAng) * rx0 * flow;
+        const ey = Math.sin(aAng) * ry0 * flow + wob;
+        const px = cx0 + ex * cosR - ey * sinR;
+        const py = cy0 + ex * sinR + ey * cosR;
+        const depth = Math.sin(aAng);
+        const seg: Seg = { x: px, y: py, a: Math.sin(tU * Math.PI), u: tU };
+        if (depth < 0) {
+          back[back.length - 1]!.push(seg);
+          if (front[front.length - 1]!.length) front.push([]);
+        } else {
+          front[front.length - 1]!.push(seg);
+          if (back[back.length - 1]!.length) back.push([]);
+        }
+      }
+      ribbons.push({ front, back, col: ac[r % ac.length]! });
+    }
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const traceRuns = (runs: Seg[][], colR: string, isFront: boolean): void => {
+      for (const run of runs) {
+        for (let q = 0; q + 1 < run.length; q++) {
+          const p0 = run[q]!;
+          const p1 = run[q + 1]!;
+          const aa = ((p0.a + p1.a) / 2) * (0.5 + 0.5 * kP) * (isFront ? 1 : 0.42);
+          if (aa < 0.08) continue;
+          // The stream's body: the lot color casing... in the hurt
+          // flash the streams ARE the silhouette — garment-scale
+          // structure, painted white whole.
+          ctx.globalAlpha = hurt ? Math.min(1, aa * 2.2) : Math.min(1, aa) * 0.78;
+          ctx.strokeStyle = hurt ? '#ffffff' : colR;
+          ctx.lineWidth = Math.max(1.4, s * (isFront ? 0.031 : 0.016));
+          ctx.beginPath();
+          ctx.moveTo(p0.x, p0.y);
+          ctx.lineTo(p1.x, p1.y);
+          ctx.stroke();
+          if (!hurt) {
+            ctx.globalAlpha = Math.min(1, aa);
+            ctx.strokeStyle = isFront ? '#e8fff4' : shade(colR, -18);
+            ctx.lineWidth = Math.max(1, s * (isFront ? 0.0095 : 0.006));
+            ctx.beginPath();
+            ctx.moveTo(p0.x, p0.y);
+            ctx.lineTo(p1.x, p1.y);
+            ctx.stroke();
+          }
+          // The combed rays: only off the bright front passage,
+          // reaching away from the heart — light escaping the bind.
+          // Faint floating strokes are skipped whole (dilate bar).
+          if (!hurt && isFront && q % 2 === 0) {
+            const rw = 0.5 + 0.5 * Math.sin(nowMs * 0.0011 + q * 2.3 + sOff);
+            const ra = Math.min(1, aa) * (0.28 + 0.5 * rw);
+            if (ra >= 0.3) {
+              const mx = (p0.x + p1.x) / 2;
+              const my = (p0.y + p1.y) / 2;
+              const dx = mx - cx0;
+              const dy = my - cy0;
+              const dd = Math.hypot(dx, dy) || 1;
+              const rl = (0.028 + 0.03 * kP) * s * (0.6 + 0.4 * rw);
+              ctx.globalAlpha = ra * 0.85;
+              ctx.strokeStyle = colR;
+              ctx.lineWidth = Math.max(1.2, s * 0.011);
+              ctx.beginPath();
+              ctx.moveTo(mx, my);
+              ctx.lineTo(mx + (dx / dd) * rl, my + (dy / dd) * rl - rl * 0.35);
+              ctx.stroke();
+            }
+          }
+        }
+      }
     };
-    // THE NIGHT DRIFT FIRST: the mass the lights stand on.
-    // Structure — it holds white.
+    // THE FAR PASSES FIRST: every ribbon's back arcs, dim and thin —
+    // the lights honestly go BEHIND the heart.
+    for (const rb of ribbons) traceRuns(rb.back, rb.col, false);
+    ctx.globalAlpha = 1;
+    // THE NIGHT HEART: the torn piece of sky the lights bend around
+    // — an irregular shard of the deepest night, smaller than the
+    // swirl that binds it (the lights out-scale their prisoner), a
+    // star prick awake inside it. Structure: it holds white.
+    const hs = 0.064 * s * (1 + 0.06 * kP) * (0.8 + 0.2 * duck);
     ctx.fillStyle = hurt ? '#ffffff' : col;
-    drift();
+    ctx.beginPath();
+    for (let i = 0; i < 7; i++) {
+      const aH = (i / 7) * Math.PI * 2;
+      const h = Math.sin((sOff + 3) * 12.9898 + i * 78.233) * 43758.5453;
+      const rr = hs * (0.78 + ((h - Math.floor(h)) - 0.5) * 0.5 +
+        0.06 * Math.sin(nowMs * 0.0016 + i * 2.1 + sOff));
+      const pxH = cx0 + Math.cos(aH) * rr * 1.12;
+      const pyH = cy0 + Math.sin(aH) * rr * (upright ? 0.94 : 0.78);
+      if (i === 0) ctx.moveTo(pxH, pyH);
+      else ctx.lineTo(pxH, pyH);
+    }
+    ctx.closePath();
     ctx.fill();
     if (!hurt) {
-      ctx.save();
-      drift();
-      ctx.clip();
-      // The belly lives inside the body (the egg lesson) — a shade,
-      // never a hole.
-      ctx.fillStyle = shade(col, -12);
+      // One cold arris where the heart catches the swirl's light.
+      ctx.strokeStyle = shade(col, 22);
+      ctx.globalAlpha = 0.5 + 0.3 * kP;
+      ctx.lineWidth = Math.max(1, s * 0.007);
       ctx.beginPath();
-      ctx.ellipse(0.008 * s, 0.072 * s, 0.115 * s, 0.036 * s, 0, 0, Math.PI * 2);
-      ctx.fill();
-      // The lit crest plane: snow under the lights (2.5D top read).
-      ctx.fillStyle = shade(col, 30);
-      ctx.beginPath();
-      ctx.ellipse(side * 0.012 * s, -0.052 * s, 0.082 * s, 0.024 * s, side * -0.1, 0, Math.PI * 2);
-      ctx.fill();
-      // Stars seated in the drift, one awake at a time.
-      ctx.fillStyle = st.starfield?.color ?? trim;
-      for (const [ui, sx2, sy2] of [[0, -0.052, -0.004], [1, 0.046, -0.022]] as const) {
-        const tw2 = Math.sin(nowMs * 0.00034 + ui * 2.51 + ph);
-        if (tw2 < 0.25) continue;
-        ctx.globalAlpha = 0.3 + 0.5 * ((tw2 - 0.25) / 0.75);
-        starPrick(ctx, sx2 * s, sy2 * s, (0.009 + 0.005 * tw2) * s);
+      ctx.arc(cx0, cy0, hs * 0.92, Math.PI * 1.12, Math.PI * 1.66);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      const twH = Math.sin(nowMs * 0.00034 + sOff);
+      if (twH > 0.2) {
+        ctx.globalAlpha = 0.35 + 0.5 * ((twH - 0.2) / 0.8);
+        ctx.fillStyle = st.starfield?.color ?? trim;
+        starPrick(ctx, cx0 - hs * 0.24, cy0 - hs * 0.1, (0.008 + 0.004 * twH) * s);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+    // THE NEAR PASSES: the bright faces of the streams sweep in
+    // front of the heart, rays combing off them.
+    for (const rb of ribbons) traceRuns(rb.front, rb.col, true);
+    ctx.globalAlpha = 1;
+    if (!hurt && kP > 0.7) {
+      // At the dance one spark slips the bind, rising off the crown
+      // of the swirl and fading home — never below the wrap bar.
+      const mu = ((nowMs * 0.00022 + sOff) % 1 + 1) % 1;
+      const aS = Math.sin(mu * Math.PI) * (kP - 0.7) / 0.3;
+      if (aS >= 0.32) {
+        ctx.globalAlpha = aS;
+        ctx.fillStyle = '#e8fff4';
+        ctx.beginPath();
+        ctx.arc(cx0 + Math.sin(sOff + mu * 5) * 0.02 * s, cy0 - (0.1 + mu * 0.07) * s, 0.007 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+    // THE SORCERER'S BIND: the one forged thing — a still frost
+    // cradle under the swirl, riveted at its tips. It does not
+    // spin, it does not breathe: the bind holds (the binding law).
+    ctx.strokeStyle = hurt ? '#ffffff' : trim;
+    ctx.lineWidth = Math.max(1.4, s * 0.014);
+    ctx.beginPath();
+    ctx.ellipse(cx0, cy0 + 0.026 * s, 0.092 * s * shrink, 0.052 * s * shrink, 0, Math.PI * 0.16, Math.PI * 0.84);
+    ctx.stroke();
+    if (!hurt) {
+      ctx.fillStyle = shade(trim, 8);
+      for (const tipA of [Math.PI * 0.16, Math.PI * 0.84]) {
+        ctx.beginPath();
+        ctx.arc(cx0 + Math.cos(tipA) * 0.092 * s * shrink, cy0 + 0.026 * s + Math.sin(tipA) * 0.052 * s * shrink, 0.0075 * s, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.globalAlpha = 1;
-      ctx.restore();
-      // The frost rim: the one bright line that says WORN.
-      ctx.strokeStyle = trim;
-      ctx.lineWidth = Math.max(1, s * 0.013);
-      ctx.beginPath();
-      ctx.moveTo(-0.106 * s, 0.052 * s);
-      ctx.quadraticCurveTo(0, 0.092 * s, 0.104 * s, 0.05 * s);
-      ctx.stroke();
-    }
-    // THE CONTAINED LIGHTS — folds standing ON the crest, hems
-    // seated right at the drift's edge (brightest where sky meets
-    // snow); the fold BODIES are night silk clearly lighter than
-    // the drift (a device darker than its cap reads as insignia),
-    // the light drawn only on the hem and in the rays.
-    const folds: ReadonlyArray<readonly [number, number, number, number, number]> =
-      side > 0
-        ? [[-0.034, -0.062, 0.09, 0.06, 1], [0.018, -0.068, 0.13, 0.115, 0]]
-        : [[-0.048, -0.064, 0.1, 0.06, 0], [0.03, -0.06, 0.09, 0.075, 2]];
-    for (const [fx0, fy0, fw, fh2, ci] of folds) {
-      const pts: Array<{ x: number; y: number }> = [];
-      for (let i = 0; i <= 3; i++) {
-        const u = i / 3;
-        pts.push({
-          x: (fx0 + outb + (u - 0.5) * fw) * s,
-          y: (fy0 + 0.008 * Math.sin(u * Math.PI)) * s +
-            Math.sin(u * 3.8 - nowMs * 0.0019 + ph) * 0.007 * s * (1 + 0.8 * kP),
-        });
-      }
-      auroraCurtain(
-        ctx, pts, fh2 * s * duck * (0.8 + 0.45 * kP), silkP,
-        ac[ci % ac.length]!, '#e8fff4', kP, nowMs, ph + ci,
-        Math.max(1, s * 0.0095), hurt,
-      );
     }
     ctx.restore();
     return;

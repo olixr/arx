@@ -3539,7 +3539,10 @@ export function paintGoblinHead(
   // steps smaller at the three-quarter bands (the cheap perspective
   // cue); both read from behind as backs — membranes face forward.
   const drawEar = (side: number, depth: number): void => {
-    const el = hh * (1.02 + 0.3 * hv) * depth;
+    // At profile the ear GROWS: it must stay the tallest thing in the
+    // silhouette, or a forward nose out-points it and the head reads
+    // backward. The rake eases so it stands, not lies.
+    const el = hh * (1.02 + 0.3 * hv) * depth * (1 + 0.22 * profileK);
     const bw = hh * 0.19 * (0.9 + 0.2 * hv);
     // PERSPECTIVE: the roots walk to the OCCIPUT as the head turns —
     // face-on the ears root wide on the skull sides; at profile both
@@ -3883,24 +3886,27 @@ export function paintGoblinHead(
   // off the brow root, hooking down to a pointed tip past the grin
   // seam — wide nostril flares at the underside, a lit bridge plane
   // on top. Carved planes with an outline, never a stick and a ball.
-  // At profile the hook runs out LEVEL and long, clear of the face
-  // silhouette — a drooped tip hugging the cheek reads as a folded
-  // flap, not a nose. Face-on it still drops past the grin seam.
-  const nl = gw * (0.3 + 0.62 * profileK);
+  // At profile the hook is a CROOK, never a spear: the bridge arcs UP
+  // off the brow, crests, and the tip curls decisively DOWN — a
+  // straight forward point reads as an ear worn on the face. Shorter
+  // than the ear behind it, always. Face-on it still drops past the
+  // grin seam, unchanged.
+  const nl = gw * (0.3 + 0.5 * profileK);
   const nRootX = headX + fx * gw * 0.16;
   const nRootY = eyeY + hh * 0.02;
   const rootW = gw * 0.2;
   const tipX = headX + fx * (gw * 0.24 + nl);
-  const tipY = mouthY + hh * 0.1 - hh * 0.3 * profileK;
+  const tipY = mouthY + hh * 0.1 - hh * 0.18 * profileK;
   const flareY = mouthY - hh * 0.22;
   const flareW = gw * 0.3 * (1 - 0.4 * profileK);
   ctx.fillStyle = hurt ? '#ffffff' : shade(gb.hide, 5);
   ctx.beginPath();
   ctx.moveTo(nRootX - rootW, nRootY);
-  // Leading edge: bridge bows out, then hooks down to the point.
+  // Leading edge: the bridge arcs high, then the hook curls down into
+  // the tip — the arc IS the crook.
   ctx.quadraticCurveTo(
-    nRootX + fx * nl * 0.85 - gw * 0.02,
-    nRootY - hh * 0.06,
+    nRootX + fx * nl * 0.75 - gw * 0.02,
+    nRootY - hh * (0.06 + 0.3 * profileK),
     tipX,
     tipY,
   );
@@ -3915,13 +3921,19 @@ export function paintGoblinHead(
     ctx.strokeStyle = shade(gb.hide, -26);
     ctx.lineWidth = Math.max(1, hh * 0.045);
     ctx.stroke();
-    // The lit bridge plane: one bright facet down the leading edge —
-    // the carved read at a glance.
+    // The lit bridge plane: one bright facet riding the arc's crest —
+    // the carved read at a glance. It follows the crook, never
+    // outruns it (a straight bright sliver re-spears the hook).
     ctx.fillStyle = shade(gb.hide, 14);
     ctx.beginPath();
     ctx.moveTo(nRootX - rootW * 0.4, nRootY + hh * 0.02);
-    ctx.quadraticCurveTo(nRootX + fx * nl * 0.7, nRootY - hh * 0.02, tipX - fx * gw * 0.05, tipY - hh * 0.08);
-    ctx.quadraticCurveTo(nRootX + fx * nl * 0.5, nRootY + hh * 0.08, nRootX - rootW * 0.1, nRootY + hh * 0.09);
+    ctx.quadraticCurveTo(
+      nRootX + fx * nl * 0.55,
+      nRootY - hh * (0.02 + 0.22 * profileK),
+      tipX - fx * gw * 0.14,
+      tipY - hh * (0.1 + 0.06 * profileK),
+    );
+    ctx.quadraticCurveTo(nRootX + fx * nl * 0.45, nRootY + hh * 0.08, nRootX - rootW * 0.1, nRootY + hh * 0.09);
     ctx.closePath();
     ctx.fill();
     // The underside shade seats the wedge over the mouth...
