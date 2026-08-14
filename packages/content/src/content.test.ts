@@ -26,9 +26,10 @@ import { buildSilverfall } from './maps/silverfall.js';
 import { buildSaltmere } from './maps/saltmere.js';
 import { buildPinewatch } from './maps/pinewatch.js';
 import { buildHartfell } from './maps/hartfell.js';
+import { buildKingsdelf } from './maps/kingsdelf.js';
 import { buildUndercroft } from './maps/undercroft.js';
 import { buildLowhall } from './maps/lowhall.js';
-import { AMBERFORD_RECT, HARTFELL_RECT, SALTMERE_RECT, SILVERFALL_RECT } from './geography.js';
+import { AMBERFORD_RECT, HARTFELL_RECT, KINGSDELF_RECT, SALTMERE_RECT, SILVERFALL_RECT } from './geography.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
 import { compileTemplate, templateHeight, templateWidth } from './structures/stamp.js';
 import { templateFromJson, templateToJson } from './structures/serialize.js';
@@ -2266,6 +2267,117 @@ test('hartfell: every door, pier, fold and stone walks from the Kettle', () => {
     const lx = Math.floor(a.x - z.origin.x);
     const ly = Math.floor(a.y - z.origin.y);
     assert.equal(seen[ly * z.width + lx], 1, `${a.actor}'s post at (${lx},${ly}) is unreachable`);
+  }
+});
+
+test('kingsdelf: the delf town holds its stone, its glass, and three ways in', () => {
+  const z = buildKingsdelf();
+  assert.equal(z.id, 'kingsdelf');
+  assert.equal(z.width, KINGSDELF_RECT.w);
+  assert.equal(z.height, KINGSDELF_RECT.h);
+  assert.equal(z.origin.x, KINGSDELF_RECT.x);
+  assert.equal(z.origin.y, KINGSDELF_RECT.y);
+  assert.ok(z.elev, 'the crag shelves carry elevation');
+  const at = (x: number, y: number): Tile => z.ground[y * z.width + x] as Tile;
+  const n = (t: Tile): number => z.ground.reduce((c, g) => (g === t ? c + 1 : c), 0);
+  // The Ashmere owns the south-west; the Sump is the one sweet water.
+  assert.ok(n(Tile.Water) > 600, 'the drowned workings shrank');
+  assert.ok(n(Tile.WaterShallow) >= 100, 'the wading rim and the Sump');
+  // The working face: two shelves, six flights, the fence is the wall.
+  assert.equal(n(Tile.Ramp), 18, 'the six flights of the two shelves');
+  assert.ok(n(Tile.Cliff) >= 150, 'the shelf rims are the north wall');
+  // The trades that exist nowhere else at this scale.
+  assert.equal(n(Tile.Vault), 5, 'the Countinghouse vault row and the assay strongroom');
+  assert.equal(n(Tile.BankChest), 2, "the Charter's public floor");
+  assert.equal(n(Tile.EnchantingTable), 1, "the world's second table");
+  assert.equal(n(Tile.BeastPen), 1, 'the Beastyard stalls');
+  assert.equal(n(Tile.Furnace), 4, 'the forge pair and the twin kilns');
+  assert.equal(n(Tile.Anvil), 2);
+  assert.equal(n(Tile.RockMithril), 3, 'the Delfworks mithril faces');
+  assert.equal(n(Tile.RockAdamant), 2, 'the Delfworks adamant faces');
+  assert.equal(n(Tile.FishingSpot), 2, 'the pale sump-fish');
+  assert.equal(n(Tile.ArchStone), 1, 'the Sealed Stair mouth');
+  assert.ok(n(Tile.LampPost) >= 18, 'the lit town under the unlit road');
+  assert.ok(n(Tile.Dock) >= 10, 'the quay');
+  // Three ways in: the east gate, the wicket, the water gate.
+  assert.equal(n(Tile.GateGarrison), 9);
+  assert.ok(n(Tile.WallGarrison) >= 200, 'the curtain came down');
+  // The gate mouths meet the carved routes tile-exact: the Old Road
+  // lands at local (126,20); the Processional leaves at local (60,0).
+  for (const y of [19, 20, 21]) {
+    assert.equal(at(126, y), Tile.Path, `the Old Road mouth must reach the east edge at ${y}`);
+    assert.equal(at(121, y), Tile.GateGarrison, `the east gate stands at ${y}`);
+  }
+  for (const x of [59, 60, 61]) {
+    assert.equal(at(x, 0), Tile.Dirt, `the Processional must reach the north edge at ${x}`);
+    assert.equal(at(x, 2), Tile.GateGarrison, `the wicket bar stands at ${x}`);
+  }
+  assert.equal(at(45, 86), Tile.GateGarrison, 'the water gate opens to the quay');
+  // The spawn is the round beside the Stone: the south-west's hearth.
+  assert.deepEqual(z.spawn, { x: KINGSDELF_RECT.x + 62.5, y: KINGSDELF_RECT.y + 65.5 });
+  assert.ok((z.signs ?? []).length >= 18, 'the town lost its boards');
+  // The elevation layer round-trips (the Silverfall law, not the flat one).
+  const json = zoneToJson(z);
+  assert.ok(json.elev !== undefined, 'the shelves must serialize');
+  assert.deepEqual(zoneToJson(zoneFromJson(json)), json);
+});
+
+test('kingsdelf: every door, stall and stone walks from the Unfinished Stone', () => {
+  const z = buildKingsdelf();
+  const lvl = (i: number): number => z.elev![i] ?? 0;
+  const walkable = (x: number, y: number): boolean =>
+    x >= 0 && y >= 0 && x < z.width && y < z.height &&
+    !TILE_DEFS[z.ground[y * z.width + x]! as Tile].solid;
+  const seen = new Uint8Array(z.width * z.height);
+  const start = 65 * z.width + 62; // the round beside the Stone
+  const queue: number[] = [start];
+  seen[start] = 1;
+  while (queue.length > 0) {
+    const i = queue.pop()!;
+    const x = i % z.width;
+    const y = Math.floor(i / z.width);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (!walkable(nx, ny)) continue;
+      const ni = ny * z.width + nx;
+      if (seen[ni]) continue;
+      if (lvl(ni) !== lvl(i) && z.ground[i] !== Tile.Ramp && z.ground[ni] !== Tile.Ramp) continue;
+      seen[ni] = 1;
+      queue.push(ni);
+    }
+  }
+  const unreachable: string[] = [];
+  for (let i = 0; i < z.ground.length; i++) {
+    const t = z.ground[i];
+    if (
+      (t === Tile.DoorwayStone || t === Tile.DoorwayWood ||
+        t === Tile.DoorwayStoneWide || t === Tile.DoorwayWoodWide) && !seen[i]
+    ) {
+      unreachable.push(`(${i % z.width},${Math.floor(i / z.width)})`);
+    }
+  }
+  assert.deepEqual(unreachable, [], `doorways cut off from the Stone: ${unreachable.join(' ')}`);
+  for (const [what, x, y] of [
+    ['the east gate mouth', 126, 20], ['the gate street', 100, 20],
+    ['the wicket track', 60, 1], ['the notch', 60, 18],
+    ['the Countinghouse lobby', 90, 25], ['the vault room', 90, 29],
+    ['the Sealed Stair step', 37, 27], ['the names-stone stand', 41, 26],
+    ["Annik's hut", 30, 33], ['the Delfworks', 16, 34],
+    ['the Delfhall floor', 42, 38], ['the Starfall Forge', 37, 52],
+    ['the assay counter', 53, 51], ["the Foreman's Rest bar", 78, 49],
+    ["Hedda's room", 87, 54], ['the Glasshouse kilns', 98, 64],
+    ['the dispensary', 105, 38], ['the wardroom', 115, 27],
+    ['the provisioner', 52, 75], ['the outfitter', 64, 75],
+    ["Ferrun's cottage", 113, 49], ['the delvers’ barracks', 100, 77],
+    ['the Flamehouse flame', 17, 17], ['the Focus House table', 42, 17],
+    ['the Beastyard pen', 100, 12], ["Orin's cottage", 114, 12],
+    ['the lookout', 83, 4], ['the west crown', 30, 6],
+    ['the Sump steps', 80, 70], ['the market round', 61, 65],
+    ['the quay dock', 38, 88], ["Denna's shack", 51, 90],
+    ['the water gate lane', 45, 89],
+  ] as const) {
+    assert.equal(seen[y * z.width + x], 1, `${what} is severed`);
   }
 });
 

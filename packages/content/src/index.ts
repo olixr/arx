@@ -95,5 +95,6 @@ export * from './maps/silverfall.js';
 export * from './maps/saltmere.js';
 export * from './maps/pinewatch.js';
 export * from './maps/hartfell.js';
+export * from './maps/kingsdelf.js';
 export * from './maps/undercroft.js';
 export * from './maps/lowhall.js';
