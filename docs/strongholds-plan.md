@@ -1058,3 +1058,41 @@ gathered around the capitals.
   for weight-2 rares, revisit SITE_TRIES if play wants them denser;
   the Weather bench rows for marchBand/marchGather ride a future
   bench pass (dials live + clamped + refusal-tested today).
+
+## Second rung — THE INFLUENCE LAW (2026-08-14)
+
+The user's verdict on the whole ordinary shelf: still stamps. Every
+POI should read as an INFLUENCE ZONE — concentrated heart, worked
+surroundings, room to pick pulls apart. Shipped:
+
+- **THE INFLUENCE LAW** (content/pois/influence.ts): every ordinary
+  POI prefab expands ~2.6× per axis (median 14 → 34-42; hoargate 48,
+  wardline/diggers per measure) — the authored sketch stays VERBATIM
+  as the heart (tiles, markers, portals bit-identical, translated),
+  wrapped in generated outskirts: worked ground patches, 1-3
+  satellite pockets with their worn lines home, family litter
+  thinning with distance (influence FADES), tracks walking out.
+  Deterministic per id. Compose spreads the muster for free: holdR
+  and knot splits read the dims, sentries ring the bigger footprint.
+- **THE MEASURED CAPS**: the authored pins are the law — every
+  coordinate-pinned site probed against its pool (≤ tolerance within
+  the 14-tile nudge): waystations DON'T expand (the spineshelf ledge
+  is wedged between Silverfall's clearance and crag rough — original
+  footprints exactly); fell barrows DON'T (the barrow cell takes
+  only 17×13 — the fell theme IS scarce rock); toll bar 22, diggers
+  24, hoargate 48; wings 20 (26 starved compounds of wings). Probe
+  scripts beat hand-waving every single time.
+- **THE RELAXED SITING, GENERALIZED**: every footprint scan is now
+  tolerance-based (small stamps ≤5% rough, ≥34/axis territories
+  stride-3 ≤10%) in decideSite AND findAuthoredAnchor — the
+  capitals' Phase-3 lesson finally walked all the way down. Latent
+  geometry bug found: the authored-pin nudge searched Chebyshev but
+  the test asserted Euclidean.
+- **Live-proven**: an expanded goblin stockade stood at -686,-472 —
+  heart + three worn tracks + a banner pocket + fading litter, read
+  as territory in real forest. The garrison killed the scout (again).
+  1,625 workspace tests green.
+- **Debt**: waystations and fell barrows carry no outskirts by
+  measure — if play wants influence there, it must come from
+  compose-time cues (which don't consume pinned ground), not prefab
+  growth.

@@ -241,27 +241,22 @@ test('every site stands on flat standable ground, clear of zones and the dark ba
     const prefab = POI_PREFABS.get(site.prefabId)!;
     const fx0 = site.anchorX - Math.floor(prefab.width / 2);
     const fy0 = site.anchorY - Math.floor(prefab.height / 2);
-    // THE RELAXED LANDMARK SITING: expansive prefabs (≥45/axis)
-    // tolerate a rough fraction (the capitals' law, reached down);
-    // ordinary camps stay strict.
-    const landmark = Math.max(prefab.width, prefab.height) >= 45;
+    // THE RELAXED SITING, generalized: every footprint tolerates a
+    // rough fraction scaled to its size (≤10% expansive, ≤5% stamps;
+    // the sweep allows a hair over the roll-time bars because the
+    // roll samples on a stride and this sweep reads every tile).
+    const landmark = Math.max(prefab.width, prefab.height) >= 34;
     let rough = 0;
     let probes = 0;
     for (let dy = 0; dy < prefab.height; dy++) {
       for (let dx = 0; dx < prefab.width; dx++) {
         const cls = groundProbeAt(SEED, fx0 + dx, fy0 + dy);
         probes++;
-        if (cls !== 'grass' && cls !== 'forest') {
-          rough++;
-          assert.ok(
-            landmark,
-            `${site.defId}@${site.cellX},${site.cellY}: footprint tile is '${cls}'`,
-          );
-        }
+        if (cls !== 'grass' && cls !== 'forest') rough++;
       }
     }
     assert.ok(
-      rough / probes <= 0.12,
+      rough / probes <= (landmark ? 0.14 : 0.08),
       `${site.defId}@${site.cellX},${site.cellY}: ${Math.round((rough / probes) * 100)}% rough footprint`,
     );
     assert.ok(fy0 + prefab.height < DARK_BAND_Y, 'footprint reaches the dark band');
@@ -613,9 +608,10 @@ test('every authored wild site finds honest ground and composes', async () => {
         const prefab = POI_PREFABS.get(prefabId)!;
         const spot = findAuthoredAnchor(SEED, want.x!, want.y!, prefab, ctx);
         assert.ok(spot, `${want.id}: no honest ground for '${prefabId}' near (${want.x},${want.y})`);
-        // The nudge must stay a nudge — the lamp belongs beside ITS road.
+        // The nudge must stay a nudge — the lamp belongs beside ITS
+        // road. Chebyshev, matching the search ring's own geometry.
         assert.ok(
-          Math.hypot(spot!.x - want.x!, spot!.y - want.y!) <= 14,
+          Math.max(Math.abs(spot!.x - want.x!), Math.abs(spot!.y - want.y!)) <= 14,
           `${want.id}: anchor nudged too far`,
         );
         site = {

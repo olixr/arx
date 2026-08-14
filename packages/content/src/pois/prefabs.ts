@@ -1,6 +1,7 @@
 import { TILE_SKIP, Tile } from '@arx/shared';
 import type { PrefabDef, PrefabSpawn } from '../maps/prefab.js';
 import { LANDMARK_PREFABS } from './landmarks.js';
+import { expandInfluence } from './influence.js';
 import { validatePrefab } from '../maps/prefab.js';
 
 /**
@@ -1590,5 +1591,9 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     findBarrow,
     findWarTotem,
     findStashMound,
-  ].map((p) => [p.id, p]),
+    // THE INFLUENCE LAW (hybrid charter, second rung): every ordinary
+    // POI expands from a stamp into a territory — authored heart,
+    // generated outskirts (influence.ts; courts, finds, and landmarks
+    // pass through untouched).
+  ].map((p) => [p.id, expandInfluence(p)] as [string, PrefabDef]),
 );

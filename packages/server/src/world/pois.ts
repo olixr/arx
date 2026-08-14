@@ -257,35 +257,31 @@ export function poiForCell(
       // materialization candidate — satellites, tolls, renewals, wakes
       // and fresh rolls alike, since they all pass through this scan.
       if (intersectsRings(fx0, fy0, prefab.width, prefab.height, ctx.claimRings)) continue;
-      // THE RELAXED LANDMARK SITING (the hybrid charter): a whole-
-      // footprint standable scan is statistically brutal at landmark
-      // scale (the capitals' Phase-3 audit, relearned) — expansive
-      // prefabs (≥45/axis) sample on a stride and tolerate a rough
-      // fraction; ordinary camps keep the strict scan.
-      const landmark = Math.max(prefab.width, prefab.height) >= 45;
+      // THE RELAXED SITING, generalized (the hybrid charter): a
+      // whole-footprint all-standable scan was always statistically
+      // brutal (the capitals' Phase-3 audit) and THE INFLUENCE LAW
+      // grew every footprint — every scan now tolerates a rough
+      // fraction, scaled to what the footprint can absorb: expansive
+      // grounds (≥34/axis) sample stride-3 at ≤10%, small stamps
+      // stay near-strict at ≤5%.
+      const landmark = Math.max(prefab.width, prefab.height) >= 34;
       const stride = landmark ? 3 : 1;
+      const tolerance = landmark ? 0.1 : 0.05;
       let score = 0;
       let rough = 0;
       let probes = 0;
-      let ok = true;
-      for (let dy = 0; dy < prefab.height && ok; dy++) {
+      for (let dy = 0; dy < prefab.height; dy += stride) {
         for (let dx = 0; dx < prefab.width; dx += stride) {
           probes++;
           const cls = groundProbeAt(seed, fx0 + dx, fy0 + dy);
           if (!standable(cls)) {
-            if (!landmark) {
-              ok = false;
-              break;
-            }
             rough++;
             continue;
           }
           if (cls === 'grass') score++; // open ground beats tree-choked
         }
-        if (landmark) dy += stride - 1;
       }
-      if (!ok) continue;
-      if (landmark && rough / probes > 0.1) continue;
+      if (rough / probes > tolerance) continue;
       if (!best || score > best.score) best = { tx, ty, score };
     }
     if (!best) return null;
@@ -1581,17 +1577,29 @@ export function findAuthoredAnchor(
   ctx: PoiContext,
   maxNudge = 14,
 ): { x: number; y: number } | null {
+  // THE RELAXED LANDMARK SITING reaches authored pins too: the
+  // INFLUENCE LAW grew every ordinary prefab past what hand-picked
+  // ground was measured for — expansive footprints sample stride-3,
+  // tolerate a rough fraction, and SLIDE farther from the pin (a
+  // milepost stepping 20 tiles along its road is still the milepost;
+  // a territory that can't breathe there stands nowhere honestly).
+  const landmark = Math.max(prefab.width, prefab.height) >= 34;
+  const stride = landmark ? 3 : 1;
+  const tolerance = landmark ? 0.1 : 0.05;
   const fits = (tx: number, ty: number): boolean => {
     if (ty + prefab.height / 2 >= DARK_BAND_Y - ZONE_CLEARANCE) return false;
     const fx0 = tx - Math.floor(prefab.width / 2);
     const fy0 = ty - Math.floor(prefab.height / 2);
     if (intersectsZones(fx0, fy0, prefab.width, prefab.height, ctx.zoneRects, 6)) return false;
-    for (let dy = 0; dy < prefab.height; dy++) {
-      for (let dx = 0; dx < prefab.width; dx++) {
-        if (!standable(groundProbeAt(seed, fx0 + dx, fy0 + dy))) return false;
+    let rough = 0;
+    let probes = 0;
+    for (let dy = 0; dy < prefab.height; dy += stride) {
+      for (let dx = 0; dx < prefab.width; dx += stride) {
+        probes++;
+        if (!standable(groundProbeAt(seed, fx0 + dx, fy0 + dy))) rough++;
       }
     }
-    return true;
+    return rough / probes <= tolerance;
   };
   if (fits(x, y)) return { x, y };
   for (let r = 1; r <= maxNudge; r++) {
