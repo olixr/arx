@@ -15,9 +15,18 @@
 //   ?cols=a-b   column banding for close-ups (E/W cells)
 //   ?det=1      DETERMINISTIC mode: fixed 60Hz steps run synchronously
 //               on the first frame; ?detn=N sets the step count.
-import { LegSolver, beastSpec, drawBeast, drawHumanoid, foxLook, type RigPose } from '../render/rig.js';
+import {
+  DIREWOLF_LOOK,
+  LegSolver,
+  WOLF_LOOK,
+  beastSpec,
+  drawBeast,
+  drawHumanoid,
+  foxLook,
+  type RigPose,
+} from '../render/rig.js';
 import { LegRig, type LegPose } from '../render/legs.js';
-import { TailSim, drawFoxBrush } from '../render/tail.js';
+import { TailSim, drawFoxBrush, drawWolfBrush } from '../render/tail.js';
 import { EarSim } from '../render/earPhysics.js';
 import { PoseState } from '@arx/shared';
 
@@ -107,6 +116,14 @@ figs.push({ label: 'ruler: player+vixen', defId: 'fox_champion', dir: Math.PI / 
 figs.push({ label: 'fox S (face)', defId: 'fox', dir: Math.PI / 2, mode: 'idle', seed: 5 });
 figs.push({ label: 'fox E (profile)', defId: 'fox', dir: 0, mode: 'idle', seed: 5 });
 figs.push({ label: 'fox N (back)', defId: 'fox', dir: -Math.PI / 2, mode: 'idle', seed: 5 });
+// THE WOLFKIN BANDS: the premium polish audit — wolf and matriarch on
+// the same physics kit, every facing, idle through the pounce.
+row('wolf idle', 'wolf', 'idle');
+row('wolf run', 'wolf', 'run');
+row('wolf pounce', 'wolf', 'pounce');
+row('dire idle', 'dire_wolf', 'idle');
+row('dire run', 'dire_wolf', 'run');
+row('dire pounce', 'dire_wolf', 'pounce');
 
 const COLS = 8;
 const CW = Math.round(S * 2.3);
@@ -185,14 +202,20 @@ function drawQuad(
   // and the brush's answer all read.
   const attackT = mode === 'pounce' ? (now * 0.0011) % 1 : 0;
   const hurt = mode === 'hurt';
-  // THE BRUSH + THE EARS: fox figs run the live sims the game runs —
-  // rump-rooted plume fed the LUNGED anchor (the tail rides the
-  // pounce), and the elastic ear pair ticked inside drawFoxHead.
+  // THE BRUSH + THE EARS: canid figs run the live sims the game runs —
+  // rump-rooted brush fed the LUNGED anchor (the tail rides the
+  // pounce), and the elastic ear pair ticked inside the head painter.
+  const CANID: Record<string, { rootOff: number; rumpH: number; sizeK: number; heavy: number }> = {
+    fox: { rootOff: 0.3, rumpH: 0.32, sizeK: 0.95, heavy: 0.9 },
+    fox_champion: { rootOff: 0.4, rumpH: 0.46, sizeK: 1.3, heavy: 1.15 },
+    wolf: { rootOff: 0.38, rumpH: 0.44, sizeK: 1.0, heavy: 1.0 },
+    dire_wolf: { rootOff: 0.5, rumpH: 0.52, sizeK: 1.2, heavy: 1.25 },
+  };
   let tail: (() => void) | undefined;
   let ears: EarSim | undefined;
-  if (f.defId.startsWith('fox')) {
-    const queen = f.defId === 'fox_champion';
-    f.brush ??= new TailSim(queen ? 1.15 : 0.9, seed, queen ? 0.4 : 0.3);
+  const canid = CANID[f.defId];
+  if (canid) {
+    f.brush ??= new TailSim(canid.heavy, seed, canid.rootOff);
     let lunge = 0;
     if (attackT > 0) {
       lunge =
@@ -202,23 +225,23 @@ function drawQuad(
     }
     const lwx = wx + Math.cos(lp.dir) * lunge;
     const lwy = wy + Math.sin(lp.dir) * lunge;
-    f.brush.update(
-      lwx,
-      lwy,
-      (queen ? 0.46 : 0.32) + lp.bob * 0.35,
-      lp.dir,
-      dt,
-      now / 1000,
-      queen ? 1.3 : 0.95,
-    );
-    const look = foxLook(f.defId, seed);
+    f.brush.update(lwx, lwy, canid.rumpH + lp.bob * 0.35, lp.dir, dt, now / 1000, canid.sizeK);
+    const isFox = f.defId.startsWith('fox');
+    const foxL = isFox ? foxLook(f.defId, seed) : undefined;
+    const wolfSt = isFox
+      ? undefined
+      : f.defId === 'dire_wolf'
+        ? { coat: DIREWOLF_LOOK.coat, under: DIREWOLF_LOOK.under, tip: DIREWOLF_LOOK.grizzle, heavy: 1.15 }
+        : { coat: WOLF_LOOK.coat, under: WOLF_LOOK.under, tip: WOLF_LOOK.saddle, heavy: 1.0 };
     const brush = f.brush;
     tail = () => {
       const pts = brush.nodes.map((nd) => ({
         x: x + (nd.x - wx) * S,
         y: y + (nd.y - wy) * S * YS - nd.z * S,
       }));
-      drawFoxBrush(ctx, pts, look, S, { hurt, back: Math.sin(lp.dir) < -0.2 });
+      const back = Math.sin(lp.dir) < -0.2;
+      if (foxL) drawFoxBrush(ctx, pts, foxL, S, { hurt, back });
+      else drawWolfBrush(ctx, pts, wolfSt!, S, { hurt, back });
     };
     ears = f.earSim ??= new EarSim(seed);
   }

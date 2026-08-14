@@ -10708,10 +10708,17 @@ export function paintWolfBody(
     ctx,
     f,
     foot,
+    // THE RISING KEEL: withers ramp forward into a NECK ROOT that
+    // climbs out of the shoulders (the wolf carries its head high —
+    // the body must offer the neck, not butt-joint it), a gentle loin
+    // ease behind, then the stern FALLS AWAY into the brush root so
+    // the simulated tail reads grown, never pinned on.
     (X) =>
       look.backH +
-      Math.max(0, X / hl - 0.05) * look.shoulderH -
-      0.05 * Math.max(0, (-X / hl - 0.35) / 0.65),
+      Math.max(0, X / hl - 0.05) * look.shoulderH +
+      0.045 * Math.max(0, (X / hl - 0.55) / 0.45) -
+      0.04 * Math.max(0, (-X / hl - 0.3) / 0.5) -
+      0.06 * Math.max(0, (-X / hl - 0.72) / 0.28),
     (X) => look.chestH + (look.tuckH - look.chestH) * Math.min(1, Math.max(0, (0.5 - X / hl) / 1.2)),
     coat,
     (gx, gyy, lift) => {
@@ -10748,11 +10755,134 @@ export function paintWolfBody(
   );
 }
 
+/** Pre-resolved canid-ear tones — the painter never learns a species. */
+interface CanidEarStyle {
+  /** The blade's frame fill, both faces. */
+  fill: string;
+  /** Pale inner fan, face-on only. */
+  inner: string;
+  /** Back cartilage seam. */
+  seam: string;
+}
+
+/**
+ * Paint one projected canid ear off a physics (or rest) chain — the
+ * pricked blade every wolf-line head wears: straight tapered edges,
+ * pale inner fan face-on, one cartilage seam behind, and the optional
+ * NOTCH bitten from the trailing edge (the matriarch's history in
+ * silhouette). Plain path calls so painter tests can walk every
+ * coordinate.
+ */
+function paintCanidEar(
+  ctx: CanvasRenderingContext2D,
+  pts: Array<{ x: number; y: number }>,
+  w0: number,
+  st: CanidEarStyle,
+  o: { front: boolean; hurt: boolean; dead: boolean; notch: boolean; headX: number; headY: number },
+): void {
+  const prof = [1, 0.8, 0.45, 0];
+  const ea: Array<{ x: number; y: number }> = [];
+  const eb: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < 4; i++) {
+    const a = pts[Math.max(0, i - 1)]!;
+    const b = pts[Math.min(3, i + 1)]!;
+    let tx = b.x - a.x;
+    let ty = b.y - a.y;
+    const tl = Math.hypot(tx, ty) || 1;
+    tx /= tl;
+    ty /= tl;
+    const ww = w0 * prof[i]!;
+    ea.push({ x: pts[i]!.x + ty * ww, y: pts[i]!.y - tx * ww });
+    eb.push({ x: pts[i]!.x - ty * ww, y: pts[i]!.y + tx * ww });
+  }
+  // The leading edge faces AWAY from the skull (the wing-ear law).
+  const da = Math.hypot(ea[1]!.x - o.headX, ea[1]!.y - o.headY);
+  const db = Math.hypot(eb[1]!.x - o.headX, eb[1]!.y - o.headY);
+  const lead = da >= db ? ea : eb;
+  const trail = da >= db ? eb : ea;
+  const blade = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(trail[0]!.x, trail[0]!.y);
+    ctx.lineTo(lead[0]!.x, lead[0]!.y);
+    ctx.lineTo(lead[1]!.x, lead[1]!.y);
+    ctx.lineTo(lead[2]!.x, lead[2]!.y);
+    ctx.lineTo(pts[3]!.x, pts[3]!.y);
+    if (o.notch) {
+      // The V bitten into the trailing edge on the way back down.
+      const ax = trail[2]!.x * 0.6 + pts[3]!.x * 0.4;
+      const ay = trail[2]!.y * 0.6 + pts[3]!.y * 0.4;
+      ctx.lineTo(ax, ay);
+      ctx.lineTo(ax * 0.62 + pts[2]!.x * 0.38, ay * 0.62 + pts[2]!.y * 0.38);
+      ctx.lineTo(trail[2]!.x * 0.8 + trail[1]!.x * 0.2, trail[2]!.y * 0.8 + trail[1]!.y * 0.2);
+    } else {
+      ctx.lineTo(trail[2]!.x, trail[2]!.y);
+    }
+    ctx.lineTo(trail[1]!.x, trail[1]!.y);
+    ctx.closePath();
+  };
+  ctx.lineJoin = 'round';
+  ctx.fillStyle = o.hurt ? '#ffffff' : st.fill;
+  blade();
+  ctx.fill();
+  if (o.hurt) return;
+  if (o.front && !o.dead) {
+    ctx.fillStyle = st.inner;
+    ctx.beginPath();
+    ctx.moveTo(pts[0]!.x + (trail[0]!.x - pts[0]!.x) * 0.45, pts[0]!.y + (trail[0]!.y - pts[0]!.y) * 0.45);
+    ctx.lineTo(pts[0]!.x + (lead[0]!.x - pts[0]!.x) * 0.55, pts[0]!.y + (lead[0]!.y - pts[0]!.y) * 0.55);
+    ctx.lineTo(lead[1]!.x * 0.6 + pts[1]!.x * 0.4, lead[1]!.y * 0.6 + pts[1]!.y * 0.4);
+    ctx.lineTo(pts[2]!.x * 0.85 + pts[3]!.x * 0.15, pts[2]!.y * 0.85 + pts[3]!.y * 0.15);
+    ctx.lineTo(trail[1]!.x * 0.6 + pts[1]!.x * 0.4, trail[1]!.y * 0.6 + pts[1]!.y * 0.4);
+    ctx.closePath();
+    ctx.fill();
+  } else if (!o.front && !o.dead) {
+    ctx.strokeStyle = st.seam;
+    ctx.lineWidth = Math.max(1, w0 * 0.16);
+    ctx.beginPath();
+    ctx.moveTo(pts[0]!.x, pts[0]!.y);
+    ctx.quadraticCurveTo(pts[1]!.x, pts[1]!.y, pts[2]!.x, pts[2]!.y);
+    ctx.stroke();
+  }
+}
+
+/**
+ * Resolve a canid head's ear chains: tick the live sim when the caller
+ * owns one, else THE ONE REST — and split the pair by the projection's
+ * own depth term so far ears paint under the skull, near ears over the
+ * face. Never a hand-authored band.
+ */
+function canidEarChains(
+  carr: EarCarriage,
+  o: { fx: number; fy: number; dead?: boolean; nowMs?: number; ears?: EarSim },
+  cx: number,
+  cy: number,
+  s: number,
+  pin: number,
+): { behind: Array<{ c: EarChain; side: number }>; front: Array<{ c: EarChain; side: number }> } {
+  const dir = Math.atan2(o.fy, o.fx);
+  if (o.ears && !o.dead && o.nowMs) o.ears.update(cx, cy, s, carr, dir, pin, o.nowMs);
+  // The SIDE rides through the depth split: a mark worn on one ear
+  // (the matriarch's notch) must stay on that ear at every facing.
+  const chains = ([-1, 1] as const).map((side) => ({
+    side: side as number,
+    c:
+      o.ears && !o.dead
+        ? o.ears.chain(side, carr, dir, pin)
+        : earRestChain(side, carr, { dir, pin: o.dead ? 0.55 : pin, sway: 0 }),
+  }));
+  return {
+    behind: chains.filter((e) => e.c.depth <= 0.05),
+    front: chains.filter((e) => e.c.depth > 0.05),
+  };
+}
+
 /**
  * The wolf head: angular skull slab with erect ears and a long tapered
  * muzzle that turns with the facing (full-face wedge head-on, narrow
  * profile spike side-on). `snarl` pins the ears back and bares teeth
- * through the pounce telegraph; corpses pass `dead` (no eyes).
+ * through the pounce telegraph; corpses pass `dead` (no eyes). THE EAR
+ * IS A SIMULATION: pass `ears` + `nowMs` for the live elastic pair;
+ * sim-less callers paint the settled rest.
  */
 export function drawWolfHead(
   ctx: CanvasRenderingContext2D,
@@ -10768,8 +10898,10 @@ export function drawWolfHead(
     dead?: boolean;
     /** 0..1 through the attack telegraph. */
     snarl?: number;
-    /** 0..1 quick idle ear twitch. */
-    flick?: number;
+    /** Wall clock for the ear sim tick; absent = the settled rest. */
+    nowMs?: number;
+    /** THE EAR IS A SIMULATION: the live elastic pair. */
+    ears?: EarSim;
   },
 ): void {
   const { x: cx, y: cy, s, fx, fy, ys } = o;
@@ -10780,31 +10912,37 @@ export function drawWolfHead(
   const C = (c: string): string => (o.hurt ? '#ffffff' : c);
   const snarl = o.snarl ?? 0;
 
-  // Erect ears on the skull crown — pinned flat mid-snarl, the near
-  // one twitching at idle. A small along-facing stagger keeps the two
-  // ears from collapsing into one sliver at full profile.
-  for (const es of [-1, 1]) {
-    const bxr = cx + px * es * w * 0.3 + fx * es * w * 0.1;
-    const byr = cy + (py * es * w * 0.3 + fy * es * w * 0.1) * ys - h * 0.38;
-    const pin = Math.min(1, snarl * 0.6 + (es > 0 ? (o.flick ?? 0) * 0.35 : 0));
-    const tx = bxr + px * es * w * 0.15 - fx * w * 0.22 * pin;
-    const ty = byr - h * (0.78 - 0.36 * pin) - fy * w * 0.22 * pin * ys;
-    ctx.fillStyle = C(shade(look.coat, -6));
-    ctx.beginPath();
-    ctx.moveTo(bxr - px * es * w * 0.17, byr + h * 0.06);
-    ctx.lineTo(tx, ty);
-    ctx.lineTo(bxr + px * es * w * 0.2, byr + h * 0.12);
-    ctx.closePath();
-    ctx.fill();
-    if (fy > 0.05 && !o.hurt && !o.dead) {
-      ctx.fillStyle = look.earIn;
-      ctx.beginPath();
-      ctx.moveTo(bxr - px * es * w * 0.06, byr + h * 0.02);
-      ctx.lineTo(bxr + (tx - bxr) * 0.62, byr + (ty - byr) * 0.62);
-      ctx.lineTo(bxr + px * es * w * 0.12, byr + h * 0.07);
-      ctx.closePath();
-      ctx.fill();
-    }
+  // THE EAR IS A SIMULATION: erect blades on the elastic-pair
+  // contract — orientation, z-order, and foreshortening by the one
+  // projection; the sim adds turn lag, gait flap, and the pin-back
+  // sweeping AROUND the skull mid-snarl, never a hinge over the face.
+  const earPin = Math.min(1, snarl * 0.65);
+  const earCarr: EarCarriage = {
+    azimuth: 2.05,
+    rootR: look.headW * 0.26,
+    rootLift: look.headH * 0.48,
+    length: look.headW * 0.62,
+    spread: 0.55,
+    rise: 1.15,
+    curl: [0, 0.06, 0.14],
+  };
+  const earSt: CanidEarStyle = {
+    fill: C(shade(look.coat, -6)),
+    inner: look.earIn,
+    seam: shade(look.coat, -20),
+  };
+  const earW0 = w * 0.15;
+  const earPair = canidEarChains(earCarr, o, cx, cy, s, earPin);
+  const earFront = fy > 0.05;
+  for (const e of earPair.behind) {
+    paintCanidEar(ctx, e.c.pts.map((p) => ({ x: cx + p.x * s, y: cy + p.y * s })), earW0, earSt, {
+      front: earFront,
+      hurt: o.hurt === true,
+      dead: o.dead === true,
+      notch: false,
+      headX: cx,
+      headY: cy,
+    });
   }
 
   // Skull block: lit brow, shaded jaw, pale cheek band low.
@@ -10869,6 +11007,19 @@ export function drawWolfHead(
         ctx.fill();
       }
     }
+    // The pale under-jaw at profile: the white lip line every canid
+    // carries — a PROFILE read (the fox's face-on drip lesson).
+    if (!o.hurt && profileK > 0.25) {
+      const low = ny >= 0 ? 1 : -1;
+      ctx.strokeStyle = C(look.under);
+      ctx.lineWidth = Math.max(1.2, w * 0.05);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(bx0 + nx * hb * 0.72 * low, by0 + ny * hb * 0.72 * low);
+      ctx.lineTo(tx + nx * ht * 0.62 * low, ty + ny * ht * 0.62 * low);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
     // Nose chip SEATED on the tip — pulled back along the axis so it
     // overlaps the wedge instead of floating past it at profile.
     ctx.fillStyle = C(OUTLINE);
@@ -10877,8 +11028,10 @@ export function drawWolfHead(
     ctx.fill();
   }
 
-  // Amber hunter's eyes — slanted slits, the far one hiding as the
-  // head goes profile; none from behind, none dead.
+  // Amber hunter's eyes — slanted, DARK-LINED, one fixed light chip:
+  // the liner is what carries the stare at world zoom (a bare amber
+  // slit read as a sticker). The far one hides as the head goes
+  // profile; none from behind, none dead.
   if (!o.dead && fy > -0.45) {
     for (const es of [-1, 1]) {
       if (Math.abs(fx) > 0.6 && es * py < 0) continue;
@@ -10887,10 +11040,29 @@ export function drawWolfHead(
       ctx.save();
       ctx.translate(ex, ey);
       ctx.rotate(es * (0.3 + snarl * 0.3));
+      ctx.fillStyle = C(shade(look.saddle, -12));
+      ctx.fillRect(-w * 0.09, -h * 0.065, w * 0.18, h * 0.13);
       ctx.fillStyle = C(look.eye);
-      ctx.fillRect(-w * 0.078, -h * 0.055, w * 0.156, h * 0.11);
+      ctx.fillRect(-w * 0.076, -h * 0.052, w * 0.152, h * 0.104);
+      if (!o.hurt) {
+        ctx.fillStyle = 'rgba(255, 250, 235, 0.85)';
+        ctx.fillRect(w * 0.026, -h * 0.04, w * 0.026, h * 0.03);
+      }
       ctx.restore();
     }
+  }
+
+  // The near ears return over everything — the projection's z-order.
+  const earFront2 = fy > 0.05;
+  for (const e of earPair.front) {
+    paintCanidEar(ctx, e.c.pts.map((p) => ({ x: cx + p.x * s, y: cy + p.y * s })), earW0, earSt, {
+      front: earFront2,
+      hurt: o.hurt === true,
+      dead: o.dead === true,
+      notch: false,
+      headX: cx,
+      headY: cy,
+    });
   }
 }
 
@@ -10946,6 +11118,35 @@ export const DIREWOLF_LOOK: DireWolfLook = {
   headH: 0.3,
 };
 
+/**
+ * OLD FANG (the dread crown, the wolf boss): the dire painter worn
+ * by an authored DESIGN, never a reskin — aged iron-grey where the
+ * dire runs storm-charcoal, and the frost ticking laid on HEAVY: a
+ * coat gone white at the guard hairs the way an old muzzle goes
+ * white. Old-gold eyes (the dire's burn ember), pale scar rake wider
+ * than hers — his ledger is longer. Frame reads OLD AND RANGY:
+ * leaner in the body and lower at the back than the matriarch,
+ * carried on the longest lope in the wood.
+ */
+export const OLDFANG_LOOK: DireWolfLook = {
+  coat: '#7a7468',
+  saddle: '#4e4838',
+  under: '#c2bba8',
+  grizzle: '#dcd8c8',
+  hackle: '#38332a',
+  earIn: '#3d3226',
+  eye: '#f2c23a',
+  eyeCore: '#fff4cc',
+  scar: '#b8b0a0',
+  bodyW: 0.205,
+  backH: 0.66,
+  shoulderH: 0.15,
+  chestH: 0.28,
+  tuckH: 0.44,
+  headW: 0.37,
+  headH: 0.29,
+};
+
 export function paintDireWolfBody(
   ctx: CanvasRenderingContext2D,
   spec: BeastSpec,
@@ -10969,11 +11170,16 @@ export function paintDireWolfBody(
   ];
   const coat = shade(look.coat, (((f.seed >>> 5) & 7) - 3) * 2);
   // Withers carry the drama: a taller shoulder ramp than the wolf's,
-  // then the spine falls away down a low-slung rump.
+  // a NECK ROOT climbing off them into her high-held skull, then the
+  // spine falls away down a low-slung rump whose stern drops hard
+  // into the brush root — the simulated tail reads grown, never
+  // pinned on.
   const topH = (X: number): number =>
     look.backH +
-    Math.max(0, X / hl + 0.05) * look.shoulderH -
-    0.07 * Math.max(0, (-X / hl - 0.3) / 0.7);
+    Math.max(0, X / hl + 0.05) * look.shoulderH +
+    0.05 * Math.max(0, (X / hl - 0.55) / 0.45) -
+    0.07 * Math.max(0, (-X / hl - 0.3) / 0.7) -
+    0.055 * Math.max(0, (-X / hl - 0.74) / 0.26);
   paintBlockBody(
     ctx,
     f,
@@ -11114,8 +11320,10 @@ export function drawDireWolfHead(
     dead?: boolean;
     /** 0..1 through the attack telegraph. */
     snarl?: number;
-    /** 0..1 quick idle ear twitch. */
-    flick?: number;
+    /** Wall clock for the ear sim tick; absent = the settled rest. */
+    nowMs?: number;
+    /** THE EAR IS A SIMULATION: the live elastic pair. */
+    ears?: EarSim;
   },
 ): void {
   const { x: cx, y: cy, s, fx, fy, ys } = o;
@@ -11126,41 +11334,39 @@ export function drawDireWolfHead(
   const C = (c: string): string => (o.hurt ? '#ffffff' : c);
   const snarl = o.snarl ?? 0;
 
-  // Tall ears — the NEAR ear (es > 0) carries the notch, a triangular
-  // bite taken out of its trailing edge: the matriarch's history in
-  // silhouette. Both pin flat mid-snarl.
-  for (const es of [-1, 1]) {
-    const bxr = cx + px * es * w * 0.3 + fx * es * w * 0.1;
-    const byr = cy + (py * es * w * 0.3 + fy * es * w * 0.1) * ys - h * 0.4;
-    const pin = Math.min(1, snarl * 0.6 + (es > 0 ? (o.flick ?? 0) * 0.35 : 0));
-    const tx = bxr + px * es * w * 0.16 - fx * w * 0.24 * pin;
-    const ty = byr - h * (0.92 - 0.4 * pin) - fy * w * 0.24 * pin * ys;
-    ctx.fillStyle = C(shade(look.coat, -8));
-    ctx.beginPath();
-    ctx.moveTo(bxr - px * es * w * 0.18, byr + h * 0.06);
-    if (es > 0) {
-      // Notched trailing edge: out to the tip, then a V bitten into
-      // the way back down.
-      ctx.lineTo(tx, ty);
-      ctx.lineTo(bxr + px * es * w * 0.24 + (tx - bxr) * 0.42, byr + (ty - byr) * 0.55);
-      ctx.lineTo(bxr + px * es * w * 0.1 + (tx - bxr) * 0.3, byr + (ty - byr) * 0.42);
-      ctx.lineTo(bxr + px * es * w * 0.21, byr + h * 0.12);
-    } else {
-      ctx.lineTo(tx, ty);
-      ctx.lineTo(bxr + px * es * w * 0.21, byr + h * 0.12);
-    }
-    ctx.closePath();
-    ctx.fill();
-    if (fy > 0.05 && !o.hurt && !o.dead) {
-      ctx.fillStyle = look.earIn;
-      ctx.beginPath();
-      ctx.moveTo(bxr - px * es * w * 0.06, byr + h * 0.02);
-      ctx.lineTo(bxr + (tx - bxr) * 0.55, byr + (ty - byr) * 0.55);
-      ctx.lineTo(bxr + px * es * w * 0.12, byr + h * 0.07);
-      ctx.closePath();
-      ctx.fill();
-    }
-  }
+  // THE EAR IS A SIMULATION: taller heavier blades than any wolf's,
+  // on the elastic-pair contract — and the +1 ear carries the NOTCH,
+  // the triangular bite out of its trailing edge (the matriarch's
+  // history in silhouette), riding THAT ear through every facing.
+  const earPin = Math.min(1, snarl * 0.6);
+  const earCarr: EarCarriage = {
+    azimuth: 2.05,
+    rootR: look.headW * 0.27,
+    rootLift: look.headH * 0.5,
+    length: look.headW * 0.66,
+    spread: 0.55,
+    rise: 1.1,
+    curl: [0, 0.06, 0.14],
+  };
+  const earSt: CanidEarStyle = {
+    fill: C(shade(look.coat, -8)),
+    inner: look.earIn,
+    seam: shade(look.coat, -22),
+  };
+  const earW0 = w * 0.155;
+  const earPair = canidEarChains(earCarr, o, cx, cy, s, earPin);
+  const dEarFront = fy > 0.05;
+  const paintDireEar = (e: { c: EarChain; side: number }): void => {
+    paintCanidEar(ctx, e.c.pts.map((p) => ({ x: cx + p.x * s, y: cy + p.y * s })), earW0, earSt, {
+      front: dEarFront,
+      hurt: o.hurt === true,
+      dead: o.dead === true,
+      notch: e.side > 0,
+      headX: cx,
+      headY: cy,
+    });
+  };
+  for (const e of earPair.behind) paintDireEar(e);
 
   // Skull block: broader than the wolf's, chamfered heavier.
   ctx.fillStyle = C(look.coat);
@@ -11271,6 +11477,10 @@ export function drawDireWolfHead(
       ctx.restore();
     }
   }
+
+  // The near ears return over everything — the projection's z-order;
+  // the notch stays on its own ear whichever side the turn puts it.
+  for (const e of earPair.front) paintDireEar(e);
 }
 
 /**
@@ -17702,7 +17912,12 @@ export function drawBeast(
   // shares it.)
   const cattle = CATTLE_LOOKS[opts.defId];
   const wolfL = opts.defId === 'wolf' ? WOLF_LOOK : undefined;
-  const direL = opts.defId === 'dire_wolf' ? DIREWOLF_LOOK : undefined;
+  const direL =
+    opts.defId === 'dire_wolf'
+      ? DIREWOLF_LOOK
+      : opts.defId === 'wolf_oldfang'
+        ? OLDFANG_LOOK
+        : undefined;
   const worgL = opts.defId === 'worg' ? WORG_LOOK : undefined;
   const ratL = opts.defId === 'rat' ? RAT_LOOK : undefined;
   const boarL = opts.defId === 'boar' ? BOAR_LOOK : undefined;
@@ -18298,9 +18513,8 @@ export function drawBeast(
       ctx.lineTo(chx + px * hw2 * 0.36, chy + py * hw2 * 0.36 * ys + wolfL.headH * s * 0.24);
       ctx.closePath();
       ctx.fill();
-      // Idle ear flick: a rare quick pulse, never a metronome.
-      const flick =
-        now > 0 ? Math.max(0, Math.sin(now * 0.0021 + seed) - 0.94) / 0.06 * idle : 0;
+      // No hand-rolled flick: the elastic pair carries its own idle
+      // sway, gait flap, and turn lag — physics, not a metronome.
       drawWolfHead(ctx, wolfL, {
         x: chx,
         y: chy,
@@ -18310,7 +18524,8 @@ export function drawBeast(
         ys,
         hurt: opts.hurt,
         snarl: at > 0 ? Math.min(1, at * 2.2) : 0,
-        flick,
+        nowMs: now > 0 ? now : undefined,
+        ears: opts.ears,
       });
       return;
     }
@@ -18359,8 +18574,6 @@ export function drawBeast(
           ctx.fill();
         }
       }
-      const flick =
-        now > 0 ? Math.max(0, Math.sin(now * 0.0017 + seed) - 0.94) / 0.06 * idle : 0;
       drawDireWolfHead(ctx, direL, {
         x: chx,
         y: chy,
@@ -18370,7 +18583,8 @@ export function drawBeast(
         ys,
         hurt: opts.hurt,
         snarl: at > 0 ? Math.min(1, at * 2.2) : 0,
-        flick,
+        nowMs: now > 0 ? now : undefined,
+        ears: opts.ears,
       });
       return;
     }
@@ -18832,6 +19046,13 @@ export function drawBeast(
       return;
     }
     if (wolfL) {
+      // THE SIMULATED BRUSH: the live game runs the verlet chain
+      // (TailSim + drawWolfBrush) — physics, not pose. The analytic
+      // hang below survives only for sim-less callers.
+      if (opts.tail) {
+        opts.tail();
+        return;
+      }
       // The brush: a full bushy tail hanging off the rump in a lazy
       // curve, dark-tipped, swaying with the gait and drifting at idle.
       const hl = spec.bodyLen * s;
@@ -18857,6 +19078,12 @@ export function drawBeast(
       return;
     }
     if (direL) {
+      // THE SIMULATED BRUSH — the sim-less analytic hang below is for
+      // portraits and the CMS only.
+      if (opts.tail) {
+        opts.tail();
+        return;
+      }
       // The matriarch's brush: heavier than any wolf's, hung low and
       // ending PALE — the frost tip, the inverse of the pack's dark
       // ones. Sways slower; she wastes no motion.

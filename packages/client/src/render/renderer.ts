@@ -83,6 +83,8 @@ import {
   goblinLook,
   lynxLook,
   foxLook,
+  WOLF_LOOK,
+  DIREWOLF_LOOK,
   owlHoverHeight,
   owlLook,
   skeletonLook,
@@ -177,7 +179,7 @@ import {
 } from './reveal.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
-import { BobtailSim, TailSim, drawBobtail, drawFoxBrush, drawTail } from './tail.js';
+import { BobtailSim, TailSim, drawBobtail, drawFoxBrush, drawTail, drawWolfBrush } from './tail.js';
 import { EarSim } from './earPhysics.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
@@ -620,13 +622,13 @@ interface AnimState {
   ears?: EarSim;
   /** The lynx bobtail sim — present only on the tufted shadows. */
   bobtail?: BobtailSim;
-  /** THE BRUSH IS A SIMULATION: the fox's full plume — its own slot,
-   *  beside the gnoll's humanoid-lane `tail`, so neither lane's
-   *  lifecycle evicts the other's appendage. */
-  foxBrush?: TailSim;
-  /** The fox's elastic ear pair — beside the goblin's `ears`, its own
+  /** THE BRUSH IS A SIMULATION: the canid brush (fox plume, wolf and
+   *  dire-wolf hangs) — its own slot beside the gnoll's humanoid-lane
+   *  `tail`, so neither lane's lifecycle evicts the other's appendage. */
+  canidBrush?: TailSim;
+  /** The canid elastic ear pair — beside the goblin's `ears`, its own
    *  slot for the same no-cross-lane-eviction reason. */
-  foxEars?: EarSim;
+  canidEars?: EarSim;
   /** THE FLEECE TELLS THE TIME: last seen shorn state on a sheep —
    *  the false→true edge is the shear moment and puffs the tufts. */
   shornSeen?: boolean;
@@ -32862,15 +32864,27 @@ export class Renderer {
     // paints through drawFoxBrush inside drawBeast's depth seam.
     let brushSim: TailSim | null = null;
     let foxEarSim: EarSim | undefined;
-    if (defId.startsWith('fox')) {
-      const queenB = defId === 'fox_champion';
-      if (!anim.foxBrush) {
-        // Root the plume at the RUMP, not the humanoid hip line — a
+    // THE CANID LANE: fox skulk and wolfkin share the physics kit —
+    // the rump-rooted brush and the elastic ear pair. Per-species
+    // dials only; one contract.
+    const CANID: Record<
+      string,
+      { rootOff: number; rumpH: number; sizeK: number; heavy: number }
+    > = {
+      fox: { rootOff: 0.3, rumpH: 0.32, sizeK: 0.95, heavy: 0.9 },
+      fox_champion: { rootOff: 0.4, rumpH: 0.46, sizeK: 1.3, heavy: 1.15 },
+      wolf: { rootOff: 0.38, rumpH: 0.44, sizeK: 1.0, heavy: 1.0 },
+      dire_wolf: { rootOff: 0.5, rumpH: 0.52, sizeK: 1.2, heavy: 1.25 },
+    };
+    const canid = CANID[defId];
+    if (canid) {
+      if (!anim.canidBrush) {
+        // Root the brush at the RUMP, not the humanoid hip line — a
         // quadruped's tail seated at the default offset roots inside
         // the torso and hangs between the legs.
-        anim.foxBrush = new TailSim(queenB ? 1.15 : 0.9, eid, queenB ? 0.4 : 0.3);
+        anim.canidBrush = new TailSim(canid.heavy, eid, canid.rootOff);
       }
-      brushSim = anim.foxBrush;
+      brushSim = anim.canidBrush;
       // THE TAIL RIDES THE POUNCE: drawBeast lunges the painted body
       // through the attack beat, so the sim must anchor on the SAME
       // lunged position — fed the raw server point, the brush floats
@@ -32888,32 +32902,37 @@ export class Renderer {
         lax,
         lay,
         // The rump height, riding the gait bob.
-        (queenB ? 0.46 : 0.32) + legPose.bob * 0.35,
+        canid.rumpH + legPose.bob * 0.35,
         legPose.dir,
         this.frameDt,
         performance.now() / 1000,
-        queenB ? 1.3 : 0.95,
+        canid.sizeK,
       );
-      const look = foxLook(defId, eid);
+      const isFox = defId.startsWith('fox');
+      const foxL = isFox ? foxLook(defId, eid) : undefined;
+      const wolfSt = isFox
+        ? undefined
+        : defId === 'dire_wolf'
+          ? { coat: DIREWOLF_LOOK.coat, under: DIREWOLF_LOOK.under, tip: DIREWOLF_LOOK.grizzle, heavy: 1.15 }
+          : { coat: WOLF_LOOK.coat, under: WOLF_LOOK.under, tip: WOLF_LOOK.saddle, heavy: 1.0 };
       paintBob = () => {
         const pts = brushSim!.nodes.map((nd) => {
           const sp = this.camera.worldToScreen(nd.x, nd.y, this.w, this.h);
           return { x: sp.x, y: sp.y - this.renderLift(nd.x, nd.y) * scale - nd.z * scale };
         });
-        drawFoxBrush(this.ctx, pts, look, scale, {
-          hurt,
-          back: Math.sin(legPose.dir) < -0.2,
-        });
+        const back = Math.sin(legPose.dir) < -0.2;
+        if (foxL) drawFoxBrush(this.ctx, pts, foxL, scale, { hurt, back });
+        else drawWolfBrush(this.ctx, pts, wolfSt!, scale, { hurt, back });
       };
-      // THE EAR IS A SIMULATION, spoken vulpine: the elastic pair on
-      // the anim map; drawFoxHead ticks it at the exact skull anchor
-      // (the goblin contract — the rig owns the anchor, the renderer
-      // owns the lifecycle and the re-bake cue).
-      anim.foxEars ??= new EarSim(eid);
-      foxEarSim = anim.foxEars;
+      // THE EAR IS A SIMULATION: the elastic pair on the anim map;
+      // the head painter ticks it at the exact skull anchor (the
+      // goblin contract — the rig owns the anchor, the renderer owns
+      // the lifecycle and the re-bake cue).
+      anim.canidEars ??= new EarSim(eid);
+      foxEarSim = anim.canidEars;
     } else {
-      if (anim.foxBrush) anim.foxBrush = undefined;
-      if (anim.foxEars) anim.foxEars = undefined;
+      if (anim.canidBrush) anim.canidBrush = undefined;
+      if (anim.canidEars) anim.canidEars = undefined;
     }
     // THE FLEECE TELLS THE TIME: the false→true edge on the meta's
     // shorn flag IS the shear landing — puff the fleece off the body.

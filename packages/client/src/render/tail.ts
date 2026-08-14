@@ -626,6 +626,110 @@ export function drawFoxBrush(
   ctx.stroke();
 }
 
+/** Pre-resolved wolf-brush tones — the painter never learns a species. */
+export interface WolfBrushStyle {
+  coat: string;
+  under: string;
+  /** The tip dip: saddle-dark on the pack, frost-pale on the matriarch
+   *  — the inversion detail, kept on physics. */
+  tip: string;
+  /** Volume scale — the matriarch's brush out-masses the pack's. */
+  heavy: number;
+}
+
+/**
+ * Paint the projected WOLF BRUSH — the canid hang: bushy through the
+ * middle, slimmer than the fox's flag plume, dipped at the tip in the
+ * style's own ink. Pale underfur rides the low edge; a quiet contour
+ * separates the brush from same-coat flanks. Plain path calls — no
+ * Path2D — so node-side painter tests can walk every coordinate.
+ */
+export function drawWolfBrush(
+  ctx: CanvasRenderingContext2D,
+  pts: Array<{ x: number; y: number }>,
+  st: WolfBrushStyle,
+  wk: number,
+  opts: FoxBrushDrawOpts,
+): void {
+  const n = pts.length;
+  if (n < 4) return;
+  const left: Array<{ x: number; y: number }> = [];
+  const right: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[Math.max(0, i - 1)]!;
+    const b = pts[Math.min(n - 1, i + 1)]!;
+    let tx = b.x - a.x;
+    let ty = b.y - a.y;
+    const tl = Math.hypot(tx, ty) || 1;
+    tx /= tl;
+    ty /= tl;
+    const t = i / (n - 1);
+    // The wolf profile: a fuller root than the fox (the brush grows
+    // straight out of the guard hairs), bushy mid, honest taper.
+    const w =
+      (0.026 + 0.062 * Math.pow(Math.sin(Math.min(1, t * 1.08) * Math.PI), 0.75) + 0.01 * (1 - t)) *
+      st.heavy *
+      wk;
+    left.push({ x: pts[i]!.x + ty * w, y: pts[i]!.y - tx * w });
+    right.push({ x: pts[i]!.x - ty * w, y: pts[i]!.y + tx * w });
+  }
+
+  const silhouette = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(left[0]!.x, left[0]!.y);
+    for (let i = 1; i < n; i++) ctx.lineTo(left[i]!.x, left[i]!.y);
+    const tipX = pts[n - 1]!.x + (pts[n - 1]!.x - pts[n - 2]!.x) * 0.45;
+    const tipY = pts[n - 1]!.y + (pts[n - 1]!.y - pts[n - 2]!.y) * 0.45;
+    ctx.quadraticCurveTo(tipX, tipY, right[n - 1]!.x, right[n - 1]!.y);
+    for (let i = n - 2; i >= 0; i--) ctx.lineTo(right[i]!.x, right[i]!.y);
+    ctx.closePath();
+  };
+
+  ctx.lineJoin = 'round';
+  // The back view shows underfur DIMMED toward the coat — the fox's
+  // balloon lesson, inherited.
+  ctx.fillStyle = opts.hurt ? '#ffffff' : opts.back ? shade(st.under, -24) : shade(st.coat, -4);
+  silhouette();
+  ctx.fill();
+  if (opts.hurt) return;
+
+  ctx.save();
+  silhouette();
+  ctx.clip();
+  // The tip dip: the last knuckle and a half in the style's own ink —
+  // the read that survives any zoom, dark or frost.
+  ctx.fillStyle = st.tip;
+  ctx.beginPath();
+  const fl = n - 2;
+  ctx.moveTo(left[fl]!.x + (left[fl - 1]!.x - left[fl]!.x) * 0.3, left[fl]!.y + (left[fl - 1]!.y - left[fl]!.y) * 0.3);
+  for (let i = fl; i < n; i++) ctx.lineTo(left[i]!.x, left[i]!.y);
+  const capX = pts[n - 1]!.x + (pts[n - 1]!.x - pts[n - 2]!.x) * 0.5;
+  const capY = pts[n - 1]!.y + (pts[n - 1]!.y - pts[n - 2]!.y) * 0.5;
+  ctx.quadraticCurveTo(capX, capY, right[n - 1]!.x, right[n - 1]!.y);
+  for (let i = n - 2; i >= fl; i--) ctx.lineTo(right[i]!.x, right[i]!.y);
+  ctx.lineTo(right[fl]!.x + (right[fl - 1]!.x - right[fl]!.x) * 0.3, right[fl]!.y + (right[fl - 1]!.y - right[fl]!.y) * 0.3);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // Pale underfur along the DOWN-SCREEN edge — the brush's low side.
+  let leftDown = 0;
+  for (let i = 1; i < n - 1; i++) leftDown += left[i]!.y - right[i]!.y;
+  const low = leftDown >= 0 ? left : right;
+  ctx.strokeStyle = shade(st.under, -8);
+  ctx.lineWidth = Math.max(1, wk * 0.016);
+  ctx.beginPath();
+  ctx.moveTo(low[1]!.x, low[1]!.y);
+  for (let i = 2; i <= n - 2; i++) ctx.lineTo(low[i]!.x, low[i]!.y);
+  ctx.stroke();
+
+  // The quiet contour separating the brush from same-coat flanks.
+  ctx.strokeStyle = shade(st.coat, -24);
+  ctx.lineWidth = Math.max(1, wk * 0.014);
+  silhouette();
+  ctx.stroke();
+}
+
 export interface TailDrawOpts {
   hurt: boolean;
 }

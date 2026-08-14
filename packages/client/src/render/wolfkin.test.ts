@@ -145,7 +145,9 @@ test('both painters run clean across all eight facings, live and dead', () => {
           ys: 0.82,
           dead,
           snarl: dead ? 0 : 0.8,
-          flick: 0.5,
+          // No flick lever anymore: the ears are a SIMULATION, and a
+          // sim-less call paints THE ONE REST — exactly what this
+          // NaN-sweep should walk.
         });
         drawWorgHead(mockCtx(), WORG_LOOK, {
           x: 100,
