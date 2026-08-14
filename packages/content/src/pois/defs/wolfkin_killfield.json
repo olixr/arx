@@ -1,0 +1,31 @@
+{
+  "id": "wolfkin_killfield",
+  "name": "The kill-field",
+  "description": "Where the pack drags what it takes. Bone drifts older than the trees around them, den mouths under rock lips, and a ring of skulls around the things the pack will not share.",
+  "tiers": [3, 5],
+  "weight": 2,
+  "prefabs": ["poi_wolfkin_killfield"],
+  "garrison": [
+    { "npc": "wolf", "count": [4, 6], "role": "holdfast" },
+    { "npc": "wolf", "count": [2, 3], "role": "sentry", "patrol": true },
+    { "npc": "worg", "count": [2, 3], "role": "holdfast", "minTier": 4 },
+    { "npc": "wolf", "count": [2, 3], "role": "holdfast", "hours": { "from": 19, "to": 6 } },
+    {
+      "npc": "dire_wolf",
+      "count": [1, 1],
+      "role": "holdfast",
+      "minTier": 4,
+      "levelOffset": 3,
+      "names": ["The Field's Jaw", "Old Dragmark", "The Unshared", "Mother of the Drifts"]
+    }
+  ],
+  "chestTierBonus": 0,
+  "cues": {
+    "clearing": 5,
+    "scatter": [
+      { "tile": "BonePile", "count": 4 },
+      { "tile": "SkullPile", "count": 2 }
+    ]
+  },
+  "family": "wolfkin"
+}

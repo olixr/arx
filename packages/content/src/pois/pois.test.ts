@@ -295,3 +295,36 @@ test('the shipped escalating archetypes carry their ladders', () => {
   assert.equal(POI_DEFS.get('forest_ruin')!.boldness!.satellites, undefined);
   assert.equal(POI_DEFS.get('goblin_warcamp')!.boldness!.satellites, true);
 });
+
+test('THE LANDMARKS: expansive authored grounds, each with one modest cache', () => {
+  const LANDMARKS = [
+    'poi_barrowfield_great',
+    'poi_ruin_greatkeep',
+    'poi_goblin_sprawl',
+    'poi_wolfkin_killfield',
+    'poi_brigand_waystead',
+  ];
+  for (const id of LANDMARKS) {
+    const p = POI_PREFABS.get(id);
+    assert.ok(p, `${id} missing from the shelf`);
+    // 3-5x the ordinary camp (median 14): a landmark is a PLACE.
+    assert.ok(Math.max(p!.width, p!.height) >= 45, `${id}: ${p!.width}x${p!.height} too small for a landmark`);
+    assert.ok(Math.max(p!.width, p!.height) <= 98, `${id}: outgrew its cell`);
+    // One iron cache — strongholds keep the big chests (the loot law).
+    let iron = 0;
+    let boss = 0;
+    for (const t of p!.ground) {
+      if (t === Tile.ChestIron) iron++;
+      if (t === Tile.ChestBoss) boss++;
+    }
+    assert.equal(iron, 1, `${id}: exactly one modest cache`);
+    assert.equal(boss, 0, `${id}: boss chests belong to strongholds and courts`);
+    // No spawn markers — the def's garrison is the muster.
+    assert.equal(p!.spawns.length, 0, `${id}: landmark prefabs carry no spawn markers`);
+    // Referenced by a registered def.
+    assert.ok(
+      [...POI_DEFS.values()].some((d) => d.prefabs.includes(id)),
+      `${id}: no def deals it`,
+    );
+  }
+});

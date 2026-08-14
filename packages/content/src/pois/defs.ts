@@ -29,6 +29,11 @@ import wildGrove from './defs/wild_grove.json';
 import wolfkinDen from './defs/wolfkin_den.json';
 import lynxkinLair from './defs/lynxkin_lair.json';
 import owlRoost from './defs/owl_roost.json';
+import barrowfieldGreat from './defs/barrowfield_great.json';
+import greatkeepRuin from './defs/greatkeep_ruin.json';
+import goblinSprawl from './defs/goblin_sprawl.json';
+import wolfkinKillfield from './defs/wolfkin_killfield.json';
+import brigandWaystead from './defs/brigand_waystead.json';
 
 /**
  * Every authored POI archetype JSON, registered here. A def that isn't
@@ -66,6 +71,12 @@ const SOURCES: readonly unknown[] = [
   wolfkinDen,
   lynxkinLair,
   owlRoost,
+  // THE LANDMARKS (the hybrid charter): expansive authored grounds.
+  barrowfieldGreat,
+  greatkeepRuin,
+  goblinSprawl,
+  wolfkinKillfield,
+  brigandWaystead,
 ];
 
 function buildRegistry(): ReadonlyMap<string, PoiDef> {

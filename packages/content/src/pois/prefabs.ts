@@ -1,5 +1,6 @@
 import { TILE_SKIP, Tile } from '@arx/shared';
 import type { PrefabDef, PrefabSpawn } from '../maps/prefab.js';
+import { LANDMARK_PREFABS } from './landmarks.js';
 import { validatePrefab } from '../maps/prefab.js';
 
 /**
@@ -1571,6 +1572,9 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     // The parliament (great owls of the deep wood):
     roostShadewood,
     roostPinehollow,
+    // THE LANDMARKS (the hybrid charter): expansive authored grounds,
+    // 3-5x the camp shelf — built in landmarks.ts the Foundry way.
+    ...LANDMARK_PREFABS,
     // The Small Finds (the lived-in land, phase 2):
     findHuntersRest,
     findSnareLine,

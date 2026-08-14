@@ -1,0 +1,38 @@
+{
+  "id": "barrowfield_great",
+  "name": "The great barrowfield",
+  "description": "A whole valley of the old dead: kerbed mounds in rows past counting, a stone processional nobody living laid, and a great barrow whose door stands open. Where the kerbs are broken, the households walk.",
+  "tiers": [3, 5],
+  "weight": 2,
+  "prefabs": ["poi_barrowfield_great"],
+  "garrison": [
+    { "npc": "skeleton", "count": [3, 5], "role": "holdfast" },
+    { "npc": "skeleton", "count": [2, 3], "role": "holdfast", "hours": { "from": 18, "to": 6 } },
+    { "npc": "skeleton_archer", "count": [1, 2], "role": "sentry", "patrol": true },
+    { "npc": "skeleton_guard", "count": [2, 3], "role": "holdfast", "minTier": 4 },
+    { "npc": "skeleton_chanter", "count": [1, 1], "role": "holdfast", "minTier": 5 },
+    {
+      "npc": "skeleton_guard",
+      "count": [1, 1],
+      "role": "holdfast",
+      "levelOffset": 4,
+      "names": ["The Barrow Reeve", "The Kerb Warden", "He Who Counts the Rows", "The First Buried"]
+    }
+  ],
+  "chestTierBonus": 1,
+  "cues": {
+    "clearing": 4,
+    "approachPath": true,
+    "scatter": [
+      { "tile": "Rock", "count": 3 },
+      { "tile": "BonePile", "count": 3 }
+    ]
+  },
+  "signs": [
+    {
+      "title": "OLD STONE",
+      "lines": ["row on row they lie", "dig no barrow"]
+    }
+  ],
+  "family": "dead"
+}

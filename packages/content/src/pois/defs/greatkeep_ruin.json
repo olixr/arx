@@ -1,0 +1,38 @@
+{
+  "id": "greatkeep_ruin",
+  "name": "The fallen keep",
+  "description": "A curtain wall that lost its war a kingdom ago. The keep still holds its floor, the braziers still get lit, and whatever lights them never left the garrison.",
+  "tiers": [3, 5],
+  "weight": 2,
+  "prefabs": ["poi_ruin_greatkeep"],
+  "garrison": [
+    { "npc": "skeleton", "count": [3, 5], "role": "holdfast" },
+    { "npc": "skeleton_archer", "count": [2, 3], "role": "holdfast" },
+    { "npc": "skeleton_archer", "count": [1, 2], "role": "sentry", "patrol": true },
+    { "npc": "skeleton_guard", "count": [2, 3], "role": "holdfast", "minTier": 4 },
+    {
+      "npc": "skeleton_champion",
+      "count": [1, 1],
+      "role": "holdfast",
+      "minTier": 4,
+      "levelOffset": 3,
+      "names": ["The Last Castellan", "The Wall's Memory", "The Unrelieved Watch", "The Keeper of the Keys"]
+    }
+  ],
+  "chestTierBonus": 1,
+  "cues": {
+    "clearing": 4,
+    "approachPath": true,
+    "scatter": [
+      { "tile": "CaveRubble", "count": 4 },
+      { "tile": "Rock", "count": 2 }
+    ]
+  },
+  "signs": [
+    {
+      "title": "GATE STONE",
+      "lines": ["the arms are chiselled off", "somebody keeps the braziers lit"]
+    }
+  ],
+  "family": "dead"
+}

@@ -996,3 +996,65 @@ The loot charter, shipped same-day on Phase 8's captains:
 - **Smaller camps unchanged**: POI camps keep their own chest laws —
   the strongholds are where the big chests live, and every one of
   them is somebody's charge. 1,571 workspace tests green.
+
+---
+
+# The Hybrid Charter — Clusters of Clusters (2026-08-14)
+
+The user's ask: see how procedural and pre-authored zones actually
+meet, then author EXPANSIVE POIs (3-5× the shelf) so the frontier
+reads as constellations — authored landmarks and procedural camps
+gathered around the capitals.
+
+## The audit's verdict (2026-08-14)
+
+- The hybrid pipeline already exists structurally: every POI def
+  deals from a prefab pool; every pool prefab is a data/prefabs JSON
+  (FILE WINS, Map Studio-editable); sketch-origin and hand-authored
+  files mix indistinguishably. 28 archetypes + 14 minor finds +
+  3 compound holds (court + 2-4 wings, ~60-65 tile constellations).
+- The SIZE was the gap: median POI 14 tiles across, the biggest 23
+  (hoargate), against a cell ceiling of ~98. "Small and minor" was
+  exactly right.
+- The CLUSTER was inverted: capitals masked their ground AND repelled
+  compound holds (regionCells pad) — a capital's neighborhood was
+  QUIETER than open frontier, the opposite of clusters-of-clusters.
+
+## Shipped (THE LANDMARKS + THE GATHERED MARCHES)
+
+- **THE LANDMARKS** (content/pois/landmarks.ts): five expansive
+  authored grounds, 60-68 tiles (3-5× the median), built the Foundry
+  way — deterministic builders at pinned seeds, painted interiors
+  (the claimed-yard lesson), one modest iron cache each (the loot
+  law: strongholds keep the big chests): the great barrowfield
+  (kerbed mound rows, pillar processional, the great barrow's lit
+  chamber), the fallen keep (broken curtain, weed courtyard, intact
+  keep floor), the goblin sprawl (five-camp tent city, no walls),
+  the kill-field (bone drifts, den mouths, rib-ringed hoard), the
+  lost waystead (robbed king's waystation, wagon ring, watch-mound).
+  Five new archetype defs with champion name pools, night watches,
+  patrol sentries, signs, and approach cues; weight 2 (landmark-rare).
+- **THE RELAXED LANDMARK SITING**: whole-footprint standability is
+  statistically brutal at 66×50 (the capitals' Phase-3 audit,
+  relearned at POI scale) — expansive prefabs (≥45/axis) sample on a
+  stride-3 grid and tolerate ≤10% rough ground; ordinary camps stay
+  strict. The coverage sweep is what caught it: landmarks never
+  occurred until the law relaxed.
+- **THE GATHERED MARCHES** (pois.ts + FRONTIER dials marchBand 160
+  [64,320] / marchGather 1.6 [1,2.5]): cells within the march band
+  of a capital's mask deal MORE (poiChance × gather, capped 0.85)
+  and lean TWICE as hard to the country's family — every capital
+  reads as the heart of a same-blood constellation. Compound holds
+  stay excluded near capitals (one war-ground per region, unchanged);
+  the mask law unchanged. Pure: the same ctx.capitals the mask reads.
+  Statistically test-pinned (band cells gather visibly over a
+  120-seed sweep; masked cells stay silent).
+- **Live-proven** (rig lane 6): 'The great barrowfield' stood at
+  -945,-204 on the fourth candidate ground (the land refuses
+  honestly), discovery banner fired, Skeleton Guards on the
+  processional and 'The First Buried' (the def pool's champion)
+  walking the east rows. 1,592 workspace tests green.
+- **Debts**: landmark acceptance ~1-in-4 grounds at 66 wide — fine
+  for weight-2 rares, revisit SITE_TRIES if play wants them denser;
+  the Weather bench rows for marchBand/marchGather ride a future
+  bench pass (dials live + clamped + refusal-tested today).

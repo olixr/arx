@@ -1,0 +1,38 @@
+{
+  "id": "brigand_waystead",
+  "name": "The lost waystead",
+  "description": "A king's waystation the road forgot and the robbers remembered: the stores moved back in, the wagon ring turns takings over by firelight, and the watch-mound torch means the yard is working tonight.",
+  "tiers": [2, 4],
+  "weight": 2,
+  "prefabs": ["poi_brigand_waystead"],
+  "garrison": [
+    { "npc": "brigand", "count": [3, 5], "role": "holdfast" },
+    { "npc": "brigand_archer", "count": [2, 3], "role": "holdfast" },
+    { "npc": "brigand_archer", "count": [1, 2], "role": "sentry", "patrol": true },
+    { "npc": "brigand", "count": [1, 2], "role": "sentry", "hours": { "from": 19, "to": 7 } },
+    {
+      "npc": "brigand_reaver",
+      "count": [1, 1],
+      "role": "holdfast",
+      "minTier": 3,
+      "levelOffset": 4,
+      "names": ["The Waystead Factor", "Toll-Mother Hesse", "Quiet Andrey", "The Ledger's Hand"]
+    }
+  ],
+  "chestTierBonus": 1,
+  "cues": {
+    "clearing": 4,
+    "approachPath": true,
+    "scatter": [
+      { "tile": "Crate", "count": 2 },
+      { "tile": "CaveRubble", "count": 2 }
+    ]
+  },
+  "signs": [
+    {
+      "title": "MILE POST",
+      "lines": ["the king's mark is planed away", "the toll is whatever you carry"]
+    }
+  ],
+  "family": "brigand"
+}

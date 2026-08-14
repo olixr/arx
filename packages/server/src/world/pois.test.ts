@@ -128,6 +128,32 @@ test('the scaffold is deterministic', () => {
   assert.deepEqual(scanSites(), scanSites());
 });
 
+test('THE GATHERED MARCHES: a capital gathers camps in its band, never on its ground', () => {
+  // A synthetic capital rect; cells fully inside it stay silent (the
+  // mask), cells in the march band decide MORE often than far cells.
+  // North frontier ground (south of y≈512 is the dark band — no sites).
+  const cap = { x: 4 * POI_CELL, y: -5 * POI_CELL, w: 160, h: 160 };
+  const withCap: PoiContext = { ...CTX, capitals: [cap] };
+  // The masked cell: the capital's own ground deals nothing.
+  for (let seed = 1; seed <= 20; seed++) {
+    assert.equal(poiForCell(seed, 4, -5, 0, withCap), null, 'masked ground must stay silent');
+  }
+  // Band cell (adjacent to the rect, within marchBand) vs a far cell:
+  // count decisions across seeds — the band must gather visibly. Use
+  // the same cell coordinates for both runs so only ctx differs.
+  let near = 0;
+  let far = 0;
+  const bandCell = { cx: 6, cy: -5 }; // ~128 tiles from the rect edge
+  for (let seed = 1; seed <= 120; seed++) {
+    if (poiForCell(seed, bandCell.cx, bandCell.cy, 0, withCap)) near++;
+    if (poiForCell(seed, bandCell.cx, bandCell.cy, 0, CTX)) far++;
+  }
+  assert.ok(
+    near > far,
+    `the march band must gather: ${near} sites with the capital vs ${far} without`,
+  );
+});
+
 test('the planned rects join the clearance list and flag stale sites', () => {
   // poiContext folds the master plan's rects in even when the live
   // zone list carries only Dawnmead — the frontier keeps out of
@@ -215,15 +241,29 @@ test('every site stands on flat standable ground, clear of zones and the dark ba
     const prefab = POI_PREFABS.get(site.prefabId)!;
     const fx0 = site.anchorX - Math.floor(prefab.width / 2);
     const fy0 = site.anchorY - Math.floor(prefab.height / 2);
+    // THE RELAXED LANDMARK SITING: expansive prefabs (≥45/axis)
+    // tolerate a rough fraction (the capitals' law, reached down);
+    // ordinary camps stay strict.
+    const landmark = Math.max(prefab.width, prefab.height) >= 45;
+    let rough = 0;
+    let probes = 0;
     for (let dy = 0; dy < prefab.height; dy++) {
       for (let dx = 0; dx < prefab.width; dx++) {
         const cls = groundProbeAt(SEED, fx0 + dx, fy0 + dy);
-        assert.ok(
-          cls === 'grass' || cls === 'forest',
-          `${site.defId}@${site.cellX},${site.cellY}: footprint tile is '${cls}'`,
-        );
+        probes++;
+        if (cls !== 'grass' && cls !== 'forest') {
+          rough++;
+          assert.ok(
+            landmark,
+            `${site.defId}@${site.cellX},${site.cellY}: footprint tile is '${cls}'`,
+          );
+        }
       }
     }
+    assert.ok(
+      rough / probes <= 0.12,
+      `${site.defId}@${site.cellX},${site.cellY}: ${Math.round((rough / probes) * 100)}% rough footprint`,
+    );
     assert.ok(fy0 + prefab.height < DARK_BAND_Y, 'footprint reaches the dark band');
     for (const r of CTX.zoneRects) {
       const clear =

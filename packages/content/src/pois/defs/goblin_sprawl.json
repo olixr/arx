@@ -1,0 +1,32 @@
+{
+  "id": "goblin_sprawl",
+  "name": "The goblin sprawl",
+  "description": "A tent city that never learned walls: five camps braided into one loud sprawl, paths worn between the fires, and a chief who rules from the biggest tent by shouting loudest.",
+  "tiers": [2, 4],
+  "weight": 2,
+  "prefabs": ["poi_goblin_sprawl"],
+  "garrison": [
+    { "npc": "goblin", "count": [4, 6], "role": "holdfast" },
+    { "npc": "goblin", "count": [2, 3], "role": "sentry", "patrol": true },
+    { "npc": "goblin_thrower", "count": [2, 3], "role": "holdfast" },
+    { "npc": "worg", "count": [1, 2], "role": "holdfast", "minTier": 3 },
+    { "npc": "goblin_firecaller", "count": [1, 1], "role": "holdfast", "minTier": 3 },
+    {
+      "npc": "goblin",
+      "count": [1, 1],
+      "role": "holdfast",
+      "levelOffset": 5,
+      "names": ["Big Yagga", "Sprawl-King Nubbin", "Old Shoutmost", "Grub the Wide"]
+    }
+  ],
+  "chestTierBonus": 0,
+  "cues": {
+    "clearing": 5,
+    "approachPath": true,
+    "scatter": [
+      { "tile": "SkullPile", "count": 3 },
+      { "tile": "WarBanner", "count": 2 }
+    ]
+  },
+  "family": "goblin"
+}

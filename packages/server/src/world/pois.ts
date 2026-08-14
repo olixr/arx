@@ -193,10 +193,30 @@ export function poiForCell(
   const centerTier = dangerAt(seed, x0 + POI_CELL / 2, y0 + POI_CELL / 2, ctx.anchors);
   if (centerTier === 0) return null; // settled land is authored land
 
+  // THE GATHERED MARCHES (the hybrid charter): a capital gathers its
+  // camps — cells in the march band around a seat deal MORE and lean
+  // harder to the country's family, so every capital reads as the
+  // heart of a constellation (clusters of clusters). Pure: the same
+  // ctx.capitals input the mask already reads.
+  let march = false;
+  {
+    const ccx = x0 + POI_CELL / 2;
+    const ccy = y0 + POI_CELL / 2;
+    for (const c of ctx.capitals) {
+      const rx = Math.max(c.x - ccx, 0, ccx - (c.x + c.w));
+      const ry = Math.max(c.y - ccy, 0, ccy - (c.y + c.h));
+      if (rx * rx + ry * ry <= FRONTIER.marchBand * FRONTIER.marchBand) {
+        march = true;
+        break;
+      }
+    }
+  }
+
   const law = dangerLaw(centerTier);
   if (!force) {
     const roll = stream(seed, ST_EXIST, cellX, cellY, epoch) / 4294967296;
-    if (roll >= law.poiChance) return null;
+    const chance = Math.min(0.85, law.poiChance * (march ? FRONTIER.marchGather : 1));
+    if (roll >= chance) return null;
   }
 
   // VARIANT + SITE as one decision, extracted so a PROMOTED cell whose
@@ -237,19 +257,35 @@ export function poiForCell(
       // materialization candidate — satellites, tolls, renewals, wakes
       // and fresh rolls alike, since they all pass through this scan.
       if (intersectsRings(fx0, fy0, prefab.width, prefab.height, ctx.claimRings)) continue;
+      // THE RELAXED LANDMARK SITING (the hybrid charter): a whole-
+      // footprint standable scan is statistically brutal at landmark
+      // scale (the capitals' Phase-3 audit, relearned) — expansive
+      // prefabs (≥45/axis) sample on a stride and tolerate a rough
+      // fraction; ordinary camps keep the strict scan.
+      const landmark = Math.max(prefab.width, prefab.height) >= 45;
+      const stride = landmark ? 3 : 1;
       let score = 0;
+      let rough = 0;
+      let probes = 0;
       let ok = true;
       for (let dy = 0; dy < prefab.height && ok; dy++) {
-        for (let dx = 0; dx < prefab.width; dx++) {
+        for (let dx = 0; dx < prefab.width; dx += stride) {
+          probes++;
           const cls = groundProbeAt(seed, fx0 + dx, fy0 + dy);
           if (!standable(cls)) {
-            ok = false;
-            break;
+            if (!landmark) {
+              ok = false;
+              break;
+            }
+            rough++;
+            continue;
           }
           if (cls === 'grass') score++; // open ground beats tree-choked
         }
+        if (landmark) dy += stride - 1;
       }
       if (!ok) continue;
+      if (landmark && rough / probes > 0.1) continue;
       if (!best || score > best.score) best = { tx, ty, score };
     }
     if (!best) return null;
@@ -284,8 +320,11 @@ export function poiForCell(
   // gates: unmatched weights stand untouched, and a country whose
   // family has no eligible def here decides exactly as before.
   const territory = territoryAt(seed, x0 + POI_CELL / 2, y0 + POI_CELL / 2, familiesOf(ctx.defs));
+  // In the march band the lean DOUBLES: the capital's own kind camps
+  // at its feet — a goblin citadel gathers goblin ground, not a
+  // grab-bag (the family read is the cluster read).
   const leanW = (d: PoiDef): number =>
-    territoryWeight(d.weight, d.family, territory, FRONTIER.territoryBias);
+    territoryWeight(d.weight, d.family, territory, FRONTIER.territoryBias * (march ? 2 : 1));
   const holds = ctx.defs.filter(
     (d) => d.compound && d.weight > 0 && centerTier >= d.tiers[0] && centerTier <= d.tiers[1],
   );

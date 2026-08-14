@@ -104,6 +104,13 @@ test('the capital dials refuse out-of-law values by name (strongholds Phase 6)',
   const bad3 = { ...AUTHORED_FRONTIER, capitalRoughMax: 0.9 };
   const r3 = validateFrontier(bad3);
   assert.ok(!r3.ok && r3.errors.some((e) => e.includes('capitalRoughMax')));
+  // THE GATHERED MARCHES dials keep their clamps.
+  const badMarch = { ...AUTHORED_FRONTIER, marchBand: 20 };
+  const rMarch = validateFrontier(badMarch);
+  assert.ok(!rMarch.ok && rMarch.errors.some((e) => e.includes('marchBand')));
+  const badGather = { ...AUTHORED_FRONTIER, marchGather: 5 };
+  const rGather = validateFrontier(badGather);
+  assert.ok(!rGather.ok && rGather.errors.some((e) => e.includes('marchGather')));
   // The cross-law: a capital is savored longer than a hold.
   const bad4 = {
     ...AUTHORED_FRONTIER,

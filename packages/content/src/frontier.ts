@@ -48,6 +48,14 @@ export interface FrontierDef {
   capitalTierFloor: number;
   /** Rough-ground fraction the relaxed capital siting tolerates. */
   capitalRoughMax: number;
+  /**
+   * THE GATHERED MARCHES (the hybrid charter): how far past a
+   * capital's masked ground its camps gather, in tiles — the band
+   * where the clusters-of-clusters read lives.
+   */
+  marchBand: number;
+  /** POI-chance multiplier inside the march band (clamped by law). */
+  marchGather: number;
   territoryBias: number;
 }
 
@@ -233,6 +241,8 @@ export const FRONTIER: FrontierDef = {
   strongholdFallowMs: [12 * 60 * 60_000, 24 * 60 * 60_000],
   capitalTierFloor: 3,
   capitalRoughMax: 0.15,
+  marchBand: 160,
+  marchGather: 1.6,
   /**
    * THE TERRITORY FIELD (lived-in-land Phase 5): how hard the land
    * leans toward its country's family — a matching archetype's pick
@@ -442,6 +452,8 @@ export function validateFrontier(raw: unknown): ValidateFrontierResult {
     strongholdFallowMs: range('strongholdFallowMs', HOUR, 7 * DAY),
     capitalTierFloor: num('capitalTierFloor', 3, 5, true),
     capitalRoughMax: num('capitalRoughMax', 0, 0.5),
+    marchBand: num('marchBand', 64, 320, true),
+    marchGather: num('marchGather', 1, 2.5),
     territoryBias: num('territoryBias', 1, 10),
   };
   // Unknown keys are refused loudly — a typoed dial must never sit in
