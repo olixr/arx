@@ -96,10 +96,17 @@ export interface C2SInteract {
   ty: number;
 }
 
-/** Equip the item in an inventory slot (or eat it, if food). */
+/**
+ * Equip the item in an inventory slot (or eat it, if food).
+ * `stow: true` sends a hand-slot piece to THE SECOND GRIP's stowed
+ * row instead of the hands — same gates, same two-hands law, worn on
+ * the body until the swap verb trades it in. Only weapon/offhand
+ * pieces may stow; the server refuses the rest with words.
+ */
 export interface C2SUseItem {
   t: 'use';
   slot: number;
+  stow?: true;
 }
 
 /** Unequip a worn slot back to the inventory. */
@@ -1966,7 +1973,9 @@ export function parseC2S(raw: string): C2SMessage | null {
     case 'use': {
       if (!isFiniteNum(msg.slot) || !Number.isInteger(msg.slot)) return null;
       if (msg.slot < 0 || msg.slot >= 64) return null;
-      return { t: 'use', slot: msg.slot };
+      // WHITELIST LESSON: the stow destination joins the parse or dies
+      // silently at this door. Literal `true` only — never truthy.
+      return { t: 'use', slot: msg.slot, ...(msg.stow === true ? { stow: true as const } : {}) };
     }
     case 'unequip': {
       if (typeof msg.slot !== 'string') return null;

@@ -184,6 +184,27 @@ test('aggregateGearStats counts classes and applies modifiers', () => {
   assert.ok(shield.armor >= 3);
 });
 
+test('THE SLEEPING STEEL: the stowed pair folds nothing', () => {
+  // The same shield that armors from the offhand contributes ZERO from
+  // the stowed row — and a stowed weapon leaves no trace either. This
+  // is the ONE fold both server combat and client cards read, so the
+  // exclusion here IS the anti-abuse law for weapon sets.
+  const empty = aggregateGearStats({});
+  const sleeping = aggregateGearStats({
+    stowWeapon: { id: 'bronze_sword', roll: { rar: 'rare', seed: 11 } },
+    stowOffhand: { id: 'oak_kiteshield', roll: { rar: 'rare', seed: 12 } },
+  });
+  assert.deepEqual(sleeping, empty, 'stowed steel must fold like bare hands');
+
+  // ...and a mixed body counts ONLY the worn half.
+  const mixed = aggregateGearStats({
+    offhand: { id: 'oak_kiteshield' },
+    stowOffhand: { id: 'oak_kiteshield', roll: { rar: 'legendary', seed: 13 } },
+  });
+  const wornOnly = aggregateGearStats({ offhand: { id: 'oak_kiteshield' } });
+  assert.deepEqual(mixed, wornOnly, 'the stowed twin adds nothing to the worn one');
+});
+
 test('rarity scales base armor and value', () => {
   const common = rolledStats('steel_platebody', { rar: 'common', seed: 5 })!;
   const legendary = rolledStats('steel_platebody', { rar: 'legendary', seed: 5 })!;

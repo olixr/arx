@@ -137,7 +137,17 @@
 // v28 client would decode smeared positions and garbage alerts for
 // every body on screen — the snapshot itself changed shape, so the
 // handshake turns the old client away.
-export const PROTOCOL_VERSION = 29;
+// v30 — THE SECOND GRIP (weapon sets, Phase 1): EquipSlot grows the
+// stowed pair (stowWeapon/stowOffhand), C2SUseItem grows the optional
+// `stow` destination, and InputButton gains Swap (1<<11). Strictly
+// additive JSON both ways — a v29 client never sends the new fields
+// and drops unknown record keys without harm. Bumped anyway (the v26
+// judgment): the equip-slot roster is a shared contract, and a v29
+// client meeting a body whose only visible kit rides the stowed slots
+// would draw bare hands where every current peer sees a carried
+// arsenal — the wardrobe's shape changed, so the handshake keeps the
+// shards honest.
+export const PROTOCOL_VERSION = 30;
 
 /** The most souls one party can hold. */
 export const PARTY_CAP = 10;

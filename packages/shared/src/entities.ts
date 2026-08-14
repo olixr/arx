@@ -187,6 +187,8 @@ export type EquipSlot =
   | 'boots'
   | 'weapon'
   | 'offhand'
+  | 'stowWeapon'
+  | 'stowOffhand'
   | 'tool'
   | 'relic'
   | 'sigil'
@@ -200,8 +202,25 @@ export const EQUIP_SLOTS: readonly EquipSlot[] = [
   'boots',
   'weapon',
   'offhand',
+  'stowWeapon',
+  'stowOffhand',
   'tool',
   'relic',
   'sigil',
   'cape',
 ];
+
+/**
+ * THE SECOND GRIP: the stowed weapon set — a full pair carried on the
+ * body (back sling, far hip) and traded with the hands by the swap
+ * verb. THE SLEEPING STEEL law: stowed steel is furniture. It grants
+ * NOTHING — no stats, no passives, no procs, no set counts, no
+ * teaching — until a swap brings it to the hands. Every fold that
+ * aggregates worn gear must skip these slots; the appearance rail is
+ * the one deliberate exception (the back tells the truth).
+ */
+export const STOWED_SLOTS: readonly EquipSlot[] = ['stowWeapon', 'stowOffhand'];
+
+export function isStowedSlot(slot: EquipSlot): boolean {
+  return slot === 'stowWeapon' || slot === 'stowOffhand';
+}

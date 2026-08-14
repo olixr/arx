@@ -42,6 +42,12 @@ export enum InputButton {
   Sheathe = 1 << 9,
   /** Mount toggle (P) — press edge calls the beast or steps down. */
   Mount = 1 << 10,
+  /**
+   * THE SECOND GRIP's swap verb — press edge trades the hands with the
+   * stowed weapon set through the honest beat (attacks wait out the
+   * draw lock; the trade itself is atomic on the server).
+   */
+  Swap = 1 << 11,
 }
 
 export function hasButton(buttons: number, b: InputButton): boolean {

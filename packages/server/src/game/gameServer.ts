@@ -107,6 +107,7 @@ import {
   isSignTile,
   sanitizeSignText,
   TILE_DEFS,
+  isStowedSlot,
   type DestructibleInfo,
   type SignInfo,
   type VoiceWire,
@@ -1611,6 +1612,12 @@ interface PlayerComp {
   sheathed: boolean;
   /** No attacks or casts until this tick — the weapon is mid-draw. */
   drawLockUntilTick: number;
+  /**
+   * THE SECOND GRIP: re-presses of the swap verb are swallowed until
+   * this tick — the honest trade's beat. The attack/cast side of the
+   * same beat rides drawLockUntilTick (one gate, zero new seams).
+   */
+  swapLockUntilTick: number;
   /** Consecutive ticks without movement while sneaking. */
   sneakStillTicks: number;
   /** Fully hidden from other players and NPCs. */
@@ -1967,6 +1974,13 @@ const PLAYER_HIT_HEIGHT = 1.9;
  * damage can happen, so an accidental click can never be an attack.
  */
 const DRAW_LOCK_TICKS = 10;
+/**
+ * THE HONEST TRADE: the swap verb's beat, in ticks (~600ms). For the
+ * whole beat attacks and casts wait behind the standing draw-lock gate
+ * and re-presses of the verb are swallowed. The beat IS the cooldown —
+ * no timer rides on top of it, by design (LAW 4, weapon-sets plan).
+ */
+const SWAP_BEAT_TICKS = 12;
 
 /**
  * Damage roll with a 10% base crit chance (guaranteed heavy hit).
@@ -3271,6 +3285,7 @@ export class GameServer {
       petBondAt: new Map(),
       sheathed: false,
       drawLockUntilTick: 0,
+      swapLockUntilTick: 0,
       sneakStillTicks: 0,
       hidden: false,
       flags: character.id > 0 ? await this.accounts.loadFlags(character.id) : new Map(),
@@ -11447,7 +11462,10 @@ export class GameServer {
    */
   private deepenTarget(player: PlayerComp): EquippedItem | null {
     let found: EquippedItem | null = null;
-    for (const worn of Object.values(player.equipment)) {
+    for (const [slot, worn] of Object.entries(player.equipment)) {
+      // THE SLEEPING STEEL: the sigil answers worn steel, not the
+      // stowed pair — swap first and mean it.
+      if (isStowedSlot(slot as EquipSlot)) continue;
       if (!worn?.roll || worn.roll.deep) continue;
       if (!worn.roll.ench) continue;
       if (rarityIndex(worn.roll.rar) < rarityIndex(DEEPEN_MIN_RARITY)) continue;
@@ -11545,7 +11563,7 @@ export class GameServer {
     }
   }
 
-  useItem(eid: EntityId, slotIndex: number): void {
+  useItem(eid: EntityId, slotIndex: number, stow?: boolean): void {
     const player = this.players.get(eid);
     if (!player || slotIndex >= player.inventory.length) return;
     const slot = player.inventory[slotIndex];
@@ -11940,6 +11958,24 @@ export class GameServer {
     }
 
     if (def.equipSlot) {
+      // THE SECOND GRIP: `stow` re-aims a hand-slot equip at the stowed
+      // row. Only the hands have a second grip — everything else
+      // refuses with words, never silently.
+      if (stow && def.equipSlot !== 'weapon' && def.equipSlot !== 'offhand') {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: 'That piece has no place at the ready. A weapon or an off hand can wait there.',
+        });
+        return;
+      }
+      // The row this equip lands in: the hands, or the stowed pair.
+      // Every law below speaks in row terms so both rows obey the same
+      // grammar (LAW: each set obeys its own laws).
+      const rowWeapon: EquipSlot = stow ? 'stowWeapon' : 'weapon';
+      const rowOffhand: EquipSlot = stow ? 'stowOffhand' : 'offhand';
+      const destSlot: EquipSlot =
+        def.equipSlot === 'weapon' ? rowWeapon : def.equipSlot === 'offhand' ? rowOffhand : def.equipSlot;
       // NO LAUNDERING: EquippedItem carries no theft facet, so a
       // stolen piece worn once would come back off the body honest.
       // The facet has nowhere to live up there — refuse at the door.
@@ -11954,7 +11990,8 @@ export class GameServer {
       // Equip gate: BASE level only — worn +skill bonuses never
       // bootstrap their way into more gear. A re-issued instance gates
       // at its POWER, not its native floor: a power-45 heirloom robe is
-      // endgame loot and demands endgame skill.
+      // endgame loot and demands endgame skill. The stowed row gates
+      // the same: what waits at the ready must be yours to wield.
       const req = effectiveReq(slot.item, slot.roll);
       if (req && levelForXp(player.skills[req.skill] ?? 0) < req.level) {
         player.session?.sendJson({
@@ -11969,30 +12006,25 @@ export class GameServer {
       // hand, goes TO the off hand instead of swapping — if the arm is
       // strong enough (onehand 10+) or the secret is already yours. The
       // first time, the hidden skill reveals itself. No menu, no hint:
-      // players find it by trying the obvious rogue thing.
+      // players find it by trying the obvious rogue thing. The stowed
+      // row pairs blades under the same gate, but the DISCOVERY belongs
+      // to the hands alone — packing two knives is planning, not the
+      // act; the swap that brings them out speaks the ceremony.
       if (def.equipSlot === 'weapon' && def.weapon?.style === 'onehand') {
-        const main = player.equipment.weapon;
+        const main = player.equipment[rowWeapon];
         const mainWeapon = main ? itemDef(main.id)?.weapon : undefined;
         const discovered = player.skills.dualwield !== undefined;
         const onehandLvl = levelForXp(player.skills.onehand ?? 0);
         if (
           main &&
           mainWeapon?.style === 'onehand' &&
-          !player.equipment.offhand &&
+          !player.equipment[rowOffhand] &&
           (discovered || onehandLvl >= DUALWIELD_UNLOCK_ONEHAND)
         ) {
           const taken = takeSlot(player.inventory, slotIndex, 1);
           if (!taken) return;
-          player.equipment.offhand = { id: taken.item, roll: taken.roll };
-          if (!discovered) {
-            player.skills.dualwield = 0;
-            this.grantXp(eid, player, 'dualwield', 1);
-            player.session?.sendJson({
-              t: 'chat',
-              channel: 'system',
-              text: HIDDEN_SKILLS.dualwield!.discovery,
-            });
-          }
+          player.equipment[rowOffhand] = { id: taken.item, roll: taken.roll };
+          if (!stow) this.discoverDualWield(eid, player);
           this.onEquipmentChanged(eid, player);
           return;
         }
@@ -12002,17 +12034,18 @@ export class GameServer {
       // only a back-mounted quiver rides along. Equipping either side of
       // a conflict STOWS the other side in the pack, never a silent
       // refusal and never a vanished instance; it only refuses when the
-      // pack can't take what must come off.
+      // pack can't take what must come off. The stowed row keeps the
+      // same law — what waits at the ready must be wearable as it lies.
       let shedSlot: EquipSlot | null = null;
       if (def.equipSlot === 'weapon' && isTwoHanded(def)) {
-        const off = player.equipment.offhand;
-        if (off && !itemDef(off.id)?.backMounted) shedSlot = 'offhand';
+        const off = player.equipment[rowOffhand];
+        if (off && !itemDef(off.id)?.backMounted) shedSlot = rowOffhand;
       } else if (def.equipSlot === 'offhand' && !def.backMounted) {
-        const main = player.equipment.weapon;
+        const main = player.equipment[rowWeapon];
         const mainDef = main ? itemDef(main.id) : undefined;
-        if (mainDef && isTwoHanded(mainDef)) shedSlot = 'weapon';
+        if (mainDef && isTwoHanded(mainDef)) shedSlot = rowWeapon;
       }
-      const worn = player.equipment[def.equipSlot];
+      const worn = player.equipment[destSlot];
       if (shedSlot) {
         // The clicked slot frees as the item equips; the swapped-out worn
         // piece refills it. The shed hand needs its own empty slot.
@@ -12034,7 +12067,7 @@ export class GameServer {
       const taken = takeSlot(player.inventory, slotIndex, 1);
       if (!taken) return;
       if (worn) addItem(player.inventory, worn.id, 1, worn.roll);
-      player.equipment[def.equipSlot] = { id: taken.item, roll: taken.roll };
+      player.equipment[destSlot] = { id: taken.item, roll: taken.roll };
       if (shedSlot) {
         const shed = player.equipment[shedSlot];
         if (shed) {
@@ -12045,7 +12078,7 @@ export class GameServer {
             t: 'chat',
             channel: 'system',
             text:
-              shedSlot === 'offhand'
+              shedSlot === rowOffhand
                 ? `The ${def.name.toLowerCase()} needs both hands — your ${shedName} goes back in your pack.`
                 : `Your ${shedName} needs both hands — it goes back in your pack.`,
           });
@@ -15530,6 +15563,76 @@ export class GameServer {
   }
 
   /**
+   * THE HONEST TRADE: the swap verb trades the hands with the stowed
+   * pair in one atomic exchange, then makes the player wait out the
+   * beat. The attack/cast side of the lock rides the standing
+   * draw-lock gate, so every combat door already refuses with zero new
+   * seams; re-presses during the beat are swallowed whole (the beat IS
+   * the cooldown — LAW 4). Everything a sheathe kills, a swap kills:
+   * the string, the pending blow, the breath, the note. Both rows are
+   * legal by construction (the equip act enforces each row's laws), so
+   * the exchange itself never needs the pack and never fails halfway.
+   */
+  private swapWeaponSets(eid: EntityId, player: PlayerComp): void {
+    if (this.tickCount < player.swapLockUntilTick) return;
+    const stowW = player.equipment.stowWeapon;
+    const stowO = player.equipment.stowOffhand;
+    // LAW 9: EMPTY HANDS REFUSE QUIETLY — no beat paid, nothing moves.
+    if (!stowW && !stowO) {
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: 'Nothing waits at your back.',
+      });
+      return;
+    }
+    const mainOut = player.equipment.weapon;
+    const offOut = player.equipment.offhand;
+    if (stowW) player.equipment.weapon = stowW;
+    else delete player.equipment.weapon;
+    if (stowO) player.equipment.offhand = stowO;
+    else delete player.equipment.offhand;
+    if (mainOut) player.equipment.stowWeapon = mainOut;
+    else delete player.equipment.stowWeapon;
+    if (offOut) player.equipment.stowOffhand = offOut;
+    else delete player.equipment.stowOffhand;
+    player.swapLockUntilTick = this.tickCount + SWAP_BEAT_TICKS;
+    player.drawLockUntilTick = Math.max(player.drawLockUntilTick, player.swapLockUntilTick);
+    player.sheathed = false; // a trade is made to fight: the incoming set draws
+    player.drawTicks = 0; // the bowstring lets down
+    resetCombo(player.combo); // the traded string is a dropped string
+    player.pendingStrike = null; // the traded blow never lands
+    this.cancelCasting(eid, player); // traded steel casts nothing
+    if (player.action?.kind === 'channel') this.cancelAction(eid, player, 'cancelled');
+    // Two blades truly sharing the hands for the first time speak the
+    // ceremony no matter which road brought them together.
+    this.discoverDualWield(eid, player);
+    this.onEquipmentChanged(eid, player);
+  }
+
+  /**
+   * DUAL WIELD's discovery, one door for both roads in (the equip act
+   * and the swap): the moment two one-handed weapons truly share the
+   * HANDS, the hidden skill wakes. Pairing blades in the stowed row is
+   * planning, not the act — it never speaks here.
+   */
+  private discoverDualWield(eid: EntityId, player: PlayerComp): void {
+    if (player.skills.dualwield !== undefined) return;
+    const main = player.equipment.weapon;
+    const off = player.equipment.offhand;
+    if (!main || !off) return;
+    if (itemDef(main.id)?.weapon?.style !== 'onehand') return;
+    if (itemDef(off.id)?.weapon?.style !== 'onehand') return;
+    player.skills.dualwield = 0;
+    this.grantXp(eid, player, 'dualwield', 1);
+    player.session?.sendJson({
+      t: 'chat',
+      channel: 'system',
+      text: HIDDEN_SKILLS.dualwield!.discovery,
+    });
+  }
+
+  /**
    * Character creation: accept the look ONCE, then lock. The lock is
    * server law — a future makeover NPC selectively lifts it here, not
    * in any client.
@@ -16377,10 +16480,12 @@ export class GameServer {
     });
   }
 
-  /** Passives contributed by worn gear. */
+  /** Passives contributed by worn gear (THE SLEEPING STEEL: the
+   *  stowed pair contributes none until it reaches the hands). */
   private passiveIds(player: PlayerComp): PassiveId[] {
     const out: PassiveId[] = [];
-    for (const worn of Object.values(player.equipment)) {
+    for (const [slot, worn] of Object.entries(player.equipment)) {
+      if (isStowedSlot(slot as EquipSlot)) continue;
       const p = itemDef(worn?.id ?? '')?.passive;
       if (p) out.push(p);
     }
@@ -16388,7 +16493,8 @@ export class GameServer {
   }
 
   private hasPassive(player: PlayerComp, id: PassiveId): boolean {
-    for (const worn of Object.values(player.equipment)) {
+    for (const [slot, worn] of Object.entries(player.equipment)) {
+      if (isStowedSlot(slot as EquipSlot)) continue;
       if (itemDef(worn?.id ?? '')?.passive === id) return true;
     }
     return false;
@@ -25049,6 +25155,9 @@ export class GameServer {
           if (player.action?.kind === 'channel') this.cancelAction(eid, player, 'cancelled');
         }
       }
+      // THE SECOND GRIP: one press trades the hands with the stowed
+      // pair through the honest beat (refusals and swallows inside).
+      if (pressed & InputButton.Swap) this.swapWeaponSets(eid, player);
       const abilityPressed =
         pressed &
         (InputButton.Ability1 | InputButton.Ability2 | InputButton.Ability3 | InputButton.Ability4);
@@ -25486,6 +25595,9 @@ export class GameServer {
       // Appearance carries item IDS only — rendering never needs rolls.
       // Enchants are the exception: they change how gear LOOKS, so the
       // enchanted slots ride along (ids only, still no rolls).
+      // THE BACK TELLS THE TRUTH: the stowed pair rides along HERE on
+      // purpose — the one place sleeping steel speaks is the body that
+      // carries it (LAW 6, weapon-sets plan). Never exclude it.
       const equip: Partial<Record<EquipSlot, string>> = {};
       let ench: Partial<Record<EquipSlot, string>> | undefined;
       for (const [slot, worn] of Object.entries(player.equipment)) {

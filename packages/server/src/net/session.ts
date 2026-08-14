@@ -277,7 +277,7 @@ export class Session {
       case 'use': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;
-        this.game.useItem(this.playerEid, msg.slot);
+        this.game.useItem(this.playerEid, msg.slot, msg.stow);
         return;
       }
       case 'signedit': {

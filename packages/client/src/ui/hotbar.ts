@@ -1,4 +1,4 @@
-import { EQUIP_SLOTS, PASSIVES, type AbilitySlot } from '@arx/shared';
+import { EQUIP_SLOTS, PASSIVES, isStowedSlot, type AbilitySlot } from '@arx/shared';
 import { ENCHANTS, itemDef } from '@arx/content';
 import type { ClientGame } from '../game/clientGame.js';
 import type { InputManager } from '../input/inputManager.js';
@@ -257,9 +257,12 @@ export class Hotbar {
     }
 
     // Passive tray: the quiet half of the build, rebuilt only when the
-    // worn passives actually change.
+    // worn passives actually change. THE SLEEPING STEEL: the stowed
+    // pair shows no chip — the server folds none, and the tray must
+    // never promise what the fold refuses.
     let key = '';
     for (const slot of EQUIP_SLOTS) {
+      if (isStowedSlot(slot)) continue;
       const p = itemDef(game.equipment[slot]?.id ?? '')?.passive;
       if (p) key += p + '|';
     }

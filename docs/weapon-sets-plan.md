@@ -149,7 +149,39 @@ changelog line for the two new slot strings + input bit.
 
 ## Part 3 — The phases
 
-**Phase 1 — THE SECOND ROW (server + wire foundation).**
+**Phase 1 — THE SECOND ROW (server + wire foundation). SHIPPED 2026-08-14.**
+
+*As-built:* slots sit after `offhand` in `EquipSlot`/`EQUIP_SLOTS` (no positional
+reader exists — verified before inserting); `STOWED_SLOTS` + `isStowedSlot` in
+entities.ts are the one exclusion vocabulary. `InputButton.Swap = 1<<11`;
+protocol v30 (strictly additive JSON — bumped anyway on the v26 judgment,
+paragraph in constants.ts). `C2SUseItem.stow` validates literal-true only;
+`useItem(eid, slot, stow)` rows the whole equip block through
+`rowWeapon`/`rowOffhand`/`destSlot` so both rows run the SAME gate code —
+theft, level, two-hands shed, dual-wield pairing. Dual-wield discovery was
+extracted to `discoverDualWield` (ONE door, both roads): the stowed row pairs
+blades under the gate but never speaks the ceremony (packing is planning); the
+swap speaks it the moment two blades truly reach the hands. THE SLEEPING STEEL
+census, exclusions applied: `aggregateGearStats` (THE ONE FOLD — server combat
+and client cards go honest together), `passiveIds`/`hasPassive`, `deepenTarget`
+(the sigil answers worn steel), the client hotbar passive tray. KEPT on
+purpose: the appearance rail (LAW 6, commented in place), the social inspect
+list (truthful), sunder/enchant slot-addressed targets (modification is not
+benefit). `swapWeaponSets`: atomic pair exchange; new `swapLockUntilTick`
+field swallows re-presses while `drawLockUntilTick` (max-merged) makes every
+attack/cast door refuse through the STANDING gate — zero new combat seams;
+empty refusal pays no beat; sheathe's whole kill-list runs (string, pending
+blow, cast, channel, bow draw). `SWAP_BEAT_TICKS = 12` lives beside
+`DRAW_LOCK_TICKS`. Tests: weaponSets.test.ts = 12 slate pins (stow row laws,
+trade atomicity + roll fidelity, beat swallow, ghost-key hygiene, ceremony,
+passive silence, fresh input bit) + the fold pin in content equipment.test.ts;
+1654 workspace tests green, typecheck clean. Deliberate Phase-1 states: no
+client surface sends `stow` or `Swap` yet (Phases 2/4 hold those doors);
+panels' LOCAL slot list keeps the armor stand blind to the stowed row until
+THE RACK; no login sanitize for the stowed row (the lawful equip path is its
+only writer — no legacy state can exist).
+
+*Original scope:*
 `stowWeapon`/`stowOffhand` in shared; equip/stow/unequip/swap paths in
 gameServer (stow verb = same `use` flow with an explicit destination, C2S
 `use` gains an optional `stow?: true` field through parseC2S — WHITELIST LESSON);

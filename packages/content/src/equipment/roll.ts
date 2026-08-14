@@ -1,5 +1,5 @@
 import type { EquipSlot, ItemRoll, RarityTier, SkillId, StatusId } from '@arx/shared';
-import { Rng, hashCoords, hashString, rarityIndex } from '@arx/shared';
+import { Rng, hashCoords, hashString, isStowedSlot, rarityIndex } from '@arx/shared';
 import type { CombatStyle, ArxElement } from '../items.js';
 import { ITEMS, itemDef } from '../items.js';
 import type { EnchantEffect, ProcEffect } from './enchants.js';
@@ -331,6 +331,11 @@ export function aggregateGearStats(
   const out = emptyGearStats();
   const setCounts = new Map<string, number>();
   for (const slot of Object.keys(equipment) as EquipSlot[]) {
+    // THE SLEEPING STEEL: the stowed pair is furniture — it folds
+    // nothing (no armor, affixes, class counts, set words, enchants)
+    // until a swap brings it to the hands. This is the ONE fold, so
+    // excluding here keeps server combat and client cards agreeing.
+    if (isStowedSlot(slot)) continue;
     const worn = equipment[slot];
     if (!worn) continue;
     const def = itemDef(worn.id);
