@@ -541,6 +541,52 @@ mean something.
   full clear → ember loot walk → fallow → epoch turn deals different walls;
   stage 2 capital re-mans its empty wards and the town's guard says so.
 
+### Phase 5 as-built (2026-08-13, commit 8423d33 — THE LONG WAR)
+
+Shipped as designed; deviations and laws learned:
+
+- **The mask outlives the deal**: layoutForSeat folds the epoch (new
+  walls each age) while the seat's mask rect widens to the family
+  pool's LARGEST footprint — pure and epoch-free, so the ledger-blind
+  mask can never disagree with whatever age is standing. The siting
+  probes still run for the epoch-0 layout; later ages inherit the
+  ground judgment (noted: a re-dealt layout's gates may rarely open
+  onto rougher fringe — acceptable, spikes and dirt tolerate it).
+- **First standing arms the boldness clock** (observation =
+  materialization for a thing only players' approach stands up);
+  stages recompose in place by retiring — the next approach raises
+  the bolder watch. Stage effects are strictly FREQUENCY-lawful:
+  optional wards re-man (65% + 12/stage), sentry knots thicken within
+  the PULL LAW's cap of 3, ground bit-identical (test-pinned).
+- **The purse opened exactly once**: capitals pay only MARKED
+  participants (bounty:sh: flags via postBounty, pruned lazily), at
+  bounty_t{tier} × (1 + stage at death). The death stage is captured
+  BEFORE the clear zeroes the row — a subtle order bug caught in
+  review.
+- **cap: origins joined the family law**: capital satellites are the
+  family's HOLD (or its strongest camp where no compound exists),
+  seeded two cells out townward-ranked; the orphan watch learned the
+  cap: dialect (before that, capital satellites would have scattered
+  on the next beat — the poiLedger lookup returns undefined for
+  synthetic origins).
+- **THE ONE ATLAS LAW, witnessed live**: mid-phase, a peer session
+  shipped the lynxkin family and every country redrew — the moot's
+  cell became parliament country (owls keep no capitals: lawful
+  null), and the capitals re-seated with their families. Orphaned
+  ledger rows for moved seats are harmless deviations (if the roster
+  ever reverts, the seats return). This is the documented territory
+  law at capital scale, not a defect — but roster edits ARE
+  continental events and the Phase 6 bench should say so.
+- **Live-proven cycle** (resilient-runner pattern; the shared vite
+  reloads mid-run on peer edits): threat_near at the walls → stage 2
+  re-stands bolder → threat_bold=true → ember → dignity → dissolve
+  banked debt 1 → fallow 1119m inside the [12h,24h] band.
+- **Deferred from this phase**: THE RUIN REMEMBERS (ruin-variant
+  layouts) as planned; capital stage pips on the chart (capitals ride
+  settlement discovery, not poi markers — needs its own wire, queued
+  with Phase 6's lenses); stale settlement-discovery names after an
+  epoch re-deal (the chart remembers the old title until revisited).
+
 ## Phase 6 — The Surveyor's Glass II (the studio owns the stronghold)
 
 Goal: every dial is content; every capital is visible to the bench; density is
