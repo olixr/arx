@@ -773,6 +773,13 @@ export interface BodyStyle {
   /** Lagoon lot: the reef at the shoulder — coral and seated
    *  pearls, read by coralpaul (the dawncrest cross-read pattern). */
   reefbloom?: { coral: string; pearl: string };
+  /** Abyss lot: THE TWIN MEDUSAE — the living jellyfish at each
+   *  shoulder, read by deeppaul (the cross-read pattern): bell
+   *  color and the light its organs and rim carry. */
+  medusae?: { bell: string; lume: string };
+  /** Abyss lot: THE JELLY FRINGE — oral-arm streamers off the
+   *  shoulder line, swaying, lume-tipped. */
+  jellyfringe?: { color: string; lume: string };
   /** Voidwhisper: three staggered ink panels hanging down the robe —
    *  depth as flat value steps, the way the crypt keeps its layers. */
   inkpanels?: { color: string };
@@ -1169,6 +1176,10 @@ export interface HelmStyle {
   /** Depthcrown: jelly-bell lappets trailing at the jaw, scallop
    *  hems, swaying — hung things trail. */
   jellyveil?: { color: string };
+  /** Depthcrown: THE BELL CROWN — the medusa worn as the crown:
+   *  scalloped bell over the cowl, organ glow inside, rim light
+   *  breathing on the tide and flaring at the break. */
+  bellcrown?: { bell: string; lume: string };
   /** Conchcrown: THE CONCH worn as the crown — whorl, spire and
    *  nacre mouth. The sea's own architecture, found, not forged. */
   conch?: { shell: string; lip: string };
@@ -3199,6 +3210,8 @@ registerColorways(BODY_STYLES, 'tidecaller_robe', {
   abyss: {
     color: '#2a3352', trim: '#8ad4e0', underskirt: '#1a2136',
     pauldron: 'deeppaul', pauldronColor: '#232c48', pauldronTrim: '#46527a',
+    medusae: { bell: '#4a5680', lume: '#8af2e0' },
+    jellyfringe: { color: '#3a4468', lume: '#8af2e0' },
     capelet: { color: '#232c48', hem: 'scallop', trim: '#46527a' },
     foamtiers: { color: '#323e60' }, pearlstrand: { color: '#bfeee8' },
     streamwrap: { color: '#1a2136', foam: '#8af2e0' },
@@ -3231,6 +3244,7 @@ registerColorways(HELM_STYLES, 'tidecaller_hood', {
     deeplure: { stalk: '#5a6896', glow: '#8af2e0' },
     lumefreckles: { color: '#8af2e0' },
     jellyveil: { color: '#5a6896' },
+    bellcrown: { bell: '#454f7c', lume: '#8af2e0' },
   },
   lagoon: {
     color: '#3f9a8c', trim: '#f0e6c8', kind: 'conchcrown',
@@ -5284,6 +5298,36 @@ export function drawTorsoGarment(
       frontPlaneOff();
     }
 
+
+    // ---- THE JELLY FRINGE: the abyss robe's own — four streamers
+    // trailing off the shoulder line like oral arms, each on its own
+    // sway, each carrying its drop of the deep's light.
+    if (st.jellyfringe && !hurt && !back) {
+      const jf = st.jellyfringe;
+      const kJ = tideK(nowMs, 0.22);
+      frontPlaneOn();
+      ctx.lineCap = 'round';
+      for (const [fu, fl, ph3] of [
+        [-0.62, 0.5, 0], [-0.24, 0.66, 1.9], [0.28, 0.6, 3.7], [0.64, 0.46, 0.9],
+      ] as const) {
+        const fx2 = fu * tw;
+        const wob = Math.sin(nowMs * 0.0013 + ph3) * tw * 0.07;
+        const endY = -th * (0.62 - fl * 0.52);
+        ctx.strokeStyle = jf.color;
+        ctx.lineWidth = Math.max(1, s * 0.0095);
+        ctx.beginPath();
+        ctx.moveTo(fx2, -th * 0.6);
+        ctx.quadraticCurveTo(fx2 + wob, -th * (0.62 - fl * 0.28), fx2 + wob * 1.5, endY);
+        ctx.stroke();
+        ctx.fillStyle = jf.lume;
+        ctx.globalAlpha = 0.45 + 0.45 * kJ;
+        ctx.beginPath();
+        ctx.arc(fx2 + wob * 1.5, endY + s * 0.005, s * 0.0075, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      frontPlaneOff();
+    }
 
     // ---- THE STREAM WRAP: tidecaller's living water — two drawn
     // currents crossing the torso, foam riding the flow; the rush
@@ -10421,69 +10465,101 @@ export function drawPauldron(
     return;
   }
 
+
   if (st.pauldron === 'deeppaul') {
-    // THE DEEP — the abyss's shoulders: the right carries THE
-    // MEDUSA, a jelly bell hovering over the seat on its own slow
-    // pulse, tendrils trailing to the cloth, its rim light breathing
-    // with the tide; the left carries THE MOTE FALL — bioluminescent
-    // specks sinking through the dark in their own procession.
-    const lume = st.luremotes?.color ?? trim;
+    const med = st.medusae;
+    const bell = hurt ? '#ffffff' : med?.bell ?? shade(col, 30);
+    const lume = med?.lume ?? st.luremotes?.color ?? trim;
     const k = tideK(nowMs, 0.14);
-    seat(0.105 * s, 0.086 * s, hurt ? '#ffffff' : col, trim);
-    if (side > 0) {
-      // THE MEDUSA: the bell — hover bob on its own pulse clock.
-      const bob = Math.sin(nowMs * 0.0014) * 0.008 * s;
-      const pulse = 1 + Math.sin(nowMs * 0.0028) * 0.05;
-      const bx = side * 0.03 * s;
-      const by = -0.115 * s + bob;
-      const brx = 0.078 * s * pulse;
-      ctx.fillStyle = hurt ? '#ffffff' : shade(col, 34);
-      ctx.beginPath();
-      ctx.ellipse(bx, by, brx, 0.042 * s / pulse, 0, Math.PI * 0.98, Math.PI * 2.02);
-      ctx.closePath();
-      ctx.fill();
-      if (!hurt) {
-        // The bell's inner dome — the deep seen through it.
-        ctx.fillStyle = shade(col, 2);
+    const brk = tideBreakK(nowMs, 0.14);
+    seat(0.092 * s, 0.074 * s, hurt ? '#ffffff' : col, trim);
+    const ph = side > 0 ? 0 : 2.6;
+    // THE PULSE: a real medusa swims — contract fast, kick, drift,
+    // settle. One beat every ~2.4s, per-side phase.
+    const pu = ((nowMs * 0.00042 + ph * 0.17) % 1 + 1) % 1;
+    const contract = pu < 0.22 ? Math.sin((pu / 0.22) * Math.PI) : 0;
+    const kick = pu < 0.5 ? Math.sin((pu / 0.5) * Math.PI) : 0;
+    const bx = side * 0.035 * s;
+    const by = -0.128 * s - kick * 0.014 * s + Math.sin(nowMs * 0.0009 + ph) * 0.005 * s;
+    const brx = 0.082 * s * (1 - 0.16 * contract) * (1 + 0.06 * brk);
+    const bry = 0.058 * s * (1 + 0.2 * contract);
+    if (!hurt) {
+      // THE TENTACLES first, under the bell: two long outer whips
+      // and two short inner frills, kicked by the pulse, tips lit.
+      ctx.lineCap = 'round';
+      for (const [tu, tl, w2, ph2, outer] of [
+        [-0.72, 0.115, 0.009, 0, 1], [0.68, 0.105, 0.009, 2.2, 1],
+        [-0.26, 0.07, 0.0065, 4.1, 0], [0.3, 0.075, 0.0065, 1.3, 0],
+      ] as const) {
+        const wob = Math.sin(nowMs * 0.0016 + ph + ph2) * 0.011 * s * (1 + kick * 0.8);
+        const tipX = bx + tu * brx * 1.15 + wob * 1.6;
+        const tipY = by + 0.03 * s + tl * s * (1 + kick * 0.25);
+        ctx.strokeStyle = outer ? shade(col, 30) : shade(col, 18);
+        ctx.lineWidth = Math.max(1, s * w2);
         ctx.beginPath();
-        ctx.ellipse(bx, by + 0.004 * s, brx * 0.66, 0.026 * s, 0, Math.PI, Math.PI * 2);
-        ctx.fill();
-        // The rim light: the medusa's own lamp, breathing with the
-        // tide.
-        ctx.strokeStyle = shade(lume, Math.round(-8 + 40 * k));
-        ctx.lineWidth = Math.max(1, s * 0.013);
-        ctx.beginPath();
-        ctx.ellipse(bx, by + 0.002 * s, brx * 0.98, 0.04 * s, 0, Math.PI * 0.06, Math.PI * 0.94);
+        ctx.moveTo(bx + tu * brx * 0.8, by + bry * 0.5);
+        ctx.quadraticCurveTo(bx + tu * brx * 1.05 + wob, by + 0.02 * s + tl * s * 0.55, tipX, tipY);
         ctx.stroke();
-        // The tendrils: wavering strokes trailing to the seat.
-        ctx.strokeStyle = shade(col, 24);
-        ctx.lineWidth = Math.max(1, s * 0.007);
-        ctx.lineCap = 'round';
-        for (const [tu, tl, ph] of [[-0.6, 0.075, 0], [-0.2, 0.09, 2.1], [0.25, 0.085, 4.2], [0.62, 0.07, 1.1]] as const) {
-          const wob = Math.sin(nowMs * 0.0019 + ph) * 0.008 * s;
+        if (outer) {
+          ctx.fillStyle = lume;
+          ctx.globalAlpha = 0.5 + 0.4 * k;
           ctx.beginPath();
-          ctx.moveTo(bx + tu * brx, by + 0.032 * s);
-          ctx.quadraticCurveTo(bx + tu * brx + wob, by + 0.032 * s + tl * s * 0.6, bx + tu * brx * 1.5 + wob * 1.6, by + 0.032 * s + tl * s);
-          ctx.stroke();
+          ctx.arc(tipX, tipY + s * 0.004, s * 0.008, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
         }
       }
-    } else if (!hurt) {
-      // THE MOTE FALL: specks sinking through the shoulder's dark,
-      // each on its own watch — a soft dark shelf to sink past.
-      ctx.fillStyle = shade(col, -14);
-      ctx.beginPath();
-      ctx.ellipse(0, -0.06 * s, 0.08 * s, 0.036 * s, 0, 0, Math.PI * 2);
-      ctx.fill();
-      for (const [i, [ux, ph]] of ([[-0.055, 0], [0.01, 0.37], [0.06, 0.71]] as const).entries()) {
-        const mu = ((nowMs * 0.00011 + ph) % 1 + 1) % 1;
-        const my2 = -0.115 * s + mu * 0.1 * s;
-        ctx.globalAlpha = Math.sin(mu * Math.PI) * (0.5 + 0.5 * k);
-        ctx.fillStyle = i === 1 ? shade(lume, 16) : lume;
+      // Motes drifting up past the bell — the deep breathes out.
+      ctx.fillStyle = lume;
+      for (const mp of [0.1, 0.6] as const) {
+        const mu = ((nowMs * 0.00009 + mp + ph * 0.1) % 1 + 1) % 1;
+        ctx.globalAlpha = Math.sin(mu * Math.PI) * (0.4 + 0.4 * k);
         ctx.beginPath();
-        ctx.arc(ux * s + Math.sin(mu * 7 + ph * 9) * 0.008 * s, my2, 0.009 * s * (1.2 - mu * 0.5), 0, Math.PI * 2);
+        ctx.arc(bx + Math.sin(mu * 7 + ph) * 0.02 * s - side * 0.04 * s, -0.04 * s - mu * 0.13 * s, 0.007 * s, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.globalAlpha = 1;
+    }
+    // THE BELL: dome over a scalloped skirt — structure, white on
+    // hurt.
+    ctx.fillStyle = bell;
+    ctx.beginPath();
+    ctx.moveTo(bx - brx, by + bry * 0.35);
+    ctx.quadraticCurveTo(bx - brx * 1.02, by - bry * 0.75, bx, by - bry);
+    ctx.quadraticCurveTo(bx + brx * 1.02, by - bry * 0.75, bx + brx, by + bry * 0.35);
+    ctx.arc(bx + brx * 0.66, by + bry * 0.35, brx * 0.34, 0, Math.PI, false);
+    ctx.arc(bx, by + bry * 0.35, brx * 0.34, 0, Math.PI, false);
+    ctx.arc(bx - brx * 0.66, by + bry * 0.35, brx * 0.34, 0, Math.PI, false);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // Bell planes: lit crown crescent, inner dome shade.
+      ctx.fillStyle = shade(med?.bell ?? shade(col, 30), 16);
+      ctx.beginPath();
+      ctx.ellipse(bx - brx * 0.1, by - bry * 0.5, brx * 0.5, bry * 0.34, -0.15, Math.PI, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = shade(med?.bell ?? shade(col, 30), -16);
+      ctx.beginPath();
+      ctx.ellipse(bx, by + bry * 0.18, brx * 0.8, bry * 0.3, 0, 0, Math.PI);
+      ctx.fill();
+      // THE ORGANS: the light inside — waxing with the tide,
+      // deepening on the contraction.
+      ctx.globalAlpha = 0.22 + 0.3 * k + 0.25 * contract + 0.25 * brk;
+      ctx.fillStyle = lume;
+      ctx.beginPath();
+      ctx.ellipse(bx, by - bry * 0.1, brx * 0.4, bry * 0.32, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      // THE RIM LIGHT: the skirt's scallops breathing, flaring at
+      // the break.
+      ctx.strokeStyle = shade(lume, Math.round(-24 + (0.35 + 0.65 * Math.max(k, brk)) * 38));
+      ctx.lineWidth = Math.max(1, s * (0.007 + 0.004 * brk));
+      ctx.lineCap = 'round';
+      for (const su of [-0.66, 0, 0.66]) {
+        ctx.beginPath();
+        ctx.arc(bx + brx * su, by + bry * 0.35, brx * 0.34, Math.PI * 0.12, Math.PI * 0.88);
+        ctx.stroke();
+      }
     }
     ctx.restore();
     return;
@@ -16216,14 +16292,15 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
   }
 
 
+
   if (st.kind === 'depthcrown') {
-    // THE ABYSS — the deep water's head: a fitted midnight dome that
-    // keeps its silhouette quiet, because the deep is quiet. What it
-    // carries is LIGHT: the deep lure arcing off the crown to hang
-    // its caged lamp before the brow, breathing on the tide;
-    // bioluminescent freckles waking across the cloth in a traveling
-    // wave; jelly-bell lappets trailing at the jaw. The face sinks
-    // into the set's darkest veil — the lure does the looking.
+    // THE BELL CROWN — the abyss's head: darkness wearing its one
+    // lamp. A fitted midnight cowl under a jelly-bell crown — the
+    // bell's scalloped skirt rings the brow, its rim light breathes
+    // with the tide, and at the break it FLARES. Tentacle-veils
+    // trail from both jaws (hung things trail), the freckle wake
+    // counts across the cloth, and the angler stalk hangs its
+    // iron-caged lamp before the deepest veil in the court.
     const t = profileK;
     const front = backK <= 0.55;
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
@@ -16233,19 +16310,63 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     const k = tideK(f.nowMs, 0.06);
     const brk = tideBreakK(f.nowMs, 0.06);
     const lumeC = st.deeplure?.glow ?? st.trim;
+    const bellC = st.bellcrown?.bell ?? shade(st.color, 24);
+    const bLume = st.bellcrown?.lume ?? lumeC;
+    // The bell breathes — a slow medusa pulse, deeper at the break.
+    const puls = 1 + 0.045 * Math.sin(f.nowMs * 0.0016) + 0.06 * brk;
+    const bellW = hw * 1.28;
+    const bellTop = headY - hh * (1.3 * puls);
+    const skirtY = headY - hh * 0.52;
     const shell = () => {
-      ctx.moveTo(headX + lead * hw * 1.22, headY + hh * 1.18);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.28, headY + hh * 0.1, headX + lead * hw * 1.1, headY - hh * 0.56);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.02, headY - hh * 1.12, headX + lead * hw * 0.3, headY - hh * 1.3);
-      ctx.quadraticCurveTo(headX - lead * hw * 0.5, headY - hh * 1.34, headX - lead * hw * (1.0 + t * 0.22), headY - hh * 0.7);
-      // A soft trailing point — the deep's one flourish.
-      ctx.quadraticCurveTo(headX - lead * hw * (1.34 + t * 0.28), headY - hh * 0.2, headX - lead * hw * 1.26, headY + hh * 1.18);
-      ctx.quadraticCurveTo(headX, headY + hh * 1.44, headX + lead * hw * 1.22, headY + hh * 1.18);
+      ctx.moveTo(headX + lead * hw * 1.2, headY + hh * 1.16);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.26, headY + hh * 0.1, headX + lead * hw * 1.08, headY - hh * 0.5);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.6, headY - hh * 0.8, headX, headY - hh * 0.82);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.6, headY - hh * 0.8, headX - lead * hw * (1.04 + t * 0.2), headY - hh * 0.46);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.28 + t * 0.26), headY + hh * 0.2, headX - lead * hw * 1.24, headY + hh * 1.16);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.42, headX + lead * hw * 1.2, headY + hh * 1.16);
       ctx.closePath();
     };
     const opening = () => {
       chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
     };
+    // THE TENTACLE VEILS first, so the cowl laps over their roots:
+    // two per side — one broad ribbon, one thin whip — trailing and
+    // swaying, each tipped in its own light.
+    if (!hurt) {
+      for (const es of [-1, 1]) {
+        const jx = headX + es * hw * 1.0;
+        const jsw = Math.sin(f.nowMs * 0.0012 + es * 1.7) * hw * 0.07;
+        const jsw2 = Math.sin(f.nowMs * 0.0019 + es * 0.6) * hw * 0.05;
+        // The broad ribbon: a filled wavering band.
+        ctx.fillStyle = st.jellyveil?.color ?? shade(st.color, 22);
+        ctx.beginPath();
+        ctx.moveTo(jx - es * hw * 0.14, headY + hh * 0.42);
+        ctx.quadraticCurveTo(jx + jsw - es * hw * 0.06, headY + hh * 1.2, jx + jsw * 1.5, headY + hh * 1.86);
+        ctx.quadraticCurveTo(jx + jsw * 1.5 + es * hw * 0.12, headY + hh * 1.94, jx + es * hw * 0.16, headY + hh * 1.8);
+        ctx.quadraticCurveTo(jx + es * hw * 0.2, headY + hh * 1.0, jx + es * hw * 0.14, headY + hh * 0.42);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = bLume;
+        ctx.beginPath();
+        ctx.arc(jx + jsw * 1.5 + es * hw * 0.05, headY + hh * 1.9, hw * 0.05, 0, Math.PI * 2);
+        ctx.fill();
+        // The whip: one thin trailing stroke, faster sway.
+        ctx.strokeStyle = shade(st.color, 26);
+        ctx.lineCap = 'round';
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.beginPath();
+        ctx.moveTo(jx + es * hw * 0.05, headY + hh * 0.5);
+        ctx.quadraticCurveTo(jx + jsw2 * 1.4 + es * hw * 0.14, headY + hh * 1.4, jx + jsw2 * 2 + es * hw * 0.06, headY + hh * 2.05);
+        ctx.stroke();
+        ctx.fillStyle = bLume;
+        ctx.globalAlpha = 0.75;
+        ctx.beginPath();
+        ctx.arc(jx + jsw2 * 2 + es * hw * 0.06, headY + hh * 2.08, hw * 0.032, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+    // The cowl.
     ctx.fillStyle = mc;
     ctx.beginPath();
     shell();
@@ -16258,20 +16379,62 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       if (front) opening();
       ctx.clip('evenodd');
       ctx.fillStyle = shade(st.color, -12);
-      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.4);
-      // The crown's one lit plane — barely: light dies down here.
-      ctx.fillStyle = shade(st.color, 8);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.2, hw * 2.4, hh * 3.0);
+      ctx.restore();
+    }
+    // THE BELL: the medusa worn as the crown — structure, so it
+    // holds white in the hurt flash.
+    ctx.fillStyle = hurt ? '#ffffff' : bellC;
+    ctx.beginPath();
+    ctx.moveTo(headX - bellW, skirtY);
+    ctx.quadraticCurveTo(headX - bellW * 1.04, bellTop + hh * 0.34, headX - bellW * 0.44, bellTop);
+    ctx.quadraticCurveTo(headX, bellTop - hh * 0.14, headX + bellW * 0.44, bellTop);
+    ctx.quadraticCurveTo(headX + bellW * 1.04, bellTop + hh * 0.34, headX + bellW, skirtY);
+    // The scalloped skirt: four bites back across the brow.
+    ctx.arc(headX + bellW * 0.75, skirtY, bellW * 0.25, 0, Math.PI, false);
+    ctx.arc(headX + bellW * 0.25, skirtY, bellW * 0.25, 0, Math.PI, false);
+    ctx.arc(headX - bellW * 0.25, skirtY, bellW * 0.25, 0, Math.PI, false);
+    ctx.arc(headX - bellW * 0.75, skirtY, bellW * 0.25, 0, Math.PI, false);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // The bell's planes: lit crown, shaded flank toward the trail.
+      ctx.fillStyle = shade(bellC, 14);
       ctx.beginPath();
-      ctx.ellipse(headX + lead * hw * 0.3, headY - hh * 0.98, hw * 0.62, hh * 0.3, lead * -0.2, Math.PI, Math.PI * 2);
+      ctx.ellipse(headX + lead * bellW * 0.12, bellTop + hh * 0.16, bellW * 0.52, hh * 0.2, lead * -0.1, Math.PI, Math.PI * 2);
       ctx.fill();
-      // THE FRECKLE WAKE: bioluminescent points scattered on the
-      // cloth, each waking in turn as the wave travels the dome.
+      ctx.fillStyle = shade(bellC, -14);
+      ctx.beginPath();
+      ctx.moveTo(headX - lead * bellW * 0.98, skirtY - hh * 0.02);
+      ctx.quadraticCurveTo(headX - lead * bellW * 1.0, bellTop + hh * 0.36, headX - lead * bellW * 0.44, bellTop + hh * 0.04);
+      ctx.quadraticCurveTo(headX - lead * bellW * 0.62, bellTop + hh * 0.5, headX - lead * bellW * 0.7, skirtY - hh * 0.02);
+      ctx.closePath();
+      ctx.fill();
+      // THE ORGAN GLOW: the light inside the bell — a soft ring
+      // that waxes with the tide (unclipped alpha accent lane).
+      ctx.globalAlpha = 0.16 + 0.3 * k + 0.3 * brk;
+      ctx.fillStyle = bLume;
+      ctx.beginPath();
+      ctx.ellipse(headX, bellTop + hh * 0.42, bellW * 0.34, hh * 0.16, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      // THE RIM LIGHT: the skirt's scallops carry the bell's own
+      // lamp — breathing, flaring at the break.
+      ctx.strokeStyle = shade(bLume, Math.round(-26 + (0.35 + 0.65 * Math.max(k, brk)) * 40));
+      ctx.lineWidth = Math.max(1, s * (0.009 + 0.005 * brk));
+      ctx.lineCap = 'round';
+      for (const su of [-0.75, -0.25, 0.25, 0.75]) {
+        ctx.beginPath();
+        ctx.arc(headX + bellW * su, skirtY, bellW * 0.25, Math.PI * 0.15, Math.PI * 0.85);
+        ctx.stroke();
+      }
+      // THE FRECKLE WAKE: the deep keeps count across bell and cowl.
       if (st.lumefreckles) {
         const fc = st.lumefreckles.color;
         const frk: Array<[number, number, number]> = [
-          [0.92, -0.7, 0.075], [0.62, -1.02, 0.06], [0.2, -1.14, 0.08],
-          [-0.28, -1.08, 0.06], [-0.68, -0.82, 0.075], [-0.94, -0.3, 0.06],
-          [-0.8, 0.3, 0.068],
+          [0.7, -1.06, 0.06], [0.24, -1.22, 0.075], [-0.3, -1.16, 0.06],
+          [-0.78, -0.92, 0.07], [0.98, -0.6, 0.055], [-1.02, -0.24, 0.06],
+          [0.88, 0.14, 0.055],
         ];
         for (const [i, [ux, uy, rr]] of frk.entries()) {
           const wu = ((f.nowMs / 6800 - i * 0.075) % 1 + 1) % 1;
@@ -16280,83 +16443,6 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
           ctx.beginPath();
           ctx.arc(headX + lead * hw * ux, headY + hh * uy, hw * rr * (1 + wake * 0.5), 0, Math.PI * 2);
           ctx.fill();
-        }
-      }
-      ctx.restore();
-      // THE JELLY LAPPETS: bell-hemmed veils trailing at the jaw —
-      // they anchor at the cheek seam and TRAIL, as hanging things do.
-      if (st.jellyveil) {
-        const jc = st.jellyveil.color;
-        const jsw = Math.sin(f.nowMs * 0.0011) * hw * 0.05;
-        for (const es of front ? [-1] : [-1, 1]) {
-          const jx = headX + es * lead * hw * 1.02;
-          ctx.fillStyle = jc;
-          ctx.beginPath();
-          ctx.moveTo(jx - hw * 0.16, headY + hh * 0.5);
-          ctx.quadraticCurveTo(jx - hw * 0.24 + jsw, headY + hh * 1.3, jx - hw * 0.1 + jsw * 1.5, headY + hh * 1.74);
-          // The bell hem: three scallop bites back up.
-          ctx.arc(jx + hw * 0.0 + jsw * 1.5, headY + hh * 1.74, hw * 0.1, Math.PI * 0.9, Math.PI * 0.1, true);
-          ctx.arc(jx + hw * 0.2 + jsw * 1.5, headY + hh * 1.7, hw * 0.09, Math.PI * 0.9, Math.PI * 0.1, true);
-          ctx.quadraticCurveTo(jx + hw * 0.3, headY + hh * 1.0, jx + hw * 0.22, headY + hh * 0.5);
-          ctx.closePath();
-          ctx.fill();
-          ctx.strokeStyle = shade(jc, -18);
-          ctx.lineWidth = Math.max(1, s * 0.008);
-          ctx.beginPath();
-          ctx.moveTo(jx + hw * 0.02, headY + hh * 0.56);
-          ctx.quadraticCurveTo(jx - hw * 0.04 + jsw, headY + hh * 1.2, jx + hw * 0.04 + jsw * 1.4, headY + hh * 1.66);
-          ctx.stroke();
-        }
-      }
-      // THE DEEP LURE: the stalk arcs off the crown and hangs its
-      // caged lamp before the brow — a filled tapered limb, never a
-      // stroke. The lamp breathes with the tide; at the break it
-      // flares and sheds two rising motes.
-      if (st.deeplure && front) {
-        const stalkC = st.deeplure.stalk;
-        const rootX = headX - lead * hw * 0.06;
-        const rootY = headY - hh * 1.16;
-        const bulbX = headX + lead * (hw * (0.34 + 0.48 * t) + Math.sin(f.nowMs * 0.0013) * hw * 0.05);
-        const bulbY = headY - hh * (0.98 - 0.06 * t);
-        const midX = headX + lead * hw * (0.4 + 0.3 * t);
-        const midY = headY - hh * 1.56;
-        ctx.fillStyle = stalkC;
-        ctx.beginPath();
-        ctx.moveTo(rootX - lead * hw * 0.13, rootY);
-        ctx.quadraticCurveTo(midX - lead * hw * 0.07, midY - hh * 0.06, bulbX - lead * hw * 0.025, bulbY - hh * 0.18);
-        ctx.lineTo(bulbX + lead * hw * 0.035, bulbY - hh * 0.15);
-        ctx.quadraticCurveTo(midX + lead * hw * 0.1, midY + hh * 0.07, rootX + lead * hw * 0.13, rootY + hh * 0.08);
-        ctx.closePath();
-        ctx.fill();
-        // The lamp: a dark iron ring holding the breathing light —
-        // the one bright thing the deep allows itself.
-        const glow = 0.6 + 0.4 * k + brk * 0.3;
-        const br2 = headR * 0.17;
-        ctx.strokeStyle = shade(st.color, -32);
-        ctx.lineWidth = Math.max(1, s * 0.012);
-        ctx.beginPath();
-        ctx.arc(bulbX, bulbY, br2 * 1.12, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.fillStyle = shade(lumeC, Math.round(-14 + glow * 44));
-        ctx.beginPath();
-        ctx.arc(bulbX, bulbY, br2 * (1 + 0.1 * k), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = shade(lumeC, Math.round(14 + glow * 40));
-        ctx.beginPath();
-        ctx.arc(bulbX - br2 * 0.24, bulbY - br2 * 0.24, br2 * 0.42, 0, Math.PI * 2);
-        ctx.fill();
-        if (brk > 0.1) {
-          const fly = 1 - brk;
-          ctx.fillStyle = lumeC;
-          for (const mo of [0, 0.3] as const) {
-            const mu = Math.min(1, fly + mo);
-            if (mu >= 1) continue;
-            ctx.globalAlpha = (1 - mu) * 0.85;
-            ctx.beginPath();
-            ctx.arc(bulbX + lead * hw * 0.1 * Math.sin(mu * 9), bulbY - br2 - mu * hh * 0.5, headR * 0.03 * (1 - mu * 0.4), 0, Math.PI * 2);
-            ctx.fill();
-          }
-          ctx.globalAlpha = 1;
         }
       }
       if (front) {
@@ -16372,7 +16458,7 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         opening();
         ctx.stroke();
       } else {
-        // From behind: the freckle field keeps counting, and the
+        // From behind: the bell's back keeps its rim light, and the
         // drape tail falls light over the shaded back.
         ctx.fillStyle = st.color;
         ctx.beginPath();
@@ -16382,12 +16468,61 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.lineTo(headX - hw * 0.1, headY + hh * 1.9);
         ctx.closePath();
         ctx.fill();
-        ctx.strokeStyle = shade(st.color, -22);
-        ctx.lineWidth = Math.max(1, s * 0.011);
+      }
+      // THE DEEP LURE: the stalk reaches from under the bell to hang
+      // its iron-caged lamp before the brow — the one warm thing.
+      if (st.deeplure && front) {
+        const stalkC = st.deeplure.stalk;
+        const rootX = headX + lead * hw * 0.22;
+        const rootY = skirtY - hh * 0.04;
+        const bulbX = headX + lead * (hw * (0.3 + 0.42 * t) + Math.sin(f.nowMs * 0.0013) * hw * 0.045);
+        const bulbY = headY - hh * (0.4 - 0.04 * t);
+        const midX = headX + lead * hw * (0.48 + 0.24 * t);
+        const midY = headY - hh * 0.82;
+        ctx.fillStyle = stalkC;
         ctx.beginPath();
-        ctx.moveTo(headX, headY - hh * 1.2);
-        ctx.quadraticCurveTo(headX - lead * hw * 0.16, headY - hh * 0.2, headX, headY + hh * 0.78);
+        ctx.moveTo(rootX - lead * hw * 0.1, rootY);
+        ctx.quadraticCurveTo(midX - lead * hw * 0.06, midY, bulbX - lead * hw * 0.02, bulbY - hh * 0.14);
+        ctx.lineTo(bulbX + lead * hw * 0.028, bulbY - hh * 0.12);
+        ctx.quadraticCurveTo(midX + lead * hw * 0.08, midY + hh * 0.05, rootX + lead * hw * 0.1, rootY + hh * 0.06);
+        ctx.closePath();
+        ctx.fill();
+        const glow = 0.6 + 0.4 * k + brk * 0.3;
+        const br2 = headR * 0.155;
+        ctx.strokeStyle = shade(st.color, -32);
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.beginPath();
+        ctx.arc(bulbX, bulbY, br2 * 1.12, 0, Math.PI * 2);
         ctx.stroke();
+        ctx.fillStyle = shade(lumeC, Math.round(-14 + glow * 44));
+        ctx.beginPath();
+        ctx.arc(bulbX, bulbY, br2 * (1 + 0.1 * k), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(lumeC, Math.round(14 + glow * 40));
+        ctx.beginPath();
+        ctx.arc(bulbX - br2 * 0.24, bulbY - br2 * 0.24, br2 * 0.42, 0, Math.PI * 2);
+        ctx.fill();
+        // The iron cage: two dark ribs over the light.
+        ctx.strokeStyle = shade(st.color, -32);
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        for (const ca of [0.32, 0.68]) {
+          ctx.beginPath();
+          ctx.arc(bulbX, bulbY, br2 * 0.98, Math.PI * (0.9 + ca * 0.4), Math.PI * (1.7 + ca * 0.4));
+          ctx.stroke();
+        }
+        if (brk > 0.1) {
+          const fly = 1 - brk;
+          ctx.fillStyle = lumeC;
+          for (const mo of [0, 0.3] as const) {
+            const mu = Math.min(1, fly + mo);
+            if (mu >= 1) continue;
+            ctx.globalAlpha = (1 - mu) * 0.85;
+            ctx.beginPath();
+            ctx.arc(bulbX + lead * hw * 0.1 * Math.sin(mu * 9), bulbY - br2 - mu * hh * 0.5, headR * 0.03 * (1 - mu * 0.4), 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+        }
       }
     }
     return;
