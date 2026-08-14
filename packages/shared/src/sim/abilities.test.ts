@@ -79,6 +79,49 @@ test('reaction damage scales with both powers and never rounds to zero', () => {
   assert.ok(reactionDamage(0, 0, r) >= 1, 'a detonation always stings');
 });
 
+// ------------------------------------------------- THE READING EDGE
+
+import { SUNDER_MAX_PCT, stateBucket, sunderAmp, type ActiveStatus } from './abilities.js';
+
+const rider = (id: ActiveStatus['id'], power = 3): ActiveStatus => ({ id, power, ticksLeft: 100 });
+
+test('stateBucket: an unmarked body pays nothing extra', () => {
+  assert.equal(stateBucket(undefined, [{ status: 'venom', mult: 1.5 }]), 1);
+  assert.equal(stateBucket([], [{ status: 'venom', mult: 1.5 }]), 1);
+  assert.equal(stateBucket([rider('venom')], []), 1, 'a state with no reader is silent');
+});
+
+test('stateBucket: the highest clause per state wins — payoffs never stack', () => {
+  const list = [rider('venom')];
+  const clauses = [
+    { status: 'venom' as const, mult: 1.3 },
+    { status: 'venom' as const, mult: 1.5 },
+    { status: 'bleed' as const, mult: 2.0 },
+  ];
+  assert.equal(stateBucket(list, clauses), 1.5, 'best venom clause alone; bleed clause finds no bleed');
+});
+
+test('stateBucket: distinct states multiply — the assembled build is the jackpot', () => {
+  const list = [rider('venom'), rider('bleed')];
+  const clauses = [
+    { status: 'venom' as const, mult: 1.5 },
+    { status: 'bleed' as const, mult: 1.2 },
+  ];
+  assert.ok(Math.abs(stateBucket(list, clauses) - 1.8) < 1e-9);
+});
+
+test('stateBucket: a clause never pays less than 1 — states cannot be a discount', () => {
+  assert.equal(stateBucket([rider('venom')], [{ status: 'venom', mult: 0.5 }]), 1);
+});
+
+test('sunderAmp: the mark amplifies clause-free and clamps at the ceiling', () => {
+  assert.equal(sunderAmp([rider('sunder', 15)]), 1.15);
+  assert.equal(sunderAmp([rider('sunder', 90)]), 1 + SUNDER_MAX_PCT / 100, 'the seam clamps');
+  assert.equal(sunderAmp([rider('venom')]), 1);
+  const both = stateBucket([rider('sunder', 20), rider('venom')], [{ status: 'venom', mult: 1.5 }]);
+  assert.ok(Math.abs(both - 1.2 * 1.5) < 1e-9, 'the mark multiplies into the bucket');
+});
+
 test('on-hit haste pulls cooldowns forward and clamps at zero', () => {
   assert.equal(hasteOnHit(100), 100 - HASTE_ON_HIT_TICKS);
   assert.equal(hasteOnHit(100, true), 100 - HASTE_FULL_DRAW_TICKS);

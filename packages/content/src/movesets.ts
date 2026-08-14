@@ -13,6 +13,7 @@ import {
   TWOHAND_FINISHER_RECOVERY_MULT,
   TWOHAND_KNOCKBACK_MULT,
   TWOHAND_STAGE2_DAMAGE_MULT,
+  type StatusId,
 } from '@arx/shared';
 import type { MovesetId, WeaponStats } from './items.js';
 
@@ -49,6 +50,14 @@ export interface StrikeDef {
   windupTicks: number;
   /** THE BRANCH: a rhythm TAP on this beat plays this strike instead. */
   alt?: StrikeDef;
+  /**
+   * THE READING EDGE: this beat SPENDS a state it finds. A body in
+   * the arc carrying `status` takes `mult` times this strike's roll
+   * and the state is consumed — the finisher that reads the wound it
+   * built. Each struck body pays and spends its own. Resolved at the
+   * one seam; whiff-0 spends nothing.
+   */
+  consumes?: { status: StatusId; mult: number };
   /** Wand lane: projectile speed factor. */
   speedMult?: number;
   /** Wand lane: splash radius (tiles) at impact. */

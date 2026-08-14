@@ -184,6 +184,13 @@ export interface GearStats {
   /** Ability-cooldown ticks shaved on every kill. */
   onKillHasteTicks: number;
   /**
+   * THE READING EDGE: per-state "takes more from me" percentages,
+   * HIGHEST WINS at the fold (same-state clauses never stack across
+   * pieces). The seam turns each into a clause and multiplies
+   * distinct states only.
+   */
+  vsState: Partial<Record<StatusId, number>>;
+  /**
    * Workings whose trigger belongs to the BODY (kill, hurt, block,
    * cast, lowHp, stacks, gather, stride) rather than to the steel that
    * landed. Deduplicated by proc id, so a matched set carrying one
@@ -206,6 +213,7 @@ export function emptyGearStats(): GearStats {
     thorns: 0,
     critPct: 0,
     onKillHasteTicks: 0,
+    vsState: {},
     procs: [],
   };
 }
@@ -257,6 +265,11 @@ export function foldEffect(out: GearStats, fx: EnchantEffect): void {
       break;
     case 'onKillHaste':
       out.onKillHasteTicks += fx.ticks;
+      break;
+    case 'vsState':
+      // HIGHEST WINS: two pieces reading the same state answer once,
+      // with the stronger clause — the anti-stacking constitution.
+      out.vsState[fx.status] = Math.max(out.vsState[fx.status] ?? 0, fx.pct);
       break;
   }
 }

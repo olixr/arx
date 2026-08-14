@@ -34,6 +34,9 @@ function power(fx: EnchantEffect): number {
     case 'armor': return fx.amount * 3;
     case 'thorns': return fx.amount * 3;
     case 'styleDmg': case 'elementDmg': return fx.pct * 1.2;
+    // Conditional damage prices under unconditional: the wearer must
+    // BUILD the state before the clause pays a single point.
+    case 'vsState': return fx.pct * 0.7;
     case 'cooldown': return fx.pct * 2;
     case 'speed': return fx.pct * 4;
     case 'crit': return fx.pct * 2.5;

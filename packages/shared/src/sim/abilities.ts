@@ -230,6 +230,63 @@ export function reactionDamage(oldPower: number, newPower: number, r: ReactionDe
   return Math.max(1, Math.round((oldPower + newPower) * r.mult));
 }
 
+// ---------------------------------------------- THE READING EDGE
+
+/**
+ * One attacker-side payoff clause: "bodies carrying `status` take
+ * `mult` times damage from me." Gathered from worn gear (vsState
+ * effects, highest-wins per state) and from the striking ability or
+ * finisher beat (AbilityDef.vs / StrikeDef.consumes).
+ */
+export interface VsClause {
+  status: StatusId;
+  /** Damage multiplier while the state rides (1.5 = half again). */
+  mult: number;
+}
+
+/** The universal amplifier: what a riding sunder mark lets through. */
+export function sunderAmp(list: readonly ActiveStatus[] | undefined): number {
+  if (!list) return 1;
+  for (const s of list) {
+    if (s.id === 'sunder') return 1 + Math.min(s.power, SUNDER_MAX_PCT) / 100;
+  }
+  return 1;
+}
+
+/**
+ * THE TWO BUCKETS AND NO MORE law, second bucket. Everything additive
+ * (styleDmg, elementDmg, crit, affixes) folds upstream into the max
+ * hit; this is the ONLY other multiplication in the game, and it is
+ * target-conditional by construction:
+ *
+ * - per distinct state riding the target, the HIGHEST applicable
+ *   clause wins — same-state payoffs never stack;
+ * - distinct states multiply — assembling an applier and two readers
+ *   across the build is the jackpot the player paid slots for;
+ * - the sunder mark multiplies in as the one clause-free amplifier
+ *   (its own entry is highest-wins at the apply door), clamped to
+ *   SUNDER_MAX_PCT no matter what authored the mark.
+ *
+ * Pure, so the whole constitution is testable without a server.
+ */
+export function stateBucket(
+  list: readonly ActiveStatus[] | undefined,
+  clauses: readonly VsClause[],
+): number {
+  if (!list || list.length === 0) return 1;
+  let mult = sunderAmp(list);
+  const present = new Set<StatusId>();
+  for (const s of list) if (s.id !== 'sunder') present.add(s.id);
+  for (const id of present) {
+    let best = 1;
+    for (const c of clauses) {
+      if (c.status === id && c.mult > best) best = c.mult;
+    }
+    mult *= best;
+  }
+  return mult;
+}
+
 // -------------------------------------------------------------- haste
 
 /**
@@ -486,6 +543,15 @@ export interface AbilityDef {
   pulses?: number;
   pulseEveryTicks?: number;
   status?: StatusApply;
+  /**
+   * THE READING EDGE: a target-conditional payoff clause. Bodies
+   * carrying `status` take `mult` times this ability's damage; with
+   * `consume`, the payoff SPENDS every riding entry of that state
+   * for its answer — the consume verb. Resolved at the one seam
+   * (stateBucket), highest-wins against the wearer's gear clauses,
+   * and always printed as one sentence on the card.
+   */
+  vs?: { status: StatusId; mult: number; consume?: boolean };
   self?: AbilitySelf;
   /**
    * Shove strength multiplier. NEGATIVE pulls targets toward the

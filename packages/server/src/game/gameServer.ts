@@ -521,6 +521,9 @@ import {
   AFFLICTION_SOURCE_CAP,
   AFFLICTION_STACKS_SHIFT,
   STATUS_IDS,
+  stateBucket,
+  sunderAmp,
+  type VsClause,
   snapShot,
   type AbilityDef,
   type AbilitySlot,
@@ -535,6 +538,7 @@ import {
   type ChargeInfo,
   type S2CFx,
   type StatusApply,
+  type StatusId,
   type SteerMemory,
 } from '@arx/shared';
 import { config } from '../config.js';
@@ -1073,6 +1077,8 @@ interface ProjectileComp {
   spawnSeq?: number;
   /** Status carried onto whatever this hits. */
   status?: StatusApply;
+  /** THE READING EDGE: the firing ability's payoff clause. */
+  vs?: { status: StatusId; mult: number; consume?: boolean };
   /** Punches through targets instead of stopping at the first. */
   pierce?: boolean;
   /** Targets already struck (pierce double-hit guard). */
@@ -1188,6 +1194,8 @@ interface PendingBlast {
   damage: number;
   knockback: number;
   status?: StatusApply;
+  /** THE READING EDGE: the scheduling ability's payoff clause. */
+  vs?: { status: StatusId; mult: number; consume?: boolean };
   fuseLeft: number;
   ownerEid: EntityId;
   style: SkillId;
@@ -1220,6 +1228,11 @@ interface ActiveField {
   everyTicks: number;
   ticksLeft: number;
   status?: StatusApply;
+  /**
+   * THE READING EDGE: the field's payoff clause, folded per pulse. A
+   * consume clause spends the state on the first pulse that reads it.
+   */
+  vs?: { status: StatusId; mult: number; consume?: boolean };
   ownerEid: EntityId;
   style: SkillId;
   fromNpc: boolean;
@@ -1458,6 +1471,8 @@ interface PlayerComp {
     range: number;
     /** twohand: the whirlwind's deed check rides the resolve. */
     deed: boolean;
+    /** THE READING EDGE: the beat's consume clause, captured at press. */
+    consumes?: { status: StatusId; mult: number };
   } | null;
   /** Remaining cooldown ticks: [first art (Q), relic, second art (R), sigil]. */
   abilityCd: [number, number, number, number];
@@ -15799,6 +15814,11 @@ export class GameServer {
         ? GUARD_SWEEP_RANGE
         : weapon.range + (moveset.style === 'twohand' ? player.perks.greatReach : 0),
       deed: moveset.style === 'twohand',
+      // THE READING EDGE: the beat's consume clause is captured at
+      // the press like every other number — the promise made is the
+      // promise kept. The guard sweep is a doorstep clearing, not a
+      // page beat, and spends nothing.
+      consumes: guard ? undefined : strike.consumes,
     };
     if (windup === 0) this.landStrike(eid, player, strikeData);
     else player.pendingStrike = strikeData;
@@ -15852,6 +15872,7 @@ export class GameServer {
       // Lag comp: the world the attacker saw at the PRESS — the base
       // rewind plus however long this blow has been in flight.
       this.tickCount - s.pressTick,
+      s.consumes ? { ...s.consumes, consume: true } : undefined,
     );
     // THE UNWRITTEN PAGE: three felled by ONE turn of the great
     // steel is the whirlwind's deed — the crowd taught the turning.
@@ -15934,6 +15955,8 @@ export class GameServer {
     arcHalf = Math.PI / 3,
     /** Extra rewind ticks: how long this blow flew after its press. */
     extraRewind = 0,
+    /** THE READING EDGE: the beat's payoff clause, per struck body. */
+    vs?: { status: StatusId; mult: number; consume?: boolean },
     /** @returns bodies FELLED by this one swing (the whirlwind's deed). */
   ): number {
     const pos = this.positions.must(eid);
@@ -16004,6 +16027,7 @@ export class GameServer {
           basic: true,
           backstab,
           offhand: xpStyle === 'dualwield',
+          vs,
         });
         const after = this.healths.get(npcEid);
         if (!after || after.hp <= 0) felled++;
@@ -16030,6 +16054,7 @@ export class GameServer {
         basic: true,
         backstab,
         offhand: xpStyle === 'dualwield',
+        vs,
       });
       const after = this.healths.get(bestTarget);
       if (!after || after.hp <= 0) return 1;
@@ -16962,6 +16987,7 @@ export class GameServer {
             crit: roll.crit,
             knockbackMult,
             status: ab.status,
+            vs: ab.vs,
           });
           this.drainHeal(casterEid, dmg, ab.drainFrac);
         }
@@ -16996,6 +17022,7 @@ export class GameServer {
               crit: roll.crit,
               knockbackMult,
               status: ab.status,
+              vs: ab.vs,
             });
             this.drainHeal(casterEid, dmg, ab.drainFrac);
           }
@@ -17062,6 +17089,7 @@ export class GameServer {
               crit: roll.crit,
               knockbackMult,
               status: ab.status,
+              vs: ab.vs,
             });
             this.drainHeal(casterEid, dmg, ab.drainFrac);
           }
@@ -17099,6 +17127,7 @@ export class GameServer {
               speed: ab.projectileSpeed ?? 14,
               distLeft: ab.range ?? 6,
               status: ab.status,
+              vs: ab.vs,
               fromNpc,
               attackerLevel: fromNpc ? level : undefined,
               element: ab.element ?? (style === 'arx' ? element : undefined),
@@ -17225,7 +17254,7 @@ export class GameServer {
           from = { x: tpos.x, y: tpos.y };
           const roll = rollDamage(maxHit);
           const dmg = this.executeAdjust(best, roll.dmg, ab.executeBelow);
-          this.damageNpc(best, dmg, casterEid, style, { crit: roll.crit, status: ab.status });
+          this.damageNpc(best, dmg, casterEid, style, { crit: roll.crit, status: ab.status, vs: ab.vs });
           this.drainHeal(casterEid, dmg, ab.drainFrac);
         }
         break;
@@ -17245,6 +17274,7 @@ export class GameServer {
             damage: maxHit,
             knockback: knockbackMult,
             status: ab.status,
+            vs: ab.vs,
             fuseLeft: 1 + i * every,
             ownerEid: casterEid,
             style,
@@ -17285,6 +17315,7 @@ export class GameServer {
             speed: ab.projectileSpeed ?? 14,
             distLeft: ab.range ?? 7,
             status: ab.status,
+            vs: ab.vs,
             pierce: ab.pierce,
             splashRadius: ab.splashRadius,
             fromNpc,
@@ -17352,6 +17383,7 @@ export class GameServer {
           damage: maxHit,
           knockback: knockbackMult,
           status: ab.status,
+          vs: ab.vs,
           fuseLeft: fuse,
           ownerEid: casterEid,
           style,
@@ -17389,6 +17421,7 @@ export class GameServer {
           everyTicks: ab.pulseEveryTicks ?? 16,
           ticksLeft: life,
           status: ab.status,
+          vs: ab.vs,
           ownerEid: casterEid,
           style,
           fromNpc,
@@ -17468,6 +17501,7 @@ export class GameServer {
               crit: roll.crit,
               knockbackMult,
               status: ab.status,
+              vs: ab.vs,
             });
             this.drainHeal(casterEid, dmg, ab.drainFrac);
           }
@@ -17531,6 +17565,7 @@ export class GameServer {
               crit: roll.crit,
               knockbackMult,
               status: ab.status,
+              vs: ab.vs,
               knockFrom: { x: cx, y: cy },
             });
             this.drainHeal(casterEid, dmg, ab.drainFrac);
@@ -17552,6 +17587,7 @@ export class GameServer {
             damage: maxHit,
             knockback: knockbackMult,
             status: ab.status,
+            vs: ab.vs,
             fuseLeft: 1 + i * every,
             ownerEid: casterEid,
             style,
@@ -18113,6 +18149,11 @@ export class GameServer {
     const npc = this.npcs.get(npcEid);
     const health = this.healths.get(npcEid);
     if (!npc || !health || dmg <= 0) return;
+    // THE READING EDGE: the sunder mark amplifies the drip too — a
+    // cracked guard lets everything through, wounds included. Gear
+    // vs clauses stay OFF the pulse until a temper is authored to
+    // read ticks (recorded in the plan; the seam covers direct blows).
+    dmg = Math.round(dmg * sunderAmp(this.statuses.get(npcEid)));
     // Nothing burns through the ward — a status that somehow landed
     // before protection was set still ticks for zero.
     if (this.actors.get(npcEid)?.actor.protection === 'invulnerable') return;
@@ -18251,6 +18292,7 @@ export class GameServer {
             crit: roll.crit,
             knockbackMult: blast.knockback,
             status: blast.status,
+            vs: blast.vs,
             // Ground blasts shove from the CRATER, not from the caster —
             // and vortex blasts (negative knockback) drag INTO it.
             knockFrom: isArc ? undefined : { x: blast.x, y: blast.y },
@@ -18288,6 +18330,7 @@ export class GameServer {
           crit,
           knockbackMult: field.knockback,
           status: field.status,
+          vs: field.vs,
           knockFrom: { x: field.x, y: field.y },
         });
         this.drainHeal(field.ownerEid, dmg, field.drainFrac);
@@ -18544,6 +18587,7 @@ export class GameServer {
               basic: proj.basic,
               fullDraw: proj.fullDraw,
               status: proj.status,
+              vs: proj.vs,
               knockbackMult: proj.heavy ? HEAVY_BOLT_KNOCKBACK : proj.fullDraw ? 1.4 : 1,
             });
             this.drainHeal(proj.ownerEid, dmg, proj.drainFrac);
@@ -18588,6 +18632,7 @@ export class GameServer {
                 this.damageNpc(otherEid, roll.dmg, proj.ownerEid, proj.style, {
                   crit: roll.crit,
                   status: proj.status,
+                  vs: proj.vs,
                 });
               }
             }
@@ -18720,6 +18765,17 @@ export class GameServer {
   ): void {
     if (worn) {
       for (const p of weaponStrikeEffects(worn.id, worn.roll).procs) {
+        // THE READING EDGE door law: a hitState working is skipped
+        // BEFORE arbitration when the struck body does not carry its
+        // state — no roll spent, no rest banked (the targeted-moment
+        // law), so the published chance holds against marked bodies.
+        if (p.trigger.on === 'hitState') {
+          const wanted = p.trigger.status;
+          const riding =
+            ctx.targetEid !== undefined &&
+            (this.statuses.get(ctx.targetEid)?.some((s) => s.id === wanted) ?? false);
+          if (!riding) continue;
+        }
         this.offerProc(eid, player, p, on, ctx);
       }
     }
@@ -19017,6 +19073,14 @@ export class GameServer {
        * behind opts.basic, which a pet blow never sets.
        */
       viaPet?: { petEid: EntityId };
+      /**
+       * THE READING EDGE: the striking payoff clause — an ability's
+       * `vs` or a finisher beat's `consumes`. Folded at the seam
+       * against the wearer's gear clauses (highest wins per state);
+       * `consume` spends every riding entry of the state on a landed
+       * blow.
+       */
+      vs?: { status: StatusId; mult: number; consume?: boolean };
     } = {},
   ): void {
     const crit = opts.crit ?? false;
@@ -19050,6 +19114,40 @@ export class GameServer {
         this.npcAggro(npcEid, npc, attackerEid, { force: true });
       }
       return;
+    }
+
+    // ------------------------------------------------ THE READING EDGE
+    // The one seam (law 10 of the buildcraft plan): every blow that
+    // reaches an NPC pays the state bucket here — sunder's amp plus
+    // the highest applicable clause per riding state, distinct states
+    // multiplying (TWO BUCKETS AND NO MORE; the additive bucket folds
+    // upstream into the max hit). Read BEFORE opts.status lands, so a
+    // blow never feeds on the state it carries; whiff-0 folds nothing
+    // and spends nothing.
+    if (dmg > 0) {
+      const riders = this.statuses.get(npcEid);
+      if (riders?.length) {
+        const clauses: VsClause[] = [];
+        const reader = this.players.get(attackerEid);
+        // The pet's fang does not wear the keeper's armor: gear
+        // clauses ride only the wearer's own blows.
+        if (reader && !opts.viaPet) {
+          for (const [rid, pctVal] of Object.entries(reader.gear.vsState)) {
+            if (pctVal) clauses.push({ status: rid as StatusId, mult: 1 + pctVal / 100 });
+          }
+        }
+        if (opts.vs) clauses.push(opts.vs);
+        const stateMult = stateBucket(riders, clauses);
+        if (stateMult !== 1) dmg = Math.max(1, Math.round(dmg * stateMult));
+        // THE CONSUME VERB: a landed payoff spends every riding entry
+        // of the state it read — the wound answers once, whoever
+        // opened it.
+        if (opts.vs?.consume && riders.some((s) => s.id === opts.vs!.status)) {
+          const kept = riders.filter((s) => s.id !== opts.vs!.status);
+          if (kept.length > 0) this.statuses.set(npcEid, kept);
+          else this.statuses.delete(npcEid);
+        }
+      }
     }
 
     // The rhythm engine: every landed basic pulls slots 0 and 1
@@ -19622,6 +19720,11 @@ export class GameServer {
     let dmg = opts.pierceArmor
       ? raw
       : mitigate(raw, defLevel, armor, opts.attackerLevel ?? 1);
+    // THE READING EDGE, mirrored: a sundered guard lets more through.
+    // Folded AFTER mitigation (the crack is in the armor, so it
+    // amplifies what the armor failed to stop), before the wall's
+    // lesson — blocked-credit stays gated on blocked > 0 below.
+    dmg = Math.round(dmg * sunderAmp(this.statuses.get(eid)));
 
     // THE WALL'S LESSON: what gets through trains the flesh (below);
     // what the wall stops trains the wall. DoTs teach nothing here and

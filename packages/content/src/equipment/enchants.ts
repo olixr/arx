@@ -44,6 +44,14 @@ import type { GearSlot } from './types.js';
 export type EnchantTrigger =
   /** A basic attack landed. Rolls `chance` on each landed blow. */
   | { on: 'hit'; chance: number }
+  /**
+   * THE READING EDGE: a basic landed on a body already carrying
+   * `status`. Strike channel — it reads the steel that connected.
+   * The state check happens AT THE DOOR (an unmarked body means no
+   * roll and no rest, the targeted-moment law), so the published
+   * chance holds against marked bodies alone.
+   */
+  | { on: 'hitState'; status: StatusId; chance: number }
   /** A critical landed. Rare of its own nature, so it needs no chance. */
   | { on: 'crit' }
   /** Something died to you. */
@@ -137,7 +145,12 @@ export type ProcAction =
  * `stacks` is deliberately absent even when it counts hits: see the
  * meter law on the trigger itself.
  */
-export const STRIKE_TRIGGERS: readonly EnchantTrigger['on'][] = ['hit', 'crit', 'cadence'];
+export const STRIKE_TRIGGERS: readonly EnchantTrigger['on'][] = [
+  'hit',
+  'crit',
+  'cadence',
+  'hitState',
+];
 
 export function isStrikeTrigger(on: EnchantTrigger['on']): boolean {
   return (STRIKE_TRIGGERS as readonly string[]).includes(on);
@@ -153,7 +166,14 @@ export function isStrikeTrigger(on: EnchantTrigger['on']): boolean {
  * `kill` is absent on purpose. The foe that died is the only candidate,
  * and poisoning a corpse is not an effect.
  */
-export const TARGETED_TRIGGERS: readonly EnchantTrigger['on'][] = ['hit', 'crit', 'cadence', 'hurt', 'block'];
+export const TARGETED_TRIGGERS: readonly EnchantTrigger['on'][] = [
+  'hit',
+  'crit',
+  'cadence',
+  'hitState',
+  'hurt',
+  'block',
+];
 
 /** Actions that cannot do anything without a foe. */
 export const TARGETED_ACTIONS: readonly ProcAction['do'][] = ['status', 'bolt'];
@@ -203,6 +223,13 @@ export type EnchantEffect =
   | { kind: 'onHitStatus'; status: StatusId; power: number; durationTicks: number; chance: number }
   | { kind: 'lifesteal'; frac: number }
   | { kind: 'backstab'; bonus: number }
+  /**
+   * THE READING EDGE: bodies carrying `status` take `pct`% more from
+   * the wearer. Aggregate channel, and HIGHEST WINS at the fold —
+   * same-state clauses never stack across pieces, by law. The seam
+   * multiplies distinct states only.
+   */
+  | { kind: 'vsState'; status: StatusId; pct: number }
   | ProcEffect;
 
 /**
@@ -1380,6 +1407,8 @@ export function describeTrigger(t: EnchantTrigger): string {
   switch (t.on) {
     case 'hit':
       return `${pct(t.chance)} of landed blows`;
+    case 'hitState':
+      return `${pct(t.chance)} of blows on a ${t.status} ridden foe`;
     case 'crit':
       return 'a critical strike';
     case 'kill':
@@ -1469,6 +1498,8 @@ export function describeEffect(fx: EnchantEffect): string {
       return `heal ${Math.round(fx.frac * 100)}% of damage dealt`;
     case 'backstab':
       return `backstabs +${Math.round(fx.bonus * 100)}% crueler`;
+    case 'vsState':
+      return `${fx.status} ridden foes take ${fx.pct}% more from you`;
   }
 }
 
@@ -1599,6 +1630,7 @@ export function scaleEffect(fx: EnchantEffect, q: number): EnchantEffect {
     case 'cooldown':
     case 'speed':
     case 'crit':
+    case 'vsState':
       return { ...fx, pct: scaleN(fx.pct, q) };
     case 'onKillHaste':
       return { ...fx, ticks: scaleN(fx.ticks, q) };
@@ -1760,8 +1792,14 @@ export function procWakes(
   // A stacking working listens for its OWN source moment rather than
   // for its name; a cadence counts landed strikes, so it listens for
   // the hit. Everything else answers to the moment it is named after.
+  // hitState listens for the HIT moment too: the state check is the
+  // door's (server-side, target in hand), never the arbitration's.
   const listens =
-    t.on === 'stacks' ? t.per === on : t.on === 'cadence' ? on === 'hit' : t.on === on;
+    t.on === 'stacks'
+      ? t.per === on
+      : t.on === 'cadence' || t.on === 'hitState'
+        ? on === 'hit'
+        : t.on === on;
   if (!listens) return false;
   const resting = tick < st.restUntil;
 
@@ -1777,6 +1815,7 @@ export function procWakes(
       st.stacks = 0;
       break;
     case 'hit':
+    case 'hitState':
     case 'hurt':
     case 'gather':
       if (resting || roll() >= t.chance) return false;

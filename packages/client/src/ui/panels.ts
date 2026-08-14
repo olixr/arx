@@ -3037,6 +3037,11 @@ export class Panels {
           ab.status.status.charAt(0).toUpperCase() + ab.status.status.slice(1);
         add(statusName, `for ${secs(ab.status.durationTicks)}`, '#7ac46a');
       }
+      if (ab.vs) {
+        // THE READING EDGE tooltip law: every payoff clause prints.
+        const vsName = ab.vs.status.charAt(0).toUpperCase() + ab.vs.status.slice(1);
+        add(`×${ab.vs.mult}`, ab.vs.consume ? `spends ${vsName}` : `vs ${vsName}`, '#e8b64c');
+      }
       this.artsDetail.appendChild(stats);
     }
 

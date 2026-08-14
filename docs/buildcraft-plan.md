@@ -243,6 +243,58 @@ The keystone everything else reads. Split the five statuses into two lanes:
 
 ### Phase 2 — THE READING EDGE (target-conditional grammar)
 
+**SHIPPED 2026-08-14. As-built:**
+
+- Shared pure core (`sim/abilities.ts`): `VsClause`, `sunderAmp(list)`
+  (the clause-free amplifier, clamped to `SUNDER_MAX_PCT` at the
+  read, whatever authored the mark), and `stateBucket(list, clauses)`
+  — THE SECOND BUCKET: highest applicable clause per riding state,
+  distinct states multiply, sunder multiplies in. Pure and pinned
+  without a server.
+- **THE ONE SEAM** lives at the top of `damageNpc`: every blow that
+  reaches an NPC (basics, arts, projectiles, blasts, fields, procs,
+  reaction bursts) pays the bucket there. Gear clauses come from
+  `GearStats.vsState`; the striking clause rides `opts.vs`. Folded
+  BEFORE `opts.status` lands (a blow never feeds on the state it
+  carries), gated on `dmg > 0` (whiff-0 folds nothing, spends
+  nothing), floor 1 after rounding. `viaPet` blows skip gear clauses
+  (the pet's fang does not wear the keeper's armor). Mirror seam:
+  `damagePlayer` folds `sunderAmp` right after `mitigate` (the crack
+  is in the armor, so it amplifies what the armor failed to stop);
+  `dotNpc` folds it too (the drip pays the mark). Gear vs clauses
+  stay OFF DoT pulses until a tick-reading temper is authored.
+- **THE CONSUME VERB**: `opts.vs.consume` spends every riding entry
+  of the read state on a landed blow — the wound answers once,
+  whoever opened it.
+- Vocabulary shipped: `EnchantEffect` + `{kind:'vsState', status,
+  pct}` (aggregate channel, HIGHEST WINS at `foldEffect` — same-state
+  clauses never stack across pieces; quality scales pct; described as
+  one sentence; priced 0.7/pct in the epic scorer — conditional under
+  unconditional); `AbilityDef.vs {status, mult, consume?}` (rank
+  steps inherit it free via `RankStep = Partial`); `EnchantTrigger` +
+  `{on:'hitState', status, chance}` (strike channel; **listens on the
+  HIT moment inside `procWakes`** — the cadence pattern — so no new
+  ProcMoment; the state check is THE DOOR'S: `steelMoment` skips an
+  unmarked body before arbitration, no roll spent, no rest banked);
+  `StrikeDef.consumes {status, mult}` (captured into `pendingStrike`
+  at press — the promise made is the promise kept; the guard sweep
+  deliberately spends nothing; each struck body pays and spends its
+  own).
+- Threading: the six castAbility damage sites, `ProjectileComp.vs` +
+  both landing sites, `PendingBlast.vs` + resolution, `ActiveField.vs`
+  + pulse (a field's consume spends on the first pulse that reads
+  it). NPC-cast abilities carry no `vs` and `damagePlayer` reads no
+  clauses — vs is a player-side payoff this phase.
+- Tooltip law honored where content will land: ability cards print
+  the clause (`×1.5 vs Venom` / `spends Venom`); gear cards flow
+  through `describeEffect`'s new sentence.
+- ZERO authored content this phase: no ability, enchant, item, or
+  moveset page carries a clause yet — the grammar goes live with
+  Phase 3 words and Phase 4 tempers, so live damage is byte-identical
+  today.
+- Laws pinned in `server/src/game/readingEdge.test.ts` (10 seam
+  tests) + shared `stateBucket` pins. Suite 1602 green.
+
 The user's exact sentence becomes authorable data:
 
 - **The seam**: `stateMult(targetStatuses, attacker)` folded once at the top
