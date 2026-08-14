@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { DANGER_BAND, DANGER_MAX, HAVEN_FADE, dangerAt, type DangerAnchor } from './danger.js';
+import { DANGER_BAND, DANGER_MAX, DANGER_OVER, HAVEN_FADE, dangerAt, type DangerAnchor } from './danger.js';
 
 const SEED = 1337;
 const ANCHORS: DangerAnchor[] = [
@@ -131,4 +131,70 @@ test('dread never reaches inside a hearth, and never joins the march', () => {
   const lone: DangerAnchor[] = [{ x: 600, y: 600, safeR: 80, dread: 2 }];
   const far = dangerAt(SEED, -900, -900, lone);
   assert.ok(far >= 1 && far <= DANGER_MAX);
+});
+
+// ------------------------------------------------------- the Overband
+
+test('OVERBAND: a dread-3 heart in marched-out country crosses the ceiling', () => {
+  // (600,600) sits ~12 bands past the hearth — the march saturates.
+  const brand: DangerAnchor = { x: 600, y: 600, safeR: 80, dread: 3 };
+  const world = [...ANCHORS, brand];
+  let overs = 0;
+  for (let i = 0; i < 600; i++) {
+    const ang = (i / 600) * Math.PI * 2;
+    const r = (i % 12) * 6.5; // 0..71.5, all inside safeR 80
+    const tx = Math.round(brand.x + Math.cos(ang) * r);
+    const ty = Math.round(brand.y + Math.sin(ang) * r);
+    const tier = dangerAt(SEED, tx, ty, world);
+    // Inside the heart the field reads 5 or 6, never less (jitter may
+    // pull the march to 4 in pockets; those pockets stay at 5 via the
+    // classic dread law) — and never more.
+    assert.ok(tier >= DANGER_MAX && tier <= DANGER_OVER, `heart tile ${tx},${ty} read ${tier}`);
+    if (tier === DANGER_OVER) overs++;
+  }
+  assert.ok(overs > 300, `the heart barely opened: ${overs}/600 tiles at DANGER_OVER`);
+});
+
+test('OVERBAND: the rim never crosses — only the full heart does', () => {
+  const brand = { x: 600, y: 600, safeR: 80, dread: 3 } as const;
+  const world: DangerAnchor[] = [...ANCHORS, { ...brand }];
+  for (let d = brand.safeR + 1; d < brand.safeR + HAVEN_FADE * 2 + 40; d += 2) {
+    const tier = dangerAt(SEED, brand.x + d, brand.y, world);
+    assert.ok(tier <= DANGER_MAX, `rim at +${d} read ${tier}`);
+    // And the rim still speaks the classic dread law exactly.
+    const without = dangerAt(SEED, brand.x + d, brand.y, ANCHORS);
+    const add = d - brand.safeR < HAVEN_FADE * 2 ? brand.dread - 1 : 0;
+    assert.equal(tier, Math.min(DANGER_MAX, without + add), `rim law at +${d}`);
+  }
+});
+
+test('OVERBAND: dread below 3 never opens it, anywhere', () => {
+  const wood: DangerAnchor = { x: 600, y: 600, safeR: 80, dread: 2 };
+  const world = [...ANCHORS, wood];
+  for (let i = 0; i < 800; i++) {
+    const tx = 600 + ((i * 37) % 240) - 120;
+    const ty = 600 + ((i * 53) % 240) - 120;
+    assert.ok(dangerAt(SEED, tx, ty, world) <= DANGER_MAX, `dread-2 leaked past MAX at ${tx},${ty}`);
+  }
+});
+
+test('OVERBAND: a dread-3 heart in near country stays inside the old law', () => {
+  // Planted two bands south of the hearth (base 2-3 across the whole
+  // heart, clear of the second anchor): the march never saturates
+  // there, so even the full dread-3 heart answers the classic law.
+  const near = { x: 48, y: 48 + 96 + 90, safeR: 30, dread: 3 } as const;
+  const world: DangerAnchor[] = [...ANCHORS, { ...near }];
+  for (let i = 0; i < 400; i++) {
+    const ang = (i / 400) * Math.PI * 2;
+    const r = (i % 10) * 3.2; // 0..28.8, all inside safeR 30
+    const tx = Math.round(near.x + Math.cos(ang) * r);
+    const ty = Math.round(near.y + Math.sin(ang) * r);
+    const tier = dangerAt(SEED, tx, ty, world);
+    const without = dangerAt(SEED, tx, ty, ANCHORS);
+    assert.equal(
+      tier,
+      Math.max(1, Math.min(DANGER_MAX, without + near.dread)),
+      `near heart at ${tx},${ty}`,
+    );
+  }
 });

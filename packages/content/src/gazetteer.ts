@@ -69,8 +69,9 @@ export const GAZETTEER: Readonly<Record<string, GazetteerEntry>> = {
 
 /**
  * The threat ladder, one word per danger tier — the walk-out's names,
- * spoken by the herald beside the level band. Indexed by tier 0..5,
- * clamped by the caller through dangerLaw's own bounds.
+ * spoken by the herald beside the level band. One entry per
+ * DANGER_LAWS row, clamped by the caller through dangerLaw's own
+ * bounds.
  */
 export const THREAT_WORDS: readonly string[] = [
   'The settled land',
@@ -79,4 +80,5 @@ export const THREAT_WORDS: readonly string[] = [
   'The expedition line',
   'The deep frontier',
   'The far dark',
+  'The lampless dark',
 ];

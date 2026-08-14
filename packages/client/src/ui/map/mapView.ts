@@ -70,6 +70,8 @@ const TIER_WASH = [
   'rgba(230, 140, 60, 0.18)',
   'rgba(220, 80, 60, 0.20)',
   'rgba(170, 40, 90, 0.24)',
+  // The Overband — the lampless dark: past red, into ember-on-char.
+  'rgba(112, 22, 128, 0.28)',
 ];
 
 export type MapBand = 'surface' | 'dungeon';
@@ -301,7 +303,7 @@ export class MapView {
         const ty = by * BLOCK + iy * step + step / 2;
         if (ty >= UNDERGROUND_Y) continue;
         const tier = dangerAt(seed, tx, ty, this.game.dangerAnchors);
-        ctx.fillStyle = TIER_WASH[Math.max(0, Math.min(5, tier))]!;
+        ctx.fillStyle = TIER_WASH[Math.max(0, Math.min(TIER_WASH.length - 1, tier))]!;
         ctx.fillRect(ix, iy, 1, 1);
       }
     }

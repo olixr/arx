@@ -120,6 +120,13 @@ export const DANGER_LAWS: readonly DangerLaw[] = [
   { npcLevel: [22, 34], chest: 'gilded', rarityBonus: 4, poiChance: 0.45, wildDensity: 0.5, findChance: 0.22, holdChance: 0.14 },
   // 5 — the far dark: the overworld's dungeon-grade band.
   { npcLevel: [32, 48], chest: 'boss', rarityBonus: 6, poiChance: 0.5, wildDensity: 0.55, findChance: 0.22, holdChance: 0.18 },
+  // 6 — THE OVERBAND: the lampless dark. Distance never deals this
+  // row — only named country does: a dread-3 heart standing in ground
+  // the march already saturates (shared/world/danger.ts owns the law;
+  // the first such heart is the Brand, the Kingsdelf epic). Chest kind
+  // holds at 'boss' — the strongbox ladder's honest cap — and the
+  // rarity bonus carries the difference.
+  { npcLevel: [44, 60], chest: 'boss', rarityBonus: 8, poiChance: 0.5, wildDensity: 0.55, findChance: 0.2, holdChance: 0.18 },
 ];
 
 /** Danger tier at a world tile over the settled anchors. */

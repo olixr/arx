@@ -59,8 +59,32 @@ export interface DangerAnchor {
   dread?: number;
 }
 
-/** Highest danger tier. */
+/** Highest danger tier the band march itself can reach. */
 export const DANGER_MAX = 5;
+
+/**
+ * THE OVERBAND — the one tier past the march's ceiling, and the only
+ * tier distance can never deal. The band march is a model of REMOTENESS,
+ * and remoteness ran out of meaning at DANGER_MAX: past five bands out,
+ * farther is just farther. What lies past the far dark is not farther —
+ * it is named country so wrong the map keeps a separate word for it.
+ *
+ * The law: a tile reads DANGER_OVER only where BOTH hold —
+ *   1. the march itself (base + jitter − relief, before any dread)
+ *      already reads DANGER_MAX, and
+ *   2. the tile stands INSIDE the safe radius (the full heart, not the
+ *      graded rim) of an anchor with dread >= OVERBAND_DREAD.
+ * Everywhere else the classic clamped law answers, byte for byte. A
+ * dread-2 wood (the Blackpine) can never deal it; a dread-3 heart near
+ * a town can never deal it; the rim of a dread-3 heart never deals it.
+ * Only the deep frontier's own worst ground crosses the old ceiling —
+ * and the jitter still wanders tier-5 pockets through it, because band
+ * borders wander everywhere in this world.
+ */
+export const DANGER_OVER = DANGER_MAX + 1;
+
+/** Dread strength required (at full heart) before the Overband opens. */
+export const OVERBAND_DREAD = 3;
 
 /** Width in tiles of each danger band past the safe radius. */
 export const DANGER_BAND = 56;
@@ -89,6 +113,7 @@ export function dangerAt(
   let edge = Infinity;
   let relief = 0;
   let dread = 0;
+  let dreadCore = 0;
   for (const a of anchors) {
     const d = Math.hypot(tx - a.x, ty - a.y) - a.safeR;
     if (a.dread) {
@@ -96,6 +121,9 @@ export function dangerAt(
       // signed the other way. It never joins the march.
       const add = d <= 0 ? a.dread : d < HAVEN_FADE * 2 ? a.dread - 1 : 0;
       if (add > dread) dread = add;
+      // The Overband reads only full hearts, never rims (see the law
+      // at DANGER_OVER).
+      if (d <= 0 && a.dread > dreadCore) dreadCore = a.dread;
     } else if (a.haven) {
       if (d <= 0) return 0;
       const r = d < HAVEN_FADE ? 2 : d < HAVEN_FADE * 2 ? 1 : 0;
@@ -112,5 +140,11 @@ export function dangerAt(
   // Slow wobble bends band borders by at most one tier either way.
   const j = fbm(seed ^ JITTER_SALT, tx * 0.011, ty * 0.011, 2);
   const jitter = j > 0.62 ? 1 : j < 0.38 ? -1 : 0;
+  // THE OVERBAND (see DANGER_OVER): where the march alone already
+  // saturates AND the tile stands in a full dread-3 heart, the field
+  // crosses the old ceiling. Everywhere else, the classic clamped law
+  // answers exactly as it always has.
+  const marched = Math.max(1, Math.min(DANGER_MAX, base + jitter - relief));
+  if (dreadCore >= OVERBAND_DREAD && marched === DANGER_MAX) return DANGER_OVER;
   return Math.max(1, Math.min(DANGER_MAX, base + jitter - relief + dread));
 }
