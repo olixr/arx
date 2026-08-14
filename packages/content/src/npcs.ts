@@ -1,4 +1,5 @@
 import type { StatusApply, StatusId } from '@arx/shared';
+import { NPC_LANES, type NpcLanes } from './npcLanes.js';
 
 
 /**
@@ -97,6 +98,13 @@ export interface NpcDef {
   resist?: readonly StatusId[];
   /** Statuses that hit this NPC twice as hard. */
   weak?: readonly StatusId[];
+  /**
+   * THE MARKED WORLD: combat-lane temperament (npcLanes.ts registry,
+   * merged at the map build). Categorical — a lane is turned or
+   * bitten at one game-wide pair of multipliers, folded at the one
+   * damage seam and taught in play by the floating word.
+   */
+  lanes?: NpcLanes;
   /** Livestock: what interacting yields (milking), on a per-animal cooldown. */
   produce?: { item: string; cooldownSec: number; xp: number };
   /** Livestock: lays this item on the ground every minSec–maxSec while players are near. */
@@ -1327,10 +1335,17 @@ const defs: NpcDef[] = [
   },
 ];
 
-export const NPCS: ReadonlyMap<string, NpcDef> = new Map(defs.map((d) => [d.id, d]));
+// THE MARKED WORLD: combat-lane temperaments join their bodies here —
+// one registry page (npcLanes.ts), merged at the map build so the
+// def literals stay about the body and the lanes read as one roster.
+const laned = (d: NpcDef): NpcDef => (NPC_LANES[d.id] ? { ...d, lanes: NPC_LANES[d.id] } : d);
+
+export const NPCS: ReadonlyMap<string, NpcDef> = new Map(defs.map((d) => [d.id, laned(d)]));
 
 /** The authored bestiary exactly as shipped — the CMS revert target. */
-export const AUTHORED_NPCS: ReadonlyMap<string, NpcDef> = new Map(defs.map((d) => [d.id, d]));
+export const AUTHORED_NPCS: ReadonlyMap<string, NpcDef> = new Map(
+  defs.map((d) => [d.id, laned(d)]),
+);
 
 /**
  * THE CMS HOOK: repopulate the live bestiary in place. Every runtime

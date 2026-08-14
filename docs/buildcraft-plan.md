@@ -490,6 +490,53 @@ The user's exact sentence becomes authorable data:
 
 ### Phase 6 — THE MARKED WORLD (contextual meta + the ledger)
 
+**SHIPPED 2026-08-14. As-built — THE EPIC IS COMPLETE.**
+
+- `npcLanes.ts` = the temperament registry: `DamageLane`
+  (onehand/twohand/archery/arx), categorical game-wide multipliers
+  (`LANE_WEAK_MULT` 1.25 / `LANE_RESIST_MULT` 0.8 — a turned lane
+  still hurts, a bitten lane never doubles), `laneOf(style)` folding
+  dualwield and the knife arts into blade work. Merged onto `NpcDef`
+  at the NPCS map build (`lanes?` field, def literals stay about the
+  body).
+- Wave-one temperaments, bodies that argue for them and no further:
+  BONES (5 skeletons — arrows turned, crush bites), STONE (4 golems —
+  the edge turned, the working bites), FORMLESS (2 slimes — shafts
+  swallowed, the working bites), CARAPACE (beetle + mudcrab — edge
+  turned, crush bites). **The flesh stays fair** — wolves, brigands,
+  goblins keep no lanes (test-pinned).
+- The fold lives at THE ONE SEAM (damageNpc, after the state bucket),
+  and **the world teaches it**: 'Turned' / 'Bites deep' floats on the
+  lane hit, throttled per body (8s), so the lesson costs no codex
+  dive. DoT drips stay unlaned (the wound is already inside —
+  mitigation's own law).
+- **Element lanes = FUTURE DOOR** (the seam knows only the style;
+  threading the hit's school waits for a family that needs it).
+- **THE LEDGER** (`ledger.test.ts`, 5 cross-system laws): lane merge
+  liveness + no self-contradiction + fairness pins; multiplier
+  bounds; the vs-state ceiling across ALL THREE authoring systems
+  (words, tempers, enchants — wave one ≤30); every authored sunder
+  source under `SUNDER_MAX_PCT`.
+
+---
+
+## THE GOALS AUDIT (epic close, 2026-08-14)
+
+The brief, answered line by line: set bonuses exist (46 families,
+2pc/4pc, behavioral by law) — was ZERO; proc variety: 33 weapon
+tempers + 92 word lines join the 34 enchant workings, all under ONE
+ID ONE TIMER; "poisoned targets take 1.5x from these abilities" is
+now authorable data in three systems and live in six word clauses and
+two tempers; stacking buffs/debuffs: afflictions stack per source,
+buffs chip the HUD, states read on every nameplate; strategic depth:
+lane temperaments make best-gear a per-target question. Balance: zero
+tuning constants moved in six phases; solo damage identical except
+where a build ASSEMBLES a payoff. Deliberate opens, recorded where
+they lie: player-side affliction stacking (ledger question), buildup
+meters (pilot on sunder someday), chooseable craft 2pc, bespoke
+SIGNATURES faces for word/temper procs, element lanes, DoT-reading
+tempers, ranged-lane vs for NPC casts.
+
 - `NpcDef.resist`/`weak` (statuses only today) extend to typed DAMAGE
   lanes: per-family style/element weaknesses (`weakTo`/`resists` on
   damage), folded at the same seam, surfaced in bestiary/codex copy so

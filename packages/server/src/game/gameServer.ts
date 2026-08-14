@@ -327,6 +327,9 @@ import {
   mountDef,
   MOUNTS,
   isDaggerStats,
+  laneOf,
+  LANE_RESIST_MULT,
+  LANE_WEAK_MULT,
   movesetFor,
   strikePose,
   STRONGHOLD_DEFS,
@@ -824,6 +827,8 @@ interface NpcComp {
   def: NpcDef;
   originX: number;
   originY: number;
+  /** THE MARKED WORLD: last tick a lane word floated (teach throttle). */
+  laneFxTick?: number;
   /**
    * THE QUEST PARTICIPATION LEDGER: every player eid whose landed
    * wound touched this body (whiff-0 sacred — a miss writes nothing).
@@ -19173,6 +19178,35 @@ export class GameServer {
           const kept = riders.filter((s) => s.id !== opts.vs!.status);
           if (kept.length > 0) this.statuses.set(npcEid, kept);
           else this.statuses.delete(npcEid);
+        }
+      }
+    }
+
+    // THE MARKED WORLD: the body's own temperament about the lane the
+    // blow rode in on — categorical, game-wide multipliers, and the
+    // world TEACHES it: the turned or bitten word floats, throttled
+    // per body, so the lesson costs no codex dive. DoT drips never
+    // pass here (dotNpc) — the wound is already inside, mitigation's
+    // own law.
+    if (dmg > 0 && npc.def.lanes) {
+      const lane = laneOf(style);
+      const turned = lane !== null && (npc.def.lanes.resist?.includes(lane) ?? false);
+      const bitten = !turned && lane !== null && (npc.def.lanes.weak?.includes(lane) ?? false);
+      if (turned) dmg = Math.max(1, Math.round(dmg * LANE_RESIST_MULT));
+      else if (bitten) dmg = Math.round(dmg * LANE_WEAK_MULT);
+      if ((turned || bitten) && this.tickCount - (npc.laneFxTick ?? -1000) >= 160) {
+        npc.laneFxTick = this.tickCount;
+        const pos = this.positions.get(npcEid);
+        if (pos) {
+          this.broadcastFx({
+            t: 'fx',
+            kind: 'reaction',
+            x: pos.x,
+            y: pos.y,
+            radius: 0,
+            color: turned ? '#9a94a8' : '#e8b64c',
+            text: turned ? 'Turned' : 'Bites deep',
+          });
         }
       }
     }
