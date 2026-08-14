@@ -1162,6 +1162,30 @@ export const SKELETON_LOOKS: Record<string, SkeletonLook> = {
     heavy: 1.3,
     cracked: true,
   },
+  // THE ASHEN COURT (the Kingsdelf epic) — the Old Crown's dead, laid
+  // properly in the processional vaults and woken slowly by the burn.
+  // The kingsman: ash-stained soldier bone, drilled taller than barrow
+  // dead, the vaults' grey cold standing in the sockets. UNCRACKED —
+  // these were not robbed graves; they were honors.
+  skeleton_kingsman: {
+    bone: '#cfc6b4',
+    cavity: '#2b2130',
+    glow: '#9fb4c8',
+    heavy: 1.12,
+    cracked: false,
+  },
+  // The crownsguard: parade-perfect after a hundred and fifty years —
+  // unbroken discipline reads eerier than any battle scar. The circlet
+  // is the OLD realm's silver, tarnished, with the Brand's ember where
+  // a royal stone sat: the crown the Silver Line never talks about.
+  skeleton_crownsguard: {
+    bone: '#c2b49a',
+    cavity: '#2e2030',
+    glow: '#cfd2e8',
+    crown: { band: '#9aa4b2', gem: '#d86a35' },
+    heavy: 1.34,
+    cracked: false,
+  },
 };
 
 /** Variant lookup with the rank-and-file as the unknown-id fallback. */

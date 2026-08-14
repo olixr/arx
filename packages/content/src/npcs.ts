@@ -884,6 +884,68 @@ const defs: NpcDef[] = [
       { ability: 'raise_the_fallen', cooldownTicks: 500, windupTicks: 24, aim: 'self', minLevel: 30 },
     ],
   },
+  // ------------------------------------------------------------------
+  // THE ASHEN COURT (the Kingsdelf epic) — the Old Crown's dead. They
+  // were not buried in barrows: the old realm laid its honored dead in
+  // the capital's processional vaults, and the Brand's long burn has
+  // been waking them for a century. By night they walk the Processional
+  // toward a capital that is not there anymore. The kingsman carries a
+  // MITHRIL blade because Kingsdelf mined the mithril — the look is the
+  // loot story, and the loot story is the town's history walking.
+  // ------------------------------------------------------------------
+  {
+    id: 'skeleton_kingsman',
+    name: 'Old Crown kingsman',
+    level: 48,
+    maxHp: 210,
+    damage: 13,
+    attackRange: 1.1,
+    attackCooldownTicks: 36,
+    aggroRange: 7,
+    sightArc: 140,
+    leashRange: 32,
+    speed: 3.7,
+    xpReward: 950,
+    loot: ['skeleton', 'crypt_wardrobe', 'crypt_arms'],
+    respawnSec: 90,
+    // Ash-stained bone: a century and a half under the burn's wind.
+    color: '#cfc6b4',
+    radius: 0.34,
+    hitHeight: 2.3,
+    resist: ['bleed'],
+    weak: ['burn'],
+    // One art, kept from life: the cold of the vaults, laid on close.
+    kit: [{ ability: 'marrow_chill', cooldownTicks: 260, windupTicks: 12, maxRange: 2.6 }],
+  },
+  {
+    id: 'skeleton_crownsguard',
+    name: 'Old Crown crownsguard',
+    level: 55,
+    maxHp: 330,
+    damage: 17,
+    attackRange: 1.2,
+    attackCooldownTicks: 40,
+    aggroRange: 7,
+    sightArc: 150,
+    leashRange: 34,
+    speed: 3.6,
+    xpReward: 1550,
+    loot: ['skeleton_champion', 'champion_capes', 'champion_wardrobe', 'champion_armory', 'heirlooms'],
+    respawnSec: 150,
+    color: '#b8ac96',
+    radius: 0.42,
+    hitHeight: 2.7,
+    resist: ['bleed'],
+    weak: ['burn'],
+    // The champion's dance at the crown's own tempo: the slam you
+    // dodge, the vault-cold you walk out of, the volley that punishes
+    // walking away.
+    kit: [
+      { ability: 'ground_slam', cooldownTicks: 170, maxRange: 4.5, weight: 2 },
+      { ability: 'marrow_chill', cooldownTicks: 230, windupTicks: 10, maxRange: 2.8 },
+      { ability: 'bone_volley', cooldownTicks: 250, windupTicks: 14, minRange: 2.5, maxRange: 9 },
+    ],
+  },
   {
     id: 'troll',
     name: 'Hill troll',

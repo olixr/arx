@@ -34,7 +34,10 @@ import greatkeepRuin from './defs/greatkeep_ruin.json';
 import goblinSprawl from './defs/goblin_sprawl.json';
 import wolfkinKillfield from './defs/wolfkin_killfield.json';
 import brigandWaystead from './defs/brigand_waystead.json';
-
+import hewerGarrison from './defs/hewer_garrison.json';
+import ashProcession from './defs/ash_procession.json';
+import starfallCrater from './defs/starfall_crater.json';
+import oldcrownGatehouse from './defs/oldcrown_gatehouse.json';
 import goblinWarren from './defs/goblin_warren.json';
 import goblinMootfield from './defs/goblin_mootfield.json';
 import goblinGrubfarm from './defs/goblin_grubfarm.json';
@@ -86,6 +89,13 @@ const SOURCES: readonly unknown[] = [
   goblinSprawl,
   wolfkinKillfield,
   brigandWaystead,
+  // THE MARCH (the Kingsdelf epic): the Overband's own grounds — the
+  // waking quarry declares family 'golem' (the earth epic's deferred
+  // territory), and the Ashen Court walks the old roads by night.
+  hewerGarrison,
+  ashProcession,
+  starfallCrater,
+  oldcrownGatehouse,
   // THE PEOPLED LANDMARKS: the goblin and dead landmark libraries —
   // module-built grounds with posts and walked rounds.
   goblinWarren,

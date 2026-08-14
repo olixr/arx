@@ -666,9 +666,10 @@ const AUTHORED_PLAN: GeographyDef = {
         { x: -336, y: 46 },
         { x: -360, y: 48 },
         { x: -388, y: 60 },
-        { x: -408, y: 76 },
-        { x: -424, y: 92 },
-        { x: -436, y: 110 },
+        { x: -398, y: 78 },
+        { x: -400, y: 98 },
+        { x: -418, y: 104 },
+        { x: -436, y: 112 },
       ],
     },
     {
@@ -771,6 +772,38 @@ const AUTHORED_PLAN: GeographyDef = {
     { id: 'hoargate', defId: 'hoargate_watch', x: -334, y: -262 },
     // The shelf walk under Silverfall's crags gets one roof.
     { id: 'spineshelf_rest', defId: 'waystation', x: -232, y: -236 },
+    // THE OLD ROAD'S ONE ROOF (the Kingsdelf epic) — the Third Stone,
+    // at the old realm's third milestone (they counted DOWN to the
+    // capital). The fire is kept by returners, not Waykeepers: the
+    // road is unlit BY THE ORDER'S OWN CHOICE, and this one hearth at
+    // the halfway mark is the town's standing argument with them,
+    // built in stone and firewood.
+    { id: 'third_stone', defId: 'waystation', x: -120, y: 140 },
+    // THE RETURNERS' CROFTS — the last friendly smoke before the gate
+    // country: ash-sifters and wall-eyed optimists farming the hem of
+    // a land that wants them gone. Pinned on the dry meadow BESIDE
+    // the road's lake-corridor league (the first draft sat on the
+    // drowned finger's east shore and composed only on a lucky roll —
+    // the compose test caught it; author against the ground that
+    // exists).
+    { id: 'returners_camp', defId: 'roadside_hamlet', x: -158, y: 226 },
+    // THE OLDCROWN DOOR — the buried capital's east gatehouse. The
+    // Processional's last league passes ABOVE the garrison's ground
+    // and turns in for the rect: the old way walks past the watch,
+    // then through the door. Pinned east of the reserve with room for
+    // the prefab's INFLUENCE apron (the siting footprint is ~2.5x the
+    // sketch — the first draft pinned 13 tiles off the rect and the
+    // nudge could never escape the pad; the compose test taught it).
+    // Weight-0: this door exists exactly once, and the delve epic
+    // knows the address.
+    { id: 'oldcrown_door', defId: 'oldcrown_gatehouse', x: -390, y: 118 },
+    // (No forced crater: the first draft cell-forced a starfall
+    // crater into the burn corridor, but the influence apron makes
+    // the footprint ~2.5x the sketch and the Brand's crowded cells
+    // have no honest ground at that size — the compose test refused
+    // it, correctly. The archetype rolls naturally across all tier
+    // 5-6 country instead, and the burn's own obsidian knolls carry
+    // the guaranteed-ore story.)
   ],
   anchors: SETTLED_ANCHORS.map((a) => ({ ...a })),
   massifs: [

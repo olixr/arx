@@ -299,7 +299,11 @@ test('the flood law: every foe’s per-kill expectation stays under its station�
   // the Champion alone showers. A retune (code or CMS) that breaks a
   // ceiling is a flood, not a balance pass.
   const NAMED = new Set(['kobold_digmaster', 'brigand_reaver', 'dire_wolf', 'gnoll_champion', 'lynx_champion', 'elder_great_owl']);
-  const BOSS = new Set(['skeleton_champion']);
+  // The crownsguard is the Ashen Court's champion body (the Kingsdelf
+  // epic): a minTier-6 singleton that walks only after dusk, carrying
+  // the champion's whole purse at the Overband's level. Boss station
+  // by design — the shower is the point of surviving the procession.
+  const BOSS = new Set(['skeleton_champion', 'skeleton_crownsguard']);
   for (const [id, npc] of NPCS) {
     let stacks = 0;
     let gear = 0;

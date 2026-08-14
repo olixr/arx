@@ -32130,6 +32130,11 @@ export class Renderer {
     skeleton_archer: { weapon: 'marrowpoint', offhand: 'hunters_quiver' },
     skeleton_guard: { weapon: 'iron_sword', offhand: 'oak_kiteshield', head: 'iron_helm' },
     skeleton_champion: { weapon: 'iron_sword', cape: 'cape_champion' },
+    // The Ashen Court: the Old Crown's dead carry the delf's own
+    // mithril — the blade IS the town's history, and both blades sit
+    // inside the heirloom pool at their bearers' level.
+    skeleton_kingsman: { weapon: 'mithril_sword', offhand: 'oak_kiteshield', head: 'iron_helm' },
+    skeleton_crownsguard: { weapon: 'mithril_greatblade', cape: 'cape_champion' },
   };
 
   private static readonly GOBLIN_EQUIP: Record<string, Partial<Record<string, string>>> = {
@@ -32220,6 +32225,10 @@ export class Renderer {
     // The chanter: the robed dead — rank-and-file bones drawn a
     // little too tall and a little too still.
     skeleton_chanter: 1.08,
+    // The Ashen Court: soldiers of the old realm, drilled taller than
+    // barrow bones; the crownsguard carries the champion's presence.
+    skeleton_kingsman: 1.1,
+    skeleton_crownsguard: 1.3,
   };
 
   /**

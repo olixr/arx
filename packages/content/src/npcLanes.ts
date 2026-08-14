@@ -77,6 +77,8 @@ export const NPC_LANES: Record<string, NpcLanes> = {
   skeleton_archer: BONES,
   skeleton_chanter: BONES,
   skeleton_champion: BONES,
+  skeleton_kingsman: BONES,
+  skeleton_crownsguard: BONES,
   // Stone turns the edge; the working unbinds the binding.
   rock_golem: STONE,
   iron_golem: STONE,

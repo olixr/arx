@@ -1,0 +1,54 @@
+{
+  "id": "ash_procession",
+  "name": "Processional of the Old Crown",
+  "description": "A reach of the old realm's paved way, lych pillars in facing pairs and the centerline swept bare through a century of ash. By daylight it is a ruin with good pickings and a bad feeling. After dusk the Ashen Court walks it home to a capital that is not there anymore — soldiers of the Old Crown in the delf's own mithril, keeping an order of march nobody living has ever seen the end of. They do not argue about right of way.",
+  "tiers": [5, 6],
+  "weight": 2.5,
+  "prefabs": ["poi_procession_way", "poi_procession_rest"],
+  "garrison": [
+    {
+      "npc": "skeleton_kingsman",
+      "count": [2, 3],
+      "role": "holdfast",
+      "hours": { "from": 20.5, "to": 5.5 }
+    },
+    {
+      "npc": "skeleton_archer",
+      "count": [1, 1],
+      "role": "sentry",
+      "hours": { "from": 20.5, "to": 5.5 }
+    },
+    {
+      "npc": "skeleton_crownsguard",
+      "count": [1, 1],
+      "role": "holdfast",
+      "minTier": 6,
+      "hours": { "from": 20.5, "to": 5.5 },
+      "names": [
+        "The Bier-Bearer",
+        "The Second Crown",
+        "Keeper of the March",
+        "The Last Herald",
+        "She Who Walks Foremost"
+      ]
+    }
+  ],
+  "chestTierBonus": 1,
+  "cues": {
+    "clearing": 2,
+    "scatter": [
+      { "tile": "BonePile", "count": 2 },
+      { "tile": "PillarStone", "count": 2 }
+    ]
+  },
+  "signs": [
+    {
+      "title": "THE WAYSTONE",
+      "lines": [
+        "the distance is scored in a dead measure",
+        "the arrow points at nothing standing"
+      ]
+    }
+  ],
+  "family": "dead"
+}

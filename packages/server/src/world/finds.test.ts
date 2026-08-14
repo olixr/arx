@@ -82,7 +82,7 @@ test('composeFinds: one zone, transparent between, spawns slot-tagged, caches hu
   let composedCells = 0;
   let sawSpawn = false;
   let sawChest = false;
-  for (const { cx, cy, site } of scanCells(80)) {
+  for (const { cx, cy, site } of scanCells(140)) {
     const finds = findsForCell(SEED, cx, cy, 0, CTX, site);
     if (finds.length === 0) continue;
     const composed = composeFinds(SEED, cx, cy, 0, finds, CTX);

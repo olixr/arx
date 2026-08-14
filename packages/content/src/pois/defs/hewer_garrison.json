@@ -1,0 +1,83 @@
+{
+  "id": "hewer_garrison",
+  "name": "Working of the Old Crown",
+  "description": "A quarry bench of the realm before the roads, still being worked. The Hewers never received the order to stop: the benches are swept, the half-cut blocks stand square in their cradles, and the crane footings are kept clear for a crane that rotted before your grandmother's grandmother. There is no fire anywhere on the ground, because stone does not need to see. Interrupt the shift at your own cost.",
+  "tiers": [
+    5,
+    6
+  ],
+  "weight": 1.5,
+  "prefabs": [
+    "poi_hewer_quarry",
+    "poi_hewer_cut"
+  ],
+  "garrison": [
+    {
+      "npc": "rock_golem",
+      "count": [
+        1,
+        2
+      ],
+      "role": "holdfast"
+    },
+    {
+      "npc": "iron_golem",
+      "count": [
+        1,
+        1
+      ],
+      "role": "sentry"
+    },
+    {
+      "npc": "fire_golem",
+      "count": [
+        1,
+        1
+      ],
+      "role": "holdfast",
+      "minTier": 6
+    },
+    {
+      "npc": "iron_golem",
+      "count": [
+        1,
+        1
+      ],
+      "role": "holdfast",
+      "minTier": 6,
+      "levelOffset": 2,
+      "names": [
+        "The Last Order",
+        "Old Nine-Ropes",
+        "The Foreman's Shadow",
+        "Third-Shift",
+        "The Undelivered"
+      ]
+    }
+  ],
+  "chestTierBonus": 1,
+  "cues": {
+    "clearing": 3,
+    "approachPath": true,
+    "scatter": [
+      {
+        "tile": "Rock",
+        "count": 3
+      },
+      {
+        "tile": "Stump",
+        "count": 2
+      }
+    ]
+  },
+  "signs": [
+    {
+      "title": "THE ROLLS",
+      "lines": [
+        "a tally scored into the bench face",
+        "the count is current to this morning"
+      ]
+    }
+  ],
+  "family": "golem"
+}

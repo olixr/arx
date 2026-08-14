@@ -1,0 +1,49 @@
+{
+  "id": "oldcrown_gatehouse",
+  "name": "Gatehouse of the Oldcrown",
+  "description": "The buried capital's east gatehouse, kept half dug out of the ash by nobody anyone has seen digging. The Hewers hold it because a gate is on the maintenance rolls, and the rolls have no end date. Behind the garrison the arch is sealed with masonry finer than anything living hands cut — the Guild says their sealing craft came FROM this door, and the Guild does not say it loudly. The garrison does not discuss what it is a gate to.",
+  "tiers": [5, 6],
+  "weight": 0,
+  "prefabs": ["poi_oldcrown_gate"],
+  "garrison": [
+    {
+      "npc": "iron_golem",
+      "count": [2, 2],
+      "role": "holdfast"
+    },
+    {
+      "npc": "rock_golem",
+      "count": [1, 1],
+      "role": "sentry"
+    },
+    {
+      "npc": "iron_golem",
+      "count": [1, 1],
+      "role": "holdfast",
+      "levelOffset": 2,
+      "names": [
+        "The Gate Stands",
+        "Warden of the Rolls",
+        "The Crown's Last Porter"
+      ]
+    }
+  ],
+  "chestTierBonus": 1,
+  "cues": {
+    "clearing": 2,
+    "scatter": [
+      { "tile": "Rock", "count": 2 },
+      { "tile": "BonePile", "count": 1 }
+    ]
+  },
+  "signs": [
+    {
+      "title": "THE OLD GATE",
+      "lines": [
+        "the arch is sealed from the inside",
+        "the garrison is not"
+      ]
+    }
+  ],
+  "family": "golem"
+}

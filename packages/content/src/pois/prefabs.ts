@@ -137,6 +137,13 @@ const LEGEND: Record<string, number> = {
   '(': Tile.TargetDummy,
   '"': Tile.WarDrum,
   '`': Tile.HideFrame,
+  // THE KINGSDELF EXTENSION: the burn's ore. The apostrophe is the
+  // last free ASCII mark (obsidian's glint); starfall rides the 9 —
+  // digits fall through to the legend when a sketch's marker table
+  // does not claim them (sketch() checks markers first), and no
+  // sketch will ever muster nine kinds of body.
+  "'": Tile.RockObsidian,
+  '9': Tile.RockStarfall,
 };
 
 export interface Marker {
@@ -1257,6 +1264,155 @@ const wardlineCut = sketch(
 );
 
 /**
+ * THE WAKING QUARRY (the Kingsdelf epic — the golem POI the earth
+ * epic deferred). A bench cutting of the Old Crown's stoneworks,
+ * still being worked: the Hewers never received the order to stop.
+ * Half-cut blocks stand in their cradles, the crane footings hold a
+ * crane long rotted, and the benches are SWEPT — a hundred and fifty
+ * years of tending with nobody to deliver to. No fire anywhere: a
+ * construct needs no light, and the dark working is the whole read.
+ */
+const hewerQuarry = sketch(
+  'poi_hewer_quarry',
+  'The waking quarry',
+  [
+    '___,,rrrrrrrrr,,___',
+    '__,rrrSSSSSSSrrr,__',
+    '_,rrSSrr...rrSSrr,_',
+    '_,rSSr..SSS..rSSr,_',
+    ',rSS..SSrrrSS..SSr,',
+    ',rS..Sr..P..rS..Sr,',
+    ',rS.Sr..SSS..rS.Sr,',
+    ',rS.S..SrXrS..S.Sr,',
+    ',rS.Sr..SSS..rS.Sr,',
+    ',rS..Sr..P..rS..Sr,',
+    ',rSS..SSrrrSS..SSr,',
+    '_,rSSr..:::..rSSr,_',
+    '_,rrSSrr:::rrSSrr,_',
+    '__,rrrSS:::SSrrr,__',
+    '___,,rrr:::rrr,,___',
+  ],
+);
+
+/**
+ * THE HEWERS' CUT — the linear make: a road-cutting toward a capital
+ * that no longer orders stone, faced on both hands, with the last
+ * blocks of the last commission standing where the wains never came.
+ */
+const hewerCut = sketch(
+  'poi_hewer_cut',
+  "The Hewers' cut",
+  [
+    '_,,rrrrrrrrrrrrr,,_',
+    ',rrSSSSSSSSSSSSSrr,',
+    ',rS..rr..P..rr..Sr,',
+    ',rS.SSSS...SSSS.Sr,',
+    ',rS..rr..X..rr..Sr,',
+    ',rSSSSSSSSSSSSSSSr,',
+    '_,,rrrrrr:::rrrr,,_',
+    '____,,,,,:::,,,,,__',
+  ],
+);
+
+/**
+ * THE PROCESSIONAL WAY (the Ashen Court) — a surviving reach of the
+ * old realm's paved approach: lych pillars in facing pairs, the
+ * paving broken but SWEPT down the centerline, and the arch of a
+ * fallen waygate lying where it dropped. By day it is a ruin worth
+ * robbing. After dusk the court walks it home, and the dead do not
+ * argue about right of way.
+ */
+const processionWay = sketch(
+  'poi_procession_way',
+  'The Processional way',
+  [
+    '_,,....o.....,,,___',
+    ',,.P..SSS..P..,,,__',
+    ',..:.SSSSS.:...,,__',
+    ',.P..SSSSS..P..,,__',
+    ',....SSSSS....o,,__',
+    ',.o..SSSSS.....,,__',
+    ',.P..SSSSS..P..,,__',
+    ',....SSQSS.....,,__',
+    ',.P..SSSSS..P.X,,__',
+    ',,...SSSSS....,,,__',
+    '_,,...SSS...,,,,___',
+    '__,,...o...,,,_____',
+  ],
+);
+
+/**
+ * THE WAYHOUSE OF THE OLD ROAD — where the processions rested a bier
+ * overnight, a hundred and fifty years before anyone called the road
+ * old. The roof went first; the bier table still stands level, and
+ * things are laid on it, sometimes, that nobody living laid there.
+ */
+const processionRest = sketch(
+  'poi_procession_rest',
+  'The fallen wayhouse',
+  [
+    '_,,....o....,,_',
+    ',..##z###.#..,_',
+    ',..#SSSSS....,_',
+    ',..zSSkSS#.o.,_',
+    ',..#SSSSSz...,_',
+    ',..#S...S#.P.,_',
+    ',..##.###X...,_',
+    '_,....o......,_',
+  ],
+);
+
+/**
+ * THE STARFALL CRATER (the Kingsdelf epic) — where a piece of the
+ * star that woke the Brand broke up on the skirt. The ring of thrown
+ * rock has had a century and a half to gather moss; the heart has
+ * not. Starfall in the open, obsidian where the heat glassed the
+ * floor — the richest open ground in the Dawnlands, at Overband
+ * prices, and the fire's own bodies stand the claim.
+ */
+const starfallCrater = sketch(
+  'poi_starfall_crater',
+  'The starfall crater',
+  [
+    '__,,,rr:rr,,,__',
+    '_,,rr:::::rr,,_',
+    ',,rr::,:,::rr,,',
+    ",,r::'::::'r,,_",
+    ',r::,::9::::r,_',
+    ',r:::,:::,::r,_',
+    ",,r:'::::X:r,,_",
+    '_,,rr:,::rr,,,_',
+    '__,,,rr:rr,,,__',
+  ],
+);
+
+/**
+ * THE OLDCROWN GATE (weight 0 — the authored door). The buried
+ * capital's east gatehouse, dug half out of the ash by nobody: the
+ * Hewers keep it clear because a gate is on the maintenance rolls.
+ * The arch behind them is SEALED — the door a delve epic will knock
+ * on — and the garrison does not discuss it.
+ */
+const oldcrownGate = sketch(
+  'poi_oldcrown_gate',
+  'The Oldcrown gate',
+  [
+    '_,,VVVVVVVVVVVVV,,_',
+    ',,VVVVVVQQQVVVVVV,,',
+    ',,VV#SSSSSSSSS#VV,,',
+    ',..#SS..P.P..SS#.,,',
+    ',..zS...SSS...Sz.,,',
+    ',..#S..SSSSS..S#.,,',
+    ',..#SS.SSSSS.SS#.,,',
+    ',..##S..SXS..S##.,,',
+    ',...#SS.....SS#..,,',
+    ',....#SS:::SS#...,,',
+    '_,....o.:::.o....,_',
+    '__,,....:::....,,__',
+  ],
+);
+
+/**
  * THE FELL BARROW (the Hartfell epic) — a robbed mound of the old
  * north. The kerb ring stands as it was set before any road was laid;
  * the door does not: pillars levered aside, a trench cut straight
@@ -1559,6 +1715,13 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     fellBarrow,
     barrowRing,
     barrowDiggers,
+    // Kingsdelf (the Ashmarch — the Overband's own grounds):
+    hewerQuarry,
+    hewerCut,
+    processionWay,
+    processionRest,
+    starfallCrater,
+    oldcrownGate,
     // The War-Ground (the lived-in land, phase 4):
     warholdCourt,
     stockadeCourt,
