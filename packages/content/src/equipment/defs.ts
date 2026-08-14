@@ -962,9 +962,11 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   // -------- Hedgemage: moss and mustard patchwork, the herb-garden
   // craft line. A pointed hat colorway proves hats obey the law too.
   ...hedgemageSet(),
-  // -------- Tidecaller: deep teal and sea-foam, drop-only from the
-  // goblin raiders who loot the coast. The tide keeps its own ledger.
-  ...tidecallerSet(),
+  // -------- Tidecaller: THE TIDE COURT — four waters on one robe:
+  // the breaker, the abyss, the lagoon, the maelstrom. Drop-only
+  // from the raiders who loot the coast; the tide keeps its own
+  // ledger, and the moon on the chest keeps it honest.
+  ...tidecallerCourt(),
   // -------- Voidwhisper: ink-violet and pale lavender, drop-only from
   // the crypt. A masked cowl and an unblinking eye device.
   ...voidwhisperSet(),
@@ -1570,6 +1572,21 @@ function hedgemageSet(): EquipmentDef[] {
   ];
 }
 
+function tidecallerCourt(): EquipmentDef[] {
+  const base = tidecallerSet();
+  return [
+    ...base,
+    ...colorways(base, [
+      { key: 'abyss', dye: 'Abyss', color: '#2a3352',
+        desc: 'Cut from water no sun has reached. The light it carries is its own.' },
+      { key: 'lagoon', dye: 'Lagoon', color: '#3f9a8c',
+        desc: 'Shallow-water bright, coral at the shoulder. Even its shadows are warm.' },
+      { key: 'maelstrom', dye: 'Maelstrom', color: '#4a6360',
+        desc: 'The whirlpool, measured and hemmed. It has not stopped turning.' },
+    ]),
+  ];
+}
+
 function tidecallerSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
     { stat: 'arx', w: 2 },
@@ -1588,9 +1605,9 @@ function tidecallerSet(): EquipmentDef[] {
   });
   return [
     piece('tidecaller_hood', 'Tidecaller hood', 'head', 22, 2, 430, 'Th',
-      'A pearl at the brow. The sea pays attention to who wears it.'),
+      'The wave that chose a wearer. It has been about to break for a hundred years.'),
     piece('tidecaller_robe', 'Tidecaller robe', 'body', 24, 4, 600, 'Tr',
-      'Foam-hemmed teal that always feels a little damp, never cold.'),
+      'It wears its moon in the pearl strand\'s keeping and its surf low on the hem.'),
     piece('tidecaller_skirts', 'Tidecaller skirts', 'legs', 22, 3, 510, 'Tk',
       'They move like slack water and hit like a spring tide.'),
     piece('tidecaller_slippers', 'Tidecaller slippers', 'boots', 22, 2, 450, 'Tp',

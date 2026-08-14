@@ -376,9 +376,14 @@ test('themed leather sets: five pieces each, coherent class and reqs', () => {
 
 test('themed cloth sets: five pieces each, coherent class and reqs', () => {
   const sets = ['hedgemage', 'tidecaller', 'voidwhisper', 'cindersworn', 'starweaver'];
+  // THE TIDE COURT: tidecaller ships in four waters — the base set
+  // plus three dye lots. Lots are identity, never power, so the
+  // five-piece law below reads base pieces only.
+  const TIDE_DYES = ['abyss', 'lagoon', 'maelstrom'];
+  const isLot = (id: string): boolean => TIDE_DYES.some((dye) => id.endsWith(`_${dye}`));
   const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
   for (const set of sets) {
-    const pieces = EQUIPMENT_DEFS.filter((d) => d.id.startsWith(`${set}_`));
+    const pieces = EQUIPMENT_DEFS.filter((d) => d.id.startsWith(`${set}_`) && !isLot(d.id));
     assert.equal(pieces.length, 5, `${set} should have 5 pieces`);
     const slots = new Set(pieces.map((p) => p.slot));
     assert.deepEqual([...slots].sort(), ['body', 'boots', 'gloves', 'head', 'legs'], `${set} covers the armor slots`);
@@ -389,6 +394,19 @@ test('themed cloth sets: five pieces each, coherent class and reqs', () => {
     }
     const stories = new Set(pieces.map((p) => (p.acquisition.craft ? 'craft' : 'drop')));
     assert.equal(stories.size, 1, `${set} has one acquisition story`);
+  }
+  // The tide court's waters each mirror their base piece exactly —
+  // same armor, same gate, still a chase drop.
+  const tideBase = EQUIPMENT_DEFS.filter((d) => d.id.startsWith('tidecaller_') && !isLot(d.id));
+  for (const dye of TIDE_DYES) {
+    for (const b of tideBase) {
+      const v = byId.get(`${b.id}_${dye}`);
+      assert.ok(v, `${b.id}_${dye} exists`);
+      assert.equal(v!.armor, b.armor, `${v!.id} keeps armor`);
+      assert.deepEqual(v!.levelReq, b.levelReq, `${v!.id} keeps the gate`);
+      assert.ok(v!.acquisition.drop, `${v!.id} stays a chase drop`);
+      assert.equal(v!.recipe, undefined, `${v!.id} drop lot sheds the recipe`);
+    }
   }
   assert.ok(byId.get('scholars_tome'));
 });

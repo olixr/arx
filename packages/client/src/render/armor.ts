@@ -166,6 +166,106 @@ function stormVeil(
   ctx.restore();
 }
 
+/**
+ * THE TIDE clock — the tide court's one water, shared by the crest,
+ * the shoulders, the surf tiers and the moon. A 6.8s cycle: the
+ * swell BUILDS long and patient, stands for a breath, BREAKS fast,
+ * then a backwash lap and slack. Unlike the fen's traded watches
+ * and the storm's one shared sky, the tide is a PROCESSION: callers
+ * pass `off` by their place DOWN the garment (moon 0 → crest 0.06 →
+ * shoulders 0.14 → waist 0.22 → hem 0.3) so one swell visibly
+ * travels the wearer crown to hem (THE TRAVELING SWELL law).
+ */
+function tideK(nowMs: number, off = 0): number {
+  const u = ((nowMs / 6800 - off) % 1 + 1) % 1;
+  const sm = (kk: number): number => {
+    const c = Math.min(1, Math.max(0, kk));
+    return c * c * (3 - 2 * c);
+  };
+  if (u < 0.62) return 0.15 + 0.85 * sm(u / 0.62);
+  const v = (u - 0.62) / 0.38;
+  if (v < 0.2) return 1 - 0.85 * sm(v / 0.2);
+  if (v < 0.48) return 0.15 + 0.16 * Math.sin(((v - 0.2) / 0.28) * Math.PI);
+  return 0.15;
+}
+
+/**
+ * THE BREAK — how hard the wave is breaking right now, 0..1: full
+ * at the moment the swell falls, decaying through the backwash.
+ * Drives spray, foam surge and flow surges; same `off` convention
+ * as tideK so the break travels the garment too.
+ */
+function tideBreakK(nowMs: number, off = 0): number {
+  const u = ((nowMs / 6800 - off) % 1 + 1) % 1;
+  if (u < 0.62 || u > 0.9) return 0;
+  return 1 - (u - 0.62) / 0.28;
+}
+
+/**
+ * THE DRAWN CURRENT — water as strokes with intent (the LIGHTNING
+ * IS DRAWN law's sibling: water is DRAWN, never glowed). A smooth
+ * sinuous rope between two points — deep casing under a pale core —
+ * whose ripple TRAVELS along the rope, with foam beads riding the
+ * flow. Strokes and small opaque bead fills only, gremlin #2's safe
+ * lanes. `flow` scales the running speed (surge it at the break).
+ */
+function tideStream(
+  ctx: CanvasRenderingContext2D,
+  x0: number, y0: number, x1: number, y1: number,
+  nowMs: number, phase: number, amp: number,
+  col: string, foam: string, alpha: number, lw: number,
+  flow = 1,
+): void {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const len = Math.hypot(dx, dy);
+  if (len < 0.0001) return;
+  const nx = -dy / len;
+  const ny = dx / len;
+  const segs = 11;
+  const run = nowMs * 0.0042 * flow;
+  const pts: Array<[number, number]> = [];
+  for (let i = 0; i <= segs; i++) {
+    const v = i / segs;
+    const off = Math.sin(v * Math.PI * 2.3 - run + phase) * amp * Math.sin(v * Math.PI);
+    pts.push([x0 + dx * v + nx * off, y0 + dy * v + ny * off]);
+  }
+  const trace = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(pts[0]![0], pts[0]![1]);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i]![0], pts[i]![1]);
+    ctx.stroke();
+  };
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  // The casing: the deep water, wide and soft.
+  ctx.globalAlpha = alpha * 0.55;
+  ctx.strokeStyle = col;
+  ctx.lineWidth = lw * 2.2;
+  trace();
+  // The core: the light the water carries.
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = '#dff4ef';
+  ctx.lineWidth = lw;
+  trace();
+  // Foam riding the flow: two beads travelling the rope, swelling
+  // mid-run — the current made visible even in a still frame.
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = foam;
+  for (let j = 0; j < 2; j++) {
+    const ub = ((nowMs * 0.00019 * flow + phase * 0.37 + j * 0.5) % 1 + 1) % 1;
+    const i0 = Math.min(segs - 1, Math.floor(ub * segs));
+    const fr2 = ub * segs - i0;
+    const bx = pts[i0]![0] + (pts[i0 + 1]![0] - pts[i0]![0]) * fr2;
+    const by = pts[i0]![1] + (pts[i0 + 1]![1] - pts[i0]![1]) * fr2;
+    ctx.beginPath();
+    ctx.arc(bx, by, lw * (0.75 + 0.5 * Math.sin(ub * Math.PI)), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 
 /**
  * Visual equipment styles — the CAPE_STYLES pattern extended to every
@@ -234,6 +334,14 @@ export interface BodyStyle {
     // `aurorapaul` the curtain and the nightfield. All on THE
     // STORMBOLT clock.
     | 'cloudbank' | 'anvilpaul' | 'showerpaul' | 'aurorapaul'
+    // THE TIDE COURT'S SHOULDERS — tidecaller's four waters, one
+    // owner each, every pair ASYMMETRIC: `surfpaul` the breaker
+    // and the eddy (the water rushes AROUND the wearer), `deeppaul`
+    // the medusa and the mote fall, `coralpaul` the cove and the
+    // oyster, `vortexpaul` the whirl and the wash. All on THE TIDE
+    // clock, each device offset by its place down the garment (THE
+    // TRAVELING SWELL law).
+    | 'surfpaul' | 'deeppaul' | 'coralpaul' | 'vortexpaul'
     // THE FOUR SHADOWS' SHOULDERS — cutpurse's guild offices, one
     // owner per LOT and every pair ASYMMETRIC (one shoulder for the
     // guild, one for the work): `shadowdrape` the notched half-mantle
@@ -634,12 +742,35 @@ export interface BodyStyle {
   /** Hedgemage: herb bundles and a seed pouch hung off the sash cord,
    *  swinging on the stride — the garden carried along. */
   herbgirdle?: { cord: string; leaf: string };
-  /** Tidecaller: scalloped foam-edged tiers lapped over the skirt —
-   *  the surf worn as an underskirt's older sister. */
+  /** Tidecaller: THE LIVING SURF — scalloped surf tiers whose
+   *  waterline rides THE TIDE clock: they climb the robe with the
+   *  swell and draw back through the slack, foam crescents seated
+   *  in the dips, backwash sparkle on the retreat. */
   foamtiers?: { color: string };
   /** Tidecaller: a pearl strand off the neckline, no medallion — one
-   *  glimmer walks bead to bead, wave after wave. */
+   *  glimmer walks bead to bead, and the whole strand catches the
+   *  light when the wave breaks. */
   pearlstrand?: { color: string };
+  /** Tidecaller: THE STREAM WRAP — drawn currents crossing the
+   *  torso with foam riding the flow, surging at the break. Water
+   *  is DRAWN, never glowed. */
+  streamwrap?: { color: string; foam: string };
+  /** Tidecaller: THE TIDE MOON — the caller's warrant high on the
+   *  chest; its lit face waxes with the swell and stands full at
+   *  the break. The moon moves the water; the robe repeats it. */
+  tidemoon?: { color: string };
+  /** Abyss lot: bioluminescent motes rising through the hem air in
+   *  their own procession. */
+  luremotes?: { color: string };
+  /** Lagoon lot: the caustic net — water-light wavering low on the
+   *  skirt, brightening as the swell passes. */
+  caustics?: { color: string };
+  /** Maelstrom lot: spindrift — the churn riding the living hem,
+   *  spume streaking off the leading side at the break. */
+  spindrift?: { color: string };
+  /** Lagoon lot: the reef at the shoulder — coral and seated
+   *  pearls, read by coralpaul (the dawncrest cross-read pattern). */
+  reefbloom?: { coral: string; pearl: string };
   /** Voidwhisper: three staggered ink panels hanging down the robe —
    *  depth as flat value steps, the way the crypt keeps its layers. */
   inkpanels?: { color: string };
@@ -783,14 +914,13 @@ export interface HelmStyle {
     // thistledown rolled-brim working hood, `mothcowl` the mothwing
     // tufted moth's head,
     // `hedgehat`
-    // the hedgemage patched twice-bent cone, `tidehood` the
-    // tidecaller breaking wave crest, `whispercowl` the voidwhisper
+    // the hedgemage patched twice-bent cone, `whispercowl` the voidwhisper
     // tippet cowl with the embroidered eye, `cinderhood` the
     // cindersworn char-lapped hood on a banked-coal band,
     // `stardiadem` the starweaver woven silver band under its turning
     // ring of stars.
     | 'fieldhood' | 'mothcowl'
-    | 'hedgehat' | 'tidehood' | 'whispercowl' | 'cinderhood'
+    | 'hedgehat' | 'whispercowl' | 'cinderhood'
     | 'stardiadem'
     // THE STORM COURT'S HEADS — stormwoven's four weathers, one
     // owner each, the lots-override-kind law (the vigils precedent):
@@ -802,6 +932,13 @@ export interface HelmStyle {
     // aurora's folded midnight peak flying the night curtains. All
     // four keep THE STORMBOLT clock.
     | 'shroudcowl' | 'thunderhat' | 'showerhat' | 'aurorapeak'
+    // THE TIDE COURT'S HEADS — tidecaller's four waters, one owner
+    // each (tidehood is dead): `crestcowl` the breaking wave worn
+    // mid-fall under its foam gum and spray, `depthcrown` the abyss
+    // under the deep lure's caged lamp, `conchcrown` the lagoon's
+    // found architecture — whorl, spire and nacre mouth, `maelcowl`
+    // the whirlpool wound as cloth. All four keep THE TIDE clock.
+    | 'crestcowl' | 'depthcrown' | 'conchcrown' | 'maelcowl'
     // THE HUNTER'S HEADS — the leather lane's own, one owner each:
     // `courierhood` the hareswift wind-flattened runner's hood,
     // kingfisher's FOUR LEVIATHANS (each dye lot wears its OWN sea
@@ -1011,9 +1148,38 @@ export interface HelmStyle {
    *  luminous silks waking in sequence — and the `star` pricks in
    *  the cloth. */
   nightcurtain?: { colors: string[]; star?: string };
-  /** Tidehood: the pearl string across the brow — one glimmer walks
-   *  the strand, wave after wave. */
+  /** Crestcowl: the pearl string across the brow — one glimmer
+   *  walks the strand, and the whole strand catches the light when
+   *  the wave breaks. Conchcrown seats one pearl at the shell's
+   *  mouth instead. */
   pearls?: { color: string };
+  /** Depthcrown: THE DEEP LURE — the angler stalk arcing off the
+   *  crown to hang its caged lamp before the brow, breathing on
+   *  the tide; the deep's one lamp. */
+  deeplure?: { stalk: string; glow: string };
+  /** Depthcrown: bioluminescent freckles on the cowl cloth, waking
+   *  in a wave that travels the dome — the deep keeps count. */
+  lumefreckles?: { color: string };
+  /** Depthcrown: jelly-bell lappets trailing at the jaw, scallop
+   *  hems, swaying — hung things trail. */
+  jellyveil?: { color: string };
+  /** Conchcrown: THE CONCH worn as the crown — whorl, spire and
+   *  nacre mouth. The sea's own architecture, found, not forged. */
+  conch?: { shell: string; lip: string };
+  /** Conchcrown: branching coral at the trailing temple — a filled
+   *  assembly, never strokes. */
+  coralsprig?: { color: string };
+  /** Conchcrown: a cord of tiny fan shells across the brow. */
+  shellband?: { color: string };
+  /** Conchcrown: the water-light — caustic lines swaying over the
+   *  whorl, the shallows' dapple worn as ornament. */
+  causticcrown?: { color: string };
+  /** Maelcowl: the spiral the cloth was wound on — churn seams
+   *  sweeping the dome, slowly turning, foam at each leading tip. */
+  spiralwrap?: { color: string };
+  /** Maelcowl: spume — the flecks the streamer tears off at the
+   *  break. */
+  spume?: { color: string };
   /** Whispercowl: the embroidered unblinking eye on the brow — flat
    *  stitchwork, and a pale glint that rarely, slowly, looks at you. */
   broweye?: { color: string; iris: string };
@@ -1349,12 +1515,14 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
   },
   tidecaller_robe: {
     color: '#2f6a78', trim: '#bfe8e0', cls: 'cloth',
-    silhouette: 'robe', pauldron: 'none', chest: 'emblem', emblem: 'moon',
-    skirt: 0.34, runes: '#bfe8e0', sleeves: 'full',
-    underskirt: '#1f4a55', motes: '#bfe8e0', folds: true,
+    silhouette: 'robe', pauldron: 'surfpaul', pauldronColor: '#2a5f6c',
+    pauldronTrim: '#bfe8e0', pauldronScale: 1.15, chest: 'none',
+    skirt: 0.34, sleeves: 'full',
+    underskirt: '#1f4a55', folds: true,
     capelet: { color: '#245663', hem: 'scallop', trim: '#bfe8e0' },
     foamtiers: { color: '#3a7d8c' }, pearlstrand: { color: '#e8e2d4' },
-    emblemScale: 1.25,
+    streamwrap: { color: '#1f4a55', foam: '#dff4ef' },
+    tidemoon: { color: '#e8e2d4' },
   },
   voidwhisper_robe: {
     color: '#453a5c', trim: '#b8a8d8', cls: 'cloth',
@@ -1920,7 +2088,7 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     sprig: { color: '#7a9a4a' },
   },
   tidecaller_hood: {
-    color: '#2f6a78', trim: '#bfe8e0', kind: 'tidehood',
+    color: '#2f6a78', trim: '#bfe8e0', kind: 'crestcowl',
     pearls: { color: '#e8e2d4' },
   },
   voidwhisper_cowl: {
@@ -3008,6 +3176,72 @@ registerColorways(BOOT_STYLES, 'stormwoven_slippers', {
   aurora: { color: '#326256', cuff: { color: '#b8e8d0' } },
 });
 
+// Tidecaller dye lots — THE TIDE COURT: each water wears its OWN
+// head and its OWN shoulders (lots override `kind` AND `pauldron`),
+// and every color-bearing word is restated whole so no lot wears
+// stale water.
+registerColorways(BODY_STYLES, 'tidecaller_robe', {
+  abyss: {
+    color: '#2a3352', trim: '#8ad4e0', underskirt: '#1a2136',
+    pauldron: 'deeppaul', pauldronColor: '#232c48', pauldronTrim: '#46527a',
+    capelet: { color: '#232c48', hem: 'scallop', trim: '#46527a' },
+    foamtiers: { color: '#323e60' }, pearlstrand: { color: '#bfeee8' },
+    streamwrap: { color: '#1a2136', foam: '#8af2e0' },
+    tidemoon: { color: '#bfeee8' },
+    luremotes: { color: '#8af2e0' },
+  },
+  lagoon: {
+    color: '#3f9a8c', trim: '#f0e6c8', underskirt: '#2e7a70',
+    pauldron: 'coralpaul', pauldronColor: '#38897d', pauldronTrim: '#f0e6c8',
+    capelet: { color: '#358174', hem: 'scallop', trim: '#f0e6c8' },
+    foamtiers: { color: '#4fae9e' }, pearlstrand: { color: '#f4eee0' },
+    streamwrap: { color: '#2e7a70', foam: '#eafaf0' },
+    tidemoon: { color: '#f4eee0' },
+    caustics: { color: '#eafaf0' },
+    reefbloom: { coral: '#d86a5e', pearl: '#f4eee0' },
+  },
+  maelstrom: {
+    color: '#4a6360', trim: '#dce8e4', underskirt: '#374a48',
+    pauldron: 'vortexpaul', pauldronColor: '#425855', pauldronTrim: '#98aca6',
+    capelet: { color: '#40534f', hem: 'scallop', trim: '#98aca6' },
+    foamtiers: { color: '#54706a' }, pearlstrand: { color: '#dce8e4' },
+    streamwrap: { color: '#374a48', foam: '#eaf2ee' },
+    tidemoon: { color: '#dce8e4' },
+    spindrift: { color: '#eaf2ee' },
+  },
+});
+registerColorways(HELM_STYLES, 'tidecaller_hood', {
+  abyss: {
+    color: '#2a3352', trim: '#8ad4e0', kind: 'depthcrown',
+    deeplure: { stalk: '#5a6896', glow: '#8af2e0' },
+    lumefreckles: { color: '#8af2e0' },
+    jellyveil: { color: '#5a6896' },
+  },
+  lagoon: {
+    color: '#3f9a8c', trim: '#f0e6c8', kind: 'conchcrown',
+    conch: { shell: '#e8d8b4', lip: '#f0b09a' },
+    coralsprig: { color: '#d86a5e' },
+    shellband: { color: '#f4eee0' },
+    causticcrown: { color: '#eafaf0' },
+    pearls: { color: '#f4eee0' },
+  },
+  maelstrom: {
+    color: '#4a6360', trim: '#dce8e4', kind: 'maelcowl',
+    spiralwrap: { color: '#2e3d3a' },
+    spume: { color: '#eaf2ee' },
+  },
+});
+registerColorways(LEG_STYLES, 'tidecaller_skirts', {
+  abyss: { thigh: '#1e2740' },
+  lagoon: { thigh: '#2e7a70' },
+  maelstrom: { thigh: '#374a48' },
+});
+registerColorways(BOOT_STYLES, 'tidecaller_slippers', {
+  abyss: { color: '#1a2136', cuff: { color: '#8ad4e0' } },
+  lagoon: { color: '#2e7a70', cuff: { color: '#f0e6c8' } },
+  maelstrom: { color: '#374a48', cuff: { color: '#dce8e4' } },
+});
+
 // Hareswift dye lots: the fur stays a coat, the ear tips stay black,
 // the waybill keeps its seal — a hare is a hare in any season, and a
 // courier is never off duty. Every color-bearing word restates.
@@ -3450,6 +3684,23 @@ registerColorways(GLOVE_STYLES, 'fenwalker_wraps', {
   mirebloom: { color: '#5e4260', bracer: '#523a54', cuff: { color: '#e0b0d8', kind: 'band' }, knuckle: { color: '#e8b0e0', kind: 'gem' } },
   rustsedge: { color: '#8a5a36', bracer: '#744b2c', cuff: { color: '#e8cc90', kind: 'band' }, knuckle: { color: '#f0c078', kind: 'gem' } },
   graymist: { color: '#6e7a76', bracer: '#5e6a66', cuff: { color: '#d8e0dc', kind: 'band' }, knuckle: { color: '#d0ecdc', kind: 'gem' } },
+});
+registerColorways(GLOVE_STYLES, 'tidecaller_gloves', {
+  abyss: {
+    color: '#2a3352', bracer: '#232c48',
+    cuff: { color: '#8ad4e0', kind: 'roll' },
+    knuckle: { color: '#8af2e0', kind: 'gem' },
+  },
+  lagoon: {
+    color: '#3f9a8c', bracer: '#38897d',
+    cuff: { color: '#f0e6c8', kind: 'roll' },
+    knuckle: { color: '#f4eee0', kind: 'gem' },
+  },
+  maelstrom: {
+    color: '#4a6360', bracer: '#425855',
+    cuff: { color: '#dce8e4', kind: 'roll' },
+    knuckle: { color: '#eaf2ee', kind: 'gem' },
+  },
 });
 registerColorways(GLOVE_STYLES, 'stormwoven_wraps', {
   thunderhead: { color: '#3a3f4e', bracer: '#333744', cuff: { color: '#e8c04c', kind: 'band' }, knuckle: { color: '#e8c04c', kind: 'studs' } },
@@ -4162,13 +4413,19 @@ export function drawTorsoGarment(
         }
       }
       if (st.foamtiers) {
-        // THE FOAM TIERS: tidecaller's own skirt — two scalloped
-        // surf layers breaking over the cloth, each hem beaded in
-        // pale foam rounds. The tide climbs the robe and retreats.
+        // THE LIVING SURF: tidecaller's own skirt — two scalloped
+        // surf layers breaking over the cloth. The waterline RIDES
+        // the tide: the tiers climb the robe with the swell and
+        // draw back through the slack; the foam is crescents seated
+        // in the scallop dips, swelling when the wave breaks, and
+        // the backwash leaves its sparkle on the cloth below.
         const fCol = st.foamtiers.color;
+        const kT = tideK(nowMs, 0.3);
+        const brkT = tideBreakK(nowMs, 0.3);
+        const lift = kT * 0.05 * s;
         for (const [ti, top, dv] of [[0, 0.26, 2], [1, 0.56, -7]] as const) {
-          const tierTop = y0 + (hemY - y0) * top - 0.02 * s;
-          const tierBot = y0 + (hemY - y0) * (top + 0.28);
+          const tierTop = y0 + (hemY - y0) * top - 0.02 * s - lift * (1 - ti * 0.4);
+          const tierBot = y0 + (hemY - y0) * (top + 0.28) - lift * (1 - ti * 0.4) * 0.6;
           const spread = 1 + (top + 0.28) * 0.3;
           ctx.fillStyle = shade(fCol, dv);
           ctx.beginPath();
@@ -4179,20 +4436,111 @@ export function drawTorsoGarment(
             const px = u * ww * spread;
             const px2 = (u + 0.5) * ww * spread;
             ctx.quadraticCurveTo(
-              (px + px2) / 2 - ww * 0.25 * spread * 0, tierBot + 0.026 * s,
+              (px + px2) / 2, tierBot + 0.026 * s,
               px, tierBot - 0.006 * s * Math.sin(i * 1.9),
             );
           }
           ctx.closePath();
           ctx.fill();
-          // Foam beads riding the scallop dips.
+          // The surf line: foam crescents seated IN the scallop
+          // dips — a gum, not loose dots — swelling at the break.
           ctx.fillStyle = st.trim;
           for (let i = 0; i < 4; i++) {
             const u = -0.75 + (i / 3) * 1.5;
+            const fr2 = 0.016 * s * (1 + 0.3 * Math.sin(i * 2.2 + ti)) * (1 + 0.5 * brkT);
             ctx.beginPath();
-            ctx.arc(u * ww * spread, tierBot + 0.012 * s, 0.013 * s * (1 + 0.3 * Math.sin(i * 2.2 + ti)), 0, Math.PI * 2);
+            ctx.arc(u * ww * spread, tierBot + 0.008 * s, fr2, Math.PI * 0.92, Math.PI * 2.08);
+            ctx.closePath();
             ctx.fill();
           }
+        }
+        // The backwash sparkle: what the retreating water leaves.
+        if (brkT > 0.1) {
+          ctx.fillStyle = st.trim;
+          for (const [su, sv, ph] of [[-0.5, 0.94, 0], [0.15, 0.9, 0.4], [0.6, 0.96, 0.7]] as const) {
+            const twk = Math.max(0, Math.sin((brkT + ph) * Math.PI * 2));
+            if (twk < 0.2) continue;
+            ctx.globalAlpha = twk * 0.8;
+            ctx.beginPath();
+            ctx.arc(su * ww, y0 + (hemY - y0) * sv, 0.008 * s, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+        }
+      }
+      if (st.luremotes) {
+        // THE RISING LIGHT: the abyss breathes out — bioluminescent
+        // motes climbing the hem air in their own procession, each
+        // fading as it clears the cloth.
+        const lm = st.luremotes.color;
+        const kT = tideK(nowMs, 0.3);
+        for (const [i, [ux, ph]] of ([[-0.7, 0], [0.05, 0.33], [0.72, 0.66]] as const).entries()) {
+          const mu = ((nowMs * 0.00012 + ph) % 1 + 1) % 1;
+          ctx.globalAlpha = Math.sin(mu * Math.PI) * (0.45 + 0.55 * kT);
+          ctx.fillStyle = i === 1 ? shade(lm, 14) : lm;
+          ctx.beginPath();
+          ctx.arc(
+            ux * ww + Math.sin(mu * 8 + i * 2.6) * 0.02 * s,
+            hemY + 0.02 * s - mu * 0.24 * s,
+            0.009 * s * (1.15 - mu * 0.4), 0, Math.PI * 2,
+          );
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+      if (st.caustics) {
+        // THE CAUSTIC NET: water-light wavering low on the skirt —
+        // the shallows' dapple, brightening as the swell passes.
+        const kT = tideK(nowMs, 0.3);
+        ctx.strokeStyle = st.caustics.color;
+        ctx.lineWidth = Math.max(1, s * 0.007);
+        ctx.lineCap = 'round';
+        for (const [ph, vv] of [[0, 0.62], [2.4, 0.82]] as const) {
+          ctx.globalAlpha = 0.22 + 0.34 * kT;
+          ctx.beginPath();
+          for (let i = 0; i <= 9; i++) {
+            const v = i / 9;
+            const px = (-0.9 + v * 1.8) * ww;
+            const py = y0 + (hemY - y0) * vv + Math.sin(v * Math.PI * 3.1 + nowMs * 0.0011 + ph) * 0.016 * s;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
+      if (st.spindrift) {
+        // THE SPINDRIFT: the churn that never settles riding the
+        // living hem — and when the wave breaks, spume streaks fly
+        // off the leading side.
+        const sd = st.spindrift.color;
+        const brkT = tideBreakK(nowMs, 0.3);
+        const slide = Math.sin(nowMs * 0.0006) * 0.02 * s;
+        ctx.fillStyle = sd;
+        for (const [i, hp] of hem.entries()) {
+          if (i % 2 === 0) continue;
+          ctx.beginPath();
+          ctx.arc(hp.x + slide, hp.y - 0.012 * s, 0.014 * s * (1 + 0.4 * brkT), Math.PI * 0.92, Math.PI * 2.08);
+          ctx.closePath();
+          ctx.fill();
+        }
+        if (brkT > 0.1) {
+          const fly = 1 - brkT;
+          ctx.strokeStyle = sd;
+          ctx.lineCap = 'round';
+          ctx.lineWidth = Math.max(1, s * 0.008);
+          for (const dph of [0, 0.3] as const) {
+            const du = Math.min(1, fly + dph);
+            if (du >= 1) continue;
+            ctx.globalAlpha = (1 - du) * 0.8;
+            const sx = f.lead * ww * (1.0 + du * 0.5);
+            const sy = hemY - 0.05 * s - du * 0.03 * s;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(sx + f.lead * (0.035 + du * 0.02) * s, sy - 0.006 * s);
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
         }
       }
       if (st.constellation && !back) {
@@ -4921,12 +5269,85 @@ export function drawTorsoGarment(
       frontPlaneOff();
     }
 
+
+    // ---- THE STREAM WRAP: tidecaller's living water — two drawn
+    // currents crossing the torso, foam riding the flow; the rush
+    // surges when the wave breaks. Water is DRAWN, never glowed.
+    if (st.streamwrap && !hurt && !back) {
+      const sw2 = st.streamwrap;
+      const brkC = tideBreakK(nowMs, 0.22);
+      frontPlaneOn();
+      // The chest crossing: leading shoulder to trailing hip.
+      tideStream(
+        ctx,
+        f.lead * tw * 0.78, -th * 0.68,
+        -f.lead * tw * 0.85, -th * 0.1,
+        nowMs, 0.6, tw * 0.14,
+        sw2.color, sw2.foam, 0.9, Math.max(1, s * 0.016),
+        1 + brkC,
+      );
+      // The waist wrap: the current circling the body.
+      tideStream(
+        ctx,
+        -tw * 0.98, -th * 0.03,
+        tw * 0.98, -th * 0.05,
+        nowMs, 3.4, tw * 0.09,
+        sw2.color, sw2.foam, 0.8, Math.max(1, s * 0.014),
+        1 + brkC,
+      );
+      frontPlaneOff();
+    }
+
+    // ---- THE TIDE MOON: the caller's warrant, high on the chest —
+    // its lit face waxes with the swell and fills as the wave
+    // breaks. The moon moves the water; the robe just repeats it.
+    if (st.tidemoon && !hurt && !back) {
+      frontPlaneOn();
+      const mCol = st.tidemoon.color;
+      const kM = tideK(nowMs, 0);
+      const brkM = tideBreakK(nowMs, 0);
+      const mr = tw * 0.21;
+      const mx = 0;
+      const my = -th * 0.19;
+      // The dark disc first — the moon that is always there.
+      ctx.fillStyle = shade(st.color, -30);
+      ctx.beginPath();
+      ctx.arc(mx, my, mr, 0, Math.PI * 2);
+      ctx.fill();
+      // The lit face: full disc, then the shadow slides OFF it with
+      // the swell — the classic phase, no path tricks.
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(mx, my, mr, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.fillStyle = mCol;
+      ctx.beginPath();
+      ctx.arc(mx, my, mr, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = shade(st.color, -30);
+      ctx.beginPath();
+      ctx.arc(mx - mr * 2.05 * kM * kM - mr * 0.16 + mr * 0.16 * kM, my, mr * 0.96, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      // The nacre rim holds the disc to the cloth; at the break it
+      // catches the strand's own light.
+      ctx.strokeStyle = brkM > 0.4 ? shade(mCol, 30) : shade(st.color, -34);
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.beginPath();
+      ctx.arc(mx, my, mr, 0, Math.PI * 2);
+      ctx.stroke();
+      frontPlaneOff();
+    }
+
     // ---- THE PEARL STRAND: tidecaller's own jewelry — a strand off
-    // the neckline with no medallion, and one glimmer that WALKS the
-    // pearls bead to bead, wave after wave. Front only.
+    // the neckline with no medallion. One glimmer walks the pearls
+    // bead to bead — and when the wave breaks, the whole strand
+    // catches its light at once.
     if (st.pearlstrand && !hurt && !back) {
       frontPlaneOn();
       const pCol = st.pearlstrand.color;
+      const kP = tideK(nowMs, 0.22);
+      const brkP = tideBreakK(nowMs, 0.22);
       const sway3 = f.strideSw * 0.008 * s;
       const lowY = -th * 0.34;
       const nBeads = 7;
@@ -4935,8 +5356,8 @@ export function drawTorsoGarment(
         const u = -1 + (k / (nBeads - 1)) * 2;
         const bx = u * tw * 0.42 + sway3;
         const by = lowY - Math.abs(u) * th * 0.5 + th * 0.06 * (1 - u * u);
-        const lit = k === walk;
-        ctx.fillStyle = u > 0.3 && !lit ? shade(pCol, -14) : lit ? shade(pCol, 26) : pCol;
+        const lit = k === walk || brkP > 0.5;
+        ctx.fillStyle = u > 0.3 && !lit ? shade(pCol, -14) : lit ? shade(pCol, Math.round(18 + 16 * Math.max(kP, brkP))) : pCol;
         ctx.beginPath();
         ctx.arc(bx, by, 0.014 * s * (lit ? 1.25 : 1), 0, Math.PI * 2);
         ctx.fill();
@@ -9629,6 +10050,356 @@ export function drawPauldron(
       ctx.arc(0, 0.16 * s, 0.13 * s, Math.PI * 1.28, Math.PI * 1.72);
       ctx.stroke();
       ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (st.pauldron === 'surfpaul') {
+    // THE SURF — tidecaller's shoulders: the water rushing AROUND
+    // the wearer, literally. The right shoulder carries THE BREAKER:
+    // a wave standing off the cap on the tide, curling, breaking in
+    // foam and spray; a drawn current wraps the seat so the rush
+    // never stops. The left carries THE EDDY: a flat circling pool,
+    // two ring currents and a bead train going round — the quiet
+    // water that is still moving.
+    const foam = st.streamwrap?.foam ?? trim;
+    const k = tideK(nowMs, 0.14);
+    const brk = tideBreakK(nowMs, 0.14);
+    seat(0.108 * s, 0.088 * s, hurt ? '#ffffff' : col, trim);
+    if (side > 0) {
+      // THE BREAKER: the swell mound rises with the tide...
+      const rise = 0.05 * s + 0.055 * s * k;
+      const mx = side * 0.015 * s;
+      const my = -0.055 * s;
+      ctx.fillStyle = hurt ? '#ffffff' : shade(col, -6);
+      ctx.beginPath();
+      ctx.moveTo(mx - 0.1 * s, my + 0.02 * s);
+      ctx.quadraticCurveTo(mx - 0.11 * s, my - rise * 0.7, mx - side * 0.01 * s, my - rise);
+      // ...and the curl lip reaches outboard as it stands.
+      ctx.quadraticCurveTo(mx + side * (0.06 + 0.05 * k) * s, my - rise * (1.02 + 0.14 * k), mx + side * (0.1 + 0.06 * k) * s, my - rise * (0.62 + 0.2 * k));
+      ctx.quadraticCurveTo(mx + side * 0.07 * s, my - rise * 0.5, mx + side * 0.1 * s, my + 0.016 * s);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // The wave face: lit where it stands up.
+        ctx.fillStyle = shade(col, 12);
+        ctx.beginPath();
+        ctx.moveTo(mx + side * 0.075 * s, my + 0.01 * s);
+        ctx.quadraticCurveTo(mx + side * 0.075 * s, my - rise * 0.55, mx + side * (0.085 + 0.05 * k) * s, my - rise * (0.58 + 0.18 * k));
+        ctx.quadraticCurveTo(mx + side * 0.045 * s, my - rise * 0.4, mx + side * 0.03 * s, my + 0.01 * s);
+        ctx.closePath();
+        ctx.fill();
+        // The foam gum on the curl lip: crescents seated on the
+        // edge, swelling at the break.
+        ctx.fillStyle = foam;
+        for (const [fu, fr] of [[0.15, 0.03], [0.5, 0.024], [0.85, 0.02]] as const) {
+          const gx = mx - side * 0.01 * s + side * (0.11 + 0.06 * k) * s * fu;
+          const gy = my - rise * (1 - 0.35 * fu * fu) - 0.008 * s;
+          ctx.beginPath();
+          ctx.arc(gx, gy, s * fr * (1 + 0.4 * brk), Math.PI * 0.9, Math.PI * 2.1);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // THE SPRAY: droplets off the lip at the break, flying
+        // outboard — the wave ends the way waves end.
+        if (brk > 0.05) {
+          const fly = 1 - brk;
+          for (const [dph, dsc] of [[0, 1], [0.22, 0.65]] as const) {
+            const du = Math.min(1, fly + dph);
+            if (du >= 1) continue;
+            ctx.globalAlpha = (1 - du) * 0.9;
+            ctx.beginPath();
+            ctx.arc(
+              mx + side * (0.1 + du * 0.06) * s,
+              my - rise * 0.7 - Math.sin(du * Math.PI) * 0.03 * s + du * du * 0.06 * s,
+              0.014 * s * dsc * (1 - du * 0.4), 0, Math.PI * 2,
+            );
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+        }
+        // THE RUSH: the drawn current wrapping the seat — in under
+        // the wave, around the cap hem, off outboard.
+        tideStream(
+          ctx,
+          -side * 0.11 * s, 0.02 * s,
+          side * 0.125 * s, 0.05 * s,
+          nowMs, side * 2.1, 0.022 * s,
+          shade(col, -18), foam, 0.9, Math.max(1, s * 0.015),
+          1 + brk,
+        );
+      }
+    } else if (!hurt) {
+      // THE EDDY: the pool on the cap — dark water plane first.
+      ctx.fillStyle = shade(col, -16);
+      ctx.beginPath();
+      ctx.ellipse(0, -0.05 * s, 0.088 * s, 0.042 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Two ring currents circling, segment arcs whose phase turns.
+      ctx.lineCap = 'round';
+      for (const [ri, rw, sp] of [[0.072, 0.034, 1], [0.046, 0.02, -1.4]] as const) {
+        const a0 = nowMs * 0.0006 * sp;
+        ctx.strokeStyle = shade(col, 14);
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.beginPath();
+        ctx.ellipse(0, -0.05 * s, ri * s, rw * s, 0, a0, a0 + Math.PI * 1.2);
+        ctx.stroke();
+      }
+      // The bead train: three foam beads going round the rim.
+      ctx.fillStyle = foam;
+      for (let j = 0; j < 3; j++) {
+        const a = nowMs * 0.0006 + (j / 3) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * 0.08 * s, -0.05 * s + Math.sin(a) * 0.038 * s, 0.014 * s * (1 + 0.25 * Math.sin(a * 2)), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // The eddy's heart: one dim glint that brightens as the swell
+      // passes through.
+      ctx.fillStyle = shade(foam, Math.round(-30 + 34 * k));
+      ctx.beginPath();
+      ctx.arc(0, -0.05 * s, 0.013 * s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (st.pauldron === 'deeppaul') {
+    // THE DEEP — the abyss's shoulders: the right carries THE
+    // MEDUSA, a jelly bell hovering over the seat on its own slow
+    // pulse, tendrils trailing to the cloth, its rim light breathing
+    // with the tide; the left carries THE MOTE FALL — bioluminescent
+    // specks sinking through the dark in their own procession.
+    const lume = st.luremotes?.color ?? trim;
+    const k = tideK(nowMs, 0.14);
+    seat(0.105 * s, 0.086 * s, hurt ? '#ffffff' : col, trim);
+    if (side > 0) {
+      // THE MEDUSA: the bell — hover bob on its own pulse clock.
+      const bob = Math.sin(nowMs * 0.0014) * 0.008 * s;
+      const pulse = 1 + Math.sin(nowMs * 0.0028) * 0.05;
+      const bx = side * 0.03 * s;
+      const by = -0.115 * s + bob;
+      const brx = 0.078 * s * pulse;
+      ctx.fillStyle = hurt ? '#ffffff' : shade(col, 34);
+      ctx.beginPath();
+      ctx.ellipse(bx, by, brx, 0.042 * s / pulse, 0, Math.PI * 0.98, Math.PI * 2.02);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // The bell's inner dome — the deep seen through it.
+        ctx.fillStyle = shade(col, 2);
+        ctx.beginPath();
+        ctx.ellipse(bx, by + 0.004 * s, brx * 0.66, 0.026 * s, 0, Math.PI, Math.PI * 2);
+        ctx.fill();
+        // The rim light: the medusa's own lamp, breathing with the
+        // tide.
+        ctx.strokeStyle = shade(lume, Math.round(-8 + 40 * k));
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.beginPath();
+        ctx.ellipse(bx, by + 0.002 * s, brx * 0.98, 0.04 * s, 0, Math.PI * 0.06, Math.PI * 0.94);
+        ctx.stroke();
+        // The tendrils: wavering strokes trailing to the seat.
+        ctx.strokeStyle = shade(col, 24);
+        ctx.lineWidth = Math.max(1, s * 0.007);
+        ctx.lineCap = 'round';
+        for (const [tu, tl, ph] of [[-0.6, 0.075, 0], [-0.2, 0.09, 2.1], [0.25, 0.085, 4.2], [0.62, 0.07, 1.1]] as const) {
+          const wob = Math.sin(nowMs * 0.0019 + ph) * 0.008 * s;
+          ctx.beginPath();
+          ctx.moveTo(bx + tu * brx, by + 0.032 * s);
+          ctx.quadraticCurveTo(bx + tu * brx + wob, by + 0.032 * s + tl * s * 0.6, bx + tu * brx * 1.5 + wob * 1.6, by + 0.032 * s + tl * s);
+          ctx.stroke();
+        }
+      }
+    } else if (!hurt) {
+      // THE MOTE FALL: specks sinking through the shoulder's dark,
+      // each on its own watch — a soft dark shelf to sink past.
+      ctx.fillStyle = shade(col, -14);
+      ctx.beginPath();
+      ctx.ellipse(0, -0.06 * s, 0.08 * s, 0.036 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      for (const [i, [ux, ph]] of ([[-0.055, 0], [0.01, 0.37], [0.06, 0.71]] as const).entries()) {
+        const mu = ((nowMs * 0.00011 + ph) % 1 + 1) % 1;
+        const my2 = -0.115 * s + mu * 0.1 * s;
+        ctx.globalAlpha = Math.sin(mu * Math.PI) * (0.5 + 0.5 * k);
+        ctx.fillStyle = i === 1 ? shade(lume, 16) : lume;
+        ctx.beginPath();
+        ctx.arc(ux * s + Math.sin(mu * 7 + ph * 9) * 0.008 * s, my2, 0.009 * s * (1.2 - mu * 0.5), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (st.pauldron === 'coralpaul') {
+    // THE REEF — the lagoon's shoulders: the right grows THE COVE,
+    // a branching coral stand with pearls seated in its forks and
+    // the water-light swaying over it; the left wears THE OYSTER,
+    // a half-open fan shell with its pearl, catching the swell's
+    // glint. Everything found, nothing forged.
+    const reef = st.reefbloom;
+    const coral = hurt ? '#ffffff' : reef?.coral ?? trim;
+    const pearl = reef?.pearl ?? trim;
+    const k = tideK(nowMs, 0.14);
+    seat(0.106 * s, 0.086 * s, hurt ? '#ffffff' : col, trim);
+    if (side > 0) {
+      // THE COVE: filled tapered limbs, an assembly — never a token.
+      const limb = (ax: number, ay: number, bx2: number, by2: number, w0: number): void => {
+        const lnx = -(by2 - ay);
+        const lny = bx2 - ax;
+        const ll = Math.hypot(lnx, lny) || 1;
+        ctx.beginPath();
+        ctx.moveTo(ax + (lnx / ll) * w0, ay + (lny / ll) * w0);
+        ctx.lineTo(bx2, by2);
+        ctx.lineTo(ax - (lnx / ll) * w0, ay - (lny / ll) * w0);
+        ctx.closePath();
+        ctx.fill();
+      };
+      ctx.fillStyle = coral;
+      const rx = side * 0.02 * s;
+      const ry = -0.045 * s;
+      limb(rx, ry, rx - side * 0.035 * s, ry - 0.085 * s, 0.014 * s);
+      limb(rx, ry, rx + side * 0.055 * s, ry - 0.065 * s, 0.012 * s);
+      limb(rx - side * 0.015 * s, ry - 0.04 * s, rx - side * 0.07 * s, ry - 0.055 * s, 0.009 * s);
+      limb(rx + side * 0.025 * s, ry - 0.03 * s, rx + side * 0.02 * s, ry - 0.1 * s, 0.009 * s);
+      if (!hurt) {
+        // Pale polyp tips on every limb end.
+        ctx.fillStyle = shade(reef?.coral ?? trim, 22);
+        for (const [tx2, ty2] of [[-0.035, -0.085], [0.055, -0.065], [-0.07, -0.055], [0.02, -0.1]] as const) {
+          ctx.beginPath();
+          ctx.arc(rx + side * tx2 * s * (tx2 < 0 ? 1 : 1), ry + ty2 * s, 0.009 * s, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // Two pearls seated in the forks, waking with the swell.
+        for (const [px2, py2, pr] of [[0.012, -0.052, 0.012], [-0.028, -0.032, 0.009]] as const) {
+          ctx.fillStyle = shade(pearl, Math.round(4 + 26 * k));
+          ctx.beginPath();
+          ctx.arc(rx + side * px2 * s, ry + py2 * s, pr * s, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // The water-light swaying over the stand.
+        ctx.strokeStyle = shade(pearl, 30);
+        ctx.lineWidth = Math.max(1, s * 0.006);
+        ctx.lineCap = 'round';
+        ctx.globalAlpha = 0.3 + 0.35 * k;
+        ctx.beginPath();
+        for (let i = 0; i <= 6; i++) {
+          const v = i / 6;
+          const px = rx - side * 0.07 * s + v * side * 0.15 * s;
+          const py = ry - 0.075 * s + Math.sin(v * Math.PI * 2.4 + nowMs * 0.001) * 0.012 * s;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    } else if (!hurt) {
+      // THE OYSTER: the fan shell half-open — a lower valve cupping
+      // down, an upper valve tipped open on the swell, ribs on the
+      // lit shell, the pearl in the gape.
+      const ox = side * 0.01 * s;
+      const oy = -0.05 * s;
+      ctx.fillStyle = shade(col, 8);
+      ctx.beginPath();
+      ctx.moveTo(ox - 0.055 * s, oy + 0.01 * s);
+      ctx.quadraticCurveTo(ox, oy + 0.052 * s, ox + 0.055 * s, oy + 0.01 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(col, 26);
+      ctx.beginPath();
+      ctx.moveTo(ox - 0.055 * s, oy + 0.008 * s);
+      ctx.quadraticCurveTo(ox, oy - (0.05 + 0.03 * k) * s, ox + 0.055 * s, oy + 0.008 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = shade(col, -8);
+      ctx.lineWidth = Math.max(1, s * 0.005);
+      for (const ru of [-0.55, 0, 0.55]) {
+        ctx.beginPath();
+        ctx.moveTo(ox + ru * 0.04 * s, oy - (0.036 + 0.024 * k) * s * (1 - Math.abs(ru) * 0.4));
+        ctx.lineTo(ox + ru * 0.05 * s, oy + 0.006 * s);
+        ctx.stroke();
+      }
+      // The pearl in the gape, glinting as the swell passes.
+      ctx.fillStyle = shade(pearl, Math.round(6 + 30 * k));
+      ctx.beginPath();
+      ctx.arc(ox, oy - 0.004 * s, 0.014 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = shade(pearl, 55);
+      ctx.beginPath();
+      ctx.arc(ox - 0.005 * s, oy - 0.009 * s, 0.005 * s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (st.pauldron === 'vortexpaul') {
+    // THE CHURN — the maelstrom's shoulders: the right carries the
+    // whirl itself, two crescent ridges turning over the cap with
+    // foam chasing their rims, spume tearing off at the break; the
+    // left wears THE WASH — flat foam sheets sliding opposed, the
+    // sea that never lies still.
+    const spume = st.spindrift?.color ?? trim;
+    const brk = tideBreakK(nowMs, 0.14);
+    seat(0.107 * s, 0.087 * s, hurt ? '#ffffff' : col, trim);
+    if (side > 0 && !hurt) {
+      // THE WHIRL: crescent ridges precessing round the cap.
+      ctx.lineCap = 'round';
+      for (const [i, rr] of [[0, 0.05], [1, 0.078]] as const) {
+        const a0 = nowMs * 0.00082 * (i === 0 ? 1 : -0.7) + i * 2.4;
+        ctx.fillStyle = shade(col, i === 0 ? 16 : -8);
+        ctx.beginPath();
+        ctx.ellipse(side * 0.015 * s, -0.06 * s, rr * s, rr * s * 0.55, 0, a0, a0 + Math.PI * 1.15);
+        ctx.ellipse(side * 0.015 * s, -0.06 * s, rr * s * 0.72, rr * s * 0.4, 0, a0 + Math.PI * 1.15, a0, true);
+        ctx.closePath();
+        ctx.fill();
+        // Foam chasing each ridge's leading rim.
+        const fa = a0 + Math.PI * 1.15;
+        ctx.fillStyle = spume;
+        ctx.beginPath();
+        ctx.arc(side * 0.015 * s + Math.cos(fa) * rr * s * 0.86, -0.06 * s + Math.sin(fa) * rr * s * 0.48, 0.012 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // The eye: the whirl's still point.
+      ctx.fillStyle = shade(col, -26);
+      ctx.beginPath();
+      ctx.ellipse(side * 0.015 * s, -0.06 * s, 0.018 * s, 0.011 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Spume off the rim at the break.
+      if (brk > 0.05) {
+        const fly = 1 - brk;
+        ctx.fillStyle = spume;
+        for (const dph of [0, 0.25] as const) {
+          const du = Math.min(1, fly + dph);
+          if (du >= 1) continue;
+          ctx.globalAlpha = (1 - du) * 0.85;
+          ctx.beginPath();
+          ctx.arc(side * (0.09 + du * 0.08) * s, -0.07 * s - du * 0.03 * s, 0.011 * s * (1 - du * 0.4), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+    } else if (side < 0 && !hurt) {
+      // THE WASH: two foam sheets sliding on opposed swells.
+      const s0 = Math.sin(nowMs * 0.0005) * 0.014 * s;
+      const s1 = Math.sin(nowMs * 0.0005 + Math.PI) * 0.011 * s;
+      for (const [dy2, rx2, dv, dr] of [[-0.055, 0.078, -8, 1], [-0.03, 0.064, 4, -1]] as const) {
+        const bx = side * 0.01 * s + (dr > 0 ? s0 : s1);
+        ctx.fillStyle = shade(col, dv);
+        ctx.beginPath();
+        ctx.ellipse(bx, dy2 * s, rx2 * s, 0.024 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // The foam edge leading each sheet.
+        ctx.fillStyle = spume;
+        for (const fu of [-0.5, 0.1, 0.65]) {
+          ctx.beginPath();
+          ctx.arc(bx + (dr > 0 ? 1 : -1) * rx2 * s * 0.8 * (0.6 + 0.4 * Math.abs(fu)), dy2 * s + fu * 0.016 * s, 0.008 * s, Math.PI * 0.9, Math.PI * 2.1);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
     }
     ctx.restore();
     return;
@@ -14866,36 +15637,42 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     return;
   }
 
-  if (st.kind === 'tidehood') {
-    // THE TIDEHOOD — tidecaller's own head: the hood caught mid-
-    // break. The peak sweeps up and curls FORWARD over the crown like
-    // a wave crest about to fall, foam scallops riding its lip; the
-    // mantle hem breaks in foam along the shoulders; a pearl string
-    // crosses the brow, one glimmer walking it, wave after wave.
+  if (st.kind === 'crestcowl') {
+    // THE BREAKER — tidecaller's own head, second forging: the hood
+    // caught mid-break, and this time the water is ALIVE. The peak
+    // stands with the swell and curls forward over the brow (a
+    // face-side device may lead); under the curl hangs THE BARREL —
+    // the wave's own dark tube; a drawn current runs up the back
+    // slope on the tide; and at the break the foam gum surges and
+    // spray flies off the lip. The face keeps its mystery under the
+    // cast veil, and the pearl string reads the swell.
     const t = profileK;
     const front = backK <= 0.55;
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
     const ohw = hw * 0.74 * (1 - 0.5 * t);
     const oTop = headY - hh * 0.6;
     const oBot = headY + hh * 0.84;
-    const sway = Math.sin(f.nowMs * 0.0016) * hw * 0.05;
-    // The crest: apex over the trailing crown, curling forward over
-    // the leading brow — the breaking wave's own silhouette.
-    const apexX = headX - lead * hw * (0.2 + t * 0.12);
-    const apexY = headY - hh * 1.74;
-    const curlX = headX + lead * (hw * (0.98 - t * 0.12) + sway);
-    const curlY = headY - hh * 1.42;
+    const k = tideK(f.nowMs, 0.06);
+    const brk = tideBreakK(f.nowMs, 0.06);
+    const sway = Math.sin(f.nowMs * 0.0016) * hw * 0.04;
+    // The crest: the swell lifts the apex, and the curl reaches
+    // further forward as the wave stands up.
+    const apexX = headX - lead * hw * (0.16 + t * 0.1);
+    const apexY = headY - hh * (1.4 + 0.1 * k);
+    const tipX = headX + lead * (hw * (0.62 + 0.16 * k - t * 0.1) + sway);
+    const tipY = headY - hh * (1.12 - 0.04 * k);
     const shell = () => {
       ctx.moveTo(headX + lead * hw * 1.26, headY + hh * 1.18);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.34, headY + hh * 0.2, headX + lead * hw * 1.18, headY - hh * 0.48);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.24, headY - hh * 0.8, headX + lead * hw * 0.92, headY - hh * 1.08);
-      // Up the face of the wave into the curl: the crest overhangs
-      // the leading side, tip hooking back down toward the brow.
-      ctx.quadraticCurveTo(headX + lead * hw * 0.95, headY - hh * 1.42, curlX, curlY);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.28, headY - hh * 1.86, apexX, apexY);
-      // The wave's back: down the trailing slope into the drape.
-      ctx.quadraticCurveTo(headX - lead * hw * (0.82 + t * 0.26), headY - hh * 1.4, headX - lead * hw * (1.18 + t * 0.34), headY - hh * 0.4);
-      ctx.quadraticCurveTo(headX - lead * hw * (1.36 + t * 0.32), headY + hh * 0.32, headX - lead * hw * 1.3, headY + hh * 1.18);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.34, headY + hh * 0.2, headX + lead * hw * 1.16, headY - hh * 0.5);
+      // Up the wave face into the overhanging curl — tucked close;
+      // the crest overhangs the brow, never flaps beside it.
+      ctx.quadraticCurveTo(headX + lead * hw * 1.14, headY - hh * 0.96, tipX, tipY);
+      // The curl's underside hooks back in — the barrel's mouth.
+      ctx.quadraticCurveTo(headX + lead * hw * (0.66 + 0.1 * k), headY - hh * 1.06, headX + lead * hw * 0.52, headY - hh * 1.28);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.3, headY - hh * (1.52 + 0.08 * k), apexX, apexY);
+      // The swell's back: down the trailing slope into the drape.
+      ctx.quadraticCurveTo(headX - lead * hw * (0.78 + t * 0.24), headY - hh * 1.3, headX - lead * hw * (1.14 + t * 0.32), headY - hh * 0.4);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.32 + t * 0.3), headY + hh * 0.32, headX - lead * hw * 1.28, headY + hh * 1.18);
       ctx.quadraticCurveTo(headX, headY + hh * 1.46, headX + lead * hw * 1.26, headY + hh * 1.18);
       ctx.closePath();
     };
@@ -14913,67 +15690,111 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       shell();
       if (front) opening();
       ctx.clip('evenodd');
+      // The trailing half in shadow — the swell's unlit back.
       ctx.fillStyle = shade(st.color, -13);
-      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
-      // The wave face: a lighter flat plane climbing into the curl —
-      // water thins where it stands up.
-      ctx.fillStyle = shade(st.color, 12);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.8, hw * 2.4, hh * 3.6);
+      // THE WAVE FACE: the lit plane standing up under the curl —
+      // water thins where it climbs.
+      ctx.fillStyle = shade(st.color, 14);
       ctx.beginPath();
-      ctx.moveTo(headX + lead * hw * 0.86, headY - hh * 1.02);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.9, headY - hh * 1.38, curlX - lead * hw * 0.06, curlY + hh * 0.08);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.3, headY - hh * 1.72, apexX + lead * hw * 0.1, apexY + hh * 0.1);
-      ctx.lineTo(apexX - lead * hw * 0.06, apexY + hh * 0.3);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.2, headY - hh * 1.5, headX + lead * hw * 0.62, headY - hh * 0.86);
+      ctx.moveTo(headX + lead * hw * 1.02, headY - hh * 0.5);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.06, headY - hh * 0.9, tipX - lead * hw * 0.06, tipY + hh * 0.1);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.6, headY - hh * 1.02, headX + lead * hw * 0.46, headY - hh * 0.66);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.6, headY - hh * 0.2, headX + lead * hw * 0.72, headY + hh * 0.1);
+      ctx.lineTo(headX + lead * hw * 1.08, headY + hh * 0.1);
       ctx.closePath();
       ctx.fill();
-      // The curl's under-shadow: the falling water's own dark.
-      ctx.fillStyle = shade(st.color, -22);
+      // THE BARREL: the tube under the curl — the wave's own dark.
+      ctx.fillStyle = shade(st.color, -28);
       ctx.beginPath();
-      ctx.moveTo(curlX, curlY + hh * 0.04);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.4, headY - hh * 1.62, apexX + lead * hw * 0.14, apexY + hh * 0.26);
-      ctx.lineTo(apexX + lead * hw * 0.02, apexY + hh * 0.42);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.4, headY - hh * 1.46, curlX - lead * hw * 0.1, curlY + hh * 0.2);
+      ctx.moveTo(tipX - lead * hw * 0.04, tipY + hh * 0.06);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.6, headY - hh * 1.1, headX + lead * hw * 0.5, headY - hh * 1.24);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.78, headY - hh * 1.18, tipX - lead * hw * 0.02, tipY - hh * 0.06);
       ctx.closePath();
       ctx.fill();
+      // The crest's under-shadow: a wide dark sweep along the ridge
+      // that seats the foam mane on the wave instead of over it.
+      ctx.strokeStyle = shade(st.color, -22);
+      ctx.lineWidth = hh * 0.2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(tipX - lead * hw * 0.02, tipY + hh * 0.1);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.3, headY - hh * (1.5 + 0.08 * k), apexX - lead * hw * 0.2, apexY + hh * 0.34);
+      ctx.stroke();
       ctx.restore();
-      // FOAM ON THE LIP: pale scallop beads riding the curl's edge —
-      // painted after the clip so they can overhang the silhouette,
-      // biggest at the falling tip, trailing back up the crest.
-      ctx.fillStyle = st.trim;
-      for (const [di, dr] of [[0, 0.13], [1, 0.1], [2, 0.08], [3, 0.06]] as const) {
-        const fu = di / 3;
-        const fxx = curlX - lead * hw * (0.02 + fu * 0.72) * (1 + t * 0.1);
-        const fyy = curlY - hh * (0.04 - fu * 0.06) - hh * fu * 0.3;
+      // THE FOAM MANE: the breaking crest worn as fat connected
+      // foam rolls riding the ridge from the curl tip to the apex —
+      // the surf tiers' own language carried to the crown. Rounds
+      // with crescent caps (never dots), swelling at the break.
+      const foamC = st.trim;
+      const qx = (fu: number): number =>
+        (1 - fu) * (1 - fu) * tipX + 2 * (1 - fu) * fu * (headX + lead * hw * 0.3) + fu * fu * apexX;
+      const qy = (fu: number): number =>
+        (1 - fu) * (1 - fu) * tipY + 2 * (1 - fu) * fu * (headY - hh * (1.62 + 0.08 * k)) + fu * fu * apexY;
+      const swell = 1 + 0.18 * brk;
+      for (const [fu, fr] of [[0.02, 0.2], [0.3, 0.17], [0.58, 0.145], [0.84, 0.115]] as const) {
+        const gx = qx(fu);
+        const gy = qy(fu);
+        const gr = hw * fr * swell;
+        ctx.fillStyle = foamC;
         ctx.beginPath();
-        ctx.arc(fxx, fyy, hw * dr, 0, Math.PI * 2);
+        ctx.arc(gx, gy, gr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(foamC, 22);
+        ctx.beginPath();
+        ctx.arc(gx, gy, gr * 0.78, Math.PI * 1.06, Math.PI * 1.94);
+        ctx.closePath();
         ctx.fill();
       }
-      // Foam along the mantle hem: a scallop band breaking on the
-      // shoulders.
-      for (let i = 0; i < 5; i++) {
-        const u = -1.1 + (i / 4) * 2.2;
-        ctx.beginPath();
-        ctx.arc(headX + hw * u, headY + hh * (1.1 + 0.06 * Math.sin(i * 2.1)), hw * (0.1 + 0.02 * Math.sin(i * 1.7)), 0, Math.PI * 2);
-        ctx.fill();
+      // The curl's falling lip: one foam roll hooking DOWN off the
+      // tip toward the brow — the wave is about to land on you.
+      ctx.fillStyle = foamC;
+      ctx.beginPath();
+      ctx.arc(tipX, tipY + hh * 0.1, hw * 0.14 * swell, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = shade(foamC, 22);
+      ctx.beginPath();
+      ctx.arc(tipX, tipY + hh * 0.1, hw * 0.11 * swell, Math.PI * 1.06, Math.PI * 1.94);
+      ctx.closePath();
+      ctx.fill();
+      // THE SPRAY: at the break, droplets arc off the falling tip.
+      if (brk > 0.04) {
+        const fly = 1 - brk;
+        ctx.fillStyle = st.trim;
+        for (const [dphase, dscale] of [[0, 1], [0.2, 0.65]] as const) {
+          const du = Math.min(1, fly + dphase);
+          if (du >= 1) continue;
+          const dx2 = tipX + lead * hw * (0.2 + du * 0.55);
+          const dy2 = tipY + hh * 0.1 - Math.sin(du * Math.PI) * hh * 0.3 + du * du * hh * 0.55;
+          ctx.globalAlpha = (1 - du) * 0.9;
+          ctx.beginPath();
+          ctx.arc(dx2, dy2, hw * 0.07 * dscale * (1 - du * 0.45), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
       }
       if (front) {
+        // The cast veil: shade thrown down into the opening, opaque
+        // past the eye line, fading at the chin.
         ctx.save();
         ctx.beginPath();
         opening();
         ctx.clip();
-        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.04);
-        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.46)');
-        shGrad.addColorStop(1, 'rgba(24, 15, 26, 0)');
-        ctx.fillStyle = shGrad;
-        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.64);
+        stormVeil(ctx, cx, ohw, oTop + cut * 0.2, headY + hh * 0.16, headY + hh * 0.68, '#0a161c');
         ctx.restore();
-        ctx.strokeStyle = shade(st.color, 18);
-        ctx.lineWidth = Math.max(1, s * 0.013);
+        // The shrine frame: pale border, dark inner line.
+        ctx.strokeStyle = shade(st.color, 20);
+        ctx.lineWidth = Math.max(1, s * 0.014);
         ctx.beginPath();
         opening();
         ctx.stroke();
-        // THE PEARL STRING across the brow: five pearls seated on a
-        // dark cord, one glimmer walking bead to bead.
+        ctx.strokeStyle = shade(st.color, -26);
+        ctx.lineWidth = Math.max(1, s * 0.007);
+        ctx.beginPath();
+        chamferRect(ctx, cx - ohw * 0.9, oTop + cut * 0.5, ohw * 1.8, (oBot - oTop) - cut, cut * 0.7);
+        ctx.stroke();
+        // THE PEARL STRING across the brow — and when the wave
+        // arrives, the whole strand catches its light at once.
         if (st.pearls) {
           const pc = st.pearls.color;
           ctx.strokeStyle = shade(st.color, -26);
@@ -14987,8 +15808,8 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
             const u = -0.8 + i * 0.4;
             const px = cx + u * ohw;
             const py = oTop + headR * 0.03 * (1 - Math.abs(u));
-            const lit = i === walk;
-            ctx.fillStyle = lit ? shade(pc, 30) : pc;
+            const lit = i === walk || brk > 0.55;
+            ctx.fillStyle = lit ? shade(pc, Math.round(20 + 20 * Math.max(k, brk))) : pc;
             ctx.beginPath();
             ctx.arc(px, py, headR * (lit ? 0.075 : 0.06), 0, Math.PI * 2);
             ctx.fill();
@@ -14999,21 +15820,605 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
           }
         }
       } else {
-        // From behind: the wave's back — the drape tail and one deep
-        // trough seam down the swell.
-        ctx.fillStyle = shade(st.color, -12);
+        // From behind: the swell's back — the drape tail falls the
+        // center seam in base value over the shaded back (a hanging
+        // piece reads by light over dark), trough seams either side.
+        ctx.fillStyle = st.color;
         ctx.beginPath();
-        ctx.moveTo(headX - hw * 0.36, headY + hh * 0.88);
-        ctx.lineTo(headX + hw * 0.36, headY + hh * 0.88);
-        ctx.lineTo(headX + lead * hw * 0.1, headY + hh * 1.9);
+        ctx.moveTo(headX - hw * 0.3, headY + hh * 0.78);
+        ctx.lineTo(headX + hw * 0.3, headY + hh * 0.78);
+        ctx.lineTo(headX + hw * 0.1, headY + hh * 1.92);
+        ctx.lineTo(headX - hw * 0.12, headY + hh * 1.92);
         ctx.closePath();
         ctx.fill();
         ctx.strokeStyle = shade(st.color, -22);
         ctx.lineWidth = Math.max(1, s * 0.012);
+        for (const es of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(headX + es * hw * 0.62, headY - hh * 1.0);
+          ctx.quadraticCurveTo(headX + es * hw * 0.86, headY - hh * 0.1, headX + es * hw * 0.7, headY + hh * 0.9);
+          ctx.stroke();
+        }
+        // Foam crescents breaking along the bottom hem.
+        ctx.fillStyle = st.trim;
+        for (let i = 0; i < 4; i++) {
+          const u = -0.85 + (i / 3) * 1.7;
+          ctx.beginPath();
+          ctx.arc(headX + hw * u, headY + hh * (1.16 + 0.05 * Math.sin(i * 2.1)), hw * (0.09 + 0.02 * Math.sin(i * 1.7)), Math.PI * 0.94, Math.PI * 2.06);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+    return;
+  }
+
+  if (st.kind === 'depthcrown') {
+    // THE ABYSS — the deep water's head: a fitted midnight dome that
+    // keeps its silhouette quiet, because the deep is quiet. What it
+    // carries is LIGHT: the deep lure arcing off the crown to hang
+    // its caged lamp before the brow, breathing on the tide;
+    // bioluminescent freckles waking across the cloth in a traveling
+    // wave; jelly-bell lappets trailing at the jaw. The face sinks
+    // into the set's darkest veil — the lure does the looking.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.74 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.58;
+    const oBot = headY + hh * 0.84;
+    const k = tideK(f.nowMs, 0.06);
+    const brk = tideBreakK(f.nowMs, 0.06);
+    const lumeC = st.deeplure?.glow ?? st.trim;
+    const shell = () => {
+      ctx.moveTo(headX + lead * hw * 1.22, headY + hh * 1.18);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.28, headY + hh * 0.1, headX + lead * hw * 1.1, headY - hh * 0.56);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.02, headY - hh * 1.12, headX + lead * hw * 0.3, headY - hh * 1.3);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.5, headY - hh * 1.34, headX - lead * hw * (1.0 + t * 0.22), headY - hh * 0.7);
+      // A soft trailing point — the deep's one flourish.
+      ctx.quadraticCurveTo(headX - lead * hw * (1.34 + t * 0.28), headY - hh * 0.2, headX - lead * hw * 1.26, headY + hh * 1.18);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.44, headX + lead * hw * 1.22, headY + hh * 1.18);
+      ctx.closePath();
+    };
+    const opening = () => {
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    if (front) opening();
+    ctx.fill('evenodd');
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      if (front) opening();
+      ctx.clip('evenodd');
+      ctx.fillStyle = shade(st.color, -12);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.4);
+      // The crown's one lit plane — barely: light dies down here.
+      ctx.fillStyle = shade(st.color, 8);
+      ctx.beginPath();
+      ctx.ellipse(headX + lead * hw * 0.3, headY - hh * 0.98, hw * 0.62, hh * 0.3, lead * -0.2, Math.PI, Math.PI * 2);
+      ctx.fill();
+      // THE FRECKLE WAKE: bioluminescent points scattered on the
+      // cloth, each waking in turn as the wave travels the dome.
+      if (st.lumefreckles) {
+        const fc = st.lumefreckles.color;
+        const frk: Array<[number, number, number]> = [
+          [0.92, -0.7, 0.075], [0.62, -1.02, 0.06], [0.2, -1.14, 0.08],
+          [-0.28, -1.08, 0.06], [-0.68, -0.82, 0.075], [-0.94, -0.3, 0.06],
+          [-0.8, 0.3, 0.068],
+        ];
+        for (const [i, [ux, uy, rr]] of frk.entries()) {
+          const wu = ((f.nowMs / 6800 - i * 0.075) % 1 + 1) % 1;
+          const wake = wu < 0.16 ? Math.sin((wu / 0.16) * Math.PI) : 0;
+          ctx.fillStyle = shade(fc, Math.round(-30 + wake * 58));
+          ctx.beginPath();
+          ctx.arc(headX + lead * hw * ux, headY + hh * uy, hw * rr * (1 + wake * 0.5), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+      // THE JELLY LAPPETS: bell-hemmed veils trailing at the jaw —
+      // they anchor at the cheek seam and TRAIL, as hanging things do.
+      if (st.jellyveil) {
+        const jc = st.jellyveil.color;
+        const jsw = Math.sin(f.nowMs * 0.0011) * hw * 0.05;
+        for (const es of front ? [-1] : [-1, 1]) {
+          const jx = headX + es * lead * hw * 1.02;
+          ctx.fillStyle = jc;
+          ctx.beginPath();
+          ctx.moveTo(jx - hw * 0.16, headY + hh * 0.5);
+          ctx.quadraticCurveTo(jx - hw * 0.24 + jsw, headY + hh * 1.3, jx - hw * 0.1 + jsw * 1.5, headY + hh * 1.74);
+          // The bell hem: three scallop bites back up.
+          ctx.arc(jx + hw * 0.0 + jsw * 1.5, headY + hh * 1.74, hw * 0.1, Math.PI * 0.9, Math.PI * 0.1, true);
+          ctx.arc(jx + hw * 0.2 + jsw * 1.5, headY + hh * 1.7, hw * 0.09, Math.PI * 0.9, Math.PI * 0.1, true);
+          ctx.quadraticCurveTo(jx + hw * 0.3, headY + hh * 1.0, jx + hw * 0.22, headY + hh * 0.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = shade(jc, -18);
+          ctx.lineWidth = Math.max(1, s * 0.008);
+          ctx.beginPath();
+          ctx.moveTo(jx + hw * 0.02, headY + hh * 0.56);
+          ctx.quadraticCurveTo(jx - hw * 0.04 + jsw, headY + hh * 1.2, jx + hw * 0.04 + jsw * 1.4, headY + hh * 1.66);
+          ctx.stroke();
+        }
+      }
+      // THE DEEP LURE: the stalk arcs off the crown and hangs its
+      // caged lamp before the brow — a filled tapered limb, never a
+      // stroke. The lamp breathes with the tide; at the break it
+      // flares and sheds two rising motes.
+      if (st.deeplure && front) {
+        const stalkC = st.deeplure.stalk;
+        const rootX = headX - lead * hw * 0.06;
+        const rootY = headY - hh * 1.16;
+        const bulbX = headX + lead * (hw * (0.34 + 0.48 * t) + Math.sin(f.nowMs * 0.0013) * hw * 0.05);
+        const bulbY = headY - hh * (0.98 - 0.06 * t);
+        const midX = headX + lead * hw * (0.4 + 0.3 * t);
+        const midY = headY - hh * 1.56;
+        ctx.fillStyle = stalkC;
         ctx.beginPath();
-        ctx.moveTo(headX + lead * hw * 0.1, headY - hh * 1.1);
-        ctx.quadraticCurveTo(headX - lead * hw * 0.2, headY - hh * 0.1, headX + lead * hw * 0.04, headY + hh * 0.85);
+        ctx.moveTo(rootX - lead * hw * 0.13, rootY);
+        ctx.quadraticCurveTo(midX - lead * hw * 0.07, midY - hh * 0.06, bulbX - lead * hw * 0.025, bulbY - hh * 0.18);
+        ctx.lineTo(bulbX + lead * hw * 0.035, bulbY - hh * 0.15);
+        ctx.quadraticCurveTo(midX + lead * hw * 0.1, midY + hh * 0.07, rootX + lead * hw * 0.13, rootY + hh * 0.08);
+        ctx.closePath();
+        ctx.fill();
+        // The lamp: a dark iron ring holding the breathing light —
+        // the one bright thing the deep allows itself.
+        const glow = 0.6 + 0.4 * k + brk * 0.3;
+        const br2 = headR * 0.17;
+        ctx.strokeStyle = shade(st.color, -32);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.arc(bulbX, bulbY, br2 * 1.12, 0, Math.PI * 2);
         ctx.stroke();
+        ctx.fillStyle = shade(lumeC, Math.round(-14 + glow * 44));
+        ctx.beginPath();
+        ctx.arc(bulbX, bulbY, br2 * (1 + 0.1 * k), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(lumeC, Math.round(14 + glow * 40));
+        ctx.beginPath();
+        ctx.arc(bulbX - br2 * 0.24, bulbY - br2 * 0.24, br2 * 0.42, 0, Math.PI * 2);
+        ctx.fill();
+        if (brk > 0.1) {
+          const fly = 1 - brk;
+          ctx.fillStyle = lumeC;
+          for (const mo of [0, 0.3] as const) {
+            const mu = Math.min(1, fly + mo);
+            if (mu >= 1) continue;
+            ctx.globalAlpha = (1 - mu) * 0.85;
+            ctx.beginPath();
+            ctx.arc(bulbX + lead * hw * 0.1 * Math.sin(mu * 9), bulbY - br2 - mu * hh * 0.5, headR * 0.03 * (1 - mu * 0.4), 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+        }
+      }
+      if (front) {
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        stormVeil(ctx, cx, ohw, oTop + cut * 0.2, headY + hh * 0.2, headY + hh * 0.74, '#060b14');
+        ctx.restore();
+        ctx.strokeStyle = shade(st.color, 18);
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.beginPath();
+        opening();
+        ctx.stroke();
+      } else {
+        // From behind: the freckle field keeps counting, and the
+        // drape tail falls light over the shaded back.
+        ctx.fillStyle = st.color;
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.26, headY + hh * 0.8);
+        ctx.lineTo(headX + hw * 0.26, headY + hh * 0.8);
+        ctx.lineTo(headX + hw * 0.08, headY + hh * 1.9);
+        ctx.lineTo(headX - hw * 0.1, headY + hh * 1.9);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(st.color, -22);
+        ctx.lineWidth = Math.max(1, s * 0.011);
+        ctx.beginPath();
+        ctx.moveTo(headX, headY - hh * 1.2);
+        ctx.quadraticCurveTo(headX - lead * hw * 0.16, headY - hh * 0.2, headX, headY + hh * 0.78);
+        ctx.stroke();
+      }
+    }
+    return;
+  }
+
+  if (st.kind === 'conchcrown') {
+    // THE LAGOON — the shallows' head: a great conch worn as the
+    // crown, whorl and spire and nacre mouth — the sea's own
+    // architecture, found, not forged. Coral branches at the temple,
+    // a cord of fan shells across the brow, and over the shell's
+    // dome plays the water-light: caustic lines swaying the way sun
+    // does through clear water. The brightest court, so its veil
+    // holds shallow — warm shade, not mystery.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.74 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.58;
+    const oBot = headY + hh * 0.84;
+    const k = tideK(f.nowMs, 0.06);
+    const shellC = st.conch?.shell ?? st.trim;
+    const lipC = st.conch?.lip ?? shade(st.trim, -14);
+    // The mantle FIRST — a crown needs a nape (the hats law); its
+    // face window is CUT, never filled.
+    const mantle = () => {
+      ctx.moveTo(headX + lead * hw * 1.18, headY + hh * 1.16);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.26, headY + hh * 0.1, headX + lead * hw * 1.06, headY - hh * 0.66);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.6, headY - hh * 0.98, headX, headY - hh * 1.0);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.6, headY - hh * 0.98, headX - lead * hw * (1.08 + t * 0.2), headY - hh * 0.6);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.3 + t * 0.26), headY + hh * 0.16, headX - lead * hw * 1.22, headY + hh * 1.16);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.42, headX + lead * hw * 1.18, headY + hh * 1.16);
+      ctx.closePath();
+    };
+    const opening = () => {
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    mantle();
+    if (front) opening();
+    ctx.fill('evenodd');
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      mantle();
+      if (front) opening();
+      ctx.clip('evenodd');
+      ctx.fillStyle = shade(st.color, -12);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.2, hw * 2.4, hh * 3.0);
+      ctx.restore();
+    }
+    // THE CONCH itself, over the mantle: the great whorl seated on
+    // the crown, spire stacking up the trailing side, nacre mouth
+    // rolled toward the brow. Structure — it paints white on hurt.
+    const wcx = headX - lead * hw * 0.08;
+    const wcy = headY - hh * 0.98;
+    const wr = hw * 0.92;
+    // The whorl body, wound: the outer coil sweeps from the mouth up
+    // and over — the silhouette says SHELL before a seam is drawn.
+    ctx.fillStyle = hurt ? '#ffffff' : shellC;
+    ctx.beginPath();
+    ctx.ellipse(wcx, wcy, wr, hh * 0.64, lead * -0.12, 0, Math.PI * 2);
+    ctx.fill();
+    // The spire: the coil's last turn rising blunt at the trailing
+    // crown — one lobe, continuing the spiral, not a stack of buns.
+    ctx.fillStyle = hurt ? '#ffffff' : shade(shellC, -7);
+    ctx.beginPath();
+    ctx.moveTo(wcx - lead * wr * 0.5, wcy - hh * 0.36);
+    ctx.quadraticCurveTo(wcx - lead * wr * 0.98, wcy - hh * 0.86, wcx - lead * wr * 1.14, wcy - hh * 0.3);
+    ctx.quadraticCurveTo(wcx - lead * wr * 1.06, wcy + hh * 0.1, wcx - lead * wr * 0.66, wcy + hh * 0.16);
+    ctx.closePath();
+    ctx.fill();
+    if (!hurt) {
+      // Flat-forge planes: lit top crescent, shaded underside.
+      ctx.fillStyle = shade(shellC, 16);
+      ctx.beginPath();
+      ctx.ellipse(wcx + lead * hw * 0.1, wcy - hh * 0.22, wr * 0.68, hh * 0.28, lead * -0.12, Math.PI, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = shade(shellC, -16);
+      ctx.beginPath();
+      ctx.ellipse(wcx, wcy + hh * 0.32, wr * 0.84, hh * 0.24, lead * -0.1, 0, Math.PI);
+      ctx.fill();
+      // THE SPIRAL: one bold seam winding in — three sweeps closing
+      // on the coil's eye high on the trailing side. This is the
+      // read that says the crown was GROWN.
+      ctx.strokeStyle = shade(shellC, -30);
+      ctx.lineCap = 'round';
+      const ecx = wcx - lead * wr * 0.3;
+      const ecy = wcy - hh * 0.14;
+      for (const [ri, a0s, a1s, lw2] of [
+        [0.95, -0.35, 0.75, 0.016],
+        [0.62, -0.15, 1.0, 0.013],
+        [0.34, 0.1, 1.35, 0.011],
+      ] as const) {
+        ctx.lineWidth = Math.max(1, s * lw2);
+        ctx.beginPath();
+        ctx.ellipse(ecx, ecy, wr * ri, hh * 0.52 * ri, lead * -0.12, Math.PI * a0s, Math.PI * a1s);
+        ctx.stroke();
+      }
+      // The coil's eye.
+      ctx.fillStyle = shade(shellC, -24);
+      ctx.beginPath();
+      ctx.arc(ecx, ecy, wr * 0.09, 0, Math.PI * 2);
+      ctx.fill();
+      // THE NACRE MOUTH: the shell's opening rolled toward the brow
+      // — cream rim, coral-pink inner lip. It crowns the opening the
+      // way the wave crowns the breaker.
+      ctx.fillStyle = shade(shellC, 22);
+      ctx.beginPath();
+      ctx.moveTo(wcx + lead * wr * 0.5, wcy - hh * 0.44);
+      ctx.quadraticCurveTo(wcx + lead * wr * 1.2, wcy - hh * 0.12, wcx + lead * wr * 0.62, wcy + hh * 0.5);
+      ctx.quadraticCurveTo(wcx + lead * wr * 0.42, wcy + hh * 0.18, wcx + lead * wr * 0.5, wcy - hh * 0.44);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = lipC;
+      ctx.beginPath();
+      ctx.moveTo(wcx + lead * wr * 0.52, wcy - hh * 0.34);
+      ctx.quadraticCurveTo(wcx + lead * wr * 1.12, wcy - hh * 0.04, wcx + lead * wr * 0.58, wcy + hh * 0.42);
+      ctx.quadraticCurveTo(wcx + lead * wr * 0.46, wcy + hh * 0.1, wcx + lead * wr * 0.54, wcy - hh * 0.3);
+      ctx.closePath();
+      ctx.fill();
+      // One pearl seated at the mouth's low corner.
+      if (st.pearls) {
+        ctx.fillStyle = shade(st.pearls.color, Math.round(10 + 24 * k));
+        ctx.beginPath();
+        ctx.arc(wcx + lead * wr * 0.74, wcy + hh * 0.42, headR * 0.07, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(st.pearls.color, 55);
+        ctx.beginPath();
+        ctx.arc(wcx + lead * wr * 0.72, wcy + hh * 0.38, headR * 0.024, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // THE CAUSTICS: the water-light swaying over the whorl — two
+      // wavering pale lines, the shallows' dapple worn as ornament.
+      if (st.causticcrown) {
+        ctx.strokeStyle = st.causticcrown.color;
+        ctx.lineWidth = Math.max(1, s * 0.008);
+        ctx.lineCap = 'round';
+        for (const [ph, uy] of [[0, -0.16], [2.3, 0.14]] as const) {
+          const cph = f.nowMs * 0.0009 + ph;
+          ctx.globalAlpha = 0.3 + 0.3 * k;
+          ctx.beginPath();
+          for (let i = 0; i <= 8; i++) {
+            const v = i / 8;
+            const px = wcx - wr * 0.7 + v * wr * 1.4;
+            const py = wcy + hh * uy + Math.sin(v * Math.PI * 2.6 + cph) * hh * 0.08;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
+      // Coral sprigs at the trailing temple: a small branching
+      // assembly, filled tapered limbs — never strokes.
+      if (st.coralsprig) {
+        const cc = st.coralsprig.color;
+        const bx0 = headX - lead * hw * 1.02;
+        const by0 = headY - hh * 0.28;
+        ctx.strokeStyle = cc;
+        ctx.lineCap = 'round';
+        const finger = (ax: number, ay: number, bx2: number, by2: number, w0: number): void => {
+          ctx.lineWidth = Math.max(1, w0);
+          ctx.beginPath();
+          ctx.moveTo(ax, ay);
+          ctx.quadraticCurveTo((ax + bx2) / 2 - lead * hw * 0.05, (ay + by2) / 2, bx2, by2);
+          ctx.stroke();
+        };
+        finger(bx0, by0, bx0 - lead * hw * 0.24, by0 - hh * 0.56, hw * 0.15);
+        finger(bx0 - lead * hw * 0.08, by0 - hh * 0.24, bx0 - lead * hw * 0.42, by0 - hh * 0.4, hw * 0.11);
+        finger(bx0 - lead * hw * 0.14, by0 - hh * 0.38, bx0 - lead * hw * 0.0, by0 - hh * 0.74, hw * 0.1);
+        ctx.fillStyle = shade(cc, 18);
+        for (const [tx2, ty2, tr] of [[-0.24, -0.56, 0.075], [-0.42, -0.4, 0.06], [0.0, -0.74, 0.065]] as const) {
+          ctx.beginPath();
+          ctx.arc(bx0 + lead * hw * tx2, by0 + hh * ty2, hw * tr, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      if (front) {
+        // THE SHELL BAND: tiny fan shells on a cord across the brow.
+        if (st.shellband) {
+          const sc = st.shellband.color;
+          ctx.strokeStyle = shade(st.color, -24);
+          ctx.lineWidth = Math.max(1, s * 0.008);
+          ctx.beginPath();
+          ctx.moveTo(cx - ohw * 0.94, oTop + headR * 0.01);
+          ctx.quadraticCurveTo(cx, oTop + headR * 0.06, cx + ohw * 0.94, oTop + headR * 0.01);
+          ctx.stroke();
+          for (const u of [-0.6, 0, 0.6]) {
+            const px = cx + u * ohw;
+            const py = oTop + headR * 0.05 * (1 - Math.abs(u)) + headR * 0.01;
+            ctx.fillStyle = sc;
+            ctx.beginPath();
+            ctx.moveTo(px, py - headR * 0.02);
+            ctx.lineTo(px + headR * 0.055, py + headR * 0.055);
+            ctx.lineTo(px - headR * 0.055, py + headR * 0.055);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = shade(sc, -22);
+            ctx.lineWidth = Math.max(1, s * 0.005);
+            ctx.beginPath();
+            ctx.moveTo(px, py - headR * 0.015);
+            ctx.lineTo(px, py + headR * 0.05);
+            ctx.moveTo(px - headR * 0.03, py + headR * 0.005);
+            ctx.lineTo(px - headR * 0.045, py + headR * 0.05);
+            ctx.moveTo(px + headR * 0.03, py + headR * 0.005);
+            ctx.lineTo(px + headR * 0.045, py + headR * 0.05);
+            ctx.stroke();
+          }
+        }
+        // The warm shallow veil: shade, not mystery — the lagoon is
+        // the court's one sunlit water.
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        stormVeil(ctx, cx, ohw, oTop + cut * 0.2, headY + hh * 0.1, headY + hh * 0.56, '#241a10');
+        ctx.restore();
+        ctx.strokeStyle = shade(st.color, 20);
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.beginPath();
+        opening();
+        ctx.stroke();
+      } else {
+        // From behind: the spire IS the story — whorl back, wound
+        // seams, drape tail light over dark.
+        ctx.fillStyle = st.color;
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.26, headY + hh * 0.76);
+        ctx.lineTo(headX + hw * 0.26, headY + hh * 0.76);
+        ctx.lineTo(headX + hw * 0.06, headY + hh * 1.86);
+        ctx.lineTo(headX - hw * 0.1, headY + hh * 1.86);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    return;
+  }
+
+  if (st.kind === 'maelcowl') {
+    // THE MAELSTROM — the whirlpool's head: the cowl cloth WOUND on
+    // a spiral, churn seams sweeping the dome and slowly turning,
+    // each seam chased by its own fleck of foam; the peak torn
+    // sideways into a spume streamer that TRAILS off the crown (a
+    // hanging device trails; only face-side devices lead); a churn
+    // of foam crescents at the throat. At the break, spindrift
+    // flies off the streamer.
+    const t = profileK;
+    const front = backK <= 0.55;
+    const cx = headX + fx * headR * (0.34 + 0.24 * t);
+    const ohw = hw * 0.74 * (1 - 0.5 * t);
+    const oTop = headY - hh * 0.6;
+    const oBot = headY + hh * 0.84;
+    const brk = tideBreakK(f.nowMs, 0.06);
+    const spCol = st.spume?.color ?? st.trim;
+    const flut = Math.sin(f.nowMs * 0.0021) * hh * 0.08;
+    const shell = () => {
+      ctx.moveTo(headX + lead * hw * 1.24, headY + hh * 1.18);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.32, headY + hh * 0.14, headX + lead * hw * 1.12, headY - hh * 0.52);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.08, headY - hh * 1.06, headX + lead * hw * 0.4, headY - hh * 1.3);
+      // The crown twists trailing — the wind-torn peak.
+      ctx.quadraticCurveTo(headX - lead * hw * 0.2, headY - hh * 1.46, headX - lead * hw * 0.56, headY - hh * 1.3);
+      // The streamer: torn spume pennant trailing off the peak.
+      ctx.quadraticCurveTo(headX - lead * hw * 1.1, headY - hh * (1.24 + 0.06 * brk), headX - lead * hw * (1.56 + 0.2 * brk), headY - hh * 1.0 + flut);
+      ctx.quadraticCurveTo(headX - lead * hw * 1.1, headY - hh * 0.98 + flut * 0.5, headX - lead * hw * 0.88, headY - hh * 0.88);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.18 + t * 0.24), headY - hh * 0.4, headX - lead * hw * (1.3 + t * 0.28), headY + hh * 0.3);
+      ctx.quadraticCurveTo(headX - lead * hw * 1.3, headY + hh * 0.8, headX - lead * hw * 1.26, headY + hh * 1.18);
+      ctx.quadraticCurveTo(headX, headY + hh * 1.46, headX + lead * hw * 1.24, headY + hh * 1.18);
+      ctx.closePath();
+    };
+    const opening = () => {
+      chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
+    };
+    ctx.fillStyle = mc;
+    ctx.beginPath();
+    shell();
+    if (front) opening();
+    ctx.fill('evenodd');
+    if (!hurt) {
+      ctx.save();
+      ctx.beginPath();
+      shell();
+      if (front) opening();
+      ctx.clip('evenodd');
+      ctx.fillStyle = shade(st.color, -13);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.7, hw * 2.4, hh * 3.5);
+      // The wound crown's lit plane.
+      ctx.fillStyle = shade(st.color, 11);
+      ctx.beginPath();
+      ctx.ellipse(headX + lead * hw * 0.34, headY - hh * 0.94, hw * 0.6, hh * 0.34, lead * -0.24, Math.PI, Math.PI * 2);
+      ctx.fill();
+      // THE CHURN SEAMS: the spiral the cloth was wound on — three
+      // arc seams sweeping the dome, turning slowly, each chased by
+      // its own foam fleck (the churn made visible).
+      const wrapC = st.spiralwrap?.color ?? shade(st.color, -24);
+      ctx.strokeStyle = wrapC;
+      ctx.lineCap = 'round';
+      // fatter seams — the churn must read at arm's length.
+      const ccx = headX - lead * hw * 0.04;
+      const ccy = headY - hh * 0.5;
+      for (const [i, rr] of [[0, 0.5], [1, 0.78], [2, 1.06]] as const) {
+        const a0 = f.nowMs * 0.00034 + i * 2.15;
+        ctx.lineWidth = Math.max(1, s * (0.017 - i * 0.002));
+        ctx.beginPath();
+        ctx.ellipse(ccx, ccy, hw * rr, hh * rr * 0.72, lead * -0.16, a0, a0 + Math.PI * 0.62);
+        ctx.stroke();
+        // The foam fleck chasing the seam's leading end.
+        const fa = a0 + Math.PI * 0.62;
+        ctx.fillStyle = spCol;
+        ctx.beginPath();
+        ctx.arc(ccx + Math.cos(fa) * hw * rr, ccy + Math.sin(fa) * hh * rr * 0.72, hw * 0.058, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = wrapC;
+      }
+      ctx.restore();
+      // Foam gum riding the torn peak's top edge — the churn's own
+      // crest, so the peak reads WAVE and never hair.
+      ctx.fillStyle = spCol;
+      for (const [pu, pr] of [[0.15, 0.1], [0.45, 0.085], [0.75, 0.07]] as const) {
+        const px2 = headX - lead * hw * (0.56 + pu * 0.9);
+        const py2 = headY - hh * (1.3 - pu * 0.22) + flut * pu * 0.6;
+        ctx.beginPath();
+        ctx.arc(px2, py2, hw * pr * (1 + 0.25 * brk), Math.PI * 0.94, Math.PI * 2.06);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // The pennant's tip carries its bead of spume.
+      ctx.beginPath();
+      ctx.arc(headX - lead * hw * (1.52 + 0.2 * brk), headY - hh * 1.0 + flut, hw * 0.07, 0, Math.PI * 2);
+      ctx.fill();
+      // The streamer's spume: flecks tearing off the pennant at the
+      // break — the storm the water makes of itself.
+      if (brk > 0.05) {
+        const fly = 1 - brk;
+        ctx.fillStyle = spCol;
+        for (const [dph, dsc] of [[0, 1], [0.2, 0.7], [0.38, 0.5]] as const) {
+          const du = Math.min(1, fly + dph);
+          if (du >= 1) continue;
+          ctx.globalAlpha = (1 - du) * 0.85;
+          ctx.beginPath();
+          ctx.arc(
+            headX - lead * hw * (1.4 + du * 0.6),
+            headY - hh * (1.0 + du * 0.16) + flut * (1 - du),
+            hw * 0.045 * dsc * (1 - du * 0.4), 0, Math.PI * 2,
+          );
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+      // THE CHURN COLLAR: overlapping foam crescents ringing the
+      // throat — the whirlpool's white ring, worn.
+      ctx.fillStyle = spCol;
+      for (let i = 0; i < 5; i++) {
+        const u = -0.92 + (i / 4) * 1.84;
+        ctx.beginPath();
+        ctx.arc(headX + hw * u, headY + hh * (1.06 + 0.05 * Math.sin(i * 2.4 + f.nowMs * 0.0008)), hw * (0.11 - 0.015 * Math.abs(u)), Math.PI * 0.92, Math.PI * 2.08);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (front) {
+        ctx.save();
+        ctx.beginPath();
+        opening();
+        ctx.clip();
+        stormVeil(ctx, cx, ohw, oTop + cut * 0.2, headY + hh * 0.16, headY + hh * 0.68, '#0d1416');
+        ctx.restore();
+        ctx.strokeStyle = shade(st.color, 18);
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.beginPath();
+        opening();
+        ctx.stroke();
+      } else {
+        // From behind: the vortex itself — two wound arcs closing on
+        // the eye, and the drape tail light over the shaded back.
+        ctx.strokeStyle = shade(st.color, -22);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        for (const [rr, aa] of [[0.66, 0.4], [0.38, 1.6]] as const) {
+          const a0 = f.nowMs * 0.00034 + aa;
+          ctx.beginPath();
+          ctx.ellipse(headX, headY - hh * 0.3, hw * rr, hh * rr * 0.8, 0, a0, a0 + Math.PI * 1.1);
+          ctx.stroke();
+        }
+        ctx.fillStyle = spCol;
+        ctx.beginPath();
+        ctx.arc(headX, headY - hh * 0.3, hw * 0.06, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = st.color;
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 0.28, headY + hh * 0.82);
+        ctx.lineTo(headX + hw * 0.28, headY + hh * 0.82);
+        ctx.lineTo(headX + hw * 0.08, headY + hh * 1.9);
+        ctx.lineTo(headX - hw * 0.1, headY + hh * 1.9);
+        ctx.closePath();
+        ctx.fill();
       }
     }
     return;
