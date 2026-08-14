@@ -1103,6 +1103,23 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
     put(ax, ay, style.accents[rDress.int(0, style.accents.length - 1)]!);
   }
 
+  // ---- 8b. THE CLAIMED YARD (Second Charter) -------------------------
+  // A standing garrison CLEARS its ground: every transparent cell
+  // inside the walls becomes trampled meadow, so the wilderness the
+  // seat happens to stand on (pine forest, a pond, boulders) never
+  // swallows the yard — and the validator's reachability flood is the
+  // WORLD's reachability, not a grassland's luck. The approach ground
+  // outside the walls stays transparent: the wild presses against the
+  // fort, never inside it. (This supersedes Phase 1's meadow-through
+  // courtyards, which read well only on open grass.)
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      if (!insideHull(x, y, 1)) continue;
+      if (at(x, y) !== TILE_SKIP) continue;
+      put(x, y, rDress.chance(0.07) ? Tile.GrassTall : Tile.Grass);
+    }
+  }
+
   // ---- 9. THE DEF -----------------------------------------------------
   const fortCy = (y0 + y1) >> 1;
   const usedKeys = new Set<string>();

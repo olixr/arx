@@ -778,3 +778,69 @@ the bar.
   layout swept; compose invariants at the new scale. Live prove: stand a
   citadel via /stronghold here, walk gate → district gate → stairs → chief,
   screenshot the zoomed-out truth (walls overflowing the frame).
+
+### Phase 7 as-built (2026-08-13, commits 8162690 + claimed-yard — THE WALLS WIDEN)
+
+Shipped as designed; deviations and laws learned:
+
+- **The real hard wall was PREFAB_MAX_DIM = 128** (prefab.ts), not the
+  stronghold envelope — nothing bigger even loads (boot skips the file
+  silently, Map Studio 400s). Raised to 256; every consumer reads the
+  one constant. The server audit's second find was as load-bearing:
+  `capitalLatticeRange`'s reach was HAND-PINNED to 128 on a "half a
+  120 footprint" comment — now DERIVED (`SEAT_JITTER +
+  ceil(STRONGHOLD_MAX_DIM/2) + CAPITAL_CLEARANCE`), because a missed
+  mask is ledger-permanent. The materialization-budget worry was a
+  myth: zones stand in ONE call and stream lazily per 32×32 chunk;
+  bursts are interest-window-bound, so zone-scale costs what camp
+  scale did.
+- **THE NEIGHBOR LAW** (new): at zone scale two adjacent countries'
+  seat envelopes can collide (lattice points jitter into the middle
+  80% of 384-tile cells — worst-case separation ~77 tiles). The lower
+  lattice hash keeps its seat; the other country lawfully yields,
+  judged against the neighbor's cheap pure envelope (no probes).
+  Conservative — a country may yield to a neighbor that then fails
+  its own probes — priced as honest scarcity.
+- **THE CLAIMED YARD** (new law, live-taught): courtyards-as-TILE_SKIP
+  read as meadow only on open grass. The first live stand seated in
+  Hartfell's pinelands and the yard was SWALLOWED by forest — worse,
+  world trees can stand on ground the validator flooded as reachable.
+  A standing garrison now CLEARS its ground: every transparent cell
+  inside the walls becomes trampled meadow (7% tall-grass tufts); the
+  approach ground outside stays wild. Supersedes Phase 1's
+  meadow-through courtyards. The wilderness presses against the
+  walls, never inside them.
+- **The boss court seats low enough for its apron**: the two-step
+  branch silently never fired until the citadel court search started
+  at y0+10 (apron pad 7 + hull margin 2) — the ASCII render caught a
+  single-ring summit where two were designed. Then: citadel musters
+  jumped 40→54 as the apron knots landed.
+- **THE BREATHING LAW's enforceable halves**: the plan's whole-interior
+  open floor wasn't computable from def+prefab alone (FRINGE is a
+  generator constant); it shipped as per-ward walkable ≥ 55% + total
+  ward-rect share ≤ 30% of the prefab. Baseline audit that calibrated
+  it: shipped layouts were already 93-96% open ground — "compacted"
+  was footprint-vs-screen, small pieces, a 32-body muster, and one
+  flat enclosure, NOT ground clutter.
+- **Numbers as shipped**: flagship moot 171×171 (3 screens at max
+  zoom-out), citadels 152-180 / 10-14 wards / 40-54 bodies; holds
+  100-124 / 7-10 wards / 22-34. Chord walls 24+ tiles apart, gates
+  1-wide + 45% posterns, chord-gate watches on the defended side.
+  Bench sizeClass now reads the pinned roster first (ward count lies
+  once holds carry pickets).
+- **Live-proven on an isolated rig** (lane 6: vite :5183 → server
+  :8799, DB arx_charter): 'The Shouting Ring' stood at 900,-300 —
+  zone decode 171×171, 41 bodies over 12 wings, 4 patrols, elev
+  live, chief 'Mor the Unfed'; discovery ceremony fired; the
+  garrison killed two unarmored scout accounts (its own proof).
+  Camera evidence via the Map Studio cameraOverride seam driven from
+  the prover (the body parks outside leash range; the lens flies):
+  whole-zone frame only fits at studio zoom 0.22 — no player zoom
+  shows the fort whole. Screenshots: c2-*.png in the session
+  scratchpad.
+- **Debts carried**: garrison simulation never far-retires (bigger
+  musters make the audit's standing-forever note heavier — a
+  distance-retire path mirroring POIs is future work); the timed
+  full-assault proving still needs a real input rig (the Phase 6
+  recipe stands); middle-district accents read sparse at studio zoom
+  (player zoom is the design target — revisit only if play agrees).
