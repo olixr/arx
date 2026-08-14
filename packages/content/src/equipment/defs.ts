@@ -1654,7 +1654,7 @@ function cinderswornSet(): EquipmentDef[] {
     { stat: 'vitality' },
     { stat: 'regen' },
   ];
-  const color = '#4a3a38';
+  const color = '#251a16';
   const craft = (levelReq: number, xp: number, ticks: number, cloth: number, gold: number) => ({
     skill: 'tailoring' as const,
     levelReq,
@@ -1665,25 +1665,25 @@ function cinderswornSet(): EquipmentDef[] {
   });
   return [
     {
-      id: 'cindersworn_hood', name: 'Cindersworn hood', slot: 'head', armorClass: 'cloth',
+      id: 'cindersworn_hood', name: 'Cindersworn cowl', slot: 'head', armorClass: 'cloth',
       levelReq: { skill: 'arx', level: 33 }, armor: 3, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(36, 320, 85, 2, 1),
       value: 720, color, code: 'Ch',
-      desc: 'An ember set at the brow. It has never once gone out.',
+      desc: 'One coal, set in iron at the brow. It has never once gone out.',
     },
     {
       id: 'cindersworn_robe', name: 'Cindersworn robe', slot: 'body', armorClass: 'cloth',
       levelReq: { skill: 'arx', level: 34 }, armor: 5, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(40, 460, 100, 4, 2),
       value: 990, color, code: 'Cr',
-      desc: 'Charcoal cloth, hem runes banked like coals. Warm side out.',
+      desc: 'Charred cloth over a sworn fire. The light in the seams is the fire keeping watch.',
     },
     {
       id: 'cindersworn_skirts', name: 'Cindersworn skirts', slot: 'legs', armorClass: 'cloth',
       levelReq: { skill: 'arx', level: 33 }, armor: 4, affixPool: pool,
       acquisition: { craft: true }, recipe: craft(38, 380, 90, 3, 1),
       value: 850, color, code: 'Ck',
-      desc: 'Ash-grey wool that keeps the heat and spends it later.',
+      desc: 'Char-black wool. The hem has been burning away for years and never once finished.',
     },
     {
       id: 'cindersworn_slippers', name: 'Cindersworn slippers', slot: 'boots', armorClass: 'cloth',

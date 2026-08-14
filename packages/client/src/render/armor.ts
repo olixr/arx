@@ -278,6 +278,110 @@ function tideStream(
   ctx.restore();
 }
 
+/**
+ * THE DRAWN BREATH — the cinder oath's clock: a banked fire under a
+ * slow bellows. A long smoulder rising off the floor (a sworn ember
+ * NEVER goes out), the held draw, then THE FLARE — brief, bright,
+ * gone — and the settle back down to the watch. Fourth clock grammar
+ * in the court: the fen trades watches, the storm shares one sky,
+ * the tide processes — the cinder BREATHES AS ONE BED; every ember
+ * on the garment draws on the same wind, and only the crawl
+ * positions keep their own time. Same `off` convention as tideK.
+ */
+function cinderK(nowMs: number, off = 0): number {
+  const u = ((nowMs / 5800 - off) % 1 + 1) % 1;
+  const sm = (kk: number): number => {
+    const c = Math.min(1, Math.max(0, kk));
+    return c * c * (3 - 2 * c);
+  };
+  if (u < 0.62) return 0.12 + 0.88 * sm(u / 0.62);
+  const v = (u - 0.62) / 0.38;
+  if (v < 0.3) return 1 - 0.7 * sm(v / 0.3);
+  return 0.3 - 0.18 * sm((v - 0.3) / 0.7);
+}
+
+/**
+ * THE FLARE — how hard the fire is remembering right now, 0..1:
+ * full the instant the draw crests (a flare is SUDDEN), decaying
+ * through the settle. Drives the licks, the sparks, the halos —
+ * and their particles ride `1 - flare` as a monotone run.
+ */
+function cinderFlareK(nowMs: number, off = 0): number {
+  const u = ((nowMs / 5800 - off) % 1 + 1) % 1;
+  if (u < 0.62 || u > 0.86) return 0;
+  return 1 - (u - 0.62) / 0.24;
+}
+
+/**
+ * THE DRAWN CRACK — fire as strokes with intent (the drawn-water
+ * law's fire verse: FIRE LIVES IN THE CRACK, never in a glow, and
+ * never dresses a device's body in its own light). A fixed jagged
+ * fissure between two points — the crack itself NEVER moves; what
+ * moves is THE EMBER CRAWL: bright beads walking the fissure at one
+ * constant pace forever (the seamless law), swelling and fading with
+ * the breath `k`. Deep-red casing under a hot core, both breathing.
+ */
+function emberCrack(
+  ctx: CanvasRenderingContext2D,
+  x0: number, y0: number, x1: number, y1: number,
+  seed: number, amp: number,
+  casing: string, ember: string,
+  nowMs: number, k: number, lw: number,
+): void {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const len = Math.hypot(dx, dy);
+  if (len < 0.0001) return;
+  const nx = -dy / len;
+  const ny = dx / len;
+  const segs = 9;
+  const pts: Array<[number, number]> = [];
+  for (let i = 0; i <= segs; i++) {
+    const v = i / segs;
+    // A fissure, not a wave: hard per-vertex jags, deterministic in
+    // the seed, damped at both ends so the crack roots cleanly.
+    const j = Math.sin(seed * 37.7 + i * 91.3) + 0.5 * Math.sin(seed * 13.1 + i * 53.7);
+    pts.push([
+      x0 + dx * v + nx * j * amp * Math.sin(v * Math.PI),
+      y0 + dy * v + ny * j * amp * Math.sin(v * Math.PI),
+    ]);
+  }
+  const trace = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(pts[0]![0], pts[0]![1]);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i]![0], pts[i]![1]);
+    ctx.stroke();
+  };
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = casing;
+  ctx.globalAlpha = 0.3 + 0.45 * k;
+  ctx.lineWidth = lw * 2.1;
+  trace();
+  ctx.strokeStyle = ember;
+  ctx.globalAlpha = 0.28 + 0.6 * k;
+  ctx.lineWidth = lw;
+  trace();
+  // The crawl: embers walking the fissure, born dark and dying
+  // dark — the fade at both ends hides the wrap (the bead law).
+  ctx.fillStyle = ember;
+  for (let j2 = 0; j2 < 2; j2++) {
+    const ub = ((nowMs * 0.00016 + seed * 0.31 + j2 * 0.5) % 1 + 1) % 1;
+    const i0 = Math.min(segs - 1, Math.floor(ub * segs));
+    const fr2 = ub * segs - i0;
+    const bx = pts[i0]![0] + (pts[i0 + 1]![0] - pts[i0]![0]) * fr2;
+    const by = pts[i0]![1] + (pts[i0 + 1]![1] - pts[i0]![1]) * fr2;
+    const life = Math.sin(ub * Math.PI);
+    ctx.globalAlpha = life * (0.5 + 0.5 * k);
+    ctx.beginPath();
+    ctx.arc(bx, by, lw * (0.6 + 0.7 * life), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
 
 /**
  * Visual equipment styles — the CAPE_STYLES pattern extended to every
@@ -358,6 +462,13 @@ export interface BodyStyle {
     // the wash. All on THE TIDE clock, each device offset by its
     // place down the garment (THE TRAVELING SWELL law).
     | 'tideorbs' | 'deeppaul' | 'darkwells' | 'vortexpaul'
+    // THE SWORN BRAZIERS — cindersworn's MATCHED pair: an iron
+    // brazier sunk into each cap, ringed by a crown of standing
+    // char shards, holding a bed of coals whose light lives only in
+    // the cracks BETWEEN them; the pair draws on ONE breath (the
+    // cinder clock), and at the flare each vents a drawn flame lick
+    // and lets its sparks rise. Fire sworn, not displayed.
+    | 'brazierpaul'
     // THE FOUR SHADOWS' SHOULDERS — cutpurse's guild offices, one
     // owner per LOT, pairs asymmetric (one shoulder for the guild,
     // one for the work): `shadowdrape` the notched half-mantle and
@@ -819,10 +930,23 @@ export interface BodyStyle {
   /** Voidwhisper: three staggered ink panels hanging down the robe —
    *  depth as flat value steps, the way the crypt keeps its layers. */
   inkpanels?: { color: string };
-  /** Cindersworn: hanging char-tipped tabs off the shoulder line and
-   *  hem — full drawn edges, charred ends, ember rims breathing in
-   *  rotation. The banked fire, worn. */
-  chartabs?: { color: string; ember: string };
+  /** Cindersworn: THE OATH SEAMS — drawn fissures where the char
+   *  split and the fire looked out; the ember crawl walks them.
+   *  Read by brazierpaul for its coal-bed light (the cross-read
+   *  pattern). Casing = deep fire, ember = the hot core. */
+  emberveins?: { casing: string; ember: string };
+  /** Cindersworn: THE CINDER VEILS — the robe re-clothed as lapped
+   *  sheets of charred cloth descending the skirt, each a step
+   *  darker, every hem a slack burnt diagonal; ember light breathes
+   *  in the gaps BETWEEN the laps, never on them. colors[0] is the
+   *  charred yoke at the chest; the rest descend. */
+  cinderveils?: { colors: string[] };
+  /** Cindersworn: THE ASH HEM — the hem is burning away: ragged
+   *  char tongues past the cloth's bottom edge (structure — they
+   *  hold white in the flash), the burn line crawling along it, and
+   *  sparks that RISE off the line and die. What the robe loses it
+   *  gives to the air. */
+  ashhem?: { char: string; ember: string };
   /** Starweaver: a linked constellation low on the skirt — five stars
    *  joined by faint lines, flaring one at a time in sequence. */
   constellation?: { color: string };
@@ -973,12 +1097,13 @@ export interface HelmStyle {
     // tufted moth's head,
     // `hedgehat`
     // the hedgemage patched twice-bent cone, `whispercowl` the voidwhisper
-    // tippet cowl with the embroidered eye, `cinderhood` the
-    // cindersworn char-lapped hood on a banked-coal band,
+    // tippet cowl with the embroidered eye, `oathcowl` the
+    // cindersworn char-tiered watch cowl under the one sworn coal
+    // (cinderhood is dead — the fire keeps only what it re-forges),
     // `stardiadem` the starweaver woven silver band under its turning
     // ring of stars.
     | 'fieldhood' | 'mothcowl'
-    | 'hedgehat' | 'whispercowl' | 'cinderhood'
+    | 'hedgehat' | 'whispercowl' | 'oathcowl'
     | 'stardiadem'
     // THE STORM COURT'S HEADS — stormwoven's four weathers, one
     // owner each, the lots-override-kind law (the vigils precedent):
@@ -1247,9 +1372,14 @@ export interface HelmStyle {
   /** Whispercowl: the embroidered unblinking eye on the brow — flat
    *  stitchwork, and a pale glint that rarely, slowly, looks at you. */
   broweye?: { color: string; iris: string };
-  /** Cinderhood: the banked-coal brow band — dark iron holding three
-   *  coals that breathe in rotation, never all at once. */
-  coalband?: { color: string; coal: string };
+  /** Oathcowl: THE OATH COAL — the one sworn ember, set in an iron
+   *  shrine at the brow. It has never once gone out. Breathes with
+   *  the drawn breath; at the flare it remembers, and lets go one
+   *  rising spark. */
+  oathcoal?: { iron: string; coal: string; ember: string };
+  /** Oathcowl: the fissures in the char — drawn cracks carrying the
+   *  ember crawl through the cloth (FIRE LIVES IN THE CRACK). */
+  crackseams?: { casing: string; ember: string };
   /** Stardiadem: star points rising off the woven band, center
    *  tallest. */
   starpoints?: { color: string };
@@ -1606,12 +1736,17 @@ export const BODY_STYLES: Record<string, BodyStyle> = {
     inkpanels: { color: '#3d3352' }, emblemScale: 1.25,
   },
   cindersworn_robe: {
-    color: '#4a3a38', trim: '#e05438', cls: 'cloth',
-    silhouette: 'robe', pauldron: 'none', chest: 'stitch', skirt: 0.34,
-    sash: '#8a2f24', glowTrim: '#ff9a4a', runes: '#ff9a4a',
-    sleeves: 'full', mantle: '#3a2d2b', underskirt: '#332826',
-    motes: '#ffb054', folds: true,
-    chartabs: { color: '#5a4340', ember: '#ff9a4a' },
+    // THE CINDER OATH: near-black char; the fire shows only in the
+    // cracks. Three values — char, smoked bronze, the ember pair —
+    // and no word wears its own light (the crack law).
+    color: '#251a16', trim: '#d96a2c', cls: 'cloth',
+    silhouette: 'robe', pauldron: 'brazierpaul', pauldronColor: '#291c17',
+    pauldronTrim: '#7a5a44', chest: 'none', skirt: 0.34,
+    sash: '#4a1d14', sleeves: 'full', mantle: '#1b1310',
+    underskirt: '#160f0c', folds: true,
+    emberveins: { casing: '#c83a1a', ember: '#ffb054' },
+    cinderveils: { colors: ['#2c1e18', '#261a15', '#1f1511', '#180f0b'] },
+    ashhem: { char: '#180f0b', ember: '#ffb054' },
   },
   starweaver_robe: {
     color: '#2c3260', trim: '#c8cee8', cls: 'cloth',
@@ -2171,8 +2306,9 @@ export const HELM_STYLES: Record<string, HelmStyle> = {
     mask: '#5a4e78', broweye: { color: '#b8a8d8', iris: '#2a2238' },
   },
   cindersworn_hood: {
-    color: '#4a3a38', trim: '#e05438', kind: 'cinderhood',
-    coalband: { color: '#33241f', coal: '#ff9a4a' },
+    color: '#251a16', trim: '#d96a2c', kind: 'oathcowl',
+    oathcoal: { iron: '#4a382c', coal: '#16100c', ember: '#ffb054' },
+    crackseams: { casing: '#c83a1a', ember: '#ffb054' },
   },
   starweaver_circlet: {
     color: '#c8cee8', trim: '#9db6ff', kind: 'stardiadem',
@@ -2463,7 +2599,7 @@ export const LEG_STYLES: Record<string, LegStyle> = {
   hedgemage_skirts: { kind: 'pants', thigh: '#4e5c33' },
   tidecaller_skirts: { kind: 'pants', thigh: '#245562' },
   voidwhisper_skirts: { kind: 'pants', thigh: '#332b47' },
-  cindersworn_skirts: { kind: 'pants', thigh: '#3a2d2b' },
+  cindersworn_skirts: { kind: 'pants', thigh: '#1f1511' },
   starweaver_skirts: { kind: 'pants', thigh: '#232850' },
   hareswift_chaps: {
     kind: 'wraps', thigh: '#c2a878', shin: '#a88f60', knee: 'wrap',
@@ -2555,7 +2691,7 @@ export const BOOT_STYLES: Record<string, BootStyle> = {
   hedgemage_slippers: { color: '#8a7a3c', height: 0.07, curl: true },
   tidecaller_slippers: { color: '#1f4a55', height: 0.08, cuff: { color: '#bfe8e0' } },
   voidwhisper_slippers: { color: '#2e2740', height: 0.08, cuff: { color: '#b8a8d8' } },
-  cindersworn_slippers: { color: '#332826', height: 0.08, cuff: { color: '#e05438' } },
+  cindersworn_slippers: { color: '#180f0b', height: 0.08, cuff: { color: '#c8511f' } },
   starweaver_slippers: { color: '#232850', height: 0.08, curl: true, cuff: { color: '#c8cee8' } },
   hareswift_boots: { color: '#a88f60', height: 0.1, fur: { color: '#e8e2d4' } },
   kingfisher_boots: { color: '#122a34', height: 0.15, toe: '#cfe4e2', cuff: { color: '#1e4450' } },
@@ -2706,9 +2842,9 @@ export const GLOVE_STYLES: Record<string, GloveStyle> = {
     knuckle: { color: '#b8a8d8', kind: 'gem' },
   },
   cindersworn_gloves: {
-    color: '#332826', hand: 'glove', bracer: '#3e2f2c',
-    cuff: { color: '#e05438', kind: 'band' },
-    knuckle: { color: '#ff9a3c', kind: 'gem' },
+    color: '#1c130f', hand: 'glove', bracer: '#291c17',
+    cuff: { color: '#c8511f', kind: 'band' },
+    knuckle: { color: '#ffb054', kind: 'gem' },
   },
   starweaver_gloves: {
     color: '#2c3260', hand: 'glove', bracer: '#272c54',
@@ -4320,6 +4456,61 @@ export function drawTorsoGarment(
         }
         ctx.globalAlpha = 1;
       }
+      if (st.cinderveils) {
+        // THE CINDER VEILS: the burnt strata — lapped sheets of
+        // charred cloth descending the skirt, each a step darker,
+        // every hem a slack burnt diagonal leaning against its
+        // neighbor (the diagonals kill the tube). The ember light
+        // lives in the GAPS between the laps, breathing with the
+        // one breath — on the seam, never on the cloth.
+        const cvD = st.cinderveils.colors;
+        const kV = cinderK(nowMs, 0);
+        for (let vi = 0; vi < 3; vi++) {
+          const cV = cvD[Math.min(vi + 1, cvD.length - 1)]!;
+          const lean = (vi % 2 === 0 ? -1 : 1) * 0.055;
+          const topU = 0.1 + vi * 0.29;
+          const breathe = Math.sin(nowMs * 0.0016 + vi * 1.7) * 0.008 * s * (0.3 + 0.7 * kV);
+          const yL = y0 + (hemY - y0) * (topU - lean) + breathe;
+          const yR = y0 + (hemY - y0) * (topU + lean) + breathe;
+          const wV = ww * (1 + topU * 0.28);
+          ctx.fillStyle = cV;
+          ctx.beginPath();
+          ctx.moveTo(-wV, yL);
+          ctx.quadraticCurveTo(-wV * 0.34, yL + 0.022 * s, wV * 0.1, (yL + yR) / 2 + 0.01 * s);
+          ctx.quadraticCurveTo(wV * 0.6, yR - 0.012 * s, wV, yR);
+          ctx.lineTo(hem[4]!.x, hem[4]!.y);
+          for (let i = 3; i >= 0; i--) ctx.lineTo(hem[i]!.x, hem[i]!.y);
+          ctx.closePath();
+          ctx.fill();
+          // The gap light: a thin ember line hugging the seam from
+          // beneath the lap above — the middle seam carries the
+          // strongest watch; the others bank lower.
+          if (st.emberveins) {
+            ctx.strokeStyle = st.emberveins.ember;
+            ctx.globalAlpha = (0.1 + 0.36 * kV) * (vi === 1 ? 1 : 0.55);
+            ctx.lineWidth = Math.max(1, s * 0.008);
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(-wV * 0.88, yL + 0.008 * s);
+            ctx.quadraticCurveTo(wV * 0.08, (yL + yR) / 2 + 0.016 * s, wV * 0.88, yR + 0.004 * s);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+          }
+          // One warm arris per seam, leading side only.
+          ctx.strokeStyle = shade(cV, 20);
+          ctx.lineWidth = Math.max(1, s * 0.008);
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          if (f.lead === 1) {
+            ctx.moveTo(wV * 0.26, (yL + yR) / 2 + 0.008 * s);
+            ctx.quadraticCurveTo(wV * 0.64, yR - 0.01 * s, wV * 0.94, yR);
+          } else {
+            ctx.moveTo(-wV * 0.94, yL);
+            ctx.quadraticCurveTo(-wV * 0.6, yL + 0.02 * s, -wV * 0.26, (yL + yR) / 2 + 0.008 * s);
+          }
+          ctx.stroke();
+        }
+      }
       if (st.mirehem) {
         // THE WATERLINE: the hem stitched as still black water — a
         // dark band riding the living hem's own contour, reed blades
@@ -4889,6 +5080,75 @@ export function drawTorsoGarment(
           ctx.globalAlpha = Math.sin(mu * Math.PI) * (0.45 + 0.35 * kH);
           ctx.beginPath();
           ctx.arc(hp.x + Math.sin(mu * 7) * 0.006 * s, hp.y + tl * s + mu * 0.09 * s, 0.0075 * s * (1 - mu * 0.4), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
+    // THE ASH HEM: outside the hurt guard on purpose — the tongues
+    // change the garment's OUTLINE, so they are structure and hold
+    // white in the flash. The hem is burning away: charred tongues
+    // reaching past the cloth's bottom edge, THE BURN LINE crawling
+    // where cloth becomes ash, and sparks that RISE off it and die.
+    // What the robe loses, it gives to the air.
+    if (st.ashhem) {
+      const ah = st.ashhem;
+      const kA = cinderK(nowMs, 0);
+      const flA = cinderFlareK(nowMs, 0);
+      const hemAtA = (u: number): { x: number; y: number } => {
+        const fu = ((u + 1) / 2) * 4;
+        const i0 = Math.min(3, Math.floor(fu));
+        const fr2 = fu - i0;
+        return {
+          x: hem[i0]!.x + (hem[i0 + 1]!.x - hem[i0]!.x) * fr2,
+          y: hem[i0]!.y + (hem[i0 + 1]!.y - hem[i0]!.y) * fr2,
+        };
+      };
+      // Six charred tongues, no two alike — hard jagged cuts, not
+      // water curves: burnt cloth breaks, it does not pour.
+      ctx.fillStyle = hurt ? '#ffffff' : ah.char;
+      for (const [ui, len, wT, ph] of [
+        [-0.9, 0.07, 0.052, 0], [-0.52, 0.105, 0.06, 1.6],
+        [-0.14, 0.08, 0.052, 3.1], [0.22, 0.115, 0.058, 0.9],
+        [0.6, 0.085, 0.054, 2.4], [0.9, 0.065, 0.046, 3.8],
+      ] as const) {
+        const hp = hemAtA(ui);
+        const sway2 = hurt ? 0 : Math.sin(nowMs * 0.0012 + ph) * 0.006 * s;
+        const lenY = len * s * (1 + 0.1 * kA);
+        ctx.beginPath();
+        ctx.moveTo(hp.x - wT * s * 0.5, hp.y - 0.02 * s);
+        ctx.lineTo(hp.x + wT * s * 0.5, hp.y - 0.02 * s);
+        ctx.lineTo(hp.x + wT * s * 0.18 + sway2, hp.y + lenY * 0.55);
+        ctx.lineTo(hp.x + sway2, hp.y + lenY);
+        ctx.lineTo(hp.x - wT * s * 0.26 + sway2 * 0.6, hp.y + lenY * 0.5);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (!hurt) {
+        // THE BURN LINE: the one fissure riding the living hem —
+        // its embers walk it at one pace forever; the flare speaks
+        // through their weight, never their speed.
+        emberCrack(
+          ctx,
+          hem[0]!.x, hem[0]!.y - 0.012 * s,
+          hem[4]!.x, hem[4]!.y - 0.012 * s,
+          7.4, 0.008 * s,
+          st.emberveins?.casing ?? shade(ah.ember, -30), ah.ember,
+          nowMs, Math.max(kA, flA), Math.max(1, s * 0.007),
+        );
+        // THE RISING: sparks born on the burn line, climbing past
+        // the skirt and dying — brightest when the fire remembers.
+        ctx.fillStyle = ah.ember;
+        for (const [i, [ux, ph2]] of ([[-0.6, 0], [0.1, 0.4], [0.7, 0.73]] as const).entries()) {
+          const mu = ((nowMs * 0.00012 + ph2) % 1 + 1) % 1;
+          const hp = hemAtA(ux);
+          ctx.globalAlpha = Math.sin(mu * Math.PI) * (0.22 + 0.3 * kA + 0.3 * flA);
+          ctx.beginPath();
+          ctx.arc(
+            hp.x + Math.sin(mu * 6 + i * 2.2) * 0.015 * s,
+            hp.y - 0.01 * s - mu * 0.22 * s,
+            0.0075 * s * (1 - mu * 0.35), 0, Math.PI * 2,
+          );
           ctx.fill();
         }
         ctx.globalAlpha = 1;
@@ -6260,43 +6520,59 @@ export function drawTorsoGarment(
       frontPlaneOff();
     }
 
-    // ---- THE CHAR TABS: cindersworn's own layer — hanging tabs off
-    // the shoulder line, full drawn edges, charred tips, and ember
-    // rims that breathe in rotation with the banked clock: the fire
-    // is out; the fire is not gone.
-    if (st.chartabs && !hurt) {
-      const tCol = st.chartabs.color;
-      const ember = st.chartabs.ember;
-      const turn = Math.floor(nowMs / 1400) % 3;
-      const ft = (nowMs % 1400) / 1400;
-      const sway2 = f.strideSw * 0.01 * s;
-      for (const [i, u, len] of [[0, -0.78, 0.34], [1, -0.5, 0.26], [2, 0.62, 0.3]] as const) {
-        const px = u * tw;
-        const w = tw * 0.13;
-        const y1 = -th + th * len * 1.6;
-        ctx.fillStyle = shade(tCol, -4 + i * 4);
-        ctx.beginPath();
-        ctx.moveTo(px - w, -th * 1.0);
-        ctx.lineTo(px + w, -th * 1.0);
-        ctx.lineTo(px + w * 0.8 + sway2, y1);
-        ctx.lineTo(px - w * 0.8 + sway2, y1);
-        ctx.closePath();
-        ctx.fill();
-        // The charred tip: a flat black band closing the tab.
-        ctx.fillStyle = '#1c1412';
-        ctx.beginPath();
-        ctx.moveTo(px - w * 0.84 + sway2, y1 - th * 0.07);
-        ctx.lineTo(px + w * 0.84 + sway2, y1 - th * 0.07);
-        ctx.lineTo(px + w * 0.8 + sway2, y1);
-        ctx.lineTo(px - w * 0.8 + sway2, y1);
-        ctx.closePath();
-        ctx.fill();
-        // The ember rim, taking its turn on the banked clock.
-        const lit = i === turn ? Math.sin(ft * Math.PI) : 0.1;
-        ctx.globalAlpha = 0.25 + lit * 0.6;
-        ctx.fillStyle = ember;
-        ctx.fillRect(px - w * 0.8 + sway2, y1 - 0.006 * s, w * 1.6, 0.012 * s);
-        ctx.globalAlpha = 1;
+    // ---- THE CHAR YOKE: cindersworn's mantle — the first cinder
+    // veil laps the chest as a charred yoke, its hem burnt ragged
+    // (chartabs is dead; the oath keeps only what it re-forges).
+    // Off the collar runs THE OATH SEAM: the robe's one fissure,
+    // leaning across the body — a diagonal kills the tube — with
+    // the ember crawl walking it on the drawn breath. Wrap-around
+    // cloth: no front plane, and the back wears it too.
+    if (st.cinderveils && !hurt) {
+      const yc = st.cinderveils.colors[0]!;
+      const kY = cinderK(nowMs, 0);
+      const flY = cinderFlareK(nowMs, 0);
+      const br2 = Math.sin(nowMs * 0.0016) * th * 0.015 * (0.3 + 0.7 * kY);
+      const hemPts: Array<[number, number]> = [
+        [1.04, -0.62], [0.7, -0.5], [0.44, -0.6], [0.14, -0.48],
+        [-0.18, -0.58], [-0.5, -0.46], [-0.78, -0.56], [-1.04, -0.5],
+      ];
+      ctx.fillStyle = yc;
+      ctx.beginPath();
+      ctx.moveTo(-tw * 1.02, -th * 0.98);
+      ctx.lineTo(tw * 1.02, -th * 0.98);
+      for (const [hx, hy] of hemPts) ctx.lineTo(tw * hx, th * hy + br2);
+      ctx.closePath();
+      ctx.fill();
+      // The char edging on the burnt hem — the line the fire drew.
+      ctx.strokeStyle = '#120a08';
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(tw * hemPts[0]![0], th * hemPts[0]![1] + br2);
+      for (let hi = 1; hi < hemPts.length; hi++) {
+        ctx.lineTo(tw * hemPts[hi]![0], th * hemPts[hi]![1] + br2);
+      }
+      ctx.stroke();
+      // The yoke's warm arris, leading side only — an edge the
+      // forge-light found, never a drawn rim.
+      ctx.strokeStyle = shade(yc, 24);
+      ctx.lineWidth = Math.max(1, s * 0.008);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(f.lead * tw * 0.98, -th * 0.66 + br2);
+      ctx.quadraticCurveTo(f.lead * tw * 0.5, -th * 0.56 + br2, f.lead * tw * 0.16, -th * 0.6 + br2);
+      ctx.stroke();
+      if (st.emberveins) {
+        // THE OATH SEAM: collar to waist, across the grain.
+        const evT = st.emberveins;
+        emberCrack(
+          ctx,
+          f.lead * tw * 0.42, -th * 0.54 + br2,
+          -f.lead * tw * 0.14, -th * 0.06,
+          2.6, tw * 0.06,
+          evT.casing, evT.ember,
+          nowMs, Math.max(kY, flY), Math.max(1, s * 0.0085),
+        );
       }
     }
 
@@ -11130,6 +11406,150 @@ export function drawPauldron(
       ctx.globalAlpha = Math.sin(mu * Math.PI) * 0.4;
       ctx.beginPath();
       ctx.arc(wx + Math.sin(mu * 7 + ph) * 0.012 * s, wy2 - wry - mu * 0.05 * s, 0.005 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (st.pauldron === 'brazierpaul') {
+    // THE SWORN BRAZIERS — cindersworn's MATCHED pair: an iron
+    // brazier sunk into each cap, ringed at the back rim by a crown
+    // of standing char shards, and in the bowl a bed of coals whose
+    // fire shows ONLY in the cracks between them (the crack law —
+    // no coal ever wears its own light). The pair draws on the ONE
+    // breath; at the flare each bowl vents a drawn flame lick and
+    // lets its sparks rise and die. Only the leaking heat keeps
+    // per-side time (the clockwork law). Fire sworn, not displayed.
+    const ev = st.emberveins;
+    const casing = ev?.casing ?? shade(trim, -14);
+    const ember = ev?.ember ?? trim;
+    const k = cinderK(nowMs, 0);
+    const fl = cinderFlareK(nowMs, 0);
+    const ph = side > 0 ? 0 : 2.3;
+    seat(0.105 * s, 0.087 * s, hurt ? '#ffffff' : col, trim);
+    const bx = side * 0.012 * s;
+    const by = -0.064 * s;
+    const brx = 0.06 * s;
+    const bry = 0.026 * s;
+    // THE CROWN OF SHARDS: standing char blades ringing the back
+    // rim, no two the same height, mirrored across the pair —
+    // structure, so they hold white in the flash.
+    ctx.fillStyle = hurt ? '#ffffff' : shade(col, -18);
+    for (const [su, hM, lean2] of [
+      [-0.88, 0.62, -0.3], [-0.45, 1.0, -0.12], [0.02, 0.78, 0.04],
+      [0.48, 0.9, 0.16], [0.86, 0.55, 0.32],
+    ] as const) {
+      const sx = bx + side * su * brx;
+      const sh2 = 0.052 * s * hM;
+      const lx = side * lean2 * 0.02 * s;
+      ctx.beginPath();
+      ctx.moveTo(sx - 0.011 * s, by - bry * 0.2);
+      ctx.lineTo(sx + 0.011 * s, by - bry * 0.2);
+      ctx.lineTo(sx + lx + 0.002 * s, by - sh2);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // THE BOWL: cold iron, a filled band (never a wire), its top
+    // crescent lit — the 2.5D face of the rim.
+    ctx.fillStyle = hurt ? '#ffffff' : shade(trim, -8);
+    ctx.beginPath();
+    ctx.ellipse(bx, by, brx * 1.22, bry * 1.35, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (!hurt) {
+      ctx.fillStyle = shade(trim, 10);
+      ctx.beginPath();
+      ctx.ellipse(bx, by - bry * 0.18, brx * 1.16, bry * 1.06, 0, Math.PI, Math.PI * 2);
+      ctx.fill();
+      // The bowl's dark: the bed the coals sit in.
+      ctx.fillStyle = shade(col, -30);
+      ctx.beginPath();
+      ctx.ellipse(bx, by + bry * 0.06, brx * 0.96, bry * 0.92, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // THE COALS: three faceted black lumps shouldering each other
+      // over the rim — their bodies stay dark as their word.
+      for (const [cu, cw2, chh, dv] of [
+        [-0.52, 0.032, 0.03, -20], [0.06, 0.04, 0.038, -14], [0.6, 0.03, 0.026, -24],
+      ] as const) {
+        const px = bx + side * cu * brx;
+        ctx.fillStyle = shade(col, dv);
+        ctx.beginPath();
+        ctx.moveTo(px - cw2 * s, by + bry * 0.3);
+        ctx.lineTo(px - cw2 * s * 0.5, by - chh * s);
+        ctx.lineTo(px + cw2 * s * 0.55, by - chh * s * 0.82);
+        ctx.lineTo(px + cw2 * s, by + bry * 0.3);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // THE EMBERS: the fire lives in the cracks BETWEEN the coals
+      // — two drawn wedges of light breathing with the bed, casing
+      // under core, and never a glow around anything.
+      ctx.lineCap = 'round';
+      for (const [gu, ga] of [[-0.24, 0.9], [0.34, 1.1]] as const) {
+        const px = bx + side * gu * brx;
+        ctx.strokeStyle = casing;
+        ctx.globalAlpha = (0.3 + 0.45 * k) * ga * 0.8;
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.beginPath();
+        ctx.moveTo(px - 0.008 * s, by + bry * 0.34);
+        ctx.lineTo(px + 0.004 * s, by - bry * 0.25);
+        ctx.stroke();
+        ctx.strokeStyle = ember;
+        ctx.globalAlpha = (0.3 + 0.6 * k) * ga * 0.8;
+        ctx.lineWidth = Math.max(1, s * 0.006);
+        ctx.beginPath();
+        ctx.moveTo(px - 0.006 * s, by + bry * 0.3);
+        ctx.lineTo(px + 0.003 * s, by - bry * 0.2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      if (fl > 0.05) {
+        // THE LICK: at the flare the bowl vents one drawn flame —
+        // a curling casing+core stroke, tapered by its two weights,
+        // leaning outboard on the pair's shared beat.
+        const lh = 0.055 * s * (0.5 + 0.5 * fl);
+        const tipX2 = bx + side * 0.022 * s;
+        const midX = bx - side * 0.012 * s;
+        ctx.globalAlpha = 0.5 + 0.5 * fl;
+        ctx.strokeStyle = casing;
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        ctx.beginPath();
+        ctx.moveTo(bx, by - bry * 0.3);
+        ctx.quadraticCurveTo(midX, by - lh * 0.55, tipX2, by - lh);
+        ctx.stroke();
+        ctx.strokeStyle = ember;
+        ctx.lineWidth = Math.max(1, s * 0.0065);
+        ctx.beginPath();
+        ctx.moveTo(bx, by - bry * 0.25);
+        ctx.quadraticCurveTo(midX, by - lh * 0.5, tipX2, by - lh * 0.92);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        // The sparks: rising, wandering, dying — per-side jitter on
+        // the one shared beat.
+        const flyU = 1 - fl;
+        ctx.fillStyle = ember;
+        for (const [dph, dxu] of [[0, -0.5], [0.22, 0.55]] as const) {
+          const du = Math.min(1, flyU + dph);
+          if (du >= 1) continue;
+          ctx.globalAlpha = (1 - du) * 0.85;
+          ctx.beginPath();
+          ctx.arc(
+            bx + side * dxu * brx * 0.6 + Math.sin(du * 9 + ph) * 0.012 * s,
+            by - bry - du * 0.07 * s,
+            0.0065 * s * (1 - du * 0.4), 0, Math.PI * 2,
+          );
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+      // The leak: one ember mote always rising off the bed on its
+      // own side-phase — heat is the one thing the oath lets go.
+      const mu = ((nowMs * 0.00011 + ph * 0.2) % 1 + 1) % 1;
+      ctx.fillStyle = ember;
+      ctx.globalAlpha = Math.sin(mu * Math.PI) * (0.25 + 0.3 * k);
+      ctx.beginPath();
+      ctx.arc(bx + Math.sin(mu * 7 + ph) * 0.014 * s, by - bry - mu * 0.055 * s, 0.005 * s, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
     }
@@ -17641,39 +18061,67 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     return;
   }
 
-  if (st.kind === 'cinderhood') {
-    // THE CINDERHOOD — cindersworn's own head: the hood that walked
-    // through the forge fire and kept the receipts. Two lapped tiers
-    // shingle the crown, every edge burnt ragged and CHARRED black at
-    // the tips, the lowest lap holding a thin ember rim that breathes;
-    // at the brow, the banked-coal band — dark iron holding three
-    // coals that take turns glowing. Warm side out.
+  if (st.kind === 'oathcowl') {
+    // THE CINDER OATH — the sworn watch: a cowl cut from charred
+    // cloth over a fire that was BANKED, never beaten. Three char
+    // tiers lap the crown, every hem burnt ragged; down the leading
+    // pitch runs THE MAIN CRACK — the one fissure where the fire
+    // looks out, its ember crawl walking the cloth. The opening is
+    // framed like a furnace door in cold iron, the face lost in the
+    // deepest warm dark, and at the brow sits THE OATH COAL in its
+    // iron shrine: one ember, sworn. It has never once gone out.
+    // Fire lives in the crack. The cloth just keeps the promise.
     const t = profileK;
     const front = backK <= 0.55;
     const cx = headX + fx * headR * (0.34 + 0.24 * t);
     const ohw = hw * 0.74 * (1 - 0.5 * t);
-    const oTop = headY - hh * 0.6;
+    const oTop = headY - hh * 0.58;
     const oBot = headY + hh * 0.84;
-    const sway = Math.sin(f.nowMs * 0.0015) * hw * 0.04;
-    const apexX = headX - lead * hw * (0.3 + t * 0.18);
-    const apexY = headY - hh * 1.5;
-    const tipX = headX - lead * (hw * (1.34 + t * 0.5) + sway);
-    const tipY = headY - hh * 0.9;
+    const k = cinderK(f.nowMs, 0);
+    const fl = cinderFlareK(f.nowMs, 0);
+    const casing = st.crackseams?.casing ?? shade(st.trim, -18);
+    const ember = st.crackseams?.ember ?? st.trim;
+    const sway = Math.sin(f.nowMs * 0.0013) * hw * 0.03;
+    // The shell: the vigils triangle leaned TRAILING (proven
+    // chassis), the crown folding back to a pinched dropped tip —
+    // here burnt to a charred barb. The bottom hem is CHEWED: char
+    // took the edge, and the silhouette says so.
+    const apexX = headX - lead * hw * (0.44 + t * 0.18);
+    const apexY = headY - hh * 1.48;
+    const tipX = headX - lead * hw * (0.66 + t * 0.18) + sway * -lead;
+    const tipY = apexY + hh * 0.3;
     const shell = () => {
-      ctx.moveTo(headX + lead * hw * 1.26, headY + hh * 1.18);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.34, headY + hh * 0.2, headX + lead * hw * 1.18, headY - hh * 0.48);
-      ctx.quadraticCurveTo(headX + lead * hw * 1.26, headY - hh * 0.84, headX + lead * hw * 0.84, headY - hh * 1.14);
-      ctx.quadraticCurveTo(headX + lead * hw * 0.3, headY - hh * 1.42, apexX, apexY);
-      ctx.quadraticCurveTo(headX - lead * hw * (0.94 + t * 0.32), apexY + hh * 0.04, tipX, tipY);
-      ctx.quadraticCurveTo(headX - lead * hw * (0.98 + t * 0.26), headY - hh * 0.5, headX - lead * hw * (1.24 + t * 0.36), headY - hh * 0.16);
-      ctx.quadraticCurveTo(headX - lead * hw * (1.38 + t * 0.32), headY + hh * 0.34, headX - lead * hw * 1.32, headY + hh * 1.18);
-      ctx.quadraticCurveTo(headX, headY + hh * 1.46, headX + lead * hw * 1.26, headY + hh * 1.18);
+      ctx.moveTo(headX + lead * hw * 1.22, headY + hh * 1.18);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.3, headY + hh * 0.16, headX + lead * hw * 1.1, headY - hh * 0.5);
+      ctx.quadraticCurveTo(headX + lead * hw * 1.02, headY - hh * 1.04, headX + lead * hw * 0.36, headY - hh * 1.3);
+      ctx.quadraticCurveTo(headX - lead * hw * 0.04, headY - hh * 1.44, apexX, apexY);
+      // the peak folds back, pinches, and drops its burnt point
+      ctx.quadraticCurveTo(headX - lead * hw * (0.72 + t * 0.2), apexY + hh * 0.06, tipX, tipY);
+      // the return hugs the fold OUTBOARD of the skull — the notch
+      // under a folded tip is where the scalp leaks (the nape law)
+      ctx.quadraticCurveTo(headX - lead * hw * (0.64 + t * 0.16), apexY + hh * 0.42, headX - lead * hw * (0.94 + t * 0.22), headY - hh * 1.0);
+      ctx.quadraticCurveTo(headX - lead * hw * (1.18 + t * 0.28), headY - hh * 0.5, headX - lead * hw * (1.28 + t * 0.3), headY + hh * 0.22);
+      ctx.quadraticCurveTo(headX - lead * hw * 1.32, headY + hh * 0.74, headX - lead * hw * 1.26, headY + hh * 1.2);
+      // THE BURNT HEM: a chewed edge, fixed geometry — char does
+      // not breathe, it only keeps what it has taken.
+      ctx.quadraticCurveTo(headX - lead * hw * 0.92, headY + hh * 1.4, headX - lead * hw * 0.68, headY + hh * 1.34);
+      ctx.lineTo(headX - lead * hw * 0.5, headY + hh * 1.48);
+      ctx.lineTo(headX - lead * hw * 0.26, headY + hh * 1.36);
+      ctx.lineTo(headX - lead * hw * 0.02, headY + hh * 1.5);
+      ctx.lineTo(headX + lead * hw * 0.24, headY + hh * 1.34);
+      ctx.lineTo(headX + lead * hw * 0.44, headY + hh * 1.46);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.92, headY + hh * 1.28, headX + lead * hw * 1.22, headY + hh * 1.18);
       ctx.closePath();
     };
     const opening = () => {
       chamferRect(ctx, cx - ohw, oTop, ohw * 2, oBot - oTop, cut * 0.8);
     };
+    // The base cap FIRST: cloth between skull and crown at every
+    // facing, so no fold can ever show scalp (the nape law).
     ctx.fillStyle = mc;
+    ctx.beginPath();
+    ctx.ellipse(headX, headY - hh * 0.5, hw * 1.04, hh * 0.72, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.beginPath();
     shell();
     if (front) opening();
@@ -17684,112 +18132,225 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       shell();
       if (front) opening();
       ctx.clip('evenodd');
-      ctx.fillStyle = shade(st.color, -13);
-      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.6, hw * 2.4, hh * 3.2);
-      // THE CHAR LAPS: two tiers shingling the crown, hems ragged,
-      // tips burnt black — each lap a flat band, its char a second
-      // flat band riding the ragged edge. The lowest lap's char
-      // carries the ember rim, breathing on the banked clock.
-      const breath = 0.5 + 0.5 * Math.sin(f.nowMs * 0.0011);
-      for (const [ti, y0, dv] of [[0, -1.08, 6], [1, -0.55, -4]] as const) {
-        const baseY = headY + hh * y0;
-        const ragged = (i: number): number =>
-          hh * (0.14 + 0.09 * Math.sin(i * 2.4 + ti * 1.9));
-        const hemPath = () => {
-          ctx.moveTo(headX + lead * hw * 1.4, baseY - hh * 0.3);
-          ctx.lineTo(headX - lead * hw * 1.5, baseY - hh * 0.44);
-          ctx.lineTo(headX - lead * hw * 1.5, baseY + hh * 0.04);
-          for (let i = 0; i < 6; i++) {
-            const u = -1.5 + (i / 5) * 2.9;
-            ctx.lineTo(headX + lead * hw * (u + 0.12), baseY + ragged(i));
-            ctx.lineTo(headX + lead * hw * (u + 0.26), baseY - hh * 0.02);
-          }
-          ctx.closePath();
-        };
+      // Folded dark: the trailing third in hard shadow.
+      ctx.fillStyle = shade(st.color, -12);
+      ctx.fillRect(lead === 1 ? headX - hw * 2.4 : headX, headY - hh * 1.7, hw * 2.4, hh * 3.5);
+      // THE CHAR TIERS: three lapped tiers stepping darker toward
+      // the hem, every hem a fixed ragged jag with its char edging —
+      // burnt cloth holds its shape; only the light in it moves.
+      for (const [bi, topV, dv] of [[0, -0.34, -5], [1, 0.14, -14], [2, 0.58, -24]] as const) {
+        const bY = headY + hh * topV + Math.sin(f.nowMs * 0.0016 + bi * 2.1) * hh * 0.016 * (0.3 + 0.7 * k);
+        const jag = (i: number): number =>
+          hh * (0.05 + 0.05 * Math.sin(i * 2.7 + bi * 1.3)) * (i % 2 === 0 ? 1 : -0.5);
         ctx.fillStyle = shade(st.color, dv);
         ctx.beginPath();
-        hemPath();
-        ctx.fill();
-        // The char: a black band clipped to the lap, hugging the hem.
-        ctx.save();
-        ctx.beginPath();
-        hemPath();
-        ctx.clip();
-        ctx.fillStyle = '#1c1412';
-        for (let i = 0; i < 6; i++) {
-          const u = -1.5 + (i / 5) * 2.9;
-          ctx.beginPath();
-          ctx.moveTo(headX + lead * hw * (u - 0.04), baseY - hh * 0.06);
-          ctx.lineTo(headX + lead * hw * (u + 0.12), baseY + ragged(i));
-          ctx.lineTo(headX + lead * hw * (u + 0.28), baseY - hh * 0.06);
-          ctx.closePath();
-          ctx.fill();
+        ctx.moveTo(headX - hw * 1.5, bY + jag(0));
+        for (let i = 1; i <= 6; i++) {
+          ctx.lineTo(headX + hw * (-1.5 + (i / 6) * 3), bY + jag(i));
         }
-        if (ti === 1 && st.coalband) {
-          // The ember rim under the lowest char, breathing.
-          ctx.globalAlpha = 0.35 + 0.4 * breath;
-          ctx.strokeStyle = st.coalband.coal;
-          ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.lineTo(headX + hw * 1.5, headY + hh * 1.7);
+        ctx.lineTo(headX - hw * 1.5, headY + hh * 1.7);
+        ctx.closePath();
+        ctx.fill();
+        // The char edging riding the ragged hem — the burnt line.
+        ctx.strokeStyle = '#120a08';
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(headX - hw * 1.5, bY + jag(0));
+        for (let i = 1; i <= 6; i++) {
+          ctx.lineTo(headX + hw * (-1.5 + (i / 6) * 3), bY + jag(i));
+        }
+        ctx.stroke();
+        if (bi === 2) {
+          // The banked light seeping under the lowest lap — a thin
+          // ember rim breathing with the drawn breath, nothing more.
+          // A banked fire never shows all its heat.
+          ctx.strokeStyle = ember;
+          ctx.globalAlpha = 0.14 + 0.4 * k;
+          ctx.lineWidth = Math.max(1, s * 0.008);
           ctx.beginPath();
-          ctx.moveTo(headX - lead * hw * 1.4, baseY + hh * 0.1);
-          for (let i = 0; i < 6; i++) {
-            const u = -1.5 + (i / 5) * 2.9;
-            ctx.lineTo(headX + lead * hw * (u + 0.12), baseY + ragged(i) + hh * 0.02);
+          ctx.moveTo(headX - hw * 1.5, bY + jag(0) + hh * 0.05);
+          for (let i = 1; i <= 6; i++) {
+            ctx.lineTo(headX + hw * (-1.5 + (i / 6) * 3), bY + jag(i) + hh * 0.05);
           }
           ctx.stroke();
           ctx.globalAlpha = 1;
         }
-        ctx.restore();
       }
+      // The windward arris: one warm lit plane down the leading
+      // pitch — cloth that remembers standing near the forge.
+      ctx.fillStyle = shade(st.color, 9);
+      ctx.beginPath();
+      ctx.moveTo(headX + lead * hw * 0.3, headY - hh * 1.28);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.8, headY - hh * 0.9, headX + lead * hw * 0.96, headY - hh * 0.4);
+      ctx.quadraticCurveTo(headX + lead * hw * 0.6, headY - hh * 0.7, headX + lead * hw * 0.16, headY - hh * 1.16);
+      ctx.closePath();
+      ctx.fill();
+      // THE MAIN CRACK: the one fissure, crown to collar down the
+      // leading pitch, clipped in the shell — the fire lives IN the
+      // cloth, never on it. Its embers crawl at one pace forever;
+      // the flare speaks through their weight, never their speed.
+      emberCrack(
+        ctx,
+        headX + lead * hw * 0.3, headY - hh * 1.18,
+        headX + lead * hw * 1.0, headY + hh * 0.68,
+        3.2, hw * 0.085,
+        casing, ember,
+        f.nowMs, Math.max(k, fl), Math.max(1, s * 0.0095),
+      );
       ctx.restore();
+      // The charred barb at the tip: a burnt bead holding one ember
+      // eye — and at the flare it lets a spark GO. Fire that could
+      // not quite stay cloth rises; the dark waters' drop, inverted.
+      ctx.fillStyle = shade(st.color, -18);
+      ctx.beginPath();
+      ctx.arc(tipX, tipY + hh * 0.04, hw * 0.062, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = ember;
+      ctx.globalAlpha = 0.22 + 0.5 * Math.max(k, fl);
+      ctx.beginPath();
+      ctx.arc(tipX - lead * hw * 0.012, tipY + hh * 0.055, hw * 0.02, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      if (fl > 0.05) {
+        const du = 1 - fl;
+        ctx.fillStyle = ember;
+        ctx.globalAlpha = (1 - du) * 0.85;
+        ctx.beginPath();
+        ctx.arc(
+          tipX - lead * hw * 0.1 * du + Math.sin(du * 9) * hw * 0.05,
+          tipY - hh * (0.08 + du * 1.5),
+          hw * 0.04 * (1 - du * 0.4), 0, Math.PI * 2,
+        );
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
       if (front) {
+        // THE VEIL: the deepest warm dark in the wardrobe — opaque
+        // past the eye line, falling off below (the cast veil). The
+        // coal watches; the face is nobody's business.
         ctx.save();
         ctx.beginPath();
         opening();
         ctx.clip();
-        const shGrad = ctx.createLinearGradient(0, oTop, 0, headY + hh * 0.06);
-        shGrad.addColorStop(0, 'rgba(24, 15, 26, 0.5)');
-        shGrad.addColorStop(1, 'rgba(24, 15, 26, 0)');
-        ctx.fillStyle = shGrad;
-        ctx.fillRect(cx - ohw, oTop, ohw * 2, hh * 0.68);
+        // The hold must reach WELL past the eye line — the rig's
+        // eyes sit lower than they look. An OPAQUE fill holds the
+        // mystery zone solid (opaque fills are gremlin-safe in a
+        // clip; stacked stroke bands seam against a bright face),
+        // then the cast veil grades only the chin.
+        ctx.fillStyle = '#0d0705';
+        ctx.fillRect(cx - ohw, oTop + cut * 0.2, ohw * 2, headY + hh * 0.56 - (oTop + cut * 0.2));
+        stormVeil(ctx, cx, ohw, headY + hh * 0.4, headY + hh * 0.56, headY + hh * 0.86, '#0d0705');
         ctx.restore();
-        if (st.coalband) {
-          // THE BANKED BAND: dark iron across the brow holding three
-          // coals — they take turns; a banked fire never shows all
-          // its heat at once.
-          const cb = st.coalband;
-          ctx.fillStyle = cb.color;
-          ctx.fillRect(cx - ohw * 1.0, oTop - headR * 0.055, ohw * 2.0, headR * 0.13);
-          const turn = Math.floor(f.nowMs / 1400) % 3;
-          const ft = (f.nowMs % 1400) / 1400;
-          for (let i = 0; i < 3; i++) {
-            const u = -0.55 + i * 0.55;
-            const px = cx + u * ohw;
-            const py = oTop + headR * 0.008;
-            const lit = i === turn ? Math.sin(ft * Math.PI) : 0.12;
-            ctx.fillStyle = shade(cb.coal, -30 + lit * 56);
+        // THE FURNACE DOOR: cold iron frame, inner dark line, two
+        // rivets at the collar — the one metal the oath allows, and
+        // it wears NO light of its own (the crack law holds at the
+        // door too: iron is dark; only the coal burns).
+        const doorIron = st.oathcoal?.iron ?? shade(st.trim, -40);
+        ctx.strokeStyle = shade(doorIron, -8);
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.beginPath();
+        opening();
+        ctx.stroke();
+        ctx.strokeStyle = '#150c08';
+        ctx.lineWidth = Math.max(1, s * 0.005);
+        ctx.beginPath();
+        chamferRect(ctx, cx - ohw * 0.9, oTop + (oBot - oTop) * 0.04, ohw * 1.8, (oBot - oTop) * 0.92, cut * 0.7);
+        ctx.stroke();
+        ctx.fillStyle = shade(doorIron, 10);
+        for (const bu of [-0.82, 0.82] as const) {
+          ctx.beginPath();
+          ctx.arc(cx + ohw * bu, oBot - cut * 0.5, headR * 0.036, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (st.oathcoal) {
+          // THE OATH COAL: painted after the veil — the one device
+          // that reads OVER the dark (what watches by the veil
+          // paints after it). An iron shrine on the brow bar, and
+          // in it the sworn ember: a faceted black coal whose fire
+          // shows ONLY in the cracks across its face. It draws with
+          // the breath; at the flare it remembers, and one spark
+          // rises. It has never once gone out.
+          const oc = st.oathcoal;
+          // The coal hangs INSIDE the door's dark, at the brow —
+          // one ember burning in a black shrine. Nothing in the
+          // wardrobe reads faster than a single light in a doorway.
+          const py = headY - hh * 0.26;
+          ctx.fillStyle = oc.iron;
+          ctx.beginPath();
+          chamferRect(ctx, cx - headR * 0.2, py - headR * 0.125, headR * 0.4, headR * 0.25, headR * 0.05);
+          ctx.fill();
+          // The setting's lit top facet — 2.5D says iron has a face.
+          ctx.fillStyle = shade(oc.iron, 16);
+          ctx.beginPath();
+          ctx.moveTo(cx - headR * 0.17, py - headR * 0.09);
+          ctx.lineTo(cx + headR * 0.17, py - headR * 0.09);
+          ctx.lineTo(cx + headR * 0.13, py - headR * 0.025);
+          ctx.lineTo(cx - headR * 0.13, py - headR * 0.025);
+          ctx.closePath();
+          ctx.fill();
+          // The coal: near-black, faceted, dark as its word.
+          ctx.fillStyle = oc.coal;
+          ctx.beginPath();
+          chamferRect(ctx, cx - headR * 0.115, py - headR * 0.085, headR * 0.23, headR * 0.175, headR * 0.035);
+          ctx.fill();
+          // The cracks across its face — the only place the fire
+          // shows. Drawn strokes, breathing with the bed.
+          ctx.strokeStyle = oc.ember;
+          ctx.lineCap = 'round';
+          ctx.lineWidth = Math.max(1, s * 0.0075);
+          ctx.globalAlpha = 0.4 + 0.6 * Math.max(k, fl);
+          ctx.beginPath();
+          ctx.moveTo(cx - headR * 0.085, py + headR * 0.02);
+          ctx.lineTo(cx - headR * 0.02, py - headR * 0.03);
+          ctx.lineTo(cx + headR * 0.055, py + headR * 0.038);
+          ctx.moveTo(cx + headR * 0.005, py - headR * 0.068);
+          ctx.lineTo(cx + headR * 0.06, py - headR * 0.012);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+          if (fl > 0.05) {
+            // The remembering: a tight halo — never a balloon — and
+            // one spark that rises and dies.
+            ctx.strokeStyle = oc.ember;
+            ctx.globalAlpha = 0.22 * fl;
+            ctx.lineWidth = Math.max(1, s * 0.01);
             ctx.beginPath();
-            chamferRect(ctx, px - headR * 0.05, py - headR * 0.04, headR * 0.1, headR * 0.08, headR * 0.02);
+            ctx.arc(cx, py, headR * 0.185, 0, Math.PI * 2);
+            ctx.stroke();
+            const du = 1 - fl;
+            ctx.fillStyle = oc.ember;
+            ctx.globalAlpha = (1 - du) * 0.8;
+            ctx.beginPath();
+            ctx.arc(
+              cx + Math.sin(du * 8) * headR * 0.05,
+              py - headR * (0.14 + du * 0.55),
+              headR * 0.028 * (1 - du * 0.4), 0, Math.PI * 2,
+            );
             ctx.fill();
-            if (lit > 0.5) {
-              ctx.globalAlpha = (lit - 0.5) * 0.7;
-              ctx.fillStyle = cb.coal;
-              ctx.beginPath();
-              ctx.arc(px, py, headR * 0.1, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.globalAlpha = 1;
-            }
+            ctx.globalAlpha = 1;
           }
         }
       } else {
-        // From behind: the drape tail under the char laps.
-        ctx.fillStyle = shade(st.color, -12);
+        // From behind: the drape tail under the char tiers, and the
+        // crack's back verse — the fire does not care which way the
+        // wearer faces.
+        ctx.fillStyle = st.color;
         ctx.beginPath();
-        ctx.moveTo(headX - hw * 0.34, headY + hh * 0.9);
-        ctx.lineTo(headX + hw * 0.34, headY + hh * 0.9);
-        ctx.lineTo(headX + lead * hw * 0.08, headY + hh * 1.9);
+        ctx.moveTo(headX - hw * 0.3, headY + hh * 0.82);
+        ctx.lineTo(headX + hw * 0.28, headY + hh * 0.82);
+        ctx.lineTo(headX + hw * 0.1, headY + hh * 1.9);
+        ctx.lineTo(headX - hw * 0.14, headY + hh * 1.9);
         ctx.closePath();
         ctx.fill();
+        emberCrack(
+          ctx,
+          headX - hw * 0.02, headY + hh * 0.94,
+          headX + hw * 0.04, headY + hh * 1.76,
+          5.1, hw * 0.05,
+          casing, ember,
+          f.nowMs, k, Math.max(1, s * 0.007),
+        );
       }
     }
     return;
