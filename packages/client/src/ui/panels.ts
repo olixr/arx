@@ -44,10 +44,12 @@ import {
   movesetFor,
   rolledStats,
   secretArtsFor,
+  setName,
   techniquePoolDef,
   techniquesFor,
   trinketPowerMult,
   type CallingDef,
+  type GearStats,
   type ItemDef,
 } from '@arx/content';
 import { itemIconUrl, slotGlyphUrl } from '../render/icons.js';
@@ -292,6 +294,14 @@ export class Panels {
   private lastSkills: SkillXp = {};
   private lastSlots: InvSlot[] = [];
   private lastEquipment: Partial<Record<string, EquippedItem>> = {};
+  /**
+   * ONE TRUTH FOR THE COUNT (visible-buildcraft V3): the aggregate of
+   * the worn kit, computed ONCE per equipment push by the shared
+   * aggregator. Every House surface (court, card, anatomy pips, pack
+   * marks, compare) reads `setCounts` from here — the hand-rolled
+   * per-card counter is dead.
+   */
+  private lastGearStats: GearStats | null = null;
   /** What the inspect card currently shows (to refresh on re-render). */
   private cardSource: { kind: 'inv'; slot: number } | { kind: 'equip'; slot: string } | null = null;
   /** The cell the card is pinned beside (repositions on refresh). */
@@ -1027,6 +1037,37 @@ export class Panels {
             delta > 0 ? 'var(--green)' : delta < 0 ? 'var(--red-soft)' : 'var(--parchment-dim)';
           this.card.appendChild(line);
         }
+        // THE COMPARE STOPS LYING ABOUT THE HOUSE: a swap that would
+        // put a live word to sleep says so in ember; one that would
+        // wake a word says so in gold. Silent when the swap stays
+        // inside one family or touches no threshold.
+        const wornSet = wDef?.gear?.set;
+        const mySet = def.gear?.set;
+        if (wornSet !== mySet) {
+          const houseLine = (text: string, wakes: boolean): void => {
+            const l = document.createElement('div');
+            l.className = 'card-compare house-word-line';
+            l.textContent = text;
+            l.style.color = wakes ? 'var(--gold-bright)' : 'var(--red-soft)';
+            this.card.appendChild(l);
+          };
+          if (wornSet) {
+            const n = this.setCount(wornSet);
+            for (const word of setWordsFor(wornSet)) {
+              if (n >= word.pieces && n - 1 < word.pieces) {
+                houseLine(`Puts ${word.name} to sleep.`, false);
+              }
+            }
+          }
+          if (mySet) {
+            const n = this.setCount(mySet);
+            for (const word of setWordsFor(mySet)) {
+              if (n < word.pieces && n + 1 >= word.pieces) {
+                houseLine(`Wakes ${word.name}.`, true);
+              }
+            }
+          }
+        }
       }
     }
 
@@ -1116,6 +1157,14 @@ export class Panels {
     // (Armor and tool power already lead the headline strip.)
     const cls = def.gear?.armorClass;
     if (cls) stat('Class', cls.charAt(0).toUpperCase() + cls.slice(1), CLASS_COLORS[cls]);
+    // THE HOUSE COURT: the family holds court on the card — the same
+    // structure the stand shows, one builder, one grammar. The family
+    // is the def's, not the roll's, so it is not gated on rolled.
+    const houseSet = def.gear?.set;
+    if (houseSet) {
+      const court = this.houseCourt(houseSet);
+      if (court) this.card.appendChild(court);
+    }
     if (rolled) {
       for (const a of rolled.affixes) {
         stat(affixName(a.stat), `+${a.value}`, '#7dc46a');
@@ -1124,29 +1173,8 @@ export class Panels {
       if (def.gear?.effects?.length) {
         stat('Trait', def.gear.effects.map(describeEffect).join(' · '), '#e8c04c');
       }
-      // THE HOUSE WORD: the family block — pieces worn now, each word
-      // lit or waiting, and its sentence printed (the tooltip law).
-      const setId = def.gear?.set;
-      if (setId) {
-        const words = setWordsFor(setId);
-        if (words.length > 0) {
-          let wornCount = 0;
-          for (const s of ['head', 'body', 'legs', 'gloves', 'boots'] as const) {
-            const w = this.lastEquipment[s];
-            if (w && itemDef(w.id)?.gear?.set === setId) wornCount++;
-          }
-          const setName = setId.charAt(0).toUpperCase() + setId.slice(1);
-          stat('House', `${setName} · ${wornCount} of 5 worn`, '#c8a84c');
-          for (const word of words) {
-            const lit = wornCount >= word.pieces;
-            const wd = document.createElement('div');
-            wd.className = 'card-passive-desc';
-            wd.style.opacity = lit ? '1' : '0.45';
-            wd.textContent = `(${word.pieces}) ${word.name}. ${word.desc}`;
-            this.card.appendChild(wd);
-          }
-        }
-      }
+      // (The House holds court above, outside the rolled gate — the
+      // old prose block that lived here is dead.)
       // The bonded enchantment — permanent, tier-colored, spelled out.
       // THE ENCHANTER'S HAND and THE DEEPENING: a piece may carry a
       // ward and an art, each with its own quality, and both are part
@@ -1509,6 +1537,40 @@ export class Panels {
     }
   }
 
+  /**
+   * THE PACK KNOWS THE HOUSE (visible-buildcraft V3): an idempotent
+   * pass in the applyReqGate mold — a pack piece whose family you
+   * already wear, where wearing IT would raise the count, gets a
+   * small gold house pip. The pack tells you what advances a build
+   * without a single hover.
+   */
+  private applyHouseMarks(): void {
+    for (const cell of this.invGrid.querySelectorAll<HTMLElement>('[data-invslot]')) {
+      const slot = this.lastSlots[Number(cell.dataset.invslot)];
+      const def = slot ? itemDef(slot.item) : undefined;
+      const set = def?.gear?.set;
+      let advances = false;
+      if (set && def?.equipSlot) {
+        const count = this.setCount(set);
+        const worn = this.lastEquipment[def.equipSlot];
+        const wornSet = worn ? itemDef(worn.id)?.gear?.set : undefined;
+        advances = count >= 1 && count < 5 && wornSet !== set;
+      }
+      cell.classList.toggle('house-callin', advances);
+      let pip = cell.querySelector<HTMLElement>('.house-pip');
+      if (advances) {
+        if (!pip) {
+          pip = document.createElement('span');
+          pip.className = 'house-pip';
+          pip.textContent = '◆';
+          cell.appendChild(pip);
+        }
+      } else {
+        pip?.remove();
+      }
+    }
+  }
+
   renderInventory(slots: InvSlot[]): void {
     this.lastSlots = slots;
     this.invGrid.innerHTML = '';
@@ -1590,6 +1652,7 @@ export class Panels {
     this.packFill.classList.toggle('full', filled >= count);
     this.applyPackFilter();
     this.applyReqGate();
+    this.applyHouseMarks();
 
     // The card may be describing a slot that just changed — refresh it;
     // the bench re-lays or re-seeds the same way.
@@ -1616,6 +1679,19 @@ export class Panels {
       cell.classList.add('clickable', 'equipped');
       const tier = rarityOfInstance(worn.id, worn.roll);
       if (tier !== 'common') cell.classList.add(`rarity-${tier}`);
+      // THE ANATOMY SPEAKS: sockets of a family with a word lit (two
+      // or more worn) wear a shared gold pip — kin reads at a glance.
+      const kinSet = itemDef(worn.id)?.gear?.set;
+      if (kinSet) {
+        cell.dataset.set = kinSet;
+        if (this.setCount(kinSet) >= 2) {
+          cell.classList.add('house-kin');
+          const pip = document.createElement('span');
+          pip.className = 'house-pip';
+          pip.textContent = '◆';
+          cell.appendChild(pip);
+        }
+      }
       cell.dataset.filled = '1';
       cell.dataset.nav = '';
       cell.dataset.navkey = `equip:${slot}`;
@@ -1654,14 +1730,20 @@ export class Panels {
 
   renderEquipment(equipment: Partial<Record<string, EquippedItem>>): void {
     this.lastEquipment = equipment;
+    // ONE TRUTH: aggregate once; every surface below reads this.
+    this.lastGearStats = aggregateGearStats(
+      equipment as Parameters<typeof aggregateGearStats>[0],
+    );
     // The armor stand: every socket hung at its body place.
     this.equipAnatomy.innerHTML = '';
     for (const slot of EQUIP_SLOTS) {
       this.equipAnatomy.appendChild(this.equipCell(slot, equipment));
     }
 
-    this.renderGearStrip(equipment);
+    this.renderGearStrip();
     this.renderWornManifest(equipment);
+    // Worn houses changed — the pack's advance marks follow.
+    this.applyHouseMarks();
 
     if (this.cardSource?.kind === 'equip') {
       const worn = this.lastEquipment[this.cardSource.slot];
@@ -1677,6 +1759,74 @@ export class Panels {
     // A weapon swap can re-aim the R key at another school's ladder —
     // the open codex follows the hand.
     if (this.artsOpen) this.renderArts();
+  }
+
+  /** Worn pieces of a family — the ONE TRUTH cache, zero when clean. */
+  private setCount(setId: string): number {
+    return this.lastGearStats?.setCounts[setId] ?? 0;
+  }
+
+  /**
+   * THE HOUSE COURT (visible-buildcraft V3): the ONE way a House is
+   * shown, everywhere it appears — the stand, the item card, and (by
+   * the card's re-parenting) the bench. A crest ring carries the worn
+   * count toward five; each word stands as a row, lit gold when its
+   * threshold is met, ghosted with its price in plain words when not.
+   * Replaces the bolted-on prose block of the first HOUSE WORD pass.
+   */
+  private houseCourt(setId: string): HTMLElement | null {
+    const words = setWordsFor(setId);
+    if (words.length === 0) return null;
+    const count = this.setCount(setId);
+    const court = document.createElement('div');
+    court.className = 'house-court';
+    const head = document.createElement('div');
+    head.className = 'court-head';
+    const ring = ringGauge(count / 5, { tone: 'var(--gold)' });
+    const num = document.createElement('span');
+    num.className = 'court-num';
+    num.textContent = String(count);
+    ring.center.appendChild(num);
+    const title = document.createElement('div');
+    title.className = 'court-title';
+    const nm = document.createElement('div');
+    nm.className = 'court-name';
+    nm.textContent = setName(setId);
+    const sub = document.createElement('div');
+    sub.className = 'court-sub';
+    sub.textContent =
+      count === 0
+        ? 'none worn'
+        : count === 1
+          ? 'one of five worn'
+          : `${count} of five worn`;
+    title.append(nm, sub);
+    head.append(ring.root, title);
+    court.appendChild(head);
+    for (const word of words) {
+      const lit = count >= word.pieces;
+      const row = document.createElement('div');
+      row.className = `court-word${lit ? ' lit' : ''}`;
+      const pip = document.createElement('span');
+      pip.className = 'word-pip';
+      pip.textContent = '◆';
+      const body = document.createElement('div');
+      body.className = 'word-body';
+      const line = document.createElement('div');
+      line.className = 'word-name';
+      line.textContent = word.name;
+      const gate = document.createElement('span');
+      gate.className = 'word-gate';
+      gate.textContent = lit ? 'woken' : word.pieces === 2 ? 'at two pieces' : 'at four pieces';
+      line.appendChild(gate);
+      const desc = document.createElement('div');
+      desc.className = 'word-desc';
+      desc.textContent = word.desc;
+      body.append(line, desc);
+      row.append(pip, body);
+      court.appendChild(row);
+    }
+    return court;
   }
 
   /**
@@ -1714,6 +1864,14 @@ export class Panels {
       // Common wears no treatment — parchment, like every plain word.
       const ink = RARITY_COLORS[rarityOfInstance(worn.id, worn.roll)];
       if (ink) name.style.color = ink;
+      // A piece of a lit family carries the court's gold tick.
+      const rowSet = def.gear?.set;
+      if (rowSet && this.setCount(rowSet) >= 2) {
+        const tick = document.createElement('span');
+        tick.className = 'house-tick';
+        tick.textContent = '◆';
+        name.appendChild(tick);
+      }
       // The headline: the piece's one most honest figure.
       const note = document.createElement('span');
       note.className = 'worn-row-note';
@@ -1731,6 +1889,19 @@ export class Panels {
     }
     this.wornManifest.classList.toggle('hidden', rows.length === 0);
     if (rows.length === 0) return;
+    // THE HOUSE LEADS THE KIT: every worn family holds court at the
+    // manifest's head — most pieces first — then the pieces themselves.
+    // No furniture when no family is worn.
+    const families = Object.entries(this.lastGearStats?.setCounts ?? {})
+      .filter(([, n]) => n >= 1)
+      .sort((a, b) => b[1] - a[1]);
+    if (families.length > 0) {
+      this.wornManifest.appendChild(sectionHead(families.length === 1 ? 'The house' : 'The houses'));
+      for (const [setId] of families) {
+        const court = this.houseCourt(setId);
+        if (court) this.wornManifest.appendChild(court);
+      }
+    }
     this.wornManifest.appendChild(sectionHead('The kit'));
     for (const row of rows) this.wornManifest.appendChild(row);
   }
@@ -1739,8 +1910,9 @@ export class Panels {
    * The gear ledger: everything the worn kit adds up to, told as stat
    * plaques under the stage — a big honest number over a plain label.
    */
-  private renderGearStrip(equipment: Partial<Record<string, EquippedItem>>): void {
-    const gear = aggregateGearStats(equipment as Parameters<typeof aggregateGearStats>[0]);
+  private renderGearStrip(): void {
+    const gear = this.lastGearStats;
+    if (!gear) return;
     this.gearStrip.innerHTML = '';
     const add = (value: string, label: string, tone: string): void => {
       this.gearStrip.appendChild(statPlaque(value, label, tone));

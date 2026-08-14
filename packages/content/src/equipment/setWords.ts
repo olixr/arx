@@ -435,3 +435,63 @@ export const SET_WORDS: Record<string, SetWord[]> = {
 export function setWordsFor(set: string): SetWord[] {
   return SET_WORDS[set] ?? [];
 }
+
+/**
+ * THE HOUSE ANSWERS TO A NAME (visible-buildcraft V3): authored
+ * display names for every worded family — never derived from the id
+ * (capitalize() gave "Voidwhisper" and "Barrowking"; a house deserves
+ * its spaces back). Coverage is pinned two ways in setWords.test.ts.
+ */
+export const SET_NAMES: Record<string, string> = {
+  warden: 'Warden',
+  frostplate: 'Frostplate',
+  bulwark: 'Bulwark',
+  dreadforge: 'Dreadforge',
+  sunforged: 'Sunforged',
+  wayfarer: 'Wayfarer',
+  wolfstalker: 'Wolfstalker',
+  nightveil: 'Nightveil',
+  drakescale: 'Drakescale',
+  stagheart: 'Stagheart',
+  hedgemage: 'Hedgemage',
+  tidecaller: 'Tidecaller',
+  voidwhisper: 'Void Whisper',
+  cindersworn: 'Cindersworn',
+  starweaver: 'Starweaver',
+  moonbell: 'Moonbell',
+  riftweave: 'Riftweave',
+  wintercourt: 'Winter Court',
+  vigil: 'Vigil',
+  skydancer: 'Skydancer',
+  orrery: 'Orrery',
+  sunhallow: 'Sunhallow',
+  stormsinger: 'Stormsinger',
+  gloamsight: 'Gloamsight',
+  flamewrought: 'Flamewrought',
+  duskwarden: 'Duskwarden',
+  aetherion: 'Aetherion',
+  adderfang: 'Adderfang',
+  hartsong: 'Hartsong',
+  skytalon: 'Skytalon',
+  broodsilk: 'Broodsilk',
+  cindershade: 'Cindershade',
+  rookfeather: 'Rookfeather',
+  aurochs: 'Aurochs',
+  barrowking: 'Barrow King',
+  stormcrown: 'Stormcrown',
+  forgeheart: 'Forgeheart',
+  wyrmsteel: 'Wyrmsteel',
+  oathgold: 'Oathgold',
+  jadeskull: 'Jadeskull',
+  fellbone: 'Fellbone',
+  redmarch: 'Redmarch',
+  rimethorn: 'Rimethorn',
+  palethorn: 'Palethorn',
+  kingsmane: 'Kingsmane',
+  gatefall: 'Gatefall',
+};
+
+/** A house's display name; the raw id only if it was never christened. */
+export function setName(set: string): string {
+  return SET_NAMES[set] ?? set;
+}

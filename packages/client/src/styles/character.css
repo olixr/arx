@@ -267,6 +267,123 @@
   white-space: nowrap;
 }
 
+/* THE HOUSE COURT (visible-buildcraft V3) — the ONE presentation of a
+   worn family: crest ring with the count toward five, then each word
+   as a row, gold when woken, ghosted with its plain-words price when
+   waiting. Lives in the manifest, on the item card, and (by the
+   card's re-parenting) on the bench — one builder, one dress. */
+.house-court {
+  --ring-size: 2.5rem;
+  padding: 0.375rem 0.375rem 0.5rem;
+  border-left: var(--rule) solid var(--gold-deep);
+  background: var(--ink-wash);
+  margin: 0.25rem 0;
+}
+
+.court-head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.25rem;
+}
+
+.court-num {
+  font-size: var(--t-label);
+  font-weight: 700;
+  color: var(--gold-bright);
+  text-shadow: var(--punch-small);
+}
+
+.court-name {
+  font-size: var(--t-body);
+  font-weight: 700;
+  color: var(--gold-bright);
+  text-shadow: var(--punch-small);
+}
+
+.court-sub {
+  font-size: var(--t-whisper);
+  color: var(--parchment-dim);
+}
+
+.court-word {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4375rem;
+  padding: 0.25rem 0 0.125rem;
+}
+
+.court-word .word-pip {
+  flex: none;
+  font-size: var(--t-whisper);
+  color: var(--line-strong);
+}
+
+.court-word.lit .word-pip {
+  color: var(--gold-bright);
+}
+
+.court-word .word-body {
+  min-width: 0;
+}
+
+.court-word .word-name {
+  font-size: var(--t-label);
+  font-weight: 700;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.court-word.lit .word-name {
+  color: var(--gold-bright);
+}
+
+.court-word .word-gate {
+  margin-left: 0.4375rem;
+  font-size: var(--t-whisper);
+  font-weight: 400;
+  color: var(--parchment-dim);
+}
+
+.court-word.lit .word-gate {
+  color: var(--gold);
+}
+
+.court-word .word-desc {
+  font-size: var(--t-whisper);
+  color: var(--parchment-dim);
+}
+
+.court-word.lit .word-desc {
+  color: var(--parchment);
+}
+
+/* The court's marks outside its walls: the manifest row's kin tick,
+   the anatomy socket's shared pip, and the pack cell's advance pip. */
+.house-tick {
+  margin-left: 0.3125rem;
+  font-size: var(--t-whisper);
+  color: var(--gold-bright);
+}
+
+.inv-slot .house-pip {
+  position: absolute;
+  left: 0.1875rem;
+  bottom: 0.125rem;
+  font-size: 0.6875rem;
+  line-height: 1;
+  color: var(--gold-bright);
+  text-shadow: var(--punch-small);
+  pointer-events: none;
+}
+
+/* The stand's sockets wear their name across the south edge — the
+   kin pip steps up to the top corner there. */
+.equip-cell .house-pip {
+  bottom: auto;
+  top: 0.1875rem;
+}
+
 /* The stand: sockets hung where they sit on the body — head over
    chest over legs over boots down the spine, weapon hand left,
    shield hand right, cape at the shoulder, tools on the belt. */

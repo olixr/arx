@@ -180,3 +180,20 @@ test('the fold is live: worn pieces speak, thresholds gate, wordOnHit routes', (
   ]);
   assert.ok(proc.procs.some((p) => p.id === 'word_barrowking_crown'), 'the word proc folds');
 });
+
+test('THE HOUSE ANSWERS TO A NAME: every family is christened, both ways', async () => {
+  const { SET_NAMES, setName } = await import('./setWords.js');
+  for (const set of Object.keys(SET_WORDS)) {
+    const name = SET_NAMES[set];
+    assert.ok(name && name.trim().length > 0, `${set} has no display name`);
+    // A christening is words, not machinery: letters and spaces only,
+    // leading capitals, and never a dash (the VOICE law).
+    assert.match(name!, /^[A-Z][a-zA-Z]*( [A-Z][a-zA-Z]*)*$/, `${set} name "${name}" reads wrong`);
+  }
+  for (const set of Object.keys(SET_NAMES)) {
+    assert.ok(SET_WORDS[set], `SET_NAMES christens "${set}" but no such family speaks`);
+  }
+  assert.equal(setName('warden'), 'Warden');
+  assert.equal(setName('voidwhisper'), 'Void Whisper');
+  assert.equal(setName('never_stamped'), 'never_stamped');
+});
