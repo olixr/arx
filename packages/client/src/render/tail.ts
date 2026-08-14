@@ -52,9 +52,16 @@ export class TailSim {
   /** Tip speed (tiles/s) — the settle detector. */
   tipSpd = 0;
 
+  /**
+   * `rootOff` seats the root behind the anchor (tiles). The default is
+   * the humanoid hip line; a QUADRUPED must pass its own body
+   * half-length or the tail roots INSIDE the torso and hangs between
+   * the legs — the fox lesson.
+   */
   constructor(
     private readonly heavy: number,
     seed: number,
+    private readonly rootOff: number = BACK_OFF,
   ) {
     this.segs = 6;
     this.segLen = 0.072 * (1 + 0.3 * (heavy - 1));
@@ -78,8 +85,8 @@ export class TailSim {
     const n = this.segs + 1;
     const fx = Math.cos(dir);
     const fy = Math.sin(dir);
-    const cx = ax - fx * BACK_OFF * sizeK;
-    const cy = ay - fy * BACK_OFF * sizeK;
+    const cx = ax - fx * this.rootOff * sizeK;
+    const cy = ay - fy * this.rootOff * sizeK;
     const seg = this.segLen * sizeK;
 
     // First sight or teleport: lay the brush at rest behind the facing

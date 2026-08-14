@@ -9719,18 +9719,22 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
   // fox down, it runs YOU down and thinks better of it.
   fox: {
     rig: {
-      legs: quadLegs(0.24, 0.09),
-      legLen: 0.36,
-      rise: 0.3,
+      // A wider track than the first cut: the narrow line read
+      // elegant at profile but let far legs cross the chest at the
+      // quarter bands — the stance plants clear of the body now.
+      legs: quadLegs(0.26, 0.115),
+      legLen: 0.34,
+      rise: 0.29,
       liftAmp: 0.13,
       runSpeed: 5.0,
       turnRate: 11,
     },
-    bodyLen: 0.31,
-    bodyRise: 0.35,
+    // Longer and lower: the arrow body, not a box on stilts.
+    bodyLen: 0.34,
+    bodyRise: 0.33,
     kneeFwd: [1, 1, -1, -1],
-    hipFwd: 0.9,
-    hipSide: 0.55,
+    hipFwd: 0.88,
+    hipSide: 0.6,
     legW: 0.055,
     foot: 'paw',
     // The slightly long forearm over a fine pastern, the long thigh
@@ -9744,18 +9748,18 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
   // blade's edge moving faster than anything her size.
   fox_champion: {
     rig: {
-      legs: quadLegs(0.3, 0.12),
-      legLen: 0.48,
-      rise: 0.4,
+      legs: quadLegs(0.33, 0.14),
+      legLen: 0.46,
+      rise: 0.38,
       liftAmp: 0.12,
       runSpeed: 5.2,
       turnRate: 10,
     },
-    bodyLen: 0.42,
-    bodyRise: 0.48,
+    bodyLen: 0.45,
+    bodyRise: 0.45,
     kneeFwd: [1, 1, -1, -1],
-    hipFwd: 0.9,
-    hipSide: 0.55,
+    hipFwd: 0.88,
+    hipSide: 0.6,
     legW: 0.07,
     foot: 'paw',
     segSplit: [0.52, 0.57],
@@ -16926,19 +16930,21 @@ export function paintFoxBody(
 ): void {
   const hl = spec.bodyLen;
   const hw = look.bodyW;
-  // The fox's footprint: neither the wolf's chest keel nor the cat's
-  // wide rump — a slim winter-coat barrel carrying its width MIDSHIP
-  // and tapering neat at both ends, the chest a shade leader. What
-  // says fox at world zoom is how little body rides how much brush.
+  // THE STREAMLINED HULL: a fox is an arrow, not a barrel — the deep
+  // narrow chest CARRIES the width, the waist draws in hard, and the
+  // rump runs to a NARROW stern that pours straight into the brush
+  // root. Neither the wolf's keel-and-slab nor the cat's wide-rumped
+  // wedge: the taper is the species. What says fox at world zoom is
+  // how little body rides how much brush.
   const foot: Array<[number, number]> = [
-    [hl, -hw * 0.68],
-    [hl, hw * 0.68],
-    [hl * 0.45, hw * 0.95],
-    [-hl * 0.3, hw],
-    [-hl, hw * 0.62],
-    [-hl, -hw * 0.62],
-    [-hl * 0.3, -hw],
-    [hl * 0.45, -hw * 0.95],
+    [hl, -hw * 0.72],
+    [hl, hw * 0.72],
+    [hl * 0.55, hw],
+    [-hl * 0.2, hw * 0.86],
+    [-hl, hw * 0.5],
+    [-hl, -hw * 0.5],
+    [-hl * 0.2, -hw * 0.86],
+    [hl * 0.55, -hw],
   ];
   // Skulk variance: each fox's coat sits a step off the cluster tone.
   const coat = shade(look.coat, (((f.seed >>> 5) & 7) - 3) * 2);
@@ -16946,17 +16952,20 @@ export function paintFoxBody(
     ctx,
     f,
     foot,
-    // THE LEVEL TOPLINE, carried alert: a modest wither rise toward
-    // the high-held neck root (the fox listens UP where the lynx
-    // prowls DOWN), a shallow spine dip, and a light haunch spring —
-    // present, coiled, but well under the cat's loaded ramp.
+    // THE ARROW TOPLINE: the neck root RISES out of the chest (the
+    // fox listens UP — the head must grow from the body, never hover
+    // off it), a shallow dip behind the withers, a light loin arch
+    // over the coiled rear, then the stern FALLS AWAY into the brush
+    // root — the tail reads attached because the body hands it off.
     (X) =>
       look.backH +
-      look.shoulderH * Math.max(0, (X / hl - 0.15) / 0.85) -
-      0.025 * Math.max(0, 1 - Math.abs(X / hl + 0.05) / 0.55) +
-      look.haunchH * Math.max(0, (-X / hl - 0.15) / 0.65),
-    // The deep little chest into the HIGH tuck — the leggy waist.
-    (X) => look.chestH + (look.tuckH - look.chestH) * Math.min(1, Math.max(0, (0.45 - X / hl) / 1.0)),
+      (look.shoulderH + 0.045) * Math.max(0, (X / hl - 0.45) / 0.55) -
+      0.02 * Math.max(0, 1 - Math.abs(X / hl - 0.15) / 0.45) +
+      look.haunchH * Math.max(0, 1 - Math.abs(-X / hl - 0.55) / 0.45) -
+      0.075 * Math.max(0, (-X / hl - 0.72) / 0.28),
+    // The deep little chest into the HIGH hard tuck — the leggy
+    // waist, drawn tighter than any other beast wears it.
+    (X) => look.chestH + (look.tuckH - look.chestH) * Math.min(1, Math.max(0, (0.5 - X / hl) / 0.85)),
     coat,
     (gx, gyy, lift) => {
       const s = f.s;
@@ -17051,8 +17060,12 @@ export function drawFoxHead(
     dead?: boolean;
     /** 0..1 through the attack telegraph. */
     snarl?: number;
-    /** 0..1 quick idle ear twitch. */
-    flick?: number;
+    /** Wall clock for the ear sim tick; absent = the settled rest. */
+    nowMs?: number;
+    /** THE EAR IS A SIMULATION: the live elastic pair. Sim-less
+     *  callers (portraits, CMS, ragdoll) fall to earRestChain — THE
+     *  ONE REST, the exact silhouette the live game relaxes to. */
+    ears?: EarSim;
   },
 ): void {
   const { x: cx, y: cy, s, fx, fy, ys } = o;
@@ -17063,6 +17076,116 @@ export function drawFoxHead(
   const C = (c: string): string => (o.hurt ? '#ffffff' : c);
   const snarl = o.snarl ?? 0;
   const queen = look.champion === true;
+
+  // THE EAR IS A SIMULATION, spoken vulpine: the pricked blades are
+  // elastic bodies on the goblin's exact contract — ONE 3D carriage
+  // projected through the fixed camera, so orientation, near/far
+  // z-order, and foreshortening at every band fall out BY
+  // CONSTRUCTION; the sim adds the lag, the gait flap, and the
+  // settle no rigged triangle ever had. A fox ear is stiff cartilage:
+  // tall rise, tight curl, and the strength law keeps it a blade.
+  const dir = Math.atan2(fy, fx);
+  const pin = Math.min(1, snarl * 0.75);
+  const carr: EarCarriage = {
+    azimuth: 2.1,
+    rootR: look.headW * 0.3,
+    rootLift: look.headH * 0.58,
+    length: look.headW * (queen ? 1.05 : 0.95),
+    spread: 0.5,
+    rise: 1.3,
+    curl: [0, 0.05, 0.12],
+  };
+  if (o.ears && !o.dead && o.nowMs) o.ears.update(cx, cy, s, carr, dir, pin, o.nowMs);
+  const chains = ([-1, 1] as const).map((side) =>
+    o.ears && !o.dead
+      ? o.ears.chain(side, carr, dir, pin)
+      : earRestChain(side, carr, { dir, pin: o.dead ? 0.55 : pin, sway: 0 }),
+  );
+  const earW0 = w * (queen ? 0.2 : 0.18);
+  const paintEar = (chain: { pts: Array<{ x: number; y: number }>; depth: number }): void => {
+    const pts = chain.pts.map((p) => ({ x: cx + p.x * s, y: cy + p.y * s }));
+    const prof = [1, 0.78, 0.42, 0];
+    const ea: Array<{ x: number; y: number }> = [];
+    const eb: Array<{ x: number; y: number }> = [];
+    for (let i = 0; i < 4; i++) {
+      const a = pts[Math.max(0, i - 1)]!;
+      const b = pts[Math.min(3, i + 1)]!;
+      let tx = b.x - a.x;
+      let ty = b.y - a.y;
+      const tl = Math.hypot(tx, ty) || 1;
+      tx /= tl;
+      ty /= tl;
+      const ww = earW0 * prof[i]!;
+      ea.push({ x: pts[i]!.x + ty * ww, y: pts[i]!.y - tx * ww });
+      eb.push({ x: pts[i]!.x - ty * ww, y: pts[i]!.y + tx * ww });
+    }
+    // The leading edge faces AWAY from the skull (the wing-ear law).
+    const da = Math.hypot(ea[1]!.x - cx, ea[1]!.y - cy);
+    const db = Math.hypot(eb[1]!.x - cx, eb[1]!.y - cy);
+    const lead = da >= db ? ea : eb;
+    const trail = da >= db ? eb : ea;
+    const blade = (): void => {
+      ctx.beginPath();
+      ctx.moveTo(trail[0]!.x, trail[0]!.y);
+      ctx.lineTo(lead[0]!.x, lead[0]!.y);
+      ctx.lineTo(lead[1]!.x, lead[1]!.y);
+      ctx.lineTo(lead[2]!.x, lead[2]!.y);
+      ctx.lineTo(pts[3]!.x, pts[3]!.y);
+      ctx.lineTo(trail[2]!.x, trail[2]!.y);
+      ctx.lineTo(trail[1]!.x, trail[1]!.y);
+      ctx.closePath();
+    };
+    // The visible face follows the HEAD's facing: toward the camera
+    // shows the pale inner fan in a soot frame; away shows the black
+    // back — the fox's whole from-behind identity.
+    const front = fy > 0.05;
+    ctx.lineJoin = 'round';
+    // The blade frame is ALWAYS soot — face-on the pale fan sits
+    // inside it; the black-backed ear never stops reading.
+    ctx.fillStyle = C(look.earBack);
+    blade();
+    ctx.fill();
+    if (o.hurt) return;
+    if (front && !o.dead) {
+      // The pale inner fan, inset so the soot frame survives it.
+      ctx.fillStyle = look.earIn;
+      ctx.beginPath();
+      ctx.moveTo(pts[0]!.x + (trail[0]!.x - pts[0]!.x) * 0.45, pts[0]!.y + (trail[0]!.y - pts[0]!.y) * 0.45);
+      ctx.lineTo(pts[0]!.x + (lead[0]!.x - pts[0]!.x) * 0.55, pts[0]!.y + (lead[0]!.y - pts[0]!.y) * 0.55);
+      ctx.lineTo(lead[1]!.x * 0.6 + pts[1]!.x * 0.4, lead[1]!.y * 0.6 + pts[1]!.y * 0.4);
+      ctx.lineTo(pts[2]!.x * 0.85 + pts[3]!.x * 0.15, pts[2]!.y * 0.85 + pts[3]!.y * 0.15);
+      ctx.lineTo(trail[1]!.x * 0.6 + pts[1]!.x * 0.4, trail[1]!.y * 0.6 + pts[1]!.y * 0.4);
+      ctx.closePath();
+      ctx.fill();
+    } else if (!front && !o.dead) {
+      // Ear back: one cartilage seam keeps the black blade a volume.
+      ctx.strokeStyle = shade(look.earBack, 14);
+      ctx.lineWidth = Math.max(1, earW0 * 0.16);
+      ctx.beginPath();
+      ctx.moveTo(pts[0]!.x, pts[0]!.y);
+      ctx.quadraticCurveTo(pts[1]!.x, pts[1]!.y, pts[2]!.x, pts[2]!.y);
+      ctx.stroke();
+    }
+    // The queen's silver rim — her winters, worn on the leading edge.
+    if (queen && look.grizzle && !o.dead) {
+      ctx.strokeStyle = look.grizzle;
+      ctx.lineWidth = Math.max(1, earW0 * 0.18);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(lead[0]!.x, lead[0]!.y);
+      ctx.lineTo(lead[1]!.x, lead[1]!.y);
+      ctx.lineTo(lead[2]!.x, lead[2]!.y);
+      ctx.lineTo(pts[3]!.x, pts[3]!.y);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
+  };
+  // Far ears first — the skull and face paint over their roots; near
+  // ears return at the very end, over everything (the projection's
+  // own z-order, never a hand-authored band).
+  const earsBehind = chains.filter((c) => c.depth <= 0.05);
+  const earsFront = chains.filter((c) => c.depth > 0.05);
+  for (const c of earsBehind) paintEar(c);
 
   // THE GREAT RUFF: the matriarch's pale collar, laid down before the
   // ears so skull and ears both lap it — a full frame of layered chops
@@ -17083,71 +17206,6 @@ export function drawFoxHead(
         ctx.closePath();
         ctx.fill();
       }
-    }
-  }
-
-  // THE SOOT EARS: oversized triangles set high, taller than the
-  // wolf's or the lynx's — pinned flat mid-snarl, the near one
-  // twitching at idle. The along-facing stagger keeps the pair from
-  // collapsing into one sliver at full profile. Seen from behind the
-  // fills go SOOT — two black triangles over a warm coat are the
-  // fox's whole from-behind identity.
-  const earSeen = fy > 0.05;
-  const earPk = faceProfileK(fx);
-  for (const es of [-1, 1]) {
-    const bxr = cx + px * es * w * 0.3 + fx * es * w * 0.09;
-    const byr = cy + (py * es * w * 0.3 + fy * es * w * 0.09) * ys - h * 0.34;
-    const pin = Math.min(1, snarl * 0.7 + (es > 0 ? (o.flick ?? 0) * 0.35 : 0));
-    // SILHOUETTE HIERARCHY (the goblin lesson): at profile the EAR
-    // GROWS — its breadth walks off the collapsing lateral axis onto
-    // the facing axis, so the standing triangle never thins to a
-    // sliver at E/W. The ears ARE the fox; they never yield.
-    const ubx = px * es * (1 - 0.7 * earPk) + fx * 0.9 * earPk;
-    const uby = py * es * (1 - 0.7 * earPk) * ys;
-    // The matriarch's blades run bigger still — on the great-eared
-    // queen, scale IS identity.
-    const earK = queen ? 1.14 : 1;
-    const tx = bxr + px * es * w * 0.14 + fx * earPk * w * 0.1 - fx * w * 0.26 * pin;
-    const ty = byr - h * (1.0 - 0.4 * pin) * earK - fy * w * 0.26 * pin * ys;
-    ctx.fillStyle = C(earSeen ? shade(look.coat, -4) : look.earBack);
-    ctx.beginPath();
-    ctx.moveTo(bxr - ubx * w * 0.17 * earK, byr - uby * w * 0.17 * earK + h * 0.05);
-    ctx.lineTo(tx, ty);
-    ctx.lineTo(bxr + ubx * w * 0.19 * earK, byr + uby * w * 0.19 * earK + h * 0.11);
-    ctx.closePath();
-    ctx.fill();
-    if (earSeen && !o.hurt && !o.dead) {
-      // The pale inner fan filling most of the shell.
-      ctx.fillStyle = look.earIn;
-      ctx.beginPath();
-      ctx.moveTo(bxr - px * es * w * 0.07, byr + h * 0.02);
-      ctx.lineTo(bxr + (tx - bxr) * 0.6, byr + (ty - byr) * 0.6);
-      ctx.lineTo(bxr + px * es * w * 0.12, byr + h * 0.07);
-      ctx.closePath();
-      ctx.fill();
-      // The soot edge: the ear's dark back peeking past the outer
-      // rim, so the black ear read never fully leaves the face view.
-      ctx.strokeStyle = C(look.earBack);
-      ctx.lineWidth = Math.max(1.2, w * 0.055);
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(bxr - px * es * w * 0.15, byr + h * 0.04);
-      ctx.lineTo(tx, ty);
-      ctx.stroke();
-      ctx.lineCap = 'butt';
-    }
-    // The queen's silver rims — her winters, worn high: the FULL
-    // leading edge, base to tip, so the silver reads as the ear's
-    // own edge and never a floating wire.
-    if (queen && look.grizzle && !o.hurt && !o.dead) {
-      ctx.strokeStyle = look.grizzle;
-      ctx.lineWidth = Math.max(1, w * 0.035);
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(bxr - ubx * w * 0.15 * earK, byr - uby * w * 0.15 * earK + h * 0.04);
-      ctx.lineTo(tx, ty);
-      ctx.stroke();
-      ctx.lineCap = 'butt';
     }
   }
 
@@ -17180,8 +17238,10 @@ export function drawFoxHead(
     for (const es of [-1, 1]) {
       if (Math.abs(fx) > 0.75 && es * py < 0) continue;
       for (let i = 0; i < 2; i++) {
-        const rx = cx + px * es * w * (0.42 + i * 0.1) + fx * w * 0.02;
-        const ry = cy + (py * es * w * (0.42 + i * 0.1) + fy * w * 0.02) * ys + h * (0.14 + i * 0.09);
+        // Seated at the JAW line — flares riding the eye line read as
+        // tusks (the lynx ruff lesson, relearned at the cheek).
+        const rx = cx + px * es * w * (0.4 + i * 0.1) + fx * w * 0.02;
+        const ry = cy + (py * es * w * (0.4 + i * 0.1) + fy * w * 0.02) * ys + h * (0.22 + i * 0.08);
         ctx.fillStyle = C(i === 0 ? look.under : shade(look.coat, -4));
         ctx.beginPath();
         ctx.moveTo(rx - px * es * w * 0.14, ry - h * 0.1);
@@ -17218,20 +17278,24 @@ export function drawFoxHead(
   // white jaw is half the fox's face.
   if (fy > -0.3) {
     const profileK = faceProfileK(fx);
-    const bx0 = cx + fx * w * 0.24;
-    const by0 = cy + fy * w * 0.24 * ys + h * 0.14;
-    const sl = w * (0.36 + 0.34 * profileK);
+    const bx0 = cx + fx * w * 0.2;
+    const by0 = cy + fy * w * 0.2 * ys + h * 0.14;
+    // THE SNIPE EARNS ITS LENGTH: a fox is a THIRD muzzle — the long
+    // fine taper is half the head's identity, and the first cut ran
+    // it too short (the goofy read). It grows from deep on the face,
+    // reaches, and drops.
+    const sl = w * (0.48 + 0.36 * profileK);
     const tx = bx0 + fx * sl;
     // The tip drops below the bridge line — a fox noses DOWN; a level
     // snipe read as a bill.
-    const ty = by0 + fy * sl * ys + h * (0.09 + 0.07 * profileK);
+    const ty = by0 + fy * sl * ys + h * (0.1 + 0.09 * profileK);
     const axv = tx - bx0;
     const ayv = ty - by0;
     const al = Math.hypot(axv, ayv) || 1e-4;
     const nx = -ayv / al;
     const ny = axv / al;
-    const hb = w * 0.15 * (1 - profileK * 0.2);
-    const ht = hb * 0.48;
+    const hb = w * 0.165 * (1 - profileK * 0.2);
+    const ht = hb * 0.4;
     // The snipe wears the COAT — a lightened wedge read as a beak at
     // profile (the duck-bill lesson); the pale jaw below carries the
     // white, the coat carries the bridge.
@@ -17321,6 +17385,11 @@ export function drawFoxHead(
       ctx.restore();
     }
   }
+
+  // The near ears return over everything — roots on the viewer's side
+  // of the skull paint over brow and crown (the projection's own
+  // z-order, never a hand-authored band).
+  for (const c of earsFront) paintEar(c);
 }
 
 export function drawBeast(
@@ -17366,6 +17435,12 @@ export function drawBeast(
      * viewport) fall back to the analytic pose.
      */
     tail?: () => void;
+    /**
+     * THE EAR IS A SIMULATION (fox lane): the renderer-owned elastic
+     * pair; the fox head branch ticks it at the exact skull anchor
+     * (the goblin contract). Sim-less callers get THE ONE REST.
+     */
+    ears?: EarSim;
     /**
      * THE COLLAR TELLS THE TALE (beastcraft v2): strap color for a
      * tamed body — worn gear in the saddle's tradition, never a
@@ -17997,10 +18072,8 @@ export function drawBeast(
         ctx.closePath();
         ctx.fill();
       }
-      // Idle ear flick: a rare quick pulse, never a metronome — the
-      // fox flicks oftener than the cat (it is ALL ears).
-      const flick =
-        now > 0 ? (Math.max(0, Math.sin(now * 0.0026 + seed) - 0.92) / 0.08) * idle : 0;
+      // No hand-rolled flick: the elastic pair carries its own idle
+      // sway, gait flap, and turn lag — physics, not a metronome.
       drawFoxHead(ctx, foxL, {
         x: chx,
         y: chy,
@@ -18010,7 +18083,8 @@ export function drawBeast(
         ys,
         hurt: opts.hurt,
         snarl: at > 0 ? Math.min(1, at * 2.2) : 0,
-        flick,
+        nowMs: now > 0 ? now : undefined,
+        ears: opts.ears,
       });
       return;
     }

@@ -624,6 +624,9 @@ interface AnimState {
    *  beside the gnoll's humanoid-lane `tail`, so neither lane's
    *  lifecycle evicts the other's appendage. */
   foxBrush?: TailSim;
+  /** The fox's elastic ear pair — beside the goblin's `ears`, its own
+   *  slot for the same no-cross-lane-eviction reason. */
+  foxEars?: EarSim;
   /** THE FLEECE TELLS THE TIME: last seen shorn state on a sheep —
    *  the false→true edge is the shear moment and puffs the tufts. */
   shornSeen?: boolean;
@@ -32858,18 +32861,34 @@ export class Renderer {
     // out at a lope, settling into the soft low arc at rest — and
     // paints through drawFoxBrush inside drawBeast's depth seam.
     let brushSim: TailSim | null = null;
+    let foxEarSim: EarSim | undefined;
     if (defId.startsWith('fox')) {
       const queenB = defId === 'fox_champion';
       if (!anim.foxBrush) {
-        anim.foxBrush = new TailSim(queenB ? 1.15 : 0.9, eid);
+        // Root the plume at the RUMP, not the humanoid hip line — a
+        // quadruped's tail seated at the default offset roots inside
+        // the torso and hangs between the legs.
+        anim.foxBrush = new TailSim(queenB ? 1.15 : 0.9, eid, queenB ? 0.42 : 0.32);
       }
       brushSim = anim.foxBrush;
+      // THE TAIL RIDES THE POUNCE: drawBeast lunges the painted body
+      // through the attack beat, so the sim must anchor on the SAME
+      // lunged position — fed the raw server point, the brush floats
+      // in place while the body strikes past it.
+      let lunge = 0;
+      if (attackT > 0) {
+        lunge =
+          attackT < 0.7
+            ? -0.12 * (attackT / 0.7)
+            : 0.3 * Math.sin(Math.PI * Math.min(1, (attackT - 0.7) / 0.3));
+      }
+      const lax = s.x + Math.cos(legPose.dir) * lunge;
+      const lay = s.y + Math.sin(legPose.dir) * lunge;
       brushSim.update(
-        s.x,
-        s.y,
-        // The hip height: the brush roots off the rump line, riding
-        // the gait bob.
-        (queenB ? 0.46 : 0.33) + legPose.bob * 0.35,
+        lax,
+        lay,
+        // The rump height, riding the gait bob.
+        (queenB ? 0.46 : 0.32) + legPose.bob * 0.35,
         legPose.dir,
         this.frameDt,
         performance.now() / 1000,
@@ -32886,8 +32905,15 @@ export class Renderer {
           back: Math.sin(legPose.dir) < -0.2,
         });
       };
-    } else if (anim.foxBrush) {
-      anim.foxBrush = undefined;
+      // THE EAR IS A SIMULATION, spoken vulpine: the elastic pair on
+      // the anim map; drawFoxHead ticks it at the exact skull anchor
+      // (the goblin contract — the rig owns the anchor, the renderer
+      // owns the lifecycle and the re-bake cue).
+      anim.foxEars ??= new EarSim(eid);
+      foxEarSim = anim.foxEars;
+    } else {
+      if (anim.foxBrush) anim.foxBrush = undefined;
+      if (anim.foxEars) anim.foxEars = undefined;
     }
     // THE FLEECE TELLS THE TIME: the false→true edge on the meta's
     // shorn flag IS the shear landing — puff the fleece off the body.
@@ -32914,7 +32940,8 @@ export class Renderer {
       (bobSim !== null && bobSim.restless) ||
       // The fox's brush earns the same full-rate courtesy — a settling
       // plume that snaps between cache frames reads as a dropped sim.
-      (brushSim !== null && brushSim.restless);
+      (brushSim !== null && brushSim.restless) ||
+      (foxEarSim !== undefined && foxEarSim.restless);
     const olDyn = fullDyn || (locomotion && (this.frameNo + eid) % 2 === 0);
     return {
       sortY: s.y,
@@ -32956,6 +32983,7 @@ export class Renderer {
           // marker is the durable fact; ownerEid comes and goes).
           collar: meta.stock ? '#8a6234' : meta.ownerEid !== undefined ? '#6e4a26' : undefined,
           tail: paintBob,
+          ears: foxEarSim,
           shorn,
         });
         // The shear moment: loosed tufts drift up and away off the

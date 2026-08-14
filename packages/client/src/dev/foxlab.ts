@@ -18,6 +18,7 @@
 import { LegSolver, beastSpec, drawBeast, drawHumanoid, foxLook, type RigPose } from '../render/rig.js';
 import { LegRig, type LegPose } from '../render/legs.js';
 import { TailSim, drawFoxBrush } from '../render/tail.js';
+import { EarSim } from '../render/earPhysics.js';
 import { PoseState } from '@arx/shared';
 
 const canvas = document.getElementById('lab') as HTMLCanvasElement;
@@ -68,6 +69,8 @@ interface Fig {
   walkPhase?: number;
   /** THE BRUSH IS A SIMULATION: live verlet plume per fox fig. */
   brush?: TailSim;
+  /** THE EAR IS A SIMULATION: live elastic pair per fox fig. */
+  earSim?: EarSim;
   manLegs?: LegSolver;
   manKnee?: number[];
   manDepth?: RigPose['depthMemory'];
@@ -182,15 +185,27 @@ function drawQuad(
   // and the brush's answer all read.
   const attackT = mode === 'pounce' ? (now * 0.0011) % 1 : 0;
   const hurt = mode === 'hurt';
-  // THE BRUSH: fox figs run the live verlet plume the game runs.
+  // THE BRUSH + THE EARS: fox figs run the live sims the game runs —
+  // rump-rooted plume fed the LUNGED anchor (the tail rides the
+  // pounce), and the elastic ear pair ticked inside drawFoxHead.
   let tail: (() => void) | undefined;
+  let ears: EarSim | undefined;
   if (f.defId.startsWith('fox')) {
     const queen = f.defId === 'fox_champion';
-    f.brush ??= new TailSim(queen ? 1.15 : 0.9, seed);
+    f.brush ??= new TailSim(queen ? 1.15 : 0.9, seed, queen ? 0.42 : 0.32);
+    let lunge = 0;
+    if (attackT > 0) {
+      lunge =
+        attackT < 0.7
+          ? -0.12 * (attackT / 0.7)
+          : 0.3 * Math.sin(Math.PI * Math.min(1, (attackT - 0.7) / 0.3));
+    }
+    const lwx = wx + Math.cos(lp.dir) * lunge;
+    const lwy = wy + Math.sin(lp.dir) * lunge;
     f.brush.update(
-      wx,
-      wy,
-      (queen ? 0.46 : 0.33) + lp.bob * 0.35,
+      lwx,
+      lwy,
+      (queen ? 0.46 : 0.32) + lp.bob * 0.35,
       lp.dir,
       dt,
       now / 1000,
@@ -205,6 +220,7 @@ function drawQuad(
       }));
       drawFoxBrush(ctx, pts, look, S, { hurt, back: Math.sin(lp.dir) < -0.2 });
     };
+    ears = f.earSim ??= new EarSim(seed);
   }
   drawBeast(ctx, {
     x,
@@ -225,6 +241,7 @@ function drawQuad(
     seed,
     nowMs: now,
     tail,
+    ears,
   });
 }
 
