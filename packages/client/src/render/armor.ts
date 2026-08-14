@@ -1237,17 +1237,12 @@ export interface BodyStyle {
   /** Sunshower lot: one warm window of light sliding across the
    *  cloth as the clouds shift. The luck is that it finds you. */
   sunpatch?: { color: string };
-  /** Aurora lot: THE GREAT CURTAIN — the lot's heirloom (the bolt
-   *  brand's seat re-founded for the weather that never strikes):
-   *  folds of night `silk` descending the skirt's trailing side,
-   *  each hem a drawn line of light with rays combed up into the
-   *  cloth, waking top to bottom as THE DANCE travels the body. */
-  greatcurtain?: { colors: string[]; silk: string };
-  /** Aurora lot: THE AURORA STREAMS — the wardrobe's fourth floating
+  /** Aurora lot: THE RISING AURA — the wardrobe's fourth floating
    *  regalia (crown ring, glyphs, the eddy, now the lights loose):
-   *  two curtain ribbons chasing each other around the hips on the
-   *  glyph ring's occlusion law, undulating at one constant pace,
-   *  surging by amplitude alone. */
+   *  three ribbons of aurora corkscrewing the whole body chest to
+   *  hem on the glyph ring's occlusion law, spinning at one
+   *  constant pace, surging by amplitude alone; at the dance,
+   *  risers slip the aura and climb. */
   auroraband?: { colors: string[] };
   /** Aurora lot: stars scattered down the skirt cloth, one waking
    *  at a time — the night the lights need behind them. */
@@ -3818,7 +3813,6 @@ registerColorways(BODY_STYLES, 'stormwoven_robe', {
     staticcourt: undefined,
     chargebeads: undefined,
     stormshroud: undefined,
-    greatcurtain: { colors: ['#7df2b0', '#54dcd0', '#b08cf0'], silk: '#35635a' },
     auroraband: { colors: ['#7df2b0', '#54dcd0', '#b08cf0'] },
     starfield: { color: '#e8f4ee' },
     frosthem: { color: '#c8e4dc', glow: '#7df2b0' },
@@ -5205,96 +5199,63 @@ export function drawTorsoGarment(
         }
         ctx.globalAlpha = 1;
       }
-      if (st.greatcurtain) {
-        // THE GREAT CURTAIN: the aurora lot's heirloom — the bolt
-        // brand's seat re-founded for the one weather that never
-        // strikes. Three folds of night silk descend the skirt's
-        // trailing side (a hung device TRAILS), every hem a drawn
-        // line of light with rays combed up into the cloth, and the
-        // wake walks top to bottom as THE DANCE passes the waist.
-        const gcW = st.greatcurtain;
-        const foldsG: ReadonlyArray<readonly [number, number, number, number, number]> =
-          // [u0 down the skirt, trailing offset, half-width, height, color]
-          [[0.46, 0.16, 1.42, 0.15, 0], [0.72, 0.34, 1.06, 0.1, 2]];
-        for (let j = 0; j < foldsG.length; j++) {
-          const [u0, off0, wSpan, hgt, ci] = foldsG[j]!;
-          const kG = auroraK(nowMs, 0.28 + j * 0.06);
-          const xj = -f.lead * ww * off0;
-          const yj = y0 + (hemY - y0) * u0 + 0.04 * s;
-          const wj = ww * wSpan;
-          const ptsG: Array<{ x: number; y: number }> = [];
-          for (let i = 0; i <= 5; i++) {
-            const u = i / 5;
-            ptsG.push({
-              x: xj - f.lead * wj * 0.5 + f.lead * wj * u,
-              y: yj + Math.sin(u * 4.6 - nowMs * 0.0019 + j * 1.9) * (0.012 + 0.016 * kG) * s +
-                (u - 0.5) * 0.05 * s * (j === 0 ? 1 : -0.7) * f.lead,
-            });
-          }
-          auroraCurtain(
-            ctx, ptsG, hgt * s, gcW.silk,
-            gcW.colors[ci % gcW.colors.length]!, '#e8fff4',
-            kG, nowMs, j * 2.1, Math.max(1, s * 0.009), false,
-          );
-        }
-      }
       if (st.auroraband) {
-        // THE AURORA STREAMS: the wardrobe's fourth floating regalia
-        // — after the crown ring, the glyphs and the eddy, the
-        // lights themselves come loose: two curtain ribbons chasing
-        // each other around the hips on the glyph ring's occlusion
-        // law (skipped where the body honestly hides them, dim and
-        // thin past its far edge, sweeping in FRONT of the cloth on
-        // the near pass — the streams believe the turn). The
-        // undulation travels at one constant pace forever; the
-        // substorm speaks only through amplitude, width and light.
+        // THE RISING AURA: the wardrobe's fourth floating regalia,
+        // second forging — the lights no longer keep to one orbit:
+        // three ribbons of aurora CORKSCREW the whole body, chest to
+        // hem, each climbing the spiral at one constant pace on the
+        // glyph ring's occlusion law (skipped where the body
+        // honestly hides them, dim and thin past its far edge,
+        // sweeping in FRONT of the cloth on the near pass — the aura
+        // believes the turn). The helix widens with the robe's own
+        // flare; the substorm speaks through amplitude, width and
+        // light, and at the dance RISERS slip the aura and climb.
         // Floating light, not garment: the hurt guard owns it.
         const ab = st.auroraband;
         const kA = auroraK(nowMs, 0.18);
-        const cyA = 0.05 * s;
-        const rxA = ww * 1.7;
-        const ryA = 0.07 * s;
-        const spinA = nowMs * 0.00024;
-        const segsA = 22;
+        const spinA = nowMs * 0.00034;
+        const segsA = 40;
+        const yTopA = -0.155 * s;
+        const yBotA = y0 + (hemY - y0) * 0.94;
         ctx.lineCap = 'round';
-        for (let ri = 0; ri < 2; ri++) {
+        for (let ri = 0; ri < 3; ri++) {
           const colR = ab.colors[ri % ab.colors.length]!;
-          const baseA = spinA + ri * Math.PI;
-          const spanA = Math.PI * 0.82;
+          const baseA = spinA + ri * ((Math.PI * 2) / 3);
           let run: Array<{ x: number; y: number; a: number; far: boolean }> = [];
           const flush = (): void => {
             for (let q = 0; q + 1 < run.length; q++) {
               const p0 = run[q]!;
               const p1 = run[q + 1]!;
-              const aa = ((p0.a + p1.a) / 2) * (0.5 + 0.5 * kA);
+              const aa = ((p0.a + p1.a) / 2) * (0.48 + 0.52 * kA);
               if (aa < 0.08) continue;
-              const wF = p0.far ? 0.72 : 1;
+              const wF = p0.far ? 0.7 : 1;
               ctx.globalAlpha = Math.min(1, aa) * 0.55;
               ctx.strokeStyle = colR;
-              ctx.lineWidth = Math.max(1.4, s * 0.023) * wF;
+              ctx.lineWidth = Math.max(1.4, s * 0.021) * wF;
               ctx.beginPath();
               ctx.moveTo(p0.x, p0.y);
               ctx.lineTo(p1.x, p1.y);
               ctx.stroke();
               ctx.globalAlpha = Math.min(1, aa);
               ctx.strokeStyle = '#e8fff4';
-              ctx.lineWidth = Math.max(1, s * 0.009) * wF;
+              ctx.lineWidth = Math.max(1, s * 0.0085) * wF;
               ctx.beginPath();
               ctx.moveTo(p0.x, p0.y);
               ctx.lineTo(p1.x, p1.y);
               ctx.stroke();
-              // The combed rays ride only the bright near passage —
-              // a faint floating stroke is skipped whole (dilate
-              // bar), never dimmed into a whisker.
+              // The combed rays ride only the bright near passage,
+              // reaching up and OUTWARD off the spiral — a faint
+              // floating stroke is skipped whole (dilate bar).
               const rw = 0.5 + 0.5 * Math.sin(nowMs * 0.0011 + q * 2.3 + ri * 3.1);
               const ra = Math.min(1, aa) * (0.3 + 0.5 * rw);
               if (!p0.far && ra >= 0.3 && q % 2 === 0) {
+                const outR = p0.x >= 0 ? 1 : -1;
                 ctx.globalAlpha = ra * 0.8;
                 ctx.strokeStyle = colR;
                 ctx.lineWidth = Math.max(1.2, s * 0.011);
                 ctx.beginPath();
                 ctx.moveTo(p0.x, p0.y);
-                ctx.lineTo(p0.x + Math.sin(nowMs * 0.0009 + q) * 0.01 * s, p0.y - (0.045 + 0.05 * kA) * s);
+                ctx.lineTo(p0.x + outR * (0.012 + 0.014 * kA) * s, p0.y - (0.04 + 0.05 * kA) * s);
                 ctx.stroke();
               }
             }
@@ -5302,22 +5263,42 @@ export function drawTorsoGarment(
           };
           for (let i = 0; i <= segsA; i++) {
             const tU = i / segsA;
-            const aAng = baseA + tU * spanA;
+            // 1.8 turns of the screw, crown to hem; the radius rides
+            // the robe's flare so the aura wraps the SHAPE of the
+            // wearer, never a cylinder.
+            const aAng = baseA + tU * Math.PI * 3.6;
+            const rxA = ww * (1.04 + 0.62 * tU);
             const px = Math.cos(aAng) * rxA;
             const farA = Math.sin(aAng) < 0;
-            if (!back && farA && Math.abs(px) < ww * 1.2) {
+            if (!back && farA && Math.abs(px) < ww * (0.78 + 0.5 * tU)) {
               flush();
               continue;
             }
-            const wave = Math.sin(tU * 4.2 - nowMs * 0.0021 + ri * 2.7) * (0.008 + 0.013 * kA) * s;
+            const wave = Math.sin(tU * 7.2 - nowMs * 0.0021 + ri * 2.1) * (0.006 + 0.011 * kA) * s;
             run.push({
               x: px,
-              y: cyA + Math.sin(aAng) * ryA + wave,
-              a: Math.sin(tU * Math.PI) * (farA ? 0.5 : 1),
+              y: yTopA + (yBotA - yTopA) * tU + Math.sin(aAng) * 0.045 * s + wave,
+              a: Math.sin(tU * Math.PI) * (farA ? 0.45 : 1),
               far: farA,
             });
           }
           flush();
+        }
+        if (kA > 0.62) {
+          // THE RISERS: the dance charges the aura past holding —
+          // sparks climb the spiral's air and burn out going home.
+          const ansR = (kA - 0.62) / 0.38;
+          for (let m = 0; m < 3; m++) {
+            const mu = ((nowMs * 0.00024 + m / 3) % 1 + 1) % 1;
+            const aM = Math.sin(mu * Math.PI) * ansR * 0.9;
+            if (aM < 0.32) continue;
+            const mx = Math.sin(nowMs * 0.0009 + m * 2.6) * ww * (0.5 + 0.4 * (1 - mu));
+            ctx.globalAlpha = aM;
+            ctx.fillStyle = ab.colors[m % ab.colors.length]!;
+            ctx.beginPath();
+            ctx.arc(mx, yBotA - (yBotA - yTopA) * mu, (0.0085 - 0.003 * mu) * s, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
         ctx.globalAlpha = 1;
       }
@@ -5339,7 +5320,7 @@ export function drawTorsoGarment(
         ctx.stroke();
         if (kF > 0.66) {
           const ans = (kF - 0.66) / 0.34;
-          const colsF = st.greatcurtain?.colors ?? st.auroraband?.colors ?? [fh.glow];
+          const colsF = st.auroraband?.colors ?? [fh.glow];
           const walkF = nowMs * 0.00042;
           for (let i = 0; i < 4; i++) {
             const uD = ((walkF + i * 0.29) % 1 + 1) % 1;
@@ -18226,12 +18207,77 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.globalAlpha = 1;
       ctx.restore();
     }
-    // THE CORONA: rooted just under the peak so the rays read as
-    // coming out of the cloth, drawn BEFORE the shell so the shell's
-    // edge grounds them. Quiet sky: the frost seed alone. Substorm:
-    // the crown of rays stands up, colors walking green, teal,
-    // violet — every ray a drawn stroke, never a halo.
+    // THE CHARGED RING: the aurora orbiting the cowl itself — a
+    // drawn ribbon circling the crown on the floating-orbit split
+    // law (far arc painted BEFORE the shell, near arc after the
+    // face), spinning at one constant pace forever. Quiet sky: one
+    // slow teal ring. The dance charges it — wider, brighter, rays
+    // combing off the near passage, and a second violet ring wakes
+    // inside the first. Floating light: the hurt flash owns none
+    // of it (the shell holds the white).
     const wakeC = Math.max(0, (kC - 0.42) / 0.58);
+    const ringCy = headY - hh * 0.52;
+    const ringPass = (nearP: boolean): void => {
+      if (hurt) return;
+      ctx.lineCap = 'round';
+      const rings = wakeC > 0.3 ? 2 : 1;
+      for (let rg = 0; rg < rings; rg++) {
+        const colRg = cor[rg === 0 ? 0 : 2] ?? st.trim;
+        const scaleR = rg === 0 ? 1 : 0.78;
+        const rxR = hw * 1.82 * scaleR;
+        const ryR = hh * (0.4 + 0.08 * wakeC) * scaleR;
+        const baseR = f.nowMs * (rg === 0 ? 0.00052 : 0.00068) + rg * 2.4;
+        const gate = rg === 0 ? 1 : Math.min(1, (wakeC - 0.3) / 0.5);
+        const segsR = 18;
+        for (let i = 0; i < segsR; i++) {
+          const a0 = baseR + (i / segsR) * Math.PI * 2;
+          const a1 = baseR + ((i + 1) / segsR) * Math.PI * 2;
+          const dep = Math.sin((a0 + a1) / 2);
+          if (nearP ? dep < 0 : dep >= 0) continue;
+          const aa = (0.26 + 0.55 * kC) * Math.min(1, Math.abs(dep) * 2.4) *
+            (nearP ? 1 : 0.5) * gate;
+          if (aa < 0.08) continue;
+          const wob0 = Math.sin(a0 * 3 + f.nowMs * 0.0007 + rg * 2) * hh * (0.02 + 0.05 * wakeC);
+          const wob1 = Math.sin(a1 * 3 + f.nowMs * 0.0007 + rg * 2) * hh * (0.02 + 0.05 * wakeC);
+          const x0 = headX + Math.cos(a0) * rxR;
+          const y0R = ringCy + Math.sin(a0) * ryR + wob0;
+          const x1 = headX + Math.cos(a1) * rxR;
+          const y1R = ringCy + Math.sin(a1) * ryR + wob1;
+          ctx.globalAlpha = Math.min(1, aa) * 0.6;
+          ctx.strokeStyle = colRg;
+          ctx.lineWidth = Math.max(1.3, s * 0.015) * (nearP ? 1 : 0.72);
+          ctx.beginPath();
+          ctx.moveTo(x0, y0R);
+          ctx.lineTo(x1, y1R);
+          ctx.stroke();
+          ctx.globalAlpha = Math.min(1, aa);
+          ctx.strokeStyle = '#e8fff4';
+          ctx.lineWidth = Math.max(1, s * 0.0065) * (nearP ? 1 : 0.72);
+          ctx.beginPath();
+          ctx.moveTo(x0, y0R);
+          ctx.lineTo(x1, y1R);
+          ctx.stroke();
+          if (nearP && rg === 0 && i % 3 === 0) {
+            // Charge rays comb up and outward off the bright arc —
+            // skipped whole below the dilate bar.
+            const rw = 0.5 + 0.5 * Math.sin(f.nowMs * 0.0011 + i * 2.1);
+            const ra = Math.min(1, aa) * (0.26 + 0.5 * rw) * (0.4 + 0.6 * wakeC);
+            if (ra >= 0.3) {
+              const outR = x0 >= headX ? 1 : -1;
+              ctx.globalAlpha = ra;
+              ctx.strokeStyle = colRg;
+              ctx.lineWidth = Math.max(1.1, s * 0.009);
+              ctx.beginPath();
+              ctx.moveTo(x0, y0R);
+              ctx.lineTo(x0 + outR * hw * 0.14, y0R - hh * (0.1 + 0.12 * wakeC));
+              ctx.stroke();
+            }
+          }
+        }
+      }
+      ctx.globalAlpha = 1;
+    };
+    ringPass(false);
     if (!hurt) {
       // THE FROST SEED: the one forged thing — a star seated at the
       // peak, always awake; the corona erupts from it at the dance.
@@ -18239,24 +18285,6 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       ctx.globalAlpha = 0.85;
       starPrick(ctx, apexX, apexY + hh * 0.1, headR * (0.05 + 0.02 * wakeC));
       ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-    if (!hurt && wakeC > 0.02) {
-      ctx.lineCap = 'round';
-      for (let i = 0; i < 5; i++) {
-        const aR = -Math.PI / 2 + (i - 2) * 0.42 - lead * 0.14;
-        const wob = Math.sin(f.nowMs * 0.0016 + i * 2.1);
-        const lenR = hh * (0.3 + 0.26 * wakeC + 0.07 * wob) * (1 - Math.abs(i - 2) * 0.14);
-        const aA = wakeC * (0.5 + 0.36 * (0.5 + 0.5 * wob));
-        if (aA < 0.3) continue;
-        ctx.globalAlpha = aA;
-        ctx.strokeStyle = cor[i % cor.length]!;
-        ctx.lineWidth = Math.max(1.4, s * (0.016 - Math.abs(i - 2) * 0.002));
-        ctx.beginPath();
-        ctx.moveTo(apexX, apexY + hh * 0.12);
-        ctx.lineTo(apexX + Math.cos(aR) * lenR, apexY + hh * 0.12 + Math.sin(aR) * lenR);
-        ctx.stroke();
-      }
       ctx.globalAlpha = 1;
     }
     const shell = (): void => {
@@ -18409,6 +18437,7 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
         ctx.globalAlpha = 1;
       }
     }
+    ringPass(true);
     return;
   }
 
