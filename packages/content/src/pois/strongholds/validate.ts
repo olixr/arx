@@ -159,6 +159,17 @@ export function validateStronghold(
     errors.push('weight must be a number in [0, 100]');
   }
 
+  let titles: string[] | undefined;
+  if (raw.titles !== undefined) {
+    if (!Array.isArray(raw.titles) || raw.titles.length === 0) {
+      errors.push('titles must be a non-empty name pool (or absent)');
+    } else if (raw.titles.some((t) => typeof t !== 'string' || !t.trim())) {
+      errors.push('titles entries must be non-empty strings');
+    } else {
+      titles = raw.titles as string[];
+    }
+  }
+
   const prefabId =
     typeof raw.prefab === 'string' && raw.prefab.trim()
       ? raw.prefab
@@ -602,6 +613,7 @@ export function validateStronghold(
       family,
       tiers,
       weight,
+      ...(titles !== undefined ? { titles } : {}),
       prefab: prefabId,
       wards,
       boss,

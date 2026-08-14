@@ -919,13 +919,53 @@ export class AccountStore {
       epoch: number;
       wardsCleared: number;
       clearedAt: number | null;
+      emberUntil: number | null;
+      fallowUntil: number | null;
+      stage: number;
+      stageAt: number | null;
     }>
   > {
     return this.db.query(
       'SELECT lattice_x AS "latticeX", lattice_y AS "latticeY", layout_id AS "layoutId", ' +
         'anchor_x AS "anchorX", anchor_y AS "anchorY", epoch, ' +
-        'wards_cleared AS "wardsCleared", cleared_at AS "clearedAt" FROM world_strongholds',
+        'wards_cleared AS "wardsCleared", cleared_at AS "clearedAt", ' +
+        'ember_until AS "emberUntil", fallow_until AS "fallowUntil", ' +
+        'stage, stage_at AS "stageAt" FROM world_strongholds',
     ) as ReturnType<AccountStore['loadStrongholds']>;
+  }
+
+  /** THE LONG WAR: the capital ledger's full-row amendment. */
+  saveStrongholdState(
+    latticeX: number,
+    latticeY: number,
+    row: {
+      layoutId: string;
+      epoch: number;
+      wardsCleared: number;
+      clearedAt: number | null;
+      emberUntil: number | null;
+      fallowUntil: number | null;
+      stage: number;
+      stageAt: number | null;
+    },
+  ): void {
+    this.db.fire(
+      'UPDATE world_strongholds SET layout_id = ?, epoch = ?, wards_cleared = ?, cleared_at = ?, ' +
+        'ember_until = ?, fallow_until = ?, stage = ?, stage_at = ? ' +
+        'WHERE lattice_x = ? AND lattice_y = ?',
+      [
+        row.layoutId,
+        row.epoch,
+        row.wardsCleared,
+        row.clearedAt,
+        row.emberUntil,
+        row.fallowUntil,
+        row.stage,
+        row.stageAt,
+        latticeX,
+        latticeY,
+      ],
+    );
   }
 
   markStrongholdWards(latticeX: number, latticeY: number, wardsCleared: number): void {

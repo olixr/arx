@@ -234,6 +234,8 @@ function chapterSlate() {
   const arts: string[] = [];
   const killerPlayer = {
     session: { sendJson: (m: { text?: string }) => lines.push(m.text ?? '') },
+    flags: new Map<string, number>(),
+    inventory: [] as unknown[],
   };
   const spawnPoints = [
     { npc: 'gnoll', eid: 1, active: true, wing: wardA, x: 0, y: 0 },
@@ -243,6 +245,8 @@ function chapterSlate() {
   ];
   const slate = {
     spawnPoints,
+    poiLedger: new Map(),
+    poiLive: new Map(),
     strongholdSpawnCells: new Map([[0, key], [1, key], [2, key], [3, key]]),
     strongholdLive: new Map([
       [key, {
@@ -262,7 +266,17 @@ function chapterSlate() {
       markStrongholdWards: (_gx: number, _gy: number, bits: number) => wardMarks.push(bits),
       markStrongholdCleared: (_gx: number, _gy: number, bits: number, ts: number) =>
         clearedMarks.push([bits, ts]),
+      saveStrongholdState: (_gx: number, _gy: number, r: { wardsCleared: number; clearedAt: number | null }) =>
+        clearedMarks.push([r.wardsCleared, r.clearedAt ?? 0]),
+      setPoiEmber: () => {},
     },
+    saveStrongholdRow(this: { strongholdLedger: Map<string, unknown>; accounts: { saveStrongholdState: (gx: number, gy: number, r: unknown) => void } }, gx: number, gy: number) {
+      const r = this.strongholdLedger.get(`${gx},${gy}`);
+      if (r) this.accounts.saveStrongholdState(gx, gy, r);
+    },
+    stampCalm: () => {},
+    standDownGarrison: () => {},
+    clearPlayerFlag: (p: { flags: Map<string, number> }, flag: string) => p.flags.delete(flag),
     grantArt: (_p: unknown, id: string) => arts.push(id),
     poiSpawnFights: chapterProto.poiSpawnFights,
   };
@@ -303,4 +317,152 @@ test('the last stand falls: the clear ceremony, the stamp, the open cache', () =
   assert.equal(f.clearedMarks.length, 1);
   // The ward breaks with the court: the cache opens.
   assert.equal(chapterProto.strongholdGarrisonStands.call(f.slate, f.key, f.bossWi), false);
+});
+
+// ---- THE LONG WAR, slate-proven (the frontier-clock dialect) ---------
+
+import { FRONTIER, strongholdEmberFor, strongholdFallowFor } from '@arx/content';
+import { config } from '../config.js';
+import { layoutForSeat } from './strongholds.js';
+
+const warProto = GameServer.prototype as unknown as {
+  dissolveOneCapitalEmber: (this: unknown, now: number) => boolean;
+  wakeOneCapitalFallow: (this: unknown, now: number) => boolean;
+  stageOneCapital: (this: unknown, now: number) => boolean;
+  playerWithin: (this: unknown, x: number, y: number, r: number) => boolean;
+  calmNear: (this: unknown, cx: number, cy: number, now: number) => boolean;
+};
+
+function warSlate(row: {
+  clearedAt?: number | null;
+  emberUntil?: number | null;
+  fallowUntil?: number | null;
+  stage?: number;
+  stageAt?: number | null;
+}) {
+  const saved: unknown[] = [];
+  const credits: number[] = [];
+  const retired: string[] = [];
+  const slate = {
+    strongholdLedger: new Map([
+      ['4,4', {
+        layoutId: 'stronghold_gnoll_cacklefort',
+        anchorX: 1700,
+        anchorY: 1700,
+        epoch: 0,
+        wardsCleared: 5,
+        clearedAt: row.clearedAt ?? null,
+        emberUntil: row.emberUntil ?? null,
+        fallowUntil: row.fallowUntil ?? null,
+        stage: row.stage ?? 0,
+        stageAt: row.stageAt ?? null,
+      }],
+    ]),
+    poiLedger: new Map(),
+    poiLive: new Map(),
+    strongholdLive: new Map(),
+    strongholdSpawnCells: new Map(),
+    poiChests: new Map(),
+    frontierCalm: new Map(),
+    frontierCredits: 0,
+    players: new Map(),
+    positions: new Map(),
+    accounts: {
+      saveStrongholdState: (_gx: number, _gy: number, r: unknown) => saved.push(r),
+      saveFrontierCredits: (n: number) => credits.push(n),
+    },
+    saveStrongholdRow: undefined as unknown,
+    playerWithin: () => false,
+    calmNear: warProto.calmNear,
+    retireCapital: (key: string) => retired.push(key),
+    unloadZone: () => {},
+  };
+  slate.saveStrongholdRow = (GameServer.prototype as unknown as {
+    saveStrongholdRow: unknown;
+  }).saveStrongholdRow;
+  return { slate, saved, credits, retired };
+}
+
+test('a due capital ember dissolves: epoch turns, seat rests, ONE credit banks', () => {
+  const now = Date.now();
+  const f = warSlate({ clearedAt: now - 60_000, emberUntil: now - 1 });
+  assert.equal(warProto.dissolveOneCapitalEmber.call(f.slate, now), true);
+  const row = f.slate.strongholdLedger.get('4,4')!;
+  assert.equal(row.epoch, 1);
+  assert.equal(row.clearedAt, null);
+  assert.equal(row.emberUntil, null);
+  assert.equal(row.wardsCleared, 0);
+  assert.equal(row.stage, 0);
+  assert.ok(
+    row.fallowUntil !== null &&
+      row.fallowUntil >= now + FRONTIER.strongholdFallowMs[0] &&
+      row.fallowUntil <= now + FRONTIER.strongholdFallowMs[1],
+    'the seat rests inside the dial band',
+  );
+  assert.deepEqual(f.credits, [1], 'one clear, one credit — conservation');
+  assert.deepEqual(f.retired, ['4,4']);
+  // Nothing left due: the ladder rung yields.
+  assert.equal(warProto.dissolveOneCapitalEmber.call(f.slate, now), false);
+});
+
+test('dignity holds the dissolve; the wake lifts the fallow when due', () => {
+  const now = Date.now();
+  const f = warSlate({ clearedAt: now - 60_000, emberUntil: now - 1 });
+  (f.slate as { playerWithin: () => boolean }).playerWithin = () => true;
+  assert.equal(warProto.dissolveOneCapitalEmber.call(f.slate, now), false, 'never in front of anyone');
+  const g = warSlate({ fallowUntil: now - 1 });
+  assert.equal(warProto.wakeOneCapitalFallow.call(g.slate, now), true);
+  assert.equal(g.slate.strongholdLedger.get('4,4')!.fallowUntil, null);
+});
+
+test('the boldness clock climbs armed capitals and calm freezes it', () => {
+  const now = Date.now();
+  const armed = now - FRONTIER.stageMs[1] - 1;
+  const f = warSlate({ stage: 0, stageAt: armed });
+  assert.equal(warProto.stageOneCapital.call(f.slate, now), true);
+  const row = f.slate.strongholdLedger.get('4,4')!;
+  assert.equal(row.stage, 1);
+  assert.deepEqual(f.retired, ['4,4'], 'recompose-in-place: the walls re-stand bolder');
+  // A relax window freezes the climb.
+  const g = warSlate({ stage: 0, stageAt: armed });
+  g.slate.frontierCalm.set('13,13', now + 60_000);
+  assert.equal(warProto.stageOneCapital.call(g.slate, now), false);
+});
+
+test('jitter helpers stay in-band and epoch-divergent; the epoch re-deals the walls', () => {
+  const a = strongholdEmberFor(config.worldSeed, 3, 3, 0);
+  assert.equal(a, strongholdEmberFor(config.worldSeed, 3, 3, 0));
+  assert.ok(a >= FRONTIER.strongholdEmberMs[0] && a <= FRONTIER.strongholdEmberMs[1]);
+  assert.notEqual(a, strongholdEmberFor(config.worldSeed, 3, 3, 1));
+  const fw = strongholdFallowFor(config.worldSeed, 3, 3, 0);
+  assert.ok(fw >= FRONTIER.strongholdFallowMs[0] && fw <= FRONTIER.strongholdFallowMs[1]);
+  // layoutForSeat: epoch 0 is the seat's own layout; the goblin pool
+  // has three layouts, so SOME seat re-deals differently by epoch 3.
+  const seats = sweepSeats().filter((st) => st.family === 'goblin');
+  if (seats.length === 0) return;
+  const layouts = [...STRONGHOLD_DEFS.values()];
+  let changed = false;
+  for (const seat of seats) {
+    assert.equal(layoutForSeat(SEED, seat, 0, layouts)?.id, seat.layoutId, 'epoch 0 = the seat');
+    for (let e = 1; e <= 6; e++) {
+      const dealt = layoutForSeat(SEED, seat, e, layouts);
+      assert.ok(dealt && dealt.family === seat.family, 'the deal never leaves the family');
+      if (dealt.id !== seat.layoutId) changed = true;
+    }
+  }
+  assert.ok(changed, 'no seat ever re-dealt different walls across six epochs');
+});
+
+test('stage re-mans and thickens: bolder capitals muster more, never deadlier', () => {
+  const seat = sweepSeats()[0]!;
+  const layouts = [...STRONGHOLD_DEFS.values()];
+  const layout = layoutForSeat(SEED, seat, 0, layouts)!;
+  const prefab = STRONGHOLD_PREFABS.get(layout.prefab)!;
+  const calm = composeStronghold(SEED, seat, layout, prefab, 0, 0);
+  const bold = composeStronghold(SEED, seat, layout, prefab, 0, 3);
+  const bodies = (z: typeof calm) => (z.spawns ?? []).reduce((n, sp) => n + sp.count, 0);
+  assert.ok(bodies(bold) >= bodies(calm), 'boldness never thins the watch');
+  const maxLevel = (z: typeof calm) => Math.max(...(z.spawns ?? []).map((sp) => sp.level ?? 0));
+  assert.equal(maxLevel(bold), maxLevel(calm), 'busier, never deadlier (THE FREQUENCY LAW)');
+  assert.deepEqual(bold.ground, calm.ground, 'boldness never moves a wall');
 });

@@ -113,7 +113,7 @@ export function strongholdSeat(
   if (pool.length === 0) return null;
   const base = hashCoords((seed ^ ST_CAPITAL) >>> 0, gx, gy);
   const totalW = pool.reduce((n, d) => n + d.weight, 0);
-  let roll = ((hashCoords(base, 0x1a, 0) % 10000) / 10000) * totalW;
+  let roll = ((hashCoords(base, 0x1a, 0) % 10000) / 10000) * totalW; // epoch 0 — layoutForSeat re-rolls later ages
   let layout = pool[pool.length - 1]!;
   for (const d of pool) {
     if (roll < d.weight) {
@@ -126,6 +126,17 @@ export function strongholdSeat(
   if (!prefab) return null;
   const halfW = Math.floor(prefab.width / 2);
   const halfH = Math.floor(prefab.height / 2);
+  // THE LONG WAR: the epoch re-deals which layout stands here, so the
+  // MASK rect covers the widest walls the family pool could raise —
+  // pure and epoch-free, while the standing zone uses its own dims.
+  let maskW = prefab.width;
+  let maskH = prefab.height;
+  for (const d of pool) {
+    const pp = ctx.prefabs.get(d.prefab);
+    if (!pp) continue;
+    if (pp.width > maskW) maskW = pp.width;
+    if (pp.height > maskH) maskH = pp.height;
+  }
   const gates = strongholdGates(prefab);
 
   for (let attempt = 0; attempt < SEAT_TRIES; attempt++) {
@@ -171,13 +182,48 @@ export function strongholdSeat(
       gy,
       x: ax,
       y: ay,
-      rect: { x: x0, y: y0, w: prefab.width, h: prefab.height },
+      rect: {
+        x: ax - Math.floor(maskW / 2),
+        y: ay - Math.floor(maskH / 2),
+        w: maskW,
+        h: maskH,
+      },
       family,
       tier,
       layoutId: layout.id,
     };
   }
   return null; // the country keeps no capital this age — honest scarcity
+}
+
+/**
+ * The layout the seat deals AT AN EPOCH — epoch 0 is the seat's own
+ * layoutId; an epoch turn rolls the family pool again, so returning
+ * players find new walls on the old ground (THE LONG WAR).
+ */
+export function layoutForSeat(
+  seed: number,
+  seat: CapitalSeat,
+  epoch: number,
+  layouts: readonly StrongholdDef[],
+): StrongholdDef | undefined {
+  const pool = layouts.filter(
+    (d) =>
+      d.family === seat.family && d.weight > 0 && seat.tier >= d.tiers[0] && seat.tier <= d.tiers[1],
+  );
+  if (pool.length === 0) return undefined;
+  const base = hashCoords((seed ^ ST_CAPITAL) >>> 0, seat.gx, seat.gy);
+  const totalW = pool.reduce((n, d) => n + d.weight, 0);
+  let roll = ((hashCoords(base, 0x1a, epoch) % 10000) / 10000) * totalW;
+  let layout = pool[pool.length - 1]!;
+  for (const d of pool) {
+    if (roll < d.weight) {
+      layout = d;
+      break;
+    }
+    roll -= d.weight;
+  }
+  return layout;
 }
 
 /** Lattice indices whose seats could reach a tile rect (rect + mask pad). */
@@ -215,10 +261,13 @@ export function composeStronghold(
   layout: StrongholdDef,
   prefab: PrefabDef,
   epoch = 0,
+  stage = 0,
 ): ZoneDef {
   const { width: w, height: h } = prefab;
-  const originX = seat.rect.x;
-  const originY = seat.rect.y;
+  // The zone stands on ITS OWN dims centered at the anchor — the seat
+  // rect is the MASK (widest walls the pool could raise), not the zone.
+  const originX = seat.x - Math.floor(w / 2);
+  const originY = seat.y - Math.floor(h / 2);
   const ground = prefab.ground.slice();
   const detail = prefab.detail.slice();
   const flat = prefab.elev.every((e) => e === 0);
@@ -281,20 +330,28 @@ export function composeStronghold(
     return pts.length >= 3 ? pts : []; // degrade to the post (the POI law)
   };
   const bossWardIdx = layout.wards.findIndex((wd) => wd.key === layout.boss.ward);
+  let sentryBoosts = 0;
   layout.wards.forEach((ward, wi) => {
     // THE WAR IS DEALT: an optional ward rolls manned or empty per
     // epoch — same walls, different watch. The last stand never rolls.
-    if (ward.optional && hashCoords(musterBase, wi, 0xd1) % 100 >= 65) return;
+    // THE FREQUENCY LAW at citadel scale: boldness RE-MANS the empty
+    // wards (stage 3 mans everything) — busier, never deadlier.
+    if (ward.optional && hashCoords(musterBase, wi, 0xd1) % 100 >= 65 + stage * 12) return;
     const loop = ward.patrol ? patrolLoop(ward) : [];
     ward.knots.forEach((knot, ki) => {
       if (knot.minTier !== undefined && seat.tier < knot.minTier) return;
       const span = knot.band[1] - knot.band[0] + 1;
       const count = knot.band[0] + (hashCoords(musterBase, wi * 31 + ki, 0x9e) % span);
+      // Boldness thickens the watch: up to `stage` sentry knots gain
+      // one body, capped at the PULL LAW's knot ceiling of 3.
+      const bolder =
+        knot.role === 'sentry' && stage > 0 && sentryBoosts < stage && count < 3 ? 1 : 0;
+      if (bolder > 0) sentryBoosts++;
       spawns.push({
         x: originX + knot.at[0],
         y: originY + knot.at[1],
         npc: knot.npc,
-        count,
+        count: count + bolder,
         radius: 2.5,
         level: rollLevel(wi * 31 + ki, 0xa1, knot.levelOffset ?? 0),
         wing: wi,
@@ -316,9 +373,15 @@ export function composeStronghold(
     ...(bossWardIdx >= 0 ? { wing: bossWardIdx } : {}),
   });
 
+  // THE SEAT'S NAME: the world knows the place by its title, rolled
+  // per standing (the epoch folds in — new walls take a new name).
+  const title =
+    layout.titles && layout.titles.length > 0
+      ? layout.titles[hashCoords(musterBase, 0x71e, 0x9) % layout.titles.length]!
+      : layout.name;
   return {
     id: `stronghold:${seat.gx},${seat.gy}`,
-    name: layout.name,
+    name: title,
     origin: { x: originX, y: originY },
     width: w,
     height: h,

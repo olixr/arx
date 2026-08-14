@@ -40,6 +40,10 @@ export interface FrontierDef {
   wildKnotProbes: number;
   trailReach: number;
   holdEmberMs: FrontierRange;
+  /** THE LONG WAR (strongholds Phase 5): a broken CAPITAL lingers. */
+  strongholdEmberMs: FrontierRange;
+  /** The seat rests before new walls rise (long — a capital is an age). */
+  strongholdFallowMs: FrontierRange;
   territoryBias: number;
 }
 
@@ -221,6 +225,8 @@ export const FRONTIER: FrontierDef = {
    * savor. [min, max] ms, hash-jittered per site.
    */
   holdEmberMs: [15 * 60_000, 20 * 60_000],
+  strongholdEmberMs: [25 * 60_000, 35 * 60_000],
+  strongholdFallowMs: [12 * 60 * 60_000, 24 * 60 * 60_000],
   /**
    * THE TERRITORY FIELD (lived-in-land Phase 5): how hard the land
    * leans toward its country's family — a matching archetype's pick
@@ -299,6 +305,26 @@ export function holdEmberFor(
   return jitter(seed, ST_EMBER ^ 0x401d, cellX, cellY, epoch, FRONTIER.holdEmberMs);
 }
 
+/** How long a broken CAPITAL lingers as loot-walk (strongholds Phase 5). */
+export function strongholdEmberFor(
+  seed: number,
+  latticeX: number,
+  latticeY: number,
+  epoch: number,
+): number {
+  return jitter(seed, ST_EMBER ^ 0x5ca7, latticeX, latticeY, epoch, FRONTIER.strongholdEmberMs);
+}
+
+/** How long the seat rests before new walls rise on it. */
+export function strongholdFallowFor(
+  seed: number,
+  latticeX: number,
+  latticeY: number,
+  epoch: number,
+): number {
+  return jitter(seed, ST_FALLOW ^ 0x5ca7, latticeX, latticeY, epoch, FRONTIER.strongholdFallowMs);
+}
+
 // ------------------------------------------------- the Studio's half
 
 /** The authored dials exactly as shipped — the CMS revert target. */
@@ -312,6 +338,8 @@ export const AUTHORED_FRONTIER: Readonly<FrontierDef> = Object.freeze({
   creepMs: [...FRONTIER.creepMs] as [number, number],
   peddlerLingerMs: [...FRONTIER.peddlerLingerMs] as [number, number],
   holdEmberMs: [...FRONTIER.holdEmberMs] as [number, number],
+  strongholdEmberMs: [...FRONTIER.strongholdEmberMs] as [number, number],
+  strongholdFallowMs: [...FRONTIER.strongholdFallowMs] as [number, number],
 });
 
 export type ValidateFrontierResult =
@@ -404,6 +432,8 @@ export function validateFrontier(raw: unknown): ValidateFrontierResult {
     wildKnotProbes: num('wildKnotProbes', 1, 8, true),
     trailReach: num('trailReach', 16, 96, true),
     holdEmberMs: range('holdEmberMs', MIN, 2 * HOUR),
+    strongholdEmberMs: range('strongholdEmberMs', MIN, 4 * HOUR),
+    strongholdFallowMs: range('strongholdFallowMs', HOUR, 7 * DAY),
     territoryBias: num('territoryBias', 1, 10),
   };
   // Unknown keys are refused loudly — a typoed dial must never sit in
@@ -424,6 +454,12 @@ export function validateFrontier(raw: unknown): ValidateFrontierResult {
   }
   if (def.claimReach < def.claimR) {
     errors.push('claimReach must not be narrower than claimR (the flood grows the yard, never shrinks it)');
+  }
+  if (def.strongholdEmberMs[0] < def.holdEmberMs[0]) {
+    errors.push('strongholdEmberMs must not start below holdEmberMs (a capital is savored longer than a hold)');
+  }
+  if (def.strongholdFallowMs[0] < def.fallowMs[0]) {
+    errors.push('strongholdFallowMs must not start below fallowMs (a fallen age rests longer than a camp)');
   }
   if (errors.length > 0) return { ok: false, errors };
   return { ok: true, def };

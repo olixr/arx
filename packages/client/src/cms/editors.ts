@@ -4228,6 +4228,16 @@ function strongholdDetail(body: HTMLElement, linkage: HTMLElement, id: string): 
   kv('family', famPick);
   kv('tiers', tiersPair);
   kv('weight', weightIn);
+  const titlesIn = document.createElement('textarea');
+  titlesIn.rows = 2;
+  titlesIn.placeholder = 'seat names, one per line — the world knows the place by these';
+  titlesIn.value = (draft.titles ?? []).join('\n');
+  titlesIn.oninput = () => {
+    const pool = titlesIn.value.split('\n').map((t) => t.trim()).filter(Boolean);
+    draft.titles = pool.length > 0 ? pool : undefined;
+    markDirty();
+  };
+  kv('titles', titlesIn);
   body.appendChild(
     sect(
       'The commission',

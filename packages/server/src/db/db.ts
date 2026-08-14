@@ -953,6 +953,9 @@ const MIGRATIONS: string[] = [
     first_seen_at BIGINT NOT NULL,
     PRIMARY KEY (lattice_x, lattice_y)
   );`,
+  // v32: THE LONG WAR (strongholds Phase 5) — the boldness clock's
+  // armed timestamp joins the capital ledger.
+  `ALTER TABLE world_strongholds ADD COLUMN stage_at BIGINT;`,
 ];
 
 /**

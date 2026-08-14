@@ -331,6 +331,8 @@ import {
   strikePose,
   STRONGHOLD_DEFS,
   PLANNED_ZONE_RECTS,
+  strongholdEmberFor,
+  strongholdFallowFor,
 } from '@arx/content';
 import {
   collectVoicePrefetch,
@@ -359,6 +361,7 @@ import {
 import {
   CAPITAL_PAD_TILES,
   capitalKey,
+  layoutForSeat,
   capitalLatticeRange,
   capitalMasked,
   composeStronghold,
@@ -2212,6 +2215,10 @@ export class GameServer {
       epoch: number;
       wardsCleared: number;
       clearedAt: number | null;
+      emberUntil: number | null;
+      fallowUntil: number | null;
+      stage: number;
+      stageAt: number | null;
     }
   >();
 
@@ -8289,25 +8296,78 @@ export class GameServer {
       }
       return;
     }
-    // The last stand falls — the capital is broken.
+    // The last stand falls — the capital is broken. The ember is
+    // long (a citadel is savored), the marches calm, the country's
+    // mobilized camps scatter (SOURCE-AND-KILL-SWITCH), and every
+    // MARKED participant collects the posted purse.
+    const now = Date.now();
+    const deathStage = row?.stage ?? 0;
     if (row) {
       row.wardsCleared |= 1 << ward;
-      row.clearedAt = Date.now();
-      this.accounts.markStrongholdCleared(
-        live.seat.gx,
-        live.seat.gy,
-        row.wardsCleared,
-        row.clearedAt,
-      );
+      row.clearedAt = now;
+      row.emberUntil = now + strongholdEmberFor(config.worldSeed, live.seat.gx, live.seat.gy, row.epoch);
+      row.stage = 0;
+      row.stageAt = null;
+      this.saveStrongholdRow(live.seat.gx, live.seat.gy);
+    }
+    this.stampCalm(poiCellOf(live.seat.x), poiCellOf(live.seat.y));
+    const origin = GameServer.capitalOrigin(key);
+    let scattered = 0;
+    for (const [skey, srow] of this.poiLedger) {
+      if (srow.originCell !== origin || srow.site === null || srow.emberUntil !== null) continue;
+      srow.emberUntil =
+        now + scatterLingerFor(config.worldSeed, srow.site.cellX, srow.site.cellY);
+      this.standDownGarrison(this.poiLive.get(skey)?.spawnIdx ?? []);
+      this.accounts.setPoiEmber(srow.site.cellX, srow.site.cellY, srow.emberUntil);
+      scattered++;
     }
     live.fighters = undefined;
+    const purseFlag = bountyFlag(`sh:${key}`);
+    const eidOf = new Map<PlayerComp, EntityId>();
+    for (const [peid, pl] of this.players) eidOf.set(pl, peid);
     for (const p of heard) {
       p.session?.sendJson({
         t: 'chat',
         channel: 'system',
         text: `The last of them falls. ${layout.name} is broken — word of it will travel.`,
       });
+      if (scattered > 0) {
+        p.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: 'Word spreads — the country\'s camps lose their nerve and scatter.',
+        });
+      }
       this.grantArt(p, 'warden_volley');
+      // The posted purse: marked participants collect bounty_t{tier}
+      // scaled by the stage the capital died at (the payBounty law,
+      // by hand — capitals live outside the poi cell ledger).
+      if (p.flags.has(purseFlag)) {
+        this.clearPlayerFlag(p, purseFlag);
+        const tier = Math.max(1, Math.min(5, live.seat.tier));
+        // The purse scales by the stage the mark was POSTED against —
+        // clearing zeroes row.stage first, so the death stage rides
+        // the ward count instead: stage at death = the bits' story.
+        const mult = 1 + deathStage;
+        let paid = 0;
+        for (const drop of rollLoot(`bounty_t${tier}`, { level: tier * 10, rand: Math.random })) {
+          const qty = drop.qty * mult;
+          const added = addItem(p.inventory, drop.item, qty);
+          if (added < qty) {
+            const peid = eidOf.get(p);
+            const pos = peid !== undefined ? this.positions.get(peid) : undefined;
+            if (pos && peid !== undefined) this.spawnDrop(drop.item, qty - added, pos.x, pos.y, peid);
+          }
+          paid += qty;
+        }
+        if (paid > 0) {
+          p.session?.sendJson({
+            t: 'chat',
+            channel: 'system',
+            text: `The bounty is honored: ${paid} coin${paid === 1 ? '' : 's'}.`,
+          });
+        }
+      }
     }
   }
 
@@ -8353,7 +8413,15 @@ export class GameServer {
 
   private materializeCapital(seat: CapitalSeat): void {
     const key = capitalKey(seat.gx, seat.gy);
-    const layout = STRONGHOLD_DEFS.get(seat.layoutId);
+    const preRow = this.strongholdLedger.get(key);
+    // A resting seat raises nothing — the fallow holds until the
+    // clock lifts it (approach alone never hurries an age).
+    if (preRow?.fallowUntil !== null && preRow?.fallowUntil !== undefined) return;
+    // THE LONG WAR: the epoch deals the layout — returning players
+    // find new walls on the old ground.
+    const layout =
+      layoutForSeat(config.worldSeed, seat, preRow?.epoch ?? 0, [...STRONGHOLD_DEFS.values()]) ??
+      STRONGHOLD_DEFS.get(seat.layoutId);
     const prefab = layout ? this.poiPrefabs?.get(layout.prefab) : undefined;
     if (!layout || !prefab) {
       console.warn(`[stronghold] ${key}: cannot compose '${seat.layoutId}' — content missing`);
@@ -8378,7 +8446,14 @@ export class GameServer {
       }
     }
     const row = this.strongholdLedger.get(key);
-    const zone = composeStronghold(config.worldSeed, seat, layout, prefab, row?.epoch ?? 0);
+    const zone = composeStronghold(
+      config.worldSeed,
+      seat,
+      layout,
+      prefab,
+      row?.epoch ?? 0,
+      row?.stage ?? 0,
+    );
     this.world.addZone(zone);
     this.dropClientChunks(zone);
     const spawnIdx = this.registerSpawns(zone.spawns ?? [], zone.id);
@@ -8406,21 +8481,208 @@ export class GameServer {
       const wy = zone.origin.y + Math.floor(i / zone.width);
       this.poiChests.set(`${wx},${wy}`, { cell: `sh:${key}`, warded: true });
     }
-    this.strongholdLive.set(key, { zoneId: zone.id, seat, layoutId: seat.layoutId, spawnIdx });
+    this.strongholdLive.set(key, { zoneId: zone.id, seat, layoutId: layout.id, spawnIdx });
     if (!this.strongholdLedger.has(key)) {
       this.strongholdLedger.set(key, {
-        layoutId: seat.layoutId,
+        layoutId: layout.id,
         anchorX: seat.x,
         anchorY: seat.y,
         epoch: 0,
         wardsCleared: 0,
         clearedAt: null,
+        emberUntil: null,
+        fallowUntil: null,
+        stage: 0,
+        stageAt: Date.now(), // first standing ARMS the boldness clock
       });
-      this.accounts.recordStronghold(seat.gx, seat.gy, seat.layoutId, seat.x, seat.y, 0);
+      this.accounts.recordStronghold(seat.gx, seat.gy, layout.id, seat.x, seat.y, 0);
+      this.saveStrongholdRow(seat.gx, seat.gy);
+    } else {
+      const armed = this.strongholdLedger.get(key)!;
+      armed.layoutId = layout.id;
+      if (armed.stageAt === null && armed.clearedAt === null) {
+        armed.stageAt = Date.now();
+      }
+      this.saveStrongholdRow(seat.gx, seat.gy);
     }
     console.log(
       `[stronghold] ${key}: '${seat.layoutId}' stands at ${seat.x},${seat.y} tier ${seat.tier} (${zone.spawns?.length ?? 0} musters)`,
     );
+  }
+
+  /** Persist a capital ledger row (the full-row upsert). */
+  private saveStrongholdRow(gx: number, gy: number): void {
+    const row = this.strongholdLedger.get(capitalKey(gx, gy));
+    if (!row) return;
+    this.accounts.saveStrongholdState(gx, gy, row);
+  }
+
+  /** The satellite-origin key of a capital (the hearth: dialect). */
+  private static capitalOrigin(key: string): string {
+    return `cap:${key}`;
+  }
+
+  /** The def a staged capital seeds: the family's hold, else its camp. */
+  private capitalSatelliteDef(family: string): string | null {
+    let fallback: { id: string; weight: number } | null = null;
+    for (const def of POI_DEFS.values()) {
+      if (def.family !== family || def.weight <= 0) continue;
+      if (def.compound) return def.id;
+      if (!fallback || def.weight > fallback.weight) fallback = { id: def.id, weight: def.weight };
+    }
+    return fallback?.id ?? null;
+  }
+
+  /**
+   * THE LONG WAR's ladder (strongholds Phase 5) — the capital joins
+   * the frontier clock, one unit of work per beat like every rung.
+   */
+  private dissolveOneCapitalEmber(now: number): boolean {
+    for (const [key, row] of this.strongholdLedger) {
+      if (row.clearedAt === null || row.emberUntil === null || row.emberUntil > now) continue;
+      const [gxs, gys] = key.split(',');
+      const gx = Number(gxs);
+      const gy = Number(gys);
+      // Dignity at citadel scale: nobody within the walls' reach.
+      if (this.playerWithin(row.anchorX, row.anchorY, FRONTIER.dignityTiles + 64)) continue;
+      this.retireCapital(key);
+      row.epoch += 1;
+      row.wardsCleared = 0;
+      row.clearedAt = null;
+      row.emberUntil = null;
+      row.stage = 0;
+      row.stageAt = null;
+      row.fallowUntil = now + strongholdFallowFor(config.worldSeed, gx, gy, row.epoch);
+      this.saveStrongholdRow(gx, gy);
+      // One clear was one victory: the dissolve banks ONE credit —
+      // conservation, never inflation (the ember-law covenant).
+      this.frontierCredits += 1;
+      this.accounts.saveFrontierCredits(this.frontierCredits);
+      console.log(
+        `[stronghold] ${key}: the broken capital dissolves — epoch ${row.epoch}, the seat rests`,
+      );
+      return true;
+    }
+    return false;
+  }
+
+  private wakeOneCapitalFallow(now: number): boolean {
+    for (const [key, row] of this.strongholdLedger) {
+      if (row.fallowUntil === null || row.fallowUntil > now) continue;
+      const [gxs, gys] = key.split(',');
+      const gx = Number(gxs);
+      const gy = Number(gys);
+      if (this.calmNear(poiCellOf(row.anchorX), poiCellOf(row.anchorY), now)) continue;
+      if (this.playerWithin(row.anchorX, row.anchorY, FRONTIER.dignityTiles + 64)) continue;
+      row.fallowUntil = null;
+      this.saveStrongholdRow(gx, gy);
+      console.log(`[stronghold] ${key}: the seat is ready — new walls rise on approach`);
+      return true;
+    }
+    return false;
+  }
+
+  private stageOneCapital(now: number): boolean {
+    for (const [key, row] of this.strongholdLedger) {
+      if (row.clearedAt !== null || row.emberUntil !== null || row.fallowUntil !== null) continue;
+      if (row.stageAt === null || row.stage >= FRONTIER.stageMax) continue;
+      const [gxs, gys] = key.split(',');
+      const gx = Number(gxs);
+      const gy = Number(gys);
+      if (now < row.stageAt + stageWaitFor(config.worldSeed, gx, gy, row.stage)) continue;
+      if (this.calmNear(poiCellOf(row.anchorX), poiCellOf(row.anchorY), now)) continue;
+      if (this.playerWithin(row.anchorX, row.anchorY, FRONTIER.dignityTiles + 64)) continue;
+      row.stage += 1;
+      row.stageAt = now;
+      this.saveStrongholdRow(gx, gy);
+      // Recompose-in-place: retire; the next approach re-stands the
+      // walls with the bolder watch (re-manned wards, thicker gates).
+      this.retireCapital(key);
+      console.log(`[stronghold] ${key}: the capital grows bolder — stage ${row.stage}`);
+      return true;
+    }
+    return false;
+  }
+
+  private seedOneCapitalSatellite(now: number): boolean {
+    if (!this.poiPrefabs) return false;
+    const authored = this.authoredCells();
+    for (const [key, row] of this.strongholdLedger) {
+      if (row.clearedAt !== null || row.emberUntil !== null || row.fallowUntil !== null) continue;
+      if (row.stage < FRONTIER.satelliteStage) continue;
+      const origin = GameServer.capitalOrigin(key);
+      let sats = 0;
+      for (const r of this.poiLedger.values()) {
+        if (r.originCell === origin && r.site !== null && r.emberUntil === null) sats++;
+      }
+      if (sats >= FRONTIER.satelliteMax) continue;
+      const satDef = this.capitalSatelliteDef(
+        STRONGHOLD_DEFS.get(row.layoutId)?.family ?? '',
+      );
+      if (satDef === null) continue;
+      const ccx = poiCellOf(row.anchorX);
+      const ccy = poiCellOf(row.anchorY);
+      if (this.calmNear(ccx, ccy, now)) continue;
+      // The country mobilizes: candidate cells two out from the seat,
+      // ranked townward (the capital's reach preys on the roads).
+      const anchors = this.dangerAnchors();
+      const candidates: Array<{ cx: number; cy: number; d: number }> = [];
+      for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== 2) continue;
+          const cx = ccx + dx;
+          const cy = ccy + dy;
+          let dTown = Infinity;
+          for (const a of anchors) {
+            const ax = (cx + 0.5) * POI_CELL - a.x;
+            const ay = (cy + 0.5) * POI_CELL - a.y;
+            dTown = Math.min(dTown, ax * ax + ay * ay);
+          }
+          candidates.push({ cx, cy, d: dTown });
+        }
+      }
+      candidates.sort((a, b) => a.d - b.d);
+      for (const cand of candidates.slice(0, 4)) {
+        const cellKey = poiCellKey(cand.cx, cand.cy);
+        if (authored.has(cellKey)) continue;
+        const existing = this.poiLedger.get(cellKey);
+        if (existing?.site) continue;
+        if (existing?.fallowUntil !== null && existing?.fallowUntil !== undefined) continue;
+        if (this.calmNear(cand.cx, cand.cy, now)) continue;
+        const site = poiForCell(
+          config.worldSeed,
+          cand.cx,
+          cand.cy,
+          existing?.epoch ?? 0,
+          this.poiCtx(),
+          satDef,
+        );
+        if (!site) continue;
+        this.poiLedger.set(cellKey, {
+          epoch: site.epoch,
+          site,
+          clearedAt: null,
+          emberUntil: null,
+          fallowUntil: null,
+          stage: 0,
+          stageAt: null,
+          originCell: origin,
+        });
+        this.accounts.recordPoiCell(
+          cand.cx,
+          cand.cy,
+          site.epoch,
+          { poiId: site.defId, prefabId: site.prefabId, tier: site.tier, anchorX: site.anchorX, anchorY: site.anchorY },
+          null,
+          origin,
+        );
+        console.log(
+          `[stronghold] ${key}: the country mobilizes — '${satDef}' seeded at cell ${cellKey}`,
+        );
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Retire a standing capital (content edits; future lifecycle). */
@@ -8495,6 +8757,10 @@ export class GameServer {
         epoch: number;
         wardsCleared: number;
         clearedAt: number | null;
+        emberUntil: number | null;
+        fallowUntil: number | null;
+        stage: number;
+        stageAt: number | null;
       }>;
     } = {},
   ): void {
@@ -8515,6 +8781,10 @@ export class GameServer {
         epoch: h.epoch,
         wardsCleared: h.wardsCleared,
         clearedAt: h.clearedAt,
+        emberUntil: h.emberUntil,
+        fallowUntil: h.fallowUntil,
+        stage: h.stage,
+        stageAt: h.stageAt,
       });
     }
     let sites = 0;
@@ -9120,6 +9390,10 @@ export class GameServer {
     if (this.wakeOneFallow(now)) return;
     if (this.stageOnePoi(now)) return;
     if (this.seedOneSatellite(now)) return;
+    if (this.dissolveOneCapitalEmber(now)) return;
+    if (this.wakeOneCapitalFallow(now)) return;
+    if (this.stageOneCapital(now)) return;
+    if (this.seedOneCapitalSatellite(now)) return;
     if (this.forkOneToll(now)) return;
     this.spendRenewalCredit(now);
   }
@@ -9545,6 +9819,10 @@ export class GameServer {
         // unclaim (or lose) your bed and the covetous camp loses
         // interest in a yard that no longer exists.
         if (this.homesByCharacter.has(hearthOwner)) continue;
+      } else if (row.originCell.startsWith('cap:')) {
+        // A capital-tied camp holds while its capital stands.
+        const cap = this.strongholdLedger.get(row.originCell.slice(4));
+        if (cap && cap.clearedAt === null && cap.fallowUntil === null) continue;
       } else {
         const core = this.poiLedger.get(row.originCell);
         if (core?.site && core.clearedAt === null) continue; // the core stands
@@ -13537,6 +13815,17 @@ export class GameServer {
       if (row.stage >= FRONTIER.satelliteStage) out.bold = true;
       if (row.site.defId === 'road_toll') out.toll = true;
     }
+    // THE LONG WAR: a standing capital in the watch is news — and a
+    // STAGED one is the loudest worry a post can carry. (Defensive
+    // read: hand-built slates without the capital fields see none.)
+    for (const row of this.strongholdLedger?.values() ?? []) {
+      if (row.clearedAt !== null || row.emberUntil !== null || row.fallowUntil !== null) continue;
+      const dx = row.anchorX - sx;
+      const dy = row.anchorY - sy;
+      if (dx * dx + dy * dy > watch * watch) continue;
+      out.near = true;
+      if (row.stage >= 1) out.bold = true;
+    }
     return out;
   }
 
@@ -13911,8 +14200,47 @@ export class GameServer {
         best = { key, site: row.site, stage: row.stage, d2 };
       }
     }
+    // A standing capital in the watch outranks every camp — the seat
+    // of the trouble is always the mark worth posting (priority reads
+    // as rung 3 + its own stage, above any camp's ladder).
+    let bestCap: { key: string; x: number; y: number; stage: number; name: string; d2: number } | null =
+      null;
+    for (const [ckey, row] of this.strongholdLedger ?? []) {
+      if (row.clearedAt !== null || row.emberUntil !== null || row.fallowUntil !== null) continue;
+      const dx = row.anchorX - spos.x;
+      const dy = row.anchorY - spos.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > watch * watch) continue;
+      const layoutName =
+        this.strongholdLive.get(ckey) !== undefined
+          ? this.world.zoneById(this.strongholdLive.get(ckey)!.zoneId)?.name
+          : undefined;
+      const capStage = 3 + row.stage;
+      if (!bestCap || capStage > bestCap.stage || (capStage === bestCap.stage && d2 < bestCap.d2)) {
+        bestCap = {
+          key: ckey,
+          x: row.anchorX,
+          y: row.anchorY,
+          stage: capStage,
+          name: layoutName ?? STRONGHOLD_DEFS.get(row.layoutId)?.name ?? 'the stronghold',
+          d2,
+        };
+      }
+    }
     const sys = (text: string) =>
       player.session?.sendJson({ t: 'chat', channel: 'system', text });
+    if (bestCap && (!best || bestCap.stage >= best.stage)) {
+      const wx = Math.round(bestCap.x);
+      const wy = Math.round(bestCap.y);
+      this.setWaypoint(eid, wx, wy);
+      player.session?.sendJson({ t: 'waypoint', x: wx, y: wy });
+      this.setPlayerFlag(player, bountyFlag(`sh:${bestCap.key}`));
+      sys(
+        `Your chart takes the mark: ${bestCap.name}, ` +
+          `${compass8(wx - pos.x, wy - pos.y)}, ${Math.round(Math.hypot(wx - pos.x, wy - pos.y))} paces out.`,
+      );
+      return;
+    }
     if (!best) {
       // The gate said threat, but it broke mid-conversation — honest.
       sys('Nothing stands within the watch now — the word was stale.');
@@ -13940,6 +14268,15 @@ export class GameServer {
     for (const flag of [...player.flags.keys()]) {
       if (!flag.startsWith(BOUNTY_FLAG_PREFIX)) continue;
       const key = flag.slice(BOUNTY_FLAG_PREFIX.length);
+      if (key.startsWith('sh:')) {
+        // A capital mark stands while the capital does.
+        const cap = this.strongholdLedger?.get(key.slice(3));
+        const capStands =
+          cap !== undefined && cap.clearedAt === null && cap.emberUntil === null && cap.fallowUntil === null;
+        if (capStands) out.push(key);
+        else this.clearPlayerFlag(player, flag);
+        continue;
+      }
       const row = this.poiLedger.get(key);
       const standing =
         row !== undefined && row.site !== null && row.clearedAt === null && row.emberUntil === null;
@@ -23266,6 +23603,38 @@ export class GameServer {
         say(`Capital at lattice ${gx},${gy} retired (ledger row kept).`);
         return;
       }
+      if (sub === 'stage') {
+        const gx = Math.floor(px / 384);
+        const gy = Math.floor(py / 384);
+        const row = this.strongholdLedger.get(capitalKey(gx, gy));
+        if (!row) {
+          say('No capital ledger row in this lattice cell.');
+          return;
+        }
+        row.stage = Math.max(0, Math.min(FRONTIER.stageMax, Number(arg ?? row.stage + 1) || 0));
+        row.stageAt = Date.now();
+        this.saveStrongholdRow(gx, gy);
+        this.retireCapital(capitalKey(gx, gy));
+        say(`Capital staged to ${row.stage} — it re-stands bolder on approach.`);
+        return;
+      }
+      if (sub === 'ember') {
+        const gx = Math.floor(px / 384);
+        const gy = Math.floor(py / 384);
+        const row = this.strongholdLedger.get(capitalKey(gx, gy));
+        if (!row) {
+          say('No capital ledger row in this lattice cell.');
+          return;
+        }
+        const min = Math.max(0.05, Number(arg ?? 1) || 1);
+        row.clearedAt = Date.now();
+        row.emberUntil = Date.now() + Math.round(min * 60_000);
+        this.saveStrongholdRow(gx, gy);
+        const live = this.strongholdLive.get(capitalKey(gx, gy));
+        if (live) this.standDownGarrison(live.spawnIdx);
+        say(`Capital embered for ~${min}m — a staged wipe without the fight.`);
+        return;
+      }
       // Info: this lattice neighborhood's seats.
       const gx = Math.floor(px / 384);
       const gy = Math.floor(py / 384);
@@ -23279,15 +23648,19 @@ export class GameServer {
           const bits = row?.wardsCleared ?? 0;
           let brokenWards = 0;
           for (let b = bits; b > 0; b >>= 1) brokenWards += b & 1;
-          const state = this.strongholdLive.has(key)
-            ? this.strongholdGarrisonStands(key)
-              ? brokenWards > 0
-                ? `standing, ${brokenWards} ward(s) broken`
-                : 'standing'
-              : 'broken'
-            : row
-              ? 'known, beyond the fog'
-              : 'unfound';
+          const now = Date.now();
+          const state = row?.fallowUntil
+            ? `fallow ${Math.round((row.fallowUntil - now) / 60_000)}m`
+            : row?.emberUntil
+              ? `ember ${Math.round((row.emberUntil - now) / 60_000)}m`
+              : this.strongholdLive.has(key)
+                ? this.strongholdGarrisonStands(key)
+                  ? (row?.stage ? `standing, stage ${row.stage}` : 'standing') +
+                    (brokenWards > 0 ? `, ${brokenWards} ward(s) broken` : '')
+                  : 'broken'
+                : row
+                  ? 'known, beyond the fog'
+                  : 'unfound';
           const d = Math.round(Math.hypot(seat.x - px, seat.y - py));
           lines.push(
             `${key}: ${seat.layoutId} t${seat.tier} at ${seat.x},${seat.y} (${d} tiles) · ${state}`,

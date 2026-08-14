@@ -30,6 +30,8 @@ interface RosterEntry {
   sizeClass: StrongholdSizeClass;
   seed: number;
   bossNames: readonly string[];
+  /** Seat-name pool (Phase 5) — the world knows the place by these. */
+  titles: readonly string[];
 }
 
 const ROSTER: readonly RosterEntry[] = [
@@ -44,6 +46,7 @@ const ROSTER: readonly RosterEntry[] = [
     sizeClass: 'citadel',
     seed: 9,
     bossNames: ['Gruk Threefires', 'Nagga the Wide', 'Skarn Bonecounter', 'Old Yellowtooth', 'Vrek Stonehowl', 'Mor the Unfed'],
+    titles: ["The Shouting Ring", "Threefires Moot", "The Wide Court"],
   },
   {
     id: 'stronghold_goblin_warring',
@@ -55,6 +58,7 @@ const ROSTER: readonly RosterEntry[] = [
     sizeClass: 'hold',
     seed: 1,
     bossNames: ['Hakk Redhand', 'Snagga Pitborn', 'Urzul the Patient', 'Grimtongue', 'Karsh Two-Drums'],
+    titles: ["The Quick Ring", "Redhand Ring", "The Raised Spears"],
   },
   {
     id: 'stronghold_goblin_deepfort',
@@ -66,6 +70,7 @@ const ROSTER: readonly RosterEntry[] = [
     sizeClass: 'citadel',
     seed: 4,
     bossNames: ['Zogg the Under-King', 'Marrgul Ashcrown', 'Thrukk Ninefingers', 'The Moot-Breaker'],
+    titles: ["The Old Moot", "Ashcrown Fast", "The Under Fort"],
   },
   {
     id: 'stronghold_brigand_bastion',
@@ -78,6 +83,7 @@ const ROSTER: readonly RosterEntry[] = [
     sizeClass: 'citadel',
     seed: 6,
     bossNames: ['Corvin the Toll', 'Mave Ironpurse', 'Halden Rook', 'Sorrel the Knife', 'Bract Longwatch'],
+    titles: ["The Ledger House", "The Toll Bastion", "The Robbers' Yard"],
   },
   {
     id: 'stronghold_brigand_stockyard',
@@ -89,6 +95,7 @@ const ROSTER: readonly RosterEntry[] = [
     sizeClass: 'hold',
     seed: 1,
     bossNames: ['Redga the Brand', 'Toller Finch', 'One-Eyed Wyn', 'Cutter Pell'],
+    titles: ["The Stockyard", "The Long Count", "The Fenced Yard"],
   },
   {
     id: 'stronghold_wolfkin_greatring',
@@ -101,6 +108,7 @@ const ROSTER: readonly RosterEntry[] = [
     sizeClass: 'citadel',
     seed: 5,
     bossNames: ['The Grey Sovereign', 'Mother Longfang', 'The Winter Jaw', 'Old Ninescar'],
+    titles: ["The Grey Ring", "The Winter Court", "The Longfang Ring"],
   },
   {
     id: 'stronghold_wolfkin_bonering',
@@ -112,6 +120,7 @@ const ROSTER: readonly RosterEntry[] = [
     sizeClass: 'hold',
     seed: 6,
     bossNames: ['Splitmuzzle', 'The Lean King', 'Redhackle', 'Gnawer-of-Gates'],
+    titles: ["The Bone Ring", "The Lean Yard", "The Gnawed Ring"],
   },
   {
     id: 'stronghold_gnoll_cacklefort',
@@ -123,6 +132,7 @@ const ROSTER: readonly RosterEntry[] = [
     sizeClass: 'hold',
     seed: 3,
     bossNames: ['Yipmaw the Loud', 'Gash the Grinner', 'Half-Laugh', 'Rekka Boneshaker'],
+    titles: ["The Cackle Fort", "The Loud Fort", "The Grinning Ring"],
   },
   {
     id: 'stronghold_dead_barrowcourt',
@@ -135,6 +145,7 @@ const ROSTER: readonly RosterEntry[] = [
     sizeClass: 'hold',
     seed: 4,
     bossNames: ['The Walled King', 'He Who Kept the Count', 'The Hollow Warden', 'The First Mason', 'The Crowned Silence'],
+    titles: ["The Walled Court", "The Counted Court", "The Silent Court"],
   },
 ];
 
@@ -146,9 +157,12 @@ function buildShelf(): {
   const prefabs = new Map<string, PrefabDef>();
   const errors: string[] = [];
   for (const entry of ROSTER) {
-    const { seed, sizeClass, bossNames, ...specRest } = entry;
+    const { seed, sizeClass, bossNames, titles, ...specRest } = entry;
     const proposal = genStronghold(seed, { ...specRest, sizeClass, bossNames });
-    const res = validateStronghold(proposal.def, { prefab: proposal.prefab });
+    // The seat-name pool rides the def, not the generator — a reroll
+    // keeps the place's names.
+    const withTitles = { ...proposal.def, titles };
+    const res = validateStronghold(withTitles, { prefab: proposal.prefab });
     if (!res.ok) {
       errors.push(...res.errors.map((e) => `${entry.id}: ${e}`));
       continue;

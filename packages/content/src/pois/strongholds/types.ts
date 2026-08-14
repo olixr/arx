@@ -103,6 +103,14 @@ export interface StrongholdDef {
   weight: number;
   /** The mega-prefab (shared library id — by convention === id). */
   prefab: string;
+  /**
+   * Seat-name pool (strongholds Phase 5): the settled world knows a
+   * capital by ITS name, not its layout's — the seat hash picks ONE
+   * title per standing ("The Splitfang Ring"), stable until the epoch
+   * turns and new walls take a new name. Absent = the layout's own
+   * bench name serves.
+   */
+  titles?: readonly string[];
   /** The chapters. ≥ 2 (a gate yard and a last stand at minimum). */
   wards: readonly StrongholdWard[];
   /** The last stand. */
