@@ -131,3 +131,62 @@ export function stowBack(kind: 'bow' | 'staff' | 'great', side: number): StowSpo
     angle: sd >= 0 ? -Math.PI + lean : -lean,
   };
 }
+
+// ------------------------------------------------- the second grip
+
+/**
+ * THE VISIBLE BACK: where the WAITING weapon set rides — one rank
+ * deeper than the active weapon's own stow spots, so both can dress
+ * the body at once. These ADD spots; the active spots above never
+ * move (user verdicts stand).
+ *
+ * The back rank is THE CROSS: the waiting piece slings on the
+ * OPPOSITE lean, anchored past the opposite shoulder, riding lower
+ * and leaned HARDER than the active sling — authored numbers, not a
+ * mere mirror, because a waiting bow that only mirrors a sheathed
+ * greatblade disappears inside its silhouette (the lab caught it).
+ * The bow keeps THE MIRROR LAW's structure: its opposite lean IS the
+ * reflected sling, never a rotation, so the belly stays outward.
+ */
+export function restBack(kind: 'bow' | 'staff' | 'great', side: number): StowSpot {
+  const sd = firmSide(side);
+  if (kind === 'staff') {
+    return { dx: sd * 0.11, dy: 0.4, angle: -Math.PI / 2 - sd * 0.62 };
+  }
+  if (kind === 'great') {
+    return { dx: sd * 0.1, dy: 0.48, angle: Math.PI / 2 - sd * 0.48 };
+  }
+  const lean = Math.abs(sd) * 0.55;
+  return { dx: sd * 0.11, dy: 0.34, angle: sd >= 0 ? -lean : -Math.PI + lean };
+}
+
+/** How much deeper behind the torso the waiting back rank sits, in
+ * units of the active sling's own −fx·0.14 back offset multiplier. */
+export const REST_BACK_DEPTH = 0.2;
+
+/**
+ * THE SECOND ROW: where a waiting blade hangs the belt — a notch
+ * lower and a touch wider than the live scabbards, relaxing toward a
+ * vertical hang so the waiting hilts read as a quiet row UNDER the
+ * war belt's live one, two hilts never kissing.
+ */
+export function restBlade(hand: 'main' | 'off', side: number, rake: number, sit = 0): StowSpot {
+  const spot = stowBlade(hand, side, rake, sit);
+  return {
+    dx: spot.dx * 1.18,
+    dy: spot.dy + 0.075,
+    angle: spot.angle + (Math.PI / 2 - spot.angle) * 0.35,
+  };
+}
+
+/**
+ * THE SLUNG WALL: a waiting shield hangs square across the back on
+ * its guige, face out, riding just below the sling line — deeper than
+ * every other back item so bows and blades paint over it (the wall is
+ * the ground the rest of the kit reads against). One perch, both the
+ * caped and bare-back paths.
+ */
+export function restShield(side: number): { dx: number; dy: number; tilt: number } {
+  const sd = firmSide(side);
+  return { dx: -sd * 0.02, dy: 0.4, tilt: sd * 0.12 };
+}

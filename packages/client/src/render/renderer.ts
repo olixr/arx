@@ -31152,6 +31152,15 @@ export class Renderer {
           bootsItem: e.equip.boots,
           glovesItem: e.equip.gloves,
           offhandItem: lieE > 0.2 || (chairSit && sitE > 0.2) ? undefined : e.equip.offhand,
+          // THE VISIBLE BACK: the waiting set rides the body at rest,
+          // under the same furniture law as the hands — a body on a
+          // seat or a bed sets ALL its steel aside, waiting row too.
+          stowWeaponItem:
+            lieE > 0.2 || (chairSit && sitE > 0.2) ? undefined : e.equip.stowWeapon,
+          stowOffhandItem:
+            lieE > 0.2 || (chairSit && sitE > 0.2) ? undefined : e.equip.stowOffhand,
+          stowWeaponEnch: e.ench?.stowWeapon,
+          stowOffhandEnch: e.ench?.stowOffhand,
           hasCape: e.equip.cape !== undefined,
           size: e.size,
           skinColor: e.skinColor,

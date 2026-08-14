@@ -240,7 +240,44 @@ STOW_HANDOFF, mispredict reconciles like the predicted blow); stow/draw sfx pair
 THE SAFETY interplay (combat press during the beat buffers, fires when the lock
 lifts). Riglab transition rows for the trade.
 
-**Phase 3 — THE VISIBLE BACK (the body wears both).** Rig inputs grow the stowed
+**Phase 3 — THE VISIBLE BACK (the body wears both). SHIPPED 2026-08-14.**
+
+*As-built:* sheath.ts grew the REST VOCABULARY beside the active spots (ADD
+only — no active number moved): `restBack` = THE CROSS, authored numbers not a
+mere mirror (first cut composed `stowBack(-side)` and the waiting bow vanished
+inside a sheathed greatblade's silhouette — the lab caught it; the shipped
+spots anchor past the OPPOSITE shoulder, ride lower, lean HARDER, and the bow
+keeps THE MIRROR LAW's reflection structure); `restBlade` = THE SECOND ROW
+(lower, wider, relaxing toward vertical — a quiet row under the war belt,
+hilts never kissing, tip-down law inherited); `restShield` = THE SLUNG WALL
+(square on its guige, deepest rank — the ground the rest of the kit reads
+against); `REST_BACK_DEPTH` deepens the back offset. Five new law pins in
+sheath.test.ts (cross/second-row/tip-down/continuity/wall, 14 green). RigPose
+grew `stowWeaponItem`/`stowOffhandItem` (+ ench twins — bonded steel burns at
+rest, the flaming-blade law). The paint: rest spots solve beside the active
+stow solve (ONE wieldClass detection); closures paintRestBeltMain/Off (with
+the full scabbard + frog dressing — waiting blades keep their bespoke
+identity) and paintRestBack (wall → waiting quiver → crossed sling) enter
+every depth band FIRST — live steel always layers over waiting steel, both
+the early band (over legs, under torso) and the late (over torso, under
+arms), mirroring slingFront/beltBehind exactly. drawBackGear (the caped path)
+gained the same rank with the same first-in-band law and a widened
+early-return gate (rest gear earns the call on its own). Tomes/orbs rest
+UNDRAWN by design — the same silence the active sheathe keeps for them.
+Remote players need nothing new: AppearanceData has carried the slots since
+Phase 1. pairlab.html/pairlab.ts = THE CARRIED PAIR sheet (10 rows × 8
+facings on the riglab det harness, persistent solvers per THE LAB LESSON,
+?det/?rows levers; it plays the renderer's cape-depth part for drawBackGear —
+first cut called it flat and the S-facing caped cells overdrew, fixed to the
+capeFront ordering). Audited by eye at det frame 239: the flagship
+sword-and-board-over-waiting-bow, the reversed bow-over-wall, THE CROSS
+(great × bow, both leans), four daggers two rows, caped staff/wall rows,
+hurt-flash silhouette swallowing the waiting kit. 1673 workspace tests green
+(the Kingsdelf quest failure was fixed in their lane), typecheck clean.
+Staged BY HUNK: rig.ts carried two in-flight goblin-head hunks and
+renderer.ts six pet-lane hunks from concurrent sessions — excluded exactly.
+
+*Original scope:* Rig inputs grow the stowed
 pair (`stowedWeaponItem`/`stowedOffItem`); drawBackGear + blade scabbards render
 them at permanent rest; ranked crossed-back angles when active-sheathed and
 stowed share the back; far-hip rank for a second blade; AppearanceData carries
