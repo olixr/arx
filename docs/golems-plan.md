@@ -306,6 +306,21 @@ Shipped exactly as planned, with these deltas and lessons:
   territory chain (needs a MAJOR golem POI to declare it — a "waking
   quarry" POI is the natural follow-up), mine-dungeon iron garrisons,
   and a stone matter material (dust carries the earth voice fine).
+**THE LODESTONE (41c7f8e, 2026-08-14)** — the iron golem reworked
+whole, per user verdict ("feels like a robot; rethink it into its
+element"). Forged plates/visor/rivets DEAD. New identity: a magnetic
+heart that GATHERED a body — oreMass() six-facet crystalline brick
+(vs rock's rounded boulders), per-mass magnetic quiver (hum deepens
+with flare), rust strata, hard glint slivers, ONE copper vein, THE
+GATHERED IRON seed-picked relics (horseshoe/nails/pick-head/blade-tip
+— justifies the ore + forgeplate drops), pale struck-metal seam
+sparks + one white cross-spark at peak wind, lodestone skull with ONE
+socket-glint + bent-nail crown, three hovering shrapnel pieces, and a
+field-fails corpse. Palette forged-grey → ore-brown (def color, look,
+riglab mirror all moved). LESSON: SYMMETRY READS AS MACHINE — a
+construct's elemental read lives in asymmetric gathered mass; the
+robot was the symmetry, not the metal.
+
 **THE ELEMENTS WAKE (c90350c, 2026-08-14)** — the ascension pass, per
 user mandate ("elemental beings bound by energy, never reskins"):
 rock = binding seam-light (amber over deep under-strokes, CONTRAST
