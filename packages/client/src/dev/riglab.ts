@@ -39,7 +39,7 @@ const DIRS = [
 /** The bestiary rows this sheet audits (content defs, mirrored). */
 const BODIES: Record<string, { size: number; color: string; skin?: string; kind: 'golem' | 'troll' | 'gnoll' | 'player' }> = {
   rock_golem: { size: 1.55, color: '#8a8164', kind: 'golem' },
-  iron_golem: { size: 1.6, color: '#6a7280', kind: 'golem' },
+  iron_golem: { size: 1.6, color: '#6f665e', kind: 'golem' },
   fire_golem: { size: 1.6, color: '#3a2c26', kind: 'golem' },
   ice_golem: { size: 1.7, color: '#9ec8dc', kind: 'golem' },
   troll: { size: 1.4, color: '#6a7d5c', skin: '#6a7d5c', kind: 'troll' },

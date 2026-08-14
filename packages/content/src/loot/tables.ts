@@ -1510,7 +1510,7 @@ const defs: LootTableDef[] = [
   },
   {
     id: 'iron_golem',
-    desc: 'The forge\'s debt, paid out in plate and ore.',
+    desc: 'Everything the lodestone gathered, let go at once.',
     entries: [
       { item: 'coins', qty: [25, 70], chance: 0.85 },
       { item: 'forgeplate_scrap', qty: [1, 2], chance: 0.6 },

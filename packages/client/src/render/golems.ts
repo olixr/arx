@@ -61,9 +61,12 @@ export const GOLEM_LOOKS: Record<string, GolemLook> = {
     accent: '#6a7d46', glow: '#b0a88e', heavy: 1,
   },
   iron_golem: {
+    // THE LODESTONE: raw ore browns with a metallic pale, copper for
+    // the one warmth, and the spark-pale glow of struck iron — the
+    // forged greys and furnace orange died with the robot.
     build: 'iron',
-    shell: '#6a7280', deep: '#3d434e', lit: '#98a2b2', under: '#2c313a',
-    accent: '#c8b06a', glow: '#ffb03a', heavy: 1.05,
+    shell: '#6f665e', deep: '#3a322a', lit: '#a89a86', under: '#26201a',
+    accent: '#b8703f', glow: '#dfe6ee', heavy: 1.05,
   },
   fire_golem: {
     build: 'fire',
@@ -378,103 +381,241 @@ function rockBody(ctx: CanvasRenderingContext2D, gol: GolemLook, f: GolemBodyFra
 }
 
 /**
- * IRON — the forge's debt. The one symmetric golem: a hammered chest
- * plate with a dark center seam, rivet tick-marks down both edges,
- * squared pauldron slabs, and the single brass strap. ONE BRIGHT EDGE
- * lights the leading arris; the back is a spined back-plate.
+ * One raw ore chunk: an angular six-facet mass with a metallic glint
+ * sliver, an optional rust stratum, and a shadowed under-facet — the
+ * iron golem's brick, deliberately CRYSTALLINE where the rock golem's
+ * boulders are rounded. Facet jitter is seeded; nothing repeats.
  */
-function ironBody(ctx: CanvasRenderingContext2D, gol: GolemLook, f: GolemBodyFrame): void {
-  const { s, tw, th, fx, backK, lead, hurt } = f;
-  const hv = gol.heavy;
-  // The waist block: narrower, banded.
-  stoneMass(ctx, 0, -th * 0.2, tw * 0.58, th * 0.26, s * 0.035,
-    hurt ? '#ffffff' : shade(gol.shell, -6), gol.lit, gol.deep, hurt, 0.18);
-  // The chest plate: broad, chamfered, carrying everything.
-  stoneMass(ctx, 0, -th * 0.66, tw * 0.84, th * 0.42, s * 0.07,
-    gol.shell, gol.lit, gol.deep, hurt, 0.2);
+function oreMass(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  salt: number,
+  seed: number,
+  shell: string,
+  lit: string,
+  deep: string,
+  hurt: boolean,
+  rust?: string,
+): void {
+  const j = (i: number): number => (hash(seed, salt * 7 + i) - 0.5) * 0.22;
+  const pts: ReadonlyArray<[number, number]> = [
+    [-1 + j(0), 0.45 + j(1)],
+    [-0.9 + j(2), -0.5 + j(3)],
+    [-0.25 + j(4), -1],
+    [0.6 + j(5), -0.85 + j(6)],
+    [1, 0.1 + j(7)],
+    [0.4 + j(8), 1],
+  ];
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(x + pts[0]![0] * w, y + pts[0]![1] * h);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(x + pts[i]![0] * w, y + pts[i]![1] * h);
+  ctx.closePath();
+  ctx.fillStyle = hurt ? '#ffffff' : shell;
+  ctx.fill();
   if (!hurt) {
-    // The center seam: a darker PLANE, not a line — two halves forged
-    // and married. From behind it becomes the spine ridge.
-    ctx.fillStyle = gol.deep;
-    ctx.fillRect(-tw * 0.07 - fx * tw * 0.18, -th * 1.02, tw * 0.14, th * 0.76);
-    // THE FORGE WAKES: heat stands at the seam's base — the furnace
-    // behind the plates, banked to a coal-dim breath at rest, climbing
-    // the seam as the piston winds. Iron's whole identity is
-    // CONTAINMENT: the light never escapes the seam's own plane.
-    const forge = 0.42 + 0.14 * Math.sin(f.nowMs / 560) + 0.5 * f.flare;
-    const climb = th * (0.2 + 0.34 * f.flare);
-    ctx.save();
-    ctx.globalAlpha = Math.min(1, forge) * 0.85;
-    ctx.fillStyle = gol.glow;
-    ctx.fillRect(-tw * 0.055 - fx * tw * 0.18, -th * 0.26 - climb, tw * 0.11, climb);
-    ctx.fillStyle = '#fff3d0';
-    ctx.globalAlpha = Math.min(1, forge) * 0.5;
-    ctx.fillRect(-tw * 0.03 - fx * tw * 0.18, -th * 0.26 - climb * 0.5, tw * 0.06, climb * 0.5);
-    ctx.restore();
-    // ONE BRIGHT EDGE: the leading arris takes the light.
-    ctx.fillStyle = gol.lit;
-    ctx.fillRect(lead * tw * 0.76, -th * 1.0, tw * 0.08, th * 0.66);
-    // Rivet tick-marks down both plate edges — the tick-mark law:
-    // countable, evenly spaced, never noise. Through the wind, ONE
-    // glint travels the row: the forge-light finding each rivet head
-    // in turn.
-    const glintAt = f.flare > 0.05 ? Math.floor(f.flare * 5.9) % 6 : -1;
-    let rv = 0;
-    for (const side of [-1, 1] as const) {
-      for (let i = 0; i < 3; i++) {
-        ctx.fillStyle = rv === glintAt ? '#fff3d0' : shade(gol.shell, -18);
-        ctx.beginPath();
-        ctx.arc(side * tw * 0.66 - fx * tw * 0.1, -th * (0.42 + i * 0.22), s * 0.02, 0, Math.PI * 2);
-        ctx.fill();
-        rv++;
-      }
-    }
-    if (backK < 0.55) {
-      // The brass strap: the ONE warm accent, shoulder to hip, with
-      // its buckle plate — the strap that holds nothing shut, because
-      // nothing inside ever needs out.
-      ctx.fillStyle = gol.accent;
-      ctx.save();
-      ctx.translate(-fx * tw * 0.1, 0);
-      ctx.beginPath();
-      ctx.moveTo(-tw * 0.5, -th * 0.98);
-      ctx.lineTo(-tw * 0.32, -th * 1.0);
-      ctx.lineTo(tw * 0.42, -th * 0.16);
-      ctx.lineTo(tw * 0.24, -th * 0.14);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = shade(gol.accent, -24);
-      ctx.fillRect(-tw * 0.04, -th * 0.62, tw * 0.16, th * 0.1);
-      ctx.restore();
-    } else {
-      // The spine: a raised ridge plate with its own rivet run.
-      ctx.fillStyle = shade(gol.shell, -12);
-      ctx.fillRect(-tw * 0.09, -th * 1.04, tw * 0.18, th * 0.86);
-      ctx.fillStyle = shade(gol.shell, -22);
-      for (let i = 0; i < 4; i++) {
-        ctx.beginPath();
-        ctx.arc(0, -th * (0.3 + i * 0.2), s * 0.018, 0, Math.PI * 2);
-        ctx.fill();
-      }
+    ctx.clip();
+    // The metallic read: ONE hard glint sliver off the upper facet —
+    // sharp and pale, nothing like stone's soft lit crown.
+    ctx.fillStyle = lit;
+    ctx.beginPath();
+    ctx.moveTo(x + pts[2]![0] * w, y + pts[2]![1] * h);
+    ctx.lineTo(x + pts[3]![0] * w, y + pts[3]![1] * h);
+    ctx.lineTo(x + pts[3]![0] * w * 0.55, y + pts[3]![1] * h * 0.45);
+    ctx.lineTo(x + pts[2]![0] * w * 0.5, y + pts[2]![1] * h * 0.55);
+    ctx.closePath();
+    ctx.fill();
+    // The under-facet in shadow.
+    ctx.fillStyle = deep;
+    ctx.globalAlpha = 0.55;
+    ctx.fillRect(x - w, y + h * 0.55, w * 2, h * 0.45);
+    ctx.globalAlpha = 1;
+    // The rust stratum: weather written across the grain.
+    if (rust) {
+      ctx.fillStyle = rust;
+      ctx.globalAlpha = 0.75;
+      ctx.fillRect(x - w, y - h * (0.15 - hash(seed, salt + 40) * 0.3), w * 2, h * 0.2);
+      ctx.globalAlpha = 1;
     }
   }
-  // The pauldron slabs: squared caps riding the shoulder line — the
-  // golem's own, forged on (it owns no wardrobe).
+  ctx.restore();
+}
+
+/**
+ * IRON — THE LODESTONE. Not forged and never a machine: a magnetic
+ * heart that GATHERED a body — raw ore masses held in suspension,
+ * humming with a quiver no stacked stone has, wearing the iron the
+ * land lost (a horseshoe, old nails, a broken pick) embedded where
+ * the field caught them. One copper vein is the warm accent; the
+ * light is the pale spark of struck metal at the seams, never a
+ * furnace. Asymmetric by construction — the field does not care for
+ * symmetry, and symmetry was what read as ROBOT.
+ */
+function ironBody(ctx: CanvasRenderingContext2D, gol: GolemLook, f: GolemBodyFrame): void {
+  const { s, tw, th, fx, backK, hurt, nowMs, flare } = f;
+  const seed = gol.seed ?? 0;
+  const hv = gol.heavy;
+  const rust = shade(gol.deep, 14);
+  // THE MAGNETIC QUIVER: every mass hums on its own fast micro-clock
+  // — the suspension read that makes this body a FIELD, not a stack.
+  // The hum deepens as the field strains through a wind.
+  const qa = s * (0.0025 + 0.0045 * flare);
+  const qv = (i: number): number =>
+    hurt ? 0 : Math.sin(nowMs / 53 + i * 2.6) * qa + Math.sin(nowMs / 730 + i * 1.7) * s * 0.002;
+  // The field's dark ground — contained, stepped toward the shell.
+  ctx.fillStyle = hurt ? '#ffffff' : shade(gol.shell, -22);
+  ctx.beginPath();
+  chamferRect(ctx, -tw * 0.74, -th * 0.96, tw * 1.48, th * 0.94, s * 0.04);
+  ctx.fill();
+  // Which shoulder carries the bigger ore mass — the lodestone
+  // gathered more on one side and never noticed.
+  const bigSide = hash(seed, 130) > 0.5 ? 1 : -1;
+  // The hip mass: squat, rust-banded.
+  oreMass(ctx, (hash(seed, 131) - 0.5) * tw * 0.16, -th * 0.16 + qv(0), tw * 0.6, th * 0.28,
+    1, seed, shade(gol.shell, -4), gol.lit, gol.deep, hurt, rust);
+  // The belly mass: rolled off-center opposite the big shoulder.
+  oreMass(ctx, -bigSide * tw * 0.12, -th * 0.5 + qv(1), tw * 0.72, th * 0.26,
+    2, seed, shade(gol.shell, 3), gol.lit, gol.deep, hurt);
+  // The chest mass: the widest gather, carrying the shoulder line.
+  oreMass(ctx, fx * tw * -0.06, -th * 0.82 + qv(2), tw * 0.88, th * 0.26,
+    3, seed, gol.shell, gol.lit, gol.deep, hurt, rust);
+  // The shoulder chunks: angular, unequal — crystalline against the
+  // rock golem's round boulders.
   for (const side of [-1, 1] as const) {
-    const w = tw * 0.34 * (0.94 + 0.12 * hv);
-    const bx = side * tw * 0.78;
-    const by = -th * 0.96;
-    ctx.fillStyle = hurt ? '#ffffff' : shade(gol.shell, 3);
-    ctx.beginPath();
-    chamferRect(ctx, bx - w, by - th * 0.14, w * 2, th * 0.26, s * 0.03);
-    ctx.fill();
-    if (!hurt) {
-      ctx.fillStyle = gol.lit;
-      ctx.fillRect(bx - w, by - th * 0.14, w * 2, th * 0.07);
-      ctx.fillStyle = shade(gol.shell, -18);
+    const big = side === bigSide;
+    oreMass(ctx, side * tw * (big ? 0.74 : 0.66), -th * (big ? 0.98 : 0.92) + qv(side + 4),
+      tw * (big ? 0.4 : 0.3) * (0.94 + 0.12 * hv), th * (big ? 0.22 : 0.16),
+      big ? 4 : 5, seed, shade(gol.shell, big ? 5 : -6), gol.lit, gol.deep, hurt);
+  }
+  if (hurt) return;
+  // THE COPPER VEIN: one warm native seam riding the chest mass — the
+  // accent law's single warmth on an otherwise cold body.
+  ctx.strokeStyle = gol.accent;
+  ctx.lineCap = 'round';
+  ctx.lineWidth = Math.max(1, s * 0.02);
+  ctx.beginPath();
+  ctx.moveTo(-tw * 0.5, -th * (0.9 + hash(seed, 133) * 0.06));
+  ctx.lineTo(-tw * 0.12, -th * 0.8);
+  ctx.lineTo(tw * 0.1, -th * 0.88);
+  ctx.lineTo(tw * 0.44, -th * 0.76);
+  ctx.stroke();
+  // THE GATHERED IRON: seed-picked relics the field caught — worn
+  // dark, half-swallowed by the ore. Two or three per body, from the
+  // land's own losses (this is why it pays ore and old plate).
+  const relics = [
+    () => {
+      // The horseshoe, open side down, two nail holes still in it.
+      const hx = bigSide * tw * 0.3;
+      const hy = -th * 0.48 + qv(1);
+      ctx.strokeStyle = shade(gol.shell, -30);
+      ctx.lineWidth = Math.max(1.5, s * 0.028);
       ctx.beginPath();
-      ctx.arc(bx, by - th * 0.02, s * 0.022, 0, Math.PI * 2);
+      ctx.arc(hx, hy, tw * 0.16, Math.PI * 1.1, Math.PI * 1.9);
+      ctx.stroke();
+      ctx.fillStyle = shade(gol.shell, -30);
+      for (const o of [-0.6, 0.6]) {
+        ctx.beginPath();
+        ctx.arc(hx + Math.cos(Math.PI * 1.5 + o) * tw * 0.16, hy + Math.sin(Math.PI * 1.5 + o) * tw * 0.16, s * 0.012, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    },
+    () => {
+      // Three old nails, drawn to the belly at field angles.
+      ctx.strokeStyle = shade(gol.shell, -32);
+      ctx.lineCap = 'butt';
+      ctx.lineWidth = Math.max(1, s * 0.016);
+      for (let i = 0; i < 3; i++) {
+        const a = -0.5 + i * 0.5 + hash(seed, 140 + i) * 0.3;
+        const nx = -bigSide * tw * 0.28 + i * tw * 0.1;
+        const ny = -th * 0.52 + qv(1);
+        ctx.beginPath();
+        ctx.moveTo(nx, ny);
+        ctx.lineTo(nx + Math.cos(a) * s * 0.07, ny + Math.sin(a) * s * 0.07);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'round';
+    },
+    () => {
+      // The broken pick-head, jutting from the big shoulder's edge.
+      const px2 = bigSide * tw * (0.92 + 0.06 * hv);
+      const py2 = -th * 1.02 + qv(bigSide + 4);
+      ctx.fillStyle = shade(gol.shell, -26);
+      ctx.beginPath();
+      ctx.moveTo(px2 - bigSide * tw * 0.14, py2 + th * 0.05);
+      ctx.lineTo(px2 + bigSide * tw * 0.1, py2 - th * 0.06);
+      ctx.lineTo(px2 + bigSide * tw * 0.16, py2 + th * 0.015);
+      ctx.lineTo(px2 - bigSide * tw * 0.1, py2 + th * 0.1);
+      ctx.closePath();
       ctx.fill();
+    },
+    () => {
+      // A snapped blade-tip, swallowed to the fuller, on the hip.
+      const bx = -bigSide * tw * 0.4;
+      const by = -th * 0.12 + qv(0);
+      ctx.fillStyle = shade(gol.lit, -14);
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx - bigSide * tw * 0.22, by - th * 0.1);
+      ctx.lineTo(bx - bigSide * tw * 0.16, by + th * 0.005);
+      ctx.closePath();
+      ctx.fill();
+    },
+  ];
+  const first = (seed >>> 3) % relics.length;
+  relics[first]!();
+  relics[(first + 1 + ((seed >>> 7) % (relics.length - 1))) % relics.length]!();
+  // THE SEAM SPARK: pale struck-metal light living where the masses
+  // nearly meet — banked ticks at rest, snapping bright through the
+  // wind. Iron's light is the spark, never a furnace.
+  const sparkA = 0.3 + 0.7 * flare + 0.08 * Math.sin(nowMs / 340);
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, sparkA);
+  ctx.strokeStyle = gol.glow;
+  ctx.lineWidth = Math.max(1, s * 0.014);
+  for (const [sx0, sy0, sx1, sy1] of [
+    [-0.4, -0.66, -0.14, -0.7],
+    [0.2, -0.68, 0.46, -0.63],
+    [-0.3, -0.32, 0.02, -0.35],
+  ] as const) {
+    ctx.beginPath();
+    ctx.moveTo(tw * sx0, th * sy0 + qv(1));
+    ctx.lineTo(tw * sx1, th * sy1 + qv(2));
+    ctx.stroke();
+  }
+  // The one live cross-spark when the field strains hardest.
+  if (flare > 0.5 && backK < 0.6) {
+    const cs = s * 0.03 * flare;
+    const cx2 = tw * 0.34;
+    const cy2 = -th * 0.64;
+    ctx.strokeStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(cx2 - cs, cy2);
+    ctx.lineTo(cx2 + cs, cy2);
+    ctx.moveTo(cx2, cy2 - cs);
+    ctx.lineTo(cx2, cy2 + cs);
+    ctx.stroke();
+  }
+  ctx.restore();
+  // THE HELD SHRAPNEL: three small pieces hovering just off the body,
+  // quivering in the field — the read that says none of this is
+  // stacked; all of it is HELD.
+  for (let i = 0; i < 3; i++) {
+    const a = hash(seed, 150 + i) * Math.PI * 2;
+    const hx = Math.cos(a) * tw * (1.06 + 0.1 * hash(seed, 154 + i));
+    const hy = -th * (0.3 + 0.55 * hash(seed, 158 + i)) + Math.sin(nowMs / 210 + i * 2.1) * s * 0.012 + qv(i + 6) * 2;
+    ctx.fillStyle = shade(gol.shell, -18);
+    if (i % 2 === 0) {
+      ctx.beginPath();
+      ctx.moveTo(hx - s * 0.02, hy + s * 0.012);
+      ctx.lineTo(hx + s * 0.006, hy - s * 0.022);
+      ctx.lineTo(hx + s * 0.02, hy + s * 0.016);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.fillRect(hx - s * 0.019, hy - s * 0.007, s * 0.038, s * 0.014);
     }
   }
 }
@@ -864,69 +1005,85 @@ function rockHead(ctx: CanvasRenderingContext2D, gol: GolemLook, f: GolemHeadFra
  * body, leading the facing, flaring with the strike. From behind: the
  * occiput plate and its rivets, no light at all.
  */
+/**
+ * IRON head — THE LODESTONE SKULL. An angular magnetite chunk, tilted
+ * the way the field left it, with ONE deep socket and the pale spark
+ * that lives in it — a watching glint, never a furnace slit (the slit
+ * was the robot). A crown of gathered iron rides the crest: two bent
+ * nails and a spike the field caught and kept. From behind, bare ore
+ * facets and a rust stratum — no face, no bolts.
+ */
 function ironHead(ctx: CanvasRenderingContext2D, gol: GolemLook, f: GolemHeadFrame): void {
-  const { headX, headY, hw, hh, cut, fx, profileK, backK, hurt, flare, nowMs } = f;
+  const { headX, headY, hw, hh, fx, backK, lead, hurt, flare, nowMs } = f;
+  const seed = (gol.seed ?? 0) ^ 0x1e0;
   const back = backK > 0.55;
-  const gw = hw * 1.12;
-  const gh = hh * 0.98;
-  stoneMass(ctx, headX, headY, gw, gh, cut * 0.8, gol.shell, gol.lit, gol.deep, hurt, 0.2);
-  if (hurt) return;
-  // The crest fin: a deep plate ridge running fore-aft — from the
-  // side a blade, from the front a narrow keel.
-  ctx.fillStyle = shade(gol.shell, -10);
-  const finW = gw * (0.14 + 0.5 * profileK);
-  ctx.beginPath();
-  chamferRect(ctx, headX - finW / 2 + fx * gw * 0.1, headY - gh * 1.34, finW, gh * 0.42, cut * 0.3);
-  ctx.fill();
-  ctx.fillStyle = gol.lit;
-  ctx.fillRect(headX - finW / 2 + fx * gw * 0.1, headY - gh * 1.34, finW, gh * 0.08);
-  // Corner rivets: four, countable.
-  ctx.fillStyle = shade(gol.shell, -20);
-  for (const [ox, oy] of [[-0.72, -0.66], [0.72, -0.66], [-0.72, 0.6], [0.72, 0.6]] as const) {
+  const gw = hw * 1.14;
+  const gh = hh * 1.0;
+  const tilt = (hash(seed, 1) - 0.5) * 0.24;
+  ctx.save();
+  ctx.translate(headX, headY);
+  ctx.rotate(tilt);
+  // The skull chunk: crystalline, one hard glint facet.
+  oreMass(ctx, 0, 0, gw, gh, 6, seed, gol.shell, gol.lit, gol.deep, hurt,
+    back ? shade(gol.deep, 14) : undefined);
+  if (hurt) {
+    ctx.restore();
+    return;
+  }
+  // The gathered crown: bent nails and one spike, embedded standing.
+  ctx.strokeStyle = shade(gol.shell, -30);
+  ctx.lineCap = 'butt';
+  ctx.lineWidth = Math.max(1, gh * 0.07);
+  for (const [ox, a, len] of [
+    [-0.44, -0.35, 0.4],
+    [0.1, 0.12, 0.52],
+    [0.5, 0.42, 0.34],
+  ] as const) {
+    const bx = gw * ox;
+    const by = -gh * (0.78 - Math.abs(ox) * 0.2);
     ctx.beginPath();
-    ctx.arc(headX + gw * ox, headY + gh * oy, gh * 0.07, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx + Math.sin(a) * gh * len, by - Math.cos(a) * gh * len);
+    ctx.stroke();
   }
   if (!back) {
-    // THE VISOR SLIT — the furnace looks out. Leads the facing,
-    // shortens at profile, breathes at rest, FLARES on the strike.
-    const breathe = 0.75 + 0.25 * Math.sin(nowMs / 520);
-    const bright = Math.min(1, breathe * 0.7 + flare);
-    const slitW = gw * (0.62 - 0.24 * profileK);
-    const slitX = headX + fx * gw * 0.3;
-    const slitY = headY - gh * 0.08;
-    const slitH = gh * (0.1 + 0.1 * flare);
+    // THE ONE SOCKET: a dark hollow the field looks out of, leading
+    // the facing — and in it the spark, breathing at rest, snapping
+    // white through the wind. A glint, never a lamp.
+    const ex = fx * gw * 0.3 + lead * gw * 0.08;
+    const ey = -gh * 0.1;
     ctx.fillStyle = gol.under;
     ctx.beginPath();
-    chamferRect(ctx, slitX - slitW, slitY - slitH * 1.6, slitW * 2, slitH * 3.2, slitH);
+    ctx.moveTo(ex - gw * 0.3, ey - gh * 0.1);
+    ctx.lineTo(ex + gw * 0.22, ey - gh * 0.22);
+    ctx.lineTo(ex + gw * 0.28, ey + gh * 0.16);
+    ctx.lineTo(ex - gw * 0.2, ey + gh * 0.22);
+    ctx.closePath();
     ctx.fill();
+    const breathe = 0.55 + 0.2 * Math.sin(nowMs / 520);
+    const bright = Math.min(1, breathe + flare);
     ctx.fillStyle = gol.glow;
-    ctx.globalAlpha = 0.5 + 0.5 * bright;
-    ctx.beginPath();
-    chamferRect(ctx, slitX - slitW * 0.92, slitY - slitH, slitW * 1.84, slitH * 2, slitH * 0.8);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    // The white heart of the look, center-weighted.
-    ctx.fillStyle = '#fff3d0';
     ctx.globalAlpha = bright;
-    ctx.fillRect(slitX - slitW * 0.4, slitY - slitH * 0.4, slitW * 0.8, slitH * 0.8);
-    ctx.globalAlpha = 1;
-    // The jaw plate under the slit.
-    ctx.fillStyle = shade(gol.shell, -8);
-    ctx.fillRect(headX - gw * 0.6 + fx * gw * 0.16, headY + gh * 0.42, gw * 1.2, gh * 0.3);
-  } else {
-    // The occiput plate: a bolted square, honest dark.
-    ctx.fillStyle = shade(gol.shell, -12);
     ctx.beginPath();
-    chamferRect(ctx, headX - gw * 0.5, headY - gh * 0.4, gw, gh * 0.9, cut * 0.4);
+    ctx.arc(ex + fx * gw * 0.04, ey, gh * (0.09 + 0.05 * flare), 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = shade(gol.shell, -22);
-    for (const [ox, oy] of [[-0.3, -0.2], [0.3, -0.2], [0, 0.28]] as const) {
-      ctx.beginPath();
-      ctx.arc(headX + gw * ox, headY + gh * oy, gh * 0.055, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    ctx.globalAlpha = Math.min(1, bright) * 0.9;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(ex + fx * gw * 0.04, ey - gh * 0.02, gh * 0.035, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    // The brow crag: a jutting facet shadowing the socket.
+    ctx.fillStyle = shade(gol.shell, -14);
+    ctx.beginPath();
+    ctx.moveTo(ex - gw * 0.34, ey - gh * 0.14);
+    ctx.lineTo(ex + gw * 0.3, ey - gh * 0.26);
+    ctx.lineTo(ex + gw * 0.34, ey - gh * 0.16);
+    ctx.lineTo(ex - gw * 0.26, ey - gh * 0.05);
+    ctx.closePath();
+    ctx.fill();
   }
+  ctx.restore();
 }
 
 /**
@@ -1188,50 +1345,66 @@ export function drawGolemArm(
       break;
     }
     case 'iron': {
-      // Plate sleeves: hard square caps (butt ends), a brass elbow
-      // ring, the riveted block fist. The piston look is in the
-      // COLOR discipline: flat planes, one lit arris per segment.
+      // Ore-column limbs: raw gathered metal, not machined sleeves —
+      // a heavy chunk-stroke upper, a leaner forearm, and the LUMP
+      // fist with old nail-heads for knuckles. The magnetic hum rides
+      // the whole limb as a slow micro-offset.
+      const q = hurt ? 0 : Math.sin(nowMs / 53) * s * 0.0025;
       ctx.lineCap = 'butt';
       ctx.strokeStyle = shell;
-      ctx.lineWidth = Math.max(2, s * 0.13 * (0.9 + 0.2 * hv));
+      ctx.lineWidth = Math.max(2, s * 0.135 * (0.9 + 0.2 * hv));
       ctx.beginPath();
-      ctx.moveTo(sx, sy);
-      ctx.lineTo(kx, ky);
+      ctx.moveTo(sx + q, sy);
+      ctx.lineTo(kx + q, ky);
       ctx.stroke();
-      ctx.strokeStyle = hurt ? '#ffffff' : shade(gol.shell, -6);
-      ctx.lineWidth = Math.max(2, s * 0.1);
+      ctx.strokeStyle = hurt ? '#ffffff' : shade(gol.shell, -7);
+      ctx.lineWidth = Math.max(2, s * 0.102);
       ctx.beginPath();
-      ctx.moveTo(kx, ky);
+      ctx.moveTo(kx + q, ky);
       ctx.lineTo(ex, ey);
       ctx.stroke();
       if (!hurt) {
-        // The elbow: a joint disc with the brass ring — the one warm
-        // accent carried to the limb.
-        ctx.fillStyle = shade(gol.shell, -4);
+        // The elbow: an angular ore chip with the copper fleck — the
+        // one warmth carried to the limb.
+        ctx.fillStyle = shade(gol.shell, -12);
         ctx.beginPath();
-        ctx.arc(kx, ky, Math.max(1.8, s * 0.052), 0, Math.PI * 2);
+        ctx.moveTo(kx - s * 0.05, ky + s * 0.02);
+        ctx.lineTo(kx - s * 0.01, ky - s * 0.055);
+        ctx.lineTo(kx + s * 0.05, ky - s * 0.01);
+        ctx.lineTo(kx + s * 0.02, ky + s * 0.05);
+        ctx.closePath();
         ctx.fill();
-        // The brass pivot: a filled stud, never a floating hoop.
         ctx.fillStyle = gol.accent;
         ctx.beginPath();
-        ctx.arc(kx, ky, Math.max(1.2, s * 0.026), 0, Math.PI * 2);
+        ctx.arc(kx, ky, Math.max(1, s * 0.016), 0, Math.PI * 2);
         ctx.fill();
       }
-      // The fist: a chamfered block with knuckle rivets.
+      // The fist: an angular ore lump, glint on the striking face,
+      // three worn nail-heads for knuckles.
       ctx.save();
       ctx.translate(ex, ey);
       ctx.rotate(Math.atan2(ey - ky, ex - kx));
       ctx.fillStyle = hurt ? '#ffffff' : shade(gol.shell, 3);
       ctx.beginPath();
-      chamferRect(ctx, -s * 0.05, -s * 0.085, s * 0.16, s * 0.17, s * 0.03);
+      ctx.moveTo(-s * 0.05, -s * 0.08);
+      ctx.lineTo(s * 0.07, -s * 0.095);
+      ctx.lineTo(s * 0.115, -s * 0.02);
+      ctx.lineTo(s * 0.095, s * 0.075);
+      ctx.lineTo(-s * 0.04, s * 0.09);
+      ctx.closePath();
       ctx.fill();
       if (!hurt) {
         ctx.fillStyle = gol.lit;
-        ctx.fillRect(-s * 0.05, -s * 0.085, s * 0.16, s * 0.04);
-        ctx.fillStyle = shade(gol.shell, -20);
-        for (const oy of [-0.045, 0, 0.045]) {
+        ctx.beginPath();
+        ctx.moveTo(s * 0.07, -s * 0.095);
+        ctx.lineTo(s * 0.115, -s * 0.02);
+        ctx.lineTo(s * 0.05, -s * 0.03);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = shade(gol.shell, -26);
+        for (const oy of [-0.05, 0, 0.05]) {
           ctx.beginPath();
-          ctx.arc(s * 0.08, oy * s, s * 0.016, 0, Math.PI * 2);
+          ctx.arc(s * 0.085, oy * s, s * 0.014, 0, Math.PI * 2);
           ctx.fill();
         }
       }
@@ -1384,30 +1557,31 @@ export function paintGolemFoot(
       break;
     }
     case 'iron': {
-      // The sabaton: chamfered plate, brass toe cap, one rivet.
+      // The ore footing: an angular gathered lump — rust band, one
+      // glint facet, an old nail-head worn near the heel. No sabaton;
+      // nothing on this body was ever fitted.
       ctx.fillStyle = hurt ? '#ffffff' : shade(gol.shell, -2);
       ctx.beginPath();
-      chamferRect(ctx, fxx - 0.095 * s * gv, fyy - 0.038 * s, 0.19 * s * gv, 0.076 * s, 0.022 * s);
+      ctx.moveTo(fxx - 0.1 * s * gv, fyy - 0.026 * s);
+      ctx.lineTo(fxx - 0.04 * s, fyy - 0.046 * s);
+      ctx.lineTo(fxx + lead * 0.105 * s * gv, fyy - 0.026 * s);
+      ctx.lineTo(fxx + lead * 0.115 * s * gv, fyy + 0.024 * s);
+      ctx.lineTo(fxx - 0.09 * s * gv, fyy + 0.038 * s);
+      ctx.closePath();
       ctx.fill();
       if (!hurt) {
         ctx.fillStyle = gol.lit;
-        ctx.fillRect(fxx - 0.075 * s * gv, fyy - 0.036 * s, 0.15 * s * gv, 0.02 * s);
-        ctx.fillStyle = gol.accent;
         ctx.beginPath();
-        // Chamfer geometry needs a positive width whichever way the
-        // toe leads.
-        chamferRect(
-          ctx,
-          lead > 0 ? fxx + 0.05 * s : fxx - (0.05 + 0.05 * gv) * s,
-          fyy - 0.03 * s,
-          0.05 * s * gv,
-          0.06 * s,
-          0.014 * s,
-        );
+        ctx.moveTo(fxx - 0.04 * s, fyy - 0.046 * s);
+        ctx.lineTo(fxx + lead * 0.105 * s * gv, fyy - 0.026 * s);
+        ctx.lineTo(fxx + lead * 0.02 * s, fyy - 0.014 * s);
+        ctx.closePath();
         ctx.fill();
-        ctx.fillStyle = shade(gol.shell, -20);
+        ctx.fillStyle = shade(gol.deep, 14);
+        ctx.fillRect(fxx - 0.08 * s * gv, fyy + 0.006 * s, 0.17 * s * gv, 0.014 * s);
+        ctx.fillStyle = shade(gol.shell, -26);
         ctx.beginPath();
-        ctx.arc(fxx - lead * 0.03 * s, fyy, 0.014 * s, 0, Math.PI * 2);
+        ctx.arc(fxx - lead * 0.055 * s, fyy - 0.008 * s, 0.013 * s, 0, Math.PI * 2);
         ctx.fill();
       }
       break;

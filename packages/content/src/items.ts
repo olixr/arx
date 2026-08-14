@@ -929,7 +929,7 @@ const defs: ItemDef[] = [
   // shared heart plus a signature piece per build.
   { id: 'golem_core', name: 'Golem core', stackable: true, maxStack: 10, value: 160, desc: 'A fist of grey stone, worked all over with a mason\'s marks. It is still faintly warm, and nobody taught it to be.', color: '#9a94a8', code: 'Go' },
   { id: 'hillstone_heart', name: 'Hillstone heart', stackable: true, maxStack: 10, value: 60, desc: 'The keystone off a walking cairn, moss still in the seams. Heavier than honest rock has any right to be.', color: '#8a8164', code: 'Hh' },
-  { id: 'forgeplate_scrap', name: 'Forgeplate scrap', stackable: true, maxStack: 10, value: 95, desc: 'A riveted plate hammered by no smith living. The seams are too straight and the iron is too old.', color: '#6a7280', code: 'Fs' },
+  { id: 'forgeplate_scrap', name: 'Forgeplate scrap', stackable: true, maxStack: 10, value: 95, desc: 'An old riveted plate pulled from the lodestone\'s gathered body. Some smith made it once. The golem only kept it.', color: '#6f665e', code: 'Fs' },
   { id: 'molten_slag', name: 'Molten slag', stackable: true, maxStack: 10, value: 110, desc: 'Furnace-melt gone hard, black outside, ember-veined within. It never quite cools.', color: '#d84c1e', code: 'Mg' },
   { id: 'everfrost_shard', name: 'Everfrost shard', stackable: true, maxStack: 10, value: 130, desc: 'A faceted slab of old winter. It does not melt, and the room it sits in forgets summer.', color: '#9ad4e8', code: 'Ev' },
 

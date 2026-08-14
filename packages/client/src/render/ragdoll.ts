@@ -1104,17 +1104,30 @@ function drawGolemRagdoll(
     ctx.ellipse(chestM.x, chestM.y - s * 0.1, s * 0.09, s * 0.035, 0.2, 0, Math.PI * 2);
     ctx.fill();
   } else if (gol.build === 'iron') {
-    // Sprung plates: the chest seam gapes dark; rivets still count.
-    ctx.fillStyle = gol.under;
-    ctx.fillRect(chestM.x - s * 0.035, chestM.y - s * 0.14, s * 0.07, s * 0.26);
-    ctx.fillStyle = shade(shell, -20);
-    for (const [ox, oy] of [[-0.16, -0.08], [0.16, -0.08], [-0.16, 0.08], [0.16, 0.08]] as const) {
+    // THE FIELD FAILS: everything the lodestone held lets go — nails
+    // and shrapnel strewn wide of the wreck, the copper vein the only
+    // warmth left in it.
+    ctx.strokeStyle = shade(shell, -26);
+    ctx.lineCap = 'butt';
+    ctx.lineWidth = Math.max(1, s * 0.016);
+    for (let i = 0; i < 4; i++) {
+      const h = ((seed >> (i * 4)) ^ (seed * 31 + i * 77)) | 0;
+      const a = ((h & 15) / 15) * Math.PI * 2;
+      const d = s * (0.3 + ((h >> 4) & 7) / 7 * 0.35);
+      const nx2 = chestM.x + Math.cos(a) * d;
+      const ny2 = chestM.y + Math.sin(a) * d * 0.6 + s * 0.05;
       ctx.beginPath();
-      ctx.arc(chestM.x + ox * s, chestM.y + oy * s, s * 0.016, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(nx2, ny2);
+      ctx.lineTo(nx2 + Math.cos(a + 1) * s * 0.06, ny2 + Math.sin(a + 1) * s * 0.03);
+      ctx.stroke();
     }
-    ctx.fillStyle = gol.accent;
-    ctx.fillRect(hipM.x - s * 0.14, hipM.y - s * 0.02, s * 0.28, s * 0.035);
+    ctx.strokeStyle = gol.accent;
+    ctx.lineWidth = Math.max(1, s * 0.018);
+    ctx.beginPath();
+    ctx.moveTo(chestM.x - s * 0.16, chestM.y - s * 0.04);
+    ctx.lineTo(chestM.x - s * 0.02, chestM.y + s * 0.02);
+    ctx.lineTo(chestM.x + s * 0.14, chestM.y - s * 0.03);
+    ctx.stroke();
   } else if (gol.build === 'fire') {
     // THE FURNACE GOES OUT: the crack network survives as DEAD seams —
     // deep, cold, and honest. No glow anywhere on this corpse.
@@ -1188,9 +1201,15 @@ function drawGolemRagdoll(
         ctx.fill();
       }
     } else if (gol.build === 'iron') {
-      // The visor: dark and DEAD — the one line that never lights again.
+      // The socket: dark and DEAD — the spark that never comes back.
       ctx.fillStyle = gol.under;
-      ctx.fillRect(-hwR * 0.7, -hwR * 0.16, hwR * 1.4, hwR * 0.3);
+      ctx.beginPath();
+      ctx.moveTo(-hwR * 0.4, -hwR * 0.2);
+      ctx.lineTo(hwR * 0.32, -hwR * 0.32);
+      ctx.lineTo(hwR * 0.4, hwR * 0.14);
+      ctx.lineTo(-hwR * 0.3, hwR * 0.22);
+      ctx.closePath();
+      ctx.fill();
     } else {
       // The crucible mouth, cold: a dark pool where the light lived.
       ctx.fillStyle = gol.under;

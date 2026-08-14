@@ -146,7 +146,6 @@ import { paintTree, saplingModel,
 import { dust } from './matter/dust.js';
 import { fire } from './matter/fire.js';
 import { frost } from './matter/frost.js';
-import { smoke } from './matter/smoke.js';
 import { storm } from './matter/storm.js';
 import { asMatter } from './matter/index.js';
 import { speakBreath } from './breathFx.js';
@@ -32333,17 +32332,14 @@ export class Renderer {
             }
             break;
           case 'iron': {
-            // The spark hiss speaks only when the pistons work.
-            if (walking && Math.random() < this.frameDt * 0.8) {
-              storm.deployments.crackle!(host, s.x + (Math.random() - 0.5) * 0.4, s.y - 0.6, {
+            // THE LODESTONE's voice: struck-metal sparks where the
+            // gathered ore grinds — on the move, and rarely at rest
+            // when the field shifts its grip.
+            if (Math.random() < this.frameDt * (walking ? 0.9 : 0.15)) {
+              storm.deployments.crackle!(host, s.x + (Math.random() - 0.5) * 0.5, s.y - 0.9, {
                 radius: 0.25,
-                scale: 0.3,
+                scale: 0.28,
               });
-            }
-            // The chimney: one thin wisp off the crest fin on a slow
-            // clock — the furnace behind the visor never quite sleeps.
-            if (Math.random() < this.frameDt * 0.25) {
-              smoke.deployments.plume!(host, s.x, s.y - 2.2, { scale: 0.16 });
             }
             break;
           }

@@ -1239,9 +1239,10 @@ const defs: NpcDef[] = [
     ],
   },
   {
-    // The forge's debt: riveted plates and a furnace-slit visor, armor
-    // with nobody inside. The one golem with no ranged art — the
-    // walker. Its menace is that it keeps coming.
+    // THE LODESTONE: a magnetic heart that gathered a body — raw ore
+    // in humming suspension, wearing the iron the land lost. The one
+    // golem with no ranged art — the walker. Its menace is that it
+    // keeps coming.
     id: 'iron_golem',
     name: 'Iron golem',
     level: 26,
@@ -1256,7 +1257,7 @@ const defs: NpcDef[] = [
     xpReward: 520,
     loot: ['iron_golem', 'heirlooms'],
     respawnSec: 140,
-    color: '#6a7280',
+    color: '#6f665e',
     radius: 0.48,
     hitHeight: 3.1,
     resist: ['bleed', 'venom'],
