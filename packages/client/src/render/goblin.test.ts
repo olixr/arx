@@ -21,6 +21,7 @@ import {
   paintGoblinTorso,
   type GoblinLook,
 } from './rig.js';
+import { earRestChain, type EarCarriage } from './earPhysics.js';
 
 test('every goblin NPC has its own authored look', () => {
   const goblinIds = [...NPCS.keys()].filter((id) => id.startsWith('goblin'));
@@ -236,20 +237,45 @@ test('the jaw jeers through the strike beat', () => {
   assert.ok(open.fills > shut.fills, 'the gape opens the maw and bares the lower needles');
 });
 
-test('the wing ears live on the clock and pin back with the jeer', () => {
-  const gb = GOBLIN_LOOKS['goblin']!;
-  // Two wall-clock moments — the listening sway travels.
-  const t0 = mockCtx();
-  paintGoblinHead(t0, gb, headFrame(Math.PI / 2, 0, 100));
-  const t1 = mockCtx();
-  paintGoblinHead(t1, gb, headFrame(Math.PI / 2, 0, 800));
-  assert.notEqual(t0.coordSum, t1.coordSum, 'the ears sway between moments');
-  // The pin-back rides the gape even at a pinned clock.
-  const calm = mockCtx();
-  paintGoblinHead(calm, gb, headFrame(0, 0, 100));
-  const angry = mockCtx();
-  paintGoblinHead(angry, gb, headFrame(0, 1, 100));
-  assert.notEqual(calm.coordSum, angry.coordSum, 'anger moves the whole silhouette');
+test('the wing ears are elastic bodies rooted on the skull azimuth', () => {
+  // THE EAR IS A SIMULATION (earPhysics.ts): the head painter no
+  // longer rigs ears per band — one projected carriage serves every
+  // facing. The laws that used to live in blend arithmetic are now
+  // properties of the projection, and pinned here.
+  const c: EarCarriage = {
+    azimuth: 2.0,
+    rootR: 0.19,
+    rootLift: 0.05,
+    length: 0.26,
+    spread: 0.85,
+    rise: 0.95,
+    curl: [0, 0.16, 0.34],
+  };
+  // At the E band BOTH blades rake behind the facing and STAND — an
+  // ear can never point forward like a nose again, by construction.
+  for (const side of [-1, 1] as const) {
+    const ch = earRestChain(side, c, { dir: 0, pin: 0, sway: 0 });
+    const root = ch.pts[0]!;
+    const tip = ch.pts[3]!;
+    assert.ok(tip.x < root.x, 'facing east the blade rakes west, behind the head');
+    assert.ok(tip.y < root.y, 'the blade stands up-screen, never level');
+  }
+  // The depth law at every cardinal: profile splits the pair around
+  // the skull, face-on tucks both behind, from behind both backs show.
+  assert.ok(earRestChain(1, c, { dir: 0, pin: 0, sway: 0 }).depth > 0);
+  assert.ok(earRestChain(-1, c, { dir: 0, pin: 0, sway: 0 }).depth < 0);
+  for (const side of [-1, 1] as const) {
+    assert.ok(earRestChain(side, c, { dir: Math.PI / 2, pin: 0, sway: 0 }).depth < 0);
+    assert.ok(earRestChain(side, c, { dir: -Math.PI / 2, pin: 0, sway: 0 }).depth > 0);
+  }
+  // The jeer pins the pair around toward the occiput...
+  const calm = earRestChain(1, c, { dir: 0, pin: 0, sway: 0 });
+  const angry = earRestChain(1, c, { dir: 0, pin: 1, sway: 0 });
+  assert.notDeepEqual(calm.pts, angry.pts, 'anger moves the whole silhouette');
+  // ...and the listening sway moves the blades between moments.
+  const t0 = earRestChain(1, c, { dir: Math.PI / 2, pin: 0, sway: 0.05 });
+  const t1 = earRestChain(1, c, { dir: Math.PI / 2, pin: 0, sway: -0.05 });
+  assert.notDeepEqual(t0.pts, t1.pts, 'the ears sway between moments');
 });
 
 test('the casters’ shawl is painted mass the rabble does not carry', () => {

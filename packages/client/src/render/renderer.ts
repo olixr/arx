@@ -176,6 +176,7 @@ import {
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { BobtailSim, TailSim, drawBobtail, drawTail } from './tail.js';
+import { EarSim } from './earPhysics.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
 import { InteriorMap, packTile, type InteriorRegion } from './interiors.js';
@@ -611,6 +612,10 @@ interface AnimState {
   capeKey?: string;
   /** The fur dialect's tail sim — present only on tailed species. */
   tail?: TailSim;
+  /** THE EAR IS A SIMULATION: the goblin's elastic wing-ear pair —
+   *  rig-ticked inside drawHumanoid (it owns the exact skull anchor);
+   *  the renderer owns only the lifecycle and the re-bake cue. */
+  ears?: EarSim;
   /** The lynx bobtail sim — present only on the tufted shadows. */
   bobtail?: BobtailSim;
   /** THE FLEECE TELLS THE TIME: last seen shorn state on a sheep —
@@ -30846,6 +30851,15 @@ export class Renderer {
     } else if (anim.tail) {
       anim.tail = undefined;
     }
+    // THE EARS JOIN THE TAIL'S LAW: the goblin's wing ears are an
+    // elastic-body pair (earPhysics.ts) on the anim map. The rig
+    // ticks them inside drawHumanoid — only the lifecycle and the
+    // restless re-bake cue live here.
+    if (e.goblin) {
+      anim.ears ??= new EarSim(typeof e.eid === 'number' ? e.eid : 7);
+    } else if (anim.ears) {
+      anim.ears = undefined;
+    }
     // Paint side follows the FACING (the beast head/tail convention):
     // the back — and the cloth on it — is toward the camera only when
     // facing up-screen. Hysteresis in front() keeps the flip steady.
@@ -30875,6 +30889,9 @@ export class Renderer {
       // A restless tail (moving body, or still settling after a stop)
       // re-bakes at full rate; a calm one wags on the idle cadence.
       (tailSim !== null && tailSim.restless) ||
+      // Restless wing ears too — the elastic pair settling after a
+      // turn, a stop, or a jeer keeps the body at full rate.
+      (anim.ears !== undefined && anim.ears.restless) ||
       (sitK > 0 && sitK < 1) ||
       (lieK > 0 && lieK < 1) ||
       (rideK > 0 && rideK < 1) ||
@@ -31160,6 +31177,7 @@ export class Renderer {
           kobold: e.kobold,
           gnoll: e.gnoll,
           goblin: e.goblin,
+          earSim: anim.ears,
           golem: e.golem,
           gatherPhase: now / 1000,
           craftKind: station?.kind ?? null,

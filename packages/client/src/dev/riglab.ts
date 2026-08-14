@@ -21,6 +21,7 @@ import {
   type RigPose,
 } from '../render/rig.js';
 import { PoseState } from '@arx/shared';
+import { EarSim } from '../render/earPhysics.js';
 
 const canvas = document.getElementById('lab') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
@@ -84,6 +85,10 @@ interface Fig {
   manLegs?: LegSolver;
   manKnee?: number[];
   manDepth?: RigPose['depthMemory'];
+  /** THE EAR IS A SIMULATION: live elastic pair per goblin fig, so
+   *  the sheet shows the same physics the game plays — walk rows
+   *  flap with the bob, strike rows pin back through the jeer. */
+  ears?: EarSim;
 }
 
 const figs: Fig[] = [];
@@ -247,6 +252,7 @@ function drawBody(
     headItem: eq.head,
     bodyItem: eq.body,
     goblin: gob,
+    earSim: gob ? (f.ears ??= new EarSim(f.seed)) : undefined,
     gnoll: gno,
     kobold: kob,
   });
