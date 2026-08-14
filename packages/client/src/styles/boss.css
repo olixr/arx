@@ -1,0 +1,159 @@
+/* THE DREAD BANNER (docs/boss-system-plan.md LAW 7) — the crowned
+ * fight worn top-center: name and epithet over a long ember gauge,
+ * the phase ladder as rune pips, and the reveal line rising for a
+ * breath when the fight turns. Tokens only (ONE TRUTH); motion is
+ * transform/opacity and gates on body.no-ui-motion like every
+ * ceremony. Pointer-blind: the banner is a reading, never a control. */
+
+#boss-banner {
+  position: fixed;
+  left: 50%;
+  top: var(--sp-6);
+  transform: translateX(-50%);
+  width: min(23.5rem, 72vw);
+  z-index: 56; /* under the herald's 57 — a place ceremony outranks a duel */
+  pointer-events: none;
+  text-align: center;
+  filter: drop-shadow(0 0.125rem 0.375rem var(--shadow));
+}
+
+/* ------------------------------------------------------- the head */
+.boss-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.0625rem;
+}
+.boss-name {
+  font-family: var(--serif);
+  font-size: var(--t-lead);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--parchment);
+  text-shadow:
+    0 0 0.25rem var(--ink-wash),
+    0 0.0625rem 0 var(--ink-line);
+}
+.boss-title {
+  font-size: var(--t-whisper);
+  font-style: italic;
+  letter-spacing: 0.12em;
+  color: var(--parchment-dim);
+  text-shadow: 0 0.0625rem 0 var(--ink-line);
+}
+
+/* ------------------------------------------------------ the gauge */
+.boss-hp {
+  position: relative;
+  height: 0.5625rem;
+  margin-top: var(--sp-2);
+  background: var(--sunk);
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: var(--r-chip);
+  overflow: hidden;
+}
+/* Both layers read --boss-vigor: the fill snaps to the truth, the
+ * pale ghost eases after it — every bite leaves a mark that fades. */
+.boss-hp-ghost,
+.boss-hp-fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform: scaleX(var(--boss-vigor, 1));
+}
+.boss-hp-ghost {
+  background: var(--red-soft);
+  opacity: 0.55;
+  transition: transform 0.7s ease-out 0.25s;
+}
+.boss-hp-fill {
+  background: linear-gradient(180deg, var(--red) 0%, var(--ember-deep) 100%);
+}
+#boss-banner[data-vigor='dire'] .boss-hp-fill {
+  background: linear-gradient(180deg, var(--red-soft) 0%, var(--red) 100%);
+}
+
+/* ----------------------------------------------------- the ladder */
+.boss-pips {
+  display: flex;
+  justify-content: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+.boss-pip {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  background: var(--raise);
+  border: var(--hairline) solid var(--line-strong);
+  /* the brutalist chamfer: a rotated square, never a soft dot */
+  transform: rotate(45deg);
+}
+.boss-pip.now {
+  background: var(--red);
+  border-color: var(--red-soft);
+  box-shadow: 0 0 0.3125rem var(--ember-deep);
+}
+.boss-pip.past {
+  background: var(--ember-deep);
+  opacity: 0.45;
+}
+
+/* ----------------------------------------------------- the reveal */
+.boss-reveal {
+  margin-top: var(--sp-2);
+  font-family: var(--serif);
+  font-size: var(--t-label);
+  font-style: italic;
+  letter-spacing: 0.14em;
+  color: var(--red-soft);
+  text-shadow: 0 0.0625rem 0 var(--ink-line);
+  opacity: 0;
+}
+.boss-reveal.speaking {
+  animation: boss-reveal-rise 2.8s ease-out forwards;
+}
+@keyframes boss-reveal-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0.375rem);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ----------------------------------------------------- the felling */
+#boss-banner.felled .boss-name {
+  color: var(--parchment-dim);
+}
+#boss-banner.felled {
+  animation: boss-felled-lower 2.2s ease-in forwards;
+}
+@keyframes boss-felled-lower {
+  0%,
+  55% {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-0.5rem);
+  }
+}
+
+/* The stillness law: ceremonies hold their pose when motion is off. */
+body.no-ui-motion .boss-reveal.speaking {
+  animation: none;
+  opacity: 1;
+}
+body.no-ui-motion #boss-banner.felled {
+  animation: none;
+  opacity: 1;
+}

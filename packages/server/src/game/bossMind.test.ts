@@ -81,12 +81,14 @@ function slate(opts: { hp?: { hp: number; maxHp: number } } = {}) {
   const fx: Array<Record<string, unknown>> = [];
   const casts: Array<{ ab: { id: string } }> = [];
   const said: string[] = [];
+  const metaSends: number[] = [];
   const self = {
     tickCount: 200,
     positions: { get: () => pos, must: () => pos },
     healths: new Map([[7, opts.hp ?? { hp: 100, maxHp: 100 }]]),
     world: { isSolid: () => false },
     broadcastFx: (f: Record<string, unknown>) => fx.push(f),
+    broadcastMetaUpdate: (eid: number) => metaSends.push(eid),
     castAbility: (_eid: number, ab: { id: string }) => casts.push({ ab }),
     setNpcPose: () => {},
     rallyPack: () => {},
@@ -95,7 +97,7 @@ function slate(opts: { hp?: { hp: number; maxHp: number } } = {}) {
     fireNpcCast: proto.fireNpcCast,
     cancelNpcCast: proto.cancelNpcCast,
   };
-  return { self, fx, casts, said };
+  return { self, fx, casts, said, metaSends };
 }
 
 const GS: NpcKitEntry = { ability: 'ground_slam', cooldownTicks: 150 };
@@ -179,7 +181,7 @@ test('a broken breath breaks the combo', () => {
 });
 
 test('the turning: a crossed gate barks, waives the entry, and winds it honestly', () => {
-  const { self, said } = slate({ hp: { hp: 40, maxHp: 100 } });
+  const { self, said, metaSends, fx } = slate({ hp: { hp: 40, maxHp: 100 } });
   const boss: NpcBossDef = {
     phases: [
       {},
@@ -192,6 +194,8 @@ test('the turning: a crossed gate barks, waives the entry, and winds it honestly
   assert.equal(npc.bossPhase, 1, 'the crown turned');
   assert.deepEqual(said, ['Enough of this.'], 'the rung speaks aloud');
   assert.deepEqual(npc.casting, { idx: 0, ticksLeft: 14, total: 14 }, 'the free entry still winds — the turn is loud, never cheap');
+  assert.deepEqual(metaSends, [7], 'the banner turns with the crown (the one meta door)');
+  assert.ok(fx.some((f) => f.kind === 'summon'), 'the turn gets its moment in the world');
 });
 
 test('the turning is idempotent: a standing rung turns no ceremony twice', () => {

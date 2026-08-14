@@ -130,9 +130,11 @@ export const FAMILY_STYLES: ReadonlyMap<string, FamilyStyle> = new Map<string, F
       sentinel: { npc: 'goblin_thrower', band: [1, 2] },
       guard: { npc: 'goblin', band: [2, 3] },
       captain: { npc: 'goblin_firecaller', band: [1, 1] },
-      // The boss-court crowns a true warboss now, not a big goblin —
-      // its own def carries the champion weight, so the offset eases.
-      bossNpc: 'goblin_champion',
+      // THE DREAD CROWN: the goblin capital's court seats the
+      // flame-tyrant — a phased caster-summoner whose cinder ring
+      // rallies the very garrison around it. The offset stays eased:
+      // the crown's own def carries the boss weight.
+      bossNpc: 'goblin_flame_tyrant',
       bossOffset: 3,
       accents: [Tile.SkullPile, Tile.BonePile, Tile.WarBanner],
       hearthGear: [Tile.CookPot, Tile.MeatRack, Tile.MeatSpit, Tile.WarDrum, Tile.SkullPile],

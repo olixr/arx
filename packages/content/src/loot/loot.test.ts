@@ -313,7 +313,11 @@ test('the flood law: every foe’s per-kill expectation stays under its station�
       stacks += y.stacks;
       gear += y.gearStacks;
     }
-    const [maxStacks, maxGear] = BOSS.has(id) ? [8, 2.2] : NAMED.has(id) ? [4.5, 0.5] : [3.2, 0.2];
+    // THE DREAD CROWN: a crowned foe IS boss station by definition —
+    // the `boss` block is the marker, so every future crown inherits
+    // the shower ceiling without joining a hand-kept list.
+    const [maxStacks, maxGear] =
+      BOSS.has(id) || npc.boss !== undefined ? [8, 2.2] : NAMED.has(id) ? [4.5, 0.5] : [3.2, 0.2];
     assert.ok(stacks <= maxStacks, `${id} expects ${stacks.toFixed(2)} stacks/kill > ${maxStacks}`);
     assert.ok(gear <= maxGear, `${id} expects ${gear.toFixed(3)} gear/kill > ${maxGear}`);
   }

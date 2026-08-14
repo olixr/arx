@@ -22672,6 +22672,22 @@ export class GameServer {
     const next = bossPhaseFor(boss, frac, cur);
     if (next === cur) return;
     npc.bossPhase = next;
+    // The banner turns with the crown (the one meta door), and the
+    // turn gets its moment in the world: the shipped summon ring —
+    // self-contained arrival grammar, the def's own color.
+    this.broadcastMetaUpdate(eid);
+    const tpos2 = this.positions.get(eid);
+    if (tpos2) {
+      this.broadcastFx({
+        t: 'fx',
+        kind: 'summon',
+        x: tpos2.x,
+        y: tpos2.y,
+        radius: 1.6,
+        ticks: 30,
+        color: npc.def.color,
+      });
+    }
     const rung = boss.phases[next];
     if (!rung) return;
     if (rung.bark) this.sayAloud(eid, npc.def.name, rung.bark);
@@ -23179,6 +23195,8 @@ export class GameServer {
             npc.bossChainIdx = null;
             npc.bossLastKitIdx = undefined;
             npc.kitCds = undefined;
+            // The banner walks back to the opening stance with the body.
+            this.broadcastMetaUpdate(eid);
           }
           // The walk home cools the blood: the meter settles under
           // the suspicious line, so the next sighting climbs the
@@ -26013,6 +26031,19 @@ export class GameServer {
       meta.name = npc.def.name;
       meta.defId = npc.def.id;
       meta.level = npc.def.level;
+      // THE DREAD CROWN: the banner's whole read — ladder length, the
+      // standing rung, and its reveal line. Re-broadcast through the
+      // one meta door on every turn and on the arena reset.
+      const boss = npc.def.boss;
+      if (boss) {
+        const phase = npc.bossPhase ?? 0;
+        meta.boss = {
+          title: boss.title,
+          phases: boss.phases.length,
+          phase,
+          phaseName: boss.phases[phase]?.name,
+        };
+      }
     }
     // THE COLLAR TELLS THE TALE: ownership is the one companion fact
     // every watcher must know — it changes what the entity IS

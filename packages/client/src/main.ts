@@ -15,6 +15,7 @@ import { ChatUI } from './ui/chat.js';
 import { Hotbar } from './ui/hotbar.js';
 import { SwapSlot } from './ui/swapSlot.js';
 import { BeltSlot, resolveBelt, beltPin } from './ui/beltSlot.js';
+import { BossBanner } from './ui/bossBanner.js';
 import { CompanionPlaque } from './ui/companionPlaque.js';
 import { Panels, SKILL_FACE, SKILL_STORY } from './ui/panels.js';
 import { showLevelUp } from './ui/levelToast.js';
@@ -1838,6 +1839,8 @@ const swapWell = new SwapSlot(() => input.queueSwap());
 // THE COMPANION PLAQUE: the friend at your heel as a standing HUD
 // piece. THE QUIET HEEL holds — pressing it pats the friend at your
 // side; the server range-gates the press, so a far body just no-ops.
+// THE DREAD BANNER: the crowned fight, read from meta + snapshots.
+const bossBanner = new BossBanner();
 const companionPlaque = new CompanionPlaque();
 companionPlaque.onPat = () => {
   const petEid = game.ownPetEid();
@@ -3642,6 +3645,7 @@ function frame(now: number): void {
   belt.update(game);
   swapWell.update(game);
   companionPlaque.update(game);
+  bossBanner.update(game);
 
   // The world's voice: zone-weighted music and ambience follow the
   // listener's position and the game clock every frame.

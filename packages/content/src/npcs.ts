@@ -478,6 +478,72 @@ const defs: NpcDef[] = [
     kit: [{ ability: 'ground_slam', cooldownTicks: 170, maxRange: 4.5, weight: 2 }],
   },
   {
+    // THE ASHEN TYRANT (docs/boss-system-plan.md, the second crown):
+    // the stronghold court's caster-king. A standoff summoner whose
+    // adds are the CAMP ITSELF — the cinder ring carries the rally,
+    // so every staked burn calls another bounded wave of the warband.
+    // Authored WEAKNESS: ordinary flesh to the stun (stunMult 1) —
+    // the interrupt school's payday; the arc-line breaks this fight
+    // open where it merely dents the king's. goblin_ prefix = the
+    // greenskin painter dispatch; fire and gloom are goblin words
+    // (the firecaller and gloomcaller taught both).
+    id: 'goblin_flame_tyrant',
+    name: 'Goblin flame-tyrant',
+    level: 24,
+    maxHp: 150,
+    damage: 4,
+    attackRange: 7,
+    attackCooldownTicks: 48,
+    aggroRange: 7,
+    sightArc: 240,
+    leashRange: 30,
+    speed: 3.4,
+    xpReward: 620,
+    loot: ['goblin_champion', 'goblin_arms', 'champion_armory', 'heirlooms'],
+    respawnSec: 90,
+    color: '#d1541f',
+    radius: 0.38,
+    hitHeight: 2.2,
+    ranged: { range: 7, projectileSpeed: 10 },
+    resist: ['burn'],
+    weak: ['chill'],
+    pack: 'goblin',
+    standoff: 5.5,
+    kit: [
+      // The chase beat: the ring stakes where you are GOING, and the
+      // bolt follows you out of it — leaving is right, and it costs.
+      { ability: 'goblin_firebolt', cooldownTicks: 100, windupTicks: 14, minRange: 1.5, maxRange: 8, weight: 2 },
+      { ability: 'cinder_ring', cooldownTicks: 190, windupTicks: 12, maxRange: 7, aim: 'lead', rally: true, then: 'goblin_firebolt' },
+      { ability: 'miasma_ring', cooldownTicks: 260, windupTicks: 16, maxRange: 7, aim: 'lead', phase: 1 },
+    ],
+    boss: {
+      title: 'Tyrant of the Burning Court',
+      phases: [
+        { name: 'The Holding Word' },
+        {
+          hpBelow: 0.6,
+          name: 'The Camp Answers',
+          bark: 'Burn them! The camp is MINE!',
+          entry: 'cinder_ring',
+          cdMult: 0.85,
+        },
+        {
+          hpBelow: 0.25,
+          name: 'The Burning Word',
+          bark: 'I am the fire this camp fears!',
+          entry: 'miasma_ring',
+          cdMult: 0.7,
+          speedMult: 1.1,
+        },
+      ],
+      knockbackMult: 0.4,
+      stunMult: 1,
+      arenaR: 18,
+      engageBark: 'You walk into MY court?',
+      defeatBark: 'The fire... goes out...',
+    },
+  },
+  {
     // The wilds' first HUMAN enemies — deserters and toll-thieves who
     // haunt the roads between the hearths. They ride the player rig
     // with real gear (the loot-story law: every piece they wear
@@ -681,6 +747,70 @@ const defs: NpcDef[] = [
       { ability: 'marrow_chill', cooldownTicks: 220, windupTicks: 10, maxRange: 2.8 },
       { ability: 'bone_volley', cooldownTicks: 240, windupTicks: 14, minRange: 2.5, maxRange: 9 },
     ],
+  },
+  {
+    // THE FALLEN KING (docs/boss-system-plan.md, the first crown):
+    // the crypt's deepest seat, no longer a scaled champion. A
+    // melee-leaning hybrid whose fight TURNS: the sweep chains into
+    // the slam (the two-beat you learn to bank a dodge for), the
+    // court rises at the first deep wound, and the last vigil is
+    // faster than the sitting king ever was. Every voice is a
+    // shipped, fully-faced bone word — the crown composes, it does
+    // not invent. skeleton_ prefix = the bone painter dispatch.
+    id: 'skeleton_fallen_king',
+    name: 'The Fallen King',
+    level: 30,
+    maxHp: 220,
+    damage: 6,
+    attackRange: 1.25,
+    attackCooldownTicks: 42,
+    aggroRange: 7,
+    sightArc: 360,
+    leashRange: 30,
+    speed: 3.8,
+    xpReward: 900,
+    loot: ['skeleton_champion', 'champion_capes', 'champion_wardrobe', 'champion_armory', 'heirlooms'],
+    respawnSec: 120,
+    color: '#e8e2d0',
+    radius: 0.44,
+    hitHeight: 2.7,
+    resist: ['bleed', 'chill'],
+    weak: ['burn'],
+    kit: [
+      // The two-beat: the sweep commits, and the slam lands where you
+      // fled to — bank the dodge for the SECOND ring, not the first.
+      { ability: 'reaping_sweep', cooldownTicks: 150, windupTicks: 10, maxRange: 2.2, weight: 2, then: 'ground_slam' },
+      { ability: 'ground_slam', cooldownTicks: 170, maxRange: 4.5, weight: 2 },
+      { ability: 'bone_volley', cooldownTicks: 220, windupTicks: 14, minRange: 2.5, maxRange: 9 },
+      { ability: 'marrow_chill', cooldownTicks: 230, windupTicks: 10, maxRange: 2.8, phase: 1 },
+      { ability: 'raise_the_fallen', cooldownTicks: 450, windupTicks: 24, aim: 'self', phase: 1 },
+    ],
+    boss: {
+      title: 'The Crown Below',
+      phases: [
+        { name: 'The Long Sitting' },
+        {
+          hpBelow: 0.65,
+          name: 'The Court Rises',
+          bark: 'Rise. Your king commands it.',
+          entry: 'raise_the_fallen',
+          cdMult: 0.9,
+        },
+        {
+          hpBelow: 0.3,
+          name: 'The Last Vigil',
+          bark: 'This crown was earned in the dark.',
+          entry: 'ground_slam',
+          cdMult: 0.75,
+          speedMult: 1.15,
+        },
+      ],
+      knockbackMult: 0.15,
+      stunMult: 0.5,
+      arenaR: 16,
+      engageBark: 'Who wakes the king?',
+      defeatBark: 'At last... the long watch ends.',
+    },
   },
   {
     id: 'mudcrab',

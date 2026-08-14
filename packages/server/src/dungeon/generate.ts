@@ -101,7 +101,10 @@ const ROSTERS: Record<DungeonTheme, ThemeRoster> = {
       { npc: 'cave_bat', w: 1 },
     ],
     elite: 'skeleton_guard',
-    boss: { npc: 'skeleton_champion', name: 'The Fallen Champion' },
+    // THE DREAD CROWN: the crypt's deepest seat wears a true crown
+    // now — phases, chains, the risen court. The name override stays
+    // authored here (spawn.name = the named-boss purse predicate).
+    boss: { npc: 'skeleton_fallen_king', name: 'The Fallen King' },
     warden: 'Reliquary Warden',
   },
   mine: {

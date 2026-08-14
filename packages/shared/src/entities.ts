@@ -126,6 +126,15 @@ export interface EntityMeta {
    * shearable at a glance. Sheep-only, additive.
    */
   shorn?: boolean;
+  /**
+   * THE DREAD CROWN (docs/boss-system-plan.md): present only on a
+   * crowned foe. `phases` is the ladder's length, `phase` the rung
+   * the body stands on NOW (re-broadcast through the one meta door on
+   * every turn and on the arena reset), `phaseName` the standing
+   * rung's authored reveal line. Additive-optional (the `shorn`
+   * precedent): a client that ignores it simply raises no banner.
+   */
+  boss?: { title?: string; phases: number; phase: number; phaseName?: string };
   /** Projectiles only: the input-frame seq whose press/release fired
    *  this shot — the tracer↔entity matching key. */
   seq?: number;

@@ -1294,6 +1294,22 @@ export const SKELETON_LOOKS: Record<string, SkeletonLook> = {
     heavy: 1.34,
     cracked: false,
   },
+  // THE FALLEN KING (the dread crown): old ivory gone gold at the
+  // edges — richer bone than any soldier, aged in state, not in the
+  // dirt. Gravelight stands in the sockets (the same cold breath his
+  // court rises on), and the crown is the barrow's own heavy gold
+  // around a grave-lit stone. Cracked — the long watch shows, and the
+  // crack is the honest ledger of whoever finally sat him down the
+  // first time. The heaviest dead in the ground: the throne fed him
+  // well before it kept him.
+  skeleton_fallen_king: {
+    bone: '#ded2ae',
+    cavity: '#241a2c',
+    glow: '#7fe8c8',
+    crown: { band: '#c9963a', gem: '#58c9a4' },
+    heavy: 1.42,
+    cracked: true,
+  },
 };
 
 /** Variant lookup with the rank-and-file as the unknown-id fallback. */
@@ -3457,6 +3473,24 @@ export const GOBLIN_LOOKS: Record<string, GoblinLook> = {
     tusks: true,
     scarred: true,
     heavy: 1.35,
+  },
+  // THE ASHEN TYRANT (the dread crown): the caster-king. Ash-scorched
+  // hide — a green that has stood too near its own fires for years —
+  // over a soot-pale gut, eyes lit the deep furnace orange no other
+  // greenskin burns. Wears the court robe (a tyrant's ash-red, darker
+  // than the firecaller's working shawl) over oiled leather, tusked
+  // and burn-scarred; NO war-knot — this crown's crown is the fire
+  // itself, spoken by the charge every time it winds.
+  goblin_flame_tyrant: {
+    hide: '#6d7a3a',
+    belly: '#b8b184',
+    ink: '#241c12',
+    eye: '#ff7a2e',
+    cloth: '#4a3524',
+    garb: '#8f3a24',
+    tusks: true,
+    scarred: true,
+    heavy: 1.2,
   },
 };
 

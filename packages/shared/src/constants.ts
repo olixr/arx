@@ -147,6 +147,12 @@
 // would draw bare hands where every current peer sees a carried
 // arsenal — the wardrobe's shape changed, so the handshake keeps the
 // shards honest.
+// (THE DREAD CROWN, still v30: EntityMeta grows the optional `boss`
+// block {title?, phases, phase, phaseName?} so the client banner can
+// read a crowned foe's fight, re-broadcast through the one meta door
+// on every phase turn and arena reset. Additive — a client that
+// ignores the key shows plain nameplates and corrupts nothing.
+// Recorded on purpose.)
 export const PROTOCOL_VERSION = 30;
 
 /** The most souls one party can hold. */
