@@ -232,6 +232,71 @@ race: bosses spawn with no players near); the 20Hz gap-filling
 heartbeat (weapon-sets pattern) is required or seq-domain clocks
 stretch.
 
+## THE GRAND SHOW — the refinement pass (2026-08-14, second session)
+
+The user's mandate: walk the crown again at the artisan bar — soundness
+review, "tons of visual appeal and effects," then more crowns. Findings
+and deltas:
+
+**Presentation raised (all shipped grammar, no new wire kinds):**
+- **THE ETCHED GATES**: `EntityMeta.boss.gates` (additive, the shorn
+  precedent) carries each later rung's hpBelow; the banner etches a
+  hairline notch at every gate so the coming turn is a read, never a
+  surprise. Crossed gates dim to spent. Proven on the wire (receipt 1).
+- **THE TURN PULSE**: the banner takes the blow when the fight turns —
+  ember flash over the gauge, a breath of scale punch, and the standing
+  pip IGNITES (lands hot at 1.9×, settles). All motion transform/opacity,
+  all stilled under `body.no-ui-motion`.
+- **THE DREAD PRESENCE** (`renderer.crownAmbience`): a crowned body
+  bends the air — low ground-glow in the def's color plus sparse rising
+  motes, both deepening per phase rung. Keyed purely off
+  `EntityMeta.boss`; plain flesh pays nothing.
+- **THE FELLING** (`main.ts onDeath`): a crowned death is a ceremony —
+  46-grain burst, a rising ember column, a late pale echo ring, and the
+  camera exclamation (shake 7, hitstop 0.12, zoom, full rumble) reading
+  across the whole arena (18 tiles), not just at your feet.
+- **The turn's moment**: the summon ring now layers a `nova` (power
+  stepping up + its camera punch). **The engage**: a `buff` flourish
+  (runes orbiting the body) marks the court opening for the eyes as the
+  bark marks it for the ears.
+
+**Three new crowns (LAW 8 held: composed only from shipped faced voices,
+each with a bespoke authored look):**
+- **`gnoll_matriarch`** — the cacklefort's seat (gnoll stronghold
+  `bossNpc`, was a plain packlord). Skirmisher crown: rending_lunge
+  `then` ravening_cackle (jaws through you, and the laugh that follows
+  RAISES THE WARBAND), gnawed_mending below 0.45 hp (28% back unless the
+  breath is broken — the fight's test). Weakness: knockbackMult 1.1 (light
+  on her feet), stunMult 0.75. Look: night-dark coat under the ONE cold
+  crest in the species (deliberate, wider-than-law value gap); GNOLL_SIZE
+  1.55 — she looms over her own packlords.
+- **`skeleton_barrow_lord`** — the gravecourt's seat (dead stronghold
+  `bossNpc`). THE ANTI-KING: standoff chanter-king, grave_mist `then`
+  bone_volley (the ground is the argument), raise_the_fallen at the wake,
+  ground_slam only in The Long Toll. Weakness: knockbackMult 1.2 — the
+  most movable crown (dry bone is light); stunMult 0.4 (the dead don't
+  stagger). Look: barrow-violet bone, marsh-light sockets, grave-silver
+  circlet, UNCRACKED (nobody ever sat him down).
+- **`anvil_golem`** — the mine dungeon's deep seat (was a renamed troll).
+  The only IMMOVABLE crown (knockbackMult 0) and the most interruptible
+  (stunMult 1.5 — iron carries the storm to its joints): anvil_fall
+  `then` drawn_bolt (the anvil takes the ground, the bolt takes the
+  leaving), quarry_ring close, hillstone_throw from phase 1. Iron build,
+  deep-mine colorway (silver accent — the crown wears what the miners
+  came for); GOLEM_SIZE 1.68, still under the ice (the stature law holds).
+
+**Proving grew to 20 receipts** (S4 THE NEW COURTS: each new crown's
+ladder + gates ride the wire whole), run ×2 on fresh worlds
+(arx_prove_boss_9, _10). Art-contract lesson: the gnoll test's dark-fill
+heuristic counts any `#2x` fill as face-dark — `shade()` is ADDITIVE, so
+a crown coat must keep every derived plane (fur −20, skin −46) above
+`#30` red. The matriarch's palette is calibrated to the exact band.
+
+**Seats still renamed trash (the next docket, recorded not filled):**
+cavern's "Broodmother" (giant_spider — needs spider voices before a
+lawful crown), stronghold-theme dungeon's "Hold-Warden" (troll), the
+brigand/wolfkin stronghold seats (brigand_reaver / dire_wolf).
+
 ## Open questions (recommendation first; proceeding on recommendations)
 
 - **Enrage timers?** REC: no — tempo (`cdMult`) is the honest pressure; a

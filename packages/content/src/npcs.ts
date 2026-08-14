@@ -813,6 +813,75 @@ const defs: NpcDef[] = [
     },
   },
   {
+    // THE BARROW LORD (docs/boss-system-plan.md, the gravecourt's
+    // crown): the ANTI-KING. Where the Fallen King meets you blade
+    // to blade, the keeper of the dead courts holds his distance and
+    // makes the GROUND the argument — the mist stakes the footing
+    // you hold, the volley meets you on the way out of it, and the
+    // court rises when he is truly wounded. Authored WEAKNESS: dry
+    // bone is LIGHT — every landed shove moves him whole
+    // (knockbackMult 1.2, the most movable crown), so the push
+    // schools own this fight; the dead do not stagger (stunMult
+    // 0.4). skeleton_ prefix = the bone painter dispatch.
+    id: 'skeleton_barrow_lord',
+    name: 'The Barrow Lord',
+    level: 28,
+    maxHp: 200,
+    damage: 6,
+    attackRange: 1.2,
+    attackCooldownTicks: 44,
+    aggroRange: 7,
+    sightArc: 360,
+    leashRange: 30,
+    speed: 3.4,
+    xpReward: 820,
+    loot: ['skeleton_champion', 'chanter_vestry', 'champion_armory', 'heirlooms'],
+    respawnSec: 120,
+    color: '#b8aed6',
+    radius: 0.4,
+    hitHeight: 2.6,
+    ranged: { range: 8, projectileSpeed: 10 },
+    resist: ['bleed', 'venom'],
+    weak: ['burn'],
+    standoff: 5.5,
+    kit: [
+      // The stake-and-punish two-beat: the mist takes the ground you
+      // hold, and the volley punishes the leaving of it.
+      { ability: 'grave_mist', cooldownTicks: 230, windupTicks: 16, maxRange: 7, aim: 'lead', weight: 2, then: 'bone_volley' },
+      { ability: 'bone_volley', cooldownTicks: 170, windupTicks: 14, minRange: 2, maxRange: 8, weight: 2 },
+      // The "off my court" word for anyone who closes the gap.
+      { ability: 'marrow_chill', cooldownTicks: 230, windupTicks: 10, maxRange: 2.8 },
+      { ability: 'raise_the_fallen', cooldownTicks: 420, windupTicks: 24, aim: 'self', phase: 1 },
+      { ability: 'ground_slam', cooldownTicks: 180, maxRange: 4.5, phase: 2 },
+    ],
+    boss: {
+      title: 'Keeper of the Quiet Court',
+      phases: [
+        { name: 'The Quiet Court' },
+        {
+          hpBelow: 0.6,
+          name: 'The Court Wakes',
+          bark: 'You stand on my dead. Rise and be counted.',
+          entry: 'raise_the_fallen',
+          cdMult: 0.85,
+        },
+        {
+          hpBelow: 0.25,
+          name: 'The Long Toll',
+          bark: 'The barrow keeps what it takes.',
+          entry: 'grave_mist',
+          cdMult: 0.7,
+          speedMult: 1.1,
+        },
+      ],
+      knockbackMult: 1.2,
+      stunMult: 0.4,
+      arenaR: 18,
+      engageBark: 'Another for the quiet earth.',
+      defeatBark: 'Back... to the long... quiet...',
+    },
+  },
+  {
     id: 'mudcrab',
     name: 'Mudcrab',
     level: 2,
@@ -1287,6 +1356,77 @@ const defs: NpcDef[] = [
     ],
   },
   {
+    // THE MATRIARCH (docs/boss-system-plan.md, the cacklefort's
+    // crown): gnoll war-camps run on the mother's law, and the
+    // matriarch IS the law. A skirmisher crown — the lunge goes
+    // THROUGH you and the laugh that follows raises the warband;
+    // that chain is her signature sentence. Wounded deep, she gnaws
+    // the old bone and MENDS: the heal is honest (long wind, loud
+    // telegraph) and breaking the breath is the fight's test.
+    // Authored WEAKNESS: light on her feet — every landed shove
+    // moves her whole (knockbackMult 1.1); the frenzy barely
+    // staggers (stunMult 0.75). gnoll_ prefix = the hyena painter.
+    id: 'gnoll_matriarch',
+    name: 'Gnoll matriarch',
+    level: 28,
+    maxHp: 190,
+    damage: 7,
+    attackRange: 1.2,
+    attackCooldownTicks: 36,
+    aggroRange: 7,
+    sightArc: 240,
+    leashRange: 34,
+    speed: 4.6,
+    xpReward: 780,
+    loot: ['gnoll_champion', 'champion_armory', 'heirlooms'],
+    respawnSec: 120,
+    color: '#3a342e',
+    radius: 0.46,
+    hitHeight: 2.7,
+    // The mother's jaws set the warband's whole appetite.
+    attackStatus: { status: 'bleed', power: 2, durationTicks: 70 },
+    pack: 'gnoll',
+    resist: ['venom'], // a carrion eater fears no spoiled meat
+    weak: ['burn'],
+    kit: [
+      // The signature sentence: jaws through you, then the laugh —
+      // and the laugh is a rally, so dodging the lunge is only half
+      // the answer.
+      { ability: 'rending_lunge', cooldownTicks: 170, windupTicks: 10, minRange: 1.5, maxRange: 4.5, weight: 2, then: 'ravening_cackle' },
+      { ability: 'ravening_cackle', cooldownTicks: 210, maxRange: 4.5, rally: true },
+      // The gnawed bone: a quarter of her back unless the breath is
+      // broken — shove her, shock her, or fight her twice.
+      { ability: 'gnawed_mending', cooldownTicks: 550, windupTicks: 20, hpBelow: 0.45, aim: 'self' },
+    ],
+    boss: {
+      title: 'Mother of the Warband',
+      phases: [
+        { name: 'The Low Laugh' },
+        {
+          hpBelow: 0.55,
+          name: 'The Warband Answers',
+          bark: 'Hear them laughing? They laugh for ME.',
+          entry: 'ravening_cackle',
+          cdMult: 0.85,
+          speedMult: 1.1,
+        },
+        {
+          hpBelow: 0.25,
+          name: 'Red Teeth',
+          bark: 'Now the mother eats FIRST.',
+          entry: 'rending_lunge',
+          cdMult: 0.7,
+          speedMult: 1.25,
+        },
+      ],
+      knockbackMult: 1.1,
+      stunMult: 0.75,
+      arenaR: 18,
+      engageBark: 'Fresh meat walks INTO the den?',
+      defeatBark: 'The pack... will not stop... laughing...',
+    },
+  },
+  {
     id: 'bear',
     name: 'Black bear',
     level: 16,
@@ -1714,6 +1854,71 @@ const defs: NpcDef[] = [
       { ability: 'calving_volley', cooldownTicks: 170, windupTicks: 16, minRange: 2, maxRange: 8 },
       { ability: 'winters_floor', cooldownTicks: 260, windupTicks: 14, maxRange: 7, aim: 'lead' },
     ],
+  },
+  {
+    // THE ANVILHEART (docs/boss-system-plan.md, the mine's crown):
+    // the deep seat held a renamed troll — now the mine's own keeper
+    // stands it. An iron-build golem grown around a struck-anvil
+    // heart: the slowest crown and the only IMMOVABLE one
+    // (knockbackMult 0 — a mountain is not argued with), and in
+    // trade the most interruptible (stunMult 1.5 — iron carries the
+    // storm to its joints; the shock school breaks this fight open).
+    // The two-beat: the anvil falls where you stand, and the drawn
+    // bolt meets you leaving the ring. _golem suffix = the construct
+    // painter dispatch (iron build, deep-mine colorway).
+    id: 'anvil_golem',
+    name: 'Anvil golem',
+    level: 27,
+    maxHp: 230,
+    damage: 8,
+    attackRange: 1.4,
+    attackCooldownTicks: 54,
+    aggroRange: 6,
+    sightArc: 150,
+    leashRange: 30,
+    speed: 2.5, // no golem hurries — the crown least of all
+    xpReward: 950,
+    loot: ['iron_golem', 'champion_armory', 'heirlooms'],
+    respawnSec: 150,
+    color: '#7d7468',
+    radius: 0.5,
+    hitHeight: 3.2,
+    resist: ['bleed', 'venom'],
+    weak: ['shock'],
+    kit: [
+      // The signature two-beat: the anvil takes the ground, the bolt
+      // takes the leaving — bank the dodge for the SECOND word.
+      { ability: 'anvil_fall', cooldownTicks: 210, windupTicks: 22, maxRange: 3.5, weight: 2, then: 'drawn_bolt' },
+      { ability: 'drawn_bolt', cooldownTicks: 180, windupTicks: 14, minRange: 2.5, maxRange: 6 },
+      { ability: 'quarry_ring', cooldownTicks: 220, windupTicks: 12, maxRange: 4.5 },
+      { ability: 'hillstone_throw', cooldownTicks: 190, windupTicks: 20, minRange: 2.5, maxRange: 8, phase: 1 },
+    ],
+    boss: {
+      title: 'What the Mine Woke',
+      phases: [
+        { name: 'The Banked Heart' },
+        {
+          hpBelow: 0.6,
+          name: 'The Seam Wakes',
+          bark: 'The mine answers.',
+          entry: 'hillstone_throw',
+          cdMult: 0.85,
+        },
+        {
+          hpBelow: 0.3,
+          name: 'Struck Iron',
+          bark: 'Iron remembers the hammer.',
+          entry: 'anvil_fall',
+          cdMult: 0.7,
+          speedMult: 1.2,
+        },
+      ],
+      knockbackMult: 0,
+      stunMult: 1.5,
+      arenaR: 14,
+      engageBark: 'The seam is closed.',
+      defeatBark: 'The hum... runs out.',
+    },
   },
 ];
 

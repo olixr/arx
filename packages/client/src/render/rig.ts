@@ -1310,6 +1310,21 @@ export const SKELETON_LOOKS: Record<string, SkeletonLook> = {
     heavy: 1.42,
     cracked: true,
   },
+  // THE BARROW LORD (the dread crown): barrow-violet bone — the
+  // gravecourt's damp stained him where the king aged in state. A
+  // cold marsh-light stands in the sockets (grave mist's own breath
+  // made permanent), and the circlet is grave SILVER around a mist-
+  // pale stone — the quiet court's authority, never the king's gold.
+  // UNCRACKED: nobody ever sat him down; the court has held
+  // unbroken. Lighter than the king — a keeper, not a warrior.
+  skeleton_barrow_lord: {
+    bone: '#cdc4d8',
+    cavity: '#231c30',
+    glow: '#a8c8e0',
+    crown: { band: '#8f96a8', gem: '#b9d8ea' },
+    heavy: 1.28,
+    cracked: false,
+  },
 };
 
 /** Variant lookup with the rank-and-file as the unknown-id fallback. */
@@ -2511,6 +2526,25 @@ export const GNOLL_LOOKS: Record<string, GnollLook> = {
     eye: '#ffd24a',
     nose: '#1d1815',
     heavy: 1.3,
+    scarred: true,
+  },
+  // THE MATRIARCH (the dread crown): night-dark coat under a pale
+  // bone-silver crest — the ONE gnoll whose roach runs cold. Every
+  // other coat keeps the warm-crest reference law; the crown breaks
+  // it on purpose, and the value gap is even wider than the law
+  // asks, so her silhouette reads across the whole fort. Blood-
+  // amber eyes, scarred: the mother's ledger is longer than any
+  // packlord's.
+  gnoll_matriarch: {
+    fur: '#48413a',
+    underfur: '#8c8274',
+    skin: '#6b5f4e',
+    spot: '#342d25',
+    mane: '#b8b4a8',
+    mask: '#332c25',
+    eye: '#ff9a3d',
+    nose: '#241d17',
+    heavy: 1.5,
     scarred: true,
   },
 };

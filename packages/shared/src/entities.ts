@@ -131,10 +131,13 @@ export interface EntityMeta {
    * crowned foe. `phases` is the ladder's length, `phase` the rung
    * the body stands on NOW (re-broadcast through the one meta door on
    * every turn and on the arena reset), `phaseName` the standing
-   * rung's authored reveal line. Additive-optional (the `shorn`
-   * precedent): a client that ignores it simply raises no banner.
+   * rung's authored reveal line, `gates` the hp fractions (0..1,
+   * descending) where the later rungs wake — the banner etches a
+   * notch at each so the coming turn is a read, never a surprise.
+   * Additive-optional (the `shorn` precedent): a client that ignores
+   * it simply raises no banner.
    */
-  boss?: { title?: string; phases: number; phase: number; phaseName?: string };
+  boss?: { title?: string; phases: number; phase: number; phaseName?: string; gates?: number[] };
   /** Projectiles only: the input-frame seq whose press/release fired
    *  this shot — the tracer↔entity matching key. */
   seq?: number;

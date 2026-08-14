@@ -162,7 +162,9 @@ export const FAMILY_STYLES: ReadonlyMap<string, FamilyStyle> = new Map<string, F
       sentinel: { npc: 'gnoll', band: [1, 2] },
       guard: { npc: 'gnoll', band: [2, 3] },
       captain: { npc: 'gnoll', band: [1, 1] },
-      bossNpc: 'gnoll_champion',
+      // THE DREAD CROWN: the cacklefort's court belongs to the
+      // matriarch — a true phased crown, not a scaled packlord.
+      bossNpc: 'gnoll_matriarch',
       bossOffset: 3,
       accents: [Tile.SkullPile, Tile.BonePile],
       hearthGear: [Tile.MeatSpit, Tile.MeatRack, Tile.BonePile, Tile.SkullPile],
@@ -248,7 +250,9 @@ export const FAMILY_STYLES: ReadonlyMap<string, FamilyStyle> = new Map<string, F
       sentinel: { npc: 'skeleton_archer', band: [1, 1] },
       guard: { npc: 'skeleton_guard', band: [2, 3] },
       captain: { npc: 'skeleton_guard', band: [1, 1] },
-      bossNpc: 'skeleton_champion',
+      // THE DREAD CROWN: the gravecourt's seat holds the Barrow Lord
+      // — the standoff anti-king, a true phased crown.
+      bossNpc: 'skeleton_barrow_lord',
       bossOffset: 2,
       accents: [Tile.BonePile, Tile.CaveRubble],
       hearthGear: [Tile.Brazier, Tile.BonePile, Tile.CaveRubble, Tile.Rock],

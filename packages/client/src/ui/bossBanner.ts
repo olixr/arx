@@ -34,12 +34,18 @@ interface ShownCrown {
   hp: number;
 }
 
+/** The gate notches etched on the gauge (hp fractions, descending). */
+function crownGates(game: ClientGame, eid: number): number[] {
+  return game.entities.get(eid)?.meta.boss?.gates ?? [];
+}
+
 export class BossBanner {
   private readonly root = document.createElement('div');
   private readonly nameEl = document.createElement('div');
   private readonly titleEl = document.createElement('div');
   private readonly fill = document.createElement('div');
   private readonly ghost = document.createElement('div');
+  private readonly notchesEl = document.createElement('div');
   private readonly pipsEl = document.createElement('div');
   private readonly revealEl = document.createElement('div');
   private key = '';
@@ -60,7 +66,8 @@ export class BossBanner {
     gauge.className = 'boss-hp';
     this.ghost.className = 'boss-hp-ghost';
     this.fill.className = 'boss-hp-fill';
-    gauge.append(this.ghost, this.fill);
+    this.notchesEl.className = 'boss-hp-notches';
+    gauge.append(this.ghost, this.fill, this.notchesEl);
 
     this.pipsEl.className = 'boss-pips';
     this.revealEl.className = 'boss-reveal';
@@ -156,6 +163,34 @@ export class BossBanner {
     this.titleEl.textContent = best.title;
     this.titleEl.style.display = best.title ? '' : 'none';
 
+    // THE ETCHED GATES: a hairline notch at every hp fraction where a
+    // later rung wakes — the coming turn is a read, never a surprise.
+    // Etched once per crown; a crossed gate dims to spent.
+    const gates = crownGates(game, best.eid);
+    if (fresh || this.notchesEl.childElementCount !== gates.length) {
+      this.notchesEl.replaceChildren();
+      for (const g of gates) {
+        const n = document.createElement('span');
+        n.className = 'boss-hp-notch';
+        n.style.left = `${Math.round(g * 1000) / 10}%`;
+        this.notchesEl.appendChild(n);
+      }
+    }
+    for (let i = 0; i < this.notchesEl.childElementCount; i++) {
+      // Gate i wakes rung i+1 — standing past it, the notch is spent.
+      (this.notchesEl.children[i] as HTMLElement).classList.toggle('spent', best.phase >= i + 1);
+    }
+
+    // THE TURN PULSE: the whole banner takes the blow when the fight
+    // turns — one ember flash over the gauge, restarted per turn.
+    if (turned) {
+      this.root.classList.remove('turning');
+      void this.root.offsetWidth;
+      this.root.classList.add('turning');
+    } else if (fresh) {
+      this.root.classList.remove('turning');
+    }
+
     // The gauge: fill snaps to the truth, the pale ghost eases after
     // it in CSS — every bite leaves a mark before it fades.
     const frac = Math.max(0, Math.min(1, best.hp / 255));
@@ -169,6 +204,9 @@ export class BossBanner {
       for (let i = 0; i < best.phases; i++) {
         const pip = document.createElement('span');
         pip.className = i < best.phase ? 'boss-pip past' : i === best.phase ? 'boss-pip now' : 'boss-pip';
+        // A TRUE turn ignites the standing pip — approach re-raises
+        // nothing, so the pop only ever plays when the fight moves.
+        if (turned && i === best.phase) pip.classList.add('ignite');
         this.pipsEl.appendChild(pip);
       }
     }

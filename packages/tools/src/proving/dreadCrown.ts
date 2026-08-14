@@ -634,6 +634,38 @@ async function main(): Promise<void> {
   // No cleanup slay: the proving world is thrown away whole, and a
   // reset boss is eternal by the arena law — leave the court standing.
 
+  // ================================================================
+  // S4 — THE NEW COURTS: every later crown rides the wire whole. A
+  // content-to-wire receipt per crown (ladder length, title, the
+  // gate notches the banner etches) — the fight machinery itself is
+  // the SAME proven rail S1-S3 walked; the def is what's new.
+  // ================================================================
+  await claimCourt();
+  const matron = await spawnCrown(a, 'gnoll_matriarch');
+  receipt(
+    "THE MOTHER'S COURT: the matriarch's crown rides the wire whole",
+    matron.meta.boss?.phases === 3 &&
+      matron.meta.boss?.title === 'Mother of the Warband' &&
+      JSON.stringify(matron.meta.boss?.gates) === '[0.55,0.25]',
+    JSON.stringify(matron.meta.boss),
+  );
+  const lord = await spawnCrown(a, 'skeleton_barrow_lord');
+  receipt(
+    "THE QUIET COURT: the barrow lord's crown rides the wire whole",
+    lord.meta.boss?.phases === 3 &&
+      lord.meta.boss?.title === 'Keeper of the Quiet Court' &&
+      JSON.stringify(lord.meta.boss?.gates) === '[0.6,0.25]',
+    JSON.stringify(lord.meta.boss),
+  );
+  const anvil = await spawnCrown(a, 'anvil_golem');
+  receipt(
+    'THE BANKED HEART: the mine crown rides the wire whole',
+    anvil.meta.boss?.phases === 3 &&
+      anvil.meta.boss?.title === 'What the Mine Woke' &&
+      JSON.stringify(anvil.meta.boss?.gates) === '[0.6,0.3]',
+    JSON.stringify(anvil.meta.boss),
+  );
+
   console.log(`\nTHE PROVING STANDS: ${passed} receipts, every one honest.`);
   process.exit(0);
 }

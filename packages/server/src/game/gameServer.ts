@@ -21967,8 +21967,22 @@ export class GameServer {
     // THE DREAD CROWN: the moment the fight truly opens (a body not
     // already mid-chase marking a player), the crown speaks — once
     // per engagement; retargets inside a running fight stay quiet.
+    // The rousing flourish (shipped buff grammar: runes orbiting the
+    // body) marks the same beat for the eyes the bark marks for the
+    // ears — the court is now in session.
     if (npc.state !== 'chase' && npc.def.boss?.engageBark && this.players.has(targetEid)) {
       this.sayAloud(eid, npc.def.name, npc.def.boss.engageBark);
+      const bpos = this.positions.get(eid);
+      if (bpos) {
+        this.broadcastFx({
+          t: 'fx',
+          kind: 'buff',
+          x: bpos.x,
+          y: bpos.y,
+          radius: 1.1,
+          color: npc.def.color,
+        });
+      }
     }
     npc.state = 'chase';
     // A retarget mid-breath drops the old working (new quarry, new
@@ -22730,8 +22744,10 @@ export class GameServer {
     if (next === cur) return;
     npc.bossPhase = next;
     // The banner turns with the crown (the one meta door), and the
-    // turn gets its moment in the world: the shipped summon ring —
-    // self-contained arrival grammar, the def's own color.
+    // turn gets its moment in the world: the shipped summon ring
+    // (arrival grammar) UNDER a nova (the power stepping up) — two
+    // shipped voices layered, the def's own color, no new grammar.
+    // The nova's camera punch makes the turn land in the hands too.
     this.broadcastMetaUpdate(eid);
     const tpos2 = this.positions.get(eid);
     if (tpos2) {
@@ -22742,6 +22758,14 @@ export class GameServer {
         y: tpos2.y,
         radius: 1.6,
         ticks: 30,
+        color: npc.def.color,
+      });
+      this.broadcastFx({
+        t: 'fx',
+        kind: 'nova',
+        x: tpos2.x,
+        y: tpos2.y,
+        radius: 2.4,
         color: npc.def.color,
       });
     }
@@ -26133,16 +26157,23 @@ export class GameServer {
       meta.defId = npc.def.id;
       meta.level = npc.def.level;
       // THE DREAD CROWN: the banner's whole read — ladder length, the
-      // standing rung, and its reveal line. Re-broadcast through the
-      // one meta door on every turn and on the arena reset.
+      // standing rung, its reveal line, and the gate notches (each
+      // later rung's hpBelow, so the gauge shows where the fight will
+      // turn). Re-broadcast through the one meta door on every turn
+      // and on the arena reset.
       const boss = npc.def.boss;
       if (boss) {
         const phase = npc.bossPhase ?? 0;
+        const gates = boss.phases
+          .slice(1)
+          .map((p) => p.hpBelow)
+          .filter((g): g is number => g !== undefined);
         meta.boss = {
           title: boss.title,
           phases: boss.phases.length,
           phase,
           phaseName: boss.phases[phase]?.name,
+          gates: gates.length > 0 ? gates : undefined,
         };
       }
     }

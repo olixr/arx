@@ -73,6 +73,65 @@
   background: linear-gradient(180deg, var(--red-soft) 0%, var(--red) 100%);
 }
 
+/* THE ETCHED GATES: a notch at every hp fraction where a later rung
+ * wakes — the coming turn is a read on the gauge itself. A crossed
+ * gate is spent and falls back into the metal. */
+.boss-hp-notches {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.boss-hp-notch {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0.125rem;
+  margin-left: -0.0625rem;
+  background: var(--ink-line);
+  opacity: 0.85;
+  box-shadow: 0.0625rem 0 0 var(--parchment-dim);
+}
+.boss-hp-notch.spent {
+  opacity: 0.3;
+  box-shadow: none;
+}
+
+/* THE TURN PULSE: the banner takes the blow when the fight turns —
+ * an ember flash washes the gauge and the frame punches a breath. */
+.boss-hp::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--red-soft);
+  opacity: 0;
+  pointer-events: none;
+}
+#boss-banner.turning .boss-hp::after {
+  animation: boss-gauge-flash 0.9s ease-out;
+}
+#boss-banner.turning {
+  animation: boss-turn-punch 0.5s ease-out;
+}
+@keyframes boss-gauge-flash {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes boss-turn-punch {
+  0% {
+    transform: translateX(-50%) scale(1);
+  }
+  30% {
+    transform: translateX(-50%) scale(1.03);
+  }
+  100% {
+    transform: translateX(-50%) scale(1);
+  }
+}
+
 /* ----------------------------------------------------- the ladder */
 .boss-pips {
   display: flex;
@@ -96,6 +155,20 @@
 .boss-pip.past {
   background: var(--ember-deep);
   opacity: 0.45;
+}
+/* A TRUE turn ignites the standing pip: it lands hot and settles. */
+.boss-pip.ignite {
+  animation: boss-pip-ignite 0.7s ease-out;
+}
+@keyframes boss-pip-ignite {
+  0% {
+    transform: rotate(45deg) scale(1.9);
+    box-shadow: 0 0 0.625rem var(--red-soft);
+  }
+  100% {
+    transform: rotate(45deg) scale(1);
+    box-shadow: 0 0 0.3125rem var(--ember-deep);
+  }
 }
 
 /* ----------------------------------------------------- the reveal */
@@ -156,4 +229,9 @@ body.no-ui-motion .boss-reveal.speaking {
 body.no-ui-motion #boss-banner.felled {
   animation: none;
   opacity: 1;
+}
+body.no-ui-motion #boss-banner.turning,
+body.no-ui-motion #boss-banner.turning .boss-hp::after,
+body.no-ui-motion .boss-pip.ignite {
+  animation: none;
 }

@@ -1422,6 +1422,36 @@ const game = new ClientGame(input, {
   onDeath: (death) => {
     const def = npcDef(death.defId);
     const color = def?.color ?? '#c9ccd4';
+    if (def?.boss) {
+      // THE FELLING: a crowned death is a ceremony, not a pop. The
+      // burst scales to the stakes, an ember column rises where the
+      // crown stood, and a late pale ring gives the kill its echo —
+      // and the exclamation point reads across the whole arena.
+      renderer.particles.burst(death.x, death.y - 0.2, 46, [color, '#f4efe4', '#8a8494'], {
+        speed: 4.8,
+        life: 0.95,
+        gravity: 4,
+      });
+      renderer.particles.burst(death.x, death.y - 0.5, 16, [color, '#f4efe4'], {
+        speed: 2.6,
+        life: 1.35,
+        gravity: 1.2,
+        dir: -Math.PI / 2,
+        spread: 0.35,
+      });
+      renderer.addRing(death.x, death.y - 0.2, color, 1.5);
+      window.setTimeout(() => {
+        renderer.addRing(death.x, death.y - 0.2, 'rgba(244, 239, 228, 0.8)', 2.2);
+      }, 240);
+      sfx.spatial({ x: death.x, y: death.y }, 'mid', () => sfx.kill());
+      if (sfx.listenerDist(death.x, death.y) < 18) {
+        renderer.shake(7);
+        renderer.hitstop(0.12);
+        renderer.zoomPulse(0.06);
+        input.rumble(1, 0.7, 420);
+      }
+      return;
+    }
     renderer.particles.burst(death.x, death.y - 0.2, 22, [color, '#f4efe4', '#8a8494'], {
       speed: 3.6,
       life: 0.7,

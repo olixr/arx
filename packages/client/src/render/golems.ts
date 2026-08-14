@@ -78,6 +78,17 @@ export const GOLEM_LOOKS: Record<string, GolemLook> = {
     shell: '#9ec8dc', deep: '#5a8aa8', lit: '#d8f2ff', under: '#2e4a60',
     accent: '#f0fbff', glow: '#e8faff', heavy: 1.1,
   },
+  anvil_golem: {
+    // THE ANVILHEART (the dread crown): the iron build gone DEEP-
+    // MINE — coal-dark ore mass, seams of raw silver where the picks
+    // opened it, and iron at forging heat standing in the visor and
+    // the chest gaps. The lodestone's copper warmth is traded for
+    // the mine's pale silver: the crown wears what the miners came
+    // for. Broadest iron frame in the ground.
+    build: 'iron',
+    shell: '#4a443e', deep: '#26211c', lit: '#8a8178', under: '#17130f',
+    accent: '#c8ccd4', glow: '#ffb44a', heavy: 1.18,
+  },
 };
 
 /**

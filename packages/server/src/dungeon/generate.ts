@@ -117,7 +117,9 @@ const ROSTERS: Record<DungeonTheme, ThemeRoster> = {
       { npc: 'cave_bat', w: 1 },
     ],
     elite: 'giant_beetle',
-    boss: { npc: 'troll', name: 'The Deep Troll' },
+    // THE DREAD CROWN: the deep seat wears a true crown — the mine's
+    // own keeper (iron build, phased), not a renamed troll.
+    boss: { npc: 'anvil_golem', name: 'The Anvilheart' },
     warden: 'Claim Keeper',
   },
   stronghold: {

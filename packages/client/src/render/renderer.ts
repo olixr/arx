@@ -29553,6 +29553,11 @@ export class Renderer {
       if (remoteEnch) {
         this.wornLight(eid, s.x, s.y, s.dir, remoteEnch, false, remote.buffer.gliding());
       }
+      // THE DREAD PRESENCE: a crowned foe reads as a crown at a
+      // glance, before a single blow — and the air deepens per rung.
+      if (remote.meta.boss && remote.meta.kind === EntityKind.Npc) {
+        this.crownAmbience(s.x, s.y, remote.meta.boss.phase, remote.meta.defId);
+      }
 
       switch (remote.meta.kind) {
         case EntityKind.Player: {
@@ -32382,6 +32387,8 @@ export class Renderer {
   private static readonly GNOLL_SIZE: Record<string, number> = {
     gnoll: 1.18,
     gnoll_champion: 1.42,
+    // The matriarch looms over her own packlords.
+    gnoll_matriarch: 1.55,
   };
 
   /**
@@ -32394,6 +32401,9 @@ export class Renderer {
     iron_golem: 1.6,
     fire_golem: 1.6,
     ice_golem: 1.7,
+    // The crown stands over every iron — and still under the ice:
+    // "the ice golem over all of them" is the standing stature law.
+    anvil_golem: 1.68,
   };
 
   /**
@@ -34783,6 +34793,34 @@ export class Renderer {
    * riding together still read as two things. Spawn rates are
    * frame-time scaled so effect density is fps-stable.
    */
+  /**
+   * THE DREAD PRESENCE (docs/boss-system-plan.md): a crowned body
+   * bends the air around it — a low ground-glow in the crown's own
+   * color and sparse motes rising off the shoulders, both deepening
+   * as the fight climbs the phase ladder. Keyed purely off
+   * EntityMeta.boss (the wire the banner already reads), so plain
+   * flesh pays nothing and a dead wire raises nothing.
+   */
+  private crownAmbience(x: number, y: number, phase: number, defId: string | undefined): void {
+    const col = npcDef(defId ?? '')?.color ?? '#c9ccd4';
+    const rr = Number.parseInt(col.slice(1, 3), 16);
+    const gg = Number.parseInt(col.slice(3, 5), 16);
+    const bb = Number.parseInt(col.slice(5, 7), 16);
+    this.queueGlow(x, y - 0.2, 1.1 + phase * 0.15, `${rr}, ${gg}, ${bb}`, 0.12 + phase * 0.045);
+    const dt = this.frameDt;
+    if (Math.random() < dt * (2.5 + phase * 3.5)) {
+      // Sparse rising motes — presence, never weather; the status
+      // ambiences above stay the louder voice when they land.
+      this.particles.burst(x + (Math.random() - 0.5) * 0.8, y - 0.15, 1, [col, '#f4efe4'], {
+        speed: 0.3,
+        life: 0.9,
+        size: Math.random() < 0.4 ? 0.05 : 0.08,
+        gravity: -0.8,
+        flicker: 0.25,
+      });
+    }
+  }
+
   private statusAmbience(x: number, y: number, bits: number): void {
     // Stealth bits ride the same byte — only DoT/CC bits make weather.
     bits &= STATUS_AMBIENCE_MASK;
