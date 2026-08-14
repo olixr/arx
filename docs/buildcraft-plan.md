@@ -592,3 +592,182 @@ Related law files this plan defers to: enchanting-v2-plan.md (proc engine),
 combat-v2-plan.md (moveset book, finisher branch), techniques-v2-plan.md
 (Callings/FLOURISH), loot-audit 2026-08-14 (acquisition routes frozen),
 VOICE.md, content boundaries.
+
+---
+
+# CAMPAIGN TWO — THE FIGHT SHOWS ITS FACE (the visible buildcraft)
+
+*Drafted 2026-08-14, on the user's directive: the new bonuses, buffs, and
+states must be VISIBLE with the highest level of intent — clear indicators
+where buffs and debuffs are applied, particle language for poisons and
+burns, and set bonuses presented in the inventory as architecture, not a
+bolted-on add-on. Loose ends closed at a foundational level.*
+
+## Part 0 — The audit (receipts verified 2026-08-14, three sweeps)
+
+What THE THINKING BLADE built is mechanically complete and nearly MUTE on
+screen:
+
+- **No application moment exists anywhere.** Statuses have no landing
+  announcement: no edge detection in the client (interpolation carries
+  `status` as a plain field, no prev-bits memory), no server fx on apply
+  (applyStatusToNpc broadcasts only Resist and detonations;
+  applyStatusToPlayer broadcasts nothing). A poison lands and the world
+  says nothing; the ambience simply fades in on the next frame.
+- **The ambience is good bones** (renderer.ts statusAmbience: every state
+  owns a distinct PLACE and RHYTHM — burn rises, chill falls from high,
+  shock jitters fast, bleed drips, venom blebs rise, sunder sheds grey
+  chips from the shoulders) but it predates the matter library, spawns
+  single flat squares, and is the ONLY ongoing signal a DoT is live.
+- **DoT ticks are anonymous.** dotNpc/damagePlayer tick damage rides
+  plain broadcastHit; a bleed tick and a sword hit print identical white
+  numbers. The hurt vignette is red regardless of cause.
+- **A full-health body shows nothing.** Every drawMiniHp call site gates
+  on hpPct < 255, so a freshly-marked, unhurt enemy carries no state
+  blocks at all.
+- **The player cannot see their own wounds.** ownStatus reaches only the
+  body ambience and three stealth getters. The affliction stack nibble
+  the wire carries for exactly this purpose renders on every body EXCEPT
+  the player's own HUD. No self-status element exists; own HP is a bare
+  canvas bar at h-96.
+- **Combat buff chips are outside the material system**: lettered coins
+  styled by inline boxShadow/cssText in hotbar.ts (no CSS rule, no
+  tokens), tooltip = bare name (the wire carries no description),
+  onBuffs fires with zero subscribers, and #buff-tray/#companion-plaque
+  bottom offsets are hand-tuned literals that bypass the LANES tokens.
+- **The House is three lines of prose in one tooltip branch**
+  (panels.ts renderCard, inside `if (rolled)`): a generic stat row + two
+  opacity-dimmed text lines. The client recomputes the worn count by
+  hand over a hardcoded slot list (drift risk: it ignores the
+  armorClass guard the authoritative counter applies); `GearStats.
+  setCounts` is already computed by renderGearStrip's aggregate call and
+  THROWN AWAY. No set display-name registry exists (ids are
+  capitalize()d). The worn manifest, paper-doll anatomy, gear strip,
+  pack grid, compare line, and vault are all set-blind. The compare line
+  will happily recommend a swap that silently breaks a live 4pc word.
+- **Free ground everywhere**: `itemDef(id).gear.set` is in the client
+  bundle at zero wire cost for every pack/worn/vault/loot item; the kit
+  already offers ringGauge, socket, tabRail, ledger, plate; the harm
+  color ramp (--ember-deep/--red) has no HUD consumer yet.
+
+## Part 1 — The laws of this campaign
+
+1. **ONE GRAMMAR, EVERY SCALE.** A state looks the same on a nameplate,
+   on the player's own HUD, and in a tooltip: same hex, same priority
+   order (sunder, bleed, venom, burn, chill, shock), same xN stack
+   voice. The player learns the language once.
+2. **THE LANDING SPEAKS, THE RIDE HUMS.** Application moment = one
+   short library-voiced burst (the announcement); ambience = the quiet
+   ongoing hum. Never two voices at once louder than a strike.
+3. **ONE-VOICE HOLDS.** New status matter composes render/matter/
+   deployments. The per-body ambience keeps its frameDt-gated bespoke
+   voice BY DOCTRINE (bodies are unbounded, emitter records are a
+   scarce pooled resource; the GATE-RETIRES law binds signatures, not
+   body-worn instruments) — recorded in the file header.
+4. **BROKEN MATTER IS NEVER ENERGY.** Bleed and sunder keep zero glow,
+   in ambience and in landing. Blood spatters; stone cracks; neither
+   shines.
+5. **ONE TRUTH FOR THE COUNT.** aggregateGearStats is the ONLY worn-set
+   counter. The client caches one GearStats per equipment push and every
+   surface reads it. The hand-rolled card counter dies.
+6. **THE HOUSE IS A PLACE, NOT A FOOTNOTE.** One court builder renders a
+   House everywhere it appears (stand, item card, bench); pieces declare
+   membership on their sockets; the pack marks what advances a worn
+   house; the compare line refuses to be set-blind.
+7. **TOKENS OR DEATH.** Every new chip, ring, and band rides tokens.ts +
+   stylesheet classes. The inline-styled combat coin is paid off, not
+   extended. New bottom-lane offsets join LANES.
+8. **ADDITIVE WIRE ONLY.** Any wire help (tick attribution, buff
+   descriptions) is optional fields on existing JSON messages — no
+   protocol bump, old clients unharmed.
+9. **HONEST COPY, VOICE-TRUE.** No dashes, no mechanics-speak prefixes
+   like "(2)"; thresholds are shown as pips and plain words. Set word
+   descs already read clean; the frames around them must too.
+
+## Part 2 — The three phases
+
+### Phase V1 — THE LANDING WORD (status VFX mastery)
+
+The world announces every state change, speaking the matter library.
+
+- **Edge detection, client-side** (new render/statusFx.ts): a per-eid
+  prev-bits map swept each frame from the same collect pass that feeds
+  statusAmbience (remotes + own body). Rising edge per status fires its
+  landing; a rising affliction stack nibble fires the smaller re-apply
+  note; falling edges stay silent (consume detonations already have the
+  reaction voice from the server). Map entries die with their eids.
+- **The landing vocabulary** (library deployments, small scale, chest
+  height): burn = fire.burst; chill = frost.bloom; shock =
+  storm.crackle; bleed = blood.spatter; venom = venom.burst; sunder =
+  dust.slam + a beat of hero stone chips (law 4: no glow for bleed or
+  sunder). Stack re-apply notes: venom.bead / blood.drip single.
+- **Ambience texture pass**: two-size grain populations; bleed and venom
+  adopt the v5 drop silhouette (falling drips, rising blebs read as
+  liquid); rhythm law and palettes unchanged.
+- **DoT ticks sign their work**: broadcastHit gains optional
+  `via: StatusId` from dotNpc/tickStatuses paths; the client tints tick
+  floats per status (burn #ff8a3c, bleed #c4372a, venom #a0c050) at a
+  quieter sizeMul than strikes. Own-body DoT ticks tint the hurt
+  vignette toward the status color (a green edge says POISON without a
+  word).
+- **The full-health body confesses**: drawMiniHp call sites gate on
+  `hpPct < 255 || (status & STATUS_AMBIENCE_MASK)`; at full health the
+  gauge is skipped and only the state block row draws.
+- Tests: statusFx edge logic (pure), via-field pass-through, gate law.
+
+### Phase V2 — THE BODY KNOWS ITS WOUNDS (self-status + buff HUD refit)
+
+- **THE WOUND ROW**: the player's own states drawn on canvas directly
+  beneath the own HP bar — the nameplate grammar scaled up (state
+  blocks in the one priority order, xN stack text), drawn from
+  ownStatus every frame beside drawHpBar. No timers invented: the wire
+  carries bits and stacks, and that is what is shown.
+- **The combat coin pays its debt**: .buff-chip.combat (+ glyph span)
+  moves into the stylesheet on tokens; the lettered-coin idiom stays.
+- **Chips learn to speak**: BuffInfo gains optional `desc` composed
+  server-side from the buff's real fields ("+15% damage for a breath");
+  titles become name + desc; chips gain data-tipname so pad focus gets
+  the same words.
+- **Lanes take the strays**: #buff-tray and #companion-plaque offsets
+  join the LANES tokens.
+- Tests: sendBuffs desc composition, chip key stability.
+
+### Phase V3 — THE HOUSE COURT (set bonuses as architecture)
+
+- **ONE TRUTH**: panels caches GearStats per equipment push; the card's
+  hand counter dies; every surface below reads the cache.
+- **SET_NAMES**: authored display names for all 46 families in
+  setWords.ts (compound ids get their spaces back), pinned by a
+  coverage test beside the words pin.
+- **houseCourt(setId, count)** — ONE builder renders a House: name in
+  brass, ring gauge N of 5 around the count, the two words as rows with
+  lit state (lit = gold ink + filled pip; unlit = ghost ink + "at two
+  pieces" / "at four pieces" in plain words). Deployed:
+  - **The stand**: a House band in the character room for every worn
+    family (0-2 in practice; empty = silent, no furniture for nothing).
+  - **The item card**: the court replaces the bolted prose block,
+    whenever the def carries a set (no longer gated on rolled).
+  - **The bench**: same DOM re-parented — free by construction.
+- **The anatomy speaks**: equipCell stamps data-set; sockets of a
+  family with 2+ worn share a corner pip tint (corner-truth compliant).
+- **The pack knows the house**: an applyHouseMarks pass (the
+  applyReqGate precedent) stamps a small house pip on pack cells whose
+  set matches a worn family with pieces still missing.
+- **The compare line stops lying**: swapping a piece that breaks a live
+  word says "breaks <word>" in ember; completing a threshold says
+  "wakes <word>" in gold.
+- Tests: SET_NAMES coverage, court threshold logic, compare set-awareness.
+
+### Phase V4 — THE LOOSE ENDS (foundational close)
+
+Vault sockets take the same house marks via the getEquipment thunk;
+reduced-motion and pad-nav paths verified on every new surface; ?fx and
+dress-char screenshot audits; full suites; as-builts; memory.
+
+## Part 3 — What this campaign does NOT do
+
+No new gameplay numbers move. No protocol bump. No buff-duration wire for
+statuses (bits and stacks only — inventing timers the wire does not carry
+would lie). Momentum and micro-buffs stay off the HUD by Phase 5's
+standing design. The armory/vault set SORT and a full "collection browser"
+for unworn houses are recorded as deliberate follow-on doors, not scope.
