@@ -54,7 +54,15 @@ export class Session {
    */
   lastCenterChunk: string | null = null;
 
-  private readonly inputBucket = new TokenBucket(25, 50);
+  /**
+   * Input frames refill at a hair over the 20Hz tick rate — the burst
+   * absorbs jitter, but SUSTAINED overrate must not clear the tick
+   * rate: the drain's 2-per-tick catch-up converts a standing backlog
+   * into real extra movement (a 25/s refill let a hostile client walk
+   * at 1.25x forever). 21/s leaves honest clock skew room and caps
+   * the exploit at a meaningless 1.05x.
+   */
+  private readonly inputBucket = new TokenBucket(21, 50);
   private readonly chatBucket = new TokenBucket(1, 4);
   private readonly miscBucket = new TokenBucket(10, 20);
   private readonly authBucket = new TokenBucket(0.3, 5);

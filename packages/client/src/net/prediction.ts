@@ -1,4 +1,5 @@
 import {
+  CHILL_SPEED_FACTOR,
   DODGE_COOLDOWN_SEQ,
   DRAW_MOVE_FACTOR,
   InputButton,
@@ -32,7 +33,16 @@ export class Predictor {
   private prev: Vec2 = { x: 0, y: 0 };
   /** 0..1 fraction through the current tick, set by the game loop. */
   renderAlpha = 1;
-  private pending: InputFrame[] = [];
+  /**
+   * Unacked frames, each stamped with the SPEED it was first simmed at
+   * — reconcile replays with the frame's own historical speed, never
+   * today's (a mid-flight ride/chill change used to mis-replay the
+   * whole queue at the new multiplier). Rooting is re-judged live at
+   * replay instead: it is seq-deterministic, and a root learned LATE
+   * (a charged cast's fire message) must still root the frames it
+   * covers.
+   */
+  private pending: Array<{ frame: InputFrame; speed: number }> = [];
   private errX = 0;
   private errY = 0;
   private lastDodgeSeq = -999;
@@ -58,6 +68,20 @@ export class Predictor {
    * prediction would have rubber-banded every frame.
    */
   speedMult = 1;
+  /**
+   * THE PREDICTOR FEELS THE COLD: chilled bodies walk at
+   * CHILL_SPEED_FACTOR on the server — mirrored here from the own
+   * snapshot's status bit. Without it a chilled player over-predicts
+   * at 1.8x the authoritative speed for the chill's whole life and
+   * rubber-bands every frame. One RTT stale at the edges, honest for
+   * the duration.
+   */
+  chilled = false;
+  /**
+   * Drawn-bow walk factor with perks folded (Longstride) — mirrored
+   * from S2CRide; the bare constant is only the fallback.
+   */
+  drawFactor = DRAW_MOVE_FACTOR;
 
   constructor(
     private readonly collision: CollisionSource,
@@ -95,16 +119,22 @@ export class Predictor {
     return out;
   }
 
-  /** Per-frame speed — drawing a bow brakes exactly like the server. */
+  /** Rooted while committed to a cast (the frames after the cast frame). */
+  private rooted(seq: number): boolean {
+    return seq > this.lastCastSeq && seq <= this.lastCastSeq + this.lastCastFreeze;
+  }
+
+  /**
+   * Per-frame speed — every factor the server applies, mirrored:
+   * draw-slow (perk-folded), the steady ride mult, and the chill.
+   */
   private frameSpeed(frame: InputFrame): number {
-    // Rooted while committed to a cast (the frames after the cast frame).
-    if (frame.seq > this.lastCastSeq && frame.seq <= this.lastCastSeq + this.lastCastFreeze) {
-      return 0;
-    }
-    return (
-      (isDrawSlowed(frame, this.weaponStyle) ? this.speed * DRAW_MOVE_FACTOR : this.speed) *
-      this.speedMult
-    );
+    if (this.rooted(frame.seq)) return 0;
+    let speed =
+      (isDrawSlowed(frame, this.weaponStyle) ? this.speed * this.drawFactor : this.speed) *
+      this.speedMult;
+    if (this.chilled) speed *= CHILL_SPEED_FACTOR;
+    return speed;
   }
 
   /** The shared per-frame move: normal step + optional dodge impulse. */
@@ -128,19 +158,22 @@ export class Predictor {
   }
 
   applyInput(frame: InputFrame): void {
-    this.pending.push(frame);
+    this.pending.push({ frame, speed: this.frameSpeed(frame) });
     this.prev = this.pos;
     this.pos = this.simFrame(this.pos, frame, true);
   }
 
   reconcile(authoritative: Vec2, lastProcessedSeq: number): void {
-    while (this.pending.length > 0 && this.pending[0]!.seq <= lastProcessedSeq) {
+    while (this.pending.length > 0 && this.pending[0]!.frame.seq <= lastProcessedSeq) {
       this.pending.shift();
     }
     const before = this.pos;
     let pos = { ...authoritative };
-    for (const frame of this.pending) {
-      pos = stepMovement(pos, frame, this.frameSpeed(frame), TICK_DT, this.collision);
+    for (const { frame, speed } of this.pending) {
+      // The frame's own historical speed; rooting re-judged live so a
+      // root learned late (a charged cast's fire) covers its frames.
+      const replaySpeed = this.rooted(frame.seq) ? 0 : speed;
+      pos = stepMovement(pos, frame, replaySpeed, TICK_DT, this.collision);
       // Replay the committed dodge/cast impulses on their exact frames.
       if (frame.seq === this.lastDodgeSeq) {
         pos = applyDodge(pos, frame.mx, frame.my, this.collision);

@@ -1501,6 +1501,14 @@ interface PlayerComp {
   lastBlockFxTick: number;
   poseUntilTick: number;
   lastDodgeSeq: number;
+  /**
+   * ONE LAW, TWO CLOCKS for the dodge too: seqs are client-authored,
+   * so the seq-only cooldown could be inflated away (a ~24-seq jump
+   * per frame = a fresh dodge every frame = 21 tiles/s of legal
+   * wall-sliding). The tick twin is the server's own wall clock; an
+   * honest 20Hz client sees both expire on the same frame.
+   */
+  lastDodgeTick: number;
   /** Ticks the bow has been drawn; 0 = not drawing. */
   drawTicks: number;
   /** Client-reported adaptive interp delay, ms (v8) — exact lag comp. */
@@ -3311,6 +3319,7 @@ export class GameServer {
       lastBlockFxTick: 0,
       poseUntilTick: 0,
       lastDodgeSeq: -999,
+      lastDodgeTick: -999,
       drawTicks: 0,
       combo: freshCombo(),
       attackBufferedUntilTick: 0,
@@ -4640,14 +4649,22 @@ export class GameServer {
    */
   private sendRide(player: PlayerComp): void {
     const mult = this.steadySpeedMult(player);
-    const sig = `${player.mountId ?? ''}|${mult.toFixed(4)}|${player.mountsOwned.size}`;
+    // Longstride's drawn-bow walk rides the same mirror: the predictor
+    // must know the perk or every drawn step under-predicts by the
+    // whole perk margin (a permanent rubber-drag for archers).
+    const draw = Math.max(DRAW_MOVE_FACTOR, player.perks.drawMoveFactor);
+    // The roster signature joins the ids, not the count — a same-size
+    // swap of owned mounts must still speak.
+    const owned = [...player.mountsOwned];
+    const sig = `${player.mountId ?? ''}|${mult.toFixed(4)}|${draw.toFixed(4)}|${owned.join(',')}`;
     if (sig === player.rideSigSent) return;
     player.rideSigSent = sig;
     player.session?.sendJson({
       t: 'ride',
       mount: player.mountId,
       mult,
-      owned: [...player.mountsOwned],
+      draw,
+      owned,
     });
   }
 
@@ -12710,6 +12727,7 @@ export class GameServer {
     }
     if (!best) {
       sys('Nothing wild in reach answers the call.');
+      this.sendCooldowns(player); // THE HONEST REFUSAL: take back the optimistic pay
       return;
     }
     const npc = best.npc;
@@ -12717,6 +12735,7 @@ export class GameServer {
     const tame = tameDef(npc.def.id)!;
     if (player.characterId < 0) {
       sys('A companion needs a keeper the world will remember. Guests pass through.');
+      this.sendCooldowns(player);
       return;
     }
     // THE BEAST SETS THE BAR (user mandate 2026-08-13): the gate is
@@ -12730,10 +12749,12 @@ export class GameServer {
         `Needs beastcraft ${npc.def.level}`,
         `It is a level ${npc.def.level} beast, and your beastcraft is ${bc}. It will not answer you yet.`,
       );
+      this.sendCooldowns(player);
       return;
     }
     if (player.pets.length >= PET_CAP) {
       this.speak(player, 'Stalls full', 'Your stalls are full. Three is a household.');
+      this.sendCooldowns(player);
       return;
     }
     // You may finish a fight it started with you — never steal one it
@@ -12746,6 +12767,7 @@ export class GameServer {
         { x: best.x, y: best.y },
         'note',
       );
+      this.sendCooldowns(player);
       return;
     }
     const lureName = itemDef(tame.lure)?.name.toLowerCase() ?? tame.lure;
@@ -12756,10 +12778,14 @@ export class GameServer {
         `It noses your pack for ${lureName} and finds none.`,
         { x: best.x, y: best.y },
       );
+      this.sendCooldowns(player);
       return;
     }
     const health = this.healths.get(targetEid);
-    if (!health || health.hp <= 0) return;
+    if (!health || health.hp <= 0) {
+      this.sendCooldowns(player);
+      return;
+    }
 
     // Every refusal has spoken — NOW the cast is paid for.
     player.abilityCd[slot] = Math.max(1, Math.round(ab.cooldownTicks * player.gear.cooldownMult));
@@ -13040,10 +13066,12 @@ export class GameServer {
       const best = this.wildBeastInCone(pos, aim, ab.range ?? 5);
       if (!best) {
         sys('Nothing wild in reach hears you.');
+        this.sendCooldowns(player); // THE HONEST REFUSAL
         return;
       }
       if (isBeastSovereign(best.npc.def)) {
         sys('That one is too proud to be stilled.');
+        this.sendCooldowns(player);
         return;
       }
       this.payKeeperCast(eid, player, slot, ab);
@@ -13083,6 +13111,7 @@ export class GameServer {
       const petUp = petEid !== null && (this.healths.get(petEid)?.hp ?? 0) > 0;
       if (ears.length === 0 && !petUp) {
         sys('Nothing wild is near enough to hear you.');
+        this.sendCooldowns(player);
         return;
       }
       this.payKeeperCast(eid, player, slot, ab);
@@ -13127,6 +13156,7 @@ export class GameServer {
     const row = player.pets.find((p) => p.state === 'heel');
     if (!row) {
       sys('No friend walks with you.');
+      this.sendCooldowns(player); // THE HONEST REFUSAL
       return;
     }
     const petEid = player.petEid;
@@ -13137,6 +13167,7 @@ export class GameServer {
       case 'heel': {
         if (petDown) {
           sys('Your friend is down. Kneel to it instead.');
+          this.sendCooldowns(player);
           return;
         }
         this.payKeeperCast(eid, player, slot, ab);
@@ -13178,10 +13209,12 @@ export class GameServer {
       case 'fang': {
         if (petEid === null) {
           sys('Your friend is not beside you.');
+          this.sendCooldowns(player);
           return;
         }
         if (petDown) {
           sys('Your friend is down. Kneel to it instead.');
+          this.sendCooldowns(player);
           return;
         }
         const range = ab.range ?? 7;
@@ -13206,6 +13239,7 @@ export class GameServer {
         }
         if (!mark) {
           sys('Nothing in reach to point at.');
+          this.sendCooldowns(player);
           return;
         }
         this.payKeeperCast(eid, player, slot, ab);
@@ -16850,6 +16884,11 @@ export class GameServer {
     // per pair of hands, and the refusal is predictable, not clever.
     if (player.casting) {
       if (player.casting.slot === slot) this.cancelCasting(eid, player);
+      // THE HONEST REFUSAL: the other-slot press may have paid an
+      // optimistic client cooldown — the authoritative snapshot takes
+      // it back (a refusal used to leave the ghost cooldown standing
+      // for its whole length, with no message on any refusal path).
+      else this.sendCooldowns(player);
       return;
     }
     // THE HELD NOTE: pressing the singing slot again ends the note —
@@ -16862,8 +16901,18 @@ export class GameServer {
     }
     const ab = this.slotAbility(player, slot);
     if (!ab) return;
-    if (player.abilityCd[slot] > 0) return;
-    if (this.tickCount < player.castFreezeUntilTick) return;
+    if (player.abilityCd[slot] > 0) {
+      // THE HONEST REFUSAL: the client thought this slot ready (its
+      // ms mirror drifted, or a catch-up tick skewed the clocks) and
+      // has already paid — resend the truth so the radial recovers
+      // now, not at the next unrelated success.
+      this.sendCooldowns(player);
+      return;
+    }
+    if (this.tickCount < player.castFreezeUntilTick) {
+      this.sendCooldowns(player); // same law: refusals speak
+      return;
+    }
     // THE LOAN LAW: a dormant seat (unmastered secret, teacher away)
     // refuses quietly — no cooldown, no freeze, nothing spent.
     {
@@ -18192,6 +18241,14 @@ export class GameServer {
           untilTick: this.tickCount + self.durationTicks,
         }),
       );
+      // THE VISIBLE FIGHT keeps its word: the named stance chip must
+      // ride the wire the moment it is born — without this, the chip
+      // only surfaced if some unrelated buff push happened to fire,
+      // and a whole stance could live and die invisible.
+      this.sendBuffs(player);
+      // A stance carrying speed changes the steady mult THIS tick —
+      // the ride mirror is what the predictor walks by.
+      if (self.speedMult !== undefined) this.sendRide(player);
     }
   }
 
@@ -25588,13 +25645,18 @@ export class GameServer {
         if (pressed & InputButton.Ability3) this.tryCastAbility(eid, player, 2, frame.aim, aimPt);
         if (pressed & InputButton.Ability4) this.tryCastAbility(eid, player, 3, frame.aim, aimPt);
       }
-      // Dodge dash: same seq-cooldown rule the client predicts with.
+      // Dodge dash: same seq-cooldown rule the client predicts with —
+      // plus the tick twin (ONE LAW, TWO CLOCKS): the seq half keeps
+      // the mirror deterministic, the tick half keeps the cooldown
+      // honest against a client-authored seq counter.
       if (
         hasButton(frame.buttons, InputButton.Dodge) &&
         frame.seq >= player.lastDodgeSeq + DODGE_COOLDOWN_SEQ &&
+        this.tickCount >= player.lastDodgeTick + DODGE_COOLDOWN_SEQ &&
         Math.hypot(frame.mx, frame.my) > 0.01
       ) {
         player.lastDodgeSeq = frame.seq;
+        player.lastDodgeTick = this.tickCount;
         const dashed = applyDodge(pos, frame.mx, frame.my, this.world);
         pos.x = dashed.x;
         pos.y = dashed.y;

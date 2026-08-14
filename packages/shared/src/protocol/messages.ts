@@ -1267,6 +1267,13 @@ export interface S2CRide {
   mount: string | null;
   /** Steady speed multiplier over PLAYER_SPEED (rideSpeedMult output). */
   mult: number;
+  /**
+   * Drawn-bow walk factor, perks folded (max of DRAW_MOVE_FACTOR and
+   * Longstride) — the predictor's draw-slow must walk the server's
+   * number, not the bare constant. Optional: absent on old servers,
+   * the client falls back to the constant.
+   */
+  draw?: number;
   /** Mount def ids this character owns (the stable row's truth). */
   owned: string[];
 }

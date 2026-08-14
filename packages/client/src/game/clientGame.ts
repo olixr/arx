@@ -17,6 +17,9 @@ import {
   PLAYER_SPEED,
   PROTOCOL_VERSION,
   SHEATHED_BIT,
+  STATUS_BIT,
+  DRAW_MOVE_FACTOR,
+  groundAimRange,
   SNEAK_DETECTED_BIT,
   SNEAK_HIDDEN_BIT,
   TICK_MS,
@@ -677,6 +680,26 @@ export class ClientGame {
     return this.effectiveSheathed() || seq < this.drawLockUntilSeq;
   }
 
+  /** The predicted sheathe truth, for UI consumers (the aim ring). */
+  sheathedNow(): boolean {
+    return this.effectiveSheathed();
+  }
+
+  /**
+   * ONE LAW, TWO MIRRORS for the aim ring: true while the NEXT cast
+   * press would be refused (weapons away, cast freeze, a winding
+   * breath). The ring must not arm-and-swallow a press the server
+   * would refuse anyway — the refusal shape should be the same one
+   * every other lane shows.
+   */
+  castGateClosed(): boolean {
+    return (
+      this.weaponsAway(this.inputSeq) ||
+      this.inputSeq < this.castFreezeUntilSeq ||
+      this.ownCast !== null
+    );
+  }
+
   /** Tap-to-move autopilot; cancelled by any manual movement input. */
   private autoPath: Vec2[] | null = null;
   /** Drop entity to take the moment the auto-walk brings it in reach. */
@@ -919,6 +942,11 @@ export class ClientGame {
       // spends this press drawing steel (THE SAFETY) — no cast fires,
       // so no radial starts and no cooldown is paid locally either.
       if (this.weaponsAway(frame.seq)) continue;
+      // The cast-freeze gate, mirrored — the melee and staff lanes
+      // already checked it; the cast lane wrote the clock and then
+      // forgot to read it, so a press inside the freeze paid a
+      // cooldown the server was refusing.
+      if (frame.seq < this.castFreezeUntilSeq) continue;
       // THE DRAWN BREATH, mirrored: a second press of the winding slot
       // is the cancel; any other slot is refused while the breath holds.
       if (this.ownCast) {
@@ -938,17 +966,52 @@ export class ClientGame {
         this.onCastStart?.(slot, ab);
         continue;
       }
-      this.abilityReadyAt[slot] = now + ab.cooldownTicks * TICK_MS;
-      this.abilityMax[slot] = ab.cooldownTicks;
+      // Pay with the SERVER'S OWN denominator when it has spoken (the
+      // cooldowns push bakes gear.cooldownMult); the raw def value is
+      // only the first-ever fallback — and never overwrite the
+      // discounted max with the undiscounted one (the radial's
+      // denominator used to jump on every cloth-discounted cast).
+      const cdTicks = this.abilityMax[slot] > 0 ? this.abilityMax[slot] : ab.cooldownTicks;
+      this.abilityReadyAt[slot] = now + cdTicks * TICK_MS;
+      if (this.abilityMax[slot] <= 0) this.abilityMax[slot] = ab.cooldownTicks;
       this.drawStartAt = 0; // casting lets the bowstring down
       this.castFreezeUntilSeq = frame.seq + (ab.castFreezeTicks ?? 0);
       this.predictor.registerCast(
         frame.seq,
         ab.castFreezeTicks ?? 0,
-        ab.shape === 'dash_strike' ? { tiles: ab.dashTiles ?? 3, aim: frame.aim } : null,
+        this.castImpulse(ab, frame),
       );
       this.onCastFx?.(slot, ab);
     }
+  }
+
+  /**
+   * The movement impulse a cast carries, for the predictor: the
+   * dash-strike's charge, and THE LEAP PREDICTED — a leap released on
+   * an aimed ring flies the same clamped hop the server will fly
+   * (same reach ruler, same min(hop, dist) law, and applyCastDash IS
+   * the server's 0.4-substep loop), so the landing stops being a
+   * four-tile pop. An unaimed leap (touch/hotbar tap) keeps the
+   * server's aim-assist and stays unpredicted — the snap is honest
+   * there.
+   */
+  private castImpulse(
+    ab: AbilityDef,
+    frame: InputFrame,
+  ): { tiles: number; aim: number } | null {
+    if (ab.shape === 'dash_strike') return { tiles: ab.dashTiles ?? 3, aim: frame.aim };
+    if (ab.shape === 'leap_slam' && frame.tx !== undefined && frame.ty !== undefined) {
+      const p = this.predictor.pos;
+      const reach = groundAimRange(ab);
+      let dx = frame.tx - p.x;
+      let dy = frame.ty - p.y;
+      const dist = Math.hypot(dx, dy);
+      const clamped = Math.min(dist, reach);
+      if (clamped < 0.05) return null;
+      const hop = Math.min(Math.abs(ab.dashTiles ?? 4), clamped);
+      return { tiles: hop, aim: Math.atan2(dy, dx) };
+    }
+    return null;
   }
 
   /**
@@ -1864,7 +1927,26 @@ export class ClientGame {
           this.ownCast = null;
           if (msg.state === 'fire') {
             const ab = cast?.ab ?? this.slotAbilityDef(msg.slot as AbilitySlot);
-            if (ab) this.onCastFx?.(msg.slot as AbilitySlot, ab);
+            if (ab) {
+              this.onCastFx?.(msg.slot as AbilitySlot, ab);
+              // THE CHARGED ROOT: a cast-time art roots the server
+              // body for castFreezeTicks at its FIRE — the client used
+              // to keep walking at full speed through the whole
+              // commitment (and a charged dash-strike moved the server
+              // body with zero prediction). Anchor on the last applied
+              // frame: the root starts one wire-trip late and ends
+              // equally late, a bounded skew instead of a total miss.
+              const freeze = ab.castFreezeTicks ?? 0;
+              const dash =
+                ab.shape === 'dash_strike'
+                  ? { tiles: ab.dashTiles ?? 3, aim: this.aim }
+                  : null;
+              if (freeze > 0 || dash) {
+                const anchor = this.inputSeq - 1;
+                this.castFreezeUntilSeq = Math.max(this.castFreezeUntilSeq, anchor + freeze);
+                this.predictor.registerCast(anchor, freeze, dash);
+              }
+            }
           }
         }
         break;
@@ -1965,6 +2047,9 @@ export class ClientGame {
         this.ownMount = msg.mount;
         this.ownedMounts = msg.owned;
         this.predictor.speedMult = msg.mult;
+        // ...and its drawn-bow walk: the perk-folded factor (Longstride)
+        // rides the same mirror; the bare constant is only the fallback.
+        this.predictor.drawFactor = msg.draw ?? DRAW_MOVE_FACTOR;
         this.onRide?.();
         break;
       }
@@ -3189,6 +3274,9 @@ export class ClientGame {
         if (this.ownSwing && e.pose === this.ownSwing.pose) this.ownSwing = null;
         this.ownPose = e.pose;
         this.ownStatus = e.status;
+        // THE PREDICTOR FEELS THE COLD: the chill bit drives the same
+        // speed factor the server walks by (CHILL_SPEED_FACTOR).
+        this.predictor.chilled = (e.status & STATUS_BIT.chill) !== 0;
         // The sheathe mirror retires the moment the server bit agrees
         // (same-value handover, the PREDICTED BLOW pattern); a claim
         // the server never confirms — a dropped frame — goes stale

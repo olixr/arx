@@ -1855,8 +1855,15 @@ game.onCallings = () => panels.setCallings(game.callings);
 // steered once per render frame further down.
 const groundAim = new GroundAimController({
   slotAbility: (slot) => game.slotAbilityDef(slot),
-  slotReady: (slot) => game.abilityCdFraction(slot) === 0 && !game.seatDormant(slot),
-  sheathed: () => game.isSheathed,
+  // ONE LAW, TWO MIRRORS: the ring reads the same gates the cast
+  // mirror refuses by — a closed gate must not arm-and-swallow the
+  // press (the server was going to refuse it; let the refusal wear
+  // its normal shape).
+  slotReady: (slot) =>
+    game.abilityCdFraction(slot) === 0 && !game.seatDormant(slot) && !game.castGateClosed(),
+  // The PREDICTED sheathe truth — the snapshot bit is a round trip
+  // stale and armed rings it shouldn't.
+  sheathed: () => game.sheathedNow(),
   touchBits: () => input.touchAbilityBits(),
 });
 game.groundAim = groundAim;

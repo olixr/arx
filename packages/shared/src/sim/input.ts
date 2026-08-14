@@ -65,10 +65,14 @@ export function sanitizeInputFrame(f: InputFrame): InputFrame {
     my /= len;
   }
   // Sneaking caps movement speed: honest clients already scaled their axes,
-  // so this only bites a client claiming stealth at full tilt.
-  if ((f.buttons & InputButton.Sneak) !== 0 && len > SNEAK_FACTOR) {
-    mx = (mx / len) * SNEAK_FACTOR;
-    my = (my / len) * SNEAK_FACTOR;
+  // so this only bites a client claiming stealth at full tilt. Judge by
+  // the POST-normalization length — dividing by the raw one re-shrank
+  // an already-normalized vector to SNEAK_FACTOR/len (fails safe, but
+  // it is not the cap the comment promises).
+  const elen = Math.min(len, 1);
+  if ((f.buttons & InputButton.Sneak) !== 0 && elen > SNEAK_FACTOR) {
+    mx = (mx / elen) * SNEAK_FACTOR;
+    my = (my / elen) * SNEAK_FACTOR;
   }
   const out: InputFrame = {
     seq: f.seq >>> 0,
