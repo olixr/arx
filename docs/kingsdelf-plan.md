@@ -317,6 +317,31 @@ town is inside the artifact.**
    Kingsdelf pattern, joining the lowhall ring, with the fence's counter
    near it. Decided and placed during the build, per the lowhall laws.
 
+**THE SURVEY (Phase-5 coordinate contract — local tiles on
+KINGSDELF_RECT (-320,240) 128×96; world = local + origin).** The stair
+law (south-facing flights) resolves the bowl into a SOUTH-FACING
+QUARRY AMPHITHEATER: the high working face and rim along the north
+(L2), benches stepping down through L1, the delf floor at L0 running
+south to the quay and the Ashmere shore in the south-west corner (the
+wall dies into the water at both ends — the mole law). The Brand looms
+behind the north face; the drowned workings receive the south. Route
+landings are LAW (profiled, committed in geography): **east gate =
+local (126,20)** on the Gate Shelf; **north wicket = local (60,0)**.
+Draft anchors (settled to the tile during the build's desk audit, the
+usual way): spawn on the market round beside the Unfinished Stone
+~(60.5,64.5); the Unfinished Stone block ~(58-62,64-67); Sealed Stair
+cut into the north face ~(34-40,30-34) with the names-stone; the
+Countinghouse cut into the face ~(44-56,28-36), windowless vault
+behind; Foreman's Rest on Bench Row ~(66-80,30-40); the Beastyard on
+the Gate Shelf ~(100-118,6-16); Glasshouse on the floor east
+~(84-98,56-66); Starfall Forge floor west ~(24-38,56-66); assay house
+~(44-52,70-76); masons' yard ~(24-36,70-80); the Sump pool ~(70,78)
+with FishingSpot ×2; quay ~(46-70,88-93) with the fisher's shack; town
+ore faces (mithril ×3, adamant ×2) in the bench walls; Flamehouse west
+bench ~(12-22,30-38); homes along the west benches; wardroom by the
+east gate ~(118-126,26-34); the Company hatch placed during the build
+(READ red-company memory first).
+
 **Architecture.** Cut stone out of the delf itself — the town is built
 from its own quarry, mortared ashlar below, timber only in roofs and
 galleries (boards are imports; the town uses them like spice). The 45°
