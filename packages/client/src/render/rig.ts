@@ -3348,6 +3348,13 @@ export interface GoblinLook {
   /** The lit eye bead — bright, mean, and too small for the head. */
   eye: string;
   /**
+   * The loincloth wrap: every goblin owns real underwear — a cloth
+   * band lapping the pelvis with a torn apron front and seat. Dirty
+   * scrap-cloth on the rabble, school-dyed on the casters, oiled
+   * leather under the warboss iron.
+   */
+  cloth: string;
+  /**
    * The casters' ragged half-cowl and shawl; undefined = the bare
    * chest and scrap belt of the rank-and-file.
    */
@@ -3375,6 +3382,7 @@ export const GOBLIN_LOOKS: Record<string, GoblinLook> = {
     belly: '#b9cb8c',
     ink: '#2a2416',
     eye: '#ffd84a',
+    cloth: '#7c6648',
     heavy: 1,
   },
   // The thrower: a wirier build a shade toward olive — the arm that
@@ -3384,6 +3392,7 @@ export const GOBLIN_LOOKS: Record<string, GoblinLook> = {
     belly: '#c4c690',
     ink: '#2a2416',
     eye: '#ffd84a',
+    cloth: '#6e6a52',
     heavy: 0.88,
   },
   // The firecaller: sallow hide under an ember-dyed rag cowl — the
@@ -3393,6 +3402,7 @@ export const GOBLIN_LOOKS: Record<string, GoblinLook> = {
     belly: '#cbc892',
     ink: '#2b2214',
     eye: '#ffb23a',
+    cloth: '#8a5230',
     garb: '#b85c26',
     heavy: 1,
   },
@@ -3403,6 +3413,7 @@ export const GOBLIN_LOOKS: Record<string, GoblinLook> = {
     belly: '#a8bd82',
     ink: '#232a18',
     eye: '#b9e04a',
+    cloth: '#3d4a34',
     garb: '#333f2a',
     heavy: 1.05,
   },
@@ -3414,6 +3425,7 @@ export const GOBLIN_LOOKS: Record<string, GoblinLook> = {
     belly: '#9cb478',
     ink: '#241f14',
     eye: '#ff9a3a',
+    cloth: '#54412e',
     topknot: '#33251a',
     tusks: true,
     scarred: true,
@@ -3591,17 +3603,19 @@ export function paintGoblinHead(
   if (profileK < 0.72 || back) drawEar(-nearSide, back ? 1 : 0.82);
   drawEar(nearSide, 1);
 
-  // --- cranium block.
+  // --- cranium block: chamfered ROUND — a skull, not a crate. The
+  // crown corners cut deep and the jaw corners deeper than the other
+  // dialects because the jowls below rebuild the width the cuts take.
   ctx.fillStyle = hide;
   ctx.beginPath();
-  chamferRect(ctx, headX - gw, crTop, gw * 2, crBot - crTop, [cut * 1.2, cut * 1.2, cut * 0.9, cut * 0.9]);
+  chamferRect(ctx, headX - gw, crTop, gw * 2, crBot - crTop, [cut * 1.8, cut * 1.8, cut * 1.3, cut * 1.3]);
   ctx.fill();
   if (!hurt) {
     // THE FORM SPLIT restated for hide: hard shade right half, lit
     // crown band, jaw under-shade — the block reads as mass.
     ctx.save();
     ctx.beginPath();
-    chamferRect(ctx, headX - gw, crTop, gw * 2, crBot - crTop, [cut * 1.2, cut * 1.2, cut * 0.9, cut * 0.9]);
+    chamferRect(ctx, headX - gw, crTop, gw * 2, crBot - crTop, [cut * 1.8, cut * 1.8, cut * 1.3, cut * 1.3]);
     ctx.clip();
     ctx.fillStyle = shade(gb.hide, -10);
     ctx.fillRect(headX, crTop, gw, crBot - crTop);
@@ -3611,6 +3625,19 @@ export function paintGoblinHead(
     ctx.fillRect(headX - gw, crBot - hh * 0.1, gw * 2, hh * 0.1);
     ctx.restore();
   }
+  // --- the jowls: cheek masses bulging past the chamfer line, low
+  // and wide — the fed-on-anything face. Far jowl steps smaller at
+  // the three-quarter bands; both read from behind as skull width.
+  const drawJowl = (side: number, depth: number): void => {
+    const jx = headX - fx * gw * 0.08 + side * gw * 0.8;
+    const jy = headY + hh * 0.24;
+    ctx.fillStyle = hurt ? '#ffffff' : shade(gb.hide, side === (fx >= 0 ? 1 : -1) ? -2 : -9);
+    ctx.beginPath();
+    ctx.ellipse(jx, jy, gw * 0.3 * depth, hh * 0.3 * depth, 0, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  if (profileK < 0.72 || back) drawJowl(-nearSide, back ? 0.9 : 0.78);
+  drawJowl(nearSide, back ? 0.9 : 0.95);
 
   if (back) {
     // --- the occiput: no face from behind. Hide courses, the nape
@@ -3643,36 +3670,69 @@ export function paintGoblinHead(
     return;
   }
 
-  // --- the born scowl: one heavy brow ledge angling down toward the
-  // nose root — the goblin is angry before anything has happened.
+  // --- THE BROW LEDGE: one protruding shelf of bone dipping toward
+  // the nose root — a carved form, not a drawn-on frown. Its shadow
+  // line hoods the eyes, and the goblin is angry before anything has
+  // happened.
   const eyeY = headY - hh * 0.14;
   const eCx = headX + fx * gw * 0.16;
-  if (!hurt) {
+  if (!hurt && !back) {
+    const blW = gw * 0.82 * (1 - 0.2 * profileK);
+    const blTop = eyeY - hh * 0.42;
+    ctx.fillStyle = shade(gb.hide, -12);
+    ctx.beginPath();
+    ctx.moveTo(eCx - blW, blTop + hh * 0.1);
+    ctx.quadraticCurveTo(eCx - blW * 0.4, blTop - hh * 0.04, eCx + fx * gw * 0.02, blTop + hh * 0.12);
+    ctx.quadraticCurveTo(eCx + blW * 0.4, blTop - hh * 0.04, eCx + blW, blTop + hh * 0.1);
+    ctx.lineTo(eCx + blW * 0.86, blTop + hh * 0.26);
+    ctx.quadraticCurveTo(eCx + blW * 0.3, blTop + hh * 0.14, eCx + fx * gw * 0.02, blTop + hh * 0.3);
+    ctx.quadraticCurveTo(eCx - blW * 0.3, blTop + hh * 0.14, eCx - blW * 0.86, blTop + hh * 0.26);
+    ctx.closePath();
+    ctx.fill();
+    // The lit top plane of the shelf — bone catching the sky.
+    ctx.fillStyle = shade(gb.hide, 6);
+    ctx.beginPath();
+    ctx.moveTo(eCx - blW * 0.9, blTop + hh * 0.1);
+    ctx.quadraticCurveTo(eCx - blW * 0.4, blTop - hh * 0.02, eCx + fx * gw * 0.02, blTop + hh * 0.13);
+    ctx.quadraticCurveTo(eCx + blW * 0.4, blTop - hh * 0.02, eCx + blW * 0.9, blTop + hh * 0.1);
+    ctx.lineTo(eCx + blW * 0.7, blTop + hh * 0.16);
+    ctx.quadraticCurveTo(eCx, blTop + hh * 0.04, eCx - blW * 0.7, blTop + hh * 0.16);
+    ctx.closePath();
+    ctx.fill();
+    // The shadow under the shelf: the hooded-eye line.
     ctx.strokeStyle = gb.ink;
-    ctx.lineWidth = Math.max(1.5, hh * 0.09);
+    ctx.lineWidth = Math.max(1, hh * 0.045);
     for (const side of [-1, 1] as const) {
       if (profileK > 0.72 && side !== nearSide) continue;
-      const bx = eCx + side * gw * 0.4 * (1 - 0.3 * profileK);
+      const bx = eCx + side * gw * 0.38 * (1 - 0.3 * profileK);
       ctx.beginPath();
-      ctx.moveTo(bx + side * gw * 0.2, eyeY - hh * 0.3);
-      ctx.lineTo(bx - side * gw * 0.1, eyeY - hh * 0.16);
+      ctx.moveTo(bx + side * gw * 0.2, eyeY - hh * 0.22);
+      ctx.quadraticCurveTo(bx, eyeY - hh * 0.3, bx - side * gw * 0.14, eyeY - hh * 0.18);
       ctx.stroke();
     }
   }
 
-  // --- beady eyes on the fixed eye line: a bright bead with a slit
-  // pupil, far eye slipping around the corner at profile.
+  // --- the eyes: wide, SLANTED toward the temples under the brow
+  // shelf — the D&D goblin read — with a slit pupil, the far eye
+  // slipping around the corner at profile.
   for (const side of [-1, 1] as const) {
     if (profileK > 0.72 && side !== nearSide) continue;
-    const ex = eCx + side * gw * 0.36 * (1 - 0.32 * profileK);
+    const ex = eCx + side * gw * 0.37 * (1 - 0.32 * profileK);
+    const slant = -side * 0.3;
     ctx.fillStyle = hurt ? '#ffffff' : gb.eye;
     ctx.beginPath();
-    ctx.ellipse(ex, eyeY, hh * 0.115, hh * 0.1, 0, 0, Math.PI * 2);
+    ctx.ellipse(ex, eyeY, hh * 0.15, hh * 0.088, slant, 0, Math.PI * 2);
     ctx.fill();
     if (!hurt) {
+      // The socket's inner corner shade seats the eye in the skull.
+      ctx.strokeStyle = shade(gb.hide, -22);
+      ctx.lineWidth = Math.max(1, hh * 0.03);
+      ctx.beginPath();
+      ctx.ellipse(ex, eyeY, hh * 0.15, hh * 0.088, slant, Math.PI * 0.15, Math.PI * 0.9);
+      ctx.stroke();
       ctx.fillStyle = gb.ink;
       ctx.beginPath();
-      ctx.ellipse(ex + fx * hh * 0.03, eyeY + hh * 0.01, hh * 0.038, hh * 0.075, 0, 0, Math.PI * 2);
+      ctx.ellipse(ex + fx * hh * 0.03, eyeY + hh * 0.005, hh * 0.036, hh * 0.07, slant * 0.5, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -3792,49 +3852,82 @@ export function paintGoblinHead(
     }
   }
 
-  // --- THE HOOK NOSE, last so it overhangs the grin: a down-hooked
-  // wedge leading the facing — a narrow drop face-on, run out long at
-  // profile — ending in a bulbed tip with one ink nostril. Filled
-  // form with an outline, never a stroke chain.
-  const nl = gw * (0.26 + 0.58 * profileK);
-  const nRootY = eyeY + hh * 0.04;
+  // --- the cheek creases: the nasolabial folds from nostril flare
+  // toward the mouth corners — the two lines that age a face out of
+  // cartoon. Drawn before the nose so the flare overlaps their start.
+  if (!hurt && profileK < 0.85) {
+    ctx.strokeStyle = shade(gb.hide, -18);
+    ctx.lineWidth = Math.max(1, hh * 0.035);
+    for (const side of [-1, 1] as const) {
+      if (profileK > 0.6 && side !== nearSide) continue;
+      const cx0 = eCx + side * gw * 0.24;
+      ctx.beginPath();
+      ctx.moveTo(cx0, mouthY - hh * 0.32);
+      ctx.quadraticCurveTo(cx0 + side * gw * 0.22, mouthY - hh * 0.16, mCx + side * mHw * 0.86, mouthY - hh * 0.06);
+      ctx.stroke();
+    }
+  }
+
+  // --- THE HOOK NOSE, last so it overhangs the grin: a BROAD wedge
+  // off the brow root, hooking down to a pointed tip past the grin
+  // seam — wide nostril flares at the underside, a lit bridge plane
+  // on top. Carved planes with an outline, never a stick and a ball.
+  const nl = gw * (0.3 + 0.54 * profileK);
+  const nRootX = headX + fx * gw * 0.16;
+  const nRootY = eyeY + hh * 0.02;
+  const rootW = gw * 0.2;
   const tipX = headX + fx * (gw * 0.24 + nl);
-  // Face-on the hook drops PAST the grin seam — the overhanging beak
-  // that names the profile even when there is no profile to read.
-  const tipY = mouthY + hh * 0.08 - hh * 0.12 * profileK;
-  ctx.fillStyle = hurt ? '#ffffff' : shade(gb.hide, 7);
+  const tipY = mouthY + hh * 0.1 - hh * 0.14 * profileK;
+  const flareY = mouthY - hh * 0.22;
+  const flareW = gw * 0.3 * (1 - 0.4 * profileK);
+  ctx.fillStyle = hurt ? '#ffffff' : shade(gb.hide, 5);
   ctx.beginPath();
-  ctx.moveTo(headX + fx * gw * 0.16 - gw * 0.17, nRootY);
+  ctx.moveTo(nRootX - rootW, nRootY);
+  // Leading edge: bridge bows out, then hooks down to the point.
   ctx.quadraticCurveTo(
-    headX + fx * (gw * 0.2 + nl * 0.8) - gw * 0.02,
-    nRootY - hh * 0.05,
+    nRootX + fx * nl * 0.85 - gw * 0.02,
+    nRootY - hh * 0.06,
     tipX,
     tipY,
   );
-  ctx.quadraticCurveTo(
-    headX + fx * (gw * 0.16 + nl * 0.35),
-    tipY + hh * 0.02,
-    headX + fx * gw * 0.16 + gw * 0.17,
-    nRootY,
-  );
+  // Underside: back up through the near nostril flare — the wide
+  // goblin nostrils are the wedge's own base, not a dot on a ball.
+  ctx.quadraticCurveTo(tipX - fx * gw * 0.1 + flareW * 0.4, tipY - hh * 0.015, nRootX + fx * gw * 0.06 + flareW, flareY + hh * 0.1);
+  ctx.quadraticCurveTo(nRootX + fx * gw * 0.04, flareY + hh * 0.16, nRootX + fx * gw * 0.02 - flareW, flareY + hh * 0.09);
+  ctx.lineTo(nRootX + rootW * (fx >= 0 ? -0.4 : 0.4), nRootY + hh * 0.06);
   ctx.closePath();
   ctx.fill();
   if (!hurt) {
     ctx.strokeStyle = shade(gb.hide, -26);
-    ctx.lineWidth = Math.max(1, hh * 0.05);
+    ctx.lineWidth = Math.max(1, hh * 0.045);
     ctx.stroke();
-    // The tip bulb and its one dark nostril.
-    ctx.fillStyle = shade(gb.hide, 12);
+    // The lit bridge plane: one bright facet down the leading edge —
+    // the carved read at a glance.
+    ctx.fillStyle = shade(gb.hide, 14);
     ctx.beginPath();
-    ctx.arc(tipX, tipY, hh * 0.09, 0, Math.PI * 2);
+    ctx.moveTo(nRootX - rootW * 0.4, nRootY + hh * 0.02);
+    ctx.quadraticCurveTo(nRootX + fx * nl * 0.7, nRootY - hh * 0.02, tipX - fx * gw * 0.05, tipY - hh * 0.08);
+    ctx.quadraticCurveTo(nRootX + fx * nl * 0.5, nRootY + hh * 0.08, nRootX - rootW * 0.1, nRootY + hh * 0.09);
+    ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = shade(gb.hide, -26);
-    ctx.lineWidth = Math.max(1, hh * 0.04);
-    ctx.stroke();
+    // The underside shade seats the wedge over the mouth...
+    ctx.fillStyle = shade(gb.hide, -14);
+    ctx.beginPath();
+    ctx.moveTo(tipX, tipY);
+    ctx.quadraticCurveTo(tipX - fx * gw * 0.12, tipY - hh * 0.02, nRootX + fx * gw * 0.05 + flareW * 0.7, flareY + hh * 0.12);
+    ctx.quadraticCurveTo(tipX - fx * gw * 0.06, tipY - hh * 0.09, tipX, tipY);
+    ctx.closePath();
+    ctx.fill();
+    // ...and the nostrils flare wide off it: ink wedges, one each
+    // side face-on, the near one alone at profile.
     ctx.fillStyle = gb.ink;
-    ctx.beginPath();
-    ctx.ellipse(tipX - fx * hh * 0.02, tipY + hh * 0.06, hh * 0.036, hh * 0.025, 0, 0, Math.PI * 2);
-    ctx.fill();
+    for (const side of [-1, 1] as const) {
+      if (profileK > 0.6 && side !== nearSide) continue;
+      const nx = nRootX + fx * gw * 0.05 + side * flareW * 0.72;
+      ctx.beginPath();
+      ctx.ellipse(nx, flareY + hh * 0.1, hh * 0.045, hh * 0.03, side * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 }
 
@@ -3850,6 +3943,94 @@ export interface GoblinBodyFrame {
   backK: number;
   lead: number;
   hurt: boolean;
+}
+
+/**
+ * THE LOINCLOTH — every goblin owns real underwear. A cloth wrap
+ * lapping the pelvis hip to hip, with a torn apron hanging over the
+ * front and a seat flap covering the back band: coverage from every
+ * facing, never a naked hip line. Drawn in the torso's local frame
+ * over the legs and UNDER the gut overpaint, and — unlike the gut —
+ * for EVERY variant: the warboss wears its wrap under the scavenged
+ * iron the way every soldier ever has.
+ */
+export function paintGoblinLoincloth(
+  ctx: CanvasRenderingContext2D,
+  gb: GoblinLook,
+  f: GoblinBodyFrame,
+): void {
+  const { s, ww, fx, backK, hurt } = f;
+  if (hurt) return;
+  const back = backK > 0.55;
+  const cloth = gb.cloth;
+  const bw = ww * 1.04;
+  const topY = -0.05 * s;
+  const bandH = 0.095 * s;
+  // --- the wrap band: hip to hip, wider than the waist so it reads
+  // as cloth AROUND the body, not paint on it.
+  ctx.fillStyle = cloth;
+  ctx.beginPath();
+  chamferRect(ctx, -bw, topY, bw * 2, bandH, 0.018 * s);
+  ctx.fill();
+  ctx.save();
+  ctx.beginPath();
+  chamferRect(ctx, -bw, topY, bw * 2, bandH, 0.018 * s);
+  ctx.clip();
+  // Form split + the fold creases of wound cloth.
+  ctx.fillStyle = shade(cloth, -11);
+  ctx.fillRect(0, topY, bw, bandH);
+  ctx.fillStyle = shade(cloth, 8);
+  ctx.fillRect(-bw, topY, bw * 2, bandH * 0.3);
+  ctx.strokeStyle = shade(cloth, -18);
+  ctx.lineWidth = Math.max(1, s * 0.012);
+  for (const u of [-0.45, 0.15, 0.62]) {
+    ctx.beginPath();
+    ctx.moveTo(bw * u, topY + bandH * 0.15);
+    ctx.lineTo(bw * (u + 0.12), topY + bandH);
+    ctx.stroke();
+  }
+  ctx.restore();
+  // --- the apron: a hanging flap with a torn hem — the front drape
+  // facing the camera, the seat flap facing away. It leads the facing
+  // a touch so profile bands keep their coverage too.
+  const aw = ww * (0.62 + 0.1 * (1 - Math.abs(fx)));
+  const ax = fx * ww * 0.16;
+  const drop = 0.15 * s * (0.94 + 0.18 * (gb.heavy - 1));
+  const hemY = topY + bandH + drop;
+  ctx.fillStyle = back ? shade(cloth, -7) : shade(cloth, -3);
+  ctx.beginPath();
+  ctx.moveTo(ax - aw, topY + bandH - 0.024 * s);
+  ctx.lineTo(ax + aw, topY + bandH - 0.024 * s);
+  // The torn hem: ragged teeth, never a tailored edge.
+  ctx.lineTo(ax + aw * 0.86, hemY - 0.02 * s);
+  for (let i = 3; i >= 0; i--) {
+    const u = (i / 3) * 2 - 1;
+    const tear = 0.028 * s * (0.5 + 0.5 * Math.sin(i * 2.7 + 1.2));
+    ctx.lineTo(ax + u * aw * 0.66 + aw * 0.1, hemY - 0.022 * s);
+    ctx.lineTo(ax + u * aw * 0.66, hemY + tear - 0.01 * s);
+  }
+  ctx.lineTo(ax - aw * 0.86, hemY - 0.02 * s);
+  ctx.closePath();
+  ctx.fill();
+  // The drape's center fold and one honest patch: cloth that has
+  // been worn, washed never, and mended once.
+  ctx.strokeStyle = shade(cloth, -16);
+  ctx.lineWidth = Math.max(1, s * 0.013);
+  ctx.beginPath();
+  ctx.moveTo(ax + fx * aw * 0.2, topY + bandH);
+  ctx.lineTo(ax + fx * aw * 0.26, hemY - 0.03 * s);
+  ctx.stroke();
+  if (!back) {
+    ctx.fillStyle = shade(cloth, 12);
+    ctx.beginPath();
+    chamferRect(ctx, ax - aw * 0.46, topY + bandH + drop * 0.28, 0.05 * s, 0.04 * s, 0.008 * s);
+    ctx.fill();
+    ctx.strokeStyle = shade(cloth, -16);
+    ctx.lineWidth = Math.max(1, s * 0.008);
+    ctx.beginPath();
+    chamferRect(ctx, ax - aw * 0.46, topY + bandH + drop * 0.28, 0.05 * s, 0.04 * s, 0.008 * s);
+    ctx.stroke();
+  }
 }
 
 /**
@@ -7235,6 +7416,22 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       th,
       fx,
       backK,
+      hurt: rig.hurt,
+    });
+  }
+  // Every goblin wears the loincloth wrap — the warboss keeps it
+  // under the scavenged iron the way every soldier ever has.
+  if (gob) {
+    paintGoblinLoincloth(ctx, gob, {
+      s,
+      tw,
+      ww,
+      th,
+      fx,
+      fy,
+      profileK,
+      backK,
+      lead,
       hurt: rig.hurt,
     });
   }
