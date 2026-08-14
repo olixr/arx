@@ -224,7 +224,7 @@
 #buff-tray {
   position: absolute;
   right: calc(50% + 9.375rem);
-  bottom: 1.125rem;
+  bottom: var(--lane-chips);
   display: flex;
   gap: 0.5625rem;
   pointer-events: auto;
@@ -238,6 +238,26 @@
   background: rgba(24, 18, 12, 0.68);
   border: 0.09375rem solid rgba(8, 6, 3, 0.75);
   box-shadow: inset 0 0 0 0.09375rem rgba(217, 164, 65, 0.4), 0 0.125rem 0.25rem rgba(6, 4, 2, 0.45);
+}
+
+/* THE LETTERED COIN — a combat buff has no item behind it: a brass
+   ring and the working's initials, the charge chip's sibling. The
+   dress lives here (never inline) so the coin family re-skins with
+   the tokens. */
+.buff-chip.combat {
+  box-shadow: inset 0 0 0 0.09375rem rgba(232, 182, 76, 0.5), 0 0.125rem 0.25rem rgba(6, 4, 2, 0.45);
+}
+
+.buff-chip .coin-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  text-shadow: var(--punch-small);
 }
 
 .buff-chip.tonic {

@@ -10,7 +10,7 @@
 #companion-plaque {
   position: absolute;
   right: calc(50% + 9.375rem);
-  bottom: 4.0625rem;
+  bottom: var(--lane-plaque);
   display: flex;
   align-items: center;
   padding: 0;

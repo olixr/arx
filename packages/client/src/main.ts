@@ -1361,7 +1361,9 @@ const game = new ClientGame(input, {
     if (hit.isOwn && hit.dmg > 0) {
       // Taking a hit is body feedback, not world audio — always flat.
       renderer.shake(hit.crit ? 10 : 7);
-      renderer.flashHurt();
+      // A DoT pulse tints the edge toward its wound — green says
+      // POISON before any word does.
+      renderer.flashHurt(hit.via);
       sfx.hurt();
       input.rumble(0.6, 0.25, 160);
     } else {

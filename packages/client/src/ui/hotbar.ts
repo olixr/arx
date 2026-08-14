@@ -305,13 +305,13 @@ export class Hotbar {
         if (b.channel === 'combat') {
           // THE VISIBLE FIGHT: a combat chip has no item behind it —
           // a lettered coin in the tray, the charge chip's sibling.
-          chip.title = b.name;
-          chip.style.boxShadow =
-            'inset 0 0 0 1.5px rgba(232, 182, 76, 0.5), 0 2px 4px rgba(6, 4, 2, 0.45)';
+          // Dress lives in hotbar.css (.buff-chip.combat/.coin-glyph);
+          // THE CHIP SPEAKS: the server-composed effect line rides the
+          // title so hovering a coin tells what it does, not just its
+          // name.
+          chip.title = b.desc ? `${b.name}: ${b.desc}` : b.name;
           const glyph = document.createElement('span');
-          glyph.style.cssText =
-            'display:flex;align-items:center;justify-content:center;width:100%;height:100%;' +
-            "font:700 13px 'Trebuchet MS',sans-serif;color:#e8c04c;";
+          glyph.className = 'coin-glyph';
           glyph.textContent = b.name
             .split(/\s+/)
             .map((w) => w[0] ?? '')
@@ -320,7 +320,7 @@ export class Hotbar {
             .toUpperCase();
           chip.append(glyph, secs);
         } else {
-          chip.title = `${b.name}: ${b.channel === 'food' ? 'well fed' : 'tonic'}`;
+          chip.title = `${b.name}: ${b.desc ?? (b.channel === 'food' ? 'well fed' : 'tonic')}`;
           const img = document.createElement('img');
           img.src = itemIconUrl(b.id, 34);
           img.draggable = false;

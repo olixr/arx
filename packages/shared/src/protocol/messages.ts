@@ -908,6 +908,13 @@ export interface S2CHit {
    * client says "Immune" instead of painting a zero.
    */
   im?: boolean;
+  /**
+   * The wound that ticked this damage — DoT pulses sign their status
+   * so the client can ink the number and tint the hurt edge (THE
+   * LANDING WORD). Absent on struck blows. Additive wire fact: old
+   * clients ignore it, no protocol bump.
+   */
+  via?: 'burn' | 'bleed' | 'venom';
 }
 
 /** An NPC died (killed by someone) — drives the death effect. */
@@ -1176,6 +1183,13 @@ export interface BuffInfo {
    */
   channel: string;
   secsLeft: number;
+  /**
+   * Plain-words effect line composed server-side from the buff's LIVE
+   * fields ("+25% crit, a ward of 40") — truthful by construction,
+   * never a client roster that could drift. Additive wire fact; an
+   * older client shows the bare name.
+   */
+  desc?: string;
 }
 
 /** The player's active chip-worthy buffs (sent on gain + expiry). */

@@ -150,6 +150,8 @@ import { frost } from './matter/frost.js';
 import { storm } from './matter/storm.js';
 import { asMatter } from './matter/index.js';
 import { speakBreath } from './breathFx.js';
+import { StatusEdges, statusLanding, STATUS_INK, STATUS_VIGNETTE_RGB } from './statusFx.js';
+import type { MatterCtx } from './matter/types.js';
 import {
   DITHER_CELL,
   FADE_BODY_BELOW,
@@ -875,6 +877,9 @@ interface DrawItem {
 export class Renderer {
   readonly camera = new Camera();
   readonly particles = new Particles();
+  /** THE LANDING WORD: per-body status memory for application moments. */
+  private statusEdges = new StatusEdges();
+  private matterCtxCache: MatterCtx | null = null;
   /** Smashed-prop chunk bodies — pooled, wall-aware, self-clearing. */
   readonly debris = new Debris();
   /** Ambient bird flocks — land, peck, and flush when a body comes close. */
@@ -1161,6 +1166,8 @@ export class Renderer {
   private h = 0;
   private hitstopUntil = 0;
   private vignetteUntil = 0;
+  /** Hurt-band ink — a DoT tick tints the edge toward its wound. */
+  private vignetteRgb = '196, 60, 40';
   private zoomPulseAmount = 0;
   private readonly rings: Array<{ x: number; y: number; color: string; bornAt: number; maxR: number }> = [];
   /**
@@ -1260,9 +1267,14 @@ export class Renderer {
     this.hitstopUntil = Math.max(this.hitstopUntil, performance.now() + seconds * 1000);
   }
 
-  /** Red edge flash when the local player takes damage. */
-  flashHurt(): void {
+  /**
+   * Red edge flash when the local player takes damage. A DoT tick
+   * names its wound and the bands take that ink (green edge = POISON,
+   * no words needed); a plain blow stays the standing red.
+   */
+  flashHurt(via?: 'burn' | 'bleed' | 'venom'): void {
     this.vignetteUntil = performance.now() + 320;
+    this.vignetteRgb = via ? STATUS_VIGNETTE_RGB[via] : '196, 60, 40';
   }
 
   /** Expanding impact ring at a world position. */
@@ -4990,7 +5002,7 @@ export class Renderer {
     const ctx = this.ctx;
     const a = Math.min(1, remaining / 320) * 0.32;
     const band = Math.max(10, this.w * 0.025);
-    ctx.fillStyle = `rgba(196, 60, 40, ${a})`;
+    ctx.fillStyle = `rgba(${this.vignetteRgb}, ${a})`;
     ctx.fillRect(0, 0, this.w, band);
     ctx.fillRect(0, this.h - band, this.w, band);
     ctx.fillRect(0, band, band, this.h - band * 2);
@@ -29450,6 +29462,9 @@ export class Renderer {
   }
 
   private collectEntities(game: ClientGame, items: DrawItem[]): void {
+    // THE LANDING WORD: one frame tick for the status edge memory —
+    // every visible body observes below; unseen bodies age out.
+    this.statusEdges.sweep();
     const t = game.renderTime();
     // Projectiles live on the server-NOW timeline: extrapolated to
     // their true in-flight position instead of the interp past — your
@@ -29510,6 +29525,11 @@ export class Renderer {
         continue;
       }
       const hurt = (remote.hurtUntil ?? 0) > now;
+      // THE LANDING WORD: a state that ROSE this frame announces
+      // itself once; the ambience below is the ongoing hum.
+      for (const ev of this.statusEdges.observe(eid, s.status)) {
+        statusLanding(this.matterHost(), s.x, s.y, ev);
+      }
       if (s.status) this.statusAmbience(s.x, s.y, s.status);
       const remoteEnch = remote.meta.appearance?.ench;
       if (remoteEnch) {
@@ -29769,6 +29789,9 @@ export class Renderer {
 
     if (game.ownEid !== null) {
       const own = game.predictor.renderPos();
+      for (const ev of this.statusEdges.observe(game.ownEid, game.ownStatus)) {
+        statusLanding(this.matterHost(), own.x, own.y, ev);
+      }
       if (game.ownStatus) this.statusAmbience(own.x, own.y, game.ownStatus);
       // The rig only wants item IDS — strip the equip map's rolls,
       // keeping just the enchant ids (they ARE appearance). Rebuilt
@@ -31364,7 +31387,7 @@ export class Renderer {
           ctx.fillStyle = e.nameInk ?? (e.isOwn ? '#e8b64c' : '#efe3c2');
           ctx.fillText(label, p.x, topY);
         }
-        if (e.hpPct < 255) {
+        if (e.hpPct < 255 || ((e.status ?? 0) & STATUS_AMBIENCE_MASK) !== 0) {
           this.drawMiniHp(p.x, topY + s * 0.08, 0.7 * s, e.hpPct, e.status);
         }
       },
@@ -31559,30 +31582,36 @@ export class Renderer {
     const ctx = this.ctx;
     // Sharp block gauge — a sliver of the brutalist UI over the world.
     const h = Math.max(3, this.camera.scale * 0.08);
-    ctx.fillStyle = 'rgba(24, 14, 32, 0.85)';
-    ctx.fillRect(x - w / 2 - 1, y - 1, w + 2, h + 2);
-    ctx.fillStyle = '#54303a';
-    ctx.fillRect(x - w / 2, y, w, h);
-    ctx.fillStyle = '#4fc06a';
-    ctx.fillRect(x - w / 2, y, Math.max(2, w * (hpPct / 255)), h);
+    // THE FULL-HEALTH BODY CONFESSES: an unhurt body carrying states
+    // skips the gauge and speaks only its state blocks on the bar
+    // line — a freshly marked target shows its mark before first blood.
+    if (hpPct < 255) {
+      ctx.fillStyle = 'rgba(24, 14, 32, 0.85)';
+      ctx.fillRect(x - w / 2 - 1, y - 1, w + 2, h + 2);
+      ctx.fillStyle = '#54303a';
+      ctx.fillRect(x - w / 2, y, w, h);
+      ctx.fillStyle = '#4fc06a';
+      ctx.fillRect(x - w / 2, y, Math.max(2, w * (hpPct / 255)), h);
+    }
     // THE VISIBLE FIGHT: state blocks under the gauge — one square
     // per riding state, build-relevant first (the mark, the wounds,
     // then the sparks), capped at four; the affliction stack count
     // stands beside them. Same brutalist sliver family as the bar.
+    // Inks read from STATUS_INK (ONE GRAMMAR, EVERY SCALE).
     const states = status & STATUS_AMBIENCE_MASK;
     if (!states) return;
     const d = Math.max(3, this.camera.scale * 0.07);
     const order: ReadonlyArray<readonly [number, string]> = [
-      [STATUS_BIT.sunder, '#b8b2a6'],
-      [STATUS_BIT.bleed, '#c4372a'],
-      [STATUS_BIT.venom, '#a0c050'],
-      [STATUS_BIT.burn, '#ff8a3c'],
-      [STATUS_BIT.chill, '#8ac4e8'],
-      [STATUS_BIT.shock, '#e8e06a'],
+      [STATUS_BIT.sunder, STATUS_INK.sunder!],
+      [STATUS_BIT.bleed, STATUS_INK.bleed!],
+      [STATUS_BIT.venom, STATUS_INK.venom!],
+      [STATUS_BIT.burn, STATUS_INK.burn!],
+      [STATUS_BIT.chill, STATUS_INK.chill!],
+      [STATUS_BIT.shock, STATUS_INK.shock!],
     ];
     const shown = order.filter(([bit]) => (states & bit) !== 0).slice(0, 4);
     let sx = x - (shown.length * (d + 2) - 2) / 2;
-    const sy = y + h + 3;
+    const sy = hpPct < 255 ? y + h + 3 : y;
     for (const [, color] of shown) {
       ctx.fillStyle = 'rgba(24, 14, 32, 0.85)';
       ctx.fillRect(sx - 1, sy - 1, d + 2, d + 2);
@@ -32687,7 +32716,7 @@ export class Renderer {
           ctx.fillStyle = nameInk ?? '#f0cf8a';
           ctx.fillText(label, p.x, topY);
         }
-        if (s.hpPct < 255) {
+        if (s.hpPct < 255 || ((s.status ?? 0) & STATUS_AMBIENCE_MASK) !== 0) {
           this.drawMiniHp(p.x, p.y - r * 2.45, r * 2, s.hpPct, s.status);
         }
       },
@@ -32768,7 +32797,7 @@ export class Renderer {
           ctx.fillStyle = nameInk ?? '#f0cf8a';
           ctx.fillText(label, p.x, labelTop);
         }
-        if (s.hpPct < 255) {
+        if (s.hpPct < 255 || ((s.status ?? 0) & STATUS_AMBIENCE_MASK) !== 0) {
           this.drawMiniHp(p.x, labelTop + 0.12 * scale, r * 2, s.hpPct, s.status);
         }
       },
@@ -32865,7 +32894,7 @@ export class Renderer {
           ctx.fillStyle = nameInk ?? '#f0cf8a';
           ctx.fillText(label, p.x, labelTop);
         }
-        if (s.hpPct < 255) {
+        if (s.hpPct < 255 || ((s.status ?? 0) & STATUS_AMBIENCE_MASK) !== 0) {
           this.drawMiniHp(p.x, labelTop + 0.12 * scale, r * 2, s.hpPct, s.status);
         }
       },
@@ -34446,6 +34475,14 @@ export class Renderer {
 
   // ----------------------------------------------------- combat fx
 
+  /** The renderer as a matter-library host (statusFx landings). */
+  private matterHost(): MatterCtx {
+    return (this.matterCtxCache ??= {
+      particles: this.particles,
+      glow: (x, y, r, rgb, a) => this.queueGlow(x, y, r, rgb, a),
+    });
+  }
+
   /**
    * Ambient status VFX riding an entity: embers for burn, drifting
    * frost for chill, spark jitter for shock, falling drips for bleed,
@@ -34462,22 +34499,26 @@ export class Renderer {
     if (bits & STATUS_BIT.burn) {
       this.queueGlow(x, y - 0.3, 0.9, '255, 138, 60', 0.3);
       if (Math.random() < dt * 14) {
+        // Two-grain fire: fines carry the texture, body embers the heat.
         this.particles.burst(x + (Math.random() - 0.5) * 0.4, y - 0.2, 1, ['#ff8a3c', '#e8763c', '#ffd24a'], {
           speed: 0.7,
           life: 0.5,
-          size: 0.08,
+          size: Math.random() < 0.35 ? 0.045 : 0.085,
           gravity: -2.2,
+          flicker: 0.3,
         });
       }
     }
     if (bits & STATUS_BIT.chill) {
       this.queueGlow(x, y - 0.3, 0.8, '138, 196, 232', 0.22);
       if (Math.random() < dt * 8) {
+        // Frost motes settle: sparse glints among the falling grain.
         this.particles.burst(x + (Math.random() - 0.5) * 0.5, y - 0.7, 1, ['#c8ecff', '#8ac4e8'], {
           speed: 0.25,
           life: 0.7,
-          size: 0.07,
+          size: Math.random() < 0.3 ? 0.045 : 0.07,
           gravity: 0.8,
+          shape: Math.random() < 0.25 ? 'glint' : 'square',
         });
       }
     }
@@ -34494,11 +34535,14 @@ export class Renderer {
     }
     if (bits & STATUS_BIT.bleed) {
       if (Math.random() < dt * 9) {
+        // THE LIQUID LAW: blood falls as drops, not squares — fines
+        // between the body drips keep the wound textured.
         this.particles.burst(x + (Math.random() - 0.5) * 0.3, y - 0.35, 1, ['#c4372a', '#8e2015'], {
           speed: 0.3,
           life: 0.45,
-          size: 0.07,
+          size: Math.random() < 0.35 ? 0.045 : 0.075,
           gravity: 4.5,
+          shape: 'drop',
         });
       }
     }
@@ -34506,11 +34550,14 @@ export class Renderer {
       // Sickly green blebs drifting UP — the poison working out of the wound.
       this.queueGlow(x, y - 0.3, 0.8, '160, 192, 80', 0.22);
       if (Math.random() < dt * 10) {
+        // Liquid blebs, not squares — the poison beads as it rises.
         this.particles.burst(x + (Math.random() - 0.5) * 0.35, y - 0.3, 1, ['#a0c050', '#6a8a2a', '#c8e04a'], {
           speed: 0.35,
           life: 0.6,
-          size: 0.07,
+          size: Math.random() < 0.35 ? 0.05 : 0.075,
           gravity: -1.2,
+          shape: 'drop',
+          wobble: 0.4,
         });
       }
     }
@@ -34520,11 +34567,14 @@ export class Renderer {
       // broken matter, not energy, and the dead palette plus the
       // hard fall keeps it apart from bleed's slow red drips.
       if (Math.random() < dt * 7) {
+        // Angular masonry, tumbling as it drops — never a soft square.
         this.particles.burst(x + (Math.random() - 0.5) * 0.5, y - 0.55, 1, ['#b8b2a6', '#8a8478', '#6a6458'], {
           speed: 0.4,
           life: 0.4,
-          size: 0.07,
+          size: Math.random() < 0.3 ? 0.05 : 0.08,
           gravity: 5.0,
+          shape: 'shard',
+          spin: 5,
         });
       }
     }
@@ -35102,7 +35152,8 @@ export class Renderer {
           ctx.beginPath();
           facetCircle(ctx, p.x, p.y - sc * 0.78, sc * 0.15, 6, 0.3);
           ctx.fill();
-          if (s.hpPct < 255) this.drawMiniHp(p.x, p.y - sc * 1.05, sc * 0.66, s.hpPct, s.status);
+          if (s.hpPct < 255 || ((s.status ?? 0) & STATUS_AMBIENCE_MASK) !== 0)
+            this.drawMiniHp(p.x, p.y - sc * 1.05, sc * 0.66, s.hpPct, s.status);
         }
       },
     };
@@ -38861,5 +38912,52 @@ export class Renderer {
     ctx.beginPath();
     chamferRect(ctx, bx - 3, by - 3, bw + 6, bh + 6, 5);
     ctx.stroke();
+    this.drawOwnWounds(game, by);
+  }
+
+  /**
+   * THE WOUND ROW (visible-buildcraft V2): the player's own riding
+   * states, on the vitality gauge's shoulder. ONE GRAMMAR, EVERY
+   * SCALE — the same inks, the same priority order, and the same xN
+   * stack voice as every nameplate, scaled up for the owner. It
+   * stands ABOVE the bar because the hotbar owns the south edge; no
+   * timers are invented (the wire carries bits and stacks, and that
+   * is what is shown). Empty when clean — no furniture for nothing.
+   */
+  private drawOwnWounds(game: ClientGame, barY: number): void {
+    const states = game.ownStatus & STATUS_AMBIENCE_MASK;
+    if (!states) return;
+    const ctx = this.ctx;
+    const order: ReadonlyArray<readonly [number, string]> = [
+      [STATUS_BIT.sunder, STATUS_INK.sunder!],
+      [STATUS_BIT.bleed, STATUS_INK.bleed!],
+      [STATUS_BIT.venom, STATUS_INK.venom!],
+      [STATUS_BIT.burn, STATUS_INK.burn!],
+      [STATUS_BIT.chill, STATUS_INK.chill!],
+      [STATUS_BIT.shock, STATUS_INK.shock!],
+    ];
+    const shown = order.filter(([bit]) => (states & bit) !== 0);
+    const d = 12;
+    const gap = 5;
+    const stacks = afflictionStacksOf(game.ownStatus);
+    const stackW = stacks >= 2 ? 26 : 0;
+    let sx = this.w / 2 - (shown.length * (d + gap) - gap + stackW) / 2;
+    const sy = barY - d - 8;
+    for (const [, color] of shown) {
+      ctx.fillStyle = 'rgba(24, 14, 32, 0.85)';
+      ctx.fillRect(sx - 2, sy - 2, d + 4, d + 4);
+      ctx.fillStyle = color;
+      ctx.fillRect(sx, sy, d, d);
+      sx += d + gap;
+    }
+    if (stacks >= 2) {
+      ctx.font = "700 12px 'Trebuchet MS', sans-serif";
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle = 'rgba(24, 14, 32, 0.9)';
+      ctx.fillText(`x${stacks}`, sx + 2.5, sy + d + 0.5);
+      ctx.fillStyle = '#efe3c2';
+      ctx.fillText(`x${stacks}`, sx + 1, sy + d - 1);
+    }
   }
 }

@@ -132,6 +132,7 @@ export type InteractTarget =
   | { kind: 'seat'; tx: number; ty: number }
   | { kind: 'bed'; tx: number; ty: number }
   | { kind: 'sign'; tx: number; ty: number; mine: boolean; blank: boolean };
+import { STATUS_INK } from '../render/statusFx.js';
 import { Connection } from '../net/connection.js';
 import { InterpBuffer } from '../net/interpolation.js';
 import { Predictor } from '../net/prediction.js';
@@ -199,7 +200,16 @@ export interface GameEvents {
   onSignChanged?(tx: number, ty: number): void;
   /** Crossed into a dungeon — everything the entry banner tells. */
   onDungeon?(d: { name: string; sigil: string; tier: string; theme: string; power: number }): void;
-  onHit(hit: { x: number; y: number; dmg: number; isOwn: boolean; crit: boolean; backstab?: boolean }): void;
+  onHit(hit: {
+    x: number;
+    y: number;
+    dmg: number;
+    isOwn: boolean;
+    crit: boolean;
+    backstab?: boolean;
+    /** Set on DoT pulses — the wound that ticked (tints the hurt edge). */
+    via?: 'burn' | 'bleed' | 'venom';
+  }): void;
   onDeath(death: { x: number; y: number; defId: string }): void;
   /** A damaging blow with a knock direction — directional impact FX. */
   onImpact?(impact: {
@@ -1448,17 +1458,24 @@ export class ClientGame {
             // A warded blow says so in words — a bare "0" reads as a
             // bad roll, not an unbreakable guard.
             text: msg.im ? 'Immune' : String(msg.dmg),
+            // A signed DoT pulse prints in its wound's ink (ONE
+            // GRAMMAR: the same hex as the ambience and the state
+            // blocks), quieter than a struck blow — and the ink wins
+            // over the own-body red: WHAT is eating you outranks THAT
+            // something is (the vignette tint carries the "you").
             color: crit
               ? '#ffd24a'
               : msg.im
                 ? '#9db7d6'
                 : msg.dmg === 0
                   ? '#7fb2d9'
-                  : msg.eid === this.ownEid
-                    ? '#ff7b6b'
-                    : '#f4efe4',
+                  : msg.via
+                    ? STATUS_INK[msg.via]!
+                    : msg.eid === this.ownEid
+                      ? '#ff7b6b'
+                      : '#f4efe4',
             bornAt: performance.now(),
-            sizeMul: crit ? 1.6 : 1,
+            sizeMul: crit ? 1.6 : msg.via ? 0.85 : 1,
           });
           if (msg.bs) {
             this.floaties.push({
@@ -1470,7 +1487,15 @@ export class ClientGame {
               sizeMul: 1.3,
             });
           }
-          this.events.onHit({ x, y, dmg: msg.dmg, isOwn: msg.eid === this.ownEid, crit, backstab: msg.bs === true });
+          this.events.onHit({
+            x,
+            y,
+            dmg: msg.dmg,
+            isOwn: msg.eid === this.ownEid,
+            crit,
+            backstab: msg.bs === true,
+            via: msg.via,
+          });
         }
         break;
       }

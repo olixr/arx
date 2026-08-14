@@ -12017,6 +12017,31 @@ export class GameServer {
   }
 
   /** The HUD chip row: named consumable buffs only. */
+  /**
+   * THE CHIP SPEAKS (visible-buildcraft V2): the plain-words effect
+   * line for a buff's HUD chip, read from the LIVE fields so the
+   * tooltip can never drift from the mechanics. Three clauses at
+   * most — a chip is a chip, not a codex page.
+   */
+  private describeBuff(b: PlayerBuff): string | undefined {
+    const parts: string[] = [];
+    if (b.dmgMult > 1) parts.push(`+${Math.round((b.dmgMult - 1) * 100)}% damage`);
+    if (b.critPct > 0) parts.push(`+${b.critPct}% crit`);
+    if (b.shieldHp > 0) parts.push(`a ward of ${b.shieldHp}`);
+    if (b.armor > 0) parts.push(`+${b.armor} armor`);
+    if (b.speedMult > 1) parts.push(`+${Math.round((b.speedMult - 1) * 100)}% speed`);
+    if (b.speedMult < 1) parts.push('slowed');
+    if (b.regenPer4s > 0) parts.push(`mends ${b.regenPer4s} every four breaths`);
+    if (b.meleeLifesteal > 0) parts.push(`blows drink ${Math.round(b.meleeLifesteal * 100)}%`);
+    if (b.reflectFrac > 0) parts.push(`returns ${Math.round(b.reflectFrac * 100)}% of blows`);
+    if (b.offhandWeight > 0) parts.push('the off hand echoes');
+    if (b.gatherSpeed > 1) parts.push(`gathers ${Math.round((b.gatherSpeed - 1) * 100)}% faster`);
+    if (b.onHitStatus) parts.push(`blows carry ${b.onHitStatus.status}`);
+    if (b.beastTruce) parts.push('beasts pass you by');
+    if (b.beastPart > 0) parts.push('the wild parts around you');
+    return parts.length > 0 ? parts.slice(0, 3).join(', ') : undefined;
+  }
+
   private sendBuffs(player: PlayerComp): void {
     // THE VISIBLE FIGHT (buildcraft Phase 5): the invisible-buff era
     // ends. Consumables keep their chips; NAMED combat buffs — proc
@@ -12030,13 +12055,20 @@ export class GameServer {
     const combat: BuffInfo[] = [];
     for (const b of player.buffs) {
       if (b.channel && b.itemId && b.name) {
-        buffs.push({ id: b.itemId, name: b.name, channel: b.channel, secsLeft: secs(b) });
+        buffs.push({
+          id: b.itemId,
+          name: b.name,
+          channel: b.channel,
+          secsLeft: secs(b),
+          desc: this.describeBuff(b),
+        });
       } else if (b.name && b.channel === undefined) {
         combat.push({
           id: `combat:${b.name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`,
           name: b.name,
           channel: 'combat',
           secsLeft: secs(b),
+          desc: this.describeBuff(b),
         });
       }
     }
@@ -13397,6 +13429,8 @@ export class GameServer {
       attackerLevel?: number;
       sourceEid?: EntityId;
       pierceArmor?: boolean;
+      /** DoT pulses sign their wound — rides the hit to the client. */
+      via?: 'burn' | 'bleed' | 'venom';
     } = {},
   ): void {
     const pet = this.pets.get(petEid);
@@ -13416,7 +13450,7 @@ export class GameServer {
     const dmg = opts.pierceArmor
       ? raw
       : mitigate(raw, 0, (stats?.armor ?? 0) + guardArmor, opts.attackerLevel ?? 1);
-    this.broadcastHit(petEid, dmg);
+    this.broadcastHit(petEid, dmg, false, 0, 0, false, false, opts.via);
     pet.lastHurtTick = this.tickCount;
     if (dmg <= 0) return; // the whiff and the clank both write nothing
     health.hp -= dmg;
@@ -18141,7 +18175,11 @@ export class GameServer {
             // the friendly-fire wall in damageNpc) — the drip pierces
             // armor exactly as it does for players: the wound's
             // already inside.
-            this.damagePet(eid, s.power, { pierceArmor: true, sourceEid: s.sourceEid });
+            this.damagePet(eid, s.power, {
+              pierceArmor: true,
+              sourceEid: s.sourceEid,
+              via: s.id as 'burn' | 'bleed' | 'venom',
+            });
           } else if (this.npcs.has(eid)) {
             this.dotNpc(eid, s.power, s.sourceEid, s.id as 'burn' | 'bleed' | 'venom', s.fromPet);
           } else if (this.players.has(eid)) {
@@ -18153,6 +18191,7 @@ export class GameServer {
             this.damagePlayer(eid, Math.max(1, Math.round(s.power * p.perks.dotResistMult)), {
               pierceArmor: true,
               sourceEid: s.sourceEid,
+              via: s.id as 'burn' | 'bleed' | 'venom',
             });
           }
         }
@@ -18184,7 +18223,8 @@ export class GameServer {
     // Nothing burns through the ward — a status that somehow landed
     // before protection was set still ticks for zero.
     if (this.actors.get(npcEid)?.actor.protection === 'invulnerable') return;
-    this.broadcastHit(npcEid, dmg);
+    // The pulse signs its wound: the client inks the number per status.
+    this.broadcastHit(npcEid, dmg, false, 0, 0, false, false, kind);
     health.hp -= dmg;
     const source = this.players.get(sourceEid);
     if (source && !fromPet) {
@@ -19753,6 +19793,8 @@ export class GameServer {
       sourceEid?: EntityId;
       /** Attacker's level — feeds armor-class piercing (default 1). */
       attackerLevel?: number;
+      /** DoT pulses sign their wound — rides the hit to the client. */
+      via?: 'burn' | 'bleed' | 'venom';
     } = {},
   ): void {
     const player = this.players.get(eid);
@@ -19859,7 +19901,7 @@ export class GameServer {
       b.shieldHp -= soaked;
       dmg -= soaked;
     }
-    this.broadcastHit(eid, dmg);
+    this.broadcastHit(eid, dmg, false, 0, 0, false, false, opts.via);
     player.lastCombatAt = Date.now();
     if (dmg <= 0) return;
 
@@ -20066,6 +20108,7 @@ export class GameServer {
     ky = 0,
     backstab = false,
     immune = false,
+    via?: 'burn' | 'bleed' | 'venom',
   ): void {
     const hasDir = kx !== 0 || ky !== 0;
     for (const s of this.sessions) {
@@ -20079,6 +20122,7 @@ export class GameServer {
           ky: hasDir ? Math.round(ky * 100) / 100 : undefined,
           bs: backstab || undefined,
           im: immune || undefined,
+          via,
         });
       }
     }
