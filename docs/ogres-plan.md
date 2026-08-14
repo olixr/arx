@@ -251,6 +251,42 @@ ELF palette) swept into my blobs by live neighbor edits between
 census and tree-build — hunk-filtered out; the census must be
 re-run at tree-build time, not before.**
 
+**④ THE GIANT RIG (user-directed refinement round, same day)** —
+the borrowed human rig's seams at 2.15–2.5×, fixed at the rig level
+for every future giant, never per-band:
+- **THE GIANT GAIT**: `LegSolver(stature)` — the size-1 solver
+  planted a man-width track (±0.1 tiles) and man-length strides
+  under a giant body, and the side-on stance narrowing walked the far
+  foot across the centerline (the crossed-feet read). The statured
+  solver runs WORLD-TRUE giant legs (track/stride/reach/lift ×
+  stature, `swingMax` 0.35+0.16·(st−1) — the human swing ceiling
+  forced mincing double-time steps) and reports RIG-UNIT dynamics
+  (rise/bob/lift ÷ stature — painters multiply by `s` which already
+  carries size; world-true twice is a double-lift). Stature 1 is the
+  exact legacy solver; renderer keys the anim slot `humanoid@st`.
+  legs.ts grew `swingMax` in LegRigConfig.
+- **THE GIANT REACH**: the unequal bones out-reached the human rest
+  targets by a forearm; the surplus bend threw elbows rearward. The
+  giant rest spends it honestly — knuckles +0.12s lower (the ape
+  hang) and +0.06s forward under the stooped shoulders, both fists.
+- **THE LOG CARRY**: the woodcutter's flat shoulder carry threw the
+  tree-length club far behind the stoop and across the face at four
+  idle bands. The giant uprights the mass against the shoulder
+  (angle blended 0.5 toward −π/2+0.38·side), butt-fist dropped to
+  the gut line — one motion from the toll, head clear at all eight.
+- **THE BELLOWS DRAW** (the giant cast, whole — the human cast was a
+  one-hand jab that read as nothing on a body whose art is a voice):
+  one analytic curve, two movements — THE FILL (0..0.55: both fists
+  wide-high-back, elbows past the silhouette, synchronized with the
+  chest flare and the roar already riding this beat) then THE THROW
+  (0.55..1: a double-handed drive down the PROJECTED aim, fists
+  split on the aim's screen perpendicular AND staggered along it so
+  the push reads as two hands at the camera lines). Self-aimed arts
+  (haunch_gnaw) throw to the JAW — the meal, drawn honestly. A
+  club-armed caster sweeps the haft back through the fill and levels
+  it on the throw. armAssembly writer census: +2 heldAngle, +1
+  mainX/mainY/offX/offY/mainFore — a decision, pinned.
+
 **Deferred by design:** the ogre crown (the cavern boss seat "The
 Broodmother" is a renamed spider — an honest ogre crown could claim
 it, per the Dread Crown session); the war-drum idle bark; live-lane

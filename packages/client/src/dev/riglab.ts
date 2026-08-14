@@ -194,7 +194,9 @@ function drawBody(
   const lookId = DEF_ALIAS[defId] ?? defId;
   let legs = slot === 'main' ? f.legs : f.manLegs;
   if (!legs) {
-    legs = new LegSolver();
+    // THE GIANT GAIT: ogre figs walk the statured solver, exactly as
+    // the renderer builds it — the sheet plays the game's own legs.
+    legs = new LegSolver(info.kind === 'ogre' ? info.size : 1);
     if (slot === 'main') {
       f.legs = legs;
       f.knee = [0, 0];

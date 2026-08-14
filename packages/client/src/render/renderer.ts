@@ -30422,9 +30422,14 @@ export class Renderer {
     const s = this.camera.scale;
     const now = performance.now();
     const anim = this.animFor(e.eid, e.x, e.y, e.pose, now);
-    if (!anim.legs || anim.rigKey !== 'humanoid') {
-      anim.legs = new LegSolver();
-      anim.rigKey = 'humanoid';
+    // THE GIANT GAIT: giant-kin walk on a statured solver — world-true
+    // track, stride, and swing time for the body's real size. Every
+    // other humanoid keeps the exact legacy rig (stature 1).
+    const stature = e.ogre ? Math.max(1, e.size ?? 1) : 1;
+    const rigKey = stature === 1 ? 'humanoid' : `humanoid@${stature}`;
+    if (!anim.legs || anim.rigKey !== rigKey) {
+      anim.legs = new LegSolver(stature);
+      anim.rigKey = rigKey;
     }
     const legPose = anim.legs.update(e.x, e.y, e.dir, this.frameDt);
     // Seated rest: drop the hips, stretch the legs to forward ground

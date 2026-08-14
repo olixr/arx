@@ -112,6 +112,14 @@ export interface LegRigConfig {
    * Default: unlimited (billboard rigs face the camera regardless).
    */
   turnRate?: number;
+  /**
+   * Swing-time ceiling in seconds. Default 0.35 — tuned for a
+   * man-sized stride. THE GIANT GAIT: a leg twice as long takes a
+   * real fraction of a second longer to swing; capping a giant at the
+   * human ceiling forces mincing double-time steps under a ponderous
+   * body (the ogre lesson).
+   */
+  swingMax?: number;
 }
 
 interface StepState {
@@ -269,7 +277,7 @@ export class LegRig {
       const swingWalk = stance * 0.82;
       swing = swingWalk + (swingRun - swingWalk) * runF;
       swing = Math.min(swing, cfg.flight ? stance * 2.1 : stance * 0.95);
-      swing = Math.min(0.35, Math.max(0.06, swing));
+      swing = Math.min(cfg.swingMax ?? 0.35, Math.max(0.06, swing));
     }
     const idleThresh = cfg.legLen * 0.2;
 

@@ -24,14 +24,14 @@ const SRC = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'rig.ts')
 
 /** The fenced arm channels and their PINNED writer counts. */
 const CENSUS: Record<string, number> = {
-  heldAngle: 6, // strike resolve · rest lerp · wrist-follow ×2 · cast · sheathe
-  mainX: 15, // pose/work targets · rest · pump/sway/breath · seat · cast · draw · sheathe · strike arc (THE CUT LIVES IN THE WORLD)
-  mainY: 17,
-  offX: 22, // the widest channel: every stage owns the free hand somewhere
-  offY: 22,
+  heldAngle: 8, // strike resolve · rest lerp · wrist-follow ×2 · cast · bellows fill+throw (THE GIANT CAST) · sheathe
+  mainX: 16, // pose/work targets · rest · pump/sway/breath · seat · cast · draw · sheathe · strike arc (THE CUT LIVES IN THE WORLD)
+  mainY: 18,
+  offX: 23, // the widest channel: every stage owns the free hand somewhere
+  offY: 23,
   offAngle: 2, // counter-swing init (world engine) · echo brace
   offBladeAngle: 5, // guard init · echo · rest · flourish path · sheathe
-  mainFore: 3, // strike resolve · rest lerp · cast present (Phase 3)
+  mainFore: 4, // strike resolve · rest lerp · cast present (Phase 3) · bellows throw
   offFore: 3, // init · echo · rest lerp
   staffGrip: 6, // combat default · strike override · mountain-falls grip · great rest · staff rest · sheathe
   armSwingK: 3, // default · great pumpK · staff pumpK

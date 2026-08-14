@@ -175,9 +175,53 @@ const HUMANOID_LEG_CFG: LegRigConfig = {
   flight: true,
 };
 
+/**
+ * THE GIANT GAIT (docs/ogres-plan.md): the humanoid solver, statured.
+ * A 2.5× body walked on the size-1 config planted its feet on a
+ * man-width track under giant-width hips — shins converged, the
+ * side-on stance narrowing walked the far foot across the centerline,
+ * and the human swing ceiling forced mincing double-time steps. The
+ * statured solver runs WORLD-TRUE giant legs (track, stride, reach,
+ * lift, swing time all × stature) and reports RIG-UNIT dynamics:
+ * rise/bob/lift come back ÷ stature, because every painter multiplies
+ * by `s` which already carries the size — world-true twice is a
+ * double-lift. Positions stay world coordinates, untouched.
+ *
+ * Stature 1 is the exact legacy solver — no shipped body changes.
+ * Future giant-kin (trolls rebuilt, true giants) pass their own.
+ */
 export class LegSolver extends LegRig {
-  constructor() {
-    super(HUMANOID_LEG_CFG);
+  private readonly stature: number;
+  constructor(stature = 1) {
+    super(
+      stature === 1
+        ? HUMANOID_LEG_CFG
+        : {
+            ...HUMANOID_LEG_CFG,
+            legs: [
+              { fwd: 0, side: -HIP_HALF * stature, group: 0 },
+              { fwd: 0, side: HIP_HALF * stature, group: 1 },
+            ],
+            legLen: LEG_LEN * stature,
+            rise: LEG_RISE * stature,
+            liftAmp: LIFT_AMP * stature,
+            // The ponderous ceiling: swing time grows with the leg.
+            swingMax: 0.35 + 0.16 * (stature - 1),
+          },
+    );
+    this.stature = stature;
+  }
+
+  override update(bx: number, by: number, dirRaw: number, rawDt: number): LegPose {
+    const lp = super.update(bx, by, dirRaw, rawDt);
+    if (this.stature === 1) return lp;
+    const inv = 1 / this.stature;
+    return {
+      ...lp,
+      rise: lp.rise * inv,
+      bob: lp.bob * inv,
+      feet: lp.feet.map((f) => ({ x: f.x, y: f.y, lift: f.lift * inv })),
+    };
   }
 }
 
@@ -6579,6 +6623,17 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     let hy = armY + REST_HANG_DROP_S * s - elbowLift * (1 + liftAlt);
     let hAngle = Math.PI / 2 + sideW * (0.3 + 0.35 * runK); // tip down, trailing
     let hFore = 1; // rest-carry foreshortening, blended in on the settle
+    if (ogr) {
+      // THE KNUCKLE HANG'S REST (THE GIANT REACH): the ogre's unequal
+      // bones out-reach the human hang target by a whole forearm —
+      // the surplus bend let the elbow solver throw arms REARWARD at
+      // the turned bands. The giant's rest spends the surplus
+      // honestly: knuckles a half-step LOWER (mid-thigh, the ape
+      // hang) and FORWARD along the stooped facing, under the leaned
+      // shoulders — the arms hang where the carriage put the weight.
+      hx += fx * 0.06 * s;
+      hy += 0.12 * s;
+    }
     // How "at rest" the rest really is: flourishes and wrist life only
     // play when the figure is planted (no gait, no sneak crouch) —
     // a sneaking rogue does not twirl knives.
@@ -6638,6 +6693,17 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       hFore = gf.fore;
       hx = rig.x + gf.dx * s * wS + gf.fwd * s;
       hy = armY + gf.dy * s;
+      if (ogr) {
+        // THE LOG CARRY: the woodcutter's flat-back shoulder carry
+        // threw a tree-length club far behind a stooped giant. An
+        // ogre carries the club the way anyone carries a felled log:
+        // the mass UPRIGHTED against the shoulder, butt-fist dropped
+        // to the gut line — one motion from the overhead toll, and
+        // the head stays clear at every idle band.
+        hAngle += angleDelta(hAngle, -Math.PI / 2 + sideW * 0.38) * 0.5;
+        hy += 0.11 * s;
+        hx += fx * 0.04 * s;
+      }
       // THE GRIP JOINS THE LADDER (arms-v3 Phase 2): grip and pumpK
       // ride the same settle blend every other rest channel rides —
       // they used to be plain overwrites, and the fist SNAPPED along
@@ -6702,6 +6768,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // blade of a paired stance, not a mirror image.
     let ox = rig.x - wSide * hangW * wS - hangStag * 0.12;
     let oy = armY + REST_HANG_DROP_S * s - elbowLift * (1 - liftAlt);
+    if (ogr) {
+      // The off fist hangs the same giant rest (THE GIANT REACH).
+      ox += fx * 0.06 * s;
+      oy += 0.12 * s;
+    }
     if (offBlade) {
       // The carriage mirrors on FACING, not on the hanging side — the
       // off fist trails the facing, so its outward push (dx) mirrors
@@ -6915,7 +6986,77 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // amount is remembered so the staff's two-hand claim below yields
   // the fist for exactly as long as the spell owns it.
   let castPunch = 0;
-  if (rig.pose === PoseState.Cast && rig.poseT < 0.5) {
+  if (ogr && rig.pose === PoseState.Cast) {
+    // THE BELLOWS DRAW (docs/ogres-plan.md) — the giant cast, whole.
+    // The human cast is a one-hand jab; on a body whose art is a
+    // VOICE it read as nothing. The giant casts with everything it
+    // has, on one analytic curve in two movements:
+    //   THE FILL (0..0.55): both fists rise wide and BACK, elbows
+    //   flared past the silhouette, while the chest flare (already
+    //   riding this beat in body and head) swells the bellows and
+    //   the jaw tips into the roar.
+    //   THE THROW (0.55..1): both fists drive down-forward along the
+    //   PROJECTED aim at gut width — the shout, the heave, and the
+    //   verse are all the same push. A self-aimed art (the haunch
+    //   gnaw) throws to the JAW instead: the meal, drawn honestly.
+    const T = Math.min(1, rig.poseT);
+    const fill = Math.min(1, T / 0.55);
+    const fillE = fill * fill * (3 - 2 * fill);
+    const throwT = Math.max(0, (T - 0.55) / 0.45);
+    const throwE = throwT * throwT * (3 - 2 * throwT);
+    castPunch = throwE;
+    // Self-aim: the kit's own mouth-ward verse (aim collapses home).
+    const selfCast = Math.hypot(aim.px, aim.py) < 0.2;
+    // THE FILL pose: fists beside the chest, wide and high and back.
+    const fillX = 0.98 * tw;
+    const fillUpY = armY - 0.16 * s;
+    const backX = -fx * 0.1 * s;
+    // THE THROW pose: a double-handed drive down the PROJECTED aim —
+    // fists split on the aim's screen perpendicular AND staggered
+    // along it (near fist short, far fist long), so the push reads as
+    // two hands at every band instead of stacking into folded arms at
+    // the camera lines. Or, self-aimed, up to the jaw.
+    const throwR = 0.46 * s;
+    for (const armSide of [1, -1] as const) {
+      const spread = armSide * 0.5 * tw;
+      const stagAim = armSide * 0.07 * s; // fore-aft stagger down the aim
+      let tx: number;
+      let ty: number;
+      if (throwT <= 0) {
+        tx = rig.x + armSide * fillX * wS + backX;
+        ty = fillUpY;
+      } else if (selfCast) {
+        // The gnaw: both fists converge on the jaw line.
+        tx = rig.x + armSide * 0.3 * tw * wS + fx * 0.08 * s;
+        ty = armY - (0.3 + 0.1 * throwE) * s;
+      } else {
+        tx =
+          rig.x +
+          (armSide * fillX * wS + backX) * (1 - throwE) +
+          (aim.px * (throwR + stagAim) * wS - aim.py * spread) * throwE;
+        ty =
+          fillUpY * (1 - throwE) +
+          (armY + aim.py * (throwR + stagAim) + aim.px * spread * 0.55 + 0.08 * s) * throwE;
+      }
+      // The fill eases in from wherever the hands were resting.
+      if (armSide === 1) {
+        mainX += (tx - mainX) * fillE;
+        mainY += (ty - mainY) * fillE;
+      } else {
+        offX += (tx - offX) * fillE;
+        offY += (ty - offY) * fillE;
+      }
+    }
+    // A club-armed caster keeps the fist but the haft rides the
+    // motion: tip swept back through the fill, leveled on the throw.
+    if (weapon) {
+      heldAngle += angleDelta(heldAngle, -Math.PI / 2 - fx * 0.5) * fillE * (1 - throwE);
+      if (throwT > 0 && !selfCast) {
+        heldAngle += angleDelta(heldAngle, aim.angle) * throwE * 0.6;
+        mainFore += (aim.fore - mainFore) * throwE * 0.6;
+      }
+    }
+  } else if (rig.pose === PoseState.Cast && rig.poseT < 0.5) {
     const u = Math.sin((rig.poseT / 0.5) * Math.PI);
     castPunch = u;
     // The punch is a radial reach down the aim — it rides the ground
