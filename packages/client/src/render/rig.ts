@@ -13950,12 +13950,15 @@ export function paintLynxBody(
     foot,
     // THE RUMP-HIGH TOPLINE: a modest shoulder rise forward, a shallow
     // spine dip, then the haunches SWELL PAST the shoulder line — the
-    // coiled-spring rear that fires the pounce.
+    // coiled-spring rear that fires the pounce. At the very front the
+    // NECK ROOT falls away out of the shoulders: the prowler head
+    // hangs off a descending slope, never off a flat prism wall.
     (X) =>
       look.backH +
       look.shoulderH * Math.max(0, X / hl - 0.25) -
       0.035 * Math.max(0, 1 - Math.abs(X / hl - 0.1) / 0.5) +
-      look.haunchH * Math.max(0, (-X / hl - 0.05) / 0.75),
+      look.haunchH * Math.max(0, (-X / hl - 0.05) / 0.75) -
+      0.07 * Math.max(0, (X / hl - 0.62) / 0.38),
     (X) => look.chestH + (look.tuckH - look.chestH) * Math.min(1, Math.max(0, (0.5 - X / hl) / 1.05)),
     coat,
     (gx, gyy, lift) => {
@@ -15079,31 +15082,35 @@ export function drawBeast(
       return;
     }
     if (lynxL) {
-      // The lynx carries its head low and forward off the shoulders —
-      // and through the pounce windup the whole front end SINKS while
-      // the high haunches stay coiled: the stalk, the cat's tell.
+      // THE PROWLER CARRIAGE: a cat's head never SITS on its
+      // shoulders — it hangs FORWARD and LOW off them. The skull
+      // rides level with the shoulder line at rest, drops with the
+      // lope (the prowl), and sinks to the chest line through the
+      // pounce windup while the high haunches stay coiled — the
+      // stalking wedge every big-cat silhouette is built on. The
+      // wolves carry their heads high on a rising neck; the lynx
+      // must never borrow that.
       const hl = spec.bodyLen * s;
       const hw2 = lynxL.headW * s;
       const nod = opts.pose.bob * 0.4 * s;
-      const stalk = at > 0 ? Math.min(1, at / 0.7) * (lynxL.champion ? 0.12 : 0.09) * s : 0;
-      const chx = bx + fx * (hl * 0.95 + hw2 * 0.3);
-      const chy =
-        by +
-        fy * (hl * 0.95 + hw2 * 0.3) * ys -
-        (lynxL.backH + lynxL.shoulderH + 0.16) * s -
-        nod +
-        stalk;
-      // Neck: a coat wedge from the shoulder top into the head sides —
-      // short and thick; the ruff does the rest at the skull.
+      const run = opts.pose.poleStrength;
+      const stalk =
+        ((at > 0 ? Math.min(1, at / 0.7) * (lynxL.champion ? 0.1 : 0.08) : 0) + run * 0.035) * s;
+      const reach = hl * 1.1 + hw2 * 0.34;
+      const chx = bx + fx * reach;
+      const chy = by + fy * reach * ys - (lynxL.backH * 0.94 + 0.02) * s - nod + stalk;
+      // Neck: a thick coat wedge sloping DOWN-forward from the
+      // shoulder top into the head sides — the descending line IS the
+      // prowler read; the ruff does the rest at the skull.
       ctx.fillStyle = opts.hurt ? '#ffffff' : shade(lynxL.coat, -5);
       ctx.beginPath();
-      const nb = (lynxL.backH + lynxL.shoulderH * 0.8) * s + opts.pose.bob * 0.35 * s;
-      const nwx = px * lynxL.bodyW * (lynxL.champion ? 0.9 : 0.78) * s;
-      const nwy = py * lynxL.bodyW * (lynxL.champion ? 0.9 : 0.78) * s;
-      ctx.moveTo(bx + fx * hl * 0.6 + nwx, by + (fy * hl * 0.6 + nwy) * ys - nb);
-      ctx.lineTo(bx + fx * hl * 0.6 - nwx, by + (fy * hl * 0.6 - nwy) * ys - nb);
-      ctx.lineTo(chx - px * hw2 * 0.4, chy - py * hw2 * 0.4 * ys + lynxL.headH * s * 0.34);
-      ctx.lineTo(chx + px * hw2 * 0.4, chy + py * hw2 * 0.4 * ys + lynxL.headH * s * 0.34);
+      const nb = (lynxL.backH + lynxL.shoulderH * 0.5) * s + opts.pose.bob * 0.35 * s;
+      const nwx = px * lynxL.bodyW * (lynxL.champion ? 0.95 : 0.85) * s;
+      const nwy = py * lynxL.bodyW * (lynxL.champion ? 0.95 : 0.85) * s;
+      ctx.moveTo(bx + fx * hl * 0.5 + nwx, by + (fy * hl * 0.5 + nwy) * ys - nb);
+      ctx.lineTo(bx + fx * hl * 0.5 - nwx, by + (fy * hl * 0.5 - nwy) * ys - nb);
+      ctx.lineTo(chx - px * hw2 * 0.42, chy - py * hw2 * 0.42 * ys + lynxL.headH * s * 0.3);
+      ctx.lineTo(chx + px * hw2 * 0.42, chy + py * hw2 * 0.42 * ys + lynxL.headH * s * 0.3);
       ctx.closePath();
       ctx.fill();
       // Idle ear flick: a rare quick pulse, never a metronome.
