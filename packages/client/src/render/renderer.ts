@@ -12,6 +12,7 @@ import {
   ALERT_ICON_HUNTING,
   STATUS_AMBIENCE_MASK,
   STATUS_BIT,
+  afflictionStacksOf,
   LIGHT_BLOCKING_TILES,
   TICK_MS,
   TILE_PX,
@@ -29524,6 +29525,7 @@ export class Renderer {
             dir: s.dir,
             pose: s.pose,
             hpPct: s.hpPct,
+            status: s.status,
             name: remote.meta.name,
             isOwn: false,
             hurt,
@@ -29560,6 +29562,7 @@ export class Renderer {
                 dir: s.dir,
                 pose: s.pose,
                 hpPct: s.hpPct,
+                status: s.status,
                 name: remote.meta.name,
                 level: remote.meta.level,
                 isOwn: false,
@@ -30281,6 +30284,8 @@ export class Renderer {
     isOwn: boolean;
     color: string;
     hpPct: number;
+    /** Snapshot status u16 — the nameplate's state blocks read it. */
+    status?: number;
     hurt?: boolean;
     equip: Partial<Record<string, string>>;
     /** Enchant ids by slot — drives blade fx and the tier-3 aura. */
@@ -31360,7 +31365,7 @@ export class Renderer {
           ctx.fillText(label, p.x, topY);
         }
         if (e.hpPct < 255) {
-          this.drawMiniHp(p.x, topY + s * 0.08, 0.7 * s, e.hpPct);
+          this.drawMiniHp(p.x, topY + s * 0.08, 0.7 * s, e.hpPct, e.status);
         }
       },
     };
@@ -31550,7 +31555,7 @@ export class Renderer {
     };
   }
 
-  private drawMiniHp(x: number, y: number, w: number, hpPct: number): void {
+  private drawMiniHp(x: number, y: number, w: number, hpPct: number, status = 0): void {
     const ctx = this.ctx;
     // Sharp block gauge — a sliver of the brutalist UI over the world.
     const h = Math.max(3, this.camera.scale * 0.08);
@@ -31560,6 +31565,38 @@ export class Renderer {
     ctx.fillRect(x - w / 2, y, w, h);
     ctx.fillStyle = '#4fc06a';
     ctx.fillRect(x - w / 2, y, Math.max(2, w * (hpPct / 255)), h);
+    // THE VISIBLE FIGHT: state blocks under the gauge — one square
+    // per riding state, build-relevant first (the mark, the wounds,
+    // then the sparks), capped at four; the affliction stack count
+    // stands beside them. Same brutalist sliver family as the bar.
+    const states = status & STATUS_AMBIENCE_MASK;
+    if (!states) return;
+    const d = Math.max(3, this.camera.scale * 0.07);
+    const order: ReadonlyArray<readonly [number, string]> = [
+      [STATUS_BIT.sunder, '#b8b2a6'],
+      [STATUS_BIT.bleed, '#c4372a'],
+      [STATUS_BIT.venom, '#a0c050'],
+      [STATUS_BIT.burn, '#ff8a3c'],
+      [STATUS_BIT.chill, '#8ac4e8'],
+      [STATUS_BIT.shock, '#e8e06a'],
+    ];
+    const shown = order.filter(([bit]) => (states & bit) !== 0).slice(0, 4);
+    let sx = x - (shown.length * (d + 2) - 2) / 2;
+    const sy = y + h + 3;
+    for (const [, color] of shown) {
+      ctx.fillStyle = 'rgba(24, 14, 32, 0.85)';
+      ctx.fillRect(sx - 1, sy - 1, d + 2, d + 2);
+      ctx.fillStyle = color;
+      ctx.fillRect(sx, sy, d, d);
+      sx += d + 2;
+    }
+    const stacks = afflictionStacksOf(status);
+    if (stacks >= 2) {
+      ctx.font = `700 ${Math.max(9, this.camera.scale * 0.2)}px 'Trebuchet MS', sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#efe3c2';
+      ctx.fillText(`x${stacks}`, sx + 2, sy + d);
+    }
   }
 
   /** Eight-tap alpha dilate → tinted ring under the sprite. */
@@ -32182,7 +32219,7 @@ export class Renderer {
     eid: number,
     defId: string,
     meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean },
-    s: { x: number; y: number; dir: number; hpPct: number; pose: number },
+    s: { x: number; y: number; dir: number; hpPct: number; pose: number; status?: number },
     nameInk?: string,
   ): DrawItem {
     if (meta.ownerEid !== undefined) nameInk = '#9fd39a';
@@ -32286,7 +32323,7 @@ export class Renderer {
     eid: number,
     defId: string,
     meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean; shorn?: boolean },
-    s: { x: number; y: number; dir: number; hpPct: number; pose: number },
+    s: { x: number; y: number; dir: number; hpPct: number; pose: number; status?: number },
     hurt: boolean,
     nameInk?: string,
   ): DrawItem {
@@ -32651,7 +32688,7 @@ export class Renderer {
           ctx.fillText(label, p.x, topY);
         }
         if (s.hpPct < 255) {
-          this.drawMiniHp(p.x, p.y - r * 2.45, r * 2, s.hpPct);
+          this.drawMiniHp(p.x, p.y - r * 2.45, r * 2, s.hpPct, s.status);
         }
       },
     };
@@ -32667,7 +32704,7 @@ export class Renderer {
     eid: number,
     defId: string,
     meta: { name?: string; level?: number },
-    s: { x: number; y: number; dir: number; hpPct: number; pose: number },
+    s: { x: number; y: number; dir: number; hpPct: number; pose: number; status?: number },
     hurt: boolean,
     nameInk?: string,
   ): DrawItem {
@@ -32732,7 +32769,7 @@ export class Renderer {
           ctx.fillText(label, p.x, labelTop);
         }
         if (s.hpPct < 255) {
-          this.drawMiniHp(p.x, labelTop + 0.12 * scale, r * 2, s.hpPct);
+          this.drawMiniHp(p.x, labelTop + 0.12 * scale, r * 2, s.hpPct, s.status);
         }
       },
     };
@@ -32751,7 +32788,7 @@ export class Renderer {
     eid: number,
     defId: string,
     meta: { name?: string; level?: number; ownerEid?: number; stock?: boolean },
-    s: { x: number; y: number; dir: number; hpPct: number; pose: number },
+    s: { x: number; y: number; dir: number; hpPct: number; pose: number; status?: number },
     hurt: boolean,
     nameInk?: string,
   ): DrawItem {
@@ -32829,7 +32866,7 @@ export class Renderer {
           ctx.fillText(label, p.x, labelTop);
         }
         if (s.hpPct < 255) {
-          this.drawMiniHp(p.x, labelTop + 0.12 * scale, r * 2, s.hpPct);
+          this.drawMiniHp(p.x, labelTop + 0.12 * scale, r * 2, s.hpPct, s.status);
         }
       },
     };
@@ -34952,7 +34989,7 @@ export class Renderer {
 
   private summonItem(
     defId: string,
-    s: { x: number; y: number; hpPct: number },
+    s: { x: number; y: number; hpPct: number; status?: number },
     now: number,
   ): DrawItem {
     const ctx = this.ctx;
@@ -35065,7 +35102,7 @@ export class Renderer {
           ctx.beginPath();
           facetCircle(ctx, p.x, p.y - sc * 0.78, sc * 0.15, 6, 0.3);
           ctx.fill();
-          if (s.hpPct < 255) this.drawMiniHp(p.x, p.y - sc * 1.05, sc * 0.66, s.hpPct);
+          if (s.hpPct < 255) this.drawMiniHp(p.x, p.y - sc * 1.05, sc * 0.66, s.hpPct, s.status);
         }
       },
     };

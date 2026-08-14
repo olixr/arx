@@ -1160,18 +1160,25 @@ export interface S2CCallings {
   answered: string[];
 }
 
-/** One active consumable buff, for the HUD chip row. */
+/** One active buff, for the HUD chip row. */
 export interface BuffInfo {
-  /** Item id that granted it (drives the chip icon). */
+  /**
+   * Item id that granted it (drives the chip icon), or a synthetic
+   * `combat:<slug>` for named combat buffs (glyph chip, no item).
+   */
   id: string;
   /** Display name, e.g. "Sugar Rush". */
   name: string;
-  /** 'tonic' | 'food' — one active buff per channel. */
+  /**
+   * 'tonic' | 'food' (one active per channel) | 'combat' (THE
+   * VISIBLE FIGHT: named wards, surges, and stance riders — additive
+   * v29 wire fact, an older client simply styles the chip plainly).
+   */
   channel: string;
   secsLeft: number;
 }
 
-/** The player's active consumable buffs (sent on gain + expiry). */
+/** The player's active chip-worthy buffs (sent on gain + expiry). */
 export interface S2CBuffs {
   t: 'buffs';
   buffs: BuffInfo[];

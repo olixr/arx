@@ -537,6 +537,7 @@ import {
   type BuildOrient,
   type ChargeInfo,
   type S2CFx,
+  type BuffInfo,
   type StatusApply,
   type StatusId,
   type SteerMemory,
@@ -12012,14 +12013,33 @@ export class GameServer {
 
   /** The HUD chip row: named consumable buffs only. */
   private sendBuffs(player: PlayerComp): void {
-    const buffs = player.buffs
-      .filter((b) => b.channel && b.itemId && b.name)
-      .map((b) => ({
-        id: b.itemId!,
-        name: b.name!,
-        channel: b.channel!,
-        secsLeft: Math.max(0, Math.ceil((b.untilTick - this.tickCount) / 20)),
-      }));
+    // THE VISIBLE FIGHT (buildcraft Phase 5): the invisible-buff era
+    // ends. Consumables keep their chips; NAMED combat buffs — proc
+    // wards and surges, stance riders, the passives' bursts — join
+    // under the 'combat' channel. Unnamed micro-buffs (sprint,
+    // dodge haste) and the momentum channel stay off the HUD by
+    // design (the knife's hunger reads in the feet, not a chip).
+    const secs = (b: PlayerBuff): number =>
+      Math.max(0, Math.ceil((b.untilTick - this.tickCount) / 20));
+    const buffs: BuffInfo[] = [];
+    const combat: BuffInfo[] = [];
+    for (const b of player.buffs) {
+      if (b.channel && b.itemId && b.name) {
+        buffs.push({ id: b.itemId, name: b.name, channel: b.channel, secsLeft: secs(b) });
+      } else if (b.name && b.channel === undefined) {
+        combat.push({
+          id: `combat:${b.name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`,
+          name: b.name,
+          channel: 'combat',
+          secsLeft: secs(b),
+        });
+      }
+    }
+    // The chip row fails past ~6 — consumables always show, combat
+    // chips fill the rest, longest remaining first (the readability
+    // cap from the plan's HUD survey).
+    combat.sort((a, b) => b.secsLeft - a.secsLeft);
+    buffs.push(...combat.slice(0, Math.max(0, 6 - buffs.length)));
     player.session?.sendJson({ t: 'buffs', buffs });
   }
 
@@ -17750,6 +17770,8 @@ export class GameServer {
     ) {
       player.buffs.push(
         mkBuff({
+          // THE VISIBLE FIGHT: a stance chip wears its art's name.
+          name: ab.name,
           speedMult: self.speedMult ?? 1,
           // Stonewall thickens every shield the caster raises.
           shieldHp: Math.round((self.shieldHp ?? 0) * powerMult * player.perks.shieldMult),
@@ -18907,7 +18929,10 @@ export class GameServer {
         break;
       }
       case 'ward': {
-        player.buffs.push(mkBuff({ shieldHp: a.absorb, untilTick: this.tickCount + a.ticks }));
+        player.buffs.push(
+          mkBuff({ shieldHp: a.absorb, name: p.name, untilTick: this.tickCount + a.ticks }),
+        );
+        this.sendBuffs(player);
         radius = 0.9;
         break;
       }
@@ -18924,8 +18949,9 @@ export class GameServer {
         const until = this.tickCount + a.ticks;
         const lift = a.pct / 100;
         player.buffs.push(
-          mkBuff(
-            a.stat === 'speed'
+          mkBuff({
+            name: p.name,
+            ...(a.stat === 'speed'
               ? { speedMult: 1 + lift, untilTick: until }
               : a.stat === 'armor'
                 ? { armor: a.pct, untilTick: until }
@@ -18933,9 +18959,10 @@ export class GameServer {
                   ? { regenPer4s: a.pct, untilTick: until }
                   : a.stat === 'crit'
                     ? { critPct: a.pct, untilTick: until }
-                    : { dmgMult: 1 + lift, untilTick: until },
-          ),
+                    : { dmgMult: 1 + lift, untilTick: until }),
+          }),
         );
+        this.sendBuffs(player);
         radius = 0.9;
         break;
       }
@@ -19459,7 +19486,10 @@ export class GameServer {
       }
       // Battle Rush: each kill feeds the next chase.
       if (this.hasPassive(killer, 'battle_rush')) {
-        killer.buffs.push(mkBuff({ speedMult: 1.25, untilTick: this.tickCount + 50 }));
+        killer.buffs.push(
+          mkBuff({ speedMult: 1.25, name: 'Battle Rush', untilTick: this.tickCount + 50 }),
+        );
+        this.sendBuffs(killer);
       }
       // On-kill haste (Battlecharged etc.): victory shaves the Q/E
       // slots — THE QUICKENED HAND's second engine, same index law as
@@ -19858,7 +19888,10 @@ export class GameServer {
       health.hp + dmg >= swLine &&
       this.hasPassive(player, 'second_wind')
     ) {
-      player.buffs.push(mkBuff({ speedMult: 1.35, untilTick: this.tickCount + 60 }));
+      player.buffs.push(
+        mkBuff({ speedMult: 1.35, name: 'Second Wind', untilTick: this.tickCount + 60 }),
+      );
+      this.sendBuffs(player);
     }
 
     if (health.hp <= 0) {
@@ -24699,9 +24732,12 @@ export class GameServer {
       if (player.abilityCd[i]! > 0) player.abilityCd[i]!--;
     }
     if (player.buffs.length > 0) {
-      const expired = player.buffs.some((b) => this.tickCount >= b.untilTick && b.channel);
+      // A chip-bearing buff running out clears its chip: consumables
+      // (channel) and named combat buffs alike (THE VISIBLE FIGHT).
+      const expired = player.buffs.some(
+        (b) => this.tickCount >= b.untilTick && (b.channel !== undefined || b.name !== undefined),
+      );
       player.buffs = player.buffs.filter((b) => this.tickCount < b.untilTick);
-      // A tonic or meal ran out — clear its HUD chip.
       if (expired) this.sendBuffs(player);
     }
     // Underground refuses the saddle — checked per tick so every way

@@ -300,13 +300,32 @@ export class Hotbar {
       for (const b of game.buffs) {
         const chip = document.createElement('div');
         chip.className = `buff-chip ${b.channel}`;
-        chip.title = `${b.name}: ${b.channel === 'food' ? 'well fed' : 'tonic'}`;
-        const img = document.createElement('img');
-        img.src = itemIconUrl(b.id, 34);
-        img.draggable = false;
         const secs = document.createElement('span');
         secs.className = 'buff-secs';
-        chip.append(img, secs);
+        if (b.channel === 'combat') {
+          // THE VISIBLE FIGHT: a combat chip has no item behind it —
+          // a lettered coin in the tray, the charge chip's sibling.
+          chip.title = b.name;
+          chip.style.boxShadow =
+            'inset 0 0 0 1.5px rgba(232, 182, 76, 0.5), 0 2px 4px rgba(6, 4, 2, 0.45)';
+          const glyph = document.createElement('span');
+          glyph.style.cssText =
+            'display:flex;align-items:center;justify-content:center;width:100%;height:100%;' +
+            "font:700 13px 'Trebuchet MS',sans-serif;color:#e8c04c;";
+          glyph.textContent = b.name
+            .split(/\s+/)
+            .map((w) => w[0] ?? '')
+            .join('')
+            .slice(0, 2)
+            .toUpperCase();
+          chip.append(glyph, secs);
+        } else {
+          chip.title = `${b.name}: ${b.channel === 'food' ? 'well fed' : 'tonic'}`;
+          const img = document.createElement('img');
+          img.src = itemIconUrl(b.id, 34);
+          img.draggable = false;
+          chip.append(img, secs);
+        }
         this.buffTray.appendChild(chip);
         this.buffSecsEls.push(secs);
       }

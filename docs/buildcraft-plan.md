@@ -444,6 +444,37 @@ The user's exact sentence becomes authorable data:
 
 ### Phase 5 — THE VISIBLE FIGHT (legibility layer)
 
+**SHIPPED 2026-08-14. As-built:**
+
+- **The invisible-buff era ends.** `sendBuffs` now carries NAMED
+  combat buffs under the `'combat'` channel (additive wire fact,
+  recorded on BuffInfo — no protocol bump): proc wards and surges
+  wear their working's name, stance riders wear their art's name,
+  Battle Rush and Second Wind speak theirs. Chip row caps at 6 —
+  consumables always, combat fills the rest longest-first. Unnamed
+  micro-buffs (sprint, dodge haste) and the momentum channel stay
+  OFF the HUD by design (the knife's hunger reads in the feet — the
+  combat-v2 decision stands). Send sites: ward/surge pushes in
+  runProc, the ability self-rider, the two passives, plus the expiry
+  sweep now clears named chips too.
+- Combat chips render as lettered coins (initials glyph, gold ring,
+  the charge chip's sibling) — no item icon to fake.
+- **States on every nameplate**: `drawMiniHp` grew the state blocks —
+  one brutalist square per riding state under the gauge,
+  build-relevant first (sunder, then wounds, then sparks), capped at
+  four, with the affliction stack count (`xN`, the Phase 1 nibble
+  finally read) beside them. One implementation serves humanoids,
+  beasts, and pets (the snapshot status threads through all five
+  call sites).
+- Sunder's ambience branch shipped in Phase 1; the anti-mush law
+  holds (six states, six places, six rhythms).
+- **Recorded debts (deliberate)**: bespoke SIGNATURES faces for word
+  and temper procs ride the generic action-shaped proc grammar for
+  now (the same read the 33 enchant workings shipped with) — a
+  FLOURISH pass is future polish, not a blocker; own-body state
+  readout stays ambience + chips (a self nameplate would double the
+  HUD's voice).
+
 - **Buff registry**: `PlayerBuff` gains `id`; `sendBuffs` carries combat
   buffs (wards, surges, momentum, set states) with a HUD cap of ~6 chips,
   own-effects first. The invisible-buff era ends.
