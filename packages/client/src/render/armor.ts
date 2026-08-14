@@ -5200,33 +5200,45 @@ export function drawTorsoGarment(
         ctx.globalAlpha = 1;
       }
       if (st.auroraband) {
-        // THE RISING AURA: the wardrobe's fourth floating regalia,
-        // second forging — the lights no longer keep to one orbit:
-        // three ribbons of aurora CORKSCREW the whole body, chest to
-        // hem, each climbing the spiral at one constant pace on the
-        // glyph ring's occlusion law (skipped where the body
-        // honestly hides them, dim and thin past its far edge,
-        // sweeping in FRONT of the cloth on the near pass — the aura
-        // believes the turn). The helix widens with the robe's own
-        // flare; the substorm speaks through amplitude, width and
-        // light, and at the dance RISERS slip the aura and climb.
-        // Floating light, not garment: the hurt guard owns it.
+        // THE RISING AURA, third forging: the continuous corkscrew
+        // read as a STRING OF LIGHTS — too neat to be power. The
+        // aura is now WISPS: eight short arcs of aurora, each on its
+        // own height band and its own breathing radius, sweeping the
+        // body on one wind but waking and fading on staggered
+        // watches — radiant static, not a coil. Occlusion holds per
+        // segment (glyph-ring law: skipped inside the silhouette,
+        // dim past the far edge, in front on the near pass). All
+        // motion at constant rates; the substorm and the flicker
+        // speak only through amplitude, width and light. Floating
+        // light, not garment: the hurt guard owns it.
         const ab = st.auroraband;
         const kA = auroraK(nowMs, 0.18);
-        const spinA = nowMs * 0.00034;
-        const segsA = 40;
+        const spinA = nowMs * 0.00038;
         const yTopA = -0.155 * s;
         const yBotA = y0 + (hemY - y0) * 0.94;
         ctx.lineCap = 'round';
-        for (let ri = 0; ri < 3; ri++) {
-          const colR = ab.colors[ri % ab.colors.length]!;
-          const baseA = spinA + ri * ((Math.PI * 2) / 3);
+        // [height band 0..1, sweep span (rad), phase seat, color]
+        const wisps: ReadonlyArray<readonly [number, number, number, number]> = [
+          [0.04, 2.3, 0.0, 0], [0.16, 1.7, 2.6, 2], [0.3, 2.6, 4.4, 1],
+          [0.44, 1.9, 1.4, 0], [0.56, 2.4, 5.3, 2], [0.68, 1.8, 3.3, 1],
+          [0.8, 2.7, 0.9, 0], [0.9, 2.0, 4.0, 1],
+        ];
+        for (let wi = 0; wi < wisps.length; wi++) {
+          const [band, span, seat, ci] = wisps[wi]!;
+          const colR = ab.colors[ci % ab.colors.length]!;
+          // Each wisp breathes awake and asleep on its own watch —
+          // the flicker of static, never a synchronized string.
+          const pulse = 0.32 + 0.68 * (0.5 + 0.5 * Math.sin(nowMs * 0.00131 + seat * 1.7));
+          const wispA = (0.42 + 0.58 * kA) * pulse;
+          if (wispA < 0.14) continue;
+          const baseA = spinA + seat;
+          const segsW = 12;
           let run: Array<{ x: number; y: number; a: number; far: boolean }> = [];
           const flush = (): void => {
             for (let q = 0; q + 1 < run.length; q++) {
               const p0 = run[q]!;
               const p1 = run[q + 1]!;
-              const aa = ((p0.a + p1.a) / 2) * (0.48 + 0.52 * kA);
+              const aa = ((p0.a + p1.a) / 2) * wispA;
               if (aa < 0.08) continue;
               const wF = p0.far ? 0.7 : 1;
               ctx.globalAlpha = Math.min(1, aa) * 0.55;
@@ -5243,50 +5255,74 @@ export function drawTorsoGarment(
               ctx.moveTo(p0.x, p0.y);
               ctx.lineTo(p1.x, p1.y);
               ctx.stroke();
-              // The combed rays ride only the bright near passage,
-              // reaching up and OUTWARD off the spiral — a faint
-              // floating stroke is skipped whole (dilate bar).
-              const rw = 0.5 + 0.5 * Math.sin(nowMs * 0.0011 + q * 2.3 + ri * 3.1);
+              const rw = 0.5 + 0.5 * Math.sin(nowMs * 0.0011 + q * 2.3 + wi * 3.1);
               const ra = Math.min(1, aa) * (0.3 + 0.5 * rw);
               if (!p0.far && ra >= 0.3 && q % 2 === 0) {
+                // Charge licks: radiating OUT from the body, the
+                // static's own gesture (skipped whole below the
+                // dilate bar).
                 const outR = p0.x >= 0 ? 1 : -1;
                 ctx.globalAlpha = ra * 0.8;
                 ctx.strokeStyle = colR;
                 ctx.lineWidth = Math.max(1.2, s * 0.011);
                 ctx.beginPath();
                 ctx.moveTo(p0.x, p0.y);
-                ctx.lineTo(p0.x + outR * (0.012 + 0.014 * kA) * s, p0.y - (0.04 + 0.05 * kA) * s);
+                ctx.lineTo(p0.x + outR * (0.018 + 0.016 * kA) * s, p0.y - (0.03 + 0.04 * kA) * s);
                 ctx.stroke();
               }
             }
             run = [];
           };
-          for (let i = 0; i <= segsA; i++) {
-            const tU = i / segsA;
-            // 1.8 turns of the screw, crown to hem; the radius rides
-            // the robe's flare so the aura wraps the SHAPE of the
-            // wearer, never a cylinder.
-            const aAng = baseA + tU * Math.PI * 3.6;
-            const rxA = ww * (1.04 + 0.62 * tU);
+          for (let i = 0; i <= segsW; i++) {
+            const tU = i / segsW;
+            const aAng = baseA + tU * span;
+            const hT = band + tU * 0.1;
+            // The radius BREATHES in and out of orbit as the wisp
+            // sweeps (energy, never wire) and follows the robe's
+            // flare down the body.
+            const flow = 1 + 0.13 * Math.sin(tU * 2.6 + nowMs * 0.0014 + seat);
+            const rxA = ww * (1.02 + 0.6 * hT) * flow;
             const px = Math.cos(aAng) * rxA;
             const farA = Math.sin(aAng) < 0;
-            if (!back && farA && Math.abs(px) < ww * (0.78 + 0.5 * tU)) {
+            if (!back && farA && Math.abs(px) < ww * (0.78 + 0.5 * hT)) {
               flush();
               continue;
             }
-            const wave = Math.sin(tU * 7.2 - nowMs * 0.0021 + ri * 2.1) * (0.006 + 0.011 * kA) * s;
             run.push({
               x: px,
-              y: yTopA + (yBotA - yTopA) * tU + Math.sin(aAng) * 0.045 * s + wave,
+              y: yTopA + (yBotA - yTopA) * hT + Math.sin(aAng) * 0.045 * s,
               a: Math.sin(tU * Math.PI) * (farA ? 0.45 : 1),
               far: farA,
             });
           }
           flush();
         }
+        // THE STATIC BREATH: twice a beat a bare flick of charge
+        // jumps straight off the cloth into the air — position
+        // cycling, life brief, drawn not glowed.
+        if ((nowMs % 1150) < 150) {
+          const fi = Math.floor(nowMs / 1150);
+          const lifeF = ((nowMs % 1150) / 150);
+          const aF = Math.sin(lifeF * Math.PI) * (0.4 + 0.5 * kA);
+          if (aF >= 0.3) {
+            const h = Math.sin(fi * 12.9898) * 43758.5453;
+            const hT = 0.15 + ((h - Math.floor(h)) * 0.7);
+            const outR = fi % 2 === 0 ? 1 : -1;
+            const fx0 = outR * ww * (1.0 + 0.6 * hT);
+            const fy0 = yTopA + (yBotA - yTopA) * hT;
+            ctx.globalAlpha = aF;
+            ctx.strokeStyle = ab.colors[fi % ab.colors.length]!;
+            ctx.lineWidth = Math.max(1.2, s * 0.01);
+            ctx.beginPath();
+            ctx.moveTo(fx0, fy0);
+            ctx.lineTo(fx0 + outR * 0.03 * s, fy0 - 0.014 * s);
+            ctx.lineTo(fx0 + outR * 0.044 * s, fy0 - 0.036 * s);
+            ctx.stroke();
+          }
+        }
         if (kA > 0.62) {
           // THE RISERS: the dance charges the aura past holding —
-          // sparks climb the spiral's air and burn out going home.
+          // sparks climb the air and burn out going home.
           const ansR = (kA - 0.62) / 0.38;
           for (let m = 0; m < 3; m++) {
             const mu = ((nowMs * 0.00024 + m / 3) % 1 + 1) % 1;
