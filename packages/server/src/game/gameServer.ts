@@ -1448,6 +1448,12 @@ interface DungeonInstance {
    * own gate, not the owner's.
    */
   guests: Map<number, { x: number; y: number }>;
+  /**
+   * THE COURT WARDS THE PRIZE: global spawnPoints index of the
+   * champion. The boss chest's ward reads his life through it —
+   * standing (alive or not yet woken) holds the lid shut.
+   */
+  bossSpawnIdx?: number;
 }
 
 interface PlayerComp {
@@ -4233,13 +4239,17 @@ export class GameServer {
     const wardStands = over?.warded
       ? over.cell.startsWith('sh:')
         ? this.strongholdCacheWarded(over.cell.slice(3))
-        : this.poiGarrisonStands(over.cell)
+        : over.cell.startsWith('dg:')
+          ? this.dungeonChampionStands(Number(over.cell.slice(3)))
+          : this.poiGarrisonStands(over.cell)
       : false;
     if (wardStands) {
       this.speak(
         player,
         'Warded',
-        'The lid will not lift — the ward holds while its keeper stands.',
+        over?.cell.startsWith('dg:')
+          ? 'The lid will not lift — the champion of these halls still holds the court.'
+          : 'The lid will not lift — the ward holds while its keeper stands.',
         { x: tx + 0.5, y: ty + 0.5 },
       );
       return;
@@ -11565,8 +11575,26 @@ export class GameServer {
       sigil: spec.sigil,
       theme: spec.theme,
       guests: new Map(),
+      // registerSpawns flattens one point per BODY — the champion's
+      // global index is offset by every earlier entry's count.
+      bossSpawnIdx: (() => {
+        if (result.bossSpawnIndex === null) return undefined;
+        let flat = 0;
+        for (let i = 0; i < result.bossSpawnIndex; i++) {
+          flat += result.zone.spawns?.[i]?.count ?? 0;
+        }
+        return spawnIndexes[flat];
+      })(),
     };
     this.dungeons.set(player.characterId, inst);
+    // THE COURT WARDS THE PRIZE: the champion's chest refuses the hand
+    // while he stands — the fight is the key, not the sneak.
+    if (result.bossChest) {
+      this.poiChests.set(`${result.bossChest.x},${result.bossChest.y}`, {
+        cell: `dg:${player.characterId}`,
+        warded: true,
+      });
+    }
     player.session?.sendJson({
       t: 'dungeon',
       name: spec.name,
@@ -11617,6 +11645,10 @@ export class GameServer {
     }
     this.world.removeZone(dungeon.zoneId);
     this.dungeons.delete(characterId);
+    // The court's ward retires with its halls.
+    for (const [tileKey, over] of this.poiChests) {
+      if (over.cell === `dg:${characterId}`) this.poiChests.delete(tileKey);
+    }
     // THE WORN WARD's last beat rides every door-close: a spent key
     // that was only standing because this run stood crumbles now.
     const ownerEid = this.characterEids.get(characterId);
@@ -11638,6 +11670,21 @@ export class GameServer {
   /** The dungeon instance owning this tile, if any (chests scale by it). */
   private dungeonPowerAt(tx: number, ty: number): number | null {
     return this.dungeonAt(tx, ty)?.power ?? null;
+  }
+
+  /**
+   * Does the champion of this character's run still stand? Standing
+   * means alive OR not yet woken (a spawn nobody has approached keeps
+   * eid null with a finite respawn clock); felled in the dungeon band
+   * reads as eid null + respawnAt pinned to Infinity (THE CLEARED
+   * HALL law) — only that combination drops the ward.
+   */
+  private dungeonChampionStands(characterId: number): boolean {
+    const inst = this.dungeons.get(characterId);
+    if (!inst || inst.bossSpawnIdx === undefined) return false;
+    const s = this.spawnPoints[inst.bossSpawnIdx];
+    if (!s?.active) return false;
+    return s.eid !== null || s.respawnAt !== Number.POSITIVE_INFINITY;
   }
 
   /**

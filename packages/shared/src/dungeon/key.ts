@@ -21,13 +21,14 @@ import { RARITY_TIERS, rarityIndex, type ItemRoll, type RarityTier } from '../ra
 export const DUNGEON_KEY_ITEM = 'dungeon_key';
 
 /**
- * The four dungeon dialects. `caveness` is the fraction of chambers
+ * The five dungeon dialects. `caveness` is the fraction of chambers
  * carved as natural cavern (cellular growth) rather than worked halls
  * (rect rooms + masonry) — the generator blends the two per room, so
  * a stronghold still cracks open into raw cave now and then and a
- * cavern hides the odd bricked vault.
+ * cavern hides the odd bricked vault. The warren is the gnolls'
+ * ground: dug dens, bone and hide, the Matriarch at the heart.
  */
-export type DungeonTheme = 'cavern' | 'crypt' | 'mine' | 'stronghold';
+export type DungeonTheme = 'cavern' | 'crypt' | 'mine' | 'stronghold' | 'warren';
 
 export interface ThemeLaw {
   theme: DungeonTheme;
@@ -42,6 +43,7 @@ export const THEME_LAWS: readonly ThemeLaw[] = [
   { theme: 'mine', caveness: 0.6, water: 0.45 },
   { theme: 'stronghold', caveness: 0.3, water: 0.15 },
   { theme: 'crypt', caveness: 0.15, water: 0.0 },
+  { theme: 'warren', caveness: 0.75, water: 0.25 },
 ];
 
 /**
@@ -59,12 +61,14 @@ export interface TierLaw {
   value: number;
 }
 
+// THE LONG DARK: a run is a 5–10 minute journey — the spine-and-branch
+// plan draws the road, these laws buy it the ground it needs.
 export const DUNGEON_TIER_LAWS: Record<RarityTier, TierLaw> = {
-  common: { size: 100, chambers: 10, power: 6, value: 120 },
-  uncommon: { size: 120, chambers: 13, power: 16, value: 340 },
-  rare: { size: 140, chambers: 17, power: 30, value: 900 },
-  epic: { size: 160, chambers: 21, power: 48, value: 2200 },
-  legendary: { size: 184, chambers: 26, power: 68, value: 5600 },
+  common: { size: 120, chambers: 12, power: 6, value: 120 },
+  uncommon: { size: 140, chambers: 16, power: 16, value: 340 },
+  rare: { size: 160, chambers: 20, power: 30, value: 900 },
+  epic: { size: 180, chambers: 25, power: 48, value: 2200 },
+  legendary: { size: 200, chambers: 30, power: 68, value: 5600 },
 };
 
 /** Everything the generator (and the key card) needs, derived pure. */
@@ -127,6 +131,10 @@ const NAME_BANKS: Record<DungeonTheme, { adj: string[]; noun: string[] }> = {
   crypt: {
     adj: ['Ashen', 'Mossgrown', 'Quiet', 'Gloomlit', 'Crumbled', 'Nameless', 'Cold', 'Elder'],
     noun: ['Barrow', 'Crypt', 'Ossuary', 'Tombs', 'Catacombs', 'Sepulcher', 'Reliquary', 'Halls'],
+  },
+  warren: {
+    adj: ['Howling', 'Gnawed', 'Redfang', 'Musky', 'Snarling', 'Bonestrewn', 'Rank', 'Wild'],
+    noun: ['Dens', 'Warren', 'Burrows', 'Lair', 'Digs', 'Underdens', 'Hollow', 'Sett'],
   },
 };
 

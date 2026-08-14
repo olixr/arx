@@ -211,5 +211,134 @@ test('corridors are wide enough to read: 1-wide pinches stay rare', () => {
 test('dungeon origin slots never overlap', () => {
   const a = dungeonOrigin(0);
   const b = dungeonOrigin(1);
-  assert.ok(b.x - a.x >= 184 + 32, 'slot spacing clears the largest tier');
+  assert.ok(b.x - a.x >= 200 + 32, 'slot spacing clears the largest tier');
+});
+
+/** BFS walk length from the landing to a target's doorstep, in tiles. */
+function walkDistance(
+  ground: Uint16Array,
+  s: number,
+  sx: number,
+  sy: number,
+  tx: number,
+  ty: number,
+): number {
+  const dist = new Int32Array(s * s).fill(-1);
+  dist[sy * s + sx] = 0;
+  const q = [sy * s + sx];
+  while (q.length > 0) {
+    const i = q.shift()!;
+    const x = i % s;
+    const y = Math.floor(i / s);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= s || ny >= s) continue;
+      const ni = ny * s + nx;
+      if (dist[ni] !== -1 || !passable(ground[ni]!)) continue;
+      dist[ni] = dist[i]! + 1;
+      q.push(ni);
+    }
+  }
+  let best = -1;
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    const d = dist[(ty + dy) * s + (tx + dx)] ?? -1;
+    if (d >= 0 && (best === -1 || d < best)) best = d;
+  }
+  return best;
+}
+
+test('THE SPINE: the road to the court is long by construction', () => {
+  // The critical path is authored rung by rung — the shortest walk
+  // from the landing to the champion's chest must spend the map.
+  // Measured across tiers: 1.0–1.5× the side; the law pins 0.85×.
+  for (const tier of ['common', 'rare', 'legendary'] as const) {
+    for (let seed = 1; seed <= 10; seed++) {
+      const { zone, entry, bossChest, spec } = gen(seed * 7919, tier);
+      const s = zone.width;
+      assert.ok(bossChest, `${tier}/${seed}: the court raises a chest`);
+      const d = walkDistance(
+        zone.ground,
+        s,
+        Math.floor(entry.x - ORIGIN.x),
+        Math.floor(entry.y - ORIGIN.y),
+        bossChest!.x - ORIGIN.x,
+        bossChest!.y - ORIGIN.y,
+      );
+      assert.ok(
+        d >= spec.size * 0.85,
+        `${tier}/${seed}: court ${d} tiles out on a ${spec.size} map — too short a road`,
+      );
+    }
+  }
+});
+
+test("THE CHAMPION'S COURT: every theme seats its crown over a warded chest", () => {
+  // Find seeds for every theme (the seed hash deals them), then hold
+  // each court to the law: a boss chest the result names, a champion
+  // spawn the result indexes, the theme's own seat on it.
+  const SEATS: Record<string, string[]> = {
+    cavern: ['giant_spider'],
+    crypt: ['skeleton_fallen_king', 'skeleton_barrow_lord'],
+    mine: ['anvil_golem'],
+    stronghold: ['goblin_flame_tyrant'],
+    warren: ['gnoll_matriarch'],
+  };
+  const found = new Map<string, number>();
+  for (let seed = 1; found.size < 5 && seed <= 600; seed++) {
+    const spec = dungeonSpecFromRoll({ rar: 'rare', seed });
+    if (!found.has(spec.theme)) found.set(spec.theme, seed);
+  }
+  assert.equal(found.size, 5, 'all five themes deal within 600 seeds');
+  for (const [theme, seed] of found) {
+    const { zone, bossChest, bossSpawnIndex } = gen(seed, 'rare');
+    const s = zone.width;
+    assert.ok(bossChest, `${theme}: court chest exists`);
+    assert.equal(
+      zone.ground[(bossChest!.y - ORIGIN.y) * s + (bossChest!.x - ORIGIN.x)],
+      Tile.ChestBoss,
+      `${theme}: the named chest cell is the boss chest`,
+    );
+    assert.ok(bossSpawnIndex !== null, `${theme}: champion spawn indexed`);
+    const champ = (zone.spawns ?? [])[bossSpawnIndex!];
+    assert.ok(champ?.name, `${theme}: the champion is named`);
+    assert.ok(
+      SEATS[theme]!.includes(champ!.npc),
+      `${theme}: seat ${champ!.npc} is not this theme's crown`,
+    );
+    assert.equal(champ!.count, 1, `${theme}: one champion`);
+  }
+});
+
+test('THE LIVED-IN DARK: war themes seat posts and the halls are walked', () => {
+  // Across a spread of war-theme seeds, at least some camps seat
+  // posted bodies and some corridor sentries carry patrol rounds —
+  // the fixtures exist, hop lengths stay lawful.
+  let posts = 0;
+  let patrols = 0;
+  for (let seed = 1; seed <= 40; seed++) {
+    const spec = dungeonSpecFromRoll({ rar: 'epic', seed });
+    if (spec.theme !== 'stronghold' && spec.theme !== 'warren') continue;
+    const { zone } = gen(seed, 'epic');
+    for (const sp of zone.spawns ?? []) {
+      if (sp.post) {
+        posts++;
+        assert.equal(sp.count, 1, 'a post is one body');
+      }
+      if (sp.patrol) {
+        patrols++;
+        assert.ok(sp.patrol.length >= 3, 'a round has stops');
+        for (let i = 1; i < sp.patrol.length; i++) {
+          const a = sp.patrol[i - 1]!;
+          const b = sp.patrol[i]!;
+          assert.ok(
+            Math.hypot(a.x - b.x, a.y - b.y) <= 12,
+            'patrol hops stay walkable',
+          );
+        }
+      }
+    }
+  }
+  assert.ok(posts >= 1, `war camps seat posted bodies (${posts})`);
+  assert.ok(patrols >= 3, `corridor sentries walk rounds (${patrols})`);
 });
