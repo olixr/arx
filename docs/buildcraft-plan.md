@@ -771,3 +771,72 @@ statuses (bits and stacks only — inventing timers the wire does not carry
 would lie). Momentum and micro-buffs stay off the HUD by Phase 5's
 standing design. The armory/vault set SORT and a full "collection browser"
 for unworn houses are recorded as deliberate follow-on doors, not scope.
+
+## As built — THE FIGHT SHOWS ITS FACE (campaign complete, 2026-08-14)
+
+Four phases, three commits, live-proven on the 5174 rig.
+
+**V1+V2 — THE LANDING WORD + THE WOUND ROW (5379708).**
+render/statusFx.ts: StatusEdges per-body bit memory (swept from
+collectEntities, one frame tick; first sight and stale re-entries
+adopt silently; falling edges silent) fires LANDINGS on rising edges —
+fire.burst / frost.bloom (dur 0.6) / storm.crackle / blood.spatter /
+venom.burst / dust.slam + bespoke stone chips for sunder (no glow for
+bleed or sunder, law 4) — and STACK_NOTES (venom.bead / blood.drip
+dur 0.5) when the affliction nibble deepens (ambiguous stacks speak
+venom; a same-frame landing suppresses the note). STATUS_INK = the one
+color truth (statusFx.ts), read by drawMiniHp, the floats, and the
+wound row. Ambience texture: bleed/venom wear the v5 drop silhouette,
+sunder tumbles shards, two-grain sizes throughout; rhythm and palettes
+unchanged. Wire: S2CHit.via signs DoT pulses (dotNpc kind, damagePlayer
+/damagePet opts.via from tickStatuses — additive, no bump); tick floats
+print in status ink at 0.85 sizeMul (ink outranks own-red; the vignette
+carries the "you"); flashHurt(via) tints the hurt bands
+(STATUS_VIGNETTE_RGB). Full-health bodies confess: every nameplate gate
+is hpPct < 255 OR ambience bits, and drawMiniHp draws blocks-only at
+full health. THE WOUND ROW: drawOwnWounds beside drawHpBar — nameplate
+grammar at owner scale, ABOVE the bar (the hotbar owns the south), no
+invented timers. Combat coins tokenized (.buff-chip.combat +
+.coin-glyph in hotbar.css); BuffInfo.desc composed server-side by
+describeBuff from LIVE PlayerBuff fields (three clauses max);
+lane-chips + lane-plaque join LANES. statusFx.test.ts = 9 edge laws.
+
+**V3 — THE HOUSE COURT (d4a3a68).** SET_NAMES christens all 46
+families (setWords.ts; compound ids get their spaces back; coverage
+pinned both ways + shape law in setWords.test.ts). panels.lastGearStats
+= ONE TRUTH (aggregated once per equipment push; renderGearStrip reads
+it; the card's hand counter is dead). houseCourt(setId) = the one
+builder (ring gauge toward five, count numeral center, words as
+lit/ghost rows with plain-word gates "at two pieces"/"at four
+pieces"/"woken") deployed: manifest head ("The house(s)" section leads
+"The kit"), item card (after the Class row, ungated from rolled), bench
+via re-parenting. Marks outside the court: equip-cell kin pips
+(data-set + count>=2), manifest row gold ticks, applyHouseMarks pack
+pips (applyReqGate mold, idempotent, re-run on equipment push: worn
+family 1-4 pieces AND the slot's worn piece is not already kin).
+Compare: "Puts <word> to sleep." ember / "Wakes <word>." gold, silent
+inside one family. CSS = house-court block in character.css, tokens
+only, corner-truth safe (left rule, no clipped rings).
+
+**V4 — THE ARMORY KNOWS THE HOUSE (eef5a83).** vaultCell carries the
+same advance pip via the getEquipment thunk; buff chips carry
+data-tipname. Live proof (scratchpad prove-visible.mjs +
+prove-wounds.mjs, throwaway accounts on 5174): court/pips/card/wound
+row all photographed; the wolfstalker gate seals (archery 22/24)
+barred the first attempt exactly as designed.
+
+**Deliberate opens:** buff chips are still not pad-navigable (tipname
+waits for a focus path); landing bursts on CULLED bodies never fire
+(by design — the edge memory is viewport-scoped); the vault has no
+"by House" sort; unworn-family collection browser stays a follow-on
+door; the wake/sleep compare lines are logic-tested but not
+screenshot-proven.
+
+Foreign-failure ledger at close: every red test during this campaign
+(skeleton looks, composeFinds, patrol sentries, mileposts, geography)
+belonged to the Kingsdelf/POI session's in-flight worktree; my
+surfaces closed green (client 492/492, content setWords 9/9, statusFx
+9/9). Mid-campaign incident: a peer git stash swept uncommitted WIP;
+recovered byte-exact from the stash + context; standing rule agreed
+with both sessions — no stash/reset/checkout of unowned paths in the
+shared tree, ever.
