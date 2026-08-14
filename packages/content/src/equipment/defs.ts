@@ -921,19 +921,19 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
 
   // -------- Warden: patina-green bronze and copper, the explorer's
   // plate. Grown, not forged — affixes lean into the field skills.
-  ...wardenSet(),
+  ...withSet('warden', wardenSet()),
   // -------- Frostplate: pale ice-steel, drop-only from the wolf packs.
   // The battle-mage hybrid: plate that still remembers Arx.
-  ...frostplateSet(),
+  ...withSet('frostplate', frostplateSet()),
   // -------- Bulwark: gunmetal and brass, the fortress line. Nothing
   // clever, everything thick.
-  ...bulwarkSet(),
+  ...withSet('bulwark', bulwarkSet()),
   // -------- Dreadforge: blackened steel and blood trim, drop-only from
   // the Skeleton Champion. The villain's wardrobe, worn by you.
-  ...dreadforgeSet(),
+  ...withSet('dreadforge', dreadforgeSet()),
   // -------- Sunforged: gold and ivory, the endgame craft line. Wings,
   // sun devices, gilded edges — the parade armor that fights.
-  ...sunforgedSet(),
+  ...withSet('sunforged', sunforgedSet()),
 
   // =============================================== themed leather sets
   // The leather wardrobe: the skirmisher's five color stories. Fur,
@@ -941,19 +941,19 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
 
   // -------- Wayfarer: buckskin and a redtail feather, the scout's
   // starter craft line. Everything a long road asks for.
-  ...wayfarerSet(),
+  ...withSet('wayfarer', wayfarerSet()),
   // -------- Wolfstalker: smoke-grey hide and winter fur, drop-only
   // from the wolf packs. Ears on the hood; the pack walks with you.
-  ...wolfstalkerSet(),
+  ...withSet('wolfstalker', wolfstalkerSet()),
   // -------- Nightveil: ink and dusk-purple, drop-only from the crypt.
   // Masked, quiet, gone. The rogue's wardrobe — it gates on Sneak.
-  ...nightveilSet(),
+  ...withSet('nightveil', nightveilSet()),
   // -------- Drakescale: oxblood scale over boiled leather, the
   // skirmish bruiser's high craft line. Copper-edged, fire-tempered.
-  ...drakescaleSet(),
+  ...withSet('drakescale', drakescaleSet()),
   // -------- Stagheart: bark leather, moss trim, ivory ANTLERS — the
   // endgame forest-king craft. The wilds crown their own.
-  ...stagheartSet(),
+  ...withSet('stagheart', stagheartSet()),
 
   // ================================================= themed cloth sets
   // The cloth wardrobe: the caster's five color stories. Sashes, hem
@@ -961,21 +961,21 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
 
   // -------- Hedgemage: moss and mustard patchwork, the herb-garden
   // craft line. A pointed hat colorway proves hats obey the law too.
-  ...hedgemageSet(),
+  ...withSet('hedgemage', hedgemageSet()),
   // -------- Tidecaller: THE TIDE COURT — four waters on one robe:
   // the breaker, the abyss, the dark waters, the maelstrom. Drop-only
   // from the raiders who loot the coast; the tide keeps its own
   // ledger, and the moon on the chest keeps it honest.
-  ...tidecallerCourt(),
+  ...withSet('tidecaller', tidecallerCourt()),
   // -------- Voidwhisper: ink-violet and pale lavender, drop-only from
   // the crypt. A masked cowl and an unblinking eye device.
-  ...voidwhisperSet(),
+  ...withSet('voidwhisper', voidwhisperSet()),
   // -------- Cindersworn: charcoal and live ember, the high craft
   // line. Hem runes that glow like a banked fire.
-  ...cinderswornSet(),
+  ...withSet('cindersworn', cinderswornSet()),
   // -------- Starweaver: midnight and silver, the endgame craft.
   // Orbits its own shoulder-orbs under a floating halo.
-  ...starweaverSet(),
+  ...withSet('starweaver', starweaverSet()),
 
   // ========================================== early-game cloth wardrobe
   // Five sets for the leveling road (arx 2–19), each in FOUR dye lots
@@ -1054,6 +1054,18 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
 // Local authoring shorthand only: each returns plain EquipmentDefs and
 // keeps the four pieces of a set tonally coherent (one palette, one
 // affix pool, one acquisition story). A JSON tool would inline these.
+
+/**
+ * THE HOUSE WORD: stamp a family's set id on every piece it makes.
+ * Explicit at the maker call so the assembly reads as a roster;
+ * colorway lots minted from a stamped base inherit the stamp through
+ * the spread. Early wardrobes are deliberately NOT stamped — identity
+ * starts where the chase starts, and sixty word-sets would drown the
+ * ledger.
+ */
+function withSet(set: string, defs: EquipmentDef[]): EquipmentDef[] {
+  return defs.map((d) => ({ ...d, set }));
+}
 
 function wardenSet(): EquipmentDef[] {
   const pool: AffixPoolEntry[] = [
@@ -5354,6 +5366,8 @@ type ArmorSlot = 'head' | 'body' | 'legs' | 'gloves' | 'boots';
 
 function chasePiece(
   base: {
+    /** THE HOUSE WORD: the family's set id — every piece carries it. */
+    set: string;
     class: 'cloth' | 'leather' | 'plate';
     skill: 'arx' | 'archery' | 'sneak' | 'defence';
     pool: AffixPoolEntry[];
@@ -5367,7 +5381,7 @@ function chasePiece(
     id, name, slot, armorClass: base.class,
     levelReq: { skill: base.skill, level }, armor, affixPool: base.pool,
     acquisition: { drop: true }, value, color: base.color, code, desc,
-    rarities: base.rarities,
+    rarities: base.rarities, set: base.set,
   };
 }
 
@@ -5376,6 +5390,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // bells, a glow the flower keeps for itself. Owner: the fen edge
   // where moonbell grows — adders and the spiders above them.
   const moonbell = {
+    set: 'moonbell',
     class: 'cloth' as const, skill: 'arx' as const,
     pool: [
       { stat: 'arx', w: 2 },
@@ -5390,6 +5405,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // one white seam, violet runes: the riftglass blade's own language.
   // Owner: the riftgate and the Champion who guards the way down.
   const riftweave = {
+    set: 'riftweave',
     class: 'cloth' as const, skill: 'arx' as const,
     pool: [
       { stat: 'arx', w: 3 },
@@ -5403,6 +5419,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // ADDERFANG — diamondback hide with the fangs still on it. Owner:
   // the adder, plainly; the road crews pay for the skins they take.
   const adderfang = {
+    set: 'adderfang',
     class: 'leather' as const, skill: 'archery' as const,
     pool: [
       { stat: 'archery', w: 2 },
@@ -5416,6 +5433,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // BROODSILK — ink leather bound in moon-pale cord. Owner: the giant
   // spider, whose silk it is; the crypt keeps a set for its own.
   const broodsilk = {
+    set: 'broodsilk',
     class: 'leather' as const, skill: 'sneak' as const,
     pool: [
       { stat: 'sneak', w: 3 },
@@ -5429,6 +5447,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // AUROCHS — a bull's chest in black bronze, brass ring in the nose.
   // Owner: the bull. The pastures tell stories about the one that won.
   const aurochs = {
+    set: 'aurochs',
     class: 'plate' as const, skill: 'defence' as const,
     pool: [
       { stat: 'defence', w: 2 },
@@ -5443,6 +5462,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // Owner: the crypt's Champion; the hill kept its king, and the king
   // kept his wardrobe.
   const barrowking = {
+    set: 'barrowking',
     class: 'plate' as const, skill: 'defence' as const,
     pool: [
       { stat: 'defence', w: 3 },
@@ -5457,6 +5477,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // made. Owner: the winter packs — the matriarch walks with the
   // court's leavings snagged in the great pelt.
   const wintercourt = {
+    set: 'wintercourt',
     class: 'cloth' as const, skill: 'arx' as const,
     pool: [
       { stat: 'arx', w: 2 },
@@ -5471,6 +5492,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // Owner: the crypt's watch; the keeper's vestment outlasted the
   // keeper, and the guards hold what the hill holds.
   const vigil = {
+    set: 'vigil',
     class: 'cloth' as const, skill: 'arx' as const,
     pool: [
       { stat: 'arx', w: 2 },
@@ -5485,6 +5507,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // never settle. Owner: the troll, who keeps anything that glows and
   // never once looked up to ask where this came from.
   const skydancer = {
+    set: 'skydancer',
     class: 'cloth' as const, skill: 'arx' as const,
     pool: [
       { stat: 'arx', w: 2 },
@@ -5499,6 +5522,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // company. Owner: the stag, plainly; the boar tramples the same
   // glades and keeps what it finds.
   const hartsong = {
+    set: 'hartsong',
     class: 'leather' as const, skill: 'archery' as const,
     pool: [
       { stat: 'archery', w: 2 },
@@ -5513,6 +5537,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // remembers the wind. Owner: the crypt's archer, still at his post;
   // the mossy chests hold what the old kingdom fletched.
   const skytalon = {
+    set: 'skytalon',
     class: 'leather' as const, skill: 'archery' as const,
     pool: [
       { stat: 'archery', w: 3 },
@@ -5527,6 +5552,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // coals for eyes. Owner: the reaver crews who burn what they rob;
   // one of them walked out of a burn wearing this.
   const cindershade = {
+    set: 'cindershade',
     class: 'leather' as const, skill: 'sneak' as const,
     pool: [
       { stat: 'sneak', w: 2 },
@@ -5541,6 +5567,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // never thin. Owner: the rooks bank their best in other people's
   // vaults — gilded locks and boss hoards.
   const rookfeather = {
+    set: 'rookfeather',
     class: 'leather' as const, skill: 'sneak' as const,
     pool: [
       { stat: 'sneak', w: 3 },
@@ -5555,6 +5582,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // time. Owner: the diggers found it and the gilded locks kept it;
   // nobody alive remembers the magister who wound it.
   const orrery = {
+    set: 'orrery',
     class: 'cloth' as const, skill: 'arx' as const,
     pool: [
       { stat: 'arx', w: 3 },
@@ -5569,6 +5597,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // Owner: the high crags where the storm lives; the rams wear it
   // down, and the goblin throwers scavenge what the lightning drops.
   const stormcrown = {
+    set: 'stormcrown',
     class: 'plate' as const, skill: 'defence' as const,
     pool: [
       { stat: 'defence', w: 2 },
@@ -5583,6 +5612,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // warren; the kobolds dug into the old forge and the digmaster
   // wears what the anvil remembers.
   const forgeheart = {
+    set: 'forgeheart',
     class: 'plate' as const, skill: 'defence' as const,
     pool: [
       { stat: 'defence', w: 3 },
@@ -5597,6 +5627,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // trolls den in the old wyrm caves; the riftgate hoards kept the
   // rest of the smith's run.
   const wyrmsteel = {
+    set: 'wyrmsteel',
     class: 'plate' as const, skill: 'defence' as const,
     pool: [
       { stat: 'onehand', w: 3 },
@@ -5614,6 +5645,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // crypt's Champion still drills in the dark, and the boss hoards
   // bank the rest.
   const oathgold = {
+    set: 'oathgold',
     class: 'plate' as const, skill: 'defence' as const,
     pool: [
       { stat: 'defence', w: 2 },
@@ -5631,6 +5663,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // JADESKULL — jade steel, gold seams, a skull device whose eyes
   // wake. Owner: the gnoll war packs crown their champions in it.
   const jadeskull = {
+    set: 'jadeskull',
     class: 'plate' as const, skill: 'defence' as const,
     pool: [
       { stat: 'defence', w: 2 },
@@ -5645,6 +5678,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // the wind, a cold light in the gaps. Owner: the trolls hoard the
   // old bones, and the deepest of them wear some.
   const fellbone = {
+    set: 'fellbone',
     class: 'plate' as const, skill: 'defence' as const,
     pool: [
       { stat: 'defence', w: 2 },
@@ -5659,6 +5693,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // other like fires down a border wall. Owner: the reaver bands that
   // broke the old border watch still carry what they stripped.
   const redmarch = {
+    set: 'redmarch',
     class: 'plate' as const, skill: 'defence' as const,
     pool: [
       { stat: 'defence', w: 2 },
@@ -5673,6 +5708,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // the shoulders that gives no heat. Owner: the far winter's own —
   // the dire packs, and the riftgate banks the rest.
   const rimethorn = {
+    set: 'rimethorn',
     class: 'plate' as const, skill: 'defence' as const,
     pool: [
       { stat: 'defence', w: 3 },
@@ -5687,6 +5723,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // its fire burns bone gold. Owner: the high passes — the elder
   // owls nest over the lot that went south.
   const palethorn = {
+    set: 'palethorn',
     class: 'plate' as const, skill: 'defence' as const,
     pool: [
       { stat: 'defence', w: 3 },
@@ -5701,6 +5738,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // floating crown of light. Owner: the deep hoards; the guard never
   // sold a suit, and the world only keeps what it took.
   const kingsmane = {
+    set: 'kingsmane',
     class: 'plate' as const, skill: 'defence' as const,
     pool: [
       { stat: 'defence', w: 2 },
@@ -5719,6 +5757,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // come back. Owner: the Champion's trophy racks keep the suit with
   // everyone who tried; the gate keeps what it considers its own.
   const gatefall = {
+    set: 'gatefall',
     class: 'plate' as const, skill: 'defence' as const,
     pool: [
       { stat: 'defence', w: 2 },
@@ -5741,6 +5780,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // service whole and has sung it wrong ever since; the vaults keep
   // a second set folded right.
   const sunhallow = {
+    set: 'sunhallow',
     class: 'cloth' as const, skill: 'arx' as const,
     pool: [
       { stat: 'arx', w: 2 },
@@ -5755,6 +5795,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // circling. Owner: the elder great owl, the only thing over the
   // pines that ever outflew the weather it sings about.
   const stormsinger = {
+    set: 'stormsinger',
     class: 'cloth' as const, skill: 'arx' as const,
     pool: [
       { stat: 'arx', w: 3 },
@@ -5770,6 +5811,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // Owner: the gloomcaller, who looked into the gloam and came back
   // wearing the answer badly.
   const gloamsight = {
+    set: 'gloamsight',
     class: 'cloth' as const, skill: 'arx' as const,
     pool: [
       { stat: 'arx', w: 2 },
@@ -5785,6 +5827,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // fire; the firecaller has carried the last word of the scripture
   // since before it could pronounce it.
   const flamewrought = {
+    set: 'flamewrought',
     class: 'cloth' as const, skill: 'arx' as const,
     pool: [
       { stat: 'arx', w: 3 },
@@ -5800,6 +5843,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // the worgs took the last warden at the ford and could not agree
   // on the hat.
   const duskwarden = {
+    set: 'duskwarden',
     class: 'cloth' as const, skill: 'arx' as const,
     pool: [
       { stat: 'arx', w: 2 },
@@ -5815,6 +5859,7 @@ function namedChaseDefs(): EquipmentDef[] {
   // word. Owner: the deep hoards, same law as the kingsmane — the
   // world only keeps what it took.
   const aetherion = {
+    set: 'aetherion',
     class: 'cloth' as const, skill: 'arx' as const,
     pool: [
       { stat: 'arx', w: 3 },

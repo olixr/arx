@@ -6,6 +6,7 @@ import type { EnchantEffect, ProcEffect } from './enchants.js';
 import { addProc, instanceEffects, isStrikeTrigger } from './enchants.js';
 import type { AffixStat, ArmorClass } from './types.js';
 import { ARMOR_CLASS_SLOTS } from './types.js';
+import { setWordsFor } from './setWords.js';
 import {
   AFFIX_ROLL_FRAC,
   ARMOR_CLASS_MODS,
@@ -190,6 +191,15 @@ export interface GearStats {
    * distinct states only.
    */
   vsState: Partial<Record<StatusId, number>>;
+  /** THE HOUSE WORD: worn pieces per set id (armor slots only). */
+  setCounts: Record<string, number>;
+  /**
+   * On-hit afflictions granted by WORDS (the Envenom stance pattern:
+   * every landed basic carries them, whichever blade landed). Kept
+   * OFF foldEffect on purpose — a weapon's own onHitStatus rides the
+   * strike channel, and folding both would double-apply.
+   */
+  wordOnHit: Array<{ status: StatusId; power: number; durationTicks: number; chance: number }>;
   /**
    * Workings whose trigger belongs to the BODY (kill, hurt, block,
    * cast, lowHp, stacks, gather, stride) rather than to the steel that
@@ -214,6 +224,8 @@ export function emptyGearStats(): GearStats {
     critPct: 0,
     onKillHasteTicks: 0,
     vsState: {},
+    setCounts: {},
+    wordOnHit: [],
     procs: [],
   };
 }
@@ -317,6 +329,7 @@ export function aggregateGearStats(
   equipment: Partial<Record<EquipSlot, EquippedRef | undefined>>,
 ): GearStats {
   const out = emptyGearStats();
+  const setCounts = new Map<string, number>();
   for (const slot of Object.keys(equipment) as EquipSlot[]) {
     const worn = equipment[slot];
     if (!worn) continue;
@@ -333,6 +346,10 @@ export function aggregateGearStats(
       const cls = def.gear?.armorClass;
       if (cls && (ARMOR_CLASS_SLOTS as readonly string[]).includes(slot)) {
         out.classCounts[cls]++;
+        // THE HOUSE WORD: set membership counts on the armor slots
+        // alone — the same five slots the class mods read.
+        const set = def.gear?.set;
+        if (set) setCounts.set(set, (setCounts.get(set) ?? 0) + 1);
       }
     } else {
       // Legacy non-gear items (capes, bucklers) still contribute their
@@ -356,6 +373,30 @@ export function aggregateGearStats(
     }
     out.speedMult += (mods.speedPct * count) / 100;
     out.cooldownMult += (mods.cooldownPct * count) / 100;
+  }
+  // THE HOUSE WORD: every threshold met speaks, cumulatively (the 2pc
+  // line stays live under the 4pc word). Effects reuse the whole
+  // enchant vocabulary through the same fold — a word's proc dedupes
+  // by id like any matched set, a word's vsState folds highest-wins.
+  for (const [set, count] of setCounts) {
+    out.setCounts[set] = count;
+    for (const word of setWordsFor(set)) {
+      if (count < word.pieces) continue;
+      for (const fx of word.effects) {
+        if (fx.kind === 'onHitStatus') {
+          // The word's affliction rides the worn aggregate, never the
+          // strike channel — see the wordOnHit doc above.
+          out.wordOnHit.push({
+            status: fx.status,
+            power: fx.power,
+            durationTicks: fx.durationTicks,
+            chance: fx.chance,
+          });
+        } else {
+          foldEffect(out, fx);
+        }
+      }
+    }
   }
   return out;
 }

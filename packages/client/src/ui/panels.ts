@@ -37,6 +37,7 @@ import {
   enchantDef,
   bondedEffects,
   qualityWord,
+  setWordsFor,
   instanceName,
   isTwoHanded,
   itemDef,
@@ -1122,6 +1123,29 @@ export class Panels {
       // Native traits — what the def itself DOES beyond stats.
       if (def.gear?.effects?.length) {
         stat('Trait', def.gear.effects.map(describeEffect).join(' · '), '#e8c04c');
+      }
+      // THE HOUSE WORD: the family block — pieces worn now, each word
+      // lit or waiting, and its sentence printed (the tooltip law).
+      const setId = def.gear?.set;
+      if (setId) {
+        const words = setWordsFor(setId);
+        if (words.length > 0) {
+          let wornCount = 0;
+          for (const s of ['head', 'body', 'legs', 'gloves', 'boots'] as const) {
+            const w = this.lastEquipment[s];
+            if (w && itemDef(w.id)?.gear?.set === setId) wornCount++;
+          }
+          const setName = setId.charAt(0).toUpperCase() + setId.slice(1);
+          stat('House', `${setName} · ${wornCount} of 5 worn`, '#c8a84c');
+          for (const word of words) {
+            const lit = wornCount >= word.pieces;
+            const wd = document.createElement('div');
+            wd.className = 'card-passive-desc';
+            wd.style.opacity = lit ? '1' : '0.45';
+            wd.textContent = `(${word.pieces}) ${word.name}. ${word.desc}`;
+            this.card.appendChild(wd);
+          }
+        }
       }
       // The bonded enchantment — permanent, tier-colored, spelled out.
       // THE ENCHANTER'S HAND and THE DEEPENING: a piece may carry a

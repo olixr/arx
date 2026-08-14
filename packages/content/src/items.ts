@@ -145,6 +145,15 @@ export interface GearInfo {
   acquisition: { drop: boolean; craft: boolean; shop: boolean };
   /** Native always-on effects (enchant vocabulary, baked into the def). */
   effects?: EnchantEffect[];
+  /**
+   * THE HOUSE WORD: the armor family this piece belongs to,
+   * mechanically. An EXPLICIT field, never parsed from the id —
+   * colorway lots share their family's set. Worn pieces of one set
+   * are counted at the aggregate and speak the family's words
+   * (SET_WORDS) at 2 and 4 pieces. Absent = no set (early lots,
+   * weapons, offhands, capes).
+   */
+  set?: string;
 }
 
 export interface ItemDef {

@@ -19240,6 +19240,19 @@ export class GameServer {
         for (const b of attacker.buffs) {
           if (b.onHitStatus) this.applyStatusToNpc(npcEid, b.onHitStatus, attackerEid, style);
         }
+        // THE HOUSE WORD: a word's affliction rides every landed
+        // basic, whichever blade landed — the stance pattern, worn
+        // as armor. (Basics floor at 1, so there is no whiff here.)
+        for (const oh of attacker.gear.wordOnHit) {
+          if (Math.random() < oh.chance) {
+            this.applyStatusToNpc(
+              npcEid,
+              { status: oh.status, power: oh.power, durationTicks: oh.durationTicks },
+              attackerEid,
+              style,
+            );
+          }
+        }
       }
     }
     // The status may have detonated a reaction that already killed the

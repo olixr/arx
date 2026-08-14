@@ -63,6 +63,7 @@ export function compileEquipment(defs: readonly EquipmentDef[]): {
       rarities,
       acquisition: { drop: !!acq.drop, craft: !!acq.craft, shop: !!acq.shop },
       effects: def.effects,
+      set: def.set,
     };
 
     items.push({

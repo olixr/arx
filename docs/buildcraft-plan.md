@@ -320,6 +320,54 @@ The user's exact sentence becomes authorable data:
 
 ### Phase 3 — THE HOUSE WORD (set bonuses)
 
+**SHIPPED 2026-08-14. As-built:**
+
+- `EquipmentDef.set` / `GearInfo.set` — explicit field, never
+  id-parsed. Stamps: 31 chase base consts carry `set:` inline
+  (`chasePiece` copies it), the 15 themed makers wrap in
+  `withSet(id, maker())` at the assembly, tidecaller's four waters
+  share one set. **Early wardrobes deliberately unstamped** — this
+  resolves the plan's craft-vs-early tension: identity starts where
+  the chase starts, and the craft lane keeps its edge through the six
+  craft-only THEMED families (wayfarer, drakescale, stagheart,
+  hedgemage, cindersworn, starweaver). Wave one = 46 word-sets.
+- `SET_WORDS` registry (`equipment/setWords.ts`): per family, one 2pc
+  flat line + one 4pc behavioral word, cumulative. Effects reuse the
+  enchant vocabulary; the fold lives at the end of
+  `aggregateGearStats` (setCounts on the same five armor slots
+  classCounts reads; `GearStats.setCounts` exposed for the card).
+- **The wordOnHit lane**: a word's `onHitStatus` rides a dedicated
+  `GearStats.wordOnHit` aggregate (the Envenom-stance pattern: every
+  landed basic carries it, whichever blade landed), applied at the
+  buff-stance site in damageNpc. Kept OFF `foldEffect` on purpose — a
+  weapon's own native onHitStatus rides the strike channel, and
+  folding both would double-apply.
+- Word laws, all pinned in `setWords.test.ts` (8 tests): EXACT
+  two-way coverage (stamped ⇔ spoken, 46 exactly, early wordless);
+  one 2pc + one 4pc in order; BEHAVIOR OVER NUMBERS both ways (4pc
+  must behave, 2pc must NOT); words never touch the strike channel
+  (no lifesteal/backstab kinds, body triggers only — a set is worn,
+  not swung; `procMismatch` walked; targeted actions need targeted
+  triggers — the validator caught starweaver's bolt-on-cast at
+  authoring, exactly as designed); `word_` proc-id prefix, globally
+  unique vs the enchant roster (ONE ID ONE TIMER is global); flat
+  budget caps; live fold walk on real ids (moonbell thresholds,
+  mixed houses speak neither, wolfstalker wordOnHit, barrowking proc).
+- Notable words: **barrowking 4pc is sunder's debut source** (block →
+  sunder 15% for 3s); voidwhisper 4pc lights up the reserved
+  `cleanse` action; moonbell/flamewrought/cindersworn/dreadforge/
+  nightveil/wyrmsteel carry the first vsState clauses; adderfang/
+  wolfstalker/drakescale/cindershade the first word afflictions.
+- Item card: the House block — `House · N of 5 worn` + each word's
+  sentence lit (full) or waiting (dimmed), the slotGate reading.
+- The recompute path needed NO server change (words fold inside
+  `aggregateGearStats`, which `recomputeGear` already calls); the
+  only server line is the wordOnHit apply beside the stance loop.
+- Deferred within phase: no bespoke FX faces for word procs yet
+  (they ride the generic proc grammar; the FLOURISH pass lands with
+  Phase 5), and the ledger prices procs behaviorally rather than
+  numerically (plan Part 3 budgets stand as the authoring guide).
+
 - `EquipmentDef.set?: string` survives compile into `GearInfo`; colorway
   lots share the family's set id. Explicit field, never name-parsing.
 - `SET_WORDS` registry in content: per set id, thresholds

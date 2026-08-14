@@ -86,6 +86,13 @@ export interface EquipmentDef {
    * beyond stats; an enchant stacks a second layer on top.
    */
   effects?: EnchantEffect[];
+  /**
+   * THE HOUSE WORD: the armor family this piece mechanically belongs
+   * to. Explicit, never parsed from the id — colorway lots share the
+   * family's set. Families with entries in SET_WORDS speak them at
+   * 2 and 4 worn pieces.
+   */
+  set?: string;
   /** Which stats this piece may roll, weighted. */
   affixPool: AffixPoolEntry[];
   /** Tiers this item can exist at; default all five. */
