@@ -148,6 +148,11 @@ export function garrisonAll(b: DungeonBuild): void {
   };
 
   // ---- room packs ----------------------------------------------------
+  // THE TURNED SEED: a teeming key fields an extra body per pack; a
+  // blooded one drills the whole garrison three levels harder (the
+  // court's own crown keeps its authored remove either way).
+  const teem = b.mods.has('teeming') ? 1 : 0;
+  const drill = b.mods.has('blooded') ? 3 : 0;
   for (const a of b.rooms) {
     // The entry is safe ground, the court has its own garrison, and
     // the sealed vault/forge stay quiet — the reward IS the calm.
@@ -162,8 +167,8 @@ export function garrisonAll(b: DungeonBuild): void {
         x: origin.x + a.x + rMobs.int(-2, 2),
         y: origin.y + a.y + rMobs.int(-2, 2),
         radius: Math.max(2, a.r - 2),
-        count: rMobs.int(1, 2) + (rarityIndex(b.spec.tier) >= 3 ? 1 : 0),
-        level: lvl(rMobs.int(-2, 2)),
+        count: rMobs.int(1, 2) + (rarityIndex(b.spec.tier) >= 3 ? 1 : 0) + teem,
+        level: lvl(rMobs.int(-2, 2) + drill),
       });
     }
   }
@@ -213,8 +218,11 @@ export function garrisonAll(b: DungeonBuild): void {
   }
 
   // ---- corridor sentries: the halls are walked, not stood ------------
+  // THE TURNED SEED: a watchful key walks most of its ways, and its
+  // sentries watch two levels sharper.
+  const watchful = b.mods.has('watchful');
   for (const [ei, e] of b.edges.entries()) {
-    if (!rMobs.chance(0.4)) continue;
+    if (!rMobs.chance(watchful ? 0.75 : 0.4)) continue;
     const a = b.rooms[e.a]!;
     const d = b.rooms[e.b]!;
     const path = b.corridorPaths[ei];
@@ -246,7 +254,7 @@ export function garrisonAll(b: DungeonBuild): void {
       y: origin.y + my,
       radius: 3,
       count: 1,
-      level: lvl(rMobs.int(-2, 0)),
+      level: lvl(rMobs.int(-2, 0) + drill + (watchful ? 2 : 0)),
       patrol,
     });
   }
@@ -263,6 +271,13 @@ export function garrisonAll(b: DungeonBuild): void {
     radius: 1,
     count: 1,
     level: lvl(5),
+    // THE COURT HOLDS THE CROWN: every authored arena is 23×15 (walkable
+    // half-extents ≈ 9.5×6.5), while the crowns' open-ground arenaR runs
+    // 14–18 — unchecked, the champion chases a kiter up the approach and
+    // the rim guard can never fire. The seat's own radius keeps the
+    // fight in the court: past the mouth he plants; far past it he walks
+    // home whole (the one honest reset).
+    arenaR: 8,
   });
   // The honor guard flanks the dais; a watchful pair holds the mouth.
   spawns.push({

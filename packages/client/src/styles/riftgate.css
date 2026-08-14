@@ -71,6 +71,13 @@
   color: var(--arcane-soft);
 }
 
+/* THE TURNED SEED: the key's modifier words — quiet italics, the
+   blurb rides the title attribute. */
+.rift-mod {
+  font-style: italic;
+  color: var(--gold);
+}
+
 /* The headline number, told huge (the inspect card's plaque dialect). */
 .rift-power {
   flex: none;

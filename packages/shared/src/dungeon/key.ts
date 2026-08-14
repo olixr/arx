@@ -167,6 +167,64 @@ export function dungeonSigil(seed: number): string {
   return `${syllable(h)}-${syllable(h >>> 10)}`;
 }
 
+// ----------------------------------------------------------- modifiers
+
+/**
+ * THE TURNED SEED: every key carries 0–3 modifiers, pure in the seed
+ * like everything else — two keys of one tier are never quite the
+ * same run, and a well-turned key becomes a trade good in its own
+ * right ("a blooded, hoarding KAR-VOTH" says something at market).
+ *
+ * Every modifier is GENERATIVE: it bends the plan/dress/garrison
+ * passes (counts, levels, placements) and never reaches into engine
+ * dials — the pipeline stays the one place a dungeon is decided.
+ * Pressure pays: the harder words carry their own extra reward in
+ * the same breath (more bodies is more xp; the drilled garrison
+ * hoards a deeper chest ladder).
+ */
+export interface DungeonModifier {
+  id: 'teeming' | 'blooded' | 'veined' | 'hoarding' | 'watchful';
+  name: string;
+  /** One-line key-card blurb — what it costs and what it pays. */
+  blurb: string;
+}
+
+export const DUNGEON_MODIFIERS: readonly DungeonModifier[] = [
+  { id: 'teeming', name: 'Teeming', blurb: 'The halls run thick — every pack fields an extra body.' },
+  { id: 'blooded', name: 'Blooded', blurb: 'A drilled garrison stands harder — and hoards a richer ladder.' },
+  { id: 'veined', name: 'Veined', blurb: 'The rock runs rich — twice the ore in every chamber.' },
+  { id: 'hoarding', name: 'Hoarding', blurb: 'The keepers hoard — two more chests wait along the road.' },
+  { id: 'watchful', name: 'Watchful', blurb: 'The ways are walked — more sentries, and sharper ones.' },
+];
+
+/** How many modifier words each tier's seed may turn. */
+function modifierBudget(seed: number, tier: RarityTier): number {
+  switch (rarityIndex(tier)) {
+    case 0:
+      return hashCoords(seed, 23, 1) % 2; // 0–1
+    case 1:
+      return 1;
+    case 2:
+      return 1 + (hashCoords(seed, 23, 2) % 2); // 1–2
+    case 3:
+      return 2;
+    default:
+      return 2 + (hashCoords(seed, 23, 3) % 2); // 2–3
+  }
+}
+
+/** The seed's modifiers, in a stable draw order. Pure; shared. */
+export function dungeonModifiers(seed: number, tier: RarityTier): DungeonModifier[] {
+  const budget = modifierBudget(seed >>> 0, tier);
+  const pool = [...DUNGEON_MODIFIERS];
+  const out: DungeonModifier[] = [];
+  for (let k = 0; k < budget && pool.length > 0; k++) {
+    const i = hashCoords(seed >>> 0, 29, k + 11) % pool.length;
+    out.push(pool.splice(i, 1)[0]!);
+  }
+  return out;
+}
+
 // ------------------------------------------------------------- economy
 
 /**

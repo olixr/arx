@@ -562,9 +562,11 @@ import {
   RARITY_TIERS,
   SERVER_REVEAL_TICKS,
   dangerAt,
+  dungeonModifiers,
   dungeonSpecFromRoll,
   hashCoords,
   keyForgePrice,
+  nextKeyTier,
   keyUsesForTier,
   keyUsesLeft,
   mintKeyPower,
@@ -1328,6 +1330,8 @@ interface SpawnState {
   level?: number;
   /** Display-name override (named bosses, hidden-room wardens). */
   name?: string;
+  /** THE COURT HOLDS THE CROWN: per-seat arena radius override. */
+  arenaR?: number;
   /** Idle waypoint loop (POI sentry rounds) — survives respawns. */
   patrol?: ReadonlyArray<{ x: number; y: number; dwell?: number; sit?: boolean }>;
   /** Activity window (game hours, midnight-wrapping) — see ZoneSpawn.hours. */
@@ -1469,6 +1473,13 @@ interface DungeonInstance {
    * standing (alive or not yet woken) holds the lid shut.
    */
   bossSpawnIdx?: number;
+  /** When the key turned — the clear ceremony reads the run clock. */
+  cutAt: number;
+  /**
+   * THE WAY HOME OPENS: the sealed rift-mouth below the dais (world
+   * coords) — torn open when the champion falls.
+   */
+  courtExit?: { x: number; y: number };
 }
 
 interface PlayerComp {
@@ -2853,6 +2864,7 @@ export class GameServer {
       count: number;
       level?: number;
       name?: string;
+      arenaR?: number;
       patrol?: ReadonlyArray<{ x: number; y: number; dwell?: number; sit?: boolean }>;
       hours?: { from: number; to: number };
       wing?: number;
@@ -2882,6 +2894,7 @@ export class GameServer {
           active: true,
           level: spawn.level,
           name: spawn.name,
+          arenaR: spawn.arenaR,
           patrol: spawn.patrol,
           hours: spawn.hours,
           wing: spawn.wing,
@@ -4337,11 +4350,21 @@ export class GameServer {
       tier > 0 ? dlaw.npcLevel[1] : 0,
     );
     const table = over?.table ?? law.table;
+    // THE LADDER PAYS IN HANDS: a champion's chest never spills its key
+    // on the floor for the quickest hand — the key rolls PER SOUL of
+    // the run standing in the halls, straight onto each ring, and it
+    // rolls at the NEXT rung of the ladder (commons seed uncommons;
+    // legendaries keep paying legendaries). The rest of the hoard
+    // stays a shared pile, as loot should be.
+    const dgRun = over?.cell.startsWith('dg:')
+      ? this.dungeons.get(Number(over.cell.slice(3)))
+      : undefined;
     for (const drop of rollLoot(table, {
       level: chestLevel,
       rand: Math.random,
       rarityBonus: tier > 0 ? dlaw.rarityBonus : 0,
     })) {
+      if (dgRun && drop.item === DUNGEON_KEY_ITEM) continue;
       this.placeDrop(
         drop.item,
         drop.qty,
@@ -4355,6 +4378,28 @@ export class GameServer {
           roll: drop.roll,
         },
       );
+    }
+    if (dgRun) {
+      const nt = nextKeyTier(dgRun.tier as ItemRoll['rar']);
+      for (const [peid, p] of this.players) {
+        if (p.characterId !== dgRun.ownerId && !dgRun.guests.has(p.characterId)) continue;
+        const pp = this.positions.get(peid);
+        if (!pp || pp.y < 8192 || pp.x < dgRun.x0 || pp.x >= dgRun.x1) continue;
+        if (Math.random() >= 0.6) continue;
+        const seed = Math.floor(Math.random() * 0x100000000) >>> 0;
+        this.addKeyToRing(p, {
+          rar: nt,
+          seed,
+          pwr: mintKeyPower(nt, seed),
+          uses: keyUsesForTier(nt),
+        });
+        const next = dungeonSpecFromRoll({ rar: nt, seed });
+        p.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `From the champion's hoard, a key finds your ring — ${next.name} (${next.sigil}, ${nt}).`,
+        });
+      }
     }
     this.setWorldTile(tx, ty, openChestTile(chest.kind));
     // THE CLEARED HALL STAYS CLEARED: a delve chest never re-arms
@@ -11728,6 +11773,8 @@ export class GameServer {
         }
         return spawnIndexes[flat];
       })(),
+      cutAt: Date.now(),
+      courtExit: result.courtExit ?? undefined,
     };
     this.dungeons.set(player.characterId, inst);
     // THE COURT WARDS THE PRIZE: the champion's chest refuses the hand
@@ -11738,6 +11785,7 @@ export class GameServer {
         warded: true,
       });
     }
+    const modNames = dungeonModifiers(spec.seed, spec.tier).map((m) => m.name);
     player.session?.sendJson({
       t: 'dungeon',
       name: spec.name,
@@ -11745,11 +11793,12 @@ export class GameServer {
       tier: spec.tier,
       theme: spec.theme,
       power: spec.power,
+      mods: modNames.length > 0 ? modNames : undefined,
     });
     player.session?.sendJson({
       t: 'chat',
       channel: 'system',
-      text: `${spec.name} — sigil ${spec.sigil}, power ${spec.power}. The way out is where you land; the boss is where you'd least like him.`,
+      text: `${spec.name} — sigil ${spec.sigil}, power ${spec.power}${modNames.length > 0 ? `, ${modNames.join(', ').toLowerCase()}` : ''}. The way out is where you land; the boss is where you'd least like him.`,
     });
     this.teleport(eid, result.entry.x, result.entry.y);
     // Offer the fellowship the door (any riftgate carries them in).
@@ -11786,6 +11835,22 @@ export class GameServer {
         spawn.eid = null;
       }
     }
+    // THE ROCK TAKES ITS DEAD: anything still breathing in the band
+    // that the roster never knew — a crown's raised adds spawn with
+    // spawnIndex -1 — goes with the zone, or the next instance dealt
+    // this slot inherits live teeth in its rock. Companions are the
+    // one exception: a friend follows its keeper, never the rubble.
+    const strays: EntityId[] = [];
+    for (const [neid] of this.npcs) {
+      if (this.pets.has(neid)) continue;
+      const npos = this.positions.get(neid);
+      if (!npos || npos.y < 8192 || npos.x < dungeon.x0 || npos.x >= dungeon.x1) continue;
+      strays.push(neid);
+    }
+    for (const neid of strays) {
+      this.removeFromChunks(neid);
+      this.ecs.destroy(neid);
+    }
     this.world.removeZone(dungeon.zoneId);
     this.dungeons.delete(characterId);
     // The court's ward retires with its halls.
@@ -11816,6 +11881,27 @@ export class GameServer {
   }
 
   /**
+   * THE MANY ARE MET: how many souls of the run (owner + guests)
+   * currently stand inside the instance that owns this tile — 1 when
+   * the ground is no dungeon. The garrison meets the party through
+   * this number: each extra soul thickens every body's effective hide
+   * and stiffens its arm, so a fellowship fights a fight instead of
+   * a harvest, and a key's power reads as the SOLO recommendation.
+   */
+  private dungeonHeadcount(tx: number, ty: number): number {
+    const inst = this.dungeonAt(tx, ty);
+    if (!inst) return 1;
+    let n = 0;
+    for (const [peid, p] of this.players) {
+      if (p.characterId !== inst.ownerId && !inst.guests.has(p.characterId)) continue;
+      if (p.session === null && p.disconnectedAt !== null) continue;
+      const pp = this.positions.get(peid);
+      if (pp && pp.y >= 8192 && pp.x >= inst.x0 && pp.x < inst.x1) n++;
+    }
+    return Math.max(1, n);
+  }
+
+  /**
    * Does the champion of this character's run still stand? Standing
    * means alive OR not yet woken (a spawn nobody has approached keeps
    * eid null with a finite respawn clock); felled in the dungeon band
@@ -11828,6 +11914,42 @@ export class GameServer {
     const s = this.spawnPoints[inst.bossSpawnIdx];
     if (!s?.active) return false;
     return s.eid !== null || s.respawnAt !== Number.POSITIVE_INFINITY;
+  }
+
+  /**
+   * THE COURT FALLS: the champion of a run went down. If the felled
+   * spawn is the run's own crown, the run is CLEARED — every soul of
+   * the fellowship present gets the ceremony (banner + line, with the
+   * run clock read honest), and the sealed rift-mouth below the dais
+   * tears open so the victors step home instead of walking the whole
+   * cleared spine back. Fires at most once per cut: THE CLEARED HALL
+   * pins the champion's respawn to Infinity, so he falls only once.
+   */
+  private noteDungeonCleared(spawnIndex: number, tx: number, ty: number): void {
+    const inst = this.dungeonAt(tx, ty);
+    if (!inst || inst.bossSpawnIdx !== spawnIndex) return;
+    const sec = Math.max(1, Math.round((Date.now() - inst.cutAt) / 1000));
+    if (inst.courtExit) {
+      this.setWorldTile(inst.courtExit.x, inst.courtExit.y, Tile.PortalUp);
+      this.broadcastFx({
+        t: 'fx',
+        kind: 'summon',
+        x: inst.courtExit.x + 0.5,
+        y: inst.courtExit.y + 0.5,
+        radius: 1.6,
+        color: '#8f7ae8',
+      });
+    }
+    const mm = Math.floor(sec / 60);
+    const ss = String(sec % 60).padStart(2, '0');
+    const line = `${inst.name} is cleared — the court fell in ${mm}:${ss}. The champion's chest lies open to claim${inst.courtExit ? ', and a way home stands torn open below the dais' : ''}.`;
+    for (const [peid, p] of this.players) {
+      if (p.characterId !== inst.ownerId && !inst.guests.has(p.characterId)) continue;
+      const pp = this.positions.get(peid);
+      if (!pp || pp.y < 8192 || pp.x < inst.x0 || pp.x >= inst.x1) continue;
+      p.session?.sendJson({ t: 'dgclear', name: inst.name, sigil: inst.sigil, sec });
+      p.session?.sendJson({ t: 'chat', channel: 'system', text: line });
+    }
   }
 
   /**
@@ -11855,6 +11977,7 @@ export class GameServer {
       if (!inst) return sys(`${target.name} holds no rift open.`);
       inst.guests.set(actor.id, { x: pos.x, y: pos.y });
       // The banner + fog-mask reset ride the same message the owner got.
+      const guestMods = dungeonModifiers(inst.seed, inst.tier as ItemRoll['rar']).map((m) => m.name);
       session.sendJson({
         t: 'dungeon',
         name: inst.name,
@@ -11862,6 +11985,7 @@ export class GameServer {
         tier: inst.tier,
         theme: inst.theme,
         power: inst.power,
+        mods: guestMods.length > 0 ? guestMods : undefined,
       });
       this.teleport(eid, inst.entry.x, inst.entry.y);
       const ownerEid = this.characterEids.get(target.id);
@@ -20174,6 +20298,21 @@ export class GameServer {
       }
     }
 
+    // THE MANY ARE MET: a fellowship's blows land on thicker hide —
+    // each extra soul standing the run folds every wound to the
+    // garrison by 1/(1 + 0.55·(n−1)), so four hands make the fight a
+    // fight, never a harvest. An EFFECTIVE fold, not a max-hp one:
+    // bars, purses, and xp all keep reading the honest body. Costs
+    // nothing outside the dungeon band (headcount is 1 everywhere
+    // else, and the band check gates the lookup).
+    if (dmg > 0) {
+      const npos = this.positions.get(npcEid);
+      if (npos && npos.y >= DUNGEON_MIN_Y) {
+        const heads = this.dungeonHeadcount(Math.floor(npos.x), Math.floor(npos.y));
+        if (heads > 1) dmg = Math.max(1, Math.round(dmg / (1 + 0.55 * (heads - 1))));
+      }
+    }
+
     // The rhythm engine: every landed basic pulls slots 0 and 1
     // forward. Whiffs never count — you have to CONNECT. THE QUICKENED
     // HAND: these indices are the law, not an accident — Q is the
@@ -20610,11 +20749,14 @@ export class GameServer {
       this.noteStrongholdKill(npc.spawnIndex, killerEid);
       this.notePoiKill(npc.spawnIndex, killerEid);
       this.noteMinorKill(npc.spawnIndex);
-      // THE UNWRITTEN PAGE: felling a delve's named boss (the only
-      // named spawn a dungeon seeds) is the riftwalker's deed.
+      // THE UNWRITTEN PAGE: felling a delve's named keeper (the boss,
+      // a hidden warden) is the riftwalker's deed.
       if (spawn.name !== undefined && pos.y >= DUNGEON_MIN_Y) {
         const killer = this.players.get(killerEid);
         if (killer) this.grantArt(killer, 'riftwalker_step');
+        // THE COURT FALLS: if this was the run's own champion, the run
+        // is cleared — the ceremony fires and the way home opens.
+        this.noteDungeonCleared(npc.spawnIndex, Math.floor(pos.x), Math.floor(pos.y));
       }
     }
     // THE UNWRITTEN PAGE: felling a champion with the wall still on
@@ -20730,6 +20872,18 @@ export class GameServer {
     const player = this.players.get(eid);
     const health = this.healths.get(eid);
     if (!player || !health) return;
+
+    // THE MANY ARE MET (the other edge): a garrison meeting a
+    // fellowship strikes a shade harder — +12% per extra soul, capped
+    // at half again — so numbers thin the blows they draw, never
+    // erase them. Free outside the dungeon band.
+    if (raw > 0) {
+      const dpp = this.positions.get(eid);
+      if (dpp && dpp.y >= DUNGEON_MIN_Y) {
+        const heads = this.dungeonHeadcount(Math.floor(dpp.x), Math.floor(dpp.y));
+        if (heads > 1) raw = Math.round(raw * Math.min(1.5, 1 + 0.12 * (heads - 1)));
+      }
+    }
 
     // Getting hit blows your cover even if armor soaks the damage to 0 —
     // and it must land before NPC retaliation picks a target.
@@ -20974,6 +21128,17 @@ export class GameServer {
         player.session?.sendJson({
           t: 'deathmark',
           mark: { x: spillAt.x, y: spillAt.y, remainMs: DEATH_SPILL_TTL_MS },
+        });
+      }
+      // THE DOOR STAYS OPEN: a fall inside a rift never ends the run —
+      // the halls keep their clears, and re-entry through any gate is
+      // free. The rules are generous; SAY so, or the fallen assume the
+      // worst and shelve the key.
+      if (inst) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: 'The rift still stands — the halls keep your clears, and any Riftgate carries you back in free.',
         });
       }
       // The claimed home bed answers first; everyone else wakes at the
@@ -23297,7 +23462,10 @@ export class GameServer {
   ): boolean {
     const boss = npc.def.boss;
     if (!boss) return false;
-    const r = (boss.arenaR ?? npc.def.leashRange) - 1.2;
+    // The seat's own override outranks the authored radius — a crown
+    // stamped into a court fights inside the walls the author drew.
+    const r =
+      (this.spawnPoints[npc.spawnIndex]?.arenaR ?? boss.arenaR ?? npc.def.leashRange) - 1.2;
     const cur = Math.hypot(pos.x - npc.originX, pos.y - npc.originY);
     const nx = pos.x + mx * 0.6;
     const ny = pos.y + my * 0.6;
@@ -23430,8 +23598,13 @@ export class GameServer {
           }
         }
         // THE ARENA LAW: a crowned foe's fight has authored bounds —
-        // arenaR outranks the def's leash when the crown wears one.
-        if (fromOrigin > (npc.def.boss?.arenaR ?? npc.def.leashRange)) {
+        // arenaR outranks the def's leash when the crown wears one, and
+        // the SEAT's own radius outranks both (a court-stamped crown
+        // fights inside the walls its arena prefab drew).
+        if (
+          fromOrigin >
+          (this.spawnPoints[npc.spawnIndex]?.arenaR ?? npc.def.boss?.arenaR ?? npc.def.leashRange)
+        ) {
           npc.state = 'return';
           npc.targetEid = null;
           npc.windupTicks = 0;

@@ -1526,6 +1526,29 @@ export interface S2CDungeonEnter {
   tier: string;
   theme: string;
   power: number;
+  /**
+   * THE TURNED SEED: the run's modifier display names ("Teeming",
+   * "Blooded", …), absent when the seed turned none. Additive and
+   * cosmetic-at-entry (the effects are baked into the generated
+   * halls), so it rides v32 without a bump — an old client just
+   * shows a plainer banner.
+   */
+  mods?: string[];
+}
+
+/**
+ * THE COURT FALLS: the run's champion went down — the run is cleared.
+ * Fired to every soul of the fellowship standing the halls; the
+ * client lands the ceremony (clear banner, run clock). Additive
+ * alongside v32: a client that drops it still reads the cleared
+ * state off the chest and the chat line.
+ */
+export interface S2CDungeonClear {
+  t: 'dgclear';
+  name: string;
+  sigil: string;
+  /** The run clock, key-turn to court-fall, whole seconds. */
+  sec: number;
 }
 
 /** One friend on the social snapshot. */
@@ -1935,6 +1958,7 @@ export type S2CMessage =
   | S2CKeyLore
   | S2CKeyForgeOpen
   | S2CDungeonEnter
+  | S2CDungeonClear
   | S2CSigns
   | S2CDialogueOpen
   | S2CDialogueNode

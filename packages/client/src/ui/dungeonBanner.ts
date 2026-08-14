@@ -20,6 +20,8 @@ export function showDungeonEntry(o: {
   tier: string;
   theme: string;
   power: number;
+  /** THE TURNED SEED: the run's modifier names, when the seed turned any. */
+  mods?: string[];
 }): void {
   const tint = (isRarityTier(o.tier) ? RARITY_COLORS[o.tier] : null) ?? 'var(--gold)';
   raiseHerald({
@@ -28,7 +30,28 @@ export function showDungeonEntry(o: {
     kicker: `${o.tier} ${o.theme}`,
     name: o.name,
     iconUrl: itemIconUrl('dungeon_key', 64),
-    facts: { notes: [`Sigil ${o.sigil}`, `Power ${o.power}`] },
+    facts: {
+      notes: [`Sigil ${o.sigil}`, `Power ${o.power}`, ...(o.mods ?? [])],
+    },
+    holdMs: HOLD_MS,
+  });
+}
+
+/**
+ * THE COURT FALLS: the run is cleared — the champion is down, the
+ * chest is open to claim, the way home stands torn open. The same
+ * herald dialect as the threshold, reading the run clock back.
+ */
+export function showDungeonClear(o: { name: string; sigil: string; sec: number }): void {
+  const mm = Math.floor(o.sec / 60);
+  const ss = String(o.sec % 60).padStart(2, '0');
+  raiseHerald({
+    kind: 'dungeon',
+    accent: 'var(--gold)',
+    kicker: 'dungeon cleared',
+    name: o.name,
+    iconUrl: itemIconUrl('dungeon_key', 64),
+    facts: { notes: [`Sigil ${o.sigil}`, `Cleared in ${mm}:${ss}`] },
     holdMs: HOLD_MS,
   });
 }

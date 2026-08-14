@@ -3,6 +3,7 @@ import {
   Rng,
   THEME_LAWS,
   Tile,
+  dungeonModifiers,
   hashCoords,
   type DungeonSpec,
   type Vec2,
@@ -51,6 +52,13 @@ export interface DungeonResult {
   bossChest: Vec2 | null;
   /** Index into zone.spawns of the champion (the ward reads his life). */
   bossSpawnIndex: number | null;
+  /**
+   * THE WAY HOME OPENS: a sealed rift-mouth below the dais. The cell
+   * is plain floor (its portal pre-registered) until the champion
+   * falls — then the server tears it open and the victors step home
+   * instead of walking the whole spine back through a cleared ruin.
+   */
+  courtExit: Vec2 | null;
 }
 
 /** Largest tier size — instance slots are spaced by it. */
@@ -70,6 +78,7 @@ export function generateDungeon(
   const b: DungeonBuild = {
     spec,
     theme: THEME_LAWS.find((t) => t.theme === spec.theme)!,
+    mods: new Set(dungeonModifiers(spec.seed, spec.tier).map((m) => m.id)),
     c: new Carver(spec.size),
     origin,
     returnTo,
@@ -113,6 +122,32 @@ export function generateDungeon(
     { x: origin.x + entry.x, y: origin.y + entry.y, dest: returnTo },
   ];
 
+  // THE WAY HOME OPENS: seat the sealed rift-mouth on clear floor in
+  // the court's south lane (between the champion and the ceremonial
+  // mouth, never the dais). The portal def registers now — the tile
+  // stays plain floor until the champion falls, so the door cannot be
+  // walked before it is earned.
+  let courtExit: Vec2 | null = null;
+  {
+    const court = b.rooms[b.bossIdx]!;
+    outer: for (const dy of [4, 5, 3, 6]) {
+      for (const dx of [0, 1, -1, 2, -2, 3, -3]) {
+        const x = court.x + dx;
+        const y = court.y + dy;
+        const t = b.c.get(x, y);
+        if (t !== Tile.CaveFloor && t !== Tile.DungeonFloor) continue;
+        let open = 0;
+        for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+          if (b.c.passable(x + ox, y + oy)) open++;
+        }
+        if (open < 3) continue;
+        courtExit = { x: origin.x + x, y: origin.y + y };
+        break outer;
+      }
+    }
+    if (courtExit) portals.push({ x: courtExit.x, y: courtExit.y, dest: returnTo });
+  }
+
   const zone: ZoneDef = {
     id: `dungeon-${slot}-${spec.sigil}-${spec.seed}`,
     name: spec.name,
@@ -131,5 +166,6 @@ export function generateDungeon(
     spec,
     bossChest: b.bossChest ? { x: origin.x + b.bossChest.x, y: origin.y + b.bossChest.y } : null,
     bossSpawnIndex: b.bossSpawnIndex,
+    courtExit,
   };
 }

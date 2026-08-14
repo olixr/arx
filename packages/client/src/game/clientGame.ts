@@ -236,7 +236,16 @@ export interface GameEvents {
   /** A board's words arrived or changed — repaint whatever shows them. */
   onSignChanged?(tx: number, ty: number): void;
   /** Crossed into a dungeon — everything the entry banner tells. */
-  onDungeon?(d: { name: string; sigil: string; tier: string; theme: string; power: number }): void;
+  onDungeon?(d: {
+    name: string;
+    sigil: string;
+    tier: string;
+    theme: string;
+    power: number;
+    mods?: string[];
+  }): void;
+  /** THE COURT FALLS: the run's champion is down — the run is cleared. */
+  onDungeonClear?(d: { name: string; sigil: string; sec: number }): void;
   onHit(hit: {
     x: number;
     y: number;
@@ -1872,7 +1881,12 @@ export class ClientGame {
           tier: msg.tier,
           theme: msg.theme,
           power: msg.power,
+          mods: msg.mods,
         });
+        break;
+      }
+      case 'dgclear': {
+        this.events.onDungeonClear?.({ name: msg.name, sigil: msg.sigil, sec: msg.sec });
         break;
       }
       case 'dlgopen': {

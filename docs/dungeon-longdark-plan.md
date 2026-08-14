@@ -227,3 +227,94 @@ landing, pinch cap S²/400, slot spacing at 200, SPINE ≥0.85×S, COURT
 crown/chest/index per theme, LIVED-IN posts+patrol hop law). Server 480 /
 content 496 / shared 215 green; client 535 green + 3 failures owned by a
 peer's uncommitted hamstring_bite FX WIP (not this seam).
+
+## THE LONG DARK PROVED WHOLE — audit + polish pass (2026-08-14, second session)
+
+The commissioned audit: 300 generated dungeons measured empirically
+(walk distance, breadth, reward coverage), plus two deep code audits
+(boss↔dungeon marriage; the player-facing run). What it found, what
+shipped:
+
+**Layout laws closed (plan.ts):**
+- **THE ROAD STAYS LONG**: loop candidates walk a Dijkstra over the
+  planned graph in MANHATTAN weights before joining — any link that
+  shortens entry→court is refused (multi-hop branch-chain bypasses
+  included). A rare crypt's entry→rung-2 loop had cut the road to 0.73×.
+- **The direct-manhattan spine guard**: a 4-connected walk can never
+  beat direct manhattan, so while the court would seat nearer than
+  0.88×S manhattan from the entry, the road walks on (≤4 extra rungs,
+  and the chamber budget GROWS with them so branches never thin). A
+  monotone-diagonal spine whose branch blobs bridged the chord walked
+  0.73× the law; now min walk ≥0.9×S over 300 seeds, breadth unchanged.
+- **THE FLOOR OF ONE**: no tier rolls a loopless out-and-back tree.
+- **THE DEAD END PAYS** (dress.ts): every degree-1 tangent room the
+  ladders skipped gets the tier's humble chest or a vein. Empty leaves:
+  mean ~0.9 → ~0.05, max 4 → 1.
+- Regression seeds pinned in tests: common/12345, rare/2619526897.
+
+**THE COURT HOLDS THE CROWN (arena law, cross-system):** every crown's
+open-ground arenaR (14–18) exceeded the 23×15 arena's interior
+(half-extents ≈9.5×6.5) — the champion chased kiters up the approach
+and bossAtArenaRim could never fire underground. `ZoneSpawn.arenaR`
+(content types) → SpawnState → the leash check and the rim guard both
+read the SEAT's radius first; garrison stamps the court seat arenaR 8.
+Test-pinned per theme.
+
+**THE MANY ARE MET (party scaling, gameServer):** headcount = souls of
+the run (owner + guests) present in the band. Player→garrison damage
+folds by 1/(1+0.55·(n−1)); garrison→player damage rises ×(1+0.12·(n−1))
+cap 1.5. EFFECTIVE folds at the damage seams — bars, purses, xp all
+read the honest body; costs nothing outside the band. A key's power is
+the SOLO recommendation; guests still enter free (key economy
+unchanged).
+
+**THE LADDER PAYS IN HANDS (interactChest):** the champion's chest
+never spills its key on the floor for the quickest hand — dead-code
+`nextKeyTier` is now the law: the key rolls PER PRESENT RUN MEMBER at
+60% each, straight onto each ring, at the NEXT tier (commons seed
+uncommons; legendaries keep paying legendaries). Gear/coins stay a
+shared pile.
+
+**THE COURT FALLS (completion):** instance stamps `cutAt`;
+noteDungeonCleared (keyed to bossSpawnIdx, fires once by THE CLEARED
+HALL) sends `dgclear` {name, sigil, sec} to every present member →
+client herald ceremony with the run clock; chat line carries it too.
+**THE WAY HOME OPENS**: generate.ts seats a sealed rift-mouth on court
+floor south of the dais (portal def pre-registered, tile stays floor
+until earned); the clear tears it open (setWorldTile → PortalUp +
+summon fx). Owner stepping through = the run complete + teardown;
+guests go home to their own gates. Test-pinned: registered portal,
+floor-until-earned, ≤16 from the dais.
+
+**THE TURNED SEED (repeatability, shared/dungeon/key.ts):** every key
+turns 0–3 modifier words pure from the seed — Teeming (+1 body/pack),
+Blooded (garrison +3 levels, +1 best chest), Veined (ore ×2), Hoarding
+(+2 chests), Watchful (sentry chance 0.4→0.75, +2 levels). Budget by
+tier: common 0–1, uncommon 1, rare 1–2, epic 2, legendary 2–3. ALL
+GENERATIVE — they bend plan/dress/garrison counts and never touch
+engine dials. Shown at the riftgate rows, the Keys bench (name+blurb),
+the entry banner facts, and the entry chat line. S2CDungeonEnter grows
+optional `mods` (additive, still v32, changelog-recorded).
+
+**Fairness + copy:** death underground now SAYS the generous rule
+("the rift still stands… re-entry free"); dungeon_key item copy no
+longer claims "never spent" (three-turns law). **THE ROCK TAKES ITS
+DEAD** (teardownDungeon): stray bodies in the band with no spawn point
+(a crown's raised adds, spawnIndex −1) are swept at teardown —
+companions excepted — or the next instance dealt the slot inherits
+live teeth.
+
+**Known seams, deliberately deferred:** cavern Broodmother is still a
+named giant_spider, not a crown — rig.ts/ragdoll.ts spider dispatch is
+exact-id and that file is the boss session's active ground (their
+docket already carries "spider voices"); the court seat wiring takes a
+new crown as one ROSTERS line. Logout still tears the run down with no
+grace window. No court/objective marker on the underground chart yet
+(waypoints stay disabled below 8192). Banner SHOW_RANGE (14) no longer
+conflicts underground now that court arenaR is 8.
+
+Final measured state (60 seeds/tier): walk-to-court 23–72s pure walk
+across tiers, off-spine floor 64–72%, empty leaves ≈0, loops ≥1
+always, chests 5–17, bodies 30–460 (modifiers visible in the spread),
+anomalies 0/300. Tests: 12 in generate.test.ts; full tree green
+(shared 215 / content 496 / server 542 / client 489).

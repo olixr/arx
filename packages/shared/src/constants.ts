@@ -171,6 +171,12 @@
 // conversation end well and then NOTHING happen — a working NPC whose
 // service silently never opens reads as a broken town, not a missing
 // nicety, so the handshake keeps the shards honest.
+// (THE LONG DARK polish, still v32: S2CDungeonEnter grows optional
+// `mods` (THE TURNED SEED display names) and S2CDungeonClear joins
+// the catalog (THE COURT FALLS ceremony — clear banner + run clock).
+// Additive — a v32 client that ignores them shows a plainer entry
+// banner, reads the clear off the chest and chat line, and corrupts
+// nothing. Recorded on purpose.)
 export const PROTOCOL_VERSION = 32;
 
 /** The most souls one party can hold. */

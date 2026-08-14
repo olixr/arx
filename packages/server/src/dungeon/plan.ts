@@ -50,7 +50,17 @@ export function planLayout(b: DungeonBuild): void {
   let px = entry.x;
   let py = entry.y;
   const MIN_SEP = 13;
-  for (let i = 1; i < rungs; i++) {
+  // THE ROAD IS LONG BY CONSTRUCTION: rungs are a floor, not the law.
+  // A 4-connected walk can never beat the direct manhattan distance,
+  // so the one provable guard is the court's own remove: while the
+  // final rung would seat the court nearer than 0.88×S manhattan from
+  // the entry, the road walks on (≤4 extra rungs). The proving found
+  // monotone-diagonal spines whose branch blobs bridged the chord —
+  // walked at 0.73× the law; this bound closes every such seed.
+  const targetDirect = S * 0.88;
+  let extraRungs = 0;
+  const maxRungs = rungs + 4;
+  for (let i = 1; i < rungs + extraRungs; i++) {
     let placed = false;
     for (let attempt = 0; attempt < 10 && !placed; attempt++) {
       // Wander, but never swing back south: the road always makes way.
@@ -76,7 +86,14 @@ export function planLayout(b: DungeonBuild): void {
       px = Math.round(Math.max(M, Math.min(S - M - 1, px + Math.cos(heading) * step)));
       py = Math.round(Math.max(M, Math.min(S - M - 1, py + Math.sin(heading) * step)));
     }
-    rooms.push(blankRoom(px, py, i === rungs - 1 ? 'boss' : 'room', true));
+    const isLast = i === rungs + extraRungs - 1;
+    const directM = Math.abs(px - entry.x) + Math.abs(py - entry.y);
+    if (isLast && directM < targetDirect && rungs + extraRungs < maxRungs) {
+      extraRungs++;
+      rooms.push(blankRoom(px, py, 'room', true));
+      continue;
+    }
+    rooms.push(blankRoom(px, py, isLast ? 'boss' : 'room', true));
   }
   const bossIdx = rooms.length - 1;
   const spine = rooms.map((_, i) => i);
@@ -86,7 +103,10 @@ export function planLayout(b: DungeonBuild): void {
   for (let i = 1; i < rooms.length; i++) edges.push([i - 1, i]);
 
   // ---- the branches --------------------------------------------------
-  while (rooms.length < b.spec.chambers) {
+  // Extra road rungs never eat the tangents: the chamber budget grows
+  // with them, so an extended seed keeps its full breadth to explore.
+  const chamberBudget = b.spec.chambers + extraRungs;
+  while (rooms.length < chamberBudget) {
     let best: { x: number; y: number } | null = null;
     let bestScore = -1;
     for (let k = 0; k < 14; k++) {
@@ -144,17 +164,64 @@ export function planLayout(b: DungeonBuild): void {
   const guarded = new Set([bossIdx, spine[spine.length - 2]!]);
   const hasEdge = (i: number, j: number) =>
     edges.some(([a, c]) => (a === i && c === j) || (a === j && c === i));
+  // THE ROAD STAYS LONG: a loop is lateral circulation, never a chord.
+  // Dijkstra walks the planned graph (euclidean weights — the carver
+  // digs corridors near-straight) before a candidate joins; any link
+  // that would shorten the entry→court road is refused, multi-hop
+  // bypasses through branch chains included. The proving found a rare
+  // crypt whose entry→rung-2 loop cut the road to 0.73× the law.
+  // Weights are MANHATTAN — corridors carve as L-legs, and a euclidean
+  // metric under-prices diagonal chords enough to let them through.
+  const roadLen = (extra?: [number, number]): number => {
+    const all = extra ? [...edges, extra] : edges;
+    const adj: Array<Array<{ j: number; w: number }>> = rooms.map(() => []);
+    for (const [i, j] of all) {
+      const w =
+        Math.abs(rooms[i]!.x - rooms[j]!.x) + Math.abs(rooms[i]!.y - rooms[j]!.y);
+      adj[i]!.push({ j, w });
+      adj[j]!.push({ j: i, w });
+    }
+    const best = rooms.map(() => Infinity);
+    best[0] = 0;
+    const done = new Set<number>();
+    for (;;) {
+      let u = -1;
+      for (let k = 0; k < rooms.length; k++) {
+        if (!done.has(k) && best[k]! < (u === -1 ? Infinity : best[u]!)) u = k;
+      }
+      if (u === -1 || u === bossIdx) break;
+      done.add(u);
+      for (const { j, w } of adj[u]!) best[j] = Math.min(best[j]!, best[u]! + w);
+    }
+    return best[bossIdx]!;
+  };
+  const loopKeepsRoad = (i: number, j: number): boolean =>
+    roadLen([i, j]) >= roadLen() - 0.5;
   const maxLoops = Math.max(3, Math.round(b.spec.chambers / 5));
   let loops = 0;
+  const loopFits = (i: number, j: number): boolean => {
+    if (guarded.has(i) || guarded.has(j) || hasEdge(i, j)) return false;
+    if (Math.abs(treeDepth[i]! - treeDepth[j]!) > 2) return false;
+    return dist(rooms[i]!.x, rooms[i]!.y, rooms[j]!.x, rooms[j]!.y) < S * 0.34;
+  };
   for (let i = 0; i < rooms.length && loops < maxLoops; i++) {
-    if (guarded.has(i)) continue;
     for (let j = i + 1; j < rooms.length && loops < maxLoops; j++) {
-      if (guarded.has(j) || hasEdge(i, j)) continue;
-      if (Math.abs(treeDepth[i]! - treeDepth[j]!) > 2) continue;
-      const d = dist(rooms[i]!.x, rooms[i]!.y, rooms[j]!.x, rooms[j]!.y);
-      if (d < S * 0.34 && rng.chance(0.28)) {
+      if (loopFits(i, j) && rng.chance(0.28) && loopKeepsRoad(i, j)) {
         edges.push([i, j]);
         loops++;
+      }
+    }
+  }
+  // THE FLOOR OF ONE: a dungeon with no loop at all is an out-and-back
+  // chore — if the coin never fell, take the first lawful cross-link.
+  if (loops === 0) {
+    outer: for (let i = 0; i < rooms.length; i++) {
+      for (let j = i + 1; j < rooms.length; j++) {
+        if (loopFits(i, j) && loopKeepsRoad(i, j)) {
+          edges.push([i, j]);
+          loops++;
+          break outer;
+        }
       }
     }
   }

@@ -39,7 +39,7 @@ import { showRepBanner } from './ui/repBanner.js';
 import { ObjectiveTracker } from './ui/objectiveTracker.js';
 import { showQuestBanner } from './ui/questBanner.js';
 import { RiftgatePanel } from './ui/riftgate.js';
-import { showDungeonEntry } from './ui/dungeonBanner.js';
+import { showDungeonClear, showDungeonEntry } from './ui/dungeonBanner.js';
 import { Sfx } from './audio/sfx.js';
 import { AudioEngine } from './audio/engine.js';
 import { TrackPlayer } from './audio/tracks.js';
@@ -1585,6 +1585,11 @@ const game = new ClientGame(input, {
   onDungeon: (d) => {
     // A toast, not a screen — it overlays like the level-up card.
     showDungeonEntry(d);
+  },
+  onDungeonClear: (d) => {
+    // THE COURT FALLS: the clear is a ceremony, not a chat line.
+    showDungeonClear(d);
+    sfx.discovery();
   },
   onDiscovery: (d) => {
     // The riftgate's threshold banner is the dungeon kind's ceremony —

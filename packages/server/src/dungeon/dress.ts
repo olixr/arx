@@ -201,9 +201,11 @@ export function dressAll(b: DungeonBuild): void {
     }
     return wallAdj && open >= 3;
   };
+  // THE TURNED SEED: a veined key runs the rock twice as rich.
+  const veinMult = b.mods.has('veined') ? 2 : 1;
   for (const a of b.rooms) {
     if (a.kind === 'entry') continue;
-    const veins = rDress.int(1, 3) + (a.depth >= maxDepth - 1 ? 1 : 0);
+    const veins = (rDress.int(1, 3) + (a.depth >= maxDepth - 1 ? 1 : 0)) * veinMult;
     for (let v = 0; v < veins; v++) {
       for (let attempt = 0; attempt < 14; attempt++) {
         const x = a.x + rDress.int(-a.r - 2, a.r + 2);
@@ -255,7 +257,15 @@ export function dressAll(b: DungeonBuild): void {
   const chestRooms = b.rooms
     .filter((a) => a.kind === 'room')
     .sort((p, q) => q.depth - p.depth);
-  const pathChests = PATH_CHESTS[b.spec.tier] ?? PATH_CHESTS.common!;
+  // THE TURNED SEED: a hoarding key stretches the ladder by two rungs;
+  // a blooded garrison hoards one more of its best (pressure pays).
+  let pathChests = PATH_CHESTS[b.spec.tier] ?? PATH_CHESTS.common!;
+  if (b.mods.has('hoarding')) {
+    pathChests = [pathChests[0]!, pathChests[1] ?? pathChests[0]!, ...pathChests];
+  }
+  if (b.mods.has('blooded')) {
+    pathChests = [...pathChests, pathChests[pathChests.length - 1]!];
+  }
   b.placedChests = [];
   const placedChests = b.placedChests;
   /**
@@ -295,6 +305,35 @@ export function dressAll(b: DungeonBuild): void {
     const spot = cells[rDress.int(0, cells.length - 1)]!;
     c.set(spot.x, spot.y, pathChests[pathChests.length - 1 - i]!);
     placedChests.push(spot);
+  }
+
+  // THE DEAD END PAYS: a tangent that goes nowhere must hold something.
+  // Walking a branch to its end and finding bare rock is the one sin a
+  // dungeon crawler never forgives — any degree-1 side room the ladders
+  // skipped gets the tier's humble chest, or failing wall space, a vein.
+  for (const room of b.rooms) {
+    if (room.onSpine || room.kind !== 'room' || room.degree !== 1) continue;
+    const rr = room.r + 3;
+    const paid =
+      placedChests.some((p) => dist(p.x, p.y, room.x, room.y) <= rr) ||
+      oreSpots.some((p) => dist(p.x, p.y, room.x, room.y) <= rr);
+    if (paid) continue;
+    const cells = northWallCells(room);
+    if (cells.length > 0) {
+      const spot = cells[rDress.int(0, cells.length - 1)]!;
+      c.set(spot.x, spot.y, pathChests[0]!);
+      placedChests.push(spot);
+      continue;
+    }
+    for (let attempt = 0; attempt < 14; attempt++) {
+      const x = room.x + rDress.int(-room.r - 2, room.r + 2);
+      const y = room.y + rDress.int(-room.r - 2, room.r + 2);
+      if (!canOre(x, y)) continue;
+      removables.push({ x, y, was: c.get(x, y) });
+      c.set(x, y, allowedOres[rDress.int(0, allowedOres.length - 1)]!.tile);
+      oreSpots.push({ x, y });
+      break;
+    }
   }
 
   // ---- props: the room learns its furniture --------------------------

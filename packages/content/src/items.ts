@@ -1181,7 +1181,7 @@ const defs: ItemDef[] = [
     name: 'Dungeon key',
     stackable: false,
     value: 120,
-    desc: 'A rift-cut key humming with somewhere else. The same key always opens the same halls — never spent, only carried.',
+    desc: 'A rift-cut key humming with somewhere else. The same key always opens the same halls — and its ward holds three turns before it wears through.',
     color: '#8f7bd9',
     code: 'Dk',
     dungeonKey: true,

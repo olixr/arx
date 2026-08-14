@@ -4,6 +4,7 @@ import {
   DOOR_TILES,
   RARITY_TIERS,
   Tile,
+  dungeonModifiers,
   dungeonSpecFromRoll,
   isSolidTile,
   type RarityTier,
@@ -307,6 +308,87 @@ test("THE CHAMPION'S COURT: every theme seats its crown over a warded chest", ()
       `${theme}: seat ${champ!.npc} is not this theme's crown`,
     );
     assert.equal(champ!.count, 1, `${theme}: one champion`);
+    // THE COURT HOLDS THE CROWN: the seat's arena override must fit
+    // the 23×15 arena prefab (walkable half-extents ≈ 9.5×6.5) — an
+    // open-ground arenaR would chase kiters up the approach corridor
+    // and park the rim guard outside the walls where it never fires.
+    assert.ok(
+      champ!.arenaR !== undefined && champ!.arenaR <= 9,
+      `${theme}: court seat arenaR ${champ!.arenaR} exceeds the arena prefab`,
+    );
+  }
+});
+
+test('THE ROAD STAYS LONG: the shortcut seeds the proving caught stay closed', () => {
+  // Two real regressions, pinned by seed: a common crypt whose loop
+  // chorded the road to 0.82×, and a rare crypt whose monotone
+  // diagonal spine let branch blobs bridge the entry→court chord
+  // (0.73×). The plan-time loop guard + the direct-manhattan spine
+  // extension close both — and must stay closed.
+  for (const [seed, tier] of [
+    [12345, 'common'],
+    [2619526897, 'rare'],
+  ] as const) {
+    const { zone, entry, bossChest, spec } = gen(seed, tier);
+    const d = walkDistance(
+      zone.ground,
+      zone.width,
+      Math.floor(entry.x - ORIGIN.x),
+      Math.floor(entry.y - ORIGIN.y),
+      bossChest!.x - ORIGIN.x,
+      bossChest!.y - ORIGIN.y,
+    );
+    assert.ok(
+      d >= spec.size * 0.85,
+      `${tier}/${seed}: road ${d} on a ${spec.size} map — the shortcut reopened`,
+    );
+  }
+});
+
+test('THE WAY HOME OPENS: the court keeps a sealed rift-mouth, floor until earned', () => {
+  for (const tier of ['common', 'legendary'] as const) {
+    for (let seed = 1; seed <= 12; seed++) {
+      const { zone, bossChest, courtExit } = gen(seed * 7919, tier);
+      const s = zone.width;
+      assert.ok(courtExit, `${tier}/${seed}: the court seats a way home`);
+      // Registered as a portal already…
+      assert.ok(
+        (zone.portals ?? []).some((p) => p.x === courtExit!.x && p.y === courtExit!.y),
+        `${tier}/${seed}: the rift-mouth is a registered portal`,
+      );
+      // …but the tile stays plain floor until the champion falls.
+      const t = zone.ground[(courtExit!.y - ORIGIN.y) * s + (courtExit!.x - ORIGIN.x)]!;
+      assert.ok(
+        t === Tile.CaveFloor || t === Tile.DungeonFloor,
+        `${tier}/${seed}: sealed mouth is floor, not ${t}`,
+      );
+      // And it stands in the court, below the prize.
+      assert.ok(bossChest, `${tier}/${seed}: court chest exists`);
+      const dx = courtExit!.x - bossChest!.x;
+      const dy = courtExit!.y - bossChest!.y;
+      assert.ok(Math.hypot(dx, dy) <= 16, `${tier}/${seed}: mouth ${Math.hypot(dx, dy)} from dais`);
+    }
+  }
+});
+
+test('THE TURNED SEED: modifiers are pure, tier-budgeted, and distinct', () => {
+  for (let seed = 1; seed <= 200; seed++) {
+    for (const tier of RARITY_TIERS) {
+      const a = dungeonModifiers(seed, tier);
+      const b = dungeonModifiers(seed, tier);
+      assert.deepEqual(a, b, 'same seed, same words');
+      const ids = a.map((m) => m.id);
+      assert.equal(new Set(ids).size, ids.length, 'no word turned twice');
+      const budget: Record<RarityTier, [number, number]> = {
+        common: [0, 1],
+        uncommon: [1, 1],
+        rare: [1, 2],
+        epic: [2, 2],
+        legendary: [2, 3],
+      };
+      const [lo, hi] = budget[tier];
+      assert.ok(a.length >= lo && a.length <= hi, `${tier}: ${a.length} words`);
+    }
   }
 });
 

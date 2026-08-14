@@ -1,4 +1,4 @@
-import { RARITY_COLORS } from '@arx/shared';
+import { RARITY_COLORS, dungeonModifiers } from '@arx/shared';
 import type { PartyRunWire } from '@arx/shared';
 import { itemIconUrl } from '../render/icons.js';
 import { iconTile, sectionHead } from './panel.js';
@@ -94,6 +94,15 @@ export class RiftgatePanel {
       const themeWord = document.createElement('span');
       themeWord.textContent = k.spec.theme;
       sub.append(sigil, ' · ', tierWord, ' · ', themeWord);
+      // THE TURNED SEED: the key's modifier words, read pure from the
+      // roll — the gate tells you what kind of run you're buying.
+      for (const mod of dungeonModifiers(k.spec.seed, k.spec.tier)) {
+        const word = document.createElement('span');
+        word.className = 'rift-mod';
+        word.textContent = mod.name.toLowerCase();
+        word.title = mod.blurb;
+        sub.append(' · ', word);
+      }
       if (openHere) {
         const standing = document.createElement('span');
         standing.className = 'rift-standing';

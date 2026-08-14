@@ -350,6 +350,27 @@
   gap: 0.5rem;
 }
 
+/* THE TURNED SEED: the door's modifier words — one line each, the
+   name in gold, the blurb in dim parchment. */
+.keybench-mods {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.5rem 0.625rem;
+  background: var(--raise);
+  border: 0.09375rem solid var(--line);
+  border-radius: 0.3125rem;
+}
+
+.keybench-mod {
+  font-size: var(--t-label);
+  color: var(--parchment-dim);
+}
+
+.keybench-mod strong {
+  color: var(--gold);
+  font-weight: 700;
+}
+
 .keybench-ward {
   display: flex;
   align-items: center;

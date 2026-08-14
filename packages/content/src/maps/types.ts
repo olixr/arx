@@ -46,6 +46,13 @@ export interface ZoneSpawn {
   /** Display-name override — how a scaled troll becomes a Hold-Warden. */
   name?: string;
   /**
+   * THE COURT HOLDS THE CROWN: per-seat arena radius override. A
+   * crown's authored `boss.arenaR` is sized for open ground; a seat
+   * inside a stamped room passes the room's own reach here so the
+   * leash and the rim guard hold the fight where the author put it.
+   */
+  arenaR?: number;
+  /**
    * A waypoint loop the body paces while idle (POI sentry rounds).
    * World coords; the idle brain walks leg to leg with the steering
    * fan and lingers at each stop. Combat and chase own the body as

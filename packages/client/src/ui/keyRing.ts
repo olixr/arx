@@ -1,4 +1,4 @@
-import { DUNGEON_TIER_LAWS, RARITY_COLORS, RARITY_TIERS } from '@arx/shared';
+import { DUNGEON_TIER_LAWS, RARITY_COLORS, RARITY_TIERS, dungeonModifiers } from '@arx/shared';
 import type { DungeonTheme, RarityTier } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
 import { dockGlyphUrl, itemIconUrl } from '../render/icons.js';
@@ -552,6 +552,26 @@ export class KeyRingPanel {
       statPlaque(`${DUNGEON_TIER_LAWS[k.spec.tier].value}`, 'worth · coins', undefined),
     );
     this.bench.appendChild(plaques);
+
+    // THE TURNED SEED, told plainly: what this particular cut of the
+    // door does differently — the words that make one rare key worth
+    // more at market than another.
+    const mods = dungeonModifiers(k.spec.seed, k.spec.tier);
+    if (mods.length > 0) {
+      const turned = document.createElement('div');
+      turned.className = 'keybench-mods';
+      for (const mod of mods) {
+        const line = document.createElement('div');
+        line.className = 'keybench-mod';
+        const modName = document.createElement('strong');
+        modName.textContent = mod.name;
+        const modBlurb = document.createElement('span');
+        modBlurb.textContent = ` — ${mod.blurb}`;
+        line.append(modName, modBlurb);
+        turned.appendChild(line);
+      }
+      this.bench.appendChild(turned);
+    }
 
     // THE WORN WARD, told plainly.
     const ward = document.createElement('div');

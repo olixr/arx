@@ -118,6 +118,12 @@ export class Carver {
 export interface DungeonBuild {
   readonly spec: DungeonSpec;
   readonly theme: ThemeLaw;
+  /**
+   * THE TURNED SEED: the spec's modifier ids (dungeonModifiers of the
+   * seed), derived once in the orchestrator — passes read membership,
+   * never re-derive.
+   */
+  readonly mods: ReadonlySet<string>;
   readonly c: Carver;
   readonly origin: Vec2;
   readonly returnTo: Vec2;
