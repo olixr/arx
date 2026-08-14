@@ -16058,9 +16058,9 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
     // THE MANTLE FIRST (hats need napes), face window CUT.
     const mantle = (): void => {
       ctx.moveTo(headX - hw * 1.18, headY + hh * 1.1);
-      ctx.quadraticCurveTo(headX - hw * 1.24, headY - hh * 0.3, headX - hw * 0.94, bandY - hh * 0.1);
-      ctx.lineTo(headX + hw * 0.94, bandY - hh * 0.1);
-      ctx.quadraticCurveTo(headX + hw * 1.24, headY - hh * 0.3, headX + hw * 1.18, headY + hh * 1.1);
+      ctx.quadraticCurveTo(headX - hw * 1.26, headY - hh * 0.34, headX - hw * 1.02, bandY - hh * 0.44);
+      ctx.lineTo(headX + hw * 1.02, bandY - hh * 0.44);
+      ctx.quadraticCurveTo(headX + hw * 1.26, headY - hh * 0.34, headX + hw * 1.18, headY + hh * 1.1);
       ctx.quadraticCurveTo(headX, headY + hh * 1.38, headX - hw * 1.18, headY + hh * 1.1);
       ctx.closePath();
     };
@@ -16270,7 +16270,7 @@ export function drawHelmet(ctx: CanvasRenderingContext2D, st: HelmStyle, f: Head
       // THE PEARL BAND: the count, worn where a hatband goes — one
       // glimmer walking, the whole strand lit at the break.
       ctx.fillStyle = shade(st.color, -30);
-      ctx.fillRect(headX - hw * 0.74, bandY - hh * 0.4, hw * 1.48, hh * 0.22);
+      ctx.fillRect(headX - hw * 0.9, bandY - hh * 0.4, hw * 1.8, hh * 0.22);
       if (front && st.pearls) {
         const pc = st.pearls.color;
         const walk = Math.floor(f.nowMs / 700) % 5;
