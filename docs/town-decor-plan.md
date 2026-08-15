@@ -59,9 +59,18 @@ Design intent per piece:
 - **TownBell** — the tall civic timber: an A-braced frame two men
   high, the bronze bell hung under its own little roof, pull rope
   swaying. Breaking it is the loudest note it ever plays (boom).
-- **HandCart** — commerce in motion, parked: big spoked wheel proud
-  of the bed (the mine cart's TRACK-READS-AS-TRACK lesson: wheels
-  must read), shafts down to the ground, load of sacks + one crate.
+- **HandCart** (REWORKED 2026-08-15 — the pass-one cart was a side
+  elevation: no deck, the wheel a coin facing the camera) — THE
+  MERCHANT'S CART: a DEEP foreshortened deck (crate-lid treatment at
+  cart scale) carrying goods read from above — dyed cloth bolts, an
+  iron-banded strongbox, the plump sack, straw between; a painted
+  dye-trim stripe and iron corner brackets on the carved side board
+  (a merchant advertises). One honest axle: the near wheel a full
+  iron-shod eight-spoke ring with hub cap seated at true axle height
+  (its crown just proud of the deck, never floating over the cargo),
+  the far wheel's crown showing over the back rail. Shafts down and
+  resting with the pull bar, iron ferrule tips, a stone chocking the
+  wheel.
 - **GrainSacks** — the town's clean answer to PlunderSacks: plump,
   TIED, upright on a low skid pallet (grain never sits on wet
   ground) — kept stores, not loot. The proudest sack wears the
@@ -71,6 +80,15 @@ Design intent per piece:
   over-dealt props in the game. The stack law: side casks show round
   END GRAIN hoops (the 3D argument), chocks stop the roll; crates
   stagger, top lid ajar with straw and a stencil mark.
+  (CrateStack REWORKED 2026-08-15 — **A CRATE IS SLATS AND AIR**:
+  the pass-one flat faces with stroked-rectangle "battens" read as
+  CARDBOARD BOXES, which this world has never made. Now honest
+  carpentry: interior darkness first, slats over it with true gaps
+  between, corner battens over the slat ends, iron nail dots at
+  every crossing; the bottom crate's top plane exposed by the
+  stagger with the lashing rope coiled on it; the pried lid a real
+  two-board panel with its cross batten; one straw tuft escaping a
+  face gap.)
 - **PennantLine** (REWORKED from WashLine, 2026-08-15 — hanging
   laundry is not this universe's voice; festival colors are) — two
   turned poles with bronze ball finials leaning a hair out under the
@@ -218,6 +236,29 @@ Three pieces went back to the bench after the user's live read:
   wide (zero glow — the lamps keep the dark), page-error trap clean
   (no unsigned-hash regressions), body-ruler checks beside the
   prover.
+
+### Rework pass round three (2026-08-15, user — the cart's perspective and the cardboard verdict)
+
+- **THE CART GETS ITS DECK** (perspective failure): the pass-one
+  HandCart was a side elevation — a planked front face with a sliver
+  top and the wheel drawn as a coin facing the camera. This camera
+  is a tilted bird's eye: a cart's DECK is most of what it shows.
+  Rebuilt with a deep foreshortened deck plane (goods read from
+  above), the near wheel seated at true axle height (crown just
+  proud of the deck — the first rebuild floated it high over the bed
+  and it ate the cargo read; lowered and shifted so the bolts and
+  strongbox ride visible on the back half), the far wheel's crown
+  over the back rail, and merchant's luxury: dye-trim stripe, iron
+  brackets, bolts in two dye families, iron-banded strongbox with
+  bronze hasp, pull-bar shafts, wheel chock.
+- **A CRATE IS SLATS AND AIR** (the cardboard verdict): a sealed
+  brown face reads as pasteboard; wood freight is battens, slats,
+  and the dark gaps between them. The crateFace helper (interior
+  dark → toned slats with lit tops → corner battens → nail dots) is
+  the reusable recipe for any crated casework.
+- Proven live on the :8813/:5202 rig beside the body ruler at the
+  farmstead cart, the orchard harvest corner, and the pier head;
+  3s page-error trap clean.
 
 ### Deferred on purpose
 

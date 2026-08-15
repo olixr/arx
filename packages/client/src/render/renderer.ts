@@ -33852,121 +33852,300 @@ export class Renderer {
       case Tile.HandCart: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.2;
-        // Commerce in motion, parked: a two-wheel barrow on its rest
-        // legs, shafts down, still loaded — somebody is coming BACK
-        // for this (the kept law). The wheel is the read: big,
-        // spoked, proud of the bed (the mine cart's lesson).
-        const hw = s * 0.56;
-        const bedY = baseY - s * 0.42;
+        // THE MERCHANT'S CART, parked mid-round: the camera finally
+        // gets what it is owed — a DEEP foreshortened deck (the
+        // crate-lid treatment at cart scale) carrying a merchant's
+        // goods you read from above: dyed bolts, an iron-banded
+        // chest, the plump sack. One true axle: the near wheel a
+        // full shod ring proud of the bed, the far wheel's crown
+        // showing over the deck's back edge. Shafts down and
+        // resting, a stone chocking the wheel — somebody is coming
+        // BACK for this (the kept law).
+        const hw = s * 0.62;
+        const bedY = baseY - s * 0.46;
+        const deep = s * 0.26;
+        const skew = s * 0.09;
+        const railH = s * 0.15;
+        const cloths = Renderer.AWNING_CLOTHS;
+        const trim = cloths[(h >>> 4) % 10]!;
+        const boltA = cloths[(((h >>> 4) % 10) + 3) % 10]!;
+        const boltB = cloths[(((h >>> 4) % 10) + 6) % 10]!;
         return {
           sortY: ty + 0.7,
-          body: stationBody(0.72, 1.0, 0.5),
-          drawShadow: () => this.castContact(p.x, baseY, hw * 1.1, s * 0.075),
+          body: stationBody(1.1, 1.05, 0.5),
+          drawShadow: () => this.castContact(p.x - s * 0.06, baseY, s * 0.85, s * 0.08),
           draw: () => {
             // Draw-time ctx capture: the outline pass swaps this.ctx
             // to its scratch — the build-time capture would paint past it.
             const ctx = this.ctx;
             ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
             ctx.beginPath();
-            ctx.ellipse(p.x + s * 0.04, baseY + s * 0.02, hw * 1.12, s * 0.08, 0, 0, Math.PI * 2);
+            ctx.ellipse(p.x - s * 0.04, baseY + s * 0.02, s * 0.92, s * 0.08, 0, 0, Math.PI * 2);
             ctx.fill();
-            // The far wheel: a dark rim hint behind the bed.
-            ctx.strokeStyle = shade(TWN_OAK_DARK, -14);
-            ctx.lineWidth = Math.max(1.5, s * 0.04);
+            // THE FAR WHEEL first: its crown rides above the deck's
+            // back edge — the axle's honest second half.
+            const wxF = p.x + s * 0.1 + skew;
+            const wyF = baseY - s * 0.3 - deep * 0.85;
+            const wrF = s * 0.32;
+            ctx.strokeStyle = shade(TWN_OAK_DARK, -12);
+            ctx.lineWidth = Math.max(2, s * 0.055);
             ctx.beginPath();
-            ctx.ellipse(p.x - hw * 0.18, baseY - s * 0.3, s * 0.26, s * 0.28, 0, 0, Math.PI * 2);
+            ctx.ellipse(wxF, wyF, wrF, wrF * 1.02, 0, 0, Math.PI * 2);
             ctx.stroke();
-            // The shafts: down to the street, resting.
-            ctx.strokeStyle = TWN_OAK;
-            ctx.lineWidth = Math.max(1.5, s * 0.032);
-            for (const m of [0.34, 0.62] as const) {
+            ctx.strokeStyle = shade(TWN_OAK, -14);
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            for (let k = 0; k < 4; k++) {
+              const a = (k / 4) * Math.PI + 0.4;
               ctx.beginPath();
-              ctx.moveTo(p.x - hw * m, bedY + s * 0.1);
-              ctx.lineTo(p.x - hw * (m + 0.62), baseY - s * 0.02);
+              ctx.moveTo(wxF - Math.cos(a) * wrF * 0.85, wyF - Math.sin(a) * wrF * 0.85);
+              ctx.lineTo(wxF + Math.cos(a) * wrF * 0.85, wyF + Math.sin(a) * wrF * 0.85);
               ctx.stroke();
             }
-            // The bed: planked box — front face in the weathered
-            // tone, the load riding the foreshortened top plane.
-            ctx.fillStyle = TWN_OAK;
-            ctx.fillRect(p.x - hw * 0.62, bedY, hw * 1.32, s * 0.3);
-            ctx.strokeStyle = 'rgba(60, 44, 24, 0.5)';
-            ctx.lineWidth = Math.max(1, s * 0.012);
+            // THE DECK: the cart's top plane, deep enough to stand
+            // goods on (the 2.5D law) — planked lengthwise, back
+            // edge drifting east with the camera.
+            ctx.fillStyle = shade(TWN_OAK_LIT, -6);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw, bedY);
+            ctx.lineTo(p.x - hw + skew, bedY - deep);
+            ctx.lineTo(p.x + hw + skew, bedY - deep);
+            ctx.lineTo(p.x + hw, bedY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(90, 64, 34, 0.45)';
+            ctx.lineWidth = Math.max(1, s * 0.01);
             for (let k = 1; k < 3; k++) {
+              const f = k / 3;
               ctx.beginPath();
-              ctx.moveTo(p.x - hw * 0.62, bedY + s * 0.3 * (k / 3));
-              ctx.lineTo(p.x + hw * 0.7, bedY + s * 0.3 * (k / 3));
+              ctx.moveTo(p.x - hw + skew * f, bedY - deep * f);
+              ctx.lineTo(p.x + hw + skew * f, bedY - deep * f);
               ctx.stroke();
             }
-            ctx.fillStyle = TWN_OAK_LIT;
+            // The far rail: a low carved lip on the deck's back edge.
+            ctx.fillStyle = shade(TWN_OAK, -10);
+            ctx.fillRect(p.x - hw + skew, bedY - deep - s * 0.05, hw * 2, s * 0.05);
+            // The east end cap: the bed's thickness turned to the camera.
+            ctx.fillStyle = shade(TWN_OAK, -8);
             ctx.beginPath();
-            ctx.moveTo(p.x - hw * 0.62, bedY);
-            ctx.lineTo(p.x - hw * 0.5, bedY - s * 0.08);
-            ctx.lineTo(p.x + hw * 0.82, bedY - s * 0.08);
-            ctx.lineTo(p.x + hw * 0.7, bedY);
+            ctx.moveTo(p.x + hw, bedY);
+            ctx.lineTo(p.x + hw + skew, bedY - deep);
+            ctx.lineTo(p.x + hw + skew, bedY - deep + railH);
+            ctx.lineTo(p.x + hw, bedY + railH);
             ctx.closePath();
             ctx.fill();
-            // The load: two plump sacks + one crate riding the plane.
-            ctx.fillStyle = TWN_BURLAP;
+            // THE SIDE BOARD: low, carved, and PAINTED — the trim
+            // stripe wears a town dye (a merchant advertises), iron
+            // corner brackets holding the joinery.
+            ctx.fillStyle = TWN_OAK;
+            ctx.fillRect(p.x - hw, bedY, hw * 2, railH);
+            ctx.strokeStyle = 'rgba(60, 44, 24, 0.5)';
+            ctx.lineWidth = Math.max(1, s * 0.011);
             ctx.beginPath();
-            ctx.ellipse(p.x - hw * 0.24, bedY - s * 0.16, s * 0.14, s * 0.12, -0.15, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(p.x + hw * 0.08, bedY - s * 0.14, s * 0.12, s * 0.11, 0.2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = TWN_BURLAP_LIT;
-            ctx.beginPath();
-            ctx.ellipse(p.x - hw * 0.28, bedY - s * 0.2, s * 0.07, s * 0.045, -0.3, 0, Math.PI * 2);
-            ctx.fill();
-            // Tied necks.
-            ctx.strokeStyle = TWN_ROPE;
-            ctx.lineWidth = Math.max(1, s * 0.014);
-            ctx.beginPath();
-            ctx.moveTo(p.x - hw * 0.3, bedY - s * 0.28);
-            ctx.lineTo(p.x - hw * 0.22, bedY - s * 0.26);
+            ctx.moveTo(p.x - hw, bedY + railH * 0.52);
+            ctx.lineTo(p.x + hw, bedY + railH * 0.52);
             ctx.stroke();
-            ctx.fillStyle = shade(TWN_OAK, 8);
-            ctx.fillRect(p.x + hw * 0.3, bedY - s * 0.26, s * 0.22, s * 0.19);
-            ctx.fillStyle = TWN_OAK_LIT;
+            ctx.fillStyle = trim.a;
+            ctx.fillRect(p.x - hw + s * 0.05, bedY + railH * 0.3, hw * 2 - s * 0.1, s * 0.032);
+            for (const m of [-1, 1] as const) {
+              ctx.strokeStyle = TWN_IRON;
+              ctx.lineWidth = Math.max(1, s * 0.018);
+              ctx.beginPath();
+              ctx.moveTo(p.x + m * (hw - s * 0.02), bedY + s * 0.015);
+              ctx.lineTo(p.x + m * (hw - s * 0.02), bedY + railH - s * 0.015);
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(p.x + m * (hw - s * 0.06), bedY + s * 0.02);
+              ctx.lineTo(p.x + m * (hw - s * 0.015), bedY + s * 0.02);
+              ctx.stroke();
+            }
+            // The deck's front arris catches the sun.
+            ctx.fillStyle = '#d8b988';
+            ctx.fillRect(p.x - hw, bedY - s * 0.012, hw * 2, s * 0.018);
+            // THE LOAD, read from above on the deck plane:
+            // the sack at the west end, leaning into the corner.
+            {
+              const sx2 = p.x - hw * 0.68;
+              const sy2 = bedY - deep * 0.45;
+              ctx.fillStyle = 'rgba(40, 28, 14, 0.3)';
+              ctx.beginPath();
+              ctx.ellipse(sx2 + s * 0.02, sy2 + s * 0.055, s * 0.14, s * 0.045, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = TWN_BURLAP;
+              ctx.beginPath();
+              ctx.moveTo(sx2 - s * 0.13, sy2 + s * 0.06);
+              ctx.quadraticCurveTo(sx2 - s * 0.17, sy2 - s * 0.12, sx2 - s * 0.05, sy2 - s * 0.2);
+              ctx.quadraticCurveTo(sx2 + s * 0.02, sy2 - s * 0.26, sx2 + s * 0.07, sy2 - s * 0.2);
+              ctx.quadraticCurveTo(sx2 + s * 0.16, sy2 - s * 0.1, sx2 + s * 0.13, sy2 + s * 0.06);
+              ctx.quadraticCurveTo(sx2, sy2 + s * 0.1, sx2 - s * 0.13, sy2 + s * 0.06);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = TWN_BURLAP_LIT;
+              ctx.beginPath();
+              ctx.ellipse(sx2 - s * 0.05, sy2 - s * 0.14, s * 0.05, s * 0.035, -0.4, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = TWN_ROPE;
+              ctx.lineWidth = Math.max(1, s * 0.013);
+              ctx.beginPath();
+              ctx.moveTo(sx2 - s * 0.02, sy2 - s * 0.225);
+              ctx.lineTo(sx2 + s * 0.05, sy2 - s * 0.215);
+              ctx.stroke();
+            }
+            // Two bolts of dyed cloth lying across the bed — the
+            // rolls read from above: long bodies, wound ends facing
+            // the street, no two dyes in the same family.
+            for (const [bi, dye] of [boltA, boltB].entries()) {
+              const bx2 = p.x - hw * 0.02 + bi * s * 0.16;
+              const by2 = bedY - deep * (0.88 - bi * 0.3);
+              const bl = s * 0.24;
+              const br2 = s * 0.075;
+              ctx.fillStyle = 'rgba(40, 28, 14, 0.28)';
+              ctx.beginPath();
+              ctx.ellipse(bx2 + s * 0.01, by2 + br2 * 0.9, bl * 0.9, s * 0.03, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.save();
+              ctx.translate(bx2, by2);
+              ctx.rotate(-0.06 + bi * 0.1);
+              ctx.fillStyle = dye.a;
+              ctx.beginPath();
+              ctx.moveTo(-bl, -br2);
+              ctx.lineTo(bl * 0.92, -br2);
+              ctx.quadraticCurveTo(bl * 1.12, 0, bl * 0.92, br2);
+              ctx.lineTo(-bl, br2);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = 'rgba(250, 244, 228, 0.28)';
+              ctx.fillRect(-bl, -br2, bl * 1.9, br2 * 0.55);
+              ctx.fillStyle = dye.b;
+              ctx.beginPath();
+              ctx.ellipse(bl * 0.98, 0, br2 * 0.5, br2, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = dye.a;
+              ctx.lineWidth = Math.max(1, s * 0.012);
+              ctx.beginPath();
+              ctx.ellipse(bl * 0.98, 0, br2 * 0.22, br2 * 0.45, 0, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.restore();
+            }
+            // The strongbox at the east end: iron-banded, hasped —
+            // its own small lid plane keeps the law.
+            {
+              const cx2 = p.x + hw * 0.72;
+              const cy2 = bedY - deep * 0.55;
+              const cw2 = s * 0.17;
+              const chh = s * 0.17;
+              ctx.fillStyle = 'rgba(40, 28, 14, 0.3)';
+              ctx.beginPath();
+              ctx.ellipse(cx2, cy2 + s * 0.02, cw2 * 1.1, s * 0.035, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = shade(TWN_OAK, -4);
+              ctx.fillRect(cx2 - cw2, cy2 - chh, cw2 * 2, chh);
+              ctx.fillStyle = shade(TWN_OAK_LIT, -2);
+              ctx.beginPath();
+              ctx.moveTo(cx2 - cw2, cy2 - chh);
+              ctx.lineTo(cx2 - cw2 + s * 0.05, cy2 - chh - s * 0.07);
+              ctx.lineTo(cx2 + cw2 + s * 0.05, cy2 - chh - s * 0.07);
+              ctx.lineTo(cx2 + cw2, cy2 - chh);
+              ctx.closePath();
+              ctx.fill();
+              ctx.strokeStyle = TWN_IRON;
+              ctx.lineWidth = Math.max(1, s * 0.02);
+              for (const fx2 of [-0.55, 0.55] as const) {
+                ctx.beginPath();
+                ctx.moveTo(cx2 + fx2 * cw2, cy2 - chh - s * 0.055);
+                ctx.lineTo(cx2 + fx2 * cw2, cy2);
+                ctx.stroke();
+              }
+              ctx.fillStyle = TWN_BRONZE_LIT;
+              ctx.fillRect(cx2 - s * 0.02, cy2 - chh * 0.62, s * 0.04, s * 0.05);
+            }
+            // Straw wisps drifted between the goods.
+            ctx.strokeStyle = 'rgba(216, 196, 154, 0.7)';
+            ctx.lineWidth = Math.max(1, s * 0.009);
+            for (let k = 0; k < 3; k++) {
+              const kx = p.x - hw * 0.3 + ((h >>> (k + 2)) & 7) * hw * 0.12;
+              const ky = bedY - deep * (0.2 + ((h >>> k) & 1) * 0.25);
+              ctx.beginPath();
+              ctx.moveTo(kx, ky);
+              ctx.quadraticCurveTo(kx + s * 0.03, ky - s * 0.02, kx + s * 0.06, ky - s * 0.005);
+              ctx.stroke();
+            }
+            // THE SHAFTS: down and resting — near and far, joined by
+            // the pull bar, iron ferrules at the tips.
+            for (const [si, lift] of [0, 1].entries()) {
+              const y0 = bedY + railH * 0.6 - lift * s * 0.12;
+              const x0 = p.x - hw + s * 0.03 + lift * skew * 0.6;
+              const x1 = p.x - hw - s * 0.36 + lift * skew * 0.6;
+              const y1 = baseY - s * 0.015 - lift * s * 0.1;
+              ctx.strokeStyle = si === 0 ? TWN_OAK : shade(TWN_OAK, -12);
+              ctx.lineWidth = Math.max(1.5, s * 0.034);
+              ctx.beginPath();
+              ctx.moveTo(x0, y0);
+              ctx.lineTo(x1, y1);
+              ctx.stroke();
+              ctx.strokeStyle = TWN_IRON;
+              ctx.lineWidth = Math.max(1, s * 0.02);
+              ctx.beginPath();
+              ctx.moveTo(x1 + s * 0.015, y1 - s * 0.008);
+              ctx.lineTo(x1 - s * 0.012, y1 + s * 0.006);
+              ctx.stroke();
+            }
+            ctx.strokeStyle = shade(TWN_OAK, 8);
+            ctx.lineWidth = Math.max(1.5, s * 0.026);
             ctx.beginPath();
-            ctx.moveTo(p.x + hw * 0.3, bedY - s * 0.26);
-            ctx.lineTo(p.x + hw * 0.3 + s * 0.04, bedY - s * 0.31);
-            ctx.lineTo(p.x + hw * 0.3 + s * 0.26, bedY - s * 0.31);
-            ctx.lineTo(p.x + hw * 0.3 + s * 0.22, bedY - s * 0.26);
-            ctx.closePath();
-            ctx.fill();
-            // THE WHEEL: rim, six spokes, hub — proud of the bed and
-            // BIG (pass-one note: a modest wheel muddied into the
-            // bed at map scale; the wheel is the cart's read).
-            const wx = p.x + hw * 0.32;
-            const wy = baseY - s * 0.33;
-            const wr = s * 0.36;
-            ctx.strokeStyle = TWN_OAK_DARK;
-            ctx.lineWidth = Math.max(2, s * 0.06);
+            ctx.moveTo(p.x - hw - s * 0.36, baseY - s * 0.015);
+            ctx.lineTo(p.x - hw - s * 0.36 + skew * 0.6, baseY - s * 0.115);
+            ctx.stroke();
+            // THE NEAR WHEEL: the cart's proud read — iron-shod
+            // felloe ring, eight spokes, hub with an iron cap.
+            const wx = p.x + s * 0.1;
+            const wy = baseY - s * 0.3;
+            const wr = s * 0.34;
+            ctx.strokeStyle = TWN_IRON;
+            ctx.lineWidth = Math.max(2, s * 0.05);
             ctx.beginPath();
-            ctx.ellipse(wx, wy, wr, wr * 1.04, 0, 0, Math.PI * 2);
+            ctx.ellipse(wx, wy, wr, wr * 1.03, 0, 0, Math.PI * 2);
             ctx.stroke();
             ctx.strokeStyle = TWN_OAK;
-            ctx.lineWidth = Math.max(1, s * 0.024);
-            for (let k = 0; k < 6; k++) {
-              const a = (k / 6) * Math.PI + 0.26;
+            ctx.lineWidth = Math.max(1.5, s * 0.045);
+            ctx.beginPath();
+            ctx.ellipse(wx, wy, wr - s * 0.045, (wr - s * 0.045) * 1.03, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.strokeStyle = shade(TWN_OAK, 6);
+            ctx.lineWidth = Math.max(1, s * 0.022);
+            for (let k = 0; k < 8; k++) {
+              const a = (k / 8) * Math.PI + 0.2;
               ctx.beginPath();
-              ctx.moveTo(wx - Math.cos(a) * wr * 0.88, wy - Math.sin(a) * wr * 0.9);
-              ctx.lineTo(wx + Math.cos(a) * wr * 0.88, wy + Math.sin(a) * wr * 0.9);
+              ctx.moveTo(wx - Math.cos(a) * (wr - s * 0.07), wy - Math.sin(a) * (wr - s * 0.07) * 1.03);
+              ctx.lineTo(wx + Math.cos(a) * (wr - s * 0.07), wy + Math.sin(a) * (wr - s * 0.07) * 1.03);
               ctx.stroke();
             }
+            ctx.fillStyle = TWN_OAK_DARK;
+            ctx.beginPath();
+            ctx.ellipse(wx, wy, s * 0.075, s * 0.075, 0, 0, Math.PI * 2);
+            ctx.fill();
             ctx.fillStyle = TWN_IRON;
             ctx.beginPath();
-            ctx.ellipse(wx, wy, s * 0.045, s * 0.045, 0, 0, Math.PI * 2);
+            ctx.ellipse(wx, wy, s * 0.036, s * 0.036, 0, 0, Math.PI * 2);
             ctx.fill();
-            // The iron tyre's lit arc — the wheel is SHOD.
-            ctx.strokeStyle = 'rgba(200, 200, 208, 0.4)';
+            ctx.fillStyle = 'rgba(222, 226, 234, 0.7)';
+            ctx.beginPath();
+            ctx.ellipse(wx - s * 0.012, wy - s * 0.012, s * 0.011, s * 0.011, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The shod tyre's sun arc.
+            ctx.strokeStyle = 'rgba(210, 212, 220, 0.45)';
             ctx.lineWidth = Math.max(1, s * 0.016);
             ctx.beginPath();
-            ctx.ellipse(wx, wy, wr, wr * 1.04, 0, Math.PI * 1.15, Math.PI * 1.7);
+            ctx.ellipse(wx, wy, wr, wr * 1.03, 0, Math.PI * 1.1, Math.PI * 1.65);
             ctx.stroke();
-            // The rest leg under the bed's far corner.
-            ctx.fillStyle = TWN_OAK_DARK;
-            ctx.fillRect(p.x - hw * 0.5, bedY + s * 0.3, s * 0.04, baseY - bedY - s * 0.3);
+            // The chock: a stone wedged at the wheel's foot.
+            ctx.fillStyle = TWN_STONE_DARK;
+            ctx.beginPath();
+            facetBlob(ctx, wx + wr * 0.75, baseY - s * 0.025, s * 0.05, h ^ 91, 5, 0.65);
+            ctx.fill();
+            ctx.fillStyle = TWN_STONE;
+            ctx.beginPath();
+            facetBlob(ctx, wx + wr * 0.73, baseY - s * 0.04, s * 0.028, h ^ 47, 4, 0.6);
+            ctx.fill();
           },
         };
       }
@@ -34408,15 +34587,21 @@ export class Renderer {
       case Tile.CrateStack: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.18;
-        // Freight waiting to move: two crates squared off, the top
-        // lid pried and left ajar over its straw — inspected and
-        // passed. The stencil says whose it is; the stagger says
-        // human hands stacked it.
-        const hw = s * 0.42;
-        const midY = baseY - s * 0.44;
+        // Freight waiting to move — and CARPENTERED, never folded:
+        // a crate is corner battens and slats with dark air between
+        // them (the gaps are what say WOOD; a sealed face reads as
+        // pasteboard, which this world has never made). Two crates
+        // staggered so the bottom one's top plane shows, the coiled
+        // lashing rope waiting on it, the top crate open over its
+        // straw with the pried slat lid leaning back where the
+        // inspector left it.
+        const hw = s * 0.46;
+        const midY = baseY - s * 0.4;
+        const deep = s * 0.13;
+        const skew = s * 0.07;
         return {
           sortY: ty + 0.7,
-          body: stationBody(0.55, 1.15, 0.45),
+          body: stationBody(0.72, 1.05, 0.45),
           drawShadow: () => this.castContact(p.x, baseY, hw * 1.15, s * 0.07),
           draw: () => {
             // Draw-time ctx capture: the outline pass swaps this.ctx
@@ -34424,78 +34609,151 @@ export class Renderer {
             const ctx = this.ctx;
             ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
             ctx.beginPath();
-            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.2, s * 0.07, 0, 0, Math.PI * 2);
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.25, s * 0.07, 0, 0, Math.PI * 2);
             ctx.fill();
-            // The bottom crate: front face, batten frame, stencil.
-            ctx.fillStyle = TWN_OAK;
-            ctx.fillRect(p.x - hw, midY, hw * 2, baseY - midY);
-            ctx.strokeStyle = 'rgba(60, 44, 24, 0.55)';
-            ctx.lineWidth = Math.max(1, s * 0.014);
-            ctx.strokeRect(p.x - hw * 0.96, midY + s * 0.02, hw * 1.92, baseY - midY - s * 0.045);
+            // One slatted face: interior dark first, then slats with
+            // true gaps, then the corner battens over the slat ends,
+            // nail dots at every crossing.
+            const crateFace = (x0: number, y0: number, w2: number, h2: number, tone: number, slats: number) => {
+              ctx.fillStyle = 'rgba(22, 15, 8, 0.9)';
+              ctx.fillRect(x0, y0, w2, h2);
+              const gap = s * 0.018;
+              const slatH = (h2 - gap * (slats - 1)) / slats;
+              for (let k = 0; k < slats; k++) {
+                ctx.fillStyle = shade(TWN_OAK, tone + (((h >>> (k * 3 + 1)) & 3) - 1) * 5);
+                ctx.fillRect(x0, y0 + k * (slatH + gap), w2, slatH);
+                ctx.fillStyle = 'rgba(250, 240, 214, 0.14)';
+                ctx.fillRect(x0, y0 + k * (slatH + gap), w2, slatH * 0.28);
+              }
+              const bw2 = s * 0.055;
+              for (const bx3 of [x0, x0 + w2 - bw2] as const) {
+                ctx.fillStyle = shade(TWN_OAK_LIT, tone - 4);
+                ctx.fillRect(bx3, y0, bw2, h2);
+                ctx.fillStyle = 'rgba(60, 42, 22, 0.55)';
+                ctx.fillRect(bx3 + (bx3 === x0 ? bw2 - s * 0.012 : 0), y0, s * 0.012, h2);
+                ctx.fillStyle = TWN_IRON;
+                for (const fy of [0.14, 0.86] as const) {
+                  ctx.beginPath();
+                  ctx.ellipse(bx3 + bw2 / 2, y0 + h2 * fy, s * 0.011, s * 0.011, 0, 0, Math.PI * 2);
+                  ctx.fill();
+                }
+              }
+            };
+            // THE BOTTOM CRATE: face, then its top plane — planked,
+            // lit, the far edge shaded — with the lashing rope
+            // coiled on the exposed east half (a lead coils, never
+            // loops).
+            crateFace(p.x - hw, midY, hw * 2, baseY - midY, 0, 3);
+            ctx.fillStyle = shade(TWN_OAK_LIT, 4);
             ctx.beginPath();
-            ctx.moveTo(p.x - hw * 0.96, midY + s * 0.02);
-            ctx.lineTo(p.x + hw * 0.96, baseY - s * 0.03);
-            ctx.stroke();
-            ctx.fillStyle = TWN_OAK_LIT;
-            ctx.fillRect(p.x - hw, midY, s * 0.035, baseY - midY);
-            // The stencil: a ringed mark — the miller's brand.
-            ctx.strokeStyle = 'rgba(52, 40, 24, 0.65)';
+            ctx.moveTo(p.x - hw, midY);
+            ctx.lineTo(p.x - hw + skew, midY - deep);
+            ctx.lineTo(p.x + hw + skew, midY - deep);
+            ctx.lineTo(p.x + hw, midY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = 'rgba(70, 48, 24, 0.4)';
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw + skew, midY - deep);
+            ctx.lineTo(p.x + hw + skew, midY - deep);
+            ctx.lineTo(p.x + hw + skew - s * 0.02, midY - deep + s * 0.025);
+            ctx.lineTo(p.x - hw + skew - s * 0.02, midY - deep + s * 0.025);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(90, 64, 34, 0.45)';
+            ctx.lineWidth = Math.max(1, s * 0.009);
+            for (const fx3 of [-0.33, 0.33] as const) {
+              ctx.beginPath();
+              ctx.moveTo(p.x + fx3 * hw * 2 * 0.5, midY);
+              ctx.lineTo(p.x + fx3 * hw * 2 * 0.5 + skew, midY - deep);
+              ctx.stroke();
+            }
+            // The stencil rides the SLATS: the miller's ringed wheat
+            // mark, paint worn where the grain of the boards breaks it.
+            ctx.strokeStyle = 'rgba(52, 40, 24, 0.68)';
             ctx.lineWidth = Math.max(1, s * 0.016);
             ctx.beginPath();
-            ctx.ellipse(p.x + hw * 0.45, (midY + baseY) / 2, s * 0.07, s * 0.07, 0, 0, Math.PI * 2);
+            ctx.ellipse(p.x + hw * 0.5, (midY + baseY) / 2, s * 0.075, s * 0.075, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            for (const a of [-0.5, 0, 0.5] as const) {
+              ctx.beginPath();
+              ctx.moveTo(p.x + hw * 0.5, (midY + baseY) / 2 + s * 0.04);
+              ctx.lineTo(p.x + hw * 0.5 + Math.sin(a) * s * 0.038, (midY + baseY) / 2 - s * 0.035);
+              ctx.stroke();
+            }
+            // The coiled rope on the exposed plane.
+            ctx.strokeStyle = TWN_ROPE;
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            ctx.beginPath();
+            ctx.ellipse(p.x + hw * 0.58 + skew * 0.6, midY - deep * 0.5, s * 0.062, s * 0.026, 0.05, 0, Math.PI * 2);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(p.x + hw * 0.45 - s * 0.045, (midY + baseY) / 2);
-            ctx.lineTo(p.x + hw * 0.45 + s * 0.045, (midY + baseY) / 2);
+            ctx.ellipse(p.x + hw * 0.58 + skew * 0.6, midY - deep * 0.55, s * 0.04, s * 0.017, 0.05, 0, Math.PI * 2);
             ctx.stroke();
-            // The top crate: offset to the west, a bit smaller —
-            // front face + the foreshortened top with its pried lid.
-            const tw = hw * 0.8;
-            const tx2 = p.x - hw * 0.16;
-            const topY = midY - s * 0.4;
-            ctx.fillStyle = shade(TWN_OAK, 6);
-            ctx.fillRect(tx2 - tw, topY, tw * 2, midY - topY);
-            ctx.strokeStyle = 'rgba(60, 44, 24, 0.55)';
-            ctx.lineWidth = Math.max(1, s * 0.014);
-            ctx.strokeRect(tx2 - tw * 0.95, topY + s * 0.02, tw * 1.9, midY - topY - s * 0.04);
-            ctx.fillStyle = TWN_OAK_LIT;
-            ctx.fillRect(tx2 - tw, topY, s * 0.032, midY - topY);
-            // The open top plane: straw packing under the gap.
-            ctx.fillStyle = shade(TWN_OAK, -10);
+            // THE TOP CRATE: smaller, seated west on the plane —
+            // same carpentry, open over its straw.
+            const tw = s * 0.3;
+            const tx2 = p.x - hw * 0.32;
+            const tBase = midY - deep * 0.5;
+            const topY = tBase - s * 0.34;
+            crateFace(tx2 - tw, topY, tw * 2, tBase - topY, 6, 2);
+            // The open mouth: rim planks, dark void, straw heaped.
+            ctx.fillStyle = shade(TWN_OAK, -14);
             ctx.beginPath();
             ctx.moveTo(tx2 - tw, topY);
-            ctx.lineTo(tx2 - tw * 0.8, topY - s * 0.09);
-            ctx.lineTo(tx2 + tw * 1.2, topY - s * 0.09);
+            ctx.lineTo(tx2 - tw + skew, topY - deep * 0.8);
+            ctx.lineTo(tx2 + tw + skew, topY - deep * 0.8);
             ctx.lineTo(tx2 + tw, topY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = 'rgba(20, 14, 8, 0.85)';
+            ctx.beginPath();
+            ctx.moveTo(tx2 - tw * 0.78, topY - s * 0.012);
+            ctx.lineTo(tx2 - tw * 0.78 + skew * 0.7, topY - deep * 0.62);
+            ctx.lineTo(tx2 + tw * 0.82 + skew * 0.7, topY - deep * 0.62);
+            ctx.lineTo(tx2 + tw * 0.82, topY - s * 0.012);
             ctx.closePath();
             ctx.fill();
             ctx.fillStyle = TWN_GRAIN;
             ctx.beginPath();
-            ctx.ellipse(tx2 + tw * 0.1, topY - s * 0.045, tw * 0.62, s * 0.035, -0.04, 0, Math.PI * 2);
+            ctx.ellipse(tx2 + skew * 0.4, topY - deep * 0.34, tw * 0.6, s * 0.035, -0.03, 0, Math.PI * 2);
             ctx.fill();
             ctx.strokeStyle = shade(TWN_GRAIN, -26);
             ctx.lineWidth = Math.max(1, s * 0.008);
-            for (let k = 0; k < 4; k++) {
-              const kx = tx2 - tw * 0.4 + k * tw * 0.3;
+            for (let k = 0; k < 3; k++) {
+              const kx = tx2 - tw * 0.35 + k * tw * 0.35;
               ctx.beginPath();
-              ctx.moveTo(kx, topY - s * 0.055);
-              ctx.lineTo(kx + s * 0.045, topY - s * 0.028);
+              ctx.moveTo(kx, topY - deep * 0.42);
+              ctx.lineTo(kx + s * 0.04, topY - deep * 0.18);
               ctx.stroke();
             }
-            // THE LID AJAR: a plank slab rotated off the corner,
-            // its own lit face + a nail still standing proud.
-            ctx.save();
-            ctx.translate(tx2 + tw * 0.55, topY - s * 0.1);
-            ctx.rotate(0.32);
-            ctx.fillStyle = TWN_OAK_LIT;
-            ctx.fillRect(-tw * 0.85, -s * 0.035, tw * 1.7, s * 0.07);
-            ctx.strokeStyle = 'rgba(60, 44, 24, 0.5)';
+            // One straw tuft escaping a face gap — the packing
+            // showing through the carpentry.
+            ctx.strokeStyle = 'rgba(216, 196, 154, 0.8)';
             ctx.lineWidth = Math.max(1, s * 0.01);
-            ctx.strokeRect(-tw * 0.82, -s * 0.028, tw * 1.64, s * 0.056);
-            ctx.strokeStyle = TWN_IRON;
             ctx.beginPath();
-            ctx.moveTo(tw * 0.6, -s * 0.035);
-            ctx.lineTo(tw * 0.64, -s * 0.075);
+            ctx.moveTo(tx2 + tw * 0.55, topY + (tBase - topY) * 0.46);
+            ctx.quadraticCurveTo(tx2 + tw * 0.75, topY + (tBase - topY) * 0.42, tx2 + tw * 0.85, topY + (tBase - topY) * 0.52);
+            ctx.stroke();
+            // THE LID, pried and leaning: a two-board slatted panel
+            // with its cross batten, one nail still standing proud —
+            // set back half-on where the inspector left it.
+            ctx.save();
+            ctx.translate(tx2 + tw * 0.72 + skew, topY - deep * 0.55);
+            ctx.rotate(0.34);
+            ctx.fillStyle = 'rgba(22, 15, 8, 0.85)';
+            ctx.fillRect(-tw * 0.8, -s * 0.052, tw * 1.6, s * 0.104);
+            ctx.fillStyle = TWN_OAK_LIT;
+            ctx.fillRect(-tw * 0.8, -s * 0.052, tw * 1.6, s * 0.044);
+            ctx.fillStyle = shade(TWN_OAK_LIT, -7);
+            ctx.fillRect(-tw * 0.8, s * 0.008, tw * 1.6, s * 0.044);
+            ctx.fillStyle = shade(TWN_OAK, -4);
+            ctx.fillRect(-tw * 0.14, -s * 0.052, s * 0.05, s * 0.104);
+            ctx.strokeStyle = TWN_IRON;
+            ctx.lineWidth = Math.max(1, s * 0.013);
+            ctx.beginPath();
+            ctx.moveTo(tw * 0.58, -s * 0.052);
+            ctx.lineTo(tw * 0.63, -s * 0.095);
             ctx.stroke();
             ctx.restore();
           },
