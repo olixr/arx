@@ -663,6 +663,31 @@ export enum Tile {
   BurialUrns = 357,
   /** A weathered king of the swallowed kingdom — moss has taken the crown. */
   AncientStatue = 358,
+  // THE LONG DARK PEOPLED — the second furnishing pass. Where the
+  // first kit was the architecture of abandonment, this one is the
+  // people who passed through the dark: the garrison's justice, the
+  // miners' timber, the delvers who never came back, and whatever
+  // was down here long before any of them.
+  /** A gallows arm and its iron cage, swinging slow on the chain. */
+  GibbetCage = 359,
+  /** A timber pillory on a worn platform — the holes stand empty now. */
+  Stocks = 360,
+  /** A miners' support frame wedged under the roof. It holds the mountain; it does not break. */
+  TimberBrace = 361,
+  /** Enormous ribs half-buried in the rock — older than the kingdom, bigger than a king. */
+  WallFossil = 362,
+  /** Dense webs draped down the stone; something patient keeps them mended. */
+  WallWeb = 363,
+  /** A still mineral pool ringed in pale deposit; the mountain drips into it, one bead at a time. */
+  DripPool = 364,
+  /** A delver's camp nobody came back to: cold ash, a bedroll, a dropped pack. */
+  ColdCamp = 365,
+  /** A chest already broken open — whoever got here first left only splinters and one coin. */
+  LootedChest = 366,
+  /** Grave-candles melted over a ledger stone. A few still burn: someone tends this place. */
+  CandleShrine = 367,
+  /** An iron grate over black depth; the air below breathes up through the bars. */
+  IronGrate = 368,
 }
 
 export enum Detail {
@@ -1209,6 +1234,19 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.GrandPillar]: { name: 'grand pillar', solid: true, color: '#5b5566', raised: true, topColor: '#938e9f' },
   [Tile.BurialUrns]: { name: 'burial urns', solid: true, color: '#7a5a40', raised: true, topColor: '#a87e50' },
   [Tile.AncientStatue]: { name: 'ancient statue', solid: true, color: '#5e5869', raised: true, topColor: '#8f8a7a' },
+  // THE LONG DARK PEOPLED — same chart voice as the first kit: a full
+  // value step off the flagstone dark. The wall fixtures and the two
+  // floor-flat pieces (pool, grate) are WALKABLE.
+  [Tile.GibbetCage]: { name: 'hanging gibbet', solid: true, color: '#565060', raised: true, topColor: '#6d6875' },
+  [Tile.Stocks]: { name: 'stocks', solid: true, color: '#6b5844', raised: true, topColor: '#8a7355' },
+  [Tile.TimberBrace]: { name: 'mine brace', solid: false, color: '#6b5844', raised: true, topColor: '#8a7355' },
+  [Tile.WallFossil]: { name: 'buried ribs', solid: false, color: '#6f6a5e', raised: true, topColor: '#cfc7ae' },
+  [Tile.WallWeb]: { name: 'cobwebs', solid: false, color: '#5f5c66', raised: true, topColor: '#9a97a4' },
+  [Tile.DripPool]: { name: 'drip pool', solid: false, color: '#3a3d4a', raised: true, topColor: '#566074' },
+  [Tile.ColdCamp]: { name: 'cold camp', solid: true, color: '#5a534e', raised: true, topColor: '#7d7268' },
+  [Tile.LootedChest]: { name: 'looted chest', solid: true, color: '#66513c', raised: true, topColor: '#84684a' },
+  [Tile.CandleShrine]: { name: 'grave candles', solid: true, color: '#6e675a', raised: true, topColor: '#e8c26a' },
+  [Tile.IronGrate]: { name: 'iron grate', solid: false, color: '#454049', raised: true, topColor: '#5d5670' },
 };
 
 /** The four awning silhouettes, index order FOREVER (the id math). */
@@ -1809,6 +1847,14 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.GrandPillar, 0.38],
   [Tile.BurialUrns, 0.3],
   [Tile.AncientStatue, 0.34],
+  // THE LONG DARK PEOPLED: the gallows post, the pillory platform,
+  // the camp ring, the wrecked chest, and the candle stone are all
+  // masses you step around, never full blocks.
+  [Tile.GibbetCage, 0.3],
+  [Tile.Stocks, 0.34],
+  [Tile.ColdCamp, 0.3],
+  [Tile.LootedChest, 0.28],
+  [Tile.CandleShrine, 0.26],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -2015,7 +2061,14 @@ export type DestructibleKind =
   | 'sarcophagus'
   | 'brokenpillar'
   | 'urns'
-  | 'oldstatue';
+  | 'oldstatue'
+  // THE LONG DARK PEOPLED: the gibbet comes down chain-first, timber
+  // splits dry, a dead camp scatters in ash, and wax snuffs soft.
+  | 'gibbet'
+  | 'stocks'
+  | 'coldcamp'
+  | 'lootchest'
+  | 'candles';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -2123,6 +2176,15 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.BrokenPillar, { kind: 'brokenpillar', respawnSec: 600, hits: 3 }],
   [Tile.BurialUrns, { kind: 'urns', respawnSec: 300, hits: 1 }],
   [Tile.AncientStatue, { kind: 'oldstatue', respawnSec: 600, hits: 4 }],
+  // THE LONG DARK PEOPLED: joined timber holds a beat, everything a
+  // delver left pops in one. The mine brace is NOT here — it holds
+  // the roof, same law as the grand pillar — and the fossil, the
+  // webs, the pool, and the grate belong to the mountain itself.
+  [Tile.GibbetCage, { kind: 'gibbet', respawnSec: 600, hits: 2 }],
+  [Tile.Stocks, { kind: 'stocks', respawnSec: 600, hits: 2 }],
+  [Tile.ColdCamp, { kind: 'coldcamp', respawnSec: 300, hits: 1 }],
+  [Tile.LootedChest, { kind: 'lootchest', respawnSec: 300, hits: 1 }],
+  [Tile.CandleShrine, { kind: 'candles', respawnSec: 300, hits: 1 }],
 ]);
 
 /** Every smashable prop tile. */

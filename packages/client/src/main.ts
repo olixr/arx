@@ -2034,7 +2034,10 @@ game.onFx = (fx) => {
         kind === 'beacon' || kind === 'crystals' ||
         // Hollow vessels of the deep: a rotten cask and fired grave
         // clay both boom when they let go.
-        kind === 'mossbarrel' || kind === 'urns',
+        kind === 'mossbarrel' || kind === 'urns' ||
+        // The gibbet's iron basket rings when it comes down; the tin
+        // cup gives the cold camp one hollow note.
+        kind === 'gibbet' || kind === 'coldcamp',
       ),
     );
     // Stone-weight pieces land heavy: marble, mithril, and old

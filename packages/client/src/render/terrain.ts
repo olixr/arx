@@ -512,7 +512,7 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     if (t >= Tile.ArcaneBeacon && t <= Tile.RunePillar) return nearestFloor(ground, tx, ty);
     // THE LONG DARK FURNISHED: dungeon props stand on whatever the
     // dark laid down — flagstone, raw cave floor, or rubble.
-    if (t >= Tile.MossBarrel && t <= Tile.AncientStatue) return nearestFloor(ground, tx, ty);
+    if (t >= Tile.MossBarrel && t <= Tile.IronGrate) return nearestFloor(ground, tx, ty);
     // The palisade stands in open country like the garrison curtain:
     // whatever walkable terrain fronts it continues beneath (south
     // first — that side's base sliver shows), and a family member

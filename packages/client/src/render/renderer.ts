@@ -4322,6 +4322,15 @@ export class Renderer {
           const flick = 0.8 + Math.sin(t * 13 + tx * 2.9) * 0.13 + Math.sin(t * 29 + ty * 1.1) * 0.07;
           this.glows.push({ x: tx + 0.5, y: ty - 1.1 / this.camera.yScale, r: 1.15 * flick, rgb: '255, 156, 62', a: 0.28 * flick * boost });
           this.lights.push({ x: tx + 0.5, y: ty + 0.35, r: 3.4 * flick, rgb: [255, 176, 96], intensity: 0.8 * flame * flick, occlude: true });
+        } else if (tile === Tile.CandleShrine) {
+          // THE LONG DARK PEOPLED: grave-candles — the smallest kept
+          // flame in the game. A knee-high amber pool with a soft
+          // double-wick waver, warmer and gentler than any torch:
+          // enough to find the shrine across a dark chamber, never
+          // enough to light the way past it.
+          const flick = 0.86 + Math.sin(t * 9 + tx * 2.3) * 0.08 + Math.sin(t * 17 + ty * 1.7) * 0.06;
+          this.glows.push({ x: tx + 0.5, y: ty + 0.18, r: 0.85 * flick, rgb: '255, 190, 100', a: 0.24 * flick * boost });
+          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 2.4 * flick, rgb: [255, 200, 130], intensity: 0.55 * flame * flick, occlude: true });
         } else if (tile === Tile.StandingTorch) {
           // A camp torch: a small hot pool with a hard flicker — the
           // rag head burns rough, never lamplight-steady.
@@ -16356,6 +16365,29 @@ export class Renderer {
       splinters: ['#b08655', '#96704a', '#d8cba8'],
       chips: ['#b08655', '#d8cba8'],
     },
+    // THE LONG DARK PEOPLED: gallows timber and pillory oak cough
+    // dry brown; the dead camp goes up in ash-gray; wax snuffs in
+    // cream and one last spark.
+    ...Object.fromEntries(
+      (['gibbet', 'stocks', 'lootchest'] as const).map((k) => [
+        k,
+        {
+          dust: ['#6a4a28', '#4e4232', '#8a7355'],
+          splinters: ['#8a7355', '#6a4a28', '#a58258'],
+          chips: ['#8a7355', '#a58258'],
+        },
+      ]),
+    ),
+    coldcamp: {
+      dust: ['#514c4e', '#3b3640', '#6e6866'],
+      splinters: ['#6e6866', '#514c4e', '#7a6a58'],
+      chips: ['#6e6866', '#7a6a58'],
+    },
+    candles: {
+      dust: ['#c9bd9e', '#8c8798', '#e6dcc0'],
+      splinters: ['#e6dcc0', '#d8cba8', '#f2c94c'],
+      chips: ['#e6dcc0', '#f2c94c'],
+    },
   };
 
   crackProp(wx: number, wy: number, dir: number, kind: SmashKind): void {
@@ -16896,6 +16928,20 @@ export class Renderer {
     Tile.GrandPillar,
     Tile.BurialUrns,
     Tile.AncientStatue,
+    // THE LONG DARK PEOPLED: all ten ride the cache too — the
+    // gibbet's swing, the web's breathing, the pool's drip rings,
+    // the candle flames, and the grate's rising mist all sit under
+    // 4Hz; the candle bloom lives in collectStaticLights.
+    Tile.GibbetCage,
+    Tile.Stocks,
+    Tile.TimberBrace,
+    Tile.WallFossil,
+    Tile.WallWeb,
+    Tile.DripPool,
+    Tile.ColdCamp,
+    Tile.LootedChest,
+    Tile.CandleShrine,
+    Tile.IronGrate,
   ]);
 
   /**
@@ -16985,6 +17031,14 @@ export class Renderer {
     Tile.GrandPillar,
     Tile.BurialUrns,
     Tile.AncientStatue,
+    // THE LONG DARK PEOPLED statics: dead timber, dead stone, dead
+    // wood. The gibbet (swing), webs (breathe), pool (drip), candles
+    // (flame), and grate (mist) stay on the fast cadence.
+    Tile.Stocks,
+    Tile.TimberBrace,
+    Tile.WallFossil,
+    Tile.ColdCamp,
+    Tile.LootedChest,
   ]);
 
   /**
@@ -27803,6 +27857,1134 @@ export class Renderer {
           },
         };
       }
+
+      case Tile.GibbetCage: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        // THE LONG DARK PEOPLED — the garrison's warning, still doing
+        // its job centuries after the garrison. A driven gallows post,
+        // an arm, and an iron basket-cage on a short chain, swinging
+        // on air nobody felt move. The bones inside sit low in the
+        // basket: whoever it was gave up standing a long time ago.
+        const m = ((h >> 4) & 1) === 0 ? 1 : -1; // the arm's side
+        const postX = p.x - m * s * 0.22;
+        const postTop = baseY - s * 1.58;
+        const tipX = postX + m * s * 0.6;
+        const tipY = postTop + s * 0.06;
+        return {
+          sortY: ty + 0.6,
+          body: stationBody(0.8, 2.0, 0.4),
+          drawShadow: () => this.castEdgeQuad(postX - s * 0.1, baseY, postX + s * 0.1, baseY, 1.5),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            // The swing: one slow pendulum term, cage and chain agree.
+            const sw = Math.sin(t * 0.8 + h * 0.7) * s * 0.038;
+            const cageX = tipX + sw;
+            const cageTop = tipY + s * 0.34;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.26)';
+            ctx.beginPath();
+            ctx.ellipse(postX, baseY + s * 0.01, s * 0.13, s * 0.055, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(cageX, baseY + syT * 0.06, s * 0.14, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The post: squared timber, weather-checked, one iron band.
+            ctx.fillStyle = shade(PALI_LOG, -8);
+            ctx.fillRect(postX - s * 0.055, postTop, s * 0.11, baseY - postTop);
+            ctx.fillStyle = shade(PALI_LOG, 8);
+            ctx.fillRect(postX - s * 0.055, postTop, s * 0.036, baseY - postTop);
+            ctx.fillStyle = 'rgba(30, 22, 16, 0.5)';
+            for (const dy of [0.35, 0.7, 1.1]) {
+              ctx.fillRect(postX - s * 0.04, baseY - s * dy, s * 0.07, Math.max(1, s * 0.016));
+            }
+            ctx.fillStyle = DGN_IRON;
+            ctx.fillRect(postX - s * 0.06, baseY - s * 0.42, s * 0.12, s * 0.05);
+            // The arm and its knee brace carry the load to the post.
+            ctx.fillStyle = shade(PALI_LOG, -4);
+            ctx.beginPath();
+            ctx.moveTo(postX, postTop + s * 0.02);
+            ctx.lineTo(tipX, tipY);
+            ctx.lineTo(tipX, tipY + s * 0.07);
+            ctx.lineTo(postX, postTop + s * 0.1);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = shade(PALI_LOG, -14);
+            ctx.lineWidth = Math.max(1.5, s * 0.045);
+            ctx.beginPath();
+            ctx.moveTo(postX + m * s * 0.02, postTop + s * 0.42);
+            ctx.lineTo(postX + m * s * 0.34, tipY + s * 0.09);
+            ctx.stroke();
+            // The chain takes the sway as a lean, links alternating
+            // tall and flat the way a hung chain turns to the eye.
+            for (let k = 0; k <= 5; k++) {
+              const f = k / 5;
+              const lx = tipX + (cageX - tipX) * f;
+              const ly = tipY + s * 0.05 + (cageTop - tipY - s * 0.05) * f;
+              ctx.fillStyle = DGN_IRON_LIT;
+              if ((k & 1) === 0) ctx.fillRect(lx - s * 0.013, ly - s * 0.024, s * 0.026, s * 0.048);
+              else ctx.fillRect(lx - s * 0.019, ly - s * 0.015, s * 0.038, s * 0.03);
+            }
+            // The cage: dark air behind the bars first, then the iron.
+            const cbot = cageTop + s * 0.46;
+            ctx.fillStyle = 'rgba(18, 14, 26, 0.55)';
+            ctx.beginPath();
+            ctx.moveTo(cageX - s * 0.13, cageTop + s * 0.04);
+            ctx.quadraticCurveTo(cageX - s * 0.16, cageTop + s * 0.24, cageX - s * 0.1, cbot);
+            ctx.lineTo(cageX + s * 0.1, cbot);
+            ctx.quadraticCurveTo(cageX + s * 0.16, cageTop + s * 0.24, cageX + s * 0.13, cageTop + s * 0.04);
+            ctx.closePath();
+            ctx.fill();
+            // The tenant: a heap of old bone low in the basket, the
+            // skull tipped against the bars.
+            ctx.fillStyle = DGN_BONE_DIM;
+            ctx.beginPath();
+            facetBlob(ctx, cageX + s * 0.01, cbot - s * 0.07, s * 0.085, h ^ 0x35, 5, 0.6);
+            ctx.fill();
+            ctx.fillStyle = DGN_BONE;
+            ctx.beginPath();
+            facetCircle(ctx, cageX - m * s * 0.045, cbot - s * 0.12, s * 0.048, 6, 0.4, 0.8);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(24, 18, 30, 0.8)';
+            ctx.fillRect(cageX - m * s * 0.06, cbot - s * 0.13, s * 0.02, s * 0.022);
+            ctx.fillStyle = DGN_BONE_DIM;
+            ctx.fillRect(cageX + m * s * 0.04, cbot - s * 0.2, s * 0.018, s * 0.1);
+            // The ironwork: rings top, middle, bottom; four bowed bars;
+            // rust taking the weather side of everything.
+            ctx.strokeStyle = DGN_IRON;
+            ctx.lineWidth = Math.max(1, s * 0.024);
+            for (const bf of [-0.85, -0.3, 0.3, 0.85]) {
+              ctx.beginPath();
+              ctx.moveTo(cageX + s * 0.13 * bf, cageTop + s * 0.04);
+              ctx.quadraticCurveTo(cageX + s * 0.165 * bf, cageTop + s * 0.24, cageX + s * 0.1 * bf, cbot);
+              ctx.stroke();
+            }
+            for (const [ry2, rw] of [
+              [cageTop + s * 0.04, 0.13],
+              [cageTop + s * 0.24, 0.155],
+              [cbot, 0.1],
+            ] as const) {
+              ctx.strokeStyle = DGN_IRON;
+              ctx.beginPath();
+              ctx.ellipse(cageX, ry2, s * rw, s * 0.042, 0, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.strokeStyle = DGN_IRON_LIT;
+              ctx.beginPath();
+              ctx.ellipse(cageX, ry2, s * rw, s * 0.042, 0, Math.PI * 1.1, Math.PI * 1.9);
+              ctx.stroke();
+            }
+            ctx.fillStyle = DGN_RUST_LIT;
+            ctx.fillRect(cageX - s * 0.012, cageTop - s * 0.02, s * 0.024, s * 0.05);
+          },
+        };
+      }
+
+      case Tile.Stocks: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        // The pillory: village justice the dungeon inherited. A worn
+        // platform, two posts, and the split board with its three
+        // holes — all standing empty, which is somehow worse. The
+        // warrant is still nailed up; nobody can read it now.
+        const m = ((h >> 6) & 1) === 0 ? 1 : -1;
+        const platTop = baseY - s * 0.12;
+        const boardY = platTop - s * 0.84; // the split board's seam
+        return {
+          sortY: ty + 0.6,
+          body: stationBody(0.72, 1.5, 0.4),
+          drawShadow: () => this.castEdgeQuad(p.x - s * 0.4, baseY, p.x + s * 0.4, baseY, 0.95),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.26)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, s * 0.48, s * 0.13, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Old rot thrown and never cleaned: dark stains fanned in
+            // front of the platform.
+            ctx.fillStyle = 'rgba(52, 44, 36, 0.4)';
+            for (let k = 0; k < 3; k++) {
+              ctx.beginPath();
+              facetBlob(
+                ctx,
+                p.x + (((h >> (k * 5 + 2)) % 100) - 50) / 100 * s * 0.7,
+                baseY + syT * (0.18 + ((h >> (k * 3)) % 20) / 100),
+                s * 0.055,
+                h ^ (k * 77),
+                5,
+                0.5,
+              );
+              ctx.fill();
+            }
+            // The platform: a worn gray-going deck, low and wide —
+            // pass 1's tall saturated box read as a podium.
+            const deckWood = '#5e4c34';
+            ctx.fillStyle = shade(deckWood, -12);
+            ctx.fillRect(p.x - s * 0.5, platTop, s * 1.0, s * 0.12);
+            ctx.fillStyle = shade(deckWood, 4);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.5, platTop);
+            ctx.lineTo(p.x - s * 0.4, platTop - syT * 0.3);
+            ctx.lineTo(p.x + s * 0.4, platTop - syT * 0.3);
+            ctx.lineTo(p.x + s * 0.5, platTop);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(30, 22, 16, 0.45)';
+            ctx.lineWidth = Math.max(1, s * 0.018);
+            for (const f of [-0.1, 0.1]) {
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.44, platTop - syT * (0.15 + f));
+              ctx.lineTo(p.x + s * 0.44, platTop - syT * (0.15 + f));
+              ctx.stroke();
+            }
+            ctx.fillStyle = 'rgba(160, 140, 110, 0.35)';
+            ctx.fillRect(p.x - s * 0.5, platTop, s * 1.0, Math.max(1, s * 0.02));
+            // The posts rise wide from the deck's back plank.
+            const py2 = platTop - syT * 0.2;
+            for (const fx of [-0.34, 0.34]) {
+              ctx.fillStyle = shade(PALI_LOG, -8);
+              ctx.fillRect(p.x + fx * s - s * 0.055, boardY - s * 0.3, s * 0.11, py2 - boardY + s * 0.3);
+              ctx.fillStyle = shade(PALI_LOG, 8);
+              ctx.fillRect(p.x + fx * s - s * 0.055, boardY - s * 0.3, s * 0.035, py2 - boardY + s * 0.3);
+            }
+            // The split board: two halves meeting at the seam, three
+            // holes straddling it — neck between the wrists. Wide
+            // enough to hold a man's reach; nobody mistakes it now.
+            ctx.fillStyle = shade(PALI_LOG, -2);
+            ctx.fillRect(p.x - s * 0.42, boardY - s * 0.16, s * 0.84, s * 0.32);
+            ctx.fillStyle = 'rgba(160, 140, 110, 0.35)';
+            ctx.fillRect(p.x - s * 0.42, boardY - s * 0.16, s * 0.84, Math.max(1, s * 0.022));
+            ctx.strokeStyle = 'rgba(30, 22, 16, 0.55)';
+            ctx.lineWidth = Math.max(1, s * 0.022);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.42, boardY);
+            ctx.lineTo(p.x + s * 0.42, boardY);
+            ctx.stroke();
+            ctx.fillStyle = '#241d18';
+            for (const [hx, hr] of [
+              [-0.21, 0.048],
+              [0, 0.075],
+              [0.21, 0.048],
+            ] as const) {
+              ctx.beginPath();
+              ctx.ellipse(p.x + hx * s, boardY, s * hr, s * (hr * 1.15), 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            // Wear-polish around the neck hole: a thousand collars.
+            ctx.strokeStyle = 'rgba(180, 158, 122, 0.35)';
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            ctx.beginPath();
+            ctx.ellipse(p.x, boardY, s * 0.095, s * 0.11, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            // Hinge one side, hasp the other — honest iron.
+            ctx.fillStyle = DGN_IRON;
+            ctx.fillRect(p.x - m * s * 0.41, boardY - s * 0.07, s * 0.055, s * 0.14);
+            ctx.fillStyle = DGN_IRON_LIT;
+            ctx.fillRect(p.x + m * s * 0.36, boardY - s * 0.045, s * 0.06, s * 0.09);
+            // The warrant, nailed to a post: paper gone parchment,
+            // one corner curled off the grain.
+            const wx = p.x + m * s * 0.34;
+            ctx.fillStyle = '#c9bd9e';
+            ctx.fillRect(wx - s * 0.045, boardY + s * 0.2, s * 0.09, s * 0.13);
+            ctx.fillStyle = '#b0a486';
+            ctx.beginPath();
+            ctx.moveTo(wx + s * 0.045, boardY + s * 0.28);
+            ctx.lineTo(wx + s * 0.045, boardY + s * 0.33);
+            ctx.lineTo(wx - s * 0.005, boardY + s * 0.33);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = DGN_RUST_LIT;
+            ctx.fillRect(wx - s * 0.008, boardY + s * 0.208, s * 0.016, s * 0.016);
+            ctx.strokeStyle = 'rgba(70, 60, 48, 0.6)';
+            ctx.lineWidth = Math.max(1, s * 0.012);
+            for (const ly of [0.24, 0.27, 0.3]) {
+              ctx.beginPath();
+              ctx.moveTo(wx - s * 0.03, boardY + s * ly);
+              ctx.lineTo(wx + s * 0.028, boardY + s * ly);
+              ctx.stroke();
+            }
+          },
+        };
+      }
+
+      case Tile.TimberBrace:
+      case Tile.WallFossil:
+      case Tile.WallWeb: {
+        const syT = s * this.camera.yScale;
+        // THE WALL FIXTURES, second rank — same law as the sconce and
+        // the chains: the prop owns a FLOOR cell, its art lives on the
+        // wall face NORTH of it, and with no honest wall behind each
+        // piece falls back to a form that stands alone.
+        const wn = game.world.groundAt(tx, ty - 1);
+        const walled =
+          wn === Tile.CaveWall ||
+          wn === Tile.CrackedCaveWall ||
+          wn === Tile.WallStone ||
+          wn === Tile.WallGarrison ||
+          wn === Tile.WallWood;
+        const wallBase = p.y - syT * 0.5;
+        const fixSort = ty + 0.3;
+
+        if (tile === Tile.TimberBrace) {
+          // The miners' frame: two squared posts and a cap beam wedged
+          // under the roof, bowed a hair where the mountain leans on
+          // it. It reads as load-bearing because it IS load-bearing —
+          // the one piece of carpentry down here nobody dares strike.
+          // Pass 1 read a bare goalpost: the frame now carries WEIGHT —
+          // heavy timbers leaning into the load, stone footings, a
+          // diagonal sway-brace, and the feet planted in the cell.
+          const footY = wallBase + syT * 0.42;
+          const capY = wallBase - s * 1.46;
+          return {
+            sortY: fixSort,
+            body: stationBody(0.68, 1.95, 0.4),
+            draw: () => {
+              // Draw-time ctx capture: the outline pass swaps this.ctx
+              // to its scratch — the build-time capture would paint past it.
+              const ctx = this.ctx;
+              ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+              for (const fx of [-0.4, 0.4]) {
+                ctx.beginPath();
+                ctx.ellipse(p.x + fx * s, footY + s * 0.02, s * 0.15, s * 0.06, 0, 0, Math.PI * 2);
+                ctx.fill();
+              }
+              // Sifted rock dust streaks the wall under the cap — the
+              // frame is earning its keep.
+              ctx.fillStyle = 'rgba(150, 145, 158, 0.18)';
+              for (const fx of [-0.24, 0.08, 0.3]) {
+                ctx.fillRect(p.x + fx * s, capY + s * 0.16, s * 0.035, s * 0.55);
+              }
+              // Stone footings: the frame stands on pads, not dirt.
+              for (const fx of [-0.4, 0.4]) {
+                ctx.fillStyle = DGN_STONE_DARK;
+                ctx.fillRect(p.x + fx * s - s * 0.11, footY - s * 0.09, s * 0.22, s * 0.09);
+                ctx.fillStyle = 'rgba(160, 155, 173, 0.4)';
+                ctx.fillRect(p.x + fx * s - s * 0.11, footY - s * 0.09, s * 0.22, Math.max(1, s * 0.018));
+              }
+              // The diagonal sway-brace ties the frame square — nailed
+              // across both posts, the carpenter's signature.
+              ctx.strokeStyle = shade(PALI_LOG, -14);
+              ctx.lineWidth = Math.max(2, s * 0.065);
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.38, capY + s * 0.34);
+              ctx.lineTo(p.x + s * 0.38, footY - s * 0.32);
+              ctx.stroke();
+              // The posts: heavy squared timber leaning INTO the load
+              // (a hair of A-frame), checked with age.
+              for (const fx of [-0.4, 0.4]) {
+                const bx2 = p.x + fx * s;
+                const tx2 = p.x + fx * s * 0.88;
+                ctx.fillStyle = shade(PALI_LOG, -8);
+                ctx.beginPath();
+                ctx.moveTo(bx2 - s * 0.085, footY - s * 0.06);
+                ctx.lineTo(tx2 - s * 0.08, capY + s * 0.04);
+                ctx.lineTo(tx2 + s * 0.08, capY + s * 0.04);
+                ctx.lineTo(bx2 + s * 0.085, footY - s * 0.06);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = shade(PALI_LOG, 8);
+                ctx.beginPath();
+                ctx.moveTo(bx2 - s * 0.085, footY - s * 0.06);
+                ctx.lineTo(tx2 - s * 0.08, capY + s * 0.04);
+                ctx.lineTo(tx2 - s * 0.028, capY + s * 0.04);
+                ctx.lineTo(bx2 - s * 0.033, footY - s * 0.06);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = 'rgba(30, 22, 16, 0.5)';
+                for (const dy of [0.5, 0.95]) {
+                  ctx.fillRect(bx2 - s * 0.06, footY - s * dy, s * 0.1, Math.max(1, s * 0.02));
+                }
+              }
+              // The cap beam bows DOWN a hair mid-span: the load made
+              // visible. Lit top arris, deep checked underside.
+              ctx.fillStyle = shade(PALI_LOG, -4);
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.54, capY - s * 0.02);
+              ctx.quadraticCurveTo(p.x, capY + s * 0.05, p.x + s * 0.54, capY - s * 0.02);
+              ctx.lineTo(p.x + s * 0.54, capY + s * 0.15);
+              ctx.quadraticCurveTo(p.x, capY + s * 0.22, p.x - s * 0.54, capY + s * 0.15);
+              ctx.closePath();
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(160, 140, 110, 0.45)';
+              ctx.lineWidth = Math.max(1, s * 0.024);
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.54, capY - s * 0.005);
+              ctx.quadraticCurveTo(p.x, capY + s * 0.06, p.x + s * 0.54, capY - s * 0.005);
+              ctx.stroke();
+              ctx.strokeStyle = 'rgba(30, 22, 16, 0.5)';
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.4, capY + s * 0.1);
+              ctx.quadraticCurveTo(p.x, capY + s * 0.16, p.x + s * 0.4, capY + s * 0.1);
+              ctx.stroke();
+              // The wedge pairs driven between post and cap — the
+              // miners' signature, and the first thing checked on
+              // every shift that ever walked this drift.
+              ctx.fillStyle = shade(PALI_LOG, 20);
+              for (const fx of [-0.35, 0.35]) {
+                ctx.beginPath();
+                ctx.moveTo(p.x + fx * s - s * 0.1, capY + s * 0.2);
+                ctx.lineTo(p.x + fx * s + s * 0.1, capY + s * 0.2);
+                ctx.lineTo(p.x + fx * s + s * 0.06, capY + s * 0.28);
+                ctx.lineTo(p.x + fx * s - s * 0.06, capY + s * 0.28);
+                ctx.closePath();
+                ctx.fill();
+              }
+              // A coil of rope on a peg — somebody meant to come back.
+              if (((h >> 9) & 1) === 0) {
+                ctx.strokeStyle = '#8a7355';
+                ctx.lineWidth = Math.max(1, s * 0.028);
+                ctx.beginPath();
+                ctx.ellipse(p.x - s * 0.37, footY - s * 0.66, s * 0.06, s * 0.075, 0, 0, Math.PI * 2);
+                ctx.stroke();
+              }
+            },
+          };
+        }
+
+        if (tile === Tile.WallFossil) {
+          // Something older than the kingdom: a rank of enormous ribs
+          // half-proud of the rock, crusted where the mountain is
+          // taking them back. Nobody carved this. Nobody could.
+          const m = ((h >> 5) & 1) === 0 ? 1 : -1;
+          if (walled) {
+            const spX = p.x - m * s * 0.34;
+            const spY = wallBase - s * 1.28;
+            return {
+              sortY: fixSort,
+              body: stationBody(0.75, 1.9, 0.2),
+              draw: () => {
+                // Draw-time ctx capture: the outline pass swaps this.ctx
+                // to its scratch — the build-time capture would paint past it.
+                const ctx = this.ctx;
+                // The recess shadow behind the rank sinks the bones
+                // INTO the face instead of pasting them onto it.
+                ctx.fillStyle = 'rgba(14, 10, 22, 0.32)';
+                ctx.beginPath();
+                facetBlob(ctx, p.x + m * s * 0.05, wallBase - s * 0.75, s * 0.52, h ^ 0x4d, 7, 0.62);
+                ctx.fill();
+                // The spine end: a stack of vertebra discs where the
+                // rank roots into the rock.
+                for (let k = 0; k < 3; k++) {
+                  ctx.fillStyle = k === 1 ? DGN_BONE : DGN_BONE_DIM;
+                  ctx.beginPath();
+                  ctx.ellipse(spX - m * s * 0.02 * k, spY + s * 0.13 * k, s * (0.09 - k * 0.012), s * 0.055, 0, 0, Math.PI * 2);
+                  ctx.fill();
+                }
+                // Four ribs, arcing down-and-away, each shorter than
+                // the last — the rest of the animal is still in there.
+                // Pass 1 read thin painted marks: the ribs run THICK
+                // now, bone that argues with the rock.
+                for (let k = 0; k < 4; k++) {
+                  const rx = spX + m * s * (0.16 + k * 0.19);
+                  const ln = s * (1.05 - k * 0.18);
+                  ctx.strokeStyle = DGN_BONE_DIM;
+                  ctx.lineWidth = Math.max(2.5, s * (0.088 - k * 0.008));
+                  ctx.beginPath();
+                  ctx.moveTo(rx, spY + s * 0.05 + k * s * 0.04);
+                  ctx.quadraticCurveTo(
+                    rx + m * s * 0.16,
+                    spY + ln * 0.5,
+                    rx + m * s * 0.05,
+                    spY + ln,
+                  );
+                  ctx.stroke();
+                  ctx.strokeStyle = DGN_BONE;
+                  ctx.lineWidth = Math.max(1.5, s * 0.032);
+                  ctx.beginPath();
+                  ctx.moveTo(rx - m * s * 0.02, spY + s * 0.08 + k * s * 0.04);
+                  ctx.quadraticCurveTo(
+                    rx + m * s * 0.14,
+                    spY + ln * 0.48,
+                    rx + m * s * 0.03,
+                    spY + ln * 0.92,
+                  );
+                  ctx.stroke();
+                  // Each rib ends in a broken knuckle, not a taper.
+                  ctx.fillStyle = DGN_BONE;
+                  ctx.beginPath();
+                  ctx.ellipse(rx + m * s * 0.05, spY + ln, s * 0.038, s * 0.028, 0, 0, Math.PI * 2);
+                  ctx.fill();
+                }
+                // Mineral crust laps over the mid-ribs: the mountain
+                // reclaiming its tenants, one century at a time.
+                ctx.fillStyle = 'rgba(69, 63, 82, 0.7)';
+                ctx.beginPath();
+                facetBlob(ctx, spX + m * s * 0.38, spY + s * 0.42, s * 0.16, h ^ 0x71, 6, 0.7);
+                ctx.fill();
+                ctx.beginPath();
+                facetBlob(ctx, spX + m * s * 0.68, spY + s * 0.3, s * 0.12, h ^ 0x2b, 5, 0.7);
+                ctx.fill();
+              },
+            };
+          }
+          // Fallback in the open: the same ribs erupt from the floor —
+          // a beached cage of them, arching over a buried spine.
+          return {
+            sortY: ty + 0.55,
+            body: stationBody(0.8, 1.4, 0.4),
+            draw: () => {
+              // Draw-time ctx capture: the outline pass swaps this.ctx
+              // to its scratch — the build-time capture would paint past it.
+              const ctx = this.ctx;
+              const gy = p.y + syT * 0.15;
+              ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+              ctx.beginPath();
+              ctx.ellipse(p.x, gy + s * 0.02, s * 0.5, s * 0.13, 0, 0, Math.PI * 2);
+              ctx.fill();
+              // The buried spine: a low bone ridge the ribs spring
+              // from — pass 1's rootless arcs read as pale grass.
+              ctx.fillStyle = DGN_BONE_DIM;
+              ctx.beginPath();
+              facetBlob(ctx, p.x - m * s * 0.3, gy - s * 0.02, s * 0.16, h ^ 0x1f, 6, 0.4);
+              ctx.fill();
+              for (let k = 3; k >= 0; k--) {
+                const off = (k - 1.5) * syT * 0.24;
+                const sc = 1 - Math.abs(k - 1.5) * 0.14;
+                // Contact shadow where each rib leaves the ground.
+                ctx.fillStyle = 'rgba(12, 8, 20, 0.3)';
+                ctx.beginPath();
+                ctx.ellipse(p.x - m * s * 0.42 * sc, gy + off + s * 0.02, s * 0.07, s * 0.032, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = k === 1 || k === 2 ? DGN_BONE : DGN_BONE_DIM;
+                ctx.lineWidth = Math.max(2.5, s * 0.085 * sc);
+                ctx.beginPath();
+                ctx.moveTo(p.x - m * s * 0.42 * sc, gy + off);
+                ctx.quadraticCurveTo(p.x - m * s * 0.1, gy + off - s * 1.0 * sc, p.x + m * s * 0.3 * sc, gy + off - s * 0.24);
+                ctx.stroke();
+                // The broken knuckle at the free end.
+                ctx.fillStyle = DGN_BONE;
+                ctx.beginPath();
+                ctx.ellipse(p.x + m * s * 0.3 * sc, gy + off - s * 0.24, s * 0.04, s * 0.03, 0, 0, Math.PI * 2);
+                ctx.fill();
+              }
+              ctx.fillStyle = DGN_BONE_DIM;
+              ctx.beginPath();
+              ctx.ellipse(p.x - m * s * 0.4, gy + s * 0.02, s * 0.11, s * 0.055, 0, 0, Math.PI * 2);
+              ctx.fill();
+            },
+          };
+        }
+
+        // Tile.WallWeb — the patient tenant's work: sheet webs draped
+        // down the stone, mended nightly by something nobody has seen.
+        const post = (px2: number, ht2: number): void => {
+          const ctx = this.ctx;
+          ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+          ctx.beginPath();
+          ctx.ellipse(px2, wallBase + s * 0.02, s * 0.11, s * 0.05, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(PALI_LOG, -6);
+          ctx.fillRect(px2 - s * 0.05, wallBase - ht2, s * 0.1, ht2);
+          ctx.fillStyle = shade(PALI_LOG, 10);
+          ctx.fillRect(px2 - s * 0.05, wallBase - ht2, s * 0.032, ht2);
+        };
+        return {
+          sortY: fixSort,
+          body: stationBody(0.6, 1.9, 0.2),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            if (!walled) post(p.x - s * 0.32, s * 1.5);
+            // The drape breathes on a slow swell — the only air down
+            // here is the mountain's own.
+            const sw = Math.sin(t * 0.5 + h * 0.4) * s * 0.024;
+            const aX = p.x - s * 0.42;
+            const aY = wallBase - s * 1.48;
+            const bX = p.x + s * 0.36;
+            const bY = wallBase - s * 1.16;
+            const dX = p.x + s * 0.02 + sw;
+            const dY = wallBase - s * 0.32;
+            // The main sheet: a translucent fall from two anchors to
+            // the drape point, then its strands over the top. Pass 1
+            // read wireframe scratches on the dark stone — the sheet
+            // now carries real BODY: a doubled fill, a bright drape
+            // heart, heavy sagging strands, and dew.
+            ctx.fillStyle = 'rgba(216, 214, 228, 0.2)';
+            ctx.beginPath();
+            ctx.moveTo(aX, aY);
+            ctx.quadraticCurveTo(p.x - s * 0.1, wallBase - s * 1.5, bX, bY);
+            ctx.quadraticCurveTo(bX - s * 0.06, dY - s * 0.3, dX, dY);
+            ctx.quadraticCurveTo(aX + s * 0.1, aY + s * 0.62, aX, aY);
+            ctx.closePath();
+            ctx.fill();
+            // The dense heart where the drape gathers.
+            ctx.fillStyle = 'rgba(228, 226, 238, 0.16)';
+            ctx.beginPath();
+            ctx.moveTo(aX + s * 0.18, aY + s * 0.22);
+            ctx.quadraticCurveTo(p.x, wallBase - s * 1.1, bX - s * 0.08, bY + s * 0.16);
+            ctx.quadraticCurveTo(bX - s * 0.1, dY - s * 0.2, dX, dY);
+            ctx.quadraticCurveTo(aX + s * 0.16, aY + s * 0.6, aX + s * 0.18, aY + s * 0.22);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(232, 230, 242, 0.5)';
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            for (const [ex, ey] of [
+              [aX, aY],
+              [aX + s * 0.2, aY - s * 0.04],
+              [p.x - s * 0.04, wallBase - s * 1.44],
+              [bX - s * 0.14, bY - s * 0.12],
+              [bX, bY],
+            ] as const) {
+              ctx.beginPath();
+              ctx.moveTo(dX, dY);
+              ctx.quadraticCurveTo((dX + ex) / 2 + s * 0.05, (dY + ey) / 2 + s * 0.08, ex, ey);
+              ctx.stroke();
+            }
+            for (const f of [0.3, 0.55, 0.78]) {
+              ctx.beginPath();
+              ctx.moveTo(aX + (dX - aX) * f, aY + (dY - aY) * f);
+              ctx.quadraticCurveTo(
+                p.x - s * 0.02,
+                aY + (dY - aY) * f + s * 0.16,
+                bX + (dX - bX) * f,
+                bY + (dY - bY) * f,
+              );
+              ctx.stroke();
+            }
+            // Dew beads where the strands cross — the web's glint.
+            ctx.fillStyle = 'rgba(240, 240, 250, 0.55)';
+            for (const [gx2, gy2] of [
+              [aX + s * 0.3, aY + s * 0.34],
+              [p.x + s * 0.06, wallBase - s * 0.86],
+              [bX - s * 0.1, bY + s * 0.3],
+            ] as const) {
+              ctx.fillRect(gx2 - s * 0.013, gy2 - s * 0.013, s * 0.026, s * 0.026);
+            }
+            // A second, smaller sheet lower in the corner.
+            ctx.fillStyle = 'rgba(216, 214, 228, 0.16)';
+            ctx.beginPath();
+            ctx.moveTo(bX + s * 0.04, wallBase - s * 0.7);
+            ctx.quadraticCurveTo(bX - s * 0.14, wallBase - s * 0.42, bX - s * 0.24, wallBase - s * 0.08);
+            ctx.lineTo(bX + s * 0.04, wallBase - s * 0.05);
+            ctx.closePath();
+            ctx.fill();
+            // Anchor threads run to the floor: the web owns the cell.
+            ctx.strokeStyle = 'rgba(228, 226, 238, 0.3)';
+            ctx.beginPath();
+            ctx.moveTo(dX, dY);
+            ctx.lineTo(p.x - s * 0.18, p.y + syT * 0.16);
+            ctx.moveTo(dX, dY);
+            ctx.lineTo(p.x + s * 0.26, p.y + syT * 0.08);
+            ctx.stroke();
+            // Something wrapped, hanging from the drape — the size of
+            // a rabbit. Best not to ask.
+            if (((h >> 7) & 3) !== 0) {
+              const cx2 = dX + sw * 1.6;
+              const cy2 = dY + s * 0.2;
+              ctx.strokeStyle = 'rgba(228, 226, 238, 0.4)';
+              ctx.beginPath();
+              ctx.moveTo(dX, dY);
+              ctx.lineTo(cx2, cy2 - s * 0.07);
+              ctx.stroke();
+              ctx.fillStyle = '#b9b6c4';
+              ctx.beginPath();
+              ctx.ellipse(cx2, cy2, s * 0.05, s * 0.075, sw * 0.3, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(150, 147, 162, 0.6)';
+              ctx.lineWidth = Math.max(1, s * 0.012);
+              for (const wy of [-0.03, 0.01, 0.045]) {
+                ctx.beginPath();
+                ctx.moveTo(cx2 - s * 0.048, cy2 + s * wy);
+                ctx.lineTo(cx2 + s * 0.048, cy2 + s * wy * 0.7);
+                ctx.stroke();
+              }
+            }
+          },
+        };
+      }
+
+      case Tile.DripPool: {
+        const syT = s * this.camera.yScale;
+        // A still mineral pool: the mountain's slowest clock. Pale
+        // deposit rings where centuries of beads landed, water the
+        // color of a held breath, and every few seconds — one drip.
+        const cy = p.y + syT * 0.05;
+        return {
+          sortY: ty - 0.42,
+          body: stationBody(0.55, 0.5, 0.45),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            // The deposit apron, then its brighter rim — pass 1 read
+            // a manhole: the pale mineral collar now steps a full
+            // value off the flagstone (the kit's value law) and the
+            // water goes cold BLUE, never floor-dark.
+            ctx.fillStyle = 'rgba(138, 135, 120, 0.55)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, cy, s * 0.47, syT * 0.47, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(168, 165, 150, 0.85)';
+            ctx.lineWidth = Math.max(1.5, s * 0.035);
+            ctx.beginPath();
+            ctx.ellipse(p.x, cy, s * 0.4, syT * 0.4, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            // The water: cold blue-dark, deepening at the heart.
+            ctx.fillStyle = '#28304a';
+            ctx.beginPath();
+            ctx.ellipse(p.x, cy, s * 0.35, syT * 0.35, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#1b2136';
+            ctx.beginPath();
+            ctx.ellipse(p.x + s * 0.04, cy + syT * 0.04, s * 0.22, syT * 0.22, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The wet sheen on the near rim — light catching the lip.
+            ctx.strokeStyle = 'rgba(190, 205, 230, 0.25)';
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            ctx.beginPath();
+            ctx.ellipse(p.x, cy, s * 0.35, syT * 0.35, 0, Math.PI * 0.15, Math.PI * 0.85);
+            ctx.stroke();
+            // One cold reflection: whatever light there is, held still.
+            ctx.fillStyle = 'rgba(150, 170, 200, 0.22)';
+            ctx.fillRect(p.x - s * 0.16, cy - syT * 0.12, s * 0.04, syT * 0.22);
+            ctx.fillStyle = 'rgba(190, 205, 230, 0.45)';
+            ctx.fillRect(p.x - s * 0.155, cy - syT * 0.1, s * 0.02, syT * 0.06);
+            // Two beads on offset clocks: ripple ring, then stillness.
+            for (let k = 0; k < 2; k++) {
+              const ph = (t * 0.32 + k * 0.47 + (h % 97) * 0.01) % 1;
+              if (ph < 0.55) {
+                const f = ph / 0.55;
+                const dx = p.x + (k === 0 ? -s * 0.08 : s * 0.12);
+                const dy = cy + (k === 0 ? syT * 0.08 : -syT * 0.06);
+                ctx.strokeStyle = `rgba(170, 185, 210, ${(1 - f) * 0.4})`;
+                ctx.lineWidth = Math.max(1, s * 0.016);
+                ctx.beginPath();
+                ctx.ellipse(dx, dy, s * 0.26 * f + s * 0.02, (syT * 0.26 * f + syT * 0.02), 0, 0, Math.PI * 2);
+                ctx.stroke();
+                if (f < 0.18) {
+                  ctx.fillStyle = 'rgba(210, 220, 240, 0.55)';
+                  ctx.fillRect(dx - s * 0.012, dy - s * 0.012, s * 0.024, s * 0.024);
+                }
+              }
+            }
+            // Two wet stones keep the rim company.
+            ctx.fillStyle = DGN_STONE_DARK;
+            ctx.beginPath();
+            facetCircle(ctx, p.x + s * 0.36, cy + syT * 0.18, s * 0.05, 5, 0.4, 0.8);
+            ctx.fill();
+            ctx.fillStyle = DGN_STONE;
+            ctx.beginPath();
+            facetCircle(ctx, p.x - s * 0.34, cy - syT * 0.2, s * 0.04, 5, 1.1, 0.8);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.ColdCamp: {
+        const syT = s * this.camera.yScale;
+        // A delver's camp with nobody in it: cold ash in a ring of
+        // scorched stones, a bedroll still laid out, a pack still
+        // packed. They meant to come back. The kit's quietest story —
+        // deliberately no flame, no light, no motion at all.
+        const m = ((h >> 3) & 1) === 0 ? 1 : -1;
+        const fx2 = p.x - m * s * 0.14;
+        const fy2 = p.y + syT * 0.06;
+        return {
+          sortY: ty + 0.45,
+          body: stationBody(0.8, 0.85, 0.5),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            // The bedroll: laid out east-west (a coffin lies — and so
+            // does a sleeper), wool with a blanket band, the head end
+            // still dented.
+            const bx = p.x + m * s * 0.34;
+            const by = p.y - syT * 0.22;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(bx, by + syT * 0.1, s * 0.32, syT * 0.16, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#7a6a58';
+            ctx.beginPath();
+            chamferRect(ctx, bx, by, s * 0.62, syT * 0.3, s * 0.06);
+            ctx.fill();
+            ctx.fillStyle = '#5d4f42';
+            ctx.fillRect(bx - s * 0.31 + s * 0.16, by - syT * 0.15, s * 0.32, syT * 0.3);
+            ctx.fillStyle = '#8d7c66';
+            ctx.beginPath();
+            ctx.ellipse(bx - m * s * 0.2, by - syT * 0.02, s * 0.085, syT * 0.09, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(50, 42, 34, 0.4)';
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            ctx.beginPath();
+            ctx.moveTo(bx - s * 0.02, by - syT * 0.14);
+            ctx.lineTo(bx + s * 0.04, by + syT * 0.13);
+            ctx.stroke();
+            // The fire ring: scorched stones around a heart of cold
+            // ash — pale dust crown on a black bed, two charred stubs.
+            // Pass 1's pebbles vanished at map scale: the ring reads
+            // as a RING now, big scorched stones and a pale heart.
+            ctx.fillStyle = 'rgba(20, 16, 24, 0.55)';
+            ctx.beginPath();
+            ctx.ellipse(fx2, fy2, s * 0.24, syT * 0.24, 0, 0, Math.PI * 2);
+            ctx.fill();
+            for (let k = 0; k < 7; k++) {
+              const a = (k / 7) * Math.PI * 2 + (h % 10) * 0.1;
+              ctx.fillStyle = (k & 1) === 0 ? '#413b46' : '#4c4652';
+              ctx.beginPath();
+              facetCircle(ctx, fx2 + Math.cos(a) * s * 0.24, fy2 + Math.sin(a) * syT * 0.24, s * 0.062, 5, a, 0.8);
+              ctx.fill();
+              ctx.fillStyle = 'rgba(160, 155, 168, 0.3)';
+              ctx.beginPath();
+              facetCircle(ctx, fx2 + Math.cos(a) * s * 0.24 - s * 0.012, fy2 + Math.sin(a) * syT * 0.24 - s * 0.015, s * 0.026, 4, a + 1, 0.8);
+              ctx.fill();
+            }
+            ctx.fillStyle = '#57525a';
+            ctx.beginPath();
+            facetBlob(ctx, fx2, fy2, s * 0.14, h ^ 0x19, 6, 0.6);
+            ctx.fill();
+            ctx.fillStyle = '#767077';
+            ctx.beginPath();
+            facetBlob(ctx, fx2 - s * 0.02, fy2 - syT * 0.03, s * 0.085, h ^ 0x52, 5, 0.6);
+            ctx.fill();
+            ctx.fillStyle = '#2b2530';
+            ctx.fillRect(fx2 - s * 0.15, fy2 - syT * 0.02, s * 0.19, s * 0.032);
+            ctx.fillRect(fx2 - s * 0.02, fy2 - syT * 0.1, s * 0.034, s * 0.15);
+            // The pack: still buckled, flap thrown, one strap loose —
+            // and the tin cup where it landed.
+            const kx = p.x - m * s * 0.42;
+            const ky = p.y - syT * 0.16;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.22)';
+            ctx.beginPath();
+            ctx.ellipse(kx, ky + s * 0.1, s * 0.14, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#6a5a44';
+            ctx.beginPath();
+            ctx.moveTo(kx - s * 0.13, ky + s * 0.1);
+            ctx.quadraticCurveTo(kx - s * 0.14, ky - s * 0.16, kx, ky - s * 0.19);
+            ctx.quadraticCurveTo(kx + s * 0.14, ky - s * 0.16, kx + s * 0.13, ky + s * 0.1);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#4e4232';
+            ctx.beginPath();
+            ctx.moveTo(kx - s * 0.09, ky - s * 0.14);
+            ctx.lineTo(kx + s * 0.09, ky - s * 0.14);
+            ctx.lineTo(kx + s * 0.05, ky - s * 0.02);
+            ctx.lineTo(kx - s * 0.05, ky - s * 0.02);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#84684a';
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            ctx.beginPath();
+            ctx.moveTo(kx + s * 0.1, ky - s * 0.06);
+            ctx.quadraticCurveTo(kx + s * 0.17, ky + s * 0.02, kx + s * 0.13, ky + s * 0.09);
+            ctx.stroke();
+            ctx.fillStyle = '#9a97a4';
+            ctx.beginPath();
+            ctx.ellipse(kx + m * s * 0.2, ky + s * 0.08, s * 0.04, s * 0.028, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.LootedChest: {
+        const syT = s * this.camera.yScale;
+        // Somebody got here first. The lid is torn clean off and lies
+        // where it was thrown; the hinges point at the ceiling; the
+        // inside holds splinters, dust, and the one coin they missed.
+        const m = ((h >> 5) & 1) === 0 ? 1 : -1;
+        const baseY = p.y + syT * 0.16;
+        const bw = s * 0.4; // half-width of the box
+        const bh = s * 0.26; // front face height
+        return {
+          sortY: ty + 0.5,
+          body: stationBody(0.72, 1.0, 0.5),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.26)';
+            ctx.beginPath();
+            ctx.ellipse(p.x - m * s * 0.1, baseY + s * 0.02, s * 0.44, s * 0.12, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Drag scuffs from box to lid: the story in two arcs.
+            ctx.strokeStyle = 'rgba(30, 24, 20, 0.3)';
+            ctx.lineWidth = Math.max(1, s * 0.025);
+            for (const dy of [0, 0.07]) {
+              ctx.beginPath();
+              ctx.moveTo(p.x + m * s * 0.1, baseY - s * 0.02 + s * dy);
+              ctx.quadraticCurveTo(p.x + m * s * 0.4, baseY + s * 0.04 + s * dy, p.x + m * s * 0.6, baseY + s * 0.1 + s * dy);
+              ctx.stroke();
+            }
+            // The thrown lid, face-down past the box: an arched slab
+            // with its strap still riveted on.
+            const lx = p.x + m * s * 0.58;
+            const ly = baseY + s * 0.06;
+            ctx.fillStyle = '#5d4732';
+            ctx.beginPath();
+            ctx.moveTo(lx - s * 0.22, ly);
+            ctx.quadraticCurveTo(lx - m * s * 0.04, ly - s * 0.13, lx + s * 0.2, ly - s * 0.04);
+            ctx.lineTo(lx + s * 0.22, ly + s * 0.07);
+            ctx.lineTo(lx - s * 0.2, ly + s * 0.1);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = DGN_IRON;
+            ctx.fillRect(lx - s * 0.04, ly - s * 0.1, s * 0.07, s * 0.19);
+            ctx.fillStyle = DGN_RUST_LIT;
+            ctx.fillRect(lx - s * 0.025, ly - s * 0.07, s * 0.02, s * 0.02);
+            // The box: wood body, iron corner straps, and the OPEN top
+            // — rim, then the dark of an emptied inside.
+            const topY = baseY - bh;
+            ctx.fillStyle = '#6a5138';
+            ctx.fillRect(p.x - m * s * 0.1 - bw, topY, bw * 2, bh);
+            ctx.fillStyle = 'rgba(30, 22, 16, 0.4)';
+            ctx.fillRect(p.x - m * s * 0.1 - bw, topY + bh * 0.55, bw * 2, Math.max(1, s * 0.02));
+            ctx.fillStyle = '#7d6244';
+            ctx.beginPath();
+            ctx.moveTo(p.x - m * s * 0.1 - bw, topY);
+            ctx.lineTo(p.x - m * s * 0.1 - bw + s * 0.07, topY - syT * 0.24);
+            ctx.lineTo(p.x - m * s * 0.1 + bw - s * 0.07, topY - syT * 0.24);
+            ctx.lineTo(p.x - m * s * 0.1 + bw, topY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#241d18';
+            ctx.beginPath();
+            ctx.moveTo(p.x - m * s * 0.1 - bw + s * 0.06, topY - s * 0.005);
+            ctx.lineTo(p.x - m * s * 0.1 - bw + s * 0.115, topY - syT * 0.2);
+            ctx.lineTo(p.x - m * s * 0.1 + bw - s * 0.115, topY - syT * 0.2);
+            ctx.lineTo(p.x - m * s * 0.1 + bw - s * 0.06, topY - s * 0.005);
+            ctx.closePath();
+            ctx.fill();
+            // The coin they missed, and the glint that gives it away.
+            const cx2 = p.x - m * s * 0.1 + m * bw * 0.55;
+            const cy2 = topY - syT * 0.08;
+            ctx.fillStyle = '#e8c26a';
+            ctx.beginPath();
+            ctx.ellipse(cx2, cy2, s * 0.032, s * 0.02, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255, 240, 190, 0.8)';
+            ctx.fillRect(cx2 - s * 0.006, cy2 - s * 0.03, s * 0.012, s * 0.06);
+            ctx.fillRect(cx2 - s * 0.03, cy2 - s * 0.006, s * 0.06, s * 0.012);
+            // Iron corner straps; the wrenched hinges point UP off the
+            // back rim — the violence of the opening, kept.
+            ctx.fillStyle = DGN_IRON;
+            for (const fx of [-1, 1]) {
+              ctx.fillRect(p.x - m * s * 0.1 + fx * bw - (fx > 0 ? s * 0.06 : 0), topY, s * 0.06, bh);
+            }
+            ctx.fillStyle = DGN_IRON_LIT;
+            for (const fx of [-0.35, 0.35]) {
+              ctx.save();
+              ctx.translate(p.x - m * s * 0.1 + fx * bw, topY - syT * 0.22);
+              ctx.rotate(fx * m * 0.5);
+              ctx.fillRect(-s * 0.018, -s * 0.09, s * 0.036, s * 0.09);
+              ctx.restore();
+            }
+            // Splinters where the pry-bar won.
+            this.rubble(p.x - m * s * 0.1, baseY - s * 0.1, s * 0.8, h ^ 0x5e, ['#a58258', '#7d6244', '#5d4732']);
+          },
+        };
+      }
+
+      case Tile.CandleShrine: {
+        const syT = s * this.camera.yScale;
+        // Grave-candles on a ledger stone: wax generations deep, the
+        // runnels frozen mid-fall over the slab's edge. Two or three
+        // still burn — someone still comes down here, and recently.
+        // The kept-flame heart of the kit: the one prop that says the
+        // dark is TENDED.
+        const baseY = p.y + syT * 0.14;
+        const slabTop = baseY - s * 0.2;
+        const lit = (h >> 2) % 3; // which arrangement burns tonight
+        return {
+          sortY: ty + 0.5,
+          body: stationBody(0.62, 1.05, 0.45),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            const flick = 0.86 + Math.sin(t * 9 + h) * 0.08 + Math.sin(t * 17 + h * 0.4) * 0.06;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, s * 0.4, s * 0.11, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The firelight lap on the floor is a WHISPER — the live
+            // light pass throws the real pool (the sconce's lesson).
+            ctx.fillStyle = `rgba(232, 160, 70, ${0.04 * flick})`;
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + syT * 0.08, s * 0.55, s * 0.22, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The ledger stone: front face, lit top, a worn line of
+            // lettering nobody living can read.
+            ctx.fillStyle = DGN_STONE_DARK;
+            ctx.fillRect(p.x - s * 0.34, slabTop, s * 0.68, s * 0.2);
+            ctx.fillStyle = DGN_STONE;
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.34, slabTop);
+            ctx.lineTo(p.x - s * 0.28, slabTop - syT * 0.22);
+            ctx.lineTo(p.x + s * 0.28, slabTop - syT * 0.22);
+            ctx.lineTo(p.x + s * 0.34, slabTop);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = 'rgba(160, 155, 173, 0.5)';
+            ctx.fillRect(p.x - s * 0.34, slabTop, s * 0.68, Math.max(1, s * 0.02));
+            ctx.fillStyle = 'rgba(24, 18, 30, 0.5)';
+            for (const fx of [-0.22, -0.08, 0.06, 0.18]) {
+              ctx.fillRect(p.x + fx * s, slabTop + s * 0.08, s * 0.07, Math.max(1, s * 0.02));
+            }
+            // The candles: a family of stubs, tall to spent, wax
+            // pooled and run over the front edge in frozen falls.
+            const cands = [
+              { x: -0.22, ht: 0.3, on: lit !== 0 },
+              { x: -0.09, ht: 0.16, on: lit === 0 },
+              { x: 0.02, ht: 0.38, on: true },
+              { x: 0.13, ht: 0.1, on: false },
+              { x: 0.24, ht: 0.22, on: lit === 1 },
+            ];
+            ctx.fillStyle = '#e6dcc0';
+            ctx.beginPath();
+            facetBlob(ctx, p.x + s * 0.02, slabTop - syT * 0.12, s * 0.16, h ^ 0x44, 6, 0.42);
+            ctx.fill();
+            for (const [rx, rh] of [
+              [-0.16, 0.14],
+              [0.09, 0.2],
+            ] as const) {
+              ctx.fillStyle = '#d8cba8';
+              ctx.fillRect(p.x + rx * s - s * 0.02, slabTop - s * 0.01, s * 0.04, s * rh);
+              ctx.fillStyle = '#e6dcc0';
+              ctx.beginPath();
+              ctx.ellipse(p.x + rx * s, slabTop + s * (rh - 0.01), s * 0.028, s * 0.02, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            for (const c of cands) {
+              const cx2 = p.x + c.x * s;
+              const topY2 = slabTop - syT * 0.12 - s * c.ht;
+              ctx.fillStyle = '#d8cba8';
+              ctx.fillRect(cx2 - s * 0.032, topY2, s * 0.064, s * c.ht);
+              ctx.fillStyle = '#efe6cf';
+              ctx.fillRect(cx2 - s * 0.032, topY2, s * 0.022, s * c.ht);
+              ctx.fillStyle = '#c9bd9e';
+              ctx.beginPath();
+              ctx.ellipse(cx2, topY2, s * 0.032, s * 0.014, 0, 0, Math.PI * 2);
+              ctx.fill();
+              if (c.on) {
+                // The flame and its private halo.
+                ctx.fillStyle = `rgba(255, 200, 120, ${0.12 * flick})`;
+                ctx.beginPath();
+                ctx.ellipse(cx2, topY2 - s * 0.07, s * 0.09, s * 0.11, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#e8823d';
+                ctx.beginPath();
+                ctx.moveTo(cx2 - s * 0.024 * flick, topY2);
+                ctx.quadraticCurveTo(cx2 - s * 0.02, topY2 - s * 0.08 * flick, cx2 + s * 0.004, topY2 - s * 0.11 * flick);
+                ctx.quadraticCurveTo(cx2 + s * 0.026, topY2 - s * 0.05, cx2 + s * 0.024 * flick, topY2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = '#f2c94c';
+                ctx.beginPath();
+                ctx.ellipse(cx2, topY2 - s * 0.035, s * 0.012, s * 0.028 * flick, 0, 0, Math.PI * 2);
+                ctx.fill();
+              } else {
+                ctx.fillStyle = '#241d18';
+                ctx.fillRect(cx2 - s * 0.006, topY2 - s * 0.022, s * 0.012, s * 0.022);
+              }
+            }
+            // Offerings at the slab's foot: two river pebbles and a
+            // dried sprig — someone's whole eulogy.
+            ctx.fillStyle = '#9a97a4';
+            ctx.beginPath();
+            facetCircle(ctx, p.x - s * 0.3, baseY - s * 0.03, s * 0.03, 5, 0.5, 0.8);
+            ctx.fill();
+            ctx.beginPath();
+            facetCircle(ctx, p.x - s * 0.24, baseY - s * 0.015, s * 0.024, 5, 1.3, 0.8);
+            ctx.fill();
+            ctx.strokeStyle = '#7d6a4a';
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            ctx.beginPath();
+            ctx.moveTo(p.x + s * 0.28, baseY - s * 0.02);
+            ctx.quadraticCurveTo(p.x + s * 0.34, baseY - s * 0.09, p.x + s * 0.4, baseY - s * 0.11);
+            ctx.stroke();
+          },
+        };
+      }
+
+      case Tile.IronGrate: {
+        const syT = s * this.camera.yScale;
+        // A grate over black depth. The bars are honest garrison iron;
+        // what's under them is nobody's business. The air below is
+        // colder than the air above, and you can watch it rise.
+        const cy = p.y + syT * 0.02;
+        const hw = s * 0.38;
+        const hd = syT * 0.38;
+        const bent = ((h >> 8) & 3) === 0; // one bar pried, once
+        return {
+          sortY: ty - 0.42,
+          body: stationBody(0.55, 0.6, 0.5),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            // The depth first: a hole in the world.
+            ctx.fillStyle = '#0b0a12';
+            ctx.fillRect(p.x - hw, cy - hd, hw * 2, hd * 2);
+            // The under-bars run away from the eye, faint in the dark.
+            ctx.fillStyle = 'rgba(93, 86, 112, 0.45)';
+            for (const fx of [-0.36, 0, 0.36]) {
+              ctx.fillRect(p.x + fx * hw - s * 0.016, cy - hd, s * 0.032, hd * 2);
+            }
+            // The main bars face the camera: three flat iron strips
+            // with lit top edges — and one of them pried and bent
+            // down into the dark, if this grate has a story.
+            for (const [fy3, k] of [
+              [-0.5, 0],
+              [0, 1],
+              [0.5, 2],
+            ] as const) {
+              const by2 = cy + fy3 * hd * 1.1;
+              if (bent && k === 1) {
+                ctx.fillStyle = DGN_IRON;
+                ctx.fillRect(p.x - hw, by2 - s * 0.026, hw * 0.75, s * 0.052);
+                ctx.fillStyle = DGN_IRON_LIT;
+                ctx.fillRect(p.x - hw, by2 - s * 0.026, hw * 0.75, s * 0.018);
+                ctx.save();
+                ctx.translate(p.x + hw * 0.05, by2);
+                ctx.rotate(0.7);
+                ctx.fillStyle = DGN_IRON;
+                ctx.fillRect(0, -s * 0.026, hw * 0.4, s * 0.052);
+                ctx.restore();
+                continue;
+              }
+              ctx.fillStyle = DGN_IRON;
+              ctx.fillRect(p.x - hw, by2 - s * 0.028, hw * 2, s * 0.056);
+              ctx.fillStyle = DGN_IRON_LIT;
+              ctx.fillRect(p.x - hw, by2 - s * 0.028, hw * 2, s * 0.02);
+            }
+            // The frame: four beveled strips and their corner rivets.
+            ctx.fillStyle = DGN_IRON;
+            ctx.fillRect(p.x - hw - s * 0.05, cy - hd - s * 0.05, hw * 2 + s * 0.1, s * 0.06);
+            ctx.fillRect(p.x - hw - s * 0.05, cy + hd - s * 0.01, hw * 2 + s * 0.1, s * 0.06);
+            ctx.fillRect(p.x - hw - s * 0.05, cy - hd - s * 0.05, s * 0.06, hd * 2 + s * 0.1);
+            ctx.fillRect(p.x + hw - s * 0.01, cy - hd - s * 0.05, s * 0.06, hd * 2 + s * 0.1);
+            ctx.fillStyle = DGN_IRON_LIT;
+            ctx.fillRect(p.x - hw - s * 0.05, cy - hd - s * 0.05, hw * 2 + s * 0.1, s * 0.02);
+            ctx.fillStyle = DGN_RUST_LIT;
+            for (const [fx, fy3] of [
+              [-1, -1],
+              [1, -1],
+              [-1, 1],
+              [1, 1],
+            ] as const) {
+              ctx.fillRect(p.x + fx * hw - s * 0.014, cy + fy3 * hd - s * 0.014, s * 0.028, s * 0.028);
+            }
+            // The breath of the deep: two wisps on offset clocks,
+            // rising, drifting, thinning to nothing.
+            for (let k = 0; k < 2; k++) {
+              const ph = (t * 0.22 + k * 0.53 + (h % 89) * 0.011) % 1;
+              const wx = p.x + (k === 0 ? -s * 0.12 : s * 0.16) + Math.sin(ph * 5 + k) * s * 0.05;
+              const wy = cy - ph * s * 0.55;
+              ctx.fillStyle = `rgba(190, 198, 218, ${(1 - ph) * 0.12})`;
+              ctx.beginPath();
+              ctx.ellipse(wx, wy, s * (0.05 + ph * 0.07), s * (0.04 + ph * 0.05), 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          },
+        };
+      }
+
 
       case Tile.Table: {
         const syT = s * this.camera.yScale;

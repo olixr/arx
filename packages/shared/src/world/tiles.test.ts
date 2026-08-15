@@ -362,6 +362,13 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.BrokenPillar, 'brokenpillar', 3],
     [Tile.BurialUrns, 'urns', 1],
     [Tile.AncientStatue, 'oldstatue', 4],
+    // THE LONG DARK PEOPLED: joined timber holds a beat, everything
+    // a delver left pops in one.
+    [Tile.GibbetCage, 'gibbet', 2],
+    [Tile.Stocks, 'stocks', 2],
+    [Tile.ColdCamp, 'coldcamp', 1],
+    [Tile.LootedChest, 'lootchest', 1],
+    [Tile.CandleShrine, 'candles', 1],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {
@@ -412,6 +419,14 @@ test('load-bearing scenery is not smashable', () => {
     Tile.GrandPillar,
     Tile.WallSconce,
     Tile.WallChains,
+    // THE LONG DARK PEOPLED: the mine brace holds the roof (the
+    // grand pillar's law in timber); the ribs, the webs, the pool,
+    // and the grate are the mountain's own — and walkable besides.
+    Tile.TimberBrace,
+    Tile.WallFossil,
+    Tile.WallWeb,
+    Tile.DripPool,
+    Tile.IronGrate,
   ]) {
     assert.equal(destructibleInfo(t), null);
   }

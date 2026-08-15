@@ -79,6 +79,13 @@ const DECOR_KITS: Record<DungeonTheme, DecorEntry[]> = {
     { tile: Tile.BrokenPillar, per: 130 },
     { tile: Tile.AncientStatue, per: 200 },
     { tile: Tile.MossBarrel, per: 160 },
+    // THE LONG DARK PEOPLED: what was here before the kingdom (the
+    // ribs in the rock, the patient webs, the mountain's slow clock)
+    // and the delvers who came asking.
+    { tile: Tile.WallFossil, per: 150, north: true },
+    { tile: Tile.WallWeb, per: 130, north: true },
+    { tile: Tile.DripPool, per: 90, styles: ['cave'] },
+    { tile: Tile.ColdCamp, per: 180 },
   ],
   crypt: [
     { tile: Tile.BonePile, per: 48 },
@@ -92,6 +99,15 @@ const DECOR_KITS: Record<DungeonTheme, DecorEntry[]> = {
     { tile: Tile.BrokenPillar, per: 120 },
     { tile: Tile.AncientStatue, per: 150, styles: ['hall'] },
     { tile: Tile.GrandPillar, per: 170, styles: ['hall'] },
+    // THE LONG DARK PEOPLED: the crypt is TENDED (someone still
+    // lights the candles), ROBBED (someone got to the goods first),
+    // and older than its own dead (the webs, the grates over what
+    // lies deeper, the dishonored swinging in iron).
+    { tile: Tile.CandleShrine, per: 90 },
+    { tile: Tile.LootedChest, per: 140 },
+    { tile: Tile.WallWeb, per: 140, north: true },
+    { tile: Tile.GibbetCage, per: 180, styles: ['hall'] },
+    { tile: Tile.IronGrate, per: 160, styles: ['hall'] },
   ],
   mine: [
     { tile: Tile.Crate, per: 80 },
@@ -103,6 +119,13 @@ const DECOR_KITS: Record<DungeonTheme, DecorEntry[]> = {
     { tile: Tile.MineCart, per: 90 },
     { tile: Tile.MossBarrel, per: 85 },
     { tile: Tile.WallChains, per: 150, north: true },
+    // THE LONG DARK PEOPLED: the miners' own timber holding the
+    // drift, the water they cursed, the camps of the shift that
+    // never clocked out — and their pay-chest, long since visited.
+    { tile: Tile.TimberBrace, per: 100, north: true },
+    { tile: Tile.DripPool, per: 110, styles: ['cave'] },
+    { tile: Tile.ColdCamp, per: 160 },
+    { tile: Tile.LootedChest, per: 190 },
   ],
   stronghold: [
     { tile: Tile.WarBanner, per: 90, wall: true, styles: ['hall'] },
@@ -117,6 +140,13 @@ const DECOR_KITS: Record<DungeonTheme, DecorEntry[]> = {
     { tile: Tile.ChainedSkeleton, per: 140, north: true },
     { tile: Tile.MossBarrel, per: 110 },
     { tile: Tile.GrandPillar, per: 170, styles: ['hall'] },
+    // THE LONG DARK PEOPLED: the garrison's justice in full — the
+    // gibbet by the gate, the stocks in the yard, the grates over
+    // the oubliette, and the paymaster's chest already pried.
+    { tile: Tile.GibbetCage, per: 130 },
+    { tile: Tile.Stocks, per: 150, styles: ['hall'] },
+    { tile: Tile.IronGrate, per: 140, styles: ['hall'] },
+    { tile: Tile.LootedChest, per: 160 },
   ],
   warren: [
     { tile: Tile.BonePile, per: 55 },
@@ -128,6 +158,11 @@ const DECOR_KITS: Record<DungeonTheme, DecorEntry[]> = {
     // Dragged home and never opened; the pack's larder tells on it.
     { tile: Tile.MossBarrel, per: 130 },
     { tile: Tile.ChainedSkeleton, per: 190, north: true },
+    // THE LONG DARK PEOPLED: the warren keeps its corners webbed,
+    // its victims' camps cold, and their goods already gone through.
+    { tile: Tile.WallWeb, per: 100, north: true },
+    { tile: Tile.ColdCamp, per: 150 },
+    { tile: Tile.LootedChest, per: 170 },
   ],
   // THE ROOT-HALLS: runestones grown askew, crystal the roots fed,
   // shroomlight where the moon never reached, the odd fallen light
@@ -143,6 +178,12 @@ const DECOR_KITS: Record<DungeonTheme, DecorEntry[]> = {
     // quiet keepers, half reclaimed.
     { tile: Tile.BrokenPillar, per: 140 },
     { tile: Tile.AncientStatue, per: 190, styles: ['hall'] },
+    // THE LONG DARK PEOPLED: the roots grew through older bones than
+    // the kingdom's, the water still keeps time, and the webs mend
+    // themselves in the quiet.
+    { tile: Tile.WallFossil, per: 150, north: true },
+    { tile: Tile.DripPool, per: 100 },
+    { tile: Tile.WallWeb, per: 160, north: true },
   ],
 };
 
@@ -179,6 +220,17 @@ const PLACED_PROP_TILES: ReadonlySet<Tile> = new Set([
   Tile.GrandPillar,
   Tile.BurialUrns,
   Tile.AncientStatue,
+  // THE LONG DARK PEOPLED
+  Tile.GibbetCage,
+  Tile.Stocks,
+  Tile.TimberBrace,
+  Tile.WallFossil,
+  Tile.WallWeb,
+  Tile.DripPool,
+  Tile.ColdCamp,
+  Tile.LootedChest,
+  Tile.CandleShrine,
+  Tile.IronGrate,
 ]);
 
 const FLOORISH: ReadonlySet<Tile> = new Set([Tile.CaveFloor, Tile.DungeonFloor, Tile.CaveRubble]);

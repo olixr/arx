@@ -95,7 +95,14 @@ export type SmashKind =
   | 'sarcophagus'
   | 'brokenpillar'
   | 'urns'
-  | 'oldstatue';
+  | 'oldstatue'
+  // THE LONG DARK PEOPLED: gallows timber, pillory oak, a camp's
+  // ashes, a chest's splinters, and snuffed wax.
+  | 'gibbet'
+  | 'stocks'
+  | 'coldcamp'
+  | 'lootchest'
+  | 'candles';
 
 export interface DebrisChunk {
   x: number; // world coords (tile units)
@@ -566,6 +573,12 @@ const CHIP_TONE: Record<SmashKind, string> = {
   brokenpillar: '#8c8798',
   urns: '#96704a',
   oldstatue: '#5e5869',
+  // Second-rank dungeon wreckage: old timber, ash, and wax.
+  gibbet: '#6a4a28',
+  stocks: '#6a4a28',
+  coldcamp: '#514c4e',
+  lootchest: '#a58258',
+  candles: '#e6dcc0',
 };
 
 const pick = <T>(rand: () => number, arr: readonly T[]): T =>
@@ -1345,6 +1358,85 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       for (let i = 0; i < 3; i++) {
         out.push({ len: 0.05, wid: 0.045, color: pick(rand, ['#4a6138', '#5e7a44']), round: true, pace: 1.15 });
       }
+      break;
+    }
+    case 'gibbet': {
+      // The gallows lets go from the top down: the arm and post fall
+      // as long dry timber, the chain rains straight down link by
+      // link (iron doesn't bounce), the cage rings roll off as iron
+      // hoops — and the tenant finally gets out, bones scattering
+      // pale with the skull keeping together.
+      wood('#6a4a28', 3 + Math.floor(rand() * 2), 0.28, 0.5, 0.09);
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.05, wid: 0.03, color: '#3a3444', pace: 0.6 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.12, wid: 0.1, color: '#3a3444', stripe: '#5d5670', round: true, pace: 0.95 });
+      }
+      wood('#cfc7ae', 3, 0.14, 0.24, 0.05);
+      out.push({ len: 0.11, wid: 0.1, color: '#cfc7ae', stripe: '#ddd6c0', round: true, pace: 0.85 });
+      break;
+    }
+    case 'stocks': {
+      // The pillory splits at its own seam: the two board halves
+      // leave as slabs, the posts and deck as dry oak, the hinge and
+      // hasp spraying bright — and the warrant sails farthest of
+      // all, free at last.
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.3 + rand() * 0.06, wid: 0.13, color: pick(rand, ['#6a4a28', '#7d5a34']), stripe: '#4e3a20', pace: 0.85 });
+      }
+      wood('#6a4a28', 4 + Math.floor(rand() * 2), 0.22, 0.4, 0.09);
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.05, wid: 0.04, color: '#5d5670', round: true, pace: 1.3 });
+      }
+      out.push({ len: 0.1, wid: 0.08, color: '#c9bd9e', stripe: '#b0a486', pace: 1.5 });
+      break;
+    }
+    case 'coldcamp': {
+      // A dead camp doesn't burst — it EXHALES: the ash goes up as a
+      // slow gray sigh, the ring stones drop where they sat, the
+      // charred stubs snap dry, a wool scrap sails, and the tin cup
+      // rings off bright for the far wall.
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.06 + rand() * 0.04, wid: 0.055, color: pick(rand, ['#514c4e', '#6e6866']), round: true, pace: 0.6 });
+      }
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.07, wid: 0.06, color: pick(rand, ['#3b3640', '#453f4a']), round: true, pace: 0.7 });
+      }
+      wood('#2b2530', 2, 0.14, 0.22, 0.05);
+      out.push({ len: 0.16, wid: 0.09, color: '#7a6a58', stripe: '#5d4f42', pace: 1.2 });
+      out.push({ len: 0.06, wid: 0.045, color: '#9a97a4', stripe: '#c4c1cc', round: true, pace: 1.35 });
+      break;
+    }
+    case 'lootchest': {
+      // Broken once by thieves, finished by you: dry planks split
+      // easy, the straps drop heavy, the splinters spray light — and
+      // the coin they missed leaves brightest and farthest, catching
+      // the eye one last time.
+      wood('#6a5138', 4 + Math.floor(rand() * 3), 0.2, 0.38, 0.09);
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.2 + rand() * 0.06, wid: 0.05, color: '#3a3444', stripe: '#5d5670', pace: 0.8 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.08 + rand() * 0.05, wid: 0.03, color: '#a58258', pace: 1.3 });
+      }
+      out.push({ len: 0.05, wid: 0.045, color: '#e8c26a', stripe: '#fff0be', round: true, pace: 1.5 });
+      break;
+    }
+    case 'candles': {
+      // Wax snuffs SOFT: the stubs tumble cream and whole, the pooled
+      // sheets flake off the slab, a stone chip or two drops dead —
+      // and one last spark leaves the wicks, the only bright thing.
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.08 + rand() * 0.05, wid: 0.055, color: pick(rand, ['#e6dcc0', '#d8cba8']), stripe: rand() < 0.4 ? '#c9bd9e' : null, round: true, pace: 0.9 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.09 + rand() * 0.04, wid: 0.04, color: '#efe6cf', pace: 1.1 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.09, wid: 0.06, color: pick(rand, ['#453f52', '#5b5566']), pace: 0.75 });
+      }
+      out.push({ len: 0.04, wid: 0.035, color: '#f2c94c', stripe: '#fff0be', round: true, pace: 1.4 });
       break;
     }
   }

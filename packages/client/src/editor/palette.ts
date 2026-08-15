@@ -141,6 +141,11 @@ export const TILE_CATEGORIES: TileCategory[] = [
       Tile.GrandPillar, Tile.BrokenPillar, Tile.Sarcophagus, Tile.AncientStatue,
       Tile.WallSconce, Tile.WallChains, Tile.ChainedSkeleton,
       Tile.BurialUrns, Tile.MossBarrel, Tile.MineCart,
+      // THE LONG DARK PEOPLED: the second rank — justice, timber,
+      // the mountain's own tenants, and what the delvers left.
+      Tile.GibbetCage, Tile.Stocks, Tile.TimberBrace, Tile.WallFossil,
+      Tile.WallWeb, Tile.DripPool, Tile.ColdCamp, Tile.LootedChest,
+      Tile.CandleShrine, Tile.IronGrate,
     ],
   },
   {
