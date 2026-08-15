@@ -28,8 +28,11 @@
  *    sounds must soothe, never nag.
  *  - CAVE (underground): a barely-there low rumble plus echoing
  *    drips; the ambience bus reverb makes each drip a cavern.
- *  - TOWN: a distant smithy tink now and then by day — the sound of
- *    other lives being lived somewhere behind the houses.
+ *  - TOWN: a far-off dog somewhere behind the houses now and then by
+ *    day — the sound of other lives being lived. (The smithy tink
+ *    that held this seat was removed by user verdict.)
+ *  - OWL (night, wild): the low four-note call off in the dark, rare
+ *    and far — the calmest thing the night says.
  *  - FALLING WATER (near a waterfall): a calm pink-noise roil in two
  *    legs — a body whose lowpass opens as the listener approaches
  *    (distance darkens a fall long before it silences it) and a low
@@ -68,9 +71,10 @@ export class AmbienceSystem {
   private nextBirdAt = 0;
   private nextCricketAt: number[] = [0, 0];
   private nextDripAt = 0;
-  private nextTownAt = 0;
+  private nextDogAt = 0;
   private nextDoveAt = 0;
   private nextPeckAt = 0;
+  private nextOwlAt = 0;
   private portalGain: GainNode | null = null;
   private nextPortalMoodAt = 0;
   private fallBody: GainNode | null = null;
@@ -176,9 +180,13 @@ export class AmbienceSystem {
       if (w.cave > 0.5) this.drip(ctx, bus, t);
       this.nextDripAt = t + 2.5 + Math.random() * 7;
     }
-    if (t >= this.nextTownAt) {
-      if (w.town > 0.5 && day > 0.4) this.townTink(ctx, bus, t);
-      this.nextTownAt = t + 16 + Math.random() * 18;
+    if (t >= this.nextDogAt) {
+      if (w.town > 0.5 && day > 0.4) this.dogBark(ctx, bus, t);
+      this.nextDogAt = t + 38 + Math.random() * 50;
+    }
+    if (t >= this.nextOwlAt) {
+      if (night * outdoor * w.wild > 0.3) this.owlHoot(ctx, bus, t);
+      this.nextOwlAt = t + 55 + Math.random() * 65;
     }
     if (t >= this.nextDoveAt) {
       if (day * outdoor * (w.wild + w.town * 0.6) > 0.25) this.dove(ctx, bus, t);
@@ -227,9 +235,12 @@ export class AmbienceSystem {
     this.windGain.connect(bus);
     rustle.start();
 
-    // The dove and the woodpecker wait a polite while after login.
+    // The dove, the woodpecker, the dog, and the owl all wait a
+    // polite while after login — the world greets you with wind first.
     this.nextDoveAt = ctx.currentTime + 12 + Math.random() * 20;
     this.nextPeckAt = ctx.currentTime + 25 + Math.random() * 30;
+    this.nextDogAt = ctx.currentTime + 15 + Math.random() * 25;
+    this.nextOwlAt = ctx.currentTime + 18 + Math.random() * 25;
 
     // Cave rumble: the same noise idea, pressed under 150 Hz.
     const rumble = loopNoise();
@@ -641,29 +652,101 @@ export class AmbienceSystem {
     }
   }
 
-  /** A far-off hammer on a far-off anvil: the village at work. */
-  private townTink(ctx: AudioContext, bus: GainNode, t: number): void {
+  /**
+   * A dog somewhere behind the houses — soft far-off barks, low-passed
+   * to distance. Each "wuff" is a pitch-dropping saw pair (a few cents
+   * apart for the throat's roughness) with a sharp attack; the pattern
+   * varies — one wuff, a quick ruff-ruff, or a short string — so the
+   * same dog never says the same thing twice.
+   */
+  private dogBark(ctx: AudioContext, bus: GainNode, t: number): void {
     const pan = ctx.createStereoPanner();
     pan.pan.value = (Math.random() * 2 - 1) * 0.6;
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.value = 2200;
+    lp.frequency.value = 720 + Math.random() * 260;
+    lp.Q.value = 0.4;
     lp.connect(pan);
     pan.connect(bus);
-    const hits = Math.random() < 0.5 ? 1 : 2 + Math.floor(Math.random() * 2);
-    for (let i = 0; i < hits; i++) {
-      const at = t + i * (0.42 + Math.random() * 0.08);
+    const far = Math.random() < 0.45;
+    const vol = far ? 0.018 : 0.032;
+    const roll = Math.random();
+    const barks = roll < 0.4 ? 1 : roll < 0.8 ? 2 : 3 + Math.floor(Math.random() * 2);
+    // A quick pair reads as "ruff-ruff"; longer strings space out.
+    const gap = barks === 2 ? 0.17 : 0.32;
+    let at = t + 0.03;
+    for (let i = 0; i < barks; i++) {
+      const f0 = 205 + Math.random() * 65;
+      for (const cents of [0, 14]) {
+        const o = ctx.createOscillator();
+        o.type = 'sawtooth';
+        o.detune.value = cents;
+        o.frequency.setValueAtTime(f0, at);
+        o.frequency.exponentialRampToValueAtTime(f0 * 0.55, at + 0.1);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.exponentialRampToValueAtTime(vol * (cents ? 0.55 : 1), at + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.001, at + 0.11);
+        o.connect(g);
+        g.connect(lp);
+        o.start(at);
+        o.stop(at + 0.13);
+      }
+      at += gap + Math.random() * 0.12;
+    }
+  }
+
+  /**
+   * An owl off in the dark — the low four-note call: hoo… h'hoo…
+   * hoo, hoooo. Soft-attacked sines settling slightly flat through a
+   * dark filter, a breath of vibrato on the held last note. Rare and
+   * far by design: the parliament roosts out there, and hearing one
+   * should feel like the night noticed you.
+   */
+  private owlHoot(ctx: AudioContext, bus: GainNode, t: number): void {
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = (Math.random() * 2 - 1) * 0.75;
+    const far = Math.random() < 0.5;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = far ? 520 : 700;
+    lp.Q.value = 0.3;
+    lp.connect(pan);
+    pan.connect(bus);
+    const vol = far ? 0.026 : 0.046;
+    const f = 315 + Math.random() * 40;
+    const note = (at: number, dur: number, freq: number, vib = false): void => {
       const o = ctx.createOscillator();
-      o.type = 'triangle';
-      o.frequency.setValueAtTime(1150 + Math.random() * 120, at);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(freq, at);
+      o.frequency.exponentialRampToValueAtTime(freq * 0.94, at + dur);
+      if (vib) {
+        const v = ctx.createOscillator();
+        v.frequency.value = 5.2;
+        const va = ctx.createGain();
+        va.gain.value = 6; // cents — felt, not warbled
+        v.connect(va);
+        va.connect(o.detune);
+        v.start(at);
+        v.stop(at + dur + 0.1);
+      }
       const g = ctx.createGain();
       g.gain.setValueAtTime(0.0001, at);
-      g.gain.exponentialRampToValueAtTime(0.032, at + 0.004);
-      g.gain.exponentialRampToValueAtTime(0.001, at + 0.22);
+      g.gain.exponentialRampToValueAtTime(vol, at + 0.05);
+      g.gain.setValueAtTime(vol, at + Math.max(0.05, dur * 0.55));
+      g.gain.exponentialRampToValueAtTime(0.001, at + dur);
       o.connect(g);
       g.connect(lp);
       o.start(at);
-      o.stop(at + 0.26);
-    }
+      o.stop(at + dur + 0.05);
+    };
+    let at = t + 0.05;
+    note(at, 0.32, f);
+    at += 0.5 + Math.random() * 0.1;
+    note(at, 0.14, f * 1.06);
+    at += 0.22;
+    note(at, 0.3, f);
+    at += 0.5 + Math.random() * 0.12;
+    note(at, 0.55, f * 0.98, true);
   }
 }

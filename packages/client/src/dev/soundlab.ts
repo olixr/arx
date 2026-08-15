@@ -31,7 +31,8 @@ interface AmbienceVoices {
   woodpecker(ctx: AudioContext, bus: GainNode, t: number): void;
   cricketBurst(ctx: AudioContext, voice: number, t: number): void;
   drip(ctx: AudioContext, bus: GainNode, t: number): void;
-  townTink(ctx: AudioContext, bus: GainNode, t: number): void;
+  dogBark(ctx: AudioContext, bus: GainNode, t: number): void;
+  owlHoot(ctx: AudioContext, bus: GainNode, t: number): void;
   portalMood(ctx: AudioContext, bus: GainNode, t: number, near: number): void;
   cricketGains: GainNode[];
 }
@@ -71,7 +72,7 @@ const SCENARIOS: Scenario[] = [
     hours: 23,
     portalNear: 0,
     fall: SILENT_EAR,
-    note: 'the two cricket voices; wind gusts stay (quieter register)',
+    note: 'the two cricket voices + a rare owl; wind gusts stay (quieter register)',
   },
   {
     label: 'Town, day',
@@ -79,7 +80,7 @@ const SCENARIOS: Scenario[] = [
     hours: 12,
     portalNear: 0,
     fall: SILENT_EAR,
-    note: 'half-strength rustle + birds + the distant smithy tink',
+    note: 'half-strength rustle + birds + a far-off dog now and then',
   },
   {
     label: 'Cave',
@@ -175,10 +176,16 @@ const ONE_SHOTS: Row[] = [
     play: () => shot((ctx, bus, t) => voices.drip(ctx, bus, t)),
   },
   {
-    name: 'Town smithy tink',
-    src: 'ambience.ts · townTink()',
-    desc: 'a far-off hammer on a far-off anvil, once in a while by day',
-    play: () => shot((ctx, bus, t) => voices.townTink(ctx, bus, t)),
+    name: 'Town dog bark',
+    src: 'ambience.ts · dogBark()',
+    desc: 'a dog somewhere behind the houses — wuff, ruff-ruff, or a short string',
+    play: () => shot((ctx, bus, t) => voices.dogBark(ctx, bus, t)),
+  },
+  {
+    name: 'Owl hoot',
+    src: 'ambience.ts · owlHoot()',
+    desc: 'the low four-note night call, off in the dark',
+    play: () => shot((ctx, bus, t) => voices.owlHoot(ctx, bus, t)),
   },
   {
     name: 'Riftgate mood',
@@ -192,7 +199,7 @@ const SFX_SUSPECTS: Row[] = [
   {
     name: 'Footstep — grass',
     src: 'sfx.ts · footstep(grass)',
-    desc: 'two tiny brushed puffs per step — the blade rustle underfoot',
+    desc: 'a granular blade swish — staggered random foliage grains over soft earth',
     play: () => sfx.footstep('grass', 0.5),
   },
   {

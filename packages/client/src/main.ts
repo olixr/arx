@@ -1,7 +1,7 @@
 import { procShape } from './render/wornLight.js';
 import { deckFillAt, fillContains } from './render/terrain.js';
 import { AWNING_HOST_TILES, AWNING_SHAPES, EntityKind, FENCE_TILES, GARRISON_TILES, HANGABLE_WALL_TILES, HEDGE_TILES, PoseState, ROCK_TILES, SWAP_BEAT_MS, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo, type EntityMeta } from '@arx/shared';
-import { BUILDABLES, DYE_PIGMENTS, ELEMENT_COLORS, RECIPES, SIGN_MOTIFS, TRELLIS_SPECIES, buildableForTile, buildableGround, enchantDef, isDaggerStats, itemDef, npcActor, npcDef, resonanceShift, type BuildableDef } from '@arx/content';
+import { BUILDABLES, DYE_PIGMENTS, ELEMENT_COLORS, POI_DEFS, RECIPES, SIGN_MOTIFS, TRELLIS_SPECIES, buildableForTile, buildableGround, enchantDef, isDaggerStats, itemDef, npcActor, npcDef, resonanceShift, type BuildableDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { farmBins, farmJobs, farmKey } from './game/farmCare.js';
 import { WORK_RECIPES, WORK_VERBS, workDone, type WorkStation } from '@arx/content';
@@ -41,7 +41,7 @@ import { DangerGauge } from './ui/dangerGauge.js';
 import { showQuestBanner } from './ui/questBanner.js';
 import { RiftgatePanel } from './ui/riftgate.js';
 import { showDungeonClear, showDungeonEntry } from './ui/dungeonBanner.js';
-import { Sfx } from './audio/sfx.js';
+import { Sfx, type SampleName } from './audio/sfx.js';
 import { AudioEngine } from './audio/engine.js';
 import { TrackPlayer } from './audio/tracks.js';
 import { AmbienceSystem } from './audio/ambience.js';
@@ -1605,9 +1605,15 @@ const game = new ClientGame(input, {
     chat.addLine({ channel: 'system', text: `Discovered: ${d.name} — marked on your chart (M).` });
     showDiscovery(d);
     // The recorded shelf speaks for the find — the calm sting for a
-    // town's gate, the discovery call for the wild's sites — with the
-    // synth voice as the pre-decode fallback.
-    if (!sfx.sample(d.kind === 'town' ? 'stab_calm_1' : 'poi_discovery')) sfx.discovery();
+    // town's gate, a dread sting for a camp that would rather you
+    // hadn't (a standing garrison and nobody civil = hostile), the
+    // discovery call for everything else — with the synth voice as
+    // the pre-decode fallback.
+    const def = d.kind === 'poi' && d.defId ? POI_DEFS.get(d.defId) : undefined;
+    const hostileCamp = def !== undefined && def.garrison.length > 0 && !def.actors;
+    const sting: SampleName =
+      d.kind === 'town' ? 'stab_calm_1' : hostileCamp ? nextDreadStab() : 'poi_discovery';
+    if (!sfx.sample(sting)) sfx.discovery();
     const pos = game.predictor.pos;
     renderer.addRing(pos.x, pos.y, '#f2c94c', 1.3);
     renderer.zoomPulse(0.035);
@@ -2978,6 +2984,18 @@ let fpsWindowStart = performance.now();
 let nextPortalScanAt = 0;
 /** Last frame's sky clock — the dusk/dawn seam stingers watch it. */
 let lastSkyHours: number | null = null;
+/**
+ * THE DREAD STABS — the three dramatic stings deal in rotation so
+ * neither the night nor two camp finds in a row repeat themselves.
+ */
+const DREAD_STABS: readonly SampleName[] = ['stab_dramatic_1', 'stab_dramatic_2', 'stab_dramatic_3'];
+let dreadStabIdx = Math.floor(Math.random() * DREAD_STABS.length);
+function nextDreadStab(): SampleName {
+  dreadStabIdx = (dreadStabIdx + 1) % DREAD_STABS.length;
+  return DREAD_STABS[dreadStabIdx]!;
+}
+/** Next deep-night dread sting (ms clock); <0 = not yet scheduled. */
+let nextDreadStabAt = -1;
 /** Fall-earshot scan, half-phase offset from the portal scan so the
  *  two 441-tile sweeps never land in the same frame. */
 let nextFallScanAt = 200;
@@ -3833,6 +3851,19 @@ function frame(now: number): void {
       lastSkyHours = hours;
     } else {
       lastSkyHours = null;
+    }
+    // THE NIGHT HAS TEETH: deep in the dark, out in genuinely
+    // dangerous country, a rare far-off dramatic sting — a triggered
+    // ambient one-shot on no beat the player can predict. True wild
+    // + tier 2 or worse only; towns and the safe meadows never hear
+    // it, and the first is never sooner than two minutes in.
+    if (nextDreadStabAt < 0) nextDreadStabAt = now + 120_000 + Math.random() * 120_000;
+    if (now >= nextDreadStabAt) {
+      nextDreadStabAt = now + 170_000 + Math.random() * 220_000;
+      const deepNight = hours < 4.5 || hours > 21.5;
+      if (deepNight && w.wild > 0.7 && dangerTier >= 2 && own.y < UNDERGROUND_Y) {
+        sfx.sample(nextDreadStab(), 0.6);
+      }
     }
     // The gauge reads the same field the music does — one law, every
     // surface. Underground, the cinema, and the workbench stand it

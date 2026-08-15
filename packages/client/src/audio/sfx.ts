@@ -39,10 +39,11 @@ const PAN_MAX = 0.8;
  * re-measure when samples are added or replaced).
  *
  * Wired today: `level_up` (the skill herald), `poi_discovery` and
- * `stab_calm_1` (the discovery ceremony's two voices), and the
- * `day_to_night`/`night_to_day` seam stingers (THE SKY'S SEAM in the
- * main loop). The rest sit ready for future moments — see each
- * entry's note for its intended seat.
+ * `stab_calm_1` (the discovery ceremony's voices), the three
+ * `stab_dramatic` dread stings (rotating: deep-night dangerous wilds
+ * + hostile-camp discoveries), and the `day_to_night`/`night_to_day`
+ * seam stingers (THE SKY'S SEAM in the main loop). The rest sit
+ * ready for future moments — see each entry's note.
  */
 const SAMPLE_TRIM = {
   level_up: 0.6, // −13.4 — the skill level-up herald (wired: levelUp())
@@ -52,7 +53,7 @@ const SAMPLE_TRIM = {
   notification_success: 0.72, // −14.9 — an affirmative notice landing
   success_1: 0.81, // −16.0 — a smaller "it worked" flourish
   stab_calm_1: 0.47, // −11.2 — a town's gate entered (wired: onDiscovery)
-  stab_dramatic_1: 0.72, // −14.9 — a dramatic sting for grim beats
+  stab_dramatic_1: 0.72, // −14.9 — dread stings (wired: deep-night wilds + hostile-camp finds, rotating)
   stab_dramatic_2: 0.67, // −14.3
   stab_dramatic_3: 0.84, // −16.3
   day_to_night: 0.57, // −12.9 — the dusk stinger (wired: THE SKY'S SEAM)
@@ -151,6 +152,9 @@ export class Sfx {
     this.warmSample('stab_calm_1');
     this.warmSample('day_to_night');
     this.warmSample('night_to_day');
+    this.warmSample('stab_dramatic_1');
+    this.warmSample('stab_dramatic_2');
+    this.warmSample('stab_dramatic_3');
   }
 
   // ---- the recorded shelf -------------------------------------------
@@ -970,11 +974,22 @@ export class Sfx {
    */
   footstep(mat: 'grass' | 'stone' | 'wood' | 'dirt' | 'sand' | 'cave' | 'wet', vol: number): void {
     switch (mat) {
-      case 'grass':
-        // Two tiny brushed puffs — the blade rustle the user asked for.
-        this.noise(0.055, vol * 0.9, 0, { band: 2600 });
-        this.noise(0.09, vol * 0.5, 0.035, { band: 1900 });
+      case 'grass': {
+        // A boot pressing INTO blades, not brushing over a surface: a
+        // stagger of tiny foliage grains — narrow random bands, random
+        // spacing, so no two steps ever swish alike (the fixed-band
+        // pair before this read as cloth, the user's verdict) — over
+        // one soft earth contact underneath the green.
+        let at = 0;
+        for (let i = 0; i < 4; i++) {
+          this.noise(0.014 + Math.random() * 0.03, vol * (0.55 - i * 0.09), at, {
+            band: 1500 + Math.random() * 2700,
+          });
+          at += 0.01 + Math.random() * 0.03;
+        }
+        this.noise(0.055, vol * 0.5, 0.008, { band: 560 });
         break;
+      }
       case 'stone':
         this.tone(190, 0.045, { type: 'triangle', slide: -60, volume: vol * 0.7 });
         this.noise(0.035, vol * 0.55, 0, { band: 1400 });
