@@ -23,13 +23,13 @@ import {
   ELDER_GREAT_OWL_LOOK,
   GREAT_OWL_LOOK,
   beastSpec,
-  drawGreatOwl,
   drawOwlHead,
   owlHoverHeight,
   owlLook,
   owlWingFan,
   paintOwlBody,
 } from './rig.js';
+import { drawGreatOwl, flierSpec, stagedFlight } from './flight.js';
 
 test('the bestiary fields the parliament, packed, taloned, and led', () => {
   const owl = NPCS.get('great_owl');
@@ -182,7 +182,7 @@ function mockCtx(): CanvasRenderingContext2D {
   }) as unknown as CanvasRenderingContext2D;
 }
 
-test('the flier runs clean: eight facings, every altitude, banking, swooping, hurt', () => {
+test('the flier runs clean: eight facings, every carriage, swooping, hurt', () => {
   const g = globalThis as { Path2D?: unknown };
   const hadPath = g.Path2D;
   g.Path2D = FakePath2D;
@@ -191,9 +191,15 @@ test('the flier runs clean: eight facings, every altitude, banking, swooping, hu
     const elderSpec = beastSpec('elder_great_owl', 0.46, 4.6);
     for (let band = 0; band < 8; band++) {
       const dir = (band / 8) * Math.PI * 2;
-      // The full altitude ledger: roost, fold edge, flare, climb, cruise.
-      for (const air of [0, 0.15, 0.3, 0.31, 0.5, 0.8, 1]) {
+      // The full carriage ledger: hover, slow flight, cruise — each
+      // staged deterministically off the rig itself.
+      for (const moveK of [0, 0.4, 1]) {
+        const owlFlight = stagedFlight(flierSpec('great_owl'), { seed: band * 5, moveK });
+        const elderFlight = stagedFlight(flierSpec('elder_great_owl'), { seed: band, moveK });
         for (const at of [0, 0.5, 0.85]) {
+          const atFlight = at > 0
+            ? stagedFlight(flierSpec('great_owl'), { seed: band * 5, moveK, attackT: at })
+            : owlFlight;
           for (const hurt of [false, true]) {
             drawGreatOwl(mockCtx(), owlSpec, owlLook('great_owl', band * 5), {
               x: 100,
@@ -201,9 +207,7 @@ test('the flier runs clean: eight facings, every altitude, banking, swooping, hu
               s: 48,
               dir,
               ys: 0.82,
-              air,
-              moveK: air > 0.5 ? 1 : 0,
-              bank: band % 2 === 0 ? 0.3 : -0.25,
+              flight: atFlight,
               attackT: at,
               hurt,
               nowMs: 5234 + band * 331,
@@ -216,8 +220,7 @@ test('the flier runs clean: eight facings, every altitude, banking, swooping, hu
               s: 48,
               dir,
               ys: 0.82,
-              air,
-              moveK: 0.5,
+              flight: elderFlight,
               attackT: at,
               hurt,
               nowMs: 917 + band * 77,
@@ -234,8 +237,7 @@ test('the flier runs clean: eight facings, every altitude, banking, swooping, hu
         s: 48,
         dir,
         ys: 0.82,
-        air: 0,
-        moveK: 0,
+        flight: stagedFlight(flierSpec('great_owl'), { seed: 0, moveK: 0, steps: 2 }),
         nowMs: 0,
         seed: 0,
       });

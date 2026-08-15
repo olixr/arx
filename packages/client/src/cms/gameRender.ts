@@ -4,9 +4,7 @@ import { LegRig } from '../render/legs.js';
 import {
   beastSpec,
   drawBackGear,
-  drawBat,
   drawBeast,
-  drawGreatOwl,
   drawHumanoid,
   drawSlime,
   drawSnake,
@@ -22,6 +20,7 @@ import { ogreLook } from '../render/ogre.js';
 import { skralLook } from '../render/skral.js';
 import { hobgoblinLook } from '../render/hobgoblin.js';
 import { TailSim, drawTail } from '../render/tail.js';
+import { drawBat, drawGreatOwl, flierSpec, stagedFlight } from '../render/flight.js';
 
 /**
  * TRUE IN-GAME RENDERS. Every creature and actor the studio shows is
@@ -337,8 +336,9 @@ function paintBeast(ctx: CanvasRenderingContext2D, px: number, def: NpcDef): voi
       s: scale,
       dir,
       ys: Y_SCALE,
-      air: 1,
-      moveK: 1,
+      // A staged deterministic cruise: the rig run to its settled
+      // carriage at full travel — the card paints what the game flies.
+      flight: stagedFlight(flierSpec(def.id), { seed: 7, moveK: 1 }),
       nowMs: PINNED_MS,
       seed: 7,
     });
@@ -423,8 +423,10 @@ function paintLegless(ctx: CanvasRenderingContext2D, px: number, def: NpcDef): v
     ys: Y_SCALE,
   };
   type Bag = Parameters<typeof drawSlime>[1];
-  if (bat) drawBat(ctx, common as unknown as Bag);
-  else if (snake) drawSnake(ctx, common as unknown as Bag);
+  if (bat) {
+    // The bat card hangs the hover — the staged rig settled at rest.
+    drawBat(ctx, { ...common, flight: stagedFlight(flierSpec(def.id), { seed: 7, moveK: 0 }) });
+  } else if (snake) drawSnake(ctx, common as unknown as Bag);
   else drawSlime(ctx, common as unknown as Bag);
 }
 

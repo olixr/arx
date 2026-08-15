@@ -74,9 +74,7 @@ import {
   beastSpec,
   mountSpec,
   drawBackGear,
-  drawBat,
   drawBeast,
-  drawGreatOwl,
   drawHumanoid,
   drawSlime,
   drawSnake,
@@ -189,6 +187,7 @@ import {
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { BobtailSim, TailSim, drawBobtail, drawFoxBrush, drawHorseTail, drawSabercatTail, drawTail, drawTurtleTail, drawWolfBrush } from './tail.js';
+import { FlightRig, drawBat, drawGreatOwl, flierSpec } from './flight.js';
 import { EarSim } from './earPhysics.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
@@ -780,12 +779,12 @@ interface AnimState {
   olY?: number;
   olDir?: number;
   olCoolUntil?: number;
-  /** THE PARLIAMENT FLIES — the owl's smoothed 0..1 altitude blend
-   *  (0 = roosting on the ground, 1 = cruise height). */
-  owlAir?: number;
-  /** Smoothed banking roll (radians) + last facing for the turn rate. */
-  owlBank?: number;
-  owlDir?: number;
+  /** THE FLIGHT RIG — every flying body's one carriage (owls, bats):
+   *  state blends, phase-continuous wingbeat, banking springs, and
+   *  the simulated wing vanes all live inside it. The renderer owns
+   *  only the lifecycle; `flightKey` evicts it on a def change. */
+  flight?: FlightRig;
+  flightKey?: string;
 }
 
 /** Player zoom bounds: 1 = the classic framing (also the default). */
@@ -45234,6 +45233,23 @@ export class Renderer {
     };
     const bat = defId === 'cave_bat';
     const snake = defId === 'adder';
+    // THE BAT RIDES THE FLIGHT RIG: same carriage as the owls at the
+    // membrane dials — the renderer owns lifecycle, the rig owns all.
+    let batFlight: ReturnType<FlightRig['update']> | undefined;
+    if (bat) {
+      if (!anim.flight || anim.flightKey !== defId) {
+        anim.flight = new FlightRig(flierSpec(defId), eid);
+        anim.flightKey = defId;
+      }
+      batFlight = anim.flight.update({
+        x: s.x,
+        y: s.y,
+        dir: s.dir,
+        moveK,
+        dt: Math.max(this.frameDt, 1e-3),
+        attackT,
+      });
+    }
     // Sprite extents differ per body plan: the adder trails 1.3 tiles of
     // ribbon, the bat hovers a full tile up with wings wide.
     const halfW = (snake ? 1.55 : bat ? 0.95 : radius * 2.2 + 0.25) * scale;
@@ -45249,7 +45265,7 @@ export class Renderer {
         this.castBody(p.x, p.y + r * 0.25, r * (bat ? 0.8 : snake ? 1.0 : 1.05));
       },
       draw: () => {
-        if (bat) drawBat(this.ctx, common);
+        if (bat) drawBat(this.ctx, { ...common, flight: batFlight! });
         else if (snake) drawSnake(this.ctx, common);
         else drawSlime(this.ctx, common);
       },
@@ -45303,24 +45319,28 @@ export class Renderer {
     const look = owlLook(defId, eid);
     const dt = Math.max(this.frameDt, 1e-3);
 
-    // AN OWL NEVER SITS: the parliament lives on the wing, always.
-    // The roost ledger is gone — an idle owl holds a hunting hover
-    // (the flier's own dialect), never the glade floor.
+    // AN OWL NEVER SITS: the parliament lives on the wing, always —
+    // and the wing lives on THE FLIGHT RIG. One rig per body carries
+    // the whole carriage: the hover↔cruise state blend, the
+    // phase-continuous wingbeat, the banking spring, and the
+    // simulated wing vanes. The renderer owns only its lifecycle.
     const moveK = anim.moveK ?? 0;
-    anim.owlAir = 1;
     const air = 1;
-
-    // ---- banking: the body rolls into the turn rate, smoothed.
-    const dPrev = anim.owlDir ?? s.dir;
-    let dd = s.dir - dPrev;
-    while (dd > Math.PI) dd -= Math.PI * 2;
-    while (dd < -Math.PI) dd += Math.PI * 2;
-    anim.owlDir = s.dir;
-    const bankTarget = Math.max(-0.38, Math.min(0.38, (dd / dt) * 0.09));
-    anim.owlBank = (anim.owlBank ?? 0) + (bankTarget - (anim.owlBank ?? 0)) * Math.min(1, dt * 5);
-
+    if (!anim.flight || anim.flightKey !== defId) {
+      anim.flight = new FlightRig(flierSpec(defId), eid);
+      anim.flightKey = defId;
+    }
     const attackT =
       s.pose === PoseState.Attack ? Math.min(1, (now - anim.poseStartedAt) / 420) : 0;
+    const flight = anim.flight.update({
+      x: s.x,
+      y: s.y,
+      dir: s.dir,
+      moveK,
+      dt,
+      attackT,
+      air,
+    });
     const hover = owlHoverHeight(look);
     const halfW = (look.wingSpan + spec.bodyLen + 0.3) * scale;
     const top = (hover + look.backH + look.tuftLen + 0.5) * scale;
@@ -45340,9 +45360,7 @@ export class Renderer {
           s: scale,
           dir: s.dir,
           ys: this.camera.yScale,
-          air,
-          moveK,
-          bank: anim.owlBank ?? 0,
+          flight,
           attackT,
           hurt,
           nowMs: now,
