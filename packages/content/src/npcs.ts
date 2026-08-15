@@ -1,5 +1,5 @@
-import type { StatusApply, StatusId } from '@arx/shared';
-import { NPC_LANES, type NpcLanes } from './npcLanes.js';
+import { STATUS_IDS, type StatusApply, type StatusId } from '@arx/shared';
+import { DAMAGE_LANES, NPC_LANES, type NpcLanes } from './npcLanes.js';
 
 
 /**
@@ -2790,8 +2790,64 @@ export function validateNpcDef(
       }
     }
   }
-  if (d.hitHeight !== undefined && typeof d.hitHeight !== 'number') {
-    errors.push('hitHeight must be a number');
+  if (
+    d.hitHeight !== undefined &&
+    (typeof d.hitHeight !== 'number' || !Number.isFinite(d.hitHeight) || d.hitHeight < 0)
+  ) {
+    // A negative height inverts the feet→crown hit band.
+    errors.push('hitHeight must be a non-negative number');
+  }
+  // THE COMBAT FIELDS ARE COMBAT LAW (audit 2026-08-15): attackStatus,
+  // resist/weak, and lanes are typed, shipped on dozens of defs, and
+  // applied to players on every landed blow — yet the CMS door never
+  // vetted them, so a live edit could ride any shape (a NaN power, an
+  // unknown status) straight into damage math. Checked whole now.
+  if (d.attackStatus !== undefined) {
+    const a = d.attackStatus as Record<string, unknown>;
+    if (
+      typeof a !== 'object' ||
+      a === null ||
+      !STATUS_IDS.includes(a.status as StatusId) ||
+      typeof a.power !== 'number' ||
+      !Number.isFinite(a.power) ||
+      (a.power as number) < 0 ||
+      typeof a.durationTicks !== 'number' ||
+      !Number.isInteger(a.durationTicks) ||
+      (a.durationTicks as number) < 1
+    ) {
+      errors.push(
+        `attackStatus must be {status: ${STATUS_IDS.join('|')}, power >= 0, durationTicks >= 1}`,
+      );
+    }
+  }
+  for (const f of ['resist', 'weak'] as const) {
+    if (d[f] !== undefined) {
+      if (
+        !Array.isArray(d[f]) ||
+        (d[f] as unknown[]).some((s) => !STATUS_IDS.includes(s as StatusId))
+      ) {
+        errors.push(`${f} must be an array of status ids (${STATUS_IDS.join('|')})`);
+      }
+    }
+  }
+  if (d.lanes !== undefined) {
+    const l = d.lanes as Record<string, unknown>;
+    if (typeof l !== 'object' || l === null) {
+      errors.push('lanes must be an object');
+    } else {
+      for (const f of ['weak', 'resist'] as const) {
+        if (
+          l[f] !== undefined &&
+          (!Array.isArray(l[f]) ||
+            (l[f] as unknown[]).some((s) => !DAMAGE_LANES.includes(s as (typeof DAMAGE_LANES)[number])))
+        ) {
+          errors.push(`lanes.${f} must be an array of lanes (${DAMAGE_LANES.join('|')})`);
+        }
+      }
+      for (const key of Object.keys(l)) {
+        if (key !== 'weak' && key !== 'resist') errors.push(`lanes has unknown field '${key}'`);
+      }
+    }
   }
   if (d.special !== undefined) {
     errors.push("special is retired — author kit: [{ability, cooldownTicks, ...}] (docs/enemy-arts-plan.md)");
@@ -2996,6 +3052,12 @@ export function validateNpcDef(
     if (typeof s?.count !== 'number' || (s.count as number) < 1) {
       errors.push('splitInto.count must be ≥ 1');
     }
+    // The engine caps split recursion "by data" — this is where that
+    // data is capped: a def splitting into itself (or any cycle the
+    // CMS lets through) makes death spawn exponentially.
+    if (typeof d.id === 'string' && s?.npc === d.id) {
+      errors.push('splitInto.npc may not be the def itself (death would spawn exponentially)');
+    }
   }
   if (d.produce !== undefined) {
     const p = d.produce as Record<string, unknown>;
@@ -3005,7 +3067,14 @@ export function validateNpcDef(
   }
   if (d.lays !== undefined) {
     const p = d.lays as Record<string, unknown>;
-    if (typeof p?.item !== 'string' || typeof p?.minSec !== 'number' || typeof p?.maxSec !== 'number') {
+    if (
+      typeof p?.item !== 'string' ||
+      typeof p?.minSec !== 'number' ||
+      typeof p?.maxSec !== 'number' ||
+      typeof p?.xp !== 'number'
+    ) {
+      // The error message always claimed xp; the check now agrees
+      // (an unchecked xp paid undefined beastcraft XP at pickup).
       errors.push('lays needs {item, minSec, maxSec, xp}');
     }
   }

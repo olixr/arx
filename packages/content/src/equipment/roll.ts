@@ -126,6 +126,11 @@ export function heirloomFor(npcLevel: number, rand: () => number): string | null
   for (const [id, def] of ITEMS) {
     const gear = def.gear;
     if (!gear) continue;
+    // The acquisition law holds here too: drop and craft lanes re-issue
+    // as heirlooms; a shop-only piece never falls off a foe (the pool
+    // was the one gear route with no acquisition filter, and it leaked
+    // exactly one shop-only staff before this line).
+    if (!gear.acquisition.drop && !gear.acquisition.craft) continue;
     if ((gear.levelReq?.level ?? 1) > npcLevel - HEIRLOOM_MIN_SURPLUS) continue;
     pool.push(id);
   }

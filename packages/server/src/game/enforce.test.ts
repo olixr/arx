@@ -13,6 +13,7 @@ type AnyFn = (...args: never[]) => unknown;
 const proto = GameServer.prototype as unknown as {
   npcAggro: AnyFn;
   cancelNpcCast: AnyFn;
+  resetBossEngagement: AnyFn;
   npcFactionOf: AnyFn;
   npcEnforcerFid: AnyFn;
   playerBandWith: AnyFn;
@@ -77,6 +78,8 @@ function slate(opts: {
     actors: new Map(opts.actorSlug ? [[21, { actor: { id: opts.actorSlug } }]] : []),
     npcAggro: proto.npcAggro,
     cancelNpcCast: proto.cancelNpcCast,
+    // The retarget teardown is one owned act now (audit 2026-08-15).
+    resetBossEngagement: proto.resetBossEngagement,
     npcFactionOf: proto.npcFactionOf,
     npcEnforcerFid: proto.npcEnforcerFid,
     playerBandWith: proto.playerBandWith,

@@ -22,7 +22,7 @@
   { "id": "miscount",
  "voice": "bram_tally__miscount", "text": "No. I do not miscount. I have been asked that by everyone in this town including the reeve and the answer has not changed in nineteen years.", "next": "off_count" },
   { "id": "stolen",
- "voice": "bram_tally__stolen", "text": "That is not my word. My word is missing. Halla can have the other word if she wants it, and she can have my books, and she has not asked for either.", "next": "hub", "set": ["bram_gap"] },
+ "voice": "bram_tally__stolen", "text": "That is not my word. My word is missing. Halla can have the other word if she wants it, and she can have my books, and she has not asked for either.", "next": "hub", "hooks": [{ "kind": "flag", "flag": "bram_gap" }] },
   { "id": "off",
  "voice": "bram_tally__off", "text": "Mind the chain." }
  ]

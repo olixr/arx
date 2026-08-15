@@ -57,7 +57,9 @@ function yieldOf(
     return { stacks, gearStacks };
   }
   for (const e of table.entries) {
-    const p = Math.min(1, (e.chance ?? 1) * chanceMult);
+    // Mirrors rollInto's ONE-DAMP-PER-LEAF law: a reference's gate is
+    // undamped (the mult rides into the sub-table and damps each leaf).
+    const p = Math.min(1, (e.chance ?? 1) * (e.table ? 1 : chanceMult));
     const y = entryYield(e, tables, chanceMult, depth);
     stacks += p * y.stacks;
     gearStacks += p * y.gearStacks;

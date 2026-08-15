@@ -25,7 +25,7 @@
     { "text": "What was his name?", "next": "name" },
     { "text": "I am sorry.", "next": "sorry" } ] },
   { "id": "name",
- "voice": "torvi_stone__name", "text": "Aslak. Say it once and go on with your day. That is all I have ever wanted anybody to do with it.", "next": "hub", "set": ["torvi_name"] },
+ "voice": "torvi_stone__name", "text": "Aslak. Say it once and go on with your day. That is all I have ever wanted anybody to do with it.", "next": "hub", "hooks": [{ "kind": "flag", "flag": "torvi_name" }] },
   { "id": "sorry",
  "voice": "torvi_stone__sorry", "text": "Everyone is. Sit down, then, and be sorry where it is warm.", "next": "hub" },
   { "id": "afraid",

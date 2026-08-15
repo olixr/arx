@@ -24,7 +24,7 @@
     { "text": "Officially.", "next": "wink" },
     { "text": "Good.", "next": "hub" } ] },
   { "id": "wink",
- "voice": "ospren_ledger__wink", "text": "I said what I said. If somebody is bringing great sticks down to the bays that did not grow inside the line, that is a matter for Halla and not for a man with a list.", "next": "hub", "set": ["ospren_hint"] },
+ "voice": "ospren_ledger__wink", "text": "I said what I said. If somebody is bringing great sticks down to the bays that did not grow inside the line, that is a matter for Halla and not for a man with a list.", "next": "hub", "hooks": [{ "kind": "flag", "flag": "ospren_hint" }] },
   { "id": "off",
  "voice": "ospren_ledger__off", "text": "Mind the wains at the bays. They do not stop either." }
  ]

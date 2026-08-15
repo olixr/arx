@@ -267,10 +267,26 @@ function validateChoices(
       errors.push(`${where}.choices[${i}].set may not write faction: flags (deeds write standing, the bands answer)`);
       continue;
     }
+    for (const key of Object.keys(c)) {
+      if (!CHOICE_KEYS.has(key)) {
+        errors.push(`${where}.choices[${i}] has unknown field '${key}'`);
+      }
+    }
     out.push(choice);
   }
   return out;
 }
+
+/**
+ * THE CLOSED SHAPES: a rebuild-style validator copies fields one by
+ * one, so a field it doesn't know is a field that silently vanishes —
+ * that mechanism ate four shipped trees' node-level `set` (and with it
+ * the only stamp of the a_name_for_the_stone quest gate) before this
+ * guard existed. Every unknown key is now a build error with the
+ * lawful alternative named, never a quiet drop.
+ */
+const CHOICE_KEYS = new Set(['text', 'next', 'requires', 'forbids', 'set']);
+const NODE_KEYS = new Set(['id', 'speaker', 'text', 'next', 'choices', 'hooks', 'voice', 'mood']);
 
 function validateNode(
   raw: unknown,
@@ -282,6 +298,15 @@ function validateNode(
   if (!isRecord(raw)) {
     errors.push(`${where} must be an object`);
     return undefined;
+  }
+  for (const key of Object.keys(raw)) {
+    if (!NODE_KEYS.has(key)) {
+      errors.push(
+        key === 'set'
+          ? `${where} has unknown field 'set' — a node stamps flags through hooks: [{ "kind": "flag", "flag": … }] (choice-level set belongs to choices)`
+          : `${where} has unknown field '${key}'`,
+      );
+    }
   }
   const id = typeof raw.id === 'string' ? raw.id : '';
   if (!SLUG_RE.test(id) || id.length > 48) {
@@ -354,6 +379,11 @@ export function validateDialogue(raw: unknown, refs?: ValidateDialogueRefs): Val
   }
   const requires = flagList(raw.requires, 'requires', errors, refs);
   const forbids = flagList(raw.forbids, 'forbids', errors, refs);
+
+  const DIALOGUE_KEYS = new Set(['id', 'start', 'once', 'requires', 'forbids', 'nodes', 'bindings']);
+  for (const key of Object.keys(raw)) {
+    if (!DIALOGUE_KEYS.has(key)) errors.push(`unknown field '${key}'`);
+  }
 
   if (!Array.isArray(raw.nodes) || raw.nodes.length < 1 || raw.nodes.length > 64) {
     errors.push('nodes must be an array of 1..64 nodes');

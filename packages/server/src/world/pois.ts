@@ -1840,6 +1840,19 @@ export function findAuthoredAnchor(
     const fx0 = tx - Math.floor(prefab.width / 2);
     const fy0 = ty - Math.floor(prefab.height / 2);
     if (intersectsZones(fx0, fy0, prefab.width, prefab.height, ctx.zoneRects, 6)) return false;
+    // THE EXCLUSION LAW reaches authored pins too: decideSite's doc
+    // claims every materialization candidate passes the ring check —
+    // this scan didn't, so a re-seeded milepost could nudge its
+    // footprint onto a player's claimed yard (the exact event the
+    // rings exist to forbid). The capital mask rides along for the
+    // same reason.
+    if (intersectsRings(fx0, fy0, prefab.width, prefab.height, ctx.claimRings)) return false;
+    for (const c of ctx.capitals) {
+      if (fx0 < c.x + c.w + 24 && c.x - 24 < fx0 + prefab.width &&
+          fy0 < c.y + c.h + 24 && c.y - 24 < fy0 + prefab.height) {
+        return false;
+      }
+    }
     let rough = 0;
     let probes = 0;
     for (let dy = 0; dy < prefab.height; dy += stride) {

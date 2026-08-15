@@ -4433,6 +4433,24 @@ export class GameServer {
     }
   }
 
+  /**
+   * Does the site owning a warded chest currently lie broken (cleared
+   * or embered — its garrison stood down for the whole window)? The
+   * reclose clock consults this so a ward never re-arms keeperless.
+   */
+  private chestSiteLiesBroken(cell: string): boolean {
+    if (cell.startsWith('sh:')) {
+      // 'sh:gx,gy' or 'sh:gx,gy:wardIdx' — the site key is the middle.
+      const rest = cell.slice(3);
+      const colon = rest.indexOf(':');
+      const row = this.strongholdLedger.get(colon >= 0 ? rest.slice(0, colon) : rest);
+      return row !== undefined && (row.clearedAt !== null || row.emberUntil !== null);
+    }
+    if (cell.startsWith('dg:')) return false; // no reclose underground
+    const row = this.poiLedger.get(cell);
+    return row !== undefined && (row.clearedAt !== null || row.emberUntil !== null);
+  }
+
   /** How long a hand-opened door stands before pulling itself to. */
   private static readonly DOOR_AUTOCLOSE_MS = 120_000;
 
@@ -8979,10 +8997,33 @@ export class GameServer {
       row?.epoch ?? 0,
       row?.stage ?? 0,
     );
+    // The felled capital's carcass keeps its lids up too (the POI
+    // ember law's dialect): rebuilding chests closed handed a restart
+    // one free boss-law open per cleared citadel.
+    if (row && (row.clearedAt !== null || row.emberUntil !== null)) {
+      for (let i = 0; i < zone.ground.length; i++) {
+        const info = chestInfo(zone.ground[i]!);
+        if (info && !info.open) zone.ground[i] = openChestTile(info.kind);
+      }
+    }
     this.world.addZone(zone);
     this.dropClientChunks(zone);
     const spawnIdx = this.registerSpawns(zone.spawns ?? [], zone.id);
     for (const i of spawnIdx) this.strongholdSpawnCells.set(i, key);
+    // THE BITS BELONG TO THEIR WALLS: wardsCleared indexes THIS
+    // layout's ward list by position. When the dealt layout differs
+    // from the one the bits were earned against (a pool edit re-deals
+    // layoutForSeat at the same epoch — the ghost-seat law), applying
+    // them would stand down arbitrary wards of walls nobody broke, or
+    // point past the list entirely. Earned against other walls = not
+    // earned; the new walls stand whole.
+    if (row && row.layoutId !== layout.id && row.wardsCleared !== 0) {
+      console.log(
+        `[stronghold] ${key}: walls re-dealt '${row.layoutId}' -> '${layout.id}' — ward bits dropped`,
+      );
+      row.wardsCleared = 0;
+      this.accounts.markStrongholdWards(seat.gx, seat.gy, 0);
+    }
     // THE CHAPTERS, restart-safe: broken wards re-stand broken; a
     // cleared capital re-stands whole as a carcass (the ember-law
     // dialect — Phase 5's clock owns dissolving it).
@@ -9445,7 +9486,36 @@ export class GameServer {
       const cellY = want.cell ? want.cell[1] : poiCellOf(want.y!);
       const key = poiCellKey(cellX, cellY);
       const row = this.poiLedger.get(key);
-      if (row?.site?.defId === want.defId) continue; // already standing
+      if (row?.site?.defId === want.defId) {
+        // THE SEEDER RE-READS THE PLAN: matching defId alone used to
+        // end the story here, which pinned two silent failures — a
+        // Studio-moved pin never moved its site (doc and world
+        // disagreeing forever, no log), and a stored prefab that left
+        // the def's pool stood as an uncomposable corpse no sweep
+        // would ever heal (sweeps skip authored cells by design).
+        const stale =
+          !this.poiPrefabs.has(row.site.prefabId) || !def.prefabs.includes(row.site.prefabId);
+        const pinMoved =
+          !want.cell &&
+          Math.hypot(row.site.anchorX - want.x!, row.site.anchorY - want.y!) >
+            GameServer.AUTHORED_NUDGE_MAX + 0.5;
+        if (!stale && !pinMoved) {
+          // Standing true — but heal any legacy cleared/ember stamp
+          // (THE AUTHORED GROUND NEVER EMBERS: rows stamped before
+          // that law held would otherwise stand garrison-down forever).
+          if (row.clearedAt !== null || row.emberUntil !== null) {
+            row.clearedAt = null;
+            row.emberUntil = null;
+            this.accounts.healPoiCleared(cellX, cellY);
+            console.log(`[poi] authored site '${want.id}': healed a legacy cleared stamp`);
+          }
+          continue;
+        }
+        console.log(
+          `[poi] authored site '${want.id}': ` +
+            `${stale ? 'stored prefab left the library' : 'the pin moved'} — re-seeding`,
+        );
+      }
 
       // A different decision holds the cell — retire it; the epoch
       // bump keeps the re-decision's muster streams fresh.
@@ -9457,8 +9527,18 @@ export class GameServer {
         const prefabId =
           def.prefabs[hashCoords(config.worldSeed ^ 0xa07d, want.x!, want.y!) % def.prefabs.length]!;
         const prefab = this.poiPrefabs.get(prefabId);
+        // The nudge may never carry the anchor out of the pin's macro
+        // cell: the ledger row, the authored-cell protection, and the
+        // validator's one-site-per-cell key all name the PIN's cell —
+        // an anchor sliding across the border left them all pointing
+        // at the wrong ground and freed the real cell for an organic
+        // roll on top of it.
+        const inX = want.x! - cellX * POI_CELL;
+        const inY = want.y! - cellY * POI_CELL;
+        const edge = Math.min(inX, inY, POI_CELL - 1 - inX, POI_CELL - 1 - inY);
+        const nudge = Math.max(0, Math.min(GameServer.AUTHORED_NUDGE_MAX, edge));
         const spot = prefab
-          ? findAuthoredAnchor(config.worldSeed, want.x!, want.y!, prefab, ctx)
+          ? findAuthoredAnchor(config.worldSeed, want.x!, want.y!, prefab, ctx, nudge)
           : null;
         if (spot) {
           site = {
@@ -9550,6 +9630,14 @@ export class GameServer {
    * and loot the warded chest before the camp restaffs.
    */
   private static readonly POI_RESPAWN_MIN_SEC = 180;
+
+  /**
+   * How far an authored pin's anchor may slide off its pin (matches
+   * findAuthoredAnchor's default) — the seeder reads it both to clamp
+   * the nudge inside the pin's macro cell and to recognize a pin that
+   * MOVED (stored anchor farther than any nudge could have carried it).
+   */
+  private static readonly AUTHORED_NUDGE_MAX = 14;
 
   /**
    * THE THINNER PURSE: what fraction of its open-world drop chances a
@@ -10917,16 +11005,26 @@ export class GameServer {
       this.standFinds(cellX, cellY, row.epoch, { x: row.site.anchorX, y: row.site.anchorY });
       return null;
     }
-    this.world.addZone(zone);
-    this.dropClientChunks(zone);
-    const spawnIdx = this.registerSpawns(zone.spawns ?? [], zone.id);
-    for (const i of spawnIdx) this.poiSpawnCells.set(i, key);
     // THE EMBER LAW, restart-safe: a cleared cell (or a scattered
     // satellite — ember with no clear) re-materializes as the carcass
     // it is — the zone stands (tents, cold fires, the opened chest),
     // but the fighting garrison stays down. Livestock and staff keep
-    // their lives; only the broken muster is denied.
-    if (row.clearedAt !== null || row.emberUntil !== null) this.standDownGarrison(spawnIdx);
+    // their lives; only the broken muster is denied. "The opened
+    // chest" is literal now: the prefab rebuilds chests closed, which
+    // handed a restart-during-ember one free warded open per cleared
+    // site — the carcass keeps its lids up instead.
+    const broken = row.clearedAt !== null || row.emberUntil !== null;
+    if (broken) {
+      for (let i = 0; i < zone.ground.length; i++) {
+        const info = chestInfo(zone.ground[i]!);
+        if (info && !info.open) zone.ground[i] = openChestTile(info.kind);
+      }
+    }
+    this.world.addZone(zone);
+    this.dropClientChunks(zone);
+    const spawnIdx = this.registerSpawns(zone.spawns ?? [], zone.id);
+    for (const i of spawnIdx) this.poiSpawnCells.set(i, key);
+    if (broken) this.standDownGarrison(spawnIdx);
     // The friendly staff stands up through the actor machinery —
     // identity, disposition, protection, dialogue, and shop all ride
     // the same laws the town's own people keep.
@@ -11149,8 +11247,16 @@ export class GameServer {
     }
     const [cx, cy] = key.split(',').map(Number);
     const row = this.poiLedger.get(key);
-    if (row) row.clearedAt = Date.now();
-    if (this.authoredCells().has(key)) {
+    const authored = this.authoredCells();
+    if (authored.has(key)) {
+      // THE AUTHORED GROUND NEVER EMBERS: a wipe here buys the live
+      // grace window and nothing else — no cleared stamp, in memory or
+      // DB. The stamp is the ember system's, and materializePoiCell
+      // reads any stamp as "stand the garrison down"; stamping an
+      // authored cell turned one clear + one reboot into a permanent
+      // carcass (the exact opposite of the covenant markPoiCleared's
+      // own comment states). The ceremony, flags, and calm below still
+      // pay — only the carcass machinery is refused.
       const graceAt = Date.now() + GameServer.POI_RESPAWN_MIN_SEC * 1000;
       for (const i of live.spawnIdx) {
         const s = this.spawnPoints[i];
@@ -11158,8 +11264,8 @@ export class GameServer {
           s.respawnAt = Math.max(s.respawnAt, graceAt);
         }
       }
-      this.accounts.markPoiCleared(cx!, cy!);
     } else {
+      if (row) row.clearedAt = Date.now();
       this.standDownGarrison(live.spawnIdx);
       // A felled WAR-GROUND savors longer (Phase 4): the five-minute
       // clear earns the fifteen-minute trophy.
@@ -11183,7 +11289,8 @@ export class GameServer {
     // family's nerve the same way: the core and every sibling scatter.
     let scattered = 0;
     const scatterCell = (skey: string, srow: NonNullable<typeof row>): void => {
-      if (srow.site === null || srow.emberUntil !== null) return;
+      // Authored ground never scatters either — same covenant as above.
+      if (srow.site === null || srow.emberUntil !== null || authored.has(skey)) return;
       srow.emberUntil =
         Date.now() + scatterLingerFor(config.worldSeed, srow.site.cellX, srow.site.cellY);
       this.standDownGarrison(this.poiLive.get(skey)?.spawnIdx ?? []);
@@ -20505,8 +20612,27 @@ export class GameServer {
       // THE STUBBORN CROWN: a crowned body is shoved a step, never
       // juggled — the boss dial scales every landed knockback.
       const push = (crit ? 0.55 : 0.35) * knockbackMult * bossKnockMult(npc.def);
-      const nx = npos.x + kx * push;
-      const ny = npos.y + ky * push;
+      let nx = npos.x + kx * push;
+      let ny = npos.y + ky * push;
+      // THE ARENA HOLDS THE CROWN, shove included: the rim guard only
+      // planted self-chosen steps, so a movable crown standing inside
+      // the guard band could be knocked OVER its own rim — one lucky
+      // proc handed any half-dead fight a self-leash full heal (and a
+      // griefing tool). The shove lands, but never past the line the
+      // body itself may not cross.
+      if (npc.def.boss) {
+        const r = this.arenaRadiusFor(npc) - GameServer.ARENA_RIM_BAND;
+        const odx = nx - npc.originX;
+        const ody = ny - npc.originY;
+        const od = Math.hypot(odx, ody);
+        if (od > r) {
+          const cur = Math.hypot(npos.x - npc.originX, npos.y - npc.originY);
+          // Clamp to the rim (or hold ground if already shoved past it).
+          const hold = Math.max(Math.min(r, od), Math.min(cur, od));
+          nx = npc.originX + (odx / od) * hold;
+          ny = npc.originY + (ody / od) * hold;
+        }
+      }
       if (!circleHitsSolid(this.world, nx, ny, npc.def.radius)) {
         npos.x = nx;
         npos.y = ny;
@@ -20649,6 +20775,8 @@ export class GameServer {
     if (npc.def.boss?.defeatBark) {
       this.sayAloud(npcEid, npc.def.name, npc.def.boss.defeatBark);
     }
+    // THE COURT FALLS WITH ITS CROWN: the raiser's summons go with it.
+    this.disbandCourt(npc);
     // Everyone watching sees the death burst.
     for (const s of this.sessions) {
       if (s.playerEid === npcEid || s.knownEntities.has(npcEid)) {
@@ -21298,6 +21426,17 @@ export class GameServer {
       // kit, authored crown) simply stands unforged — never a crash.
       if (spawn.crown !== undefined && !def.boss && def.kit && crownPoolFor(def.id)) {
         def = forgeCrown(def, spawn.crown, { name: spawn.name });
+      } else if (spawn.crown !== undefined && !def.boss && !this.crownWarned.has(def.id)) {
+        // A crowned seat the forge cannot serve stands a plain champion
+        // — lawful, but never silent again: this flag has already been
+        // eaten twice on its way here (the validator drop, then the
+        // poolless skral deepkings), both invisible until walked live.
+        // Once per def id, not per respawn.
+        this.crownWarned.add(def.id);
+        console.warn(
+          `[crown] seat for '${def.id}' is crowned but unforgeable ` +
+            `(${def.kit ? 'no crown pool claims it' : 'kitless base'}) — stands unforged`,
+        );
       }
       // Find a walkable scatter position.
       let x = spawn.x;
@@ -21362,6 +21501,9 @@ export class GameServer {
   /** Live ambient bodies (spawnIndex -1) and the roster window each
    * came in on; killNpc and the despawn pass prune it. */
   private readonly wildBodies = new Map<EntityId, { from: number; to: number } | null>();
+
+  /** Crowned-but-unforgeable seats already warned about (once per def id). */
+  private readonly crownWarned = new Set<string>();
 
   /** Ambient spawns keep this far out / this near a player (tiles). */
   private static readonly WILD_MIN_R = 34;
@@ -22666,9 +22808,10 @@ export class GameServer {
       }
     }
     npc.state = 'chase';
-    // A retarget mid-breath drops the old working (new quarry, new
-    // choices — the stale cast would fire at the wrong feet).
-    if (npc.targetEid !== targetEid) this.cancelNpcCast(eid, npc);
+    // A retarget drops the old working whole (new quarry, new choices
+    // — the stale cast would fire at the wrong feet, and a queued
+    // combo link belongs to the fight that queued it).
+    if (npc.targetEid !== targetEid) this.resetBossEngagement(eid, npc);
     npc.targetEid = targetEid;
     npc.navBest = Infinity;
     npc.navStuck = 0;
@@ -23007,8 +23150,8 @@ export class GameServer {
     npc.state = 'search';
     npc.targetEid = null;
     npc.windupTicks = 0;
-    this.cancelNpcCast(eid, npc);
-    npc.lopeIdx = null; // a lost quarry ends the run — nothing to call over
+    // A lost quarry ends the cast, the combo, and the run as one act.
+    this.resetBossEngagement(eid, npc);
     npc.helpEid = null;
     npc.huntUntilTick = this.tickCount + GameServer.SEARCH_TICKS;
     npc.huntWps = null;
@@ -23387,6 +23530,13 @@ export class GameServer {
         }
       }
       const childEid = this.spawnNpc(def, cx, cy, -1);
+      // A raised body is EPHEMERAL for real: it joins the ambient
+      // ledger so the distance despawn claims it once nobody is near.
+      // Without this, a spawnIndex −1 add belonged to no sweep — every
+      // abandoned engagement left its court standing forever, and a
+      // respawned raiser's fresh cap ledger raised a new court beside
+      // the old one (unbounded growth at every summoning seat).
+      this.wildBodies.set(childEid, null);
       caster.summonedEids.push(childEid);
       const child = this.npcs.get(childEid)!;
       // Raised INTO the fight the raiser is in.
@@ -23507,18 +23657,29 @@ export class GameServer {
    * a kiting player watches a half-dead fight erase itself (the
    * proving found it live). At the rim the body plants and fights.
    */
+  /** Tiles inside the arena radius where the rim guard plants a retreating crown. */
+  private static readonly ARENA_RIM_BAND = 1.2;
+
+  /**
+   * THE ONE RADIUS: how far this body's fight may stray — the seat's
+   * override outranks the authored crown radius outranks the leash.
+   * The rim guard, the leash break, and the knockback clamp all read
+   * it here; the fallback chain used to live in each by hand.
+   */
+  private arenaRadiusFor(npc: NpcComp): number {
+    return this.spawnPoints[npc.spawnIndex]?.arenaR ?? npc.def.boss?.arenaR ?? npc.def.leashRange;
+  }
+
   private bossAtArenaRim(
     npc: NpcComp,
     pos: { x: number; y: number },
     mx: number,
     my: number,
   ): boolean {
-    const boss = npc.def.boss;
-    if (!boss) return false;
+    if (!npc.def.boss) return false;
     // The seat's own override outranks the authored radius — a crown
     // stamped into a court fights inside the walls the author drew.
-    const r =
-      (this.spawnPoints[npc.spawnIndex]?.arenaR ?? boss.arenaR ?? npc.def.leashRange) - 1.2;
+    const r = this.arenaRadiusFor(npc) - GameServer.ARENA_RIM_BAND;
     const cur = Math.hypot(pos.x - npc.originX, pos.y - npc.originY);
     const nx = pos.x + mx * 0.6;
     const ny = pos.y + my * 0.6;
@@ -23526,6 +23687,52 @@ export class GameServer {
     // Only an OUTWARD-bound step past the guard band is refused — an
     // inward retreat is always free ground, wherever it starts.
     return next > cur && next > r;
+  }
+
+  /**
+   * THE ENGAGEMENT ENDS AS ONE ACT: every transition that abandons a
+   * fight — search start, retarget, leash/arena break — ends the
+   * cast, the queued combo link, and the lope errand HERE. The break
+   * used to ride cancelNpcCast alone, which early-returns when no
+   * cast is in flight: a chain queued at fire time survived the
+   * transition, and the NEXT engagement opened on a cooldown-waived
+   * follower its challenger never saw earned.
+   */
+  private resetBossEngagement(eid: EntityId, npc: NpcComp): void {
+    this.cancelNpcCast(eid, npc);
+    npc.bossChainIdx = null;
+    npc.lopeIdx = null;
+    npc.lopeUntilTick = 0;
+  }
+
+  /**
+   * THE COURT FALLS WITH ITS CROWN: a raiser's standing summons die
+   * with the engagement that raised them — on the raiser's death, and
+   * on the arena walk-home (a full-heal reset that kept the old court
+   * both opened the next fight harder than authored and let the cap
+   * ledger count stale bodies, so the fresh fight's summon ceremony
+   * could raise nothing). Distance despawn covers the abandoned rest:
+   * summons enter wildBodies at birth.
+   */
+  private disbandCourt(npc: NpcComp): void {
+    for (const ceid of npc.summonedEids ?? []) {
+      const child = this.npcs.get(ceid);
+      if (!child) continue;
+      // The fall must READ: each add pays the death burst where it
+      // stands (no loot, no xp — a collapsing court is not a kill).
+      const cpos = this.positions.get(ceid);
+      if (cpos) {
+        for (const s of this.sessions) {
+          if (s.knownEntities.has(ceid)) {
+            s.sendJson({ t: 'death', eid: ceid, x: cpos.x, y: cpos.y, defId: child.def.id });
+          }
+        }
+      }
+      this.removeFromChunks(ceid);
+      this.ecs.destroy(ceid);
+      this.wildBodies.delete(ceid);
+    }
+    npc.summonedEids = undefined;
   }
 
   private tickNpcs(now: number): void {
@@ -23654,15 +23861,11 @@ export class GameServer {
         // arenaR outranks the def's leash when the crown wears one, and
         // the SEAT's own radius outranks both (a court-stamped crown
         // fights inside the walls its arena prefab drew).
-        if (
-          fromOrigin >
-          (this.spawnPoints[npc.spawnIndex]?.arenaR ?? npc.def.boss?.arenaR ?? npc.def.leashRange)
-        ) {
+        if (fromOrigin > this.arenaRadiusFor(npc)) {
           npc.state = 'return';
           npc.targetEid = null;
           npc.windupTicks = 0;
-          this.cancelNpcCast(eid, npc);
-          npc.lopeIdx = null;
+          this.resetBossEngagement(eid, npc);
           npc.navBest = Infinity;
           npc.navStuck = 0;
         } else if (!tpos || sightBroke) {
@@ -24061,14 +24264,17 @@ export class GameServer {
           npc.helpCalled = false;
           npc.helpEid = null;
           // THE ARENA LAW's other half: the walk home resets the
-          // crown — opening stance, chain dropped, cooldowns
-          // re-seeded (the lazy-seed idiom). No door-cheesing a
-          // half-dead boss: the next challenger meets the whole fight.
+          // crown WHOLE — opening stance, chain dropped, cooldowns
+          // re-seeded (the lazy-seed idiom), and the raised court
+          // disbanded (a full-heal reset that kept its old adds
+          // opened the next fight harder than authored). No
+          // door-cheesing a half-dead boss: the next challenger meets
+          // the whole fight, exactly the whole fight.
           if (npc.def.boss) {
+            this.resetBossEngagement(eid, npc);
+            this.disbandCourt(npc);
             npc.bossPhase = 0;
-            npc.bossChainIdx = null;
             npc.bossLastKitIdx = undefined;
-            npc.lopeIdx = null;
             npc.kitCds = undefined;
             // The banner walks back to the opening stance with the body.
             this.broadcastMetaUpdate(eid);
@@ -26338,6 +26544,18 @@ export class GameServer {
         // The world moved on under this entry — let it go.
         this.respawnQueue.splice(i, 1);
         continue;
+      }
+      // THE WARD RE-ARMS WITH ITS KEEPER: a warded chest's reclose
+      // defers while its site lies cleared or embered — the garrison
+      // is down for that whole window, so an on-schedule reclose was a
+      // free boss-law open every recloseSec (2-3 unguarded dips per
+      // stronghold clear). The epoch re-deal is the honest reset.
+      if (chestInfo(entry.tile) && !chestInfo(entry.tile)!.open) {
+        const over = this.poiChests.get(`${entry.tx},${entry.ty}`);
+        if (over?.warded && this.chestSiteLiesBroken(over.cell)) {
+          entry.at = now + 60_000;
+          continue;
+        }
       }
       // Never stand a solid back up THROUGH a body: if the tile is
       // currently walkable and about to turn solid, an occupant defers

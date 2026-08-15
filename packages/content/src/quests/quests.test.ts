@@ -88,6 +88,32 @@ test('requires.quests chains are acyclic (a gate must be earnable)', () => {
   for (const id of QUESTS.keys()) visit(id);
 });
 
+test('every quest gate flag is stampable in shipped content (a gate must be earnable)', () => {
+  // The a_name_for_the_stone lesson: its one gate flag was authored on
+  // a dialogue node's `set` — a field the node validator didn't know
+  // and silently ate — so the quest shipped unreachable. Flags only
+  // exist where something stamps them; this walks every stamp source
+  // and refuses a gate no shipped content can ever satisfy.
+  const stampable = new Set<string>();
+  for (const d of DIALOGUES.values()) {
+    for (const n of d.nodes) {
+      for (const h of n.hooks ?? []) if (h.kind === 'flag') stampable.add(h.flag);
+      for (const c of n.choices ?? []) for (const f of c.set ?? []) stampable.add(f);
+    }
+  }
+  for (const q of QUESTS.values()) for (const f of q.rewards?.flags ?? []) stampable.add(f);
+  for (const q of QUESTS.values()) {
+    for (const f of q.requires?.flags ?? []) {
+      if (f.startsWith('faction:')) continue; // answered live from standing
+      if (f.startsWith('dlg:')) {
+        assert.ok(DIALOGUES.has(f.slice(4)), `${q.id}: gate '${f}' names a real dialogue`);
+        continue;
+      }
+      assert.ok(stampable.has(f), `${q.id}: gate flag '${f}' is stamped nowhere in shipped content`);
+    }
+  }
+});
+
 test('validator: the laws hold', () => {
   const base = {
     id: 'law_probe',

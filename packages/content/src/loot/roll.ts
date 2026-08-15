@@ -58,7 +58,11 @@ function rollInto(
     }
   } else {
     for (const e of table.entries) {
-      const chance = (e.chance ?? 1) * chanceMult;
+      // ONE DAMP PER LEAF: a reference entry's gate stays undamped —
+      // the mult rides into the sub-table and damps each leaf there.
+      // Damping the gate too compounded the dial quadratically (a 0.5
+      // delve dial paid nested racks at 0.25).
+      const chance = (e.chance ?? 1) * (e.table ? 1 : chanceMult);
       if (chance < 1 && ctx.rand() > chance) continue;
       resolveEntry(e, table, ctx, tables, chanceMult, depth, sink);
     }
@@ -91,8 +95,27 @@ function resolveEntry(
   const qty = lo + Math.floor(ctx.rand() * (hi - lo + 1));
   // Pool picks are rolled gear by construction — craft-only sets
   // re-issued as heirlooms still arrive with a rarity and a power.
-  out.push({ item, qty, roll: stampRoll(item, table, ctx, e.pool !== undefined) });
+  const roll = stampRoll(item, table, ctx, e.pool !== undefined);
+  if (roll === undefined && itemDef(item)?.gear !== undefined) {
+    // THE REFUSAL IS LOUD: gear stampRoll won't roll is gear with no
+    // drop acquisition — shipping it anyway minted a permanently-common
+    // affixless husk with zero telemetry (the mechanism behind the
+    // seven-orphan bug, still armed for any live CMS table edit).
+    // The drop is withheld and the table confesses.
+    if (!refusedWarned.has(item)) {
+      refusedWarned.add(item);
+      console.warn(
+        `[loot] table pays gear '${item}' that carries no drop acquisition — withheld ` +
+          `(it would drop as a permanently-common husk; flag it or remove it from the table)`,
+      );
+    }
+    return;
+  }
+  out.push({ item, qty, roll });
 }
+
+/** Gear refusals already confessed (once per item id, not per kill). */
+const refusedWarned = new Set<string>();
 
 /**
  * Rarity + item-power stamping for one dropped instance. Gear flagged
@@ -128,7 +151,11 @@ function stampRoll(
   if (!rollable) return undefined;
   const allowed = floorRarities(gear?.rarities ?? RARITY_TIERS, table.minRarity);
   const weights = dropRarityWeights(ctx.level + (table.rarityBonus ?? 0) + (ctx.rarityBonus ?? 0));
-  const roll = makeRoll(pickRarity(weights, allowed, ctx.rand));
+  // The purity contract holds for the whole roll: the affix seed draws
+  // from ctx.rand like everything else (Math.random here made "pure
+  // given ctx.rand" a lie — seeded tests could pin rarity but never
+  // affixes, and a replay harness would silently diverge).
+  const roll = makeRoll(pickRarity(weights, allowed, ctx.rand), Math.floor(ctx.rand() * 0x100000000) >>> 0);
   if ((table.power ?? 'source') === 'source') {
     const native = gear?.levelReq?.level ?? 0;
     const pwr = ctx.level + Math.floor(ctx.rand() * 4);

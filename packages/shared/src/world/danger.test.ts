@@ -176,12 +176,19 @@ test('OVERBAND: a dread-3 heart mid-march burns hot but never crosses', () => {
 test('OVERBAND: the rim never crosses — only the full heart does', () => {
   const brand = { x: 600, y: 600, safeR: 80, dread: 3 } as const;
   const world: DangerAnchor[] = [...ANCHORS, { ...brand }];
-  for (let d = brand.safeR + 1; d < brand.safeR + HAVEN_FADE * 2 + 40; d += 2) {
+  for (let d = brand.safeR + 1; d < brand.safeR + HAVEN_FADE * 3 + 40; d += 2) {
     const tier = dangerAt(SEED, brand.x + d, brand.y, world);
     assert.ok(tier <= DANGER_MAX, `rim at +${d} read ${tier}`);
-    // And the rim still speaks the classic dread law exactly.
+    // And the rim speaks the GRADED dread law exactly: every rung on
+    // the way down, never the old two-tier cliff at the hem's edge.
     const without = dangerAt(SEED, brand.x + d, brand.y, ANCHORS);
-    const add = d - brand.safeR < HAVEN_FADE * 2 ? brand.dread - 1 : 0;
+    const fade = d - brand.safeR;
+    const add =
+      fade < HAVEN_FADE * 2
+        ? brand.dread - 1
+        : fade < HAVEN_FADE * 3
+          ? Math.max(0, brand.dread - 2)
+          : 0;
     assert.equal(tier, Math.min(DANGER_MAX, without + add), `rim law at +${d}`);
   }
 });

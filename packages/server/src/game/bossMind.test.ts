@@ -33,6 +33,7 @@ const proto = GameServer.prototype as unknown as {
   cancelNpcCast: Fn;
   tickBossCrown: Fn;
   bossAtArenaRim: Fn;
+  arenaRadiusFor: Fn;
 };
 
 const LADDER: NpcBossDef = {
@@ -210,7 +211,7 @@ test('the turning: a crossed gate barks, waives the entry, and winds it honestly
 test('the arena holds the crown: a rim-bound retreat plants instead of self-leashing', () => {
   // The slate carries the seat table too — a stamped court's own
   // arenaR override outranks the authored radius (the delve law).
-  const arenaSlate = { spawnPoints: [] };
+  const arenaSlate = { spawnPoints: [], arenaRadiusFor: proto.arenaRadiusFor };
   const npc = mkBossNpc([{ ...GS }], { ...LADDER, arenaR: 10 });
   const rim = (dx: number, x: number): boolean =>
     (proto.bossAtArenaRim as Fn).call(arenaSlate, npc, { x, y: 0 }, dx, 0) as boolean;

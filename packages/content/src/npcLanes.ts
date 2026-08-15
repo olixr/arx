@@ -33,6 +33,9 @@ import type { SkillId } from '@arx/shared';
 
 export type DamageLane = 'onehand' | 'twohand' | 'archery' | 'arx';
 
+/** The full lane roster as a value (validators check membership here). */
+export const DAMAGE_LANES: readonly DamageLane[] = ['onehand', 'twohand', 'archery', 'arx'];
+
 /** A weak lane bites this much harder. Categorical, game-wide. */
 export const LANE_WEAK_MULT = 1.25;
 /** A turned lane lands this much softer. Categorical, game-wide. */

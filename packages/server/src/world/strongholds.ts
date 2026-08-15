@@ -495,6 +495,26 @@ export function composeStronghold(
   });
   // The chief: crowned once, named forever (the names-pool law).
   const bossName = layout.boss.names[hashCoords(musterBase, 0xb0, 0x55) % layout.boss.names.length]!;
+  // THE COURT HOLDS THE CROWN (the delve seat's lesson, finally taught
+  // here too): a chief's authored open-ground arenaR outruns his own
+  // walled ward — kited out the ward door, the rim guard could never
+  // fire. The seat's radius is the ward itself: far corner from the
+  // throne plus a hem, so the fight fills the court and ends at it.
+  const bossWard = bossWardIdx >= 0 ? layout.wards[bossWardIdx] : undefined;
+  const courtR = bossWard
+    ? Math.ceil(
+        Math.hypot(
+          Math.max(
+            Math.abs(layout.boss.at[0] - bossWard.rect.x),
+            Math.abs(bossWard.rect.x + bossWard.rect.w - layout.boss.at[0]),
+          ),
+          Math.max(
+            Math.abs(layout.boss.at[1] - bossWard.rect.y),
+            Math.abs(bossWard.rect.y + bossWard.rect.h - layout.boss.at[1]),
+          ),
+        ),
+      ) + 2
+    : undefined;
   spawns.push({
     x: originX + layout.boss.at[0],
     y: originY + layout.boss.at[1],
@@ -503,6 +523,7 @@ export function composeStronghold(
     radius: 1.5,
     level: law.npcLevel[1] + (layout.boss.levelOffset ?? 0),
     name: bossName,
+    ...(courtR !== undefined ? { arenaR: courtR } : {}),
     ...(bossWardIdx >= 0 ? { wing: bossWardIdx } : {}),
   });
 

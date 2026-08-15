@@ -1176,6 +1176,19 @@ export class AccountStore {
     );
   }
 
+  /**
+   * Erase a cell's cleared/ember stamps whole. Boot heal for authored
+   * cells stamped before THE AUTHORED GROUND NEVER EMBERS held — a
+   * legacy stamp otherwise re-materializes the plan's fixed points
+   * garrison-down forever.
+   */
+  healPoiCleared(cellX: number, cellY: number): void {
+    this.db.fire(
+      'UPDATE world_pois SET cleared_at = NULL, ember_until = NULL WHERE cell_x = ? AND cell_y = ?',
+      [cellX, cellY],
+    );
+  }
+
   /** Re-stamp only the ember clock (boot reconcile of legacy clears, staging). */
   setPoiEmber(cellX: number, cellY: number, emberUntil: number | null): void {
     this.db.fire('UPDATE world_pois SET ember_until = ? WHERE cell_x = ? AND cell_y = ?', [

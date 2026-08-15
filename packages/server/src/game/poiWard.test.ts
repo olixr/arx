@@ -144,7 +144,7 @@ test('THE EMBER LAW: a procedural wipe stands the garrison down for good', () =>
   assert.ok((s.frontierCalm.get('3,4') ?? 0) > Date.now());
 });
 
-test('authored landmarks keep the old covenant: grace window, no ember', () => {
+test('authored landmarks keep the old covenant: grace window, no ember, NO STAMP', () => {
   const soon = Date.now() + 35_000; // the bestiary's own short clock
   const s = slate(
     [brigand({ respawnAt: soon }), brigand({ respawnAt: soon }), cow({ eid: 11 })],
@@ -153,9 +153,14 @@ test('authored landmarks keep the old covenant: grace window, no ember', () => {
   const before = Date.now();
   proto.notePoiKill.call(s, 1);
   const row = s.poiLedger.get('3,4')!;
-  assert.ok(row.clearedAt !== null && row.clearedAt >= before);
+  // THE AUTHORED GROUND NEVER EMBERS — and never carries the cleared
+  // stamp either: materializePoiCell reads ANY stamp as "stand the
+  // garrison down", so stamping an authored cell turned one clear plus
+  // one reboot into a permanent carcass. The grace window is the whole
+  // record of the wipe.
+  assert.equal(row.clearedAt, null);
   assert.equal(row.emberUntil, null);
-  assert.equal(s.cleared[0]![2], null); // no ember rides to the DB
+  assert.equal(s.cleared.length, 0); // nothing rides to the DB at all
   // Every downed fighter waits out the full grace, then stands anew.
   for (const i of [0, 1]) {
     assert.equal(s.spawnPoints[i]!.active, true);

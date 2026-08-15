@@ -218,6 +218,19 @@ export function validatePoiDef(
           : typeof g.crowned === 'boolean'
             ? g.crowned
             : (errors.push(`${at}: crowned must be a boolean`), undefined);
+      if (crowned) {
+        // A crown is ONE named body: an unnamed crowned row could have
+        // its bodies peeled onto posts (posted spawns carry no crown —
+        // the crown evaporates), and a count above one would expand
+        // into N spawn points all carrying the same crown seed and
+        // name — N identical bosses.
+        if (names === undefined) {
+          errors.push(`${at}: a crowned row needs a names pool (the crown wants a name)`);
+        }
+        if (count[1] > 1) {
+          errors.push(`${at}: a crowned row musters one body — count must be [1, 1]`);
+        }
+      }
       if (role) {
         out.push({
           npc,
@@ -548,6 +561,20 @@ export function validatePoiDef(
         : (errors.push(
             `clearedFlag '${String(raw.clearedFlag)}' must match ${FLAG_RE}`,
           ), undefined);
+
+  // THE CLOSED SHAPE (the crowned lesson): this validator rebuilds the
+  // def field-by-field, so a key it doesn't know is a key that silently
+  // vanishes — exactly how `crowned` was eaten for its whole first
+  // life. Unknown keys are errors now; the next typed-but-uncarried
+  // field fails the build instead of degrading a shipped def.
+  const KNOWN_KEYS = new Set([
+    'id', 'name', 'description', 'family', 'shore', 'tiers', 'weight', 'prefabs',
+    'garrison', 'chestTierBonus', 'cues', 'boldness', 'actors', 'haven',
+    'chestLoot', 'chestWarded', 'clearedFlag', 'signs', 'compound',
+  ]);
+  for (const key of Object.keys(raw)) {
+    if (!KNOWN_KEYS.has(key)) errors.push(`unknown field '${key}'`);
+  }
 
   if (errors.length > 0) {
     return { ok: false, errors: errors.map((e) => `${id || '<poi>'}: ${e}`) };

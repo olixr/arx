@@ -1962,6 +1962,20 @@ export function validateLootTables(tables: readonly LootTableDef[]): void {
       if (e.item && !ITEMS.has(e.item)) {
         throw new Error(`loot table '${t.id}': unknown item '${e.item}'`);
       }
+      if (e.item) {
+        // THE ACQUISITION LAW AT THE DOOR: gear a table pays must be
+        // drop-flagged — stampRoll refuses anything else at roll time
+        // (loudly, and withholds the drop), so letting it into a table
+        // just authors a drop that never lands. The seven-orphan bug
+        // and the CMS live-edit lane both die here.
+        const gear = ITEMS.get(e.item)?.gear;
+        if (gear && !gear.acquisition.drop) {
+          throw new Error(
+            `loot table '${t.id}': gear '${e.item}' carries no drop acquisition — ` +
+              `flag it (acquisition.drop) or keep it off drop tables`,
+          );
+        }
+      }
       if (e.table && !byId.has(e.table)) {
         throw new Error(`loot table '${t.id}': unknown table ref '${e.table}'`);
       }
@@ -1983,6 +1997,28 @@ export function validateLootTables(tables: readonly LootTableDef[]): void {
     }
     if (t.minRarity && !RARITY_TIERS.includes(t.minRarity)) {
       throw new Error(`loot table '${t.id}': unknown rarity '${String(t.minRarity)}'`);
+    }
+    // Value checks for the fields the resolver does math with — the
+    // check-only+passthrough CMS door let a string nothingW NaN the
+    // draw weights and an unknown power string silently behave as
+    // 'source'. Typed at the door now.
+    if (
+      t.nothingW !== undefined &&
+      (typeof t.nothingW !== 'number' || !Number.isFinite(t.nothingW) || t.nothingW < 0)
+    ) {
+      throw new Error(`loot table '${t.id}': nothingW must be a non-negative number`);
+    }
+    if (
+      t.rarityBonus !== undefined &&
+      (typeof t.rarityBonus !== 'number' || !Number.isFinite(t.rarityBonus))
+    ) {
+      throw new Error(`loot table '${t.id}': rarityBonus must be a finite number`);
+    }
+    if (t.power !== undefined && t.power !== 'source' && t.power !== 'native') {
+      throw new Error(`loot table '${t.id}': power must be 'source' | 'native'`);
+    }
+    if (t.picks && (!Number.isInteger(t.picks[0]) || !Number.isInteger(t.picks[1]))) {
+      throw new Error(`loot table '${t.id}': picks must be integers`);
     }
   }
   // Reference cycles would make the resolver loop; reject them here.

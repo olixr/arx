@@ -168,8 +168,21 @@ export function dangerAt(
     const d = Math.hypot(tx - a.x, ty - a.y) - a.safeR;
     if (a.dread) {
       // The dread law: bad country, graded like a haven's relief and
-      // signed the other way. It never joins the march.
-      const add = d <= 0 ? a.dread : d < HAVEN_FADE * 2 ? a.dread - 1 : 0;
+      // signed the other way. It never joins the march. The grading is
+      // real at every step: a dread-3 heart's rim used to hold a flat
+      // −1 for its whole 48-tile hem and then drop STRAIGHT to zero —
+      // a two-tier cliff (9 beside 7 at the Brand's edge) in a field
+      // whose own header forbids cliffs. The outer band now steps
+      // through every rung on the way down; dread ≤ 2 reads exactly
+      // as it always has.
+      const add =
+        d <= 0
+          ? a.dread
+          : d < HAVEN_FADE * 2
+            ? a.dread - 1
+            : d < HAVEN_FADE * 3
+              ? Math.max(0, a.dread - 2)
+              : 0;
       if (add > dread) dread = add;
       // The Overband reads only full hearts, never rims (see the law
       // at DANGER_OVER).
@@ -190,7 +203,17 @@ export function dangerAt(
     const out = Math.max(0, d);
     const m = word + Math.floor(out / DANGER_BAND);
     if (m < march) march = m;
-    const h = word - Math.floor(out / HEAT_FADE);
+    // THE HAND-OFF LAW: heat's FIRST step lands exactly where the
+    // haven's relief runs out (HAVEN_FADE*2 = 48); every later step
+    // keeps the classic HEAT_FADE ladder untouched. Unaligned, heat
+    // held the FULL word through the 16 tiles past the last relief
+    // rung — a hostile spike RING around any town whose word out-runs
+    // the surrounding march (Kingsdelf's Old Road read 4 → 5 → 6 → 5
+    // → 4 walking IN, a level-44 band astride the promised tier-4
+    // approach). Only that annulus changes: the walk-out is monotone
+    // by construction and the far heat belt keeps its authored reach.
+    const h =
+      word - Math.max(out >= HAVEN_FADE * 2 ? 1 : 0, Math.floor(out / HEAT_FADE));
     if (h > heat) heat = h;
   }
   if (inside) return 0;
