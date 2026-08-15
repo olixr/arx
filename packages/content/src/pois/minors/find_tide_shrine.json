@@ -1,0 +1,23 @@
+{
+  "id": "find_tide_shrine",
+  "name": "Tide shrine",
+  "description": "A wave-worn table the coral is taking back, lit by a caged jelly. The offerings are recent.",
+  "tiers": [2, 6],
+  "weight": 1.5,
+  "prefabs": ["find_tide_shrine"],
+  "family": "skral",
+  "shore": true,
+  "garrison": [
+    {
+      "npc": "skral",
+      "count": [1, 1]
+    },
+    {
+      "npc": "skral_tidecaller",
+      "count": [1, 1],
+      "minTier": 4,
+      "hours": { "from": 19, "to": 6 }
+    }
+  ],
+  "clearing": 1
+}

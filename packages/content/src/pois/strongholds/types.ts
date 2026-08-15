@@ -134,6 +134,15 @@ export interface StrongholdDef {
   tiers: readonly [number, number];
   /** Pick weight within the family's layout pool. */
   weight: number;
+  /**
+   * THE DROWNED CHARTER (docs/skral-decor-plan.md): a shore-flagged
+   * layout seats only where the country's heart brushes open water —
+   * and the seat scan counts water and strand as BUILDABLE ground
+   * (the weir-folk build into the shallows), capped so a capital
+   * never fully drowns. A shore country whose heart runs dry lawfully
+   * keeps no capital (the kobold precedent, by water).
+   */
+  shore?: boolean;
   /** The mega-prefab (shared library id — by convention === id). */
   prefab: string;
   /**

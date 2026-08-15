@@ -185,3 +185,92 @@ dress.ts lane (shore camps are prefab-dressed, not procedurally
 dressed); shore POI count unchanged (the three prefabs re-voiced in
 place); midden reads quiet at far map scale beside the monuments —
 acceptable, revisit only if flagged.
+
+# THE BANKS BECOME A COUNTRY — the skral procedural ladder
+
+**SHIPPED 2026-08-15, one session, four audit passes on lane 10
+(arx_skralland).** The kit's debts paid and the race seated in every
+placement layer the other families own: finds, camps, war-ground,
+capital.
+
+## The four rungs
+
+- **THE SHORE FIND** (`MinorDef.shore` + finds.ts): a shore-flagged
+  find enters a slot's pool only when the slot brushes water
+  (SHORE_SLOT_REACH 16 = find reach 6 + anchor jitter 10) and every
+  anchor try passes shoreProbeAt — the PoiDef.shore law at find
+  scale, no burnt rolls by construction. Four skral finds:
+  `find_beached_wreck` (cache 0.25), `find_old_ribs` (pathless
+  landmark; **clearing 2 — pass-three verdict: an unclipped bank
+  forest SWALLOWS a monument**), `find_tide_shrine` (keeper garrison,
+  tidecaller by night), `find_roe_ground` (habitat 'roe' — THE DEN IS
+  THE SOURCE by water: the day shoal musters at the spawning bank;
+  reciprocity test-pinned).
+- **THE WIDER SHOAL**: two new camp prefabs (`poi_skral_wreck`,
+  `poi_skral_drying`) widen skral_shoal's pool to five.
+- **THE TIDEHOLD** (`skral_tidehold`): the skral compound war-ground —
+  court `poi_skral_court` (the deepking's dug pool ringed in ancestor
+  ribs and totems, altar + warded boss cache at the east head, NO
+  palisade: the skral fell nothing), wings from the camp pool, named
+  crowned deepkings, satellites deal skral_shoal. Laws: the holds
+  promotion pool gains the cellSeesWater parity gate (a landlocked
+  cell never burns its promotion on a hold the land must refuse);
+  **a shore COMPOUND is judged from its whole extent** (shoreReach =
+  margin − 14 + SHORE_CAMP_REACH — the court carries its own pool
+  while the wings work the waterline); wing prefabs joined WING_CAP
+  20 and the court joined influence EXEMPT (unfixed, compoundExtent
+  overflowed the cell and every deal refused in 1.8ms — span<=0 is
+  the first thing to check when a compound never lands).
+- **THE DROWNED CHARTER** (`StrongholdDef.shore` + seat law): the
+  skral stronghold shelf — `stronghold_skral_greatweir` "The Great
+  Weir" (citadel, seed 2, 163×159, 12 wards) and
+  `stronghold_skral_tidefast` (hold, seed 4, 124×117). FamilyStyle
+  'skral': CAIRN walls (the swallowed kingdom's wave-worn stone —
+  the skral moved in), TideAltar hearth, eight ward_sk_* pieces
+  (spawning pools / drying yard / middens / net lines / beached
+  hulls / totem way / harpoon watch / the deepking's kingspool),
+  skral POST_SIGNS rows (harpoon racks drill by day, totem + lure
+  vigils go nocturnal on the cairn clock, roe and hulls are KEPT),
+  `FamilyStyle.roadMarker` = LurePole (**pass-four verdict: a skral
+  processional lit by the dead's braziers is the wrong voice — the
+  shoal lights its roads with its own street light**). Seat law: a
+  shore layout requires shoreProbeAt within its own half-span;
+  water/sand count as BUILDABLE in the rough scan (the weir-folk
+  build into the shallows; the zone stands over them) capped at 35%;
+  the FOUND DOOR relaxes to ≥2 dry gates so a water gate is legal.
+  Survey: 39 Great Weirs crown the coasts (102 seats total) — pure
+  addition; no dry family lost a seat; a dry-hearted skral country
+  lawfully keeps none (the kobold precedent, by water).
+
+## Proving (lane 10, arx_skralland, four passes)
+
+- Density survey via /dev/pois/simulate: shoal camps + tidehold
+  promotion (1/13 holds) + shore finds all deal; capitals 102 seats.
+- Live: the organic tidehold at 1095,-454 — King Gullet (34) crowned
+  at his rib-ringed pool, wing camp working beside it. The Great Weir
+  at 688,-2197 (lattice 1,-6) — **"Discovered: The Long Pools"** (the
+  Place Herald pulls from titles), stepped summit holding the
+  kingspool, chord-wall districts, lure-lit lanes at night, Skral
+  (93) wading the four-pool spawning ward at THE WORLD'S RIM, the
+  garrison killing the naked scout on schedule.
+- **THE GHOST SEAT LESSON**: the first weir hunt flew to 903,-891 —
+  a seat computed BEFORE the layout seeds were pinned; re-rolling a
+  layout's pinned seed MOVES every seat that family holds. Recompute
+  targets after any roster edit; `/stronghold` at the site is the
+  ground truth.
+- Prover craft: fresh-DB login needs the #login-toggle create flow;
+  chunk streaming follows the BODY (~50 tiles), not the lens — park
+  the scout inside the zone and accept the death; capitals
+  materialize on approach (CAPITAL_PAD_TILES of the seat rect), and
+  the capitalCache means a server restart recomputes seats against
+  CURRENT zones — a capital that never stood can be crowded out by
+  its own neighborhood (pre-existing, all families; the ledger
+  protects any capital that stood once).
+
+Debts (deliberate): tidefast unproven live (validated + composed in
+tests; it shares every law with the weir); no skral dungeon garrison
+packs (a drowned delve is still an open invitation); wild shoal knot
+walk not re-shot this session (shipped in the skral epic; the roe
+habitat pull is content-tested); the weir's yard reads sparse at
+0.3 zoom between wards — the breathing law's intent, revisit only if
+flagged.

@@ -4,6 +4,7 @@ import {
   STRONGHOLD_MAX_DIM,
   dangerLaw,
   groundProbeAt,
+  shoreProbeAt,
   strongholdGates,
   territoryLatticeFamily,
   territoryLatticePoint,
@@ -209,32 +210,52 @@ export function strongholdSeat(
     ) {
       continue;
     }
-    // The sampled grid: the wall conforms to the land, but only so far.
+    // THE DROWNED CHARTER: a shore-flagged layout seats only where
+    // the country's heart brushes open water — judged from the
+    // footprint's own half-span, the same elevation truth every other
+    // shore consumer reads. A dry heart keeps no capital this age.
+    const shore = layout.shore === true;
+    if (shore && !shoreProbeAt(seed, ax, ay, Math.max(halfW, halfH) + 6)) continue;
+    // The sampled grid: the wall conforms to the land, but only so
+    // far. A shore layout counts water and strand as BUILDABLE — the
+    // weir-folk build into the shallows (the zone's own ground stands
+    // over them) — capped so the capital never simply drowns.
     let probes = 0;
     let rough = 0;
+    let wet = 0;
     for (let sy = 0; sy < prefab.height; sy += stride) {
       for (let sx = 0; sx < prefab.width; sx += stride) {
         probes++;
         const probe = groundProbeAt(seed, x0 + sx, y0 + sy);
+        if (shore && (probe === 'water' || probe === 'sand')) {
+          wet++;
+          continue;
+        }
         if (probe !== 'grass' && probe !== 'forest') rough++;
       }
     }
     if (rough / probes > FRONTIER.capitalRoughMax) continue;
+    if (shore && wet / probes > 0.35) continue; // a third in the shallows, no more
     // THE FOUND DOOR, honored by the land: every gate apron walkable.
-    let apronsOk = true;
+    // A shore layout may open WATER GATES (the skral swim out), but
+    // at least two doors must still stand on honest earth — the
+    // assault always has a dry way in.
+    let dryGates = 0;
     for (const g of gates) {
       // Outward = away from the footprint center on the dominant axis.
       const dx = g.x - halfW;
       const dy = g.y - halfH;
       const ox = Math.abs(dx) > Math.abs(dy) ? Math.sign(dx) : 0;
       const oy = ox === 0 ? Math.sign(dy) || 1 : 0;
-      for (let step = 1; step <= 3 && apronsOk; step++) {
+      let apronOk = true;
+      for (let step = 1; step <= 3 && apronOk; step++) {
         const probe = groundProbeAt(seed, x0 + g.x + ox * step, y0 + g.y + oy * step);
-        if (probe !== 'grass' && probe !== 'forest') apronsOk = false;
+        if (probe !== 'grass' && probe !== 'forest') apronOk = false;
       }
-      if (!apronsOk) break;
+      if (apronOk) dryGates++;
+      else if (!shore) break; // the old law: one wet apron refuses the seat
     }
-    if (!apronsOk) continue;
+    if (shore ? dryGates < 2 : dryGates < gates.length) continue;
     return {
       gx,
       gy,

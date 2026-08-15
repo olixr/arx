@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { TILE_SKIP } from '@arx/shared';
-import { WORLD_SEED, POI_DEFS, POI_PREFABS, validatePoiDef } from '@arx/content';
+import { WORLD_SEED, POI_DEFS, POI_PREFABS, shoreProbeAt, validatePoiDef } from '@arx/content';
 import { GameServer } from '../game/gameServer.js';
 import {
   composePoi,
@@ -118,6 +118,46 @@ test('the compound composes deterministically, wings tagged, prefix stage-stable
     assert.equal(z0.ground[y * z0.width], TILE_SKIP, 'left leaks');
     assert.equal(z0.ground[y * z0.width + z0.width - 1], TILE_SKIP, 'right leaks');
   }
+});
+
+test('THE TIDEHOLD stands on the bank or not at all, and its wings crowd the pool', () => {
+  // The skral compound rides the shore probe at hold scale: a forced
+  // deal either refuses (dry ground — lawful) or stands wet; and the
+  // promotion pool never offers it to a landlocked cell (the parity
+  // gate — a refused promotion would burn the region's hold on a
+  // fallback camp).
+  const ctx: PoiContext = {
+    ...CTX,
+    defs: [
+      POI_DEFS.get('skral_shoal')!,
+      POI_DEFS.get('skral_tidehold')!,
+      POI_DEFS.get('goblin_warcamp')!,
+    ],
+  };
+  let dealt = 0;
+  let looked = 0;
+  for (const { cx, cy } of poiScanOrder(16)) {
+    if (looked >= 600 || dealt >= 4) break;
+    looked++;
+    const site = poiForCell(SEED, cx, cy, 0, ctx, 'skral_tidehold');
+    if (!site) continue; // the land refused — the FALLBACK LAW's other half
+    dealt++;
+    assert.equal(site.defId, 'skral_tidehold');
+    // The bank is judged from the hold's whole extent (the court may
+    // stand a wing-ring inland of the waterline its camps work).
+    const def = POI_DEFS.get('skral_tidehold')!;
+    const court = ctx.prefabs.get(site.prefabId)!;
+    const reach = Math.ceil(compoundExtent(def, court, ctx)) + 10;
+    assert.ok(
+      shoreProbeAt(SEED, site.anchorX, site.anchorY, reach),
+      `a tidehold court stands dry at ${site.anchorX},${site.anchorY}`,
+    );
+    const z = composePoi(SEED, site, ctx, 0)!;
+    assert.ok(z, 'the tidehold must compose');
+    const wingSpawns = (z.spawns ?? []).filter((s) => s.wing !== undefined);
+    assert.ok(wingSpawns.length >= 2, 'a tidehold with no wing bodies is just a camp');
+  }
+  assert.ok(dealt >= 1, 'no bank ever accepted a tidehold across 600 cells');
 });
 
 test('wing-skip honesty: missing wing prefabs compose a court-only hold, never a crash', () => {

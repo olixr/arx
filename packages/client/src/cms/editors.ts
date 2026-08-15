@@ -2412,6 +2412,9 @@ function minorDetail(body: HTMLElement, linkage: HTMLElement, id: string): void 
     ...(draft.habitat !== undefined
       ? [pill(`habitat: ${draft.habitat}`, 'wild knots of the matching kind muster at this mouth', 'ok')]
       : []),
+    ...(draft.shore === true
+      ? [pill('shore', 'stands only where the slot brushes open water', 'ok')]
+      : []),
     ...(draft.cache !== undefined
       ? [pill(`cache ${Math.round(draft.cache.chance * 100)}%`, 'the chest survives this often, ONE TIER HUMBLE', 'brass')]
       : []),

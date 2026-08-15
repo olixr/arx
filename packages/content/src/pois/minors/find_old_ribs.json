@@ -1,0 +1,11 @@
+{
+  "id": "find_old_ribs",
+  "name": "Old ribs",
+  "description": "A sea-beast's ribs arching from the bank sand, shells strung between them. The skral hold this ground older than the water.",
+  "tiers": [1, 6],
+  "weight": 1.5,
+  "prefabs": ["find_old_ribs"],
+  "family": "skral",
+  "shore": true,
+  "clearing": 2
+}

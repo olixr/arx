@@ -384,7 +384,7 @@ const skralMarks: Record<string, Marker> = {
  * legend — the same marks, dressed in bank-stuff. The skral build
  * only in what the water gave them.
  */
-const skralLegend: Record<string, number> = {
+export const skralLegend: Record<string, number> = {
   ')': Tile.FishRack,
   '?': Tile.TideTotem,
   '`': Tile.NetFrame,
@@ -460,6 +460,50 @@ const skralMidden = sketch(
     '_,:.o.W2!:,_',
     '__,::`:::,__',
     '____,,,,____',
+  ],
+  skralMarks,
+  undefined,
+  skralLegend,
+);
+
+/** The wreck-camp: the shoal that moved into somebody's bad day —
+ *  two hulls hauled past the tide line, the nets still working, and
+ *  the salvage under guard. No dug pool: this camp sits ON the bank
+ *  (the shore flag's probe holds that promise). */
+const skralWreck = sketch(
+  'poi_skral_wreck',
+  'Skral wreck-camp',
+  [
+    '____,,,,,,____',
+    '__,::::::::,__',
+    '_,:.^..`.-.:,_',
+    ',::1.:::.3.::,',
+    ',::.^:W:..{:,_',
+    '_,:2.:::.).:,_',
+    '_,:.o..f..!:,_',
+    '__,:::?::::,__',
+    '____,,,,,,____',
+  ],
+  skralMarks,
+  undefined,
+  skralLegend,
+);
+
+/** The drying-ground: the shoal's larder — rack rows heavy with the
+ *  catch, the day's baskets, and the midden growing at the verge. */
+const skralDrying = sketch(
+  'poi_skral_drying',
+  'Skral drying-ground',
+  [
+    '____,,,,,,____',
+    '__,::::::::,__',
+    '_,:.).).)..:,_',
+    ',::1.....2.::,',
+    ',::.{.f.-.::,_',
+    '_,:.-...W..:,_',
+    '_,:3.`...o.:,_',
+    '__,::::!:::,__',
+    '____,,,,,,____',
   ],
   skralMarks,
   undefined,
@@ -1800,6 +1844,74 @@ const findBarrow = sketch('find_barrow', 'Old barrow', [
   '_,....,_',
 ]);
 
+// THE SHORE FINDS (docs/skral-decor-plan.md): the banks' own texture —
+// each stands only where its slot brushes water (MinorDef.shore), and
+// each re-voices the war camp's punctuation through the skral legend.
+
+/** A dugout dragged past the tide line and never launched again. */
+const findBeachedWreck = sketch(
+  'find_beached_wreck',
+  'Beached wreck',
+  [
+    '_,....,_',
+    ',.^.-..,',
+    ',.`:W..,',
+    '_,,..,,_',
+  ],
+  {},
+  undefined,
+  skralLegend,
+);
+
+/** A sea-beast's ribs arching from the bank sand — older than the
+ *  water, and pathless by the cairn law: it marks the coast, not a
+ *  destination. */
+const findOldRibs = sketch(
+  'find_old_ribs',
+  'Old ribs',
+  [
+    '_,....,_',
+    ',.r"o..,',
+    ',..:...,',
+    '_,....,_',
+  ],
+  {},
+  undefined,
+  skralLegend,
+);
+
+/** A wave-worn table the coral is taking back, lit by a caged jelly. */
+const findTideShrine = sketch(
+  'find_tide_shrine',
+  'Tide shrine',
+  [
+    '_,....,_',
+    ',.!.&..,',
+    ',..:-..,',
+    '_,....,_',
+  ],
+  {},
+  undefined,
+  skralLegend,
+);
+
+/** Glistening clutches in scraped hollows at the waterline — the
+ *  spawning bank the shoals muster to (habitat 'roe'). */
+const findRoeGround = sketch(
+  'find_roe_ground',
+  'Roe ground',
+  [
+    '_,....,_',
+    ',.0.~..,',
+    ',.~0{..,',
+    ',..0...,',
+    '_,....,_',
+  ],
+  {},
+  undefined,
+  skralLegend,
+);
+
 // ----------------------------------------------------- THE WAR-GROUND
 // (lived-in-land Phase 4.) Courts — the heart of a compound hold: the
 // named chief's ground, the warded boss cache, the last stand. Wings
@@ -1855,6 +1967,35 @@ const greatdenCourt = sketch('poi_greatden_court', 'Great den court', [
   '____,,rr,,____',
   '______,,______',
 ]);
+
+/**
+ * THE TIDEHOLD's court (docs/skral-decor-plan.md): the deepking's
+ * pool. No palisade — the skral fell nothing: the ring is the
+ * ancestors' RIBS at the corners and the watching totems between,
+ * around the great dug pool the whole hold exists to keep. The tide's
+ * table and the warded boss cache stand at the pool's east head where
+ * the king wades out; the lure poles light the water, not the land.
+ */
+const skralCourt = sketch(
+  'poi_skral_court',
+  'Tidehold court',
+  [
+    '_____,,::,,_____',
+    '__,::::::::::,__',
+    '_,:."..?.."..:,_',
+    '_,:!.~~~~~.o.:,_',
+    ',::.~~~~~~~.-::,',
+    ',::?~~~~~~~&Z::,',
+    ',::.~~~~~~~.)::,',
+    '_,:1.~~~~~.2.:,_',
+    '_,:."..?.."..:,_',
+    '__,::::::::::,__',
+    '_____,,::,,_____',
+  ],
+  skralMarks,
+  undefined,
+  skralLegend,
+);
 
 // ------------------------------------------------------------------
 // THE EVERWOOD (the Evenfall epic): the old folk's wild grounds.
@@ -2099,6 +2240,7 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     warholdCourt,
     stockadeCourt,
     greatdenCourt,
+    skralCourt,
     // The gnoll warband (savage scavengers in other people's ruins):
     gnollSquat,
     gnollBoneyard,
@@ -2106,6 +2248,8 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     skralWeir,
     skralTotems,
     skralMidden,
+    skralWreck,
+    skralDrying,
     // THE HILL COMES DOWN (the giant-kin grounds):
     ogreCamp,
     ogreMidden,
@@ -2144,6 +2288,11 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     findBarrow,
     findWarTotem,
     findStashMound,
+    // The shore finds (docs/skral-decor-plan.md): bank texture.
+    findBeachedWreck,
+    findOldRibs,
+    findTideShrine,
+    findRoeGround,
     // THE INFLUENCE LAW (hybrid charter, second rung): every ordinary
     // POI expands from a stamp into a territory — authored heart,
     // generated outskirts (influence.ts; courts, finds, and landmarks

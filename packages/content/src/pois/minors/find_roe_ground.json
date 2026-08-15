@@ -1,0 +1,18 @@
+{
+  "id": "find_roe_ground",
+  "name": "Roe ground",
+  "description": "Glistening clutches in scraped hollows at the waterline. The bank watches whoever comes near.",
+  "tiers": [2, 5],
+  "weight": 2,
+  "prefabs": ["find_roe_ground"],
+  "family": "skral",
+  "shore": true,
+  "habitat": "roe",
+  "garrison": [
+    {
+      "npc": "skral",
+      "count": [1, 2]
+    }
+  ],
+  "clearing": 1
+}

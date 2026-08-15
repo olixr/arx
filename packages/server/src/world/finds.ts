@@ -12,6 +12,7 @@ import {
   dangerLaw,
   familiesOf,
   groundProbeAt,
+  shoreProbeAt,
   territoryAt,
   territoryWeight,
   type MinorDef,
@@ -62,6 +63,16 @@ const FIND_TRIES = 4;
 /** Zone clearance for finds — tighter than a site's 24: texture may
  * stand nearer the world's edges, never inside them. */
 const FIND_ZONE_PAD = 8;
+/**
+ * THE SHORE FIND (docs/skral-decor-plan.md): a shore-flagged find's
+ * anchor must see open water within this reach — tighter than a
+ * camp's SHORE_CAMP_REACH 10, because a beached wreck IS the
+ * waterline where a camp merely works it.
+ */
+const SHORE_FIND_REACH = 6;
+/** The slot-pool gate reads at the slot center, so it widens by the
+ * anchor jitter (±10) the tries are allowed to wander. */
+const SHORE_SLOT_REACH = SHORE_FIND_REACH + 10;
 
 /** Named stream salts (the ST_* family's kin — see pois.ts). */
 const ST_FIND = 0x501e60;
@@ -138,8 +149,16 @@ export function findsForCell(
     // roster names the countries; the finds palette is what makes a
     // territory READABLE on the ground). Slot-local read, so a border
     // cuts through a cell the way real borders do.
+    // THE SHORE FIND pool gate: a shore-flagged find only enters a
+    // slot's pool when the slot itself brushes water — an inland slot
+    // never burns its one roll on a wreck the land must refuse (the
+    // shore camps' cellSeesWater law, read at slot grain).
     const eligible = ctx.minors.filter(
-      (m) => m.weight > 0 && tier >= m.tiers[0] && tier <= m.tiers[1],
+      (m) =>
+        m.weight > 0 &&
+        tier >= m.tiers[0] &&
+        tier <= m.tiers[1] &&
+        (!m.shore || shoreProbeAt(seed, cx, cy, SHORE_SLOT_REACH)),
     );
     if (eligible.length === 0) continue;
     const territory = territoryAt(seed, cx, cy, familiesOf(ctx.defs));
@@ -165,6 +184,8 @@ export function findsForCell(
       const ax = cx + ((draw(10 + t * 2) % 21) - 10);
       const ay = cy + ((draw(11 + t * 2) % 21) - 10);
       if (ay + prefab.height / 2 >= DARK_BAND_Y - FIND_ZONE_PAD) continue;
+      // THE SHORE FIND: the anchor itself must sit on the bank.
+      if (def.shore && !shoreProbeAt(seed, ax, ay, SHORE_FIND_REACH)) continue;
       const fx0 = ax - Math.floor(prefab.width / 2);
       const fy0 = ay - Math.floor(prefab.height / 2);
       if (intersectsZones(fx0, fy0, prefab.width, prefab.height, ctx.zoneRects, FIND_ZONE_PAD)) {

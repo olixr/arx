@@ -64,6 +64,15 @@ export interface MinorDef {
    */
   family?: string;
   /**
+   * THE SHORE FIND (docs/skral-decor-plan.md): this find stands on a
+   * bank — its slot only enters the kind pool when the slot's ground
+   * sees open water, and every anchor try must pass shoreProbeAt
+   * (the same elevation truth the shore camps and the wild spawner's
+   * shore refinement read, so a beached wreck and the shoreline can
+   * never disagree). The PoiDef.shore law, at find scale.
+   */
+  shore?: boolean;
+  /**
    * The humble cache: any closed chest tile in the stamped prefab
    * SURVIVES with this probability (else it composes away to grass) —
    * and when it survives it re-keys ONE TIER HUMBLE

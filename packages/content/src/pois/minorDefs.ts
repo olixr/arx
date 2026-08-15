@@ -2,14 +2,18 @@ import type { MinorDef } from './minorTypes.js';
 import { validateMinorDef } from './minorValidate.js';
 
 import findBarrow from './minors/find_barrow.json';
+import findBeachedWreck from './minors/find_beached_wreck.json';
 import findBonePile from './minors/find_bone_pile.json';
 import findCatCache from './minors/find_cat_cache.json';
 import findDenMouth from './minors/find_den_mouth.json';
 import findGlade from './minors/find_glade.json';
 import findHuntersRest from './minors/find_hunters_rest.json';
+import findOldRibs from './minors/find_old_ribs.json';
+import findRoeGround from './minors/find_roe_ground.json';
 import findSnareLine from './minors/find_snare_line.json';
 import findStandingStone from './minors/find_standing_stone.json';
 import findStashMound from './minors/find_stash_mound.json';
+import findTideShrine from './minors/find_tide_shrine.json';
 import findWarTotem from './minors/find_war_totem.json';
 import findTappedYew from './minors/find_tapped_yew.json';
 import findWarren from './minors/find_warren.json';
@@ -24,15 +28,19 @@ import findWreckedCart from './minors/find_wrecked_cart.json';
  */
 const SOURCES: readonly unknown[] = [
   findBarrow,
+  findBeachedWreck,
   findBonePile,
   findCatCache,
   findDenMouth,
   findGlade,
   findHuntersRest,
+  findOldRibs,
+  findRoeGround,
   findSnareLine,
   findStandingStone,
   findStashMound,
   findTappedYew,
+  findTideShrine,
   findWarTotem,
   findWarren,
   findWaymarkCairn,

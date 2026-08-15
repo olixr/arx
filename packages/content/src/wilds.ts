@@ -129,8 +129,10 @@ export const WILD_ROSTER: readonly WildEntry[] = [
   { npc: 'giant_crab', weight: 1.2, tiers: [3, 7], biomes: ['shore'], band: [1, 2], spread: 2 },
   // THE SKRAL (docs/skral-plan.md): the banks get their PEOPLE. Day
   // shoals wade the margin netting the shallows; harpooners stand off
-  // the waterline in ones and twos.
-  { npc: 'skral', weight: 2, tiers: [2, 5], biomes: ['shore'], band: [2, 4], spread: 2, family: 'skral' },
+  // the waterline in ones and twos. The day shoal answers the roe
+  // ground (THE DEN IS THE SOURCE, by water): while a spawning bank
+  // stands unrobbed nearby, the shoal musters at it.
+  { npc: 'skral', weight: 2, tiers: [2, 5], biomes: ['shore'], band: [2, 4], spread: 2, habitat: 'roe', family: 'skral' },
   { npc: 'skral_harpooner', weight: 1, tiers: [2, 5], biomes: ['shore'], band: [1, 2], spread: 2, family: 'skral' },
   // The tidecaller keeps the dark hours — a lone silhouette on the
   // waterline with the water doing things water should not.

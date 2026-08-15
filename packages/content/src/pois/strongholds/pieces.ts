@@ -1,5 +1,5 @@
 import type { PrefabDef } from '../../maps/prefab.js';
-import { sketch } from '../prefabs.js';
+import { sketch, skralLegend } from '../prefabs.js';
 
 /**
  * THE WARD-PIECE SHELF (docs/strongholds-plan.md Phase 1) — the
@@ -38,8 +38,9 @@ const piece = (
   base: string,
   rows: string[],
   knots?: WardPiece['knots'],
+  legendExt?: Record<string, number>,
 ): WardPiece => ({
-  prefab: sketch(id, base, rows),
+  prefab: sketch(id, base, rows, {}, undefined, legendExt),
   base,
   kind,
   ...(knots ? { knots } : {}),
@@ -460,6 +461,160 @@ const gsWartents = piece('ward', 'ward_gs_wartents', 'war tents', [
   '_________________',
 ]);
 
+/**
+ * Skral cluster (docs/skral-decor-plan.md) — THE GREAT WEIR's
+ * material, spoken through the skral legend: FOUND, NEVER FELLED.
+ * The shoal's capital is a working waterside — dug pools, drying
+ * yards, net lines, the ancestors' bones — inside the swallowed
+ * kingdom's wave-worn stone.
+ */
+const skPools = piece(
+  'ward',
+  'ward_sk_pools',
+  'spawning pools',
+  [
+    '________________',
+    '__,::::::::,____',
+    '_:.0~~..~~0.:___',
+    '_:.~~~..~~~.,___',
+    '_:0.........0___',
+    '_:.~~~..~~~.:___',
+    '_:.0~~..~~0.,___',
+    '__,::::::::,____',
+    '________________',
+  ],
+  [{ npc: 'skral', band: [2, 3] }],
+  skralLegend,
+);
+
+const skRacks = piece(
+  'ward',
+  'ward_sk_racks',
+  'drying yard',
+  [
+    '_______________',
+    '_)::):::)::)___',
+    '_::::::::::::__',
+    '_:-...f...-:,__',
+    '_::::::::::::__',
+    '_)::):::)::)___',
+    '__,____,_______',
+    '_______________',
+  ],
+  undefined,
+  skralLegend,
+);
+
+const skMiddens = piece(
+  'ward',
+  'ward_sk_middens',
+  'shell middens',
+  [
+    '________________',
+    '__o::{:::o::____',
+    '_,::::::::::o___',
+    '_:o:..o...::{___',
+    '_::..o..-..:,___',
+    '_:{:..:..o.::___',
+    '_::::o:::::o____',
+    '__o::{::o::_____',
+    '________________',
+  ],
+  undefined,
+  skralLegend,
+);
+
+const skNetyard = piece(
+  'ward',
+  'ward_sk_netyard',
+  'net lines',
+  [
+    '________________',
+    '_`::`:::`::`____',
+    '_::::::::::::,__',
+    '_:{...........__',
+    '_::::::::::::,__',
+    '_`::{:::-::`____',
+    '__,____,________',
+    '________________',
+  ],
+  undefined,
+  skralLegend,
+);
+
+const skWrecks = piece(
+  'ward',
+  'ward_sk_wrecks',
+  'beached hulls',
+  [
+    '_________________',
+    '__^____^____,____',
+    '_,::::::::::::___',
+    '_:...-....o..:,__',
+    '_^:...^....-.:___',
+    '_:...........,___',
+    '_::::::`:::::;___',
+    '__,____o____,____',
+    '_________________',
+  ],
+  undefined,
+  skralLegend,
+);
+
+const skTotems = piece(
+  'ward',
+  'ward_sk_totems',
+  'totem way',
+  [
+    '_________________',
+    '__?::!::::!::?___',
+    '_::::::::::::::__',
+    '_:.".........".:_',
+    '_::::::::::::::__',
+    '__?::!::::!::?___',
+    '___,________,____',
+    '_________________',
+  ],
+  undefined,
+  skralLegend,
+);
+
+const skWatch = piece(
+  'watch',
+  'ward_sk_watch',
+  'harpoon yard',
+  [
+    '__________',
+    '__>:!:>___',
+    '_,:::::o__',
+    '_:>:o::,__',
+    '_::::-::__',
+    '__o:,:>___',
+    '__________',
+  ],
+  undefined,
+  skralLegend,
+);
+
+const skKingspool = piece(
+  'boss',
+  'ward_sk_kingspool',
+  "deepking's pool",
+  [
+    '_____________',
+    '__".?:::?."__',
+    '_:::~~~~~:::_',
+    '_:!:~~~~~:&:_',
+    '_:::~~~~~Z::_',
+    '_:0:~~~~~:):_',
+    '_:::~~~~~:::_',
+    '__".?:::?."__',
+    '_____________',
+  ],
+  undefined,
+  skralLegend,
+);
+
 /** Every piece, by id — the Foundry's shelf. */
 export const WARD_PIECES: ReadonlyMap<string, WardPiece> = new Map(
   [
@@ -495,5 +650,13 @@ export const WARD_PIECES: ReadonlyMap<string, WardPiece> = new Map(
     ddGravefield,
     wkWargpens,
     gsWartents,
+    skPools,
+    skRacks,
+    skMiddens,
+    skNetyard,
+    skWrecks,
+    skTotems,
+    skWatch,
+    skKingspool,
   ].map((p) => [p.prefab.id, p]),
 );

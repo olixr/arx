@@ -172,6 +172,10 @@ export function validateStronghold(
     }
   }
 
+  if (raw.shore !== undefined && typeof raw.shore !== 'boolean') {
+    errors.push('shore must be a boolean');
+  }
+
   const prefabId =
     typeof raw.prefab === 'string' && raw.prefab.trim()
       ? raw.prefab
@@ -723,6 +727,7 @@ export function validateStronghold(
       family,
       tiers,
       weight,
+      ...(raw.shore === true ? { shore: true } : {}),
       ...(titles !== undefined ? { titles } : {}),
       prefab: prefabId,
       wards,

@@ -1,0 +1,12 @@
+{
+  "id": "find_beached_wreck",
+  "name": "Beached wreck",
+  "description": "A dugout dragged past the tide line and never launched again. The chest under the hull was buried in a hurry.",
+  "tiers": [1, 5],
+  "weight": 2,
+  "prefabs": ["find_beached_wreck"],
+  "family": "skral",
+  "shore": true,
+  "cache": { "chance": 0.25 },
+  "clearing": 1
+}

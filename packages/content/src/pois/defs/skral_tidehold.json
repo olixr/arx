@@ -1,0 +1,130 @@
+{
+  "id": "skral_tidehold",
+  "name": "Skral tidehold",
+  "description": "The region's shoal-heart: a great dug pool ringed in ancestor bones, whole camps crowding its banks, and a crowned deepking wading its center. The croaking here never stops.",
+  "tiers": [3, 6],
+  "weight": 2.5,
+  "shore": true,
+  "prefabs": ["poi_skral_court"],
+  "garrison": [
+    {
+      "npc": "skral_champion",
+      "count": [1, 1],
+      "role": "holdfast",
+      "levelOffset": 3,
+      "names": [
+        "King Gullet",
+        "Marrowgill the Deep",
+        "Saltmother Croa",
+        "Old Brine",
+        "The Wet Crown"
+      ],
+      "crowned": true
+    },
+    {
+      "npc": "skral",
+      "count": [2, 3],
+      "role": "holdfast"
+    },
+    {
+      "npc": "skral_harpooner",
+      "count": [2, 2],
+      "role": "sentry",
+      "patrol": true
+    },
+    {
+      "npc": "skral_tidecaller",
+      "count": [1, 2],
+      "role": "holdfast",
+      "minTier": 4
+    }
+  ],
+  "chestTierBonus": 1,
+  "chestWarded": true,
+  "clearedFlag": "poi_skral_tidehold_broken",
+  "cues": {
+    "clearing": 4,
+    "approachPath": true,
+    "scatter": [
+      {
+        "tile": "ShellMidden",
+        "count": 2
+      },
+      {
+        "tile": "FishTrap",
+        "count": 1
+      }
+    ]
+  },
+  "compound": {
+    "wings": {
+      "pool": [
+        "poi_skral_weir",
+        "poi_skral_midden",
+        "poi_skral_wreck",
+        "poi_skral_drying"
+      ],
+      "count": [2, 4]
+    },
+    "wingGarrison": [
+      {
+        "npc": "skral",
+        "count": [2, 3],
+        "role": "holdfast"
+      },
+      {
+        "npc": "skral_harpooner",
+        "count": [1, 1],
+        "role": "holdfast",
+        "minTier": 4
+      }
+    ]
+  },
+  "boldness": {
+    "stages": [
+      {
+        "garrison": [
+          {
+            "npc": "skral",
+            "count": [1, 2],
+            "role": "holdfast"
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "skral_harpooner",
+            "count": [1, 2],
+            "role": "sentry"
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "FishRack",
+            "count": 2
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "skral_tidecaller",
+            "count": [1, 1],
+            "role": "holdfast",
+            "minTier": 4
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "ShellMidden",
+            "count": 2
+          }
+        ]
+      }
+    ],
+    "satellites": true,
+    "satelliteDef": "skral_shoal"
+  },
+  "family": "skral"
+}

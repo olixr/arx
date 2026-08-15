@@ -9,6 +9,7 @@ import championsTor from './defs/champions_tor.json';
 import forestRuin from './defs/forest_ruin.json';
 import gnollSquat from './defs/gnoll_squat.json';
 import skralShoal from './defs/skral_shoal.json';
+import skralTidehold from './defs/skral_tidehold.json';
 import ogreCamp from './defs/ogre_camp.json';
 import goblinWarcamp from './defs/goblin_warcamp.json';
 import koboldDigs from './defs/kobold_digs.json';
@@ -73,6 +74,10 @@ const SOURCES: readonly unknown[] = [
   // the first def to carry the 'shore' flag; it only ever stands on a
   // bank the elevation field itself calls wet.
   skralShoal,
+  // THE TIDEHOLD: the shoal's war-ground — the one compound hold that
+  // must stand on a bank (court and promotion both honor the shore
+  // probe; a landlocked region keeps goblin holds instead).
+  skralTidehold,
   ogreCamp,
   goblinWarcamp,
   koboldDigs,

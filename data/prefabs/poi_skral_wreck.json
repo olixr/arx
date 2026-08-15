@@ -1,27 +1,27 @@
 {
-  "id": "poi_skral_midden",
-  "name": "Skral shell-midden",
+  "id": "poi_skral_wreck",
+  "name": "Skral wreck-camp",
   "width": 20,
   "height": 13,
-  "ground": "////////////////////////////////////////////////////////AQABAAEAAgABAAIAAQD//3EB/////////////////////////////wEAAQABAAEAAQABAAEAAgACAAIAAgD///////////////////////8CAAEAAgABAAIAAgADAAMAAwADAAMAAwACAP//////////////////AQACAAEAAgACAAMAdgEBAAMAAQB0AQEAAwACAP//dwH//////////wEAAQACAAIAAwADAAEAdwEBABgAAQBxAQMAAwACAP////////////8BAAIAAQACAAMAAwADAAEAewEBAHYBAQADAAMAAgD/////////////AgABAAEAAQACAAMAAQB2AQEAbwADAHkBAwACAP///////////////wIAAgABAAIA//8CAAMAAwBzAQMAAwADAAIA/////////////////////wEA/////wEAAQABAAIAAgACAAIA////////////////////////////////AQACAAEAAQABAAEAAQD//////////////////////////////////wEAAQABAAEAAQABAAEA/////////////////////////////////////////////////////////////////////////////w==",
+  "ground": "//////////////////////////////////////////////////////////////////8BAAEAAQACAAIA//////////8BAAEAAQACAAIA/////////////////////wIAAgACAAIAAgACAP//AgABAAEAAQABAP///////////////wIAAwADAAMAAwADAAMAAwADAAIAAgACAAEAAQD/////////////AgADAAEAdAEBAAEAcwEBAHsBAQADAAIAAgACAAEA//////////8CAAMAAwADAAEAAwADAAMAAQADAAEAAwADAAIAAQABAP//////////AgADAAMAAQB0AQMAbwADAAEAAQB3AQMAAgD//wIAAQD/////////////AgADAAMAAQADAAMAAwABAHEBAQADAAIA/////wEA/////wMA/////wIAAwABAHYBAQABABgAAQABAHkBAwACAP////92Af////8DAAMA//8DAAIAAwADAAMAcgEDAAMAAwADAAIA////////////////AwADAAMAAwD/////AgACAAIAAgACAAIA/////////////////////wMAcQH//////////3cB////////////////dwH//////////////////////////////////////////////////////////////////w==",
   "detail": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
   "spawns": [
     {
-      "dx": 9,
-      "dy": 4,
+      "dx": 6,
+      "dy": 5,
       "npc": "skral",
       "radius": 2,
       "count": 1
     },
     {
-      "dx": 7,
-      "dy": 6,
+      "dx": 12,
+      "dy": 5,
       "npc": "skral_harpooner",
       "radius": 2,
       "count": 1
     },
     {
-      "dx": 11,
+      "dx": 6,
       "dy": 7,
       "npc": "skral",
       "radius": 2,

@@ -11,7 +11,9 @@
   "prefabs": [
     "poi_skral_weir",
     "poi_skral_totems",
-    "poi_skral_midden"
+    "poi_skral_midden",
+    "poi_skral_wreck",
+    "poi_skral_drying"
   ],
   "garrison": [
     {

@@ -55,6 +55,8 @@ export interface StrongholdSpec {
   tiers: readonly [number, number];
   weight: number;
   sizeClass: StrongholdSizeClass;
+  /** THE DROWNED CHARTER: this layout seats only on a waterside. */
+  shore?: boolean;
   /** Boss champion name pool (the roster/bench supplies it). */
   bossNames: readonly string[];
   /**
@@ -94,6 +96,11 @@ interface FamilyStyle {
   captain: KnotMenuEntry;
   bossNpc: string;
   bossOffset: number;
+  /**
+   * The lit marker pacing the processional and outer roads. Absent =
+   * the wall material's word (torch / brazier / skull pile).
+   */
+  roadMarker?: Tile;
   /** Courtyard scatter accents. */
   accents: readonly Tile[];
   /** THE CLUSTERED GROUND: what accumulates around the hearths. */
@@ -229,6 +236,44 @@ export const FAMILY_STYLES: ReadonlyMap<string, FamilyStyle> = new Map<string, F
       bossOffset: 4,
       accents: [Tile.BonePile, Tile.SkullPile],
       hearthGear: [Tile.BonePile, Tile.SkullPile, Tile.HideFrame],
+    },
+  ],
+  [
+    'skral',
+    {
+      // THE DROWNED CHARTER (docs/skral-decor-plan.md): the shoal's
+      // capital squats in the swallowed kingdom's wave-worn stone —
+      // cairn walls the skral never raised, dug pools they did. The
+      // heart is the tide's own table; the gear is FOUND, NEVER
+      // FELLED — no iron, no rope, no sawn end anywhere.
+      wall: 'cairn',
+      hearth: Tile.TideAltar,
+      wardPieces: [
+        'ward_sk_pools',
+        'ward_sk_racks',
+        'ward_sk_middens',
+        'ward_sk_netyard',
+        'ward_sk_wrecks',
+        'ward_sk_totems',
+      ],
+      watchPiece: 'ward_sk_watch',
+      bossPiece: 'ward_sk_kingspool',
+      menu: [
+        { npc: 'skral', band: [2, 3] },
+        { npc: 'skral_harpooner', band: [1, 2] },
+        { npc: 'skral_tidecaller', band: [1, 1], minTier: 4 },
+      ],
+      sentinel: { npc: 'skral_harpooner', band: [1, 2] },
+      guard: { npc: 'skral', band: [2, 3] },
+      captain: { npc: 'skral_tidecaller', band: [1, 1] },
+      // The shoal lights its roads with its own street light — the
+      // caged deep-jelly, never the dead's cold brazier.
+      roadMarker: Tile.LurePole,
+      // The deepking, scaled to the throne he finally owns.
+      bossNpc: 'skral_champion',
+      bossOffset: 5,
+      accents: [Tile.ShellMidden, Tile.FishRack, Tile.BonePile],
+      hearthGear: [Tile.FishRack, Tile.CatchBasket, Tile.FishTrap, Tile.NetFrame, Tile.ShellMidden],
     },
   ],
   [
@@ -1062,6 +1107,15 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
     { match: [Tile.TentHide, Tile.TentWar], post: 'rest', hours: { from: 19, to: 7 } },
     { match: [Tile.SkullTotem, Tile.Brazier, Tile.WarDrum], post: 'vigil' },
     { match: [Tile.PrisonCage, Tile.BeastNest], post: 'keeper' },
+    // THE DROWNED CHARTER's furniture: the shoal's work. Harpoon
+    // yards drill by day; the totems and the lure are watched (the
+    // cairn clock below turns those vigils nocturnal — the tidecaller
+    // keeps the dark hours); roe and beached hulls are KEPT; the
+    // catch is tended like any hearth.
+    { match: [Tile.HarpoonRack], post: 'drill', hours: { from: 6, to: 20 } },
+    { match: [Tile.TideTotem, Tile.LurePole], post: 'vigil' },
+    { match: [Tile.RoeNest, Tile.Dugout], post: 'keeper' },
+    { match: [Tile.FishRack, Tile.CatchBasket], post: 'cook' },
   ];
 
   // Gate captains and wardens (THE CAPTAIN LAW), picket watches on
@@ -1306,7 +1360,8 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
   // The roads are LIT (family-voiced): a marker line paces the
   // processional and the outer roads.
   const roadMark =
-    style.wall === 'palisade' ? Tile.StandingTorch : style.wall === 'cairn' ? Tile.Brazier : Tile.SkullPile;
+    style.roadMarker ??
+    (style.wall === 'palisade' ? Tile.StandingTorch : style.wall === 'cairn' ? Tile.Brazier : Tile.SkullPile);
   for (let i = rDress.int(0, 5); i < roadCells.length; i += 11) {
     const [rx, ry] = roadCells[i]!;
     for (const [mx, my] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
@@ -1502,6 +1557,7 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
     family: spec.family,
     tiers: spec.tiers,
     weight: spec.weight,
+    ...(spec.shore === true ? { shore: true } : {}),
     prefab: spec.id,
     wards,
     boss: {

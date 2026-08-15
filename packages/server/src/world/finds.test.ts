@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { TILE_SKIP, chestInfo } from '@arx/shared';
-import { WORLD_SEED, MINOR_DEFS, POI_PREFABS, SETTLED_ANCHORS, dangerLaw } from '@arx/content';
+import { WORLD_SEED, MINOR_DEFS, POI_PREFABS, SETTLED_ANCHORS, dangerLaw, shoreProbeAt } from '@arx/content';
 import { poiContext, poiForCell, poiScanOrder, POI_CELL } from './pois.js';
 import { FIND_SPACING, composeFinds, findsForCell, findsZoneId } from './finds.js';
 
@@ -52,6 +52,28 @@ test('the lattice is deterministic and honors the spacing law', () => {
   assert.ok(total >= 40, `only ${total} finds over 80 cells — the land went bare`);
   assert.ok(total <= 80 * 6, `${total} finds over 80 cells — the land is cluttered`);
   assert.ok(cellsWithFinds >= 25, `only ${cellsWithFinds}/80 cells dealt any texture`);
+});
+
+test('THE SHORE FIND: a shore-flagged find always stands on the bank, and the banks do deal them', () => {
+  const shoreDefs = new Set(
+    [...MINOR_DEFS.values()].filter((d) => d.shore).map((d) => d.id),
+  );
+  assert.ok(shoreDefs.size >= 4, 'the skral shore finds exist');
+  let dealt = 0;
+  for (const { cx, cy, site } of scanCells(220)) {
+    for (const f of findsForCell(SEED, cx, cy, 0, CTX, site)) {
+      if (!shoreDefs.has(f.defId)) continue;
+      dealt++;
+      assert.ok(
+        shoreProbeAt(SEED, f.anchorX, f.anchorY, 6),
+        `${f.defId} at ${f.anchorX},${f.anchorY} stands dry — the wreck and the waterline disagree`,
+      );
+    }
+  }
+  // The gate must not starve the family out of existence: over a wide
+  // scan the banks deal SOME of their own texture, or the pool gate
+  // is quietly refusing everything.
+  assert.ok(dealt >= 3, `only ${dealt} shore finds over 220 cells — the banks went bare`);
 });
 
 test('settled ground deals no finds', () => {

@@ -66,6 +66,12 @@ const WING_CAP = new Set([
   'poi_bandit_hollow',
   'poi_den_bones',
   'poi_den_hollow',
+  // THE TIDEHOLD's wing pool — the shoal camps ring the court the way
+  // the goblin camps ring the warhold, and pay the same rent.
+  'poi_skral_weir',
+  'poi_skral_midden',
+  'poi_skral_wreck',
+  'poi_skral_drying',
 ]);
 
 /** Quiet wayside types: expanded gently, never into a sprawl. */
@@ -110,6 +116,7 @@ const EXEMPT = new Set([
   'poi_warhold_court',
   'poi_stockade_court',
   'poi_greatden_court',
+  'poi_skral_court',
   'poi_barrowfield_great',
   'poi_ruin_greatkeep',
   'poi_goblin_sprawl',

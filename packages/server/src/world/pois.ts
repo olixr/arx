@@ -278,8 +278,13 @@ export function poiForCell(
       // THE SHORE CAMP: a shore-flagged def stands within a stone's
       // throw of open water or not at all — the same elevation truth
       // the wild spawner's shore refinement reads, so the fishing
-      // camp and the shoreline can never disagree.
-      if (def.shore && !shoreProbeAt(seed, tx, ty, SHORE_CAMP_REACH)) continue;
+      // camp and the shoreline can never disagree. A shore-flagged
+      // COMPOUND is judged from its whole extent: the court (which
+      // carries its own dug pool) may stand a wing-ring inland while
+      // the hold's outermost camps work the actual waterline — the
+      // court's own margin already measures that reach.
+      const shoreReach = def.compound ? margin - 14 + SHORE_CAMP_REACH : SHORE_CAMP_REACH;
+      if (def.shore && !shoreProbeAt(seed, tx, ty, shoreReach)) continue;
       const fx0 = tx - Math.floor(prefab.width / 2);
       const fy0 = ty - Math.floor(prefab.height / 2);
       if (intersectsZones(fx0, fy0, prefab.width, prefab.height, ctx.zoneRects)) continue;
@@ -351,8 +356,18 @@ export function poiForCell(
   // grab-bag (the family read is the cluster read).
   const leanW = (d: PoiDef): number =>
     territoryWeight(d.weight, d.family, territory, FRONTIER.territoryBias * (march ? 2 : 1));
+  // THE SHORE CAMP's law at hold scale: a shore-flagged compound only
+  // enters the promotion pool where the cell actually sees water —
+  // the decideSite probe would refuse it anyway (and the FALLBACK LAW
+  // would deal a camp), but a landlocked cell should spend its
+  // promotion on a hold the land can accept, not burn it on a refusal.
   const holds = ctx.defs.filter(
-    (d) => d.compound && d.weight > 0 && centerTier >= d.tiers[0] && centerTier <= d.tiers[1],
+    (d) =>
+      d.compound &&
+      d.weight > 0 &&
+      centerTier >= d.tiers[0] &&
+      centerTier <= d.tiers[1] &&
+      (!d.shore || cellSeesWater(seed, x0, y0)),
   );
   if (
     allowHold &&

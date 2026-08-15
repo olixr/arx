@@ -29,6 +29,8 @@ interface RosterEntry {
   weight: number;
   sizeClass: StrongholdSizeClass;
   seed: number;
+  /** THE DROWNED CHARTER: this layout seats only on a waterside. */
+  shore?: boolean;
   bossNames: readonly string[];
   /** Seat-name pool (Phase 5) — the world knows the place by these. */
   titles: readonly string[];
@@ -190,6 +192,34 @@ const ROSTER: readonly RosterEntry[] = [
     seed: 3,
     bossNames: ['Rakkash the Greatlaugh', 'Old Bonebreaker', 'Yezza Longgrin', 'The Last Laugh'],
     titles: ['The Greatlaugh Fort', 'The Howl Keep', 'The Long Grin'],
+  },
+  {
+    id: 'stronghold_skral_greatweir',
+    name: 'The Great Weir',
+    description:
+      'The shoal country in council: dug pools behind drowned-kingdom stone, drying yards and net lines working the shallows, and a deepking holding the oldest pool of all.',
+    family: 'skral',
+    tiers: [4, 9],
+    weight: 3,
+    sizeClass: 'citadel',
+    seed: 2,
+    shore: true,
+    bossNames: ['The Drowned King', 'Mother-of-Pools', 'Gorrmaw the Patient', 'The Tide That Stays'],
+    titles: ['The Great Weir', 'The Drowned Court', 'The Long Pools'],
+  },
+  {
+    id: 'stronghold_skral_tidefast',
+    name: 'Skral tidefast',
+    description:
+      'A lesser weir-hold on a working bank: middens, beached hulls, and too many bone-tipped spears for its size.',
+    family: 'skral',
+    tiers: [3, 6],
+    weight: 2,
+    sizeClass: 'hold',
+    seed: 4,
+    shore: true,
+    bossNames: ['Brinefather', 'The Bank King', 'Croalsh Ninespine', 'The Weir Warden'],
+    titles: ['The Tidefast', 'The Wet Ring', 'The Croaking Fast'],
   },
   {
     id: 'stronghold_dead_barrowcourt',

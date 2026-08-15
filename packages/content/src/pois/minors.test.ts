@@ -93,6 +93,7 @@ test('the validator refuses the dishonest find, by class', () => {
   bad({ cache: { chance: 0.5 } }, 'texture is not treasure');
   bad({ clearing: 3 }, 'clearing');
   bad({ habitat: 'Bad Slug' }, 'habitat');
+  bad({ shore: 'yes' }, 'shore');
   bad({ chestWarded: true }, "unknown field 'chestWarded'");
   // Cross-refs bite when provided.
   const refs = { prefabIds: new Set(['find_glade']), npcIds: new Set(['rat']) };

@@ -8,6 +8,7 @@ import { WORLD_SEED,
   STRONGHOLD_DEFS,
   STRONGHOLD_PREFABS,
   familiesOf,
+  shoreProbeAt,
   territoryAt,
 } from '@arx/content';
 import { chestInfo } from '@arx/shared';
@@ -51,6 +52,26 @@ test('the seat is deterministic and the sweep deals some capitals', () => {
   const b = sweepSeats();
   assert.deepEqual(a, b);
   assert.ok(a.length >= 2, `only ${a.length} capitals in a 17x17 country sweep`);
+});
+
+test('THE DROWNED CHARTER: every skral capital brushes water, and the banks do crown one', () => {
+  const seats = sweepSeats();
+  const skral = seats.filter((s) => s.family === 'skral');
+  // The Great Weir must actually exist somewhere — a shore law that
+  // refuses every heart is a dead shelf.
+  assert.ok(skral.length >= 1, 'no skral country ever crowned a capital');
+  for (const s of skral) {
+    const layout = STRONGHOLD_DEFS.get(s.layoutId)!;
+    assert.equal(layout.shore, true, 'a skral seat dealt a dry layout');
+    const p = prefabs.get(layout.prefab)!;
+    const reach = Math.max(Math.floor(p.width / 2), Math.floor(p.height / 2)) + 6;
+    assert.ok(
+      shoreProbeAt(SEED, s.x, s.y, reach),
+      `the weir at ${s.x},${s.y} stands dry — the charter broke`,
+    );
+  }
+  // And the charter never costs the dry families their own seats.
+  assert.ok(seats.some((s) => s.family !== 'skral'), 'the sweep lost the dry countries');
 });
 
 test('every seat agrees with the territory field under it (THE ONE ATLAS LAW)', () => {
