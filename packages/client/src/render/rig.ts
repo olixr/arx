@@ -11068,14 +11068,17 @@ export function paintWolfBody(
       ctx.restore();
       // Pale bib at the chest — only while the chest can actually
       // face the camera; painted flat it would show through the back
-      // when the wolf walks away.
+      // when the wolf walks away. It rides the hull's own bob (the
+      // chest face sits between the top ring's full lift and the
+      // belly's 0.6) — a pinned bib stands still while the body
+      // bounces around it.
       if (f.fy > -0.15) {
         ctx.fillStyle = look.under;
         ctx.beginPath();
         facetBlob(
           ctx,
           gx(hl * 0.88, 0),
-          gyy(hl * 0.88, 0) - (look.chestH + 0.1) * s,
+          gyy(hl * 0.88, 0) - (look.chestH + 0.1) * s - lift * 0.8,
           hw * s * 0.8,
           f.seed ^ 0x33,
           7,
@@ -11556,7 +11559,7 @@ export function paintDireWolfBody(
         facetBlob(
           ctx,
           gx(hl * 0.9, 0),
-          gyy(hl * 0.9, 0) - (look.chestH + 0.12) * s,
+          gyy(hl * 0.9, 0) - (look.chestH + 0.12) * s - lift * 0.8,
           hw * s * 0.82,
           f.seed ^ 0x33,
           7,
@@ -11923,7 +11926,7 @@ export function paintWorgBody(
         facetBlob(
           ctx,
           gx(hl * 0.88, 0),
-          gyy(hl * 0.88, 0) - (look.chestH + 0.1) * s,
+          gyy(hl * 0.88, 0) - (look.chestH + 0.1) * s - lift * 0.8,
           hw * s * 0.72,
           f.seed ^ 0x2f,
           7,
@@ -13772,7 +13775,7 @@ export function paintBoarBody(
         facetBlob(
           ctx,
           gx(hl * 0.3, 0),
-          gyy(hl * 0.3, 0) - (look.chestH + 0.09) * s,
+          gyy(hl * 0.3, 0) - (look.chestH + 0.09) * s - lift * 0.8,
           hw * s * 0.72,
           f.seed ^ 0x55,
           7,
@@ -16403,7 +16406,7 @@ export function paintSabercatBody(
         facetBlob(
           ctx,
           gx(hl * 0.86, 0),
-          gyy(hl * 0.86, 0) - (look.chestH + 0.1) * s,
+          gyy(hl * 0.86, 0) - (look.chestH + 0.1) * s - lift * 0.8,
           hw * s * 0.78,
           f.seed ^ 0x33,
           7,
@@ -16825,7 +16828,7 @@ export function paintLynxBody(
         facetBlob(
           ctx,
           gx(hl * 0.86, 0),
-          gyy(hl * 0.86, 0) - (look.chestH + 0.1) * s,
+          gyy(hl * 0.86, 0) - (look.chestH + 0.1) * s - lift * 0.8,
           hw * s * 0.8,
           f.seed ^ 0x33,
           7,
@@ -17572,7 +17575,7 @@ export function paintFoxBody(
         facetBlob(
           ctx,
           gx(hl * 0.84, 0),
-          gyy(hl * 0.84, 0) - (look.chestH + 0.09) * s,
+          gyy(hl * 0.84, 0) - (look.chestH + 0.09) * s - lift * 0.8,
           hw * s * 0.92,
           f.seed ^ 0x33,
           7,
@@ -18084,13 +18087,17 @@ export function drawBeast(
     const leg = spec.rig.legs[i];
     if (!foot || !leg) return;
     // Hip: body-frame attach point, projected like the world plane and
-    // raised to the rig's (crouch-scaled) hip height.
+    // raised to the rig's (crouch-scaled) hip height. THE ROOT RIDES
+    // THE BODY: the hip dips with the gait bob at the belly line's own
+    // coupling (lift · 0.6 — the edge the legs emerge from), so the
+    // leg roots stay seated in the bouncing mass instead of hanging
+    // pinned in the air while the body moves around them.
     const hf = leg.fwd * spec.hipFwd;
     const hs = leg.side * spec.hipSide;
     const wx = fx * hf - fy * hs;
     const wy = fy * hf + fx * hs;
     const hipX = bx + wx * s;
-    const hipY = by + wy * s * ys - opts.pose.rise * s;
+    const hipY = by + wy * s * ys - (opts.pose.rise + opts.pose.bob * 0.35 * 0.6) * s;
     const footY = foot.y - foot.lift * s;
     // Anatomical joint preference: along the facing (front knees bow
     // forward, hocks and bird ankles backward) plus a SCREEN-space
@@ -18234,11 +18241,20 @@ export function drawBeast(
   };
   // Depth split by where each foot ACTUALLY is, not its rest pose —
   // during a turn a planted foot can be anywhere around the body, and
-  // classifying by home spec is what drew legs across faces.
+  // classifying by home spec is what drew legs across faces. The line
+  // a foot must cross to paint IN FRONT is the body's NEAR silhouette
+  // edge, not its center: facing to or away from the camera the whole
+  // leg column stands inside the hull's footprint, so it tucks BEHIND
+  // the mass and emerges below the belly — split at the center, the
+  // near legs painted their thighs across the chest face. The margin
+  // walks out with |fy|, so profile keeps the flank-overlap split and
+  // the swap always lands where the leg crosses the silhouette (where
+  // both orders paint the same pixels).
   const farLegs: number[] = [];
   const nearLegs: number[] = [];
+  const nearEdge = by + Math.abs(fy) * len * 0.85 * ys;
   for (let i = 0; i < spec.rig.legs.length; i++) {
-    ((opts.feet[i]?.y ?? opts.y) < opts.y ? farLegs : nearLegs).push(i);
+    ((opts.feet[i]?.y ?? opts.y) < nearEdge ? farLegs : nearLegs).push(i);
   }
   // ---- paint closures, composed in true depth order below. (The
   // per-entity seed hash is hoisted above the legs — the limb painter

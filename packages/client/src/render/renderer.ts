@@ -35380,8 +35380,14 @@ export class Renderer {
       if (!anim.canidBrush) {
         // Root the brush at the RUMP, not the humanoid hip line — a
         // quadruped's tail seated at the default offset roots inside
-        // the torso and hangs between the legs.
-        anim.canidBrush = new TailSim(canid.heavy, eid, canid.rootOff);
+        // the torso and hangs between the legs. And THE ROOT SEATS
+        // INSIDE THE STERN: the sim scales rootOff by sizeK, so the
+        // dial must never let rootOff · sizeK reach past the painted
+        // hull (spec.bodyLen) — the vixen's brush rooted 0.09 tiles
+        // behind her body and hung disconnected in the air. Clamp
+        // from the spec so no dial can overshoot the stern.
+        const rootOff = Math.min(canid.rootOff, (spec.bodyLen - 0.04) / canid.sizeK);
+        anim.canidBrush = new TailSim(canid.heavy, eid, rootOff);
       }
       brushSim = anim.canidBrush;
       // THE TAIL RIDES THE POUNCE: drawBeast lunges the painted body

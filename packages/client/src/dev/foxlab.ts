@@ -215,7 +215,13 @@ function drawQuad(
   let ears: EarSim | undefined;
   const canid = CANID[f.defId];
   if (canid) {
-    f.brush ??= new TailSim(canid.heavy, seed, canid.rootOff);
+    // THE ROOT SEATS INSIDE THE STERN — the live renderer's clamp,
+    // mirrored so the sheet shows the seated root the game paints.
+    f.brush ??= new TailSim(
+      canid.heavy,
+      seed,
+      Math.min(canid.rootOff, (spec.bodyLen - 0.04) / canid.sizeK),
+    );
     let lunge = 0;
     if (attackT > 0) {
       lunge =
