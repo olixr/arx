@@ -1773,6 +1773,28 @@ export function drawBeastRagdoll(
       ctx.beginPath();
       ctx.ellipse(ft.x, ft.y, pw * 0.62, pw * 0.42, shinA - Math.PI / 2, 0, Math.PI * 2);
       ctx.fill();
+      if (spec.foot === 'bearpaw' || spec.foot === 'turtleclaw') {
+        // The claws outlive the beast: pale keratin ticks trailing
+        // limp off the pad along the limb's own lie — a corpse foot
+        // hangs with the leg, so the limb frame is the honest one
+        // here (the living foot bears the facing instead).
+        ctx.strokeStyle = spec.foot === 'bearpaw' ? '#d8cbb2' : '#cfc49e';
+        ctx.lineWidth = Math.max(1, pw * 0.14);
+        ctx.lineCap = 'round';
+        for (const t of [-0.4, 0, 0.4]) {
+          ctx.beginPath();
+          ctx.moveTo(
+            ft.x + Math.cos(shinA + t) * pw * 0.34,
+            ft.y + Math.sin(shinA + t) * pw * 0.34,
+          );
+          ctx.lineTo(
+            ft.x + Math.cos(shinA + t) * pw * 0.66,
+            ft.y + Math.sin(shinA + t) * pw * 0.66,
+          );
+          ctx.stroke();
+        }
+        ctx.lineCap = 'butt';
+      }
     }
   };
 

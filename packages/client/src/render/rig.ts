@@ -643,7 +643,15 @@ const LEG_SOLVE: LimbSolve = { ex: 0, ey: 0, kx: 0, ky: 0 };
 /** Hoisted per-foot paint tables — loop literals in the leg painter
  *  alloc once per LEG per frame otherwise. */
 const CLAW_TOES = [-0.55, 0, 0.55] as const;
-const BEARPAW_RAKE = [-1, 0, 1] as const;
+/** THE FOOT KNOWS THE GROUND — foot-frame digit tables. Bear digits:
+ *  lateral seats (×foot width) of the four toe lobes across the pad's
+ *  leading edge, one claw per digit. Turtle claws: the three-horn fan
+ *  of the sprawled forefoot. */
+const BEAR_TOES = [-0.63, -0.22, 0.22, 0.63] as const;
+const TURTLE_CLAW_FAN = [-0.55, 0, 0.55] as const;
+/** Species whose horn splits at the toe — the cloven line. Coursers
+ *  and garrons keep the whole horn. */
+const CLOVEN_HOOF = /^(cow|bull|boar|ram|sheep|stag|hind)/;
 
 /**
  * One two-segment arm: shoulder → elbow (sleeve) → forearm (skin) →
@@ -9842,7 +9850,7 @@ export interface BeastSpec {
   hipSide: number;
   /** Upper-leg thickness (tiles). */
   legW: number;
-  foot: 'hoof' | 'paw' | 'claw' | 'bearpaw';
+  foot: 'hoof' | 'paw' | 'claw' | 'bearpaw' | 'turtleclaw';
   /** Bare shanks (chicken) instead of body-shaded legs. */
   legColor?: string;
   /**
@@ -10241,7 +10249,7 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     hipFwd: 0.8,
     hipSide: 0.78,
     legW: 0.15,
-    foot: 'bearpaw',
+    foot: 'turtleclaw',
     legColor: '#6f7c50',
   },
   // THE MOUNTAIN: never a scaled snapper — a HIGH tortoise dome on
@@ -10272,7 +10280,7 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     hipFwd: 0.82,
     hipSide: 0.72,
     legW: 0.25,
-    foot: 'bearpaw',
+    foot: 'turtleclaw',
     legColor: '#68705a',
     // Elephant bones: long thigh over a short shank, front and hind.
     segSplit: [0.56, 0.52],
@@ -18927,7 +18935,38 @@ export function drawBeast(
     ctx.stroke();
     ctx.lineCap = 'butt';
 
-    // Feet: the species' contact chip.
+    // Feet: the species' contact chip, painted in THE GROUND FRAME.
+    // THE FOOT KNOWS THE GROUND: a foot is a ground-plane object — its
+    // bearing is the body's slewed facing plus a small anatomical
+    // splay from its own side of the body (hooves run near-true, paws
+    // toe out a hair, bears walk pigeon-toed, turtles sprawl wide),
+    // NEVER the shin's screen axis. A shin-framed foot whips with the
+    // IK chord — up to a half-turn as a swing crosses the hip line —
+    // which was the rotating-foot bug. The transform maps foot-local
+    // tiles (u forward, v sideways) through the world projection, so
+    // pads, lobes, and claws foreshorten with the ground plane like
+    // every other flat mass. Mid-swing the digits CURL — reach
+    // shortens and the claws tuck — so a lifted foot reads carried,
+    // never stamped on the air.
+    const sideSgn = Math.sign(leg.side) || 1;
+    const digitCurl = Math.min(1, foot.lift / Math.max(0.02, spec.rig.liftAmp * 1.2));
+    const splay =
+      spec.foot === 'turtleclaw'
+        ? leg.fwd >= 0
+          ? 0.38
+          : 0.26
+        : spec.foot === 'bearpaw'
+          ? leg.fwd >= 0
+            ? -0.14
+            : 0.1
+          : spec.foot === 'hoof'
+            ? 0.05
+            : 0.1;
+    const footA = opts.dir + sideSgn * splay;
+    const ffx = Math.cos(footA);
+    const ffy = Math.sin(footA) * ys;
+    const fsx = -Math.sin(footA);
+    const fsy = Math.cos(footA) * ys;
     if (spec.foot === 'claw') {
       // Splayed bird toes, fanning along the facing.
       ctx.strokeStyle = footColor;
@@ -18942,50 +18981,201 @@ export function drawBeast(
       }
       ctx.lineCap = 'butt';
     } else if (spec.foot === 'hoof') {
-      // Hoof block seated square on the shin's own axis.
-      const hw = spec.legW * s * 1.5;
-      const shinA = Math.atan2(ey - ky, ex - kx);
-      ctx.save();
-      ctx.translate(ex, ey);
-      ctx.rotate(shinA - Math.PI / 2);
-      ctx.fillStyle = footColor;
-      ctx.beginPath();
-      chamferRect(ctx, -hw / 2, -hw * 0.35, hw, hw * 0.62, hw * 0.18);
-      ctx.fill();
-      ctx.restore();
-    } else if (spec.foot === 'bearpaw') {
-      // Broad pad with pale claws raking off its leading edge — drawn
-      // in the shin's own frame so pad and rake follow the leg at
-      // every facing, in the fur tone (not the near-black generic
-      // foot shade).
-      const pw = spec.legW * s * 1.45;
-      const shinA = Math.atan2(ey - ky, ex - kx);
-      ctx.save();
-      ctx.translate(ex, ey);
-      ctx.rotate(shinA - Math.PI / 2);
-      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(spec.legColor ?? opts.color, -10);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, pw * 0.62, pw * 0.46, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = opts.hurt ? '#ffffff' : '#d8cbb2';
-      ctx.lineWidth = Math.max(1.2, s * 0.02);
-      ctx.lineCap = 'round';
-      for (const t of BEARPAW_RAKE) {
+      // The hoof is a horn BLOCK with real height: the dark wall
+      // carries the footprint on the ground and the lit top plane
+      // rides one wall-height up — the foreshortened-top law at
+      // ankle scale. The cloven species split the toe with a center
+      // cleft; a courser's horn stays whole.
+      const W = spec.legW * 1.5;
+      const wallH = W * 0.55 * s;
+      const HX = (u: number, v: number): number => ex + (ffx * u + fsx * v) * s;
+      const HY = (u: number, v: number): number => ey + (ffy * u + fsy * v) * s;
+      const trace = (dz: number): void => {
         ctx.beginPath();
-        ctx.moveTo(t * pw * 0.34, pw * 0.28);
-        ctx.lineTo(t * pw * 0.44, pw * 0.58);
+        ctx.moveTo(HX(-0.42 * W, -0.34 * W), HY(-0.42 * W, -0.34 * W) - dz);
+        ctx.lineTo(HX(0.16 * W, -0.44 * W), HY(0.16 * W, -0.44 * W) - dz);
+        ctx.quadraticCurveTo(
+          HX(0.68 * W, -0.34 * W),
+          HY(0.68 * W, -0.34 * W) - dz,
+          HX(0.68 * W, 0),
+          HY(0.68 * W, 0) - dz,
+        );
+        ctx.quadraticCurveTo(
+          HX(0.68 * W, 0.34 * W),
+          HY(0.68 * W, 0.34 * W) - dz,
+          HX(0.16 * W, 0.44 * W),
+          HY(0.16 * W, 0.44 * W) - dz,
+        );
+        ctx.lineTo(HX(-0.42 * W, 0.34 * W), HY(-0.42 * W, 0.34 * W) - dz);
+        ctx.closePath();
+      };
+      ctx.fillStyle = footColor;
+      trace(0);
+      ctx.fill();
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(spec.legColor ?? legBase, -38);
+      trace(wallH);
+      ctx.fill();
+      if (CLOVEN_HOOF.test(opts.defId)) {
+        ctx.strokeStyle = 'rgba(12,9,7,0.5)';
+        ctx.lineWidth = Math.max(1, W * s * 0.09);
+        ctx.beginPath();
+        ctx.moveTo(HX(0.66 * W, 0), HY(0.66 * W, 0) - wallH);
+        ctx.lineTo(HX(0.2 * W, 0), HY(0.2 * W, 0) - wallH * 0.9);
         ctx.stroke();
       }
-      ctx.lineCap = 'butt';
+    } else if (spec.foot === 'bearpaw') {
+      // THE BEAR PAW EARNS ITS CLAWS: a broad plantigrade pad, four
+      // knuckle lobes stepping into the light across the leading
+      // edge, and four honest keratin claws — filled curved wedges,
+      // never scratch-lines. The fore paws splay INWARD (negative
+      // splay above): bears walk pigeon-toed, the field mark of the
+      // amble.
+      const W = spec.legW * 1.25;
+      const curl = 1 - 0.26 * digitCurl;
+      const skin = spec.legColor ?? opts.color;
+      ctx.save();
+      ctx.transform(ffx * s, ffy * s, fsx * s, fsy * s, ex, ey);
+      // Claws first — the roots hide under the digits.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : '#d8cbb2';
+      for (const v of BEAR_TOES) {
+        const ru = (0.5 + 0.12 * (1 - Math.abs(v))) * W * curl;
+        const rv = v * W;
+        const cl = W * (0.52 - 0.2 * digitCurl);
+        const tu = ru + cl;
+        const tv = rv + v * W * 0.28;
+        ctx.beginPath();
+        ctx.moveTo(ru, rv - 0.1 * W);
+        ctx.quadraticCurveTo(ru + cl * 0.55, rv - 0.09 * W + (tv - rv) * 0.45, tu, tv);
+        ctx.quadraticCurveTo(ru + cl * 0.5, rv + 0.1 * W + (tv - rv) * 0.45, ru, rv + 0.1 * W);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // The pad: heel arc behind the ankle, flanks swelling to the
+      // toe line.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(skin, -8);
+      ctx.beginPath();
+      ctx.moveTo(-0.5 * W, -0.52 * W);
+      ctx.quadraticCurveTo(-0.85 * W, 0, -0.5 * W, 0.52 * W);
+      ctx.lineTo(0.42 * W * curl, 0.7 * W);
+      ctx.quadraticCurveTo(0.78 * W * curl, 0, 0.42 * W * curl, -0.7 * W);
+      ctx.closePath();
+      ctx.fill();
+      // Knuckle lobes, one per digit, a step lighter than the pad.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(skin, 7);
+      for (const v of BEAR_TOES) {
+        const u = (0.48 + 0.12 * (1 - Math.abs(v))) * W * curl;
+        ctx.beginPath();
+        ctx.arc(u, v * W, 0.2 * W, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // The crease that seats the digits ON the pad — quiet ink.
+      ctx.strokeStyle = 'rgba(16,11,8,0.28)';
+      ctx.lineWidth = 0.05 * W;
+      ctx.beginPath();
+      ctx.moveTo(0.3 * W * curl, -0.56 * W);
+      ctx.quadraticCurveTo(0.46 * W * curl, 0, 0.3 * W * curl, 0.56 * W);
+      ctx.stroke();
+      ctx.restore();
+    } else if (spec.foot === 'turtleclaw') {
+      // THE TURTLE TREADS ON CLAWS — two species, two feet. The
+      // snapper plants a webbed crocodilian forefoot: three long horn
+      // claws splayed on the sprawl with the web scalloped between
+      // their knuckles. The colossus sets an elephant footing: a
+      // round column base rimmed with three BLUNT toenail wedges —
+      // no web, no rake, just weight.
+      const heavy = opts.defId === 'colossus_turtle';
+      const W = spec.legW * (heavy ? 1.05 : 1.2);
+      const curl = 1 - 0.3 * digitCurl;
+      const skin = spec.legColor ?? opts.color;
+      ctx.save();
+      ctx.transform(ffx * s, ffy * s, fsx * s, fsy * s, ex, ey);
+      if (heavy) {
+        // The footing first, then the toenails ON its front rim — an
+        // elephant's nails ride the visible face of the column base,
+        // never hide beneath it (buried roots left only the tips
+        // showing, and they read as scattered debris chips).
+        ctx.fillStyle = opts.hurt ? '#ffffff' : shade(skin, -12);
+        ctx.beginPath();
+        ctx.ellipse(0.05 * W, 0, 0.78 * W, 0.68 * W, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // The base's front rim catches the light — the column seats.
+        ctx.strokeStyle = opts.hurt ? '#ffffff' : shade(skin, 6);
+        ctx.lineWidth = 0.09 * W;
+        ctx.beginPath();
+        ctx.ellipse(0.05 * W, 0, 0.64 * W, 0.55 * W, 0, -0.9, 0.9);
+        ctx.stroke();
+        ctx.fillStyle = opts.hurt ? '#ffffff' : '#b9b193';
+        for (const v of TURTLE_CLAW_FAN) {
+          const rv = v * 0.95 * W;
+          const u0 = 0.42 * W * curl;
+          const tip = 1.0 * W * curl;
+          ctx.beginPath();
+          ctx.moveTo(u0, rv - 0.21 * W);
+          ctx.lineTo(tip, rv - 0.12 * W + v * 0.12 * W);
+          ctx.lineTo(tip, rv + 0.12 * W + v * 0.12 * W);
+          ctx.lineTo(u0, rv + 0.21 * W);
+          ctx.closePath();
+          ctx.fill();
+        }
+      } else {
+        // Horn claws first — long, curved, fanned on the sprawl.
+        ctx.fillStyle = opts.hurt ? '#ffffff' : '#cfc49e';
+        for (const v of TURTLE_CLAW_FAN) {
+          const ru = (0.5 + 0.1 * (1 - Math.abs(v))) * W * curl;
+          const rv = v * 0.95 * W;
+          const cl = W * (0.62 - 0.24 * digitCurl) * (1 - 0.15 * Math.abs(v));
+          const tu = ru + cl;
+          const tv = rv + v * W * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(ru, rv - 0.11 * W);
+          ctx.quadraticCurveTo(ru + cl * 0.5, rv - 0.1 * W + (tv - rv) * 0.5, tu, tv);
+          ctx.quadraticCurveTo(ru + cl * 0.45, rv + 0.11 * W + (tv - rv) * 0.5, ru, rv + 0.11 * W);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // The webbed pad: heel arc, flank swell, and a leading edge
+        // SCALLOPED between the claw knuckles — the web.
+        ctx.fillStyle = opts.hurt ? '#ffffff' : shade(skin, -6);
+        ctx.beginPath();
+        ctx.moveTo(-0.38 * W, -0.62 * W);
+        ctx.quadraticCurveTo(-0.75 * W, 0, -0.38 * W, 0.62 * W);
+        ctx.quadraticCurveTo(0.1 * W, 0.95 * W, 0.52 * W * curl, 0.55 * W);
+        ctx.quadraticCurveTo(0.34 * W * curl, 0.27 * W, 0.56 * W * curl, 0);
+        ctx.quadraticCurveTo(0.34 * W * curl, -0.27 * W, 0.52 * W * curl, -0.55 * W);
+        ctx.quadraticCurveTo(0.1 * W, -0.95 * W, -0.38 * W, -0.62 * W);
+        ctx.closePath();
+        ctx.fill();
+        // Scaled skin: two quiet plate seams across the metatarsus.
+        ctx.strokeStyle = 'rgba(14,18,10,0.25)';
+        ctx.lineWidth = 0.05 * W;
+        for (const u of [-0.05, 0.2] as const) {
+          ctx.beginPath();
+          ctx.moveTo(u * W, -0.42 * W);
+          ctx.quadraticCurveTo((u + 0.14) * W, 0, u * W, 0.42 * W);
+          ctx.stroke();
+        }
+      }
       ctx.restore();
     } else {
-      // Paw chip aligned with the shin.
-      const pw = spec.legW * s * 1.35;
-      const shinA = Math.atan2(ey - ky, ex - kx);
+      // Paw chip: a ground oval set toes-forward of the ankle on the
+      // facing's bearing, its leading edge split by two soft digit
+      // seams — the read of a paw at the cost the zoom can afford.
+      const W = spec.legW * 1.35;
+      ctx.save();
+      ctx.transform(ffx * s, ffy * s, fsx * s, fsy * s, ex, ey);
       ctx.fillStyle = footColor;
       ctx.beginPath();
-      ctx.ellipse(ex, ey, pw * 0.62, pw * 0.42, shinA - Math.PI / 2, 0, Math.PI * 2);
+      ctx.ellipse(0.22 * W * (1 - 0.2 * digitCurl), 0, 0.68 * W, 0.5 * W, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.strokeStyle = opts.hurt ? '#ffffff' : shade(spec.legColor ?? legBase, -30);
+      ctx.lineWidth = 0.06 * W;
+      for (const v of [-0.2, 0.2] as const) {
+        ctx.beginPath();
+        ctx.moveTo(0.5 * W, v * W * 1.4);
+        ctx.lineTo(0.8 * W, v * W * 2.1);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
   };
   // Depth split by where each foot ACTUALLY is, not its rest pose —
