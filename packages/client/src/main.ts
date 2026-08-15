@@ -2040,7 +2040,10 @@ game.onFx = (fx) => {
         kind === 'gibbet' || kind === 'coldcamp' ||
         // A dugout is forty seasons of hollowing — the biggest drum
         // on the bank when it finally lets go.
-        kind === 'dugout',
+        kind === 'dugout' ||
+        // The town bell's break is the loudest note it ever plays,
+        // and a stack of empty casks is a drum choir.
+        kind === 'townbell' || kind === 'barrelstack',
       ),
     );
     // Stone-weight pieces land heavy: marble, mithril, and old
@@ -2052,7 +2055,10 @@ game.onFx = (fx) => {
           // Kingdom-stone and joined iron land like the masonry they are.
           kind === 'sarcophagus' || kind === 'brokenpillar' || kind === 'oldstatue' || kind === 'minecart' ||
           // A sea-beast's rib falls with a monument's weight.
-          kind === 'greatribs'
+          kind === 'greatribs' ||
+          // Town limestone and a founder's bronze land like the
+          // civic masonry they are.
+          kind === 'townfountain' || kind === 'founder' || kind === 'stonebench'
           ? 3.2
           : 2.2,
       );

@@ -516,6 +516,9 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     // THE BANKS GET THEIR GOODS: shore props stand on whatever bank
     // the tide left — sand, trampled dirt, or meadow.
     if (t >= Tile.FishRack && t <= Tile.TideChimes) return nearestFloor(ground, tx, ty);
+    // THE TOWN KEEPS ITS DAY: street furniture stands on whatever
+    // the town paved — flagstone, path, or the green.
+    if (t >= Tile.TownFountain && t <= Tile.ProduceStand) return nearestFloor(ground, tx, ty);
     // The palisade stands in open country like the garrison curtain:
     // whatever walkable terrain fronts it continues beneath (south
     // first — that side's base sliver shows), and a family member

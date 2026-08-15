@@ -742,6 +742,40 @@ export enum Tile {
   KeepPool = 389,
   /** Shell chimes on a driftwood arch, ticking in the sea wind. */
   TideChimes = 390,
+  // THE TOWN KEEPS ITS DAY — the town-life kit (391-404,
+  // docs/town-decor-plan.md). The deliberate inversion of the
+  // dungeon shelf: down there everything was LEFT; up here
+  // everything is KEPT. Work mid-shift, goods in motion, civic
+  // pride polished — the fountain runs because someone dredges it,
+  // the notices are fresh because someone pins them.
+  /** The plaza's heart: a two-tier limestone fountain, wish-coins below. */
+  TownFountain = 391,
+  /** The founder in bronze gone green — the town still lays a wreath. */
+  FounderStatue = 392,
+  /** The town's voice: pinned bills under a shingle rain cap. */
+  NoticeBoard = 393,
+  /** The bronze bell in its timber frame; it calls the hours and the alarms. */
+  TownBell = 394,
+  /** A two-wheel barrow parked on its legs, still loaded. */
+  HandCart = 395,
+  /** Plump tied sacks of grain — kept stores, the scoop parked in the open one. */
+  GrainSacks = 396,
+  /** Two casks chocked on their sides, a third standing on top. */
+  BarrelStack = 397,
+  /** Crates stacked two high, the top lid ajar over straw. */
+  CrateStack = 398,
+  /** The week's wash sagging true between two posts. */
+  WashLine = 399,
+  /** A chewed hitching rail, iron rings, one tied lead. */
+  HitchingPost = 400,
+  /** Cordwood ranked between stakes; the axe stands in the block. */
+  Woodpile = 401,
+  /** A half-barrel planter spilling blooms over the street. */
+  StreetPlanter = 402,
+  /** A carved civic bench, worn where people actually sit. */
+  StoneBench = 403,
+  /** A street grocer's tiered display under a hanging scale. */
+  ProduceStand = 404,
 }
 
 export enum Detail {
@@ -1330,6 +1364,25 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.WithyStore]: { name: 'withy bundles', solid: true, color: '#87764a', raised: true, topColor: '#c9b278' },
   [Tile.KeepPool]: { name: 'keep-pool', solid: true, color: '#3c545e', raised: true, topColor: '#b8c4c6' },
   [Tile.TideChimes]: { name: 'shell chimes', solid: true, color: '#6e6858', raised: true, topColor: '#e8d8b8' },
+  // THE TOWN KEEPS ITS DAY — minimap voice: warm worked timber and
+  // town limestone with one bright key each, every piece a full
+  // value step off the three grounds a street stands on (StoneFloor
+  // '#514b58', path '#96744c', grass '#4f7c35') — so a dressed
+  // square reads as a SQUARE at chart scale, never as clutter.
+  [Tile.TownFountain]: { name: 'town fountain', solid: true, color: '#7d8489', raised: true, topColor: '#9fc4d8' },
+  [Tile.FounderStatue]: { name: "founder's statue", solid: true, color: '#6f6a58', raised: true, topColor: '#7fae94' },
+  [Tile.NoticeBoard]: { name: 'notice board', solid: true, color: '#6f5a38', raised: true, topColor: '#e2d9c4' },
+  [Tile.TownBell]: { name: 'town bell', solid: true, color: '#6f5a38', raised: true, topColor: '#c2a45c' },
+  [Tile.HandCart]: { name: 'hand cart', solid: true, color: '#75603e', raised: true, topColor: '#c9a76a' },
+  [Tile.GrainSacks]: { name: 'grain sacks', solid: true, color: '#8a744e', raised: true, topColor: '#d8c49a' },
+  [Tile.BarrelStack]: { name: 'stacked barrels', solid: true, color: '#75603e', raised: true, topColor: '#b08a45' },
+  [Tile.CrateStack]: { name: 'stacked crates', solid: true, color: '#75603e', raised: true, topColor: '#c9a76a' },
+  [Tile.WashLine]: { name: 'washing line', solid: true, color: '#6f6a58', raised: true, topColor: '#c4808a' },
+  [Tile.HitchingPost]: { name: 'hitching post', solid: true, color: '#6f5a38', raised: true, topColor: '#a8823f' },
+  [Tile.Woodpile]: { name: 'woodpile', solid: true, color: '#75603e', raised: true, topColor: '#c9a76a' },
+  [Tile.StreetPlanter]: { name: 'street planter', solid: true, color: '#75603e', raised: true, topColor: '#c95a74' },
+  [Tile.StoneBench]: { name: 'stone bench', solid: true, color: '#8a857a', raised: true, topColor: '#b3ada0' },
+  [Tile.ProduceStand]: { name: 'produce stand', solid: true, color: '#75603e', raised: true, topColor: '#c05a3a' },
 };
 
 /** The four awning silhouettes, index order FOREVER (the id math). */
@@ -1965,6 +2018,23 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.WithyStore, 0.3],
   [Tile.KeepPool, 0.38],
   [Tile.TideChimes, 0.18],
+  // THE TOWN KEEPS ITS DAY: street furniture you brush past — the
+  // fountain and the cart keep the widest stance, the planter and
+  // the hitch rail are things you lean on, not walls you hit.
+  [Tile.TownFountain, 0.45],
+  [Tile.FounderStatue, 0.36],
+  [Tile.NoticeBoard, 0.3],
+  [Tile.TownBell, 0.4],
+  [Tile.HandCart, 0.4],
+  [Tile.GrainSacks, 0.32],
+  [Tile.BarrelStack, 0.38],
+  [Tile.CrateStack, 0.34],
+  [Tile.WashLine, 0.32],
+  [Tile.HitchingPost, 0.28],
+  [Tile.Woodpile, 0.36],
+  [Tile.StreetPlanter, 0.24],
+  [Tile.StoneBench, 0.34],
+  [Tile.ProduceStand, 0.36],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -2203,7 +2273,25 @@ export type DestructibleKind =
   | 'shellbench'
   | 'withies'
   | 'keeppool'
-  | 'shellchimes';
+  | 'shellchimes'
+  // THE TOWN KEEPS ITS DAY: street timber coughs the joinery amber
+  // it was built from; the NEW voices are town limestone, bronze
+  // (the bell's break is the loudest note it ever plays), spilled
+  // grain, flying laundry, and produce rolling for the gutter.
+  | 'townfountain'
+  | 'founder'
+  | 'notices'
+  | 'townbell'
+  | 'handcart'
+  | 'grainsacks'
+  | 'barrelstack'
+  | 'cratestack'
+  | 'washline'
+  | 'hitchpost'
+  | 'woodpile'
+  | 'streetplanter'
+  | 'stonebench'
+  | 'produce';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -2347,6 +2435,25 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.WithyStore, { kind: 'withies', respawnSec: 300, hits: 1 }],
   [Tile.KeepPool, { kind: 'keeppool', respawnSec: 300, hits: 1 }],
   [Tile.TideChimes, { kind: 'shellchimes', respawnSec: 300, hits: 1 }],
+  // THE TOWN KEEPS ITS DAY: street timber holds a blow or two,
+  // civic masonry and bronze hold three or four — and a town REPAIRS
+  // (the civic pieces restand on the long clock, the small stuff on
+  // the short one). Everything here breaks: a kept town is a town
+  // somebody can wreck, and that is what the watch is for.
+  [Tile.TownFountain, { kind: 'townfountain', respawnSec: 600, hits: 4 }],
+  [Tile.FounderStatue, { kind: 'founder', respawnSec: 600, hits: 4 }],
+  [Tile.NoticeBoard, { kind: 'notices', respawnSec: 300, hits: 2 }],
+  [Tile.TownBell, { kind: 'townbell', respawnSec: 600, hits: 3 }],
+  [Tile.HandCart, { kind: 'handcart', respawnSec: 300, hits: 2 }],
+  [Tile.GrainSacks, { kind: 'grainsacks', respawnSec: 300, hits: 1 }],
+  [Tile.BarrelStack, { kind: 'barrelstack', respawnSec: 300, hits: 2 }],
+  [Tile.CrateStack, { kind: 'cratestack', respawnSec: 300, hits: 2 }],
+  [Tile.WashLine, { kind: 'washline', respawnSec: 300, hits: 1 }],
+  [Tile.HitchingPost, { kind: 'hitchpost', respawnSec: 300, hits: 2 }],
+  [Tile.Woodpile, { kind: 'woodpile', respawnSec: 300, hits: 1 }],
+  [Tile.StreetPlanter, { kind: 'streetplanter', respawnSec: 300, hits: 1 }],
+  [Tile.StoneBench, { kind: 'stonebench', respawnSec: 600, hits: 3 }],
+  [Tile.ProduceStand, { kind: 'produce', respawnSec: 300, hits: 2 }],
 ]);
 
 /** Every smashable prop tile. */

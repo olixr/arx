@@ -396,6 +396,22 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.WithyStore, 'withies', 1],
     [Tile.KeepPool, 'keeppool', 1],
     [Tile.TideChimes, 'shellchimes', 1],
+    // THE TOWN KEEPS ITS DAY: street timber holds a blow or two,
+    // civic masonry and bronze hold three or four.
+    [Tile.TownFountain, 'townfountain', 4],
+    [Tile.FounderStatue, 'founder', 4],
+    [Tile.NoticeBoard, 'notices', 2],
+    [Tile.TownBell, 'townbell', 3],
+    [Tile.HandCart, 'handcart', 2],
+    [Tile.GrainSacks, 'grainsacks', 1],
+    [Tile.BarrelStack, 'barrelstack', 2],
+    [Tile.CrateStack, 'cratestack', 2],
+    [Tile.WashLine, 'washline', 1],
+    [Tile.HitchingPost, 'hitchpost', 2],
+    [Tile.Woodpile, 'woodpile', 1],
+    [Tile.StreetPlanter, 'streetplanter', 1],
+    [Tile.StoneBench, 'stonebench', 3],
+    [Tile.ProduceStand, 'produce', 2],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {

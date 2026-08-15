@@ -129,7 +129,25 @@ export type SmashKind =
   | 'shellbench'
   | 'withies'
   | 'keeppool'
-  | 'shellchimes';
+  | 'shellchimes'
+  // THE TOWN KEEPS ITS DAY: street wreckage — limestone slabs and
+  // coping, bronze that rings on the cobbles, paper that sails,
+  // laundry that flies, grain that pours, and produce rolling for
+  // the gutter.
+  | 'townfountain'
+  | 'founder'
+  | 'notices'
+  | 'townbell'
+  | 'handcart'
+  | 'grainsacks'
+  | 'barrelstack'
+  | 'cratestack'
+  | 'washline'
+  | 'hitchpost'
+  | 'woodpile'
+  | 'streetplanter'
+  | 'stonebench'
+  | 'produce';
 
 export interface DebrisChunk {
   x: number; // world coords (tile units)
@@ -631,6 +649,22 @@ const CHIP_TONE: Record<SmashKind, string> = {
   withies: '#a08b58',
   keeppool: '#a08b58',
   shellchimes: '#ded5c4',
+  // Town wreckage: kept limestone, kept bronze, oak joinery, burlap
+  // gold, dyed cloth, and garden green.
+  townfountain: '#a39a86',
+  founder: '#8a7448',
+  notices: '#e2d9c4',
+  townbell: '#8a7448',
+  handcart: '#8a6534',
+  grainsacks: '#b89a68',
+  barrelstack: '#8a6534',
+  cratestack: '#8a6534',
+  washline: '#e2d9c4',
+  hitchpost: '#8a6534',
+  woodpile: '#8a6534',
+  streetplanter: '#8a6534',
+  stonebench: '#a39a86',
+  produce: '#c05a3a',
 };
 
 const pick = <T>(rand: () => number, arr: readonly T[]): T =>
@@ -1784,6 +1818,199 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
         out.push({ len: 0.22, wid: 0.035, color: '#8d8672', stripe: '#b5ad94', pace: 1.0 });
       }
       out.push({ len: 0.04, wid: 0.035, color: '#94d6ca', stripe: '#def5ee', round: true, pace: 0.6 });
+      break;
+    }
+    // ---- THE TOWN KEEPS ITS DAY -------------------------------------
+    case 'townfountain': {
+      // The basin lets go: coping blocks drop like the stone they
+      // are, the bowl's rim arcs off, and the pool sheets DARK
+      // across the plaza — with both wish-coins winking out in it.
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.16 + rand() * 0.06, wid: 0.09, color: pick(rand, ['#a39a86', '#8a8271', '#78705d']), stripe: '#c6bda6', pace: 0.45 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.14, wid: 0.12, color: '#5f87a8', stripe: '#9fc4d8', round: true, pace: 0.5 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.035, wid: 0.03, color: '#c8a95e', stripe: '#e8d4a0', round: true, pace: 1.3 });
+      }
+      break;
+    }
+    case 'founder': {
+      // The founder comes down in pieces a founder comes down in:
+      // heavy plinth slabs low and slow, bronze limbs ringing off
+      // the cobbles, and the verdigris dusting green where they land.
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.18 + rand() * 0.05, wid: 0.1, color: pick(rand, ['#a39a86', '#78705d']), stripe: '#c6bda6', pace: 0.4 });
+      }
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.14 + rand() * 0.06, wid: 0.05, color: pick(rand, ['#6d5a34', '#8a7448']), stripe: '#c2a45c', pace: 0.85 });
+      }
+      out.push({ len: 0.08, wid: 0.07, color: '#5f9b84', stripe: '#7fae94', round: true, pace: 0.6 });
+      break;
+    }
+    case 'notices': {
+      // The town's word scatters: posts tumble, the shingle cap
+      // sheds, and every pinned bill SAILS — paper flies far, falls
+      // slow, and reads pale wherever it settles.
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.3, wid: 0.045, color: '#6f4d26', stripe: '#c9a76a', pace: 0.6 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.12, wid: 0.03, color: '#8a6534', stripe: '#c9a76a', pace: 0.8 });
+      }
+      for (let i = 0; i < 6; i++) {
+        out.push({ len: 0.09 + rand() * 0.04, wid: 0.07, color: pick(rand, ['#e2d9c4', '#f2ead6', '#d9cfb4']), round: true, pace: 1.5 });
+      }
+      break;
+    }
+    case 'townbell': {
+      // The loudest note it ever plays: the frame's legs kick out,
+      // the little roof sheds both pitches, and the BELL ITSELF
+      // drops dead-weight, rolls a half turn, and settles mouth-up.
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.26 + rand() * 0.08, wid: 0.05, color: pick(rand, ['#6f4d26', '#8a6534']), stripe: '#c9a76a', pace: 0.7 });
+      }
+      out.push({ len: 0.17, wid: 0.15, color: '#8a7448', stripe: '#c2a45c', round: true, pace: 0.35 });
+      out.push({ len: 0.05, wid: 0.045, color: '#3a3020', round: true, pace: 1.0 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.1, wid: 0.02, color: '#a89263', pace: 1.1 });
+      }
+      break;
+    }
+    case 'handcart': {
+      // The barrow breaks at its joints: the wheel gets FREE and
+      // rolls (the one long round), shafts clatter, the bed planks
+      // fan, and the load bursts with it.
+      out.push({ len: 0.24, wid: 0.22, color: '#6f4d26', stripe: '#c9a76a', round: true, pace: 1.4 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.3, wid: 0.035, color: '#8a6534', stripe: '#c9a76a', pace: 0.8 });
+      }
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.16, wid: 0.05, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.7 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.1, wid: 0.08, color: '#b89a68', stripe: '#d8c49a', round: true, pace: 0.55 });
+      }
+      break;
+    }
+    case 'grainsacks': {
+      // Burlap gives at the seams: the cloth folds soft and short,
+      // and the grain POURS — a spray of gold kernels that carries,
+      // with the scoop flipping end over end among them.
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.13, wid: 0.09, color: pick(rand, ['#b89a68', '#d8c49a']), round: true, pace: 0.4 });
+      }
+      for (let i = 0; i < 9; i++) {
+        out.push({ len: 0.028, wid: 0.02, color: pick(rand, ['#d8b878', '#e8d4a0', '#c9a76a']), round: true, pace: 1.6 });
+      }
+      out.push({ len: 0.11, wid: 0.03, color: '#8a6534', stripe: '#c9a76a', pace: 1.0 });
+      break;
+    }
+    case 'barrelstack': {
+      // The chocks lose the argument: staves fan off both side
+      // casks, the iron hoops ring away in circles, and the crown
+      // cask's lid frisbees clear.
+      for (let i = 0; i < 7; i++) {
+        out.push({ len: 0.17 + rand() * 0.05, wid: 0.04, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.85 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.13, wid: 0.11, color: '#4c4a52', stripe: '#8c8798', round: true, pace: 1.1 });
+      }
+      out.push({ len: 0.15, wid: 0.13, color: '#c9a76a', stripe: '#e0c68e', round: true, pace: 1.3 });
+      break;
+    }
+    case 'cratestack': {
+      // Two crates come apart as boards: battens, panels, the ajar
+      // lid already loose going furthest, straw puffing out of the
+      // middle of it all.
+      for (let i = 0; i < 6; i++) {
+        out.push({ len: 0.16 + rand() * 0.05, wid: 0.05, color: pick(rand, ['#8a6534', '#96713c']), stripe: '#c9a76a', pace: 0.75 });
+      }
+      out.push({ len: 0.2, wid: 0.06, color: '#c9a76a', stripe: '#e0c68e', pace: 1.25 });
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.07, wid: 0.014, color: pick(rand, ['#d8b878', '#e8d4a0']), pace: 1.2 });
+      }
+      break;
+    }
+    case 'washline': {
+      // The week's wash takes flight: posts drop like posts, but the
+      // LAUNDRY sails — dyed cloth tumbling high and far, the pegs
+      // ticking down among it. The town's most colorful wreck.
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.28, wid: 0.04, color: '#8a6534', stripe: '#c9a76a', pace: 0.6 });
+      }
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.12 + rand() * 0.05, wid: 0.09, color: pick(rand, ['#efe8d4', '#c4808a', '#8fa3bd', '#c9b45a']), round: true, pace: 1.5 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.045, wid: 0.012, color: '#c9a76a', pace: 1.2 });
+      }
+      break;
+    }
+    case 'hitchpost': {
+      // The chewed rail finally loses: it snaps at the weakest
+      // notch, the rings ring off, and the tied lead goes down still
+      // knotted to its half of the rail.
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.26, wid: 0.05, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.7 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.07, wid: 0.06, color: '#4c4a52', stripe: '#8c8798', round: true, pace: 1.1 });
+      }
+      out.push({ len: 0.12, wid: 0.025, color: '#a89263', pace: 0.5 });
+      break;
+    }
+    case 'woodpile': {
+      // The rank lets go the way a rank does: the whole face ROLLS —
+      // rounds and splits tumbling low and heavy, end grain over end
+      // grain, the axe cartwheeling once off the block.
+      for (let i = 0; i < 8; i++) {
+        out.push({ len: 0.1 + rand() * 0.05, wid: 0.08, color: pick(rand, ['#6f4d26', '#8a6534', '#d4b98a']), stripe: '#d4b98a', round: true, pace: 0.55 });
+      }
+      out.push({ len: 0.16, wid: 0.035, color: '#96713c', stripe: '#c9a76a', pace: 1.15 });
+      break;
+    }
+    case 'streetplanter': {
+      // The half-barrel bursts wet: staves out, the soil slumping
+      // dark and SHORT, and the blooms going up brighter than
+      // anything else on the street.
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.14, wid: 0.04, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.7 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.08, wid: 0.06, color: '#4a3a28', round: true, pace: 0.35 });
+      }
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.05, wid: 0.04, color: pick(rand, ['#c95a74', '#d8c454', '#5d8449']), round: true, pace: 1.3 });
+      }
+      break;
+    }
+    case 'stonebench': {
+      // Carved stone drops like the stone it is: the slab in two,
+      // the scroll feet rolling a half turn, dust and done.
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.24, wid: 0.09, color: '#a39a86', stripe: '#c6bda6', pace: 0.4 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.1, wid: 0.08, color: '#78705d', stripe: '#a39a86', round: true, pace: 0.5 });
+      }
+      break;
+    }
+    case 'produce': {
+      // Market day ends early: the tiers fold, the baskets burst,
+      // and the GOODS make their break — apples bouncing far,
+      // cabbages rolling, the pumpkin going exactly one sad hop.
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.18, wid: 0.05, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.7 });
+      }
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.055, wid: 0.05, color: pick(rand, ['#c05a3a', '#b5452f']), stripe: '#e8c8a0', round: true, pace: 1.5 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.08, wid: 0.07, color: '#6a9455', stripe: '#87b06a', round: true, pace: 0.9 });
+      }
+      out.push({ len: 0.14, wid: 0.11, color: '#c9822f', stripe: '#e0a860', round: true, pace: 0.4 });
       break;
     }
   }

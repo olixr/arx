@@ -168,6 +168,19 @@ export const TILE_CATEGORIES: TileCategory[] = [
     ],
   },
   {
+    // THE TOWN KEEPS ITS DAY: the town-life shelf — the civic
+    // anchors first (fountain, founder, board, bell set a square),
+    // then commerce, then the chores that make a street a HOME.
+    id: 'town',
+    label: 'Town life',
+    tiles: [
+      Tile.TownFountain, Tile.FounderStatue, Tile.NoticeBoard, Tile.TownBell,
+      Tile.ProduceStand, Tile.HandCart, Tile.BarrelStack, Tile.CrateStack,
+      Tile.GrainSacks, Tile.WashLine, Tile.Woodpile, Tile.HitchingPost,
+      Tile.StreetPlanter, Tile.StoneBench,
+    ],
+  },
+  {
     // THE FAIR HOUSE FURNISHED: the elven shelf — lights and cloth
     // first (the pieces that set a scene), then furniture, stations,
     // and the garden stone.
