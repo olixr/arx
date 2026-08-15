@@ -35,6 +35,16 @@
  * The volleys (bone_volley, rattling_volley, goblin_firebolt,
  * gloom_spittle) are projectile-borne and speak the mastered flight
  * voices — their polish lives on the wing, not here.
+ *
+ * THE BRINE WAVE (the skral crowns): all EIGHT boss arts carry
+ * full set-pieces — a crown's word is read a dozen times a fight
+ * and must teach on every one. The dialect's shared grammar: water
+ * is the actor (the spear rises through a mound, the crater empties
+ * itself, the pool pulls INWARD), every landing wets the bank, and
+ * the clocks are ragged — the shoal's rhythm, never the legion's.
+ * gorge_spray is the exception that proves the volley rule: its
+ * landing gob IS the art (the flight is a lobbed mouthful), so the
+ * splat owns a signature where the arrows stay quiet.
  */
 
 import { srand } from './abilityFx.js';
@@ -1860,6 +1870,408 @@ const warlord_horn: AbilitySig = {
   },
 };
 
+// --------------------------------------------------- drowning_surge
+// ground_field (r 2.6, ~4.5 s) — the tidelord stakes a flood on
+// your stride; standing in it is agreeing to go under.
+
+/**
+ * DROWNING_SURGE — "the pool that pulls."
+ * Every hazard ring in the game announces itself OUTWARD; the
+ * drowning pool is the one read that runs the other way. Rings are
+ * born at the rim and CONTRACT to the heart on the field's own pulse
+ * clock, brightening as they go under — the surface swallowing.
+ * Between them, six curved drag-hooks crawl a slow rotation (the
+ * current's fingers), and seeded bubble stations blink white where
+ * the drowned air gets out. Each server pulse hauls a real undertow
+ * through the matter library, and when the pool finally lets the
+ * bank go it leaves a broken ring of sodden grains and one dark
+ * blotch where the deepest of it stood.
+ */
+const drowning_surge: AbilitySig = {
+  spawn(c) {
+    // The flood arrives already pulling: an undertow, not a splash.
+    const m = asMatter(c);
+    water.deployments.undertow!(m, c.wx, c.wy, { radius: c.radius * 0.8, scale: 0.7 });
+    water.deployments.splash!(m, c.wx, c.wy, { scale: 0.45 });
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx, age, now } = c;
+    const wireMs = (c.ticks ?? 90) * 50;
+    const fade = Math.min(cl(age / 300), cl((wireMs - age) / 450));
+    ctx.save();
+    // THE INDRAWN RINGS: born at the rim on the pulse clock, dying
+    // at the heart — each one brighter the deeper it goes.
+    for (let i = 0; i < 5; i++) {
+      const u = (age - 250 - i * 1000) / 650;
+      if (u <= 0 || u >= 1) continue;
+      const rr = rPx * (1 - u * 0.92);
+      ctx.globalAlpha = (0.32 + 0.6 * u) * fade;
+      ctx.strokeStyle = u < 0.72 ? st.mid : st.core;
+      ctx.lineWidth = Math.max(2, sc * (0.04 + u * 0.035));
+      ctx.beginPath();
+      ctx.ellipse(px, py, rr, rr * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    // THE DRAG HOOKS: six curved current-fingers crawling a slow
+    // rotation — each arc wears a comma tip bent toward the eye.
+    const rand = srand(c.seed ^ 0xd0d);
+    const drift = now / 2400;
+    ctx.strokeStyle = st.deep;
+    for (let k = 0; k < 6; k++) {
+      const a0 = rand() * Math.PI * 2 + drift;
+      const hr = rPx * (0.42 + rand() * 0.46);
+      ctx.globalAlpha = 0.5 * fade;
+      ctx.lineWidth = Math.max(1.5, sc * 0.03);
+      ctx.beginPath();
+      ctx.ellipse(px, py, hr, hr * squash, 0, a0, a0 + 0.55);
+      ctx.stroke();
+      // The comma: the hook's tail bends INWARD off the arc's end.
+      const tx = px + Math.cos(a0 + 0.55) * hr;
+      const ty = py + Math.sin(a0 + 0.55) * hr * squash;
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(
+        px + Math.cos(a0 + 0.72) * hr * 0.82,
+        py + Math.sin(a0 + 0.72) * hr * 0.82 * squash,
+      );
+      ctx.stroke();
+    }
+    // THE DROWNED BREATH: bubble stations blinking on their own
+    // seeded clocks — the air leaving whatever the pool is holding.
+    const rand2 = srand(c.seed ^ 0xb0b);
+    for (let k = 0; k < 7; k++) {
+      const a = rand2() * Math.PI * 2;
+      const rr = Math.sqrt(rand2()) * rPx * 0.8;
+      const ph = rand2();
+      const b = (now / 1100 + ph) % 1;
+      if (b >= 0.16) continue;
+      const bu = b / 0.16;
+      ctx.globalAlpha = (1 - bu) * 0.8 * fade;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(1, sc * 0.02);
+      const bs = sc * (0.03 + bu * 0.04);
+      ctx.beginPath();
+      ctx.ellipse(px + Math.cos(a) * rr, py + Math.sin(a) * rr * squash, bs, bs * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+    // The pool breathes light, and each server pulse HAULS: a real
+    // undertow through the library on the field's own beat.
+    c.glow(c.wx, c.wy, c.radius * 0.8, (0.1 + 0.05 * Math.sin(now / 320)) * fade);
+    for (let i = 0; i < 5; i++) {
+      if (crossed(c, wireMs, (250 + i * 1000) / wireMs)) {
+        water.deployments.undertow!(asMatter(c), c.wx, c.wy, { radius: c.radius * 0.7, scale: 0.35 });
+      }
+    }
+    // THE SODDEN FLOOR: the pool lets go, the bank stays claimed.
+    if (crossed(c, wireMs, 0.93)) {
+      const rand3 = srand(c.seed ^ 0xd0d5);
+      for (let k = 0; k < 7; k++) {
+        const a = (k / 7) * Math.PI * 2 + rand3() * 0.5;
+        const rr = c.radius * (0.72 + rand3() * 0.26);
+        lay(c, c.wx + Math.cos(a) * rr, c.wy + Math.sin(a) * rr * c.squash, '#8fb4c0', {
+          life: 6 + rand3() * 2, size: 0.05, fade: '#40606c', fadeAt: 0.45,
+        });
+      }
+      lay(c, c.wx, c.wy, '#5a8494', { life: 9, size: 0.15, fade: '#2c4650', fadeAt: 0.35 });
+    }
+  },
+};
+
+// ------------------------------------------------------ abyssal_jet
+// beam (range 9, width 0.6) — trench water at pressure through the
+// planted trident; the first beam any crown speaks.
+
+/**
+ * ABYSSAL_JET — "the trench speaks once."
+ * A beam of light dries the moment it dies; a beam of WATER has to
+ * go somewhere. In the corridor's first beats a white pressure slug
+ * outruns the bands from muzzle to stop (the water arriving, made
+ * visible), and from then on the art is all consequence: a soaked
+ * dark lane widens under the corridor, rivulet fingers creep off
+ * both edges hunting the low ground, drip strings fall off the
+ * beam's belly at true height, and the terminus pools — foam rim
+ * working — where nine tiles of trench water hit one patch of bank.
+ * The lasting mark is the dialect's only LINE: wet grains lying
+ * along the whole corridor, so the fight remembers exactly which
+ * lane the king owned.
+ */
+const abyssal_jet: AbilitySig = {
+  spawn(c) {
+    const m = asMatter(c);
+    const ang = Math.atan2(c.wy2 - c.wy, c.wx2 - c.wx);
+    // The muzzle churns; the stop takes the whole trench at once.
+    water.deployments.churn!(m, c.wx, c.wy, { radius: 0.35, scale: 0.35 });
+    water.deployments.splash!(m, c.wx2, c.wy2, { scale: 0.7 });
+    water.deployments.spray!(m, c.wx2, c.wy2, { dir: ang, scale: 0.5 });
+    // Trench water is COLD — a small frost bloom rides the stop.
+    frost.deployments.bloom!(m, c.wx2, c.wy2, { radius: 0.45, scale: 0.3 });
+    c.glow(c.wx2, c.wy2, 1.2, 0.4);
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, px2, py2 } = c;
+    const dx = px2 - px;
+    const dy = py2 - py;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    const nx = -uy;
+    const ny = ux;
+    const linger = 1 - cl((t - 0.62) / 0.38);
+    ctx.save();
+    // THE SOAKED LANE: dark from muzzle to stop, widening as the
+    // runoff spreads — the corridor's shadow on the bank.
+    const w0 = sc * 0.16;
+    const w1 = sc * 0.4 * (0.7 + 0.5 * t);
+    ctx.globalAlpha = 0.34 * linger;
+    ctx.fillStyle = st.deep;
+    ctx.beginPath();
+    ctx.moveTo(px + nx * w0, py + ny * w0);
+    ctx.lineTo(px2 + nx * w1, py2 + ny * w1);
+    ctx.lineTo(px2 - nx * w1, py2 - ny * w1);
+    ctx.lineTo(px - nx * w0, py - ny * w0);
+    ctx.closePath();
+    ctx.fill();
+    // THE RIVULETS: fingers creep off both edges hunting low ground.
+    const rand = srand(c.seed ^ 0xab5);
+    ctx.strokeStyle = st.mid;
+    ctx.lineWidth = Math.max(1.5, sc * 0.028);
+    for (let k = 0; k < 5; k++) {
+      const tk = 0.22 + rand() * 0.7;
+      const side = k % 2 === 0 ? 1 : -1;
+      const reach = cl((t - tk * 0.25) / 0.45) * sc * (0.16 + rand() * 0.16);
+      if (reach <= 0) continue;
+      const bx = px + dx * tk + nx * side * w1 * 0.8;
+      const by = py + dy * tk + ny * side * w1 * 0.8;
+      const bend = (rand() - 0.5) * 0.8;
+      ctx.globalAlpha = 0.55 * linger;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx + nx * side * reach * 0.6 + ux * bend * reach * 0.4, by + ny * side * reach * 0.6 * squash + uy * bend * reach * 0.4);
+      ctx.lineTo(bx + nx * side * reach + ux * bend * reach, by + ny * side * reach * squash + uy * bend * reach);
+      ctx.stroke();
+    }
+    // THE TERMINUS POOL: the stop takes the trench and keeps it —
+    // a growing pool with its foam rim still working.
+    const pr = sc * (0.42 + 0.3 * cl(t / 0.5));
+    ctx.globalAlpha = 0.4 * linger;
+    ctx.fillStyle = st.deep;
+    ctx.beginPath();
+    ctx.ellipse(px2, py2, pr, pr * squash, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const foamA = c.now / 300;
+    ctx.globalAlpha = 0.7 * linger;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = Math.max(1, sc * 0.025);
+    ctx.beginPath();
+    ctx.ellipse(px2, py2, pr * 0.9, pr * 0.9 * squash, 0, foamA, foamA + 1.6);
+    ctx.stroke();
+    ctx.restore();
+    // THE LINE THE FIGHT REMEMBERS: wet grains down the whole
+    // corridor — the dialect's one linear lasting mark, dense
+    // enough to read as a lane after the wire dies.
+    if (crossed(c, 480, 0.5)) {
+      const rand2 = srand(c.seed ^ 0xab55);
+      for (let k = 0; k < 9; k++) {
+        const tk = 0.12 + k * 0.1;
+        const j = (rand2() - 0.5) * 0.34;
+        lay(c, c.wx + (c.wx2 - c.wx) * tk + j, c.wy + (c.wy2 - c.wy) * tk + j * c.squash, '#8fc0cc', {
+          life: 6 + rand2() * 2, size: 0.055 + rand2() * 0.02, fade: '#3c5c6c', fadeAt: 0.45,
+        });
+      }
+      lay(c, c.wx2, c.wy2, '#6a9cac', { life: 8, size: 0.13, fade: '#2c4854', fadeAt: 0.4 });
+      lay(c, c.wx2 + 0.3, c.wy2 + 0.15, '#8fc0cc', { life: 6, size: 0.06, fade: '#3c5c6c', fadeAt: 0.45 });
+      lay(c, c.wx2 - 0.25, c.wy2 - 0.2, '#8fc0cc', { life: 7, size: 0.05, fade: '#3c5c6c', fadeAt: 0.45 });
+    }
+  },
+  air(c) {
+    const { ctx, st, t, sc, px, py, px2, py2 } = c;
+    const lift = sc * 0.5;
+    ctx.save();
+    // THE PRESSURE SLUG: the water's own arrival outruns the bands —
+    // a white knot with a bow wedge, muzzle to stop in the first beats.
+    if (t < 0.3) {
+      const f = cl(t / 0.3);
+      const sx = px + (px2 - px) * f;
+      const sy = py + (py2 - py) * f - lift;
+      const ang = Math.atan2(py2 - py, px2 - px);
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(ang);
+      ctx.globalAlpha = 0.95;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, sc * 0.16, sc * 0.07, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = st.spark;
+      ctx.beginPath();
+      ctx.moveTo(sc * 0.14, -sc * 0.09);
+      ctx.lineTo(sc * 0.26, 0);
+      ctx.lineTo(sc * 0.14, sc * 0.09);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    // THE DRIP STRINGS: the beam's belly sheds — droplets fall from
+    // corridor height to the bank, accelerating like honest water.
+    const rand = srand(c.seed ^ 0xab7);
+    ctx.fillStyle = st.core;
+    for (let k = 0; k < 4; k++) {
+      const tk = 0.2 + rand() * 0.6;
+      const s0 = 0.12 + rand() * 0.45;
+      const fall = (t - s0) / 0.38;
+      if (fall <= 0 || fall >= 1) continue;
+      const bx = px + (px2 - px) * tk;
+      const by = py + (py2 - py) * tk - lift + lift * fall * fall;
+      ctx.globalAlpha = (1 - fall) * 0.85;
+      ctx.fillRect(bx - sc * 0.012, by, sc * 0.024, sc * (0.05 + 0.03 * (1 - fall)));
+    }
+    ctx.restore();
+  },
+};
+
+// ------------------------------------------------- kingspool_geyser
+// pulse_nova (r 2.4, three pulses) — the throne's answer to being
+// stood on; the first pulse_nova any crown speaks.
+
+/**
+ * KINGSPOOL_GEYSER — "the throne's plumbing."
+ * The pool the tidelord will not leave turns out to be PLUMBED: on
+ * each pulse the bank around him cracks in seeded fissures that run
+ * hot-bright for one beat (the pressure showing through the turf),
+ * and then the column goes up — a true standing geyser with a
+ * mushroom crown that climbs, holds, and breaks into falling blocks
+ * while real droplets rain back over the ring. Three pulses overlap
+ * into one erupting pool. The vent mouth stays dark at the heart
+ * with its foam rim working, and the lasting mark is the plumbing
+ * itself: crack-line grains and a wet apron rim that outlive the
+ * eruption — the throne remembering where it vents.
+ */
+const kingspool_geyser: AbilitySig = {
+  spawn(c) {
+    const m = asMatter(c);
+    water.deployments.splash!(m, c.wx, c.wy, { scale: 0.85 });
+    water.deployments.churn!(m, c.wx, c.wy, { radius: c.radius * 0.4, scale: 0.5 });
+    c.glow(c.wx, c.wy, c.radius * 0.9, 0.5);
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    ctx.save();
+    // THE WET APRON: the eruption soaks its ring outward.
+    const ar = rPx * Math.sqrt(cl(t / 0.4));
+    ctx.globalAlpha = 0.22 * (1 - t * 0.6);
+    ctx.fillStyle = st.deep;
+    ctx.beginPath();
+    ctx.ellipse(px, py, ar, ar * squash, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // THE VENT CRACKS: seeded fissures run hot for one beat — the
+    // pressure showing through the turf — then dim to wet dark.
+    const rand = srand(c.seed ^ 0x6e75);
+    const hot = t < 0.3;
+    ctx.strokeStyle = hot ? '#ffffff' : st.deep;
+    ctx.lineWidth = Math.max(2, sc * (hot ? 0.05 : 0.03));
+    ctx.globalAlpha = hot ? 0.95 : 0.5 * (1 - t);
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2 + rand() * 0.9;
+      const r1 = rPx * (0.5 + rand() * 0.35);
+      const j1 = (rand() - 0.5) * 0.4;
+      const j2 = (rand() - 0.5) * 0.4;
+      ctx.beginPath();
+      ctx.moveTo(px + Math.cos(a) * sc * 0.12, py + Math.sin(a) * sc * 0.12 * squash);
+      ctx.lineTo(px + Math.cos(a + j1) * r1 * 0.55, py + Math.sin(a + j1) * r1 * 0.55 * squash);
+      ctx.lineTo(px + Math.cos(a + j2) * r1, py + Math.sin(a + j2) * r1 * squash);
+      ctx.stroke();
+    }
+    // THE VENT MOUTH: dark at the heart, foam rim working.
+    ctx.globalAlpha = 0.75 * (1 - cl((t - 0.7) / 0.3));
+    ctx.fillStyle = st.deep;
+    ctx.beginPath();
+    ctx.ellipse(px, py, sc * 0.28, sc * 0.28 * squash, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const foamA = c.now / 260;
+    ctx.globalAlpha = 0.8 * (1 - cl((t - 0.7) / 0.3));
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = Math.max(1, sc * 0.025);
+    ctx.beginPath();
+    ctx.ellipse(px, py, sc * 0.3, sc * 0.3 * squash, 0, foamA, foamA + 2.1);
+    ctx.stroke();
+    ctx.restore();
+    // THE PLUMBING REMEMBERED: crack grains and the apron rim.
+    if (crossed(c, 780, 0.55)) {
+      const rand2 = srand(c.seed ^ 0x6e7);
+      const ca = rand2() * Math.PI * 2;
+      for (let k = 0; k < 3; k++) {
+        const rr = c.radius * (0.2 + k * 0.22);
+        lay(c, c.wx + Math.cos(ca) * rr, c.wy + Math.sin(ca) * rr * c.squash, '#7ea8b4', {
+          life: 7, size: 0.045, fade: '#35505c', fadeAt: 0.4,
+        });
+      }
+      for (let k = 0; k < 4; k++) {
+        const a = rand2() * Math.PI * 2;
+        lay(c, c.wx + Math.cos(a) * c.radius * 0.92, c.wy + Math.sin(a) * c.radius * 0.92 * c.squash, '#9fc8d0', {
+          life: 5 + rand2() * 2, size: 0.05, fade: '#40606c', fadeAt: 0.5,
+        });
+      }
+      lay(c, c.wx, c.wy, '#48707c', { life: 9, size: 0.13, fade: '#243c44', fadeAt: 0.35 });
+    }
+  },
+  air(c) {
+    const { ctx, st, t, sc, px, py } = c;
+    // THE COLUMN: climbs, holds, breaks. Height rides the pool size.
+    const rise = cl(t / 0.28);
+    const fall = cl((t - 0.5) / 0.28);
+    const hMax = sc * 1.5;
+    const h = hMax * (rise * rise * (3 - 2 * rise)) * (1 - fall * 0.9);
+    if (h <= sc * 0.05 && fall >= 1) return;
+    ctx.save();
+    if (h > sc * 0.05) {
+      const cw = sc * 0.17 * (1 - fall * 0.4);
+      // Sheath, body, core — three hard bands, dark to white.
+      for (const [w, col, a] of [
+        [1.7, st.deep, 0.5],
+        [1.15, st.mid, 0.75],
+        [0.5, '#ffffff', 0.95],
+      ] as const) {
+        ctx.globalAlpha = a * (1 - fall);
+        ctx.fillStyle = col;
+        ctx.fillRect(px - cw * w * 0.5, py - h, cw * w, h);
+      }
+      // THE CROWN: the mushroom head — widest just before the break.
+      const crw = cw * (2.2 + rise * 0.8) * (1 - fall);
+      ctx.globalAlpha = 0.9 * (1 - fall);
+      ctx.fillStyle = st.spark;
+      ctx.beginPath();
+      ctx.ellipse(px, py - h, crw, crw * 0.42, 0, Math.PI, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(px, py - h, crw * 0.55, crw * 0.24, 0, Math.PI, Math.PI * 2);
+      ctx.fill();
+      c.glow(c.wx, c.wy, c.radius * 0.7, 0.25 * (1 - fall));
+    }
+    // THE BREAK: the crown lets go in blocks that fall true.
+    if (fall > 0 && fall < 1) {
+      const rand = srand(c.seed ^ 0x6e76);
+      ctx.fillStyle = st.mid;
+      for (let k = 0; k < 5; k++) {
+        const a = rand() * Math.PI * 2;
+        const spread = sc * (0.2 + rand() * 0.3);
+        const bh = hMax * (0.85 + rand() * 0.1);
+        const by = py - bh + (bh - sc * 0.05) * fall * fall;
+        const bx = px + Math.cos(a) * spread * fall;
+        const bs = sc * (0.05 + rand() * 0.04) * (1 - fall * 0.5);
+        ctx.globalAlpha = (1 - fall) * 0.9;
+        ctx.fillRect(bx - bs / 2, by - bs / 2, bs, bs * 1.3);
+      }
+    }
+    ctx.restore();
+    // The crest lets its rain go once, over the whole ring.
+    if (crossed(c, 780, 0.3)) {
+      water.deployments.rain!(asMatter(c), c.wx, c.wy, { radius: c.radius * 0.7, scale: 0.5, dur: 1.2 });
+    }
+  },
+};
+
 // --------------------------------------------------- court_of_spears
 // summon (self-staked) — the tidelord's word for the harpoon court.
 
@@ -1903,7 +2315,7 @@ const court_of_spears: AbilitySig = {
       const well = cl((t - stag) / 0.2);
       const sink = cl((t - stag - 0.75) / 0.2);
       if (well <= 0 || sink >= 1) continue;
-      const mw = sc * (0.16 + rand() * 0.04);
+      const mw = sc * (0.19 + rand() * 0.045);
       const mh = mw * 0.5 * well * (1 - sink);
       ctx.globalAlpha = 0.85 * (1 - sink);
       ctx.fillStyle = st.mid;
@@ -1918,17 +2330,17 @@ const court_of_spears: AbilitySig = {
       // and goes back under with the water that raised it.
       const rise = cl((t - stag - 0.16) / 0.2);
       if (rise > 0) {
-        const sh = sc * (0.24 + rand() * 0.05) * rise * (1 - sink);
+        const sh = sc * (0.28 + rand() * 0.06) * rise * (1 - sink);
         ctx.globalAlpha = 0.92 * (1 - sink);
         ctx.strokeStyle = st.deep;
-        ctx.lineWidth = Math.max(1, sc * 0.022);
+        ctx.lineWidth = Math.max(1.5, sc * 0.03);
         ctx.beginPath();
         ctx.moveTo(bx, by - mh * 0.5);
         ctx.lineTo(bx, by - mh * 0.5 - sh);
         ctx.stroke();
         // The barbed head: point plus two back-hooks — a fisher's
         // iron, never a soldier's leaf.
-        const hw = sc * 0.028;
+        const hw = sc * 0.036;
         const hy = by - mh * 0.5 - sh;
         ctx.fillStyle = st.spark;
         ctx.beginPath();
@@ -1941,23 +2353,410 @@ const court_of_spears: AbilitySig = {
         ctx.closePath();
         ctx.fill();
       }
-      // The splash each shaft sheds as it clears its mound.
+      // The splash each shaft sheds as it clears its mound — and the
+      // wet iron catches the light for exactly that beat.
       if (crossed(c, 500, stag + 0.2)) {
         const m = asMatter(c);
-        water.deployments.splash!(m, c.wx + Math.cos(a) * c.radius * 0.85,
-          c.wy + Math.sin(a) * c.radius * 0.85 * c.squash, { scale: 0.4 });
+        const mwx = c.wx + Math.cos(a) * c.radius * 0.85;
+        const mwy = c.wy + Math.sin(a) * c.radius * 0.85 * c.squash;
+        water.deployments.splash!(m, mwx, mwy, { scale: 0.4 });
+        c.glow(mwx, mwy, 0.5, 0.25);
       }
     }
     ctx.restore();
-    // Wet grains where the court stood — the bank remembers them.
+    // Wet grains where the court stood — each mound leaves its own
+    // puddle and the drip-dash its shaft shed sliding back under.
     if (crossed(c, 500, 0.6)) {
       const rand2 = srand(c.seed ^ 0xc04);
       for (let k = 0; k < 5; k++) {
         const a = (k / 5) * Math.PI * 2 + rand2() * 0.4;
-        lay(c, c.wx + Math.cos(a) * c.radius * 0.85, c.wy + Math.sin(a) * c.radius * 0.85 * c.squash,
-          '#9fb8c4', { life: 5 + rand2() * 2, size: 0.05, fade: '#48606c', fadeAt: 0.5 });
+        const gx = c.wx + Math.cos(a) * c.radius * 0.85;
+        const gy = c.wy + Math.sin(a) * c.radius * 0.85 * c.squash;
+        lay(c, gx, gy, '#9fb8c4', { life: 5 + rand2() * 2, size: 0.055, fade: '#48606c', fadeAt: 0.5 });
+        lay(c, gx + (rand2() - 0.5) * 0.24, gy - 0.14, '#b8ccd4', {
+          life: 4 + rand2() * 2, size: 0.035, fade: '#48606c', fadeAt: 0.45,
+        });
       }
     }
+  },
+};
+
+// ----------------------------------------------------- shallows_rush
+// dash_strike (4 tiles) — the deepmaw goes flat as an eel and comes
+// through the shallows at you.
+
+/**
+ * SHALLOWS_RUSH — "the eel's wake."
+ * A dash streak says something MOVED; this wake says something SWAM.
+ * The lane the bulk carved is a serpentine S — no straight line ever
+ * came off a swimming body — revealed head-first as the rush passes,
+ * with chevron ripples peeling off alternate sides the way a hull
+ * sheds its wash. Over the water line, three raked dorsal ghosts
+ * stand a beat where the crest broke the surface and fold away in
+ * sequence. The bank keeps a staggered trail of wet dashes,
+ * alternating sides down the lane — the drip line of a body that
+ * was never fully out of the water.
+ */
+const shallows_rush: AbilitySig = {
+  spawn(c) {
+    const m = asMatter(c);
+    const ang = Math.atan2(c.wy2 - c.wy, c.wx2 - c.wx);
+    // The launch throws its wash backward; the arrival wears it.
+    water.deployments.spray!(m, c.wx, c.wy, { dir: ang + Math.PI, scale: 0.45 });
+    water.deployments.splash!(m, c.wx2, c.wy2, { scale: 0.5 });
+    c.glow(c.wx2, c.wy2, 0.9, 0.3);
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, px2, py2 } = c;
+    const dx = px2 - px;
+    const dy = py2 - py;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    const fade = 1 - cl((t - 0.55) / 0.45);
+    const amp = sc * 0.2;
+    ctx.save();
+    // THE S-WAKE: the swimming line — two opposed bows through the
+    // lane, dark bed under a living mid stroke.
+    for (const [w, col, a] of [
+      [0.15, st.deep, 0.35],
+      [0.065, st.mid, 0.6],
+    ] as const) {
+      ctx.globalAlpha = a * fade;
+      ctx.strokeStyle = col;
+      ctx.lineWidth = Math.max(1.5, sc * w);
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.quadraticCurveTo(
+        px + dx * 0.28 + nx * amp, py + dy * 0.28 + ny * amp * squash,
+        px + dx * 0.5, py + dy * 0.5,
+      );
+      ctx.quadraticCurveTo(
+        px + dx * 0.72 - nx * amp, py + dy * 0.72 - ny * amp * squash,
+        px2, py2,
+      );
+      ctx.stroke();
+    }
+    // THE CHEVRONS: hull-wash vees peeling off alternate sides,
+    // revealed head-first as the body passes each station.
+    const rand = srand(c.seed ^ 0x5e1);
+    ctx.strokeStyle = st.spark;
+    ctx.lineWidth = Math.max(1.5, sc * 0.03);
+    for (let k = 0; k < 5; k++) {
+      const tk = 0.16 + k * 0.17;
+      if (t < tk * 0.5) continue;
+      const side = k % 2 === 0 ? 1 : -1;
+      const open = sc * (0.12 + rand() * 0.08) * (1 + t * 0.6);
+      const bx = px + dx * tk + nx * side * sc * 0.1;
+      const by = py + dy * tk + ny * side * sc * 0.1;
+      ctx.globalAlpha = 0.7 * fade;
+      ctx.beginPath();
+      ctx.moveTo(bx + nx * side * open, by + ny * side * open * squash - dx / len * open * 0.5);
+      ctx.lineTo(bx, by);
+      ctx.lineTo(bx + nx * side * open - dx / len * open * 0.9, by + ny * side * open * squash - dy / len * open * 0.9);
+      ctx.stroke();
+    }
+    ctx.restore();
+    // THE DRIP LINE: wet dashes alternating sides down the lane.
+    if (crossed(c, 380, 0.6)) {
+      const rand2 = srand(c.seed ^ 0x5e15);
+      for (let k = 0; k < 4; k++) {
+        const tk = 0.2 + k * 0.2;
+        const side = k % 2 === 0 ? 1 : -1;
+        lay(
+          c,
+          c.wx + (c.wx2 - c.wx) * tk + side * 0.18 + (rand2() - 0.5) * 0.1,
+          c.wy + (c.wy2 - c.wy) * tk + side * 0.18 * c.squash,
+          '#9fc4b5',
+          { life: 5 + rand2() * 2, size: 0.045, fade: '#48685c', fadeAt: 0.5 },
+        );
+      }
+    }
+  },
+  air(c) {
+    const { ctx, st, t, sc, px, py, px2, py2 } = c;
+    // THE DORSAL GHOSTS: the crest breaking the surface at three
+    // stations, raked hard back, folding away in passing order.
+    const dx = px2 - px;
+    const dy = py2 - py;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    const lift = sc * 0.32;
+    ctx.save();
+    for (let k = 0; k < 3; k++) {
+      const tk = 0.3 + k * 0.25;
+      const a = 1 - cl((t - tk * 0.45) / 0.34);
+      if (t < tk * 0.45 || a <= 0) continue;
+      const bx = px + dx * tk;
+      const by = py + dy * tk - lift;
+      const fh = sc * (0.15 + k * 0.02);
+      ctx.globalAlpha = 0.8 * a;
+      ctx.fillStyle = st.deep;
+      ctx.beginPath();
+      ctx.moveTo(bx - ux * sc * 0.07, by - uy * sc * 0.07);
+      // Raked AFT along the travel line — a fin, never a flame.
+      ctx.quadraticCurveTo(bx - ux * fh * 0.3, by - fh, bx - ux * fh * 1.1, by - fh * 0.66);
+      ctx.lineTo(bx + ux * sc * 0.07, by + uy * sc * 0.07);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 0.6 * a;
+      ctx.strokeStyle = st.mid;
+      ctx.lineWidth = Math.max(1, sc * 0.016);
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx - ux * fh * 0.5, by - fh * 0.8);
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
+};
+
+// ------------------------------------------------------- gullet_snap
+// melee_arc (range 1.8) — the biggest jaw in the game closes, and
+// the guard it catches stays cracked (the first sunder crown).
+
+/**
+ * GULLET_SNAP — "the bite keeps."
+ * The crab's breakwater is two smooth keratin edges meeting; the
+ * gullet is TEETH — an outer and an inner row of them, closing
+ * across the crescent from both sides over a dark wet gum-line
+ * until they meet, then pulling INTO the maw's mid-point in one
+ * gulp. Whatever was between them went with the gulp. Over the
+ * meet, a bone-pale crack glyph snaps and dies — the sunder read:
+ * your guard now has a seam in it. And the bank keeps the game's
+ * only dental record: two curved rows of puncture grains, the bite
+ * print lying seven seconds where the jaw closed.
+ */
+const gullet_snap: AbilitySig = {
+  spawn(c) {
+    const m = asMatter(c);
+    const bx = c.wx + Math.cos(c.dir) * c.radius * 0.55;
+    const by = c.wy + Math.sin(c.dir) * c.radius * 0.55 * c.squash;
+    water.deployments.churn!(m, bx, by, { radius: 0.3, scale: 0.3 });
+    water.deployments.spray!(m, bx, by, { dir: c.dir, scale: 0.4 });
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx, dir } = c;
+    const half = 0.72;
+    const close = cl(t / 0.42);
+    const gulp = cl((t - 0.7) / 0.26);
+    const midR = 0.72;
+    const outerR = 1.0 + (midR - 1.0) * close;
+    const innerR = 0.4 + (midR - 0.07 - 0.4) * close;
+    ctx.save();
+    // THE WET GUM: the dark band the rows ride on.
+    ctx.globalAlpha = 0.38 * (1 - gulp);
+    ctx.strokeStyle = st.deep;
+    ctx.lineWidth = Math.max(4, sc * 0.22);
+    ctx.beginPath();
+    ctx.ellipse(px, py, rPx * midR, rPx * midR * squash, 0, dir - half, dir + half);
+    ctx.stroke();
+    // THE TOOTH ROWS: five outer teeth biting inward, four inner
+    // teeth biting out — individual triangles, never a smooth edge.
+    // Big and bone-white over dark casings: the read must land in
+    // nine frames, so the teeth carry the whole crescent's weight.
+    const rand = srand(c.seed ^ 0x9a9);
+    const drawTooth = (a: number, rr: number, inward: boolean): void => {
+      const pull = 1 - gulp;
+      const ga = dir + (a - dir) * pull; // the gulp hauls angles to the mid-line
+      const gr = rr + (midR * 0.78 - rr) * gulp; // ...and radii into the maw
+      const bx = px + Math.cos(ga) * rPx * gr;
+      const by = py + Math.sin(ga) * rPx * gr * squash;
+      const th = sc * (0.17 + rand() * 0.03) * pull;
+      const tw = sc * 0.062 * pull;
+      const tx = px + Math.cos(ga) * (rPx * gr + (inward ? -th : th));
+      const ty = py + Math.sin(ga) * (rPx * gr + (inward ? -th : th)) * squash;
+      const pxn = -Math.sin(ga);
+      const pyn = Math.cos(ga);
+      ctx.beginPath();
+      ctx.moveTo(bx + pxn * tw, by + pyn * tw * squash);
+      ctx.lineTo(tx, ty);
+      ctx.lineTo(bx - pxn * tw, by - pyn * tw * squash);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    };
+    ctx.globalAlpha = 0.95 * (1 - gulp * 0.6);
+    ctx.strokeStyle = st.deep;
+    ctx.lineWidth = Math.max(1, sc * 0.018);
+    ctx.fillStyle = '#ffffff';
+    for (let k = 0; k < 5; k++) {
+      drawTooth(dir + ((k / 4) * 2 - 1) * half * 0.88, outerR, true);
+    }
+    ctx.fillStyle = st.spark;
+    for (let k = 0; k < 4; k++) {
+      drawTooth(dir + ((k / 3) * 2 - 1) * half * 0.62, innerR, false);
+    }
+    ctx.restore();
+    // THE BITE PRINT: the game's only dental record — puncture
+    // grains in two curved rows where the rows met.
+    if (crossed(c, 300, 0.55)) {
+      const m = asMatter(c);
+      water.deployments.splash!(m, c.wx + Math.cos(dir) * c.radius * midR,
+        c.wy + Math.sin(dir) * c.radius * midR * c.squash, { scale: 0.35 });
+      for (let k = 0; k < 5; k++) {
+        const a = dir + ((k / 4) * 2 - 1) * half * 0.88;
+        lay(c, c.wx + Math.cos(a) * c.radius * 0.78, c.wy + Math.sin(a) * c.radius * 0.78 * c.squash,
+          '#e6e8da', { life: 7, size: 0.04, fade: '#4a5648', fadeAt: 0.35 });
+      }
+      for (let k = 0; k < 4; k++) {
+        const a = dir + ((k / 3) * 2 - 1) * half * 0.62;
+        lay(c, c.wx + Math.cos(a) * c.radius * 0.62, c.wy + Math.sin(a) * c.radius * 0.62 * c.squash,
+          '#e6e8da', { life: 7, size: 0.035, fade: '#4a5648', fadeAt: 0.35 });
+      }
+    }
+  },
+  air(c) {
+    const { ctx, st, t, sc, px, py, dir } = c;
+    // THE GUARD CRACK: the sunder read — one bone-pale seam snaps
+    // over the bite and dies. Not shock-blue; this is a BREAK.
+    const u = (t - 0.5) / 0.4;
+    if (u <= 0 || u >= 1) return;
+    const bx = px + Math.cos(dir) * c.rPx * 0.72;
+    const by = py + Math.sin(dir) * c.rPx * 0.72 * c.squash - sc * 0.55;
+    const s = sc * 0.42 * (1 - u * 0.3);
+    ctx.save();
+    // Dark casing under a white seam — the break must read on any sky.
+    for (const [w, col] of [[0.075, st.deep], [0.032, '#ffffff']] as const) {
+      ctx.globalAlpha = (1 - u) * 0.95;
+      ctx.strokeStyle = col;
+      ctx.lineWidth = Math.max(1.5, sc * w * (1 - u * 0.5));
+      ctx.beginPath();
+      ctx.moveTo(bx - s * 0.5, by - s * 0.55);
+      ctx.lineTo(bx - s * 0.1, by - s * 0.15);
+      ctx.lineTo(bx - s * 0.28, by + s * 0.05);
+      ctx.lineTo(bx + s * 0.2, by + s * 0.5);
+      ctx.stroke();
+    }
+    // The seam's two flake ticks.
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = Math.max(1, sc * 0.022);
+    ctx.beginPath();
+    ctx.moveTo(bx - s * 0.1, by - s * 0.15);
+    ctx.lineTo(bx + s * 0.24, by - s * 0.32);
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
+// ------------------------------------------------------- gorge_spray
+// projectile_fan (5 gobs) — what the gullet keeps, rots; the sig
+// speaks at every LANDING (each gob's blast wire), five at once.
+
+/**
+ * GORGE_SPRAY — "what the gullet kept."
+ * The flight is a lobbed mouthful; the art is where it LANDS. Each
+ * gob hits as a ragged six-lobed splat — no two the same shape —
+ * throwing satellite droplets on runner lines, with a pale shine on
+ * the seeded upstream rim and fizz bubbles blinking as the rot
+ * starts working the ground. Two thin stink curls stand off the
+ * blot and die. The stain is the lasting mark: a dark olive blotch
+ * and its satellites, lying seven seconds — walk the fight long
+ * enough and the bank reads like a map of everywhere you dodged.
+ * Budgeted lean on purpose: five of these can be alive at once.
+ */
+const gorge_spray: AbilitySig = {
+  spawn(c) {
+    const m = asMatter(c);
+    venom.deployments.spit!(m, c.wx, c.wy, { dir: -Math.PI / 2, scale: 0.3 });
+    water.deployments.splash!(m, c.wx, c.wy, { scale: 0.28 });
+    c.glow(c.wx, c.wy, 0.55, 0.22);
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx, now } = c;
+    const rand = srand(c.seed ^ 0x60b);
+    const reveal = cl(t / 0.14);
+    const fade = 1 - cl((t - 0.6) / 0.4);
+    ctx.save();
+    // THE SPLAT: six ragged lobes — no compass circle ever splatted.
+    ctx.globalAlpha = 0.55 * fade;
+    ctx.fillStyle = st.deep;
+    ctx.beginPath();
+    let a0 = rand() * Math.PI * 2;
+    ctx.moveTo(px + Math.cos(a0) * rPx * 0.6 * reveal, py + Math.sin(a0) * rPx * 0.6 * reveal * squash);
+    for (let k = 1; k <= 6; k++) {
+      const a = a0 + (k / 6) * Math.PI * 2;
+      const lr = rPx * (0.5 + rand() * 0.45) * reveal;
+      const ca = a0 + ((k - 0.5) / 6) * Math.PI * 2;
+      ctx.quadraticCurveTo(
+        px + Math.cos(ca) * rPx * 0.3 * reveal, py + Math.sin(ca) * rPx * 0.3 * reveal * squash,
+        px + Math.cos(a) * lr, py + Math.sin(a) * lr * squash,
+      );
+    }
+    ctx.fill();
+    // THE SATELLITES: droplets thrown past the blot on runner lines.
+    ctx.strokeStyle = st.mid;
+    ctx.lineWidth = Math.max(1, sc * 0.02);
+    for (let k = 0; k < 3; k++) {
+      const a = rand() * Math.PI * 2;
+      const rr = rPx * (1.25 + rand() * 0.55) * reveal;
+      const sx = px + Math.cos(a) * rr;
+      const sy = py + Math.sin(a) * rr * squash;
+      ctx.globalAlpha = 0.6 * fade;
+      ctx.beginPath();
+      ctx.moveTo(px + Math.cos(a) * rPx * 0.7, py + Math.sin(a) * rPx * 0.7 * squash);
+      ctx.lineTo(sx, sy);
+      ctx.stroke();
+      ctx.globalAlpha = 0.75 * fade;
+      ctx.fillStyle = st.mid;
+      const ds = sc * (0.03 + rand() * 0.02);
+      ctx.beginPath();
+      ctx.ellipse(sx, sy, ds, ds * squash, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // THE FIZZ: the rot working — bubbles blinking on seeded clocks.
+    ctx.strokeStyle = st.spark;
+    for (let k = 0; k < 3; k++) {
+      const a = rand() * Math.PI * 2;
+      const rr = Math.sqrt(rand()) * rPx * 0.6;
+      const b = (now / 700 + rand()) % 1;
+      if (b >= 0.2) continue;
+      ctx.globalAlpha = (1 - b / 0.2) * 0.8 * fade;
+      ctx.lineWidth = Math.max(1, sc * 0.015);
+      const bs = sc * 0.022;
+      ctx.beginPath();
+      ctx.ellipse(px + Math.cos(a) * rr, py + Math.sin(a) * rr * squash, bs, bs * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    // THE RIM SHINE: wet light on the upstream edge.
+    ctx.globalAlpha = 0.55 * fade;
+    ctx.strokeStyle = st.spark;
+    ctx.lineWidth = Math.max(1, sc * 0.022);
+    ctx.beginPath();
+    ctx.ellipse(px, py, rPx * 0.62, rPx * 0.62 * squash, 0, a0 - 0.5, a0 + 0.7);
+    ctx.stroke();
+    ctx.restore();
+    // THE STAIN: the map of everywhere you dodged.
+    if (crossed(c, 780, 0.5)) {
+      const rand2 = srand(c.seed ^ 0x60b5);
+      lay(c, c.wx, c.wy, '#6a7a3c', { life: 7, size: 0.09, fade: '#3a4424', fadeAt: 0.4 });
+      for (let k = 0; k < 2; k++) {
+        const a = rand2() * Math.PI * 2;
+        lay(c, c.wx + Math.cos(a) * c.radius * 1.3, c.wy + Math.sin(a) * c.radius * 1.3 * c.squash,
+          '#7a8a48', { life: 5, size: 0.045, fade: '#3a4424', fadeAt: 0.45 });
+      }
+    }
+  },
+  air(c) {
+    const { ctx, st, t, sc, px, py } = c;
+    // THE STINK: two thin curls stand off the blot and die early.
+    if (t >= 0.5) return;
+    const rand = srand(c.seed ^ 0x60b7);
+    ctx.save();
+    ctx.strokeStyle = st.mid;
+    ctx.lineWidth = Math.max(1, sc * 0.018);
+    for (let k = 0; k < 2; k++) {
+      const bx = px + (rand() - 0.5) * sc * 0.3;
+      const h = sc * (0.2 + rand() * 0.12) * cl(t / 0.3);
+      const sway = Math.sin(c.now / 300 + k * 2.4) * sc * 0.04;
+      ctx.globalAlpha = (1 - t / 0.5) * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(bx, py - sc * 0.1);
+      ctx.quadraticCurveTo(bx + sway, py - sc * 0.1 - h * 0.6, bx - sway * 0.6, py - sc * 0.1 - h);
+      ctx.stroke();
+    }
+    ctx.restore();
   },
 };
 
@@ -1966,26 +2765,87 @@ const court_of_spears: AbilitySig = {
 
 /**
  * BREACHING_CRASH — "a crater wearing spray."
- * The blast grammar (teeth ring, quake motif) already says SLAM;
- * this signature says WATER LANDED: a white collapse column falls at
- * the heart in the first beats, a corona of tall spray sheets stands
- * up around the rim and falls OUTWARD (the crab's law inverted — the
- * water leaves the crater, never returns to it), and the bank keeps
- * a broken ring of wet grains and one long puddle-stain where the
+ * A TWO-ACT set-piece riding the leap's two wires. Act one, the
+ * dash wire, plays at the DEPARTURE: the bulk tears out of the bank
+ * and the bank pays — a dark seat-ring contracts into the hole it
+ * left, a low gray slump of water folds back into the vacancy, and
+ * three draw-lines rush in to fill it. Act two, the blast wire, is
+ * the landing: a white impact shock, then the collapse column falls
+ * back through itself at the heart, a corona of tall spray sheets
+ * stands up around the rim and falls OUTWARD (the crab's law
+ * inverted — the water leaves the crater, never returns to it),
+ * real crown-droplets rain over the ring, and the bank keeps a
+ * broken ring of wet grains and one long puddle-stain where the
  * bulk came down. Ragged everywhere: the shoal's clocks, not the
  * legion's.
  */
 const breaching_crash: AbilitySig = {
   spawn(c) {
-    // The landing itself: the biggest single splash in the dialect,
-    // plus a churn that keeps working while the spray settles.
     const m = asMatter(c);
+    if (c.kind === 'dash') {
+      // Act one: the launch — the water he was standing in goes up
+      // with him, and the hole he left starts refilling.
+      water.deployments.splash!(m, c.wx, c.wy, { scale: 0.55 });
+      water.deployments.churn!(m, c.wx, c.wy, { radius: 0.45, scale: 0.4 });
+      return;
+    }
+    // Act two: the landing — the biggest single splash in the
+    // dialect, a churn that keeps working, and the crown coming
+    // back down as honest rain over the whole ring.
     water.deployments.splash!(m, c.wx, c.wy, { scale: 0.95 });
     water.deployments.churn!(m, c.wx, c.wy, { radius: c.radius * 0.5, scale: 0.6 });
+    water.deployments.rain!(m, c.wx, c.wy, { radius: c.radius * 0.8, scale: 0.55, dur: 1.1 });
+    c.glow(c.wx, c.wy, c.radius, 0.45);
   },
   ground(c) {
     const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    if (c.kind === 'dash') {
+      // ACT ONE — THE VACATED SEAT: the ring he tore out of pulls
+      // shut, dark and quick, with three fill-lines rushing in.
+      const shut = cl(t / 0.7);
+      const fade = 1 - cl((t - 0.55) / 0.45);
+      const sr = sc * (0.55 - 0.38 * shut);
+      ctx.save();
+      ctx.globalAlpha = 0.55 * fade;
+      ctx.strokeStyle = st.deep;
+      ctx.lineWidth = Math.max(2, sc * 0.06 * (1 - shut * 0.5));
+      ctx.beginPath();
+      ctx.ellipse(px, py, sr, sr * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      // The slump: a low gray fold of water dropping into the hole.
+      const sl = (1 - shut) * sc * 0.18;
+      if (sl > 1) {
+        ctx.globalAlpha = 0.6 * fade;
+        ctx.fillStyle = st.mid;
+        ctx.beginPath();
+        ctx.ellipse(px, py - sl * 0.4, sr * 0.7, sl, 0, Math.PI, Math.PI * 2);
+        ctx.fill();
+      }
+      const rand = srand(c.seed ^ 0xb4e1);
+      ctx.strokeStyle = st.mid;
+      ctx.lineWidth = Math.max(1.5, sc * 0.03);
+      for (let k = 0; k < 3; k++) {
+        const a = rand() * Math.PI * 2;
+        const r0 = sc * (0.6 + rand() * 0.25) * (1 - shut * 0.6);
+        ctx.globalAlpha = 0.6 * fade;
+        ctx.beginPath();
+        ctx.moveTo(px + Math.cos(a) * r0, py + Math.sin(a) * r0 * squash);
+        ctx.lineTo(px + Math.cos(a) * sr * 0.8, py + Math.sin(a) * sr * 0.8 * squash);
+        ctx.stroke();
+      }
+      ctx.restore();
+      return;
+    }
     ctx.save();
+    // THE IMPACT SHOCK: one white ground flash under the first beats.
+    if (t < 0.16) {
+      const su = 1 - t / 0.16;
+      ctx.globalAlpha = 0.5 * su;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(px, py, rPx * 0.85 * (1 - su * 0.4), rPx * 0.85 * (1 - su * 0.4) * squash, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
     // THE COLLAPSE COLUMN: the water the breach carried falls back
     // through itself at the heart — tall, white, and brief.
     const col = 1 - cl(t / 0.28);
@@ -2055,7 +2915,13 @@ export const FOES_SIGS: Record<string, AbilitySig> = {
   shrilling_dart,
   breakwater_grip,
   shoal_call,
+  drowning_surge,
+  abyssal_jet,
+  kingspool_geyser,
   court_of_spears,
+  shallows_rush,
+  gullet_snap,
+  gorge_spray,
   breaching_crash,
   warlord_horn,
 };

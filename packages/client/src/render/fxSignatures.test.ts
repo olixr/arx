@@ -42,3 +42,28 @@ test('the matter-migration ledger is sound and append-only', () => {
   // The library the migrations lean on is present and whole.
   assert.equal(Object.keys(MATTER).length, 10);
 });
+
+/**
+ * THE BRINE WAVE: a crown's word is read a dozen times a fight, so
+ * every one of the skral bosses' eight arts carries a full bespoke
+ * set-piece — never just the shared grammar. The layered promise is
+ * pinned per art: every signature owns its ground story, and the
+ * arts whose reads live at true height (the geyser's column, the
+ * eel's dorsal ghosts, the jet's falling drips, the sunder crack,
+ * the gob's stink) carry an air stratum too.
+ */
+test('THE BRINE CROWNS: all eight boss arts wear bespoke signatures', () => {
+  const GROUNDED = [
+    'drowning_surge', 'abyssal_jet', 'court_of_spears', 'kingspool_geyser',
+    'shallows_rush', 'gullet_snap', 'gorge_spray', 'breaching_crash',
+  ];
+  for (const id of GROUNDED) {
+    const sig = SIGNATURES[id];
+    assert.ok(sig, `brine crown art '${id}' lost its bespoke signature`);
+    assert.ok(sig.spawn, `'${id}' spawn hook: every brine landing wets the bank`);
+    assert.ok(sig.ground, `'${id}' ground hook: every brine art marks its floor`);
+  }
+  for (const id of ['kingspool_geyser', 'shallows_rush', 'abyssal_jet', 'gullet_snap', 'gorge_spray']) {
+    assert.ok(SIGNATURES[id]!.air, `'${id}' air hook: this read stands at true height`);
+  }
+});
