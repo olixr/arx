@@ -1,0 +1,95 @@
+{
+ "id": "aldaren_evenhall",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "king_aldaren"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "Come up. The fire does not mind strangers, and I have decided not to either.",
+   "next": "hub",
+   "voice": "aldaren_evenhall__greet"
+  },
+  {
+   "id": "hub",
+   "text": "Ask. I have answered harder things than questions.",
+   "choices": [
+    {
+     "text": "Why open the gate now?",
+     "next": "gate"
+    },
+    {
+     "text": "Did you know the old realm?",
+     "next": "realm"
+    },
+    {
+     "text": "What happened in the quiet years?",
+     "next": "quiet"
+    },
+    {
+     "text": "What is the Heartwood?",
+     "next": "heartwood"
+    }
+   ],
+   "voice": "aldaren_evenhall__hub"
+  },
+  {
+   "id": "gate",
+   "text": "Because family was knocking. Annik at the delf, Denna on her coast, a hundred more who do not know their own ears. The thinned blood is still the blood. A door you keep shut on family is not a door. It is a wall, and we do not build walls.",
+   "choices": [
+    {
+     "text": "Not everyone here agrees.",
+     "next": "dissent"
+    },
+    {
+     "text": "Never mind.",
+     "next": "hub"
+    }
+   ],
+   "voice": "aldaren_evenhall__gate"
+  },
+  {
+   "id": "dissent",
+   "text": "My daughter counts my mistakes. It is good work and somebody should do it. She keeps the open gate better than anyone who wanted it open. That is the whole argument, standing at her post.",
+   "next": "hub",
+   "voice": "aldaren_evenhall__dissent"
+  },
+  {
+   "id": "realm",
+   "text": "I taught their first masons which end of the stone listens... they built well, for people in a hurry. When their mountain woke I brought my folk home. The ones who stayed east are your grandmothers. Some of you have the ears still.",
+   "choices": [
+    {
+     "text": "The kings at Silverfall are moonpale.",
+     "next": "crown"
+    },
+    {
+     "text": "Never mind.",
+     "next": "hub"
+    }
+   ],
+   "voice": "aldaren_evenhall__realm"
+  },
+  {
+   "id": "crown",
+   "text": "Are they. Five kings, one name, a foreman's line... I knew a foreman once. Paid his debts in silver and laughed from the belt up. I will not finish this thought. You may, if you walk east again.",
+   "next": "hub",
+   "voice": "aldaren_evenhall__crown"
+  },
+  {
+   "id": "quiet",
+   "text": "A hundred and fifty years of tending what we are. Songs. Glass. Bows. The wood grew. The stones kept the miles. Nothing happened, which is what we wanted, and it cost more than it sounds like it would.",
+   "next": "hub",
+   "voice": "aldaren_evenhall__quiet"
+  },
+  {
+   "id": "heartwood",
+   "text": "The grove we keep. That is the whole answer anyone gets, and I am the king, so it will hold... ask me again in a hundred years. Or do something worth an earlier asking. People have.",
+   "next": "hub",
+   "voice": "aldaren_evenhall__heartwood"
+  }
+ ]
+}

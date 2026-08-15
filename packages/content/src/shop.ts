@@ -32,9 +32,24 @@ export function trainerPrice(levelReq: number): number {
   return Math.round((60 + levelReq * 20 + levelReq * levelReq * 0.5) / 5) * 5;
 }
 
+/**
+ * THE ELVEN EXCEPTION's roll: taught lore that exactly ONE teacher
+ * carries (the Bowyer's House, the Evenfall epic). These stay off
+ * every generic guild shelf — the knowledge went west, and the walk
+ * west is the price.
+ */
+const SINGLE_TEACHER_RECIPES: ReadonlySet<string> = new Set([
+  'craft_windsinger',
+  'craft_yew_shortbow',
+  'craft_yew_hunting_bow',
+  'craft_yew_longbow',
+]);
+
 /** Every trainer-taught scroll for the given professions, by level. */
 function trainerStock(skills: SkillId[]): ShopEntry[] {
-  return UNLOCKABLE_RECIPES.filter((r) => r.unlock === 'trainer' && skills.includes(r.skill))
+  return UNLOCKABLE_RECIPES.filter(
+    (r) => r.unlock === 'trainer' && skills.includes(r.skill) && !SINGLE_TEACHER_RECIPES.has(r.id),
+  )
     .sort((a, b) => a.levelReq - b.levelReq || a.name.localeCompare(b.name))
     .map((r) => ({ item: recipeScrollId(r.id), price: trainerPrice(r.levelReq) }));
 }
@@ -848,6 +863,108 @@ const defs: ShopDef[] = [
     id: 'trainer_sage',
     name: "Elowen's Folios",
     stock: trainerStock(['herbalism', 'enchanting']),
+  },
+  // ---- EVENFALL — the city the old folk kept (the Evenfall epic).
+  // The finest, never the most: the prices are courteous and firm,
+  // and half the stock exists nowhere else at any price.
+  // Aewyn staffs the game's whole bow lane: the trainer shelf like
+  // anyone else, and the high shelf as SCROLLS — the legacy-scroll
+  // precedent, because no trainer teaches above the band and the
+  // wood does not make exceptions, it makes arrangements.
+  {
+    id: 'aewyn_bows',
+    name: "The Bowyer's House",
+    stock: [
+      ...trainerStock(['woodworking']),
+      { item: recipeScrollId('craft_windsinger'), price: 2400 },
+      { item: recipeScrollId('craft_yew_shortbow'), price: 2600 },
+      { item: recipeScrollId('craft_yew_hunting_bow'), price: 2900 },
+      { item: recipeScrollId('craft_yew_longbow'), price: 3200 },
+      { item: 'yew_log', price: 110 },
+      { item: 'heartwood', price: 900 },
+    ],
+  },
+  // Myrren keeps the tailoring shelf and the cloth worth crossing a
+  // map for. (The moonpale weave itself is not for sale. Ask, and
+  // learn something about yourself.)
+  {
+    id: 'myrren_silks',
+    name: 'The Silk Hall',
+    stock: [
+      ...trainerStock(['tailoring']),
+      { item: 'cloth', price: 45 },
+      { item: 'linen', price: 38 },
+      { item: 'gloomsilk', price: 180 },
+    ],
+  },
+  // Vessa sells the enchanter's shelf at the oldest table in the
+  // world, and the deep materials the Arcanum rations.
+  {
+    id: 'vessa_inscriptions',
+    name: 'The Third Table',
+    stock: [
+      ...trainerStock(['enchanting']),
+      { item: 'arcane_dust', price: 55 },
+      { item: 'stormpearl', price: 120 },
+      { item: 'mithril_bar', price: 380 },
+    ],
+  },
+  // Selorne trades in cold light: the stones the glass listens to.
+  {
+    id: 'selorne_glass',
+    name: 'The Moonglass Hall',
+    stock: [
+      { item: 'frostshard', price: 90 },
+      { item: 'moonbell', price: 18 },
+      { item: 'dried_moonbell', price: 130 },
+      { item: 'arcane_dust', price: 60 },
+    ],
+  },
+  // Faelar sells finished mithril, never ore: the elven way.
+  {
+    id: 'faelar_fittings',
+    name: 'The Mithril Forge',
+    stock: [
+      { item: 'mithril_bar', price: 400 },
+      { item: 'mithril_sword', price: 2900 },
+      { item: 'mithril_tanto', price: 3200 },
+    ],
+  },
+  // Corwen weighs what the wood gives and takes a cut.
+  {
+    id: 'corwen_goods',
+    name: 'The Gate Court Stand',
+    stock: [
+      { item: 'berries', price: 5 },
+      { item: 'raw_trout', price: 12 },
+      { item: 'honey', price: 48 },
+      { item: 'yew_log', price: 120 },
+    ],
+  },
+  // Elarin feeds travelers and collects their idioms in change.
+  {
+    id: 'elarin_board',
+    name: 'The Outward House',
+    stock: [
+      { item: 'bread', price: 7 },
+      { item: 'hearty_stew', price: 22 },
+      { item: 'cooked_beef', price: 18 },
+      { item: 'milk', price: 7 },
+    ],
+  },
+  // Naia's remedies: gathered, never tilled, and they taste like
+  // that on purpose.
+  {
+    id: 'naia_remedies',
+    name: 'The Stillroom',
+    stock: [
+      { item: 'healing_tincture', price: 62 },
+      { item: 'mending_salve', price: 88 },
+      { item: 'swiftness_tonic', price: 112 },
+      { item: 'ironbark_tonic', price: 132 },
+      { item: 'sagewort', price: 10 },
+      { item: 'moonbell', price: 16 },
+    ],
   },
 ];
 

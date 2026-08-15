@@ -1,0 +1,26 @@
+{
+ "id": "keeper_ilvane",
+ "name": "Ilvane",
+ "title": "Keeper of the Everflame",
+ "examine": "She tends a fire that needs no tending and has for longer than the roads have had names. Ask her what the flame burns and she will say: nothing. That is the point.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 12,
+   "hair": 4,
+   "hairColor": 6,
+   "beard": 0,
+   "eyes": 0,
+   "ears": 2,
+   "feature": 0,
+   "shirt": 5,
+   "pants": 11
+  }
+ },
+ "lines": [
+  "The flame burns nothing. It has never needed anything. I keep it company, not alive.",
+  "Every road lamp south of here is a daughter of a daughter of this light. The lamps do not know it.",
+  "The mother-flame at Silverfall is the youngest daughter. Tell Sella she is doing it right."
+ ]
+}

@@ -1,0 +1,35 @@
+{
+ "id": "sentinel_serel",
+ "name": "Serel",
+ "title": "Captain of the Evengate",
+ "examine": "The gate captain: polite as a drawn bow. She was the first face most of the thinned blood ever saw at the arch, and she has decided to be a good one, as a discipline.",
+ "disposition": "neutral",
+ "protection": "invulnerable",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 12,
+   "hair": 2,
+   "hairColor": 6,
+   "beard": 0,
+   "eyes": 1,
+   "ears": 2,
+   "feature": 0,
+   "shirt": 11,
+   "pants": 4
+  }
+ },
+ "equipment": {
+  "weapon": "mithril_sword"
+ },
+ "lines": [
+  "Welcome to Evenfall. The arch is the whole wall. Treat it accordingly.",
+  "No, you may not see the Heartwood. Yes, everyone asks. No, asking twice does not help. You may ask twice anyway.",
+  "The king says the gate stays open. So it stays open, and I stay at it."
+ ],
+ "combat": {
+  "level": 44,
+  "respawnSec": 90,
+  "stats": { "maxHp": 280, "damage": 11, "speed": 3.6, "leashRange": 12 }
+ }
+}

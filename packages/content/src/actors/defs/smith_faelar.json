@@ -1,0 +1,27 @@
+{
+ "id": "smith_faelar",
+ "name": "Faelar",
+ "title": "Smith of the Mithril Forge",
+ "examine": "The keeper of the one warm room in Evenfall, and the closest thing the city has to a loud voice, which is not very. Mithril fittings, ferrule collars, leaf-blades: never ore by the cart.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 12,
+   "hair": 0,
+   "hairColor": 1,
+   "beard": 0,
+   "eyes": 1,
+   "ears": 2,
+   "feature": 0,
+   "shirt": 2,
+   "pants": 3
+  }
+ },
+ "shop": "faelar_fittings",
+ "lines": [
+  "Mine is the one fire in the city that works for a living. The Everflame just stands there being old.",
+  "The delf pulls mithril out by the cart. We pulled ours out by the ounce, first, before their realm had a name.",
+  "A leaf-blade is not a sword shaped like a leaf. It is a leaf that agreed to be a sword. Different joinery."
+ ]
+}

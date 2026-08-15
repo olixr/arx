@@ -1,0 +1,26 @@
+{
+ "id": "keeper_othiel",
+ "name": "Othiel",
+ "title": "Keeper of the Keeping",
+ "examine": "The smallest bank in the world, kept perfectly. Two vaults, one chest, and a keeper who does not count out loud, because counting out loud is for people who might be wrong.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 12,
+   "hair": 1,
+   "hairColor": 6,
+   "beard": 0,
+   "eyes": 0,
+   "ears": 2,
+   "feature": 0,
+   "shirt": 5,
+   "pants": 5
+  }
+ },
+ "lines": [
+  "What is kept is kept. That is the whole charter, and it has never needed a second line.",
+  "The Charter's countinghouse has nine clerks and a tithe vault. We have a bench and my memory. Same service.",
+  "Your coin is safe here. Safer than you are, frankly, but you chose the adventuring."
+ ]
+}

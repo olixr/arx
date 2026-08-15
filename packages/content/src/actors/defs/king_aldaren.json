@@ -1,0 +1,26 @@
+{
+ "id": "king_aldaren",
+ "name": "Aldaren",
+ "title": "The Evenking",
+ "examine": "The first of the few: old blood, whole, and older than the word for it. He opened the gate after a hundred and fifty years, and he carries the cost of every quiet year like a coat.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 12,
+   "hair": 6,
+   "hairColor": 7,
+   "beard": 0,
+   "eyes": 0,
+   "ears": 2,
+   "feature": 0,
+   "shirt": 5,
+   "pants": 5
+  }
+ },
+ "lines": [
+  "You came up the Evenway. I planted the third stone on it. Or the fourth... no. The third.",
+  "The gate is open because family was knocking. The thinned blood is still the blood.",
+  "The foreman's grandchildren wear a crown now. He would have laughed. He had a good laugh."
+ ]
+}

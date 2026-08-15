@@ -1,0 +1,60 @@
+{
+ "id": "vessa_table",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "inscriber_vessa"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "Wipe your feet. The dust in here has seniority.",
+   "next": "hub",
+   "voice": "vessa_table__greet"
+  },
+  {
+   "id": "hub",
+   "text": "The third table, by the human count. The first, by counting. What brings you to the oldest desk in the world?",
+   "choices": [
+    {
+     "text": "What can you teach me?",
+     "next": "browse"
+    },
+    {
+     "text": "Whose letters are those?",
+     "next": "letters"
+    },
+    {
+     "text": "What's on the rear wall?",
+     "next": "wall"
+    }
+   ],
+   "voice": "vessa_table__hub"
+  },
+  {
+   "id": "letters",
+   "text": "Copies. An enchantress at the capital writes monthly to an exile at the delf, asking nothing in very fine handwriting. The exile answers with silence, also monthly. I keep copies because someday one of them will say the true thing, and I want to be current when it happens.",
+   "next": "hub",
+   "voice": "vessa_table__letters"
+  },
+  {
+   "id": "wall",
+   "text": "An answer, waiting for its question to walk in. It has waited a long time. It can wait for you to earn it, too. Bring me a reason older than curiosity.",
+   "next": "hub",
+   "voice": "vessa_table__wall"
+  },
+  {
+   "id": "browse",
+   "text": "Workings and materials the Arcanum rations, sold here by the handful. Mind the dust.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "vessa_inscriptions"
+    }
+   ],
+   "voice": "vessa_table__browse"
+  }
+ ]
+}

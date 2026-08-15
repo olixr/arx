@@ -2492,10 +2492,23 @@ test('evenfall: the fair city holds its flame, its stair, and no wall at all', (
   }
   // The spawn is the gate court: the west's hearth.
   assert.deepEqual(z.spawn, { x: EVENFALL_RECT.x + 146.5, y: EVENFALL_RECT.y + 56.5 });
-  // The map pass places no people (the Amberford law: the people pass
-  // casts them) and no portals — there is NO Low Hall door here, by
-  // canon, forever.
-  assert.equal((z.actorSpawns ?? []).length, 0);
+  // The cast: fourteen named, four on the watch, three in the Fair
+  // Court — and every keeper keeps hours except Othiel, who holds the
+  // Keeping's still bench (the Orla precedent).
+  const actors = z.actorSpawns ?? [];
+  assert.equal(actors.length, 21, 'Evenfall lost residents');
+  for (const slug of [
+    'king_aldaren', 'warden_sylwen', 'keeper_ilvane', 'loresinger_maelis',
+    'bowyer_aewyn', 'weaver_myrren', 'glasswright_selorne', 'smith_faelar',
+    'inscriber_vessa', 'innkeep_elarin', 'provisioner_corwen',
+    'sentinel_serel', 'stillkeeper_naia', 'keeper_othiel',
+  ]) {
+    assert.ok(actors.some((a) => a.actor === slug), `${slug} missing from Evenfall`);
+  }
+  assert.equal(actors.filter((a) => a.actor === 'evenguard_watch').length, 4);
+  assert.equal(actors.filter((a) => a.actor === 'fair_artisan').length, 3);
+  assert.equal(actors.filter((a) => a.routine).length, 13, 'every keeper keeps hours');
+  // No portals — there is NO Low Hall door here, by canon, forever.
   assert.equal((z.portals ?? []).length, 0, 'the Company has no door in Evenfall');
   assert.ok((z.signs ?? []).length >= 8, 'the city lost its boards');
   // The elevation layer round-trips (the Silverfall law).

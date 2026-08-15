@@ -110,6 +110,21 @@ import waykeeperBrant from './defs/waykeeper_brant.json';
 import waykeeperHale from './defs/waykeeper_hale.json';
 import waykeeperOdessa from './defs/waykeeper_odessa.json';
 import waywardWatch from './defs/wayward_watch.json';
+import kingAldaren from './defs/king_aldaren.json';
+import wardenSylwen from './defs/warden_sylwen.json';
+import keeperIlvane from './defs/keeper_ilvane.json';
+import loresingerMaelis from './defs/loresinger_maelis.json';
+import bowyerAewyn from './defs/bowyer_aewyn.json';
+import weaverMyrren from './defs/weaver_myrren.json';
+import glasswrightSelorne from './defs/glasswright_selorne.json';
+import smithFaelar from './defs/smith_faelar.json';
+import inscriberVessa from './defs/inscriber_vessa.json';
+import innkeepElarin from './defs/innkeep_elarin.json';
+import provisionerCorwen from './defs/provisioner_corwen.json';
+import sentinelSerel from './defs/sentinel_serel.json';
+import stillkeeperNaia from './defs/stillkeeper_naia.json';
+import keeperOthiel from './defs/keeper_othiel.json';
+import fairArtisan from './defs/fair_artisan.json';
 import sentinelVeran from './defs/sentinel_veran.json';
 import sentinelLisse from './defs/sentinel_lisse.json';
 import sentinelThal from './defs/sentinel_thal.json';
@@ -304,6 +319,22 @@ const SOURCES: readonly unknown[] = [
   sentinelLisse,
   sentinelThal,
   evenguardWatch,
+  // Evenfall — the city the old folk kept (the people pass):
+  kingAldaren,
+  wardenSylwen,
+  keeperIlvane,
+  loresingerMaelis,
+  bowyerAewyn,
+  weaverMyrren,
+  glasswrightSelorne,
+  smithFaelar,
+  inscriberVessa,
+  innkeepElarin,
+  provisionerCorwen,
+  sentinelSerel,
+  stillkeeperNaia,
+  keeperOthiel,
+  fairArtisan,
   youngPip,
   // The Road's Fortune (living frontier, phase 5) — the peddler pool:
   peddlerNix,

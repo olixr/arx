@@ -1,0 +1,27 @@
+{
+ "id": "stillkeeper_naia",
+ "name": "Naia",
+ "title": "Keeper of the Stillroom",
+ "examine": "The healers' house and the hanging gardens are hers: gathered herbs, never tilled rows. She is the youngest whole-blood in the city and the only one who finds that funny.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 12,
+   "hair": 5,
+   "hairColor": 4,
+   "beard": 0,
+   "eyes": 0,
+   "ears": 2,
+   "feature": 0,
+   "shirt": 6,
+   "pants": 6
+  }
+ },
+ "shop": "naia_remedies",
+ "lines": [
+  "I am the baby of the city. I have seen four human kingdoms. It keeps me humble.",
+  "We do not till. The wood gives what it gives, and the garden is a conversation, not a demand.",
+  "Drink it all. Yes, it tastes like that on purpose."
+ ]
+}

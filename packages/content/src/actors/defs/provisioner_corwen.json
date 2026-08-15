@@ -1,0 +1,27 @@
+{
+ "id": "provisioner_corwen",
+ "name": "Corwen",
+ "title": "Provisioner of the Gate Court",
+ "examine": "Thinned blood: pointed ears, human years. He walked west a decade before the gate opened and was let in, which nobody outside had managed in a century. What he gave up to stay, he does not say.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 2,
+   "hair": 2,
+   "hairColor": 2,
+   "beard": 3,
+   "eyes": 2,
+   "ears": 1,
+   "feature": 5,
+   "shirt": 2,
+   "pants": 2
+  }
+ },
+ "shop": "corwen_goods",
+ "lines": [
+  "The wood provides. I just weigh it and take a cut. Smallest job in the city, best view in the world.",
+  "You want to know how I got in. Everyone asks. I knocked for three years. Take from that what you like.",
+  "They count my age in their heads when they talk to me. I can see them doing it. They are always gentle after."
+ ]
+}

@@ -1,0 +1,69 @@
+{
+ "id": "aewyn_bows",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "bowyer_aewyn"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "Hands off the staves unless they greet you first.",
+   "next": "hub",
+   "voice": "aewyn_bows__greet"
+  },
+  {
+   "id": "hub",
+   "text": "Bows. Staves. Sixty years of patience on racks. What do you need?",
+   "choices": [
+    {
+     "text": "Teach me the craft.",
+     "next": "teach"
+    },
+    {
+     "text": "Why yew?",
+     "next": "yew"
+    },
+    {
+     "text": "Show me your work.",
+     "next": "browse"
+    }
+   ],
+   "voice": "aewyn_bows__hub"
+  },
+  {
+   "id": "teach",
+   "text": "The guild halls east teach to a line and stop. I teach past it. Yew bows, the singing bow, the war bow. Nobody else alive will show you, because everybody else who could is in this city, and they all send students to me anyway.",
+   "choices": [
+    {
+     "text": "Show me, then.",
+     "next": "browse"
+    },
+    {
+     "text": "Later.",
+     "next": "hub"
+    }
+   ],
+   "voice": "aewyn_bows__teach"
+  },
+  {
+   "id": "yew",
+   "text": "Yew grows slow and remembers everything. Oak forgets by autumn. A yew stave taken kindly will pull for your grandchildren. Taken unkindly it will not pull at all. The wood decides. My whole craft is asking well.",
+   "next": "hub",
+   "voice": "aewyn_bows__yew"
+  },
+  {
+   "id": "browse",
+   "text": "Patterns, staves, and finished work. The prices are firm. So is the yew.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "aewyn_bows"
+    }
+   ],
+   "voice": "aewyn_bows__browse"
+  }
+ ]
+}

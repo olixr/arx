@@ -4264,6 +4264,14 @@ interface WoodStep {
   value: number;
   code: string;
   desc: string;
+  /**
+   * THE ELVEN EXCEPTION (the Evenfall epic): the band law files 40+
+   * lore under 'drop' by default, but the yew rungs are TAUGHT — by
+   * exactly one bowyer, in exactly one city, at the far end of the
+   * longest trail on the map. The knowledge is not lost; it went
+   * west with everyone else who was tired of being asked.
+   */
+  unlock?: 'trainer';
 }
 
 function woodLine(
@@ -4303,6 +4311,7 @@ function woodLine(
         // Every bow is strung: the tailor's twine is the bowyer's string.
         ticks: design.ticks,
         inputs: [{ item: w.log, qty: design.logs }, { item: 'twine', qty: 1 }],
+        ...(w.unlock ? { unlock: w.unlock } : {}),
       },
       value: w.value, color: w.color, code: w.code, desc: w.desc,
     };
@@ -4350,7 +4359,7 @@ function bowDefs(): EquipmentDef[] {
         desc: 'Dense oak snaps the arrow out flat and fast.' },
       { wood: 'willow', log: 'willow_log', color: WOODS.willow, damage: 5, archReq: 24, craftReq: 30, xp: 210, value: 320, code: 'Uw',
         desc: 'Willow forgives a hurried draw and hides the creak.' },
-      { wood: 'yew', log: 'yew_log', color: WOODS.yew, damage: 6, archReq: 40, craftReq: 46, xp: 360, value: 740, code: 'Ys',
+      { wood: 'yew', log: 'yew_log', color: WOODS.yew, damage: 6, archReq: 40, craftReq: 46, xp: 360, value: 740, code: 'Ys', unlock: 'trainer',
         desc: 'Yew in a small frame: a whisper that hits like a shout.' },
     ],
   );
@@ -4371,7 +4380,7 @@ function bowDefs(): EquipmentDef[] {
         desc: 'Northern pine, straight as the cold horizon it grew against.' },
       { wood: 'willow', log: 'willow_log', color: WOODS.willow, damage: 8, archReq: 30, craftReq: 34, xp: 280, value: 400, code: 'Wl',
         desc: 'Willow bends far and sends arrows farther.' },
-      { wood: 'yew', log: 'yew_log', color: WOODS.yew, damage: 10, archReq: 45, craftReq: 50, xp: 420, value: 920, code: 'Yn',
+      { wood: 'yew', log: 'yew_log', color: WOODS.yew, damage: 10, archReq: 45, craftReq: 50, xp: 420, value: 920, code: 'Yn', unlock: 'trainer',
         desc: 'The wood wars are fought over. A yard of bent thunder.' },
     ],
   );
@@ -4390,7 +4399,7 @@ function bowDefs(): EquipmentDef[] {
         desc: 'Oak recurve — the poacher\'s rank badge, worn on the back.' },
       { wood: 'willow', log: 'willow_log', color: WOODS.willow, damage: 6, archReq: 26, craftReq: 32, xp: 240, value: 360, code: 'Wr',
         desc: 'It bends like the river it grew beside. Deer trust rivers.' },
-      { wood: 'yew', log: 'yew_log', color: WOODS.yew, damage: 8, archReq: 42, craftReq: 48, xp: 390, value: 820, code: 'Yr',
+      { wood: 'yew', log: 'yew_log', color: WOODS.yew, damage: 8, archReq: 42, craftReq: 48, xp: 390, value: 820, code: 'Yr', unlock: 'trainer',
         desc: 'The last thing the King\'s deer never saw.' },
     ],
   );
@@ -4432,6 +4441,8 @@ function bowDefs(): EquipmentDef[] {
       recipe: {
         skill: 'woodworking', levelReq: 45, xp: 420, station: 'carving_bench', ticks: 90,
         inputs: [{ item: 'yew_log', qty: 2 }, { item: 'gold_bar', qty: 1 }, { item: 'moonbell', qty: 2 }, { item: 'twine', qty: 1 }],
+        // THE ELVEN EXCEPTION: taught at the Bowyer's House, nowhere else.
+        unlock: 'trainer',
       },
       value: 880, color: '#8ab4c8', code: 'Wi',
       desc: 'A yew war bow drilled with song-holes. You hear the note. Then whatever the note was about.',

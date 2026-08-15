@@ -344,6 +344,7 @@ export function buildEvenfall(): ZoneDef {
   b.set(91, 40, Tile.MithrilAnvil);
   b.set(88, 42, Tile.Anvil);
   b.set(92, 42, Tile.CrateGoods);
+  b.set(92, 37, Tile.Bed);
   // THE GALLERY — two facing colonnade rows: pillars, planters, low
   // counters. The market that is not a market: nothing shouts.
   for (const gx of [75, 79, 83, 87, 91]) {
@@ -599,6 +600,41 @@ export function buildEvenfall(): ZoneDef {
   b.sign(66, 57, 'THE INSCRIBER', ['the third table', 'the first answer'], Tile.Signpost);
   b.sign(14, 2, 'THE HEARTWOOD WALK', ['the wood past the arch is not walked', 'this is not a rule, it is a fact'], Tile.Signpost);
   b.sign(100, 65, 'THE EVENMERE', ['the city keeps its mirror clean'], Tile.Signpost);
+
+  // ---------------------------------------------------------------
+  // THE PEOPLE — every keeper at their promised post (dir 1.5707963
+  // faces the camera, the royal law; the watch faces the way you
+  // came from).
+  // ---------------------------------------------------------------
+  const CAM = 1.5707963;
+  const UP = 4.7123889;
+  const E = 0.0;
+  const W = 3.1415927;
+  b.actor('king_aldaren', 31, 39, CAM, 'ef_king');
+  b.actor('warden_sylwen', 28, 65, CAM, 'ef_warden');
+  b.actor('keeper_ilvane', 31, 42, UP, 'ef_keeper');
+  b.actor('loresinger_maelis', 64, 31, W, 'ef_singer');
+  b.actor('bowyer_aewyn', 77, 20, W, 'ef_bowyer');
+  b.actor('weaver_myrren', 77, 38, W, 'ef_weaver');
+  b.actor('glasswright_selorne', 78, 63, UP, 'ef_glasswright');
+  b.actor('smith_faelar', 90, 40, E, 'ef_smith');
+  b.actor('inscriber_vessa', 64, 61, W, 'ef_inscriber');
+  b.actor('innkeep_elarin', 142, 40, CAM, 'ef_innkeep');
+  b.actor('provisioner_corwen', 143, 53, CAM, 'ef_provisioner');
+  b.actor('sentinel_serel', 155, 56, E, 'ef_gate');
+  b.actor('stillkeeper_naia', 51, 62, W, 'ef_stillkeeper');
+  // Othiel holds the Keeping's still bench (the Orla precedent: one
+  // keeper is allowed to simply BE where the keeping is).
+  b.actor('keeper_othiel', 53, 31, CAM);
+  // The Evenguard on the walks; the watch faces the way you came.
+  b.actor('evenguard_watch', 152, 55, E);
+  b.actor('evenguard_watch', 152, 58, E);
+  b.actor('evenguard_watch', 76, 96, CAM);
+  b.actor('evenguard_watch', 17, 12, UP);
+  // The Fair Court keeps its own company.
+  b.actor('fair_artisan', 79, 52, CAM);
+  b.actor('fair_artisan', 87, 56, UP);
+  b.actor('fair_artisan', 75, 55, E);
 
   // ---------------------------------------------------------------
   // THE SPAWN — the gate court: every waker's first sight of the

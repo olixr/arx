@@ -550,6 +550,59 @@ everyone does NOT talk about the seal unless Annik is doing the talking.
 - **Glasshands** (pooled): kiln-squint careful. "You never look straight
   into the kiln. You learn that once."
 
+### Evenfall — the city the old folk kept
+
+The first non-human town: every whole-blood throat speaks in THE PRESENT
+TENSE OF CENTURIES — unhurried, exact, answering the question under the
+question at least once per conversation. Elves never name-bomb; they
+ground names with a touch of amusement, as if introducing children. They
+do not explain the wood, do not give ages, and do not translate the old
+tongue (a thing withheld is a thing the player found). The town's ONE
+spice-carrier is **Elarin**; trail-off "..." is granted to **Aldaren**
+alone (he loses decades mid-sentence and returns). Corwen is the bridge
+throat: human rhythm, answers what elves answer slowly.
+
+- **Aldaren, the Evenking**: wants the family whole again; carries every
+  quiet year. Quirk: remembers your ancestors' era, misplaces which one.
+  Cadence: long warm sentences that stop early when the weight arrives;
+  drifts granted. Never frightened, never hurried.
+- **Sylwen** (Warden of the Wood): wants the gate she opposed kept
+  perfectly; the wound is being right about the cost and wrong about the
+  choice. Quirk: counts while she listens. Cadence: sentinel's
+  arithmetic, short declaratives, one dry edge per conversation.
+- **Keeper Ilvane** (the Everflame): wants the light kept company.
+  Cadence: still, kind, speaks of fire the way others speak of elders.
+- **Loresinger Maelis** (the Songhouse): wants everything kept; will not
+  sing one verse. Cadence: musical phrasing, refuses beautifully, "No."
+  is a complete sentence she owns.
+- **Aewyn** (the Bowyer's House): wants the staves treated as
+  acquaintances. Cadence: workshop imperatives softened by sixty-year
+  patience; the wood is always the subject of the sentence.
+- **Myrren** (the Silk Hall): speaks in textures when words run short.
+- **Selorne** (the Moonglass Hall): the patience register; measures
+  everything in decades and finds days quaint.
+- **Faelar** (the Mithril Forge): the loudest voice in the city, which
+  is not very; proud of the one working fire.
+- **Inscriber Vessa** (the Third Table): wants the right asker to walk
+  in; keeps copies of other people's silences. Cadence: dry, precise,
+  archival.
+- **Elarin** (the Outward House): the ONE wit — collects human idioms
+  and uses them wrong on purpose. Wants travelers talking. Cadence:
+  bright, hosting, lands the idiom-joke once per conversation at most.
+- **Corwen** (provisioner): thinned blood who knocked for three years.
+  The wound is whose clock he chose to age by. Cadence: human-quick,
+  plain, generous with the answers elves ration.
+- **Serel** (the Evengate): polite as a drawn bow. Cadence: gate-watch
+  clip, welcomes and warns in the same breath.
+- **Naia** (the Stillroom): the "baby" at four human kingdoms old; the
+  only whole-blood who jokes about age. Cadence: quick, warm, botanical.
+- **Othiel** (the Keeping): does not count out loud. Fewest words in
+  the city; each one load-bearing.
+- **Evenguard** (pooled): "You are seen." Watch-speak pared to the
+  bone; faces the way you came from.
+- **Fair Court artisans** (pooled): courteous, absorbed, allergic to
+  hurry.
+
 ---
 
 ## 5. Surface rules

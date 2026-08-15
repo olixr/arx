@@ -1,0 +1,48 @@
+{
+ "id": "ef_singer",
+ "base": {
+  "kind": "post",
+  "dir": 3.1415927,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 15,
+   "to": 17,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": -8,
+      "y": 17,
+      "waitSec": 300,
+      "dir": 1.5707963
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 3.1415927
+     }
+    ]
+   }
+  },
+  {
+   "from": 23.5,
+   "to": 6,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 4,
+      "y": 2,
+      "lie": true
+     }
+    ],
+    "mode": "once"
+   }
+  }
+ ]
+}

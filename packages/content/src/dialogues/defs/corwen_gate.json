@@ -1,0 +1,75 @@
+{
+ "id": "corwen_gate",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "provisioner_corwen"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "You look like you have questions. I had the same ones, standing where you are.",
+   "next": "hub",
+   "voice": "corwen_gate__greet"
+  },
+  {
+   "id": "hub",
+   "text": "Ask me. I answer the things elves answer slowly.",
+   "choices": [
+    {
+     "text": "How did you get in?",
+     "next": "in"
+    },
+    {
+     "text": "What should I not do here?",
+     "next": "donts"
+    },
+    {
+     "text": "What are you selling?",
+     "next": "browse"
+    }
+   ],
+   "voice": "corwen_gate__hub"
+  },
+  {
+   "id": "in",
+   "text": "I knocked for three years. Camped at the arch, traded at the arch, wintered at the arch. Year three, Serel opened it and said: you knock like family. My mother had the ears. I never thought they meant anything. They meant everything.",
+   "choices": [
+    {
+     "text": "What did you give up to stay?",
+     "next": "cost"
+    },
+    {
+     "text": "Never mind.",
+     "next": "hub"
+    }
+   ],
+   "voice": "corwen_gate__in"
+  },
+  {
+   "id": "cost",
+   "text": "A house at the ford. A trade. Somebody. You want the story to have a villain, but it is just years. They pass differently here, and I chose whose clock I age by. She would not come west. That is all of it you get.",
+   "next": "hub",
+   "voice": "corwen_gate__cost"
+  },
+  {
+   "id": "donts",
+   "text": "Do not hurry anyone. Do not ask ages. Do not touch the staves at the bowyer's before they know you. And the Heartwood is not a dare. The wood keeps score, and it has a long book.",
+   "next": "hub",
+   "voice": "corwen_gate__donts"
+  },
+  {
+   "id": "browse",
+   "text": "What the wood gives, weighed fair. The honey is the good kind of trouble.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "corwen_goods"
+    }
+   ],
+   "voice": "corwen_gate__browse"
+  }
+ ]
+}

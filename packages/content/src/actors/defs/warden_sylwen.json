@@ -1,0 +1,40 @@
+{
+ "id": "warden_sylwen",
+ "name": "Sylwen",
+ "title": "Warden of the Wood",
+ "examine": "The Evenking's heir, and the Evenguard's commander. She argued against opening the gate, lost, and now keeps the open gate better than anyone alive. Both of those are duty.",
+ "disposition": "neutral",
+ "protection": "invulnerable",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 12,
+   "hair": 2,
+   "hairColor": 1,
+   "beard": 0,
+   "eyes": 1,
+   "ears": 2,
+   "feature": 0,
+   "shirt": 11,
+   "pants": 4
+  }
+ },
+ "equipment": {
+  "weapon": "windsinger"
+ },
+ "lines": [
+  "Two hundred years I kept a shut gate. Keeping an open one is harder. Nobody asks the second question.",
+  "The Company cut forty lengths of silverbark. Forty lengths came back to the hem, stacked. We are patient, not gentle.",
+  "My father is right about most things. I count the ones he is wrong about. The count is not zero."
+ ],
+ "combat": {
+  "level": 46,
+  "respawnSec": 120,
+  "stats": {
+   "maxHp": 320,
+   "damage": 12,
+   "speed": 3.6,
+   "leashRange": 12
+  }
+ }
+}

@@ -1,0 +1,26 @@
+{
+ "id": "fair_artisan",
+ "name": "Fair Court artisan",
+ "title": "Artisan of Evenfall",
+ "examine": "An artisan of the Fair Court, at work on something that will outlive every customer it ever has. This does not seem to hurry anyone.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 12,
+   "hair": 3,
+   "hairColor": 7,
+   "beard": 0,
+   "eyes": 0,
+   "ears": 2,
+   "feature": 0,
+   "shirt": 4,
+   "pants": 5
+  }
+ },
+ "lines": [
+  "Mind the planters. They are older than your town.",
+  "We do not shout our wares. The work speaks at its own pace.",
+  "The Gallery is not a market. Coin is welcome. Hurry is not."
+ ]
+}

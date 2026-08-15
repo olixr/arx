@@ -1,0 +1,27 @@
+{
+ "id": "weaver_myrren",
+ "name": "Myrren",
+ "title": "Weaver of the Silk Hall",
+ "examine": "Moonpale silk with silver thread, woven by hands that remember teaching the craft to people whose great-grandchildren taught it to yours. She speaks in textures when words run short.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 12,
+   "hair": 4,
+   "hairColor": 4,
+   "beard": 0,
+   "eyes": 0,
+   "ears": 2,
+   "feature": 0,
+   "shirt": 5,
+   "pants": 5
+  }
+ },
+ "shop": "myrren_silks",
+ "lines": [
+  "Feel this. That is what a hundred quiet years does to thread.",
+  "Your ford-town wool is honest. Honest is a texture. I like it better than you would guess.",
+  "The moonpale weave is not white. Look again. Slower."
+ ]
+}

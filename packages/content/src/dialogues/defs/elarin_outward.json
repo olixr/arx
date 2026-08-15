@@ -1,0 +1,60 @@
+{
+ "id": "elarin_outward",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "innkeep_elarin"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "Welcome to the Outward House! Sit anywhere. As you humans say: my casa is your casa.",
+   "next": "hub",
+   "voice": "elarin_outward__greet"
+  },
+  {
+   "id": "hub",
+   "text": "Food, a bed, or talk. I stock all three and only burn one of them.",
+   "choices": [
+    {
+     "text": "Why build an inn in a closed city?",
+     "next": "inn"
+    },
+    {
+     "text": "You like humans.",
+     "next": "humans"
+    },
+    {
+     "text": "What's on the board?",
+     "next": "browse"
+    }
+   ],
+   "voice": "elarin_outward__hub"
+  },
+  {
+   "id": "inn",
+   "text": "Forty years ago I built it, to be ready. The whole city said the gate would never open. I said: then a ready inn costs us nothing but my foolishness, and you all enjoy that anyway. The whole city helps me sweep it now. Nobody apologizes. It is very elven.",
+   "next": "hub",
+   "voice": "elarin_outward__inn"
+  },
+  {
+   "id": "humans",
+   "text": "You are fast. You decide things in a season and mean them. A human promise is a mayfly promising you the summer, and keeping it. I collect your sayings. I use them wrong on purpose, it makes travelers correct me, and then we are talking. You see the trick. You fell for it anyway.",
+   "next": "hub",
+   "voice": "elarin_outward__humans"
+  },
+  {
+   "id": "browse",
+   "text": "Stew that is older than your town, bread that is not. Both are good.",
+   "hooks": [
+    {
+     "kind": "shop",
+     "shop": "elarin_board"
+    }
+   ],
+   "voice": "elarin_outward__browse"
+  }
+ ]
+}

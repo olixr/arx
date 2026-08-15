@@ -1,0 +1,48 @@
+{
+ "id": "ef_weaver",
+ "base": {
+  "kind": "post",
+  "dir": 3.1415927,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 11,
+   "to": 15,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 8,
+      "y": 14,
+      "waitSec": 600,
+      "dir": 4.7123889
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 3.1415927
+     }
+    ]
+   }
+  },
+  {
+   "from": 23.5,
+   "to": 6,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": 2,
+      "y": 3,
+      "lie": true
+     }
+    ],
+    "mode": "once"
+   }
+  }
+ ]
+}

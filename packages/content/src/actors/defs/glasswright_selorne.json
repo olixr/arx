@@ -1,0 +1,27 @@
+{
+ "id": "glasswright_selorne",
+ "name": "Selorne",
+ "title": "Glasswright of the Moonglass Hall",
+ "examine": "Moonglass is worked cold, over years, the way a river works a stone. Selorne is on his eleventh lens this century and considers the pace a little hurried.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 12,
+   "hair": 1,
+   "hairColor": 7,
+   "beard": 0,
+   "eyes": 0,
+   "ears": 2,
+   "feature": 0,
+   "shirt": 11,
+   "pants": 5
+  }
+ },
+ "shop": "selorne_glass",
+ "lines": [
+  "Glass is a liquid that made a promise. Moonglass keeps it longer.",
+  "The Glasshouse in the delf melts starfall in a day. Impressive. Loud, but impressive.",
+  "Cold work, slow work, true work. Sit, if you like. This lens has nine years left in it."
+ ]
+}

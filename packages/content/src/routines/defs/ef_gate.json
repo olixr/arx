@@ -1,0 +1,32 @@
+{
+ "id": "ef_gate",
+ "base": {
+  "kind": "post",
+  "dir": 0.0,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 6,
+   "to": 7.5,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": -57,
+      "y": 0,
+      "waitSec": 120,
+      "dir": 3.1415927
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 0.0
+     }
+    ]
+   }
+  }
+ ]
+}

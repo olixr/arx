@@ -243,6 +243,14 @@ import orinBeastyard from './defs/orin_beastyard.json';
 import ferrunForge from './defs/ferrun_forge.json';
 import mirenaGlass from './defs/mirena_glass.json';
 import veyleFocus from './defs/veyle_focus.json';
+import aldarenEvenhall from './defs/aldaren_evenhall.json';
+import sylwenRoost from './defs/sylwen_roost.json';
+import ilvaneFlame from './defs/ilvane_flame.json';
+import maelisSong from './defs/maelis_song.json';
+import aewynBows from './defs/aewyn_bows.json';
+import vessaTable from './defs/vessa_table.json';
+import elarinOutward from './defs/elarin_outward.json';
+import corwenGate from './defs/corwen_gate.json';
 import lornAssay from './defs/lorn_assay.json';
 import sorenFlame from './defs/soren_flame.json';
 import livPost from './defs/liv_post.json';
@@ -535,6 +543,14 @@ const SOURCES: readonly unknown[] = [
   ferrunForge,
   mirenaGlass,
   veyleFocus,
+  aldarenEvenhall,
+  sylwenRoost,
+  ilvaneFlame,
+  maelisSong,
+  aewynBows,
+  vessaTable,
+  elarinOutward,
+  corwenGate,
   lornAssay,
   sorenFlame,
   livPost,

@@ -1,6 +1,19 @@
 import type { RoutineDef } from './types.js';
 import { validateRoutine } from './validate.js';
 
+import efKing from './defs/ef_king.json';
+import efWarden from './defs/ef_warden.json';
+import efKeeper from './defs/ef_keeper.json';
+import efSinger from './defs/ef_singer.json';
+import efBowyer from './defs/ef_bowyer.json';
+import efWeaver from './defs/ef_weaver.json';
+import efGlasswright from './defs/ef_glasswright.json';
+import efSmith from './defs/ef_smith.json';
+import efInscriber from './defs/ef_inscriber.json';
+import efInnkeep from './defs/ef_innkeep.json';
+import efProvisioner from './defs/ef_provisioner.json';
+import efGate from './defs/ef_gate.json';
+import efStillkeeper from './defs/ef_stillkeeper.json';
 import croftReeve from './defs/croft_reeve.json';
 import croftTrader from './defs/croft_trader.json';
 import croftVeteran from './defs/croft_veteran.json';
@@ -184,6 +197,19 @@ import hartWatchBeacon from './defs/hart_watch_beacon.json';
 import hartHerder from './defs/hart_herder.json';
 
 const SOURCES: readonly unknown[] = [
+  efKing,
+  efWarden,
+  efKeeper,
+  efSinger,
+  efBowyer,
+  efWeaver,
+  efGlasswright,
+  efSmith,
+  efInscriber,
+  efInnkeep,
+  efProvisioner,
+  efGate,
+  efStillkeeper,
   croftReeve,
   croftTrader,
   croftVeteran,

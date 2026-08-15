@@ -1,0 +1,48 @@
+{
+ "id": "ef_stillkeeper",
+ "base": {
+  "kind": "post",
+  "dir": 3.1415927,
+  "speed": 1.6
+ },
+ "slots": [
+  {
+   "from": 10,
+   "to": 13,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": -21,
+      "y": 10,
+      "waitSec": 420,
+      "dir": 1.5707963
+     },
+     {
+      "x": 0,
+      "y": 0,
+      "waitSec": 60,
+      "dir": 3.1415927
+     }
+    ]
+   }
+  },
+  {
+   "from": 23.5,
+   "to": 6,
+   "task": {
+    "kind": "path",
+    "speed": 1.4,
+    "waypoints": [
+     {
+      "x": -1,
+      "y": 4,
+      "lie": true
+     }
+    ],
+    "mode": "once"
+   }
+  }
+ ]
+}

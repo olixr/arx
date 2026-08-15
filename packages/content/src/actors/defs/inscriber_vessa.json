@@ -1,0 +1,27 @@
+{
+ "id": "inscriber_vessa",
+ "name": "Vessa",
+ "title": "Inscriber of the Third Table",
+ "examine": "The oldest enchanting table in the world stands in her house, and the answer the Arcanum exiled Veyle for asking hangs on her rear wall. She has been waiting for somebody to come and see it.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 12,
+   "hair": 4,
+   "hairColor": 8,
+   "beard": 0,
+   "eyes": 0,
+   "ears": 2,
+   "feature": 0,
+   "shirt": 8,
+   "pants": 5
+  }
+ },
+ "shop": "vessa_inscriptions",
+ "lines": [
+  "The Arcanum calls theirs the first table. Counting is hard when you start at your own birth.",
+  "Solvei's letters to Veyle are very polite. Veyle's silences are very polite. I am running out of politeness to watch.",
+  "The wall in the back answers one question. It has waited a long time for the right asker."
+ ]
+}

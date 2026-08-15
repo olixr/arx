@@ -1,0 +1,27 @@
+{
+ "id": "innkeep_elarin",
+ "name": "Elarin",
+ "title": "Keeper of the Outward House",
+ "examine": "The one elf in Evenfall who likes travelers, keeping the one building raised in a hundred and fifty years. He collects human idioms and uses them slightly wrong, on purpose, probably.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 12,
+   "hair": 3,
+   "hairColor": 4,
+   "beard": 0,
+   "eyes": 0,
+   "ears": 2,
+   "feature": 0,
+   "shirt": 1,
+   "pants": 2
+  }
+ },
+ "shop": "elarin_board",
+ "lines": [
+  "Welcome to the Outward House. As you humans say: make yourself at house.",
+  "I built this inn myself, forty years ago, to be ready. The whole city said the gate would never open. The whole city helps me sweep it now.",
+  "The stew is my own recipe. It is one hundred and six years old. The stew, not the pot. The pot is older."
+ ]
+}

@@ -1,0 +1,70 @@
+{
+ "id": "sylwen_roost",
+ "start": "greet",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "warden_sylwen"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "greet",
+   "text": "You walked the stones and the watch let you by. So you are welcome. Those are the same fact.",
+   "next": "hub",
+   "voice": "sylwen_roost__greet"
+  },
+  {
+   "id": "hub",
+   "text": "Say what you need. I count while I listen, it is not rudeness.",
+   "choices": [
+    {
+     "text": "You argued against opening the gate.",
+     "next": "against"
+    },
+    {
+     "text": "What does the Evenguard watch for?",
+     "next": "watch"
+    },
+    {
+     "text": "What's this about the Red Company?",
+     "next": "company"
+    }
+   ],
+   "voice": "sylwen_roost__hub"
+  },
+  {
+   "id": "against",
+   "text": "I did. I lost. Now the gate is mine to keep open, and I keep it. If you want a warden who only guards what she voted for, the humans elect those, I hear.",
+   "choices": [
+    {
+     "text": "Why did you argue against it?",
+     "next": "why"
+    },
+    {
+     "text": "Never mind.",
+     "next": "hub"
+    }
+   ],
+   "voice": "sylwen_roost__against"
+  },
+  {
+   "id": "why",
+   "text": "Because the last time the world was let in, my people thinned into it and did not come back. My father calls that family. I call it arithmetic. We are both right, which is the hard part.",
+   "next": "hub",
+   "voice": "sylwen_roost__why"
+  },
+  {
+   "id": "watch",
+   "text": "The dark under the old lights. Wolves, and worse than wolves, and lately axes. The wood holds most of it down without being asked. We handle what the wood leaves us.",
+   "next": "hub",
+   "voice": "sylwen_roost__watch"
+  },
+  {
+   "id": "company",
+   "text": "A timber company keeps sending crews for silverbark nobody sold them. We keep sending the palisades back in bundles. Politely. The fourth crew is losing its nerve. There will be a fifth. Patience is a weapon you never have to sharpen.",
+   "next": "hub",
+   "voice": "sylwen_roost__company"
+  }
+ ]
+}

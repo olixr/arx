@@ -1,0 +1,26 @@
+{
+ "id": "loresinger_maelis",
+ "name": "Maelis",
+ "title": "Loresinger of Evenfall",
+ "examine": "The Songhouse keeps the memory the way humans keep ledgers, and Maelis keeps the Songhouse. There is one verse she will not sing. Everyone here knows which one, and nobody asks twice.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 12,
+   "hair": 5,
+   "hairColor": 7,
+   "beard": 0,
+   "eyes": 0,
+   "ears": 2,
+   "feature": 0,
+   "shirt": 4,
+   "pants": 5
+  }
+ },
+ "lines": [
+  "A song is a ledger that forgives. That is the whole difference between our houses and yours.",
+  "The harp is older than the hall. The hall is older than the question you were about to ask.",
+  "There is a verse about the deep grove. It is not mine to sing. It is not yours to hear. We are both fine."
+ ]
+}

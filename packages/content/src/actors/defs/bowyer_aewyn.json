@@ -1,0 +1,27 @@
+{
+ "id": "bowyer_aewyn",
+ "name": "Aewyn",
+ "title": "Bowyer of the Fair Court",
+ "examine": "The finest bowyer alive, by the reckoning of everyone who has held her work and lived to reckon. She treats every stave as an acquaintance of some decades' standing, because it is.",
+ "disposition": "friendly",
+ "model": {
+  "kind": "humanoid",
+  "look": {
+   "skin": 12,
+   "hair": 3,
+   "hairColor": 1,
+   "beard": 0,
+   "eyes": 1,
+   "ears": 2,
+   "feature": 0,
+   "shirt": 4,
+   "pants": 3
+  }
+ },
+ "shop": "aewyn_bows",
+ "lines": [
+  "This stave and I have known each other sixty years. It is nearly ready. So am I.",
+  "A bow is a conversation between a tree and a need. Most of yours shout.",
+  "Yew wants patience. Everything worth stringing does."
+ ]
+}
