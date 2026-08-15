@@ -268,10 +268,47 @@ export const BAT_FLIER: FlierSpec = {
   stern: 0,
 };
 
+/**
+ * The giant bat: the orchard-shadow soarer — a flying fox's build.
+ * Long slow strokes on a broad sail, but still a MEMBRANE: it never
+ * earns the feathered glide, its languor lives in the tempo alone.
+ */
+export const GIANT_BAT_FLIER: FlierSpec = {
+  hover: 1.05,
+  beatHz: 1.7,
+  hoverBeatK: 0.75,
+  glides: false,
+  stations: 5,
+  tone: 0.6,
+  uprightA: 0.78,
+  tail: 0,
+  stern: 0,
+};
+
+/**
+ * The dire bat: the ragged hunter. Heavy hammering strokes — quicker
+ * than the giant, far heavier than the cave flutter — on the loosest
+ * sail in the sky (the torn trailing edge billows a beat behind), and
+ * the deepest hover hunch: it hangs in the air like a threat.
+ */
+export const DIRE_BAT_FLIER: FlierSpec = {
+  hover: 0.95,
+  beatHz: 2.3,
+  hoverBeatK: 0.78,
+  glides: false,
+  stations: 5,
+  tone: 0.48,
+  uprightA: 0.62,
+  tail: 0,
+  stern: 0,
+};
+
 /** The rig ledger by def id — the renderer's one lookup. */
 export function flierSpec(defId: string): FlierSpec {
   if (defId === 'elder_great_owl') return ELDER_OWL_FLIER;
   if (defId === 'cave_bat') return BAT_FLIER;
+  if (defId === 'giant_bat') return GIANT_BAT_FLIER;
+  if (defId === 'dire_bat') return DIRE_BAT_FLIER;
   return OWL_FLIER;
 }
 
@@ -1497,27 +1534,302 @@ export function drawGreatOwl(
   }
 }
 
-// ---------------------------------------------------------- the bat
+// ---------------------------------------------------------- the bats
 
 /**
- * THE CAVE BAT RIDES THE RIG: the membrane flier. The same carriage
- * as the owl at different dials — quick loose flutter, no glides, a
- * hover that hangs more vertical than it pitches. The wing is one
- * leathery plane: a rigged arm-and-finger leading edge with the
- * membrane's scalloped trailing edge riding the sim stations, so the
- * whole sail billows a beat behind the bones — leather, not feather,
- * told entirely by tone and damping. Identity kept: round tuft body,
- * tall ragged dish ears, amber eyes, fangs on the lunge.
+ * THE COLONY'S DIAL SHEET — one look interface, three bespoke bodies.
+ * Every dial the painter reads lives here, so a new bat is a design
+ * decision, never a code fork: the CAVE BAT (the minimal dusk
+ * flutterer — big dish ears on a small tuft body), the GIANT BAT (the
+ * orchard-shadow soarer: a fox-muzzled head, a maned ruff, one broad
+ * slow sail), and the DIRE BAT (the ragged hunter: gaunt hunched
+ * hull, horn-swept ears, bared fangs, wrist hooks, and a torn
+ * trailing edge). Art dials only — motion lives in the FlierSpec.
+ */
+export interface BatLook {
+  /** Body and head fur. */
+  coat: string;
+  /** The pale chest tuft — the hull's keel tone. */
+  chest: string;
+  /** Membrane leather — the camera-side (top) face. */
+  sail: string;
+  /** Membrane underside — the paler lit leather. */
+  sailUnder: string;
+  /** Arm and finger bone ink. */
+  bone: string;
+  /** Inner-ear skin — the dish's lining. */
+  earSkin: string;
+  /** Eye lamp. */
+  eye: string;
+  /** Fang ivory. */
+  fang: string;
+  /** Nose-pad leather. */
+  nose: string;
+  /** Hull half-length (tiles). */
+  bodyR: number;
+  /** Hull half-width (tiles). */
+  bodyW: number;
+  /** Skull radius (tiles). */
+  headR: number;
+  /** Muzzle reach past the skull rim (tiles) — the fox dial. */
+  muzzle: number;
+  /** Ear reach off the crown (tiles). */
+  earLen: number;
+  /** Ear base half-width (tiles). */
+  earW: number;
+  /** Ear back-sweep 0..1: 0 an upright dish, 1 a swept horn. */
+  earBack: number;
+  /** One wing's reach (tiles). */
+  wingSpan: number;
+  /** Membrane fingers (3..5) — each rides a sim station. */
+  fingers: number;
+  /** Trailing-edge scallop depth 0..1. */
+  scallop: number;
+  /** 0 = a clean trailing edge, 1 = the dire's torn rag. */
+  ragged: number;
+  /** Wrist thumb-hook reach (tiles); 0 = none. */
+  thumbClaw: number;
+  /** Shoulder mane mass 0..1 — the giant's ruff. */
+  ruff: number;
+  /** Dorsal hump 0..1 — the dire's hunch. */
+  hunch: number;
+  /** Tail-membrane reach past the vent (tiles); 0 = none. */
+  tailSail: number;
+  /** Fang length as a skull-radius fraction. */
+  fangLen: number;
+  /** Eye lamp radius as a skull-radius fraction. */
+  eyeR: number;
+  /** Fangs bared at rest — the dire never closes its mouth. */
+  fangBare: boolean;
+  /** Seeded modular: one torn ear. */
+  earNotch?: boolean;
+  /** Seeded modular: fur mottle patches on the hull. */
+  mottle?: boolean;
+  variant: 'cave' | 'giant' | 'dire';
+  seed?: number;
+}
+
+/** The dusk flutterer — kept minimal on purpose: ears, eyes, wings. */
+export const CAVE_BAT_LOOK: BatLook = {
+  coat: '#4a3d55',
+  chest: '#766585',
+  sail: '#382e46',
+  sailUnder: '#5c5270',
+  bone: '#2a2236',
+  earSkin: '#8a6274',
+  eye: '#e2a63c',
+  fang: '#efe9d8',
+  nose: '#2e2638',
+  bodyR: 0.26,
+  bodyW: 0.2,
+  headR: 0.16,
+  muzzle: 0.045,
+  earLen: 0.23,
+  earW: 0.075,
+  earBack: 0.12,
+  wingSpan: 0.85,
+  fingers: 3,
+  scallop: 0.5,
+  ragged: 0,
+  thumbClaw: 0,
+  ruff: 0,
+  hunch: 0,
+  tailSail: 0.1,
+  fangLen: 0.2,
+  eyeR: 0.16,
+  fangBare: false,
+  variant: 'cave',
+};
+
+/**
+ * The orchard-shadow soarer — a flying fox, drawn from life and then
+ * sized for menace: a long fox muzzle where the cave bat wears a
+ * snub, SMALL ears (the fruit-eater's face, unmistakable beside the
+ * hunter's dishes), a maned russet ruff over the shoulders, and one
+ * broad shallow-scalloped sail per side. It carries NO tail membrane
+ * — the flying fox's honest silhouette.
+ */
+export const GIANT_BAT_LOOK: BatLook = {
+  coat: '#7a5638',
+  chest: '#a47c50',
+  sail: '#42302a',
+  sailUnder: '#6c5648',
+  bone: '#291d1a',
+  earSkin: '#5c4034',
+  eye: '#d89a3c',
+  fang: '#efe9d8',
+  nose: '#2a1e1c',
+  bodyR: 0.5,
+  bodyW: 0.3,
+  headR: 0.24,
+  muzzle: 0.15,
+  earLen: 0.15,
+  earW: 0.055,
+  earBack: 0.32,
+  wingSpan: 1.7,
+  fingers: 4,
+  scallop: 0.3,
+  ragged: 0,
+  thumbClaw: 0.08,
+  ruff: 0.7,
+  hunch: 0,
+  tailSail: 0,
+  fangLen: 0.22,
+  eyeR: 0.13,
+  fangBare: false,
+  variant: 'giant',
+};
+
+/**
+ * The ragged hunter — gaunt where the giant is heavy: a lean hunched
+ * hull under a dorsal hump, horn-swept ears, blood-lamp eyes, fangs
+ * BARED AT REST, wrist thumb-hooks riding the leading edge, and the
+ * deepest, torn trailing edge in the sky — every scallop ripped into
+ * seeded sub-notches, a sail that has been through other creatures.
+ */
+export const DIRE_BAT_LOOK: BatLook = {
+  coat: '#3c3742',
+  chest: '#5e5866',
+  sail: '#2b2530',
+  sailUnder: '#4e4656',
+  bone: '#191521',
+  earSkin: '#6e4650',
+  eye: '#d84040',
+  fang: '#f2ead6',
+  nose: '#201a24',
+  bodyR: 0.44,
+  bodyW: 0.24,
+  headR: 0.21,
+  muzzle: 0.12,
+  earLen: 0.3,
+  earW: 0.07,
+  earBack: 0.72,
+  wingSpan: 1.95,
+  fingers: 5,
+  scallop: 0.85,
+  ragged: 1,
+  thumbClaw: 0.13,
+  ruff: 0.2,
+  hunch: 0.55,
+  tailSail: 0.15,
+  fangLen: 0.38,
+  eyeR: 0.15,
+  fangBare: true,
+  variant: 'dire',
+};
+
+/**
+ * THE COLONY SORTS INTO ROOSTS — seeded skin clusters per design (the
+ * coat-cluster law, membraned): each variant rolls one of four curated
+ * colorways plus a shade jitter, so a cave full of bats reads as kin
+ * groups, never rubber stamps. Modular bits ride the same hash: a
+ * torn ear here, a mottled coat there — small survivals, not costumes.
+ */
+type BatSkin = Pick<BatLook, 'coat' | 'chest' | 'sail' | 'sailUnder' | 'earSkin' | 'eye'>;
+
+const CAVE_BAT_SKINS: readonly BatSkin[] = [
+  // dusk violet — the shipped def color
+  { coat: '#4a3d55', chest: '#766585', sail: '#382e46', sailUnder: '#5c5270', earSkin: '#8a6274', eye: '#e2a63c' },
+  // ash brown — the barn-eave roost
+  { coat: '#57493e', chest: '#837260', sail: '#40352c', sailUnder: '#635649', earSkin: '#8a6a58', eye: '#e0b04a' },
+  // slate — the cave-mouth grey
+  { coat: '#46505e', chest: '#74808c', sail: '#333c48', sailUnder: '#586472', earSkin: '#74606e', eye: '#d8c452' },
+  // moss dun — the hollow-tree sleeper
+  { coat: '#4e4f3d', chest: '#7d7c62', sail: '#3a3b2c', sailUnder: '#5d5e48', earSkin: '#7e6a58', eye: '#e8a838' },
+];
+
+const GIANT_BAT_SKINS: readonly BatSkin[] = [
+  // russet — the authored design
+  { coat: '#7a5638', chest: '#a47c50', sail: '#42302a', sailUnder: '#6c5648', earSkin: '#5c4034', eye: '#d89a3c' },
+  // tawny gold — the sunset-orchard coat
+  { coat: '#8a6c40', chest: '#b49262', sail: '#4a3a2a', sailUnder: '#75604a', earSkin: '#66503c', eye: '#e0aa48' },
+  // dark chocolate — the deep-grove elder tone
+  { coat: '#5e4432', chest: '#8a6a4c', sail: '#362824', sailUnder: '#5a4840', earSkin: '#4e3830', eye: '#cc9040' },
+  // silver-frosted — the old one the pickers name
+  { coat: '#6e6154', chest: '#9c9080', sail: '#3e3630', sailUnder: '#645a50', earSkin: '#5a4c44', eye: '#d8b45c' },
+];
+
+const DIRE_BAT_SKINS: readonly BatSkin[] = [
+  // barrow ash — the authored design
+  { coat: '#3c3742', chest: '#5e5866', sail: '#2b2530', sailUnder: '#4e4656', earSkin: '#6e4650', eye: '#d84040' },
+  // blood-dark — old stains that never washed out
+  { coat: '#442e34', chest: '#6a4a50', sail: '#301f24', sailUnder: '#54393e', earSkin: '#7a4650', eye: '#e05038' },
+  // tar black — the lampless deep
+  { coat: '#302c34', chest: '#504a56', sail: '#221e28', sailUnder: '#443c4a', earSkin: '#5c3e4c', eye: '#cc3c50' },
+  // bone-pale — the one the miners saw and swore off the shaft
+  { coat: '#6a6258', chest: '#948a7c', sail: '#3c3730', sailUnder: '#5e574e', earSkin: '#7c5a54', eye: '#c83232' },
+];
+
+const BAT_LOOK_CACHE = new Map<string, BatLook>();
+
+/**
+ * Variant lookup with the cave bat as the unknown-id fallback. The
+ * seed (spawn eid) is hashed first — roost-mates spawn with
+ * CONSECUTIVE eids, and raw bits would dress a whole cave in one coat
+ * — then rolls the skin cluster, a shade jitter, and the modular
+ * bits. Cached; runs per body per frame.
+ */
+export function batLook(defId: string, seed = 0): BatLook {
+  const base =
+    defId === 'giant_bat' ? GIANT_BAT_LOOK : defId === 'dire_bat' ? DIRE_BAT_LOOK : CAVE_BAT_LOOK;
+  const key = `${defId}|${seed & 0xff}`;
+  const hit = BAT_LOOK_CACHE.get(key);
+  if (hit) return hit;
+  const skins =
+    base.variant === 'giant' ? GIANT_BAT_SKINS : base.variant === 'dire' ? DIRE_BAT_SKINS : CAVE_BAT_SKINS;
+  const h = (seed * 2654435761) | 0;
+  const cl = skins[(h >>> 8) & 3]!;
+  const jit = (((h >>> 12) & 7) - 3) * 2;
+  const look: BatLook = {
+    ...base,
+    coat: shade(cl.coat, jit),
+    chest: cl.chest,
+    sail: shade(cl.sail, jit),
+    sailUnder: cl.sailUnder,
+    earSkin: cl.earSkin,
+    eye: cl.eye,
+    earNotch: ((h >>> 16) & 7) === 0,
+    mottle: ((h >>> 19) & 3) === 0,
+    seed,
+  };
+  BAT_LOOK_CACHE.set(key, look);
+  return look;
+}
+
+/** A body-space point: (F fwd, L lateral, Z up) in tiles. */
+type V3 = [number, number, number];
+
+/**
+ * THE COLONY RIDES THE RIG — the one painter all three bat designs
+ * share, every dial drawn from the BatLook. Root laws, all inherited
+ * from the owl rounds and applied here at membrane dials:
+ *
+ * - THE CHEST RIDES THE PITCH: the hull is a real pitched solid
+ *   between nose and vent poles — the hover stands it upright, cruise
+ *   lays it flat, and the pale chest tuft is GEOMETRY (facing × pitch,
+ *   dying to zero on away bands), never a sticker on a circle.
+ * - THE FACE IS A TURNED SURFACE (THE SPHERE LAW): ears, eyes,
+ *   muzzle, nose and fangs are (azimuth, height) STATIONS sliding
+ *   around the skull sphere with pure-horizontal foreshortening — no
+ *   visibility gates, nothing pops at any of 360°.
+ * - THE FACE OF THE SAIL IS ITS OWN NORMAL (THE NORMAL LAW): which
+ *   membrane face shows comes from the wing plane's 3D normal dotted
+ *   with the true view ray — never projected winding, never a pose
+ *   threshold.
+ * - ROOT TUCK + SCAPULAR: the sail anchors INSIDE the hull core and a
+ *   fur mass seats the joint — wings can never separate from the body.
+ * - THE SHANK LAW: the hook feet (giant and dire only — the cave bat
+ *   keeps its minimal read) stay under a tenth of a tile; the strike's
+ *   reach is the body's lunge.
  */
 export function drawBat(
   ctx: CanvasRenderingContext2D,
+  look: BatLook,
   o: {
     x: number;
     y: number;
     s: number;
     dir: number;
-    radius: number;
-    color: string;
     hurt: boolean;
     nowMs: number;
     seed: number;
@@ -1534,17 +1846,19 @@ export function drawBat(
   const px = -fy;
   const py = fx;
   const at = o.attackT ?? 0;
-  const rt = o.radius * 2.6; // body radius in tiles (the old bulk)
-  const span = rt * 1.55;
-  const pf = pitchFrame(fr.pitchA, 0.42);
-  const body = o.hurt ? '#ffffff' : o.color;
-  const membrane = o.hurt ? '#ffffff' : shade(o.color, -10);
-  const boneInk = o.hurt ? '#ffffff' : shade(o.color, -30);
+  const seed = o.seed;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : c);
+  const pf = pitchFrame(fr.pitchA, 0.45);
+  const coat = C(shade(look.coat, (((seed >>> 4) & 7) - 3) * 2));
+  const boneInk = C(look.bone);
 
-  // The strike dips then lunges — carried by the rig's channels.
-  const bcx = o.x + fx * (fr.lungeF * 0.65 + fr.driftF) * s + px * fr.driftL * s;
-  const bcy = o.y + (fy * (fr.lungeF * 0.65 + fr.driftF) + py * fr.driftL) * ys * s - fr.lift * s;
-  const roll = fr.bank * 0.5;
+  // Altitude and lunge come from the rig alone (one owner).
+  const lift = fr.lift * s;
+  const bcx = o.x + fx * (fr.lungeF * 0.85 + fr.driftF) * s + px * fr.driftL * s;
+  const bcy = o.y + (fy * (fr.lungeF * 0.85 + fr.driftF) + py * fr.driftL) * ys * s - lift;
+  // THE GIMBAL: the bank rolls the projected body; the head, painted
+  // last and level, holds the horizon like every flier here.
+  const roll = fr.bank * fr.pitchK * 0.55;
   const cosR = Math.cos(roll);
   const sinR = Math.sin(roll);
   const P: Projector = (F, L, Z) => {
@@ -1553,154 +1867,621 @@ export function drawBat(
     return [bcx + wx * cosR - wy * sinR, bcy + wx * sinR + wy * cosR];
   };
 
+  // THE HULL IS A PITCHED SOLID — nose and vent poles on the one
+  // axis, hover-stretched so the upright tread never collapses to a
+  // dot under the head (the style-compressed pitch, membraned).
+  const hullStretch = 1 + 0.18 * (1 - fr.pitchK);
+  const noseA = look.bodyR * 0.8 * hullStretch;
+  const ventA = look.bodyR * 1.0 * hullStretch;
+  const noseF = pf.aF * noseA;
+  const noseZ = pf.aZ * noseA;
+  const ventF = -pf.aF * ventA;
+  const ventZ = -pf.aZ * ventA;
+  const screechK = at > 0.4 ? Math.min(1, (at - 0.4) / 0.25) : 0;
+
   const drawWing = (es: number): void => {
     const lag = es < 0 ? fr.port : fr.star;
-    const spread = Math.max(0.15, fr.spread);
-    const armL = span * 0.5 * spread;
-    const handL = span * 0.5 * spread;
-    const shF = pf.dF * rt * 0.12;
-    const shZ = pf.dZ * rt * 0.12;
-    const shL = es * rt * 0.24;
-    const wrF = shF + pf.wuF * Math.sin(fr.raise) * armL + pf.wfF * fr.swing;
-    const wrZ = shZ + pf.wuZ * Math.sin(fr.raise) * armL + pf.wfZ * fr.swing;
+    const tipVel = es < 0 ? fr.portTipVel : fr.starTipVel;
+    const spread = Math.max(0.1, fr.spread);
+    const span = look.wingSpan;
+    const armL = span * 0.4 * spread;
+    const handL = span * 0.6 * spread;
+    // Shoulder on the pitched hull — dorsal and forward, so it rides
+    // up the back as the body swings vertical.
+    const shA = look.bodyR * 0.22;
+    const shD = look.bodyW * 0.42;
+    const shF = pf.aF * shA + pf.dF * shD;
+    const shZ = pf.aZ * shA + pf.dZ * shD;
+    const shL = es * look.bodyW * 0.62;
+    // ROOT TUCK: the sail's inner anchor lives INSIDE the hull core —
+    // no raise angle or bank can ever open daylight at the joint.
+    const tuckF = pf.aF * 0.01 + pf.dF * 0.02;
+    const tuckZ = pf.aZ * 0.01 + pf.dZ * 0.02;
+    const tuckL = es * look.bodyW * 0.16;
+    const rowF = 0.08 * spread + fr.swing;
+    const wrF = shF + pf.wfF * rowF + pf.wuF * Math.sin(fr.raise) * armL;
+    const wrZ = shZ + pf.wfZ * rowF + pf.wuZ * Math.sin(fr.raise) * armL;
     const wrL = shL + es * Math.cos(fr.raise) * armL;
-    // Two finger spikes carry the membrane's outer edge.
-    const fingers: Array<[number, number, number]> = [];
-    for (let k = 0; k < 2; k++) {
-      const u = k * 0.5;
-      const len = handL * (1 - 0.28 * u);
-      const a = fr.raiseHand - (0.2 + 0.5 * u) * spread * 0.5 - (lag[k + 1] ?? 0) * 0.4;
-      const backW = (0.15 + 0.6 * u) * len * fr.sweepK;
-      fingers.push([
-        wrF - pf.wfF * backW + pf.wuF * Math.sin(a) * len * 0.9,
-        wrL + es * Math.cos(a) * len,
-        wrZ - pf.wfZ * backW + pf.wuZ * Math.sin(a) * len * 0.9,
+    const flex = clamp(-tipVel * 0.09, -0.5, 0.5);
+    // The fingers: each carries the membrane's outer edge, each rides
+    // its own sim station — the sail billows a beat behind the bones.
+    const N = look.fingers;
+    const tips: V3[] = [];
+    for (let k = 0; k < N; k++) {
+      const u = N === 1 ? 1 : k / (N - 1);
+      const len = handL * (1 - 0.3 * u);
+      const lagK = lag[Math.min(k, lag.length - 1)] ?? 0;
+      // THE SAIL LOADS UP AT SPEED: the hover's deep finger droop
+      // eases toward level as cruise takes over, and lift arches the
+      // tips — real membrane physics, and the projection fix in one:
+      // a full anhedral droop at cruise nearly cancels the back-sweep
+      // under the camera's y-squash at the south bands, collapsing
+      // the whole sail to a wire exactly where players see it most.
+      const droop = (0.2 + 0.62 * u) * spread * 0.6 * (1 - 0.5 * fr.cruiseK);
+      const tipRaise = fr.raiseHand - droop - lagK * 0.5;
+      const backW = (0.08 + 0.9 * u) * len * fr.sweepK;
+      const rise =
+        Math.sin(tipRaise) * len * 0.88 +
+        flex * u * u * span * 0.3 +
+        fr.cruiseK * u * u * span * 0.05;
+      tips.push([
+        wrF + pf.wfF * (0.05 * spread - backW) + pf.wuF * rise,
+        wrL + es * Math.cos(tipRaise) * len,
+        wrZ + pf.wfZ * (0.05 * spread - backW) + pf.wuZ * rise,
       ]);
     }
-    // The membrane closes into the flank through SIMULATED scallops:
-    // each dip between anchor points sags on its station's lag — the
-    // leather breathing a beat behind the bones.
-    const ankF = -pf.aF * rt * 0.42;
-    const ankZ = -pf.aZ * rt * 0.42 - rt * 0.1;
-    const ankL = es * rt * 0.3;
-    // The sail keeps a resting belly even between beats — a membrane
-    // with no sag collapses to a dagger at the frontal bands.
-    const sag = (k: number): number => 0.24 + clamp((lag[k] ?? 0) * 0.9, -0.3, 0.55);
-    const tip = fingers[1]!;
-    const m1: [number, number, number] = [
-      (tip[0] + ankF) * 0.55 - pf.wuF * sag(2) * span * 0.3,
-      (tip[1] + ankL) * 0.55,
-      (tip[2] + ankZ) * 0.55 - pf.wuZ * sag(2) * span * 0.3,
-    ];
-    const m2: [number, number, number] = [
-      (tip[0] * 0.3 + ankF * 0.7) - pf.wuF * sag(3) * span * 0.22,
-      (tip[1] * 0.3 + ankL * 0.7),
-      (tip[2] * 0.3 + ankZ * 0.7) - pf.wuZ * sag(3) * span * 0.22,
-    ];
-    ctx.fillStyle = membrane;
-    ctx.beginPath();
-    const p0 = P(shF, shL, shZ);
-    ctx.moveTo(p0[0], p0[1]);
-    const pw = P(wrF, wrL, wrZ);
-    ctx.lineTo(pw[0], pw[1]);
-    for (const f of fingers) {
-      const pfp = P(f[0], f[1], f[2]);
-      ctx.lineTo(pfp[0], pfp[1]);
+    // The ankle: where the sail docks the hull's flank, low and aft.
+    const ankF = -pf.aF * look.bodyR * 0.55 - pf.dF * look.bodyW * 0.1;
+    const ankZ = -pf.aZ * look.bodyR * 0.55 - pf.dZ * look.bodyW * 0.1;
+    const ankL = es * look.bodyW * 0.4;
+    // The trailing edge SCALLOPS between the fingers: each dip is the
+    // membrane sagging on its station's simulated lag — leather
+    // breathing a beat behind the bones — and the dire's edge is TORN:
+    // each scallop ripped into seeded sub-notches built into the
+    // outline itself, never decals.
+    const pts3: V3[] = [[tuckF, tuckL, tuckZ], [shF, shL, shZ], [wrF, wrL, wrZ]];
+    const dip = (a: V3, b: V3, t: number, pull: number): V3 => {
+      const mx = a[0] * (1 - t) + b[0] * t;
+      const ml = a[1] * (1 - t) + b[1] * t;
+      const mz = a[2] * (1 - t) + b[2] * t;
+      return [mx + (wrF - mx) * pull, ml + (wrL - ml) * pull, mz + (wrZ - mz) * pull];
+    };
+    for (let k = 0; k < N; k++) {
+      pts3.push(tips[k]!);
+      const nxt = k < N - 1 ? tips[k + 1]! : [ankF, ankL, ankZ] as V3;
+      const lagK = lag[Math.min(k, lag.length - 1)] ?? 0;
+      const sagK = 0.2 + clamp(lagK * 0.9, -0.25, 0.55);
+      const closing = k === N - 1;
+      const pull = Math.min(
+        0.7,
+        (closing ? 0.16 : 0.12) + (0.3 * look.scallop) * (0.75 + sagK),
+      );
+      if (look.ragged > 0.3) {
+        const j1 = (((seed >>> (k * 3)) & 3) / 3) * 0.16 * look.ragged;
+        const j2 = (((seed >>> (k * 3 + 5)) & 3) / 3) * 0.16 * look.ragged;
+        pts3.push(dip(tips[k]!, nxt, 0.3, pull * (0.5 + j1)));
+        pts3.push(dip(tips[k]!, nxt, 0.52, pull * (1.2 + j2)));
+        pts3.push(dip(tips[k]!, nxt, 0.74, pull * 0.55));
+      } else {
+        pts3.push(dip(tips[k]!, nxt, 0.5, pull));
+      }
     }
-    const pm1 = P(m1[0], m1[1], m1[2]);
-    ctx.lineTo(pm1[0], pm1[1]);
-    const pm2 = P(m2[0], m2[1], m2[2]);
-    ctx.lineTo(pm2[0], pm2[1]);
-    const pa = P(ankF, ankL, ankZ);
-    ctx.lineTo(pa[0], pa[1]);
+    pts3.push([ankF, ankL, ankZ]);
+    const outline: Array<[number, number]> = pts3.map((v) => P(v[0], v[1], v[2]));
+    // The slab gate measures the OUTER sail only — the tuck wedge at
+    // the body always keeps area and would blind an edge-on gate.
+    let area2 = 0;
+    const outer = outline.slice(1);
+    for (let k = 0; k < outer.length; k++) {
+      const a = outer[k]!;
+      const b = outer[(k + 1) % outer.length]!;
+      area2 += a[0] * b[1] - b[0] * a[1];
+    }
+    const slabArea = Math.abs(area2) / 2;
+    const slabK = Math.min(1, slabArea / (0.1 * span * span * s * s));
+    // THE NORMAL LAW: which membrane face shows is the wing plane's
+    // OWN 3D normal (arm × chord, world axes) dotted with the true
+    // view ray (0, 1, ys) — flips through zero exactly at the
+    // invisible edge-on instant, at every band, every beat phase.
+    const aF = wrF - shF;
+    const aL2 = wrL - shL;
+    const aZ = wrZ - shZ;
+    const trF = (tips[N - 1]![0] + ankF) / 2;
+    const trL = (tips[N - 1]![1] + ankL) / 2;
+    const trZ = (tips[N - 1]![2] + ankZ) / 2;
+    const cF = trF - (shF + wrF) / 2;
+    const cL = trL - (shL + wrL) / 2;
+    const cZ = trZ - (shZ + wrZ) / 2;
+    const nF = aL2 * cZ - aZ * cL;
+    const nL = aZ * cF - aF * cZ;
+    const nZ = aF * cL - aL2 * cF;
+    const nwy = nF * fy + nL * py;
+    const underVis = es * (nwy + nZ * ys) < 0;
+    const base = o.hurt ? '#ffffff' : underVis ? look.sailUnder : look.sail;
+    const detailA = slabK <= 0.22 ? 0 : Math.min(1, (slabK - 0.22) / 0.3);
+    ctx.fillStyle = base;
+    ctx.beginPath();
+    ctx.moveTo(outline[0]![0], outline[0]![1]);
+    for (let k = 1; k < outline.length; k++) ctx.lineTo(outline[k]![0], outline[k]![1]);
     ctx.closePath();
     ctx.fill();
-    // Wing-arm bones ride the leading edge, wrist to finger tips.
-    ctx.strokeStyle = boneInk;
-    ctx.lineWidth = Math.max(1.5, rt * s * 0.07);
-    ctx.lineCap = 'round';
+    // THE WING HAS THICKNESS: the edge-on sail keeps a leather-edge
+    // mass along the leading bones — never a screen hairline.
+    const p0 = outline[1]!;
+    const pw = outline[2]!;
+    if (slabK < 0.3) {
+      const edgeW = s * span * 0.045 * (1 - slabK / 0.3);
+      if (edgeW > 1) {
+        ctx.strokeStyle = base;
+        ctx.lineWidth = edgeW;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(p0[0], p0[1]);
+        ctx.lineTo(pw[0], pw[1]);
+        const lead = tips[0]!;
+        const pl = P(lead[0], lead[1], lead[2]);
+        ctx.lineTo(pl[0], pl[1]);
+        ctx.stroke();
+        ctx.lineCap = 'butt';
+        ctx.lineJoin = 'miter';
+      }
+    }
+    // Detail ink fades with the slab (the wire verdict, kept): finger
+    // bones raying wrist → tips, the arm bone, one plagiopatagium
+    // crease, the furred forearm, and the wrist thumb-hook.
+    if (detailA > 0.02) {
+      const boneW = 0.35 + 0.65 * slabK;
+      ctx.globalAlpha = detailA;
+      ctx.strokeStyle = boneInk;
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(1.4, s * span * 0.032 * boneW);
+      ctx.beginPath();
+      ctx.moveTo(p0[0], p0[1]);
+      ctx.lineTo(pw[0], pw[1]);
+      ctx.stroke();
+      ctx.lineWidth = Math.max(1, s * span * 0.016 * boneW);
+      for (let k = 0; k < N; k++) {
+        const t = tips[k]!;
+        const pt = P(t[0], t[1], t[2]);
+        ctx.beginPath();
+        ctx.moveTo(pw[0], pw[1]);
+        ctx.lineTo(pt[0], pt[1]);
+        ctx.stroke();
+      }
+      // The membrane's body-fold crease, wrist toward the ankle.
+      ctx.globalAlpha = detailA * 0.45;
+      ctx.strokeStyle = shade(base, -9);
+      ctx.lineWidth = Math.max(1, s * span * 0.012);
+      const cr = P(
+        wrF * 0.45 + ankF * 0.55,
+        wrL * 0.45 + ankL * 0.55,
+        wrZ * 0.45 + ankZ * 0.55,
+      );
+      ctx.beginPath();
+      ctx.moveTo(pw[0], pw[1]);
+      ctx.lineTo(cr[0], cr[1]);
+      ctx.stroke();
+      // The furred forearm: coat washing out over the arm's root half.
+      ctx.globalAlpha = detailA * (0.5 + 0.4 * look.ruff);
+      ctx.strokeStyle = coat;
+      ctx.lineWidth = Math.max(1.5, s * look.bodyW * 0.5);
+      const fm = P(
+        shF * 0.45 + wrF * 0.55,
+        shL * 0.45 + wrL * 0.55,
+        shZ * 0.45 + wrZ * 0.55,
+      );
+      ctx.beginPath();
+      ctx.moveTo(p0[0], p0[1]);
+      ctx.lineTo(fm[0], fm[1]);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      // THE THUMB-HOOK: the wrist's climbing claw, ivory, curling
+      // forward-down off the leading edge — the dire's is a weapon.
+      if (look.thumbClaw > 0 && slabK > 0.12) {
+        const tc = look.thumbClaw;
+        const c1: V3 = [
+          wrF + pf.wfF * tc * 0.8 + pf.wuF * tc * 0.5,
+          wrL + es * tc * 0.15,
+          wrZ + pf.wfZ * tc * 0.8 + pf.wuZ * tc * 0.5,
+        ];
+        const c2: V3 = [
+          c1[0] + pf.wfF * tc * 0.35 - pf.wuF * tc * 0.5,
+          c1[1] + es * tc * 0.1,
+          c1[2] + pf.wfZ * tc * 0.35 - pf.wuZ * tc * 0.5,
+        ];
+        const q1 = P(c1[0], c1[1], c1[2]);
+        const q2 = P(c2[0], c2[1], c2[2]);
+        ctx.globalAlpha = detailA;
+        ctx.strokeStyle = C(look.fang);
+        ctx.lineWidth = Math.max(1.3, s * 0.03);
+        ctx.beginPath();
+        ctx.moveTo(pw[0], pw[1]);
+        ctx.lineTo(q1[0], q1[1]);
+        ctx.lineTo(q2[0], q2[1]);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      ctx.lineCap = 'butt';
+    }
+    // THE SCAPULAR: a fur mass over the wing root seating the sail
+    // INTO the hull silhouette — the no-gap law's second half. And NO
+    // wind lines on any model, ever — air belongs to the particles.
+    if (!o.hurt) {
+      const sc = P(
+        shF * 0.55 + tuckF * 0.45,
+        shL * 0.7 + tuckL * 0.3,
+        shZ * 0.55 + tuckZ * 0.45,
+      );
+      ctx.fillStyle = shade(coat, -4);
+      ctx.beginPath();
+      facetCircle(ctx, sc[0], sc[1], look.bodyW * s * 0.32, 7, es * 0.7, 0.72);
+      ctx.fill();
+    }
+  };
+
+  const drawTailSail = (): void => {
+    // The uropatagium — the tail membrane stretched behind the vent.
+    // The cave bat carries a small clean one, the dire a ragged one,
+    // and the giant NONE (the flying fox's honest silhouette).
+    if (look.tailSail <= 0) return;
+    const rootL = look.bodyW * 0.5;
+    const reach = look.tailSail * 1.7;
+    const a = P(ventF * 0.7, -rootL, ventZ * 0.7);
+    const b = P(ventF * 0.7, rootL, ventZ * 0.7);
+    const tF = ventF - pf.aF * reach;
+    const tZ = ventZ - pf.aZ * reach - 0.03;
+    ctx.fillStyle = C(look.sail);
     ctx.beginPath();
-    ctx.moveTo(p0[0], p0[1]);
-    ctx.lineTo(pw[0], pw[1]);
-    const f0 = fingers[0]!;
-    const pf0 = P(f0[0], f0[1], f0[2]);
-    ctx.lineTo(pf0[0], pf0[1]);
-    ctx.stroke();
-    // The second finger rays off the wrist through the membrane.
-    ctx.lineWidth = Math.max(1.1, rt * s * 0.045);
-    ctx.beginPath();
-    ctx.moveTo(pw[0], pw[1]);
-    const f1 = fingers[1]!;
-    const pf1 = P(f1[0], f1[1], f1[2]);
-    ctx.lineTo(pf1[0], pf1[1]);
-    ctx.stroke();
-    ctx.lineCap = 'butt';
+    ctx.moveTo(a[0], a[1]);
+    if (look.ragged > 0.3) {
+      // The torn fan: a notched V instead of one point.
+      const t1 = P(tF + pf.aF * reach * 0.25, -rootL * 0.4, tZ + pf.aZ * reach * 0.25);
+      const t2 = P(tF, 0, tZ + 0.02);
+      const t3 = P(tF + pf.aF * reach * 0.3, rootL * 0.45, tZ + pf.aZ * reach * 0.3);
+      ctx.lineTo(t1[0], t1[1]);
+      ctx.lineTo(t2[0], t2[1]);
+      ctx.lineTo(t3[0], t3[1]);
+    } else {
+      const t2 = P(tF, 0, tZ);
+      ctx.lineTo(t2[0], t2[1]);
+    }
+    ctx.lineTo(b[0], b[1]);
+    ctx.closePath();
+    ctx.fill();
   };
 
   const drawBody = (): void => {
-    // Round tuft hull on the pitched axis — the hover hangs it
-    // near-vertical, travel lays it into the flight line.
-    const pC = P(0, 0, 0);
-    ctx.fillStyle = body;
+    // THE CHEST RIDES THE PITCH: one streamlined mass between the
+    // pitched poles — an upright keg treading the hover, a level
+    // dart at cruise, foreshortened by the projection itself. The
+    // old billboard blob never rotated; this is the root fix.
+    const pN = P(noseF, 0, noseZ);
+    const pV = P(ventF, 0, ventZ);
+    // The dire's hunch: a dorsal hump over the shoulders, painted
+    // first in the same coat so the silhouette grows one mass.
+    if (look.hunch > 0 && !o.hurt) {
+      const hb = P(
+        pf.aF * look.bodyR * 0.12 + pf.dF * look.bodyW * (0.55 + 0.35 * look.hunch),
+        0,
+        pf.aZ * look.bodyR * 0.12 + pf.dZ * look.bodyW * (0.55 + 0.35 * look.hunch),
+      );
+      ctx.fillStyle = coat;
+      ctx.beginPath();
+      facetCircle(ctx, hb[0], hb[1], look.bodyW * s * (0.45 + 0.25 * look.hunch), 7, seed * 0.4, 0.8);
+      ctx.fill();
+    }
+    const mx = (pN[0] + pV[0]) / 2;
+    const my = (pN[1] + pV[1]) / 2;
+    const ax = Math.atan2(pV[1] - pN[1], pV[0] - pN[0]);
+    const half = Math.max(
+      Math.hypot(pV[0] - pN[0], pV[1] - pN[1]) / 2 + look.bodyW * 0.55 * s,
+      look.bodyW * 1.05 * s,
+    );
+    ctx.save();
+    ctx.translate(mx, my);
+    ctx.rotate(ax);
+    ctx.fillStyle = coat;
     ctx.beginPath();
-    facetBlob(ctx, pC[0], pC[1], rt * 0.42 * s, o.seed, 8, 1.1);
+    facetBlob(ctx, 0, 0, half, seed | 1, 9, (look.bodyW * 1.05 * s) / half, 0.35);
     ctx.fill();
-    // Pale belly tuft toward the vent.
-    const pB = P(-pf.aF * rt * 0.16, 0, -pf.aZ * rt * 0.16);
-    ctx.fillStyle = o.hurt ? '#ffffff' : shade(o.color, 12);
+    if (!o.hurt) {
+      ctx.beginPath();
+      facetBlob(ctx, 0, 0, half, seed | 1, 9, (look.bodyW * 1.05 * s) / half, 0.35);
+      ctx.clip();
+      ctx.rotate(-ax);
+      // The pale chest tuft is GEOMETRY — facing × pitch, the same
+      // gate the owl's keel rides: full on a camera-facing hover
+      // chest, dead zero on an away-facing back (the inside-out law).
+      const keelK = clamp(0.5 + fy * (0.7 + 0.5 * Math.sin(Math.max(0, fr.pitchA))), 0, 1);
+      if (keelK > 0.05) {
+        ctx.globalAlpha = keelK;
+        ctx.fillStyle = C(look.chest);
+        ctx.fillRect(
+          -half * 1.4,
+          look.bodyW * 0.1 * s * fr.pitchK - half * 0.5 * (1 - fr.pitchK),
+          half * 2.8,
+          half * 2.4,
+        );
+        ctx.globalAlpha = 1;
+      }
+      // Seeded mottle patches — the modular coat wear.
+      if (look.mottle) {
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = shade(look.coat, -8);
+        for (let k = 0; k < 2; k++) {
+          const ox = ((((seed >>> (7 + k * 4)) & 7) / 7) - 0.5) * half * 1.1;
+          const oy = ((((seed >>> (9 + k * 4)) & 7) / 7) - 0.3) * half * 0.8;
+          ctx.beginPath();
+          facetCircle(ctx, ox, oy, half * 0.22, 6, seed * 0.3 + k, 0.8);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+      // The sunlit top rim — the camera always reads the back plane.
+      ctx.fillStyle = 'rgba(255, 244, 220, 0.11)';
+      ctx.rotate(ax);
+      ctx.fillRect(-half, -look.bodyW * 1.05 * s, half * 2, look.bodyW * 0.3 * s);
+    }
+    ctx.restore();
+    // The giant's ruff: a maned collar cinched at the neck seam, a
+    // shade warmer than the coat, with fur ticks combing aft.
+    if (look.ruff > 0 && !o.hurt) {
+      const nk = P(noseF * 0.62, 0, noseZ * 0.62);
+      ctx.fillStyle = shade(look.coat, 9);
+      ctx.beginPath();
+      facetCircle(ctx, nk[0], nk[1], look.bodyW * s * (0.6 + 0.35 * look.ruff), 8, seed * 0.2, 0.82);
+      ctx.fill();
+      ctx.strokeStyle = shade(look.coat, -6);
+      ctx.lineWidth = Math.max(1, s * 0.02);
+      ctx.lineCap = 'round';
+      const rr = look.bodyW * s * (0.6 + 0.35 * look.ruff);
+      for (let k = 0; k < 4; k++) {
+        const aT = Math.PI * (0.25 + 0.17 * k);
+        ctx.beginPath();
+        ctx.moveTo(nk[0] + Math.cos(aT) * rr * 0.55, nk[1] + Math.sin(aT) * rr * 0.55);
+        ctx.lineTo(nk[0] + Math.cos(aT) * rr * 0.95, nk[1] + Math.sin(aT) * rr * 0.95);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+    }
+  };
+
+  const drawFoot = (es: number): void => {
+    // Hook feet — the giant and the dire only; the cave bat keeps its
+    // minimal read. THE SHANK LAW: the reach is the body's lunge, the
+    // weapon is the hook — the shank never crosses a tenth of a tile.
+    if (look.variant === 'cave') return;
+    const talonK = fr.talonK;
+    if (talonK < 0.15 && at === 0) return;
+    const striking = at >= 0.7;
+    const shankInk = C(shade(look.coat, -18));
+    const clawInk = C(shade(look.coat, -45));
+    const hipA = -look.bodyR * 0.35;
+    const hipD = -(look.bodyW * 0.5);
+    const hipF = pf.aF * hipA + pf.dF * hipD;
+    const hipZ = pf.aZ * hipA + pf.dZ * hipD;
+    const hipL = es * look.bodyW * 0.34;
+    const footF = hipF + (striking ? 0.09 : 0.04) * talonK;
+    const footZ = hipZ - (striking ? 0.06 : 0.04) * talonK - 0.02;
+    ctx.lineCap = 'round';
+    const a = P(hipF, hipL, hipZ);
+    const b = P(footF, hipL * 1.1, footZ);
+    ctx.strokeStyle = shankInk;
+    ctx.lineWidth = Math.max(1.6, s * 0.035);
     ctx.beginPath();
-    facetBlob(ctx, pB[0], pB[1], rt * 0.2 * s, o.seed ^ 0x33, 6, 0.8);
-    ctx.fill();
+    ctx.moveTo(a[0], a[1]);
+    ctx.lineTo(b[0], b[1]);
+    ctx.stroke();
+    if (talonK > 0.25) {
+      ctx.strokeStyle = clawInk;
+      ctx.lineWidth = Math.max(1.2, s * 0.024);
+      for (const ta of [-1, 1]) {
+        const c = P(
+          footF + (striking ? 0.1 : 0.03) * talonK + ta * 0.02,
+          hipL * 1.1 + es * ta * 0.04 * talonK,
+          footZ - (striking ? 0.07 : 0.04) * talonK,
+        );
+        ctx.beginPath();
+        ctx.moveTo(b[0], b[1]);
+        ctx.lineTo(c[0], c[1]);
+        ctx.stroke();
+      }
+    }
+    ctx.lineCap = 'butt';
   };
 
   const drawHead = (): void => {
-    const hA = rt * 0.34;
-    const hD = rt * 0.3;
-    const hp = P(pf.aF * hA + pf.dF * hD, 0, pf.aZ * hA + pf.dZ * hD);
-    const hr = rt * 0.3 * s;
-    // Tall ragged dish ears split fore/aft at profile — the
-    // paired-gear stagger law.
-    for (const es of [-1, 1]) {
-      const ex = hp[0] + es * px * hr * 0.7 + fx * es * hr * 0.14;
-      const ey = hp[1] + (es * py * hr * 0.7 + fy * es * hr * 0.14) * ys - hr * 0.5;
-      ctx.fillStyle = body;
+    // THE FACE IS A TURNED SURFACE — every feature an (azimuth,
+    // height) station on the skull sphere through ONE projector:
+    // x slides on the ring's cosine, y takes only the small depth bow
+    // plus the feature's height, width foreshortens PURE-HORIZONTALLY
+    // (this camera never rolls), so nothing pops at any of 360°.
+    const seatA = noseA + look.headR * 0.55;
+    const seatD = look.headR * (0.2 + 0.3 * fr.pitchK);
+    const hp = P(pf.aF * seatA + pf.dF * seatD, 0, pf.aZ * seatA + pf.dZ * seatD);
+    // The echolocation scan: a small quick gaze jitter in the hover;
+    // the strike locks dead ahead.
+    const gazeAmp = 0.12 * fr.hoverK;
+    const hdir =
+      o.dir + (at > 0 ? 0 : (o.nowMs > 0 ? Math.sin(o.nowMs * 0.0011 + seed * 1.3) : 0) * gazeAmp);
+    const hfx = Math.cos(hdir);
+    const hfy = Math.sin(hdir);
+    const hr = look.headR * s;
+    const hAng = Math.atan2(hfy, hfx);
+    const SRX = hr * 0.88;
+    const SRY = hr * 0.34;
+    const proj = (a: number, dz: number, rK = 1): [number, number] => [
+      hp[0] + Math.cos(a) * SRX * rK,
+      hp[1] + Math.sin(a) * SRY * ys * rK + dz,
+    ];
+    const fore = (a: number): number => Math.sin(a);
+    const wOf = (a: number): number => Math.pow(Math.max(0, fore(a)), 0.45);
+    // The muzzle's size-fade: full face-on, gone past the shoulder.
+    const mzK = clamp((fore(hAng) + 0.32) / 0.4, 0, 1);
+    const earBackK = Math.min(1, look.earBack + 0.35 * screechK);
+    const earL = look.earLen * s;
+
+    const drawEar = (es2: number): void => {
+      const aE = hAng + es2 * 0.6;
+      const bp = proj(aE, -hr * 0.45);
+      // The ear keeps a width floor — from behind you see ear BACKS,
+      // the bat's honest silhouette from every side.
+      const bw = look.earW * s * (0.4 + 0.6 * Math.max(wOf(aE), 0.2));
+      const sweep = earBackK * earL;
+      const tipX = bp[0] - hfx * sweep * 0.7 + Math.cos(aE) * hr * 0.28;
+      const tipY = bp[1] - hfy * ys * sweep * 0.7 - earL * (1 - 0.35 * earBackK);
+      const notched = look.earNotch && es2 > 0;
+      ctx.fillStyle = coat;
       ctx.beginPath();
-      ctx.moveTo(ex - hr * 0.24, ey);
-      ctx.lineTo(ex, ey - hr * 1.05);
-      ctx.lineTo(ex + hr * 0.24, ey);
+      ctx.moveTo(bp[0] - bw, bp[1]);
+      ctx.lineTo(tipX, tipY);
+      if (notched) {
+        // One torn bite out of the trailing edge — a survival.
+        ctx.lineTo(
+          bp[0] + bw * 0.55 + (tipX - bp[0]) * 0.45,
+          bp[1] + (tipY - bp[1]) * 0.45,
+        );
+        ctx.lineTo(bp[0] + bw * 0.3 + (tipX - bp[0]) * 0.32, bp[1] + (tipY - bp[1]) * 0.28);
+      }
+      ctx.lineTo(bp[0] + bw, bp[1]);
       ctx.closePath();
       ctx.fill();
-    }
-    ctx.fillStyle = body;
-    ctx.beginPath();
-    facetCircle(ctx, hp[0], hp[1], hr, 6, o.dir + Math.PI / 6);
-    ctx.fill();
-    if (fy > -0.45 && !o.hurt) {
-      ctx.fillStyle = '#e2a63c';
-      for (const es of [-1, 1]) {
-        const eex = hp[0] + fx * hr * 0.35 + es * px * hr * 0.34;
-        const eey = hp[1] + (fy * hr * 0.35 + es * py * hr * 0.34) * ys;
-        ctx.fillRect(eex - hr * 0.09, eey - hr * 0.09, hr * 0.18, hr * 0.18);
+      // The dish lining shows only while the dish faces the camera —
+      // a smooth gate on the station's own facing, never a pop.
+      const inA = clamp((fore(aE) - 0.08) / 0.3, 0, 1);
+      if (inA > 0.02 && !o.hurt) {
+        ctx.globalAlpha = inA;
+        ctx.fillStyle = look.earSkin;
+        ctx.beginPath();
+        ctx.moveTo(bp[0] - bw * 0.5, bp[1] - hr * 0.04);
+        ctx.lineTo(bp[0] + (tipX - bp[0]) * 0.55, bp[1] + (tipY - bp[1]) * 0.55);
+        ctx.lineTo(bp[0] + bw * 0.5, bp[1] - hr * 0.04);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1;
       }
-      if (at > 0.4) {
-        ctx.fillStyle = '#efe9d8';
-        for (const es of [-1, 1]) {
-          ctx.fillRect(hp[0] + es * hr * 0.18 - hr * 0.05, hp[1] + hr * 0.5, hr * 0.1, hr * 0.26);
+    };
+
+    // Far ear first — the pair z-splits around the skull by facing.
+    const earOrder = fore(hAng + 0.6) < fore(hAng - 0.6) ? [1, -1] : [-1, 1];
+    drawEar(earOrder[0]!);
+    // The skull.
+    ctx.fillStyle = coat;
+    ctx.beginPath();
+    facetCircle(ctx, hp[0], hp[1], hr, 7, hAng * 0.3 + seed * 0.2, 0.92);
+    ctx.fill();
+    // The muzzle: a wedge from the cheek stations to the protruding
+    // nose tip — the fox dial. It fades by SIZE as the head turns
+    // away (the owl-beak law): never a gate, never a pop.
+    if (mzK > 0.03 && !o.hurt) {
+      const mzR = 1 + (look.muzzle / look.headR) * 1.05 * mzK;
+      const ckL = proj(hAng - 0.34, hr * 0.2);
+      const ckR = proj(hAng + 0.34, hr * 0.2);
+      const nt = proj(hAng, hr * 0.24, mzR);
+      ctx.fillStyle = shade(coat, -5);
+      ctx.beginPath();
+      ctx.moveTo(ckL[0], ckL[1]);
+      ctx.lineTo(nt[0], nt[1]);
+      ctx.lineTo(ckR[0], ckR[1]);
+      ctx.closePath();
+      ctx.fill();
+      // The nose pad; the cave bat wears its little nose-leaf above.
+      ctx.fillStyle = look.nose;
+      ctx.beginPath();
+      facetCircle(ctx, nt[0], nt[1], hr * 0.11 * (0.4 + 0.6 * mzK), 5, hAng, 0.85);
+      ctx.fill();
+      if (look.variant === 'cave') {
+        ctx.fillStyle = look.earSkin;
+        ctx.beginPath();
+        ctx.moveTo(nt[0] - hr * 0.07 * mzK, nt[1] - hr * 0.06);
+        ctx.lineTo(nt[0], nt[1] - hr * 0.22 * mzK);
+        ctx.lineTo(nt[0] + hr * 0.07 * mzK, nt[1] - hr * 0.06);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // The gape and the fangs hang off the muzzle's underrim.
+      const fangK = Math.max(look.fangBare ? 0.65 + 0.35 * screechK : 0, screechK);
+      if (fangK > 0.05) {
+        if (screechK > 0.1) {
+          const gp = proj(hAng, hr * 0.42, 0.88);
+          ctx.fillStyle = '#2a1620';
+          ctx.beginPath();
+          ctx.ellipse(
+            gp[0],
+            gp[1],
+            Math.max(0.5, hr * 0.28 * (0.3 + 0.7 * wOf(hAng))),
+            hr * 0.2 * screechK,
+            0,
+            0,
+            Math.PI * 2,
+          );
+          ctx.fill();
+        }
+        ctx.fillStyle = C(look.fang);
+        for (const es2 of [-1, 1]) {
+          const aFg = hAng + es2 * 0.14;
+          const tp = proj(aFg, hr * 0.32, 0.96 + (look.muzzle / look.headR) * 0.55 * mzK);
+          const fw = hr * 0.085 * (0.45 + 0.55 * wOf(aFg));
+          const fl = hr * look.fangLen * fangK * (0.4 + 0.6 * mzK);
+          if (fw > 0.3 && fl > 0.5) {
+            ctx.beginPath();
+            ctx.moveTo(tp[0] - fw, tp[1]);
+            ctx.lineTo(tp[0], tp[1] + fl);
+            ctx.lineTo(tp[0] + fw, tp[1]);
+            ctx.closePath();
+            ctx.fill();
+          }
         }
       }
     }
+    // THE QUIET LAMPS: each eye a station at its own azimuth — a dark
+    // socket, the lamp, one glint — sliding around the sphere and
+    // slimming by pure horizontal width to zero at its own horizon.
+    if (!o.hurt) {
+      for (const es2 of [-1, 1]) {
+        const aEye = hAng + es2 * 0.36;
+        const ep = proj(aEye, -hr * 0.06);
+        const er = hr * look.eyeR;
+        const rw = er * wOf(aEye);
+        if (rw < 0.35) continue;
+        ctx.fillStyle = shade(look.coat, -16);
+        ctx.beginPath();
+        ctx.ellipse(ep[0], ep[1], rw * 1.3, er * 1.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = look.eye;
+        ctx.beginPath();
+        ctx.ellipse(ep[0], ep[1], rw, er, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.beginPath();
+        ctx.ellipse(ep[0] - rw * 0.25, ep[1] - er * 0.3, rw * 0.28, er * 0.24, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    drawEar(earOrder[1]!);
   };
 
+  // Assembly — painter's order from the facing, the owl's proven
+  // ledger: far wing and far foot behind the hull, near foot and near
+  // wing over it; with the back to the camera the head leads and the
+  // tail sail tucks behind the body mass.
   const farEs = py < 0 ? 1 : py > 0 ? -1 : 1;
   if (fy >= -0.15) {
+    drawTailSail();
     drawWing(farEs);
+    drawFoot(farEs);
     drawBody();
+    drawFoot(-farEs);
     drawWing(-farEs);
     drawHead();
   } else {
     drawHead();
     drawWing(farEs);
+    drawFoot(farEs);
+    drawFoot(-farEs);
     drawBody();
+    drawTailSail();
     drawWing(-farEs);
   }
 }

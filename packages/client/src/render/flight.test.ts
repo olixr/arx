@@ -11,10 +11,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   BAT_FLIER,
+  CAVE_BAT_LOOK,
+  DIRE_BAT_FLIER,
+  DIRE_BAT_LOOK,
   ELDER_OWL_FLIER,
   FlightRig,
+  GIANT_BAT_FLIER,
+  GIANT_BAT_LOOK,
   OWL_FLIER,
   WingSim,
+  batLook,
   drawBat,
   drawGreatOwl,
   flierSpec,
@@ -51,10 +57,61 @@ test('the spec ledger reads as rank and species: tempo, seat, tone, glides', () 
   assert.ok(BAT_FLIER.tone < OWL_FLIER.tone);
   assert.equal(BAT_FLIER.glides, false);
   assert.equal(OWL_FLIER.glides, true);
+  // THE COLONY'S RANKS: the giant soars on the slowest membrane in
+  // the sky, the dire hammers between — and NO bat ever glides (a
+  // glide stays a feathered privilege at every rank).
+  assert.ok(GIANT_BAT_FLIER.beatHz < DIRE_BAT_FLIER.beatHz);
+  assert.ok(DIRE_BAT_FLIER.beatHz < BAT_FLIER.beatHz);
+  assert.equal(GIANT_BAT_FLIER.glides, false);
+  assert.equal(DIRE_BAT_FLIER.glides, false);
+  // The dire hangs the deepest hover hunch; the dire's sail is the
+  // loosest leather any rig drives.
+  assert.ok(DIRE_BAT_FLIER.uprightA < BAT_FLIER.uprightA);
+  assert.ok(DIRE_BAT_FLIER.tone < BAT_FLIER.tone);
   // Routing: the ledger answers every flier def.
   assert.equal(flierSpec('great_owl'), OWL_FLIER);
   assert.equal(flierSpec('elder_great_owl'), ELDER_OWL_FLIER);
   assert.equal(flierSpec('cave_bat'), BAT_FLIER);
+  assert.equal(flierSpec('giant_bat'), GIANT_BAT_FLIER);
+  assert.equal(flierSpec('dire_bat'), DIRE_BAT_FLIER);
+});
+
+test('THE COLONY IS THREE DESIGNS, NEVER A SCALE-UP — and it sorts into roosts', () => {
+  // Bespoke identity pins: the giant wears the fox muzzle and the
+  // smallest ears; the cave bat wears the biggest ears RELATIVE to
+  // its skull (the dish-eared flutterer); the dire alone bares fangs
+  // at rest, sweeps its ears to horns, rips its trailing edge, and
+  // hangs the hunch. Finger count climbs with rank.
+  assert.ok(GIANT_BAT_LOOK.muzzle > CAVE_BAT_LOOK.muzzle * 2);
+  assert.ok(GIANT_BAT_LOOK.earLen < CAVE_BAT_LOOK.earLen);
+  assert.ok(
+    CAVE_BAT_LOOK.earLen / CAVE_BAT_LOOK.headR > GIANT_BAT_LOOK.earLen / GIANT_BAT_LOOK.headR,
+  );
+  assert.equal(DIRE_BAT_LOOK.fangBare, true);
+  assert.equal(CAVE_BAT_LOOK.fangBare, false);
+  assert.equal(GIANT_BAT_LOOK.fangBare, false);
+  assert.ok(DIRE_BAT_LOOK.earBack > 0.6 && CAVE_BAT_LOOK.earBack < 0.2);
+  assert.ok(DIRE_BAT_LOOK.ragged > 0.8 && GIANT_BAT_LOOK.ragged === 0 && CAVE_BAT_LOOK.ragged === 0);
+  assert.ok(DIRE_BAT_LOOK.hunch > 0 && GIANT_BAT_LOOK.hunch === 0);
+  // The flying fox's honest silhouette: NO tail membrane on the giant.
+  assert.equal(GIANT_BAT_LOOK.tailSail, 0);
+  assert.ok(CAVE_BAT_LOOK.tailSail > 0 && DIRE_BAT_LOOK.tailSail > 0);
+  assert.ok(
+    CAVE_BAT_LOOK.fingers < GIANT_BAT_LOOK.fingers &&
+      GIANT_BAT_LOOK.fingers < DIRE_BAT_LOOK.fingers,
+  );
+  // The wingspans rank: dire widest, cave smallest.
+  assert.ok(DIRE_BAT_LOOK.wingSpan > GIANT_BAT_LOOK.wingSpan);
+  assert.ok(GIANT_BAT_LOOK.wingSpan > CAVE_BAT_LOOK.wingSpan * 1.5);
+  // THE ROOST SORTS: consecutive seeds are hashed into ≥2 coats per
+  // design — kin clusters, never one rubber stamp (and the cache
+  // hands back the same look for the same spawn, deterministic).
+  for (const id of ['cave_bat', 'giant_bat', 'dire_bat']) {
+    const coats = new Set<string>();
+    for (let k = 0; k < 8; k++) coats.add(batLook(id, 700 + k).coat);
+    assert.ok(coats.size >= 2, `${id} roost wears one coat`);
+    assert.equal(batLook(id, 703), batLook(id, 703));
+  }
 });
 
 test('THE STATE BLEND: still = upright hover, sustained travel = level cruise', () => {
@@ -237,7 +294,7 @@ function mockCtx(): CanvasRenderingContext2D {
   }) as unknown as CanvasRenderingContext2D;
 }
 
-test('every rig rider paints clean: owl, elder, bat × bands × carriages × hurt', () => {
+test('every rig rider paints clean: owl, elder, three bats × bands × carriages × hurt', () => {
   const g = globalThis as { Path2D?: unknown };
   const hadPath = g.Path2D;
   g.Path2D = FakePath2D;
@@ -274,20 +331,24 @@ test('every rig rider paints clean: owl, elder, bat × bands × carriages × hur
               nowMs: 917 + band,
               seed: band * 13,
             });
-            drawBat(mockCtx(), {
-              x: 80,
-              y: 80,
-              s: 48,
-              dir,
-              radius: 0.28,
-              color: '#5a4a5e',
-              hurt,
-              nowMs: 2222 + band,
-              seed: band,
-              ys: 0.82,
-              flight: stagedFlight(BAT_FLIER, { seed: band, moveK, attackT: at }),
-              attackT: at,
-            });
+            for (const [batId, batSpec] of [
+              ['cave_bat', BAT_FLIER],
+              ['giant_bat', GIANT_BAT_FLIER],
+              ['dire_bat', DIRE_BAT_FLIER],
+            ] as const) {
+              drawBat(mockCtx(), batLook(batId, band * 5), {
+                x: 80,
+                y: 80,
+                s: 48,
+                dir,
+                hurt,
+                nowMs: 2222 + band,
+                seed: band,
+                ys: 0.82,
+                flight: stagedFlight(batSpec, { seed: band, moveK, attackT: at }),
+                attackT: at,
+              });
+            }
           }
         }
       }

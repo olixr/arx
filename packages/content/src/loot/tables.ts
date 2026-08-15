@@ -1571,6 +1571,29 @@ const defs: LootTableDef[] = [
     ],
   },
   {
+    id: 'giant_bat',
+    desc: 'Sail leather by the wing and orchard-thief bones.',
+    entries: [
+      { item: 'bones' },
+      // One wing is more hide than most whole animals carry.
+      { item: 'scrap_hide', qty: [1, 2], chance: 0.55 },
+      { item: 'crimson_essence', chance: 0.08 },
+      { item: 'gloomsilk_thread', chance: 0.1 },
+    ],
+  },
+  {
+    id: 'dire_bat',
+    desc: 'Ragged sail-leather and a skull that is mostly fangs.',
+    entries: [
+      { item: 'bones', qty: [1, 2] },
+      { item: 'scrap_hide', qty: [1, 3], chance: 0.6 },
+      // What it fed on, distilled. Do not ask what it fed on.
+      { item: 'crimson_essence', chance: 0.16 },
+      { item: 'umbral_essence', chance: 0.14 },
+      { item: 'gloomsilk_thread', qty: [1, 2], chance: 0.14 },
+    ],
+  },
+  {
     id: 'adder',
     desc: 'Venom by the gland, skin by the yard.',
     entries: [

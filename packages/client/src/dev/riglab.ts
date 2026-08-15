@@ -25,7 +25,7 @@ import {
   owlLook,
   type RigPose,
 } from '../render/rig.js';
-import { FlightRig, drawBat, drawGreatOwl, flierSpec } from '../render/flight.js';
+import { FlightRig, batLook, drawBat, drawGreatOwl, flierSpec } from '../render/flight.js';
 import { PoseState } from '@arx/shared';
 
 const canvas = document.getElementById('lab') as HTMLCanvasElement;
@@ -63,6 +63,8 @@ const SPEED: Record<string, number> = {
   great_owl: 4.4,
   elder_great_owl: 4.6,
   cave_bat: 2.6,
+  giant_bat: 4.2,
+  dire_bat: 4.6,
 };
 
 interface Fig {
@@ -101,6 +103,12 @@ row('elder swoop', 'elder_great_owl', 'swoop', 9);
 row('bat hover', 'cave_bat', 'hover', 3);
 row('bat cruise', 'cave_bat', 'cruise', 3);
 row('bat swoop', 'cave_bat', 'swoop', 3);
+row('giant bat hover', 'giant_bat', 'hover', 4);
+row('giant bat cruise', 'giant_bat', 'cruise', 4);
+row('giant bat swoop', 'giant_bat', 'swoop', 4);
+row('dire bat hover', 'dire_bat', 'hover', 6);
+row('dire bat cruise', 'dire_bat', 'cruise', 6);
+row('dire bat swoop', 'dire_bat', 'swoop', 6);
 // THE PLUMAGE SPREAD: eight consecutive seeds — the parliament sorts
 // into kin clusters, never rubber stamps. Shot at the E band where
 // the mantle and barred keel both show.
@@ -112,6 +120,15 @@ for (let k = 0; k < 8; k++) {
 figs.push({ label: 'ruler: player+owl', defId: 'great_owl', dir: Math.PI / 2, mode: 'hover', seed: 5, ruler: true });
 figs.push({ label: 'ruler: player+elder', defId: 'elder_great_owl', dir: Math.PI / 2, mode: 'hover', seed: 9, ruler: true });
 figs.push({ label: 'ruler: player+bat', defId: 'cave_bat', dir: Math.PI / 2, mode: 'hover', seed: 3, ruler: true });
+figs.push({ label: 'ruler: player+giant bat', defId: 'giant_bat', dir: Math.PI / 2, mode: 'hover', seed: 4, ruler: true });
+figs.push({ label: 'ruler: player+dire bat', defId: 'dire_bat', dir: Math.PI / 2, mode: 'hover', seed: 6, ruler: true });
+// THE ROOST SPREAD: eight consecutive seeds per bat design — skin
+// clusters and the modular bits (torn ears, mottle) proven mixed.
+for (const bid of ['cave_bat', 'giant_bat', 'dire_bat']) {
+  for (let k = 0; k < 8; k++) {
+    figs.push({ label: `${bid} seed ${700 + k}`, defId: bid, dir: Math.PI / 2, mode: 'hover', seed: 700 + k });
+  }
+}
 
 const kept = ONLY ? figs.filter((f) => f.defId === ONLY) : figs;
 
@@ -186,17 +203,17 @@ function drawFlier(f: Fig, x: number, y: number, now: number, dt: number): void 
   // The ground shadow the renderer would cast — the altitude read.
   ctx.fillStyle = 'rgba(20, 16, 26, 0.28)';
   ctx.beginPath();
-  const shr = (f.defId === 'cave_bat' ? 0.5 : 0.62) * S * (1.05 - 0.18 * flight.lift);
+  const isBat = f.defId.endsWith('_bat');
+  const shr =
+    (f.defId === 'cave_bat' ? 0.5 : isBat ? 0.72 : 0.62) * S * (1.05 - 0.18 * flight.lift);
   ctx.ellipse(x, y, shr, shr * YS * 0.6, 0, 0, Math.PI * 2);
   ctx.fill();
-  if (f.defId === 'cave_bat') {
-    drawBat(ctx, {
+  if (isBat) {
+    drawBat(ctx, batLook(f.defId, f.seed), {
       x,
       y,
       s: S,
       dir: f.dir,
-      radius: 0.28,
-      color: '#5a4a5e',
       hurt,
       nowMs: now,
       seed: f.seed,

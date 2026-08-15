@@ -20,7 +20,7 @@ import { ogreLook } from '../render/ogre.js';
 import { skralLook } from '../render/skral.js';
 import { hobgoblinLook } from '../render/hobgoblin.js';
 import { TailSim, drawTail } from '../render/tail.js';
-import { drawBat, drawGreatOwl, flierSpec, stagedFlight } from '../render/flight.js';
+import { batLook, drawBat, drawGreatOwl, flierSpec, stagedFlight } from '../render/flight.js';
 
 /**
  * TRUE IN-GAME RENDERS. Every creature and actor the studio shows is
@@ -395,11 +395,12 @@ function paintBeast(ctx: CanvasRenderingContext2D, px: number, def: NpcDef): voi
 
 function paintLegless(ctx: CanvasRenderingContext2D, px: number, def: NpcDef): void {
   const radius = def.radius;
-  const bat = def.id === 'cave_bat';
+  const bat = def.id === 'cave_bat' || def.id === 'giant_bat' || def.id === 'dire_bat';
   const snake = def.id === 'adder';
-  // Extents from the leglessItem bounds law.
-  const halfWTiles = snake ? 1.55 : bat ? 0.95 : radius * 2.2 + 0.25;
-  const topTiles = bat ? 1.7 : snake ? 0.55 : radius * 2.4 + 0.15;
+  // Extents from the leglessItem bounds law; bats size off the look.
+  const bLook = bat ? batLook(def.id, 7) : undefined;
+  const halfWTiles = snake ? 1.55 : bLook ? bLook.wingSpan + bLook.bodyW + 0.2 : radius * 2.2 + 0.25;
+  const topTiles = bLook ? 1.45 + bLook.bodyR + bLook.earLen : snake ? 0.55 : radius * 2.4 + 0.15;
   const bottomTiles = snake ? 1.1 : 0.4;
   const scale = Math.min(
     (px * 0.84) / (halfWTiles * 2),
@@ -425,7 +426,10 @@ function paintLegless(ctx: CanvasRenderingContext2D, px: number, def: NpcDef): v
   type Bag = Parameters<typeof drawSlime>[1];
   if (bat) {
     // The bat card hangs the hover — the staged rig settled at rest.
-    drawBat(ctx, { ...common, flight: stagedFlight(flierSpec(def.id), { seed: 7, moveK: 0 }) });
+    drawBat(ctx, batLook(def.id, 7), {
+      ...common,
+      flight: stagedFlight(flierSpec(def.id), { seed: 7, moveK: 0 }),
+    });
   } else if (snake) drawSnake(ctx, common as unknown as Bag);
   else drawSlime(ctx, common as unknown as Bag);
 }

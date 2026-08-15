@@ -1547,6 +1547,54 @@ const defs: NpcDef[] = [
     kit: [{ ability: 'shrilling_dart', cooldownTicks: 180, windupTicks: 8, maxRange: 4 }],
   },
   {
+    // THE ORCHARD SHADOW: a flying fox grown to the frontier's scale
+    // — a fox-muzzled soarer on one broad slow sail. It reads gentle
+    // until it does not; the wingspan is the warning.
+    id: 'giant_bat',
+    name: 'Giant bat',
+    level: 12,
+    maxHp: 58,
+    damage: 5,
+    attackRange: 0.9,
+    attackCooldownTicks: 42,
+    aggroRange: 5,
+    sightArc: 360,
+    leashRange: 24,
+    speed: 4.2,
+    xpReward: 130,
+    loot: ['giant_bat'],
+    respawnSec: 40,
+    color: '#7a5638',
+    radius: 0.4,
+    // Sails high on the broad wing: chest-height shots find it.
+    hitHeight: 1.4,
+    attackStatus: { status: 'bleed', power: 1, durationTicks: 50 },
+  },
+  {
+    // THE RAGGED HUNTER: gaunt, hunched, fangs bared at rest, a torn
+    // sail that has been through other creatures. The expedition
+    // line's night terror — it screams before it comes through you.
+    id: 'dire_bat',
+    name: 'Dire bat',
+    level: 19,
+    maxHp: 130,
+    damage: 9,
+    attackRange: 1.0,
+    attackCooldownTicks: 38,
+    aggroRange: 6,
+    sightArc: 360,
+    leashRange: 26,
+    speed: 4.6,
+    xpReward: 260,
+    loot: ['dire_bat'],
+    respawnSec: 50,
+    color: '#3c3742',
+    radius: 0.42,
+    hitHeight: 1.4,
+    attackStatus: { status: 'bleed', power: 2, durationTicks: 60 },
+    kit: [{ ability: 'shrilling_dart', cooldownTicks: 140, windupTicks: 10, maxRange: 5 }],
+  },
+  {
     id: 'adder',
     name: 'Giant adder',
     level: 9,

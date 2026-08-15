@@ -187,7 +187,7 @@ import {
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
 import { BobtailSim, TailSim, drawBobtail, drawFoxBrush, drawHorseTail, drawSabercatTail, drawTail, drawTurtleTail, drawWolfBrush } from './tail.js';
-import { FlightRig, drawBat, drawGreatOwl, flierSpec } from './flight.js';
+import { FlightRig, batLook, drawBat, drawGreatOwl, flierSpec } from './flight.js';
 import { EarSim } from './earPhysics.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
@@ -46648,7 +46648,14 @@ export class Renderer {
 
     // Leg-less bodies skip the rig entirely: gel blocks hop, wings
     // hover, coils slither — each through its own dedicated painter.
-    if (defId === 'slime' || defId === 'slime_small' || defId === 'cave_bat' || defId === 'adder') {
+    if (
+      defId === 'slime' ||
+      defId === 'slime_small' ||
+      defId === 'cave_bat' ||
+      defId === 'giant_bat' ||
+      defId === 'dire_bat' ||
+      defId === 'adder'
+    ) {
       return this.leglessItem(eid, defId, meta, s, hurt, nameInk);
     }
 
@@ -47052,7 +47059,7 @@ export class Renderer {
       attackT,
       ys: this.camera.yScale,
     };
-    const bat = defId === 'cave_bat';
+    const bat = defId === 'cave_bat' || defId === 'giant_bat' || defId === 'dire_bat';
     const snake = defId === 'adder';
     // THE BAT RIDES THE FLIGHT RIG: same carriage as the owls at the
     // membrane dials — the renderer owns lifecycle, the rig owns all.
@@ -47073,10 +47080,15 @@ export class Renderer {
     }
     // Sprite extents differ per body plan: the adder trails 1.3 tiles of
     // ribbon, the bat hovers a full tile up with wings wide.
-    const halfW = (snake ? 1.55 : bat ? 0.95 : radius * 2.2 + 0.25) * scale;
-    const top = (bat ? 1.7 : snake ? 0.55 : radius * 2.4 + 0.15) * scale;
+    // Bat extents come from the look — the giant and dire sail far
+    // wider and hang higher than the cave flutterer's box.
+    const bLook = bat ? batLook(defId, eid) : undefined;
+    const halfW = (snake ? 1.55 : bLook ? bLook.wingSpan + bLook.bodyW + 0.2 : radius * 2.2 + 0.25) * scale;
+    const top = (bLook ? 1.45 + bLook.bodyR + bLook.earLen : snake ? 0.55 : radius * 2.4 + 0.15) * scale;
     const bottom = (snake ? 1.1 : 0.4) * scale;
-    const labelTop = bat ? p.y - 1.95 * scale : p.y - Math.max(r * 2.6, 0.55 * scale);
+    const labelTop = bLook
+      ? p.y - (1.7 + bLook.bodyR + bLook.earLen) * scale
+      : p.y - Math.max(r * 2.6, 0.55 * scale);
     return {
       sortY: s.y,
       elevated: terrainLift !== 0,
@@ -47086,7 +47098,7 @@ export class Renderer {
         this.castBody(p.x, p.y + r * 0.25, r * (bat ? 0.8 : snake ? 1.0 : 1.05));
       },
       draw: () => {
-        if (bat) drawBat(this.ctx, { ...common, flight: batFlight! });
+        if (bat) drawBat(this.ctx, batLook(defId, eid), { ...common, flight: batFlight! });
         else if (snake) drawSnake(this.ctx, common);
         else drawSlime(this.ctx, common);
       },

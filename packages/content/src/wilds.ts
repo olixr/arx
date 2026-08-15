@@ -236,6 +236,11 @@ export const WILD_ROSTER: readonly WildEntry[] = [
     habitat: 'den',
   },
   { npc: 'cave_bat', weight: 2, tiers: [2, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 3], spread: 2 },
+  // The orchard shadow crosses the walk-out bands alone or paired —
+  // a broad slow sail over the night fields.
+  { npc: 'giant_bat', weight: 1, tiers: [2, 4], biomes: ['grass', 'forest'], hours: NIGHT, band: [1, 2], spread: 2 },
+  // The ragged hunter owns the expedition line's night air.
+  { npc: 'dire_bat', weight: 0.9, tiers: [3, 6], biomes: ['forest'], hours: NIGHT, band: [1, 2], spread: 2 },
   { npc: 'giant_spider', weight: 1.5, tiers: [3, 7], biomes: ['forest'], hours: NIGHT },
   { npc: 'skeleton', weight: 1, tiers: [3, 7], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 3], habitat: 'barrow', family: 'dead' },
   { npc: 'worg', weight: 1.5, tiers: [4, 8], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 2], family: 'wolfkin' },
