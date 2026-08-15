@@ -4,15 +4,18 @@
  * disappear from attention within a minute and leave a hole if muted.
  *
  * Layers, all crossfaded continuously by zone weight and clock:
- *  - LEAF RUSTLE (the "wind"): a GRANULAR texture — a pre-rendered
- *    stereo loop of long, heavily overlapped grains breathing over a
- *    floor, pink-tinted and seated dark, so a gust reads as a calm
- *    exhale through the canopy (the BOTW register: chill, never
- *    busy). v2 by user verdict: the first build's fast micro-grain
- *    flicker read as a paper bag scrunching — fast deep flicker on
- *    bright noise IS crinkle, so this voice may never carry it.
- *    Gated by the squared gust curve of the SAME wind field the
- *    grass and trees bend to; silent between gusts.
+ *  - LEAF RUSTLE (the "wind"): a REAL RECORDING — aspen foliage at
+ *    the edge of Białowieża Forest (freesound #381717 by urupin,
+ *    CC0), its calmest 14 seconds cut into a seamless loop
+ *    (public/sfx/leaf_rustle_loop.mp3), fetched and decoded async
+ *    with the old synthesized grain loop standing in only until the
+ *    recording arrives. Ruled twice on synthesis (v1 micro-grains =
+ *    paper bag, v2 smooth grains = white noise): this voice is a
+ *    field recording now, full stop — real leaves are the only
+ *    thing that sounds like real leaves. Gated by the squared gust
+ *    curve of the SAME wind field the grass and trees bend to;
+ *    silent between gusts, so the recording supplies the TEXTURE
+ *    and the field supplies the WEATHER.
  *    THE BAN (two user rejections): NO continuous filtered-noise bed
  *    may ever play, in any band — a smooth gain envelope on noise
  *    reads as waves crashing, full stop. Granular or nothing.
@@ -85,6 +88,8 @@ export class AmbienceSystem {
   private fallRumble: GainNode | null = null;
   private fallLp: BiquadFilterNode | null = null;
   private fallPan: StereoPannerNode | null = null;
+  /** The synth rustle standing in until the recorded loop decodes. */
+  private rustleSynth: AudioBufferSourceNode | null = null;
   /** Debug mirrors for live verification. */
   gates = { wind: 0, birds: 0, crickets: 0, cave: 0, portal: 0, fall: 0 };
   /**
@@ -135,7 +140,7 @@ export class AmbienceSystem {
       const windLevel = (w.wild * 1 + w.town * 0.5) * wind * wind * (0.6 + 0.4 * day) * 0.06;
       this.windGain!.gain.setTargetAtTime(windLevel, t, 0.4);
       // A cresting gust opens slightly brighter — a breath, not a hiss.
-      this.windFilter!.frequency.setTargetAtTime(2400 + wind * 500, t, 0.6);
+      this.windFilter!.frequency.setTargetAtTime(3400 + wind * 800, t, 0.6);
       this.rumbleGain!.gain.setTargetAtTime(w.cave * 0.1, t, 0.8);
       const cr = night * outdoor * 0.038;
       for (const g of this.cricketGains) g.gain.setTargetAtTime(cr, t, 0.6);
@@ -220,24 +225,27 @@ export class AmbienceSystem {
       return src;
     };
 
-    // LEAF RUSTLE — granular, never a flat noise bed (the surf law),
-    // and never a fast flicker (the paper-bag law). The texture
-    // undulates INSIDE the loop; the squared gust curve in update()
-    // still owns when it sounds at all. Seated dark and wide — calm
-    // canopy, not bright crinkle.
+    // LEAF RUSTLE — the recorded aspen loop is the voice; the synth
+    // grain loop below plays ONLY until the recording decodes (a
+    // gust in the first second of a session should not be silent).
+    // The squared gust curve in update() owns when either sounds.
+    // The filter is a gentle lowpass lid, not a carving bandpass —
+    // the recording already carries the right spectrum.
     const rustle = ctx.createBufferSource();
     rustle.buffer = this.makeRustleBuffer(ctx);
     rustle.loop = true;
     this.windFilter = ctx.createBiquadFilter();
-    this.windFilter.type = 'bandpass';
-    this.windFilter.frequency.value = 2600;
-    this.windFilter.Q.value = 0.3;
+    this.windFilter.type = 'lowpass';
+    this.windFilter.frequency.value = 3600;
+    this.windFilter.Q.value = 0.4;
     this.windGain = ctx.createGain();
     this.windGain.gain.value = 0;
     rustle.connect(this.windFilter);
     this.windFilter.connect(this.windGain);
     this.windGain.connect(bus);
     rustle.start();
+    this.rustleSynth = rustle;
+    this.loadRustleLoop(ctx);
 
     // The dove, the woodpecker, the dog, and the owl all wait a
     // polite while after login — the world greets you with wind first.
@@ -346,10 +354,37 @@ export class AmbienceSystem {
   }
 
   /**
-   * Pre-render the leaf texture, v2 — THE CALM CANOPY. The first
-   * build's 20-80ms micro-grains flickering to silence read as a
-   * paper bag scrunching (user verdict): fast, deep amplitude
-   * flicker on bright noise IS crinkle. What a gust through leaves
+   * Fetch + decode the recorded aspen loop and seat it in the synth
+   * loop's place. SILENCE IS VALID: any failure simply leaves the
+   * synth fallback playing — no throw escapes into the frame loop.
+   */
+  private loadRustleLoop(ctx: AudioContext): void {
+    fetch('/sfx/leaf_rustle_loop.mp3')
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`${r.status}`))))
+      .then((bytes) => ctx.decodeAudioData(bytes))
+      .then((buf) => {
+        if (!this.windFilter) return;
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.loop = true;
+        src.connect(this.windFilter);
+        src.start();
+        // The stand-in bows out the moment the real leaves arrive.
+        this.rustleSynth?.stop();
+        this.rustleSynth?.disconnect();
+        this.rustleSynth = null;
+      })
+      .catch(() => {
+        // The synth loop keeps the wind alive this session.
+      });
+  }
+
+  /**
+   * Pre-render the SYNTH leaf texture — since v3 only the stand-in
+   * while the recorded loop decodes (and the net-failure fallback).
+   * The first build's 20-80ms micro-grains flickering to silence
+   * read as a paper bag scrunching (user verdict): fast, deep
+   * amplitude flicker on bright noise IS crinkle. What a gust through leaves
    * actually does is BREATHE — so this loop is long (120-350ms),
    * heavily overlapped sin²-windowed grains riding OVER a floor
    * (the texture undulates, it never blinks), on pink-tinted noise

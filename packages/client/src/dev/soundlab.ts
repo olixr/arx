@@ -334,9 +334,9 @@ root.appendChild(windCtl);
 const rustleNote = h(
   'p',
   'note',
-  'The leaf rustle (ambience.ts · makeRustleBuffer v2 — THE CALM CANOPY: long overlapped grains breathing ' +
-    'over a floor, pink-tinted, seated dark ~2.6 kHz) sounds ONLY while a gust crests. ' +
-    'Pick "Wild, day" and tick the force-gust box to hold it open.',
+  'The leaf rustle (ambience.ts · loadRustleLoop — a REAL aspen recording from Białowieża Forest, CC0, ' +
+    'cut to a seamless 14s loop; synth grains stand in only until it decodes) sounds ONLY while a gust ' +
+    'crests. Pick "Wild, day" and tick the force-gust box to hold it open.',
 );
 root.appendChild(rustleNote);
 const gates = h('div', 'gates');
