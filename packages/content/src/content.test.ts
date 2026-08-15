@@ -2468,7 +2468,7 @@ test('evenfall: the fair city holds its flame, its stair, and no wall at all', (
   assert.equal(n(Tile.CrystalCluster), 1);
   assert.equal(n(Tile.ArcaneTome), 1);
   assert.equal(n(Tile.ElvenHarp), 2);
-  assert.equal(n(Tile.ElvenChimes), 3);
+  assert.equal(n(Tile.ElvenChimes), 4);
   assert.equal(n(Tile.ElvenLoom), 2, 'the silk lane');
   assert.equal(n(Tile.ElvenBanner), 4);
   assert.ok(n(Tile.ElvenBench) >= 12, 'the city sits where the views are');

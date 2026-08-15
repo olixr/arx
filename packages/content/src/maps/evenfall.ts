@@ -411,6 +411,10 @@ export function buildEvenfall(): ZoneDef {
   b.set(50, 40, Tile.ElvenStatue).set(63, 40, Tile.ElvenStatue);
   b.set(50, 53, Tile.ArcaneBeacon).set(63, 53, Tile.ArcaneBeacon);
   b.set(48, 46, Tile.ElvenPlanter).set(65, 47, Tile.ElvenPlanter);
+  // The crescent's own green and voice (the walk found the center
+  // sparse; the court gets what a court sits still for).
+  b.set(52, 42, Tile.ElvenPlanter).set(61, 51, Tile.ElvenPlanter);
+  b.set(61, 43, Tile.ElvenChimes);
   // THE KEEPING — the bank: two vaults, one chest, and a keeper who
   // does not count out loud. The smallest, finest bank in the world.
   b.building(48, 28, 11, 8, {
