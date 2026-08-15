@@ -16894,9 +16894,6 @@ export function paintTurtleBody(
   const fall = look.ancient ? 0.36 : 0.52;
   const topH = (X: number): number =>
     Math.max(0.05, look.shellH * (1 - fall * Math.pow((X - domeC) / hl, 2)));
-  // The dome's lateral cross-section: plates on the flanks seat
-  // lower — the mail wraps a vault, never a tabletop.
-  const surf = (X: number, Y: number): number => topH(X) * (1 - 0.3 * Math.pow(Y / hw, 2));
   const P3 = (X: number, Y: number, Z: number): { x: number; y: number } => ({
     x: bx + (fx * X + px * Y) * s,
     y: gy + (fy * X + py * Y) * ys * s - Z * tk * s - lift,
@@ -17083,10 +17080,16 @@ export function paintTurtleBody(
       const cfr = MESH_COLS[j2]! + jy2;
       const Yv = cfr * wX + ridgeY * (1 - cfr * cfr);
       const z2 = topH(X) * (1 - 0.3 * Math.pow((cfr * wX) / hw, 2));
-      row.push({ X, Y: Yv, z: z2, ...pv(X, Yv, z2) });
+      const sp = pv(X, Yv, z2);
+      row.push({ X, Y: Yv, z: z2, x: sp.x, y: sp.y });
     }
     grid.push(row);
   }
+  // Cost containment: the whole lattice — vertices, plates, horns —
+  // is ONE O(cells) pass with no Path2D and no per-frame caches to
+  // invalidate, and in the world it paints through the body-sprite
+  // cache: an idle shell re-bakes on the OL_IDLE_CADENCE stagger,
+  // not per frame.
 
   paintBlockBody(
     ctx,
@@ -17168,6 +17171,9 @@ export function paintTurtleBody(
     K: { x: number; y: number };
     R: number;
     rank: number;
+    mossy: boolean;
+    scarred: boolean;
+    mseed: number;
     sortY: number;
   }>;
   for (let ib = 0; ib < grid.length - 1; ib++) {
@@ -17190,7 +17196,13 @@ export function paintTurtleBody(
         y: v.y + (K.y - v.y) * 0.14,
       }));
       const R = Math.hypot(ring[0]!.x - ring[2]!.x, ring[0]!.y - ring[2]!.y) / (2 * s);
-      thorns.push({ T, ring, K, R, rank, sortY: pv(Xc, Yc, 0).y });
+      // The years are CELL facts, decided HERE where the cell id is
+      // stable — never off the depth-sorted index (a sort-order pick
+      // made the moss JUMP between plates as the body turned; the
+      // sort permutes with facing, the lattice does not).
+      const mossy = !!look.moss && ((jb >>> 16) & 15) < 2;
+      const scarred = !!look.moss && ((jb >>> 20) & 31) === 3;
+      thorns.push({ T, ring, K, R, rank, mossy, scarred, mseed: jb, sortY: pv(Xc, Yc, 0).y });
     }
   }
   thorns.sort((q1, q2) => q1.sortY - q2.sortY);
@@ -17309,31 +17321,38 @@ export function paintTurtleBody(
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
-  }
-
-  // The years, grown ON the horn: moss caps three seeded thorns at
-  // the shoulder and a pale lichen scar rakes a fourth — the
-  // colossus only.
-  if (look.moss && !f.hurt) {
-    const picks = [1 + (f.seed & 3), 6 + ((f.seed >>> 3) & 7), 14 + ((f.seed >>> 7) & 7)];
-    ctx.fillStyle = look.moss;
-    ctx.globalAlpha = 0.85;
-    for (const idx of picks) {
-      const th = thorns[idx % thorns.length]!;
-      const mx3 = th.K.x + (th.T.x - th.K.x) * 0.35;
-      const my3 = th.K.y + (th.T.y - th.K.y) * 0.35;
+    // The years, grown ON the horn and painted WITH the horn — moss
+    // caps and lichen scars ride their own plate's paint slot in the
+    // depth order, so a nearer spike overlaps them exactly as it
+    // overlaps the horn they cap. Position and shape both derive
+    // from the cell (K→T axis, cell seed): the growth is AFFIXED —
+    // it turns with the spike and never redraws elsewhere (the
+    // painted-on-top jitter, retired).
+    if (th.mossy) {
+      ctx.fillStyle = look.moss!;
+      ctx.globalAlpha = 0.85;
       ctx.beginPath();
-      facetBlob(ctx, mx3, my3, th.R * s * 0.7, f.seed ^ (idx * 131), 6, 0.7, 0.9);
+      facetBlob(
+        ctx,
+        K.x + (T.x - K.x) * 0.32,
+        K.y + (T.y - K.y) * 0.32,
+        th.R * s * 0.6,
+        th.mseed,
+        6,
+        0.7,
+        0.9,
+      );
       ctx.fill();
+      ctx.globalAlpha = 1;
     }
-    ctx.globalAlpha = 1;
-    const scar = thorns[(3 + ((f.seed >>> 6) & 3)) % thorns.length]!;
-    ctx.strokeStyle = shade(look.shell, 20);
-    ctx.lineWidth = Math.max(1, s * 0.013);
-    ctx.beginPath();
-    ctx.moveTo(scar.ring[0]!.x, scar.ring[0]!.y);
-    ctx.lineTo(scar.T.x, scar.T.y);
-    ctx.stroke();
+    if (th.scarred) {
+      ctx.strokeStyle = shade(look.shell, 20);
+      ctx.lineWidth = Math.max(1, s * 0.013);
+      ctx.beginPath();
+      ctx.moveTo(ring[0]!.x, ring[0]!.y);
+      ctx.lineTo(T.x, T.y);
+      ctx.stroke();
+    }
   }
 }
 

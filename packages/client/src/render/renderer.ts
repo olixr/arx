@@ -37087,14 +37087,21 @@ export class Renderer {
       // and a clipped sprite gives the dilate a hard rectangle edge
       // to ring — the "seeping border" bug.
       body: (() => {
-        const halfW = (spec.bodyLen * 2.0 + 0.35) * scale + r;
+        // THE SNAP LEAVES THE BOX: the turtles' neck telescope (and
+        // the lattice's raked stern horns) reach past the spec
+        // envelope east-west AND drop below it at the south bands —
+        // they buy their own room on every edge, or the body-sprite
+        // cache crops the strike mid-extension (user-flagged on the
+        // colossus).
+        const snapRoom = defId === 'colossus_turtle' ? 0.55 : defId === 'giant_turtle' ? 0.3 : 0;
+        const halfW = (spec.bodyLen * 2.0 + 0.35 + snapRoom) * scale + r;
         // Tall headgear reaches past the spec envelope — the stag's
         // antlers ride a raised neck and clip at the top edge without
         // their own headroom (user-flagged walking up-screen).
         const headroom =
-          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'wolf_oldfang' ? 0.32 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : defId === 'fox' ? 0.35 : defId === 'fox_champion' ? 0.5 : defId === 'giant_turtle' ? 0.3 : defId === 'colossus_turtle' ? 0.7 : defId === 'giant_crab' ? 0.45 : 0;
+          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'wolf_oldfang' ? 0.32 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : defId === 'fox' ? 0.35 : defId === 'fox_champion' ? 0.5 : defId === 'giant_turtle' ? 0.45 : defId === 'colossus_turtle' ? 0.85 : defId === 'giant_crab' ? 0.45 : 0;
         const top = (spec.bodyRise + (def?.radius ?? 0.3) * 2.2 + headroom) * scale + r;
-        const bottom = (spec.rig.legLen + 0.7) * scale;
+        const bottom = (spec.rig.legLen + 0.7 + snapRoom) * scale;
         return { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom };
       })(),
       drawLabel: () => {
