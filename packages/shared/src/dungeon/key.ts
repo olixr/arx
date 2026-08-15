@@ -28,7 +28,7 @@ export const DUNGEON_KEY_ITEM = 'dungeon_key';
  * cavern hides the odd bricked vault. The warren is the gnolls'
  * ground: dug dens, bone and hide, the Matriarch at the heart.
  */
-export type DungeonTheme = 'cavern' | 'crypt' | 'mine' | 'stronghold' | 'warren';
+export type DungeonTheme = 'cavern' | 'crypt' | 'mine' | 'stronghold' | 'warren' | 'heartwood';
 
 export interface ThemeLaw {
   theme: DungeonTheme;
@@ -44,6 +44,12 @@ export const THEME_LAWS: readonly ThemeLaw[] = [
   { theme: 'stronghold', caveness: 0.3, water: 0.15 },
   { theme: 'crypt', caveness: 0.15, water: 0.0 },
   { theme: 'warren', caveness: 0.75, water: 0.25 },
+  // THE ROOT-HALLS (the Evenfall epic's sixth theme): the ground
+  // under the Everwood's reach, which is everywhere — grown chambers
+  // more than dug ones, root-water pooling, the old folk's fallen
+  // lights still burning where nobody feeds them, and the dark the
+  // wood's quiet holds down pooling underneath it all.
+  { theme: 'heartwood', caveness: 0.85, water: 0.4 },
 ];
 
 /**
@@ -135,6 +141,10 @@ const NAME_BANKS: Record<DungeonTheme, { adj: string[]; noun: string[] }> = {
   warren: {
     adj: ['Howling', 'Gnawed', 'Redfang', 'Musky', 'Snarling', 'Bonestrewn', 'Rank', 'Wild'],
     noun: ['Dens', 'Warren', 'Burrows', 'Lair', 'Digs', 'Underdens', 'Hollow', 'Sett'],
+  },
+  heartwood: {
+    adj: ['Rooted', 'Moonlit', 'Sleeping', 'Grown', 'Veined', 'Quiet', 'Elder', 'Unlit'],
+    noun: ['Rootways', 'Hollows', 'Boughs', 'Underwood', 'Gallery', 'Heartways', 'Grove', 'Tanglings'],
   },
 };
 

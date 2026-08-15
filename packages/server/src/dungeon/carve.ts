@@ -2,6 +2,7 @@ import { Rng, Tile, rarityIndex, type Vec2 } from '@arx/shared';
 import {
   ARENA_CAVERN,
   ARENA_CRYPT,
+  ARENA_HEARTWOOD,
   ARENA_MINE,
   ARENA_STRONGHOLD,
   ARENA_WARREN,
@@ -319,6 +320,7 @@ const ARENAS: Record<string, Prefab> = {
   mine: ARENA_MINE,
   stronghold: ARENA_STRONGHOLD,
   warren: ARENA_WARREN,
+  heartwood: ARENA_HEARTWOOD,
 };
 
 // ------------------------------------------------------------ the pass

@@ -91,6 +91,13 @@ export const PREFAB_TILES: Record<string, Tile> = {
   D: Tile.TargetDummy,
   u: Tile.WarDrum,
   H: Tile.HideFrame,
+  // THE ROOT-HALLS (the Evenfall epic): the fair kit steps below —
+  // the POI legend's digit convention, kept coherent underground.
+  '3': Tile.WardArch,
+  '4': Tile.ArcaneBeacon,
+  '5': Tile.Runestone,
+  '8': Tile.ElvenWaystone,
+  z: Tile.CrystalCluster,
 };
 
 /** Horizontal mirror — the cheap doubling of every authored variant. */
@@ -143,6 +150,30 @@ export const ARENA_CAVERN = prefab([
   '____#....s...s....#____',
   '_____##.........##_____',
   '_______#_______#_______',
+]);
+
+/**
+ * THE ROOT COURT: the heartwood's grand arena — a grown vault under
+ * the oldest roots, runestones standing their broken ring, the ward
+ * arches framing a dais the wood built around whatever it buried
+ * there, and two fallen lights still burning silver at the mouth.
+ */
+export const ARENA_HEARTWOOD = prefab([
+  '_______#########_______',
+  '_____##....B....##_____',
+  '____#...3.....3...#____',
+  '___#....z.....z....#___',
+  '__#.......5.........#__',
+  '__#..5....,.,....5..#__',
+  '_#........,~,........#_',
+  '_#...z....,,,....z...#_',
+  '_#...................#_',
+  '__#..m.....5.....m..#__',
+  '__#.................#__',
+  '___#...8.......8...#___',
+  '____#....m...m....#____',
+  '_____##.........##_____',
+  '_______#.4...4.#_______',
 ]);
 
 /** The mine's foundry floor: the great works, cold and waiting. */

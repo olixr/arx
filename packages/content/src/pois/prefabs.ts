@@ -1921,12 +1921,17 @@ const fellersBoom = sketch('poi_fellers_boom', "Fellers' boom", [
  * masonry; it is sealed with PERMISSION, which is harder work to
  * break. The trees past it are taller than trees.
  */
+// The arch was sealed with permission; the permission has been given
+// (the_first_focus pays the gift's debt), and the door is a WORKING
+// riftgate now — 'D' rides the stamp as a delve gate by the prefab
+// portal law, and THE KEY IS THE DUNGEON does the rest. The root-
+// halls below are the sixth theme's country.
 const heartwoodDoor = sketch('poi_heartwood_door', 'The Heartwood door', [
   '______,,,,,______',
   '___,,,.....,,,___',
   '__,...Y...Y...,__',
   '_,..5.......5..,_',
-  '_,....S,,,S....,_',
+  '_,....S,D,S....,_',
   ',,..8.S,3,S.8..,,',
   '_,....S,,,S....,_',
   '_,.....SSS.....,_',

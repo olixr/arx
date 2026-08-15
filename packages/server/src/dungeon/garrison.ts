@@ -114,6 +114,28 @@ const ROSTERS: Record<DungeonTheme, ThemeRoster> = {
     bosses: [{ npc: 'gnoll_matriarch', name: 'The Den Matriarch' }],
     warden: 'Den Mother',
   },
+  // THE ROOT-HALLS (the Evenfall epic): what the Everwood's quiet
+  // actually holds down, pooled where the roots reach — the old
+  // watch that was never relieved, and the wood's own teeth keeping
+  // them company in the dark.
+  heartwood: {
+    packs: [
+      { npc: 'skeleton', w: 3 },
+      { npc: 'skeleton_archer', w: 2 },
+      { npc: 'wolf', w: 2, maxPower: 30 },
+      { npc: 'lynx', w: 2 },
+      { npc: 'giant_spider', w: 1 },
+      { npc: 'skeleton_guard', w: 2, minPower: 12 },
+      { npc: 'skeleton_chanter', w: 1, minPower: 24 },
+      { npc: 'dire_wolf', w: 1, minPower: 28 },
+    ],
+    elite: 'lynx',
+    // The barrow lord's body wears the root court's name for now —
+    // a bespoke ROOTED crown is the boss docket's to mint (the
+    // Broodmother handoff precedent).
+    bosses: [{ npc: 'skeleton_barrow_lord', name: 'The Rooted King' }],
+    warden: 'Root Warden',
+  },
 };
 
 /** Furniture that seats a post, and the work it holds. */

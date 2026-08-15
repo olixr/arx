@@ -94,6 +94,17 @@ const DECOR_KITS: Record<DungeonTheme, DecorEntry[]> = {
     { tile: Tile.SkullTotem, per: 170, wall: true },
     { tile: Tile.GlowShroom, per: 44, wall: true, styles: ['cave'] },
   ],
+  // THE ROOT-HALLS: runestones grown askew, crystal the roots fed,
+  // shroomlight where the moon never reached, the odd fallen light
+  // still burning silver with nobody left to thank — and bones,
+  // because the quiet holds down what bones do.
+  heartwood: [
+    { tile: Tile.Runestone, per: 70, wall: true },
+    { tile: Tile.CrystalCluster, per: 95 },
+    { tile: Tile.GlowShroom, per: 40, wall: true, styles: ['cave'] },
+    { tile: Tile.BonePile, per: 110 },
+    { tile: Tile.ArcaneBeacon, per: 170, styles: ['hall'] },
+  ],
 };
 
 /**

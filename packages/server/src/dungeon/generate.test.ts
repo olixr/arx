@@ -284,13 +284,14 @@ test("THE CHAMPION'S COURT: every theme seats its crown over a warded chest", ()
     mine: ['anvil_golem'],
     stronghold: ['goblin_flame_tyrant'],
     warren: ['gnoll_matriarch'],
+    heartwood: ['skeleton_barrow_lord'],
   };
   const found = new Map<string, number>();
-  for (let seed = 1; found.size < 5 && seed <= 600; seed++) {
+  for (let seed = 1; found.size < 6 && seed <= 600; seed++) {
     const spec = dungeonSpecFromRoll({ rar: 'rare', seed });
     if (!found.has(spec.theme)) found.set(spec.theme, seed);
   }
-  assert.equal(found.size, 5, 'all five themes deal within 600 seeds');
+  assert.equal(found.size, 6, 'all six themes deal within 600 seeds');
   for (const [theme, seed] of found) {
     const { zone, bossChest, bossSpawnIndex } = gen(seed, 'rare');
     const s = zone.width;
