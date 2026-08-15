@@ -358,6 +358,85 @@ explicit ok argument; S4's three standing crowns mean S5 must claim
 fresh ground BEFORE eating; never rerun diagnostics against a dirtied
 world — capture the log instead.
 
+## THE WILD CROWN — the generative forge (2026-08-14, fourth session)
+
+The user's mandate: bosses must not all be pre-authored. Core mechanics
+stay authored; VARIANTS are forged — a goblin champion crowned in one
+war-camp fights differently from the same champion crowned in another,
+with different voices, ladders, temperaments, and names. Modular,
+architectural, never a dice roll bolted onto a spawn table.
+
+### The laws
+
+- **LAW W1 — THE FORGE COMPOSES, IT NEVER INVENTS.** Every part a
+  forged crown is built from is AUTHORED: family voice pools (faced
+  voices only), authored chain pairs, ladder archetypes, CC
+  temperaments (each an authored weakness story), bark/name/epithet
+  pools. The seed chooses and jitters WITHIN authored bounds; it never
+  synthesizes a mechanic. Emergence comes from composition — the same
+  boids principle that built the crown itself.
+- **LAW W2 — GENERATED CONTENT WALKS THE SAME GATE.** `forgeCrown`
+  output must pass `validateNpcDef` whole — every boss-block law,
+  chain law, and kit law an authored crown obeys. The fuzz contract
+  (crownForge.test.ts) drives hundreds of seeds per pool through the
+  validator; one failing seed fails the build.
+- **LAW W3 — THE SEED IS THE SOUL.** Same base + same seed = the same
+  crown, forever (name, kit, ladder, temper — bit-stable via the
+  shared mulberry Rng). A camp's crowned champion is a STABLE foe the
+  player can learn, not a re-roll per visit; seeds derive from world
+  coordinates, so the world itself names its tyrants.
+- **LAW W4 — THE BODY IS THE BASE.** A forged crown keeps the base
+  def's `id`: every dialect look, stature table, and art contract keys
+  off the body that earned them. The forge touches BEHAVIOR and
+  identity words only. Zero client changes — the banner, presence,
+  felling, and barks all ride the wire the authored crowns built.
+- **LAW W5 — AUTHORED OUTRANKS FORGED.** A def already wearing a
+  `boss` block is refused by the forge. Named authored crowns (the
+  king, the tyrant, Old Fang...) are the fixed stars; forged crowns
+  fill the wild between them.
+
+### The parts
+
+- `packages/content/src/crownForge.ts` — CROWN_POOLS (goblin,
+  skeleton, gnoll, wolfkin to start), TEMPERS (immovable / stubborn /
+  light / lesson — kb+stun bands), LADDERS (rising_court needs a
+  summon voice, headlong ramps tempo+stride, skirmisher needs a lope
+  voice), and `forgeCrown(base, seed, opts) → NpcDef` (pure).
+- Seats: `ZoneSpawn.crown?: number` (the seed) threads through
+  registerSpawns → the ONE instantiation seam forges after the level
+  reissue (`scaleNpcDef` first, so the crown rides the seat's level;
+  spawn-name pools survive as the given name — the forge appends its
+  epithet). POI content: `PoiGarrisonEntry.crowned?: true` on named
+  holdfast rows → the composer stamps `crown = hashCoords(site...)`.
+- Dev verb `/forgecrown <baseId> [seed]` — deterministic proving.
+
+### As built (same session)
+
+Shipped as designed; the fuzz contract runs 400 seeds per pool through
+`validateNpcDef` whole, plus determinism (bit-equal re-forge; the soul
+holds across level reissues), variance (≥20 names / ≥20 tempers / ≥3
+hands per 100 seeds), and LAW W5 refusal pins. First crowned seats:
+goblin_warhold (goblin_champion), wolfkin_den (dire_wolf), gnoll_squat
+(gnoll_champion) — each site's tyrant is stable and named. A seat-given
+name ('Varga Nine Teeth') is kept WHOLE — only pool-drawn first names
+get epithet-signed, and the naming choice never moves the seed stream.
+
+**Proving = 30 receipts ×2 fresh worlds** (S6: the desk-predicted soul
+on the wire — 'Gorbash Camp-Burner' from seed 4242 twice, 'Ratbane the
+Unbowed' from 777 — and a forged crown fighting whole: engage bark +
+banner turn at its generated gate). Lane laws learned:
+- **THE EDGE OF THE GATE**: `pct(gate)` can round a hair ABOVE the
+  fraction itself (166/255 > 0.65) — gate-crossing wounds pass
+  `pct(gate) − 2`, never the raw edge.
+- **THE UNSTICK**: the prover's chase is straight-line and terrain is
+  rolled; 12s without wound progress steps the prover to the quarry —
+  the chase is not under test, the fight is.
+- **MEASURE AT CAST BEGIN**: a chasing observer closes the whole lope
+  gap during the windup itself — the summon-fx position lies about the
+  flight three different ways (walled courts, natural-cycle calls,
+  windup closure). The charge fx marks where the wind STARTS; that is
+  where the gap must stand.
+
 ## Open questions (recommendation first; proceeding on recommendations)
 
 - **Enrage timers?** REC: no — tempo (`cdMult`) is the honest pressure; a

@@ -1109,6 +1109,11 @@ export function composePoi(
           count: remain,
           level,
           name: gname,
+          // THE WILD CROWN: a crowned row forges its champion — the
+          // seed hashes off the site's own muster, so THIS camp's
+          // tyrant keeps THIS name and hand forever (LAW W3), and the
+          // next camp over forges a different fight entirely.
+          crown: g.crowned ? hashCoords(musterBase, gi, 0x517d) & 0x7fffffff : undefined,
           hours: g.hours,
         });
       }

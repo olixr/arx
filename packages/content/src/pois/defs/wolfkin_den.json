@@ -1,7 +1,7 @@
 {
   "id": "wolfkin_den",
   "name": "Wolfkin den",
-  "description": "The pack's ground, marked and defended — and in the middle of it, the cold camp of the traveler who found that out. Their chest is still there. The pack neither opened it nor left it.",
+  "description": "The pack's ground, marked and defended \u2014 and in the middle of it, the cold camp of the traveler who found that out. Their chest is still there. The pack neither opened it nor left it.",
   "tiers": [
     2,
     5
@@ -52,7 +52,8 @@
         "Ashfang",
         "Hollowhowl",
         "The Winter Sister"
-      ]
+      ],
+      "crowned": true
     }
   ],
   "chestTierBonus": 0,

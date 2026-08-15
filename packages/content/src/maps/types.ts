@@ -46,6 +46,14 @@ export interface ZoneSpawn {
   /** Display-name override — how a scaled troll becomes a Hold-Warden. */
   name?: string;
   /**
+   * THE WILD CROWN (docs/boss-system-plan.md): forge seed. A seeded
+   * seat crowns its champion at spawn — a boss VARIANT composed from
+   * the family's authored parts, deterministic in the seed (the same
+   * seat forges the same tyrant forever). The `name` above survives
+   * as the crown's given name; the forge signs with its epithet.
+   */
+  crown?: number;
+  /**
    * THE COURT HOLDS THE CROWN: per-seat arena radius override. A
    * crown's authored `boss.arenaR` is sized for open ground; a seat
    * inside a stamped room passes the room's own reach here so the

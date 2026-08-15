@@ -584,7 +584,7 @@ import {
   type RepStandingWire,
   type Vec2,
 } from '@arx/shared';
-import { AUTHORED_LOCKS, geographySnapshot, scaleNpcDef } from '@arx/content';
+import { AUTHORED_LOCKS, crownPoolFor, forgeCrown, geographySnapshot, scaleNpcDef } from '@arx/content';
 import {
   bossCdMult,
   bossChainIndex,
@@ -1330,6 +1330,12 @@ interface SpawnState {
   level?: number;
   /** Display-name override (named bosses, hidden-room wardens). */
   name?: string;
+  /**
+   * THE WILD CROWN (docs/boss-system-plan.md): forge seed — the seat
+   * crowns its champion at spawn, deterministically (same seed, same
+   * crown, forever: the world names its own tyrants).
+   */
+  crown?: number;
   /** THE COURT HOLDS THE CROWN: per-seat arena radius override. */
   arenaR?: number;
   /** Idle waypoint loop (POI sentry rounds) — survives respawns. */
@@ -2864,6 +2870,7 @@ export class GameServer {
       count: number;
       level?: number;
       name?: string;
+      crown?: number;
       arenaR?: number;
       patrol?: ReadonlyArray<{ x: number; y: number; dwell?: number; sit?: boolean }>;
       hours?: { from: number; to: number };
@@ -2894,6 +2901,7 @@ export class GameServer {
           active: true,
           level: spawn.level,
           name: spawn.name,
+          crown: spawn.crown,
           arenaR: spawn.arenaR,
           patrol: spawn.patrol,
           hours: spawn.hours,
@@ -21250,7 +21258,16 @@ export class GameServer {
       const base = NPCS.get(spawn.npc);
       if (!base) continue;
       // Dungeon garrisons: the authored def re-issued at the key's power.
-      const def = spawn.level !== undefined ? scaleNpcDef(base, spawn.level, spawn.name) : base;
+      let def = spawn.level !== undefined ? scaleNpcDef(base, spawn.level, spawn.name) : base;
+      // THE WILD CROWN: a seeded seat forges its champion into a boss
+      // variant — after the level reissue, so the crown rides the
+      // seat's power; the seat's given name survives as the crown's
+      // first name. Pure in the seed: the same seat forges the same
+      // tyrant on every respawn, and an unforgeable base (no pool, no
+      // kit, authored crown) simply stands unforged — never a crash.
+      if (spawn.crown !== undefined && !def.boss && def.kit && crownPoolFor(def.id)) {
+        def = forgeCrown(def, spawn.crown, { name: spawn.name });
+      }
       // Find a walkable scatter position.
       let x = spawn.x;
       let y = spawn.y;
@@ -25179,6 +25196,47 @@ export class GameServer {
         placed++;
       }
       player.session?.sendJson({ t: 'chat', channel: 'system', text: `Spawned ${def.name} ×${placed}.` });
+      return;
+    }
+    if (config.devCommands && text.startsWith('/forgecrown')) {
+      // /forgecrown <baseId> [seed] — THE WILD CROWN's staging lever:
+      // forge a boss variant beside the caller, deterministic in the
+      // seed (the proving lane's whole handle on the forge).
+      const [, id, seedRaw] = text.split(/\s+/);
+      const base = id ? NPCS.get(id) : undefined;
+      const pool = id ? crownPoolFor(id) : null;
+      if (!base || !base.kit || base.boss || !pool) {
+        const ids = [...NPCS.keys()].filter((k) => crownPoolFor(k) && !NPCS.get(k)!.boss);
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `/forgecrown <base> [seed] — forgeable: ${ids.join(', ')}`,
+        });
+        return;
+      }
+      const seed = Number.parseInt(seedRaw ?? '', 10) || ((Math.random() * 0x7fffffff) | 0);
+      const forged = forgeCrown(base, seed);
+      const pos = this.positions.get(eid);
+      if (!pos) return;
+      let x = pos.x + 1.5;
+      let y = pos.y;
+      for (let tries = 0; tries < 10; tries++) {
+        const a = Math.random() * Math.PI * 2;
+        const r = 1.5 + Math.random() * 2;
+        const tx = pos.x + Math.cos(a) * r;
+        const ty = pos.y + Math.sin(a) * r;
+        if (!this.world.isSolid(Math.floor(tx), Math.floor(ty))) {
+          x = tx;
+          y = ty;
+          break;
+        }
+      }
+      this.spawnNpc(forged, x, y, -1);
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `Forged ${forged.name} — ${forged.boss!.title} (seed ${seed}).`,
+      });
       return;
     }
     if (config.devCommands && text.startsWith('/npcstate')) {

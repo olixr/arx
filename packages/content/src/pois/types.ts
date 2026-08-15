@@ -31,6 +31,14 @@ export interface PoiGarrisonEntry {
   /** Display-name override (named champions). */
   name?: string;
   /**
+   * THE WILD CROWN (docs/boss-system-plan.md): forge this row's
+   * champion into a boss variant. The composer stamps a site-hashed
+   * seed, so the crown is stable per camp and different across camps.
+   * Only meaningful on a row whose npc a crown pool claims; an
+   * unforgeable base simply stands unforged.
+   */
+  crowned?: boolean;
+  /**
    * Sentries only: instead of holding a post, the body walks the
    * perimeter — the composer lays a waypoint loop around the footprint
    * and the idle brain paces it (combat and chase own the body; the

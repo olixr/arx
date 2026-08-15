@@ -52,6 +52,7 @@ export * from './livestock.js';
 export * from './farmwork.js';
 export * from './larder.js';
 export * from './npcs.js';
+export * from './crownForge.js';
 export * from './npcLanes.js';
 export * from './mounts.js';
 export * from './tames.js';
