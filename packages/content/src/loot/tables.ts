@@ -1347,6 +1347,39 @@ const defs: LootTableDef[] = [
     ],
   },
   {
+    id: 'skral',
+    desc: 'Bank pickings: the day\'s catch off its belt, and the frill if the skinning goes well.',
+    entries: [
+      { item: 'bones' },
+      // A skral IS a fisher — the catch on its belt is the least
+      // surprising drop in the game.
+      { item: 'raw_trout', qty: [1, 2], chance: 0.5 },
+      { item: 'skral_frill', chance: 0.1 },
+      { item: 'coins', qty: [3, 14], chance: 0.45 },
+      { item: 'frost_essence', chance: 0.08 },
+      { item: 'brass_key', chance: 0.02 },
+      { item: 'dungeon_key', chance: 0.012 },
+    ],
+  },
+  {
+    id: 'skral_champion',
+    desc: 'The deepking pays like a king of anywhere: the pearl off its throat, and the drowned things it hoarded.',
+    rarityBonus: 3,
+    entries: [
+      { item: 'bones' },
+      { item: 'deepking_pearl', chance: 0.9 },
+      { item: 'skral_frill', qty: [1, 2], chance: 0.5 },
+      { item: 'coins', qty: [25, 70], chance: 0.7 },
+      { item: 'frost_essence', qty: [1, 3], chance: 0.35 },
+      { item: 'brass_key', chance: 0.08 },
+      { item: 'dungeon_key', chance: 0.04 },
+      // The dark-waters wardrobe the crabs only pass around — the
+      // deepking is the one who DIVES for it. Better odds at the
+      // throne than in the shallows.
+      ...setDrops('tidecaller', 0.02, { colorway: 'darkwater' }),
+    ],
+  },
+  {
     id: 'slime',
     desc: 'What the ooze dissolved, and what it could not.',
     entries: [

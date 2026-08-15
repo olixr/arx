@@ -70,6 +70,10 @@ const STONE: NpcLanes = { resist: ['onehand'], weak: ['arx'] };
 const FORMLESS: NpcLanes = { resist: ['archery'], weak: ['arx'] };
 const CARAPACE: NpcLanes = { resist: ['onehand'], weak: ['twohand'] };
 const GIANT: NpcLanes = { resist: ['onehand'], weak: ['archery'] };
+// Slick hide sheds the shaft; the working bites the wet. (Same pair
+// the formless speak, but the skral EARN it differently — an arrow
+// skates off angled slime-coated scale where a slime swallows it.)
+const SLICK: NpcLanes = { resist: ['archery'], weak: ['arx'] };
 
 export const NPC_LANES: Record<string, NpcLanes> = {
   // Bones turn arrows; the great blade cracks them.
@@ -98,4 +102,9 @@ export const NPC_LANES: Record<string, NpcLanes> = {
   ogre_hurler: GIANT,
   ogre_bellower: GIANT,
   ogre_champion: GIANT,
+  // The brine-folk: slick scale turns the shaft, the storm finds the wet.
+  skral: SLICK,
+  skral_harpooner: SLICK,
+  skral_tidecaller: SLICK,
+  skral_champion: SLICK,
 };

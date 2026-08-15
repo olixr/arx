@@ -103,6 +103,7 @@ import {
 } from './rig.js';
 import { golemLook, type GolemLook } from './golems.js';
 import { GutSim, PendantSim, ogreLook, type OgreLook } from './ogre.js';
+import { skralLook, type SkralLook } from './skral.js';
 import { LegRig, type LegPose } from './legs.js';
 import { FINISHER_PHASES, strikePhases } from './carriage.js';
 import { GREAT_FINISHER_PHASES, GREAT_PHASES } from './wield.js';
@@ -34237,6 +34238,8 @@ export class Renderer {
     golem?: GolemLook;
     /** Giant-dialect override: this humanoid is an ogre. */
     ogre?: OgreLook;
+    /** Brine-dialect override: this humanoid is a skral. */
+    skral?: SkralLook;
     /** Weapons stowed on the body (snapshot SHEATHED_BIT). */
     sheathed?: boolean;
     /**
@@ -34817,7 +34820,10 @@ export class Renderer {
     // elastic-body pair (earPhysics.ts) on the anim map. The rig
     // ticks them inside drawHumanoid — only the lifecycle and the
     // restless re-bake cue live here.
-    if (e.goblin) {
+    if (e.goblin || e.skral) {
+      // The skral's crest rides the same slot in its brine verse —
+      // one elastic-body contract, two species (the ear-physics API
+      // was species-agnostic by design, and this is the payoff).
       anim.ears ??= new EarSim(typeof e.eid === 'number' ? e.eid : 7);
     } else if (anim.ears) {
       anim.ears = undefined;
@@ -34895,6 +34901,10 @@ export class Renderer {
       // The ogre's design + seed: hide cluster, warts, scar, and the
       // belt trophy all hash the spawn — no two sprites may collide.
       e.ogre ? `O${e.ogre.design}${(e.ogre.seed ?? 0) & 0xff}` : ''
+    }${
+      // The skral's water cluster and flank speckle ride the spawn
+      // seed — same-water bodies must never share a sprite.
+      e.skral ? `S${(e.skral.seed ?? 0) & 0xff}` : ''
     }${seat ? `|${seat.kind}${seat.head ?? ''}` : ''}${riding ? `|m${anim.mountKey}` : ''}`;
 
     const capeFront = capeSim !== null && capeSim.front(Math.sin(dir));
@@ -35161,6 +35171,7 @@ export class Renderer {
           kobold: e.kobold,
           gnoll: e.gnoll,
           goblin: e.goblin,
+          skral: e.skral,
           earSim: anim.ears,
           golem: e.golem,
           ogre: e.ogre,
@@ -36322,6 +36333,18 @@ export class Renderer {
   };
 
   /**
+   * Skral stature (docs/skral-plan.md): waist-high waders between the
+   * goblin and a man, on the biggest head proportion in the game —
+   * and the deepking a full head over its whole shoal.
+   */
+  private static readonly SKRAL_SIZE: Record<string, number> = {
+    skral: 0.86,
+    skral_harpooner: 0.84,
+    skral_tidecaller: 0.9,
+    skral_champion: 1.25,
+  };
+
+  /**
    * Gnoll kit — the loot-story law: scavenged pieces that really drop
    * from the warband's tables. The skulker swings rusted camp iron;
    * the packlord hauls the greatblade no goblin could lift.
@@ -36586,6 +36609,7 @@ export class Renderer {
       defId.startsWith('gnoll') ||
       defId.endsWith('_golem') ||
       defId.startsWith('ogre') ||
+      defId.startsWith('skral') ||
       defId === 'troll'
     ) {
       const def = npcDef(defId);
@@ -36598,6 +36622,9 @@ export class Renderer {
       // of individuals from one stock, never one body stamped five
       // times (THE GREENSKIN DIALECT).
       const gob = defId.startsWith('goblin') ? goblinLook(defId, eid) : undefined;
+      // The skral wader and harpooner roll their water cluster; the
+      // tidecaller and deepking are designs (THE BRINE DIALECT).
+      const skr = defId.startsWith('skral') ? skralLook(defId, eid) : undefined;
       // The rock golem rolls its stone cluster the same way; the other
       // builds are designs whose seed varies layout, never palette.
       const gol = defId.endsWith('_golem') ? golemLook(defId, eid) : undefined;
@@ -36716,7 +36743,7 @@ export class Renderer {
         // The goblin's garment ground is its own rolled hide — the
         // tunic block under the pot-gut overpaint must never flash a
         // different green at the silhouette edge.
-        color: gob?.hide ?? ogr?.hide ?? def?.color ?? '#999',
+        color: gob?.hide ?? ogr?.hide ?? skr?.hide ?? def?.color ?? '#999',
         skinColor:
           defId === 'troll'
             ? '#6a7d5c'
@@ -36730,7 +36757,9 @@ export class Renderer {
                     ? gol.shell
                     : ogr
                       ? ogr.hide
-                      : Renderer.BRIGAND_SKIN[defId],
+                      : skr
+                        ? skr.hide
+                        : Renderer.BRIGAND_SKIN[defId],
         size:
           Renderer.KOBOLD_SIZE[defId] ??
           Renderer.GNOLL_SIZE[defId] ??
@@ -36739,6 +36768,7 @@ export class Renderer {
           Renderer.BRIGAND_SIZE[defId] ??
           Renderer.GOLEM_SIZE[defId] ??
           Renderer.OGRE_SIZE[defId] ??
+          Renderer.SKRAL_SIZE[defId] ??
           (defId === 'troll' ? 1.4 : 0.85),
         nameInk,
         skeletal: skel,
@@ -36747,6 +36777,7 @@ export class Renderer {
         goblin: gob,
         golem: gol,
         ogre: ogr,
+        skral: skr,
       });
     }
 
@@ -38430,6 +38461,7 @@ export class Renderer {
       death.defId.startsWith('gnoll') ||
       death.defId.endsWith('_golem') ||
       death.defId.startsWith('ogre') ||
+      death.defId.startsWith('skral') ||
       death.defId === 'troll';
     let rag: Ragdoll;
     let look: (typeof this.corpses)[number]['look'];
@@ -38475,6 +38507,7 @@ export class Renderer {
         Renderer.BRIGAND_SIZE[death.defId] ??
         Renderer.GOLEM_SIZE[death.defId] ??
         Renderer.OGRE_SIZE[death.defId] ??
+        Renderer.SKRAL_SIZE[death.defId] ??
         (death.defId === 'troll' ? 1.4 : 0.85);
       const corpseKob = death.defId.startsWith('kobold')
         ? koboldLook(death.defId)
@@ -38496,7 +38529,12 @@ export class Renderer {
       const corpseOgr = death.defId.startsWith('ogre')
         ? ogreLook(death.defId, death.eid)
         : undefined;
-      const bodyColor = corpseGob?.hide ?? corpseOgr?.hide ?? def.color ?? '#999';
+      // The drowned-out skral keeps its rolled water (the corpse-coat
+      // law: seed by raw eid, never the mixed rag seed).
+      const corpseSkr = death.defId.startsWith('skral')
+        ? skralLook(death.defId, death.eid)
+        : undefined;
+      const bodyColor = corpseGob?.hide ?? corpseOgr?.hide ?? corpseSkr?.hide ?? def.color ?? '#999';
       rag = buildHumanoidRagdoll(size, seed);
       rag.launch(sx, sy, sev, HUMANOID_UPPER, HUMANOID_FEET);
       look = {
@@ -38511,6 +38549,7 @@ export class Renderer {
                 corpseGob?.hide ??
                 corpseGol?.shell ??
                 corpseOgr?.hide ??
+                corpseSkr?.hide ??
                 Renderer.BRIGAND_SKIN[death.defId] ??
                 '#7aa74a'),
           hairColor: shade(bodyColor, -24),
@@ -38519,7 +38558,8 @@ export class Renderer {
           // kobold corpses keep the scale dialect — horns and tail;
           // gnoll corpses keep the fur dialect — muzzle, crest, coat;
           // goblin corpses keep the greenskin dialect — ears and tusks;
-          // golem corpses keep the construct dialect — the collapse.
+          // golem corpses keep the construct dialect — the collapse;
+          // skral corpses keep the brine dialect — the flopped crest.
           skel: death.defId.startsWith('skeleton')
             ? skeletonLook(death.defId)
             : undefined,
@@ -38528,6 +38568,7 @@ export class Renderer {
           gob: corpseGob,
           gol: corpseGol,
           ogr: corpseOgr,
+          skr: corpseSkr,
         },
       };
     } else {

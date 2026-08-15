@@ -3884,6 +3884,58 @@ const defs: AbilityDef[] = [
     status: { status: 'chill', power: 1, durationTicks: 50 },
   },
 
+  // ------------------------------------ THE SKRAL (docs/skral-plan.md):
+  // the brine-folk's three words. The tidecaller speaks two — the lash
+  // thrown flat off the wrist and the undertow staked where your feet
+  // are headed — and the deepking speaks the third: the croak that is
+  // not a spell at all, just the whole shoal's name said once, loudly.
+  {
+    id: 'tide_lash',
+    name: 'Tide Lash',
+    desc: 'The tidecaller snaps its wrist and a rope of brine cracks across the bank, cold as the deep it came from.',
+    color: '#6fa8a0',
+    code: 'Tl',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'projectile_fan',
+    damage: 4,
+    projectiles: 1,
+    projectileSpeed: 11,
+    range: 8,
+    // Cold water at pressure IS winter with intent (the crab's law).
+    element: 'frost',
+    status: { status: 'chill', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'riptide_ring',
+    name: 'Riptide Ring',
+    desc: 'The tidecaller marks a ring of ground, and the ground remembers it used to be riverbed. Do not be standing in the memory.',
+    color: '#54889c',
+    code: 'Rr',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'ground_aoe',
+    damage: 5,
+    range: 0, // staked where the caster's aim law puts it
+    radius: 2.2,
+    fuseTicks: 22,
+    // THE UNDERTOW: no shove — the water's argument is that you slow.
+    status: { status: 'chill', power: 2, durationTicks: 50 },
+  },
+  {
+    id: 'shoal_call',
+    name: 'Shoal-Call',
+    desc: "The deepking fills its throat and croaks the shoal's one word. The bank answers.",
+    color: '#7c9c8a',
+    code: 'Sc',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'ground_aoe',
+    damage: 4,
+    range: 0,
+    radius: 3.2,
+    fuseTicks: 18,
+    // The croak grips like cold water down the spine.
+    status: { status: 'chill', power: 1, durationTicks: 40 },
+  },
+
   // -------------------------------- THE EARTH STANDS UP (golem arts,
   // docs/golems-plan.md): four constructs, and every big die bought at
   // the telegraph premium off a slow heavy basic. A golem's art is

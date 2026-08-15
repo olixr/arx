@@ -19,6 +19,7 @@ import {
   type RigPose,
 } from '../render/rig.js';
 import { ogreLook } from '../render/ogre.js';
+import { skralLook } from '../render/skral.js';
 import { TailSim, drawTail } from '../render/tail.js';
 
 /**
@@ -171,6 +172,11 @@ const MOB_SIZE: Record<string, number> = {
   ogre_hurler: 2.1,
   ogre_bellower: 2.25,
   ogre_champion: 2.5,
+  // THE BRINE DIALECT: waist-high waders, the deepking over its shoal.
+  skral: 0.86,
+  skral_harpooner: 0.84,
+  skral_tidecaller: 0.9,
+  skral_champion: 1.25,
 };
 
 /** Road tans for the human outlaws (the renderer's BRIGAND_SKIN twin). */
@@ -188,6 +194,7 @@ function isHumanoidMob(defId: string): boolean {
     defId.startsWith('brigand') ||
     defId.startsWith('gnoll') ||
     defId.startsWith('ogre') ||
+    defId.startsWith('skral') ||
     defId === 'troll'
   );
 }
@@ -208,6 +215,9 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
   // The ogre card pins the tallow hide; the gut and trophy paint THE
   // ONE REST (no sims on a still card — the same settled silhouette).
   const ogr = def.id.startsWith('ogre') ? ogreLook(def.id, 0) : undefined;
+  // The skral card pins the tide-green water; the crest paints THE
+  // ONE REST through the rig's stateless earRestChain path.
+  const skr = def.id.startsWith('skral') ? skralLook(def.id, 0) : undefined;
   if (gno) {
     // The tail is a simulation in the world (tail.ts); the poster runs
     // it to rest at a pinned moment and paints the settled brush
@@ -251,7 +261,7 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
     // A pinned poster is deliberately STATELESS: no depthMemory, so
     // the rig runs its single-frame fallbacks — fine for a still.
     kneeMemory: [0, 0],
-    bodyColor: gob?.hide ?? ogr?.hide ?? def.color,
+    bodyColor: gob?.hide ?? ogr?.hide ?? skr?.hide ?? def.color,
     hurt: false,
     isOwn: false,
     weaponItem: eq.weapon,
@@ -263,13 +273,14 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
     skinColor:
       def.id === 'troll'
         ? '#6a7d5c'
-        : (gob?.hide ?? kob?.hide ?? gno?.fur ?? ogr?.hide ?? MOB_SKIN[def.id]),
+        : (gob?.hide ?? kob?.hide ?? gno?.fur ?? ogr?.hide ?? skr?.hide ?? MOB_SKIN[def.id]),
     size: sizeK,
     skeletal: skel,
     kobold: kob,
     gnoll: gno,
     goblin: gob,
     ogre: ogr,
+    skral: skr,
     gatherPhase: 0,
     craftKind: null,
   };

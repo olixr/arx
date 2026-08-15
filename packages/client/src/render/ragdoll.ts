@@ -95,6 +95,7 @@ import {
 } from './rig.js';
 import { type GolemLook } from './golems.js';
 import { type OgreLook } from './ogre.js';
+import { type SkralLook } from './skral.js';
 
 const BOOT = '#4a3324';
 
@@ -501,6 +502,9 @@ export interface HumanoidCorpseLook {
   /** Set = this corpse is an ogre: THE FELLED HILL — the gut is the
    *  mound, the jaw still juts, the club lies by the open hand. */
   ogr?: OgreLook;
+  /** Set = this corpse is a skral: the lantern eye gone dull, the
+   *  crest flopped flat over the skull, the needle grin slack. */
+  skr?: SkralLook;
   /** Worn equipment — the corpse keeps everything it died in. */
   gear?: CorpseGear;
 }
@@ -588,14 +592,18 @@ export function drawHumanoidRagdoll(
       ? shade(look.gno.fur, -5)
       : look.gob
         ? shade(look.gob.hide, -6)
-        : (legSt?.thigh ?? shade(look.bodyColor, -28));
+        : look.skr
+          ? shade(look.skr.hide, -6)
+          : (legSt?.thigh ?? shade(look.bodyColor, -28));
   const shinCol = look.kob
     ? shade(look.kob.hide, -12)
     : look.gno
       ? shade(look.gno.fur, -14)
       : look.gob
         ? shade(look.gob.hide, -15)
-        : (legSt?.shin ?? legCol);
+        : look.skr
+          ? shade(look.skr.hide, -14)
+          : (legSt?.shin ?? legCol);
   const sleeveCol = bodySt?.sleeve ?? shade(cloth, -10);
   const footCol = look.kob
     ? shade(look.kob.hide, -8)
@@ -603,7 +611,9 @@ export function drawHumanoidRagdoll(
       ? shade(look.gno.skin, -6)
       : look.gob
         ? shade(look.gob.hide, -4)
-        : (bootSt?.color ?? BOOT);
+        : look.skr
+          ? shade(look.skr.belly, -8)
+          : (bootSt?.color ?? BOOT);
   const mittCol = gloveSt?.color ?? look.skinColor;
   const foreCol = gloveSt ? (gloveSt.bracer ?? shade(gloveSt.color, -8)) : look.skinColor;
 
@@ -1040,6 +1050,85 @@ export function drawHumanoidRagdoll(
       ctx.lineTo(hw * 0.44, hh * 0.5);
       ctx.closePath();
       ctx.fill();
+    }
+  } else if (look.skr) {
+    // The skral corpse head in profile: the broad fish skull with the
+    // crest flopped FLAT over the crown (the sail's standing days are
+    // over), the near lantern eye gone dull under a slack lid, the
+    // long grin seam fallen open a needle's width, one barbel in the
+    // dirt. Identity by silhouette: nobody mistakes the fallen fish.
+    const sk = look.skr;
+    const hv = sk.heavy;
+    // The flopped crest: membrane lying back over the skull, rays
+    // still fanned through it.
+    ctx.fillStyle = shade(sk.fin, -12);
+    ctx.beginPath();
+    ctx.moveTo(hw * 0.2, -hh * 0.6);
+    ctx.quadraticCurveTo(-hw * (1.2 + 0.2 * hv), -hh * (1.0 + 0.1 * hv), -hw * (1.75 + 0.25 * hv), -hh * 0.25);
+    ctx.quadraticCurveTo(-hw * 0.9, -hh * 0.4, hw * 0.05, -hh * 0.3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = shade(sk.ray, -4);
+    ctx.lineWidth = Math.max(1, hh * 0.045);
+    for (const t of [0.45, 0.75] as const) {
+      ctx.beginPath();
+      ctx.moveTo(hw * 0.05, -hh * 0.45);
+      ctx.lineTo(-hw * (0.7 + t) * (1 + 0.1 * hv), -hh * (0.35 + t * 0.5));
+      ctx.stroke();
+    }
+    // The broad skull — wider than tall even in the sprawl.
+    ctx.fillStyle = sk.hide;
+    ctx.beginPath();
+    chamferRect(ctx, -hw * 1.1, -hh * 0.6, hw * 2.3, hh * 1.24, [cut * 1.2, cut * 1.2, cut * 0.8, cut * 0.8]);
+    ctx.fill();
+    // The dull lantern: pale iris, no glint ever again, lid half down.
+    ctx.fillStyle = shade(sk.eye, -18);
+    ctx.beginPath();
+    ctx.ellipse(hw * 0.44, -hh * 0.18, hh * 0.26, hh * 0.24, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = shade(sk.hide, -6);
+    ctx.beginPath();
+    ctx.ellipse(hw * 0.44, -hh * 0.3, hh * 0.28, hh * 0.16, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+    // The grin seam, fallen open a needle's width — pale jaw under.
+    ctx.fillStyle = sk.belly;
+    ctx.beginPath();
+    chamferRect(ctx, -hw * 0.5, hh * 0.42, hw * 1.7, hh * 0.26, [0, 0, cut * 0.4, cut * 0.4]);
+    ctx.fill();
+    ctx.strokeStyle = sk.ink;
+    ctx.lineWidth = Math.max(1, hh * 0.05);
+    ctx.beginPath();
+    ctx.moveTo(-hw * 0.5, hh * 0.42);
+    ctx.quadraticCurveTo(hw * 0.4, hh * 0.52, hw * 1.2, hh * 0.4);
+    ctx.stroke();
+    // Needles resting on the slack seam.
+    ctx.fillStyle = '#e6e8da';
+    for (const off of [0.1, 0.45, 0.8]) {
+      ctx.beginPath();
+      ctx.moveTo(hw * off - hh * 0.04, hh * 0.44);
+      ctx.lineTo(hw * off, hh * 0.44 - hh * 0.13);
+      ctx.lineTo(hw * off + hh * 0.04, hh * 0.44);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // One barbel in the dirt.
+    ctx.strokeStyle = sk.ink;
+    ctx.lineWidth = Math.max(1, hh * 0.04);
+    ctx.beginPath();
+    ctx.moveTo(hw * 1.2, hh * 0.44);
+    ctx.quadraticCurveTo(hw * 1.4, hh * 0.6, hw * 1.55, hh * 0.62);
+    ctx.stroke();
+    // The deepking's coral studs outlive the king.
+    if (sk.crowned) {
+      ctx.fillStyle = shade('#e6e8da', -6);
+      for (const off of [-0.55, -0.1, 0.35]) {
+        ctx.beginPath();
+        ctx.moveTo(hw * off - hh * 0.05, -hh * 0.58);
+        ctx.lineTo(hw * off, -hh * 0.78);
+        ctx.lineTo(hw * off + hh * 0.05, -hh * 0.56);
+        ctx.closePath();
+        ctx.fill();
+      }
     }
   } else {
     ctx.fillStyle = look.skinColor;

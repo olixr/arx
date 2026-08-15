@@ -365,6 +365,71 @@ const gnollDenhall = sketch(
   gnollMarks,
 );
 
+const skralMarks: Record<string, Marker> = {
+  '1': { npc: 'skral', radius: 2, under: Tile.Dirt },
+  '2': { npc: 'skral', radius: 2, under: Tile.Dirt },
+  '3': { npc: 'skral_harpooner', radius: 2, under: Tile.Dirt },
+};
+
+/**
+ * THE SKRAL CAMPS (docs/skral-plan.md): the brine-folk BUILD, but only
+ * in bank-stuff — reed shelters, lashed racks heavy with the catch,
+ * and always the dug pool at the heart (the '~' shallows: a camp that
+ * carries its own water is a camp that could only ever stand on the
+ * bank, which is exactly what the def's shore flag promises).
+ */
+const skralWeir = sketch(
+  'poi_skral_weir',
+  'Skral weir-camp',
+  [
+    '____,,,,,,____',
+    '__,::::::::,__',
+    '_,:.)..^..):,_',
+    '_,:1.~~~.2.:,_',
+    ',::.~~~~~.f:,_',
+    '_,:3.~~~.).:,_',
+    '_,:.`..W...:,_',
+    ',::0.f.-..)::,',
+    '_,::::?:::,,__',
+    '____,,,,______',
+  ],
+  skralMarks,
+);
+
+/** The totem-ring: shell-stacked watchers around the pool. */
+const skralTotems = sketch(
+  'poi_skral_totems',
+  'Skral totem-ring',
+  [
+    '____,,,,____',
+    '__,::::::,__',
+    '_,:?.).?.:,_',
+    ',::.~~~.1::,',
+    ',:2~~~.f.::,',
+    '_,:?.W.?.:,_',
+    '__,:::::0,__',
+    '____,,,,____',
+  ],
+  skralMarks,
+);
+
+/** The shell-midden: an open catch-camp, racks and refuse and smoke. */
+const skralMidden = sketch(
+  'poi_skral_midden',
+  'Skral shell-midden',
+  [
+    '____,,,,____',
+    '__,::::::,__',
+    '_,:o.1.^.:,_',
+    ',::.{.f..::,',
+    ',::3.-.o.::,',
+    '_,:.o.W2.:,_',
+    '__,::`:::,__',
+    '____,,,,____',
+  ],
+  skralMarks,
+);
+
 const ogreMarks: Record<string, Marker> = {
   // A giant wanders wide of its post — the radius is the read.
   '1': { npc: 'ogre', radius: 3, under: Tile.Dirt },
@@ -2002,6 +2067,9 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     gnollSquat,
     gnollBoneyard,
     gnollDenhall,
+    skralWeir,
+    skralTotems,
+    skralMidden,
     // THE HILL COMES DOWN (the giant-kin grounds):
     ogreCamp,
     ogreMidden,

@@ -521,6 +521,14 @@ export function validatePoiDef(
     }
   }
 
+  // THE SHORE CAMP flag: this def only stands where the water is.
+  const shore =
+    raw.shore === undefined
+      ? undefined
+      : typeof raw.shore === 'boolean'
+        ? raw.shore
+        : (errors.push('shore must be a boolean'), undefined);
+
   // The cleared-flag hook.
   const clearedFlag =
     raw.clearedFlag === undefined
@@ -541,6 +549,7 @@ export function validatePoiDef(
       name,
       ...(description !== undefined ? { description } : {}),
       ...(family !== undefined ? { family } : {}),
+      ...(shore !== undefined ? { shore } : {}),
       tiers,
       weight,
       prefabs,

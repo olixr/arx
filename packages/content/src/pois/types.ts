@@ -179,6 +179,15 @@ export interface PoiDef {
    * and neutral sites usually should).
    */
   family?: string;
+  /**
+   * THE SHORE CAMP (skral epic): true = this archetype only stands on
+   * a bank — every candidate anchor must pass shoreProbeAt (open
+   * water within a stone's throw), and a cell whose ground shows no
+   * water never offers the def in its kind pool. The POI cousin of
+   * the wilds' 'shore' refinement, honoring the same elevation truth,
+   * so a fishing camp can never roll in a dry meadow.
+   */
+  shore?: boolean;
   /** Danger tiers this archetype can roll at, inclusive. */
   tiers: readonly [number, number];
   /** Pick weight among archetypes eligible at a tier. */

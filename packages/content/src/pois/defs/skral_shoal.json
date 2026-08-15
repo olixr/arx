@@ -1,0 +1,166 @@
+{
+  "id": "skral_shoal",
+  "name": "Skral shoal",
+  "description": "Reed shelters and drying racks on the wet margin, and a dug pool the bank keeps refilling. The croaking stops when you get close. That is the bad sign.",
+  "tiers": [
+    2,
+    5
+  ],
+  "weight": 2,
+  "shore": true,
+  "prefabs": [
+    "poi_skral_weir",
+    "poi_skral_totems",
+    "poi_skral_midden"
+  ],
+  "garrison": [
+    {
+      "npc": "skral",
+      "count": [
+        2,
+        3
+      ],
+      "role": "holdfast"
+    },
+    {
+      "npc": "skral",
+      "count": [
+        1,
+        2
+      ],
+      "role": "sentry",
+      "patrol": true
+    },
+    {
+      "npc": "skral_harpooner",
+      "count": [
+        1,
+        2
+      ],
+      "role": "holdfast"
+    },
+    {
+      "npc": "skral_tidecaller",
+      "count": [
+        1,
+        1
+      ],
+      "role": "holdfast",
+      "minTier": 3
+    },
+    {
+      "npc": "skral_champion",
+      "count": [
+        1,
+        1
+      ],
+      "role": "holdfast",
+      "minTier": 3,
+      "levelOffset": 3,
+      "names": [
+        "Brackjaw",
+        "Wetmaw",
+        "Gullcroak",
+        "Old Brine"
+      ],
+      "crowned": true
+    }
+  ],
+  "chestTierBonus": 0,
+  "chestWarded": true,
+  "clearedFlag": "poi_skral_shoal_broken",
+  "cues": {
+    "clearing": 4,
+    "approachPath": true,
+    "scatter": [
+      {
+        "tile": "BonePile",
+        "count": 2
+      }
+    ]
+  },
+  "boldness": {
+    "stages": [
+      {
+        "garrison": [
+          {
+            "npc": "skral",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "skral",
+            "count": [
+              1,
+              1
+            ],
+            "role": "sentry",
+            "patrol": true
+          },
+          {
+            "npc": "skral_harpooner",
+            "count": [
+              1,
+              1
+            ],
+            "role": "holdfast"
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "skral",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          },
+          {
+            "npc": "skral_champion",
+            "count": [
+              1,
+              1
+            ],
+            "role": "holdfast",
+            "minTier": 3,
+            "names": [
+              "Brackjaw",
+              "Wetmaw",
+              "Gullcroak",
+              "Old Brine"
+            ]
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "BonePile",
+            "count": 2
+          }
+        ]
+      }
+    ],
+    "satellites": true
+  },
+  "family": "skral"
+}

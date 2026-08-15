@@ -571,6 +571,15 @@ export const FX_STYLES: Record<string, FxStyle> = {
   // glacier and the crypt cold alike.
   breakwater_grip: TIDE({ mid: '#6d8577', deep: '#22403a', spark: '#d8ecdf', ring: 'teeth', debris: 'ice', decal: 'stain', punch: 0.75, wash: 0.4 }),
   brine_jet: TIDE({ mid: '#7ab0b8', deep: '#28454e', ring: 'shards', debris: 'ice', decal: 'stain', motif: 'wave', punch: 0.4, wash: 0.35 }),
+  // THE SKRAL (docs/skral-plan.md) — the same cold harbor family in a
+  // kelp-green register: the lash is thin quick water (light punch,
+  // whip spray), the riptide is the crab's TIDE turned undertow (halo
+  // ring — a ring you should not be inside — with the drag's stain),
+  // and the croak is the ECHO family spoken in brine: rings out of a
+  // throat, not a spell, gurgle-green over deep water.
+  tide_lash: TIDE({ mid: '#6fa8a0', deep: '#24443e', ring: 'shards', debris: 'ice', decal: 'stain', motif: 'wave', punch: 0.35, wash: 0.3 }),
+  riptide_ring: TIDE({ mid: '#54889c', deep: '#1e3a48', ring: 'halo', debris: 'ice', decal: 'stain', motif: 'vortex', punch: 0.6, wash: 0.45 }),
+  shoal_call: TIDE({ mid: '#7c9c8a', deep: '#28443c', spark: '#d8ecdf', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.6, wash: 0.32 }),
 
   // ------------------- THE EARTH STANDS UP (golem arts, docs/golems-plan.md)
   // Four constructs, four material voices: the rock arts speak dry

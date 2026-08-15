@@ -912,6 +912,133 @@ const defs: NpcDef[] = [
     // A shell doesn't bleed.
     resist: ['bleed'],
   },
+
+  // ------------------------------------ THE SKRAL (docs/skral-plan.md):
+  // the brine-folk — fish-headed waders who net the banks by day and
+  // march as a shoal by night. The watersides' first PEOPLE: where the
+  // crabs are the shore's armor, the skral are its society. Cold-water
+  // natives to the last scale: the chill slides off them, the storm
+  // finds the wet. Their courage lives in the shoal — pack + craven is
+  // the whole race written in two fields: poke one and it bolts
+  // croaking for its fellows, and the bank comes down on you.
+  {
+    id: 'skral',
+    name: 'Skral',
+    level: 8,
+    maxHp: 24,
+    damage: 3,
+    attackRange: 1.0,
+    attackCooldownTicks: 50,
+    aggroRange: 5,
+    // Wall-eyed: the lantern eyes sit on the SIDES of the skull —
+    // a skral sees most of the bank without turning its head.
+    sightArc: 260,
+    leashRange: 24,
+    speed: 3.4,
+    xpReward: 90,
+    loot: ['skral'],
+    respawnSec: 30,
+    color: '#4f8a6a',
+    radius: 0.3,
+    hitHeight: 2.0,
+    resist: ['chill'],
+    weak: ['shock'],
+    // The shoal answers as one throat.
+    pack: 'skral',
+    // And a skral alone is a skral already leaving — bloodied, it
+    // bolts croaking for the shoal and drags the whole bank back.
+    craven: true,
+  },
+  {
+    id: 'skral_harpooner',
+    name: 'Skral harpooner',
+    level: 10,
+    maxHp: 22,
+    damage: 3,
+    attackRange: 6,
+    attackCooldownTicks: 56,
+    aggroRange: 6,
+    sightArc: 260,
+    leashRange: 24,
+    speed: 3.2,
+    xpReward: 85,
+    loot: ['skral'],
+    respawnSec: 35,
+    color: '#4a7d9c',
+    radius: 0.28,
+    hitHeight: 2.0,
+    // The fish-spear thrown flat off the bank: a fisher's arm turned
+    // on whatever walks the waterline.
+    ranged: { range: 6, projectileSpeed: 10 },
+    resist: ['chill'],
+    weak: ['shock'],
+    pack: 'skral',
+    craven: true,
+  },
+  {
+    id: 'skral_tidecaller',
+    name: 'Skral tidecaller',
+    level: 12,
+    maxHp: 30,
+    damage: 3,
+    attackRange: 7,
+    attackCooldownTicks: 54,
+    aggroRange: 6,
+    sightArc: 260,
+    leashRange: 26,
+    speed: 3.1,
+    xpReward: 115,
+    loot: ['skral', 'heirlooms'],
+    respawnSec: 50,
+    color: '#5a5474',
+    radius: 0.3,
+    hitHeight: 2.0,
+    // Brine spit: the weak ranged basic between the kit's words.
+    ranged: { range: 7, projectileSpeed: 10 },
+    resist: ['chill'],
+    weak: ['shock'],
+    pack: 'skral',
+    // THE STANDOFF CASTER, bank verse: holds the waterline and lets
+    // the tide speak.
+    standoff: 5.5,
+    kit: [
+      { ability: 'tide_lash', cooldownTicks: 120, windupTicks: 12, minRange: 1.5, maxRange: 8 },
+      // 'lead': the undertow is staked where you are GOING.
+      { ability: 'riptide_ring', cooldownTicks: 240, windupTicks: 14, maxRange: 7, aim: 'lead' },
+    ],
+  },
+  {
+    // THE DEEPKING: the shoal's named heart — the one skral the bank
+    // stands behind, crowned in coral and carrying a barbed trident
+    // no smith forged. The fight is the CAMP: the pack tag brings the
+    // whole shoal, and the croak calls it twice.
+    id: 'skral_champion',
+    name: 'Skral deepking',
+    level: 17,
+    maxHp: 88,
+    damage: 5,
+    attackRange: 1.2,
+    attackCooldownTicks: 44,
+    aggroRange: 7,
+    sightArc: 300,
+    leashRange: 30,
+    speed: 3.7,
+    xpReward: 310,
+    loot: ['skral_champion', 'heirlooms'],
+    respawnSec: 90,
+    color: '#3d5c6e',
+    radius: 0.42,
+    hitHeight: 2.3,
+    // The cold grip: a trident that spent its life in the water
+    // leaves the water's argument in the wound.
+    attackStatus: { status: 'chill', power: 1, durationTicks: 50 },
+    resist: ['chill'],
+    weak: ['shock'],
+    pack: 'skral',
+    // The croak is WOUND: the throat visibly fills before the word —
+    // the breath voice's charge law, and the fight's one clean read.
+    kit: [{ ability: 'shoal_call', cooldownTicks: 200, windupTicks: 12, maxRange: 4.5, rally: true }],
+  },
   {
     id: 'slime',
     name: 'Slime',

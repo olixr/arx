@@ -8,6 +8,7 @@ import wolfkinGreatden from './defs/wolfkin_greatden.json';
 import championsTor from './defs/champions_tor.json';
 import forestRuin from './defs/forest_ruin.json';
 import gnollSquat from './defs/gnoll_squat.json';
+import skralShoal from './defs/skral_shoal.json';
 import ogreCamp from './defs/ogre_camp.json';
 import goblinWarcamp from './defs/goblin_warcamp.json';
 import koboldDigs from './defs/kobold_digs.json';
@@ -68,6 +69,10 @@ const SOURCES: readonly unknown[] = [
   championsTor,
   forestRuin,
   gnollSquat,
+  // THE SHORE CAMP (docs/skral-plan.md): the brine-folk's weir-camps —
+  // the first def to carry the 'shore' flag; it only ever stands on a
+  // bank the elevation field itself calls wet.
+  skralShoal,
   ogreCamp,
   goblinWarcamp,
   koboldDigs,

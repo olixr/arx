@@ -1667,6 +1667,107 @@ const breakwater_grip: AbilitySig = {
   },
 };
 
+// --------------------------------------------------------- shoal_call
+// ground_aoe (self-staked, r 3.2) — the deepking's croak.
+
+/**
+ * SHOAL_CALL — "the bank answers."
+ * The read is a VOICE, not a spell: gurgle rings leave the throat in
+ * stuttered PAIRS (glub-GLUB — the cackle's ugly cousin gone
+ * underwater), wobbling out to the ring's edge as living water
+ * circles. When the word lands the pool claps — spray true-height at
+ * the king — and the RIM ANSWERS: small fin-blades stand up around
+ * the circle in a ragged salute and fold away again, because the
+ * call was never about the water. It was about who is in it.
+ */
+const shoal_call: AbilitySig = {
+  spawn(c) {
+    // The throat fills: churn at the king's feet before the word.
+    const m = asMatter(c);
+    water.deployments.churn!(m, c.wx, c.wy, { radius: c.radius * 0.35, scale: 0.5 });
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    ctx.save();
+    // THE GURGLE PAIRS: rings leave in twos — a short beat inside
+    // each pair, a long beat between pairs. Never a steady pulse;
+    // a croak has a rhythm and the rhythm is ugly.
+    const PAIRS: ReadonlyArray<readonly [number, number]> = [
+      [0.0, 0.09],
+      [0.3, 0.39],
+      [0.6, 0.69],
+    ];
+    for (const [pa, pb] of PAIRS) {
+      for (const start of [pa, pb]) {
+        const u = cl((t - start) / 0.42);
+        if (u <= 0 || u >= 1) continue;
+        // The wobble: a ring of water is never a compass circle.
+        const wob = 1 + 0.05 * Math.sin(c.now / 55 + start * 40);
+        const rr = rPx * (0.16 + u * 0.84) * wob;
+        ctx.globalAlpha = 0.7 * (1 - u);
+        ctx.strokeStyle = u < 0.25 ? '#ffffff' : st.mid;
+        ctx.lineWidth = Math.max(1.5, sc * (0.05 - u * 0.02));
+        ctx.beginPath();
+        ctx.ellipse(px, py, rr, rr * squash, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+    // THE RIM ANSWER: fin-blades stand up around the circle in a
+    // ragged stagger and fold away — the shoal, saluting its king.
+    const ans = cl((t - 0.45) / 0.5);
+    if (ans > 0) {
+      const rand = srand(c.seed ^ 0x5ca11);
+      for (let k = 0; k < 9; k++) {
+        const a = (k / 9) * Math.PI * 2 + (rand() - 0.5) * 0.5;
+        const stag = rand() * 0.35;
+        const rise = cl((ans - stag) / 0.25);
+        const fold = cl((ans - stag - 0.5) / 0.25);
+        if (rise <= 0 || fold >= 1) continue;
+        const fh = sc * (0.14 + rand() * 0.07) * rise * (1 - fold);
+        const bx = px + Math.cos(a) * rPx * 0.97;
+        const by = py + Math.sin(a) * rPx * 0.97 * squash;
+        const bw = sc * 0.055;
+        ctx.globalAlpha = 0.85 * (1 - fold);
+        ctx.fillStyle = st.deep;
+        ctx.beginPath();
+        ctx.moveTo(bx - bw, by);
+        // The blade rakes AFT (screen-right of its own rise) — a fin,
+        // never a candle flame.
+        ctx.quadraticCurveTo(bx - bw * 0.2, by - fh, bx + bw * 1.3, by - fh * 0.72);
+        ctx.lineTo(bx + bw, by);
+        ctx.closePath();
+        ctx.fill();
+        // One pale ray through the membrane.
+        ctx.globalAlpha = 0.7 * (1 - fold);
+        ctx.strokeStyle = st.mid;
+        ctx.lineWidth = Math.max(1, sc * 0.018);
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx + bw * 0.3, by - fh * 0.85);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+    // THE WORD LANDS: the pool claps at the throat, and wet brine
+    // grains lie where the croak rolled over.
+    if (crossed(c, 600, 0.45)) {
+      const m = asMatter(c);
+      water.deployments.splash!(m, c.wx, c.wy, { scale: 0.6 });
+      const rand = srand(c.seed ^ 0x5ca);
+      for (let k = 0; k < 5; k++) {
+        const a = rand() * Math.PI * 2;
+        const rr = c.radius * (0.3 + rand() * 0.6);
+        lay(c, c.wx + Math.cos(a) * rr, c.wy + Math.sin(a) * rr * c.squash, '#9fc4b5', {
+          life: 4 + rand() * 2,
+          size: 0.045,
+          fade: '#48685c',
+          fadeAt: 0.5,
+        });
+      }
+    }
+  },
+};
+
 export const FOES_SIGS: Record<string, AbilitySig> = {
   cinder_ring,
   miasma_ring,
@@ -1679,4 +1780,5 @@ export const FOES_SIGS: Record<string, AbilitySig> = {
   rending_lunge,
   shrilling_dart,
   breakwater_grip,
+  shoal_call,
 };

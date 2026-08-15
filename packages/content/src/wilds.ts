@@ -127,6 +127,27 @@ export const WILD_ROSTER: readonly WildEntry[] = [
   // deadlier walls — the band rescales the body, the silhouette
   // keeps the promise.
   { npc: 'giant_crab', weight: 1.2, tiers: [3, 7], biomes: ['shore'], band: [1, 2], spread: 2 },
+  // THE SKRAL (docs/skral-plan.md): the banks get their PEOPLE. Day
+  // shoals wade the margin netting the shallows; harpooners stand off
+  // the waterline in ones and twos.
+  { npc: 'skral', weight: 2, tiers: [2, 5], biomes: ['shore'], band: [2, 4], spread: 2, family: 'skral' },
+  { npc: 'skral_harpooner', weight: 1, tiers: [2, 5], biomes: ['shore'], band: [1, 2], spread: 2, family: 'skral' },
+  // The tidecaller keeps the dark hours — a lone silhouette on the
+  // waterline with the water doing things water should not.
+  { npc: 'skral_tidecaller', weight: 0.7, tiers: [3, 6], biomes: ['shore'], hours: NIGHT, band: [1, 1], family: 'skral' },
+  // THE NIGHT SHOAL: after dark the bank marches behind its deepking —
+  // the gnoll warband's promotion law, spoken in croaks.
+  {
+    npc: 'skral',
+    weight: 1.2,
+    tiers: [3, 6],
+    biomes: ['shore'],
+    hours: NIGHT,
+    band: [3, 5],
+    spread: 2,
+    lead: { npc: 'skral_champion' },
+    family: 'skral',
+  },
   // --------------------------------------------- the standing perils
   { npc: 'wolf', weight: 2, tiers: [2, 5], biomes: ['forest'], band: [2, 3], habitat: 'den', family: 'wolfkin' },
   { npc: 'adder', weight: 1, tiers: [2, 4], biomes: ['grass'] },

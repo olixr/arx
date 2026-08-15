@@ -39,7 +39,7 @@ import {
   type ZoneSign,
   type ZoneSpawn,
 } from '@arx/content';
-import { DARK_BAND_Y, groundProbeAt } from '@arx/content';
+import { DARK_BAND_Y, groundProbeAt, shoreProbeAt } from '@arx/content';
 
 /**
  * THE POI SCAFFOLD — the wilderness sibling of the dungeon generator.
@@ -75,6 +75,30 @@ export const ZONE_CLEARANCE = 24;
 
 /** Candidate anchors probed per cell before giving up. */
 const SITE_TRIES = 24;
+
+/**
+ * THE SHORE CAMP (docs/skral-plan.md): how far a shore-flagged def's
+ * anchor may stand from open water — a stone's throw, far enough for
+ * the footprint to keep dry ground, near enough that the camp and its
+ * water read as one place.
+ */
+const SHORE_CAMP_REACH = 10;
+
+/**
+ * Coarse cell gate for shore-flagged kinds: a 3×3 lattice of wide
+ * probes across the cell. Misses a puddle at the far rim sometimes —
+ * a shore camp made slightly rarer is fine; a landlocked cell burning
+ * its one roll on a def the anchors must all refuse is not.
+ */
+function cellSeesWater(seed: number, x0: number, y0: number): boolean {
+  const q = POI_CELL / 4;
+  for (let gy = 1; gy <= 3; gy++) {
+    for (let gx = 1; gx <= 3; gx++) {
+      if (shoreProbeAt(seed, x0 + gx * q, y0 + gy * q, 14)) return true;
+    }
+  }
+  return false;
+}
 
 export interface PoiZoneRect {
   x: number;
@@ -251,6 +275,11 @@ export function poiForCell(
       // Quick rejects before the full footprint scan.
       if (ty + prefab.height / 2 >= DARK_BAND_Y - ZONE_CLEARANCE) continue;
       if (!standable(groundProbeAt(seed, tx, ty))) continue;
+      // THE SHORE CAMP: a shore-flagged def stands within a stone's
+      // throw of open water or not at all — the same elevation truth
+      // the wild spawner's shore refinement reads, so the fishing
+      // camp and the shoreline can never disagree.
+      if (def.shore && !shoreProbeAt(seed, tx, ty, SHORE_CAMP_REACH)) continue;
       const fx0 = tx - Math.floor(prefab.width / 2);
       const fy0 = ty - Math.floor(prefab.height / 2);
       if (intersectsZones(fx0, fy0, prefab.width, prefab.height, ctx.zoneRects)) continue;
@@ -346,8 +375,17 @@ export function poiForCell(
   }
   // Weight-0 archetypes never roll on their own — they exist only
   // for the authored-sites law (the Last Lamp is placed, not found).
+  // THE SHORE CAMP pool gate: a shore-flagged def only enters a cell's
+  // pool when a coarse probe of the cell actually sees water — an
+  // inland cell never burns its one roll on a camp the land must
+  // refuse (which would starve the cell of any site at all).
   const eligible = ctx.defs.filter(
-    (d) => !d.compound && d.weight > 0 && centerTier >= d.tiers[0] && centerTier <= d.tiers[1],
+    (d) =>
+      !d.compound &&
+      d.weight > 0 &&
+      centerTier >= d.tiers[0] &&
+      centerTier <= d.tiers[1] &&
+      (!d.shore || cellSeesWater(seed, x0, y0)),
   );
   if (eligible.length === 0) return null;
   const totalW = eligible.reduce((s, d) => s + leanW(d), 0);

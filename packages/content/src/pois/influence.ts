@@ -37,6 +37,9 @@ const VOCABS: ReadonlyArray<[RegExp, Vocab]> = [
   [/^poi_(bandit|stockade|raider|barrow_diggers|wardline)/, { litter: [Tile.Crate, Tile.Barrel, Tile.CaveRubble], pocket: [Tile.TentHide, Tile.Crate, Tile.PlunderSacks], fire: Tile.Campfire }],
   [/^poi_(den|greatden)/, { litter: [Tile.BonePile, Tile.SkullPile], pocket: [Tile.BeastNest, Tile.BonePile, Tile.HideFrame] }],
   [/^poi_(gnoll)/, { litter: [Tile.BonePile, Tile.SkullPile], pocket: [Tile.TentHide, Tile.MeatSpit, Tile.SkullPile], fire: Tile.Campfire }],
+  // Skral litter is the CATCH: racks, frames, and fish-bone middens —
+  // a shoal's verge smells of smoke and low tide from the road.
+  [/^poi_(skral)/, { litter: [Tile.BonePile, Tile.MeatRack, Tile.HideFrame], pocket: [Tile.TentHide, Tile.MeatRack, Tile.BonePile], fire: Tile.Campfire }],
   // Ogre litter is FURNITURE-sized: whole middens, whole skulls, the
   // meat economy of a body that eats a cow a day. The fire is the
   // great bonfire — an ogre camp reads from a hilltop away.

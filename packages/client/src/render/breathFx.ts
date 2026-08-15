@@ -402,6 +402,24 @@ export const BREATH_DIALECTS: Record<string, BreathDialect> = {
     charge: (c, x, y, o) =>
       water.deployments.undertow!(c, x, y, { radius: o.radius * 0.45, scale: 0.5, dur: 0.7 }),
   },
+  // THE SKRAL (docs/skral-plan.md) — a wader's wind is the water it
+  // stands in. Tide Lash: the lash is DRAWN — water climbs the caster's
+  // arm in a thin churn before the wrist snaps.
+  tide_lash: {
+    charge: (c, x, y) => water.deployments.churn!(c, x, y, { radius: 0.5, scale: 0.4, dur: 0.6 }),
+  },
+  // Riptide Ring: the bank remembers being riverbed — the undertow
+  // stirs at the caller's feet while the mark is being spoken.
+  riptide_ring: {
+    charge: (c, x, y, o) =>
+      water.deployments.undertow!(c, x, y, { radius: o.radius * 0.5, scale: 0.5, dur: 0.8 }),
+  },
+  // Shoal-Call: the throat fills — spray shivers off the deepking
+  // while the croak loads.
+  shoal_call: {
+    charge: (c, x, y, o) =>
+      water.deployments.churn!(c, x, y, { radius: o.radius * 0.4, scale: 0.5, dur: 0.7 }),
+  },
   // THE BROTHERHOOD (the wolf crown) — three breaths, one sentence.
   // Hamstring Bite: he drops LOW — a skirt of grit shivers out under
   // the crouch before the cut.

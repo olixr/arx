@@ -4680,6 +4680,104 @@ Object.assign(PLATES, {
     dot(c, st.spark, 0.22, 0.0, 0.036);
   },
 
+  // ----------------------- THE SKRAL — the brine-folk's plates.
+  // Tide Lash — the wrist-crack of thrown brine, mid-snap.
+  tide_lash: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.lineCap = 'round';
+    // The lash: one living S of water, thick at the wrist, thin at
+    // the crack.
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.075;
+    c.beginPath();
+    c.moveTo(-0.4, 0.3);
+    c.quadraticCurveTo(-0.1, 0.34, 0.02, 0.06);
+    c.stroke();
+    c.lineWidth = 0.045;
+    c.beginPath();
+    c.moveTo(0.02, 0.06);
+    c.quadraticCurveTo(0.14, -0.22, 0.38, -0.26);
+    c.stroke();
+    // The crack itself: the tip's hard flick.
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.moveTo(0.38, -0.26);
+    c.lineTo(0.3, -0.38);
+    c.stroke();
+    // Spray shaken off the bend.
+    droplet(c, 0.2, -0.02, 0.16, st);
+    droplet(c, -0.06, -0.12, 0.14, st);
+    dot(c, st.spark, 0.4, -0.32, 0.034);
+  },
+  // Riptide Ring — the staked undertow: a ring that pulls inward.
+  riptide_ring: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    // The marked ring on the ground.
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.ellipse(0, 0.08, 0.38, 0.2, 0, 0, Math.PI * 2);
+    c.stroke();
+    // The drag: spiral arms curling to the sunken heart.
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.038;
+    for (const q of [0, 1, 2] as const) {
+      const a0 = q * ((Math.PI * 2) / 3);
+      c.beginPath();
+      c.moveTo(Math.cos(a0) * 0.34, 0.08 + Math.sin(a0) * 0.17);
+      c.quadraticCurveTo(
+        Math.cos(a0 + 1.2) * 0.2,
+        0.08 + Math.sin(a0 + 1.2) * 0.1,
+        Math.cos(a0 + 2.2) * 0.05,
+        0.08 + Math.sin(a0 + 2.2) * 0.025,
+      );
+      c.stroke();
+    }
+    // The heart the water leaves by.
+    dot(c, st.deep, 0, 0.08, 0.05);
+    dot(c, st.spark, 0.3, -0.06, 0.028);
+    droplet(c, -0.3, -0.08, 0.14, st);
+  },
+  // Shoal-Call — the croak: an open throat and the word going out.
+  shoal_call: (st) => (c) => {
+    c.translate(0.42, 0.52);
+    // The gaping profile: blunt skull, underslung jaw wide open.
+    c.fillStyle = st.deep;
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(-0.3, -0.2);
+    c.quadraticCurveTo(0.02, -0.32, 0.14, -0.1); // skull crown
+    c.lineTo(-0.06, -0.02); // upper lip back to the hinge
+    c.quadraticCurveTo(0.1, 0.16, 0.02, 0.26); // the dropped jaw
+    c.quadraticCurveTo(-0.24, 0.28, -0.32, 0.08); // throat sac, full
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The swollen throat's highlight — the croak loaded.
+    dot(c, st.mid, -0.2, 0.14, 0.06);
+    // The eye, pale and round.
+    dot(c, st.spark, -0.08, -0.18, 0.042);
+    // Needle teeth on the gape.
+    fill(c, st.spark, [[0.1, -0.07], [0.15, -0.02], [0.06, -0.03]]);
+    fill(c, st.spark, [[0.04, 0.2], [0.1, 0.14], [0.12, 0.22]]);
+    // The word going out: gurgle rings in stuttered pairs.
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.036;
+    for (const r of [0.2, 0.3] as const) {
+      c.beginPath();
+      c.arc(0.18, 0.05, r, -0.7, 0.7);
+      c.stroke();
+    }
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.arc(0.18, 0.05, 0.42, -0.5, 0.5);
+    c.stroke();
+    droplet(c, 0.4, -0.3, 0.15, st);
+  },
+
   // ------------------- THE EARTH STANDS UP — the golem arts' plates.
   // Hillstone Throw — the torn-out boulder mid-flight, dust behind it.
   hillstone_throw: (st) => (c) => {

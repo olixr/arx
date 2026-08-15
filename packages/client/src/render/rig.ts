@@ -35,6 +35,17 @@ import {
   type PendantSim,
 } from './ogre.js';
 import {
+  drawSkralArm,
+  drawSkralCrest,
+  paintSkralBody,
+  paintSkralFoot,
+  paintSkralHead,
+  paintSkralWrap,
+  skralCrestCarriage,
+  skralCrestStyle,
+  type SkralLook,
+} from './skral.js';
+import {
   LegRig,
   chooseLimbSign,
   solveLimb,
@@ -449,6 +460,14 @@ export interface RigPose {
   ogreGut?: GutSim;
   /** Caller-owned belt-trophy pendant sim — same contract. */
   ogrePendant?: PendantSim;
+  /**
+   * THE BRINE DIALECT (docs/skral-plan.md): swap the flesh head for
+   * the skral's lantern-eyed fish skull under a SIMULATED crest fin
+   * (the earSim slot, brine verse), pale the belly, web the hands and
+   * fan the feet — while the rig, carriage, and facing bands keep
+   * working untouched.
+   */
+  skral?: SkralLook;
   /** Time-based swing driver for the gather pose. */
   gatherPhase: number;
   /**
@@ -724,6 +743,10 @@ function drawArm(
    *  LONG forearm) solved right here, inverted taper, ham fists.
    *  Overrides everything the way bone does. */
   ogr?: OgreLook | null,
+  /** Brine dialect: lean wet-hide arms with a forearm fin and webbed
+   *  three-ray hands — overrides the cloth/glove branches the way
+   *  bone does; the skral never owned a sleeve. */
+  skr?: SkralLook | null,
 ): { ex: number; ey: number; kx: number; ky: number } {
   // THE REMEMBERED ELBOW: the arms carry the same side-choice
   // hysteresis the knees have had since the quadruped rig — score the
@@ -766,6 +789,11 @@ function drawArm(
 
   if (ogr) {
     drawOgreArm(ctx, ogr, sx, sy, kx, ky, ex, ey, s, hurt ?? false, nowMs ?? 0);
+    return { ex, ey, kx, ky };
+  }
+
+  if (skr) {
+    drawSkralArm(ctx, skr, sx, sy, kx, ky, ex, ey, s, hurt ?? false, nowMs ?? 0);
     return { ex, ey, kx, ky };
   }
 
@@ -4996,6 +5024,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const gob = rig.goblin ?? null;
   const gol = rig.golem ?? null;
   const ogr = rig.ogre ?? null;
+  const skr = rig.skral ?? null;
   const skin = rig.hurt
     ? '#ffffff'
     : (skel?.bone ?? rig.skinColor ?? (rig.look ? SKIN_TONES[rig.look.skin]! : SKIN));
@@ -5146,9 +5175,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
                 ? shade(gol.shell, -4)
                 : ogr
                   ? shade(ogr.hide, -5)
-                  : rig.look
-                    ? shade(CLOTH_COLORS[rig.look.pants]!, -8)
-                    : shade(bodyColor, -28);
+                  : skr
+                    ? shade(skr.hide, -6)
+                    : rig.look
+                      ? shade(CLOTH_COLORS[rig.look.pants]!, -8)
+                      : shade(bodyColor, -28);
       const thighCol = rig.hurt ? '#ffffff' : (legSt?.thigh ?? baseLeg);
       const shinCol = rig.hurt
         ? '#ffffff'
@@ -5164,7 +5195,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
                   ? shade(gol.shell, -12)
                   : ogr
                     ? shade(ogr.hide, -13)
-                    : (legSt?.shin ?? legSt?.thigh ?? baseLeg);
+                    : skr
+                      ? shade(skr.hide, -14)
+                      : (legSt?.shin ?? legSt?.thigh ?? baseLeg);
       // THE FOOT CAPS THE LEG: the shin stroke ends at the ANKLE — the
       // endpoint pulled back up the bone so its round cap tucks inside
       // the footwear painted below. Stroked all the way to the sole, the
@@ -5180,9 +5213,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // The ogre shank: a tree-trunk column — the one shin in the
       // game thicker than a hero's whole thigh, because the body it
       // holds up out-weighs three of them.
+      // The skral shank is the goblin's spindle gone wet: the frog
+      // haunch above carries all the leg's mass; the shin is a reed.
       const shinLW = Math.max(
         2,
-        s * (skel ? 0.052 * skel.heavy : bootSt ? 0.1 : gno ? 0.078 : gob ? 0.062 : gol ? 0.128 : ogr ? 0.145 : 0.09),
+        s * (skel ? 0.052 * skel.heavy : bootSt ? 0.1 : gno ? 0.078 : gob ? 0.062 : gol ? 0.128 : ogr ? 0.145 : skr ? 0.058 : 0.09),
       );
       const ankPull = shinLW * 0.55;
       const ankX = fxx - aux * ankPull;
@@ -5201,18 +5236,20 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
                   ? 0.165 * (0.9 + 0.2 * gol.heavy)
                   : ogr
                     ? 0.185 * (0.9 + 0.2 * ogr.heavy)
-                    : 0.09),
+                    : skr
+                      ? 0.105 * (0.85 + 0.2 * skr.heavy)
+                      : 0.09),
       );
       ctx.beginPath();
       ctx.moveTo(hipX, hipY);
       ctx.lineTo(kx, ky);
-      if (shinCol === thighCol && !skel && !gno && !gob && !gol && !ogr) {
+      if (shinCol === thighCol && !skel && !gno && !gob && !gol && !ogr && !skr) {
         ctx.lineTo(ankX, ankY);
         ctx.stroke();
       } else {
         ctx.stroke();
         ctx.strokeStyle = shinCol;
-        if (skel || gno || gob || gol || ogr) ctx.lineWidth = shinLW;
+        if (skel || gno || gob || gol || ogr || skr) ctx.lineWidth = shinLW;
         ctx.beginPath();
         ctx.moveTo(kx, ky);
         ctx.lineTo(ankX, ankY);
@@ -5237,6 +5274,23 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         ctx.fillStyle = shade(gob.hide, -12);
         ctx.beginPath();
         ctx.arc(kx, ky, Math.max(1.6, s * 0.036 * (0.9 + 0.2 * gob.heavy)), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (skr && !rig.hurt) {
+        // The calf fin: a small raked blade off the shin's trailing
+        // edge in the crest's accent — the leg stays a fish's even
+        // when the fan foot is mid-swing (one-sided, the hock rule).
+        const outX = Math.abs(fx) > 0.35 ? -Math.sign(fx) : i === 0 ? -1 : 1;
+        ctx.fillStyle = shade(skr.fin, -6);
+        ctx.beginPath();
+        ctx.moveTo(kx + outX * 0.012 * s, ky + 0.01 * s);
+        ctx.quadraticCurveTo(
+          kx + outX * 0.085 * s * (0.9 + 0.2 * skr.heavy),
+          ky + 0.05 * s,
+          kx + outX * 0.014 * s,
+          ky + 0.07 * s,
+        );
+        ctx.closePath();
         ctx.fill();
       }
       if (ogr && !rig.hurt) {
@@ -5291,7 +5345,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // Each paints ON the limb's own solved geometry (segments and
       // normals), so it rides every gait for free. One-sided words
       // pick the outward side the way the gnoll hock does.
-      if (legSt && !rig.hurt && !skel && !kob && !gno && !gob) {
+      if (legSt && !rig.hurt && !skel && !kob && !gno && !gob && !skr) {
         const outX = Math.abs(fx) > 0.35 ? -Math.sign(fx) : i === 0 ? -1 : 1;
         // Thigh segment frame (hip→knee) for thigh-mounted words.
         const tLen = Math.hypot(kx - hipX, ky - hipY) || 1;
@@ -5811,6 +5865,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         // The giant footing: the widest bare slab in the game — four
         // toe seams and worn ivory nails. No boot was ever the size.
         paintOgreFoot(ctx, ogr, fxx, fyy, s, lead, rig.hurt);
+      } else if (skr && !bootSt) {
+        // THE FAN FOOT: the murloc footprint — a webbed triangle
+        // twice the shank's width (skral.ts owns the anatomy).
+        paintSkralFoot(ctx, skr, fxx, fyy, s, lead, rig.hurt);
       } else if (gob && !bootSt) {
         // The bare goblin foot: a FLAP a size too big for the spindle
         // shank above it — wide, flat, pale-soled, with two toe seams
@@ -6004,8 +6062,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // THE GIANT INVERSION: the ogre's waist multiplier tops every body's
   // — the gut station in paintOgreBody widens it further still, so the
   // silhouette triangle points UP (heroes and golems point down).
-  const tw = SHOULDER_HALF_S * s * (gno ? 1.28 : gob ? 0.92 : gol ? 1.4 * (0.94 + 0.12 * gol.heavy) : ogr ? 1.32 * (0.94 + 0.1 * ogr.heavy) : 1); // shoulder half-width
-  const ww = WAIST_HALF_S * s * (gno ? 1.06 : gob ? 1.16 + 0.14 * gob.heavy : gol ? 1.22 : ogr ? 1.4 + 0.12 * ogr.heavy : 1); // waist half-width
+  // The skral narrows the shoulders the goblin's way but keeps the
+  // waist a frog's: sloped, slick, a little pot — the mass pools LOW.
+  const tw = SHOULDER_HALF_S * s * (gno ? 1.28 : gob ? 0.92 : gol ? 1.4 * (0.94 + 0.12 * gol.heavy) : ogr ? 1.32 * (0.94 + 0.1 * ogr.heavy) : skr ? 0.88 : 1); // shoulder half-width
+  const ww = WAIST_HALF_S * s * (gno ? 1.06 : gob ? 1.16 + 0.14 * gob.heavy : gol ? 1.22 : ogr ? 1.4 + 0.12 * ogr.heavy : skr ? 1.1 + 0.1 * skr.heavy : 1); // waist half-width
   const th = TORSO_RISE_S * s * (1 - 0.12 * crouch); // hip line → shoulders
 
   // Melee combo stages — THE CUT LIVES IN THE WORLD (strikes.ts, the
@@ -7714,6 +7774,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       gol,
       gob,
       ogr,
+      skr,
     );
     if (shieldSt && shieldFr) {
       if (shieldBehindArm) drawShieldStraps(ctx, shieldSt, shieldFr, rig.hurt);
@@ -7850,6 +7911,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       gol,
       gob,
       ogr,
+      skr,
     );
   };
   // ---- THE BILLBOARD SOCKET: pauldrons sit on the rig's SHOULDER
@@ -8237,6 +8299,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // The construct stands like a tower — no hunch. Only the rock golem
   // carries a lean: a stacked cairn was never plumb.
   if (gol) lean += (gol.build === 'rock' ? 0.06 : 0.015) * fx * (1 - sit);
+  // The wader's crouch: the deepest hunch of any walker — a body
+  // built to stand thigh-deep in current leads with its whole skull,
+  // easing out when seated.
+  if (skr) lean += 0.18 * fx * (1 - sit);
   // The giant's stoop: the heaviest carriage in the game leads with
   // its brow — the gut hangs, the hump rises, the head arrives last.
   // THE MARCH STRAIGHTENS IT: a standing ogre looms over its supper;
@@ -8284,38 +8350,43 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // azimuth projection owns the perspective at every band; no ear
   // code below ever consults a facing blend.
   let paintEars: ((layer: 'behind' | 'front') => void) | null = null;
-  if (gob) {
-    const hv = gob.heavy;
+  if (gob || skr) {
+    const hv = (gob ?? skr)!.heavy;
     // The head anchor, through the torso frame's own transform
     // (translate → lean → squash) so the roots ride the drawn skull.
-    const earR = 0.15 * s * 1.34;
-    const ehx = fx * 0.1 * s * rig.wScale;
-    const ehy = (-th - earR * 0.42) * (1 + (1 - rig.wScale) * 0.55);
+    const earR = 0.15 * s * (gob ? 1.34 : 1.42);
+    const ehx = fx * (gob ? 0.1 : 0.12) * s * rig.wScale;
+    const ehy = (-th - earR * (gob ? 0.42 : 0.34)) * (1 + (1 - rig.wScale) * 0.55);
     const cosE = Math.cos(lean);
     const sinE = Math.sin(lean);
     const eax = rig.x + cosE * ehx - sinE * ehy;
     const eay = hipY + sinE * ehx + cosE * ehy;
-    // The jeer pins the ears back through every strike beat — the
-    // same clock the head's gape rides.
+    // The jeer pins the goblin's ears back through every strike beat;
+    // the same clock FLARES the skral's crest — one beat, two threats.
     const jeer =
       meleeStage >= 0 || rig.pose === PoseState.Cast
         ? Math.sin(Math.min(1, rig.poseT) * Math.PI)
         : 0;
-    const carriage: EarCarriage = {
-      azimuth: 2.0,
-      rootR: 0.19,
-      rootLift: 0.05,
-      length: 0.26 + 0.08 * (hv - 1),
-      spread: 0.85,
-      rise: 0.95,
-      curl: [0, 0.16, 0.34],
-    };
+    const carriage: EarCarriage = gob
+      ? {
+          azimuth: 2.0,
+          rootR: 0.19,
+          rootLift: 0.05,
+          length: 0.26 + 0.08 * (hv - 1),
+          spread: 0.85,
+          rise: 0.95,
+          curl: [0, 0.16, 0.34],
+        }
+      : skralCrestCarriage(hv, jeer);
+    // The crest pins gently, never fully — a fin has no occiput to
+    // fold against; its threat is the RISE the carriage already took.
+    const pin = gob ? jeer : jeer * 0.3;
     let chains: Array<{ side: number; c: EarChain }>;
     if (rig.earSim) {
-      rig.earSim.update(eax, eay, s, carriage, rig.dir, jeer, rig.nowMs);
+      rig.earSim.update(eax, eay, s, carriage, rig.dir, pin, rig.nowMs);
       chains = [-1, 1].map((side) => ({
         side,
-        c: rig.earSim!.chain(side, carriage, rig.dir, jeer),
+        c: rig.earSim!.chain(side, carriage, rig.dir, pin),
       }));
     } else {
       // Stateless: THE ONE REST — the settled silhouette, listening
@@ -8324,39 +8395,59 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         side,
         c: earRestChain(side, carriage, {
           dir: rig.dir,
-          pin: jeer,
+          pin,
           sway: rig.hurt ? 0 : 0.05 * Math.sin(rig.nowMs / 640 + side * 1.7),
         }),
       }));
     }
     chains.sort((a, b) => a.c.depth - b.c.depth);
     const backHead = backK > 0.55;
-    const st: EarStyle = {
-      skin: shade(gob.hide, backHead ? -14 : -6),
-      outline: shade(gob.hide, -26),
-      membrane: shade(gob.belly, -6),
-      rib: shade(gob.hide, -16),
-      seam: shade(gob.hide, -18),
-    };
-    const earW = 0.038 * (0.9 + 0.2 * hv) * s;
-    paintEars = (layer) => {
-      for (const { side, c } of chains) {
-        if ((c.depth > 0.05) !== (layer === 'front')) continue;
-        drawWingEar(
-          ctx,
-          c.pts.map((p) => ({ x: eax + p.x * s, y: eay + p.y * s })),
-          earW,
-          st,
-          {
-            hurt: rig.hurt,
-            back: backHead,
-            notch: (gob.scarred ?? false) && side === lead,
-            headX: eax,
-            headY: eay,
-          },
-        );
-      }
-    };
+    if (gob) {
+      const st: EarStyle = {
+        skin: shade(gob.hide, backHead ? -14 : -6),
+        outline: shade(gob.hide, -26),
+        membrane: shade(gob.belly, -6),
+        rib: shade(gob.hide, -16),
+        seam: shade(gob.hide, -18),
+      };
+      const earW = 0.038 * (0.9 + 0.2 * hv) * s;
+      paintEars = (layer) => {
+        for (const { side, c } of chains) {
+          if ((c.depth > 0.05) !== (layer === 'front')) continue;
+          drawWingEar(
+            ctx,
+            c.pts.map((p) => ({ x: eax + p.x * s, y: eay + p.y * s })),
+            earW,
+            st,
+            {
+              hurt: rig.hurt,
+              back: backHead,
+              notch: (gob.scarred ?? false) && side === lead,
+              headX: eax,
+              headY: eay,
+            },
+          );
+        }
+      };
+    } else {
+      // THE CREST: two tight banks of one sail — the far bank paints
+      // behind the skull, the near bank over it, and at profile they
+      // stack into one deep blade by projection alone.
+      const cst = skralCrestStyle(skr!, backHead);
+      const crestW = 0.1 * (0.9 + 0.2 * hv) * s;
+      paintEars = (layer) => {
+        for (const { side, c } of chains) {
+          if ((c.depth > 0.05) !== (layer === 'front')) continue;
+          drawSkralCrest(
+            ctx,
+            c.pts.map((p) => ({ x: eax + p.x * s, y: eay + p.y * s })),
+            crestW,
+            cst,
+            { hurt: rig.hurt, notch: (skr!.scarred ?? false) && side === lead },
+          );
+        }
+      };
+    }
     paintEars('behind');
   }
 
@@ -8415,9 +8506,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // proportion on the biggest frame that walks — a 0.98 head sunk
   // near-neckless in front of the hump. Nothing else says "giant" as
   // loudly as a head the body dwarfs.
-  const headR = 0.15 * s * (kob ? 1.16 : gno ? 1.22 : gob ? 1.34 : gol ? 1.04 : ogr ? 0.98 : 1);
+  // The skral head out-proportions even the goblin's — the head is
+  // half the animal (the murloc argument) — and it sits IN the
+  // shoulders: the lowest carry of any dialect, because there is no
+  // neck to carry it with.
+  const headR = 0.15 * s * (kob ? 1.16 : gno ? 1.22 : gob ? 1.34 : gol ? 1.04 : ogr ? 0.98 : skr ? 1.42 : 1);
   const headX =
-    kob ? fx * 0.14 * s : gno ? fx * 0.19 * s : gob ? fx * 0.1 * s : gol ? fx * 0.08 * s : ogr ? fx * 0.12 * s : fx * 0.05 * s;
+    kob ? fx * 0.14 * s : gno ? fx * 0.19 * s : gob ? fx * 0.1 * s : gol ? fx * 0.08 * s : ogr ? fx * 0.12 * s : skr ? fx * 0.12 * s : fx * 0.05 * s;
   const headY =
     kob
       ? -th - headR * 0.48
@@ -8429,7 +8524,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
             ? -th - headR * 0.08
             : ogr
               ? -th - headR * 0.34
-              : -th - headR * 0.82;
+              : skr
+                ? -th - headR * 0.34
+                : -th - headR * 0.82;
   const hw = headR * 1.04; // half-width
   const hh = headR * 1.0; // half-height
   const cut = headR * 0.34;
@@ -8482,7 +8579,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   };
   // The bone, scale, fur, and greenskin dialects replace head, hair,
   // and face wholesale.
-  if (!skel && !kob && !gno && !gob && !gol && !ogr) drawHairBack(ctx, hairFrame, hairIx, cover);
+  if (!skel && !kob && !gno && !gob && !gol && !ogr && !skr) drawHairBack(ctx, hairFrame, hairIx, cover);
 
   // Torso garment: the styled body (robe, jerkin, brigandine, cuirass,
   // pauldrons) — the bare `tunic` default is the original silhouette.
@@ -8673,6 +8770,27 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       hurt: rig.hurt,
     });
   }
+  // The skral body: belly plate, spine finlets, and the deepking's
+  // back-slung trident (armor keeps the belly pass out, the loot-
+  // story law) — then the net-sash, which every skral wears the way
+  // every goblin wears the loincloth.
+  if (skr) {
+    const skFr = {
+      s,
+      tw,
+      ww,
+      th,
+      fx,
+      fy,
+      profileK,
+      backK,
+      lead,
+      hurt: rig.hurt,
+      nowMs: rig.nowMs,
+    };
+    paintSkralBody(ctx, skr, skFr, bodySt != null);
+    paintSkralWrap(ctx, skr, skFr);
+  }
 
   // ---- THE HEAD SITS UPON THE SHOULDERS: at a settled, empty-handed
   // rest the torso frame closes here so the hanging arms can paint in
@@ -8787,6 +8905,32 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         ? Math.sin(Math.min(1, rig.poseT) * Math.PI)
         : 0;
     paintGoblinHead(ctx, gob, {
+      s,
+      headX,
+      headY,
+      hw,
+      hh,
+      cut,
+      fx,
+      fy,
+      profileK,
+      backK,
+      lead,
+      hurt: rig.hurt,
+      nowMs: rig.nowMs,
+      gape,
+    });
+  } else if (skr) {
+    // THE BRINE DIALECT head replaces head, hair, and face wholesale
+    // — the lantern eyes ride the skull's sides, the needle grin
+    // sweeps ear to ear, and the jaw drops through every strike beat
+    // while the gular throat fills: the skral CROAKS as it swings
+    // (the crest flares on the same clock — the sim block above).
+    const gape =
+      meleeStage >= 0 || rig.pose === PoseState.Cast
+        ? Math.sin(Math.min(1, rig.poseT) * Math.PI)
+        : 0;
+    paintSkralHead(ctx, skr, {
       s,
       headX,
       headY,
