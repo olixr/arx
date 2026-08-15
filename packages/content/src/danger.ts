@@ -24,28 +24,28 @@ export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
   // breaks the journey at the waist: dangers stand BESIDE the road
   // (the toll camp law), so the walk has teeth without being a
   // gauntlet. The northwest march toward Silverfall stays deep.
-  { x: 352, y: 24, safeR: 72 },
+  { x: 520, y: -4, safeR: 72 },
   // Silverfall — the mountain capital, and a HAVEN, not a hearth
   // (the haven law): its lamp keeps the terraces tier 0 and relieves
   // a graded rim, but it never joins the band march — the High Road
   // approach stays tier 4-5 to the last brazier, exactly as the
   // master plan demands. The walk is the game; the walls are the
   // reward.
-  { x: -288, y: -160, safeR: 72, haven: true },
+  { x: -448, y: -280, safeR: 72, haven: true },
   // Saltmere — the town at the water's end, and the second HAVEN:
   // its lamp keeps the quay and the pans tier 0, but the Salt Road
   // south stays an earned walk — tier 2 past the halfway lamp, tier 3
   // for the last league to the gate. Beyond the mere the far shore
   // runs tier 4-5: the deep south is a frontier the town lights, not
   // one it tames.
-  { x: 356, y: 292, safeR: 64, haven: true },
+  { x: 760, y: 330, safeR: 64, haven: true },
   // Pinewatch — the town that watches the deep wood, and the third
   // HAVEN. Its lamp keeps the muster yard and the boom tier 0, and
   // its country bands tier 4 (levels 22-34) all the way round: the
   // first town the Dawnlands ask a made adventurer to earn. North
   // across the Glasswater and east past the Wardline the field goes
   // to 5 and stays there — the old wood is watched, never held.
-  { x: 584, y: -136, safeR: 64, haven: true },
+  { x: 1160, y: -356, safeR: 64, haven: true },
   // Hartfell — the town past the treeline, and the fourth HAVEN. Its
   // lamp keeps the Kettle and the folds tier 0, and the relief grades
   // the walk-out: tier 3 at the walls, 4 a stone's throw on, 5 past
@@ -53,7 +53,7 @@ export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
   // and the town is a warm ring in it, not a hole through it. No
   // dread stands on the Barrowfell for the same reason a candle isn't
   // lit at noon: the field is already at its ceiling up there.
-  { x: 848, y: -392, safeR: 64, haven: true },
+  { x: 1304, y: -616, safeR: 64, haven: true },
   // THE BLACKPINE — the first DREAD in the Dawnlands, and the reason
   // the Sparway is the bad way. The trail between Amberford and
   // Pinewatch is barely half the Timber Road's length and passes far
@@ -63,14 +63,14 @@ export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
   // nothing at all inside anyone's walls (the dread never reaches
   // into a hearth). Nobody put this here; the wood was always like
   // this, and the Timber Road's whole existence is the argument.
-  { x: 440, y: -96, safeR: 88, dread: 2 },
+  { x: 886, y: -108, safeR: 72, dread: 2 },
   // Kingsdelf — the town in the King's Delf, and the fifth HAVEN. Its
   // lamp keeps the quarry bowl tier 0 and the relief grades the
   // walk-out; past the relief the whole south-west is tier-5 country
   // by plain distance — the town is ~307 tiles from Dawnmead, the
   // only hearth that reaches. A level-50 town needs no dial: the land
   // was already the far dark, and the Returning built inside it.
-  { x: -256, y: 288, safeR: 64, haven: true },
+  { x: -480, y: 328, safeR: 64, haven: true },
   // THE BRAND — the burned mountain, and the first dread-3 heart in
   // the Dawnlands: the key that opens the OVERBAND (tier 6, the
   // lampless dark — shared/world/danger.ts owns the law). The march
@@ -78,7 +78,7 @@ export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
   // burn while the rim keeps the classic law; the reach (safeR + 48)
   // clears Kingsdelf's north wall — the town lives BESIDE the
   // furnace, never in it. Nobody put this here either; a star did.
-  { x: -320, y: 104, safeR: 96, dread: 3 },
+  { x: -544, y: 144, safeR: 96, dread: 3 },
   // Evenfall — the city of the old folk, and the SIXTH haven. Its
   // light keeps the groves and the terraces tier 0 and the relief
   // grades the hem: tier 3 under the outermost boughs, 4 a waystone
@@ -89,7 +89,7 @@ export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
   // reason every town past the ford is: a settled anchor out here
   // would re-origin the whole west's band march, and the west was
   // never anyone's to calm.
-  { x: -680, y: -176, safeR: 64, haven: true },
+  { x: -1032, y: -358, safeR: 64, haven: true },
 ];
 
 /**

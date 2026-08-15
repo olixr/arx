@@ -39,13 +39,13 @@ test('the mood law: town outranks all, caves brood, the deep frontier darkens th
 test('every hearth reaches the ear: all eight towns play town, day or night, any tier', () => {
   const seats: Array<[number, number]> = [
     [-64, 48], // Dawnmead
-    [352, 24], // Amberford
-    [-288, -160], // Silverfall
-    [356, 292], // Saltmere
-    [584, -136], // Pinewatch
-    [848, -392], // Hartfell — its country bands tier 5; the walls must not
-    [-256, 288], // Kingsdelf — its country reads the Overband; the bowl must not
-    [-680, -176], // Evenfall — the far west is tier-5 country; the groves must not
+    [520, -4], // Amberford
+    [-448, -280], // Silverfall
+    [760, 330], // Saltmere
+    [1160, -356], // Pinewatch
+    [1304, -616], // Hartfell — its country bands tier 5; the walls must not
+    [-480, 328], // Kingsdelf — its country reads the Overband; the bowl must not
+    [-1032, -358], // Evenfall — the far west is tier-5 country; the groves must not
   ];
   for (const [x, y] of seats) {
     assert.equal(moodFor(zoneWeights(x, y), 12, 5), 'town', `day at ${x},${y}`);
