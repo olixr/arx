@@ -73,6 +73,14 @@ export function buildLowhall(): ZoneDef {
   b.sign(27, 36, 'THE KINGSDELF DOOR', ['the unlit road', 'ask for Slate, buy something']);
   b.set(15, 19, Tile.Brazier).set(23, 20, Tile.Brazier);
   b.set(9, 24, Tile.Brazier).set(9, 33, Tile.Brazier).set(15, 38, Tile.Brazier);
+  // Every door is a dug tunnel, and the Company timbers what it digs —
+  // one brace at each alcove's mouth, holding the city off its head.
+  b.set(15, 14, Tile.TimberBrace); // Amberford
+  b.set(23, 15, Tile.TimberBrace); // Hartfell
+  b.set(5, 19, Tile.TimberBrace); // Silverfall
+  b.set(5, 32, Tile.TimberBrace); // Saltmere
+  b.set(15, 37, Tile.TimberBrace); // Pinewatch
+  b.set(27, 34, Tile.TimberBrace); // Kingsdelf
   // The Company mark at the ring's heart.
   b.setDetail(17, 28, Detail.RugRound);
   b.set(14, 27, bannerPoleTile(1)).set(20, 27, bannerPoleTile(1));
@@ -84,6 +92,10 @@ export function buildLowhall(): ZoneDef {
   b.fillRect(27, 27, 10, 3, Tile.StoneFloor); // the throat
   b.set(28, 26, Tile.Brazier).set(35, 30, Tile.Brazier);
   b.fillRect(37, 19, 26, 18, Tile.WoodFloor);
+  // The Company's iron light on the north wall, and in the west
+  // corner the candles: one flame for every name the roads kept.
+  b.set(41, 19, Tile.WallSconce).set(58, 19, Tile.WallSconce);
+  b.set(37, 19, Tile.CandleShrine);
   // Ravna's end: the seat, the madder cloth, the map table.
   b.set(49, 21, Tile.Chair); // the Captain's seat — a chair, on purpose
   b.setDetail(48, 22, Detail.Rug).setDetail(49, 22, Detail.Rug).setDetail(50, 22, Detail.Rug);
@@ -98,6 +110,7 @@ export function buildLowhall(): ZoneDef {
   b.set(54, 27, Tile.Chair).set(54, 30, Tile.Chair);
   b.set(56, 26, Tile.Chair).set(56, 29, Tile.Chair).set(56, 31, Tile.Chair);
   b.set(38, 35, Tile.Barrel).set(39, 36, Tile.Barrel); // the hall's cellar row
+  b.set(38, 36, Tile.MossBarrel); // the cask that turned; nobody owns up
   b.set(61, 35, Tile.CrateGoods).set(62, 36, Tile.Crate);
   b.set(38, 25, Tile.Brazier).set(61, 25, Tile.Brazier);
   b.setDetail(49, 27, Detail.Rug).setDetail(49, 28, Detail.Rug);
@@ -115,6 +128,7 @@ export function buildLowhall(): ZoneDef {
   for (let x = 44; x <= 47; x++) b.set(x, 12, Tile.Counter); // the fence counter
   b.set(42, 12, Tile.Table).set(42, 13, Tile.Chair); // Brusk's scales
   b.set(52, 12, Tile.CrateGoods).set(53, 13, Tile.Barrel); // last night's goods
+  b.set(51, 10, Tile.LootedChest); // a strongbox, already fenced — the trade in one prop
   b.sign(52, 15, 'THE DOCKET', ['work posted, work paid', 'ask the Tallyman']);
   b.set(41, 15, Tile.Brazier).set(54, 8, Tile.Brazier);
   b.setDetail(45, 13, Detail.Rug).setDetail(46, 13, Detail.Rug);
@@ -126,6 +140,8 @@ export function buildLowhall(): ZoneDef {
   b.fillRect(66, 20, 14, 10, Tile.StoneFloor);
   b.set(69, 24, Tile.Counter).set(69, 25, Tile.Counter);
   b.set(67, 21, Tile.WeaponRack).set(77, 21, Tile.WeaponRack).set(77, 28, Tile.ToolRack);
+  b.set(70, 20, Tile.WallChains).set(75, 20, Tile.WallChains); // the CAGE earns its name
+  b.set(78, 28, Tile.MossBarrel); // the kit that went green — Yeva's shame shelf
   b.set(72, 21, Tile.Crate).set(74, 21, Tile.CrateGoods);
   b.set(78, 24, Tile.Cabinet).set(72, 28, Tile.Barrel).set(74, 28, Tile.Crate);
   b.set(67, 28, Tile.Workbench); // she mends what she sells
@@ -146,6 +162,7 @@ export function buildLowhall(): ZoneDef {
   b.set(52, 47, Tile.Table).set(53, 47, Tile.Table);
   b.set(51, 47, Tile.Chair).set(54, 47, Tile.Chair).set(52, 48, Tile.Chair).set(53, 46, Tile.Chair);
   b.set(43, 49, Tile.Barrel).set(58, 49, Tile.CrateGoods).set(59, 45, Tile.Crate);
+  b.set(44, 41, Tile.WallSconce); // low light over the bunks
   b.set(42, 46, Tile.Brazier).set(59, 41, Tile.Brazier);
 
   // ---------------------------------------------------------------
@@ -158,7 +175,14 @@ export function buildLowhall(): ZoneDef {
   b.set(23, 46, Tile.FishingSpot).set(31, 48, Tile.FishingSpot);
   b.set(22, 50, Tile.GlowShroom).set(33, 44, Tile.GlowShroom).set(34, 50, Tile.GlowShroom);
   b.set(24, 43, Tile.Stalagmite).set(32, 51, Tile.Stalagmite);
+  // The one corner the Company does not sweep: the water's own clock,
+  // the drain to the deeper dark, and a web nobody's brushed down.
+  b.set(31, 45, Tile.DripPool);
+  b.set(35, 48, Tile.IronGrate);
+  b.set(22, 44, Tile.WallWeb);
   b.setDetail(30, 45, Detail.Pebbles).setDetail(24, 49, Detail.Pebbles);
+  // Cave grit where the rock shows (the hall proper keeps its rugs).
+  b.scatterDetail(Detail.Pebbles, 0.05, [Tile.CaveFloor]);
 
   // ---------------------------------------------------------------
   // THE PEOPLE — posts (routines are each post's origin).

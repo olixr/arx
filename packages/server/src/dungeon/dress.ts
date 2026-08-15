@@ -1,4 +1,4 @@
-import { Tile, rarityIndex, type DungeonTheme } from '@arx/shared';
+import { Tile, isSolidTile, rarityIndex, type DungeonTheme } from '@arx/shared';
 import { dist, reachMask, reached, type DungeonBuild, type Room } from './types.js';
 
 /**
@@ -49,143 +49,381 @@ const PATH_CHESTS: Record<string, Tile[]> = {
 };
 
 /**
- * THE DECOR KITS — what each theme scatters through its ordinary
- * rooms, beyond the light every dungeon owes (brazier shoulders in
- * halls, shroomlight in caves). `per` is floor-area per piece;
- * `wall` pins the piece to wall-adjacent cells; `styles` limits the
- * piece to one carving dialect.
+ * THE CURATED HAND — the ambient coat.
+ *
+ * What each theme breathes through EVERY ordinary room: texture, not
+ * story. Thin by design — the vignettes below carry the narrative,
+ * and they only read against quiet ground. `per` is floor-area per
+ * piece; `wall` pins to wall-adjacent cells; `north` deals from the
+ * scanned north-wall band (rock due north, open south, never kissing
+ * a crack); `styles` limits to one carving dialect.
  */
 interface DecorEntry {
   tile: Tile;
   per: number;
   wall?: boolean;
-  /**
-   * THE LONG DARK FURNISHED: wall-hung pieces (sconce, chains, the
-   * chained prisoner) paint their iron onto the wall face NORTH of
-   * their cell — the only face the camera sees — so they demand rock
-   * directly north, and refuse a cracked wall on any side (a fixture
-   * over the crack's whisper would cork the discovery).
-   */
   north?: boolean;
   styles?: ReadonlyArray<'cave' | 'hall'>;
 }
 
-const DECOR_KITS: Record<DungeonTheme, DecorEntry[]> = {
+const AMBIENT_KITS: Record<DungeonTheme, DecorEntry[]> = {
   cavern: [
     { tile: Tile.Stalagmite, per: 42, styles: ['cave'] },
     { tile: Tile.GlowShroom, per: 36, wall: true },
-    // The swallowed kingdom: a snapped column and a worn king the
-    // cave took back — nobody carved these HERE, the dark moved in.
-    { tile: Tile.BrokenPillar, per: 130 },
-    { tile: Tile.AncientStatue, per: 200 },
-    { tile: Tile.MossBarrel, per: 160 },
-    // THE LONG DARK PEOPLED: what was here before the kingdom (the
-    // ribs in the rock, the patient webs, the mountain's slow clock)
-    // and the delvers who came asking.
-    { tile: Tile.WallFossil, per: 150, north: true },
-    { tile: Tile.WallWeb, per: 130, north: true },
-    { tile: Tile.DripPool, per: 90, styles: ['cave'] },
-    { tile: Tile.ColdCamp, per: 180 },
+    { tile: Tile.MossBarrel, per: 210 },
+    { tile: Tile.WallFossil, per: 230, north: true },
   ],
   crypt: [
-    { tile: Tile.BonePile, per: 48 },
-    { tile: Tile.SkullPile, per: 110, wall: true },
+    { tile: Tile.BonePile, per: 60 },
+    { tile: Tile.SkullPile, per: 130, wall: true },
     { tile: Tile.GlowShroom, per: 60, wall: true, styles: ['cave'] },
-    // THE LONG DARK FURNISHED — the crypt is the kit's showcase: the
-    // honored dead in stone and clay, the dishonored dead in irons.
-    { tile: Tile.Sarcophagus, per: 70, styles: ['hall'] },
-    { tile: Tile.BurialUrns, per: 72 },
-    { tile: Tile.ChainedSkeleton, per: 130, north: true },
-    { tile: Tile.BrokenPillar, per: 120 },
-    { tile: Tile.AncientStatue, per: 150, styles: ['hall'] },
-    { tile: Tile.GrandPillar, per: 170, styles: ['hall'] },
-    // THE LONG DARK PEOPLED: the crypt is TENDED (someone still
-    // lights the candles), ROBBED (someone got to the goods first),
-    // and older than its own dead (the webs, the grates over what
-    // lies deeper, the dishonored swinging in iron).
-    { tile: Tile.CandleShrine, per: 90 },
-    { tile: Tile.LootedChest, per: 140 },
-    { tile: Tile.WallWeb, per: 140, north: true },
-    { tile: Tile.GibbetCage, per: 180, styles: ['hall'] },
-    { tile: Tile.IronGrate, per: 160, styles: ['hall'] },
+    { tile: Tile.BurialUrns, per: 150 },
+    { tile: Tile.ChainedSkeleton, per: 240, north: true },
   ],
   mine: [
-    { tile: Tile.Crate, per: 80 },
-    { tile: Tile.Barrel, per: 90 },
+    { tile: Tile.Crate, per: 95 },
+    { tile: Tile.Barrel, per: 115 },
     { tile: Tile.Stalagmite, per: 60, styles: ['cave'] },
     { tile: Tile.GlowShroom, per: 46, wall: true, styles: ['cave'] },
-    // The shift that never clocked out: a cart still half loaded,
-    // stores gone green, chains where the haulage ran.
-    { tile: Tile.MineCart, per: 90 },
-    { tile: Tile.MossBarrel, per: 85 },
-    { tile: Tile.WallChains, per: 150, north: true },
-    // THE LONG DARK PEOPLED: the miners' own timber holding the
-    // drift, the water they cursed, the camps of the shift that
-    // never clocked out — and their pay-chest, long since visited.
-    { tile: Tile.TimberBrace, per: 100, north: true },
-    { tile: Tile.DripPool, per: 110, styles: ['cave'] },
-    { tile: Tile.ColdCamp, per: 160 },
-    { tile: Tile.LootedChest, per: 190 },
+    { tile: Tile.MossBarrel, per: 160 },
+    { tile: Tile.WallChains, per: 220, north: true },
   ],
   stronghold: [
-    { tile: Tile.WarBanner, per: 90, wall: true, styles: ['hall'] },
-    { tile: Tile.SpearRack, per: 130, wall: true, styles: ['hall'] },
-    { tile: Tile.PlunderSacks, per: 120 },
-    { tile: Tile.BonePile, per: 100 },
-    { tile: Tile.Crate, per: 100 },
+    { tile: Tile.WarBanner, per: 100, wall: true, styles: ['hall'] },
+    { tile: Tile.BonePile, per: 110 },
+    { tile: Tile.Crate, per: 115 },
     { tile: Tile.GlowShroom, per: 50, wall: true, styles: ['cave'] },
-    // The garrison's dark side: prisoners in irons, stores gone
-    // green, and the odd column of whoever held these halls first.
-    { tile: Tile.WallChains, per: 120, north: true },
-    { tile: Tile.ChainedSkeleton, per: 140, north: true },
-    { tile: Tile.MossBarrel, per: 110 },
-    { tile: Tile.GrandPillar, per: 170, styles: ['hall'] },
-    // THE LONG DARK PEOPLED: the garrison's justice in full — the
-    // gibbet by the gate, the stocks in the yard, the grates over
-    // the oubliette, and the paymaster's chest already pried.
-    { tile: Tile.GibbetCage, per: 130 },
-    { tile: Tile.Stocks, per: 150, styles: ['hall'] },
-    { tile: Tile.IronGrate, per: 140, styles: ['hall'] },
-    { tile: Tile.LootedChest, per: 160 },
+    { tile: Tile.MossBarrel, per: 190 },
   ],
   warren: [
-    { tile: Tile.BonePile, per: 55 },
-    { tile: Tile.SkullPile, per: 90, wall: true },
-    { tile: Tile.HideFrame, per: 120, wall: true },
-    { tile: Tile.BeastNest, per: 140 },
-    { tile: Tile.SkullTotem, per: 170, wall: true },
+    { tile: Tile.BonePile, per: 60 },
+    { tile: Tile.SkullPile, per: 105, wall: true },
+    { tile: Tile.HideFrame, per: 150, wall: true },
     { tile: Tile.GlowShroom, per: 44, wall: true, styles: ['cave'] },
-    // Dragged home and never opened; the pack's larder tells on it.
-    { tile: Tile.MossBarrel, per: 130 },
-    { tile: Tile.ChainedSkeleton, per: 190, north: true },
-    // THE LONG DARK PEOPLED: the warren keeps its corners webbed,
-    // its victims' camps cold, and their goods already gone through.
-    { tile: Tile.WallWeb, per: 100, north: true },
-    { tile: Tile.ColdCamp, per: 150 },
-    { tile: Tile.LootedChest, per: 170 },
   ],
-  // THE ROOT-HALLS: runestones grown askew, crystal the roots fed,
-  // shroomlight where the moon never reached, the odd fallen light
-  // still burning silver with nobody left to thank — and bones,
-  // because the quiet holds down what bones do.
   heartwood: [
-    { tile: Tile.Runestone, per: 70, wall: true },
-    { tile: Tile.CrystalCluster, per: 95 },
+    { tile: Tile.Runestone, per: 90, wall: true },
+    { tile: Tile.CrystalCluster, per: 110 },
     { tile: Tile.GlowShroom, per: 40, wall: true, styles: ['cave'] },
-    { tile: Tile.BonePile, per: 110 },
-    { tile: Tile.ArcaneBeacon, per: 170, styles: ['hall'] },
-    // What the roots grew through: the old kingdom's columns and its
-    // quiet keepers, half reclaimed.
-    { tile: Tile.BrokenPillar, per: 140 },
-    { tile: Tile.AncientStatue, per: 190, styles: ['hall'] },
-    // THE LONG DARK PEOPLED: the roots grew through older bones than
-    // the kingdom's, the water still keeps time, and the webs mend
-    // themselves in the quiet.
-    { tile: Tile.WallFossil, per: 150, north: true },
-    { tile: Tile.DripPool, per: 100 },
-    { tile: Tile.WallWeb, per: 160, north: true },
+    { tile: Tile.BonePile, per: 130 },
   ],
 };
+
+/**
+ * THE ROOM DRAWS A STORY — the vignette tables.
+ *
+ * A vignette is a SCENE: an anchor piece and its satellites, placed
+ * as a cluster the way a hand would set them. Roles: `north` mates
+ * deal from the room's north-wall band near the anchor; `beside`
+ * takes an orthogonal of the anchor; `near` lands within a step or
+ * three. Optional pieces fail silently — scenes degrade, never
+ * scatter. Adjacent rooms refuse the same story, and the marquee
+ * pieces carry per-dungeon caps, so rarity is law, not luck.
+ */
+interface VigPiece {
+  tile: Tile;
+  role: 'north' | 'beside' | 'near';
+  opt?: boolean;
+}
+
+interface Vignette {
+  id: string;
+  weight: number;
+  /** The anchor: first on the ground, the scene grows around it. */
+  anchor: Tile;
+  /** Anchor deals from the north-wall band instead of open floor. */
+  northAnchor?: boolean;
+  pieces: VigPiece[];
+  styles?: ReadonlyArray<'cave' | 'hall'>;
+  /**
+   * Which half of the road the scene belongs to: the garrison's
+   * justice meets you at the ENTRY half; the delvers' cold camps
+   * fall on the COURT half — they died close to the prize.
+   */
+  half?: 'entry' | 'court';
+  /** The scene prefers rooms where the traffic died (degree 1). */
+  degree1?: boolean;
+}
+
+const STORY_TABLES: Record<DungeonTheme, Vignette[]> = {
+  cavern: [
+    {
+      id: 'swallowed_kingdom', weight: 3, anchor: Tile.BrokenPillar,
+      pieces: [
+        { tile: Tile.AncientStatue, role: 'near', opt: true },
+        { tile: Tile.MossBarrel, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'bone_bed', weight: 3, anchor: Tile.WallFossil, northAnchor: true,
+      pieces: [
+        { tile: Tile.WallFossil, role: 'north', opt: true },
+        { tile: Tile.DripPool, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'web_hollow', weight: 2.5, anchor: Tile.WallWeb, northAnchor: true, degree1: true,
+      pieces: [
+        { tile: Tile.WallWeb, role: 'north' },
+        { tile: Tile.WallWeb, role: 'north', opt: true },
+      ],
+    },
+    {
+      id: 'delvers_end', weight: 2, anchor: Tile.ColdCamp, half: 'court',
+      pieces: [
+        { tile: Tile.LootedChest, role: 'near' },
+        { tile: Tile.MossBarrel, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'spring_seep', weight: 2, anchor: Tile.DripPool, styles: ['cave'],
+      pieces: [
+        { tile: Tile.DripPool, role: 'near' },
+        { tile: Tile.GlowShroom, role: 'near', opt: true },
+      ],
+    },
+  ],
+  crypt: [
+    {
+      // The candle only ever burns beside the dead it tends.
+      id: 'tended_reliquary', weight: 3, anchor: Tile.Sarcophagus, styles: ['hall'],
+      pieces: [
+        { tile: Tile.CandleShrine, role: 'beside' },
+        { tile: Tile.BurialUrns, role: 'near' },
+        { tile: Tile.BurialUrns, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'robbed_grave', weight: 2.5, anchor: Tile.LootedChest,
+      pieces: [
+        { tile: Tile.Sarcophagus, role: 'near', opt: true },
+        { tile: Tile.BurialUrns, role: 'near', opt: true },
+        { tile: Tile.BonePile, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'gibbet_row', weight: 1.5, anchor: Tile.GibbetCage, northAnchor: true, styles: ['hall'],
+      pieces: [
+        { tile: Tile.GibbetCage, role: 'north', opt: true },
+        { tile: Tile.BonePile, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'oubliette', weight: 1.5, anchor: Tile.IronGrate, styles: ['hall'],
+      pieces: [
+        { tile: Tile.IronGrate, role: 'near', opt: true },
+        { tile: Tile.ChainedSkeleton, role: 'north', opt: true },
+      ],
+    },
+    {
+      id: 'old_colonnade', weight: 2, anchor: Tile.GrandPillar, styles: ['hall'],
+      pieces: [
+        { tile: Tile.GrandPillar, role: 'near' },
+        { tile: Tile.BrokenPillar, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'quiet_dead', weight: 2, anchor: Tile.BurialUrns,
+      pieces: [
+        { tile: Tile.BurialUrns, role: 'beside', opt: true },
+        { tile: Tile.CandleShrine, role: 'near', opt: true },
+        { tile: Tile.BonePile, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'kings_watch', weight: 1.5, anchor: Tile.AncientStatue, styles: ['hall'],
+      pieces: [
+        { tile: Tile.CandleShrine, role: 'beside', opt: true },
+        { tile: Tile.BrokenPillar, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'webbed_vault', weight: 1.5, anchor: Tile.WallWeb, northAnchor: true, degree1: true,
+      pieces: [
+        { tile: Tile.WallWeb, role: 'north', opt: true },
+        { tile: Tile.BonePile, role: 'near', opt: true },
+      ],
+    },
+  ],
+  mine: [
+    {
+      id: 'working_face', weight: 3, anchor: Tile.TimberBrace, northAnchor: true,
+      pieces: [
+        { tile: Tile.TimberBrace, role: 'north', opt: true },
+        { tile: Tile.MineCart, role: 'near', opt: true },
+        { tile: Tile.Crate, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'haul_run', weight: 2.5, anchor: Tile.MineCart,
+      pieces: [
+        { tile: Tile.Crate, role: 'near' },
+        { tile: Tile.Barrel, role: 'near', opt: true },
+        { tile: Tile.MossBarrel, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'flooded_drift', weight: 2, anchor: Tile.DripPool, styles: ['cave'],
+      pieces: [
+        { tile: Tile.DripPool, role: 'near' },
+        { tile: Tile.DripPool, role: 'near', opt: true },
+        { tile: Tile.GlowShroom, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'dead_shift', weight: 2, anchor: Tile.ColdCamp, half: 'court',
+      pieces: [
+        { tile: Tile.LootedChest, role: 'near' },
+        { tile: Tile.Barrel, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'chained_haulage', weight: 1.5, anchor: Tile.WallChains, northAnchor: true,
+      pieces: [
+        { tile: Tile.WallChains, role: 'north', opt: true },
+        { tile: Tile.MossBarrel, role: 'near', opt: true },
+      ],
+    },
+  ],
+  stronghold: [
+    {
+      // The gibbet and the stocks stand TOGETHER, at the gate.
+      id: 'gatehouse_justice', weight: 2.5, anchor: Tile.GibbetCage, half: 'entry', styles: ['hall'],
+      pieces: [
+        { tile: Tile.Stocks, role: 'near' },
+        { tile: Tile.BonePile, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'oubliette', weight: 2, anchor: Tile.IronGrate, styles: ['hall'],
+      pieces: [
+        { tile: Tile.IronGrate, role: 'near', opt: true },
+        { tile: Tile.ChainedSkeleton, role: 'north', opt: true },
+      ],
+    },
+    {
+      id: 'armory', weight: 2.5, anchor: Tile.SpearRack, northAnchor: true, styles: ['hall'],
+      pieces: [
+        { tile: Tile.WarBanner, role: 'north', opt: true },
+        { tile: Tile.SpearRack, role: 'north', opt: true },
+        { tile: Tile.Crate, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'plunder_heap', weight: 2.5, anchor: Tile.PlunderSacks,
+      pieces: [
+        { tile: Tile.PlunderSacks, role: 'near', opt: true },
+        { tile: Tile.LootedChest, role: 'near', opt: true },
+        { tile: Tile.Crate, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'prisoners_wall', weight: 2, anchor: Tile.ChainedSkeleton, northAnchor: true,
+      pieces: [
+        { tile: Tile.WallChains, role: 'north' },
+        { tile: Tile.BonePile, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'old_kingdom', weight: 1.5, anchor: Tile.GrandPillar, styles: ['hall'],
+      pieces: [{ tile: Tile.GrandPillar, role: 'near', opt: true }],
+    },
+  ],
+  warren: [
+    {
+      id: 'trophy_wall', weight: 2.5, anchor: Tile.SkullTotem, northAnchor: true,
+      pieces: [
+        { tile: Tile.HideFrame, role: 'north', opt: true },
+        { tile: Tile.SkullPile, role: 'near' },
+        { tile: Tile.BonePile, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'victims_camp', weight: 2.5, anchor: Tile.ColdCamp, half: 'court',
+      pieces: [
+        { tile: Tile.LootedChest, role: 'near' },
+        { tile: Tile.BonePile, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'web_corner', weight: 2.5, anchor: Tile.WallWeb, northAnchor: true, degree1: true,
+      pieces: [
+        { tile: Tile.WallWeb, role: 'north' },
+        { tile: Tile.WallWeb, role: 'north', opt: true },
+        { tile: Tile.BonePile, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'nest_cluster', weight: 3, anchor: Tile.BeastNest,
+      pieces: [
+        { tile: Tile.BeastNest, role: 'near', opt: true },
+        { tile: Tile.BonePile, role: 'near' },
+        { tile: Tile.SkullPile, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'chained_larder', weight: 1.5, anchor: Tile.ChainedSkeleton, northAnchor: true,
+      pieces: [
+        { tile: Tile.MossBarrel, role: 'near' },
+        { tile: Tile.BonePile, role: 'near', opt: true },
+      ],
+    },
+  ],
+  heartwood: [
+    {
+      id: 'root_shrine', weight: 3, anchor: Tile.Runestone, northAnchor: true,
+      pieces: [
+        { tile: Tile.CrystalCluster, role: 'near' },
+        { tile: Tile.CrystalCluster, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'fossil_bed', weight: 2.5, anchor: Tile.WallFossil, northAnchor: true,
+      pieces: [
+        { tile: Tile.WallFossil, role: 'north', opt: true },
+        { tile: Tile.DripPool, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'still_water', weight: 2, anchor: Tile.DripPool,
+      pieces: [
+        { tile: Tile.DripPool, role: 'near' },
+        { tile: Tile.GlowShroom, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'swallowed_hall', weight: 2, anchor: Tile.BrokenPillar, styles: ['hall'],
+      pieces: [
+        { tile: Tile.AncientStatue, role: 'near', opt: true },
+        { tile: Tile.ArcaneBeacon, role: 'near', opt: true },
+      ],
+    },
+    {
+      id: 'patient_webs', weight: 2, anchor: Tile.WallWeb, northAnchor: true, degree1: true,
+      pieces: [{ tile: Tile.WallWeb, role: 'north', opt: true }],
+    },
+  ],
+};
+
+/**
+ * RARITY IS LAW: per-dungeon caps on the marquee pieces. A gibbet you
+ * see once is a gallows; a gibbet you see nine times is wallpaper.
+ * Enforced at the placement choke point for every pass.
+ */
+const PROP_CAPS: ReadonlyMap<Tile, number> = new Map([
+  [Tile.GibbetCage, 3],
+  [Tile.Stocks, 2],
+  [Tile.CandleShrine, 5],
+  [Tile.LootedChest, 4],
+  [Tile.ColdCamp, 4],
+  [Tile.MineCart, 4],
+  [Tile.AncientStatue, 3],
+  [Tile.GrandPillar, 4],
+  [Tile.Sarcophagus, 7],
+  [Tile.IronGrate, 4],
+  [Tile.ChainedSkeleton, 5],
+  [Tile.BrokenPillar, 5],
+]);
 
 /**
  * Every tile the dress pass keeps its distance from (crowding guard) —
@@ -234,6 +472,16 @@ const PLACED_PROP_TILES: ReadonlySet<Tile> = new Set([
 ]);
 
 const FLOORISH: ReadonlySet<Tile> = new Set([Tile.CaveFloor, Tile.DungeonFloor, Tile.CaveRubble]);
+
+const ORTHO = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
+
+/**
+ * DRY FEET: a bedroll, a wax shrine, or a chest of dry goods never
+ * stands at the water's lip — the pool carve leaves shoal cells
+ * inside its own spread, and a camp on a shoal reads as a mistake,
+ * not a story.
+ */
+const DRY_FEET: ReadonlySet<Tile> = new Set([Tile.ColdCamp, Tile.CandleShrine, Tile.LootedChest]);
 
 export function dressAll(b: DungeonBuild): void {
   const { c, rDress } = b;
@@ -453,11 +701,14 @@ export function dressAll(b: DungeonBuild): void {
   // Solid props keep three open orthogonal neighbors and never crowd
   // each other — and the repair pass below guarantees they never wall
   // off a prize.
-  const canProp = (x: number, y: number, mask: Uint8Array = openMask): boolean => {
+  const canProp = (x: number, y: number, mask: Uint8Array = openMask, t?: Tile): boolean => {
     if (!mask[y * S + x]) return false;
     if (!FLOORISH.has(c.get(x, y))) return false;
     let open = 0;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      if (t !== undefined && DRY_FEET.has(t) && c.get(x + dx, y + dy) === Tile.WaterShallow) {
+        return false;
+      }
       if (c.passable(x + dx, y + dy)) open++;
     }
     if (open < 3) return false;
@@ -469,57 +720,232 @@ export function dressAll(b: DungeonBuild): void {
     return true;
   };
   const putProp = (x: number, y: number, t: Tile, mask?: Uint8Array): boolean => {
-    if (!canProp(x, y, mask)) return false;
+    if (!canProp(x, y, mask, t)) return false;
     removables.push({ x, y, was: c.get(x, y) });
     c.set(x, y, t);
     return true;
   };
 
-  const kit = DECOR_KITS[b.spec.theme];
-  for (const a of b.rooms) {
-    if (a.kind === 'entry') continue; // the landing stays clear
-    // THE COURT IS DRESSED BY ITS AUTHOR: the grand arena carries its
-    // own regalia — scattered clutter would cheapen the read and can
-    // wall the dais lane the prefab authored open.
-    if (a.kind === 'boss') continue;
-    const area = Math.PI * a.r * a.r;
-    // The light every dungeon owes: brazier shoulders in worked rooms…
-    if (a.style === 'hall') {
-      const spots = northWallCells(a).filter((p) => c.get(p.x, p.y) === Tile.DungeonFloor);
-      for (let placedB = 0; placedB < 2 && spots.length > 0; placedB++) {
-        const spot = spots.splice(rDress.int(0, spots.length - 1), 1)[0]!;
-        putProp(spot.x, spot.y, Tile.Brazier);
+  // ---- THE CURATED HAND: caps, the vignette placer, the stories ------
+  const capCount = new Map<Tile, number>();
+  const capped = (t: Tile): boolean => {
+    const cap = PROP_CAPS.get(t);
+    return cap !== undefined && (capCount.get(t) ?? 0) >= cap;
+  };
+  /** putProp with the rarity ledger — the choke point for capped tiles. */
+  const putCapped = (x: number, y: number, t: Tile, mask?: Uint8Array): boolean => {
+    if (capped(t)) return false;
+    if (!putProp(x, y, t, mask)) return false;
+    if (PROP_CAPS.has(t)) capCount.set(t, (capCount.get(t) ?? 0) + 1);
+    return true;
+  };
+  /**
+   * The vignette's own placement law: a satellite may stand beside
+   * its OWN scene (the 3×3 crowding guard yields to this vignette's
+   * members) but must never squeeze a walkway — a solid piece is
+   * refused if any neighboring floor cell would end up closed
+   * solid-to-solid on an axis (the mortar pass's own pinch
+   * definition), and a solid never kisses a cracked wall (NEVER
+   * BLOCKADE A SECRET). The repair sweep stays the last guarantee.
+   */
+  const placePiece = (x: number, y: number, t: Tile, own: Set<number>): boolean => {
+    if (x < 3 || y < 3 || x >= S - 3 || y >= S - 3) return false;
+    if (!openMask[y * S + x]) return false;
+    if (!FLOORISH.has(c.get(x, y))) return false;
+    if (capped(t)) return false;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (own.has((y + dy) * S + (x + dx))) continue;
+        if (PLACED_PROP_TILES.has(c.get(x + dx, y + dy))) return false;
       }
     }
-    // …then the theme's own kit.
-    for (const entryDef of kit) {
-      if (entryDef.styles && !entryDef.styles.includes(a.style)) continue;
-      const pieces = Math.round(area / entryDef.per);
-      if (entryDef.north) {
-        // THE FIXTURE FINDS ITS WALL: random darts almost never land
-        // on the one-cell band under a room's north wall (the first
-        // census hung one skeleton per five dungeons) — so the wall
-        // pieces deal from the scanned band itself. northWallCells
-        // already speaks the whole law: rock due north, open to the
-        // south, never kissing a crack.
-        const cells = northWallCells(a);
-        for (let i = 0; i < pieces && cells.length > 0; i++) {
-          const spot = cells.splice(rDress.int(0, cells.length - 1), 1)[0]!;
-          putProp(spot.x, spot.y, entryDef.tile);
-        }
-        continue;
+    if (DRY_FEET.has(t)) {
+      for (const [dx, dy] of ORTHO) {
+        if (c.get(x + dx, y + dy) === Tile.WaterShallow) return false;
       }
-      for (let i = 0; i < pieces; i++) {
+    }
+    if (isSolidTile(t)) {
+      let open = 0;
+      for (const [dx, dy] of ORTHO) {
+        if (c.get(x + dx, y + dy) === Tile.CrackedCaveWall) return false;
+        if (c.passable(x + dx, y + dy)) open++;
+      }
+      if (open < 2) return false;
+      const solidAt = (px: number, py: number): boolean =>
+        (px === x && py === y) || !c.passable(px, py);
+      for (const [dx, dy] of ORTHO) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (!c.passable(nx, ny)) continue;
+        if (solidAt(nx - 1, ny) && solidAt(nx + 1, ny)) return false;
+        if (solidAt(nx, ny - 1) && solidAt(nx, ny + 1)) return false;
+      }
+    }
+    removables.push({ x, y, was: c.get(x, y) });
+    c.set(x, y, t);
+    if (PROP_CAPS.has(t)) capCount.set(t, (capCount.get(t) ?? 0) + 1);
+    own.add(y * S + x);
+    return true;
+  };
+  /** Stamp one vignette into a room; true if the anchor stood. */
+  const placeVignette = (a: Room, vig: Vignette): boolean => {
+    const own = new Set<number>();
+    let ax = -1;
+    let ay = -1;
+    if (vig.northAnchor) {
+      const band = northWallCells(a);
+      while (band.length > 0 && ax < 0) {
+        const spot = band.splice(rDress.int(0, band.length - 1), 1)[0]!;
+        if (placePiece(spot.x, spot.y, vig.anchor, own)) {
+          ax = spot.x;
+          ay = spot.y;
+        }
+      }
+    } else {
+      for (let attempt = 0; attempt < 14 && ax < 0; attempt++) {
         const x = a.x + rDress.int(-a.r, a.r);
         const y = a.y + rDress.int(-a.r, a.r);
-        if (entryDef.wall) {
-          let wallAdj = false;
-          for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
-            if (c.isRock(x + dx, y + dy)) wallAdj = true;
-          }
-          if (!wallAdj) continue;
+        if (placePiece(x, y, vig.anchor, own)) {
+          ax = x;
+          ay = y;
         }
-        putProp(x, y, entryDef.tile);
+      }
+    }
+    if (ax < 0) return false;
+    const band = vig.pieces.some((p) => p.role === 'north') ? northWallCells(a) : [];
+    for (const piece of vig.pieces) {
+      let done = false;
+      if (piece.role === 'beside') {
+        const start = rDress.int(0, 3);
+        for (let k = 0; k < 4 && !done; k++) {
+          const [dx, dy] = ORTHO[(start + k) % 4]!;
+          done = placePiece(ax + dx, ay + dy, piece.tile, own);
+        }
+      } else if (piece.role === 'north') {
+        // Band-mates hang a step or three along the same wall.
+        const near = band.filter((p) => {
+          const d = Math.max(Math.abs(p.x - ax), Math.abs(p.y - ay));
+          return d >= 1 && d <= 4;
+        });
+        while (near.length > 0 && !done) {
+          const spot = near.splice(rDress.int(0, near.length - 1), 1)[0]!;
+          done = placePiece(spot.x, spot.y, piece.tile, own);
+        }
+      } else {
+        for (let attempt = 0; attempt < 12 && !done; attempt++) {
+          const x = ax + rDress.int(-3, 3);
+          const y = ay + rDress.int(-3, 3);
+          if (Math.max(Math.abs(x - ax), Math.abs(y - ay)) < 1) continue;
+          done = placePiece(x, y, piece.tile, own);
+        }
+      }
+      // Optional pieces fail silently — a scene degrades, never scatters.
+    }
+    return true;
+  };
+
+  // A story never repeats next door: the adjacency, built once.
+  const roomAdj: Array<Set<number>> = b.rooms.map(() => new Set());
+  for (const e of b.edges) {
+    roomAdj[e.a]!.add(e.b);
+    roomAdj[e.b]!.add(e.a);
+  }
+  const roomStory = new Map<number, string[]>();
+  const table = STORY_TABLES[b.spec.theme];
+  const ambient = AMBIENT_KITS[b.spec.theme];
+  for (const [ri, a] of b.rooms.entries()) {
+    if (a.kind === 'entry') continue; // the landing stays clear
+    // THE COURT IS DRESSED BY ITS AUTHOR — and so is every prefab
+    // set-piece now (vault, forge, camp, spring, ossuary, den): their
+    // stamps carry their own furniture; scatter stays out.
+    const area = Math.PI * a.r * a.r;
+    if (a.kind === 'room') {
+      // The light every dungeon owes: brazier shoulders in worked rooms…
+      if (a.style === 'hall') {
+        const spots = northWallCells(a).filter((p) => c.get(p.x, p.y) === Tile.DungeonFloor);
+        for (let placedB = 0; placedB < 2 && spots.length > 0; placedB++) {
+          const spot = spots.splice(rDress.int(0, spots.length - 1), 1)[0]!;
+          putProp(spot.x, spot.y, Tile.Brazier);
+        }
+      }
+      // …then THE ROOM DRAWS A STORY: one scene (two in the biggest
+      // rooms), weighted by where the room stands on the road and how
+      // the traffic runs through it, told as a placed cluster.
+      const taken = new Set<string>();
+      for (const n of roomAdj[ri]!) {
+        for (const sid of roomStory.get(n) ?? []) taken.add(sid);
+      }
+      const mine: string[] = [];
+      const failed = new Set<string>();
+      const storyCount = 1 + (a.r >= 10 && rDress.chance(0.55) ? 1 : 0);
+      for (let sc = 0; sc < storyCount; sc++) {
+        for (let tries = 0; tries < 3; tries++) {
+          const cands = table.filter(
+            (v) =>
+              !taken.has(v.id) &&
+              !mine.includes(v.id) &&
+              !failed.has(v.id) &&
+              (!v.styles || v.styles.includes(a.style)) &&
+              !capped(v.anchor),
+          );
+          if (cands.length === 0) break;
+          let total = 0;
+          const weights = cands.map((v) => {
+            let w = v.weight;
+            if (v.half) {
+              const frac = a.depth / maxDepth;
+              const inHalf = v.half === 'entry' ? frac <= 0.45 : frac >= 0.55;
+              const opposed = v.half === 'entry' ? frac >= 0.55 : frac <= 0.45;
+              w *= inHalf ? 3 : opposed ? 0.4 : 1;
+            }
+            if (v.degree1 && a.degree === 1) w *= 2.5;
+            total += w;
+            return w;
+          });
+          let roll = rDress.range(0, total);
+          let pick = cands[cands.length - 1]!;
+          for (let ci = 0; ci < cands.length; ci++) {
+            roll -= weights[ci]!;
+            if (roll <= 0) {
+              pick = cands[ci]!;
+              break;
+            }
+          }
+          if (placeVignette(a, pick)) {
+            mine.push(pick.id);
+            break;
+          }
+          failed.add(pick.id);
+        }
+      }
+      if (mine.length > 0) roomStory.set(ri, mine);
+      // …then the theme's thin ambient coat — texture under the story.
+      for (const entryDef of ambient) {
+        if (entryDef.styles && !entryDef.styles.includes(a.style)) continue;
+        const pieces = Math.round(area / entryDef.per);
+        if (entryDef.north) {
+          // THE FIXTURE FINDS ITS WALL: wall pieces deal from the
+          // scanned band itself — random darts almost never land on
+          // the one-cell lane under the north wall.
+          const cells = northWallCells(a);
+          for (let i = 0; i < pieces && cells.length > 0; i++) {
+            const spot = cells.splice(rDress.int(0, cells.length - 1), 1)[0]!;
+            putCapped(spot.x, spot.y, entryDef.tile);
+          }
+          continue;
+        }
+        for (let i = 0; i < pieces; i++) {
+          const x = a.x + rDress.int(-a.r, a.r);
+          const y = a.y + rDress.int(-a.r, a.r);
+          if (entryDef.wall) {
+            let wallAdj = false;
+            for (const [dx, dy] of ORTHO) {
+              if (c.isRock(x + dx, y + dy)) wallAdj = true;
+            }
+            if (!wallAdj) continue;
+          }
+          putCapped(x, y, entryDef.tile);
+        }
       }
     }
     // Rubble breaks up any big floor.
@@ -527,6 +953,107 @@ export function dressAll(b: DungeonBuild): void {
       const x = a.x + rDress.int(-a.r, a.r);
       const y = a.y + rDress.int(-a.r, a.r);
       if (c.get(x, y) === Tile.CaveFloor) c.set(x, y, Tile.CaveRubble);
+    }
+  }
+
+  // ---- AFFINITY IS LAW: props follow the map's own facts -------------
+  const wallCellFits = (x: number, y: number): boolean =>
+    FLOORISH.has(c.get(x, y)) &&
+    !!openMask[y * S + x] &&
+    c.isRock(x, y - 1) &&
+    c.get(x, y - 1) !== Tile.CrackedCaveWall &&
+    c.passable(x, y + 1);
+  if (b.spec.theme === 'mine') {
+    // The working face: timber stands where the miners actually cut —
+    // beside the veins they were chasing…
+    let faceBraces = 0;
+    for (const v of oreSpots) {
+      if (faceBraces >= 6 || !rDress.chance(0.45)) continue;
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const x = v.x + rDress.int(-2, 2);
+        const y = v.y + rDress.int(-2, 2);
+        if (!wallCellFits(x, y)) continue;
+        if (putProp(x, y, Tile.TimberBrace)) {
+          faceBraces++;
+          break;
+        }
+      }
+    }
+    // …and down the drifts they dug, every ~16–24 corridor tiles.
+    let driftBraces = 0;
+    for (const path of b.corridorPaths) {
+      let next = 10 + rDress.int(0, 8);
+      for (let i = 0; i < path.length && driftBraces < 8; i++) {
+        if (i < next) continue;
+        const pc = path[i]!;
+        let placed = false;
+        for (const [dx, dy] of ORTHO) {
+          if (!wallCellFits(pc.x + dx, pc.y + dy)) continue;
+          if (putProp(pc.x + dx, pc.y + dy, Tile.TimberBrace)) {
+            placed = true;
+            driftBraces++;
+            break;
+          }
+        }
+        next = i + (placed ? 16 + rDress.int(0, 8) : 4);
+      }
+    }
+    // The haul run: on the longest ways, a cart still stands mid-drift.
+    let carts = 0;
+    for (const path of b.corridorPaths) {
+      if (carts >= 2 || path.length < 26 || !rDress.chance(0.4)) continue;
+      const pc = path[Math.floor(path.length / 2) + rDress.int(-4, 4)];
+      if (!pc) continue;
+      for (const [dx, dy] of ORTHO) {
+        if (putCapped(pc.x + dx, pc.y + dy, Tile.MineCart)) {
+          carts++;
+          break;
+        }
+      }
+    }
+  }
+  if (b.spec.theme === 'crypt') {
+    // Someone still walks these halls: the odd corridor shrine, lit.
+    let shrines = 0;
+    for (const path of b.corridorPaths) {
+      if (shrines >= 2 || path.length < 20 || !rDress.chance(0.3)) continue;
+      const pc = path[rDress.int(6, path.length - 7)]!;
+      for (const [dx, dy] of ORTHO) {
+        const x = pc.x + dx;
+        const y = pc.y + dy;
+        let wallAdj = false;
+        for (const [wx, wy] of ORTHO) {
+          if (c.isRock(x + wx, y + wy)) wallAdj = true;
+        }
+        if (!wallAdj) continue;
+        if (putCapped(x, y, Tile.CandleShrine)) {
+          shrines++;
+          break;
+        }
+      }
+    }
+  }
+  if (b.spec.theme === 'cavern' || b.spec.theme === 'warren' || b.spec.theme === 'heartwood') {
+    // The webs mend where nobody brushes them off: the corridor walls.
+    let webs = 0;
+    for (const path of b.corridorPaths) {
+      let next = 14 + rDress.int(0, 8);
+      for (let i = 0; i < path.length && webs < 6; i++) {
+        if (i < next) continue;
+        const pc = path[i]!;
+        let placed = false;
+        if (rDress.chance(0.5)) {
+          for (const [dx, dy] of ORTHO) {
+            if (!wallCellFits(pc.x + dx, pc.y + dy)) continue;
+            if (putProp(pc.x + dx, pc.y + dy, Tile.WallWeb)) {
+              placed = true;
+              webs++;
+              break;
+            }
+          }
+        }
+        next = i + (placed ? 20 + rDress.int(0, 10) : 6);
+      }
     }
   }
   // Glowshrooms light hidden pockets too.

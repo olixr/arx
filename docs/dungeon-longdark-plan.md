@@ -318,3 +318,51 @@ across tiers, off-spine floor 64–72%, empty leaves ≈0, loops ≥1
 always, chests 5–17, bodies 30–460 (modifiers visible in the spread),
 anomalies 0/300. Tests: 12 in generate.test.ts; full tree green
 (shared 215 / content 496 / server 542 / client 489).
+
+---
+
+# THE CURATED HAND — semantic dress v3 (2026-08-15)
+
+**The mandate:** the twenty LONG DARK decor props (tiles 349–368) must
+stop being area-quota sprinkle and start being PLACED — every room a
+scene somebody authored, every prop where its story says it stands.
+And the two authored underground zones (Undercroft, Low Hall) — which
+used ZERO of the twenty — get the kit by hand.
+
+## The diagnosis
+`DECOR_KITS` dealt EVERY kit row into EVERY ordinary room by
+`area/per` quota with random darts. Semantically correct at the tile
+level (north-wall lane, crack refusal, crowding guard, repair sweep)
+but narratively uniform: no clusters, no adjacency, no rarity — a
+gibbet was as likely deep in a store room as at the gate, a candle
+shrine never stood beside the grave it tends.
+
+## The design — rooms tell STORIES
+1. **THE ROOM DRAWS A STORY**: each ordinary room seeds 1–2 vignettes
+   from its theme's story table — a coherent scene (anchor piece +
+   satellites with roles: `north` band-mates, `beside` orthogonals,
+   `near` radius-2/3) placed as a cluster, not a sprinkle. Adjacent
+   rooms refuse the same story (variety by construction); marquee
+   props carry per-dungeon caps (rarity by law).
+2. **THE BASE COAT THINS**: ambient kit (shrooms, stalagmites, humble
+   singles) stays but light, so the stories read against quiet ground.
+3. **AFFINITY IS LAW**: braces timber the mine's corridors and ore
+   faces; carts sit the haul runs; webs thicken where the traffic
+   died (degree-1 rooms); the stronghold's justice stands its ENTRY
+   half, the delvers' cold camps fall on the COURT half (they died
+   close to the prize); the candle shrine only ever burns beside the
+   dead it tends.
+4. **THE PREFAB LEGEND GROWS**: all twenty tiles join the stamp
+   legend; every set-piece pool gains a third variant speaking the new
+   vocabulary (ossuary with sarcophagi + tended shrine, forge with
+   braced walls + cart, warcamp justice yard, vault with the kept
+   flame, camps beside the previous tenant's cold one); arenas take
+   restrained authored touches only.
+5. **Placement truth unchanged**: canProp/northWallCells/removables/
+   two-sweep repair remain the guarantee. All seeding via rDress.
+6. **THE AUTHORED DARK**: undercroft.ts gets the working kit
+   (braces + carts in the galleries, drip pools + grates in the Old
+   Works, the Riftgate Vault dressed grand, the Kobold Front's
+   overrun camp), lowhall.ts gets the LIVED-IN kit (braced door
+   tunnels, sconce light, stores, the fence's emptied strongbox —
+   no cobwebs in a hall the Company sweeps).

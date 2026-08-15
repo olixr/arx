@@ -77,6 +77,7 @@ export function buildUndercroft(): ZoneDef {
   b.fillEllipse(33, 25, 3, 2, Tile.WaterShallow);
   b.fillRect(32, 25, 3, 1, Tile.Water);
   b.set(36, 23, Tile.GlowShroom).set(30, 28, Tile.GlowShroom);
+  b.set(37, 25, Tile.DripPool); // the spring seeps past its own rim
   // The promenade: two facing stall rows on dressed stone, braziers
   // at the corners — the guild sweeps and lights this spine.
   b.fillRect(36, 29, 16, 7, Tile.StoneFloor);
@@ -89,6 +90,7 @@ export function buildUndercroft(): ZoneDef {
   b.set(36, 36, Tile.Brazier).set(51, 36, Tile.Brazier);
   b.set(39, 37, Tile.Bench).set(47, 37, Tile.Bench);
   b.set(54, 31, Tile.Crate).set(55, 33, Tile.Barrel).set(30, 33, Tile.CrateGoods);
+  b.set(54, 35, Tile.MossBarrel); // the cask the damp got to first
   b.sign(30, 29, 'THE DEEP MARKET', ['weights honest, lamps lit']);
   b.set(54, 26, Tile.Stalagmite).set(32, 38, Tile.Stalagmite).set(48, 24, Tile.Stalagmite);
 
@@ -106,6 +108,9 @@ export function buildUndercroft(): ZoneDef {
   b.set(41, 9, Tile.Brazier).set(45, 9, Tile.Brazier);
   b.set(41, 13, Tile.Brazier).set(45, 13, Tile.Brazier);
   b.set(37, 11, Tile.Stalagmite).set(49, 11, Tile.Stalagmite);
+  // The gate-watch keeps its flames: wax generations deep, and no one
+  // has ever seen who lights them.
+  b.set(40, 11, Tile.CandleShrine).set(46, 11, Tile.CandleShrine);
   b.sign(44, 17, 'THE RIFTGATE', ['keys turn, places answer']);
 
   // ---------------------------------------------------------------
@@ -121,6 +126,8 @@ export function buildUndercroft(): ZoneDef {
   b.set(72, 16, Tile.RockSilver).set(79, 18, Tile.RockSilver);
   b.set(89, 15, Tile.RockMithril).set(90, 17, Tile.RockMithril);
   b.set(75, 16, Tile.PillarStone).set(75, 18, Tile.PillarStone); // shoring
+  // The guild's own timber holds the swept walk.
+  b.set(70, 16, Tile.TimberBrace).set(77, 16, Tile.TimberBrace).set(82, 16, Tile.TimberBrace);
   b.set(83, 17, Tile.Brazier);
   b.set(91, 15, Tile.ChestIron);
   b.set(86, 18, Tile.CaveRubble);
@@ -131,6 +138,8 @@ export function buildUndercroft(): ZoneDef {
   b.set(89, 22, Tile.RockAdamant).set(89, 24, Tile.RockAdamant);
   b.set(78, 22, Tile.RockObsidian).set(74, 24, Tile.RockSilver);
   b.set(81, 22, Tile.PillarStone).set(81, 24, Tile.PillarStone);
+  b.set(76, 22, Tile.TimberBrace).set(84, 22, Tile.TimberBrace); // the mid walk's timber
+  b.set(72, 22, Tile.WallChains); // where the haulage ran
   b.set(85, 25, Tile.Brazier);
   b.set(91, 23, Tile.CrackedCaveWall); // three blows say otherwise
   b.fillRect(92, 22, 3, 3, Tile.CaveFloor);
@@ -146,6 +155,13 @@ export function buildUndercroft(): ZoneDef {
   b.set(84, 33, Tile.BonePile).set(88, 28, Tile.BonePile);
   b.set(90, 33, Tile.ChestIron);
   b.set(85, 34, Tile.Stalagmite);
+  // The webbed hollows the sign warned about — and, in the rock, ribs
+  // older than any guild.
+  b.set(72, 28, Tile.WallWeb).set(78, 28, Tile.WallWeb).set(85, 28, Tile.WallWeb);
+  b.set(74, 28, Tile.WallFossil);
+  // Somebody tried for the starfall before the guild sealed the door:
+  // their ring is cold, their bedroll is laid, and they never left.
+  b.set(84, 32, Tile.ColdCamp);
 
   // ---------------------------------------------------------------
   // THE KOBOLD FRONT — southeast. Rubble chokes the market door;
@@ -154,6 +170,7 @@ export function buildUndercroft(): ZoneDef {
   // ---------------------------------------------------------------
   b.fillRect(56, 40, 8, 3, Tile.CaveFloor); // the choked way in
   b.set(57, 40, Tile.CaveRubble).set(59, 42, Tile.CaveRubble).set(61, 41, Tile.CaveRubble);
+  b.set(62, 42, Tile.LootedChest); // the first Undercroft's pay, long since visited
   b.sign(55, 39, 'BEYOND THIS MARK', ['the guild does not sweep', 'past the rubble']);
   b.fillEllipse(67, 45, 6, 5, Tile.CaveFloor); // the outer warren
   b.fillEllipse(78, 51, 7, 5, Tile.CaveFloor); // the deep warren
@@ -167,6 +184,8 @@ export function buildUndercroft(): ZoneDef {
   b.set(86, 44, Tile.CaveRubble);
   b.set(62, 44, Tile.GlowShroom).set(72, 52, Tile.GlowShroom).set(81, 48, Tile.GlowShroom);
   b.set(66, 49, Tile.Stalagmite).set(79, 49, Tile.Stalagmite).set(84, 54, Tile.Stalagmite);
+  b.set(65, 41, Tile.WallWeb).set(76, 47, Tile.WallWeb); // the warren keeps its corners webbed
+  b.set(75, 47, Tile.ChainedSkeleton); // the delver the kobolds caught
   b.set(89, 45, Tile.ChestMossy); // the hoard
   b.set(88, 47, Tile.Crate).set(90, 46, Tile.Crate); // stolen, unopened
 
@@ -180,12 +199,16 @@ export function buildUndercroft(): ZoneDef {
   b.set(15, 45, Tile.PillarStone).set(18, 45, Tile.PillarStone); // stock, still racked
   b.set(20, 47, Tile.Crate).set(14, 52, Tile.CrateGoods).set(19, 52, Tile.Barrel);
   b.set(10, 48, Tile.ToolRack);
+  b.set(13, 44, Tile.TimberBrace).set(19, 44, Tile.TimberBrace); // the masons' own shoring
+  b.set(20, 52, Tile.MossBarrel); // stores gone green since the sealing
+  b.set(14, 53, Tile.IronGrate); // the works' drain, breathing cold
   b.set(16, 44, Tile.Brazier); // the one lamp the guild still feeds
   b.setDetail(15, 48, Detail.Pebbles).setDetail(18, 51, Detail.Pebbles);
   // The cistern: black water, blind fish.
   b.fillEllipse(28, 52, 5, 4, Tile.CaveFloor);
   b.fillEllipse(28, 52, 3, 2, Tile.WaterShallow);
   b.fillRect(27, 52, 3, 1, Tile.Water);
+  b.set(31, 50, Tile.DripPool); // the cistern keeps the mountain's clock
   b.set(26, 52, Tile.FishingSpot).set(30, 52, Tile.FishingSpot);
   b.set(25, 49, Tile.GlowShroom).set(31, 54, Tile.GlowShroom).set(22, 52, Tile.GlowShroom);
   // The glowshroom grotto between cistern and market.
@@ -195,6 +218,7 @@ export function buildUndercroft(): ZoneDef {
   b.set(43, 49, Tile.GlowShroom).set(48, 48, Tile.GlowShroom).set(50, 52, Tile.GlowShroom);
   b.set(44, 53, Tile.GlowShroom).set(42, 51, Tile.GlowShroom);
   b.set(42, 48, Tile.Stalagmite).set(51, 49, Tile.Stalagmite);
+  b.set(44, 47, Tile.WallFossil); // the grotto grew around older ribs
   b.set(49, 54, Tile.ChestMossy);
 
   // ---------------------------------------------------------------

@@ -34,6 +34,17 @@ import { Tile } from '@arx/shared';
  *   C  cook pot        R  potion rack       n  beast nest
  *   S  plunder sacks   q  spear rack        D  target dummy
  *   u  war drum        H  hide frame
+ *   -- THE LONG DARK shelf (tiles 349–368) --
+ *   L  moss barrel     U  mine cart       &  chained skeleton
+ *   i  wall sconce     j  wall chains     0  sarcophagus
+ *   Y  broken pillar   |  grand pillar    a  burial urns
+ *   !  ancient statue  g  hanging gibbet  =  stocks
+ *   ^  mine brace      )  wall fossil     *  wall web
+ *   d  drip pool       Q  cold camp       X  looted chest
+ *   y  grave candles   +  iron grate
+ *   (the wall-hung five — & i j ^ ) * — only read walled with rock
+ *   due north; stamp them under a '#' row or accept their
+ *   freestanding fallback form)
  */
 export interface Prefab {
   rows: string[];
@@ -98,6 +109,28 @@ export const PREFAB_TILES: Record<string, Tile> = {
   '5': Tile.Runestone,
   '8': Tile.ElvenWaystone,
   z: Tile.CrystalCluster,
+  // THE CURATED HAND: the LONG DARK decor shelf (349–368) joins the
+  // legend, so set-pieces can speak the whole vocabulary.
+  L: Tile.MossBarrel,
+  U: Tile.MineCart,
+  '&': Tile.ChainedSkeleton,
+  i: Tile.WallSconce,
+  j: Tile.WallChains,
+  '0': Tile.Sarcophagus,
+  Y: Tile.BrokenPillar,
+  '|': Tile.GrandPillar,
+  a: Tile.BurialUrns,
+  '!': Tile.AncientStatue,
+  g: Tile.GibbetCage,
+  '=': Tile.Stocks,
+  '^': Tile.TimberBrace,
+  ')': Tile.WallFossil,
+  '*': Tile.WallWeb,
+  d: Tile.DripPool,
+  Q: Tile.ColdCamp,
+  X: Tile.LootedChest,
+  y: Tile.CandleShrine,
+  '+': Tile.IronGrate,
 };
 
 /** Horizontal mirror — the cheap doubling of every authored variant. */
@@ -118,7 +151,7 @@ export function mirrorPrefab(pf: Prefab): Prefab {
 export const ARENA_CRYPT = prefab([
   '#######################',
   '#######..b.B.b..#######',
-  '######....I.I....######',
+  '######y...I.I...y######',
   '###.................###',
   '##...I..........I....##',
   '##...................##',
@@ -139,7 +172,7 @@ export const ARENA_CAVERN = prefab([
   '_____##....B....##_____',
   '____#..m.......m..#____',
   '___#....s.....s....#___',
-  '__#.................#__',
+  '__#)...............)#__',
   '__#..s....,,,....s..#__',
   '_#........,~,........#_',
   '_#...m....,,,....m...#_',
@@ -180,7 +213,7 @@ export const ARENA_HEARTWOOD = prefab([
 export const ARENA_MINE = prefab([
   '#######################',
   '#######..F.B.A..#######',
-  '######....I.I....######',
+  '######^...I.I...^######',
   '###..c..........c...###',
   '##...................##',
   '##..I....,.,.....I...##',
@@ -209,7 +242,7 @@ export const ARENA_STRONGHOLD = prefab([
   '##..w.............w..##',
   '##.....u.......c.....##',
   '###.................###',
-  '####...............####',
+  '####.g...........g.####',
   '#####....t...t....#####',
   '#######.........#######',
 ]);
@@ -219,7 +252,7 @@ export const ARENA_WARREN = prefab([
   '_______#########_______',
   '_____##..K.B.K..##_____',
   '____#....k...k....#____',
-  '___#...............#___',
+  '___#*.............*#___',
   '__#..n...........n..#__',
   '__#.......,,,.......#__',
   '_#...H....,o,....H...#_',
@@ -252,6 +285,16 @@ export const VAULTS: Prefab[] = [
     '#....,....#',
     '###########',
   ]),
+  // THE KEPT FLAME: candles burning behind a door nobody has opened —
+  // whoever tends this vault does not use the door.
+  prefab([
+    '###########',
+    '#.G..|..G.#',
+    '#y.......y#',
+    '#....N....#',
+    '#....,....#',
+    '###########',
+  ]),
 ];
 
 /** Wayfarers' camps: light, stores, somewhere to breathe. */
@@ -271,6 +314,17 @@ export const CAMPS: Prefab[] = [
     '_.h....T.._',
     '_.,..c...._',
     '___________',
+  ]),
+  // THE CAMP BEFORE THIS ONE: wayfarers pitched beside the last
+  // party's cold ring and emptied strongbox — everyone stops here,
+  // not everyone leaves.
+  prefab([
+    '____________',
+    '_.Q...c.,.__',
+    '_..,.f...l._',
+    '_.X..T.h.,._',
+    '_.,........_',
+    '____________',
   ]),
 ];
 
@@ -295,6 +349,16 @@ export const WARCAMPS: Prefab[] = [
     '_.k...u..e.._',
     '_____________',
   ]),
+  // THE JUSTICE YARD: the garrison's law in one square — gibbet,
+  // stocks, the cage, and the fire they gather at to watch.
+  prefab([
+    '_____________',
+    '_.g....O..e._',
+    '_..,......S._',
+    '_.=..P....,._',
+    '_.,..x..k..._',
+    '_____________',
+  ]),
 ];
 
 /** Forgotten forges — smelt your dungeon ore without leaving. */
@@ -312,6 +376,16 @@ export const FORGES: Prefab[] = [
     '#b.......#',
     '#..c..l..#',
     '#....,...#',
+    '####.#####',
+  ]),
+  // THE TIMBERED WORKS: braces holding the roof over the works, the
+  // last haul still sitting in its cart.
+  prefab([
+    '##########',
+    '#^F.A..^.#',
+    '#b.......#',
+    '#..c..U..#',
+    '#...,....#',
     '####.#####',
   ]),
 ];
@@ -333,6 +407,17 @@ export const SPRINGS: Prefab[] = [
     '_.,~~s~~~.__',
     '_..~~~~,.___',
     '__m.,~,.____',
+    '____________',
+  ]),
+  // THE SEEPING SPRING: the pool's overflow keeps its own slow clock
+  // in mineral-collared drip pools around the rim.
+  prefab([
+    '____________',
+    '__d..~~,.___',
+    '_.~~~~~~,d__',
+    '_.,~~~~~.___',
+    '_d.~~~~,.___',
+    '__.,~,.dm___',
     '____________',
   ]),
 ];
@@ -357,6 +442,17 @@ export const OSSUARIES: Prefab[] = [
     '_o..k...o..k_',
     '_____________',
   ]),
+  // THE TENDED RELIQUARY: coffins laid in rank, urns between, and the
+  // candles somebody still lights over them.
+  prefab([
+    '_____________',
+    '_0...y...0.._',
+    '_..a...a...._',
+    '_.o...M..o.._',
+    '_....a......_',
+    '_0.......0.._',
+    '_____________',
+  ]),
 ];
 
 /** Warren dens: nests, hides, and the pack's gnawed larder. */
@@ -375,6 +471,16 @@ export const DENS: Prefab[] = [
     '_.n...,..r._',
     '_..o.,K...._',
     '_.,..n...k._',
+    '____________',
+  ]),
+  // THE VICTIMS' END: the pack dragged a camp home whole — the cold
+  // ring, the strongbox they tore through, the bones they kept.
+  prefab([
+    '____________',
+    '_.n..k..H.._',
+    '_..Q....n.._',
+    '_.,..X..,.._',
+    '_..n...o..._',
     '____________',
   ]),
 ];
