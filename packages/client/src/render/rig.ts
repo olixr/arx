@@ -16157,8 +16157,14 @@ export function paintGiantCrabBody(
   const stalksFirst = fy < -0.45;
   const drawStalks = (): void => {
     if (dead || f.hurt) return;
-    const axp = bx + fx * hl * 0.58 * s;
-    const ayp = gy + fy * hl * 0.58 * ys * s - (look.rimBot + topH(hl * 0.58) + 0.02) * tk * s - lift;
+    // THE STALK GROWS FROM A SOCKET (the attachment law): every
+    // appendage roots at a visible fixture ON the body's surface, at
+    // every band — a stem that begins in open air reads as a severed
+    // prop. Each stalk owns a turret socket seated on the shell's
+    // true curve; the stem's path STARTS at that socket point, so no
+    // projection can ever open daylight between stalk and shell.
+    const axp = bx + fx * hl * 0.55 * s;
+    const ayp = gy + fy * hl * 0.55 * ys * s - (look.rimBot + topH(hl * 0.55)) * tk * s - lift;
     const carriage: EarCarriage = {
       azimuth: 0.5,
       rootR: 0.09,
@@ -16180,11 +16186,27 @@ export function paintGiantCrabBody(
             sway: 0.05 * Math.sin(nowMs / 640 + phase + side * 1.7),
           });
       const pts = chain.pts;
+      // The socket: a small turret dome on the shell at this stalk's
+      // own station, painted first so the stem rises out of it.
+      const sockX = hl * 0.52;
+      const sockY = side * hw * 0.16;
+      const sock = P3(sockX, sockY, surf(sockX, sockY));
+      ctx.fillStyle = shade(shell, -8);
+      ctx.beginPath();
+      facetCircle(ctx, sock.x, sock.y, s * 0.038, 6, side * 1.1);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(26, 20, 36, 0.35)';
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.stroke();
       ctx.strokeStyle = shade(look.shell, -20);
       ctx.lineCap = 'round';
       ctx.lineWidth = Math.max(1.4, s * 0.032);
       ctx.beginPath();
-      ctx.moveTo(axp + pts[0]!.x * s, ayp + pts[0]!.y * s);
+      // The stem: FROM the socket's own surface point, through the
+      // chain — the bridge segment spans whatever the projection
+      // opens between anchor and socket, so attachment is structural.
+      ctx.moveTo(sock.x, sock.y - s * 0.012);
+      ctx.lineTo(axp + pts[0]!.x * s, ayp + pts[0]!.y * s);
       for (let i = 1; i < pts.length; i++) {
         ctx.lineTo(axp + pts[i]!.x * s, ayp + pts[i]!.y * s);
       }
@@ -16243,6 +16265,36 @@ export function paintGiantCrabBody(
       ctx.stroke();
       ctx.globalAlpha = 1;
       ctx.restore();
+      // THE YEARS ON THE WALL: the barnacle colonies live INSIDE the
+      // hull-clipped marks pass (the mudcrab mottle law) — a surface
+      // fixture painted as a free overlay escapes the silhouette on
+      // far-flank projections and floats beside the animal (user-
+      // flagged at the quarters). Clipped, a colony can only ever
+      // sit ON the body, at every band, by construction.
+      if (!dead) {
+        const cb = (n: number): number => ((f.seed >>> ((n * 5) % 26)) & 7) / 7;
+        const colX = (-0.35 + cb(0) * 0.3) * hl;
+        const colY = (0.25 + cb(1) * 0.3) * hw * (cb(5) > 0.5 ? 1 : -1);
+        ctx.fillStyle = shade(look.barnacle, -5);
+        for (let k = 0; k < 6; k++) {
+          const b = (n: number): number => ((f.seed >>> ((k * 5 + n * 3) % 27)) & 7) / 7;
+          const cX = (k < 4 ? colX : hl * 0.34) + (b(0) - 0.5) * 0.14 * hl;
+          const cY = (k < 4 ? colY : -colY * 0.5) + (b(1) - 0.5) * 0.16 * hw;
+          const bpx = gx(cX, cY);
+          const bpy = gyy(cX, cY) - surf(cX, cY) * tk * s - lift2;
+          const r0 = s * (0.013 + b(2) * 0.013);
+          ctx.beginPath();
+          facetCircle(ctx, bpx, bpy, r0, 5, k * 1.9);
+          ctx.fill();
+          if (r0 > s * 0.019) {
+            ctx.fillStyle = shade(look.barnacle, -30);
+            ctx.beginPath();
+            facetCircle(ctx, bpx, bpy, r0 * 0.4, 4, k * 2.7);
+            ctx.fill();
+            ctx.fillStyle = shade(look.barnacle, -5);
+          }
+        }
+      }
     },
   );
 
@@ -16360,33 +16412,8 @@ export function paintGiantCrabBody(
     }
   }
 
-  // THE YEARS ON THE WALL: seeded barnacle clusters — the veteran
-  // read. One colony on the crown's weather side, one at the bow.
-  if (!f.hurt && !dead) {
-    // One tight colony on the weather flank, one small cluster at the
-    // bow shoulder — scattered singles read as dropped rice.
-    const cb = (n: number): number => ((f.seed >>> ((n * 5) % 26)) & 7) / 7;
-    const colX = (-0.35 + cb(0) * 0.3) * hl;
-    const colY = (0.25 + cb(1) * 0.3) * hw * (cb(5) > 0.5 ? 1 : -1);
-    ctx.fillStyle = look.barnacle;
-    for (let k = 0; k < 6; k++) {
-      const b = (n: number): number => ((f.seed >>> ((k * 5 + n * 3) % 27)) & 7) / 7;
-      const cX = (k < 4 ? colX : hl * 0.34) + (b(0) - 0.5) * 0.16 * hl;
-      const cY = (k < 4 ? colY : -colY * 0.5) + (b(1) - 0.5) * 0.2 * hw;
-      const p = P3(cX, cY, surf(cX, cY) + 0.01);
-      const r0 = s * (0.014 + b(2) * 0.014);
-      ctx.beginPath();
-      facetCircle(ctx, p.x, p.y, r0, 5, k * 1.9);
-      ctx.fill();
-      if (r0 > s * 0.02) {
-        ctx.fillStyle = shade(look.barnacle, -26);
-        ctx.beginPath();
-        facetCircle(ctx, p.x, p.y, r0 * 0.4, 4, k * 2.7);
-        ctx.fill();
-        ctx.fillStyle = look.barnacle;
-      }
-    }
-  }
+  // (THE YEARS ON THE WALL moved inside the hull-clipped marks pass
+  // above — a barnacle can no longer float off the silhouette.)
 
   // THE WORKING MOUTH: two small dim maxilliped chevrons tucked in
   // the rim shadow under the bow, fluttering — the idle read that
