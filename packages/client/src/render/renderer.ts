@@ -33826,7 +33826,7 @@ export class Renderer {
             // The shirt: dyed body + two sleeves, pegged at the yoke.
             {
               const a = lineAt(0.16);
-              const dye = cloths[1 + ((h >> 3) % 5)]!;
+              const dye = cloths[1 + ((h >>> 3) % 5)]!;
               const sw = sway(1);
               const bw = s * 0.24;
               const bh = s * 0.5;
@@ -33863,7 +33863,7 @@ export class Renderer {
             // The kerchief and the sock pair on the east run.
             {
               const a = lineAt(0.4);
-              const dye = cloths[1 + ((h >> 7) % 5)]!;
+              const dye = cloths[1 + ((h >>> 7) % 5)]!;
               const sw = sway(2);
               ctx.save();
               ctx.translate(a.x, a.y);
@@ -33921,7 +33921,7 @@ export class Renderer {
               ctx.lineTo(p.x - hw * 0.525, baseY - s * (0.05 + k * 0.06));
               ctx.stroke();
             }
-            ctx.fillStyle = cloths[1 + ((h >> 11) % 5)]!.a;
+            ctx.fillStyle = cloths[1 + ((h >>> 11) % 5)]!.a;
             ctx.beginPath();
             ctx.ellipse(p.x - hw * 0.64, baseY - s * 0.18, s * 0.085, s * 0.035, 0.1, 0, Math.PI * 2);
             ctx.fill();

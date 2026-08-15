@@ -124,6 +124,13 @@ export function buildDawnmead(): ZoneDef {
   b.set(33, 44, Tile.FlowerBox).set(39, 44, Tile.FlowerBox);
   b.set(36, 45, Tile.Dirt); // the worn step
   b.setDetail(33, 43, trellisDetail(1));
+  // The keeper's garden: a clipped hedge line shelters a flower bed
+  // against the west wall — fifty years of tending, visible. Her wash
+  // dries on the line among the flowers (the wall-shadow law: a line
+  // BEHIND the cottage vanishes under the facade paint).
+  for (let y = 37; y <= 43; y++) b.set(30, y, Tile.Hedge);
+  b.setDetail(31, 38, Detail.Flowers).setDetail(31, 42, Detail.Flowers);
+  b.set(31, 40, Tile.WashLine);
 
   // ---------------------------------------------------------------
   // THE GREEN — the village's living room at the world's exact
@@ -132,14 +139,29 @@ export function buildDawnmead(): ZoneDef {
   // lane stone in front of the well.
   // ---------------------------------------------------------------
   b.fillRect(56, 43, 21, 5, Tile.StoneFloor);
-  b.set(63, 44, Tile.WallStone).set(64, 44, Tile.WallStone); // the well
-  b.set(63, 45, Tile.WallStone).set(64, 45, Tile.WallStone);
+  // The well — a REAL well now (the remade plan's promise, finally
+  // kept): one honest wellhead where the old build stacked four blank
+  // wall stones into a bunker. Same world tile the worldgen probe
+  // pins at (-65,44).
+  b.set(63, 44, Tile.Well);
   b.set(59, 44, Tile.Bench).set(70, 44, Tile.Bench);
   b.set(57, 43, Tile.FlowerBox).set(75, 43, Tile.FlowerBox);
   b.sign(68, 43, 'DAWNMEAD', ['The village that raises wakers.', 'Learn your hands, then the road.'], Tile.Signpost);
   b.setDetail(60, 46, Detail.Pebbles).setDetail(72, 44, Detail.Pebbles);
   b.set(56, 46, Tile.LampPost).set(76, 46, Tile.LampPost);
   b.set(58, 42, Tile.BannerPole).set(74, 42, Tile.BannerPole);
+  // The green finds its civic voice. The bell calls supper and worse;
+  // the board is where the village writes to itself; the town sign
+  // stands between its two clipped sentries. NO fountain and NO
+  // founder statue, ever: the well and the Ring are Dawnmead's heart,
+  // and nobody founded the village that grew around the stones.
+  b.set(60, 43, Tile.TownBell);
+  b.set(62, 43, Tile.NoticeBoard);
+  b.set(67, 43, Tile.TopiaryBall).set(69, 43, Tile.TopiaryBall);
+  // Rowan's seat: the stone bench the village set when the old keeper
+  // took his own advice and walked east. Nobody says it's his. It is.
+  b.set(58, 45, Tile.StoneBench);
+  b.set(61, 46, Tile.StreetPlanter).set(67, 46, Tile.StreetPlanter);
 
   // ---------------------------------------------------------------
   // THE FIVE STONES — the inn, named for the only thing every guest
@@ -154,10 +176,12 @@ export function buildDawnmead(): ZoneDef {
   b.set(51, 40, Tile.WallWoodWindow).set(59, 40, Tile.WallWoodWindow);
   b.set(48, 34, Tile.WallWoodWindow).set(62, 34, Tile.WallWoodWindow);
   b.set(52, 30, Tile.WallWoodWindow).set(58, 30, Tile.WallWoodWindow);
-  // The bar: counter run, the keg behind it, cups on the back shelf.
+  // The bar: counter run, the keg behind it, cups on the back shelf,
+  // and the stocked back-bar casework Gilly actually sells from.
   b.set(50, 33, Tile.Counter).set(51, 33, Tile.Counter).set(52, 33, Tile.Counter);
   b.set(49, 32, Tile.BrewKeg);
   b.set(49, 31, Tile.Cabinet).set(50, 31, Tile.Cabinet);
+  b.set(51, 31, Tile.ShopShelf);
   b.set(53, 31, Tile.Barrel);
   // The common room: hearth on the west wall, two honest tables.
   b.set(48, 36, Tile.Hearth);
@@ -183,6 +207,14 @@ export function buildDawnmead(): ZoneDef {
   b.sign(58, 41, 'THE FIVE STONES', ['Beds for wakers.', 'Claim one. Come back to it.']);
   b.set(54, 41, Tile.Dirt).set(55, 41, Tile.Dirt); // the worn threshold
   b.set(47, 41, Tile.LampPost);
+  // An inn that works: the brewer's drop and four beds' worth of
+  // linen on the west service side (never out back — the wall-shadow
+  // law), a rail for whatever a traveler rides in on, and town color
+  // at the door.
+  b.set(46, 32, Tile.BarrelStack);
+  b.set(46, 34, Tile.WashLine);
+  b.set(52, 41, Tile.HitchingPost);
+  b.set(56, 41, Tile.StreetPlanter);
 
   // ---------------------------------------------------------------
   // THE FARMSTEAD — Brammel's family and Sorrel the drover: the
@@ -206,10 +238,16 @@ export function buildDawnmead(): ZoneDef {
   b.set(74, 13, Tile.Table).set(75, 13, Tile.Table);
   b.set(73, 13, Tile.Chair).set(76, 13, Tile.Chair);
   b.set(78, 13, Tile.Basin);
-  b.set(79, 14, Tile.Crate);
+  b.set(79, 14, Tile.GrainSacks); // the pantry corner, scoop parked
   b.setDetail(74, 12, Detail.Rug).setDetail(75, 12, Detail.Rug);
   b.setDetail(74, 14, Detail.Doormat);
   b.setDetail(71, 15, trellisDetail(0)); // ivy takes working houses
+  // A farm mid-chore: the cart parked off the walk between house and
+  // coop, feed sacks at the coop rail, five people's wash on the line
+  // at the west gable where the morning sun lands (wall-shadow law).
+  b.set(81, 16, Tile.HandCart);
+  b.set(81, 10, Tile.GrainSacks);
+  b.set(68, 10, Tile.WashLine);
   // The coop: fenced dirt, straw, west gate standing open. The hens
   // roam it and the long grass — the egg errand is honest work.
   b.fillRect(83, 9, 5, 4, Tile.Dirt);
@@ -262,11 +300,18 @@ export function buildDawnmead(): ZoneDef {
   b.set(82, 42, Tile.Sawhorse);
   b.set(85, 42, Tile.CarvingBench);
   b.set(77, 41, Tile.Stump); // the log that feeds the sawhorse
+  b.set(78, 41, Tile.LumberRack); // stump to rack to sawhorse — timber flows east
   b.set(86, 41, Tile.CrateGoods);
   b.set(77, 45, Tile.Barrel);
-  // The forge corner: one furnace, one anvil, facing the lane.
+  // The forge corner: one furnace, one anvil, facing the lane — and
+  // the working triangle between them. Quench beside the anvil,
+  // bellows at the fire's shoulder, the ingot rack showing every
+  // waker what a bar of bronze is FOR before Amberford ever asks.
   b.set(84, 45, Tile.Furnace);
   b.set(82, 45, Tile.Anvil);
+  b.set(83, 45, Tile.QuenchTrough);
+  b.set(85, 45, Tile.SmithBellows);
+  b.set(86, 44, Tile.IngotRack);
   b.setDetail(79, 43, Detail.Sawdust).setDetail(82, 43, Detail.Sawdust);
   b.setDetail(85, 43, Detail.Sawdust).setDetail(80, 42, Detail.Sawdust);
   b.setDetail(83, 44, Detail.Pebbles);
@@ -285,6 +330,7 @@ export function buildDawnmead(): ZoneDef {
   b.set(71, 53, Tile.Bed).set(71, 54, Tile.Bed);
   b.set(71, 56, Tile.Cabinet);
   b.set(73, 53, Tile.Basin);
+  b.set(73, 57, Tile.HerbRack); // the bank's forage, hung heads-down
   b.setDetail(72, 54, Detail.RugRound);
   b.setDetail(73, 55, Detail.Doormat);
   // The open hall: posts, stone floor, stations on the north row.
@@ -297,8 +343,15 @@ export function buildDawnmead(): ZoneDef {
   b.set(76, 55, Tile.Table).set(77, 55, Tile.Table).set(78, 55, Tile.Table).set(79, 55, Tile.Table);
   b.set(76, 54, Tile.Bench).set(77, 54, Tile.Bench).set(78, 54, Tile.Bench).set(79, 54, Tile.Bench);
   b.set(76, 56, Tile.Bench).set(77, 56, Tile.Bench).set(78, 56, Tile.Bench).set(79, 56, Tile.Bench);
-  // The smoke yard east of the hall: spit and smoker, downwind.
+  // The baking line on the hall's north face: the brick oven Berrit
+  // fires before dawn, flour at its left hand, fuel at its right.
+  b.set(78, 51, Tile.BreadOven);
+  b.set(76, 51, Tile.GrainSacks);
+  b.set(80, 51, Tile.Woodpile);
+  // The smoke yard east of the hall: spit, block, and smoker in a
+  // working row, downwind. The cleaver stands where she left it.
   b.set(82, 53, Tile.MeatSpit);
+  b.set(82, 55, Tile.ButcherBlock);
   b.set(82, 57, Tile.Smoker);
   b.set(81, 59, Tile.Barrel);
   b.sign(73, 59, 'THE LONG TABLE', ['Berrit feeds all comers.', 'Wash your hands.'], Tile.Signpost);
@@ -332,6 +385,7 @@ export function buildDawnmead(): ZoneDef {
   b.fillRect(46, 56, 16, 10, Tile.Dirt);
   b.set(49, 58, Tile.TargetDummy).set(53, 58, Tile.TargetDummy).set(57, 58, Tile.TargetDummy);
   b.set(47, 56, Tile.WeaponRack);
+  b.set(48, 56, Tile.Grindstone); // the yard keeps its own edges
   b.set(60, 56, Tile.ToolRack);
   b.set(46, 64, Tile.Barrel);
   b.set(61, 64, Tile.Bench);
@@ -354,6 +408,7 @@ export function buildDawnmead(): ZoneDef {
   b.set(51, 74, Tile.WeaponRack);
   b.set(45, 74, Tile.Hearth);
   b.set(50, 74, Tile.Crate);
+  b.set(43, 74, Tile.Woodpile); // the watch's winter, ranked at the west wall
   b.setDetail(48, 71, Detail.Rug);
   b.setDetail(48, 69, Detail.Doormat);
   // The archery range: fenced so nobody wanders behind the butts.
@@ -417,6 +472,7 @@ export function buildDawnmead(): ZoneDef {
   b.set(16, 63, Tile.Cabinet);
   b.setDetail(14, 64, Detail.RugRound);
   b.setDetail(17, 64, Detail.Doormat);
+  b.set(16, 69, Tile.Woodpile); // the trade itself: cordwood ranked at the south wall
   b.sign(20, 65, 'THE COPSE', ['Take the marked ones.', 'A stand outlives its keeper.'], Tile.Signpost);
   // The Scrap Crag: copper and tin in the open, pick-height.
   b.set(23, 81, Tile.Rock).set(28, 85, Tile.Rock);
@@ -427,17 +483,21 @@ export function buildDawnmead(): ZoneDef {
   b.sign(25, 86, 'THE SCRAP CRAG', ['Copper and tin, honest seams.', "Ottery's furnace is hungry."], Tile.Signpost);
 
   // ---------------------------------------------------------------
-  // THE ORCHARD — planted lines behind their fence in the northwest,
-  // the gate onto the long walk that ends at the Ring.
+  // THE ORCHARD — planted lines behind a clipped hedgerow in the
+  // northwest, the living arch onto the long walk that ends at the
+  // Ring. The one place in Dawnmead bounded by hedge, not rail:
+  // livestock gets post-and-timber, but an orchard is a GARDEN, and
+  // fifty years of wakers learning shears have kept this one square.
   // ---------------------------------------------------------------
-  b.outlineRect(18, 8, 23, 17, Tile.Fence);
-  b.set(28, 24, Tile.FenceGate); // south gate, standing open
+  b.outlineRect(18, 8, 23, 17, Tile.Hedge);
+  b.set(28, 24, Tile.HedgeGate); // the living arch, wicket swung aside
+  b.set(27, 23, Tile.TopiarySpire).set(29, 23, Tile.TopiarySpire); // the gate's honor guard
   for (let row = 0; row < 4; row++) {
     for (let col = 0; col < 6; col++) {
       b.set(21 + col * 3 + (row % 2), 11 + row * 3, Tile.TreeOak);
     }
   }
-  b.set(19, 23, Tile.Crate).set(20, 23, Tile.Barrel); // the harvest corner
+  b.set(19, 23, Tile.CrateStack).set(20, 23, Tile.Barrel); // the harvest corner, mid-picking
   b.sign(30, 25, 'THE ORCHARD', ["Windfalls are anybody's.", 'Shake nothing. Ask Alder.'], Tile.Signpost);
   b.setDetail(25, 14, Detail.Flowers).setDetail(33, 19, Detail.Flowers);
   b.setDetail(29, 21, Detail.Flowers);
@@ -525,7 +585,7 @@ export function buildDawnmead(): ZoneDef {
   b.setDetail(107, 18, Detail.Doormat);
   b.set(101, 17, Tile.DryingRack).set(101, 20, Tile.DryingRack);
   b.set(98, 19, Tile.Barrel);
-  b.set(97, 22, Tile.Crate); // the tackle box at the pier head
+  b.set(97, 22, Tile.CrateStack); // the tackle stacked at the pier head
 
   // ---------------------------------------------------------------
   // THE OLD GRANARY — the roofless ruin in the southeast meadow.
@@ -568,6 +628,9 @@ export function buildDawnmead(): ZoneDef {
   b.set(80, 46, Tile.LampPost);
   b.set(98, 46, Tile.LampPost).set(106, 50, Tile.LampPost);
   b.set(114, 46, Tile.LampPost).set(122, 50, Tile.LampPost);
+  // The send-off seat: a stone bench between the last lamps, facing
+  // the lane. Every waker who ever left sat here a minute first.
+  b.set(110, 46, Tile.StoneBench);
 
   // ---------------------------------------------------------------
   // THE QUIET QUARTERS — every corner holds a vignette, no voids.

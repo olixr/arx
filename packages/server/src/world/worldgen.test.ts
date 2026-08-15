@@ -118,11 +118,11 @@ test('different seeds give different terrain', () => {
 test('authored zone overlays the procedural world exactly', () => {
   const town = buildDawnmead();
   const world = new WorldSource(1337, [town]);
-  // The village spans world (-128,0)-(-1,95); its well sits on the
-  // green with its NW stone at (-65,44).
+  // The village spans world (-128,0)-(-1,95); its well stands on the
+  // green at (-65,44) — a real wellhead since the dressing pass.
   world.ensure(-3, 1);
   world.ensure(-2, 1);
-  assert.equal(world.groundAt(-65, 44), Tile.WallStone);
+  assert.equal(world.groundAt(-65, 44), Tile.Well);
   // The Waking Ring's pad is walkable stone.
   assert.equal(world.groundAt(-82, 48), Tile.StoneFloor);
   assert.equal(world.isSolid(-82, 48), false);
