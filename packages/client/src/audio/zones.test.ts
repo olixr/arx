@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { birdsK, cricketsK, dominantZone, zoneWeights } from './zones.js';
+import { birdsK, cricketsK, dominantZone, skySeam, zoneWeights } from './zones.js';
 
 test('zone weights always sum to 1 and never leave [0,1]', () => {
   for (let x = -200; x <= 200; x += 7) {
@@ -33,6 +33,22 @@ test('the town edge fades — no cliff in the crossfade', () => {
     prev = cur;
   }
   assert.equal(prev, 0);
+});
+
+test("THE SKY'S SEAM: dusk and dawn each cross once, warps cross nothing", () => {
+  // A frame stepping over sunset hears dusk; over sunrise, dawn.
+  assert.equal(skySeam(20.49, 20.51), 'dusk');
+  assert.equal(skySeam(5.49, 5.51), 'dawn');
+  // An ordinary frame step crosses nothing.
+  assert.equal(skySeam(12.0, 12.001), null);
+  assert.equal(skySeam(20.51, 20.52), null);
+  // Midnight wraps without inventing a seam.
+  assert.equal(skySeam(23.99, 0.01), null);
+  // A warp-sized jump (login, /time) crosses nothing — even over dusk.
+  assert.equal(skySeam(12, 22), null);
+  assert.equal(skySeam(22, 12), null);
+  // A stalled clock stays quiet.
+  assert.equal(skySeam(20.5, 20.5), null);
 });
 
 test('birds own the day, crickets own the night, dusk holds a quiet gap', () => {

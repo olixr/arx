@@ -13,6 +13,8 @@
  * last hedgerows trail off by ~36.
  */
 
+import { SUNRISE, SUNSET } from '@arx/shared';
+
 export interface ZoneWeights {
   town: number;
   wild: number;
@@ -59,6 +61,34 @@ export function zoneWeights(x: number, y: number): ZoneWeights {
 export function dominantZone(w: ZoneWeights): ZoneId {
   if (w.cave >= w.town && w.cave >= w.wild) return 'cave';
   return w.town >= w.wild ? 'town' : 'wild';
+}
+
+/**
+ * A clock jump larger than this between two frames (login, /time, a
+ * long hitch) is a warp, not a passage — it crosses no seam. The
+ * frame clock steps ~0.0005h; twelve real seconds of game clock is
+ * far past any honest frame gap.
+ */
+const SEAM_WARP_HOURS = 0.25;
+
+/**
+ * THE SKY'S SEAM — did the clock pass dusk or dawn between two
+ * readings? Pure and wrap-aware: the passage is measured forward from
+ * `prev` (the clock only ever walks forward), and a warp-sized step
+ * crosses nothing, so logging in at night never plays a dusk that
+ * happened hours ago. The caller decides whether the sky is even
+ * visible (no seam sounds underground).
+ */
+export function skySeam(prev: number, cur: number): 'dusk' | 'dawn' | null {
+  const step = (((cur - prev) % 24) + 24) % 24;
+  if (step <= 0 || step > SEAM_WARP_HOURS) return null;
+  const crossed = (mark: number): boolean => {
+    const toMark = (((mark - prev) % 24) + 24) % 24;
+    return toMark > 0 && toMark <= step;
+  };
+  if (crossed(SUNSET)) return 'dusk';
+  if (crossed(SUNRISE)) return 'dawn';
+  return null;
 }
 
 /**

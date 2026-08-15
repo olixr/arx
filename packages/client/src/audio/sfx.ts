@@ -38,22 +38,25 @@ const PAN_MAX = 0.8;
  * sample (EBU R128 integrated, ffmpeg ebur128: −17.8 LUFS reference —
  * re-measure when samples are added or replaced).
  *
- * Wired today: `level_up` (the skill herald). The rest sit ready for
- * future moments — see each entry's note for its intended seat.
+ * Wired today: `level_up` (the skill herald), `poi_discovery` and
+ * `stab_calm_1` (the discovery ceremony's two voices), and the
+ * `day_to_night`/`night_to_day` seam stingers (THE SKY'S SEAM in the
+ * main loop). The rest sit ready for future moments — see each
+ * entry's note for its intended seat.
  */
 const SAMPLE_TRIM = {
   level_up: 0.6, // −13.4 — the skill level-up herald (wired: levelUp())
-  poi_discovery: 0.67, // −14.3 — a found place; ready to succeed discovery()
+  poi_discovery: 0.67, // −14.3 — a wild site found (wired: onDiscovery)
   alert_1: 0.99, // −17.7 — a general attention chime, brighter
   alert_2: 0.69, // −14.6 — a general attention chime, softer
   notification_success: 0.72, // −14.9 — an affirmative notice landing
   success_1: 0.81, // −16.0 — a smaller "it worked" flourish
-  stab_calm_1: 0.47, // −11.2 — a calm ambient sting for quiet reveals
+  stab_calm_1: 0.47, // −11.2 — a town's gate entered (wired: onDiscovery)
   stab_dramatic_1: 0.72, // −14.9 — a dramatic sting for grim beats
   stab_dramatic_2: 0.67, // −14.3
   stab_dramatic_3: 0.84, // −16.3
-  day_to_night: 0.57, // −12.9 — a dusk stinger for the day/night seam
-  night_to_day: 1, // −17.8 — the answering dawn stinger
+  day_to_night: 0.57, // −12.9 — the dusk stinger (wired: THE SKY'S SEAM)
+  night_to_day: 1, // −17.8 — the answering dawn stinger (wired)
 } as const;
 export type SampleName = keyof typeof SAMPLE_TRIM;
 
@@ -141,6 +144,10 @@ export class Sfx {
     this.engine.unlock();
     // Warm the wired samples so their first firing is the recording.
     this.warmSample('level_up');
+    this.warmSample('poi_discovery');
+    this.warmSample('stab_calm_1');
+    this.warmSample('day_to_night');
+    this.warmSample('night_to_day');
   }
 
   // ---- the recorded shelf -------------------------------------------

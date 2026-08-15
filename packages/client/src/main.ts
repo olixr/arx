@@ -47,7 +47,7 @@ import { TrackPlayer } from './audio/tracks.js';
 import { AmbienceSystem } from './audio/ambience.js';
 import { VoicePlayer } from './audio/voice.js';
 import { AudioMenu } from './ui/audioMenu.js';
-import { UNDERGROUND_Y, zoneWeights } from './audio/zones.js';
+import { UNDERGROUND_Y, skySeam, zoneWeights } from './audio/zones.js';
 import { scanFallEar, SILENT_EAR, type FallEar } from './audio/falls.js';
 import { setupTouch } from './input/touch.js';
 import { DYE_SWATCHES, buildableIconUrl, dockGlyphUrl, itemIconUrl, uiIconUrl } from './render/icons.js';
@@ -1604,7 +1604,10 @@ const game = new ClientGame(input, {
     // hand the whole document a second style/layout pass this task.
     chat.addLine({ channel: 'system', text: `Discovered: ${d.name} — marked on your chart (M).` });
     showDiscovery(d);
-    sfx.discovery();
+    // The recorded shelf speaks for the find — the calm sting for a
+    // town's gate, the discovery call for the wild's sites — with the
+    // synth voice as the pre-decode fallback.
+    if (!sfx.sample(d.kind === 'town' ? 'stab_calm_1' : 'poi_discovery')) sfx.discovery();
     const pos = game.predictor.pos;
     renderer.addRing(pos.x, pos.y, '#f2c94c', 1.3);
     renderer.zoomPulse(0.035);
@@ -2973,6 +2976,8 @@ let fpsWindowStart = performance.now();
 // Riftgate earshot: throttled nearest-portal scan feeding the drone.
 // The fall-earshot scan rides the same 2.5 Hz throttle.
 let nextPortalScanAt = 0;
+/** Last frame's sky clock — the dusk/dawn seam stingers watch it. */
+let lastSkyHours: number | null = null;
 /** Fall-earshot scan, half-phase offset from the portal scan so the
  *  two 441-tile sweeps never land in the same frame. */
 let nextFallScanAt = 200;
@@ -3816,6 +3821,19 @@ function frame(now: number): void {
         ? dangerAt(game.worldSeed, own.x, own.y, game.dangerAnchors)
         : 0;
     music.update(w, hours, dangerTier);
+    // THE SKY'S SEAM: dusk and dawn each speak once as the light
+    // turns — surface only (there is no sky underground; the clock
+    // still advances so a delver never surfaces into a stale seam).
+    if (own.y < UNDERGROUND_Y) {
+      if (lastSkyHours !== null) {
+        const seam = skySeam(lastSkyHours, hours);
+        if (seam === 'dusk') sfx.sample('day_to_night');
+        else if (seam === 'dawn') sfx.sample('night_to_day');
+      }
+      lastSkyHours = hours;
+    } else {
+      lastSkyHours = null;
+    }
     // The gauge reads the same field the music does — one law, every
     // surface. Underground, the cinema, and the workbench stand it
     // down; the dark keeps its own chrome.
