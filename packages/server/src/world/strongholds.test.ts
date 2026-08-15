@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import {
+import { WORLD_SEED,
   MINOR_DEFS,
   POI_DEFS,
   POI_PREFABS,
@@ -21,7 +21,7 @@ import {
   type SeatCtx,
 } from './strongholds.js';
 
-const SEED = 1337;
+const SEED = WORLD_SEED;
 
 const prefabs = new Map([...POI_PREFABS, ...STRONGHOLD_PREFABS]);
 

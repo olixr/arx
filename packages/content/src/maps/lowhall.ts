@@ -37,12 +37,12 @@ import type { ZoneDef } from './types.js';
  * hatch (never ON the paired portal — the Undercroft pairing law).
  */
 const DOOR_UP = {
-  amberford: { x: 389.5, y: 39.5 }, // the reed neck's slack bank
-  silverfall: { x: -337.5, y: -179.5 }, // the Rookery's back lot
-  saltmere: { x: 367.5, y: 292.5 }, // the pocket by the Pilot's Cot
-  pinewatch: { x: 534.5, y: -140.5 }, // the reed bank at the millrace
-  hartfell: { x: 845.5, y: -382.5 }, // the yard behind the Speaker's house
-  kingsdelf: { x: -216.5, y: 322.5 }, // the shadow behind the delvers' barracks
+  amberford: { x: 557.5, y: 11.5 }, // the reed neck's slack bank
+  silverfall: { x: -497.5, y: -299.5 }, // the Rookery's back lot
+  saltmere: { x: 771.5, y: 330.5 }, // the pocket by the Pilot's Cot
+  pinewatch: { x: 1110.5, y: -360.5 }, // the reed bank at the millrace
+  hartfell: { x: 1301.5, y: -606.5 }, // the yard behind the Speaker's house
+  kingsdelf: { x: -440.5, y: 362.5 }, // the shadow behind the delvers' barracks
 } as const;
 
 export function buildLowhall(): ZoneDef {

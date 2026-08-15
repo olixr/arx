@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { TILE_SKIP, chestInfo } from '@arx/shared';
-import { MINOR_DEFS, POI_PREFABS, SETTLED_ANCHORS, dangerLaw } from '@arx/content';
+import { WORLD_SEED, MINOR_DEFS, POI_PREFABS, SETTLED_ANCHORS, dangerLaw } from '@arx/content';
 import { poiContext, poiForCell, poiScanOrder, POI_CELL } from './pois.js';
 import { FIND_SPACING, composeFinds, findsForCell, findsZoneId } from './finds.js';
 
-const SEED = 1337;
+const SEED = WORLD_SEED;
 const CTX = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, [], []);
 
 /** Hostile-tier scan cells with their (possibly null) site anchors. */

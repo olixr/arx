@@ -1,5 +1,5 @@
-import { fbm, type Vec2, type DangerAnchor } from '@arx/shared';
-import { SETTLED_ANCHORS, replaceSettledAnchors } from './danger.js';
+import { DANGER_MAX, fbm, type Vec2, type DangerAnchor } from '@arx/shared';
+import { AUTHORED_ANCHOR_WORDS, SETTLED_ANCHORS, replaceSettledAnchors } from './danger.js';
 
 /**
  * THE GEOGRAPHY — the master plan's fixed points, in one place.
@@ -68,21 +68,29 @@ export interface Landform {
 export const DAWNMEAD_RECT: ZoneRect = { x: -96, y: 16, w: 96, h: 64 };
 
 /**
- * Amberford — the crossroads market town (epic 2). Center (352, 24):
- * pushed a full ~300 tiles past Dawnmead's east hem so the First Road
- * is a REAL first journey (~90 seconds of honest walking through the
- * Amberfen, not a stroll) — the corridor carries a toll narrows, a
+ * Amberford — the crossroads market town (epic 2). Center (520, -4):
+ * pushed a full ~470 tiles past Dawnmead's east hem so the First Road
+ * is a REAL first journey — the corridor carries a toll narrows, a
  * crofter haven, and the fen's islet country to explore on the way.
+ * THE GREAT WORLD REGEN (seed 24601) seated it on the north bank of
+ * the east country's great river: the channel runs just below the
+ * south hem, so the ford that names the town is finally a real ford —
+ * the Salt Road leaves the South Gate and crosses it on its first
+ * league.
  */
-export const AMBERFORD_RECT: ZoneRect = { x: 296, y: -16, w: 112, h: 80 };
+export const AMBERFORD_RECT: ZoneRect = { x: 464, y: -44, w: 112, h: 80 };
 
 /**
- * Silverfall — the mountain capital (epic 4). Center (-288, -160):
- * deep in the Silverspine, ~306 tiles from Dawnmead, so the band
+ * Silverfall — the mountain capital (epic 4). Center (-448, -280):
+ * deep in the Silverspine, ~530 tiles from Dawnmead, so the band
  * march keeps its approach at tier 4-5 forever. The city anchors as a
  * HAVEN (a lamp, not a hearth) — tier 0 inside, wild at the walls.
+ * Re-seated by the great regen onto seed 24601's own highland belt —
+ * the massif now amplifies real crag country instead of inventing it,
+ * and a north-flowing river passes east of the walls for the High
+ * Road's last bridge below the falls.
  */
-export const SILVERFALL_RECT: ZoneRect = { x: -376, y: -224, w: 176, h: 128 };
+export const SILVERFALL_RECT: ZoneRect = { x: -536, y: -344, w: 176, h: 128 };
 
 /**
  * Saltmere — the town at the water's end (the southern epic). Center
@@ -91,12 +99,14 @@ export const SILVERFALL_RECT: ZoneRect = { x: -376, y: -224, w: 176, h: 128 };
  * into tier 3 for its last league — the first journey the game asks
  * of a made character, not a waker. The town anchors as a HAVEN (the
  * Silverfall law): tier 0 on the quay, wild at the walls, and the far
- * shore of the mere stays tier 4-5 country forever.
+ * shore of the mere stays tier 4-5 country forever. Center (760, 330)
+ * since the great regen: the lake district west of the rect is the
+ * seed's own, and the flats run south below it.
  */
-export const SALTMERE_RECT: ZoneRect = { x: 300, y: 252, w: 112, h: 80 };
+export const SALTMERE_RECT: ZoneRect = { x: 704, y: 290, w: 112, h: 80 };
 
 /** The Silverspine massif — crag country cradling Silverfall. */
-export const SILVERSPINE = { x: -320, y: -192, r: 210 } as const;
+export const SILVERSPINE = { x: -480, y: -312, r: 210 } as const;
 
 /**
  * THE SPINEWALLS — the two ramparts that close the Silverspine's hand
@@ -112,8 +122,8 @@ export const SILVERSPINE = { x: -320, y: -192, r: 210 } as const;
  * with the Kingswater on the other side, the final approach to
  * Silverfall is a gap between crag and deep water. One road in.
  */
-export const SPINEWALL_EAST = { x: -152, y: -176, r: 116 } as const;
-export const SPINEWALL_SOUTH = { x: -238, y: -34, r: 82 } as const;
+export const SPINEWALL_EAST = { x: -312, y: -296, r: 116 } as const;
+export const SPINEWALL_SOUTH = { x: -398, y: -154, r: 82 } as const;
 
 /**
  * THE KINGSWATER + THE COLDTARN — the capital's water. The Kingswater
@@ -126,8 +136,8 @@ export const SPINEWALL_SOUTH = { x: -238, y: -34, r: 82 } as const;
  * city authors its own ground and the border's edge class carries the
  * water outward, so no shoreline is ever sliced by a rect.
  */
-export const KINGSWATER = { x: -380, y: -70, r: 84 } as const;
-export const COLDTARN = { x: -166, y: -250, r: 44 } as const;
+export const KINGSWATER = { x: -540, y: -190, r: 84 } as const;
+export const COLDTARN = { x: -326, y: -370, r: 44 } as const;
 
 /**
  * THE PINEREACH — the great taiga of the north-east, and the whole
@@ -138,19 +148,21 @@ export const COLDTARN = { x: -166, y: -250, r: 44 } as const;
  * so the shore country a future port will sit on already has its
  * hinterland, and the treeline reads as a journey rather than a rule.
  */
-export const PINEREACH = { x: 620, y: -190, r: 190 } as const;
-export const PINEREACH_SOUTH = { x: 700, y: -30, r: 150 } as const;
+export const PINEREACH = { x: 1000, y: -520, r: 190 } as const;
+export const PINEREACH_SOUTH = { x: 1210, y: -180, r: 150 } as const;
 
 /**
  * THE GLASSWATER — the lake Pinewatch watches across. The town holds
  * its south shore; the old wood holds the north; between them lies
  * water that nothing crosses. Except in a hard winter, when it
- * freezes end to end — which is what the watch is FOR.
+ * freezes end to end — which is what the watch is FOR. Since the
+ * great regen the heart reinforces the lake seed 24601 already deals
+ * against the town's west hem — the walls hold the east shore.
  */
-export const GLASSWATER = { x: 596, y: -224, r: 96 } as const;
+export const GLASSWATER = { x: 1044, y: -336, r: 90 } as const;
 
 /** The Thornveil — the dark wood between the lowlands and the climb. */
-export const THORNVEIL = { x: -130, y: -70, r: 160 } as const;
+export const THORNVEIL = { x: -220, y: -150, r: 160 } as const;
 
 /**
  * THE AMBERFEN — the wetland the First Road threads, and the water
@@ -161,8 +173,8 @@ export const THORNVEIL = { x: -130, y: -70, r: 160 } as const;
  * Worldgen pulls elevation toward the wet line and lifts moisture
  * inside the fen; the noise still decides every shoreline.
  */
-export const AMBERFEN_WEST = { x: 92, y: 40, r: 68 } as const;
-export const AMBERFEN_EAST = { x: 206, y: 34, r: 66 } as const;
+export const AMBERFEN_WEST = { x: 90, y: 60, r: 68 } as const;
+export const AMBERFEN_EAST = { x: 200, y: 110, r: 66 } as const;
 
 /**
  * THE SALT FLATS — the wet country past Saltmere's mere, where the
@@ -172,22 +184,26 @@ export const AMBERFEN_EAST = { x: 206, y: 34, r: 66 } as const;
  * class carries it out), so the far shore reads as tidal flat and
  * brack-marsh on every seed.
  */
-export const SALT_FLATS = { x: 356, y: 400, r: 64 } as const;
+export const SALT_FLATS = { x: 760, y: 438, r: 64 } as const;
 
 /**
  * Pinewatch — the town that watches the deep wood (the Pinereach
- * epic). Centre (584,-136): far enough north-east of Amberford that
+ * epic). Centre (1160,-356): far enough north-east of Amberford that
  * the band march lands the whole of the town's country at TIER 4
  * (levels 22-34) and everything past the Glasswater or east of the
  * Wardline at tier 5. The town anchors as a HAVEN, the third: tier 0
  * on the muster yard, wild at the gates, and the old wood beyond the
  * line stays a frontier the town watches rather than one it holds.
+ * The great regen seated it on the EAST bank of the north country's
+ * lake chain: the west gate opens onto the Glasswater's own shore,
+ * the old wood stands across the water, and both roads arrive by the
+ * isthmus between the lake and the southern tarns.
  */
-export const PINEWATCH_RECT: ZoneRect = { x: 520, y: -184, w: 128, h: 96 };
+export const PINEWATCH_RECT: ZoneRect = { x: 1096, y: -404, w: 128, h: 96 };
 
 /**
  * Hartfell — the town past the treeline (the Hartfell epic). Centre
- * (848,-400): ~322 tiles beyond Pinewatch's muster yard, deep in the
+ * (1304,-616): ~365 tiles beyond Pinewatch's muster yard, deep in the
  * tier-5 base band, which is the design — the fourth HAVEN's relief
  * grades the walk-out to tier 3 at the walls (levels 15-24), tier 4 a
  * stone's throw on (22-34), tier 5 past that (32-48): a 25-35 onion
@@ -195,9 +211,11 @@ export const PINEWATCH_RECT: ZoneRect = { x: 520, y: -184, w: 128, h: 96 };
  * dug: the cold Graywater laps the west flank, the Darkwater's arm
  * touches the north-east corner, and the little spring hollow at the
  * centre-east is the Kettle — the one warm water in the north, and
- * the whole reason a town can live past the trees.
+ * the whole reason a town can live past the trees. The great regen
+ * seated it on the grass province EAST of the north country's river
+ * gorge: the Hartway's last league crosses the water below the walls.
  */
-export const HARTFELL_RECT: ZoneRect = { x: 784, y: -440, w: 128, h: 96 };
+export const HARTFELL_RECT: ZoneRect = { x: 1240, y: -664, w: 128, h: 96 };
 
 /**
  * THE BARROWDEEP — ground RESERVED, not built (the Rimeward law: a
@@ -208,7 +226,7 @@ export const HARTFELL_RECT: ZoneRect = { x: 784, y: -440, w: 128, h: 96 };
  * aproned: the barrow fells keep their crags and their sunken ways
  * right up to the last stone.
  */
-export const BARROWDEEP_RECT: ZoneRect = { x: 776, y: -528, w: 80, h: 56 };
+export const BARROWDEEP_RECT: ZoneRect = { x: 1232, y: -752, w: 80, h: 56 };
 
 /**
  * THE CAIRNFELL — the north wall above the Barrowdeep. The base noise
@@ -217,7 +235,7 @@ export const BARROWDEEP_RECT: ZoneRect = { x: 776, y: -528, w: 80, h: 56 };
  * can read: south of it, dells and barrows and the town's lamps;
  * north of it, stone and weather and no more map.
  */
-export const CAIRNFELL = { x: 800, y: -580, r: 110 } as const;
+export const CAIRNFELL = { x: 1256, y: -804, r: 110 } as const;
 
 /**
  * THE RIMEWARD — ground RESERVED, not built. The Hoargate Road has to
@@ -230,11 +248,11 @@ export const CAIRNFELL = { x: 800, y: -580, r: 110 } as const;
  * mountains should keep their crags right up to the road's last
  * milepost.
  */
-export const RIMEWARD_RECT: ZoneRect = { x: -400, y: -448, w: 128, h: 96 };
+export const RIMEWARD_RECT: ZoneRect = { x: -560, y: -568, w: 128, h: 96 };
 
 /**
  * Kingsdelf — the town in the King's Delf (the seventh town, the
- * Kingsdelf epic; docs/kingsdelf-plan.md). Centre (-256, 288): ~307
+ * Kingsdelf epic; docs/kingsdelf-plan.md). Centre (-480, 328): ~515
  * tiles from Dawnmead's hearth, deep in the tier-5 base band, which is
  * the design — the FIFTH haven's relief grades the walk-out, the far
  * country stays 32-48, and the Brand's dread heart north-west is the
@@ -242,7 +260,7 @@ export const RIMEWARD_RECT: ZoneRect = { x: -400, y: -448, w: 128, h: 96 };
  * The quarry bowl that cut the Old Crown's stone, and the town the
  * Returning built inside it.
  */
-export const KINGSDELF_RECT: ZoneRect = { x: -320, y: 240, w: 128, h: 96 };
+export const KINGSDELF_RECT: ZoneRect = { x: -544, y: 280, w: 128, h: 96 };
 
 /**
  * THE OLDCROWN — ground RESERVED, not built (the Rimeward law: a road
@@ -252,7 +270,7 @@ export const KINGSDELF_RECT: ZoneRect = { x: -320, y: 240, w: 128, h: 96 };
  * door a future delve epic gets to open. Deliberately NOT aproned —
  * the ash keeps the old streets until somebody sweeps them.
  */
-export const OLDCROWN_RECT: ZoneRect = { x: -520, y: 96, w: 96, h: 64 };
+export const OLDCROWN_RECT: ZoneRect = { x: -744, y: 136, w: 96, h: 64 };
 
 /**
  * THE BRAND — the burned mountain of the south-west. A star fell on
@@ -264,7 +282,7 @@ export const OLDCROWN_RECT: ZoneRect = { x: -520, y: 96, w: 96, h: 64 };
  * opens the Overband over its heart — the one tier-6 ground in the
  * Dawnlands, and the whole reason a level-50 character walks south.
  */
-export const THE_BRAND = { x: -320, y: 104, r: 110 } as const;
+export const THE_BRAND = { x: -544, y: 144, r: 110 } as const;
 
 /**
  * THE ASHMERE — the drowned lower workings. When the Brandfall ended
@@ -274,7 +292,7 @@ export const THE_BRAND = { x: -320, y: 104, r: 110 } as const;
  * authors its own sump and quay, and the border's edge class carries
  * the water out to the true shore.
  */
-export const ASHMERE = { x: -368, y: 368, r: 80 } as const;
+export const ASHMERE = { x: -592, y: 408, r: 80 } as const;
 
 /**
  * THE ASHMARCH — the burn country: the Brand's skirt of ash, where the
@@ -284,12 +302,12 @@ export const ASHMERE = { x: -368, y: 368, r: 80 } as const;
  * painted black (the density lesson) — and the chunk dresser converts
  * canopy to standing dead wood at a scorch-scaled rate.
  */
-export const ASHMARCH = { x: -296, y: 176, r: 150 } as const;
+export const ASHMARCH = { x: -520, y: 216, r: 150 } as const;
 
 /**
  * Evenfall — the city of the old folk in the Everwood (the eighth
- * town, the Evenfall epic; docs/evenfall-plan.md). Centre (-680,-176):
- * ~655 tiles from Dawnmead's hearth, past the Silverspine's west
+ * town, the Evenfall epic; docs/evenfall-plan.md). Centre (-1032,-358):
+ * ~1060 tiles from Dawnmead's hearth, past the Silverspine's west
  * skirt, in ground the band march saturated long ago — the far west
  * is base-5 country end to end, which is the design. The SIXTH haven:
  * tier 0 under the boughs, tier 3 at the hem, the deep wood past the
@@ -298,7 +316,7 @@ export const ASHMARCH = { x: -296, y: 176, r: 150 } as const;
  * the roads were roads; it has been closed for a hundred and fifty
  * years, and it is open now.
  */
-export const EVENFALL_RECT: ZoneRect = { x: -760, y: -232, w: 160, h: 112 };
+export const EVENFALL_RECT: ZoneRect = { x: -1112, y: -414, w: 160, h: 112 };
 
 /**
  * THE HEARTWOOD — ground RESERVED, not built (the Rimeward law: a
@@ -308,7 +326,7 @@ export const EVENFALL_RECT: ZoneRect = { x: -760, y: -232, w: 160, h: 112 };
  * future delve epic gets to be invited through. Deliberately NOT
  * aproned: the deep wood keeps its own counsel until then.
  */
-export const HEARTWOOD_RECT: ZoneRect = { x: -880, y: -352, w: 96, h: 64 };
+export const HEARTWOOD_RECT: ZoneRect = { x: -1232, y: -534, w: 96, h: 64 };
 
 /**
  * THE EVERWOOD — the great wood of the far west, and the first
@@ -327,11 +345,11 @@ export const HEARTWOOD_RECT: ZoneRect = { x: -880, y: -352, w: 96, h: 64 };
  * grove was always going to be there; the plan just tells the truth
  * about it.)
  */
-export const EVERWOOD = { x: -724, y: -204, r: 185 } as const;
-export const EVERWOOD_SOUTH = { x: -696, y: -104, r: 140 } as const;
-export const EVERWOOD_EAST = { x: -596, y: -186, r: 120 } as const;
+export const EVERWOOD = { x: -1076, y: -386, r: 185 } as const;
+export const EVERWOOD_SOUTH = { x: -1048, y: -286, r: 140 } as const;
+export const EVERWOOD_EAST = { x: -948, y: -368, r: 120 } as const;
 /** The deep grove's own damp — the Heartwood out-greens everything. */
-export const EVERWOOD_DEEP = { x: -832, y: -316, r: 120 } as const;
+export const EVERWOOD_DEEP = { x: -1184, y: -498, r: 120 } as const;
 
 export interface RoadRoute {
   id: string;
@@ -414,44 +432,21 @@ const AUTHORED_PLAN: GeographyDef = {
       id: 'first_road',
       name: 'The First Road',
       kind: 'road',
-      // Dawnmead's east lane mouth to Amberford's Fordgate: the first
-      // journey, laid AROUND the Amberfen the way carts actually go.
-      // It drops south along Dawnmead's hem, crosses the reed flats
-      // on the one sand causeway the fen deals at its southern edge,
-      // climbs onto the dry south-shore belt (the scenic shore miles
-      // — and the toll camp's hunting ground, water on one hand and
-      // brigands on the other), touches the waist's foot below the
-      // Fenside Crofts, then walks the long sand shore under the
-      // south lobe and rises east to the ford. Serpentine on purpose:
-      // ~390 tiles of road where the crow flies 296 — the distance IS
-      // the design, and not one tile of it is causeway over open
-      // water (THE SHORT SPAN LAW: the fen's cores are moats; the
-      // road earns the far bank with shore miles, not impossible
-      // bridgework). Tier 1-2 throughout.
+      // Dawnmead's east lane to Amberford's Fordgate: the first
+      // journey, re-laid by the great regen. It drops south along the
+      // hem into the fen country, rides the Amberfen's north waist on
+      // the one dry line between the two hearts, and climbs the long
+      // meadow shelf east to the river gate. ~500 tiles where the crow
+      // flies 466 — gentler than the old fen serpentine, because the
+      // river at the far end is now the destination's own drama.
+      // Tier 1-2 throughout.
       pts: [
-        { x: 0, y: 48 },
-        { x: 4, y: 58 },
-        { x: 10, y: 70 },
-        { x: 10, y: 80 },
-        { x: 12, y: 90 },
-        { x: 18, y: 94 },
-        { x: 34, y: 95 },
-        { x: 44, y: 92 },
-        { x: 52, y: 86 },
-        { x: 64, y: 82 },
-        { x: 80, y: 81 },
-        { x: 94, y: 80 },
-        { x: 106, y: 76 },
-        { x: 120, y: 73 },
-        { x: 130, y: 70 },
-        { x: 146, y: 60 },
-        { x: 152, y: 46 },
-        { x: 166, y: 53 },
-        { x: 190, y: 54 },
-        { x: 220, y: 50 },
-        { x: 240, y: 44 },
-        { x: 264, y: 38 },
-        { x: 296, y: 36 },
+        { x: 0, y: 48 }, { x: 8, y: 60 }, { x: 16, y: 74 }, { x: 28, y: 86 },
+        { x: 44, y: 96 }, { x: 62, y: 102 }, { x: 84, y: 104 }, { x: 108, y: 100 },
+        { x: 130, y: 88 }, { x: 152, y: 80 }, { x: 176, y: 72 }, { x: 200, y: 64 },
+        { x: 228, y: 58 }, { x: 254, y: 56 }, { x: 278, y: 58 }, { x: 304, y: 56 },
+        { x: 330, y: 46 }, { x: 356, y: 38 }, { x: 382, y: 30 }, { x: 410, y: 24 },
+        { x: 436, y: 16 }, { x: 464, y: 8 },
       ],
     },
     {
@@ -459,69 +454,48 @@ const AUTHORED_PLAN: GeographyDef = {
       name: 'The High Road',
       kind: 'road',
       // Amberford's north gate to Silverfall's south gate: the game's
-      // great journey. Foothills (T2), the Thornveil crossing (T3),
-      // then crag country past the Last Lamp (T4-5). The eastern leg
-      // arcs over the Amberfen's north rim into the old foothill line
-      // at (140,-56) — everything west of there is untouched ground
-      // (fernway_rest and the Thornveil Fork keep their pins).
+      // great journey, now ~1010 tiles — nearly double what it was
+      // before the regen, which is the design. It climbs out of the
+      // gate, crosses the east country's great river at the ten-tile
+      // neck the land actually deals (the first bridge of the journey,
+      // in sight of the walls), walks the dry corridor between the
+      // channel and the northwest water, takes the second channel at
+      // its six-tile narrows, and then runs the long west miles: the
+      // Thornveil crossing (T3), the fork country, and the crag skirt
+      // past the Last Lamp (T4-5) to the gate between the Spinewall
+      // and the Kingswater. One road in.
       pts: [
-        { x: 350, y: -15 },
-        { x: 312, y: -42 },
-        { x: 258, y: -56 },
-        { x: 196, y: -60 },
-        { x: 140, y: -56 },
-        { x: 104, y: -88 },
-        { x: 48, y: -112 },
-        { x: -20, y: -124 },
-        { x: -80, y: -118 },
-        { x: -140, y: -96 },
-        { x: -190, y: -88 },
-        { x: -244, y: -76 },
-        { x: -278, y: -88 },
-        { x: -288, y: -98 },
+        { x: 518, y: -43 }, { x: 508, y: -58 }, { x: 496, y: -72 }, { x: 482, y: -84 },
+        { x: 472, y: -94 }, { x: 465, y: -104 }, { x: 462, y: -114 }, { x: 452, y: -118 },
+        { x: 430, y: -119 }, { x: 404, y: -120 }, { x: 378, y: -120 }, { x: 352, y: -119 },
+        { x: 330, y: -124 }, { x: 318, y: -129 }, { x: 306, y: -134 }, { x: 292, y: -137 },
+        { x: 278, y: -139 }, { x: 248, y: -140 }, { x: 216, y: -142 }, { x: 184, y: -138 },
+        { x: 152, y: -142 }, { x: 120, y: -148 }, { x: 88, y: -152 }, { x: 56, y: -152 },
+        { x: 24, y: -156 }, { x: -8, y: -162 }, { x: -40, y: -166 }, { x: -72, y: -168 },
+        { x: -104, y: -172 }, { x: -140, y: -176 }, { x: -176, y: -182 }, { x: -208, y: -186 },
+        { x: -240, y: -192 }, { x: -272, y: -196 }, { x: -304, y: -200 }, { x: -336, y: -202 },
+        { x: -368, y: -206 }, { x: -400, y: -210 }, { x: -426, y: -214 }, { x: -448, y: -218 },
       ],
     },
     {
       id: 'salt_road',
       name: 'The Salt Road',
       kind: 'road',
-      // Amberford's South Gate to Saltmere's landward gate: the road
-      // the salt built. The fen tail's lake laps the town's own south
-      // hem, so the road does what salt carts have always done: it
-      // works the EAST SHORE — out of the gate onto the sand hem,
-      // down the waterline league, then east over the heath shelf
-      // where the marsh widens, and back west across the dry sand fan
-      // below the wet country to pick up the straight run south. The
-      // whole north half is shore road with the water on the right
-      // hand and the heath on the left; not one tile of causeway
-      // (THE SHORT SPAN LAW: the fen's cores are moats, not fords).
-      // Tier 1 at the fields, tier 2 past the halfway lamp, tier 3 to
-      // the gate — the first road that expects a made character
-      // (L15+), and says so at both ends.
+      // Amberford's South Gate to Saltmere's landward gate — and the
+      // FORD itself: the road leaves the gate and crosses the great
+      // river on its first league, the crossing that names the town.
+      // South along the waterline miles, then east over the heath
+      // shelf NORTH of the wet belt (the fan country below is all
+      // marsh — THE SHORT SPAN LAW: the road takes the three-tile
+      // channel neck at the top and works the dry east bank down to
+      // the gate). Tier 1 at the fields, 3 at the gate.
       pts: [
-        { x: 348, y: 62 },
-        { x: 355, y: 63 },
-        { x: 358, y: 67 },
-        { x: 359, y: 74 },
-        { x: 360, y: 88 },
-        { x: 366, y: 100 },
-        { x: 369, y: 106 },
-        { x: 377, y: 110 },
-        { x: 392, y: 113 },
-        { x: 404, y: 118 },
-        { x: 410, y: 126 },
-        { x: 416, y: 134 },
-        { x: 418, y: 142 },
-        { x: 416, y: 148 },
-        { x: 410, y: 153 },
-        { x: 394, y: 154 },
-        { x: 378, y: 155 },
-        { x: 366, y: 158 },
-        { x: 368, y: 176 },
-        { x: 362, y: 200 },
-        { x: 350, y: 222 },
-        { x: 348, y: 238 },
-        { x: 354, y: 256 },
+        { x: 516, y: 34 }, { x: 520, y: 44 }, { x: 528, y: 56 }, { x: 534, y: 72 },
+        { x: 536, y: 88 }, { x: 540, y: 106 }, { x: 546, y: 124 }, { x: 550, y: 142 },
+        { x: 552, y: 160 }, { x: 556, y: 178 }, { x: 560, y: 196 }, { x: 568, y: 212 },
+        { x: 580, y: 226 }, { x: 600, y: 232 }, { x: 626, y: 236 }, { x: 652, y: 238 },
+        { x: 678, y: 232 }, { x: 698, y: 226 }, { x: 714, y: 230 }, { x: 726, y: 242 },
+        { x: 736, y: 258 }, { x: 744, y: 274 }, { x: 752, y: 286 }, { x: 758, y: 294 },
       ],
     },
     {
@@ -529,53 +503,39 @@ const AUTHORED_PLAN: GeographyDef = {
       name: 'The Timber Road',
       kind: 'road',
       // Amberford's EAST GATE to Pinewatch's south gate: the long way
-      // round, and the only way a loaded timber wain can come. It runs
-      // the open lowland due east until the braid-water country
-      // starts, then does what a wain must: turns NORTH up the dry
-      // shelf and rounds the whole mosaic on its top edge (the braids
-      // stay on the carter's right hand the entire league — scenery,
-      // never causeway; THE SHORT SPAN LAW), then east under the
-      // Pinereach's southern arm and at the town from below so the
-      // lake is the last thing you see, not the first. ~400 tiles
-      // against the Sparway's ~230 — the distance IS the safety,
-      // because three havens sit on it and nothing sits on the trail.
+      // round, and the only way a loaded timber wain can come. Due
+      // east across the open lowland, over the river's thin southern
+      // channel, then the long south bow AROUND the dread wood (the
+      // Blackpine answers for the chord; the road pays in miles for
+      // its lamps), north up the east country, and the last league
+      // threads the neck between the Glasswater and the eastern tarn
+      // to the gate under the walls. ~750 tiles against the Sparway's
+      // ~290 — the distance IS the safety.
       pts: [
-        { x: 408, y: 44 },
-        { x: 456, y: 38 },
-        { x: 500, y: 28 },
-        { x: 514, y: 10 },
-        { x: 514, y: -8 },
-        { x: 520, y: -22 },
-        { x: 560, y: -24 },
-        { x: 604, y: -21 },
-        { x: 644, y: -20 },
-        { x: 666, y: -50 },
-        { x: 660, y: -78 },
-        { x: 620, y: -80 },
-        { x: 584, y: -89 },
+        { x: 576, y: 16 }, { x: 608, y: 12 }, { x: 640, y: 6 }, { x: 672, y: -2 },
+        { x: 704, y: -8 }, { x: 736, y: -12 }, { x: 768, y: -14 }, { x: 806, y: -6 },
+        { x: 844, y: -2 }, { x: 882, y: -4 }, { x: 916, y: -20 }, { x: 944, y: -46 },
+        { x: 968, y: -74 }, { x: 986, y: -104 }, { x: 1000, y: -132 }, { x: 1010, y: -160 },
+        { x: 1050, y: -170 }, { x: 1084, y: -184 }, { x: 1108, y: -204 }, { x: 1122, y: -228 },
+        { x: 1128, y: -252 }, { x: 1130, y: -276 }, { x: 1136, y: -296 }, { x: 1148, y: -306 },
+        { x: 1160, y: -309 },
       ],
     },
     {
       id: 'sparway',
       name: 'The Sparway',
       kind: 'trail',
-      // The mast-cutters' shortcut. It forks off the Timber Road at
-      // the exact bend where the wains give up and turn north around
-      // the braid country — and goes STRAIGHT instead: due north up
-      // the one dry seam east of the Blackpine's meres, through the
-      // heart of the dread ring, to Pinewatch's west gate. Half the
-      // distance, none of the lamps, and the tier the Blackpine deals
-      // does not care that you are in a hurry. Dry the whole way BY
-      // the land's own accident (the wet country ends at the seam) —
-      // a hunter's track wades nothing; it just walks where the
-      // ground lets it and pays in danger instead.
+      // The mast-cutters' shortcut: forks off the Timber Road where
+      // the wains commit to the south bow — and goes STRAIGHT instead,
+      // northeast through the heart of the Blackpine's dread ring,
+      // over the river where it runs three tiles thin (a hunter's
+      // plank, not a bridge), and rejoins the road below the lakes.
+      // Less than half the distance, none of the lamps, and the tier
+      // the wood deals does not care that you are in a hurry.
       pts: [
-        { x: 514, y: -8 },
-        { x: 492, y: -32 },
-        { x: 482, y: -60 },
-        { x: 482, y: -90 },
-        { x: 494, y: -114 },
-        { x: 520, y: -136 },
+        { x: 768, y: -14 }, { x: 794, y: -40 }, { x: 818, y: -64 }, { x: 842, y: -86 },
+        { x: 868, y: -100 }, { x: 896, y: -104 }, { x: 924, y: -108 }, { x: 948, y: -122 },
+        { x: 970, y: -138 }, { x: 988, y: -150 }, { x: 1010, y: -160 },
       ],
     },
     {
@@ -583,55 +543,36 @@ const AUTHORED_PLAN: GeographyDef = {
       name: 'The Hoargate Road',
       kind: 'road',
       // Silverfall's Postern Lane to the top of the world. It leaves
-      // the city's north hem, runs the aproned shelf under the crags,
-      // climbs the vale the massif leaves open at x -338..-306, and
-      // passes the Hoargate itself — the garrison across the narrows.
-      // North of the gate the road keeps going for a while and then
-      // the maps stop, which is exactly what the signage says.
+      // the city's north hem, climbs the vale under the crags past the
+      // Hoargate itself — the garrison across the narrows — and keeps
+      // going a while toward the Rimeward before the maps stop, which
+      // is exactly what the signage says.
       pts: [
-        { x: -204, y: -224 },
-        { x: -216, y: -240 },
-        { x: -244, y: -248 },
-        { x: -278, y: -252 },
-        { x: -306, y: -258 },
-        { x: -320, y: -272 },
-        { x: -322, y: -292 },
-        { x: -328, y: -316 },
-        { x: -334, y: -344 },
-        { x: -338, y: -372 },
+        { x: -364, y: -344 }, { x: -376, y: -362 }, { x: -396, y: -378 }, { x: -420, y: -392 },
+        { x: -444, y: -406 }, { x: -464, y: -422 }, { x: -478, y: -440 }, { x: -488, y: -458 },
+        { x: -494, y: -466 }, { x: -498, y: -472 },
       ],
     },
     {
       id: 'hartway',
       name: 'The Hartway',
       kind: 'road',
-      // The drovers' road: the Timber Road's last-league waypoint
-      // below Pinewatch to Hartfell's south gate. It forks BELOW the
-      // town on purpose — every wain north rolls past Pinewatch's
-      // walls first, so the two towns stay stapled together — then
-      // climbs the east country: through the pine belt, over the
-      // Sunken Mile (the one dell the grade cuts straight through),
-      // across the beck braids on plank spans, up the isthmus between
-      // the tarn chains, and out of the trees onto the open fell. One
-      // road in, no shortcut, lamped with Hartfell's own tallow: the
-      // north's whole lesson about safety is STAY ON THE ROAD.
+      // The drovers' road: it leaves Pinewatch's NORTH WICKET — every
+      // wain bound for the fells rolls through the town first, which
+      // staples the pair together even harder than a fork would — and
+      // is the only legal thread the braid country deals: the east
+      // approach is sealed by the tarn maze on every side (measured,
+      // not guessed), so the road crosses the braid channel at its
+      // three-tile neck above the walls and climbs the one dry
+      // corridor north between the west lakes and the maze, crosses
+      // the fell river below Hartfell, and comes up to the gate out
+      // of the trees. One road in, no shortcut: the north's whole
+      // lesson about safety is STAY ON THE ROAD.
       pts: [
-        { x: 660, y: -78 },
-        { x: 682, y: -100 },
-        { x: 708, y: -122 },
-        { x: 734, y: -142 },
-        { x: 752, y: -166 },
-        { x: 768, y: -190 },
-        { x: 784, y: -214 },
-        { x: 800, y: -236 },
-        { x: 824, y: -256 },
-        { x: 830, y: -270 },
-        { x: 832, y: -284 },
-        { x: 843, y: -292 },
-        { x: 842, y: -306 },
-        { x: 838, y: -322 },
-        { x: 836, y: -336 },
-        { x: 838, y: -345 },
+        { x: 1220, y: -404 }, { x: 1212, y: -412 }, { x: 1226, y: -418 }, { x: 1234, y: -432 },
+        { x: 1238, y: -452 }, { x: 1240, y: -472 }, { x: 1240, y: -492 }, { x: 1242, y: -512 },
+        { x: 1246, y: -532 }, { x: 1252, y: -548 }, { x: 1262, y: -556 }, { x: 1278, y: -562 },
+        { x: 1294, y: -569 },
       ],
     },
     {
@@ -641,14 +582,9 @@ const AUTHORED_PLAN: GeographyDef = {
       // The old processional way: Hartfell's north wicket, up through
       // the dell country past the Quiet Stones, to the Barrowdeep's
       // door. The tithe sledge uses the first half of it every
-      // slaughter-day; nothing living uses the rest. It grades
-      // through the dells as a hollow-way — a track worn below its
-      // own banks by feet older than any road the Crown ever cut.
+      // slaughter-day; nothing living uses the rest.
       pts: [
-        { x: 810, y: -440 },
-        { x: 812, y: -458 },
-        { x: 806, y: -476 },
-        { x: 804, y: -490 },
+        { x: 1266, y: -664 }, { x: 1268, y: -682 }, { x: 1264, y: -700 }, { x: 1260, y: -714 },
       ],
     },
     {
@@ -657,33 +593,19 @@ const AUTHORED_PLAN: GeographyDef = {
       kind: 'road',
       // Dawnmead's south hem to Kingsdelf's east gate: the road the
       // quarrymen fled up a hundred and fifty years ago, walked the
-      // other way. Built by the Old Crown — which is why it is a ROAD
-      // and not a trail: the grade and the bones of the paving are
-      // older than every other road on this map — and UNLIT, because
-      // the Waykeepers never accepted it (the one dark road in the
-      // Dawnlands; the town's standing grievance, and a quest lamp by
-      // lamp). It drops south through the open meadow country, swings
-      // west of the crag knots, threads the corridor between the
-      // drowned finger-lake and the east woods, and turns west for
-      // the gate with the water on the right hand and the burn beyond
-      // it — the toll-camp story, retold at tier 4-5. The band march
-      // does the rest: tier 1 at Dawnmead's hem, 5 before the walls.
+      // other way. Built by the Old Crown and UNLIT (the Waykeepers
+      // never accepted it — the one dark road in the Dawnlands). It
+      // drops south-west through the open meadow country the regen
+      // dealt — ~515 tiles from hearth to walls now — and turns west
+      // for the gate with the burn country rising beyond. The band
+      // march does the rest: tier 1 at Dawnmead's hem, 5 before the
+      // walls.
       pts: [
-        { x: -64, y: 80 },
-        { x: -76, y: 96 },
-        { x: -92, y: 112 },
-        { x: -104, y: 130 },
-        { x: -112, y: 148 },
-        { x: -124, y: 160 },
-        { x: -136, y: 178 },
-        { x: -150, y: 192 },
-        { x: -164, y: 202 },
-        { x: -166, y: 218 },
-        { x: -166, y: 234 },
-        { x: -164, y: 248 },
-        { x: -162, y: 257 },
-        { x: -178, y: 259 },
-        { x: -194, y: 260 },
+        { x: -64, y: 80 }, { x: -78, y: 98 }, { x: -94, y: 116 }, { x: -112, y: 134 },
+        { x: -132, y: 152 }, { x: -152, y: 170 }, { x: -172, y: 188 }, { x: -194, y: 206 },
+        { x: -218, y: 224 }, { x: -244, y: 240 }, { x: -270, y: 256 }, { x: -296, y: 272 },
+        { x: -322, y: 286 }, { x: -348, y: 296 }, { x: -374, y: 302 }, { x: -398, y: 302 },
+        { x: -412, y: 300 }, { x: -418, y: 300 },
       ],
     },
     {
@@ -692,53 +614,29 @@ const AUTHORED_PLAN: GeographyDef = {
       kind: 'trail',
       // The old realm's paved approach to its own capital, ash-buried
       // and unwalked — by the living. It leaves Kingsdelf's north
-      // wicket, runs the corridor between the Brand's east face and
-      // the drowned finger, crosses the burn THROUGH the dread heart
-      // (the first tier-6 walk in the game — the trail is passable
-      // because a route calms its own ribbon; everything beside it is
-      // the Overband, which is the point), rounds the mountain's
-      // north shoulder past the little tarn, and comes down to the
-      // Oldcrown's buried east gate. The dead walk it home by night.
+      // wicket, crosses the burn THROUGH the dread heart (the first
+      // tier-6 walk in the game), rounds the Brand's west shoulder,
+      // and comes down to the Oldcrown's buried east gate. The dead
+      // walk it home by night.
       pts: [
-        { x: -260, y: 240 },
-        { x: -252, y: 214 },
-        { x: -248, y: 188 },
-        { x: -252, y: 162 },
-        { x: -262, y: 128 },
-        { x: -272, y: 100 },
-        { x: -282, y: 76 },
-        { x: -288, y: 62 },
-        { x: -300, y: 48 },
-        { x: -316, y: 46 },
-        { x: -336, y: 46 },
-        { x: -360, y: 48 },
-        { x: -388, y: 60 },
-        { x: -398, y: 78 },
-        { x: -400, y: 98 },
-        { x: -418, y: 104 },
-        { x: -436, y: 112 },
+        { x: -484, y: 280 }, { x: -478, y: 254 }, { x: -474, y: 228 }, { x: -478, y: 202 },
+        { x: -488, y: 176 }, { x: -500, y: 152 }, { x: -512, y: 128 }, { x: -524, y: 106 },
+        { x: -538, y: 88 }, { x: -556, y: 76 }, { x: -578, y: 72 }, { x: -602, y: 74 },
+        { x: -626, y: 84 }, { x: -646, y: 100 }, { x: -654, y: 118 }, { x: -652, y: 136 },
+        { x: -648, y: 150 },
       ],
     },
     {
       id: 'hunters_trail',
-      name: "The Hunter's Trail",
+      name: 'The Hunter\'s Trail',
       kind: 'trail',
       // Dawnmead's north hem to the Thornveil Fork: the unlit shortcut
       // that threads the wolf dens. Saves half the journey, costs the
       // safety — the map's lesson about roads, taught by counterexample.
-      // The last league hooks around the fork tarn's SOUTH shore on
-      // the sand (hunters know the dry line; nobody wades a tarn in
-      // wolf country) and comes up its west bank to the fork.
       pts: [
-        { x: -64, y: 15 },
-        { x: -52, y: -8 },
-        { x: -72, y: -40 },
-        { x: -104, y: -68 },
-        { x: -116, y: -76 },
-        { x: -130, y: -78 },
-        { x: -146, y: -78 },
-        { x: -146, y: -92 },
-        { x: -140, y: -96 },
+        { x: -64, y: 15 }, { x: -72, y: -8 }, { x: -84, y: -32 }, { x: -98, y: -56 },
+        { x: -110, y: -80 }, { x: -118, y: -104 }, { x: -124, y: -128 }, { x: -130, y: -150 },
+        { x: -136, y: -166 }, { x: -140, y: -176 },
       ],
     },
     {
@@ -748,36 +646,16 @@ const AUTHORED_PLAN: GeographyDef = {
       // The way west, and the one approach in the Dawnlands where the
       // road-faith's light gives out and something older takes over.
       // It forks off the Hoargate Road at the last level bend before
-      // the climb — north to the cold gate, west to the wood — and
-      // runs the Silverspine's south skirt into the Everwood, keeping
-      // a respectful league off the Hoargate's narrows (the garrison
-      // holds the pass, and the pass's honest ground is the
-      // garrison's; the first draft brushed its apron and the compose
-      // test refused it, correctly). A trail by KIND (the wood does
-      // not pave) but tended by something, because the line never
-      // wanders into a bog and the deadfall is always cleared by
-      // morning. No lamps. The waystones pick it up where the last
-      // lamp's reach ends, and the waystones do not answer to the
-      // road-faith. Tier 4-5 the whole long way: the journey is the
-      // introduction.
+      // the climb and runs the Silverspine's north skirt west into the
+      // Everwood — ~520 tiles of waystone country, tier 4-5 the whole
+      // long way: the journey is the introduction. No lamps. The
+      // waystones pick it up where the last lamp's reach ends.
       pts: [
-        { x: -278, y: -252 },
-        { x: -296, y: -228 },
-        { x: -326, y: -220 },
-        { x: -360, y: -224 },
-        { x: -398, y: -232 },
-        { x: -428, y: -226 },
-        // The dry shelf north of the reed basin: the line rides the
-        // crag foot rather than wade the wet ground the first draft
-        // found at (-486,-221) — the span law taught it (13-tile deck
-        // refused; walk the shore).
-        { x: -458, y: -227 },
-        { x: -492, y: -226 },
-        { x: -514, y: -210 },
-        { x: -540, y: -196 },
-        { x: -566, y: -188 },
-        { x: -590, y: -180 },
-        { x: -601, y: -176 },
+        { x: -444, y: -406 }, { x: -472, y: -400 }, { x: -502, y: -390 }, { x: -534, y: -378 },
+        { x: -566, y: -368 }, { x: -600, y: -362 }, { x: -634, y: -360 }, { x: -668, y: -362 },
+        { x: -702, y: -366 }, { x: -736, y: -370 }, { x: -770, y: -372 }, { x: -804, y: -372 },
+        { x: -838, y: -370 }, { x: -872, y: -366 }, { x: -906, y: -362 }, { x: -934, y: -360 },
+        { x: -953, y: -358 },
       ],
     },
     {
@@ -786,148 +664,93 @@ const AUTHORED_PLAN: GeographyDef = {
       kind: 'trail',
       // Evenfall's north wicket to the hem of the grove the old folk
       // keep. The city end is swept and stone-stepped; the far end is
-      // not a path so much as a permission, and the permission has
-      // not been granted to anyone living who was not born under the
-      // boughs. It ends at a door the maps do not draw (the Rimeward
-      // law: the reserve tells the truth about where it goes).
+      // not a path so much as a permission, and it ends at a door the
+      // maps do not draw.
       pts: [
-        { x: -744, y: -232 },
-        { x: -756, y: -252 },
-        { x: -772, y: -268 },
-        { x: -788, y: -284 },
-        { x: -800, y: -296 },
+        { x: -1096, y: -414 }, { x: -1108, y: -434 }, { x: -1122, y: -452 }, { x: -1136, y: -466 },
+        { x: -1144, y: -474 }, { x: -1136, y: -482 },
       ],
     },
   ],
   sites: [
     // The High Road mileposts — a lamp for each leg of the great
-    // journey, each in its own macro-cell. The anchors follow the
-    // GROUND, not arithmetic: the mesa cutting has no standable verge
-    // at all, so no rest stands on it — cross it in one push.
-    { id: 'fernway_rest', defId: 'waystation', x: 122, y: -53 },
-    { id: 'longmeadow_rest', defId: 'waystation', x: -58, y: -108 },
-    { id: 'fork_rest', defId: 'waystation', x: -150, y: -104 },
+    // journey (now ~1010 tiles), each in its own macro-cell, each
+    // standing beside the carve where a traveler can actually see it.
+    { id: 'fernway_rest', defId: 'waystation', x: 330, y: -116 },
+    { id: 'longmeadow_rest', defId: 'waystation', x: 24, y: -148 },
+    { id: 'fork_rest', defId: 'waystation', x: -146, y: -168 },
     // THE LAST LAMP: the final haven before Silverfall's gate country.
-    { id: 'last_lamp', defId: 'last_lamp', x: -262, y: -70 },
-    // The named dens of the wild northwest — the veil has ALWAYS held
-    // these; the cell-forced scan finds them honest ground off-road.
-    { id: 'veil_den', defId: 'wolfkin_den', cell: [-2, 0] },
-    { id: 'spine_digs', defId: 'kobold_digs', cell: [-3, 0] },
+    { id: 'last_lamp', defId: 'last_lamp', x: -264, y: -202 },
+    // The named dens of the wild — the veil and the spine have ALWAYS
+    // held these; the cell-forced scan finds them honest ground.
+    { id: 'veil_den', defId: 'wolfkin_den', cell: [-3, -1] },
+    { id: 'spine_digs', defId: 'kobold_digs', cell: [-5, -4] },
     // The First Road ambush — every waker's first lesson that the
-    // space BETWEEN safeties is the game. PINNED to the dry bank
-    // above the south-shore bend (the fen owns most of its cell now,
-    // so the honest scan has no room): the camp watches the one
-    // stretch where the road has water on one side and them on the
-    // other.
-    { id: 'first_road_toll', defId: 'bandit_camp', x: 120, y: 78 },
-    // The broken tower on the High Road's first climb.
-    { id: 'first_climb_tower', defId: 'watchtower_ruin', cell: [1, -1] },
+    // space BETWEEN safeties is the game: the camp watches the fen-
+    // waist stretch where the road has water on one side and them on
+    // the other.
+    { id: 'first_road_toll', defId: 'bandit_camp', x: 122, y: 112 },
+    // The broken tower on the High Road's west miles, watching the
+    // channel country where the road takes its two bridges.
+    { id: 'first_climb_tower', defId: 'watchtower_ruin', x: 368, y: -136 },
     // THE TOLLHOUSE (factions Phase 4): the Red Company's one open
-    // door — a bar across the first climb where the Company talks
-    // before it takes. Beside the High Road north of Amberford, its
-    // own macro-cell per the authored-sites law.
-    { id: 'company_tollhouse', defId: 'company_tollhouse', x: 300, y: -60 },
-    // THE FENSIDE CROFTS — the mid-journey haven: fisher-crofters on
-    // the waist between the fen's two hearts, a lamp and a larder at
-    // the halfway mark so the long walk east has a place to breathe.
-    { id: 'fenside_crofts', defId: 'roadside_hamlet', x: 152, y: 32 },
-    // THE GULLMOOR REST — the Salt Road's halfway lamp, where the
-    // heath opens and the gulls start winning arguments. The last
-    // roof before the tier-3 league; south of here the road trusts
-    // you to be ready.
-    { id: 'gullmoor_rest', defId: 'waystation', x: 352, y: 158 },
-    // THE TIMBER ROAD'S TWO LAMPS — the long way's whole argument.
-    // Each is a HAVEN, and a haven relieves the danger field around
-    // it, so the lamped road genuinely bands lower than the wood the
-    // Sparway walks through. The lamp is the safety; it always was.
-    // They sit on the road's BACK half by design: the first league
-    // out of Amberford is tier 1-2 and needs nobody's fire, and every
-    // macro-cell an authored site claims is a cell the living
-    // frontier can never grow anything in (the one-site-per-cell
-    // law). The Sparway is deliberately given NOTHING — its terror is
-    // whatever the scaffold rolls there, which is the point: the
-    // shortcut is dangerous because it is unwatched, not because a
-    // designer parked a den on it.
-    { id: 'pinehollow_rest', defId: 'roadside_hamlet', x: 674, y: -56 },
-    { id: 'hollow_watch', defId: 'wardens_outpost', x: 612, y: -13 },
-    // PAST THE WARDLINE: the axe-thieves in the old wood east of
+    // door — a bar on the west bank of the great river's first bridge,
+    // where the Company talks before it takes. Outside the town calm
+    // by a clean league.
+    { id: 'company_tollhouse', defId: 'company_tollhouse', x: 460, y: -82 },
+    // THE FENSIDE CROFTS — the mid-journey haven on the Amberfen's
+    // waist: a lamp and a larder at the halfway mark so the long walk
+    // east has a place to breathe.
+    { id: 'fenside_crofts', defId: 'roadside_hamlet', x: 148, y: 98 },
+    // THE GULLMOOR REST — the Salt Road's halfway lamp, the last roof
+    // before the tier-3 league.
+    { id: 'gullmoor_rest', defId: 'waystation', x: 568, y: 196 },
+    // THE TIMBER ROAD'S TWO LAMPS — the long way's whole argument:
+    // each is a HAVEN on the road's back half, and the lamped road
+    // genuinely bands lower than the wood the Sparway walks through.
+    // The Sparway is deliberately given NOTHING.
+    { id: 'pinehollow_rest', defId: 'roadside_hamlet', x: 976, y: -68 },
+    { id: 'hollow_watch', defId: 'wardens_outpost', x: 1090, y: -176 },
+    // PAST THE WARDLINE: the axe-thieves in the old wood south-east of
     // Pinewatch, cutting the great spars nobody is allowed to cut.
-    // The town's quest spine has a physical address.
-    { id: 'wardline_cut', defId: 'timber_poachers', cell: [5, -2] },
-    // THE HARTWAY'S ONE ROOF — a walled fire at the halfway mark,
-    // exactly where the band runs deepest. Pinewatch's relief covers
-    // the fork; Hartfell's covers the last league; this covers the
-    // drove that has to sleep once in between.
-    { id: 'drovers_fire', defId: 'waystation', x: 794, y: -218 },
-    // THE DIGGERS' CAMP — the Red Company's spades below the
-    // Barrowfell, pitched beside the Cairn Path where the sledge road
-    // meets the dells. Hartfell's quest spine has a physical address;
-    // breaking it sets poi_diggers_broken and the fell breathes out.
-    { id: 'diggers_camp', defId: 'barrow_diggers', x: 798, y: -464 },
+    { id: 'wardline_cut', defId: 'timber_poachers', cell: [9, -2] },
+    // THE HARTWAY'S ONE ROOF — a walled fire on the isthmus miles,
+    // exactly where the band runs deepest and the water stands on
+    // both hands.
+    { id: 'drovers_fire', defId: 'waystation', x: 1228, y: -460 },
+    // THE DIGGERS' CAMP — the Red Company's spades beside the Cairn
+    // Path where the sledge road meets the dells.
+    { id: 'diggers_camp', defId: 'barrow_diggers', x: 1278, y: -680 },
     // THE HOLLOW BARROW — one opened mound guaranteed in the near
-    // fells (the archetype also rolls naturally across the high
-    // country; this one is the story's). Cell-forced: the honest scan
-    // finds it standable ground west of the beck chain, and a barrow
-    // is exactly the kind of place that is allowed to be far from a
-    // road.
-    { id: 'hollow_barrow', defId: 'fell_barrow', cell: [5, -4] },
+    // fells, east of the town where the high country begins.
+    { id: 'hollow_barrow', defId: 'fell_barrow', cell: [10, -5] },
     // THE HOARGATE — the garrison across the pass, and the last
     // authored thing before the Rimeward.
-    { id: 'hoargate', defId: 'hoargate_watch', x: -334, y: -262 },
-    // THE FIRST WAYSTONE — where the trail bends into the wood and
+    { id: 'hoargate', defId: 'hoargate_watch', x: -446, y: -430 },
+    // THE FIRST WAYSTONE — where the Evenway bends into the wood and
     // the stones pick up the watch the lamps handed off leagues ago.
-    // The first draft pinned it at the heath handoff itself, but the
-    // handoff country is crag to the horizon and the honest scan
-    // refused every candidate (the influence law again: a glade's
-    // real footprint is ~2.5x its sketch) — so the stone stands where
-    // the ground opens, which is where the wood begins, which is the
-    // truer story anyway.
-    { id: 'first_waystone', defId: 'waystone_glade', x: -500, y: -198 },
+    { id: 'first_waystone', defId: 'waystone_glade', x: -838, y: -360 },
     // THE MIDWOOD ARBOR — the Evenguard's manned post at the long
-    // walk's waist: the first elven faces a traveler meets, courteous
-    // and exact. Cell-forced so the honest scan seats the lodge off
-    // the carve.
-    { id: 'midwood_arbor', defId: 'sentinel_arbor', cell: [-5, -2] },
+    // walk's waist: the first elven faces a traveler meets.
+    { id: 'midwood_arbor', defId: 'sentinel_arbor', cell: [-6, -3] },
     // THE HEARTWOOD DOOR — the one threshold (weight-0, exactly
     // once): the ward arch at the reserve's hem, east of the rect
-    // with apron room (the oldcrown_door lesson), where the Heartwood
-    // Walk ends and permission begins. The delve epic knows the
-    // address.
-    { id: 'heartwood_door', defId: 'heartwood_door', x: -770, y: -290 },
-    // The shelf walk under Silverfall's crags gets one roof.
-    { id: 'spineshelf_rest', defId: 'waystation', x: -232, y: -236 },
-    // THE OLD ROAD'S ONE ROOF (the Kingsdelf epic) — the Third Stone,
-    // at the old realm's third milestone (they counted DOWN to the
-    // capital). The fire is kept by returners, not Waykeepers: the
-    // road is unlit BY THE ORDER'S OWN CHOICE, and this one hearth at
-    // the halfway mark is the town's standing argument with them,
-    // built in stone and firewood.
-    { id: 'third_stone', defId: 'waystation', x: -120, y: 140 },
+    // with apron room, where the Heartwood Walk ends and permission
+    // begins.
+    { id: 'heartwood_door', defId: 'heartwood_door', x: -1118, y: -482 },
+    // The crag skirt under Silverfall's walls gets one roof.
+    { id: 'spineshelf_rest', defId: 'waystation', x: -398, y: -202 },
+    // THE OLD ROAD'S ONE ROOF — the Third Stone, kept by returners,
+    // not Waykeepers: the one hearth on the dark road, the town's
+    // standing argument with the order, built in stone and firewood.
+    { id: 'third_stone', defId: 'waystation', x: -164, y: 192 },
     // THE RETURNERS' CROFTS — the last friendly smoke before the gate
-    // country: ash-sifters and wall-eyed optimists farming the hem of
-    // a land that wants them gone. Pinned on the dry meadow BESIDE
-    // the road's lake-corridor league (the first draft sat on the
-    // drowned finger's east shore and composed only on a lucky roll —
-    // the compose test caught it; author against the ground that
-    // exists).
-    { id: 'returners_camp', defId: 'roadside_hamlet', x: -158, y: 226 },
-    // THE OLDCROWN DOOR — the buried capital's east gatehouse. The
-    // Processional's last league passes ABOVE the garrison's ground
-    // and turns in for the rect: the old way walks past the watch,
-    // then through the door. Pinned east of the reserve with room for
-    // the prefab's INFLUENCE apron (the siting footprint is ~2.5x the
-    // sketch — the first draft pinned 13 tiles off the rect and the
-    // nudge could never escape the pad; the compose test taught it).
-    // Weight-0: this door exists exactly once, and the delve epic
-    // knows the address.
-    { id: 'oldcrown_door', defId: 'oldcrown_gatehouse', x: -390, y: 118 },
-    // (No forced crater: the first draft cell-forced a starfall
-    // crater into the burn corridor, but the influence apron makes
-    // the footprint ~2.5x the sketch and the Brand's crowded cells
-    // have no honest ground at that size — the compose test refused
-    // it, correctly. The archetype rolls naturally across all tier
-    // 5-6 country instead, and the burn's own obsidian knolls carry
-    // the guaranteed-ore story.)
+    // country.
+    { id: 'returners_camp', defId: 'roadside_hamlet', x: -344, y: 288 },
+    // THE OLDCROWN DOOR — the buried capital's east gatehouse, pinned
+    // east of the reserve with room for the prefab's INFLUENCE apron.
+    // Weight-0: this door exists exactly once.
+    { id: 'oldcrown_door', defId: 'oldcrown_gatehouse', x: -632, y: 148 },
   ],
   anchors: SETTLED_ANCHORS.map((a) => ({ ...a })),
   massifs: [
@@ -1225,12 +1048,26 @@ export function validateGeographyDef(
         errors.push(`${at} cannot be a haven and a dread at once`);
         continue;
       }
+      // THE WORD (danger.ts): the tier of the anchor's own country. A
+      // doc saved before anchors learned to speak backfills from the
+      // authored map by position (the FRONTIER backfill law); a dread
+      // has no townsfolk to ask, so a worded dread is refused.
+      const country = a.country ?? AUTHORED_ANCHOR_WORDS.get(`${a.x},${a.y}`);
+      if (country !== undefined && (!isInt(country) || country < 1 || country > DANGER_MAX)) {
+        errors.push(`${at}.country must be an integer in [1, ${DANGER_MAX}] (or absent)`);
+        continue;
+      }
+      if (a.dread !== undefined && a.country !== undefined) {
+        errors.push(`${at} cannot carry a dread and a country word at once`);
+        continue;
+      }
       anchors.push({
         x: a.x,
         y: a.y,
         safeR: a.safeR,
         ...(a.haven ? { haven: true } : {}),
         ...(a.dread !== undefined ? { dread: a.dread } : {}),
+        ...(country !== undefined && a.dread === undefined ? { country } : {}),
       });
     }
   }

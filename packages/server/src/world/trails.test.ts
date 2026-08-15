@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { TILE_SKIP, Tile } from '@arx/shared';
-import {
+import { WORLD_SEED,
   FRONTIER,
   POI_DEFS,
   POI_PREFABS,
@@ -20,7 +20,7 @@ import {
 } from './pois.js';
 import { composeFinds, findsForCell } from './finds.js';
 
-const SEED = 1337;
+const SEED = WORLD_SEED;
 const CTX = poiContext(SETTLED_ANCHORS, [], POI_PREFABS, [], []);
 
 /**

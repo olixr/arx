@@ -8,7 +8,7 @@
       "id": "the_court",
       "journal": "Skarn sent word up the stair; it came back the same day under a crown seal. Present yourself at the castle court — the mark on your chart is the Court Gate, and the stairs do the rest. Then bring Skarn word of how the king seemed. He asked plainly, the way he asks everything.",
       "objectives": [{ "kind": "talk", "actor": "king_aeriex" }],
-      "mark": { "x": -288, "y": -162 }
+      "mark": { "x": -448, "y": -282 }
     }
   ],
   "rewards": {

@@ -1,4 +1,4 @@
-import type { GeographyDef } from '@arx/content';
+import { WORLD_SEED, type GeographyDef } from '@arx/content';
 import type { MapListEntry, WorldCell, WorldSnapshot } from '../api.js';
 
 /**
@@ -57,7 +57,7 @@ export class WorldState {
   geo: GeographyDef | null = null;
   /** JSON of the last server-acknowledged plan (dirty baseline). */
   private savedJson = '';
-  seed = 1337;
+  seed = WORLD_SEED;
   poiCell = 128;
   cells: WorldCell[] = [];
   /** THE LIVING STATE (Phase 6): credits owed, calm windows, claimed yards. */

@@ -1419,7 +1419,7 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   assert.equal(z.height, SILVERFALL_RECT.h);
   const at = (x: number, y: number): Tile => z.ground[y * z.width + x]! as Tile;
   // The hearth of the north: respawn inside the gate on the avenue.
-  assert.deepEqual(z.spawn, { x: -287.5, y: -119.5 });
+  assert.deepEqual(z.spawn, { x: -447.5, y: -239.5 });
   // ELEVATION IS REAL: the first terraced town exports a layer that
   // climbs all the way to the Hold, flat at the border apron.
   assert.ok(z.elev, 'silverfall must carry an elevation layer');
@@ -2043,8 +2043,8 @@ test('pinewatch: the watch town holds its knoll, its water, and three gates', ()
   assert.equal(z.id, 'pinewatch');
   assert.equal(z.width, 128);
   assert.equal(z.height, 96);
-  assert.equal(z.origin.x, 520);
-  assert.equal(z.origin.y, -184);
+  assert.equal(z.origin.x, 1096);
+  assert.equal(z.origin.y, -404);
   assert.ok(z.elev, 'the Old Watch stands on a knoll, so the zone carries elevation');
   const at = (x: number, y: number): Tile => z.ground[y * z.width + x] as Tile;
   const n = (t: Tile): number => z.ground.reduce((c, g) => (g === t ? c + 1 : c), 0);
@@ -2080,7 +2080,7 @@ test('pinewatch: the watch town holds its knoll, its water, and three gates', ()
   assert.equal(at(6, 49), Tile.GateGarrison, 'the west gate stands');
   assert.equal(at(106, 60), Tile.GateGarrison, 'the Wardline gate stands');
   // The spawn is the muster yard: the respawn hearth of the north-east.
-  assert.deepEqual(z.spawn, { x: 520 + 66.5, y: -184 + 50.5 });
+  assert.deepEqual(z.spawn, { x: 1096 + 66.5, y: -404 + 50.5 });
   // The cast.
   const actors = z.actorSpawns ?? [];
   assert.equal(actors.length, 22, 'Pinewatch lost residents');

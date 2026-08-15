@@ -18,7 +18,7 @@ import {
   tileIndex,
   type ChunkData,
 } from '@arx/shared';
-import { generateChunk, type ZoneDef } from '@arx/content';
+import { WORLD_SEED, generateChunk, type ZoneDef } from '@arx/content';
 import { ClientGame, type GameEvents } from '../game/clientGame.js';
 import type { InputManager } from '../input/inputManager.js';
 import { Renderer } from '../render/renderer.js';
@@ -55,7 +55,7 @@ export class EditorStage {
   /** True once the first frame rendered without throwing. */
   healthy = true;
 
-  private seed = 1337;
+  private seed = WORLD_SEED;
   /** Chunk keys needing recomposition after an edit. */
   private readonly dirtyChunks = new Set<string>();
   private lastFrameMs = 0;

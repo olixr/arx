@@ -82,8 +82,8 @@ export const FACTIONS: FactionsDef = {
       npcPrefixes: [],
       anchors: [
         { x: -64, y: 48 },
-        { x: 352, y: 24 },
-        { x: -256, y: 288 }, // Kingsdelf — the Charter's far seat
+        { x: 520, y: -4 },
+        { x: -480, y: 328 }, // Kingsdelf — the Charter's far seat
       ],
       refusals: [
         'Walk on. The watch knows your face.',
@@ -154,8 +154,8 @@ export const FACTIONS: FactionsDef = {
       enforcers: ['castle_guard', 'silverfall_watch', 'pinewatch_watch', 'hoargate_watch'],
       npcPrefixes: [],
       anchors: [
-        { x: -288, y: -160 },
-        { x: 584, y: -136 },
+        { x: -448, y: -280 },
+        { x: 1160, y: -356 },
       ],
       refusals: [
         'The crown remembers. Move along.',
@@ -267,7 +267,7 @@ export const FACTIONS: FactionsDef = {
       ],
       enforcers: ['evenguard_watch'],
       npcPrefixes: [],
-      anchors: [{ x: -680, y: -176 }],
+      anchors: [{ x: -1032, y: -358 }],
       refusals: [
         'The wood saw that. So did I.',
         'You were welcomed. Act like it.',

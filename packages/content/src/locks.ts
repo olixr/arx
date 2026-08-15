@@ -12,8 +12,8 @@
 export const AUTHORED_LOCKS: ReadonlyArray<{ x: number; y: number }> = [
   // The Bank of Amberford's vault room — windowless; coin sleeps in
   // the dark behind Cormund's one inner door.
-  { x: 333, y: 12 },
+  { x: 501, y: -16 },
   // The Bank of Silverfall's vault — double-walled off the working
   // floor, the mountain's coin under the Crown's countersign.
-  { x: -327, y: -184 },
+  { x: -487, y: -304 },
 ];

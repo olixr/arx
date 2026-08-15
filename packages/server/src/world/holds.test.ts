@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { TILE_SKIP } from '@arx/shared';
-import { POI_DEFS, POI_PREFABS, validatePoiDef } from '@arx/content';
+import { WORLD_SEED, POI_DEFS, POI_PREFABS, validatePoiDef } from '@arx/content';
 import { GameServer } from '../game/gameServer.js';
 import {
   composePoi,
@@ -12,7 +12,7 @@ import {
   type PoiSite,
 } from './pois.js';
 
-const SEED = 1337;
+const SEED = WORLD_SEED;
 
 /**
  * THE WAR-GROUND's laws, pinned (lived-in-land Phase 4): promotion is

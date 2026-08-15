@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { TILE_DEFS, TILE_SKIP, Tile, chestInfo, closedChestTile } from '@arx/shared';
-import {
+import { WORLD_SEED,
   AMBERFORD_RECT,
   MINOR_DEFS,
   PLANNED_ZONE_RECTS,
@@ -23,7 +23,7 @@ import {
   type PoiSite,
 } from './pois.js';
 
-const SEED = 1337;
+const SEED = WORLD_SEED;
 const CTX: PoiContext = {
   anchors: SETTLED_ANCHORS,
   zoneRects: [

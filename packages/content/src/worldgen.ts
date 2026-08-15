@@ -54,8 +54,74 @@ import {
  * at cliff feet, formations along plateau rims, the richest veins up on
  * the mesas, and a modest bonus seam on the quarry floors.
  */
+
+/**
+ * THE SHIPPED SEED — the one world everyone plays (THE GREAT WORLD
+ * REGEN, 2026-08-14; before it the project lived its whole life on
+ * 1337). This is the single source: server config defaults to it, the
+ * editor's offline fallback reads it, and every test that pins a fact
+ * about the shipped terrain imports it instead of hardcoding a number.
+ * The authored geography (rects, routes, sites, hearts) is composed
+ * against THIS seed's rivers and provinces — change it and the whole
+ * plan must be re-threaded, which is a project, not an env edit.
+ */
+export const WORLD_SEED = 24601;
+
+/**
+ * THE LAND LEARNS COMPOSITION — the macro fields.
+ *
+ * The mid-frequency detail noise on its own deals statistically
+ * identical speckle on every seed: no plains, no lake districts, no
+ * provinces — confetti to the horizon. A continent-scale field under
+ * it is what gives a seed an IDENTITY: regions where the macro runs
+ * high read as broad dry grassland provinces, regions where it runs
+ * low read as lake country, and the detail noise keeps every local
+ * edge organic. The macro never decides a tile — it decides a REGION,
+ * and the detail field argues every shoreline with it.
+ */
+function macroElevAt(seed: number, tx: number, ty: number): number {
+  return fbm(seed + 130717, tx * 0.0032, ty * 0.0032, 2);
+}
+
+/**
+ * THE RIVERS — the level-set law. The 0.5 contour of a slow, smooth
+ * field is a family of long, connected, winding curves — exactly the
+ * shape a river is, and exactly the shape blob-thresholding can never
+ * deal. `riverRidgeAt` measures closeness to that contour (1 on the
+ * centerline, falling off with distance); the carve pulls elevation
+ * down toward the waterline along it, hardest at the center, so a
+ * channel reads deep midstream with wadeable margins — and the
+ * sandbar field still crests through the mid band, so fords happen
+ * where the land says so, not where a designer parked one.
+ *
+ * The riverbed FLOORS AT 0.305 — above the 0.3 deep-water line — by
+ * law: THE SHORT SPAN LAW forbids bridging deep water, and a river
+ * the roads may never cross is a wall, not a river. (Lakes stay the
+ * moats; rivers are the roads' honest adversary — crossable, at a
+ * price, where the banks agree.) Width breathes with its own meander
+ * field; town aprons dry the carve out entirely, and a massif heart
+ * fades it so no canyon ever severs an authored pass.
+ */
+function riverRidgeAt(seed: number, tx: number, ty: number): number {
+  const rn = fbm(seed + 60607, tx * 0.0045, ty * 0.0045, 2);
+  return 1 - Math.abs(rn - 0.5) * 2;
+}
+
+const RIVER_BED = 0.305;
+
+function riverCarveAt(seed: number, tx: number, ty: number): number {
+  const ridge = riverRidgeAt(seed, tx, ty);
+  // Meander: the banks breathe ±, so no reach is ever two ruled lines.
+  const wob = (fbm(seed + 70809, tx * 0.02, ty * 0.02, 2) - 0.5) * 0.024;
+  const t = 0.938 + wob;
+  if (ridge <= t) return 0;
+  return Math.min(1, (ridge - t) / (1 - t));
+}
+
 export function elevationAt(seed: number, tx: number, ty: number): number {
-  let elevation = fbm(seed, tx * 0.015, ty * 0.015, 4);
+  const detail = fbm(seed, tx * 0.015, ty * 0.015, 4);
+  // The macro provinces under the detail grain (composition law above).
+  let elevation = detail * 0.62 + macroElevAt(seed, tx, ty) * 0.38;
   // Continental bias: dry land guaranteed around Dawnmead, the one
   // settled hearth the world grows out from.
   const distFromOrigin = Math.hypot(tx + 64, ty - 48);
@@ -95,6 +161,20 @@ export function elevationAt(seed: number, tx: number, ty: number): number {
     const water = 0.3 - mere * 0.12 + (fbm(seed + 8181, tx * 0.02, ty * 0.02, 2) - 0.5) * 0.16;
     elevation = elevation * (1 - k) + water * k;
   }
+  // THE RIVERS (composition law above): carve the channel toward the
+  // bed, hardest midstream. Town aprons dry the carve to nothing and a
+  // massif heart fades it, so no channel floods a gate or saws an
+  // authored pass in half; everywhere else the river takes what the
+  // ridge gives it — including straight through hill country, where
+  // the flanking plateau fences read as a gorge on their own.
+  const carve = riverCarveAt(seed, tx, ty);
+  if (carve > 0) {
+    const k = carve * (1 - fieldApronAt(tx, ty, 28)) * (1 - m * 0.85);
+    if (k > 0) {
+      const bed = RIVER_BED + (1 - carve) * 0.08;
+      if (elevation > bed) elevation = elevation * (1 - k) + bed * k;
+    }
+  }
   // THE EDGE-HARMONY LAW: near a registered zone border the field
   // honors the border's authored intention — water edges keep flowing
   // outward as coves and creeks, sand continues as beach, and every
@@ -114,6 +194,12 @@ const PLATEAU_T2 = 0.705;
 
 export function plateauFieldAt(seed: number, tx: number, ty: number): number {
   let f = fbm(seed + 31337, tx * 0.012, ty * 0.012, 3);
+  // THE RANGES (composition law at elevationAt): a continent-scale
+  // belt term clusters the crags into provinces — true highland belts
+  // with open lowland leagues between them — instead of dealing the
+  // same even speckle of mesas to every horizon. The detail noise
+  // still cuts every rim and valley inside a belt.
+  f += (fbm(seed + 90901, tx * 0.0035, ty * 0.0035, 2) - 0.5) * 0.34;
   // The Silverspine bias: crag country guaranteed around Silverfall —
   // mesa-dominant at the heart, breaking into plateaus and valley
   // floors toward the rim. The noise still decides every edge.
@@ -201,6 +287,16 @@ export function moistureAt(seed: number, tx: number, ty: number): number {
   // flats, and the herb layer (moonbell opens in the deepest wet).
   const m =
     fbm(seed + 9999, tx * 0.03, ty * 0.03, 3) +
+    // THE WOODS COME IN BELTS (composition law at elevationAt): a
+    // continent-scale term so forest happens as forests — belts and
+    // broad woods with open meadow provinces between — never as
+    // confetti stands dealt evenly to every league.
+    (fbm(seed + 40405, tx * 0.0045, ty * 0.0045, 2) - 0.5) * 0.3 +
+    // THE RIPARIAN RIBBON: banks drink from their own river. The
+    // ridge field that carves the channel lends the last reach of its
+    // skirt to moisture, so willow-green follows the water and a
+    // river reads as a living seam even from the far shore.
+    Math.max(0, riverRidgeAt(seed, tx, ty) - 0.82) * 1.1 +
     thornveilAt(tx, ty) * 0.3 +
     fenAt(tx, ty) * 0.22 +
     // A pineland is damp as well as cold: the taiga hearts close

@@ -1672,28 +1672,33 @@ export function previewPoi(
 ): { site: PoiSite; zone: ZoneDef } | null {
   const def = ctx.defs.find((d) => d.id === defId);
   if (!def) return null;
-  // Mid-band radius from the FIRST anchor (the hearth): tier T spans
-  // [safeR + (T-1)·band, safeR + T·band).
-  const hearth = ctx.anchors[0] ?? { x: 0, y: 0, safeR: 0 };
-  const radius = hearth.safeR + (tier - 0.5) * DANGER_BAND;
+  // Mid-band ring around EVERY settled hearth: tier T spans
+  // [safeR + (T-1)·band, safeR + T·band). One hearth's ring can miss
+  // every cell center of a thin band (the great regen proved it —
+  // Dawnmead's tier-1 ring landed all its cell centers in band 2+),
+  // so the bench walks each hearth in turn until a stage composes.
   const seen = new Set<string>();
-  for (let step = 0; step < 96; step++) {
-    const ang = (step / 96) * Math.PI * 2;
-    const tx = hearth.x + Math.cos(ang) * radius;
-    const ty = hearth.y + Math.sin(ang) * radius;
-    const cx = poiCellOf(tx);
-    const cy = poiCellOf(ty);
-    const key = poiCellKey(cx, cy);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const site = poiForCell(seed, cx, cy, 0, ctx, defId);
-    if (!site || site.tier !== tier) continue;
-    const shown =
-      prefabId !== undefined && ctx.prefabs.has(prefabId)
-        ? { ...site, prefabId }
-        : site;
-    const zone = composePoi(seed, shown, ctx, stage);
-    if (zone) return { site: shown, zone };
+  const hearths = ctx.anchors.filter((a) => !a.haven && !a.dread);
+  for (const hearth of hearths.length ? hearths : [{ x: 0, y: 0, safeR: 0 }]) {
+    const radius = hearth.safeR + (tier - 0.5) * DANGER_BAND;
+    for (let step = 0; step < 96; step++) {
+      const ang = (step / 96) * Math.PI * 2;
+      const tx = hearth.x + Math.cos(ang) * radius;
+      const ty = hearth.y + Math.sin(ang) * radius;
+      const cx = poiCellOf(tx);
+      const cy = poiCellOf(ty);
+      const key = poiCellKey(cx, cy);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const site = poiForCell(seed, cx, cy, 0, ctx, defId);
+      if (!site || site.tier !== tier) continue;
+      const shown =
+        prefabId !== undefined && ctx.prefabs.has(prefabId)
+          ? { ...site, prefabId }
+          : site;
+      const zone = composePoi(seed, shown, ctx, stage);
+      if (zone) return { site: shown, zone };
+    }
   }
   return null;
 }

@@ -30,7 +30,10 @@ import {
 } from './geography.js';
 import { SETTLED_ANCHORS } from './danger.js';
 import { buildDawnmead } from './maps/dawnmead.js';
-import { elevationAt } from './worldgen.js';
+import { WORLD_SEED, elevationAt } from './worldgen.js';
+
+/** Every terrain fact in this file is a fact about THE SHIPPED SEED. */
+const SEED = WORLD_SEED;
 
 /**
  * THE GEOGRAPHY IS LOAD-BEARING: zone builds stamp into exactly these
@@ -64,24 +67,16 @@ test('every route starts and ends at a planned zone (gates meet roads)', () => {
       assert.ok(onHigh, `${route.name} must end on a High Road waypoint (the fork)`);
       continue;
     }
-    // The Sparway forks off the Timber Road at the bend where the
-    // wains turn north around the braid country — the shortcut IS
-    // the refusal to go around. Fork start, Pinewatch west gate end.
+    // The Sparway forks off the Timber Road where the wains commit to
+    // the south bow — and REJOINS it below the lakes: the shortcut is
+    // the refusal to go around, and both its ends live on the road it
+    // refuses. Fork start, fork end.
     if (route.id === 'sparway') {
       const timber = ROAD_ROUTES.find((r) => r.id === 'timber_road')!;
-      const onTimber = timber.pts.some((p) => p.x === a.x && p.y === a.y);
-      assert.ok(onTimber, `${route.name} must start on a Timber Road waypoint (the fork)`);
-      assert.ok(inAnyRect(b.x, b.y), `${route.name} end is loose`);
-      continue;
-    }
-    // The Hartway forks off the Timber Road's last-league waypoint
-    // below Pinewatch — every wain north rolls past the town's walls
-    // first. The fork IS the start; the end is Hartfell's gate.
-    if (route.id === 'hartway') {
-      const timber = ROAD_ROUTES.find((r) => r.id === 'timber_road')!;
-      const onTimber = timber.pts.some((p) => p.x === a.x && p.y === a.y);
-      assert.ok(onTimber, `${route.name} must start on a Timber Road waypoint (the fork)`);
-      assert.ok(inAnyRect(b.x, b.y), `${route.name} end is loose`);
+      const onTimberA = timber.pts.some((p) => p.x === a.x && p.y === a.y);
+      const onTimberB = timber.pts.some((p) => p.x === b.x && p.y === b.y);
+      assert.ok(onTimberA, `${route.name} must start on a Timber Road waypoint (the fork)`);
+      assert.ok(onTimberB, `${route.name} must end on a Timber Road waypoint (the rejoin)`);
       continue;
     }
     // The Evenway forks off the Hoargate Road at the bend where the
@@ -113,18 +108,18 @@ test('the fields fall off to honest zero in the far frontier', () => {
   assert.equal(fenAt(2000, 2000), 0);
   assert.equal(scorchAt(2000, 2000), 0);
   assert.equal(fieldApronAt(2000, 2000, 64), 0);
-  assert.equal(roadDistanceAt(1337, 2000, 2000), Infinity);
+  assert.equal(roadDistanceAt(SEED, 2000, 2000), Infinity);
   assert.equal(nearRoads(1900, 1900, 2100, 2100), false);
 });
 
 test('road queries agree with themselves (deterministic, kind-aware)', () => {
-  const a = roadHitAt(1337, 34, 95);
-  const b = roadHitAt(1337, 34, 95);
+  const a = roadHitAt(SEED, 84, 104);
+  const b = roadHitAt(SEED, 84, 104);
   assert.deepEqual(a, b);
-  assert.ok(a !== null && a.dist < 8, 'the First Road runs the causeway near (34,95)');
+  assert.ok(a !== null && a.dist < 8, 'the First Road runs the fen waist near (84,104)');
   assert.equal(a!.trail, false);
-  const t = roadHitAt(1337, -60, -10);
-  assert.ok(t !== null && t.trail, "the Hunter's Trail near (-60,-10) reads as a trail");
+  const t = roadHitAt(SEED, -84, -32);
+  assert.ok(t !== null && t.trail, "the Hunter's Trail near (-84,-32) reads as a trail");
 });
 
 test('distToRect is zero inside, exact outside', () => {
@@ -156,7 +151,7 @@ test('authored wild sites claim distinct macro-cells', () => {
 test('pinned mileposts stand beside the road, never on it', () => {
   for (const s of AUTHORED_WILD_SITES) {
     if (s.x === undefined || s.y === undefined) continue;
-    const d = roadDistanceAt(1337, s.x, s.y);
+    const d = roadDistanceAt(SEED, s.x, s.y);
     assert.ok(d > 4.5, `${s.id} anchor sits inside the road shoulder (${d.toFixed(1)})`);
     assert.ok(d < 26, `${s.id} anchor wandered off the road (${d.toFixed(1)})`);
     // The plan never pins a landmark inside its own future streets.
@@ -174,8 +169,8 @@ test('roadBearingAt points at the road, and honestly refuses far ground', () => 
   const b = roadBearingAt(56, 64, 40);
   assert.ok(b !== null, 'the First Road is within 40 of (56,64)');
   const step = 10;
-  const before = roadDistanceAt(1337, 56, 64);
-  const after = roadDistanceAt(1337, Math.round(56 + b!.x * step), Math.round(64 + b!.y * step));
+  const before = roadDistanceAt(SEED, 56, 64);
+  const after = roadDistanceAt(SEED, Math.round(56 + b!.x * step), Math.round(64 + b!.y * step));
   assert.ok(after < before, 'walking the bearing must close on the road');
   // The deep frontier has no bearing to give.
   assert.equal(roadBearingAt(2000, 2000, 40), null);
@@ -200,7 +195,7 @@ test('the authored plan passes its own validator, byte-honest', () => {
 
 test('the authored plan earns no warnings from its own counsel', () => {
   assert.deepEqual(
-    geographyWarnings(AUTHORED_GEOGRAPHY, 1337, (x, y) => elevationAt(1337, x, y)),
+    geographyWarnings(AUTHORED_GEOGRAPHY, SEED, (x, y) => elevationAt(SEED, x, y)),
     [],
   );
 });
@@ -213,7 +208,7 @@ test('the authored plan earns no warnings from its own counsel', () => {
 // ------------------------------------------------------------------
 
 test('every route crosses water only at short necks (the span law, route by route)', () => {
-  const decks = routeBridgeDecks(AUTHORED_GEOGRAPHY, 1337, (x, y) => elevationAt(1337, x, y));
+  const decks = routeBridgeDecks(AUTHORED_GEOGRAPHY, SEED, (x, y) => elevationAt(SEED, x, y));
   for (const route of AUTHORED_GEOGRAPHY.routes) {
     const own = decks.filter((d) => d.routeId === route.id);
     const max = route.kind === 'trail' ? TRAIL_SPAN_MAX : ROAD_SPAN_MAX;
@@ -281,15 +276,15 @@ test('replaceGeography moves the roads, the anchors, and every query with them',
     assert.equal(SETTLED_ANCHORS.length, 1);
     assert.equal(AUTHORED_WILD_SITES[0]!.id, 'east_rest');
     // The road queries answer from the new plan (derived bounds moved).
-    assert.ok(roadDistanceAt(1337, 1100, 100) < 8, 'the East Reach exists');
-    assert.equal(roadDistanceAt(1337, 34, 95), Infinity, 'the First Road is gone');
+    assert.ok(roadDistanceAt(SEED, 1100, 100) < 8, 'the East Reach exists');
+    assert.equal(roadDistanceAt(SEED, 84, 104), Infinity, 'the First Road is gone');
     assert.equal(nearRoads(0, 0, 200, 200), false);
     assert.ok(nearRoads(990, 90, 1010, 110));
   } finally {
     replaceGeography(before);
   }
   // The restoration is honest: shipped queries answer as ever.
-  assert.ok(roadDistanceAt(1337, 34, 95) < 8);
+  assert.ok(roadDistanceAt(SEED, 84, 104) < 8);
   assert.equal(SETTLED_ANCHORS.length, AUTHORED_GEOGRAPHY.anchors.length);
 });
 
@@ -343,7 +338,7 @@ test('the Sparway is shorter than the Timber Road and bands worse', () => {
       len += seg;
       for (let t = 0; t < 1; t += 4 / seg) {
         tiers.push(
-          dangerAt(1337, Math.round(a.x + (b.x - a.x) * t), Math.round(a.y + (b.y - a.y) * t), anchors),
+          dangerAt(SEED, Math.round(a.x + (b.x - a.x) * t), Math.round(a.y + (b.y - a.y) * t), anchors),
         );
       }
     }
@@ -360,8 +355,8 @@ test('the Sparway is shorter than the Timber Road and bands worse', () => {
 
 test('both towns stay tier 0 at their own hearths despite the Blackpine', () => {
   const anchors = AUTHORED_GEOGRAPHY.anchors.map((a) => ({ ...a }));
-  assert.equal(dangerAt(1337, 352, 24, anchors), 0, 'Amberford');
-  assert.equal(dangerAt(1337, 584, -136, anchors), 0, 'Pinewatch');
+  assert.equal(dangerAt(SEED, 520, -4, anchors), 0, 'Amberford');
+  assert.equal(dangerAt(SEED, 1160, -356, anchors), 0, 'Pinewatch');
 });
 
 // ------------------------------------------------------------------
@@ -374,15 +369,15 @@ test('both towns stay tier 0 at their own hearths despite the Blackpine', () => 
 
 test("Hartfell's relief grades the walk-out and the far fell stays at the ceiling", () => {
   const anchors = AUTHORED_GEOGRAPHY.anchors.map((a) => ({ ...a }));
-  assert.equal(dangerAt(1337, 848, -392, anchors), 0, 'the Kettle is a hearth');
-  assert.equal(dangerAt(1337, 838, -350, anchors), 0, 'the south gate stands inside the lamp');
-  const walls = dangerAt(1337, 848, -318, anchors); // ~10 past the safe edge
+  assert.equal(dangerAt(SEED, 1304, -616, anchors), 0, 'the Kettle is a hearth');
+  assert.equal(dangerAt(SEED, 1294, -572, anchors), 0, 'the south gate stands inside the lamp');
+  const walls = dangerAt(SEED, 1304, -542, anchors); // ~10 past the safe edge
   assert.ok(walls >= 2 && walls <= 4, `just past the walls should read 2-4, got ${walls}`);
-  const fell = dangerAt(1337, 816, -500, anchors); // the Barrowfell approach
+  const fell = dangerAt(SEED, 1260, -720, anchors); // the Barrowfell approach
   assert.ok(fell >= 4, `the barrow country must stay deep, got ${fell}`);
   // The Hartway's middle league is honestly tier 5 country: the road
   // is calm to SPAWNS (worldgen's ROAD_CALM), never to the field.
-  const midway = dangerAt(1337, 800, -240, anchors);
+  const midway = dangerAt(SEED, 1240, -450, anchors);
   assert.ok(midway >= 4, `the drove's long middle must stay earned, got ${midway}`);
 });
 
@@ -396,8 +391,8 @@ test("Hartfell's relief grades the walk-out and the far fell stays at the ceilin
 
 test("Kingsdelf's bowl is calm, and the Brand's heart reads the Overband", () => {
   const anchors = AUTHORED_GEOGRAPHY.anchors.map((a) => ({ ...a }));
-  assert.equal(dangerAt(1337, -256, 288, anchors), 0, 'the delf floor is a hearth');
-  assert.equal(dangerAt(1337, -230, 270, anchors), 0, 'the benches stand inside the lamp');
+  assert.equal(dangerAt(SEED, -480, 328, anchors), 0, 'the delf floor is a hearth');
+  assert.equal(dangerAt(SEED, -454, 310, anchors), 0, 'the benches stand inside the lamp');
   // The Brand's full heart: the march runs within a band of its
   // ceiling out here, so the dread-3 core crosses it. Sample a ring
   // inside safeR — the town-facing arc is one band softer and the
@@ -407,9 +402,9 @@ test("Kingsdelf's bowl is calm, and the Brand's heart reads the Overband", () =>
   for (let i = 0; i < 200; i++) {
     const ang = (i / 200) * Math.PI * 2;
     const tier = dangerAt(
-      1337,
-      Math.round(-320 + Math.cos(ang) * 60),
-      Math.round(104 + Math.sin(ang) * 60),
+      SEED,
+      Math.round(-544 + Math.cos(ang) * 60),
+      Math.round(144 + Math.sin(ang) * 60),
       anchors,
     );
     assert.ok(tier >= 5 && tier <= DANGER_OVER, `burn heart read ${tier}`);
@@ -418,10 +413,10 @@ test("Kingsdelf's bowl is calm, and the Brand's heart reads the Overband", () =>
   assert.ok(overs > 60, `the Overband barely opened: ${overs}/200`);
   // The dread reach clears the town's north wall: beside the furnace,
   // never in it.
-  const northWall = dangerAt(1337, -256, 240, anchors);
+  const northWall = dangerAt(SEED, -480, 280, anchors);
   assert.ok(northWall <= 5, `the north wall must stay under the Overband, got ${northWall}`);
   // The Old Road's last league grades in under the haven's relief —
   // an artery, not a gauntlet; the burn is where the 44-60 band lives.
-  const lastLeague = dangerAt(1337, -178, 259, anchors);
+  const lastLeague = dangerAt(SEED, -398, 302, anchors);
   assert.ok(lastLeague >= 1 && lastLeague <= 4, `the last league should read 1-4, got ${lastLeague}`);
 });

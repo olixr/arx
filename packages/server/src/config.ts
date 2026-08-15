@@ -1,3 +1,5 @@
+import { WORLD_SEED } from '@arx/content';
+
 function envInt(name: string, fallback: number): number {
   const raw = process.env[name];
   if (raw === undefined) return fallback;
@@ -61,7 +63,10 @@ export const config = {
   inviteCode: (process.env.INVITE_CODE ?? '').trim(),
   /** Hard cap on simultaneous sockets — the box's overload fuse. */
   maxConnections: envInt('MAX_CONNECTIONS', 300),
-  worldSeed: envInt('WORLD_SEED', 1337),
+  // THE SHIPPED SEED lives in content (worldgen.ts) — the geography is
+  // composed against it. The env override exists for rigs and labs,
+  // never for prod (a prod seed change is a world regen project).
+  worldSeed: envInt('WORLD_SEED', WORLD_SEED),
   /**
    * Zone whose spawn point receives BRAND-NEW characters (the
    * awakening). Death respawn resolves separately (nearest settled

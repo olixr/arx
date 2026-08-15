@@ -29,13 +29,13 @@ export type ZoneId = keyof ZoneWeights;
  */
 const TOWNS = [
   { x: -64, y: 48, full: 22, fade: 36 }, // Dawnmead
-  { x: 352, y: 24, full: 30, fade: 48 }, // Amberford — the bigger hearth
-  { x: -288, y: -160, full: 44, fade: 72 }, // Silverfall — the mountain capital
-  { x: 356, y: 292, full: 34, fade: 52 }, // Saltmere — the town at the water's end
-  { x: 584, y: -136, full: 30, fade: 48 }, // Pinewatch — the wood's muster town
-  { x: 848, y: -392, full: 30, fade: 48 }, // Hartfell — the town past the treeline
-  { x: -256, y: 288, full: 34, fade: 52 }, // Kingsdelf — the town in the King's Delf
-  { x: -680, y: -176, full: 44, fade: 72 }, // Evenfall — the city of the old folk
+  { x: 520, y: -4, full: 30, fade: 48 }, // Amberford — the bigger hearth
+  { x: -448, y: -280, full: 44, fade: 72 }, // Silverfall — the mountain capital
+  { x: 760, y: 330, full: 34, fade: 52 }, // Saltmere — the town at the water's end
+  { x: 1160, y: -356, full: 30, fade: 48 }, // Pinewatch — the wood's muster town
+  { x: 1304, y: -616, full: 30, fade: 48 }, // Hartfell — the town past the treeline
+  { x: -480, y: 328, full: 34, fade: 52 }, // Kingsdelf — the town in the King's Delf
+  { x: -1032, y: -358, full: 44, fade: 72 }, // Evenfall — the city of the old folk
 ] as const;
 /** The dark band: worldgen's underground begins here. */
 export const UNDERGROUND_Y = 512;

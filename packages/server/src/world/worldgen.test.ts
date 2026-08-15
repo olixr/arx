@@ -8,7 +8,7 @@ import { isFishingTile,
   encodeChunk,
   isSolidTile,
 } from '@arx/shared';
-import {
+import { WORLD_SEED,
   AMBERFORD_RECT,
   ROAD_ROUTES,
   SALTMERE_RECT,
@@ -176,7 +176,7 @@ test('levels are fenced: no walkable step between levels except ramps', () => {
   // different levels must involve a Ramp. Signed now — the same law
   // covers plateau crowns AND sunken dells/quarries, so the scan mixes
   // hard-coded plateau country with chunks found by the basin probe.
-  const seed = 1337;
+  const seed = WORLD_SEED;
   const coords: Array<readonly [number, number]> = [
     [3, 3],
     [-4, 2],
@@ -213,7 +213,7 @@ test('THE CLIFF-FOOT LAW: the probe refuses every tile that borders a level chan
   // dressing and the talus at the wall base live there, so anything a
   // scanner stands on it clips through the rock face. The probe must
   // read 'rock' both ON non-flat levels and BESIDE them.
-  const seed = 1337;
+  const seed = WORLD_SEED;
   let boundaryTiles = 0;
   for (const [cx, cy] of [[3, 3], [-4, 2], [7, -6], [12, 12], ...findSinkChunks(seed, 2)] as Array<
     [number, number]
@@ -244,7 +244,7 @@ test('THE CLIFF-FOOT LAW: the probe refuses every tile that borders a level chan
 });
 
 test('sinks never cut water or shoreline, and every ramp is a straight-edge flight', () => {
-  const seed = 1337;
+  const seed = WORLD_SEED;
   const wet = new Set<number>([
     Tile.Water,
     Tile.WaterDeep,
@@ -292,7 +292,7 @@ test('sink regions get entrance ramps (most enterable, some scenic)', () => {
   // "the odd unclimbable mesa stays scenic". So the guarantee worth
   // testing is statistical and, for a fixed seed, exact: most sizeable
   // dells must carry at least one entrance ramp on their level-0 lip.
-  const seed = 1337;
+  const seed = WORLD_SEED;
   const regionKeys = new Set<string>();
   let sizeable = 0;
   let enterable = 0;
@@ -350,7 +350,7 @@ test('sink regions get entrance ramps (most enterable, some scenic)', () => {
 test('ramps exist and connect a lower walkable tile to a higher one', () => {
   // Scan a broad band of wilderness for ramps; every ramp must have a
   // walkable mouth below and open ground above.
-  const seed = 1337;
+  const seed = WORLD_SEED;
   let ramps = 0;
   for (let cy = -8; cy <= 8; cy++) {
     for (let cx = -8; cx <= 8; cx++) {
@@ -402,7 +402,7 @@ function routeSamples(routeId: string): Array<[number, number]> {
 }
 
 test('roads carve a walkable surface end to end', () => {
-  const seed = 1337;
+  const seed = WORLD_SEED;
   const chunkCache = new Map<string, ReturnType<typeof generateChunk>>();
   const groundAt = (tx: number, ty: number): number => {
     const cx = Math.floor(tx / CHUNK_SIZE);
@@ -448,7 +448,7 @@ test('road cuttings keep the fence law: no walkable level step off the carve', (
   // The carve forces terrain levels flat inside the ribbon; the cliff
   // fence must land on the ribbon hem, never on the trodden surface,
   // and every level change around a cutting must still be fenced.
-  const seed = 1337;
+  const seed = WORLD_SEED;
   // Find High Road chunks that cut through raised country.
   const cuts = new Set<string>();
   for (const [px, py] of routeSamples('high_road')) {
@@ -479,7 +479,7 @@ test('road cuttings keep the fence law: no walkable level step off the carve', (
 });
 
 test('the Silverspine stands: crag country cradles the Silverfall rect', () => {
-  const seed = 1337;
+  const seed = WORLD_SEED;
   let n = 0;
   let raised = 0;
   let water = 0;
@@ -502,7 +502,7 @@ test('the Silverspine stands: crag country cradles the Silverfall rect', () => {
 });
 
 test('the Amberfen is a true wetland: wet mosaic, reed banks, dry islets', () => {
-  const seed = 1337;
+  const seed = WORLD_SEED;
   let n = 0;
   let wet = 0;
   let reeds = 0;
@@ -531,7 +531,7 @@ test('the Amberfen is a true wetland: wet mosaic, reed banks, dry islets', () =>
 });
 
 test('the Thornveil is a true wood', () => {
-  const seed = 1337;
+  const seed = WORLD_SEED;
   let n = 0;
   let forest = 0;
   for (let ty = THORNVEIL.y - 112; ty < THORNVEIL.y + 112; ty += 3) {
@@ -546,7 +546,7 @@ test('the Thornveil is a true wood', () => {
 });
 
 test('the taiga stands north: pines take the cold forests, never the south', () => {
-  const seed = 1337;
+  const seed = WORLD_SEED;
   // Deep-north wilds (east of Silverfall's rect, well past the cold
   // ramp): the forest share of trees must be pine-dominant.
   let northPine = 0;
@@ -590,7 +590,7 @@ function generateChunkTile(seed: number, tx: number, ty: number): number {
 }
 
 test('planned zone rects are flat canvases: no levels, no basins inside', () => {
-  const seed = 1337;
+  const seed = WORLD_SEED;
   for (const rect of [AMBERFORD_RECT, SILVERFALL_RECT, SALTMERE_RECT]) {
     for (let ty = rect.y; ty < rect.y + rect.h; ty += 5) {
       for (let tx = rect.x; tx < rect.x + rect.w; tx += 5) {
@@ -605,7 +605,7 @@ test('planned zone rects are flat canvases: no levels, no basins inside', () => 
 });
 
 test('roads read as not-standable to the POI probe and calm to the wilds', () => {
-  const seed = 1337;
+  const seed = WORLD_SEED;
   // Centerline distances are ~0; the probe treats the whole shoulder
   // as rock so no POI footprint can sever a route.
   const samples = routeSamples('high_road');

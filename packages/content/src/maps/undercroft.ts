@@ -57,7 +57,7 @@ export function buildUndercroft(): ZoneDef {
   b.fillRect(6, 28, 12, 9, Tile.CaveFloor);
   b.fillRect(7, 31, 9, 3, Tile.StoneFloor);
   // The way home: lands you on the Undercroft apron at Silverfall.
-  b.portal(8, 32, Tile.PortalUp, { x: -337.5, y: -203.5 });
+  b.portal(8, 32, Tile.PortalUp, { x: -497.5, y: -323.5 });
   b.set(10, 30, Tile.PillarStone).set(10, 34, Tile.PillarStone);
   b.set(13, 30, Tile.PillarStone).set(13, 34, Tile.PillarStone);
   b.set(7, 30, Tile.Brazier).set(7, 34, Tile.Brazier);

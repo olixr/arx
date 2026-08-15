@@ -314,6 +314,33 @@ deploy at quiet hours once there's a population.
 - **Scaling:** one process = one world. Keep it on one box; move the
   client to a CDN later if asset bandwidth ever matters.
 
+## THE GREAT WORLD REGEN (2026-08-14): rolling the new seed to prod
+
+The shipped seed moved from 1337 to **24601** — it now lives as
+`WORLD_SEED` in `packages/content/src/worldgen.ts` (server config
+defaults to it; the `WORLD_SEED` env knob remains a rig/lab override
+only). The authored geography — every town rect, landform heart, road
+polyline, and wild site — is composed against seed 24601's rivers and
+provinces, so **the seed and the geography deploy as one unit**: never
+override the seed on prod again, and never change it without
+re-threading the whole plan (that is a project, not an env edit).
+
+Rollout procedure (the seed change soft-corrupts a live DB — POI
+ledger anchors, player positions, and built-tile overlays were all
+chosen against old-seed terrain):
+
+1. Deploy the release carrying the new `WORLD_SEED` + geography.
+2. STOP the server.
+3. Remove any stale `WORLD_SEED` line from the site `.env` (the
+   content constant must win).
+4. `npm run db:refresh -w @arx/server -- --all --yes` — the full
+   reset: content docs (including the stored geography doc, which
+   would otherwise outvote the new plan forever under the two-hash
+   law), world ledgers, and player rows. Voice tables and
+   `invite_codes` survive, as ever.
+5. Start the server — the next boot re-seeds content, re-surveys the
+   POI ledger against the new terrain, and the world is the new world.
+
 ## Refreshing the world before launch
 
 `npm run db:refresh -w @arx/server` is the pre-launch reset lane. It

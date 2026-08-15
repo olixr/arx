@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CHUNK_SIZE, Tile } from '@arx/shared';
-import {
+import { WORLD_SEED,
   elevationAt,
   generateChunk,
   moistureAt,
@@ -18,7 +18,7 @@ import { WorldSource } from './worldSource.js';
  * to a world that never heard of the zone.
  */
 
-const SEED = 1337;
+const SEED = WORLD_SEED;
 const WET = new Set<number>([Tile.Water, Tile.WaterDeep, Tile.WaterShallow, Tile.FishingSpot]);
 
 /** A synthetic all-grass zone with optional authored edits. */
