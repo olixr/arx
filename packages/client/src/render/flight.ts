@@ -1884,10 +1884,17 @@ export function drawBat(
     const tipVel = es < 0 ? fr.portTipVel : fr.starTipVel;
     const spread = Math.max(0.1, fr.spread);
     const span = look.wingSpan;
-    const armL = span * 0.42 * spread;
-    const handL = span * 0.66 * spread;
-    // Shoulder on the pitched hull — dorsal and forward, so it rides
-    // up the back as the body swings vertical.
+    // THE WING IS AN ARM, NOT A FAN (the user's architecture verdict,
+    // drawn from reference): a real bat wing is three structures —
+    // a TWO-BONE ARM whose elbow breaks the leading edge and whose
+    // WRIST stands as the wing's high outer apex (the thumb-hook
+    // lives there), LONG FINGERS radiating from that apex with the
+    // LEADING finger carrying the far wingtip and each next finger
+    // stepping shorter and further inward, and DEEP CONCAVE MEMBRANE
+    // BAYS hung between the fingertips — true curves, never polyline
+    // dips — with the last bay draping all the way to the ANKLE at
+    // the hull's low flank. An equal-rib radial fan reads umbrella;
+    // this is the anatomy, at this style's scale.
     const shA = look.bodyR * 0.22;
     const shD = look.bodyW * 0.42;
     const shF = pf.aF * shA + pf.dF * shD;
@@ -1898,88 +1905,107 @@ export function drawBat(
     const tuckF = pf.aF * 0.01 + pf.dF * 0.02;
     const tuckZ = pf.aZ * 0.01 + pf.dZ * 0.02;
     const tuckL = es * look.bodyW * 0.16;
-    const rowF = 0.08 * spread + fr.swing;
-    const wrF = shF + pf.wfF * rowF + pf.wuF * Math.sin(fr.raise) * armL;
-    const wrZ = shZ + pf.wfZ * rowF + pf.wuZ * Math.sin(fr.raise) * armL;
-    const wrL = shL + es * Math.cos(fr.raise) * armL;
+    // The upper arm rides ABOVE the rig's carriage (the elbow apex),
+    // the forearm settles back onto the hand channel — the angular
+    // leading edge every reference shows.
+    const armU = span * 0.3 * spread;
+    const armF2 = span * 0.36 * spread;
+    const rowF = 0.04 * spread + fr.swing;
+    const aU = fr.raise + 0.42;
+    const elbF = shF + pf.wfF * rowF + pf.wuF * Math.sin(aU) * armU;
+    const elbZ = shZ + pf.wfZ * rowF + pf.wuZ * Math.sin(aU) * armU;
+    const elbL = shL + es * Math.cos(aU) * armU;
+    const aW = fr.raiseHand + 0.02;
+    const wrF = elbF + pf.wuF * Math.sin(aW) * armF2;
+    const wrZ = elbZ + pf.wuZ * Math.sin(aW) * armF2;
+    const wrL = elbL + es * Math.cos(aW) * armF2;
     const flex = clamp(-tipVel * 0.09, -0.5, 0.5);
-    // The fingers: each carries the membrane's outer edge, each rides
-    // its own sim station — the sail billows a beat behind the bones.
+    // The fingers: the leading one nearly continues the forearm line
+    // out to the WINGTIP (the farthest point of the whole wing); each
+    // next finger is shorter and rotated further down-inward, so the
+    // tips lay a descending arc for the bays to hang from. Each rides
+    // its own sim station — the membrane breathes a beat behind.
     const N = look.fingers;
+    const fanSpread = 1.35 * spread * (1 - 0.22 * fr.cruiseK);
+    const len0 = span * 0.58 * spread;
     const tips: V3[] = [];
     for (let k = 0; k < N; k++) {
       const u = N === 1 ? 1 : k / (N - 1);
-      // THE FAT WING: barely-tapered fingers — the innermost rib is
-      // nearly as long as the leading one, so the sail keeps its
-      // surface all the way in to the body.
-      const len = handL * (1 - 0.12 * u);
       const lagK = lag[Math.min(k, lag.length - 1)] ?? 0;
-      // THE SAIL IS TALL, NOT WIDE (the user's coverage verdict): the
-      // fingers RADIATE from the wrist through a ~90° arc — the
-      // leading rib rides near the arm line, the innermost sweeps
-      // DOWN toward the body's flank — so the membrane skin drapes
-      // the hull's whole vertical height and then some, the fat
-      // dragon-wing read. The arc breathes with the sim (each rib
-      // still drags its station's lag) and compresses a quarter at
-      // cruise so speed streamlines without giving up the coverage.
-      const fanArc = (0.24 + 1.52 * u) * spread * (1 - 0.22 * fr.cruiseK);
-      const tipRaise = fr.raiseHand - fanArc - lagK * 0.5;
-      // Back-sweep stays modest — depth lives in the fan now, and the
-      // vertical drape projects at full height (never y-squashed).
-      const backW = (0.05 + 0.45 * u) * len * fr.sweepK;
+      const ang = fr.raiseHand - 0.28 - fanSpread * Math.pow(u, 1.15) - lagK * 0.45;
+      const len = len0 * (1 - 0.42 * Math.pow(u, 1.2));
       const rise =
-        Math.sin(tipRaise) * len * 1.0 +
-        flex * u * u * span * 0.3 +
-        fr.cruiseK * u * u * span * 0.05;
+        Math.sin(ang) * len + flex * u * len0 * 0.3 + fr.cruiseK * u * len0 * 0.06;
       tips.push([
-        wrF + pf.wfF * (0.05 * spread - backW) + pf.wuF * rise,
-        wrL + es * Math.cos(tipRaise) * len,
-        wrZ + pf.wfZ * (0.05 * spread - backW) + pf.wuZ * rise,
+        wrF - pf.wfF * 0.06 * len * u + pf.wuF * rise,
+        wrL + es * Math.cos(ang) * len,
+        wrZ - pf.wfZ * 0.06 * len * u + pf.wuZ * rise,
       ]);
     }
-    // The ankle: where the sail docks the hull's flank, low and aft.
-    const ankF = -pf.aF * look.bodyR * 0.55 - pf.dF * look.bodyW * 0.1;
-    const ankZ = -pf.aZ * look.bodyR * 0.55 - pf.dZ * look.bodyW * 0.1;
-    const ankL = es * look.bodyW * 0.4;
-    // The trailing edge SCALLOPS between the fingers: each dip is the
-    // membrane sagging on its station's simulated lag — leather
-    // breathing a beat behind the bones — and the dire's edge is TORN:
-    // each scallop ripped into seeded sub-notches built into the
-    // outline itself, never decals.
-    const pts3: V3[] = [[tuckF, tuckL, tuckZ], [shF, shL, shZ], [wrF, wrL, wrZ]];
-    const dip = (a: V3, b: V3, t: number, pull: number): V3 => {
-      const mx = a[0] * (1 - t) + b[0] * t;
-      const ml = a[1] * (1 - t) + b[1] * t;
-      const mz = a[2] * (1 - t) + b[2] * t;
-      return [mx + (wrF - mx) * pull, ml + (wrL - ml) * pull, mz + (wrZ - mz) * pull];
+    // The ankle: low on the hull's flank, under the mass — the last
+    // bay's inner mooring, so the sail wraps the body's whole height.
+    const ankF = -pf.aF * look.bodyR * 0.6 - pf.dF * look.bodyW * 0.5;
+    const ankZ = -pf.aZ * look.bodyR * 0.6 - pf.dZ * look.bodyW * 0.5;
+    const ankL = es * look.bodyW * 0.38;
+    // A membrane bay's control point: the midpoint drawn toward the
+    // wrist — the quadratic sags into the deep concave arc that IS
+    // the bat-wing trailing edge.
+    const bayCtrl = (a: V3, b: V3, deep: number): V3 => {
+      const mF = (a[0] + b[0]) / 2;
+      const mL = (a[1] + b[1]) / 2;
+      const mZ = (a[2] + b[2]) / 2;
+      return [mF + (wrF - mF) * deep, mL + (wrL - mL) * deep, mZ + (wrZ - mZ) * deep];
     };
+    const qSample = (a: V3, c: V3, b: V3): V3 => [
+      a[0] * 0.25 + c[0] * 0.5 + b[0] * 0.25,
+      a[1] * 0.25 + c[1] * 0.5 + b[1] * 0.25,
+      a[2] * 0.25 + c[2] * 0.5 + b[2] * 0.25,
+    ];
+    // Bays are collected first (segments + their curve midpoints feed
+    // the slab gate and the edge-on mass), then painted as curves.
+    interface BaySeg {
+      to: V3;
+      ctrl: V3;
+    }
+    const bays: BaySeg[] = [];
+    const bayDeep = 0.42 + 0.34 * look.scallop;
     for (let k = 0; k < N; k++) {
-      pts3.push(tips[k]!);
-      const nxt = k < N - 1 ? tips[k + 1]! : [ankF, ankL, ankZ] as V3;
-      const lagK = lag[Math.min(k, lag.length - 1)] ?? 0;
-      const sagK = 0.2 + clamp(lagK * 0.9, -0.25, 0.55);
+      const a = tips[k]!;
+      const b = k < N - 1 ? tips[k + 1]! : ([ankF, ankL, ankZ] as V3);
       const closing = k === N - 1;
-      // Scallops stay GENTLE: the trailing edge breathes, it never
-      // saws — a spiked edge shrank the whole wing's read (the user's
-      // spiky verdict). Depth caps well short of the wrist.
-      const pull = Math.min(
-        0.45,
-        (closing ? 0.13 : 0.08) + (0.18 * look.scallop) * (0.75 + sagK),
-      );
+      // TAUT AT THE TIP, DRAPED AT THE BODY: the outer bays stretch
+      // shallow between the long fingers, the inner bays hang deep —
+      // the membrane tension gradient every reference carries.
+      const deep = bayDeep * (closing ? 0.8 : 0.55 + 0.5 * ((k + 0.5) / N));
       if (look.ragged > 0.3) {
-        const j1 = (((seed >>> (k * 3)) & 3) / 3) * 0.1 * look.ragged;
-        const j2 = (((seed >>> (k * 3 + 5)) & 3) / 3) * 0.1 * look.ragged;
-        pts3.push(dip(tips[k]!, nxt, 0.3, pull * (0.55 + j1)));
-        pts3.push(dip(tips[k]!, nxt, 0.52, pull * (1.15 + j2)));
-        pts3.push(dip(tips[k]!, nxt, 0.74, pull * 0.6));
+        // The torn sail: each bay rips at a seeded notch — two curves
+        // meeting at a point pulled extra deep, never a decal.
+        const j = 0.85 + (((seed >>> (k * 3)) & 7) / 7) * 0.5;
+        const nP = qSample(a, bayCtrl(a, b, deep * 1.2 * j * look.ragged), b);
+        bays.push({ to: nP, ctrl: bayCtrl(a, nP, deep * 0.5) });
+        bays.push({ to: b, ctrl: bayCtrl(nP, b, deep * 0.5) });
       } else {
-        pts3.push(dip(tips[k]!, nxt, 0.5, pull));
+        bays.push({ to: b, ctrl: bayCtrl(a, b, deep) });
       }
     }
-    pts3.push([ankF, ankL, ankZ]);
-    const outline: Array<[number, number]> = pts3.map((v) => P(v[0], v[1], v[2]));
-    // The slab gate measures the OUTER sail only — the tuck wedge at
-    // the body always keeps area and would blind an edge-on gate.
+    // Sampled outline (leading anchors + bay curve midpoints): the
+    // honest area gate and the edge-on mass path.
+    const outline: Array<[number, number]> = [];
+    outline.push(P(tuckF, tuckL, tuckZ));
+    const p0 = P(shF, shL, shZ);
+    outline.push(p0);
+    const pe = P(elbF, elbL, elbZ);
+    outline.push(pe);
+    const pw = P(wrF, wrL, wrZ);
+    outline.push(pw);
+    let prev: V3 = tips[0]!;
+    outline.push(P(prev[0], prev[1], prev[2]));
+    for (const seg of bays) {
+      const m = qSample(prev, seg.ctrl, seg.to);
+      outline.push(P(m[0], m[1], m[2]));
+      outline.push(P(seg.to[0], seg.to[1], seg.to[2]));
+      prev = seg.to;
+    }
     let area2 = 0;
     const outer = outline.slice(1);
     for (let k = 0; k < outer.length; k++) {
@@ -2009,21 +2035,28 @@ export function drawBat(
     const underVis = es * (nwy + nZ * ys) < 0;
     const base = o.hurt ? '#ffffff' : underVis ? look.sailUnder : look.sail;
     const detailA = slabK <= 0.22 ? 0 : Math.min(1, (slabK - 0.22) / 0.3);
+    // The sail: leading edge tuck→shoulder→elbow→wrist→leading tip in
+    // straight bone lines, then the bays as true concave curves.
     ctx.fillStyle = base;
     ctx.beginPath();
     ctx.moveTo(outline[0]![0], outline[0]![1]);
-    for (let k = 1; k < outline.length; k++) ctx.lineTo(outline[k]![0], outline[k]![1]);
+    ctx.lineTo(p0[0], p0[1]);
+    ctx.lineTo(pe[0], pe[1]);
+    ctx.lineTo(pw[0], pw[1]);
+    const pt0 = P(tips[0]![0], tips[0]![1], tips[0]![2]);
+    ctx.lineTo(pt0[0], pt0[1]);
+    for (const seg of bays) {
+      const c = P(seg.ctrl[0], seg.ctrl[1], seg.ctrl[2]);
+      const t = P(seg.to[0], seg.to[1], seg.to[2]);
+      ctx.quadraticCurveTo(c[0], c[1], t[0], t[1]);
+    }
     ctx.closePath();
     ctx.fill();
-    // THE WING HAS THICKNESS: the edge-on sail keeps a leather-edge
-    // mass along the leading bones — never a screen hairline.
-    const p0 = outline[1]!;
-    const pw = outline[2]!;
+    // THE WING HAS THICKNESS: seen edge-on the fan collapses to a
+    // stack of ribs, and every part of that stack is folded membrane
+    // mass — the stroke rides the WHOLE outer outline, never only the
+    // leading bones (a bare fill there reads as a hanging string).
     if (slabK < 0.35) {
-      // The stroke rides the WHOLE outer outline, not just the
-      // leading bones — an edge-on fan collapses to a vertical
-      // sliver of stacked ribs, and every part of that stack is a
-      // folded membrane mass, never a string (the profile verdict).
       const edgeW = s * span * 0.06 * (1 - slabK / 0.35);
       if (edgeW > 1) {
         ctx.strokeStyle = base;
@@ -2038,20 +2071,27 @@ export function drawBat(
         ctx.lineJoin = 'miter';
       }
     }
-    // Detail ink fades with the slab (the wire verdict, kept): finger
-    // bones raying wrist → tips, the arm bone, one plagiopatagium
-    // crease, the furred forearm, and the wrist thumb-hook.
+    // Detail ink fades with the slab (the wire verdict, kept): the
+    // two-bone arm with its elbow joint, the finger ribs raying from
+    // the wrist apex, the membrane fold crease, the furred upper arm,
+    // and the wrist thumb-hook.
     if (detailA > 0.02) {
-      const boneW = 0.35 + 0.65 * slabK;
+      const boneWK = 0.35 + 0.65 * slabK;
       ctx.globalAlpha = detailA;
       ctx.strokeStyle = boneInk;
       ctx.lineCap = 'round';
-      ctx.lineWidth = Math.max(1.4, s * span * 0.032 * boneW);
+      ctx.lineWidth = Math.max(1.5, s * span * 0.03 * boneWK);
       ctx.beginPath();
       ctx.moveTo(p0[0], p0[1]);
+      ctx.lineTo(pe[0], pe[1]);
       ctx.lineTo(pw[0], pw[1]);
       ctx.stroke();
-      ctx.lineWidth = Math.max(1, s * span * 0.016 * boneW);
+      // The elbow: a visible joint, not a kink in a wire.
+      ctx.fillStyle = boneInk;
+      ctx.beginPath();
+      ctx.arc(pe[0], pe[1], Math.max(1.2, s * span * 0.022), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineWidth = Math.max(1, s * span * 0.014 * boneWK);
       for (let k = 0; k < N; k++) {
         const t = tips[k]!;
         const pt = P(t[0], t[1], t[2]);
@@ -2063,7 +2103,7 @@ export function drawBat(
       // The membrane's body-fold crease, wrist toward the ankle.
       ctx.globalAlpha = detailA * 0.45;
       ctx.strokeStyle = shade(base, -9);
-      ctx.lineWidth = Math.max(1, s * span * 0.012);
+      ctx.lineWidth = Math.max(1, s * span * 0.011);
       const cr = P(
         wrF * 0.45 + ankF * 0.55,
         wrL * 0.45 + ankL * 0.55,
@@ -2073,33 +2113,34 @@ export function drawBat(
       ctx.moveTo(pw[0], pw[1]);
       ctx.lineTo(cr[0], cr[1]);
       ctx.stroke();
-      // The furred forearm: coat washing out over the arm's root half.
+      // The furred upper arm: coat washing down the leading bone.
       ctx.globalAlpha = detailA * (0.5 + 0.4 * look.ruff);
       ctx.strokeStyle = coat;
       ctx.lineWidth = Math.max(1.5, s * look.bodyW * 0.5);
       const fm = P(
-        shF * 0.45 + wrF * 0.55,
-        shL * 0.45 + wrL * 0.55,
-        shZ * 0.45 + wrZ * 0.55,
+        shF * 0.4 + elbF * 0.6,
+        shL * 0.4 + elbL * 0.6,
+        shZ * 0.4 + elbZ * 0.6,
       );
       ctx.beginPath();
       ctx.moveTo(p0[0], p0[1]);
       ctx.lineTo(fm[0], fm[1]);
       ctx.stroke();
       ctx.globalAlpha = 1;
-      // THE THUMB-HOOK: the wrist's climbing claw, ivory, curling
-      // forward-down off the leading edge — the dire's is a weapon.
+      // THE THUMB-HOOK: the climbing claw at the wrist APEX, curling
+      // up-and-out off the leading edge — where every reference puts
+      // it; the dire's is a weapon.
       if (look.thumbClaw > 0 && slabK > 0.12) {
         const tc = look.thumbClaw;
         const c1: V3 = [
-          wrF + pf.wfF * tc * 0.8 + pf.wuF * tc * 0.5,
-          wrL + es * tc * 0.15,
-          wrZ + pf.wfZ * tc * 0.8 + pf.wuZ * tc * 0.5,
+          wrF + pf.wfF * tc * 0.4 + pf.wuF * tc * 0.75,
+          wrL + es * tc * 0.2,
+          wrZ + pf.wfZ * tc * 0.4 + pf.wuZ * tc * 0.75,
         ];
         const c2: V3 = [
-          c1[0] + pf.wfF * tc * 0.35 - pf.wuF * tc * 0.5,
-          c1[1] + es * tc * 0.1,
-          c1[2] + pf.wfZ * tc * 0.35 - pf.wuZ * tc * 0.5,
+          c1[0] + pf.wfF * tc * 0.5 - pf.wuF * tc * 0.2,
+          c1[1] + es * tc * 0.15,
+          c1[2] + pf.wfZ * tc * 0.5 - pf.wuZ * tc * 0.2,
         ];
         const q1 = P(c1[0], c1[1], c1[2]);
         const q2 = P(c2[0], c2[1], c2[2]);
