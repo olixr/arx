@@ -528,4 +528,48 @@ plumbing flow (the shared-tree law, all of it).
 
 ## 12. As-built ledger
 
-(filled per phase at ship time)
+**THE EPIC IS COMPLETE (2026-08-15, one session, six commits):**
+
+- **Ph1 THE PLAN** fa89552 (2026-08-14).
+- **Ph2 THE LAND** bc5fb41: FOUR everwood veil hearts (the paired-hearts
+  grammar — a landform has no strength dial; Heartwood reads 89%
+  forest/66% deep, the deepest grove in the world); THE CANOPY HOLDS
+  THE WARMTH (coldAt − thornveilAt·0.6 — broadleaf hearts, pine
+  fringe, provably inert at warm latitudes); the evenway forks the
+  Hoargate Road at (-278,-252), NOT the plan's bend — the garrison
+  owns the narrows' one honest pocket at (-324,-249) and the span law
+  refused the first draft's 13-tile deck (walk the shore, the law
+  said, so it does).
+- **Ph3 THE WOOD** fedb29f: family 'elf' on the atlas; five archetypes
+  + nine prefabs; LEGEND digits 3-8 = the elven kit's sketch
+  vocabulary; the first_waystone pinned at (-500,-198) where the
+  ground opens — which is where the wood begins, the truer story.
+- **Ph4 THE CITY** faf5ff8 (+2d0ab6f walk polish): 610-line bespoke
+  zone; terraces L1/L2/L3; the Moonstair = 21 ramps in three flights;
+  spring → twin races → six falls (foot-water law test-pinned in
+  evenfall.test.ts) → meander stream → the Evenmere → reed sink; the
+  WALL-LESS LAW test-pinned (zero garrison tiles); ALL 25 kit props
+  placed (beacons exact-pinned at 17); NO Low Hall door, test-pinned,
+  by canon, forever. Desk rig zonerender.mts caught six real defects
+  before any test ran.
+- **Ph5 THE PEOPLE** 4fd9ec4: 21 souls, 13 routines, 8 shops, 8
+  dialogue trees, faction `evencourt`, VOICE.md block; **THE ELVEN
+  EXCEPTION canonized in law**: the four yew-bow recipes are
+  `unlock:'trainer'` at the source but SINGLE_TEACHER_RECIPES keeps
+  them off every guild shelf — sold only at the Bowyer's House, the
+  first above-band teacher in the game.
+- **Ph6 THE ERRANDS + THE WALK** e2ab3e7: five quests (the letters
+  find their address; the exile's question walks home and sets
+  `the_gift_remembered` for the Heartwood epic; the yew asks back;
+  the stones drink light, repeatable; the song pays its debt to
+  Denna's line); the live walk = 14 stops at close zoom on rig lane 8
+  (8802/5185), routines seen firing (Ilvane at the Moonwell at noon,
+  Aldaren seated at the dais beside the empty chair), the waterfall
+  curtains proven, three defects found and fixed (sparse crescent,
+  stream fragmentation, bench in the water).
+
+**Debts this epic leaves, honestly:** dialogue trees for
+Myrren/Selorne/Faelar/Naia/Serel/Othiel (lines+shop today); the silk
+lane's 30→50 recipe extension (Myrren sells the shelf, not yet the
+summit); waystone dressing along the Evenway carve; VO casting; the
+Heartwood delve behind `the_gift_remembered`.
