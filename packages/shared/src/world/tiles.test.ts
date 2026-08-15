@@ -209,10 +209,11 @@ test('hedge family: the clipped green stands apart and its arch rounds the trip'
       `${tileDef(tile).name} never encloses a room`,
     );
   }
-  // Head-high clipped green hides its garden; the open arch spills
-  // lantern light down the path.
+  // THE WAIST LAW: the hedgerow runs hip-high — lamplight clears the
+  // hedge WALLS like it clears a fence; only the full-height living
+  // arch (shut) is lamplight mass, pinned by the door-posture test.
   for (const tile of [Tile.Hedge, Tile.HedgeDiagNE, Tile.HedgeDiagNW]) {
-    assert.ok(LIGHT_BLOCKING_TILES.includes(tile), `${tileDef(tile).name} blocks lamplight`);
+    assert.ok(!LIGHT_BLOCKING_TILES.includes(tile), `${tileDef(tile).name} clears lamplight`);
   }
   // The 45° turn joins whichever diagonal already carries the hedge.
   assert.equal(orientDiagHedge(true, false, false, false), Tile.HedgeDiagNE);

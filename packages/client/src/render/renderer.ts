@@ -656,6 +656,9 @@ const LOW_STICK_TILES = new Set<number>([
   Tile.FenceDiagNW,
   Tile.FenceGate,
   Tile.FenceGateShut,
+  Tile.Hedge,
+  Tile.HedgeDiagNE,
+  Tile.HedgeDiagNW,
   Tile.RailWood,
   Tile.Table,
   Tile.Chair,
@@ -20669,23 +20672,30 @@ export class Renderer {
   }
 
   /**
-   * THE CLIPPED GREEN — a hedge wall in the game's 2.5D dialect. The
-   * unit is the SLAB: a clipped box of foliage wearing a sunlit
-   * foreshortened top plane (the bird's-eye law) over a shaded south
-   * face, its crown scalloped by world-keyed leaf lobes so runs fold
-   * seamlessly and a lone hedge still reads as a deliberate piece of
-   * topiary. E-W runs are one continuous sculpted slab; N-S runs show
-   * the honest edge-on projection — the crown plane marching
-   * up-screen in scalloped strips; corners, tees, run ends, and 45°
-   * strides are anchored by fuller junction knuckles in the same
-   * vocabulary. THE BODY HOLDS STILL (dense clipped box — and per-tile
-   * wind bend would print seam kinks a run must never show); the LIFE
-   * is layered on: the wind field's long luminance swell rolls light
-   * across the crowns, stray sprigs the shears missed flutter above
-   * the silhouette, leaf glints breathe on the face, and one tile in
-   * six carries a bloom cluster. Ink is the wall law live-stroked:
-   * crown silhouette always, plumb sides only at true free ends,
-   * seams never — estate-length hedgerows ring seamlessly.
+   * THE CLIPPED GREEN, AT THE WAIST — a hedgerow, not a wall. The
+   * unit is the CUSHION RUN: a hip-high bed of clipped pillows whose
+   * sunlit top plane is the DOMINANT surface under the bird's-eye
+   * camera (a low hedge is seen mostly from above), riding a short
+   * shaded south face that seats into the turf through a tufted
+   * skirt. The mass FILLS its tile in plan — skirt near the south
+   * edge, crown back near the north — so a hedgerow laid against a
+   * building reads as planted against it, never a fence floating in
+   * grass. World-keyed half-tile lobes billow the crown so runs fold
+   * seamlessly; pillow creases part the plane at those same
+   * boundaries (each tile owns its west/north seam crease — one
+   * crease per boundary, never doubled) and a soft dome sheen rounds
+   * every cushion. E-W runs are one continuous pillowed bed; N-S
+   * runs march the near-full-width crown plane up-screen; corners,
+   * tees, N-S run ends, and 45° strides are anchored by fuller
+   * junction cushions in the same vocabulary. THE BODY HOLDS STILL
+   * (per-tile wind bend would print seam kinks a run must never
+   * show); the LIFE is layered on: the wind field's long luminance
+   * swell rolls light across the crowns, stray sprigs the shears
+   * missed flutter above the silhouette, leaf glints breathe on the
+   * plane, and one tile in six flowers on its crown. Ink is the wall
+   * law live-stroked: crown silhouette always, plumb sides only at
+   * true free ends, seams never — estate-length hedgerows ring
+   * seamlessly.
    */
   private hedgeItem(tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
     const s = this.camera.scale;
@@ -20693,7 +20703,10 @@ export class Renderer {
     const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
     const h = hashCoords(41, tx, ty);
-    const baseY = p.y + syT * 0.14;
+    // The skirt line sits near the tile's SOUTH edge (not the wall
+    // family's +0.14 center line): with the deep crown plane above,
+    // the mass fills its tile in plan and abuts whatever it dresses.
+    const baseY = p.y + syT * 0.4;
     const straight = tile === Tile.Hedge;
     const gAt = (dx: number, dy: number) => game.world.groundAt(tx + dx, ty + dy);
     const cn = straight && this.hedgeish(game, tx, ty - 1);
@@ -20741,20 +20754,23 @@ export class Renderer {
       anyDiag ||
       isoNE ||
       isoNW;
-    // The clipped measures: face break at 1.04 tiles (crown clears
-    // the 1.15-tile body's eyes), plane depth 0.3 in plan.
-    const HED_H = 1.04;
-    const DEEP = 0.3 * syT;
+    // The clipped measures — THE WAIST LAW: the face breaks at 0.5
+    // tiles (the table anchor's hip band — a villager rests a hand on
+    // it, the 1.15-tile body sees clean over it) and the crown plane
+    // goes DEEP: 0.72 tiles in plan, so the bird's eye reads a bed of
+    // pillows, not the top edge of a wall.
+    const HED_H = 0.5;
+    const DEEP = 0.72 * syT;
     return {
       sortY: ty + 0.8,
       drawShadow: () => {
-        if (ewAny) this.castEdgeQuad(xw, baseY, xe, baseY, 0.8);
-        if (cn) this.castEdgeQuad(p.x, baseY - syT * 0.5, p.x, baseY, 0.8);
-        if (cs) this.castEdgeQuad(p.x, baseY, p.x, baseY + syT * 0.5, 0.8);
-        if (dNE || isoNE) this.castEdgeQuad(p.x, baseY, p.x + s * 0.5, baseY - syT * 0.5, 0.8);
-        if (dSW || isoNE) this.castEdgeQuad(p.x - s * 0.5, baseY + syT * 0.5, p.x, baseY, 0.8);
-        if (dNW || isoNW) this.castEdgeQuad(p.x - s * 0.5, baseY - syT * 0.5, p.x, baseY, 0.8);
-        if (dSE || isoNW) this.castEdgeQuad(p.x, baseY, p.x + s * 0.5, baseY + syT * 0.5, 0.8);
+        if (ewAny) this.castEdgeQuad(xw, baseY, xe, baseY, 0.5);
+        if (cn) this.castEdgeQuad(p.x, baseY - syT * 0.5, p.x, baseY, 0.5);
+        if (cs) this.castEdgeQuad(p.x, baseY, p.x, baseY + syT * 0.5, 0.5);
+        if (dNE || isoNE) this.castEdgeQuad(p.x, baseY, p.x + s * 0.5, baseY - syT * 0.5, 0.5);
+        if (dSW || isoNE) this.castEdgeQuad(p.x - s * 0.5, baseY + syT * 0.5, p.x, baseY, 0.5);
+        if (dNW || isoNW) this.castEdgeQuad(p.x - s * 0.5, baseY - syT * 0.5, p.x, baseY, 0.5);
+        if (dSE || isoNW) this.castEdgeQuad(p.x, baseY, p.x + s * 0.5, baseY + syT * 0.5, 0.5);
       },
       draw: () => {
         // Draw-time ctx capture: the outline pass swaps this.ctx.
@@ -20810,15 +20826,16 @@ export class Renderer {
           sil.closePath();
           ctx.fillStyle = HEDGE_LEAF;
           ctx.fill(sil);
-          // THE PLANE SPEAKS IN VALUE: the crown plane is the
-          // brightest surface — sky-lit, rolling dark into the break.
+          // THE PLANE SPEAKS IN VALUE: on a waist-high hedge the
+          // crown plane IS the picture — sky-lit, parted into
+          // cushions, rolling dark only at the short south break.
           const ribbon = new Path2D();
           this.hedgeCrownInto(ribbon, segs, yBack, 1);
           ribbon.lineTo(x1, yBreak);
           for (let i = segsB.length - 1; i >= 0; i--) {
             const [sx0, sx1, amp] = segsB[i]!;
             const w = sx1 - sx0;
-            const a = amp * 0.55 * s;
+            const a = amp * 0.7 * s;
             ribbon.quadraticCurveTo(sx0 + w * 0.76, yBreak - a * 1.8, sx0 + w * 0.5, yBreak - a * 0.55);
             ribbon.quadraticCurveTo(sx0 + w * 0.24, yBreak - a * 2.1, sx0, yBreak);
           }
@@ -20832,35 +20849,82 @@ export class Renderer {
             ctx.fillStyle = `rgba(214, 236, 176, ${(0.16 * wind.l).toFixed(3)})`;
             ctx.fill(ribbon);
           }
-          // The sunlit arris where the plane breaks over the face.
-          ctx.fillStyle = shade(HEDGE_LIT, 26);
-          ctx.fillRect(x0 + s * 0.02, yBreak - s * 0.012, x1 - x0 - s * 0.04, s * 0.024);
-          // The face rolls darker toward the ground; the base sits in
-          // its own shadow, seating the mass on the turf.
+          // EVERY CUSHION IS ROUND: a soft dome sheen crests each
+          // lobe, a hair off-center where the sky takes it — world-
+          // keyed, so panning never re-deals the light.
+          for (const [sx0, sx1] of segs) {
+            const w2 = sx1 - sx0;
+            const key = solo ? seed : Math.round((sx0 - (p.x - s * 0.5)) / (s * 0.5)) + tx * 2;
+            const dseed = hashCoords(139, key, ty);
+            const mx = sx0 + w2 * (0.4 + ((dseed >>> 3) % 20) / 100);
+            ctx.fillStyle = 'rgba(214, 236, 176, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(mx, yBack + DEEP * 0.34, w2 * 0.3, DEEP * 0.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          // THE SHEARS PART THE CUSHIONS: a soft crease at every
+          // half-tile lobe boundary. Drawn at segment STARTS only —
+          // a free west edge is already silhouette, and a run seam
+          // belongs to the tile east of it — so no boundary doubles.
+          if (!solo) {
+            ctx.strokeStyle = 'rgba(24, 50, 28, 0.42)';
+            ctx.lineWidth = Math.max(1, s * 0.022);
+            for (let i = 0; i < segs.length; i++) {
+              if (i === 0 && freeW) continue;
+              const cx0 = segs[i]![0];
+              const key = Math.round((cx0 - (p.x - s * 0.5)) / (s * 0.5)) + tx * 2;
+              const bow = ((((hashCoords(149, key, ty) >>> 4) % 12) - 6) / 100) * s;
+              ctx.beginPath();
+              ctx.moveTo(cx0, yBack + s * 0.02);
+              ctx.quadraticCurveTo(cx0 + bow, (yBack + yBreak) / 2, cx0, yBreak - s * 0.012);
+              ctx.stroke();
+            }
+          }
+          // The sunlit arris rides the scalloped break — never a
+          // ruler line across a pillowed bed.
+          ctx.strokeStyle = shade(HEDGE_LIT, 24);
+          ctx.lineWidth = Math.max(1, s * 0.02);
+          ctx.beginPath();
+          this.hedgeCrownInto(ctx, segsB, yBreak, 0.7);
+          ctx.stroke();
+          // The short face rolls darker toward the ground; the base
+          // sits in its own shadow, seating the mass on the turf.
           ctx.fillStyle = shade(HEDGE_LEAF, -8);
           ctx.fillRect(x0, gy - (gy - yBreak) * 0.45, x1 - x0, (gy - yBreak) * 0.45);
           ctx.fillStyle = 'rgba(20, 14, 26, 0.28)';
-          ctx.fillRect(x0, gy - s * 0.05, x1 - x0, s * 0.05);
-          // CLIPPED, NOT CAST: chunky leaf clusters break the face —
-          // dark clumps deep, mid clumps low, lit flecks up near the
-          // arris where the sun still reaches.
+          ctx.fillRect(x0, gy - s * 0.04, x1 - x0, s * 0.04);
+          // THE TUFTED SKIRT: the hedge meets the turf in clumps the
+          // shears never reach — the ground line must not read ruled.
           const span = x1 - x0;
+          const nT = Math.max(2, Math.round(span / (s * 0.34)));
+          for (let i = 0; i < nT; i++) {
+            const tseed = hashCoords(151, seed * 16 + i, ty);
+            const tx3 = x0 + s * 0.06 + (((tseed >>> 5) % 100) / 100) * (span - s * 0.12);
+            const tr = s * (0.04 + ((tseed >>> 9) & 3) * 0.013);
+            ctx.fillStyle = (tseed & 4) === 0 ? HEDGE_DARK : shade(HEDGE_LEAF, -4);
+            ctx.beginPath();
+            facetBlob(ctx, tx3, gy - tr * 0.3, tr, tseed, 5, 0.8);
+            ctx.fill();
+          }
+          // CLIPPED, NOT CAST: leaf clusters break the short face —
+          // dark clumps deep, mid clumps up where the sun reaches.
           const nCl = Math.max(2, Math.round(span / (s * 0.21)));
           for (let i = 0; i < nCl; i++) {
             const cseed = hashCoords(89, seed * 16 + i, ty);
             const cx = x0 + s * 0.08 + ((cseed >>> 4) % 100) / 100 * (span - s * 0.16);
             const fh = 0.2 + ((cseed >>> 8) % 60) / 100;
             const cy = gy - (gy - yBreak) * fh;
-            const cr = s * (0.055 + ((cseed >>> 11) & 3) * 0.014);
+            const cr = s * (0.038 + ((cseed >>> 11) & 3) * 0.011);
             ctx.fillStyle = fh > 0.55 ? shade(HEDGE_LEAF, 7) : HEDGE_DARK;
             ctx.beginPath();
             facetBlob(ctx, cx, cy, cr, cseed, 6, 0.85);
             ctx.fill();
           }
+          // Lit flecks scattered on the plane where the sun lies.
           for (let i = 0; i < nCl - 1; i++) {
             const gseed = hashCoords(97, seed * 16 + i, ty);
             const gx = x0 + s * 0.1 + ((gseed >>> 3) % 100) / 100 * (span - s * 0.2);
-            const gy2 = yBreak + s * (0.06 + ((gseed >>> 9) & 3) * 0.03);
+            const gy2 = yBack + DEEP * (0.18 + ((gseed >>> 9) & 3) * 0.16);
             ctx.fillStyle = shade(HEDGE_LIT, 18);
             ctx.fillRect(gx, gy2, s * 0.035, s * 0.028);
           }
@@ -20872,16 +20936,16 @@ export class Renderer {
             const a = Math.max(0, Math.sin(phase)) * 0.42 * gustA;
             if (a < 0.04) continue;
             const gx = x0 + s * 0.1 + ((gseed >>> 5) % 100) / 100 * (span - s * 0.2);
-            const gy2 = yBreak + s * (0.1 + ((gseed >>> 10) % 40) / 100);
+            const gy2 = yBack + DEEP * (0.15 + ((gseed >>> 10) % 40) / 100 * 0.7);
             ctx.fillStyle = `rgba(190, 226, 150, ${a.toFixed(3)})`;
             ctx.fillRect(gx, gy2, s * 0.03, s * 0.024);
           }
-          // One tile in six flowers — a madder cluster set into the
-          // face like the berry bush's gems (inside the mass, never
-          // on the hem).
+          // One tile in six flowers — a madder cluster ON THE CROWN,
+          // where the bird's eye actually looks at a waist-high
+          // hedge (inside the plane, never on the silhouette hem).
           if (!solo && ((h >>> 7) & 7) < 1 && span > s * 0.4) {
             const bx = x0 + span * (0.3 + ((h >>> 10) % 40) / 100);
-            const by = yBreak + (gy - yBreak) * 0.34;
+            const by = yBack + DEEP * (0.3 + ((h >>> 12) % 40) / 100);
             for (let i = 0; i < 4; i++) {
               const bseed = hashCoords(103, tx * 8 + i, ty);
               const ox = (((bseed >>> 2) % 30) - 15) / 100 * s;
@@ -20915,8 +20979,13 @@ export class Renderer {
          * die under a slab or junction knuckle.
          */
         const crownStrip = (y0: number, y1: number) => {
-          const lift = HED_H * s + DEEP * 0.5;
-          const hw = s * 0.3;
+          // The plane floats at exactly the face height — a N-S
+          // run's plan depth lies ACROSS the screen, so the strip
+          // takes no extra lift — and spans nearly the whole tile,
+          // so a hedgerow run reads planted against whatever borders
+          // it, never a ribbon floating in a lane of grass.
+          const lift = HED_H * s + s * 0.04;
+          const hw = s * 0.44;
           const strip = new Path2D();
           const segsY: Array<readonly [number, number, number, number]> = [];
           for (let hy = y0; hy < y1 - s * 0.01; hy += syT * 0.5) {
@@ -20960,16 +21029,44 @@ export class Renderer {
           }
           // The turn of the mass: sunlit west shoulder, shaded east.
           ctx.fillStyle = shade(HEDGE_LIT, 24);
-          ctx.fillRect(p.x - hw + s * 0.014, y0 - lift, s * 0.05, y1 - y0);
+          ctx.fillRect(p.x - hw + s * 0.014, y0 - lift, s * 0.068, y1 - y0);
           ctx.fillStyle = shade(HEDGE_LEAF, -10);
-          ctx.fillRect(p.x + hw - s * 0.066, y0 - lift, s * 0.052, y1 - y0);
-          // Clipped clumps break the plane like the slab's face.
+          ctx.fillRect(p.x + hw - s * 0.086, y0 - lift, s * 0.072, y1 - y0);
+          // EVERY CUSHION IS ROUND, edge-on too — but WHISPERED: a
+          // full-width crease per half tile ruled the strip into a
+          // ladder of pods (this round's first sheet). The crease
+          // stays SHORT of both shoulders and soft, the dome sheen
+          // small and wandering, so the strip reads as one clipped
+          // bed with breathing swells, not a stack of segments.
+          for (const [sy0] of segsY) {
+            const vi = Math.round((sy0 - (baseY - syT * 0.5)) / (syT * 0.5)) + ty * 2;
+            const dseed = hashCoords(139, tx, vi);
+            const mx = p.x + ((((dseed >>> 3) % 60) - 30) / 100) * hw;
+            ctx.fillStyle = 'rgba(214, 236, 176, 0.13)';
+            ctx.beginPath();
+            ctx.ellipse(mx, sy0 + syT * 0.24 - lift, hw * 0.38, syT * 0.11, 0, 0, Math.PI * 2);
+            ctx.fill();
+            const cseed2 = hashCoords(149, tx, vi);
+            const bow = ((((cseed2 >>> 4) % 12) - 6) / 100) * s;
+            const cOfs = ((((cseed2 >>> 8) % 36) - 18) / 100) * hw;
+            ctx.strokeStyle = 'rgba(24, 50, 28, 0.3)';
+            ctx.lineWidth = Math.max(1, s * 0.022);
+            ctx.beginPath();
+            ctx.moveTo(p.x + cOfs - hw * 0.5, sy0 - lift);
+            ctx.quadraticCurveTo(p.x + cOfs + bow, sy0 + syT * 0.07 - lift, p.x + cOfs + hw * 0.5, sy0 - lift);
+            ctx.stroke();
+          }
+          // Clipped clumps break the plane like the slab's face —
+          // keyed on the WORLD half-tile index, never the screen y
+          // (a screen-keyed seed re-deals the clumps as the camera
+          // pans).
           for (const [sy0, , ampW] of segsY) {
-            const cseed = hashCoords(113, tx, Math.round(sy0));
-            const cx = p.x + ((((cseed >>> 4) % 56) - 28) / 100) * hw;
+            const vi = Math.round((sy0 - (baseY - syT * 0.5)) / (syT * 0.5)) + ty * 2;
+            const cseed = hashCoords(113, tx, vi);
+            const cx = p.x + ((((cseed >>> 4) % 124) - 62) / 100) * hw;
             ctx.fillStyle = (cseed & 4) === 0 ? HEDGE_DARK : shade(HEDGE_LEAF, 6);
             ctx.beginPath();
-            facetBlob(ctx, cx, sy0 + syT * 0.25 - lift, s * (0.062 + ampW * 0.45), cseed, 6, 0.85);
+            facetBlob(ctx, cx, sy0 + syT * (0.22 + ((cseed >>> 9) & 3) * 0.06) - lift, s * (0.046 + ampW * 0.34), cseed, 6, 0.85);
             ctx.fill();
           }
           // The wall law's ink: the two SIDE silhouettes only — a
@@ -21010,43 +21107,42 @@ export class Renderer {
         // Back-to-front: north masses, the E-W slab, the junction
         // knuckle capping every joint, then south masses over it.
         if (cn) crownStrip(baseY - syT * 0.5, baseY);
+        // THE STRIDE IS A STRING OF CUSHIONS (this round's rethink):
+        // at the waist, intermediate step slabs printed a shuffle of
+        // overlapping arcs down every 45° turn — so the stride keeps
+        // ONLY the heart knuckle each diagonal tile already owns plus
+        // ONE shared corner cushion at the tile seam, owned by the
+        // NORTH-going stride so exactly one tile draws each corner.
+        // Big cushion, small cushion, big cushion: an even half-tile
+        // rhythm that reads as a low clipped bank stepping over.
         const diagSlabs: Array<[number, number, number]> = [];
-        const strideInto = (sx: number, sy: number, kBase: number, corner: boolean) => {
-          for (let i = 0; i < 2; i++) {
-            const f = (i + 1) / 3;
-            diagSlabs.push([sx * f * 0.5, sy * f * 0.5, kBase + i]);
-          }
-          // The corner step closes the chain across the tile seam —
-          // owned by the NORTH-going stride only, so exactly one tile
-          // draws each shared corner.
-          if (corner) diagSlabs.push([sx * 0.5, sy * 0.5, kBase + 2]);
-        };
-        if (dNE || isoNE) strideInto(1, -1, 8, true);
-        if (dNW || isoNW) strideInto(-1, -1, 10, true);
-        if (dSW || isoNE) strideInto(-1, 1, 12, false);
-        if (dSE || isoNW) strideInto(1, 1, 14, false);
+        if (dNE || isoNE) diagSlabs.push([0.5, -0.5, 8]);
+        if (dNW || isoNW) diagSlabs.push([-0.5, -0.5, 10]);
+        if (isoNE) diagSlabs.push([-0.5, 0.5, 12]);
+        if (isoNW) diagSlabs.push([0.5, 0.5, 14]);
         diagSlabs.sort((a, b) => a[1] - b[1]);
-        // A diagonal stride is a CHAIN, not a picket row: each step
-        // slab is wide enough to overlap its neighbors across the
-        // corner (the pass-1 sliver verdict), a hair shorter than the
-        // wall so the stepped crowns read as one clipped run turning.
+        // Corner cushions take CROWN-ONLY ink — a plumb-sided ring on
+        // every step printed a row of inked tombstones (the sheet
+        // before this one); the scalloped crown plus the skirt shadow
+        // seat each cushion like the slab's own base.
         for (const [fx, fy, k] of diagSlabs) {
           if (fy < 0) {
             const cx2 = p.x + fx * s;
-            slab(cx2 - s * 0.28, cx2 + s * 0.28, baseY + fy * syT, 0.9, true, true, tx * 16 + k, true);
+            slab(cx2 - s * 0.34, cx2 + s * 0.34, baseY + fy * syT, 0.92, false, false, tx * 16 + k, true);
           }
         }
         if (ewAny) slab(xw, xe, baseY, 1, !cw, !ce, tx, false);
         if (needAnchor) {
-          // The knuckle: a fuller clipped block at the tile heart —
+          // The knuckle: a fuller clipped cushion at the tile heart —
           // the gardener squares off every corner, tee, and run end.
-          slab(p.x - s * 0.3, p.x + s * 0.3, baseY + s * 0.015, 1.07, true, true, tx * 16 + 7, true);
+          // It must OUT-MEASURE the near-full-width strips it caps.
+          slab(p.x - s * 0.48, p.x + s * 0.48, baseY + s * 0.02, 1.1, true, true, tx * 16 + 7, true);
         }
         if (cs) crownStrip(baseY, baseY + syT * 0.5);
         for (const [fx, fy, k] of diagSlabs) {
           if (fy >= 0) {
             const cx2 = p.x + fx * s;
-            slab(cx2 - s * 0.28, cx2 + s * 0.28, baseY + fy * syT, 0.9, true, true, tx * 16 + k, true);
+            slab(cx2 - s * 0.34, cx2 + s * 0.34, baseY + fy * syT, 0.92, false, false, tx * 16 + k, true);
           }
         }
 
@@ -21061,7 +21157,9 @@ export class Renderer {
         for (let i = 0; i < nSpr; i++) {
           const sseed = hashCoords(127, tx * 8 + i, ty);
           const sx2 = p.x + ((((sseed >>> 3) % 84) - 42) / 100) * s;
-          const sy2 = baseY - (HED_H + 0.22) * s - (((sseed >>> 9) % 16) / 100) * s;
+          // Sprigs stand ON the crown plane now — rooted between the
+          // cushions, poking above the back silhouette.
+          const sy2 = baseY - HED_H * s - DEEP * (0.3 + (((sseed >>> 9) % 55) / 100));
           const len = s * (0.09 + ((sseed >>> 6) & 3) * 0.02);
           const flut =
             Math.sin(tSec * (1.9 + (sseed % 5) * 0.16) + (sseed % 100) * 0.4) *
@@ -21098,18 +21196,21 @@ export class Renderer {
     const syT = s * this.camera.yScale;
     const p = this.camera.worldToScreen(tx + 0.5, ty + 0.5, this.w, this.h);
     p.y -= game.world.elevAt(tx, ty) * ELEV_H * s;
-    const baseY = p.y + syT * 0.14;
+    // The arch stands on the hedgerow's own ground line (the south-
+    // skirt law) so piers and run meet foot-true, and its trained
+    // span carries the same deep plan as the runs it bridges.
+    const baseY = p.y + syT * 0.4;
     const open = doorInfo(tile)!.open;
     const h = hashCoords(41, tx, ty);
     const vertical =
       (this.hedgeish(game, tx, ty - 1) || this.hedgeish(game, tx, ty + 1)) &&
       !(this.hedgeish(game, tx + 1, ty) || this.hedgeish(game, tx - 1, ty));
-    const DEEP = 0.3 * syT;
+    const DEEP = 0.72 * syT;
     return {
       sortY: ty + (vertical ? 0.75 : 0.8),
       drawShadow: () => {
-        if (vertical) this.castEdgeQuad(p.x, baseY - syT * 0.5, p.x, baseY + syT * 0.5, 0.9);
-        else this.castEdgeQuad(p.x - s * 0.5, baseY, p.x + s * 0.5, baseY, 0.9);
+        if (vertical) this.castEdgeQuad(p.x, baseY - syT * 0.5, p.x, baseY + syT * 0.5, 0.6);
+        else this.castEdgeQuad(p.x - s * 0.5, baseY, p.x + s * 0.5, baseY, 0.6);
       },
       draw: () => {
         // Draw-time ctx capture: the outline pass swaps this.ctx.
@@ -21126,8 +21227,11 @@ export class Renderer {
         // A clipped pier: a slim rounded column of green on a peeking
         // stem, lit crown facet turning its top to the sky.
         const pier = (px2: number, gy: number, seed: number) => {
-          const hgt = s * 1.3;
-          const hw = s * 0.15;
+          // Stocky, not towering: the pier is the gate's one tall
+          // gesture, a clipped column rising from a waist-high line —
+          // it clears the span's ends and no more.
+          const hgt = s * 1.05;
+          const hw = s * 0.16;
           ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
           ctx.beginPath();
           ctx.ellipse(px2, gy + s * 0.012, hw * 1.5, s * 0.045, 0, 0, Math.PI * 2);
@@ -21209,11 +21313,14 @@ export class Renderer {
           // plumb ends, and the arched soffit rising over the path
           // (the pass-2 verdict: a soffit drawn as its own crescent
           // hung BELOW the mass like a sagging rope).
-          const yTopArch = baseY - 1.58 * s;
+          // Low-line measures: span top at 1.42 tiles, soffit mid at
+          // ~1.26 — the 1.15-tile body still walks under clean, but
+          // the arch no longer towers over the waist-high garden.
+          const yTopArch = baseY - 1.42 * s;
           const xL = pierL - s * 0.08;
           const xR = pierR + s * 0.08;
-          const endDrop = s * 0.46;
-          const midDrop = s * 0.2;
+          const endDrop = s * 0.44;
+          const midDrop = s * 0.16;
           const seg: ReadonlyArray<readonly [number, number, number]> = [
             [xL, p.x, this.hedgeLobe(79, tx * 16 + 2, ty)],
             [p.x, xR, this.hedgeLobe(79, tx * 16 + 3, ty)],
@@ -21231,8 +21338,8 @@ export class Renderer {
           // Crown plane + arris, the slab laws in miniature.
           const ribbon = new Path2D();
           this.hedgeCrownInto(ribbon, seg, yTopArch, 1);
-          ribbon.lineTo(xR, yTopArch + DEEP * 0.55);
-          ribbon.lineTo(xL, yTopArch + DEEP * 0.55);
+          ribbon.lineTo(xR, yTopArch + DEEP * 0.5);
+          ribbon.lineTo(xL, yTopArch + DEEP * 0.5);
           ribbon.closePath();
           ctx.fillStyle = shade(HEDGE_LIT, 10);
           ctx.fill(ribbon);
@@ -21241,7 +21348,7 @@ export class Renderer {
             ctx.fill(ribbon);
           }
           ctx.fillStyle = shade(HEDGE_LIT, 26);
-          ctx.fillRect(xL + s * 0.03, yTopArch + DEEP * 0.55 - s * 0.011, xR - xL - s * 0.06, s * 0.022);
+          ctx.fillRect(xL + s * 0.03, yTopArch + DEEP * 0.5 - s * 0.011, xR - xL - s * 0.06, s * 0.022);
           // The soffit: a dark under-band INSIDE the mass, hugging
           // the arched underside — the span carries its own shadow.
           ctx.fillStyle = HEDGE_DARK;

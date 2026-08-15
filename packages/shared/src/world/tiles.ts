@@ -1702,12 +1702,11 @@ export const LIGHT_BLOCKING_TILES: readonly Tile[] = [
   Tile.PalisadeDiagNE,
   Tile.PalisadeDiagNW,
   Tile.PalisadeGateShut,
-  // Head-high clipped green: a garden hedge hides its garden the way
-  // the camp wall hides its camp. The open arch spills lantern light
-  // down the path; the latched wicket seals it.
-  Tile.Hedge,
-  Tile.HedgeDiagNE,
-  Tile.HedgeDiagNW,
+  // THE WAIST LAW: the hedgerow runs hip-high — lamplight clears a
+  // clipped cushion bed the way it clears a fence, so the hedge WALLS
+  // never block. Only the living arch is full-height green mass:
+  // shut, it seals the garden; open, it spills lantern light down
+  // the path.
   Tile.HedgeGateShut,
 ];
 
