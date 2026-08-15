@@ -41,9 +41,10 @@ const PAN_MAX = 0.8;
  * Wired today: `level_up` (the skill herald), `poi_discovery` and
  * `stab_calm_1` (the discovery ceremony's voices), the three
  * `stab_dramatic` dread stings (rotating: deep-night dangerous wilds
- * + hostile-camp discoveries), and the `day_to_night`/`night_to_day`
- * seam stingers (THE SKY'S SEAM in the main loop). The rest sit
- * ready for future moments — see each entry's note.
+ * + hostile-camp discoveries), the `day_to_night`/`night_to_day`
+ * seam stingers (THE SKY'S SEAM in the main loop), and the five
+ * `step_grass` field recordings (footstep('grass') round-robin).
+ * The rest sit ready for future moments — see each entry's note.
  */
 const SAMPLE_TRIM = {
   level_up: 0.6, // −13.4 — the skill level-up herald (wired: levelUp())
@@ -58,6 +59,15 @@ const SAMPLE_TRIM = {
   stab_dramatic_3: 0.84, // −16.3
   day_to_night: 0.57, // −12.9 — the dusk stinger (wired: THE SKY'S SEAM)
   night_to_day: 1, // −17.8 — the answering dawn stinger (wired)
+  // THE REAL STEP: five grass-step field recordings (Kenney.nl Impact
+  // Sounds, CC0), mastered soft at the source (≈−29 dB mean, ±1 dB of
+  // natural variation kept on purpose) — trims stay 1, the footstep
+  // caller's gait volume does the scaling.
+  step_grass_1: 1, // (wired: footstep('grass') round-robin)
+  step_grass_2: 1,
+  step_grass_3: 1,
+  step_grass_4: 1,
+  step_grass_5: 1,
 } as const;
 export type SampleName = keyof typeof SAMPLE_TRIM;
 
@@ -66,6 +76,17 @@ export const SAMPLE_NAMES = Object.keys(SAMPLE_TRIM) as SampleName[];
 
 /** Seats the whole recorded shelf in the synth voices' mix. */
 const SAMPLE_LEVEL = 0.55;
+
+/** The grass steps' round-robin deal order. */
+const GRASS_STEPS: readonly SampleName[] = [
+  'step_grass_1',
+  'step_grass_2',
+  'step_grass_3',
+  'step_grass_4',
+  'step_grass_5',
+];
+/** Seats the recorded grass steps against the caller's gait volume. */
+const GRASS_STEP_VOL = 2.2;
 
 /**
  * Procedural WebAudio SFX — synthesized voices, plus THE RECORDED
@@ -155,6 +176,8 @@ export class Sfx {
     this.warmSample('stab_dramatic_1');
     this.warmSample('stab_dramatic_2');
     this.warmSample('stab_dramatic_3');
+    // The grass underfoot must be the recording from the first step.
+    for (const s of GRASS_STEPS) this.warmSample(s);
   }
 
   // ---- the recorded shelf -------------------------------------------
@@ -162,6 +185,8 @@ export class Sfx {
   /** Decoded samples, held for the session. */
   private sampleBuf = new Map<SampleName, AudioBuffer>();
   private sampleLoading = new Set<SampleName>();
+  /** The grass steps' round-robin cursor (random start per session). */
+  private grassStepIdx = Math.floor(Math.random() * GRASS_STEPS.length);
 
   /** Fetch + decode a sample ahead of its moment. Failure stays quiet. */
   warmSample(name: SampleName): void {
@@ -187,7 +212,7 @@ export class Sfx {
    * Flat by default (UI and self feedback); inside `spatial()` it
    * rides the emitter like every other voice.
    */
-  sample(name: SampleName, volume = 1): boolean {
+  sample(name: SampleName, volume = 1, rate = 1): boolean {
     const ctx = this.ctx;
     const out = this.dest ?? this.engine.sfx;
     if (!ctx || !out) return false;
@@ -198,6 +223,9 @@ export class Sfx {
     }
     const src = ctx.createBufferSource();
     src.buffer = buf;
+    // A breath of rate variation keeps repeated one-shots (footsteps)
+    // from ever machine-gunning the identical waveform.
+    src.playbackRate.value = rate;
     const gain = ctx.createGain();
     gain.gain.value = SAMPLE_TRIM[name] * SAMPLE_LEVEL * volume;
     src.connect(gain);
@@ -975,16 +1003,19 @@ export class Sfx {
   footstep(mat: 'grass' | 'stone' | 'wood' | 'dirt' | 'sand' | 'cave' | 'wet', vol: number): void {
     switch (mat) {
       case 'grass': {
-        // THE SOFT-STEP LAW at its softest: stepping in grass is
-        // nearly silent — a muted low CRUSH, felt more than heard.
-        // Two long, low-banded grains folding into each other (short
-        // high-banded grains read as paper or gravel — user verdict,
-        // twice) with one whisper of blade-tips far underneath.
+        // THE REAL STEP (v4): synthesis was ruled paper THREE times
+        // (fixed-band pair, staggered grains, muted low crush) — this
+        // voice is a field recording now, full stop. Five CC0 grass
+        // steps (Kenney.nl) dealt round-robin with a breath of rate
+        // wobble so no two steps are the identical waveform; the
+        // muted synth crush below survives ONLY as the pre-decode
+        // fallback for the first beat of a session.
+        const name = GRASS_STEPS[this.grassStepIdx++ % GRASS_STEPS.length]!;
+        if (this.sample(name, vol * GRASS_STEP_VOL, 0.94 + Math.random() * 0.12)) break;
         this.noise(0.07 + Math.random() * 0.03, vol * 0.5, 0, { band: 650 + Math.random() * 250 });
         this.noise(0.09 + Math.random() * 0.04, vol * 0.32, 0.025, {
           band: 950 + Math.random() * 350,
         });
-        this.noise(0.05, vol * 0.1, 0.01, { band: 2000 + Math.random() * 500 });
         break;
       }
       case 'stone':

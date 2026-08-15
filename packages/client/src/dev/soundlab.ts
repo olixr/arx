@@ -199,7 +199,7 @@ const SFX_SUSPECTS: Row[] = [
   {
     name: 'Footstep — grass',
     src: 'sfx.ts · footstep(grass)',
-    desc: 'a muted low crush, nearly silent — one whisper of blade-tips under it',
+    desc: 'REAL recordings — five CC0 grass steps (Kenney), round-robin + rate wobble',
     play: () => sfx.footstep('grass', 0.5),
   },
   {
