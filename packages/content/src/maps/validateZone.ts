@@ -24,7 +24,82 @@ export interface ValidationResult {
   fenceAdded: number;
 }
 
+/**
+ * THE PLACEMENT VET (core-audit debt 4): the structural half of the
+ * gate — spawns, actor posts, portals, and the growth mark checked as
+ * VALUES, not just decoded shapes. These lists rode zoneFromJson by
+ * reference with no check at all: a spawn count of 1e9 hung the boot
+ * inside registerSpawns, a NaN radius scattered bodies into the void,
+ * and none of it was refused anywhere on any path. Cheap (no builder
+ * replay), so every load door can afford it.
+ */
+export function zonePlacementErrors(zone: ZoneDef): string[] {
+  const errors: string[] = [];
+  const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+  if (typeof zone.id !== 'string' || zone.id.length === 0 || zone.id.length > 64) {
+    errors.push('zone id must be a non-empty string (max 64)');
+  }
+  if (typeof zone.name !== 'string' || zone.name.length > 120) {
+    errors.push('zone name must be a string (max 120)');
+  }
+  if (zone.growth !== undefined && zone.growth !== 'kept' && zone.growth !== 'wild') {
+    errors.push(`growth must be 'kept' | 'wild'`);
+  }
+  for (const [i, s] of (zone.spawns ?? []).entries()) {
+    const at = `spawns[${i}]`;
+    if (typeof s.npc !== 'string' || s.npc.length === 0) errors.push(`${at}.npc must be a slug`);
+    if (!num(s.x) || !num(s.y)) errors.push(`${at} needs finite x/y`);
+    if (!Number.isInteger(s.count) || s.count < 1 || s.count > 64) {
+      errors.push(`${at}.count must be an integer 1..64`);
+    }
+    if (!num(s.radius) || s.radius < 0 || s.radius > 64) {
+      errors.push(`${at}.radius must be 0..64 tiles`);
+    }
+    if (s.level !== undefined && (!Number.isInteger(s.level) || s.level < 1 || s.level > 99)) {
+      errors.push(`${at}.level must be an integer 1..99`);
+    }
+    if (s.hours !== undefined && (!num(s.hours.from) || !num(s.hours.to))) {
+      errors.push(`${at}.hours needs numeric from/to`);
+    }
+    if (s.patrol !== undefined) {
+      if (!Array.isArray(s.patrol) || s.patrol.length > 64 ||
+          s.patrol.some((p) => !num(p.x) || !num(p.y))) {
+        errors.push(`${at}.patrol must be ≤64 finite waypoints`);
+      }
+    }
+    if (s.post !== undefined && (!num(s.post.x) || !num(s.post.y) || !num(s.post.dir))) {
+      errors.push(`${at}.post needs finite x/y/dir`);
+    }
+  }
+  for (const [i, a] of (zone.actorSpawns ?? []).entries()) {
+    const at = `actorSpawns[${i}]`;
+    if (typeof a.actor !== 'string' || a.actor.length === 0) errors.push(`${at}.actor must be a slug`);
+    if (!num(a.x) || !num(a.y)) errors.push(`${at} needs finite x/y`);
+    if (a.dir !== undefined && !num(a.dir)) errors.push(`${at}.dir must be a number`);
+    if (a.routine !== undefined && typeof a.routine !== 'string') {
+      errors.push(`${at}.routine must be a routine id`);
+    }
+  }
+  for (const [i, p] of (zone.portals ?? []).entries()) {
+    const at = `portals[${i}]`;
+    if (!num(p.x) || !num(p.y)) errors.push(`${at} needs finite x/y`);
+    if (p.dest !== undefined && (!num(p.dest.x) || !num(p.dest.y))) {
+      errors.push(`${at}.dest needs finite x/y`);
+    }
+    if (p.dest === undefined && p.delve !== true) {
+      errors.push(`${at} needs a dest or delve: true (a door must lead somewhere)`);
+    }
+  }
+  return errors;
+}
+
 export function validateZone(zone: ZoneDef): ValidationResult {
+  // The structural half first — a malformed placement list should
+  // never reach the builder replay.
+  const placementErrors = zonePlacementErrors(zone);
+  if (placementErrors.length > 0) {
+    return { ok: false, error: placementErrors.join('; '), fenceAdded: 0 };
+  }
   const b = new ZoneBuilder(zone.id, zone.name, zone.origin, zone.width, zone.height, Tile.Grass);
   for (let y = 0; y < zone.height; y++) {
     for (let x = 0; x < zone.width; x++) {

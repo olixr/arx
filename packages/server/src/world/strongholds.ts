@@ -276,6 +276,68 @@ export function strongholdSeat(
 }
 
 /**
+ * THE LEDGER PINS THE SEAT (core-audit debt 2): a capital that has
+ * EVER been seated is a historical fact — its anchor and first walls
+ * live in the stronghold ledger. Re-deriving the seat live let a
+ * hearth claim near the lattice point MOVE or NULL a standing
+ * citadel's seat mid-life: the mask vanished from poiForCell (camps
+ * dealt inside the walls), a reboot could silently never re-stand it,
+ * and a moved seat composed at new ground while the ledger kept the
+ * old anchor. This reconstructs the seat from the row by pure
+ * derivation — claim rings and ground scans are consulted only at
+ * FIRST seating (strongholdSeat). Returns null when the row's layout
+ * has left the shelf (the live scan then answers, and the ward-bits
+ * law already guards the mismatch).
+ */
+export function seatFromLedger(
+  seed: number,
+  gx: number,
+  gy: number,
+  row: { anchorX: number; anchorY: number; layoutId: string },
+  ctx: SeatCtx,
+): CapitalSeat | null {
+  const layout = ctx.layouts.find((d) => d.id === row.layoutId);
+  if (!layout) return null;
+  const { hash } = territoryLatticePoint(seed, gx, gy);
+  // Roster drift can re-name the country under standing walls — the
+  // walls win: the layout's own family is the seat's family.
+  const family = territoryLatticeFamily(hash, ctx.families) ?? layout.family;
+  const tier = dangerAt(seed, row.anchorX, row.anchorY, ctx.anchors);
+  // The mask covers the widest walls the family pool could raise —
+  // the same epoch-free envelope strongholdSeat computes.
+  let maskW = 0;
+  let maskH = 0;
+  for (const d of ctx.layouts) {
+    if (d.family !== family || d.weight <= 0) continue;
+    const pp = ctx.prefabs.get(d.prefab);
+    if (!pp) continue;
+    if (pp.width > maskW) maskW = pp.width;
+    if (pp.height > maskH) maskH = pp.height;
+  }
+  const own = ctx.prefabs.get(layout.prefab);
+  if (own) {
+    if (own.width > maskW) maskW = own.width;
+    if (own.height > maskH) maskH = own.height;
+  }
+  if (maskW === 0 || maskH === 0) return null;
+  return {
+    gx,
+    gy,
+    x: row.anchorX,
+    y: row.anchorY,
+    rect: {
+      x: row.anchorX - Math.floor(maskW / 2),
+      y: row.anchorY - Math.floor(maskH / 2),
+      w: maskW,
+      h: maskH,
+    },
+    family,
+    tier,
+    layoutId: row.layoutId,
+  };
+}
+
+/**
  * The layout the seat deals AT AN EPOCH — epoch 0 is the seat's own
  * layoutId; an epoch turn rolls the family pool again, so returning
  * players find new walls on the old ground (THE LONG WAR).

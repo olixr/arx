@@ -148,7 +148,9 @@ function slate(rows: Array<[string, LedgerRow]>, opts: { credits?: number } = {}
     playerWithin: proto.playerWithin,
     authoredCells: proto.authoredCells,
     poiCtx: proto.poiCtx,
-    capitalRects: () => [],
+    // The mask now derives from the queried ground (core-audit debt 2)
+    // — the slate keeps an empty frontier of capitals.
+    capitalRectsNear: () => [],
     claimRings: proto.claimRings,
     inClaimRing: proto.inClaimRing,
     standOnePeddler: proto.standOnePeddler,

@@ -34,6 +34,7 @@ export * from './voice.js';
 export * from './nodes.js';
 export * from './wilds.js';
 export * from './pois/types.js';
+export * from './pois/postSigns.js';
 export * from './pois/validate.js';
 export * from './pois/prefabs.js';
 export * from './pois/defs.js';

@@ -370,6 +370,7 @@ import {
   capitalLatticeRange,
   capitalMasked,
   composeStronghold,
+  seatFromLedger,
   strongholdSeat,
   type CapitalSeat,
 } from '../world/strongholds.js';
@@ -2893,6 +2894,13 @@ export class GameServer {
   ): number[] {
     const indexes: number[] = [];
     for (const spawn of spawns) {
+      // The belt behind THE PLACEMENT VET: every load door checks
+      // values now, but this loop is where a bad count becomes a boot
+      // hang — refuse it here too, loudly.
+      if (!Number.isInteger(spawn.count) || spawn.count < 1 || spawn.count > 64) {
+        console.warn(`[npc] spawn of '${spawn.npc}' has unlawful count ${spawn.count} — skipped`);
+        continue;
+      }
       for (let i = 0; i < spawn.count; i++) {
         const angle = (i / spawn.count) * Math.PI * 2;
         const r = spawn.radius * 0.6;
@@ -8719,15 +8727,19 @@ export class GameServer {
   /**
    * THE ONE CONTEXT BUILDER: every POI decision reads the same context
    * — anchors, zone rects, prefab library, and the claim rings — so
-   * the exclusion law cannot be forgotten at any call site.
+   * the exclusion law cannot be forgotten at any call site. The query
+   * cell is REQUIRED: the capital mask derives from the lattice around
+   * the ground being decided, never from where players happen to
+   * stand (the old player-anchored scan made the same cell answer
+   * differently by who was online — boot sweeps decided maskless).
    */
-  private poiCtx(): PoiContext {
+  private poiCtx(cellX: number, cellY: number): PoiContext {
     return poiContext(
       this.dangerAnchors(),
       this.world.zoneDefs,
       this.poiPrefabs!,
       this.claimRings(),
-      this.capitalRects(),
+      this.capitalRectsNear(cellX * POI_CELL, cellY * POI_CELL, POI_CELL, POI_CELL),
     );
   }
 
@@ -8756,47 +8768,47 @@ export class GameServer {
     const key = capitalKey(gx, gy);
     const hit = this.capitalCache.get(key);
     if (hit !== undefined) return hit;
-    const seat = strongholdSeat(config.worldSeed, gx, gy, this.seatCtx());
+    // THE LEDGER PINS THE SEAT: a capital ever seated answers from its
+    // row by pure derivation — a hearth claim near the lattice point
+    // can no longer move or null a standing citadel's seat (rings and
+    // ground scans judge FIRST seatings only).
+    const row = this.strongholdLedger?.get(key);
+    const seat =
+      (row ? seatFromLedger(config.worldSeed, gx, gy, row, this.seatCtx()) : null) ??
+      strongholdSeat(config.worldSeed, gx, gy, this.seatCtx());
     this.capitalCache.set(key, seat);
     return seat;
   }
 
   /**
-   * Every seated capital rect near an online player — THE MASK's
-   * source. Computed lazily inside poiCtx() so a cell can never be
-   * decided before its ground's capital is known (no beat ordering
-   * to race). Warm-cache cost is map lookups.
+   * Every seated capital rect near a QUERIED GROUND — THE MASK's
+   * source, a pure function of the coordinates asked about. The old
+   * form scanned the lattice around ONLINE PLAYERS: the same cell at
+   * the same epoch answered differently by who was logged in — boot
+   * sweeps, seedAuthoredSites, and wakeOneFallow all decided with an
+   * empty or partial mask, and whatever they rolled was pinned into
+   * the ledger. cachedSeat makes the lattice cells map-hit cheap.
    */
-  private capitalRects(): Array<{ x: number; y: number; w: number; h: number }> {
+  private capitalRectsNear(
+    x0: number,
+    y0: number,
+    w: number,
+    h: number,
+  ): Array<{ x: number; y: number; w: number; h: number }> {
     const out: Array<{ x: number; y: number; w: number; h: number }> = [];
     // Hand-built test slates borrow these methods without the capital
     // fields — an absent cache reads as an empty frontier, never a
     // throw (the standDownGarrison slate convention).
-    if (!this.capitalCache || !this.sessions) return out;
-    const seen = new Set<string>();
-    for (const session of this.sessions) {
-      if (session.playerEid === null) continue;
-      const pos = this.positions.get(session.playerEid);
-      if (!pos) continue;
-      const py = pos.y;
-      if (py >= DARK_BAND_Y) continue;
-      const px = pos.x;
-      // Any POI decision a player can force happens within the pois
-      // tick reach (128) of them, over a cell (128) whose compound-
-      // hold check pads by regionCells × POI_CELL (256) — a capital
-      // mask can matter ~512 tiles out. Scan generously (the Second
-      // Charter's zone-scale masks outgrew the old hand-pinned pad);
-      // cachedSeat makes the extra lattice cells free.
-      const reach = 512 + CAPITAL_CLEARANCE;
-      const r = capitalLatticeRange(px - reach, py - reach, reach * 2, reach * 2);
-      for (let gy = r.gy0; gy <= r.gy1; gy++) {
-        for (let gx = r.gx0; gx <= r.gx1; gx++) {
-          const key = capitalKey(gx, gy);
-          if (seen.has(key)) continue;
-          seen.add(key);
-          const seat = this.cachedSeat(gx, gy);
-          if (seat) out.push(seat.rect);
-        }
+    if (!this.capitalCache) return out;
+    // A capital mask can matter ~512 tiles out (compound-hold checks
+    // pad by regionCells × POI_CELL; the Second Charter's zone-scale
+    // masks outgrew every hand-pinned pad).
+    const reach = 512 + CAPITAL_CLEARANCE;
+    const r = capitalLatticeRange(x0 - reach, y0 - reach, w + reach * 2, h + reach * 2);
+    for (let gy = r.gy0; gy <= r.gy1; gy++) {
+      for (let gx = r.gx0; gx <= r.gx1; gx++) {
+        const seat = this.cachedSeat(gx, gy);
+        if (seat) out.push(seat.rect);
       }
     }
     return out;
@@ -8807,7 +8819,13 @@ export class GameServer {
     const pad = FRONTIER.regionCells * POI_CELL;
     const x0 = cellX * POI_CELL - pad;
     const y0 = cellY * POI_CELL - pad;
-    return capitalMasked(x0, y0, POI_CELL + pad * 2, POI_CELL + pad * 2, this.capitalRects());
+    return capitalMasked(
+      x0,
+      y0,
+      POI_CELL + pad * 2,
+      POI_CELL + pad * 2,
+      this.capitalRectsNear(x0, y0, POI_CELL + pad * 2, POI_CELL + pad * 2),
+    );
   }
 
   /**
@@ -9322,7 +9340,7 @@ export class GameServer {
           cand.cx,
           cand.cy,
           existing?.epoch ?? 0,
-          this.poiCtx(),
+          this.poiCtx(cand.cx, cand.cy),
           satDef,
         );
         if (!site) continue;
@@ -9501,14 +9519,19 @@ export class GameServer {
     // The lamps light BEFORE the sweep: fallow re-decisions read the
     // field with every standing haven in it.
     this.rebuildHavens();
-    // THE PLAN SWEEP: the master plan reserves zone rects (Amberford,
-    // Silverfall) before their epics build them, but the site-pick
-    // honors zones only at roll time — so any cell decided under an
-    // older plan whose footprint now collides re-rolls on a fresh
-    // epoch and finds a home clear of tomorrow's streets.
-    const evicted = this.zonePlanSweep();
-    if (evicted > 0) {
-      console.log(`[poi] plan sweep: ${evicted} site(s) re-rolled off planned zone rects`);
+    // THE PLAN SWEEP — the FULL judge, boot and reload alike (core-
+    // audit debt 2): rect-blocked sites re-roll, orphaned weight-0
+    // landmarks dissolve, and paved camps step off the redrawn road.
+    // Boot used to run only the rect check, so a geography change
+    // arriving without a live reload (DB import, revert tooling)
+    // booted into orphaned lamps still burning and camps squatting on
+    // the new road indefinitely.
+    const swept = this.geographySweep();
+    if (swept.evicted + swept.orphaned > 0) {
+      console.log(
+        `[poi] plan sweep: ${swept.evicted} site(s) re-rolled, ` +
+          `${swept.orphaned} orphaned landmark(s) dissolved`,
+      );
     }
     // THE EPOCH TURN: cells cleared and left fallow long enough
     // re-roll on fresh streams — the frontier churns exactly where
@@ -9560,7 +9583,6 @@ export class GameServer {
    */
   private seedAuthoredSites(): void {
     if (!this.poiPrefabs) return;
-    const ctx = this.poiCtx();
     let seeded = 0;
     for (const want of AUTHORED_WILD_SITES) {
       const def = POI_DEFS.get(want.defId);
@@ -9570,6 +9592,9 @@ export class GameServer {
       }
       const cellX = want.cell ? want.cell[0] : poiCellOf(want.x!);
       const cellY = want.cell ? want.cell[1] : poiCellOf(want.y!);
+      // The context is per-want: the capital mask derives from the
+      // seat's own ground (the one-context law with its query point).
+      const ctx = this.poiCtx(cellX, cellY);
       const key = poiCellKey(cellX, cellY);
       const row = this.poiLedger.get(key);
       if (row?.site?.defId === want.defId) {
@@ -9667,40 +9692,6 @@ export class GameServer {
    * rect it predates (fallowSweep's shape, rect-triggered). Runs at
    * boot before anything materializes, so retire is pure bookkeeping.
    */
-  private zonePlanSweep(): number {
-    if (!this.poiPrefabs) return 0;
-    const ctx = this.poiCtx();
-    const authored = this.authoredCells();
-    let evicted = 0;
-    for (const [key, row] of this.poiLedger) {
-      // Authored cells are the plan's own landmarks — never evicted
-      // (they stand near planned rects deliberately, tight-padded).
-      if (authored.has(key)) continue;
-      if (row.site === null || !poiSiteBlocked(row.site, ctx)) continue;
-      const { cellX, cellY } = row.site;
-      this.fadePoiDiscoveries(key);
-      this.retirePoiCell(key);
-      const epoch = row.epoch + 1;
-      const site = poiForCell(config.worldSeed, cellX, cellY, epoch, ctx);
-      this.accounts.recordPoiCell(
-        cellX,
-        cellY,
-        epoch,
-        site && {
-          poiId: site.defId,
-          prefabId: site.prefabId,
-          tier: site.tier,
-          anchorX: site.anchorX,
-          anchorY: site.anchorY,
-        },
-      );
-      this.poiLedger.set(key, { epoch, site, clearedAt: null, emberUntil: null, fallowUntil: null, stage: 0, stageAt: null, originCell: null });
-      evicted++;
-    }
-    if (evicted > 0) this.rebuildHavens();
-    return evicted;
-  }
-
   /**
    * Real days before the BOOT reconcile turns a cleared cell that
    * somehow slipped the ember clock (legacy rows, downed clocks). The
@@ -9743,7 +9734,6 @@ export class GameServer {
    */
   private fallowSweep(cutoffMs: number): { turned: number; rerolled: number } {
     if (!this.poiPrefabs) return { turned: 0, rerolled: 0 };
-    const ctx = this.poiCtx();
     const authored = this.authoredCells();
     let turned = 0;
     let rerolled = 0;
@@ -9753,6 +9743,7 @@ export class GameServer {
       if (authored.has(key)) continue;
       if (row.site === null || row.clearedAt === null || row.clearedAt >= cutoffMs) continue;
       const { cellX, cellY } = row.site;
+      const ctx = this.poiCtx(cellX, cellY);
       this.fadePoiDiscoveries(key);
       this.retirePoiCell(key);
       const epoch = row.epoch + 1;
@@ -9797,6 +9788,11 @@ export class GameServer {
     this.world.dropAll();
     for (const s of this.sessions) s.knownChunks.clear();
     this.anchorCache = null;
+    // The seat context reads SETTLED_ANCHORS and PLANNED_ZONE_RECTS —
+    // both just swapped in place. A stale seat cache kept an already-
+    // cached capital seated inside a NEW planned rect (or at a moved
+    // anchor's dead tier) until process restart.
+    this.capitalCache.clear();
     // Anchors may have moved even when no haven changed — push both.
     const wire = { t: 'havens' as const, list: this.havenWire(), settled: this.anchorWire() };
     for (const s of this.sessions) {
@@ -9822,7 +9818,6 @@ export class GameServer {
    */
   private geographySweep(): { evicted: number; orphaned: number } {
     if (!this.poiPrefabs) return { evicted: 0, orphaned: 0 };
-    const ctx = this.poiCtx();
     const authored = this.authoredCells();
     const authoredOnly = new Set(
       [...POI_DEFS.values()].filter((d) => d.weight === 0).map((d) => d.id),
@@ -9832,6 +9827,7 @@ export class GameServer {
     for (const [key, row] of this.poiLedger) {
       if (authored.has(key)) continue; // the seeder owns these
       if (row.site === null) continue;
+      const ctx = this.poiCtx(row.site.cellX, row.site.cellY);
       const blocked = poiSiteBlocked(row.site, ctx);
       // A weight-0 archetype only ever places through the authored
       // roster — a row wearing one outside the roster is an orphan.
@@ -10223,7 +10219,7 @@ export class GameServer {
       // THE RELAX WINDOW: a calmed valley stays quiet — the wake waits
       // out the window rather than standing a new camp into it.
       if (this.calmNear(cx!, cy!, now)) continue;
-      const ctx = this.poiCtx();
+      const ctx = this.poiCtx(cx!, cy!);
       const site = poiForCell(config.worldSeed, cx!, cy!, row.epoch, ctx);
       if (site && this.playerWithin(site.anchorX, site.anchorY, FRONTIER.dignityTiles)) {
         return true; // someone is standing on the meadow — retry next pass
@@ -10302,11 +10298,11 @@ export class GameServer {
       return true;
     }
     const authored = this.authoredCells();
-    const ctx = this.poiCtx();
     for (const { tx, ty } of points) {
       if (ty >= DARK_BAND_Y - ZONE_CLEARANCE) continue;
       const cx = poiCellOf(tx);
       const cy = poiCellOf(ty);
+      const ctx = this.poiCtx(cx, cy);
       const key = poiCellKey(cx, cy);
       if (authored.has(key)) continue;
       const row = this.poiLedger.get(key);
@@ -10364,7 +10360,6 @@ export class GameServer {
   ): PoiSite | null {
     if (!this.poiPrefabs || !POI_DEFS.has('peddler_rest')) return null;
     const authored = this.authoredCells();
-    const ctx = this.poiCtx();
     const ranked = points
       .map((p) => ({ ...p, road: roadDistanceAt(config.worldSeed, p.tx, p.ty) }))
       .sort((a, b) => a.road - b.road);
@@ -10372,6 +10367,7 @@ export class GameServer {
       if (ty >= DARK_BAND_Y - ZONE_CLEARANCE) continue;
       const cx = poiCellOf(tx);
       const cy = poiCellOf(ty);
+      const ctx = this.poiCtx(cx, cy);
       const key = poiCellKey(cx, cy);
       if (authored.has(key)) continue;
       const row = this.poiLedger.get(key);
@@ -10613,8 +10609,8 @@ export class GameServer {
           return { ncx, ncy, d: best };
         })
         .sort((a, b) => a.d - b.d);
-      const ctx = this.poiCtx();
       for (const cand of ranked.slice(0, 3)) {
+        const ctx = this.poiCtx(cand.ncx, cand.ncy);
         const nkey = poiCellKey(cand.ncx, cand.ncy);
         if (authored.has(nkey)) { this.satTrace.push(`${nkey}:authored`); continue; }
         const nrow = this.poiLedger.get(nkey);
@@ -10741,8 +10737,8 @@ export class GameServer {
           return { ncx, ncy, score: dTown + dRoad * 3 };
         })
         .sort((a, b) => a.score - b.score);
-      const ctx = this.poiCtx();
       for (const cand of ranked.slice(0, 3)) {
+        const ctx = this.poiCtx(cand.ncx, cand.ncy);
         const nkey = poiCellKey(cand.ncx, cand.ncy);
         if (authored.has(nkey)) { this.tollTrace.push(`${nkey}:authored`); continue; }
         const nrow = this.poiLedger.get(nkey);
@@ -10899,8 +10895,8 @@ export class GameServer {
       }
     }
     ranked.sort((a, b) => a.d - b.d);
-    const ctx = this.poiCtx();
     for (const cand of ranked) {
+      const ctx = this.poiCtx(cand.cx, cand.cy);
       const nkey = poiCellKey(cand.cx, cand.cy);
       if (authored.has(nkey)) { this.raidTrace.push(`${nkey}:authored`); continue; }
       const nrow = this.poiLedger.get(nkey);
@@ -11033,7 +11029,7 @@ export class GameServer {
   ): PoiSite | null {
     if (!this.poiPrefabs) return null;
     const key = poiCellKey(cellX, cellY);
-    const ctx = this.poiCtx();
+    const ctx = this.poiCtx(cellX, cellY);
     let row = this.poiLedger.get(key);
     if (!row || opts.epoch !== undefined) {
       const epoch = opts.epoch ?? 0;
@@ -11162,7 +11158,7 @@ export class GameServer {
   ): void {
     const key = poiCellKey(cellX, cellY);
     if (this.findsLive.has(key)) return;
-    const ctx = this.poiCtx();
+    const ctx = this.poiCtx(cellX, cellY);
     const finds = findsForCell(config.worldSeed, cellX, cellY, epoch, ctx, siteAnchor);
     if (finds.length === 0) return;
     const composed = composeFinds(config.worldSeed, cellX, cellY, epoch, finds, ctx);
@@ -11626,7 +11622,28 @@ export class GameServer {
     if (!this.poiPrefabs) return null;
     const defs = new Map(POI_DEFS);
     if (draft) defs.set(draft.id, draft);
-    const ctx = this.poiCtx();
+    // The bench previews anywhere in the settled world, so its capital
+    // mask covers the whole anchored extent (the land SIM derives its
+    // own lattice rects — finds.ts — and overrides these). cachedSeat
+    // makes the lattice cells map-hit cheap after the first read.
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (const a of SETTLED_ANCHORS) {
+      x0 = Math.min(x0, a.x);
+      y0 = Math.min(y0, a.y);
+      x1 = Math.max(x1, a.x);
+      y1 = Math.max(y1, a.y);
+    }
+    const pad = 1024;
+    const ctx = poiContext(
+      this.dangerAnchors(),
+      this.world.zoneDefs,
+      this.poiPrefabs,
+      this.claimRings(),
+      this.capitalRectsNear(x0 - pad, y0 - pad, x1 - x0 + pad * 2, y1 - y0 + pad * 2),
+    );
     return { ...ctx, defs: [...defs.values()] };
   }
 
@@ -21756,7 +21773,7 @@ export class GameServer {
     if (spotTier === 0) return null;
     if (roadDistanceAt(config.worldSeed, tx, ty) <= ROAD_CALM) return null;
     // THE CAPITAL LAW: no ambient knot grazes a capital's yard.
-    if (capitalMasked(tx, ty, 1, 1, this.capitalRects())) return null;
+    if (capitalMasked(tx, ty, 1, 1, this.capitalRectsNear(tx, ty, 1, 1))) return null;
     if (this.inClaimRing(tx, ty)) return null;
     const biome = groundProbeAt(config.worldSeed, tx, ty);
     if (biome !== 'grass' && biome !== 'forest') return null;

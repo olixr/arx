@@ -1,5 +1,5 @@
 import { Tile, rarityIndex, type DungeonTheme } from '@arx/shared';
-import type { ZoneSpawn } from '@arx/content';
+import { POST_SIGN_ROWS, type ZoneSpawn } from '@arx/content';
 import type { DungeonBuild } from './types.js';
 
 /**
@@ -138,12 +138,18 @@ const ROSTERS: Record<DungeonTheme, ThemeRoster> = {
   },
 };
 
-/** Furniture that seats a post, and the work it holds. */
-const POST_SIGNS: Array<{ tiles: Tile[]; kind: 'cook' | 'keeper' | 'drill' }> = [
-  { tiles: [Tile.CookPot, Tile.MeatSpit, Tile.Bonfire, Tile.Campfire], kind: 'cook' },
-  { tiles: [Tile.PrisonCage, Tile.BeastNest], kind: 'keeper' },
-  { tiles: [Tile.TargetDummy, Tile.SpearRack], kind: 'drill' },
-];
+/**
+ * THE ONE FURNITURE TABLE (content pois/postSigns.ts), filtered to the
+ * work the underdark keeps: no sun means no drill hours and no night
+ * vigils — the halls cook, keep, and drill around the clock (rest and
+ * vigil kinds are surface work; a dungeon garrison never sleeps on
+ * shift). The union taught this lane the weapon rack.
+ */
+const POST_SIGNS: Array<{ tiles: readonly Tile[]; kind: 'cook' | 'keeper' | 'drill' }> =
+  POST_SIGN_ROWS.filter(
+    (r): r is (typeof POST_SIGN_ROWS)[number] & { kind: 'cook' | 'keeper' | 'drill' } =>
+      r.kind === 'cook' || r.kind === 'keeper' || r.kind === 'drill',
+  ).map((r) => ({ tiles: r.match, kind: r.kind }));
 
 export function garrisonAll(b: DungeonBuild): void {
   const { c, rMobs, origin } = b;

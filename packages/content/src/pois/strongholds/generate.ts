@@ -1,4 +1,5 @@
 import { Rng, TILE_DEFS, TILE_SKIP, Tile, hashCoords, hashString } from '@arx/shared';
+import { POST_SIGN_ROWS } from '../postSigns.js';
 import type { PrefabDef } from '../../maps/prefab.js';
 import type { KnotPost, StrongholdDef, StrongholdKnot, StrongholdWard } from './types.js';
 import { KNOT_SPACING, STRONGHOLD_BODIES_MAX, STRONGHOLD_BODIES_MIN } from './types.js';
@@ -1106,32 +1107,11 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
   }
   // THE POST LAW: the signature furniture a body works at, and the
   // hours it keeps — the camp reads differently at noon and midnight.
-  const POST_SIGNS: Array<{
-    match: readonly Tile[];
-    post: KnotPost;
-    hours?: { from: number; to: number };
-  }> = [
-    { match: [Tile.CookPot, Tile.MeatSpit, Tile.Campfire], post: 'cook' },
-    { match: [Tile.TargetDummy, Tile.SpearRack, Tile.WeaponRack], post: 'drill', hours: { from: 6, to: 20 } },
-    { match: [Tile.TentHide, Tile.TentWar], post: 'rest', hours: { from: 19, to: 7 } },
-    { match: [Tile.SkullTotem, Tile.Brazier, Tile.WarDrum], post: 'vigil' },
-    { match: [Tile.PrisonCage, Tile.BeastNest], post: 'keeper' },
-    // THE DROWNED CHARTER's furniture: the shoal's work. Harpoon
-    // yards drill by day; the totems and the lure are watched (the
-    // cairn clock below turns those vigils nocturnal — the tidecaller
-    // keeps the dark hours); roe and beached hulls are KEPT; the
-    // catch is tended like any hearth.
-    { match: [Tile.HarpoonRack], post: 'drill', hours: { from: 6, to: 20 } },
-    { match: [Tile.TideTotem, Tile.LurePole], post: 'vigil' },
-    { match: [Tile.RoeNest, Tile.Dugout], post: 'keeper' },
-    { match: [Tile.FishRack, Tile.CatchBasket], post: 'cook' },
-    // The craftsmen's shelf: the shelter sleeps its tenant by night
-    // (the tent's law in reed), the smoker is a hearth, and the
-    // benches, pools, and pans are work someone KEEPS.
-    { match: [Tile.ReedShelter], post: 'rest', hours: { from: 19, to: 7 } },
-    { match: [Tile.SmokeTripod], post: 'cook' },
-    { match: [Tile.MendingBench, Tile.ShellBench, Tile.KeepPool, Tile.SaltPan], post: 'keeper' },
-  ];
+  // THE ONE FURNITURE TABLE (../postSigns.ts) — this lane's clock law:
+  // a stronghold's vigil is kept round the clock, except under cairn
+  // walls where the dead's own hours turn it nocturnal (below). The
+  // union taught this lane the bonfire, the bench, and the brazier
+  // rows the camps always knew.
 
   // Gate captains and wardens (THE CAPTAIN LAW), picket watches on
   // the roads, post-anchored knots in the wards.
@@ -1191,7 +1171,7 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
       post: KnotPost;
       hours?: { from: number; to: number };
     }> = [];
-    for (const sign of POST_SIGNS) {
+    for (const sign of POST_SIGN_ROWS) {
       if (posts.length >= wanted) break;
       let found: [number, number] | null = null;
       let furniture: [number, number] | null = null;
@@ -1221,15 +1201,15 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
         // The beast families keep their clock through the den: a
         // thicket-wall nest is a DAY rest (nocturnal denners), not a
         // keeper's pen.
-        const denRest = sign.post === 'keeper' && style.wall === 'thicket';
+        const denRest = sign.kind === 'keeper' && style.wall === 'thicket';
         // The dead keep the opposite clock: a cairn vigil STIRS at
         // night — grave rows crowded at midnight, quiet at noon.
-        const graveVigil = sign.post === 'vigil' && style.wall === 'cairn';
+        const graveVigil = sign.kind === 'vigil' && style.wall === 'cairn';
         posts.push({
           x: found[0],
           y: found[1],
           at: furniture,
-          post: denRest ? 'rest' : sign.post,
+          post: denRest ? 'rest' : sign.kind,
           ...(denRest
             ? { hours: { from: 7, to: 19 } }
             : graveVigil

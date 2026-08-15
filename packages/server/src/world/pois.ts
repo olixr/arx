@@ -19,6 +19,7 @@ import {
   PLANNED_ZONE_RECTS,
   POI_DEFS,
   POI_PREFABS,
+  POST_SIGN_ROWS,
   STRONGHOLD_PREFABS,
   ROAD_SHOULDER,
   dangerLaw,
@@ -1040,36 +1041,11 @@ export function composePoi(
   const postSeats: PostSeat[] = [];
   {
     const beastFam = def.family === 'wolfkin' || def.family === 'lynxkin';
-    const POI_POST_SIGNS: Array<{
-      match: readonly Tile[];
-      kind: PostKind;
-      seats: number;
-      hours?: { from: number; to: number };
-    }> = [
-      // The fire seats a circle — the gathered camp, cooking.
-      { match: [Tile.CookPot, Tile.MeatSpit, Tile.Bonfire, Tile.Campfire], kind: 'cook', seats: 3 },
-      { match: [Tile.TargetDummy, Tile.SpearRack, Tile.WeaponRack], kind: 'drill', seats: 1, hours: { from: 6, to: 20 } },
-      { match: [Tile.TentHide, Tile.TentWar], kind: 'rest', seats: 1, hours: { from: 19, to: 7 } },
-      // A bench or chair is a seat kept — the refectory the dead
-      // never left, the wayside bench a brigand loafs on.
-      { match: [Tile.Bench, Tile.Chair], kind: 'rest', seats: 1 },
-      { match: [Tile.SkullTotem, Tile.Brazier, Tile.WarBrazier, Tile.StandingTorch], kind: 'vigil', seats: 1, hours: { from: 18, to: 6 } },
-      { match: [Tile.PrisonCage, Tile.BeastNest], kind: 'keeper', seats: 1 },
-      // THE CRAFTSMEN OF THE BANKS: the working village keeps its own
-      // hours — the shelter is the shoal's tent (sleepers by night),
-      // the smoker is tended like any hearth, and the mending, shell,
-      // and keep-pool work is KEPT through the day.
-      { match: [Tile.ReedShelter], kind: 'rest', seats: 1, hours: { from: 19, to: 7 } },
-      { match: [Tile.SmokeTripod], kind: 'cook', seats: 1 },
-      { match: [Tile.MendingBench, Tile.ShellBench, Tile.KeepPool, Tile.SaltPan], kind: 'keeper', seats: 1 },
-      // THE DROWNED VILLAGES: the Charter's remaining rows arrive at
-      // POI scale — harpoon yards drill by day, the totems and the
-      // lure keep the dark hours (the shoal's own night watch).
-      { match: [Tile.HarpoonRack], kind: 'drill', seats: 1, hours: { from: 6, to: 20 } },
-      { match: [Tile.TideTotem, Tile.LurePole], kind: 'vigil', seats: 1, hours: { from: 18, to: 6 } },
-    ];
+    // THE ONE FURNITURE TABLE (content/pois/postSigns.ts) — this lane's
+    // clock law: a camp's vigil is the NIGHT watch (18-6). Everything
+    // else the furniture already knows.
     const claimed: Array<[number, number]> = [];
-    for (const sign of POI_POST_SIGNS) {
+    for (const sign of POST_SIGN_ROWS) {
       for (let zy = 1; zy < zh - 1; zy++) {
         for (let zx = 1; zx < zw - 1; zx++) {
           if (!(sign.match as readonly number[]).includes(ground[zy * zw + zx]!)) continue;
@@ -1094,7 +1070,9 @@ export function composePoi(
               ? undefined
               : denRest
                 ? { from: 7, to: 19 }
-                : sign.hours;
+                : sign.kind === 'vigil'
+                  ? { from: 18, to: 6 }
+                  : sign.hours;
           for (const [sx, sy] of spots) {
             postSeats.push({
               x: originX + sx + 0.5,

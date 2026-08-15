@@ -51,7 +51,9 @@ import {
   validateNpcDef,
   validatePoiDef,
   validateVoice,
+  validateZone,
   zoneFromJson,
+  zonePlacementErrors,
   type GrowthRow,
   larderEpoch,
   type LootTableDef,
@@ -109,6 +111,20 @@ try {
     try {
       const json = JSON.parse(readFileSync(join(mapsDir, file), 'utf8')) as ZoneJson;
       const zone = zoneFromJson(json);
+      // THE ONE ZONE GATE holds at boot too (core-audit debt 4 — the
+      // header always claimed it did). Malformed placements REFUSE the
+      // file (a 1e9 spawn count would hang the boot); a builder-law
+      // verdict only WARNS here — refusing a standing town zone over a
+      // fence drift is the bigger hazard, and the Studio's save door
+      // keeps the hard gate.
+      const placementErrors = zonePlacementErrors(zone);
+      if (placementErrors.length > 0) {
+        throw new Error(`placements invalid: ${placementErrors[0]}`);
+      }
+      const verdict = validateZone(zone);
+      if (!verdict.ok) {
+        console.warn(`[server] zone '${json.id}' fails the builder replay (${verdict.error}) — loaded anyway (grandfathered; re-save in the Studio to heal)`);
+      }
       const idx = zones.findIndex((z) => z.id === zone.id);
       if (idx === -1) zones.push(zone);
       else zones[idx] = zone;
@@ -138,6 +154,22 @@ if (config.requireInvite) {
     console.warn('[server] WARNING: invite required but NO open codes exist — nobody can register. Set INVITE_CODE in .env.');
   }
 }
+
+// NPC actors + routines load FIRST among the POI family's refs — pure
+// DB reads, hoisted above the content block so the POI validator can
+// check actor/routine references against the LIVE roster (Studio-born
+// entries included). Boot used to validate with the authored
+// registries only, while the CMS PUT validated with the live ids: a
+// def naming a Studio-born actor saved fine, then silently reverted to
+// its authored twin on the very next boot (core-audit debt 3).
+// registerActors/registerRoutines still run at their old station,
+// from these same results.
+const actorSync = await syncNpcActors(db, [...NPC_ACTORS.values()]);
+const actorLoad = await loadNpcActors(db);
+const rtnSeed = await seedRoutines(db, [...ROUTINES.values()]);
+const rtnLoad = await loadRoutines(db);
+const liveActorIds = new Set(actorLoad.actors.map((a) => a.id));
+const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
 
 // Bestiary + loot tables, DB-first under the two-hash truth law: the
 // shipped registries seed content_docs, the runtime reads BACK from
@@ -195,7 +227,7 @@ if (config.requireInvite) {
   const poiDocs = await loadContentDocs(db, 'poi');
   const goodPois: PoiDef[] = [];
   for (const docRow of poiDocs) {
-    const res = validatePoiDef(docRow.doc);
+    const res = validatePoiDef(docRow.doc, { actorIds: liveActorIds, routineIds: liveRoutineIds });
     if (!res.ok) {
       console.warn(`[content] DB poi '${docRow.id}' invalid (${res.errors[0]}) — authored def stands`);
       const authored = AUTHORED_POI_DEFS.get(docRow.id);
@@ -452,17 +484,15 @@ for (const zone of zones) {
 
 // NPC actors, DB-first: authored JSON seeds the relational tables,
 // then the runtime roster is read BACK from the DB — the same tables
-// dev tools will edit. One validator guards both directions.
-const actorSync = await syncNpcActors(db, [...NPC_ACTORS.values()]);
-const actorLoad = await loadNpcActors(db);
+// dev tools will edit. One validator guards both directions. (Loaded
+// in the content phase above so the POI validator saw the live ids;
+// registered here, at the same station as always.)
 for (const err of actorLoad.errors) console.warn(`[npc] invalid DB actor: ${err}`);
 game.registerActors(actorLoad.actors);
 
 // Routines, DB-first under the same truth law — registered BEFORE the
 // placements that reference them, so a dangling routine id warns at
 // boot instead of failing silently at spawn time.
-const rtnSeed = await seedRoutines(db, [...ROUTINES.values()]);
-const rtnLoad = await loadRoutines(db);
 for (const err of rtnLoad.errors) console.warn(`[npc] invalid DB routine: ${err}`);
 game.registerRoutines(rtnLoad.routines);
 game.routineSource = () => loadRoutines(db); // /routinereload's live wire
