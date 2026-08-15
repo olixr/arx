@@ -60,6 +60,35 @@ allocation — a reused ring buffer on the anim entry. Death adds a
 last burst of gel splats at the point of collapse (oozes leave no
 corpse — the splat is the funeral).
 
-## As-built
+## As-built (SHIPPED 6573b6b5, 2026-08-15)
 
-(filled at ship)
+- **Content**: 7 new NpcDefs (giant_slime, gray_ooze, ochre_jelly,
+  ochre_half, gelatinous_cube, black_pudding, pudding_half) beside the
+  upgraded pair; `OOZE_IDS`/`isOozeId` in npcs.ts is the ONE family
+  register (tames refusal reads it; the client keeps a painter-side
+  mirror in `oozeLook`). 8 loot tables; FORMLESS lanes family-wide;
+  wild entries (marsh knots + giant lead, night-wood ochre); garrison
+  seats in cavern/crypt/mine/heartwood.
+- **Painters** (rig.ts): `oozeLook` / `drawOoze` / `oozeExtents` /
+  `drawOozeTrailDab`. Five plan painters share `oozeRim` (stationed
+  contour: seeded facet + <1 Hz breath + travel bulge + gather coil)
+  and `oozeArm` (the pseudopod, spring-only). One strike clock
+  (`oozeStrike`: gather 0..0.7, spring 0.7..1).
+- **Renderer**: legless routing by `oozeLook`, per-plan sprite extents,
+  `oozeTrail` ring on AnimState (cap 12, `OOZE_TRAIL_MS` 2.6 s, painted
+  in drawShadow so bodies walk over the wet, hopper spacing 0.52 /
+  slider 0.32), family-wide corpse skip + two-stage gel burst.
+- **Lab**: `slimelab.html` → `src/dev/slimelab.ts` — the standing ooze
+  sheet (plan rows × 8 bands × idle/move/strike, line-up, hurt, rulers,
+  seed spread, trail cells, `?ol=1` dilate sim, `?rows`/`?cols`/`?s`).
+- **Audit verdicts paid**: gray's floating-boulder read → flattened to
+  ysq 0.3 with contour-riding gleam dashes (floating chips banned);
+  ochre's ground-level lobes read as turtle flippers → lobes pinned to
+  the CROWN arc; premature gather-arm nubs → arms spring-only, the
+  gather telegraph moved INTO the rim coil; pudding's matte-rock read →
+  tar values doubled (lit arris +26, chips +72, beads +16 riding lighter
+  than the body).
+- **Not done, deliberate**: no ooze boss (the Dread Crown docket owns
+  crowns); no bespoke engulf mechanic (the cube speaks through chill +
+  the existing melee law); trail is per-entity memory, never a decal
+  system.
