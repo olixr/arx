@@ -186,6 +186,13 @@ export function sketch(
   rows: string[],
   markers: Record<string, Marker> = {},
   elevRows?: string[],
+  // Per-sketch legend extension: the global ASCII ran out at
+  // Kingsdelf, so a themed sketch family may RE-VOICE marks locally
+  // (resolution order: markers, then the local legend, then the
+  // global). A local mark shadows the global one for THIS sketch
+  // only — the skral camps fly ')' as a drying rack while the war
+  // camps keep it as a meat rack.
+  legendExt?: Record<string, number>,
 ): PrefabDef {
   const width = rows[0]!.length;
   const height = rows.length;
@@ -223,7 +230,7 @@ export function sketch(
         });
         continue;
       }
-      const tile = LEGEND[ch];
+      const tile = legendExt?.[ch] ?? LEGEND[ch];
       if (tile === undefined) throw new Error(`${id}: unknown sketch char '${ch}'`);
       ground[y * width + x] = tile;
     }
@@ -372,8 +379,29 @@ const skralMarks: Record<string, Marker> = {
 };
 
 /**
+ * THE BANKS GET THEIR GOODS (docs/skral-decor-plan.md): the shoal
+ * camps re-voice the war camp's own punctuation through a local
+ * legend — the same marks, dressed in bank-stuff. The skral build
+ * only in what the water gave them.
+ */
+const skralLegend: Record<string, number> = {
+  ')': Tile.FishRack,
+  '?': Tile.TideTotem,
+  '`': Tile.NetFrame,
+  '^': Tile.Dugout,
+  '>': Tile.HarpoonRack,
+  o: Tile.ShellMidden,
+  '{': Tile.FishTrap,
+  '0': Tile.RoeNest,
+  '!': Tile.LurePole,
+  '&': Tile.TideAltar,
+  '-': Tile.CatchBasket,
+  '"': Tile.WhaleRibs,
+};
+
+/**
  * THE SKRAL CAMPS (docs/skral-plan.md): the brine-folk BUILD, but only
- * in bank-stuff — reed shelters, lashed racks heavy with the catch,
+ * in bank-stuff — lashed racks heavy with the catch, a beached dugout,
  * and always the dug pool at the heart (the '~' shallows: a camp that
  * carries its own water is a camp that could only ever stand on the
  * bank, which is exactly what the def's shore flag promises).
@@ -384,36 +412,42 @@ const skralWeir = sketch(
   [
     '____,,,,,,____',
     '__,::::::::,__',
-    '_,:.)..^..):,_',
+    '_,:.)..^..!:,_',
     '_,:1.~~~.2.:,_',
     ',::.~~~~~.f:,_',
-    '_,:3.~~~.).:,_',
-    '_,:.`..W...:,_',
-    ',::0.f.-..)::,',
+    '_,:3.~~~.{.:,_',
+    '_,:.`..W.-.:,_',
+    ',::0.f....)::,',
     '_,::::?:::,,__',
     '____,,,,______',
   ],
   skralMarks,
+  undefined,
+  skralLegend,
 );
 
-/** The totem-ring: shell-stacked watchers around the pool. */
+/** The totem-ring: the shoal's shrine — the ancestor's ribs and the
+ *  tide's own table at the head of the pool, watchers all around. */
 const skralTotems = sketch(
   'poi_skral_totems',
   'Skral totem-ring',
   [
     '____,,,,____',
     '__,::::::,__',
-    '_,:?.).?.:,_',
+    '_,:?."&.?:,_',
     ',::.~~~.1::,',
     ',:2~~~.f.::,',
-    '_,:?.W.?.:,_',
-    '__,:::::0,__',
+    '_,:?.W..!:,_',
+    '__,::::.0,__',
     '____,,,,____',
   ],
   skralMarks,
+  undefined,
+  skralLegend,
 );
 
-/** The shell-midden: an open catch-camp, racks and refuse and smoke. */
+/** The shell-midden: an open catch-camp — heaps, traps, and the
+ *  day's baskets between the fires. */
 const skralMidden = sketch(
   'poi_skral_midden',
   'Skral shell-midden',
@@ -421,13 +455,15 @@ const skralMidden = sketch(
     '____,,,,____',
     '__,::::::,__',
     '_,:o.1.^.:,_',
-    ',::.{.f..::,',
+    ',::.{.f.)::,',
     ',::3.-.o.::,',
-    '_,:.o.W2.:,_',
+    '_,:.o.W2!:,_',
     '__,::`:::,__',
     '____,,,,____',
   ],
   skralMarks,
+  undefined,
+  skralLegend,
 );
 
 const ogreMarks: Record<string, Marker> = {

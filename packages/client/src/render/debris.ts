@@ -102,7 +102,21 @@ export type SmashKind =
   | 'stocks'
   | 'coldcamp'
   | 'lootchest'
-  | 'candles';
+  | 'candles'
+  // THE BANKS GET THEIR GOODS: shore wreckage — lashings let go,
+  // wicker springs, the catch escapes, the clutch pops wet, and old
+  // bone falls with a monument's weight.
+  | 'fishrack'
+  | 'tidetotem'
+  | 'net'
+  | 'dugout'
+  | 'harpoons'
+  | 'midden'
+  | 'fishtrap'
+  | 'roe'
+  | 'lure'
+  | 'catch'
+  | 'greatribs';
 
 export interface DebrisChunk {
   x: number; // world coords (tile units)
@@ -579,6 +593,19 @@ const CHIP_TONE: Record<SmashKind, string> = {
   coldcamp: '#514c4e',
   lootchest: '#a58258',
   candles: '#e6dcc0',
+  // Shore wreckage: silvered driftwood, bone, shell, reed-gold
+  // wicker, and the wet teal of the clutch.
+  fishrack: '#8d8672',
+  tidetotem: '#cfc7ae',
+  net: '#8d8672',
+  dugout: '#8d8672',
+  harpoons: '#8d8672',
+  midden: '#ded5c4',
+  fishtrap: '#a08b58',
+  roe: '#9fe0d0',
+  lure: '#8d8672',
+  catch: '#a08b58',
+  greatribs: '#cfc7ae',
 };
 
 const pick = <T>(rand: () => number, arr: readonly T[]): T =>
@@ -1437,6 +1464,156 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
         out.push({ len: 0.09, wid: 0.06, color: pick(rand, ['#453f52', '#5b5566']), pace: 0.75 });
       }
       out.push({ len: 0.04, wid: 0.035, color: '#f2c94c', stripe: '#fff0be', round: true, pace: 1.4 });
+      break;
+    }
+    case 'fishrack': {
+      // The lashings let go first: the rails and shear-legs scatter
+      // silver-gray, kelp cord drops limp and short, and the catch
+      // FLIES — five fish going back to the ground they came from.
+      wood('#8d8672', 4 + Math.floor(rand() * 2), 0.24, 0.4, 0.08);
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.1 + rand() * 0.05, wid: 0.03, color: '#3f5c48', stripe: '#5a7a5c', pace: 0.55 });
+      }
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.12 + rand() * 0.05, wid: 0.045, color: pick(rand, ['#b8c4c6', '#dde6e2']), stripe: '#4a5a5e', round: true, pace: 1.3 });
+      }
+      break;
+    }
+    case 'tidetotem': {
+      // The post shears at the barnacle line, the skull keeps
+      // together (the statue's head law, in bone), the shell strings
+      // rain straight down, and the fin banner sails — the lightest
+      // thing always leaves furthest.
+      wood('#8d8672', 3 + Math.floor(rand() * 2), 0.22, 0.38, 0.09);
+      out.push({ len: 0.16, wid: 0.13, color: '#cfc7ae', stripe: '#e6dfc8', round: true, pace: 0.85 });
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.045, wid: 0.035, color: pick(rand, ['#ded5c4', '#c8b9a0']), round: true, pace: 0.6 });
+      }
+      out.push({ len: 0.18 + rand() * 0.06, wid: 0.1, color: '#4fae9a', stripe: '#7fd8c8', pace: 1.45 });
+      break;
+    }
+    case 'net': {
+      // A net dies quietly: the posts tip, the cork floats BOUNCE,
+      // and the mesh comes down in limp gray hanks that barely
+      // clear the frame — cord has no throw in it.
+      wood('#8d8672', 2, 0.3, 0.42, 0.07);
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.14 + rand() * 0.08, wid: 0.03, color: pick(rand, ['#a8b2a4', '#8a948a']), pace: 0.5 });
+      }
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.05, wid: 0.045, color: '#c2ab6e', stripe: '#d8c288', round: true, pace: 1.35 });
+      }
+      out.push({ len: 0.07, wid: 0.06, color: '#c98a74', round: true, pace: 0.9 });
+      break;
+    }
+    case 'dugout': {
+      // A hull is years of hollowing: it lets go in long heavy
+      // strakes that drop close, the thwart tumbles, the hide patch
+      // flaps off soft — and the paddle leaves LAST and brightest
+      // (the sword law, afloat). Two beads of bilge water go with it.
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.3 + rand() * 0.14, wid: 0.09, color: pick(rand, ['#8d8672', '#5e5949', '#7a745f']), stripe: rand() < 0.5 ? '#b5ad94' : null, pace: 0.7 });
+      }
+      out.push({ len: 0.12, wid: 0.08, color: '#8a6f52', round: true, pace: 0.85 });
+      out.push({ len: 0.34, wid: 0.055, color: '#b5ad94', stripe: '#d4ccb2', pace: 1.3 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.05, wid: 0.045, color: '#4a6068', round: true, pace: 1.1 });
+      }
+      break;
+    }
+    case 'harpoons': {
+      // The stand folds and the arsenal scatters: long thin shafts
+      // tumbling far, the bone points flying brightest, the rib
+      // A-frame dropping in two heavy sweeps.
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.3 + rand() * 0.1, wid: 0.035, color: pick(rand, ['#8d8672', '#7a745f']), stripe: '#b5ad94', pace: 1.15 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.09, wid: 0.03, color: '#efe9d8', stripe: '#cfc7ae', pace: 1.4 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.2 + rand() * 0.06, wid: 0.06, color: '#b5ac91', round: true, pace: 0.7 });
+      }
+      break;
+    }
+    case 'midden': {
+      // A generation of shells sprays light and NEAR — shell has no
+      // weight to carry it — with the mussel darks in the pale spray
+      // and the fishbone comb spinning off whole.
+      for (let i = 0; i < 7; i++) {
+        out.push({ len: 0.05 + rand() * 0.04, wid: 0.04, color: pick(rand, ['#ded5c4', '#c8b9a0', '#d0bfa8']), round: true, pace: 1.2 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.05, wid: 0.028, color: '#3e4650', round: true, pace: 1.0 });
+      }
+      out.push({ len: 0.12, wid: 0.03, color: '#cfc7ae', stripe: '#e6dfc8', pace: 1.3 });
+      break;
+    }
+    case 'fishtrap': {
+      // Sprung wicker: the hoops leap off ROUND and spinning, the
+      // withies splinter dry — and whatever was in the funnel flops
+      // out silver and indignant.
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.13, wid: 0.11, color: pick(rand, ['#a08b58', '#8a7748']), stripe: '#c2ab6e', round: true, pace: 1.25 });
+      }
+      wood('#a08b58', 4, 0.16, 0.3, 0.05);
+      out.push({ len: 0.13, wid: 0.05, color: '#b8c4c6', stripe: '#dde6e2', round: true, pace: 1.35 });
+      break;
+    }
+    case 'roe': {
+      // The clutch pops WET: teal beads scattering close and low,
+      // kelp scraps slumping where they lay — nothing here was ever
+      // meant to fly, and none of it does.
+      for (let i = 0; i < 6; i++) {
+        out.push({ len: 0.055 + rand() * 0.03, wid: 0.05, color: pick(rand, ['#9fe0d0', '#c5e6da', '#6fae9e']), round: true, pace: 0.7 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.12 + rand() * 0.06, wid: 0.04, color: pick(rand, ['#3f5c48', '#5a7a5c']), pace: 0.5 });
+      }
+      break;
+    }
+    case 'lure': {
+      // The pole cracks in two long staves, the bone cage rains its
+      // ribs — and the jelly SLUMPS: one soft heavy bead of light
+      // going out where it lands, its tendrils beside it.
+      wood('#8d8672', 2, 0.32, 0.46, 0.06);
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.07, wid: 0.025, color: '#b5ac91', stripe: '#cfc7ae', pace: 1.1 });
+      }
+      out.push({ len: 0.13, wid: 0.11, color: '#7fd8c8', stripe: '#b2ede2', round: true, pace: 0.4 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.09, wid: 0.02, color: '#6fae9e', pace: 0.5 });
+      }
+      break;
+    }
+    case 'catch': {
+      // The creels burst and the haul ESCAPES: a spray of silver
+      // going every way at once — the fastest debris on the bank —
+      // over the slower tumble of sprung wicker.
+      wood('#a08b58', 3 + Math.floor(rand() * 2), 0.18, 0.3, 0.06);
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.12, wid: 0.1, color: '#8a7748', stripe: '#c2ab6e', round: true, pace: 1.1 });
+      }
+      for (let i = 0; i < 6; i++) {
+        out.push({ len: 0.1 + rand() * 0.05, wid: 0.035, color: pick(rand, ['#b8c4c6', '#dde6e2']), stripe: '#4a5a5e', round: true, pace: 1.45 });
+      }
+      break;
+    }
+    case 'greatribs': {
+      // The monument comes down the way monuments do: in slabs of
+      // bone with torso weight, the snapped crowns tumbling round
+      // end-grain, barnacle grit spraying pale — and the shell
+      // string leaves LAST, still strung.
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.26 + rand() * 0.14, wid: 0.09, color: pick(rand, ['#cfc7ae', '#b5ac91', '#e6dfc8']), stripe: rand() < 0.4 ? '#efe9d8' : null, pace: 0.7 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.14, wid: 0.12, color: '#b5ac91', stripe: '#efe9d8', round: true, pace: 0.8 });
+      }
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.04, wid: 0.03, color: '#c5bda8', round: true, pace: 1.2 });
+      }
+      out.push({ len: 0.24, wid: 0.035, color: '#3f5c48', stripe: '#ded5c4', pace: 1.25 });
       break;
     }
   }

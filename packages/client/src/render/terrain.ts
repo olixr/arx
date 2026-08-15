@@ -513,6 +513,9 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     // THE LONG DARK FURNISHED: dungeon props stand on whatever the
     // dark laid down — flagstone, raw cave floor, or rubble.
     if (t >= Tile.MossBarrel && t <= Tile.IronGrate) return nearestFloor(ground, tx, ty);
+    // THE BANKS GET THEIR GOODS: shore props stand on whatever bank
+    // the tide left — sand, trampled dirt, or meadow.
+    if (t >= Tile.FishRack && t <= Tile.WhaleRibs) return nearestFloor(ground, tx, ty);
     // The palisade stands in open country like the garrison curtain:
     // whatever walkable terrain fronts it continues beneath (south
     // first — that side's base sliver shows), and a family member

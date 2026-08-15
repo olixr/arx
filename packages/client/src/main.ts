@@ -2037,7 +2037,10 @@ game.onFx = (fx) => {
         kind === 'mossbarrel' || kind === 'urns' ||
         // The gibbet's iron basket rings when it comes down; the tin
         // cup gives the cold camp one hollow note.
-        kind === 'gibbet' || kind === 'coldcamp',
+        kind === 'gibbet' || kind === 'coldcamp' ||
+        // A dugout is forty seasons of hollowing — the biggest drum
+        // on the bank when it finally lets go.
+        kind === 'dugout',
       ),
     );
     // Stone-weight pieces land heavy: marble, mithril, and old
@@ -2047,7 +2050,9 @@ game.onFx = (fx) => {
         kind === 'table' || kind === 'palisade' || kind === 'statue' || kind === 'fountain' || kind === 'waystone' ||
           kind === 'anvil' || kind === 'runestone' || kind === 'wardarch' || kind === 'runepillar' ||
           // Kingdom-stone and joined iron land like the masonry they are.
-          kind === 'sarcophagus' || kind === 'brokenpillar' || kind === 'oldstatue' || kind === 'minecart'
+          kind === 'sarcophagus' || kind === 'brokenpillar' || kind === 'oldstatue' || kind === 'minecart' ||
+          // A sea-beast's rib falls with a monument's weight.
+          kind === 'greatribs'
           ? 3.2
           : 2.2,
       );

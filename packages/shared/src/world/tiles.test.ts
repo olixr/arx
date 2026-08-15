@@ -369,6 +369,21 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.ColdCamp, 'coldcamp', 1],
     [Tile.LootedChest, 'lootchest', 1],
     [Tile.CandleShrine, 'candles', 1],
+    // THE BANKS GET THEIR GOODS: lashed bank-stuff pops in a blow,
+    // the hollowed hull and joined bone hold a few, and the great
+    // ribs at four are the kit's hardest bones. The TideAltar is
+    // deliberately NOT here (the tide keeps its own).
+    [Tile.FishRack, 'fishrack', 1],
+    [Tile.TideTotem, 'tidetotem', 3],
+    [Tile.NetFrame, 'net', 1],
+    [Tile.Dugout, 'dugout', 3],
+    [Tile.HarpoonRack, 'harpoons', 2],
+    [Tile.ShellMidden, 'midden', 1],
+    [Tile.FishTrap, 'fishtrap', 1],
+    [Tile.RoeNest, 'roe', 1],
+    [Tile.LurePole, 'lure', 2],
+    [Tile.CatchBasket, 'catch', 1],
+    [Tile.WhaleRibs, 'greatribs', 4],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {
@@ -427,6 +442,10 @@ test('load-bearing scenery is not smashable', () => {
     Tile.WallWeb,
     Tile.DripPool,
     Tile.IronGrate,
+    // THE BANKS GET THEIR GOODS: the tide altar never breaks — the
+    // bonfire law reaching the water. The sea placed it; the sea
+    // keeps it.
+    Tile.TideAltar,
   ]) {
     assert.equal(destructibleInfo(t), null);
   }

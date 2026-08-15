@@ -149,6 +149,20 @@ export const TILE_CATEGORIES: TileCategory[] = [
     ],
   },
   {
+    // THE BANKS GET THEIR GOODS: the shore-camp shelf — the
+    // landmarks first (the ribs and the idols set the bank's scene),
+    // then the boats and lights, then the working goods of a fishing
+    // people.
+    id: 'skral',
+    label: 'Shore camp',
+    tiles: [
+      Tile.WhaleRibs, Tile.TideTotem, Tile.TideAltar,
+      Tile.Dugout, Tile.LurePole,
+      Tile.FishRack, Tile.NetFrame, Tile.HarpoonRack,
+      Tile.FishTrap, Tile.CatchBasket, Tile.ShellMidden, Tile.RoeNest,
+    ],
+  },
+  {
     // THE FAIR HOUSE FURNISHED: the elven shelf — lights and cloth
     // first (the pieces that set a scene), then furniture, stations,
     // and the garden stone.

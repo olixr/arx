@@ -688,6 +688,36 @@ export enum Tile {
   CandleShrine = 367,
   /** An iron grate over black depth; the air below breathes up through the bars. */
   IronGrate = 368,
+  // THE BANKS GET THEIR GOODS — the skral shore-camp kit
+  // (docs/skral-decor-plan.md). The kit's voice: FOUND, NEVER FELLED
+  // — everything the brine-folk own came off the bank or out of the
+  // water. Driftwood silvered by salt, kelp-cord lashings, bone and
+  // shell and net; no saw-cut ends, no rope, no iron; and every
+  // piece is wet where it meets the ground.
+  /** The catch drying head-down on lashed driftwood rails. */
+  FishRack = 369,
+  /** A fish-skull idol on a barnacled post, flying a fin banner. */
+  TideTotem = 370,
+  /** A knotted net hung to dry — cork floats, one mended tear. */
+  NetFrame = 371,
+  /** A dugout canoe hauled up the bank; some lie keel-up, patched. */
+  Dugout = 372,
+  /** Bone-tipped harpoons leaning points-up on a lashed rib stand. */
+  HarpoonRack = 373,
+  /** The camp's shell-heap: cracked fans and spirals, wet on top. */
+  ShellMidden = 374,
+  /** A woven funnel creel on its side, dark mouth to the camera. */
+  FishTrap = 375,
+  /** A glistening clutch of roe in a kelp-ringed hollow. */
+  RoeNest = 376,
+  /** A caged deep-jelly on a bowed pole — the shoal's night light. */
+  LurePole = 377,
+  /** A wave-worn offering slab the coral is taking back. It belongs to the tide; it does not break. */
+  TideAltar = 378,
+  /** Creels brimming with the day's silver — one tipped, spilling. */
+  CatchBasket = 379,
+  /** A sea-beast's ribcage arching from the ground; the camp moved in under it. */
+  WhaleRibs = 380,
 }
 
 export enum Detail {
@@ -1247,6 +1277,23 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.LootedChest]: { name: 'looted chest', solid: true, color: '#66513c', raised: true, topColor: '#84684a' },
   [Tile.CandleShrine]: { name: 'grave candles', solid: true, color: '#6e675a', raised: true, topColor: '#e8c26a' },
   [Tile.IronGrate]: { name: 'iron grate', solid: false, color: '#454049', raised: true, topColor: '#5d5670' },
+  // THE BANKS GET THEIR GOODS — minimap voice: silvered driftwood
+  // grays and bone pales, each a full value step off the three
+  // grounds a shore camp stands on (meadow '#4f7c35', trampled
+  // '#96744c', sand '#ddc98d') — cool against the warm bank, so a
+  // dressed shore reads as a CAMP at chart scale, never as flotsam.
+  [Tile.FishRack]: { name: 'drying rack', solid: true, color: '#75705f', raised: true, topColor: '#b8c4c6' },
+  [Tile.TideTotem]: { name: 'tide totem', solid: true, color: '#6e6858', raised: true, topColor: '#cfc7ae' },
+  [Tile.NetFrame]: { name: 'hung net', solid: true, color: '#5c6656', raised: true, topColor: '#8d8672' },
+  [Tile.Dugout]: { name: 'dugout canoe', solid: true, color: '#6b6353', raised: true, topColor: '#8d8672' },
+  [Tile.HarpoonRack]: { name: 'harpoon rack', solid: true, color: '#7a7464', raised: true, topColor: '#cfc7ae' },
+  [Tile.ShellMidden]: { name: 'shell midden', solid: true, color: '#a89e8c', raised: true, topColor: '#ded5c4' },
+  [Tile.FishTrap]: { name: 'fish trap', solid: true, color: '#7c6c44', raised: true, topColor: '#a08b58' },
+  [Tile.RoeNest]: { name: 'roe nest', solid: true, color: '#3f5c48', raised: true, topColor: '#9fe0d0' },
+  [Tile.LurePole]: { name: 'lure pole', solid: true, color: '#6b6353', raised: true, topColor: '#7fd8c8' },
+  [Tile.TideAltar]: { name: 'tide altar', solid: true, color: '#707a80', raised: true, topColor: '#c98a74' },
+  [Tile.CatchBasket]: { name: 'catch baskets', solid: true, color: '#7c6c44', raised: true, topColor: '#b8c4c6' },
+  [Tile.WhaleRibs]: { name: 'great ribs', solid: true, color: '#8a8272', raised: true, topColor: '#e6dfc8' },
 };
 
 /** The four awning silhouettes, index order FOREVER (the id math). */
@@ -1855,6 +1902,21 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.ColdCamp, 0.3],
   [Tile.LootedChest, 0.28],
   [Tile.CandleShrine, 0.26],
+  // THE BANKS GET THEIR GOODS: bank-stuff is lashed sticks and heaps
+  // — you shoulder past the pole, wade around the hull, never bump an
+  // invisible crate. The dugout and the ribs keep the widest stance.
+  [Tile.FishRack, 0.35],
+  [Tile.TideTotem, 0.2],
+  [Tile.NetFrame, 0.35],
+  [Tile.Dugout, 0.45],
+  [Tile.HarpoonRack, 0.3],
+  [Tile.ShellMidden, 0.34],
+  [Tile.FishTrap, 0.32],
+  [Tile.RoeNest, 0.34],
+  [Tile.LurePole, 0.18],
+  [Tile.TideAltar, 0.4],
+  [Tile.CatchBasket, 0.32],
+  [Tile.WhaleRibs, 0.42],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -2068,7 +2130,20 @@ export type DestructibleKind =
   | 'stocks'
   | 'coldcamp'
   | 'lootchest'
-  | 'candles';
+  | 'candles'
+  // THE BANKS GET THEIR GOODS: bank-stuff comes apart wet — lashings
+  // let go, wicker springs, the catch escapes, old bone falls heavy.
+  | 'fishrack'
+  | 'tidetotem'
+  | 'net'
+  | 'dugout'
+  | 'harpoons'
+  | 'midden'
+  | 'fishtrap'
+  | 'roe'
+  | 'lure'
+  | 'catch'
+  | 'greatribs';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -2185,6 +2260,21 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.ColdCamp, { kind: 'coldcamp', respawnSec: 300, hits: 1 }],
   [Tile.LootedChest, { kind: 'lootchest', respawnSec: 300, hits: 1 }],
   [Tile.CandleShrine, { kind: 'candles', respawnSec: 300, hits: 1 }],
+  // THE BANKS GET THEIR GOODS: lashed bank-stuff pops in a blow, the
+  // hollowed hull and joined bone hold a few. The TideAltar is NOT
+  // here — the tide keeps its own (the bonfire law reaching the
+  // water), and the ribs at 4 are the kit's hardest bones.
+  [Tile.FishRack, { kind: 'fishrack', respawnSec: 300, hits: 1 }],
+  [Tile.TideTotem, { kind: 'tidetotem', respawnSec: 600, hits: 3 }],
+  [Tile.NetFrame, { kind: 'net', respawnSec: 300, hits: 1 }],
+  [Tile.Dugout, { kind: 'dugout', respawnSec: 600, hits: 3 }],
+  [Tile.HarpoonRack, { kind: 'harpoons', respawnSec: 300, hits: 2 }],
+  [Tile.ShellMidden, { kind: 'midden', respawnSec: 300, hits: 1 }],
+  [Tile.FishTrap, { kind: 'fishtrap', respawnSec: 300, hits: 1 }],
+  [Tile.RoeNest, { kind: 'roe', respawnSec: 300, hits: 1 }],
+  [Tile.LurePole, { kind: 'lure', respawnSec: 600, hits: 2 }],
+  [Tile.CatchBasket, { kind: 'catch', respawnSec: 300, hits: 1 }],
+  [Tile.WhaleRibs, { kind: 'greatribs', respawnSec: 600, hits: 4 }],
 ]);
 
 /** Every smashable prop tile. */
