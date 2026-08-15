@@ -1620,8 +1620,8 @@ export const CAVE_BAT_LOOK: BatLook = {
   eye: '#e2a63c',
   fang: '#efe9d8',
   nose: '#2e2638',
-  bodyR: 0.26,
-  bodyW: 0.2,
+  bodyR: 0.19,
+  bodyW: 0.175,
   headR: 0.16,
   muzzle: 0.045,
   earLen: 0.23,
@@ -1659,8 +1659,8 @@ export const GIANT_BAT_LOOK: BatLook = {
   eye: '#d89a3c',
   fang: '#efe9d8',
   nose: '#2a1e1c',
-  bodyR: 0.5,
-  bodyW: 0.3,
+  bodyR: 0.38,
+  bodyW: 0.26,
   headR: 0.24,
   muzzle: 0.15,
   earLen: 0.15,
@@ -1697,8 +1697,8 @@ export const DIRE_BAT_LOOK: BatLook = {
   eye: '#d84040',
   fang: '#f2ead6',
   nose: '#201a24',
-  bodyR: 0.44,
-  bodyW: 0.24,
+  bodyR: 0.33,
+  bodyW: 0.215,
   headR: 0.21,
   muzzle: 0.12,
   earLen: 0.3,
@@ -1870,7 +1870,7 @@ export function drawBat(
   // THE HULL IS A PITCHED SOLID — nose and vent poles on the one
   // axis, hover-stretched so the upright tread never collapses to a
   // dot under the head (the style-compressed pitch, membraned).
-  const hullStretch = 1 + 0.18 * (1 - fr.pitchK);
+  const hullStretch = 1 + 0.08 * (1 - fr.pitchK);
   const noseA = look.bodyR * 0.8 * hullStretch;
   const ventA = look.bodyR * 1.0 * hullStretch;
   const noseF = pf.aF * noseA;
@@ -1885,7 +1885,7 @@ export function drawBat(
     const spread = Math.max(0.1, fr.spread);
     const span = look.wingSpan;
     const armL = span * 0.42 * spread;
-    const handL = span * 0.62 * spread;
+    const handL = span * 0.66 * spread;
     // Shoulder on the pitched hull — dorsal and forward, so it rides
     // up the back as the body swings vertical.
     const shA = look.bodyR * 0.22;
@@ -1922,13 +1922,13 @@ export function drawBat(
       // dragon-wing read. The arc breathes with the sim (each rib
       // still drags its station's lag) and compresses a quarter at
       // cruise so speed streamlines without giving up the coverage.
-      const fanArc = (0.22 + 1.38 * u) * spread * (1 - 0.22 * fr.cruiseK);
+      const fanArc = (0.24 + 1.52 * u) * spread * (1 - 0.22 * fr.cruiseK);
       const tipRaise = fr.raiseHand - fanArc - lagK * 0.5;
       // Back-sweep stays modest — depth lives in the fan now, and the
       // vertical drape projects at full height (never y-squashed).
       const backW = (0.05 + 0.45 * u) * len * fr.sweepK;
       const rise =
-        Math.sin(tipRaise) * len * 0.95 +
+        Math.sin(tipRaise) * len * 1.0 +
         flex * u * u * span * 0.3 +
         fr.cruiseK * u * u * span * 0.05;
       tips.push([
@@ -2019,19 +2019,20 @@ export function drawBat(
     // mass along the leading bones — never a screen hairline.
     const p0 = outline[1]!;
     const pw = outline[2]!;
-    if (slabK < 0.3) {
-      const edgeW = s * span * 0.045 * (1 - slabK / 0.3);
+    if (slabK < 0.35) {
+      // The stroke rides the WHOLE outer outline, not just the
+      // leading bones — an edge-on fan collapses to a vertical
+      // sliver of stacked ribs, and every part of that stack is a
+      // folded membrane mass, never a string (the profile verdict).
+      const edgeW = s * span * 0.06 * (1 - slabK / 0.35);
       if (edgeW > 1) {
         ctx.strokeStyle = base;
         ctx.lineWidth = edgeW;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         ctx.beginPath();
-        ctx.moveTo(p0[0], p0[1]);
-        ctx.lineTo(pw[0], pw[1]);
-        const lead = tips[0]!;
-        const pl = P(lead[0], lead[1], lead[2]);
-        ctx.lineTo(pl[0], pl[1]);
+        ctx.moveTo(outer[0]![0], outer[0]![1]);
+        for (let k = 1; k < outer.length; k++) ctx.lineTo(outer[k]![0], outer[k]![1]);
         ctx.stroke();
         ctx.lineCap = 'butt';
         ctx.lineJoin = 'miter';
