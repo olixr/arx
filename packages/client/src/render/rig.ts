@@ -13597,41 +13597,47 @@ export function drawOwlHead(
         ctx.stroke();
       }
     }
-    // The eye: a LARGE forward lamp crowded toward the beak — owl
-    // eyes own the disc; the strike narrows the pupil to a pin.
-    const er = lobeR * (look.elder ? 0.46 : 0.4);
-    const exl = -es * lobeR * 0.2;
+    // THE QUIET LAMP (user redesign: the loud amber ring + bulging
+    // pupil read aggressive) — minimal, in the game's own dialect:
+    // the small dark pupil IS the eye, a THIN amber iris ring hints
+    // the night-lamp, one pin of light gives it life, and a soft
+    // short brow keeps the raptor line without the scowl. Calm at
+    // rest; the screech narrows it to a hunting slit.
+    const er = lobeR * (look.elder ? 0.3 : 0.27);
+    const exl = -es * lobeR * 0.18;
     const eyl = lobeR * 0.02;
     if (!o.dead) {
-      ctx.fillStyle = C(look.eye);
+      const squint = 1 - 0.3 * screech;
+      ctx.fillStyle = o.hurt ? '#ffffff' : OUTLINE;
       ctx.beginPath();
-      facetCircle(ctx, exl, eyl, er, 6, es * 0.5);
+      facetCircle(ctx, exl, eyl, er, 6, es * 0.5, squint);
       ctx.fill();
       if (!o.hurt) {
-        const pr = er * 0.62 * (1 - 0.35 * screech);
-        ctx.fillStyle = OUTLINE;
+        // The iris: a whisper of amber around the dark — never a lamp
+        // that outshines the face.
+        ctx.strokeStyle = look.eye;
+        ctx.lineWidth = Math.max(1, s * 0.013);
         ctx.beginPath();
-        facetCircle(ctx, exl, eyl + er * 0.04, pr, 6, 0.3);
-        ctx.fill();
-        // One glint, up-inner and mirrored — a same-side pair reads
-        // walleyed.
+        facetCircle(ctx, exl, eyl, er * 0.94, 6, es * 0.5, squint);
+        ctx.stroke();
+        // One pin of light, up-inner and mirrored.
         ctx.fillStyle = '#fff7e0';
         ctx.beginPath();
-        facetCircle(ctx, exl - es * er * 0.3, eyl - er * 0.34, er * 0.13, 5, 0.4);
+        facetCircle(ctx, exl - es * er * 0.28, eyl - er * 0.3, er * 0.16, 5, 0.4);
         ctx.fill();
         const blink = o.blink ?? 0;
         if (blink > 0.05) {
           ctx.fillStyle = look.disc;
-          ctx.fillRect(exl - er * 1.05, eyl - er * 1.05, er * 2.1, er * 2.1 * Math.min(1, blink));
+          ctx.fillRect(exl - er * 1.15, eyl - er * 1.15, er * 2.3, er * 2.3 * Math.min(1, blink));
         }
-        // THE BROW RIDGE: the hard slanted ledge that turns a staring
-        // toy into a raptor — heavier on the elder (the court scowl).
-        ctx.strokeStyle = C(shade(look.discRim, -8));
-        ctx.lineWidth = Math.max(1.6, s * (look.elder ? 0.04 : 0.031));
+        // The brow: a soft short ledge, a line of thought — not a
+        // hard scowl bar.
+        ctx.strokeStyle = C(shade(look.discRim, -4));
+        ctx.lineWidth = Math.max(1.2, s * (look.elder ? 0.024 : 0.019));
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(exl - es * er * 0.9, eyl - er * (1.28 + 0.12 * screech));
-        ctx.lineTo(exl + es * er * 0.95, eyl - er * (0.8 - 0.12 * screech));
+        ctx.moveTo(exl - es * er * 1.0, eyl - er * (1.6 + 0.15 * screech));
+        ctx.lineTo(exl + es * er * 0.8, eyl - er * (1.25 - 0.15 * screech));
         ctx.stroke();
         ctx.lineCap = 'butt';
       }

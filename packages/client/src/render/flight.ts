@@ -668,10 +668,12 @@ export class FlightRig {
       const fy = Math.sin(o.dir);
       const lx = -fy;
       const ly = fx;
-      const sternR = spec.stern * Math.cos(pitchEff);
+      // The dock sits INSIDE the stern (0.8 of the reach) — the chain
+      // emerges from feathers, never from a point floating behind them.
+      const sternR = spec.stern * 0.8 * Math.cos(pitchEff);
       const rootX = o.x + fx * (lungeF + driftF - sternR) + lx * driftL;
       const rootY = o.y + fy * (lungeF + driftF - sternR) + ly * driftL;
-      const rootZ = lift - Math.sin(pitchEff) * spec.stern;
+      const rootZ = lift - Math.sin(pitchEff) * spec.stern * 0.8;
       // The fan's rest droop follows the hull pitch — down-braced in
       // the upright hover, streamed flat at cruise and in the dive.
       const droopA = 0.12 + Math.max(0, pitchEff) * 0.8;
@@ -785,8 +787,6 @@ function owlWingSim(
   const { P, pf, es, s, fr } = o;
   const spread = Math.max(0.05, fr.spread);
   const span = look.wingSpan;
-  const base = o.hurt ? '#ffffff' : fr.under ? look.breast : look.mantle;
-  const flightInk = o.hurt ? '#ffffff' : fr.under ? shade(look.breast, -9) : shade(look.mantle, -10);
   const boneInk = o.hurt ? '#ffffff' : shade(look.mantle, -22);
 
   const armL = span * 0.42 * spread;
@@ -891,6 +891,18 @@ function owlWingSim(
   const slabArea = Math.abs(area2) / 2;
   /** 1 = a full broad slab, →0 as the wing turns edge-on. */
   const slabK = Math.min(1, slabArea / (0.1 * span * span * s * s));
+  // WHICH FACE SHOWS IS GEOMETRY, NOT A THRESHOLD: the projected
+  // polygon's WINDING flips exactly when the camera crosses the wing
+  // plane — and at that instant the slab is edge-on and invisible,
+  // so the top↔underside swap can never flash (the old raise>0.4
+  // flip popped pale at the crest of every hover beat).
+  const underVis = area2 * o.es > 0;
+  const base = o.hurt ? '#ffffff' : underVis ? look.breast : look.mantle;
+  const flightInk = o.hurt
+    ? '#ffffff'
+    : underVis
+      ? shade(look.breast, -9)
+      : shade(look.mantle, -10);
   /** Detail ink fades out with the slab: an edge-on wing keeps its
    *  pale sliver, but bands, barring, coverts and bones — the DARK
    *  ink — vanish with the surface they decorate (the wire verdict). */
@@ -1085,8 +1097,11 @@ export function drawGreatOwl(
   const C = (c: string): string => (o.hurt ? '#ffffff' : c);
   const pf = pitchFrame(fr.pitchA);
 
-  // The elder rides higher — fold the rank seat into the rig's lift.
-  const lift = fr.lift * (look.elder ? 1.18 / 0.98 : 1) * s;
+  // Altitude comes from the rig alone (spec.hover owns the elder's
+  // higher seat) — a painter-side rank multiplier desynced the body
+  // from the tail chain the rig anchored at ITS lift (the detached-
+  // tail verdict: the elder's fan floated a fifth of a tile low).
+  const lift = fr.lift * s;
   const bcx = o.x + fx * (fr.lungeF + fr.driftF) * s + px * fr.driftL * s;
   const bcy = o.y + (fy * (fr.lungeF + fr.driftF) + py * fr.driftL) * ys * s - lift;
   // THE GIMBAL: the bank rolls the whole projected bird around its
@@ -1145,17 +1160,42 @@ export function drawGreatOwl(
     // not shrink the plumage).
     const fanLen = Math.max(
       Math.hypot(last[0] - mid[0], last[1] - mid[1]) + look.tailLen * s * 0.55,
-      look.tailLen * s * 0.85,
+      look.tailLen * s * 1.0,
     );
-    const tSpread = 0.55 + 0.72 * (1 - fr.pitchK) + Math.min(0.5, Math.abs(fr.bank)) * 0.4;
-    // The dock: covert wedge seating the fan INTO the stern silhouette.
-    ctx.fillStyle = C(shade(look.mantle, -3));
-    ctx.beginPath();
-    ctx.moveTo(dock[0] - Math.sin(ang) * s * 0.09, dock[1] + Math.cos(ang) * s * 0.09 * 0.6);
-    ctx.lineTo(dock[0] + Math.sin(ang) * s * 0.09, dock[1] - Math.cos(ang) * s * 0.09 * 0.6);
-    ctx.lineTo(mid[0], mid[1]);
-    ctx.closePath();
-    ctx.fill();
+    const tSpread = 0.55 + 1.05 * (1 - fr.pitchK) + Math.min(0.5, Math.abs(fr.bank)) * 0.4;
+    // THE STEM: a tapered feather ribbon following the chain from
+    // inside the hull out to the fan root — a CONTINUOUS mass, so the
+    // fan can never float detached behind the body (the user's gap
+    // verdict, three screenshots' worth). Widths in tiles, perp per
+    // sample, one closed fill.
+    const midIdx = Math.max(1, pts.length - 3);
+    const stem = pts.slice(0, midIdx + 1);
+    if (stem.length >= 2) {
+      const wAt = (t: number): number => s * (0.16 - 0.08 * t);
+      ctx.fillStyle = C(shade(look.mantle, -3));
+      ctx.beginPath();
+      const perp = (i: number): [number, number] => {
+        const a = stem[Math.max(0, i - 1)]!;
+        const b = stem[Math.min(stem.length - 1, i + 1)]!;
+        const d = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1e-4;
+        return [-(b[1] - a[1]) / d, (b[0] - a[0]) / d];
+      };
+      for (let i = 0; i < stem.length; i++) {
+        const p = stem[i]!;
+        const n = perp(i);
+        const w2 = wAt(i / (stem.length - 1));
+        if (i === 0) ctx.moveTo(p[0] + n[0] * w2, p[1] + n[1] * w2);
+        else ctx.lineTo(p[0] + n[0] * w2, p[1] + n[1] * w2);
+      }
+      for (let i = stem.length - 1; i >= 0; i--) {
+        const p = stem[i]!;
+        const n = perp(i);
+        const w2 = wAt(i / (stem.length - 1));
+        ctx.lineTo(p[0] - n[0] * w2, p[1] - n[1] * w2);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
     // The fan: five stepped blades around the chain's live direction.
     const TN = 5;
     ctx.fillStyle = C(shade(look.mantle, -6));
@@ -1181,7 +1221,7 @@ export function drawGreatOwl(
     }
     ctx.closePath();
     ctx.fill();
-    if (!o.hurt && fanLen > s * 0.3) {
+    if (!o.hurt && fanLen > s * 0.22) {
       // Bar ticks riding every blade tip — the parliament's barring.
       // (Skipped on a tightly folded fan, where tip ticks read as
       // toes — the sheet's talon-mirage verdict.)
@@ -1287,49 +1327,53 @@ export function drawGreatOwl(
     }
   };
 
-  const drawTalons = (): void => {
-    // Tucked into the belly feathers through every peaceful state — a
-    // cruising owl shows NO legs; the strike punches short feathered
-    // shanks forward under the chest, claws open. Never a wader.
+  const drawTalon = (es: number): void => {
+    // ONE leg, so the pair can z-split around the hull like the
+    // wings do. The hip anchors at the BELLY — slightly aft of the
+    // hull's center, below its keel — so the legs read as landing
+    // gear under the mass at every pitch (the old stern-derived
+    // anchor climbed the torso as the hull pitched, worst on the
+    // elder's stretched hull: the user's legs-up-the-body verdict).
     const talonK = fr.talonK;
     if (talonK < 0.15 && at === 0) return;
     const shankInk = C(shade(spec.legColor ?? look.mantle, -20));
     const clawInk = C(shade(spec.legColor ?? look.mantle, -50));
+    const striking = at >= 0.7;
+    const hipA = -hl * 0.14;
+    const hipD = -(look.bodyW * 0.62);
+    const hipF = pf.aF * hipA + pf.dF * hipD;
+    const hipZ = pf.aZ * hipA + pf.dZ * hipD;
+    const hipL = es * look.bodyW * 0.4;
+    // The shank stays SHORT at every band — the dive's reach is the
+    // BODY's lunge, and the weapon is the claw: a long foot throw
+    // projected at the south bands re-grew the wader (twice now —
+    // this is the law, keep the shank under a tenth of a tile).
+    const footF = hipF + (striking ? 0.13 * talonK : 0.05 * talonK);
+    const footZ = hipZ - (striking ? 0.07 : 0.05) * talonK - 0.03;
     ctx.lineCap = 'round';
-    for (const es of [-1, 1]) {
-      // Short feathered shanks — the strike punches them forward
-      // under the chest, trimmed tight so no band ever reads wader.
-      const hipF = at >= 0.7 ? 0.05 : ventF * 0.3;
-      const hipL = es * look.bodyW * 0.42;
-      const hipZ = ventZ * 0.3 - look.bodyW * 0.48;
-      const footF = hipF + (at >= 0.7 ? 0.3 * talonK : talonK * 0.1 - (1 - talonK) * 0.12);
-      const footZ = hipZ - (0.05 + 0.12 * talonK) + (at >= 0.7 ? 0.08 : 0);
-      const striking = at >= 0.7;
-      const a = P(hipF, hipL, hipZ);
-      const b = P(footF, hipL * 1.15, footZ);
-      ctx.strokeStyle = shankInk;
-      ctx.lineWidth = Math.max(2, spec.legW * s * (striking ? 1.2 : 0.95));
-      ctx.beginPath();
-      ctx.moveTo(a[0], a[1]);
-      ctx.lineTo(b[0], b[1]);
-      ctx.stroke();
-      if (talonK > 0.25) {
-        // The business end: cocked claws curl under through the
-        // windup; the strike SPLAYS them — long, spread, and thrown
-        // at the prey. The talons are the swoop's exclamation mark.
-        ctx.strokeStyle = clawInk;
-        ctx.lineWidth = Math.max(1.4, spec.legW * s * (striking ? 0.62 : 0.5));
-        for (const ta of [-1, 0, 1]) {
-          const c = P(
-            footF + (striking ? 0.17 : 0.03) * talonK + ta * (striking ? 0.045 : 0.02),
-            hipL * 1.15 + es * ta * (striking ? 0.085 : 0.045) * talonK,
-            footZ - (striking ? 0.11 : 0.07) * talonK + (striking ? 0.02 : 0) * Math.abs(ta),
-          );
-          ctx.beginPath();
-          ctx.moveTo(b[0], b[1]);
-          ctx.lineTo(c[0], c[1]);
-          ctx.stroke();
-        }
+    const a = P(hipF, hipL, hipZ);
+    const b = P(footF, hipL * 1.12, footZ);
+    ctx.strokeStyle = shankInk;
+    ctx.lineWidth = Math.max(2, spec.legW * s * (striking ? 1.2 : 0.95));
+    ctx.beginPath();
+    ctx.moveTo(a[0], a[1]);
+    ctx.lineTo(b[0], b[1]);
+    ctx.stroke();
+    if (talonK > 0.25) {
+      // Cocked claws curl under through the windup; the strike
+      // SPLAYS them — the swoop's exclamation mark.
+      ctx.strokeStyle = clawInk;
+      ctx.lineWidth = Math.max(1.5, spec.legW * s * (striking ? 0.72 : 0.5));
+      for (const ta of [-1, 0, 1]) {
+        const c = P(
+          footF + (striking ? 0.17 : 0.04) * talonK + ta * (striking ? 0.045 : 0.02),
+          hipL * 1.12 + es * ta * (striking ? 0.085 : 0.045) * talonK,
+          footZ - (striking ? 0.11 : 0.07) * talonK + (striking ? 0.02 : 0) * Math.abs(ta),
+        );
+        ctx.beginPath();
+        ctx.moveTo(b[0], b[1]);
+        ctx.lineTo(c[0], c[1]);
+        ctx.stroke();
       }
     }
     ctx.lineCap = 'butt';
@@ -1381,19 +1425,25 @@ export function drawGreatOwl(
   // Assembly — painter's order from the facing: the far wing always
   // seats behind the hull, the near wing over it; the tail and head
   // swap ends as the bird turns through the camera line.
+  // Assembly — painter's order from the facing: far wing and far leg
+  // seat behind the hull, near leg and near wing over it; with the
+  // back to the camera BOTH legs tuck behind the body mass (the
+  // stubs-on-the-back verdict), and tail and head swap ends.
   const farEs = py < 0 ? 1 : py > 0 ? -1 : 1;
   if (fy >= -0.15) {
     drawTail();
     drawWing(farEs);
+    drawTalon(farEs);
     drawBody();
-    drawTalons();
+    drawTalon(-farEs);
     drawWing(-farEs);
     drawHead();
   } else {
     drawHead();
     drawWing(farEs);
+    drawTalon(farEs);
+    drawTalon(-farEs);
     drawBody();
-    drawTalons();
     drawTail();
     drawWing(-farEs);
   }
