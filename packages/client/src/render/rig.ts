@@ -10226,10 +10226,12 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
   // own line.
   giant_turtle: {
     rig: {
-      legs: quadLegs(0.34, 0.25),
-      legLen: 0.22,
-      rise: 0.14,
-      liftAmp: 0.05,
+      legs: quadLegs(0.32, 0.24),
+      // STUBBY IS THE SPECIES: the shortest, thickest legs of any
+      // walker — barely more than feet with knees.
+      legLen: 0.17,
+      rise: 0.1,
+      liftAmp: 0.045,
       runSpeed: 1.5,
       turnRate: 2.5,
     },
@@ -10238,7 +10240,7 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     kneeFwd: [1, 1, -1, -1],
     hipFwd: 0.8,
     hipSide: 0.78,
-    legW: 0.12,
+    legW: 0.15,
     foot: 'bearpaw',
     legColor: '#6f7c50',
   },
@@ -10251,13 +10253,15 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
   colossus_turtle: {
     rig: {
       legs: [
-        { fwd: 0.52, side: -0.3, group: 0 },
-        { fwd: 0.52, side: 0.3, group: 1 },
-        { fwd: -0.46, side: -0.26, group: 1 },
-        { fwd: -0.46, side: 0.26, group: 0 },
+        { fwd: 0.48, side: -0.3, group: 0 },
+        { fwd: 0.48, side: 0.3, group: 1 },
+        { fwd: -0.44, side: -0.26, group: 1 },
+        { fwd: -0.44, side: 0.26, group: 0 },
       ],
-      legLen: 0.4,
-      rise: 0.28,
+      // Columns, not stilts: short thick posts under the daylight —
+      // a mountain squats on footings, it does not stride on stilts.
+      legLen: 0.3,
+      rise: 0.2,
       liftAmp: 0.055,
       runSpeed: 1.05,
       turnRate: 2,
@@ -10267,7 +10271,7 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     kneeFwd: [1, 1, -1, -1],
     hipFwd: 0.82,
     hipSide: 0.72,
-    legW: 0.2,
+    legW: 0.25,
     foot: 'bearpaw',
     legColor: '#68705a',
     // Elephant bones: long thigh over a short shank, front and hind.
@@ -15935,28 +15939,44 @@ export function drawTurtleHead(
   const gape = o.dead ? 0.12 : (o.gape ?? 0);
   const skin = o.hurt ? '#ffffff' : shade(look.skin, 4);
 
-  // The lower jaw first — the skull overhangs it. Pale, and it drops
-  // through the gape while the skull holds its line. The ancient's
-  // jaw runs WIDE and forward (the dragon-turtle underbite).
-  const jawW = look.ancient ? 0.38 : 0.3;
-  const jawReach = look.ancient ? 0.92 : 0.84;
-  const hingeX = x + fx * hw * 0.22;
-  const hingeY = y + fy * hw * 0.22 * ys + hh * 0.2;
-  const jawDrop = gape * hh * 0.55;
+  // THE SNAPPER MOUTH — a CUT, never a cone. The rework's law: the
+  // muzzle is the skull's own flesh, the keratin lip is a narrow
+  // band on its leading edge with the hook notch at the tip, and
+  // the mouth is the long dark line sweeping from the hook back to
+  // a corner below the eye — the grim saurian smile of every
+  // reference plate. Nothing pale ever projects off the face like a
+  // bird's bill again.
+  const pk = Math.abs(fx);
+  const tipR = look.ancient ? 0.88 : 0.98;
+  const tipX = x + fx * hw * tipR;
+  const tipY = y + fy * hw * tipR * ys + hh * 0.02;
+  const jawDrop = gape * hh * 0.6;
+  // Mouth corners: below and behind the eye line, one per side —
+  // the cut's far end, and the lower jaw's hinge.
+  const corner = (es: number): { x: number; y: number } => ({
+    x: x + px * es * hw * 0.46 + fx * hw * 0.16,
+    y: y + (py * es * hw * 0.46 + fy * hw * 0.16) * ys + hh * 0.2,
+  });
+  const cL = corner(-1);
+  const cR = corner(1);
+  // The lower jaw: one wide pale shovel spanning corner to corner —
+  // never a narrow chin — swinging down through the gape.
   ctx.fillStyle = o.hurt ? '#ffffff' : look.throat;
   ctx.beginPath();
-  ctx.moveTo(hingeX - px * hw * jawW, hingeY - py * hw * jawW * ys);
-  ctx.lineTo(x + fx * hw * jawReach, y + fy * hw * jawReach * ys + hh * 0.26 + jawDrop);
-  ctx.lineTo(hingeX + px * hw * jawW, hingeY + py * hw * jawW * ys);
+  ctx.moveTo(cL.x, cL.y);
+  ctx.lineTo(tipX, tipY + hh * 0.24 + jawDrop);
+  ctx.lineTo(cR.x, cR.y);
+  ctx.lineTo(x + fx * hw * 0.08, y + fy * hw * 0.08 * ys + hh * 0.36);
   ctx.closePath();
   ctx.fill();
-  // The mouth's dark interior shows in the gape.
-  if (gape > 0.15 && !o.hurt) {
-    ctx.fillStyle = '#3a231e';
+  // The gape's dark room between lip and jaw.
+  if (gape > 0.12 && !o.hurt) {
+    ctx.fillStyle = '#4a2e28';
     ctx.beginPath();
-    ctx.moveTo(hingeX - px * hw * (jawW * 0.8), hingeY - py * hw * (jawW * 0.8) * ys);
-    ctx.lineTo(x + fx * hw * (jawReach + 0.04), y + fy * hw * (jawReach + 0.04) * ys + hh * 0.08 + jawDrop * 0.55);
-    ctx.lineTo(hingeX + px * hw * (jawW * 0.8), hingeY + py * hw * (jawW * 0.8) * ys);
+    ctx.moveTo(cL.x, cL.y);
+    ctx.lineTo(tipX, tipY + hh * 0.1 + jawDrop * 0.5);
+    ctx.lineTo(cR.x, cR.y);
+    ctx.lineTo(x + fx * hw * 0.14, y + fy * hw * 0.14 * ys + hh * 0.14);
     ctx.closePath();
     ctx.fill();
   }
@@ -15986,53 +16006,103 @@ export function drawTurtleHead(
     }
   }
 
-  // THE HOOK: the upper mandible — the snapper's drops in a true
-  // raptor hook; the mountain's is a broad blunt shear. The one
-  // bright value on the head; it must read at any zoom.
-  const hookDrop = look.ancient ? 0.16 : 0.26;
-  const beakBaseX = x + fx * hw * 0.38;
-  const beakBaseY = y + fy * hw * 0.38 * ys;
-  const beakTipX = x + fx * hw * (look.ancient ? 0.98 : 1.06);
-  const beakTipY = y + fy * hw * (look.ancient ? 0.98 : 1.06) * ys + hh * 0.02;
-  ctx.fillStyle = o.hurt ? '#ffffff' : look.beak;
+  // THE MUZZLE: the skull's own flesh reaching forward to the lip —
+  // one mass with the cranium, wider than it is long, so the head
+  // reads reptile, never bird.
+  ctx.fillStyle = skin;
   ctx.beginPath();
-  ctx.moveTo(beakBaseX - px * hw * 0.36, beakBaseY - py * hw * 0.36 * ys - hh * 0.1);
-  ctx.lineTo(beakTipX, beakTipY - hh * 0.14);
-  ctx.lineTo(beakTipX + fx * hw * 0.04, beakTipY + hh * hookDrop);
-  ctx.lineTo(beakBaseX, beakBaseY + hh * 0.16);
-  ctx.lineTo(beakBaseX + px * hw * 0.36, beakBaseY + py * hw * 0.36 * ys - hh * 0.1);
+  ctx.moveTo(x - px * hw * 0.46 + fx * hw * 0.16, y + (-py * hw * 0.46 + fy * hw * 0.16) * ys - hh * 0.12);
+  ctx.lineTo(tipX - px * hw * 0.24, tipY - py * hw * 0.24 * ys - hh * 0.08);
+  ctx.lineTo(tipX, tipY + hh * 0.08);
+  ctx.lineTo(tipX + px * hw * 0.24, tipY + py * hw * 0.24 * ys - hh * 0.08);
+  ctx.lineTo(x + px * hw * 0.46 + fx * hw * 0.16, y + (py * hw * 0.46 + fy * hw * 0.16) * ys - hh * 0.12);
+  ctx.lineTo(x + fx * hw * 0.1, y + fy * hw * 0.1 * ys + hh * 0.18);
   ctx.closePath();
   ctx.fill();
   if (!o.hurt) {
-    // The cutting edge, inked — and the snapper's edge is SERRATED:
-    // two tooth-notch ticks along the shear, the bestiary-plate bite.
-    ctx.strokeStyle = shade(look.beak, -32);
-    ctx.lineWidth = Math.max(1, s * 0.016);
+    // The muzzle's top plane catches the light with the crown.
+    ctx.fillStyle = shade(look.skin, 10);
     ctx.beginPath();
-    ctx.moveTo(beakBaseX, beakBaseY + hh * 0.16);
-    ctx.lineTo(beakTipX + fx * hw * 0.04, beakTipY + hh * hookDrop);
+    ctx.moveTo(x - px * hw * 0.26 + fx * hw * 0.2, y + (-py * hw * 0.26 + fy * hw * 0.2) * ys - hh * 0.16);
+    ctx.lineTo(tipX - px * hw * 0.13, tipY - py * hw * 0.13 * ys - hh * 0.1);
+    ctx.lineTo(tipX + px * hw * 0.13, tipY + py * hw * 0.13 * ys - hh * 0.1);
+    ctx.lineTo(x + px * hw * 0.26 + fx * hw * 0.2, y + (py * hw * 0.26 + fy * hw * 0.2) * ys - hh * 0.16);
+    ctx.closePath();
+    ctx.fill();
+
+    // THE LIP: a narrow keratin band along the leading edge — the
+    // beak is TRIM on the mouth, never the mouth itself.
+    ctx.strokeStyle = shade(look.beak, 4);
+    ctx.lineWidth = Math.max(1.5, hh * 0.13);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(tipX - px * hw * 0.22, tipY - py * hw * 0.22 * ys + hh * 0.0);
+    ctx.quadraticCurveTo(
+      tipX + fx * hw * 0.05,
+      tipY + fy * hw * 0.05 * ys + hh * 0.05,
+      tipX + px * hw * 0.22,
+      tipY + py * hw * 0.22 * ys + hh * 0.0,
+    );
     ctx.stroke();
-    if (!look.ancient) {
-      ctx.fillStyle = shade(look.beak, -20);
-      for (const t of [0.42, 0.68]) {
-        const nx0 = beakBaseX + (beakTipX - beakBaseX) * t;
-        const ny0 = beakBaseY + hh * 0.16 + (beakTipY + hh * hookDrop - (beakBaseY + hh * 0.16)) * t;
+    ctx.lineCap = 'butt';
+    // THE HOOK NOTCH: the lip's point dropping past the jaw line —
+    // deep on the snapper, a blunt chisel on the mountain.
+    ctx.fillStyle = shade(look.beak, -6);
+    ctx.beginPath();
+    ctx.moveTo(tipX - px * hw * 0.08, tipY - py * hw * 0.08 * ys + hh * 0.02);
+    ctx.lineTo(tipX + fx * hw * 0.04, tipY + fy * hw * 0.04 * ys + hh * (look.ancient ? 0.2 : 0.3));
+    ctx.lineTo(tipX + px * hw * 0.08, tipY + py * hw * 0.08 * ys + hh * 0.02);
+    ctx.closePath();
+    ctx.fill();
+
+    // THE CUT: the mouth line sweeping from under the hook back to
+    // the corner below the eye — a sag, then the rise into the grim
+    // corner. Both cheeks show face-on (the iconic front smile);
+    // the far cheek hides at profile. The open mouth replaces it.
+    if (gape < 0.3) {
+      ctx.strokeStyle = 'rgba(30, 20, 24, 0.72)';
+      ctx.lineWidth = Math.max(1, s * 0.02);
+      ctx.lineCap = 'round';
+      for (const es of [-1, 1]) {
+        if (pk > 0.6 && es * py < 0) continue;
+        const c = corner(es);
+        const midXc = (tipX + c.x) / 2 + fx * hw * 0.02;
+        const midYc = (tipY + c.y) / 2 + hh * 0.16;
         ctx.beginPath();
-        ctx.moveTo(nx0 - hw * 0.045, ny0);
-        ctx.lineTo(nx0, ny0 + hh * 0.1);
-        ctx.lineTo(nx0 + hw * 0.045, ny0);
-        ctx.closePath();
-        ctx.fill();
+        ctx.moveTo(tipX + px * es * hw * 0.05, tipY + py * es * hw * 0.05 * ys + hh * 0.1);
+        ctx.quadraticCurveTo(midXc, midYc, c.x, c.y - hh * 0.05);
+        ctx.stroke();
+        // The snapper's teeth: two points hanging off the upper lip
+        // along the cut — the bestiary-plate bite. The mountain is
+        // beyond needing to show its teeth.
+        if (!look.ancient && !o.dead) {
+          ctx.fillStyle = shade(look.beak, -14);
+          for (const t of [0.3, 0.55]) {
+            const u = 1 - t;
+            const qx = u * u * (tipX + px * es * hw * 0.05) + 2 * u * t * midXc + t * t * c.x;
+            const qy =
+              u * u * (tipY + py * es * hw * 0.05 * ys + hh * 0.1) +
+              2 * u * t * midYc +
+              t * t * (c.y - hh * 0.05);
+            ctx.beginPath();
+            ctx.moveTo(qx - hw * 0.035, qy - hh * 0.02);
+            ctx.lineTo(qx, qy + hh * 0.09);
+            ctx.lineTo(qx + hw * 0.035, qy - hh * 0.02);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
       }
+      ctx.lineCap = 'butt';
     }
-    // Nostril pits at the beak's base, camera-facing bands only.
+    // Nostril pits on the muzzle tip's top plane.
     if (fy > 0.05) {
-      ctx.fillStyle = shade(look.beak, -28);
+      ctx.fillStyle = shade(look.skin, -24);
       for (const es of [-1, 1]) {
         ctx.beginPath();
         ctx.arc(
-          beakBaseX + fx * hw * 0.32 + px * es * hw * 0.09,
-          beakBaseY + (fy * hw * 0.32 + py * es * hw * 0.09) * ys - hh * 0.06,
+          tipX - fx * hw * 0.1 + px * es * hw * 0.08,
+          tipY + (-fy * hw * 0.1 + py * es * hw * 0.08) * ys - hh * 0.1,
           Math.max(0.6, s * 0.012),
           0,
           Math.PI * 2,
@@ -18932,8 +19002,23 @@ export function drawBeast(
   const farLegs: number[] = [];
   const nearLegs: number[] = [];
   const nearEdge = by + Math.abs(fy) * len * 0.85 * ys;
+  // THE SHELL OWNS ITS LEGS: a turtle's hull overhangs every foot at
+  // every band, so the foot-position split flickers — a swinging
+  // foot crosses the silhouette line mid-stride and the leg PHASES
+  // through the shell. Shell-mounted legs classify by the HIP's
+  // body-frame seat instead (stable per facing, slews smoothly with
+  // the body): near-half hips paint over the skirt, far-half hips
+  // tuck behind the keep. Every other beast keeps the foot rule —
+  // their bodies never overhang the stride.
+  const shellMount = opts.defId.endsWith('_turtle');
   for (let i = 0; i < spec.rig.legs.length; i++) {
-    ((opts.feet[i]?.y ?? opts.y) < nearEdge ? farLegs : nearLegs).push(i);
+    if (shellMount) {
+      const leg = spec.rig.legs[i]!;
+      const hipDepth = fy * leg.fwd * spec.hipFwd + py * leg.side * spec.hipSide;
+      (hipDepth < 0 ? farLegs : nearLegs).push(i);
+    } else {
+      ((opts.feet[i]?.y ?? opts.y) < nearEdge ? farLegs : nearLegs).push(i);
+    }
   }
   // ---- paint closures, composed in true depth order below. (The
   // per-entity seed hash is hoisted above the legs — the limb painter
