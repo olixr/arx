@@ -110,6 +110,61 @@ Design intent per piece:
   town-zone dressing passes (the towns get this shelf via Studio +
   future authored passes, the elven-kit precedent).
 
-## As-built ledger
+## As-built ledger (SHIPPED 2026-08-15, cb5229f4)
 
-(filled at ship time)
+Everything in the spec shipped as written; ids 391-404, next free 405.
+Wired end to end: enum + TILE_DEFS + brush-past colliders +
+DESTRUCTIBLE_INFO (all fourteen pinned in tiles.test.ts), TWN_*
+palette + fourteen painters before `case Tile.Table`, ring-cache
+membership (four clocked <4Hz, ten in STATIC_RING_TILES), SMASH_TONES
+(limestone / bronze / grain / laundry / paper / produce voices),
+fourteen debris kits, resonant booms (townbell, barrelstack) + civic
+3.2 shakes (townfountain, founder, stonebench), terrain underlay
+range, Studio 'Town life' shelf.
+
+### Audit verdicts (two paint passes, rig lane 9 at Dawnmead's hem)
+
+- **THE FOUNTAIN MUST ANCHOR** — pass 1 read as a birdbath beside
+  the ruler. Basin/stem/bowl grew a third; the crown clears head
+  height. A civic anchor outweighs the body.
+- **THE BELL IS THE READ** — pass 1's frame read as a bare ladder at
+  map scale. The bell doubled, the roof widened and thickened; the
+  frame exists to hold the bell.
+- **A LEAD COILS, NEVER LOOPS** — the hanging rope loop under the
+  hitch rail read as a GALLOWS NOOSE. Killed: the lead now wraps the
+  rail in three snug turns with a short frayed tail.
+- **A CASK LIES ON ITS BELLY** — head-on end circles alone read as
+  three standing lumps; the side casks now show their long bulged
+  lying bodies with horizontal staves and upright hoops.
+- **BRONZE IS NOT SANDSTONE** — the founder read tan against his own
+  plinth; metal darkened two steps, verdigris doubled.
+- Passed clean on pass 1: NoticeBoard, Woodpile (the end-grain rank
+  is the instant 3D read), CrateStack, StoneBench, StreetPlanter,
+  GrainSacks, WashLine, ProduceStand.
+- **Night hierarchy proven**: the wide night shot shows the whole
+  square dark while the village lamps and windows glow — not one kit
+  piece emits light.
+- **Smash theatre proven**: the grain-sack burst caught mid-pour
+  (burlap folds, flipping scoop, gold kernels); bell smashed in
+  exactly 3 hits, tile patched, respawn lane armed.
+
+### Rig lessons banked
+
+- The prover logs out ANYWHERE — an absolute-coordinate stage anchor
+  with tp-verify retries beats spawn-relative offsets (the first run
+  staged inside the Undercroft; the second died to a L16 black bear
+  at the forest hem and got hearth-carried mid-run, scattering
+  stamps).
+- Frame close-ups from the SE diagonal: a body standing due south
+  eclipses a tall prop's whole stem.
+- Dawnmead's "open" north meadow holds the farmstead cabin — its
+  roof overdraws anything staged at y≈80-84 west of x≈-55.
+- Debris shots must fire INSIDE the burst window (no settle sleep);
+  three swing cycles plus a settle wait outlives the theatre.
+
+### Deferred on purpose
+
+Examine lines, a quest-board interaction lane for the NoticeBoard,
+town-zone dressing passes (the towns get this shelf via Studio and a
+future authored pass — the elven-kit precedent), and POI prefab
+legend chars.
