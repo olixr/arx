@@ -15821,100 +15821,123 @@ const GIANTCRAB_PLATES: ReadonlyArray<[number, number, number, number, number]> 
 
 const CRABARM_SOLVE: LimbSolve = { ex: 0, ey: 0, kx: 0, ky: 0 };
 
-export function paintGiantCrabBody(
+/**
+ * THE SIEGE CRUSHER + the cutter — the giant crab's arms, a
+ * standalone pass so drawBeast can compose them in TRUE depth: the
+ * far claw tucks behind the hull (the body painter runs the 'far'
+ * pass), and the near claws paint TOPMOST, after the near legs (THE
+ * CLAW IS NEVER UNDER A LEG — a stilt crossing in front of the
+ * crusher broke the whole read, user-flagged).
+ *
+ * THE WIDE GUARD: a crab holds its arms OUT of its body, never
+ * hugged to the bow — shoulders root at the wide bow corners under
+ * a coxa collar, elbows flare outboard past the rim, and the palms
+ * ride clearly OUTSIDE the hull's width with the pincer tips aimed
+ * in-and-forward at the shared focus ahead of the bow (the pinch
+ * that is always about to happen). The clamp is the crusher's
+ * alone: the windup swings it wider and higher (the harbor opens),
+ * the strike sweeps it in and through the facing line.
+ */
+export function paintGiantCrabClaws(
   ctx: CanvasRenderingContext2D,
   spec: BeastSpec,
   look: GiantCrabLook,
   f: BeastBlockFrame,
+  which: 'far' | 'near' | 'all',
   at = 0,
   nowMs = 0,
-  /** THE LIVING STALKS: the live ear sim; absent = the ONE REST chain. */
-  eyes?: EarSim,
 ): void {
   const hl = spec.bodyLen;
   const hw = look.bodyW;
   const { bx, gy, s, fx, fy, ys } = f;
   const px = -fy;
   const py = fx;
-  const shell = shade(look.shell, (((f.seed >>> 5) & 7) - 3) * 2);
   const dead = f.topScale !== undefined && f.topScale < 1;
   const lift = f.bob * 0.35 * s;
   const tk = f.topScale ?? 1;
-  const dir = Math.atan2(fy, fx);
-  // Per-body menace phase — a pair of bulwarks never breathes in sync.
   const phase = ((f.seed % 89) + 89) * 0.53;
 
-  const domeC = -hl * 0.06;
-  const topH = (X: number): number =>
-    Math.max(0.05, look.shellH * (1 - 0.42 * Math.pow((X - domeC) / hl, 2)));
-  const surf = (X: number, Y: number): number => topH(X) * (1 - 0.32 * Math.pow(Y / hw, 2));
-  const P3 = (X: number, Y: number, Z: number): { x: number; y: number } => ({
-    x: bx + (fx * X + px * Y) * s,
-    y: gy + (fy * X + py * Y) * ys * s - (look.rimBot + Z) * tk * s - lift,
-  });
+  // A claw whose palm carry projects below the body center on screen
+  // is the near one; with the arms out wide the LATERAL term rules,
+  // so profile bands split the pair cleanly.
+  const clawNear = (es: number): boolean => (fy * hl * 0.45 + py * es * hw * 1.1) * ys > 0;
 
-  // ---- THE SIEGE CRUSHER + the cutter: true two-bone arms off the
-  // bow corners. The crusher (left, es = -1) carries across the bow
-  // like a tower shield; the cutter rides low and outboard. Windup
-  // coils the crusher home and gapes the jaws; the strike drives the
-  // palm through the facing and snaps them flat.
   const drawClaw = (es: number): void => {
     const crusher = es < 0;
-    // Shoulder: bow corner, seated into the flank under the skirt.
-    const shF = hl * 0.38;
-    const shS = es * hw * 0.62;
-    const shZ = look.rimBot + look.shellH * 0.4;
+    // Shoulder: the wide bow corner, rooted under a coxa collar so
+    // the arm visibly ARTICULATES off the hull instead of floating.
+    const shF = hl * 0.32;
+    const shS = es * hw * 0.75;
+    const shZ = look.rimBot + look.shellH * 0.32;
     const sx = bx + (fx * shF + px * shS) * s;
     const sy = gy + (fy * shF + py * shS) * ys * s - shZ * tk * s - lift;
-    // The palm's carry target in body frame. THE GUARD CARRY: both
-    // fists ride HIGH and forward of the bow — face-on they frame the
-    // front like a boxer's hands, profile-on the crusher leads the
-    // silhouette. The clamp is the crusher's alone; the cutter flares.
-    const sway = dead ? 0 : Math.sin(nowMs / 940 + phase + (crusher ? 0 : 2.1)) * 0.02;
-    let tF = crusher ? hl * 1.05 : hl * 0.9;
-    let tS = es * hw * (crusher ? 0.3 : 0.62) + sway;
-    let tZ = look.rimBot + look.shellH * (crusher ? 0.62 : 0.42);
+    // THE WIDE GUARD carry: palms OUTSIDE the hull width, forward of
+    // the widest station — the whole armspan frames the animal.
+    const sway = dead ? 0 : Math.sin(nowMs / 940 + phase + (crusher ? 0 : 2.1)) * 0.025;
+    let tF = crusher ? hl * 0.5 : hl * 0.38;
+    let tS = es * hw * (crusher ? 1.18 : 1.05) + sway;
+    // Both chelipeds carry ABOVE stilt height — a claw riding at leg
+    // level tangles with the near legs at profile even when it paints
+    // over them; the raised carry is what separates arm from stilt.
+    let tZ = look.rimBot + look.shellH * (crusher ? 0.58 : 0.46);
     let gape = dead ? 0.16 : 0.2 + 0.06 * Math.sin(nowMs / 760 + phase);
     if (!dead && at > 0 && crusher) {
       if (at <= 0.7) {
-        // The coil: the claw draws home and up, and the jaws open wide.
+        // The harbor opens: the crusher swings WIDER and higher, and
+        // the jaws gape — the warning is the whole armspan.
         const w = at / 0.7;
-        tF -= 0.2 * w;
-        tZ += 0.16 * w;
+        tS += es * hw * 0.22 * w;
+        tZ += 0.14 * w;
+        tF -= hl * 0.06 * w;
         gape = 0.25 + w * 0.75;
       } else {
-        // The clamp: driven through the facing, jaws snapping flat.
+        // The clamp: the arm sweeps IN and through the facing line,
+        // jaws snapping flat where the crescent closes.
         const k = Math.sin(Math.PI * Math.min(1, (at - 0.7) / 0.3));
-        tF += 0.46 * k;
-        tZ -= 0.06 * k;
+        tF += (hl * 1.15 - tF) * k;
+        tS += (es * hw * 0.28 - tS) * k;
+        tZ -= 0.08 * k;
         gape = Math.max(0, 0.25 * (1 - k * 4));
       }
     } else if (!dead && at > 0.55 && !crusher) {
-      // The cutter flares open in sympathy — the offhand's threat.
+      // The cutter braces wide and flares open in sympathy.
+      tS += es * hw * 0.06;
       gape = 0.5;
     }
     if (dead) {
-      // Slack arms: palms dropped to the ground line, jaws ajar.
+      // Slack arms: dropped out wide to the ground line, jaws ajar —
+      // the span stays honest even in death.
       tZ = 0.03;
-      tF = crusher ? hl * 0.7 : hl * 0.6;
-      tS = es * hw * 0.65;
+      tF = hl * 0.3;
+      tS = es * hw * 1.2;
     }
     const txp = bx + (fx * tF + px * tS) * s;
     const typ = gy + (fy * tF + py * tS) * ys * s - tZ * tk * s - lift;
-    // Elbow pole: outward on the claw's own screen side, and up — a
-    // crab's arm breaks upward at the carpus, never underslung.
-    const outSgn = Math.sign(sx - bx) || es;
+    // Elbow pole: hard outboard on the claw's own screen side, and
+    // up — a crab's arm breaks upward and OUTWARD at the carpus.
+    const outSgn = Math.sign(txp - bx) || es;
     const arm = solveLimbInto(
       CRABARM_SOLVE,
       sx,
       sy,
       txp,
       typ,
-      (crusher ? 0.3 : 0.23) * s,
+      (crusher ? 0.33 : 0.25) * s,
       1.12,
-      outSgn * 0.8,
-      -0.6,
+      outSgn,
+      -0.45,
     );
+    // The coxa collar: the joint plate the arm roots through — the
+    // connection read at every band.
+    ctx.fillStyle = f.hurt ? '#ffffff' : shade(look.claw, -14);
+    ctx.beginPath();
+    facetCircle(ctx, sx, sy, s * (crusher ? 0.085 : 0.06), 6, es * 0.8);
+    ctx.fill();
+    if (!f.hurt) {
+      ctx.strokeStyle = 'rgba(26, 20, 36, 0.4)';
+      ctx.lineWidth = Math.max(1, s * 0.015);
+      ctx.stroke();
+    }
     const armC = f.hurt ? '#ffffff' : shade(look.claw, -8);
     const foreC = f.hurt ? '#ffffff' : shade(look.claw, 2);
     ctx.lineCap = 'round';
@@ -15942,11 +15965,16 @@ export function paintGiantCrabBody(
       ctx.closePath();
       ctx.fill();
     }
-    // The palm: a faceted fist aimed along the strike line, studded
-    // on its outer edge. The crusher's is the biggest single mass on
-    // the animal after the shell itself — that is the read.
+    // The palm: a faceted fist. THE PINCH THAT IS ALWAYS COMING: the
+    // pincer aims from wherever the palm rides toward the shared
+    // focus ahead of the bow — out wide at rest, the tips still
+    // point in-and-forward exactly as a living crab holds them.
     const pR = (crusher ? 0.25 : 0.135) * s;
-    const aim = Math.atan2(fy * ys, fx) + es * (crusher ? 0.12 : 0.3);
+    const fpx = bx + (fx * hl * 1.5 + px * es * hw * 0.1) * s;
+    const fpy = gy + (fy * hl * 1.5 + py * es * hw * 0.1) * ys * s - tZ * tk * s - lift;
+    const aim = dead
+      ? Math.atan2(fy * ys, fx) + es * 0.5
+      : Math.atan2(fpy - arm.ey, fpx - arm.ex);
     const cxp = arm.ex + Math.cos(aim) * pR * 0.35;
     const cyp = arm.ey + Math.sin(aim) * pR * 0.35;
     ctx.fillStyle = f.hurt ? '#ffffff' : shade(look.claw, 6);
@@ -16041,10 +16069,57 @@ export function paintGiantCrabBody(
     }
   };
 
-  // A claw whose shoulder's screen-y sits below the body center is
-  // the near one — it paints over the hull; the other tucks behind.
-  const clawNear = (es: number): boolean => (fy * hl * 0.38 + py * es * hw * 0.62) * ys > 0;
-  for (const es of [-1, 1]) if (!clawNear(es)) drawClaw(es);
+  for (const es of [-1, 1]) {
+    const near = clawNear(es);
+    if ((which === 'far' && !near) || (which === 'near' && near) || which === 'all') {
+      drawClaw(es);
+    }
+  }
+}
+
+export function paintGiantCrabBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: GiantCrabLook,
+  f: BeastBlockFrame,
+  at = 0,
+  nowMs = 0,
+  /** THE LIVING STALKS: the live ear sim; absent = the ONE REST chain. */
+  eyes?: EarSim,
+  /**
+   * drawBeast composes the near claws itself as the TOPMOST pass
+   * (after the near legs — a stilt must never cross the crusher);
+   * standalone callers leave this false and get the whole animal.
+   */
+  deferNearClaws = false,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  const { bx, gy, s, fx, fy, ys } = f;
+  const px = -fy;
+  const py = fx;
+  const shell = shade(look.shell, (((f.seed >>> 5) & 7) - 3) * 2);
+  const dead = f.topScale !== undefined && f.topScale < 1;
+  const lift = f.bob * 0.35 * s;
+  const tk = f.topScale ?? 1;
+  const dir = Math.atan2(fy, fx);
+  // Per-body menace phase — a pair of bulwarks never breathes in sync.
+  const phase = ((f.seed % 89) + 89) * 0.53;
+
+  const domeC = -hl * 0.06;
+  const topH = (X: number): number =>
+    Math.max(0.05, look.shellH * (1 - 0.42 * Math.pow((X - domeC) / hl, 2)));
+  const surf = (X: number, Y: number): number => topH(X) * (1 - 0.32 * Math.pow(Y / hw, 2));
+  const P3 = (X: number, Y: number, Z: number): { x: number; y: number } => ({
+    x: bx + (fx * X + px * Y) * s,
+    y: gy + (fy * X + py * Y) * ys * s - (look.rimBot + Z) * tk * s - lift,
+  });
+
+  // The far claw tucks behind the hull; the near claws are drawn by
+  // the caller's topmost pass (drawBeast) or, for standalone callers
+  // (ragdoll, portraits, sheets without the composed path), by the
+  // trailing pass at the end of this painter.
+  paintGiantCrabClaws(ctx, spec, look, f, 'far', at, nowMs);
 
   // THE BODY UNDER THE RAMPART: the ground-frame under-mass (THE
   // BELLY TUCKS LIKE A LION'S) with honest stilt daylight — screen
@@ -16337,7 +16412,7 @@ export function paintGiantCrabBody(
 
   if (!stalksFirst) drawStalks();
 
-  for (const es of [-1, 1]) if (clawNear(es)) drawClaw(es);
+  if (!deferNearClaws) paintGiantCrabClaws(ctx, spec, look, f, 'near', at, nowMs);
 }
 
 /**
@@ -20483,9 +20558,11 @@ export function drawBeast(
       return;
     }
     if (giantCrabL) {
-      // THE TIDE'S RAMPART: whole animal in the body painter — the
-      // live stalks ride the caller's ear sim (fox-ear contract).
-      paintGiantCrabBody(ctx, spec, giantCrabL, blockFrame(), at, now, opts.ears);
+      // THE TIDE'S RAMPART: the body painter runs hull + far claw;
+      // the near claws are composed TOPMOST below, after the near
+      // legs — a stilt must never cross the crusher. The live stalks
+      // ride the caller's ear sim (fox-ear contract).
+      paintGiantCrabBody(ctx, spec, giantCrabL, blockFrame(), at, now, opts.ears, true);
       return;
     }
     if (beetleL) {
@@ -21956,6 +22033,10 @@ export function drawBeast(
   if (!udderBehind) paintUdder();
   if (!headBack && !headFront) paintHead();
   for (const i of nearLegs) drawLeg(i);
+  // THE CLAW IS NEVER UNDER A LEG: the giant crab's near claws are
+  // the TOPMOST layer of the whole animal — over the hull, over
+  // every stilt — exactly as the raised guard carries in life.
+  if (giantCrabL) paintGiantCrabClaws(ctx, spec, giantCrabL, blockFrame(), 'near', at, now);
   opts.rider?.();
   if (headFront) paintHead();
   if (tailFront) paintTail();
