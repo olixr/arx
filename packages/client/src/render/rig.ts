@@ -16716,14 +16716,17 @@ export interface TurtleLook {
 export const TURTLE_LOOK: TurtleLook = {
   shell: '#4a5238',
   rim: '#6e7449',
-  spike: '#3d4430',
+  // The horn is its own material — raised olive bone, never the
+  // shell's tone (a thorn the shell's color reads as a bump, not
+  // grown armor).
+  spike: '#6f6d49',
   skin: '#7a8455',
   throat: '#cdc7a3',
   beak: '#a89d72',
   eye: '#d29b3f',
   bodyW: 0.44,
   shellH: 0.3,
-  spikeH: 0.13,
+  spikeH: 0.2,
   headW: 0.27,
   headH: 0.19,
   headRise: 0.22,
@@ -16733,7 +16736,9 @@ export const TURTLE_LOOK: TurtleLook = {
 export const COLOSSUS_LOOK: TurtleLook = {
   shell: '#555c49',
   rim: '#7b775c',
-  spike: '#464c3c',
+  // Weathered stone-horn — the mountain's studs, a step above the
+  // vault they crown but carved by their own shadow.
+  spike: '#746e58',
   skin: '#6d7462',
   throat: '#c3bd9d',
   beak: '#a8a184',
@@ -16741,7 +16746,7 @@ export const COLOSSUS_LOOK: TurtleLook = {
   moss: '#5d7442',
   bodyW: 0.62,
   shellH: 0.6,
-  spikeH: 0.2,
+  spikeH: 0.32,
   headW: 0.38,
   headH: 0.26,
   headRise: 0.34,
@@ -16750,43 +16755,71 @@ export const COLOSSUS_LOOK: TurtleLook = {
 };
 
 /**
- * THE MAIL LAYOUTS — one row per scute: [X, Y, halfLen, halfWid,
- * keelK] in body fractions (X·bodyLen, Y·bodyW; halfLen·bodyLen,
- * halfWid·bodyW; keelK·spikeH = the apex's rise above the dome).
- * Y = 0 marks the vertebral row — its blades ride the crown
- * silhouette; the costal rows wrap the flanks. Authored, never
- * generated: each plate is placed the way a smith would place it.
+ * THE THORN LAYOUTS — the carapace is GROWN horn, not appliqué: a
+ * vertebral saw plus two costal ranks a side tile the whole dome,
+ * staggered so no rank shadows another's gap. One row per thorn:
+ * [X, Y, baseR, heightK, rank] in body fractions (X·bodyLen,
+ * Y·bodyW, baseR·bodyLen, heightK·spikeH; rank 0 = vertebral,
+ * 1 = inner costal, 2 = outer costal — the rank picks the outward
+ * cant, so the crown bristles harder toward its rim). Y = 0 rides
+ * the crown silhouette (THE RIDGE RIDES THE CROWN). Authored,
+ * never generated: each thorn set the way a smith sets a stud.
  */
-const TURTLE_SCUTES: ReadonlyArray<[number, number, number, number, number]> = [
-  // The vertebral blades — the snapper's saw skyline, raked aft.
-  [0.5, 0, 0.13, 0.13, 0.55],
-  [0.16, 0, 0.16, 0.15, 1],
-  [-0.2, 0, 0.16, 0.15, 0.95],
-  [-0.55, 0, 0.12, 0.13, 0.7],
-  // Costal pyramids, port and starboard — true raised keels.
-  [0.36, -0.55, 0.15, 0.2, 0.58],
-  [-0.02, -0.58, 0.16, 0.21, 0.66],
-  [-0.4, -0.55, 0.13, 0.19, 0.52],
-  [0.36, 0.55, 0.15, 0.2, 0.58],
-  [-0.02, 0.58, 0.16, 0.21, 0.66],
-  [-0.4, 0.55, 0.13, 0.19, 0.52],
+const SNAPPER_THORNS: ReadonlyArray<[number, number, number, number, number]> = [
+  // The vertebral saw — five blades, tallest amidships, raked hard.
+  [0.58, 0, 0.1, 0.68, 0],
+  [0.26, 0, 0.12, 0.94, 0],
+  [-0.07, 0, 0.13, 1, 0],
+  [-0.4, 0, 0.12, 0.88, 0],
+  [-0.71, 0, 0.09, 0.62, 0],
+  // Inner costal rank — set into the spine's gaps, port then starboard.
+  [0.43, -0.37, 0.11, 0.72, 1],
+  [0.09, -0.41, 0.12, 0.8, 1],
+  [-0.25, -0.41, 0.12, 0.76, 1],
+  [-0.57, -0.36, 0.1, 0.62, 1],
+  [0.43, 0.37, 0.11, 0.72, 1],
+  [0.09, 0.41, 0.12, 0.8, 1],
+  [-0.25, 0.41, 0.12, 0.76, 1],
+  [-0.57, 0.36, 0.1, 0.62, 1],
+  // Outer costal rank — the flank bristle, leaning hard to sea.
+  [0.55, -0.68, 0.09, 0.52, 2],
+  [0.24, -0.74, 0.1, 0.58, 2],
+  [-0.09, -0.75, 0.1, 0.56, 2],
+  [-0.42, -0.71, 0.09, 0.5, 2],
+  [-0.7, -0.6, 0.08, 0.42, 2],
+  [0.55, 0.68, 0.09, 0.52, 2],
+  [0.24, 0.74, 0.1, 0.58, 2],
+  [-0.09, 0.75, 0.1, 0.56, 2],
+  [-0.42, 0.71, 0.09, 0.5, 2],
+  [-0.7, 0.6, 0.08, 0.42, 2],
 ];
-const COLOSSUS_SCUTES: ReadonlyArray<[number, number, number, number, number]> = [
-  // Five vertebral peaks — the mountain ridge line.
-  [0.56, 0, 0.1, 0.11, 0.5],
-  [0.27, 0, 0.13, 0.14, 0.85],
-  [-0.04, 0, 0.15, 0.15, 1],
-  [-0.36, 0, 0.13, 0.14, 0.9],
-  [-0.65, 0, 0.1, 0.12, 0.6],
-  // Costal terraces, four a side — the stepped flanks of a tor.
-  [0.42, -0.52, 0.14, 0.2, 0.5],
-  [0.03, -0.56, 0.16, 0.22, 0.58],
-  [-0.36, -0.54, 0.14, 0.2, 0.52],
-  [-0.67, -0.42, 0.09, 0.15, 0.36],
-  [0.42, 0.52, 0.14, 0.2, 0.5],
-  [0.03, 0.56, 0.16, 0.22, 0.58],
-  [-0.36, 0.54, 0.14, 0.2, 0.52],
-  [-0.67, 0.42, 0.09, 0.15, 0.36],
+const COLOSSUS_THORNS: ReadonlyArray<[number, number, number, number, number]> = [
+  // Five vertebral peaks — the mountain ridge line, blunt and broad.
+  [0.6, 0, 0.11, 0.72, 0],
+  [0.31, 0, 0.13, 0.92, 0],
+  [-0.01, 0, 0.14, 1, 0],
+  [-0.33, 0, 0.13, 0.9, 0],
+  [-0.63, 0, 0.11, 0.66, 0],
+  // Inner terraces — near-touching bases, the studded tor.
+  [0.46, -0.34, 0.12, 0.7, 1],
+  [0.15, -0.38, 0.13, 0.78, 1],
+  [-0.17, -0.38, 0.13, 0.76, 1],
+  [-0.49, -0.34, 0.12, 0.64, 1],
+  [0.46, 0.34, 0.12, 0.7, 1],
+  [0.15, 0.38, 0.13, 0.78, 1],
+  [-0.17, 0.38, 0.13, 0.76, 1],
+  [-0.49, 0.34, 0.12, 0.64, 1],
+  // Outer terraces — the stepped skirts, leaning out over the rim.
+  [0.52, -0.62, 0.1, 0.5, 2],
+  [0.22, -0.68, 0.11, 0.56, 2],
+  [-0.1, -0.69, 0.11, 0.54, 2],
+  [-0.42, -0.65, 0.1, 0.48, 2],
+  [-0.68, -0.52, 0.09, 0.4, 2],
+  [0.52, 0.62, 0.1, 0.5, 2],
+  [0.22, 0.68, 0.11, 0.56, 2],
+  [-0.1, 0.69, 0.11, 0.54, 2],
+  [-0.42, 0.65, 0.1, 0.48, 2],
+  [-0.68, 0.52, 0.09, 0.4, 2],
 ];
 
 export function paintTurtleBody(
@@ -16874,6 +16907,70 @@ export function paintTurtleBody(
         [hl * 0.72, -hw * 0.8],
       ];
 
+  // THE THORNED SKIRT: the marginal rim wears true horn all the way
+  // around — every foot edge hangs a two-facet thorn pointing
+  // outward in the BODY frame (projected, so the hem rotates and
+  // foreshortens with the hull). Far thorns paint UNDER the keep so
+  // the dome occludes their roots while the tips still break the
+  // skyline at the back bands; near thorns paint over the flank —
+  // a full 360° hem, never a near-side decal.
+  const cyd = gy - lift;
+  const skirtLen = (look.ancient ? 0.14 : 0.17) * hl;
+  const rootZ = look.rimBot + (look.ancient ? 0.1 : 0.05);
+  type SkirtThorn = {
+    a: { x: number; y: number };
+    b: { x: number; y: number };
+    m: { x: number; y: number };
+    t: { x: number; y: number };
+    near: boolean;
+  };
+  const skirt: SkirtThorn[] = [];
+  for (let i = 0; i < foot.length; i++) {
+    const a = foot[i]!;
+    const b = foot[(i + 1) % foot.length]!;
+    const jb = (f.seed ^ (i * 0x85ebca6b)) >>> 0;
+    const jl = 0.78 + ((jb >>> 3) & 15) * 0.035; // a jagged hem, never a comb
+    const mX = (a[0] + b[0]) / 2;
+    const mY = (a[1] + b[1]) / 2;
+    const el = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1e-4;
+    const ex2 = (b[0] - a[0]) / el;
+    const ey2 = (b[1] - a[1]) / el;
+    let nx = ey2;
+    let ny2 = -ex2;
+    if (nx * mX + ny2 * mY < 0) {
+      nx = -nx;
+      ny2 = -ny2;
+    }
+    const bw = Math.min(el * 0.3, hl * 0.09);
+    const A2 = P3(mX - ex2 * bw, mY - ey2 * bw, rootZ);
+    const B2 = P3(mX + ex2 * bw, mY + ey2 * bw, rootZ);
+    const T2 = P3(mX + nx * skirtLen * jl, mY + ny2 * skirtLen * jl, rootZ - 0.035);
+    const M2 = P3(mX, mY, rootZ + 0.02);
+    skirt.push({ a: A2, b: B2, m: M2, t: T2, near: M2.y > cyd - 0.02 * s });
+  }
+  const hornRim = shade(look.rim, -4);
+  const paintSkirtThorn = (th: SkirtThorn): void => {
+    // Two facets split along the thorn's axis, lit by true screen
+    // orientation — the same light every dome thorn answers to.
+    const halves: Array<[{ x: number; y: number }, { x: number; y: number }]> = [
+      [th.a, th.t],
+      [th.t, th.b],
+    ];
+    for (const [c0, c1] of halves) {
+      const midY2 = (c0.y + c1.y) / 2;
+      const dn2 = Math.hypot((c0.x + c1.x) / 2 - th.m.x, midY2 - th.m.y) || 1e-4;
+      const nyF = (midY2 - th.m.y) / dn2;
+      ctx.fillStyle = f.hurt ? '#ffffff' : shade(hornRim, Math.round(-nyF * 24) + 4);
+      ctx.beginPath();
+      ctx.moveTo(th.m.x, th.m.y);
+      ctx.lineTo(c0.x, c0.y);
+      ctx.lineTo(c1.x, c1.y);
+      ctx.closePath();
+      ctx.fill();
+    }
+  };
+  for (const th of skirt) if (!th.near) paintSkirtThorn(th);
+
   paintBlockBody(
     ctx,
     f,
@@ -16882,8 +16979,8 @@ export function paintTurtleBody(
     () => look.rimBot,
     shell,
     (gx, gyy, lift2) => {
-      // Quiet under-mail work only — the pyramids carry the armor
-      // read now. Soft value patches keep big plates from banding
+      // Quiet under-mail work only — the thorns carry the armor
+      // read now. Soft value patches keep the vault from banding
       // flat, and the marginal band seats the rim.
       ctx.save();
       ctx.translate(gx(domeC, 0), gyy(domeC, 0) - look.shellH * tk * s * 0.8 - lift2);
@@ -16913,154 +17010,172 @@ export function paintTurtleBody(
     },
   );
 
-  // THE SAW RIM: marginal teeth hanging off the near rim edge —
-  // rim-toned so they read against the shaded flank, biggest on the
-  // snapper (the jagged skirt is its whole hem).
-  if (!f.hurt) {
-    const rimY = (X: number, Y: number): number =>
-      gy + (fy * X + py * Y) * ys * s - look.rimBot * s - lift * 0.6;
-    const rimX = (X: number, Y: number): number => bx + (fx * X + px * Y) * s;
-    const cyd = gy - lift;
-    ctx.fillStyle = shade(look.rim, -8);
-    for (let i = 0; i < foot.length; i++) {
-      const a = foot[i]!;
-      const b = foot[(i + 1) % foot.length]!;
-      const mX = (a[0] + b[0]) / 2;
-      const mY = (a[1] + b[1]) / 2;
-      const sx0 = rimX(mX, mY);
-      const sy0 = rimY(mX, mY);
-      // Near-side segments only: below the body center on screen.
-      if (sy0 <= cyd - 0.02 * s) continue;
-      // Outward in screen space, away from the hull center.
-      let ox = sx0 - bx;
-      let oy = sy0 - cyd;
-      const od = Math.hypot(ox, oy) || 1e-4;
-      ox /= od;
-      oy /= od;
-      const tw = s * (look.ancient ? 0.07 : 0.08);
-      const ex0 = rimX(a[0] * 0.75 + mX * 0.25, a[1] * 0.75 + mY * 0.25);
-      const ey0 = rimY(a[0] * 0.75 + mX * 0.25, a[1] * 0.75 + mY * 0.25);
-      const ex1 = rimX(b[0] * 0.75 + mX * 0.25, b[1] * 0.75 + mY * 0.25);
-      const ey1 = rimY(b[0] * 0.75 + mX * 0.25, b[1] * 0.75 + mY * 0.25);
-      ctx.beginPath();
-      ctx.moveTo(ex0, ey0);
-      ctx.lineTo(sx0 + ox * tw, sy0 + oy * tw + tw * 0.5);
-      ctx.lineTo(ex1, ey1);
-      ctx.closePath();
-      ctx.fill();
-    }
-  }
+  // The near half of the hem rides over the painted flank.
+  for (const th of skirt) if (th.near) paintSkirtThorn(th);
 
-  // ---- THE FACETED MAIL: every scute a pyramid seated on the
-  // dome's true curve — four triangular facets each, lit by their
-  // own screen orientation (sky-facing bright, undercut dark), far
-  // plates painted first so near plates overlap true at every band.
-  // The vertebral row slides up-crown by the lateral projection
-  // (THE RIDGE RIDES THE CROWN): dead-center face-on, on the
-  // skyline at profile — the defining read never collapses.
-  const rows = look.ancient ? COLOSSUS_SCUTES : TURTLE_SCUTES;
+  // ---- THE THORNED MAIL: the whole dome is grown horn — every
+  // thorn a four-facet curved horn seated on the vault's true curve,
+  // raked aft and canted outward by its rank, painted far-to-near so
+  // each near thorn's raked tip overlaps the base behind it (the
+  // imbricated read of grown armor, never a scatter of decals). The
+  // vertebral saw keeps THE RIDGE RIDES THE CROWN: dead-center
+  // face-on, the blade skyline at profile.
+  const rows = look.ancient ? COLOSSUS_THORNS : SNAPPER_THORNS;
+  // The species wears its own horn (TWO BODIES, TWO SPECIES): the
+  // snapper's blades rake hard and curve like sabres; the mountain's
+  // studs rise blunt and broad on near-touching bases.
+  // shadeAmp: the mountain's blunt studs need HARDER facet light —
+  // shallow cones at this camera pitch flatten to lozenges unless
+  // the light carves them (the colossus pass-one failure).
+  const horn = look.ancient
+    ? { rake: 0.42, cant: [0, 0.62, 1.05], curve: 0.14, baseK: 1.15, shadeAmp: 36 }
+    : { rake: 0.62, cant: [0, 0.4, 0.75], curve: 0.3, baseK: 1, shadeAmp: 26 };
   const ridgeY = -py * hw * 0.66;
-  const plates = rows
-    .map(([txx, tyy, lk, wk2, kk], idx) => {
-      // Seeded smith's-hand jitter: no two plates the same size, no
-      // two shells the same mail — and the same shell forever.
+  const thorns = rows
+    .map(([txx, tyy, rk, hk2, rank], idx) => {
+      // Seeded smith's-hand jitter: no two thorns the same, no two
+      // shells the same mail — and the same shell forever.
       const jb = (f.seed ^ (idx * 0x9e3779b9)) >>> 0;
-      const js = 0.92 + ((jb >>> 4) & 15) * 0.01;
-      const jx = (((jb >>> 8) & 7) - 3.5) * 0.01;
+      const js = 0.9 + ((jb >>> 4) & 15) * 0.0125;
+      const jx = (((jb >>> 8) & 7) - 3.5) * 0.012;
+      const jh = 0.9 + ((jb >>> 12) & 15) * 0.013;
       const X = (txx + jx) * hl;
       const Y = tyy === 0 ? ridgeY : tyy * hw;
-      const LX = lk * hl * js;
-      const WY = wk2 * hw * js;
-      const zBase = tyy === 0 ? topH(X) : surf(X, Y);
-      // A SHINGLE, not a window: the plate's aft edge draws in — the
-      // trapezoid is what says "grown armor" instead of "stamped
-      // tile" (every reference scute tapers toward the stern).
-      const corners = [
-        P3(X + LX, Y - WY, zBase * 0.94),
-        P3(X + LX, Y + WY, zBase * 0.94),
-        P3(X - LX, Y + WY * 0.62, zBase * 0.94),
-        P3(X - LX, Y - WY * 0.62, zBase * 0.94),
+      const zB = tyy === 0 ? topH(X) : surf(X, Y);
+      const h = look.spikeH * hk2 * jh;
+      const R = rk * hl * js * horn.baseK;
+      // The lean lives in the BODY frame — aft with the rake,
+      // outward with the rank — so every band inherits the true 3D
+      // cant instead of a per-band cheat.
+      const latSgn = tyy > 0.01 ? 1 : tyy < -0.01 ? -1 : 0;
+      const dX = -horn.rake * h;
+      const dY = latSgn * horn.cant[rank]! * h;
+      const dl = Math.hypot(dX, dY) || 1e-4;
+      const ux = dX / dl;
+      const uy = dY / dl;
+      const T = P3(X + dX, Y + dY, zB + h);
+      // The base ring: nose into the lean's face, heel tucked under
+      // the overhang, shoulders square across it.
+      const ring = [
+        P3(X - uy * R, Y + ux * R, zB * 0.93),
+        P3(X - ux * R * 0.9, Y - uy * R * 0.9, zB * 0.9),
+        P3(X + uy * R, Y - ux * R, zB * 0.93),
+        P3(X + ux * R * 0.62, Y + uy * R * 0.62, zB * 0.96),
       ];
-      // The apex rakes aft — the blades sweep toward the stern.
-      const apex = P3(X - LX * 0.42, Y, zBase + look.spikeH * kk * tk);
-      return { corners, apex, sortY: P3(X, Y, 0).y, vertebral: tyy === 0 };
+      const K = P3(X, Y, zB * 0.93);
+      return { T, ring, K, R, rank, sortY: P3(X, Y, 0).y };
     })
-    .sort((a, b2) => a.sortY - b2.sortY);
-  for (const pl of plates) {
-    const { corners, apex } = pl;
+    .sort((q1, q2) => q1.sortY - q2.sortY);
+  const curveK = horn.curve;
+  for (const th of thorns) {
+    const { T, ring, K } = th;
     if (f.hurt) {
       ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.moveTo(apex.x, apex.y);
-      for (const c of corners) ctx.lineTo(c.x, c.y);
-      ctx.closePath();
-      ctx.fill();
+      for (let e = 0; e < 4; e++) {
+        const ci = ring[e]!;
+        const cj = ring[(e + 1) % 4]!;
+        ctx.beginPath();
+        ctx.moveTo(T.x, T.y);
+        ctx.lineTo(ci.x, ci.y);
+        ctx.lineTo(cj.x, cj.y);
+        ctx.closePath();
+        ctx.fill();
+      }
       continue;
     }
-    // The mail catches the light the flat dome cannot: plates sit a
-    // step BRIGHTER than the vault they armor (dark plates on a lit
-    // dome read as windows — the pass-one failure).
-    const base = pl.vertebral ? shade(look.spike, 16) : shade(shell, 7);
+    // The socket: a dark crevice the horn grows OUT of — every thorn
+    // rooted in the shell, never pasted on it. The sockets between
+    // packed bases are what read as the carapace's seams.
+    ctx.fillStyle = shade(shell, -16);
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(K.x + (ring[0]!.x - K.x) * 1.18, K.y + (ring[0]!.y - K.y) * 1.18);
+    for (let e = 1; e < 4; e++)
+      ctx.lineTo(K.x + (ring[e]!.x - K.x) * 1.18, K.y + (ring[e]!.y - K.y) * 1.18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    // Four facets, edges bowed to the tip (the sabre curve —
+    // straight triangles read as stamped tin), lit by TRUE screen
+    // orientation: sky-facing horn catches the light, the undercut
+    // falls into its own shadow. The horn sits BRIGHTER than the
+    // vault it grows from (dark plates on a lit dome read as
+    // windows — the law still binds).
+    const base = th.rank === 0 ? shade(look.spike, 8) : look.spike;
+    const ctrl = (p: { x: number; y: number }): { x: number; y: number } => {
+      const mx2 = (p.x + T.x) / 2;
+      const my2 = (p.y + T.y) / 2;
+      const ox = mx2 - K.x;
+      const oy = my2 - K.y;
+      const od = Math.hypot(ox, oy) || 1e-4;
+      const el2 = Math.hypot(p.x - T.x, p.y - T.y);
+      return { x: mx2 + (ox / od) * el2 * curveK, y: my2 + (oy / od) * el2 * curveK };
+    };
     for (let e = 0; e < 4; e++) {
-      const ci = corners[e]!;
-      const cj = corners[(e + 1) % 4]!;
+      const ci = ring[e]!;
+      const cj = ring[(e + 1) % 4]!;
       const midX = (ci.x + cj.x) / 2;
       const midY = (ci.y + cj.y) / 2;
-      const dn = Math.hypot(midX - apex.x, midY - apex.y) || 1e-4;
-      // Facet light by true screen orientation: the face tilted
-      // sky-ward catches the world's top light; the face hanging
-      // toward the camera falls into its own shadow.
-      const ny = (midY - apex.y) / dn;
-      ctx.fillStyle = shade(base, Math.round(-ny * 22) + 8);
+      const dn = Math.hypot(midX - T.x, midY - T.y) || 1e-4;
+      const nyF = (midY - T.y) / dn;
+      ctx.fillStyle = shade(base, Math.round(-nyF * horn.shadeAmp) + 6);
+      const c0 = ctrl(ci);
+      const c1 = ctrl(cj);
       ctx.beginPath();
-      ctx.moveTo(apex.x, apex.y);
-      ctx.lineTo(ci.x, ci.y);
-      ctx.lineTo(cj.x, cj.y);
+      ctx.moveTo(ci.x, ci.y);
+      ctx.quadraticCurveTo(c0.x, c0.y, T.x, T.y);
+      ctx.quadraticCurveTo(c1.x, c1.y, cj.x, cj.y);
       ctx.closePath();
       ctx.fill();
     }
-    // The chiseled seam around each plate — quiet, so the facets
-    // (not the ink) carry the relief.
-    ctx.strokeStyle = 'rgba(26, 20, 36, 0.22)';
-    ctx.lineWidth = Math.max(1, s * 0.013);
+    // Quiet base seam + a lit keel on the saw blades — the facets
+    // carry the relief, never the ink.
+    ctx.strokeStyle = 'rgba(26, 20, 36, 0.2)';
+    ctx.lineWidth = Math.max(1, s * 0.012);
     ctx.beginPath();
-    ctx.moveTo(corners[0]!.x, corners[0]!.y);
-    for (let e = 1; e < 4; e++) ctx.lineTo(corners[e]!.x, corners[e]!.y);
+    ctx.moveTo(ring[0]!.x, ring[0]!.y);
+    for (let e = 1; e < 4; e++) ctx.lineTo(ring[e]!.x, ring[e]!.y);
     ctx.closePath();
     ctx.stroke();
-    // The lit spine of the keel — vertebral blades flash their edge.
-    if (pl.vertebral) {
-      ctx.strokeStyle = shade(shell, 28);
+    // The saw flashes its keel only where the blade shows its side —
+    // face-on the five keels would chain into one pale zipper down
+    // the spine (the pass-one failure of this pass).
+    if (th.rank === 0 && Math.abs(fx) > 0.35) {
+      ctx.strokeStyle = shade(base, 26);
       ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.globalAlpha = Math.min(1, Math.abs(fx) * 1.3);
+      const nose = ring[1]!;
+      const cn = ctrl(nose);
       ctx.beginPath();
-      ctx.moveTo(corners[0]!.x, corners[0]!.y);
-      ctx.lineTo(apex.x, apex.y);
+      ctx.moveTo(nose.x, nose.y);
+      ctx.quadraticCurveTo(cn.x, cn.y, T.x, T.y);
       ctx.stroke();
+      ctx.globalAlpha = 1;
     }
   }
 
-  // The years, grown ON the mail: moss caps two seeded plates and a
-  // pale lichen scar crosses a third — the colossus only.
+  // The years, grown ON the horn: moss caps three seeded thorns at
+  // the shoulder and a pale lichen scar rakes a fourth — the
+  // colossus only.
   if (look.moss && !f.hurt) {
-    const picks = [1 + (f.seed & 3), 5 + ((f.seed >>> 3) & 7)];
+    const picks = [1 + (f.seed & 3), 6 + ((f.seed >>> 3) & 7), 14 + ((f.seed >>> 7) & 7)];
     ctx.fillStyle = look.moss;
     ctx.globalAlpha = 0.85;
     for (const idx of picks) {
-      const pl = plates[idx % plates.length]!;
-      const cx0 = (pl.apex.x + pl.corners[2]!.x) / 2;
-      const cy0 = (pl.apex.y + pl.corners[2]!.y) / 2;
+      const th = thorns[idx % thorns.length]!;
+      const mx3 = th.K.x + (th.T.x - th.K.x) * 0.35;
+      const my3 = th.K.y + (th.T.y - th.K.y) * 0.35;
       ctx.beginPath();
-      facetBlob(ctx, cx0, cy0, s * hl * 0.14, f.seed ^ (idx * 131), 6, 0.7, 0.9);
+      facetBlob(ctx, mx3, my3, th.R * s * 0.85, f.seed ^ (idx * 131), 6, 0.7, 0.9);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
-    const scar = plates[(2 + ((f.seed >>> 6) & 3)) % plates.length]!;
+    const scar = thorns[(3 + ((f.seed >>> 6) & 3)) % thorns.length]!;
     ctx.strokeStyle = shade(look.shell, 20);
     ctx.lineWidth = Math.max(1, s * 0.013);
     ctx.beginPath();
-    ctx.moveTo(scar.corners[3]!.x, scar.corners[3]!.y);
-    ctx.lineTo((scar.apex.x + scar.corners[1]!.x) / 2, (scar.apex.y + scar.corners[1]!.y) / 2);
-    ctx.lineTo(scar.corners[1]!.x, scar.corners[1]!.y);
+    ctx.moveTo(scar.ring[0]!.x, scar.ring[0]!.y);
+    ctx.lineTo(scar.T.x, scar.T.y);
     ctx.stroke();
   }
 }
