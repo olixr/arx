@@ -1,5 +1,6 @@
 import {
   CHUNK_SIZE,
+  DARK_BAND_Y,
   Detail,
   Tile,
   emptyChunk,
@@ -345,8 +346,11 @@ export function coldAt(seed: number, tx: number, ty: number): number {
   );
 }
 
-/** Below this world-y everything defaults to solid cave (dungeon land). */
-export const DARK_BAND_Y = 512;
+/** Below this world-y everything defaults to solid cave (dungeon land).
+ *  Defined in shared beside the other world-structure constants (the
+ *  geography validator derives its authoring ceiling from it);
+ *  re-exported here for its long-standing consumers. */
+export { DARK_BAND_Y };
 
 /** Signed terrain level (−2..2) at a world tile — the fields combined. */
 export function levelAt(seed: number, tx: number, ty: number): number {

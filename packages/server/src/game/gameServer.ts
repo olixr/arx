@@ -4759,15 +4759,18 @@ export class GameServer {
     });
     if (procExtra > 0) addItem(player.inventory, node.yieldItem, procExtra);
     // Occasional extra find (wild herbs shed seeds) — a single item or
-    // a loot table rolled at the node's level (interaction loot).
+    // a loot table rolled at the node's level (interaction loot). The
+    // find banks through the one purse leaf (the quest lane's law): a
+    // full pack spills it at the feet instead of destroying it, and a
+    // table that pays a key clips it onto the ring, never the pack.
     if (node.bonusYield && Math.random() < node.bonusYield.chance) {
-      if (node.bonusYield.item) addItem(player.inventory, node.bonusYield.item, 1);
+      if (node.bonusYield.item) this.bankDrop(eid, player, node.bonusYield.item, 1, undefined);
       if (node.bonusYield.table) {
         for (const drop of rollLoot(node.bonusYield.table, {
           level: node.levelReq,
           rand: Math.random,
         })) {
-          addItem(player.inventory, drop.item, drop.qty, drop.roll);
+          this.bankDrop(eid, player, drop.item, drop.qty, drop.roll);
         }
       }
     }
@@ -8996,18 +8999,7 @@ export class GameServer {
         // The purse scales by the stage the mark was POSTED against —
         // clearing zeroes row.stage first, so the death stage rides
         // the ward count instead: stage at death = the bits' story.
-        const mult = 1 + deathStage;
-        let paid = 0;
-        for (const drop of rollLoot(`bounty_t${tier}`, { level: tier * 10, rand: Math.random })) {
-          const qty = drop.qty * mult;
-          const added = addItem(p.inventory, drop.item, qty);
-          if (added < qty) {
-            const peid = eidOf.get(p);
-            const pos = peid !== undefined ? this.positions.get(peid) : undefined;
-            if (pos && peid !== undefined) this.spawnDrop(drop.item, qty - added, pos.x, pos.y, peid);
-          }
-          paid += qty;
-        }
+        const paid = this.payPurse(eidOf.get(p), p, tier, 1 + deathStage);
         if (paid > 0) {
           p.session?.sendJson({
             t: 'chat',
@@ -9602,7 +9594,13 @@ export class GameServer {
       const cellY = want.cell ? want.cell[1] : poiCellOf(want.y!);
       // The context is per-want: the capital mask derives from the
       // seat's own ground (the one-context law with its query point).
-      const ctx = this.poiCtx(cellX, cellY);
+      // And the SEEDER IS GEOLOGIC (core-audit debt 13): authored
+      // sites judge tiers over SETTLED_ANCHORS only, never the
+      // currently-lit waystation lamps — the old live read made the
+      // same plan seed different camps by seeding order and ledger
+      // history (first boot: zero lamps lit; a later re-seed: every
+      // neighbor's lamp burning). The seatCtx convention, kept here.
+      const ctx = { ...this.poiCtx(cellX, cellY), anchors: SETTLED_ANCHORS };
       const key = poiCellKey(cellX, cellY);
       const row = this.poiLedger.get(key);
       if (row?.site?.defId === want.defId) {
@@ -9664,7 +9662,8 @@ export class GameServer {
             cellX,
             cellY,
             epoch,
-            tier: this.liveDangerTier(spot.x, spot.y),
+            // Geologic, like the cell branch: the plan's own field.
+            tier: dangerAt(config.worldSeed, spot.x, spot.y, SETTLED_ANCHORS),
             defId: want.defId,
             prefabId,
             anchorX: spot.x,
@@ -11484,19 +11483,8 @@ export class GameServer {
     const site = row?.site;
     if (!site) return;
     const tier = Math.max(1, Math.min(5, site.tier));
-    const mult = 1 + (row?.stage ?? 0);
-    let paid = 0;
-    for (const drop of rollLoot(`bounty_t${tier}`, { level: tier * 10, rand: Math.random })) {
-      const qty = drop.qty * mult;
-      const added = addItem(player.inventory, drop.item, qty);
-      if (added < qty) {
-        const pos = this.positions.get(eid);
-        if (pos) this.spawnDrop(drop.item, qty - added, pos.x, pos.y, eid);
-      }
-      paid += qty;
-    }
+    const paid = this.payPurse(eid, player, tier, 1 + (row?.stage ?? 0));
     if (paid > 0) {
-      player.session?.sendJson({ t: 'inv', slots: player.inventory });
       player.session?.sendJson({
         t: 'chat',
         channel: 'system',
@@ -11505,6 +11493,73 @@ export class GameServer {
       // The town that posted the ask remembers the hand that answered.
       this.creditDeed(player, this.factionForPlace(site.anchorX, site.anchorY), 'bountyHonored');
     }
+  }
+
+  /**
+   * THE ONE PURSE, leaf law: bank one rolled drop into a player's
+   * hands. A dungeon key clips straight onto the ring (the key-ring
+   * law — a table edit that pays a key must never land it in the
+   * pack), everything else enters WITH its roll (a bare addItem would
+   * strip a rolled piece to a husk), and what the pack refuses falls
+   * at the player's feet through placeDrop so the roll survives the
+   * ground — never the roll-blind spawnDrop, never simply destroyed.
+   * Callers own their own messages and pack-mirror sends.
+   */
+  private bankDrop(
+    eid: EntityId | undefined,
+    player: PlayerComp,
+    item: string,
+    qty: number,
+    roll: ItemRoll | undefined,
+  ): void {
+    if (itemDef(item)?.dungeonKey) {
+      let ringed: ItemRoll | undefined;
+      for (let n = 0; n < Math.max(1, qty); n++) ringed = this.addKeyToRing(player, roll).roll;
+      const spec = dungeonSpecFromRoll(ringed);
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `The key to ${spec.name} (${spec.sigil}) clips onto your key ring.`,
+      });
+      return;
+    }
+    const added = addItem(player.inventory, item, qty, roll);
+    if (added >= qty) return;
+    const pos = eid !== undefined ? this.positions.get(eid) : undefined;
+    if (!pos) return;
+    this.placeDrop(item, qty - added, pos.x, pos.y, {
+      ownerEid: null,
+      ownerUntil: 0,
+      despawnAt: Date.now() + 12 * 60_000,
+      pickupAfter: Date.now() + 400,
+      roll,
+    });
+  }
+
+  /**
+   * THE ONE PURSE: the bounty payout both honor lanes share — the poi
+   * cell ledger's (payBounty above) and the capital's by-hand copy
+   * had already drifted apart (the copy skipped the pack sync, so the
+   * client showed stale coins; both were roll-blind). One roll of
+   * bounty_t{tier} at tier wages, every drop banked through the leaf
+   * law (rolls kept, keys ringed, overflow at the feet), one pack
+   * mirror after. Coin-only tables today; the mechanics no longer
+   * care. Messages and ledger credits stay with the callers.
+   */
+  private payPurse(
+    eid: EntityId | undefined,
+    player: PlayerComp,
+    tier: number,
+    mult: number,
+  ): number {
+    let paid = 0;
+    for (const drop of rollLoot(`bounty_t${tier}`, { level: tier * 10, rand: Math.random })) {
+      const qty = drop.qty * mult;
+      this.bankDrop(eid, player, drop.item, qty, drop.roll);
+      paid += qty;
+    }
+    if (paid > 0) player.session?.sendJson({ t: 'inv', slots: player.inventory });
+    return paid;
   }
 
   /** Retire a cell's standing zone + bodies (the /poi levers ride this). */

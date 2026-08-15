@@ -219,11 +219,12 @@ export function dangerAt(
   }
   if (inside) return 0;
   // With no worded anchor at all, the world origin plays the hearth so
-  // the field stays defined.
+  // the field stays defined — but it is a REFERENCE POINT, never a
+  // settlement: tile (0,0) itself reads tier 1 like everything else
+  // outside a real safeR (the old `return 0` minted a one-tile haven
+  // out of thin air in any anchors-list of pure lamps and dreads).
   if (march === Infinity) {
-    const edge = Math.hypot(tx, ty);
-    if (edge <= 0) return 0;
-    march = 1 + Math.floor(edge / DANGER_BAND);
+    march = 1 + Math.floor(Math.hypot(tx, ty) / DANGER_BAND);
   }
 
   const base = Math.min(DANGER_MAX, Math.max(march, heat, 1));

@@ -2,6 +2,11 @@ import { RARITY_TIERS } from '@arx/shared';
 import { HEIRLOOM_CHANCE } from '../equipment/tables.js';
 import { ITEMS } from '../items.js';
 import { UNLOCKABLE_RECIPES, recipeScrollId } from '../recipes.js';
+// A deliberate cycle: analyze.js imports this module's LOOT_TABLES.
+// Safe because the module-load call below (validateLootTables) stays
+// purely structural — expectedYield is only dereferenced from
+// lootTableErrors, long after both module bodies have evaluated.
+import { expectedYield } from './analyze.js';
 import type { LootEntryDef, LootTableDef } from './types.js';
 
 /**
@@ -2060,12 +2065,45 @@ export function replaceLootTables(next: Iterable<LootTableDef>): void {
   for (const t of next) map.set(t.id, t);
 }
 
+/**
+ * THE FLOOD LAW AT THE DOOR: the richest lawful station is the boss
+ * purse — loot.test pins the full ladder ([3.2, 0.2] regular,
+ * [4.5, 0.5] named, [8, 2.2] boss stacks/gear per kill), summed over
+ * each foe's tables. The accept gate cannot know which station will
+ * carry a candidate table, so it enforces the honest subset: no
+ * SINGLE table may expect past the boss ceiling on its own, because
+ * no station anywhere could lawfully carry it. CI's per-station sums
+ * stay the fine gate; this is the coarse one, armed at CMS accept
+ * instead of the next pipeline run.
+ */
+export const BOSS_YIELD_CEILING = { stacks: 8, gearStacks: 2.2 } as const;
+
 /** validateLootTables, collecting instead of throwing — the CMS gate. */
 export function lootTableErrors(tables: readonly LootTableDef[]): string[] {
   try {
     validateLootTables(tables);
-    return [];
   } catch (err) {
     return [(err as Error).message];
   }
+  // Structure holds — now the flood law. Yield math needs the whole
+  // candidate set resolvable (refs vetted above), never the live map:
+  // the gate judges the world being proposed, not the one running.
+  const byId = new Map(tables.map((t) => [t.id, t]));
+  const errors: string[] = [];
+  for (const t of tables) {
+    const y = expectedYield(t.id, byId);
+    if (y.stacks > BOSS_YIELD_CEILING.stacks) {
+      errors.push(
+        `loot table '${t.id}': expects ${y.stacks.toFixed(2)} stacks/roll — past the boss ` +
+          `ceiling (${BOSS_YIELD_CEILING.stacks}); no station may lawfully carry it`,
+      );
+    }
+    if (y.gearStacks > BOSS_YIELD_CEILING.gearStacks) {
+      errors.push(
+        `loot table '${t.id}': expects ${y.gearStacks.toFixed(3)} gear/roll — past the boss ` +
+          `ceiling (${BOSS_YIELD_CEILING.gearStacks}); no station may lawfully carry it`,
+      );
+    }
+  }
+  return errors;
 }

@@ -202,6 +202,23 @@ export const CHUNK_SIZE = 32;
 export const POI_MACRO_CELL = 128;
 
 /**
+ * Below this world-y everything defaults to solid cave (dungeon land).
+ * Lives beside the other world-structure constants so geography can
+ * DERIVE its authoring ceiling from it (worldgen re-exports it for its
+ * old consumers) — the two used to be free literals 112 rows apart
+ * with a governed-by-nobody band between them (core-audit debt 13).
+ */
+export const DARK_BAND_Y = 512;
+
+/**
+ * The authoring hem: routes and pinned sites stay this many rows above
+ * the cave roof, so hand-authored content never crowds the band the
+ * runtime clearance laws govern. GEOGRAPHY_SURFACE_MAX_Y derives from
+ * these two — never a free 400 again.
+ */
+export const SURFACE_AUTHOR_MARGIN = 112;
+
+/**
  * Signed terrain level range. DOWN is the same law as UP, relative: for
  * every boundary the higher side owns the crown and the faces, and the
  * Cliff-ring + Ramp collision story is identical for sinks and

@@ -1,4 +1,4 @@
-import { DANGER_MAX, POI_MACRO_CELL, fbm, type Vec2, type DangerAnchor } from '@arx/shared';
+import { DANGER_MAX, DARK_BAND_Y, POI_MACRO_CELL, SURFACE_AUTHOR_MARGIN, fbm, type Vec2, type DangerAnchor } from '@arx/shared';
 import { AUTHORED_ANCHOR_WORDS, SETTLED_ANCHORS, replaceSettledAnchors } from './danger.js';
 
 /**
@@ -927,8 +927,10 @@ export function replaceGeography(def: GeographyDef): void {
 // --------------------------------------------------------------------
 
 const GEO_ID_RE = /^[a-z][a-z0-9_-]{0,63}$/;
-/** Routes must stay far above the dark band (y >= 400 is underground). */
-export const GEOGRAPHY_SURFACE_MAX_Y = 400;
+/** Routes and pins stay a full authoring hem above the cave roof —
+ *  DERIVED from the dark band (core-audit debt 13: 400 and 512 were
+ *  two free literals with an ungoverned 112-row band between them). */
+export const GEOGRAPHY_SURFACE_MAX_Y = DARK_BAND_Y - SURFACE_AUTHOR_MARGIN;
 /** POI macro-cell width — mirrored from the scaffold (POI_CELL). */
 export const GEO_POI_CELL = POI_MACRO_CELL;
 
@@ -947,6 +949,18 @@ export function validateGeographyDef(
   const errors: string[] = [];
   const r = raw as Partial<GeographyDef> | null;
   if (!r || typeof r !== 'object') return { ok: false, errors: ['geography must be an object'] };
+
+  // THE CLOSED SHAPE (core-audit debt 11): this validator rebuilds the
+  // doc and BOTH save paths persist the rebuild — an unknown field
+  // wasn't just ignored, it was ERASED on every Studio save (the worst
+  // possible form of the crowned mechanism). Unknown keys are refused
+  // at every nesting level now.
+  const vetKeys = (obj: object, known: readonly string[], at: string): void => {
+    for (const key of Object.keys(obj)) {
+      if (!known.includes(key)) errors.push(`${at} has unknown field '${key}'`);
+    }
+  };
+  vetKeys(r, ['routes', 'sites', 'anchors', 'massifs', 'veils', 'fens', 'meres', 'pinelands', 'scorches', 'planned'], 'geography');
 
   const routes: RoadRoute[] = [];
   const seenRoutes = new Set<string>();
@@ -986,6 +1000,7 @@ export function validateGeographyDef(
           bad = true;
         }
       }
+      vetKeys(rt, ['id', 'name', 'kind', 'pts'], at);
       if (!bad) {
         routes.push({
           id: rt.id,
@@ -1021,6 +1036,7 @@ export function validateGeographyDef(
       if (refs?.poiDefIds && !refs.poiDefIds.has(s.defId)) {
         errors.push(`site '${s.id}' names unknown POI archetype '${s.defId}'`);
       }
+      vetKeys(s, ['id', 'defId', 'x', 'y', 'cell'], `site '${s.id}'`);
       const pinned = s.x !== undefined || s.y !== undefined;
       const celled = s.cell !== undefined;
       if (pinned === celled) {
@@ -1049,6 +1065,15 @@ export function validateGeographyDef(
         }
         cx = c[0];
         cy = c[1];
+        // Cell mode lawfully skips the road law and the dark-band PIN
+        // check — but never the surface itself: a forced cell whose
+        // rows start past the authoring ceiling would stand a landmark
+        // on ground no pin may name (the audit's governed-by-nobody
+        // band, closed).
+        if (cy * GEO_POI_CELL >= GEOGRAPHY_SURFACE_MAX_Y) {
+          errors.push(`site '${s.id}' cell [${cx},${cy}] starts past the surface ceiling (y >= ${GEOGRAPHY_SURFACE_MAX_Y})`);
+          continue;
+        }
         sites.push({ id: s.id, defId: s.defId, cell: [cx, cy] });
       }
       const key = `${cx},${cy}`;
@@ -1085,11 +1110,30 @@ export function validateGeographyDef(
         errors.push(`${at} cannot be a haven and a dread at once`);
         continue;
       }
+      vetKeys(a, ['x', 'y', 'safeR', 'haven', 'dread', 'country'], at);
       // THE WORD (danger.ts): the tier of the anchor's own country. A
       // doc saved before anchors learned to speak backfills from the
       // authored map by position (the FRONTIER backfill law); a dread
       // has no townsfolk to ask, so a worded dread is refused.
       const country = a.country ?? AUTHORED_ANCHOR_WORDS.get(`${a.x},${a.y}`);
+      // The backfill keys by EXACT shipped position — a legacy anchor
+      // nudged a tile would silently lose its word, softening the
+      // danger field around one town with no error anywhere. A
+      // wordless haven standing near a shipped worded seat must carry
+      // its word explicitly.
+      if (country === undefined && a.haven && a.dread === undefined) {
+        for (const [key, word] of AUTHORED_ANCHOR_WORDS) {
+          const [wx, wy] = key.split(',').map(Number);
+          const d = Math.hypot(a.x - wx!, a.y - wy!);
+          if (d > 0 && d <= 48) {
+            errors.push(
+              `${at} stands ${Math.round(d)} tiles off the authored worded seat at ${key} ` +
+                `with no country — a moved town must carry its word explicitly (was ${word})`,
+            );
+            break;
+          }
+        }
+      }
       if (country !== undefined && (!isInt(country) || country < 1 || country > DANGER_MAX)) {
         errors.push(`${at}.country must be an integer in [1, ${DANGER_MAX}] (or absent)`);
         continue;
@@ -1118,8 +1162,11 @@ export function validateGeographyDef(
     const seen = new Set<string>();
     if (!Array.isArray(list)) {
       // Fens, meres and pinelands all joined the plan after ship — an
-      // older doc simply has none, and must still load.
-      if (!optional) errors.push(`${kind} must be an array`);
+      // older doc simply has none, and must still load. But PRESENT
+      // and malformed is a corruption, never an empty list: the old
+      // silent [] flattened a whole landform layer (and worldgen with
+      // it) on any non-array value with no error anywhere.
+      if (!optional || list !== undefined) errors.push(`${kind} must be an array`);
       return out;
     }
     for (const [i, m] of list.entries()) {
@@ -1134,6 +1181,7 @@ export function validateGeographyDef(
         errors.push(`${at} needs integer x,y and r in [8, 1024]`);
         continue;
       }
+      vetKeys(m, ['id', 'x', 'y', 'r'], at);
       out.push({ id: m.id, x: m.x, y: m.y, r: m.r });
     }
     return out;
@@ -1161,6 +1209,7 @@ export function validateGeographyDef(
         errors.push(`${at} needs integer x,y and w,h in [1, 512]`);
         continue;
       }
+      vetKeys(p, ['id', 'name', 'x', 'y', 'w', 'h', 'apron'], at);
       planned.push({
         id: p.id,
         ...(typeof p.name === 'string' && p.name.trim() !== '' ? { name: p.name } : {}),
@@ -1402,19 +1451,15 @@ export function geographyWarnings(
       }
     }
   }
-  // Judge pinned sites against the DRAFT's own roads, not the live ones.
+  // Judge pinned sites against the DRAFT's own roads, not the live
+  // ones — through THE ONE PROJECTION, never a hand re-derivation.
   const draftDist = (x: number, y: number): number => {
     let best = Infinity;
     for (const route of def.routes) {
       for (let i = 0; i < route.pts.length - 1; i++) {
         const p = route.pts[i]!;
         const q = route.pts[i + 1]!;
-        const dx = q.x - p.x;
-        const dy = q.y - p.y;
-        const len2 = dx * dx + dy * dy;
-        let t = len2 === 0 ? 0 : ((x - p.x) * dx + (y - p.y) * dy) / len2;
-        t = t < 0 ? 0 : t > 1 ? 1 : t;
-        best = Math.min(best, Math.hypot(x - (p.x + t * dx), y - (p.y + t * dy)));
+        best = Math.min(best, segDist(x, y, p.x, p.y, q.x, q.y));
       }
     }
     return best;
@@ -1638,6 +1683,31 @@ export function nearRoads(x0: number, y0: number, x1: number, y1: number): boole
   return false;
 }
 
+/**
+ * THE ONE PROJECTION (core-audit debt 13): point-to-segment used to be
+ * re-derived by hand in four places in this file — and two of the
+ * copies had already drifted a tie-break apart. Every consumer now
+ * reads this pair: the projection when it needs the point, the
+ * distance when it only needs the distance.
+ */
+function segProject(
+  px: number,
+  py: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+): { x: number; y: number; d: number } {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  let t = len2 === 0 ? 0 : ((px - ax) * dx + (py - ay) * dy) / len2;
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  const qx = ax + t * dx;
+  const qy = ay + t * dy;
+  return { x: qx, y: qy, d: Math.hypot(px - qx, py - qy) };
+}
+
 function segDist(
   px: number,
   py: number,
@@ -1646,12 +1716,7 @@ function segDist(
   bx: number,
   by: number,
 ): number {
-  const dx = bx - ax;
-  const dy = by - ay;
-  const len2 = dx * dx + dy * dy;
-  let t = len2 === 0 ? 0 : ((px - ax) * dx + (py - ay) * dy) / len2;
-  t = t < 0 ? 0 : t > 1 ? 1 : t;
-  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+  return segProject(px, py, ax, ay, bx, by).d;
 }
 
 export interface RoadHit {
@@ -1735,20 +1800,11 @@ export function roadBearingAt(
     }
     const pts = b.route.pts;
     for (let i = 0; i < pts.length - 1; i++) {
-      const ax = pts[i]!.x;
-      const ay = pts[i]!.y;
-      const dx = pts[i + 1]!.x - ax;
-      const dy = pts[i + 1]!.y - ay;
-      const len2 = dx * dx + dy * dy;
-      let t = len2 === 0 ? 0 : ((tx - ax) * dx + (ty - ay) * dy) / len2;
-      t = t < 0 ? 0 : t > 1 ? 1 : t;
-      const px = ax + t * dx;
-      const py = ay + t * dy;
-      const d = Math.hypot(tx - px, ty - py);
-      if (d < best) {
-        best = d;
-        bx = px - tx;
-        by = py - ty;
+      const hit = segProject(tx, ty, pts[i]!.x, pts[i]!.y, pts[i + 1]!.x, pts[i + 1]!.y);
+      if (hit.d < best) {
+        best = hit.d;
+        bx = hit.x - tx;
+        by = hit.y - ty;
       }
     }
   }

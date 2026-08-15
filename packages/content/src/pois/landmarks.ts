@@ -1,6 +1,7 @@
 import { TILE_SKIP, Tile } from '@arx/shared';
 import type { PrefabDef } from '../maps/prefab.js';
 import { at, blob, canvas, finish, put, route, ruinRect, scatter, seedOf, track } from './canvas.js';
+import { declareInfluence } from './influence.js';
 import {
   beastPen,
   brazierWalk,
@@ -1195,7 +1196,15 @@ function buildSkralSaltgarth(): PrefabDef {
   return finish(c, 'poi_skral_village_saltgarth', 'The salt garth');
 }
 
-/** The landmark shelf — built once at module load, pinned forever. */
+/**
+ * The landmark shelf — built once at module load, pinned forever.
+ * EVERY prefab on this shelf declares influence-EXEMPT at its
+ * registration: a landmark is BORN EXPANSIVE (3-5x the camp shelf),
+ * its whole ground authored — generated litter would bury curated art,
+ * and the drowned villages carry their own dug water, so influence
+ * must never redraw a bank the builder dug. A new landmark added here
+ * is exempt by construction, never by remembering a far-file list.
+ */
 export const LANDMARK_PREFABS: readonly PrefabDef[] = [
   buildBarrowfield(),
   buildGreatkeep(),
@@ -1213,4 +1222,4 @@ export const LANDMARK_PREFABS: readonly PrefabDef[] = [
   // THE DROWNED VILLAGES (skral): the banks' landmark grounds.
   buildSkralLongbanks(),
   buildSkralSaltgarth(),
-];
+].map((p) => declareInfluence(p, { exempt: true }));

@@ -38,6 +38,9 @@ import {
   replaceFrontier,
   replaceGrowth,
   geographyWarnings,
+  ROAD_SPAN_MAX,
+  TRAIL_SPAN_MAX,
+  routeBridgeDecks,
   packZoneEdgeProfile,
   lootTableErrors,
   prefabFromJson,
@@ -274,6 +277,29 @@ export function createMapsApi(
           const result = validateGeographyDef(raw, { poiDefIds: new Set(POI_DEFS.keys()) });
           if (!result.ok) {
             sendJson(res, 400, { error: result.errors.join('; ') });
+            return true;
+          }
+          // THE SPAN LAW GROWS TEETH (core-audit debt 13): the deck
+          // survey used to run AFTER the save — a road drawn across
+          // the Glasswater shipped its impossible causeway to every
+          // player, and the warning arrived in the same response, too
+          // late. Deep-water decks and over-max spans now REFUSE the
+          // save; the shore-hugging counsel stays advisory.
+          const decks = routeBridgeDecks(result.def, config.worldSeed, (x, y) =>
+            elevationAt(config.worldSeed, x, y),
+          );
+          const unlawful = decks.filter(
+            (d) => d.deep > 0 || d.span > (d.trail ? TRAIL_SPAN_MAX : ROAD_SPAN_MAX),
+          );
+          if (unlawful.length > 0) {
+            const d = unlawful[0]!;
+            sendJson(res, 400, {
+              error:
+                `route '${d.routeId}' lays an unlawful ${d.span}-tile deck at ` +
+                `(${d.x0},${d.y0})..(${d.x1},${d.y1})` +
+                (d.deep > 0 ? ` over ${d.deep} tile(s) of DEEP water (never bridged)` : '') +
+                ` — cross at a neck or walk the shore (the span law)`,
+            });
             return true;
           }
           await importContentDoc(db, 'geography', 'world', result.def);

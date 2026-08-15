@@ -215,6 +215,8 @@ test('SOURCE-AND-KILL-SWITCH: breaking a core scatters its satellites without pa
 const proto3 = GameServer.prototype as unknown as {
   notePoiKill: WardFn;
   payBounty: WardFn;
+  payPurse: WardFn;
+  bankDrop: WardFn;
   setPlayerFlag: WardFn;
   clearPlayerFlag: WardFn;
   creditDeed: WardFn;
@@ -279,8 +281,10 @@ test('THE PARTICIPATION LEDGER: every hand that bled the garrison gets the credi
     positions: new Map([[11, { x: 448, y: 576 }], [12, { x: 449, y: 576 }]]),
     characterEids: new Map([[101, 11], [102, 12]]),
     grantArt: (p: FakePlayer, art: string) => arts.push([p.characterId, art]),
-    spawnDrop: () => {},
+    placeDrop: () => {},
     payBounty: proto3.payBounty,
+    payPurse: proto3.payPurse,
+    bankDrop: proto3.bankDrop,
     setPlayerFlag: proto3.setPlayerFlag,
     clearPlayerFlag: proto3.clearPlayerFlag,
   });
@@ -329,7 +333,9 @@ test('the purse scales with the boldness rung the camp died at', () => {
   p.flags.set('bounty:3,4', 1);
   Object.assign(s, {
     positions: new Map([[11, { x: 448, y: 576 }]]),
-    spawnDrop: () => {},
+    placeDrop: () => {},
+    payPurse: proto3.payPurse,
+    bankDrop: proto3.bankDrop,
     clearPlayerFlag: proto3.clearPlayerFlag,
   });
   armStanding(s);
@@ -390,8 +396,10 @@ test('THE HEARTH WATCH: breaking the squat stamps the settler the full quiet', (
     positions: new Map([[11, { x: 448, y: 576 }]]),
     characterEids: new Map([[101, 11]]),
     grantArt: () => {},
-    spawnDrop: () => {},
+    placeDrop: () => {},
     payBounty: proto3.payBounty,
+    payPurse: proto3.payPurse,
+    bankDrop: proto3.bankDrop,
     setPlayerFlag: proto3.setPlayerFlag,
     clearPlayerFlag: proto3.clearPlayerFlag,
   });

@@ -180,8 +180,16 @@ export const DANGER_LAWS: readonly DangerLaw[] = [
   { npcLevel: [88, 99], chest: 'boss', rarityBonus: 16, poiChance: 0.5, wildDensity: 0.62, findChance: 0.2, holdChance: 0.22 },
 ];
 
-/** Danger tier at a world tile over the settled anchors. */
-export function dangerTierAt(seed: number, tx: number, ty: number): number {
+/**
+ * Danger tier over the SETTLED anchors only — waystation lamps
+ * deliberately excluded (the seatCtx "geologic" convention: a seat
+ * decision must not move because a runtime lamp lit). Renamed from
+ * `dangerTierAt` (core-audit debt 13): under that name it read as the
+ * everyday field and silently disagreed with the server's
+ * liveDangerTier everywhere a lamp burned — a dead trap for the next
+ * caller. Reach for the server's live read unless you MEAN geologic.
+ */
+export function settledDangerTierAt(seed: number, tx: number, ty: number): number {
   return dangerAt(seed, tx, ty, SETTLED_ANCHORS);
 }
 

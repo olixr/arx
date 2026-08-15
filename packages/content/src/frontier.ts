@@ -492,16 +492,18 @@ export function validateFrontier(raw: unknown): ValidateFrontierResult {
  * validated doc.
  */
 export function replaceFrontier(next: FrontierDef): void {
-  Object.assign(FRONTIER, next, {
-    emberLingerMs: [...next.emberLingerMs],
-    fallowMs: [...next.fallowMs],
-    renewalRing: [...next.renewalRing],
-    stageMs: [...next.stageMs],
-    scatterLingerMs: [...next.scatterLingerMs],
-    creepMs: [...next.creepMs],
-    peddlerLingerMs: [...next.peddlerLingerMs],
-    holdEmberMs: [...next.holdEmberMs],
-  });
+  // Every array-valued dial copies BY VALUE, derived from the doc
+  // itself — never a hand-maintained list (core-audit debt 11: the
+  // old list silently missed strongholdEmberMs/strongholdFallowMs,
+  // so the live dial and the caller's doc — the CMS revert target —
+  // became ONE aliased array; the next range added would have joined
+  // them). A field the type gains is copied correctly the day it's
+  // born.
+  const copy: Record<string, unknown> = { ...next };
+  for (const [k, v] of Object.entries(copy)) {
+    if (Array.isArray(v)) copy[k] = [...v];
+  }
+  Object.assign(FRONTIER, copy);
 }
 
 // The shipped seed must satisfy its own law — loudly, at build time.

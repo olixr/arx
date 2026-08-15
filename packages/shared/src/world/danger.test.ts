@@ -55,8 +55,13 @@ test('deterministic from its inputs', () => {
   }
 });
 
-test('no anchors: the origin plays the hearth', () => {
-  assert.equal(dangerAt(SEED, 0, 0, []), 0);
+test('no anchors: the origin is a reference, never a settlement', () => {
+  // The old law minted a one-tile haven out of thin air at (0,0) —
+  // reachable in any anchors-list of pure lamps and dreads. Outside a
+  // real safeR the field never drops below 1 (its own header's law);
+  // the border wobble may still lift the origin's rung by one.
+  const origin = dangerAt(SEED, 0, 0, []);
+  assert.ok(origin >= 1 && origin <= 2, `origin read ${origin}`);
   assert.ok(dangerAt(SEED, 1500, 0, []) >= DANGER_MAX - 1);
 });
 

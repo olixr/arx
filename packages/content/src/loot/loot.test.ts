@@ -4,7 +4,13 @@ import { rarityIndex } from '@arx/shared';
 import { ITEMS, itemDef } from '../items.js';
 import { HEIRLOOM_MIN_SURPLUS } from '../equipment/tables.js';
 import { NPCS } from '../npcs.js';
-import { LOOT_TABLES, setDrops, validateLootTables } from './tables.js';
+import {
+  BOSS_YIELD_CEILING,
+  LOOT_TABLES,
+  lootTableErrors,
+  setDrops,
+  validateLootTables,
+} from './tables.js';
 import { reachableItems, rollLoot } from './roll.js';
 import { expectedYield } from './analyze.js';
 import { lootTablesFromJson, lootTablesToJson } from './serialize.js';
@@ -340,6 +346,47 @@ test('the flood law: every foe’s per-kill expectation stays under its station�
     assert.ok(stacks <= maxStacks, `${id} expects ${stacks.toFixed(2)} stacks/kill > ${maxStacks}`);
     assert.ok(gear <= maxGear, `${id} expects ${gear.toFixed(3)} gear/kill > ${maxGear}`);
   }
+});
+
+test('the flood law at the door: the CMS gate refuses a single table past the boss purse', () => {
+  // The accept gate cannot know which NPC station will carry a
+  // candidate table — that binding is a kill-time fact — so it
+  // enforces the honest subset: a lone table whose OWN expectation
+  // tops the boss ceiling has no lawful home anywhere. The shipped
+  // roster must pass its own door, or the CMS could never re-accept
+  // the world as it stands.
+  const shipped = [...LOOT_TABLES.values()];
+  assert.deepEqual(lootTableErrors(shipped), [], 'the shipped roster fails its own door');
+  // A nine-certain-stack purse floods the stack ceiling (8)...
+  const flood: LootTableDef = {
+    id: 'flood_purse',
+    entries: Array.from({ length: 9 }, () => ({ item: 'bones' })),
+  };
+  const floodErrs = lootTableErrors([...shipped, flood]);
+  assert.ok(
+    floodErrs.some((e) => e.includes('flood_purse') && e.includes('stacks/roll')),
+    `stack flood passed the door: ${floodErrs.join('; ')}`,
+  );
+  // ...and three certain gear drops flood the gear ceiling (2.2)
+  // while staying under the stack one — each axis trips on its own.
+  // Any gear item already riding a shipped table is drop-flagged by
+  // construction (the acquisition law upstream), so borrow one.
+  const gearItem = shipped
+    .flatMap((t) => t.entries)
+    .find((e) => e.item && itemDef(e.item)?.gear)!.item!;
+  const shower: LootTableDef = {
+    id: 'flood_wardrobe',
+    entries: Array.from({ length: 3 }, () => ({ item: gearItem })),
+  };
+  const showerErrs = lootTableErrors([...shipped, shower]);
+  assert.ok(
+    showerErrs.some((e) => e.includes('flood_wardrobe') && e.includes('gear/roll')),
+    `gear flood passed the door: ${showerErrs.join('; ')}`,
+  );
+  // The door's ceiling IS the boss station's — the ladder's top rung
+  // pinned above; a drifted constant would quietly loosen the gate.
+  assert.equal(BOSS_YIELD_CEILING.stacks, 8);
+  assert.equal(BOSS_YIELD_CEILING.gearStacks, 2.2);
 });
 
 test('astral essence climbs a level-banded ladder, not a cliff', () => {

@@ -1,7 +1,7 @@
 import { TILE_SKIP, Tile } from '@arx/shared';
 import type { PrefabDef, PrefabSpawn } from '../maps/prefab.js';
 import { LANDMARK_PREFABS } from './landmarks.js';
-import { expandInfluence } from './influence.js';
+import { QUIET_WAYSIDE_CAP, WING_POOL_CAP, declareInfluence, expandInfluence } from './influence.js';
 import { validatePrefab } from '../maps/prefab.js';
 
 /**
@@ -267,7 +267,7 @@ const goblinMarks: Record<string, Marker> = {
 };
 
 /** A palisaded goblin ring-camp: fire at the heart, loot behind it. */
-const goblinCampRing = sketch(
+const goblinCampRing = declareInfluence(sketch(
   'poi_goblin_camp_ring',
   'Goblin ring-camp',
   [
@@ -284,10 +284,10 @@ const goblinCampRing = sketch(
     '_____,,,_____',
   ],
   goblinMarks,
-);
+), { cap: WING_POOL_CAP });
 
 /** A sprawled two-fire goblin camp on a trampled clearing. */
-const goblinCampPair = sketch(
+const goblinCampPair = declareInfluence(sketch(
   'poi_goblin_camp_pair',
   'Goblin twin-fires',
   [
@@ -301,7 +301,7 @@ const goblinCampPair = sketch(
     '___,,::::,,____',
   ],
   goblinMarks,
-);
+), { cap: WING_POOL_CAP });
 
 const gnollMarks: Record<string, Marker> = {
   '1': { npc: 'gnoll', radius: 2, under: Tile.StoneFloor },
@@ -419,8 +419,12 @@ export const skralLegend: Record<string, number> = {
  * and always the dug pool at the heart (the '~' shallows: a camp that
  * carries its own water is a camp that could only ever stand on the
  * bank, which is exactly what the def's shore flag promises).
+ *
+ * THE TIDEHOLD's wing pool — the seven shoal wing-camps below ring
+ * the court the way the goblin camps ring the warhold, and pay the
+ * same WING_POOL_CAP rent (the totem ground stands apart, unpooled).
  */
-const skralWeir = sketch(
+const skralWeir = declareInfluence(sketch(
   'poi_skral_weir',
   'Skral weir-camp',
   [
@@ -438,7 +442,7 @@ const skralWeir = sketch(
   skralMarks,
   undefined,
   skralLegend,
-);
+), { cap: WING_POOL_CAP });
 
 /** The totem-ring: the shoal's shrine — the ancestor's ribs and the
  *  tide's own table at the head of the pool, watchers all around. */
@@ -462,7 +466,7 @@ const skralTotems = sketch(
 
 /** The shell-midden: an open catch-camp — heaps, traps, and the
  *  day's baskets between the fires. */
-const skralMidden = sketch(
+const skralMidden = declareInfluence(sketch(
   'poi_skral_midden',
   'Skral shell-midden',
   [
@@ -478,13 +482,13 @@ const skralMidden = sketch(
   skralMarks,
   undefined,
   skralLegend,
-);
+), { cap: WING_POOL_CAP });
 
 /** The wreck-camp: the shoal that moved into somebody's bad day —
  *  two hulls hauled past the tide line, the nets still working, and
  *  the salvage under guard. No dug pool: this camp sits ON the bank
  *  (the shore flag's probe holds that promise). */
-const skralWreck = sketch(
+const skralWreck = declareInfluence(sketch(
   'poi_skral_wreck',
   'Skral wreck-camp',
   [
@@ -501,11 +505,11 @@ const skralWreck = sketch(
   skralMarks,
   undefined,
   skralLegend,
-);
+), { cap: WING_POOL_CAP });
 
 /** The drying-ground: the shoal's larder — rack rows heavy with the
  *  catch, the day's baskets, and the midden growing at the verge. */
-const skralDrying = sketch(
+const skralDrying = declareInfluence(sketch(
   'poi_skral_drying',
   'Skral drying-ground',
   [
@@ -522,12 +526,12 @@ const skralDrying = sketch(
   skralMarks,
   undefined,
   skralLegend,
-);
+), { cap: WING_POOL_CAP });
 
 /** The salt-camp: the pan-folk's small works — brine finger, worked
  *  pans, the withies keeping the season's take. The bank's money in
  *  its smallest honest denomination. */
-const skralSaltcamp = sketch(
+const skralSaltcamp = declareInfluence(sketch(
   'poi_skral_saltcamp',
   'Skral salt-garth',
   [
@@ -544,11 +548,11 @@ const skralSaltcamp = sketch(
   skralMarks,
   undefined,
   skralLegend,
-);
+), { cap: WING_POOL_CAP });
 
 /** The kelp-garth: the winter larder on its lines, the live larder
  *  circling beside it — the camp that feeds the lean months. */
-const skralKelpcamp = sketch(
+const skralKelpcamp = declareInfluence(sketch(
   'poi_skral_kelpcamp',
   'Skral kelp-garth',
   [
@@ -565,11 +569,11 @@ const skralKelpcamp = sketch(
   skralMarks,
   undefined,
   skralLegend,
-);
+), { cap: WING_POOL_CAP });
 
 /** The chime-hollow: the shoal's small culture — shell strings on
  *  the wind, the tide's table, the spawning bank kept quiet. */
-const skralChimehollow = sketch(
+const skralChimehollow = declareInfluence(sketch(
   'poi_skral_chimehollow',
   'Skral chime-hollow',
   [
@@ -586,7 +590,7 @@ const skralChimehollow = sketch(
   skralMarks,
   undefined,
   skralLegend,
-);
+), { cap: WING_POOL_CAP });
 
 const ogreMarks: Record<string, Marker> = {
   // A giant wanders wide of its post — the radius is the read.
@@ -784,7 +788,7 @@ const wolfMarks: Record<string, Marker> = {
 };
 
 /** An ore knoll standing free of the hills — worth the wolves. */
-const groveOre = sketch(
+const groveOre = declareInfluence(sketch(
   'poi_grove_ore',
   'Ore knoll',
   [
@@ -797,10 +801,10 @@ const groveOre = sketch(
     '____,____',
   ],
   wolfMarks,
-);
+), { cap: QUIET_WAYSIDE_CAP });
 
 /** An ancient yew stand ringed by oaks, floor thick with forage. */
-const groveYew = sketch(
+const groveYew = declareInfluence(sketch(
   'poi_grove_yew',
   'Elder grove',
   [
@@ -815,15 +819,20 @@ const groveYew = sketch(
     '____O___O____',
   ],
   wolfMarks,
-);
+), { cap: QUIET_WAYSIDE_CAP });
 
 /**
  * A lamplit rest on the long road: keeper's stall by the fire, lamp
  * posts that carry real light after dusk, benches for the sit emote.
  * No spawn markers — the staff arrives through the def's actor
  * entries, placed semantically at compose time.
+ *
+ * MEASURED influence: the spineshelf ledge is wedged between
+ * Silverfall's clearance and the crag rough — waystations keep their
+ * ORIGINAL footprints (a rest is furniture; the world's ledges were
+ * sized for it). The rest/walled pair below pay the same law at 15.
  */
-const waystationCamp = sketch(
+const waystationCamp = declareInfluence(sketch(
   'poi_waystation_camp',
   "Wayfarers' waystation",
   [
@@ -836,10 +845,10 @@ const waystationCamp = sketch(
     '__,:::::::,__',
     '_____,,,_____',
   ],
-);
+), { cap: 13 });
 
 /** The road-house variant: hitching rails, two benches, one lamp. */
-const waystationRest = sketch(
+const waystationRest = declareInfluence(sketch(
   'poi_waystation_rest',
   'Roadside rest',
   [
@@ -852,7 +861,7 @@ const waystationRest = sketch(
     '__,::::::::,___',
     '______,,_______',
   ],
-);
+), { cap: 15 });
 
 const riftMarks: Record<string, Marker> = {
   '1': { npc: 'skeleton', radius: 2, under: Tile.StoneFloor },
@@ -926,7 +935,7 @@ const brigandMarks: Record<string, Marker> = {
  * strongbox, and a rail pen holding somebody's cows (the hamlets down
  * the road count their herds and curse).
  */
-const banditHollow = sketch(
+const banditHollow = declareInfluence(sketch(
   'poi_bandit_hollow',
   'Brigand hollow',
   [
@@ -943,14 +952,14 @@ const banditHollow = sketch(
     '______,,_________',
   ],
   brigandMarks,
-);
+), { cap: WING_POOL_CAP });
 
 /**
  * The toll-gate: an old cart track crosses the camp, banner poles
  * flank it, and the strewn crates and bones tell you exactly how the
  * last argument about the toll went.
  */
-const banditToll = sketch(
+const banditToll = declareInfluence(sketch(
   'poi_bandit_toll',
   "Thieves' toll",
   [
@@ -966,7 +975,7 @@ const banditToll = sketch(
     '______,,________',
   ],
   brigandMarks,
-);
+), { cap: 22 });
 
 /**
  * THE COVETOUS CAMP (living-frontier Phase 4): a raider squat thrown
@@ -998,7 +1007,7 @@ const raiderSquat = sketch(
  * she was not here yesterday and will not be here tonight. The actor
  * pool (tinker / herb-wife / relic-monger) stands at the hearth.
  */
-const peddlerRest = sketch(
+const peddlerRest = declareInfluence(sketch(
   'poi_peddler_rest',
   "Peddler's rest",
   [
@@ -1011,7 +1020,7 @@ const peddlerRest = sketch(
     '____,,_____',
   ],
   {},
-);
+), { cap: QUIET_WAYSIDE_CAP });
 
 const hamletMarks: Record<string, Marker> = {
   '8': { npc: 'chicken', radius: 1.5, under: Tile.Grass, level: 1 },
@@ -1023,7 +1032,7 @@ const hamletMarks: Record<string, Marker> = {
  * a table set for two), the fenced grain plot, hens loose in the
  * yard, and the woodpile that says winter is taken seriously.
  */
-const hamletCroft = sketch(
+const hamletCroft = declareInfluence(sketch(
   'poi_hamlet_croft',
   'Roadside croft',
   [
@@ -1042,14 +1051,14 @@ const hamletCroft = sketch(
     '________,,________',
   ],
   hamletMarks,
-);
+), { cap: QUIET_WAYSIDE_CAP });
 
 /**
  * Two households, one fire — the cabins face each other across the
  * pit the way old neighbors argue: daily, warmly, forever. The cow
  * pen is shared. The chicken is nobody's and everybody's.
  */
-const hamletPair = sketch(
+const hamletPair = declareInfluence(sketch(
   'poi_hamlet_pair',
   'Twin-hearth hamlet',
   [
@@ -1069,7 +1078,7 @@ const hamletPair = sketch(
     '_________,,________',
   ],
   hamletMarks,
-);
+), { cap: QUIET_WAYSIDE_CAP });
 
 const outpostMarks: Record<string, Marker> = {
   // The pen's guest of honor: a raider the Watch actually caught —
@@ -1181,7 +1190,7 @@ const digsMouth = sketch(
  * traveler's cold camp, the crate torn open, the iron chest the pack
  * neither opened nor left. Somebody should carry word back.
  */
-const denBones = sketch(
+const denBones = declareInfluence(sketch(
   'poi_den_bones',
   'Wolfkin den',
   [
@@ -1196,14 +1205,14 @@ const denBones = sketch(
     '____,,,________',
   ],
   wolfMarks,
-);
+), { cap: WING_POOL_CAP });
 
 /**
  * A trampled hollow ringed by stumps the pack has scent-marked to
  * death — bones dragged to the middle, and the last owner's chest
  * shoved under the rocks by something that didn't understand locks.
  */
-const denHollow = sketch(
+const denHollow = declareInfluence(sketch(
   'poi_den_hollow',
   'Pack hollow',
   [
@@ -1218,7 +1227,7 @@ const denHollow = sketch(
     '____,,,_______',
   ],
   wolfMarks,
-);
+), { cap: WING_POOL_CAP });
 
 const lynxMarks: Record<string, Marker> = {
   '1': { npc: 'lynx', radius: 2.5, under: Tile.Grass },
@@ -1366,7 +1375,7 @@ const watchtowerShelter = sketch(
  * fed, a bench for the tired, and herbs seeded by a hundred grateful
  * hands. Danger owns the miles; it does not own this circle.
  */
-const wayshrineStones = sketch(
+const wayshrineStones = declareInfluence(sketch(
   'poi_wayshrine_stones',
   'Wayshrine',
   [
@@ -1380,14 +1389,14 @@ const wayshrineStones = sketch(
     '__,.,,..,___',
     '____,,______',
   ],
-);
+), { cap: QUIET_WAYSIDE_CAP });
 
 /**
  * A spring the road-faith blessed: clear water, one old stone, a
  * bench under the willow. Travelers leave the pool cleaner than
  * they found it. Even brigands. Nobody discusses this.
  */
-const wayshrinePool = sketch(
+const wayshrinePool = declareInfluence(sketch(
   'poi_wayshrine_pool',
   'Blessed spring',
   [
@@ -1401,7 +1410,7 @@ const wayshrinePool = sketch(
     '__,.,,..i,___',
     '____,,,______',
   ],
-);
+), { cap: QUIET_WAYSIDE_CAP });
 
 /**
  * The warcamp grown teeth: a full stockade with gates north and
@@ -1456,7 +1465,7 @@ const ruinArch = sketch(
  * crowding the water. The grove's answer to a market square, with
  * the grove's idea of a stall keeper.
  */
-const groveSpring = sketch(
+const groveSpring = declareInfluence(sketch(
   'poi_grove_spring',
   'Cold spring',
   [
@@ -1471,7 +1480,7 @@ const groveSpring = sketch(
     '____,,,______',
   ],
   wolfMarks,
-);
+), { cap: QUIET_WAYSIDE_CAP });
 
 /**
  * A riftgate half-swallowed by the hill that grew over it — one
@@ -1523,7 +1532,7 @@ const championsBarrow = sketch(
  * high country throws, rails for the animals, and the keeper's
  * stall in the lee corner. Lamps mark it long before you see walls.
  */
-const waystationWalled = sketch(
+const waystationWalled = declareInfluence(sketch(
   'poi_waystation_walled',
   'Walled rest',
   [
@@ -1537,7 +1546,7 @@ const waystationWalled = sketch(
     '__,::::::::,___',
     '_____,,________',
   ],
-);
+), { cap: 15 });
 
 /**
  * THE LAST LAMP — the final light on the High Road before the
@@ -1571,7 +1580,7 @@ const lastLamp = sketch(
  * never let die. No garrison: the Company talks here — the sketch is
  * a checkpoint, not a camp.
  */
-const companyTollhouse = sketch(
+const companyTollhouse = declareInfluence(sketch(
   'poi_company_tollhouse',
   'The Tollhouse',
   [
@@ -1585,7 +1594,7 @@ const companyTollhouse = sketch(
     '____,,:::,,____',
     '_____,,,,,_____',
   ],
-);
+), { cap: QUIET_WAYSIDE_CAP });
 
 /**
  * THE HOARGATE (the Pinereach epic) — the Crown's garrison across the
@@ -1596,7 +1605,7 @@ const companyTollhouse = sketch(
  * ever read the gate. Snow on the shoulders, pines on both hems, and
  * three signs that do not hedge.
  */
-const hoargateFort = sketch(
+const hoargateFort = declareInfluence(sketch(
   'poi_hoargate',
   'The Hoargate',
   [
@@ -1616,7 +1625,7 @@ const hoargateFort = sketch(
     '__,....i.......i....,__',
     '___,,,jjj,,,,,jjj,,,___',
   ],
-);
+), { cap: 48 });
 
 /**
  * THE WARDLINE CUT (the Pinereach epic) — a poacher camp in the old
@@ -1802,8 +1811,13 @@ const oldcrownGate = sketch(
  * through the south ring, and the household's goods gone or going.
  * The dead walk their own grave-field day and night, because whatever
  * kept their hours went out the door with the robbers.
+ *
+ * MEASURED influence: the high fells hold no room — the barrow cell
+ * (5,-4) takes ONLY the original footprints; the fell theme IS scarce
+ * rocky ground (the def's approach cues carry the influence read
+ * instead). The ring barrow below pays the same law at 11.
  */
-const fellBarrow = sketch(
+const fellBarrow = declareInfluence(sketch(
   'poi_fell_barrow',
   'Opened barrow',
   [
@@ -1821,14 +1835,14 @@ const fellBarrow = sketch(
     '__,,.c.:::.a.,,__',
     '____,,.:::.,,____',
   ],
-);
+), { cap: 17 });
 
 /**
  * THE RING BARROW — the smaller, older make: a kerb of stones over a
  * single cist, no chamber to speak of and no door to lever. The ones
  * the diggers open anyway are the ones that answer.
  */
-const barrowRing = sketch(
+const barrowRing = declareInfluence(sketch(
   'poi_barrow_ring',
   'Ring barrow',
   [
@@ -1841,7 +1855,7 @@ const barrowRing = sketch(
     '_,..r:r..,_',
     '__,,.:.,,__',
   ],
-);
+), { cap: 11 });
 
 /**
  * THE DIGGERS' CAMP (the Hartfell epic) — the Red Company's dig below
@@ -1850,7 +1864,7 @@ const barrowRing = sketch(
  * the road south, and a locked box of the best of it. Everything
  * about this camp is a crime with an address.
  */
-const barrowDiggers = sketch(
+const barrowDiggers = declareInfluence(sketch(
   'poi_barrow_diggers',
   "The Diggers' Camp",
   [
@@ -1869,7 +1883,7 @@ const barrowDiggers = sketch(
     '__,...wwwww...,____',
     '____,,,......,,____',
   ],
-);
+), { cap: 24 });
 
 // ----------------------------------------------------- THE SMALL FINDS
 // (docs/lived-in-land-plan.md Phase 2.) Footprints stay tiny — the
@@ -2076,8 +2090,12 @@ const findRoeGround = sketch(
  * totem beside the warded cache, and the camp's whole life (cage,
  * drum, plunder, spit) crowded inside the logs. Torches and war
  * banners walk the gate row so the hold reads from the road at night.
+ *
+ * All four courts declare EXEMPT: a compound court's constellation is
+ * the WINGS — influence must never litter the ring the wings are
+ * dealt onto.
  */
-const warholdCourt = sketch('poi_warhold_court', 'War-hold court', [
+const warholdCourt = declareInfluence(sketch('poi_warhold_court', 'War-hold court', [
   '_____,,::,,_____',
   '__,::::::::::,__',
   '_,::|::==::|::,_',
@@ -2089,10 +2107,10 @@ const warholdCourt = sketch('poi_warhold_court', 'War-hold court', [
   '_,::|::==::|::,_',
   '__,::::::::::,__',
   '_____,,::,,_____',
-]);
+]), { exempt: true });
 
 /** The stockade court: rough timber walls, two gates, the tally's cache. */
-const stockadeCourt = sketch('poi_stockade_court', 'Stockade court', [
+const stockadeCourt = declareInfluence(sketch('poi_stockade_court', 'Stockade court', [
   '______,,,______',
   '__,::::::::,___',
   '_,:wwwg:gwww:,_',
@@ -2104,10 +2122,10 @@ const stockadeCourt = sketch('poi_stockade_court', 'Stockade court', [
   '_,:wwwg:gwww:,_',
   '__,::::::::,___',
   '______,,,______',
-]);
+]), { exempt: true });
 
 /** The great den's court: a bone-strewn rise under the old rocks. */
-const greatdenCourt = sketch('poi_greatden_court', 'Great den court', [
+const greatdenCourt = declareInfluence(sketch('poi_greatden_court', 'Great den court', [
   '____,,rr,,____',
   '__,rrRRRRrr,__',
   '_,rR::::::Rr,_',
@@ -2118,7 +2136,7 @@ const greatdenCourt = sketch('poi_greatden_court', 'Great den court', [
   '__,rrRRrrr,___',
   '____,,rr,,____',
   '______,,______',
-]);
+]), { exempt: true });
 
 /**
  * THE TIDEHOLD's court (docs/skral-decor-plan.md): the deepking's
@@ -2128,7 +2146,7 @@ const greatdenCourt = sketch('poi_greatden_court', 'Great den court', [
  * table and the warded boss cache stand at the pool's east head where
  * the king wades out; the lure poles light the water, not the land.
  */
-const skralCourt = sketch(
+const skralCourt = declareInfluence(sketch(
   'poi_skral_court',
   'Tidehold court',
   [
@@ -2147,7 +2165,7 @@ const skralCourt = sketch(
   skralMarks,
   undefined,
   skralLegend,
-);
+), { exempt: true });
 
 // ------------------------------------------------------------------
 // THE EVERWOOD (the Evenfall epic): the old folk's wild grounds.

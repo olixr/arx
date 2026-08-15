@@ -302,6 +302,13 @@ export function validateVoice(raw: unknown): ValidateVoiceResult {
   const doc = raw as Record<string, unknown>;
   const num = (key: keyof VoiceDoc, lo: number, hi: number, int = false): number => {
     const v = doc[key];
+    // THE BACKFILL LAW (the growth validator's precedent, ported by
+    // core-audit debt 11): an ABSENT dial adopts the shipped default,
+    // so a doc saved before a dial existed keeps its Studio tuning
+    // when the table grows. Without this, the first new dial added to
+    // VoiceDoc invalidated every saved DB voice doc and silently
+    // reverted all tuning to authored at the next boot.
+    if (v === undefined) return AUTHORED_VOICE[key] as number;
     if (typeof v !== 'number' || !Number.isFinite(v)) {
       errors.push(`${key} must be a number`);
       return lo;

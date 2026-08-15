@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { CROWN_POOLS, crownPoolFor, forgeCrown } from './crownForge.js';
 import { NPCS, npcDef, scaleNpcDef, validateNpcDef } from './npcs.js';
 import { abilityDef } from './abilities.js';
-import { LOOT_TABLES } from './loot/tables.js';
+import { BOSS_YIELD_CEILING, LOOT_TABLES } from './loot/tables.js';
+import { expectedYield } from './loot/analyze.js';
 
 /**
  * THE WILD CROWN's contract (docs/boss-system-plan.md):
@@ -87,6 +88,39 @@ test('LAW W1 — the sweep produces true variants, not one crown re-stamped', ()
   assert.ok(names.size >= 20, `names barely vary (${names.size})`);
   assert.ok(hands.size >= 3, `kits barely vary (${hands.size})`);
   assert.ok(tempers.size >= 20, `tempers barely vary (${tempers.size})`);
+});
+
+test('the flood law wears the crown: forged loot unions stay under the boss purse', () => {
+  // The forge unions base.loot with the pool's lootAdd — two racks
+  // that each pass the CMS door on their own could still SUM past
+  // the shower a crowned foe is licensed for. Sweep a seed sample
+  // per pool body (the union is seed-stable today, but the sweep is
+  // the house pattern and guards any future seeded rack draw) and
+  // hold the summed expectation to the boss station's ceiling — the
+  // same [8, 2.2] the flood-law test pins per authored foe.
+  for (const pool of CROWN_POOLS) {
+    for (const id of pool.appliesTo) {
+      const base = npcDef(id)!;
+      for (let seed = 1; seed <= 40; seed++) {
+        const forged = forgeCrown(base, seed);
+        let stacks = 0;
+        let gear = 0;
+        for (const t of forged.loot) {
+          const y = expectedYield(t);
+          stacks += y.stacks;
+          gear += y.gearStacks;
+        }
+        assert.ok(
+          stacks <= BOSS_YIELD_CEILING.stacks,
+          `${id} seed ${seed}: ${stacks.toFixed(2)} stacks/kill > boss ${BOSS_YIELD_CEILING.stacks}`,
+        );
+        assert.ok(
+          gear <= BOSS_YIELD_CEILING.gearStacks,
+          `${id} seed ${seed}: ${gear.toFixed(3)} gear/kill > boss ${BOSS_YIELD_CEILING.gearStacks}`,
+        );
+      }
+    }
+  }
 });
 
 test('LAW W5 — authored outranks forged: a crowned def is refused', () => {

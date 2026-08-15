@@ -6,7 +6,9 @@ import { test } from 'node:test';
 import { TILE_SKIP, Tile, chestInfo } from '@arx/shared';
 import { DANGER_LAWS } from '../danger.js';
 import { NPCS } from '../npcs.js';
+import type { PrefabDef } from '../maps/prefab.js';
 import { AUTHORED_POI_DEFS, POI_DEFS } from './defs.js';
+import { declareInfluence, expandInfluence } from './influence.js';
 import { POI_PREFABS } from './prefabs.js';
 import { validatePoiDef } from './validate.js';
 
@@ -453,4 +455,104 @@ test('THE DROWNED VILLAGES: the banks carry their own water, worked and walked',
       );
     }
   }
+});
+
+test('THE DECLARED TERRITORY: influence rides the definition, and the heart keeps ALL THREE layers', () => {
+  // A synthetic prefab with something in every layer — the shipped
+  // sketches all carry empty detail/elev planes, so only a synthetic
+  // heart can prove the blit (the audit's latent flattening bug).
+  const mk = (id: string): PrefabDef => {
+    const w = 9;
+    const h = 7;
+    const ground = new Uint16Array(w * h).fill(TILE_SKIP);
+    const detail = new Uint16Array(w * h);
+    const elev = new Int8Array(w * h);
+    for (let i = 0; i < w * h; i++) {
+      if (i % 3 === 0) ground[i] = Tile.Dirt;
+      detail[i] = (i * 7) % 251;
+      elev[i] = (i % 4) - 1;
+    }
+    // Corners transparent (the fringe law) so the sketch reads honest.
+    for (const c of [0, w - 1, (h - 1) * w, h * w - 1]) ground[c] = TILE_SKIP;
+    return { id, name: id, width: w, height: h, ground, detail, elev, portals: [], spawns: [], actorSpawns: [] };
+  };
+
+  // A DECLARED cap is the whole law: the long axis lands exactly on it
+  // (9x7 wants round(9*2.6)=23, floored up to the 34 knee — the cap
+  // outranks both).
+  const capped = expandInfluence(declareInfluence(mk('poi_test_declared_cap'), { cap: 24 }));
+  assert.equal(Math.max(capped.width, capped.height), 24, 'declared cap not honored');
+
+  // An UNDECLARED poi_ id takes the open default (the 34 knee for a
+  // small heart) — no far-file list left to consult.
+  const open = expandInfluence(mk('poi_test_undeclared'));
+  assert.equal(Math.max(open.width, open.height), 34, 'open default drifted');
+
+  // A declared EXEMPT passes through untouched — same object, no copy.
+  const exempt = mk('poi_test_declared_exempt');
+  declareInfluence(exempt, { exempt: true });
+  assert.equal(expandInfluence(exempt), exempt, 'exempt prefab was rebuilt');
+
+  // THE HEART IS BIT-IDENTICAL — all three layers, not just ground:
+  // detail and elev must survive expansion verbatim at the centered
+  // rect (they used to be dropped for empty planes).
+  const src = mk('poi_test_declared_cap');
+  const hx0 = Math.floor((capped.width - src.width) / 2);
+  const hy0 = Math.floor((capped.height - src.height) / 2);
+  for (let y = 0; y < src.height; y++) {
+    for (let x = 0; x < src.width; x++) {
+      const o = y * src.width + x;
+      const e = (hy0 + y) * capped.width + (hx0 + x);
+      const t = src.ground[o]!;
+      if (t !== TILE_SKIP) assert.equal(capped.ground[e], t, `ground drifted at ${x},${y}`);
+      assert.equal(capped.detail[e], src.detail[o], `detail flattened at ${x},${y}`);
+      assert.equal(capped.elev[e], src.elev[o], `elev flattened at ${x},${y}`);
+    }
+  }
+  // The outskirt ring carries NOTHING on the upper planes: detail and
+  // elev outside the heart stay empty (the ring is ground-only).
+  let outside = 0;
+  for (let i = 0; i < capped.detail.length; i++) {
+    const x = i % capped.width;
+    const y = Math.floor(i / capped.width);
+    const inHeart = x >= hx0 && x < hx0 + src.width && y >= hy0 && y < hy0 + src.height;
+    if (!inHeart && (capped.detail[i] !== 0 || capped.elev[i] !== 0)) outside++;
+  }
+  assert.equal(outside, 0, 'the outskirts grew detail/elev');
+
+  // A declared vocab OUTRANKS the family-prefix read: an id no regex
+  // family claims, declared 'skral', litters the catch — racks,
+  // middens, traps — never the neutral rocks-and-berries.
+  const voiced = expandInfluence(declareInfluence(mk('poi_test_declared_vocab'), { vocab: 'skral' }));
+  const SKRAL_SCATTER = new Set<number>([
+    Tile.ShellMidden, Tile.FishRack, Tile.FishTrap, Tile.NetFrame, Tile.KelpLine, Tile.WithyStore,
+  ]);
+  assert.ok(
+    voiced.ground.some((t) => SKRAL_SCATTER.has(t)),
+    'declared vocab did not reach the scatter',
+  );
+  assert.ok(
+    !voiced.ground.some((t) => t === Tile.BerryBush),
+    'neutral vocab leaked past the declaration',
+  );
+
+  // ONE VOICE PER ID: a second declaration throws at load, never a
+  // silent last-writer-wins.
+  assert.throws(() => declareInfluence(mk('poi_test_declared_cap'), { cap: 10 }));
+
+  // The migrated shelf holds its measured lines: the sample of each
+  // old hand-list keeps the exact footprint it shipped with.
+  for (const [id, maxDim] of [
+    ['poi_goblin_camp_ring', 20], // wing pool
+    ['poi_wayshrine_stones', 30], // quiet wayside
+    ['poi_hoargate', 48], // measured pin
+    ['poi_barrow_ring', 11], // measured pin (unexpanded — the fells hold no room)
+  ] as const) {
+    const p = POI_PREFABS.get(id)!;
+    assert.ok(p, `${id} missing from the shelf`);
+    assert.ok(Math.max(p.width, p.height) <= maxDim, `${id}: ${p.width}x${p.height} outgrew its declared cap ${maxDim}`);
+  }
+  // Exempt courts and landmarks never grew past their authored dims.
+  const court = POI_PREFABS.get('poi_warhold_court')!;
+  assert.equal(Math.max(court.width, court.height), 16, 'the warhold court expanded — exemption lost');
 });
