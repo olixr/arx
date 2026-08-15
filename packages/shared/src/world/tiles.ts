@@ -776,6 +776,37 @@ export enum Tile {
   StoneBench = 403,
   /** A street grocer's tiered display under a hanging scale. */
   ProduceStand = 404,
+  // THE TRADES KEEP SHOP — the working-trades kit (405-416,
+  // docs/trade-decor-plan.md). The town kit dressed the street;
+  // this shelf dresses the SHOPS behind it. Same voice, TENDED,
+  // NEVER LEFT — every piece is mid-shift: the blade still cooling
+  // in the quench, the loaves still warm on the peel, the chalk
+  // marks fresh on the dress form. A trade you can read at a
+  // glance is a town you believe in.
+  /** The smith's slack tub: iron-banded, a blade left cooling, steam rising. */
+  QuenchTrough = 405,
+  /** A treadle grinding wheel, its groove worn true, a blade resting on the rest. */
+  Grindstone = 406,
+  /** The forge's great double-lung bellows parked on its stand, nozzle to the fire. */
+  SmithBellows = 407,
+  /** Bar stock leaning and ingots stacked by metal — the smith's larder. */
+  IngotRack = 408,
+  /** Planks racked on edge between dowel pegs, sawdust drifted below. */
+  LumberRack = 409,
+  /** Two brimming dye vats, a stir paddle resting, drips down the staves. */
+  DyeVats = 410,
+  /** The tailor's dress form wearing a pinned, chalk-marked garment. */
+  TailorsDummy = 411,
+  /** Bolts of dyed cloth rolled and racked, ends spilling color. */
+  ClothBolts = 412,
+  /** A domed masonry bread oven, the day's loaves cooling on the peel. */
+  BreadOven = 413,
+  /** The butcher's scarred round block, cleaver standing, links on the hooks. */
+  ButcherBlock = 414,
+  /** Bundled herbs hung heads-down to dry over the herbalist's mortar. */
+  HerbRack = 415,
+  /** A shopkeeper's tall stocked shelving — jars, crockery, folded goods. */
+  ShopShelf = 416,
 }
 
 export enum Detail {
@@ -1383,6 +1414,22 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.StreetPlanter]: { name: 'street planter', solid: true, color: '#75603e', raised: true, topColor: '#c95a74' },
   [Tile.StoneBench]: { name: 'stone bench', solid: true, color: '#8a857a', raised: true, topColor: '#b3ada0' },
   [Tile.ProduceStand]: { name: 'produce stand', solid: true, color: '#75603e', raised: true, topColor: '#c05a3a' },
+  // THE TRADES KEEP SHOP — minimap voice: each trade keys off its
+  // own material (quench iron, grindstone grit, oven brick, dye
+  // madder, herb green) so a workshop yard reads as a WORKSHOP at
+  // chart scale, distinct from the street furniture beside it.
+  [Tile.QuenchTrough]: { name: 'quench trough', solid: true, color: '#4c4a52', raised: true, topColor: '#8fb4c4' },
+  [Tile.Grindstone]: { name: 'grindstone', solid: true, color: '#6f5a38', raised: true, topColor: '#b3ada0' },
+  [Tile.SmithBellows]: { name: "smith's bellows", solid: true, color: '#75603e', raised: true, topColor: '#a3714a' },
+  [Tile.IngotRack]: { name: 'ingot rack', solid: true, color: '#5c5648', raised: true, topColor: '#c2a45c' },
+  [Tile.LumberRack]: { name: 'lumber rack', solid: true, color: '#75603e', raised: true, topColor: '#d4b98a' },
+  [Tile.DyeVats]: { name: 'dye vats', solid: true, color: '#75603e', raised: true, topColor: '#a04a58' },
+  [Tile.TailorsDummy]: { name: "tailor's dummy", solid: true, color: '#6f6a58', raised: true, topColor: '#7a86b8' },
+  [Tile.ClothBolts]: { name: 'cloth bolts', solid: true, color: '#75603e', raised: true, topColor: '#c4808a' },
+  [Tile.BreadOven]: { name: 'bread oven', solid: true, color: '#8a6a52', raised: true, topColor: '#b8917a' },
+  [Tile.ButcherBlock]: { name: "butcher's block", solid: true, color: '#75603e', raised: true, topColor: '#c9856a' },
+  [Tile.HerbRack]: { name: 'herb rack', solid: true, color: '#6f5a38', raised: true, topColor: '#7fae6a' },
+  [Tile.ShopShelf]: { name: 'shop shelf', solid: true, color: '#75603e', raised: true, topColor: '#c9a76a' },
 };
 
 /** The four awning silhouettes, index order FOREVER (the id math). */
@@ -2035,6 +2082,22 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.StreetPlanter, 0.24],
   [Tile.StoneBench, 0.34],
   [Tile.ProduceStand, 0.36],
+  // THE TRADES KEEP SHOP: workshop gear you work AROUND — the oven
+  // is the yard's one true mass, the dress form a pole you sidle
+  // past, the racks and vats the shoulder-width of the aisles they
+  // stand in.
+  [Tile.QuenchTrough, 0.4],
+  [Tile.Grindstone, 0.34],
+  [Tile.SmithBellows, 0.32],
+  [Tile.IngotRack, 0.34],
+  [Tile.LumberRack, 0.36],
+  [Tile.DyeVats, 0.36],
+  [Tile.TailorsDummy, 0.24],
+  [Tile.ClothBolts, 0.32],
+  [Tile.BreadOven, 0.45],
+  [Tile.ButcherBlock, 0.32],
+  [Tile.HerbRack, 0.28],
+  [Tile.ShopShelf, 0.38],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -2291,7 +2354,23 @@ export type DestructibleKind =
   | 'woodpile'
   | 'streetplanter'
   | 'stonebench'
-  | 'produce';
+  | 'produce'
+  // THE TRADES KEEP SHOP: each trade breaks in its own material —
+  // the quench sloshes out, the grindstone disc ROLLS FREE, the
+  // oven lands like the masonry it is, the bolts unroll in flight,
+  // and a smashed shelf is a rain of crockery.
+  | 'quench'
+  | 'grindstone'
+  | 'bellows'
+  | 'ingots'
+  | 'lumber'
+  | 'dyevat'
+  | 'dressform'
+  | 'clothbolts'
+  | 'breadoven'
+  | 'butcherblock'
+  | 'herbs'
+  | 'shopshelf';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -2454,6 +2533,21 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.StreetPlanter, { kind: 'streetplanter', respawnSec: 300, hits: 1 }],
   [Tile.StoneBench, { kind: 'stonebench', respawnSec: 600, hits: 3 }],
   [Tile.ProduceStand, { kind: 'produce', respawnSec: 300, hits: 2 }],
+  // THE TRADES KEEP SHOP: workshop timber holds a blow or two like
+  // the street's; the oven is the yard's masonry and holds four.
+  // A wrecked shop restocks on the short clock — trade goes on.
+  [Tile.QuenchTrough, { kind: 'quench', respawnSec: 300, hits: 2 }],
+  [Tile.Grindstone, { kind: 'grindstone', respawnSec: 300, hits: 2 }],
+  [Tile.SmithBellows, { kind: 'bellows', respawnSec: 300, hits: 1 }],
+  [Tile.IngotRack, { kind: 'ingots', respawnSec: 300, hits: 2 }],
+  [Tile.LumberRack, { kind: 'lumber', respawnSec: 300, hits: 2 }],
+  [Tile.DyeVats, { kind: 'dyevat', respawnSec: 300, hits: 2 }],
+  [Tile.TailorsDummy, { kind: 'dressform', respawnSec: 300, hits: 1 }],
+  [Tile.ClothBolts, { kind: 'clothbolts', respawnSec: 300, hits: 1 }],
+  [Tile.BreadOven, { kind: 'breadoven', respawnSec: 600, hits: 4 }],
+  [Tile.ButcherBlock, { kind: 'butcherblock', respawnSec: 300, hits: 2 }],
+  [Tile.HerbRack, { kind: 'herbs', respawnSec: 300, hits: 1 }],
+  [Tile.ShopShelf, { kind: 'shopshelf', respawnSec: 300, hits: 2 }],
 ]);
 
 /** Every smashable prop tile. */

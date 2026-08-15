@@ -619,6 +619,25 @@ const TWN_GRAIN = '#d8b878';
 const TWN_ROPE = '#a89263';
 const TWN_IRON = '#4c4a52';
 const TWN_WICKER_TOWN = '#a88f5c';
+// THE TRADES KEEP SHOP — the workshop kit's own keys, laid over the
+// town timber it shares: quench iron and slack water, grindstone
+// grit, oven brick with its fired heart, cured leather, and the
+// herb-green of the drying rack. Trades read by MATERIAL.
+const TRD_STEEL = '#8a94a0';
+const TRD_STEEL_LIT = '#d2dae2';
+const TRD_GRIT = '#8f887a';
+const TRD_GRIT_LIT = '#b3ada0';
+const TRD_LEATHER = '#8a5a36';
+const TRD_LEATHER_LIT = '#b5824e';
+const TRD_BRICK = '#8a5844';
+const TRD_BRICK_LIT = '#b8917a';
+const TRD_MORTAR = '#a89a88';
+const TRD_CRUST = '#c9955c';
+const TRD_CRUST_LIT = '#e8c48e';
+const TRD_MEAT = '#a4524a';
+const TRD_HERB = '#5d7c42';
+const TRD_HERB_DRY = '#8a9058';
+const TRD_LAVENDER = '#8a7aa8';
 /** Solid props too short for a chest-high stick: arrows lodge low. */
 const LOW_STICK_TILES = new Set<number>([
   Tile.Fence,
@@ -16631,6 +16650,66 @@ export class Renderer {
       splinters: ['#c9a76a', '#8a6534', '#5d8449'],
       chips: ['#c95a74', '#5d8449'],
     },
+    // THE TRADES KEEP SHOP: each trade breaks in its own material —
+    // quench water and steel, grindstone grit, coal-and-metal
+    // clatter, dye splashing its own roster colors, fired brick and
+    // flour-dust, meat-market reds, dry herb chaff, and the shop
+    // shelf's rain of crockery. Timber pieces keep the joinery amber.
+    quench: {
+      dust: ['#9fc4d8', '#5f87a8', '#8a94a0'],
+      splinters: ['#8a6534', '#d2dae2', '#4c4a52'],
+      chips: ['#9fc4d8', '#d2dae2'],
+    },
+    bellows: {
+      dust: ['#8a5a36', '#b5824e', '#8a6534'],
+      splinters: ['#b5824e', '#8a5a36', '#c2a45c'],
+      chips: ['#b5824e', '#c2a45c'],
+    },
+    dressform: {
+      dust: ['#e2d9c4', '#8a6534', '#c4808a'],
+      splinters: ['#efe8d4', '#c4808a', '#c9a76a'],
+      chips: ['#efe8d4', '#c4808a'],
+    },
+    clothbolts: {
+      dust: ['#e2d9c4', '#c4808a', '#8fa3bd'],
+      splinters: ['#c9566a', '#5c6c9c', '#efe8d4'],
+      chips: ['#c9566a', '#efe8d4'],
+    },
+    grindstone: {
+      dust: ['#8f887a', '#b3ada0', '#6f6a5c'],
+      splinters: ['#b3ada0', '#8f887a', '#8a6534'],
+      chips: ['#b3ada0', '#d2dae2'],
+    },
+    ingots: {
+      dust: ['#4a4440', '#5c6068', '#8a94a0'],
+      splinters: ['#d2dae2', '#c2a45c', '#d29a6a'],
+      chips: ['#c2a45c', '#d2dae2'],
+    },
+    dyevat: {
+      dust: ['#a04a58', '#4a5a8a', '#8a6534'],
+      splinters: ['#c9566a', '#5c6c9c', '#c9a76a'],
+      chips: ['#c9566a', '#5c6c9c'],
+    },
+    breadoven: {
+      dust: ['#8a5844', '#a89a88', '#e8dcc4'],
+      splinters: ['#b8917a', '#8a5844', '#e8c48e'],
+      chips: ['#b8917a', '#e8c48e'],
+    },
+    butcherblock: {
+      dust: ['#a4524a', '#8a6534', '#deca96'],
+      splinters: ['#c9ab74', '#a4524a', '#8a6534'],
+      chips: ['#a4524a', '#c9ab74'],
+    },
+    herbs: {
+      dust: ['#8a9058', '#5d7c42', '#8a7aa8'],
+      splinters: ['#7fae6a', '#8a9058', '#a89263'],
+      chips: ['#7fae6a', '#8a7aa8'],
+    },
+    shopshelf: {
+      dust: ['#8a6534', '#b39268', '#7c9a6a'],
+      splinters: ['#c9a76a', '#d8c0a0', '#7c9a6a'],
+      chips: ['#d8c0a0', '#b08a45'],
+    },
   };
 
   crackProp(wx: number, wy: number, dir: number, kind: SmashKind): void {
@@ -17235,6 +17314,23 @@ export class Renderer {
     Tile.StreetPlanter,
     Tile.StoneBench,
     Tile.ProduceStand,
+    // THE TRADES KEEP SHOP: the workshop shelf rides the same ring —
+    // quench steam, the grindstone's drip, the dye swirl, the oven's
+    // flue and the herb sway all sit under 4Hz; the seven still
+    // pieces idle in STATIC_RING_TILES. Zero light entries: even the
+    // oven's banked coals are paint, never a lamp.
+    Tile.QuenchTrough,
+    Tile.Grindstone,
+    Tile.SmithBellows,
+    Tile.IngotRack,
+    Tile.LumberRack,
+    Tile.DyeVats,
+    Tile.TailorsDummy,
+    Tile.ClothBolts,
+    Tile.BreadOven,
+    Tile.ButcherBlock,
+    Tile.HerbRack,
+    Tile.ShopShelf,
   ]);
 
   /**
@@ -17366,6 +17462,17 @@ export class Renderer {
     Tile.StreetPlanter,
     Tile.StoneBench,
     Tile.ProduceStand,
+    // Trade statics: parked bellows, pigged ingots, racked planks,
+    // the pinned dress form, rolled bolts, the hung butcher's court,
+    // stocked shelves. The quench, grindstone, vats, oven, and herb
+    // rack stay on the fast cadence for their slow-clock terms.
+    Tile.SmithBellows,
+    Tile.IngotRack,
+    Tile.LumberRack,
+    Tile.TailorsDummy,
+    Tile.ClothBolts,
+    Tile.ButcherBlock,
+    Tile.ShopShelf,
   ]);
 
   /**
@@ -34404,6 +34511,1663 @@ export class Renderer {
               ctx.ellipse(pxm, pym + s * 0.08 + (m < 0 ? s * 0.015 : 0), s * 0.035, s * 0.014, 0, 0, Math.PI * 2);
               ctx.fill();
             }
+          },
+        };
+      }
+
+      case Tile.QuenchTrough: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        // The smith's slack tub: an iron-banded timber trough of
+        // black water, a finished blade left hilt-up to cool, the
+        // tongs parked across the rim — steam still lifting off the
+        // last dip. Mid-shift, never abandoned.
+        const hw = s * 0.46;
+        const rimY = baseY - s * 0.36;
+        return {
+          sortY: ty + 0.68,
+          body: stationBody(0.6, 0.8, 0.4),
+          drawShadow: () => this.castContact(p.x, baseY, hw * 1.12, s * 0.07),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            // The quench splashes: a dark wet apron around the tub.
+            ctx.fillStyle = 'rgba(24, 30, 40, 0.26)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.28, s * 0.08, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The trough: staved timber, belly bulged, on two feet.
+            ctx.fillStyle = TWN_OAK_DARK;
+            ctx.fillRect(p.x - hw * 0.7, baseY - s * 0.06, s * 0.09, s * 0.06);
+            ctx.fillRect(p.x + hw * 0.61, baseY - s * 0.06, s * 0.09, s * 0.06);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw, rimY);
+            ctx.quadraticCurveTo(p.x - hw * 1.1, baseY - s * 0.14, p.x - hw * 0.78, baseY - s * 0.04);
+            ctx.lineTo(p.x + hw * 0.78, baseY - s * 0.04);
+            ctx.quadraticCurveTo(p.x + hw * 1.1, baseY - s * 0.14, p.x + hw, rimY);
+            ctx.closePath();
+            ctx.fill();
+            // Lit stave faces + seams.
+            ctx.fillStyle = TWN_OAK;
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw, rimY);
+            ctx.quadraticCurveTo(p.x - hw * 1.08, baseY - s * 0.15, p.x - hw * 0.8, baseY - s * 0.05);
+            ctx.lineTo(p.x - hw * 0.42, baseY - s * 0.05);
+            ctx.lineTo(p.x - hw * 0.38, rimY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(50, 36, 18, 0.5)';
+            ctx.lineWidth = Math.max(1, s * 0.012);
+            for (const k of [-0.38, 0.02, 0.4]) {
+              ctx.beginPath();
+              ctx.moveTo(p.x + hw * k, rimY + s * 0.02);
+              ctx.lineTo(p.x + hw * (k * 0.92), baseY - s * 0.05);
+              ctx.stroke();
+            }
+            // Two iron bands, each with one lit edge.
+            ctx.fillStyle = TWN_IRON;
+            ctx.fillRect(p.x - hw * 0.98, rimY + s * 0.05, hw * 1.96, s * 0.035);
+            ctx.fillRect(p.x - hw * 0.88, baseY - s * 0.12, hw * 1.76, s * 0.032);
+            ctx.fillStyle = 'rgba(210, 218, 226, 0.35)';
+            ctx.fillRect(p.x - hw * 0.98, rimY + s * 0.05, hw * 1.96, s * 0.012);
+            // The rim lip.
+            ctx.fillStyle = shade(TWN_OAK, 14);
+            ctx.beginPath();
+            ctx.ellipse(p.x, rimY, hw, s * 0.085, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The water: black at the edge, steel where the sky sits.
+            ctx.fillStyle = '#1e2832';
+            ctx.beginPath();
+            ctx.ellipse(p.x, rimY, hw * 0.88, s * 0.068, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(143, 180, 196, 0.4)';
+            ctx.beginPath();
+            ctx.ellipse(p.x - hw * 0.2, rimY - s * 0.012, hw * 0.44, s * 0.028, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // A slow ring where the blade went in (<4Hz).
+            const ringK = (t * 0.45 + ((h >> 2) & 3) * 0.25) % 1;
+            ctx.strokeStyle = `rgba(159, 196, 216, ${(0.5 * (1 - ringK)).toFixed(3)})`;
+            ctx.lineWidth = Math.max(1, s * 0.012);
+            ctx.beginPath();
+            ctx.ellipse(p.x + hw * 0.24, rimY, hw * 0.5 * ringK + s * 0.02, (s * 0.038) * ringK + s * 0.006, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            // The cooling blade: hilt-up out of the bath, edge lit.
+            const bx = p.x + hw * 0.26;
+            ctx.strokeStyle = TRD_STEEL;
+            ctx.lineWidth = Math.max(1.5, s * 0.03);
+            ctx.beginPath();
+            ctx.moveTo(bx, rimY + s * 0.01);
+            ctx.lineTo(bx + s * 0.14, rimY - s * 0.3);
+            ctx.stroke();
+            ctx.strokeStyle = TRD_STEEL_LIT;
+            ctx.lineWidth = Math.max(1, s * 0.012);
+            ctx.beginPath();
+            ctx.moveTo(bx + s * 0.014, rimY);
+            ctx.lineTo(bx + s * 0.152, rimY - s * 0.29);
+            ctx.stroke();
+            // Cross guard + wrapped grip.
+            ctx.strokeStyle = TWN_BRONZE;
+            ctx.lineWidth = Math.max(1.5, s * 0.024);
+            ctx.beginPath();
+            ctx.moveTo(bx + s * 0.095, rimY - s * 0.315);
+            ctx.lineTo(bx + s * 0.185, rimY - s * 0.285);
+            ctx.stroke();
+            ctx.strokeStyle = TRD_LEATHER;
+            ctx.lineWidth = Math.max(1.5, s * 0.026);
+            ctx.beginPath();
+            ctx.moveTo(bx + s * 0.14, rimY - s * 0.3);
+            ctx.lineTo(bx + s * 0.175, rimY - s * 0.38);
+            ctx.stroke();
+            // The tongs across the far rim, jaws over the water.
+            ctx.strokeStyle = TWN_IRON;
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            for (const m of [0, 1] as const) {
+              ctx.beginPath();
+              ctx.moveTo(p.x - hw * 1.06, rimY - s * (0.1 + m * 0.02));
+              ctx.quadraticCurveTo(p.x - hw * 0.5, rimY - s * (0.13 + m * 0.03), p.x - hw * 0.18, rimY - s * 0.05);
+              ctx.stroke();
+            }
+            ctx.beginPath();
+            ctx.ellipse(p.x - hw * 0.92, rimY - s * 0.11, s * 0.022, s * 0.022, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            // Steam off the bath: two soft puffs on the slow clock.
+            for (let k = 0; k < 2; k++) {
+              const ph = (t * 0.32 + k * 0.5 + ((h >> k) & 3) * 0.125) % 1;
+              const sx = p.x + hw * (0.26 - k * 0.34) + Math.sin(t * 0.9 + k * 2.1) * s * 0.03;
+              const sy = rimY - s * 0.08 - ph * s * 0.42;
+              const al = 0.26 * (1 - ph) * Math.min(1, ph * 5);
+              ctx.fillStyle = `rgba(226, 234, 240, ${al.toFixed(3)})`;
+              ctx.beginPath();
+              ctx.ellipse(sx, sy, s * (0.05 + ph * 0.07), s * (0.035 + ph * 0.05), 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          },
+        };
+      }
+
+      case Tile.Grindstone: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        // The treadle wheel: a stone disc worn true in an oak cradle,
+        // the drip can hung to keep the rim wet, a blade resting on
+        // the tool rest waiting for the next foot on the treadle.
+        const hw = s * 0.4;
+        const cx = p.x - s * 0.02;
+        const cy = baseY - s * 0.46;
+        const R = s * 0.3;
+        return {
+          sortY: ty + 0.68,
+          body: stationBody(0.58, 1.05, 0.4),
+          drawShadow: () => this.castContact(p.x, baseY, hw * 1.05, s * 0.065),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            // Grit shadow under the wheel — the stone sheds where it works.
+            ctx.fillStyle = 'rgba(60, 56, 48, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(cx, baseY, hw * 0.95, s * 0.06, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The oak cradle: two A-legs straddling the wheel.
+            for (const m of [-1, 1] as const) {
+              ctx.fillStyle = m < 0 ? TWN_OAK : TWN_OAK_DARK;
+              ctx.beginPath();
+              ctx.moveTo(cx + m * R * 1.02 - s * 0.035, baseY);
+              ctx.lineTo(cx + m * R * 0.6 - s * 0.028, cy + s * 0.02);
+              ctx.lineTo(cx + m * R * 0.6 + s * 0.028, cy + s * 0.02);
+              ctx.lineTo(cx + m * R * 1.02 + s * 0.035, baseY);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // Cross brace low.
+            ctx.fillStyle = TWN_OAK_DARK;
+            ctx.fillRect(cx - R * 0.86, baseY - s * 0.16, R * 1.72, s * 0.045);
+            ctx.fillStyle = 'rgba(201, 167, 106, 0.5)';
+            ctx.fillRect(cx - R * 0.86, baseY - s * 0.16, R * 1.72, s * 0.016);
+            // THE WHEEL: full round to the street — the honest disc.
+            ctx.fillStyle = TRD_GRIT;
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, R, R * 0.96, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Rim lit where the sky hits; wear groove rides the rim.
+            ctx.fillStyle = TRD_GRIT_LIT;
+            ctx.beginPath();
+            ctx.ellipse(cx - R * 0.18, cy - R * 0.2, R * 0.72, R * 0.68, -0.4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = shade(TRD_GRIT, -18);
+            ctx.lineWidth = Math.max(1.5, s * 0.026);
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, R * 0.88, R * 0.84, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            // The wet arc: the drip can keeps the working rim dark.
+            ctx.strokeStyle = 'rgba(40, 52, 62, 0.5)';
+            ctx.lineWidth = Math.max(2, s * 0.05);
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, R * 0.94, R * 0.9, 0, -0.9, 0.7);
+            ctx.stroke();
+            // Grit speckle, hash-dealt so no two wheels pit alike.
+            ctx.fillStyle = 'rgba(90, 84, 72, 0.55)';
+            for (let k = 0; k < 6; k++) {
+              const a = ((h >> (k * 2)) & 7) * 0.785 + k;
+              const rr2 = R * (0.3 + (((h >> k) & 3) / 3) * 0.5);
+              ctx.beginPath();
+              ctx.ellipse(cx + Math.cos(a) * rr2, cy + Math.sin(a) * rr2 * 0.94, s * 0.014, s * 0.012, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            // Hub and crank: iron boss, square nut, the crank dropped
+            // to rest at the hash's angle.
+            ctx.fillStyle = TWN_IRON;
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, s * 0.055, s * 0.055, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = TRD_STEEL_LIT;
+            ctx.fillRect(cx - s * 0.018, cy - s * 0.018, s * 0.036, s * 0.036);
+            const ca = 0.6 + ((h >> 3) & 3) * 0.5;
+            ctx.strokeStyle = TWN_IRON;
+            ctx.lineWidth = Math.max(1.5, s * 0.022);
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx + Math.cos(ca) * R * 0.62, cy + Math.sin(ca) * R * 0.6);
+            ctx.stroke();
+            ctx.fillStyle = TWN_OAK;
+            ctx.beginPath();
+            ctx.ellipse(cx + Math.cos(ca) * R * 0.62, cy + Math.sin(ca) * R * 0.6, s * 0.026, s * 0.026, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The tool rest with a blade waiting flat across it.
+            ctx.fillStyle = TWN_OAK_DARK;
+            ctx.fillRect(cx + R * 0.68, cy - s * 0.02, s * 0.3, s * 0.04);
+            ctx.strokeStyle = TRD_STEEL;
+            ctx.lineWidth = Math.max(1.5, s * 0.024);
+            ctx.beginPath();
+            ctx.moveTo(cx + R * 0.7, cy - s * 0.035);
+            ctx.lineTo(cx + R * 0.7 + s * 0.34, cy - s * 0.075);
+            ctx.stroke();
+            ctx.strokeStyle = TRD_STEEL_LIT;
+            ctx.lineWidth = Math.max(1, s * 0.01);
+            ctx.beginPath();
+            ctx.moveTo(cx + R * 0.7, cy - s * 0.047);
+            ctx.lineTo(cx + R * 0.7 + s * 0.33, cy - s * 0.086);
+            ctx.stroke();
+            // The drip can on its bracket over the wheel — one hung
+            // drop mid-fall on the slow clock.
+            ctx.strokeStyle = TWN_OAK_DARK;
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            ctx.beginPath();
+            ctx.moveTo(cx - R * 0.6, cy + s * 0.02);
+            ctx.lineTo(cx - R * 0.6, cy - R - s * 0.18);
+            ctx.lineTo(cx - R * 0.08, cy - R - s * 0.18);
+            ctx.stroke();
+            ctx.fillStyle = TRD_STEEL;
+            ctx.fillRect(cx - R * 0.08 - s * 0.045, cy - R - s * 0.18, s * 0.09, s * 0.085);
+            ctx.fillStyle = TRD_STEEL_LIT;
+            ctx.fillRect(cx - R * 0.08 - s * 0.045, cy - R - s * 0.18, s * 0.03, s * 0.085);
+            const dk = (t * 0.6 + ((h >> 5) & 3) * 0.25) % 1;
+            ctx.fillStyle = `rgba(159, 196, 216, ${(0.7 * (1 - dk * 0.6)).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.ellipse(cx - R * 0.08, cy - R - s * 0.08 + dk * s * 0.1, s * 0.011, s * 0.016, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The treadle board, toe-worn pale.
+            ctx.fillStyle = TWN_OAK;
+            ctx.fillRect(cx - R * 0.5, baseY - s * 0.055, R, s * 0.045);
+            ctx.fillStyle = 'rgba(212, 185, 138, 0.6)';
+            ctx.fillRect(cx - R * 0.2, baseY - s * 0.055, R * 0.4, s * 0.018);
+            ctx.strokeStyle = TWN_IRON;
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            ctx.beginPath();
+            ctx.moveTo(cx + R * 0.3, baseY - s * 0.055);
+            ctx.lineTo(cx + Math.cos(ca) * R * 0.62, cy + Math.sin(ca) * R * 0.6);
+            ctx.stroke();
+          },
+        };
+      }
+
+      case Tile.SmithBellows: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        // The forge's lungs at rest: two oak boards and a pleated
+        // leather gut on a trestle, brass nozzle aimed at the fire it
+        // serves, the lever handle worn smooth by the apprentice.
+        const hw = s * 0.46;
+        const deckY = baseY - s * 0.3;
+        return {
+          sortY: ty + 0.68,
+          body: stationBody(0.6, 0.9, 0.4),
+          drawShadow: () => this.castContact(p.x, baseY, hw * 1.05, s * 0.065),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.08, s * 0.065, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The trestle: two straight post pairs — THE LUNGS ARE
+            // LEATHER, NOT A BARROW (pass-2 verdict: crossed legs
+            // read as barrow struts at map scale).
+            for (const m of [-0.55, 0.45]) {
+              ctx.fillStyle = TWN_OAK_DARK;
+              ctx.fillRect(p.x + hw * m - s * 0.03, deckY + s * 0.02, s * 0.06, baseY - deckY - s * 0.02);
+              ctx.fillStyle = TWN_OAK;
+              ctx.fillRect(p.x + hw * m - s * 0.03, deckY + s * 0.02, s * 0.024, baseY - deckY - s * 0.02);
+            }
+            // THE GUT: pleated leather between the boards — deep
+            // dark folds so the lung reads as LEATHER against the
+            // pale timber, ridges catching the light.
+            const noseX = p.x - hw * 1.0;
+            const noseY = deckY - s * 0.06;
+            const tailX = p.x + hw * 0.88;
+            ctx.fillStyle = '#5c3a20';
+            ctx.beginPath();
+            ctx.moveTo(noseX + s * 0.1, noseY);
+            ctx.quadraticCurveTo(p.x - hw * 0.2, deckY + s * 0.18, tailX, deckY + s * 0.06);
+            ctx.lineTo(tailX, deckY - s * 0.26);
+            ctx.quadraticCurveTo(p.x - hw * 0.1, deckY - s * 0.2, noseX + s * 0.1, noseY - s * 0.05);
+            ctx.closePath();
+            ctx.fill();
+            // Pleats: four full bellied folds, valley then lit ridge,
+            // wide enough to count at street scale.
+            for (let k = 0; k < 4; k++) {
+              const kx = p.x - hw * 0.52 + k * hw * 0.34;
+              ctx.strokeStyle = '#3f2814';
+              ctx.lineWidth = Math.max(1.5, s * 0.022);
+              ctx.beginPath();
+              ctx.moveTo(kx, deckY - s * (0.24 - k * 0.012));
+              ctx.quadraticCurveTo(kx - s * 0.05, deckY - s * 0.04, kx + s * 0.02, deckY + s * (0.12 + k * 0.015));
+              ctx.stroke();
+              ctx.strokeStyle = TRD_LEATHER;
+              ctx.lineWidth = Math.max(1.5, s * 0.02);
+              ctx.beginPath();
+              ctx.moveTo(kx + s * 0.07, deckY - s * (0.23 - k * 0.012));
+              ctx.quadraticCurveTo(kx + s * 0.03, deckY - s * 0.05, kx + s * 0.09, deckY + s * (0.11 + k * 0.015));
+              ctx.stroke();
+            }
+            // The hash's one patch — every working bellows has one.
+            const pk = (h >> 2) & 3;
+            ctx.fillStyle = shade(TRD_LEATHER, -12);
+            ctx.beginPath();
+            ctx.ellipse(p.x - hw * 0.3 + pk * hw * 0.24, deckY - s * (0.06 + (pk & 1) * 0.08), s * 0.055, s * 0.04, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = shade(TRD_LEATHER_LIT, 8);
+            ctx.lineWidth = Math.max(1, s * 0.008);
+            ctx.setLineDash([s * 0.014, s * 0.014]);
+            ctx.beginPath();
+            ctx.ellipse(p.x - hw * 0.3 + pk * hw * 0.24, deckY - s * (0.06 + (pk & 1) * 0.08), s * 0.055, s * 0.04, 0.3, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            // The lower board: a long wedge running out to the nozzle.
+            ctx.fillStyle = TWN_OAK_DARK;
+            ctx.beginPath();
+            ctx.moveTo(noseX, noseY);
+            ctx.lineTo(tailX + s * 0.06, deckY + s * 0.05);
+            ctx.lineTo(tailX + s * 0.06, deckY + s * 0.11);
+            ctx.lineTo(noseX, noseY + s * 0.045);
+            ctx.closePath();
+            ctx.fill();
+            // The upper board rides raked-up toward the handle.
+            ctx.fillStyle = TWN_OAK;
+            ctx.beginPath();
+            ctx.moveTo(noseX, noseY - s * 0.04);
+            ctx.lineTo(tailX + s * 0.06, deckY - s * 0.3);
+            ctx.lineTo(tailX + s * 0.06, deckY - s * 0.36);
+            ctx.lineTo(noseX, noseY - s * 0.085);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = TWN_OAK_LIT;
+            ctx.beginPath();
+            ctx.moveTo(noseX, noseY - s * 0.075);
+            ctx.lineTo(tailX + s * 0.06, deckY - s * 0.35);
+            ctx.lineTo(tailX + s * 0.06, deckY - s * 0.36);
+            ctx.lineTo(noseX, noseY - s * 0.085);
+            ctx.closePath();
+            ctx.fill();
+            // Rivet studs along the board hems bind gut to timber.
+            ctx.fillStyle = TWN_BRONZE_LIT;
+            for (let k = 0; k < 5; k++) {
+              const kk = k / 4;
+              ctx.beginPath();
+              ctx.ellipse(noseX + s * 0.12 + (tailX - noseX - s * 0.16) * kk, noseY - s * 0.05 - (deckY - s * 0.32 - (noseY - s * 0.05)) * -kk, s * 0.011, s * 0.011, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            // The handle bar at the tail, grip worn pale.
+            ctx.strokeStyle = TWN_OAK_DARK;
+            ctx.lineWidth = Math.max(1.5, s * 0.03);
+            ctx.beginPath();
+            ctx.moveTo(tailX + s * 0.05, deckY - s * 0.33);
+            ctx.lineTo(tailX + s * 0.2, deckY - s * 0.5);
+            ctx.stroke();
+            ctx.strokeStyle = '#c9ab74';
+            ctx.lineWidth = Math.max(1.5, s * 0.026);
+            ctx.beginPath();
+            ctx.moveTo(tailX + s * 0.14, deckY - s * 0.43);
+            ctx.lineTo(tailX + s * 0.2, deckY - s * 0.5);
+            ctx.stroke();
+            // The brass nozzle — big enough to read as the business
+            // end — tip darkened by the fire it feeds.
+            ctx.fillStyle = TWN_BRONZE_LIT;
+            ctx.beginPath();
+            ctx.moveTo(noseX + s * 0.03, noseY - s * 0.07);
+            ctx.lineTo(noseX - s * 0.2, noseY - s * 0.032);
+            ctx.lineTo(noseX - s * 0.2, noseY + s * 0.012);
+            ctx.lineTo(noseX + s * 0.03, noseY + s * 0.035);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#e0c88a';
+            ctx.beginPath();
+            ctx.moveTo(noseX + s * 0.03, noseY - s * 0.07);
+            ctx.lineTo(noseX - s * 0.2, noseY - s * 0.032);
+            ctx.lineTo(noseX - s * 0.2, noseY - s * 0.014);
+            ctx.lineTo(noseX + s * 0.03, noseY - s * 0.038);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#3a3630';
+            ctx.fillRect(noseX - s * 0.225, noseY - s * 0.036, s * 0.032, s * 0.05);
+          },
+        };
+      }
+
+      case Tile.IngotRack: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        // The smith's larder: ingots pigged up by metal on the low
+        // shelf, bar stock leaning on the rail, the coal sack slumped
+        // where the shovel left it. Stock IN, work OUT.
+        const hw = s * 0.42;
+        const shelfY = baseY - s * 0.26;
+        const railY = baseY - s * 0.72;
+        return {
+          sortY: ty + 0.68,
+          body: stationBody(0.6, 1.0, 0.4),
+          drawShadow: () => this.castContact(p.x, baseY, hw * 1.15, s * 0.065),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.2, s * 0.07, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Frame: two posts + the leaning rail behind.
+            for (const m of [-1, 1] as const) {
+              ctx.fillStyle = TWN_OAK_DARK;
+              ctx.fillRect(p.x + m * hw * 0.92 - s * 0.03, railY - s * 0.08, s * 0.06, baseY - railY + s * 0.08);
+              ctx.fillStyle = TWN_OAK;
+              ctx.fillRect(p.x + m * hw * 0.92 - s * 0.03, railY - s * 0.08, s * 0.024, baseY - railY + s * 0.08);
+            }
+            ctx.fillStyle = TWN_OAK_DARK;
+            ctx.fillRect(p.x - hw * 0.95, railY, hw * 1.9, s * 0.045);
+            ctx.fillStyle = 'rgba(201, 167, 106, 0.5)';
+            ctx.fillRect(p.x - hw * 0.95, railY, hw * 1.9, s * 0.016);
+            // BAR STOCK leans on the rail: rods long and short, steel
+            // and black iron, dealt by the hash.
+            for (let k = 0; k < 4; k++) {
+              const kx = p.x - hw * 0.55 + k * hw * 0.3 + (((h >> k) & 3) - 1.5) * s * 0.02;
+              const lean = s * (0.1 + (((h >> (k + 3)) & 3) / 3) * 0.08);
+              const topY = railY - s * (0.16 + (((h >> (k + 6)) & 3) / 3) * 0.14);
+              ctx.strokeStyle = ((h >> (k * 2)) & 1) ? TRD_STEEL : TWN_IRON;
+              ctx.lineWidth = Math.max(1.5, s * 0.02);
+              ctx.beginPath();
+              ctx.moveTo(kx, baseY - s * 0.02);
+              ctx.lineTo(kx + lean, topY);
+              ctx.stroke();
+              ctx.strokeStyle = 'rgba(210, 218, 226, 0.4)';
+              ctx.lineWidth = Math.max(1, s * 0.008);
+              ctx.beginPath();
+              ctx.moveTo(kx + s * 0.008, baseY - s * 0.03);
+              ctx.lineTo(kx + lean + s * 0.008, topY + s * 0.01);
+              ctx.stroke();
+            }
+            // The shelf plank with its lit front arris.
+            ctx.fillStyle = TWN_OAK_DARK;
+            ctx.fillRect(p.x - hw, shelfY, hw * 2, s * 0.055);
+            ctx.fillStyle = TWN_OAK_LIT;
+            ctx.fillRect(p.x - hw, shelfY, hw * 2, s * 0.018);
+            // THE PIGS: two ingot stacks, metal dealt by the hash —
+            // iron, bronze, or copper — each bar a lit-topped keel.
+            const metals = [
+              { lo: '#5c6068', hi: TRD_STEEL_LIT },
+              { lo: '#8a6a2c', hi: TWN_BRONZE_LIT },
+              { lo: '#8a5434', hi: '#d29a6a' },
+            ];
+            for (const st of [0, 1] as const) {
+              const met = metals[(h >>> (st * 3)) % 3]!;
+              const sx = p.x + (st === 0 ? -hw * 0.5 : hw * 0.34);
+              const rows = 2 + ((h >> (st + 8)) & 1);
+              for (let r = 0; r < rows; r++) {
+                const n = rows - r;
+                for (let k = 0; k < n; k++) {
+                  const ix = sx + (k - (n - 1) / 2) * s * 0.135;
+                  const iy = shelfY - s * 0.045 - r * s * 0.075;
+                  ctx.fillStyle = met.lo;
+                  ctx.beginPath();
+                  ctx.moveTo(ix - s * 0.062, iy + s * 0.038);
+                  ctx.lineTo(ix - s * 0.048, iy - s * 0.026);
+                  ctx.lineTo(ix + s * 0.048, iy - s * 0.026);
+                  ctx.lineTo(ix + s * 0.062, iy + s * 0.038);
+                  ctx.closePath();
+                  ctx.fill();
+                  ctx.fillStyle = met.hi;
+                  ctx.fillRect(ix - s * 0.048, iy - s * 0.026, s * 0.096, s * 0.016);
+                }
+              }
+            }
+            // The coal sack: slumped burlap mouth-open, lumps spilled.
+            const ckx = p.x + hw * 1.06;
+            ctx.fillStyle = '#4a4440';
+            ctx.beginPath();
+            ctx.moveTo(ckx - s * 0.11, baseY);
+            ctx.quadraticCurveTo(ckx - s * 0.13, baseY - s * 0.3, ckx, baseY - s * 0.34);
+            ctx.quadraticCurveTo(ckx + s * 0.13, baseY - s * 0.3, ckx + s * 0.11, baseY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#5c5650';
+            ctx.beginPath();
+            ctx.moveTo(ckx - s * 0.1, baseY);
+            ctx.quadraticCurveTo(ckx - s * 0.12, baseY - s * 0.28, ckx - s * 0.02, baseY - s * 0.32);
+            ctx.quadraticCurveTo(ckx - s * 0.01, baseY - s * 0.16, ckx - s * 0.03, baseY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#2e2c30';
+            ctx.beginPath();
+            ctx.ellipse(ckx, baseY - s * 0.31, s * 0.075, s * 0.035, -0.1, 0, Math.PI * 2);
+            ctx.fill();
+            for (let k = 0; k < 4; k++) {
+              const lx = ckx - s * 0.06 + ((h >> k) & 3) * s * 0.05;
+              const ly = baseY - s * 0.01 - ((h >> (k + 2)) & 1) * s * 0.025;
+              ctx.fillStyle = '#34323a';
+              ctx.beginPath();
+              ctx.ellipse(lx, ly, s * 0.023, s * 0.018, k, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = 'rgba(138, 148, 160, 0.35)';
+              ctx.beginPath();
+              ctx.ellipse(lx - s * 0.006, ly - s * 0.006, s * 0.008, s * 0.006, k, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          },
+        };
+      }
+
+      case Tile.LumberRack: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        // The joiner's stock: planks on edge between peg posts, one
+        // pulled and leaning for the next cut, a round log waiting
+        // its turn, sawdust drifted where the work happens.
+        const hw = s * 0.44;
+        return {
+          sortY: ty + 0.68,
+          body: stationBody(0.6, 1.25, 0.4),
+          drawShadow: () => this.castContact(p.x, baseY, hw * 1.1, s * 0.065),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.15, s * 0.07, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Sawdust drift, pale and soft, before everything.
+            ctx.fillStyle = 'rgba(222, 198, 150, 0.4)';
+            ctx.beginPath();
+            ctx.ellipse(p.x + hw * 0.4, baseY - s * 0.005, s * 0.16, s * 0.045, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            // The two peg posts.
+            for (const m of [-1, 1] as const) {
+              ctx.fillStyle = TWN_OAK_DARK;
+              ctx.fillRect(p.x + m * hw * 0.9 - s * 0.032, baseY - s * 1.02, s * 0.064, s * 1.02);
+              ctx.fillStyle = TWN_OAK;
+              ctx.fillRect(p.x + m * hw * 0.9 - s * 0.032, baseY - s * 1.02, s * 0.025, s * 1.02);
+              // Peg stubs jut where the planks lean.
+              ctx.fillStyle = TWN_OAK_DARK;
+              ctx.fillRect(p.x + m * hw * 0.9 - s * 0.06, baseY - s * 0.68, s * 0.12, s * 0.035);
+              ctx.fillRect(p.x + m * hw * 0.9 - s * 0.06, baseY - s * 0.34, s * 0.12, s * 0.035);
+            }
+            // THE STOCK: five planks on edge, tones and heights dealt
+            // by the hash, top ends cut square showing pale end grain.
+            const tones = [TWN_OAK, '#96713c', TWN_OAK_LIT, '#7c5a30', '#a3814a'];
+            const n = 5;
+            for (let k = 0; k < n; k++) {
+              const kx = p.x - hw * 0.62 + k * hw * 0.31;
+              const ph = s * (0.78 + (((h >> (k * 2)) & 3) / 3) * 0.26);
+              const lean = s * (0.03 + (((h >> (k + 5)) & 3) / 3) * 0.025);
+              const tone = tones[(h >>> (k * 3)) % tones.length]!;
+              ctx.fillStyle = shade(tone, -14);
+              ctx.beginPath();
+              ctx.moveTo(kx - s * 0.052, baseY);
+              ctx.lineTo(kx - s * 0.052 + lean, baseY - ph);
+              ctx.lineTo(kx + s * 0.052 + lean, baseY - ph);
+              ctx.lineTo(kx + s * 0.052, baseY);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = tone;
+              ctx.beginPath();
+              ctx.moveTo(kx - s * 0.052, baseY);
+              ctx.lineTo(kx - s * 0.052 + lean, baseY - ph);
+              ctx.lineTo(kx - s * 0.012 + lean, baseY - ph);
+              ctx.lineTo(kx - s * 0.012, baseY);
+              ctx.closePath();
+              ctx.fill();
+              // The cut top: pale end grain on the square cut.
+              ctx.fillStyle = '#e0c49a';
+              ctx.beginPath();
+              ctx.moveTo(kx - s * 0.052 + lean, baseY - ph);
+              ctx.lineTo(kx - s * 0.038 + lean, baseY - ph - s * 0.022);
+              ctx.lineTo(kx + s * 0.062 + lean, baseY - ph - s * 0.022);
+              ctx.lineTo(kx + s * 0.052 + lean, baseY - ph);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // ONE PLANK PULLED: leaning long against the rack front —
+            // the next cut, already chosen. Mid-shift, never left.
+            ctx.fillStyle = '#b08a45';
+            ctx.beginPath();
+            ctx.moveTo(p.x + hw * 0.52, baseY + s * 0.02);
+            ctx.lineTo(p.x + hw * 0.98, baseY - s * 0.86);
+            ctx.lineTo(p.x + hw * 1.08, baseY - s * 0.84);
+            ctx.lineTo(p.x + hw * 0.63, baseY + s * 0.02);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(111, 77, 38, 0.5)';
+            ctx.lineWidth = Math.max(1, s * 0.01);
+            ctx.beginPath();
+            ctx.moveTo(p.x + hw * 0.58, baseY);
+            ctx.lineTo(p.x + hw * 1.0, baseY - s * 0.83);
+            ctx.stroke();
+            // The waiting log: round end grain to the street.
+            const lx = p.x - hw * 1.02;
+            ctx.fillStyle = TWN_OAK_DARK;
+            ctx.fillRect(lx - s * 0.02, baseY - s * 0.2, s * 0.26, s * 0.18);
+            ctx.beginPath();
+            ctx.ellipse(lx, baseY - s * 0.11, s * 0.095, s * 0.105, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#d4b98a';
+            ctx.beginPath();
+            ctx.ellipse(lx, baseY - s * 0.11, s * 0.072, s * 0.082, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(140, 108, 62, 0.6)';
+            ctx.lineWidth = Math.max(1, s * 0.008);
+            ctx.beginPath();
+            ctx.ellipse(lx, baseY - s * 0.11, s * 0.04, s * 0.045, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          },
+        };
+      }
+
+      case Tile.DyeVats: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        // The dyer's pair: two staved vats brimming with the town's
+        // own dye roster — no two tiles brew the same two colors —
+        // the stir paddle resting, the staves striped with old runs.
+        const hw = s * 0.46;
+        const d1 = h % 10;
+        const d2 = (d1 + 1 + ((h >>> 4) % 9)) % 10;
+        const dye1 = Renderer.AWNING_CLOTHS[d1]!.a;
+        const dye2 = Renderer.AWNING_CLOTHS[d2]!.a;
+        return {
+          sortY: ty + 0.68,
+          body: stationBody(0.62, 0.85, 0.42),
+          drawShadow: () => this.castContact(p.x, baseY, hw * 1.15, s * 0.07),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.2, s * 0.075, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Old spills stain the ground in both colors.
+            for (const [m, dye] of [[-1, dye1], [1, dye2]] as const) {
+              ctx.fillStyle = dye;
+              ctx.globalAlpha = 0.28;
+              ctx.beginPath();
+              ctx.ellipse(p.x + (m as number) * hw * 0.5 + s * 0.06, baseY + s * 0.015, s * 0.09, s * 0.03, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.globalAlpha = 1;
+            }
+            // The two vats, rear one first for the overlap.
+            const vats = [
+              { vx: p.x + hw * 0.45, vy: baseY - s * 0.05, r: hw * 0.5, dye: dye2, k: 1 },
+              { vx: p.x - hw * 0.42, vy: baseY, r: hw * 0.56, dye: dye1, k: 0 },
+            ];
+            for (const v of vats) {
+              const rimY = v.vy - s * 0.42;
+              // Staved body with a bulge.
+              ctx.fillStyle = TWN_OAK_DARK;
+              ctx.beginPath();
+              ctx.moveTo(v.vx - v.r, rimY);
+              ctx.quadraticCurveTo(v.vx - v.r * 1.16, v.vy - s * 0.2, v.vx - v.r * 0.86, v.vy);
+              ctx.lineTo(v.vx + v.r * 0.86, v.vy);
+              ctx.quadraticCurveTo(v.vx + v.r * 1.16, v.vy - s * 0.2, v.vx + v.r, rimY);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = TWN_OAK;
+              ctx.beginPath();
+              ctx.moveTo(v.vx - v.r, rimY);
+              ctx.quadraticCurveTo(v.vx - v.r * 1.12, v.vy - s * 0.2, v.vx - v.r * 0.88, v.vy);
+              ctx.lineTo(v.vx - v.r * 0.34, v.vy);
+              ctx.lineTo(v.vx - v.r * 0.3, rimY);
+              ctx.closePath();
+              ctx.fill();
+              // Stave seams.
+              ctx.strokeStyle = 'rgba(50, 36, 18, 0.45)';
+              ctx.lineWidth = Math.max(1, s * 0.011);
+              for (const kk of [-0.3, 0.1, 0.5]) {
+                ctx.beginPath();
+                ctx.moveTo(v.vx + v.r * kk, rimY + s * 0.02);
+                ctx.lineTo(v.vx + v.r * kk * 0.9, v.vy);
+                ctx.stroke();
+              }
+              // Iron hoops.
+              ctx.fillStyle = TWN_IRON;
+              ctx.fillRect(v.vx - v.r * 1.02, rimY + s * 0.06, v.r * 2.04, s * 0.03);
+              ctx.fillRect(v.vx - v.r * 0.92, v.vy - s * 0.12, v.r * 1.84, s * 0.028);
+              // THE DYE RUN: drips off the rim in the vat's own color.
+              ctx.fillStyle = v.dye;
+              ctx.globalAlpha = 0.75;
+              const dxk = ((h >> (v.k * 5)) & 3) * 0.3 - 0.45;
+              ctx.beginPath();
+              ctx.moveTo(v.vx + v.r * dxk - s * 0.012, rimY + s * 0.02);
+              ctx.lineTo(v.vx + v.r * dxk + s * 0.012, rimY + s * 0.02);
+              ctx.lineTo(v.vx + v.r * dxk * 0.96 + s * 0.008, rimY + s * (0.14 + ((h >> v.k) & 3) * 0.03));
+              ctx.closePath();
+              ctx.fill();
+              ctx.globalAlpha = 1;
+              // The rim + the brimming surface.
+              ctx.fillStyle = shade(TWN_OAK, 10);
+              ctx.beginPath();
+              ctx.ellipse(v.vx, rimY, v.r, s * 0.078, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = shade(v.dye, -20);
+              ctx.beginPath();
+              ctx.ellipse(v.vx, rimY, v.r * 0.86, s * 0.062, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = v.dye;
+              ctx.beginPath();
+              ctx.ellipse(v.vx - v.r * 0.08, rimY - s * 0.006, v.r * 0.68, s * 0.045, 0, 0, Math.PI * 2);
+              ctx.fill();
+              // The slow stir: a swirl arm turning under 4Hz.
+              const sa = t * (0.5 + v.k * 0.13) + v.k * 2.4 + tx * 0.7 + ty * 1.1;
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+              ctx.lineWidth = Math.max(1, s * 0.013);
+              ctx.beginPath();
+              ctx.ellipse(v.vx, rimY, v.r * 0.5, s * 0.033, 0, sa, sa + 2.1);
+              ctx.stroke();
+              ctx.strokeStyle = shade(v.dye, 26);
+              ctx.beginPath();
+              ctx.ellipse(v.vx, rimY, v.r * 0.3, s * 0.02, 0, sa + 3.6, sa + 5.2);
+              ctx.stroke();
+            }
+            // The stir paddle resting across the near vat's rim.
+            const pv = vats[1]!;
+            ctx.strokeStyle = TWN_OAK;
+            ctx.lineWidth = Math.max(1.5, s * 0.024);
+            ctx.beginPath();
+            ctx.moveTo(pv.vx - pv.r * 0.5, pv.vy - s * 0.44);
+            ctx.lineTo(pv.vx + pv.r * 1.1, pv.vy - s * 0.72);
+            ctx.stroke();
+            // The blade end wears the vat's color, deep-soaked.
+            ctx.fillStyle = shade(dye1, -14);
+            ctx.beginPath();
+            ctx.ellipse(pv.vx - pv.r * 0.52, pv.vy - s * 0.435, s * 0.055, s * 0.028, -0.34, 0, Math.PI * 2);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.TailorsDummy: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        // The tailor's dress form: a pinned garment mid-fitting in
+        // one of the town's own dyes, chalk still on the cloth, the
+        // measure draped where the hands left it.
+        const dye = Renderer.AWNING_CLOTHS[(h >>> 2) % 10]!;
+        const shX = p.x;
+        return {
+          sortY: ty + 0.66,
+          body: stationBody(0.5, 1.35, 0.35),
+          drawShadow: () => this.castContact(p.x, baseY, s * 0.3, s * 0.05),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.22)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, s * 0.28, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Three splayed feet + the pole with its set-screw knob.
+            ctx.strokeStyle = TWN_OAK_DARK;
+            ctx.lineWidth = Math.max(1.5, s * 0.028);
+            for (const fa of [-0.9, 0.14, 0.9]) {
+              ctx.beginPath();
+              ctx.moveTo(shX, baseY - s * 0.22);
+              ctx.lineTo(shX + Math.sin(fa) * s * 0.2, baseY + Math.abs(Math.cos(fa)) * s * 0.005);
+              ctx.stroke();
+            }
+            ctx.fillStyle = TWN_OAK_DARK;
+            ctx.fillRect(shX - s * 0.022, baseY - s * 0.58, s * 0.044, s * 0.38);
+            ctx.fillStyle = TWN_OAK;
+            ctx.fillRect(shX - s * 0.022, baseY - s * 0.58, s * 0.017, s * 0.38);
+            ctx.fillStyle = TWN_BRONZE_LIT;
+            ctx.beginPath();
+            ctx.ellipse(shX + s * 0.035, baseY - s * 0.44, s * 0.018, s * 0.018, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // THE FORM: shoulders, cinched waist, hip flare — wearing
+            // the work: bodice in the dealt dye, hem still unpinned.
+            const shY = baseY - s * 1.04;
+            const waistY = baseY - s * 0.76;
+            const hemY = baseY - s * 0.56;
+            ctx.fillStyle = shade(dye.a, -16);
+            ctx.beginPath();
+            ctx.moveTo(shX - s * 0.155, shY);
+            ctx.quadraticCurveTo(shX - s * 0.09, waistY - s * 0.02, shX - s * 0.105, waistY);
+            ctx.quadraticCurveTo(shX - s * 0.17, hemY - s * 0.02, shX - s * 0.15, hemY);
+            ctx.lineTo(shX + s * 0.15, hemY);
+            ctx.quadraticCurveTo(shX + s * 0.17, hemY - s * 0.02, shX + s * 0.105, waistY);
+            ctx.quadraticCurveTo(shX + s * 0.09, waistY - s * 0.02, shX + s * 0.155, shY);
+            ctx.closePath();
+            ctx.fill();
+            // The lit panel.
+            ctx.fillStyle = dye.a;
+            ctx.beginPath();
+            ctx.moveTo(shX - s * 0.135, shY + s * 0.01);
+            ctx.quadraticCurveTo(shX - s * 0.075, waistY - s * 0.02, shX - s * 0.088, waistY);
+            ctx.quadraticCurveTo(shX - s * 0.14, hemY - s * 0.02, shX - s * 0.125, hemY - s * 0.01);
+            ctx.lineTo(shX - s * 0.01, hemY - s * 0.01);
+            ctx.lineTo(shX - s * 0.01, shY + s * 0.01);
+            ctx.closePath();
+            ctx.fill();
+            // The seam under work: center line with pin glints.
+            ctx.strokeStyle = shade(dye.a, -30);
+            ctx.lineWidth = Math.max(1, s * 0.01);
+            ctx.beginPath();
+            ctx.moveTo(shX + s * 0.02, shY + s * 0.02);
+            ctx.lineTo(shX + s * 0.03, hemY - s * 0.02);
+            ctx.stroke();
+            ctx.fillStyle = TRD_STEEL_LIT;
+            for (let k = 0; k < 4; k++) {
+              ctx.beginPath();
+              ctx.ellipse(shX + s * (0.022 + k * 0.003), shY + s * 0.06 + k * s * 0.1, s * 0.009, s * 0.009, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            // Chalk marks: two short strokes where the take-in goes.
+            ctx.strokeStyle = 'rgba(244, 242, 234, 0.85)';
+            ctx.lineWidth = Math.max(1, s * 0.011);
+            ctx.beginPath();
+            ctx.moveTo(shX - s * 0.09, waistY - s * 0.05);
+            ctx.lineTo(shX - s * 0.05, waistY - s * 0.06);
+            ctx.moveTo(shX - s * 0.095, waistY + s * 0.01);
+            ctx.lineTo(shX - s * 0.055, waistY);
+            ctx.stroke();
+            // The hem hangs uneven — pinned on one side only.
+            ctx.fillStyle = shade(dye.a, -8);
+            ctx.beginPath();
+            ctx.moveTo(shX - s * 0.15, hemY - s * 0.005);
+            ctx.lineTo(shX + s * 0.15, hemY - s * 0.005);
+            ctx.lineTo(shX + s * 0.145, hemY + s * 0.045);
+            ctx.lineTo(shX + s * 0.02, hemY + s * 0.02);
+            ctx.lineTo(shX - s * 0.13, hemY + s * 0.055);
+            ctx.closePath();
+            ctx.fill();
+            // The neck cap.
+            ctx.fillStyle = TWN_OAK;
+            ctx.beginPath();
+            ctx.ellipse(shX, shY - s * 0.015, s * 0.045, s * 0.026, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = TWN_OAK_LIT;
+            ctx.beginPath();
+            ctx.ellipse(shX, shY - s * 0.022, s * 0.032, s * 0.016, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The measure: a cream tape over the shoulder, ticked.
+            ctx.strokeStyle = '#efe8d4';
+            ctx.lineWidth = Math.max(1.5, s * 0.022);
+            ctx.beginPath();
+            ctx.moveTo(shX - s * 0.1, shY + s * 0.005);
+            ctx.quadraticCurveTo(shX - s * 0.13, waistY - s * 0.06, shX - s * 0.115, hemY + s * 0.06);
+            ctx.stroke();
+            ctx.strokeStyle = 'rgba(90, 74, 50, 0.6)';
+            ctx.lineWidth = Math.max(1, s * 0.008);
+            for (let k = 0; k < 4; k++) {
+              const ky = shY + s * 0.1 + k * s * 0.11;
+              ctx.beginPath();
+              ctx.moveTo(shX - s * 0.128, ky);
+              ctx.lineTo(shX - s * 0.105, ky);
+              ctx.stroke();
+            }
+          },
+        };
+      }
+
+      case Tile.ClothBolts: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        // The mercer's crib: bolts standing in the rack, every roll
+        // a different dye, the front bolt tongued open for a customer
+        // who is coming back — and the shears parked till then.
+        const hw = s * 0.44;
+        const deckY = baseY - s * 0.34;
+        return {
+          sortY: ty + 0.68,
+          body: stationBody(0.6, 1.1, 0.4),
+          drawShadow: () => this.castContact(p.x, baseY, hw * 1.1, s * 0.065),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.1, s * 0.065, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The crib: four legs and two side rails.
+            ctx.fillStyle = TWN_OAK_DARK;
+            for (const m of [-1, 1] as const) {
+              ctx.fillRect(p.x + m * hw * 0.86 - s * 0.028, deckY, s * 0.056, baseY - deckY);
+              ctx.fillRect(p.x + m * hw * 0.6 - s * 0.024, deckY + s * 0.04, s * 0.048, baseY - deckY - s * 0.04);
+            }
+            ctx.fillStyle = TWN_OAK;
+            ctx.fillRect(p.x - hw * 0.92, deckY + s * 0.02, hw * 1.84, s * 0.04);
+            // THE BOLTS: four rolls leaning in the crib — A BOLT IS A
+            // ROLL, NOT A RAMP (pass-2 verdict): every roll is its own
+            // upright cylinder, dyes dealt on a stride of three so
+            // neighbors never share a hue family, dark seams parting
+            // roll from roll, the wound end fat and readable.
+            const base = h % 10;
+            for (let k = 3; k >= 0; k--) {
+              const cloth = Renderer.AWNING_CLOTHS[(base + k * 3) % 10]!;
+              const kx = p.x - hw * 0.58 + k * hw * 0.42;
+              const lean = s * (0.05 + (((h >>> (k * 2)) & 3) / 3) * 0.03);
+              const topY = deckY - s * (0.42 + (((h >>> (k + 3)) & 3) / 3) * 0.12);
+              const rw = s * 0.075;
+              // The standing roll: a leaning cylinder, lit down one
+              // flank, its neighbor parted by shadow.
+              ctx.fillStyle = shade(cloth.a, -26);
+              ctx.beginPath();
+              ctx.moveTo(kx - rw, deckY - s * 0.02);
+              ctx.lineTo(kx - rw + lean, topY);
+              ctx.lineTo(kx + rw + lean, topY);
+              ctx.lineTo(kx + rw, deckY - s * 0.02);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = cloth.a;
+              ctx.beginPath();
+              ctx.moveTo(kx - rw, deckY - s * 0.02);
+              ctx.lineTo(kx - rw + lean, topY);
+              ctx.lineTo(kx + rw * 0.3 + lean, topY);
+              ctx.lineTo(kx + rw * 0.3, deckY - s * 0.02);
+              ctx.closePath();
+              ctx.fill();
+              // The selvage stripe winds the body once.
+              ctx.strokeStyle = cloth.b;
+              ctx.lineWidth = Math.max(1, s * 0.012);
+              ctx.beginPath();
+              ctx.moveTo(kx - rw * 0.5, deckY - s * 0.1);
+              ctx.lineTo(kx + rw * 0.7 + lean * 0.4, topY + s * 0.12);
+              ctx.stroke();
+              // THE WOUND END: fat dye disc up top, spiral + dowel.
+              ctx.fillStyle = shade(cloth.a, 10);
+              ctx.beginPath();
+              ctx.ellipse(kx + lean, topY, rw * 1.08, rw * 0.62, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = shade(cloth.a, -24);
+              ctx.lineWidth = Math.max(1, s * 0.011);
+              ctx.beginPath();
+              ctx.ellipse(kx + lean, topY, rw * 0.68, rw * 0.4, 0, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.ellipse(kx + lean, topY, rw * 0.32, rw * 0.19, 0, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.fillStyle = '#d8c49a';
+              ctx.beginPath();
+              ctx.ellipse(kx + lean, topY, s * 0.016, s * 0.011, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            // THE TONGUE: the front bolt spills open over the rail,
+            // trim stripe riding the fold.
+            const front = Renderer.AWNING_CLOTHS[(base + 5) % 10]!;
+            ctx.fillStyle = front.a;
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.6, deckY - s * 0.02);
+            ctx.lineTo(p.x - hw * 0.18, deckY - s * 0.04);
+            ctx.lineTo(p.x - hw * 0.1, baseY - s * 0.02);
+            ctx.quadraticCurveTo(p.x - hw * 0.36, baseY + s * 0.02, p.x - hw * 0.56, baseY - s * 0.015);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(front.a, -16);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.6, deckY - s * 0.02);
+            ctx.lineTo(p.x - hw * 0.18, deckY - s * 0.04);
+            ctx.lineTo(p.x - hw * 0.2, deckY + s * 0.03);
+            ctx.lineTo(p.x - hw * 0.58, deckY + s * 0.04);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = front.b;
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.53, deckY + s * 0.06);
+            ctx.quadraticCurveTo(p.x - hw * 0.38, baseY - s * 0.1, p.x - hw * 0.33, baseY - s * 0.03);
+            ctx.stroke();
+            // The shears resting on the tongue: crossed steel, ring
+            // handles — the cut is coming.
+            const sx = p.x - hw * 0.36;
+            const sy = deckY + s * 0.1;
+            ctx.strokeStyle = TRD_STEEL;
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            for (const m of [-1, 1] as const) {
+              ctx.beginPath();
+              ctx.moveTo(sx + m * s * 0.012, sy + s * 0.05);
+              ctx.lineTo(sx - m * s * 0.028, sy - s * 0.06);
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.ellipse(sx + m * s * 0.022, sy + s * 0.062, s * 0.016, s * 0.014, 0, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+            ctx.fillStyle = TRD_STEEL_LIT;
+            ctx.beginPath();
+            ctx.ellipse(sx, sy, s * 0.012, s * 0.012, 0, 0, Math.PI * 2);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.BreadOven: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        // The baker's dome: fired brick over a stone hearth, the
+        // day's loaves cooling on the shelf, the peel still under the
+        // last one, the flue breathing — the fire is LIT and tended.
+        const hw = s * 0.5;
+        const domeCx = p.x - s * 0.04;
+        const domeBase = baseY - s * 0.34;
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.66, 1.45, 0.45),
+          drawShadow: () => this.castContact(p.x, baseY, hw * 1.15, s * 0.08),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.26)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.22, s * 0.08, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The hearth base: two stone courses, mortar-joined.
+            ctx.fillStyle = TWN_STONE_DARK;
+            ctx.fillRect(domeCx - hw, domeBase, hw * 2, baseY - domeBase);
+            ctx.fillStyle = TWN_STONE;
+            ctx.fillRect(domeCx - hw, domeBase, hw * 0.85, baseY - domeBase);
+            ctx.strokeStyle = 'rgba(120, 112, 93, 0.6)';
+            ctx.lineWidth = Math.max(1, s * 0.012);
+            ctx.beginPath();
+            ctx.moveTo(domeCx - hw, domeBase + (baseY - domeBase) * 0.52);
+            ctx.lineTo(domeCx + hw, domeBase + (baseY - domeBase) * 0.52);
+            ctx.stroke();
+            for (let k = 0; k < 3; k++) {
+              ctx.beginPath();
+              const kx = domeCx - hw * 0.6 + k * hw * 0.55 + ((h >> k) & 1) * hw * 0.12;
+              ctx.moveTo(kx, domeBase + ((k & 1) ? (baseY - domeBase) * 0.52 : 0));
+              ctx.lineTo(kx, domeBase + ((k & 1) ? (baseY - domeBase) : (baseY - domeBase) * 0.52));
+              ctx.stroke();
+            }
+            // THE DOME: fired brick, lit high on the sun side, its
+            // crown showing the foreshortened top the camera owns.
+            const dR = hw * 0.94;
+            ctx.fillStyle = TRD_BRICK;
+            ctx.beginPath();
+            ctx.ellipse(domeCx, domeBase, dR, s * 0.78, 0, Math.PI, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = TRD_BRICK_LIT;
+            ctx.beginPath();
+            ctx.ellipse(domeCx - dR * 0.16, domeBase - s * 0.06, dR * 0.72, s * 0.6, -0.12, Math.PI, 0);
+            ctx.closePath();
+            ctx.fill();
+            // The crown cap: the dome's top plane, mortar-pale.
+            ctx.fillStyle = TRD_MORTAR;
+            ctx.beginPath();
+            ctx.ellipse(domeCx - dR * 0.08, domeBase - s * 0.66, dR * 0.34, syT * 0.13, -0.08, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(120, 100, 84, 0.35)';
+            ctx.beginPath();
+            ctx.ellipse(domeCx + dR * 0.02, domeBase - s * 0.64, dR * 0.22, syT * 0.08, -0.08, 0, Math.PI * 2);
+            ctx.fill();
+            // Brick courses arc the dome; the hash staggers the bonds.
+            ctx.strokeStyle = 'rgba(90, 54, 40, 0.5)';
+            ctx.lineWidth = Math.max(1, s * 0.012);
+            for (let k = 1; k < 4; k++) {
+              ctx.beginPath();
+              ctx.ellipse(domeCx, domeBase, dR * (1 - k * 0.22), s * (0.78 - k * 0.17), 0, Math.PI + 0.15, -0.15);
+              ctx.stroke();
+            }
+            for (let k = 0; k < 5; k++) {
+              const a = Math.PI + 0.4 + k * 0.48 + (((h >> k) & 1) - 0.5) * 0.1;
+              ctx.beginPath();
+              ctx.moveTo(domeCx + Math.cos(a) * dR * 0.94, domeBase + Math.sin(a) * s * 0.73);
+              ctx.lineTo(domeCx + Math.cos(a) * dR * 0.75, domeBase + Math.sin(a) * s * 0.58);
+              ctx.stroke();
+            }
+            // THE MOUTH: brick voussoirs around the dark arch, soot
+            // feathered up the dome face — a working oven wears it.
+            ctx.fillStyle = 'rgba(30, 20, 18, 0.35)';
+            ctx.beginPath();
+            ctx.ellipse(domeCx + dR * 0.1, domeBase - s * 0.36, dR * 0.36, s * 0.3, 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#241a16';
+            ctx.beginPath();
+            ctx.ellipse(domeCx + dR * 0.08, domeBase - s * 0.1, dR * 0.3, s * 0.26, 0, Math.PI, 0);
+            ctx.closePath();
+            ctx.fill();
+            // The banked fire deep inside: coals only, never a lamp.
+            ctx.fillStyle = 'rgba(196, 92, 44, 0.55)';
+            ctx.beginPath();
+            ctx.ellipse(domeCx + dR * 0.06, domeBase - s * 0.04, dR * 0.16, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(232, 150, 70, 0.5)';
+            ctx.beginPath();
+            ctx.ellipse(domeCx + dR * 0.1, domeBase - s * 0.045, dR * 0.07, s * 0.026, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = shade(TRD_BRICK_LIT, 12);
+            ctx.lineWidth = Math.max(1.5, s * 0.024);
+            ctx.beginPath();
+            ctx.ellipse(domeCx + dR * 0.08, domeBase - s * 0.1, dR * 0.32, s * 0.28, 0, Math.PI + 0.2, -0.2);
+            ctx.stroke();
+            // THE SHELF: the loaves cooling where the peel left them.
+            ctx.fillStyle = TWN_STONE_LIT;
+            ctx.fillRect(domeCx - hw * 0.5, domeBase - s * 0.035, hw * 1.4, s * 0.05);
+            const loaves = 2 + ((h >> 3) & 1);
+            for (let k = 0; k < loaves; k++) {
+              const lx = domeCx - hw * 0.2 + k * hw * 0.36 + ((h >> (k + 2)) & 1) * s * 0.02;
+              const ly = domeBase - s * 0.09;
+              ctx.fillStyle = TRD_CRUST;
+              ctx.beginPath();
+              ctx.ellipse(lx, ly, s * 0.085, s * 0.055, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = TRD_CRUST_LIT;
+              ctx.beginPath();
+              ctx.ellipse(lx - s * 0.015, ly - s * 0.02, s * 0.055, s * 0.028, -0.2, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(122, 74, 38, 0.7)';
+              ctx.lineWidth = Math.max(1, s * 0.01);
+              ctx.beginPath();
+              ctx.moveTo(lx - s * 0.045, ly - s * 0.02);
+              ctx.lineTo(lx + s * 0.04, ly - s * 0.03);
+              ctx.stroke();
+            }
+            // THE PEEL: long handle to the ground, blade under bread.
+            ctx.strokeStyle = TWN_OAK;
+            ctx.lineWidth = Math.max(1.5, s * 0.024);
+            ctx.beginPath();
+            ctx.moveTo(domeCx + hw * 0.62, domeBase - s * 0.07);
+            ctx.lineTo(domeCx + hw * 1.14, baseY + s * 0.01);
+            ctx.stroke();
+            ctx.fillStyle = TWN_OAK_LIT;
+            ctx.beginPath();
+            ctx.ellipse(domeCx + hw * 0.56, domeBase - s * 0.075, s * 0.075, s * 0.038, -0.5, 0, Math.PI * 2);
+            ctx.fill();
+            // THE FLUE breathes: a short stack and a slow ribbon of
+            // smoke — under 4Hz, the tended fire's flag.
+            ctx.fillStyle = TRD_BRICK;
+            ctx.fillRect(domeCx - dR * 0.52, domeBase - s * 0.84, s * 0.09, s * 0.24);
+            ctx.fillStyle = TRD_BRICK_LIT;
+            ctx.fillRect(domeCx - dR * 0.52, domeBase - s * 0.84, s * 0.034, s * 0.24);
+            ctx.fillStyle = TRD_MORTAR;
+            ctx.fillRect(domeCx - dR * 0.54, domeBase - s * 0.87, s * 0.13, s * 0.035);
+            for (let k = 0; k < 3; k++) {
+              const ph = (t * 0.28 + k * 0.33 + ((h >> k) & 3) * 0.08) % 1;
+              const sx = domeCx - dR * 0.47 + Math.sin(t * 0.7 + k * 2.2 + tx) * s * 0.04 + ph * s * 0.1;
+              const sy = domeBase - s * 0.9 - ph * s * 0.5;
+              const al = 0.22 * (1 - ph) * Math.min(1, ph * 4);
+              ctx.fillStyle = `rgba(198, 196, 190, ${al.toFixed(3)})`;
+              ctx.beginPath();
+              ctx.ellipse(sx, sy, s * (0.045 + ph * 0.075), s * (0.032 + ph * 0.05), 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          },
+        };
+      }
+
+      case Tile.ButcherBlock: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        // The butcher's court: links and a ham hung high on iron
+        // S-hooks, the round block scarred and stained below, the
+        // cleaver STANDING in the wood between customers.
+        const hw = s * 0.42;
+        const railY = baseY - s * 1.1;
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.6, 1.5, 0.4),
+          drawShadow: () => this.castContact(p.x, baseY, hw * 1.05, s * 0.065),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.12, s * 0.07, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Sawdust strewn underfoot — the butcher's clean floor.
+            ctx.fillStyle = 'rgba(222, 198, 150, 0.32)';
+            ctx.beginPath();
+            ctx.ellipse(p.x - hw * 0.2, baseY, s * 0.2, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The gallows frame: posts + chamfered rail.
+            for (const m of [-1, 1] as const) {
+              ctx.fillStyle = TWN_OAK_DARK;
+              ctx.fillRect(p.x + m * hw * 0.92 - s * 0.032, railY - s * 0.05, s * 0.064, baseY - railY + s * 0.05);
+              ctx.fillStyle = TWN_OAK;
+              ctx.fillRect(p.x + m * hw * 0.92 - s * 0.032, railY - s * 0.05, s * 0.025, baseY - railY + s * 0.05);
+            }
+            ctx.fillStyle = TWN_OAK_DARK;
+            ctx.fillRect(p.x - hw * 1.02, railY, hw * 2.04, s * 0.055);
+            ctx.fillStyle = TWN_OAK_LIT;
+            ctx.fillRect(p.x - hw * 1.02, railY, hw * 2.04, s * 0.02);
+            // THE HANG: dealt by the hash — links, the ham, a second
+            // string — each on an iron S-hook, never a rope loop.
+            const hang = (h >> 2) & 3;
+            const hookAt = (hx: number) => {
+              ctx.strokeStyle = TRD_STEEL;
+              ctx.lineWidth = Math.max(1, s * 0.014);
+              ctx.beginPath();
+              ctx.arc(hx + s * 0.012, railY + s * 0.075, s * 0.018, Math.PI * 0.5, Math.PI * 1.5);
+              ctx.arc(hx - s * 0.012, railY + s * 0.115, s * 0.018, Math.PI * 1.5, Math.PI * 0.5);
+              ctx.stroke();
+            };
+            // The sausage string: five links stepped down a curve.
+            const linksAt = (hx: number, m: number) => {
+              hookAt(hx);
+              ctx.strokeStyle = shade(TRD_MEAT, -26);
+              ctx.lineWidth = Math.max(1, s * 0.01);
+              ctx.beginPath();
+              ctx.moveTo(hx, railY + s * 0.13);
+              ctx.quadraticCurveTo(hx + m * s * 0.05, railY + s * 0.3, hx + m * s * 0.03, railY + s * 0.46);
+              ctx.stroke();
+              for (let k = 0; k < 4; k++) {
+                const ky = railY + s * (0.17 + k * 0.085);
+                const kx = hx + m * Math.sin(k * 1.1) * s * 0.035;
+                ctx.fillStyle = k % 2 ? TRD_MEAT : shade(TRD_MEAT, -10);
+                ctx.beginPath();
+                ctx.ellipse(kx, ky, s * 0.028, s * 0.042, m * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'rgba(232, 196, 142, 0.5)';
+                ctx.beginPath();
+                ctx.ellipse(kx - s * 0.008, ky - s * 0.012, s * 0.009, s * 0.014, m * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            };
+            // The ham: rind-banded, bone stub proud.
+            const hamAt = (hx: number) => {
+              hookAt(hx);
+              ctx.fillStyle = shade(TRD_MEAT, -16);
+              ctx.beginPath();
+              ctx.moveTo(hx, railY + s * 0.13);
+              ctx.quadraticCurveTo(hx - s * 0.09, railY + s * 0.3, hx - s * 0.05, railY + s * 0.44);
+              ctx.quadraticCurveTo(hx, railY + s * 0.52, hx + s * 0.05, railY + s * 0.44);
+              ctx.quadraticCurveTo(hx + s * 0.09, railY + s * 0.3, hx, railY + s * 0.13);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = TRD_MEAT;
+              ctx.beginPath();
+              ctx.moveTo(hx - s * 0.002, railY + s * 0.14);
+              ctx.quadraticCurveTo(hx - s * 0.07, railY + s * 0.3, hx - s * 0.04, railY + s * 0.43);
+              ctx.quadraticCurveTo(hx - s * 0.005, railY + s * 0.48, hx, railY + s * 0.47);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = TRD_LEATHER_LIT;
+              ctx.fillRect(hx - s * 0.055, railY + s * 0.34, s * 0.11, s * 0.026);
+              ctx.fillStyle = '#e8ddc8';
+              ctx.beginPath();
+              ctx.ellipse(hx, railY + s * 0.125, s * 0.016, s * 0.012, 0, 0, Math.PI * 2);
+              ctx.fill();
+            };
+            if (hang & 1) {
+              linksAt(p.x - hw * 0.55, 1);
+              hamAt(p.x + hw * 0.4);
+            } else {
+              hamAt(p.x - hw * 0.45);
+              linksAt(p.x + hw * 0.5, -1);
+            }
+            if (hang & 2) linksAt(p.x + hw * 0.02, 1);
+            // THE BLOCK: a thick round on splayed legs, top scarred.
+            const bx = p.x - hw * 0.1;
+            const bTop = baseY - s * 0.52;
+            ctx.fillStyle = TWN_OAK_DARK;
+            for (const m of [-1, 1] as const) {
+              ctx.beginPath();
+              ctx.moveTo(bx + m * s * 0.13, bTop + s * 0.3);
+              ctx.lineTo(bx + m * s * 0.18, baseY);
+              ctx.lineTo(bx + m * s * 0.13, baseY);
+              ctx.lineTo(bx + m * s * 0.09, bTop + s * 0.3);
+              ctx.closePath();
+              ctx.fill();
+            }
+            ctx.fillStyle = TWN_OAK_DARK;
+            ctx.fillRect(bx - s * 0.17, bTop, s * 0.34, s * 0.34);
+            ctx.fillStyle = TWN_OAK;
+            ctx.fillRect(bx - s * 0.17, bTop, s * 0.12, s * 0.34);
+            // The top plane: pale, scored, one honest dark stain.
+            ctx.fillStyle = '#c9ab74';
+            ctx.beginPath();
+            ctx.ellipse(bx, bTop, s * 0.175, s * 0.07, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(122, 52, 44, 0.4)';
+            ctx.beginPath();
+            ctx.ellipse(bx + s * 0.03, bTop + s * 0.008, s * 0.08, s * 0.032, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(120, 90, 50, 0.6)';
+            ctx.lineWidth = Math.max(1, s * 0.01);
+            for (let k = 0; k < 3; k++) {
+              const a = ((h >> (k * 2)) & 3) * 0.6 - 0.9;
+              ctx.beginPath();
+              ctx.moveTo(bx - Math.cos(a) * s * 0.12, bTop - Math.sin(a) * s * 0.04);
+              ctx.lineTo(bx + Math.cos(a) * s * 0.12, bTop + Math.sin(a) * s * 0.04);
+              ctx.stroke();
+            }
+            // THE CLEAVER: blade bitten in, handle raked, edge lit.
+            ctx.fillStyle = TRD_STEEL;
+            ctx.beginPath();
+            ctx.moveTo(bx - s * 0.1, bTop - s * 0.005);
+            ctx.lineTo(bx - s * 0.115, bTop - s * 0.13);
+            ctx.lineTo(bx + s * 0.005, bTop - s * 0.145);
+            ctx.lineTo(bx + s * 0.01, bTop - s * 0.01);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = TRD_STEEL_LIT;
+            ctx.beginPath();
+            ctx.moveTo(bx - s * 0.115, bTop - s * 0.13);
+            ctx.lineTo(bx + s * 0.005, bTop - s * 0.145);
+            ctx.lineTo(bx + s * 0.003, bTop - s * 0.118);
+            ctx.lineTo(bx - s * 0.108, bTop - s * 0.105);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = TRD_LEATHER;
+            ctx.lineWidth = Math.max(1.5, s * 0.026);
+            ctx.beginPath();
+            ctx.moveTo(bx - s * 0.05, bTop - s * 0.14);
+            ctx.lineTo(bx - s * 0.015, bTop - s * 0.245);
+            ctx.stroke();
+          },
+        };
+      }
+
+      case Tile.HerbRack: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        // The herbalist's rack: bundles hung heads-down on two rails
+        // to dry — sage, lavender, seed-heads dealt by the hash —
+        // swinging on the town's one breeze, the mortar waiting below.
+        const hw = s * 0.42;
+        const railHi = baseY - s * 1.0;
+        const railLo = baseY - s * 0.62;
+        return {
+          sortY: ty + 0.68,
+          body: stationBody(0.58, 1.35, 0.38),
+          drawShadow: () => this.castContact(p.x, baseY, hw * 0.95, s * 0.06),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.22)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 0.95, s * 0.055, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The frame: two posts, two rails, pale lashings.
+            for (const m of [-1, 1] as const) {
+              ctx.fillStyle = TWN_OAK_DARK;
+              ctx.fillRect(p.x + m * hw * 0.88 - s * 0.028, railHi - s * 0.08, s * 0.056, baseY - railHi + s * 0.08);
+              ctx.fillStyle = TWN_OAK;
+              ctx.fillRect(p.x + m * hw * 0.88 - s * 0.028, railHi - s * 0.08, s * 0.022, baseY - railHi + s * 0.08);
+            }
+            for (const ry of [railHi, railLo]) {
+              ctx.fillStyle = TWN_OAK_DARK;
+              ctx.fillRect(p.x - hw * 0.92, ry, hw * 1.84, s * 0.035);
+              ctx.fillStyle = 'rgba(201, 167, 106, 0.5)';
+              ctx.fillRect(p.x - hw * 0.92, ry, hw * 1.84, s * 0.013);
+              ctx.strokeStyle = TWN_ROPE;
+              ctx.lineWidth = Math.max(1, s * 0.012);
+              for (const m of [-1, 1] as const) {
+                ctx.beginPath();
+                ctx.moveTo(p.x + m * hw * 0.88 - s * 0.03, ry - s * 0.01);
+                ctx.lineTo(p.x + m * hw * 0.88 + s * 0.03, ry + s * 0.045);
+                ctx.stroke();
+              }
+            }
+            // THE BUNDLES: heads-down bushels, each tied with twine,
+            // each swinging its own small swing on the shared breeze.
+            // Greens carry the rack (a drying line is a GREEN read);
+            // lavender and seed-gold are the accents, never the base.
+            const hues = [
+              { lo: shade(TRD_HERB, -14), hi: '#6f9450' },
+              { lo: shade(TRD_HERB_DRY, -14), hi: TRD_HERB_DRY },
+              { lo: shade(TRD_HERB, -10), hi: TRD_HERB_DRY },
+              { lo: shade(TRD_LAVENDER, -16), hi: TRD_LAVENDER },
+              { lo: shade(TRD_HERB_DRY, -12), hi: '#9aa668' },
+              { lo: '#8a6f30', hi: '#a8823f' },
+            ];
+            const rows = [
+              { ry: railHi, n: 4, off: 0 },
+              { ry: railLo, n: 3, off: 5 },
+            ];
+            for (const row of rows) {
+              for (let k = 0; k < row.n; k++) {
+                const hue = hues[(h >>> (k * 2 + row.off)) % hues.length]!;
+                const kx = p.x - hw * 0.62 + k * ((hw * 1.24) / (row.n - 1));
+                const sway = Math.sin(t * 1.15 + tx * 1.7 + ty * 1.2 + k * 1.9 + row.off) * 0.09;
+                const len = s * (0.2 + (((h >> (k + row.off)) & 3) / 3) * 0.06);
+                const tipX = kx + Math.sin(sway) * len;
+                const tipY = row.ry + s * 0.04 + Math.cos(sway) * len;
+                // Stems from the tie down to the flared heads.
+                ctx.strokeStyle = hue.lo;
+                ctx.lineWidth = Math.max(1, s * 0.014);
+                ctx.beginPath();
+                ctx.moveTo(kx, row.ry + s * 0.04);
+                ctx.lineTo(tipX, tipY);
+                ctx.stroke();
+                // The bushel head: layered teardrop, lit on one cheek.
+                ctx.fillStyle = hue.lo;
+                ctx.beginPath();
+                ctx.moveTo(kx + Math.sin(sway) * len * 0.4, row.ry + s * 0.04 + Math.cos(sway) * len * 0.4);
+                ctx.quadraticCurveTo(tipX - s * 0.055, tipY, tipX - s * 0.02, tipY + s * 0.1);
+                ctx.quadraticCurveTo(tipX, tipY + s * 0.13, tipX + s * 0.02, tipY + s * 0.1);
+                ctx.quadraticCurveTo(tipX + s * 0.055, tipY, kx + Math.sin(sway) * len * 0.4, row.ry + s * 0.04 + Math.cos(sway) * len * 0.4);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = hue.hi;
+                ctx.beginPath();
+                ctx.moveTo(kx + Math.sin(sway) * len * 0.45 - s * 0.01, row.ry + s * 0.06 + Math.cos(sway) * len * 0.45);
+                ctx.quadraticCurveTo(tipX - s * 0.04, tipY, tipX - s * 0.012, tipY + s * 0.085);
+                ctx.quadraticCurveTo(tipX + s * 0.006, tipY + s * 0.02, kx + Math.sin(sway) * len * 0.45 + s * 0.012, row.ry + s * 0.06 + Math.cos(sway) * len * 0.45);
+                ctx.closePath();
+                ctx.fill();
+                // Sprig strokes give the head its herb TEXTURE.
+                ctx.strokeStyle = hue.lo;
+                ctx.lineWidth = Math.max(1, s * 0.008);
+                for (const m of [-1, 0.2, 1]) {
+                  ctx.beginPath();
+                  ctx.moveTo(tipX + m * s * 0.02, tipY + s * 0.02);
+                  ctx.lineTo(tipX + m * s * 0.035, tipY + s * 0.11);
+                  ctx.stroke();
+                }
+                // The twine tie at the rail.
+                ctx.strokeStyle = TWN_ROPE;
+                ctx.lineWidth = Math.max(1, s * 0.013);
+                ctx.beginPath();
+                ctx.ellipse(kx, row.ry + s * 0.045, s * 0.014, s * 0.018, 0, 0, Math.PI * 2);
+                ctx.stroke();
+              }
+            }
+            // The bench below: mortar + pestle and the day's strip.
+            ctx.fillStyle = TWN_OAK;
+            ctx.fillRect(p.x - hw * 0.5, baseY - s * 0.16, hw, s * 0.045);
+            ctx.fillStyle = TWN_OAK_DARK;
+            ctx.fillRect(p.x - hw * 0.42, baseY - s * 0.115, s * 0.035, s * 0.115);
+            ctx.fillRect(p.x + hw * 0.36, baseY - s * 0.115, s * 0.035, s * 0.115);
+            ctx.fillStyle = TWN_STONE;
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.075, baseY - s * 0.19);
+            ctx.quadraticCurveTo(p.x - s * 0.085, baseY - s * 0.28, p.x - s * 0.05, baseY - s * 0.29);
+            ctx.lineTo(p.x + s * 0.05, baseY - s * 0.29);
+            ctx.quadraticCurveTo(p.x + s * 0.085, baseY - s * 0.28, p.x + s * 0.075, baseY - s * 0.19);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = TWN_STONE_LIT;
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - s * 0.285, s * 0.052, s * 0.02, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#3c4434';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - s * 0.283, s * 0.036, s * 0.013, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = TWN_STONE;
+            ctx.lineWidth = Math.max(1.5, s * 0.024);
+            ctx.beginPath();
+            ctx.moveTo(p.x + s * 0.02, baseY - s * 0.29);
+            ctx.lineTo(p.x + s * 0.09, baseY - s * 0.4);
+            ctx.stroke();
+            // A few fallen leaves under the rack.
+            ctx.fillStyle = 'rgba(125, 140, 88, 0.55)';
+            for (let k = 0; k < 3; k++) {
+              ctx.beginPath();
+              ctx.ellipse(p.x - hw * 0.4 + ((h >> k) & 3) * hw * 0.25, baseY - s * 0.015 + ((h >> (k + 3)) & 1) * s * 0.02, s * 0.02, s * 0.009, k * 0.8, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          },
+        };
+      }
+
+      case Tile.ShopShelf: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        // The shopkeeper's wall: tall casework STOCKED — every tile
+        // deals its own three rows from the goods roster (jars, dyed
+        // cloth, crockery, tinned boxes), so no two shelves in a
+        // street sell quite the same shop.
+        const hw = s * 0.46;
+        const topY = baseY - s * 1.28;
+        const topDepth = syT * 0.32;
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.62, 1.7, 0.42),
+          drawShadow: () => this.castContact(p.x, baseY, hw * 1.05, s * 0.07),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.08, s * 0.065, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The carcass: dark backboard between two side panels.
+            ctx.fillStyle = shade(TWN_OAK_DARK, -16);
+            ctx.fillRect(p.x - hw * 0.92, topY, hw * 1.84, baseY - topY);
+            for (const m of [-1, 1] as const) {
+              ctx.fillStyle = m < 0 ? TWN_OAK : TWN_OAK_DARK;
+              ctx.fillRect(p.x + m * hw - s * 0.04, topY, s * 0.08, baseY - topY);
+            }
+            // The plinth foot.
+            ctx.fillStyle = TWN_OAK_DARK;
+            ctx.fillRect(p.x - hw * 1.02, baseY - s * 0.07, hw * 2.04, s * 0.07);
+            // THE TOP PLANE: lit lid, shaded far edge, sunlit front
+            // arris — the 2.5D law for anything past the waist.
+            ctx.fillStyle = shade(TWN_OAK, -26);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 1.04, topY);
+            ctx.lineTo(p.x - hw * 0.9, topY - topDepth);
+            ctx.lineTo(p.x + hw * 0.9, topY - topDepth);
+            ctx.lineTo(p.x + hw * 1.04, topY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = TWN_OAK;
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 1.04, topY);
+            ctx.lineTo(p.x - hw * 0.93, topY - topDepth * 0.78);
+            ctx.lineTo(p.x + hw * 0.93, topY - topDepth * 0.78);
+            ctx.lineTo(p.x + hw * 1.04, topY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = TWN_OAK_LIT;
+            ctx.fillRect(p.x - hw * 1.04, topY, hw * 2.08, s * 0.028);
+            // Three shelf rows; the goods are dealt per row.
+            const rowH = (baseY - s * 0.07 - topY) / 3;
+            for (let row = 0; row < 3; row++) {
+              const shY = topY + rowH * (row + 1);
+              // The shelf board's lit front edge.
+              ctx.fillStyle = TWN_OAK;
+              ctx.fillRect(p.x - hw * 0.92, shY - s * 0.035, hw * 1.84, s * 0.035);
+              ctx.fillStyle = 'rgba(201, 167, 106, 0.55)';
+              ctx.fillRect(p.x - hw * 0.92, shY - s * 0.035, hw * 1.84, s * 0.013);
+              // Rows never repeat within one shelf: the hash deals
+              // the ROTATION, the row walks it — every shelf shows
+              // three different trades' worth of stock.
+              const goods = ((h & 3) + row) % 4;
+              const gy = shY - s * 0.035;
+              if (goods === 0) {
+                // JARS: corked glass in three heights, one label.
+                const glass = ['#7c9a6a', '#b08a45', '#8a94a0', '#a06a52'];
+                for (let k = 0; k < 4; k++) {
+                  const kx = p.x - hw * 0.6 + k * hw * 0.4;
+                  const gh = s * (0.14 + (((h >> (k + row)) & 3) / 3) * 0.1);
+                  const tone = glass[(h >>> (k * 2 + row)) % 4]!;
+                  ctx.fillStyle = tone;
+                  ctx.fillRect(kx - s * 0.038, gy - gh, s * 0.076, gh);
+                  ctx.fillStyle = shade(tone, 24);
+                  ctx.fillRect(kx - s * 0.028, gy - gh + s * 0.02, s * 0.016, gh - s * 0.04);
+                  ctx.fillStyle = TRD_LEATHER_LIT;
+                  ctx.fillRect(kx - s * 0.022, gy - gh - s * 0.022, s * 0.044, s * 0.024);
+                  if (k === ((h >> row) & 3)) {
+                    ctx.fillStyle = TWN_PAPER;
+                    ctx.fillRect(kx - s * 0.026, gy - gh * 0.62, s * 0.052, s * 0.05);
+                  }
+                }
+              } else if (goods === 1) {
+                // CLOTH: two folded stacks off the dye roster.
+                for (let st = 0; st < 2; st++) {
+                  const kx = p.x - hw * 0.42 + st * hw * 0.82;
+                  for (let k = 0; k < 3; k++) {
+                    const cloth = Renderer.AWNING_CLOTHS[(h >>> (st * 4 + k * 2 + row)) % 10]!;
+                    const ky = gy - s * 0.05 - k * s * 0.052;
+                    ctx.fillStyle = shade(cloth.a, -10);
+                    ctx.fillRect(kx - s * 0.13, ky, s * 0.26, s * 0.05);
+                    ctx.fillStyle = cloth.a;
+                    ctx.fillRect(kx - s * 0.13, ky, s * 0.26, s * 0.032);
+                    ctx.fillStyle = cloth.b;
+                    ctx.fillRect(kx - s * 0.13, ky + s * 0.008, s * 0.26, s * 0.007);
+                  }
+                }
+              } else if (goods === 2) {
+                // CROCKERY: a bowl stack and the big-bellied jug.
+                const kx = p.x - hw * 0.45;
+                for (let k = 0; k < 3; k++) {
+                  const ky = gy - s * 0.03 - k * s * 0.045;
+                  ctx.fillStyle = k % 2 ? '#b39268' : '#a3825c';
+                  ctx.beginPath();
+                  ctx.ellipse(kx, ky, s * (0.095 - k * 0.012), s * 0.032, 0, 0, Math.PI);
+                  ctx.fill();
+                  ctx.fillStyle = '#d8c0a0';
+                  ctx.beginPath();
+                  ctx.ellipse(kx, ky - s * 0.008, s * (0.09 - k * 0.012), s * 0.02, 0, 0, Math.PI * 2);
+                  ctx.fill();
+                }
+                const jx = p.x + hw * 0.4;
+                ctx.fillStyle = '#8a6a4c';
+                ctx.beginPath();
+                ctx.moveTo(jx - s * 0.03, gy - s * 0.24);
+                ctx.quadraticCurveTo(jx - s * 0.12, gy - s * 0.16, jx - s * 0.085, gy);
+                ctx.lineTo(jx + s * 0.085, gy);
+                ctx.quadraticCurveTo(jx + s * 0.12, gy - s * 0.16, jx + s * 0.03, gy - s * 0.24);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = '#b5926a';
+                ctx.beginPath();
+                ctx.moveTo(jx - s * 0.024, gy - s * 0.23);
+                ctx.quadraticCurveTo(jx - s * 0.095, gy - s * 0.15, jx - s * 0.068, gy);
+                ctx.lineTo(jx - s * 0.01, gy);
+                ctx.lineTo(jx - s * 0.01, gy - s * 0.23);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#6f523a';
+                ctx.lineWidth = Math.max(1, s * 0.016);
+                ctx.beginPath();
+                ctx.arc(jx + s * 0.065, gy - s * 0.17, s * 0.045, -Math.PI * 0.6, Math.PI * 0.4);
+                ctx.stroke();
+              } else {
+                // BOXES: stenciled tins and a small crate, lids on.
+                for (let k = 0; k < 3; k++) {
+                  const kx = p.x - hw * 0.55 + k * hw * 0.52 + ((h >> (k + row)) & 1) * s * 0.02;
+                  const bw = s * (0.11 + ((h >> (k * 2)) & 1) * 0.03);
+                  const bh = s * (0.1 + ((h >> (k + 4)) & 1) * 0.05);
+                  ctx.fillStyle = k === 1 ? '#7c8a94' : TWN_OAK;
+                  ctx.fillRect(kx - bw, gy - bh, bw * 2, bh);
+                  ctx.fillStyle = k === 1 ? '#a8b4bc' : TWN_OAK_LIT;
+                  ctx.fillRect(kx - bw, gy - bh, bw * 2, s * 0.022);
+                  ctx.fillStyle = k === 1 ? '#5c6870' : TWN_OAK_DARK;
+                  ctx.beginPath();
+                  ctx.ellipse(kx, gy - bh * 0.45, bw * 0.4, bw * 0.32, 0, 0, Math.PI * 2);
+                  ctx.fill();
+                }
+              }
+            }
+            // The price tag: one paper slip strung off the mid shelf.
+            const tagX = p.x + hw * (0.3 + ((h >> 6) & 3) * 0.14);
+            const tagY = topY + rowH * 2;
+            ctx.strokeStyle = TWN_ROPE;
+            ctx.lineWidth = Math.max(1, s * 0.008);
+            ctx.beginPath();
+            ctx.moveTo(tagX, tagY - s * 0.005);
+            ctx.lineTo(tagX + s * 0.014, tagY + s * 0.035);
+            ctx.stroke();
+            ctx.fillStyle = TWN_PAPER;
+            ctx.save();
+            ctx.translate(tagX + s * 0.014, tagY + s * 0.035);
+            ctx.rotate(0.18);
+            ctx.fillRect(-s * 0.022, 0, s * 0.048, s * 0.06);
+            ctx.strokeStyle = 'rgba(74, 60, 40, 0.6)';
+            ctx.beginPath();
+            ctx.moveTo(-s * 0.012, s * 0.022);
+            ctx.lineTo(s * 0.016, s * 0.022);
+            ctx.moveTo(-s * 0.012, s * 0.04);
+            ctx.lineTo(s * 0.01, s * 0.04);
+            ctx.stroke();
+            ctx.restore();
           },
         };
       }

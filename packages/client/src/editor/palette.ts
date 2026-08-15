@@ -181,6 +181,18 @@ export const TILE_CATEGORIES: TileCategory[] = [
     ],
   },
   {
+    // THE TRADES KEEP SHOP: the working-trades shelf — the forge
+    // yard first (the loudest trade), then timber, cloth and dye,
+    // the food trades, and the shopkeeper's own furniture.
+    id: 'trades',
+    label: 'Trades & shops',
+    tiles: [
+      Tile.QuenchTrough, Tile.Grindstone, Tile.SmithBellows, Tile.IngotRack,
+      Tile.LumberRack, Tile.DyeVats, Tile.TailorsDummy, Tile.ClothBolts,
+      Tile.BreadOven, Tile.ButcherBlock, Tile.HerbRack, Tile.ShopShelf,
+    ],
+  },
+  {
     // THE FAIR HOUSE FURNISHED: the elven shelf — lights and cloth
     // first (the pieces that set a scene), then furniture, stations,
     // and the garden stone.

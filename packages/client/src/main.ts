@@ -2060,7 +2060,10 @@ game.onFx = (fx) => {
         kind === 'dugout' ||
         // The town bell's break is the loudest note it ever plays,
         // and a stack of empty casks is a drum choir.
-        kind === 'townbell' || kind === 'barrelstack',
+        kind === 'townbell' || kind === 'barrelstack' ||
+        // The baker's dome is one big fired vessel — it booms the
+        // way a kiln-hollow breaks.
+        kind === 'breadoven',
       ),
     );
     // Stone-weight pieces land heavy: marble, mithril, and old
@@ -2075,7 +2078,10 @@ game.onFx = (fx) => {
           kind === 'greatribs' ||
           // Town limestone and a founder's bronze land like the
           // civic masonry they are.
-          kind === 'townfountain' || kind === 'founder' || kind === 'stonebench'
+          kind === 'townfountain' || kind === 'founder' || kind === 'stonebench' ||
+          // The bread oven and the grindstone's disc are the trade
+          // kit's stone-weight.
+          kind === 'breadoven' || kind === 'grindstone'
           ? 3.2
           : 2.2,
       );

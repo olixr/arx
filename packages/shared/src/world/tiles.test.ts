@@ -412,6 +412,20 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.StreetPlanter, 'streetplanter', 1],
     [Tile.StoneBench, 'stonebench', 3],
     [Tile.ProduceStand, 'produce', 2],
+    // THE TRADES KEEP SHOP: workshop timber like the street's; the
+    // bread oven is the yard's masonry and holds four.
+    [Tile.QuenchTrough, 'quench', 2],
+    [Tile.Grindstone, 'grindstone', 2],
+    [Tile.SmithBellows, 'bellows', 1],
+    [Tile.IngotRack, 'ingots', 2],
+    [Tile.LumberRack, 'lumber', 2],
+    [Tile.DyeVats, 'dyevat', 2],
+    [Tile.TailorsDummy, 'dressform', 1],
+    [Tile.ClothBolts, 'clothbolts', 1],
+    [Tile.BreadOven, 'breadoven', 4],
+    [Tile.ButcherBlock, 'butcherblock', 2],
+    [Tile.HerbRack, 'herbs', 1],
+    [Tile.ShopShelf, 'shopshelf', 2],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {
