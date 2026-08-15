@@ -184,6 +184,10 @@ const MOB_SIZE: Record<string, number> = {
   skral_harpooner: 0.84,
   skral_tidecaller: 0.9,
   skral_champion: 1.25,
+  // THE BRINE CROWNS: the tidelord over the deepking, the deepmaw
+  // over everything on the bank (renderer SKRAL_SIZE hand-sync).
+  skral_tidelord: 1.34,
+  skral_deepmaw: 1.44,
   // THE LEGION DIALECT: man-height soldiers, the warlord over any
   // brigand, the juggernaut on the giant gait.
   hobgoblin: 1.02,

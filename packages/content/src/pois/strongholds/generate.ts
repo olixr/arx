@@ -276,8 +276,10 @@ export const FAMILY_STYLES: ReadonlyMap<string, FamilyStyle> = new Map<string, F
       // The shoal lights its roads with its own street light — the
       // caged deep-jelly, never the dead's cold brazier.
       roadMarker: Tile.LurePole,
-      // The deepking, scaled to the throne he finally owns.
-      bossNpc: 'skral_champion',
+      // THE TIDELORD (docs/boss-system-plan.md, THE BRINE CROWNS):
+      // the elder deepking on the oldest pool — the Drowned Court's
+      // authored crown, scaled to the throne that was always his.
+      bossNpc: 'skral_tidelord',
       bossOffset: 5,
       accents: [Tile.ShellMidden, Tile.FishRack, Tile.BonePile],
       hearthGear: [Tile.FishRack, Tile.CatchBasket, Tile.FishTrap, Tile.NetFrame, Tile.ShellMidden],

@@ -3936,6 +3936,136 @@ const defs: AbilityDef[] = [
     status: { status: 'chill', power: 1, durationTicks: 40 },
   },
 
+  // --------------------- THE BRINE CROWNS (docs/boss-system-plan.md):
+  // the skral bosses' eight words — the tidelord's four spoken FROM
+  // the oldest pool (the tide fights for the king), and the deepmaw's
+  // four spoken by appetite alone. Every word is water remembering
+  // something: the flood it owes, the pressure it keeps, the spears
+  // it feeds, and what the gullet never gave back.
+  {
+    id: 'drowning_surge',
+    name: 'Drowning Surge',
+    desc: 'The tidelord lifts a palm and the ground ahead of your next step remembers the flood. The water stands, and stays, and argues.',
+    color: '#4a7ea0',
+    code: 'Ds',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'ground_field',
+    // The flood is an ARGUMENT, not a blow: low tick, long stay —
+    // the field's job is to own the lane the fight wanted.
+    damage: 2,
+    range: 0,
+    radius: 2.6,
+    fieldTicks: 90,
+    pulseEveryTicks: 20,
+    // Deep water holds ankles: the heaviest chill in the dialect.
+    status: { status: 'chill', power: 2, durationTicks: 50 },
+  },
+  {
+    id: 'abyssal_jet',
+    name: 'Abyssal Jet',
+    desc: 'The tidelord plants the trident and the deep comes up THROUGH it — a bar of black water at pressure, straight and flat and cold as the trench it left.',
+    color: '#3a6a8c',
+    code: 'Aj',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'beam',
+    // Die 10 on the basic 7 rides the 1.5x telegraph lane (14t wind).
+    damage: 10,
+    range: 9,
+    width: 0.6,
+    // Trench water IS winter with intent (the family's flight law).
+    element: 'frost',
+    status: { status: 'chill', power: 1, durationTicks: 50 },
+  },
+  {
+    id: 'court_of_spears',
+    name: 'Court of Spears',
+    desc: 'The tidelord croaks a name older than the weir, and harpooners stand up out of water that held no one. The court was always here. It was waiting to be needed.',
+    color: '#6a8ea8',
+    code: 'Cq',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'summon',
+    damage: 0,
+    // THE RANGED COURT: every other crown's adds come for your throat;
+    // the tidelord's court STANDS OFF and throws — the fight problem
+    // is the ring of spears, not the pile of teeth. Scaled to the
+    // caster's spawned level (the brotherhood lane), capped alive.
+    summonNpc: { npc: 'skral_harpooner', count: 2, capAlive: 4, levelDelta: -5 },
+  },
+  {
+    id: 'kingspool_geyser',
+    name: 'Kingspool Geyser',
+    desc: 'Stand too near the king and the pool itself objects — the water under your feet goes UP, and again, and again.',
+    color: '#7ab8c4',
+    code: 'Kg',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'pulse_nova',
+    // Three honest waves off the king's own feet: the anti-crowd
+    // answer that punishes standing IN the throne.
+    damage: 6,
+    radius: 2.4,
+    pulses: 3,
+    pulseEveryTicks: 10,
+    status: { status: 'chill', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'shallows_rush',
+    name: 'Shallows Rush',
+    desc: 'The deepmaw drops flat as an eel and comes THROUGH you on a sheet of its own bow-wave. The water arrives a heartbeat before the meat does.',
+    color: '#7e9a8c',
+    code: 'Sw',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'dash_strike',
+    damage: 7,
+    dashTiles: 4,
+    status: { status: 'chill', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'gullet_snap',
+    name: 'Gullet Snap',
+    desc: 'The jaw unhinges past what a skull should allow and closes like a weir gate. Whatever armor was in the way is in the way no longer.',
+    color: '#9ab0a0',
+    code: 'Gs',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'melee_arc',
+    // Die 9 on the basic 6: the 1.5x lane, bought with a 14t wind.
+    damage: 9,
+    // THE CRACKED SHELL: the game's one amplifier mark — the bite
+    // ruins your guard and everything after hits a tenth harder.
+    status: { status: 'sunder', power: 10, durationTicks: 80 },
+  },
+  {
+    id: 'gorge_spray',
+    name: 'Gorge Spray',
+    desc: 'It heaves, and the fan of half-kept brine that follows is nothing the tide will take credit for. What the gullet keeps, rots.',
+    color: '#8a9a5c',
+    code: 'Gy',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'projectile_fan',
+    damage: 5,
+    projectiles: 5,
+    spreadArc: 1.0,
+    projectileSpeed: 9,
+    range: 6,
+    // The one venom in the dialect — swallowed water goes bad.
+    status: { status: 'venom', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'breaching_crash',
+    name: 'Breaching Crash',
+    desc: 'The deepmaw goes UNDER — a long beat of standing water and a wake you can read — and then the bank where you stood is a crater wearing spray.',
+    color: '#647e6e',
+    code: 'Bc',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'leap_slam',
+    // Die 12 on the basic 6: the full 2.5x premium, bought with the
+    // longest wind any skral draws (24t — the whole bank reads it).
+    damage: 12,
+    dashTiles: 4.5,
+    radius: 2.3,
+    knockback: 1.8,
+    status: { status: 'chill', power: 1, durationTicks: 40 },
+  },
+
   // ------------------------- THE LEGION (docs/hobgoblin-plan.md): the
   // hobgoblins' three words, all spoken in iron and flame. The
   // warcaster speaks two — the brand thrown flat and hard, and the

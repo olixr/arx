@@ -1860,6 +1860,188 @@ const warlord_horn: AbilitySig = {
   },
 };
 
+// --------------------------------------------------- court_of_spears
+// summon (self-staked) — the tidelord's word for the harpoon court.
+
+/**
+ * COURT_OF_SPEARS — "the court was always here."
+ * The third rim voice, and it must read against BOTH cousins: the
+ * shoal's croak answers in ragged fin-blades, the legion's horn in
+ * drilled leaf-spears on the count — the tidelord's court answers in
+ * WATER FIRST. Five mounds of standing water well up around the ring
+ * on ragged clocks, and only once each mound stands does a barbed
+ * harpoon rise THROUGH it, shedding its own splash, holding its
+ * salute a long beat, then sliding back under. The read is exactly
+ * the fight: the water stands, and then it is holding a spear.
+ */
+const court_of_spears: AbilitySig = {
+  spawn(c) {
+    // Water stands where no one is: a curtain climbs at the king.
+    const m = asMatter(c);
+    water.deployments.curtain!(m, c.wx, c.wy, { radius: c.radius * 0.35, scale: 0.5 });
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    ctx.save();
+    // One deep court-ring, low and slow — the pool marking its rim.
+    const ru = cl(t / 0.5);
+    if (ru < 1) {
+      ctx.globalAlpha = 0.6 * (1 - ru);
+      ctx.strokeStyle = st.deep;
+      ctx.lineWidth = Math.max(1.5, sc * 0.05);
+      ctx.beginPath();
+      ctx.ellipse(px, py, rPx * (0.3 + ru * 0.7), rPx * (0.3 + ru * 0.7) * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    const rand = srand(c.seed ^ 0xc0427);
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2 + (rand() - 0.5) * 0.6;
+      const stag = rand() * 0.3;
+      const bx = px + Math.cos(a) * rPx * 0.85;
+      const by = py + Math.sin(a) * rPx * 0.85 * squash;
+      // THE MOUND: water wells up first — a low dome with a pale cap.
+      const well = cl((t - stag) / 0.2);
+      const sink = cl((t - stag - 0.75) / 0.2);
+      if (well <= 0 || sink >= 1) continue;
+      const mw = sc * (0.16 + rand() * 0.04);
+      const mh = mw * 0.5 * well * (1 - sink);
+      ctx.globalAlpha = 0.85 * (1 - sink);
+      ctx.fillStyle = st.mid;
+      ctx.beginPath();
+      ctx.ellipse(bx, by, mw, mh + mw * 0.2 * squash, 0, Math.PI, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = st.deep;
+      ctx.beginPath();
+      ctx.ellipse(bx, by, mw, mw * 0.24 * squash, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // THE SPEAR: rises THROUGH the standing mound, barbed, holds,
+      // and goes back under with the water that raised it.
+      const rise = cl((t - stag - 0.16) / 0.2);
+      if (rise > 0) {
+        const sh = sc * (0.24 + rand() * 0.05) * rise * (1 - sink);
+        ctx.globalAlpha = 0.92 * (1 - sink);
+        ctx.strokeStyle = st.deep;
+        ctx.lineWidth = Math.max(1, sc * 0.022);
+        ctx.beginPath();
+        ctx.moveTo(bx, by - mh * 0.5);
+        ctx.lineTo(bx, by - mh * 0.5 - sh);
+        ctx.stroke();
+        // The barbed head: point plus two back-hooks — a fisher's
+        // iron, never a soldier's leaf.
+        const hw = sc * 0.028;
+        const hy = by - mh * 0.5 - sh;
+        ctx.fillStyle = st.spark;
+        ctx.beginPath();
+        ctx.moveTo(bx, hy - hw * 2.2);
+        ctx.lineTo(bx + hw * 0.7, hy);
+        ctx.lineTo(bx + hw * 1.5, hy + hw * 1.2);
+        ctx.lineTo(bx, hy + hw * 0.4);
+        ctx.lineTo(bx - hw * 1.5, hy + hw * 1.2);
+        ctx.lineTo(bx - hw * 0.7, hy);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // The splash each shaft sheds as it clears its mound.
+      if (crossed(c, 500, stag + 0.2)) {
+        const m = asMatter(c);
+        water.deployments.splash!(m, c.wx + Math.cos(a) * c.radius * 0.85,
+          c.wy + Math.sin(a) * c.radius * 0.85 * c.squash, { scale: 0.4 });
+      }
+    }
+    ctx.restore();
+    // Wet grains where the court stood — the bank remembers them.
+    if (crossed(c, 500, 0.6)) {
+      const rand2 = srand(c.seed ^ 0xc04);
+      for (let k = 0; k < 5; k++) {
+        const a = (k / 5) * Math.PI * 2 + rand2() * 0.4;
+        lay(c, c.wx + Math.cos(a) * c.radius * 0.85, c.wy + Math.sin(a) * c.radius * 0.85 * c.squash,
+          '#9fb8c4', { life: 5 + rand2() * 2, size: 0.05, fade: '#48606c', fadeAt: 0.5 });
+      }
+    }
+  },
+};
+
+// --------------------------------------------------- breaching_crash
+// leap_slam — the deepmaw's landing, read from the receiving end.
+
+/**
+ * BREACHING_CRASH — "a crater wearing spray."
+ * The blast grammar (teeth ring, quake motif) already says SLAM;
+ * this signature says WATER LANDED: a white collapse column falls at
+ * the heart in the first beats, a corona of tall spray sheets stands
+ * up around the rim and falls OUTWARD (the crab's law inverted — the
+ * water leaves the crater, never returns to it), and the bank keeps
+ * a broken ring of wet grains and one long puddle-stain where the
+ * bulk came down. Ragged everywhere: the shoal's clocks, not the
+ * legion's.
+ */
+const breaching_crash: AbilitySig = {
+  spawn(c) {
+    // The landing itself: the biggest single splash in the dialect,
+    // plus a churn that keeps working while the spray settles.
+    const m = asMatter(c);
+    water.deployments.splash!(m, c.wx, c.wy, { scale: 0.95 });
+    water.deployments.churn!(m, c.wx, c.wy, { radius: c.radius * 0.5, scale: 0.6 });
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    ctx.save();
+    // THE COLLAPSE COLUMN: the water the breach carried falls back
+    // through itself at the heart — tall, white, and brief.
+    const col = 1 - cl(t / 0.28);
+    if (col > 0) {
+      const cw = sc * 0.2 * (0.6 + 0.4 * col);
+      const chh = sc * (0.5 + 0.3 * col) * col;
+      ctx.globalAlpha = 0.8 * col;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(px - cw, py);
+      ctx.quadraticCurveTo(px - cw * 0.5, py - chh * 0.7, px - cw * 0.3, py - chh);
+      ctx.lineTo(px + cw * 0.3, py - chh);
+      ctx.quadraticCurveTo(px + cw * 0.5, py - chh * 0.7, px + cw, py);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // THE SPRAY CORONA: sheets stand on the rim and fall OUTWARD on
+    // ragged clocks — the crater emptying itself.
+    const rand = srand(c.seed ^ 0xb4ea);
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2 + (rand() - 0.5) * 0.5;
+      const stag = rand() * 0.2;
+      const up = cl((t - stag) / 0.18);
+      const fall = cl((t - stag - 0.2) / 0.35);
+      if (up <= 0 || fall >= 1) continue;
+      const reach = rPx * (0.95 + fall * 0.35);
+      const bx = px + Math.cos(a) * reach;
+      const by = py + Math.sin(a) * reach * squash;
+      const sh2 = sc * (0.2 + rand() * 0.08) * up * (1 - fall);
+      const lean = Math.cos(a) * sc * 0.06 * (1 + fall);
+      ctx.globalAlpha = 0.8 * (1 - fall);
+      ctx.fillStyle = fall < 0.3 ? '#ffffff' : st.mid;
+      ctx.beginPath();
+      ctx.moveTo(bx - sc * 0.03, by);
+      ctx.quadraticCurveTo(bx + lean * 0.4, by - sh2, bx + lean, by - sh2 * 0.7);
+      ctx.lineTo(bx + sc * 0.03, by);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+    // THE WET RING: the lasting mark — a broken ring of brine grains
+    // and the puddle the bulk pressed into the bank.
+    if (crossed(c, 600, 0.35)) {
+      const rand2 = srand(c.seed ^ 0xb4e);
+      for (let k = 0; k < 7; k++) {
+        const a = rand2() * Math.PI * 2;
+        const rr = c.radius * (0.75 + rand2() * 0.35);
+        lay(c, c.wx + Math.cos(a) * rr, c.wy + Math.sin(a) * rr * c.squash, '#9fc4c4', {
+          life: 5 + rand2() * 3, size: 0.05, fade: '#446068', fadeAt: 0.5,
+        });
+      }
+      lay(c, c.wx, c.wy, '#7ea8b0', { life: 8, size: 0.16, fade: '#3a545c', fadeAt: 0.4 });
+    }
+  },
+};
+
 export const FOES_SIGS: Record<string, AbilitySig> = {
   cinder_ring,
   miasma_ring,
@@ -1873,5 +2055,7 @@ export const FOES_SIGS: Record<string, AbilitySig> = {
   shrilling_dart,
   breakwater_grip,
   shoal_call,
+  court_of_spears,
+  breaching_crash,
   warlord_horn,
 };

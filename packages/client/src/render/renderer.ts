@@ -42412,6 +42412,10 @@ export class Renderer {
     skral_harpooner: 0.84,
     skral_tidecaller: 0.9,
     skral_champion: 1.25,
+    // THE BRINE CROWNS: the tidelord a head over the deepking he
+    // outlived; the deepmaw the bulkiest thing on any bank.
+    skral_tidelord: 1.34,
+    skral_deepmaw: 1.44,
   };
 
   /**

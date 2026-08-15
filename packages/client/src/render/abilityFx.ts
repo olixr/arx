@@ -580,6 +580,26 @@ export const FX_STYLES: Record<string, FxStyle> = {
   tide_lash: TIDE({ mid: '#6fa8a0', deep: '#24443e', ring: 'shards', debris: 'ice', decal: 'stain', motif: 'wave', punch: 0.35, wash: 0.3 }),
   riptide_ring: TIDE({ mid: '#54889c', deep: '#1e3a48', ring: 'halo', debris: 'ice', decal: 'stain', motif: 'vortex', punch: 0.6, wash: 0.45 }),
   shoal_call: TIDE({ mid: '#7c9c8a', deep: '#28443c', spark: '#d8ecdf', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.6, wash: 0.32 }),
+  // THE BRINE CROWNS (docs/boss-system-plan.md) — the boss words wear
+  // the same cold family a register DEEPER. The tidelord's four: the
+  // surge is standing floodwater (wave crests over the heaviest tide
+  // stain), the jet is trench water at pressure (a TEAR — the deep
+  // slit open, not a spell drawn), the court is the croak grown a
+  // CAGE of spear-shafts on its rim, and the geyser is the pool gone
+  // vertical (pillar, frost-ringed). The deepmaw's four: the rush is
+  // a clean bow-wave with no lingering mark (water that ARRIVES), the
+  // snap is teeth-and-bone with the cracked-guard decal (the sunder
+  // made visible), the spray is the one rot in the dialect (kelp-bile
+  // olive, gobbets raining), and the breach is the family's loudest
+  // word — a quake wearing spray, punch near the ceiling.
+  drowning_surge: TIDE({ mid: '#4a7ea0', deep: '#1c3a50', ring: 'halo', debris: 'ice', decal: 'stain', motif: 'wave', punch: 0.5, wash: 0.5 }),
+  abyssal_jet: TIDE({ mid: '#3a6a8c', deep: '#132c40', spark: '#bfe6ee', ring: 'shards', debris: 'ice', decal: 'stain', motif: 'tear', punch: 0.7, wash: 0.4 }),
+  court_of_spears: TIDE({ mid: '#6a8ea8', deep: '#24404e', spark: '#d8ecdf', ring: 'halo', debris: 'spark', decal: undefined, motif: 'cage', punch: 0.6, wash: 0.35 }),
+  kingspool_geyser: TIDE({ mid: '#7ab8c4', deep: '#2a4e58', ring: 'frost', debris: 'ice', decal: 'stain', motif: 'pillar', punch: 0.65, wash: 0.5 }),
+  shallows_rush: TIDE({ mid: '#7e9a8c', deep: '#2c4038', ring: 'shards', debris: 'ice', decal: undefined, motif: 'wave', punch: 0.45, wash: 0.3 }),
+  gullet_snap: TIDE({ mid: '#9ab0a0', deep: '#324438', spark: '#e6e8da', ring: 'teeth', debris: 'bone', decal: 'cracks', punch: 0.75, wash: 0.35 }),
+  gorge_spray: TIDE({ mid: '#8a9a5c', deep: '#3a4424', spark: '#cfd89a', glow: '150, 160, 90', ring: 'petals', debris: 'leaf', decal: 'stain', motif: 'rain', punch: 0.45, wash: 0.3 }),
+  breaching_crash: TIDE({ mid: '#647e6e', deep: '#22342a', spark: '#d8ecdf', ring: 'teeth', debris: 'ice', decal: 'cracks', motif: 'quake', punch: 0.9, wash: 0.5 }),
 
   // ------------------- THE LEGION (docs/hobgoblin-plan.md): iron and
   // flame with DISCIPLINE in it. The brand is the EMBER family spoken

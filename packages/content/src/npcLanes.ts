@@ -114,6 +114,9 @@ export const NPC_LANES: Record<string, NpcLanes> = {
   skral_harpooner: SLICK,
   skral_tidecaller: SLICK,
   skral_champion: SLICK,
+  // ...and the lane rides the race's crowns whole (THE BRINE CROWNS).
+  skral_tidelord: SLICK,
+  skral_deepmaw: SLICK,
   // The legion's shield-bearers: the wall turns the shaft, the crush
   // caves the wall. Only the ranks that CARRY the kiteshield (or the
   // juggernaut's plate) earn the lane — the bow and the staff ranks

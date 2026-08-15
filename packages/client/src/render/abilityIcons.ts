@@ -4777,6 +4777,287 @@ Object.assign(PLATES, {
     c.stroke();
     droplet(c, 0.4, -0.3, 0.15, st);
   },
+  // ----------------------- THE BRINE CROWNS — the boss plates.
+  // Drowning Surge — the flood standing where your next step was:
+  // a lane of risen water with one breaking crest riding it.
+  drowning_surge: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    // The claimed ground: a long low sheet.
+    c.fillStyle = st.deep;
+    c.beginPath();
+    c.ellipse(0, 0.14, 0.42, 0.18, 0, 0, Math.PI * 2);
+    c.fill();
+    // The standing water over it.
+    c.fillStyle = st.mid;
+    c.beginPath();
+    c.ellipse(0, 0.08, 0.36, 0.13, 0, 0, Math.PI * 2);
+    c.fill();
+    // The crest: one wave curling over its own lane.
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.055;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.34, 0.02);
+    c.quadraticCurveTo(-0.06, -0.34, 0.18, -0.16);
+    c.quadraticCurveTo(0.3, -0.06, 0.16, -0.04);
+    c.stroke();
+    // Chop ticks on the sheet — the water arguing.
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.032;
+    for (const [tx, ty] of [[-0.16, 0.1], [0.08, 0.14], [0.26, 0.06]] as const) {
+      c.beginPath();
+      c.moveTo(tx - 0.05, ty);
+      c.quadraticCurveTo(tx, ty - 0.05, tx + 0.05, ty);
+      c.stroke();
+    }
+    droplet(c, 0.3, -0.28, 0.15, st);
+  },
+  // Abyssal Jet — trench water at pressure: a flat hard bar with the
+  // deep tearing open behind it.
+  abyssal_jet: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.lineCap = 'round';
+    // The torn deep it left: a jagged slit.
+    c.fillStyle = st.deep;
+    c.beginPath();
+    c.moveTo(-0.44, -0.1);
+    c.lineTo(-0.28, -0.04);
+    c.lineTo(-0.38, 0.02);
+    c.lineTo(-0.26, 0.1);
+    c.lineTo(-0.44, 0.08);
+    c.closePath();
+    c.fill();
+    // The jet: thick at the source, needle at the far end.
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.11;
+    c.beginPath();
+    c.moveTo(-0.3, 0);
+    c.lineTo(0.1, -0.04);
+    c.stroke();
+    c.lineWidth = 0.055;
+    c.beginPath();
+    c.moveTo(0.1, -0.04);
+    c.lineTo(0.42, -0.08);
+    c.stroke();
+    // The pressure line down its spine.
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.moveTo(-0.26, -0.01);
+    c.lineTo(0.38, -0.07);
+    c.stroke();
+    // Shiver spray off the bar.
+    droplet(c, 0.14, -0.2, 0.14, st);
+    droplet(c, 0.02, 0.14, 0.13, st);
+    dot(c, st.spark, 0.44, -0.09, 0.034);
+  },
+  // Court of Spears — harpoons standing up out of water that held
+  // no one: three shafts on a risen ring.
+  court_of_spears: (st) => (c) => {
+    c.translate(0.5, 0.58);
+    // The pool the court stands from.
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.045;
+    c.beginPath();
+    c.ellipse(0, 0.1, 0.38, 0.17, 0, 0, Math.PI * 2);
+    c.stroke();
+    // The spears: bone-tipped shafts at a ragged salute.
+    for (const [sx, lean, ln] of [[-0.24, -0.12, 0.5], [0.02, 0.02, 0.62], [0.26, 0.12, 0.46]] as const) {
+      c.strokeStyle = st.deep;
+      c.lineWidth = 0.045;
+      c.beginPath();
+      c.moveTo(sx, 0.12);
+      c.lineTo(sx + lean, 0.12 - ln);
+      c.stroke();
+      // The barbed head.
+      fill(c, st.spark, [
+        [sx + lean - 0.045, 0.16 - ln],
+        [sx + lean + 0.045, 0.16 - ln],
+        [sx + lean, 0.06 - ln],
+      ]);
+    }
+    // The water each shaft rose through.
+    droplet(c, -0.24, 0.02, 0.13, st);
+    droplet(c, 0.26, 0.0, 0.12, st);
+    dot(c, st.core, 0.02, 0.14, 0.036);
+  },
+  // Kingspool Geyser — the pool gone vertical: a column with its
+  // pulse rings still leaving.
+  kingspool_geyser: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    // The pool.
+    c.fillStyle = st.deep;
+    c.beginPath();
+    c.ellipse(0, 0.18, 0.3, 0.13, 0, 0, Math.PI * 2);
+    c.fill();
+    // The column: wasp-waisted water standing up hard.
+    c.fillStyle = st.mid;
+    c.beginPath();
+    c.moveTo(-0.1, 0.16);
+    c.quadraticCurveTo(-0.03, -0.05, -0.13, -0.3);
+    c.quadraticCurveTo(0, -0.42, 0.13, -0.3);
+    c.quadraticCurveTo(0.03, -0.05, 0.1, 0.16);
+    c.closePath();
+    c.fill();
+    // The crown burst at the head.
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.036;
+    c.lineCap = 'round';
+    for (const a of [-2.4, -1.9, -1.25, -0.75] as const) {
+      c.beginPath();
+      c.moveTo(0, -0.32);
+      c.lineTo(Math.cos(a) * 0.18, -0.32 + Math.sin(a) * 0.18);
+      c.stroke();
+    }
+    // The pulses still rolling out of the pool.
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.03;
+    for (const r of [0.34, 0.42] as const) {
+      c.beginPath();
+      c.ellipse(0, 0.18, r, r * 0.42, 0, 0, Math.PI * 2);
+      c.stroke();
+    }
+    droplet(c, 0.26, -0.22, 0.14, st);
+  },
+  // Shallows Rush — the eel-flat closer: a low body under its own
+  // bow-wave, already through you.
+  shallows_rush: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    c.lineCap = 'round';
+    // The wake it left.
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.04;
+    c.beginPath();
+    c.moveTo(-0.44, 0.16);
+    c.quadraticCurveTo(-0.2, 0.22, 0.0, 0.16);
+    c.stroke();
+    // The body: one flat eel line, fin ticked.
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.095;
+    c.beginPath();
+    c.moveTo(-0.3, 0.1);
+    c.quadraticCurveTo(0.0, 0.0, 0.3, 0.02);
+    c.stroke();
+    fill(c, st.mid, [[0.26, -0.02], [0.44, 0.0], [0.3, 0.1]]);
+    // The bow-wave breaking ahead of the meat.
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.moveTo(0.3, -0.18);
+    c.quadraticCurveTo(0.46, -0.06, 0.38, 0.12);
+    c.stroke();
+    droplet(c, 0.2, -0.2, 0.14, st);
+    dot(c, st.spark, -0.22, 0.06, 0.034);
+  },
+  // Gullet Snap — the weir gate closing: the unhinged jaw and the
+  // guard it cracked.
+  gullet_snap: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // Upper jaw, over-wide.
+    c.fillStyle = st.deep;
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(-0.4, -0.1);
+    c.quadraticCurveTo(0.0, -0.4, 0.36, -0.14);
+    c.quadraticCurveTo(0.1, -0.06, -0.4, -0.1);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // Lower jaw rising to meet it.
+    c.beginPath();
+    c.moveTo(-0.38, 0.2);
+    c.quadraticCurveTo(0.0, 0.4, 0.34, 0.18);
+    c.quadraticCurveTo(0.08, 0.12, -0.38, 0.2);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // Needle courses, both gates.
+    for (const [tx, dirY] of [[-0.16, 1], [0.04, 1], [0.22, 1], [-0.12, -1], [0.08, -1], [0.24, -1]] as const) {
+      const base = dirY > 0 ? -0.12 : 0.18;
+      fill(c, st.spark, [
+        [tx - 0.035, base],
+        [tx + 0.035, base],
+        [tx, base + dirY * 0.11],
+      ]);
+    }
+    // The cracked guard between the gates — the sunder made visible.
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.036;
+    c.beginPath();
+    c.moveTo(-0.06, -0.02);
+    c.lineTo(0.02, 0.04);
+    c.moveTo(0.02, 0.04);
+    c.lineTo(-0.04, 0.1);
+    c.moveTo(0.02, 0.04);
+    c.lineTo(0.12, 0.06);
+    c.stroke();
+    dot(c, st.spark, 0.3, -0.24, 0.036);
+  },
+  // Gorge Spray — what the gullet kept: the open maw and the rotten
+  // fan leaving it.
+  gorge_spray: (st) => (c) => {
+    c.translate(0.42, 0.5);
+    // The heaving profile, jaw at full hinge.
+    c.fillStyle = st.deep;
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(-0.32, -0.16);
+    c.quadraticCurveTo(-0.02, -0.3, 0.1, -0.12);
+    c.lineTo(-0.08, -0.02);
+    c.quadraticCurveTo(0.06, 0.18, -0.06, 0.26);
+    c.quadraticCurveTo(-0.3, 0.24, -0.34, 0.04);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    dot(c, st.spark, -0.12, -0.14, 0.04);
+    // The fan: five gobbets on diverging lines.
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.034;
+    c.lineCap = 'round';
+    for (const a of [-0.5, -0.25, 0, 0.25, 0.5] as const) {
+      c.beginPath();
+      c.moveTo(0.06, 0.02);
+      c.lineTo(0.06 + Math.cos(a) * 0.36, 0.02 + Math.sin(a) * 0.36);
+      c.stroke();
+      dot(c, st.spark, 0.06 + Math.cos(a) * 0.42, 0.02 + Math.sin(a) * 0.42, 0.038);
+    }
+    droplet(c, 0.3, -0.3, 0.13, st);
+  },
+  // Breaching Crash — the arc read whole: up, OVER, and the bank
+  // where you stood wearing spray.
+  breaching_crash: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    c.lineCap = 'round';
+    // The cratered landing: a ring of thrown water.
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.ellipse(0.16, 0.18, 0.28, 0.12, 0, 0, Math.PI * 2);
+    c.stroke();
+    // The breach arc — the whole flight, readable.
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.07;
+    c.beginPath();
+    c.moveTo(-0.42, 0.2);
+    c.quadraticCurveTo(-0.1, -0.44, 0.16, 0.08);
+    c.stroke();
+    // The mass at the top of the arc.
+    dot(c, st.mid, -0.12, -0.26, 0.095);
+    fill(c, st.mid, [[-0.06, -0.3], [0.08, -0.26], [-0.04, -0.18]]);
+    // The crash: spray thrown off the rim.
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.036;
+    for (const a of [-2.6, -2.0, -1.1, -0.5] as const) {
+      c.beginPath();
+      c.moveTo(0.16, 0.14);
+      c.lineTo(0.16 + Math.cos(a) * 0.2, 0.14 + Math.sin(a) * 0.2);
+      c.stroke();
+    }
+    droplet(c, 0.38, -0.08, 0.14, st);
+    dot(c, st.spark, -0.3, -0.1, 0.034);
+  },
 
   // ----------------------- THE LEGION — the hobgoblins' plates.
   // Iron Brand — the white-hot bar mid-hurl, sparks off the tail.

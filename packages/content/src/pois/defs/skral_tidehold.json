@@ -1,14 +1,14 @@
 {
   "id": "skral_tidehold",
   "name": "Skral tidehold",
-  "description": "The region's shoal-heart: a great dug pool ringed in ancestor bones, whole camps crowding its banks, and a crowned deepking wading its center. The croaking here never stops.",
+  "description": "The region's shoal-heart: a great dug pool ringed in ancestor bones, whole camps crowding its banks, and something far too big wading its center — the crowned gullet the shoal feeds first. The croaking here never stops.",
   "tiers": [3, 6],
   "weight": 2.5,
   "shore": true,
   "prefabs": ["poi_skral_court"],
   "garrison": [
     {
-      "npc": "skral_champion",
+      "npc": "skral_deepmaw",
       "count": [1, 1],
       "role": "holdfast",
       "levelOffset": 3,
@@ -18,8 +18,7 @@
         "Saltmother Croa",
         "Old Brine",
         "The Wet Crown"
-      ],
-      "crowned": true
+      ]
     },
     {
       "npc": "skral",

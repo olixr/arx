@@ -186,6 +186,30 @@ export const CROWN_POOLS: readonly CrownPool[] = [
     barksDefeat: [],
     phaseNames: ['The Pack Closes', 'Red Snow', 'The Last Hunt', 'Winter’s Teeth'],
   },
+  {
+    // THE BRINE CROWNS' wild layer: a shoal-camp deepking forged into
+    // the bank's own tyrant. The base croak (shoal_call) always
+    // stays — the fight is the camp — and the seed decides whether
+    // this king also learned the tidecaller's two words or how to
+    // call the court's spears (the family verb: any crowned skral may
+    // call the bank's harpoons; the AUTHORED tidelord keeps the jet,
+    // the geyser, and the flood as his signature alone).
+    appliesTo: ['skral_champion'],
+    voices: [
+      { entry: { ability: 'tide_lash', cooldownTicks: 130, windupTicks: 12, minRange: 1.5, maxRange: 8 }, tag: 'strike' },
+      { entry: { ability: 'riptide_ring', cooldownTicks: 250, windupTicks: 14, maxRange: 7, aim: 'lead' }, tag: 'zone' },
+      { entry: { ability: 'court_of_spears', cooldownTicks: 430, windupTicks: 18, aim: 'self', rally: true }, tag: 'summon' },
+    ],
+    chains: [['riptide_ring', 'tide_lash']],
+    lootAdd: ['champion_armory'],
+    names: ['Brakkul', 'Gormgul', 'Croalsh', 'Wetjaw', 'Old Sallow', 'Murkgill', 'Roeback', 'Gloamfin'],
+    epithets: ['the Bank’s Dread', 'Weir-Wise', 'Nine-Gills', 'the Patient Flood', 'Netbreaker', 'of the Cold Larder', 'Twice-Drowned'],
+    titles: ['Crowned of the Wet Bank', 'Tyrant of the Small Pools', 'King Under the Weir', 'The Shoal’s Loudest Croak'],
+    barksEngage: ['This bank feeds the SHOAL.', 'Walk in. The water remembers everyone.', 'Croaaak — the pool sets another place.'],
+    barksPhase: ['The bank RISES!', 'Spears! SPEARS for the king!', 'The water is not done with you!', 'Deeper. DEEPER!'],
+    barksDefeat: ['The shoal... swims on...', 'Back... to the cold larder...'],
+    phaseNames: ['The Bank Rises', 'The Wet Court', 'The Long Undertow', 'Cold Water Closing'],
+  },
 ];
 
 /** Pool lookup — null when no family claims the base. */

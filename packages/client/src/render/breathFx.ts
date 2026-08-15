@@ -420,6 +420,55 @@ export const BREATH_DIALECTS: Record<string, BreathDialect> = {
     charge: (c, x, y, o) =>
       water.deployments.churn!(c, x, y, { radius: o.radius * 0.4, scale: 0.5, dur: 0.7 }),
   },
+  // THE BRINE CROWNS — eight winds off two crowns, every one water
+  // remembering something. Drowning Surge: the flood is OWED first —
+  // an undertow drags at the tidelord's feet while the ground ahead
+  // is promised to the water.
+  drowning_surge: {
+    charge: (c, x, y) =>
+      water.deployments.undertow!(c, x, y, { radius: 0.6, scale: 0.55, dur: 0.9 }),
+  },
+  // Abyssal Jet: the trench pressurizes — a tight hard churn climbs
+  // the planted trident before the deep comes up through it.
+  abyssal_jet: {
+    charge: (c, x, y) =>
+      water.deployments.churn!(c, x, y, { radius: 0.35, scale: 0.6, dur: 0.8 }),
+  },
+  // Court of Spears: the old name is croaked and water STANDS — a
+  // curtain rises around the king where the court is about to be.
+  court_of_spears: {
+    charge: (c, x, y) =>
+      water.deployments.curtain!(c, x, y, { radius: 0.7, scale: 0.5, dur: 0.9 }),
+  },
+  // Kingspool Geyser: the pool tenses — spray spits straight UP off
+  // the king's feet before the water goes vertical in earnest.
+  kingspool_geyser: {
+    charge: (c, x, y) =>
+      water.deployments.spray!(c, x, y, { scale: 0.5, dur: 0.7 }),
+  },
+  // Shallows Rush: the deepmaw drops FLAT — one hard splash where a
+  // standing body just stopped being one.
+  shallows_rush: {
+    charge: (c, x, y) => water.deployments.splash!(c, x, y, { scale: 0.5, dur: 0.5 }),
+  },
+  // Gullet Snap: the jaw unhinges and the wet hinge works — a low
+  // churn at the maw while the weir gate opens.
+  gullet_snap: {
+    charge: (c, x, y) =>
+      water.deployments.churn!(c, x, y, { radius: 0.4, scale: 0.45, dur: 0.7 }),
+  },
+  // Gorge Spray: the heave pulls INWARD first — an undertow at the
+  // gullet before what the gullet kept comes back.
+  gorge_spray: {
+    charge: (c, x, y) =>
+      water.deployments.undertow!(c, x, y, { radius: 0.45, scale: 0.5, dur: 0.6 }),
+  },
+  // Breaching Crash: he goes UNDER — the widest churn any skral
+  // draws, a standing wake the whole bank has time to read.
+  breaching_crash: {
+    charge: (c, x, y) =>
+      water.deployments.churn!(c, x, y, { radius: 0.9, scale: 0.7, dur: 1.1 }),
+  },
   // THE LEGION — three winds, all drilled. Iron Brand: molten gobbets
   // gather as the bar is drawn out of the empty air.
   iron_brand: {

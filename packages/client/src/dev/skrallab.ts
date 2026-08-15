@@ -116,6 +116,8 @@ const SIZE: Record<string, number> = {
   skral_harpooner: 0.84,
   skral_tidecaller: 0.9,
   skral_champion: 1.25,
+  skral_tidelord: 1.34,
+  skral_deepmaw: 1.44,
   gnoll: 1.18,
   gnoll_champion: 1.42,
 };
@@ -125,6 +127,8 @@ const SPEED: Record<string, number> = {
   skral_harpooner: 3.2,
   skral_tidecaller: 3.1,
   skral_champion: 3.7,
+  skral_tidelord: 3.6,
+  skral_deepmaw: 3.5,
   gnoll: 4.2,
   gnoll_champion: 4.0,
 };
@@ -175,6 +179,17 @@ row('deepking idle', 'skral_champion', 'idle');
 row('deepking walk', 'skral_champion', 'walk');
 row('deepking strike', 'skral_champion', 'strike');
 row('deepking hurt', 'skral_champion', 'hurt');
+// THE BRINE CROWNS: the tidelord's cast rows (the regalia + the
+// standoff caster read) and the deepmaw's strike rows (the biggest
+// jaw in the game croaking open mid-swing).
+row('tidelord idle', 'skral_tidelord', 'idle');
+row('tidelord walk', 'skral_tidelord', 'walk');
+row('tidelord cast', 'skral_tidelord', 'cast');
+row('tidelord hurt', 'skral_tidelord', 'hurt');
+row('deepmaw idle', 'skral_deepmaw', 'idle');
+row('deepmaw walk', 'skral_deepmaw', 'walk');
+row('deepmaw strike', 'skral_deepmaw', 'strike');
+row('deepmaw hurt', 'skral_deepmaw', 'hurt');
 // THE HUNCH AUDIT rows: the gnolls share the sheet — same bands, same
 // rulers — so the two hunched species' arm anchors are one audit.
 row('gnoll idle', 'gnoll', 'idle', 7);
@@ -194,6 +209,8 @@ for (let k = 0; k < 8; k++) {
 figs.push({ label: 'ruler: player+skral', defId: 'skral', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
 figs.push({ label: 'ruler: player+tidecall', defId: 'skral_tidecaller', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
 figs.push({ label: 'ruler: player+deepking', defId: 'skral_champion', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
+figs.push({ label: 'ruler: player+tidelord', defId: 'skral_tidelord', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
+figs.push({ label: 'ruler: player+deepmaw', defId: 'skral_deepmaw', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
 figs.push({ label: 'ruler: player+gnoll', defId: 'gnoll', dir: Math.PI / 2, mode: 'idle', seed: 7, ruler: true });
 figs.push({ label: 'ruler: player+packlord', defId: 'gnoll_champion', dir: Math.PI / 2, mode: 'idle', seed: 7, ruler: true });
 

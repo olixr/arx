@@ -89,8 +89,8 @@ test('the shoal answers as one throat and the deepking croaks', () => {
   assert.ok(king.kit?.[0]?.rally, 'the croak IS a rally — the fight is the camp');
   assert.ok((king.kit?.[0]?.windupTicks ?? 0) > 0, 'the throat fills before the word');
   assert.equal(king.attackStatus?.status, 'chill', 'the cold grip keeps arguing');
-  // Cold-water natives to the last scale, race-wide.
-  for (const id of ['skral', 'skral_harpooner', 'skral_tidecaller', 'skral_champion']) {
+  // Cold-water natives to the last scale, race-wide — crowns included.
+  for (const id of ['skral', 'skral_harpooner', 'skral_tidecaller', 'skral_champion', 'skral_tidelord', 'skral_deepmaw']) {
     const def = NPCS.get(id)!;
     assert.ok(def.resist?.includes('chill'), `${id} shrugs the chill`);
     assert.ok(def.weak?.includes('shock'), `the storm finds the wet ${id}`);
@@ -98,6 +98,36 @@ test('the shoal answers as one throat and the deepking croaks', () => {
     assert.ok(def.lanes?.resist?.includes('archery'), `slick hide sheds the shaft on ${id}`);
     assert.ok(def.lanes?.weak?.includes('arx'), `the working bites the wet ${id}`);
   }
+});
+
+test('THE BRINE CROWNS: two authored crowns, each a design with a weakness story', () => {
+  // The tidelord: the ONLY skral carrying the full regalia at once.
+  const lord = SKRAL_LOOKS['skral_tidelord']!;
+  assert.ok(lord.crowned && lord.trident && lord.garb, 'the tidelord carries crown, trident, and mantle');
+  for (const [id, look] of Object.entries(SKRAL_LOOKS)) {
+    if (id === 'skral_tidelord') continue;
+    assert.ok(!(look.crowned && look.trident && look.garb), `${id} must not match the full regalia`);
+  }
+  // The deepmaw: the biggest jaw span in the game, and no regalia at
+  // all — appetite wears nothing.
+  const maw = SKRAL_LOOKS['skral_deepmaw']!;
+  assert.ok((maw.jaw ?? 1) > (SKRAL_LOOKS['skral_champion']!.jaw ?? 1), 'the deepmaw out-gapes the deepking');
+  assert.ok(!maw.crowned && !maw.trident && !maw.garb, 'the deepmaw wears nothing');
+  assert.ok(maw.heavy > lord.heavy, 'the deepmaw is the bulkiest thing on the bank');
+  // The crowns' fight identities hold: the tidelord's signature chain
+  // (the flood, then the jet) and the shock-finds-the-wet weakness;
+  // the deepmaw's breach-into-bite and the shove that sits him down.
+  const tidelord = NPCS.get('skral_tidelord')!;
+  assert.ok(tidelord.boss, 'the tidelord wears the crown');
+  assert.equal(tidelord.kit?.find((k) => k.ability === 'drowning_surge')?.then, 'abyssal_jet', 'the flood chains into the jet');
+  assert.ok((tidelord.boss!.stunMult ?? 0) > 1, 'the storm finds the wet: shock is the authored answer');
+  assert.ok((tidelord.boss!.knockbackMult ?? 1) < 0.25, 'the tidelord is planted in his own pool');
+  assert.ok(tidelord.kit?.find((k) => k.ability === 'court_of_spears')?.rally, 'the court call re-gathers the camp');
+  const deepmaw = NPCS.get('skral_deepmaw')!;
+  assert.ok(deepmaw.boss, 'the deepmaw wears the crown');
+  assert.equal(deepmaw.kit?.find((k) => k.ability === 'breaching_crash')?.then, 'gullet_snap', 'the breach chains into the bite');
+  assert.ok((deepmaw.kit?.find((k) => k.ability === 'breaching_crash')?.windupTicks ?? 0) >= 24, 'the breach is the longest wind any skral draws');
+  assert.ok((deepmaw.boss!.knockbackMult ?? 0) >= 0.8, 'all that bulk rides on frog legs — the shove works');
 });
 
 test('the shore roster feeds both ways (the crab law, peopled)', () => {

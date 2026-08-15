@@ -1039,6 +1039,155 @@ const defs: NpcDef[] = [
     // the breath voice's charge law, and the fight's one clean read.
     kit: [{ ability: 'shoal_call', cooldownTicks: 200, windupTicks: 12, maxRange: 4.5, rally: true }],
   },
+  {
+    // THE BRINE CROWNS (docs/boss-system-plan.md): THE TIDELORD — the
+    // elder deepking on the oldest pool, the Drowned Court's seat
+    // (skral stronghold charter). The fight's grammar: HE DOES NOT
+    // COME TO YOU. He floods the lane you wanted, stakes the undertow
+    // on your stride, calls a court that THROWS instead of bites, and
+    // if you stand on the throne anyway, the pool itself objects.
+    // Authored weakness: THE STORM FINDS THE WET — near-immovable
+    // (planted in his own water, knockback 0.15) but shock staggers
+    // him WHOLE and then some (stunMult 1.25): the race's storm-fear
+    // written into the crown as the fight's earned answer.
+    id: 'skral_tidelord',
+    name: 'Skral tidelord',
+    level: 30,
+    maxHp: 200,
+    damage: 7,
+    attackRange: 1.2,
+    attackCooldownTicks: 42,
+    aggroRange: 8,
+    // The unsleeping pool: wall-eyes plus a court of watchers.
+    sightArc: 300,
+    leashRange: 34,
+    speed: 3.6,
+    xpReward: 820,
+    loot: ['skral_champion', 'champion_armory', 'heirlooms'],
+    respawnSec: 150,
+    color: '#3a4666',
+    radius: 0.46,
+    hitHeight: 2.5,
+    // The old trident's cold grip, same as the shoal's king.
+    attackStatus: { status: 'chill', power: 1, durationTicks: 50 },
+    resist: ['chill'],
+    weak: ['shock'],
+    pack: 'skral',
+    // The standoff king: holds the pool rim and lets the water argue.
+    standoff: 4,
+    ranged: { range: 7, projectileSpeed: 10 },
+    kit: [
+      // The family word first: the undertow staked on your stride —
+      // a tidelord still speaks tidecaller.
+      { ability: 'riptide_ring', cooldownTicks: 260, windupTicks: 14, maxRange: 7, aim: 'lead' },
+      // THE SIGNATURE SENTENCE: the flood lays the bank low, and the
+      // jet takes the swimmer — dodging the sheet is only half the
+      // answer, because the chain is already winding.
+      { ability: 'drowning_surge', cooldownTicks: 300, windupTicks: 16, maxRange: 7, aim: 'lead', weight: 2, then: 'abyssal_jet' },
+      { ability: 'abyssal_jet', cooldownTicks: 240, windupTicks: 14, minRange: 2, maxRange: 9 },
+      // The court rises once the fight is real (rung 1) — harpooners
+      // stand out of empty water and the croak re-gathers the camp.
+      { ability: 'court_of_spears', cooldownTicks: 420, windupTicks: 18, aim: 'self', rally: true, phase: 1 },
+      // The pool's objection: only ever spoken at his own feet, only
+      // once the deep is up (rung 2) — the anti-face-tank verse.
+      { ability: 'kingspool_geyser', cooldownTicks: 280, windupTicks: 12, maxRange: 2.5, aim: 'self', phase: 2 },
+    ],
+    boss: {
+      title: 'The Drowned Court',
+      phases: [
+        { name: 'The Oldest Pool' },
+        {
+          hpBelow: 0.65,
+          name: 'The Court Rises',
+          bark: 'The bank STANDS for its king.',
+          entry: 'court_of_spears',
+          cdMult: 0.85,
+        },
+        {
+          hpBelow: 0.3,
+          name: 'The Deep Comes Up',
+          bark: 'You are in MY water now.',
+          entry: 'abyssal_jet',
+          cdMult: 0.7,
+          speedMult: 1.1,
+        },
+      ],
+      knockbackMult: 0.15,
+      stunMult: 1.25,
+      arenaR: 16,
+      engageBark: 'The pool is older than your name. It will outlast it.',
+      defeatBark: 'The tide... always... comes back...',
+    },
+  },
+  {
+    // THE BRINE CROWNS: THE DEEPMAW — the skral that ate past its
+    // rank, the tidehold's crowned gullet ("King Gullet" and kin).
+    // A leviathan bruiser against the tidelord's court: read the
+    // breach (the longest wind any skral draws), break the bite
+    // before the jaw ruins your guard, and never stand in the spray.
+    // Authored weakness: ALL THAT BULK RIDES ON FROG LEGS — a good
+    // shove sits him down (knockback 0.85, the movable brine crown),
+    // while the gullet barely notices a stagger (stunMult 0.45).
+    id: 'skral_deepmaw',
+    name: 'Skral deepmaw',
+    level: 21,
+    maxHp: 130,
+    damage: 6,
+    attackRange: 1.3,
+    attackCooldownTicks: 40,
+    aggroRange: 7,
+    sightArc: 260,
+    leashRange: 30,
+    speed: 3.5,
+    xpReward: 520,
+    loot: ['skral_champion', 'champion_armory', 'heirlooms'],
+    respawnSec: 120,
+    color: '#7e8f78',
+    radius: 0.5,
+    hitHeight: 2.6,
+    resist: ['chill'],
+    weak: ['shock'],
+    pack: 'skral',
+    kit: [
+      // The eel rush: flat, low, and through you — the closer.
+      { ability: 'shallows_rush', cooldownTicks: 190, windupTicks: 12, minRange: 2, maxRange: 6 },
+      // The rot the tide won't claim — spoken from the first breath.
+      { ability: 'gorge_spray', cooldownTicks: 240, windupTicks: 12, minRange: 1.5, maxRange: 6 },
+      // The jaw: mid-fight word (rung 1), and the breach's follower —
+      // the crash lands, and the gate closes on whatever it caught.
+      { ability: 'gullet_snap', cooldownTicks: 200, windupTicks: 14, maxRange: 1.8, phase: 1 },
+      // THE BREACH: he goes under on a 24-tick wake the whole bank
+      // can read, and the bank where you stood becomes a crater.
+      { ability: 'breaching_crash', cooldownTicks: 320, windupTicks: 24, minRange: 2, maxRange: 4.5, weight: 2, phase: 1, then: 'gullet_snap' },
+    ],
+    boss: {
+      title: 'The Crowned Gullet',
+      phases: [
+        { name: 'Shallow Water' },
+        {
+          hpBelow: 0.6,
+          name: 'The Gullet Opens',
+          bark: 'All of you... fits.',
+          entry: 'gullet_snap',
+          cdMult: 0.85,
+          speedMult: 1.1,
+        },
+        {
+          hpBelow: 0.28,
+          name: 'The Hunger',
+          bark: 'The pool eats WITH me tonight!',
+          entry: 'breaching_crash',
+          cdMult: 0.7,
+          speedMult: 1.2,
+        },
+      ],
+      knockbackMult: 0.85,
+      stunMult: 0.45,
+      arenaR: 14,
+      engageBark: 'Everything on this bank goes in the same door.',
+      defeatBark: 'Still... hungry...',
+    },
+  },
   // ------------------------- THE LEGION (docs/hobgoblin-plan.md): the
   // hobgoblins — the goblins' master race, and nothing like them.
   // Conquerors nurtured in iron and flame: they hold formation, wear

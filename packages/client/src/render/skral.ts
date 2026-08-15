@@ -145,6 +145,43 @@ export const SKRAL_LOOKS: Record<string, SkralLook> = {
     jaw: 1.14,
     heavy: 1.3,
   },
+  // THE TIDELORD (THE BRINE CROWNS): the elder deepking on the
+  // oldest pool — the ONLY skral carrying the full regalia at once
+  // (coral crown, barbed trident, AND a royal kelp mantle): storm
+  // violet-slate hide, drowned-gold lantern eyes, and the crest gone
+  // the lure's own teal — the one glow the shoal follows in the dark.
+  skral_tidelord: {
+    hide: '#46516e',
+    belly: '#b4b8c2',
+    ink: '#1c2230',
+    eye: '#d8c878',
+    fin: '#3ac4b4',
+    ray: '#3d7a6e',
+    cloth: '#4a4638',
+    garb: '#3d4660',
+    crowned: true,
+    trident: true,
+    scarred: true,
+    jaw: 1.08,
+    heavy: 1.45,
+  },
+  // THE DEEPMAW (THE BRINE CROWNS): the skral that ate past its rank
+  // — bloat-pale gray-green over a vast belly, bile-amber eyes gone
+  // small in all that meat, bruise-madder fins, and the biggest jaw
+  // span in the game (out-gaping the deepking by a full fifth). No
+  // crown, no trident, no mantle: appetite wears nothing.
+  skral_deepmaw: {
+    hide: '#8a9a84',
+    belly: '#e0e2cc',
+    ink: '#222a24',
+    eye: '#d8b86a',
+    fin: '#a04a62',
+    ray: '#5e3040',
+    cloth: '#6a6048',
+    scarred: true,
+    jaw: 1.35,
+    heavy: 1.6,
+  },
 };
 
 /**

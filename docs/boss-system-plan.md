@@ -437,6 +437,73 @@ banner turn at its generated gate). Lane laws learned:
   windup closure). The charge fx marks where the wind STARTS; that is
   where the gap must stand.
 
+## THE BRINE CROWNS — the skral bosses (2026-08-15, fifth session)
+
+The user's mandate: the skral joined the world (docs/skral-plan.md) —
+now the banks need their own crowns: one or two bespoke bosses, no
+borrowed moves, aquatic to the bone, telegraphed at the grand scale.
+
+**Two authored crowns + the skral forge pool** (three rungs of skral
+bossing: camp → tidehold → capital):
+
+- **`skral_tidelord` — the Drowned Court** (skral stronghold charter
+  seat, both the Great Weir and the tidefast; the seat's own bossNames
+  — 'The Drowned King', 'Mother-of-Pools' — name the body). L30
+  standoff controller-king wearing the ONLY full regalia in the
+  species (coral crown + barbed trident + royal kelp mantle, teal
+  lure-glow crest — SKRAL_LOOKS design pin). HE DOES NOT COME TO YOU:
+  `drowning_surge` (ground_field staked on your stride) `then`
+  `abyssal_jet` (the first BEAM any crown speaks — trench water at
+  pressure through the planted trident) is the signature sentence;
+  `court_of_spears` (rung-1 entry) raises a RANGED court — harpooner
+  adds that stand off and throw, a different fight problem from every
+  melee court in the game — and `kingspool_geyser` (the first
+  pulse_nova crown, rung 2, self-staked ≤2.5) punishes standing on
+  the throne. Weakness story: THE STORM FINDS THE WET — knockback
+  0.15 (planted in his own pool) but stunMult 1.25: the race's shock
+  fear written into the crown as the authored answer.
+- **`skral_deepmaw` — the Crowned Gullet** (skral_tidehold POI
+  holdfast seat; the name row 'King Gullet', 'Marrowgill the Deep'…
+  gives each tidehold its own). L21 leviathan bruiser, bloat-pale, NO
+  regalia (appetite wears nothing), the biggest jaw dial in the game
+  (1.35 — out-gapes the deepking). `breaching_crash` (the first
+  leap_slam crown; windup 24 — the longest wind any skral draws, the
+  whole bank reads the wake) `then` `gullet_snap` (melee arc carrying
+  the game's ONE amplifier mark — sunder 10%: the first sunder
+  crown); `shallows_rush` closes flat as an eel; `gorge_spray` is the
+  dialect's one venom (what the gullet keeps, rots). Weakness story:
+  ALL THAT BULK RIDES ON FROG LEGS — knockback 0.85 (the movable
+  brine crown, shove him out of his own breach line), stun 0.45.
+- **The skral CROWN_POOL** (crownForge): voices tide_lash /
+  riptide_ring / court_of_spears (the family verb — any crowned skral
+  may call the bank's spears; the jet, the geyser, and the flood stay
+  the tidelord's signature alone), chain riptide→lash, brine-register
+  name/epithet/title/bark bins. **This closed a live latent gap: the
+  shoal-camp and village seats shipped `crowned: true` on the
+  deepking, but no pool claimed skral_champion — the instantiation
+  seam's `crownPoolFor` guard silently degraded every 'crowned'
+  deepking to a plain champion.** They forge true now.
+
+**Eight new arts, every one full-faced per LAW 8**: TIDE fx faces
+(each a distinct layer identity — the surge's wave over the heaviest
+stain, the jet's TEAR, the court's CAGE, the geyser's frost-ringed
+pillar, the rush's clean wave, the snap's teeth-and-bone with the
+cracks decal, the spray's kelp-bile rain, the breach's quake at punch
+0.9), eight hand-painted spell-plates, eight water-drawn breath
+voices (every kit entry winds), and two grand FOES_SIGS set-pieces:
+`court_of_spears` — the THIRD rim voice, read against both cousins
+(the croak's ragged fins, the horn's drilled count): WATER STANDS
+FIRST — five mounds well up raggedly and barbed harpoons rise
+THROUGH them, shed their splash, hold, and slide under; and
+`breaching_crash` — a white collapse column at the heart, a spray
+corona falling OUTWARD off the rim (the crater empties, never
+refills), and a wet ring + puddle-stain lasting mark.
+
+Suites at ship: shared 217 / content 507 / server 493 / client 594,
+all green; skral.test grew THE BRINE CROWNS pins (full-regalia
+uniqueness, biggest-jaw, chain signatures, both weakness stories) and
+the race-law loop covers the crowns.
+
 ## Open questions (recommendation first; proceeding on recommendations)
 
 - **Enrage timers?** REC: no — tempo (`cdMult`) is the honest pressure; a
