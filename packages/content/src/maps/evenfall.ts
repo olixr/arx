@@ -588,6 +588,60 @@ export function buildEvenfall(): ZoneDef {
   b.set(146, 32, Tile.TreeYew).set(136, 66, Tile.TreeOak);
   // The south-east shore grove.
   b.set(140, 86, Tile.TreeWillow);
+  // ---------------------------------------------------------------
+  // THE BREATH PASS (the polish walk's findings): the city was
+  // composed; now it is inhabited. Groves where the shelves ran
+  // bare, stones where the walks ran straight, reeds where the
+  // water met mown grass, cloth on the walls that faced the courts
+  // empty-handed. Everything keeps the apron; nothing crowds.
+  // ---------------------------------------------------------------
+  // The wicket country: the walk to the Heartwood keeps its own
+  // small watch, and the trees leant in to listen generations ago.
+  b.set(19, 6, Tile.ElvenWaystone);
+  b.set(13, 9, Tile.Runestone);
+  b.set(21, 10, Tile.TreeYew).set(11, 5, Tile.TreeOak);
+  // The long north walk: three stones pace the cliff-foot mile, and
+  // one bench faces the wood for whoever the walk winds.
+  b.set(34, 10, Tile.ElvenWaystone);
+  b.set(56, 9, Tile.ElvenWaystone);
+  b.set(78, 10, Tile.ElvenWaystone);
+  b.set(45, 10, Tile.ElvenBench);
+  // THE QUIET TERRACE: the L1 north strip was a bare shelf; now it
+  // is the grove the guest house looks out on — old trees, a leaning
+  // runestone, a crystal the children of the city grew up daring
+  // each other to touch (it has never minded).
+  b.set(12, 19, Tile.TreeYew).set(18, 22, Tile.TreeOak).set(26, 19, Tile.TreeOak);
+  b.set(34, 21, Tile.TreeYew).set(44, 19, Tile.TreeOak).set(52, 22, Tile.TreeYew);
+  b.set(30, 23, Tile.Runestone);
+  b.set(40, 22, Tile.ElvenBench);
+  b.set(22, 20, Tile.CrystalCluster);
+  // The vein glitters: the mithril face keeps a grown crystal at its
+  // foot, which is either geology or courtesy. Nobody has asked.
+  b.set(13, 62, Tile.CrystalCluster);
+  // The avenue learns its lights: two beacon pairs pace the walk
+  // from the gate to the cliff-foot, with green between them.
+  b.set(108, 54, Tile.ArcaneBeacon).set(108, 58, Tile.ArcaneBeacon);
+  b.set(126, 54, Tile.ArcaneBeacon).set(126, 58, Tile.ArcaneBeacon);
+  b.set(117, 54, Tile.ElvenPlanter).set(117, 58, Tile.ElvenPlanter);
+  b.set(112, 58, Tile.ElvenBench);
+  // The mere wears its reeds where the water meets the meadow, and
+  // the far shore gets the bench every dusk deserves.
+  b.set(103, 76, Tile.FibrePlant).set(133, 80, Tile.FibrePlant);
+  b.set(126, 94, Tile.FibrePlant).set(108, 94, Tile.FibrePlant);
+  b.set(100, 92, Tile.ElvenBench);
+  b.set(134, 74, Tile.ElvenPlanter);
+  b.set(131, 73, Tile.ElvenChimes);
+  // The orchard band thickens toward the falls.
+  b.set(54, 82, Tile.TreeYew).set(64, 86, Tile.TreeOak).set(46, 86, Tile.TreeYew);
+  b.set(60, 88, Tile.Runestone);
+  // The halls hang their cloth: moon banners on the Evenhall's face,
+  // and on the Outward House where travelers first look up.
+  b.setDetail(26, 50, Detail.BannerMoon).setDetail(36, 50, Detail.BannerMoon);
+  b.setDetail(141, 48, Detail.BannerMoon).setDetail(149, 48, Detail.BannerMoon);
+  // The floors remember bare feet: rugs in the cold-work halls.
+  b.setDetail(78, 64, Detail.RugRound);
+  b.setDetail(52, 65, Detail.RugRound);
+
   // Grass texture: tall grass and flowers, nothing else scattered.
   b.scatter(Tile.GrassTall, 0.05);
   b.scatterDetail(Detail.Flowers, 0.03);
