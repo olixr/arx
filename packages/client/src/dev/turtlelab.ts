@@ -362,8 +362,22 @@ function drawSheet(now: number, dt: number): void {
         drawQuad(f, homeX, homeY, f.dir, f.mode, f.seed, now, dt);
       }
     };
-    if (OL) paintCellOutlined(homeX - CW / 2, homeY - Math.round(S * 2.4), CW, CH, paintFig);
-    else paintFig();
+    if (OL) {
+      // THE SNAP LEAVES THE BOX, lab edition: the outline scratch
+      // pads a full stride past the cell bounds — the colossus'
+      // telescoping strike reaches ~2 tiles past center, and a
+      // scratch cropped at the cell edge guillotines the skull
+      // mid-extension (the same law the renderer's body-sprite
+      // cache pays with snapRoom).
+      const pad = Math.round(S * 1.0);
+      paintCellOutlined(
+        homeX - CW / 2 - pad,
+        homeY - Math.round(S * 2.4) - pad,
+        CW + pad * 2,
+        CH + pad * 2,
+        paintFig,
+      );
+    } else paintFig();
     ctx.fillStyle = '#e8e4d8';
     ctx.font = '13px monospace';
     ctx.textAlign = 'center';
