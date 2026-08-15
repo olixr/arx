@@ -6,7 +6,9 @@ import {
   drawBackGear,
   drawBeast,
   drawHumanoid,
-  drawSlime,
+  drawOoze,
+  oozeExtents,
+  oozeLook,
   drawSnake,
   koboldLook,
   gnollLook,
@@ -397,11 +399,14 @@ function paintLegless(ctx: CanvasRenderingContext2D, px: number, def: NpcDef): v
   const radius = def.radius;
   const bat = def.id === 'cave_bat' || def.id === 'giant_bat' || def.id === 'dire_bat';
   const snake = def.id === 'adder';
-  // Extents from the leglessItem bounds law; bats size off the look.
+  // Extents from the leglessItem bounds law; bats size off the look,
+  // oozes off their body plan (oozeExtents is the one truth).
   const bLook = bat ? batLook(def.id, 7) : undefined;
-  const halfWTiles = snake ? 1.55 : bLook ? bLook.wingSpan + bLook.bodyW + 0.2 : radius * 2.2 + 0.25;
-  const topTiles = bLook ? 1.45 + bLook.bodyR + bLook.earLen : snake ? 0.55 : radius * 2.4 + 0.15;
-  const bottomTiles = snake ? 1.1 : 0.4;
+  const ooze = oozeLook(def.id);
+  const oExt = ooze ? oozeExtents(ooze, radius) : undefined;
+  const halfWTiles = snake ? 1.55 : bLook ? bLook.wingSpan + bLook.bodyW + 0.2 : oExt ? oExt.halfW : radius * 2.2 + 0.25;
+  const topTiles = bLook ? 1.45 + bLook.bodyR + bLook.earLen : snake ? 0.55 : oExt ? oExt.top : radius * 2.4 + 0.15;
+  const bottomTiles = snake ? 1.1 : oExt ? oExt.bottom : 0.4;
   const scale = Math.min(
     (px * 0.84) / (halfWTiles * 2),
     (px * 0.8) / (topTiles + bottomTiles),
@@ -423,7 +428,7 @@ function paintLegless(ctx: CanvasRenderingContext2D, px: number, def: NpcDef): v
     attackT: 0,
     ys: Y_SCALE,
   };
-  type Bag = Parameters<typeof drawSlime>[1];
+  type Bag = Parameters<typeof drawSnake>[1];
   if (bat) {
     // The bat card hangs the hover — the staged rig settled at rest.
     drawBat(ctx, batLook(def.id, 7), {
@@ -431,7 +436,7 @@ function paintLegless(ctx: CanvasRenderingContext2D, px: number, def: NpcDef): v
       flight: stagedFlight(flierSpec(def.id), { seed: 7, moveK: 0 }),
     });
   } else if (snake) drawSnake(ctx, common as unknown as Bag);
-  else drawSlime(ctx, common as unknown as Bag);
+  else drawOoze(ctx, ooze ?? { plan: 'hopper', giant: false, nuclei: 1 }, common as unknown as Bag);
 }
 
 // ----------------------------------------------------------- the API
@@ -462,7 +467,7 @@ export function creatureRender(def: NpcDef, size = 176): HTMLCanvasElement {
   const canvas = ringComposite(size, (ctx, px) => {
     try {
       if (isHumanoidMob(def.id)) paintHumanoidMob(ctx, px, def);
-      else if (['slime', 'slime_small', 'cave_bat', 'adder'].includes(def.id)) {
+      else if (oozeLook(def.id) !== undefined || ['cave_bat', 'adder'].includes(def.id)) {
         paintLegless(ctx, px, def);
       } else paintBeast(ctx, px, def);
     } catch {

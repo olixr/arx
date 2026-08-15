@@ -76,7 +76,10 @@ import {
   drawBackGear,
   drawBeast,
   drawHumanoid,
-  drawSlime,
+  drawOoze,
+  drawOozeTrailDab,
+  oozeExtents,
+  oozeLook,
   drawSnake,
   shade,
   koboldLook,
@@ -483,6 +486,8 @@ function projectileTint(style: string): ElementTint {
 }
 /** How long a landed arrow stands in the world before fading. */
 const STUCK_ARROW_MS = 90_000;
+/** How long an ooze's ground print stays wet before it dries. */
+const OOZE_TRAIL_MS = 2_600;
 /** The spent shot's terminal arc: duration and forward carry (tiles). */
 const FALLING_SHAFT_MS = 260;
 const FALLING_SHAFT_ADVANCE = 0.55;
@@ -740,6 +745,15 @@ interface AnimState {
   /** Smoothed 0..1 travel activity — leg-less bodies (slimes, snakes)
    *  gate their locomotion animation on it. */
   moveK?: number;
+  /**
+   * THE OOZE TRAIL (docs/ooze-family-plan.md): the glisten prints this
+   * body left, world coords + birth time, oldest first. Painted by the
+   * SHADOW pass so every body walks over the wet; capped small and
+   * pruned by age — a memory, not a decal system.
+   */
+  oozeTrail?: Array<{ x: number; y: number; at: number; seed: number }>;
+  oozeTrailX?: number;
+  oozeTrailY?: number;
   /**
    * Smoothed 0..1 seated blend. NEVER poseT — that clock resets on
    * every pose change, which would pop the stand-up; this one glides
@@ -50279,11 +50293,11 @@ export class Renderer {
     // On its feet again: the next fall sprawls fresh.
     this.downedRags.delete(eid);
 
-    // Leg-less bodies skip the rig entirely: gel blocks hop, wings
-    // hover, coils slither — each through its own dedicated painter.
+    // Leg-less bodies skip the rig entirely: the whole ooze family
+    // (five body plans, docs/ooze-family-plan.md), wings hover, coils
+    // slither — each through its own dedicated painter.
     if (
-      defId === 'slime' ||
-      defId === 'slime_small' ||
+      oozeLook(defId) !== undefined ||
       defId === 'cave_bat' ||
       defId === 'giant_bat' ||
       defId === 'dire_bat' ||
@@ -50711,21 +50725,68 @@ export class Renderer {
         attackT,
       });
     }
+    // THE OOZE TRAIL (docs/ooze-family-plan.md): a moving ooze prints
+    // the ground it crossed. Hoppers print at LANDING SPACING (the hop
+    // rhythm stays legible in the wet); sliders lay a near-continuous
+    // glisten. Ring capped small, pruned by age — never a decal system.
+    const ooze = oozeLook(defId);
+    if (ooze) {
+      const spacing = ooze.plan === 'hopper' ? 0.52 : 0.32;
+      const dx = s.x - (anim.oozeTrailX ?? s.x);
+      const dy = s.y - (anim.oozeTrailY ?? s.y);
+      if (anim.oozeTrailX === undefined || dx * dx + dy * dy >= spacing * spacing) {
+        anim.oozeTrailX = s.x;
+        anim.oozeTrailY = s.y;
+        if (moveK > 0.2) {
+          const trail = (anim.oozeTrail ??= []);
+          trail.push({ x: s.x, y: s.y, at: now, seed: (eid * 31 + trail.length * 0x9e37) | 0 });
+          if (trail.length > 12) trail.shift();
+        }
+      }
+      const trail = anim.oozeTrail;
+      if (trail) while (trail.length > 0 && now - trail[0]!.at > OOZE_TRAIL_MS) trail.shift();
+    }
     // Sprite extents differ per body plan: the adder trails 1.3 tiles of
-    // ribbon, the bat hovers a full tile up with wings wide.
+    // ribbon, the bat hovers a full tile up with wings wide, and every
+    // ooze plan buys its own room (the puddle reaches, the column
+    // stands, the cube surges — oozeExtents is the one truth).
     // Bat extents come from the look — the giant and dire sail far
     // wider and hang higher than the cave flutterer's box.
     const bLook = bat ? batLook(defId, eid) : undefined;
-    const halfW = (snake ? 1.55 : bLook ? bLook.wingSpan + bLook.bodyW + 0.2 : radius * 2.2 + 0.25) * scale;
-    const top = (bLook ? 1.45 + bLook.bodyR + bLook.earLen : snake ? 0.55 : radius * 2.4 + 0.15) * scale;
-    const bottom = (snake ? 1.1 : 0.4) * scale;
+    const oExt = ooze ? oozeExtents(ooze, radius) : undefined;
+    const halfW = (snake ? 1.55 : bLook ? bLook.wingSpan + bLook.bodyW + 0.2 : oExt ? oExt.halfW : radius * 2.2 + 0.25) * scale;
+    const top = (bLook ? 1.45 + bLook.bodyR + bLook.earLen : snake ? 0.55 : oExt ? oExt.top : radius * 2.4 + 0.15) * scale;
+    const bottom = (snake ? 1.1 : oExt ? oExt.bottom : 0.4) * scale;
     const labelTop = bLook
       ? p.y - (1.7 + bLook.bodyR + bLook.earLen) * scale
-      : p.y - Math.max(r * 2.6, 0.55 * scale);
+      : oExt
+        ? p.y - Math.max((oExt.top + 0.12) * scale, 0.55 * scale)
+        : p.y - Math.max(r * 2.6, 0.55 * scale);
     return {
       sortY: s.y,
       elevated: terrainLift !== 0,
       drawShadow: () => {
+        // The wet the body left, under everything that walks here —
+        // shadow-pass ground prints, fading as they dry.
+        const trail = anim.oozeTrail;
+        if (ooze && trail && trail.length > 0) {
+          const ink = ooze.plan === 'cube' ? shade(def?.color ?? '#999', 10) : shade(def?.color ?? '#999', -8);
+          for (let i = 0; i < trail.length; i++) {
+            const d = trail[i]!;
+            const age = (now - d.at) / OOZE_TRAIL_MS;
+            if (age >= 1) continue;
+            const dp = this.camera.worldToScreen(d.x, d.y, this.w, this.h);
+            drawOozeTrailDab(
+              this.ctx,
+              dp.x,
+              dp.y,
+              r * (0.5 - age * 0.14),
+              d.seed,
+              ink,
+              (1 - age) * 0.26,
+            );
+          }
+        }
         // The bat's shadow stays on the ground it flies over, smaller
         // for the height; the adder throws a low smear.
         this.castBody(p.x, p.y + r * 0.25, r * (bat ? 0.8 : snake ? 1.0 : 1.05));
@@ -50733,7 +50794,7 @@ export class Renderer {
       draw: () => {
         if (bat) drawBat(this.ctx, batLook(defId, eid), { ...common, flight: batFlight! });
         else if (snake) drawSnake(this.ctx, common);
-        else drawSlime(this.ctx, common);
+        else drawOoze(this.ctx, ooze ?? { plan: 'hopper', giant: false, nuclei: 1 }, common);
       },
       body: { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom },
       drawLabel: () => {
@@ -51942,10 +52003,38 @@ export class Renderer {
     // Humanoid actors have no bestiary def — their look IS the body
     // (the def-less case bails inside the branch chain below).
     const def = npcDef(death.defId);
-    // Slimes leave no body — the mass divides (the server spawns the
-    // halves) or, for a half, simply bursts. The death particle burst
-    // is the whole funeral.
-    if (death.defId === 'slime' || death.defId === 'slime_small') return;
+    // Oozes leave no body — the mass divides (the server spawns the
+    // halves) or simply bursts. The gel burst below is the whole
+    // funeral, in the body's own dye.
+    if (oozeLook(death.defId) !== undefined) {
+      const color = def?.color ?? '#6fbf4e';
+      const r = def?.radius ?? 0.3;
+      // Droplets fly, heavier gobbets die close, and a wet sheet
+      // splats flat at the point of collapse.
+      this.particles.burst(death.x, death.y - r * 0.6, 10 + Math.round(r * 14), [
+        color,
+        shade(color, -18),
+        shade(color, 24),
+      ], {
+        speed: 1.6 + r * 1.2,
+        life: 0.55,
+        size: 0.05 + r * 0.05,
+        gravity: 5,
+        drag: 2.4,
+        fade: shade(color, -10),
+        fadeAt: 0.55,
+      });
+      this.particles.burst(death.x, death.y - r * 0.2, 5, [shade(color, -12)], {
+        speed: 0.5,
+        life: 1.1,
+        size: 0.08 + r * 0.08,
+        gravity: 2.5,
+        drag: 3,
+        fade: shade(color, -20),
+        fadeAt: 0.4,
+      });
+      return;
+    }
     let seed = 0;
     for (let i = 0; i < death.defId.length; i++) {
       seed = (seed * 31 + death.defId.charCodeAt(i)) | 0;

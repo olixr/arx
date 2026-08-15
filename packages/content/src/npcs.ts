@@ -251,6 +251,28 @@ export const BOSS_STUN_MULT = 0.5;
 /** How far a pack answers a packmate's aggro (tiles). */
 export const PACK_RALLY_RANGE = 7;
 
+/**
+ * THE OOZE FAMILY (docs/ooze-family-plan.md): the formless, as one
+ * set. One membership answer for every reader — the tame refusal, the
+ * client's legless routing, the no-corpse law. Ids, not a prefix: the
+ * family outgrew 'slime*' the day the grays and puddings arrived.
+ */
+export const OOZE_IDS: ReadonlySet<string> = new Set([
+  'slime',
+  'slime_small',
+  'giant_slime',
+  'gray_ooze',
+  'ochre_jelly',
+  'ochre_half',
+  'gelatinous_cube',
+  'black_pudding',
+  'pudding_half',
+]);
+
+export function isOozeId(id: string): boolean {
+  return OOZE_IDS.has(id);
+}
+
 /** How far a craven body will run looking for a resting packmate (tiles). */
 export const HELP_SEEK_RANGE = 12;
 
@@ -1326,6 +1348,11 @@ const defs: NpcDef[] = [
     pack: 'hobgoblin',
     kit: [{ ability: 'ground_slam', cooldownTicks: 180, maxRange: 4.5, weight: 2 }],
   },
+  // ------------------------------------------------- THE OOZE FAMILY
+  // docs/ooze-family-plan.md: five body plans, never a reskin. The
+  // split chain is data (giant → slime → small, ochre and pudding
+  // halve once) and every chain terminates. Hoppers POUNCE — the
+  // gather-and-spring the painter always animated now truly leaps.
   {
     id: 'slime',
     name: 'Slime',
@@ -1348,6 +1375,7 @@ const defs: NpcDef[] = [
     resist: ['bleed', 'venom'],
     weak: ['chill'],
     splitInto: { npc: 'slime_small', count: 2 },
+    pounce: true,
   },
   {
     id: 'slime_small',
@@ -1370,6 +1398,186 @@ const defs: NpcDef[] = [
     hitHeight: 0.35,
     resist: ['bleed', 'venom'],
     weak: ['chill'],
+    pounce: true,
+  },
+  {
+    // The mother of the marsh knot: a hopper at landmark scale. Its
+    // landing is weather — ground_slam is the crashing-mass splash,
+    // telegraphed and dodgeable — and its death is an ARITHMETIC
+    // PROBLEM: two slimes, then four smalls, each wave born hunting.
+    id: 'giant_slime',
+    name: 'Giant slime',
+    level: 9,
+    maxHp: 60,
+    damage: 4,
+    attackRange: 1.1,
+    attackCooldownTicks: 56,
+    aggroRange: 0,
+    sightArc: 360,
+    leashRange: 16,
+    speed: 2.2,
+    xpReward: 130,
+    loot: ['giant_slime'],
+    respawnSec: 45,
+    color: '#5cae44',
+    radius: 0.55,
+    hitHeight: 1.1,
+    resist: ['bleed', 'venom'],
+    weak: ['chill'],
+    splitInto: { npc: 'slime', count: 2 },
+    pounce: true,
+    kit: [{ ability: 'ground_slam', cooldownTicks: 200, maxRange: 4, weight: 2 }],
+  },
+  {
+    // Wet stone that moves: a low eyeless pool the torchlight misses
+    // until it is close enough to reach. The acid keeps the argument
+    // with your armor (sunder), and the cold means nothing to a body
+    // that is already the temperature of the floor.
+    id: 'gray_ooze',
+    name: 'Gray ooze',
+    level: 13,
+    maxHp: 55,
+    damage: 5,
+    attackRange: 1.0,
+    attackCooldownTicks: 52,
+    // The ambusher's bargain: it sees all around but only an arm's
+    // reach out — walking wide of the puddle is the whole lesson.
+    aggroRange: 3,
+    sightArc: 360,
+    leashRange: 12,
+    speed: 2.0,
+    xpReward: 200,
+    loot: ['gray_ooze'],
+    respawnSec: 40,
+    color: '#8b8d90',
+    radius: 0.4,
+    hitHeight: 0.35,
+    attackStatus: { status: 'sunder', power: 1, durationTicks: 60 },
+    resist: ['bleed', 'venom', 'chill'],
+    weak: ['burn'],
+  },
+  {
+    // A colony pretending to be a creature: lobes, several nuclei,
+    // and no argument that dividing it settles — it halves on death
+    // and both halves keep the grudge. Lightning passes through a
+    // body with no one place to strike.
+    id: 'ochre_jelly',
+    name: 'Ochre jelly',
+    level: 16,
+    maxHp: 90,
+    damage: 5,
+    attackRange: 1.1,
+    attackCooldownTicks: 50,
+    aggroRange: 5,
+    sightArc: 360,
+    leashRange: 16,
+    speed: 2.3,
+    xpReward: 260,
+    loot: ['ochre_jelly'],
+    respawnSec: 50,
+    color: '#c8973a',
+    radius: 0.46,
+    hitHeight: 0.7,
+    attackStatus: { status: 'sunder', power: 1, durationTicks: 60 },
+    resist: ['bleed', 'venom', 'shock'],
+    weak: ['chill'],
+    splitInto: { npc: 'ochre_half', count: 2 },
+  },
+  {
+    id: 'ochre_half',
+    name: 'Ochre half',
+    level: 8,
+    maxHp: 24,
+    damage: 3,
+    attackRange: 0.9,
+    attackCooldownTicks: 46,
+    aggroRange: 5,
+    sightArc: 360,
+    leashRange: 20,
+    speed: 2.7,
+    xpReward: 70,
+    loot: ['ochre_half'],
+    respawnSec: 50,
+    color: '#d4a54e',
+    radius: 0.3,
+    hitHeight: 0.5,
+    resist: ['bleed', 'venom', 'shock'],
+    weak: ['chill'],
+  },
+  {
+    // THE CORRIDOR MADE FLESH: a tomb-sized prism of gel sweeping the
+    // hall it fits exactly, carrying everything it ever engulfed —
+    // the bones and the sword you can SEE suspended inside are the
+    // loot table, told honestly. The engulf numbs (chill); slow
+    // enough to walk away from, patient enough that you won't.
+    id: 'gelatinous_cube',
+    name: 'Gelatinous cube',
+    level: 19,
+    maxHp: 160,
+    damage: 6,
+    attackRange: 1.2,
+    attackCooldownTicks: 60,
+    aggroRange: 2.5,
+    sightArc: 360,
+    leashRange: 10,
+    speed: 1.6,
+    xpReward: 420,
+    loot: ['gelatinous_cube', 'heirlooms'],
+    respawnSec: 70,
+    color: '#9fd8c8',
+    radius: 0.6,
+    hitHeight: 1.6,
+    attackStatus: { status: 'chill', power: 2, durationTicks: 50 },
+    resist: ['bleed', 'venom'],
+    weak: ['burn'],
+  },
+  {
+    // The deep's last word: a standing pillar of tar that eats steel
+    // (sunder 2) and shrugs everything but fire. It divides once,
+    // and the halves are still worse than most whole things.
+    id: 'black_pudding',
+    name: 'Black pudding',
+    level: 24,
+    maxHp: 140,
+    damage: 8,
+    attackRange: 1.1,
+    attackCooldownTicks: 54,
+    aggroRange: 6,
+    sightArc: 360,
+    leashRange: 16,
+    speed: 2.4,
+    xpReward: 560,
+    loot: ['black_pudding', 'heirlooms'],
+    respawnSec: 70,
+    color: '#2e2a33',
+    radius: 0.42,
+    hitHeight: 1.3,
+    attackStatus: { status: 'sunder', power: 2, durationTicks: 70 },
+    resist: ['bleed', 'venom', 'shock', 'chill'],
+    weak: ['burn'],
+    splitInto: { npc: 'pudding_half', count: 2 },
+  },
+  {
+    id: 'pudding_half',
+    name: 'Pudding half',
+    level: 12,
+    maxHp: 40,
+    damage: 4,
+    attackRange: 0.9,
+    attackCooldownTicks: 48,
+    aggroRange: 6,
+    sightArc: 360,
+    leashRange: 20,
+    speed: 2.8,
+    xpReward: 130,
+    loot: ['pudding_half'],
+    respawnSec: 70,
+    color: '#3a3542',
+    radius: 0.28,
+    hitHeight: 0.9,
+    attackStatus: { status: 'sunder', power: 1, durationTicks: 50 },
+    resist: ['bleed', 'venom', 'shock', 'chill'],
+    weak: ['burn'],
   },
   {
     // THE FLEECE FINDS ITS BODY: the yard's wool-bearer, a placid

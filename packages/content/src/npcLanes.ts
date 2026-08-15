@@ -99,9 +99,17 @@ export const NPC_LANES: Record<string, NpcLanes> = {
   iron_golem: STONE,
   fire_golem: STONE,
   ice_golem: STONE,
-  // The formless swallow shafts whole and fear the working.
+  // The formless swallow shafts whole and fear the working — the
+  // whole ooze family speaks it (docs/ooze-family-plan.md).
   slime: FORMLESS,
   slime_small: FORMLESS,
+  giant_slime: FORMLESS,
+  gray_ooze: FORMLESS,
+  ochre_jelly: FORMLESS,
+  ochre_half: FORMLESS,
+  gelatinous_cube: FORMLESS,
+  black_pudding: FORMLESS,
+  pudding_half: FORMLESS,
   // Carapace turns the edge and cracks under crush.
   giant_beetle: CARAPACE,
   mudcrab: CARAPACE,

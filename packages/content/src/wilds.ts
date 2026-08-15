@@ -150,6 +150,25 @@ export const WILD_ROSTER: readonly WildEntry[] = [
     lead: { npc: 'skral_champion' },
     family: 'skral',
   },
+  // ------------------------------------------------ the wet margins
+  // THE OOZE FAMILY (docs/ooze-family-plan.md): slimes work the damp
+  // ground where meadow meets water, in glistening handfuls. Deeper
+  // out, the knot hops behind its mother — the giant slime is the
+  // dire-wolf promotion spoken in gel, and killing her is an
+  // arithmetic problem (two slimes, then four smalls).
+  { npc: 'slime', weight: 1.5, tiers: [1, 2], biomes: ['grass', 'shore'], band: [2, 4], spread: 2 },
+  {
+    npc: 'slime',
+    weight: 1,
+    tiers: [2, 4],
+    biomes: ['grass', 'shore'],
+    band: [2, 3],
+    spread: 2,
+    lead: { npc: 'giant_slime' },
+  },
+  // The ochre jelly keeps the night wood: a lobed amber colony
+  // browsing the leaf-rot alone, and twice as many once you object.
+  { npc: 'ochre_jelly', weight: 0.8, tiers: [4, 7], biomes: ['forest'], hours: NIGHT },
   // --------------------------------------------- the standing perils
   { npc: 'wolf', weight: 2, tiers: [2, 5], biomes: ['forest'], band: [2, 3], habitat: 'den', family: 'wolfkin' },
   { npc: 'adder', weight: 1, tiers: [2, 4], biomes: ['grass'] },

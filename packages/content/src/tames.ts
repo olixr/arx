@@ -20,7 +20,7 @@
  */
 
 import type { StatusApply } from '@arx/shared';
-import { NPCS, scaleNpcDef, type NpcDef } from './npcs.js';
+import { NPCS, isOozeId, scaleNpcDef, type NpcDef } from './npcs.js';
 import { itemDef } from './items.js';
 
 /**
@@ -240,7 +240,9 @@ export function isWildBeast(def: NpcDef): boolean {
   for (const prefix of HUMANOID_PREFIXES) {
     if (def.id.startsWith(prefix)) return false;
   }
-  if (def.id.startsWith('slime')) return false;
+  // The whole ooze family refuses the leash — a puddle has no ear to
+  // speak into (and half of them divide instead of listening anyway).
+  if (isOozeId(def.id)) return false;
   return true;
 }
 

@@ -1445,6 +1445,68 @@ const defs: LootTableDef[] = [
     ],
   },
   {
+    id: 'giant_slime',
+    desc: 'A landmark of ooze digests a landmark of pocket change.',
+    entries: [
+      { item: 'coins', qty: [6, 20], chance: 0.7 },
+      { item: 'verdant_essence', chance: 0.35 },
+      { item: 'arcane_dust', chance: 0.2 },
+      { item: 'vipersong', chance: 0.03 },
+    ],
+  },
+  {
+    id: 'gray_ooze',
+    desc: 'What the acid pitted but could not finish.',
+    entries: [
+      { item: 'coins', qty: [4, 14], chance: 0.6 },
+      { item: 'arcane_dust', chance: 0.2 },
+    ],
+  },
+  {
+    id: 'ochre_jelly',
+    desc: 'The colony kept its books in the middle of itself.',
+    entries: [
+      { item: 'coins', qty: [6, 18], chance: 0.65 },
+      { item: 'verdant_essence', chance: 0.3 },
+      { item: 'arcane_dust', chance: 0.22 },
+    ],
+  },
+  {
+    id: 'ochre_half',
+    desc: 'Half a colony, half a ledger.',
+    entries: [
+      { item: 'coins', qty: [2, 7], chance: 0.5 },
+      { item: 'verdant_essence', chance: 0.1 },
+    ],
+  },
+  {
+    // The debris you SEE suspended in the prism is this table, told
+    // honestly — the cube is the corridor's lost-and-found.
+    id: 'gelatinous_cube',
+    desc: 'Everything the corridor ever swallowed, in one place.',
+    entries: [
+      { item: 'coins', qty: [15, 40], chance: 0.9 },
+      { item: 'arcane_dust', chance: 0.3 },
+      { item: 'verdant_essence', chance: 0.2 },
+    ],
+  },
+  {
+    id: 'black_pudding',
+    desc: 'Steel it ate, coin it could not.',
+    entries: [
+      { item: 'coins', qty: [12, 30], chance: 0.8 },
+      { item: 'arcane_dust', chance: 0.35 },
+    ],
+  },
+  {
+    id: 'pudding_half',
+    desc: 'The lesser share of a bad meal.',
+    entries: [
+      { item: 'coins', qty: [4, 10], chance: 0.55 },
+      { item: 'arcane_dust', chance: 0.12 },
+    ],
+  },
+  {
     // No wool here on purpose: the fleece answers only the shears
     // of a keeper — the yard registry is the only wool payer.
     id: 'sheep',

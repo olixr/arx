@@ -39,6 +39,15 @@ const ROSTERS: Record<DungeonTheme, ThemeRoster> = {
       { npc: 'slime', w: 2 },
       { npc: 'adder', w: 2 },
       { npc: 'mudcrab', w: 1, maxPower: 25 },
+      // THE OOZE FAMILY (docs/ooze-family-plan.md): the cavern is
+      // ooze country — the ladder deepens with the delve. The gray
+      // puddles first, the colony next, then the corridor made
+      // flesh, and at the bottom the deep's last word.
+      { npc: 'giant_slime', w: 1, minPower: 8 },
+      { npc: 'gray_ooze', w: 2, minPower: 14 },
+      { npc: 'ochre_jelly', w: 1, minPower: 18 },
+      { npc: 'gelatinous_cube', w: 1, minPower: 24 },
+      { npc: 'black_pudding', w: 1, minPower: 32 },
       // THE HILL COMES DOWN: deep caverns are giant country — an ogre
       // moved in where the ceiling finally fit it.
       { npc: 'ogre', w: 1, minPower: 35 },
@@ -59,6 +68,10 @@ const ROSTERS: Record<DungeonTheme, ThemeRoster> = {
       // The king's own, where the reissue runs deep enough to matter.
       { npc: 'skeleton_kingsman', w: 2, minPower: 45 },
       { npc: 'skeleton_crownsguard', w: 1, minPower: 45 },
+      // The tomb's janitor: a gelatinous cube fits the corridor it
+      // sweeps EXACTLY, and the gray ooze pools where the seep runs.
+      { npc: 'gray_ooze', w: 1, minPower: 12 },
+      { npc: 'gelatinous_cube', w: 1, minPower: 20 },
     ],
     elite: 'skeleton_guard',
     // THE DREAD CROWN: two true crowns share the crypt's deep seat —
@@ -80,6 +93,10 @@ const ROSTERS: Record<DungeonTheme, ThemeRoster> = {
       { npc: 'rat', w: 1, maxPower: 15 },
       { npc: 'cave_bat', w: 1 },
       { npc: 'rock_golem', w: 1, minPower: 30 },
+      // Where the shaft floods, the gray waits; the drowned deep
+      // galleries belong to the pudding.
+      { npc: 'gray_ooze', w: 1, minPower: 14 },
+      { npc: 'black_pudding', w: 1, minPower: 40 },
     ],
     elite: 'giant_beetle',
     // THE DREAD CROWN: the mine's own keeper, phased iron.
@@ -128,6 +145,8 @@ const ROSTERS: Record<DungeonTheme, ThemeRoster> = {
       { npc: 'skeleton_guard', w: 2, minPower: 12 },
       { npc: 'skeleton_chanter', w: 1, minPower: 24 },
       { npc: 'dire_wolf', w: 1, minPower: 28 },
+      // The leaf-rot between the roots feeds the amber colony.
+      { npc: 'ochre_jelly', w: 1, minPower: 16 },
     ],
     elite: 'lynx',
     // The barrow lord's body wears the root court's name for now —
