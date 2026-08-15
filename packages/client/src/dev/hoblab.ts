@@ -21,8 +21,18 @@
 //               max(1.25, s*0.04), integer 8-tap, ink under art)
 //   ?det=1      DETERMINISTIC mode: fixed 60Hz steps run synchronously
 //               on the first frame; ?detn=N sets the step count.
+//   ?head=1     THE TURN STRIP: sixteen evenly-spaced headings of one
+//               bare body (?only picks it) — the standing procedure
+//               for vetting the head as a TURNED VOLUME: the face
+//               must travel, tip, and wrap as one object across all
+//               sixteen steps, not just behave at the eight bands.
+//   ?probe=1    the head's own geometry overlay (HOB_HEAD_DEBUG):
+//               magenta = the painter's true silhouette sampling,
+//               green/red dots = the load-bearing feature stations on
+//               camera-side / turned-away. Judge geometry first, art
+//               second.
 import { LegSolver, drawHumanoid, goblinLook, type RigPose } from '../render/rig.js';
-import { hobgoblinLook } from '../render/hobgoblin.js';
+import { HOB_HEAD_DEBUG, hobgoblinLook } from '../render/hobgoblin.js';
 import { EarSim } from '../render/earPhysics.js';
 import { PoseState } from '@arx/shared';
 
@@ -206,6 +216,18 @@ figs.push({ label: 'ruler: player+warcast', defId: 'hobgoblin_warcaster', dir: M
 figs.push({ label: 'ruler: player+warlord', defId: 'hobgoblin_champion', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
 figs.push({ label: 'ruler: player+juggern', defId: 'hobgoblin_juggernaut', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
 figs.push({ label: 'ruler: goblin+legion', defId: 'hobgoblin', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
+
+// THE TURN STRIP: ?head=1 swaps the roster for sixteen headings of
+// one bare body — the head-vetting procedure's own sheet.
+if (q.get('head') === '1') {
+  figs.length = 0;
+  const id = ONLY ?? 'hobgoblin';
+  for (let i = 0; i < 16; i++) {
+    const a = Math.PI / 2 + (i / 16) * Math.PI * 2;
+    figs.push({ label: `turn ${i}/16`, defId: id, dir: a, mode: 'idle', seed: 5, bare: true });
+  }
+}
+HOB_HEAD_DEBUG.on = q.get('probe') === '1';
 
 const kept = ONLY ? figs.filter((f) => f.defId === ONLY) : figs;
 

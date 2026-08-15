@@ -410,8 +410,114 @@ export interface HobHeadFrame {
   gape: number;
 }
 
+/** Silhouette samples per head — the turn must read smooth. */
+const SIL_N = 36;
+
 /**
- * THE WAR MASK IS ONE HULL. The head is an ellipsoid hull with
+ * THE HEAD IS A TURNED VOLUME (round three, user-directed root fix).
+ * The features were always honest 3D stations — but the silhouette
+ * they lived on was still an axis-aligned billboard slab, so through
+ * a turn the face slid across a rectangle that never rotated, and at
+ * the diagonals the mouth read as hanging off a cheek that wasn't
+ * turning with it. The hull is now a real solid: a p=6 SUPERELLIPSOID
+ * (the soldier's rounded block, honestly three-dimensional) with the
+ * longer rear axis, and the painted silhouette is its EXACT screen
+ * projection — computed by support function through the very same
+ * basis every station projects through. One algebra, two guarantees:
+ * the outline tips, shifts, and swells with the turn by construction,
+ * and every on-hull feature provably lives inside it.
+ *
+ * Exported whole so the audit sheet's probe overlay and the law tests
+ * walk the SAME geometry the painter draws — the vetting procedure,
+ * not a parallel approximation.
+ */
+export function hobHeadHull(
+  hw: number,
+  hh: number,
+  fx: number,
+  fy: number,
+): {
+  aF: number;
+  aB: number;
+  aL: number;
+  aZ: number;
+  c1f: { x: number; y: number };
+  c1b: { x: number; y: number };
+  c2: { x: number; y: number };
+  c3: { x: number; y: number };
+  /** Station: head frame (F, L, Z) → screen offset + camera depth. */
+  st: (F: number, L: number, Z: number) => { x: number; y: number; d: number };
+  /** Support point of the projected hull in screen direction (nx,ny). */
+  support: (nx: number, ny: number) => { x: number; y: number };
+} {
+  // THE STYLE-COMPRESSED PITCH: the world camera's honest YK 0.6
+  // looks DOWN on a head — projected truly, the crown owns most of
+  // the south band and the face shrinks to a chin strip (the probe
+  // strip convicted it on frame one). The head projects through a
+  // SOFTER pitch coupling instead — the SILHOUETTE HIERARCHY law
+  // (pm^0.3's cousin): the outline still tips, travels, and swells
+  // with the turn (the fx terms are untouched and the fy coupling
+  // survives at 0.4), but the face keeps the read the whole game's
+  // style is built on. One constant, INSIDE the hull, so painter,
+  // probe, and law tests compress identically.
+  const YKH = 0.4;
+  const px = -fy;
+  const py = fx;
+  const aF = hw * 0.96;
+  const aB = aF * 1.32;
+  const aL = hw * 1.0;
+  const aZ = hh * 1.02;
+  const c1f = { x: aF * fx, y: aF * fy * YKH };
+  const c1b = { x: aB * fx, y: aB * fy * YKH };
+  const c2 = { x: aL * px, y: aL * py * YKH };
+  const c3 = { x: 0, y: -aZ };
+  const st = (F: number, L: number, Z: number): { x: number; y: number; d: number } => {
+    const ax = F >= 0 ? aF : aB;
+    return {
+      x: F * ax * fx + L * aL * px,
+      y: (F * ax * fy + L * aL * py) * YKH - Z * aZ,
+      d: F * fy + L * py,
+    };
+  };
+  // The support point of the projected p=6 superball in direction n:
+  // v_i = c_i·n, u_i ∝ sign(v_i)·|v_i|^(1/5) (the 6-norm's dual),
+  // normalized in the 6-norm, mapped back through the basis. p=6 is
+  // the SOLDIER'S BLOCK — square enough to keep the dialect's chamfer
+  // identity, round enough to turn (p=4 read balloon on the strip).
+  // The front/rear axis is chosen by the preimage's own F sign — the
+  // two half-hulls share the F = 0 disc, so the outline is continuous.
+  const dual = (v: number): number => Math.sign(v) * Math.pow(Math.abs(v), 0.2);
+  const support = (nx: number, ny: number): { x: number; y: number } => {
+    const c1 = c1f.x * nx + c1f.y * ny >= 0 ? c1f : c1b;
+    const u1 = dual(c1.x * nx + c1.y * ny);
+    const u2 = dual(c2.x * nx + c2.y * ny);
+    const u3 = dual(c3.x * nx + c3.y * ny);
+    const k =
+      1 /
+      (Math.pow(u1 ** 6 + u2 ** 6 + u3 ** 6, 1 / 6) || 1e-6);
+    const w1 = u1 * k;
+    const w2 = u2 * k;
+    const w3 = u3 * k;
+    return {
+      x: c1.x * w1 + c2.x * w2 + c3.x * w3,
+      y: c1.y * w1 + c2.y * w2 + c3.y * w3,
+    };
+  };
+  return { aF, aB, aL, aZ, c1f, c1b, c2, c3, st, support };
+}
+
+/**
+ * THE PROBE (the standing vetting procedure): when the lab flips this
+ * on, every painted head overlays its own silhouette sampling and its
+ * load-bearing feature stations — green where the station holds the
+ * camera side, hollow red where it has turned away. A head change is
+ * audited by LOOKING at the geometry the painter actually ran, at
+ * every band of the turn strip, before any judgment call on the art.
+ */
+export const HOB_HEAD_DEBUG = { on: false };
+
+/**
+ * THE WAR MASK IS ONE HULL. The head is a superellipsoid hull with
  * semi-axes (aF fwd, aB aft, aL lat, aZ up) and EVERY feature — the
  * helm and its furniture, the brow ledge, both ember eyes, the flat
  * nose, the mouth arc with its corner fangs, the jaw fringe, the
@@ -431,31 +537,95 @@ export function paintHobgoblinHead(
   f: HobHeadFrame,
 ): void {
   const { headX, headY, hw, hh, cut, fx, fy, lead, hurt, nowMs, gape } = f;
+  void cut;
   const s = f.s;
   const hv = hb.heavy;
   const jawK = hb.jaw ?? 1;
   const hide = hurt ? '#ffffff' : hb.hide;
   const px = -fy;
   const py = fx;
-  const YK = 0.6;
-  // The hull: squarer than any other dialect's — a soldier's skull,
-  // taller than wide, longer astern than abow (mass behind the eyes).
-  const aF = hw * 0.96;
-  const aB = aF * 1.32;
-  const aL = hw * 1.0;
-  const aZ = hh * 1.02;
+  const hull = hobHeadHull(hw, hh, fx, fy);
+  const { aF, aB, aL, aZ } = hull;
+  void aB;
   const st = (F: number, L: number, Z: number): { x: number; y: number; d: number } => {
-    const ax = F >= 0 ? aF : aB;
-    return {
-      x: headX + F * ax * fx + L * aL * px,
-      y: headY + (F * ax * fy + L * aL * py) * YK - Z * aZ,
-      d: F * fy + L * py,
-    };
+    const p = hull.st(F, L, Z);
+    return { x: headX + p.x, y: headY + p.y, d: p.d };
   };
-  const W = Math.sqrt(aF * fx * (aF * fx) + aL * px * (aL * px));
-  const cx = headX + fx * aF * 0.08;
-  const skyY = headY - aZ;
+  /** THE TURNED VOLUME's own outline path, centered on the head. */
+  const sil = (): void => {
+    ctx.beginPath();
+    for (let i = 0; i < SIL_N; i++) {
+      const a = (i / SIL_N) * Math.PI * 2;
+      const p = hull.support(Math.cos(a), Math.sin(a));
+      if (i === 0) ctx.moveTo(headX + p.x, headY + p.y);
+      else ctx.lineTo(headX + p.x, headY + p.y);
+    }
+    ctx.closePath();
+  };
+  // The skyline the fixtures clamp to: the outline's own zenith.
+  const skyY = headY + hull.support(0, -1).y;
   const helmed = hb.helm !== 'none';
+  /** A crown cross-section ring (the hull cut at height Z = zR),
+   *  projected — the helm brim and the hairline are REAL sections of
+   *  the turned volume, so they tip and shift with the head instead
+   *  of sitting on a screen-level line. */
+  const ringPts = (zR: number): Array<{ x: number; y: number; d: number }> => {
+    const pts: Array<{ x: number; y: number; d: number }> = [];
+    for (let i = 0; i < 20; i++) {
+      const t = (i / 20) * Math.PI * 2;
+      const ct = Math.cos(t);
+      const stn = Math.sin(t);
+      const rho = Math.pow((1 - zR ** 6) / (ct ** 6 + stn ** 6), 1 / 6);
+      pts.push(st(rho * ct, rho * stn, zR));
+    }
+    return pts;
+  };
+  /** Fill the hull's cap above Z = zR (caller has clipped to sil()):
+   *  the half-plane above the ring's own TIPPED chord plus the ring
+   *  loop itself — the brim's visible top plane (the 2.5D top-plane
+   *  law, spoken on a head). */
+  const fillCap = (zR: number, ring: ReadonlyArray<{ x: number; y: number }>): void => {
+    const rcy = headY - zR * aZ;
+    const l1 = Math.hypot(hull.c1f.x, hull.c1f.y);
+    const l2 = Math.hypot(hull.c2.x, hull.c2.y);
+    const ax = l1 >= l2 ? hull.c1f : hull.c2;
+    const al = Math.hypot(ax.x, ax.y) || 1e-6;
+    const axx = ax.x / al;
+    const axy = ax.y / al;
+    let pxu = axy;
+    let pyu = -axx;
+    if (pyu > 0) {
+      pxu = -pxu;
+      pyu = -pyu;
+    }
+    const L2 = s * 4;
+    ctx.beginPath();
+    ctx.moveTo(headX - axx * L2, rcy - axy * L2);
+    ctx.lineTo(headX + axx * L2, rcy + axy * L2);
+    ctx.lineTo(headX + axx * L2 + pxu * L2, rcy + axy * L2 + pyu * L2);
+    ctx.lineTo(headX - axx * L2 + pxu * L2, rcy - axy * L2 + pyu * L2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ring.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    ctx.closePath();
+    ctx.fill();
+  };
+  /** Stroke the camera-near arc of a crown ring — the worn edge. */
+  const strokeRimNear = (ring: ReadonlyArray<{ x: number; y: number; d: number }>, dy = 0): void => {
+    let run: Array<{ x: number; y: number }> = [];
+    let best: Array<{ x: number; y: number }> = [];
+    for (const p of [...ring, ...ring]) {
+      if (p.d > 0.03) {
+        run.push(p);
+        if (run.length > best.length && run.length <= ring.length) best = run;
+      } else run = [];
+    }
+    if (best.length < 2) return;
+    ctx.beginPath();
+    best.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y + dy) : ctx.lineTo(p.x, p.y + dy)));
+    ctx.stroke();
+  };
 
   // ---- THE HELM FURNITURE, far pass: crest segments and horns whose
   // stations ride the camera-far hemisphere paint BEFORE the hull —
@@ -467,7 +637,10 @@ export function paintHobgoblinHead(
   const crest: Fix[] = [];
   const horns: Fix[] = [];
   const normFix = (F: number, L: number, Z: number, r: number): Fix => {
-    const v = Math.hypot(F, L, Z) || 1;
+    // Seated ON the superellipsoid surface: normalize in the hull's
+    // own 6-norm, so a fixture's base touches the skin it is riveted
+    // to at every band (a 2-norm seat sat slightly sunken).
+    const v = Math.pow(F ** 6 + L ** 6 + Z ** 6, 1 / 6) || 1;
     const F0 = F / v;
     const L0 = L / v;
     const Z0 = Z / v;
@@ -535,62 +708,48 @@ export function paintHobgoblinHead(
   });
   for (const u of horns) if (u.d <= 0) paintHorn(u);
 
-  // ---- the hull slab + occiput cap. The bow bands keep the
-  // chamfered soldier's block; toward profile the back of the skull
-  // swells to the aB axis and rounds through a full curve (THE
-  // OCCIPUT ROUNDS — a skull never ends in a cropped wall).
-  const sgnF = fx >= 0 ? 1 : -1;
-  const rearK = Math.abs(fx);
-  const occ = rearK * (aB - aF);
-  const xf = cx + sgnF * W;
-  const xb = cx - sgnF * (W + occ);
-  const yT = headY - aZ;
-  const yB = yT + aZ * 1.9;
-  const cc = cut * 1.0;
-  const capX = cx - sgnF * (W - cc - rearK * W * 0.5);
+  // ---- THE TURNED VOLUME: the silhouette is the hull's exact
+  // projection — it tips at the diagonals, swells astern at the
+  // profiles (THE OCCIPUT ROUNDS, now by algebra instead of a
+  // hand-drawn cap), and every face station below provably lives on
+  // it, because outline and stations share one basis.
   ctx.fillStyle = hide;
-  ctx.beginPath();
-  ctx.moveTo(xf - sgnF * cc, yT);
-  ctx.lineTo(xf, yT + cc);
-  ctx.lineTo(xf, yB - cc);
-  ctx.lineTo(xf - sgnF * cc, yB);
-  ctx.lineTo(capX, yB);
-  ctx.quadraticCurveTo(xb, yB, xb, yT + aZ * 0.9);
-  ctx.quadraticCurveTo(xb, yT, capX, yT);
-  ctx.closePath();
+  sil();
   ctx.fill();
+  if (!hurt) {
+    // The form split: one screen-fixed light over the whole turned
+    // volume — clipped to the true outline.
+    ctx.save();
+    sil();
+    ctx.clip();
+    ctx.fillStyle = 'rgba(16, 12, 10, 0.14)';
+    ctx.fillRect(headX, headY - aZ * 1.4, aB + aL + s, aZ * 2.8);
+    ctx.restore();
+  }
 
   if (!hurt) {
     if (helmed) {
       // ---- THE PAINTED HELM: the open war-helm is head furniture,
-      // never an item (THE FORGE LAW would seal the face). The iron
-      // bowl owns the hull's upper reach — brow rim to crown — with
-      // the rim's own lit edge; the cheek guards and nape guard are
-      // stations that keep their own side of the turn.
-      const rimY = yT + aZ * 0.62;
+      // never an item (THE FORGE LAW would seal the face). The bowl
+      // is the hull's own cap above the rim SECTION — a true
+      // cross-section ring of the turned volume, so the brim tips
+      // and wraps with the head (the billboard rim was a level
+      // screen line at every band: the root of the diagonal lie).
+      const zRim = 0.5;
+      const ring = ringPts(zRim);
       ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(xf - sgnF * cc, yT);
-      ctx.lineTo(xf, yT + cc);
-      ctx.lineTo(xf, yB - cc);
-      ctx.lineTo(xf - sgnF * cc, yB);
-      ctx.lineTo(capX, yB);
-      ctx.quadraticCurveTo(xb, yB, xb, yT + aZ * 0.9);
-      ctx.quadraticCurveTo(xb, yT, capX, yT);
-      ctx.closePath();
+      sil();
       ctx.clip();
       ctx.fillStyle = shade(hb.iron, hb.helm === 'crest' ? 2 : -2);
-      ctx.fillRect(Math.min(xb, xf) - s, yT - s * 0.05, Math.abs(xf - xb) + s * 2, rimY - yT);
-      // The bowl's form split: the same screen-fixed light the torso
-      // reads by — hard shade right of center.
-      ctx.fillStyle = shade(hb.iron, -10);
-      ctx.fillRect(cx, yT - s * 0.05, Math.abs(xf - xb) + s, rimY - yT);
-      // The rim: one lit edge line, then the shadow it throws on the
-      // brow — the helm SITS, it is not a dye job.
-      ctx.fillStyle = shade(hb.trim, 4);
-      ctx.fillRect(Math.min(xb, xf) - s, rimY - s * 0.018, Math.abs(xf - xb) + s * 2, s * 0.02);
-      ctx.fillStyle = shade(hb.hide, -14);
-      ctx.fillRect(Math.min(xb, xf) - s, rimY + s * 0.002, Math.abs(xf - xb) + s * 2, s * 0.014);
+      fillCap(zRim, ring);
+      // The rim: the ring's camera-near arc in lit trim, and the
+      // shadow the brim throws on the brow below it.
+      ctx.strokeStyle = shade(hb.hide, -14);
+      ctx.lineWidth = Math.max(1, s * 0.016);
+      strokeRimNear(ring, s * 0.016);
+      ctx.strokeStyle = shade(hb.trim, 4);
+      ctx.lineWidth = Math.max(1, s * 0.02);
+      strokeRimNear(ring);
       ctx.restore();
       // The nape guard: a flared iron skirt off the occiput — shown
       // only while the occiput genuinely faces the camera (at profile
@@ -627,31 +786,30 @@ export function paintHobgoblinHead(
         ctx.fill();
       }
     } else {
-      // The bare crown: the scalp reads as swept-back hair — a dark
-      // widow's-peak cap, never a helmet shape (the uncovered ranks
-      // wear the soldier's crop; hair is a uniform matter).
-      const rimY = yT + aZ * 0.5;
+      // The bare crown: the scalp reads as swept-back hair — the
+      // hull's cap above the HAIRLINE section, so the crop turns
+      // with the skull it grows from (the uncovered ranks wear the
+      // soldier's crop; hair is a uniform matter).
+      const zRim = 0.64;
+      const ring = ringPts(zRim);
       ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(xf - sgnF * cc, yT);
-      ctx.lineTo(xf, yT + cc);
-      ctx.lineTo(xf, yB - cc);
-      ctx.lineTo(xf - sgnF * cc, yB);
-      ctx.lineTo(capX, yB);
-      ctx.quadraticCurveTo(xb, yB, xb, yT + aZ * 0.9);
-      ctx.quadraticCurveTo(xb, yT, capX, yT);
-      ctx.closePath();
+      sil();
       ctx.clip();
       ctx.fillStyle = shade(hb.hair, 2);
-      ctx.fillRect(Math.min(xb, xf) - s, yT - s * 0.05, Math.abs(xf - xb) + s * 2, rimY - yT);
-      // The peak: hair dips a point down the brow's center line.
-      const pk = st(0.9, 0, 0.5);
-      ctx.beginPath();
-      ctx.moveTo(pk.x - hw * 0.22, rimY - s * 0.004);
-      ctx.lineTo(pk.x, rimY + aZ * 0.16);
-      ctx.lineTo(pk.x + hw * 0.22, rimY - s * 0.004);
-      ctx.closePath();
-      ctx.fill();
+      fillCap(zRim, ring);
+      // The peak: hair dips a point down the brow's center line —
+      // hung off the hairline ring's own forward station, so it
+      // walks the turn and leaves with the face.
+      const rho0 = Math.pow(1 - zRim ** 6, 1 / 6);
+      const pk = st(rho0, 0, zRim);
+      if (pk.d > 0.05) {
+        ctx.beginPath();
+        ctx.moveTo(pk.x - hw * 0.22, pk.y);
+        ctx.lineTo(pk.x, pk.y + aZ * 0.18);
+        ctx.lineTo(pk.x + hw * 0.22, pk.y);
+        ctx.closePath();
+        ctx.fill();
+      }
       // Temple sweep: two strokes raking toward the crown's rear.
       ctx.strokeStyle = shade(hb.hair, 12);
       ctx.lineWidth = Math.max(1, s * 0.012);
@@ -1022,6 +1180,45 @@ export function paintHobgoblinHead(
   // gular nothing — the hobgoblin's idle face is STILL. Deliberate:
   // the stillness against the goblin's constant jeer IS the read.
   void nowMs;
+
+  // ---- THE PROBE: the standing vetting overlay (lab-only). The
+  // magenta ring is the very silhouette sampling the painter filled;
+  // the dots are the load-bearing stations — green holding the
+  // camera side, hollow red turned away. Any feature outside the
+  // ring, or any cluster that fails to travel with the ring through
+  // the turn strip, is convicted on sight before taste is consulted.
+  if (HOB_HEAD_DEBUG.on && !hurt) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(235, 80, 225, 0.9)';
+    ctx.lineWidth = 1.5;
+    sil();
+    ctx.stroke();
+    const probes: Array<[number, number, number]> = [
+      [0.56, -0.4, 0.2],
+      [0.56, 0.4, 0.2],
+      [1.0, 0, 0],
+      [0.9, 0, -0.45],
+      [0.22, -0.78, -0.4],
+      [0.22, 0.78, -0.4],
+      [0.78, 0, -0.66],
+    ];
+    for (const [F, L, Z] of probes) {
+      const p = st(F, L, Z);
+      if (p.d > 0) {
+        ctx.fillStyle = 'rgba(90, 230, 110, 0.95)';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2.4, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = 'rgba(235, 80, 80, 0.95)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2.4, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
 }
 
 // ---------------------------------------------------------------------------

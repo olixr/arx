@@ -121,6 +121,38 @@ Three foundational fixes, all in the projection itself:
   (the GIANT REACH pattern, legion numbers) — the diagonal stance no
   longer pinches under the broad shoulders.
 
+## The turned-volume round (round three, user-directed root fix)
+
+The features were honest 3D stations from day one — but the
+silhouette they lived on was still an axis-aligned billboard slab, so
+the face slid across a rectangle that never rotated and the SE/SW
+mouth read as hanging off the cheek no matter how the feature gates
+were tuned. Root fix, one algebra:
+
+- **THE HEAD IS A TURNED VOLUME** (`hobHeadHull`, exported): a p=6
+  superellipsoid (the soldier's block, honestly 3D) with the longer
+  rear axis; the painted silhouette is its EXACT projection via
+  support-function sampling through the same basis every station
+  uses. The outline tips, travels, and swells with the turn by
+  construction, and every on-hull feature provably lives inside it.
+- **THE STYLE-COMPRESSED PITCH**: the world camera's honest YK 0.6
+  looks down on a skull — truly projected, the crown owned the south
+  band and the face shrank to a chin strip. The head projects
+  through a softer pitch coupling (YKH 0.4, inside the hull so
+  painter/probe/tests compress identically) — the SILHOUETTE
+  HIERARCHY law: the turn keeps its tilt, the face keeps its read.
+- **THE RIM IS A SECTION**: helm brim and hairline are real
+  cross-section rings of the hull (6-norm sections), so they tip and
+  wrap with the head; the brim's near arc is the crate-lid top-plane
+  read on a skull.
+- **THE VETTING PROCEDURE** (the standing answer to "stop finding
+  the same problem"): `?head=1` = THE TURN STRIP (sixteen headings of
+  one bare body — the head must read as one rotating object across
+  ALL sixteen, not just behave at the eight bands); `?probe=1` =
+  HOB_HEAD_DEBUG (magenta = the painter's true silhouette sampling,
+  green/red station dots). Geometry is judged first, art second;
+  every future head change reshoots the strip.
+
 ## Audit
 
 `hoblab.html` → `src/dev/hoblab.ts` = THE HOBGOBLIN SHEET (skrallab
