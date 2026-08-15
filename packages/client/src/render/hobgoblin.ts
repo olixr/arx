@@ -414,19 +414,13 @@ export interface HobHeadFrame {
 const SIL_N = 36;
 
 /**
- * THE BLOCK DIAL: the hull's superellipsoid exponent. 2 = egg, 4 =
- * balloon-block, 6 = die. The soldier's skull carries its chamfer at
- * a VISIBLE corner radius — tuned on the turn strip, by eye.
- */
-const HULL_P = 4.4;
-
-/**
  * THE HEAD IS A TURNED VOLUME (round three, user-directed root fix).
  * The features were always honest 3D stations — but the silhouette
  * they lived on was still an axis-aligned billboard slab, so through
  * a turn the face slid across a rectangle that never rotated, and at
  * the diagonals the mouth read as hanging off a cheek that wasn't
- * turning with it. The hull is now a real solid: a SUPERELLIPSOID (exponent HULL_P)
+ * turning with it. The hull is now a real solid: a TWO-LOBE SKULL (domed cranium over a
+ * narrower squarer jaw — superellipsoid lobes)
  * (the soldier's rounded block, honestly three-dimensional) with the
  * longer rear axis, and the painted silhouette is its EXACT screen
  * projection — computed by support function through the very same
@@ -454,8 +448,10 @@ export function hobHeadHull(
   c3: { x: number; y: number };
   /** Station: head frame (F, L, Z) → screen offset + camera depth. */
   st: (F: number, L: number, Z: number) => { x: number; y: number; d: number };
-  /** Support point of the projected hull in screen direction (nx,ny). */
+  /** Support point of the projected skull in screen direction (nx,ny). */
   support: (nx: number, ny: number) => { x: number; y: number };
+  /** One point of the crown cross-section ring at height Z = zR. */
+  ring: (zR: number, t: number) => { x: number; y: number; d: number };
 } {
   // THE STYLE-COMPRESSED PITCH: the world camera's honest YK 0.6
   // looks DOWN on a head — projected truly, the crown owns most of
@@ -471,9 +467,9 @@ export function hobHeadHull(
   const px = -fy;
   const py = fx;
   const aF = hw * 0.96;
-  const aB = aF * 1.32;
-  const aL = hw * 1.0;
-  const aZ = hh * 1.02;
+  const aB = aF * 1.3;
+  const aL = hw * 0.94;
+  const aZ = hh * 0.98;
   const c1f = { x: aF * fx, y: aF * fy * YKH };
   const c1b = { x: aB * fx, y: aB * fy * YKH };
   const c2 = { x: aL * px, y: aL * py * YKH };
@@ -486,35 +482,64 @@ export function hobHeadHull(
       d: F * fy + L * py,
     };
   };
-  // The support point of the projected superball in direction n:
-  // v_i = c_i·n, u_i ∝ sign(v_i)·|v_i|^(1/(P-1)) (the P-norm's dual),
-  // normalized in the P-norm, mapped back through the basis. P is
-  // THE BLOCK DIAL — the soldier's skull lives between the balloon
-  // (p=4 on the strip) and the die (p=6, the user's "feels like a
-  // cube"): squareness with a visible corner radius. The front/rear
-  // axis is chosen by the preimage's own F sign — the two half-hulls
-  // share the F = 0 disc, so the outline is continuous.
-  const dual = (v: number): number => Math.sign(v) * Math.pow(Math.abs(v), 1 / (HULL_P - 1));
-  const support = (nx: number, ny: number): { x: number; y: number } => {
-    const c1 = c1f.x * nx + c1f.y * ny >= 0 ? c1f : c1b;
-    const u1 = dual(c1.x * nx + c1.y * ny);
-    const u2 = dual(c2.x * nx + c2.y * ny);
-    const u3 = dual(c3.x * nx + c3.y * ny);
+  // THE SKULL IS TWO LOBES (the user's cube round, solved as anatomy
+  // instead of an exponent: one symmetric superball's front view IS a
+  // rounded square — the wrong solid for a head no matter its dial).
+  // A domed CRANIUM sits over a narrower, squarer JAW; the silhouette
+  // is the convex hull of the pair (support = the lobes' max), which
+  // hangs the cheek taper between them for free. Both lobes project
+  // through the one shared basis, so the whole skull still tips,
+  // travels, and swells with the turn as a single turned volume.
+  interface Lobe {
+    kF: number;
+    kB: number;
+    kL: number;
+    kZ: number;
+    z0: number;
+    P: number;
+  }
+  const CRANIUM: Lobe = { kF: 1.0, kB: 1.0, kL: 1.0, kZ: 0.66, z0: 0.34, P: 3.0 };
+  const JAW: Lobe = { kF: 0.88, kB: 0.9, kL: 0.82, kZ: 0.56, z0: -0.44, P: 5.0 };
+  const lobeSupport = (lo: Lobe, nx: number, ny: number): { x: number; y: number } => {
+    const front = c1f.x * nx + c1f.y * ny >= 0;
+    const b1 = front
+      ? { x: c1f.x * lo.kF, y: c1f.y * lo.kF }
+      : { x: c1b.x * lo.kB, y: c1b.y * lo.kB };
+    const b2 = { x: c2.x * lo.kL, y: c2.y * lo.kL };
+    const b3 = { x: 0, y: -aZ * lo.kZ };
+    const e = 1 / (lo.P - 1);
+    const dual = (v: number): number => Math.sign(v) * Math.abs(v) ** e;
+    const u1 = dual(b1.x * nx + b1.y * ny);
+    const u2 = dual(b2.x * nx + b2.y * ny);
+    const u3 = dual(b3.x * nx + b3.y * ny);
     const k =
       1 /
-      (Math.pow(
-        Math.abs(u1) ** HULL_P + Math.abs(u2) ** HULL_P + Math.abs(u3) ** HULL_P,
-        1 / HULL_P,
-      ) || 1e-6);
-    const w1 = u1 * k;
-    const w2 = u2 * k;
-    const w3 = u3 * k;
+      ((Math.abs(u1) ** lo.P + Math.abs(u2) ** lo.P + Math.abs(u3) ** lo.P) ** (1 / lo.P) ||
+        1e-6);
     return {
-      x: c1.x * w1 + c2.x * w2 + c3.x * w3,
-      y: c1.y * w1 + c2.y * w2 + c3.y * w3,
+      x: (b1.x * u1 + b2.x * u2 + b3.x * u3) * k,
+      y: -aZ * lo.z0 + (b1.y * u1 + b2.y * u2 + b3.y * u3) * k,
     };
   };
-  return { aF, aB, aL, aZ, c1f, c1b, c2, c3, st, support };
+  const support = (nx: number, ny: number): { x: number; y: number } => {
+    const a = lobeSupport(CRANIUM, nx, ny);
+    const b = lobeSupport(JAW, nx, ny);
+    return a.x * nx + a.y * ny >= b.x * nx + b.y * ny ? a : b;
+  };
+  // Crown sections (helm brim, hairline) live on the cranium lobe.
+  const ring = (zR: number, t: number): { x: number; y: number; d: number } => {
+    const zl = Math.max(-0.99, Math.min(0.99, (zR - CRANIUM.z0) / CRANIUM.kZ));
+    const ct = Math.cos(t);
+    const stn = Math.sin(t);
+    const rho = Math.pow(
+      (1 - Math.abs(zl) ** CRANIUM.P) / (Math.abs(ct) ** CRANIUM.P + Math.abs(stn) ** CRANIUM.P),
+      1 / CRANIUM.P,
+    );
+    const F = rho * ct * (ct >= 0 ? CRANIUM.kF : CRANIUM.kB);
+    const L = rho * stn * CRANIUM.kL;
+    return st(F, L, zR);
+  };
+  return { aF, aB, aL, aZ, c1f, c1b, c2, c3, st, support, ring };
 }
 
 /**
@@ -583,14 +608,8 @@ export function paintHobgoblinHead(
   const ringPts = (zR: number): Array<{ x: number; y: number; d: number }> => {
     const pts: Array<{ x: number; y: number; d: number }> = [];
     for (let i = 0; i < 20; i++) {
-      const t = (i / 20) * Math.PI * 2;
-      const ct = Math.cos(t);
-      const stn = Math.sin(t);
-      const rho = Math.pow(
-        (1 - Math.abs(zR) ** HULL_P) / (Math.abs(ct) ** HULL_P + Math.abs(stn) ** HULL_P),
-        1 / HULL_P,
-      );
-      pts.push(st(rho * ct, rho * stn, zR));
+      const p = hull.ring(zR, (i / 20) * Math.PI * 2);
+      pts.push({ x: headX + p.x, y: headY + p.y, d: p.d });
     }
     return pts;
   };
@@ -651,14 +670,14 @@ export function paintHobgoblinHead(
   const crest: Fix[] = [];
   const horns: Fix[] = [];
   const normFix = (F: number, L: number, Z: number, r: number): Fix => {
-    // Seated ON the superellipsoid surface: normalize in the hull's
-    // own P-norm, so a fixture's base touches the skin it is riveted
-    // to at every band (a 2-norm seat sat slightly sunken).
-    const v =
-      Math.pow(Math.abs(F) ** HULL_P + Math.abs(L) ** HULL_P + Math.abs(Z) ** HULL_P, 1 / HULL_P) || 1;
+    // Seated on the CRANIUM dome (the crown lobe is near-ellipsoid at
+    // its P): normalize in the lobe frame, so crest and horns touch
+    // the skin they are riveted to at every band.
+    const zl = (Z - 0.34) / 0.66;
+    const v = Math.hypot(F, L, zl) || 1;
     const F0 = F / v;
     const L0 = L / v;
-    const Z0 = Z / v;
+    const Z0 = 0.34 + 0.66 * (zl / v);
     const p = st(F0, L0, Z0);
     const q = st(F0 * 1.5, L0 * 1.5, Z0 * 1.5);
     let nx = q.x - p.x;
@@ -815,8 +834,8 @@ export function paintHobgoblinHead(
       // The peak: hair dips a point down the brow's center line —
       // hung off the hairline ring's own forward station, so it
       // walks the turn and leaves with the face.
-      const rho0 = Math.pow(1 - zRim ** HULL_P, 1 / HULL_P);
-      const pk = st(rho0, 0, zRim);
+      const pk0 = hull.ring(zRim, 0);
+      const pk = { x: headX + pk0.x, y: headY + pk0.y, d: pk0.d };
       if (pk.d > 0.05) {
         ctx.beginPath();
         ctx.moveTo(pk.x - hw * 0.22, pk.y);

@@ -8567,7 +8567,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     const hv = (gob ?? skr ?? hob)!.heavy;
     // The head anchor, through the torso frame's own transform
     // (translate → lean → squash) so the roots ride the drawn skull.
-    const earR = 0.15 * s * (gob ? 1.34 : skr ? 1.42 : 1.08);
+    const earR = 0.15 * s * (gob ? 1.34 : skr ? 1.42 : 1.02);
     const ehx = fx * (gob ? 0.1 : skr ? 0.12 : 0.06) * s * rig.wScale;
     const ehy = (-th - earR * (gob ? 0.42 : skr ? 0.34 : 0.66)) * (1 + (1 - rig.wScale) * 0.55);
     const cosE = Math.cos(lean);
@@ -8754,7 +8754,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // frame, carried HIGH on a real neck (the only dialect that stands
   // parade-straight): every other monstrous head slumps, sinks, or
   // juts, and the upright carry against them IS the discipline read.
-  const headR = 0.15 * s * (kob ? 1.16 : gno ? 1.22 : gob ? 1.34 : gol ? 1.04 : ogr ? 0.98 : skr ? 1.42 : hob ? 1.08 : 1);
+  const headR = 0.15 * s * (kob ? 1.16 : gno ? 1.22 : gob ? 1.34 : gol ? 1.04 : ogr ? 0.98 : skr ? 1.42 : hob ? 1.02 : 1);
   const headX =
     kob ? fx * 0.14 * s : gno ? fx * 0.19 * s : gob ? fx * 0.1 * s : gol ? fx * 0.08 * s : ogr ? fx * 0.12 * s : skr ? fx * 0.12 * s : hob ? fx * 0.06 * s : fx * 0.05 * s;
   const headY =
