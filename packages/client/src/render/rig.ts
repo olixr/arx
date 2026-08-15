@@ -656,6 +656,20 @@ export function faceProfileK(fx: number): number {
 
 /** Shared per-frame IK scratches (see solveLimbInto's contract). */
 const ARM_SOLVE: LimbSolve = { ex: 0, ey: 0, kx: 0, ky: 0 };
+/**
+ * THE FACE SANDWICH's segment channel (the stoop lane, round 2). On
+ * the skral the skull out-widens the shoulder bar, so a front-layer
+ * arm's root half genuinely lives BEHIND the head — painted whole
+ * over the face it sprouted from the eye. The two sandwich stations
+ * in drawHumanoid paint such arms twice around the head: upper arm
+ * under the skull, forearm + hand over it, emerging past the head
+ * silhouette (the depth read the flat pass could never give). The
+ * segment rides a module channel exactly like RIG_DEBUG — rendering
+ * is single-threaded, the stations set it around a drawArm call and
+ * clear it after — so drawArm's crowded positional tail (a live
+ * bench for every new dialect) never has to grow a parameter.
+ */
+let armSegPass: 'under' | 'over' | null = null;
 /** Per-draw knee scratch (hot path, no alloc): the leg loop records
  * each solved knee so the seated arm vocabulary can drape a forearm
  * over the raised kneecap it actually drew. d = hip→foot span; the
@@ -806,7 +820,7 @@ function drawArm(
         ? solveLimb2Into(ARM_SOLVE, sx, sy, hx, hy, ARM_LEN * 0.92 * s, ARM_LEN * 1.18 * s, 1.08, prefX, prefY)
         : solveLimbInto(ARM_SOLVE, sx, sy, hx, hy, ARM_LEN * s, 1.08, prefX, prefY);
 
-  if (RIG_DEBUG.on) RIG_DEBUG.arms.push({ sx, sy, kx, ky, ex, ey });
+  if (RIG_DEBUG.on && armSegPass !== 'over') RIG_DEBUG.arms.push({ sx, sy, kx, ky, ex, ey });
 
   if (gol) {
     drawGolemArm(ctx, gol, sx, sy, kx, ky, ex, ey, s, hurt ?? false, nowMs ?? 0);
@@ -819,7 +833,7 @@ function drawArm(
   }
 
   if (skr) {
-    drawSkralArm(ctx, skr, sx, sy, kx, ky, ex, ey, s, hurt ?? false, nowMs ?? 0);
+    drawSkralArm(ctx, skr, sx, sy, kx, ky, ex, ey, s, hurt ?? false, nowMs ?? 0, armSegPass ?? undefined);
     return { ex, ey, kx, ky };
   }
 
@@ -7835,14 +7849,18 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const strikeSweepBehind = strikeRes !== null && strikeRes.depthSin < -0.32;
   const weaponBehind = (awayDeep && !greatRestFront && strikeRes === null) || strikeSweepBehind;
   const cuff = bodySt?.sleeves === 'full' ? sleeve : undefined;
-  const paintOffArm = (): void => {
+  const paintOffArm = (seg?: 'under' | 'over'): void => {
     // DUAL WIELD: the off blade is the real weapon, carried by the off
     // fist in its OWN grip — raised guard in combat, settling into its
     // full carriage (standard or reversed) at rest. It paints BEFORE
     // the arm — weapon, then fist, the main hand's layering — so the
     // mitt visibly wraps the hilt instead of the grip floating on top
     // of the hand.
-    const offWeapon = offSt?.kind === 'weapon' && rig.offhandItem !== undefined && !archer;
+    // THE FACE SANDWICH: an 'under' pass paints only the arm's root
+    // half — hand-anchored gear (weapon, shield, straps) belongs to
+    // the 'over' pass with the forearm that carries it.
+    const offWeapon =
+      offSt?.kind === 'weapon' && rig.offhandItem !== undefined && !archer && seg !== 'under';
     if (offWeapon && offSt) {
       drawHeldItem(ctx, rig.offhandItem!, offSt.color, offX, offY, offBladeAngle, s, rig, {
         ench: rig.offhandEnch,
@@ -7857,7 +7875,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // then the enarmes struck back over the sleeve so the limb reads
     // as genuinely threaded through the straps.
     const shieldBehindArm = shieldFr !== null && shieldFr.seeBack;
-    if (shieldSt && shieldFr && shieldBehindArm) {
+    if (shieldSt && shieldFr && shieldBehindArm && seg !== 'under') {
       drawShield(ctx, shieldSt, shieldFr, rig.hurt, rig.nowMs);
     }
     // The elbow braces along the boards when a shield claims the arm,
@@ -7867,6 +7885,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     const claim = shieldFr ? 1 - shieldFr.sling : 0;
     const armPoleX = freePoleX + (shieldFr ? (shieldFr.poleX - freePoleX) * claim : 0);
     const armPoleY = 1 + (shieldFr ? (shieldFr.poleY - 1) * claim : 0);
+    armSegPass = seg ?? null;
     const joints = drawArm(
       ctx,
       offShX,
@@ -7891,14 +7910,15 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ogr,
       skr,
     );
-    if (shieldSt && shieldFr) {
+    armSegPass = null;
+    if (shieldSt && shieldFr && seg !== 'under') {
       if (shieldBehindArm) drawShieldStraps(ctx, shieldSt, shieldFr, rig.hurt);
       else drawShield(ctx, shieldSt, shieldFr, rig.hurt, rig.nowMs);
     }
     // Arm-carried offhand rides the solved forearm, same depth layer as
     // the arm itself so the strap never breaks. An archer's off hand is
     // busy holding the bow — the shield sits this one out.
-    if (offSt && offSt.kind !== 'quiver' && !archer && !offWeapon && !shieldSt) {
+    if (offSt && offSt.kind !== 'quiver' && !archer && !offWeapon && !shieldSt && seg !== 'under') {
       drawOffhandOnArm(ctx, offSt, joints, s, profileK, rig.hurt, rig.nowMs);
     }
   };
@@ -8002,7 +8022,8 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const slingFront = bandFlag(mem, 'slingFront', -fy, 0.22, 0.1);
   // (The leg layer, belt gear, and quiver paint down at the depth
   // ladder — after every paint closure exists, before the torso.)
-  const paintMainArm = (): void => {
+  const paintMainArm = (seg?: 'under' | 'over'): void => {
+    armSegPass = seg ?? null;
     drawArm(
       ctx,
       mainShX,
@@ -8028,6 +8049,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ogr,
       skr,
     );
+    armSegPass = null;
   };
   // ---- THE BILLBOARD SOCKET: pauldrons sit on the rig's SHOULDER
   // SOCKETS — and the sockets obey the BILLBOARD's law, not a 3D
@@ -8961,6 +8983,29 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     ctx.translate(rig.x, hipY);
     if (lean !== 0) ctx.rotate(lean);
     ctx.scale(wS, hScale);
+  } else if (skr) {
+    // THE FACE SANDWICH's under station (the stoop lane, round 2):
+    // the skral skull out-widens the shoulder bar, so every front-
+    // layer arm's ROOT half genuinely lives behind the head — during
+    // strikes the shoulder even slides along the bar toward the hand,
+    // parking the root at the spine center, dead behind the face.
+    // Painted whole on the front layer the arm sprouted from the eye
+    // (the deepking strike / tidecaller cast verdicts). Here — after
+    // the body, before the head — each arm that the tail will paint
+    // on the front layer lays down its UPPER segment, in world space
+    // exactly like the headOverArms dance above; the skull then
+    // paints over it, and the tail's 'over' pass draws the forearm +
+    // hand emerging past the head silhouette. Same guards as the
+    // tail stations, so the two halves can never disagree about
+    // which arms are on the front layer.
+    ctx.restore();
+    if (offFront) paintOffArm('under');
+    if (!weaponBehind && !mainBehind) paintMainArm('under');
+    if (mainBehind) paintOffArm('under');
+    ctx.save();
+    ctx.translate(rig.x, hipY);
+    if (lean !== 0) ctx.rotate(lean);
+    ctx.scale(wS, hScale);
   }
 
   // ---- head (inside the squash frame so turning carries it too).
@@ -9689,14 +9734,18 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // in which case the NEAR (off) arm is the foremost thing instead.
   // Facing the camera the off arm joins the front layer too — under
   // the main pair, so the weapon stays the boldest thing on screen.
-  if (offFront && !headOverArms) paintOffArm();
+  // THE FACE SANDWICH's over station: the skral front-layer arms
+  // painted their upper segments under the head above — here only the
+  // forearm + webbed hand land, emerging past the skull's silhouette.
+  const seg = skr ? ('over' as const) : undefined;
+  if (offFront && !headOverArms) paintOffArm(seg);
   if (!weaponBehind && !mainBehind && !headOverArms) {
     // A split carry keeps only its near range here — the far half
     // already painted under the torso.
     paintWeapon(splitNear ?? undefined);
-    paintMainArm();
+    paintMainArm(seg);
   }
-  if (mainBehind) paintOffArm();
+  if (mainBehind) paintOffArm(seg);
   // Visible shoulder caps paint over everything on their layer — the
   // near cap over its arm's root, and from behind, both caps over the
   // backplate where the camera can actually see them.

@@ -1147,17 +1147,38 @@ export function drawSkralArm(
   s: number,
   hurt: boolean,
   nowMs: number,
+  /**
+   * THE FACE SANDWICH (the stoop lane, round 2): the skral's skull is
+   * WIDER than its shoulder bar, so a front-layer arm's ROOT half
+   * lives behind the head — painted whole over the face it read as
+   * sprouting from the eye (the deepking strike / tidecaller cast
+   * screenshots). The rig paints the arm in two passes around the
+   * head: 'under' = the upper arm only (shoulder→elbow, occluded by
+   * the skull), 'over' = forearm + fin + webbed hand, emerging past
+   * the head silhouette. Undefined paints the whole arm (the behind-
+   * torso layers and the settled rest, where the head already covers
+   * everything). The two passes butt-join at the elbow with round
+   * caps — pixels identical to a single pass wherever the head
+   * doesn't overlap.
+   */
+  seg?: 'under' | 'over',
 ): void {
   void nowMs;
   const hv = 0.9 + 0.2 * sk.heavy;
   ctx.lineCap = 'round';
   // Upper arm, then a slightly lighter forearm — wet hide catches sky.
-  ctx.strokeStyle = hurt ? '#ffffff' : shade(sk.hide, -4);
-  ctx.lineWidth = Math.max(2, s * 0.06 * hv);
-  ctx.beginPath();
-  ctx.moveTo(sx, sy);
-  ctx.lineTo(kx, ky);
-  ctx.stroke();
+  if (seg !== 'over') {
+    ctx.strokeStyle = hurt ? '#ffffff' : shade(sk.hide, -4);
+    ctx.lineWidth = Math.max(2, s * 0.06 * hv);
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(kx, ky);
+    ctx.stroke();
+  }
+  if (seg === 'under') {
+    ctx.lineCap = 'butt';
+    return;
+  }
   ctx.strokeStyle = hurt ? '#ffffff' : shade(sk.hide, 2);
   ctx.lineWidth = Math.max(2, s * 0.052 * hv);
   ctx.beginPath();
