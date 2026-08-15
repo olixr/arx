@@ -34013,8 +34013,19 @@ export class Renderer {
             const wxF = p.x + s * 0.1 + skew;
             const wyF = baseY - s * 0.3 - deep * 0.85;
             const wrF = s * 0.32;
+            // THE WHEEL WEARS ITS OWN LINE (user verdict): the
+            // outline pass inks only the sprite's outer silhouette,
+            // so a wheel lapping the bed lost its edge mid-arc.
+            // Wheels are external items — each rim rides its own
+            // full ring, painted in the pass's own ink so the two
+            // lines are one voice.
+            ctx.strokeStyle = '#241a2e';
+            ctx.lineWidth = Math.max(3, s * 0.125);
+            ctx.beginPath();
+            ctx.ellipse(wxF, wyF, wrF, wrF * 1.02, 0, 0, Math.PI * 2);
+            ctx.stroke();
             ctx.strokeStyle = shade(TWN_OAK_DARK, -12);
-            ctx.lineWidth = Math.max(2, s * 0.055);
+            ctx.lineWidth = Math.max(1.5, s * 0.048);
             ctx.beginPath();
             ctx.ellipse(wxF, wyF, wrF, wrF * 1.02, 0, 0, Math.PI * 2);
             ctx.stroke();
@@ -34226,6 +34237,16 @@ export class Renderer {
             const wx = p.x + s * 0.1;
             const wy = baseY - s * 0.3;
             const wr = s * 0.34;
+            // The near wheel's own ring first (the wheel-wears-its-
+            // own-line law): one wide band of the outline ink under
+            // the rim, so both the tyre's outer edge and the
+            // felloe's inner edge stay inked across the bed and the
+            // cargo, full circle.
+            ctx.strokeStyle = '#241a2e';
+            ctx.lineWidth = Math.max(3, s * 0.175);
+            ctx.beginPath();
+            ctx.ellipse(wx, wy, wr - s * 0.02, (wr - s * 0.02) * 1.03, 0, 0, Math.PI * 2);
+            ctx.stroke();
             ctx.strokeStyle = TWN_IRON;
             ctx.lineWidth = Math.max(2, s * 0.05);
             ctx.beginPath();
@@ -34245,6 +34266,12 @@ export class Renderer {
               ctx.lineTo(wx + Math.cos(a) * (wr - s * 0.07), wy + Math.sin(a) * (wr - s * 0.07) * 1.03);
               ctx.stroke();
             }
+            // The hub takes its own ink disc under the wood — the
+            // wheel's center reads as an object even over the bolts.
+            ctx.fillStyle = '#241a2e';
+            ctx.beginPath();
+            ctx.ellipse(wx, wy, s * 0.095, s * 0.095, 0, 0, Math.PI * 2);
+            ctx.fill();
             ctx.fillStyle = TWN_OAK_DARK;
             ctx.beginPath();
             ctx.ellipse(wx, wy, s * 0.075, s * 0.075, 0, 0, Math.PI * 2);
