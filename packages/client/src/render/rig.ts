@@ -16202,19 +16202,34 @@ export function paintGiantCrabBody(
       ctx.lineCap = 'round';
       ctx.lineWidth = Math.max(1.4, s * 0.032);
       ctx.beginPath();
-      // The stem: FROM the socket's own surface point, through the
-      // chain — the bridge segment spans whatever the projection
-      // opens between anchor and socket, so attachment is structural.
-      ctx.moveTo(sock.x, sock.y - s * 0.012);
-      ctx.lineTo(axp + pts[0]!.x * s, ayp + pts[0]!.y * s);
-      for (let i = 1; i < pts.length; i++) {
-        ctx.lineTo(axp + pts[i]!.x * s, ayp + pts[i]!.y * s);
+      // THE GRAFT: the drawn stalk interpolates from the socket's own
+      // surface point INTO the sim chain — base exactly ON the shell,
+      // tip exactly where the physics put it, one continuous curve
+      // between. A separate bridge segment kinked above the skyline
+      // at the diagonals (user-flagged); a graft has no seam to kink,
+      // at any band, live sim or rest chain alike.
+      const gx0 = sock.x;
+      const gy0 = sock.y - s * 0.012;
+      let ex1 = gx0;
+      let ey1 = gy0;
+      ctx.moveTo(gx0, gy0);
+      for (let i = 0; i < pts.length; i++) {
+        const t = pts.length > 1 ? i / (pts.length - 1) : 1;
+        // Ease into the chain: the lower stalk belongs to the socket,
+        // the upper stalk to the sim — full physics by the tip.
+        const w = t * t * (3 - 2 * t);
+        ex1 = gx0 + (axp + pts[i]!.x * s - gx0) * (0.35 + 0.65 * w);
+        ey1 = gy0 + (ayp + pts[i]!.y * s - gy0) * (0.35 + 0.65 * w);
+        if (i === 0) {
+          // The first grafted node sits just off the socket — the
+          // stem leaves the dome, never teleports past it.
+          ex1 = gx0 + (ex1 - gx0) * 0.4;
+          ey1 = gy0 + (ey1 - gy0) * 0.4;
+        }
+        ctx.lineTo(ex1, ey1);
       }
       ctx.stroke();
       ctx.lineCap = 'butt';
-      const tip = pts[pts.length - 1]!;
-      const ex1 = axp + tip.x * s;
-      const ey1 = ayp + tip.y * s;
       // The eye bead: a faceted amber drop with a dark core and one
       // wet glint — the only warm note on the whole cold animal.
       ctx.fillStyle = look.eye;
