@@ -14,6 +14,11 @@
 //   ?cols=a-b   column banding for close-ups (E/W cells)
 //   ?det=1      DETERMINISTIC mode: fixed 60Hz steps run synchronously
 //               on the first frame; ?detn=N sets the step count.
+//   ?ol=1       OUTLINE mode: every figure rings through a faithful
+//               simulation of the renderer's 8-tap dilate (same
+//               radius law r = max(1.25, s·0.04), integer taps,
+//               the world's #241a2e ink, ring UNDER the art) — the
+//               in-game silhouette read without launching the game.
 import {
   COLOSSUS_LOOK,
   LegSolver,
@@ -28,11 +33,71 @@ import { BobtailSim, drawTurtleTail } from '../render/tail.js';
 import { PoseState } from '@arx/shared';
 
 const canvas = document.getElementById('lab') as HTMLCanvasElement;
-const ctx = canvas.getContext('2d')!;
+// `let`, never `const`: outline mode swaps the sheet's ctx out from
+// under the painters mid-cell — the exact contract the renderer's
+// paintOutlineScratch runs on the live game's draw closures.
+let ctx = canvas.getContext('2d')!;
 
 const q = new URLSearchParams(location.search);
 const S = Math.max(60, parseInt(q.get('s') ?? '110', 10) || 110); // scale px per tile (?s= zoom lever)
 const YS = 0.6; // camera y foreshorten (world-y tile → screen), renderer's yScale
+const OL = q.get('ol') === '1'; // ring every figure with the renderer's dilate
+
+// The outline simulation scratches (renderer's paintOutlineScratch,
+// at the lab's 1× dpr): art into A believing it is the frame, B
+// becomes the dilated tinted silhouette, ring first then art on top.
+const olA = document.createElement('canvas');
+const olB = document.createElement('canvas');
+const olACtx = olA.getContext('2d')!;
+const olBCtx = olB.getContext('2d')!;
+const OL_TAPS: ReadonlyArray<readonly [number, number]> = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [0.71, 0.71],
+  [-0.71, 0.71],
+  [0.71, -0.71],
+  [-0.71, -0.71],
+];
+
+function paintCellOutlined(x0: number, y0: number, w0: number, h0: number, paint: () => void): void {
+  const r = Math.max(1.25, S * 0.04); // the renderer's radius law
+  const m = Math.ceil(r) + 2;
+  const w = w0 + m * 2;
+  const h = h0 + m * 2;
+  if (olA.width !== w || olA.height !== h) {
+    olA.width = olB.width = w;
+    olA.height = olB.height = h;
+  }
+  olACtx.setTransform(1, 0, 0, 1, 0, 0);
+  olACtx.clearRect(0, 0, w, h);
+  olACtx.setTransform(1, 0, 0, 1, m - x0, m - y0);
+  const prev = ctx;
+  ctx = olACtx;
+  try {
+    paint();
+  } finally {
+    ctx = prev;
+    olACtx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+  // INTEGER taps, same law as the renderer (fractional offsets
+  // bilinear-soften the ring).
+  const ri = Math.max(1, Math.round(r));
+  const rd = Math.max(1, Math.round(r * 0.71));
+  olBCtx.setTransform(1, 0, 0, 1, 0, 0);
+  olBCtx.clearRect(0, 0, w, h);
+  for (const [tx, ty] of OL_TAPS) {
+    const diag = tx !== 0 && ty !== 0;
+    olBCtx.drawImage(olA, Math.sign(tx) * (diag ? rd : ri), Math.sign(ty) * (diag ? rd : ri));
+  }
+  olBCtx.globalCompositeOperation = 'source-in';
+  olBCtx.fillStyle = '#241a2e';
+  olBCtx.fillRect(0, 0, w, h);
+  olBCtx.globalCompositeOperation = 'source-over';
+  ctx.drawImage(olB, x0 - m, y0 - m);
+  ctx.drawImage(olA, x0 - m, y0 - m);
+}
 
 const DIRS = [
   ['S', Math.PI / 2],
@@ -289,12 +354,16 @@ function drawSheet(now: number, dt: number): void {
     ctx.stroke();
 
     // Ruler cells: the player stands a stride west of the shell.
-    if (f.ruler) {
-      drawMan(f, homeX - 0.95 * S, homeY, now, dt);
-      drawQuad(f, homeX + 0.45 * S, homeY, f.dir, f.mode, f.seed, now, dt);
-    } else {
-      drawQuad(f, homeX, homeY, f.dir, f.mode, f.seed, now, dt);
-    }
+    const paintFig = (): void => {
+      if (f.ruler) {
+        drawMan(f, homeX - 0.95 * S, homeY, now, dt);
+        drawQuad(f, homeX + 0.45 * S, homeY, f.dir, f.mode, f.seed, now, dt);
+      } else {
+        drawQuad(f, homeX, homeY, f.dir, f.mode, f.seed, now, dt);
+      }
+    };
+    if (OL) paintCellOutlined(homeX - CW / 2, homeY - Math.round(S * 2.4), CW, CH, paintFig);
+    else paintFig();
     ctx.fillStyle = '#e8e4d8';
     ctx.font = '13px monospace';
     ctx.textAlign = 'center';
