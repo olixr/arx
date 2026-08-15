@@ -9895,9 +9895,10 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     hipSide: 0.5,
     legW: 0.095,
     foot: 'hoof',
-    // The dairy body dwarfs a mid-size hoof: the block scales up to
-    // meet the leg it carries.
-    footScale: 1.3,
+    // Cattle legs are already thick — the standard hoof proportion
+    // over-blocks them, so the dial runs BELOW one (the 1.3 cut made
+    // slippers; a hoof is barely wider than the cannon above it).
+    footScale: 0.85,
     legColor: '#d9ccb8',
   },
   bull: {
@@ -9916,7 +9917,7 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     hipSide: 0.5,
     legW: 0.105,
     foot: 'hoof',
-    footScale: 1.3,
+    footScale: 0.85,
     legColor: '#584a3d',
   },
   wolf: {
@@ -18943,20 +18944,22 @@ export function drawBeast(
       return;
     }
 
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = tone(legColor);
-    ctx.lineWidth = Math.max(2, spec.legW * s);
-    ctx.beginPath();
-    ctx.moveTo(hipX, hipY);
-    ctx.lineTo(kx, ky);
-    ctx.stroke();
-    ctx.strokeStyle = tone(shinColor);
-    ctx.lineWidth = Math.max(1.5, spec.legW * s * 0.78);
-    ctx.beginPath();
-    ctx.moveTo(kx, ky);
-    ctx.lineTo(ex, ey);
-    ctx.stroke();
-    ctx.lineCap = 'butt';
+    const paintShin = (): void => {
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = tone(legColor);
+      ctx.lineWidth = Math.max(2, spec.legW * s);
+      ctx.beginPath();
+      ctx.moveTo(hipX, hipY);
+      ctx.lineTo(kx, ky);
+      ctx.stroke();
+      ctx.strokeStyle = tone(shinColor);
+      ctx.lineWidth = Math.max(1.5, spec.legW * s * 0.78);
+      ctx.beginPath();
+      ctx.moveTo(kx, ky);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    };
 
     // Feet: the species' contact chip, painted in THE GROUND FRAME.
     // THE FOOT KNOWS THE GROUND: a foot is a ground-plane object — its
@@ -18990,6 +18993,15 @@ export function drawBeast(
     const ffy = Math.sin(footA) * ys;
     const fsx = -Math.sin(footA);
     const fsy = Math.cos(footA) * ys;
+    // THE FOOT SITS UNDER ITS LEG (the 2.5D skew law): 0 toward the
+    // camera → 1 pointing dead away. A foot bearing away shows its
+    // HEEL — the claws foreshorten to nubs — and it paints BEFORE
+    // the shin (below, in the layering), so the leg overlaps the
+    // pad's rear exactly as the bird's-eye skew demands. Painted
+    // after the shin at the back bands, pads and talons stacked OVER
+    // the leg and the foot read as inverted.
+    const away = Math.max(0, -Math.sin(footA));
+    const paintFoot = (): void => {
     if (spec.foot === 'claw') {
       // Splayed bird toes, fanning along the facing.
       ctx.strokeStyle = footColor;
@@ -19065,7 +19077,7 @@ export function drawBeast(
       for (const v of BEAR_TOES) {
         const ru = (0.5 + 0.12 * (1 - Math.abs(v))) * W * curl;
         const rv = v * W;
-        const cl = W * (0.52 - 0.2 * digitCurl);
+        const cl = W * (0.52 - 0.2 * digitCurl) * (1 - 0.68 * away);
         const tu = ru + cl;
         const tv = rv + v * W * 0.28;
         ctx.beginPath();
@@ -19109,7 +19121,7 @@ export function drawBeast(
       // round column base rimmed with three BLUNT toenail wedges —
       // no web, no rake, just weight.
       const heavy = opts.defId === 'colossus_turtle';
-      const W = spec.legW * (heavy ? 1.05 : 1.2) * (spec.footScale ?? 1);
+      const W = spec.legW * (heavy ? 0.95 : 1.2) * (spec.footScale ?? 1);
       const curl = 1 - 0.3 * digitCurl;
       const skin = spec.legColor ?? opts.color;
       ctx.save();
@@ -19133,7 +19145,7 @@ export function drawBeast(
         for (const v of TURTLE_CLAW_FAN) {
           const rv = v * 0.95 * W;
           const u0 = 0.42 * W * curl;
-          const tip = 1.0 * W * curl;
+          const tip = u0 + 0.58 * W * curl * (1 - 0.7 * away);
           ctx.beginPath();
           ctx.moveTo(u0, rv - 0.21 * W);
           ctx.lineTo(tip, rv - 0.12 * W + v * 0.12 * W);
@@ -19148,7 +19160,7 @@ export function drawBeast(
         for (const v of TURTLE_CLAW_FAN) {
           const ru = (0.5 + 0.1 * (1 - Math.abs(v))) * W * curl;
           const rv = v * 0.95 * W;
-          const cl = W * (0.62 - 0.24 * digitCurl) * (1 - 0.15 * Math.abs(v));
+          const cl = W * (0.62 - 0.24 * digitCurl) * (1 - 0.15 * Math.abs(v)) * (1 - 0.68 * away);
           const tu = ru + cl;
           const tv = rv + v * W * 0.5;
           ctx.beginPath();
@@ -19201,6 +19213,14 @@ export function drawBeast(
         ctx.stroke();
       }
       ctx.restore();
+    }
+    };
+    if (Math.sin(footA) < 0) {
+      paintFoot();
+      paintShin();
+    } else {
+      paintShin();
+      paintFoot();
     }
   };
   // Depth split by where each foot ACTUALLY is, not its rest pose —
