@@ -975,19 +975,16 @@ export class Sfx {
   footstep(mat: 'grass' | 'stone' | 'wood' | 'dirt' | 'sand' | 'cave' | 'wet', vol: number): void {
     switch (mat) {
       case 'grass': {
-        // A boot pressing INTO blades, not brushing over a surface: a
-        // stagger of tiny foliage grains — narrow random bands, random
-        // spacing, so no two steps ever swish alike (the fixed-band
-        // pair before this read as cloth, the user's verdict) — over
-        // one soft earth contact underneath the green.
-        let at = 0;
-        for (let i = 0; i < 4; i++) {
-          this.noise(0.014 + Math.random() * 0.03, vol * (0.55 - i * 0.09), at, {
-            band: 1500 + Math.random() * 2700,
-          });
-          at += 0.01 + Math.random() * 0.03;
-        }
-        this.noise(0.055, vol * 0.5, 0.008, { band: 560 });
+        // THE SOFT-STEP LAW at its softest: stepping in grass is
+        // nearly silent — a muted low CRUSH, felt more than heard.
+        // Two long, low-banded grains folding into each other (short
+        // high-banded grains read as paper or gravel — user verdict,
+        // twice) with one whisper of blade-tips far underneath.
+        this.noise(0.07 + Math.random() * 0.03, vol * 0.5, 0, { band: 650 + Math.random() * 250 });
+        this.noise(0.09 + Math.random() * 0.04, vol * 0.32, 0.025, {
+          band: 950 + Math.random() * 350,
+        });
+        this.noise(0.05, vol * 0.1, 0.01, { band: 2000 + Math.random() * 500 });
         break;
       }
       case 'stone':
