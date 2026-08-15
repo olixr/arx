@@ -1,107 +1,48 @@
 /* ==================================================================
-   THE TECHNIQUES CODEX — the combat arts' own screen (Grand Refit
-   Ph4, the flagship room). The loadout ALTAR up top: four painted
-   seats wearing their live chips. The school RAIL on the left: one
-   crest per school ringed by its climb, Callings last, LT/RT
-   stepping the stops. ONE school's ladder stands on the stage — the
-   eight-ladder scroll is gone — and the chosen art reads on the
-   bench, which renders on focus: inspection costs nothing.
+   THE PROVING HALL — the Techniques room rebuilt (2026-08-15).
+   Anatomy, top to bottom:
+   - THE CREST RAIL: every school a crest across the head, LB/RB
+     stepping the stops, the standing school flooding its accent.
+   - THE PATH: one school's arts as a single center-staged ribbon on
+     a forged spine — the track SLIDES (translate, overflow clip), so
+     nothing ever lives below a fold or behind a scrollbar.
+   - THE READING: the chosen art told as instruments — envelope-scaled
+     measure channels, forged mark seals, the rank spine — never as a
+     grid of stat cards.
+   - THE PROVING GROUND: the live canvas diagram of the cast itself.
+   - THE HAND: the four seats at the foot, where the hotbar lives.
    ================================================================== */
 
 .screen-arts {
   width: min(77.5rem, 94vw);
-  height: min(53.75rem, 90vh);
+  height: min(55rem, 92vh);
 }
 
-/* ---- THE LOADOUT ALTAR: four seats, one story. */
-
-#arts-loadout {
-  flex: none;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 2.25rem;
-  padding: 0.5rem 1.125rem 0.375rem;
-  margin-bottom: 0.625rem;
-  background: var(--sunk);
-  border: 0.125rem solid var(--line);
+/* The room teaches through its furniture now — the hand's own line
+   and the plates' verbs. The generic hint under the title would only
+   spend the reading's height saying it twice. */
+.screen-arts .panel-hint {
+  display: none;
 }
 
-.load-title {
-  align-self: center;
-  flex: none;
-  width: 6rem;
-  font-family: var(--serif);
-  font-size: 0.9375rem;
-  line-height: 1.35;
-  letter-spacing: 0.125rem;
-  text-transform: uppercase;
-  color: var(--parchment-dim);
-  text-shadow: var(--punch-small);
-}
+/* ---- THE CREST RAIL: the schools shoulder to shoulder. ---------- */
 
-/* The altar seat: a kit socket wearing its chip, its office, and the
-   seated art's name under it. */
-.altar-seat {
-  --socket-size: 3.5rem;
-  gap: 0.1875rem;
-  cursor: pointer;
-}
-
-.altar-seat .socket-label {
-  color: var(--gold-bright);
-}
-
-.altar-seat.dormant .socket-well img {
-  filter: grayscale(0.9) brightness(0.75);
-}
-
-.load-name {
-  max-width: 8.5rem;
-  font-size: var(--t-label);
-  font-weight: 700;
-  color: var(--parchment);
-  text-shadow: var(--punch-small);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.load-name.empty {
-  font-style: italic;
-  font-weight: 400;
-  color: var(--parchment-dim);
-  opacity: 0.75;
-}
-
-/* ---- the body: rail left, one school on the stage, bench right. */
-
-.arts-main {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: 13.5rem 1fr 25rem;
-  gap: 0.875rem;
-}
-
-/* THE SCHOOL RAIL: crests down the left edge. */
 #arts-rail {
-  min-height: 0;
+  flex: none;
   display: flex;
-  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
   gap: 0.375rem;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+  padding: 0.25rem 0 0.4375rem;
 }
 
 .rail-stop {
-  --cut: 0.5625rem;
   position: relative;
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  padding: 0.3125rem 0.625rem;
+  gap: 0.4375rem;
+  padding: 0.25rem 0.875rem 0.25rem 0.4375rem;
+  min-width: 0;
   text-align: left;
   background: var(--raise);
   color: var(--parchment);
@@ -109,14 +50,14 @@
   border-radius: 0;
   cursor: pointer;
   clip-path: polygon(
-    var(--cut) 0,
-    calc(100% - var(--cut)) 0,
-    100% var(--cut),
-    100% calc(100% - var(--cut)),
-    calc(100% - var(--cut)) 100%,
-    var(--cut) 100%,
-    0 calc(100% - var(--cut)),
-    0 var(--cut)
+    0.4375rem 0,
+    calc(100% - 0.4375rem) 0,
+    100% 0.4375rem,
+    100% calc(100% - 0.4375rem),
+    calc(100% - 0.4375rem) 100%,
+    0.4375rem 100%,
+    0 calc(100% - 0.4375rem),
+    0 0.4375rem
   );
   box-shadow:
     inset 0 0.125rem 0 rgba(255, 236, 190, 0.07),
@@ -127,178 +68,273 @@
   background: var(--raise-hi);
 }
 
-/* The standing stop: the school's own color floods its left edge. */
+/* The standing stop: lifted, flooded with its school's color, and
+   wearing the gold ground-tongue every active tab in the hall wears. */
 .rail-stop.active {
-  background: var(--raise-hi);
+  background: color-mix(in srgb, var(--skill-accent) 16%, var(--raise-hi));
   box-shadow:
-    inset 0.25rem 0 0 var(--skill-accent),
-    inset 0 0.125rem 0 rgba(255, 236, 190, 0.07),
-    inset 0 -0.1875rem 0 rgba(10, 7, 3, 0.4);
+    inset 0 0.125rem 0 rgba(255, 236, 190, 0.1),
+    inset 0 -0.25rem 0 var(--skill-accent);
 }
 
 .rail-stop .ring-gauge {
-  --ring-size: 2.375rem;
+  --ring-size: 2.25rem;
   --ring-tone: var(--skill-accent);
   flex: none;
 }
 
 .rail-stop .ring-center img {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.1875rem;
+  height: 1.1875rem;
 }
 
 .rail-text {
-  flex: 1;
   display: flex;
-  align-items: baseline;
-  gap: 0.375rem;
+  flex-direction: column;
+  gap: 0.0625rem;
   min-width: 0;
-}
-
-.rail-text .rail-sub {
-  margin-left: auto;
-  flex: none;
 }
 
 .rail-name {
   font-weight: 800;
-  font-size: var(--t-label);
+  font-size: var(--t-whisper);
+  letter-spacing: 0.01875rem;
   text-transform: capitalize;
   text-shadow: var(--punch-small);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 6.25rem;
 }
 
 .rail-sub {
-  font-size: var(--t-whisper);
+  font-size: 0.65625rem;
+  font-weight: 700;
   color: var(--parchment-faint);
   text-shadow: var(--punch-small);
+  white-space: nowrap;
 }
 
 /* Something unseen waits behind this stop. */
 .rail-stop.has-pip::after {
   content: '';
   position: absolute;
-  top: 0.375rem;
-  right: 0.375rem;
-  width: 0.5625rem;
-  height: 0.5625rem;
+  top: 0.3125rem;
+  right: 0.3125rem;
+  width: 0.5rem;
+  height: 0.5rem;
   background: var(--gold-bright);
   transform: rotate(45deg);
-  border: var(--hairline) solid rgba(10, 6, 16, 0.85);
+  border: var(--hairline) solid var(--ink-wash);
 }
 
-/* A school with an art in hand wears a quiet brass tick. */
+/* A school with an art in hand speaks gold. */
 .rail-stop.in-hand-stop .rail-name {
   color: var(--gold-bright);
 }
 
-/* THE STAGE: one school's ladder, whole, no scroll at reference. */
-#arts-schools {
+/* ---- the body grid: THE PATH over THE READING | THE GROUND. ----- */
+
+.arts-main {
+  flex: 1;
   min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 26.5rem;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    'stage stage'
+    'reading ground';
+  gap: 0.625rem 0.75rem;
+}
+
+#arts-schools {
+  grid-area: stage;
+  min-width: 0;
+}
+
+#arts-detail {
+  grid-area: reading;
+}
+
+#arts-ground {
+  grid-area: ground;
+}
+
+/* The callings wing folds the ground away and hands the whole body
+   to the passives: rows on the left, the bench on the right. */
+.wing-callings .arts-main {
+  grid-template-areas: 'stage reading';
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 25rem;
+}
+
+.wing-callings #arts-ground {
+  display: none;
+}
+
+.wing-callings #arts-schools {
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding-right: 0.375rem;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
-}
-
-.arts-school {
-  flex: none;
-  scroll-margin-top: 3.25rem;
-  background: color-mix(in srgb, var(--skill-accent, var(--line)) 9%, var(--raise));
-  border: 0.09375rem solid color-mix(in srgb, var(--skill-accent, var(--line)) 45%, var(--line));
-  border-left: 0.3125rem solid var(--skill-accent, var(--line));
-  padding: 0.75rem 1rem 0.875rem;
-}
-
-/* "N of 10" — how much of the ladder this hand has climbed. */
-.arts-school-count {
-  font-size: 0.71875rem;
-  font-weight: 800;
-  letter-spacing: 0.0375rem;
-  padding: 0.1875rem 0.5rem;
-  color: var(--parchment-dim);
-  background: var(--sunk);
-  border: 0.09375rem solid var(--line);
-  border-radius: 0.25rem;
-  text-shadow: var(--punch-small);
-}
-
-.arts-school-head {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-right: 0.375rem;
+}
+
+/* ---- THE PATH: the school's arts on one sliding ribbon. --------- */
+
+.arts-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4375rem;
+}
+
+.stage-head {
+  display: flex;
+  align-items: baseline;
   gap: 0.625rem;
-  margin-bottom: 0.75rem;
+  padding: 0 0.25rem;
 }
 
-.skill-plaque.sm {
-  width: 2.625rem;
-  height: 2.625rem;
-}
-
-.skill-plaque.sm img {
-  width: 1.875rem;
-  height: 1.875rem;
-}
-
-.arts-school-name {
+.stage-school {
   font-family: var(--serif);
-  font-size: 1.25rem;
+  font-size: 1.375rem;
   font-weight: 700;
   letter-spacing: 0.025rem;
   text-transform: capitalize;
   color: var(--parchment);
-  text-shadow: var(--punch-small);
+  text-shadow: var(--punch);
 }
 
-.arts-school.secret-skill .arts-school-name {
+.arts-stage.secret-skill .stage-school {
   color: var(--gold-bright);
 }
 
-.arts-school-lv {
+.stage-lv {
   font-size: 0.78125rem;
   font-weight: 800;
   letter-spacing: 0.05rem;
-  padding: 0.1875rem 0.5625rem;
+  padding: 0.125rem 0.5rem;
   color: var(--parchment-dim);
   background: var(--sunk);
-  border: 0.09375rem solid var(--line);
-  border-radius: 0.25rem;
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--r-chip);
   text-shadow: var(--punch-small);
 }
 
-/* "In hand": this ladder is the one the R key channels right now. */
-.in-hand {
+.stage-count {
+  font-size: var(--t-whisper);
+  font-weight: 700;
+  color: var(--parchment-faint);
+  text-shadow: var(--punch-small);
+}
+
+.stage-head .in-hand {
   margin-left: auto;
+}
+
+/* Two seated arts in one school: the chips sit together at the edge. */
+.stage-head .in-hand ~ .in-hand {
+  margin-left: 0.375rem;
+}
+
+.stage-head .in-hand {
   font-size: 0.71875rem;
   font-weight: 800;
   letter-spacing: 0.075rem;
   text-transform: uppercase;
-  padding: 0.25rem 0.625rem;
+  padding: 0.1875rem 0.5625rem;
   color: var(--gold-bright);
   background: color-mix(in srgb, var(--gold) 18%, var(--sunk));
-  border: 0.09375rem solid var(--gold);
-  border-radius: 0.25rem;
+  border: var(--hairline) solid var(--gold);
+  border-radius: var(--r-chip);
   text-shadow: var(--punch-small);
 }
 
-/* THE OPEN LADDER: ten plates, five to a row. The rail is no longer
-   one line drawn through the row — each plate carries its own LINK
-   back to the rung before it, so the path lights up plate by plate as
-   the school levels. Links live under the wells (the well socket is
-   opaque and z-raised), which is what killed the old line-over-icon
-   artifact for good. */
-.tech-rail {
-  position: relative;
-  isolation: isolate;
+/* The pointer's edge chevrons: quiet until the ribbon is hovered.
+   The pad never needs them — spatial nav walks clipped plates. */
+.ribbon-nudge {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  translate: 0 -50%;
+  width: 1.625rem;
+  height: 3.25rem;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.875rem 0.625rem;
+  place-items: center;
+  padding: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+  font-family: var(--serif);
+  color: var(--gold-bright);
+  background: rgba(10, 7, 3, 0.72);
+  border: var(--hairline) solid var(--line-strong);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
 }
+
+.ribbon-nudge.prev {
+  left: 0.25rem;
+}
+
+.ribbon-nudge.next {
+  right: 0.25rem;
+}
+
+.path-ribbon:hover .ribbon-nudge {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+body.pad-mode .ribbon-nudge {
+  display: none;
+}
+
+.ribbon-nudge:hover {
+  background: rgba(10, 7, 3, 0.9);
+  color: var(--gold-hot);
+}
+
+/* The ribbon clips; the track slides. `clip` (not hidden) so the
+   focus ring's scrollIntoView can never scroll it out from under the
+   translate — the slide is the only motion this shelf knows. */
+.path-ribbon {
+  position: relative;
+  overflow: clip;
+  padding: 0.4375rem 0 0.125rem;
+  isolation: isolate;
+}
+
+/* The stage floor under the plates: a quiet sunk band with the ink
+   ring, so the ribbon reads as a real shelf, not floating buttons. */
+.path-ribbon::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--sunk);
+  border: var(--rule) solid var(--line);
+  box-shadow:
+    inset 0 0 0 var(--rule) var(--ink-line),
+    inset 0 0.375rem 0.75rem rgba(10, 7, 3, 0.45);
+}
+
+.path-track {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  width: max-content;
+  padding: 0.375rem 0.875rem 0.375rem;
+  translate: 0 0;
+}
+
+body:not(.no-ui-motion) .path-track {
+  transition: translate 300ms cubic-bezier(0.25, 0.7, 0.3, 1);
+}
+
+/* ---- the plates on the path. ------------------------------------ */
 
 .tech-plate-btn {
   position: relative;
@@ -306,20 +342,24 @@
   background: none;
   border: none;
   padding: 0;
-  min-width: 0;
+  width: 5.5rem;
+  flex: none;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3125rem;
+  gap: 0.25rem;
   cursor: pointer;
   font-family: inherit;
   color: var(--parchment);
 }
 
-/* The link to the previous rung: a short bar at well height, running
-   center-to-center under the opaque sockets. Dim until the rung it
-   arrives at is unlocked — then it carries the lit brass of the path
-   already walked. */
+body:not(.no-ui-motion) .tech-plate-btn .tech-plate-well {
+  transition: transform 170ms cubic-bezier(0.3, 0.7, 0.35, 1.2);
+}
+
+/* THE SPINE: each plate's forged link back to the rung before it,
+   running center-to-center at well height UNDER the opaque sockets.
+   Lit brass once the rung it arrives at is climbed. */
 .tech-plate-btn.rail-link::before {
   content: '';
   position: absolute;
@@ -341,8 +381,8 @@
 .tech-plate-well {
   position: relative;
   z-index: 1;
-  width: 3.875rem;
-  height: 3.875rem;
+  width: 3.625rem;
+  height: 3.625rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -351,24 +391,33 @@
 }
 
 .tech-plate-well img {
-  width: 2.625rem;
-  height: 2.625rem;
+  width: 2.5rem;
+  height: 2.5rem;
 }
 
 .tech-plate-btn:hover .tech-plate-well {
   filter: brightness(1.18);
 }
 
-.tech-plate-btn.locked {
+/* The chosen plate stands forward — the ribbon's center stage. */
+.tech-plate-btn.selected .tech-plate-well {
+  transform: scale(1.16);
+  box-shadow:
+    inset 0 0 0 0.15625rem rgba(239, 227, 194, 0.9),
+    inset 0 0 12.5rem rgba(239, 227, 194, 0.08);
+}
+
+.tech-plate-btn.selected .tech-plate-name {
+  color: var(--gold-bright);
+}
+
+.tech-plate-btn.locked,
+.tech-plate-btn.veiled {
   color: var(--parchment-dim);
 }
 
 .tech-plate-btn.locked .tech-plate-well img {
   filter: saturate(0.2) brightness(0.55);
-}
-
-.tech-plate-btn.veiled {
-  color: var(--parchment-dim);
 }
 
 .tech-mystery {
@@ -383,32 +432,38 @@
   font-size: 3rem;
 }
 
-/* Rarity-law states: rings are INSET box-shadows over the well art. */
+/* The veil cap breathes — the mist is alive, not a dead question. */
+body:not(.no-ui-motion) .veil-cap .tech-mystery {
+  animation: veil-breathe 3.4s ease-in-out infinite;
+}
+
+@keyframes veil-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Rarity-law state rings: INSET box-shadows over the well art. */
 .tech-plate-btn.equipped .tech-plate-well {
   box-shadow:
     inset 0 0 0 0.15625rem var(--gold),
     inset 0 0 12.5rem rgba(217, 164, 65, 0.14);
 }
 
-.tech-plate-btn.selected .tech-plate-well {
-  box-shadow:
-    inset 0 0 0 0.15625rem rgba(239, 227, 194, 0.9),
-    inset 0 0 12.5rem rgba(239, 227, 194, 0.08);
-}
-
 .tech-plate-btn.equipped.selected .tech-plate-well {
+  transform: scale(1.16);
   box-shadow:
     inset 0 0 0 0.15625rem var(--gold-hot),
     inset 0 0 12.5rem rgba(217, 164, 65, 0.2);
 }
 
-.tech-plate-btn.selected .tech-plate-name {
-  color: var(--gold-bright);
-}
-
 .tech-plate-name {
   max-width: 100%;
-  font-size: 0.8125rem;
+  font-size: 0.78125rem;
   font-weight: 700;
   text-shadow: var(--punch-small);
   white-space: nowrap;
@@ -417,7 +472,7 @@
 }
 
 .tech-plate-sub {
-  font-size: 0.6875rem;
+  font-size: 0.65625rem;
   font-weight: 700;
   letter-spacing: 0.0375rem;
   color: var(--parchment-dim);
@@ -428,10 +483,37 @@
   color: var(--gold-bright);
 }
 
-/* The chosen-on-R brass seal, overhanging the well's corner. */
-/* The seated seal is the seat's OWN chip (kb cap or pad glyph, the
-   device picks) hung off the plate corner — the badge box retired
-   with seatKey; the chip is the badge now. */
+/* The forged seam between the ladder and the secret shelf. */
+.path-seam {
+  flex: none;
+  align-self: stretch;
+  width: 1.625rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  margin: 0 0.125rem;
+  border-left: var(--hairline) solid var(--line-strong);
+  border-right: var(--hairline) solid var(--ink-line);
+}
+
+.seam-mark {
+  font-size: 0.8125rem;
+  color: var(--gold-bright);
+  text-shadow: var(--punch-small);
+}
+
+.seam-word {
+  writing-mode: vertical-rl;
+  font-size: 0.59375rem;
+  font-weight: 800;
+  letter-spacing: 0.09375rem;
+  text-transform: uppercase;
+  color: var(--parchment-faint);
+}
+
+/* The chosen-seat chip hung off the plate corner. */
 .r-badge {
   position: absolute;
   right: -0.5625rem;
@@ -450,17 +532,15 @@
   font-size: 0.59375rem;
   font-weight: 900;
   letter-spacing: 0.05rem;
-  color: #f6ead0;
-  background: var(--red-soft);
-  border: 0.09375rem solid #140e04;
+  color: var(--parchment);
+  background: var(--ember-deep);
+  border: var(--hairline) solid var(--ink-wash);
   border-radius: 0.1875rem;
   text-shadow: none;
 }
 
-/* On a plate well the pip tucks into the corner instead of covering
-   the art — the plate is the point, the pip is the whisper.
-   (Right-anchored overrides MUST reset left, or the base left:-0.5625rem
-   stretches the pip across the whole well.) */
+/* On a plate well the pip tucks into the corner (right-anchored
+   overrides MUST reset left, or the base left stretches the pip). */
 .tech-plate-well .new-pip {
   left: auto;
   right: -0.5rem;
@@ -480,24 +560,80 @@
   width: 0.5625rem;
   height: 0.5625rem;
   border-radius: 50%;
-  background: #ffd98a;
+  background: var(--gold-hot);
   box-shadow: 0 0 0.375rem rgba(255, 217, 138, 0.8);
 }
 
-/* ---- the bench: the chosen art, spread out and told honestly. */
+/* THE UNWRITTEN PAGE / secret citizenship seal on a plate corner. */
+.earned-seal {
+  position: absolute;
+  left: -0.4375rem;
+  bottom: -0.4375rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: grid;
+  place-items: center;
+  font-size: 0.6875rem;
+  color: var(--gold-bright);
+  background: color-mix(in srgb, var(--gold) 22%, var(--sunk));
+  border: var(--hairline) solid var(--gold);
+  border-radius: 50%;
+  text-shadow: var(--punch-small);
+}
+
+/* THE LESSON at plate scale: the quiet sliver along the well's foot. */
+.plate-lesson {
+  position: absolute;
+  left: 0.25rem;
+  right: 0.25rem;
+  bottom: 0.125rem;
+  height: 0.1875rem;
+  background: var(--ink-wash);
+  overflow: hidden;
+  pointer-events: none;
+}
+.plate-lesson-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--arcane-deep), var(--arcane));
+}
+
+/* A dormant plate sleeps like the hotbar seat does — same language. */
+.tech-plate-btn.dormant .tech-plate-well img {
+  filter: grayscale(0.85) brightness(0.55);
+  opacity: 0.7;
+}
+
+/* ---- THE READING: instruments, not cards. ----------------------- */
 
 #arts-detail {
   min-height: 0;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.8125rem;
-  padding: 1.125rem 1.25rem;
+  gap: 0.4375rem;
+  padding: 0.75rem 1.125rem 0.625rem;
   background: var(--sunk);
-  border: 0.125rem solid var(--line);
+  border: var(--rule) solid var(--line);
+  box-shadow:
+    inset 0 0 0 var(--rule) var(--ink-line),
+    inset 0 0.375rem 0.875rem rgba(10, 7, 3, 0.4);
+  overflow: hidden;
 }
+
+/* The reading's fixed anatomy — code appends in build order, the
+   room lays them in READING order. */
+#arts-detail .bench-head { order: 0; }
+#arts-detail .art-state { order: 1; }
+#arts-detail .rank-spine { order: 2; }
+#arts-detail .bench-next { order: 3; }
+#arts-detail .measures { order: 4; }
+#arts-detail .mark-row { order: 5; }
+#arts-detail .lesson-row { order: 6; }
+#arts-detail .bench-desc { order: 7; }
+#arts-detail .bench-seats { order: 8; }
+#arts-detail .act-btn { order: 8; }
+#arts-detail .bench-teach { order: 9; }
 
 .bench-head {
   display: flex;
@@ -505,10 +641,18 @@
   gap: 0.875rem;
 }
 
+/* The standing chip rides the head's right shoulder. */
+.bench-head .art-state {
+  margin-left: auto;
+  align-self: center;
+  max-width: 15rem;
+  text-align: right;
+}
+
 .bench-plate {
   flex: none;
-  width: 6rem;
-  height: 6rem;
+  width: 4.625rem;
+  height: 4.625rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -517,8 +661,8 @@
 }
 
 .bench-plate img {
-  width: 4.625rem;
-  height: 4.625rem;
+  width: 3.25rem;
+  height: 3.25rem;
 }
 
 .bench-names {
@@ -527,16 +671,19 @@
 
 .bench-name {
   font-family: var(--serif);
-  font-size: 1.6875rem;
+  font-size: 1.4375rem;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1.08;
   color: var(--parchment);
   text-shadow: var(--punch);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .bench-line {
   margin-top: 0.25rem;
-  font-size: 0.78125rem;
+  font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.09375rem;
   text-transform: uppercase;
@@ -546,11 +693,11 @@
 
 .art-state {
   align-self: flex-start;
-  padding: 0.3125rem 0.75rem;
-  font-size: 0.8125rem;
+  padding: 0.25rem 0.6875rem;
+  font-size: 0.78125rem;
   font-weight: 800;
   letter-spacing: 0.0375rem;
-  border: 0.09375rem solid var(--line);
+  border: var(--hairline) solid var(--line);
   text-shadow: var(--punch-small);
 }
 
@@ -562,12 +709,12 @@
 
 .art-state.unlocked {
   color: var(--green);
-  border-color: rgba(125, 196, 106, 0.5);
+  border-color: color-mix(in srgb, var(--green) 50%, transparent);
 }
 
 .art-state.locked {
   color: var(--red-soft);
-  border-color: rgba(217, 87, 99, 0.5);
+  border-color: color-mix(in srgb, var(--red) 50%, transparent);
 }
 
 .art-state.veiled {
@@ -575,19 +722,253 @@
   color: var(--parchment-dim);
 }
 
+/* THE RANK SPINE: one forged road, four studs, the walked length lit. */
+.rank-spine {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  padding: 0.125rem 0.5rem 1.125rem;
+  margin: 0.0625rem 0;
+}
+
+.rank-spine::before {
+  content: '';
+  position: absolute;
+  left: 1.0625rem;
+  right: 1.0625rem;
+  top: 0.875rem;
+  height: 0.1875rem;
+  background: var(--line);
+  box-shadow: 0 0.09375rem 0 var(--ink-line);
+}
+
+.rank-spine::after {
+  content: '';
+  position: absolute;
+  left: 1.0625rem;
+  top: 0.84375rem;
+  height: 0.25rem;
+  /* --walked-n is a bare number 0..1 set by the reading. */
+  width: calc((100% - 2.125rem) * var(--walked-n, 0));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 55%, var(--line)), var(--gold));
+  box-shadow: 0 0 0.3125rem rgba(217, 164, 65, 0.4);
+}
+
+body:not(.no-ui-motion) .rank-spine::after {
+  transition: width 380ms cubic-bezier(0.25, 0.7, 0.3, 1);
+}
+
+.spine-stud {
+  position: relative;
+  z-index: 1;
+  width: 1.375rem;
+  height: 1.375rem;
+  display: grid;
+  place-items: center;
+  background: var(--raise);
+  border: var(--hairline) solid var(--line-strong);
+  transform: rotate(45deg);
+  box-shadow:
+    inset 0 0 0 var(--hairline) var(--ink-line),
+    0.125rem 0.125rem 0 var(--ink-line);
+}
+
+.stud-numeral {
+  transform: rotate(-45deg);
+  font-size: 0.65625rem;
+  font-weight: 800;
+  letter-spacing: 0.03125rem;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.spine-stud.attained {
+  background: color-mix(in srgb, var(--gold) 30%, var(--raise));
+  border-color: var(--gold);
+}
+
+.spine-stud.attained .stud-numeral {
+  color: var(--gold-hot);
+}
+
+.spine-stud.current {
+  box-shadow:
+    inset 0 0 0 var(--hairline) var(--ink-line),
+    0 0 0 0.1875rem color-mix(in srgb, var(--gold) 45%, transparent),
+    0.125rem 0.125rem 0 var(--ink-line);
+}
+
+.stud-under {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  /* Counter the stud's 45° set, THEN drop straight down in screen
+     space — transform functions compose left-to-right in the local
+     frame, so the rotate cancels first and the translate is honest. */
+  transform: rotate(-45deg) translate(-50%, 1.25rem);
+  font-size: 0.59375rem;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--parchment-faint);
+  text-shadow: var(--punch-small);
+}
+
+.bench-next {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+/* THE MEASURES: envelope-scaled instrument channels. */
+.measures {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4375rem;
+}
+
+.measure {
+  display: flex;
+  align-items: center;
+  gap: 0.5625rem;
+}
+
+.m-label {
+  flex: none;
+  width: 4.625rem;
+  text-align: right;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.05rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.m-channel {
+  position: relative;
+  flex: 1;
+  height: 0.8125rem;
+  background: var(--ink-wash);
+  border: var(--hairline) solid var(--line);
+  box-shadow: inset 0 0.125rem 0.25rem rgba(6, 4, 2, 0.6);
+  overflow: hidden;
+}
+
+.m-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--m-tone) 75%, white) 0%,
+    var(--m-tone) 38%,
+    color-mix(in srgb, var(--m-tone) 55%, black) 100%
+  );
+  box-shadow: inset -0.125rem 0 0 color-mix(in srgb, var(--m-tone) 40%, white);
+}
+
+body:not(.no-ui-motion) .m-fill {
+  transition: width 380ms cubic-bezier(0.25, 0.7, 0.3, 1);
+}
+
+/* Tick facets etched into the channel — a tile per notch. */
+.m-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--hairline);
+  background: rgba(20, 14, 8, 0.7);
+}
+
+.m-value {
+  flex: none;
+  min-width: 3.875rem;
+  text-align: left;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--m-tone);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+}
+
+/* THE MARKS: the art's remaining facts as forged chip seals. */
+.mark-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.mark-seal {
+  padding: 0.1875rem 0.5625rem;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.0375rem;
+  text-transform: uppercase;
+  color: var(--m-tone);
+  background: color-mix(in srgb, var(--m-tone) 12%, var(--sunk));
+  border: var(--hairline) solid color-mix(in srgb, var(--m-tone) 45%, var(--line));
+  clip-path: polygon(
+    0.3125rem 0,
+    calc(100% - 0.3125rem) 0,
+    100% 50%,
+    calc(100% - 0.3125rem) 100%,
+    0.3125rem 100%,
+    0 50%
+  );
+  text-shadow: var(--punch-small);
+}
+
 .bench-desc {
   margin: 0;
-  font-size: 0.96875rem;
+  font-size: 0.9375rem;
   font-style: italic;
-  line-height: 1.5;
+  line-height: 1.45;
   color: var(--parchment);
   text-shadow: var(--punch-small);
 }
 
-.bench-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(6.25rem, 1fr));
+/* THE LESSON LAW's meter: the courtship told plainly. */
+.lesson-row {
+  display: flex;
+  align-items: center;
   gap: 0.5rem;
+}
+.lesson-meter {
+  flex: 1;
+  height: 0.5625rem;
+  border: var(--hairline) solid var(--line);
+  background: var(--ink-wash);
+  overflow: hidden;
+}
+.lesson-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--arcane-deep), var(--arcane));
+  transition: width 0.6s ease;
+}
+.lesson-label {
+  flex: none;
+  font-size: var(--t-whisper);
+  letter-spacing: 0.03em;
+  color: var(--arcane);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+}
+
+/* THE SECOND HAND: the two seat verbs, equal citizens — trimmed to
+   the reading's rhythm so the instruments keep their room. */
+.bench-seats {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+.bench-seats > * {
+  flex: 1;
+}
+.bench-seats .act-btn {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+  min-height: 0;
 }
 
 #arts-detail .act-btn {
@@ -595,7 +976,167 @@
   margin-top: 0.125rem;
 }
 
-/* THE FOCUS METER — what the milestones earned, what answering holds. */
+#arts-detail .act-btn.cant {
+  filter: saturate(0.4) brightness(0.75);
+}
+
+.bench-teach {
+  padding-top: 0.4375rem;
+  border-top: var(--hairline) solid var(--line);
+  font-size: 0.71875rem;
+  font-style: italic;
+  line-height: 1.35;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+/* When no seats render, the teach line still sits at the foot. */
+#arts-detail .bench-teach {
+  margin-top: auto;
+}
+
+#arts-detail .bench-seats ~ .bench-teach {
+  margin-top: 0;
+}
+
+.bench-empty {
+  font-style: italic;
+  color: var(--parchment-dim);
+}
+
+/* ---- THE PROVING GROUND: the diagram pane. ---------------------- */
+
+#arts-ground {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+}
+
+.proving-ground {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--sunk);
+  border: var(--rule) solid var(--line);
+  box-shadow:
+    inset 0 0 0 var(--rule) var(--ink-line),
+    inset 0 0.375rem 0.875rem rgba(10, 7, 3, 0.45);
+  overflow: hidden;
+}
+
+.proving-ground canvas {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ground-caption {
+  flex: none;
+  padding: 0.375rem 0.875rem 0.5625rem;
+  font-size: 0.75rem;
+  font-style: italic;
+  text-align: center;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  border-top: var(--hairline) solid var(--line);
+  background: rgba(10, 7, 3, 0.35);
+}
+
+.ground-caption:empty {
+  display: none;
+}
+
+/* ---- THE HAND: the seats at the foot, where the hotbar lives. --- */
+
+#arts-loadout {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1.75rem;
+  padding: 0.4375rem 1.125rem 0.3125rem;
+  margin-top: 0.625rem;
+  background: var(--raise);
+  border: var(--rule) solid var(--line);
+  box-shadow:
+    inset 0 0 0 var(--rule) var(--ink-line),
+    inset 0 0.125rem 0 rgba(255, 236, 190, 0.06);
+}
+
+.load-title {
+  align-self: center;
+  flex: none;
+  font-family: var(--serif);
+  font-size: 0.875rem;
+  line-height: 1.3;
+  letter-spacing: 0.125rem;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.altar-seat {
+  --socket-size: 3.25rem;
+  gap: 0.1875rem;
+  cursor: pointer;
+}
+
+.altar-seat .socket-label {
+  color: var(--gold-bright);
+}
+
+.altar-seat.dormant .socket-well img {
+  filter: grayscale(0.9) brightness(0.75);
+}
+
+/* The seat holding the art on the reading — the eye's anchor. */
+.altar-seat.holds-choice .socket-well {
+  box-shadow:
+    inset 0 0 0 0.15625rem rgba(239, 227, 194, 0.85),
+    0 0 0.625rem rgba(239, 227, 194, 0.25);
+}
+
+.load-name {
+  max-width: 8.5rem;
+  font-size: var(--t-label);
+  font-weight: 700;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.load-name.empty {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--parchment-dim);
+  opacity: 0.75;
+}
+
+/* The seats' law, told once beside them. */
+.hand-teach {
+  align-self: center;
+  max-width: 19rem;
+  font-size: 0.71875rem;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+/* THE SEAT FLIGHT: the plate's face crossing the room to its seat. */
+.seat-flight {
+  position: fixed;
+  z-index: 99;
+  pointer-events: none;
+  filter: drop-shadow(0.125rem 0.1875rem 0 rgba(10, 7, 3, 0.5));
+}
+
+/* ---- the Callings wing (the passives keep their home). ---------- */
+
 .focus-nums {
   font-size: var(--t-body);
   font-weight: 800;
@@ -609,19 +1150,19 @@
   height: 0.625rem;
   min-width: 7.5rem;
   background: var(--sunk);
-  border: 0.09375rem solid var(--line);
+  border: var(--hairline) solid var(--line);
   border-radius: 0.3125rem;
   overflow: hidden;
 }
 
 .focus-fill {
   height: 100%;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 65%, #7a5a1a), var(--gold));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 65%, var(--gold-deep)), var(--gold));
   transition: width 200ms ease;
 }
 
 .focus-fill.full {
-  background: linear-gradient(90deg, #a8623a, #d98a5a);
+  background: linear-gradient(90deg, var(--ember-deep), var(--red-soft));
 }
 
 .focus-teach {
@@ -631,13 +1172,12 @@
   text-shadow: var(--punch-small);
 }
 
-/* Calling rows: each skill's pair of passives. */
 .calling-row {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.4375rem 0.625rem;
-  border: 0.09375rem solid var(--line);
+  border: var(--hairline) solid var(--line);
   border-radius: 0.375rem;
   background: color-mix(in srgb, var(--sunk) 55%, transparent);
 }
@@ -685,7 +1225,7 @@
   text-align: left;
   padding: 0.375rem 0.625rem;
   background: var(--sunk);
-  border: 0.09375rem solid var(--line);
+  border: var(--hairline) solid var(--line);
   border-radius: 0.3125rem;
   cursor: pointer;
   color: var(--parchment);
@@ -716,8 +1256,8 @@
   height: 0.875rem;
   flex: none;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #ffffff8a, var(--gem) 45%, #00000055);
-  border: 0.09375rem solid var(--line);
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.54), var(--gem) 45%, rgba(0, 0, 0, 0.33));
+  border: var(--hairline) solid var(--line);
 }
 
 .call-gem.lg {
@@ -753,153 +1293,3 @@
   display: grid;
   place-items: center;
 }
-
-#arts-detail .act-btn.cant {
-  filter: saturate(0.4) brightness(0.75);
-}
-
-/* THE UNWRITTEN PAGE's mark: this art was earned, not leveled. */
-.earned-seal {
-  position: absolute;
-  left: -0.4375rem;
-  bottom: -0.4375rem;
-  width: 1.25rem;
-  height: 1.25rem;
-  display: grid;
-  place-items: center;
-  font-size: 0.6875rem;
-  color: var(--gold-bright);
-  background: color-mix(in srgb, var(--gold) 22%, var(--sunk));
-  border: 0.09375rem solid var(--gold);
-  border-radius: 50%;
-  text-shadow: var(--punch-small);
-}
-
-/* THE HONED-ART ledger: four rank seals, brass when attained. */
-.rank-ledger {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.rank-seal {
-  min-width: 2.125rem;
-  padding: 0.25rem 0;
-  text-align: center;
-  font-size: 0.78125rem;
-  font-weight: 800;
-  letter-spacing: 0.0625rem;
-  color: var(--parchment-dim);
-  background: var(--sunk);
-  border: 0.09375rem solid var(--line);
-  border-radius: 0.25rem;
-  text-shadow: var(--punch-small);
-}
-
-.rank-seal.attained {
-  color: var(--gold-bright);
-  background: color-mix(in srgb, var(--gold) 14%, var(--sunk));
-  border-color: var(--gold);
-}
-
-.rank-seal.current {
-  box-shadow: 0 0 0 0.125rem color-mix(in srgb, var(--gold) 45%, transparent);
-}
-
-.bench-next {
-  font-size: 0.78125rem;
-  font-style: italic;
-  color: var(--parchment-dim);
-  text-shadow: var(--punch-small);
-}
-
-/* THE QUIET SHELF: the school's secrets sit under their own quiet
-   plaque — a shelf, not more rungs. */
-.secret-shelf-head {
-  margin: 0.625rem 0 0.125rem;
-  font-size: 0.71875rem;
-  font-style: italic;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--parchment-dim);
-  text-shadow: var(--punch-small);
-}
-
-/* THE LESSON at plate scale: a sliver of progress along the well's
-   foot — visible at a glance, still no numerals. */
-.plate-lesson {
-  position: absolute;
-  left: 0.25rem;
-  right: 0.25rem;
-  bottom: 0.125rem;
-  height: 0.1875rem;
-  background: rgba(12, 9, 20, 0.65);
-  overflow: hidden;
-  pointer-events: none;
-}
-.plate-lesson-fill {
-  display: block;
-  height: 100%;
-  background: linear-gradient(90deg, var(--arcane-deep), var(--arcane));
-}
-
-/* A dormant plate sleeps like the hotbar seat does — same language. */
-.tech-plate-btn.dormant .tech-plate-well img {
-  filter: grayscale(0.85) brightness(0.55);
-  opacity: 0.7;
-}
-
-/* THE LESSON LAW's meter: the courtship told plainly — the bar shows
-   the shape of it, the label says the number (user mandate: the
-   player must know how close the art is to staying). */
-.lesson-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.lesson-meter {
-  flex: 1;
-  height: 0.5625rem;
-  border: 0.09375rem solid var(--line);
-  background: rgba(12, 9, 20, 0.55);
-  overflow: hidden;
-}
-.lesson-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--arcane-deep), var(--arcane));
-  transition: width 0.6s ease;
-}
-.lesson-label {
-  flex: none;
-  font-size: var(--t-whisper);
-  letter-spacing: 0.03em;
-  color: var(--arcane);
-  text-shadow: var(--punch-small);
-  white-space: nowrap;
-}
-
-/* THE SECOND HAND: the two seat buttons stand shoulder to shoulder —
-   equal citizens, like the seats they fill. */
-.bench-seats {
-  display: flex;
-  gap: 0.5rem;
-}
-.bench-seats > * {
-  flex: 1;
-}
-
-.bench-teach {
-  margin-top: auto;
-  padding-top: 0.625rem;
-  border-top: 0.09375rem solid var(--line);
-  font-size: 0.78125rem;
-  font-style: italic;
-  color: var(--parchment-dim);
-  text-shadow: var(--punch-small);
-}
-
-.bench-empty {
-  font-style: italic;
-  color: var(--parchment-dim);
-}
-

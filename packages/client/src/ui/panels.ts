@@ -69,8 +69,9 @@ import {
   type SheetVerb,
 } from './kit/contextSheet.js';
 import { ringGauge } from './kit/ring.js';
-import { socket } from './kit/plates.js';
+import { socket, type Socket } from './kit/plates.js';
 import { attachAmbient } from './kit/ambient.js';
+import { provingGround, type ProvingGround } from './artDiagram.js';
 
 /** Card display colors for the three armor weight classes. */
 const CLASS_COLORS: Record<string, string> = {
@@ -253,6 +254,11 @@ export class Panels {
   private readonly artsLoadout = document.getElementById('arts-loadout')!;
   private readonly artsSchools = document.getElementById('arts-schools')!;
   private readonly artsDetail = document.getElementById('arts-detail')!;
+  /** THE PROVING GROUND: the live diagram pane of the chosen art. */
+  private readonly artsGroundHost = document.getElementById('arts-ground')!;
+  private readonly ground: ProvingGround = provingGround();
+  /** The Hand's two art seats, kept for the seat-flight landing flash. */
+  private altarSockets: Socket[] = [];
   /** The technique the codex bench is laying out (null = auto-pick). */
   private artsSel: string | null = null;
   /** The school standing on the stage (the rail's choice). */
@@ -436,6 +442,9 @@ export class Panels {
       if (st !== 'unlocked' && st !== 'equipped') return [];
       return this.seatVerbs(ability, st);
     });
+
+    // THE PROVING GROUND mounts once; renderArtsBench feeds it.
+    this.artsGroundHost.appendChild(this.ground.root);
 
     // A rebind redraws every seat chip the codex is showing.
     bindings.onChange(() => this.refreshDevice());
@@ -622,6 +631,11 @@ export class Panels {
     const artKey = el?.dataset.navkey;
     if (artKey?.startsWith('art:')) {
       this.inspectArt(artKey.slice('art:'.length));
+      return false;
+    }
+    // The veil cap inspects like a plate: the mist tells its size.
+    if (artKey?.startsWith('artveil:')) {
+      this.inspectArt(`veil:${artKey.slice('artveil:'.length)}`);
       return false;
     }
     // The hall's emblems inspect the same way: focus lights the hero.
@@ -2590,14 +2604,20 @@ export class Panels {
     this.markTechSeen(this.artsSel);
     this.renderArtsRail(schools);
 
+    // The room wears its wing: the callings wing folds the proving
+    // ground away and hands the stage to the passives (CSS keys on it).
+    this.artsPanel.classList.toggle('wing-callings', this.artsWing === 'callings');
+
     if (this.artsWing === 'callings') {
+      this.ground.show(null);
       this.renderCallingsWing();
       return;
     }
 
     this.renderArtsLoadout();
     this.artsSchools.innerHTML = '';
-    if (this.artsSchoolSel) this.artsSchools.appendChild(this.artsSchool(this.artsSchoolSel));
+    if (this.artsSchoolSel) this.artsSchools.appendChild(this.artsStage(this.artsSchoolSel));
+    this.recenterRibbon();
     this.renderArtsBench(all);
     this.updateArtsPip();
   }
@@ -2854,7 +2874,10 @@ export class Panels {
           : glyphLine('Seat on •', seatChip(this.seatAction(seat)));
       verbs.push({
         label,
-        act: () => this.onTechnique(ability, seat === 0 ? 0 : 2),
+        act: () => {
+          this.seatFlight(ability, seat);
+          this.onTechnique(ability, seat === 0 ? 0 : 2);
+        },
         padButton: this.seatPadButton(seat),
       });
     }
@@ -2873,13 +2896,14 @@ export class Panels {
     const sigil = itemDef(this.lastEquipment.sigil?.id ?? '');
     this.artsLoadout.innerHTML = '';
     this.artsLoadout.dataset.region = '';
+    this.altarSockets = [];
     const title = document.createElement('span');
     title.className = 'load-title';
-    title.textContent = 'Battle loadout';
+    title.textContent = 'The Hand';
     this.artsLoadout.appendChild(title);
     for (const row of [
-      { action: 'ability1', src: 'First art', ab: this.techniques[0] ?? undefined, empty: 'Choose below', art: true },
-      { action: 'ability3', src: 'Second art', ab: this.techniques[1] ?? undefined, empty: 'Choose below', art: true },
+      { action: 'ability1', src: 'First art', ab: this.techniques[0] ?? undefined, empty: 'Choose above', art: true },
+      { action: 'ability3', src: 'Second art', ab: this.techniques[1] ?? undefined, empty: 'Choose above', art: true },
       { action: 'ability2', src: 'Relic', ab: relic?.relic, empty: 'Wear a relic', art: false },
       { action: 'ability4', src: 'Sigil', ab: sigil?.sigil, empty: 'Fell a boss', art: false },
     ] as const) {
@@ -2890,7 +2914,11 @@ export class Panels {
       const dormant = !!tdef && this.secretDormant(tdef);
       const seat = socket({ action: row.action, label: row.src });
       seat.root.classList.add('altar-seat');
+      if (row.art) this.altarSockets.push(seat);
       if (dormant) seat.root.classList.add('dormant');
+      // The seat holding the art on the reading wears the choice glow —
+      // the eye finds where the chosen art already lives.
+      if (row.art && ab && this.artsSel === ab.id) seat.root.classList.add('holds-choice');
       if (ab) seat.fill(abilityIconUrl(ab.id, 44), ab.name);
       const name = document.createElement('span');
       name.className = 'load-name' + (ab ? '' : ' empty');
@@ -2918,44 +2946,56 @@ export class Panels {
       }
       this.artsLoadout.appendChild(seat.root);
     }
+    // The seats' law, told beside them — the hand explains itself.
+    const teach = document.createElement('div');
+    teach.className = 'hand-teach';
+    teach.appendChild(
+      glyphLine(
+        'The • and • seats both carry any learned art, whatever you wield. Swapping is always free.',
+        seatChip(this.seatAction(0)),
+        seatChip(this.seatAction(1)),
+      ),
+    );
+    this.artsLoadout.appendChild(teach);
   }
 
-  /** One school: its face, level, and the four-rung ladder. */
-  private artsSchool(style: SkillId): HTMLElement {
+  /**
+   * THE PATH — one school's arts as a single center-staged ribbon.
+   * Everything unlocked stands linked on a forged spine; the FIRST
+   * locked rung shows its name and level; every deeper rung condenses
+   * into ONE veil cap ("✦ N more wait past Lv X") — the mist at the
+   * ladder's end, not a row of question marks. Secrets ride the same
+   * ribbon past a forged seam (THE QUIET SHELF still holds: only
+   * secrets this hand has met). The track slides so the chosen art
+   * stands center stage; `overflow: clip` on the ribbon keeps
+   * scrollIntoView from ever fighting the slide.
+   */
+  private artsStage(style: SkillId): HTMLElement {
     const face = SKILL_FACE[style] ?? { icon: 'bread', color: '#d9a441' };
     const hidden = HIDDEN_SKILLS[style];
     const level = levelForXp(this.lastSkills[style] ?? 0);
     const block = document.createElement('div');
-    block.className = 'arts-school' + (hidden ? ' secret-skill' : '');
-    block.id = `arts-school-${style}`;
+    block.className = 'arts-stage' + (hidden ? ' secret-skill' : '');
     block.style.setProperty('--skill-accent', face.color);
 
+    // The stage head: the school named once, its climb told in rungs.
     const head = document.createElement('div');
-    head.className = 'arts-school-head';
-    const plaque = document.createElement('span');
-    plaque.className = 'skill-plaque sm';
-    plaque.style.borderColor = face.color;
-    const img = document.createElement('img');
-    img.src = itemIconUrl(face.icon, 30);
-    img.draggable = false;
-    plaque.appendChild(img);
+    head.className = 'stage-head';
     const name = document.createElement('span');
-    name.className = 'arts-school-name';
+    name.className = 'stage-school';
     name.textContent = skillName(style);
     const lv = document.createElement('span');
-    lv.className = 'arts-school-lv';
+    lv.className = 'stage-lv';
     lv.textContent = `Lv ${level}`;
-    head.append(plaque, name, lv);
-    // How much of the ladder this hand has climbed (pages and secrets
-    // ride outside it — the count is the RUNG count, nothing else).
+    head.append(name, lv);
     const rungs = this.visibleTechniques(style).filter((t) => !t.hidden && !t.secret);
     const climbed = rungs.filter((t) => {
       const s = this.techState(style, t);
       return s === 'unlocked' || s === 'equipped';
     }).length;
     const count = document.createElement('span');
-    count.className = 'arts-school-count';
-    count.textContent = `${climbed} of ${rungs.length}`;
+    count.className = 'stage-count';
+    count.textContent = `${climbed} of ${rungs.length} arts`;
     count.dataset.tipname = 'The ladder';
     count.dataset.tipsub = `${climbed} of ${rungs.length} arts answer to this school so far.`;
     head.appendChild(count);
@@ -2973,32 +3013,138 @@ export class Panels {
     const visible = this.visibleTechniques(style);
     const ladder = visible.filter((t) => !t.secret);
     const secrets = visible.filter((t) => t.secret);
-    const rail = document.createElement('div');
-    rail.className = 'tech-rail';
-    ladder.forEach((tech, i) => {
-      // The link back to the previous rung — earned pages sit outside
-      // the ladder, so no link touches them on either side.
-      const prev = ladder[i - 1];
-      const linked = i % 5 !== 0 && !tech.hidden && !!prev && !prev.hidden;
-      rail.appendChild(this.techPlate(style, tech, linked));
+    // The shown rungs: everything up to the first locked; the veil
+    // condenses. Earned pages (hidden) always show — they sit at the
+    // ribbon's head end, outside the spine.
+    const shown = ladder.filter((t) => this.techState(style, t) !== 'veiled');
+    const veiled = ladder.filter((t) => this.techState(style, t) === 'veiled');
+
+    const ribbon = document.createElement('div');
+    ribbon.className = 'path-ribbon';
+    const track = document.createElement('div');
+    track.className = 'path-track';
+    shown.forEach((tech, i) => {
+      const prev = shown[i - 1];
+      const linked = !tech.hidden && !!prev && !prev.hidden;
+      track.appendChild(this.techPlate(style, tech, linked));
     });
-    block.appendChild(rail);
-    // THE QUIET SHELF: the school's secret arts — only the ones this
-    // hand has met. No shelf renders until a secret is worth showing.
-    if (secrets.length > 0) {
-      const shelfHead = document.createElement('div');
-      shelfHead.className = 'secret-shelf-head';
-      shelfHead.textContent = 'Secret arts';
-      shelfHead.dataset.tipname = 'The secret shelf';
-      shelfHead.dataset.tipsub =
-        'Arts that weapons teach. Fight with the teacher and its art becomes yours for good.';
-      block.appendChild(shelfHead);
-      const shelf = document.createElement('div');
-      shelf.className = 'tech-rail secret-shelf';
-      for (const tech of secrets) shelf.appendChild(this.techPlate(style, tech, false));
-      block.appendChild(shelf);
+    if (veiled.length > 0) {
+      const minLv = veiled.reduce((m, t) => Math.min(m, t.unlockLevel), Infinity);
+      track.appendChild(this.veilCap(style, veiled.length, minLv));
     }
+    if (secrets.length > 0) {
+      // The forged seam: where the ladder ends and the shelf begins.
+      const seam = document.createElement('div');
+      seam.className = 'path-seam';
+      const mark = document.createElement('span');
+      mark.className = 'seam-mark';
+      mark.textContent = '◈';
+      const word = document.createElement('span');
+      word.className = 'seam-word';
+      word.textContent = 'Secrets';
+      seam.append(mark, word);
+      seam.dataset.tipname = 'The secret shelf';
+      seam.dataset.tipsub =
+        'Arts that weapons teach. Fight with the teacher and its art becomes yours for good.';
+      track.appendChild(seam);
+      for (const tech of secrets) track.appendChild(this.techPlate(style, tech, false));
+    }
+    ribbon.appendChild(track);
+    // The pointer's way along a slid ribbon: the wheel steps the
+    // choice, and a chevron waits at either edge on hover. (The pad
+    // never needs them — spatial nav walks clipped plates natively.)
+    ribbon.addEventListener(
+      'wheel',
+      (e) => {
+        const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+        if (d === 0) return;
+        e.preventDefault();
+        this.stepRibbon(d > 0 ? 1 : -1);
+      },
+      { passive: false },
+    );
+    for (const dir of [-1, 1] as const) {
+      const nudge = document.createElement('button');
+      nudge.className = 'ribbon-nudge ' + (dir < 0 ? 'prev' : 'next');
+      nudge.textContent = dir < 0 ? '‹' : '›';
+      nudge.setAttribute('aria-label', dir < 0 ? 'Previous art' : 'Next art');
+      nudge.addEventListener('click', () => this.stepRibbon(dir));
+      ribbon.appendChild(nudge);
+    }
+    block.appendChild(ribbon);
     return block;
+  }
+
+  /** Step the ribbon's choice to the neighboring plate. */
+  private stepRibbon(dir: -1 | 1): void {
+    const track = this.artsSchools.querySelector<HTMLElement>('.path-track');
+    if (!track) return;
+    const keys = Array.from(track.querySelectorAll<HTMLElement>('[data-navkey]'))
+      .map((el) => el.dataset.navkey ?? '')
+      .filter((k) => k.startsWith('art:') || k.startsWith('artveil:'));
+    const currentKey = this.artsSel?.startsWith('veil:')
+      ? `artveil:${this.artsSel.slice('veil:'.length)}`
+      : `art:${this.artsSel}`;
+    const i = keys.indexOf(currentKey);
+    const next = keys[Math.max(0, Math.min(keys.length - 1, (i < 0 ? 0 : i) + dir))];
+    if (!next || next === currentKey) return;
+    this.inspectArt(
+      next.startsWith('artveil:') ? `veil:${next.slice('artveil:'.length)}` : next.slice('art:'.length),
+    );
+  }
+
+  /**
+   * The ladder's mist: one plate standing for every rung past the
+   * next — it admits how much waits without spelling any of it.
+   */
+  private veilCap(style: SkillId, count: number, minLevel: number): HTMLElement {
+    const btn = document.createElement('button');
+    btn.className = 'tech-plate-btn veiled veil-cap';
+    if (this.artsSel === `veil:${style}`) btn.classList.add('selected');
+    btn.dataset.nav = '';
+    btn.dataset.navkey = `artveil:${style}`;
+    btn.dataset.acta = 'Peer';
+    const wellEl = document.createElement('span');
+    wellEl.className = 'tech-plate-well';
+    const q = document.createElement('span');
+    q.className = 'tech-mystery';
+    q.textContent = '✦';
+    wellEl.appendChild(q);
+    const nameEl = document.createElement('span');
+    nameEl.className = 'tech-plate-name';
+    nameEl.textContent = `${count} more`;
+    const sub = document.createElement('span');
+    sub.className = 'tech-plate-sub';
+    sub.textContent = `past Lv ${minLevel}`;
+    btn.append(wellEl, nameEl, sub);
+    btn.addEventListener('click', () => this.inspectArt(`veil:${style}`));
+    return btn;
+  }
+
+  /**
+   * Slide the ribbon so the chosen plate stands center stage. The
+   * track rides the `translate` channel (compositor-only), clamped so
+   * the ribbon never shows void past either end.
+   */
+  private recenterRibbon(): void {
+    const ribbon = this.artsSchools.querySelector<HTMLElement>('.path-ribbon');
+    const track = this.artsSchools.querySelector<HTMLElement>('.path-track');
+    if (!ribbon || !track) return;
+    const key = this.artsSel?.startsWith('veil:')
+      ? `artveil:${this.artsSel.slice('veil:'.length)}`
+      : `art:${this.artsSel}`;
+    const plate = track.querySelector<HTMLElement>(`[data-navkey="${CSS.escape(key)}"]`);
+    // Measure in track-local space (offsetLeft is translate-immune,
+    // so a mid-slide recenter still lands true).
+    const ribbonW = ribbon.clientWidth;
+    const trackW = track.scrollWidth;
+    if (trackW <= ribbonW || !plate) {
+      track.style.translate = '0 0';
+      return;
+    }
+    const center = plate.offsetLeft + plate.offsetWidth / 2;
+    const tx = Math.max(ribbonW - trackW, Math.min(0, ribbonW / 2 - center));
+    track.style.translate = `${Math.round(tx)}px 0`;
   }
 
   /**
@@ -3029,7 +3175,6 @@ export class Panels {
     btn.dataset.nav = '';
     btn.dataset.navkey = `art:${tech.ability}`;
     btn.dataset.acta = 'Inspect';
-    btn.dataset.navnext = '#arts-detail';
     const wellEl = document.createElement('span');
     wellEl.className = 'tech-plate-well';
     if (st === 'veiled') {
@@ -3140,28 +3285,203 @@ export class Panels {
     if (this.artsSel === ability) return;
     this.artsSel = ability;
     this.markTechSeen(ability);
+    const key = ability.startsWith('veil:')
+      ? `artveil:${ability.slice('veil:'.length)}`
+      : `art:${ability}`;
     this.artsSchools
       .querySelectorAll('.tech-plate-btn.selected')
       .forEach((p) => p.classList.remove('selected'));
     this.artsSchools
-      .querySelector(`[data-navkey="${CSS.escape(`art:${ability}`)}"]`)
+      .querySelector(`[data-navkey="${CSS.escape(key)}"]`)
       ?.classList.add('selected');
+    for (const s of [0, 1] as const) {
+      this.altarSockets[s]?.root.classList.toggle('holds-choice', this.techniques[s] === ability);
+    }
+    this.recenterRibbon();
     this.renderArtsBench();
     this.updateArtsPip();
   }
 
-  /** The bench: the chosen art laid out large, stats told honestly. */
+  /**
+   * THE SEAT FLIGHT — the chosen plate's face flies from the ribbon
+   * into its seat, so seating an art is a thing you SEE land. Pure
+   * grace note: gated by the Interface-motion setting, and the server
+   * echo (setTechniques) repaints the truth under it either way.
+   */
+  private seatFlight(ability: string, seat: 0 | 1): void {
+    if (document.body.classList.contains('no-ui-motion')) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const from = this.artsSchools
+      .querySelector<HTMLElement>(`[data-navkey="${CSS.escape(`art:${ability}`)}"] .tech-plate-well img`);
+    const target = this.altarSockets[seat]?.root.querySelector<HTMLElement>('.socket-well');
+    if (!from || !target) return;
+    const a = from.getBoundingClientRect();
+    const b = target.getBoundingClientRect();
+    if (a.width === 0 || b.width === 0) return;
+    const ghost = from.cloneNode(true) as HTMLElement;
+    ghost.className = 'seat-flight';
+    ghost.style.width = `${a.width}px`;
+    ghost.style.height = `${a.height}px`;
+    ghost.style.left = `${a.x}px`;
+    ghost.style.top = `${a.y}px`;
+    document.body.appendChild(ghost);
+    const dx = b.x + b.width / 2 - (a.x + a.width / 2);
+    const dy = b.y + b.height / 2 - (a.y + a.height / 2);
+    const scale = (b.width * 0.72) / a.width;
+    const flight = ghost.animate(
+      [
+        { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+        {
+          transform: `translate(${dx * 0.55}px, ${dy * 0.55 - 28}px) scale(${(1 + scale) / 2})`,
+          opacity: 1,
+          offset: 0.55,
+        },
+        { transform: `translate(${dx}px, ${dy}px) scale(${scale})`, opacity: 0.4 },
+      ],
+      { duration: 430, easing: 'cubic-bezier(0.3, 0.6, 0.25, 1)' },
+    );
+    flight.onfinish = () => {
+      ghost.remove();
+      this.altarSockets[seat]?.flash();
+    };
+  }
+
+  /**
+   * THE SCHOOL ENVELOPE — the maxima the reading's gauges measure
+   * against, so every bar is a COMPARISON, not a lone number: a
+   * damage bar filled halfway means half the hardest hit this school
+   * knows. Veiled rungs stay out of the envelope (no spoilers in the
+   * scale).
+   */
+  private schoolEnvelope(style: SkillId): {
+    damage: number;
+    cooldown: number;
+    range: number;
+    radius: number;
+  } {
+    const out = { damage: 1, cooldown: 1, range: 1, radius: 1 };
+    for (const t of this.visibleTechniques(style)) {
+      if (this.techState(style, t) === 'veiled') continue;
+      const base = abilityDef(t.ability);
+      if (!base) continue;
+      const ab = honedAbility(base, t.ranks, Math.max(this.techRank(style, t), 1));
+      out.damage = Math.max(out.damage, ab.damage);
+      out.cooldown = Math.max(out.cooldown, ab.cooldownTicks / 20);
+      out.range = Math.max(out.range, ab.range ?? 0);
+      out.radius = Math.max(out.radius, Math.max(ab.radius ?? 0, ab.splashRadius ?? 0));
+    }
+    return out;
+  }
+
+  /**
+   * One gauge of the reading: a forged channel with the fill measured
+   * against the school envelope, faceted by ticks when the unit is
+   * countable (tiles), the numeral standing at the end. The stat
+   * cards died here — a measure is an instrument, not a plaque.
+   */
+  private measureRow(opts: {
+    label: string;
+    value: string;
+    frac: number;
+    tone: string;
+    ticks?: number;
+    tip?: string;
+  }): HTMLElement {
+    const row = document.createElement('div');
+    row.className = 'measure';
+    row.style.setProperty('--m-tone', opts.tone);
+    if (opts.tip) {
+      row.dataset.tipname = opts.label;
+      row.dataset.tipsub = opts.tip;
+    }
+    const label = document.createElement('span');
+    label.className = 'm-label';
+    label.textContent = opts.label;
+    const channel = document.createElement('span');
+    channel.className = 'm-channel';
+    const fill = document.createElement('span');
+    fill.className = 'm-fill';
+    fill.style.width = `${Math.round(Math.max(0, Math.min(1, opts.frac)) * 100)}%`;
+    channel.appendChild(fill);
+    if (opts.ticks && opts.ticks > 1 && opts.ticks <= 24) {
+      for (let i = 1; i < opts.ticks; i++) {
+        const tick = document.createElement('span');
+        tick.className = 'm-tick';
+        tick.style.left = `${(i / opts.ticks) * 100}%`;
+        channel.appendChild(tick);
+      }
+    }
+    const value = document.createElement('span');
+    value.className = 'm-value';
+    value.textContent = opts.value;
+    row.append(label, channel, value);
+    return row;
+  }
+
+  /** One small forged seal in the marks row — a fact, worn not listed. */
+  private markSeal(text: string, tone: string, tip?: string): HTMLElement {
+    const seal = document.createElement('span');
+    seal.className = 'mark-seal';
+    seal.style.setProperty('--m-tone', tone);
+    seal.textContent = text;
+    if (tip) {
+      seal.dataset.tipname = text;
+      seal.dataset.tipsub = tip;
+    }
+    return seal;
+  }
+
+  /** THE READING: the chosen art laid out as instruments, not cards. */
   private renderArtsBench(all?: Array<{ style: SkillId; t: TechniqueDef }>): void {
     all ??= this.artsSchoolIds().flatMap((s) =>
       this.visibleTechniques(s).map((t) => ({ style: s, t })),
     );
     this.artsDetail.innerHTML = '';
+    // The veil cap's reading: how much the mist is holding, no more.
+    if (this.artsSel?.startsWith('veil:')) {
+      const style = this.artsSel.slice('veil:'.length) as SkillId;
+      const veiled = this.visibleTechniques(style).filter(
+        (t) => !t.secret && this.techState(style, t) === 'veiled',
+      );
+      const minLv = veiled.reduce((m, t) => Math.min(m, t.unlockLevel), Infinity);
+      const hiddenSkill = HIDDEN_SKILLS[style];
+      const styleName = hiddenSkill ? hiddenSkill.name : style;
+      const head = document.createElement('div');
+      head.className = 'bench-head';
+      const well = document.createElement('div');
+      well.className = 'bench-plate veiled';
+      const q = document.createElement('span');
+      q.className = 'tech-mystery lg';
+      q.textContent = '✦';
+      well.appendChild(q);
+      const names = document.createElement('div');
+      names.className = 'bench-names';
+      const name = document.createElement('div');
+      name.className = 'bench-name';
+      name.textContent = 'The mist holds more';
+      const line = document.createElement('div');
+      line.className = 'bench-line';
+      line.textContent = styleName;
+      names.append(name, line);
+      head.append(well, names);
+      this.artsDetail.appendChild(head);
+      const desc = document.createElement('p');
+      desc.className = 'bench-desc';
+      desc.textContent =
+        veiled.length === 1
+          ? `One more art waits past ${styleName} level ${minLv}. Train on, and it will show its face.`
+          : `${veiled.length} arts wait in this school's mist. The next shows its face at ${styleName} level ${minLv}.`;
+      this.artsDetail.appendChild(desc);
+      this.ground.show(null);
+      return;
+    }
     const entry = all.find((e) => e.t.ability === this.artsSel);
     if (!entry) {
       const note = document.createElement('div');
       note.className = 'bench-empty';
       note.textContent = 'Raise a combat skill and its arts will gather here.';
       this.artsDetail.appendChild(note);
+      this.ground.show(null);
       return;
     }
     const { style, t } = entry;
@@ -3208,6 +3528,8 @@ export class Panels {
 
     const seat = this.seatOf(t.ability);
     const benchChip = (): HTMLElement => seatChip(this.seatAction(seat === 0 ? 0 : 1));
+    // The state chip rides the head row — identity and standing on one
+    // line, the reading's height spent on instruments instead.
     const state = document.createElement('div');
     state.className = `art-state ${st}`;
     if (st === 'equipped') {
@@ -3230,7 +3552,7 @@ export class Panels {
             ? `Unlocks at ${styleName} level ${t.unlockLevel}`
             : `A secret of ${styleName} — still veiled`;
     }
-    this.artsDetail.appendChild(state);
+    head.appendChild(state);
 
     // THE LESSON LAW's meter — the courtship told PLAINLY (user
     // mandate 2026-07-31, supersedes the launch quiet-fill: the player
@@ -3290,67 +3612,177 @@ export class Panels {
     this.artsDetail.appendChild(desc);
 
     if (st !== 'veiled') {
-      const stats = document.createElement('div');
-      stats.className = 'bench-stats';
-      const add = (value: string, label: string, tone?: string): void => {
-        stats.appendChild(statPlaque(value, label, tone));
-      };
+      // THE MEASURES: every figure told against the school envelope —
+      // a bar half full IS the comparison, no second art needed.
+      const env = this.schoolEnvelope(style);
+      const measures = document.createElement('div');
+      measures.className = 'measures';
       const secs = (ticks: number): string => {
         const s = ticks / 20;
         return `${s % 1 === 0 ? s : s.toFixed(1)}s`;
       };
       const channeled = (ab.channelTicks ?? 0) > 0 && ab.shape !== 'tame';
-      if (ab.damage > 0) add(String(ab.damage), channeled ? 'Per Beat' : 'Damage', '#d95763');
-      if (ab.cooldownTicks > 0) add(secs(ab.cooldownTicks), 'Cooldown', '#b49af0');
+      if (ab.damage > 0) {
+        measures.appendChild(
+          this.measureRow({
+            label: channeled ? 'Per beat' : 'Damage',
+            value: String(ab.damage),
+            frac: ab.damage / env.damage,
+            tone: '#d95763',
+            tip: `Measured against the hardest hit this school knows (${env.damage}).`,
+          }),
+        );
+      }
+      if (ab.cooldownTicks > 0) {
+        measures.appendChild(
+          this.measureRow({
+            label: 'Cooldown',
+            value: secs(ab.cooldownTicks),
+            frac: ab.cooldownTicks / 20 / env.cooldown,
+            tone: '#b49af0',
+            tip: `The wait between casts — the school's longest is ${env.cooldown % 1 === 0 ? env.cooldown : env.cooldown.toFixed(1)}s.`,
+          }),
+        );
+      }
       // THE DRAWN BREATH / THE HELD NOTE wear words: the planted
       // figure reads the same ONE ruler the accrual does.
       if (ab.castTicks) {
-        add(`${secs(ab.castTicks)} (${secs(ab.castTicks / CAST_STILL_FACTOR)} planted)`, 'Cast', '#d2e0f6');
+        measures.appendChild(
+          this.measureRow({
+            label: 'Cast',
+            value: `${secs(ab.castTicks)} · ${secs(ab.castTicks / CAST_STILL_FACTOR)} planted`,
+            frac: ab.castTicks / 20 / Math.max(env.cooldown, 3),
+            tone: '#d2e0f6',
+            tip: 'The breath drawn before the art fires. Standing still breathes faster.',
+          }),
+        );
       }
-      if (ab.channelTicks) add(secs(ab.channelTicks), 'Channel', '#f6e2b2');
-      if (ab.range) add(`${ab.range}`, 'Range', '#7dc46a');
-      if (ab.radius) add(`${ab.radius}`, 'Radius', '#8ac4e8');
-      if ((ab.projectiles ?? 0) > 1) add(`×${ab.projectiles}`, 'Shots', '#e8b64c');
-      if (ab.chainTargets) add(`×${ab.chainTargets}`, 'Chains', '#ffe86a');
-      if (ab.dashTiles) add(`${Math.abs(ab.dashTiles)}`, 'Dash', '#e8b64c');
+      if (ab.channelTicks) {
+        measures.appendChild(
+          this.measureRow({
+            label: 'Channel',
+            value: secs(ab.channelTicks),
+            frac: ab.channelTicks / 20 / Math.max(env.cooldown, 3),
+            tone: '#f6e2b2',
+            tip: 'Held while the working runs its course.',
+          }),
+        );
+      }
+      if (ab.range) {
+        measures.appendChild(
+          this.measureRow({
+            label: 'Range',
+            value: `${ab.range} tiles`,
+            frac: ab.range / env.range,
+            tone: '#7dc46a',
+            ticks: Math.ceil(env.range),
+            tip: `Each notch is one tile; the channel runs to the school's longest reach (${env.range}).`,
+          }),
+        );
+      }
+      const blast = Math.max(ab.radius ?? 0, ab.splashRadius ?? 0);
+      if (blast > 0) {
+        measures.appendChild(
+          this.measureRow({
+            label: ab.radius ? 'Radius' : 'Splash',
+            value: `${blast} tiles`,
+            frac: blast / env.radius,
+            tone: '#8ac4e8',
+            ticks: Math.ceil(env.radius),
+            tip: `How far the blast claims, in tiles — the school's widest is ${env.radius}.`,
+          }),
+        );
+      }
+      this.artsDetail.appendChild(measures);
+
+      // THE MARKS: the art's remaining facts worn as forged seals.
+      const marks = document.createElement('div');
+      marks.className = 'mark-row';
+      if ((ab.projectiles ?? 0) > 1) {
+        marks.appendChild(this.markSeal(`×${ab.projectiles} shots`, '#e8b64c', 'A fan of projectiles across the aim.'));
+      }
+      if (ab.chainTargets) {
+        marks.appendChild(this.markSeal(`chains ×${ab.chainTargets}`, '#ffe86a', 'Arcs on to more foes after the first.'));
+      }
+      if (ab.dashTiles) {
+        marks.appendChild(
+          this.markSeal(
+            (ab.dashTiles < 0 ? 'leaps back ' : 'dash ') + Math.abs(ab.dashTiles),
+            '#e8b64c',
+            ab.dashTiles < 0 ? 'Carries you away from the aim.' : 'Carries you through everything on the way.',
+          ),
+        );
+      }
+      if (ab.pierce) marks.appendChild(this.markSeal('pierces', '#d2e0f6', 'Shots punch through instead of stopping.'));
+      if (ab.homing) marks.appendChild(this.markSeal('seeking', '#b49af0', 'Shots bend toward their mark.'));
       if (ab.knockback) {
-        if (ab.knockback < 0) add('Pulls', 'Vortex', '#8a6ac8');
-        else add(String(ab.knockback), 'Knockback', '#9aa2ac');
+        marks.appendChild(
+          ab.knockback < 0
+            ? this.markSeal('pulls in', '#8a6ac8', 'Drags foes toward the center.')
+            : this.markSeal('knocks back', '#9aa2ac', 'Shoves foes away from the blow.'),
+        );
       }
       if (ab.status) {
-        const statusName =
-          ab.status.status.charAt(0).toUpperCase() + ab.status.status.slice(1);
-        add(statusName, `for ${secs(ab.status.durationTicks)}`, '#7ac46a');
+        const statusName = ab.status.status.charAt(0).toUpperCase() + ab.status.status.slice(1);
+        marks.appendChild(
+          this.markSeal(
+            `${statusName} ${secs(ab.status.durationTicks)}`,
+            '#7ac46a',
+            `Leaves ${statusName} riding the target.`,
+          ),
+        );
       }
       if (ab.vs) {
         // THE READING EDGE tooltip law: every payoff clause prints.
         const vsName = ab.vs.status.charAt(0).toUpperCase() + ab.vs.status.slice(1);
-        add(`×${ab.vs.mult}`, ab.vs.consume ? `spends ${vsName}` : `vs ${vsName}`, '#e8b64c');
+        marks.appendChild(
+          this.markSeal(
+            `×${ab.vs.mult} ${ab.vs.consume ? 'spends' : 'vs'} ${vsName}`,
+            '#e8b64c',
+            ab.vs.consume
+              ? `Bodies wearing ${vsName} take ×${ab.vs.mult} — and the state is spent for it.`
+              : `Bodies wearing ${vsName} take ×${ab.vs.mult}.`,
+          ),
+        );
       }
-      this.artsDetail.appendChild(stats);
+      if (marks.childElementCount > 0) this.artsDetail.appendChild(marks);
     }
 
-    // THE HONED-ART LAW's ledger: four seals, one per rank. Attained
-    // seals tell what they honed; waiting seals tell when they wake.
+    // THE PROVING GROUND reads the same honed figures the measures do.
+    this.ground.show(st === 'veiled' ? null : ab);
+
+    // THE HONED-ART LAW's spine: the four ranks as studs on one forged
+    // bar — the walked length lit brass, the current stud crowned,
+    // waiting studs naming their level. A progression you READ as a
+    // road, not four little cards.
     if ((st === 'unlocked' || st === 'equipped') && t.ranks?.length) {
-      const ledger = document.createElement('div');
-      ledger.className = 'rank-ledger';
+      const spine = document.createElement('div');
+      spine.className = 'rank-spine';
+      const walked = (rank - 1) / (TECHNIQUE_MAX_RANK - 1);
+      spine.style.setProperty('--walked-n', walked.toFixed(3));
       for (let r = 1; r <= TECHNIQUE_MAX_RANK; r++) {
-        const seal = document.createElement('span');
-        seal.className =
-          'rank-seal' + (r <= rank ? ' attained' : '') + (r === rank ? ' current' : '');
-        seal.textContent = RANK_ROMAN[r] ?? '?';
+        const stud = document.createElement('span');
+        stud.className =
+          'spine-stud' + (r <= rank ? ' attained' : '') + (r === rank ? ' current' : '');
+        const num = document.createElement('span');
+        num.className = 'stud-numeral';
+        num.textContent = RANK_ROMAN[r] ?? '?';
+        stud.appendChild(num);
+        const under = document.createElement('span');
+        under.className = 'stud-under';
+        under.textContent = r <= rank ? '' : `Lv ${rankLevel(techniqueAnchor(t), r)}`;
+        stud.appendChild(under);
         const note = r === 1 ? base.desc : (t.ranks[r - 2]?.note ?? '');
         if (r <= rank) {
-          seal.dataset.tipname = `Rank ${RANK_ROMAN[r]}`;
-          seal.dataset.tipsub = note;
+          stud.dataset.tipname = `Rank ${RANK_ROMAN[r]}`;
+          stud.dataset.tipsub = note;
         } else {
-          seal.dataset.tipname = `Rank ${RANK_ROMAN[r]} — ${styleName} Lv ${rankLevel(techniqueAnchor(t), r)}`;
-          seal.dataset.tipsub = 'Train on, and the art will sharpen itself.';
+          stud.dataset.tipname = `Rank ${RANK_ROMAN[r]} — ${styleName} Lv ${rankLevel(techniqueAnchor(t), r)}`;
+          stud.dataset.tipsub = 'Train on, and the art will sharpen itself.';
         }
-        ledger.appendChild(seal);
+        spine.appendChild(stud);
       }
-      this.artsDetail.appendChild(ledger);
+      this.artsDetail.appendChild(spine);
       if (rank < TECHNIQUE_MAX_RANK) {
         const nextNote = t.ranks[rank - 1]?.note;
         if (nextNote) {
@@ -3366,24 +3798,15 @@ export class Panels {
       const seats = document.createElement('div');
       seats.className = 'bench-seats';
       for (const s of [0, 1] as const) {
-        const btn = bigButton('Seat', s === 0 ? `artequip:${t.ability}` : `artequipr:${t.ability}`, () =>
-          this.onTechnique(t.ability, s === 0 ? 0 : 2),
-        );
+        const btn = bigButton('Seat', s === 0 ? `artequip:${t.ability}` : `artequipr:${t.ability}`, () => {
+          this.seatFlight(t.ability, s);
+          this.onTechnique(t.ability, s === 0 ? 0 : 2);
+        });
         btn.textContent = '';
         btn.appendChild(glyphLine('Seat on •', seatChip(this.seatAction(s))));
         seats.appendChild(btn);
       }
       this.artsDetail.appendChild(seats);
     }
-    const teach = document.createElement('div');
-    teach.className = 'bench-teach';
-    teach.appendChild(
-      glyphLine(
-        'The • and • seats both carry any learned art, whatever you wield. Two seats, two arts. Swapping is always free.',
-        seatChip(this.seatAction(0)),
-        seatChip(this.seatAction(1)),
-      ),
-    );
-    this.artsDetail.appendChild(teach);
   }
 }
