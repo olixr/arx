@@ -20686,6 +20686,344 @@ export class Renderer {
   }
 
   /**
+   * ONE MASS, ONE SILHOUETTE — the hedge's bespoke unit painter (the
+   * round-three verdict: composing slabs, strips, knuckles, and piers
+   * per tile left interior ink crossing every junction and gates
+   * reading as bollards beside gaps — wall-family thinking; a hedge
+   * is not a wall). The caller hands a closed clockwise PLAN loop of
+   * typed segments (crown = north-facing free edge, skirt = south-
+   * facing free edge wearing the face, sideW/sideE = west/east free
+   * edges, cut = a shared tile seam where a neighbor's mass
+   * continues) plus the crown texture cells and pillow-parting
+   * creases; this paints the WHOLE mass as one truth: the crown
+   * plane filled from a single decorated outline (crown lobes on
+   * north edges, pinch-and-bulge caterpillar sides keyed so both
+   * tiles at any seam agree, gently bellied skirts, rounded convex
+   * corners, filleted concave junctions), the south faces hung from
+   * the skirt edges with the full face kit, and ONE ink pass that
+   * strokes the outer silhouette only — cuts never take ink, so
+   * merged runs, corners, tees, and gate stubs read as one clipped
+   * body across any number of tiles.
+   */
+  private hedgeMassPaint(
+    px: number,
+    py: number,
+    tx: number,
+    ty: number,
+    parts: ReadonlyArray<{ au: number; av: number; bu: number; bv: number; k: number }>,
+    h: number,
+    wind: { l: number; s: number; bx: number },
+    salt: number,
+    cells: ReadonlyArray<{ u: number; v: number; ku: number; kv: number }>,
+    vcreases: ReadonlyArray<{ u: number; v0: number; v1: number; key: number }>,
+    hcreases: ReadonlyArray<{ v: number; u0: number; u1: number; key: number }>,
+    inkSides = true,
+  ): void {
+    const ctx = this.ctx;
+    const s = this.camera.scale;
+    const syT = s * this.camera.yScale;
+    const X = (u: number) => px + u * s;
+    const Y = (v: number) => py + v * syT - h * s;
+    const YG = (v: number) => py + v * syT;
+    const n = parts.length;
+    // Corner radii per joint: rounded where convex (keyed, the
+    // gardener's squared-off shoulders), a small fillet where
+    // concave (the inner turn of an L or tee), NONE beside a cut —
+    // a rounded seam would notch the neighbor's continuation.
+    const radii: number[] = [];
+    for (let i = 0; i < n; i++) {
+      const a = parts[i]!;
+      const b = parts[(i + 1) % n]!;
+      // Cuts must meet the neighbor edge-true, and the face keeps its
+      // clipped SQUARE shoulders (a rounded crown corner beside a
+      // raw-cornered face panel printed a gap in the silhouette ink).
+      if (a.k === 0 || b.k === 0 || a.k === 2 || b.k === 2) {
+        radii.push(0);
+        continue;
+      }
+      const cross =
+        Math.sign(a.bu - a.au) * Math.sign(b.bv - b.av) -
+        Math.sign(a.bv - a.av) * Math.sign(b.bu - b.au);
+      if (cross > 0) {
+        const cseed = hashCoords(173, Math.round((tx + a.bu) * 4), Math.round((ty + a.bv) * 4) + salt);
+        radii.push(0.08 + ((cseed >>> 4) & 3) * 0.015);
+      } else if (cross < 0) radii.push(0.05);
+      else radii.push(0);
+    }
+    // --- the decorated edge emitters (fill and ink share these) ---
+    const crownTo = (t: Path2D | CanvasRenderingContext2D, u0: number, v: number, u1: number) => {
+      const dir = Math.sign(u1 - u0);
+      let cur = u0;
+      let guard = 0;
+      while (guard++ < 8 && Math.abs(u1 - cur) > 0.005) {
+        const st = dir > 0 ? Math.floor(cur * 2 + 1e-4) / 2 + 0.5 : Math.ceil(cur * 2 - 1e-4) / 2 - 0.5;
+        const next = dir > 0 ? Math.min(u1, st) : Math.max(u1, st);
+        const w = next - cur;
+        const col = tx * 2 + Math.round(((cur + next) / 2 + 0.5) * 2 - 0.5);
+        const amp = this.hedgeLobe(71, col, ty * 3 + salt) * s * Math.min(1, Math.abs(w) / 0.42);
+        t.quadraticCurveTo(X(cur + w * 0.24), Y(v) - amp * 2.1, X(cur + w * 0.5), Y(v) - amp * 0.55);
+        t.quadraticCurveTo(X(cur + w * 0.76), Y(v) - amp * 1.8, X(next), Y(v));
+        cur = next;
+      }
+    };
+    const skirtTo = (t: Path2D | CanvasRenderingContext2D, u0: number, v: number, u1: number) => {
+      const kseed = hashCoords(171, tx * 4 + Math.round(u0 + u1) + salt, ty * 4);
+      const mo = (((kseed >>> 8) % 20) - 10) / 400;
+      const bow = (0.02 + ((kseed >>> 5) & 3) * 0.012) * Math.min(1, Math.abs(u1 - u0) / 0.5);
+      t.quadraticCurveTo(X((u0 + u1) / 2 + mo), Y(v) + bow * syT, X(u1), Y(v));
+    };
+    const pinchOf = (vi: number, ch: number) =>
+      0.045 + ((hashCoords(ch, tx * 3 + salt, vi) >>> 3) & 7) * 0.0055;
+    const sideTo = (
+      t: Path2D | CanvasRenderingContext2D,
+      baseU: number,
+      v0: number,
+      v1: number,
+      inward: number,
+      uEnd: number,
+    ) => {
+      const dir = Math.sign(v1 - v0);
+      let cur = v0;
+      let guard = 0;
+      while (guard++ < 8 && Math.abs(v1 - cur) > 0.005) {
+        const st = dir > 0 ? Math.floor(cur * 2 + 1e-4) / 2 + 0.5 : Math.ceil(cur * 2 - 1e-4) / 2 - 0.5;
+        const next = dir > 0 ? Math.min(v1, st) : Math.max(v1, st);
+        const last = Math.abs(next - v1) < 0.004;
+        const row = ty * 2 + Math.round(((cur + next) / 2 + 0.5) * 2 - 0.5);
+        const aseed = hashCoords(inward > 0 ? 107 : 109, tx * 3 + salt, row);
+        const ax = baseU - inward * (0.006 + ((aseed >>> 2) & 3) * 0.007);
+        const at = 0.34 + ((aseed >>> 6) % 32) / 100;
+        const vi = ty * 2 + Math.round((next + 0.5) * 2);
+        const nu = last ? uEnd : baseU + inward * pinchOf(vi, inward > 0 ? 157 : 163);
+        t.quadraticCurveTo(X(ax), Y(cur + (next - cur) * at), X(nu), Y(next));
+        cur = next;
+      }
+    };
+    const segStart = (i: number) => {
+      const g = parts[i]!;
+      const r = radii[(i + n - 1) % n]!;
+      return g.av === g.bv
+        ? { u: g.au + Math.sign(g.bu - g.au) * r, v: g.av }
+        : { u: g.au, v: g.av + Math.sign(g.bv - g.av) * r };
+    };
+    const emitLoop = (t: Path2D | CanvasRenderingContext2D, ink: boolean) => {
+      let pen = false;
+      for (let i = 0; i < n; i++) {
+        const g = parts[i]!;
+        // Ink is the OUTER silhouette only: cuts are interior seams
+        // and the skirt line is the arris (lit stroke, never struct
+        // ink) — the true lower silhouette is the face's ground
+        // line, which never inks by the wall law.
+        if (ink && (g.k === 0 || g.k === 2 || (!inkSides && g.k !== 1))) {
+          // Crown-only mode serves the diagonal stride's corner
+          // cushions — a full ring on every overlapped step printed
+          // the tombstone row two sheets back.
+          pen = false;
+          continue;
+        }
+        const rB = radii[i]!;
+        const sA = segStart(i);
+        const sB =
+          g.av === g.bv
+            ? { u: g.bu - Math.sign(g.bu - g.au) * rB, v: g.bv }
+            : { u: g.bu, v: g.bv - Math.sign(g.bv - g.av) * rB };
+        if (!pen) {
+          t.moveTo(X(sA.u), Y(sA.v));
+          pen = true;
+        }
+        switch (g.k) {
+          case 0:
+            t.lineTo(X(sB.u), Y(sB.v));
+            break;
+          case 1:
+            crownTo(t, sA.u, g.av, sB.u);
+            break;
+          case 2:
+            skirtTo(t, sA.u, g.av, sB.u);
+            break;
+          case 3:
+            // The shoulder base is the RAW westmost edge — a pinched
+            // cut endpoint must not shift the whole side's line.
+            sideTo(t, Math.min(g.au, g.bu), sA.v, sB.v, 1, sB.u);
+            break;
+          case 4:
+            sideTo(t, Math.max(g.au, g.bu), sA.v, sB.v, -1, sB.u);
+            break;
+        }
+        if (rB > 0) {
+          const nx = (i + 1) % n;
+          const ns = segStart(nx);
+          if (!ink || (parts[nx]!.k !== 0 && parts[nx]!.k !== 2))
+            t.quadraticCurveTo(X(g.bu), Y(g.bv), X(ns.u), Y(ns.v));
+        }
+      }
+    };
+    // --- FACES first (the crown covers their top edge) ---
+    for (let i = 0; i < n; i++) {
+      const g = parts[i]!;
+      if (g.k !== 2) continue;
+      const face = new Path2D();
+      face.moveTo(X(g.au), Y(g.av));
+      skirtTo(face, g.au, g.av, g.bu);
+      face.lineTo(X(g.bu), YG(g.bv));
+      face.lineTo(X(g.au), YG(g.av));
+      face.closePath();
+      ctx.fillStyle = HEDGE_LEAF;
+      ctx.fill(face);
+      const fx0 = Math.min(X(g.au), X(g.bu));
+      const fw = Math.abs(X(g.bu) - X(g.au));
+      const gy = YG(g.av);
+      ctx.fillStyle = shade(HEDGE_LEAF, -8);
+      ctx.fillRect(fx0, gy - h * s * 0.45, fw, h * s * 0.45);
+      ctx.fillStyle = 'rgba(20, 14, 26, 0.28)';
+      ctx.fillRect(fx0, gy - s * 0.04, fw, s * 0.04);
+      // Clipped clusters break the face; tufts break the ground line.
+      const nCl = Math.max(1, Math.round(fw / (s * 0.24)));
+      for (let j = 0; j < nCl; j++) {
+        const cseed = hashCoords(89, Math.round(fx0 / s) * 8 + j + salt, ty);
+        const cx = fx0 + s * 0.06 + (((cseed >>> 4) % 100) / 100) * Math.max(0, fw - s * 0.12);
+        const fh = 0.2 + ((cseed >>> 8) % 60) / 100;
+        ctx.fillStyle = fh > 0.55 ? shade(HEDGE_LEAF, 7) : HEDGE_DARK;
+        ctx.beginPath();
+        facetBlob(ctx, cx, gy - h * s * fh, s * (0.038 + ((cseed >>> 11) & 3) * 0.011), cseed, 6, 0.85);
+        ctx.fill();
+      }
+      for (let j = 0; j < nCl; j++) {
+        const tseed = hashCoords(151, Math.round(fx0 / s) * 8 + j + salt, ty);
+        const tx3 = fx0 + s * 0.05 + (((tseed >>> 5) % 100) / 100) * Math.max(0, fw - s * 0.1);
+        const tr = s * (0.04 + ((tseed >>> 9) & 3) * 0.013);
+        ctx.fillStyle = (tseed & 4) === 0 ? HEDGE_DARK : shade(HEDGE_LEAF, -4);
+        ctx.beginPath();
+        facetBlob(ctx, tx3, gy - tr * 0.3, tr, tseed, 5, 0.8);
+        ctx.fill();
+      }
+    }
+    // --- the crown plane: ONE filled loop ---
+    const crown = new Path2D();
+    emitLoop(crown, false);
+    crown.closePath();
+    ctx.fillStyle = shade(HEDGE_LIT, 10);
+    ctx.fill(crown);
+    if (wind.l > 0.05) {
+      ctx.fillStyle = `rgba(214, 236, 176, ${(0.16 * wind.l).toFixed(3)})`;
+      ctx.fill(crown);
+    }
+    // The sunlit arris rides every skirt edge — the break where the
+    // plane rolls over into the face.
+    ctx.strokeStyle = shade(HEDGE_LIT, 24);
+    ctx.lineWidth = Math.max(1, s * 0.02);
+    for (let i = 0; i < n; i++) {
+      const g = parts[i]!;
+      if (g.k !== 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(X(g.au), Y(g.av));
+      skirtTo(ctx, g.au, g.av, g.bu);
+      ctx.stroke();
+    }
+    // --- crown life, per half-tile cell: dome sheen, clump, flecks,
+    // and one pillow in six flowering (all world-keyed) ---
+    for (const c of cells) {
+      const dseed = hashCoords(139, c.ku + salt, c.kv);
+      ctx.fillStyle = 'rgba(214, 236, 176, 0.15)';
+      ctx.beginPath();
+      ctx.ellipse(
+        X(c.u + ((((dseed >>> 3) % 24) - 12) / 100)),
+        Y(c.v + ((((dseed >>> 7) % 16) - 8) / 100)),
+        s * 0.15,
+        syT * 0.11,
+        0,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+      const cseed = hashCoords(113, c.ku + salt, c.kv);
+      ctx.fillStyle = (cseed & 4) === 0 ? HEDGE_DARK : shade(HEDGE_LEAF, 6);
+      ctx.beginPath();
+      facetBlob(
+        ctx,
+        X(c.u + ((((cseed >>> 4) % 30) - 15) / 100)),
+        Y(c.v + ((((cseed >>> 9) % 24) - 12) / 100)),
+        s * (0.045 + ((cseed >>> 12) & 3) * 0.009),
+        cseed,
+        6,
+        0.85,
+      );
+      ctx.fill();
+      for (let k = 0; k < 2; k++) {
+        const gseed = hashCoords(97, c.ku * 4 + k + salt, c.kv);
+        ctx.fillStyle = (gseed & 8) === 0 ? shade(HEDGE_LIT, 18) : shade(HEDGE_LEAF, -5);
+        ctx.fillRect(
+          X(c.u + ((((gseed >>> 3) % 34) - 17) / 100)),
+          Y(c.v + ((((gseed >>> 8) % 26) - 13) / 100)),
+          s * 0.032,
+          s * 0.026,
+        );
+      }
+      if (((hashCoords(103, c.ku + salt, c.kv) >>> 7) & 7) < 1) {
+        const b0 = hashCoords(103, c.ku + salt, c.kv);
+        const bu = c.u + ((((b0 >>> 10) % 20) - 10) / 100);
+        const bv = c.v + ((((b0 >>> 13) % 16) - 8) / 100);
+        for (let k = 0; k < 4; k++) {
+          const bseed = hashCoords(103, c.ku * 8 + k + 1 + salt, c.kv);
+          ctx.fillStyle = k === 3 ? HEDGE_BLOOM_LIT : HEDGE_BLOOM;
+          ctx.beginPath();
+          facetCircle(
+            ctx,
+            X(bu) + ((((bseed >>> 2) % 30) - 15) / 100) * s,
+            Y(bv) + ((((bseed >>> 7) % 24) - 12) / 100) * s,
+            s * (k === 3 ? 0.02 : 0.028),
+            5,
+            0.4,
+            0.8,
+          );
+          ctx.fill();
+        }
+      }
+    }
+    // The shears' partings — creases along interior pillow
+    // boundaries, riding the same stations the silhouette pinches.
+    ctx.strokeStyle = 'rgba(24, 50, 28, 0.32)';
+    ctx.lineWidth = Math.max(1, s * 0.022);
+    for (const cr of vcreases) {
+      const bow = ((((hashCoords(149, cr.key + salt, ty * 2) >>> 4) % 12) - 6) / 100) * s;
+      ctx.beginPath();
+      ctx.moveTo(X(cr.u), Y(cr.v0) + s * 0.02);
+      ctx.quadraticCurveTo(X(cr.u) + bow, Y((cr.v0 + cr.v1) / 2), X(cr.u), Y(cr.v1) - s * 0.012);
+      ctx.stroke();
+    }
+    for (const cr of hcreases) {
+      const bow = ((((hashCoords(149, tx * 2 + salt, cr.key) >>> 4) % 12) - 4) / 100) * s;
+      ctx.beginPath();
+      ctx.moveTo(X(cr.u0) + s * 0.02, Y(cr.v));
+      ctx.quadraticCurveTo(X((cr.u0 + cr.u1) / 2) + bow, Y(cr.v) + syT * 0.08, X(cr.u1) - s * 0.02, Y(cr.v));
+      ctx.stroke();
+    }
+    // --- ONE ink pass: the outer silhouette only. Cuts never take
+    // ink; face side edges drop plumb where the silhouette truly
+    // turns down; the base line never inks.
+    if (this.outlineOn) {
+      this.beginStructOutline();
+      ctx.beginPath();
+      emitLoop(ctx, true);
+      if (inkSides) {
+        for (let i = 0; i < n; i++) {
+          const g = parts[i]!;
+          if (g.k !== 2) continue;
+          if (parts[(i + n - 1) % n]!.k !== 0) {
+            ctx.moveTo(X(g.au), Y(g.av));
+            ctx.lineTo(X(g.au), YG(g.av));
+          }
+          if (parts[(i + 1) % n]!.k !== 0) {
+            ctx.moveTo(X(g.bu), Y(g.bv));
+            ctx.lineTo(X(g.bu), YG(g.bv));
+          }
+        }
+      }
+      ctx.stroke();
+    }
+  }
+
+  /**
    * THE CLIPPED GREEN, AT THE WAIST — a hedgerow, not a wall. The
    * unit is the CUSHION RUN: a hip-high bed of clipped pillows whose
    * sunlit top plane is the DOMINANT surface under the bird's-eye
@@ -20761,16 +21099,7 @@ export class Renderer {
     const dirCount =
       (cw ? 1 : 0) + (ce ? 1 : 0) + (cn ? 1 : 0) + (cs ? 1 : 0) + (anyDiag ? 1 : 0);
     const ewAny = cw || ce || isoEW;
-    const nsAny = cn || cs;
-    const ewThrough = cw && ce && !nsAny && !anyDiag;
-    const nsThrough = cn && cs && !ewAny && !anyDiag;
-    const ewEnd = dirCount === 1 && (cw || ce);
     const nsEnd = dirCount === 1 && (cn || cs);
-    const needAnchor =
-      (straight && !ewThrough && !nsThrough && !isoEW && !ewEnd && !nsEnd && dirCount > 0) ||
-      anyDiag ||
-      isoNE ||
-      isoNW;
     // The clipped measures — THE WAIST LAW: the face breaks at 0.5
     // tiles (the table anchor's hip band — a villager rests a hand on
     // it, the 1.15-tile body sees clean over it) and the crown plane
@@ -20798,491 +21127,136 @@ export class Renderer {
         // light from the long luminance swell.
         const wind = windAtInto(WIND_TMP, tx + 0.5, ty + 0.5, tSec);
 
-        // World-keyed half-tile crown segments across [x0, x1] —
-        // every possible span end (tile edge or center) is a segment
-        // boundary, so seams always land between whole lobes.
-        const worldSegs = (x0: number, x1: number, ch: number) => {
-          const segs: Array<readonly [number, number, number]> = [];
-          for (let hx = x0; hx < x1 - s * 0.01; hx += s * 0.5) {
-            const hi = Math.round((hx - (p.x - s * 0.5)) / (s * 0.5)) + tx * 2;
-            segs.push([hx, hx + s * 0.5, this.hedgeLobe(ch, hi, ty)]);
-          }
-          return segs;
-        };
-
-        /**
-         * THE SLAB — face + crown plane + texture + ink for a clipped
-         * block spanning [x0, x1] on ground line gy. `solo` segments
-         * carry their own single lobe (junction knuckles); world
-         * segments serve the run. Ink: crown always, sides only when
-         * free.
-         */
-        const slab = (
-          x0: number,
-          x1: number,
-          gy: number,
-          hMul: number,
-          freeW: boolean,
-          freeE: boolean,
-          seed: number,
-          solo: boolean,
-        ) => {
-          const yBreak = gy - HED_H * s * hMul;
-          const yBack = yBreak - DEEP;
-          const segs = solo
-            ? ([[x0, x1, this.hedgeLobe(79, seed, ty)]] as const)
-            : worldSegs(x0, x1, 71);
-          const segsB = solo
-            ? ([[x0, x1, this.hedgeLobe(83, seed, ty)]] as const)
-            : worldSegs(x0, x1, 83);
-          // ONE PATH: the silhouette is fill AND ink.
-          const sil = new Path2D();
-          this.hedgeCrownInto(sil, segs, yBack, 1);
-          sil.lineTo(x1, gy);
-          sil.lineTo(x0, gy);
-          sil.closePath();
-          ctx.fillStyle = HEDGE_LEAF;
-          ctx.fill(sil);
-          // THE PLANE SPEAKS IN VALUE: on a waist-high hedge the
-          // crown plane IS the picture — sky-lit, parted into
-          // cushions, rolling dark only at the short south break.
-          const ribbon = new Path2D();
-          this.hedgeCrownInto(ribbon, segs, yBack, 1);
-          ribbon.lineTo(x1, yBreak);
-          for (let i = segsB.length - 1; i >= 0; i--) {
-            const [sx0, sx1, amp] = segsB[i]!;
-            const w = sx1 - sx0;
-            const a = amp * 0.7 * s;
-            ribbon.quadraticCurveTo(sx0 + w * 0.76, yBreak - a * 1.8, sx0 + w * 0.5, yBreak - a * 0.55);
-            ribbon.quadraticCurveTo(sx0 + w * 0.24, yBreak - a * 2.1, sx0, yBreak);
-          }
-          ribbon.closePath();
-          ctx.fillStyle = shade(HEDGE_LIT, 10);
-          ctx.fill(ribbon);
-          // The rolling light: the wind's long swell breathes across
-          // the crown plane — the whole hedgerow visibly catches the
-          // same gust of sun.
-          if (wind.l > 0.05) {
-            ctx.fillStyle = `rgba(214, 236, 176, ${(0.16 * wind.l).toFixed(3)})`;
-            ctx.fill(ribbon);
-          }
-          // EVERY CUSHION IS ROUND: a soft dome sheen crests each
-          // lobe, a hair off-center where the sky takes it — world-
-          // keyed, so panning never re-deals the light.
-          for (const [sx0, sx1] of segs) {
-            const w2 = sx1 - sx0;
-            const key = solo ? seed : Math.round((sx0 - (p.x - s * 0.5)) / (s * 0.5)) + tx * 2;
-            const dseed = hashCoords(139, key, ty);
-            const mx = sx0 + w2 * (0.4 + ((dseed >>> 3) % 20) / 100);
-            ctx.fillStyle = 'rgba(214, 236, 176, 0.16)';
-            ctx.beginPath();
-            ctx.ellipse(mx, yBack + DEEP * 0.34, w2 * 0.3, DEEP * 0.2, 0, 0, Math.PI * 2);
-            ctx.fill();
-          }
-          // THE SHEARS PART THE CUSHIONS: a soft crease at every
-          // half-tile lobe boundary. Drawn at segment STARTS only —
-          // a free west edge is already silhouette, and a run seam
-          // belongs to the tile east of it — so no boundary doubles.
-          if (!solo) {
-            ctx.strokeStyle = 'rgba(24, 50, 28, 0.42)';
-            ctx.lineWidth = Math.max(1, s * 0.022);
-            for (let i = 0; i < segs.length; i++) {
-              if (i === 0 && freeW) continue;
-              const cx0 = segs[i]![0];
-              const key = Math.round((cx0 - (p.x - s * 0.5)) / (s * 0.5)) + tx * 2;
-              const bow = ((((hashCoords(149, key, ty) >>> 4) % 12) - 6) / 100) * s;
-              ctx.beginPath();
-              ctx.moveTo(cx0, yBack + s * 0.02);
-              ctx.quadraticCurveTo(cx0 + bow, (yBack + yBreak) / 2, cx0, yBreak - s * 0.012);
-              ctx.stroke();
-            }
-          }
-          // The sunlit arris rides the scalloped break — never a
-          // ruler line across a pillowed bed.
-          ctx.strokeStyle = shade(HEDGE_LIT, 24);
-          ctx.lineWidth = Math.max(1, s * 0.02);
-          ctx.beginPath();
-          this.hedgeCrownInto(ctx, segsB, yBreak, 0.7);
-          ctx.stroke();
-          // The short face rolls darker toward the ground; the base
-          // sits in its own shadow, seating the mass on the turf.
-          ctx.fillStyle = shade(HEDGE_LEAF, -8);
-          ctx.fillRect(x0, gy - (gy - yBreak) * 0.45, x1 - x0, (gy - yBreak) * 0.45);
-          ctx.fillStyle = 'rgba(20, 14, 26, 0.28)';
-          ctx.fillRect(x0, gy - s * 0.04, x1 - x0, s * 0.04);
-          // THE TUFTED SKIRT: the hedge meets the turf in clumps the
-          // shears never reach — the ground line must not read ruled.
-          const span = x1 - x0;
-          const nT = Math.max(2, Math.round(span / (s * 0.34)));
-          for (let i = 0; i < nT; i++) {
-            const tseed = hashCoords(151, seed * 16 + i, ty);
-            const tx3 = x0 + s * 0.06 + (((tseed >>> 5) % 100) / 100) * (span - s * 0.12);
-            const tr = s * (0.04 + ((tseed >>> 9) & 3) * 0.013);
-            ctx.fillStyle = (tseed & 4) === 0 ? HEDGE_DARK : shade(HEDGE_LEAF, -4);
-            ctx.beginPath();
-            facetBlob(ctx, tx3, gy - tr * 0.3, tr, tseed, 5, 0.8);
-            ctx.fill();
-          }
-          // CLIPPED, NOT CAST: leaf clusters break the short face —
-          // dark clumps deep, mid clumps up where the sun reaches.
-          const nCl = Math.max(2, Math.round(span / (s * 0.21)));
-          for (let i = 0; i < nCl; i++) {
-            const cseed = hashCoords(89, seed * 16 + i, ty);
-            const cx = x0 + s * 0.08 + ((cseed >>> 4) % 100) / 100 * (span - s * 0.16);
-            const fh = 0.2 + ((cseed >>> 8) % 60) / 100;
-            const cy = gy - (gy - yBreak) * fh;
-            const cr = s * (0.038 + ((cseed >>> 11) & 3) * 0.011);
-            ctx.fillStyle = fh > 0.55 ? shade(HEDGE_LEAF, 7) : HEDGE_DARK;
-            ctx.beginPath();
-            facetBlob(ctx, cx, cy, cr, cseed, 6, 0.85);
-            ctx.fill();
-          }
-          // Lit flecks scattered on the plane where the sun lies.
-          for (let i = 0; i < nCl - 1; i++) {
-            const gseed = hashCoords(97, seed * 16 + i, ty);
-            const gx = x0 + s * 0.1 + ((gseed >>> 3) % 100) / 100 * (span - s * 0.2);
-            const gy2 = yBack + DEEP * (0.18 + ((gseed >>> 9) & 3) * 0.16);
-            ctx.fillStyle = shade(HEDGE_LIT, 18);
-            ctx.fillRect(gx, gy2, s * 0.035, s * 0.028);
-          }
-          // THE GLINT BREATHES: two leaf sparks pulse with the gust.
-          const gustA = 0.35 + 0.65 * Math.min(1, Math.abs(wind.s));
-          for (let i = 0; i < 2; i++) {
-            const gseed = hashCoords(101, seed * 8 + i, ty);
-            const phase = tSec * (1.4 + (gseed % 5) * 0.17) + (gseed % 100) / 16;
-            const a = Math.max(0, Math.sin(phase)) * 0.42 * gustA;
-            if (a < 0.04) continue;
-            const gx = x0 + s * 0.1 + ((gseed >>> 5) % 100) / 100 * (span - s * 0.2);
-            const gy2 = yBack + DEEP * (0.15 + ((gseed >>> 10) % 40) / 100 * 0.7);
-            ctx.fillStyle = `rgba(190, 226, 150, ${a.toFixed(3)})`;
-            ctx.fillRect(gx, gy2, s * 0.03, s * 0.024);
-          }
-          // One tile in six flowers — a madder cluster ON THE CROWN,
-          // where the bird's eye actually looks at a waist-high
-          // hedge (inside the plane, never on the silhouette hem).
-          if (!solo && ((h >>> 7) & 7) < 1 && span > s * 0.4) {
-            const bx = x0 + span * (0.3 + ((h >>> 10) % 40) / 100);
-            const by = yBack + DEEP * (0.3 + ((h >>> 12) % 40) / 100);
-            for (let i = 0; i < 4; i++) {
-              const bseed = hashCoords(103, tx * 8 + i, ty);
-              const ox = (((bseed >>> 2) % 30) - 15) / 100 * s;
-              const oy = (((bseed >>> 7) % 24) - 12) / 100 * s;
-              ctx.fillStyle = i === 3 ? HEDGE_BLOOM_LIT : HEDGE_BLOOM;
-              ctx.beginPath();
-              facetCircle(ctx, bx + ox, by + oy, s * (i === 3 ? 0.02 : 0.028), 5, 0.4, 0.8);
-              ctx.fill();
-            }
-          }
-          // The wall law's ink: crown silhouette always; plumb sides
-          // only at true free ends; the base and every seam, never.
-          if (this.outlineOn) {
-            this.beginStructOutline();
-            ctx.beginPath();
-            if (freeW) {
-              ctx.moveTo(x0, gy);
-              ctx.lineTo(x0, yBack);
-            }
-            this.hedgeCrownInto(ctx, segs, yBack, 1);
-            if (freeE) ctx.lineTo(x1, gy);
-            ctx.stroke();
-          }
-        };
-
-        /**
-         * THE CATERPILLAR CROWN — a N-S run rebuilt from the
-         * silhouette out (this round's foundational verdict: the old
-         * strip was a decorated rectangle — near-straight edges with
-         * sub-tenth wiggle read as "weird lines", the straight lit and
-         * shade fillRect bands read as ruler stripes, and every free
-         * end wore a bolted-on knuckle with a hard horizontal ink
-         * break). The new truth is the one decorating games have
-         * always known: a hedge run is a STRING OF PUFFY PILLOWS. The
-         * SILHOUETTE carries the pillows — each half-tile segment
-         * BULGES convex past the shoulder line and meets its neighbor
-         * in a world-keyed PINCH at the boundary (pinch depths keyed
-         * on the boundary index, so the two tiles at a seam agree
-         * exactly and estate runs stay seamless) — and every layer of
-         * paint follows those same curves: the lit west and shaded
-         * east crescents hug each bulge (no straight band anywhere),
-         * the crease spans pinch-to-pinch where the geometry already
-         * parts, a dome sheen crests each pillow, and leaf flecks and
-         * the occasional bloom cluster keep the bed alive. Run ends
-         * CAP THEMSELVES: a free north end closes with a rounded
-         * terminal arc, a free south end drops a faced, skirted,
-         * clustered front wall — one continuous silhouette, one ink
-         * stroke, no seam. Fill and ink trace the SAME curve set (ONE
-         * PATH), and seams still never take a rung of ink.
-         */
-        const crownStrip = (y0: number, y1: number, capN: boolean, capS: boolean) => {
-          // The plane floats at exactly the face height — a N-S
-          // run's plan depth lies ACROSS the screen — and spans
-          // nearly the whole tile so runs abut what they dress.
-          const lift = HED_H * s + s * 0.04;
-          const hw = s * 0.44;
-          const yA = (yy: number) => yy - lift;
-          const nSeg = Math.max(1, Math.round((y1 - y0) / (syT * 0.5)));
-          const vi0 = Math.round((y0 - (baseY - syT * 0.5)) / (syT * 0.5)) + ty * 2;
-          const viEnd = vi0 + nSeg;
-          const segY = (i: number) => y0 + i * syT * 0.5;
-          // Boundary pinches: keyed on the BOUNDARY index alone, so
-          // both pillows sharing it (and both tiles at a seam) meet
-          // at the identical waist.
-          const pinchW = (vi: number) => s * (0.045 + ((hashCoords(157, tx, vi) >>> 3) & 7) * 0.0055);
-          const pinchE = (vi: number) => s * (0.045 + ((hashCoords(163, tx, vi) >>> 3) & 7) * 0.0055);
-          const xW = (vi: number) => p.x - hw + pinchW(vi);
-          const xE = (vi: number) => p.x + hw - pinchE(vi);
-          // Per-pillow bulge apexes — keyed amplitude AND station, so
-          // no two pillows swell identically.
-          const westInto = (path: Path2D | CanvasRenderingContext2D) => {
-            for (let i = 0; i < nSeg; i++) {
-              const vi = vi0 + i;
-              const aW = hashCoords(107, tx, vi);
-              const ax = p.x - hw - s * (0.004 + ((aW >>> 2) & 3) * 0.007);
-              const at = 0.34 + ((aW >>> 6) % 32) / 100;
-              path.quadraticCurveTo(ax, yA(segY(i) + syT * 0.5 * at), xW(vi + 1), yA(segY(i + 1)));
-            }
-          };
-          const eastInto = (path: Path2D | CanvasRenderingContext2D) => {
-            for (let i = nSeg - 1; i >= 0; i--) {
-              const vi = vi0 + i;
-              const aE = hashCoords(109, tx, vi);
-              const ax = p.x + hw + s * (0.004 + ((aE >>> 2) & 3) * 0.007);
-              const at = 0.34 + ((aE >>> 6) % 32) / 100;
-              path.quadraticCurveTo(ax, yA(segY(i) + syT * 0.5 * at), xE(vi), yA(segY(i)));
-            }
-          };
-          // The rounded terminal arc of a free north end: two quads
-          // to a keyed off-center apex — clipped, domed, never a
-          // straight lid (the old strip opened on a "burger bun"
-          // notch where two lobes met at the start line).
-          const capNInto = (path: Path2D | CanvasRenderingContext2D) => {
-            const cseed = hashCoords(167, tx, vi0);
-            const apexY = yA(y0) - s * (0.08 + ((cseed >>> 9) & 3) * 0.014);
-            const mo = ((((cseed >>> 4) % 24) - 12) / 100) * hw;
-            path.quadraticCurveTo(p.x + hw * 0.52, apexY, p.x + mo, apexY);
-            path.quadraticCurveTo(p.x - hw * 0.52, apexY, xW(vi0), yA(y0));
-          };
-          // ONE PATH: the closed silhouette (fill) and the open edge
-          // ink both trace westInto/eastInto/capNInto verbatim.
-          const sil = new Path2D();
-          sil.moveTo(xW(vi0), yA(y0));
-          westInto(sil);
-          if (capS) {
-            sil.lineTo(xW(viEnd), y1);
-            sil.lineTo(xE(viEnd), y1);
-            sil.lineTo(xE(viEnd), yA(y1));
+        // THE FUSED FOOTPRINT (round three — the hedge stops being
+        // composed like a wall): this tile's whole contribution is
+        // ONE plan blob — a center block with arms reaching every
+        // connected seam — walked clockwise into a single typed loop
+        // and handed to hedgeMassPaint. A corner, tee, or cross is a
+        // SHAPE, not a pile of slabs and knuckles, so no interior
+        // ink line can ever cross the mass again. Cut endpoints on
+        // N/S seams carry the caterpillar pinch keyed by the shared
+        // boundary index, so both tiles narrow to the identical
+        // waist and the run reads as one body through every tile.
+        const CU = 0.44;
+        const VN = -0.32;
+        const VS = 0.4;
+        const KCUT = 0;
+        const KCROWN = 1;
+        const KSKIRT = 2;
+        const KSW = 3;
+        const KSE = 4;
+        type MSeg = { au: number; av: number; bu: number; bv: number; k: number };
+        const pinch = (vi: number, ch: number) =>
+          0.045 + ((hashCoords(ch, tx * 3, vi) >>> 3) & 7) * 0.0055;
+        const blobParts = (): MSeg[] => {
+          const out: MSeg[] = [];
+          const add = (au: number, av: number, bu: number, bv: number, k: number) =>
+            out.push({ au, av, bu, bv, k });
+          const pNW = -CU + pinch(ty * 2, 157);
+          const pNE = CU - pinch(ty * 2, 163);
+          const pSW = -CU + pinch(ty * 2 + 2, 157);
+          const pSE = CU - pinch(ty * 2 + 2, 163);
+          // NORTH side, west to east.
+          if (cn) {
+            if (cw) add(-0.5, VN, -CU, VN, KCROWN);
+            add(-CU, VN, pNW, -0.5, KSW);
+            add(pNW, -0.5, pNE, -0.5, KCUT);
+            add(pNE, -0.5, CU, VN, KSE);
+            if (ce) add(CU, VN, 0.5, VN, KCROWN);
           } else {
-            sil.lineTo(xE(viEnd), yA(y1));
+            add(cw ? -0.5 : -CU, VN, ce ? 0.5 : CU, VN, KCROWN);
           }
-          eastInto(sil);
-          if (capN) capNInto(sil);
-          sil.closePath();
-          ctx.fillStyle = shade(HEDGE_LIT, 8);
-          ctx.fill(sil);
-          // A faced south end: the terminal pillow's front wall drops
-          // from the plane's south boundary to the turf, wearing the
-          // slab's whole face kit — dark roll, seat shadow, clusters,
-          // tufted skirt, scalloped arris.
-          if (capS) {
-            const fx0 = xW(viEnd);
-            const fx1 = xE(viEnd);
-            const fw = fx1 - fx0;
-            ctx.fillStyle = HEDGE_LEAF;
-            ctx.fillRect(fx0, yA(y1), fw, lift);
-            ctx.fillStyle = shade(HEDGE_LEAF, -8);
-            ctx.fillRect(fx0, y1 - lift * 0.45, fw, lift * 0.45);
-            ctx.fillStyle = 'rgba(20, 14, 26, 0.28)';
-            ctx.fillRect(fx0, y1 - s * 0.04, fw, s * 0.04);
-            for (let i = 0; i < 3; i++) {
-              const cseed = hashCoords(89, tx * 16 + 9 + i, ty);
-              const cx = fx0 + s * 0.07 + (((cseed >>> 4) % 100) / 100) * (fw - s * 0.14);
-              const fh = 0.2 + ((cseed >>> 8) % 60) / 100;
-              ctx.fillStyle = fh > 0.55 ? shade(HEDGE_LEAF, 7) : HEDGE_DARK;
-              ctx.beginPath();
-              facetBlob(ctx, cx, y1 - lift * fh, s * (0.038 + ((cseed >>> 11) & 3) * 0.011), cseed, 6, 0.85);
-              ctx.fill();
-            }
-            for (let i = 0; i < 3; i++) {
-              const tseed = hashCoords(151, tx * 16 + 9 + i, ty);
-              const tx3 = fx0 + s * 0.06 + (((tseed >>> 5) % 100) / 100) * (fw - s * 0.12);
-              const tr = s * (0.04 + ((tseed >>> 9) & 3) * 0.013);
-              ctx.fillStyle = (tseed & 4) === 0 ? HEDGE_DARK : shade(HEDGE_LEAF, -4);
-              ctx.beginPath();
-              facetBlob(ctx, tx3, y1 - tr * 0.3, tr, tseed, 5, 0.8);
-              ctx.fill();
-            }
-            const aseed = hashCoords(171, tx, viEnd);
-            ctx.strokeStyle = shade(HEDGE_LIT, 24);
-            ctx.lineWidth = Math.max(1, s * 0.02);
-            ctx.beginPath();
-            ctx.moveTo(fx0 + s * 0.02, yA(y1));
-            ctx.quadraticCurveTo(
-              p.x + ((((aseed >>> 5) % 30) - 15) / 100) * hw,
-              yA(y1) - s * (0.02 + ((aseed >>> 9) & 3) * 0.008),
-              fx1 - s * 0.02,
-              yA(y1),
-            );
-            ctx.stroke();
+          // EAST side, north to south.
+          if (ce) add(0.5, VN, 0.5, VS, KCUT);
+          else add(CU, VN, CU, VS, KSE);
+          // SOUTH side, east to west.
+          if (cs) {
+            if (ce) add(0.5, VS, CU, VS, KSKIRT);
+            add(CU, VS, pSE, 0.5, KSE);
+            add(pSE, 0.5, pSW, 0.5, KCUT);
+            add(pSW, 0.5, -CU, VS, KSW);
+            if (cw) add(-CU, VS, -0.5, VS, KSKIRT);
+          } else {
+            add(ce ? 0.5 : CU, VS, cw ? -0.5 : -CU, VS, KSKIRT);
           }
-          // The rolling light: the whole bed catches one gust of sun.
-          if (wind.l > 0.05) {
-            ctx.fillStyle = `rgba(214, 236, 176, ${(0.16 * wind.l).toFixed(3)})`;
-            ctx.fill(sil);
-          }
-          // THE TURN OF EVERY PILLOW: lit west crescent, shaded east
-          // crescent, each hugging its own bulge and dying into the
-          // pinches — the straight shoulder bands are DEAD (they read
-          // as ruler stripes beside the ink at any zoom).
-          ctx.lineCap = 'round';
-          for (let i = 0; i < nSeg; i++) {
-            const vi = vi0 + i;
-            const aW = hashCoords(107, tx, vi);
-            const atW = 0.34 + ((aW >>> 6) % 32) / 100;
-            ctx.strokeStyle = shade(HEDGE_LIT, 22);
-            ctx.lineWidth = s * 0.05;
-            ctx.beginPath();
-            ctx.moveTo(xW(vi) + s * 0.055, yA(segY(i)) + syT * 0.1);
-            ctx.quadraticCurveTo(
-              p.x - hw + s * 0.052 - s * (0.004 + ((aW >>> 2) & 3) * 0.007),
-              yA(segY(i) + syT * 0.5 * atW),
-              xW(vi + 1) + s * 0.055,
-              yA(segY(i + 1)) - syT * 0.08,
-            );
-            ctx.stroke();
-            const aE = hashCoords(109, tx, vi);
-            const atE = 0.34 + ((aE >>> 6) % 32) / 100;
-            ctx.strokeStyle = shade(HEDGE_LEAF, -9);
-            ctx.lineWidth = s * 0.055;
-            ctx.beginPath();
-            ctx.moveTo(xE(vi) - s * 0.058, yA(segY(i)) + syT * 0.1);
-            ctx.quadraticCurveTo(
-              p.x + hw - s * 0.055 + s * (0.004 + ((aE >>> 2) & 3) * 0.007),
-              yA(segY(i) + syT * 0.5 * atE),
-              xE(vi + 1) - s * 0.058,
-              yA(segY(i + 1)) - syT * 0.08,
-            );
-            ctx.stroke();
-          }
-          ctx.lineCap = 'butt';
-          // Pillow partings, sheens, clumps, flecks, and blooms — all
-          // world-keyed on the half-tile index (never screen y).
-          for (let i = 0; i < nSeg; i++) {
-            const vi = vi0 + i;
-            // The crease rides the pinch waist the silhouette already
-            // draws — geometry and shading tell one story.
-            if (i > 0 || !capN) {
-              const cseed2 = hashCoords(149, tx, vi);
-              const bow = ((((cseed2 >>> 4) % 12) - 4) / 100) * s;
-              ctx.strokeStyle = 'rgba(24, 50, 28, 0.32)';
-              ctx.lineWidth = Math.max(1, s * 0.022);
-              ctx.beginPath();
-              ctx.moveTo(xW(vi) + s * 0.05, yA(segY(i)));
-              ctx.quadraticCurveTo(p.x + bow, yA(segY(i)) + syT * 0.08, xE(vi) - s * 0.05, yA(segY(i)));
-              ctx.stroke();
-            }
-            const dseed = hashCoords(139, tx, vi);
-            const mx = p.x + ((((dseed >>> 3) % 60) - 30) / 100) * hw;
-            ctx.fillStyle = 'rgba(214, 236, 176, 0.13)';
-            ctx.beginPath();
-            ctx.ellipse(mx, yA(segY(i)) + syT * 0.24, hw * 0.38, syT * 0.11, 0, 0, Math.PI * 2);
-            ctx.fill();
-            const cseed = hashCoords(113, tx, vi);
-            const cx = p.x + ((((cseed >>> 4) % 124) - 62) / 100) * hw;
-            ctx.fillStyle = (cseed & 4) === 0 ? HEDGE_DARK : shade(HEDGE_LEAF, 6);
-            ctx.beginPath();
-            facetBlob(ctx, cx, yA(segY(i)) + syT * (0.22 + ((cseed >>> 9) & 3) * 0.06), s * (0.046 + this.hedgeLobe(107, tx, vi) * 0.34), cseed, 6, 0.85);
-            ctx.fill();
-            for (let k = 0; k < 2; k++) {
-              const gseed = hashCoords(97, tx * 8 + k, vi);
-              const gx = p.x + ((((gseed >>> 3) % 130) - 65) / 100) * hw * 0.8;
-              const gy2 = yA(segY(i)) + syT * (0.1 + ((gseed >>> 9) % 30) / 100);
-              ctx.fillStyle = (gseed & 8) === 0 ? shade(HEDGE_LIT, 18) : shade(HEDGE_LEAF, -5);
-              ctx.fillRect(gx, gy2, s * 0.032, s * 0.026);
-            }
-            // One pillow in six flowers, like the slab's crown.
-            if (((hashCoords(103, tx, vi) >>> 7) & 7) < 1) {
-              const bseed0 = hashCoords(103, tx, vi);
-              const bx = p.x + ((((bseed0 >>> 10) % 70) - 35) / 100) * hw;
-              const by = yA(segY(i)) + syT * (0.14 + ((bseed0 >>> 13) % 22) / 100);
-              for (let k = 0; k < 4; k++) {
-                const bseed = hashCoords(103, tx * 8 + k + 1, vi);
-                const ox = ((((bseed >>> 2) % 30) - 15) / 100) * s;
-                const oy = ((((bseed >>> 7) % 24) - 12) / 100) * s;
-                ctx.fillStyle = k === 3 ? HEDGE_BLOOM_LIT : HEDGE_BLOOM;
-                ctx.beginPath();
-                facetCircle(ctx, bx + ox, by + oy, s * (k === 3 ? 0.02 : 0.028), 5, 0.4, 0.8);
-                ctx.fill();
-              }
-            }
-          }
-          // The wall law's ink: the bulged side silhouettes, the
-          // rounded north cap, the faced south end's plumb sides —
-          // never the base, never a seam rung.
-          if (this.outlineOn) {
-            this.beginStructOutline();
-            ctx.beginPath();
-            ctx.moveTo(xW(vi0), yA(y0));
-            westInto(ctx);
-            if (capS) {
-              ctx.lineTo(xW(viEnd), y1);
-              ctx.moveTo(xE(viEnd), y1);
-              ctx.lineTo(xE(viEnd), yA(y1));
-            } else {
-              ctx.moveTo(xE(viEnd), yA(y1));
-            }
-            eastInto(ctx);
-            if (capN) capNInto(ctx);
-            ctx.stroke();
-          }
+          // WEST side, south to north.
+          if (cw) add(-0.5, VS, -0.5, VN, KCUT);
+          else add(-CU, VS, -CU, VN, KSW);
+          return out;
         };
-
-        // Back-to-front: north masses, the E-W slab, the junction
-        // knuckle capping every joint, then south masses over it.
-        // Pure N-S tiles draw ONE full-tile caterpillar — a through
-        // tile has no mid split, and an end tile caps itself (capN
-        // when the run continues south, capS when it continues
-        // north); only mixed junctions keep the half strips that die
-        // under the knuckle.
-        if (nsEnd) crownStrip(baseY - syT * 0.5, baseY + syT * 0.5, cs, cn);
-        else if (nsThrough) crownStrip(baseY - syT * 0.5, baseY + syT * 0.5, false, false);
-        else if (cn) crownStrip(baseY - syT * 0.5, baseY, false, false);
-        // THE STRIDE IS A STRING OF CUSHIONS (this round's rethink):
-        // at the waist, intermediate step slabs printed a shuffle of
-        // overlapping arcs down every 45° turn — so the stride keeps
-        // ONLY the heart knuckle each diagonal tile already owns plus
-        // ONE shared corner cushion at the tile seam, owned by the
-        // NORTH-going stride so exactly one tile draws each corner.
-        // Big cushion, small cushion, big cushion: an even half-tile
-        // rhythm that reads as a low clipped bank stepping over.
-        const diagSlabs: Array<[number, number, number]> = [];
-        if (dNE || isoNE) diagSlabs.push([0.5, -0.5, 8]);
-        if (dNW || isoNW) diagSlabs.push([-0.5, -0.5, 10]);
-        if (isoNE) diagSlabs.push([-0.5, 0.5, 12]);
-        if (isoNW) diagSlabs.push([0.5, 0.5, 14]);
-        diagSlabs.sort((a, b) => a[1] - b[1]);
-        // Corner cushions take CROWN-ONLY ink — a plumb-sided ring on
-        // every step printed a row of inked tombstones (the sheet
-        // before this one); the scalloped crown plus the skirt shadow
-        // seat each cushion like the slab's own base.
-        for (const [fx, fy, k] of diagSlabs) {
-          if (fy < 0) {
-            const cx2 = p.x + fx * s;
-            slab(cx2 - s * 0.34, cx2 + s * 0.34, baseY + fy * syT, 0.92, false, false, tx * 16 + k, true);
+        // Crown texture cells (2x2 world-keyed pillow quarters) and
+        // the pillow partings: E-W-ish beds part vertically, N-S-ish
+        // runs part horizontally, junctions part both ways; each
+        // tile owns its west/north seam crease.
+        const blobCells = () => {
+          const cells: Array<{ u: number; v: number; ku: number; kv: number }> = [];
+          for (let ci = 0; ci < 2; ci++)
+            for (let ri = 0; ri < 2; ri++)
+              cells.push({
+                u: ci === 0 ? -0.25 : 0.25,
+                v: ri === 0 ? -0.12 : 0.2,
+                ku: tx * 2 + ci,
+                kv: ty * 2 + ri,
+              });
+          return cells;
+        };
+        const blobCreases = () => {
+          const vc: Array<{ u: number; v0: number; v1: number; key: number }> = [];
+          const hc: Array<{ v: number; u0: number; u1: number; key: number }> = [];
+          if (cw || ce || (!cn && !cs)) {
+            vc.push({ u: 0, v0: VN + 0.04, v1: VS - 0.03, key: tx * 2 + 1 });
+            if (cw) vc.push({ u: -0.5, v0: VN + 0.04, v1: VS - 0.03, key: tx * 2 });
           }
-        }
-        if (ewAny) slab(xw, xe, baseY, 1, !cw, !ce, tx, false);
-        if (needAnchor) {
-          // The knuckle: a fuller clipped cushion at the tile heart —
-          // the gardener squares off every corner, tee, and run end.
-          // It must OUT-MEASURE the near-full-width strips it caps.
-          slab(p.x - s * 0.48, p.x + s * 0.48, baseY + s * 0.02, 1.1, true, true, tx * 16 + 7, true);
-        }
-        if (cs && !nsEnd && !nsThrough) crownStrip(baseY, baseY + syT * 0.5, false, false);
-        for (const [fx, fy, k] of diagSlabs) {
-          if (fy >= 0) {
-            const cx2 = p.x + fx * s;
-            slab(cx2 - s * 0.34, cx2 + s * 0.34, baseY + fy * syT, 0.92, false, false, tx * 16 + k, true);
+          if (cn || cs) {
+            hc.push({ v: 0.03, u0: -CU + 0.06, u1: CU - 0.06, key: ty * 2 + 1 });
+            if (cn) hc.push({ v: -0.47, u0: -CU + 0.06, u1: CU - 0.06, key: ty * 2 });
           }
+          return { vc, hc };
+        };
+        // A lone rounded cushion in the same voice — the diagonal
+        // stride's hearts and shared corner steps, and the terminal
+        // read of an isolated planting.
+        const cushion = (cx: number, cyv: number, halfU: number, hgt: number, saltC: number, sidesInk: boolean) => {
+          const prts: MSeg[] = [
+            { au: cx - halfU, av: cyv + VN, bu: cx + halfU, bv: cyv + VN, k: KCROWN },
+            { au: cx + halfU, av: cyv + VN, bu: cx + halfU, bv: cyv + VS, k: KSE },
+            { au: cx + halfU, av: cyv + VS, bu: cx - halfU, bv: cyv + VS, k: KSKIRT },
+            { au: cx - halfU, av: cyv + VS, bu: cx - halfU, bv: cyv + VN, k: KSW },
+          ];
+          this.hedgeMassPaint(
+            p.x,
+            p.y,
+            tx,
+            ty,
+            prts,
+            hgt,
+            wind,
+            saltC,
+            [{ u: cx, v: cyv + 0.04, ku: tx * 2 + saltC, kv: ty * 2 + saltC }],
+            [],
+            [],
+            sidesInk,
+          );
+        };
+        // Back-to-front: north diagonal cushions, the fused blob (or
+        // the diagonal tile's heart cushion), then south cushions.
+        const diagC: Array<[number, number, number]> = [];
+        if (dNE || isoNE) diagC.push([0.5, -0.5, 8]);
+        if (dNW || isoNW) diagC.push([-0.5, -0.5, 10]);
+        if (isoNE) diagC.push([-0.5, 0.5, 12]);
+        if (isoNW) diagC.push([0.5, 0.5, 14]);
+        diagC.sort((a, b) => a[1] - b[1]);
+        for (const [fx, fy, k] of diagC) {
+          if (fy < 0) cushion(fx, fy, 0.34, 0.46, k, false);
+        }
+        if (straight) {
+          const { vc, hc } = blobCreases();
+          this.hedgeMassPaint(p.x, p.y, tx, ty, blobParts(), HED_H, wind, 0, blobCells(), vc, hc);
+        } else {
+          cushion(0, 0, 0.48, 0.52, 7, true);
+        }
+        for (const [fx, fy, k] of diagC) {
+          if (fy >= 0) cushion(fx, fy, 0.34, 0.46, k, false);
         }
 
         // THE SHEARS MISSED A FEW: stray sprigs above the crown, the
@@ -21363,48 +21337,44 @@ export class Renderer {
           ctx.translate(shakeX, 0);
         }
 
-        // A clipped pier: a rounded column of green on a peeking
-        // stem, lit crown facet turning its top to the sky. Callers
-        // choose the build: the horizontal arch's piers rise tall
-        // enough to carry the span; the VERTICAL gate's piers are
-        // SQUAT topiary posts — two thin columns stacked up-screen
-        // beside the low caterpillar run tangled into hooks (this
-        // round's sheet), where a pair of round posts reads as a
-        // gateway.
-        const pier = (px2: number, gy: number, seed: number, hgt = s * 1.05, hw = s * 0.16) => {
-          ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
-          ctx.beginPath();
-          ctx.ellipse(px2, gy + s * 0.012, hw * 1.5, s * 0.045, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = HEDGE_WOOD;
-          ctx.fillRect(px2 - s * 0.028, gy - s * 0.16, s * 0.056, s * 0.16);
-          const sil = new Path2D();
-          sil.moveTo(px2 - hw, gy - s * 0.1);
-          sil.quadraticCurveTo(px2 - hw * 1.25, gy - hgt * 0.55, px2 - hw * 0.7, gy - hgt + s * 0.05);
-          sil.quadraticCurveTo(px2, gy - hgt - s * 0.09, px2 + hw * 0.7, gy - hgt + s * 0.05);
-          sil.quadraticCurveTo(px2 + hw * 1.25, gy - hgt * 0.55, px2 + hw, gy - s * 0.1);
-          sil.closePath();
-          ctx.fillStyle = HEDGE_LEAF;
-          ctx.fill(sil);
-          // The turn of the column: shaded east fall-off, one modest
-          // lit crown facet (pass-2's bright cap read as a slumped
-          // pale pillar), a dark clump low, and a seated base band.
-          ctx.fillStyle = shade(HEDGE_LEAF, -10);
-          ctx.fillRect(px2 + hw * 0.3, gy - hgt * 0.72, hw * 0.6, hgt * 0.6);
-          ctx.fillStyle = shade(HEDGE_LIT, 8);
-          ctx.beginPath();
-          facetBlob(ctx, px2 - hw * 0.18, gy - hgt + s * 0.12, hw * 0.5, seed, 6, 0.85);
-          ctx.fill();
-          ctx.fillStyle = HEDGE_DARK;
-          ctx.beginPath();
-          facetBlob(ctx, px2 + hw * 0.22, gy - hgt * 0.4, hw * 0.48, seed ^ 0x3d, 6, 0.85);
-          ctx.fill();
-          ctx.fillStyle = 'rgba(20, 14, 26, 0.26)';
-          ctx.fillRect(px2 - hw * 0.9, gy - s * 0.13, hw * 1.8, s * 0.045);
-          if (this.outlineOn) {
-            this.beginStructOutline();
-            ctx.stroke(sil);
-          }
+        // THE GATEWAY IS CUT FROM THE HEDGE (round three — the old
+        // freestanding pickle piers read as bollards beside gaps,
+        // five objects where a garden shows one): each post is a
+        // PILLAR CUSHION in the mass's own voice — the same deep
+        // plan, crown lobes, pinch-bulge sides, faced skirt front —
+        // planted FLUSH at its seam so the neighboring run (whose
+        // cut edge carries no ink) fuses straight into it, trimmed
+        // proud of the line to carry the span or frame the wicket.
+        const VN = -0.32;
+        const VS = 0.4;
+        const pillar = (
+          u0: number,
+          v0: number,
+          u1: number,
+          v1: number,
+          hgt: number,
+          saltC: number,
+          cutSide: 'n' | 's' | 'none',
+        ) => {
+          const parts: Array<{ au: number; av: number; bu: number; bv: number; k: number }> = [
+            { au: u0, av: v0, bu: u1, bv: v0, k: cutSide === 'n' ? 0 : 1 },
+            { au: u1, av: v0, bu: u1, bv: v1, k: 4 },
+            { au: u1, av: v1, bu: u0, bv: v1, k: cutSide === 's' ? 0 : 2 },
+            { au: u0, av: v1, bu: u0, bv: v0, k: 3 },
+          ];
+          this.hedgeMassPaint(
+            p.x,
+            p.y,
+            tx,
+            ty,
+            parts,
+            hgt,
+            wind,
+            saltC,
+            [{ u: (u0 + u1) / 2, v: (v0 + v1) / 2 - 0.06, ku: tx * 2 + saltC, kv: ty * 2 + saltC }],
+            [],
+            [],
+          );
         };
 
         // The timber wicket: three pales under a capped top rail,
@@ -21456,10 +21426,13 @@ export class Renderer {
           // Low-line measures: span top at 1.42 tiles, soffit mid at
           // ~1.26 — the 1.15-tile body still walks under clean, but
           // the arch no longer towers over the waist-high garden.
+          // The span's ends drop onto the pillar cushions' crown
+          // backs (their top pixel rides at ~1.04 with the deep-plan
+          // lift), so the lintel SEATS instead of floating.
           const yTopArch = baseY - 1.42 * s;
           const xL = pierL - s * 0.08;
           const xR = pierR + s * 0.08;
-          const endDrop = s * 0.44;
+          const endDrop = s * 0.38;
           const midDrop = s * 0.16;
           const seg: ReadonlyArray<readonly [number, number, number]> = [
             [xL, p.x, this.hedgeLobe(79, tx * 16 + 2, ty)],
@@ -21535,23 +21508,27 @@ export class Renderer {
             spanInto(ctx);
             ctx.stroke();
           }
-          // THE WICKET: both leaves fold toward their piers.
-          const leafFull = 0.34 * s;
+          // THE WICKET swings in the pillar-framed gap, and the
+          // pillars go down LAST so the leaves hinge behind their
+          // inner faces.
+          const leafFull = 0.15 * s;
           const wNow = leafFull * (1 - o * 0.9);
-          wicket(pierL + s * 0.1, 1, wNow, Math.round(-20 * o));
-          wicket(pierR - s * 0.1, -1, wNow, Math.round(-20 * o));
-          pier(pierL, baseY, hashCoords(61, tx * 2, ty));
-          pier(pierR, baseY, hashCoords(61, tx * 2 + 1, ty));
+          wicket(p.x - s * 0.15, 1, wNow, Math.round(-20 * o));
+          wicket(p.x + s * 0.15, -1, wNow, Math.round(-20 * o));
+          pillar(-0.5, VN, -0.16, VS, 0.85, 21, 'none');
+          pillar(0.16, VN, 0.5, VS, 0.85, 22, 'none');
         } else {
-          const yN = baseY - syT * 0.5;
-          const yS = baseY + syT * 0.5;
-          pier(p.x, yN, hashCoords(61, tx * 2, ty), s * 0.78, s * 0.2);
+          // The vertical gateway: two pillar STUBS cut from the run
+          // itself — their seam edges are cuts (the neighbor strips
+          // fuse in without a line), their gap faces wear the full
+          // face kit, and the paled bar bars the space between.
+          pillar(-0.44, -0.5, 0.44, -0.18, 0.7, 21, 'n');
           if (o < 0.98) {
             // Shut: the wicket edge-on, a paled strip barring the
             // gap, retracting toward its north hinge as it swings.
             const hw2 = 0.055 * s;
-            const top = yN - 0.5 * s;
-            const bot = top + (yS - 0.04 * s - top) * (1 - o);
+            const top = p.y - 0.18 * syT - 0.62 * s;
+            const bot = top + (p.y + 0.18 * syT - 0.02 * s - top) * (1 - o);
             ctx.fillStyle = shade(FENCE_POST, 2);
             ctx.fillRect(p.x - hw2, top, hw2 * 2, bot - top);
             ctx.fillStyle = shade(FENCE_POST, 16);
@@ -21565,7 +21542,7 @@ export class Renderer {
             const oo = Math.sin((o * Math.PI) / 2);
             wicket(p.x + 0.06 * s, 1, 0.6 * s * oo, 0);
           }
-          pier(p.x, yS, hashCoords(61, tx * 2 + 1, ty), s * 0.78, s * 0.2);
+          pillar(-0.44, 0.18, 0.44, 0.5, 0.7, 22, 's');
         }
         if (shakeX !== 0) ctx.restore();
       },
