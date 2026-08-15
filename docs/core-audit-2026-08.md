@@ -100,17 +100,25 @@ boss lane, POI lifecycle, worldgen field, loot machinery, and the tick.
 
 Ordered roughly by value; every one was verified real by the audit.
 
-**LEDGER STATUS (2026-08-15, second session — THE DEBTS COME DUE, four
-commits ending 45665b7c): items 1–7, 9–11 PAID whole; item 13 paid
-except the road-severance hard reject (needs a `roadside` def flag to
-distinguish road-seekers from road-avoiders — a design decision, not a
-mechanical fix) and the roadHitAt/draftHit tie-break consolidation
-(behavior-changing at exact ties). STILL OPEN: item 8 (siting/muster
-consolidation), item 12 (perf next tier), item 14 (client, peer
-territory), the two item-13 stragglers above, and debt 5's second half
-(pinning the WING SET in the ledger at decide time needs a ledger
-column; the salted streams shipped). The per-item text below is kept
-as the audit wrote it — the record of what was found.**
+**LEDGER STATUS (2026-08-15, second session — THE DEBTS COME DUE, five
+commits ending 7ebc89b2): items 1–12 PAID (8's siting half — one
+siteScan with policy presets, byte-identical world-decision proof; the
+MUSTER half stays open BY CHOICE: its four loops consume distinct hash
+streams and consolidating them risks stream drift for structure's
+sake. 12's safe subset — dirty-flag mirrors with the petHpWatch
+one-number law, authoredCells cache, status-spread pay-once, the
+Studio survey off the tick; numeric packed chunk keys and ChunkStore
+LRU stay open — wire-semantics risk wants its own careful arc). Item
+13 paid except the road-severance hard reject (needs a `roadside` def
+flag to distinguish road-seekers from road-avoiders — a design
+decision) and the roadHitAt/draftHit tie-break consolidation
+(behavior-changing at exact ties). STILL OPEN: item 14 (client
+bossBanner monotone-phase assumption — the neighbor lane's territory),
+the muster-loop half of 8, the deep-perf pair of 12, the two item-13
+stragglers, and debt 5's second half (pinning the WING SET in the
+ledger at decide time needs a ledger column; the salted streams
+shipped). The per-item text below is kept as the audit wrote it — the
+record of what was found.**
 
 1. **POST_SIGNS exists three times and the copies disagree** (server
    pois.ts, content strongholds/generate.ts, dungeon garrison.ts):
