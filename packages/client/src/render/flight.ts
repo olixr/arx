@@ -775,6 +775,13 @@ function owlWingSim(
     /** Which wing: −1 port, +1 starboard. */
     es: number;
     s: number;
+    /** World facing + lateral basis and the camera's y-squash — the
+     *  surface-normal test needs the true 3D frame. */
+    fx: number;
+    fy: number;
+    px: number;
+    py: number;
+    ysK: number;
     fr: FlightFrame;
     /** This wing's sim stations + tip velocity (the flex cue). */
     lag: readonly number[];
@@ -891,12 +898,29 @@ function owlWingSim(
   const slabArea = Math.abs(area2) / 2;
   /** 1 = a full broad slab, →0 as the wing turns edge-on. */
   const slabK = Math.min(1, slabArea / (0.1 * span * span * s * s));
-  // WHICH FACE SHOWS IS GEOMETRY, NOT A THRESHOLD: the projected
-  // polygon's WINDING flips exactly when the camera crosses the wing
-  // plane — and at that instant the slab is edge-on and invisible,
-  // so the top↔underside swap can never flash (the old raise>0.4
-  // flip popped pale at the crest of every hover beat).
-  const underVis = area2 * o.es > 0;
+  // WHICH FACE SHOWS IS THE SURFACE'S OWN 3D NORMAL — the one robust
+  // answer (user verdict: the projected-winding shortcut lied at the
+  // back bands, because the outline is NON-planar — swept fingers and
+  // drooped secondaries can hold a winding the flat surface lost).
+  // The wing's MAIN PLANE is spanned by the arm (shoulder→wrist) and
+  // the chord (leading mid → trailing mid); its normal, carried to
+  // world axes and dotted with the camera's true view ray (0, 1, ys),
+  // says which face the camera sees — flipping through zero exactly
+  // at the invisible edge-on instant. Hand-proven at the four poles:
+  // hover-S pale underwings, hover-N dark mantle, cruise-S underwings
+  // (a bird flying at you), cruise-N mantle (flying away).
+  const aF = wrF - shF;
+  const aL2 = wrL - shL;
+  const aZ = wrZ - shZ;
+  const cF = midF - (shF + wrF) / 2;
+  const cL = midL - (shL + wrL) / 2;
+  const cZ = midZ - (shZ + wrZ) / 2;
+  const nF = aL2 * cZ - aZ * cL;
+  const nL = aZ * cF - aF * cZ;
+  const nZ = aF * cL - aL2 * cF;
+  const nwy = nF * o.fy + nL * o.py;
+  const topDot = es * (nwy + nZ * o.ysK);
+  const underVis = topDot < 0;
   const base = o.hurt ? '#ffffff' : underVis ? look.breast : look.mantle;
   const flightInk = o.hurt
     ? '#ffffff'
@@ -1181,10 +1205,13 @@ export function drawGreatOwl(
       ...pts.slice(0, Math.min(pts.length, midIdx + 2)),
     ];
     if (stem.length >= 2) {
-      const neckW = 0.055;
-      const rootW = look.bodyW * 0.78;
+      // Streamlined: the stem leaves at HALF the hull's half-width and
+      // slips to a slim neck — an extension of the body, never a bag
+      // over the rump (the user's slipped-bag verdict).
+      const neckW = 0.045;
+      const rootW = look.bodyW * 0.5;
       const wAt = (t: number): number =>
-        s * (rootW * Math.pow(1 - t, 1.35) + neckW);
+        s * (rootW * Math.pow(1 - t, 1.15) + neckW);
       ctx.fillStyle = coat;
       ctx.beginPath();
       const perp = (i: number): [number, number] => {
@@ -1257,6 +1284,11 @@ export function drawGreatOwl(
       pf,
       es,
       s,
+      fx,
+      fy,
+      px,
+      py,
+      ysK: ys,
       fr,
       lag: es < 0 ? fr.port : fr.star,
       tipVel: es < 0 ? fr.portTipVel : fr.starTipVel,
@@ -1290,17 +1322,20 @@ export function drawGreatOwl(
       facetBlob(ctx, 0, 0, half, seed | 1, 9, (look.bodyW * 1.0 * s) / half, 0.35);
       ctx.clip();
       ctx.rotate(-ax);
-      // The pale keel: the under-half of the hull in breast tone —
-      // strongest flying at the camera, and OWNED by the hover, whose
-      // upright chest shows the whole barred bib to the glade.
-      const keelK = clamp(0.55 + fy * 0.7 * fr.pitchK + 0.4 * (1 - fr.pitchK), 0, 1);
+      // The pale keel: the under-half of the hull in breast tone.
+      // Visibility is GEOMETRY — facing times pitch: the hover's
+      // upright chest shows the whole barred bib WHEN it faces the
+      // camera, and the term dies to zero facing away (the bib was
+      // painting straight onto the away-facing hull at the north
+      // bands: the user's inside-out verdict).
+      const keelK = clamp(0.5 + fy * (0.7 + 0.5 * Math.sin(Math.max(0, fr.pitchA))), 0, 1);
       if (keelK > 0.05) {
         ctx.globalAlpha = keelK;
         ctx.fillStyle = shade(look.breast, -3);
         ctx.fillRect(-half * 1.4, look.bodyW * 0.12 * s * fr.pitchK - half * 0.5 * (1 - fr.pitchK), half * 2.8, half * 2.4);
         ctx.globalAlpha = 1;
         // Barred keel rows when the chest truly meets the camera.
-        if (fy > 0.25 || fr.pitchK < 0.55) {
+        if (keelK > 0.55 && fy > -0.05) {
           ctx.strokeStyle = look.bar;
           ctx.lineWidth = Math.max(1.1, s * 0.016);
           ctx.lineCap = 'round';
