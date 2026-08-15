@@ -145,4 +145,43 @@ Per-piece design law:
 
 ## As-built ledger
 
-(filled at ship time)
+**SHIPPED 2026-08-15, 46d42efc, one session, two audit passes on rig
+lane 10** (vite.config.rig10.ts, client :5188 → server :8806).
+Standalone tree proved whole: 217 shared / 506 content / 579 client /
+490 server + clean client tsc, gated on a HEAD+mine twin while two
+peer changesets (THE LONG DARK PEOPLED, Amberford) flew beside it.
+
+Audit verdicts that reshaped the kit (pass 1 → pass 2):
+- **THE RIBS ARE CRESCENTS, NEVER A TEEPEE**: pass-one ribs were
+  straight tapers converging at one apex — the monument read as a
+  spike-tent at every zoom. The rebuild: root stands near-vertical,
+  belly bows OUTWARD, worn tip hooks back over the hollow, tips never
+  meet; two ranks with the far three dimmer AND rooted a half-step
+  north; the shell string strung AFTER the near ribs so the camp's
+  claim reads in front of the ancestor.
+- **FISH READ AS FISH**: five narrow tubes read as hanging gourds —
+  now four bigger leaf bodies, real forked tails, hard belly/back
+  two-tone split.
+- **A PALE BANNER ON A BONE SKULL VANISHES**: the fourth water-accent
+  swapped bone-pale → the deepking's crimson; the membrane grew, took
+  ink, and kept its rays.
+- **SHELL STRINGS HANG, NEVER SPLAY**: pass-one catenaries falling
+  wide off the totem spar read as skeleton arms.
+- **A MIDDEN IS A MOUND, NOT A PEBBLE**: mass up, satellite spill
+  added, shells scaled to read.
+- **A DARK PIT IS A HOLE IN THE BANK**: the roe hollow lifted to
+  mid-tone; the floating-shade lesson arriving by water.
+- Proven live: night pools (lure r3.6 teal occluding + altar r2.2
+  cool), smash-to-debris-to-patch with sword in hand (the catch flew
+  silver, the staves fell gray — never camp brown).
+
+Placement notes: the world regen between passes wiped /settile stamps
+(the chunk-flush law) — pass 2 re-verified and re-stamped before
+shooting. Equip lever for smash proofs: `__arx.game.useSlot(slot)`
+after `/give` (inventory slots carry `item`, not `id`).
+
+Deliberate debts: no wilds "find" entries (camps + Studio only); no
+dress.ts lane (shore camps are prefab-dressed, not procedurally
+dressed); shore POI count unchanged (the three prefabs re-voiced in
+place); midden reads quiet at far map scale beside the monuments —
+acceptable, revisit only if flagged.
