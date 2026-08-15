@@ -414,12 +414,19 @@ export interface HobHeadFrame {
 const SIL_N = 36;
 
 /**
+ * THE BLOCK DIAL: the hull's superellipsoid exponent. 2 = egg, 4 =
+ * balloon-block, 6 = die. The soldier's skull carries its chamfer at
+ * a VISIBLE corner radius — tuned on the turn strip, by eye.
+ */
+const HULL_P = 4.4;
+
+/**
  * THE HEAD IS A TURNED VOLUME (round three, user-directed root fix).
  * The features were always honest 3D stations — but the silhouette
  * they lived on was still an axis-aligned billboard slab, so through
  * a turn the face slid across a rectangle that never rotated, and at
  * the diagonals the mouth read as hanging off a cheek that wasn't
- * turning with it. The hull is now a real solid: a p=6 SUPERELLIPSOID
+ * turning with it. The hull is now a real solid: a SUPERELLIPSOID (exponent HULL_P)
  * (the soldier's rounded block, honestly three-dimensional) with the
  * longer rear axis, and the painted silhouette is its EXACT screen
  * projection — computed by support function through the very same
@@ -479,14 +486,15 @@ export function hobHeadHull(
       d: F * fy + L * py,
     };
   };
-  // The support point of the projected p=6 superball in direction n:
-  // v_i = c_i·n, u_i ∝ sign(v_i)·|v_i|^(1/5) (the 6-norm's dual),
-  // normalized in the 6-norm, mapped back through the basis. p=6 is
-  // the SOLDIER'S BLOCK — square enough to keep the dialect's chamfer
-  // identity, round enough to turn (p=4 read balloon on the strip).
-  // The front/rear axis is chosen by the preimage's own F sign — the
-  // two half-hulls share the F = 0 disc, so the outline is continuous.
-  const dual = (v: number): number => Math.sign(v) * Math.pow(Math.abs(v), 0.2);
+  // The support point of the projected superball in direction n:
+  // v_i = c_i·n, u_i ∝ sign(v_i)·|v_i|^(1/(P-1)) (the P-norm's dual),
+  // normalized in the P-norm, mapped back through the basis. P is
+  // THE BLOCK DIAL — the soldier's skull lives between the balloon
+  // (p=4 on the strip) and the die (p=6, the user's "feels like a
+  // cube"): squareness with a visible corner radius. The front/rear
+  // axis is chosen by the preimage's own F sign — the two half-hulls
+  // share the F = 0 disc, so the outline is continuous.
+  const dual = (v: number): number => Math.sign(v) * Math.pow(Math.abs(v), 1 / (HULL_P - 1));
   const support = (nx: number, ny: number): { x: number; y: number } => {
     const c1 = c1f.x * nx + c1f.y * ny >= 0 ? c1f : c1b;
     const u1 = dual(c1.x * nx + c1.y * ny);
@@ -494,7 +502,10 @@ export function hobHeadHull(
     const u3 = dual(c3.x * nx + c3.y * ny);
     const k =
       1 /
-      (Math.pow(u1 ** 6 + u2 ** 6 + u3 ** 6, 1 / 6) || 1e-6);
+      (Math.pow(
+        Math.abs(u1) ** HULL_P + Math.abs(u2) ** HULL_P + Math.abs(u3) ** HULL_P,
+        1 / HULL_P,
+      ) || 1e-6);
     const w1 = u1 * k;
     const w2 = u2 * k;
     const w3 = u3 * k;
@@ -575,7 +586,10 @@ export function paintHobgoblinHead(
       const t = (i / 20) * Math.PI * 2;
       const ct = Math.cos(t);
       const stn = Math.sin(t);
-      const rho = Math.pow((1 - zR ** 6) / (ct ** 6 + stn ** 6), 1 / 6);
+      const rho = Math.pow(
+        (1 - Math.abs(zR) ** HULL_P) / (Math.abs(ct) ** HULL_P + Math.abs(stn) ** HULL_P),
+        1 / HULL_P,
+      );
       pts.push(st(rho * ct, rho * stn, zR));
     }
     return pts;
@@ -638,9 +652,10 @@ export function paintHobgoblinHead(
   const horns: Fix[] = [];
   const normFix = (F: number, L: number, Z: number, r: number): Fix => {
     // Seated ON the superellipsoid surface: normalize in the hull's
-    // own 6-norm, so a fixture's base touches the skin it is riveted
+    // own P-norm, so a fixture's base touches the skin it is riveted
     // to at every band (a 2-norm seat sat slightly sunken).
-    const v = Math.pow(F ** 6 + L ** 6 + Z ** 6, 1 / 6) || 1;
+    const v =
+      Math.pow(Math.abs(F) ** HULL_P + Math.abs(L) ** HULL_P + Math.abs(Z) ** HULL_P, 1 / HULL_P) || 1;
     const F0 = F / v;
     const L0 = L / v;
     const Z0 = Z / v;
@@ -800,7 +815,7 @@ export function paintHobgoblinHead(
       // The peak: hair dips a point down the brow's center line —
       // hung off the hairline ring's own forward station, so it
       // walks the turn and leaves with the face.
-      const rho0 = Math.pow(1 - zRim ** 6, 1 / 6);
+      const rho0 = Math.pow(1 - zRim ** HULL_P, 1 / HULL_P);
       const pk = st(rho0, 0, zRim);
       if (pk.d > 0.05) {
         ctx.beginPath();
