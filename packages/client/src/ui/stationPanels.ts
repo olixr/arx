@@ -695,7 +695,9 @@ export class StationPanels {
     const count = this.placeable(def);
     const turnable =
       def.tile !== undefined &&
-      (diagWallInfo(def.tile) !== null || def.tile === Tile.FenceDiagNE);
+      (diagWallInfo(def.tile) !== null ||
+        def.tile === Tile.FenceDiagNE ||
+        def.tile === Tile.HedgeDiagNE);
 
     const head = document.createElement('div');
     head.className = 'work-head';

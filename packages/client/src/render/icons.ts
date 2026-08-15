@@ -2428,6 +2428,142 @@ const PAINTERS: Record<string, IconPainter> = {
     c.stroke();
     bar(c, shade(col, 30), 0.43, 0.18, 0.14, 0.06);
   },
+  hedgebuild: (c, col) => {
+    // The clipped block in miniature: a scalloped crown over a
+    // squared body, lit top plane, shadowed base — a gardener's wall.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.08, 0.34);
+    c.quadraticCurveTo(0.2, 0.16, 0.34, 0.3);
+    c.quadraticCurveTo(0.5, 0.14, 0.66, 0.3);
+    c.quadraticCurveTo(0.8, 0.16, 0.92, 0.34);
+    c.lineTo(0.92, 0.84);
+    c.lineTo(0.08, 0.84);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The crown plane catches the sky.
+    c.fillStyle = shade(col, 24);
+    c.beginPath();
+    c.moveTo(0.08, 0.34);
+    c.quadraticCurveTo(0.2, 0.16, 0.34, 0.3);
+    c.quadraticCurveTo(0.5, 0.14, 0.66, 0.3);
+    c.quadraticCurveTo(0.8, 0.16, 0.92, 0.34);
+    c.lineTo(0.92, 0.44);
+    c.lineTo(0.08, 0.44);
+    c.closePath();
+    c.fill();
+    // Clipped clumps break the face; the base sits in shade.
+    c.fillStyle = shade(col, -18);
+    for (const [x, y] of [[0.26, 0.58], [0.58, 0.66], [0.76, 0.54]] as const) {
+      c.beginPath();
+      c.ellipse(x, y, 0.07, 0.055, 0, 0, Math.PI * 2);
+      c.fill();
+    }
+    bar(c, shade(col, -26), 0.08, 0.78, 0.84, 0.06);
+  },
+  hedgediag: (c, col) => {
+    // The 45° turn: the clipped block striding away downhill.
+    c.save();
+    c.translate(0.5, 0.52);
+    c.rotate(-Math.PI / 5.2);
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(-0.42, -0.06);
+    c.quadraticCurveTo(-0.24, -0.24, -0.06, -0.1);
+    c.quadraticCurveTo(0.12, -0.26, 0.42, -0.06);
+    c.lineTo(0.42, 0.22);
+    c.lineTo(-0.42, 0.22);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 24);
+    c.beginPath();
+    c.moveTo(-0.42, -0.06);
+    c.quadraticCurveTo(-0.24, -0.24, -0.06, -0.1);
+    c.quadraticCurveTo(0.12, -0.26, 0.42, -0.06);
+    c.lineTo(0.42, 0.02);
+    c.lineTo(-0.42, 0.02);
+    c.closePath();
+    c.fill();
+    c.restore();
+  },
+  hedgearch: (c, col) => {
+    // The living archway: two clipped piers under a trained span, the
+    // wicket's slats latched beneath.
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    for (const x of [0.1, 0.74]) {
+      c.beginPath();
+      c.moveTo(x, 0.86);
+      c.quadraticCurveTo(x - 0.04, 0.5, x + 0.08, 0.3);
+      c.quadraticCurveTo(x + 0.2, 0.5, x + 0.16, 0.86);
+      c.closePath();
+      c.fill();
+      c.stroke();
+    }
+    c.beginPath();
+    c.moveTo(0.1, 0.36);
+    c.quadraticCurveTo(0.5, 0.06, 0.9, 0.36);
+    c.quadraticCurveTo(0.5, 0.3, 0.1, 0.36);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 24);
+    c.beginPath();
+    c.moveTo(0.14, 0.3);
+    c.quadraticCurveTo(0.5, 0.08, 0.86, 0.3);
+    c.quadraticCurveTo(0.5, 0.16, 0.14, 0.3);
+    c.closePath();
+    c.fill();
+    // The timber wicket, waist-high.
+    bar(c, '#8a6534', 0.3, 0.58, 0.4, 0.06);
+    bar(c, '#8a6534', 0.3, 0.72, 0.4, 0.06);
+    bar(c, shade('#8a6534', -12), 0.47, 0.52, 0.06, 0.32);
+  },
+  topiaryball: (c, col) => {
+    // The gardener's showpiece: a clipped sphere on its turned stem.
+    bar(c, '#5a4226', 0.46, 0.66, 0.08, 0.2);
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.ellipse(0.5, 0.42, 0.3, 0.28, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.fillStyle = shade(col, 26);
+    c.beginPath();
+    c.ellipse(0.4, 0.32, 0.13, 0.1, -0.5, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = shade(col, -18);
+    c.beginPath();
+    c.ellipse(0.6, 0.54, 0.11, 0.08, 0.4, 0, Math.PI * 2);
+    c.fill();
+  },
+  topiaryspire: (c, col) => {
+    // Three clipped tiers shrinking to a tuft finial.
+    bar(c, '#5a4226', 0.46, 0.74, 0.08, 0.14);
+    c.fillStyle = col;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    for (const [y, r] of [[0.62, 0.24], [0.42, 0.18], [0.26, 0.12]] as const) {
+      c.beginPath();
+      c.ellipse(0.5, y, r, r * 0.72, 0, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+      c.fillStyle = col;
+    }
+    c.fillStyle = shade(col, 26);
+    c.beginPath();
+    c.ellipse(0.5, 0.13, 0.055, 0.05, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+  },
   barrel: (c, col) => {
     // Bulged oak staves bound by two dark iron hoops.
     c.fillStyle = col;
@@ -6318,6 +6454,11 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   fence: { icon: 'fencebuild', color: '#8a6534' },
   fence_gate: { icon: 'fencegate', color: '#8a6534' },
   fence_corner: { icon: 'fencediag', color: '#8a6534' },
+  hedge: { icon: 'hedgebuild', color: '#3a7539' },
+  hedge_corner: { icon: 'hedgediag', color: '#3a7539' },
+  hedge_arch: { icon: 'hedgearch', color: '#3a7539' },
+  topiary_ball: { icon: 'topiaryball', color: '#3a7539' },
+  topiary_spire: { icon: 'topiaryspire', color: '#2f6234' },
   wood_railing: { icon: 'railing', color: '#a5793f' },
   campfire: { icon: 'campfirebuild', color: '#e8823d' },
   furnace: { icon: 'furnacebuild', color: '#6e6a75' },

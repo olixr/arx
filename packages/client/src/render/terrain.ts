@@ -3,6 +3,7 @@ import {
   CHUNK_SIZE,
   Detail,
   GARRISON_TILES,
+  HEDGE_TILES,
   PALISADE_TILES,
   Tile,
   WALL_RUN_TILES,
@@ -216,6 +217,16 @@ const GRASS_LIKE = new Set<number>([
   Tile.FibrePlant,
   Tile.WildSagewort,
   Tile.WildMoonbell,
+  // THE CLIPPED GREEN: a hedgerow grows FROM the meadow — the grass
+  // contour runs beneath it like beneath the fence, and the topiary
+  // pair stand planted, never potted on flags.
+  Tile.Hedge,
+  Tile.HedgeDiagNE,
+  Tile.HedgeDiagNW,
+  Tile.HedgeGate,
+  Tile.HedgeGateShut,
+  Tile.TopiaryBall,
+  Tile.TopiarySpire,
 ]);
 
 /**
@@ -515,6 +526,23 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
         pick(ground(tx + 1, ty)) ??
         pick(ground(tx - 1, ty)) ??
         Tile.Dirt
+      );
+    }
+    // The hedge stands in the garden the same way — whatever ground
+    // fronts it continues beneath, and a run-mate never lends its own
+    // skin. The open-air fallback is GRASS, never the camp's dirt: a
+    // hedge is planted in living earth.
+    if (HEDGE_TILES.has(t)) {
+      const pick = (tt: Tile | undefined): Tile | null =>
+        tt !== undefined && !tileDef(tt).solid && !HEDGE_TILES.has(tt) && tt !== Tile.Ramp
+          ? tt
+          : null;
+      return (
+        pick(ground(tx, ty + 1)) ??
+        pick(ground(tx, ty - 1)) ??
+        pick(ground(tx + 1, ty)) ??
+        pick(ground(tx - 1, ty)) ??
+        Tile.Grass
       );
     }
     // Dungeon props stand on whichever floor the corridor carries

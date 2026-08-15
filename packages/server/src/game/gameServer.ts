@@ -473,6 +473,8 @@ import {
   diagWallTile,
   orientDiagWall,
   orientDiagFence,
+  orientDiagHedge,
+  HEDGE_TILES,
   encodeDetailPatch,
   HANGABLE_WALL_TILES,
   AWNING_HOST_TILES,
@@ -4509,7 +4511,10 @@ export class GameServer {
     const unit = this.doorUnit(tx, ty, info);
     const lockKey = `${unit.ax},${unit.ay}`;
     const gate =
-      info.material === 'fence' || info.material === 'garrison' || info.material === 'palisade';
+      info.material === 'fence' ||
+      info.material === 'garrison' ||
+      info.material === 'palisade' ||
+      info.material === 'hedge';
     if (info.open) {
       for (const t of unit.tiles) {
         if (this.bodyOnTile(t.x, t.y)) {
@@ -7155,7 +7160,11 @@ export class GameServer {
     // The orient dial only turns pieces that HAVE a dial — anything
     // else silently drops it (a stale client can't skew a bed).
     const orientable =
-      diagWallInfo(pieceTile) !== null || pieceTile === Tile.FenceDiagNE ? orient : undefined;
+      diagWallInfo(pieceTile) !== null ||
+      pieceTile === Tile.FenceDiagNE ||
+      pieceTile === Tile.HedgeDiagNE
+        ? orient
+        : undefined;
     // THE DYE LAW's dial: only a dyeable piece keeps it (a stale
     // client can't tint a bed). The banner pole joined the family in
     // Phase 4 — a builder's pole flies the cloth they chose.
@@ -7395,6 +7404,28 @@ export class GameServer {
           isFence(action.tx - 1, action.ty - 1),
           isFence(action.tx + 1, action.ty + 1),
           isFence(action.tx - 1, action.ty + 1),
+        );
+      }
+    }
+    // The 45° hedge turn: the fence's two-stop dial law, spoken in
+    // clipped leaves — it joins whichever diagonal already carries
+    // the hedge.
+    if (pieceTile === Tile.HedgeDiagNE || pieceTile === Tile.HedgeDiagNW) {
+      if (action.orient) {
+        placed =
+          action.orient === 'NE' || action.orient === 'SW'
+            ? Tile.HedgeDiagNE
+            : Tile.HedgeDiagNW;
+      } else {
+        const isHedge = (x: number, y: number): boolean => {
+          const t = this.world.groundAt(x, y);
+          return t !== undefined && HEDGE_TILES.has(t as Tile);
+        };
+        placed = orientDiagHedge(
+          isHedge(action.tx + 1, action.ty - 1),
+          isHedge(action.tx - 1, action.ty - 1),
+          isHedge(action.tx + 1, action.ty + 1),
+          isHedge(action.tx - 1, action.ty + 1),
         );
       }
     }
@@ -24561,7 +24592,9 @@ export class GameServer {
       }
       if (best.info.open) {
         sys(
-          best.info.material === 'fence' || best.info.material === 'palisade'
+          best.info.material === 'fence' ||
+            best.info.material === 'palisade' ||
+            best.info.material === 'hedge'
             ? 'Close the gate before locking it.'
             : 'Close the door before locking it.',
         );

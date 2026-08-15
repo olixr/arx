@@ -121,6 +121,17 @@ export const TILE_CATEGORIES: TileCategory[] = [
     ],
   },
   {
+    // THE CLIPPED GREEN: the gardener's shelf — the hedge family
+    // first (the wall the garden is drawn with), then the showpieces.
+    id: 'garden',
+    label: 'Garden',
+    tiles: [
+      Tile.Hedge, Tile.HedgeDiagNE, Tile.HedgeDiagNW,
+      Tile.HedgeGate, Tile.HedgeGateShut,
+      Tile.TopiaryBall, Tile.TopiarySpire,
+    ],
+  },
+  {
     // THE FAIR HOUSE FURNISHED: the elven shelf — lights and cloth
     // first (the pieces that set a scene), then furniture, stations,
     // and the garden stone.

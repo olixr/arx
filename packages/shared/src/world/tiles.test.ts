@@ -11,6 +11,7 @@ import {
   FENCE_TILES,
   GARRISON_TILES,
   HANGABLE_WALL_TILES,
+  HEDGE_TILES,
   INTERIOR_BOUNDARY_TILES,
   LIGHT_BLOCKING_TILES,
   PALISADE_TILES,
@@ -39,6 +40,7 @@ import {
   openChestTile,
   openDoorTile,
   orientDiagFence,
+  orientDiagHedge,
   orientDiagPalisade,
   orientDiagWall,
   shutDoorTile,
@@ -128,6 +130,19 @@ test('door posture drives solidity and lamplight', () => {
       );
       continue;
     }
+    if (info.material === 'hedge') {
+      // The garden arch carves out like the camp gate: it belongs to
+      // the hedge family, and shut, the whole living arch is
+      // full-height green mass — lamplight stops at a sealed garden.
+      assert.ok(!WALL_RUN_TILES.includes(tile), `${tileDef(tile).name} stays out of wall runs`);
+      assert.ok(HEDGE_TILES.has(tile), `${tileDef(tile).name} joins the hedge family`);
+      assert.equal(
+        LIGHT_BLOCKING_TILES.includes(tile),
+        !info.open,
+        `${tileDef(tile).name} lamplight`,
+      );
+      continue;
+    }
     assert.equal(
       LIGHT_BLOCKING_TILES.includes(tile),
       !info.open,
@@ -167,6 +182,44 @@ test('palisade family: the spiked wall stands apart and its gate rounds the trip
   assert.equal(orientDiagPalisade(false, false, false, true), Tile.PalisadeDiagNE);
   assert.equal(orientDiagPalisade(false, true, false, false), Tile.PalisadeDiagNW);
   assert.equal(orientDiagPalisade(false, false, true, false), Tile.PalisadeDiagNW);
+});
+
+test('hedge family: the clipped green stands apart and its arch rounds the trip', () => {
+  assert.deepEqual(doorInfo(Tile.HedgeGate), { material: 'hedge', wide: false, open: true });
+  assert.deepEqual(doorInfo(Tile.HedgeGateShut), {
+    material: 'hedge',
+    wide: false,
+    open: false,
+  });
+  assert.equal(shutDoorTile(Tile.HedgeGate), Tile.HedgeGateShut);
+  assert.equal(openDoorTile(Tile.HedgeGateShut), Tile.HedgeGate);
+  for (const tile of HEDGE_TILES) {
+    assert.ok(tileDef(tile).raised, `${tileDef(tile).name} renders raised`);
+    // Only the open arch lets a body walk the path beneath it.
+    assert.equal(tileDef(tile).solid, tile !== Tile.HedgeGate, `${tileDef(tile).name} solidity`);
+    // THE SEPARATE-MASONRY LAW, fourth family: never a building wall,
+    // never a fence, never garrison masonry, never the camp's logs —
+    // clipped green merges only with its own kind.
+    assert.ok(!WALL_RUN_TILES.includes(tile), `${tileDef(tile).name} out of wall runs`);
+    assert.ok(!FENCE_TILES.has(tile), `${tileDef(tile).name} out of the fence family`);
+    assert.ok(!GARRISON_TILES.has(tile), `${tileDef(tile).name} out of the garrison family`);
+    assert.ok(!PALISADE_TILES.has(tile), `${tileDef(tile).name} out of the palisade family`);
+    assert.ok(
+      !INTERIOR_BOUNDARY_TILES.includes(tile),
+      `${tileDef(tile).name} never encloses a room`,
+    );
+  }
+  // Head-high clipped green hides its garden; the open arch spills
+  // lantern light down the path.
+  for (const tile of [Tile.Hedge, Tile.HedgeDiagNE, Tile.HedgeDiagNW]) {
+    assert.ok(LIGHT_BLOCKING_TILES.includes(tile), `${tileDef(tile).name} blocks lamplight`);
+  }
+  // The 45° turn joins whichever diagonal already carries the hedge.
+  assert.equal(orientDiagHedge(true, false, false, false), Tile.HedgeDiagNE);
+  assert.equal(orientDiagHedge(false, false, false, true), Tile.HedgeDiagNE);
+  assert.equal(orientDiagHedge(false, true, false, false), Tile.HedgeDiagNW);
+  assert.equal(orientDiagHedge(false, false, true, false), Tile.HedgeDiagNW);
+  assert.equal(orientDiagHedge(false, false, false, false), Tile.HedgeDiagNE);
 });
 
 test('fence family: gates round-trip and diagonals stay solid', () => {
@@ -295,6 +348,11 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.WardArch, 'wardarch', 4],
     [Tile.ArcaneTome, 'tome', 1],
     [Tile.RunePillar, 'runepillar', 3],
+    // THE CLIPPED GREEN: the showpieces burst in leaves. The hedge
+    // WALL is deliberately NOT here — player-built garden
+    // architecture comes down by the demolish lane, like the fence.
+    [Tile.TopiaryBall, 'topiary', 2],
+    [Tile.TopiarySpire, 'topiary', 2],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {
@@ -331,6 +389,13 @@ test('load-bearing scenery is not smashable', () => {
     Tile.Bonfire,
     // The elven hall's flame holds the same law as the camp's fire.
     Tile.Everflame,
+    // The garden arch is the door law's; the hedge wall is the
+    // demolish lane's (player-built, like the fence).
+    Tile.HedgeGate,
+    Tile.HedgeGateShut,
+    Tile.Hedge,
+    Tile.HedgeDiagNE,
+    Tile.HedgeDiagNW,
   ]) {
     assert.equal(destructibleInfo(t), null);
   }

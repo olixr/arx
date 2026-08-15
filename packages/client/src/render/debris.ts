@@ -84,7 +84,9 @@ export type SmashKind =
   | 'crystals'
   | 'wardarch'
   | 'tome'
-  | 'runepillar';
+  | 'runepillar'
+  // THE CLIPPED GREEN: a showpiece bursts in a cloud of leaves.
+  | 'topiary';
 
 export interface DebrisChunk {
   x: number; // world coords (tile units)
@@ -545,6 +547,8 @@ const CHIP_TONE: Record<SmashKind, string> = {
   wardarch: '#8d8798',
   tome: '#d8c4fa',
   runepillar: '#8d8798',
+  // Garden wreckage: clipped leaves over a snapped stem.
+  topiary: '#3a7539',
 };
 
 const pick = <T>(rand: () => number, arr: readonly T[]): T =>
@@ -1203,6 +1207,25 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       out.push({ len: 0.13, wid: 0.1, color: pick(rand, ['#7fe8a8', '#b48fe8']), stripe: '#f5faff', round: true, pace: 1.4 });
       for (let i = 0; i < 2; i++) {
         out.push({ len: 0.05, wid: 0.04, color: pick(rand, ['#7fe8a8', '#b48fe8']), round: true, pace: 1.45 });
+      }
+      break;
+    }
+    case 'topiary': {
+      // The stem snaps woody; the crown leaves the world as LEAVES —
+      // a drifting cloud of clipped green, light as the work it took,
+      // with a couple of madder blooms tumbling brighter.
+      wood('#5a4226', 2, 0.12, 0.22, 0.06);
+      for (let i = 0; i < 7; i++) {
+        out.push({
+          len: 0.05 + rand() * 0.04,
+          wid: 0.04,
+          color: pick(rand, ['#24512c', '#3a7539', '#549447', '#4f8f44']),
+          round: true,
+          pace: 1.3 + rand() * 0.25,
+        });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.045, wid: 0.04, color: pick(rand, ['#b04a72', '#ef9ec0']), round: true, pace: 1.4 });
       }
       break;
     }

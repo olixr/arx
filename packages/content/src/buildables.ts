@@ -548,6 +548,86 @@ const defs: BuildableDef[] = [
     materials: [{ item: 'board', qty: 3 }, { item: 'twine', qty: 1 }],
     ticks: 25,
   },
+  // THE CLIPPED GREEN — garden architecture is PLANTED, not carpen-
+  // tered: it grows from cuttings on the farming skill (the scarecrow
+  // precedent) and stands only on living ground (the global footing —
+  // never floors). Runs merge with their own kind alone.
+  {
+    id: 'hedge',
+    cat: 'decor',
+    name: 'Hedge',
+    tile: Tile.Hedge,
+    skill: 'farming',
+    levelReq: 6,
+    xp: 22,
+    materials: [
+      { item: 'bush_cutting', qty: 2 },
+      { item: 'plant_fibre', qty: 1 },
+    ],
+    ticks: 25,
+  },
+  {
+    // Auto-orients to join whichever diagonal already carries the
+    // hedge — plant the adjoining runs first, then the turn.
+    id: 'hedge_corner',
+    cat: 'decor',
+    name: 'Hedge corner',
+    tile: Tile.HedgeDiagNE,
+    skill: 'farming',
+    levelReq: 6,
+    xp: 22,
+    materials: [
+      { item: 'bush_cutting', qty: 2 },
+      { item: 'plant_fibre', qty: 1 },
+    ],
+    ticks: 25,
+  },
+  {
+    // The living archway: trained green over the path, a timber
+    // wicket beneath — placed standing open, and it rides the whole
+    // door law (locks included) like every gate.
+    id: 'hedge_arch',
+    cat: 'decor',
+    name: 'Hedge arch',
+    tile: Tile.HedgeGate,
+    skill: 'farming',
+    levelReq: 9,
+    xp: 34,
+    materials: [
+      { item: 'bush_cutting', qty: 3 },
+      { item: 'board', qty: 1 },
+      { item: 'twine', qty: 1 },
+    ],
+    ticks: 35,
+  },
+  {
+    id: 'topiary_ball',
+    cat: 'decor',
+    name: 'Topiary',
+    tile: Tile.TopiaryBall,
+    skill: 'farming',
+    levelReq: 11,
+    xp: 30,
+    materials: [
+      { item: 'bush_cutting', qty: 2 },
+      { item: 'twine', qty: 1 },
+    ],
+    ticks: 30,
+  },
+  {
+    id: 'topiary_spire',
+    cat: 'decor',
+    name: 'Topiary spire',
+    tile: Tile.TopiarySpire,
+    skill: 'farming',
+    levelReq: 15,
+    xp: 44,
+    materials: [
+      { item: 'bush_cutting', qty: 3 },
+      { item: 'twine', qty: 1 },
+    ],
+    ticks: 40,
+  },
   {
     id: 'wood_window',
     cat: 'wall',
@@ -1150,6 +1230,7 @@ export function buildableForTile(tile: Tile): BuildableDef | undefined {
   const dw = diagWallInfo(tile);
   if (dw) return BUILDABLES.get(DIAG_CORNER_ID[dw.material] ?? '');
   if (tile === Tile.FenceDiagNE || tile === Tile.FenceDiagNW) return BUILDABLES.get('fence_corner');
+  if (tile === Tile.HedgeDiagNE || tile === Tile.HedgeDiagNW) return BUILDABLES.get('hedge_corner');
   // THE DYE LAW's reverse: every dyed awning id folds to its shape's
   // one def, so salvage and the own-work overlay never care about dye.
   const awn = awningInfo(tile);

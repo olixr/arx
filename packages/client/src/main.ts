@@ -1,6 +1,6 @@
 import { procShape } from './render/wornLight.js';
 import { deckFillAt, fillContains } from './render/terrain.js';
-import { AWNING_HOST_TILES, AWNING_SHAPES, EntityKind, FENCE_TILES, GARRISON_TILES, HANGABLE_WALL_TILES, PoseState, ROCK_TILES, SWAP_BEAT_MS, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo, type EntityMeta } from '@arx/shared';
+import { AWNING_HOST_TILES, AWNING_SHAPES, EntityKind, FENCE_TILES, GARRISON_TILES, HANGABLE_WALL_TILES, HEDGE_TILES, PoseState, ROCK_TILES, SWAP_BEAT_MS, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo, type EntityMeta } from '@arx/shared';
 import { BUILDABLES, DYE_PIGMENTS, ELEMENT_COLORS, RECIPES, SIGN_MOTIFS, TRELLIS_SPECIES, buildableForTile, buildableGround, enchantDef, isDaggerStats, itemDef, npcActor, npcDef, resonanceShift, type BuildableDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { farmBins, farmJobs, farmKey } from './game/farmCare.js';
@@ -441,6 +441,9 @@ function orientRing(): readonly ('auto' | 'NE' | 'NW' | 'SE' | 'SW')[] | null {
   if (!def || def.tile === undefined) return null;
   if (diagWallInfo(def.tile)) return WALL_ORIENTS;
   if (def.tile === Tile.FenceDiagNE) return FENCE_ORIENTS;
+  // The hedge corner turns on the fence's two-stop dial (180°-
+  // symmetric clipped rail).
+  if (def.tile === Tile.HedgeDiagNE) return FENCE_ORIENTS;
   return null;
 }
 
@@ -2232,6 +2235,8 @@ function stepMaterial(tx: number, ty: number): 'grass' | 'stone' | 'wood' | 'dir
     case Tile.SunflowerRipe:
     case Tile.WheatMid:
     case Tile.WheatRipe:
+    // The open garden arch: feet brush the living path beneath it.
+    case Tile.HedgeGate:
       return 'grass';
     case Tile.StoneFloor:
     case Tile.Cliff:
@@ -3606,6 +3611,24 @@ function frame(now: number): void {
                 : 'NE';
         }
         landTile = diag === 'NE' ? Tile.FenceDiagNE : Tile.FenceDiagNW;
+      } else if (pieceTile === Tile.HedgeDiagNE) {
+        // The hedge turn: the fence's ghost law in clipped leaves —
+        // the preview lands the exact diagonal the server will grow.
+        if (buildOrient !== 'auto') {
+          diag = buildOrient === 'NE' || buildOrient === 'SW' ? 'NE' : 'NW';
+        } else {
+          const isHedge = (x: number, y: number): boolean => {
+            const t = game.world.groundAt(x, y);
+            return t !== undefined && HEDGE_TILES.has(t as Tile);
+          };
+          diag =
+            isHedge(tx + 1, ty - 1) || isHedge(tx - 1, ty + 1)
+              ? 'NE'
+              : isHedge(tx - 1, ty - 1) || isHedge(tx + 1, ty + 1)
+                ? 'NW'
+                : 'NE';
+        }
+        landTile = diag === 'NE' ? Tile.HedgeDiagNE : Tile.HedgeDiagNW;
       }
       // THE DYE LAW: the ghost lands the exact dyed id the server
       // will place — the preview never lies about the cloth either.

@@ -619,6 +619,25 @@ export enum Tile {
   ArcaneTome = 340,
   /** The elven street light: a carved pillar with a floating tip-stone. */
   RunePillar = 341,
+  // THE CLIPPED GREEN — the garden's living architecture. A hedge is
+  // a wall a gardener grew: it runs, turns, and gates like the fence
+  // family, but its mass is clipped foliage — a FOURTH run-merging
+  // family beside buildings, the garrison, and the palisade (the
+  // separate-masonry law: green never dies into timber or stone).
+  /** A clipped box hedge; adjacent hedge tiles fold into one body. */
+  Hedge = 342,
+  /** The 45° turn, NE-SW line ("/"). */
+  HedgeDiagNE = 343,
+  /** The 45° turn, NW-SE line ("\"). */
+  HedgeDiagNW = 344,
+  /** A living archway over the path — the wicket stands swung aside. */
+  HedgeGate = 345,
+  /** The same archway with its timber wicket latched. */
+  HedgeGateShut = 346,
+  /** A clipped sphere on a woody stem — the gardener's showpiece. */
+  TopiaryBall = 347,
+  /** A clipped spire tapering to a leaf-tuft finial. */
+  TopiarySpire = 348,
 }
 
 export enum Detail {
@@ -1138,6 +1157,18 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.AwningBoard]: { name: 'board awning', solid: false, color: '#6e4b29', raised: true, topColor: '#8a6336' },
   [Tile.AwningBowed]: { name: 'bowed awning', solid: false, color: '#c9bfa8', raised: true, topColor: '#d8cfba' },
   [Tile.BannerPoleDyed]: { name: 'banner pole', solid: true, color: '#6f4d26', raised: true, topColor: '#8a6534' },
+  // THE CLIPPED GREEN — garden architecture. Minimap voice: clipped
+  // leaf-green, a full step deeper than meadow grass, so a garden
+  // ring reads as drawn hedgerow, never as a lawn.
+  [Tile.Hedge]: { name: 'hedge', solid: true, color: '#2f5c31', raised: true, topColor: '#4c8342' },
+  [Tile.HedgeDiagNE]: { name: 'hedge', solid: true, color: '#2f5c31', raised: true, topColor: '#4c8342' },
+  [Tile.HedgeDiagNW]: { name: 'hedge', solid: true, color: '#2f5c31', raised: true, topColor: '#4c8342' },
+  // The open archway is a WALKABLE raised prop (the path runs under
+  // the living arch); the latched wicket bars it like any gate.
+  [Tile.HedgeGate]: { name: 'hedge arch', solid: false, color: '#356234', raised: true, topColor: '#4c8342' },
+  [Tile.HedgeGateShut]: { name: 'hedge arch', solid: true, color: '#2f5c31', raised: true, topColor: '#4c8342' },
+  [Tile.TopiaryBall]: { name: 'topiary', solid: true, color: '#35663a', raised: true, topColor: '#549447' },
+  [Tile.TopiarySpire]: { name: 'topiary spire', solid: true, color: '#2c5533', raised: true, topColor: '#4c8342' },
 };
 
 /** The four awning silhouettes, index order FOREVER (the id math). */
@@ -1360,6 +1391,13 @@ export const LIGHT_BLOCKING_TILES: readonly Tile[] = [
   Tile.PalisadeDiagNE,
   Tile.PalisadeDiagNW,
   Tile.PalisadeGateShut,
+  // Head-high clipped green: a garden hedge hides its garden the way
+  // the camp wall hides its camp. The open arch spills lantern light
+  // down the path; the latched wicket seals it.
+  Tile.Hedge,
+  Tile.HedgeDiagNE,
+  Tile.HedgeDiagNW,
+  Tile.HedgeGateShut,
 ];
 
 /**
@@ -1376,7 +1414,13 @@ export const LIGHT_BLOCKING_TILES: readonly Tile[] = [
  * a fence gate its shut leaves are full-height mass — they block
  * lamplight and read as fortification.
  */
-export type DoorMaterial = 'stone' | 'wood' | 'fence' | 'garrison' | 'palisade';
+export type DoorMaterial =
+  | 'stone'
+  | 'wood'
+  | 'fence'
+  | 'garrison'
+  | 'palisade'
+  | 'hedge';
 
 export interface DoorInfo {
   material: DoorMaterial;
@@ -1407,6 +1451,13 @@ const DOOR_INFO = new Map<Tile, DoorInfo>([
   // it blocks lamplight and reads as fortification.
   [Tile.PalisadeGate, { material: 'palisade', wide: false, open: true }],
   [Tile.PalisadeGateShut, { material: 'palisade', wide: false, open: false }],
+  // The garden arch: rides ALL the door machinery like the fence
+  // gate, rendered by the hedge family (never the wall-doorway
+  // pipeline). The wicket under the living arch is waist-high timber,
+  // but the arch above it is full green mass — shut, the whole
+  // opening blocks lamplight and reads as a sealed garden.
+  [Tile.HedgeGate, { material: 'hedge', wide: false, open: true }],
+  [Tile.HedgeGateShut, { material: 'hedge', wide: false, open: false }],
 ]);
 
 /** Every doorway tile, open and shut, both widths and materials. */
@@ -1425,6 +1476,7 @@ const SHUT_OF = new Map<Tile, Tile>([
   [Tile.FenceGate, Tile.FenceGateShut],
   [Tile.GateGarrison, Tile.GateGarrisonShut],
   [Tile.PalisadeGate, Tile.PalisadeGateShut],
+  [Tile.HedgeGate, Tile.HedgeGateShut],
 ]);
 const OPEN_OF = new Map<Tile, Tile>([...SHUT_OF].map(([o, s]) => [s, o]));
 
@@ -1501,6 +1553,34 @@ export function orientDiagPalisade(
   if (ne || sw) return Tile.PalisadeDiagNE;
   if (nw || se) return Tile.PalisadeDiagNW;
   return Tile.PalisadeDiagNE;
+}
+
+/**
+ * THE CLIPPED GREEN — the garden's living wall: straight runs, the
+ * two 45° turns, and the arched gate in both postures. A FOURTH
+ * run-merging family (the separate-masonry law): hedges never join a
+ * WALL_RUN, never bound an interior, and merge only with their own
+ * kind — clipped green dying into a timber fence would read as one
+ * builder's work, and a gardener is not a carpenter.
+ */
+export const HEDGE_TILES: ReadonlySet<Tile> = new Set([
+  Tile.Hedge,
+  Tile.HedgeDiagNE,
+  Tile.HedgeDiagNW,
+  Tile.HedgeGate,
+  Tile.HedgeGateShut,
+]);
+
+/** The fence family's auto-orient law, spoken in clipped leaves. */
+export function orientDiagHedge(
+  ne: boolean,
+  nw: boolean,
+  se: boolean,
+  sw: boolean,
+): Tile {
+  if (ne || sw) return Tile.HedgeDiagNE;
+  if (nw || se) return Tile.HedgeDiagNW;
+  return Tile.HedgeDiagNE;
 }
 
 /** Every mineable/mined rock formation tile, ore-bearing or not. */
@@ -1671,6 +1751,10 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.WardArch, 0.38],
   [Tile.ArcaneTome, 0.24],
   [Tile.RunePillar, 0.2],
+  // THE CLIPPED GREEN: you brush past a topiary's stem, but the hedge
+  // WALL stays full-block — it is the garden's architecture.
+  [Tile.TopiaryBall, 0.3],
+  [Tile.TopiarySpire, 0.3],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -1866,7 +1950,9 @@ export type DestructibleKind =
   | 'crystals'
   | 'wardarch'
   | 'tome'
-  | 'runepillar';
+  | 'runepillar'
+  // THE CLIPPED GREEN: a showpiece bursts in a cloud of leaves.
+  | 'topiary';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -1956,6 +2042,12 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.WardArch, { kind: 'wardarch', respawnSec: 600, hits: 4 }],
   [Tile.ArcaneTome, { kind: 'tome', respawnSec: 240, hits: 1 }],
   [Tile.RunePillar, { kind: 'runepillar', respawnSec: 600, hits: 3 }],
+  // THE CLIPPED GREEN: the showpieces burst in leaves. The hedge WALL
+  // is deliberately NOT here — like the fence it is player-built
+  // garden architecture that comes down by the demolish lane, never
+  // by a passing club; and the arch is the door law's, not ours.
+  [Tile.TopiaryBall, { kind: 'topiary', respawnSec: 420, hits: 2 }],
+  [Tile.TopiarySpire, { kind: 'topiary', respawnSec: 420, hits: 2 }],
 ]);
 
 /** Every smashable prop tile. */
