@@ -35,7 +35,7 @@ abandoned, it fails the kit.
 | 413 | BreadOven | cooking | fired-brick dome, loaves on the peel, breathing flue | smoke <4Hz | 4 | breadoven |
 | 414 | ButcherBlock | cooking | hung links + ham on S-hooks, scarred block, cleaver | static | 2 | butcherblock |
 | 415 | HerbRack | herbalism | bundles heads-down on two rails, mortar below | breeze sway <4Hz | 1 | herbs |
-| 416 | ShopShelf | shopkeeping | tall stocked casework, goods hash-dealt per row | static | 2 | shopshelf |
+| 416 | ShopShelf | shopkeeping | THE OPEN SHELF: carcassless rack, goods individually outlined | static | 2 | shopshelf |
 
 ## Variant law: THE HASH DEALS THE STOCK
 
@@ -138,6 +138,37 @@ Studio 'Trades & shops' shelf.
 - Debris flies FAST — even a 90ms in-page toDataURL capture catches
   only the tail. Chips and the patched tile are the reliable proof;
   frame-perfect debris glamour needs a recorder, not a poller.
+
+### THE OPEN SHELF (same-day rework, user verdict)
+
+The boxed casework failed the user's read — "a shelf that's not a
+cabinet or a box." Rebuilt carcassless: two chamfered uprights,
+three boards bowing gently under load (each with its lit top
+sliver), NO backboard and NO side panels — the ground reads straight
+through the bays, and because the outline pass is an alpha-dilate,
+**every good on the boards earns its own individual outline ring**
+(gaps kept wider than the ring so the dilate never bridges
+neighbors — the blade-lab gap law applied to shelf stock).
+
+- **THE SHELVING CONTRACT**: `paintGood(kind, gx, gy, seed)` — one
+  dispatcher, nine goods kinds (0 potions, 1 cloth, 2 bowls,
+  3 boxes, 4 books, 5 scrolls, 6 larder, 7 glazed crockery,
+  8 tinker), every good drawn from its bottom-center so anything
+  seats on any board. This is the seam a future PLAYER-STOCKED shelf
+  plugs into: deal kinds from a ledger instead of the hash and the
+  same painter shows a player's own wares.
+- **Ten row themes** (nine single-trade + BRIC-A-BRAC, where every
+  slot deals its own kind) walk the hash on a stride of three —
+  three rows, always three trades. Slots jitter, sizes and hues
+  deal per item, and an honest SOLD-OUT gap (1-in-8) leaves a faint
+  stand-ring where the morning's customer took the jar.
+- **Pass-2 verdicts**: GLAZED WARE, NEVER BARE CLAY (an earthen jug
+  on an oak board disappears — four glaze tones + cream slip band,
+  and a mug variant so crockery rows vary); A PYRAMID OF SCROLLS,
+  NOT ONE FLAT STRAW; the tinker's smalls grown to presences.
+- Proven live: five-shelf variant row — every shelf differently
+  stocked, potion liquids reading through glass, each bottle/loaf/
+  jug carrying its own ring, daylight through every bay.
 
 ### Deferred on purpose
 

@@ -35997,158 +35997,493 @@ export class Renderer {
       case Tile.ShopShelf: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.18;
-        // The shopkeeper's wall: tall casework STOCKED — every tile
-        // deals its own three rows from the goods roster (jars, dyed
-        // cloth, crockery, tinned boxes), so no two shelves in a
-        // street sell quite the same shop.
+        // THE OPEN SHELF: no carcass, no backboard, no box — two
+        // chamfered uprights and three laden boards with DAYLIGHT
+        // between them. The ground reads straight through the bays,
+        // so the outline pass rings every good on the boards
+        // INDIVIDUALLY (each stands as its own silhouette; gaps are
+        // kept wider than the ring so the dilate never bridges two
+        // neighbors into one blob). The stock is dealt by THE HASH:
+        // each row draws a THEME, each slot a good, and sizes, hues,
+        // leans, and honest sold-out gaps are all positional — no two
+        // shelves in a street carry the same stock. paintGood() below
+        // is ONE dispatcher keyed by (kind, seed): the seam a future
+        // player-stocked shelf plugs into — deal kinds from a ledger
+        // instead of the hash and the same painter shows a player's
+        // own wares.
         const hw = s * 0.46;
-        const topY = baseY - s * 1.28;
-        const topDepth = syT * 0.32;
+        const topY = baseY - s * 1.42;
         return {
           sortY: ty + 0.7,
-          body: stationBody(0.62, 1.7, 0.42),
+          body: stationBody(0.62, 1.75, 0.42),
           drawShadow: () => this.castContact(p.x, baseY, hw * 1.05, s * 0.07),
           draw: () => {
             // Draw-time ctx capture: the outline pass swaps this.ctx
             // to its scratch — the build-time capture would paint past it.
             const ctx = this.ctx;
-            ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.22)';
             ctx.beginPath();
-            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.08, s * 0.065, 0, 0, Math.PI * 2);
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.06, s * 0.06, 0, 0, Math.PI * 2);
             ctx.fill();
-            // The carcass: dark backboard between two side panels.
-            ctx.fillStyle = shade(TWN_OAK_DARK, -16);
-            ctx.fillRect(p.x - hw * 0.92, topY, hw * 1.84, baseY - topY);
-            for (const m of [-1, 1] as const) {
-              ctx.fillStyle = m < 0 ? TWN_OAK : TWN_OAK_DARK;
-              ctx.fillRect(p.x + m * hw - s * 0.04, topY, s * 0.08, baseY - topY);
-            }
-            // The plinth foot.
-            ctx.fillStyle = TWN_OAK_DARK;
-            ctx.fillRect(p.x - hw * 1.02, baseY - s * 0.07, hw * 2.04, s * 0.07);
-            // THE TOP PLANE: lit lid, shaded far edge, sunlit front
-            // arris — the 2.5D law for anything past the waist.
-            ctx.fillStyle = shade(TWN_OAK, -26);
-            ctx.beginPath();
-            ctx.moveTo(p.x - hw * 1.04, topY);
-            ctx.lineTo(p.x - hw * 0.9, topY - topDepth);
-            ctx.lineTo(p.x + hw * 0.9, topY - topDepth);
-            ctx.lineTo(p.x + hw * 1.04, topY);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = TWN_OAK;
-            ctx.beginPath();
-            ctx.moveTo(p.x - hw * 1.04, topY);
-            ctx.lineTo(p.x - hw * 0.93, topY - topDepth * 0.78);
-            ctx.lineTo(p.x + hw * 0.93, topY - topDepth * 0.78);
-            ctx.lineTo(p.x + hw * 1.04, topY);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = TWN_OAK_LIT;
-            ctx.fillRect(p.x - hw * 1.04, topY, hw * 2.08, s * 0.028);
-            // Three shelf rows; the goods are dealt per row.
-            const rowH = (baseY - s * 0.07 - topY) / 3;
-            for (let row = 0; row < 3; row++) {
-              const shY = topY + rowH * (row + 1);
-              // The shelf board's lit front edge.
-              ctx.fillStyle = TWN_OAK;
-              ctx.fillRect(p.x - hw * 0.92, shY - s * 0.035, hw * 1.84, s * 0.035);
-              ctx.fillStyle = 'rgba(201, 167, 106, 0.55)';
-              ctx.fillRect(p.x - hw * 0.92, shY - s * 0.035, hw * 1.84, s * 0.013);
-              // Rows never repeat within one shelf: the hash deals
-              // the ROTATION, the row walks it — every shelf shows
-              // three different trades' worth of stock.
-              const goods = ((h & 3) + row) % 4;
-              const gy = shY - s * 0.035;
-              if (goods === 0) {
-                // JARS: corked glass in three heights, one label.
-                const glass = ['#7c9a6a', '#b08a45', '#8a94a0', '#a06a52'];
-                for (let k = 0; k < 4; k++) {
-                  const kx = p.x - hw * 0.6 + k * hw * 0.4;
-                  const gh = s * (0.14 + (((h >> (k + row)) & 3) / 3) * 0.1);
-                  const tone = glass[(h >>> (k * 2 + row)) % 4]!;
-                  ctx.fillStyle = tone;
-                  ctx.fillRect(kx - s * 0.038, gy - gh, s * 0.076, gh);
-                  ctx.fillStyle = shade(tone, 24);
-                  ctx.fillRect(kx - s * 0.028, gy - gh + s * 0.02, s * 0.016, gh - s * 0.04);
-                  ctx.fillStyle = TRD_LEATHER_LIT;
-                  ctx.fillRect(kx - s * 0.022, gy - gh - s * 0.022, s * 0.044, s * 0.024);
-                  if (k === ((h >> row) & 3)) {
-                    ctx.fillStyle = TWN_PAPER;
-                    ctx.fillRect(kx - s * 0.026, gy - gh * 0.62, s * 0.052, s * 0.05);
-                  }
-                }
-              } else if (goods === 1) {
-                // CLOTH: two folded stacks off the dye roster.
-                for (let st = 0; st < 2; st++) {
-                  const kx = p.x - hw * 0.42 + st * hw * 0.82;
-                  for (let k = 0; k < 3; k++) {
-                    const cloth = Renderer.AWNING_CLOTHS[(h >>> (st * 4 + k * 2 + row)) % 10]!;
-                    const ky = gy - s * 0.05 - k * s * 0.052;
-                    ctx.fillStyle = shade(cloth.a, -10);
-                    ctx.fillRect(kx - s * 0.13, ky, s * 0.26, s * 0.05);
-                    ctx.fillStyle = cloth.a;
-                    ctx.fillRect(kx - s * 0.13, ky, s * 0.26, s * 0.032);
-                    ctx.fillStyle = cloth.b;
-                    ctx.fillRect(kx - s * 0.13, ky + s * 0.008, s * 0.26, s * 0.007);
-                  }
-                }
-              } else if (goods === 2) {
-                // CROCKERY: a bowl stack and the big-bellied jug.
-                const kx = p.x - hw * 0.45;
-                for (let k = 0; k < 3; k++) {
-                  const ky = gy - s * 0.03 - k * s * 0.045;
-                  ctx.fillStyle = k % 2 ? '#b39268' : '#a3825c';
-                  ctx.beginPath();
-                  ctx.ellipse(kx, ky, s * (0.095 - k * 0.012), s * 0.032, 0, 0, Math.PI);
-                  ctx.fill();
-                  ctx.fillStyle = '#d8c0a0';
-                  ctx.beginPath();
-                  ctx.ellipse(kx, ky - s * 0.008, s * (0.09 - k * 0.012), s * 0.02, 0, 0, Math.PI * 2);
-                  ctx.fill();
-                }
-                const jx = p.x + hw * 0.4;
-                ctx.fillStyle = '#8a6a4c';
+            // ---- The goods roster: small painters, one per kind.
+            // Every good draws from its bottom-center (gx, gy) so the
+            // dispatcher can seat anything on any board surface.
+            const glassTones = ['#9ab4a4', '#a8bfc6', '#c6b490'];
+            const brews = ['#b8434e', '#4e7ec4', '#57a05a', '#c78e3c', '#8a5ab0', '#3fa08e'];
+            const bindings = ['#7a3b34', '#4e5e7c', '#5d7c42', '#8a6a2c'];
+            const potion = (gx: number, gy: number, sd: number) => {
+              const brew = brews[(sd >>> 2) % 6]!;
+              const glass = glassTones[(sd >>> 5) % 3]!;
+              if (sd & 1) {
+                // The tall vial: shouldered body, corked neck.
+                const bh = s * (0.15 + ((sd >>> 3) & 3) * 0.02);
+                const bw = s * 0.052;
+                ctx.fillStyle = glass;
                 ctx.beginPath();
-                ctx.moveTo(jx - s * 0.03, gy - s * 0.24);
-                ctx.quadraticCurveTo(jx - s * 0.12, gy - s * 0.16, jx - s * 0.085, gy);
-                ctx.lineTo(jx + s * 0.085, gy);
-                ctx.quadraticCurveTo(jx + s * 0.12, gy - s * 0.16, jx + s * 0.03, gy - s * 0.24);
+                ctx.moveTo(gx - bw, gy);
+                ctx.lineTo(gx - bw, gy - bh * 0.72);
+                ctx.quadraticCurveTo(gx - bw, gy - bh * 0.9, gx - bw * 0.4, gy - bh * 0.92);
+                ctx.lineTo(gx - bw * 0.4, gy - bh);
+                ctx.lineTo(gx + bw * 0.4, gy - bh);
+                ctx.lineTo(gx + bw * 0.4, gy - bh * 0.92);
+                ctx.quadraticCurveTo(gx + bw, gy - bh * 0.9, gx + bw, gy - bh * 0.72);
+                ctx.lineTo(gx + bw, gy);
                 ctx.closePath();
                 ctx.fill();
-                ctx.fillStyle = '#b5926a';
+                ctx.fillStyle = brew;
+                ctx.fillRect(gx - bw * 0.82, gy - bh * 0.58, bw * 1.64, bh * 0.56);
+                ctx.fillStyle = TRD_LEATHER_LIT;
+                ctx.fillRect(gx - bw * 0.46, gy - bh - s * 0.018, bw * 0.92, s * 0.02);
+                ctx.strokeStyle = 'rgba(244, 250, 252, 0.55)';
+                ctx.lineWidth = Math.max(1, s * 0.01);
                 ctx.beginPath();
-                ctx.moveTo(jx - s * 0.024, gy - s * 0.23);
-                ctx.quadraticCurveTo(jx - s * 0.095, gy - s * 0.15, jx - s * 0.068, gy);
-                ctx.lineTo(jx - s * 0.01, gy);
-                ctx.lineTo(jx - s * 0.01, gy - s * 0.23);
-                ctx.closePath();
-                ctx.fill();
-                ctx.strokeStyle = '#6f523a';
-                ctx.lineWidth = Math.max(1, s * 0.016);
-                ctx.beginPath();
-                ctx.arc(jx + s * 0.065, gy - s * 0.17, s * 0.045, -Math.PI * 0.6, Math.PI * 0.4);
+                ctx.moveTo(gx - bw * 0.55, gy - bh * 0.82);
+                ctx.lineTo(gx - bw * 0.55, gy - bh * 0.2);
                 ctx.stroke();
               } else {
-                // BOXES: stenciled tins and a small crate, lids on.
-                for (let k = 0; k < 3; k++) {
-                  const kx = p.x - hw * 0.55 + k * hw * 0.52 + ((h >> (k + row)) & 1) * s * 0.02;
-                  const bw = s * (0.11 + ((h >> (k * 2)) & 1) * 0.03);
-                  const bh = s * (0.1 + ((h >> (k + 4)) & 1) * 0.05);
-                  ctx.fillStyle = k === 1 ? '#7c8a94' : TWN_OAK;
-                  ctx.fillRect(kx - bw, gy - bh, bw * 2, bh);
-                  ctx.fillStyle = k === 1 ? '#a8b4bc' : TWN_OAK_LIT;
-                  ctx.fillRect(kx - bw, gy - bh, bw * 2, s * 0.022);
-                  ctx.fillStyle = k === 1 ? '#5c6870' : TWN_OAK_DARK;
+                // The round flask: a fat belly and a short throat.
+                const r0 = s * (0.05 + ((sd >>> 3) & 1) * 0.012);
+                ctx.fillStyle = glass;
+                ctx.beginPath();
+                ctx.ellipse(gx, gy - r0, r0, r0, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillRect(gx - r0 * 0.32, gy - r0 * 2 - s * 0.035, r0 * 0.64, s * 0.05);
+                ctx.fillStyle = brew;
+                ctx.beginPath();
+                ctx.ellipse(gx, gy - r0 * 0.82, r0 * 0.8, r0 * 0.72, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = TRD_LEATHER_LIT;
+                ctx.fillRect(gx - r0 * 0.38, gy - r0 * 2 - s * 0.052, r0 * 0.76, s * 0.022);
+                ctx.strokeStyle = 'rgba(244, 250, 252, 0.5)';
+                ctx.lineWidth = Math.max(1, s * 0.01);
+                ctx.beginPath();
+                ctx.ellipse(gx - r0 * 0.34, gy - r0 * 1.2, r0 * 0.28, r0 * 0.38, 0.5, -1.2, 0.6);
+                ctx.stroke();
+              }
+            };
+            const clothStack = (gx: number, gy: number, sd: number) => {
+              for (let k = 0; k < 3; k++) {
+                const cloth = Renderer.AWNING_CLOTHS[((sd >>> (k * 3)) + k * 4) % 10]!;
+                const ky = gy - s * 0.014 - k * s * 0.044;
+                const kw = s * (0.115 - k * 0.008);
+                ctx.fillStyle = shade(cloth.a, -12);
+                ctx.fillRect(gx - kw, ky - s * 0.03, kw * 2, s * 0.044);
+                ctx.fillStyle = cloth.a;
+                ctx.fillRect(gx - kw, ky - s * 0.03, kw * 2, s * 0.028);
+                ctx.strokeStyle = cloth.b;
+                ctx.lineWidth = Math.max(1, s * 0.008);
+                ctx.beginPath();
+                ctx.moveTo(gx - kw, ky - s * 0.008);
+                ctx.lineTo(gx + kw, ky - s * 0.008);
+                ctx.stroke();
+              }
+            };
+            const bowls = (gx: number, gy: number, sd: number) => {
+              const n = 2 + (sd & 1);
+              for (let k = 0; k < n; k++) {
+                const ky = gy - k * s * 0.042;
+                const kw = s * (0.085 - k * 0.01);
+                ctx.fillStyle = k % 2 ? '#b39268' : '#a3825c';
+                ctx.beginPath();
+                ctx.ellipse(gx, ky - s * 0.02, kw, s * 0.034, 0, 0, Math.PI);
+                ctx.fill();
+                ctx.fillStyle = '#d8c0a0';
+                ctx.beginPath();
+                ctx.ellipse(gx, ky - s * 0.026, kw, s * 0.02, 0, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            };
+            const jug = (gx: number, gy: number, sd: number) => {
+              // Glazed ware, never bare clay: the pot must read
+              // against the timber it stands on (pass-2 verdict —
+              // an earthen jug on an oak board disappears).
+              const glazes = ['#6f8a5c', '#5c748a', '#a3703c', '#8a5a6a'];
+              const glaze = glazes[(sd >>> 4) % 4]!;
+              if ((sd & 3) === 3) {
+                // The mug: a short cousin so a crockery row varies.
+                ctx.fillStyle = glaze;
+                ctx.fillRect(gx - s * 0.038, gy - s * 0.085, s * 0.076, s * 0.085);
+                ctx.fillStyle = shade(glaze, 22);
+                ctx.fillRect(gx - s * 0.038, gy - s * 0.085, s * 0.028, s * 0.085);
+                ctx.fillStyle = '#e8dcc4';
+                ctx.fillRect(gx - s * 0.038, gy - s * 0.085, s * 0.076, s * 0.016);
+                ctx.strokeStyle = shade(glaze, -16);
+                ctx.lineWidth = Math.max(1, s * 0.012);
+                ctx.beginPath();
+                ctx.arc(gx + s * 0.048, gy - s * 0.045, s * 0.024, -Math.PI * 0.5, Math.PI * 0.5);
+                ctx.stroke();
+                return;
+              }
+              const jh = s * (0.2 + ((sd >>> 2) & 1) * 0.03);
+              ctx.fillStyle = glaze;
+              ctx.beginPath();
+              ctx.moveTo(gx - s * 0.026, gy - jh);
+              ctx.quadraticCurveTo(gx - s * 0.105, gy - jh * 0.62, gx - s * 0.075, gy);
+              ctx.lineTo(gx + s * 0.075, gy);
+              ctx.quadraticCurveTo(gx + s * 0.105, gy - jh * 0.62, gx + s * 0.026, gy - jh);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = shade(glaze, 24);
+              ctx.beginPath();
+              ctx.moveTo(gx - s * 0.02, gy - jh + s * 0.008);
+              ctx.quadraticCurveTo(gx - s * 0.082, gy - jh * 0.6, gx - s * 0.058, gy);
+              ctx.lineTo(gx - s * 0.008, gy);
+              ctx.lineTo(gx - s * 0.008, gy - jh + s * 0.008);
+              ctx.closePath();
+              ctx.fill();
+              // The slip band: a cream stripe rides the belly.
+              ctx.strokeStyle = '#e8dcc4';
+              ctx.lineWidth = Math.max(1, s * 0.014);
+              ctx.beginPath();
+              ctx.moveTo(gx - s * 0.088, gy - jh * 0.42);
+              ctx.quadraticCurveTo(gx, gy - jh * 0.34, gx + s * 0.088, gy - jh * 0.42);
+              ctx.stroke();
+              ctx.strokeStyle = shade(glaze, -18);
+              ctx.lineWidth = Math.max(1, s * 0.014);
+              ctx.beginPath();
+              ctx.arc(gx + s * 0.052, gy - jh * 0.66, s * 0.038, -Math.PI * 0.6, Math.PI * 0.4);
+              ctx.stroke();
+              ctx.fillStyle = shade(glaze, -22);
+              ctx.beginPath();
+              ctx.ellipse(gx, gy - jh, s * 0.026, s * 0.012, 0, 0, Math.PI * 2);
+              ctx.fill();
+            };
+            const box = (gx: number, gy: number, sd: number) => {
+              const tin = (sd & 3) === 0;
+              const bw = s * (0.055 + ((sd >>> 2) & 1) * 0.014);
+              const bh = s * (0.09 + ((sd >>> 4) & 1) * 0.035);
+              ctx.fillStyle = tin ? '#7c8a94' : TWN_OAK;
+              ctx.fillRect(gx - bw, gy - bh, bw * 2, bh);
+              ctx.fillStyle = tin ? '#a8b4bc' : TWN_OAK_LIT;
+              ctx.fillRect(gx - bw, gy - bh, bw * 2, s * 0.02);
+              if (tin) {
+                ctx.fillStyle = '#c9c4b4';
+                ctx.fillRect(gx - bw, gy - bh * 0.55, bw * 2, bh * 0.24);
+              } else {
+                ctx.fillStyle = TWN_OAK_DARK;
+                ctx.beginPath();
+                ctx.ellipse(gx, gy - bh * 0.45, bw * 0.42, bw * 0.34, 0, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            };
+            const books = (gx: number, gy: number, sd: number) => {
+              const n = 2 + (sd & 1);
+              for (let k = 0; k < n; k++) {
+                const tone = bindings[((sd >>> (k * 2)) + k) % 4]!;
+                const kw = s * (0.1 - k * 0.008);
+                const ky = gy - k * s * 0.03;
+                const jog = (((sd >>> (k + 3)) & 3) - 1.5) * s * 0.012;
+                ctx.fillStyle = tone;
+                ctx.fillRect(gx - kw + jog, ky - s * 0.028, kw * 2, s * 0.028);
+                ctx.fillStyle = '#e8dcc4';
+                ctx.fillRect(gx - kw + jog + s * 0.006, ky - s * 0.022, kw * 2 - s * 0.012, s * 0.006);
+                ctx.fillStyle = shade(tone, 18);
+                ctx.fillRect(gx - kw + jog, ky - s * 0.028, s * 0.01, s * 0.028);
+              }
+              // One tome LEANS against the stack — the browsed one.
+              const lean = bindings[(sd >>> 6) % 4]!;
+              ctx.save();
+              ctx.translate(gx + s * 0.135, gy);
+              ctx.rotate(-0.24 * (sd & 2 ? 1 : -0.9));
+              ctx.fillStyle = lean;
+              ctx.fillRect(-s * 0.016, -s * 0.13, s * 0.032, s * 0.13);
+              ctx.fillStyle = shade(lean, 20);
+              ctx.fillRect(-s * 0.016, -s * 0.13, s * 0.012, s * 0.13);
+              ctx.restore();
+            };
+            const scroll = (gx: number, gy: number, sd: number) => {
+              // A PYRAMID of scrolls, not one flat straw — two below,
+              // one riding the valley, ribbons in two dyes (pass-2:
+              // a lone scroll read as an empty board at map scale).
+              const rib1 = Renderer.AWNING_CLOTHS[(sd >>> 2) % 10]!;
+              const rib2 = Renderer.AWNING_CLOTHS[((sd >>> 2) + 4) % 10]!;
+              const roll = (rx: number, ry: number, rl: number, rr2: number, rib: string) => {
+                ctx.fillStyle = '#e8dcc4';
+                ctx.fillRect(rx - rl, ry - rr2 * 2, rl * 2, rr2 * 2);
+                ctx.fillStyle = '#f8f2e0';
+                ctx.fillRect(rx - rl, ry - rr2 * 2, rl * 2, rr2 * 0.8);
+                ctx.fillStyle = '#f2ead6';
+                ctx.beginPath();
+                ctx.ellipse(rx - rl, ry - rr2, rr2 * 0.55, rr2, 0, 0, Math.PI * 2);
+                ctx.ellipse(rx + rl, ry - rr2, rr2 * 0.55, rr2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(120, 100, 70, 0.5)';
+                ctx.lineWidth = Math.max(1, s * 0.007);
+                ctx.beginPath();
+                ctx.ellipse(rx - rl, ry - rr2, rr2 * 0.3, rr2 * 0.55, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.strokeStyle = rib;
+                ctx.lineWidth = Math.max(1, s * 0.015);
+                ctx.beginPath();
+                ctx.moveTo(rx + rl * 0.3, ry - rr2 * 2);
+                ctx.lineTo(rx + rl * 0.3, ry);
+                ctx.stroke();
+              };
+              const rr0 = s * 0.032;
+              roll(gx - s * 0.045, gy, s * 0.075, rr0, rib1.a);
+              roll(gx + s * 0.05, gy, s * 0.07, rr0, rib2.a);
+              roll(gx + s * 0.002, gy - rr0 * 1.8, s * 0.072, rr0, rib2.b);
+            };
+            const larder = (gx: number, gy: number, sd: number) => {
+              if (sd & 1) {
+                // The cheese wheel, one wedge sold.
+                const r0 = s * 0.062;
+                ctx.fillStyle = '#d8b34c';
+                ctx.beginPath();
+                ctx.moveTo(gx, gy - r0 * 0.5);
+                ctx.arc(gx, gy - r0 * 0.5, r0, 0.4, Math.PI * 2 + 0.05);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = '#efd98a';
+                ctx.beginPath();
+                ctx.moveTo(gx, gy - r0 * 0.5);
+                ctx.arc(gx, gy - r0 * 0.5, r0 * 0.82, 0.42, Math.PI * 0.5);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = '#c9955c';
+                ctx.beginPath();
+                ctx.ellipse(gx - r0 * 0.3, gy - r0 * 1.28, r0 * 0.5, r0 * 0.26, -0.15, 0, Math.PI * 2);
+                ctx.fill();
+              } else {
+                // A loaf and its preserve jar neighbor.
+                ctx.fillStyle = TRD_CRUST;
+                ctx.beginPath();
+                ctx.ellipse(gx - s * 0.045, gy - s * 0.042, s * 0.062, s * 0.042, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = TRD_CRUST_LIT;
+                ctx.beginPath();
+                ctx.ellipse(gx - s * 0.055, gy - s * 0.056, s * 0.038, s * 0.02, -0.2, 0, Math.PI * 2);
+                ctx.fill();
+                const cloth = Renderer.AWNING_CLOTHS[(sd >>> 3) % 10]!;
+                ctx.fillStyle = '#b8863c';
+                ctx.fillRect(gx + s * 0.052, gy - s * 0.085, s * 0.055, s * 0.085);
+                ctx.fillStyle = cloth.a;
+                ctx.beginPath();
+                ctx.ellipse(gx + s * 0.079, gy - s * 0.088, s * 0.034, s * 0.018, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = TWN_ROPE;
+                ctx.lineWidth = Math.max(1, s * 0.008);
+                ctx.beginPath();
+                ctx.moveTo(gx + s * 0.048, gy - s * 0.078);
+                ctx.lineTo(gx + s * 0.11, gy - s * 0.078);
+                ctx.stroke();
+              }
+            };
+            const tinker = (gx: number, gy: number, sd: number) => {
+              const pick2 = (sd >>> 1) & 3;
+              if (pick2 === 0) {
+                // The hourglass: bronze caps, waisted glass, run sand
+                // — grown to a PRESENCE (pass-2: the tinker's smalls
+                // read as an empty board from the street).
+                ctx.fillStyle = TWN_BRONZE_LIT;
+                ctx.fillRect(gx - s * 0.058, gy - s * 0.02, s * 0.116, s * 0.02);
+                ctx.fillRect(gx - s * 0.058, gy - s * 0.17, s * 0.116, s * 0.02);
+                ctx.fillStyle = '#c6d2d4';
+                ctx.beginPath();
+                ctx.moveTo(gx - s * 0.046, gy - s * 0.02);
+                ctx.quadraticCurveTo(gx, gy - s * 0.085, gx - s * 0.046, gy - s * 0.15);
+                ctx.lineTo(gx + s * 0.046, gy - s * 0.15);
+                ctx.quadraticCurveTo(gx, gy - s * 0.085, gx + s * 0.046, gy - s * 0.02);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = '#d8b878';
+                ctx.beginPath();
+                ctx.moveTo(gx - s * 0.038, gy - s * 0.02);
+                ctx.lineTo(gx, gy - s * 0.07);
+                ctx.lineTo(gx + s * 0.038, gy - s * 0.02);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(244, 250, 252, 0.5)';
+                ctx.lineWidth = Math.max(1, s * 0.009);
+                ctx.beginPath();
+                ctx.moveTo(gx - s * 0.032, gy - s * 0.135);
+                ctx.quadraticCurveTo(gx - s * 0.006, gy - s * 0.085, gx - s * 0.032, gy - s * 0.035);
+                ctx.stroke();
+              } else if (pick2 === 1) {
+                // Twine spool, thread tail left hanging off the board.
+                ctx.fillStyle = TWN_OAK_DARK;
+                ctx.fillRect(gx - s * 0.062, gy - s * 0.13, s * 0.124, s * 0.022);
+                ctx.fillRect(gx - s * 0.062, gy - s * 0.022, s * 0.124, s * 0.022);
+                ctx.fillStyle = TWN_ROPE;
+                ctx.fillRect(gx - s * 0.05, gy - s * 0.108, s * 0.1, s * 0.086);
+                ctx.strokeStyle = shade(TWN_ROPE, -18);
+                ctx.lineWidth = Math.max(1, s * 0.009);
+                for (let k = 0; k < 4; k++) {
                   ctx.beginPath();
-                  ctx.ellipse(kx, gy - bh * 0.45, bw * 0.4, bw * 0.32, 0, 0, Math.PI * 2);
+                  ctx.moveTo(gx - s * 0.05, gy - s * 0.094 + k * s * 0.02);
+                  ctx.lineTo(gx + s * 0.05, gy - s * 0.098 + k * s * 0.02);
+                  ctx.stroke();
+                }
+                ctx.strokeStyle = TWN_ROPE;
+                ctx.beginPath();
+                ctx.moveTo(gx + s * 0.05, gy - s * 0.04);
+                ctx.quadraticCurveTo(gx + s * 0.085, gy + s * 0.02, gx + s * 0.075, gy + s * 0.08);
+                ctx.stroke();
+              } else {
+                // Nested bronze weights, ring handles up.
+                for (let k = 0; k < 2; k++) {
+                  const kw = s * (0.062 - k * 0.018);
+                  const kh = s * (0.09 - k * 0.028);
+                  const kx = gx + (k === 0 ? -s * 0.042 : s * 0.055);
+                  ctx.fillStyle = TWN_BRONZE;
+                  ctx.beginPath();
+                  ctx.moveTo(kx - kw, gy);
+                  ctx.lineTo(kx - kw * 0.7, gy - kh);
+                  ctx.lineTo(kx + kw * 0.7, gy - kh);
+                  ctx.lineTo(kx + kw, gy);
+                  ctx.closePath();
                   ctx.fill();
+                  ctx.fillStyle = TWN_BRONZE_LIT;
+                  ctx.fillRect(kx - kw * 0.7, gy - kh, kw * 0.5, kh);
+                  ctx.strokeStyle = TWN_BRONZE_LIT;
+                  ctx.lineWidth = Math.max(1, s * 0.012);
+                  ctx.beginPath();
+                  ctx.arc(kx, gy - kh - s * 0.014, s * 0.014, 0, Math.PI * 2);
+                  ctx.stroke();
                 }
               }
+            };
+            // The dispatcher — kind index is the SHELVING CONTRACT:
+            // 0 potions, 1 cloth, 2 crockery(bowls), 3 boxes, 4 books,
+            // 5 scrolls, 6 larder, 7 jug, 8 tinker. A future
+            // player-stocked shelf deals these kinds from its ledger.
+            const paintGood = (kind: number, gx: number, gy: number, sd: number) => {
+              switch (kind % 9) {
+                case 0: potion(gx, gy, sd); break;
+                case 1: clothStack(gx, gy, sd); break;
+                case 2: bowls(gx, gy, sd); break;
+                case 3: box(gx, gy, sd); break;
+                case 4: books(gx, gy, sd); break;
+                case 5: scroll(gx, gy, sd); break;
+                case 6: larder(gx, gy, sd); break;
+                case 7: jug(gx, gy, sd); break;
+                default: tinker(gx, gy, sd); break;
+              }
+            };
+            // Row themes walk the hash's rotation on a stride of
+            // three — three rows, always three different trades'
+            // worth of stock. Theme 9 is BRIC-A-BRAC: every slot
+            // deals its own kind (the back-room shelf).
+            const themeBase = h % 10;
+            // ---- The carcassless frame: boards first (behind the
+            // posts' front faces), goods on top, posts last so the
+            // uprights cap the ends cleanly.
+            const boards = [
+              { by: baseY - s * 0.44 },
+              { by: baseY - s * 0.9 },
+              { by: baseY - s * 1.36 },
+            ];
+            const sag = (bx: number) => {
+              const t2 = bx / (hw * 0.92);
+              return (1 - t2 * t2) * s * 0.014;
+            };
+            for (let row = 0; row < 3; row++) {
+              const by = boards[row]!.by;
+              // The board: front face bowing under its load, top
+              // surface a thin lit sliver the goods STAND on.
+              ctx.fillStyle = TWN_OAK_DARK;
+              ctx.beginPath();
+              ctx.moveTo(p.x - hw * 0.98, by);
+              ctx.quadraticCurveTo(p.x, by + sag(0) * 1.9, p.x + hw * 0.98, by);
+              ctx.lineTo(p.x + hw * 0.98, by + s * 0.052);
+              ctx.quadraticCurveTo(p.x, by + s * 0.052 + sag(0) * 1.9, p.x - hw * 0.98, by + s * 0.052);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = TWN_OAK;
+              ctx.beginPath();
+              ctx.moveTo(p.x - hw * 0.98, by);
+              ctx.quadraticCurveTo(p.x, by + sag(0) * 1.9, p.x + hw * 0.98, by);
+              ctx.lineTo(p.x + hw * 0.98, by + s * 0.03);
+              ctx.quadraticCurveTo(p.x, by + s * 0.03 + sag(0) * 1.9, p.x - hw * 0.98, by + s * 0.03);
+              ctx.closePath();
+              ctx.fill();
+              // The lit top sliver: the camera's tilt on every plank.
+              ctx.fillStyle = TWN_OAK_LIT;
+              ctx.beginPath();
+              ctx.moveTo(p.x - hw * 0.98, by);
+              ctx.quadraticCurveTo(p.x, by + sag(0) * 1.9, p.x + hw * 0.98, by);
+              ctx.lineTo(p.x + hw * 0.94, by - syT * 0.055);
+              ctx.quadraticCurveTo(p.x, by - syT * 0.055 + sag(0) * 1.9, p.x - hw * 0.94, by - syT * 0.055);
+              ctx.closePath();
+              ctx.fill();
+              // One grain stroke rides the front face.
+              ctx.strokeStyle = 'rgba(111, 77, 38, 0.4)';
+              ctx.lineWidth = Math.max(1, s * 0.008);
+              ctx.beginPath();
+              ctx.moveTo(p.x - hw * 0.7, by + s * 0.038);
+              ctx.quadraticCurveTo(p.x + hw * 0.1, by + s * 0.03 + sag(0), p.x + hw * 0.8, by + s * 0.04);
+              ctx.stroke();
+              // THE STOCK: theme per row, good per slot, gaps where
+              // the morning's customers already came.
+              const theme = (themeBase + row * 3) % 10;
+              const slots = [-0.56, 0, 0.56];
+              for (let sl = 0; sl < 3; sl++) {
+                const sd = (h >>> (row * 7 + sl * 3)) ^ (row * 41 + sl * 17);
+                if ((sd & 7) === 0 && !(row === 0 && sl === 1)) {
+                  // Sold out: a faint stand-ring where the good stood.
+                  ctx.fillStyle = 'rgba(60, 44, 24, 0.12)';
+                  ctx.beginPath();
+                  ctx.ellipse(p.x + slots[sl]! * hw, by - syT * 0.03 + sag(slots[sl]! * hw), s * 0.04, s * 0.014, 0, 0, Math.PI * 2);
+                  ctx.fill();
+                  continue;
+                }
+                const gx = p.x + slots[sl]! * hw + (((sd >>> 4) & 3) - 1.5) * s * 0.016;
+                const gy = by - syT * 0.028 + sag(slots[sl]! * hw);
+                const kind = theme === 9 ? (sd >>> 2) % 9 : theme;
+                paintGood(kind, gx, gy, sd);
+              }
             }
-            // The price tag: one paper slip strung off the mid shelf.
-            const tagX = p.x + hw * (0.3 + ((h >> 6) & 3) * 0.14);
-            const tagY = topY + rowH * 2;
+            // The uprights: chamfered posts capping the board ends,
+            // pegged at every joint, feet pads under.
+            for (const m of [-1, 1] as const) {
+              const px2 = p.x + m * hw;
+              ctx.fillStyle = TWN_OAK_DARK;
+              ctx.fillRect(px2 - s * 0.034, topY + s * 0.02, s * 0.068, baseY - topY - s * 0.02);
+              ctx.fillStyle = TWN_OAK;
+              ctx.fillRect(px2 - s * 0.034, topY + s * 0.02, s * 0.027, baseY - topY - s * 0.02);
+              // The chamfer: a beveled crown, lit on the sky side.
+              ctx.fillStyle = TWN_OAK_LIT;
+              ctx.beginPath();
+              ctx.moveTo(px2 - s * 0.034, topY + s * 0.02);
+              ctx.lineTo(px2 - s * 0.02, topY);
+              ctx.lineTo(px2 + s * 0.02, topY);
+              ctx.lineTo(px2 + s * 0.034, topY + s * 0.02);
+              ctx.closePath();
+              ctx.fill();
+              // Foot pad.
+              ctx.fillStyle = TWN_OAK_DARK;
+              ctx.fillRect(px2 - s * 0.048, baseY - s * 0.028, s * 0.096, s * 0.028);
+              // Pegs at each board joint.
+              ctx.fillStyle = TWN_BRONZE_LIT;
+              for (const b2 of boards) {
+                ctx.beginPath();
+                ctx.ellipse(px2 + (m < 0 ? s * 0.012 : -s * 0.012), b2.by + s * 0.026, s * 0.009, s * 0.009, 0, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            }
+            // The price tag: one paper slip strung off a board edge.
+            const tagX = p.x + hw * (0.24 + ((h >>> 6) & 3) * 0.14);
+            const tagY = boards[1]!.by + s * 0.05;
             ctx.strokeStyle = TWN_ROPE;
             ctx.lineWidth = Math.max(1, s * 0.008);
             ctx.beginPath();
