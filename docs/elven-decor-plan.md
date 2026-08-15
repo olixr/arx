@@ -156,3 +156,81 @@ Deferred (deliberate): prefab legend chars (no elven sketches yet);
 dungeon dress/PLACED_PROP_TILES (no elven dungeon theme yet); POI
 POST_SIGNS rows (no elven town yet — the first elven zone should seat
 NPCs at the harp, loom, anvil, and lectern).
+
+## THE IMBUED LANE (user-directed second wave, 2026-08-14)
+
+User verdict on the crook-hung lantern: the arched-post-with-hanging-
+thing silhouette reads as neither lamp nor chime and isn't cool. The
+correction, straight from the brief: elves are MAGIC — their light is
+imbued stone, floating crystals, runes wrapped in violet and green
+aurora (the World-of-Warcraft night-elf key). So the kit gains a
+second sub-language beside the grown-wood one:
+
+**THE IMBUED LANE LAWS**
+- **THE STONE FLOATS**: every imbued piece has at least one part
+  levitating on a slow bob — the float IS the magic, no strings, no
+  stands. Where the crafted lane hangs things from crooks, the imbued
+  lane holds them in the air.
+- **THE TWO ARCANES**: violet (#b48fe8 bright / #7a6aa8 deep — the
+  enchanting table's own family) and mana-green (#7fe8a8 / #3fae6e).
+  Every piece leads with one and answers with the other; the
+  RunePillar deals its lead color by tile hash so a street alternates.
+- **THE GLYPH ORBITS**: rune-marks circle their host on elliptical
+  paths (front shards pass bright IN FRONT, rear pass dim BEHIND —
+  the orbit sells the 3D). All orbit/bob/pulse terms <4Hz
+  (cadence-safe).
+- **THE AURORA BREATHES**: translucent veils above the crystal,
+  never a hard beam; ground rune-circles glow faint underneath.
+- Cool-light law still holds — imbued glows are violet/green, still
+  never fire-amber.
+
+**The redone pair**
+- 317 ElvenLantern → **ArcaneBeacon** ('arcane beacon', kind
+  'beacon'): three tilted rune-stones around a levitating master
+  crystal, 3 orbiting shards, aurora veils, violet r5 light.
+- 336 **ElvenChimes rebuilt**: the crook stand is DEAD — a floating
+  mithril rune ring holds five crystal voices on threads of light,
+  violet/green alternating; same tile id, same kind.
+
+**The five new imbued works (337-341)**
+| id | Tile | What | Hits | Light |
+|----|------|------|------|-------|
+| 337 | Runestone | split monolith — carved base, its crown third floating free above, energy thread between | 4 | r3.5 violet |
+| 338 | CrystalCluster | wild mana crystals erupting from cracked earth, one master + satellites | 2 | r4 green |
+| 339 | WardArch | twin runed pillars, floating keystone, glyph arc + shimmer veil between | 4 | r3.5 violet |
+| 340 | ArcaneTome | stone pedestal, grimoire floating open above it, script-glyphs orbiting | 1 | r3 violet |
+| 341 | RunePillar | the elven street light: carved pillar, spiral glyph groove, floating tip-stone — lead color dealt by hash | 3 | r4.5 hash violet/green |
+
+## As-built ledger — imbued wave (2026-08-14, one pass + one polish)
+
+- 317 renamed ElvenLantern → **ArcaneBeacon** across shared/renderer/
+  terrain/palette/debris (tile id and DB state untouched; the enum
+  name is code-only); destructible kind 'lantern' → 'beacon', hits 2.
+  Collider 0.18 → 0.3 (stone base). Chimes kept id 336 + kind.
+- 337-341 registered on the full spine; underlay range is now
+  ArcaneBeacon..RunePillar. All 7 imbued painters in
+  CACHED_RING_TILES only (everything floats/orbits/pulses — no
+  statics). Lights: beacon r5 + pillar r4.5 occluding fixtures;
+  runestone/arch/tome/cluster soft non-occluding; RunePillar deals
+  its lead color with the SAME hashCoords(41,tx,ty) the painter uses
+  — glow and tip-stone can never disagree.
+- Client typecheck gotcha: the client typechecks @arx/shared via
+  PROJECT REFERENCES against `packages/shared/dist/*.d.ts` — after
+  editing shared, run `npx tsc` in shared (emitDeclarationOnly) or
+  the client sees the OLD enum. A stale tsbuildinfo is innocent.
+- Audit polish verdicts (now standing imbued-lane laws):
+  - **A FLOATING THING THROWS LIGHT, NEVER SHADE** — the chimes'
+    dark contact ellipse + ground ring read as a hole in the lawn;
+    floating pieces get a soft light-pool beneath, no hard shadow.
+  - **THE FLOAT MUST BREAK THE SILHOUETTE** — the runestone's crown
+    hovering plumb over its base read as one solid obelisk; the
+    crown now drifts off-axis (gap 0.3, drift ~0.06s, bigger bob)
+    and the riven faces carry the piece's brightest paint.
+  - **THE REAR ORBIT PASS STAYS LIGHT** — dim dark shards on grass
+    read as grit; rear-pass orbiters use light tints at half alpha.
+  - Ward arch: keystone +20% with halo, arc glyphs +45%, veil
+    visible at noon with falling shimmer streams. Tome: book +33%,
+    orbiting script enlarged — the book IS the piece.
+- Rig hazard logged: `pkill -f "tsx src/index.ts"` matches EVERY
+  session's proving server on this shared machine — kill by PID or
+  port, never by that pattern.

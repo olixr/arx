@@ -558,8 +558,13 @@ export enum Tile {
   // and grown rather than nailed — no rope, no sag, no kink. Where
   // the war camp is amber-lit and crooked, the fair house is moonlit
   // and true. Silverbark timber, mithril fittings, moonglass light.
-  /** A crook-stemmed standing lamp: moonglass globe in a mithril cage. */
-  ElvenLantern = 317,
+  /**
+   * THE IMBUED LANE: elven magic is worked INTO stone — floating
+   * crystals, orbiting rune-shards, violet-and-green aurora. The
+   * beacon is its founding piece: three tilted rune-stones holding a
+   * levitating master crystal in a slow orbit of glyph shards.
+   */
+  ArcaneBeacon = 317,
   /** A tall standard flying moonpale silk, crescent-and-leaf device. */
   ElvenBanner = 318,
   /** A crescent garden bench — swept legs, vine-scroll armrests. */
@@ -600,8 +605,20 @@ export enum Tile {
   ElvenMirror = 334,
   /** A runed waystone veined with mithril, script band faintly lit. */
   ElvenWaystone = 335,
-  /** A chime tree: five mithril tubes and a moonglass drop. */
+  /** A floating rune ring holding five crystal voices on light. */
   ElvenChimes = 336,
+  // 337-341 = the imbued works: stone that floats, glyphs that
+  // orbit, streets lit violet and green.
+  /** A split monolith — its carved crown floats free above the base. */
+  Runestone = 337,
+  /** Wild mana crystals erupting from cracked earth. */
+  CrystalCluster = 338,
+  /** Twin runed pillars under a floating keystone and a glyph arc. */
+  WardArch = 339,
+  /** A grimoire floating open above its pedestal, script orbiting. */
+  ArcaneTome = 340,
+  /** The elven street light: a carved pillar with a floating tip-stone. */
+  RunePillar = 341,
 }
 
 export enum Detail {
@@ -1029,7 +1046,7 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   // THE FAIR HOUSE FURNISHED — elven decor. Minimap voice: pale
   // silverbark and cool mithril blues, so an elven quarter reads
   // silver-green where the war camp reads mud-brown.
-  [Tile.ElvenLantern]: { name: 'elven lantern', solid: true, color: '#9aaec4', raised: true, topColor: '#bfe9ff' },
+  [Tile.ArcaneBeacon]: { name: 'arcane beacon', solid: true, color: '#7a6aa8', raised: true, topColor: '#b48fe8' },
   [Tile.ElvenBanner]: { name: 'elven banner', solid: true, color: '#b0a488', raised: true, topColor: '#cfd9ee' },
   [Tile.ElvenBench]: { name: 'elven bench', solid: true, color: '#b0a488', raised: true, topColor: '#c9bfa4' },
   [Tile.ElvenTable]: { name: 'elven table', solid: true, color: '#b0a488', raised: true, topColor: '#c9bfa4' },
@@ -1048,7 +1065,13 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.ElvenPlanter]: { name: 'elven planter', solid: true, color: '#a89a80', raised: true, topColor: '#5d8a6e' },
   [Tile.ElvenMirror]: { name: 'standing mirror', solid: true, color: '#b0a488', raised: true, topColor: '#d6e4f2' },
   [Tile.ElvenWaystone]: { name: 'waystone', solid: true, color: '#8d8798', raised: true, topColor: '#9fe8d8' },
-  [Tile.ElvenChimes]: { name: 'wind chimes', solid: true, color: '#b0a488', raised: true, topColor: '#aebfd4' },
+  [Tile.ElvenChimes]: { name: 'wind chimes', solid: true, color: '#8fa3bd', raised: true, topColor: '#aebfd4' },
+  // The imbued works: violet-and-green magic on the minimap.
+  [Tile.Runestone]: { name: 'runestone', solid: true, color: '#57535f', raised: true, topColor: '#b48fe8' },
+  [Tile.CrystalCluster]: { name: 'mana crystals', solid: true, color: '#3fae6e', raised: true, topColor: '#7fe8a8' },
+  [Tile.WardArch]: { name: 'ward arch', solid: true, color: '#8d8798', raised: true, topColor: '#b48fe8' },
+  [Tile.ArcaneTome]: { name: 'arcane tome', solid: true, color: '#8d8798', raised: true, topColor: '#efe6ff' },
+  [Tile.RunePillar]: { name: 'rune pillar', solid: true, color: '#8d8798', raised: true, topColor: '#7fe8a8' },
   [Tile.PikeHole]: { name: 'pike hole', solid: true, color: '#39679c', variants: ['#366293'] },
   [Tile.EelRun]: { name: 'eel run', solid: true, color: '#31578c', variants: ['#2e5284'] },
   [Tile.SalmonRun]: { name: 'salmon run', solid: true, color: '#457bbd', variants: ['#4174b3'] },
@@ -1627,7 +1650,7 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   // Elven props: fine-limbed pieces you slip past — the kit's grace
   // extends to its footprints. Bulk furniture (bench, table, daybed,
   // chair, bookcase) stays full-block like its human cousins.
-  [Tile.ElvenLantern, 0.18],
+  [Tile.ArcaneBeacon, 0.3],
   [Tile.ElvenBanner, 0.2],
   [Tile.ElvenLectern, 0.22],
   [Tile.ElvenHarp, 0.3],
@@ -1642,6 +1665,12 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.ElvenMirror, 0.22],
   [Tile.ElvenWaystone, 0.3],
   [Tile.ElvenChimes, 0.2],
+  // Imbued works: you walk around the stone, not the magic.
+  [Tile.Runestone, 0.32],
+  [Tile.CrystalCluster, 0.34],
+  [Tile.WardArch, 0.38],
+  [Tile.ArcaneTome, 0.24],
+  [Tile.RunePillar, 0.2],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -1813,7 +1842,7 @@ export type DestructibleKind =
   | 'hide'
   // THE FAIR HOUSE FURNISHED: elven finery — pale splinters, silk
   // scraps, and moonglass glitter, never the camp's brown wreckage.
-  | 'lantern'
+  | 'beacon'
   | 'elfbanner'
   | 'elfbench'
   | 'elftable'
@@ -1831,7 +1860,13 @@ export type DestructibleKind =
   | 'planter'
   | 'mirror'
   | 'waystone'
-  | 'chimes';
+  | 'chimes'
+  // The imbued works: crystal light that shatters bright.
+  | 'runestone'
+  | 'crystals'
+  | 'wardarch'
+  | 'tome'
+  | 'runepillar';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -1895,7 +1930,7 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   // four). The Everflame is deliberately NOT here: a flame this old
   // is not put out by a stick (the bonfire law), so a sacked hall
   // keeps its light.
-  [Tile.ElvenLantern, { kind: 'lantern', respawnSec: 300, hits: 1 }],
+  [Tile.ArcaneBeacon, { kind: 'beacon', respawnSec: 300, hits: 2 }],
   [Tile.ElvenBanner, { kind: 'elfbanner', respawnSec: 420, hits: 2 }],
   [Tile.ElvenBench, { kind: 'elfbench', respawnSec: 240, hits: 2 }],
   [Tile.ElvenTable, { kind: 'elftable', respawnSec: 240, hits: 2 }],
@@ -1914,6 +1949,13 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.ElvenMirror, { kind: 'mirror', respawnSec: 240, hits: 1 }],
   [Tile.ElvenWaystone, { kind: 'waystone', respawnSec: 600, hits: 4 }],
   [Tile.ElvenChimes, { kind: 'chimes', respawnSec: 240, hits: 1 }],
+  // The imbued works: old magic stands long, wild crystal cracks in
+  // two, and a floating book comes down with one good swat.
+  [Tile.Runestone, { kind: 'runestone', respawnSec: 600, hits: 4 }],
+  [Tile.CrystalCluster, { kind: 'crystals', respawnSec: 420, hits: 2 }],
+  [Tile.WardArch, { kind: 'wardarch', respawnSec: 600, hits: 4 }],
+  [Tile.ArcaneTome, { kind: 'tome', respawnSec: 240, hits: 1 }],
+  [Tile.RunePillar, { kind: 'runepillar', respawnSec: 600, hits: 3 }],
 ]);
 
 /** Every smashable prop tile. */

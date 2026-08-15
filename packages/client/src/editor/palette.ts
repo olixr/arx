@@ -127,7 +127,11 @@ export const TILE_CATEGORIES: TileCategory[] = [
     id: 'elven',
     label: 'Elven',
     tiles: [
-      Tile.ElvenLantern, Tile.Everflame, Tile.Moonwell, Tile.ElvenWaystone,
+      // The imbued works first (the pieces that set a scene), then
+      // lights and cloth, furniture, stations, garden stone.
+      Tile.ArcaneBeacon, Tile.RunePillar, Tile.Runestone, Tile.CrystalCluster,
+      Tile.WardArch, Tile.ArcaneTome,
+      Tile.Everflame, Tile.Moonwell, Tile.ElvenWaystone,
       Tile.ElvenBanner, Tile.ElvenChimes,
       Tile.ElvenBench, Tile.ElvenTable, Tile.ElvenChair, Tile.ElvenDaybed,
       Tile.ElvenBookcase, Tile.ElvenLectern, Tile.ElvenMirror,

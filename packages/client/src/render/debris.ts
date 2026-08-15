@@ -60,7 +60,7 @@ export type SmashKind =
   // THE FAIR HOUSE FURNISHED: elven wreckage — pale silverbark
   // splinters, silk that sails, moonglass that glitters, marble that
   // drops like the stone it is. Never the camp's brown ruin.
-  | 'lantern'
+  | 'beacon'
   | 'elfbanner'
   | 'elfbench'
   | 'elftable'
@@ -78,7 +78,13 @@ export type SmashKind =
   | 'planter'
   | 'mirror'
   | 'waystone'
-  | 'chimes';
+  | 'chimes'
+  // The imbued works: crystal light that shatters bright.
+  | 'runestone'
+  | 'crystals'
+  | 'wardarch'
+  | 'tome'
+  | 'runepillar';
 
 export interface DebrisChunk {
   x: number; // world coords (tile units)
@@ -514,7 +520,7 @@ const CHIP_TONE: Record<SmashKind, string> = {
   drum: '#7a5636',
   hide: '#b08d62',
   // Elven wreckage: silverbark, mithril, moonglass, marble, silk.
-  lantern: '#8fa3bd',
+  beacon: '#b48fe8',
   elfbanner: '#cdd8ec',
   elfbench: '#a39072',
   elftable: '#a39072',
@@ -533,6 +539,12 @@ const CHIP_TONE: Record<SmashKind, string> = {
   mirror: '#a8bccc',
   waystone: '#a9a396',
   chimes: '#8fa3bd',
+  // Imbued wreckage: arcane shards over dark stone.
+  runestone: '#57535f',
+  crystals: '#3fae6e',
+  wardarch: '#8d8798',
+  tome: '#d8c4fa',
+  runepillar: '#8d8798',
 };
 
 const pick = <T>(rand: () => number, arr: readonly T[]): T =>
@@ -947,15 +959,17 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       break;
     }
     // -------------------------------- THE FAIR HOUSE FURNISHED
-    case 'lantern': {
-      // The crook drops in two mithril lengths; the globe becomes
-      // glitter — moonglass rings away in bright fast motes.
-      out.push({ len: 0.42, wid: 0.045, color: '#8fa3bd', stripe: '#dce9f8' });
-      out.push({ len: 0.26, wid: 0.04, color: shade('#8fa3bd', -12), stripe: '#dce9f8' });
+    case 'beacon': {
+      // The working fails all at once: the master crystal bursts
+      // into violet shards, the orbiters scatter as sparks, and the
+      // three rune-stones just fall over — stone again, nothing more.
       for (let i = 0; i < 4; i++) {
-        out.push({ len: 0.06 + rand() * 0.04, wid: 0.05, color: pick(rand, ['#9fe0d8', '#dff6ff']), round: true, pace: 1.4 });
+        out.push({ len: 0.14 + rand() * 0.1, wid: 0.05, color: pick(rand, ['#b48fe8', '#d8c4fa']), stripe: '#efe6ff', pace: 1.45 });
       }
-      out.push({ len: 0.14, wid: 0.12, color: shade('#ded8ce', -20), round: true, pace: 0.85 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.06, wid: 0.05, color: pick(rand, ['#b48fe8', '#7fe8a8']), round: true, pace: 1.5 });
+      }
+      wood('#57535f', 3, 0.24, 0.4, 0.1);
       break;
     }
     case 'elfbanner': {
@@ -1131,14 +1145,65 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       break;
     }
     case 'chimes': {
-      // The stand drops; the five voices ring AWAY — slim bright
-      // tubes at pace, the moonglass drop among them.
-      wood('#a39072', 2, 0.28, 0.44, 0.05);
-      for (let i = 0; i < 4; i++) {
-        out.push({ len: 0.16 + rand() * 0.1, wid: 0.032, color: pick(rand, ['#8fa3bd', shade('#8fa3bd', 8)]), stripe: '#dce9f8', pace: 1.3 });
+      // The ring clatters down dead metal; the five crystal voices
+      // ring AWAY, violet and green, brighter in death than in song.
+      out.push({ len: 0.13, wid: 0.11, color: '#8fa3bd', stripe: '#dce9f8', round: true, pace: 1.1 });
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.12 + rand() * 0.08, wid: 0.03, color: i % 2 === 1 ? '#7fe8a8' : '#b48fe8', stripe: '#efe6ff', pace: 1.35 });
       }
-      out.push({ len: 0.08, wid: 0.06, color: '#9fe0d8', round: true, pace: 1.4 });
-      out.push({ len: 0.11, wid: 0.09, color: '#8fa3bd', round: true, pace: 1.1 });
+      break;
+    }
+    case 'runestone': {
+      // Old stone falls dead; the crown drops LAST and heaviest; one
+      // violet seam-spark leaves like a sigh.
+      wood('#57535f', 5, 0.24, 0.4, 0.12);
+      out.push({ len: 0.3, wid: 0.22, color: shade('#57535f', -8), stripe: '#b48fe8', round: true, pace: 0.7 });
+      out.push({ len: 0.2, wid: 0.025, color: '#d8c4fa', pace: 1.4 });
+      break;
+    }
+    case 'crystals': {
+      // The cluster shatters the way it grew: long green shards at
+      // speed, the violet runt among them, mana motes going out.
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.16 + rand() * 0.14, wid: 0.045, color: pick(rand, ['#7fe8a8', '#3fae6e']), stripe: '#effff6', pace: 1.45 });
+      }
+      out.push({ len: 0.12, wid: 0.04, color: '#b48fe8', stripe: '#d8c4fa', pace: 1.35 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.05, wid: 0.045, color: '#7fe8a8', round: true, pace: 1.5 });
+      }
+      break;
+    }
+    case 'wardarch': {
+      // The pillars break to honest masonry; the keystone falls
+      // bright and whole; the veil dies as two green sparks.
+      wood('#8d8798', 5, 0.2, 0.36, 0.11);
+      out.push({ len: 0.16, wid: 0.13, color: '#b48fe8', stripe: '#efe6ff', round: true, pace: 1.15 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.05, wid: 0.045, color: '#7fe8a8', round: true, pace: 1.45 });
+      }
+      break;
+    }
+    case 'tome': {
+      // The pedestal cracks; the grimoire drops covers-first, and
+      // its pages fly furthest of all — some of them still glowing.
+      wood('#8d8798', 2, 0.2, 0.34, 0.1);
+      out.push({ len: 0.26, wid: 0.16, color: '#c8a95e', stripe: shade('#c8a95e', 22), pace: 1.05 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.12, wid: 0.09, color: pick(rand, ['#efe6ff', '#e4d9f6']), round: true, pace: 1.55 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.05, wid: 0.04, color: pick(rand, ['#b48fe8', '#7fe8a8']), round: true, pace: 1.4 });
+      }
+      break;
+    }
+    case 'runepillar': {
+      // The shaft breaks at its glyphs; the tip-stone streaks away
+      // still burning its street's color.
+      wood('#8d8798', 4, 0.24, 0.42, 0.1);
+      out.push({ len: 0.13, wid: 0.1, color: pick(rand, ['#7fe8a8', '#b48fe8']), stripe: '#f5faff', round: true, pace: 1.4 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.05, wid: 0.04, color: pick(rand, ['#7fe8a8', '#b48fe8']), round: true, pace: 1.45 });
+      }
       break;
     }
   }

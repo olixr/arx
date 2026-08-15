@@ -269,7 +269,7 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     // THE FAIR HOUSE FURNISHED: finery breaks fast, stone and mithril
     // stand long. The Everflame is deliberately NOT here (the bonfire
     // law — a flame this old is not put out by a stick).
-    [Tile.ElvenLantern, 'lantern', 1],
+    [Tile.ArcaneBeacon, 'beacon', 2],
     [Tile.ElvenBanner, 'elfbanner', 2],
     [Tile.ElvenBench, 'elfbench', 2],
     [Tile.ElvenTable, 'elftable', 2],
@@ -288,6 +288,13 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.ElvenMirror, 'mirror', 1],
     [Tile.ElvenWaystone, 'waystone', 4],
     [Tile.ElvenChimes, 'chimes', 1],
+    // THE IMBUED LANE: old magic stands long, wild crystal cracks in
+    // two, the floating book falls to one swat.
+    [Tile.Runestone, 'runestone', 4],
+    [Tile.CrystalCluster, 'crystals', 2],
+    [Tile.WardArch, 'wardarch', 4],
+    [Tile.ArcaneTome, 'tome', 1],
+    [Tile.RunePillar, 'runepillar', 3],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {

@@ -2019,13 +2019,18 @@ game.onFx = (fx) => {
     // chimes are RESONANT — breaking one is the loudest note it
     // ever plays.
     sfx.spatial(at, 'far', () =>
-      sfx.propSmash(kind === 'barrel' || kind === 'drum' || kind === 'pot' || kind === 'harp' || kind === 'chimes'),
+      sfx.propSmash(
+        kind === 'barrel' || kind === 'drum' || kind === 'pot' || kind === 'harp' || kind === 'chimes' ||
+        // Shattering crystal rings like the instruments do.
+        kind === 'beacon' || kind === 'crystals',
+      ),
     );
-    // Stone-weight pieces land heavy: marble and mithril shake the
-    // street like the big table.
+    // Stone-weight pieces land heavy: marble, mithril, and old
+    // imbued masonry shake the street like the big table.
     if (dist < 6) {
       renderer.shake(
-        kind === 'table' || kind === 'palisade' || kind === 'statue' || kind === 'fountain' || kind === 'waystone' || kind === 'anvil'
+        kind === 'table' || kind === 'palisade' || kind === 'statue' || kind === 'fountain' || kind === 'waystone' ||
+          kind === 'anvil' || kind === 'runestone' || kind === 'wardarch' || kind === 'runepillar'
           ? 3.2
           : 2.2,
       );

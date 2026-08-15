@@ -496,8 +496,9 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     if (t >= Tile.Barrel && t <= Tile.Basin) return nearestFloor(ground, tx, ty);
     // War-camp props stand on the camp's trampled ground the same way.
     if (t >= Tile.StandingTorch && t <= Tile.HideFrame) return nearestFloor(ground, tx, ty);
-    // Elven props stand on whatever fine floor the fair house laid.
-    if (t >= Tile.ElvenLantern && t <= Tile.ElvenChimes) return nearestFloor(ground, tx, ty);
+    // Elven props (crafted AND imbued) stand on whatever fine floor
+    // the fair house laid.
+    if (t >= Tile.ArcaneBeacon && t <= Tile.RunePillar) return nearestFloor(ground, tx, ty);
     // The palisade stands in open country like the garrison curtain:
     // whatever walkable terrain fronts it continues beneath (south
     // first — that side's base sliver shows), and a family member

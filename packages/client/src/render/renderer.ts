@@ -515,6 +515,14 @@ const ELF_SILK = '#cdd8ec';
 const ELF_GOLD = '#c8a95e';
 const ELF_MARBLE = '#ded8ce';
 const ELF_LEAF = '#5d8a6e';
+// THE IMBUED LANE: worked magic — stone that floats, glyphs that
+// orbit. Two arcanes ONLY: violet (the enchanting table's own
+// family) leads, mana-green answers. Auroras breathe, beams are
+// banned, and every float/orbit/pulse clock stays under 4Hz.
+const ARC_VIOLET = '#b48fe8';
+const ARC_VIOLET_DEEP = '#7a6aa8';
+const ARC_GREEN = '#7fe8a8';
+const ARC_GREEN_DEEP = '#3fae6e';
 /** Solid props too short for a chest-high stick: arrows lodge low. */
 const LOW_STICK_TILES = new Set<number>([
   Tile.Fence,
@@ -4292,14 +4300,47 @@ export class Renderer {
           const pulse = 0.8 + Math.sin(t * 1.4 + tx * 0.9 + ty * 1.7) * 0.2;
           this.glows.push({ x: tx + 0.5, y: ty + 0.4, r: 0.95 * pulse, rgb: '110, 225, 200', a: 0.12 * pulse * boost });
           this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 2.4, rgb: [110, 225, 200], intensity: 0.4 * pulse });
-        } else if (tile === Tile.ElvenLantern) {
-          // THE COOL LIGHT LAW: every elven glow is moonlight, never
-          // fire — a slow breath on the glowshroom's clock, ungated by
-          // the flame gate (moonglass burns nothing), but occluding
-          // like a lamp: it is a fixture, not a haze.
-          const breathe = 0.82 + Math.sin(t * 1.1 + tx * 1.3 + ty * 0.7) * 0.18;
-          this.glows.push({ x: tx + 0.62, y: ty + 0.02, r: 1.0 * breathe, rgb: '191, 233, 255', a: 0.2 * breathe * boost });
-          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 5.0 * breathe, rgb: [186, 220, 250], intensity: 0.7 * breathe, occlude: true });
+        } else if (tile === Tile.ArcaneBeacon) {
+          // THE IMBUED LANE: worked violet magic — a slow arcane
+          // swell, never a flicker, ungated by the flame clock.
+          const breathe = 0.8 + Math.sin(t * 1.1 + tx * 1.3 + ty * 0.7) * 0.2;
+          this.glows.push({ x: tx + 0.5, y: ty - 0.45, r: 1.1 * breathe, rgb: '180, 143, 232', a: 0.22 * breathe * boost });
+          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 5.0 * breathe, rgb: [180, 148, 228], intensity: 0.7 * breathe, occlude: true });
+        } else if (tile === Tile.Runestone) {
+          // The split stone's seam and glyph column, a quiet violet.
+          const breathe = 0.75 + Math.sin(t * 1.0 + tx * 0.9 + ty * 1.2) * 0.25;
+          this.glows.push({ x: tx + 0.5, y: ty + 0.1, r: 0.7 * breathe, rgb: '180, 143, 232', a: 0.12 * breathe * boost });
+          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 3.5, rgb: [180, 148, 228], intensity: 0.42 * breathe });
+        } else if (tile === Tile.CrystalCluster) {
+          // Wild mana: green, low, and alive — glowshroom-class haze.
+          const breathe = 0.75 + Math.sin(t * 1.2 + tx * 1.1 + ty * 0.8) * 0.25;
+          this.glows.push({ x: tx + 0.5, y: ty + 0.35, r: 1.0 * breathe, rgb: '127, 232, 168', a: 0.15 * breathe * boost });
+          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 4.0, rgb: [130, 226, 170], intensity: 0.5 * breathe });
+        } else if (tile === Tile.WardArch) {
+          // The keystone and its veil: violet at head height.
+          const breathe = 0.75 + Math.sin(t * 1.0 + tx * 0.7 + ty * 1.0) * 0.25;
+          this.glows.push({ x: tx + 0.5, y: ty - 0.3, r: 0.8 * breathe, rgb: '180, 143, 232', a: 0.13 * breathe * boost });
+          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 3.5, rgb: [180, 148, 228], intensity: 0.45 * breathe });
+        } else if (tile === Tile.ArcaneTome) {
+          // The floating book reads by its own light.
+          const breathe = 0.78 + Math.sin(t * 1.1 + tx * 1.4 + ty * 0.6) * 0.22;
+          this.glows.push({ x: tx + 0.5, y: ty - 0.35, r: 0.6 * breathe, rgb: '216, 196, 250', a: 0.12 * breathe * boost });
+          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 3.0, rgb: [196, 176, 240], intensity: 0.4 * breathe });
+        } else if (tile === Tile.RunePillar) {
+          // The elven street light — lead color dealt by the SAME
+          // hash the painter uses, so glow and tip-stone agree.
+          const green = (hashCoords(41, tx, ty) & 1) === 0;
+          const breathe = 0.8 + Math.sin(t * 1.05 + tx * 1.0 + ty * 0.9) * 0.2;
+          this.glows.push({
+            x: tx + 0.5, y: ty - 0.9, r: 0.9 * breathe,
+            rgb: green ? '127, 232, 168' : '180, 143, 232',
+            a: 0.18 * breathe * boost,
+          });
+          this.lights.push({
+            x: tx + 0.5, y: ty + 0.5, r: 4.5 * breathe,
+            rgb: green ? [130, 226, 170] : [180, 148, 228],
+            intensity: 0.6 * breathe, occlude: true,
+          });
         } else if (tile === Tile.Everflame) {
           // The Everflame: the elven hall's night anchor — bonfire
           // reach in silver-white. It never went out, so it never
@@ -16202,12 +16243,24 @@ export class Renderer {
       ]),
     ),
     ...Object.fromEntries(
-      (['lantern', 'mirror', 'chimes', 'anvil'] as const).map((k) => [
+      (['mirror', 'chimes', 'anvil'] as const).map((k) => [
         k,
         {
           dust: ['#8fa3bd', '#6e7f96', '#b4c4d8'],
           splinters: ['#dce9f8', '#b4c4d8', '#9fe0d8'],
           chips: ['#dce9f8', '#b4c4d8'],
+        },
+      ]),
+    ),
+    // The imbued works crack in arcane light — violet-and-green
+    // sparks, never woodsmoke.
+    ...Object.fromEntries(
+      (['beacon', 'runestone', 'crystals', 'wardarch', 'tome', 'runepillar'] as const).map((k) => [
+        k,
+        {
+          dust: ['#7a6aa8', '#57535f', '#b48fe8'],
+          splinters: ['#b48fe8', '#d8c4fa', '#7fe8a8'],
+          chips: ['#b48fe8', '#7fe8a8'],
         },
       ]),
     ),
@@ -16705,7 +16758,7 @@ export class Renderer {
     // the same way — glow-breath, water, glints and breeze all sample
     // at cadence (every animated term is <4Hz, the moonlight-breathes
     // law), and all light blooms live in collectStaticLights.
-    Tile.ElvenLantern,
+    Tile.ArcaneBeacon,
     Tile.ElvenBanner,
     Tile.ElvenBench,
     Tile.ElvenTable,
@@ -16725,6 +16778,13 @@ export class Renderer {
     Tile.ElvenMirror,
     Tile.ElvenWaystone,
     Tile.ElvenChimes,
+    // The imbued works: every one floats, orbits, or pulses — all on
+    // the fast cadence, none static.
+    Tile.Runestone,
+    Tile.CrystalCluster,
+    Tile.WardArch,
+    Tile.ArcaneTome,
+    Tile.RunePillar,
   ]);
 
   /**
@@ -22068,115 +22128,135 @@ export class Renderer {
       // laws as every prop: measured against the 1.15-tile body, top
       // planes shown to the tilted bird's eye, cached ring for ink.
 
-      case Tile.ElvenLantern: {
+      case Tile.ArcaneBeacon: {
         const syT = s * this.camera.yScale;
-        const baseY = p.y + syT * 0.12;
-        // The crook: one unbroken mithril bow rising from the foot and
-        // curling over to hold the globe — the kit's signature sweep.
-        const crownY = baseY - s * 1.62;
-        const hangX = p.x + s * 0.3;
-        const { sway } = this.breezeAt(tx, ty, t, tx * 2.3 + ty * 1.7, s, 0.01, 0.014);
-        const gx = hangX + sway;
-        const gy = crownY + s * 0.34;
+        const baseY = p.y + syT * 0.2;
+        // THE STONE FLOATS: the master crystal rides a slow bob and
+        // three glyph shards orbit it — the front pass burns bright,
+        // the rear pass dims behind the crystal (the orbit sells the
+        // depth). Every clock in here is <4Hz, cadence-safe.
+        const bob = Math.sin(t * 0.8 + h * 0.4) * s * 0.035;
+        const cx2 = p.x;
+        const cy2 = baseY - s * 0.98 + bob;
         return {
           sortY: ty + 0.7,
-          body: stationBody(0.62, 1.95, 0.4),
-          drawShadow: () => {
-            this.castEdgeQuad(p.x - s * 0.05, baseY, p.x + s * 0.05, baseY, 1.45);
-          },
+          body: stationBody(0.62, 1.9, 0.45),
+          drawShadow: () => this.castContact(p.x, baseY + s * 0.02, s * 0.3, s * 0.1),
           draw: () => {
             // Draw-time ctx capture: the outline pass swaps this.ctx.
             const ctx = this.ctx;
+            const pulse = 0.75 + 0.25 * Math.sin(t * 1.1 + h * 0.7);
+            // The ground remembers the working: a faint rune circle
+            // with four way-marks.
+            ctx.strokeStyle = `rgba(180, 143, 232, ${0.16 + 0.1 * pulse})`;
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY, s * 0.4, syT * 0.22, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = `rgba(180, 143, 232, ${0.3 + 0.2 * pulse})`;
+            for (let i = 0; i < 4; i++) {
+              const a = (Math.PI / 2) * i + 0.4;
+              ctx.fillRect(
+                p.x + Math.cos(a) * s * 0.4 - s * 0.012,
+                baseY + Math.sin(a) * syT * 0.22 - s * 0.012,
+                s * 0.024,
+                s * 0.024,
+              );
+            }
             ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
             ctx.beginPath();
-            ctx.ellipse(p.x, baseY + s * 0.015, s * 0.14, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.ellipse(p.x, baseY + s * 0.01, s * 0.3, s * 0.08, 0, 0, Math.PI * 2);
             ctx.fill();
-            // Faceted stone foot the stem grows out of.
-            ctx.fillStyle = shade(ELF_MARBLE, -26);
+            // Three tilted rune-stones lean toward the light they
+            // raised — dark stone, one carved glyph each, glowing.
+            const stone = (sx2: number, lean: number, sh2: number, tone: number) => {
+              ctx.fillStyle = shade('#57535f', tone);
+              ctx.beginPath();
+              ctx.moveTo(sx2 - s * 0.07, baseY);
+              ctx.lineTo(sx2 + s * 0.07, baseY);
+              ctx.lineTo(sx2 + lean + s * 0.035, baseY - sh2);
+              ctx.lineTo(sx2 + lean - s * 0.035, baseY - sh2);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = `rgba(180, 143, 232, ${0.5 + 0.3 * pulse})`;
+              ctx.fillRect(sx2 + lean * 0.55 - s * 0.012, baseY - sh2 * 0.62, s * 0.024, sh2 * 0.3);
+            };
+            stone(p.x, s * 0.01, s * 0.3, -26);
+            stone(p.x - s * 0.24, s * 0.09, s * 0.42, -6);
+            stone(p.x + s * 0.24, -s * 0.09, s * 0.44, -14);
+            // THE AURORA BREATHES: two translucent veils above the
+            // crystal on offset clocks — never a hard beam.
+            const veil = (ph: number, wide: number, tone: string) => {
+              const wob = Math.sin(t * 0.5 + ph) * s * 0.05;
+              ctx.fillStyle = tone;
+              ctx.beginPath();
+              ctx.moveTo(cx2 - wide + wob, cy2 - s * 0.1);
+              ctx.quadraticCurveTo(cx2 - wide * 0.4 - wob, cy2 - s * 0.5, cx2 - wide * 0.7 + wob, cy2 - s * 0.86);
+              ctx.lineTo(cx2 + wide * 0.5 + wob, cy2 - s * 0.8);
+              ctx.quadraticCurveTo(cx2 + wide * 0.3 - wob, cy2 - s * 0.42, cx2 + wide + wob * 0.5, cy2 - s * 0.06);
+              ctx.closePath();
+              ctx.fill();
+            };
+            veil(1.2, s * 0.16, `rgba(180, 143, 232, ${0.1 + 0.06 * pulse})`);
+            veil(3.8, s * 0.1, `rgba(127, 232, 168, ${0.08 + 0.05 * pulse})`);
+            // THE GLYPH ORBITS: three shards on an elliptical track —
+            // one runs green (THE TWO ARCANES answer each other).
+            const orbiter = (k: number, front: boolean) => {
+              const a = t * 0.7 + (k * Math.PI * 2) / 3 + h * 0.3;
+              const ox = cx2 + Math.cos(a) * s * 0.3;
+              const oy = cy2 + Math.sin(a) * syT * 0.16;
+              if (Math.sin(a) > 0 !== front) return;
+              // The rear pass stays LIGHT at low alpha — a dark dim
+              // shard on grass read as grit, not magic.
+              const al = front ? 0.95 : 0.5;
+              ctx.fillStyle = k === 1 ? `rgba(178, 244, 205, ${al})` : `rgba(216, 196, 250, ${al})`;
+              ctx.beginPath();
+              ctx.moveTo(ox, oy - s * 0.058);
+              ctx.lineTo(ox + s * 0.038, oy);
+              ctx.lineTo(ox, oy + s * 0.058);
+              ctx.lineTo(ox - s * 0.038, oy);
+              ctx.closePath();
+              ctx.fill();
+            };
+            for (let k = 0; k < 3; k++) orbiter(k, false);
+            // THE MASTER CRYSTAL: one great faceted shard, point down
+            // — lit west facet, deep east, a burning core seam.
+            const cw = s * 0.14;
+            const chh = s * 0.3;
+            ctx.fillStyle = ARC_VIOLET_DEEP;
             ctx.beginPath();
-            facetCircle(ctx, p.x, baseY - s * 0.03, s * 0.11, 6, 0.4, 0.55);
-            ctx.fill();
-            ctx.fillStyle = shade(ELF_MARBLE, -8);
-            ctx.beginPath();
-            facetCircle(ctx, p.x, baseY - s * 0.065, s * 0.085, 6, 0.4, 0.5);
-            ctx.fill();
-            // The stem: one closed tapered path — up the west side,
-            // over the crook, back down. The wood-and-metal answer to
-            // the camp's leaning stake: this line never breaks.
-            ctx.fillStyle = shade(ELF_MITHRIL, -20);
-            ctx.beginPath();
-            ctx.moveTo(p.x - s * 0.038, baseY - s * 0.04);
-            ctx.quadraticCurveTo(p.x - s * 0.062, crownY + s * 0.5, p.x + s * 0.018, crownY + s * 0.02);
-            ctx.quadraticCurveTo(p.x + s * 0.16, crownY - s * 0.1, hangX + s * 0.02, crownY + s * 0.1);
-            ctx.lineTo(hangX - s * 0.03, crownY + s * 0.125);
-            ctx.quadraticCurveTo(p.x + s * 0.1, crownY - s * 0.015, p.x + s * 0.045, crownY + s * 0.13);
-            ctx.quadraticCurveTo(p.x + s * 0.004, crownY + s * 0.5, p.x + s * 0.038, baseY - s * 0.04);
+            ctx.moveTo(cx2, cy2 + chh);
+            ctx.lineTo(cx2 + cw, cy2 + chh * 0.25);
+            ctx.lineTo(cx2 + cw * 0.55, cy2 - chh);
+            ctx.lineTo(cx2 - cw * 0.55, cy2 - chh);
+            ctx.lineTo(cx2 - cw, cy2 + chh * 0.25);
             ctx.closePath();
             ctx.fill();
-            // One lit sliver up the west edge — worked metal earns it.
-            ctx.fillStyle = shade(ELF_MITHRIL, 4);
+            ctx.fillStyle = ARC_VIOLET;
             ctx.beginPath();
-            ctx.moveTo(p.x - s * 0.03, baseY - s * 0.06);
-            ctx.quadraticCurveTo(p.x - s * 0.05, crownY + s * 0.5, p.x + s * 0.018, crownY + s * 0.045);
-            ctx.lineTo(p.x + s * 0.028, crownY + s * 0.095);
-            ctx.quadraticCurveTo(p.x - s * 0.026, crownY + s * 0.5, p.x - s * 0.012, baseY - s * 0.06);
+            ctx.moveTo(cx2, cy2 + chh);
+            ctx.lineTo(cx2 - cw, cy2 + chh * 0.25);
+            ctx.lineTo(cx2 - cw * 0.55, cy2 - chh);
+            ctx.lineTo(cx2 - cw * 0.1, cy2 - chh);
+            ctx.lineTo(cx2 - cw * 0.15, cy2 + chh * 0.3);
             ctx.closePath();
             ctx.fill();
-            // Leaf finial where the crook ends — the maker signs it.
-            ctx.fillStyle = ELF_VEIN;
+            ctx.fillStyle = `rgba(239, 230, 255, ${0.55 + 0.35 * pulse})`;
+            ctx.fillRect(cx2 - s * 0.016, cy2 - chh * 0.8, s * 0.032, chh * 1.6);
+            // Light spills from the point onto the stones below.
+            ctx.fillStyle = `rgba(180, 143, 232, ${0.14 + 0.1 * pulse})`;
             ctx.beginPath();
-            ctx.moveTo(hangX - s * 0.005, crownY + s * 0.1);
-            ctx.quadraticCurveTo(hangX + s * 0.075, crownY + s * 0.02, hangX + s * 0.05, crownY - s * 0.07);
-            ctx.quadraticCurveTo(hangX - s * 0.02, crownY, hangX - s * 0.005, crownY + s * 0.1);
+            ctx.ellipse(cx2, baseY - s * 0.3, s * 0.24, s * 0.3, 0, 0, Math.PI * 2);
             ctx.fill();
-            // Hanging link down to the globe.
-            ctx.strokeStyle = shade(ELF_MITHRIL, -10);
-            ctx.lineWidth = Math.max(1, s * 0.016);
-            ctx.beginPath();
-            ctx.moveTo(hangX, crownY + s * 0.125);
-            ctx.lineTo(gx, gy - s * 0.17);
-            ctx.stroke();
-            // The moonglass globe breathes — a slow two-second swell,
-            // cadence-safe, never a flicker (moonlight does not spit).
-            const breathe = 0.82 + 0.18 * Math.sin(t * 1.1 + h * 0.3);
-            ctx.fillStyle = `rgba(159, 224, 216, ${0.16 * breathe})`;
-            ctx.beginPath();
-            ctx.ellipse(gx, gy, s * 0.21, s * 0.21, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = `rgba(191, 233, 255, ${0.5 + 0.14 * breathe})`;
-            ctx.beginPath();
-            ctx.ellipse(gx, gy, s * 0.115, s * 0.125, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = `rgba(234, 252, 255, ${0.55 + 0.2 * breathe})`;
-            ctx.beginPath();
-            ctx.ellipse(gx - s * 0.015, gy - s * 0.02, s * 0.055, s * 0.06, 0, 0, Math.PI * 2);
-            ctx.fill();
-            // The cage: crown cap, two ribs, bottom cup — enough metal
-            // to hold the light, never enough to pinch it out.
-            ctx.fillStyle = shade(ELF_MITHRIL, -14);
-            ctx.fillRect(gx - s * 0.07, gy - s * 0.155, s * 0.14, s * 0.045);
-            ctx.strokeStyle = shade(ELF_MITHRIL, -16);
-            ctx.lineWidth = Math.max(1, s * 0.014);
-            ctx.beginPath();
-            ctx.moveTo(gx - s * 0.065, gy - s * 0.115);
-            ctx.quadraticCurveTo(gx - s * 0.13, gy, gx - s * 0.05, gy + s * 0.115);
-            ctx.moveTo(gx + s * 0.065, gy - s * 0.115);
-            ctx.quadraticCurveTo(gx + s * 0.13, gy, gx + s * 0.05, gy + s * 0.115);
-            ctx.stroke();
-            ctx.fillStyle = shade(ELF_MITHRIL, -12);
-            ctx.beginPath();
-            ctx.moveTo(gx - s * 0.06, gy + s * 0.1);
-            ctx.lineTo(gx + s * 0.06, gy + s * 0.1);
-            ctx.lineTo(gx + s * 0.02, gy + s * 0.16);
-            ctx.lineTo(gx - s * 0.02, gy + s * 0.16);
-            ctx.closePath();
-            ctx.fill();
-            // A moonglass drop-bead under the cup — the afterthought
-            // that is never an afterthought.
-            ctx.fillStyle = ELF_GLASS;
-            ctx.beginPath();
-            ctx.ellipse(gx, gy + s * 0.2, s * 0.022, s * 0.03, 0, 0, Math.PI * 2);
-            ctx.fill();
+            for (let k = 0; k < 3; k++) orbiter(k, true);
+            // Motes drift UP into the aurora and go out.
+            for (let k = 0; k < 3; k++) {
+              const ph = (t * 0.3 + k * 0.33 + h * 0.11) % 1;
+              const mx = cx2 + Math.sin(ph * 6 + k * 2.1) * s * 0.14;
+              const my = cy2 - s * 0.2 - ph * s * 0.6;
+              ctx.fillStyle = k === 1 ? `rgba(127, 232, 168, ${0.7 * (1 - ph)})` : `rgba(216, 196, 250, ${0.7 * (1 - ph)})`;
+              ctx.fillRect(mx - s * 0.012, my - s * 0.012, s * 0.024, s * 0.024);
+            }
           },
         };
       }
@@ -24252,110 +24332,604 @@ export class Renderer {
       case Tile.ElvenChimes: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.12;
-        const crownY = baseY - s * 1.52;
-        const hangX = p.x + s * 0.26;
+        // THE SONG OF THE AIR, imbued: no stand at all. A mithril
+        // rune ring floats on a slow breath and five crystal voices
+        // hang beneath it on threads of light — the wind still owns
+        // their swing, the magic only holds the ring.
+        const bob = Math.sin(t * 0.7 + h * 0.5) * s * 0.035;
+        const ringX = p.x;
+        const ringY = baseY - s * 1.32 + bob;
         const { sway, lag } = this.breezeAt(tx, ty, t, tx * 2.7 + ty * 1.9, s, 0.014, 0.03);
         return {
           sortY: ty + 0.68,
-          body: stationBody(0.58, 1.85, 0.4),
+          body: stationBody(0.55, 1.8, 0.4),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            const pulse = 0.75 + 0.25 * Math.sin(t * 0.9 + h * 0.6);
+            // A floating thing throws LIGHT on the ground, never a
+            // hard shadow — the first pass's dark ellipse read as a
+            // hole in the lawn (audit verdict).
+            ctx.fillStyle = `rgba(127, 232, 168, ${0.08 + 0.05 * pulse})`;
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY, s * 0.24, syT * 0.13, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // FIVE VOICES first (they hang BEHIND the ring's front
+            // arc): crystal shards, violet and green answering each
+            // other, each on its own pendulum clock. The singing
+            // voice burns bright.
+            const singIdx = Math.floor((t * 0.5 + h * 0.21) % 5);
+            for (let i = 0; i < 5; i++) {
+              const f = i / 4;
+              const a = Math.PI * (0.12 + f * 0.76);
+              const tx2 = ringX + Math.cos(a) * s * 0.19;
+              const ty2 = ringY + Math.sin(a) * syT * 0.08;
+              const phase = i * 1.7;
+              const dx2 = sway * (0.5 + f * 0.6) * Math.cos(phase) + lag * 0.6 * Math.sin(phase + 1.3);
+              const len = s * (0.24 - 0.04 * Math.abs(i - 2) + 0.05 * (i % 2));
+              const bx2 = tx2 + dx2;
+              const topY2 = ty2 + s * 0.05;
+              const green = i % 2 === 1;
+              // The thread of light.
+              ctx.strokeStyle = green
+                ? `rgba(127, 232, 168, ${0.3 + 0.25 * pulse})`
+                : `rgba(216, 196, 250, ${0.3 + 0.25 * pulse})`;
+              ctx.lineWidth = Math.max(1, s * 0.01);
+              ctx.beginPath();
+              ctx.moveTo(tx2, ty2);
+              ctx.lineTo(bx2, topY2);
+              ctx.stroke();
+              // The crystal voice: slim shard, point down.
+              const singing = i === singIdx;
+              const bodyTone = green ? (singing ? ARC_GREEN : ARC_GREEN_DEEP) : singing ? ARC_VIOLET : ARC_VIOLET_DEEP;
+              ctx.fillStyle = bodyTone;
+              ctx.beginPath();
+              ctx.moveTo(bx2 - s * 0.026, topY2 + s * 0.03);
+              ctx.lineTo(bx2 + s * 0.026, topY2 + s * 0.03);
+              ctx.lineTo(bx2 + s * 0.018, topY2 + len);
+              ctx.lineTo(bx2, topY2 + len + s * 0.045);
+              ctx.lineTo(bx2 - s * 0.018, topY2 + len);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = singing ? 'rgba(245, 240, 255, 0.95)' : 'rgba(239, 230, 255, 0.5)';
+              ctx.fillRect(bx2 - s * 0.007, topY2 + s * 0.04, s * 0.014, len - s * 0.02);
+              // The cap bead that takes the thread.
+              ctx.fillStyle = ELF_MITHRIL_LIT;
+              ctx.fillRect(bx2 - s * 0.014, topY2, s * 0.028, s * 0.03);
+            }
+            // THE RING: floating mithril, three rune-marks riding it.
+            // BRIGHT metal — the audit's dark ring read as a hanging
+            // basket; the fix is jewelry, not a bucket.
+            ctx.strokeStyle = shade(ELF_MITHRIL, 14);
+            ctx.lineWidth = Math.max(1, s * 0.028);
+            ctx.beginPath();
+            ctx.ellipse(ringX, ringY, s * 0.22, syT * 0.095, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.strokeStyle = ELF_MITHRIL_LIT;
+            ctx.lineWidth = Math.max(1, s * 0.018);
+            ctx.beginPath();
+            ctx.ellipse(ringX, ringY - s * 0.012, s * 0.21, syT * 0.09, 0, Math.PI, Math.PI * 2);
+            ctx.stroke();
+            for (let i = 0; i < 3; i++) {
+              const a = t * 0.4 + (i * Math.PI * 2) / 3;
+              const gx2 = ringX + Math.cos(a) * s * 0.2;
+              const gy2 = ringY + Math.sin(a) * syT * 0.09;
+              const front = Math.sin(a) > 0;
+              ctx.fillStyle = `rgba(180, 143, 232, ${front ? 0.85 : 0.4})`;
+              ctx.fillRect(gx2 - s * 0.016, gy2 - s * 0.016, s * 0.032, s * 0.032);
+            }
+            // One aurora wisp stands off the ring's crown.
+            const wob = Math.sin(t * 0.6 + h) * s * 0.03;
+            ctx.fillStyle = `rgba(127, 232, 168, ${0.1 + 0.07 * pulse})`;
+            ctx.beginPath();
+            ctx.moveTo(ringX - s * 0.07 + wob, ringY - s * 0.06);
+            ctx.quadraticCurveTo(ringX - wob, ringY - s * 0.34, ringX + s * 0.05 + wob, ringY - s * 0.5);
+            ctx.lineTo(ringX + s * 0.09 + wob, ringY - s * 0.44);
+            ctx.quadraticCurveTo(ringX + s * 0.04 - wob, ringY - s * 0.24, ringX + s * 0.08 + wob * 0.5, ringY - s * 0.05);
+            ctx.closePath();
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.Runestone: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.3;
+        const baseTop = baseY - s * 1.02;
+        // The crown third floats free — WIDE of the seam and adrift
+        // east of plumb (audit verdict: a small aligned gap read as
+        // one solid obelisk; the float must break the silhouette).
+        const bob = Math.sin(t * 0.75 + h * 0.9 + Math.PI) * s * 0.045;
+        const drift = s * 0.06 + Math.sin(t * 0.55 + h) * s * 0.025;
+        const crownBot = baseTop - s * 0.3 + bob;
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.55, 1.9, 0.45),
           drawShadow: () => {
-            this.castEdgeQuad(p.x - s * 0.05, baseY, p.x + s * 0.05, baseY, 1.35);
+            this.castEdgeQuad(p.x - s * 0.24, baseY, p.x + s * 0.24, baseY, 1.2);
           },
           draw: () => {
             // Draw-time ctx capture: the outline pass swaps this.ctx.
             const ctx = this.ctx;
+            const pulse = 0.7 + 0.3 * Math.sin(t * 1.0 + h * 0.5);
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, s * 0.32, s * 0.1, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The base: a tapered monolith, three value planes —
+            // lifted out of the mud (+8 on every plane, the audit's
+            // too-dark verdict).
+            ctx.fillStyle = shade('#57535f', -10);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.24, baseY);
+            ctx.lineTo(p.x + s * 0.26, baseY);
+            ctx.lineTo(p.x + s * 0.17, baseTop);
+            ctx.lineTo(p.x - s * 0.16, baseTop);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade('#57535f', 10);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.24, baseY);
+            ctx.lineTo(p.x - s * 0.02, baseY);
+            ctx.lineTo(p.x - s * 0.01, baseTop);
+            ctx.lineTo(p.x - s * 0.16, baseTop);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade('#57535f', 22);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.16, baseTop);
+            ctx.lineTo(p.x + s * 0.17, baseTop);
+            ctx.lineTo(p.x + s * 0.15, baseTop - syT * 0.08);
+            ctx.lineTo(p.x - s * 0.14, baseTop - syT * 0.08 + s * 0.01);
+            ctx.closePath();
+            ctx.fill();
+            // THE GLYPH COLUMN: four carved marks burning up the west
+            // face, brightest where the stone was cut.
+            ctx.fillStyle = `rgba(180, 143, 232, ${0.45 + 0.35 * pulse})`;
+            ctx.fillRect(p.x - s * 0.1, baseY - s * 0.26, s * 0.05, s * 0.03);
+            ctx.fillRect(p.x - s * 0.085, baseY - s * 0.46, s * 0.026, s * 0.1);
+            ctx.fillRect(p.x - s * 0.1, baseY - s * 0.66, s * 0.055, s * 0.026);
+            ctx.fillRect(p.x - s * 0.075, baseY - s * 0.88, s * 0.026, s * 0.08);
+            // THE ENERGY THREAD: the seam of light the split left —
+            // two motes climb it and vanish into the crown.
+            ctx.fillStyle = `rgba(239, 230, 255, ${0.4 + 0.3 * pulse})`;
+            ctx.fillRect(p.x - s * 0.012, crownBot, s * 0.024, baseTop - crownBot - syT * 0.06);
+            for (let k = 0; k < 2; k++) {
+              const ph = (t * 0.6 + k * 0.5) % 1;
+              const my = baseTop - syT * 0.06 - ph * (baseTop - crownBot - syT * 0.06);
+              ctx.fillStyle = `rgba(216, 196, 250, ${0.85 * (1 - ph * 0.5)})`;
+              ctx.fillRect(p.x - s * 0.018, my - s * 0.015, s * 0.036, s * 0.03);
+            }
+            // THE FLOATING CROWN: the monolith's own top third, riven
+            // free — same taper, same stone, adrift off plumb so the
+            // break reads from across the field.
+            const ch2 = s * 0.36;
+            const cxd = p.x + drift;
+            ctx.fillStyle = shade('#57535f', -4);
+            ctx.beginPath();
+            ctx.moveTo(cxd - s * 0.15, crownBot);
+            ctx.lineTo(cxd + s * 0.16, crownBot);
+            ctx.lineTo(cxd + s * 0.09, crownBot - ch2);
+            ctx.lineTo(cxd - s * 0.07, crownBot - ch2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade('#57535f', 16);
+            ctx.beginPath();
+            ctx.moveTo(cxd - s * 0.15, crownBot);
+            ctx.lineTo(cxd - s * 0.01, crownBot);
+            ctx.lineTo(cxd - s * 0.005, crownBot - ch2);
+            ctx.lineTo(cxd - s * 0.07, crownBot - ch2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade('#57535f', 28);
+            ctx.beginPath();
+            ctx.moveTo(cxd - s * 0.07, crownBot - ch2);
+            ctx.lineTo(cxd + s * 0.09, crownBot - ch2);
+            ctx.lineTo(cxd + s * 0.075, crownBot - ch2 - syT * 0.07);
+            ctx.lineTo(cxd - s * 0.06, crownBot - ch2 - syT * 0.07 + s * 0.008);
+            ctx.closePath();
+            ctx.fill();
+            // The crown's own glyph answers in green.
+            ctx.fillStyle = `rgba(127, 232, 168, ${0.5 + 0.3 * pulse})`;
+            ctx.fillRect(cxd - s * 0.045, crownBot - ch2 * 0.62, s * 0.07, s * 0.026);
+            // The riven faces BURN where they look at each other —
+            // the brightest paint on the piece lives in the gap.
+            ctx.fillStyle = `rgba(180, 143, 232, ${0.45 + 0.3 * pulse})`;
+            ctx.fillRect(cxd - s * 0.14, crownBot - s * 0.026, s * 0.29, s * 0.026);
+            ctx.fillRect(p.x - s * 0.15, baseTop - syT * 0.08, s * 0.3, s * 0.024);
+          },
+        };
+      }
+
+      case Tile.CrystalCluster: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.24;
+        return {
+          sortY: ty + 0.66,
+          body: stationBody(0.6, 1.25, 0.5),
+          drawShadow: () => this.castContact(p.x, baseY + s * 0.02, s * 0.36, s * 0.11),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            const pulse = 0.7 + 0.3 * Math.sin(t * 1.2 + h * 0.8);
+            // Cracked earth: the eruption split the ground and the
+            // light leaks out of the wound.
+            ctx.fillStyle = `rgba(63, 174, 110, ${0.14 + 0.1 * pulse})`;
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY, s * 0.4, syT * 0.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(18, 12, 26, 0.4)';
+            ctx.lineWidth = Math.max(1, s * 0.018);
+            for (let i = 0; i < 4; i++) {
+              const a = 0.5 + i * 1.5 + ((h >> i) & 3) * 0.2;
+              ctx.beginPath();
+              ctx.moveTo(p.x + Math.cos(a) * s * 0.14, baseY + Math.sin(a) * syT * 0.08);
+              ctx.lineTo(p.x + Math.cos(a) * s * 0.42, baseY + Math.sin(a) * syT * 0.22);
+              ctx.stroke();
+            }
+            // One crystal grammar for the whole cluster: deep body,
+            // lit west facet, burning core seam.
+            const crystal = (cx3: number, cy3: number, w2: number, hgt: number, tilt: number, deep: string, lit: string) => {
+              ctx.save();
+              ctx.translate(cx3, cy3);
+              ctx.rotate(tilt);
+              ctx.fillStyle = deep;
+              ctx.beginPath();
+              ctx.moveTo(-w2, 0);
+              ctx.lineTo(-w2 * 0.75, -hgt * 0.72);
+              ctx.lineTo(0, -hgt);
+              ctx.lineTo(w2 * 0.75, -hgt * 0.68);
+              ctx.lineTo(w2, 0);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = lit;
+              ctx.beginPath();
+              ctx.moveTo(-w2, 0);
+              ctx.lineTo(-w2 * 0.75, -hgt * 0.72);
+              ctx.lineTo(0, -hgt);
+              ctx.lineTo(-w2 * 0.1, -hgt * 0.66);
+              ctx.lineTo(-w2 * 0.3, 0);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = `rgba(239, 255, 246, ${0.4 + 0.35 * pulse})`;
+              ctx.fillRect(-s * 0.012, -hgt * 0.85, s * 0.024, hgt * 0.7);
+              ctx.restore();
+            };
+            // Satellites first (they lean OUT of the master's light),
+            // then the master shard owns the middle.
+            crystal(p.x - s * 0.26, baseY - s * 0.02, s * 0.09, s * 0.42, -0.38, ARC_GREEN_DEEP, ARC_GREEN);
+            crystal(p.x + s * 0.27, baseY - s * 0.01, s * 0.1, s * 0.5, 0.42, ARC_GREEN_DEEP, ARC_GREEN);
+            crystal(p.x + s * 0.08, baseY - s * 0.05, s * 0.055, s * 0.24, 0.18, shade(ARC_GREEN_DEEP, -10), shade(ARC_GREEN, -8));
+            crystal(p.x - s * 0.04, baseY, s * 0.14, s * 0.88, -0.1, ARC_GREEN_DEEP, ARC_GREEN);
+            // One violet runt answers at the rim (THE TWO ARCANES).
+            crystal(p.x - s * 0.35, baseY + s * 0.03, s * 0.045, s * 0.16, -0.55, ARC_VIOLET_DEEP, ARC_VIOLET);
+            // Motes bleed upward out of the wound.
+            for (let k = 0; k < 3; k++) {
+              const ph = (t * 0.32 + k * 0.33 + h * 0.07) % 1;
+              const mx = p.x + Math.sin(ph * 5 + k * 2.4) * s * 0.18;
+              const my = baseY - s * 0.5 - ph * s * 0.5;
+              ctx.fillStyle = `rgba(127, 232, 168, ${0.65 * (1 - ph)})`;
+              ctx.fillRect(mx - s * 0.012, my - s * 0.012, s * 0.024, s * 0.024);
+            }
+          },
+        };
+      }
+
+      case Tile.WardArch: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.3;
+        const pillarTop = baseY - s * 0.92;
+        const bob = Math.sin(t * 0.7 + h * 0.6) * s * 0.03;
+        const keyY = baseY - s * 1.32 + bob;
+        return {
+          sortY: ty + 0.72,
+          body: stationBody(0.62, 1.85, 0.5),
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - s * 0.38, baseY, p.x + s * 0.38, baseY, 1.0);
+          },
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            const pulse = 0.7 + 0.3 * Math.sin(t * 1.0 + h * 0.4);
             ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
             ctx.beginPath();
-            ctx.ellipse(p.x, baseY + s * 0.015, s * 0.13, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.ellipse(p.x - s * 0.3, baseY + s * 0.02, s * 0.14, s * 0.06, 0, 0, Math.PI * 2);
+            ctx.ellipse(p.x + s * 0.3, baseY + s * 0.02, s * 0.14, s * 0.06, 0, 0, Math.PI * 2);
             ctx.fill();
-            // The stand: the lantern's sister sweep in silverbark —
-            // one bow up, curling over to hold the ring.
-            ctx.fillStyle = shade(ELF_MARBLE, -26);
+            // THE VEIL between the pillars: a sheer curtain of ward-
+            // light with two falling shimmer streams — visible even
+            // at noon (the audit's invisible-veil verdict).
+            ctx.fillStyle = `rgba(127, 232, 168, ${0.1 + 0.07 * pulse})`;
+            ctx.fillRect(p.x - s * 0.22, pillarTop + s * 0.06, s * 0.44, baseY - pillarTop - s * 0.06);
+            for (let k = 0; k < 2; k++) {
+              const ph = (t * 0.5 + k * 0.5 + h * 0.13) % 1;
+              const vx = p.x - s * 0.1 + k * s * 0.16;
+              ctx.fillStyle = `rgba(213, 255, 232, ${0.3 * (1 - ph)})`;
+              ctx.fillRect(vx - s * 0.014, pillarTop + s * 0.08 + ph * (baseY - pillarTop - s * 0.2), s * 0.028, s * 0.1);
+            }
+            ctx.fillStyle = `rgba(127, 232, 168, ${0.08 + 0.05 * pulse})`;
             ctx.beginPath();
-            facetCircle(ctx, p.x, baseY - s * 0.03, s * 0.1, 6, 0.6, 0.55);
-            ctx.fill();
-            ctx.fillStyle = shade(ELF_WOOD, -6);
-            ctx.beginPath();
-            ctx.moveTo(p.x - s * 0.036, baseY - s * 0.03);
-            ctx.quadraticCurveTo(p.x - s * 0.06, crownY + s * 0.5, p.x + s * 0.02, crownY + s * 0.02);
-            ctx.quadraticCurveTo(p.x + s * 0.15, crownY - s * 0.08, hangX + s * 0.02, crownY + s * 0.08);
-            ctx.lineTo(hangX - s * 0.025, crownY + s * 0.1);
-            ctx.quadraticCurveTo(p.x + s * 0.09, crownY, p.x + s * 0.04, crownY + s * 0.12);
-            ctx.quadraticCurveTo(p.x, crownY + s * 0.5, p.x + s * 0.036, baseY - s * 0.03);
+            ctx.moveTo(p.x - s * 0.22, pillarTop + s * 0.06);
+            ctx.lineTo(p.x + s * 0.22, pillarTop + s * 0.06);
+            ctx.lineTo(p.x + s * 0.1, keyY + s * 0.1);
+            ctx.lineTo(p.x - s * 0.1, keyY + s * 0.1);
             ctx.closePath();
             ctx.fill();
-            ctx.fillStyle = shade(ELF_WOOD, 12);
-            ctx.beginPath();
-            ctx.moveTo(p.x - s * 0.028, baseY - s * 0.05);
-            ctx.quadraticCurveTo(p.x - s * 0.048, crownY + s * 0.5, p.x + s * 0.02, crownY + s * 0.045);
-            ctx.lineTo(p.x + s * 0.028, crownY + s * 0.085);
-            ctx.quadraticCurveTo(p.x - s * 0.024, crownY + s * 0.5, p.x - s * 0.01, baseY - s * 0.05);
-            ctx.closePath();
-            ctx.fill();
-            // THE RING: a mithril circle hangs level under the curl;
-            // every voice hangs from the ring, not the wood.
-            const ringY = crownY + s * 0.2;
-            const ringX = hangX + sway * 0.4;
-            ctx.strokeStyle = shade(ELF_MITHRIL, -6);
-            ctx.lineWidth = Math.max(1, s * 0.02);
-            ctx.beginPath();
-            ctx.moveTo(hangX, crownY + s * 0.1);
-            ctx.lineTo(ringX, ringY - s * 0.03);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.ellipse(ringX, ringY, s * 0.16, syT * 0.07, 0, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.strokeStyle = ELF_MITHRIL_LIT;
-            ctx.lineWidth = Math.max(1, s * 0.012);
-            ctx.beginPath();
-            ctx.ellipse(ringX, ringY - s * 0.008, s * 0.155, syT * 0.065, 0, Math.PI * 1.1, Math.PI * 1.9);
-            ctx.stroke();
-            // FIVE VOICES: mithril tubes in falling lengths, each on
-            // its own pendulum clock, and the moonglass drop at the
-            // heart. The singing tube wears the glint.
-            const singIdx = Math.floor((t * 0.5 + h * 0.21) % 5);
+            // Twin pillars: square-cut, glyph band at the waist, top
+            // facet lit — the arch's only stone that touches ground.
+            for (const sgn of [-1, 1]) {
+              const px2 = p.x + sgn * s * 0.3;
+              ctx.fillStyle = shade('#8d8798', sgn < 0 ? -4 : -14);
+              ctx.fillRect(px2 - s * 0.085, pillarTop, s * 0.17, baseY - pillarTop);
+              ctx.fillStyle = shade('#8d8798', sgn < 0 ? 10 : 0);
+              ctx.fillRect(px2 - s * 0.085, pillarTop, s * 0.055, baseY - pillarTop);
+              ctx.fillStyle = shade('#8d8798', -26);
+              ctx.fillRect(px2 - s * 0.1, baseY - s * 0.05, s * 0.2, s * 0.05);
+              ctx.fillStyle = shade('#8d8798', 18);
+              ctx.beginPath();
+              ctx.moveTo(px2 - s * 0.085, pillarTop);
+              ctx.lineTo(px2 + s * 0.085, pillarTop);
+              ctx.lineTo(px2 + s * 0.075, pillarTop - syT * 0.07);
+              ctx.lineTo(px2 - s * 0.075, pillarTop - syT * 0.07 + s * 0.008);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = `rgba(180, 143, 232, ${0.55 + 0.35 * pulse})`;
+              ctx.fillRect(px2 - s * 0.05, baseY - s * 0.52, s * 0.1, s * 0.034);
+              ctx.fillRect(px2 - s * 0.017, baseY - s * 0.64, s * 0.034, s * 0.08);
+            }
+            // THE GLYPH ARC: five marks climb pillar to pillar over
+            // the keystone, each breathing on its own beat — sized to
+            // read at street distance.
             for (let i = 0; i < 5; i++) {
               const f = i / 4;
-              const a = Math.PI * (0.15 + f * 0.7);
-              const tx2 = ringX + Math.cos(a) * s * 0.14;
-              const ty2 = ringY + Math.sin(a) * syT * 0.055;
-              const phase = i * 1.7;
-              const dx2 = sway * (0.5 + f * 0.6) * Math.cos(phase) + lag * 0.6 * Math.sin(phase + 1.3);
-              const len = s * (0.3 - 0.045 * Math.abs(i - 2) + 0.06 * (i % 2));
-              const bx2 = tx2 + dx2;
-              const by2 = ty2 + s * 0.06 + len;
-              ctx.strokeStyle = 'rgba(222, 233, 248, 0.45)';
-              ctx.lineWidth = Math.max(1, s * 0.009);
+              const gx2 = p.x - s * 0.3 + s * 0.6 * f;
+              const arcY = pillarTop - s * 0.08 - Math.sin(Math.PI * f) * (pillarTop - keyY + s * 0.02);
+              const gp = 0.5 + 0.5 * Math.sin(t * 1.4 + i * 1.3 + h * 0.2);
+              ctx.fillStyle = i % 2 === 1 ? `rgba(127, 232, 168, ${0.45 + 0.5 * gp})` : `rgba(180, 143, 232, ${0.45 + 0.5 * gp})`;
               ctx.beginPath();
-              ctx.moveTo(tx2, ty2);
-              ctx.lineTo(bx2, ty2 + s * 0.06);
-              ctx.stroke();
-              const singing = i === singIdx;
-              ctx.fillStyle = singing ? shade(ELF_MITHRIL, 10) : shade(ELF_MITHRIL, -8 + (i % 2) * 6);
-              ctx.fillRect(bx2 - s * 0.021, ty2 + s * 0.06, s * 0.042, len);
-              ctx.fillStyle = singing ? 'rgba(240, 250, 255, 0.95)' : ELF_MITHRIL_LIT;
-              ctx.fillRect(bx2 - s * 0.021, ty2 + s * 0.06, s * 0.013, len);
-              ctx.fillStyle = shade(ELF_MITHRIL, -24);
-              ctx.fillRect(bx2 - s * 0.021, by2 - s * 0.012, s * 0.042, s * 0.012);
+              ctx.moveTo(gx2, arcY - s * 0.05);
+              ctx.lineTo(gx2 + s * 0.038, arcY);
+              ctx.lineTo(gx2, arcY + s * 0.05);
+              ctx.lineTo(gx2 - s * 0.038, arcY);
+              ctx.closePath();
+              ctx.fill();
             }
-            // The moonglass drop: the wind's clapper, always a beat
-            // behind the tubes it touches.
-            const dropX = ringX + sway * 1.1 + lag;
-            const dropY = ringY + s * 0.3;
-            ctx.strokeStyle = 'rgba(222, 233, 248, 0.45)';
-            ctx.lineWidth = Math.max(1, s * 0.009);
+            // THE KEYSTONE floats where an arch would need it least:
+            // a faceted lozenge with a halo, lit face west, core
+            // burning — the arch's whole argument, so it reads FIRST.
+            ctx.fillStyle = `rgba(180, 143, 232, ${0.12 + 0.08 * pulse})`;
             ctx.beginPath();
-            ctx.moveTo(ringX, ringY + s * 0.02);
-            ctx.lineTo(dropX, dropY - s * 0.05);
-            ctx.stroke();
-            ctx.fillStyle = 'rgba(159, 224, 216, 0.85)';
-            ctx.beginPath();
-            ctx.moveTo(dropX, dropY - s * 0.06);
-            ctx.quadraticCurveTo(dropX + s * 0.04, dropY, dropX, dropY + s * 0.055);
-            ctx.quadraticCurveTo(dropX - s * 0.04, dropY, dropX, dropY - s * 0.06);
+            ctx.ellipse(p.x, keyY, s * 0.2, s * 0.2, 0, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = 'rgba(234, 252, 255, 0.9)';
-            ctx.fillRect(dropX - s * 0.008, dropY - s * 0.03, s * 0.016, s * 0.04);
+            ctx.fillStyle = ARC_VIOLET_DEEP;
+            ctx.beginPath();
+            ctx.moveTo(p.x, keyY - s * 0.135);
+            ctx.lineTo(p.x + s * 0.11, keyY);
+            ctx.lineTo(p.x, keyY + s * 0.135);
+            ctx.lineTo(p.x - s * 0.11, keyY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = ARC_VIOLET;
+            ctx.beginPath();
+            ctx.moveTo(p.x, keyY - s * 0.135);
+            ctx.lineTo(p.x - s * 0.11, keyY);
+            ctx.lineTo(p.x, keyY + s * 0.135);
+            ctx.lineTo(p.x - s * 0.034, keyY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = `rgba(239, 230, 255, ${0.55 + 0.35 * pulse})`;
+            ctx.fillRect(p.x - s * 0.014, keyY - s * 0.075, s * 0.028, s * 0.15);
+          },
+        };
+      }
+
+      case Tile.ArcaneTome: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        const bob = Math.sin(t * 0.8 + h * 0.7) * s * 0.03;
+        const bookY = baseY - s * 1.0 + bob;
+        return {
+          sortY: ty + 0.68,
+          body: stationBody(0.52, 1.5, 0.4),
+          drawShadow: () => this.castContact(p.x, baseY + s * 0.015, s * 0.22, s * 0.08),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            const pulse = 0.72 + 0.28 * Math.sin(t * 1.1 + h * 0.3);
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.015, s * 0.2, s * 0.07, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The pedestal: a waisted stone column with a runed
+            // collar — the only part of this piece that obeys gravity.
+            ctx.fillStyle = shade('#8d8798', -20);
+            ctx.fillRect(p.x - s * 0.15, baseY - s * 0.07, s * 0.3, s * 0.07);
+            ctx.fillStyle = shade('#8d8798', -6);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.11, baseY - s * 0.07);
+            ctx.quadraticCurveTo(p.x - s * 0.05, baseY - s * 0.3, p.x - s * 0.09, baseY - s * 0.5);
+            ctx.lineTo(p.x + s * 0.09, baseY - s * 0.5);
+            ctx.quadraticCurveTo(p.x + s * 0.05, baseY - s * 0.3, p.x + s * 0.11, baseY - s * 0.07);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade('#8d8798', 8);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.095, baseY - s * 0.08);
+            ctx.quadraticCurveTo(p.x - s * 0.04, baseY - s * 0.3, p.x - s * 0.075, baseY - s * 0.49);
+            ctx.lineTo(p.x - s * 0.02, baseY - s * 0.49);
+            ctx.quadraticCurveTo(p.x - s * 0.005, baseY - s * 0.3, p.x - s * 0.03, baseY - s * 0.08);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade('#8d8798', -2);
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - s * 0.52, s * 0.13, syT * 0.06, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = `rgba(180, 143, 232, ${0.4 + 0.3 * pulse})`;
+            ctx.fillRect(p.x - s * 0.1, baseY - s * 0.32, s * 0.2, s * 0.024);
+            // The pedestal catches the book's under-light.
+            ctx.fillStyle = `rgba(180, 143, 232, ${0.12 + 0.1 * pulse})`;
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - s * 0.54, s * 0.15, syT * 0.08, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Orbiting script behind the book first.
+            const letter = (k: number, front: boolean) => {
+              const a = t * 0.6 + (k * Math.PI) / 2 + h * 0.4;
+              const ox = p.x + Math.cos(a) * s * 0.3;
+              const oy = bookY + Math.sin(a) * syT * 0.13;
+              if (Math.sin(a) > 0 !== front) return;
+              const al = front ? 0.95 : 0.5;
+              ctx.fillStyle = k % 2 === 1 ? `rgba(127, 232, 168, ${al})` : `rgba(216, 196, 250, ${al})`;
+              ctx.fillRect(ox - s * 0.022, oy - s * 0.028, s * 0.044, s * 0.056);
+            };
+            for (let k = 0; k < 4; k++) letter(k, false);
+            // THE GRIMOIRE floats open — gold-edged covers spread
+            // like wings, pages alight with a script that never
+            // stays still long enough to be read. Sized UP a third
+            // from the first pass: the book is the piece.
+            ctx.fillStyle = ELF_GOLD;
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.33, bookY + s * 0.025);
+            ctx.lineTo(p.x, bookY + s * 0.12);
+            ctx.lineTo(p.x + s * 0.33, bookY + s * 0.025);
+            ctx.lineTo(p.x + s * 0.315, bookY + s * 0.07);
+            ctx.lineTo(p.x, bookY + s * 0.165);
+            ctx.lineTo(p.x - s * 0.315, bookY + s * 0.07);
+            ctx.closePath();
+            ctx.fill();
+            const page = (sgn: number) => {
+              ctx.fillStyle = sgn < 0 ? '#efe6ff' : '#e4d9f6';
+              ctx.beginPath();
+              ctx.moveTo(p.x, bookY + s * 0.115);
+              ctx.lineTo(p.x + sgn * s * 0.3, bookY + s * 0.02);
+              ctx.lineTo(p.x + sgn * s * 0.275, bookY - s * 0.075);
+              ctx.lineTo(p.x, bookY + s * 0.012);
+              ctx.closePath();
+              ctx.fill();
+            };
+            page(-1);
+            page(1);
+            ctx.strokeStyle = `rgba(122, 106, 168, ${0.5 + 0.3 * pulse})`;
+            ctx.lineWidth = Math.max(1, s * 0.012);
+            for (let i = 0; i < 2; i++) {
+              const ly = bookY - s * 0.02 + i * s * 0.035;
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.17, ly + s * 0.045);
+              ctx.lineTo(p.x - s * 0.05, ly + s * 0.02);
+              ctx.moveTo(p.x + s * 0.05, ly + s * 0.02);
+              ctx.lineTo(p.x + s * 0.17, ly + s * 0.045);
+              ctx.stroke();
+            }
+            // The spine-light: the working that holds it all up.
+            ctx.fillStyle = `rgba(239, 230, 255, ${0.5 + 0.35 * pulse})`;
+            ctx.fillRect(p.x - s * 0.011, bookY + s * 0.0, s * 0.022, s * 0.1);
+            for (let k = 0; k < 4; k++) letter(k, true);
+          },
+        };
+      }
+
+      case Tile.RunePillar: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        const capY = baseY - s * 1.42;
+        // THE TWO ARCANES: the street deals its own rhythm — this
+        // pillar leads green or violet by tile hash, so a lit row
+        // alternates voices.
+        const green = (h & 1) === 0;
+        const lead = green ? ARC_GREEN : ARC_VIOLET;
+        const leadRgb = green ? '127, 232, 168' : '180, 143, 232';
+        const bob = Math.sin(t * 0.85 + h * 0.5) * s * 0.028;
+        const tipY = capY - s * 0.2 + bob;
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.5, 1.95, 0.4),
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - s * 0.07, baseY, p.x + s * 0.07, baseY, 1.35);
+          },
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            const pulse = 0.72 + 0.28 * Math.sin(t * 1.05 + h * 0.6);
+            // The ground ring: the lamplighter never comes; the
+            // circle keeps the light lit.
+            ctx.strokeStyle = `rgba(${leadRgb}, ${0.13 + 0.08 * pulse})`;
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY, s * 0.24, syT * 0.13, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, s * 0.13, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The pillar: a slender square taper, stepped foot, lit
+            // west arris — street furniture first, spellwork second.
+            ctx.fillStyle = shade('#8d8798', -24);
+            ctx.fillRect(p.x - s * 0.1, baseY - s * 0.06, s * 0.2, s * 0.06);
+            ctx.fillStyle = shade('#8d8798', -10);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.07, baseY - s * 0.06);
+            ctx.lineTo(p.x + s * 0.07, baseY - s * 0.06);
+            ctx.lineTo(p.x + s * 0.05, capY);
+            ctx.lineTo(p.x - s * 0.05, capY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade('#8d8798', 8);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.07, baseY - s * 0.06);
+            ctx.lineTo(p.x - s * 0.025, baseY - s * 0.06);
+            ctx.lineTo(p.x - s * 0.018, capY);
+            ctx.lineTo(p.x - s * 0.05, capY);
+            ctx.closePath();
+            ctx.fill();
+            // THE SPIRAL GROOVE: glyph dashes climb the shaft,
+            // alternating faces — the carver walked around the stone.
+            ctx.fillStyle = `rgba(${leadRgb}, ${0.45 + 0.35 * pulse})`;
+            ctx.fillRect(p.x - s * 0.045, baseY - s * 0.32, s * 0.05, s * 0.024);
+            ctx.fillRect(p.x + s * 0.0, baseY - s * 0.6, s * 0.045, s * 0.022);
+            ctx.fillRect(p.x - s * 0.05, baseY - s * 0.88, s * 0.042, s * 0.022);
+            ctx.fillRect(p.x + s * 0.005, baseY - s * 1.16, s * 0.04, s * 0.02);
+            // The capital: a small flared block, top plane lit.
+            ctx.fillStyle = shade('#8d8798', -16);
+            ctx.fillRect(p.x - s * 0.085, capY - s * 0.05, s * 0.17, s * 0.05);
+            ctx.fillStyle = shade('#8d8798', 16);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.085, capY - s * 0.05);
+            ctx.lineTo(p.x + s * 0.085, capY - s * 0.05);
+            ctx.lineTo(p.x + s * 0.07, capY - s * 0.05 - syT * 0.05);
+            ctx.lineTo(p.x - s * 0.07, capY - s * 0.05 - syT * 0.05 + s * 0.006);
+            ctx.closePath();
+            ctx.fill();
+            // THE TIP-STONE floats above its capital: a small
+            // octahedron burning in the street's lead color, wearing
+            // a soft halo — the elven lamp needs no flame and no
+            // glass.
+            ctx.fillStyle = `rgba(${leadRgb}, ${0.12 + 0.09 * pulse})`;
+            ctx.beginPath();
+            ctx.ellipse(p.x, tipY, s * 0.17, s * 0.17, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = green ? ARC_GREEN_DEEP : ARC_VIOLET_DEEP;
+            ctx.beginPath();
+            ctx.moveTo(p.x, tipY - s * 0.1);
+            ctx.lineTo(p.x + s * 0.07, tipY);
+            ctx.lineTo(p.x, tipY + s * 0.1);
+            ctx.lineTo(p.x - s * 0.07, tipY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = lead;
+            ctx.beginPath();
+            ctx.moveTo(p.x, tipY - s * 0.1);
+            ctx.lineTo(p.x - s * 0.07, tipY);
+            ctx.lineTo(p.x, tipY + s * 0.1);
+            ctx.lineTo(p.x - s * 0.022, tipY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = `rgba(245, 250, 255, ${0.55 + 0.3 * pulse})`;
+            ctx.fillRect(p.x - s * 0.01, tipY - s * 0.05, s * 0.02, s * 0.1);
+            // One mote falls UP off the tip now and then.
+            const ph = (t * 0.4 + h * 0.19) % 1;
+            if (ph < 0.6) {
+              ctx.fillStyle = `rgba(${leadRgb}, ${0.7 * (1 - ph / 0.6)})`;
+              ctx.fillRect(p.x + Math.sin(ph * 8) * s * 0.05 - s * 0.011, tipY - s * 0.16 - ph * s * 0.4, s * 0.022, s * 0.022);
+            }
           },
         };
       }
