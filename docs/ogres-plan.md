@@ -287,6 +287,29 @@ for every future giant, never per-band:
   it on the throw. armAssembly writer census: +2 heldAngle, +1
   mainX/mainY/offX/offY/mainFore — a decision, pinned.
 
+**⑤ THE MASS LAW (user-directed frame-by-frame round)** — scaling
+the kinematics linearly was still a lie: mass grows with the CUBE.
+The corrections, all in the giant lane:
+- Foot lift grows at a THIRD of geometry (liftAmp ×(1+0.35(st−1)) —
+  the linear lift shortened the hip-foot chord and the IK bend
+  exploded outward: the frog flare); strides run relatively shorter
+  (strideScale ×0.82 — the column stays under the mass); the vigor
+  reference rises (runSpeed +1.7(st−1) — the same world speed reads
+  as a calmer gait); `flight: false` — a giant NEVER leaves the
+  ground.
+- **THE COLUMN HOLDS**: the painted knee bend damps ×0.68 for the
+  giant (paint-only — feet, plants, stride untouched); flesh wraps
+  the articulation.
+- **THE WEIGHT CROSSES**: OgreBodyFrame.sway (from the live lifts) —
+  the station stack rocks onto the planted column, hips loudest
+  (0.034s), crown least (0.012s): the sumo rock, not a bounce.
+- **THE MARCH STRAIGHTENS IT**: the 0.2 stoop eases to 0.12 at full
+  stride (poleStrength) — the full stoop over soft profile knees
+  read as a crouch-walk.
+Frame audit: four det phases (149/161/173/185) × S/SE/E + the
+NE/N/E re-shoot — no flare, no crouch, the rock reads, the club
+drags and levels honestly.
+
 **Deferred by design:** the ogre crown (the cavern boss seat "The
 Broodmother" is a renamed spider — an honest ogre crown could claim
 it, per the Dread Crown session); the war-drum idle bark; live-lane

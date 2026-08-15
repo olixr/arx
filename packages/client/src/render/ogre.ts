@@ -367,6 +367,13 @@ export interface OgreBodyFrame {
   runF: number;
   /** 0..1 menace ramp (Cast/Attack wind) — the bellows fill. */
   flare: number;
+  /**
+   * THE WEIGHT CROSSES (−1..1): the walk's lateral rock — the mass
+   * moves onto the planted column each stride (the heaviest walkers
+   * sway; a bounce would lie about the tonnage). Derived from the
+   * live foot lifts by the rig; 0 at rest and in stateless callers.
+   */
+  sway: number;
   /** GutSim output in px, or null → THE ONE REST (posters, sheets). */
   gut: { dx: number; dy: number } | null;
   /** PendantSim chain, or null → the rest hang. */
@@ -433,11 +440,18 @@ export function paintOgreBody(ctx: CanvasRenderingContext2D, ogr: OgreLook, f: O
   const seed = ogr.seed ?? 0;
   const hide = hurt ? '#ffffff' : ogr.hide;
 
-  // The stations, projected once.
+  // The stations, projected once — then THE WEIGHT CROSSES: the whole
+  // stack rocks toward the planted foot, hips loudest, crown least
+  // (an inverted pendulum leans from the bottom; the top counters).
+  const swayPx = f.sway * s;
   const stGut = P(f, 0.115, 0, 0);
   const stChest = P(f, 0.02, 0, 0);
   const stHump = P(f, -0.13, 0, 0);
   const stHair = P(f, -0.175, 0, 0);
+  stGut.x += swayPx * 0.034;
+  stChest.x += swayPx * 0.02;
+  stHump.x += swayPx * 0.012;
+  stHair.x += swayPx * 0.012;
 
   // THE BREATH — the sleeping hill at idle, the bellows on a wind:
   // one analytic curve, sim-safe (a null gut still breathes).

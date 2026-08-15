@@ -167,6 +167,7 @@ function bodyFrame(dir: number, flare = 0) {
     nowMs: 1234,
     runF: 0,
     flare,
+    sway: 0,
     gut: GUT_REST,
     pendant: null,
   };

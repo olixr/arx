@@ -204,8 +204,25 @@ export class LegSolver extends LegRig {
             ],
             legLen: LEG_LEN * stature,
             rise: LEG_RISE * stature,
-            liftAmp: LIFT_AMP * stature,
-            // The ponderous ceiling: swing time grows with the leg.
+            // THE MASS LAW: geometry scales with the body — DYNAMICS
+            // do not. Mass grows with the CUBE of stature, and a body
+            // that heavy moves nothing exuberantly:
+            // • Foot lift grows at a third of the geometry (a linear
+            //   lift forced a deep mid-swing knee and the FROG FLARE;
+            //   the heaviest walkers on earth shuffle — feet skim).
+            liftAmp: LIFT_AMP * (1 + 0.35 * (stature - 1)),
+            // • Strides run relatively SHORTER than a man's — the
+            //   column must stay under the mass; overreach is a fall.
+            strideScale: 1.65 * 0.82,
+            // • The vigor reference rises with stature, so the same
+            //   world speed reads as a lower gait effort — less
+            //   crouch, less bounce, the unhurried carry of weight.
+            runSpeed: RUN_SPEED + 1.7 * (stature - 1),
+            // • A giant NEVER leaves the ground — no aerial phase,
+            //   whatever the speed. Flight is for bodies that weigh
+            //   what their silhouette suggests.
+            flight: false,
+            // • The ponderous ceiling: swing time grows with the leg.
             swingMax: 0.35 + 0.16 * (stature - 1),
           },
     );
@@ -5056,7 +5073,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // Knee: anatomical pole — bends with the FACING (sagittal side-on,
     // gentle down/outward front-on), never with travel, so backpedal
     // and strafe keep honest knees; hysteresis smooths the boundary.
-    const bend = Math.sqrt(Math.max(0, L * L - (d / 2) ** 2));
+    // THE COLUMN HOLDS: a giant's leg is wrapped in its own mass —
+    // the visible articulation is a fraction of the kinematic one
+    // (the full IK bend on a wide-tracked giant drew frog knees).
+    // The damp is PAINT-ONLY: feet, plants, and stride are untouched.
+    const bend = Math.sqrt(Math.max(0, L * L - (d / 2) ** 2)) * (ogr ? 0.68 : 1);
     const cxn = -ey / d;
     const cyn = ex / d;
     // Seated ON THE GROUND, the anatomical pole yields to gravity's
@@ -8210,7 +8231,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   if (gol) lean += (gol.build === 'rock' ? 0.06 : 0.015) * fx * (1 - sit);
   // The giant's stoop: the heaviest carriage in the game leads with
   // its brow — the gut hangs, the hump rises, the head arrives last.
-  if (ogr) lean += 0.2 * fx * (1 - sit);
+  // THE MARCH STRAIGHTENS IT: a standing ogre looms over its supper;
+  // a walking one pulls the mass up over the moving columns (the
+  // full stoop at stride, with the profile's soft knees, read as a
+  // crouch-walk — frame audit, the mass round).
+  if (ogr) lean += (0.2 - 0.08 * Math.min(1, rig.poleStrength)) * fx * (1 - sit);
 
   // Seated drape info for the garment painter: the ground line and the
   // solved knees mapped into the torso local frame (translate → lean
@@ -8523,6 +8548,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         meleeStage >= 0 || rig.pose === PoseState.Cast
           ? Math.sin(Math.min(1, rig.poseT) * Math.PI)
           : 0,
+      // THE WEIGHT CROSSES: the stride's lateral rock, from the live
+      // lifts — positive toward the planted (screen-right) column.
+      sway: Math.max(
+        -1,
+        Math.min(1, ((rig.feet[0]?.lift ?? 0) - (rig.feet[1]?.lift ?? 0)) / (LIFT_AMP * 0.65)),
+      ),
       gut,
       pendant,
     });
