@@ -549,8 +549,9 @@ const AUTHORED_PLAN: GeographyDef = {
       // is exactly what the signage says.
       pts: [
         { x: -364, y: -344 }, { x: -376, y: -362 }, { x: -396, y: -378 }, { x: -420, y: -392 },
-        { x: -444, y: -406 }, { x: -464, y: -422 }, { x: -478, y: -440 }, { x: -488, y: -458 },
-        { x: -494, y: -466 }, { x: -498, y: -472 },
+        { x: -444, y: -406 }, { x: -458, y: -436 }, { x: -462, y: -468 }, { x: -454, y: -502 },
+        { x: -442, y: -532 }, { x: -430, y: -550 }, { x: -436, y: -560 }, { x: -456, y: -566 },
+        { x: -478, y: -566 }, { x: -500, y: -560 },
       ],
     },
     {
@@ -710,7 +711,7 @@ const AUTHORED_PLAN: GeographyDef = {
     // genuinely bands lower than the wood the Sparway walks through.
     // The Sparway is deliberately given NOTHING.
     { id: 'pinehollow_rest', defId: 'roadside_hamlet', x: 976, y: -68 },
-    { id: 'hollow_watch', defId: 'wardens_outpost', x: 1090, y: -176 },
+    { id: 'hollow_watch', defId: 'wardens_outpost', x: 1128, y: -224 },
     // PAST THE WARDLINE: the axe-thieves in the old wood south-east of
     // Pinewatch, cutting the great spars nobody is allowed to cut.
     { id: 'wardline_cut', defId: 'timber_poachers', cell: [9, -2] },
@@ -723,10 +724,10 @@ const AUTHORED_PLAN: GeographyDef = {
     { id: 'diggers_camp', defId: 'barrow_diggers', x: 1278, y: -680 },
     // THE HOLLOW BARROW — one opened mound guaranteed in the near
     // fells, east of the town where the high country begins.
-    { id: 'hollow_barrow', defId: 'fell_barrow', cell: [10, -5] },
+    { id: 'hollow_barrow', defId: 'fell_barrow', cell: [11, -5] },
     // THE HOARGATE — the garrison across the pass, and the last
     // authored thing before the Rimeward.
-    { id: 'hoargate', defId: 'hoargate_watch', x: -446, y: -430 },
+    { id: 'hoargate', defId: 'hoargate_watch', x: -408, y: -560 },
     // THE FIRST WAYSTONE — where the Evenway bends into the wood and
     // the stones pick up the watch the lamps handed off leagues ago.
     { id: 'first_waystone', defId: 'waystone_glade', x: -838, y: -360 },
@@ -746,11 +747,11 @@ const AUTHORED_PLAN: GeographyDef = {
     { id: 'third_stone', defId: 'waystation', x: -164, y: 192 },
     // THE RETURNERS' CROFTS — the last friendly smoke before the gate
     // country.
-    { id: 'returners_camp', defId: 'roadside_hamlet', x: -344, y: 288 },
+    { id: 'returners_camp', defId: 'roadside_hamlet', x: -272, y: 232 },
     // THE OLDCROWN DOOR — the buried capital's east gatehouse, pinned
     // east of the reserve with room for the prefab's INFLUENCE apron.
     // Weight-0: this door exists exactly once.
-    { id: 'oldcrown_door', defId: 'oldcrown_gatehouse', x: -632, y: 148 },
+    { id: 'oldcrown_door', defId: 'oldcrown_gatehouse', x: -632, y: 62 },
   ],
   anchors: SETTLED_ANCHORS.map((a) => ({ ...a })),
   massifs: [
