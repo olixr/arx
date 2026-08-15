@@ -1,0 +1,59 @@
+{
+ "id": "q_the_letters_west_offer",
+ "start": "hub",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "enchantress_solvei",
+   "priority": 5
+  }
+ ],
+ "nodes": [
+  {
+   "id": "hub",
+   "voice": "q_the_letters_west_offer__hub",
+   "text": "The west has opened. A city nobody living has seen, at the end of a trail nobody sane has walked, and I have a letter that has waited years for an address.\n\nCarry it for me. Past the Hoargate fork, past the last lamp, to whoever keeps their gate. I would go myself, but the table does not travel, and neither, it turns out, do I.",
+   "choices": [
+    {
+     "text": "I'll do it.",
+     "next": "go"
+    },
+    {
+     "text": "What is in the letter?",
+     "next": "why"
+    }
+   ],
+   "hooks": [
+    {
+     "kind": "quest_offer",
+     "quest": "the_letters_west"
+    }
+   ]
+  },
+  {
+   "id": "why",
+   "voice": "q_the_letters_west_offer__why",
+   "text": "A question I have asked an exile every month for years, asked politely enough that she has never had to answer. The west will not be so polite, or so patient. That is rather the point of it.",
+   "choices": [
+    {
+     "text": "Then I'll do it.",
+     "next": "go"
+    }
+   ]
+  },
+  {
+   "id": "go",
+   "voice": "q_the_letters_west_offer__go",
+   "text": "Thank you. Follow the waystones when the lamps give out. And if an old man with a long memory reads it, tell him the handwriting is the youngest thing about it.",
+   "hooks": [
+    {
+     "kind": "quest_accept",
+     "quest": "the_letters_west"
+    }
+   ]
+  }
+ ],
+ "requires": [
+  "quest:the_letters_west:available"
+ ]
+}

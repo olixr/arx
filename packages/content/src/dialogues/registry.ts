@@ -243,6 +243,11 @@ import orinBeastyard from './defs/orin_beastyard.json';
 import ferrunForge from './defs/ferrun_forge.json';
 import mirenaGlass from './defs/mirena_glass.json';
 import veyleFocus from './defs/veyle_focus.json';
+import qTheLettersWestOffer from './defs/q_the_letters_west_offer.json';
+import qTheFirstFocusOffer from './defs/q_the_first_focus_offer.json';
+import qABowOfTheWoodOffer from './defs/q_a_bow_of_the_wood_offer.json';
+import qTheQuietRoadOffer from './defs/q_the_quiet_road_offer.json';
+import qWhatTheSongHoldsOffer from './defs/q_what_the_song_holds_offer.json';
 import aldarenEvenhall from './defs/aldaren_evenhall.json';
 import sylwenRoost from './defs/sylwen_roost.json';
 import ilvaneFlame from './defs/ilvane_flame.json';
@@ -543,6 +548,11 @@ const SOURCES: readonly unknown[] = [
   ferrunForge,
   mirenaGlass,
   veyleFocus,
+  qTheLettersWestOffer,
+  qTheFirstFocusOffer,
+  qABowOfTheWoodOffer,
+  qTheQuietRoadOffer,
+  qWhatTheSongHoldsOffer,
   aldarenEvenhall,
   sylwenRoost,
   ilvaneFlame,

@@ -1,0 +1,48 @@
+{
+ "id": "a_bow_of_the_wood",
+ "name": "A Bow of the Wood",
+ "giver": "bowyer_aewyn",
+ "stages": [
+  {
+   "id": "the_asking",
+   "journal": "Aewyn will teach you the yew, but the yew is not hers to give. Ask the *Warden of the Wood* for leave to take staves from the living wood. Sylwen grants it or she does not, and how you ask will matter more than what you ask for.",
+   "objectives": [
+    {
+     "kind": "talk",
+     "actor": "warden_sylwen"
+    }
+   ]
+  },
+  {
+   "id": "the_patience",
+   "journal": "Leave granted, kindly. Take *yew logs* the way the warden showed you, and bring twine for the string. Aewyn will show you the rest at the bench, and what you finish will be the first bow of your own asking.",
+   "objectives": [
+    {
+     "kind": "collect",
+     "item": "yew_log",
+     "count": 2
+    },
+    {
+     "kind": "collect",
+     "item": "twine",
+     "count": 1
+    }
+   ]
+  }
+ ],
+ "rewards": {
+  "coins": 400,
+  "xp": [
+   {
+    "skill": "woodworking",
+    "amount": 900
+   }
+  ],
+  "standing": [
+   {
+    "faction": "evencourt",
+    "delta": 3
+   }
+  ]
+ }
+}

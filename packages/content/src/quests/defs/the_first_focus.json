@@ -1,0 +1,45 @@
+{
+ "id": "the_first_focus",
+ "name": "The First Focus",
+ "giver": "inscriber_vessa",
+ "stages": [
+  {
+   "id": "the_right_asking",
+   "journal": "The wall in Vessa's house answers one question, and she will not show it to the merely curious. The question belongs to *Veyle*, who was exiled for asking it: what was the Arcanum's first focus made from? Go east to the delf and ask Veyle for her question. Carry it back the way her silence never could.",
+   "objectives": [
+    {
+     "kind": "talk",
+     "actor": "enchanter_veyle"
+    }
+   ]
+  },
+  {
+   "id": "the_wall",
+   "journal": "Veyle gave you the question the way other people hand over a blade. Bring it to *Vessa* at the Third Table. The answer has waited on her rear wall longer than the Arcanum has existed, and tonight it gets its asker at last.",
+   "objectives": [
+    {
+     "kind": "talk",
+     "actor": "inscriber_vessa"
+    }
+   ]
+  }
+ ],
+ "rewards": {
+  "coins": 700,
+  "xp": [
+   {
+    "skill": "enchanting",
+    "amount": 900
+   }
+  ],
+  "flags": [
+   "the_gift_remembered"
+  ],
+  "standing": [
+   {
+    "faction": "evencourt",
+    "delta": 4
+   }
+  ]
+ }
+}

@@ -1,0 +1,46 @@
+{
+ "id": "what_the_song_holds",
+ "name": "What the Song Holds",
+ "giver": "loresinger_maelis",
+ "stages": [
+  {
+   "id": "the_listening",
+   "journal": "There is a fisher on the far coast whose line kept the ears and lost the years, and the sea has been trying to tell her something her whole life. Maelis owes her line a song. Go east to Saltmere's quay and talk to *Denna*. Tell her the Songhouse remembers her mothers, all the way back.",
+   "objectives": [
+    {
+     "kind": "talk",
+     "actor": "fisher_denna"
+    }
+   ]
+  },
+  {
+   "id": "the_word",
+   "journal": "Denna wept, and then she laughed, and then she told you what the pearl heard. Bring Maelis a *stormpearl*, the old folk's ear for deep water, and she will sing the listening song true for the first time in a hundred and fifty years.",
+   "objectives": [
+    {
+     "kind": "collect",
+     "item": "stormpearl",
+     "count": 1
+    }
+   ]
+  }
+ ],
+ "rewards": {
+  "coins": 600,
+  "xp": [
+   {
+    "skill": "fishing",
+    "amount": 600
+   }
+  ],
+  "flags": [
+   "the_song_answers"
+  ],
+  "standing": [
+   {
+    "faction": "evencourt",
+    "delta": 3
+   }
+  ]
+ }
+}

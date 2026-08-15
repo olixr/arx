@@ -1,0 +1,59 @@
+{
+ "id": "q_what_the_song_holds_offer",
+ "start": "hub",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "loresinger_maelis",
+   "priority": 5
+  }
+ ],
+ "nodes": [
+  {
+   "id": "hub",
+   "voice": "q_what_the_song_holds_offer__hub",
+   "text": "There is a debt in my keeping. A line on the far coast kept the ears and lost the years, and the sea has been trying to talk to that family for generations. The Songhouse owes them the listening song.\n\nGo east to the quay at the water's end. Talk to Denna. Then bring me a stormpearl, and I will pay my house's debt in the only coin it holds.",
+   "choices": [
+    {
+     "text": "I'll do it.",
+     "next": "go"
+    },
+    {
+     "text": "Who is Denna?",
+     "next": "why"
+    }
+   ],
+   "hooks": [
+    {
+     "kind": "quest_offer",
+     "quest": "what_the_song_holds"
+    }
+   ]
+  },
+  {
+   "id": "why",
+   "voice": "q_what_the_song_holds_offer__why",
+   "text": "A fisher with her mother's ears and her mother's mother's patience. Veyle called her a word the old language left behind. Veyle meant it kindly, and it is also true, and the word is a good one.",
+   "choices": [
+    {
+     "text": "Then I'll do it.",
+     "next": "go"
+    }
+   ]
+  },
+  {
+   "id": "go",
+   "voice": "q_what_the_song_holds_offer__go",
+   "text": "Tell her the Songhouse remembers her mothers. All the way back. She will know what that costs us to say.",
+   "hooks": [
+    {
+     "kind": "quest_accept",
+     "quest": "what_the_song_holds"
+    }
+   ]
+  }
+ ],
+ "requires": [
+  "quest:what_the_song_holds:available"
+ ]
+}

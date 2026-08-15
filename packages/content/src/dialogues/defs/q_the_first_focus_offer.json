@@ -1,0 +1,59 @@
+{
+ "id": "q_the_first_focus_offer",
+ "start": "hub",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "inscriber_vessa",
+   "priority": 5
+  }
+ ],
+ "nodes": [
+  {
+   "id": "hub",
+   "voice": "q_the_first_focus_offer__hub",
+   "text": "You have seen the wall by now, or heard of it. It answers one question, and I will not show it to the merely curious. The question belongs to an exile at the delf who paid for it with her seat.\n\nGo and ask Veyle for her question. Bring it back in your own mouth. Then the wall is yours to read.",
+   "choices": [
+    {
+     "text": "I'll do it.",
+     "next": "go"
+    },
+    {
+     "text": "Why can't you just tell me?",
+     "next": "why"
+    }
+   ],
+   "hooks": [
+    {
+     "kind": "quest_offer",
+     "quest": "the_first_focus"
+    }
+   ]
+  },
+  {
+   "id": "why",
+   "voice": "q_the_first_focus_offer__why",
+   "text": "Because an answer without its asker is gossip. The wall has waited longer than your language has existed. It can wait for you to do this properly.",
+   "choices": [
+    {
+     "text": "Then I'll do it.",
+     "next": "go"
+    }
+   ]
+  },
+  {
+   "id": "go",
+   "voice": "q_the_first_focus_offer__go",
+   "text": "Walk east, then. And when Veyle gives you the question, carry it gently. She has been holding it a long time.",
+   "hooks": [
+    {
+     "kind": "quest_accept",
+     "quest": "the_first_focus"
+    }
+   ]
+  }
+ ],
+ "requires": [
+  "quest:the_first_focus:available"
+ ]
+}

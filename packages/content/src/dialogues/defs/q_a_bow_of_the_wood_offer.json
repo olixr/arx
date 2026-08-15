@@ -1,0 +1,59 @@
+{
+ "id": "q_a_bow_of_the_wood_offer",
+ "start": "hub",
+ "bindings": [
+  {
+   "kind": "actor",
+   "target": "bowyer_aewyn",
+   "priority": 5
+  }
+ ],
+ "nodes": [
+  {
+   "id": "hub",
+   "voice": "q_a_bow_of_the_wood_offer__hub",
+   "text": "You want the yew shelf. Everyone with eyes wants the yew shelf. The yew is not mine to give, so we do this properly.\n\nAsk the Warden for leave to take staves from the living wood. If Sylwen grants it, gather kindly and bring twine, and I will teach you what the guild halls stop short of.",
+   "choices": [
+    {
+     "text": "I'll do it.",
+     "next": "go"
+    },
+    {
+     "text": "Why does a bowyer need permission?",
+     "next": "why"
+    }
+   ],
+   "hooks": [
+    {
+     "kind": "quest_offer",
+     "quest": "a_bow_of_the_wood"
+    }
+   ]
+  },
+  {
+   "id": "why",
+   "voice": "q_a_bow_of_the_wood_offer__why",
+   "text": "I do not need permission. I have standing leave, sixty years old. YOU need permission, and watching how you ask will tell me more about your hands than any bench test.",
+   "choices": [
+    {
+     "text": "Then I'll do it.",
+     "next": "go"
+    }
+   ]
+  },
+  {
+   "id": "go",
+   "voice": "q_a_bow_of_the_wood_offer__go",
+   "text": "Go on then. Stand straight when you ask her. She counts.",
+   "hooks": [
+    {
+     "kind": "quest_accept",
+     "quest": "a_bow_of_the_wood"
+    }
+   ]
+  }
+ ],
+ "requires": [
+  "quest:a_bow_of_the_wood:available"
+ ]
+}

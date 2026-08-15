@@ -1,0 +1,41 @@
+{
+ "id": "the_quiet_road",
+ "name": "The Quiet Road",
+ "giver": "sentinel_serel",
+ "repeat": {
+  "cooldownHours": 18
+ },
+ "stages": [
+  {
+   "id": "the_stones_drink",
+   "journal": "The waystones on the Evenway drink cool light the way the road lamps drink tallow. Serel feeds the miles in both directions, and the miles are long. Bring *moonbell* and a measure of *arcane dust*, and one more stone keeps its watch through the dark season.",
+   "objectives": [
+    {
+     "kind": "collect",
+     "item": "moonbell",
+     "count": 3
+    },
+    {
+     "kind": "collect",
+     "item": "arcane_dust",
+     "count": 1
+    }
+   ]
+  }
+ ],
+ "rewards": {
+  "coins": 300,
+  "xp": [
+   {
+    "skill": "enchanting",
+    "amount": 220
+   }
+  ],
+  "standing": [
+   {
+    "faction": "evencourt",
+    "delta": 4
+   }
+  ]
+ }
+}

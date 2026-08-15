@@ -1,0 +1,55 @@
+{
+ "id": "the_letters_west",
+ "name": "The Letters West",
+ "giver": "enchantress_solvei",
+ "stages": [
+  {
+   "id": "the_address",
+   "journal": "Solvei has written to Veyle every month for years, and Veyle has answered with silence. Now there is a third address: the city the old folk kept, open for the first time in a hundred and fifty years. Solvei will not leave her table. You will. Carry her letter up the *Evenway*, past the last lamp and the first waystone, and hand it to whoever keeps the gate.",
+   "objectives": [
+    {
+     "kind": "talk",
+     "actor": "sentinel_serel"
+    }
+   ]
+  },
+  {
+   "id": "the_outward_house",
+   "journal": "Serel read the seal and did not open the letter, which told you something about the gate. She sent you to *Elarin* at the Outward House, because everything that enters Evenfall warms itself at his fire first. That is not a rule. It is just true.",
+   "objectives": [
+    {
+     "kind": "talk",
+     "actor": "innkeep_elarin"
+    }
+   ]
+  },
+  {
+   "id": "the_evenhall",
+   "journal": "The letter goes up the Moonstair. The *Evenking* reads what crosses his gate in its first season, every word of it, because a hundred and fifty years of quiet taught him what letters cost. Climb the flights and put Solvei's question in the oldest hands in the world.",
+   "objectives": [
+    {
+     "kind": "talk",
+     "actor": "king_aldaren"
+    }
+   ]
+  }
+ ],
+ "rewards": {
+  "coins": 900,
+  "xp": [
+   {
+    "skill": "combat",
+    "amount": 1800
+   }
+  ],
+  "flags": [
+   "evenfall_welcome"
+  ],
+  "standing": [
+   {
+    "faction": "evencourt",
+    "delta": 6
+   }
+  ]
+ }
+}

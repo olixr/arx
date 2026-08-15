@@ -71,6 +71,11 @@ import tallowForTheLamps from './defs/tallow_for_the_lamps.json';
 // Kingsdelf — the errands (the Kingsdelf epic).
 import theCountBelow from './defs/the_count_below.json';
 import lightTheOldRoad from './defs/light_the_old_road.json';
+import theLettersWest from './defs/the_letters_west.json';
+import theFirstFocus from './defs/the_first_focus.json';
+import aBowOfTheWood from './defs/a_bow_of_the_wood.json';
+import theQuietRoad from './defs/the_quiet_road.json';
+import whatTheSongHolds from './defs/what_the_song_holds.json';
 import theCrownAsks from './defs/the_crown_asks.json';
 import aStallInAsh from './defs/a_stall_in_ash.json';
 import whatTheNetHeld from './defs/what_the_net_held.json';
@@ -147,6 +152,11 @@ const SOURCES: readonly unknown[] = [
   tallowForTheLamps,
   theCountBelow,
   lightTheOldRoad,
+  theLettersWest,
+  theFirstFocus,
+  aBowOfTheWood,
+  theQuietRoad,
+  whatTheSongHolds,
   theCrownAsks,
   aStallInAsh,
   whatTheNetHeld,
