@@ -24,6 +24,7 @@ import {
   roadHitAt,
   scorchAt,
   thornveilAt,
+  waystoneWayAt,
 } from './geography.js';
 import {
   EDGE_BASIN_DAMP_RANGE,
@@ -844,9 +845,32 @@ export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
             ground = trail ? Tile.Dirt : Tile.Path;
             detail = !trail && roll > 0.94 ? Detail.Pebbles : Detail.None;
           }
-        } else if (dist <= (trail ? TRAIL_SHOULDER : ROAD_SHOULDER) && ROAD_FELLED.has(ground)) {
-          ground = roll < 0.05 ? Tile.Stump : Tile.Grass;
-          detail = roll > 0.88 ? Detail.Tuft : Detail.None;
+        } else if (dist <= (trail ? TRAIL_SHOULDER : ROAD_SHOULDER)) {
+          // THE WAYSTONE DRESSING (the Evenfall epic): on the ways
+          // the road-faith never lamped, the shoulder stands a stone
+          // every long stone's-throw — script band glowing faint, a
+          // runestone leaning where the mile turns odd. Sparse by law
+          // (the wood does not do rows), deterministic by hash, on
+          // ANY honest shoulder ground (a stone does not wait for a
+          // tree to be felled first), and never on the trodden
+          // surface by construction (this branch IS the shoulder).
+          // Off the waystone ways this branch is byte-identical to
+          // the old fell-only shoulder.
+          const standable =
+            ROAD_FELLED.has(ground) || ground === Tile.Grass || ground === Tile.GrassTall;
+          const wayHash = trail && standable && waystoneWayAt(baseX + lx, baseY + ly)
+            ? hashCoords(seed ^ 0x8a7e57, baseX + lx, baseY + ly) % 1000
+            : 1000;
+          if (wayHash < 14) {
+            ground = Tile.ElvenWaystone;
+            detail = Detail.None;
+          } else if (wayHash < 17) {
+            ground = Tile.Runestone;
+            detail = Detail.None;
+          } else if (ROAD_FELLED.has(ground)) {
+            ground = roll < 0.05 ? Tile.Stump : Tile.Grass;
+            detail = roll > 0.88 ? Detail.Tuft : Detail.None;
+          }
         }
       }
 

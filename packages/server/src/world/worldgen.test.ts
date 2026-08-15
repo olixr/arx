@@ -401,6 +401,37 @@ function routeSamples(routeId: string): Array<[number, number]> {
   return out;
 }
 
+test('THE WAYSTONE DRESSING: the Evenway wears its stones, the trodden way never does', () => {
+  const route = ROAD_ROUTES.find((r) => r.id === 'evenway')!;
+  const cells = new Set<string>();
+  for (const p of route.pts) {
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        cells.add(`${Math.floor(p.x / 32) + dx},${Math.floor(p.y / 32) + dy}`);
+      }
+    }
+  }
+  let stones = 0;
+  for (const key of cells) {
+    const [cx, cy] = key.split(',').map(Number);
+    const chunk = generateChunk(WORLD_SEED, cx!, cy!);
+    for (let i = 0; i < chunk.ground.length; i++) {
+      const t = chunk.ground[i]!;
+      if (t !== Tile.ElvenWaystone && t !== Tile.Runestone) continue;
+      stones++;
+      // A stone on the trodden surface would block the way: the
+      // dresser only ever stands them on the shoulder, and the carve
+      // distance proves it.
+      const tx = cx! * 32 + (i % 32);
+      const ty = cy! * 32 + Math.floor(i / 32);
+      const hit = roadHitAt(WORLD_SEED, tx, ty);
+      assert.ok(hit !== null && hit.dist > 1.1, `stone at (${tx},${ty}) stands on the trodden way`);
+    }
+  }
+  // The unlamped west keeps its miles: a stone every long stone's-throw.
+  assert.ok(stones >= 15, `the Evenway lost its stones (${stones})`);
+});
+
 test('roads carve a walkable surface end to end', () => {
   const seed = WORLD_SEED;
   const chunkCache = new Map<string, ReturnType<typeof generateChunk>>();

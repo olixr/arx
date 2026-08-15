@@ -1,5 +1,5 @@
 import { DANGER_MAX, fbm, type Vec2, type DangerAnchor } from '@arx/shared';
-import { SETTLED_ANCHORS, replaceSettledAnchors } from './danger.js';
+import { AUTHORED_ANCHOR_WORDS, SETTLED_ANCHORS, replaceSettledAnchors } from './danger.js';
 
 /**
  * THE GEOGRAPHY — the master plan's fixed points, in one place.
@@ -1052,9 +1052,7 @@ export function validateGeographyDef(
       // doc saved before anchors learned to speak backfills from the
       // authored map by position (the FRONTIER backfill law); a dread
       // has no townsfolk to ask, so a worded dread is refused.
-      // (Backfill-by-position joins this line when the worded march
-      // lands — the anchors speak plainly until then.)
-      const country = a.country;
+      const country = a.country ?? AUTHORED_ANCHOR_WORDS.get(`${a.x},${a.y}`);
       if (country !== undefined && (!isInt(country) || country < 1 || country > DANGER_MAX)) {
         errors.push(`${at}.country must be an integer in [1, ${DANGER_MAX}] (or absent)`);
         continue;
@@ -1558,6 +1556,35 @@ const WANDER_AMP = 2.2;
 const WANDER_FREQ = 0.021;
 /** Query pad: wander + widest query radius (ROAD_CALM) + slack. */
 const ROAD_PAD = 10;
+
+/**
+ * THE WAYSTONE WAYS (the Evenfall epic's dressing debt, paid): the
+ * routes the road-faith never lamped and the old folk never left
+ * dark. The worldgen shoulder dresser reads this to stand waystones
+ * along the Evenway's miles — the stones ARE the lamps out west, and
+ * they do not answer to the shrine.
+ */
+const WAYSTONE_ROUTE_IDS: ReadonlySet<string> = new Set(['evenway', 'heartwood_walk']);
+
+/**
+ * Is this tile beside one of the waystone ways? Raw polyline distance
+ * (wander ignored — the dresser gates on the carve's own distance
+ * field; this only answers WHICH way the shoulder belongs to), padded
+ * past the shoulder by the wander amplitude so no mile goes unkept
+ * where the carve wobbles wide.
+ */
+export function waystoneWayAt(tx: number, ty: number): boolean {
+  const reach = TRAIL_SHOULDER + 2.2 + 1;
+  for (const b of ROAD_BOUNDS) {
+    if (!WAYSTONE_ROUTE_IDS.has(b.route.id)) continue;
+    if (tx < b.x0 - reach || tx > b.x1 + reach || ty < b.y0 - reach || ty > b.y1 + reach) continue;
+    const pts = b.route.pts;
+    for (let i = 0; i < pts.length - 1; i++) {
+      if (segDist(tx, ty, pts[i]!.x, pts[i]!.y, pts[i + 1]!.x, pts[i + 1]!.y) <= reach) return true;
+    }
+  }
+  return false;
+}
 
 /** Does a world-tile rect come near any route? (Coarse, for fast skips.) */
 export function nearRoads(x0: number, y0: number, x1: number, y1: number): boolean {
