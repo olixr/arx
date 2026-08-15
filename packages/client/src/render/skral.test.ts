@@ -242,6 +242,7 @@ test('the whole dialect paints clean at all eight facings for every variant', ()
         // The hurt flash is a deliberately reduced form (skull, throat,
         // and the near dome at profile) — still never a single block.
         assert.ok(ctx.fills > (hurt ? 2 : 3), 'the head is a built form, not a single block');
+        paintSkralBody(ctx, sk, bodyFrame(dir, hurt), false, 'behind');
         paintSkralBody(ctx, sk, bodyFrame(dir, hurt), false);
         paintSkralWrap(ctx, sk, bodyFrame(dir, hurt));
         drawSkralArm(ctx, sk, 0, 0, 4, 8, 6, 16, 44, hurt, 1234);

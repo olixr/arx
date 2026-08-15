@@ -769,61 +769,83 @@ export interface SkralBodyFrame {
 }
 
 /**
- * The skral torso overpaint: the pale belly plate with its fold
- * bands, spine finlets from behind, and — on the deepking — the
- * back-slung barbed trident. The belly pass is gated by the caller
- * when real armor is worn (armor stays visible: the loot-story law);
- * the NET-SASH (paintSkralWrap) always paints, the loincloth law.
+ * THE BODY JOINS THE HULL: the torso overpaint in two passes ordered
+ * by the same station-depth truth the head runs on. The `behind`
+ * pass paints UNDER the torso garment (the rig calls it before the
+ * cloth goes down): the slung trident's SHAFT lives there always —
+ * honestly occluded by the body when the skral faces the camera,
+ * fully revealed as it turns away, continuous in between (the old
+ * front/back modes snapped at the quarter boundary) — and the spine
+ * finlets sit there whenever the back faces away from the camera.
+ * The `front` pass carries the tines (above the shoulder line, never
+ * occluded), the sling strap on the chest, the finlets when the back
+ * is toward the camera, and the belly plate. The carry lives on ONE
+ * BODY SHOULDER (the left): its screen side comes from the lateral
+ * projection, never from `lead` — a slung weapon must not teleport
+ * shoulders when the facing crosses south (the lead-sign snap).
+ * The belly pass is gated by the caller when real armor is worn
+ * (armor stays visible: the loot-story law).
  */
 export function paintSkralBody(
   ctx: CanvasRenderingContext2D,
   sk: SkralLook,
   f: SkralBodyFrame,
   armored: boolean,
+  layer: 'behind' | 'front' = 'front',
 ): void {
-  const { s, tw, ww, th, fy, profileK, backK, lead, hurt } = f;
+  const { s, tw, ww, th, fx, fy, profileK, backK, lead, hurt } = f;
   const back = backK > 0.5;
-  // The trident rides the back: mostly hidden behind the torso when
-  // the skral faces the camera (tines peeking over the far shoulder),
-  // whole when it faces away. Paint order does that for free — the
-  // torso quad is already down when this runs, so "behind" here means
-  // low alpha slip along the silhouette edge... no tricks: front
-  // bands draw only the head above the shoulder line; back bands draw
-  // the whole carry.
-  if (sk.trident && !hurt) {
-    // The carry rides OUTBOARD of the skull: the head proportion is
-    // the widest in the game, and a shoulder-slung tine head parked
-    // at the spine vanishes behind it at every band (the pass-two
-    // lesson) — so the barbed head clears the skull's edge instead.
-    const bx = -lead * (tw * 0.4 + s * 0.17);
-    const topY = -th - s * 0.16;
-    ctx.strokeStyle = shade('#6a5a44', back ? 0 : -4);
-    ctx.lineWidth = Math.max(1.5, s * 0.024);
-    if (back) {
+  // The body's camera frame — same law as the head's projector.
+  const px = -fy;
+  const py = fx;
+  // Trident carry stations (body frame: F fwd, L lat with L = -1 the
+  // body's LEFT shoulder; screen side falls out of px/py).
+  const latPx = tw * 0.58 + s * 0.24; // clears the game's widest skull
+  const fwdPx = ww * 0.55;
+  const bs = (F: number, L: number, y0: number): { x: number; y: number; d: number } => ({
+    x: F * fwdPx * fx + L * latPx * px,
+    y: y0 + (F * fwdPx * fy + L * latPx * py) * 0.18,
+    d: F * fy + L * py,
+  });
+  const tine = bs(-0.35, -1, -th - s * 0.16); // over the left shoulder
+  const butt = bs(0.1, 0.62, -th * 0.04); // past the right hip
+
+  if (layer === 'behind') {
+    if (sk.trident && !hurt) {
+      // THE SHAFT, whole, always — the torso decides what you see.
+      ctx.strokeStyle = shade('#6a5a44', -2);
+      ctx.lineWidth = Math.max(1.5, s * 0.024);
       ctx.beginPath();
-      ctx.moveTo(-bx * 0.3, topY + th * 1.24);
-      ctx.lineTo(bx * 0.92, topY + s * 0.08);
+      ctx.moveTo(butt.x, butt.y);
+      ctx.lineTo(tine.x * 0.96, tine.y + s * 0.07);
       ctx.stroke();
-    } else {
-      // The shaft's stub peeks from behind the shoulder to the head.
+      // The butt's worn iron cap — reads when the carry shows.
+      ctx.fillStyle = shade('#6a5a44', -12);
       ctx.beginPath();
-      ctx.moveTo(bx * 0.55, topY + s * 0.3);
-      ctx.lineTo(bx * 0.95, topY + s * 0.09);
-      ctx.stroke();
+      ctx.arc(butt.x, butt.y, s * 0.02, 0, Math.PI * 2);
+      ctx.fill();
     }
-    // The head: three barbed tines of pale bone, always visible.
-    const hxT = back ? bx + lead * s * 0.02 : bx;
+    // Spine finlets ride the back midline: while the back faces AWAY
+    // from the camera they sit in this pass and the torso covers
+    // them — occlusion by construction, never a band gate.
+    if (!hurt && fy >= 0) paintSkralFinlets(ctx, sk, f);
+    return;
+  }
+
+  if (sk.trident && !hurt) {
+    // The tines: three barbed points of pale bone over the shoulder
+    // line — never occluded by the torso; the skull may cover the
+    // center at the bow, which is honest depth.
     ctx.fillStyle = shade(SKRAL_TOOTH, -4);
     for (const o of [-1, 0, 1] as const) {
-      const tx = hxT + o * s * 0.045;
-      const tipY = topY - s * (o === 0 ? 0.1 : 0.055);
+      const tx = tine.x + o * s * 0.045;
+      const tipY = tine.y - s * (o === 0 ? 0.1 : 0.055);
       ctx.beginPath();
-      ctx.moveTo(tx - s * 0.014, topY + s * 0.06);
+      ctx.moveTo(tx - s * 0.014, tine.y + s * 0.06);
       ctx.lineTo(tx, tipY);
-      ctx.lineTo(tx + s * 0.014, topY + s * 0.06);
+      ctx.lineTo(tx + s * 0.014, tine.y + s * 0.06);
       ctx.closePath();
       ctx.fill();
-      // The barb: one back-hook off each outer tine.
       if (o !== 0) {
         ctx.beginPath();
         ctx.moveTo(tx, tipY + s * 0.03);
@@ -833,29 +855,30 @@ export function paintSkralBody(
         ctx.fill();
       }
     }
-    // The lash binding the head to the shaft.
+    // The lash binding head to shaft.
     ctx.strokeStyle = shade(sk.cloth, -8);
     ctx.lineWidth = Math.max(1, s * 0.016);
     ctx.beginPath();
-    ctx.moveTo(hxT - s * 0.05, topY + s * 0.075);
-    ctx.lineTo(hxT + s * 0.05, topY + s * 0.09);
+    ctx.moveTo(tine.x - s * 0.05, tine.y + s * 0.075);
+    ctx.lineTo(tine.x + s * 0.05, tine.y + s * 0.09);
     ctx.stroke();
-  }
-  // Spine finlets: three small hide-dark nubs down the back line —
-  // the dorsal read that keeps a walking-away skral a fish.
-  if (back && !hurt) {
-    ctx.fillStyle = shade(sk.hide, -12);
-    for (const t of [0.22, 0.46, 0.7] as const) {
-      const y = -th + th * t * 1.1;
-      const r = s * 0.028 * (1 - t * 0.4);
+    // THE SLING STRAP: the carry's front half crosses the chest when
+    // the chest faces the camera — fading in with the turn, never
+    // popping (the shaft owns the back half in the behind pass).
+    const strapK = Math.min(1, Math.max(0, (fy - 0.12) / 0.25));
+    if (strapK > 0 && !armored) {
+      ctx.strokeStyle = shade(sk.cloth, -8);
+      ctx.globalAlpha = strapK;
+      ctx.lineWidth = Math.max(1, s * 0.018);
       ctx.beginPath();
-      ctx.moveTo(-r, y);
-      ctx.lineTo(0, y - r * 1.6);
-      ctx.lineTo(r, y);
-      ctx.closePath();
-      ctx.fill();
+      ctx.moveTo(tine.x * 0.62, -th * 0.88);
+      ctx.lineTo(butt.x * 0.9, butt.y - s * 0.02);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
     }
   }
+  // Finlets surface in this pass once the back is toward the camera.
+  if (!hurt && fy < 0) paintSkralFinlets(ctx, sk, f);
   if (armored || back) return;
   // The belly plate: one pale panel from the throat's pool past the
   // waist, three soft fold bands — a frog's underside, flat planes.
@@ -887,7 +910,28 @@ export function paintSkralBody(
       ctx.fill();
     }
   }
-  void fy;
+}
+
+/**
+ * The dorsal finlets: three nubs on the spine's midline station
+ * (F −0.6, L 0). Their screen x slides with the projection — center
+ * from behind, drifting to the torso's trailing edge at profile —
+ * and which PASS paints them is the visibility verdict.
+ */
+function paintSkralFinlets(ctx: CanvasRenderingContext2D, sk: SkralLook, f: SkralBodyFrame): void {
+  const { s, ww, th, fx } = f;
+  const spineX = -0.6 * ww * 0.55 * fx;
+  ctx.fillStyle = shade(sk.hide, -12);
+  for (const t of [0.22, 0.46, 0.7] as const) {
+    const y = -th + th * t * 1.1;
+    const r = s * 0.028 * (1 - t * 0.4);
+    ctx.beginPath();
+    ctx.moveTo(spineX - r, y);
+    ctx.lineTo(spineX, y - r * 1.6);
+    ctx.lineTo(spineX + r, y);
+    ctx.closePath();
+    ctx.fill();
+  }
 }
 
 /**

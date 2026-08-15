@@ -8581,6 +8581,19 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // and face wholesale.
   if (!skel && !kob && !gno && !gob && !gol && !ogr && !skr) drawHairBack(ctx, hairFrame, hairIx, cover);
 
+  // The skral's behind-pass: the slung trident's shaft and the far-
+  // side spine finlets paint UNDER the torso — occlusion by paint
+  // order, decided by station depth, never by a band gate.
+  if (skr) {
+    paintSkralBody(
+      ctx,
+      skr,
+      { s, tw, ww, th, fx, fy, profileK, backK, lead, hurt: rig.hurt, nowMs: rig.nowMs },
+      bodySt != null,
+      'behind',
+    );
+  }
+
   // Torso garment: the styled body (robe, jerkin, brigandine, cuirass,
   // pauldrons) — the bare `tunic` default is the original silhouette.
   // The bone dialect wears no garment at all: the ribcage IS the torso.
