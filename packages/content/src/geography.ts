@@ -704,7 +704,7 @@ const AUTHORED_PLAN: GeographyDef = {
     { id: 'fenside_crofts', defId: 'roadside_hamlet', x: 148, y: 98 },
     // THE GULLMOOR REST — the Salt Road's halfway lamp, the last roof
     // before the tier-3 league.
-    { id: 'gullmoor_rest', defId: 'waystation', x: 568, y: 196 },
+    { id: 'gullmoor_rest', defId: 'waystation', x: 556, y: 140 },
     // THE TIMBER ROAD'S TWO LAMPS — the long way's whole argument:
     // each is a HAVEN on the road's back half, and the lamped road
     // genuinely bands lower than the wood the Sparway walks through.
