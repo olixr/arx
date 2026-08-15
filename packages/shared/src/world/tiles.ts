@@ -764,8 +764,8 @@ export enum Tile {
   BarrelStack = 397,
   /** Crates stacked two high, the top lid ajar over straw. */
   CrateStack = 398,
-  /** The week's wash sagging true between two posts. */
-  WashLine = 399,
+  /** Dyed pennants flying from a swagged line between two poles. */
+  PennantLine = 399,
   /** A chewed hitching rail, iron rings, one tied lead. */
   HitchingPost = 400,
   /** Cordwood ranked between stakes; the axe stands in the block. */
@@ -1441,7 +1441,7 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.GrainSacks]: { name: 'grain sacks', solid: true, color: '#8a744e', raised: true, topColor: '#d8c49a' },
   [Tile.BarrelStack]: { name: 'stacked barrels', solid: true, color: '#75603e', raised: true, topColor: '#b08a45' },
   [Tile.CrateStack]: { name: 'stacked crates', solid: true, color: '#75603e', raised: true, topColor: '#c9a76a' },
-  [Tile.WashLine]: { name: 'washing line', solid: true, color: '#6f6a58', raised: true, topColor: '#c4808a' },
+  [Tile.PennantLine]: { name: 'pennant line', solid: true, color: '#6f6a58', raised: true, topColor: '#c25668' },
   [Tile.HitchingPost]: { name: 'hitching post', solid: true, color: '#6f5a38', raised: true, topColor: '#a8823f' },
   [Tile.Woodpile]: { name: 'woodpile', solid: true, color: '#75603e', raised: true, topColor: '#c9a76a' },
   [Tile.StreetPlanter]: { name: 'street planter', solid: true, color: '#75603e', raised: true, topColor: '#c95a74' },
@@ -2124,7 +2124,7 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.GrainSacks, 0.32],
   [Tile.BarrelStack, 0.38],
   [Tile.CrateStack, 0.34],
-  [Tile.WashLine, 0.32],
+  [Tile.PennantLine, 0.32],
   [Tile.HitchingPost, 0.28],
   [Tile.Woodpile, 0.36],
   [Tile.StreetPlanter, 0.24],
@@ -2412,7 +2412,7 @@ export type DestructibleKind =
   | 'grainsacks'
   | 'barrelstack'
   | 'cratestack'
-  | 'washline'
+  | 'pennantline'
   | 'hitchpost'
   | 'woodpile'
   | 'streetplanter'
@@ -2606,7 +2606,7 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.GrainSacks, { kind: 'grainsacks', respawnSec: 300, hits: 1 }],
   [Tile.BarrelStack, { kind: 'barrelstack', respawnSec: 300, hits: 2 }],
   [Tile.CrateStack, { kind: 'cratestack', respawnSec: 300, hits: 2 }],
-  [Tile.WashLine, { kind: 'washline', respawnSec: 300, hits: 1 }],
+  [Tile.PennantLine, { kind: 'pennantline', respawnSec: 300, hits: 1 }],
   [Tile.HitchingPost, { kind: 'hitchpost', respawnSec: 300, hits: 2 }],
   [Tile.Woodpile, { kind: 'woodpile', respawnSec: 300, hits: 1 }],
   [Tile.StreetPlanter, { kind: 'streetplanter', respawnSec: 300, hits: 1 }],

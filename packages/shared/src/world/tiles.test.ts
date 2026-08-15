@@ -407,7 +407,7 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.GrainSacks, 'grainsacks', 1],
     [Tile.BarrelStack, 'barrelstack', 2],
     [Tile.CrateStack, 'cratestack', 2],
-    [Tile.WashLine, 'washline', 1],
+    [Tile.PennantLine, 'pennantline', 1],
     [Tile.HitchingPost, 'hitchpost', 2],
     [Tile.Woodpile, 'woodpile', 1],
     [Tile.StreetPlanter, 'streetplanter', 1],

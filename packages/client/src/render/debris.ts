@@ -142,7 +142,7 @@ export type SmashKind =
   | 'grainsacks'
   | 'barrelstack'
   | 'cratestack'
-  | 'washline'
+  | 'pennantline'
   | 'hitchpost'
   | 'woodpile'
   | 'streetplanter'
@@ -694,7 +694,7 @@ const CHIP_TONE: Record<SmashKind, string> = {
   grainsacks: '#b89a68',
   barrelstack: '#8a6534',
   cratestack: '#8a6534',
-  washline: '#e2d9c4',
+  pennantline: '#e2d9c4',
   hitchpost: '#8a6534',
   woodpile: '#8a6534',
   streetplanter: '#8a6534',
@@ -1997,19 +1997,18 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       }
       break;
     }
-    case 'washline': {
-      // The week's wash takes flight: posts drop like posts, but the
-      // LAUNDRY sails — dyed cloth tumbling high and far, the pegs
-      // ticking down among it. The town's most colorful wreck.
+    case 'pennantline': {
+      // The colors come down flying: the poles drop like the timber
+      // they are, but the PENNANTS scatter high and far — small dyed
+      // points still snapping on the way down — with the swagged
+      // rope falling last as one pale tail. The town's brightest wreck.
       for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.28, wid: 0.04, color: '#8a6534', stripe: '#c9a76a', pace: 0.6 });
+        out.push({ len: 0.3, wid: 0.04, color: '#8a6534', stripe: '#c9a76a', pace: 0.6 });
       }
-      for (let i = 0; i < 4; i++) {
-        out.push({ len: 0.12 + rand() * 0.05, wid: 0.09, color: pick(rand, ['#efe8d4', '#c4808a', '#8fa3bd', '#c9b45a']), round: true, pace: 1.5 });
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.09 + rand() * 0.04, wid: 0.05, color: pick(rand, ['#b0563f', '#4f6d9e', '#c9b45a', '#6d8a4a', '#7a5a8a', '#efe8d4']), pace: 1.6 });
       }
-      for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.045, wid: 0.012, color: '#c9a76a', pace: 1.2 });
-      }
+      out.push({ len: 0.2, wid: 0.014, color: '#a89263', pace: 0.9 });
       break;
     }
     case 'hitchpost': {

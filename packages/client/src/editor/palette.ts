@@ -176,7 +176,7 @@ export const TILE_CATEGORIES: TileCategory[] = [
     tiles: [
       Tile.TownFountain, Tile.FounderStatue, Tile.NoticeBoard, Tile.TownBell,
       Tile.ProduceStand, Tile.HandCart, Tile.BarrelStack, Tile.CrateStack,
-      Tile.GrainSacks, Tile.WashLine, Tile.Woodpile, Tile.HitchingPost,
+      Tile.GrainSacks, Tile.PennantLine, Tile.Woodpile, Tile.HitchingPost,
       Tile.StreetPlanter, Tile.StoneBench,
     ],
   },

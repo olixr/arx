@@ -125,12 +125,14 @@ export function buildDawnmead(): ZoneDef {
   b.set(36, 45, Tile.Dirt); // the worn step
   b.setDetail(33, 43, trellisDetail(1));
   // The keeper's garden: a clipped hedge line shelters a flower bed
-  // against the west wall — fifty years of tending, visible. Her wash
-  // dries on the line among the flowers (the wall-shadow law: a line
-  // BEHIND the cottage vanishes under the facade paint).
+  // against the west wall — fifty years of tending, visible.
   for (let y = 37; y <= 43; y++) b.set(30, y, Tile.Hedge);
   b.setDetail(31, 38, Detail.Flowers).setDetail(31, 42, Detail.Flowers);
-  b.set(31, 40, Tile.WashLine);
+  // Her pennant line flies at the porch front, facing the stones —
+  // the colors she sews for every village day. West of the step so
+  // the wakers' walk stays clear (a line prop is WIDE: give it clear
+  // air east and west — a wall column swallows an end pole).
+  b.set(34, 46, Tile.PennantLine);
 
   // ---------------------------------------------------------------
   // THE GREEN — the village's living room at the world's exact
@@ -207,12 +209,13 @@ export function buildDawnmead(): ZoneDef {
   b.sign(58, 41, 'THE FIVE STONES', ['Beds for wakers.', 'Claim one. Come back to it.']);
   b.set(54, 41, Tile.Dirt).set(55, 41, Tile.Dirt); // the worn threshold
   b.set(47, 41, Tile.LampPost);
-  // An inn that works: the brewer's drop and four beds' worth of
-  // linen on the west service side (never out back — the wall-shadow
-  // law), a rail for whatever a traveler rides in on, and town color
-  // at the door.
+  // An inn that works: the brewer's drop on the west service side
+  // (never out back — the wall-shadow law), welcome colors flying at
+  // the same shoulder — one clear tile off the wall so both poles
+  // breathe — a rail for whatever a traveler rides in on, and town
+  // color at the door.
   b.set(46, 32, Tile.BarrelStack);
-  b.set(46, 34, Tile.WashLine);
+  b.set(45, 34, Tile.PennantLine);
   b.set(52, 41, Tile.HitchingPost);
   b.set(56, 41, Tile.StreetPlanter);
 
@@ -243,11 +246,12 @@ export function buildDawnmead(): ZoneDef {
   b.setDetail(74, 14, Detail.Doormat);
   b.setDetail(71, 15, trellisDetail(0)); // ivy takes working houses
   // A farm mid-chore: the cart parked off the walk between house and
-  // coop, feed sacks at the coop rail, five people's wash on the line
-  // at the west gable where the morning sun lands (wall-shadow law).
+  // coop, feed sacks at the coop rail, and the twins' pennant line at
+  // the west gable where the morning sun lands (wall-shadow law) —
+  // strung the day of the harvest fair and never taken down.
   b.set(81, 16, Tile.HandCart);
   b.set(81, 10, Tile.GrainSacks);
-  b.set(68, 10, Tile.WashLine);
+  b.set(68, 10, Tile.PennantLine);
   // The coop: fenced dirt, straw, west gate standing open. The hens
   // roam it and the long grass — the egg errand is honest work.
   b.fillRect(83, 9, 5, 4, Tile.Dirt);

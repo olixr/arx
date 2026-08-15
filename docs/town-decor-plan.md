@@ -32,7 +32,7 @@ polished. If a piece could read as abandoned, it fails the kit.
 | 396 | GrainSacks | plump tied sacks, one open with the scoop in it | static | 1 | grainsacks |
 | 397 | BarrelStack | two casks chocked on their sides, one standing on top | static | 2 | barrelstack |
 | 398 | CrateStack | two-high crates, top lid ajar, straw + stencil | static | 2 | cratestack |
-| 399 | WashLine | laundry sagging between two posts, dye colors | breeze <4Hz | 1 | washline |
+| 399 | PennantLine | dyed pennants + swallowtail banner on a swagged line | breeze <4Hz | 1 | pennantline |
 | 400 | HitchingPost | worn rail, iron rings, tied lead, hay wisps | static | 2 | hitchpost |
 | 401 | Woodpile | ranked cordwood between stakes + chopping block, axe standing | static | 1 | woodpile |
 | 402 | StreetPlanter | half-barrel planter spilling blooms + trailing ivy | static | 1 | streetplanter |
@@ -63,16 +63,23 @@ Design intent per piece:
   of the bed (the mine cart's TRACK-READS-AS-TRACK lesson: wheels
   must read), shafts down to the ground, load of sacks + one crate.
 - **GrainSacks** — the town's clean answer to PlunderSacks: plump,
-  TIED, upright — kept stores, not loot. One open sack shows grain
-  with the wooden scoop parked in it.
+  TIED, upright on a low skid pallet (grain never sits on wet
+  ground) — kept stores, not loot. The proudest sack wears the
+  mill's stenciled wheat-sheaf mark; one open sack shows grain with
+  the wooden scoop lying mouth-open in the heap.
 - **BarrelStack / CrateStack** — variations for the two most
   over-dealt props in the game. The stack law: side casks show round
   END GRAIN hoops (the 3D argument), chocks stop the roll; crates
   stagger, top lid ajar with straw and a stencil mark.
-- **WashLine** — chores are life: the line sags true (catenary),
-  laundry wears the game's own dye roster hash-dealt per tile, cloth
-  swings on the shared breeze cadence. Two shirts, a linen sheet,
-  smallclothes — sized to the body ruler.
+- **PennantLine** (REWORKED from WashLine, 2026-08-15 — hanging
+  laundry is not this universe's voice; festival colors are) — two
+  turned poles with bronze ball finials leaning a hair out under the
+  line's pull, one true catenary, SIX pennants + the center
+  swallowtail banner all hash-dealt from the awning dye roster
+  (stride-3: neighbors never share a hue family), ribbon streamers
+  off both finials, the spare line COILED at the west pole's foot.
+  Cloth snaps on the shared breeze cadence — livelier than laundry
+  ever hung: a pennant exists to move.
 - **HitchingPost** — the mounts epic's street furniture: a chewed
   rail on two posts, two iron rings, one tied lead rope, hay wisps
   and hoof-churn at the base.
@@ -161,6 +168,56 @@ range, Studio 'Town life' shelf.
   roof overdraws anything staged at y≈80-84 west of x≈-55.
 - Debris shots must fire INSIDE the burst window (no settle sleep);
   three swing cycles plus a settle wait outlives the theatre.
+
+### Rework pass (2026-08-15, user round two — crops, quality, and the laundry verdict)
+
+Three pieces went back to the bench after the user's live read:
+
+- **THE BOUNDS ARE THE CANVAS** (the crop bug both broken props
+  shared): `stationBody(hw, up, down)` is not just the outline
+  rect — it sizes the bake scratch region, and art painted past it
+  is hard-clipped at the cell edge. Woodpile declared hw 0.62 while
+  its block + standing axe reached ~0.75 (axe sheared off mid-haft);
+  GrainSacks declared 0.55 and painted sacks to ~0.67 (flat clip
+  down the west sack). Every wide painter must derive its body from
+  its true painted extent, with margin.
+- **Woodpile rebuilt**: four hex-packed courses (every course offset
+  half a pitch — the pile reads STACKED, not floated), bark ring +
+  pale face + off-center growth ring + radial check cracks per
+  round, split half-moons with chord grain, the odd pale birch round
+  with lenticel ticks, outward-raked chamfered stakes, one split
+  pulled and leaning (mid-chore), the block grown a rank (bark
+  checks, scarred bright top, one dark wedge bite where every swing
+  lands), the axe re-forged (poll + bearded bit, crisp edge light),
+  a fresh split fallen at the block's foot, bark-chip litter.
+- **GrainSacks rebuilt**: sacks became plump gourds (belly, shoulder,
+  rope-whipped neck, soft ears) with stitched center seams, lit and
+  shaded flanks, base creases; the proud front sack wears the mill's
+  stenciled wheat-sheaf mark; all of it stands on a LOW SKID PALLET
+  with ground showing between the feet and straw drifted against
+  them (a board floating on a shadow reads SHELF — feet on dirt read
+  pallet). **A SCOOP IS A VESSEL, NOT A BLADE**: the first iron pan
+  + raked handle read as a hatchet buried in the sack at map scale
+  (the ButcherBlock's cleaver two doors down already owns that
+  silhouette) — now a pale carved wooden scoop lying half-sunk,
+  open mouth toward the street (dark hollow + bright lip is the
+  read), iron only at the ferrule.
+- **WashLine → PennantLine (id 399 kept, world saves unbroken)**:
+  the user retired hanging laundry from the universe's voice —
+  festival colors replace chores-on-a-line. Full rename across enum,
+  defs, destructible kind, debris kit (pennants FLY, rope tail falls
+  last), smash tones, palette shelf, and the three Dawnmead seats.
+- **A LINE PROP NEEDS CLEAR AIR** (placement law, minted at Wren's
+  garden): a horizontal two-pole line is ~1.3 tiles wide — stamped
+  in a one-tile strip beside a wall column, the wall's tall paint
+  swallows an end pole. Both cramped seats moved (cottage line to
+  the porch front facing the stones; inn line one tile off the west
+  wall); the farmstead gable seat already breathed.
+- Proven live on an isolated :8813/:5202 frozen-lane rig, fresh DB:
+  noon close-ups of all three pieces at all Dawnmead seats, night
+  wide (zero glow — the lamps keep the dark), page-error trap clean
+  (no unsigned-hash regressions), body-ruler checks beside the
+  prover.
 
 ### Deferred on purpose
 
