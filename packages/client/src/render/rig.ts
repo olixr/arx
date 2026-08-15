@@ -17065,6 +17065,22 @@ export function paintTurtleBody(
       ctx.closePath();
       ctx.fill();
     }
+    // The hem takes THE BROKEN INK too — the down-screen edge only,
+    // tip toward base, so each skirt horn breaks from the flank it
+    // rides without ringing the hem into a chain.
+    if (!f.hurt) {
+      const low = th.a.y >= th.b.y ? th.a : th.b;
+      ctx.strokeStyle = '#241a2e';
+      ctx.globalAlpha = 0.5;
+      ctx.lineWidth = Math.max(1, s * 0.02);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(th.t.x, th.t.y);
+      ctx.lineTo(th.t.x + (low.x - th.t.x) * 0.62, th.t.y + (low.y - th.t.y) * 0.62);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.lineCap = 'butt';
+    }
   };
   for (const th of skirt) if (!th.near) paintSkirtThorn(th);
 
@@ -17076,23 +17092,82 @@ export function paintTurtleBody(
     () => look.rimBot,
     shell,
     (gx, gyy, lift2) => {
-      // Quiet under-mail work only — the thorns carry the armor
-      // read now. Soft value patches keep the vault from banding
-      // flat, and the marginal band seats the rim.
+      // THE MAIL HAS NO GAPS: the vault is TILED with a connected
+      // scute mesh — ONE shared vertex grid (jitter seeded on the
+      // VERTEX, so neighboring plates always meet edge-to-edge and
+      // never open a sliver of bare dome), five plate columns wide
+      // following the hull's own footprint width band by band, the
+      // center column remapped onto the crown line so the mesh and
+      // the vertebral saw agree at every band. Painted inside the
+      // hull clip (the crab's fixture law): the mesh can no more
+      // escape the silhouette than the shell can — full at the
+      // quarters and the profiles, not just N/S.
+      const port = foot.filter((p) => p[1] < 0).sort((p1, p2) => p1[0] - p2[0]);
+      const wAt = (X: number): number => {
+        if (X <= port[0]![0]) return -port[0]![1];
+        for (let i2 = 1; i2 < port.length; i2++) {
+          const p1 = port[i2 - 1]!;
+          const p2 = port[i2]!;
+          if (X <= p2[0]) {
+            const t2 = (X - p1[0]) / (p2[0] - p1[0] || 1e-4);
+            return -(p1[1] + (p2[1] - p1[1]) * t2);
+          }
+        }
+        return -port[port.length - 1]![1];
+      };
+      const xs = look.ancient
+        ? [-0.86, -0.56, -0.26, 0.06, 0.38, 0.68, 0.95]
+        : [-0.9, -0.56, -0.2, 0.16, 0.54, 0.97];
+      const cf = [-1, -0.6, -0.22, 0.22, 0.6, 1];
+      const ridgeY2 = -py * hw * 0.66;
+      const vxg: number[][] = [];
+      const vyg: number[][] = [];
+      for (let i2 = 0; i2 < xs.length; i2++) {
+        const rowX: number[] = [];
+        const rowY: number[] = [];
+        for (let j2 = 0; j2 < cf.length; j2++) {
+          const jb2 = (f.seed ^ ((i2 * 7 + j2) * 0x45d9f3b)) >>> 0;
+          const X = (xs[i2]! + (((jb2 >>> 3) & 7) - 3.5) * 0.008) * hl;
+          const wX = wAt(X) * 0.985;
+          const edge = Math.abs(cf[j2]!) > 0.9;
+          const jy2 = (((jb2 >>> 7) & 7) - 3.5) * (edge ? 0.004 : 0.012);
+          const cfr = cf[j2]! + jy2;
+          // The crown remap: dead-center face-on, the skyline at
+          // profile — the SAME slide the vertebral thorns ride.
+          const Yv = cfr * wX + ridgeY2 * (1 - cfr * cfr);
+          const z2 = topH(X) * (1 - 0.3 * Math.pow((cfr * wX) / hw, 2));
+          rowX.push(gx(X, Yv));
+          rowY.push(gyy(X, Yv) - z2 * tk * s - lift2 + Yv * s * f.roll * 0.4);
+        }
+        vxg.push(rowX);
+        vyg.push(rowY);
+      }
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      for (let i2 = 0; i2 < xs.length - 1; i2++) {
+        for (let j2 = 0; j2 < cf.length - 1; j2++) {
+          const jb2 = (f.seed ^ ((i2 * 5 + j2) * 0x9e3779b9)) >>> 0;
+          // Plates sit a step brighter than the vault (the law),
+          // brightest on the crown column — the global top-face
+          // wash and flank shade re-model the dome OVER the mesh.
+          const mid2 = Math.abs(cf[j2]! + cf[j2 + 1]!) / 2;
+          const step = mid2 < 0.15 ? 7 : mid2 < 0.5 ? 4 : 2;
+          ctx.fillStyle = shade(shell, step + (((jb2 >>> 5) & 7) - 3.5));
+          ctx.beginPath();
+          ctx.moveTo(vxg[i2]![j2]!, vyg[i2]![j2]!);
+          ctx.lineTo(vxg[i2 + 1]![j2]!, vyg[i2 + 1]![j2]!);
+          ctx.lineTo(vxg[i2 + 1]![j2 + 1]!, vyg[i2 + 1]![j2 + 1]!);
+          ctx.lineTo(vxg[i2]![j2 + 1]!, vyg[i2]![j2 + 1]!);
+          ctx.closePath();
+          ctx.fill();
+          // The seams ARE the mesh read — quiet ink, never a grid.
+          ctx.strokeStyle = 'rgba(26, 20, 36, 0.28)';
+          ctx.stroke();
+        }
+      }
+      // The marginal band: lighter rim scutes hugging the skirt.
       ctx.save();
       ctx.translate(gx(domeC, 0), gyy(domeC, 0) - look.shellH * tk * s * 0.8 - lift2);
       ctx.rotate(Math.atan2(fy * ys, fx));
-      ctx.globalAlpha = 0.5;
-      ctx.fillStyle = shade(shell, -10);
-      ctx.beginPath();
-      facetBlob(ctx, -hl * 0.3 * s, hw * 0.3 * s, hl * 0.5 * s, f.seed ^ 0x33, 7, 0.6, 0.8);
-      ctx.fill();
-      ctx.fillStyle = shade(shell, 8);
-      ctx.beginPath();
-      facetBlob(ctx, hl * 0.25 * s, -hw * 0.25 * s, hl * 0.42 * s, f.seed ^ 0x77, 7, 0.6, 0.8);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      // The marginal band: lighter rim scutes hugging the skirt.
       ctx.strokeStyle = look.rim;
       ctx.lineWidth = Math.max(1.5, s * 0.045);
       ctx.globalAlpha = 0.8;
@@ -17234,6 +17309,40 @@ export function paintTurtleBody(
     for (let e = 1; e < 4; e++) ctx.lineTo(ring[e]!.x, ring[e]!.y);
     ctx.closePath();
     ctx.stroke();
+    // THE BROKEN INK: the outline shader rings only the OUTER
+    // silhouette — interior thorns melt together exactly where the
+    // 3D overlap needs definition. Each horn takes a PARTIAL stroke
+    // of the world's own ink (#241a2e): the shadow-side edge from
+    // the tip down two-thirds, a short flick on the lit edge —
+    // enough to definitively break every spike from the one behind
+    // it, never a closed ring (a ringed base grids the mail and
+    // muddies the read). Strokes follow the sabre's own quadratic,
+    // so the ink IS the edge, not a halo beside it.
+    const inkEdge = (p: { x: number; y: number }, frac: number, alpha: number): void => {
+      const c = ctrl(p);
+      ctx.strokeStyle = '#241a2e';
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = Math.max(1, s * 0.022);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(T.x, T.y);
+      for (let i2 = 1; i2 <= 5; i2++) {
+        const t2 = (frac * i2) / 5;
+        const u2 = 1 - t2;
+        ctx.lineTo(
+          u2 * u2 * T.x + 2 * u2 * t2 * c.x + t2 * t2 * p.x,
+          u2 * u2 * T.y + 2 * u2 * t2 * c.y + t2 * t2 * p.y,
+        );
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.lineCap = 'butt';
+    };
+    const inkA = look.ancient ? 0.5 : 0.62;
+    const shadowSh = ring[0]!.y >= ring[2]!.y ? ring[0]! : ring[2]!;
+    const litSh = shadowSh === ring[0] ? ring[2]! : ring[0]!;
+    inkEdge(shadowSh, 0.66, inkA);
+    inkEdge(litSh, 0.3, inkA * 0.7);
     // The saw flashes its keel only where the blade shows its side —
     // face-on the five keels would chain into one pale zipper down
     // the spine (the pass-one failure of this pass).
