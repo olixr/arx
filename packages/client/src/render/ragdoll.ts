@@ -16,6 +16,7 @@
  */
 
 import { drawShieldAt, isShieldKind, shieldStyle } from './shields.js';
+import { capeStyle } from './cape.js';
 import { itemDef } from '@arx/content';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
 import {
@@ -156,12 +157,16 @@ export class Ragdoll {
    * ragdoll and the tumble is a pure function of (victim, blow).
    */
   private rngState: number;
+  /** The build seed, kept whole for deterministic corpse painters
+   *  (the launch RNG mutates its own copy). */
+  readonly seed: number;
 
   constructor(pts: RagPoint[], sticks: RagStick[], heavy: number[], seed = 1) {
     this.pts = pts;
     this.sticks = sticks;
     this.heavySet = new Set(heavy);
-    this.rngState = (seed >>> 0) || 1;
+    this.seed = (seed >>> 0) || 1;
+    this.rngState = this.seed;
   }
 
   private rand(): number {
@@ -479,6 +484,9 @@ export interface CorpseGear {
   gloves?: string;
   weapon?: string;
   offhand?: string;
+  /** The banner comes down with its bearer — spilled cloth under the
+   *  fallen trunk, in the cape's own colors, hem cut and emblem. */
+  cape?: string;
   /** Enchant ids riding the weapons — the fx channel survives death. */
   weaponEnch?: string;
   offhandEnch?: string;
@@ -551,6 +559,200 @@ function drawFallenWeapon(
 }
 
 /**
+ * A weapon still in the fist that held it, lying along the forearm's
+ * own line — the grip is the last thing a warrior gives up. Shared by
+ * the flesh and bone painters.
+ */
+function drawWeaponInFist(
+  ctx: CanvasRenderingContext2D,
+  rag: Ragdoll,
+  f: RagFrame,
+  s: number,
+  elbow: number,
+  hand: number,
+  itemId: string,
+  nowMs: number,
+  ench?: string,
+): void {
+  const el = P(f, rag.pts[elbow]!);
+  const hd = P(f, rag.pts[hand]!);
+  ctx.save();
+  ctx.translate(hd.x, hd.y);
+  ctx.rotate(Math.atan2(hd.y - el.y, hd.x - el.x));
+  drawFallenWeapon(ctx, itemId, s, nowMs, ench);
+  ctx.restore();
+}
+
+/**
+ * The off hand keeps what it carried: a shield rides the fallen
+ * forearm (half-pinned under the trunk, as a real fall would leave
+ * it), a dual-wielded second blade lies along the far fist. Quivers
+ * live on the back — under the body, nothing to show. Shared by the
+ * flesh and bone painters.
+ */
+function drawFallenOffhand(
+  ctx: CanvasRenderingContext2D,
+  rag: Ragdoll,
+  f: RagFrame,
+  s: number,
+  gear: CorpseGear,
+  nowMs: number,
+): void {
+  if (!gear.offhand) return;
+  const offSt = offhandStyle(gear.offhand);
+  if (offSt.kind === 'weapon') {
+    drawWeaponInFist(ctx, rag, f, s, H.elbowL, H.handL, gear.offhand, nowMs, gear.offhandEnch);
+  } else if (isShieldKind(offSt.kind)) {
+    // A dropped shield does not lie flat on its face — it comes down
+    // on the arm that wore it and half-rolls onto its rim. It keeps
+    // the world painter, laid over on the forearm's own angle and
+    // turned steeply enough that the eye reads a fallen SHELL.
+    const el = P(f, rag.pts[H.elbowL]!);
+    const hd = P(f, rag.pts[H.handL]!);
+    const sh = shieldStyle(gear.offhand, offSt.kind, offSt.color, offSt.trim, offSt.boss);
+    drawShieldAt(ctx, sh, {
+      cx: (el.x + hd.x) / 2,
+      cy: (el.y + hd.y) / 2,
+      size: 0.24 * s,
+      theta: 1.08,
+      tilt: Math.atan2(hd.y - el.y, hd.x - el.x) + Math.PI / 2,
+      oside: hd.x >= el.x ? 1 : -1,
+    });
+  } else if (offSt.kind !== 'quiver') {
+    const el = P(f, rag.pts[H.elbowL]!);
+    const hd = P(f, rag.pts[H.handL]!);
+    drawOffhandOnArm(ctx, offSt, { kx: el.x, ky: el.y, ex: hd.x, ey: hd.y }, s, 0.3, false, nowMs);
+  }
+}
+
+/**
+ * THE BANNER COMES DOWN WITH ITS BEARER: the cape spills flat on the
+ * ground under the fallen trunk — clasped at the shoulders, the cloth
+ * fans past the head and rolls toward the body's ground side, hem cut
+ * (tattered, scalloped, swallowtailed) and emblem still reading. No
+ * cloth sim on the dead: the wind lost this one. Painted FIRST, under
+ * everything — the body lies ON its own banner.
+ */
+function drawFallenCape(
+  ctx: CanvasRenderingContext2D,
+  rag: Ragdoll,
+  f: RagFrame,
+  s: number,
+  capeId: string,
+  seed: number,
+): void {
+  const st = capeStyle(capeId);
+  const g = rag.pts;
+  const pelvis = P(f, g[H.pelvis]!);
+  const chest = P(f, g[H.chest]!);
+  let ux = chest.x - pelvis.x;
+  let uy = chest.y - pelvis.y;
+  const ul = Math.hypot(ux, uy) || 1e-4;
+  ux /= ul;
+  uy /= ul;
+  const nx = -uy;
+  const ny = ux;
+  // The fall's roll: the cloth drifts toward the side the body shades
+  // (screen-down), biased by the seed so no two banners lie alike.
+  const downSide = ny >= 0 ? 1 : -1;
+  const drift = downSide * (0.35 + ((seed >>> 3) & 7) / 7 * 0.4);
+  // Cloth length from the garment's own cut, spread past the shoulders.
+  const clothL = Math.min(1.05, st.segs * st.segLen + 0.18) * s;
+  const shoulderHw = Math.max(st.shoulderW, 0.14) * s * 1.15;
+  const hemHw = Math.max(st.hemW, st.shoulderW + 0.04) * s * 1.35;
+  // Clasp points at the shoulder line; the fan runs past the chest.
+  const c1 = { x: chest.x + nx * shoulderHw, y: chest.y + ny * shoulderHw };
+  const c2 = { x: chest.x - nx * shoulderHw, y: chest.y - ny * shoulderHw };
+  const hx = chest.x + ux * clothL + nx * drift * clothL * 0.55;
+  const hy = chest.y + uy * clothL + ny * drift * clothL * 0.55;
+  // Ragged hem: five stations across the hem arc, lie jittered by the
+  // seed — ground cloth never lands in a ruler line.
+  const hem: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < 5; i++) {
+    const t = i / 4 - 0.5;
+    const wob = ((((seed >>> (i * 4)) & 15) / 15) - 0.5) * 0.14 * s;
+    hem.push({
+      x: hx + nx * t * hemHw * 2 + ux * wob,
+      y: hy + ny * t * hemHw * 2 + uy * wob,
+    });
+  }
+  const ground = shade(st.color, -8);
+  ctx.fillStyle = ground;
+  ctx.beginPath();
+  ctx.moveTo(c1.x, c1.y);
+  const h0 = hem[0]!;
+  ctx.lineTo(h0.x + nx * 0, h0.y);
+  for (let i = 1; i < 5; i++) {
+    const h = hem[i]!;
+    if (st.hem === 'swallowtail' && i === 2) {
+      // The banner's notch bites back toward the shoulders.
+      ctx.lineTo(h.x - ux * 0.16 * s, h.y - uy * 0.16 * s);
+    } else if (st.hem === 'scallop') {
+      const pv = hem[i - 1]!;
+      ctx.quadraticCurveTo(
+        (pv.x + h.x) / 2 + ux * 0.05 * s,
+        (pv.y + h.y) / 2 + uy * 0.05 * s,
+        h.x,
+        h.y,
+      );
+      continue;
+    } else if (st.hem === 'tattered') {
+      const pv = hem[i - 1]!;
+      ctx.lineTo((pv.x + h.x) / 2 + ux * 0.07 * s, (pv.y + h.y) / 2 + uy * 0.07 * s);
+    }
+    ctx.lineTo(h.x, h.y);
+  }
+  ctx.lineTo(c2.x, c2.y);
+  ctx.closePath();
+  ctx.fill();
+  // One hard crease where the cloth folded under itself in the fall.
+  ctx.fillStyle = shade(st.color, -20);
+  ctx.beginPath();
+  ctx.moveTo(chest.x + nx * downSide * shoulderHw * 0.5, chest.y + ny * downSide * shoulderHw * 0.5);
+  ctx.lineTo(hem[downSide > 0 ? 3 : 1]!.x, hem[downSide > 0 ? 3 : 1]!.y);
+  ctx.lineTo(hem[2]!.x, hem[2]!.y);
+  ctx.closePath();
+  ctx.fill();
+  // The hem band — the garment's signature accent survives the fall.
+  ctx.strokeStyle = st.trim;
+  ctx.lineWidth = Math.max(1, s * 0.028);
+  ctx.beginPath();
+  ctx.moveTo(hem[0]!.x, hem[0]!.y);
+  for (let i = 1; i < 5; i++) ctx.lineTo(hem[i]!.x, hem[i]!.y);
+  ctx.stroke();
+  // The stitched mark, halfway down the spilled cloth.
+  if (st.emblem) {
+    const ex = chest.x + ux * clothL * 0.5 + nx * drift * clothL * 0.25;
+    const ey = chest.y + uy * clothL * 0.5 + ny * drift * clothL * 0.25;
+    const er = 0.07 * s;
+    ctx.fillStyle = st.trim;
+    ctx.beginPath();
+    if (st.emblem === 'diamond') {
+      ctx.moveTo(ex, ey - er);
+      ctx.lineTo(ex + er * 0.75, ey);
+      ctx.lineTo(ex, ey + er);
+      ctx.lineTo(ex - er * 0.75, ey);
+    } else if (st.emblem === 'chevron') {
+      ctx.moveTo(ex - er, ey - er * 0.5);
+      ctx.lineTo(ex, ey + er * 0.5);
+      ctx.lineTo(ex + er, ey - er * 0.5);
+      ctx.lineTo(ex + er * 0.6, ey - er * 0.5);
+      ctx.lineTo(ex, ey + er * 0.05);
+      ctx.lineTo(ex - er * 0.6, ey - er * 0.5);
+    } else {
+      ctx.moveTo(ex - er * 0.2, ey - er);
+      ctx.lineTo(ex + er * 0.5, ey - er * 0.15);
+      ctx.lineTo(ex + er * 0.1, ey - er * 0.15);
+      ctx.lineTo(ex + er * 0.2, ey + er);
+      ctx.lineTo(ex - er * 0.5, ey + er * 0.15);
+      ctx.lineTo(ex - er * 0.1, ey + er * 0.15);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+/**
  * Paint a humanoid ragdoll in the rig's own dialect: trapezoid torso
  * with a hard shade half, chamfered block head with the hair slab,
  * two-segment limbs, square mitts, boot chips. Far-side limbs go
@@ -564,7 +766,7 @@ export function drawHumanoidRagdoll(
   nowMs = 0,
 ): void {
   if (look.skel) {
-    drawSkeletonRagdoll(ctx, rag, f, look.size, look.skel);
+    drawSkeletonRagdoll(ctx, rag, f, look.size, look.skel, look.gear, nowMs);
     return;
   }
   if (look.gol) {
@@ -670,17 +872,9 @@ export function drawHumanoidRagdoll(
       ctx.stroke();
     }
   };
-  // A fallen weapon lies along the forearm's own line, still in the
-  // fist that held it — the grip is the last thing a warrior gives up.
-  const drawHandWeapon = (elbow: number, hand: number, itemId: string, ench?: string): void => {
-    const el = P(f, g[elbow]!);
-    const hd = P(f, g[hand]!);
-    ctx.save();
-    ctx.translate(hd.x, hd.y);
-    ctx.rotate(Math.atan2(hd.y - el.y, hd.x - el.x));
-    drawFallenWeapon(ctx, itemId, s, nowMs, ench);
-    ctx.restore();
-  };
+  // The banner goes down under its bearer — before the tail, before
+  // the far limbs: the whole sprawl lies ON the spilled cloth.
+  if (gear?.cape) drawFallenCape(ctx, rag, f, s, gear.cape, rag.seed);
 
   // The kobold tail goes down first — slack on the ground under the
   // body, trailing off the pelvis away from the chest, ridge chips
@@ -743,36 +937,7 @@ export function drawHumanoidRagdoll(
   drawArm(H.elbowL, H.handL, -1);
   drawLeg(H.kneeL, H.footL, -1);
 
-  // The off hand keeps what it carried: a shield rides the fallen
-  // forearm (half-pinned under the trunk, as a real fall would leave
-  // it), a dual-wielded second blade lies along the far fist. Quivers
-  // live on the back — under the body, nothing to show.
-  if (gear?.offhand) {
-    const offSt = offhandStyle(gear.offhand);
-    if (offSt.kind === 'weapon') {
-      drawHandWeapon(H.elbowL, H.handL, gear.offhand, gear.offhandEnch);
-    } else if (isShieldKind(offSt.kind)) {
-      // A dropped shield does not lie flat on its face — it comes down
-      // on the arm that wore it and half-rolls onto its rim. It keeps
-      // the world painter, laid over on the forearm's own angle and
-      // turned steeply enough that the eye reads a fallen SHELL.
-      const el = P(f, g[H.elbowL]!);
-      const hd = P(f, g[H.handL]!);
-      const sh = shieldStyle(gear.offhand, offSt.kind, offSt.color, offSt.trim, offSt.boss);
-      drawShieldAt(ctx, sh, {
-        cx: (el.x + hd.x) / 2,
-        cy: (el.y + hd.y) / 2,
-        size: 0.24 * s,
-        theta: 1.08,
-        tilt: Math.atan2(hd.y - el.y, hd.x - el.x) + Math.PI / 2,
-        oside: hd.x >= el.x ? 1 : -1,
-      });
-    } else if (offSt.kind !== 'quiver') {
-      const el = P(f, g[H.elbowL]!);
-      const hd = P(f, g[H.handL]!);
-      drawOffhandOnArm(ctx, offSt, { kx: el.x, ky: el.y, ex: hd.x, ey: hd.y }, s, 0.3, false, nowMs);
-    }
-  }
+  if (gear) drawFallenOffhand(ctx, rag, f, s, gear, nowMs);
 
   // A robe's skirt lies past the hips, a slack cloth fan behind the
   // trunk — no flutter on the dead.
@@ -1284,7 +1449,9 @@ export function drawHumanoidRagdoll(
   drawArm(H.elbowR, H.handR, 1);
 
   // The steel goes with them: the mainhand lies in the near fist.
-  if (gear?.weapon) drawHandWeapon(H.elbowR, H.handR, gear.weapon, gear.weaponEnch);
+  if (gear?.weapon) {
+    drawWeaponInFist(ctx, rag, f, s, H.elbowR, H.handR, gear.weapon, nowMs, gear.weaponEnch);
+  }
 }
 
 /**
@@ -1525,6 +1692,8 @@ function drawSkeletonRagdoll(
   f: RagFrame,
   size: number,
   sk: SkeletonLook,
+  gear?: CorpseGear,
+  nowMs = 0,
 ): void {
   const s = f.s * size;
   const hv = sk.heavy;
@@ -1533,6 +1702,9 @@ function drawSkeletonRagdoll(
   const pelvis = P(f, g[H.pelvis]!);
   const chest = P(f, g[H.chest]!);
   const head = P(f, g[H.head]!);
+
+  // The champion's cape spills under the bones before anything paints.
+  if (gear?.cape) drawFallenCape(ctx, rag, f, s, gear.cape, rag.seed);
 
   // Trunk axis pelvis→chest, with its perpendicular.
   let ux = chest.x - pelvis.x;
@@ -1577,6 +1749,10 @@ function drawSkeletonRagdoll(
   // Far pair behind the trunk.
   drawArmB(H.elbowL, H.handL, -1);
   drawLeg(H.kneeL, H.footL, -1);
+
+  // The guard's shield comes down on the arm that bore it — the dead
+  // keep their kit exactly like the flesh dead do.
+  if (gear) drawFallenOffhand(ctx, rag, f, s, gear, nowMs);
 
   // --- the fallen cage: cavity slab, rib bars crossing the axis, the
   // sternum riding the up-facing edge, then the vertebra chain down to
@@ -1726,11 +1902,39 @@ function drawSkeletonRagdoll(
       ctx.fill();
     }
   }
+  // The guard's iron stays seated on the skull — the live helmet
+  // painter runs inside the fallen head's rotated frame, exactly as
+  // it does for the flesh dead (crown toward -y, face up).
+  if (gear?.head) {
+    const helmSt = helmStyle(gear.head);
+    if (helmSt) {
+      drawHelmet(ctx, helmSt, {
+        s,
+        headX: 0,
+        headY: 0,
+        hw,
+        hh,
+        cut,
+        headR,
+        fx: 0,
+        profileK: 0,
+        backK: 0,
+        lead: 1,
+        hurt: false,
+        nowMs,
+      });
+    }
+  }
   ctx.restore();
 
   // Near pair over the trunk.
   drawLeg(H.kneeR, H.footR, 1);
   drawArmB(H.elbowR, H.handR, 1);
+
+  // The blade the bones were buried with lies in the near fist.
+  if (gear?.weapon) {
+    drawWeaponInFist(ctx, rag, f, s, H.elbowR, H.handR, gear.weapon, nowMs, gear.weaponEnch);
+  }
 }
 
 export interface BeastCorpseLook {

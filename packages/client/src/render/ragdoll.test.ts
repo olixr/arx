@@ -190,6 +190,58 @@ test('a geared corpse paints its armor and steel — death never strips the body
   );
 });
 
+test('the bones keep their kit — a geared skeleton outpaints a bare one', () => {
+  const paint = (gear?: HumanoidCorpseLook['gear']): number => {
+    const rag = buildHumanoidRagdoll(1.05, 4141);
+    rag.launch(0.8, 0, 0.6, HUMANOID_UPPER, HUMANOID_FEET);
+    settle(rag, 2.5);
+    const ctx = mockCtx();
+    const look: HumanoidCorpseLook = {
+      bodyColor: '#8a7a5c',
+      skinColor: '#e8b98a',
+      hairColor: '#4a3221',
+      size: 1.05,
+      skel: { bone: '#e3ddcc', cavity: '#241a2e', heavy: 1, cracked: false },
+      gear,
+    };
+    drawHumanoidRagdoll(ctx, rag, { ax: 400, ay: 300, s: 96 }, look, 1234);
+    return ctx.fills;
+  };
+  const bare = paint();
+  const geared = paint({
+    head: 'iron_helm',
+    weapon: 'iron_sword',
+    offhand: 'oak_kiteshield',
+  });
+  assert.ok(
+    geared > bare + 3,
+    `the skeleton guard's helm, sword and shield must paint (bare ${bare}, geared ${geared})`,
+  );
+});
+
+test('the banner comes down with its bearer — a caped corpse paints the cloth', () => {
+  const base: HumanoidCorpseLook = {
+    bodyColor: '#8a7a5c',
+    skinColor: '#e8b98a',
+    hairColor: '#4a3221',
+    size: 1,
+  };
+  const paint = (look: HumanoidCorpseLook): number => {
+    const rag = buildHumanoidRagdoll(1, 77);
+    rag.launch(0.8, 0, 0.6, HUMANOID_UPPER, HUMANOID_FEET);
+    settle(rag, 2.5);
+    const ctx = mockCtx();
+    drawHumanoidRagdoll(ctx, rag, { ax: 400, ay: 300, s: 96 }, look, 1234);
+    return ctx.fills;
+  };
+  const bare = paint(base);
+  const caped = paint({ ...base, gear: { cape: 'cape_champion' } });
+  assert.ok(
+    caped > bare,
+    `the spilled cape must paint under the body (bare ${bare}, caped ${caped})`,
+  );
+});
+
 test('a settled ragdoll sleeps — stepping it further moves nothing', () => {
   const rag = buildHumanoidRagdoll(0.85, 55);
   rag.launch(0.6, 0, 0.4, HUMANOID_UPPER, HUMANOID_FEET);

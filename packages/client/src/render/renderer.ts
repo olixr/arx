@@ -653,14 +653,26 @@ const LOW_STICK_TILES = new Set<number>([
   Tile.ChestBossOpen,
 ]);
 /**
- * Ragdoll rest: how long a settled corpse lingers before it fades. The
- * long lie is the point — mow through a camp and the bodies stay down
- * around you, evidence of the fight, then wisp away.
+ * Ragdoll rest: how long a settled corpse lingers before it fades. THE
+ * LASTING FIELD: the long lie is the point — mow through a camp and
+ * the bodies stay down around you for MINUTES, evidence of the fight
+ * you can read walking back through the zone, then wisp away.
  */
-const CORPSE_LIE_MS = 8000;
-const CORPSE_FADE_MS = 1200;
-/** Most corpses lying around at once; the oldest gives way first. */
-const CORPSE_MAX = 24;
+const CORPSE_LIE_MS = 300_000;
+const CORPSE_FADE_MS = 2600;
+/**
+ * The corpse budget slides with the machine (THE FIELD PAYS ITS WAY):
+ * a device holding its frame budget earns the full field, a straining
+ * one steps down toward the floor — and over-budget corpses are never
+ * popped, the oldest settled body is NUDGED into its fade early, one
+ * at a time, so a mass kill thins gracefully instead of blinking.
+ */
+const CORPSE_BUDGET_MIN = 12;
+const CORPSE_BUDGET_MAX = 48;
+/** Absolute array bound — the memory backstop past all nudging. */
+const CORPSE_HARD_MAX = 64;
+/** One nudge per beat: how fast over-budget thinning is allowed to go. */
+const CORPSE_NUDGE_MS = 150;
 
 interface AnimState {
   walkPhase: number;
@@ -1373,9 +1385,22 @@ export class Renderer {
     /** First trunk touchdown already made its thud sound. */
     thudded: boolean;
     settledAt: number | null;
+    /** When the fade begins — set at settle (settledAt + the lie),
+     *  pulled EARLIER by the budget nudge. Null while tumbling. */
+    fadeAt: number | null;
   }> = [];
   /** Body-thud hook: the renderer sees the landing, main.ts owns sfx. */
   onCorpseThud?: (heavy: boolean, x: number, y: number) => void;
+  /**
+   * The sliding corpse budget (THE FIELD PAYS ITS WAY): stepped by the
+   * same frame-time signal the adaptive resolution reads — a machine
+   * holding its own display budget earns the full field, a straining
+   * one sheds toward the floor. Adjusted on a slow clock so it never
+   * thrashes with one bad frame.
+   */
+  private corpseBudget = 28;
+  private corpseBudgetStepAt = 0;
+  private corpseNudgeAt = 0;
 
   /**
    * THE FALL IS NEVER THE END (beastcraft v2 Phase 3): downed
@@ -41653,9 +41678,22 @@ export class Renderer {
       items.push(fItem);
     }
 
-    // Ragdolls mid-tumble and corpses at rest.
+    // Ragdolls mid-tumble and corpses at rest. The lasting field lives
+    // for minutes and mostly lies beyond the camera — cull by screen
+    // position before building anything (the widest sprawl, an elder
+    // owl's thrown wing or an ogre's club reach, stays under the pad).
     this.tickCorpses(game, now);
+    const corpsePad = this.camera.scale * 5;
     for (const c of this.corpses) {
+      const cp = this.camera.worldToScreen(c.x, c.y, this.w, this.h);
+      if (
+        cp.x < -corpsePad ||
+        cp.x > this.w + corpsePad ||
+        cp.y < -corpsePad ||
+        cp.y > this.h + corpsePad
+      ) {
+        continue;
+      }
       const cItem = this.corpseItem(c, now);
       cItem.strat = this.stratAt(c.x, c.y);
       items.push(cItem);
@@ -44469,6 +44507,26 @@ export class Renderer {
   private static readonly NO_EQUIP: Partial<Record<string, string>> = {};
 
   /**
+   * ONE kit law for the living and the dead: the per-defId issued
+   * equipment, resolved through a single chain shared by npcItem and
+   * spawnCorpse — the corpse can never drift out of the live rig's
+   * wardrobe. Returns the static records themselves (a fresh literal
+   * here would churn the body-sprite signature's identity ids).
+   */
+  private static equipFor(defId: string): Partial<Record<string, string>> {
+    return (
+      Renderer.GOBLIN_EQUIP[defId] ??
+      Renderer.GNOLL_EQUIP[defId] ??
+      Renderer.KOBOLD_EQUIP[defId] ??
+      Renderer.SKELETON_EQUIP[defId] ??
+      Renderer.BRIGAND_EQUIP[defId] ??
+      Renderer.OGRE_EQUIP[defId] ??
+      Renderer.HOBGOBLIN_EQUIP[defId] ??
+      Renderer.NO_EQUIP
+    );
+  }
+
+  /**
    * Skeleton stature ladder: the dead stand taller and gaunter than
    * goblins — the archer a touch lighter, the guard a head above the
    * rank-and-file, the champion looming over all of them.
@@ -44546,7 +44604,9 @@ export class Renderer {
           radius,
           color: def?.color ?? '#999',
           defId,
-          seed,
+          // The corpse-coat law: painters seed by RAW eid, exactly as
+          // the standing beast does — the downed friend keeps its coat.
+          seed: eid,
           ...(corpseOwl ? { owl: corpseOwl } : {}),
         },
         lastSeen: performance.now(),
@@ -44767,10 +44827,7 @@ export class Renderer {
         hurt,
         // Every skeleton carries what it was buried with — the gear is
         // the variant's silhouette (and each piece really drops).
-        equip:
-          // Static per defId — a fresh literal here would churn the
-          // body-sprite signature's identity ids every frame.
-          Renderer.GOBLIN_EQUIP[defId] ?? Renderer.GNOLL_EQUIP[defId] ?? Renderer.KOBOLD_EQUIP[defId] ?? Renderer.SKELETON_EQUIP[defId] ?? Renderer.BRIGAND_EQUIP[defId] ?? Renderer.OGRE_EQUIP[defId] ?? Renderer.HOBGOBLIN_EQUIP[defId] ?? Renderer.NO_EQUIP,
+        equip: Renderer.equipFor(defId),
         // The goblin's garment ground is its own rolled hide — the
         // tunic block under the pot-gut overpaint must never flash a
         // different green at the silhouette edge.
@@ -46528,7 +46585,8 @@ export class Renderer {
       rag.launch(sx, sy, sev, HUMANOID_UPPER, HUMANOID_FEET);
       const eq = death.equip;
       const gear =
-        eq && (eq.head || eq.body || eq.legs || eq.boots || eq.gloves || eq.weapon || eq.offhand)
+        eq &&
+        (eq.head || eq.body || eq.legs || eq.boots || eq.gloves || eq.weapon || eq.offhand || eq.cape)
           ? {
               head: eq.head,
               body: eq.body,
@@ -46537,6 +46595,7 @@ export class Renderer {
               gloves: eq.gloves,
               weapon: eq.weapon,
               offhand: eq.offhand,
+              cape: eq.cape,
               weaponEnch: death.ench?.weapon,
               offhandEnch: death.ench?.offhand,
             }
@@ -46598,6 +46657,25 @@ export class Renderer {
       // The fallen soldier's torso stays IRON — the cuirass outlives
       // the body wearing it (the loot-story law's visual half).
       const bodyColor = corpseGob?.hide ?? corpseOgr?.hide ?? corpseSkr?.hide ?? corpseHob?.iron ?? def.color ?? '#999';
+      // THE KIT FALLS WITH THE WEARER: the same issued equipment that
+      // dresses the live rig dresses the corpse — the brigand's
+      // leathers, the guard's helm and shield, the ogre's greatclub.
+      // Every piece really drops (the loot-story law), so the body on
+      // the ground shows exactly what the fight was against.
+      const kit = Renderer.equipFor(death.defId);
+      const kitGear =
+        kit.weapon || kit.offhand || kit.head || kit.body || kit.legs || kit.cape
+          ? {
+              head: kit.head,
+              body: kit.body,
+              legs: kit.legs,
+              boots: kit.boots,
+              gloves: kit.gloves,
+              weapon: kit.weapon,
+              offhand: kit.offhand,
+              cape: kit.cape,
+            }
+          : undefined;
       rag = buildHumanoidRagdoll(size, seed);
       rag.launch(sx, sy, sev, HUMANOID_UPPER, HUMANOID_FEET);
       look = {
@@ -46636,6 +46714,7 @@ export class Renderer {
           ogr: corpseOgr,
           skr: corpseSkr,
           hob: corpseHob,
+          gear: kitGear,
         },
       };
     } else {
@@ -46660,7 +46739,11 @@ export class Renderer {
           radius,
           color: def.color ?? '#999',
           defId: death.defId,
-          seed,
+          // THE CORPSE-COAT LAW for every seeded species painter: the
+          // live lynx/fox/wolf/boar coats roll their clusters from the
+          // RAW eid, so the fallen body must too — the defId-mixed rag
+          // seed stays with the physics jitter, never the pelt.
+          seed: death.eid,
           ...(corpseOwl ? { owl: corpseOwl } : {}),
         },
       };
@@ -46674,8 +46757,16 @@ export class Renderer {
       vy: ky * speed,
       thudded: false,
       settledAt: null,
+      fadeAt: null,
     });
-    if (this.corpses.length > CORPSE_MAX) this.corpses.shift();
+    // The memory backstop: past the hard bound the oldest SETTLED body
+    // goes (a mid-tumble launch is the freshest read on screen — never
+    // steal that); the graceful thinning below the bound is the budget
+    // nudge's job in tickCorpses.
+    if (this.corpses.length > CORPSE_HARD_MAX) {
+      const idx = this.corpses.findIndex((c) => c.settledAt !== null);
+      this.corpses.splice(idx === -1 ? 0 : idx, 1);
+    }
   }
 
   /**
@@ -46685,12 +46776,46 @@ export class Renderer {
    * friction-pinned feet instead of spinning like a thrown prop.
    */
   private tickCorpses(game: ClientGame, now: number): void {
+    // THE FIELD PAYS ITS WAY: step the budget on a slow clock against
+    // the same signal the adaptive resolution reads — sustained misses
+    // of THIS display's frame budget shed corpses fast, comfortable
+    // headroom wins them back slowly (down in twos, up in ones).
+    if (now - this.corpseBudgetStepAt > 500) {
+      this.corpseBudgetStepAt = now;
+      if (this.frameEma > Math.max(this.minDt * 1.25, 21)) {
+        this.corpseBudget = Math.max(CORPSE_BUDGET_MIN, this.corpseBudget - 2);
+      } else if (this.frameEma < Math.max(this.minDt * 1.08, 18)) {
+        this.corpseBudget = Math.min(CORPSE_BUDGET_MAX, this.corpseBudget + 1);
+      }
+    }
+    // Over budget: NUDGE, never pop — the oldest settled body that is
+    // not already fading starts its fade now, one per beat, so a camp
+    // massacre thins from the back of the pile at a readable pace.
+    // Only STANDING bodies count against the budget: a fading corpse
+    // is already leaving, and counting it would keep the nudger firing
+    // through the whole dissolve — thinning the field far below the
+    // budget it was asked to hold.
+    if (now - this.corpseNudgeAt > CORPSE_NUDGE_MS && this.corpses.length > this.corpseBudget) {
+      let standing = 0;
+      for (const c of this.corpses) {
+        if (c.fadeAt === null || c.fadeAt > now) standing++;
+      }
+      if (standing > this.corpseBudget) {
+        for (const c of this.corpses) {
+          if (c.settledAt !== null && c.fadeAt !== null && c.fadeAt > now) {
+            c.fadeAt = now;
+            this.corpseNudgeAt = now;
+            break;
+          }
+        }
+      }
+    }
     const dt = this.frameDt;
     const impacts: RagImpact[] = [];
     for (let i = this.corpses.length - 1; i >= 0; i--) {
       const c = this.corpses[i]!;
       if (c.settledAt !== null) {
-        if (now - c.settledAt > CORPSE_LIE_MS + CORPSE_FADE_MS) this.corpses.splice(i, 1);
+        if (c.fadeAt !== null && now - c.fadeAt > CORPSE_FADE_MS) this.corpses.splice(i, 1);
         continue;
       }
       if (dt <= 0) continue;
@@ -46738,7 +46863,10 @@ export class Renderer {
           this.onCorpseThud?.(imp.speed > 4, c.x + imp.x, c.y);
         }
       }
-      if (c.rag.settled) c.settledAt = now;
+      if (c.rag.settled) {
+        c.settledAt = now;
+        c.fadeAt = now + CORPSE_LIE_MS;
+      }
     }
   }
 
@@ -46754,8 +46882,10 @@ export class Renderer {
     const scale = this.camera.scale;
     const p = this.liftedWTS(c.x, c.y);
     const b = c.rag.bounds();
-    const lieAge = c.settledAt === null ? 0 : now - c.settledAt;
-    const alpha = Math.max(0, Math.min(1, 1 - (lieAge - CORPSE_LIE_MS) / CORPSE_FADE_MS));
+    // The fade clock: set at settle, pulled earlier by the budget
+    // nudge — one derivation for the natural end and the thinning.
+    const alpha =
+      c.fadeAt === null ? 1 : Math.max(0, Math.min(1, 1 - (now - c.fadeAt) / CORPSE_FADE_MS));
     // The bounds come from the skeleton POINTS, but the painters reach
     // well past them (body mass overhangs the spine ends, head blocks,
     // horns, beaks). A margin smaller than that overhang clips the
@@ -46791,12 +46921,18 @@ export class Renderer {
     // past the fist, a tall helm past the crown — grow the scratch
     // rect or the outline pass rings the clipped cut.
     const gear = c.look.kind === 'humanoid' ? c.look.h.gear : undefined;
+    // Humanoid margins scale with STATURE: the skeleton points carry
+    // the size, so the painter overhang past them grows with it too —
+    // an ogre's fallen greatclub reaches size-times the player reach.
+    const hSize = c.look.kind === 'humanoid' ? Math.max(1, c.look.h.size) : 1;
     const margin =
       (c.look.kind === 'beast'
         ? 0.35 + c.look.b.spec.bodyLen * 0.6 + reach + (cattle ? cattle.hornLen * 1.5 + 0.2 : 0)
         : gear?.weapon || gear?.offhand
-          ? 0.95
-          : gear
+          ? 0.95 * hSize
+          : gear?.cape
+            ? 0.9 * hSize
+            : gear
             ? 0.6
             : 0.25) * scale;
     return {
@@ -46804,9 +46940,9 @@ export class Renderer {
       elevated: this.renderLift(c.x, c.y) !== 0,
       alpha: alpha < 1 ? alpha : undefined,
       // Body-sprite cache: a settled corpse is the stillest body in
-      // the game — one blit for its whole 8s lie. Dynamic while the
-      // ragdoll still tumbles and through the wisp fade (the fade
-      // alpha itself rides item.alpha, outside the cache).
+      // the game — one blit for its whole minutes-long lie. Dynamic
+      // while the ragdoll still tumbles and through the wisp fade (the
+      // fade alpha itself rides item.alpha, outside the cache).
       olKey: `c${this.olObjId(c)}`,
       olSig: `${Math.round(c.x * 1000)}|${Math.round(c.y * 1000)}`,
       olDyn: c.settledAt === null || alpha < 1,
@@ -46830,7 +46966,7 @@ export class Renderer {
       draw: () => {
         if (alpha <= 0) return;
         // Soul wisps drift up off the body as it fades.
-        if (lieAge > CORPSE_LIE_MS && Math.random() < this.frameDt * 9) {
+        if (alpha < 1 && Math.random() < this.frameDt * 9) {
           this.particles.burst(c.x + (Math.random() - 0.5) * 0.3, c.y - 0.1, 1, ['#efe3ff', '#c8c2d8'], {
             speed: 0.5,
             life: 0.8,
