@@ -1696,6 +1696,15 @@ interface PlayerComp {
   petSigSent: string;
   /** Wounds carried across trailing: the hp the body left with (null = whole). */
   petHp: number | null;
+  /**
+   * THE ONE LIVE NUMBER: the live companion's hp as the mirror last
+   * saw it. Combat writes that hp from a dozen lanes (blasts, dots,
+   * mends, level growth, the tend) — taxing every lane with a dirty
+   * mark would be a standing invitation to a stale card, so the input
+   * pass watches this single number instead and raises petDirty when
+   * it moves. Everything ELSE the household mirror reads is evented.
+   */
+  petHpWatch: number;
   /** Pet ladder trickle awaiting the savePlayer cadence (POSTGRES write law). */
   petXpDirty: boolean;
   /** THE BOND MOMENT's per-stall cooldown (slot → next ms). In-memory
@@ -3540,6 +3549,7 @@ export class GameServer {
       petCalmTicks: 0,
       petSigSent: '',
       petHp: null,
+      petHpWatch: -1,
       petXpDirty: false,
       petBondAt: new Map(),
       sheathed: false,
@@ -3695,6 +3705,10 @@ export class GameServer {
     // last session banked (state is per-fight RAM; a fresh boot reads
     // zeroes, which is the truth).
     this.sendCharges(player);
+    // The saddle and the household speak on the doorstep (the mirrors
+    // are evented now — no per-tick sweep will catch a fresh socket).
+    this.sendRide(player);
+    this.sendPet(player);
     session.sendJson({ t: 'callings', answered: [...player.callings] });
     session.sendJson({ t: 'time', ofs: this.timeOfsTicks });
     this.sendCooldowns(player);
@@ -4899,8 +4913,12 @@ export class GameServer {
 
   /**
    * THE PREDICTOR LEARNS ITS LEGS: mirror saddle state + steady mult
-   * to the own client whenever either changes. Called every tick from
-   * the input pass — the signature check makes the steady state free.
+   * to the own client whenever either changes. EVENTED (core-audit
+   * debt 12): called at the mutation sites of everything the
+   * signature reads — saddle up/down, mount grants, recomputeGear
+   * (gear stride, draw perk, passives), every speed-bearing buff
+   * birth and expiry, the death clear — and flushed via rideDirty.
+   * The signature check makes an over-eager mark free.
    */
   private sendRide(player: PlayerComp): void {
     const mult = this.steadySpeedMult(player);
@@ -8272,6 +8290,10 @@ export class GameServer {
       this.announceLadderClimbs(player, skill, levelBefore, levelAfter);
       // A crossed skill floor can open a quest gate.
       this.pushQuestAvail(player);
+      // The keeper's hand grew: every companion's level, ceiling, and
+      // the card's own @bc all derive from beastcraft — the household
+      // mirror must retell them (evented, core-audit debt 12).
+      if (skill === 'beastcraft') this.petDirty.add(player);
     }
   }
 
@@ -9556,11 +9578,21 @@ export class GameServer {
    * Macro-cells the authored-sites roster claims. Both sweeps skip
    * them (the plan must never evict its own landmarks), and the
    * seeder below restores them whenever the ledger disagrees.
-   * Computed at CALL time — the geography is a live registry now, and
-   * a cached projection would go stale the moment the studio moves a
-   * milepost (the ROAD_BOUNDS lesson).
+   * CACHED, INVALIDATED AT THE SWAP (core-audit debt 12): this used
+   * to rebuild at call time — the honest answer to the ROAD_BOUNDS
+   * lesson (nothing may cache a projection of the live geography) —
+   * but every tickFrontier beat and every notePoiKill paid the Map
+   * allocation and the full site walk for a roster that only ever
+   * changes when the plan itself is swapped. The ONE live swap door
+   * is reloadGeography (boot's replaceGeography runs before this
+   * object exists), so the cache dies there and the lesson holds:
+   * the projection can never outlive the registry it projects.
+   * Callers read only (.has/.get) — nothing may mutate the shared Map.
    */
+  private authoredCellsCache: Map<string, string> | null = null;
+
   private authoredCells(): Map<string, string> {
+    if (this.authoredCellsCache) return this.authoredCellsCache;
     const cells = new Map<string, string>();
     for (const s of AUTHORED_WILD_SITES) {
       const key = s.cell
@@ -9568,6 +9600,7 @@ export class GameServer {
         : poiCellKey(poiCellOf(s.x!), poiCellOf(s.y!));
       cells.set(key, s.id);
     }
+    this.authoredCellsCache = cells;
     return cells;
   }
 
@@ -9795,6 +9828,10 @@ export class GameServer {
     this.world.dropAll();
     for (const s of this.sessions) s.knownChunks.clear();
     this.anchorCache = null;
+    // The authored-cells projection died with the roster it projected
+    // (a Studio-moved milepost must claim its NEW cell on the very
+    // next sweep — the ROAD_BOUNDS lesson, kept under the cache).
+    this.authoredCellsCache = null;
     // The seat context reads SETTLED_ANCHORS and PLANNED_ZONE_RECTS —
     // both just swapped in place. A stale seat cache kept an already-
     // cached capital seated inside a NEW planned rect (or at a moved
@@ -12930,7 +12967,7 @@ export class GameServer {
       if (!takeSlot(player.inventory, slotIndex, 1)) return;
       player.mountsOwned.add(def.mount);
       player.mountChosen = def.mount;
-      player.rideSigSent = ''; // the mirror carries the new string
+      this.rideDirty.add(player); // the mirror carries the new string
       if (player.characterId > 0) {
         this.accounts.saveMountGrant(player.characterId, def.mount, Date.now());
       }
@@ -12981,6 +13018,9 @@ export class GameServer {
       );
       player.session?.sendJson({ t: 'inv', slots: player.inventory });
       this.sendBuffs(player);
+      // A tonic can carry speed — and the drink it REPLACED could
+      // have, too. Either way the steady mult may have moved.
+      this.rideDirty.add(player);
       return;
     }
 
@@ -14295,6 +14335,8 @@ export class GameServer {
     player.petHp = null;
     player.petEid = petEid;
     player.petCalmTicks = 0;
+    // 'trailing' becomes 'heel' on the card the moment the body stands.
+    this.petDirty.add(player);
   }
 
   /** Take the companion's body out of the world (trailing, stabling, logout). */
@@ -14306,6 +14348,9 @@ export class GameServer {
     this.removeFromChunks(player.petEid);
     this.ecs.destroy(player.petEid);
     player.petEid = null;
+    // The card reads 'trailing' (or the row's next state) now — every
+    // caller of this choke inherits the mark for free.
+    this.petDirty.add(player);
   }
 
   /**
@@ -14679,6 +14724,7 @@ export class GameServer {
       if (owner.characterId > 0) {
         this.accounts.savePetRest(owner.characterId, row.slot, 'resting', row.restedAt);
       }
+      this.petDirty.add(owner); // the card starts the rest countdown
     }
     owner.session?.sendJson({
       t: 'chat',
@@ -14761,6 +14807,7 @@ export class GameServer {
           this.accounts.savePetRest(player.characterId, row.slot, 'heel', null);
         }
         player.petHp = null;
+        this.petDirty.add(player); // the rested rise reaches the card
         player.session?.sendJson({
           t: 'chat',
           channel: 'system',
@@ -14772,6 +14819,7 @@ export class GameServer {
         if (player.characterId > 0) {
           this.accounts.savePetRest(player.characterId, row.slot, 'stabled', null);
         }
+        this.petDirty.add(player); // the rested settle reaches the card
         player.session?.sendJson({
           t: 'chat',
           channel: 'system',
@@ -14789,6 +14837,7 @@ export class GameServer {
     const before = petLevelFor(row.xp, base, bc);
     row.xp += amount;
     owner.petXpDirty = true;
+    this.petDirty.add(owner); // the card's xp readout moves with the row
     const after = petLevelFor(row.xp, base, bc);
     if (after > before) {
       // The body grows where it stands: new ceiling, the growth kept
@@ -16872,6 +16921,11 @@ export class GameServer {
       health.maxHp = levelForXp(player.skills.vitality ?? 0) + player.gear.maxHp;
       health.hp = Math.max(1, Math.min(health.hp, health.maxHp));
     }
+    // The ONE recompute site is also the ride mirror's one gear-side
+    // mutation site: gear stride, the draw perk, and the worn
+    // passives (fleet_footed lives in the equipment this rebuilt
+    // from) all feed the steady mult the predictor walks by.
+    this.rideDirty.add(player);
   }
 
   /** Focus spent by the currently answered set. */
@@ -19158,8 +19212,9 @@ export class GameServer {
       // and a whole stance could live and die invisible.
       this.sendBuffs(player);
       // A stance carrying speed changes the steady mult THIS tick —
-      // the ride mirror is what the predictor walks by.
-      if (self.speedMult !== undefined) this.sendRide(player);
+      // the ride mirror is what the predictor walks by (the flag
+      // flushes before this tick's snapshots go out).
+      if (self.speedMult !== undefined) this.rideDirty.add(player);
     }
   }
 
@@ -19355,16 +19410,22 @@ export class GameServer {
         switch (reaction.effect) {
           case 'aoe':
           case 'chain': {
-            // Arc/blast into everything else nearby.
-            for (const [otherEid, otherNpc] of this.npcs) {
-              if (otherEid === npcEid) continue;
-              const opos = this.positions.get(otherEid);
-              if (!opos) continue;
+            // Arc/blast into everything else nearby. THE INDEX SERVES
+            // THE FIGHT here too (core-audit debt 12): reaction radii
+            // are small and authored (2.2 tiles at the widest), so
+            // the whole-map this.npcs walk paid the world for a ring.
+            // Pay once: damageNpc can knock a struck body into a new
+            // chunk (or off the books) mid-visit, and the ring must
+            // never bill the same body twice for the re-file.
+            const paid = new Set<EntityId>([npcEid]);
+            this.forEachNpcNear(pos.x, pos.y, reaction.radius, (otherEid, otherNpc, opos) => {
+              if (paid.has(otherEid)) return;
               if (Math.hypot(opos.x - pos.x, opos.y - pos.y) - otherNpc.def.radius > reaction.radius) {
-                continue;
+                return;
               }
+              paid.add(otherEid);
               this.damageNpc(otherEid, dmg, sourceEid, style, {});
-            }
+            });
             break;
           }
           case 'spread': {
@@ -19375,15 +19436,20 @@ export class GameServer {
               apply.status === carried
                 ? { status: carried, power: apply.power, durationTicks: apply.durationTicks }
                 : { status: carried, power: other.power, durationTicks: 60 };
-            for (const [otherEid, otherNpc] of this.npcs) {
-              if (otherEid === npcEid) continue;
-              const opos = this.positions.get(otherEid);
-              if (!opos) continue;
+            // The ring again (core-audit debt 12), and the pay-once
+            // Set matters MORE here: applyStatusToNpc can detonate a
+            // fresh reaction on a neighbor mid-visit — recursion that
+            // kills and re-chunks bodies under the iterator — and a
+            // twice-visited host would double-dip the plague.
+            const infected = new Set<EntityId>([npcEid]);
+            this.forEachNpcNear(pos.x, pos.y, reaction.radius, (otherEid, otherNpc, opos) => {
+              if (infected.has(otherEid)) return;
               if (Math.hypot(opos.x - pos.x, opos.y - pos.y) - otherNpc.def.radius > reaction.radius) {
-                continue;
+                return;
               }
+              infected.add(otherEid);
               this.applyStatusToNpc(otherEid, plague, sourceEid, style);
-            }
+            });
             break;
           }
           case 'stun': {
@@ -20116,6 +20182,22 @@ export class GameServer {
    */
   private chargesDirty = new Set<EntityId>();
 
+  /**
+   * THE MIRRORS GO EVENT-DRIVEN (core-audit debt 12): sendRide and
+   * sendPet used to rebuild their whole signature string per player
+   * per tick just to discover — almost always — that nothing moved.
+   * Now every mutation site of the state those signatures read raises
+   * its flag here (the chargesDirty discipline) and the tick flushes
+   * once, before snapshots. The signature gate INSIDE each sender
+   * stays as the dedup, so an over-eager mark costs one string build,
+   * never a resend — mark liberally, the gate keeps the wire honest.
+   * PlayerComp refs, not eids: several mutation chokes (the pet
+   * despawn, the limp home) hold the player and not the id, and a
+   * ref that outlives its player flushes into a null session no-op.
+   */
+  private rideDirty = new Set<PlayerComp>();
+  private petDirty = new Set<PlayerComp>();
+
   private procState(player: PlayerComp, id: string): ProcRuntime {
     let st = player.procs.get(id);
     if (!st) {
@@ -20387,6 +20469,8 @@ export class GameServer {
           }),
         );
         this.sendBuffs(player);
+        // A speed surge moves the steady mult — the ride mirror's law.
+        if (a.stat === 'speed') this.rideDirty.add(player);
         radius = 0.9;
         break;
       }
@@ -20728,6 +20812,7 @@ export class GameServer {
                 channel: 'momentum',
               }),
             );
+            this.rideDirty.add(attacker); // the quickened feet reach the predictor
           }
         }
         for (const b of attacker.buffs) {
@@ -20984,6 +21069,7 @@ export class GameServer {
           mkBuff({ speedMult: 1.25, name: 'Battle Rush', untilTick: this.tickCount + 50 }),
         );
         this.sendBuffs(killer);
+        this.rideDirty.add(killer); // the chase speed reaches the predictor
       }
       // On-kill haste (Battlecharged etc.): victory shaves the Q/E
       // slots — THE QUICKENED HAND's second engine, same index law as
@@ -21403,6 +21489,7 @@ export class GameServer {
         mkBuff({ speedMult: 1.35, name: 'Second Wind', untilTick: this.tickCount + 60 }),
       );
       this.sendBuffs(player);
+      this.rideDirty.add(player); // the surge speed reaches the predictor
     }
 
     if (health.hp <= 0) {
@@ -21502,6 +21589,9 @@ export class GameServer {
       health.hp = health.maxHp;
       this.statuses.delete(eid); // death is at least a clean slate
       player.buffs = [];
+      // The clean slate may have swept a speed buff — and the
+      // dismount below no-ops afoot, so the mirror is flagged here.
+      this.rideDirty.add(player);
       resetCombo(player.combo); // no string survives the fall
       player.pendingStrike = null; // nor does a blow in flight
       this.dismount(eid, player); // nobody wakes up in the saddle
@@ -25405,7 +25495,7 @@ export class GameServer {
       }
       player.mountsOwned.add(def.id);
       player.mountChosen = def.id;
-      player.rideSigSent = ''; // owned set changed — force the mirror
+      this.rideDirty.add(player); // owned set changed — the mirror must speak
       this.dismount(eid, player); // switching beasts steps down first
       this.mountToggle(eid, player, pos);
       return;
@@ -26830,6 +26920,19 @@ export class GameServer {
       this.chargesDirty.clear();
     }
 
+    // The evented mirrors flush here, once, before the snapshots —
+    // however many moments moved the saddle or the household this
+    // tick, each mirror speaks at most once (and the signature gate
+    // inside swallows the marks that changed nothing on the wire).
+    if (this.rideDirty.size > 0) {
+      for (const p of this.rideDirty) this.sendRide(p);
+      this.rideDirty.clear();
+    }
+    if (this.petDirty.size > 0) {
+      for (const p of this.petDirty) this.sendPet(p);
+      this.petDirty.clear();
+    }
+
     for (const session of this.sessions) {
       if (session.playerEid === null) continue;
       this.updateInterest(session);
@@ -26854,23 +26957,38 @@ export class GameServer {
     if (player.buffs.length > 0) {
       // A chip-bearing buff running out clears its chip: consumables
       // (channel) and named combat buffs alike (THE VISIBLE FIGHT).
-      const expired = player.buffs.some(
-        (b) => this.tickCount >= b.untilTick && (b.channel !== undefined || b.name !== undefined),
-      );
+      // A speed-bearing buff running out changes the steady mult the
+      // predictor walks by — the expiry is a mutation site of the
+      // ride mirror like any other, now that the mirror is evented.
+      let chipGone = false;
+      let speedGone = false;
+      for (const b of player.buffs) {
+        if (this.tickCount < b.untilTick) continue;
+        if (b.channel !== undefined || b.name !== undefined) chipGone = true;
+        if (b.speedMult !== 1) speedGone = true;
+      }
       player.buffs = player.buffs.filter((b) => this.tickCount < b.untilTick);
-      if (expired) this.sendBuffs(player);
+      if (chipGone) this.sendBuffs(player);
+      if (speedGone) this.rideDirty.add(player);
     }
     // Underground refuses the saddle — checked per tick so every way
     // down (delve stair, riftgate, /tp) dismounts honestly at the
     // threshold. UNDERGROUND_Y covers the dark band AND the dungeon
     // slots above DUNGEON_MIN_Y.
     if (player.mountId && pos.y >= UNDERGROUND_Y) this.dismount(eid, player);
-    // The steady-mult mirror: a change-signature no-op on quiet ticks.
-    this.sendRide(player);
     // A finished convalescence rises on the same beat...
     this.tickPetRest(eid, player);
-    // ...and the household mirror carries it out, same discipline.
-    this.sendPet(player);
+    // ...and THE ONE LIVE NUMBER: the companion's hp is the one
+    // household fact combat writes from lanes too many to flag, so
+    // the mirror watches the number itself — an O(1) compare, never
+    // the old whole-roster signature rebuild.
+    if (player.petEid !== null) {
+      const petHp = this.healths.get(player.petEid)?.hp ?? -1;
+      if (petHp !== player.petHpWatch) {
+        player.petHpWatch = petHp;
+        this.petDirty.add(player);
+      }
+    }
     const equipped = this.equippedWeapon(player);
     const style = equipped?.weapon.style ?? null;
     let moved = false;
@@ -27048,6 +27166,7 @@ export class GameServer {
         // Wolf Reflexes: the dodge itself becomes an engage/escape tool.
         if (this.hasPassive(player, 'dodge_haste')) {
           player.buffs.push(mkBuff({ speedMult: 1.35, untilTick: this.tickCount + 30 }));
+          this.rideDirty.add(player); // the reflex speed reaches the predictor
         }
       }
       player.lastProcessedSeq = frame.seq;

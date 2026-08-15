@@ -23,7 +23,12 @@ import {
   hashCoords,
   type DangerAnchor,
 } from '@arx/shared';
-import { intersectsRings, intersectsZones, type ClaimRing, type PoiZoneRect } from './pois.js';
+import { CAPITAL_CLEARANCE, siteScan, type ClaimRing, type PoiZoneRect } from './pois.js';
+
+// The clearance was born here; THE ONE SITING SCAN moved it to
+// pois.ts (the import arrow only points one way) — re-exported so
+// every historical importer keeps its door.
+export { CAPITAL_CLEARANCE };
 
 /**
  * THE CAPITAL LAW (docs/strongholds-plan.md Phase 3) — one stronghold
@@ -52,9 +57,6 @@ export const ST_CAPITAL = 0x501e71;
 
 /** Materialize/decide reach beyond the interest window, in tiles. */
 export const CAPITAL_PAD_TILES = 192;
-
-/** Mask reach around a capital's rect (the intersectsZones dialect). */
-export const CAPITAL_CLEARANCE = 24;
 
 /**
  * Sampled probe stride over the footprint — scaled so a zone-size
@@ -195,11 +197,6 @@ export function strongholdSeat(
     const ay = Math.round(py) + jy;
     const x0 = ax - halfW;
     const y0 = ay - halfH;
-    if (y0 + prefab.height >= DARK_BAND_Y - CAPITAL_CLEARANCE) continue;
-    if (intersectsZones(x0, y0, prefab.width, prefab.height, ctx.zoneRects, CAPITAL_CLEARANCE)) {
-      continue;
-    }
-    if (intersectsRings(x0, y0, prefab.width, prefab.height, ctx.claimRings)) continue;
     if (
       yieldToNeighbor({
         x: ax - Math.floor(maskW / 2),
@@ -216,26 +213,27 @@ export function strongholdSeat(
     // shore consumer reads. A dry heart keeps no capital this age.
     const shore = layout.shore === true;
     if (shore && !shoreProbeAt(seed, ax, ay, Math.max(halfW, halfH) + 6)) continue;
-    // The sampled grid: the wall conforms to the land, but only so
-    // far. A shore layout counts water and strand as BUILDABLE — the
-    // weir-folk build into the shallows (the zone's own ground stands
-    // over them) — capped so the capital never simply drowns.
-    let probes = 0;
-    let rough = 0;
-    let wet = 0;
-    for (let sy = 0; sy < prefab.height; sy += stride) {
-      for (let sx = 0; sx < prefab.width; sx += stride) {
-        probes++;
-        const probe = groundProbeAt(seed, x0 + sx, y0 + sy);
-        if (shore && (probe === 'water' || probe === 'sand')) {
-          wet++;
-          continue;
-        }
-        if (probe !== 'grass' && probe !== 'forest') rough++;
-      }
-    }
-    if (rough / probes > FRONTIER.capitalRoughMax) continue;
-    if (shore && wet / probes > 0.35) continue; // a third in the shallows, no more
+    // THE ONE SCAN, capital preset: dark band and zones under the
+    // capital's own clearance, the band measured from the footprint's
+    // FOOT (the integer form this seat always used), the sampled grid
+    // at probeStride with the frontier's rough cap. A shore layout
+    // counts water and strand as BUILDABLE — the weir-folk build into
+    // the shallows (wetExempt) — and the CAP on wet stays here:
+    // capped so the capital never simply drowns.
+    const verdict = siteScan(
+      seed, ax, ay, prefab.width, prefab.height,
+      ctx.zoneRects, ctx.claimRings,
+      {
+        zonePad: CAPITAL_CLEARANCE,
+        darkPad: CAPITAL_CLEARANCE,
+        darkFrom: 'foot',
+        stride,
+        tolerance: FRONTIER.capitalRoughMax,
+        wetExempt: shore,
+      },
+    );
+    if (!verdict) continue;
+    if (shore && verdict.wet / verdict.probes > 0.35) continue; // a third in the shallows, no more
     // THE FOUND DOOR, honored by the land: every gate apron walkable.
     // A shore layout may open WATER GATES (the skral swim out), but
     // at least two doors must still stand on honest earth — the

@@ -70,6 +70,7 @@ import {
   zoneToJson,
   validateZone,
   type VoiceExt,
+  type GeographyDef,
   type LootTableDef,
   type NpcActorDef,
   type NpcDef,
@@ -78,6 +79,7 @@ import {
   type ZoneDef,
   type ZoneJson,
 } from '@arx/content';
+import { hashString } from '@arx/shared';
 import { config } from '../config.js';
 import {
   importContentDoc,
@@ -137,6 +139,36 @@ const ID_RE = /^[a-z][a-z0-9_-]{0,63}$/;
 const MAX_BODY = 32 * 1024 * 1024;
 /** Hard cap on authored zone dims — a fat-fingered width shouldn't OOM the server. */
 const MAX_DIM = 512;
+
+/**
+ * THE COUNSEL PAYS ONCE (core-audit debt 12): geographyWarnings walks
+ * every route point through the elevation field — 10^5..10^6 fbm
+ * evals, tens of ms — SYNCHRONOUSLY on the game event loop, and the
+ * Studio's World view POLLS the routes that serve it. The survey is
+ * pure in (def, seed), so an identical doc gets its cached answer,
+ * keyed by a content hash of the def (length + FNV over the JSON —
+ * cheap next to one fbm pass). Capped tiny FIFO: the working set is
+ * "the live doc and the doc just saved", never a library. THE SPAN
+ * LAW GROWS TEETH stays OUTSIDE this cache on purpose — the PUT's
+ * deck gate judges CANDIDATE docs and must always run fresh.
+ */
+const WARNINGS_CACHE_CAP = 4;
+const warningsCache = new Map<string, string[]>();
+
+function cachedGeographyWarnings(def: GeographyDef): string[] {
+  const json = JSON.stringify(def);
+  const key = `${config.worldSeed}:${json.length}:${hashString(json)}`;
+  const hit = warningsCache.get(key);
+  if (hit) return hit;
+  const warnings = geographyWarnings(def, config.worldSeed, (x, y) =>
+    elevationAt(config.worldSeed, x, y),
+  );
+  if (warningsCache.size >= WARNINGS_CACHE_CAP) {
+    warningsCache.delete(warningsCache.keys().next().value!);
+  }
+  warningsCache.set(key, warnings);
+  return warnings;
+}
 
 export type MapsApiHandler = (req: IncomingMessage, res: ServerResponse) => Promise<boolean>;
 
@@ -230,7 +262,7 @@ export function createMapsApi(
           ...snap,
           geography: def,
           geographyEdited: edited,
-          warnings: geographyWarnings(def, config.worldSeed, (x, y) => elevationAt(config.worldSeed, x, y)),
+          warnings: cachedGeographyWarnings(def),
           // The edge-harmony registry, packed — the editor mirrors it
           // so its client-side worldgen blends exactly like the server.
           edgeProfiles: ZONE_EDGE_PROFILES.map(packZoneEdgeProfile),
@@ -262,7 +294,7 @@ export function createMapsApi(
           sendJson(res, 200, {
             def,
             edited,
-            warnings: geographyWarnings(def, config.worldSeed, (x, y) => elevationAt(config.worldSeed, x, y)),
+            warnings: cachedGeographyWarnings(def),
           });
           return true;
         }
@@ -305,7 +337,7 @@ export function createMapsApi(
           await importContentDoc(db, 'geography', 'world', result.def);
           const swept = game.reloadGeography(result.def);
           console.log(`[content] geography saved + live (world regenerating)`);
-          sendJson(res, 200, { ok: true, swept, warnings: geographyWarnings(result.def, config.worldSeed, (x, y) => elevationAt(config.worldSeed, x, y)) });
+          sendJson(res, 200, { ok: true, swept, warnings: cachedGeographyWarnings(result.def) });
           return true;
         }
         if (req.method === 'DELETE') {

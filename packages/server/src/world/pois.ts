@@ -75,6 +75,49 @@ const ST_HOLD = 0x501e62;
 /** Tiles a POI footprint (and its stamps) must keep clear of zones. */
 export const ZONE_CLEARANCE = 24;
 
+/**
+ * THE ONE SCAN's named pads (core-audit debt 8): the five siting
+ * scans once restated their clearances inline and the numbers
+ * drifted — 24/8/6 are LAWS, not accidents, so they carry names.
+ *
+ * The tight pad authored placement pays: authored sites are the plan
+ * placing its own landmarks near its own streets, deliberately — 6,
+ * never the frontier's 24. traceTrail's steps walk under the same
+ * law (the town's ground is not ours to wear, but a worn path may
+ * come near it).
+ */
+export const AUTHORED_ZONE_PAD = 6;
+
+/** A compound's wings hug their court closer than the court hugs the
+ * world — 8, not the frontier's 24 (the finds' FIND_ZONE_PAD kin:
+ * texture may stand nearer the world's edges, never inside them). */
+export const WING_ZONE_PAD = 8;
+
+/**
+ * Mask reach around a capital's rect (the intersectsZones dialect).
+ * Lives HERE, not in strongholds.ts (which re-exports it), because
+ * THE ONE SITING SCAN pays it and strongholds already imports from
+ * this file — the import arrow only points one way.
+ */
+export const CAPITAL_CLEARANCE = 24;
+
+/**
+ * THE LANDMARK THRESHOLD (the relaxed-siting hybrid charter): a
+ * footprint this long on either axis is EXPANSIVE — it samples its
+ * ground at stride 3 and absorbs a 10% rough fraction, where small
+ * stamps probe every tile and stay near-strict at 5%. The number was
+ * written three times before debt 8 named it; the name IS the law.
+ */
+export const LANDMARK_FOOTPRINT_MIN = 34;
+/** Ground-scan stride an expansive footprint samples at. */
+export const LANDMARK_SCAN_STRIDE = 3;
+/** Rough fraction an expansive footprint absorbs. */
+export const LANDMARK_ROUGH_MAX = 0.1;
+/** Rough fraction a small stamp absorbs — near-strict, never zero
+ * (the whole-footprint all-standable demand was statistically brutal;
+ * the capitals' Phase-3 audit). */
+export const STAMP_ROUGH_MAX = 0.05;
+
 /** Candidate anchors probed per cell before giving up. */
 const SITE_TRIES = 24;
 
@@ -270,12 +313,19 @@ export function poiForCell(
     const span = POI_CELL - margin * 2;
     if (span <= 0) return null; // a footprint bigger than its cell
     const siteBase = stream(seed, ST_SITE, cellX, cellY, epoch);
+    // THE RELAXED SITING, generalized (the hybrid charter): a
+    // whole-footprint all-standable scan was always statistically
+    // brutal (the capitals' Phase-3 audit) and THE INFLUENCE LAW
+    // grew every footprint — every scan tolerates a rough fraction,
+    // scaled to what the footprint can absorb (footprintScanLaw:
+    // expansive grounds ≥34/axis sample stride-3 at ≤10%, small
+    // stamps stay near-strict at ≤5%).
+    const { landmark, stride, tolerance } = footprintScanLaw(prefab);
     let best: { tx: number; ty: number; score: number } | null = null;
     for (let k = 0; k < SITE_TRIES; k++) {
       const tx = x0 + margin + (hashCoords(siteBase, k, 0) % span);
       const ty = y0 + margin + (hashCoords(siteBase, k, 1) % span);
-      // Quick rejects before the full footprint scan.
-      if (ty + prefab.height / 2 >= DARK_BAND_Y - ZONE_CLEARANCE) continue;
+      // Quick reject before the full footprint scan.
       if (!standable(groundProbeAt(seed, tx, ty))) continue;
       // THE SHORE CAMP: a shore-flagged def stands within a stone's
       // throw of open water or not at all — the same elevation truth
@@ -289,43 +339,25 @@ export function poiForCell(
       // village carries its own dug vein at heart, and its hem is
       // what works the real waterline — anchor-reach-10 on a 60-tile
       // footprint would demand the heart itself stand IN the lake.
-      const expanse =
-        def.compound || Math.max(prefab.width, prefab.height) >= 34;
+      const expanse = def.compound || landmark;
       const shoreReach = expanse ? margin - 14 + SHORE_CAMP_REACH : SHORE_CAMP_REACH;
       if (def.shore && !shoreProbeAt(seed, tx, ty, shoreReach)) continue;
-      const fx0 = tx - Math.floor(prefab.width / 2);
-      const fy0 = ty - Math.floor(prefab.height / 2);
-      if (intersectsZones(fx0, fy0, prefab.width, prefab.height, ctx.zoneRects)) continue;
-      // THE EXCLUSION LAW (Phase 4): a claimed yard refuses every
-      // materialization candidate — satellites, tolls, renewals, wakes
-      // and fresh rolls alike, since they all pass through this scan.
-      if (intersectsRings(fx0, fy0, prefab.width, prefab.height, ctx.claimRings)) continue;
-      // THE RELAXED SITING, generalized (the hybrid charter): a
-      // whole-footprint all-standable scan was always statistically
-      // brutal (the capitals' Phase-3 audit) and THE INFLUENCE LAW
-      // grew every footprint — every scan now tolerates a rough
-      // fraction, scaled to what the footprint can absorb: expansive
-      // grounds (≥34/axis) sample stride-3 at ≤10%, small stamps
-      // stay near-strict at ≤5%.
-      const landmark = Math.max(prefab.width, prefab.height) >= 34;
-      const stride = landmark ? 3 : 1;
-      const tolerance = landmark ? 0.1 : 0.05;
-      let score = 0;
-      let rough = 0;
-      let probes = 0;
-      for (let dy = 0; dy < prefab.height; dy += stride) {
-        for (let dx = 0; dx < prefab.width; dx += stride) {
-          probes++;
-          const cls = groundProbeAt(seed, fx0 + dx, fy0 + dy);
-          if (!standable(cls)) {
-            rough++;
-            continue;
-          }
-          if (cls === 'grass') score++; // open ground beats tree-choked
-        }
-      }
-      if (rough / probes > tolerance) continue;
-      if (!best || score > best.score) best = { tx, ty, score };
+      // THE EXCLUSION LAW (Phase 4) rides inside THE ONE SCAN: a
+      // claimed yard refuses every materialization candidate —
+      // satellites, tolls, renewals, wakes and fresh rolls alike,
+      // since they all pass through this scan. The common core (dark
+      // band, zones, rings, sampled rough fraction) is siteScan's;
+      // the cheap dark-band compare now rides after the anchor
+      // probes — a pure-predicate reorder, no verdict moved.
+      const verdict = siteScan(
+        seed, tx, ty, prefab.width, prefab.height,
+        ctx.zoneRects, ctx.claimRings,
+        { zonePad: ZONE_CLEARANCE, darkPad: ZONE_CLEARANCE, darkFrom: 'center', stride, tolerance },
+      );
+      if (!verdict) continue;
+      // Open ground beats tree-choked: the best-scoring honest
+      // footprint of the tries wins.
+      if (!best || verdict.score > best.score) best = { tx, ty, score: verdict.score };
     }
     if (!best) return null;
 
@@ -471,6 +503,136 @@ export function intersectsRings(
 }
 
 /**
+ * The relaxed-siting knobs a footprint's size earns (decideSite and
+ * findAuthoredAnchor computed this pair independently, both against
+ * the thrice-written 34): landmarks stride 3 / tolerate 10%, stamps
+ * stride 1 / tolerate 5%.
+ */
+export function footprintScanLaw(prefab: PrefabDef): {
+  landmark: boolean;
+  stride: number;
+  tolerance: number;
+} {
+  const landmark = Math.max(prefab.width, prefab.height) >= LANDMARK_FOOTPRINT_MIN;
+  return {
+    landmark,
+    stride: landmark ? LANDMARK_SCAN_STRIDE : 1,
+    tolerance: landmark ? LANDMARK_ROUGH_MAX : STAMP_ROUGH_MAX,
+  };
+}
+
+/** The knobs one siting scan turns — each call site's preset
+ * reproduces its exact pre-consolidation constants. */
+export interface SiteScanPolicy {
+  /** Zone-rect clearance pad: frontier 24, wings/finds 8, authored 6. */
+  zonePad: number;
+  /** Dark-band clearance pad (tiles above DARK_BAND_Y). */
+  darkPad: number;
+  /**
+   * Which edge the dark band measures. 'center' = anchor + h/2, the
+   * cell scans' float compare; 'foot' = footprint bottom (fy0 + h),
+   * the capitals' integer compare. NOT unified: the two forms differ
+   * by one row at odd heights, and the zero-drift law forbids moving
+   * either verdict.
+   */
+  darkFrom: 'center' | 'foot';
+  /** Ground-scan stride: 1 for strict stamps, LANDMARK_SCAN_STRIDE
+   * for landmarks, probeStride for zone-size capital walls. */
+  stride: number;
+  /** Rough fraction tolerated. 0 = strict: the first rough probe
+   * refuses, early-exit (the wings' and finds' old cost profile). */
+  tolerance: number;
+  /** Capital rects to hold CAPITAL_CLEARANCE off. Omit at sites that
+   * never checked capitals per-candidate (decideSite and findsForCell
+   * mask whole CELLS before any roll; strongholdSeat IS the capital
+   * and yields to neighbors by its own law instead). */
+  capitals?: readonly PoiZoneRect[];
+  /**
+   * THE DROWNED CHARTER's exemption: 'water'/'sand' probes count as
+   * wet, never rough — the weir-folk build into the shallows. The
+   * CAP on wet stays at the capital's call site (site-specific law);
+   * this knob only keeps the classification honest.
+   */
+  wetExempt?: boolean;
+}
+
+/** What an accepted footprint reports — the counts callers rank or
+ * cap by. A refused footprint reports null and nothing else. */
+export interface SiteScanVerdict {
+  /** Open-ground probes ('grass') — decideSite ranks candidates by
+   * it (open ground beats tree-choked). */
+  score: number;
+  /** Wet probes (counted only under wetExempt). */
+  wet: number;
+  /** Total probes sampled (the fraction denominators). */
+  probes: number;
+}
+
+/**
+ * THE ONE SITING SCAN (core-audit debt 8, siting half) — the common
+ * core the five siting scans (decideSite, wing placement,
+ * findAuthoredAnchor, findsForCell, strongholdSeat) each restated
+ * with drifting constants: dark-band clearance, zone rects under a
+ * pad, claim rings, the capital mask, and the sampled rough-fraction
+ * ground read over an anchor-centered footprint. One footprint in,
+ * one verdict out.
+ *
+ * Site-specific law STAYS at the sites: decideSite's shore-reach
+ * math and anchor quick-probe, the wings' overlap ring, the finds'
+ * spacing law, the capitals' neighbor-yield, wet cap, and gate
+ * aprons — this function is only what was genuinely five-times
+ * copied. The internal order (dark band → zones → rings → capitals →
+ * ground) is every site's own order for the common checks; each
+ * check is a pure predicate of the candidate, so the sites' extras
+ * moved beside the call without moving a single verdict — proved
+ * against a full before/after sweep at seed 24601.
+ */
+export function siteScan(
+  seed: number,
+  ax: number,
+  ay: number,
+  w: number,
+  h: number,
+  zoneRects: readonly PoiZoneRect[],
+  claimRings: readonly ClaimRing[],
+  policy: SiteScanPolicy,
+): SiteScanVerdict | null {
+  const fx0 = ax - Math.floor(w / 2);
+  const fy0 = ay - Math.floor(h / 2);
+  const foot = policy.darkFrom === 'foot' ? fy0 + h : ay + h / 2;
+  if (foot >= DARK_BAND_Y - policy.darkPad) return null;
+  if (intersectsZones(fx0, fy0, w, h, zoneRects, policy.zonePad)) return null;
+  if (intersectsRings(fx0, fy0, w, h, claimRings)) return null;
+  if (policy.capitals && intersectsZones(fx0, fy0, w, h, policy.capitals, CAPITAL_CLEARANCE)) {
+    return null;
+  }
+  let score = 0;
+  let rough = 0;
+  let wet = 0;
+  let probes = 0;
+  for (let dy = 0; dy < h; dy += policy.stride) {
+    for (let dx = 0; dx < w; dx += policy.stride) {
+      probes++;
+      const cls = groundProbeAt(seed, fx0 + dx, fy0 + dy);
+      if (policy.wetExempt && (cls === 'water' || cls === 'sand')) {
+        wet++;
+        continue;
+      }
+      if (!standable(cls)) {
+        rough++;
+        // Strict sites always broke on the first bad tile — the same
+        // verdict, kept at the same cost.
+        if (policy.tolerance === 0) return null;
+        continue;
+      }
+      if (cls === 'grass') score++;
+    }
+  }
+  if (rough / probes > policy.tolerance) return null;
+  return { score, wet, probes };
+}
+
+/**
  * A compound hold's furthest reach from its anchor (tiles): court half
  * + the ring gap + a wing's own span. The SITE scan margins by this so
  * a war-ground never pokes out of its cell or into a neighbor's work.
@@ -540,7 +702,7 @@ export function traceTrail(
     }
     const cls = groundProbeAt(seed, wx, wy);
     if (cls !== 'grass' && cls !== 'forest') break;
-    if (intersectsZones(wx, wy, 1, 1, zoneRects, 6)) break;
+    if (intersectsZones(wx, wy, 1, 1, zoneRects, AUTHORED_ZONE_PAD)) break;
     points.push({ x: wx, y: wy, t });
   }
   return { points, reachedRoad: false };
@@ -710,9 +872,6 @@ export function composePoi(
       const wcy = Math.round(site.anchorY + Math.sin(ang) * radius);
       const wx0 = wcx - Math.floor(wp.width / 2);
       const wy0 = wcy - Math.floor(wp.height / 2);
-      if (wcy + wp.height / 2 >= DARK_BAND_Y - ZONE_CLEARANCE) continue;
-      if (intersectsZones(wx0, wy0, wp.width, wp.height, ctx.zoneRects, 8)) continue;
-      if (intersectsRings(wx0, wy0, wp.width, wp.height, ctx.claimRings)) continue;
       if (overlaps(wx0, wy0, wp.width, wp.height, cx0, cy0, prefab.width, prefab.height)) continue;
       if (
         wings.some((w) =>
@@ -721,16 +880,15 @@ export function composePoi(
       ) {
         continue;
       }
-      let ok = true;
-      for (let dy = 0; dy < wp.height && ok; dy++) {
-        for (let dx = 0; dx < wp.width; dx++) {
-          if (!standable(groundProbeAt(seed, wx0 + dx, wy0 + dy))) {
-            ok = false;
-            break;
-          }
-        }
-      }
-      if (!ok) continue;
+      // THE ONE SCAN, strict preset: a wing tolerates NO rough ground
+      // (tolerance 0 = first bad tile refuses, the old early-exit
+      // cost) and hugs its court under the tight WING pad.
+      const verdict = siteScan(
+        seed, wcx, wcy, wp.width, wp.height,
+        ctx.zoneRects, ctx.claimRings,
+        { zonePad: WING_ZONE_PAD, darkPad: ZONE_CLEARANCE, darkFrom: 'center', stride: 1, tolerance: 0 },
+      );
+      if (!verdict) continue;
       wings.push({ prefab: wp, x0: wx0, y0: wy0, cx: wcx, cy: wcy, wing: i });
     }
   }
@@ -1824,37 +1982,24 @@ export function findAuthoredAnchor(
   // tolerate a rough fraction, and SLIDE farther from the pin (a
   // milepost stepping 20 tiles along its road is still the milepost;
   // a territory that can't breathe there stands nowhere honestly).
-  const landmark = Math.max(prefab.width, prefab.height) >= 34;
-  const stride = landmark ? 3 : 1;
-  const tolerance = landmark ? 0.1 : 0.05;
-  const fits = (tx: number, ty: number): boolean => {
-    if (ty + prefab.height / 2 >= DARK_BAND_Y - ZONE_CLEARANCE) return false;
-    const fx0 = tx - Math.floor(prefab.width / 2);
-    const fy0 = ty - Math.floor(prefab.height / 2);
-    if (intersectsZones(fx0, fy0, prefab.width, prefab.height, ctx.zoneRects, 6)) return false;
-    // THE EXCLUSION LAW reaches authored pins too: decideSite's doc
-    // claims every materialization candidate passes the ring check —
-    // this scan didn't, so a re-seeded milepost could nudge its
-    // footprint onto a player's claimed yard (the exact event the
-    // rings exist to forbid). The capital mask rides along for the
-    // same reason.
-    if (intersectsRings(fx0, fy0, prefab.width, prefab.height, ctx.claimRings)) return false;
-    for (const c of ctx.capitals) {
-      if (fx0 < c.x + c.w + 24 && c.x - 24 < fx0 + prefab.width &&
-          fy0 < c.y + c.h + 24 && c.y - 24 < fy0 + prefab.height) {
-        return false;
-      }
-    }
-    let rough = 0;
-    let probes = 0;
-    for (let dy = 0; dy < prefab.height; dy += stride) {
-      for (let dx = 0; dx < prefab.width; dx += stride) {
-        probes++;
-        if (!standable(groundProbeAt(seed, fx0 + dx, fy0 + dy))) rough++;
-      }
-    }
-    return rough / probes <= tolerance;
-  };
+  const { stride, tolerance } = footprintScanLaw(prefab);
+  // THE EXCLUSION LAW reaches authored pins too: decideSite's doc
+  // claims every materialization candidate passes the ring check —
+  // this scan didn't, so a re-seeded milepost could nudge its
+  // footprint onto a player's claimed yard (the exact event the
+  // rings exist to forbid). The capital mask rides along for the
+  // same reason — THIS is the one site that checks capitals per
+  // candidate (the cell scans mask whole cells before any roll), so
+  // its preset alone passes them.
+  const fits = (tx: number, ty: number): boolean =>
+    siteScan(seed, tx, ty, prefab.width, prefab.height, ctx.zoneRects, ctx.claimRings, {
+      zonePad: AUTHORED_ZONE_PAD,
+      darkPad: ZONE_CLEARANCE,
+      darkFrom: 'center',
+      stride,
+      tolerance,
+      capitals: ctx.capitals,
+    }) !== null;
   if (fits(x, y)) return { x, y };
   for (let r = 1; r <= maxNudge; r++) {
     for (let dy = -r; dy <= r; dy++) {

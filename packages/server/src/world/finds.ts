@@ -7,7 +7,6 @@ import {
   hashCoords,
 } from '@arx/shared';
 import {
-  DARK_BAND_Y,
   FRONTIER,
   dangerLaw,
   familiesOf,
@@ -23,10 +22,9 @@ import { roadBearingAt } from '@arx/content';
 import { capitalMasked, strongholdLayouts, strongholdSeat } from './strongholds.js';
 import {
   POI_CELL,
-  intersectsRings,
-  intersectsZones,
   poiForCell,
   poiScanOrder,
+  siteScan,
   traceTrail,
   type PoiContext,
   type Trail,
@@ -183,29 +181,29 @@ export function findsForCell(
     for (let t = 0; t < FIND_TRIES; t++) {
       const ax = cx + ((draw(10 + t * 2) % 21) - 10);
       const ay = cy + ((draw(11 + t * 2) % 21) - 10);
-      if (ay + prefab.height / 2 >= DARK_BAND_Y - FIND_ZONE_PAD) continue;
       // THE SHORE FIND: the anchor itself must sit on the bank.
       if (def.shore && !shoreProbeAt(seed, ax, ay, SHORE_FIND_REACH)) continue;
-      const fx0 = ax - Math.floor(prefab.width / 2);
-      const fy0 = ay - Math.floor(prefab.height / 2);
-      if (intersectsZones(fx0, fy0, prefab.width, prefab.height, ctx.zoneRects, FIND_ZONE_PAD)) {
-        continue;
-      }
-      if (intersectsRings(fx0, fy0, prefab.width, prefab.height, ctx.claimRings)) continue;
       // THE SPACING LAW: a find keeps clear of the cell's site and of
       // every find already accepted (slot order = deterministic).
       if (siteAnchor && Math.hypot(ax - siteAnchor.x, ay - siteAnchor.y) < FIND_SPACING) continue;
       if (out.some((f) => Math.hypot(ax - f.anchorX, ay - f.anchorY) < FIND_SPACING)) continue;
-      let ok = true;
-      for (let dy = 0; dy < prefab.height && ok; dy++) {
-        for (let dx = 0; dx < prefab.width; dx++) {
-          if (!standable(groundProbeAt(seed, fx0 + dx, fy0 + dy))) {
-            ok = false;
-            break;
-          }
-        }
+      // THE ONE SCAN, strict preset: texture stands only on wholly
+      // honest ground (tolerance 0 = first bad tile refuses, the old
+      // early-exit cost), under the finds' own tight pad on both the
+      // zone rects and the dark band. NO capitals in this preset —
+      // findsForCell masks whole CELLS above, before any slot rolls,
+      // never per candidate.
+      if (
+        !siteScan(seed, ax, ay, prefab.width, prefab.height, ctx.zoneRects, ctx.claimRings, {
+          zonePad: FIND_ZONE_PAD,
+          darkPad: FIND_ZONE_PAD,
+          darkFrom: 'center',
+          stride: 1,
+          tolerance: 0,
+        })
+      ) {
+        continue;
       }
-      if (!ok) continue;
       out.push({
         slot,
         defId: def.id,

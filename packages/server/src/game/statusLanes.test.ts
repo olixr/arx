@@ -54,6 +54,11 @@ function npcSlate(def: Record<string, unknown> = {}) {
     broadcastFx: (m: { text?: string }) => fx.push(m),
     damageNpc: (eid: unknown, dmg: unknown) => hits.push({ eid, dmg }),
     applyStatusToNpc: proto.applyStatusToNpc,
+    // The reaction rings walk the chunk index now (core-audit debt
+    // 12); this slate stands one body and no index, so the honest
+    // ring is empty — exactly what the old whole-map walk saw after
+    // skipping the detonating body itself.
+    forEachNpcNear: () => undefined,
   };
   return { s, statuses, hits, fx };
 }
