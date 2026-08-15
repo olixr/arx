@@ -1426,6 +1426,28 @@ const defs: LootTableDef[] = [
     ],
   },
   {
+    // THE OLD RAZORBACK pays like the terror it is: ivory off the
+    // jaw, the forest floor's hoard out of its cheeks, and whatever
+    // its last argument left snagged in the quills.
+    id: 'dire_boar',
+    desc: 'Aged ivory, a deep larder, and the wood\'s spoils in the bristles.',
+    rarityBonus: 2,
+    entries: [
+      { item: 'bones' },
+      { item: 'razorback_tusk', qty: [1, 2], chance: 0.8 },
+      { item: 'raw_beef', qty: [1, 2], chance: 0.7 },
+      { item: 'scrap_hide', qty: [2, 4], chance: 0.8 },
+      // The digger's hoard: what the snout found stays in the cheeks.
+      { item: 'truffle', chance: 0.2 },
+      { item: 'coins', qty: [20, 55], chance: 0.5 },
+      { item: 'crimson_essence', qty: [1, 2], chance: 0.25 },
+      // It walks the bull's country and the hart's glades like its
+      // little cousin — and wins far more often.
+      ...setDrops('aurochs', 0.012),
+      ...setDrops('hartsong', 0.012),
+    ],
+  },
+  {
     id: 'giant_beetle',
     desc: 'Ground chitin is half dust already.',
     entries: [

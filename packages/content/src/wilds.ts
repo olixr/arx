@@ -106,6 +106,9 @@ export const WILD_ROSTER: readonly WildEntry[] = [
   { npc: 'rat', weight: 1, tiers: [1, 1], biomes: ['grass'], band: [1, 2], spread: 2, habitat: 'warren' },
   { npc: 'giant_beetle', weight: 1.5, tiers: [1, 2], biomes: ['grass'] },
   { npc: 'boar', weight: 2, tiers: [1, 3], biomes: ['forest'], band: [2, 3] },
+  // THE OLD RAZORBACK roots the deep wood alone by day — a hill of
+  // quills glimpsed between the trunks, best walked around.
+  { npc: 'dire_boar', weight: 0.7, tiers: [3, 6], biomes: ['forest'] },
   // --------------------------------------------- the standing perils
   { npc: 'wolf', weight: 2, tiers: [2, 5], biomes: ['forest'], band: [2, 3], habitat: 'den', family: 'wolfkin' },
   { npc: 'adder', weight: 1, tiers: [2, 4], biomes: ['grass'] },
@@ -118,6 +121,17 @@ export const WILD_ROSTER: readonly WildEntry[] = [
   // that was not on yesterday's map.
   { npc: 'colossus_turtle', weight: 0.5, tiers: [4, 6], biomes: ['grass', 'forest'] },
   // ------------------------------------------------- the night shift
+  // After dark the sounder runs behind the old razorback — the same
+  // promotion the dire wolf earned: straggler to leader.
+  {
+    npc: 'boar',
+    weight: 1.5,
+    tiers: [3, 5],
+    biomes: ['forest'],
+    hours: NIGHT,
+    band: [2, 3],
+    lead: { npc: 'dire_boar' },
+  },
   {
     npc: 'wolf',
     weight: 2,

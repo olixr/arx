@@ -651,7 +651,7 @@ const BEAR_TOES = [-0.63, -0.22, 0.22, 0.63] as const;
 const TURTLE_CLAW_FAN = [-0.55, 0, 0.55] as const;
 /** Species whose horn splits at the toe — the cloven line. Coursers
  *  and garrons keep the whole horn. */
-const CLOVEN_HOOF = /^(cow|bull|boar|ram|sheep|stag|hind)/;
+const CLOVEN_HOOF = /^(cow|bull|boar|dire_boar|ram|sheep|stag|hind)/;
 
 /**
  * One two-segment arm: shoulder → elbow (sleeve) → forearm (skin) →
@@ -10203,23 +10203,51 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     foot: 'claw',
     legColor: '#a8adbd',
   },
+  // THE RAZOR HUMP: short thick drivers under a front-loaded wedge —
+  // a wider track than the old stilts (far legs never cross the chest
+  // at quarter bands) and a lower ride, built to shove.
   boar: {
     rig: {
-      legs: quadLegs(0.24, 0.13),
+      legs: quadLegs(0.24, 0.14),
       legLen: 0.24,
-      rise: 0.21,
+      rise: 0.2,
       liftAmp: 0.06,
       runSpeed: 3.8,
-      turnRate: 7,
+      turnRate: 7.5,
     },
-    bodyLen: 0.38,
-    bodyRise: 0.27,
+    bodyLen: 0.4,
+    bodyRise: 0.26,
     kneeFwd: [1, 1, -1, -1],
     hipFwd: 0.9,
-    hipSide: 0.55,
-    legW: 0.07,
+    hipSide: 0.6,
+    legW: 0.085,
     foot: 'hoof',
-    legColor: '#463527',
+    footScale: 0.9,
+    legColor: '#3a2c21',
+  },
+  // THE MOUNTAIN AT THE SHOULDER: the dire boar is a DESIGN, never an
+  // upscale — longer-boned than its cousin with the front pair
+  // carrying a bison tower, split long-forearm over short cannon, on
+  // cloven hooves sized to the leg (never slippers).
+  dire_boar: {
+    rig: {
+      legs: quadLegs(0.31, 0.18),
+      legLen: 0.34,
+      rise: 0.29,
+      liftAmp: 0.07,
+      runSpeed: 4.2,
+      turnRate: 6.5,
+    },
+    bodyLen: 0.54,
+    bodyRise: 0.36,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.58,
+    legW: 0.13,
+    foot: 'hoof',
+    footScale: 0.85,
+    legColor: '#26201f',
+    segSplit: [0.56, 0.54],
   },
   bear: {
     rig: {
@@ -13780,37 +13808,102 @@ export function drawRatHead(
 }
 
 /**
- * The boar: a front-loaded battering wedge — massive shoulders under a
- * bristle crest, deep low-slung barrel, short muzzle ending in a flat
- * pink snout disc flanked by up-curved tusks.
+ * The boar: a battering wedge built around four reads owned by no
+ * other body — THE RAZOR HUMP (a shoulder tower falling away to a
+ * lean low stern; the whole topline is a charge waiting to happen),
+ * THE HEDGE CREST (a continuous serrated bristle ridge crown-to-
+ * midback that erects when the charge winds up), THE RAVAGER TUSKS
+ * (up-swept ivory crescents off the jaw corners), and THE GRIZZLE
+ * MASK (a pale band down the snout ridge under furious little eyes).
+ * The dire boar is a DESIGN, never an upscale: the mountain hump,
+ * frost-tipped quills over cold iron, four aged tusks, rake scars.
  */
 export interface BoarLook {
   hide: string;
   bristle: string;
+  /** Lit quill tips — the crest must read on its own dark hedge. */
+  quillTip: string;
+  /** Grizzled dust: the snout-ridge mask and the flank band. */
+  grizzle: string;
   snout: string;
   tusk: string;
   earIn: string;
+  /** The furious little lamp set in the dark eye mask. */
+  eye: string;
   bodyW: number;
+  /** Stern topline height — the LOW end of the razorback slope. */
   backH: number;
-  /** Extra bristle-crest mass peaked over the shoulders. */
+  /** Shoulder-hump rise over the withers — the tower the slope falls from. */
+  humpH: number;
+  /** Bristle-quill height over the hump line. */
   crestH: number;
+  /** Belly clearance at the deep chest / at the tucked stern. */
   chestH: number;
+  tuckH: number;
   headW: number;
   headH: number;
+  /** Tusk reach as a fraction of headW — the ravager dial. */
+  tuskLen: number;
+  /** The dire pair: upper hooks seated over the lower scimitars. */
+  fourTusk?: boolean;
+  /** Pale rake-scars on the flank — the dire's war record (seeded). */
+  scar?: string;
+  /** Heavy jowl masses framing the jaw (the dire's old-bruiser face). */
+  jowl?: boolean;
+  /** Tail cord length multiplier — the dire drags a longer rope. */
+  tailK: number;
 }
 
 export const BOAR_LOOK: BoarLook = {
-  hide: '#5c4a3a',
-  bristle: '#33261c',
-  snout: '#c99e86',
-  tusk: '#efe9d8',
-  earIn: '#2e2118',
-  bodyW: 0.21,
-  backH: 0.46,
-  crestH: 0.09,
-  chestH: 0.12,
-  headW: 0.3,
-  headH: 0.26,
+  hide: '#5e4736',
+  bristle: '#291e16',
+  quillTip: '#8d6c4c',
+  grizzle: '#93765a',
+  snout: '#c9917c',
+  tusk: '#f1e8d2',
+  earIn: '#241a14',
+  eye: '#d8a03c',
+  bodyW: 0.23,
+  backH: 0.4,
+  humpH: 0.15,
+  crestH: 0.1,
+  chestH: 0.1,
+  tuckH: 0.19,
+  headW: 0.33,
+  headH: 0.27,
+  tuskLen: 0.52,
+  tailK: 1,
+};
+
+/**
+ * THE SCARRED IRON: the dire boar wears a cold iron-umber coat under
+ * a frost-tipped quill hedge — a mountain at the shoulder where the
+ * boar is a wedge, aged four-tusk jaws where the boar carries two
+ * clean crescents, and garnet eyes sunk in heavy jowls. At any zoom
+ * the two must never read as one silhouette twice.
+ */
+export const DIREBOAR_LOOK: BoarLook = {
+  hide: '#423c3e',
+  bristle: '#1d181a',
+  quillTip: '#a89c8a',
+  grizzle: '#6f655c',
+  snout: '#8d6a60',
+  tusk: '#dccfa8',
+  earIn: '#161113',
+  eye: '#c74a35',
+  bodyW: 0.3,
+  backH: 0.5,
+  humpH: 0.26,
+  crestH: 0.13,
+  chestH: 0.13,
+  tuckH: 0.26,
+  headW: 0.42,
+  headH: 0.34,
+  tuskLen: 0.62,
+  fourTusk: true,
+  scar: '#78685c',
+  jowl: true,
+  tailK: 1.55,
 };
 
 export function paintBoarBody(
@@ -13818,88 +13911,207 @@ export function paintBoarBody(
   spec: BeastSpec,
   look: BoarLook,
   f: BeastBlockFrame,
+  /** 0..1 charge windup — the hackles stand and the crest leans in. */
+  hackle = 0,
 ): void {
   const hl = spec.bodyLen;
   const hw = look.bodyW;
-  // Front-heavy footprint: chest and shoulders carry the width, the
-  // rump pulls in — the wedge that reads "charges things".
+  const dire = look.fourTusk === true;
+  // THE RAZOR HUMP footprint: the SHOULDERS are the widest station —
+  // wider than the chest face and far wider than the stern — so the
+  // battering wedge reads face-on (mass coming at you) and from
+  // behind (the body falls away). A boar is all front.
   const foot: Array<[number, number]> = [
-    [hl, -hw * 0.75],
-    [hl, hw * 0.75],
-    [hl * 0.45, hw],
-    [-hl * 0.5, hw * 0.88],
-    [-hl, hw * 0.6],
-    [-hl, -hw * 0.6],
-    [-hl * 0.5, -hw * 0.88],
-    [hl * 0.45, -hw],
+    [hl, -hw * 0.68],
+    [hl, hw * 0.68],
+    [hl * 0.42, hw],
+    [-hl * 0.3, hw * 0.78],
+    [-hl, hw * 0.5],
+    [-hl, -hw * 0.5],
+    [-hl * 0.3, -hw * 0.78],
+    [hl * 0.42, -hw],
   ];
   const hide = shade(look.hide, (((f.seed >>> 5) & 7) - 3) * 2);
-  // The razorback line: tall over the withers, falling steadily to a
-  // low rump — the sloped wedge IS the boar silhouette.
+  // THE RAZOR HUMP topline: one smooth curve — a shoulder tower
+  // cresting just behind the neck root, falling away hard to a low
+  // lean stern. The slope IS the species; a flat back is a pig.
   const topH = (X: number): number => {
-    const t = Math.min(1, Math.max(0, (X / hl + 1) / 1.45));
-    return look.backH * (0.68 + 0.32 * t) - 0.04 * Math.max(0, (X / hl - 0.55) / 0.45);
+    const t = X / hl; // -1 stern .. +1 chest
+    const tower = Math.exp(-Math.pow((t - 0.38) / 0.56, 2));
+    // The stern eases down and then FALLS into the tail root, and the
+    // chest face dips a hair so the head reads carried low in front.
+    const stern = 0.16 * Math.max(0, (-t - 0.25) / 0.75);
+    const prow = 0.06 * Math.max(0, (t - 0.7) / 0.3);
+    return look.backH * (1 - stern) + look.humpH * tower - look.backH * prow;
   };
+  // Deep chest, tucked waist: the belly line climbs toward the stern
+  // — the streamlined undercarriage the charge is built on.
+  const botH = (X: number): number =>
+    look.chestH + (look.tuckH - look.chestH) * Math.min(1, Math.max(0, (0.42 - X / hl) / 1.1));
   paintBlockBody(
     ctx,
     f,
     foot,
     topH,
-    () => look.chestH,
+    botH,
     hide,
     (gx, gyy, lift) => {
       const s = f.s;
-      // Grizzled flank band — a lighter dust along the lower barrel,
-      // chest-side only so it never pastes onto the rump from behind.
+      const tk2 = f.topScale ?? 1;
+      // THE SHOULDER SHIELD: the gristle plate every old boar carries
+      // — a darker saddle over the hump, seated on the top plane so it
+      // rides the mass (and the lift) like the wolf's cape.
+      ctx.fillStyle = shade(look.hide, -10);
+      ctx.beginPath();
+      facetBlob(
+        ctx,
+        gx(hl * 0.34, 0),
+        gyy(hl * 0.34, 0) - topH(hl * 0.34) * tk2 * s * 0.82 - lift,
+        hw * s * 0.78,
+        f.seed ^ 0x2f,
+        7,
+        0.62,
+        1.6,
+      );
+      ctx.fill();
+      // Grizzled flank band — lighter dust low on the barrel, chest-
+      // side only so it never pastes onto the rump from behind.
       if (f.fy > -0.15) {
-        ctx.fillStyle = shade(look.hide, 12);
+        ctx.fillStyle = shade(look.grizzle, -18);
         ctx.beginPath();
         facetBlob(
           ctx,
-          gx(hl * 0.3, 0),
-          gyy(hl * 0.3, 0) - (look.chestH + 0.09) * s - lift * 0.8,
-          hw * s * 0.72,
+          gx(hl * 0.18, 0),
+          gyy(hl * 0.18, 0) - (botH(hl * 0.18) + 0.1) * s - lift * 0.8,
+          hw * s * 0.8,
           f.seed ^ 0x55,
           7,
-          0.8,
-          1.5,
+          0.62,
+          1.7,
         );
         ctx.fill();
       }
+      // THE HAMS: walking away, the stern face needs muscle — two
+      // soft creases splitting the rump into haunches, or the back
+      // band reads as a shipping crate.
+      if (f.fy < -0.35) {
+        ctx.strokeStyle = shade(look.hide, -14);
+        ctx.lineWidth = Math.max(1, s * 0.018);
+        ctx.lineCap = 'round';
+        for (const es of [-1, 1]) {
+          const Y = es * hw * 0.34;
+          ctx.beginPath();
+          ctx.moveTo(gx(-hl * 0.92, Y), gyy(-hl * 0.92, Y) - (botH(-hl) + 0.06) * s - lift * 0.7);
+          ctx.quadraticCurveTo(
+            gx(-hl * 0.98, Y * 0.5), gyy(-hl * 0.98, Y * 0.5) - topH(-hl) * s * 0.45 - lift * 0.7,
+            gx(-hl * 0.9, Y * 0.3), gyy(-hl * 0.9, Y * 0.3) - topH(-hl) * s * 0.68 - lift * 0.7,
+          );
+          ctx.stroke();
+        }
+        ctx.lineCap = 'butt';
+      }
+      // THE WAR RECORD (dire only): pale rake-scars combed down the
+      // near flank — seeded so every dire carries different history.
+      if (look.scar && f.fy > -0.3) {
+        ctx.strokeStyle = look.scar;
+        ctx.lineWidth = Math.max(1, s * 0.016);
+        ctx.lineCap = 'round';
+        const n = 2 + ((f.seed >>> 3) & 1);
+        for (let i = 0; i < n; i++) {
+          const hsh = ((f.seed * 2654435761) >>> (5 + i * 4)) & 15;
+          const X0 = hl * (0.42 - 0.34 * i - (hsh & 3) * 0.03);
+          const y0 = -(botH(X0) + 0.14 + (hsh >> 2) * 0.012) * s;
+          ctx.beginPath();
+          ctx.moveTo(gx(X0, 0), gyy(X0, 0) + y0 - lift * 0.7);
+          ctx.lineTo(gx(X0 - hl * 0.1, 0), gyy(X0 - hl * 0.1, 0) + y0 - s * 0.085 - lift * 0.7);
+          ctx.stroke();
+        }
+        ctx.lineCap = 'butt';
+      }
     },
   );
-  // The bristle crest: serrated spikes standing proud OF the spine —
-  // painted after the body (the clip would eat anything above the
-  // hull), tallest over the shoulders, dying out down the rump.
+  // THE HEDGE CREST: a continuous serrated bristle ridge running from
+  // the crown down past the hump — painted after the body (the clip
+  // would eat anything above the hull) as ONE saw-toothed polygon, so
+  // it reads as a hedge, never scattered ticks. THE RIDGE RIDES THE
+  // CROWN (turtle law): the root slides up-crown by the lateral
+  // projection so it sits dead-center going away and on the skyline
+  // at profile. The charge stands the hackles.
   const { bx, gy, s, fx, fy, ys } = f;
+  const px = -fy;
+  const py = fx;
   const lift = f.bob * 0.35 * s;
   const tk = f.topScale ?? 1;
-  ctx.fillStyle = f.hurt ? '#ffffff' : look.bristle;
+  const ridgeY = -py * hw * 0.66;
   const spineAt = (X: number): { x: number; y: number } => ({
-    x: bx + fx * X * s,
-    y: gy + fy * X * ys * s - topH(X) * tk * s - lift,
+    x: bx + (fx * X + px * ridgeY) * s,
+    y: gy + (fy * X + py * ridgeY) * ys * s - topH(X) * tk * s - lift,
   });
-  const N = 6;
+  // Face-on the hedge is a sagittal fin seen edge-on: full height
+  // stacks into a lone antenna over the crown, so it crops to a
+  // stubble ridge coming toward camera and keeps its full skyline
+  // everywhere else (going away it reads as the marching caps).
+  const rise = (1 + 0.5 * hackle) * (1 - 0.42 * Math.max(0, fy));
+  const lean = hackle * hl * 0.05;
+  const N = dire ? 9 : 7;
+  const X_HI = hl * 0.68;
+  const X_LO = -hl * 0.34;
+  const hedge = new Path2D();
+  const first = spineAt(X_HI);
+  hedge.moveTo(first.x, first.y + s * 0.03);
+  const teeth: Array<{ bx0: number; by0: number; x: number; y: number; w: number }> = [];
   for (let i = 0; i < N; i++) {
     const t = i / (N - 1);
-    const X0 = hl * (0.58 - 1.12 * t);
-    const X1 = X0 - hl * 0.14;
+    const X0 = X_HI + (X_LO - X_HI) * t;
+    const X1 = X_HI + (X_LO - X_HI) * (t + 0.5 / (N - 1));
     const a = spineAt(X0);
-    const b = spineAt(X1);
-    const hgt = s * tk * (0.085 - 0.05 * t);
+    // Quill height follows the hump — tallest over the tower, dying
+    // toward the stern — and stands with the hackle.
+    const hump = Math.exp(-Math.pow((X0 / hl - 0.3) / 0.62, 2));
+    const hgt = s * tk * look.crestH * (0.45 + 0.85 * hump) * rise;
+    const mid = spineAt(Math.min(X_HI, X1 + lean));
+    teeth.push({ bx0: a.x, by0: a.y, x: mid.x, y: (a.y + mid.y) / 2 - hgt, w: hgt });
+    hedge.lineTo(mid.x, (a.y + mid.y) / 2 - hgt);
+    const b = spineAt(X_HI + (X_LO - X_HI) * Math.min(1, t + 1 / (N - 1)));
+    hedge.lineTo(b.x, b.y + s * 0.03);
+  }
+  ctx.fillStyle = f.hurt ? '#ffffff' : look.bristle;
+  ctx.fill(hedge);
+  if (!f.hurt) {
+    // Every quill wears a lit LEADING edge — without it the hedge
+    // sinks into the hide at the back bands (dark teeth on dark coat,
+    // the worg ears-vanish lesson at spine scale)...
+    ctx.strokeStyle = look.quillTip;
+    ctx.lineWidth = Math.max(1, s * 0.012);
     ctx.beginPath();
-    ctx.moveTo(a.x, a.y + s * 0.01);
-    ctx.lineTo((a.x + b.x) / 2 - fx * s * 0.015, (a.y + b.y) / 2 - hgt);
-    ctx.lineTo(b.x, b.y + s * 0.01);
-    ctx.closePath();
-    ctx.fill();
+    for (const q of teeth) {
+      ctx.moveTo(q.bx0, q.by0 + s * 0.015);
+      ctx.lineTo(q.x, q.y);
+    }
+    ctx.stroke();
+    // ...and a pale cap at the apex — the frost tip that names the
+    // dire's hedge from any distance.
+    ctx.fillStyle = look.quillTip;
+    for (const q of teeth) {
+      const tw = Math.max(s * 0.014, q.w * 0.16);
+      ctx.beginPath();
+      ctx.moveTo(q.x - tw, q.y + tw * 2.4);
+      ctx.lineTo(q.x, q.y);
+      ctx.lineTo(q.x + tw, q.y + tw * 2.4);
+      ctx.closePath();
+      ctx.fill();
+    }
   }
 }
 
 /**
- * The boar head: a short deep wedge with pinned-back ears, a stubby
- * muzzle ending in the flat SNOUT DISC (the pig read), and white tusk
- * chips hooking up from the jaw. `charge` lowers everything.
+ * The boar head: the wedge's PROW — a deep skull carried low, pinned
+ * bristle ears, a grizzle-mask ridge running down to the flat SNOUT
+ * DISC, and THE RAVAGER TUSKS: ivory crescents sweeping up-and-out
+ * from dark gum seats at the jaw corners, with the mouth's gape line
+ * carved between them. The dire look adds the second (upper) pair,
+ * heavy jowls, and a seeded chipped tip — an old jaw, not a clean
+ * one. `charge` pins the ears and bares the gape.
  */
 export function drawBoarHead(
   ctx: CanvasRenderingContext2D,
@@ -13913,8 +14125,10 @@ export function drawBoarHead(
     ys: number;
     hurt?: boolean;
     dead?: boolean;
-    /** 0..1 through the charge telegraph — ears pin, head drops. */
+    /** 0..1 through the charge telegraph — ears pin, gape bares. */
     charge?: number;
+    /** Stable per-entity seed — the dire's chipped tusk picks a side. */
+    seed?: number;
   },
 ): void {
   const { x: cx, y: cy, s, fx, fy, ys } = o;
@@ -13924,56 +14138,112 @@ export function drawBoarHead(
   const h = look.headH * s;
   const C = (c: string): string => (o.hurt ? '#ffffff' : c);
   const charge = o.charge ?? 0;
+  const seed = o.seed ?? 0;
 
   // Small pointed ears swept back along the crest, staggered fore/aft
-  // so profile keeps the pair readable.
+  // so profile keeps the pair readable; the charge pins them flat.
   for (const es of [-1, 1]) {
-    const bxr = cx + px * es * w * 0.28 + fx * es * w * 0.08 - fx * w * 0.14;
-    const byr = cy + (py * es * w * 0.28 + fy * es * w * 0.08) * ys - h * 0.42 - fy * w * 0.14 * ys;
-    const pin = 0.35 + charge * 0.5;
-    const tx = bxr - fx * w * 0.3 * pin + px * es * w * 0.1;
-    const ty = byr - h * (0.55 - 0.25 * pin) - fy * w * 0.3 * pin * ys;
+    const bxr = cx + px * es * w * 0.3 + fx * es * w * 0.07 - fx * w * 0.18;
+    const byr = cy + (py * es * w * 0.3 + fy * es * w * 0.07) * ys - h * 0.46 - fy * w * 0.18 * ys;
+    const pin = 0.3 + charge * 0.55;
+    const tx = bxr - fx * w * 0.34 * pin + px * es * w * 0.12;
+    const ty = byr - h * (0.6 - 0.3 * pin) - fy * w * 0.34 * pin * ys;
     ctx.fillStyle = C(look.bristle);
     ctx.beginPath();
-    ctx.moveTo(bxr - px * es * w * 0.13, byr + h * 0.05);
+    ctx.moveTo(bxr - px * es * w * 0.14, byr + h * 0.06);
     ctx.lineTo(tx, ty);
-    ctx.lineTo(bxr + px * es * w * 0.15, byr + h * 0.1);
+    ctx.lineTo(bxr + px * es * w * 0.16, byr + h * 0.1);
     ctx.closePath();
     ctx.fill();
+    // Inner-ear shadow keeps the blade from reading as a horn nub.
+    if (!o.hurt && fy > 0.1) {
+      ctx.fillStyle = look.earIn;
+      ctx.beginPath();
+      ctx.moveTo(bxr - px * es * w * 0.06, byr + h * 0.04);
+      ctx.lineTo(tx - (tx - bxr) * 0.25, ty + (byr - ty) * 0.25);
+      ctx.lineTo(bxr + px * es * w * 0.08, byr + h * 0.07);
+      ctx.closePath();
+      ctx.fill();
+    }
   }
 
-  // Skull block — deep jaw, lit brow.
-  ctx.fillStyle = C(look.hide);
+  // Skull block — deep jaw, bristled crown, lit brow ledge. A step
+  // brighter than the body's shaded flanks (the turtle mail lesson: a
+  // face darker than its mass reads as a WINDOW, never a head).
+  ctx.fillStyle = C(shade(look.hide, 10));
   ctx.beginPath();
-  chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.2, w * 0.2, w * 0.26, w * 0.26]);
+  chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.18, w * 0.18, w * 0.3, w * 0.3]);
   ctx.fill();
   if (!o.hurt) {
     ctx.save();
     ctx.beginPath();
-    chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.2, w * 0.2, w * 0.26, w * 0.26]);
+    chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.18, w * 0.18, w * 0.3, w * 0.3]);
     ctx.clip();
-    ctx.fillStyle = 'rgba(255, 244, 220, 0.14)';
-    ctx.fillRect(cx - w / 2, cy - h / 2, w, h * 0.2);
-    ctx.fillStyle = C(look.bristle);
-    ctx.fillRect(cx - w / 2, cy - h / 2, w, h * 0.1);
+    // The bristle FORELOCK: a modest peaked wedge rolling off the
+    // crown — never a flat band (a full-width bar read as a hat
+    // brim), lifted off pure crest ink so the face keeps its values.
+    ctx.fillStyle = C(shade(look.bristle, 22));
+    ctx.beginPath();
+    ctx.moveTo(cx - w * 0.3, cy - h / 2);
+    ctx.lineTo(cx, cy - h / 2 + h * 0.2);
+    ctx.lineTo(cx + w * 0.3, cy - h / 2);
+    ctx.closePath();
+    ctx.fill();
+    // ...over a lit brow ledge (the light the eyes glower under).
+    ctx.fillStyle = 'rgba(255, 244, 220, 0.13)';
+    ctx.fillRect(cx - w / 2, cy - h / 2 + h * 0.2, w, h * 0.14);
+    // THE BLAZE: the grizzle ridge climbing from the muzzle root up
+    // between the eyes — it splits the dark face into planes and
+    // carries the mask read to the front bands.
+    if (fy > -0.2) {
+      ctx.fillStyle = C(shade(look.grizzle, -6));
+      ctx.beginPath();
+      ctx.moveTo(cx + fx * w * 0.05 - px * w * 0.07, cy + (fy * w * 0.05 - py * w * 0.07) * ys - h * 0.16);
+      ctx.lineTo(cx + fx * w * 0.05 + px * w * 0.07, cy + (fy * w * 0.05 + py * w * 0.07) * ys - h * 0.16);
+      ctx.lineTo(cx + fx * w * 0.3 + px * w * 0.055, cy + (fy * w * 0.3 + py * w * 0.055) * ys + h * 0.18);
+      ctx.lineTo(cx + fx * w * 0.3 - px * w * 0.055, cy + (fy * w * 0.3 - py * w * 0.055) * ys + h * 0.18);
+      ctx.closePath();
+      ctx.fill();
+    }
     ctx.restore();
   }
 
-  // Stubby muzzle → snout disc, foreshortening with the facing.
+  // THE JOWLS (dire): heavy cheek masses hung at the jaw line — the
+  // old bruiser's face, framing the tusk roots.
+  if (look.jowl && !o.hurt && fy > -0.35) {
+    ctx.fillStyle = shade(look.hide, -7);
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.62 && es * py < 0) continue;
+      ctx.beginPath();
+      facetCircle(
+        ctx,
+        cx + px * es * w * 0.4 + fx * w * 0.08,
+        cy + (py * es * w * 0.4 + fy * w * 0.08) * ys + h * 0.28,
+        w * 0.15,
+        6,
+        es * 3 + seed,
+      );
+      ctx.fill();
+    }
+  }
+
+  // Muzzle wedge → snout disc, foreshortening with the facing.
   if (fy > -0.3) {
     const profileK = faceProfileK(fx);
-    const bx0 = cx + fx * w * 0.24;
-    const by0 = cy + fy * w * 0.24 * ys + h * 0.14;
-    const sl = w * (0.26 + 0.24 * profileK);
+    const bx0 = cx + fx * w * 0.26;
+    const by0 = cy + fy * w * 0.26 * ys + h * 0.16;
+    const sl = w * (0.28 + 0.26 * profileK);
     const tx = bx0 + fx * sl;
-    const ty = by0 + fy * sl * ys + h * 0.06;
+    const ty = by0 + fy * sl * ys + h * 0.08;
     const axv = tx - bx0;
     const ayv = ty - by0;
     const al = Math.hypot(axv, ayv) || 1e-4;
-    const nx = -ayv / al;
-    const ny = axv / al;
-    const hb = w * 0.22 * (1 - profileK * 0.2);
-    const ht = hb * 0.8;
+    const ax = axv / al;
+    const ay = ayv / al;
+    const nx = -ay;
+    const ny = ax;
+    const hb = w * 0.24 * (1 - profileK * 0.2);
+    const ht = hb * 0.74;
     ctx.fillStyle = C(shade(look.hide, 4));
     ctx.beginPath();
     ctx.moveTo(bx0 + nx * hb, by0 + ny * hb);
@@ -13982,34 +14252,105 @@ export function drawBoarHead(
     ctx.lineTo(bx0 - nx * hb, by0 - ny * hb);
     ctx.closePath();
     ctx.fill();
-    // Tusks hook UP and OUT from the jaw sides — big enough to read
-    // as weapons, the far one hiding at profile. A dark gum seat keeps
-    // the ivory from floating free of the jaw.
-    for (const es of [-1, 1]) {
-      if (Math.abs(fx) > 0.6 && es * py < 0) continue;
-      const tbx = bx0 + nx * es * hb * 0.95 + (axv / al) * sl * 0.5;
-      const tby = by0 + ny * es * hb * 0.95 + (ayv / al) * sl * 0.5 + h * 0.12;
-      ctx.fillStyle = C(shade(look.hide, -16));
+    // THE GRIZZLE MASK: the pale dust band riding the snout ridge
+    // from the brow to the disc — the read that ages the face.
+    if (!o.hurt) {
+      ctx.fillStyle = C(look.grizzle);
       ctx.beginPath();
-      facetCircle(ctx, tbx, tby + h * 0.02, w * 0.045, 5, es);
-      ctx.fill();
-      ctx.fillStyle = C(look.tusk);
-      ctx.beginPath();
-      ctx.moveTo(tbx - w * 0.05, tby + h * 0.02);
-      ctx.lineTo(tbx + nx * es * w * 0.1 - w * 0.008, tby - h * 0.42);
-      ctx.lineTo(tbx + w * 0.05, tby + h * 0.04);
+      ctx.moveTo(bx0 - ax * w * 0.1 + nx * hb * 0.34, by0 - ay * w * 0.1 + ny * hb * 0.34);
+      ctx.lineTo(tx - ax * w * 0.04 + nx * ht * 0.42, ty - ay * w * 0.04 + ny * ht * 0.42);
+      ctx.lineTo(tx - ax * w * 0.04 - nx * ht * 0.42, ty - ay * w * 0.04 - ny * ht * 0.42);
+      ctx.lineTo(bx0 - ax * w * 0.1 - nx * hb * 0.34, by0 - ay * w * 0.1 - ny * hb * 0.34);
       ctx.closePath();
       ctx.fill();
     }
-    // THE SNOUT DISC — flat pink pad seated on the tip, nostrils when
+    // THE GAPE: the dark mouth line carved back from under the disc
+    // toward the tusk roots — bared wider through the charge.
+    if (!o.hurt) {
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = Math.max(1, w * (0.028 + 0.02 * charge));
+      ctx.lineCap = 'round';
+      for (const es of [-1, 1]) {
+        if (Math.abs(fx) > 0.6 && es * py < 0) continue;
+        ctx.beginPath();
+        ctx.moveTo(tx - ax * w * 0.03 + nx * es * ht * 0.7, ty - ay * w * 0.03 + ny * es * ht * 0.7 + h * 0.14);
+        ctx.quadraticCurveTo(
+          bx0 + ax * sl * 0.4 + nx * es * hb * 0.95,
+          by0 + ay * sl * 0.4 + ny * es * hb * 0.95 + h * (0.24 + 0.05 * charge),
+          bx0 + nx * es * hb * 1.02,
+          by0 + ny * es * hb * 1.02 + h * 0.2,
+        );
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+    }
+    // THE RAVAGER TUSKS: ivory crescents rooted in dark gum seats at
+    // the jaw corners, sweeping OUT then UP past the snout line —
+    // weapons first, dentistry second. The far one hides at profile.
+    // The dire carries the FOURFOLD JAW: upper hooks over the lower
+    // scimitars, and one seeded CHIP — the tip an old fight kept.
+    const reach = w * look.tuskLen;
+    const chipSide = look.fourTusk ? ((seed >>> 2) & 1) * 2 - 1 : 0;
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.6 && es * py < 0) continue;
+      const rx = bx0 + ax * sl * 0.42 + nx * es * hb * 0.92;
+      const ry = by0 + ay * sl * 0.42 + ny * es * hb * 0.92 + h * 0.18;
+      // Gum seat: the dark socket the ivory grows from.
+      ctx.fillStyle = C(shade(look.hide, -20));
+      ctx.beginPath();
+      facetCircle(ctx, rx, ry, w * 0.06, 5, es + seed);
+      ctx.fill();
+      // Lower scimitar: root → outward flare → up-curved tip. Chipped
+      // tusks stop short and end blunt.
+      const chip = es === chipSide ? 0.72 : 1;
+      const tipX = rx + nx * es * reach * 0.5 + ax * reach * 0.18;
+      const tipY = ry + ny * es * reach * 0.5 * 0.8 - reach * 0.78 * chip + ay * reach * 0.14;
+      const midX = rx + nx * es * reach * 0.42 + ax * reach * 0.1;
+      const midY = ry + ny * es * reach * 0.3 - reach * 0.18;
+      ctx.fillStyle = C(look.tusk);
+      ctx.beginPath();
+      ctx.moveTo(rx - nx * es * w * 0.07 + ax * w * 0.02, ry + h * 0.06);
+      ctx.quadraticCurveTo(midX + nx * es * w * 0.075, midY + h * 0.07, tipX, tipY);
+      ctx.quadraticCurveTo(midX - nx * es * w * 0.085, midY - h * 0.01, rx + ax * w * 0.06, ry - h * 0.04);
+      ctx.closePath();
+      ctx.fill();
+      // The ivory's shadowed inner edge — volume, not a paper sliver.
+      if (!o.hurt) {
+        ctx.strokeStyle = shade(look.tusk, -32);
+        ctx.lineWidth = Math.max(1, w * 0.022);
+        ctx.beginPath();
+        ctx.moveTo(rx + ax * w * 0.03, ry);
+        ctx.quadraticCurveTo(midX - nx * es * w * 0.02, midY + h * 0.02, tipX, tipY);
+        ctx.stroke();
+      }
+      // The dire's upper hook: shorter, curling back over the gape.
+      if (look.fourTusk) {
+        const ur = w * 0.3;
+        const urx = rx + ax * w * 0.09 + nx * es * w * 0.02;
+        const ury = ry - h * 0.16;
+        ctx.fillStyle = C(shade(look.tusk, -12));
+        ctx.beginPath();
+        ctx.moveTo(urx - nx * es * w * 0.03, ury + h * 0.04);
+        ctx.quadraticCurveTo(
+          urx + nx * es * ur * 0.5,
+          ury - ur * 0.3,
+          urx + nx * es * ur * 0.52 - ax * ur * 0.3,
+          ury - ur * 0.62,
+        );
+        ctx.quadraticCurveTo(urx + nx * es * ur * 0.2, ury - ur * 0.2, urx + ax * w * 0.03, ury);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    // THE SNOUT DISC — the flat pad seated on the tip, nostrils when
     // it faces the camera.
     ctx.fillStyle = C(look.snout);
     ctx.beginPath();
     facetCircle(
       ctx,
-      tx - (axv / al) * w * 0.015,
-      ty - (ayv / al) * w * 0.015,
-      w * 0.135 * (1 - profileK * 0.35),
+      tx - ax * w * 0.015,
+      ty - ay * w * 0.015,
+      w * 0.14 * (1 - profileK * 0.35),
       6,
       fx,
       1 - profileK * 0.3,
@@ -14023,14 +14364,24 @@ export function drawBoarHead(
     }
   }
 
-  // Small dark eyes tight against the brow.
-  if (!o.dead && fy > -0.45) {
+  // THE FURIOUS EYE: a small lamp sunk in a dark mask patch under the
+  // brow — tiny on purpose (the small eye sells the mass), lit in the
+  // species color. Dead pigs show only the mask.
+  if (fy > -0.45) {
     for (const es of [-1, 1]) {
       if (Math.abs(fx) > 0.6 && es * py < 0) continue;
-      const ex = cx + fx * w * 0.1 + px * es * w * 0.28;
-      const ey = cy + (fy * w * 0.1 + py * es * w * 0.28) * ys - h * 0.12;
-      ctx.fillStyle = C(OUTLINE);
-      ctx.fillRect(ex - w * 0.05, ey - h * 0.06, w * 0.1, h * 0.12);
+      const ex = cx + fx * w * 0.12 + px * es * w * 0.3;
+      const ey = cy + (fy * w * 0.12 + py * es * w * 0.3) * ys - h * 0.1;
+      ctx.fillStyle = C(shade(look.hide, -26));
+      ctx.beginPath();
+      facetCircle(ctx, ex, ey, w * 0.085, 5, es * 2 + 1);
+      ctx.fill();
+      if (!o.dead && !o.hurt) {
+        ctx.fillStyle = look.eye;
+        ctx.fillRect(ex - w * 0.032, ey - w * 0.026, w * 0.064, w * 0.052);
+        ctx.fillStyle = OUTLINE;
+        ctx.fillRect(ex - w * 0.016, ey - w * 0.02, w * 0.032, w * 0.04);
+      }
     }
   }
 }
@@ -19276,7 +19627,8 @@ export function drawBeast(
         : undefined;
   const worgL = opts.defId === 'worg' ? WORG_LOOK : undefined;
   const ratL = opts.defId === 'rat' ? RAT_LOOK : undefined;
-  const boarL = opts.defId === 'boar' ? BOAR_LOOK : undefined;
+  const boarL =
+    opts.defId === 'boar' ? BOAR_LOOK : opts.defId === 'dire_boar' ? DIREBOAR_LOOK : undefined;
   const spiderL = opts.defId === 'giant_spider' ? SPIDER_LOOK : undefined;
   const ramL = opts.defId === 'ram' ? RAM_LOOK : undefined;
   const sheepL = opts.defId === 'sheep' ? SHEEP_LOOK : undefined;
@@ -19344,7 +19696,8 @@ export function drawBeast(
       return;
     }
     if (boarL) {
-      paintBoarBody(ctx, spec, boarL, blockFrame());
+      // THE HACKLES STAND: the charge windup erects the hedge crest.
+      paintBoarBody(ctx, spec, boarL, blockFrame(), at > 0 ? Math.min(1, at / 0.5) : 0);
       return;
     }
     if (spiderL) {
@@ -19928,22 +20281,65 @@ export function drawBeast(
       const hl = spec.bodyLen * s;
       const hw2 = boarL.headW * s;
       const nod = opts.pose.bob * 0.5 * s;
-      // The whole head drops through the charge windup — a battering
-      // ram lining up.
-      const drop = at > 0 ? Math.min(1, at / 0.7) * 0.09 * s : 0;
-      const chx = bx + fx * (hl + hw2 * 0.3);
-      const chy =
-        by + fy * (hl + hw2 * 0.3) * ys - (boarL.backH + boarL.crestH * 0.5) * 0.9 * s - nod + drop;
-      // Thick neck roll from the crest into the skull.
+      // THE HEAD IS THE PROW: carried LOW, under the hump line — the
+      // wedge's leading edge, not a periscope. The charge windup
+      // drops it toward the ground lining up the tusks, then THE
+      // GORE THROWS IT UP through the strike — the ripping upward
+      // toss that is the whole verb of the species.
+      const windup = at > 0 ? Math.min(1, at / 0.7) : 0;
+      const throwK = at > 0.7 ? Math.sin(Math.PI * Math.min(1, (at - 0.7) / 0.3)) : 0;
+      const drop = windup * 0.14 * s - throwK * 0.24 * s;
+      const carry = (boarL.backH + boarL.humpH * 0.3) * 0.78;
+      const chx = bx + fx * (hl + hw2 * 0.26);
+      const chy = by + fy * (hl + hw2 * 0.26) * ys - carry * s - nod + drop;
+      // THE BRISTLE COLLAR: the neck the crest rolls over — a hide-
+      // toned wedge from the hump's shoulder line onto the crown (so
+      // head and body are ONE mass at every band), wearing a SERRATED
+      // mane strip along its top edge that hands the hedge crest off
+      // to the skull. Never a flat dark curtain (the face-on window).
+      const nb = (boarL.backH + boarL.humpH * 0.85) * s + opts.pose.bob * 0.35 * s;
+      const nwx = px * boarL.bodyW * 0.5 * s;
+      const nwy = py * boarL.bodyW * 0.5 * s;
+      const cAx = bx + fx * hl * 0.62 + nwx;
+      const cAy = by + (fy * hl * 0.62 + nwy) * ys - nb * 0.9;
+      const cBx = bx + fx * hl * 0.62 - nwx;
+      const cBy = by + (fy * hl * 0.62 - nwy) * ys - nb * 0.9;
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(boarL.hide, -4);
+      ctx.beginPath();
+      ctx.moveTo(cAx, cAy);
+      ctx.lineTo(cBx, cBy);
+      ctx.lineTo(chx - px * hw2 * 0.44, chy - py * hw2 * 0.44 * ys + boarL.headH * s * 0.2);
+      ctx.lineTo(chx + px * hw2 * 0.44, chy + py * hw2 * 0.44 * ys + boarL.headH * s * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      // The mane strip: short bristle teeth marching along the neck's
+      // shoulder edge — the crest arriving at the crown.
+      if (!opts.hurt) {
+        ctx.fillStyle = boarL.bristle;
+        const mane = 4;
+        for (let mi = 0; mi < mane; mi++) {
+          const t0 = mi / mane;
+          const t1 = (mi + 1) / mane;
+          const mx0 = cAx + (cBx - cAx) * t0;
+          const my0 = cAy + (cBy - cAy) * t0;
+          const mx1 = cAx + (cBx - cAx) * t1;
+          const my1 = cAy + (cBy - cAy) * t1;
+          const mh = s * boarL.crestH * 0.55;
+          ctx.beginPath();
+          ctx.moveTo(mx0, my0 + s * 0.015);
+          ctx.lineTo((mx0 + mx1) / 2, (my0 + my1) / 2 - mh);
+          ctx.lineTo(mx1, my1 + s * 0.015);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      // Hide throat under the collar: a hide quad seating the jaw.
       ctx.fillStyle = opts.hurt ? '#ffffff' : shade(boarL.hide, -8);
       ctx.beginPath();
-      const nb = (boarL.backH + boarL.crestH * 0.6) * s + opts.pose.bob * 0.35 * s;
-      const nwx = px * boarL.bodyW * 0.6 * s;
-      const nwy = py * boarL.bodyW * 0.6 * s;
-      ctx.moveTo(bx + fx * hl * 0.7 + nwx, by + (fy * hl * 0.7 + nwy) * ys - nb * 0.88);
-      ctx.lineTo(bx + fx * hl * 0.7 - nwx, by + (fy * hl * 0.7 - nwy) * ys - nb * 0.88);
-      ctx.lineTo(chx - px * hw2 * 0.42, chy - py * hw2 * 0.42 * ys + boarL.headH * s * 0.26);
-      ctx.lineTo(chx + px * hw2 * 0.42, chy + py * hw2 * 0.42 * ys + boarL.headH * s * 0.26);
+      ctx.moveTo(bx + fx * hl * 0.78 + nwx * 0.7, by + (fy * hl * 0.78 + nwy * 0.7) * ys - nb * 0.6);
+      ctx.lineTo(bx + fx * hl * 0.78 - nwx * 0.7, by + (fy * hl * 0.78 - nwy * 0.7) * ys - nb * 0.6);
+      ctx.lineTo(chx - px * hw2 * 0.4, chy - py * hw2 * 0.4 * ys + boarL.headH * s * 0.34);
+      ctx.lineTo(chx + px * hw2 * 0.4, chy + py * hw2 * 0.4 * ys + boarL.headH * s * 0.34);
       ctx.closePath();
       ctx.fill();
       drawBoarHead(ctx, boarL, {
@@ -19955,6 +20351,7 @@ export function drawBeast(
         ys,
         hurt: opts.hurt,
         charge: at > 0 ? Math.min(1, at * 1.6) : 0,
+        seed,
       });
       return;
     }
@@ -20538,31 +20935,31 @@ export function drawBeast(
       return;
     }
     if (boarL) {
-      // The piggy kink: a short cord hooking up off the rump with a
-      // dark tuft, flicking with the gait.
+      // The corded kink: a rope hooking up off the low stern into a
+      // dark bristle tassel, flicking with the gait and lashing on
+      // its own clock at idle. The dire drags a longer, heavier rope
+      // (tailK) — the one tail dial the pair shares.
       const hl = spec.bodyLen * s;
       const lift = opts.pose.bob * 0.35 * s;
+      const tk2 = boarL.tailK;
       const sway =
-        Math.sin(opts.walkPhase * Math.PI * 2) * 0.02 * s +
-        (now > 0 ? Math.sin(now * 0.0017 + seed) * 0.025 * s * idle : 0);
-      const tbx = bx - fx * hl * 0.96;
-      const tby = by - fy * hl * 0.96 * ys - boarL.backH * 0.78 * s - lift;
-      ctx.strokeStyle = opts.hurt ? '#ffffff' : shade(boarL.hide, -14);
-      ctx.lineWidth = Math.max(1.5, s * 0.024);
+        Math.sin(opts.walkPhase * Math.PI * 2) * 0.022 * s +
+        (now > 0 ? Math.sin(now * 0.0017 + seed) * 0.03 * s * idle : 0);
+      const tbx = bx - fx * hl * 0.88;
+      const tby = by - fy * hl * 0.88 * ys - boarL.backH * 0.58 * s - lift;
+      const tex = tbx - fx * hl * 0.26 * tk2 + px * sway * 2;
+      const tey = tby + s * (0.03 + 0.06 * (tk2 - 1));
+      ctx.strokeStyle = opts.hurt ? '#ffffff' : shade(boarL.hide, -26);
+      ctx.lineWidth = Math.max(2, s * (0.03 + 0.01 * (tk2 - 1)));
       ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(tbx, tby);
-      ctx.quadraticCurveTo(
-        tbx - fx * hl * 0.16 + px * sway,
-        tby - s * 0.09,
-        tbx - fx * hl * 0.2 + px * sway * 2,
-        tby + s * 0.02,
-      );
+      ctx.quadraticCurveTo(tbx - fx * hl * 0.16 * tk2 + px * sway, tby - s * 0.1 * tk2, tex, tey);
       ctx.stroke();
       ctx.lineCap = 'butt';
       ctx.fillStyle = opts.hurt ? '#ffffff' : boarL.bristle;
       ctx.beginPath();
-      facetCircle(ctx, tbx - fx * hl * 0.2 + px * sway * 2, tby + s * 0.03, s * 0.032, 5, seed * 0.3);
+      facetCircle(ctx, tex, tey + s * 0.012, s * (0.032 + 0.014 * (tk2 - 1)), 5, seed * 0.3);
       ctx.fill();
       return;
     }

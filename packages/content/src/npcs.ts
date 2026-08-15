@@ -1053,9 +1053,36 @@ const defs: NpcDef[] = [
     xpReward: 60,
     loot: ['boar'],
     respawnSec: 28,
-    color: '#5c4a3a',
+    color: '#5e4736',
     radius: 0.3,
     hitHeight: 0.9,
+    pounce: true,
+  },
+  {
+    // THE OLD RAZORBACK: the deep wood's battering terror — a
+    // mountain at the shoulder under a frost-tipped quill hedge, four
+    // aged tusks, and a hide written over with old arguments. It
+    // charges first and reconsiders never; the sounder runs behind it
+    // after dark.
+    id: 'dire_boar',
+    name: 'Dire boar',
+    level: 17,
+    maxHp: 85,
+    damage: 5,
+    attackRange: 1.0,
+    attackCooldownTicks: 38,
+    aggroRange: 5,
+    sightArc: 240,
+    leashRange: 26,
+    speed: 4.2,
+    xpReward: 300,
+    loot: ['dire_boar', 'heirlooms'],
+    respawnSec: 80,
+    color: '#423c3e',
+    radius: 0.45,
+    hitHeight: 1.15,
+    // The tusks open what the charge knocks down.
+    attackStatus: { status: 'bleed', power: 2, durationTicks: 60 },
     pounce: true,
   },
   {

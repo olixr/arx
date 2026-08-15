@@ -34,6 +34,7 @@ import {
   BEAR_LOOK,
   BEETLE_LOOK,
   BOAR_LOOK,
+  DIREBOAR_LOOK,
   CATTLE_LOOKS,
   CRAB_LOOK,
   DIREWOLF_LOOK,
@@ -2076,8 +2077,8 @@ export function drawBeastRagdoll(
       topScale: 0.7,
       botH: 0.015,
     });
-  } else if (look.defId === 'boar') {
-    paintBoarBody(ctx, spec, BOAR_LOOK, {
+  } else if (look.defId === 'boar' || look.defId === 'dire_boar') {
+    paintBoarBody(ctx, spec, look.defId === 'dire_boar' ? DIREBOAR_LOOK : BOAR_LOOK, {
       bx: midX,
       gy: midY + r * 0.4,
       s,
@@ -2391,8 +2392,8 @@ export function drawBeastRagdoll(
       ys: 1,
       dead: true,
     });
-  } else if (look.defId === 'boar') {
-    drawBoarHead(ctx, BOAR_LOOK, {
+  } else if (look.defId === 'boar' || look.defId === 'dire_boar') {
+    drawBoarHead(ctx, look.defId === 'dire_boar' ? DIREBOAR_LOOK : BOAR_LOOK, {
       x: head.x,
       y: head.y,
       s,
@@ -2400,6 +2401,7 @@ export function drawBeastRagdoll(
       fy: Math.sin(neckA),
       ys: 1,
       dead: true,
+      seed: look.seed,
     });
   } else if (look.defId === 'ram') {
     drawRamHead(ctx, RAM_LOOK, {

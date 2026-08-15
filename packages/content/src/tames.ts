@@ -93,6 +93,16 @@ export const TAME_DEFS: readonly TameDef[] = [
     flavor: 'A cart with opinions. Point it and stand aside.',
   },
   {
+    // THE OLD RAZORBACK answers to exactly one thing, and it grows
+    // underground. The hardest shove on the tame ladder — the keeper
+    // who lands this walks behind a siege engine.
+    species: 'dire_boar',
+    lure: 'truffle',
+    tameXp: 220,
+    kit: { knockback: 2.4 },
+    flavor: 'The cart became a wagon, and the wagon holds a grudge.',
+  },
+  {
     species: 'giant_spider',
     lure: 'raw_beef',
     tameXp: 130,

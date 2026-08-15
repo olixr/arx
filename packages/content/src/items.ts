@@ -936,6 +936,7 @@ const defs: ItemDef[] = [
   { id: 'gnoll_hide', name: 'Gnoll hide', stackable: true, maxStack: 10, value: 26, desc: 'Speckled gray-brown fur over dull green skin. Smells of old camps and older kills.', color: '#8a7a58', code: 'Gh' },
   { id: 'packlord_mane', name: 'Packlord mane', stackable: true, maxStack: 5, value: 120, desc: 'A bristled crest cut from the biggest back in the warband. The cackling stopped when it fell.', color: '#4e4034', code: 'Pm' },
   { id: 'warboss_tusk', name: 'Warboss tusk', stackable: true, maxStack: 5, value: 110, desc: 'A worn yellow tusk off the biggest jaw in the camp. The arguments are quieter now.', color: '#e9e0c6', code: 'Wt' },
+  { id: 'razorback_tusk', name: 'Razorback tusk', stackable: true, maxStack: 5, value: 120, desc: 'An aged ivory scimitar off the old razorback. The chip in it belonged to something bigger.', color: '#dccfa8', code: 'Rk' },
   { id: 'scrap_hide', name: 'Scrap hide', stackable: true, value: 3, desc: 'Small pelts and offcuts. Three make an honest leather.', color: '#8a6f52', code: 'Sh' },
   { id: 'owl_plume', name: 'Owl plume', stackable: true, value: 26, desc: 'A flight feather longer than your forearm. It fell without a sound.', color: '#d8ccae', code: 'Op' },
   { id: 'elder_plume', name: 'Elder plume', stackable: true, maxStack: 5, value: 140, desc: 'Moon-pale at the edge, storm-dark at the root. The wood is louder now.', color: '#5a5e70', code: 'Ep' },
