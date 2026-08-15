@@ -7440,7 +7440,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // impact frame — the cut's own landing word, riding the same arc
   // (the target's hit sparks are main.ts's; this one belongs to the
   // swing and fires whether or not anything was there to catch it).
-  if (strikeRes && strikeSchool && mainWake && (meleeStage === 0 || meleeStage === 1)) {
+  // Gated on a held blade exactly like the wake above: a bare-handed
+  // rig has no tip — the phantom tip point lands OFF the body (below
+  // the feet at some facings) and the fan reads as a detached glitch.
+  if (
+    strikeRes &&
+    strikeSchool &&
+    mainWake &&
+    (meleeStage === 0 || meleeStage === 1) &&
+    (weapon?.weapon?.style === 'onehand' || weapon?.weapon?.style === 'twohand' || isStaff)
+  ) {
     const P = schoolPhases(strikeSchool);
     const u = (rig.poseT - P.impact) / 0.09;
     if (u >= 0 && u <= 1) {
