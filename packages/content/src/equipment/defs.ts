@@ -92,7 +92,7 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     levelReq: { skill: 'defence', level: 5 },
     armor: 4,
     affixPool: LEATHER_POOL,
-    acquisition: { craft: true, drop: true },
+    acquisition: { craft: true, drop: true, shop: true },
     recipe: {
       skill: 'leatherworking',
       levelReq: 8,
@@ -231,7 +231,7 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     levelReq: { skill: 'defence', level: 5 },
     armor: 2,
     affixPool: LEATHER_POOL,
-    acquisition: { craft: true },
+    acquisition: { craft: true, drop: true, shop: true },
     recipe: {
       skill: 'leatherworking',
       levelReq: 6,
@@ -382,7 +382,7 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     levelReq: { skill: 'defence', level: 8 },
     armor: 3,
     affixPool: LEATHER_POOL,
-    acquisition: { craft: true, drop: true },
+    acquisition: { craft: true, drop: true, shop: true },
     recipe: {
       skill: 'leatherworking',
       levelReq: 10,
@@ -471,7 +471,7 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     armorClass: 'leather',
     armor: 2,
     affixPool: LEATHER_POOL,
-    acquisition: { craft: true, shop: true },
+    acquisition: { craft: true, shop: true, drop: true },
     recipe: {
       skill: 'leatherworking',
       levelReq: 2,
@@ -654,7 +654,7 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     levelReq: { skill: 'defence', level: 6 },
     armor: 3,
     affixPool: [{ stat: 'defence', w: 2 }, { stat: 'vitality' }, { stat: 'maxHp' }],
-    acquisition: { craft: true },
+    acquisition: { craft: true, drop: true },
     recipe: {
       skill: 'woodworking',
       levelReq: 9,
@@ -869,7 +869,7 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
     levelReq: { skill: 'archery', level: 10 },
     armor: 1,
     affixPool: [{ stat: 'archery', w: 3 }, { stat: 'foraging' }, { stat: 'sneak' }],
-    acquisition: { craft: true },
+    acquisition: { craft: true, drop: true },
     recipe: {
       skill: 'leatherworking',
       levelReq: 12,
@@ -948,6 +948,15 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   // -------- Nightveil: ink and dusk-purple, drop-only from the crypt.
   // Masked, quiet, gone. The rogue's wardrobe — it gates on Sneak.
   ...withSet('nightveil', nightveilSet()),
+  // The barrow lot: the same veil re-dyed in dead-king bronze-green —
+  // the deep crypt's REINTRODUCTION of the set (drop-only on the
+  // barrow lords, arriving power-stamped at the source's level, so
+  // the leather chase keeps paying past 30 without a new silhouette).
+  ...colorways(withSet('nightveil', nightveilSet()), [
+    { key: 'barrowdusk', dye: 'Barrowdusk', color: '#55603e',
+      acquisition: { drop: true },
+      desc: 'Veil leather steeped in barrow water. The old kings kept their colors; now the colors keep you.' },
+  ]),
   // -------- Drakescale: oxblood scale over boiled leather, the
   // skirmish bruiser's high craft line. Copper-edged, fire-tempered.
   ...withSet('drakescale', drakescaleSet()),
@@ -2167,12 +2176,14 @@ function earlyLeatherDefs(): EquipmentDef[] {
     // the guild does not sell its colors, you take them off somebody
     // who stopped needing them.
     ...cutpurse,
+    // The lots stay drop-only: the base cowl's shop flag is the
+    // Company post's shelf alone — no shelf ever sells a guild face.
     ...colorways(cutpurse, [
-      { key: 'alleyrat', dye: 'Alleyrat', color: '#5c5c56',
+      { key: 'alleyrat', dye: 'Alleyrat', color: '#5c5c56', acquisition: { drop: true },
         desc: 'The Latch. Gutter grey, an iron keyhole, borrowed keys. No door argues long.' },
-      { key: 'moonless', dye: 'Moonless', color: '#33303c',
+      { key: 'moonless', dye: 'Moonless', color: '#33303c', acquisition: { drop: true },
         desc: 'The Unseen. Wound ink and one lit slit. On the real nights there is no face at all.' },
-      { key: 'redhand', dye: 'Redhand', color: '#8e2a22',
+      { key: 'redhand', dye: 'Redhand', color: '#8e2a22', acquisition: { drop: true },
         desc: 'The Knife. A shroud that bleeds crimson, and the red right hand itself clamped over a faceless dark. Caught once, never twice.' },
     ]),
     // -------- Trapline: rawhide and fir hung with a toggled bandolier,
@@ -2329,8 +2340,11 @@ function cutpurseSet(): EquipmentDef[] {
     acquisition: { drop: true }, value, color, code, desc,
   });
   return [
-    piece('cutpurse_cowl', 'Cutpurse cowl', 'head', 10, 2, 170, 'Ph',
+    // The cowl alone is Company shelf stock (the post sells the face
+    // you deny wearing) — shop joins the lot's drop story.
+    { ...piece('cutpurse_cowl', 'Cutpurse cowl', 'head', 10, 2, 170, 'Ph',
       'The guild peak over a kerchief. The face is nobody; the hands are famous.'),
+      acquisition: { drop: true, shop: true } },
     piece('cutpurse_jerkin', 'Cutpurse jerkin', 'body', 12, 4, 240, 'Pj',
       'A tether of lifted coins across the chest. The ledger, worn openly.'),
     piece('cutpurse_leggings', 'Cutpurse leggings', 'legs', 11, 3, 205, 'Pc',
@@ -3211,7 +3225,7 @@ function swordDefs(): EquipmentDef[] {
       levelReq: { skill: 'onehand', level: 10 },
       weapon: { style: 'onehand', damage: 2, cooldownTicks: 7, range: 1.95, art: 'lunge' },
       affixPool: SOLDIER_POOL,
-      acquisition: { craft: true, drop: true },
+      acquisition: { craft: true, drop: true, shop: true },
       recipe: {
         skill: 'smithing', levelReq: 18, xp: 130, station: 'anvil', ticks: 70,
         inputs: [{ item: 'iron_bar', qty: 2 }],
@@ -3237,7 +3251,7 @@ function swordDefs(): EquipmentDef[] {
       levelReq: { skill: 'onehand', level: 40 },
       weapon: { style: 'onehand', damage: 4, cooldownTicks: 7, range: 2.1, art: 'shockwave' },
       affixPool: SOLDIER_POOL,
-      acquisition: { craft: true },
+      acquisition: { craft: true, shop: true },
       recipe: {
         skill: 'smithing', levelReq: 50, xp: 560, station: 'anvil', ticks: 90,
         inputs: [{ item: 'mithril_bar', qty: 2 }],
@@ -3804,7 +3818,7 @@ function daggerDefs(): EquipmentDef[] {
       levelReq: { skill: 'sneak', level: 10 },
       weapon: { style: 'onehand', damage: 2, cooldownTicks: 5, range: 1.45, art: 'shadowstep', backstabMult: 2.5 },
       affixPool: THIEF_POOL,
-      acquisition: { craft: true },
+      acquisition: { craft: true, drop: true },
       recipe: {
         skill: 'smithing', levelReq: 15, xp: 75, station: 'anvil', ticks: 55,
         inputs: [{ item: 'iron_bar', qty: 1 }],
@@ -3817,7 +3831,7 @@ function daggerDefs(): EquipmentDef[] {
       levelReq: { skill: 'sneak', level: 24 },
       weapon: { style: 'onehand', damage: 3, cooldownTicks: 5, range: 1.5, art: 'shadowstep', backstabMult: 2.5 },
       affixPool: THIEF_POOL,
-      acquisition: { craft: true },
+      acquisition: { craft: true, shop: true },
       recipe: {
         skill: 'smithing', levelReq: 31, xp: 200, station: 'anvil', ticks: 65,
         inputs: [{ item: 'steel_bar', qty: 1 }],
@@ -4251,6 +4265,9 @@ function daggerDefs(): EquipmentDef[] {
     ...crafts,
     ...finds,
   ];
+  // The mithril rung is Faelar's finished-fittings stock in Evenfall —
+  // the one dagger the elves sell whole.
+  tanto[4]!.acquisition = { craft: true, shop: true };
   return [...roster, ...tanto];
 }
 
@@ -4436,7 +4453,7 @@ function bowDefs(): EquipmentDef[] {
       levelReq: { skill: 'archery', level: 22 },
       weapon: { style: 'archery', damage: 6, cooldownTicks: 8, range: 15, ammo: 'arrow', projectileSpeed: 17, art: 'verdant_burst' },
       affixPool: [{ stat: 'archery', w: 2 }, { stat: 'foraging' }, { stat: 'regen' }, { stat: 'maxHp' }],
-      acquisition: { craft: true },
+      acquisition: { craft: true, shop: true },
       recipe: {
         skill: 'woodworking', levelReq: 28, xp: 240, station: 'carving_bench', ticks: 75,
         inputs: [{ item: 'oak_log', qty: 2 }, { item: 'sagewort', qty: 2 }, { item: 'berries', qty: 4 }, { item: 'twine', qty: 1 }],
@@ -4742,7 +4759,12 @@ function bowDefs(): EquipmentDef[] {
 
   // The plain shortbow is general-store stock — always a fixed common
   // baseline on the shelf; better rolls come from the knee or the wilds.
-  shortbow[0]!.acquisition = { craft: true, shop: true };
+  // The brigand crews carry it too (the loot-story law), so it drops.
+  shortbow[0]!.acquisition = { craft: true, shop: true, drop: true };
+  // The plain recurve is Kolgrim's hunt-stall stock in Hartfell.
+  hunting[0]!.acquisition = { craft: true, shop: true };
+  // The willow rung rides the wilds' war racks — declared so it rolls.
+  longbow[3]!.acquisition = { craft: true, drop: true };
 
   return [...shortbow, ...longbow, ...hunting, ...crafts, ...finds, ...flights];
 }

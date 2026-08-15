@@ -273,7 +273,7 @@ test('trinket potency grows with rarity and power', () => {
 
 test('acquisition routes are honest: drops in loot tables, shop stock flagged', async () => {
   const { NPCS } = await import('./npcs.js');
-  const { GENERAL_STORE } = await import('./shop.js');
+  const { SHOPS } = await import('./shop.js');
   const { reachableItems } = await import('./loot/roll.js');
   const looted = new Set<string>();
   for (const npc of NPCS.values()) {
@@ -284,11 +284,26 @@ test('acquisition routes are honest: drops in loot tables, shop stock flagged', 
   for (const def of EQUIPMENT_DEFS) {
     if (def.acquisition.drop) {
       assert.ok(looted.has(def.id), `${def.id} declares drop but no NPC drops it`);
+    } else {
+      // The converse law (the 2026-08 audit's second pass): gear a foe
+      // pays out MUST be drop-flagged, or stampRoll refuses it a roll
+      // and it lands as a permanently-common, affixless orphan.
+      assert.ok(
+        !looted.has(def.id),
+        `${def.id} sits in a foe's loot tables but is not drop-flagged (it would drop unrolled)`,
+      );
     }
   }
-  for (const entry of GENERAL_STORE) {
-    const gear = itemDef(entry.item)?.gear;
-    if (gear) assert.ok(gear.acquisition.shop, `${entry.item} sold but not shop-flagged`);
+  // EVERY shelf in the game keeps the flag honest, not just the
+  // general store — town outfitters, company posts, and the Evenfall
+  // artisans all count as the shop route.
+  for (const shop of SHOPS.values()) {
+    for (const entry of shop.stock) {
+      const gear = itemDef(entry.item)?.gear;
+      if (gear) {
+        assert.ok(gear.acquisition.shop, `${entry.item} sold at ${shop.id} but not shop-flagged`);
+      }
+    }
   }
   // Loot tables must never point at unknown items.
   for (const item of looted) assert.ok(ITEMS.has(item), `loot item '${item}' missing`);
@@ -376,9 +391,13 @@ test('the greatshield ladder: a matching wall for the plate sets, climbing in ar
 
 test('themed leather sets: five pieces each, coherent class and reqs', () => {
   const sets = ['wayfarer', 'wolfstalker', 'nightveil', 'drakescale', 'stagheart'];
+  // THE BARROW LOT: nightveil ships a dye lot on the barrow lords
+  // (the 2026-08 loot audit's leather reintroduction). Lots are
+  // identity, never power — the five-piece law reads base pieces only.
+  const isLot = (id: string): boolean => id.endsWith('_barrowdusk');
   const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
   for (const set of sets) {
-    const pieces = EQUIPMENT_DEFS.filter((d) => d.id.startsWith(`${set}_`));
+    const pieces = EQUIPMENT_DEFS.filter((d) => d.id.startsWith(`${set}_`) && !isLot(d.id));
     assert.equal(pieces.length, 5, `${set} should have 5 pieces`);
     const slots = new Set(pieces.map((p) => p.slot));
     assert.deepEqual([...slots].sort(), ['body', 'boots', 'gloves', 'head', 'legs'], `${set} covers the armor slots`);

@@ -547,6 +547,15 @@ const defs: LootTableDef[] = [
     desc: 'The bone chanter’s stolen liturgy: the Sunhallow vestments, surrendered slowly.',
     entries: [...setDrops('sunhallow', 0.004)],
   },
+  {
+    // THE BARROW LOT: the nightveil re-dyed in dead-king bronze-green,
+    // paid only by the lords of the deep crypt — the leather chase's
+    // reintroduction rung. Source power stamps it at the lord's level,
+    // so the old silhouette keeps climbing past its native band.
+    id: 'barrow_regalia',
+    desc: 'The old kings’ quiet colors: barrow-steeped veil leather, surrendered by the lords alone.',
+    entries: [...setDrops('nightveil', 0.03, { colorway: 'barrowdusk' })],
+  },
   rack('crypt_arms', 'Blades, bows, and staves the dead still carry.', 0.045, [
     { item: 'fenreaper', chance: 0.01 },
     { item: 'gravewhisper', chance: 0.012 },
@@ -1221,8 +1230,8 @@ const defs: LootTableDef[] = [
     entries: [
       { item: 'bones' },
       { item: 'elder_plume', chance: 0.9 },
-      { item: 'owl_plume', qty: [1, 3], chance: 0.6 },
-      { item: 'feather', qty: [5, 12], chance: 0.9 },
+      { item: 'owl_plume', qty: [1, 3], chance: 0.5 },
+      { item: 'feather', qty: [5, 12], chance: 0.7 },
       { item: 'storm_essence', qty: [1, 3], chance: 0.35 },
       { item: 'umbral_essence', qty: [1, 2], chance: 0.2 },
       // The elder has watched the sky the longest (astral's mid-band
@@ -1236,14 +1245,16 @@ const defs: LootTableDef[] = [
       { item: 'dungeon_key', chance: 0.04 },
       // The elder watched a lady carry a glass through the glade
       // once, and has been trying to catch the other sky since.
-      { item: 'mirrormere', chance: 0.006 },
+      { item: 'mirrormere', chance: 0.01 },
       // The pale thorn lot went south over the high passes and never
       // came down. The parliament nests above what is left of it.
-      ...setDrops('palethorn', 0.006),
+      // (Named-station generosity: the elder pays gear like the
+      // champion it is — the audit found it the poorest named purse.)
+      ...setDrops('palethorn', 0.022),
       // The only thing over the pines that ever outflew the weather
       // it sings about. The elder took the singer's indigo the way
       // it takes everything: mid-verse.
-      ...setDrops('stormsinger', 0.005),
+      ...setDrops('stormsinger', 0.015),
     ],
   },
 
@@ -1296,10 +1307,10 @@ const defs: LootTableDef[] = [
       { item: 'dungeon_key', chance: 0.04 },
       // The pack raided a harvest that would not stop being one.
       // The packlord slept on the sheaf and dreamed of bread.
-      { item: 'lastsheaf', chance: 0.008 },
+      { item: 'lastsheaf', chance: 0.012 },
       // The packs crown their best in jade and a skull that watches
       // back. The packlord earned every piece twice.
-      ...setDrops('jadeskull', 0.008),
+      ...setDrops('jadeskull', 0.022),
     ],
   },
 
@@ -1699,9 +1710,21 @@ const defs: LootTableDef[] = [
       { item: 'leather', qty: [2, 3], chance: 0.4 },
       // The Bonegrinder's own timber, better odds — the master keeps
       // the best argument in the camp.
-      { item: 'ogre_greatclub', chance: 0.04 },
+      { item: 'ogre_greatclub', chance: 0.08 },
+      // The camp's whole toll shelf, carried hot — the master skims
+      // the best of everything the hill ever flattened.
+      { table: 'ogre_arms', mult: 3 },
     ],
   },
+  // THE HILL'S TOLL SHELF: everything the flattened travelers were
+  // carrying — existing arms re-homed on the giant-kin (the reuse law:
+  // a rack re-introduces the world's weapons, it never mints new ones).
+  rack('ogre_arms', 'The toll shelf: arms the hill collected and never learned to hold.', 0.05, [
+    { item: 'ogre_greatclub', chance: 0.05 },
+    { item: 'quarryheart', chance: 0.02 },
+    { item: 'bearspine', chance: 0.02 },
+    { item: 'barrowmaw', chance: 0.015 },
+  ]),
 ];
 
 /**

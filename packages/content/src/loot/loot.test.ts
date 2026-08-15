@@ -275,8 +275,12 @@ test('every foe’s tables preserve its signature loot — reserved pieces stay 
     fox: ['fox_pelt', 'raw_chicken'],
     fox_champion: ['smokebrush_pelt', 'fox_pelt', 'emberfox_jerkin'],
     iron_golem: ['forgeplate_scrap', 'golem_core', 'lodestone'],
-    ogre: ['ogre_tooth', 'raw_beef', 'ogre_greatclub'],
-    ogre_champion: ['bonegrinder_girdle', 'ogre_tooth', 'ogre_greatclub'],
+    ogre: ['ogre_tooth', 'raw_beef', 'ogre_greatclub', 'quarryheart'],
+    ogre_champion: ['bonegrinder_girdle', 'ogre_tooth', 'ogre_greatclub', 'bearspine'],
+    elder_great_owl: ['elder_plume', 'palethorn_platebody', 'stormsinger_robe'],
+    gnoll_champion: ['packlord_mane', 'jadeskull_platebody', 'lastsheaf'],
+    skeleton_barrow_lord: ['nightveil_jerkin_barrowdusk', 'sunhallow_robe'],
+    skeleton_fallen_king: ['nightveil_cowl_barrowdusk', 'cape_champion'],
     skeleton: ['aegis_stone', 'iron_helm', 'nightveil_cowl', 'voidwhisper_skirts', 'sentinel_gauntlets_bloodwatch', 'dawnsworn_robe_eclipse', 'gravewhisper', 'boneharrow'],
     skeleton_champion: ['sigil_fallen_champion', 'storm_coil', 'cape_champion', 'cape_phoenix', 'dreadforge_platebody', 'nightveil_jerkin', 'voidwhisper_robe', 'sentinel_greaves_daybreak', 'emberfox_hood_shadowfox', 'oathkeeper', 'last_word', 'skyrender', 'worldsplinter', 'frostplate_platebody'],
     wolf: ['wolf_fur', 'bramble_band', 'wolfhide_hood', 'wolfstalker_chaps', 'emberfox_gloves_dawnfox', 'mothwing_wraps_luna', 'frostplate_helm', 'wolffang', 'glacierbite'],
@@ -297,6 +301,10 @@ test('every foe’s tables preserve its signature loot — reserved pieces stay 
   assert.ok(!reach.get('brigand')!.has('cutpurse_jerkin_redhand'), 'redhand leaked to the crews');
   // The Bonegrinder's girdle hangs on the Bonegrinder alone.
   assert.ok(!reach.get('ogre')!.has('bonegrinder_girdle'), 'girdle leaked to the rank-and-file');
+  // The barrow lot belongs to the lords of the deep crypt alone —
+  // never the crypt floor, never the Champion's own purse.
+  assert.ok(!reach.get('skeleton')!.has('nightveil_jerkin_barrowdusk'), 'barrowdusk leaked to skeletons');
+  assert.ok(!reach.get('skeleton_champion')!.has('nightveil_jerkin_barrowdusk'), 'barrowdusk leaked to the Champion');
 });
 
 test('the flood law: every foe’s per-kill expectation stays under its station’s ceiling', () => {
