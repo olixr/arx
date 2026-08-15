@@ -542,6 +542,17 @@ export class Session {
     this.sendRaw(JSON.stringify(msg));
   }
 
+  /**
+   * Send an ALREADY-STRINGIFIED S2C message. The broadcast paths
+   * stringify their payload once and fan the same string to every
+   * receiving session — a busy fight's fx used to pay one
+   * JSON.stringify per fx per session for byte-identical output.
+   * Callers own the contract that the string came from an S2CMessage.
+   */
+  sendJsonRaw(json: string): void {
+    this.sendRaw(json);
+  }
+
   sendBinary(buf: ArrayBuffer): void {
     this.sendRaw(buf);
   }

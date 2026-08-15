@@ -367,13 +367,18 @@ export function poiForCell(
   // the decideSite probe would refuse it anyway (and the FALLBACK LAW
   // would deal a camp), but a landlocked cell should spend its
   // promotion on a hold the land can accept, not burn it on a refusal.
+  // The answer is a CELL fact, not a def fact: one ~1000-sample probe
+  // per decision, lazily, never once per shore def per pool (it was
+  // re-run up to four times per cell).
+  let cellWet: boolean | undefined;
+  const seesWater = (): boolean => (cellWet ??= cellSeesWater(seed, x0, y0));
   const holds = ctx.defs.filter(
     (d) =>
       d.compound &&
       d.weight > 0 &&
       centerTier >= d.tiers[0] &&
       centerTier <= d.tiers[1] &&
-      (!d.shore || cellSeesWater(seed, x0, y0)),
+      (!d.shore || seesWater()),
   );
   if (
     allowHold &&
@@ -406,7 +411,7 @@ export function poiForCell(
       d.weight > 0 &&
       centerTier >= d.tiers[0] &&
       centerTier <= d.tiers[1] &&
-      (!d.shore || cellSeesWater(seed, x0, y0)),
+      (!d.shore || seesWater()),
   );
   if (eligible.length === 0) return null;
   const totalW = eligible.reduce((s, d) => s + leanW(d), 0);

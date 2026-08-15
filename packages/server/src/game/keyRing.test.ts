@@ -19,6 +19,7 @@ type Fn = (...a: unknown[]) => unknown;
 const proto = GameServer.prototype as unknown as {
   pickupDrop: Fn;
   tickDrops: Fn;
+  forEachDropNear: Fn;
   keyDrop: Fn;
   useKey: Fn;
   sweepWornKeys: Fn;
@@ -91,6 +92,9 @@ function slate(inventory: InvSlot[], drop: Drop | null, ring: Array<{ id: number
     nextKeyRingId: 100,
     players: new Map([[1, player]]),
     drops: new Map(drop ? [[9, drop]] : []),
+    // The vacuum reads the chunk index now (THE INDEX SERVES THE PILE).
+    forEachDropNear: proto.forEachDropNear,
+    chunks: new Map(drop ? [['0,0', new Set([9])]] : []),
     dungeons: new Map<number, { seed: number; tier: string; power: number }>(),
     graves: new Map(),
     deathMarks: new Map(),

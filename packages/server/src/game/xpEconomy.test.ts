@@ -16,6 +16,7 @@ const proto = GameServer.prototype as unknown as {
   dotNpc: AnyFn;
   creditMark: AnyFn;
   tickSneakXp: AnyFn;
+  forEachNpcNear: AnyFn;
 };
 const call = (fn: AnyFn, self: unknown, ...args: unknown[]): unknown =>
   (fn as (...a: unknown[]) => unknown).call(self, ...args);
@@ -125,6 +126,8 @@ function sneakSlate(npcLevel: number) {
       [9, { x: 5, y: 5, dir: 0 }],
     ]),
     grantXp: (_e: unknown, _p: unknown, _skill: string, amount: number) => grants.push(amount),
+    chunks: new Map([['0,0', new Set([9])]]),
+    forEachNpcNear: proto.forEachNpcNear,
     tickSneakXp: proto.tickSneakXp,
   };
   return { s, player, npc, grants };

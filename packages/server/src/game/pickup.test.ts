@@ -14,7 +14,12 @@ import type { InvSlot } from '@arx/shared';
  */
 
 type Fn = (...a: unknown[]) => unknown;
-const proto = GameServer.prototype as unknown as { pickupDrop: Fn; tickDrops: Fn; speak: Fn };
+const proto = GameServer.prototype as unknown as {
+  pickupDrop: Fn;
+  tickDrops: Fn;
+  forEachDropNear: Fn;
+  speak: Fn;
+};
 
 interface Drop {
   item: string;
@@ -45,6 +50,9 @@ function slate(inventory: InvSlot[], drop: Drop, opts: { sneaking?: boolean } = 
     speak: proto.speak,
     players: new Map([[1, player]]),
     drops: new Map([[9, drop]]),
+    // The vacuum reads the chunk index now (THE INDEX SERVES THE PILE).
+    forEachDropNear: proto.forEachDropNear,
+    chunks: new Map([['0,0', new Set([9])]]),
     graves: new Map(),
     deathMarks: new Map(),
     positions: {

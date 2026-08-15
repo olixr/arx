@@ -373,7 +373,11 @@ export function groundProbeAt(seed: number, tx: number, ty: number): GroundClass
   const e = elevationAt(seed, tx, ty);
   if (e < 0.37) return 'water';
   if (e < 0.4) return 'sand';
-  if (levelAt(seed, tx, ty) !== 0) return 'rock';
+  // The center's own level reuses the elevation already in hand —
+  // levelAt(seed,tx,ty) would recompute the full elevation stack a
+  // second time (this probe runs ~10^4 times per landmark site
+  // decision; the neighbors below genuinely need their own samples).
+  if (levelOf(plateauFieldAt(seed, tx, ty), basinFieldAt(seed, tx, ty), e) !== 0) return 'rock';
   // THE CLIFF-FOOT LAW: a flat tile bordering ANY level change is the
   // fence line's doorstep — the high side wears the Cliff/Ramp rim and
   // worldgen dresses the base with talus, so nothing procedural may

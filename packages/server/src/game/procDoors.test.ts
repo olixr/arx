@@ -35,6 +35,7 @@ const proto = GameServer.prototype as unknown as {
   executeAdjust: AnyFn;
   runProc: AnyFn;
   npcsWithin: AnyFn;
+  forEachNpcNear: AnyFn;
 };
 
 const call = (fn: AnyFn, self: unknown, ...args: unknown[]): unknown =>
@@ -288,6 +289,8 @@ test('a live surge sharpens the basic shaft where it lands', () => {
     pets: new Map(),
     livestock: new Map(), npcs: new Map([[9, { def: { radius: 0.4 } }]]),
     summons: new Map(),
+    chunks: new Map([['0,0', new Set([9])]]),
+    forEachNpcNear: proto.forEachNpcNear,
     world: { isSolid: () => false, groundAt: () => undefined },
     executeAdjust: proto.executeAdjust,
     damageNpc: (_eid: unknown, dmg: number) => dealt.push(dmg),
@@ -329,6 +332,8 @@ test('chain per-jump fx carry the `<action>:<procId>` id, same as the closing br
       [9, { def: { radius: 0.4 } }],
       [10, { def: { radius: 0.4 } }],
     ]),
+    chunks: new Map([['0,0', new Set([9, 10])]]),
+    forEachNpcNear: proto.forEachNpcNear,
     npcsWithin: proto.npcsWithin,
     damageNpc: () => {},
     broadcastFx: (m: { id?: string; x2?: number }) => fx.push(m),

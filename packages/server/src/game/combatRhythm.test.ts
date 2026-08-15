@@ -45,6 +45,7 @@ const proto = GameServer.prototype as unknown as {
   landStrike: Fn;
   resolvePendingStrike: Fn;
   tickBowDraw: Fn;
+  forEachNpcNear: Fn;
 };
 
 interface SwingRec {
@@ -375,6 +376,8 @@ test('the swing and the scenery share ONE cone', () => {
     viewRewindTicks: () => 0,
     npcs: new Map(),
     pets: new Map(),
+    chunks: new Map(),
+    forEachNpcNear: proto.forEachNpcNear,
   };
   const player = {
     equipment: {},

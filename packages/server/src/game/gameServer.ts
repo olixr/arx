@@ -2853,6 +2853,10 @@ export class GameServer {
    */
   private readonly zonePlacements = new Map<string, { spawns: number[]; actors: number[] }>();
 
+  /** Permanently-retired slot indexes awaiting reuse (see freeSpawnSlot). */
+  private readonly freeSpawnSlots: number[] = [];
+  private readonly freeActorSlots: number[] = [];
+
   private zonePlacementIdx(zoneId: string): { spawns: number[]; actors: number[] } {
     let rec = this.zonePlacements.get(zoneId);
     if (!rec) {
@@ -2892,8 +2896,7 @@ export class GameServer {
       for (let i = 0; i < spawn.count; i++) {
         const angle = (i / spawn.count) * Math.PI * 2;
         const r = spawn.radius * 0.6;
-        indexes.push(this.spawnPoints.length);
-        this.spawnPoints.push({
+        const rec = {
           npc: spawn.npc,
           x: spawn.x + Math.cos(angle) * r,
           y: spawn.y + Math.sin(angle) * r,
@@ -2909,7 +2912,17 @@ export class GameServer {
           hours: spawn.hours,
           wing: spawn.wing,
           post: spawn.post,
-        });
+        };
+        // A retired slot is re-tenanted before the array grows — the
+        // roster stays proportional to what STANDS, not to history.
+        const idx = this.freeSpawnSlots.pop();
+        if (idx !== undefined) {
+          this.spawnPoints[idx] = rec;
+          indexes.push(idx);
+        } else {
+          indexes.push(this.spawnPoints.length);
+          this.spawnPoints.push(rec);
+        }
       }
     }
     if (zoneId !== undefined) this.zonePlacementIdx(zoneId).spawns.push(...indexes);
@@ -2946,10 +2959,7 @@ export class GameServer {
           `[npc] placement of '${spawn.actor}' references unknown routine '${spawn.routine}' — posted still`,
         );
       }
-      if (zoneId !== undefined) {
-        this.zonePlacementIdx(zoneId).actors.push(this.actorSpawnPoints.length);
-      }
-      this.actorSpawnPoints.push({
+      const rec = {
         actor: spawn.actor,
         x: spawn.x,
         y: spawn.y,
@@ -2958,7 +2968,12 @@ export class GameServer {
         eid: null,
         respawnAt: 0,
         active: true,
-      });
+      };
+      const idx = this.freeActorSlots.pop();
+      const at = idx ?? this.actorSpawnPoints.length;
+      if (zoneId !== undefined) this.zonePlacementIdx(zoneId).actors.push(at);
+      if (idx !== undefined) this.actorSpawnPoints[idx] = rec;
+      else this.actorSpawnPoints.push(rec);
     }
   }
 
@@ -3085,7 +3100,28 @@ export class GameServer {
         const ms = (performance.now() - t0).toFixed(1);
         console.warn(`[world] ${gens} chunks generated in one tick (${ms}ms tick)`);
       }
-      this.timer = setTimeout(loop, Math.max(0, next - performance.now()));
+      // THE TICK KEEPS ITS OWN LEDGER: a cheap reservoir of tick times
+      // logged once a minute — the audit's scaling fixes are invisible
+      // without a number, and a slow drift toward the 50ms budget
+      // should be read in the log, not discovered as rubber-banding.
+      const tickMs = performance.now() - t0;
+      this.tickMsMax = Math.max(this.tickMsMax, tickMs);
+      this.tickMsSum += tickMs;
+      if (++this.tickMsCount >= 1200) {
+        const avg = (this.tickMsSum / this.tickMsCount).toFixed(2);
+        console.log(`[tick] avg ${avg}ms, max ${this.tickMsMax.toFixed(1)}ms over ${this.tickMsCount} ticks`);
+        this.tickMsSum = 0;
+        this.tickMsMax = 0;
+        this.tickMsCount = 0;
+      }
+      // THE STALL FORGIVES ITSELF: after a long pause (GC, laptop lid,
+      // debugger), an unclamped `next` fires a burst of back-to-back
+      // catch-up ticks — every 50ms-spaced assumption in the systems
+      // compressed into one frame. Two ticks of debt is the most the
+      // clock is allowed to remember.
+      const nowAfter = performance.now();
+      if (next < nowAfter - 2 * TICK_MS) next = nowAfter - 2 * TICK_MS;
+      this.timer = setTimeout(loop, Math.max(0, next - nowAfter));
     };
     this.timer = setTimeout(loop, TICK_MS);
   }
@@ -6843,6 +6879,36 @@ export class GameServer {
    * one. A merged contribution keeps the pile alive (timers take the
    * later of the two) — a pile lives as long as its newest addition.
    */
+  /**
+   * THE INDEX SERVES THE PILE: visit every live drop within `r` tiles
+   * of a point via the chunk index — the merge scan, the pile census,
+   * and the walk-over vacuum all walked the ENTIRE drops map (a death
+   * spill was O(28 × world drops)). Return true to stop early.
+   */
+  private forEachDropNear(
+    x: number,
+    y: number,
+    r: number,
+    fn: (eid: EntityId, drop: DropComp, pos: { x: number; y: number }) => boolean | void,
+  ): void {
+    const ring = Math.ceil((r + 1) / CHUNK_SIZE);
+    const ccx = Math.floor(x / CHUNK_SIZE);
+    const ccy = Math.floor(y / CHUNK_SIZE);
+    for (let dy = -ring; dy <= ring; dy++) {
+      for (let dx = -ring; dx <= ring; dx++) {
+        const set = this.chunks.get(chunkKey(ccx + dx, ccy + dy));
+        if (!set) continue;
+        for (const eid of set) {
+          const drop = this.drops.get(eid);
+          if (!drop) continue;
+          const pos = this.positions.get(eid);
+          if (!pos) continue;
+          if (fn(eid, drop, pos) === true) return;
+        }
+      }
+    }
+  }
+
   private placeDrop(
     item: string,
     qty: number,
@@ -6850,21 +6916,22 @@ export class GameServer {
     y: number,
     comp: Omit<DropComp, 'item' | 'qty'>,
   ): EntityId {
-    for (const [eid, drop] of this.drops) {
+    let merged: EntityId | null = null;
+    this.forEachDropNear(x, y, DROP_MERGE_RADIUS, (eid, drop, pos) => {
       if (!canMergeDrop(drop, item, comp.roll, comp.ownerEid, comp.xpOnPickup, comp.stolen)) {
-        continue;
+        return;
       }
-      const pos = this.positions.get(eid);
-      if (!pos) continue;
       const dx = pos.x - x;
       const dy = pos.y - y;
-      if (dx * dx + dy * dy > DROP_MERGE_RADIUS * DROP_MERGE_RADIUS) continue;
+      if (dx * dx + dy * dy > DROP_MERGE_RADIUS * DROP_MERGE_RADIUS) return;
       drop.qty += qty;
       drop.despawnAt = Math.max(drop.despawnAt, comp.despawnAt);
       drop.ownerUntil = Math.max(drop.ownerUntil, comp.ownerUntil);
       drop.pickupAfter = Math.max(drop.pickupAfter, comp.pickupAfter);
-      return eid;
-    }
+      merged = eid;
+      return true;
+    });
+    if (merged !== null) return merged;
     const dropEid = this.ecs.create();
     this.kinds.set(dropEid, EntityKind.ItemDrop);
     this.positions.set(dropEid, { x, y, dir: 0 });
@@ -8399,24 +8466,42 @@ export class GameServer {
   }
 
   /**
+   * Return a permanently-retired spawn slot to the reuse pool. Only
+   * lawful once its zone is gone for good (retireZonePlacements and
+   * the dungeon teardown) — a carcass's stood-down garrison keeps its
+   * slots, because the standing zone still owns them. Without reuse,
+   * spawnPoints grew with every dungeon run and POI churn FOREVER
+   * (slots were deactivated, never reclaimed) while tickSpawns walked
+   * the whole array every tick.
+   */
+  private freeSpawnSlot(i: number): void {
+    const spawn = this.spawnPoints[i];
+    if (!spawn) return;
+    spawn.active = false;
+    if (spawn.eid !== null) {
+      this.removeFromChunks(spawn.eid);
+      this.ecs.destroy(spawn.eid);
+      spawn.eid = null;
+    }
+    // The per-index side ledgers must never alias the slot's next
+    // tenant.
+    this.poiSpawnCells.delete(i);
+    this.strongholdSpawnCells.delete(i);
+    this.minorSpawnSlots.delete(i);
+    this.freeSpawnSlots.push(i);
+  }
+
+  /**
    * Deactivate a zone's placement records and silently remove their
    * live bodies — the dungeon-teardown law (removeFromChunks +
    * ecs.destroy, no loot, no death burst; ecs.destroy clears every
    * component store, dialogue/projectile/aggro guards self-heal).
+   * Slots return to the reuse pools: the zone is gone for good.
    */
   private retireZonePlacements(zoneId: string): void {
     const rec = this.zonePlacements.get(zoneId);
     if (!rec) return;
-    for (const i of rec.spawns) {
-      const spawn = this.spawnPoints[i];
-      if (!spawn) continue;
-      spawn.active = false;
-      if (spawn.eid !== null) {
-        this.removeFromChunks(spawn.eid);
-        this.ecs.destroy(spawn.eid);
-        spawn.eid = null;
-      }
-    }
+    for (const i of rec.spawns) this.freeSpawnSlot(i);
     for (const i of rec.actors) {
       const post = this.actorSpawnPoints[i];
       if (!post) continue;
@@ -8426,6 +8511,7 @@ export class GameServer {
         this.ecs.destroy(post.eid);
         post.eid = null;
       }
+      this.freeActorSlots.push(i);
     }
     this.zonePlacements.delete(zoneId);
   }
@@ -11971,16 +12057,9 @@ export class GameServer {
       });
     }
     dungeon.guests.clear();
-    for (const idx of dungeon.spawnIndexes) {
-      const spawn = this.spawnPoints[idx];
-      if (!spawn) continue;
-      spawn.active = false;
-      if (spawn.eid !== null && this.npcs.has(spawn.eid)) {
-        this.removeFromChunks(spawn.eid);
-        this.ecs.destroy(spawn.eid);
-        spawn.eid = null;
-      }
-    }
+    // The run's slots return to the pool — every dungeon ever cut used
+    // to permanently fatten spawnPoints (the one retirement door law).
+    for (const idx of dungeon.spawnIndexes) this.freeSpawnSlot(idx);
     // THE ROCK TAKES ITS DEAD: anything still breathing in the band
     // that the roster never knew — a crown's raised adds spawn with
     // spawnIndex -1 — goes with the zone, or the next instance dealt
@@ -16634,9 +16713,11 @@ export class GameServer {
   /** Re-send an entity's meta to every session that can see it. */
   private broadcastMetaUpdate(eid: EntityId): void {
     const meta = this.buildMeta(eid);
+    // One stringify for the whole fan (see broadcastFx).
+    let json: string | undefined;
     for (const s of this.sessions) {
       if (s.playerEid === eid || s.knownEntities.has(eid)) {
-        s.sendJson({ t: 'update', entities: [meta] });
+        s.sendJsonRaw((json ??= JSON.stringify({ t: 'update', entities: [meta] })));
       }
     }
   }
@@ -17021,15 +17102,19 @@ export class GameServer {
    * ring melee lag comp reads.
    */
   private foeWithin(pos: { x: number; y: number }, range: number, rewindTicks = 0): boolean {
-    for (const [npcEid, npc] of this.npcs) {
-      if (this.pets.has(npcEid)) continue;
+    let found = false;
+    this.forEachNpcNear(pos.x, pos.y, range, (npcEid, npc) => {
+      if (this.pets.has(npcEid)) return;
       const hp = this.healths.get(npcEid);
-      if (!hp || hp.hp <= 0) continue;
+      if (!hp || hp.hp <= 0) return;
       const npos = this.npcPosAt(npcEid, rewindTicks);
-      if (!npos) continue;
-      if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius <= range) return true;
-    }
-    return false;
+      if (!npos) return;
+      if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius <= range) {
+        found = true;
+        return true;
+      }
+    });
+    return found;
   }
 
   /** The impact frame arriving: a committed strike lands. */
@@ -17169,28 +17254,28 @@ export class GameServer {
     let bestTarget: EntityId | null = null;
     let bestDist = Infinity;
     const inArc: EntityId[] = [];
-    for (const [npcEid, npc] of this.npcs) {
+    this.forEachNpcNear(pos.x, pos.y, range, (npcEid, npc) => {
       // A companion is not a target — the blade picks the mob behind it.
-      if (this.pets.has(npcEid)) continue;
+      if (this.pets.has(npcEid)) return;
       const npos = this.npcPosAt(npcEid, rewind);
-      if (!npos) continue;
+      if (!npos) return;
       const dx = npos.x - pos.x;
       const dy = npos.y - pos.y;
       const dist = Math.hypot(dx, dy) - npc.def.radius;
-      if (dist > range) continue;
+      if (dist > range) return;
       // Within the weapon's sweep arc of the aim direction; anything
       // practically touching the player is hittable regardless of aim
       // (feel > sim).
       const angleTo = Math.atan2(dy, dx);
       let diff = Math.abs(angleTo - aim) % (Math.PI * 2);
       if (diff > Math.PI) diff = Math.PI * 2 - diff;
-      if (diff > arcHalf && dist > 0.9) continue;
+      if (diff > arcHalf && dist > 0.9) return;
       inArc.push(npcEid);
       if (dist < bestDist) {
         bestDist = dist;
         bestTarget = npcEid;
       }
-    }
+    });
     if (sweepAll) {
       // The finisher clears the crowd — everyone in the arc eats it.
       let felled = 0;
@@ -17588,11 +17673,17 @@ export class GameServer {
 
   /** Combat FX go to every session close enough to possibly see them. */
   private broadcastFx(fx: S2CFx): void {
+    // Stringify ONCE, fan the same bytes: a busy fight's fx used to
+    // pay one JSON.stringify per fx per session for identical output
+    // (a casting NPC alone emits a charge every 10 ticks).
+    let json: string | undefined;
     for (const s of this.sessions) {
       if (s.playerEid === null) continue;
       const pos = this.positions.get(s.playerEid);
       if (!pos) continue;
-      if (Math.abs(pos.x - fx.x) < 40 && Math.abs(pos.y - fx.y) < 40) s.sendJson(fx);
+      if (Math.abs(pos.x - fx.x) < 40 && Math.abs(pos.y - fx.y) < 40) {
+        s.sendJsonRaw((json ??= JSON.stringify(fx)));
+      }
     }
   }
 
@@ -18039,20 +18130,18 @@ export class GameServer {
    */
   private homingMarks(pos: { x: number; y: number }, aim: number, range: number): EntityId[] {
     const found: Array<{ eid: EntityId; d: number }> = [];
-    for (const [npcEid, npc] of this.npcs) {
-      if (!this.assistMark(npcEid)) continue;
-      const npos = this.positions.get(npcEid);
-      if (!npos) continue;
+    this.forEachNpcNear(pos.x, pos.y, range, (npcEid, npc, npos) => {
+      if (!this.assistMark(npcEid)) return;
       const dx = npos.x - pos.x;
       const dy = npos.y - pos.y;
       const d = Math.hypot(dx, dy) - npc.def.radius;
-      if (d > range) continue;
+      if (d > range) return;
       let diff = Math.abs(Math.atan2(dy, dx) - aim) % (Math.PI * 2);
       if (diff > Math.PI) diff = Math.PI * 2 - diff;
       // A generous cone — the point of a seeker is forgiving aim.
-      if (diff > 1.2 && d > 1.5) continue;
+      if (diff > 1.2 && d > 1.5) return;
       found.push({ eid: npcEid, d });
-    }
+    });
     found.sort((a, b) => a.d - b.d);
     return found.map((f) => f.eid);
   }
@@ -18170,16 +18259,19 @@ export class GameServer {
           });
           break;
         }
-        for (const [npcEid, npc] of this.npcs) {
-          const npos = this.positions.get(npcEid);
-          if (!npos) continue;
+        // Knockback re-chunks a struck body mid-walk — pay each body
+        // once, as the old whole-map walk guaranteed.
+        const struck = new Set<EntityId>();
+        this.forEachNpcNear(pos.x, pos.y, range, (npcEid, npc, npos) => {
+          if (struck.has(npcEid)) return;
           const dx = npos.x - pos.x;
           const dy = npos.y - pos.y;
           const dist = Math.hypot(dx, dy) - npc.def.radius;
-          if (dist > range) continue;
+          if (dist > range) return;
           let diff = Math.abs(Math.atan2(dy, dx) - aim) % (Math.PI * 2);
           if (diff > Math.PI) diff = Math.PI * 2 - diff;
-          if (diff > arc && dist > 0.9) continue;
+          if (diff > arc && dist > 0.9) return;
+          struck.add(npcEid);
           const roll = rollDamage(maxHit);
           const dmg = this.executeAdjust(npcEid, roll.dmg, ab.executeBelow);
           this.damageNpc(npcEid, dmg, casterEid, style, {
@@ -18189,7 +18281,7 @@ export class GameServer {
             vs: ab.vs,
           });
           this.drainHeal(casterEid, dmg, ab.drainFrac);
-        }
+        });
         break;
       }
 
@@ -18209,12 +18301,14 @@ export class GameServer {
             sourceEid: casterEid,
           });
         } else {
-          for (const [npcEid, npc] of this.npcs) {
-            const npos = this.positions.get(npcEid);
-            if (!npos) continue;
+          // Knockback re-chunks a struck body mid-walk — pay once.
+          const struck = new Set<EntityId>();
+          this.forEachNpcNear(pos.x, pos.y, radius, (npcEid, npc, npos) => {
+            if (struck.has(npcEid)) return;
             const dx = npos.x - pos.x;
             const dy = npos.y - pos.y;
-            if (Math.hypot(dx, dy) - npc.def.radius > radius) continue;
+            if (Math.hypot(dx, dy) - npc.def.radius > radius) return;
+            struck.add(npcEid);
             const roll = rollDamage(maxHit);
             const dmg = this.executeAdjust(npcEid, roll.dmg, ab.executeBelow);
             this.damageNpc(npcEid, dmg, casterEid, style, {
@@ -18224,7 +18318,7 @@ export class GameServer {
               vs: ab.vs,
             });
             this.drainHeal(casterEid, dmg, ab.drainFrac);
-          }
+          });
         }
         break;
       }
@@ -18276,11 +18370,9 @@ export class GameServer {
             }
             continue;
           }
-          for (const [npcEid, npc] of this.npcs) {
-            if (struck.has(npcEid)) continue;
-            const npos = this.positions.get(npcEid);
-            if (!npos) continue;
-            if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius > 0.8) continue;
+          this.forEachNpcNear(pos.x, pos.y, 0.8, (npcEid, npc, npos) => {
+            if (struck.has(npcEid)) return;
+            if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius > 0.8) return;
             struck.add(npcEid);
             const roll = rollDamage(maxHit);
             const dmg = this.executeAdjust(npcEid, roll.dmg, ab.executeBelow);
@@ -18291,7 +18383,7 @@ export class GameServer {
               vs: ab.vs,
             });
             this.drainHeal(casterEid, dmg, ab.drainFrac);
-          }
+          });
         }
         this.updateChunkMembership(casterEid);
         this.broadcastFx({
@@ -18414,26 +18506,24 @@ export class GameServer {
         for (let hop = 0; hop < maxTargets; hop++) {
           let best: EntityId | null = null;
           let bestDist = Infinity;
-          for (const [npcEid, npc] of this.npcs) {
-            if (zapped.has(npcEid)) continue;
-            const npos = this.positions.get(npcEid);
-            if (!npos) continue;
+          this.forEachNpcNear(from.x, from.y, hop === 0 ? range : chainRadius, (npcEid, npc, npos) => {
+            if (zapped.has(npcEid)) return;
             const dx = npos.x - from.x;
             const dy = npos.y - from.y;
             const d = Math.hypot(dx, dy) - npc.def.radius;
             if (hop === 0) {
-              if (d > range) continue;
+              if (d > range) return;
               let diff = Math.abs(Math.atan2(dy, dx) - aim) % (Math.PI * 2);
               if (diff > Math.PI) diff = Math.PI * 2 - diff;
-              if (diff > 0.8 && d > 1) continue;
+              if (diff > 0.8 && d > 1) return;
             } else if (d > chainRadius) {
-              continue;
+              return;
             }
             if (d < bestDist) {
               bestDist = d;
               best = npcEid;
             }
-          }
+          });
           if (best === null) break;
           zapped.add(best);
           const tpos = this.positions.must(best);
@@ -18690,10 +18780,12 @@ export class GameServer {
             });
           }
         } else {
-          for (const [npcEid, npc] of this.npcs) {
-            const npos = this.positions.get(npcEid);
-            if (!npos) continue;
-            if (!strike(npcEid, npc.def.radius, npos.x, npos.y)) continue;
+          // Knockback re-chunks a struck body mid-walk — pay once.
+          const struck = new Set<EntityId>();
+          this.forEachNpcNear(pos.x, pos.y, len + halfW, (npcEid, npc, npos) => {
+            if (struck.has(npcEid)) return;
+            if (!strike(npcEid, npc.def.radius, npos.x, npos.y)) return;
+            struck.add(npcEid);
             const roll = rollDamage(maxHit);
             const dmg = this.executeAdjust(npcEid, roll.dmg, ab.executeBelow);
             this.damageNpc(npcEid, dmg, casterEid, style, {
@@ -18703,7 +18795,7 @@ export class GameServer {
               vs: ab.vs,
             });
             this.drainHeal(casterEid, dmg, ab.drainFrac);
-          }
+          });
         }
         break;
       }
@@ -18754,10 +18846,12 @@ export class GameServer {
         if (fromNpc) {
           this.blastPlayers(cx, cy, radius, maxHit, ab.status, level, { sourceEid: casterEid });
         } else {
-          for (const [npcEid, npc] of this.npcs) {
-            const npos = this.positions.get(npcEid);
-            if (!npos) continue;
-            if (Math.hypot(npos.x - cx, npos.y - cy) - npc.def.radius > radius) continue;
+          // Knockback re-chunks a struck body mid-walk — pay once.
+          const struck = new Set<EntityId>();
+          this.forEachNpcNear(cx, cy, radius, (npcEid, npc, npos) => {
+            if (struck.has(npcEid)) return;
+            if (Math.hypot(npos.x - cx, npos.y - cy) - npc.def.radius > radius) return;
+            struck.add(npcEid);
             const roll = rollDamage(maxHit);
             const dmg = this.executeAdjust(npcEid, roll.dmg, ab.executeBelow);
             this.damageNpc(npcEid, dmg, casterEid, style, {
@@ -18768,7 +18862,7 @@ export class GameServer {
               knockFrom: { x: cx, y: cy },
             });
             this.drainHeal(casterEid, dmg, ab.drainFrac);
-          }
+          });
         }
         break;
       }
@@ -18847,13 +18941,11 @@ export class GameServer {
         });
         // A decoy is only useful if it takes the heat NOW.
         if (spec.kind === 'decoy') {
-          for (const [npcEid, npc] of this.npcs) {
-            const npos = this.positions.get(npcEid);
-            if (!npos) continue;
-            if (Math.hypot(npos.x - at.x, npos.y - at.y) > spec.radius) continue;
-            if (npc.def.damage <= 0) continue;
+          this.forEachNpcNear(at.x, at.y, spec.radius, (npcEid, npc, npos) => {
+            if (Math.hypot(npos.x - at.x, npos.y - at.y) > spec.radius) return;
+            if (npc.def.damage <= 0) return;
             this.npcAggro(npcEid, npc, eid);
-          }
+          });
         }
         break;
       }
@@ -18872,15 +18964,14 @@ export class GameServer {
     // only (an NPC cannot dare its own kind), and the town cast is
     // deaf to it — a shout never turns the watch.
     if (ab.tauntRadius && this.players.has(casterEid)) {
-      for (const [npcEid, npc] of this.npcs) {
-        const npos = this.positions.get(npcEid);
-        if (!npos) continue;
-        if (Math.hypot(npos.x - pos.x, npos.y - pos.y) > ab.tauntRadius) continue;
-        if (npc.def.damage <= 0 || this.actors.has(npcEid)) continue;
+      const tauntRadius = ab.tauntRadius;
+      this.forEachNpcNear(pos.x, pos.y, tauntRadius, (npcEid, npc, npos) => {
+        if (Math.hypot(npos.x - pos.x, npos.y - pos.y) > tauntRadius) return;
+        if (npc.def.damage <= 0 || this.actors.has(npcEid)) return;
         // A challenge is a deliberate dare — it pierces faction peace
         // (taunting a camp that trusts you is asking for the fight).
         this.npcAggro(npcEid, npc, casterEid, { force: true });
-      }
+      });
     }
   }
 
@@ -19443,12 +19534,10 @@ export class GameServer {
           }
         }
       } else if (sum.kind === 'snare_trap') {
-        for (const [npcEid, npc] of this.npcs) {
-          if (npcLivestock(npc.def)) continue; // livestock won't spring it
-          if (this.pets.has(npcEid)) continue; // a companion won't either
-          const npos = this.positions.get(npcEid);
-          if (!npos) continue;
-          if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius > sum.radius) continue;
+        this.forEachNpcNear(pos.x, pos.y, sum.radius, (npcEid, npc, npos) => {
+          if (npcLivestock(npc.def)) return; // livestock won't spring it
+          if (this.pets.has(npcEid)) return; // a companion won't either
+          if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius > sum.radius) return;
           // Sprung: bite, chill, and the trap is spent.
           const owner = this.players.get(sum.ownerEid);
           const level = owner ? this.effectiveLevel(owner, 'onehand') : 1;
@@ -19458,8 +19547,8 @@ export class GameServer {
           });
           this.removeFromChunks(eid);
           this.ecs.destroy(eid);
-          break;
-        }
+          return true;
+        });
       }
       // Decoys just stand there being extremely punchable.
     }
@@ -19498,18 +19587,20 @@ export class GameServer {
           arcHalf: blast.arcHalf,
         });
       } else {
-        for (const [npcEid, npc] of this.npcs) {
-          const npos = this.positions.get(npcEid);
-          if (!npos) continue;
+        // Knockback re-chunks a struck body mid-walk — pay once.
+        const struck = new Set<EntityId>();
+        this.forEachNpcNear(blast.x, blast.y, blast.radius, (npcEid, npc, npos) => {
+          if (struck.has(npcEid)) return;
           const dx = npos.x - blast.x;
           const dy = npos.y - blast.y;
           const dist = Math.hypot(dx, dy) - npc.def.radius;
-          if (dist > blast.radius) continue;
+          if (dist > blast.radius) return;
           if (isArc) {
             let diff = Math.abs(Math.atan2(dy, dx) - blast.arcAim!) % (Math.PI * 2);
             if (diff > Math.PI) diff = Math.PI * 2 - diff;
-            if (diff > (blast.arcHalf ?? Math.PI / 3) && dist > 0.9) continue;
+            if (diff > (blast.arcHalf ?? Math.PI / 3) && dist > 0.9) return;
           }
+          struck.add(npcEid);
           const roll = rollDamage(blast.damage);
           const dmg = this.executeAdjust(npcEid, roll.dmg, blast.executeBelow);
           this.damageNpc(npcEid, dmg, blast.ownerEid, blast.style, {
@@ -19522,7 +19613,7 @@ export class GameServer {
             knockFrom: isArc ? undefined : { x: blast.x, y: blast.y },
           });
           this.drainHeal(blast.ownerEid, dmg, blast.drainFrac);
-        }
+        });
       }
     }
   }
@@ -19543,12 +19634,14 @@ export class GameServer {
         });
         continue;
       }
-      for (const [npcEid, npc] of this.npcs) {
-        const npos = this.positions.get(npcEid);
-        if (!npos) continue;
+      // Knockback re-chunks a struck body mid-walk — pay once.
+      const struck = new Set<EntityId>();
+      this.forEachNpcNear(field.x, field.y, field.radius, (npcEid, npc, npos) => {
+        if (struck.has(npcEid)) return;
         if (Math.hypot(npos.x - field.x, npos.y - field.y) - npc.def.radius > field.radius) {
-          continue;
+          return;
         }
+        struck.add(npcEid);
         const { dmg, crit } = rollDamage(field.damage);
         this.damageNpc(npcEid, dmg, field.ownerEid, field.style, {
           crit,
@@ -19558,7 +19651,7 @@ export class GameServer {
           knockFrom: { x: field.x, y: field.y },
         });
         this.drainHeal(field.ownerEid, dmg, field.drainFrac);
-      }
+      });
     }
   }
 
@@ -19636,26 +19729,24 @@ export class GameServer {
     // to the nearest living foe within seek range; with nobody to
     // hunt it flies straight and dies at range like any other shot.
     if (proj.homingTurn && !proj.returning && !proj.fromNpc) {
-      let tpos =
+      let tpos: { x: number; y: number } | undefined =
         proj.targetEid !== undefined && this.npcs.has(proj.targetEid)
           ? this.positions.get(proj.targetEid)
           : undefined;
       if (!tpos) {
         proj.targetEid = undefined;
         let bestD = HOMING_SEEK_RANGE;
-        for (const [npcEid, npc] of this.npcs) {
-          if (proj.hitEids?.has(npcEid)) continue;
+        this.forEachNpcNear(pos.x, pos.y, HOMING_SEEK_RANGE, (npcEid, npc, npos) => {
+          if (proj.hitEids?.has(npcEid)) return;
           // A homing shot never hunts a companion.
-          if (this.pets.has(npcEid)) continue;
-          const npos = this.positions.get(npcEid);
-          if (!npos) continue;
+          if (this.pets.has(npcEid)) return;
           const d = Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius;
           if (d < bestD) {
             bestD = d;
             proj.targetEid = npcEid;
             tpos = npos;
           }
-        }
+        });
       }
       if (tpos) {
         const want = Math.atan2(tpos.y - pos.y, tpos.x - pos.x);
@@ -19820,12 +19911,10 @@ export class GameServer {
         }
       }
     } else if (!dead) {
-      for (const [npcEid, npc] of this.npcs) {
-        if (proj.hitEids?.has(npcEid)) continue;
+      this.forEachNpcNear(pos.x, pos.y, 0.25, (npcEid, npc, npos) => {
+        if (proj.hitEids?.has(npcEid)) return;
         // Arrows fly past a companion — it neither blocks nor bleeds.
-        if (this.pets.has(npcEid)) continue;
-        const npos = this.positions.get(npcEid);
-        if (!npos) continue;
+        if (this.pets.has(npcEid)) return;
         const dx = npos.x - pos.x;
         // The visual body rises north of the ground point — test the
         // feet→crown band so a shot crossing the chest or head lands.
@@ -19886,30 +19975,33 @@ export class GameServer {
           // The splash is part of the same landing, so it reads the
           // same surge-folded maxHit the direct hit rolled from.
           if (proj.splashRadius) {
+            const splashRadius = proj.splashRadius;
             const splashHit = Math.max(1, Math.round(maxHit * 0.5));
-            for (const [otherEid, other] of this.npcs) {
-              if (otherEid === npcEid) continue;
-              const opos = this.positions.get(otherEid);
-              if (!opos) continue;
-              if (Math.hypot(opos.x - pos.x, opos.y - pos.y) - other.def.radius > proj.splashRadius) {
-                continue;
+            // Knockback re-chunks a splashed body mid-walk — pay once.
+            const splashed = new Set<EntityId>();
+            this.forEachNpcNear(pos.x, pos.y, splashRadius, (otherEid, other, opos) => {
+              if (otherEid === npcEid) return;
+              if (splashed.has(otherEid)) return;
+              if (Math.hypot(opos.x - pos.x, opos.y - pos.y) - other.def.radius > splashRadius) {
+                return;
               }
+              splashed.add(otherEid);
               const roll = rollDamage(splashHit);
               this.damageNpc(otherEid, roll.dmg, proj.ownerEid, proj.style, {
                 crit: roll.crit,
                 status: proj.status,
                 vs: proj.vs,
               });
-            }
+            });
           }
           if (proj.pierce) {
             (proj.hitEids ??= new Set()).add(npcEid);
           } else {
             dead = true;
-            break;
+            return true;
           }
         }
-      }
+      });
     }
 
     return dead;
@@ -20242,12 +20334,10 @@ export class GameServer {
   /** Living foes inside a circle, nearest first. */
   private npcsWithin(x: number, y: number, radius: number): EntityId[] {
     const found: Array<{ eid: EntityId; d: number }> = [];
-    for (const [npcEid, npc] of this.npcs) {
-      const np = this.positions.get(npcEid);
-      if (!np) continue;
+    this.forEachNpcNear(x, y, radius, (npcEid, npc, np) => {
       const d = Math.hypot(np.x - x, np.y - y) - npc.def.radius;
       if (d <= radius) found.push({ eid: npcEid, d });
-    }
+    });
     found.sort((a, b) => a.d - b.d);
     return found.map((f) => f.eid);
   }
@@ -21373,9 +21463,11 @@ export class GameServer {
     via?: 'burn' | 'bleed' | 'venom',
   ): void {
     const hasDir = kx !== 0 || ky !== 0;
+    // One stringify for the whole fan (see broadcastFx).
+    let json: string | undefined;
     for (const s of this.sessions) {
       if (s.playerEid === eid || s.knownEntities.has(eid)) {
-        s.sendJson({
+        json ??= JSON.stringify({
           t: 'hit',
           eid,
           dmg,
@@ -21386,6 +21478,7 @@ export class GameServer {
           im: immune || undefined,
           via,
         });
+        s.sendJsonRaw(json);
       }
     }
   }
@@ -21504,6 +21597,14 @@ export class GameServer {
 
   /** Crowned-but-unforgeable seats already warned about (once per def id). */
   private readonly crownWarned = new Set<string>();
+
+  /** Tick-time reservoir (logged once a minute — see start()). */
+  private tickMsSum = 0;
+  private tickMsMax = 0;
+  private tickMsCount = 0;
+
+  /** Per-tick union of every session's streamed chunks (see tickNpcs). */
+  private readonly awakeChunks = new Set<string>();
 
   /** Ambient spawns keep this far out / this near a player (tiles). */
   private static readonly WILD_MIN_R = 34;
@@ -22292,6 +22393,40 @@ export class GameServer {
       if (this.doorLocks.has(`${unit.ax},${unit.ay}`)) continue;
       // Routine hands are nobody's (locked units were skipped above).
       this.interactDoor(-1 as EntityId, tx, ty, info, () => {});
+    }
+  }
+
+  /**
+   * THE INDEX SERVES THE FIGHT: visit every live NPC within `r` tiles
+   * of a point through the chunk index (separateHeading's own proven
+   * pattern) instead of the whole-world `this.npcs` walk the combat
+   * sites had grown — a projectile's hit test was O(world) per shaft
+   * per tick, and the population only rises as the map is explored.
+   * The ring pads for the widest body radius and the tallest hit band,
+   * so any NPC whose BODY can touch the circle is visited. Return true
+   * from the visit to stop early (the for-of `break` of the old walks).
+   */
+  private forEachNpcNear(
+    x: number,
+    y: number,
+    r: number,
+    fn: (eid: EntityId, npc: NpcComp, pos: { x: number; y: number }) => boolean | void,
+  ): void {
+    const ring = Math.ceil((r + 4) / CHUNK_SIZE);
+    const ccx = Math.floor(x / CHUNK_SIZE);
+    const ccy = Math.floor(y / CHUNK_SIZE);
+    for (let dy = -ring; dy <= ring; dy++) {
+      for (let dx = -ring; dx <= ring; dx++) {
+        const set = this.chunks.get(chunkKey(ccx + dx, ccy + dy));
+        if (!set) continue;
+        for (const eid of set) {
+          const npc = this.npcs.get(eid);
+          if (!npc) continue;
+          const pos = this.positions.get(eid);
+          if (!pos) continue;
+          if (fn(eid, npc, pos) === true) return;
+        }
+      }
     }
   }
 
@@ -23737,6 +23872,20 @@ export class GameServer {
 
   private tickNpcs(now: number): void {
     this.pathfindsLeft = GameServer.MAX_PATHFINDS_PER_TICK;
+    // THE UNWATCHED WORLD DOZES: the union of every session's streamed
+    // chunks, rebuilt each tick into one reusable set. An IDLE body in
+    // a chunk no session knows skips its wander walk below — garrisons
+    // stood up by exploration used to simulate at 20Hz forever, world-
+    // wide, whoever was online (roughly half the idle population
+    // rolling RNG and paying collision + separation every tick for
+    // nobody). Interest reaches ~2.5 chunks past every player — far
+    // beyond any aggroRange — so a body always wakes well off-screen;
+    // combat, search, return, and patrol states never doze, and damage
+    // force-wakes through npcAggro regardless.
+    this.awakeChunks.clear();
+    for (const s of this.sessions) {
+      for (const k of s.knownChunks) this.awakeChunks.add(k);
+    }
     for (const [eid, npc] of this.npcs) {
       const pos = this.positions.must(eid);
       if (npc.attackCooldown > 0) npc.attackCooldown--;
@@ -23774,6 +23923,15 @@ export class GameServer {
             xp: lays.xp,
           });
         }
+      }
+
+      // THE UNWATCHED WORLD DOZES (see the union above): idle and far
+      // from every eye, the body holds its pose — timers above still
+      // ran, and everything below (perception, wander, collision,
+      // separation) waits for a watcher.
+      if (npc.state === 'idle') {
+        const ck = this.entityChunk.get(eid);
+        if (ck !== undefined && !this.awakeChunks.has(ck)) continue;
       }
 
       // Shock is a hard stagger: no thinking, no moving, no swinging.
@@ -24557,14 +24715,12 @@ export class GameServer {
       const pos = this.positions.get(eid);
       if (!pos) continue;
       let best = 0;
-      let bestNpc: NpcComp | null = null;
-      for (const [npcEid, npc] of this.npcs) {
-        if (npc.def.aggroRange <= 0 || npc.def.damage <= 0) continue;
-        if ((npc.state === 'chase' || npc.state === 'seekhelp') && npc.targetEid === eid) continue;
-        const npos = this.positions.get(npcEid);
-        if (!npos) continue;
+      let bestNpc = null as NpcComp | null;
+      this.forEachNpcNear(pos.x, pos.y, SNEAK_XP_RADIUS, (npcEid, npc, npos) => {
+        if (npc.def.aggroRange <= 0 || npc.def.damage <= 0) return;
+        if ((npc.state === 'chase' || npc.state === 'seekhelp') && npc.targetEid === eid) return;
         const dist = Math.hypot(npos.x - pos.x, npos.y - pos.y);
-        if (dist > SNEAK_XP_RADIUS) continue;
+        if (dist > SNEAK_XP_RADIUS) return;
         // Closer and stronger threats teach more — until this body has
         // taught this watcher all it knows (THE CASED CAMP,
         // shared/sim/sneak.ts): the pulse offers only what remains.
@@ -24575,7 +24731,7 @@ export class GameServer {
           best = avail;
           bestNpc = npc;
         }
-      }
+      });
       if (best > 0 && bestNpc) {
         (bestNpc.casedMarks ??= new Map()).set(eid, (bestNpc.casedMarks.get(eid) ?? 0) + best);
         this.grantXp(eid, player, 'sneak', best);
@@ -24588,14 +24744,12 @@ export class GameServer {
   /** How many drops of an item lie within `radius` tiles (egg-pile cap). */
   private nearbyDropCount(item: string, x: number, y: number, radius: number): number {
     let count = 0;
-    for (const [eid, drop] of this.drops) {
-      if (drop.item !== item) continue;
-      const pos = this.positions.get(eid);
-      if (!pos) continue;
+    this.forEachDropNear(x, y, radius, (_eid, drop, pos) => {
+      if (drop.item !== item) return;
       const dx = pos.x - x;
       const dy = pos.y - y;
       if (dx * dx + dy * dy <= radius * radius) count++;
-    }
+    });
     return count;
   }
 
@@ -24664,60 +24818,62 @@ export class GameServer {
   }
 
   private tickDrops(now: number): void {
+    // The despawn sweep still reads every drop (one time compare each);
+    // the walk-over vacuum below inverts to per-PLAYER chunk scans —
+    // the old shape was O(drops × players) every tick.
     for (const [eid, drop] of this.drops) {
       if (drop.despawnAt <= now) {
         this.removeFromChunks(eid);
         this.ecs.destroy(eid);
-        continue;
       }
-      if (drop.pickupAfter > now) continue;
-      const pos = this.positions.must(eid);
-      for (const [playerEid, player] of this.players) {
-        if (player.session === null) continue;
-        // Sneaking steps lightly — nothing sticks to careful feet. This
-        // is also the deliberate way to stand IN a pile and pick from
-        // it without the walk-over vacuum grabbing the lot.
-        if (player.sneaking) continue;
+    }
+    for (const [playerEid, player] of this.players) {
+      if (player.session === null) continue;
+      // Sneaking steps lightly — nothing sticks to careful feet. This
+      // is also the deliberate way to stand IN a pile and pick from
+      // it without the walk-over vacuum grabbing the lot.
+      if (player.sneaking) continue;
+      const ppos = this.positions.get(playerEid);
+      if (!ppos) continue;
+      this.forEachDropNear(ppos.x, ppos.y, 0.55, (eid, drop, pos) => {
+        if (drop.pickupAfter > now) return;
         if (drop.ownerEid !== null && drop.ownerEid !== playerEid && drop.ownerUntil > now) {
-          continue;
+          return;
         }
-        const ppos = this.positions.get(playerEid);
-        if (!ppos) continue;
         const dx = ppos.x - pos.x;
         const dy = ppos.y - pos.y;
-        if (dx * dx + dy * dy > 0.55 * 0.55) continue;
+        if (dx * dx + dy * dy > 0.55 * 0.55) return;
         // THE KEY RING: the walk-over vacuum clips keys straight onto
         // the ring — free collecting in the field, no pack juggling.
         if (itemDef(drop.item)?.dungeonKey) {
           for (let n = 0; n < Math.max(1, drop.qty); n++) this.addKeyToRing(player, drop.roll);
           const spec = dungeonSpecFromRoll(drop.roll);
-          player.session.sendJson({
+          player.session!.sendJson({
             t: 'chat',
             channel: 'system',
             text: `The key to ${spec.name} (${spec.sigil}) clips onto your key ring.`,
           });
           this.removeFromChunks(eid);
           this.ecs.destroy(eid);
-          break;
+          return;
         }
-        if (!hasSpaceFor(player.inventory, drop.item, drop.stolen)) continue;
+        if (!hasSpaceFor(player.inventory, drop.item, drop.stolen)) return;
         // Partial fits leave the remainder on the ground — the vacuum
         // must never destroy more than the pack actually held.
         const got = addItem(player.inventory, drop.item, drop.qty, drop.roll, drop.stolen);
-        if (got === 0) continue;
+        if (got === 0) return;
         if (drop.xpOnPickup) {
           this.grantXp(playerEid, player, drop.xpOnPickup.skill, drop.xpOnPickup.xp);
           drop.xpOnPickup = undefined;
         }
-        player.session.sendJson({ t: 'inv', slots: player.inventory });
+        player.session!.sendJson({ t: 'inv', slots: player.inventory });
         if (got < drop.qty) {
           drop.qty -= got;
-          break;
+          return;
         }
         this.removeFromChunks(eid);
         this.ecs.destroy(eid);
-        break;
-      }
+      });
     }
     // Gravestones sink when the spill's quarter hour runs out.
     for (const [eid, grave] of this.graves) {
