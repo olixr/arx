@@ -553,6 +553,55 @@ export enum Tile {
   WarDrum = 315,
   /** A stretched hide lashed in a square curing frame. */
   HideFrame = 316,
+  // THE FAIR HOUSE FURNISHED — the elven decor kit (317-336). The
+  // elves are the world's artisans: everything here is swept, sprung,
+  // and grown rather than nailed — no rope, no sag, no kink. Where
+  // the war camp is amber-lit and crooked, the fair house is moonlit
+  // and true. Silverbark timber, mithril fittings, moonglass light.
+  /** A crook-stemmed standing lamp: moonglass globe in a mithril cage. */
+  ElvenLantern = 317,
+  /** A tall standard flying moonpale silk, crescent-and-leaf device. */
+  ElvenBanner = 318,
+  /** A crescent garden bench — swept legs, vine-scroll armrests. */
+  ElvenBench = 319,
+  /** A low oval feast table, leaf-vein mithril inlay across the top. */
+  ElvenTable = 320,
+  /** A high-backed chair whose back curls like an unfurling fern. */
+  ElvenChair = 321,
+  /** A canopied daybed: silk drape falling from one bowed cane. */
+  ElvenDaybed = 322,
+  /** A tall arched case of tomes and scroll pigeonholes. */
+  ElvenBookcase = 323,
+  /** A swept reading stand, tome open, one page forever lifting. */
+  ElvenLectern = 324,
+  /** A standing pedal harp strung in mithril. */
+  ElvenHarp = 325,
+  /** A weaving frame, moonpale cloth half-woven, warp weights hung. */
+  ElvenLoom = 326,
+  /** A three-tier singing fountain — thin falls, slow rings. */
+  ElvenFountain = 327,
+  /** A marble warden holding a leaf-blade point-down. */
+  ElvenStatue = 328,
+  /** A low stone basin of lit water, mist rising off the surface. */
+  Moonwell = 329,
+  /**
+   * The hall's silver-white flame in a mithril basin. The one elven
+   * piece no blade breaks — a flame this old is not put out by a
+   * stick (the bonfire law) — so a sacked hall keeps its light.
+   */
+  Everflame = 330,
+  /** The elven smithy: a swept-horn mithril anvil on a carved root. */
+  MithrilAnvil = 331,
+  /** A display rack: curved blades and a longbow on silver pegs. */
+  ElvenArmsRack = 332,
+  /** A carved urn planter, silverleaf blooms, one trailing vine. */
+  ElvenPlanter = 333,
+  /** A standing oval mirror in a vine-scroll frame. */
+  ElvenMirror = 334,
+  /** A runed waystone veined with mithril, script band faintly lit. */
+  ElvenWaystone = 335,
+  /** A chime tree: five mithril tubes and a moonglass drop. */
+  ElvenChimes = 336,
 }
 
 export enum Detail {
@@ -977,6 +1026,29 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.TargetDummy]: { name: 'target dummy', solid: true, color: '#b09c70', raised: true, topColor: '#c9b684' },
   [Tile.WarDrum]: { name: 'war drum', solid: true, color: '#6b4a26', raised: true, topColor: '#c9b088' },
   [Tile.HideFrame]: { name: 'hide frame', solid: true, color: '#6b4a26', raised: true, topColor: '#b08d62' },
+  // THE FAIR HOUSE FURNISHED — elven decor. Minimap voice: pale
+  // silverbark and cool mithril blues, so an elven quarter reads
+  // silver-green where the war camp reads mud-brown.
+  [Tile.ElvenLantern]: { name: 'elven lantern', solid: true, color: '#9aaec4', raised: true, topColor: '#bfe9ff' },
+  [Tile.ElvenBanner]: { name: 'elven banner', solid: true, color: '#b0a488', raised: true, topColor: '#cfd9ee' },
+  [Tile.ElvenBench]: { name: 'elven bench', solid: true, color: '#b0a488', raised: true, topColor: '#c9bfa4' },
+  [Tile.ElvenTable]: { name: 'elven table', solid: true, color: '#b0a488', raised: true, topColor: '#c9bfa4' },
+  [Tile.ElvenChair]: { name: 'elven chair', solid: true, color: '#b0a488', raised: true, topColor: '#c9bfa4' },
+  [Tile.ElvenDaybed]: { name: 'elven daybed', solid: true, color: '#b0a488', raised: true, topColor: '#cfd9ee' },
+  [Tile.ElvenBookcase]: { name: 'elven bookcase', solid: true, color: '#a89a80', raised: true, topColor: '#c9bfa4' },
+  [Tile.ElvenLectern]: { name: 'elven lectern', solid: true, color: '#b0a488', raised: true, topColor: '#e8e2d4' },
+  [Tile.ElvenHarp]: { name: 'elven harp', solid: true, color: '#c9bfa4', raised: true, topColor: '#d6e4f2' },
+  [Tile.ElvenLoom]: { name: 'elven loom', solid: true, color: '#b0a488', raised: true, topColor: '#cfd9ee' },
+  [Tile.ElvenFountain]: { name: 'singing fountain', solid: true, color: '#8d8798', raised: true, topColor: '#7ec4d8' },
+  [Tile.ElvenStatue]: { name: 'elven statue', solid: true, color: '#ddd6c2', raised: true, topColor: '#e8e2d4' },
+  [Tile.Moonwell]: { name: 'moonwell', solid: true, color: '#8d8798', raised: true, topColor: '#9fe8d8' },
+  [Tile.Everflame]: { name: 'everflame', solid: true, color: '#9aaec4', raised: true, topColor: '#dff2ff' },
+  [Tile.MithrilAnvil]: { name: 'mithril anvil', solid: true, color: '#7a8598', raised: true, topColor: '#aebfd4' },
+  [Tile.ElvenArmsRack]: { name: 'arms rack', solid: true, color: '#b0a488', raised: true, topColor: '#9aaec4' },
+  [Tile.ElvenPlanter]: { name: 'elven planter', solid: true, color: '#a89a80', raised: true, topColor: '#5d8a6e' },
+  [Tile.ElvenMirror]: { name: 'standing mirror', solid: true, color: '#b0a488', raised: true, topColor: '#d6e4f2' },
+  [Tile.ElvenWaystone]: { name: 'waystone', solid: true, color: '#8d8798', raised: true, topColor: '#9fe8d8' },
+  [Tile.ElvenChimes]: { name: 'wind chimes', solid: true, color: '#b0a488', raised: true, topColor: '#aebfd4' },
   [Tile.PikeHole]: { name: 'pike hole', solid: true, color: '#39679c', variants: ['#366293'] },
   [Tile.EelRun]: { name: 'eel run', solid: true, color: '#31578c', variants: ['#2e5284'] },
   [Tile.SalmonRun]: { name: 'salmon run', solid: true, color: '#457bbd', variants: ['#4174b3'] },
@@ -1552,6 +1624,24 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.TargetDummy, 0.2],
   [Tile.WarDrum, 0.32],
   [Tile.HideFrame, 0.25],
+  // Elven props: fine-limbed pieces you slip past — the kit's grace
+  // extends to its footprints. Bulk furniture (bench, table, daybed,
+  // chair, bookcase) stays full-block like its human cousins.
+  [Tile.ElvenLantern, 0.18],
+  [Tile.ElvenBanner, 0.2],
+  [Tile.ElvenLectern, 0.22],
+  [Tile.ElvenHarp, 0.3],
+  [Tile.ElvenLoom, 0.35],
+  [Tile.ElvenFountain, 0.44],
+  [Tile.ElvenStatue, 0.34],
+  [Tile.Moonwell, 0.42],
+  [Tile.Everflame, 0.34],
+  [Tile.MithrilAnvil, 0.32],
+  [Tile.ElvenArmsRack, 0.3],
+  [Tile.ElvenPlanter, 0.28],
+  [Tile.ElvenMirror, 0.22],
+  [Tile.ElvenWaystone, 0.3],
+  [Tile.ElvenChimes, 0.2],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -1720,7 +1810,28 @@ export type DestructibleKind =
   | 'spears'
   | 'dummy'
   | 'drum'
-  | 'hide';
+  | 'hide'
+  // THE FAIR HOUSE FURNISHED: elven finery — pale splinters, silk
+  // scraps, and moonglass glitter, never the camp's brown wreckage.
+  | 'lantern'
+  | 'elfbanner'
+  | 'elfbench'
+  | 'elftable'
+  | 'elfchair'
+  | 'daybed'
+  | 'bookcase'
+  | 'lectern'
+  | 'harp'
+  | 'loom'
+  | 'fountain'
+  | 'statue'
+  | 'moonwell'
+  | 'anvil'
+  | 'armsrack'
+  | 'planter'
+  | 'mirror'
+  | 'waystone'
+  | 'chimes';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -1778,6 +1889,31 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.TargetDummy, { kind: 'dummy', respawnSec: 240, hits: 3 }],
   [Tile.WarDrum, { kind: 'drum', respawnSec: 420, hits: 2 }],
   [Tile.HideFrame, { kind: 'hide', respawnSec: 420, hits: 2 }],
+  // THE FAIR HOUSE FURNISHED: finery breaks fast — silk tears, glass
+  // rings, turned legs snap in one or two blows — but stone and
+  // mithril stand long (the statue, fountain, anvil and waystone hold
+  // four). The Everflame is deliberately NOT here: a flame this old
+  // is not put out by a stick (the bonfire law), so a sacked hall
+  // keeps its light.
+  [Tile.ElvenLantern, { kind: 'lantern', respawnSec: 300, hits: 1 }],
+  [Tile.ElvenBanner, { kind: 'elfbanner', respawnSec: 420, hits: 2 }],
+  [Tile.ElvenBench, { kind: 'elfbench', respawnSec: 240, hits: 2 }],
+  [Tile.ElvenTable, { kind: 'elftable', respawnSec: 240, hits: 2 }],
+  [Tile.ElvenChair, { kind: 'elfchair', respawnSec: 240, hits: 1 }],
+  [Tile.ElvenDaybed, { kind: 'daybed', respawnSec: 300, hits: 2 }],
+  [Tile.ElvenBookcase, { kind: 'bookcase', respawnSec: 300, hits: 3 }],
+  [Tile.ElvenLectern, { kind: 'lectern', respawnSec: 240, hits: 1 }],
+  [Tile.ElvenHarp, { kind: 'harp', respawnSec: 300, hits: 2 }],
+  [Tile.ElvenLoom, { kind: 'loom', respawnSec: 300, hits: 2 }],
+  [Tile.ElvenFountain, { kind: 'fountain', respawnSec: 600, hits: 4 }],
+  [Tile.ElvenStatue, { kind: 'statue', respawnSec: 600, hits: 4 }],
+  [Tile.Moonwell, { kind: 'moonwell', respawnSec: 600, hits: 3 }],
+  [Tile.MithrilAnvil, { kind: 'anvil', respawnSec: 600, hits: 4 }],
+  [Tile.ElvenArmsRack, { kind: 'armsrack', respawnSec: 420, hits: 2 }],
+  [Tile.ElvenPlanter, { kind: 'planter', respawnSec: 240, hits: 1 }],
+  [Tile.ElvenMirror, { kind: 'mirror', respawnSec: 240, hits: 1 }],
+  [Tile.ElvenWaystone, { kind: 'waystone', respawnSec: 600, hits: 4 }],
+  [Tile.ElvenChimes, { kind: 'chimes', respawnSec: 240, hits: 1 }],
 ]);
 
 /** Every smashable prop tile. */

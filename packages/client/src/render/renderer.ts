@@ -499,6 +499,22 @@ const PALI_LOG = '#6a4a28';
 const PALI_ROPE = '#8a713f';
 const PALI_ROPE_DARK = '#4a3a22';
 const PALI_BONE = '#c9c2ae';
+// THE FAIR HOUSE FURNISHED: the elven material trinity. Silverbark
+// timber (pale and cool — never the camp's mud), mithril (the ore's
+// canonical sky-blue #7fa8d9 for veins and devices, a greyer body
+// tone for worked fittings, and the one HARD lit edge the kit allows
+// itself — metal earns it), and moonglass (the cool light-carrier).
+// Silks are moonpale; the single warm accent is gold thread, used
+// small, so the whole kit stays cold against the war camp's amber.
+const ELF_WOOD = '#a39072';
+const ELF_MITHRIL = '#8fa3bd';
+const ELF_MITHRIL_LIT = '#dce9f8';
+const ELF_VEIN = '#7fa8d9';
+const ELF_GLASS = '#9fe0d8';
+const ELF_SILK = '#cdd8ec';
+const ELF_GOLD = '#c8a95e';
+const ELF_MARBLE = '#ded8ce';
+const ELF_LEAF = '#5d8a6e';
 /** Solid props too short for a chest-high stick: arrows lodge low. */
 const LOW_STICK_TILES = new Set<number>([
   Tile.Fence,
@@ -4276,6 +4292,34 @@ export class Renderer {
           const pulse = 0.8 + Math.sin(t * 1.4 + tx * 0.9 + ty * 1.7) * 0.2;
           this.glows.push({ x: tx + 0.5, y: ty + 0.4, r: 0.95 * pulse, rgb: '110, 225, 200', a: 0.12 * pulse * boost });
           this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 2.4, rgb: [110, 225, 200], intensity: 0.4 * pulse });
+        } else if (tile === Tile.ElvenLantern) {
+          // THE COOL LIGHT LAW: every elven glow is moonlight, never
+          // fire — a slow breath on the glowshroom's clock, ungated by
+          // the flame gate (moonglass burns nothing), but occluding
+          // like a lamp: it is a fixture, not a haze.
+          const breathe = 0.82 + Math.sin(t * 1.1 + tx * 1.3 + ty * 0.7) * 0.18;
+          this.glows.push({ x: tx + 0.62, y: ty + 0.02, r: 1.0 * breathe, rgb: '191, 233, 255', a: 0.2 * breathe * boost });
+          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 5.0 * breathe, rgb: [186, 220, 250], intensity: 0.7 * breathe, occlude: true });
+        } else if (tile === Tile.Everflame) {
+          // The Everflame: the elven hall's night anchor — bonfire
+          // reach in silver-white. It never went out, so it never
+          // flickers: the beat is a heart, not a spit.
+          const beat = 0.88 + Math.sin(t * 1.6 + tx * 0.8) * 0.12;
+          this.glows.push({ x: tx + 0.5, y: ty + 0.06, r: 1.7 * beat, rgb: '223, 242, 255', a: 0.26 * beat * boost });
+          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 6.0 * beat, rgb: [206, 230, 252], intensity: 0.95 * beat, occlude: true });
+        } else if (tile === Tile.Moonwell) {
+          // The moonwell: lit water, a soft pool that swells with the
+          // surface shimmer — non-occluding like the glowshroom (a
+          // glow off water, not a lamp on a post).
+          const swell = 0.8 + Math.sin(t * 0.9 + tx * 0.6 + ty * 1.1) * 0.2;
+          this.glows.push({ x: tx + 0.5, y: ty + 0.42, r: 1.2 * swell, rgb: '159, 232, 216', a: 0.16 * swell * boost });
+          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 3.6, rgb: [150, 226, 210], intensity: 0.5 * swell });
+        } else if (tile === Tile.ElvenWaystone) {
+          // The waystone's script band: the faintest voice in the kit
+          // — just enough to find the road by.
+          const pulse = 0.7 + Math.sin(t * 0.8 + tx * 1.1 + ty * 0.9) * 0.3;
+          this.glows.push({ x: tx + 0.5, y: ty + 0.12, r: 0.65 * pulse, rgb: '159, 232, 216', a: 0.1 * pulse * boost });
+          this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 2.2, rgb: [150, 226, 210], intensity: 0.3 * pulse });
         } else if (tile === Tile.PortalDown || tile === Tile.PortalUp) {
           // The Riftgate: bloom rides the vortex heart (raised off the
           // ground — divide the squash back out, the projAir law), a
@@ -16134,6 +16178,39 @@ export class Renderer {
       splinters: ['#767083', '#5a5370', '#8c8798'],
       chips: ['#5a5370', '#767083'],
     },
+    // THE FAIR HOUSE FURNISHED: elven props never cough the joinery
+    // palette's amber — silverbark chips pale, marble bursts chalk,
+    // moonglass and mithril spark cold.
+    ...Object.fromEntries(
+      (['elfbench', 'elftable', 'elfchair', 'daybed', 'bookcase', 'lectern', 'harp', 'loom', 'armsrack', 'elfbanner'] as const).map((k) => [
+        k,
+        {
+          dust: ['#a39072', '#8a7d64', '#c3b294'],
+          splinters: ['#c3b294', '#a39072', '#d4c6a8'],
+          chips: ['#c3b294', '#a39072'],
+        },
+      ]),
+    ),
+    ...Object.fromEntries(
+      (['fountain', 'statue', 'moonwell', 'planter', 'waystone'] as const).map((k) => [
+        k,
+        {
+          dust: ['#ded8ce', '#a9a396', '#efe9de'],
+          splinters: ['#efe9de', '#ded8ce', '#c5bfb2'],
+          chips: ['#ded8ce', '#efe9de'],
+        },
+      ]),
+    ),
+    ...Object.fromEntries(
+      (['lantern', 'mirror', 'chimes', 'anvil'] as const).map((k) => [
+        k,
+        {
+          dust: ['#8fa3bd', '#6e7f96', '#b4c4d8'],
+          splinters: ['#dce9f8', '#b4c4d8', '#9fe0d8'],
+          chips: ['#dce9f8', '#b4c4d8'],
+        },
+      ]),
+    ),
   };
 
   crackProp(wx: number, wy: number, dir: number, kind: SmashKind): void {
@@ -16624,6 +16701,30 @@ export class Renderer {
     Tile.TargetDummy,
     Tile.WarDrum,
     Tile.HideFrame,
+    // THE FAIR HOUSE FURNISHED: the elven kit rides the ring cache
+    // the same way — glow-breath, water, glints and breeze all sample
+    // at cadence (every animated term is <4Hz, the moonlight-breathes
+    // law), and all light blooms live in collectStaticLights.
+    Tile.ElvenLantern,
+    Tile.ElvenBanner,
+    Tile.ElvenBench,
+    Tile.ElvenTable,
+    Tile.ElvenChair,
+    Tile.ElvenDaybed,
+    Tile.ElvenBookcase,
+    Tile.ElvenLectern,
+    Tile.ElvenHarp,
+    Tile.ElvenLoom,
+    Tile.ElvenFountain,
+    Tile.ElvenStatue,
+    Tile.Moonwell,
+    Tile.Everflame,
+    Tile.MithrilAnvil,
+    Tile.ElvenArmsRack,
+    Tile.ElvenPlanter,
+    Tile.ElvenMirror,
+    Tile.ElvenWaystone,
+    Tile.ElvenChimes,
   ]);
 
   /**
@@ -16694,6 +16795,14 @@ export class Renderer {
     Tile.PlunderSacks,
     Tile.SpearRack,
     Tile.WarDrum,
+    // Elven statics: the pieces whose painters never read the clock
+    // (bench, chair, case, marble, gallery). Everything that glows,
+    // pours, sways, sings, or glints stays on the fast cadence.
+    Tile.ElvenBench,
+    Tile.ElvenChair,
+    Tile.ElvenBookcase,
+    Tile.ElvenStatue,
+    Tile.ElvenArmsRack,
   ]);
 
   /**
@@ -21945,6 +22054,2308 @@ export class Renderer {
             ctx.fillStyle = shade(PALI_LOG, 6);
             ctx.fillRect(-s * 0.016, -s * 0.06, s * 0.032, s * 0.2);
             ctx.restore();
+          },
+        };
+      }
+
+      // ---------------------------------- THE FAIR HOUSE FURNISHED
+      // The elven decor kit (docs/elven-decor-plan.md). Where the war
+      // camp above is crooked, lashed, and amber-lit, everything here
+      // is swept, sprung, and moonlit: one long bow per silhouette
+      // (THE SWEPT LINE), joinery that forks and grows instead of
+      // kinking (GROWN, NEVER LASHED — no rope anywhere in the kit),
+      // and every glow cool silver-blue (the camp owns orange). Same
+      // laws as every prop: measured against the 1.15-tile body, top
+      // planes shown to the tilted bird's eye, cached ring for ink.
+
+      case Tile.ElvenLantern: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.12;
+        // The crook: one unbroken mithril bow rising from the foot and
+        // curling over to hold the globe — the kit's signature sweep.
+        const crownY = baseY - s * 1.62;
+        const hangX = p.x + s * 0.3;
+        const { sway } = this.breezeAt(tx, ty, t, tx * 2.3 + ty * 1.7, s, 0.01, 0.014);
+        const gx = hangX + sway;
+        const gy = crownY + s * 0.34;
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.62, 1.95, 0.4),
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - s * 0.05, baseY, p.x + s * 0.05, baseY, 1.45);
+          },
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.015, s * 0.14, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Faceted stone foot the stem grows out of.
+            ctx.fillStyle = shade(ELF_MARBLE, -26);
+            ctx.beginPath();
+            facetCircle(ctx, p.x, baseY - s * 0.03, s * 0.11, 6, 0.4, 0.55);
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_MARBLE, -8);
+            ctx.beginPath();
+            facetCircle(ctx, p.x, baseY - s * 0.065, s * 0.085, 6, 0.4, 0.5);
+            ctx.fill();
+            // The stem: one closed tapered path — up the west side,
+            // over the crook, back down. The wood-and-metal answer to
+            // the camp's leaning stake: this line never breaks.
+            ctx.fillStyle = shade(ELF_MITHRIL, -20);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.038, baseY - s * 0.04);
+            ctx.quadraticCurveTo(p.x - s * 0.062, crownY + s * 0.5, p.x + s * 0.018, crownY + s * 0.02);
+            ctx.quadraticCurveTo(p.x + s * 0.16, crownY - s * 0.1, hangX + s * 0.02, crownY + s * 0.1);
+            ctx.lineTo(hangX - s * 0.03, crownY + s * 0.125);
+            ctx.quadraticCurveTo(p.x + s * 0.1, crownY - s * 0.015, p.x + s * 0.045, crownY + s * 0.13);
+            ctx.quadraticCurveTo(p.x + s * 0.004, crownY + s * 0.5, p.x + s * 0.038, baseY - s * 0.04);
+            ctx.closePath();
+            ctx.fill();
+            // One lit sliver up the west edge — worked metal earns it.
+            ctx.fillStyle = shade(ELF_MITHRIL, 4);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.03, baseY - s * 0.06);
+            ctx.quadraticCurveTo(p.x - s * 0.05, crownY + s * 0.5, p.x + s * 0.018, crownY + s * 0.045);
+            ctx.lineTo(p.x + s * 0.028, crownY + s * 0.095);
+            ctx.quadraticCurveTo(p.x - s * 0.026, crownY + s * 0.5, p.x - s * 0.012, baseY - s * 0.06);
+            ctx.closePath();
+            ctx.fill();
+            // Leaf finial where the crook ends — the maker signs it.
+            ctx.fillStyle = ELF_VEIN;
+            ctx.beginPath();
+            ctx.moveTo(hangX - s * 0.005, crownY + s * 0.1);
+            ctx.quadraticCurveTo(hangX + s * 0.075, crownY + s * 0.02, hangX + s * 0.05, crownY - s * 0.07);
+            ctx.quadraticCurveTo(hangX - s * 0.02, crownY, hangX - s * 0.005, crownY + s * 0.1);
+            ctx.fill();
+            // Hanging link down to the globe.
+            ctx.strokeStyle = shade(ELF_MITHRIL, -10);
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            ctx.beginPath();
+            ctx.moveTo(hangX, crownY + s * 0.125);
+            ctx.lineTo(gx, gy - s * 0.17);
+            ctx.stroke();
+            // The moonglass globe breathes — a slow two-second swell,
+            // cadence-safe, never a flicker (moonlight does not spit).
+            const breathe = 0.82 + 0.18 * Math.sin(t * 1.1 + h * 0.3);
+            ctx.fillStyle = `rgba(159, 224, 216, ${0.16 * breathe})`;
+            ctx.beginPath();
+            ctx.ellipse(gx, gy, s * 0.21, s * 0.21, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = `rgba(191, 233, 255, ${0.5 + 0.14 * breathe})`;
+            ctx.beginPath();
+            ctx.ellipse(gx, gy, s * 0.115, s * 0.125, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = `rgba(234, 252, 255, ${0.55 + 0.2 * breathe})`;
+            ctx.beginPath();
+            ctx.ellipse(gx - s * 0.015, gy - s * 0.02, s * 0.055, s * 0.06, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The cage: crown cap, two ribs, bottom cup — enough metal
+            // to hold the light, never enough to pinch it out.
+            ctx.fillStyle = shade(ELF_MITHRIL, -14);
+            ctx.fillRect(gx - s * 0.07, gy - s * 0.155, s * 0.14, s * 0.045);
+            ctx.strokeStyle = shade(ELF_MITHRIL, -16);
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            ctx.beginPath();
+            ctx.moveTo(gx - s * 0.065, gy - s * 0.115);
+            ctx.quadraticCurveTo(gx - s * 0.13, gy, gx - s * 0.05, gy + s * 0.115);
+            ctx.moveTo(gx + s * 0.065, gy - s * 0.115);
+            ctx.quadraticCurveTo(gx + s * 0.13, gy, gx + s * 0.05, gy + s * 0.115);
+            ctx.stroke();
+            ctx.fillStyle = shade(ELF_MITHRIL, -12);
+            ctx.beginPath();
+            ctx.moveTo(gx - s * 0.06, gy + s * 0.1);
+            ctx.lineTo(gx + s * 0.06, gy + s * 0.1);
+            ctx.lineTo(gx + s * 0.02, gy + s * 0.16);
+            ctx.lineTo(gx - s * 0.02, gy + s * 0.16);
+            ctx.closePath();
+            ctx.fill();
+            // A moonglass drop-bead under the cup — the afterthought
+            // that is never an afterthought.
+            ctx.fillStyle = ELF_GLASS;
+            ctx.beginPath();
+            ctx.ellipse(gx, gy + s * 0.2, s * 0.022, s * 0.03, 0, 0, Math.PI * 2);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.ElvenBanner: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.14;
+        const bx = p.x - s * 0.14;
+        const topY = baseY - s * 2.02;
+        const { sway, lag } = this.breezeAt(tx, ty, t, tx * 1.9 + ty * 1.3, s, 0.02, 0.038);
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.72, 2.45, 0.45),
+          drawShadow: () => {
+            this.castEdgeQuad(bx - s * 0.05, baseY, bx + s * 0.05, baseY, 1.9);
+          },
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(bx, baseY + s * 0.015, s * 0.13, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Where the war standard kinks and mends, this pole stands
+            // TRUE — one plumb silverbark taper, foot to finial.
+            ctx.fillStyle = shade(ELF_WOOD, 4);
+            ctx.beginPath();
+            ctx.moveTo(bx - s * 0.042, baseY);
+            ctx.lineTo(bx + s * 0.042, baseY);
+            ctx.lineTo(bx + s * 0.02, topY);
+            ctx.lineTo(bx - s * 0.02, topY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_WOOD, 18);
+            ctx.fillRect(bx - s * 0.032, baseY - s * 1.9, s * 0.018, s * 1.9);
+            // Mithril ferrule collars — the grown joint's silver ring
+            // where the camp would knot a rope.
+            ctx.fillStyle = shade(ELF_MITHRIL, -6);
+            ctx.fillRect(bx - s * 0.045, baseY - s * 0.62, s * 0.09, s * 0.05);
+            ctx.fillRect(bx - s * 0.04, baseY - s * 1.38, s * 0.08, s * 0.045);
+            ctx.fillStyle = ELF_MITHRIL_LIT;
+            ctx.fillRect(bx - s * 0.045, baseY - s * 0.62, s * 0.09, s * 0.014);
+            ctx.fillRect(bx - s * 0.04, baseY - s * 1.38, s * 0.08, s * 0.013);
+            // The crescent finial rides above the cloth.
+            ctx.fillStyle = ELF_MITHRIL;
+            ctx.beginPath();
+            ctx.arc(bx, topY - s * 0.1, s * 0.095, -0.35, Math.PI + 0.35);
+            ctx.arc(bx, topY - s * 0.145, s * 0.062, Math.PI + 0.55, -0.55, true);
+            ctx.closePath();
+            ctx.fill();
+            // The crossbar carries the silk east.
+            ctx.fillStyle = shade(ELF_MITHRIL, -10);
+            ctx.fillRect(bx - s * 0.02, topY + s * 0.1, s * 0.56, s * 0.036);
+            ctx.fillStyle = ELF_MITHRIL_LIT;
+            ctx.fillRect(bx - s * 0.02, topY + s * 0.1, s * 0.56, s * 0.012);
+            // THE SEWN BORDER (the herald's-row law): the border is a
+            // trim-colored fill of the FULL silhouette with the field
+            // inset within it — never a stroked line. The drop swings
+            // as one body; only the swallow points trail the beat.
+            const cx0 = bx + s * 0.09;
+            const cw = s * 0.4;
+            const cy0 = topY + s * 0.155;
+            const cl = s * 1.22;
+            const inset = s * 0.036;
+            const silhouette = (inX: number) => {
+              const x0 = cx0 + inX;
+              const x1 = cx0 + cw - inX;
+              const yb = cy0 + cl - inX * 1.6;
+              ctx.beginPath();
+              ctx.moveTo(x0, cy0 + inX);
+              ctx.lineTo(x1, cy0 + inX);
+              ctx.lineTo(x1 + sway * 0.55, cy0 + cl * 0.6);
+              ctx.lineTo(x1 + sway * 0.8 + lag, yb);
+              ctx.lineTo(cx0 + cw * 0.5 + sway * 0.7 + lag * 0.5, cy0 + cl * 0.78 + inX);
+              ctx.lineTo(x0 + sway * 0.8 + lag, yb);
+              ctx.lineTo(x0 + sway * 0.55, cy0 + cl * 0.6);
+              ctx.closePath();
+            };
+            ctx.fillStyle = ELF_VEIN;
+            silhouette(0);
+            ctx.fill();
+            ctx.fillStyle = ELF_SILK;
+            silhouette(inset);
+            ctx.fill();
+            // The device: crescent over willow leaf, one gold star —
+            // the four-motif heraldry and nothing else.
+            const dx = cx0 + cw * 0.5 + sway * 0.3;
+            const dy = cy0 + cl * 0.3;
+            ctx.fillStyle = '#7ec4a8';
+            ctx.beginPath();
+            ctx.arc(dx, dy, s * 0.085, -0.3, Math.PI + 0.3);
+            ctx.arc(dx, dy - s * 0.04, s * 0.058, Math.PI + 0.5, -0.5, true);
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(dx, dy + s * 0.07);
+            ctx.quadraticCurveTo(dx + s * 0.09, dy + s * 0.16, dx, dy + s * 0.3);
+            ctx.quadraticCurveTo(dx - s * 0.09, dy + s * 0.16, dx, dy + s * 0.07);
+            ctx.fill();
+            ctx.fillStyle = ELF_GOLD;
+            ctx.beginPath();
+            facetCircle(ctx, dx, dy - s * 0.16, s * 0.028, 4, 0.79, 1);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.ElvenBench: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.3;
+        const hw = s * 0.48;
+        const seatY = baseY - s * 0.36;
+        return {
+          sortY: ty + 0.66,
+          body: stationBody(0.68, 0.95, 0.5),
+          drawShadow: () => this.castContact(p.x, baseY + s * 0.02, s * 0.5, s * 0.12),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, hw * 1.08, s * 0.09, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Legs first: four swept arcs splaying to the floor — the
+            // wood bowed once and held (THE SWEPT LINE).
+            const leg = (lx: number, sgn: number, tone: number) => {
+              ctx.fillStyle = shade(ELF_WOOD, tone);
+              ctx.beginPath();
+              ctx.moveTo(lx - s * 0.028, seatY + s * 0.05);
+              ctx.lineTo(lx + s * 0.028, seatY + s * 0.05);
+              ctx.quadraticCurveTo(lx + sgn * s * 0.06 + s * 0.02, baseY - s * 0.14, lx + sgn * s * 0.1 + s * 0.024, baseY);
+              ctx.lineTo(lx + sgn * s * 0.1 - s * 0.024, baseY);
+              ctx.quadraticCurveTo(lx + sgn * s * 0.06 - s * 0.02, baseY - s * 0.14, lx - s * 0.028, seatY + s * 0.05);
+              ctx.closePath();
+              ctx.fill();
+            };
+            leg(p.x - hw * 0.82, -1, -8);
+            leg(p.x + hw * 0.82, 1, -8);
+            leg(p.x - hw * 0.68, -1, 8);
+            leg(p.x + hw * 0.68, 1, 2);
+            // The apron under the seat holds the shadow line.
+            ctx.fillStyle = shade(ELF_WOOD, -14);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.86, seatY + s * 0.02);
+            ctx.quadraticCurveTo(p.x, seatY + s * 0.085, p.x + hw * 0.86, seatY + s * 0.02);
+            ctx.lineTo(p.x + hw * 0.86, seatY + s * 0.08);
+            ctx.quadraticCurveTo(p.x, seatY + s * 0.145, p.x - hw * 0.86, seatY + s * 0.08);
+            ctx.closePath();
+            ctx.fill();
+            // The seat is a crescent in plan, so its top plane reads
+            // as a bowed band — the brightest surface, sky-lit. The
+            // whole piece keeps the SILVERBARK value key: pale enough
+            // that it could never be mistaken for camp joinery.
+            ctx.fillStyle = shade(ELF_WOOD, 32);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw, seatY);
+            ctx.quadraticCurveTo(p.x, seatY - syT * 0.14, p.x + hw, seatY);
+            ctx.lineTo(p.x + hw * 0.94, seatY + s * 0.05);
+            ctx.quadraticCurveTo(p.x, seatY - syT * 0.14 + s * 0.055, p.x - hw * 0.94, seatY + s * 0.05);
+            ctx.closePath();
+            ctx.fill();
+            // Sunlit front arris breaking over the seat edge.
+            ctx.fillStyle = shade(ELF_WOOD, 16);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.94, seatY + s * 0.05);
+            ctx.quadraticCurveTo(p.x, seatY - syT * 0.14 + s * 0.055, p.x + hw * 0.94, seatY + s * 0.05);
+            ctx.lineTo(p.x + hw * 0.9, seatY + s * 0.095);
+            ctx.quadraticCurveTo(p.x, seatY - syT * 0.14 + s * 0.1, p.x - hw * 0.9, seatY + s * 0.095);
+            ctx.closePath();
+            ctx.fill();
+            // Vine-scroll armrests: each end curls ONCE and stops —
+            // restraint is the luxury.
+            for (const sgn of [-1, 1]) {
+              const ax = p.x + sgn * hw * 0.98;
+              ctx.fillStyle = shade(ELF_WOOD, 2);
+              ctx.beginPath();
+              ctx.moveTo(ax - sgn * s * 0.08, seatY + s * 0.02);
+              ctx.quadraticCurveTo(ax + sgn * s * 0.06, seatY - s * 0.1, ax, seatY - s * 0.185);
+              ctx.quadraticCurveTo(ax - sgn * s * 0.085, seatY - s * 0.23, ax - sgn * s * 0.1, seatY - s * 0.155);
+              ctx.quadraticCurveTo(ax - sgn * s * 0.06, seatY - s * 0.18, ax - sgn * s * 0.02, seatY - s * 0.155);
+              ctx.quadraticCurveTo(ax + sgn * s * 0.012, seatY - s * 0.08, ax - sgn * s * 0.045, seatY + s * 0.02);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = shade(ELF_WOOD, 20);
+              ctx.beginPath();
+              ctx.moveTo(ax - sgn * s * 0.075, seatY + s * 0.02);
+              ctx.quadraticCurveTo(ax + sgn * s * 0.045, seatY - s * 0.1, ax - sgn * s * 0.005, seatY - s * 0.175);
+              ctx.lineTo(ax - sgn * s * 0.02, seatY - s * 0.145);
+              ctx.quadraticCurveTo(ax + sgn * s * 0.005, seatY - s * 0.08, ax - sgn * s * 0.055, seatY + s * 0.02);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // One thread of mithril inlay rides the seat's front edge.
+            ctx.strokeStyle = ELF_VEIN;
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.82, seatY + s * 0.075);
+            ctx.quadraticCurveTo(p.x, seatY - syT * 0.14 + s * 0.08, p.x + hw * 0.82, seatY + s * 0.075);
+            ctx.stroke();
+          },
+        };
+      }
+
+      case Tile.ElvenTable: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.34;
+        const topY = baseY - s * 0.54;
+        const rx = s * 0.52;
+        const ry = syT * 0.3;
+        const glintPh = (t * 0.16 + h * 0.05) % 1;
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.75, 1.05, 0.55),
+          drawShadow: () => this.castContact(p.x, baseY + s * 0.02, s * 0.5, s * 0.14),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, rx * 1.02, s * 0.1, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Three swept legs — two catch the light, the far third
+            // reads tucked in shadow under the north rim.
+            const leg = (lx0: number, sgn: number, footY: number, tone: number) => {
+              ctx.fillStyle = shade(ELF_WOOD, tone);
+              ctx.beginPath();
+              ctx.moveTo(lx0 - s * 0.032, topY + ry * 0.5);
+              ctx.lineTo(lx0 + s * 0.032, topY + ry * 0.5);
+              ctx.quadraticCurveTo(lx0 + sgn * s * 0.09, footY - s * 0.2, lx0 + sgn * s * 0.15 + s * 0.026, footY);
+              ctx.lineTo(lx0 + sgn * s * 0.15 - s * 0.026, footY);
+              ctx.quadraticCurveTo(lx0 + sgn * s * 0.055, footY - s * 0.2, lx0 - s * 0.032, topY + ry * 0.5);
+              ctx.closePath();
+              ctx.fill();
+            };
+            leg(p.x, 0.15, baseY - s * 0.16, -24);
+            leg(p.x - rx * 0.62, -1, baseY, -4);
+            leg(p.x + rx * 0.62, 1, baseY, -12);
+            // The slab's thickness: dark under the lip.
+            ctx.fillStyle = shade(ELF_WOOD, -16);
+            ctx.beginPath();
+            ctx.ellipse(p.x, topY + s * 0.055, rx, ry, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The top plane is the brightest surface in the piece
+            // (THE PLANE SPEAKS IN VALUE) — the bird's eye owns it.
+            ctx.fillStyle = shade(ELF_WOOD, 26);
+            ctx.beginPath();
+            ctx.ellipse(p.x, topY, rx, ry, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // A cooler polish pool toward the north rim.
+            ctx.fillStyle = shade(ELF_WOOD, 34);
+            ctx.beginPath();
+            ctx.ellipse(p.x - rx * 0.1, topY - ry * 0.28, rx * 0.62, ry * 0.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // THE LEAF VEIN: mithril inlay branching across the slab —
+            // the elves sign their carpentry in silver.
+            ctx.strokeStyle = ELF_VEIN;
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            ctx.beginPath();
+            ctx.moveTo(p.x - rx * 0.72, topY + ry * 0.3);
+            ctx.quadraticCurveTo(p.x - rx * 0.1, topY - ry * 0.1, p.x + rx * 0.74, topY - ry * 0.24);
+            ctx.moveTo(p.x - rx * 0.28, topY + ry * 0.06);
+            ctx.quadraticCurveTo(p.x - rx * 0.05, topY - ry * 0.45, p.x + rx * 0.2, topY - ry * 0.62);
+            ctx.moveTo(p.x + rx * 0.05, topY - ry * 0.02);
+            ctx.quadraticCurveTo(p.x + rx * 0.35, topY + ry * 0.28, p.x + rx * 0.62, topY + ry * 0.3);
+            ctx.stroke();
+            // The glint walks the main vein, slow as a thought.
+            if (glintPh < 0.12) {
+              const gp = glintPh / 0.12;
+              const gvx = p.x - rx * 0.72 + rx * 1.46 * gp;
+              const gvy = topY + ry * 0.3 - ry * 0.54 * Math.sin(gp * Math.PI);
+              ctx.fillStyle = `rgba(234, 246, 255, ${0.75 * (1 - Math.abs(gp - 0.5) * 2)})`;
+              ctx.fillRect(gvx - s * 0.02, gvy - s * 0.012, s * 0.04, s * 0.024);
+            }
+          },
+        };
+      }
+
+      case Tile.ElvenChair: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.28;
+        const seatY = baseY - s * 0.36;
+        const backTop = baseY - s * 1.16;
+        const hw = s * 0.26;
+        return {
+          sortY: ty + 0.68,
+          body: stationBody(0.52, 1.5, 0.45),
+          drawShadow: () => this.castContact(p.x, baseY + s * 0.02, s * 0.3, s * 0.1),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, hw * 1.3, s * 0.08, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Four swept legs, front pair splaying wider.
+            const leg = (lx: number, sgn: number, tone: number) => {
+              ctx.fillStyle = shade(ELF_WOOD, tone);
+              ctx.beginPath();
+              ctx.moveTo(lx - s * 0.024, seatY + s * 0.04);
+              ctx.lineTo(lx + s * 0.024, seatY + s * 0.04);
+              ctx.quadraticCurveTo(lx + sgn * s * 0.05 + s * 0.016, baseY - s * 0.12, lx + sgn * s * 0.08 + s * 0.02, baseY);
+              ctx.lineTo(lx + sgn * s * 0.08 - s * 0.02, baseY);
+              ctx.quadraticCurveTo(lx + sgn * s * 0.05 - s * 0.016, baseY - s * 0.12, lx - s * 0.024, seatY + s * 0.04);
+              ctx.closePath();
+              ctx.fill();
+            };
+            leg(p.x - hw * 0.62, -1, -18);
+            leg(p.x + hw * 0.62, 1, -18);
+            leg(p.x - hw * 0.72, -1, -2);
+            leg(p.x + hw * 0.72, 1, -8);
+            // THE FROND BACK, second pass (the first read as a tent
+            // from across the green): a SLENDER splat rising from the
+            // seat's back edge, waisted like a wand, crowned with a
+            // real crozier coil. Silhouette-first design — at map
+            // scale the eye gets "slim stem, curled head", nothing
+            // else, and that pairing is unmistakably fern.
+            ctx.fillStyle = shade(ELF_WOOD, 4);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.52, seatY + s * 0.02);
+            ctx.quadraticCurveTo(p.x - hw * 0.3, seatY - s * 0.36, p.x - s * 0.05, backTop + s * 0.16);
+            ctx.quadraticCurveTo(p.x - s * 0.045, backTop + s * 0.04, p.x + s * 0.01, backTop - s * 0.035);
+            ctx.quadraticCurveTo(p.x + s * 0.1, backTop - s * 0.12, p.x + s * 0.155, backTop - s * 0.03);
+            ctx.quadraticCurveTo(p.x + s * 0.16, backTop + s * 0.07, p.x + s * 0.075, backTop + s * 0.1);
+            ctx.quadraticCurveTo(p.x + s * 0.045, backTop + s * 0.16, p.x + s * 0.05, backTop + s * 0.24);
+            ctx.quadraticCurveTo(p.x + hw * 0.3, seatY - s * 0.3, p.x + hw * 0.52, seatY + s * 0.02);
+            ctx.closePath();
+            ctx.fill();
+            // The coil's eye: a deep notch that makes the crozier a
+            // SPIRAL, not a knob — negative space does the drawing.
+            ctx.fillStyle = shade(ELF_WOOD, -26);
+            ctx.beginPath();
+            ctx.ellipse(p.x + s * 0.085, backTop + s * 0.005, s * 0.042, s * 0.036, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_WOOD, 18);
+            ctx.beginPath();
+            ctx.ellipse(p.x + s * 0.095, backTop - s * 0.005, s * 0.02, s * 0.017, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            // Carved leaf pierce: daylight through the splat's heart.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.5)';
+            ctx.beginPath();
+            ctx.moveTo(p.x, seatY - s * 0.22);
+            ctx.quadraticCurveTo(p.x + s * 0.048, seatY - s * 0.35, p.x, seatY - s * 0.5);
+            ctx.quadraticCurveTo(p.x - s * 0.048, seatY - s * 0.35, p.x, seatY - s * 0.22);
+            ctx.fill();
+            // The splat's lit west edge rides the whole sweep.
+            ctx.fillStyle = shade(ELF_WOOD, 22);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.48, seatY);
+            ctx.quadraticCurveTo(p.x - hw * 0.27, seatY - s * 0.34, p.x - s * 0.046, backTop + s * 0.16);
+            ctx.lineTo(p.x - s * 0.014, backTop + s * 0.18);
+            ctx.quadraticCurveTo(p.x - hw * 0.2, seatY - s * 0.28, p.x - hw * 0.36, seatY);
+            ctx.closePath();
+            ctx.fill();
+            // The seat: bowed top plane with a moonpale cushion.
+            ctx.fillStyle = shade(ELF_WOOD, 20);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw, seatY);
+            ctx.quadraticCurveTo(p.x, seatY - syT * 0.1, p.x + hw, seatY);
+            ctx.lineTo(p.x + hw * 0.92, seatY + s * 0.06);
+            ctx.quadraticCurveTo(p.x, seatY - syT * 0.1 + s * 0.065, p.x - hw * 0.92, seatY + s * 0.06);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_SILK, -8);
+            ctx.beginPath();
+            ctx.ellipse(p.x, seatY - s * 0.015, hw * 0.56, syT * 0.09, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_SILK, -24);
+            ctx.beginPath();
+            ctx.ellipse(p.x, seatY + s * 0.005, hw * 0.56, syT * 0.09, 0, 0, Math.PI);
+            ctx.fill();
+            // A gold thread button centers the cushion.
+            ctx.fillStyle = ELF_GOLD;
+            ctx.fillRect(p.x - s * 0.012, seatY - s * 0.025, s * 0.024, s * 0.024);
+          },
+        };
+      }
+
+      case Tile.ElvenDaybed: {
+        const syT = s * this.camera.yScale;
+        // A daybed is LONGER than the body (the body-ruler law) — it
+        // overdraws its tile south and lets the y-sort keep it honest.
+        const baseY = p.y + syT * 0.5;
+        const hw = s * 0.58;
+        const deckY = baseY - s * 0.3;
+        const { sway, lag } = this.breezeAt(tx, ty, t, tx * 1.4 + ty * 2.2, s, 0.012, 0.026);
+        return {
+          sortY: ty + 0.76,
+          body: stationBody(0.82, 1.8, 0.62),
+          drawShadow: () => this.castContact(p.x, baseY + s * 0.02, s * 0.62, s * 0.14),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, hw * 1.06, s * 0.1, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Curled runner feet: the frame ends roll under like a
+            // fern tip instead of standing on posts.
+            for (const sgn of [-1, 1]) {
+              const fx2 = p.x + sgn * (hw - s * 0.06);
+              ctx.fillStyle = shade(ELF_WOOD, -8);
+              ctx.beginPath();
+              ctx.moveTo(fx2 - sgn * s * 0.1, deckY + s * 0.1);
+              ctx.quadraticCurveTo(fx2 + sgn * s * 0.09, deckY + s * 0.12, fx2 + sgn * s * 0.08, baseY - s * 0.07);
+              ctx.quadraticCurveTo(fx2 + sgn * s * 0.07, baseY, fx2 - sgn * s * 0.015, baseY);
+              ctx.quadraticCurveTo(fx2 - sgn * s * 0.06, baseY - s * 0.005, fx2 - sgn * s * 0.05, baseY - s * 0.06);
+              ctx.lineTo(fx2 - sgn * s * 0.1, deckY + s * 0.14);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // The frame rail under the mattress.
+            ctx.fillStyle = shade(ELF_WOOD, -18);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw, deckY + s * 0.04);
+            ctx.quadraticCurveTo(p.x, deckY + s * 0.1, p.x + hw, deckY + s * 0.04);
+            ctx.lineTo(p.x + hw, deckY + s * 0.14);
+            ctx.quadraticCurveTo(p.x, deckY + s * 0.2, p.x - hw, deckY + s * 0.14);
+            ctx.closePath();
+            ctx.fill();
+            // The mattress: moonpale top plane, brightest surface,
+            // with the front tick of three tuft seams.
+            ctx.fillStyle = shade(ELF_SILK, 10);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.98, deckY + s * 0.05);
+            ctx.quadraticCurveTo(p.x, deckY - syT * 0.16, p.x + hw * 0.98, deckY + s * 0.05);
+            ctx.lineTo(p.x + hw * 0.94, deckY + s * 0.05 + s * 0.02);
+            ctx.quadraticCurveTo(p.x, deckY - syT * 0.16 + s * 0.02, p.x - hw * 0.94, deckY + s * 0.07);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_SILK, 10);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.98, deckY + s * 0.05);
+            ctx.quadraticCurveTo(p.x, deckY - syT * 0.16, p.x + hw * 0.98, deckY + s * 0.05);
+            ctx.quadraticCurveTo(p.x, deckY - syT * 0.16 + s * 0.09, p.x - hw * 0.98, deckY + s * 0.05);
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_SILK, -14);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.98, deckY + s * 0.05);
+            ctx.quadraticCurveTo(p.x, deckY - syT * 0.16 + s * 0.09, p.x + hw * 0.98, deckY + s * 0.05);
+            ctx.lineTo(p.x + hw * 0.94, deckY + s * 0.11);
+            ctx.quadraticCurveTo(p.x, deckY - syT * 0.16 + s * 0.15, p.x - hw * 0.94, deckY + s * 0.11);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_SILK, -26);
+            for (let i = -1; i <= 1; i++) {
+              ctx.fillRect(p.x + i * hw * 0.44 - s * 0.008, deckY + s * 0.015, s * 0.016, s * 0.05);
+            }
+            // The bolster at the west end — leaf-green with a gold
+            // button in the end cap.
+            ctx.fillStyle = ELF_LEAF;
+            ctx.beginPath();
+            ctx.ellipse(p.x - hw * 0.68, deckY - s * 0.06, s * 0.19, s * 0.1, -0.08, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_LEAF, 16);
+            ctx.beginPath();
+            ctx.ellipse(p.x - hw * 0.68, deckY - s * 0.085, s * 0.17, s * 0.06, -0.08, Math.PI, 0);
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_LEAF, -14);
+            ctx.beginPath();
+            ctx.ellipse(p.x - hw * 0.5, deckY - s * 0.055, s * 0.045, s * 0.08, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = ELF_GOLD;
+            ctx.fillRect(p.x - hw * 0.5 - s * 0.01, deckY - s * 0.065, s * 0.02, s * 0.02);
+            // THE CANE: one bowed silverbark rod from the head end,
+            // arcing over the bed to carry the drape.
+            const caneTip = { x: p.x + s * 0.18, y: deckY - s * 1.08 };
+            ctx.fillStyle = shade(ELF_WOOD, -4);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw + s * 0.02, deckY + s * 0.06);
+            ctx.quadraticCurveTo(p.x - hw - s * 0.04, deckY - s * 0.9, caneTip.x, caneTip.y);
+            ctx.lineTo(caneTip.x + s * 0.005, caneTip.y + s * 0.035);
+            ctx.quadraticCurveTo(p.x - hw + s * 0.005, deckY - s * 0.86, p.x - hw + s * 0.065, deckY + s * 0.06);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_WOOD, 14);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw + s * 0.03, deckY - s * 0.1);
+            ctx.quadraticCurveTo(p.x - hw - s * 0.02, deckY - s * 0.88, caneTip.x - s * 0.02, caneTip.y + s * 0.012);
+            ctx.lineTo(caneTip.x - s * 0.02, caneTip.y + s * 0.028);
+            ctx.quadraticCurveTo(p.x - hw + s * 0.01, deckY - s * 0.84, p.x - hw + s * 0.05, deckY - s * 0.1);
+            ctx.closePath();
+            ctx.fill();
+            // The drape falls from the cane tip: sheer moonpale silk,
+            // body swinging as one, hem trailing the beat. Sheer means
+            // SHEER — the mattress reads through it.
+            const dTop = caneTip.y + s * 0.02;
+            const dx0 = caneTip.x - s * 0.02;
+            const hemY = deckY + s * 0.02;
+            ctx.fillStyle = 'rgba(205, 216, 236, 0.72)';
+            ctx.beginPath();
+            ctx.moveTo(dx0, dTop);
+            ctx.lineTo(dx0 + s * 0.06, dTop);
+            ctx.quadraticCurveTo(dx0 + s * 0.3 + sway, dTop + s * 0.5, dx0 + s * 0.26 + sway + lag, hemY);
+            ctx.lineTo(dx0 + s * 0.06 + sway + lag * 0.7, hemY + s * 0.04);
+            ctx.lineTo(dx0 - s * 0.12 + sway + lag, hemY - s * 0.02);
+            ctx.quadraticCurveTo(dx0 - s * 0.06 + sway * 0.5, dTop + s * 0.5, dx0, dTop);
+            ctx.closePath();
+            ctx.fill();
+            // One fold catches shadow; the hem carries a gold thread.
+            ctx.fillStyle = 'rgba(143, 163, 189, 0.4)';
+            ctx.beginPath();
+            ctx.moveTo(dx0 + s * 0.03, dTop + s * 0.06);
+            ctx.quadraticCurveTo(dx0 + s * 0.1 + sway * 0.7, dTop + s * 0.55, dx0 + s * 0.06 + sway + lag * 0.8, hemY + s * 0.02);
+            ctx.lineTo(dx0 + s * 0.015 + sway + lag * 0.8, hemY);
+            ctx.quadraticCurveTo(dx0 + s * 0.04 + sway * 0.6, dTop + s * 0.5, dx0 + s * 0.01, dTop + s * 0.06);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = ELF_GOLD;
+            ctx.lineWidth = Math.max(1, s * 0.012);
+            ctx.beginPath();
+            ctx.moveTo(dx0 - s * 0.12 + sway + lag, hemY - s * 0.02);
+            ctx.lineTo(dx0 + s * 0.06 + sway + lag * 0.7, hemY + s * 0.04);
+            ctx.lineTo(dx0 + s * 0.26 + sway + lag, hemY);
+            ctx.stroke();
+          },
+        };
+      }
+
+      case Tile.ElvenBookcase: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.42;
+        const hw = s * 0.44;
+        // The lancet arch: the case rises past head height and closes
+        // in a point — elven casework refuses the flat crate top.
+        const archSpring = baseY - s * 1.42;
+        const apexY = baseY - s * 1.86;
+        const capD = syT * 0.26;
+        return {
+          sortY: ty + 0.74,
+          body: stationBody(0.62, 2.15, 0.5),
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - hw * 0.9, baseY, p.x + hw * 0.9, baseY, 1.55);
+          },
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.025, hw * 1.12, s * 0.09, 0, 0, Math.PI * 2);
+            ctx.fill();
+            const archTo = (yShift: number) => {
+              ctx.moveTo(p.x - hw, baseY + yShift);
+              ctx.lineTo(p.x - hw, archSpring + yShift);
+              ctx.quadraticCurveTo(p.x - hw, apexY + s * 0.09 + yShift, p.x, apexY + yShift);
+              ctx.quadraticCurveTo(p.x + hw, apexY + s * 0.09 + yShift, p.x + hw, archSpring + yShift);
+              ctx.lineTo(p.x + hw, baseY + yShift);
+              ctx.closePath();
+            };
+            // THE TOP PLANE (2.5D law): the crown band rises behind
+            // the front arch — the bird's eye sees the case has depth.
+            ctx.fillStyle = shade(ELF_WOOD, 18);
+            ctx.beginPath();
+            archTo(-capD);
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_WOOD, -30);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw, archSpring - capD);
+            ctx.quadraticCurveTo(p.x - hw, apexY + s * 0.09 - capD, p.x, apexY - capD);
+            ctx.quadraticCurveTo(p.x + hw, apexY + s * 0.09 - capD, p.x + hw, archSpring - capD);
+            ctx.lineTo(p.x + hw - s * 0.02, archSpring - capD + s * 0.02);
+            ctx.quadraticCurveTo(p.x + hw - s * 0.02, apexY + s * 0.1 - capD + s * 0.02, p.x, apexY - capD + s * 0.024);
+            ctx.quadraticCurveTo(p.x - hw + s * 0.02, apexY + s * 0.1 - capD + s * 0.02, p.x - hw + s * 0.02, archSpring - capD + s * 0.02);
+            ctx.closePath();
+            ctx.fill();
+            // The case's face frame.
+            ctx.fillStyle = shade(ELF_WOOD, -4);
+            ctx.beginPath();
+            archTo(0);
+            ctx.fill();
+            // Sunlit arris where the front face breaks over the crown.
+            ctx.fillStyle = shade(ELF_WOOD, 30);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw, archSpring);
+            ctx.quadraticCurveTo(p.x - hw, apexY + s * 0.09, p.x, apexY);
+            ctx.quadraticCurveTo(p.x + hw, apexY + s * 0.09, p.x + hw, archSpring);
+            ctx.lineTo(p.x + hw - s * 0.02, archSpring + s * 0.01);
+            ctx.quadraticCurveTo(p.x + hw - s * 0.02, apexY + s * 0.1, p.x, apexY + s * 0.024);
+            ctx.quadraticCurveTo(p.x - hw + s * 0.02, apexY + s * 0.1, p.x - hw + s * 0.02, archSpring + s * 0.01);
+            ctx.closePath();
+            ctx.fill();
+            // The recess: dark, so shelf goods read against it.
+            const inW = hw - s * 0.075;
+            ctx.fillStyle = '#2a2536';
+            ctx.beginPath();
+            ctx.moveTo(p.x - inW, baseY - s * 0.1);
+            ctx.lineTo(p.x - inW, archSpring);
+            ctx.quadraticCurveTo(p.x - inW, apexY + s * 0.2, p.x, apexY + s * 0.12);
+            ctx.quadraticCurveTo(p.x + inW, apexY + s * 0.2, p.x + inW, archSpring);
+            ctx.lineTo(p.x + inW, baseY - s * 0.1);
+            ctx.closePath();
+            ctx.fill();
+            // Three shelves of tomes — spines in the cool library
+            // palette, one gold spine per case, heights honest.
+            const shelfAt = (sy2: number) => {
+              ctx.fillStyle = shade(ELF_WOOD, -12);
+              ctx.fillRect(p.x - inW, sy2, inW * 2, s * 0.045);
+              ctx.fillStyle = shade(ELF_WOOD, 10);
+              ctx.fillRect(p.x - inW, sy2, inW * 2, s * 0.014);
+            };
+            const books = (sy2: number, seed: number) => {
+              const tones = ['#3f6e58', '#5f7ea6', '#5d5169', '#7a9a8a', '#46608a'];
+              let bx2 = p.x - inW + s * 0.03;
+              for (let i = 0; i < 6 && bx2 < p.x + inW - s * 0.1; i++) {
+                const bh2 = s * (0.22 + (((seed >> (i * 2)) & 3) * 0.02));
+                const bw2 = s * (0.055 + (((seed >> i) & 1) * 0.02));
+                const lean = ((seed >> (i * 3)) & 3) === 3;
+                ctx.fillStyle = i === 4 ? ELF_GOLD : tones[(seed + i) % tones.length]!;
+                if (lean) {
+                  ctx.beginPath();
+                  ctx.moveTo(bx2, sy2);
+                  ctx.lineTo(bx2 + bw2, sy2);
+                  ctx.lineTo(bx2 + bw2 + s * 0.035, sy2 - bh2);
+                  ctx.lineTo(bx2 + s * 0.035, sy2 - bh2);
+                  ctx.closePath();
+                  ctx.fill();
+                } else {
+                  ctx.fillRect(bx2, sy2 - bh2, bw2, bh2);
+                  ctx.fillStyle = 'rgba(234, 246, 255, 0.2)';
+                  ctx.fillRect(bx2, sy2 - bh2, bw2, s * 0.014);
+                }
+                bx2 += bw2 + s * 0.014;
+              }
+            };
+            const sh1 = baseY - s * 0.62;
+            const sh2 = baseY - s * 1.08;
+            const sh3 = baseY - s * 1.5;
+            books(sh1 - s * 0.005, h);
+            shelfAt(sh1);
+            books(sh2 - s * 0.005, h >> 3);
+            shelfAt(sh2);
+            // The top shelf under the arch keeps a single treasure:
+            // one tome laid FLAT (its long edge to the reader) and a
+            // moonglass paperweight.
+            ctx.fillStyle = '#46608a';
+            ctx.fillRect(p.x - s * 0.16, sh3 - s * 0.06, s * 0.3, s * 0.06);
+            ctx.fillStyle = 'rgba(234, 246, 255, 0.25)';
+            ctx.fillRect(p.x - s * 0.16, sh3 - s * 0.06, s * 0.3, s * 0.016);
+            ctx.fillStyle = ELF_GLASS;
+            ctx.beginPath();
+            facetCircle(ctx, p.x + s * 0.22, sh3 - s * 0.045, s * 0.035, 5, 0.5, 0.9);
+            ctx.fill();
+            shelfAt(sh3);
+            // The scroll bay: an X-divided base cell, rolled ends out.
+            ctx.fillStyle = shade(ELF_WOOD, -12);
+            ctx.beginPath();
+            ctx.moveTo(p.x - inW, baseY - s * 0.1);
+            ctx.lineTo(p.x + inW, sh1 + s * 0.05);
+            ctx.lineTo(p.x + inW, sh1 + s * 0.09);
+            ctx.lineTo(p.x - inW, baseY - s * 0.06);
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(p.x + inW, baseY - s * 0.1);
+            ctx.lineTo(p.x - inW, sh1 + s * 0.05);
+            ctx.lineTo(p.x - inW, sh1 + s * 0.09);
+            ctx.lineTo(p.x + inW, baseY - s * 0.06);
+            ctx.closePath();
+            ctx.fill();
+            const scroll = (sx2: number, sy2: number, r: number) => {
+              ctx.fillStyle = shade(ELF_MARBLE, 6);
+              ctx.beginPath();
+              ctx.ellipse(sx2, sy2, r, r, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = shade(ELF_MARBLE, -30);
+              ctx.beginPath();
+              ctx.ellipse(sx2, sy2, r * 0.45, r * 0.45, 0, 0, Math.PI * 2);
+              ctx.fill();
+            };
+            scroll(p.x - inW * 0.52, baseY - s * 0.26, s * 0.05);
+            scroll(p.x - inW * 0.28, baseY - s * 0.22, s * 0.045);
+            scroll(p.x + inW * 0.42, baseY - s * 0.25, s * 0.05);
+            // Plinth: the case lands on a lit step.
+            ctx.fillStyle = shade(ELF_WOOD, -22);
+            ctx.fillRect(p.x - hw - s * 0.03, baseY - s * 0.08, hw * 2 + s * 0.06, s * 0.08);
+            ctx.fillStyle = shade(ELF_WOOD, 6);
+            ctx.fillRect(p.x - hw - s * 0.03, baseY - s * 0.08, hw * 2 + s * 0.06, s * 0.02);
+            // A gold leaf keystone signs the arch.
+            ctx.fillStyle = ELF_GOLD;
+            ctx.beginPath();
+            ctx.moveTo(p.x, apexY + s * 0.03);
+            ctx.quadraticCurveTo(p.x + s * 0.05, apexY + s * 0.1, p.x, apexY + s * 0.17);
+            ctx.quadraticCurveTo(p.x - s * 0.05, apexY + s * 0.1, p.x, apexY + s * 0.03);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.ElvenLectern: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        const deskS = baseY - s * 0.76;
+        const deskN = baseY - s * 0.98;
+        const pagePh = (t * 0.3 + h * 0.13) % 1;
+        return {
+          sortY: ty + 0.68,
+          body: stationBody(0.52, 1.4, 0.4),
+          drawShadow: () => this.castContact(p.x, baseY + s * 0.02, s * 0.24, s * 0.09),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.015, s * 0.2, s * 0.07, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Faceted foot, then ONE swept stem that forks under the
+            // desk — grown joinery, told in two branch splits.
+            ctx.fillStyle = shade(ELF_WOOD, -16);
+            ctx.beginPath();
+            facetCircle(ctx, p.x, baseY - s * 0.02, s * 0.13, 6, 0.3, 0.5);
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_WOOD, -2);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.045, baseY - s * 0.03);
+            ctx.quadraticCurveTo(p.x - s * 0.02, baseY - s * 0.45, p.x + s * 0.035, deskS + s * 0.1);
+            ctx.lineTo(p.x + s * 0.085, deskS + s * 0.1);
+            ctx.quadraticCurveTo(p.x + s * 0.045, baseY - s * 0.45, p.x + s * 0.05, baseY - s * 0.03);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_WOOD, 12);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.03, baseY - s * 0.06);
+            ctx.quadraticCurveTo(p.x - s * 0.012, baseY - s * 0.44, p.x + s * 0.045, deskS + s * 0.1);
+            ctx.lineTo(p.x + s * 0.062, deskS + s * 0.1);
+            ctx.quadraticCurveTo(p.x - s * 0.002, baseY - s * 0.44, p.x - s * 0.012, baseY - s * 0.06);
+            ctx.closePath();
+            ctx.fill();
+            // The fork: two branches take the desk corners.
+            ctx.strokeStyle = shade(ELF_WOOD, -8);
+            ctx.lineWidth = Math.max(1, s * 0.035);
+            ctx.beginPath();
+            ctx.moveTo(p.x + s * 0.05, deskS + s * 0.1);
+            ctx.quadraticCurveTo(p.x - s * 0.1, deskS + s * 0.06, p.x - s * 0.2, deskS + s * 0.02);
+            ctx.moveTo(p.x + s * 0.05, deskS + s * 0.1);
+            ctx.quadraticCurveTo(p.x + s * 0.16, deskS + s * 0.06, p.x + s * 0.22, deskS + s * 0.02);
+            ctx.stroke();
+            // The desk: a foreshortened slab leaning toward the
+            // reader — its lit top plane IS the piece.
+            ctx.fillStyle = shade(ELF_WOOD, -20);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.28, deskS + s * 0.05);
+            ctx.lineTo(p.x + s * 0.28, deskS + s * 0.05);
+            ctx.lineTo(p.x + s * 0.31, deskN + s * 0.05);
+            ctx.lineTo(p.x - s * 0.31, deskN + s * 0.05);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_WOOD, 22);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.28, deskS);
+            ctx.lineTo(p.x + s * 0.28, deskS);
+            ctx.lineTo(p.x + s * 0.31, deskN);
+            ctx.lineTo(p.x - s * 0.31, deskN);
+            ctx.closePath();
+            ctx.fill();
+            // The open tome: two leaves, a dark gutter, script rows.
+            const page = (sgn: number) => {
+              ctx.fillStyle = sgn < 0 ? '#ece8dc' : '#e2ddd0';
+              ctx.beginPath();
+              ctx.moveTo(p.x + sgn * s * 0.015, deskS - s * 0.02);
+              ctx.lineTo(p.x + sgn * s * 0.23, deskS - s * 0.035);
+              ctx.lineTo(p.x + sgn * s * 0.25, deskN + s * 0.02);
+              ctx.lineTo(p.x + sgn * s * 0.015, deskN + s * 0.035);
+              ctx.closePath();
+              ctx.fill();
+            };
+            page(-1);
+            page(1);
+            ctx.fillStyle = 'rgba(42, 37, 54, 0.55)';
+            ctx.fillRect(p.x - s * 0.012, deskN + s * 0.02, s * 0.024, deskS - deskN - s * 0.045);
+            ctx.strokeStyle = 'rgba(74, 63, 94, 0.4)';
+            ctx.lineWidth = Math.max(1, s * 0.01);
+            for (let i = 0; i < 3; i++) {
+              const ly = deskN + s * 0.075 + i * s * 0.05;
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.2, ly + s * 0.01);
+              ctx.lineTo(p.x - s * 0.05, ly);
+              ctx.moveTo(p.x + s * 0.05, ly);
+              ctx.lineTo(p.x + s * 0.2, ly + s * 0.01);
+              ctx.stroke();
+            }
+            // One page forever lifting — the reader just stepped away.
+            if (pagePh < 0.16) {
+              const lift = Math.sin((pagePh / 0.16) * Math.PI);
+              ctx.fillStyle = `rgba(248, 245, 235, ${0.5 + 0.4 * lift})`;
+              ctx.beginPath();
+              ctx.moveTo(p.x + s * 0.02, deskS - s * 0.03);
+              ctx.quadraticCurveTo(p.x + s * 0.1, deskS - s * 0.06 - s * 0.12 * lift, p.x + s * 0.2, deskS - s * 0.05 - s * 0.05 * lift);
+              ctx.lineTo(p.x + s * 0.16, deskS - s * 0.025);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // The mithril leaf clasp holds the place.
+            ctx.fillStyle = ELF_VEIN;
+            ctx.beginPath();
+            ctx.moveTo(p.x, deskS + s * 0.005);
+            ctx.quadraticCurveTo(p.x + s * 0.035, deskS + s * 0.035, p.x, deskS + s * 0.07);
+            ctx.quadraticCurveTo(p.x - s * 0.035, deskS + s * 0.035, p.x, deskS + s * 0.005);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.ElvenHarp: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.24;
+        // The three members of a harp: bowed pillar (west), the neck's
+        // wave, the soundboard's slant — one instrument, three sweeps.
+        const pillarTop = { x: p.x - s * 0.31, y: baseY - s * 1.28 };
+        const boardTop = { x: p.x + s * 0.35, y: baseY - s * 0.86 };
+        const stringIdx = Math.floor((t * 0.6 + h * 0.1) % 6);
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.62, 1.7, 0.45),
+          drawShadow: () => this.castContact(p.x, baseY + s * 0.02, s * 0.4, s * 0.11),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, s * 0.42, s * 0.09, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The base shoe both feet grow from.
+            ctx.fillStyle = shade(ELF_WOOD, -18);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.4, baseY);
+            ctx.quadraticCurveTo(p.x, baseY + s * 0.06, p.x + s * 0.44, baseY);
+            ctx.lineTo(p.x + s * 0.4, baseY - s * 0.09);
+            ctx.quadraticCurveTo(p.x, baseY - s * 0.04, p.x - s * 0.36, baseY - s * 0.09);
+            ctx.closePath();
+            ctx.fill();
+            // The soundboard: a slanted tapered box from shoe to neck,
+            // its face the lit plane the strings will read against.
+            ctx.fillStyle = shade(ELF_WOOD, -6);
+            ctx.beginPath();
+            ctx.moveTo(p.x + s * 0.24, baseY - s * 0.04);
+            ctx.lineTo(p.x + s * 0.46, baseY - s * 0.1);
+            ctx.lineTo(boardTop.x + s * 0.045, boardTop.y);
+            ctx.lineTo(boardTop.x - s * 0.035, boardTop.y - s * 0.02);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_WOOD, 16);
+            ctx.beginPath();
+            ctx.moveTo(p.x + s * 0.24, baseY - s * 0.04);
+            ctx.lineTo(p.x + s * 0.35, baseY - s * 0.07);
+            ctx.lineTo(boardTop.x - s * 0.005, boardTop.y - s * 0.01);
+            ctx.lineTo(boardTop.x - s * 0.035, boardTop.y - s * 0.02);
+            ctx.closePath();
+            ctx.fill();
+            // The pillar: one bowed column, gold-lined.
+            ctx.fillStyle = shade(ELF_WOOD, 0);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.24, baseY - s * 0.02);
+            ctx.quadraticCurveTo(p.x - s * 0.42, baseY - s * 0.66, pillarTop.x - s * 0.015, pillarTop.y);
+            ctx.lineTo(pillarTop.x + s * 0.05, pillarTop.y + s * 0.03);
+            ctx.quadraticCurveTo(p.x - s * 0.33, baseY - s * 0.6, p.x - s * 0.16, baseY - s * 0.02);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = ELF_GOLD;
+            ctx.lineWidth = Math.max(1, s * 0.013);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.21, baseY - s * 0.06);
+            ctx.quadraticCurveTo(p.x - s * 0.38, baseY - s * 0.64, pillarTop.x + s * 0.01, pillarTop.y + s * 0.015);
+            ctx.stroke();
+            // The neck: the wave from pillar crown to soundboard top.
+            ctx.fillStyle = shade(ELF_WOOD, 6);
+            ctx.beginPath();
+            ctx.moveTo(pillarTop.x - s * 0.015, pillarTop.y);
+            ctx.quadraticCurveTo(p.x + s * 0.02, pillarTop.y - s * 0.14, boardTop.x + s * 0.01, boardTop.y - s * 0.04);
+            ctx.lineTo(boardTop.x + s * 0.035, boardTop.y + s * 0.02);
+            ctx.quadraticCurveTo(p.x + s * 0.02, pillarTop.y - s * 0.04, pillarTop.x + s * 0.05, pillarTop.y + s * 0.03);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_WOOD, 22);
+            ctx.beginPath();
+            ctx.moveTo(pillarTop.x, pillarTop.y + s * 0.005);
+            ctx.quadraticCurveTo(p.x + s * 0.02, pillarTop.y - s * 0.12, boardTop.x, boardTop.y - s * 0.03);
+            ctx.lineTo(boardTop.x, boardTop.y - s * 0.005);
+            ctx.quadraticCurveTo(p.x + s * 0.02, pillarTop.y - s * 0.085, pillarTop.x + s * 0.02, pillarTop.y + s * 0.02);
+            ctx.closePath();
+            ctx.fill();
+            // SIX MITHRIL STRINGS: parallel light, and one of them is
+            // always singing — the glint walks string to string.
+            for (let i = 0; i < 6; i++) {
+              const f = i / 5;
+              const topX = pillarTop.x + s * 0.09 + (boardTop.x - pillarTop.x - s * 0.12) * f;
+              const topYs = pillarTop.y - s * 0.02 - s * 0.1 * Math.sin(Math.PI * (0.25 + f * 0.6)) + (boardTop.y - pillarTop.y) * f * 0.7;
+              const botX = p.x + s * 0.27 + s * 0.13 * f;
+              const botY = baseY - s * 0.08 - s * 0.66 * f;
+              const singing = i === stringIdx;
+              ctx.strokeStyle = singing ? 'rgba(240, 250, 255, 0.95)' : 'rgba(220, 233, 248, 0.55)';
+              ctx.lineWidth = Math.max(1, s * (singing ? 0.016 : 0.011));
+              ctx.beginPath();
+              ctx.moveTo(topX, topYs);
+              ctx.lineTo(botX, botY);
+              ctx.stroke();
+              if (singing) {
+                ctx.fillStyle = 'rgba(240, 250, 255, 0.8)';
+                ctx.beginPath();
+                ctx.ellipse((topX + botX) / 2, (topYs + botY) / 2, s * 0.018, s * 0.018, 0, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            }
+            // The crown scroll on the pillar — one curl, gold bead.
+            ctx.fillStyle = shade(ELF_WOOD, -8);
+            ctx.beginPath();
+            facetCircle(ctx, pillarTop.x + s * 0.01, pillarTop.y - s * 0.02, s * 0.05, 6, 0.2, 1);
+            ctx.fill();
+            ctx.fillStyle = ELF_GOLD;
+            ctx.beginPath();
+            facetCircle(ctx, pillarTop.x + s * 0.01, pillarTop.y - s * 0.02, s * 0.02, 5, 0.4, 1);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.ElvenLoom: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.3;
+        const hw = s * 0.42;
+        const topBeam = baseY - s * 1.26;
+        const breastBeam = baseY - s * 0.34;
+        const { sway, lag } = this.breezeAt(tx, ty, t, tx * 2.1 + ty * 1.1, s, 0.008, 0.02);
+        return {
+          sortY: ty + 0.72,
+          body: stationBody(0.7, 1.6, 0.5),
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - hw * 0.9, baseY, p.x + hw * 0.9, baseY, 1.15);
+          },
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, hw * 1.15, s * 0.09, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Two swept uprights, feet padded, bowing gently OUT — a
+            // frame sprung to hold tension, not nailed to fight it.
+            for (const sgn of [-1, 1]) {
+              const ux = p.x + sgn * hw;
+              ctx.fillStyle = shade(ELF_WOOD, sgn < 0 ? 2 : -10);
+              ctx.beginPath();
+              ctx.moveTo(ux - s * 0.038, baseY);
+              ctx.lineTo(ux + s * 0.038, baseY);
+              ctx.quadraticCurveTo(ux + sgn * s * 0.05 + s * 0.026, baseY - s * 0.7, ux + sgn * s * 0.02 + s * 0.022, topBeam - s * 0.06);
+              ctx.lineTo(ux + sgn * s * 0.02 - s * 0.022, topBeam - s * 0.06);
+              ctx.quadraticCurveTo(ux + sgn * s * 0.05 - s * 0.026, baseY - s * 0.7, ux - s * 0.038, baseY);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = shade(ELF_WOOD, -22);
+              ctx.fillRect(ux - s * 0.06, baseY - s * 0.03, s * 0.12, s * 0.03);
+            }
+            // Top beam and breast beam, lit along their top edges.
+            ctx.fillStyle = shade(ELF_WOOD, -8);
+            ctx.fillRect(p.x - hw - s * 0.05, topBeam, hw * 2 + s * 0.1, s * 0.055);
+            ctx.fillStyle = shade(ELF_WOOD, 16);
+            ctx.fillRect(p.x - hw - s * 0.05, topBeam, hw * 2 + s * 0.1, s * 0.016);
+            ctx.fillStyle = shade(ELF_WOOD, -8);
+            ctx.fillRect(p.x - hw - s * 0.02, breastBeam, hw * 2 + s * 0.04, s * 0.05);
+            ctx.fillStyle = shade(ELF_WOOD, 14);
+            ctx.fillRect(p.x - hw - s * 0.02, breastBeam, hw * 2 + s * 0.04, s * 0.014);
+            // THE CLOTH IN PROGRESS: moonpale field woven from the top
+            // beam down, two seafoam bands and a gold selvage thread
+            // at the working edge — half done, honest about it.
+            const clothBot = baseY - s * 0.76;
+            const inW = hw - s * 0.06;
+            ctx.fillStyle = ELF_SILK;
+            ctx.beginPath();
+            ctx.moveTo(p.x - inW, topBeam + s * 0.055);
+            ctx.lineTo(p.x + inW, topBeam + s * 0.055);
+            ctx.lineTo(p.x + inW - s * 0.012 + sway * 0.4, clothBot);
+            ctx.quadraticCurveTo(p.x + sway * 0.5, clothBot + s * 0.035, p.x - inW + s * 0.012 + sway * 0.4, clothBot);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#7ec4a8';
+            ctx.fillRect(p.x - inW + s * 0.01, topBeam + s * 0.14, inW * 2 - s * 0.02, s * 0.045);
+            ctx.fillRect(p.x - inW + s * 0.008, topBeam + s * 0.27, inW * 2 - s * 0.016, s * 0.028);
+            ctx.strokeStyle = ELF_GOLD;
+            ctx.lineWidth = Math.max(1, s * 0.012);
+            ctx.beginPath();
+            ctx.moveTo(p.x - inW + s * 0.012 + sway * 0.4, clothBot);
+            ctx.quadraticCurveTo(p.x + sway * 0.5, clothBot + s * 0.035, p.x + inW - s * 0.012 + sway * 0.4, clothBot);
+            ctx.stroke();
+            // The warp: unwoven threads running on to the breast beam.
+            ctx.strokeStyle = 'rgba(222, 216, 206, 0.55)';
+            ctx.lineWidth = Math.max(1, s * 0.01);
+            for (let i = 0; i < 9; i++) {
+              const f = i / 8;
+              const wx = p.x - inW + s * 0.02 + (inW * 2 - s * 0.04) * f;
+              ctx.beginPath();
+              ctx.moveTo(wx + sway * 0.4, clothBot + s * 0.01);
+              ctx.lineTo(wx, breastBeam + s * 0.005);
+              ctx.stroke();
+            }
+            // Warp weights: four teardrop stones keep the tension,
+            // each swinging on its own small clock.
+            for (let i = 0; i < 4; i++) {
+              const f = i / 3;
+              const wx = p.x - inW * 0.72 + inW * 1.44 * f + sway * (0.6 + f * 0.5) + lag * (i % 2 === 0 ? 0.5 : -0.4);
+              const wy = clothBot + s * 0.15 + (i % 2) * s * 0.03;
+              ctx.strokeStyle = 'rgba(222, 216, 206, 0.5)';
+              ctx.beginPath();
+              ctx.moveTo(wx - sway * 0.3, clothBot + s * 0.01);
+              ctx.lineTo(wx, wy);
+              ctx.stroke();
+              ctx.fillStyle = shade(ELF_MARBLE, -34 + i * 4);
+              ctx.beginPath();
+              ctx.moveTo(wx, wy);
+              ctx.quadraticCurveTo(wx + s * 0.035, wy + s * 0.04, wx, wy + s * 0.085);
+              ctx.quadraticCurveTo(wx - s * 0.035, wy + s * 0.04, wx, wy);
+              ctx.fill();
+            }
+            // The weaver's basket waits at the east foot: three spools
+            // in the kit's thread colors.
+            ctx.fillStyle = shade(ELF_WOOD, -14);
+            ctx.beginPath();
+            ctx.moveTo(p.x + hw * 0.52, baseY);
+            ctx.lineTo(p.x + hw * 1.06, baseY);
+            ctx.lineTo(p.x + hw * 1.0, baseY - s * 0.16);
+            ctx.lineTo(p.x + hw * 0.58, baseY - s * 0.16);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_WOOD, 4);
+            ctx.fillRect(p.x + hw * 0.56, baseY - s * 0.17, hw * 0.46, s * 0.025);
+            const spool = (sx2: number, tone: string) => {
+              ctx.fillStyle = tone;
+              ctx.beginPath();
+              ctx.ellipse(sx2, baseY - s * 0.19, s * 0.036, s * 0.045, 0, 0, Math.PI * 2);
+              ctx.fill();
+            };
+            spool(p.x + hw * 0.66, '#7ec4a8');
+            spool(p.x + hw * 0.79, ELF_SILK);
+            spool(p.x + hw * 0.92, ELF_GOLD);
+          },
+        };
+      }
+
+      case Tile.ElvenFountain: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.4;
+        const rx = s * 0.5;
+        const ry = syT * 0.3;
+        const rimY = baseY - s * 0.22;
+        const midY = baseY - s * 0.72;
+        const topBowlY = baseY - s * 1.08;
+        return {
+          sortY: ty + 0.72,
+          body: stationBody(0.72, 1.55, 0.55),
+          drawShadow: () => this.castContact(p.x, baseY + s * 0.02, s * 0.52, s * 0.15),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, rx * 1.06, s * 0.12, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The basin wall: a marble drum with scallop facets — the
+            // bird's eye must see INTO the bowl, so wall first, water
+            // after, rim arris last.
+            ctx.fillStyle = shade(ELF_MARBLE, -18);
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - s * 0.06, rx, ry, 0, 0, Math.PI);
+            ctx.ellipse(p.x, rimY, rx, ry, 0, Math.PI, 0);
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_MARBLE, -4);
+            for (let i = 0; i < 5; i++) {
+              const f = (i + 0.5) / 5;
+              const sx2 = p.x - rx + rx * 2 * f;
+              const sw2 = (rx * 2) / 5 - s * 0.03;
+              ctx.beginPath();
+              ctx.moveTo(sx2 - sw2 / 2, rimY + ry * Math.sin(Math.PI * f) * 0.24);
+              ctx.lineTo(sx2 + sw2 / 2, rimY + ry * Math.sin(Math.PI * f) * 0.24);
+              ctx.lineTo(sx2 + sw2 / 2 - s * 0.014, baseY - s * 0.05 + ry * Math.sin(Math.PI * f) * 0.3);
+              ctx.lineTo(sx2 - sw2 / 2 + s * 0.014, baseY - s * 0.05 + ry * Math.sin(Math.PI * f) * 0.3);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // The pool: cool water, and the slow rings of a fountain
+            // that has been singing for three hundred years.
+            ctx.fillStyle = '#5f93ab';
+            ctx.beginPath();
+            ctx.ellipse(p.x, rimY, rx - s * 0.06, ry - s * 0.035, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#7ec4d8';
+            ctx.beginPath();
+            ctx.ellipse(p.x - rx * 0.08, rimY - ry * 0.1, rx * 0.7, ry * 0.62, 0, 0, Math.PI * 2);
+            ctx.fill();
+            for (let k = 0; k < 2; k++) {
+              const ph = (t * 0.42 + k * 0.5 + h * 0.07) % 1;
+              ctx.strokeStyle = `rgba(223, 242, 250, ${0.4 * (1 - ph)})`;
+              ctx.lineWidth = Math.max(1, s * 0.014);
+              ctx.beginPath();
+              ctx.ellipse(p.x, rimY, (rx - s * 0.1) * (0.25 + 0.75 * ph), (ry - s * 0.05) * (0.25 + 0.75 * ph), 0, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+            // Rim arris: the sunlit marble lip closes the bowl.
+            ctx.strokeStyle = shade(ELF_MARBLE, 14);
+            ctx.lineWidth = Math.max(1, s * 0.035);
+            ctx.beginPath();
+            ctx.ellipse(p.x, rimY, rx - s * 0.015, ry - s * 0.01, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            // The stem and middle bowl.
+            ctx.fillStyle = shade(ELF_MARBLE, -10);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.05, rimY - s * 0.02);
+            ctx.lineTo(p.x + s * 0.05, rimY - s * 0.02);
+            ctx.lineTo(p.x + s * 0.035, midY);
+            ctx.lineTo(p.x - s * 0.035, midY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_MARBLE, -6);
+            ctx.beginPath();
+            ctx.ellipse(p.x, midY, s * 0.24, syT * 0.13, 0, 0, Math.PI);
+            ctx.fill();
+            ctx.fillStyle = '#7ec4d8';
+            ctx.beginPath();
+            ctx.ellipse(p.x, midY - s * 0.015, s * 0.2, syT * 0.1, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = shade(ELF_MARBLE, 12);
+            ctx.lineWidth = Math.max(1, s * 0.025);
+            ctx.beginPath();
+            ctx.ellipse(p.x, midY - s * 0.015, s * 0.22, syT * 0.115, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            // The top cup and its crescent finial.
+            ctx.fillStyle = shade(ELF_MARBLE, -8);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.03, midY - s * 0.02);
+            ctx.lineTo(p.x + s * 0.03, midY - s * 0.02);
+            ctx.lineTo(p.x + s * 0.022, topBowlY);
+            ctx.lineTo(p.x - s * 0.022, topBowlY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_MARBLE, 4);
+            ctx.beginPath();
+            ctx.ellipse(p.x, topBowlY, s * 0.1, syT * 0.055, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = ELF_MITHRIL;
+            ctx.beginPath();
+            ctx.arc(p.x, topBowlY - s * 0.1, s * 0.055, -0.3, Math.PI + 0.3);
+            ctx.arc(p.x, topBowlY - s * 0.125, s * 0.036, Math.PI + 0.5, -0.5, true);
+            ctx.closePath();
+            ctx.fill();
+            // THE SONG: thin falls from cup to bowl to pool — a bright
+            // pulse slides down each thread (slow, cadence-safe), and
+            // a white tick marks where the water lands.
+            const fall = (fx2: number, y0: number, y1: number, phOff: number) => {
+              ctx.strokeStyle = 'rgba(223, 242, 250, 0.55)';
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              ctx.beginPath();
+              ctx.moveTo(fx2, y0);
+              ctx.lineTo(fx2, y1);
+              ctx.stroke();
+              const ph = (t * 0.9 + phOff) % 1;
+              ctx.fillStyle = 'rgba(240, 250, 255, 0.7)';
+              ctx.fillRect(fx2 - s * 0.012, y0 + (y1 - y0) * ph - s * 0.03, s * 0.024, s * 0.06);
+              ctx.fillStyle = 'rgba(240, 250, 255, 0.5)';
+              ctx.fillRect(fx2 - s * 0.028, y1 - s * 0.012, s * 0.056, s * 0.016);
+            };
+            fall(p.x - s * 0.14, midY + s * 0.01, rimY - s * 0.04, 0.2);
+            fall(p.x + s * 0.15, midY + s * 0.015, rimY - s * 0.03, 0.65);
+            fall(p.x + s * 0.02, topBowlY + s * 0.02, midY - s * 0.04, 0.45);
+          },
+        };
+      }
+
+      case Tile.ElvenStatue: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.38;
+        const hw = s * 0.28;
+        const plinthTop = baseY - s * 0.3;
+        const headY = baseY - s * 1.5;
+        return {
+          sortY: ty + 0.74,
+          body: stationBody(0.56, 1.95, 0.5),
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - hw * 0.8, baseY, p.x + hw * 0.8, baseY, 1.35);
+          },
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, hw * 1.5, s * 0.1, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The plinth: a marble block with its crate-lid top plane.
+            ctx.fillStyle = shade(ELF_MARBLE, -20);
+            ctx.fillRect(p.x - hw * 1.15, plinthTop + syT * 0.2, hw * 2.3, baseY - plinthTop - syT * 0.2);
+            ctx.fillStyle = shade(ELF_MARBLE, 8);
+            ctx.fillRect(p.x - hw * 1.15, plinthTop, hw * 2.3, syT * 0.2);
+            ctx.fillStyle = shade(ELF_MARBLE, -34);
+            ctx.fillRect(p.x - hw * 1.15, plinthTop, hw * 2.3, s * 0.016);
+            ctx.fillStyle = shade(ELF_MARBLE, 20);
+            ctx.fillRect(p.x - hw * 1.15, plinthTop + syT * 0.2 - s * 0.014, hw * 2.3, s * 0.014);
+            // Moss takes the shaded south-west corner — the grove
+            // reclaims what stands still long enough.
+            ctx.fillStyle = 'rgba(93, 138, 110, 0.55)';
+            ctx.beginPath();
+            ctx.ellipse(p.x - hw * 0.9, baseY - s * 0.04, s * 0.1, s * 0.05, 0.3, 0, Math.PI * 2);
+            ctx.ellipse(p.x - hw * 0.55, baseY - s * 0.015, s * 0.06, s * 0.03, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // THE WARDEN: robe falling in two long folds, hands folded
+            // on the pommel of a leaf-blade set point-down. The face
+            // is planes, not features — marble keeps its distance.
+            ctx.fillStyle = shade(ELF_MARBLE, -8);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.62, plinthTop);
+            ctx.quadraticCurveTo(p.x - hw * 0.7, headY + s * 0.52, p.x - hw * 0.42, headY + s * 0.26);
+            ctx.lineTo(p.x + hw * 0.42, headY + s * 0.26);
+            ctx.quadraticCurveTo(p.x + hw * 0.66, headY + s * 0.54, p.x + hw * 0.56, plinthTop);
+            ctx.closePath();
+            ctx.fill();
+            // The lit west fold and the deep east fold — two values
+            // carry the whole figure.
+            ctx.fillStyle = shade(ELF_MARBLE, 12);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.52, plinthTop);
+            ctx.quadraticCurveTo(p.x - hw * 0.56, headY + s * 0.56, p.x - hw * 0.3, headY + s * 0.3);
+            ctx.lineTo(p.x - hw * 0.12, headY + s * 0.3);
+            ctx.quadraticCurveTo(p.x - hw * 0.26, headY + s * 0.6, p.x - hw * 0.2, plinthTop);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_MARBLE, -26);
+            ctx.beginPath();
+            ctx.moveTo(p.x + hw * 0.28, plinthTop);
+            ctx.quadraticCurveTo(p.x + hw * 0.34, headY + s * 0.6, p.x + hw * 0.24, headY + s * 0.34);
+            ctx.lineTo(p.x + hw * 0.38, headY + s * 0.32);
+            ctx.quadraticCurveTo(p.x + hw * 0.52, headY + s * 0.58, p.x + hw * 0.46, plinthTop);
+            ctx.closePath();
+            ctx.fill();
+            // Shoulders and the quiet head; the hood line breaks the
+            // silhouette the way the ears would.
+            ctx.fillStyle = shade(ELF_MARBLE, -2);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.44, headY + s * 0.28);
+            ctx.quadraticCurveTo(p.x, headY + s * 0.14, p.x + hw * 0.44, headY + s * 0.28);
+            ctx.lineTo(p.x + hw * 0.42, headY + s * 0.4);
+            ctx.lineTo(p.x - hw * 0.42, headY + s * 0.4);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_MARBLE, 2);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.075, headY + s * 0.2);
+            ctx.quadraticCurveTo(p.x - s * 0.09, headY - s * 0.02, p.x, headY - s * 0.05);
+            ctx.quadraticCurveTo(p.x + s * 0.09, headY - s * 0.02, p.x + s * 0.075, headY + s * 0.2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_MARBLE, 14);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.055, headY + s * 0.18);
+            ctx.quadraticCurveTo(p.x - s * 0.065, headY, p.x - s * 0.01, headY - s * 0.035);
+            ctx.lineTo(p.x - s * 0.01, headY + s * 0.18);
+            ctx.closePath();
+            ctx.fill();
+            // The upswept ears — this is an ELF in marble, read at a
+            // glance from across the square.
+            for (const sgn of [-1, 1]) {
+              ctx.fillStyle = shade(ELF_MARBLE, sgn < 0 ? 10 : -12);
+              ctx.beginPath();
+              ctx.moveTo(p.x + sgn * s * 0.06, headY + s * 0.06);
+              ctx.lineTo(p.x + sgn * s * 0.135, headY - s * 0.045);
+              ctx.lineTo(p.x + sgn * s * 0.07, headY + s * 0.11);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // The leaf-blade, point down: mithril earns the kit's one
+            // hard edge even in stone company.
+            ctx.fillStyle = ELF_MITHRIL;
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.035, headY + s * 0.62);
+            ctx.quadraticCurveTo(p.x - s * 0.05, plinthTop - s * 0.22, p.x, plinthTop - s * 0.02);
+            ctx.quadraticCurveTo(p.x + s * 0.05, plinthTop - s * 0.22, p.x + s * 0.035, headY + s * 0.62);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = ELF_MITHRIL_LIT;
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.012, headY + s * 0.62);
+            ctx.quadraticCurveTo(p.x - s * 0.02, plinthTop - s * 0.2, p.x, plinthTop - s * 0.03);
+            ctx.lineTo(p.x, headY + s * 0.62);
+            ctx.closePath();
+            ctx.fill();
+            // Crossguard leaves and the folded hands above them.
+            ctx.fillStyle = ELF_GOLD;
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.09, headY + s * 0.6);
+            ctx.quadraticCurveTo(p.x, headY + s * 0.52, p.x + s * 0.09, headY + s * 0.6);
+            ctx.quadraticCurveTo(p.x, headY + s * 0.68, p.x - s * 0.09, headY + s * 0.6);
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_MARBLE, 6);
+            ctx.beginPath();
+            ctx.ellipse(p.x, headY + s * 0.52, s * 0.07, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.Moonwell: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        const rx = s * 0.46;
+        const ry = syT * 0.3;
+        const rimY = baseY - s * 0.16;
+        return {
+          sortY: ty + 0.62,
+          body: stationBody(0.66, 0.85, 0.5),
+          drawShadow: () => this.castContact(p.x, baseY + s * 0.03, s * 0.48, s * 0.13),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.03, rx * 1.1, s * 0.11, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Seven fitted rim stones — a low ring, mortarless, laid
+            // by hands that had the centuries to get it right.
+            ctx.fillStyle = shade(ELF_MARBLE, -24);
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - s * 0.05, rx, ry, 0, 0, Math.PI);
+            ctx.ellipse(p.x, rimY, rx, ry, 0, Math.PI, 0);
+            ctx.fill();
+            for (let i = 0; i < 7; i++) {
+              const a = Math.PI * (0.08 + (i / 7) * 0.84);
+              const sx2 = p.x + Math.cos(a) * rx * 0.96;
+              const sy2 = rimY + Math.sin(a) * ry * 0.9;
+              ctx.fillStyle = shade(ELF_MARBLE, -10 + ((h >> i) & 3) * 4);
+              ctx.beginPath();
+              ctx.moveTo(sx2 - s * 0.085, sy2);
+              ctx.lineTo(sx2 + s * 0.085, sy2);
+              ctx.lineTo(sx2 + s * 0.065, sy2 + s * 0.1);
+              ctx.lineTo(sx2 - s * 0.065, sy2 + s * 0.1);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // THE LIT WATER: the bird's eye looks INTO the well. The
+            // glow grades from seafoam rim to a pale heart — this is
+            // the light source, and the painter never hides it.
+            ctx.fillStyle = '#4f9a8e';
+            ctx.beginPath();
+            ctx.ellipse(p.x, rimY, rx - s * 0.09, ry - s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = ELF_GLASS;
+            ctx.beginPath();
+            ctx.ellipse(p.x, rimY - s * 0.005, rx * 0.66, ry * 0.58, 0, 0, Math.PI * 2);
+            ctx.fill();
+            const swell = 0.8 + 0.2 * Math.sin(t * 0.9 + h * 0.4);
+            ctx.fillStyle = `rgba(217, 255, 244, ${0.55 + 0.25 * swell})`;
+            ctx.beginPath();
+            ctx.ellipse(p.x - rx * 0.06, rimY - s * 0.01, rx * 0.34, ry * 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Two shimmer bands drift across the surface.
+            for (let k = 0; k < 2; k++) {
+              const ph = (t * 0.16 + k * 0.5 + h * 0.11) % 1;
+              const bx2 = p.x - rx * 0.5 + rx * ph;
+              ctx.fillStyle = `rgba(234, 252, 255, ${0.3 * Math.sin(ph * Math.PI)})`;
+              ctx.beginPath();
+              ctx.ellipse(bx2, rimY + ry * 0.12 - k * ry * 0.3, rx * 0.2, ry * 0.08, -0.15, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            // The rim arris closes the bowl over the glow.
+            ctx.strokeStyle = shade(ELF_MARBLE, 10);
+            ctx.lineWidth = Math.max(1, s * 0.032);
+            ctx.beginPath();
+            ctx.ellipse(p.x, rimY, rx - s * 0.04, ry - s * 0.025, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            // Runes on the two south stones answer the water, and the
+            // mist stands up off the surface in slow wisps.
+            const runePulse = 0.5 + 0.3 * Math.sin(t * 0.7 + h);
+            ctx.fillStyle = `rgba(191, 255, 233, ${runePulse})`;
+            ctx.fillRect(p.x - s * 0.16, baseY - s * 0.015, s * 0.02, s * 0.05);
+            ctx.fillRect(p.x - s * 0.12, baseY - s * 0.005, s * 0.035, s * 0.016);
+            ctx.fillRect(p.x + s * 0.1, baseY - s * 0.02, s * 0.016, s * 0.055);
+            ctx.fillRect(p.x + s * 0.14, baseY - s * 0.02, s * 0.03, s * 0.014);
+            for (let k = 0; k < 3; k++) {
+              const ph = (t * 0.2 + k * 0.37 + h * 0.09) % 1;
+              const mx = p.x - rx * 0.4 + rx * 0.8 * ((k * 0.41 + 0.15) % 1) + Math.sin(ph * 5 + k) * s * 0.05;
+              const my = rimY - s * 0.06 - ph * s * 0.42;
+              ctx.strokeStyle = `rgba(217, 255, 244, ${0.25 * (1 - ph)})`;
+              ctx.lineWidth = Math.max(1, s * 0.025);
+              ctx.beginPath();
+              ctx.moveTo(mx, my + s * 0.1);
+              ctx.quadraticCurveTo(mx + s * 0.045, my + s * 0.05, mx, my);
+              ctx.stroke();
+            }
+          },
+        };
+      }
+
+      case Tile.Everflame: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.24;
+        const bowlY = baseY - s * 0.78;
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.62, 1.65, 0.45),
+          drawShadow: () => this.castContact(p.x, baseY + s * 0.02, s * 0.36, s * 0.11),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, s * 0.38, s * 0.1, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Three swept legs — two read, the third peeks between.
+            const legTo = (x0: number, foot: number, tone: number) => {
+              ctx.fillStyle = shade(ELF_MITHRIL, tone);
+              ctx.beginPath();
+              ctx.moveTo(x0 - s * 0.026, bowlY + s * 0.1);
+              ctx.lineTo(x0 + s * 0.026, bowlY + s * 0.1);
+              ctx.quadraticCurveTo(x0 + (foot - x0) * 0.4, baseY - s * 0.3, foot + s * 0.024, baseY);
+              ctx.lineTo(foot - s * 0.024, baseY);
+              ctx.quadraticCurveTo(x0 + (foot - x0) * 0.34, baseY - s * 0.32, x0 - s * 0.026, bowlY + s * 0.1);
+              ctx.closePath();
+              ctx.fill();
+            };
+            legTo(p.x + s * 0.02, p.x, -30);
+            legTo(p.x - s * 0.1, p.x - s * 0.3, -10);
+            legTo(p.x + s * 0.12, p.x + s * 0.3, -18);
+            // The basin: a wide shallow mithril bowl, rim arris LIT —
+            // the one hard edge, holding the hall's oldest light.
+            ctx.fillStyle = shade(ELF_MITHRIL, -22);
+            ctx.beginPath();
+            ctx.ellipse(p.x, bowlY, s * 0.34, syT * 0.19, 0, 0, Math.PI);
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_MITHRIL, -8);
+            ctx.beginPath();
+            ctx.ellipse(p.x, bowlY, s * 0.34, syT * 0.17, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The silver coal bed inside.
+            ctx.fillStyle = '#9fc8e8';
+            ctx.beginPath();
+            ctx.ellipse(p.x, bowlY - s * 0.01, s * 0.27, syT * 0.12, 0, 0, Math.PI * 2);
+            ctx.fill();
+            const beat = 0.85 + 0.15 * Math.sin(t * 1.6 + h * 0.5);
+            ctx.fillStyle = `rgba(223, 242, 255, ${0.55 + 0.25 * beat})`;
+            ctx.beginPath();
+            ctx.ellipse(p.x - s * 0.03, bowlY - s * 0.02, s * 0.16, syT * 0.08, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // THE FLAME: three tongues of silver-white — the tall
+            // heart and two leaning answers, wavering on slow clocks.
+            // Cool fire: the camp's bonfire is its opposite number.
+            const tongue = (
+              fx2: number,
+              fh: number,
+              fw: number,
+              lean: number,
+              tone: string,
+              ph: number,
+            ) => {
+              const wob = Math.sin(t * 2.6 + ph) * s * 0.03;
+              ctx.fillStyle = tone;
+              ctx.beginPath();
+              ctx.moveTo(fx2 - fw, bowlY - s * 0.02);
+              ctx.quadraticCurveTo(fx2 - fw * 0.7 + lean * 0.4, bowlY - fh * 0.55, fx2 + lean + wob, bowlY - fh);
+              ctx.quadraticCurveTo(fx2 + fw * 0.7 + lean * 0.4, bowlY - fh * 0.5, fx2 + fw, bowlY - s * 0.02);
+              ctx.closePath();
+              ctx.fill();
+            };
+            tongue(p.x - s * 0.11, s * 0.42, s * 0.075, -s * 0.05, 'rgba(159, 200, 232, 0.85)', 1.7);
+            tongue(p.x + s * 0.12, s * 0.5, s * 0.08, s * 0.06, 'rgba(159, 200, 232, 0.85)', 3.9);
+            tongue(p.x, s * 0.74, s * 0.11, s * 0.015, '#dff2ff', 0.6);
+            tongue(p.x, s * 0.46, s * 0.06, s * 0.005, '#ffffff', 2.8);
+            // Motes rise off the flame and go out like small stars.
+            for (let k = 0; k < 3; k++) {
+              const ph = (t * 0.34 + k * 0.33 + h * 0.13) % 1;
+              const mx = p.x + Math.sin(ph * 7 + k * 2) * s * 0.09;
+              const my = bowlY - s * 0.5 - ph * s * 0.55;
+              ctx.fillStyle = `rgba(234, 252, 255, ${0.75 * (1 - ph)})`;
+              ctx.fillRect(mx - s * 0.012, my - s * 0.012, s * 0.024, s * 0.024);
+            }
+            // The rim's lit arris, drawn over the flame roots.
+            ctx.strokeStyle = ELF_MITHRIL_LIT;
+            ctx.lineWidth = Math.max(1, s * 0.03);
+            ctx.beginPath();
+            ctx.ellipse(p.x, bowlY, s * 0.335, syT * 0.165, 0, 0.15, Math.PI - 0.15);
+            ctx.stroke();
+          },
+        };
+      }
+
+      case Tile.MithrilAnvil: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.26;
+        const faceY = baseY - s * 0.74;
+        const sparkPh = (t * 0.5 + h * 0.17) % 1;
+        return {
+          sortY: ty + 0.68,
+          body: stationBody(0.66, 1.2, 0.5),
+          drawShadow: () => this.castContact(p.x, baseY + s * 0.02, s * 0.4, s * 0.12),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, s * 0.42, s * 0.1, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The carved root plinth: stone that was ASKED to hold an
+            // anvil — three root toes grip the ground.
+            ctx.fillStyle = shade(ELF_MARBLE, -30);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.26, baseY);
+            ctx.quadraticCurveTo(p.x - s * 0.22, baseY - s * 0.3, p.x - s * 0.17, baseY - s * 0.4);
+            ctx.lineTo(p.x + s * 0.17, baseY - s * 0.4);
+            ctx.quadraticCurveTo(p.x + s * 0.22, baseY - s * 0.3, p.x + s * 0.26, baseY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_MARBLE, -14);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.22, baseY);
+            ctx.quadraticCurveTo(p.x - s * 0.18, baseY - s * 0.28, p.x - s * 0.13, baseY - s * 0.38);
+            ctx.lineTo(p.x - s * 0.02, baseY - s * 0.38);
+            ctx.quadraticCurveTo(p.x - s * 0.06, baseY - s * 0.2, p.x - s * 0.04, baseY);
+            ctx.closePath();
+            ctx.fill();
+            for (const [tx2, tw] of [
+              [-0.3, 0.1],
+              [0.02, 0.08],
+              [0.24, 0.1],
+            ] as const) {
+              ctx.fillStyle = shade(ELF_MARBLE, -22);
+              ctx.beginPath();
+              ctx.moveTo(p.x + s * tx2, baseY);
+              ctx.quadraticCurveTo(p.x + s * (tx2 + tw * 0.4), baseY - s * 0.12, p.x + s * (tx2 + tw), baseY - s * 0.04);
+              ctx.lineTo(p.x + s * (tx2 + tw), baseY);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // The anvil: waist, then the long swept horn — a smith's
+            // tool drawn with a jeweler's line.
+            ctx.fillStyle = shade(ELF_MITHRIL, -16);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.13, faceY + s * 0.34);
+            ctx.quadraticCurveTo(p.x, faceY + s * 0.26, p.x + s * 0.13, faceY + s * 0.34);
+            ctx.lineTo(p.x + s * 0.15, faceY + s * 0.12);
+            ctx.lineTo(p.x - s * 0.15, faceY + s * 0.12);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_MITHRIL, -6);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.3, faceY + s * 0.12);
+            ctx.lineTo(p.x + s * 0.28, faceY + s * 0.12);
+            ctx.lineTo(p.x + s * 0.28, faceY + s * 0.02);
+            ctx.quadraticCurveTo(p.x + s * 0.52, faceY - s * 0.02, p.x + s * 0.58, faceY - s * 0.18);
+            ctx.quadraticCurveTo(p.x + s * 0.42, faceY - s * 0.06, p.x + s * 0.26, faceY - s * 0.05);
+            ctx.lineTo(p.x - s * 0.3, faceY - s * 0.05);
+            ctx.closePath();
+            ctx.fill();
+            // The face: the brightest plane in the piece — mithril
+            // polished by ten thousand true blows.
+            ctx.fillStyle = ELF_MITHRIL_LIT;
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.3, faceY - s * 0.05);
+            ctx.lineTo(p.x + s * 0.26, faceY - s * 0.05);
+            ctx.quadraticCurveTo(p.x + s * 0.42, faceY - s * 0.06, p.x + s * 0.56, faceY - s * 0.185);
+            ctx.lineTo(p.x + s * 0.5, faceY - s * 0.21);
+            ctx.quadraticCurveTo(p.x + s * 0.38, faceY - s * 0.1, p.x + s * 0.24, faceY - s * 0.095);
+            ctx.lineTo(p.x - s * 0.28, faceY - s * 0.095);
+            ctx.closePath();
+            ctx.fill();
+            // The hardy hole: one dark socket in the bright face.
+            ctx.fillStyle = shade(ELF_MITHRIL, -34);
+            ctx.fillRect(p.x - s * 0.2, faceY - s * 0.085, s * 0.045, s * 0.03);
+            // A slim hammer rests against the plinth, head down —
+            // work paused, never abandoned.
+            ctx.save();
+            ctx.translate(p.x - s * 0.34, baseY - s * 0.1);
+            ctx.rotate(0.5);
+            ctx.fillStyle = shade(ELF_WOOD, 6);
+            ctx.fillRect(-s * 0.014, -s * 0.34, s * 0.028, s * 0.34);
+            ctx.fillStyle = ELF_MITHRIL;
+            ctx.fillRect(-s * 0.055, -s * 0.4, s * 0.11, s * 0.07);
+            ctx.fillStyle = ELF_MITHRIL_LIT;
+            ctx.fillRect(-s * 0.055, -s * 0.4, s * 0.11, s * 0.018);
+            ctx.restore();
+            // A cooling spark pops off the horn now and then — the
+            // forge's heartbeat, one bright pixel at a time.
+            if (sparkPh < 0.1) {
+              const sp = sparkPh / 0.1;
+              ctx.fillStyle = `rgba(240, 250, 255, ${0.9 * (1 - sp)})`;
+              const sx2 = p.x + s * 0.54 + sp * s * 0.1;
+              const sy2 = faceY - s * 0.2 - Math.sin(sp * Math.PI) * s * 0.12;
+              ctx.fillRect(sx2 - s * 0.014, sy2 - s * 0.014, s * 0.028, s * 0.028);
+            }
+          },
+        };
+      }
+
+      case Tile.ElvenArmsRack: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.28;
+        const hw = s * 0.4;
+        const topRail = baseY - s * 1.08;
+        const midRail = baseY - s * 0.66;
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.68, 1.55, 0.45),
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - hw * 0.9, baseY, p.x + hw * 0.9, baseY, 1.0);
+          },
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, hw * 1.15, s * 0.08, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The frame: this is a GALLERY, not the camp's leaning
+            // pyramid — two swept uprights, two true rails.
+            for (const sgn of [-1, 1]) {
+              const ux = p.x + sgn * hw;
+              ctx.fillStyle = shade(ELF_WOOD, sgn < 0 ? 2 : -10);
+              ctx.beginPath();
+              ctx.moveTo(ux - s * 0.036, baseY);
+              ctx.lineTo(ux + s * 0.036, baseY);
+              ctx.quadraticCurveTo(ux + sgn * s * 0.045 + s * 0.022, baseY - s * 0.6, ux + sgn * s * 0.015 + s * 0.02, topRail - s * 0.14);
+              ctx.lineTo(ux + sgn * s * 0.015 - s * 0.02, topRail - s * 0.14);
+              ctx.quadraticCurveTo(ux + sgn * s * 0.045 - s * 0.022, baseY - s * 0.6, ux - s * 0.036, baseY);
+              ctx.closePath();
+              ctx.fill();
+              // The upright's crown curls once — the maker's mark.
+              ctx.fillStyle = shade(ELF_WOOD, -4);
+              ctx.beginPath();
+              facetCircle(ctx, ux + sgn * s * 0.015, topRail - s * 0.16, s * 0.038, 6, 0.3, 1);
+              ctx.fill();
+              ctx.fillStyle = shade(ELF_WOOD, -22);
+              ctx.fillRect(ux - s * 0.055, baseY - s * 0.028, s * 0.11, s * 0.028);
+            }
+            const rail = (ry2: number) => {
+              ctx.fillStyle = shade(ELF_WOOD, -12);
+              ctx.fillRect(p.x - hw, ry2, hw * 2, s * 0.04);
+              ctx.fillStyle = shade(ELF_WOOD, 10);
+              ctx.fillRect(p.x - hw, ry2, hw * 2, s * 0.013);
+            };
+            rail(topRail);
+            rail(midRail);
+            // Silver pegs cradle each piece.
+            ctx.fillStyle = ELF_MITHRIL_LIT;
+            for (const px2 of [p.x - hw * 0.55, p.x + hw * 0.4]) {
+              ctx.fillRect(px2 - s * 0.012, topRail - s * 0.05, s * 0.024, s * 0.05);
+              ctx.fillRect(px2 - s * 0.012, midRail - s * 0.05, s * 0.024, s * 0.05);
+            }
+            // THE LONG BLADE rests on the top pegs — second pass: at
+            // map scale the first draft's blade vanished into the
+            // rail, so the display pieces now carry REAL mass. A dark
+            // seat shadow lifts the blade off the rail, the blade is
+            // twice the weight, and the lit edge is a painted facet,
+            // not a hairline.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+            ctx.fillRect(p.x - hw * 0.8, topRail - s * 0.03, hw * 1.66, s * 0.03);
+            ctx.fillStyle = ELF_MITHRIL;
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.82, topRail - s * 0.12);
+            ctx.quadraticCurveTo(p.x - hw * 0.2, topRail - s * 0.185, p.x + hw * 0.5, topRail - s * 0.135);
+            ctx.quadraticCurveTo(p.x + hw * 0.74, topRail - s * 0.115, p.x + hw * 0.9, topRail - s * 0.175);
+            ctx.lineTo(p.x + hw * 0.86, topRail - s * 0.045);
+            ctx.quadraticCurveTo(p.x - hw * 0.2, topRail - s * 0.075, p.x - hw * 0.78, topRail - s * 0.035);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = ELF_MITHRIL_LIT;
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.82, topRail - s * 0.12);
+            ctx.quadraticCurveTo(p.x - hw * 0.2, topRail - s * 0.185, p.x + hw * 0.5, topRail - s * 0.135);
+            ctx.quadraticCurveTo(p.x + hw * 0.74, topRail - s * 0.115, p.x + hw * 0.9, topRail - s * 0.175);
+            ctx.lineTo(p.x + hw * 0.88, topRail - s * 0.125);
+            ctx.quadraticCurveTo(p.x + hw * 0.72, topRail - s * 0.155, p.x + hw * 0.5, topRail - s * 0.175);
+            ctx.quadraticCurveTo(p.x - hw * 0.2, topRail - s * 0.225, p.x - hw * 0.8, topRail - s * 0.155);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = ELF_GOLD;
+            ctx.fillRect(p.x - hw * 0.74, topRail - s * 0.16, s * 0.13, s * 0.1);
+            ctx.fillStyle = shade(ELF_GOLD, 20);
+            ctx.fillRect(p.x - hw * 0.74, topRail - s * 0.16, s * 0.13, s * 0.026);
+            // THE SHORT BLADE on the mid pegs, sheathed in leaf-green
+            // with a mithril chape and locket — the pair reads a set.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+            ctx.fillRect(p.x - hw * 0.6, midRail - s * 0.03, hw * 1.2, s * 0.03);
+            ctx.fillStyle = ELF_LEAF;
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.62, midRail - s * 0.13);
+            ctx.quadraticCurveTo(p.x, midRail - s * 0.165, p.x + hw * 0.56, midRail - s * 0.115);
+            ctx.lineTo(p.x + hw * 0.56, midRail - s * 0.035);
+            ctx.quadraticCurveTo(p.x, midRail - s * 0.085, p.x - hw * 0.62, midRail - s * 0.05);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_LEAF, 18);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.62, midRail - s * 0.13);
+            ctx.quadraticCurveTo(p.x, midRail - s * 0.165, p.x + hw * 0.56, midRail - s * 0.115);
+            ctx.lineTo(p.x + hw * 0.56, midRail - s * 0.09);
+            ctx.quadraticCurveTo(p.x, midRail - s * 0.14, p.x - hw * 0.62, midRail - s * 0.105);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = ELF_MITHRIL_LIT;
+            ctx.beginPath();
+            ctx.moveTo(p.x + hw * 0.56, midRail - s * 0.125);
+            ctx.lineTo(p.x + hw * 0.74, midRail - s * 0.09);
+            ctx.lineTo(p.x + hw * 0.56, midRail - s * 0.03);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = ELF_MITHRIL;
+            ctx.fillRect(p.x - hw * 0.2, midRail - s * 0.15, s * 0.05, s * 0.12);
+            ctx.fillStyle = ELF_GOLD;
+            ctx.fillRect(p.x - hw * 0.54, midRail - s * 0.15, s * 0.1, s * 0.11);
+            // THE GREAT BOW stands west of the east upright, full and
+            // clear of the frame — a drawn arc the eye can string.
+            const bowX = p.x + hw * 0.7;
+            ctx.fillStyle = shade(ELF_WOOD, 22);
+            ctx.beginPath();
+            ctx.moveTo(bowX - s * 0.13, baseY - s * 0.02);
+            ctx.quadraticCurveTo(bowX - s * 0.36, baseY - s * 0.7, bowX - s * 0.05, topRail - s * 0.3);
+            ctx.lineTo(bowX + s * 0.005, topRail - s * 0.26);
+            ctx.quadraticCurveTo(bowX - s * 0.26, baseY - s * 0.66, bowX - s * 0.06, baseY - s * 0.02);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = ELF_MITHRIL_LIT;
+            ctx.fillRect(bowX - s * 0.07, topRail - s * 0.31, s * 0.06, s * 0.03);
+            ctx.fillRect(bowX - s * 0.135, baseY - s * 0.05, s * 0.06, s * 0.03);
+            ctx.strokeStyle = 'rgba(222, 233, 248, 0.7)';
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            ctx.beginPath();
+            ctx.moveTo(bowX - s * 0.03, topRail - s * 0.28);
+            ctx.lineTo(bowX - s * 0.1, baseY - s * 0.04);
+            ctx.stroke();
+          },
+        };
+      }
+
+      case Tile.ElvenPlanter: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        const rimY = baseY - s * 0.62;
+        const { sway, lag } = this.breezeAt(tx, ty, t, tx * 1.6 + ty * 2.4, s, 0.008, 0.018);
+        return {
+          sortY: ty + 0.64,
+          body: stationBody(0.52, 1.15, 0.4),
+          drawShadow: () => this.castContact(p.x, baseY + s * 0.02, s * 0.26, s * 0.09),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.015, s * 0.28, s * 0.08, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The urn: foot, swelling belly, drawn-in neck — marble
+            // with a carved leaf band riding the widest course.
+            ctx.fillStyle = shade(ELF_MARBLE, -18);
+            ctx.fillRect(p.x - s * 0.12, baseY - s * 0.07, s * 0.24, s * 0.07);
+            ctx.fillStyle = shade(ELF_MARBLE, -6);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.1, baseY - s * 0.07);
+            ctx.quadraticCurveTo(p.x - s * 0.3, baseY - s * 0.26, p.x - s * 0.19, rimY + s * 0.1);
+            ctx.lineTo(p.x + s * 0.19, rimY + s * 0.1);
+            ctx.quadraticCurveTo(p.x + s * 0.3, baseY - s * 0.26, p.x + s * 0.1, baseY - s * 0.07);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_MARBLE, 10);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.08, baseY - s * 0.08);
+            ctx.quadraticCurveTo(p.x - s * 0.24, baseY - s * 0.26, p.x - s * 0.15, rimY + s * 0.11);
+            ctx.lineTo(p.x - s * 0.06, rimY + s * 0.11);
+            ctx.quadraticCurveTo(p.x - s * 0.13, baseY - s * 0.24, p.x - s * 0.03, baseY - s * 0.08);
+            ctx.closePath();
+            ctx.fill();
+            // The carved leaf band: alternating chevron leaves.
+            ctx.fillStyle = shade(ELF_MARBLE, -26);
+            for (let i = 0; i < 5; i++) {
+              const lx = p.x - s * 0.18 + i * s * 0.09;
+              ctx.beginPath();
+              ctx.moveTo(lx, baseY - s * 0.3);
+              ctx.lineTo(lx + s * 0.035, baseY - s * 0.36);
+              ctx.lineTo(lx + s * 0.07, baseY - s * 0.3);
+              ctx.lineTo(lx + s * 0.035, baseY - s * 0.33);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // The mouth: the eye looks INTO it — dark soil, lit rim.
+            ctx.fillStyle = shade(ELF_MARBLE, -2);
+            ctx.beginPath();
+            ctx.ellipse(p.x, rimY + s * 0.1, s * 0.2, syT * 0.09, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#3a3020';
+            ctx.beginPath();
+            ctx.ellipse(p.x, rimY + s * 0.1, s * 0.15, syT * 0.06, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // SILVERLEAF: pale spade leaves and three moon-white
+            // blooms standing over the mouth, each stem its own bow.
+            const leaf = (lx: number, ly: number, ang: number, tone: string) => {
+              ctx.save();
+              ctx.translate(lx, ly);
+              ctx.rotate(ang);
+              ctx.fillStyle = tone;
+              ctx.beginPath();
+              ctx.moveTo(0, 0);
+              ctx.quadraticCurveTo(s * 0.05, -s * 0.07, 0, -s * 0.16);
+              ctx.quadraticCurveTo(-s * 0.05, -s * 0.07, 0, 0);
+              ctx.fill();
+              ctx.restore();
+            };
+            ctx.strokeStyle = '#8aa892';
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            for (const [ox, oy, bend] of [
+              [-0.1, -0.34, -0.05],
+              [0.02, -0.42, 0.02],
+              [0.12, -0.3, 0.07],
+            ] as const) {
+              ctx.beginPath();
+              ctx.moveTo(p.x + s * ox * 0.3, rimY + s * 0.08);
+              ctx.quadraticCurveTo(
+                p.x + s * (ox * 0.6 + bend), rimY + s * (oy * 0.5),
+                p.x + s * ox + sway * 0.5, rimY + s * oy,
+              );
+              ctx.stroke();
+            }
+            leaf(p.x - s * 0.16, rimY - s * 0.06, -0.5, '#b8d4c0');
+            leaf(p.x - s * 0.05, rimY - s * 0.12, -0.1, '#cfe0d4');
+            leaf(p.x + s * 0.09, rimY - s * 0.04, 0.45, '#b8d4c0');
+            leaf(p.x + s * 0.17, rimY - s * 0.1, 0.75, '#a8c4b0');
+            for (const [ox, oy] of [
+              [-0.1, -0.34],
+              [0.02, -0.42],
+              [0.12, -0.3],
+            ] as const) {
+              ctx.fillStyle = '#e8f4ff';
+              ctx.beginPath();
+              facetCircle(ctx, p.x + s * ox + sway * 0.5, rimY + s * oy, s * 0.035, 5, 0.3, 1);
+              ctx.fill();
+              ctx.fillStyle = ELF_GOLD;
+              ctx.fillRect(p.x + s * ox + sway * 0.5 - s * 0.008, rimY + s * oy - s * 0.008, s * 0.016, s * 0.016);
+            }
+            // One vine escapes the rim and trails to the ground; the
+            // tip flutters — the only restless thing on the piece.
+            ctx.strokeStyle = ELF_LEAF;
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            ctx.beginPath();
+            ctx.moveTo(p.x + s * 0.17, rimY + s * 0.1);
+            ctx.quadraticCurveTo(p.x + s * 0.28, baseY - s * 0.32, p.x + s * 0.24, baseY - s * 0.1);
+            ctx.quadraticCurveTo(p.x + s * 0.22, baseY - s * 0.02, p.x + s * 0.3 + lag, baseY + s * 0.02);
+            ctx.stroke();
+            for (const [vx, vy] of [
+              [0.26, -0.36],
+              [0.22, -0.18],
+            ] as const) {
+              leaf(p.x + s * vx, baseY + s * vy, 1.2, ELF_LEAF);
+            }
+            leaf(p.x + s * 0.3 + lag, baseY + s * 0.02, 1.5 + lag * 0.04, shade(ELF_LEAF, 12));
+          },
+        };
+      }
+
+      case Tile.ElvenMirror: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.22;
+        const cx2 = p.x - s * 0.03;
+        const cy2 = baseY - s * 0.78;
+        const mrx = s * 0.26;
+        const mry = s * 0.46;
+        const glintPh = (t * 0.22 + h * 0.09) % 1;
+        return {
+          sortY: ty + 0.68,
+          body: stationBody(0.52, 1.5, 0.4),
+          drawShadow: () => this.castContact(p.x, baseY + s * 0.02, s * 0.26, s * 0.09),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.015, s * 0.28, s * 0.08, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The rear brace leg tells the tilt (perspective honesty:
+            // a standing mirror leans, so its foot steps back east).
+            ctx.fillStyle = shade(ELF_WOOD, -20);
+            ctx.beginPath();
+            ctx.moveTo(cx2 + mrx * 0.5, cy2 + mry * 0.6);
+            ctx.lineTo(cx2 + mrx * 0.62, cy2 + mry * 0.55);
+            ctx.lineTo(p.x + s * 0.3, baseY - s * 0.02);
+            ctx.lineTo(p.x + s * 0.24, baseY);
+            ctx.closePath();
+            ctx.fill();
+            // Two front feet.
+            ctx.fillStyle = shade(ELF_WOOD, -10);
+            ctx.fillRect(cx2 - mrx * 0.8 - s * 0.03, baseY - s * 0.04, s * 0.1, s * 0.04);
+            ctx.fillRect(cx2 + mrx * 0.55 - s * 0.03, baseY - s * 0.028, s * 0.1, s * 0.028);
+            ctx.fillStyle = shade(ELF_WOOD, -4);
+            ctx.beginPath();
+            ctx.moveTo(cx2 - mrx * 0.76, baseY - s * 0.02);
+            ctx.lineTo(cx2 - mrx * 0.35, cy2 + mry * 0.72);
+            ctx.lineTo(cx2 - mrx * 0.2, cy2 + mry * 0.78);
+            ctx.lineTo(cx2 - mrx * 0.62, baseY - s * 0.02);
+            ctx.closePath();
+            ctx.fill();
+            // The oval frame: a full vine ring — drawn as the frame
+            // ellipse, the glass laid inside it.
+            ctx.fillStyle = shade(ELF_WOOD, -2);
+            ctx.beginPath();
+            ctx.ellipse(cx2, cy2, mrx + s * 0.05, mry + s * 0.05, -0.06, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_WOOD, 12);
+            ctx.beginPath();
+            ctx.ellipse(cx2 - s * 0.012, cy2 - s * 0.012, mrx + s * 0.04, mry + s * 0.04, -0.06, Math.PI * 0.7, Math.PI * 1.6);
+            ctx.lineTo(cx2 - s * 0.012 + Math.cos(Math.PI * 1.6) * mrx, cy2 - s * 0.012 + Math.sin(Math.PI * 1.6) * mry);
+            ctx.ellipse(cx2 - s * 0.012, cy2 - s * 0.012, mrx + s * 0.015, mry + s * 0.015, -0.06, Math.PI * 1.6, Math.PI * 0.7, true);
+            ctx.closePath();
+            ctx.fill();
+            // THE GLASS: a cool pool standing upright — three value
+            // bands, then the slow diagonal glint that makes it glass.
+            ctx.fillStyle = '#8ba4b8';
+            ctx.beginPath();
+            ctx.ellipse(cx2, cy2, mrx, mry, -0.06, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#a8bccc';
+            ctx.beginPath();
+            ctx.ellipse(cx2 - mrx * 0.12, cy2 - mry * 0.1, mrx * 0.78, mry * 0.78, -0.06, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#c4d4e0';
+            ctx.beginPath();
+            ctx.ellipse(cx2 - mrx * 0.22, cy2 - mry * 0.24, mrx * 0.4, mry * 0.46, -0.12, 0, Math.PI * 2);
+            ctx.fill();
+            // A vague pale figure stands in the glass — never sharp,
+            // never anyone: the room's light remembered.
+            ctx.fillStyle = 'rgba(222, 233, 248, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(cx2 + mrx * 0.1, cy2 + mry * 0.16, mrx * 0.16, mry * 0.42, 0, 0, Math.PI * 2);
+            ctx.fill();
+            if (glintPh < 0.14) {
+              const gp = glintPh / 0.14;
+              ctx.save();
+              ctx.beginPath();
+              ctx.ellipse(cx2, cy2, mrx, mry, -0.06, 0, Math.PI * 2);
+              ctx.clip();
+              ctx.fillStyle = `rgba(240, 250, 255, ${0.45 * Math.sin(gp * Math.PI)})`;
+              const gx2 = cx2 - mrx * 1.4 + mrx * 2.8 * gp;
+              ctx.beginPath();
+              ctx.moveTo(gx2 - s * 0.05, cy2 + mry * 1.1);
+              ctx.lineTo(gx2 + s * 0.09, cy2 - mry * 1.1);
+              ctx.lineTo(gx2 + s * 0.16, cy2 - mry * 1.1);
+              ctx.lineTo(gx2 + s * 0.02, cy2 + mry * 1.1);
+              ctx.closePath();
+              ctx.fill();
+              ctx.restore();
+            }
+            // The crown curl and its gold bead top the frame; two
+            // small curls answer at the base.
+            ctx.fillStyle = shade(ELF_WOOD, 2);
+            ctx.beginPath();
+            facetCircle(ctx, cx2 + s * 0.01, cy2 - mry - s * 0.1, s * 0.05, 6, 0.2, 1);
+            ctx.fill();
+            ctx.fillStyle = ELF_GOLD;
+            ctx.beginPath();
+            facetCircle(ctx, cx2 + s * 0.01, cy2 - mry - s * 0.1, s * 0.02, 5, 0.5, 1);
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_WOOD, -8);
+            ctx.beginPath();
+            facetCircle(ctx, cx2 - mrx * 0.72, cy2 + mry * 0.78, s * 0.038, 6, 0.5, 1);
+            ctx.fill();
+            ctx.beginPath();
+            facetCircle(ctx, cx2 + mrx * 0.66, cy2 + mry * 0.82, s * 0.033, 6, 0.1, 1);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.ElvenWaystone: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.3;
+        const topY = baseY - s * 1.42;
+        const runePulse = 0.5 + 0.3 * Math.sin(t * 0.8 + h * 0.7);
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.52, 1.7, 0.45),
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - s * 0.22, baseY, p.x + s * 0.22, baseY, 1.15);
+          },
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, s * 0.3, s * 0.1, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The earth remembers the raising: a low mound grips the
+            // stone's foot.
+            ctx.fillStyle = '#6e5c38';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - s * 0.02, s * 0.3, s * 0.09, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The monolith: one swept west edge, one straight east —
+            // even the standing stone carries the kit's line. Three
+            // value planes, faceted, never rounded.
+            ctx.fillStyle = shade(ELF_MARBLE, -38);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.2, baseY);
+            ctx.quadraticCurveTo(p.x - s * 0.3, baseY - s * 0.8, p.x - s * 0.1, topY + s * 0.06);
+            ctx.lineTo(p.x + s * 0.12, topY);
+            ctx.lineTo(p.x + s * 0.22, baseY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_MARBLE, -16);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.2, baseY);
+            ctx.quadraticCurveTo(p.x - s * 0.3, baseY - s * 0.8, p.x - s * 0.1, topY + s * 0.06);
+            ctx.lineTo(p.x + s * 0.04, topY + s * 0.02);
+            ctx.lineTo(p.x + s * 0.08, baseY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_MARBLE, 0);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.185, baseY);
+            ctx.quadraticCurveTo(p.x - s * 0.275, baseY - s * 0.78, p.x - s * 0.095, topY + s * 0.07);
+            ctx.lineTo(p.x - s * 0.03, topY + s * 0.05);
+            ctx.lineTo(p.x - s * 0.06, baseY);
+            ctx.closePath();
+            ctx.fill();
+            // The crown facet: a small foreshortened top plane.
+            ctx.fillStyle = shade(ELF_MARBLE, 12);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.1, topY + s * 0.06);
+            ctx.lineTo(p.x + s * 0.12, topY);
+            ctx.lineTo(p.x + s * 0.1, topY - syT * 0.1);
+            ctx.lineTo(p.x - s * 0.08, topY - syT * 0.1 + s * 0.05);
+            ctx.closePath();
+            ctx.fill();
+            // MITHRIL VEINS: the ore the elves opened runs live
+            // through their marker stones — two branching threads,
+            // wide enough to read from the road.
+            ctx.strokeStyle = ELF_VEIN;
+            ctx.lineWidth = Math.max(1, s * 0.024);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.06, baseY - s * 0.08);
+            ctx.quadraticCurveTo(p.x - s * 0.1, baseY - s * 0.5, p.x + s * 0.01, baseY - s * 0.72);
+            ctx.moveTo(p.x - s * 0.055, baseY - s * 0.42);
+            ctx.quadraticCurveTo(p.x + s * 0.03, baseY - s * 0.52, p.x + s * 0.075, baseY - s * 0.4);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(220, 233, 248, 0.8)';
+            ctx.fillRect(p.x + s * 0.002, baseY - s * 0.73, s * 0.018, s * 0.018);
+            ctx.fillRect(p.x + s * 0.068, baseY - s * 0.41, s * 0.015, s * 0.015);
+            // THE SCRIPT BAND: a carved course of way-signs, lit from
+            // within on a slow breath — the road-word still speaking.
+            ctx.fillStyle = shade(ELF_MARBLE, -30);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.155, baseY - s * 0.86);
+            ctx.lineTo(p.x + s * 0.15, baseY - s * 0.92);
+            ctx.lineTo(p.x + s * 0.145, baseY - s * 1.12);
+            ctx.lineTo(p.x - s * 0.14, baseY - s * 1.06);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = `rgba(159, 232, 216, ${runePulse})`;
+            const glyphs: ReadonlyArray<readonly [number, number, number, number]> = [
+              [-0.115, 0.985, 0.016, 0.09],
+              [-0.075, 0.955, 0.05, 0.016],
+              [-0.02, 1.0, 0.016, 0.1],
+              [0.02, 0.94, 0.04, 0.016],
+              [0.075, 1.02, 0.016, 0.07],
+              [0.1, 0.96, 0.035, 0.016],
+            ];
+            for (const [gx2, gy2, gw2, gh2] of glyphs) {
+              ctx.fillRect(p.x + s * gx2, baseY - s * gy2 - s * gh2, s * gw2, s * gh2);
+            }
+            // Moss at the shaded foot; two small stones lean where
+            // travelers left them — the waystone is VISITED.
+            ctx.fillStyle = 'rgba(93, 138, 110, 0.55)';
+            ctx.beginPath();
+            ctx.ellipse(p.x + s * 0.14, baseY - s * 0.06, s * 0.07, s * 0.04, 0.4, 0, Math.PI * 2);
+            ctx.ellipse(p.x - s * 0.12, baseY - s * 0.6, s * 0.05, s * 0.09, 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_MARBLE, -22);
+            ctx.beginPath();
+            facetCircle(ctx, p.x - s * 0.26, baseY - s * 0.02, s * 0.04, 5, 0.3, 0.7);
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_MARBLE, -12);
+            ctx.beginPath();
+            facetCircle(ctx, p.x - s * 0.31, baseY - s * 0.055, s * 0.03, 5, 0.8, 0.7);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.ElvenChimes: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.12;
+        const crownY = baseY - s * 1.52;
+        const hangX = p.x + s * 0.26;
+        const { sway, lag } = this.breezeAt(tx, ty, t, tx * 2.7 + ty * 1.9, s, 0.014, 0.03);
+        return {
+          sortY: ty + 0.68,
+          body: stationBody(0.58, 1.85, 0.4),
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - s * 0.05, baseY, p.x + s * 0.05, baseY, 1.35);
+          },
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.015, s * 0.13, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The stand: the lantern's sister sweep in silverbark —
+            // one bow up, curling over to hold the ring.
+            ctx.fillStyle = shade(ELF_MARBLE, -26);
+            ctx.beginPath();
+            facetCircle(ctx, p.x, baseY - s * 0.03, s * 0.1, 6, 0.6, 0.55);
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_WOOD, -6);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.036, baseY - s * 0.03);
+            ctx.quadraticCurveTo(p.x - s * 0.06, crownY + s * 0.5, p.x + s * 0.02, crownY + s * 0.02);
+            ctx.quadraticCurveTo(p.x + s * 0.15, crownY - s * 0.08, hangX + s * 0.02, crownY + s * 0.08);
+            ctx.lineTo(hangX - s * 0.025, crownY + s * 0.1);
+            ctx.quadraticCurveTo(p.x + s * 0.09, crownY, p.x + s * 0.04, crownY + s * 0.12);
+            ctx.quadraticCurveTo(p.x, crownY + s * 0.5, p.x + s * 0.036, baseY - s * 0.03);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(ELF_WOOD, 12);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.028, baseY - s * 0.05);
+            ctx.quadraticCurveTo(p.x - s * 0.048, crownY + s * 0.5, p.x + s * 0.02, crownY + s * 0.045);
+            ctx.lineTo(p.x + s * 0.028, crownY + s * 0.085);
+            ctx.quadraticCurveTo(p.x - s * 0.024, crownY + s * 0.5, p.x - s * 0.01, baseY - s * 0.05);
+            ctx.closePath();
+            ctx.fill();
+            // THE RING: a mithril circle hangs level under the curl;
+            // every voice hangs from the ring, not the wood.
+            const ringY = crownY + s * 0.2;
+            const ringX = hangX + sway * 0.4;
+            ctx.strokeStyle = shade(ELF_MITHRIL, -6);
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            ctx.beginPath();
+            ctx.moveTo(hangX, crownY + s * 0.1);
+            ctx.lineTo(ringX, ringY - s * 0.03);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.ellipse(ringX, ringY, s * 0.16, syT * 0.07, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.strokeStyle = ELF_MITHRIL_LIT;
+            ctx.lineWidth = Math.max(1, s * 0.012);
+            ctx.beginPath();
+            ctx.ellipse(ringX, ringY - s * 0.008, s * 0.155, syT * 0.065, 0, Math.PI * 1.1, Math.PI * 1.9);
+            ctx.stroke();
+            // FIVE VOICES: mithril tubes in falling lengths, each on
+            // its own pendulum clock, and the moonglass drop at the
+            // heart. The singing tube wears the glint.
+            const singIdx = Math.floor((t * 0.5 + h * 0.21) % 5);
+            for (let i = 0; i < 5; i++) {
+              const f = i / 4;
+              const a = Math.PI * (0.15 + f * 0.7);
+              const tx2 = ringX + Math.cos(a) * s * 0.14;
+              const ty2 = ringY + Math.sin(a) * syT * 0.055;
+              const phase = i * 1.7;
+              const dx2 = sway * (0.5 + f * 0.6) * Math.cos(phase) + lag * 0.6 * Math.sin(phase + 1.3);
+              const len = s * (0.3 - 0.045 * Math.abs(i - 2) + 0.06 * (i % 2));
+              const bx2 = tx2 + dx2;
+              const by2 = ty2 + s * 0.06 + len;
+              ctx.strokeStyle = 'rgba(222, 233, 248, 0.45)';
+              ctx.lineWidth = Math.max(1, s * 0.009);
+              ctx.beginPath();
+              ctx.moveTo(tx2, ty2);
+              ctx.lineTo(bx2, ty2 + s * 0.06);
+              ctx.stroke();
+              const singing = i === singIdx;
+              ctx.fillStyle = singing ? shade(ELF_MITHRIL, 10) : shade(ELF_MITHRIL, -8 + (i % 2) * 6);
+              ctx.fillRect(bx2 - s * 0.021, ty2 + s * 0.06, s * 0.042, len);
+              ctx.fillStyle = singing ? 'rgba(240, 250, 255, 0.95)' : ELF_MITHRIL_LIT;
+              ctx.fillRect(bx2 - s * 0.021, ty2 + s * 0.06, s * 0.013, len);
+              ctx.fillStyle = shade(ELF_MITHRIL, -24);
+              ctx.fillRect(bx2 - s * 0.021, by2 - s * 0.012, s * 0.042, s * 0.012);
+            }
+            // The moonglass drop: the wind's clapper, always a beat
+            // behind the tubes it touches.
+            const dropX = ringX + sway * 1.1 + lag;
+            const dropY = ringY + s * 0.3;
+            ctx.strokeStyle = 'rgba(222, 233, 248, 0.45)';
+            ctx.lineWidth = Math.max(1, s * 0.009);
+            ctx.beginPath();
+            ctx.moveTo(ringX, ringY + s * 0.02);
+            ctx.lineTo(dropX, dropY - s * 0.05);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(159, 224, 216, 0.85)';
+            ctx.beginPath();
+            ctx.moveTo(dropX, dropY - s * 0.06);
+            ctx.quadraticCurveTo(dropX + s * 0.04, dropY, dropX, dropY + s * 0.055);
+            ctx.quadraticCurveTo(dropX - s * 0.04, dropY, dropX, dropY - s * 0.06);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(234, 252, 255, 0.9)';
+            ctx.fillRect(dropX - s * 0.008, dropY - s * 0.03, s * 0.016, s * 0.04);
           },
         };
       }

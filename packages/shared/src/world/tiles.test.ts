@@ -266,6 +266,28 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.TargetDummy, 'dummy', 3],
     [Tile.WarDrum, 'drum', 2],
     [Tile.HideFrame, 'hide', 2],
+    // THE FAIR HOUSE FURNISHED: finery breaks fast, stone and mithril
+    // stand long. The Everflame is deliberately NOT here (the bonfire
+    // law — a flame this old is not put out by a stick).
+    [Tile.ElvenLantern, 'lantern', 1],
+    [Tile.ElvenBanner, 'elfbanner', 2],
+    [Tile.ElvenBench, 'elfbench', 2],
+    [Tile.ElvenTable, 'elftable', 2],
+    [Tile.ElvenChair, 'elfchair', 1],
+    [Tile.ElvenDaybed, 'daybed', 2],
+    [Tile.ElvenBookcase, 'bookcase', 3],
+    [Tile.ElvenLectern, 'lectern', 1],
+    [Tile.ElvenHarp, 'harp', 2],
+    [Tile.ElvenLoom, 'loom', 2],
+    [Tile.ElvenFountain, 'fountain', 4],
+    [Tile.ElvenStatue, 'statue', 4],
+    [Tile.Moonwell, 'moonwell', 3],
+    [Tile.MithrilAnvil, 'anvil', 4],
+    [Tile.ElvenArmsRack, 'armsrack', 2],
+    [Tile.ElvenPlanter, 'planter', 1],
+    [Tile.ElvenMirror, 'mirror', 1],
+    [Tile.ElvenWaystone, 'waystone', 4],
+    [Tile.ElvenChimes, 'chimes', 1],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {
@@ -300,6 +322,8 @@ test('load-bearing scenery is not smashable', () => {
     Tile.PalisadeGate,
     Tile.PalisadeGateShut,
     Tile.Bonfire,
+    // The elven hall's flame holds the same law as the camp's fire.
+    Tile.Everflame,
   ]) {
     assert.equal(destructibleInfo(t), null);
   }

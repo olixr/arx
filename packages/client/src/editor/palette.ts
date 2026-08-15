@@ -121,6 +121,21 @@ export const TILE_CATEGORIES: TileCategory[] = [
     ],
   },
   {
+    // THE FAIR HOUSE FURNISHED: the elven shelf — lights and cloth
+    // first (the pieces that set a scene), then furniture, stations,
+    // and the garden stone.
+    id: 'elven',
+    label: 'Elven',
+    tiles: [
+      Tile.ElvenLantern, Tile.Everflame, Tile.Moonwell, Tile.ElvenWaystone,
+      Tile.ElvenBanner, Tile.ElvenChimes,
+      Tile.ElvenBench, Tile.ElvenTable, Tile.ElvenChair, Tile.ElvenDaybed,
+      Tile.ElvenBookcase, Tile.ElvenLectern, Tile.ElvenMirror,
+      Tile.ElvenHarp, Tile.ElvenLoom, Tile.MithrilAnvil, Tile.ElvenArmsRack,
+      Tile.ElvenFountain, Tile.ElvenStatue, Tile.ElvenPlanter,
+    ],
+  },
+  {
     // THE OUTWARD FACE: every shape × dye, dealt from the shared band
     // math so the shelf can never drift from the world ids. Authors
     // paint the awning ROW (the tile south of a wall run).

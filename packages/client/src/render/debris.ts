@@ -56,7 +56,29 @@ export type SmashKind =
   | 'spears'
   | 'dummy'
   | 'drum'
-  | 'hide';
+  | 'hide'
+  // THE FAIR HOUSE FURNISHED: elven wreckage — pale silverbark
+  // splinters, silk that sails, moonglass that glitters, marble that
+  // drops like the stone it is. Never the camp's brown ruin.
+  | 'lantern'
+  | 'elfbanner'
+  | 'elfbench'
+  | 'elftable'
+  | 'elfchair'
+  | 'daybed'
+  | 'bookcase'
+  | 'lectern'
+  | 'harp'
+  | 'loom'
+  | 'fountain'
+  | 'statue'
+  | 'moonwell'
+  | 'anvil'
+  | 'armsrack'
+  | 'planter'
+  | 'mirror'
+  | 'waystone'
+  | 'chimes';
 
 export interface DebrisChunk {
   x: number; // world coords (tile units)
@@ -491,6 +513,26 @@ const CHIP_TONE: Record<SmashKind, string> = {
   dummy: '#c9b684',
   drum: '#7a5636',
   hide: '#b08d62',
+  // Elven wreckage: silverbark, mithril, moonglass, marble, silk.
+  lantern: '#8fa3bd',
+  elfbanner: '#cdd8ec',
+  elfbench: '#a39072',
+  elftable: '#a39072',
+  elfchair: '#a39072',
+  daybed: '#cdd8ec',
+  bookcase: '#a39072',
+  lectern: '#a39072',
+  harp: '#a39072',
+  loom: '#cdd8ec',
+  fountain: '#ded8ce',
+  statue: '#ded8ce',
+  moonwell: '#9fe0d8',
+  anvil: '#8fa3bd',
+  armsrack: '#a39072',
+  planter: '#ded8ce',
+  mirror: '#a8bccc',
+  waystone: '#a9a396',
+  chimes: '#8fa3bd',
 };
 
 const pick = <T>(rand: () => number, arr: readonly T[]): T =>
@@ -902,6 +944,201 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
         out.push({ len: 0.1 + rand() * 0.05, wid: 0.03, color: '#4a3a22', pace: 1.3 });
       }
       out.push({ len: 0.15, wid: 0.05, color: '#8b93a4', pace: 1.1 });
+      break;
+    }
+    // -------------------------------- THE FAIR HOUSE FURNISHED
+    case 'lantern': {
+      // The crook drops in two mithril lengths; the globe becomes
+      // glitter — moonglass rings away in bright fast motes.
+      out.push({ len: 0.42, wid: 0.045, color: '#8fa3bd', stripe: '#dce9f8' });
+      out.push({ len: 0.26, wid: 0.04, color: shade('#8fa3bd', -12), stripe: '#dce9f8' });
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.06 + rand() * 0.04, wid: 0.05, color: pick(rand, ['#9fe0d8', '#dff6ff']), round: true, pace: 1.4 });
+      }
+      out.push({ len: 0.14, wid: 0.12, color: shade('#ded8ce', -20), round: true, pace: 0.85 });
+      break;
+    }
+    case 'elfbanner': {
+      // The true pole snaps clean in two; the silk sails off entire,
+      // border up — cloth outlives the wood that carried it.
+      wood('#a39072', 2, 0.4, 0.55, 0.06);
+      out.push({ len: 0.24, wid: 0.04, color: '#8fa3bd', stripe: '#dce9f8', pace: 1.15 });
+      out.push({ len: 0.42, wid: 0.3, color: '#cdd8ec', stripe: '#7fa8d9', round: true, pace: 1.3 });
+      out.push({ len: 0.1, wid: 0.08, color: '#8fa3bd', round: true, pace: 1.2 });
+      break;
+    }
+    case 'elfbench': {
+      // Swept legs scissor out; the crescent seat rides the fall;
+      // one armrest curl rolls its ring.
+      wood('#a39072', 4, 0.22, 0.36, 0.07);
+      out.push({ len: 0.44, wid: 0.14, color: shade('#a39072', 24), stripe: '#7fa8d9', pace: 1.1 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.1, wid: 0.09, color: shade('#a39072', -6), round: true, pace: 1.2 });
+      }
+      break;
+    }
+    case 'elftable': {
+      // The oval slab flies as one lid, vein up; the three bowed
+      // legs tumble under it.
+      out.push({ len: 0.5, wid: 0.34, color: shade('#a39072', 26), stripe: '#7fa8d9', round: true, pace: 1.25 });
+      wood('#a39072', 3, 0.3, 0.42, 0.07);
+      out.push({ len: 0.08, wid: 0.03, color: '#dce9f8', pace: 1.35 });
+      break;
+    }
+    case 'elfchair': {
+      // Legs and the frond back; the cushion puffs off soft and slow.
+      wood('#a39072', 3, 0.2, 0.34, 0.06);
+      out.push({ len: 0.3, wid: 0.1, color: shade('#a39072', -2), stripe: shade('#a39072', 16) });
+      out.push({ len: 0.2, wid: 0.16, color: '#cdd8ec', round: true, pace: 0.8 });
+      out.push({ len: 0.09, wid: 0.08, color: shade('#a39072', -8), round: true, pace: 1.25 });
+      break;
+    }
+    case 'daybed': {
+      // Frame rails, the curled runners, and TWO cloths: the heavy
+      // mattress drops, the sheer drape hangs in the air a beat.
+      wood('#a39072', 4, 0.28, 0.44, 0.08);
+      out.push({ len: 0.46, wid: 0.28, color: '#cdd8ec', stripe: '#c8a95e', round: true, pace: 0.85 });
+      out.push({ len: 0.34, wid: 0.22, color: shade('#cdd8ec', 14), round: true, pace: 1.45 });
+      out.push({ len: 0.18, wid: 0.12, color: '#5d8a6e', round: true, pace: 1.1 });
+      break;
+    }
+    case 'bookcase': {
+      // The arch comes down in pale boards — and the LIBRARY takes
+      // wing: books tumble spine-lit, scrolls roll free.
+      wood('#a39072', 5, 0.3, 0.48, 0.09);
+      for (const tone of ['#3f6e58', '#5f7ea6', '#5d5169', '#c8a95e']) {
+        out.push({ len: 0.14 + rand() * 0.06, wid: 0.1, color: tone, stripe: shade(tone, 24), pace: 1.2 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.16, wid: 0.06, color: '#e4ded2', round: true, pace: 1.3 });
+      }
+      break;
+    }
+    case 'lectern': {
+      // The stem and desk break honest; the pages FLY — the lightest
+      // debris in the game, and they go furthest.
+      wood('#a39072', 2, 0.26, 0.4, 0.07);
+      out.push({ len: 0.32, wid: 0.18, color: shade('#a39072', 22), pace: 1.05 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.12, wid: 0.09, color: pick(rand, ['#ece8dc', '#f6f3ea']), round: true, pace: 1.55 });
+      }
+      out.push({ len: 0.06, wid: 0.05, color: '#7fa8d9', round: true, pace: 1.3 });
+      break;
+    }
+    case 'harp': {
+      // Pillar, neck, soundboard — and two strings that leave as
+      // bright hairs of light with the gold crown bead.
+      wood('#a39072', 3, 0.3, 0.46, 0.07);
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.3 + rand() * 0.1, wid: 0.014, color: '#dce9f8', pace: 1.4 });
+      }
+      out.push({ len: 0.07, wid: 0.06, color: '#c8a95e', round: true, pace: 1.25 });
+      break;
+    }
+    case 'loom': {
+      // Frame timbers; the half-woven cloth sails; the warp weights
+      // drop straight like the stones they are; spools scatter color.
+      wood('#a39072', 4, 0.26, 0.42, 0.07);
+      out.push({ len: 0.36, wid: 0.24, color: '#cdd8ec', stripe: '#7ec4a8', round: true, pace: 1.3 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.07, wid: 0.06, color: shade('#ded8ce', -30), round: true, pace: 0.7 });
+      }
+      for (const tone of ['#7ec4a8', '#c8a95e']) {
+        out.push({ len: 0.06, wid: 0.05, color: tone, round: true, pace: 1.3 });
+      }
+      break;
+    }
+    case 'fountain': {
+      // Marble breaks big and falls short; the pooled water leaves
+      // as bright splash slivers with no weight at all.
+      wood('#ded8ce', 5, 0.2, 0.36, 0.11);
+      out.push({ len: 0.3, wid: 0.2, color: shade('#ded8ce', -10), round: true, pace: 0.8 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.1 + rand() * 0.05, wid: 0.03, color: pick(rand, ['#7ec4d8', '#dff2fa']), pace: 1.5 });
+      }
+      out.push({ len: 0.09, wid: 0.07, color: '#8fa3bd', round: true, pace: 1.15 });
+      break;
+    }
+    case 'statue': {
+      // The warden falls the way statues fall: in torso-weight
+      // blocks. The head keeps together; the blade leaves LAST and
+      // brightest.
+      wood('#ded8ce', 6, 0.24, 0.4, 0.12);
+      out.push({ len: 0.16, wid: 0.14, color: shade('#ded8ce', 8), round: true, pace: 0.75 });
+      out.push({ len: 0.4, wid: 0.05, color: '#8fa3bd', stripe: '#dce9f8', pace: 1.3 });
+      out.push({ len: 0.09, wid: 0.07, color: '#c8a95e', round: true, pace: 1.2 });
+      break;
+    }
+    case 'moonwell': {
+      // Rim stones tip outward; the lit water flies as glitter that
+      // dies in the air — the light does not survive the bowl.
+      wood('#ded8ce', 5, 0.16, 0.28, 0.1);
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.07 + rand() * 0.04, wid: 0.05, color: pick(rand, ['#9fe8d8', '#d9fff4']), round: true, pace: 1.45 });
+      }
+      break;
+    }
+    case 'anvil': {
+      // Mithril parts along its welds — three bright blocks — and
+      // the root plinth crumbles under it; the hammer cartwheels.
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.2 + rand() * 0.1, wid: 0.09, color: pick(rand, ['#8fa3bd', shade('#8fa3bd', -12)]), stripe: '#dce9f8' });
+      }
+      wood('#ded8ce', 3, 0.16, 0.28, 0.1);
+      out.push({ len: 0.24, wid: 0.05, color: '#a39072', stripe: '#8fa3bd', pace: 1.3 });
+      break;
+    }
+    case 'armsrack': {
+      // The gallery spills: rack timbers, both blades spinning
+      // bright, the bow's long limb, and the gold ferrule.
+      wood('#a39072', 3, 0.26, 0.4, 0.07);
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.3 + rand() * 0.12, wid: 0.045, color: '#8fa3bd', stripe: '#dce9f8', pace: 1.3 });
+      }
+      out.push({ len: 0.48, wid: 0.035, color: shade('#a39072', 16), pace: 1.15 });
+      out.push({ len: 0.07, wid: 0.06, color: '#c8a95e', round: true, pace: 1.25 });
+      break;
+    }
+    case 'planter': {
+      // The urn parts into marble shells; dark soil scatters short;
+      // silverleaf and blooms drift down LAST, light as ash.
+      wood('#ded8ce', 4, 0.14, 0.26, 0.09);
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.07, wid: 0.05, color: '#3a3020', round: true, pace: 0.7 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.09, wid: 0.06, color: pick(rand, ['#b8d4c0', '#cfe0d4', '#e8f4ff']), round: true, pace: 1.35 });
+      }
+      break;
+    }
+    case 'mirror': {
+      // The frame keeps its arcs; the GLASS goes everywhere — long
+      // bright shards, the fastest debris in the kit. Bad luck to
+      // whoever swung.
+      wood('#a39072', 3, 0.2, 0.34, 0.06);
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.12 + rand() * 0.12, wid: 0.035, color: pick(rand, ['#a8bccc', '#c4d4e0', '#dce9f8']), pace: 1.5 });
+      }
+      out.push({ len: 0.07, wid: 0.06, color: '#c8a95e', round: true, pace: 1.2 });
+      break;
+    }
+    case 'waystone': {
+      // Old stone drops dead-weight; one mithril vein leaves as a
+      // bright thread; the moss goes with its face.
+      wood('#a9a396', 5, 0.22, 0.38, 0.12);
+      out.push({ len: 0.26, wid: 0.02, color: '#7fa8d9', pace: 1.35 });
+      out.push({ len: 0.12, wid: 0.09, color: '#5d8a6e', round: true, pace: 0.9 });
+      break;
+    }
+    case 'chimes': {
+      // The stand drops; the five voices ring AWAY — slim bright
+      // tubes at pace, the moonglass drop among them.
+      wood('#a39072', 2, 0.28, 0.44, 0.05);
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.16 + rand() * 0.1, wid: 0.032, color: pick(rand, ['#8fa3bd', shade('#8fa3bd', 8)]), stripe: '#dce9f8', pace: 1.3 });
+      }
+      out.push({ len: 0.08, wid: 0.06, color: '#9fe0d8', round: true, pace: 1.4 });
+      out.push({ len: 0.11, wid: 0.09, color: '#8fa3bd', round: true, pace: 1.1 });
       break;
     }
   }

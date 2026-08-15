@@ -2015,9 +2015,21 @@ game.onFx = (fx) => {
       return;
     }
     renderer.smashProp(fx.x, fx.y, fx.dir ?? 0, kind);
-    // Hollow vessels boom; solid joinery cracks.
-    sfx.spatial(at, 'far', () => sfx.propSmash(kind === 'barrel' || kind === 'drum' || kind === 'pot'));
-    if (dist < 6) renderer.shake(kind === 'table' || kind === 'palisade' ? 3.2 : 2.2);
+    // Hollow vessels boom; solid joinery cracks. The harp and the
+    // chimes are RESONANT — breaking one is the loudest note it
+    // ever plays.
+    sfx.spatial(at, 'far', () =>
+      sfx.propSmash(kind === 'barrel' || kind === 'drum' || kind === 'pot' || kind === 'harp' || kind === 'chimes'),
+    );
+    // Stone-weight pieces land heavy: marble and mithril shake the
+    // street like the big table.
+    if (dist < 6) {
+      renderer.shake(
+        kind === 'table' || kind === 'palisade' || kind === 'statue' || kind === 'fountain' || kind === 'waystone' || kind === 'anvil'
+          ? 3.2
+          : 2.2,
+      );
+    }
     if (dist < 2.5) input.rumble(0.32, 0.5, 90);
     return;
   }
