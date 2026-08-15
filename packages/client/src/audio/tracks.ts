@@ -14,8 +14,9 @@
  * blooms, long quiets, and no two sittings walking the same path.
  *
  * Laws:
- *  - MOOD PICKS THE SHELF: town zone → town tracks; night hours or
- *    underground → night tracks; otherwise the day adventure shelf.
+ *  - MOOD PICKS THE SHELF: town zone → town tracks; underground → the
+ *    dungeon shelf; night hours → night tracks; otherwise the day
+ *    adventure shelf.
  *    Mood commits on a 2.5s-sustained change (no doorway stutter),
  *    then the sounding track bows out with a fade and the new mood
  *    opens after a short breath.
@@ -40,17 +41,27 @@
 import type { AudioEngine } from './engine.js';
 import { dominantZone, type ZoneWeights } from './zones.js';
 
-export type TrackMood = 'adventure' | 'night' | 'town' | 'danger';
+export type TrackMood = 'adventure' | 'night' | 'town' | 'dungeon' | 'danger';
 
 export const TRACK_LIBRARY: Record<TrackMood, string[]> = {
   adventure: [
     'adventure_1', 'adventure_2', 'adventure_3', 'adventure_4', 'adventure_5',
-    'adventure_6', 'adventure_7',
+    'adventure_6', 'adventure_7', 'adventure_8', 'adventure_9', 'adventure_10',
+    'adventure_11', 'adventure_12',
   ],
-  night: ['night_adventure_1', 'night_adventure_2'],
-  town: ['town_1', 'town_2', 'town_3', 'town_4', 'town_5', 'town_6', 'town_7'],
+  night: [
+    'night_adventure_1', 'night_adventure_2', 'night_adventure_3',
+    'night_adventure_4', 'night_adventure_5', 'night_adventure_6',
+    'night_adventure_7', 'night_adventure_8', 'night_adventure_9',
+  ],
+  town: [
+    'town_1', 'town_2', 'town_3', 'town_4', 'town_5', 'town_6', 'town_7',
+    'town_8',
+  ],
+  /** The long dark: everything under the world plays its own shelf. */
+  dungeon: ['dungeon_1', 'dungeon_2', 'dungeon_3', 'dungeon_4', 'dungeon_5', 'dungeon_6'],
   /** The deep frontier (danger tier 4+): the land itself is the boss. */
-  danger: ['boss_fight_1', 'boss_fight_2'],
+  danger: ['boss_fight_1', 'boss_fight_2', 'boss_fight_3'],
 };
 
 const FADE_IN_SEC = 5.0;
@@ -65,14 +76,17 @@ const RESUME_MIN_REMAIN_SEC = 25;
 /**
  * SILENCE IS A SECTION — the rest [min, max] seconds after a track
  * ends naturally, per mood. Towns feel lived-in and sing again sooner;
- * the wild holds long scenic quiets; the night longer still (its shelf
- * is small — the quiet keeps two tracks from wearing a groove); the
- * deep frontier keeps its dread close.
+ * the wild holds long scenic quiets; the night longer still — the dark
+ * belongs to the crickets first and the music second; the dungeon lets
+ * the dark breathe between pieces but never goes quiet for long (its
+ * ambience is thinner than the surface's, so the shelf carries more of
+ * the scene); the deep frontier keeps its dread close.
  */
 const REST: Record<TrackMood, readonly [number, number]> = {
   town: [12, 26],
   adventure: [24, 55],
-  night: [35, 80],
+  night: [30, 70],
+  dungeon: [18, 42],
   danger: [8, 18],
 };
 
@@ -91,8 +105,20 @@ const TRACK_TRIM: Record<string, number> = {
   adventure_5: 0.9, // −14.4
   adventure_6: 0.74, // −12.7
   adventure_7: 0.72, // −12.5
+  adventure_8: 0.73, // −12.6
+  adventure_9: 0.72, // −12.4
+  adventure_10: 0.7, // −12.2
+  adventure_11: 0.77, // −13.0
+  adventure_12: 0.73, // −12.6
   night_adventure_1: 0.74, // −12.7
   night_adventure_2: 0.78, // −13.1
+  night_adventure_3: 0.79, // −13.3
+  night_adventure_4: 0.71, // −12.3
+  night_adventure_5: 0.82, // −13.6
+  night_adventure_6: 0.69, // −12.1
+  night_adventure_7: 0.74, // −12.7
+  night_adventure_8: 0.78, // −13.1
+  night_adventure_9: 0.82, // −13.6
   town_1: 0.77, // −13.0
   town_2: 1, // −15.3
   town_3: 0.76, // −12.9
@@ -100,8 +126,16 @@ const TRACK_TRIM: Record<string, number> = {
   town_5: 0.71, // −12.3
   town_6: 0.8, // −13.4
   town_7: 0.83, // −13.7
+  town_8: 0.74, // −12.7
+  dungeon_1: 0.65, // −11.6
+  dungeon_2: 0.7, // −12.2
+  dungeon_3: 0.7, // −12.2
+  dungeon_4: 0.77, // −13.0
+  dungeon_5: 0.71, // −12.3
+  dungeon_6: 0.79, // −13.2
   boss_fight_1: 0.85, // −13.9
   boss_fight_2: 0.79, // −13.3
+  boss_fight_3: 0.86, // −14.0
 };
 
 /**
@@ -115,8 +149,8 @@ const TRACK_TRIM: Record<string, number> = {
 export function moodFor(w: ZoneWeights, hours: number, dangerTier = 0): TrackMood {
   if (dominantZone(w) === 'town') return 'town';
   const night = hours < 5.5 || hours > 20.5;
-  // The caves share the night shelf — dark and patient suits them.
-  if (dominantZone(w) === 'cave') return 'night';
+  // Underground is its own country: the dungeon shelf owns every delve.
+  if (dominantZone(w) === 'cave') return 'dungeon';
   if (dangerTier >= 4) return 'danger';
   return night ? 'night' : 'adventure';
 }

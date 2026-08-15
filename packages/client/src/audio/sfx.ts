@@ -30,7 +30,39 @@ const PAN_WIDTH = 12;
 const PAN_MAX = 0.8;
 
 /**
- * Procedural WebAudio SFX — no audio files, everything synthesized.
+ * THE RECORDED SHELF — mastered one-shot stings in /public/sfx, the
+ * fourth playback idiom beside synthesized SFX, streamed tracks, and
+ * voice: fetched once, decoded once, held warm for the session (the
+ * shelf is a handful of short stings, not a library). Values are
+ * per-sample loudness trims normalizing the shelf to its quietest
+ * sample (EBU R128 integrated, ffmpeg ebur128: −17.8 LUFS reference —
+ * re-measure when samples are added or replaced).
+ *
+ * Wired today: `level_up` (the skill herald). The rest sit ready for
+ * future moments — see each entry's note for its intended seat.
+ */
+const SAMPLE_TRIM = {
+  level_up: 0.6, // −13.4 — the skill level-up herald (wired: levelUp())
+  poi_discovery: 0.67, // −14.3 — a found place; ready to succeed discovery()
+  alert_1: 0.99, // −17.7 — a general attention chime, brighter
+  alert_2: 0.69, // −14.6 — a general attention chime, softer
+  notification_success: 0.72, // −14.9 — an affirmative notice landing
+  success_1: 0.81, // −16.0 — a smaller "it worked" flourish
+  stab_calm_1: 0.47, // −11.2 — a calm ambient sting for quiet reveals
+  stab_dramatic_1: 0.72, // −14.9 — a dramatic sting for grim beats
+  stab_dramatic_2: 0.67, // −14.3
+  stab_dramatic_3: 0.84, // −16.3
+  day_to_night: 0.57, // −12.9 — a dusk stinger for the day/night seam
+  night_to_day: 1, // −17.8 — the answering dawn stinger
+} as const;
+export type SampleName = keyof typeof SAMPLE_TRIM;
+
+/** Seats the whole recorded shelf in the synth voices' mix. */
+const SAMPLE_LEVEL = 0.55;
+
+/**
+ * Procedural WebAudio SFX — synthesized voices, plus THE RECORDED
+ * SHELF: a small set of mastered one-shot stings (see SAMPLE_TRIM).
  * Kept short and soft; a local family server doesn't need ear-splitters.
  * Every sound rides the engine's sfx bus, which carries the warmth
  * low-pass, the glue compressor, and a touch of the shared room —
@@ -107,6 +139,57 @@ export class Sfx {
   /** Browsers require a user gesture before audio can start. */
   unlock(): void {
     this.engine.unlock();
+    // Warm the wired samples so their first firing is the recording.
+    this.warmSample('level_up');
+  }
+
+  // ---- the recorded shelf -------------------------------------------
+
+  /** Decoded samples, held for the session. */
+  private sampleBuf = new Map<SampleName, AudioBuffer>();
+  private sampleLoading = new Set<SampleName>();
+
+  /** Fetch + decode a sample ahead of its moment. Failure stays quiet. */
+  warmSample(name: SampleName): void {
+    const ctx = this.ctx;
+    if (!ctx || this.sampleBuf.has(name) || this.sampleLoading.has(name)) return;
+    this.sampleLoading.add(name);
+    fetch(`/sfx/${name}.mp3`)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`${r.status}`))))
+      .then((bytes) => ctx.decodeAudioData(bytes))
+      .then((buf) => {
+        this.sampleBuf.set(name, buf);
+      })
+      .catch(() => {
+        // Silence is valid — a later call may retry the fetch.
+      })
+      .finally(() => this.sampleLoading.delete(name));
+  }
+
+  /**
+   * Play a recorded one-shot from the shelf. Returns true if the
+   * recording sounded; false warms it for next time so the caller can
+   * fall back to its synth voice — the shelf never delays a moment.
+   * Flat by default (UI and self feedback); inside `spatial()` it
+   * rides the emitter like every other voice.
+   */
+  sample(name: SampleName, volume = 1): boolean {
+    const ctx = this.ctx;
+    const out = this.dest ?? this.engine.sfx;
+    if (!ctx || !out) return false;
+    const buf = this.sampleBuf.get(name);
+    if (!buf) {
+      this.warmSample(name);
+      return false;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const gain = ctx.createGain();
+    gain.gain.value = SAMPLE_TRIM[name] * SAMPLE_LEVEL * volume;
+    src.connect(gain);
+    gain.connect(out);
+    src.start();
+    return true;
   }
 
   private get ctx(): AudioContext | null {
@@ -333,6 +416,9 @@ export class Sfx {
    * world show without overstaying.
    */
   levelUp(): void {
+    // The recorded herald leads; the synth choir below is the fallback
+    // for the beat before the sample has decoded.
+    if (this.sample('level_up')) return;
     // The felt timpani: the moment lands with weight, not a click.
     this.tone(82, 0.34, { type: 'sine', slide: -28, volume: 0.34, detune: false });
     this.noise(0.1, 0.05, 0, { band: 220 });
