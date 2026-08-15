@@ -373,14 +373,21 @@ export function paintSkralHead(
   // The hull: one ellipsoid every feature rides. Wider than long than
   // tall — the murloc argument in three numbers.
   const aF = hw * 0.95;
+  const aB = aF * 1.3;
   const aL = hw * (1.18 + 0.1 * (hv - 1));
   const aZ = hh * 0.92;
-  /** A station: head-frame (F fwd, L lat, Z up; unit-ish) → screen. */
-  const st = (F: number, L: number, Z: number): { x: number; y: number; d: number } => ({
-    x: headX + F * aF * fx + L * aL * px,
-    y: headY + (F * aF * fy + L * aL * py) * YK - Z * aZ,
-    d: F * fy + L * py,
-  });
+  /** A station: head-frame (F fwd, L lat, Z up; unit-ish) → screen.
+   * The hull is longer astern than abow (aB > aF) — a skull carries
+   * mass BEHIND the eyes, so stations with F < 0 ride the longer
+   * axis and the gills sit on the cheek the occiput actually has. */
+  const st = (F: number, L: number, Z: number): { x: number; y: number; d: number } => {
+    const ax = F >= 0 ? aF : aB;
+    return {
+      x: headX + F * ax * fx + L * aL * px,
+      y: headY + (F * ax * fy + L * aL * py) * YK - Z * aZ,
+      d: F * fy + L * py,
+    };
+  };
   // The slab: the hull's screen footprint — wide at the bow, long at
   // profile, with a slight muzzle-forward weight shift.
   const W = Math.sqrt(aF * fx * (aF * fx) + aL * px * (aL * px));
@@ -420,24 +427,58 @@ export function paintSkralHead(
     return { ...p, dot: 0.3 * fy + side * 0.95 * py, side };
   });
   const eyeR = hw * (0.3 + 0.05 * hv) * (1 - 0.08 * Math.abs(fx));
-  const paintDome = (e: Eye, rear: boolean): void => {
+  const paintDome = (e: Eye, rear: boolean, rk = 1): void => {
     ctx.fillStyle = hurt ? '#ffffff' : shade(sk.hide, rear ? -9 : e.dot > 0.12 ? 6 : -2);
     ctx.beginPath();
-    ctx.ellipse(e.x, e.y, eyeR, eyeR * 0.92, 0, 0, Math.PI * 2);
+    ctx.ellipse(e.x, e.y, eyeR * rk, eyeR * 0.92 * rk, 0, 0, Math.PI * 2);
     ctx.fill();
   };
   const rearRead = fy < -0.25;
-  for (const e of eyes) if (e.d <= 0.02 && !rearRead) paintDome(e, false);
+  // The far pass keeps the dome through the tuck near the silhouette
+  // edge, but DEEP on the far side (the profiles) the station's
+  // lateral lift would hoist it over the skyline as a floating ball —
+  // there the dome SINKS: it shrinks away smoothly instead of
+  // hovering, so the profile skyline stays the skull's own curve.
+  for (const e of eyes) {
+    if (e.d > 0.02 || rearRead) continue;
+    const sink = Math.min(1, Math.max(0, (e.d + 0.95) / 0.4));
+    if (sink <= 0.02) continue;
+    paintDome(e, false, sink);
+  }
 
-  // ---- the hull slab + its lit crown plane.
+  // ---- the hull slab + its lit crown plane. THE OCCIPUT ROUNDS
+  // (user: at profile the skull "just ends" — an abrupt flat back):
+  // the slab's rear edge is an elliptical cap whose reach and
+  // roundness ride |fx| — the bow bands keep the chamfered slab,
+  // and toward profile the back of the head swells out to the aB
+  // axis and rounds through a full curve, so the skull reads as a
+  // turned volume instead of a cropped rectangle.
+  const sgnF = fx >= 0 ? 1 : -1;
+  const rearK = Math.abs(fx);
+  const occ = rearK * (aB - aF);
+  const xf = cx + sgnF * W;
+  const xb = cx - sgnF * (W + occ);
+  const yT = headY - aZ;
+  const yB = yT + aZ * 1.72;
+  const cc = cut * 1.05;
+  const capX = cx - sgnF * (W - cc - rearK * W * 0.52);
   ctx.fillStyle = hide;
   ctx.beginPath();
-  chamferRect(ctx, cx - W, headY - aZ, W * 2, aZ * 1.72, cut * 1.05);
+  ctx.moveTo(xf - sgnF * cc, yT);
+  ctx.lineTo(xf, yT + cc);
+  ctx.lineTo(xf, yB - cc);
+  ctx.lineTo(xf - sgnF * cc, yB);
+  ctx.lineTo(capX, yB);
+  ctx.quadraticCurveTo(xb, yB, xb, yT + aZ * 0.86);
+  ctx.quadraticCurveTo(xb, yT, capX, yT);
+  ctx.closePath();
   ctx.fill();
   if (!hurt) {
     ctx.fillStyle = shade(sk.hide, 8);
     ctx.beginPath();
-    chamferRect(ctx, cx - W * 0.78, headY - aZ * 0.98, W * 1.56, aZ * 0.34, cut * 0.7);
+    const hbx = cx - sgnF * (W * 0.78 + occ * 0.72);
+    const hfx = cx + sgnF * W * 0.78;
+    chamferRect(ctx, Math.min(hbx, hfx), headY - aZ * 0.98, Math.abs(hfx - hbx), aZ * 0.34, cut * 0.7);
     ctx.fill();
   }
 
