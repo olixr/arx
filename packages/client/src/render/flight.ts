@@ -1163,16 +1163,29 @@ export function drawGreatOwl(
       look.tailLen * s * 1.0,
     );
     const tSpread = 0.55 + 1.05 * (1 - fr.pitchK) + Math.min(0.5, Math.abs(fr.bank)) * 0.4;
-    // THE STEM: a tapered feather ribbon following the chain from
-    // inside the hull out to the fan root — a CONTINUOUS mass, so the
-    // fan can never float detached behind the body (the user's gap
-    // verdict, three screenshots' worth). Widths in tiles, perp per
-    // sample, one closed fill.
+    // THE TAIL GROWS FROM THE BODY: the stem's root is BURIED inside
+    // the hull — an anchor point deep under the body mass, prepended
+    // to the chain — because the hull blob's jittered stern facet can
+    // retreat inside the nominal pole and open a notch behind any
+    // stem that merely touches it (the user's detached-shape verdict,
+    // silhouette-proven). From that buried root the stem is a
+    // FEATHERED CONE in the hull's own coat: stern-wide where it
+    // leaves the body, tapering smoothly into the fan's neck, and
+    // overlapping the fan's base by a full node — one grown mass,
+    // interlayered the way this style wants, never three shapes in a
+    // queue. Widths in tiles, perp per sample, one closed fill.
     const midIdx = Math.max(1, pts.length - 3);
-    const stem = pts.slice(0, midIdx + 1);
+    const buried = P(ventF * 0.4, 0, ventZ * 0.4);
+    const stem: Array<[number, number]> = [
+      buried,
+      ...pts.slice(0, Math.min(pts.length, midIdx + 2)),
+    ];
     if (stem.length >= 2) {
-      const wAt = (t: number): number => s * (0.16 - 0.08 * t);
-      ctx.fillStyle = C(shade(look.mantle, -3));
+      const neckW = 0.055;
+      const rootW = look.bodyW * 0.78;
+      const wAt = (t: number): number =>
+        s * (rootW * Math.pow(1 - t, 1.35) + neckW);
+      ctx.fillStyle = coat;
       ctx.beginPath();
       const perp = (i: number): [number, number] => {
         const a = stem[Math.max(0, i - 1)]!;
