@@ -110,7 +110,10 @@ import amberMiller from './defs/amber_miller.json';
 import amberOrchardist from './defs/amber_orchardist.json';
 import amberOutfitter from './defs/amber_outfitter.json';
 import amberSage from './defs/amber_sage.json';
+import amberHostler from './defs/amber_hostler.json';
+import amberRegistrar from './defs/amber_registrar.json';
 import amberSmith from './defs/amber_smith.json';
+import amberTanner from './defs/amber_tanner.json';
 import amberTraderA from './defs/amber_trader_a.json';
 import amberTraderB from './defs/amber_trader_b.json';
 import dawnWardDay from './defs/dawn_ward_day.json';
@@ -314,7 +317,10 @@ const SOURCES: readonly unknown[] = [
   amberOrchardist,
   amberOutfitter,
   amberSage,
+  amberHostler,
+  amberRegistrar,
   amberSmith,
+  amberTanner,
   amberTraderA,
   amberTraderB,
   dawnWardDay,

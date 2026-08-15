@@ -1,0 +1,27 @@
+{
+  "id": "q_a_dose_of_sense_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:a_dose_of_sense:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "sage_elowen",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Clear, amber, no sediment. Two and a half days of shelf, drink them before that. Well, three days. Two and a half. You're carrying your own midnight now, which was the entire point.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "a_dose_of_sense"
+        }
+      ],
+      "voice": "q_a_dose_of_sense_turnin__paid"
+    }
+  ]
+}

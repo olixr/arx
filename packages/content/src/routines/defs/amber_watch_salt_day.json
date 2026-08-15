@@ -1,6 +1,10 @@
 {
   "id": "amber_watch_salt_day",
-  "base": { "kind": "post", "dir": 1.5707963267948966, "speed": 1.6 },
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963267948966,
+    "speed": 1.6
+  },
   "slots": [
     {
       "from": 22.25,
@@ -10,18 +14,47 @@
         "mode": "once",
         "speed": 1.5,
         "waypoints": [
-          { "x": 0, "y": -10 },
-          { "x": 1, "y": -16 },
-          { "x": 48, "y": -16 },
-          { "x": 54, "y": -14 },
-          { "x": 54, "y": -13 },
-          { "x": 53, "y": -9 },
-          { "x": 53, "y": -8 },
-          { "x": 52, "y": -8, "lie": true }
+          {
+            "x": 0.0,
+            "y": -3.0
+          },
+          {
+            "x": 3.0,
+            "y": -6.0
+          },
+          {
+            "x": 5.0,
+            "y": -6.0
+          },
+          {
+            "x": 7.0,
+            "y": -5.0
+          },
+          {
+            "x": 7.0,
+            "y": -4.0,
+            "lie": true
+          }
         ]
       }
     },
-    { "from": 10.6, "to": 11.2, "task": { "kind": "wander", "radius": 2, "speed": 1.4 } },
-    { "from": 15.9, "to": 16.5, "task": { "kind": "wander", "radius": 2, "speed": 1.4 } }
+    {
+      "from": 9.2,
+      "to": 9.8,
+      "task": {
+        "kind": "wander",
+        "radius": 2,
+        "speed": 1.4
+      }
+    },
+    {
+      "from": 15.4,
+      "to": 16,
+      "task": {
+        "kind": "wander",
+        "radius": 2,
+        "speed": 1.4
+      }
+    }
   ]
 }

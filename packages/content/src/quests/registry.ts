@@ -88,6 +88,19 @@ import theAxeRemembers from './defs/the_axe_remembers.json';
 import boardsAndTwine from './defs/boards_and_twine.json';
 import aBarOfBronze from './defs/a_bar_of_bronze.json';
 import eggsForTheMorning from './defs/eggs_for_the_morning.json';
+import theGateBook from './defs/the_gate_book.json';
+import theDelfLadder from './defs/the_delf_ladder.json';
+import clothForTheCounting from './defs/cloth_for_the_counting.json';
+import leatherOnTheFrame from './defs/leather_on_the_frame.json';
+import aDoseOfSense from './defs/a_dose_of_sense.json';
+import theMakersMark from './defs/the_makers_mark.json';
+import flourAndWater from './defs/flour_and_water.json';
+import theAmberWater from './defs/the_amber_water.json';
+import theFreeFurrows from './defs/the_free_furrows.json';
+import aStallSweptClean from './defs/a_stall_swept_clean.json';
+import theTableLaid from './defs/the_table_laid.json';
+import theFordHolds from './defs/the_ford_holds.json';
+import theWheelTurns from './defs/the_wheel_turns.json';
 import theGentleHand from './defs/the_gentle_hand.json';
 import walkingTheBounds from './defs/walking_the_bounds.json';
 import theFirstRoad from './defs/the_first_road.json';
@@ -115,6 +128,21 @@ const SOURCES: readonly unknown[] = [
   theGentleHand,
   walkingTheBounds,
   theFirstRoad,
+  // THE FORD COMES HOME — Amberford's first working days: the arrival,
+  // the forge lane, the row, the table, and the dusk-watch capstone.
+  theGateBook,
+  theDelfLadder,
+  clothForTheCounting,
+  leatherOnTheFrame,
+  aDoseOfSense,
+  theMakersMark,
+  flourAndWater,
+  theAmberWater,
+  theFreeFurrows,
+  aStallSweptClean,
+  theTableLaid,
+  theFordHolds,
+  theWheelTurns,
   stillWaters,
   theMeadowKeepsCount,
   // The Redmask arc — Amberford's road war, gated link by link.

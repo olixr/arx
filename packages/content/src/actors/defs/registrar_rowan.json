@@ -1,0 +1,35 @@
+{
+  "id": "registrar_rowan",
+  "name": "Rowan",
+  "title": "Keeper of the Gate Book",
+  "examine": "Forty years of Dawnmead weather in his face and a traveling cloak he finally earned the honest way. The pen looks small in his hands. The book does not.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 0,
+      "hairColor": 0,
+      "beard": 5,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 10,
+      "pants": 7
+    }
+  },
+  "equipment": {
+    "body": "apprentice_robe",
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    { "item": "cape_traveler", "qty": 1 },
+    { "item": "bread", "qty": 1 },
+    { "item": "berries", "qty": 4 }
+  ],
+  "lines": [
+    "Forty years I told wakers the road would ask for them one day. Two winters back it finally asked for me.",
+    "Every name that walks north goes in the book. Every name that walks back gets a mark. I read the unmarked ones more than I should.",
+    "Wren keeps the Ring now. She writes weekly and pretends it's about the weather. It is never about the weather."
+  ]
+}

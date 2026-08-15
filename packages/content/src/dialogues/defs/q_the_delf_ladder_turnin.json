@@ -1,0 +1,27 @@
+{
+  "id": "q_the_delf_ladder_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:the_delf_ladder:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "smith_bretta",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Eight honest stones. Bronze starts exactly here, and so did I. Furnace is there, spare anvil's there, and the iron face up north of the cutting will keep saying no until your pick is better. Let it say no. That's the ladder working.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "the_delf_ladder"
+        }
+      ],
+      "voice": "q_the_delf_ladder_turnin__paid"
+    }
+  ]
+}

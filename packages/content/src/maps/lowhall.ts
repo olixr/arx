@@ -37,7 +37,7 @@ import type { ZoneDef } from './types.js';
  * hatch (never ON the paired portal — the Undercroft pairing law).
  */
 const DOOR_UP = {
-  amberford: { x: 557.5, y: 11.5 }, // the reed neck's slack bank
+  amberford: { x: 578.5, y: 70.5 }, // the slack reeds past the retting bank (THE FORD COMES HOME)
   silverfall: { x: -497.5, y: -299.5 }, // the Rookery's back lot
   saltmere: { x: 771.5, y: 330.5 }, // the pocket by the Pilot's Cot
   pinewatch: { x: 1110.5, y: -360.5 }, // the reed bank at the millrace

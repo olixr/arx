@@ -29,7 +29,10 @@ export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
   // deep middle — and the ROAD stays spawn-calm the whole way:
   // dangers stand BESIDE the road (the toll camp law), so the walk
   // has teeth without being a gauntlet.
-  { x: 520, y: -4, safeR: 72, country: 2 },
+  // (THE FORD COMES HOME grew the rect to 144x144 with the river
+  // quarter inside the south hem — safeR 80 keeps the whole ford,
+  // both bridge ends, and the far-bank gate inside the calm.)
+  { x: 520, y: -4, safeR: 80, country: 2 },
   // Silverfall — the mountain capital: a haven (lamp + relief) AND a
   // worded town. The High Road approach climbs the march to the last
   // brazier; the Silverspine past the walls holds at the city's word.

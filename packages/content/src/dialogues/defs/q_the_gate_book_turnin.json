@@ -1,0 +1,27 @@
+{
+  "id": "q_the_gate_book_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:the_gate_book:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "registrar_rowan",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Hall, bank, and hearth, and all three said so before you got back. That's a town knowing your face now, which is worth more than the coin. Take the coin anyway.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "the_gate_book"
+        }
+      ],
+      "voice": "q_the_gate_book_turnin__paid"
+    }
+  ]
+}

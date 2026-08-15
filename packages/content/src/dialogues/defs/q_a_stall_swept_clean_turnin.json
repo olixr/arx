@@ -1,0 +1,27 @@
+{
+  "id": "q_a_stall_swept_clean_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:a_stall_swept_clean:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "hostler_bray",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Bins full, beasts quiet, world briefly correct. Here's a drover's lead, and I'll tell you what it's for: the day something wild decides to walk beside you, you'll want a gentle rope and a fed animal's patience. The stall's here when you find them.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "a_stall_swept_clean"
+        }
+      ],
+      "voice": "q_a_stall_swept_clean_turnin__paid"
+    }
+  ]
+}

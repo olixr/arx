@@ -1,0 +1,27 @@
+{
+  "id": "the_free_furrows",
+  "name": "The Free Furrows",
+  "giver": "farmer_tamsin",
+  "stages": [
+    {
+      "id": "six_carrots",
+      "journal": "Tamsin says the Free Furrows outside the Fordgate are the first ground in the world a stranger is allowed to work, and she means for you to work it. Six carrots to her hand. Seeds off Jorel's stall at the Round, water in the barrel by the fence, and the common plots waiting on the road south of the fields.",
+      "objectives": [
+        {
+          "kind": "collect",
+          "item": "carrot",
+          "count": 6
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 40,
+    "xp": [
+      {
+        "skill": "farming",
+        "amount": 200
+      }
+    ]
+  }
+}

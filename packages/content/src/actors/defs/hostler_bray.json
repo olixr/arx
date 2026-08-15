@@ -1,0 +1,36 @@
+{
+  "id": "hostler_bray",
+  "name": "Bray",
+  "title": "Hostler of the Ford Stable",
+  "examine": "Smells of oats, saddle soap, and patience. He is having a quiet argument with a horse, and losing on points.",
+  "disposition": "friendly",
+  "shop": "bray_stable",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 3,
+      "hairColor": 7,
+      "beard": 2,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 4,
+      "shirt": 7,
+      "pants": 11
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "leather_boots",
+    "gloves": "leather_gloves"
+  },
+  "inventory": [
+    { "item": "wheat", "qty": 6 },
+    { "item": "carrot", "qty": 4 }
+  ],
+  "lines": [
+    "Twenty years droving and my horse retired me. Got off at the ford one spring, and he declined to leave. So here we both are.",
+    "Beasts fed before riders. Riders argue less. That's the whole philosophy of the yard.",
+    "A road horse knows the High Road better than half the folk walking it. Trust the ears. The ears are never wrong."
+  ]
+}

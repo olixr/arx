@@ -1,0 +1,27 @@
+{
+  "id": "q_flour_and_water_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:flour_and_water:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "miller_garton",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Ground even, no scorch. You listened. Forty years I've watched folk fight that stone, and the stone is undefeated. Flour's yours. Bread is flour, water, and nerve. Ask Dunna about the nerve.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "flour_and_water"
+        }
+      ],
+      "voice": "q_flour_and_water_turnin__paid"
+    }
+  ]
+}

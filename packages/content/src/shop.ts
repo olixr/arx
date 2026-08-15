@@ -875,17 +875,42 @@ const defs: ShopDef[] = [
   // Bretta sells the forge's knowledge: every guild-taught schematic
   // in the smithing line, jewellery to platebodies.
   { id: 'trainer_smithing', name: 'Ironhewn Schematics', stock: trainerStock(['smithing']) },
-  // Tilo's hall covers the soft trades: leather, cloth, and carved wood.
+  // Tilo's hall covers cloth and carved wood; the hides went home to
+  // Swale's tannery with THE FORD COMES HOME ("giving the hides back
+  // to somebody who likes them," he says, gratefully downwind).
   {
     id: 'trainer_artisan',
     name: "Tilo's Patterns",
-    stock: trainerStock(['leatherworking', 'tailoring', 'woodworking']),
+    stock: trainerStock(['tailoring', 'woodworking']),
+  },
+  // Swale sells the wet trade's whole ladder off the riverbank, plus
+  // the honest sundries a strap-cutter goes through.
+  {
+    id: 'trainer_tanner',
+    name: "Swale's Frames",
+    stock: [
+      ...trainerStock(['leatherworking']),
+      { item: 'leather', price: 22 },
+      { item: 'twine', price: 7 },
+    ],
   },
   // Elowen keeps the brewing formulas and the enchanter's treatises.
   {
     id: 'trainer_sage',
     name: "Elowen's Folios",
     stock: trainerStock(['herbalism', 'enchanting']),
+  },
+  // Bray trades in road-bred stock off the coaching yard: the ford is
+  // where a waker meets the first saddle, priced like a gate, plus
+  // the drover's lead for the beast you tamed yourself.
+  {
+    id: 'bray_stable',
+    name: 'The Ford Stable',
+    stock: [
+      { item: 'bay_courser', price: 3600 },
+      { item: 'grey_courser', price: 3600 },
+      { item: 'drovers_lead', price: 45 },
+    ],
   },
   // ---- EVENFALL — the city the old folk kept (the Evenfall epic).
   // The finest, never the most: the prices are courteous and firm,
@@ -1023,7 +1048,7 @@ export interface TrainerPost {
 // Second-town shelves (Stig, Solvei) stay discoveries of their own.
 export const TRAINER_DIRECTORY: readonly TrainerPost[] = [
   { skill: 'smithing', teacher: 'Bretta Ironhewn', town: 'Amberford' },
-  { skill: 'leatherworking', teacher: 'Tilo', town: 'Amberford' },
+  { skill: 'leatherworking', teacher: 'Swale', town: 'Amberford' },
   { skill: 'tailoring', teacher: 'Tilo', town: 'Amberford' },
   { skill: 'woodworking', teacher: 'Tilo', town: 'Amberford' },
   { skill: 'herbalism', teacher: 'Elowen', town: 'Amberford' },

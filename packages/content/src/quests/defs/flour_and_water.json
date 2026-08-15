@@ -1,0 +1,27 @@
+{
+  "id": "flour_and_water",
+  "name": "Flour and Water",
+  "giver": "miller_garton",
+  "stages": [
+    {
+      "id": "three_sacks",
+      "journal": "Garton wants three measures of flour ground on his own stone, by you. The mill stands on the riverbank through the water gate, first door on the quay walk. Wheat grows in Furrowfield and sells over his counter, and he will watch you work the stone with forty years of opinions and use maybe six of them.",
+      "objectives": [
+        {
+          "kind": "collect",
+          "item": "flour",
+          "count": 3
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 40,
+    "xp": [
+      {
+        "skill": "cooking",
+        "amount": 150
+      }
+    ]
+  }
+}

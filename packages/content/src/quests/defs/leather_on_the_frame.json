@@ -1,0 +1,27 @@
+{
+  "id": "leather_on_the_frame",
+  "name": "Leather on the Frame",
+  "giver": "tanner_swale",
+  "stages": [
+    {
+      "id": "two_hides",
+      "journal": "Swale wants two pieces of leather cured at her own racks, and she wants you to have done the wet work yourself. Hides come off the beasts of the field and the road. The tannery stands on the north bank past the water gate, downstream end, which your nose will confirm.",
+      "objectives": [
+        {
+          "kind": "collect",
+          "item": "leather",
+          "count": 2
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 45,
+    "xp": [
+      {
+        "skill": "leatherworking",
+        "amount": 200
+      }
+    ]
+  }
+}

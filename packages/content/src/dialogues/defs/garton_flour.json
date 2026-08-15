@@ -11,7 +11,7 @@
     {
       "id": "greet",
       "voice": "garton_flour__greet",
-      "text": "Mind the dust. That's good *flour*, not dirt. Garton. Forty years at this wheel, boy and man. The pond hasn't missed a day's work yet. More than I can say for anyone else in this town.",
+      "text": "Mind the dust. That's good *flour*, not dirt. Garton. Forty years at this wheel, boy and man. The river hasn't missed a day's work yet. More than I can say for anyone else in this town.",
       "next": "hub"
     },
     {
@@ -46,7 +46,7 @@
     {
       "id": "years",
       "voice": "garton_flour__years",
-      "text": "Changed? When I started, the Round was mud, the bank was a toll box, and Silverfall silver came through four caravans a season. Then the mountain sealed its cellar, the caravans thinned, and this town learnt to feed itself: fields, pond, orchard. Now the cellar's open again and everyone's dreaming of silver. *Flour*, I tell them. You can't eat silver. Nobody listens.",
+      "text": "Changed? When I started, the Round was mud, the bank was a toll box, and Silverfall silver came through four caravans a season. Then the mountain sealed its cellar, the caravans thinned, and this town learnt to feed itself: fields, river, orchard. Now the cellar's open again and everyone's dreaming of silver. *Flour*, I tell them. You can't eat silver. Nobody listens.",
       "next": "hub"
     },
     {

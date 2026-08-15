@@ -1,0 +1,36 @@
+{
+  "id": "tanner_swale",
+  "name": "Swale",
+  "title": "Tanner of the Ford",
+  "examine": "Forearms cured harder than her leather and a squint that measures your boots in seasons. She stands upwind of herself out of courtesy to nobody.",
+  "disposition": "friendly",
+  "shop": "trainer_tanner",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 1,
+      "hairColor": 4,
+      "beard": 0,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 4,
+      "shirt": 11,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "leather_boots",
+    "gloves": "leather_gloves"
+  },
+  "inventory": [
+    { "item": "leather", "qty": 3 },
+    { "item": "twine", "qty": 4 }
+  ],
+  "lines": [
+    "Quartermaster on the Last Lamp run, fifteen years, under Hask. My knees took the road's wages. The trade kept the rest of me.",
+    "Good leather outlives its buyer. Cheap leather outlives one winter. The river and I only make the first kind.",
+    "The smell means the work is honest. Downstream is a courtesy. I extend it. I expect it."
+  ]
+}

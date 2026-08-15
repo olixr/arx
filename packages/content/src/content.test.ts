@@ -1255,88 +1255,129 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   assert.equal(z.width, AMBERFORD_RECT.w);
   assert.equal(z.height, AMBERFORD_RECT.h);
   const at = (x: number, y: number): Tile => z.ground[y * z.width + x]! as Tile;
-  // The respawn hearth stands on the Market Round.
-  assert.deepEqual(z.spawn, { x: AMBERFORD_RECT.x + 52.5, y: AMBERFORD_RECT.y + 44.5 });
-  assert.equal(TILE_DEFS[at(52, 44)].solid, false, 'spawn tile must be walkable');
+  // The respawn hearth stands on the Market Round, beside the well.
+  assert.deepEqual(z.spawn, { x: AMBERFORD_RECT.x + 74.5, y: AMBERFORD_RECT.y + 53.5 });
+  assert.equal(TILE_DEFS[at(74, 53)].solid, false, 'spawn tile must be walkable');
   // The gates meet the carved worldgen roads tile-for-tile: the First
-  // Road's rows at the west edge, the High Road's mouth at the north.
-  for (const y of [51, 52, 53]) {
+  // Road's rows at the west edge, the High Road's mouth at the north,
+  // the Timber Road out the east, the Salt Road off the south bank.
+  for (const y of [50, 51, 52]) {
     assert.equal(at(0, y), Tile.Path, `Fordgate row ${y} must reach the west edge`);
   }
-  for (const x of [53, 54, 55]) {
+  for (const x of [68, 69, 70]) {
     assert.equal(at(x, 0), Tile.Path, `North Gate col ${x} must reach the north edge`);
   }
-  // The East Road stub wanders out the east edge toward the coast-someday.
-  assert.equal(at(111, 61), Tile.Path, 'the east stub must reach the edge');
-  // The South Gate's mouth meets the carved Salt Road at the south hem.
-  for (const x of [51, 52, 53]) {
-    assert.equal(at(x, 79), Tile.Path, `South Gate col ${x} must reach the south edge`);
+  for (const y of [70, 71, 72]) {
+    assert.equal(at(143, y), Tile.Path, `East Road row ${y} must reach the east edge`);
+  }
+  for (const x of [86, 87, 88]) {
+    assert.equal(at(x, 143), Tile.Path, `Salt Road col ${x} must reach the south edge`);
   }
   const counts = new Map<number, number>();
   for (const t of z.ground) counts.set(t, (counts.get(t) ?? 0) + 1);
-  // THE BANK: the world's first banking chests and the vault behind them.
+  // THE FORD COMES HOME: the river crosses the zone — authored water
+  // at the west hem entry, the southeast exit arm, and the NE tarn —
+  // with the bridge and the wadeable Old Ford beside it.
+  const water =
+    (counts.get(Tile.Water) ?? 0) +
+    (counts.get(Tile.WaterShallow) ?? 0) +
+    (counts.get(Tile.WaterDeep) ?? 0);
+  assert.ok(water >= 1200, 'the Amber Water ran dry');
+  assert.equal(at(0, 120), Tile.WaterDeep, 'the west hem entry moved');
+  assert.ok(at(130, 143) === Tile.Water || at(130, 143) === Tile.WaterShallow, 'the exit arm moved');
+  assert.equal(at(140, 0), Tile.Water, 'the NE tarn moved');
+  for (let y = 122; y <= 134; y++) {
+    assert.equal(at(86, y), Tile.Bridge, `the bridge deck broke at row ${y}`);
+  }
+  assert.equal(at(80, 126), Tile.WaterShallow, 'the Old Ford must stay wadeable');
+  // THE BANK: the banking chests and the vault behind them.
   assert.equal(counts.get(Tile.BankChest) ?? 0, 2, 'the bank floor lost its chests');
-  assert.ok((counts.get(Tile.Vault) ?? 0) >= 2, 'the vault room lost its boxes');
-  // Craft Row carries every trainer trade's station, plus the town mill.
+  assert.ok((counts.get(Tile.Vault) ?? 0) >= 3, 'the vault room lost its boxes');
+  // Craft Row, the tannery, and the mill carry every trade's station.
   for (const [tile, name] of [
     [Tile.Furnace, 'furnace'],
     [Tile.Anvil, 'anvil'],
     [Tile.Loom, 'loom'],
     [Tile.TanningRack, 'tanning rack'],
+    [Tile.HideFrame, 'hide frame'],
     [Tile.CarvingBench, 'carving bench'],
     [Tile.Alembic, 'alembic'],
     [Tile.Workbench, 'workbench'],
+    [Tile.Sawhorse, 'sawhorse'],
   ] as const) {
     assert.ok((counts.get(tile) ?? 0) >= 1, `craft station missing: ${name}`);
   }
   // The market, the water, and the working town.
-  assert.ok((counts.get(Tile.MarketStall) ?? 0) >= 4, 'the Round lost its stalls');
-  assert.ok((counts.get(Tile.FishingSpot) ?? 0) >= 2, 'the pond lost its fishing');
-  assert.ok((counts.get(Tile.Bridge) ?? 0) >= 10, 'the road spans went missing');
-  assert.ok((counts.get(Tile.Dock) ?? 0) >= 8, 'the mill pier went missing');
-  assert.ok((counts.get(Tile.TreeOak) ?? 0) >= 18, 'the orchard thinned');
-  // The living-town pass: the town that teaches holds every early
-  // loop on its own ground — cookfires, ore, flax, common furrows.
+  assert.equal(counts.get(Tile.Well) ?? 0, 1, 'the Round keeps the one town well');
+  assert.ok((counts.get(Tile.MarketStall) ?? 0) >= 10, 'the Round lost its stalls');
+  assert.ok((counts.get(Tile.FishingSpot) ?? 0) >= 2, 'the river lost its fishing');
+  assert.equal(counts.get(Tile.EelRun) ?? 0, 1, 'the eels left the bridge shadow');
+  assert.ok((counts.get(Tile.Bridge) ?? 0) >= 40, 'the bridge went missing');
+  assert.ok((counts.get(Tile.Dock) ?? 0) >= 20, 'the quay lost its planks');
+  // The orchard bears real fruit now, and the garden family debuts.
+  const appleTrees = (counts.get(Tile.AppleTreeMid) ?? 0) + (counts.get(Tile.AppleTreeRipe) ?? 0);
+  const plumTrees = (counts.get(Tile.PlumTreeMid) ?? 0) + (counts.get(Tile.PlumTreeRipe) ?? 0);
+  assert.ok(appleTrees >= 10, 'the orchard thinned');
+  assert.ok(plumTrees >= 3, 'the plums went missing');
+  assert.ok((counts.get(Tile.Hedge) ?? 0) >= 40, 'the hedges went unclipped');
+  assert.ok((counts.get(Tile.HedgeGate) ?? 0) >= 4, 'the hedge arches closed');
+  assert.equal(counts.get(Tile.TopiaryBall) ?? 0, 2, 'the topiary pair changed');
+  assert.equal(counts.get(Tile.TopiarySpire) ?? 0, 2, 'the topiary pair changed');
+  // The stable — the coaching yard the roads paid for.
+  assert.equal(counts.get(Tile.BeastPen) ?? 0, 1, 'the stable lost its stalls');
+  assert.ok((counts.get(Tile.FeedTrough) ?? 0) >= 2, 'the feed bins emptied');
+  assert.ok((counts.get(Tile.HayBale) ?? 0) >= 4, 'the hay ran out');
+  // The farm kit dresses the working land.
+  assert.equal(counts.get(Tile.Silo) ?? 0, 1);
+  assert.equal(counts.get(Tile.Scarecrow) ?? 0, 1);
+  assert.equal(counts.get(Tile.Dovecote) ?? 0, 1);
+  assert.ok((counts.get(Tile.CompostBin) ?? 0) >= 2);
+  assert.equal(counts.get(Tile.Apiary) ?? 0, 2);
+  assert.equal(counts.get(Tile.FruitPress) ?? 0, 1);
+  assert.ok((counts.get(Tile.GrowingFrame) ?? 0) >= 2);
+  assert.ok((counts.get(Tile.DryingRack) ?? 0) >= 2);
+  // The living-town pass: cookfires, ore, flax, common furrows.
   assert.equal(counts.get(Tile.Campfire) ?? 0, 2, 'the town lost a cookfire');
   assert.ok((counts.get(Tile.RockCopper) ?? 0) >= 2, 'the Delf lost its copper');
   assert.ok((counts.get(Tile.RockTin) ?? 0) >= 2, 'the Delf lost its tin');
   assert.equal(counts.get(Tile.RockIron) ?? 0, 1, 'the Delf keeps exactly one iron face');
-  assert.ok((counts.get(Tile.FenceGate) ?? 0) >= 5, 'the town lost its gates');
+  assert.ok((counts.get(Tile.FenceGate) ?? 0) >= 5, 'the working land lost its gates');
   assert.ok((counts.get(Tile.FibrePlant) ?? 0) >= 5, 'the retting bank lost its flax');
-  assert.ok((counts.get(Tile.Tilled) ?? 0) >= 40, 'the Free Furrows went fallow');
-  // THE TOWN WALL (the garrison pass): a full curtain rings the town
-  // — four garrison gates on the four road mouths (3 + 3 + 2 + 3,
-  // the Salt Road's South Gate cut in the southern epic), and all
-  // four corners cut at 45 degrees.
-  assert.equal(counts.get(Tile.GateGarrison) ?? 0, 11, 'the town gates changed');
-  assert.ok((counts.get(Tile.WallGarrison) ?? 0) >= 300, 'the town wall came down');
+  assert.ok((counts.get(Tile.Tilled) ?? 0) >= 30, 'the Free Furrows went fallow');
+  // THE TOWN WALL rings ONLY the town now: four road gates plus the
+  // miners' postern (3 + 3 + 3 + 4 + 2) and four 45-degree corner
+  // cuts of two tiles each.
+  assert.equal(counts.get(Tile.GateGarrison) ?? 0, 15, 'the town gates changed');
+  assert.ok((counts.get(Tile.WallGarrison) ?? 0) >= 280, 'the town wall came down');
   const amberDiags =
     (counts.get(Tile.WallGarrisonDiagNE) ?? 0) +
     (counts.get(Tile.WallGarrisonDiagNW) ?? 0) +
     (counts.get(Tile.WallGarrisonDiagSE) ?? 0) +
     (counts.get(Tile.WallGarrisonDiagSW) ?? 0);
-  assert.equal(amberDiags, 10, 'the corner cuts changed');
+  assert.equal(amberDiags, 8, 'the corner cuts changed');
   // The gates sit tile-exact on the road mouths, standing open.
-  for (const y of [51, 52, 53]) assert.equal(at(2, y), Tile.GateGarrison);
-  for (const x of [53, 54, 55]) assert.equal(at(x, 1), Tile.GateGarrison);
-  for (const y of [60, 61]) assert.equal(at(110, y), Tile.GateGarrison);
-  for (const x of [51, 52, 53]) assert.equal(at(x, 78), Tile.GateGarrison);
-  // Livestock only — the named people arrive in the people pass.
-  const spawnKinds = new Map((z.spawns ?? []).map((s) => [s.npc, s.count]));
-  assert.equal(spawnKinds.get('cow'), 3);
-  assert.equal(spawnKinds.get('chicken'), 3);
-  // The people pass: fifteen residents plus the two traveling
-  // traders on the produce row and the two town watch on the wall's
-  // far gates, every one on routine hours.
+  for (const y of [50, 51, 52]) assert.equal(at(16, y), Tile.GateGarrison);
+  for (const x of [68, 69, 70]) assert.equal(at(x, 8), Tile.GateGarrison);
+  for (const y of [70, 71, 72]) assert.equal(at(124, y), Tile.GateGarrison);
+  for (const x of [85, 86, 87, 88]) assert.equal(at(x, 104), Tile.GateGarrison);
+  for (const y of [20, 21]) assert.equal(at(124, y), Tile.GateGarrison, 'the postern shut');
+  // The working livestock (the pasture herd AND the caravan oxen
+  // boarding at Bray's — counts sum across spawn points per kind).
+  const spawnKinds = new Map<string, number>();
+  for (const s of z.spawns ?? []) spawnKinds.set(s.npc, (spawnKinds.get(s.npc) ?? 0) + s.count);
+  assert.equal(spawnKinds.get('cow'), 5);
+  assert.equal(spawnKinds.get('chicken'), 4);
+  assert.equal(spawnKinds.get('sheep'), 3);
+  // The people: eighteen named residents (the fifteen, plus Rowan at
+  // the gate book, Bray at the stable, and Swale at the tannery),
+  // the two traveling traders, and the watch's ten-body rota.
   const amberActors = z.actorSpawns ?? [];
-  assert.equal(amberActors.length, 27, 'Amberford lost residents');
+  assert.equal(amberActors.length, 30, 'Amberford lost residents');
   assert.equal(
     amberActors.filter((a) => a.actor === 'round_trader').length,
     2,
     'the produce row lost its traders',
   );
-  // THE CHANGING OF THE GUARD: a day and a night sentry on each of
-  // the four gates plus the patrol pair — ten bodies on the rota.
   assert.equal(
     amberActors.filter((a) => a.actor === 'amberford_watch').length,
     10,
@@ -1353,6 +1394,9 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
     'grocer_merra',
     'outfitter_hask',
     'captain_aldis',
+    'registrar_rowan',
+    'hostler_bray',
+    'tanner_swale',
     'farmer_jorel',
     'farmer_tamsin',
     'keeper_ansel',
@@ -1361,7 +1405,7 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   ]) {
     assert.ok(amberActors.some((a) => a.actor === slug), `${slug} missing from Amberford`);
   }
-  assert.equal(amberActors.filter((a) => a.routine).length, 27, 'every resident keeps hours');
+  assert.equal(amberActors.filter((a) => a.routine).length, 30, 'every resident keeps hours');
   // The editor JSON round trip holds, flat-zone law included.
   const json = zoneToJson(z);
   assert.equal(json.elev, undefined, 'amberford is a flat zone');
@@ -1376,7 +1420,7 @@ test('amberford: every doorway walks from the Round, and all four gates connect'
     x >= 0 && y >= 0 && x < z.width && y < z.height &&
     !TILE_DEFS[z.ground[y * z.width + x]! as Tile].solid;
   const seen = new Uint8Array(z.width * z.height);
-  const queue: number[] = [44 * z.width + 52]; // the Market Round
+  const queue: number[] = [53 * z.width + 74]; // the Market Round, by the well
   seen[queue[0]!] = 1;
   while (queue.length > 0) {
     const i = queue.pop()!;
@@ -1406,26 +1450,34 @@ test('amberford: every doorway walks from the Round, and all four gates connect'
     }
   }
   assert.deepEqual(unreachable, [], `doorways cut off from the Round: ${unreachable.join(' ')}`);
-  // All four road mouths connect to the Round.
-  assert.equal(seen[52 * z.width + 0], 1, 'the Fordgate is severed');
-  assert.equal(seen[1 * z.width + 54], 1, 'the North Gate is severed');
-  assert.equal(seen[61 * z.width + 111], 1, 'the east stub is severed');
-  assert.equal(seen[79 * z.width + 52], 1, 'the South Gate is severed');
+  // All four road mouths connect to the Round, plus the postern.
+  assert.equal(seen[51 * z.width + 0], 1, 'the Fordgate is severed');
+  assert.equal(seen[0 * z.width + 69], 1, 'the North Gate is severed');
+  assert.equal(seen[71 * z.width + 143], 1, 'the East Road is severed');
+  assert.equal(seen[143 * z.width + 87], 1, 'the Salt Road is severed');
+  assert.equal(seen[20 * z.width + 126], 1, "the miners' postern is severed");
   // And the banking floor is truly public: the lobby rug between the
   // two (solid) banking chests must be walkable from the door.
-  assert.equal(seen[32 * z.width + 40], 1, 'the bank floor is unreachable');
+  assert.equal(seen[44 * z.width + 33], 1, 'the bank floor is unreachable');
   // The living-town posts walk from the Round too.
   const reach = (x: number, y: number, what: string): void => {
     assert.equal(seen[y * z.width + x], 1, `${what} cut off from the Round`);
   };
-  reach(102, 8, 'the Delf floor');
-  reach(80, 43, "the anglers' fire ring");
-  reach(57, 54, 'the coaching-yard fire ring');
-  reach(27, 48, 'the Free Furrows interior');
-  reach(34, 38, 'the Toll War memorial floor');
-  reach(38, 59, 'the pilgrim alcove');
-  reach(84, 41, 'the jetty finger');
-  reach(88, 63, 'the Old Ford shallows');
+  reach(135, 20, 'the Delf floor');
+  reach(82, 112, "the Catch Fire's ring");
+  reach(98, 66, 'the coaching-yard fire ring');
+  reach(8, 60, 'the Free Furrows interior');
+  reach(26, 49, 'the Toll War memorial floor');
+  reach(25, 65, 'the pilgrim alcove');
+  reach(92, 124, 'the jetty finger');
+  reach(80, 126, 'the Old Ford shallows');
+  reach(86, 128, 'the bridge deck');
+  reach(87, 140, 'the south bank road');
+  reach(90, 15, 'the stable paddock');
+  reach(92, 34, 'the herb garden');
+  reach(124, 114, 'the tannery floor');
+  reach(70, 82, 'the Commons green');
+  reach(130, 126, 'the reeds nobody visits');
 });
 
 test('silverfall: the mountain capital holds its terraces, stations, and gate', () => {

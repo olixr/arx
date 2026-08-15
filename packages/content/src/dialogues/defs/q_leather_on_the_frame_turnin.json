@@ -1,0 +1,27 @@
+{
+  "id": "q_leather_on_the_frame_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:leather_on_the_frame:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "tanner_swale",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Even grain, no thin patches. That'll outlive your first pair of boots and the second. Hask taught me straps on this same bench when my knees still worked the road. Now I've taught you. That's how the trade stays alive.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "leather_on_the_frame"
+        }
+      ],
+      "voice": "q_leather_on_the_frame_turnin__paid"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "id": "the_delf_ladder",
+  "name": "The Delf Ladder",
+  "giver": "smith_bretta",
+  "stages": [
+    {
+      "id": "first_rung",
+      "journal": "Bretta's ladder starts in the ground, not at the anvil. Out the miners' postern in the east wall, the little gate north of the East Road, the Amber Delf holds copper in the west face and tin in the floor. Four of each. Smelt them at her furnace after, if you want to see where the ladder goes.",
+      "objectives": [
+        {
+          "kind": "collect",
+          "item": "copper_ore",
+          "count": 4
+        },
+        {
+          "kind": "collect",
+          "item": "tin_ore",
+          "count": 4
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 50,
+    "xp": [
+      {
+        "skill": "mining",
+        "amount": 200
+      }
+    ]
+  }
+}

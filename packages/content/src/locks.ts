@@ -11,8 +11,10 @@
  */
 export const AUTHORED_LOCKS: ReadonlyArray<{ x: number; y: number }> = [
   // The Bank of Amberford's vault room — windowless; coin sleeps in
-  // the dark behind Cormund's one inner door.
-  { x: 501, y: -16 },
+  // the dark behind Cormund's one inner door. (THE FORD COMES HOME
+  // rebuilt the hall; the vault door is local (29,39) of the new
+  // 144x144 rect.)
+  { x: 477, y: -17 },
   // The Bank of Silverfall's vault — double-walled off the working
   // floor, the mountain's coin under the Crown's countersign.
   { x: -487, y: -304 },

@@ -29,7 +29,7 @@ export type ZoneId = keyof ZoneWeights;
  */
 const TOWNS = [
   { x: -64, y: 48, full: 44, fade: 64 }, // Dawnmead (THE DAWN REMADE 128x96 rect)
-  { x: 520, y: -4, full: 30, fade: 48 }, // Amberford — the bigger hearth
+  { x: 520, y: 16, full: 56, fade: 80 }, // Amberford — THE FORD COMES HOME 144x144 rect
   { x: -448, y: -280, full: 44, fade: 72 }, // Silverfall — the mountain capital
   { x: 760, y: 330, full: 34, fade: 52 }, // Saltmere — the town at the water's end
   { x: 1160, y: -356, full: 30, fade: 48 }, // Pinewatch — the wood's muster town

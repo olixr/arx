@@ -31,13 +31,13 @@
   {
    "id": "wrong",
    "voice": "bretta_delf__wrong",
-   "text": "No. Furnace is the *middle*. It starts in the ground. North spine past Hask's, dirt trail east at the lamp: that's the *Amber Delf*, the old cutting. Copper in the west face. Tin in the floor. I'm up there at first light most mornings. An hour of swinging feeds this forge for a day.",
+   "text": "No. Furnace is the *middle*. It starts in the ground. Miners' postern in the east wall, the little gate north of the East Road: that's the *Amber Delf*, the old cutting. Copper in the west face. Tin in the floor. I'm up there at first light most mornings. An hour of swinging feeds this forge for a day.",
    "next": "lesson"
   },
   {
    "id": "right",
    "voice": "bretta_delf__right",
-   "text": "*In the ground.* Ha. There's hope for you. North spine past Hask's, dirt trail east at the lamp: the *Amber Delf*, the old cutting. Copper in the west face. Tin in the floor. I'm up there at first light most mornings. An hour of swinging feeds this forge for a day.",
+   "text": "*In the ground.* Ha. There's hope for you. Miners' postern in the east wall, the little gate north of the East Road: the *Amber Delf*, the old cutting. Copper in the west face. Tin in the floor. I'm up there at first light most mornings. An hour of swinging feeds this forge for a day.",
    "next": "lesson"
   },
   {

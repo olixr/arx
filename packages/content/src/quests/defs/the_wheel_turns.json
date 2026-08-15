@@ -1,0 +1,30 @@
+{
+  "id": "the_wheel_turns",
+  "name": "The Wheel Turns",
+  "giver": "miller_garton",
+  "stages": [
+    {
+      "id": "keep_it_turning",
+      "journal": "The mill eats wheat and the town eats bread, and Garton's arms are forty years into the argument. Six measures of flour ground on the stone keeps the Round's ovens fed for another day.",
+      "objectives": [
+        {
+          "kind": "collect",
+          "item": "flour",
+          "count": 6
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 60,
+    "xp": [
+      {
+        "skill": "cooking",
+        "amount": 150
+      }
+    ]
+  },
+  "repeat": {
+    "cooldownHours": 12
+  }
+}

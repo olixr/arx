@@ -1,0 +1,27 @@
+{
+  "id": "cloth_for_the_counting",
+  "name": "Cloth for the Counting",
+  "giver": "master_tilo",
+  "stages": [
+    {
+      "id": "two_lengths",
+      "journal": "Tilo wants two lengths of cloth off the town loom, spun from cotton. His cutting garden behind the hall grows it, Furrowfield grows more, and the loom in his work line is public: that is the whole idea of it. Bring the finished lengths to the counter.",
+      "objectives": [
+        {
+          "kind": "collect",
+          "item": "cloth",
+          "count": 2
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 45,
+    "xp": [
+      {
+        "skill": "tailoring",
+        "amount": 200
+      }
+    ]
+  }
+}

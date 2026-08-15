@@ -1,0 +1,53 @@
+{
+  "id": "q_cloth_for_the_counting_offer",
+  "start": "hub",
+  "requires": [
+    "quest:cloth_for_the_counting:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "master_tilo",
+      "priority": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Oh, a commission, sort of, if you'd like one. Two lengths of cloth, your own hands, the town loom. Cotton's in my garden rows out back. Sorry, I should ask first. Would you?",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "cloth_for_the_counting"
+        }
+      ],
+      "choices": [
+        {
+          "text": "I'll work the loom.",
+          "next": "sworn"
+        },
+        {
+          "text": "Cloth isn't my trade.",
+          "next": "declined"
+        }
+      ],
+      "voice": "q_cloth_for_the_counting_offer__hub"
+    },
+    {
+      "id": "sworn",
+      "text": "Wonderful. The loom is friendlier than it looks. Firm with the beater, gentle with everything else.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "cloth_for_the_counting"
+        }
+      ],
+      "voice": "q_cloth_for_the_counting_offer__sworn"
+    },
+    {
+      "id": "declined",
+      "text": "That's fair. It wasn't mine either, until it was.",
+      "voice": "q_cloth_for_the_counting_offer__declined"
+    }
+  ]
+}

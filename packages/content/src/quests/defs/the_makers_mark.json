@@ -1,0 +1,41 @@
+{
+  "id": "the_makers_mark",
+  "name": "The Makers' Mark",
+  "giver": "master_tilo",
+  "requires": {
+    "quests": [
+      "cloth_for_the_counting",
+      "leather_on_the_frame",
+      "a_dose_of_sense"
+    ]
+  },
+  "stages": [
+    {
+      "id": "the_row_knows",
+      "journal": "Cloth, leather, and a clean brew. Tilo says the row should know your name now, properly, from its own masters' mouths. Stand before Bretta at the forge, Swale at the frames, and Elowen at the counter, and let them look at the hands that did the work.",
+      "objectives": [
+        {
+          "kind": "talk",
+          "actor": "smith_bretta"
+        },
+        {
+          "kind": "talk",
+          "actor": "tanner_swale"
+        },
+        {
+          "kind": "talk",
+          "actor": "sage_elowen"
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 80,
+    "xp": [
+      {
+        "skill": "vitality",
+        "amount": 150
+      }
+    ]
+  }
+}

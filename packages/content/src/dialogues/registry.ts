@@ -145,6 +145,37 @@ import orlaKeywright from './defs/orla_keywright.json';
 import haleWatchUneasy from './defs/hale_watch_uneasy.json';
 import haleWatchUrgent from './defs/hale_watch_urgent.json';
 import haleWatchRelief from './defs/hale_watch_relief.json';
+import q_theGateBook_offer from './defs/q_the_gate_book_offer.json';
+import q_theGateBook_turnin from './defs/q_the_gate_book_turnin.json';
+import q_theDelfLadder_offer from './defs/q_the_delf_ladder_offer.json';
+import q_theDelfLadder_turnin from './defs/q_the_delf_ladder_turnin.json';
+import q_clothForTheCounting_offer from './defs/q_cloth_for_the_counting_offer.json';
+import q_clothForTheCounting_turnin from './defs/q_cloth_for_the_counting_turnin.json';
+import q_leatherOnTheFrame_offer from './defs/q_leather_on_the_frame_offer.json';
+import q_leatherOnTheFrame_turnin from './defs/q_leather_on_the_frame_turnin.json';
+import q_aDoseOfSense_offer from './defs/q_a_dose_of_sense_offer.json';
+import q_aDoseOfSense_turnin from './defs/q_a_dose_of_sense_turnin.json';
+import q_theMakersMark_offer from './defs/q_the_makers_mark_offer.json';
+import q_theMakersMark_turnin from './defs/q_the_makers_mark_turnin.json';
+import q_flourAndWater_offer from './defs/q_flour_and_water_offer.json';
+import q_flourAndWater_turnin from './defs/q_flour_and_water_turnin.json';
+import q_theAmberWater_offer from './defs/q_the_amber_water_offer.json';
+import q_theAmberWater_turnin from './defs/q_the_amber_water_turnin.json';
+import q_theFreeFurrows_offer from './defs/q_the_free_furrows_offer.json';
+import q_theFreeFurrows_turnin from './defs/q_the_free_furrows_turnin.json';
+import q_aStallSweptClean_offer from './defs/q_a_stall_swept_clean_offer.json';
+import q_aStallSweptClean_turnin from './defs/q_a_stall_swept_clean_turnin.json';
+import q_theTableLaid_offer from './defs/q_the_table_laid_offer.json';
+import q_theTableLaid_turnin from './defs/q_the_table_laid_turnin.json';
+import q_theFordHolds_offer from './defs/q_the_ford_holds_offer.json';
+import q_theFordHolds_turnin from './defs/q_the_ford_holds_turnin.json';
+import q_theWheelTurns_offer from './defs/q_the_wheel_turns_offer.json';
+import q_theWheelTurns_turnin from './defs/q_the_wheel_turns_turnin.json';
+import rowanGate from './defs/rowan_gate.json';
+import rowanWren from './defs/rowan_wren.json';
+import rowanUnmarked from './defs/rowan_unmarked.json';
+import brayYard from './defs/bray_yard.json';
+import swaleFrames from './defs/swale_frames.json';
 import qWordOffer from './defs/q_word_on_the_road_offer.json';
 import qWordTurnin from './defs/q_word_on_the_road_turnin.json';
 import qReaverOffer from './defs/q_the_reavers_mark_offer.json';
@@ -546,6 +577,37 @@ const SOURCES: readonly unknown[] = [
   // and once-intros outrank a job pitch) and turn-in trees (21 — a
   // finished errand is the player's earned moment), all gated on the
   // synthetic quest: answers so they appear and retire themselves.
+  q_theGateBook_offer,
+  q_theGateBook_turnin,
+  q_theDelfLadder_offer,
+  q_theDelfLadder_turnin,
+  q_clothForTheCounting_offer,
+  q_clothForTheCounting_turnin,
+  q_leatherOnTheFrame_offer,
+  q_leatherOnTheFrame_turnin,
+  q_aDoseOfSense_offer,
+  q_aDoseOfSense_turnin,
+  q_theMakersMark_offer,
+  q_theMakersMark_turnin,
+  q_flourAndWater_offer,
+  q_flourAndWater_turnin,
+  q_theAmberWater_offer,
+  q_theAmberWater_turnin,
+  q_theFreeFurrows_offer,
+  q_theFreeFurrows_turnin,
+  q_aStallSweptClean_offer,
+  q_aStallSweptClean_turnin,
+  q_theTableLaid_offer,
+  q_theTableLaid_turnin,
+  q_theFordHolds_offer,
+  q_theFordHolds_turnin,
+  q_theWheelTurns_offer,
+  q_theWheelTurns_turnin,
+  rowanGate,
+  rowanWren,
+  rowanUnmarked,
+  brayYard,
+  swaleFrames,
   qWordOffer,
   qWordTurnin,
   qReaverOffer,

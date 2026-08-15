@@ -1,0 +1,59 @@
+{
+  "id": "rowan_wren",
+  "start": "known",
+  "requires": [
+    "dawn_road_taken"
+  ],
+  "once": true,
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "registrar_rowan",
+      "priority": 10
+    }
+  ],
+  "nodes": [
+    {
+      "id": "known",
+      "text": "Hold on. I know that walk. Straight off the First Road, mark of the Ring still on you, and Wren's last letter three days ahead of your boots. She wrote: *one of mine is coming, the good kind*. Sit down a moment, waker. Let an old man look at what Dawnmead makes without him.",
+      "choices": [
+        {
+          "text": "You're Rowan. Wren talks about you.",
+          "next": "wren"
+        },
+        {
+          "text": "She wrote about me?",
+          "next": "letter"
+        }
+      ],
+      "voice": "rowan_wren__known"
+    },
+    {
+      "id": "wren",
+      "text": "Kindly, I hope, and with the needles going the whole time. I taught her nothing, you understand. I just stood next to her for thirty years while she was already right. Your name goes in my book with a flourish today. First flourish this month.",
+      "choices": [
+        {
+          "text": "She said you'd want my name.",
+          "next": "flourish"
+        }
+      ],
+      "voice": "rowan_wren__wren"
+    },
+    {
+      "id": "letter",
+      "text": "She writes every week. Weather, wakings, whose bread fell. Never says she misses me, which is how I know. And once a season, a line like yours. She has sent me maybe six *good kinds* in two winters. Wear it quietly.",
+      "choices": [
+        {
+          "text": "I will.",
+          "next": "flourish"
+        }
+      ],
+      "voice": "rowan_wren__letter"
+    },
+    {
+      "id": "flourish",
+      "text": "There. Signed, marked *of the Ring*, and underlined once, which is as loud as a registry gets. Amberford is a bigger pond than the meadow, waker, but the water's the same. Learn it the way you learned home: one door at a time.",
+      "voice": "rowan_wren__flourish"
+    }
+  ]
+}

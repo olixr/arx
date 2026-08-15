@@ -1,0 +1,27 @@
+{
+  "id": "a_dose_of_sense",
+  "name": "A Dose of Sense",
+  "giver": "sage_elowen",
+  "stages": [
+    {
+      "id": "two_bottles",
+      "journal": "Elowen wants two healing tinctures brewed at her alembic, on the sensible grounds that folk who can make one stop needing hers at midnight. Sagewort grows in her hedge garden rows and wild along the verges. The alembic is in the north light of the dispensary, off the spine.",
+      "objectives": [
+        {
+          "kind": "collect",
+          "item": "healing_tincture",
+          "count": 2
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 50,
+    "xp": [
+      {
+        "skill": "herbalism",
+        "amount": 200
+      }
+    ]
+  }
+}

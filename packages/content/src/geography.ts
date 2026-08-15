@@ -78,12 +78,17 @@ export const DAWNMEAD_RECT: ZoneRect = { x: -128, y: 0, w: 128, h: 96 };
  * is a REAL first journey — the corridor carries a toll narrows, a
  * crofter haven, and the fen's islet country to explore on the way.
  * THE GREAT WORLD REGEN (seed 24601) seated it on the north bank of
- * the east country's great river: the channel runs just below the
- * south hem, so the ford that names the town is finally a real ford —
- * the Salt Road leaves the South Gate and crosses it on its first
- * league.
+ * the east country's great river; THE FORD COMES HOME (the rebuild,
+ * docs/amberford-remade-plan.md) then grew the rect south TO the
+ * water: the Amber Water crosses the zone's own south quarter, the
+ * Salt Road bridge and the sandbar ford are authored town ground, and
+ * the walled heart stands in open working country — fields west,
+ * delf and orchard east, the river quarter below the water gate. The
+ * hem crossings are matched to the seed's real channel (west entry
+ * rows y58-73, southeast exit x575-581, the tarn on the NE corner) so
+ * the edge-harmony law carries the water onward outside.
  */
-export const AMBERFORD_RECT: ZoneRect = { x: 464, y: -44, w: 112, h: 80 };
+export const AMBERFORD_RECT: ZoneRect = { x: 448, y: -56, w: 144, h: 144 };
 
 /**
  * Silverfall — the mountain capital (epic 4). Center (-448, -280):
@@ -451,7 +456,7 @@ const AUTHORED_PLAN: GeographyDef = {
         { x: 130, y: 88 }, { x: 152, y: 80 }, { x: 176, y: 72 }, { x: 200, y: 64 },
         { x: 228, y: 58 }, { x: 254, y: 56 }, { x: 278, y: 58 }, { x: 304, y: 56 },
         { x: 330, y: 46 }, { x: 356, y: 38 }, { x: 382, y: 30 }, { x: 410, y: 24 },
-        { x: 436, y: 16 }, { x: 464, y: 8 },
+        { x: 436, y: 16 }, { x: 448, y: 8 },
       ],
     },
     {
@@ -470,7 +475,7 @@ const AUTHORED_PLAN: GeographyDef = {
       // past the Last Lamp (T4-5) to the gate between the Spinewall
       // and the Kingswater. One road in.
       pts: [
-        { x: 518, y: -43 }, { x: 508, y: -58 }, { x: 496, y: -72 }, { x: 482, y: -84 },
+        { x: 518, y: -56 }, { x: 508, y: -62 }, { x: 496, y: -72 }, { x: 482, y: -84 },
         { x: 472, y: -94 }, { x: 465, y: -104 }, { x: 462, y: -114 }, { x: 452, y: -118 },
         { x: 430, y: -119 }, { x: 404, y: -120 }, { x: 378, y: -120 }, { x: 352, y: -119 },
         { x: 330, y: -124 }, { x: 318, y: -129 }, { x: 306, y: -134 }, { x: 292, y: -137 },
@@ -486,16 +491,16 @@ const AUTHORED_PLAN: GeographyDef = {
       id: 'salt_road',
       name: 'The Salt Road',
       kind: 'road',
-      // Amberford's South Gate to Saltmere's landward gate — and the
-      // FORD itself: the road leaves the gate and crosses the great
-      // river on its first league, the crossing that names the town.
+      // Amberford's far-bank gate to Saltmere's landward gate. THE
+      // FORD COMES HOME: the crossing that names the town is authored
+      // town ground now — the road's first tile stands on the south
+      // bank below the bridge, where the zone hands it the lamplight.
       // South along the waterline miles, then east over the heath
       // shelf NORTH of the wet belt (the fan country below is all
       // marsh — THE SHORT SPAN LAW: the road takes the three-tile
       // channel neck at the top and works the dry east bank down to
       // the gate). Tier 1 at the fields, 3 at the gate.
       pts: [
-        { x: 516, y: 34 }, { x: 520, y: 44 }, { x: 528, y: 56 }, { x: 534, y: 72 },
         { x: 536, y: 88 }, { x: 540, y: 106 }, { x: 546, y: 124 }, { x: 550, y: 142 },
         { x: 552, y: 160 }, { x: 556, y: 178 }, { x: 560, y: 196 }, { x: 568, y: 212 },
         { x: 580, y: 226 }, { x: 600, y: 232 }, { x: 626, y: 236 }, { x: 652, y: 238 },
@@ -517,7 +522,7 @@ const AUTHORED_PLAN: GeographyDef = {
       // to the gate under the walls. ~750 tiles against the Sparway's
       // ~290 — the distance IS the safety.
       pts: [
-        { x: 576, y: 16 }, { x: 608, y: 12 }, { x: 640, y: 6 }, { x: 672, y: -2 },
+        { x: 592, y: 16 }, { x: 608, y: 12 }, { x: 640, y: 6 }, { x: 672, y: -2 },
         { x: 704, y: -8 }, { x: 736, y: -12 }, { x: 768, y: -14 }, { x: 806, y: -6 },
         { x: 844, y: -2 }, { x: 882, y: -4 }, { x: 916, y: -20 }, { x: 944, y: -46 },
         { x: 968, y: -74 }, { x: 986, y: -104 }, { x: 1000, y: -132 }, { x: 1010, y: -160 },

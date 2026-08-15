@@ -1,0 +1,53 @@
+{
+  "id": "q_the_free_furrows_offer",
+  "start": "hub",
+  "requires": [
+    "quest:the_free_furrows:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "farmer_tamsin",
+      "priority": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "See the fenced plots out the west gate, south of the road? Free Furrows. Anyone may plant. Almost nobody does, and it offends me personally. Six carrots, your own furrow. The soil's better than Jorel admits.",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "the_free_furrows"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Lend me a row.",
+          "next": "sworn"
+        },
+        {
+          "text": "Dirt and I disagree.",
+          "next": "declined"
+        }
+      ],
+      "voice": "q_the_free_furrows_offer__hub"
+    },
+    {
+      "id": "sworn",
+      "text": "Seeds at Jorel's stall, water in the barrel, and talk to the soil if it helps. It helps me. Don't tell Jorel.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "the_free_furrows"
+        }
+      ],
+      "voice": "q_the_free_furrows_offer__sworn"
+    },
+    {
+      "id": "declined",
+      "text": "The dirt always wins the disagreement, love. It just waits.",
+      "voice": "q_the_free_furrows_offer__declined"
+    }
+  ]
+}

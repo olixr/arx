@@ -1,0 +1,53 @@
+{
+  "id": "q_the_ford_holds_offer",
+  "start": "hub",
+  "requires": [
+    "quest:the_ford_holds:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "captain_aldis",
+      "priority": 7
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "I keep a list of names this town can count on when the horn goes. Short list. You're about to be on it. Two stops first: Rowan's book, Ansel's pillar. Beginning and cost. Then me.",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "the_ford_holds"
+        }
+      ],
+      "choices": [
+        {
+          "text": "I'll stand the watch.",
+          "next": "sworn"
+        },
+        {
+          "text": "Lists make me nervous.",
+          "next": "declined"
+        }
+      ],
+      "voice": "q_the_ford_holds_offer__hub"
+    },
+    {
+      "id": "sworn",
+      "text": "Dusk is best. The town shows you what it is at dusk. That's not sentiment, that's when trouble comes.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "the_ford_holds"
+        }
+      ],
+      "voice": "q_the_ford_holds_offer__sworn"
+    },
+    {
+      "id": "declined",
+      "text": "Good instinct. Stay off the other lists and this one won't hurt you.",
+      "voice": "q_the_ford_holds_offer__declined"
+    }
+  ]
+}

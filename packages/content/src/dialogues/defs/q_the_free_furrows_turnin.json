@@ -1,0 +1,27 @@
+{
+  "id": "q_the_free_furrows_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:the_free_furrows:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "farmer_tamsin",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Six, and pulled clean, not yanked. Somebody listened. That row's yours now by every law that matters, which out here is mine. Plant it or lose it to my cotton. Fair warning.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "the_free_furrows"
+        }
+      ],
+      "voice": "q_the_free_furrows_turnin__paid"
+    }
+  ]
+}

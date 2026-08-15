@@ -1,0 +1,53 @@
+{
+  "id": "q_leather_on_the_frame_offer",
+  "start": "hub",
+  "requires": [
+    "quest:leather_on_the_frame:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "tanner_swale",
+      "priority": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Hides come in raw and leave as leather, and the part in the middle is the trade. Two pieces, your hands, my racks. Yes or no.",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "leather_on_the_frame"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Show me the racks.",
+          "next": "sworn"
+        },
+        {
+          "text": "The smell says no.",
+          "next": "declined"
+        }
+      ],
+      "voice": "q_leather_on_the_frame_offer__hub"
+    },
+    {
+      "id": "sworn",
+      "text": "The rack by the frames is yours. Scrape thin, lime long, and don't rush the river. It doesn't rush you.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "leather_on_the_frame"
+        }
+      ],
+      "voice": "q_leather_on_the_frame_offer__sworn"
+    },
+    {
+      "id": "declined",
+      "text": "The smell is the trade being honest. Come back when your boots wear through. They will.",
+      "voice": "q_leather_on_the_frame_offer__declined"
+    }
+  ]
+}

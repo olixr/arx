@@ -1,0 +1,53 @@
+{
+  "id": "q_flour_and_water_offer",
+  "start": "hub",
+  "requires": [
+    "quest:flour_and_water:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "miller_garton",
+      "priority": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Everyone wants bread. Nobody wants to know where flour comes from. You look like you could stand to know. Three measures, my stone, your arms. Wheat's over the counter if you didn't grow any.",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "flour_and_water"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Teach me the stone.",
+          "next": "sworn"
+        },
+        {
+          "text": "I just eat the bread.",
+          "next": "declined"
+        }
+      ],
+      "voice": "q_flour_and_water_offer__hub"
+    },
+    {
+      "id": "sworn",
+      "text": "Steady feed, steady turn. The stone does the thinking. That's more than I can say for most of my customers.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "flour_and_water"
+        }
+      ],
+      "voice": "q_flour_and_water_offer__sworn"
+    },
+    {
+      "id": "declined",
+      "text": "In my day that answer got you the small loaf. Still does.",
+      "voice": "q_flour_and_water_offer__declined"
+    }
+  ]
+}

@@ -1,4 +1,13 @@
-import { Detail, Tile, awningTile, bracketSignDetail, pennantDetail, trellisDetail } from '@arx/shared';
+import {
+  Detail,
+  Tile,
+  awningTile,
+  bannerPoleTile,
+  bracketSignDetail,
+  pennantDetail,
+  trellisDetail,
+  wallBannerDetail,
+} from '@arx/shared';
 import { AMBERFORD_RECT } from '../geography.js';
 import { MARKET_STALL } from '../structures/templates.js';
 import { ZoneBuilder } from './builder.js';
@@ -6,944 +15,1041 @@ import type { ZoneDef } from './types.js';
 
 /**
  * Amberford — the crossroads market town, the second hearth of the
- * Dawnlands. A waker graduates here off the First Road: the world's
- * first bank, the three trainer masters' workshops, the inn with a
- * fire always lit, and two gates pointing at two different futures —
- * the warm west road home, and the North Gate where the High Road
- * starts its long climb toward Silverfall.
+ * Dawnlands, rebuilt by THE FORD COMES HOME
+ * (docs/amberford-remade-plan.md is the spec and the as-built record).
  *
- * THE TOWN-PLAN LAW (the second polish pass): Amberford is laid out
- * like a real town, not a diorama.
- *  - STREETS FIRST. A plain cross of spines — west road, north road,
- *    south lane, east stub — plus the craft lane and the dock lane.
- *    Every building FRONTS a street or the commons green, and no two
- *    structures stand closer than three open tiles unless a road runs
- *    between them (gateposts hug the gate on purpose).
- *  - A DIAGONAL BUDGET. 45-degree walls are statements, not texture:
- *    the watch tower's octagon, the chapel's faceted apse, the bank's
- *    two plaza shoulders, and Captain Aldis's house echoing her tower.
- *    Everything else is honest blocky rooms.
- *  - ROOM INTENT. Every interior room has ONE stated job and the
- *    furniture to prove it: shop floors put the counter facing the
- *    door with displays on the customer walls; workshops line their
- *    stations along a work wall; storerooms hold stock; bedrooms hold
- *    beds. Nothing is placed to fill space.
+ * The one-sentence fiction: the ford called the road, the road called
+ * the Redmasks, the town answered with stone — and now the town has
+ * walked back down to the water it was named for. The rect grew south
+ * to the great river (seed 24601's real channel), so the Salt Road
+ * bridge, the sandbar ford, the quay, the mill, the ferry, and the
+ * tannery are authored town ground inside the zone's own lamplight.
  *
- * THE LIVING-TOWN LAW (the third polish pass): Amberford is the town
- * that TEACHES. A waker's first real skills are learned here, so the
- * town must hold every early loop on its own ground:
- *  - Two cookfires (the anglers' Catch Fire on the shore, the inn's
- *    coaching-yard fire) — the only Tile.Campfire stations for miles.
- *  - The Amber Delf: copper and tin in the northeast cutting, with
- *    one iron face as the told-you-so for level fifteen.
- *  - The Free Furrows: gated common tilled ground, anyone may plant.
- *  - The retting bank's flax, the pond's trout, the orchard, and the
- *    pasture's milk close the loop for every Maker's Art trainer in
- *    Craft Row.
- *  - STORY ON THE GROUND. The Toll War memorial, the Old Ford, and
- *    the waystones say who this town is without a single quest
- *    marker: every plaque earns its place in the founding story.
+ * THE TOWN-PLAN LAW (unchanged in spirit, rebuilt in fact):
+ *  - STREETS FIRST. North spine (High Road gate to the Round), west
+ *    spine (Fordgate to the Round), the east street (Round to the
+ *    East Gate), the south lane (east street to the water gate), and
+ *    the craft lane. Every building fronts a street, the Round, or
+ *    the Commons green; no two structures within three open tiles
+ *    unless a road runs between them.
+ *  - THE WALLED HEART. The garrison curtain rings ONLY the town
+ *    (x16/x124, y8/y104) — the fields, the delf, the pasture, the
+ *    orchard, and the whole river quarter live OUTSIDE it, which is
+ *    what a market town is: a stone heart in open working country.
+ *    Four true gates on the four roads plus the miners' postern;
+ *    gates authored OPEN, only a hand shuts them, no routine may
+ *    depend on crossing a gate line.
+ *  - A DIAGONAL BUDGET. The watch tower's octagon, the chapel's
+ *    faceted apse, the bank's plaza shoulders, Aldis's house.
+ *  - ROOM INTENT. One job per room and the furniture to prove it.
+ *  - THE MODERN KIT, spent at last: every shopfront wears an awning
+ *    in its own dye with a bracket sign; the hedge and topiary family
+ *    debuts on the chapel garden, the Commons green, and the herb
+ *    garden; the town well is the world's first Tile.Well; the
+ *    farming yard kit dresses everything that grows.
  *
- * THE WALL LAW (the garrison pass): the town is ringed by a single
- * garrison curtain (tiles 139-145) with three true gates on the
- * three road mouths and 45-degree corner cuts — see THE TOWN WALL
- * section for the full reasoning. Gates stand open; only a hand
- * shuts them; NPCs never open garrison gates (the fence-gate debt),
- * so no routine may ever DEPEND on crossing a gate line.
+ * THE RIVER LAW: the Amber Water is authored to meet the worldgen
+ * channel tile-for-tile at the hems (west entry rows local y114-128,
+ * southeast exit x127-133 on the south hem, the tarn wrapping the NE
+ * corner), so the edge-harmony law carries the water onward as the
+ * real river outside. Upstream of the bridge the water is work;
+ * downstream it is memory. The riverbed keeps a wadeable sandbar ford
+ * beside the bridge — THE OLD FORD, kept the way a family keeps the
+ * first tool it ever owned.
  *
  * The zone stamps into AMBERFORD_RECT exactly (geography.test pins
- * it), and the gates meet the carved worldgen roads tile-for-tile:
- * the First Road enters the Fordgate at world (105,36) = local
- * (1,52); the High Road leaves the North Gate at world (158,-15) =
- * local (54,1).
+ * it) and the gates meet the carved roads tile-exact: First Road at
+ * world (448,8) = local (0,64) — no, see below: the Fordgate rows are
+ * local y50-52 = world y(-6..-4), First Road head (448,-4); High Road
+ * head (518,-56) = local (70,0); Timber Road head (592,16) = local
+ * gate rows y70-72; Salt Road head (536,88) = the far-bank mouth at
+ * local (88,143).
  *
- * Anchors that must NOT move once the people pass lands (routine
- * offsets will hang off them): the Market Round and its well, the
- * bank counter, the craft workshops and their stations, the inn, the
- * mill and docks, the chapel, every home's door, and both gates.
- * Residents-to-be are noted on their buildings.
+ * Anchors that must NOT move once routines re-land (offsets hang off
+ * them): every actor placement at the bottom of this file, the well,
+ * the bank counter, the bridge, both gates of every road, and the
+ * Ford Door at world (578,70) — lowhall.ts DOOR_UP points at it.
  */
 export function buildAmberford(): ZoneDef {
   const R = AMBERFORD_RECT;
   const b = new ZoneBuilder('amberford', 'Amberford', { x: R.x, y: R.y }, R.w, R.h, Tile.Grass);
 
   // ---------------------------------------------------------------
-  // The streets — a legible cross, laid first so every building
-  // shoulders up to a real address.
+  // THE AMBER WATER — laid first, because the town answers the river,
+  // never the other way round. Main channel west hem to the bridge
+  // country, then the southeast turn out the south hem. Widths taper
+  // from the broad west mouth (15 rows, matching the seed's hem
+  // crossing y114-128) to a stately 8-9 at the bridge.
   // ---------------------------------------------------------------
-  b.path({ x: 0, y: 52 }, { x: 52, y: 52 }, 3); // the west spine: Fordgate -> town
-  b.path({ x: 54, y: 2 }, { x: 54, y: 33 }, 3); // the north spine: North Gate -> the Round
-  b.path({ x: 52, y: 47 }, { x: 52, y: 68 }, 3); // the south lane: the Round -> the Commons
-  b.path({ x: 52, y: 69 }, { x: 52, y: 77 }, 3); // ...and on to the South Gate (the Salt Road)
-  b.fillRect(51, 78, 3, 2, Tile.Path); // the mouth meets the carved Salt Road
-  b.path({ x: 12, y: 8 }, { x: 54, y: 8 }, 2); // the craft lane
-  b.path({ x: 61, y: 39 }, { x: 80, y: 39 }, 2); // the dock lane: the Round -> the water
+  const bankN = (x: number) => 114 + Math.round(x * 0.115 + Math.sin(x * 0.21) * 1.5);
+  const chanW = (x: number) => 15 - Math.round(x * 0.075);
+  for (let x = 0; x <= 118; x++) {
+    const yn = x === 0 ? 114 : bankN(x);
+    const w = x === 0 ? 15 : chanW(x);
+    for (let dy = 0; dy < w; dy++) {
+      const y = yn + dy;
+      let t = Tile.WaterShallow;
+      if (dy >= 2 && dy < w - 2) t = Tile.Water;
+      if (w >= 10 && dy >= 4 && dy < w - 4) t = Tile.WaterDeep;
+      b.set(x, y, t);
+    }
+    // Soft fringes: reed-swamp flecks on both banks.
+    if (fordRng(x, yn) < 0.3) b.set(x, yn - 1, Tile.Swamp);
+    if (fordRng(x, yn + w) < 0.3) b.set(x, yn + w, Tile.Swamp);
+  }
+  // The southeast turn: past the ferry reach the channel swings off
+  // the east miles and runs out the south hem at x127-133 (the
+  // seed's exit arm), leaving the tannery bank dry above it.
+  for (let x = 114; x <= 136; x++) {
+    const yc = 129 + Math.round((x - 114) * 0.85 + Math.sin(x * 0.3) * 0.8);
+    for (let dy = -4; dy <= 4; dy++) {
+      const y = yc + dy;
+      if (y > 143) continue;
+      const a = Math.abs(dy);
+      b.set(x, y, a <= 3 ? Tile.Water : Tile.WaterShallow);
+    }
+    if (fordRng(x, yc - 5) < 0.25) b.set(x, yc - 5, Tile.Swamp);
+    if (fordRng(x, yc + 5) < 0.25 && yc + 5 <= 143) b.set(x, yc + 5, Tile.Swamp);
+  }
+  // THE NORTHEAST TARN — the still water on the town's cold corner,
+  // wrapping the hem exactly where the seed's tarn stands outside
+  // (north hem x135-143, east hem y0-8). Caravan beasts drink here.
+  b.fillEllipse(142, 3, 8, 6.5, Tile.WaterShallow);
+  b.fillEllipse(142, 3, 5.5, 4, Tile.Water);
+  b.set(133, 6, Tile.Swamp).set(136, 9, Tile.Swamp).set(139, 10, Tile.Swamp);
+  b.set(134, 2, Tile.FibrePlant).set(137, 8, Tile.FibrePlant);
 
   // ---------------------------------------------------------------
-  // The Market Round — the town's stone heart: the old well at the
-  // center, stalls around the rim, banners and benches. Market
-  // mornings happen here; the respawn hearth stands beside the well.
+  // THE STREETS — a legible skeleton laid before a single wall, so
+  // every building shoulders up to a real address.
   // ---------------------------------------------------------------
-  b.fillEllipse(52, 40, 9, 7, Tile.StoneFloor);
-  b.set(51, 39, Tile.WallStone).set(52, 39, Tile.WallStone); // the well
-  b.set(51, 40, Tile.WallStone).set(52, 40, Tile.WallStone);
-  // Stalls face the plaza from its grass aprons — north pair for the
-  // road trade, southwest for the Commons, east for the fish cart.
-  b.stamp(MARKET_STALL, 45, 32);
-  b.stamp(MARKET_STALL, 57, 32);
-  b.stamp(MARKET_STALL, 45, 47);
-  b.stamp(MARKET_STALL, 60, 35);
-  b.set(48, 34, Tile.BannerPole).set(56, 34, Tile.BannerPole);
-  b.set(48, 45, Tile.Bench).set(55, 45, Tile.Bench);
-  b.set(46, 49, Tile.LampPost).set(58, 48, Tile.LampPost);
-  b.set(43, 49, Tile.TreeOak); // the market oak, shade for the southwest corner
-  // The well dressed as the town's oldest fact: the trough the herds
-  // drink from on market days, the bucket barrel, and the notice
-  // board where the town speaks to strangers first.
-  b.set(53, 41, Tile.Basin); // the trough
-  b.set(50, 39, Tile.Barrel); // the bucket barrel
-  b.sign(55, 37, 'THE ROUND', ['market at midday', 'the well is sweet — help yourself'], Tile.Signpost);
-  // Produce row: two stands shoulder to shoulder where the spine
-  // country meets the dock lane — the market spilling up the road,
-  // the way real markets do. (The traveling traders' pitch.)
-  b.stamp(MARKET_STALL, 59, 28);
-  b.stamp(MARKET_STALL, 63, 28);
-  // The inn's terrace: tables on the grass apron facing the plaza.
-  b.set(56, 46, Tile.Bench).set(57, 46, Tile.Table).set(58, 46, Tile.Bench);
+  b.path({ x: 0, y: 51 }, { x: 59, y: 51 }, 3); // the west spine: Fordgate -> the Round
+  b.path({ x: 69, y: 0 }, { x: 69, y: 45 }, 3); // the north spine: North Gate -> the Round
+  b.path({ x: 76, y: 61 }, { x: 87, y: 70 }, 3); // the east street leaves the Round south-about...
+  b.fillRect(87, 70, 37, 3, Tile.Path); // ...and runs straight for the East Gate
+  b.fillRect(125, 70, 19, 3, Tile.Path); // ...and out to the hem, where the Timber Road takes it
+  b.path({ x: 87, y: 72 }, { x: 87, y: 104 }, 3); // the south lane: east street -> the water gate
+  b.path({ x: 20, y: 27 }, { x: 116, y: 27 }, 2); // the craft lane
+  b.path({ x: 87, y: 105 }, { x: 87, y: 124 }, 3); // the quay lane: water gate -> the bridge
 
   // ---------------------------------------------------------------
-  // The Bank of Amberford — a stone hall fronting the Round with its
-  // two plaza shoulders faceted (the diagonal budget's third entry).
-  // Inside: a public lobby, the teller line, the staff floor, the
-  // manager's office, and a windowless vault room. (Cormund's post.)
+  // THE MARKET ROUND — the stone heart, half again wider than it ever
+  // was: the town well at the center (the first Tile.Well in the
+  // world — the market town earns it), stalls in facing rows, the
+  // market oak, dyed banner poles, and the notice board that speaks
+  // to strangers first. The respawn hearth stands beside the well.
   // ---------------------------------------------------------------
-  b.fillRect(33, 24, 16, 12, Tile.StoneFloor);
-  b.outlineRect(33, 24, 16, 12, Tile.WallStone);
-  b.set(33, 35, Tile.WallStoneDiagNE); // the shoulders round to the plaza
-  b.set(48, 35, Tile.WallStoneDiagNW);
-  b.set(40, 35, Tile.DoorwayStoneWide).set(41, 35, Tile.DoorwayStoneWide);
-  b.set(36, 35, Tile.WallStoneWindow).set(45, 35, Tile.WallStoneWindow);
-  b.set(39, 24, Tile.WallStoneWindow).set(46, 24, Tile.WallStoneWindow);
-  b.set(48, 26, Tile.WallStoneWindow).set(48, 32, Tile.WallStoneWindow);
-  // The vault room: an inner wall, no windows — coin sleeps in the dark.
-  for (let y = 25; y <= 34; y++) b.set(37, y, Tile.WallStone);
-  b.set(37, 28, Tile.DoorwayStone);
-  b.set(34, 25, Tile.Vault).set(34, 28, Tile.Vault).set(34, 31, Tile.Vault);
-  b.set(36, 25, Tile.Cabinet);
-  b.set(35, 33, Tile.CrateGoods);
-  // The small-ledger box: the vault's loose coin, behind the one
-  // authored lock in town (factions Phase 5 — the pick's payoff).
-  b.set(35, 26, Tile.ChestWood);
+  b.fillEllipse(72, 53, 13, 9, Tile.StoneFloor);
+  b.set(71, 52, Tile.Well);
+  b.set(73, 52, Tile.Basin); // the trough the herds drink from
+  b.set(70, 51, Tile.Barrel); // the bucket barrel
+  b.stamp(MARKET_STALL, 62, 46);
+  b.stamp(MARKET_STALL, 66, 46); // the produce row: two stalls shoulder to shoulder
+  b.stamp(MARKET_STALL, 78, 46);
+  b.stamp(MARKET_STALL, 62, 57);
+  b.stamp(MARKET_STALL, 78, 57); // Merra's morning pitch
+  b.set(61, 45, bannerPoleTile(3)).set(83, 45, bannerPoleTile(5));
+  b.set(61, 60, bannerPoleTile(1)).set(83, 60, bannerPoleTile(8));
+  b.set(65, 53, Tile.Bench).set(79, 53, Tile.Bench);
+  b.set(63, 61, Tile.TreeOak); // the market oak, shade for the southwest corner
+  b.set(65, 62, Tile.Bench);
+  b.sign(75, 49, 'THE ROUND', ['market at midday', 'the well is sweet — help yourself'], Tile.Signpost);
+  b.set(60, 49, Tile.LampPost).set(84, 49, Tile.LampPost);
+  b.set(74, 62, Tile.LampPost);
+
+  // ---------------------------------------------------------------
+  // The Bank of Amberford — the Toll War's answer in stone, fronting
+  // the west spine with its two plaza shoulders faceted. Lobby,
+  // teller line, ledger wall, manager's office, and the windowless
+  // vault room (locks.ts arms the inner door; coin sleeps in the
+  // dark). Cormund's post.
+  // ---------------------------------------------------------------
+  b.fillRect(24, 32, 21, 15, Tile.StoneFloor);
+  b.outlineRect(24, 32, 21, 15, Tile.WallStone);
+  b.set(24, 46, Tile.WallStoneDiagNE); // the shoulders round to the forecourt
+  b.set(44, 46, Tile.WallStoneDiagNW);
+  b.set(33, 46, Tile.DoorwayStoneWide).set(34, 46, Tile.DoorwayStoneWide);
+  b.set(28, 46, Tile.WallStoneWindow).set(40, 46, Tile.WallStoneWindow);
+  b.set(28, 32, Tile.WallStoneWindow).set(37, 32, Tile.WallStoneWindow).set(42, 32, Tile.WallStoneWindow);
+  b.set(44, 36, Tile.WallStoneWindow).set(44, 42, Tile.WallStoneWindow);
+  // The vault room: an inner wall, no windows, the one authored lock.
+  for (let y = 33; y <= 45; y++) b.set(29, y, Tile.WallStone);
+  b.set(29, 39, Tile.DoorwayStone); // world (477,-17) — locks.ts re-points here
+  b.set(25, 34, Tile.Vault).set(25, 38, Tile.Vault).set(25, 42, Tile.Vault);
+  b.set(27, 33, Tile.Cabinet);
+  b.set(26, 45, Tile.CrateGoods);
+  b.set(27, 44, Tile.ChestWood); // the small-ledger box behind the lock
   // The manager's office, walled into the northeast light.
-  b.set(44, 25, Tile.WallStone).set(44, 27, Tile.WallStone);
-  b.set(44, 26, Tile.DoorwayStone);
-  for (let x = 45; x <= 47; x++) b.set(x, 28, Tile.WallStone);
-  b.set(47, 25, Tile.Bookshelf);
-  b.set(46, 26, Tile.Table).set(45, 26, Tile.Chair);
-  b.setDetail(46, 27, Detail.RugRound);
+  for (let y = 33; y <= 35; y++) b.set(38, y, Tile.WallStone);
+  b.set(38, 34, Tile.DoorwayStone);
+  for (let x = 39; x <= 43; x++) b.set(x, 36, Tile.WallStone);
+  b.set(41, 36, Tile.DoorwayStone);
+  b.set(43, 33, Tile.Bookshelf);
+  b.set(40, 34, Tile.Table).set(41, 34, Tile.Chair);
+  b.setDetail(40, 35, Detail.RugRound);
   // The teller line and the staff floor behind it.
-  for (let x = 38; x <= 43; x++) b.set(x, 29, Tile.Counter);
-  b.set(41, 25, Tile.Bookshelf).set(42, 25, Tile.Bookshelf); // the ledger wall
-  // The crown watches the books: the two sigils flank the ledger
-  // wall — this bank keeps the realm's coin under the realm's cloth.
-  b.setDetail(40, 24, Detail.BannerCrown).setDetail(43, 24, Detail.BannerMoon);
-  b.set(39, 26, Tile.Table).set(39, 27, Tile.Chair);
-  // The lobby: the two banking chests flank the charter aisle — a
-  // fitted crimson velvet runner from the double doors to the teller
-  // line (the one state carpet outside Silverfall; the charter came
-  // from the Crown, and the floor says so). Benches for the queue.
-  b.set(38, 32, Tile.BankChest).set(43, 32, Tile.BankChest);
-  b.set(45, 33, Tile.Bench).set(46, 33, Tile.Bench);
-  for (let y = 30; y <= 34; y++) {
-    b.setDetail(40, y, Detail.CarpetRoyal).setDetail(41, y, Detail.CarpetRoyal);
+  for (let x = 32; x <= 37; x++) b.set(x, 40, Tile.Counter);
+  b.set(33, 37, Tile.Bookshelf).set(34, 37, Tile.Bookshelf); // the ledger wall
+  b.setDetail(33, 32, Detail.BannerCrown).setDetail(36, 32, Detail.BannerMoon);
+  b.set(31, 37, Tile.Table).set(31, 38, Tile.Chair);
+  // The lobby: banking chests flank the charter aisle — the fitted
+  // crimson runner from the double doors to the teller line, benches
+  // for the queue.
+  b.set(31, 44, Tile.BankChest).set(38, 44, Tile.BankChest);
+  b.set(41, 44, Tile.Bench).set(42, 44, Tile.Bench);
+  for (let y = 41; y <= 45; y++) {
+    b.setDetail(33, y, Detail.CarpetRoyal).setDetail(34, y, Detail.CarpetRoyal);
   }
-  // The forecourt: a stone step down, lamps, and a walk to the Round.
-  b.fillRect(39, 36, 4, 2, Tile.StoneFloor);
-  b.path({ x: 41, y: 38 }, { x: 46, y: 39 }, 2, Tile.StoneFloor);
-  b.set(38, 36, Tile.LampPost).set(43, 36, Tile.LampPost);
-  // The facade wears the charter: crown west of the doors, moon east
-  // (the paired-seat order), the way the castle gate flies them.
-  b.setDetail(39, 35, Detail.BannerCrown).setDetail(42, 35, Detail.BannerMoon);
-  // Market-day pennants between the charter cloths — the bank fronts
-  // the Round, and the Round is a fair (weld, the ford's gold).
-  b.setDetail(37, 35, pennantDetail(3)).setDetail(44, 35, pennantDetail(3));
-  b.sign(37, 36, 'BANK OF AMBERFORD', ['coin kept, word kept']);
-  // The Toll War memorial — the reason there is a bank at all. A
-  // pillar for the ones who held the ford against the Redmasks,
-  // braziers the Waykeepers keep fed, and the plaque every newcomer
-  // walks past twice a day. Ansel and Aldis both stand here at dusk.
-  b.fillRect(33, 36, 3, 3, Tile.StoneFloor);
-  b.set(34, 37, Tile.PillarStone);
-  b.set(33, 38, Tile.Brazier).set(35, 38, Tile.Brazier);
-  b.sign(34, 40, 'THE TOLL WAR', ['for those who held the ford', 'the road stays free'], Tile.Signpost);
+  b.setDetail(33, 45, Detail.Doormat).setDetail(34, 45, Detail.Doormat);
+  // The facade wears the charter — crown west of the doors, moon
+  // east, the paired-seat order — with market-day pennants beyond.
+  b.setDetail(31, 46, Detail.BannerCrown).setDetail(36, 46, Detail.BannerMoon);
+  b.setDetail(26, 46, pennantDetail(3)).setDetail(42, 46, pennantDetail(3));
+  b.sign(37, 47, 'BANK OF AMBERFORD', ['coin kept, word kept']);
+  // The forecourt: a stone walk down to the west spine.
+  b.fillRect(32, 47, 4, 3, Tile.StoneFloor);
+  b.set(37, 48, Tile.LampPost);
+  // THE TOLL WAR MEMORIAL — the reason there is a bank at all: the
+  // pillar for the ones who held the ford, braziers the Waykeepers
+  // keep fed, and a low hedge ring — the town gardens its grief.
+  // Ansel and Aldis both stand here at dusk; Rowan reads the names.
+  b.fillRect(25, 47, 6, 3, Tile.StoneFloor);
+  b.set(27, 48, Tile.PillarStone);
+  b.set(25, 48, Tile.Brazier).set(29, 48, Tile.Brazier);
+  b.set(23, 47, Tile.Hedge).set(23, 49, Tile.Hedge); // the town gardens its grief
+  b.setDetail(24, 50, Detail.Flowers).setDetail(30, 50, Detail.Flowers);
+  b.sign(31, 49, 'THE TOLL WAR', ['for those who held the ford', 'the road stays free'], Tile.Signpost);
 
   // ---------------------------------------------------------------
-  // Craft Row — the masters' workshops down the craft lane, each a
-  // real workplace: forge hall and commission shop for the smith, a
-  // long work line and a cloth shop for the artisan.
+  // CRAFT ROW — the working north of town, along the craft lane.
+  // The smithy (Master Bretta Ironhewn): forge hall west, commission
+  // shop east, the working yard between building and lane.
   // ---------------------------------------------------------------
-  // The smithy (Master Bretta Ironhewn): the forge hall takes the
-  // west half — furnaces on the wall, paired anvils, the quench
-  // basin — and the commission shop takes the east, counter facing
-  // its own door. The working yard sprawls south, coal and cinders.
-  b.fillRect(10, 10, 16, 11, Tile.StoneFloor);
-  b.outlineRect(10, 10, 16, 11, Tile.WallStone);
-  b.set(14, 10, Tile.DoorwayStoneWide).set(15, 10, Tile.DoorwayStoneWide); // forge door
-  b.set(21, 10, Tile.DoorwayStone); // shop door
-  b.set(12, 10, Tile.WallStoneWindow).set(23, 10, Tile.WallStoneWindow);
-  b.set(10, 14, Tile.WallStoneWindow).set(25, 14, Tile.WallStoneWindow);
-  b.set(13, 20, Tile.WallStoneWindow).set(22, 20, Tile.WallStoneWindow);
-  for (let y = 11; y <= 19; y++) b.set(18, y, Tile.WallStone);
-  b.set(18, 15, Tile.DoorwayStone); // hall <-> shop
-  // The forge hall.
-  b.set(11, 12, Tile.Furnace).set(11, 15, Tile.Furnace);
-  b.set(14, 13, Tile.Anvil).set(14, 16, Tile.Anvil);
-  b.set(16, 11, Tile.ToolRack);
-  b.set(16, 18, Tile.Basin); // the quench
-  b.set(11, 18, Tile.Crate).set(11, 19, Tile.Barrel); // the coal store
-  b.setDetail(13, 14, Detail.Pebbles).setDetail(15, 17, Detail.Pebbles);
-  b.setDetail(14, 11, Detail.Doormat).setDetail(15, 11, Detail.Doormat);
-  // The commission shop: counter facing the door, work on the walls,
-  // and the ledger desk where Bretta prices what the road broke.
-  for (let x = 20; x <= 22; x++) b.set(x, 13, Tile.Counter);
-  b.set(24, 11, Tile.Cabinet).set(24, 13, Tile.WeaponRack);
-  b.set(19, 11, Tile.WeaponRack); // finished blades wait by the door
-  b.set(20, 16, Tile.Table).set(21, 16, Tile.Chair); // the commission ledger
-  b.setDetail(22, 16, Detail.RugRound);
-  b.set(24, 15, Tile.ToolRack);
-  b.set(19, 18, Tile.Crate).set(24, 17, Tile.CrateGoods);
-  b.setDetail(21, 11, Detail.Doormat);
-  // A customer's runner from the door to the counter — the one soft
-  // thing in the building, and it stays on the shop side of the wall
-  // (no cloth lives where the sparks do).
-  for (let x = 20; x <= 22; x++) b.setDetail(x, 12, Detail.Rug);
-  // The forge yard: trampled dirt, the outdoor rack, the deliveries.
-  b.fillRect(11, 21, 14, 4, Tile.Dirt);
-  b.set(13, 22, Tile.WeaponRack);
-  b.set(17, 22, Tile.Basin); // the slack trough
-  b.set(22, 22, Tile.Crate).set(23, 23, Tile.Barrel);
-  b.setDetail(15, 23, Detail.Pebbles).setDetail(20, 22, Detail.Pebbles);
-  b.sign(23, 9, 'IRONHEWN', ['smithing, shoeing, sharpening']);
-  b.set(14, 9, Tile.Dirt).set(15, 9, Tile.Dirt).set(21, 9, Tile.Dirt);
-  // The artisan hall (Master Tilo): a cloth-and-carving shop up
-  // front — counter, pattern books, bolts on display — and the work
-  // line across the back: loom, carving bench, workbench in a row.
-  // The tanning rack keeps its smell outside, downwind on the east.
-  b.fillRect(32, 10, 16, 10, Tile.WoodFloor);
-  b.outlineRect(32, 10, 16, 10, Tile.WallWood);
-  b.set(38, 10, Tile.DoorwayWoodWide).set(39, 10, Tile.DoorwayWoodWide);
-  b.set(34, 10, Tile.WallWoodWindow).set(43, 10, Tile.WallWoodWindow);
-  b.set(32, 13, Tile.WallWoodWindow).set(47, 12, Tile.WallWoodWindow);
-  b.set(36, 19, Tile.WallWoodWindow).set(43, 19, Tile.WallWoodWindow);
-  for (let x = 33; x <= 46; x++) b.set(x, 15, Tile.WallWood);
-  b.set(39, 15, Tile.DoorwayWood); // shop <-> workshop
-  // The shop floor. The east half is the SHOWROOM: the master's copy
-  // of the Silverfall weave hung on the shop wall over a grand 3x2
-  // display rug — the artisan sells cloth, so the shop wears its own
-  // best work where every customer's eye lands first.
-  for (let x = 35; x <= 38; x++) b.set(x, 13, Tile.Counter);
-  b.set(33, 11, Tile.Bookshelf).set(34, 11, Tile.Cabinet); // the pattern books
-  b.set(44, 11, Tile.Cabinet).set(45, 12, Tile.CrateGoods); // bolts and thread
-  b.setDetail(41, 10, Detail.Tapestry).setDetail(42, 10, Detail.Tapestry);
-  for (let x = 41; x <= 43; x++) {
-    b.setDetail(x, 12, Detail.Rug).setDetail(x, 13, Detail.Rug);
-  }
-  b.setDetail(38, 11, Detail.Doormat).setDetail(39, 11, Detail.Doormat);
-  // The work line — and the piece still ON the loom: a half-woven
-  // tapestry hangs on the workshop wall above it, warp showing.
-  b.set(34, 17, Tile.Loom);
-  b.set(38, 17, Tile.CarvingBench);
-  b.set(40, 17, Tile.Sawhorse); // the board station joins the work line
-  b.set(42, 17, Tile.Workbench);
-  b.set(45, 16, Tile.Crate).set(45, 18, Tile.Barrel);
-  b.setDetail(34, 15, Detail.Tapestry).setDetail(35, 15, Detail.Tapestry);
-  b.setDetail(36, 16, Detail.Sawdust).setDetail(41, 16, Detail.Sawdust);
-  b.sign(36, 9, "TILO'S", ['cloth, carving, commissions']);
-  b.set(38, 9, Tile.Dirt).set(39, 9, Tile.Dirt);
-  // The tanning pad, downwind off the east gable — hides stretched
-  // on the frame, lime in the barrel, straw where the drips land.
-  b.fillRect(49, 12, 3, 3, Tile.Dirt);
-  b.set(50, 13, Tile.TanningRack);
-  b.set(49, 14, Tile.Barrel);
-  b.set(51, 12, Tile.ToolRack); // the drying frame
-  b.setDetail(50, 14, Detail.Straw);
+  b.fillRect(20, 11, 19, 13, Tile.StoneFloor);
+  b.outlineRect(20, 11, 19, 13, Tile.WallStone);
+  b.set(25, 23, Tile.DoorwayStoneWide).set(26, 23, Tile.DoorwayStoneWide); // forge door on the yard
+  b.set(34, 23, Tile.DoorwayStone); // shop door
+  b.set(22, 11, Tile.WallStoneWindow).set(31, 11, Tile.WallStoneWindow).set(36, 11, Tile.WallStoneWindow);
+  b.set(20, 15, Tile.WallStoneWindow).set(20, 20, Tile.WallStoneWindow);
+  b.set(38, 15, Tile.WallStoneWindow).set(38, 20, Tile.WallStoneWindow);
+  b.set(30, 23, Tile.WallStoneWindow);
+  for (let y = 12; y <= 22; y++) b.set(31, y, Tile.WallStone);
+  b.set(31, 17, Tile.DoorwayStone); // hall <-> shop
+  // The forge hall: furnaces on the wall, paired anvils, the quench.
+  b.set(21, 13, Tile.Furnace).set(21, 17, Tile.Furnace);
+  b.set(25, 14, Tile.Anvil).set(25, 18, Tile.Anvil);
+  b.set(28, 12, Tile.ToolRack);
+  b.set(29, 21, Tile.Basin); // the quench
+  b.set(21, 21, Tile.Crate).set(22, 21, Tile.Barrel); // the coal store
+  b.setDetail(23, 15, Detail.Pebbles).setDetail(27, 19, Detail.Pebbles);
+  b.setDetail(25, 22, Detail.Doormat).setDetail(26, 22, Detail.Doormat);
+  // The commission shop: counter facing its own door, work on the
+  // walls, the ledger desk where Bretta prices what the road broke.
+  for (let x = 33; x <= 35; x++) b.set(x, 15, Tile.Counter);
+  b.set(37, 12, Tile.Cabinet).set(37, 14, Tile.WeaponRack);
+  b.set(32, 12, Tile.WeaponRack); // finished blades wait by the door
+  b.set(33, 19, Tile.Table).set(34, 19, Tile.Chair); // the commission ledger
+  b.set(37, 18, Tile.ToolRack);
+  b.set(32, 21, Tile.Crate).set(37, 21, Tile.CrateGoods);
+  for (let x = 33; x <= 35; x++) b.setDetail(x, 16, Detail.Rug);
+  b.setDetail(34, 22, Detail.Doormat);
+  b.setDetail(35, 23, wallBannerDetail(2));
+  // The forge yard: trampled dirt between the doors and the lane.
+  b.fillRect(21, 24, 17, 2, Tile.Dirt);
+  b.set(22, 24, Tile.WeaponRack);
+  b.set(29, 25, Tile.Basin); // the slack trough
+  b.set(36, 24, Tile.Crate).set(37, 25, Tile.Barrel);
+  b.setDetail(25, 25, Detail.Pebbles).setDetail(32, 24, Detail.Pebbles);
+  b.set(34, 24, awningTile('shed', 2)); // shade over the shop step
+  b.sign(36, 10, 'IRONHEWN', ['smithing, shoeing, sharpening']);
+  b.setDetail(33, 10, Detail.Sawdust);
+
+  // Hask's Outfitting — the gate's west post, the last shop before
+  // the High Road: pack wall, bow rack, counter facing the door, the
+  // storeroom walled east, and a real porch on the lane so the road
+  // crowd can try boots sitting down.
+  b.fillRect(42, 11, 15, 11, Tile.WoodFloor);
+  b.outlineRect(42, 11, 15, 11, Tile.WallWood);
+  b.set(49, 21, Tile.DoorwayWood); // door south toward the craft lane
+  b.set(44, 11, Tile.WallWoodWindow).set(51, 11, Tile.WallWoodWindow);
+  b.set(42, 15, Tile.WallWoodWindow).set(42, 19, Tile.WallWoodWindow);
+  b.set(56, 14, Tile.WallWoodWindow).set(45, 21, Tile.WallWoodWindow).set(54, 21, Tile.WallWoodWindow);
+  for (let y = 12; y <= 20; y++) b.set(52, y, Tile.WallWood);
+  b.set(52, 16, Tile.DoorwayWood); // shop <-> store
+  for (let y = 14; y <= 16; y++) b.set(47, y, Tile.Counter);
+  b.set(43, 12, Tile.CrateGoods).set(44, 12, Tile.Cabinet); // the pack wall
+  b.set(48, 12, Tile.WeaponRack); // bows and arrows
+  b.set(43, 20, Tile.ToolRack); // torches, rope, spades
+  b.set(46, 20, Tile.Barrel); // pitch for the torches
+  b.setDetail(45, 15, Detail.Rug).setDetail(45, 16, Detail.Rug);
+  b.setDetail(46, 15, Detail.Rug).setDetail(46, 16, Detail.Rug);
+  b.setDetail(49, 20, Detail.Doormat);
+  b.set(53, 12, Tile.Crate).set(54, 12, Tile.CrateGoods).set(54, 14, Tile.Crate);
+  b.set(53, 20, Tile.Barrel).set(55, 20, Tile.Barrel);
+  b.setDetail(54, 16, Detail.Straw);
+  // The porch: deck boards under the south eave, a bench, the awning.
+  b.fillRect(46, 22, 8, 2, Tile.PorchDeck);
+  b.set(47, 22, Tile.TimberPost).set(53, 22, Tile.TimberPost);
+  b.set(51, 23, Tile.Bench);
+  b.set(46, 22, awningTile('board', 1));
+  b.setDetail(53, 21, bracketSignDetail(4));
+  b.sign(43, 10, "HASK'S OUTFITTING", ['last chance before the road']);
 
   // ---------------------------------------------------------------
-  // The North Gate — where the High Road starts. The WATCH TOWER is
-  // the west gatepost: a true octagon of stone, racks and the duty
-  // table inside, the warning board hung where the lamplight ends.
-  // (Captain Aldis's command.)
+  // THE NORTH GATE — where the High Road starts: Aldis's octagon
+  // watch tower west of the arch, and ROWAN'S REGISTRY east of it —
+  // the gate book, the letter rack, and the bench where every new
+  // name gets a minute to sit down. (Wren's old friend keeps the
+  // book; her wakers walk in already known.)
   // ---------------------------------------------------------------
-  b.fillRect(45, 1, 6, 6, Tile.StoneFloor);
-  for (let x = 46; x <= 49; x++) b.set(x, 0, Tile.WallStone);
-  for (let x = 46; x <= 49; x++) b.set(x, 7, Tile.WallStone);
-  for (let y = 3; y <= 4; y++) b.set(44, y, Tile.WallStone);
-  for (let y = 3; y <= 4; y++) b.set(51, y, Tile.WallStone);
-  b.set(45, 1, Tile.WallStoneDiagSE).set(44, 2, Tile.WallStoneDiagSE);
-  b.set(50, 1, Tile.WallStoneDiagSW).set(51, 2, Tile.WallStoneDiagSW);
-  b.set(44, 5, Tile.WallStoneDiagNE).set(45, 6, Tile.WallStoneDiagNE);
-  b.set(51, 5, Tile.WallStoneDiagNW).set(50, 6, Tile.WallStoneDiagNW);
-  b.set(47, 7, Tile.DoorwayStone);
-  b.set(47, 0, Tile.WallStoneWindow);
-  b.set(44, 3, Tile.WallStoneWindow).set(51, 4, Tile.WallStoneWindow);
-  b.set(46, 2, Tile.WeaponRack).set(48, 2, Tile.WeaponRack);
-  b.set(49, 5, Tile.ToolRack);
-  b.set(46, 4, Tile.Table).set(47, 4, Tile.Chair);
-  b.set(45, 5, Tile.Brazier); // the watch fire
-  // The gate pair's bunks flank the racks: the day sentry sleeps the
-  // west one by night, the night sentry the east one by day — the
-  // tower is the North Gate's own squad room. Feet on (45,3)/(49,3).
-  b.set(45, 2, Tile.Bed).set(45, 3, Tile.Bed);
-  b.set(49, 2, Tile.Bed).set(49, 3, Tile.Bed);
-  b.setDetail(48, 0, Detail.BannerCrown); // the watch serves the crown
-  b.setDetail(47, 6, Detail.Doormat);
-  // The gate furniture: lamps where the lamplight ENDS, the sign that
-  // tells you the truth, a rack for the watch's spare steel.
-  b.set(52, 4, Tile.LampPost).set(56, 4, Tile.LampPost);
-  b.sign(56, 5, 'SILVERFALL', ['north, by the High Road', 'Go armed.'], Tile.Signpost);
-  b.set(52, 6, Tile.WeaponRack);
-  b.fillRect(53, 0, 3, 2, Tile.Path); // the mouth meets the carved High Road
-  // The gate itself is real garrison work now — a three-tile arched
-  // gatehouse set in the town wall (laid in THE TOWN WALL section
-  // below), sprung from Aldis's tower to the curtain. The masonry
-  // flanking the arch WEARS the realm's colors — true hung banners
-  // on the garrison faces (crown west, moon east, the paired-seat
-  // order), replacing the old freestanding poles: the wall itself
-  // welcomes the High Road now, the way the Court Gate does.
-  b.setDetail(52, 1, Detail.BannerCrown).setDetail(56, 1, Detail.BannerMoon);
-  // The outfitter (Hask), the gate's east post: the last shop before
-  // the climb. Shop floor by the road — packs stacked, bows racked,
-  // counter facing the door — and the storeroom walled off east.
-  b.fillRect(58, 2, 12, 10, Tile.WoodFloor);
-  b.outlineRect(58, 2, 12, 10, Tile.WallWood);
-  b.set(58, 6, Tile.DoorwayWood); // door on the road
-  b.set(58, 4, Tile.WallWoodWindow).set(58, 9, Tile.WallWoodWindow);
-  b.set(61, 2, Tile.WallWoodWindow).set(69, 7, Tile.WallWoodWindow);
-  b.set(61, 11, Tile.WallWoodWindow).set(66, 11, Tile.WallWoodWindow);
-  for (let y = 3; y <= 10; y++) b.set(65, y, Tile.WallWood);
-  b.set(65, 6, Tile.DoorwayWood); // shop <-> store
-  // The shop floor.
-  for (let y = 5; y <= 7; y++) b.set(62, y, Tile.Counter);
-  b.set(59, 3, Tile.CrateGoods).set(60, 3, Tile.Cabinet); // the pack wall
-  b.set(63, 3, Tile.WeaponRack); // bows and arrows
-  b.set(63, 10, Tile.ToolRack); // torches, rope, spades
-  b.set(59, 9, Tile.Barrel); // pitch for the torches
-  b.setDetail(59, 6, Detail.Doormat);
-  // A proper trade-floor rug where the customers stand and haggle.
-  b.setDetail(60, 5, Detail.Rug).setDetail(61, 5, Detail.Rug);
-  b.setDetail(60, 6, Detail.Rug).setDetail(61, 6, Detail.Rug);
-  // The storeroom.
-  b.set(66, 3, Tile.Crate).set(67, 3, Tile.CrateGoods).set(68, 4, Tile.Crate);
-  b.set(66, 10, Tile.Barrel).set(67, 10, Tile.Barrel);
-  b.setDetail(67, 6, Detail.Straw);
-  b.sign(57, 4, "HASK'S OUTFITTING", ['last chance before the road']);
-  b.set(56, 6, Tile.Dirt).set(57, 6, Tile.Dirt); // the worn step to the road
+  // The tower: a true octagon standing IN the wall line — its own
+  // masonry seals the curtain's course (the separate-masonry law:
+  // the garrison work dies honestly into Aldis's stone).
+  b.fillRect(61, 8, 7, 8, Tile.StoneFloor);
+  for (let x = 61; x <= 67; x++) b.set(x, 8, Tile.WallStone); // the north face holds the wall line
+  for (let x = 62; x <= 66; x++) b.set(x, 15, Tile.WallStone);
+  for (let y = 10; y <= 13; y++) b.set(61, y, Tile.WallStone);
+  for (let y = 10; y <= 13; y++) b.set(67, y, Tile.WallStone);
+  b.set(61, 9, Tile.WallStoneDiagSE).set(67, 9, Tile.WallStoneDiagSW);
+  b.set(61, 14, Tile.WallStoneDiagNE).set(67, 14, Tile.WallStoneDiagNW);
+  b.set(64, 15, Tile.DoorwayStone);
+  b.set(64, 8, Tile.WallStoneWindow);
+  b.set(61, 11, Tile.WallStoneWindow).set(67, 12, Tile.WallStoneWindow);
+  b.set(63, 10, Tile.WeaponRack).set(66, 10, Tile.WeaponRack);
+  b.set(62, 12, Tile.Bed).set(62, 13, Tile.Bed); // the gate pair's hot bunk, feet to the door
+  b.set(65, 12, Tile.Table).set(66, 12, Tile.Chair); // the duty table
+  b.set(62, 11, Tile.Brazier); // the watch fire
+  b.setDetail(63, 8, Detail.BannerCrown);
+  b.setDetail(64, 14, Detail.Doormat);
+  // Rowan's registry: a snug stone gate-room east of the arch.
+  b.fillRect(72, 9, 8, 7, Tile.StoneFloor);
+  b.outlineRect(72, 9, 8, 7, Tile.WallStone);
+  b.set(75, 15, Tile.DoorwayStone); // door south, off the spine
+  b.set(74, 9, Tile.WallStoneWindow).set(77, 9, Tile.WallStoneWindow);
+  b.set(72, 12, Tile.WallStoneWindow).set(79, 12, Tile.WallStoneWindow);
+  b.set(74, 11, Tile.Table).set(74, 12, Tile.Chair); // the gate book's desk
+  b.set(73, 10, Tile.Lectern); // the book itself, open to today
+  b.set(78, 10, Tile.Bookshelf); // forty years of filled registers
+  b.set(78, 13, Tile.Cabinet); // the letter rack — Wren writes weekly
+  b.set(76, 13, Tile.Bench); // where the newly arrived sit down
+  b.set(77, 10, Tile.Bed).set(77, 11, Tile.Bed); // he sleeps beside the book he keeps
+  b.setDetail(76, 11, Detail.RugRound);
+  b.setDetail(75, 14, Detail.Doormat);
+  b.setDetail(76, 9, Detail.BannerMoon);
+  b.sign(72, 16, 'THE GATE BOOK', ['every name that walks north', 'signed in, hoped home'], Tile.Signpost);
+  // The gate furniture: lamps where the lamplight ends, the sign that
+  // tells the truth, banners on the garrison faces.
+  b.set(64, 4, Tile.LampPost).set(74, 4, Tile.LampPost);
+  b.sign(74, 5, 'SILVERFALL', ['north, by the High Road', 'Go armed.'], Tile.Signpost);
+  b.fillRect(68, 0, 3, 8, Tile.Path); // the mouth meets the carved High Road
 
   // ---------------------------------------------------------------
-  // The sage's dispensary (Sage Elowen) — off the north spine with a
-  // worn footpath to her door: the remedy shop up front, the alembic
-  // lab in the north light, her small bedroom behind it, and the
-  // fenced herb garden worked in rows outside.
+  // THE FORD STABLE (Bray) — the coaching yard the roads finally
+  // paid for, inside the gate where every caravan beast arrives:
+  // rail paddock with the three-stall pen, feed and hay, the tack
+  // barn, and Bray's room at the barn's warm end.
   // ---------------------------------------------------------------
-  b.fillRect(61, 15, 11, 10, Tile.WoodFloor);
-  b.outlineRect(61, 15, 11, 10, Tile.WallWood);
-  b.set(61, 19, Tile.DoorwayWood); // door faces the spine
-  b.set(61, 17, Tile.WallWoodWindow).set(61, 22, Tile.WallWoodWindow);
-  b.set(64, 15, Tile.WallWoodWindow).set(68, 15, Tile.WallWoodWindow);
-  b.set(71, 18, Tile.WallWoodWindow).set(64, 24, Tile.WallWoodWindow);
-  for (let y = 16; y <= 23; y++) b.set(66, y, Tile.WallWood);
-  b.set(66, 19, Tile.DoorwayWood); // shop <-> the back rooms
-  for (let x = 67; x <= 70; x++) b.set(x, 20, Tile.WallWood);
-  b.set(68, 20, Tile.DoorwayWood); // lab <-> bedroom
-  // The remedy shop: counter by the door, the pharmacopoeia north.
-  for (let y = 17; y <= 19; y++) b.set(64, y, Tile.Counter);
-  b.set(62, 16, Tile.Bookshelf).set(63, 16, Tile.Cabinet);
-  b.set(63, 22, Tile.Table).set(63, 21, Tile.Chair); // where she hears symptoms
-  b.setDetail(62, 19, Detail.Doormat).setDetail(63, 20, Detail.RugRound);
-  // The waiting rug in front of the counter — patients stand soft.
-  b.setDetail(62, 17, Detail.Rug).setDetail(63, 17, Detail.Rug);
-  b.setDetail(62, 18, Detail.Rug).setDetail(63, 18, Detail.Rug);
-  // The alembic lab, then her room behind it.
-  b.set(68, 16, Tile.Alembic);
-  b.set(70, 17, Tile.Basin);
-  b.set(70, 19, Tile.Bookshelf);
-  b.setDetail(67, 18, Detail.Straw); // herbs drying on the floor
-  b.set(70, 21, Tile.Bed);
-  b.set(67, 23, Tile.Cabinet);
-  // Her one comfort: a real bedside rug, woven whole.
-  b.setDetail(68, 21, Detail.Rug).setDetail(69, 21, Detail.Rug);
-  b.setDetail(68, 22, Detail.Rug).setDetail(69, 22, Detail.Rug);
-  // The herb garden, fenced and worked in rows.
-  b.outlineRect(74, 15, 9, 8, Tile.Fence);
-  b.set(74, 19, Tile.FenceGate); // the garden gate, standing open
-  for (let x = 76; x <= 81; x += 1) {
-    b.set(x, 17, x % 2 === 0 ? Tile.SagewortRipe : Tile.Tilled);
-    b.set(x, 19, x % 2 === 0 ? Tile.Tilled : Tile.SagewortMid);
-    b.set(x, 21, x % 2 === 0 ? Tile.MoonbellMid : Tile.Tilled);
-  }
-  b.set(75, 21, Tile.WildSagewort).set(81, 16, Tile.WildMoonbell);
-  b.sign(60, 17, 'ELOWEN', ['remedies, salves, sense']);
-  b.set(60, 21, Tile.LampPost);
-  for (let x = 57; x <= 60; x++) b.set(x, 19, Tile.Dirt); // her footpath
+  b.outlineRect(84, 11, 17, 12, Tile.Fence);
+  b.set(84, 17, Tile.FenceGate); // the paddock gate, standing open on the spine side
+  b.set(88, 16, Tile.BeastPen);
+  b.set(86, 12, Tile.FeedTrough).set(87, 12, Tile.FeedTrough);
+  b.set(98, 12, Tile.HayBale).set(96, 13, Tile.HayBale);
+  b.set(97, 21, Tile.Basin); // the water trough
+  b.setDetail(90, 14, Detail.Straw).setDetail(94, 18, Detail.Straw).setDetail(88, 20, Detail.Straw);
+  // The tack barn, jointed to the paddock's east rail.
+  b.fillRect(103, 11, 13, 9, Tile.WoodFloor);
+  b.outlineRect(103, 11, 13, 9, Tile.WallWood);
+  b.set(103, 15, Tile.DoorwayWood); // barn door faces the paddock
+  b.set(106, 19, Tile.DoorwayWood); // and the yard door south
+  b.set(105, 11, Tile.WallWoodWindow).set(112, 11, Tile.WallWoodWindow);
+  b.set(115, 14, Tile.WallWoodWindow).set(110, 19, Tile.WallWoodWindow);
+  for (let y = 12; y <= 18; y++) b.set(110, y, Tile.WallWood);
+  b.set(110, 15, Tile.DoorwayWood); // tack room <-> Bray's room
+  b.set(104, 12, Tile.ToolRack).set(107, 12, Tile.ToolRack); // saddles and leads
+  b.set(104, 18, Tile.Crate).set(108, 18, Tile.Barrel); // oats by the door
+  b.setDetail(106, 14, Detail.Straw);
+  b.set(114, 12, Tile.Bed);
+  b.set(111, 12, Tile.Cabinet);
+  b.set(113, 17, Tile.Table).set(114, 17, Tile.Chair);
+  b.setDetail(112, 15, Detail.RugRound); // the one soft thing in a barn
+  b.set(82, 20, Tile.Basin); // the arrival trough by the spine — beasts drink first
+  b.sign(82, 23, 'THE FORD STABLE', ['stalls, feed, and the first saddle', 'beasts fed before riders'], Tile.Signpost);
+  b.setDetail(105, 19, wallBannerDetail(6));
+
+  // The miners' postern and the delf trail (the east wall's small
+  // honest door — the wardroom's patrol notes it twice a night).
+  b.path({ x: 125, y: 20 }, { x: 130, y: 18 }, 1, Tile.Dirt);
 
   // ---------------------------------------------------------------
-  // The Wanderer's Rest (Dunna's) — the coaching inn FRONTS THE
-  // ROUND, double doors on the plaza: the hearth room and tables,
-  // the long bar with the cellar nook behind it (Dunna's cot in the
-  // corner — she sleeps where the barrels are), the kitchen walled
-  // off southeast, and two real guest rooms in the east wing.
+  // Tilo's Hall (Master Artisan) — patterns and cloth up front, the
+  // public work line across the back: loom, carving bench, workbench,
+  // sawhorse in a row. The tanning pad is GONE — the hides went home
+  // to Swale's tannery on the riverbank, and Tilo could not be
+  // happier about the smell. His cutting garden grows the cotton the
+  // loom is hungriest for.
   // ---------------------------------------------------------------
-  b.fillRect(60, 44, 15, 14, Tile.WoodFloor);
-  b.outlineRect(60, 44, 15, 14, Tile.WallWood);
-  b.set(63, 44, Tile.DoorwayWoodWide).set(64, 44, Tile.DoorwayWoodWide);
-  b.set(67, 44, Tile.WallWoodWindow).set(71, 44, Tile.WallWoodWindow);
-  b.set(60, 47, Tile.WallWoodWindow).set(60, 51, Tile.WallWoodWindow).set(60, 55, Tile.WallWoodWindow);
-  b.set(66, 57, Tile.WallWoodWindow).set(71, 57, Tile.WallWoodWindow);
-  // The Rest greets the dock lane the way coaching inns do: the mug
-  // on its bracket, and madder-striped canvas over the south windows.
-  b.setDetail(68, 57, bracketSignDetail(0));
-  b.set(66, 58, awningTile('market', 1)).set(71, 58, awningTile('market', 1));
-  b.set(74, 46, Tile.WallWoodWindow).set(74, 53, Tile.WallWoodWindow);
-  // The guest wing: a corridor wall and two rooms with real doors.
-  for (let y = 45; y <= 51; y++) b.set(69, y, Tile.WallWood);
-  b.set(69, 46, Tile.DoorwayWood).set(69, 50, Tile.DoorwayWood);
-  for (let x = 70; x <= 73; x++) b.set(x, 48, Tile.WallWood);
-  // Each room earns a whole 2x2 woven rug — a paying guest's floor
-  // should be warmer than the corridor's boards.
-  b.set(73, 45, Tile.Bed).set(70, 47, Tile.Cabinet);
-  b.setDetail(71, 46, Detail.Rug).setDetail(72, 46, Detail.Rug);
-  b.setDetail(71, 47, Detail.Rug).setDetail(72, 47, Detail.Rug);
-  b.set(73, 51, Tile.Bed).set(70, 49, Tile.Cabinet);
-  b.setDetail(71, 49, Detail.Rug).setDetail(72, 49, Detail.Rug);
-  b.setDetail(71, 50, Detail.Rug).setDetail(72, 50, Detail.Rug);
-  // The kitchen, walled off southeast; the bar and cellar nook west.
-  for (let x = 65; x <= 73; x++) b.set(x, 52, Tile.WallWood);
-  b.set(68, 52, Tile.DoorwayWood);
-  for (let y = 53; y <= 56; y++) b.set(65, y, Tile.WallWood);
-  b.set(73, 53, Tile.Hearth); // the cook fire
-  b.set(66, 53, Tile.Basin);
-  b.set(69, 56, Tile.Counter).set(70, 56, Tile.Counter);
-  b.set(66, 55, Tile.CrateGoods).set(72, 56, Tile.Crate);
-  // The bar, and Dunna's nook behind it.
-  for (let x = 61; x <= 63; x++) b.set(x, 52, Tile.Counter);
-  b.set(61, 53, Tile.Barrel).set(62, 53, Tile.Barrel);
-  b.set(61, 56, Tile.Bed).set(62, 56, Tile.Bed).set(63, 56, Tile.Cabinet);
-  // Dunna's nook keeps a real rug too — she sleeps by the barrels,
-  // but she doesn't sleep on bare boards.
-  b.setDetail(62, 54, Detail.Rug).setDetail(63, 54, Detail.Rug);
-  b.setDetail(62, 55, Detail.Rug).setDetail(63, 55, Detail.Rug);
-  // The hearth room: the everlasting fire, a grand 3x2 hall rug laid
-  // from the doors toward the fire (the one-loom law weaves it into
-  // a single medallion cloth), and the table clusters around it. The
-  // Silverfall weave hangs over the tables — every coaching inn
-  // hangs a picture of where the road goes, and this road goes THERE.
-  b.set(61, 45, Tile.Hearth);
-  b.set(63, 48, Tile.Table).set(62, 48, Tile.Chair).set(64, 48, Tile.Chair);
-  b.set(66, 46, Tile.Table).set(66, 47, Tile.Chair);
-  b.set(66, 50, Tile.Table).set(65, 50, Tile.Chair).set(67, 50, Tile.Chair);
-  b.setDetail(65, 44, Detail.Tapestry).setDetail(66, 44, Detail.Tapestry);
-  for (let x = 62; x <= 64; x++) {
-    b.setDetail(x, 46, Detail.Rug).setDetail(x, 47, Detail.Rug);
+  b.fillRect(48, 32, 17, 13, Tile.WoodFloor);
+  b.outlineRect(48, 32, 17, 13, Tile.WallWood);
+  b.set(55, 44, Tile.DoorwayWoodWide).set(56, 44, Tile.DoorwayWoodWide); // door on the Round's apron
+  b.set(50, 44, Tile.WallWoodWindow).set(61, 44, Tile.WallWoodWindow);
+  b.set(48, 36, Tile.WallWoodWindow).set(48, 41, Tile.WallWoodWindow);
+  b.set(64, 36, Tile.WallWoodWindow).set(64, 41, Tile.WallWoodWindow);
+  b.set(52, 32, Tile.WallWoodWindow).set(60, 32, Tile.WallWoodWindow);
+  for (let x = 49; x <= 63; x++) b.set(x, 38, Tile.WallWood);
+  b.set(55, 38, Tile.DoorwayWood); // shop <-> the work line
+  // The shop floor: counter facing the doors, the pattern books, the
+  // showroom wall wearing the Silverfall weave over the display rug.
+  for (let x = 53; x <= 57; x++) b.set(x, 41, Tile.Counter);
+  b.set(49, 43, Tile.Bookshelf).set(50, 43, Tile.Cabinet); // patterns and thread
+  b.set(63, 43, Tile.Cabinet).set(63, 42, Tile.CrateGoods); // bolts by the door
+  b.setDetail(58, 44, Detail.Tapestry).setDetail(59, 44, Detail.Tapestry);
+  for (let x = 59; x <= 61; x++) {
+    b.setDetail(x, 40, Detail.Rug).setDetail(x, 41, Detail.Rug);
   }
-  b.setDetail(63, 45, Detail.Doormat).setDetail(64, 45, Detail.Doormat);
-  // The inn yard: sign and lamp at the plaza door, the travelers'
-  // bench on the lane side, the cellar deliveries along the gable.
-  b.sign(61, 43, "THE WANDERER'S REST", ['beds, board, and the news']);
-  b.set(66, 43, Tile.LampPost);
-  b.set(70, 43, Tile.FlowerBox);
-  b.set(63, 43, Tile.Dirt).set(64, 43, Tile.Dirt);
-  b.set(59, 49, Tile.Bench);
-  b.set(75, 54, Tile.Barrel).set(75, 55, Tile.Barrel).set(75, 56, Tile.Crate);
-  // The coaching-yard fire on the lane side: where Dunna cooks the
-  // midday stew, and where a traveler who can't pay for the board
-  // is welcome to cook their own. The town's second cookfire.
-  b.set(57, 53, Tile.Campfire);
-  b.set(56, 52, Tile.Bench).set(58, 54, Tile.Bench);
-  b.set(56, 54, Tile.Barrel);
-  b.setDetail(58, 52, Detail.Straw);
+  b.setDetail(55, 43, Detail.Doormat).setDetail(56, 43, Detail.Doormat);
+  // The work line, north light on every station.
+  b.set(50, 34, Tile.Loom);
+  b.set(53, 34, Tile.CarvingBench);
+  b.set(56, 34, Tile.Workbench);
+  b.set(59, 34, Tile.Sawhorse);
+  b.set(62, 33, Tile.Crate).set(63, 35, Tile.Barrel);
+  b.setDetail(51, 33, Detail.Tapestry).setDetail(52, 33, Detail.Tapestry); // the half-woven piece, warp showing
+  b.setDetail(52, 36, Detail.Sawdust).setDetail(58, 36, Detail.Sawdust);
+  b.set(55, 45, awningTile('bowed', 4)).set(59, 45, awningTile('bowed', 4));
+  b.setDetail(52, 44, bracketSignDetail(2));
+  b.sign(51, 46, "TILO'S PATTERNS", ['cloth, carving, commissions'], Tile.Signpost);
+  // The cutting garden: open beds of cotton for the hungry loom.
+  for (let x = 52; x <= 60; x++) {
+    b.set(x, 29, x % 2 === 0 ? Tile.CottonMid : Tile.Tilled);
+    b.set(x, 30, x % 2 === 0 ? Tile.Tilled : Tile.CottonRipe);
+  }
+  b.set(62, 29, Tile.GrowingFrame);
 
   // ---------------------------------------------------------------
-  // The millpond, the mill, and the docks — the Amber Water.
+  // Elowen's Dispensary — off the north spine with a worn step to
+  // her door: the remedy shop up front, the alembic lab in the north
+  // light, her small room behind it, and the herb garden ringed in a
+  // clipped hedge with its own arch: herbalism, visibly practiced.
   // ---------------------------------------------------------------
-  b.fillEllipse(90, 36, 9, 12, Tile.WaterShallow);
-  b.fillEllipse(90, 36, 7.5, 10.5, Tile.Water);
-  b.fillEllipse(90, 36, 5, 7, Tile.WaterDeep);
-  for (let y = 46; y <= 72; y++) {
-    const cx = 90 + Math.round(Math.sin(y * 0.18) * 2.5);
-    b.set(cx - 1, y, Tile.WaterShallow);
-    b.set(cx, y, Tile.Water);
-    b.set(cx + 1, y, Tile.WaterShallow);
+  b.fillRect(72, 30, 15, 13, Tile.WoodFloor);
+  b.outlineRect(72, 30, 15, 13, Tile.WallWood);
+  b.set(72, 36, Tile.DoorwayWood); // door west, on the spine
+  b.set(72, 33, Tile.WallWoodWindow).set(72, 39, Tile.WallWoodWindow);
+  b.set(76, 30, Tile.WallWoodWindow).set(82, 30, Tile.WallWoodWindow);
+  b.set(86, 33, Tile.WallWoodWindow).set(86, 39, Tile.WallWoodWindow);
+  b.set(76, 42, Tile.WallWoodWindow).set(82, 42, Tile.WallWoodWindow);
+  for (let y = 31; y <= 41; y++) b.set(80, y, Tile.WallWood);
+  b.set(80, 36, Tile.DoorwayWood); // shop <-> the back rooms
+  for (let x = 81; x <= 85; x++) b.set(x, 37, Tile.WallWood);
+  b.set(83, 37, Tile.DoorwayWood); // lab <-> her room
+  // The remedy shop: counter by the door, pharmacopoeia behind it,
+  // the chair where she hears symptoms.
+  for (let y = 34; y <= 36; y++) b.set(76, y, Tile.Counter);
+  b.set(78, 31, Tile.Bookshelf).set(79, 31, Tile.Cabinet);
+  b.set(78, 40, Tile.Table).set(77, 40, Tile.Chair);
+  b.setDetail(74, 34, Detail.Rug).setDetail(74, 35, Detail.Rug);
+  b.setDetail(75, 40, Detail.RugRound);
+  b.setDetail(73, 36, Detail.Doormat);
+  // The lab, then her room behind it.
+  b.set(82, 32, Tile.Alembic);
+  b.set(85, 32, Tile.Basin);
+  b.set(85, 35, Tile.Bookshelf);
+  b.setDetail(83, 34, Detail.Straw); // herbs drying on the floor
+  b.set(85, 39, Tile.Bed);
+  b.set(81, 41, Tile.Cabinet);
+  b.setDetail(83, 39, Detail.Rug).setDetail(84, 39, Detail.Rug);
+  b.setDetail(83, 40, Detail.Rug).setDetail(84, 40, Detail.Rug);
+  b.sign(74, 29, 'ELOWEN', ['remedies, salves, sense']);
+  b.set(71, 36, Tile.Dirt); // her worn step off the spine
+  // The herb garden: the hedge ring, the arch, the working rows.
+  for (let x = 89; x <= 96; x++) b.set(x, 31, Tile.Hedge);
+  for (let x = 89; x <= 96; x++) b.set(x, 40, Tile.Hedge);
+  for (let y = 32; y <= 39; y++) b.set(89, y, Tile.Hedge);
+  for (let y = 32; y <= 39; y++) b.set(96, y, Tile.Hedge);
+  b.set(89, 36, Tile.HedgeGate); // the hedge arch, facing her gable
+  for (const y of [33, 35, 37]) {
+    for (let x = 91; x <= 94; x++) {
+      b.set(x, y, (x + y) % 2 === 0 ? (y === 33 ? Tile.SagewortRipe : y === 35 ? Tile.MoonbellMid : Tile.SagewortMid) : Tile.Tilled);
+    }
   }
-  b.fillEllipse(91, 74, 5, 4, Tile.Swamp);
-  b.fillEllipse(91, 74, 3, 2, Tile.WaterShallow);
-  // The mill (Old Garton's): hard on the west bank with its door on
-  // the dock lane. The milling floor takes the north half — the
-  // stone, the grain sacks, straw on everything — and the flour
-  // shop the south, counter facing the lane.
-  b.fillRect(70, 28, 11, 10, Tile.WoodFloor);
-  b.outlineRect(70, 28, 11, 10, Tile.WallWood);
-  b.set(74, 37, Tile.DoorwayWood); // door on the dock lane
-  b.set(74, 28, Tile.WallWoodWindow).set(77, 28, Tile.WallWoodWindow);
-  b.set(70, 31, Tile.WallWoodWindow).set(70, 35, Tile.WallWoodWindow);
-  b.set(80, 30, Tile.WallWoodWindow).set(80, 34, Tile.WallWoodWindow);
-  b.set(77, 37, Tile.WallWoodWindow);
-  for (let x = 71; x <= 79; x++) b.set(x, 32, Tile.WallWood);
-  b.set(75, 32, Tile.DoorwayWood); // shop <-> milling floor
-  // The milling floor.
-  b.set(74, 30, Tile.Workbench); // the millstone's stand-in station
-  b.set(71, 29, Tile.Crate).set(72, 29, Tile.Crate); // the grain sacks
-  b.set(79, 29, Tile.Barrel);
-  b.setDetail(76, 30, Detail.Straw).setDetail(72, 31, Detail.Straw);
-  // The flour shop.
-  b.set(72, 35, Tile.Counter).set(73, 35, Tile.Counter);
-  b.set(78, 35, Tile.CrateGoods).set(79, 36, Tile.CrateGoods); // flour by the sack
-  b.setDetail(74, 36, Detail.Doormat).setDetail(77, 34, Detail.Straw);
-  // One modest runner where the customers queue — flour-dusted by
-  // noon every market day, and Garton wouldn't have it otherwise.
-  b.setDetail(75, 34, Detail.Rug).setDetail(76, 34, Detail.Rug);
-  b.sign(69, 36, "GARTON'S MILL", ['flour, meal, and gossip']);
-  // The millrace: the pond let through a sluice to lap the mill's
-  // east wall. The wheel itself is still on the mason's list, but
-  // the water already stands where the wheel will hang.
-  b.fillRect(81, 30, 3, 2, Tile.WaterShallow);
-  b.set(81, 29, Tile.RailWood).set(82, 29, Tile.RailWood).set(83, 29, Tile.RailWood);
-  b.set(81, 32, Tile.RailWood).set(82, 32, Tile.RailWood);
-  // The docks: the pier planks, the mooring barrels, the catch — a
-  // true jetty (Tile.Dock), suspended on piles, not a bridge.
-  for (let x = 81; x <= 86; x++) {
-    b.set(x, 38, Tile.Dock);
-    b.set(x, 39, Tile.Dock);
-  }
-  b.set(82, 37, Tile.LampPost);
-  b.set(82, 41, Tile.Barrel);
-  b.set(87, 40, Tile.FishingSpot);
-  b.set(94, 29, Tile.FishingSpot);
-  // The jetty grows a finger south — mooring for the punt-to-be —
-  // and the ANGLERS' FIRE burns on the shore beside it: benches, a
-  // net rack, and coals hot enough to teach any waker what to do
-  // with a fresh trout. The first cookfire on the First Road.
-  b.fillRect(84, 40, 2, 3, Tile.Dock);
-  b.set(85, 42, Tile.Barrel); // the mooring barrel
-  b.set(82, 44, Tile.ToolRack); // nets and boathooks
-  b.set(80, 42, Tile.Campfire);
-  b.set(79, 41, Tile.Bench).set(81, 43, Tile.Bench);
-  b.sign(78, 43, 'THE CATCH FIRE', ['fresh trout, hot coals', 'cook your own'], Tile.Signpost);
-  // The ferry shack (Peld's), down the shore path where the pond
-  // narrows to the stream: his cot, his crates, his lamp lit late.
-  b.fillRect(78, 48, 6, 5, Tile.WoodFloor);
-  b.outlineRect(78, 48, 6, 5, Tile.WallWood);
-  b.set(80, 48, Tile.DoorwayWood);
-  b.set(78, 50, Tile.WallWoodWindow).set(83, 50, Tile.WallWoodWindow);
-  b.set(82, 51, Tile.Bed);
-  b.set(79, 51, Tile.Crate).set(79, 49, Tile.Barrel);
-  b.setDetail(81, 50, Detail.RugRound); // the one soft thing Peld owns
-  b.set(84, 49, Tile.LampPost); // the ferry lamp
-  b.set(84, 51, Tile.ToolRack); // nets and boathooks
-  for (let y = 45; y <= 47; y++) b.set(80, y, Tile.Dirt); // the shore path
-  b.set(89, 55, Tile.FishingSpot);
-  // The punt's landing: two planks to the stream and the rail Peld
-  // leans on while he decides the water isn't ready yet.
-  b.set(87, 52, Tile.Dock).set(88, 52, Tile.Dock);
-  b.set(86, 52, Tile.RailWood);
-  b.sign(84, 47, 'THE CROSSING', ['ring for Peld', 'downriver — someday'], Tile.Signpost);
-  // The retting bank: flax cut, soaked, and spun to twine on the
-  // stream's slack side — a loom's whole supply line in thirty feet.
-  b.set(86, 54, Tile.FibrePlant).set(85, 56, Tile.FibrePlant).set(86, 58, Tile.FibrePlant);
-  b.sign(84, 55, 'THE RETTING BANK', ['flax for the loom', 'cut what you need'], Tile.Signpost);
-  // Reed shallows where the pond eases east.
-  b.fillEllipse(98, 31, 2, 1.5, Tile.Swamp);
-  b.fillEllipse(96, 45, 2, 1.5, Tile.Swamp);
-  b.set(99, 33, Tile.FibrePlant).set(97, 47, Tile.FibrePlant);
-  // The willows lean where the water goes.
-  b.set(88, 21, Tile.TreeWillow);
-  b.set(97, 27, Tile.TreeWillow);
-  b.set(99, 41, Tile.TreeWillow);
-  b.set(95, 47, Tile.TreeWillow);
-  b.set(85, 58, Tile.FibrePlant); // flax on the stream bank
+  b.set(91, 38, Tile.GrowingFrame).set(94, 38, Tile.DryingRack);
+  b.set(95, 32, Tile.WildSagewort).set(90, 38, Tile.WildMoonbell);
+  b.setDetail(90, 32, Detail.Flowers).setDetail(95, 39, Detail.Flowers);
 
   // ---------------------------------------------------------------
-  // The East Road stub — signed, walked, and unfinished: the map
-  // admitting there is more world than road. (Saltmere, someday.)
+  // The Wanderer's Rest (Dunna) — the coaching inn grown to its
+  // work: hearth hall, the long bar with the cellar nook (Dunna's
+  // cot in the corner — she sleeps where the barrels are), walled
+  // kitchen, FOUR guest rooms and Nib's box room in the east wing,
+  // and the coach yard with the yard fire any traveler may cook on.
   // ---------------------------------------------------------------
-  b.path({ x: 53, y: 61 }, { x: 111, y: 61 }, 2);
-  for (let y = 60; y <= 61; y++) {
-    const cx = 90 + Math.round(Math.sin(y * 0.18) * 2.5);
-    for (let x = cx - 2; x <= cx + 2; x++) b.set(x, y, Tile.Bridge);
+  b.fillRect(90, 42, 21, 19, Tile.WoodFloor);
+  b.outlineRect(90, 42, 21, 19, Tile.WallWood);
+  b.set(90, 50, Tile.DoorwayWoodWide).set(90, 51, Tile.DoorwayWoodWide); // double doors on the Round
+  b.set(90, 45, Tile.WallWoodWindow).set(90, 56, Tile.WallWoodWindow);
+  b.set(94, 42, Tile.WallWoodWindow).set(99, 42, Tile.WallWoodWindow).set(107, 42, Tile.WallWoodWindow);
+  b.set(94, 60, Tile.WallWoodWindow).set(99, 60, Tile.WallWoodWindow);
+  b.set(110, 46, Tile.WallWoodWindow).set(110, 54, Tile.WallWoodWindow);
+  // The guest wing: corridor wall, four rooms plus the box room.
+  for (let y = 43; y <= 59; y++) b.set(103, y, Tile.WallWood);
+  b.set(103, 45, Tile.DoorwayWood).set(103, 49, Tile.DoorwayWood);
+  b.set(103, 53, Tile.DoorwayWood).set(103, 57, Tile.DoorwayWood);
+  for (let x = 104; x <= 109; x++) b.set(x, 47, Tile.WallWood);
+  for (let x = 104; x <= 109; x++) b.set(x, 51, Tile.WallWood);
+  for (let x = 104; x <= 109; x++) b.set(x, 55, Tile.WallWood);
+  b.set(109, 44, Tile.Bed).set(104, 46, Tile.Cabinet);
+  b.setDetail(106, 45, Detail.Rug).setDetail(107, 45, Detail.Rug);
+  b.set(109, 48, Tile.Bed).set(104, 50, Tile.Cabinet);
+  b.setDetail(106, 49, Detail.Rug).setDetail(107, 49, Detail.Rug);
+  b.set(109, 52, Tile.Bed).set(104, 54, Tile.Cabinet);
+  b.setDetail(106, 53, Detail.Rug).setDetail(107, 53, Detail.Rug);
+  b.set(109, 56, Tile.Bed).set(104, 58, Tile.Cabinet);
+  b.setDetail(106, 57, Detail.Rug).setDetail(107, 57, Detail.Rug);
+  // The kitchen, walled off the hall's south side; its east wall
+  // leaves the passage col x102 open so the last guest room's door
+  // is reached from the hall, never through anyone's bedroom.
+  for (let x = 91; x <= 97; x++) b.set(x, 55, Tile.WallWood);
+  b.set(94, 55, Tile.DoorwayWood);
+  for (let y = 56; y <= 59; y++) b.set(97, y, Tile.WallWood);
+  b.set(96, 57, Tile.Hearth); // the cook fire
+  b.set(91, 57, Tile.Basin);
+  b.set(92, 59, Tile.Counter).set(93, 59, Tile.Counter);
+  b.set(95, 59, Tile.CrateGoods).set(91, 59, Tile.Crate);
+  // Nib's box room: the smallest door in town and the proudest.
+  b.set(98, 56, Tile.WallWood).set(100, 56, Tile.WallWood);
+  b.set(99, 56, Tile.DoorwayWood);
+  for (let y = 56; y <= 59; y++) b.set(101, y, Tile.WallWood);
+  b.set(98, 58, Tile.Bed).set(98, 59, Tile.Bed);
+  b.set(100, 57, Tile.Cabinet);
+  b.setDetail(99, 58, Detail.RugRound); // Tilo burnt her name inside the satchel; Merra wove this
+  // The bar and Dunna's cellar nook.
+  for (let y = 50; y <= 53; y++) b.set(97, y, Tile.Counter);
+  b.set(98, 49, Tile.Barrel).set(99, 49, Tile.Barrel);
+  b.set(101, 52, Tile.Bed).set(101, 50, Tile.Cabinet);
+  b.setDetail(100, 51, Detail.Rug).setDetail(101, 51, Detail.Rug);
+  // The hearth room: the everlasting fire, the hall rug laid from the
+  // doors toward it, table clusters, and the Silverfall weave hung
+  // where every road-worn eye lands — the picture of where the road
+  // goes, because this road goes THERE.
+  b.set(91, 43, Tile.Hearth);
+  b.set(93, 46, Tile.Table).set(92, 46, Tile.Chair).set(94, 46, Tile.Chair);
+  b.set(96, 44, Tile.Table).set(96, 45, Tile.Chair);
+  b.set(93, 52, Tile.Table).set(92, 52, Tile.Chair).set(93, 53, Tile.Chair);
+  b.set(100, 45, Tile.Table).set(100, 46, Tile.Chair).set(101, 45, Tile.Chair);
+  b.setDetail(96, 42, Detail.Tapestry).setDetail(97, 42, Detail.Tapestry);
+  for (let y = 49; y <= 52; y++) {
+    b.setDetail(92, y, Detail.Rug).setDetail(93, y, Detail.Rug).setDetail(94, y, Detail.Rug);
   }
-  b.sign(105, 58, 'THE EAST ROAD', ['the coast, eventually'], Tile.Signpost);
-  b.set(66, 59, Tile.LampPost).set(84, 59, Tile.LampPost);
-  // The Old Ford — the shallows the town is named for, kept beside
-  // the bridge the way a family keeps the first tool it ever owned.
-  for (const x of [87, 88, 89]) {
-    b.set(x, 62, Tile.WaterShallow);
-    b.set(x, 63, Tile.WaterShallow);
-  }
-  b.setDetail(86, 62, Detail.Pebbles).setDetail(90, 63, Detail.Pebbles);
-  b.sign(92, 59, 'THE OLD FORD', ['here the amber water ran shallow,', 'and a town grew on the crossing'], Tile.Signpost);
+  b.setDetail(91, 50, Detail.Doormat).setDetail(91, 51, Detail.Doormat);
+  // The inn's face: mug on its bracket, lamp, flower boxes, awnings.
+  b.setDetail(93, 60, bracketSignDetail(0));
+  b.set(95, 61, awningTile('market', 1)).set(100, 61, awningTile('market', 1));
+  b.sign(99, 41, "THE WANDERER'S REST", ['beds, board, and the news']);
+  b.set(88, 47, Tile.LampPost);
+  b.set(89, 48, Tile.FlowerBox).set(89, 53, Tile.FlowerBox);
+  // The coach yard, south of the inn on the lane to nowhere in a
+  // hurry: the yard fire (a town cookfire — catch a trout, cook it
+  // on Dunna's coals, no charge), benches, the trough, the cargo.
+  b.fillRect(92, 62, 16, 7, Tile.Dirt);
+  b.set(98, 65, Tile.Campfire);
+  b.set(96, 64, Tile.Bench).set(100, 66, Tile.Bench);
+  b.set(106, 63, Tile.Basin); // the coach trough
+  b.set(104, 67, Tile.Crate).set(105, 67, Tile.Barrel);
+  b.setDetail(97, 63, Detail.Straw).setDetail(103, 65, Detail.Pebbles);
+  b.sign(93, 63, 'THE YARD FIRE', ['the coals are free', 'cook your catch'], Tile.Signpost);
 
   // ---------------------------------------------------------------
-  // The Waykeepers' Hall — the travelers' chapel FRONTS THE WEST
-  // SPINE: a stone walk to double doors, a long nave of merged pews,
-  // and the FACETED APSE at the far south end where the lectern
-  // stands between two braziers. (Ansel's.)
+  // Merra's Provisions — a true shopfront at last, on the walk
+  // between the west spine and the Round: shop floor north, her snug
+  // room behind the counter wall, the carrot plot out back.
   // ---------------------------------------------------------------
-  b.fillRect(37, 56, 12, 17, Tile.StoneFloor);
-  b.outlineRect(37, 56, 12, 17, Tile.WallStone);
+  b.fillRect(46, 58, 11, 9, Tile.WoodFloor);
+  b.outlineRect(46, 58, 11, 9, Tile.WallWood);
+  b.set(50, 58, Tile.DoorwayWood); // door north, path up to the spine
+  b.set(48, 58, Tile.WallWoodWindow).set(54, 58, Tile.WallWoodWindow);
+  b.set(46, 61, Tile.WallWoodWindow).set(56, 61, Tile.WallWoodWindow);
+  b.set(52, 66, Tile.WallWoodWindow);
+  for (let x = 47; x <= 55; x++) b.set(x, 62, Tile.WallWood);
+  b.set(51, 62, Tile.DoorwayWood);
+  for (let x = 48; x <= 52; x++) b.set(x, 60, Tile.Counter);
+  b.set(47, 59, Tile.CrateGoods).set(54, 59, Tile.CrateGoods); // the pantry stacks
+  b.set(55, 61, Tile.Cabinet);
+  b.setDetail(49, 59, Detail.Rug).setDetail(50, 59, Detail.Rug);
+  b.setDetail(50, 58, Detail.Doormat);
+  b.set(48, 64, Tile.Bed).set(47, 64, Tile.Bed);
+  b.set(54, 65, Tile.Table).set(53, 65, Tile.Chair);
+  b.set(55, 63, Tile.Cabinet); // Edwin's cape hangs here, clean
+  b.setDetail(50, 64, Detail.Rug).setDetail(51, 64, Detail.Rug);
+  b.setDetail(49, 58, wallBannerDetail(3));
+  b.setDetail(53, 58, trellisDetail(1));
+  b.set(45, 59, Tile.FlowerBox);
+  b.sign(53, 57, "MERRA'S PROVISIONS", ['nothing here traveled more than a mile']);
+  for (let y = 53; y <= 57; y++) b.set(50, y, Tile.Dirt); // her path to the spine
+  b.fillRect(48, 68, 4, 2, Tile.Tilled);
+  b.set(48, 68, Tile.CarrotMid).set(51, 69, Tile.CarrotRipe);
+  b.set(53, 69, Tile.CompostBin);
+
+  // ---------------------------------------------------------------
+  // The Waykeepers' Hall (Ansel) — fronting the west spine down a
+  // stone walk: the long nave, the faceted apse, the Pilgrims' Mile
+  // runner, the pilgrim alcove (roof first, sermon second), the
+  // registry desk — and the memorial garden along the east wall,
+  // clipped hedges and a topiary pair, where the hall's quiet gets a
+  // green room.
+  // ---------------------------------------------------------------
+  b.fillRect(22, 58, 15, 23, Tile.StoneFloor);
+  b.outlineRect(22, 58, 15, 23, Tile.WallStone);
   // The apse: two-step chamfers facet the south corners.
-  b.set(37, 72, Tile.Grass).set(38, 72, Tile.Grass).set(37, 71, Tile.Grass);
-  b.set(48, 72, Tile.Grass).set(47, 72, Tile.Grass).set(48, 71, Tile.Grass);
-  b.set(38, 71, Tile.WallStoneDiagNE).set(37, 70, Tile.WallStoneDiagNE);
-  b.set(47, 71, Tile.WallStoneDiagNW).set(48, 70, Tile.WallStoneDiagNW);
-  b.set(42, 56, Tile.DoorwayStoneWide).set(43, 56, Tile.DoorwayStoneWide);
-  b.set(39, 56, Tile.WallStoneWindow).set(46, 56, Tile.WallStoneWindow);
-  b.set(37, 61, Tile.WallStoneWindow).set(37, 65, Tile.WallStoneWindow);
-  b.set(48, 61, Tile.WallStoneWindow).set(48, 65, Tile.WallStoneWindow);
-  // The apse end: lectern, braziers, the registry of who passed —
-  // and THE PILGRIMS' MILE: a single woven runner the whole length
-  // of the nave, door to lectern (the one-loom law lays the 2x12
-  // block as one cloth, a diamond chain pacing its spine). Every
-  // traveler who ever rested here walked this same strip of wool.
-  b.set(42, 70, Tile.Lectern);
-  b.set(39, 70, Tile.Brazier).set(46, 70, Tile.Brazier);
-  for (let y = 58; y <= 69; y++) {
-    b.setDetail(42, y, Detail.Rug).setDetail(43, y, Detail.Rug);
+  b.set(22, 80, Tile.Grass).set(23, 80, Tile.Grass).set(22, 79, Tile.Grass);
+  b.set(36, 80, Tile.Grass).set(35, 80, Tile.Grass).set(36, 79, Tile.Grass);
+  b.set(23, 79, Tile.WallStoneDiagNE).set(22, 78, Tile.WallStoneDiagNE);
+  b.set(35, 79, Tile.WallStoneDiagNW).set(36, 78, Tile.WallStoneDiagNW);
+  b.set(28, 58, Tile.DoorwayStoneWide).set(29, 58, Tile.DoorwayStoneWide);
+  b.set(25, 58, Tile.WallStoneWindow).set(33, 58, Tile.WallStoneWindow);
+  b.set(22, 63, Tile.WallStoneWindow).set(22, 70, Tile.WallStoneWindow);
+  b.set(36, 63, Tile.WallStoneWindow).set(36, 70, Tile.WallStoneWindow);
+  // The apse end: lectern, braziers, and the Pilgrims' Mile — a
+  // single woven runner the whole length of the nave.
+  b.set(28, 78, Tile.Lectern);
+  b.set(25, 78, Tile.Brazier).set(32, 78, Tile.Brazier);
+  for (let y = 60; y <= 77; y++) {
+    b.setDetail(28, y, Detail.Rug).setDetail(29, y, Detail.Rug);
   }
-  b.set(38, 57, Tile.Bookshelf).set(47, 57, Tile.Cabinet);
-  // Over the doors, facing the lectern down the nave: the weave of
-  // the road's far end — the Waykeepers hang the destination itself.
-  b.setDetail(40, 56, Detail.Tapestry).setDetail(41, 56, Detail.Tapestry);
-  // East pews only — the west aisle became the PILGRIM ALCOVE: two
-  // cots and a locker for road-worn travelers, because the
-  // Waykeepers' faith has always been a roof first, sermon second.
-  for (const y of [60, 63, 66]) {
-    b.set(45, y, Tile.Bench).set(46, y, Tile.Bench);
+  b.set(23, 59, Tile.Bookshelf).set(35, 59, Tile.Cabinet);
+  b.setDetail(26, 58, Detail.Tapestry).setDetail(31, 58, Detail.Tapestry);
+  // East pews; the west aisle is the PILGRIM ALCOVE: cots and a
+  // locker for road-worn travelers.
+  for (const y of [63, 67, 71]) {
+    b.set(32, y, Tile.Bench).set(33, y, Tile.Bench);
   }
-  b.set(38, 60, Tile.Bed).set(39, 60, Tile.Bed);
-  b.set(38, 63, Tile.Bed).set(39, 63, Tile.Bed);
-  b.set(38, 66, Tile.Cabinet);
-  b.setDetail(39, 61, Detail.RugRound).setDetail(39, 64, Detail.RugRound);
-  // The REGISTRY corner: the book of who passed, at a desk by the
-  // door where any traveler can find a name — or leave one.
-  b.set(46, 59, Tile.Table).set(46, 58, Tile.Chair);
-  b.setDetail(45, 59, Detail.RugRound);
-  b.set(40, 58, Tile.Brazier).set(45, 58, Tile.Brazier); // the lamp kept lit, flanking the aisle
-  b.setDetail(42, 57, Detail.Doormat).setDetail(43, 57, Detail.Doormat);
-  // The chapel yard: the stone walk from the road, lamps and boxes.
-  b.fillRect(42, 54, 2, 2, Tile.Path);
-  b.set(40, 54, Tile.LampPost).set(45, 54, Tile.LampPost);
-  b.set(39, 55, Tile.FlowerBox).set(46, 55, Tile.FlowerBox);
-  b.set(35, 58, Tile.Bench);
-  b.sign(46, 54, "WAYKEEPERS' HALL", ['rest, register, remember']);
+  b.set(23, 63, Tile.Bed).set(24, 63, Tile.Bed);
+  b.set(23, 67, Tile.Bed).set(24, 67, Tile.Bed);
+  b.set(23, 71, Tile.Cabinet);
+  b.setDetail(24, 64, Detail.RugRound).setDetail(24, 68, Detail.RugRound);
+  // The registry corner: the book of who passed, by the door.
+  b.set(33, 60, Tile.Table).set(33, 61, Tile.Chair);
+  b.setDetail(32, 60, Detail.RugRound);
+  b.set(35, 60, Tile.Bed).set(35, 61, Tile.Bed); // Ansel's own cot, behind the registry desk
+  b.set(25, 60, Tile.Brazier); // the lamp kept lit
+  b.setDetail(28, 59, Detail.Doormat).setDetail(29, 59, Detail.Doormat);
+  // The chapel yard and the stone walk from the spine.
+  b.fillRect(28, 53, 2, 5, Tile.Path);
+  b.set(26, 54, Tile.LampPost).set(32, 54, Tile.LampPost);
+  b.set(25, 56, Tile.FlowerBox).set(33, 56, Tile.FlowerBox);
+  b.sign(32, 55, "WAYKEEPERS' HALL", ['rest, register, remember']);
+  // The memorial garden along the east wall: hedge line, the topiary
+  // pair, flowers where the benches face the morning.
+  for (let y = 60; y <= 76; y++) b.set(40, y, Tile.Hedge);
+  b.set(40, 66, Tile.HedgeGate);
+  b.set(39, 60, Tile.TopiaryBall).set(39, 76, Tile.TopiarySpire);
+  b.set(38, 63, Tile.Bench).set(38, 70, Tile.Bench);
+  b.setDetail(38, 66, Detail.Flowers).setDetail(39, 72, Detail.Flowers).setDetail(38, 61, Detail.Flowers);
 
   // ---------------------------------------------------------------
-  // The Commons — the town's homes, spread around a real green with
-  // gardens between them, every floor plan its own. Wear-paths run
-  // where feet actually go.
+  // THE COMMONS — the southeast quarter inside the wall, homes
+  // around a real green. Hedge lines and the topiary gate posts are
+  // the garden family's first outing anywhere in the world.
   // ---------------------------------------------------------------
-  // The farmhouse (Jorel & Tamsin's): faces the fields across the
-  // road. Hearth hall west with the kitchen corner, the family's
-  // bedroom east through its own door.
-  b.fillRect(4, 56, 13, 10, Tile.WoodFloor);
-  b.outlineRect(4, 56, 13, 10, Tile.WallWood);
-  b.set(9, 56, Tile.DoorwayWood);
-  b.set(7, 56, Tile.WallWoodWindow).set(13, 56, Tile.WallWoodWindow);
-  b.set(4, 60, Tile.WallWoodWindow).set(16, 61, Tile.WallWoodWindow);
-  b.set(8, 65, Tile.WallWoodWindow).set(13, 65, Tile.WallWoodWindow);
-  for (let y = 57; y <= 64; y++) b.set(11, y, Tile.WallWood);
-  b.set(11, 60, Tile.DoorwayWood);
-  b.set(5, 57, Tile.Hearth);
-  b.set(7, 60, Tile.Table).set(8, 60, Tile.Table); // the long farm table
-  b.set(6, 60, Tile.Chair).set(9, 60, Tile.Chair);
-  b.set(5, 62, Tile.Counter).set(5, 63, Tile.Counter).set(5, 64, Tile.Basin);
-  // The good rug — a 4x2 laid whole between the hearth and the long
-  // table, the one Tamsin's mother wove and the one thing in the
-  // house nobody puts muddy boots on.
-  for (let x = 6; x <= 9; x++) {
-    b.setDetail(x, 58, Detail.Rug).setDetail(x, 59, Detail.Rug);
+  // The green itself.
+  b.path({ x: 71, y: 62 }, { x: 71, y: 74 }, 2, Tile.Dirt); // the walk down from the Round
+  for (let x = 62; x <= 80; x++) if (x !== 70 && x !== 71) b.set(x, 74, Tile.Hedge);
+  b.set(70, 74, Tile.HedgeGate).set(71, 74, Tile.HedgeGate); // the arch over the walk
+  b.set(68, 75, Tile.TopiaryBall).set(73, 75, Tile.TopiarySpire); // the gate posts, one of each — the gardener's argument
+  b.fillRect(64, 79, 3, 2, Tile.Tilled);
+  b.set(64, 79, Tile.CarrotMid).set(66, 80, Tile.SunflowerRipe);
+  b.fillRect(75, 84, 3, 2, Tile.Tilled);
+  b.set(75, 84, Tile.SunflowerMid).set(77, 85, Tile.CarrotRipe);
+  b.set(70, 86, Tile.TreeOak); // the bench oak
+  b.set(68, 87, Tile.Bench).set(72, 87, Tile.Bench);
+  b.set(75, 80, Tile.LampPost);
+  b.set(63, 84, Tile.Apiary); // the green's hive — Perl's bees commute
+  // Cormund's house: the study window west, bookshelves and the desk
+  // he thinks at, his bed across the room. Tidy front.
+  b.fillRect(48, 76, 10, 8, Tile.WoodFloor);
+  b.outlineRect(48, 76, 10, 8, Tile.WallWood);
+  b.set(57, 79, Tile.DoorwayWood); // door east, facing the green
+  b.set(50, 76, Tile.WallWoodWindow).set(54, 76, Tile.WallWoodWindow);
+  b.set(48, 79, Tile.WallWoodWindow).set(52, 83, Tile.WallWoodWindow);
+  b.set(49, 77, Tile.Bookshelf).set(50, 77, Tile.Bookshelf);
+  b.set(49, 80, Tile.Table).set(50, 80, Tile.Chair); // the ledger desk
+  b.set(55, 77, Tile.Bed);
+  b.set(55, 82, Tile.Cabinet);
+  b.setDetail(52, 79, Detail.Rug).setDetail(53, 79, Detail.Rug);
+  b.setDetail(52, 80, Detail.Rug).setDetail(53, 80, Detail.Rug);
+  b.setDetail(57, 78, Detail.Doormat);
+  b.set(48, 75, Tile.FlowerBox).set(56, 75, Tile.FlowerBox);
+  b.set(58, 79, Tile.Dirt).set(59, 79, Tile.Dirt);
+  // Captain Aldis's: stone, spare, the only home in the diagonal
+  // budget — corners cut like her tower. Her step faces the lane.
+  b.fillRect(100, 76, 9, 8, Tile.StoneFloor);
+  b.outlineRect(100, 76, 9, 8, Tile.WallStone);
+  b.set(100, 83, Tile.WallStoneDiagNE).set(108, 83, Tile.WallStoneDiagNW);
+  b.set(100, 79, Tile.DoorwayStone); // door west, toward the south lane
+  b.set(104, 76, Tile.WallStoneWindow);
+  b.set(108, 79, Tile.WallStoneWindow).set(104, 83, Tile.WallStoneWindow);
+  b.set(101, 77, Tile.Bed);
+  b.set(107, 77, Tile.WeaponRack);
+  b.set(104, 80, Tile.Table).set(105, 80, Tile.Chair);
+  b.set(107, 82, Tile.Cabinet);
+  b.setDetail(101, 79, Detail.Doormat);
+  b.setDetail(106, 76, Detail.BannerCrown);
+  b.setDetail(103, 79, Detail.Rug).setDetail(104, 79, Detail.Rug);
+  b.path({ x: 90, y: 79 }, { x: 99, y: 79 }, 1, Tile.Dirt); // her step to the lane
+  // Master Tilo's house: shavings even at home — the half-finished
+  // chair has been half-finished for three years and is TEACHING him.
+  b.fillRect(62, 94, 9, 8, Tile.WoodFloor);
+  b.outlineRect(62, 94, 9, 8, Tile.WallWood);
+  b.set(66, 94, Tile.DoorwayWood);
+  b.set(64, 94, Tile.WallWoodWindow).set(69, 94, Tile.WallWoodWindow);
+  b.set(62, 98, Tile.WallWoodWindow).set(70, 98, Tile.WallWoodWindow);
+  b.set(63, 95, Tile.Bed);
+  b.set(69, 95, Tile.Cabinet);
+  b.set(65, 98, Tile.Table).set(66, 98, Tile.Chair);
+  b.set(63, 100, Tile.Chair); // the half-finished one
+  b.set(69, 100, Tile.Crate);
+  b.setDetail(64, 96, Detail.RugRound);
+  b.setDetail(64, 99, Detail.Sawdust).setDetail(68, 100, Detail.Sawdust);
+  b.setDetail(66, 95, Detail.Doormat);
+  b.path({ x: 66, y: 89 }, { x: 66, y: 93 }, 1, Tile.Dirt);
+  // THE WARDROOM — the watch's roof by the water gate: four bunks
+  // worked in shifts, the duty table, racks, the hearth. The tower
+  // commands; the wardroom sleeps.
+  b.fillRect(92, 92, 11, 10, Tile.StoneFloor);
+  b.outlineRect(92, 92, 11, 10, Tile.WallStone);
+  b.set(92, 92, Tile.WallStoneDiagSE).set(102, 92, Tile.WallStoneDiagSW);
+  b.set(92, 96, Tile.DoorwayStone); // door west onto the south lane
+  b.set(96, 92, Tile.WallStoneWindow).set(99, 92, Tile.WallStoneWindow);
+  b.set(102, 96, Tile.WallStoneWindow).set(96, 101, Tile.WallStoneWindow);
+  b.set(94, 93, Tile.Bed).set(94, 94, Tile.Bed);
+  b.set(100, 93, Tile.Bed).set(100, 94, Tile.Bed);
+  b.set(94, 97, Tile.Bed).set(94, 98, Tile.Bed);
+  b.set(100, 97, Tile.Bed).set(100, 98, Tile.Bed);
+  b.set(97, 96, Tile.Table); // the duty table
+  b.set(94, 100, Tile.WeaponRack).set(100, 100, Tile.WeaponRack);
+  b.set(97, 100, Tile.Hearth);
+  b.setDetail(93, 96, Detail.Doormat);
+  b.setDetail(96, 95, Detail.Rug).setDetail(97, 95, Detail.Rug);
+  b.setDetail(98, 92, Detail.BannerCrown);
+  b.set(90, 94, Tile.LampPost); // lit for the changing of the guard
+  b.sign(93, 91, 'THE WARDROOM', ['the watch sleeps in shifts'], Tile.HangingSign);
+  // The farmhouse (Jorel & Tamsin) — inside the Fordgate corner,
+  // facing its own fields across the wall: hearth hall west with the
+  // kitchen corner, the bedroom east through its own door, the coop
+  // and dovecote in the yard.
+  b.fillRect(18, 86, 14, 10, Tile.WoodFloor);
+  b.outlineRect(18, 86, 14, 10, Tile.WallWood);
+  b.set(24, 86, Tile.DoorwayWood);
+  b.set(21, 86, Tile.WallWoodWindow).set(28, 86, Tile.WallWoodWindow);
+  b.set(18, 90, Tile.WallWoodWindow).set(31, 91, Tile.WallWoodWindow);
+  b.set(22, 95, Tile.WallWoodWindow).set(27, 95, Tile.WallWoodWindow);
+  for (let y = 87; y <= 94; y++) b.set(26, y, Tile.WallWood);
+  b.set(26, 90, Tile.DoorwayWood);
+  b.set(19, 87, Tile.Hearth);
+  b.set(21, 90, Tile.Table).set(22, 90, Tile.Table); // the long farm table
+  b.set(20, 90, Tile.Chair).set(23, 90, Tile.Chair);
+  b.set(19, 92, Tile.Counter).set(19, 93, Tile.Counter).set(19, 94, Tile.Basin);
+  for (let x = 20; x <= 23; x++) {
+    b.setDetail(x, 88, Detail.Rug).setDetail(x, 89, Detail.Rug); // the good rug — no muddy boots
   }
-  b.setDetail(9, 57, Detail.Doormat);
-  b.set(14, 58, Tile.Bed).set(14, 61, Tile.Bed);
-  b.set(12, 57, Tile.Cabinet);
-  b.setDetail(12, 59, Detail.Rug).setDetail(13, 59, Detail.Rug);
-  b.setDetail(12, 60, Detail.Rug).setDetail(13, 60, Detail.Rug);
-  b.set(9, 54, Tile.Dirt).set(9, 55, Tile.Dirt); // the worn step to the road
-  b.set(5, 66, Tile.Crate).set(6, 66, Tile.Crate); // the woodpile
-  b.set(12, 66, Tile.Bench);
-  // The coop, south of the woodpile; the hens go where they please.
-  b.outlineRect(4, 68, 7, 6, Tile.Fence);
-  b.fillRect(5, 69, 5, 4, Tile.Dirt);
-  b.set(10, 70, Tile.FenceGate); // the gate, standing open
-  b.setDetail(6, 70, Detail.Straw).setDetail(8, 71, Detail.Straw);
-  b.set(11, 70, Tile.Dirt).set(12, 70, Tile.Dirt);
-  // Merra the grocer's: pantry stacks by the wall, table set for two,
-  // her carrot plot out back. (She sells at the Round's stalls.)
-  b.fillRect(20, 56, 9, 8, Tile.WoodFloor);
-  b.outlineRect(20, 56, 9, 8, Tile.WallWood);
-  b.set(24, 56, Tile.DoorwayWood);
-  b.set(22, 56, Tile.WallWoodWindow).set(26, 56, Tile.WallWoodWindow);
-  b.set(20, 59, Tile.WallWoodWindow).set(28, 59, Tile.WallWoodWindow);
-  b.set(21, 57, Tile.CrateGoods).set(22, 57, Tile.CrateGoods);
-  b.set(27, 57, Tile.Cabinet);
-  b.set(23, 59, Tile.Table).set(24, 59, Tile.Chair);
-  b.set(27, 61, Tile.Bed).set(26, 61, Tile.Bed);
-  b.setDetail(24, 57, Detail.Doormat);
-  // The parlor square between the table and her bed.
-  b.setDetail(25, 59, Detail.Rug).setDetail(26, 59, Detail.Rug);
-  b.setDetail(25, 60, Detail.Rug).setDetail(26, 60, Detail.Rug);
-  b.set(19, 58, Tile.Bench);
-  b.set(24, 54, Tile.Dirt).set(24, 55, Tile.Dirt);
-  b.fillRect(22, 65, 4, 2, Tile.Tilled);
-  b.set(22, 65, Tile.CarrotMid).set(25, 66, Tile.CarrotRipe);
-  // Cormund the banker's: the study window west — bookshelves and
-  // the desk he thinks at — his bed across the room. Tidy front.
-  b.fillRect(13, 69, 10, 8, Tile.WoodFloor);
-  b.outlineRect(13, 69, 10, 8, Tile.WallWood);
-  b.set(17, 69, Tile.DoorwayWood);
-  b.set(15, 69, Tile.WallWoodWindow).set(20, 69, Tile.WallWoodWindow);
-  b.set(13, 72, Tile.WallWoodWindow).set(22, 72, Tile.WallWoodWindow);
-  b.set(14, 70, Tile.Bookshelf).set(15, 70, Tile.Bookshelf);
-  b.set(14, 72, Tile.Table).set(15, 72, Tile.Chair); // the ledger desk
-  b.set(20, 70, Tile.Bed);
-  b.set(21, 73, Tile.Cabinet);
-  b.setDetail(17, 70, Detail.Doormat);
-  // A banker's rug: bought, not inherited, and it shows — woven
-  // whole, laid square between the desk and the bed.
-  b.setDetail(17, 71, Detail.Rug).setDetail(18, 71, Detail.Rug);
-  b.setDetail(17, 72, Detail.Rug).setDetail(18, 72, Detail.Rug);
-  b.set(14, 68, Tile.FlowerBox).set(20, 68, Tile.FlowerBox);
-  b.set(17, 67, Tile.Dirt).set(17, 68, Tile.Dirt);
-  // Master Tilo's: shavings even at home — a half-finished chair in
-  // the corner that has been half-finished for a year.
-  b.fillRect(26, 67, 8, 8, Tile.WoodFloor);
-  b.outlineRect(26, 67, 8, 8, Tile.WallWood);
-  b.set(29, 67, Tile.DoorwayWood);
-  b.set(31, 67, Tile.WallWoodWindow);
-  b.set(26, 70, Tile.WallWoodWindow).set(33, 70, Tile.WallWoodWindow);
-  b.set(27, 68, Tile.Bed);
-  b.set(32, 68, Tile.Cabinet);
-  b.set(29, 70, Tile.Table).set(30, 70, Tile.Chair);
-  b.set(27, 71, Tile.Chair); // the half-finished one
-  b.set(32, 73, Tile.Crate);
-  b.setDetail(28, 68, Detail.RugRound); // a maker's offcut by the bed
-  b.setDetail(28, 70, Detail.Sawdust).setDetail(31, 72, Detail.Sawdust);
-  b.setDetail(29, 68, Detail.Doormat);
-  b.set(29, 65, Tile.Dirt).set(29, 66, Tile.Dirt);
-  // Captain Aldis's: stone, spare, on the east road — the only home
-  // in the diagonal budget, corners cut like her tower.
-  b.fillRect(58, 63, 8, 7, Tile.StoneFloor);
-  b.outlineRect(58, 63, 8, 7, Tile.WallStone);
-  b.set(58, 69, Tile.WallStoneDiagNE).set(65, 69, Tile.WallStoneDiagNW);
-  b.set(61, 63, Tile.DoorwayStone);
-  b.set(63, 63, Tile.WallStoneWindow);
-  b.set(58, 66, Tile.WallStoneWindow).set(65, 66, Tile.WallStoneWindow);
-  b.set(59, 64, Tile.Bed);
-  b.set(64, 64, Tile.WeaponRack);
-  b.set(61, 66, Tile.Table).set(62, 66, Tile.Chair);
-  b.set(64, 68, Tile.Cabinet);
-  b.setDetail(61, 64, Detail.Doormat);
-  // The captain's colors over her own steel, and one spare runner at
-  // the table — she'd call anything more clutter.
-  b.setDetail(64, 63, Detail.BannerCrown);
-  b.setDetail(61, 65, Detail.Rug).setDetail(62, 65, Detail.Rug);
-  b.set(61, 62, Tile.Dirt); // her step to the road
-  // Goodwife Perl's: the cottage IN the orchard she keeps, berries
-  // at the step and apples out every window.
-  b.fillRect(78, 66, 8, 7, Tile.WoodFloor);
-  b.outlineRect(78, 66, 8, 7, Tile.WallWood);
-  b.set(78, 69, Tile.DoorwayWood);
-  b.set(81, 66, Tile.WallWoodWindow);
-  b.set(78, 67, Tile.WallWoodWindow).set(85, 69, Tile.WallWoodWindow);
-  b.set(83, 67, Tile.Bed);
-  b.set(84, 71, Tile.Cabinet);
-  b.set(80, 70, Tile.Table).set(81, 70, Tile.Chair);
-  // Perl's braided square — apple-cider colors, worn soft.
-  b.setDetail(80, 68, Detail.Rug).setDetail(81, 68, Detail.Rug);
-  b.setDetail(80, 69, Detail.Rug).setDetail(81, 69, Detail.Rug);
-  b.setDetail(79, 69, Detail.Doormat);
-  b.set(76, 68, Tile.BerryBush).set(76, 70, Tile.BerryBush);
-  b.set(77, 66, Tile.FlowerBox);
-  b.set(76, 69, Tile.Dirt).set(77, 69, Tile.Dirt);
-  // The green itself: garden plots in the gaps, the bench under the
-  // oak, a lamp for coming home late.
-  b.fillRect(17, 60, 3, 2, Tile.Tilled);
-  b.set(17, 60, Tile.CarrotMid).set(19, 61, Tile.CarrotRipe);
-  b.fillRect(31, 58, 3, 2, Tile.Tilled);
-  b.set(31, 58, Tile.SunflowerMid).set(33, 59, Tile.SunflowerRipe);
-  b.set(34, 63, Tile.TreeOak);
-  b.set(33, 62, Tile.Bench);
-  b.set(28, 65, Tile.LampPost);
+  b.setDetail(24, 87, Detail.Doormat);
+  b.set(29, 88, Tile.Bed).set(29, 89, Tile.Bed);
+  b.set(29, 91, Tile.Bed).set(29, 92, Tile.Bed);
+  b.set(27, 87, Tile.Cabinet);
+  b.setDetail(27, 89, Detail.Rug).setDetail(28, 89, Detail.Rug);
+  b.path({ x: 24, y: 82 }, { x: 24, y: 85 }, 1, Tile.Dirt);
+  b.setDetail(20, 86, trellisDetail(0)); // the climbing rose on the hall's north face
+  // The coop: the hens go where they please; the dovecote watches.
+  b.outlineRect(36, 88, 9, 8, Tile.Fence);
+  b.fillRect(37, 89, 7, 6, Tile.Dirt);
+  b.set(36, 92, Tile.FenceGate);
+  b.setDetail(39, 90, Detail.Straw).setDetail(42, 93, Detail.Straw);
+  b.set(43, 86, Tile.Dovecote);
+  b.set(34, 92, Tile.Dirt).set(35, 92, Tile.Dirt);
+  b.set(33, 88, Tile.HayBale);
 
   // ---------------------------------------------------------------
-  // Furrowfield farm — the fields across the road from the
-  // farmhouse, gate south so the family crosses to work.
+  // THE TOWN WALL — the Toll War's long lesson, re-drawn around the
+  // TOWN alone: the fields, the delf, the orchard, and the river
+  // quarter breathe outside it now. Same laws: separate masonry
+  // (the curtain dies into Aldis's tower), corner cuts chained with
+  // the solid triangle pointing INTO town, gates authored OPEN.
+  // Four road gates plus the miners' postern in the east curtain.
   // ---------------------------------------------------------------
-  b.outlineRect(3, 36, 19, 12, Tile.Fence);
-  b.set(12, 47, Tile.FenceGate); // the field gate, standing open
-  // The west rail came down when the wall went up: the field runs to
-  // the rampart's foot now, headland against the masonry (the north
-  // and south rails butt into the curtain and seal the pen).
-  for (let y = 37; y <= 46; y++) b.set(3, y, Tile.Grass);
-  for (let y = 38; y <= 46; y += 2) {
-    for (let x = 5; x <= 19; x++) {
-      if (x % 2 === 0) {
-        b.set(x, y, Tile.Tilled);
-      } else if (y === 38) {
-        b.set(x, y, Tile.WheatRipe);
-      } else if (y === 40) {
-        b.set(x, y, Tile.WheatMid);
-      } else if (y === 42) {
-        b.set(x, y, Tile.CarrotRipe);
-      } else if (y === 44) {
-        b.set(x, y, Tile.CottonMid);
-      } else {
-        b.set(x, y, Tile.SunflowerRipe);
-      }
+  // North curtain, dying honestly into the tower's own stone; the
+  // North Gate opens between the tower and the east run.
+  b.fillRect(19, 8, 42, 1, Tile.WallGarrison); // x19-60, to the tower's west shoulder
+  b.set(68, 8, Tile.GateGarrison).set(69, 8, Tile.GateGarrison).set(70, 8, Tile.GateGarrison);
+  b.fillRect(71, 8, 51, 1, Tile.WallGarrison); // x71-121
+  // West curtain, Fordgate at the spine.
+  b.fillRect(16, 11, 1, 39, Tile.WallGarrison); // y11-49
+  b.set(16, 50, Tile.GateGarrison).set(16, 51, Tile.GateGarrison).set(16, 52, Tile.GateGarrison);
+  b.fillRect(16, 53, 1, 49, Tile.WallGarrison); // y53-101
+  // East curtain: the postern for the delf, the East Gate on the road.
+  b.fillRect(124, 11, 1, 9, Tile.WallGarrison); // y11-19
+  b.set(124, 20, Tile.GateGarrison).set(124, 21, Tile.GateGarrison); // the miners' postern
+  b.fillRect(124, 22, 1, 48, Tile.WallGarrison); // y22-69
+  b.set(124, 70, Tile.GateGarrison).set(124, 71, Tile.GateGarrison).set(124, 72, Tile.GateGarrison);
+  b.fillRect(124, 73, 1, 29, Tile.WallGarrison); // y73-101
+  // South curtain, the water gate over the quay lane.
+  b.fillRect(19, 104, 66, 1, Tile.WallGarrison); // x19-84
+  b.set(85, 104, Tile.GateGarrison).set(86, 104, Tile.GateGarrison);
+  b.set(87, 104, Tile.GateGarrison).set(88, 104, Tile.GateGarrison);
+  b.fillRect(89, 104, 33, 1, Tile.WallGarrison); // x89-121
+  // The corner cuts.
+  b.set(18, 9, Tile.WallGarrisonDiagSE).set(17, 10, Tile.WallGarrisonDiagSE);
+  b.set(122, 9, Tile.WallGarrisonDiagSW).set(123, 10, Tile.WallGarrisonDiagSW);
+  b.set(123, 102, Tile.WallGarrisonDiagNW).set(122, 103, Tile.WallGarrisonDiagNW);
+  b.set(17, 102, Tile.WallGarrisonDiagNE).set(18, 103, Tile.WallGarrisonDiagNE);
+  // Gate furniture: watch fires and the plain words.
+  b.set(14, 49, Tile.Brazier).set(14, 53, Tile.Brazier);
+  b.sign(12, 49, 'DAWNMEAD', ['west, by the First Road'], Tile.Signpost);
+  b.sign(13, 55, 'AMBERFORD', ['the ford holds', 'the lamp stays lit'], Tile.Signpost);
+  b.set(83, 106, Tile.Brazier).set(91, 106, Tile.Brazier);
+  b.set(126, 69, Tile.LampPost);
+  b.sign(127, 73, 'THE EAST ROAD', ['Pinewatch, by the Timber Road', 'the long way is the lamped way'], Tile.Signpost);
+
+  // ---------------------------------------------------------------
+  // THE WEST COUNTRY — Furrowfield and the Free Furrows, working
+  // ground along the First Road outside the Fordgate, dressed at
+  // last with the farm kit it always deserved.
+  // ---------------------------------------------------------------
+  // Furrowfield: the family fields, north of the road.
+  b.outlineRect(2, 30, 13, 17, Tile.Fence);
+  b.set(8, 46, Tile.FenceGate); // gate south to the road
+  for (let y = 32; y <= 44; y += 2) {
+    for (let x = 4; x <= 12; x++) {
+      if (x % 2 === 0) b.set(x, y, Tile.Tilled);
+      else if (y <= 34) b.set(x, y, Tile.WheatRipe);
+      else if (y <= 38) b.set(x, y, Tile.WheatMid);
+      else if (y <= 42) b.set(x, y, Tile.CarrotRipe);
+      else b.set(x, y, Tile.CottonMid);
     }
   }
-  b.set(12, 48, Tile.Dirt).set(12, 49, Tile.Dirt).set(12, 50, Tile.Dirt);
-
-  // ---------------------------------------------------------------
-  // The Free Furrows — common ground between the road and the bank's
-  // west meadow: fenced, gated, and open to any hand that wants to
-  // learn the spade. The town plants the odd rows; the empty ones
-  // wait for wakers. First farm a traveler is allowed to touch.
-  // ---------------------------------------------------------------
-  b.outlineRect(24, 44, 7, 6, Tile.Fence);
-  b.set(27, 49, Tile.FenceGate); // the gate, south to the road
-  for (const x of [25, 26, 27, 28, 29]) {
-    b.set(x, 45, Tile.Tilled);
-    b.set(x, 47, Tile.Tilled);
+  b.set(8, 38, Tile.Scarecrow);
+  b.set(3, 31, Tile.Silo);
+  b.set(12, 31, Tile.HayBale).set(11, 32, Tile.HayBale);
+  b.set(3, 45, Tile.CompostBin);
+  b.sign(1, 48, 'FURROWFIELD', ['the Furrowfields’ ground', 'mind the scarecrow, he minds you'], Tile.Signpost);
+  b.set(8, 47, Tile.Dirt).set(8, 48, Tile.Dirt).set(8, 49, Tile.Dirt);
+  // The Free Furrows: common ground, gate on the road — the first
+  // farm a traveler is allowed to touch.
+  b.outlineRect(2, 56, 13, 12, Tile.Fence);
+  b.set(8, 56, Tile.FenceGate);
+  for (const x of [4, 6, 8, 10, 12]) {
+    b.set(x, 59, Tile.Tilled);
+    b.set(x, 62, Tile.Tilled);
+    b.set(x, 65, Tile.Tilled);
   }
-  b.set(25, 45, Tile.CarrotMid).set(28, 45, Tile.WheatMid);
-  b.set(27, 47, Tile.SunflowerMid);
-  b.set(27, 50, Tile.Dirt); // the worn step to the road
-  b.sign(23, 49, 'THE FREE FURROWS', ['common ground', 'plant what you will, waker'], Tile.Signpost);
+  b.set(4, 59, Tile.CarrotMid).set(8, 62, Tile.WheatMid).set(12, 65, Tile.SunflowerMid);
+  b.set(13, 57, Tile.Barrel); // the water barrel
+  b.set(3, 66, Tile.CompostBin);
+  b.sign(1, 55, 'THE FREE FURROWS', ['common ground', 'plant what you will, waker'], Tile.Signpost);
+  b.set(8, 54, Tile.Dirt).set(8, 55, Tile.Dirt);
 
   // ---------------------------------------------------------------
-  // The pasture — the northeast grazing, trough by the west rail.
-  // (Perl feuds with these cows. The cows are winning.)
+  // THE EAST COUNTRY — the delf, the pasture, and the orchard, out
+  // where a town keeps its working land: past the east curtain,
+  // under the open sky.
   // ---------------------------------------------------------------
-  // The pen leans on the town wall now — the north rail IS the
-  // rampart (the wall the cows never asked for and got anyway); the
-  // side rails run up and die against the masonry.
-  b.fillRect(73, 2, 1, 9, Tile.Fence); // west rail, to the wall
-  b.fillRect(97, 2, 1, 9, Tile.Fence); // east rail, to the wall
-  b.fillRect(74, 10, 23, 1, Tile.Fence); // the south rail
-  b.set(78, 10, Tile.FenceGate); // the gate, standing open
-  b.set(75, 4, Tile.Basin);
-  b.set(74, 3, Tile.Crate); // the milking corner
-  b.setDetail(80, 5, Detail.Straw).setDetail(88, 7, Detail.Straw);
-  b.setDetail(93, 4, Detail.Straw);
-  b.sign(71, 7, 'HOLLOWAY PASTURE', ['fresh milk — mind the cows'], Tile.Signpost);
-
-  // ---------------------------------------------------------------
-  // The Amber Delf — the old cutting in the northeast birches where
-  // the town's copper and tin come out of the ground: spoil heaps,
-  // a work corner, a lamp for the early shift, and the one iron
-  // face nobody's bronze pick has beaten yet. The first forge
-  // lesson starts here, not at the anvil. Bretta walks up at dawn.
-  // ---------------------------------------------------------------
-  b.path({ x: 56, y: 13 }, { x: 101, y: 12 }, 1, Tile.Dirt); // the miners' trail
-  b.fillEllipse(104, 8, 5.5, 4.5, Tile.Dirt);
-  b.set(101, 5, Tile.RockCopper).set(106, 4, Tile.RockCopper);
-  b.set(103, 11, Tile.RockTin).set(108, 7, Tile.RockTin);
-  b.set(107, 10, Tile.RockIron); // the better-pick face
-  b.set(100, 9, Tile.Rock).set(105, 12, Tile.Rock); // spoil
-  b.set(100, 6, Tile.Crate).set(100, 7, Tile.Barrel); // the work corner
-  b.set(99, 11, Tile.LampPost); // the early shift's lamp
-  b.setDetail(103, 6, Detail.Pebbles).setDetail(105, 9, Detail.Pebbles);
-  b.setDetail(102, 9, Detail.Pebbles).setDetail(106, 11, Detail.Pebbles);
-  b.sign(57, 12, 'THE DELF', ['ore up the trail', 'mind your footing'], Tile.Signpost);
-  b.sign(99, 9, 'THE AMBER DELF', ['copper and tin for the forge', 'the north face wants a better pick'], Tile.Signpost);
-
-  // ---------------------------------------------------------------
-  // The orchard — Perl's apple rows between the east road and the
-  // stream, her cottage standing among them.
-  // ---------------------------------------------------------------
-  for (const y of [63, 66, 69, 72, 75]) {
-    for (const x of [68, 72, 76, 80, 84]) {
-      if (x >= 77 && x <= 86 && y >= 65 && y <= 73) continue; // her dooryard
-      b.set(x, y, Tile.TreeOak);
+  // The Amber Delf: the old cutting, up the postern trail.
+  b.fillEllipse(135, 20, 7, 8, Tile.Dirt);
+  b.set(131, 15, Tile.RockCopper).set(138, 14, Tile.RockCopper);
+  b.set(133, 25, Tile.RockTin).set(140, 19, Tile.RockTin);
+  b.set(139, 26, Tile.RockIron); // the better-pick face
+  b.set(130, 21, Tile.Rock).set(136, 28, Tile.Rock); // spoil
+  b.set(130, 13, Tile.Crate).set(130, 14, Tile.Barrel); // the work corner
+  b.set(129, 24, Tile.LampPost); // the early shift's lamp
+  b.setDetail(134, 17, Detail.Pebbles).setDetail(137, 22, Detail.Pebbles).setDetail(132, 23, Detail.Pebbles);
+  b.sign(127, 17, 'THE AMBER DELF', ['copper and tin for the forge', 'the iron face wants a better pick'], Tile.Signpost);
+  // Holloway pasture: the cows Perl is at war with. The cows are
+  // winning; the gate latch knows things a latch should not.
+  b.outlineRect(128, 40, 14, 19, Tile.Fence);
+  b.set(134, 58, Tile.FenceGate); // gate south, trail to the east street
+  b.set(130, 43, Tile.Basin);
+  b.set(129, 42, Tile.Crate); // the milking corner
+  b.set(139, 42, Tile.HayBale);
+  b.setDetail(133, 47, Detail.Straw).setDetail(137, 52, Detail.Straw).setDetail(131, 55, Detail.Straw);
+  b.sign(126, 60, 'HOLLOWAY PASTURE', ['fresh milk — mind the cows'], Tile.Signpost);
+  b.path({ x: 130, y: 68 }, { x: 134, y: 60 }, 1, Tile.Dirt);
+  // Perl's orchard: real apple rows at last, plum interplants, the
+  // berry hedge on the road, her cottage among the trees, the press
+  // and the hives by her dooryard.
+  for (const y of [76, 81, 86, 91, 96]) {
+    for (const x of [128, 133, 138, 142]) {
+      if (x >= 131 && x <= 141 && y >= 81 && y <= 91) continue; // her dooryard
+      const plum = (x + y) % 3 === 0;
+      const young = (x * 7 + y) % 5 === 0; // a few young grafts among the bearers
+      b.set(x, y, plum ? (young ? Tile.PlumTreeMid : Tile.PlumTreeRipe) : young ? Tile.AppleTreeMid : Tile.AppleTreeRipe);
     }
   }
-  b.set(70, 64, Tile.BerryBush).set(66, 72, Tile.BerryBush);
-  b.set(85, 75, Tile.BerryBush);
+  b.set(126, 78, Tile.BerryBush).set(126, 88, Tile.BerryBush).set(127, 97, Tile.BerryBush);
+  b.fillRect(132, 82, 9, 8, Tile.WoodFloor);
+  b.outlineRect(132, 82, 9, 8, Tile.WallWood);
+  b.set(132, 85, Tile.DoorwayWood); // door west, toward the road
+  b.set(135, 82, Tile.WallWoodWindow).set(139, 82, Tile.WallWoodWindow);
+  b.set(140, 86, Tile.WallWoodWindow).set(136, 89, Tile.WallWoodWindow);
+  b.set(138, 83, Tile.Bed).set(138, 84, Tile.Bed);
+  b.set(139, 88, Tile.Cabinet);
+  b.set(134, 87, Tile.Table).set(135, 87, Tile.Chair);
+  b.setDetail(134, 84, Detail.Rug).setDetail(135, 84, Detail.Rug); // the braided square, apple-cider colors
+  b.setDetail(133, 85, Detail.Doormat);
+  b.setDetail(137, 82, trellisDetail(2));
+  b.set(129, 84, Tile.FruitPress);
+  b.set(129, 92, Tile.Apiary);
+  b.set(131, 80, Tile.FlowerBox);
+  b.sign(128, 74, "PERL'S ORCHARD", ['windfalls by the basket', 'shade is free, the apples are not'], Tile.Signpost);
 
   // ---------------------------------------------------------------
-  // The Fordgate — the warm way home — and the west spine's lamps.
-  // The old pillar-and-arch threshold gave way to the town wall's
-  // west gate (laid in THE TOWN WALL section below); what remains
-  // here is the welcome: lamps, the waystone, the watch's fires.
+  // THE FORD QUARTER — through the water gate, the town steps down
+  // to the river it was named for. Upstream of the bridge: work.
+  // Downstream: memory.
   // ---------------------------------------------------------------
-  b.set(4, 49, Tile.LampPost).set(4, 55, Tile.LampPost);
-  b.sign(6, 49, 'DAWNMEAD', ['west, by the First Road'], Tile.Signpost);
-  b.set(14, 49, Tile.LampPost).set(26, 49, Tile.LampPost);
-  b.sign(5, 55, 'AMBERFORD', ['the ford holds', 'the lamp stays lit'], Tile.Signpost);
-  // The other spines' lamps: sparse, where corners turn dark.
-  b.set(56, 16, Tile.LampPost).set(50, 26, Tile.LampPost);
-  b.set(50, 58, Tile.LampPost).set(55, 64, Tile.LampPost);
-  // The smiths' lunch oak, alone in the west meadow.
-  b.set(29, 28, Tile.TreeOak);
-  b.set(30, 29, Tile.Bench);
+  // Garton's mill, moved off its pond onto the true current: the
+  // milling floor south against the water, the flour shop fronting
+  // the quay walk, and the millrace lapping the east wall where the
+  // wheel will hang (the wheel is still on the mason's list; the
+  // water already stands where it will turn).
+  b.fillRect(52, 108, 15, 11, Tile.WoodFloor);
+  b.outlineRect(52, 108, 15, 11, Tile.WallWood);
+  b.set(58, 108, Tile.DoorwayWood); // door north on the quay walk
+  b.set(54, 108, Tile.WallWoodWindow).set(62, 108, Tile.WallWoodWindow);
+  b.set(52, 112, Tile.WallWoodWindow).set(52, 116, Tile.WallWoodWindow);
+  b.set(66, 111, Tile.WallWoodWindow).set(60, 118, Tile.WallWoodWindow);
+  for (let x = 53; x <= 65; x++) b.set(x, 113, Tile.WallWood);
+  b.set(58, 113, Tile.DoorwayWood); // shop <-> milling floor
+  // The flour shop.
+  b.set(55, 110, Tile.Counter).set(56, 110, Tile.Counter);
+  b.set(62, 110, Tile.CrateGoods).set(63, 111, Tile.CrateGoods); // flour by the sack
+  b.setDetail(58, 109, Detail.Doormat);
+  b.setDetail(56, 111, Detail.Rug).setDetail(57, 111, Detail.Rug);
+  // The milling floor: the stone, the grain, straw on everything.
+  b.set(57, 116, Tile.Workbench); // the millstone's station
+  b.set(53, 115, Tile.Crate).set(54, 115, Tile.Crate); // the grain sacks
+  b.set(64, 117, Tile.Barrel);
+  b.set(63, 114, Tile.Bed).set(63, 115, Tile.Bed); // a miller sleeps where the grain does
+  b.setDetail(59, 115, Detail.Straw).setDetail(55, 117, Detail.Straw).setDetail(62, 115, Detail.Straw);
+  b.setDetail(56, 108, bracketSignDetail(5)); // the flour-sack shingle on the wall
+  b.sign(53, 107, "GARTON'S MILL", ['flour, meal, and gossip']);
+  // The millrace: cut through the bank to lap the east wall.
+  b.fillRect(67, 114, 2, 8, Tile.WaterShallow);
+  b.set(67, 113, Tile.RailWood).set(68, 113, Tile.RailWood);
+  b.set(69, 116, Tile.RailWood).set(69, 119, Tile.RailWood);
+  // The quay: the stone esplanade between the water gate and the
+  // bank, the dock planks, the moorings, and the fish market.
+  b.fillRect(74, 108, 21, 9, Tile.StoneFloor);
+  // The dock planks HUG the waterline east of the bridge — the ford
+  // side stays open bank, because nobody planks over the town's
+  // first tool. The bank slopes east and the planks slope with it.
+  for (let x = 89; x <= 94; x++) {
+    const yn = 114 + Math.round(x * 0.115 + Math.sin(x * 0.21) * 1.5);
+    b.set(x, yn - 1, Tile.Dock);
+    b.set(x, yn, Tile.Dock);
+  }
+  b.fillRect(91, 123, 3, 4, Tile.Dock); // the jetty finger to deep water
+  b.set(95, 125, Tile.Barrel); // the mooring
+  b.stamp(MARKET_STALL, 76, 109); // the fish cart
+  b.set(82, 111, Tile.Campfire); // THE CATCH FIRE — the shore's own coals
+  b.set(80, 110, Tile.Bench).set(84, 112, Tile.Bench);
+  b.set(80, 113, Tile.ToolRack); // nets and boathooks
+  b.set(74, 112, Tile.Crate);
+  b.sign(85, 109, 'THE CATCH FIRE', ['fresh off the river, hot coals', 'cook your own'], Tile.Signpost);
+  b.set(75, 108, Tile.LampPost).set(93, 108, Tile.LampPost);
+  b.set(94, 128, Tile.FishingSpot); // off the jetty end, in the current
+  b.set(89, 126, Tile.FishingSpot); // beside the planks, in the slack
+  // Peld's ferry landing, east along the bank: his shack, the lamp
+  // lit late, the bell, and the punt planks — a real river to pole
+  // down someday, and Saltmere at the end of it.
+  b.fillRect(108, 108, 8, 6, Tile.WoodFloor);
+  b.outlineRect(108, 108, 8, 6, Tile.WallWood);
+  b.set(108, 110, Tile.DoorwayWood); // door west
+  b.set(111, 108, Tile.WallWoodWindow).set(115, 111, Tile.WallWoodWindow);
+  b.set(113, 109, Tile.Bed).set(113, 110, Tile.Bed);
+  b.set(109, 112, Tile.Crate).set(110, 109, Tile.Barrel);
+  b.setDetail(111, 111, Detail.RugRound); // the one soft thing Peld owns
+  b.set(106, 109, Tile.LampPost); // the ferry lamp
+  b.set(106, 113, Tile.ToolRack);
+  b.fillRect(110, 122, 3, 5, Tile.Dock); // the punt planks, down to the current
+  b.set(109, 122, Tile.RailWood);
+  b.sign(107, 116, 'THE CROSSING', ['ring for Peld', 'downriver: Saltmere, someday'], Tile.Signpost);
+  // THE TANNERY (Swale) — leather made where leather is made: on the
+  // bank, downstream, downwind, and honest about all three. Frames
+  // and racks in the yard, lime by the door, the smell a courtesy
+  // she extends and expects.
+  b.fillRect(119, 110, 12, 8, Tile.WoodFloor);
+  b.outlineRect(119, 110, 12, 8, Tile.WallWood);
+  b.set(119, 113, Tile.DoorwayWood); // door west, off the quay walk
+  b.set(122, 110, Tile.WallWoodWindow).set(127, 110, Tile.WallWoodWindow);
+  b.set(130, 113, Tile.WallWoodWindow).set(124, 117, Tile.WallWoodWindow);
+  b.set(121, 111, Tile.TanningRack);
+  b.set(125, 111, Tile.Workbench); // the cutting bench
+  b.set(127, 111, Tile.Cabinet); // the finished straps
+  b.set(129, 111, Tile.Bed).set(129, 112, Tile.Bed); // Swale's cot, upwind end
+  b.setDetail(128, 113, Detail.RugRound);
+  b.set(120, 116, Tile.Barrel).set(121, 116, Tile.Barrel); // the lime
+  b.set(127, 116, Tile.Crate);
+  b.setDetail(123, 113, Detail.Rug).setDetail(124, 113, Detail.Rug);
+  b.setDetail(120, 113, Detail.Doormat);
+  // The frame yard, south to the waterline.
+  b.set(121, 120, Tile.HideFrame).set(125, 120, Tile.HideFrame);
+  b.set(128, 120, Tile.DryingRack);
+  b.set(123, 123, Tile.TanningRack);
+  b.setDetail(122, 121, Detail.Straw).setDetail(126, 122, Detail.Straw);
+  b.sign(116, 110, 'THE TANNERY', ['hides in, leather out', 'the smell is included'], Tile.Signpost);
+  // The retting bank, past the tannery: flax cut, soaked, and spun —
+  // the loom's whole supply line in forty feet of slack water.
+  b.set(132, 122, Tile.FibrePlant).set(134, 125, Tile.FibrePlant).set(130, 127, Tile.FibrePlant);
+  b.sign(133, 119, 'THE RETTING BANK', ['flax for the loom', 'cut what you need'], Tile.Signpost);
+  // THE FORD DOOR (the Red Company): the slack reeds nobody visits,
+  // downstream of the tannery smell. A hatch, a barrel, no lamp, no
+  // sign, no name. World (578,70); lowhall.ts points here.
+  b.fillRect(128, 124, 5, 4, Tile.Dirt);
+  b.portal(130, 126, Tile.PortalDown, { x: 217.5, y: 568.5 }); // the Amberford alcove below
+  b.set(132, 125, Tile.Barrel).set(128, 127, Tile.Crate);
+  b.setDetail(129, 125, Detail.Pebbles).setDetail(131, 124, Detail.Tuft);
+  b.set(133, 124, Tile.Swamp).set(127, 126, Tile.Swamp);
+  // THE BRIDGE AND THE OLD FORD — the crossing that names the town.
+  // The Salt Road takes the stone deck; the sandbar ford wades
+  // beside it, kept the way a family keeps its first tool.
+  for (let x = 85; x <= 88; x++) {
+    for (let y = 122; y <= 134; y++) b.set(x, y, Tile.Bridge);
+  }
+  b.set(84, 122, Tile.RailWood).set(89, 122, Tile.RailWood);
+  b.set(84, 134, Tile.RailWood).set(89, 134, Tile.RailWood);
+  for (let x = 78; x <= 82; x++) {
+    for (let y = 121; y <= 132; y++) {
+      const t = b.get(x, y);
+      if (t === Tile.Water || t === Tile.WaterDeep || t === Tile.WaterShallow) b.set(x, y, Tile.WaterShallow);
+    }
+  }
+  b.setDetail(79, 120, Detail.Pebbles).setDetail(81, 133, Detail.Pebbles);
+  b.sign(80, 119, 'THE OLD FORD', ['here the amber water ran shallow,', 'and a town grew on the crossing'], Tile.Signpost);
+  b.set(90, 128, Tile.EelRun); // the eels hold in the bridge shadow
+  // The south bank: the far gatepost, the road walking off to the
+  // salt country, and the reeds keeping their own counsel.
+  b.fillRect(86, 135, 3, 9, Tile.Path); // the Salt Road to the hem — head (536,88)
+  b.set(84, 137, Tile.Brazier).set(90, 137, Tile.Brazier);
+  b.sign(90, 139, 'THE SALT ROAD', ['to Saltmere and the mere country', 'go fed, go armed, go by day'], Tile.Signpost);
+  b.sign(81, 140, 'AMBERFORD', ['the ford holds'], Tile.Signpost);
+  b.set(78, 138, Tile.Swamp).set(93, 141, Tile.Swamp);
+  b.set(76, 140, Tile.FibrePlant).set(95, 139, Tile.FibrePlant);
+
+  // The water meadows west of the mill: willows, sheep, and the long
+  // grass down to the bank.
+  b.set(8, 108, Tile.TreeWillow).set(24, 112, Tile.TreeWillow).set(40, 111, Tile.TreeWillow);
+  b.set(46, 116, Tile.TreeWillow).set(70, 108, Tile.TreeWillow);
+  b.set(100, 120, Tile.TreeWillow).set(135, 112, Tile.TreeWillow);
+  b.set(14, 111, Tile.FibrePlant).set(31, 113, Tile.FibrePlant);
 
   // ---------------------------------------------------------------
-  // THE TOWN WALL — the Toll War's long lesson, finally in stone.
-  // A single garrison curtain rings the whole town (the frontier
-  // grew bold; the town answered), with three gates standing open
-  // where the three roads always ran, and every corner cut at 45 —
-  // a wall raised by farmers follows its fields, not a straightedge.
-  // Laws at work here:
-  //  - SEPARATE MASONRY: the curtain dies honestly into Aldis's
-  //    stone watch tower at the North Gate — two constructions, one
-  //    defense; the pasture and Furrowfield lean their rails on it.
-  //  - THE CORNER CUTS chain diagonally (DiagSE/SW/NW/NE with the
-  //    solid triangle pointing INTO town); each hypotenuse meets the
-  //    next corner-to-corner, so the seal is geometric, not luck.
-  //  - Gates are authored OPEN (tile 144) and never auto-close
-  //    untouched; a shut gate is the town under threat, and only a
-  //    hand can make it so. The fen takes the stream under the wall
-  //    at the reed neck — one soggy tile, the mason's compromise.
+  // Meadow life, lamps for the dark corners, then the soft edges.
   // ---------------------------------------------------------------
-  // The west curtain, Fordgate in the middle of it.
-  b.fillRect(2, 4, 1, 47, Tile.WallGarrison); // y4-50
-  b.set(2, 51, Tile.GateGarrison).set(2, 52, Tile.GateGarrison).set(2, 53, Tile.GateGarrison);
-  b.fillRect(2, 54, 1, 22, Tile.WallGarrison); // y54-75
-  // The north curtain, jointed to the watch tower, North Gate east
-  // of it — the High Road passes under a true gatehouse arch.
-  b.fillRect(5, 1, 40, 1, Tile.WallGarrison); // x5-44, dies into the tower
-  b.set(52, 1, Tile.WallGarrison);
-  b.set(53, 1, Tile.GateGarrison).set(54, 1, Tile.GateGarrison).set(55, 1, Tile.GateGarrison);
-  b.fillRect(56, 1, 51, 1, Tile.WallGarrison); // x56-106, behind the pasture
-  // The east curtain: the Delf tucked inside the corner cut, the
-  // East Road let out through its own small gate.
-  b.fillRect(110, 5, 1, 55, Tile.WallGarrison); // y5-59
-  b.set(110, 60, Tile.GateGarrison).set(110, 61, Tile.GateGarrison);
-  b.fillRect(110, 62, 1, 13, Tile.WallGarrison); // y62-74
-  // The south curtain, wading the reed neck at x91 — with the South
-  // Gate cut where the south lane always pointed: the Salt Road runs
-  // from here to the water's end, and the wall admits it.
-  b.fillRect(5, 78, 46, 1, Tile.WallGarrison); // x5-50
-  b.set(51, 78, Tile.GateGarrison).set(52, 78, Tile.GateGarrison).set(53, 78, Tile.GateGarrison);
-  b.fillRect(54, 78, 53, 1, Tile.WallGarrison); // x54-106
-  // The four corner cuts — northwest, northeast, southeast, southwest.
-  b.set(4, 2, Tile.WallGarrisonDiagSE).set(3, 3, Tile.WallGarrisonDiagSE);
-  b.set(107, 2, Tile.WallGarrisonDiagSW).set(108, 3, Tile.WallGarrisonDiagSW);
-  b.set(109, 4, Tile.WallGarrisonDiagSW);
-  b.set(109, 75, Tile.WallGarrisonDiagNW).set(108, 76, Tile.WallGarrisonDiagNW);
-  b.set(107, 77, Tile.WallGarrisonDiagNW);
-  b.set(3, 76, Tile.WallGarrisonDiagNE).set(4, 77, Tile.WallGarrisonDiagNE);
-  // The gates' furniture: watch fires at the Fordgate mouth, the
-  // east gate's lamp so the unfinished road still gets a light, and
-  // the South Gate's braziers with a plain word about the road they
-  // open onto.
-  b.set(3, 50, Tile.Brazier).set(3, 54, Tile.Brazier);
-  b.set(108, 58, Tile.LampPost);
-  b.set(49, 77, Tile.Brazier).set(55, 77, Tile.Brazier);
-  b.sign(56, 75, 'THE SALT ROAD', ['to Saltmere and the mere country', 'a hard walk past the halfway lamp', 'go fed, go armed, go by day'], Tile.Signpost);
-
-  // ---------------------------------------------------------------
-  // Meadow life, then the town's soft edges.
-  // ---------------------------------------------------------------
+  b.set(44, 24, Tile.TreeOak); // the smiths' lunch oak
+  b.set(43, 25, Tile.Bench);
+  b.set(20, 49, Tile.LampPost).set(40, 49, Tile.LampPost); // the west spine
+  b.set(66, 24, Tile.LampPost).set(72, 38, Tile.LampPost); // the north spine
+  b.set(100, 69, Tile.LampPost).set(114, 69, Tile.LampPost); // the east street
+  b.set(84, 80, Tile.LampPost).set(84, 94, Tile.LampPost); // the south lane
+  b.set(45, 30, Tile.LampPost); // the bank corner
   b.scatter(Tile.GrassTall, 0.05);
   b.scatterDetail(Detail.Flowers, 0.04);
   b.scatterDetail(Detail.Tuft, 0.06);
@@ -951,109 +1057,70 @@ export function buildAmberford(): ZoneDef {
     for (let x = 0; x < R.w; x++) {
       const t = b.get(x, y);
       if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
-      if (Math.abs(y - 52) <= 4 && x < 10) continue; // Fordgate breathes
-      if (Math.abs(x - 54) <= 4 && y < 10) continue; // North Gate breathes
-      if (Math.abs(y - 61) <= 4 && x > 100) continue; // East stub breathes
-      if (Math.abs(x - 52) <= 4 && y > 70) continue; // South Gate breathes
-      if (x >= 2 && x <= 23 && y >= 35 && y <= 49) continue; // fields
-      if (x >= 72 && x <= 98 && y >= 1 && y <= 11) continue; // pasture
-      if (x >= 97 && y <= 16) continue; // the Delf clearing
-      if (x >= 3 && x <= 36 && y >= 66) continue; // the Commons' south yards
-      if (x >= 64 && x <= 92 && y >= 62) continue; // the orchard floor
+      if (Math.abs(y - 51) <= 4 && x < 18) continue; // the Fordgate breathes
+      if (Math.abs(x - 69) <= 4 && y < 10) continue; // the North Gate breathes
+      if (Math.abs(y - 71) <= 4 && x > 122) continue; // the East Gate breathes
+      if (Math.abs(x - 87) <= 4 && y > 102) continue; // the water gate breathes
+      if (x >= 1 && x <= 15 && y >= 29 && y <= 69) continue; // the west fields
+      if (x >= 125 && y >= 10 && y <= 100) continue; // the east country works
+      if (y >= 105) continue; // the river country plants its own
+      if (x >= 17 && x <= 123 && y >= 9 && y <= 103) continue; // inside the walls, the town decides
       const edge = Math.min(x, y, R.w - 1 - x, R.h - 1 - y);
-      const density = edge < 3 ? 0.3 : edge < 7 ? 0.1 : 0;
-      if (density > 0 && fordRng(x, y) < density) b.set(x, y, Tile.Tree);
+      const density = edge < 3 ? 0.28 : edge < 7 ? 0.1 : 0.02;
+      if (fordRng(x, y) < density) b.set(x, y, Tile.Tree);
     }
   }
 
   // ---------------------------------------------------------------
-  // THE WARDROOM — the watch finally owns a roof. Four bunks worked
-  // in shifts (day sentries sleep them by night, night sentries by
-  // day), the duty table between, racks and the hearth on the south
-  // wall. It stands on the East Road so every relief walks the same
-  // lane to work. The tower commands; the wardroom sleeps.
+  // THE PEOPLE — eighteen named lives and the watch on the town's
+  // own clock. Placements are the POST each routine measures from.
   // ---------------------------------------------------------------
-  b.fillRect(103, 63, 7, 8, Tile.StoneFloor);
-  b.outlineRect(103, 63, 7, 8, Tile.WallStone);
-  b.set(103, 63, Tile.WallStoneDiagSE).set(109, 63, Tile.WallStoneDiagSW);
-  b.set(106, 63, Tile.DoorwayStone); // north door onto the East Road
-  b.set(104, 63, Tile.WallStoneWindow).set(108, 63, Tile.WallStoneWindow);
-  b.set(103, 66, Tile.WallStoneWindow).set(109, 66, Tile.WallStoneWindow);
-  b.set(105, 70, Tile.WallStoneWindow).set(107, 70, Tile.WallStoneWindow);
-  // Bunks in the four corners, feet toward the aisle rows.
-  b.set(104, 64, Tile.Bed).set(104, 65, Tile.Bed);
-  b.set(108, 64, Tile.Bed).set(108, 65, Tile.Bed);
-  b.set(104, 67, Tile.Bed).set(104, 68, Tile.Bed);
-  b.set(108, 67, Tile.Bed).set(108, 68, Tile.Bed);
-  b.set(106, 66, Tile.Table); // the duty table
-  b.set(104, 69, Tile.WeaponRack).set(108, 69, Tile.WeaponRack);
-  b.set(105, 69, Tile.Crate);
-  b.set(107, 69, Tile.Hearth);
-  b.setDetail(106, 64, Detail.Doormat);
-  b.setDetail(105, 66, Detail.Rug).setDetail(107, 66, Detail.Rug);
-  b.setDetail(107, 63, Detail.BannerCrown); // the watch serves the crown
-  b.set(106, 62, Tile.Path); // the door step meets the East Road
-  b.set(104, 62, Tile.LampPost); // lit for the changing of the guard
-  b.sign(102, 62, 'THE WARDROOM', ['the watch sleeps in shifts'], Tile.HangingSign);
+  b.actor('smith_bretta', 26.5, 16.5, Math.PI / 2, 'amber_smith');
+  b.actor('master_tilo', 55.5, 40.5, Math.PI / 2, 'amber_artisan');
+  b.actor('sage_elowen', 77.5, 35.5, Math.PI, 'amber_sage');
+  b.actor('banker_cormund', 34.5, 39.3, Math.PI / 2, 'amber_banker');
+  b.actor('innkeep_dunna', 98.5, 51.5, Math.PI, 'amber_innkeep');
+  b.actor('miller_garton', 57.5, 115.5, -Math.PI / 2, 'amber_miller');
+  b.actor('ferryman_peld', 111.5, 117.5, Math.PI / 2, 'amber_ferryman');
+  b.actor('grocer_merra', 50.5, 59.3, Math.PI / 2, 'amber_grocer');
+  b.actor('outfitter_hask', 46.5, 15.5, 0, 'amber_outfitter');
+  b.actor('captain_aldis', 64.5, 12.5, Math.PI / 2, 'amber_captain');
+  b.actor('registrar_rowan', 75.5, 12.5, Math.PI / 2, 'amber_registrar');
+  b.actor('hostler_bray', 86.5, 18.5, 0, 'amber_hostler');
+  b.actor('tanner_swale', 123.5, 113.5, Math.PI, 'amber_tanner');
+  b.actor('farmer_jorel', 8.5, 38.5, Math.PI / 2, 'amber_farmer');
+  b.actor('farmer_tamsin', 40.5, 91.5, 0, 'amber_farmwife');
+  b.actor('keeper_ansel', 28.5, 76.5, -Math.PI / 2, 'amber_keeper');
+  b.actor('orchardist_perl', 135.5, 78.5, Math.PI / 2, 'amber_orchardist');
+  b.actor('courier_nib', 74.5, 55.5, 0, 'amber_courier');
+  // THE CHANGING OF THE GUARD: every gate keeps a day and a night
+  // sentry who hand over at the gate itself; the round pair walks
+  // the streets in opposite halves of the clock. Day sentries sleep
+  // the wardroom and tower bunks by night, night sentries by day.
+  b.actor('amberford_watch', 17.5, 49.5, Math.PI, 'amber_watch_ford_day');
+  b.actor('amberford_watch', 17.5, 53.5, Math.PI, 'amber_watch_ford_night');
+  b.actor('amberford_watch', 69.5, 9.5, -Math.PI / 2, 'amber_watch_north_day');
+  b.actor('amberford_watch', 68.5, 10.5, -Math.PI / 2, 'amber_watch_north_night');
+  b.actor('amberford_watch', 123.5, 70.5, 0, 'amber_watch_east_day');
+  b.actor('amberford_watch', 123.5, 72.5, 0, 'amber_watch_east_night');
+  b.actor('amberford_watch', 87.5, 102.5, Math.PI / 2, 'amber_watch_salt_day');
+  b.actor('amberford_watch', 86.5, 102.5, Math.PI / 2, 'amber_watch_salt_night');
+  b.actor('amberford_watch', 72.5, 47.5, Math.PI / 2, 'amber_watch_round_day');
+  b.actor('amberford_watch', 72.5, 58.5, Math.PI / 2, 'amber_watch_round_night');
+  // The traveling traders: the produce row by day, the guest wing by
+  // night — the market has voices.
+  b.actor('round_trader', 63.0, 49.8, Math.PI / 2, 'amber_trader_a');
+  b.actor('round_trader', 67.0, 49.8, Math.PI / 2, 'amber_trader_b');
 
-  // ---------------------------------------------------------------
-  // THE FORD DOOR (the Red Company epic): the slack side of the
-  // reed neck, where the flax rots and nobody comes but Peld and the
-  // smell. A hatch, a barrel, no lamp, no sign, no name.
-  // ---------------------------------------------------------------
-  b.fillRect(92, 53, 4, 4, Tile.Dirt);
-  b.portal(93, 54, Tile.PortalDown, { x: 217.5, y: 568.5 }); // the Amberford alcove
-  b.set(95, 53, Tile.Barrel).set(92, 56, Tile.Crate);
-  b.setDetail(94, 55, Detail.Pebbles).setDetail(92, 54, Detail.Tuft);
+  // The animals — the town's working livestock, and the caravan oxen
+  // boarding at Bray's yard between roads.
+  b.npcSpawn('cow', 134, 49.5, 3, 3);
+  b.npcSpawn('cow', 92, 17.5, 2.5, 2);
+  b.npcSpawn('chicken', 40, 91.5, 1.6, 4);
+  b.npcSpawn('sheep', 20, 108.5, 4, 3);
 
-  // ---------------------------------------------------------------
-  // THE PEOPLE (Epic 6): fifteen lives on the town's own clock.
-  // Placements are the POST each routine measures from — the smith's
-  // anvil, the teller's counter, the lectern, the mid-field furrow.
-  // ---------------------------------------------------------------
-  b.actor('smith_bretta', 14.5, 14.5, -Math.PI / 2, 'amber_smith');
-  b.actor('master_tilo', 35.5, 17.5, Math.PI, 'amber_artisan');
-  b.actor('sage_elowen', 67.5, 17.5, 0, 'amber_sage');
-  b.actor('banker_cormund', 40.5, 28.3, Math.PI / 2, 'amber_banker');
-  b.actor('innkeep_dunna', 62.5, 51.2, Math.PI / 2, 'amber_innkeep');
-  b.actor('miller_garton', 74.5, 30.8, -Math.PI / 2, 'amber_miller');
-  b.actor('ferryman_peld', 83.5, 38.5, 0, 'amber_ferryman');
-  b.actor('grocer_merra', 23.5, 58.5, Math.PI / 2, 'amber_grocer');
-  b.actor('outfitter_hask', 63.2, 6.5, Math.PI, 'amber_outfitter');
-  b.actor('captain_aldis', 47.5, 4.5, Math.PI, 'amber_captain');
-  b.actor('farmer_jorel', 11.5, 41.5, Math.PI / 2, 'amber_farmer');
-  b.actor('farmer_tamsin', 7.5, 70.5, 0, 'amber_farmwife');
-  b.actor('keeper_ansel', 42.5, 69.5, Math.PI / 2, 'amber_keeper');
-  b.actor('orchardist_perl', 74.5, 68.5, -Math.PI / 2, 'amber_orchardist');
-  b.actor('courier_nib', 52.5, 44.5, 0, 'amber_courier');
-  // THE CHANGING OF THE GUARD — Aldis's watch grown to a real rota:
-  // every gate keeps a day sentry and a night sentry who hand over
-  // at the gate itself (the reliefs overlap on purpose, so no gate
-  // ever stands empty), and a patrol pair walks the walls' streets
-  // in opposite halves of the clock. Day sentries sleep the wardroom
-  // and tower bunks by night; night sentries sleep them by day.
-  b.actor('amberford_watch', 4.5, 50.5, Math.PI, 'amber_watch_ford_day');
-  b.actor('amberford_watch', 4.5, 54.5, Math.PI, 'amber_watch_ford_night');
-  b.actor('amberford_watch', 54.5, 3.5, -Math.PI / 2, 'amber_watch_north_day');
-  b.actor('amberford_watch', 53.5, 4.5, -Math.PI / 2, 'amber_watch_north_night');
-  b.actor('amberford_watch', 108.5, 59.5, 0, 'amber_watch_east_day');
-  b.actor('amberford_watch', 108.5, 62.5, 0, 'amber_watch_east_night');
-  b.actor('amberford_watch', 52.5, 76.5, Math.PI / 2, 'amber_watch_salt_day');
-  b.actor('amberford_watch', 51.5, 76.5, Math.PI / 2, 'amber_watch_salt_night');
-  b.actor('amberford_watch', 52.5, 38.5, Math.PI / 2, 'amber_watch_round_day');
-  b.actor('amberford_watch', 52.5, 41.5, Math.PI / 2, 'amber_watch_round_night');
-  // The traveling traders: stalls on the produce row by day, the
-  // inn's guest wing by night — the market finally has voices.
-  b.actor('round_trader', 60.0, 28.8, Math.PI / 2, 'amber_trader_a');
-  b.actor('round_trader', 64.0, 28.8, Math.PI / 2, 'amber_trader_b');
-
-  // The animals — the town's working livestock.
-  // ---------------------------------------------------------------
-  b.npcSpawn('cow', 85, 6.5, 2.5, 3);
-  b.npcSpawn('chicken', 7, 70.5, 1.4, 3);
-
-  // Respawn hearth for the eastern lowlands: the Round, beside the well.
-  b.spawn(52.5, 44.5);
+  // Respawn hearth for the eastern lowlands: the Round, by the well.
+  b.spawn(74.5, 53.5);
   return b.build();
 }
 

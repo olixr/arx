@@ -1,0 +1,27 @@
+{
+  "id": "the_amber_water",
+  "name": "The Amber Water",
+  "giver": "ferryman_peld",
+  "stages": [
+    {
+      "id": "five_fish",
+      "journal": "Peld wants five trout out of the river, caught off the town's own bank. The quay planks past the water gate, the jetty by the bridge, or the slack water by his punt landing. He says the river tells you where the fish are. He says it quietly, and only once.",
+      "objectives": [
+        {
+          "kind": "collect",
+          "item": "raw_trout",
+          "count": 5
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 45,
+    "xp": [
+      {
+        "skill": "fishing",
+        "amount": 200
+      }
+    ]
+  }
+}

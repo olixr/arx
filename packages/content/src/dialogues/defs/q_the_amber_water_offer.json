@@ -1,0 +1,53 @@
+{
+  "id": "q_the_amber_water_offer",
+  "start": "hub",
+  "requires": [
+    "quest:the_amber_water:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "ferryman_peld",
+      "priority": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "River's giving today. Five trout. The planks, the jetty, wherever the water lets you stand. It'll teach you more than I would.",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "the_amber_water"
+        }
+      ],
+      "choices": [
+        {
+          "text": "I'll wet a line.",
+          "next": "sworn"
+        },
+        {
+          "text": "Fish don't like me.",
+          "next": "declined"
+        }
+      ],
+      "voice": "q_the_amber_water_offer__hub"
+    },
+    {
+      "id": "sworn",
+      "text": "Slack water. Soft arm. The river does the rest.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "the_amber_water"
+        }
+      ],
+      "voice": "q_the_amber_water_offer__sworn"
+    },
+    {
+      "id": "declined",
+      "text": "They don't like anyone. That's not what the line is for.",
+      "voice": "q_the_amber_water_offer__declined"
+    }
+  ]
+}

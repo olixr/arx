@@ -1,0 +1,84 @@
+{
+  "id": "bray_yard",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "hostler_bray"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Mind the grey, he bites flatterers. Welcome to the yard. Feed, stalls, and road stock, in that order of importance. No, the trough is not for boots. Not you. The bay. What'll it be?",
+      "choices": [
+        {
+          "text": "Show me the road stock.",
+          "next": "stock"
+        },
+        {
+          "text": "How does a drover end up settled?",
+          "next": "settled"
+        },
+        {
+          "text": "What's the lead rope for?",
+          "next": "lead"
+        },
+        {
+          "text": "Just looking at the horses.",
+          "next": "bye"
+        }
+      ],
+      "voice": "bray_yard__hub"
+    },
+    {
+      "id": "stock",
+      "text": "Coursers, road-bred, saddled and shod, priced like the gate they are. A horse halves the High Road and doubles what you can carry away from trouble. Have a look.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "bray_stable"
+        }
+      ],
+      "voice": "bray_yard__stock"
+    },
+    {
+      "id": "settled",
+      "text": "Twenty years droving, Amberford to the Last Lamp and back. One spring I got off at the ford to water him, and he wouldn't take the road again. Just looked at me. A drover trusts the ears, so I bought the yard instead of arguing. He was right. He usually is. Don't tell him.",
+      "choices": [
+        {
+          "text": "Which one is he?",
+          "next": "him"
+        }
+      ],
+      "voice": "bray_yard__settled"
+    },
+    {
+      "id": "him",
+      "text": "The grey. Retired, fat, entirely in charge. He inspects every beast that boards here and he has never once been wrong about a bad shoe or a bad rider. The stall next to his costs the same and confers his opinion free.",
+      "choices": [
+        {
+          "text": "I'll earn his opinion.",
+          "next": "bye"
+        }
+      ],
+      "voice": "bray_yard__him"
+    },
+    {
+      "id": "lead",
+      "text": "Drover's lead. Gentle rope for a beast that's chosen you: the wild ones, tamed proper, walk better on a soft line than a hard one. Sorrel at Dawnmead teaches the choosing part. I sell the rope and the respect.",
+      "choices": [
+        {
+          "text": "I'll take a look.",
+          "next": "stock"
+        }
+      ],
+      "voice": "bray_yard__lead"
+    },
+    {
+      "id": "bye",
+      "text": "Looking's free. The grey charges for touching.",
+      "voice": "bray_yard__bye"
+    }
+  ]
+}

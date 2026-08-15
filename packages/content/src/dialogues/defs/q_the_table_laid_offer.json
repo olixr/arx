@@ -1,0 +1,53 @@
+{
+  "id": "q_the_table_laid_offer",
+  "start": "hub",
+  "requires": [
+    "quest:the_table_laid:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "innkeep_dunna",
+      "priority": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Mill, river, furrow, and stable, and every one of them mentioned you at my bar this week. Right. The common table's laid on feast nights, and folk who feed it sit at it. Two loaves, two trout done proper. Yours to bring.",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "the_table_laid"
+        }
+      ],
+      "choices": [
+        {
+          "text": "I'll bring the meal.",
+          "next": "sworn"
+        },
+        {
+          "text": "I eat alone.",
+          "next": "declined"
+        }
+      ],
+      "voice": "q_the_table_laid_offer__hub"
+    },
+    {
+      "id": "sworn",
+      "text": "Coals in the yard are lit. Bread's harder than it looks, love. That's the lesson hiding in it.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "the_table_laid"
+        }
+      ],
+      "voice": "q_the_table_laid_offer__sworn"
+    },
+    {
+      "id": "declined",
+      "text": "Half this room said that once. Look at them now, elbow to elbow and insufferable. The offer keeps.",
+      "voice": "q_the_table_laid_offer__declined"
+    }
+  ]
+}

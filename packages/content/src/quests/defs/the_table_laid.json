@@ -1,0 +1,46 @@
+{
+  "id": "the_table_laid",
+  "name": "The Table Laid",
+  "giver": "innkeep_dunna",
+  "requires": {
+    "quests": [
+      "flour_and_water",
+      "the_amber_water",
+      "the_free_furrows",
+      "a_stall_swept_clean"
+    ]
+  },
+  "stages": [
+    {
+      "id": "the_common_table",
+      "journal": "Dunna is laying the common table and your place at it gets earned the town way: two loaves and two cooked trout, brought to the bar. Bread wants Garton's flour and somebody's oven. Trout wants the river and hot coals, and the yard fire's coals are free. She was very clear that buying it all counts too, and that she'd know, and that she'd let it slide exactly once.",
+      "objectives": [
+        {
+          "kind": "collect",
+          "item": "bread",
+          "count": 2
+        },
+        {
+          "kind": "collect",
+          "item": "trout",
+          "count": 2
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 100,
+    "xp": [
+      {
+        "skill": "cooking",
+        "amount": 250
+      }
+    ],
+    "items": [
+      {
+        "item": "hearty_stew",
+        "qty": 2
+      }
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "id": "a_stall_swept_clean",
+  "name": "A Stall Swept Clean",
+  "giver": "hostler_bray",
+  "stages": [
+    {
+      "id": "five_sheaves",
+      "journal": "Bray wants five sheaves of wheat for the feed bins, because the yard's beasts eat before anybody's errands happen, his included. The Millstone sells wheat over Garton's counter, and Furrowfield grows it. He'll show you the stable door while the beasts are busy chewing.",
+      "objectives": [
+        {
+          "kind": "collect",
+          "item": "wheat",
+          "count": 5
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 40,
+    "xp": [
+      {
+        "skill": "beastcraft",
+        "amount": 150
+      }
+    ],
+    "items": [
+      {
+        "item": "drovers_lead",
+        "qty": 1
+      }
+    ]
+  }
+}

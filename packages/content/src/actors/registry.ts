@@ -80,6 +80,7 @@ import ferrymanPeld from './defs/ferryman_peld.json';
 import grocerMerra from './defs/grocer_merra.json';
 import roundTrader from './defs/round_trader.json';
 import innkeepDunna from './defs/innkeep_dunna.json';
+import hostlerBray from './defs/hostler_bray.json';
 import keeperAnsel from './defs/keeper_ansel.json';
 import lampkeeperEdda from './defs/lampkeeper_edda.json';
 import reeveHalla from './defs/reeve_halla.json';
@@ -104,9 +105,11 @@ import serjeantOttar from './defs/serjeant_ottar.json';
 import masterTilo from './defs/master_tilo.json';
 import millerGarton from './defs/miller_garton.json';
 import orchardistPerl from './defs/orchardist_perl.json';
+import registrarRowan from './defs/registrar_rowan.json';
 import outfitterHask from './defs/outfitter_hask.json';
 import sageElowen from './defs/sage_elowen.json';
 import smithBretta from './defs/smith_bretta.json';
+import tannerSwale from './defs/tanner_swale.json';
 import wayfarerDray from './defs/wayfarer_dray.json';
 import peddlerNix from './defs/peddler_nix.json';
 import peddlerHetty from './defs/peddler_hetty.json';
@@ -312,14 +315,17 @@ const SOURCES: readonly unknown[] = [
   grocerMerra,
   roundTrader,
   innkeepDunna,
+  hostlerBray,
   keeperAnsel,
   lampkeeperEdda,
   masterTilo,
   millerGarton,
   orchardistPerl,
+  registrarRowan,
   outfitterHask,
   sageElowen,
   smithBretta,
+  tannerSwale,
   wayfarerDray,
   wayfarerPetch,
   wayfarerSenna,

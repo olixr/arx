@@ -50,7 +50,10 @@
       "choices": [
         {
           "text": "You know Dunna at the ford?",
-          "next": "dunna"
+          "next": "dunna",
+          "requires": [
+            "dlg:dunna_rest"
+          ]
         },
         {
           "text": "Back to the bar.",

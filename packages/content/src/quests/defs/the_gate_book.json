@@ -1,0 +1,34 @@
+{
+  "id": "the_gate_book",
+  "name": "The Gate Book",
+  "giver": "registrar_rowan",
+  "stages": [
+    {
+      "id": "three_doors",
+      "journal": "Rowan signed your name into the gate book and sent you to the three doors every newcomer needs. Keeper Ansel at the Waykeepers' Hall on the west spine, for a bed that costs nothing and a registry that remembers. Cormund at the bank on the Round, for the chests that carry your goods between every town. And Dunna at the Wanderer's Rest, for the board, the news, and the yard fire any traveler may cook on.",
+      "objectives": [
+        {
+          "kind": "talk",
+          "actor": "keeper_ansel"
+        },
+        {
+          "kind": "talk",
+          "actor": "banker_cormund"
+        },
+        {
+          "kind": "talk",
+          "actor": "innkeep_dunna"
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 40,
+    "xp": [
+      {
+        "skill": "vitality",
+        "amount": 100
+      }
+    ]
+  }
+}

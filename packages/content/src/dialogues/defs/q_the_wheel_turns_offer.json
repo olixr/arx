@@ -1,0 +1,53 @@
+{
+  "id": "q_the_wheel_turns_offer",
+  "start": "hub",
+  "requires": [
+    "quest:the_wheel_turns:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "miller_garton",
+      "priority": 6
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Stone doesn't stop. Shoulders do. Six measures and the ovens stay ahead of the town. Same terms as always.",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "the_wheel_turns"
+        }
+      ],
+      "choices": [
+        {
+          "text": "I'll take a turn.",
+          "next": "sworn"
+        },
+        {
+          "text": "Not this time.",
+          "next": "declined"
+        }
+      ],
+      "voice": "q_the_wheel_turns_offer__hub"
+    },
+    {
+      "id": "sworn",
+      "text": "You know where everything is. Mind the feed rate. You always mind the feed rate. I always say it anyway.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "the_wheel_turns"
+        }
+      ],
+      "voice": "q_the_wheel_turns_offer__sworn"
+    },
+    {
+      "id": "declined",
+      "text": "Then bread's thin tomorrow and everyone will know whose fault it was. I'll tell them. Cheerfully.",
+      "voice": "q_the_wheel_turns_offer__declined"
+    }
+  ]
+}

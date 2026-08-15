@@ -1,0 +1,103 @@
+{
+  "id": "rowan_gate",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "registrar_rowan"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Peace on your road, traveler. The gate book's open if you're walking north, and the bench is free either way. What do you need?",
+      "choices": [
+        {
+          "text": "What's the book for?",
+          "next": "book"
+        },
+        {
+          "text": "You kept the Ring at Dawnmead.",
+          "next": "ring"
+        },
+        {
+          "text": "What's north of here?",
+          "next": "north"
+        },
+        {
+          "text": "Just passing.",
+          "next": "bye"
+        }
+      ],
+      "voice": "rowan_gate__hub"
+    },
+    {
+      "id": "book",
+      "text": "Every name that walks north through this arch, signed in. When they walk back, a mark. Ansel keeps the road's registry at the hall. I keep the gate's. Between his book and mine, nobody leaves this town unremembered.",
+      "choices": [
+        {
+          "text": "And the names with no mark?",
+          "next": "unmarked"
+        },
+        {
+          "text": "Good to know.",
+          "next": "bye"
+        }
+      ],
+      "voice": "rowan_gate__book"
+    },
+    {
+      "id": "unmarked",
+      "text": "I read them sometimes, evenings. Aldis pretends she doesn't notice, which is her way of standing next to a man while he does it. Sign north with me when you go. Then do me the courtesy of coming back.",
+      "choices": [
+        {
+          "text": "I will.",
+          "next": "bye"
+        }
+      ],
+      "voice": "rowan_gate__unmarked"
+    },
+    {
+      "id": "ring",
+      "text": "Forty years beside those stones, telling every waker the road would ask for them someday. Two winters back it asked for me, personally, by name. Wren keeps the Ring now, and better than I did. She'd argue that. She'd lose.",
+      "choices": [
+        {
+          "text": "Do you miss it?",
+          "next": "miss"
+        },
+        {
+          "text": "It suits you here.",
+          "next": "bye"
+        }
+      ],
+      "voice": "rowan_gate__ring"
+    },
+    {
+      "id": "miss",
+      "text": "I miss the mornings. Nothing else. A man who spends forty years telling folk to take the road owes it a walk of his own, and I was starting to sound like furniture. Here the road comes to me, one name at a time. Fair trade.",
+      "choices": [
+        {
+          "text": "Fair enough.",
+          "next": "bye"
+        }
+      ],
+      "voice": "rowan_gate__miss"
+    },
+    {
+      "id": "north",
+      "text": "The High Road, and it earns the name. Waykeeper lamps at Fernway, the Long Meadow, the Fork. Then the mountain, and Silverfall on it. Aldis gives the speech with more iron in it. Mine is: sign the book, walk lamp to lamp, come home.",
+      "choices": [
+        {
+          "text": "I'll sign when I go.",
+          "next": "bye"
+        }
+      ],
+      "voice": "rowan_gate__north"
+    },
+    {
+      "id": "bye",
+      "text": "The gate stays open. So does the book.",
+      "voice": "rowan_gate__bye"
+    }
+  ]
+}

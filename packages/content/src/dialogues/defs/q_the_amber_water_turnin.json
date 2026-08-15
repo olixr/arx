@@ -1,0 +1,27 @@
+{
+  "id": "q_the_amber_water_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:the_amber_water:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "ferryman_peld",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Five. River-bright, all of them. You stood still long enough. That's the whole secret, and now you know it, and I'd thank you not to spread it around.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "the_amber_water"
+        }
+      ],
+      "voice": "q_the_amber_water_turnin__paid"
+    }
+  ]
+}

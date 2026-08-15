@@ -1,0 +1,47 @@
+{
+  "id": "the_ford_holds",
+  "name": "The Ford Holds",
+  "giver": "captain_aldis",
+  "requires": {
+    "quests": [
+      "the_gate_book",
+      "the_delf_ladder",
+      "the_makers_mark",
+      "the_table_laid"
+    ]
+  },
+  "stages": [
+    {
+      "id": "the_dusk_watch",
+      "journal": "Captain Aldis walks her wall at dusk and tonight she wants you walking it too, the whole shape of what you've learned. Stand with Rowan at the gate book, where the town's names begin. Stand with Ansel at the Toll War pillar, where some of them ended. Then come to her.",
+      "objectives": [
+        {
+          "kind": "talk",
+          "actor": "registrar_rowan"
+        },
+        {
+          "kind": "talk",
+          "actor": "keeper_ansel"
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 150,
+    "xp": [
+      {
+        "skill": "vitality",
+        "amount": 400
+      }
+    ],
+    "items": [
+      {
+        "item": "cape_traveler",
+        "qty": 1
+      }
+    ],
+    "flags": [
+      "ford_freeman"
+    ]
+  }
+}

@@ -243,6 +243,21 @@ registry with Aldis now, and is spoken of warmly, never mourned.)
   route pride, cheerful non-answers.
 
 ### Amberford — the ford town
+(THE FORD COMES HOME grew the town to its river: the quay, the tannery,
+the stable, and the gate registry are new posts; every old throat kept its
+voice and got its geography re-walked.)
+- **Rowan** (Keeper of the Gate Book; Dawnmead's retired elder): wants every
+  name in his book to come home through the gate at least once. Wren's warm
+  measured plainness, aged on a bigger road; calls a Dawnmead graduate
+  "waker" and everyone else "traveler". The one throat that KNOWS you if you
+  carry Wren's mark. Cadence: unhurried, exact, kindness without softness.
+- **Bray** (Hostler, the Ford Stable): wants every beast fed before every
+  rider. Talks to animals mid-sentence, argues with them, loses. Cadence:
+  easy, saddle-leather practical; prices in oats first, coin second.
+- **Swale** (Tanner; Hask's old quartermaster off the Last Lamp run): wants
+  leather that outlives its buyer. Blunt about smells, hers included;
+  downstream is a courtesy she extends and expects. Cadence: dry, brisk,
+  workshop-exact; measures everything in seasons cured.
 - **Bretta Ironhewn** (Master Smith, came down-mountain after the seal):
   wants the forge honest and the past unmentioned. Cadence: terse, metalwork
   imperatives, drops sentence subjects ("Forge's hot. Speak."). Goes quiet
