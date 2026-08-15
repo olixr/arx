@@ -1627,7 +1627,7 @@ export const CAVE_BAT_LOOK: BatLook = {
   earLen: 0.23,
   earW: 0.075,
   earBack: 0.12,
-  wingSpan: 0.85,
+  wingSpan: 1.15,
   fingers: 3,
   scallop: 0.5,
   ragged: 0,
@@ -1666,7 +1666,7 @@ export const GIANT_BAT_LOOK: BatLook = {
   earLen: 0.15,
   earW: 0.055,
   earBack: 0.32,
-  wingSpan: 1.7,
+  wingSpan: 2.05,
   fingers: 4,
   scallop: 0.3,
   ragged: 0,
@@ -1704,7 +1704,7 @@ export const DIRE_BAT_LOOK: BatLook = {
   earLen: 0.3,
   earW: 0.07,
   earBack: 0.72,
-  wingSpan: 1.95,
+  wingSpan: 2.4,
   fingers: 5,
   scallop: 0.85,
   ragged: 1,
@@ -1884,8 +1884,8 @@ export function drawBat(
     const tipVel = es < 0 ? fr.portTipVel : fr.starTipVel;
     const spread = Math.max(0.1, fr.spread);
     const span = look.wingSpan;
-    const armL = span * 0.4 * spread;
-    const handL = span * 0.6 * spread;
+    const armL = span * 0.42 * spread;
+    const handL = span * 0.62 * spread;
     // Shoulder on the pitched hull — dorsal and forward, so it rides
     // up the back as the body swings vertical.
     const shA = look.bodyR * 0.22;
@@ -1909,7 +1909,10 @@ export function drawBat(
     const tips: V3[] = [];
     for (let k = 0; k < N; k++) {
       const u = N === 1 ? 1 : k / (N - 1);
-      const len = handL * (1 - 0.3 * u);
+      // THE WING IS THE ANIMAL: long fingers with a gentle taper —
+      // the outermost still carries most of the reach, so the sail
+      // reads LONG at every phase (the user's exaggeration verdict).
+      const len = handL * (1 - 0.22 * u);
       const lagK = lag[Math.min(k, lag.length - 1)] ?? 0;
       // THE SAIL LOADS UP AT SPEED: the hover's deep finger droop
       // eases toward level as cruise takes over, and lift arches the
@@ -1917,11 +1920,13 @@ export function drawBat(
       // a full anhedral droop at cruise nearly cancels the back-sweep
       // under the camera's y-squash at the south bands, collapsing
       // the whole sail to a wire exactly where players see it most.
-      const droop = (0.2 + 0.62 * u) * spread * 0.6 * (1 - 0.5 * fr.cruiseK);
+      const droop = (0.16 + 0.5 * u) * spread * 0.6 * (1 - 0.5 * fr.cruiseK);
       const tipRaise = fr.raiseHand - droop - lagK * 0.5;
-      const backW = (0.08 + 0.9 * u) * len * fr.sweepK;
+      // A DEEP chord: the inner fingers rake far back, so the sail
+      // carries real vertical body instead of a shallow sliver.
+      const backW = (0.12 + 1.05 * u) * len * fr.sweepK;
       const rise =
-        Math.sin(tipRaise) * len * 0.88 +
+        Math.sin(tipRaise) * len * 0.95 +
         flex * u * u * span * 0.3 +
         fr.cruiseK * u * u * span * 0.05;
       tips.push([
@@ -1952,16 +1957,19 @@ export function drawBat(
       const lagK = lag[Math.min(k, lag.length - 1)] ?? 0;
       const sagK = 0.2 + clamp(lagK * 0.9, -0.25, 0.55);
       const closing = k === N - 1;
+      // Scallops stay GENTLE: the trailing edge breathes, it never
+      // saws — a spiked edge shrank the whole wing's read (the user's
+      // spiky verdict). Depth caps well short of the wrist.
       const pull = Math.min(
-        0.7,
-        (closing ? 0.16 : 0.12) + (0.3 * look.scallop) * (0.75 + sagK),
+        0.45,
+        (closing ? 0.13 : 0.08) + (0.18 * look.scallop) * (0.75 + sagK),
       );
       if (look.ragged > 0.3) {
-        const j1 = (((seed >>> (k * 3)) & 3) / 3) * 0.16 * look.ragged;
-        const j2 = (((seed >>> (k * 3 + 5)) & 3) / 3) * 0.16 * look.ragged;
-        pts3.push(dip(tips[k]!, nxt, 0.3, pull * (0.5 + j1)));
-        pts3.push(dip(tips[k]!, nxt, 0.52, pull * (1.2 + j2)));
-        pts3.push(dip(tips[k]!, nxt, 0.74, pull * 0.55));
+        const j1 = (((seed >>> (k * 3)) & 3) / 3) * 0.1 * look.ragged;
+        const j2 = (((seed >>> (k * 3 + 5)) & 3) / 3) * 0.1 * look.ragged;
+        pts3.push(dip(tips[k]!, nxt, 0.3, pull * (0.55 + j1)));
+        pts3.push(dip(tips[k]!, nxt, 0.52, pull * (1.15 + j2)));
+        pts3.push(dip(tips[k]!, nxt, 0.74, pull * 0.6));
       } else {
         pts3.push(dip(tips[k]!, nxt, 0.5, pull));
       }

@@ -135,8 +135,8 @@ const kept = ONLY ? figs.filter((f) => f.defId === ONLY) : figs;
 const COLS = 8;
 // Flier cells: the elder spans 1.85 tiles per wing at full mantle and
 // cruises 1.2 tiles up — cells are wide and tall so nothing clips.
-const CW = Math.round(S * 3.3);
-const CH = Math.round(S * 3.3);
+const CW = Math.round(S * 3.9);
+const CH = Math.round(S * 3.9);
 
 let rowFrom = 0;
 let rowTo = Math.ceil(kept.length / COLS) - 1;
