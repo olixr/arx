@@ -430,7 +430,7 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     // THE SECOND SHIFT: street timber 1-2; carved limestone 3; the
     // kiln is the wave's masonry and holds four like the oven.
     [Tile.WallFountain, 'wallfountain', 3],
-    [Tile.StreetPump, 'streetpump', 2],
+    [Tile.WaterCask, 'watercask', 2],
     [Tile.WaterTrough, 'watertrough', 2],
     [Tile.PottersWheel, 'potterswheel', 2],
     [Tile.PotteryKiln, 'kiln', 4],

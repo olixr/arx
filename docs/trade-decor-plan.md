@@ -205,16 +205,16 @@ weighing. If a piece could read as abandoned, it fails.
 
 | id | Tile | trade | read | anim | hits | kind |
 |----|------|-------|------|------|------|------|
-| 417 | WallFountain | civic water | carved wall-basin, mask spout, water rope, drift rings | arc + rings <4Hz | 3 | wallfountain |
-| 418 | StreetPump | civic water | iron swan-neck pump on its stone step, handle parked, pail catching the drip | drip <4Hz | 2 | streetpump |
+| 417 | WallFountain | civic water | spring-fed fount of rough fieldstone, worn spout-stone, water rope, drift rings, moss + fern | arc + rings <4Hz | 3 | wallfountain |
+| 418 | WaterCask | civic water | coopered street butt raised on its cradle, wooden tap, pail catching the drip, cup on the peg | drip <4Hz | 2 | watercask |
 | 419 | WaterTrough | civic water | long staved trough, sky sliver on still water, drifting leaf, hung dipper | leaf drift <4Hz | 2 | watertrough |
 | 420 | PottersWheel | pottery | kick-wheel, wet pot half-risen on the wheelhead, slip bucket, rib + wire | static | 2 | potterswheel |
-| 421 | PotteryKiln | pottery | bottle kiln mid-firing, crown wisp, spy-hole glow AS PAINT, greenware board | smoke <4Hz | 4 | kiln |
+| 421 | PotteryKiln | pottery | THE POTTER'S MOUND: hand-daubed updraft dome on fieldstone, offset clay stack, banked stoke arch AS PAINT, greenware board, cooling bench | smoke <4Hz | 4 | kiln |
 | 422 | ScribesDesk | scribing | slant-top desk, open ruled ledger, inkhorn + quill, wax sticks, pigeonholed scrolls | static | 2 | scribedesk |
 | 423 | CandleRack | chandlery | dipped pairs curing over two rails, drip tray, wick coil | static | 1 | candlerack |
 | 424 | FletchersBench | fletching | arrow bundles in the ring crate, feather box spilling fletch, staves on pegs | static | 2 | fletcher |
 | 425 | CobblersBench | cobbling | iron lasting stand, finished boots row, scraps, awl + hammer | static | 1 | cobbler |
-| 426 | FishmongerSlab | fishmongery | tilted stone slab, the morning catch in silver rows, scale dish, drip | drip <4Hz | 2 | fishslab |
+| 426 | FishmongerSlab | fishmongery | tilted stone slab, the catch in silver rows on wet straw and seaweed, scale dish, brine drip | drip <4Hz | 2 | fishslab |
 | 427 | HangingScale | shopkeeping | beam scale on its bracket post, one pan low under a sack mid-weigh | sway <4Hz | 1 | scales |
 | 428 | DisplayTable | shopkeeping | runner-clothed table dealing SHELVING-CONTRACT wares, leaning price board | static | 2 | displaytable |
 
@@ -311,7 +311,44 @@ dungeon CandleShrine — the rack's kind is `'candlerack'`.)
   blow (debris mid-air in the capture, tile patched, four siblings
   untouched); the kiln came down on its fourth.
 
+### THE PERIOD TRUTH PASS (user verdict, same day — pass 3)
+
+**The law, minted: if the smith can't forge it and the cooper can't
+stave it, the street doesn't own it.** This world's water is drawn,
+sprung, and caught — never PLUMBED — and its workshops are raised by
+hand, not cast in a manufactory. Every piece must answer the lore's
+tech level; a prop that reads one age too advanced muddies the whole
+universe.
+
+- **StreetPump is DEAD — long live the WaterCask** (id 418 kept,
+  enum + kind renamed): the fluted cast-iron column, swan neck, and
+  acorn finial were Victorian foundry work. Replaced outright by a
+  coopered street butt raised on a stout cradle: cooper's staves,
+  smith's hoops, a whittled wooden tap filling the pail by gravity
+  alone, plank lid weighted with a stone, drinking cup on the peg.
+  Same drip, same 300s/2-hit law, new debris (staves clap out in a
+  ring, hoops roll, the lid flies whole).
+- **The WallFountain becomes THE SPRING FOUNT** (name 'spring
+  fount'): fine ashlar read plumbed. Now rough FIELDSTONE — rubble
+  the mason found, not blocks he sawed — a worn spout-stone cut big
+  and soft, moss on every wet seam, a fern in the footing crack.
+  The water is the hill's own spring, led in and let FALL.
+- **The bottle kiln becomes THE POTTER'S MOUND**: the waisted bottle
+  was a manufactory chimney two ages early. Now a clay-daubed
+  updraft dome the potter raised by hand — fieldstone footing,
+  straw-flecked daub smears, a short coil-built stack offset at the
+  crown, the stoke arch half-bricked with clay and banked (embers
+  three painted values deep, proven inert at midnight).
+- **The fish lose their ice**: no fishmonger in this world ever
+  crushed ice. The catch lies on wet straw with dark seaweed laid
+  through — and the silver reads BRIGHTER against it than on white.
+- Held under the same lens and passed: WaterTrough, PottersWheel
+  (both ancient tech), ScribesDesk, CandleRack, FletchersBench,
+  CobblersBench, HangingScale (beam scales are older than kings),
+  DisplayTable.
+
 ### Gate
 
 shared 217 / client 613 / server 493 / content 514, all pass; tsc
-clean in all four packages.
+clean in all four packages — re-run whole after the period-truth
+pass.

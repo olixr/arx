@@ -172,7 +172,7 @@ export type SmashKind =
   // silver, brass pans ringing off their chains, and the display
   // table's dealt stock going up all at once.
   | 'wallfountain'
-  | 'streetpump'
+  | 'watercask'
   | 'watertrough'
   | 'potterswheel'
   | 'kiln'
@@ -718,7 +718,7 @@ const CHIP_TONE: Record<SmashKind, string> = {
   // wet clay, kiln brick, desk oak, wax cream, bench oak, cobbler
   // leather, slab stone, scale bronze, and the table's joinery.
   wallfountain: '#8a857a',
-  streetpump: '#4c4a52',
+  watercask: '#75603e',
   watertrough: '#8a6534',
   potterswheel: '#8a6534',
   kiln: '#96604a',
@@ -2248,20 +2248,20 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       }
       break;
     }
-    case 'streetpump': {
-      // Cast iron RINGS off the stone step: the column in two heavy
-      // lengths, the swan neck whole, the handle cartwheeling, the
-      // pail's slosh dying dark.
-      for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.16, wid: 0.055, color: '#4c4a52', stripe: '#8a8a94', pace: 0.5 });
+    case 'watercask': {
+      // The cask lets go the cooper's way: staves clapping out in a
+      // ring, hoops rolling free, the lid flying whole, the tap peg
+      // spinning — and the whole held water out in one low slosh.
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.16, wid: 0.045, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.75 });
       }
-      out.push({ len: 0.13, wid: 0.035, color: '#4c4a52', stripe: '#8a8a94', pace: 1.0 });
-      out.push({ len: 0.18, wid: 0.025, color: '#4c4a52', stripe: '#8a8a94', pace: 1.4 });
       for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.1, wid: 0.05, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.8 });
+        out.push({ len: 0.11, wid: 0.022, color: '#4c4a52', stripe: '#8a94a0', pace: 1.3 });
       }
-      for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.055, wid: 0.045, color: pick(rand, ['#2e3c48', '#5f87a8']), round: true, pace: 0.35 });
+      out.push({ len: 0.13, wid: 0.1, color: '#96713c', stripe: '#c9a76a', round: true, pace: 1.1 });
+      out.push({ len: 0.07, wid: 0.02, color: '#6f4d26', stripe: '#a3814a', pace: 1.5 });
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.06, wid: 0.05, color: pick(rand, ['#2e3c48', '#5f87a8']), round: true, pace: 0.35 });
       }
       break;
     }

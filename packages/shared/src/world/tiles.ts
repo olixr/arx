@@ -810,14 +810,16 @@ export enum Tile {
   // THE SECOND SHIFT — the working-trades kit, second wave (see
   // docs/trade-decor-plan.md §THE SECOND SHIFT). The first wave
   // dressed the forge, the loom, and the oven; this one brings the
-  // street its water and the town its missing tradesfolk — potter,
+  // street its water — drawn, sprung, and caught, never PLUMBED:
+  // the well rope, the hillside spring, and the cooper's cask are
+  // this world's whole waterworks — and the town its missing tradesfolk: potter,
   // scribe, chandler, fletcher, cobbler, fishmonger — plus the
   // merchant's weighing and display furniture. Same voice: TENDED,
   // NEVER LEFT — every piece mid-shift.
-  /** A carved stone wall-basin, its mask spout still pouring its rope of water. */
+  /** A spring-fed fount of old fieldstone, its spout-stone still pouring. */
   WallFountain = 417,
-  /** The iron parish pump on its stone step, the pail set to catch the drip. */
-  StreetPump = 418,
+  /** A raised street cask on its cradle — cooper's work, a wooden tap, the pail waiting. */
+  WaterCask = 418,
   /** A long staved street trough of still water beside the hitching rail. */
   WaterTrough = 419,
   /** The potter's kick-wheel, a wet pot half-risen on the wheelhead. */
@@ -1465,8 +1467,8 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   // each trade keys off its own material (water reads WATER for all
   // three street pieces, kiln brick, scribe paper, chandler wax,
   // fletch red, cobbler leather, fish silver, merchant brass).
-  [Tile.WallFountain]: { name: 'wall fountain', solid: true, color: '#8a857a', raised: true, topColor: '#8fb4c4' },
-  [Tile.StreetPump]: { name: 'street pump', solid: true, color: '#4c4a52', raised: true, topColor: '#8fb4c4' },
+  [Tile.WallFountain]: { name: 'spring fount', solid: true, color: '#8a857a', raised: true, topColor: '#8fb4c4' },
+  [Tile.WaterCask]: { name: 'water cask', solid: true, color: '#75603e', raised: true, topColor: '#b08a45' },
   [Tile.WaterTrough]: { name: 'water trough', solid: true, color: '#75603e', raised: true, topColor: '#8fb4c4' },
   [Tile.PottersWheel]: { name: "potter's wheel", solid: true, color: '#75603e', raised: true, topColor: '#b07850' },
   [Tile.PotteryKiln]: { name: 'pottery kiln', solid: true, color: '#96604a', raised: true, topColor: '#c4a284' },
@@ -2148,7 +2150,7 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   // two true masses; the pump and the scale are poles you sidle
   // past; the trough runs long and low like the rail it serves.
   [Tile.WallFountain, 0.42],
-  [Tile.StreetPump, 0.26],
+  [Tile.WaterCask, 0.3],
   [Tile.WaterTrough, 0.42],
   [Tile.PottersWheel, 0.34],
   [Tile.PotteryKiln, 0.45],
@@ -2437,7 +2439,7 @@ export type DestructibleKind =
   // wax, feather and shaft, leather, market silver, brass chain,
   // and the display table's rain of dealt goods.
   | 'wallfountain'
-  | 'streetpump'
+  | 'watercask'
   | 'watertrough'
   | 'potterswheel'
   | 'kiln'
@@ -2629,7 +2631,7 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   // limestone holds three; the kiln is this wave's masonry and
   // holds four on the long clock like the oven before it.
   [Tile.WallFountain, { kind: 'wallfountain', respawnSec: 600, hits: 3 }],
-  [Tile.StreetPump, { kind: 'streetpump', respawnSec: 300, hits: 2 }],
+  [Tile.WaterCask, { kind: 'watercask', respawnSec: 300, hits: 2 }],
   [Tile.WaterTrough, { kind: 'watertrough', respawnSec: 300, hits: 2 }],
   [Tile.PottersWheel, { kind: 'potterswheel', respawnSec: 300, hits: 2 }],
   [Tile.PotteryKiln, { kind: 'kiln', respawnSec: 600, hits: 4 }],

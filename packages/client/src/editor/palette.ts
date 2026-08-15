@@ -193,7 +193,7 @@ export const TILE_CATEGORIES: TileCategory[] = [
       // THE SECOND SHIFT: the street's water first (the wave's
       // loudest ask), then the potter, the quiet trades, and the
       // merchant's weighing and display furniture.
-      Tile.WallFountain, Tile.StreetPump, Tile.WaterTrough,
+      Tile.WallFountain, Tile.WaterCask, Tile.WaterTrough,
       Tile.PottersWheel, Tile.PotteryKiln, Tile.ScribesDesk,
       Tile.CandleRack, Tile.FletchersBench, Tile.CobblersBench,
       Tile.FishmongerSlab, Tile.HangingScale, Tile.DisplayTable,
