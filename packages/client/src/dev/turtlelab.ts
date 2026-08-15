@@ -184,20 +184,20 @@ function drawQuad(
   let tail: (() => void) | undefined;
   if (f.defId === 'giant_turtle' || f.defId === 'colossus_turtle') {
     const colossus = f.defId === 'colossus_turtle';
-    f.stub ??= new BobtailSim(colossus ? 2.0 : 1.5, seed, 0.3);
+    f.stub ??= new BobtailSim(colossus ? 2.1 : 1.6, seed, 0.3);
     f.stub.update(
       wx,
       wy,
-      (colossus ? 0.2 : 0.15) + lp.bob * 0.35,
+      (colossus ? 0.24 : 0.12) + lp.bob * 0.35,
       lp.dir,
       dt,
       now / 1000,
-      colossus ? 1.7 : 1.15,
+      colossus ? 1.8 : 1.35,
       0,
     );
     const st = colossus
-      ? { skin: COLOSSUS_LOOK.skin, spike: COLOSSUS_LOOK.spike, heavy: 1.25 }
-      : { skin: TURTLE_LOOK.skin, spike: TURTLE_LOOK.spike, heavy: 1.0 };
+      ? { skin: COLOSSUS_LOOK.skin, spike: COLOSSUS_LOOK.spike, heavy: 1.3 }
+      : { skin: TURTLE_LOOK.skin, spike: TURTLE_LOOK.spike, heavy: 1.05 };
     const stub = f.stub;
     tail = () => {
       const pts = stub.nodes.map((nd) => ({

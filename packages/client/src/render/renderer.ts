@@ -35940,24 +35940,25 @@ export class Renderer {
     if (defId === 'giant_turtle' || defId === 'colossus_turtle') {
       const colossus = defId === 'colossus_turtle';
       if (!anim.turtleTail) {
-        anim.turtleTail = new BobtailSim(colossus ? 2.0 : 1.5, eid, 0.3);
+        anim.turtleTail = new BobtailSim(colossus ? 2.1 : 1.6, eid, 0.3);
       }
       bobSim = anim.turtleTail;
       bobSim.update(
         s.x,
         s.y,
         // The stern rim's height: the trailer roots under the shell's
-        // back door, riding the (small) gait bob.
-        (colossus ? 0.2 : 0.15) + legPose.bob * 0.35,
+        // back door, riding the (small) gait bob — the snapper drags
+        // low, the mountain's door sits over real daylight.
+        (colossus ? 0.24 : 0.12) + legPose.bob * 0.35,
         legPose.dir,
         this.frameDt,
         performance.now() / 1000,
-        colossus ? 1.7 : 1.15,
+        colossus ? 1.8 : 1.35,
         0,
       );
       const st = colossus
-        ? { skin: COLOSSUS_LOOK.skin, spike: COLOSSUS_LOOK.spike, heavy: 1.25 }
-        : { skin: TURTLE_LOOK.skin, spike: TURTLE_LOOK.spike, heavy: 1.0 };
+        ? { skin: COLOSSUS_LOOK.skin, spike: COLOSSUS_LOOK.spike, heavy: 1.3 }
+        : { skin: TURTLE_LOOK.skin, spike: TURTLE_LOOK.spike, heavy: 1.05 };
       const turtleSim = bobSim;
       paintBob = () => {
         const pts = turtleSim.nodes.map((nd) => {
@@ -36164,7 +36165,7 @@ export class Renderer {
         // antlers ride a raised neck and clip at the top edge without
         // their own headroom (user-flagged walking up-screen).
         const headroom =
-          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'wolf_oldfang' ? 0.32 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : defId === 'fox' ? 0.35 : defId === 'fox_champion' ? 0.5 : defId === 'giant_turtle' ? 0.3 : defId === 'colossus_turtle' ? 0.5 : 0;
+          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'wolf_oldfang' ? 0.32 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : defId === 'fox' ? 0.35 : defId === 'fox_champion' ? 0.5 : defId === 'giant_turtle' ? 0.3 : defId === 'colossus_turtle' ? 0.7 : 0;
         const top = (spec.bodyRise + (def?.radius ?? 0.3) * 2.2 + headroom) * scale + r;
         const bottom = (spec.rig.legLen + 0.7) * scale;
         return { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom };
