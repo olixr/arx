@@ -57,11 +57,25 @@ export class TailSim {
    * the humanoid hip line; a QUADRUPED must pass its own body
    * half-length or the tail roots INSIDE the torso and hangs between
    * the legs — the fox lesson.
+   *
+   * `tipCurl` lifts the rest carriage back UP toward the tip (a
+   * fraction of the root height, squared along the chain) — the
+   * feline hook: a big cat's tail sweeps low off the haunch and rises
+   * through its last third. Zero (the default) is the hanging carry
+   * every existing tail ships with, verbatim.
+   *
+   * `restCarry` is the rest droop fraction: how much of the root
+   * height the chain gives up by the tip while standing. The default
+   * 0.55 is the hyena flag every shipped tail wears; a horse's hair
+   * fall HANGS (≈0.88) and only lifts toward the stream at a gallop —
+   * speed scales the carry off this same dial.
    */
   constructor(
     private readonly heavy: number,
     seed: number,
     private readonly rootOff: number = BACK_OFF,
+    private readonly tipCurl: number = 0,
+    private readonly restCarry: number = 0.55,
   ) {
     this.segs = 6;
     this.segLen = 0.072 * (1 + 0.3 * (heavy - 1));
@@ -120,8 +134,11 @@ export class TailSim {
     this.lastAx = ax;
     this.lastAy = ay;
     // The carry: sunk at rest (the hunched silhouette), rising toward
-    // level as the body runs — a hyena's flag only lifts for the chase.
-    const carry = 0.55 - Math.min(0.28, spd * 0.055);
+    // level as the body runs — a hyena's flag only lifts for the
+    // chase, a horse's hanging fall streams out behind the gallop.
+    // Scaled off restCarry so every dial keeps the same speed law
+    // (at the 0.55 default this is the shipped 0.55 − min(.28, …)).
+    const carry = this.restCarry * (1 - Math.min(0.51, spd * 0.1));
 
     const lastI = n - 1;
     for (let i = 1; i < n; i++) {
@@ -140,7 +157,7 @@ export class TailSim {
       // is exactly what makes the trailing read organic.
       const rx = cx - fx * seg * i;
       const ry = cy - fy * seg * i;
-      const rz = Math.max(GROUND_Z, az * (1 - carry * ti));
+      const rz = Math.max(GROUND_Z, az * (1 - carry * ti) + this.tipCurl * az * ti * ti);
       const tone = 30 * (1 - 0.62 * ti);
       let gx = (rx - nd.x) * tone;
       let gy = (ry - nd.y) * tone;
@@ -581,6 +598,200 @@ export function drawTurtleTail(
     ctx.stroke();
   }
   // The quiet contour that separates the trailer from the ground.
+  silhouette();
+  ctx.stroke();
+}
+
+export interface HorseTailStyle {
+  /** Pre-lifted hair tone (the portrait law: shade(mane, 18)). */
+  hair: string;
+  /** Strand ink a step darker than the fall. */
+  strand: string;
+  /** Width multiplier — the garron drags a shaggier fall. */
+  heavy: number;
+}
+
+/**
+ * Paint the projected HORSE TAIL — a full fall of hair off the croup:
+ * a bound dock at the root opening into a draped sheet that swells
+ * past mid-length and closes on a ragged hem, never a rope. Loose
+ * strands ride the fall for texture; a quiet contour separates hair
+ * from same-coat croup. The painter never learns a species (the
+ * canid-lane law): dials ride the style. Plain path calls — no Path2D
+ * — so node-side painter tests can walk every coordinate.
+ */
+export function drawHorseTail(
+  ctx: CanvasRenderingContext2D,
+  pts: Array<{ x: number; y: number }>,
+  st: HorseTailStyle,
+  wk: number,
+  opts: BobtailDrawOpts,
+): void {
+  const n = pts.length;
+  if (n < 4) return;
+  const left: Array<{ x: number; y: number }> = [];
+  const right: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[Math.max(0, i - 1)]!;
+    const b = pts[Math.min(n - 1, i + 1)]!;
+    let tx = b.x - a.x;
+    let ty = b.y - a.y;
+    const tl = Math.hypot(tx, ty) || 1;
+    tx /= tl;
+    ty /= tl;
+    const t = i / (n - 1);
+    // The fall's profile: a bound dock, then the sheet lets go — width
+    // grows to a late swell and only closes in the last knuckle, the
+    // way loose hair carries its mass low.
+    const w = (0.03 + 0.052 * Math.pow(Math.min(1, t * 1.25), 0.8) * (1 - 0.55 * Math.max(0, t - 0.78) * 4.5)) * st.heavy * wk;
+    left.push({ x: pts[i]!.x + ty * w, y: pts[i]!.y - tx * w });
+    right.push({ x: pts[i]!.x - ty * w, y: pts[i]!.y + tx * w });
+  }
+
+  const silhouette = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(left[0]!.x, left[0]!.y);
+    for (let i = 1; i < n; i++) ctx.lineTo(left[i]!.x, left[i]!.y);
+    // The hem: a shallow ragged close past the last node — hair ends
+    // on strands, not on a bullet point.
+    const tipX = pts[n - 1]!.x + (pts[n - 1]!.x - pts[n - 2]!.x) * 0.4;
+    const tipY = pts[n - 1]!.y + (pts[n - 1]!.y - pts[n - 2]!.y) * 0.4;
+    ctx.quadraticCurveTo(tipX, tipY, right[n - 1]!.x, right[n - 1]!.y);
+    for (let i = n - 2; i >= 0; i--) ctx.lineTo(right[i]!.x, right[i]!.y);
+    ctx.closePath();
+  };
+
+  ctx.lineJoin = 'round';
+  ctx.fillStyle = opts.hurt ? '#ffffff' : opts.back ? shade(st.hair, -10) : st.hair;
+  silhouette();
+  ctx.fill();
+  if (opts.hurt) return;
+
+  // Loose strands down the fall — the hair read at close-up, clipped
+  // to the sheet so they never fly off the silhouette.
+  ctx.save();
+  silhouette();
+  ctx.clip();
+  ctx.strokeStyle = st.strand;
+  ctx.lineWidth = Math.max(1, wk * 0.016);
+  ctx.lineCap = 'round';
+  for (const lane of [-0.45, 0.05, 0.5]) {
+    ctx.beginPath();
+    ctx.moveTo(
+      pts[1]!.x + (left[1]!.x - pts[1]!.x) * lane,
+      pts[1]!.y + (left[1]!.y - pts[1]!.y) * lane,
+    );
+    for (let i = 2; i < n; i++) {
+      ctx.lineTo(
+        pts[i]!.x + (left[i]!.x - pts[i]!.x) * lane,
+        pts[i]!.y + (left[i]!.y - pts[i]!.y) * lane,
+      );
+    }
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+  ctx.restore();
+
+  // The quiet contour that separates the fall from the croup.
+  ctx.strokeStyle = shade(st.hair, -24);
+  ctx.lineWidth = Math.max(1, wk * 0.014);
+  silhouette();
+  ctx.stroke();
+}
+
+export interface SabercatTailStyle {
+  coat: string;
+  /** The dark banding ink near the tip — the saber stripe read. */
+  band: string;
+  heavy: number;
+}
+
+/**
+ * Paint the projected SABERCAT TAIL — the big cat's rope: long, slim,
+ * near-constant width with a soft blunt tip, dark-banded through its
+ * last third. Nothing like the fox's plume or the horse's hair fall —
+ * a cat's tail is MUSCLE all the way out. Style dials only (the
+ * canid-lane law). Plain path calls — no Path2D — so node-side
+ * painter tests can walk every coordinate.
+ */
+export function drawSabercatTail(
+  ctx: CanvasRenderingContext2D,
+  pts: Array<{ x: number; y: number }>,
+  st: SabercatTailStyle,
+  wk: number,
+  opts: BobtailDrawOpts,
+): void {
+  const n = pts.length;
+  if (n < 4) return;
+  const left: Array<{ x: number; y: number }> = [];
+  const right: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[Math.max(0, i - 1)]!;
+    const b = pts[Math.min(n - 1, i + 1)]!;
+    let tx = b.x - a.x;
+    let ty = b.y - a.y;
+    const tl = Math.hypot(tx, ty) || 1;
+    tx /= tl;
+    ty /= tl;
+    const t = i / (n - 1);
+    // The rope: full at the haunch root, easing only gently — the tip
+    // keeps most of its girth (a cat's tail never whips to a thread).
+    const w = (0.036 - 0.011 * t) * st.heavy * wk;
+    left.push({ x: pts[i]!.x + ty * w, y: pts[i]!.y - tx * w });
+    right.push({ x: pts[i]!.x - ty * w, y: pts[i]!.y + tx * w });
+  }
+
+  const silhouette = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(left[0]!.x, left[0]!.y);
+    for (let i = 1; i < n; i++) ctx.lineTo(left[i]!.x, left[i]!.y);
+    const tipX = pts[n - 1]!.x + (pts[n - 1]!.x - pts[n - 2]!.x) * 0.5;
+    const tipY = pts[n - 1]!.y + (pts[n - 1]!.y - pts[n - 2]!.y) * 0.5;
+    ctx.quadraticCurveTo(tipX, tipY, right[n - 1]!.x, right[n - 1]!.y);
+    for (let i = n - 2; i >= 0; i--) ctx.lineTo(right[i]!.x, right[i]!.y);
+    ctx.closePath();
+  };
+
+  ctx.lineJoin = 'round';
+  ctx.fillStyle = opts.hurt ? '#ffffff' : shade(st.coat, opts.back ? -12 : -3);
+  silhouette();
+  ctx.fill();
+  if (opts.hurt) return;
+
+  // The banding: two dark rings riding their rungs plus the dipped
+  // tip — the saber stripe read carried out the tail, wrapped so the
+  // rings turn with every swing.
+  ctx.save();
+  silhouette();
+  ctx.clip();
+  ctx.fillStyle = st.band;
+  for (const i0 of [n - 4, n - 3]) {
+    const la = left[i0]!;
+    const lb = left[i0 + 1]!;
+    const ra = right[i0]!;
+    const rb = right[i0 + 1]!;
+    ctx.beginPath();
+    ctx.moveTo(la.x + (lb.x - la.x) * 0.35, la.y + (lb.y - la.y) * 0.35);
+    ctx.lineTo(la.x + (lb.x - la.x) * 0.7, la.y + (lb.y - la.y) * 0.7);
+    ctx.lineTo(ra.x + (rb.x - ra.x) * 0.7, ra.y + (rb.y - ra.y) * 0.7);
+    ctx.lineTo(ra.x + (rb.x - ra.x) * 0.35, ra.y + (rb.y - ra.y) * 0.35);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.beginPath();
+  ctx.moveTo(left[n - 2]!.x + (left[n - 1]!.x - left[n - 2]!.x) * 0.5, left[n - 2]!.y + (left[n - 1]!.y - left[n - 2]!.y) * 0.5);
+  ctx.lineTo(left[n - 1]!.x, left[n - 1]!.y);
+  const capX = pts[n - 1]!.x + (pts[n - 1]!.x - pts[n - 2]!.x) * 0.55;
+  const capY = pts[n - 1]!.y + (pts[n - 1]!.y - pts[n - 2]!.y) * 0.55;
+  ctx.quadraticCurveTo(capX, capY, right[n - 1]!.x, right[n - 1]!.y);
+  ctx.lineTo(right[n - 2]!.x + (right[n - 1]!.x - right[n - 2]!.x) * 0.5, right[n - 2]!.y + (right[n - 1]!.y - right[n - 2]!.y) * 0.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // The quiet contour that separates the rope from same-coat flanks.
+  ctx.strokeStyle = shade(st.coat, -24);
+  ctx.lineWidth = Math.max(1, wk * 0.012);
   silhouette();
   ctx.stroke();
 }

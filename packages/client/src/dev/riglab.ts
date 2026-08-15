@@ -1,40 +1,53 @@
-// TEMPORARY rig verification harness (checked-in tooling): THE OGRE
-// SHEET — the giant-dialect audit (docs/ogres-plan.md). All four
-// bodies (brute / hurler / bellower / Bonegrinder) across the eight
-// facing bands at idle, walk, and the looping strike (the ROAR must
-// read — jaw drop, brow knit, skull tip), the bellower's cast row,
-// and the hurt flash; a HIDE CLUSTER row proving eight consecutive
-// spawn eids scatter a camp across all four hides; BODY-RULER cells
-// standing the player rig, the gnoll packlord, and the goblin beside
-// the giants so the broken stature ceiling reads at a glance; and a
-// bare close-up band with no club in the fist. Each figure owns a
-// live LegSolver AND live GutSim/PendantSim — the sheet plays the
-// same physics the game does: walk rows breathe and bounce, strike
-// rows throw the gut through the lunge, stops settle in one bounce.
+// TEMPORARY rig verification harness (checked-in tooling): THE SADDLE
+// SHEET — the mount audit (THE ROAD GROWS SHORT, refit under THE
+// MOTION DOCTRINE). Every saddle body (bay/grey/dun courser, the
+// Hoargate garron, the Night Sabercat) across the eight facing bands
+// at idle, walk, and FULL GALLOP (the flight rig's aerial beat is the
+// whole point — shoot the gallop rows animated, not just settled),
+// plus the hurt-flash silhouette row, a grey-dapple seed-spread row,
+// and BODY-RULER cells standing the player rig beside the courser and
+// the sabercat so the saddle height reads at a glance. Each figure
+// owns a live LegRig AND a live TailSim — the sheet plays the same
+// physics the game does: gallop rows fly, stops settle the hair fall
+// in one swing, the cat's rope hooks up through its last third.
 // Levers:
 //   ?s=px       cell scale (px per tile)
 //   ?rows=a-b   draw only sheet rows a..b (screenshot banding)
 //   ?cols=a-b   column banding (E/W close-ups)
+//   ?only=id    one body huge (courser_bay, garron_hoargate, ...)
 //   ?det=1      DETERMINISTIC mode: fixed 60Hz steps run synchronously
 //               on the first frame; ?detn=N sets the step count.
 import {
+  COURSER_LOOKS,
   LegSolver,
+  SABERCAT_LOOKS,
+  drawBeast,
   drawHumanoid,
-  goblinLook,
-  gnollLook,
+  mountSpec,
+  shade,
   type RigPose,
 } from '../render/rig.js';
-import { GutSim, PendantSim, ogreLook } from '../render/ogre.js';
+import { LegRig } from '../render/legs.js';
+import { TailSim, drawHorseTail, drawSabercatTail } from '../render/tail.js';
 import { PoseState } from '@arx/shared';
 
 const canvas = document.getElementById('lab') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 
 const q = new URLSearchParams(location.search);
-const S = Math.max(50, parseInt(q.get('s') ?? '90', 10) || 90); // scale px per tile (?s= zoom lever)
+const ONLY = q.get('only');
+const S = Math.max(50, parseInt(q.get('s') ?? (ONLY ? '220' : '110'), 10) || 110);
 const YS = 0.6; // camera y foreshorten (world-y tile → screen), renderer's yScale
 
-const WALK_SPEED = 1.45; // an ogre's stroll still covers ground
+const WALK_SPEED = 2.2; // a led amble — the four-beat walk must read
+/** Full saddle speed per body (speedMult × PLAYER_SPEED 5). */
+const GALLOP: Record<string, number> = {
+  courser_bay: 8,
+  courser_grey: 8,
+  courser_dun: 8,
+  garron_hoargate: 8,
+  sabercat_night: 8.75,
+};
 
 const DIRS = [
   ['S', Math.PI / 2],
@@ -47,29 +60,7 @@ const DIRS = [
   ['SW', (3 * Math.PI) / 4],
 ] as const;
 
-/** The bestiary rows this sheet audits (content defs, mirrored). */
-const BODIES: Record<
-  string,
-  {
-    size: number;
-    kind: 'ogre' | 'gnoll' | 'goblin' | 'player';
-    equip?: { weapon?: string; offhand?: string; head?: string; body?: string };
-  }
-> = {
-  ogre: { size: 2.15, kind: 'ogre', equip: { weapon: 'ogre_greatclub' } },
-  ogre_hurler: { size: 2.1, kind: 'ogre' },
-  ogre_bellower: { size: 2.25, kind: 'ogre' },
-  ogre_champion: { size: 2.5, kind: 'ogre', equip: { weapon: 'ogre_greatclub' } },
-  ogre_bare: { size: 2.15, kind: 'ogre' },
-  gnoll_champion: { size: 1.42, kind: 'gnoll', equip: { weapon: 'iron_greatblade' } },
-  goblin: { size: 0.72, kind: 'goblin' },
-  player: { size: 1, kind: 'player' },
-};
-
-/** Bare-body cells alias the real defs so the head is never occluded. */
-const DEF_ALIAS: Record<string, string> = { ogre_bare: 'ogre' };
-
-type Mode = 'idle' | 'walk' | 'strike' | 'cast' | 'hurt';
+type Mode = 'idle' | 'walk' | 'gallop' | 'hurt';
 
 interface Fig {
   label: string;
@@ -77,22 +68,17 @@ interface Fig {
   dir: number;
   mode: Mode;
   seed: number;
-  /** Ruler cells stand the player rig beside the subject. */
+  /** Ruler cells stand the player rig beside the saddle body. */
   ruler?: boolean;
   // live sim state
   wx?: number;
   wy?: number;
-  legs?: LegSolver;
+  legs?: LegRig;
   knee?: number[];
-  depth?: RigPose['depthMemory'];
+  tail?: TailSim;
   manLegs?: LegSolver;
   manKnee?: number[];
   manDepth?: RigPose['depthMemory'];
-  /** THE GUT KEEPS ITS OWN TIME: live belly spring per ogre fig — the
-   *  walk rows bounce with the bob exactly as in game. */
-  gut?: GutSim;
-  /** The belt-trophy pendant verlet — swings the stride, settles the stop. */
-  pendant?: PendantSim;
 }
 
 const figs: Fig[] = [];
@@ -100,51 +86,45 @@ const row = (label: string, defId: string, mode: Mode, seed = 5): void => {
   for (const [lbl, dir] of DIRS) figs.push({ label: `${label} ${lbl}`, defId, dir, mode, seed });
 };
 
-// Sheet rows, top to bottom — the strike rows are where the ROAR
-// reads; the bellower's cast row winds the bellows.
-row('brute idle', 'ogre', 'idle');
-row('brute walk', 'ogre', 'walk');
-row('brute strike', 'ogre', 'strike');
-row('hurler idle', 'ogre_hurler', 'idle');
-row('hurler walk', 'ogre_hurler', 'walk');
-row('bellower idle', 'ogre_bellower', 'idle');
-row('bellower cast', 'ogre_bellower', 'cast');
-row('Bonegrinder idle', 'ogre_champion', 'idle');
-row('Bonegrinder walk', 'ogre_champion', 'walk');
-row('Bonegrinder strike', 'ogre_champion', 'strike');
-row('brute hurt', 'ogre', 'hurt');
-// THE HIDE CLUSTER SPREAD: eight consecutive spawn eids facing the
-// camera — the hash must scatter a camp across all four hides, and
-// no two trophies or wart-fields may match.
+// Sheet rows, top to bottom — the gallop rows are where the flight
+// rig's aerial beat and the streaming tail read.
+row('bay idle', 'courser_bay', 'idle');
+row('bay walk', 'courser_bay', 'walk');
+row('bay gallop', 'courser_bay', 'gallop');
+row('grey idle', 'courser_grey', 'idle');
+row('grey gallop', 'courser_grey', 'gallop');
+row('dun gallop', 'courser_dun', 'gallop');
+row('garron idle', 'garron_hoargate', 'idle');
+row('garron walk', 'garron_hoargate', 'walk');
+row('garron gallop', 'garron_hoargate', 'gallop');
+row('saber idle', 'sabercat_night', 'idle');
+row('saber walk', 'sabercat_night', 'walk');
+row('saber gallop', 'sabercat_night', 'gallop');
+row('bay hurt', 'courser_bay', 'hurt');
+row('saber hurt', 'sabercat_night', 'hurt');
+// THE DAPPLE SPREAD: eight consecutive seeds on the grey — the scatter
+// must differ horse to horse (seeded determinism, never random).
+// Shot at the E band: the dapples live on the croup and shoulder top
+// plane, which the S band hides behind the chest face.
 for (let k = 0; k < 8; k++) {
-  figs.push({ label: `camp eid ${700 + k}`, defId: 'ogre', dir: Math.PI / 2, mode: 'idle', seed: 700 + k });
+  figs.push({ label: `grey seed ${900 + k}`, defId: 'courser_grey', dir: 0, mode: 'idle', seed: 900 + k });
 }
-// THE BODY RULER: the player rig beside the brute and the Bonegrinder
-// (the 2x-and-more claim proven on screen), then the packlord and the
-// goblin — the whole stature ladder in one row.
-figs.push({ label: 'ruler: player+brute', defId: 'ogre', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
-figs.push({ label: 'ruler: player+Bonegrinder', defId: 'ogre_champion', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
-figs.push({ label: 'packlord (reference)', defId: 'gnoll_champion', dir: Math.PI / 2, mode: 'idle', seed: 5 });
-figs.push({ label: 'goblin (reference)', defId: 'goblin', dir: Math.PI / 2, mode: 'idle', seed: 5 });
-// Bare close-up band: no club in the fist, the head unoccluded — the
-// quarter bands are where seams hide.
-figs.push({ label: 'bare S (face)', defId: 'ogre_bare', dir: Math.PI / 2, mode: 'idle', seed: 5 });
-figs.push({ label: 'bare SE (3/4)', defId: 'ogre_bare', dir: Math.PI / 4, mode: 'idle', seed: 5 });
-figs.push({ label: 'bare E (profile)', defId: 'ogre_bare', dir: 0, mode: 'idle', seed: 5 });
-figs.push({ label: 'bare NE (turn)', defId: 'ogre_bare', dir: -Math.PI / 4, mode: 'idle', seed: 5 });
-figs.push({ label: 'bare N (back)', defId: 'ogre_bare', dir: -Math.PI / 2, mode: 'idle', seed: 5 });
-figs.push({ label: 'bare W (profile)', defId: 'ogre_bare', dir: Math.PI, mode: 'idle', seed: 5 });
-figs.push({ label: 'bare roar S', defId: 'ogre_bare', dir: Math.PI / 2, mode: 'strike', seed: 5 });
-figs.push({ label: 'bare roar E', defId: 'ogre_bare', dir: 0, mode: 'strike', seed: 5 });
+// THE BODY RULER: the player rig beside the courser and the sabercat —
+// the seat-height claim proven on screen.
+figs.push({ label: 'ruler: player+bay', defId: 'courser_bay', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
+figs.push({ label: 'ruler: player+saber', defId: 'sabercat_night', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
+figs.push({ label: 'ruler: player+garron', defId: 'garron_hoargate', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
+
+const kept = ONLY ? figs.filter((f) => f.defId === ONLY) : figs;
 
 const COLS = 8;
-// Giant cells: a 2.5-size body plus a raised club needs headroom the
-// gnoll sheet never did.
-const CW = Math.round(S * 3.2);
-const CH = Math.round(S * 4.6);
+// Saddle cells: a courser is ~1.2 tiles nose to croup with a raised
+// neck, plus the tail streaming a half-tile behind at the gallop.
+const CW = Math.round(S * 2.7);
+const CH = Math.round(S * 3.1);
 
 let rowFrom = 0;
-let rowTo = Math.ceil(figs.length / COLS) - 1;
+let rowTo = Math.ceil(kept.length / COLS) - 1;
 const rowsQ = q.get('rows');
 if (rowsQ) {
   const m = rowsQ.match(/^(\d+)-(\d+)$/);
@@ -177,78 +157,109 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 
-/** One biped figure through drawHumanoid with a live leg solver. */
-function drawBody(
-  f: Fig,
-  defId: string,
-  x: number,
-  y: number,
-  dir: number,
-  mode: Mode,
-  seed: number,
-  now: number,
-  dt: number,
-  slot: 'main' | 'ruler',
-): void {
-  const info = BODIES[defId]!;
-  const lookId = DEF_ALIAS[defId] ?? defId;
-  let legs = slot === 'main' ? f.legs : f.manLegs;
-  if (!legs) {
-    // THE GIANT GAIT: ogre figs walk the statured solver, exactly as
-    // the renderer builds it — the sheet plays the game's own legs.
-    legs = new LegSolver(info.kind === 'ogre' ? info.size : 1);
-    if (slot === 'main') {
-      f.legs = legs;
-      f.knee = [0, 0];
-      f.depth = { mainBehind: false };
-      f.wx = 0;
-      f.wy = 0;
-    } else {
-      f.manLegs = legs;
-      f.manKnee = [0, 0];
-      f.manDepth = { mainBehind: false };
-    }
+/**
+ * The renderer's saddle-tail dials, mirrored (renderer.ts owns the
+ * live copy — keep these in step when retuning): heavy / rootOff /
+ * tipCurl per body, dock height off the croup or haunch.
+ */
+function tailDials(defId: string, bodyLen: number): { heavy: number; rootOff: number; curl: number; hang: number; dockH: number } {
+  if (defId.startsWith('sabercat')) {
+    return { heavy: 0.95, rootOff: Math.min(0.6, bodyLen - 0.04), curl: 0.32, hang: 0.55, dockH: 0.36 };
   }
-  const knee = slot === 'main' ? f.knee! : f.manKnee!;
-  const depth = slot === 'main' ? f.depth : f.manDepth;
-  const moving = slot === 'main' && mode === 'walk';
-  if (moving) {
-    f.wx! += Math.cos(dir) * WALK_SPEED * dt;
-    f.wy! += Math.sin(dir) * WALK_SPEED * dt;
+  if (defId.startsWith('garron')) {
+    return { heavy: 0.62, rootOff: Math.min(0.56, bodyLen - 0.04), curl: 0, hang: 0.88, dockH: 0.5 };
   }
-  const wx = slot === 'main' ? f.wx! : 0;
-  const wy = slot === 'main' ? f.wy! : 0;
-  const lp = legs.update(wx, wy, dir, dt);
-  const feet = lp.feet.map((ft) => ({
+  return { heavy: 0.55, rootOff: Math.min(0.56, bodyLen - 0.04), curl: 0, hang: 0.88, dockH: 0.63 };
+}
+
+/** One saddle beast through drawBeast with live legs and tail. */
+function drawMount(f: Fig, x: number, y: number, now: number, dt: number): void {
+  const spec = mountSpec(f.defId);
+  if (!f.legs) {
+    f.legs = new LegRig(spec.rig);
+    f.knee = [];
+    f.wx = 0;
+    f.wy = 0;
+    const d = tailDials(f.defId, spec.bodyLen);
+    f.tail = new TailSim(d.heavy, f.seed, d.rootOff, d.curl, d.hang);
+  }
+  const speed = f.mode === 'walk' ? WALK_SPEED : f.mode === 'gallop' ? (GALLOP[f.defId] ?? 8) : 0;
+  if (speed > 0) {
+    f.wx! += Math.cos(f.dir) * speed * dt;
+    f.wy! += Math.sin(f.dir) * speed * dt;
+  }
+  const wx = f.wx!;
+  const wy = f.wy!;
+  const pose = f.legs.update(wx, wy, f.dir, dt);
+  const feet = pose.feet.map((ft) => ({
     x: x + (ft.x - wx) * S,
     y: y + (ft.y - wy) * S * YS,
     lift: ft.lift,
   }));
-  // The looping beat, slow enough that the roar's jaw drop and the
-  // gut's follow-through both read.
-  const beatT = mode === 'strike' || mode === 'cast' ? (now * 0.0012) % 1 : 0;
-  const pose =
-    mode === 'strike'
-      ? PoseState.Attack
-      : mode === 'cast'
-        ? PoseState.Cast
-        : moving
-          ? PoseState.Walk
-          : PoseState.Idle;
-  const ogr = info.kind === 'ogre' ? ogreLook(lookId, seed) : undefined;
-  const gno = info.kind === 'gnoll' ? gnollLook(lookId, seed) : undefined;
-  const gob = info.kind === 'goblin' ? goblinLook(lookId, seed) : undefined;
-  const eq = info.equip ?? {};
+  const d = tailDials(f.defId, spec.bodyLen);
+  f.tail!.update(wx, wy, d.dockH + pose.bob * 0.35, pose.dir, dt, now / 1000, 1);
+  const hurt = f.mode === 'hurt';
+  const saber = f.defId.startsWith('sabercat');
+  const tail = (): void => {
+    const pts = f.tail!.nodes.map((nd) => ({
+      x: x + (nd.x - wx) * S,
+      y: y + (nd.y - wy) * S * YS - nd.z * S,
+    }));
+    const back = Math.sin(pose.dir) < -0.2;
+    if (saber) {
+      const look = SABERCAT_LOOKS[f.defId] ?? SABERCAT_LOOKS.sabercat_night!;
+      drawSabercatTail(ctx, pts, { coat: look.coat, band: look.stripe, heavy: 1 }, S, { hurt, back });
+    } else {
+      const look = COURSER_LOOKS[f.defId] ?? COURSER_LOOKS.courser_bay!;
+      drawHorseTail(
+        ctx,
+        pts,
+        { hair: shade(look.mane, 18), strand: shade(look.mane, 2), heavy: f.defId.startsWith('garron') ? 1.15 : 1 },
+        S,
+        { hurt, back },
+      );
+    }
+  };
+  drawBeast(ctx, {
+    x,
+    y,
+    scale: S,
+    dir: pose.dir,
+    radius: 0.42,
+    color: '#7b4a2e',
+    defId: f.defId,
+    spec,
+    pose,
+    feet,
+    yScale: YS,
+    walkPhase: 0,
+    hurt,
+    kneeMemory: f.knee!,
+    seed: f.seed,
+    nowMs: now,
+    tail,
+  });
+}
+
+/** The ruler player, on the game's own biped solver. */
+function drawMan(f: Fig, x: number, y: number, now: number, dt: number): void {
+  if (!f.manLegs) {
+    f.manLegs = new LegSolver(1);
+    f.manKnee = [0, 0];
+    f.manDepth = { mainBehind: false };
+  }
+  const lp = f.manLegs.update(0, 0, Math.PI / 2, dt);
+  const feet = lp.feet.map((ft) => ({ x: x + ft.x * S, y: y + ft.y * S * YS, lift: ft.lift }));
   drawHumanoid(ctx, {
     x,
     y,
     scale: S,
-    size: info.size,
-    dir,
-    pose,
-    poseT: mode === 'strike' || mode === 'cast' ? beatT : 1,
+    size: 1,
+    dir: Math.PI / 2,
+    pose: PoseState.Idle,
+    poseT: 1,
     drawT: 0,
-    restT: mode === 'idle' || mode === 'hurt' ? 1 : 0,
+    restT: 1,
     nowMs: now,
     feet,
     bob: lp.bob,
@@ -259,27 +270,13 @@ function drawBody(
     poleStrength: lp.poleStrength,
     runF: lp.runF,
     align: lp.align,
-    kneeMemory: knee,
-    depthMemory: depth,
-    bodyColor: ogr?.hide ?? gno?.fur ?? gob?.hide ?? '#3f5d8e',
-    skinColor: ogr?.hide ?? gno?.fur ?? gob?.hide ?? undefined,
-    hurt: mode === 'hurt',
+    kneeMemory: f.manKnee!,
+    depthMemory: f.manDepth,
+    bodyColor: '#3f5d8e',
+    hurt: false,
     isOwn: false,
     gatherPhase: 0,
     sheathT: 0,
-    // The equip→slot mapping lives in renderer.humanoidItem — a
-    // direct-drawHumanoid rig passes the worn items by hand.
-    weaponItem: eq.weapon,
-    offhandItem: eq.offhand,
-    headItem: eq.head,
-    bodyItem: eq.body,
-    ogre: ogr,
-    // THE GUT AND THE TROPHY are live sims per fig — the sheet plays
-    // the game's own physics, never a pose of it.
-    ogreGut: ogr ? (f.gut ??= new GutSim(seed)) : undefined,
-    ogrePendant: ogr ? (f.pendant ??= new PendantSim(seed)) : undefined,
-    gnoll: gno,
-    goblin: gob,
   });
 }
 
@@ -289,13 +286,13 @@ function drawSheet(now: number, dt: number): void {
   canvas.height = nRows * CH;
   ctx.fillStyle = '#2a3b2f';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  figs.forEach((f, i) => {
+  kept.forEach((f, i) => {
     const sheetRow = Math.floor(i / COLS);
     if (sheetRow < rowFrom || sheetRow > rowTo) return;
     const sheetCol = i % COLS;
     if (sheetCol < colFrom || sheetCol > colTo) return;
     const homeX = CW / 2 + (sheetCol - colFrom) * CW;
-    const homeY = Math.round(S * 3.9) + (sheetRow - rowFrom) * CH;
+    const homeY = Math.round(S * 2.5) + (sheetRow - rowFrom) * CH;
     ctx.strokeStyle = 'rgba(232, 228, 216, 0.18)';
     ctx.lineWidth = 1; // figures leave fat stroke widths behind
     ctx.beginPath();
@@ -303,17 +300,17 @@ function drawSheet(now: number, dt: number): void {
     ctx.lineTo(homeX + 1.3 * S, homeY);
     ctx.stroke();
 
-    // Ruler cells: the player stands a stride west of the giant.
+    // Ruler cells: the player stands a stride west of the beast.
     if (f.ruler) {
-      drawBody(f, 'player', homeX - 1.1 * S, homeY, Math.PI / 2, 'idle', 5, now, dt, 'ruler');
-      drawBody(f, f.defId, homeX + 0.5 * S, homeY, f.dir, f.mode, f.seed, now, dt, 'main');
+      drawMan(f, homeX - 1.05 * S, homeY, now, dt);
+      drawMount(f, homeX + 0.45 * S, homeY, now, dt);
     } else {
-      drawBody(f, f.defId, homeX, homeY, f.dir, f.mode, f.seed, now, dt, 'main');
+      drawMount(f, homeX, homeY, now, dt);
     }
     ctx.fillStyle = '#e8e4d8';
     ctx.font = '13px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(f.label, homeX, homeY - 3.7 * S);
+    ctx.fillText(f.label, homeX, homeY - 2.3 * S);
   });
   if (DET) {
     ctx.fillStyle = '#e8e4d8';

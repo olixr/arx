@@ -64,7 +64,9 @@ import {
   CHOP_CYCLE_MS,
   FORAGE_CYCLE_MS,
   FURNACE_CYCLE_MS,
+  COURSER_LOOKS,
   COURSER_SADDLE,
+  SABERCAT_LOOKS,
   saddleFor,
   LegSolver,
   MINE_CYCLE_MS,
@@ -183,7 +185,7 @@ import {
 } from './reveal.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
-import { BobtailSim, TailSim, drawBobtail, drawFoxBrush, drawTail, drawTurtleTail, drawWolfBrush } from './tail.js';
+import { BobtailSim, TailSim, drawBobtail, drawFoxBrush, drawHorseTail, drawSabercatTail, drawTail, drawTurtleTail, drawWolfBrush } from './tail.js';
 import { EarSim } from './earPhysics.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
@@ -638,6 +640,10 @@ interface AnimState {
   mountLastY?: number;
   /** The beast faces its travel — derived from motion, held at rest. */
   mountDir?: number;
+  /** THE SADDLE TAIL IS A SIMULATION: the mount's verlet chain (horse
+   *  hair fall, sabercat rope) — its own slot beside every wild lane,
+   *  evicted with the mount rig on a mount change. */
+  mountTail?: TailSim;
   /** The entity's cape cloth sim — present only while one is worn. */
   cape?: CapeSim;
   /** Which cape item `cape` was built for; a change rebuilds the cloth. */
@@ -33504,14 +33510,31 @@ export class Renderer {
     let beastPose: LegPose | null = null;
     let beastFeet: Array<{ x: number; y: number; lift: number }> | null = null;
     let mSpec: BeastSpec | null = null;
+    let paintMountTail: (() => void) | undefined;
     if (riding) {
       mSpec = mountSpec(anim.mountKey!);
+      // THE SADDLE TAIL IS A SIMULATION (tail.ts): per-body verlet
+      // dials — the horse's hair fall hangs heavy off a high croup;
+      // the cat's rope rides lower, longer, and hooks up through its
+      // last third (tipCurl). Rooted at the STERN with the vixen
+      // clamp so no dial can seat a tail past the painted hull.
+      const saber = anim.mountKey!.startsWith('sabercat');
+      const garron = anim.mountKey!.startsWith('garron');
       if (!anim.mountLegs || anim.mountRigKey !== anim.mountKey) {
         anim.mountLegs = new LegRig(mSpec.rig);
         anim.mountRigKey = anim.mountKey;
         anim.mountKnees = [];
         anim.mountLastPlants = undefined;
         anim.mountDir = e.dir;
+        anim.mountTail = new TailSim(
+          saber ? 0.95 : garron ? 0.62 : 0.55,
+          varEid,
+          Math.min(saber ? 0.6 : 0.56, mSpec.bodyLen - 0.04),
+          saber ? 0.32 : 0,
+          // The horse's hair fall HANGS off the high croup and only
+          // streams for the gallop; the cat sweeps its rope low.
+          saber ? 0.55 : 0.88,
+        );
       }
       // The beast faces its TRAVEL, never the rider's aim — derived
       // from motion (own and remote bodies agree by construction) and
@@ -33527,6 +33550,53 @@ export class Renderer {
         fp.y -= this.renderLift(f.x, f.y) * s;
         return { x: fp.x, y: fp.y, lift: f.lift };
       });
+      // The tail anchors on the beast's own painted frame: the dock
+      // rides the croup line and dips with the gait bob exactly as
+      // the hull it grows from (THE BODY MOVES AS ONE).
+      if (anim.mountTail) {
+        const tailSim = anim.mountTail;
+        const mountKey = anim.mountKey!;
+        const dockH = saber ? 0.36 : garron ? 0.5 : 0.63;
+        tailSim.update(
+          e.x,
+          e.y,
+          dockH + beastPose.bob * 0.35,
+          beastPose.dir,
+          this.frameDt,
+          performance.now() / 1000,
+          1,
+        );
+        paintMountTail = () => {
+          const pts = tailSim.nodes.map((nd) => {
+            const sp = this.camera.worldToScreen(nd.x, nd.y, this.w, this.h);
+            return { x: sp.x, y: sp.y - this.renderLift(nd.x, nd.y) * s - nd.z * s };
+          });
+          const back = Math.sin(beastPose!.dir) < -0.2;
+          if (saber) {
+            const look = SABERCAT_LOOKS[mountKey] ?? SABERCAT_LOOKS.sabercat_night!;
+            drawSabercatTail(
+              this.ctx,
+              pts,
+              { coat: look.coat, band: look.stripe, heavy: 1 },
+              s,
+              { hurt: e.hurt ?? false, back },
+            );
+          } else {
+            const look = COURSER_LOOKS[mountKey] ?? COURSER_LOOKS.courser_bay!;
+            drawHorseTail(
+              this.ctx,
+              pts,
+              {
+                hair: shade(look.mane, 18),
+                strand: shade(look.mane, 2),
+                heavy: garron ? 1.15 : 1,
+              },
+              s,
+              { hurt: e.hurt ?? false, back },
+            );
+          }
+        };
+      }
       // Hoof-falls own the ground story while mounted: heavier dust,
       // and the footstep bus hears hooves instead of boots.
       if (anim.mountLastPlants === undefined) {
@@ -33541,6 +33611,7 @@ export class Renderer {
     } else if (anim.mountLegs) {
       anim.mountLegs = undefined;
       anim.mountRigKey = undefined;
+      anim.mountTail = undefined;
     }
     // THE WHISTLE LANDS: arrival and step-down each stir a low bloom
     // of ground dust around the hooves — weight arriving, never a
@@ -33958,6 +34029,9 @@ export class Renderer {
       // A restless tail (moving body, or still settling after a stop)
       // re-bakes at full rate; a calm one wags on the idle cadence.
       (tailSim !== null && tailSim.restless) ||
+      // The saddle tail earns the same courtesy — a hair fall still
+      // settling after the halt must never snap between cache frames.
+      (anim.mountTail !== undefined && anim.mountTail.restless) ||
       // Restless wing ears too — the elastic pair settling after a
       // turn, a stop, or a jeer keeps the body at full rate.
       (anim.ears !== undefined && anim.ears.restless) ||
@@ -34428,6 +34502,7 @@ export class Renderer {
             seed: varEid,
             nowMs: now + lifeMs,
             rider: paintRider,
+            tail: paintMountTail,
           });
         } else {
           paintRider();

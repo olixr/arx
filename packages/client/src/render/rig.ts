@@ -17729,6 +17729,24 @@ export const COURSER_SADDLE = {
   radius: 0.42,
 };
 
+/**
+ * THE GALLOP HAS FOUR BEATS: a saddle beast's legs each own a gait
+ * group, so an amble walks a true four-beat (one hoof at a time — a
+ * horse never trots its walk) and full tilt rolls the beats down the
+ * body instead of stamping diagonal pairs. Every mount is a FLIGHT
+ * rig: past a canter the rhythm nudge staggers launches and the duty
+ * factor drops under 0.5 — the aerial beat, the whole reason a gallop
+ * reads as flying where a trot reads as sewing.
+ */
+function saddleLegs(fwd: number, side: number): LegRigConfig['legs'] {
+  return [
+    { fwd, side: -side, group: 0 },
+    { fwd, side, group: 1 },
+    { fwd: -fwd, side: -side, group: 2 },
+    { fwd: -fwd, side, group: 3 },
+  ];
+}
+
 /** One rig for every coat — only the sock color varies. */
 export function mountSpec(mountId: string): BeastSpec {
   let spec = MOUNT_SPEC_CACHE.get(mountId);
@@ -17738,12 +17756,14 @@ export function mountSpec(mountId: string): BeastSpec {
     const catLook = SABERCAT_LOOKS[mountId] ?? SABERCAT_LOOKS.sabercat_night!;
     spec = {
       rig: {
-        legs: quadLegs(0.34, 0.14),
+        legs: saddleLegs(0.34, 0.14),
         legLen: 0.46,
         rise: 0.4,
-        liftAmp: 0.09,
+        liftAmp: 0.1,
         runSpeed: 7.5,
         turnRate: 7.5,
+        flight: true,
+        flightEager: 0.26,
       },
       bodyLen: 0.62,
       bodyRise: 0.46,
@@ -17753,6 +17773,9 @@ export function mountSpec(mountId: string): BeastSpec {
       legW: 0.085,
       foot: 'paw',
       legColor: shade(catLook.coat, -14),
+      // The cat's bones: the lynx lane's long thigh over a short hock
+      // — the crouch-and-spring frame at riding scale.
+      segSplit: [0.53, 0.58],
     };
     MOUNT_SPEC_CACHE.set(mountId, spec);
     return spec;
@@ -17764,15 +17787,15 @@ export function mountSpec(mountId: string): BeastSpec {
     const garron = mountId.startsWith('garron');
     spec = {
       rig: {
-        legs: quadLegs(garron ? 0.32 : 0.36, garron ? 0.16 : 0.15),
+        legs: saddleLegs(garron ? 0.32 : 0.36, garron ? 0.16 : 0.15),
         legLen: garron ? 0.42 : 0.52,
         rise: garron ? 0.37 : 0.46,
-        liftAmp: 0.075,
-        // The gait ceiling sits at canter: at mount speed (8 t/s) the
-        // blend rides full-run and cadence scales with true speed.
+        liftAmp: garron ? 0.08 : 0.085,
         runSpeed: 6.5,
         // A horse commits to a line — statelier than a wolf's snap.
         turnRate: garron ? 6 : 5.5,
+        flight: true,
+        flightEager: 0.26,
       },
       bodyLen: garron ? 0.5 : 0.58,
       bodyRise: garron ? 0.44 : 0.54,
@@ -17782,6 +17805,10 @@ export function mountSpec(mountId: string): BeastSpec {
       legW: garron ? 0.105 : 0.09,
       foot: 'hoof',
       legColor: look.sock,
+      // Horse bones: a long forearm over a short cannon in front, the
+      // hock riding HIGH behind — the equine silhouette's whole lower
+      // story, and what keeps the gallop's folded knees honest.
+      segSplit: [0.55, 0.6],
     };
     MOUNT_SPEC_CACHE.set(mountId, spec);
   }
@@ -18155,38 +18182,43 @@ export function paintSabercatBody(
       const bh = look.backH * tk * s;
       // Flank stripes: dark bands raking down-back from the spine to
       // mid-flank, seeded per body — the saber tiger's name written
-      // on it. Long enough to survive daylight at world zoom.
+      // on it. Length, rake, weight, and seat all jitter off the
+      // seed: five identical ticks in a row read as a picket fence,
+      // never a coat (the anti-rubber-stamp law).
       if (!f.hurt) {
         ctx.strokeStyle = shade(look.stripe, -8);
         ctx.lineCap = 'round';
-        for (let k = 0; k < 5; k++) {
+        const nS = 4 + ((f.seed >>> 3) & 1);
+        for (let k = 0; k < nS; k++) {
           const rr = ((((f.seed >>> (k % 11)) * 2654435761 + k * 131) >>> 0) % 1000) / 1000;
-          const X = (-0.68 + 0.34 * k + (rr - 0.5) * 0.12) * hl;
+          const rq = ((((f.seed >>> ((k + 4) % 13)) * 2246822519 + k * 97) >>> 0) % 1000) / 1000;
+          const X = (-0.7 + (1.34 * (k + 0.5)) / nS + (rr - 0.5) * 0.2) * hl;
           const sx0 = gx(X, 0);
-          const sy0 = gyy(X, 0) - bh * (0.94 - 0.05 * (k % 2)) - lift;
-          ctx.lineWidth = Math.max(1.8, s * (0.05 - 0.006 * (k % 2)));
+          const sy0 = gyy(X, 0) - bh * (0.97 - 0.07 * rq) - lift;
+          const len = s * (0.15 + 0.11 * rq);
+          const rake = f.fx * s * (0.09 + 0.07 * rr);
+          ctx.lineWidth = Math.max(1.6, s * (0.046 - 0.01 * rr));
           ctx.beginPath();
           ctx.moveTo(sx0, sy0);
-          ctx.quadraticCurveTo(
-            sx0 - f.fx * s * 0.045,
-            sy0 + s * 0.1,
-            sx0 - f.fx * s * 0.09,
-            sy0 + s * (0.2 + 0.03 * rr),
-          );
+          ctx.quadraticCurveTo(sx0 - rake * 0.45, sy0 + len * 0.55, sx0 - rake, sy0 + len);
           ctx.stroke();
         }
         ctx.lineCap = 'butt';
       }
       // Pale bib at the chest (the wolf's law: only while the chest
-      // can face the camera).
-      if (f.fy > -0.15 && !f.hurt) {
+      // can face the camera). Sized a ruff, not a boulder — at the
+      // quarter bands the old 0.78 blob out-massed the skull beside
+      // it and read as a dewlap sack — and gated to the true front
+      // bands: at profile the chest is edge-on, and the old −0.15
+      // gate pasted the bib on the shoulder like a patch of daylight.
+      if (f.fy > 0.08 && !f.hurt) {
         ctx.fillStyle = look.under;
         ctx.beginPath();
         facetBlob(
           ctx,
           gx(hl * 0.86, 0),
           gyy(hl * 0.86, 0) - (look.chestH + 0.1) * s - lift * 0.8,
-          hw * s * 0.78,
+          hw * s * 0.62,
           f.seed ^ 0x33,
           7,
           0.85,
@@ -18218,6 +18250,20 @@ export function paintSabercatBody(
       ctx.moveTo(rgx, rgy - bh * 1.02 - lift);
       ctx.lineTo(rgx, rgy - look.chestH * tk * s * 0.5 - lift);
       ctx.stroke();
+      // The breast band: girth to chest front along the near flank —
+      // the strap that says harness-broken, not saddle-broken. Side
+      // bands only; dead ahead the bib owns that column.
+      if (Math.abs(f.fx) > 0.25) {
+        const bbx = gx(hl * 0.9, 0);
+        const bby = gyy(hl * 0.9, 0) - look.chestH * tk * s * 0.86 - lift;
+        const bmy = rgy - bh * 0.62 - lift;
+        ctx.strokeStyle = f.hurt ? '#ffffff' : look.leather;
+        ctx.lineWidth = Math.max(1.6, s * 0.036);
+        ctx.beginPath();
+        ctx.moveTo(rgx, bmy);
+        ctx.quadraticCurveTo((rgx + bbx) / 2, (bmy + bby) / 2 + s * 0.035, bbx, bby);
+        ctx.stroke();
+      }
       // The pommel horn on the strap ring — the rider's grip point,
       // on the same ruler the hands settle to.
       ctx.fillStyle = f.hurt ? '#ffffff' : shade(look.leather, 10);
@@ -21506,6 +21552,13 @@ export function drawBeast(
       return;
     }
     if (sabercatL) {
+      // THE SIMULATED SWEEP: the live game runs the verlet chain
+      // (TailSim + drawSabercatTail) — physics, not pose. The
+      // analytic sweep below is THE ONE REST for sim-less callers.
+      if (opts.tail) {
+        opts.tail();
+        return;
+      }
       // The feline tail: one long low sweep off the haunch, curling UP
       // at the tip — swaying at rest, streaming flat at speed, dark
       // banding near the end.
@@ -21548,6 +21601,13 @@ export function drawBeast(
       return;
     }
     if (courserL) {
+      // THE SIMULATED FALL: the live game runs the verlet chain
+      // (TailSim + drawHorseTail) — physics, not pose. The analytic
+      // drape below is THE ONE REST for sim-less callers.
+      if (opts.tail) {
+        opts.tail();
+        return;
+      }
       // The tail: a full fall of hair off the croup, streaming back
       // with speed, swishing on its own clock at rest.
       const hl = spec.bodyLen * s;

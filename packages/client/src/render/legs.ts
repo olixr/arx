@@ -102,6 +102,15 @@ export interface LegRigConfig {
    * stance time and never leave the ground.
    */
   flight?: boolean;
+  /**
+   * How far the NEWEST airborne swing must have progressed (0..1)
+   * before a flight rig may launch another leg. The 0.45 default is
+   * the two-group law every shipped flier runs. A FOUR-group gallop
+   * staggers launches only a quarter-cycle apart — under the default
+   * gate the fourth beat always arrives blocked and the full-gather
+   * suspension frame never happens; the saddle rigs run ~0.26.
+   */
+  flightEager?: number;
   /** Full-run swing duration in seconds (default 0.4 · √legLen). */
   swingRef?: number;
   /**
@@ -404,7 +413,10 @@ export class LegRig {
         // drops below 0.5 and the gait leaves the ground for a beat.
         // Idle: independent shuffle steps under the air cap.
         const flightOK =
-          cfg.flight === true && runF > 0.35 && airMinT > 0.45 && airCount < cfg.legs.length;
+          cfg.flight === true &&
+          runF > 0.35 &&
+          airMinT > (cfg.flightEager ?? 0.45) &&
+          airCount < cfg.legs.length;
         const groupClear = moving
           ? (!airMixed && (airGroup === -1 || airGroup === leg.group)) || flightOK
           : airCount < idleAirCap;
