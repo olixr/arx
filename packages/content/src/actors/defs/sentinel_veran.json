@@ -1,0 +1,35 @@
+{
+  "id": "sentinel_veran",
+  "name": "Veran",
+  "title": "Sentinel of the Evenway",
+  "examine": "Old blood, whole: moonpale, upswept ears, a bow that was strung before the roads were roads. He keeps the mile the way other people keep a promise.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 12,
+      "hair": 6,
+      "hairColor": 7,
+      "beard": 0,
+      "eyes": 0,
+      "ears": 2,
+      "feature": 0,
+      "shirt": 5,
+      "pants": 11
+    }
+  },
+  "equipment": {
+    "weapon": "mithril_sword"
+  },
+  "lines": [
+    "The deadfall is cleared by morning. You are welcome, and it was not for you.",
+    "The lamps stop at the fork. That is not the road failing. That is the road handing over.",
+    "You are walking toward the city. Most who pass here are walking away from something instead. Both are allowed."
+  ],
+  "combat": {
+    "level": 40,
+    "respawnSec": 90,
+    "stats": { "maxHp": 220, "damage": 9, "speed": 3.6, "leashRange": 12 }
+  }
+}

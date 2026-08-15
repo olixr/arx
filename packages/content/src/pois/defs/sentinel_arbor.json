@@ -1,0 +1,31 @@
+{
+  "id": "sentinel_arbor",
+  "name": "Sentinel arbor",
+  "description": "An open-sided bough-lodge of the Evenguard, grown more than built. The sentinels do not hide; being seen keeping the mile is the point. They are courteous to travelers and exact about which way travelers are walking.",
+  "family": "elf",
+  "tiers": [3, 5],
+  "weight": 2,
+  "prefabs": ["poi_arbor_bough", "poi_arbor_hearth"],
+  "garrison": [],
+  "actors": [
+    {
+      "pool": ["sentinel_veran", "sentinel_lisse", "sentinel_thal"],
+      "post": "hearth",
+      "routine": "waystation_keeper"
+    },
+    { "pool": ["evenguard_watch"], "post": "watch" },
+    { "pool": ["evenguard_watch"], "post": "watch" }
+  ],
+  "haven": { "safeR": 14 },
+  "cues": { "approachPath": true },
+  "signs": [
+    {
+      "title": "THE EVENGUARD",
+      "lines": ["the wood is kept", "you are seen"]
+    },
+    {
+      "title": "THE MILE",
+      "lines": ["deadfall cleared by morning", "ask who by, get a smile"]
+    }
+  ]
+}

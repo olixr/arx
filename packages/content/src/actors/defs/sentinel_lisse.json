@@ -1,0 +1,35 @@
+{
+  "id": "sentinel_lisse",
+  "name": "Lisse",
+  "title": "Sentinel of the Evenway",
+  "examine": "Old blood, whole. She counts what moves in the wood without appearing to count anything, and the count is never wrong.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 12,
+      "hair": 2,
+      "hairColor": 6,
+      "beard": 0,
+      "eyes": 0,
+      "ears": 2,
+      "feature": 0,
+      "shirt": 11,
+      "pants": 5
+    }
+  },
+  "equipment": {
+    "weapon": "windsinger"
+  },
+  "lines": [
+    "Four wolves crossed at dusk. Three crossed back. The wood settles its own arithmetic.",
+    "You may share the fire. The fire is older than the courtesy, and the courtesy is old.",
+    "The Company sent another crew for the silverbark. We sent their palisade back in bundles. Everyone is being very polite."
+  ],
+  "combat": {
+    "level": 40,
+    "respawnSec": 90,
+    "stats": { "maxHp": 200, "damage": 10, "speed": 3.6, "leashRange": 12 }
+  }
+}

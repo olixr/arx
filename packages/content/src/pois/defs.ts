@@ -47,6 +47,11 @@ import deadChapel from './defs/dead_chapel.json';
 import deadMuster from './defs/dead_muster.json';
 import deadCloister from './defs/dead_cloister.json';
 import deadKingsrow from './defs/dead_kingsrow.json';
+import waystoneGlade from './defs/waystone_glade.json';
+import sentinelArbor from './defs/sentinel_arbor.json';
+import fallenLight from './defs/fallen_light.json';
+import fellersCamp from './defs/fellers_camp.json';
+import heartwoodDoor from './defs/heartwood_door.json';
 
 /**
  * Every authored POI archetype JSON, registered here. A def that isn't
@@ -108,6 +113,14 @@ const SOURCES: readonly unknown[] = [
   deadMuster,
   deadCloister,
   deadKingsrow,
+  // THE EVERWOOD (the Evenfall epic): the old folk's wild grounds —
+  // the family 'elf' joins the territory atlas here, and the far west
+  // starts reading as somebody's country instead of nobody's.
+  waystoneGlade,
+  sentinelArbor,
+  fallenLight,
+  fellersCamp,
+  heartwoodDoor,
 ];
 
 function buildRegistry(): ReadonlyMap<string, PoiDef> {

@@ -1,0 +1,35 @@
+{
+  "id": "sentinel_thal",
+  "name": "Thal",
+  "title": "Sentinel of the Evenway",
+  "examine": "Old blood, whole, and younger than the other sentinels, which still makes him older than every road in the Dawnlands. He is the only Evenguard who asks travelers questions back.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 12,
+      "hair": 5,
+      "hairColor": 1,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 2,
+      "feature": 0,
+      "shirt": 4,
+      "pants": 5
+    }
+  },
+  "equipment": {
+    "weapon": "windsinger"
+  },
+  "lines": [
+    "What is it like, the ford town? I have heard the bell. On a north wind, once, I heard the bell.",
+    "The king opened the gate. Some of us think a hundred and fifty years was hasty. I think it was about time. Do not repeat that.",
+    "Walk the stones and you will not be lost. Leave the stones and you will be lost exactly once."
+  ],
+  "combat": {
+    "level": 38,
+    "respawnSec": 90,
+    "stats": { "maxHp": 190, "damage": 9, "speed": 3.6, "leashRange": 12 }
+  }
+}

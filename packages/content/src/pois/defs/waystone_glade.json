@@ -1,0 +1,26 @@
+{
+  "id": "waystone_glade",
+  "name": "Waystone glade",
+  "description": "A tended ring in the wild wood: a waystone, swept stone, benches facing the miles. The road-faith's lamps never reached this far. Something older keeps the watch instead, and it keeps it very well.",
+  "family": "elf",
+  "tiers": [3, 5],
+  "weight": 2,
+  "prefabs": ["poi_waystone_ring", "poi_waystone_bench"],
+  "garrison": [],
+  "haven": { "safeR": 10 },
+  "cues": { "approachPath": true },
+  "signs": [
+    {
+      "title": "THE WAYSTONE",
+      "lines": ["the stone keeps the mile", "walk on kindly"]
+    },
+    {
+      "title": "OLD SCRIPT",
+      "lines": ["a script band, worn smooth", "nobody alive reads it aloud"]
+    },
+    {
+      "title": "THE RING",
+      "lines": ["the grass inside is short", "nobody is ever seen cutting it"]
+    }
+  ]
+}

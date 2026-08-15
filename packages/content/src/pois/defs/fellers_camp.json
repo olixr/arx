@@ -1,0 +1,31 @@
+{
+  "id": "fellers_camp",
+  "name": "Fellers' camp",
+  "description": "A Red Company timber crew on the Everwood's hem, cutting silverbark nobody sold them. The palisade stops mid-course and half the stakes are already pulled: the camps keep getting taken apart by morning, politely, and the crew's nerve is going the same way.",
+  "family": "brigand",
+  "tiers": [4, 5],
+  "weight": 2,
+  "prefabs": ["poi_fellers_camp", "poi_fellers_boom"],
+  "garrison": [
+    { "npc": "brigand", "count": [2, 3], "role": "holdfast" },
+    { "npc": "brigand_archer", "count": [1, 2], "role": "sentry" },
+    {
+      "npc": "brigand_reaver",
+      "count": [1, 1],
+      "role": "holdfast",
+      "names": ["Saw-Boss Marrick", "Tally Vane", "Cross-Cut Brea", "The Foreman's Foreman"]
+    }
+  ],
+  "chestTierBonus": 1,
+  "clearedFlag": "poi_fellers_broken",
+  "signs": [
+    {
+      "title": "COMPANY GROUND",
+      "lines": ["timber rights asserted", "by whom, of whom, unclear"]
+    },
+    {
+      "title": "THE TALLY",
+      "lines": ["cut: forty lengths", "still here: forty lengths"]
+    }
+  ]
+}

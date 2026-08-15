@@ -1,0 +1,29 @@
+{
+  "id": "heartwood_door",
+  "name": "The Heartwood door",
+  "description": "A ward arch at the hem of the grove the old folk keep and do not explain. It is not sealed with masonry; it is sealed with permission, which is harder work to break. The Evenguard here are courteous the way a drawn bow is courteous.",
+  "family": "elf",
+  "tiers": [4, 5],
+  "weight": 0,
+  "prefabs": ["poi_heartwood_door"],
+  "garrison": [],
+  "actors": [
+    {
+      "pool": ["sentinel_veran", "sentinel_lisse", "sentinel_thal"],
+      "post": "hearth"
+    },
+    { "pool": ["evenguard_watch"], "post": "watch" },
+    { "pool": ["evenguard_watch"], "post": "watch" }
+  ],
+  "haven": { "safeR": 12 },
+  "signs": [
+    {
+      "title": "THE HEARTWOOD",
+      "lines": ["the wood past this arch is not walked", "it is not a rule, it is a fact"]
+    },
+    {
+      "title": "THE WARD",
+      "lines": ["the keystone floats", "it has always floated"]
+    }
+  ]
+}

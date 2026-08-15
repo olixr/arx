@@ -110,6 +110,10 @@ import waykeeperBrant from './defs/waykeeper_brant.json';
 import waykeeperHale from './defs/waykeeper_hale.json';
 import waykeeperOdessa from './defs/waykeeper_odessa.json';
 import waywardWatch from './defs/wayward_watch.json';
+import sentinelVeran from './defs/sentinel_veran.json';
+import sentinelLisse from './defs/sentinel_lisse.json';
+import sentinelThal from './defs/sentinel_thal.json';
+import evenguardWatch from './defs/evenguard_watch.json';
 import youngPip from './defs/young_pip.json';
 import portreeveBrack from './defs/portreeve_brack.json';
 import factorNeave from './defs/factor_neave.json';
@@ -295,6 +299,11 @@ const SOURCES: readonly unknown[] = [
   waykeeperHale,
   waykeeperOdessa,
   waywardWatch,
+  // THE EVERWOOD (the Evenfall epic): the Evenguard on the miles.
+  sentinelVeran,
+  sentinelLisse,
+  sentinelThal,
+  evenguardWatch,
   youngPip,
   // The Road's Fortune (living frontier, phase 5) — the peddler pool:
   peddlerNix,

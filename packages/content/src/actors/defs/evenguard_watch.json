@@ -1,0 +1,35 @@
+{
+  "id": "evenguard_watch",
+  "name": "Evenguard",
+  "title": "The Watch of the Wood",
+  "examine": "Moonpale, upswept ears, a strung bow, and the stillness of someone for whom an afternoon is not a long time. The watch faces the way you came from.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 12,
+      "hair": 3,
+      "hairColor": 7,
+      "beard": 0,
+      "eyes": 0,
+      "ears": 2,
+      "feature": 0,
+      "shirt": 5,
+      "pants": 4
+    }
+  },
+  "equipment": {
+    "weapon": "windsinger"
+  },
+  "lines": [
+    "You are seen.",
+    "The mile is kept.",
+    "Walk on. The stones know the way better than I would tell it."
+  ],
+  "combat": {
+    "level": 39,
+    "respawnSec": 90,
+    "stats": { "maxHp": 200, "damage": 9, "speed": 3.6, "leashRange": 12 }
+  }
+}

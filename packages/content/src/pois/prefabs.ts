@@ -144,6 +144,17 @@ const LEGEND: Record<string, number> = {
   // sketch will ever muster nine kinds of body.
   "'": Tile.RockObsidian,
   '9': Tile.RockStarfall,
+  // THE EVERWOOD EXTENSION: the fair house steps into the wild. The
+  // letters ran out two epics ago and the marks ran out one — the
+  // remaining digits carry the elven kit (digits fall through to the
+  // legend only when a sketch's marker table does not claim them, and
+  // no elven sketch musters more than two kinds of body).
+  '3': Tile.WardArch,
+  '4': Tile.ArcaneBeacon,
+  '5': Tile.Runestone,
+  '6': Tile.ElvenBench,
+  '7': Tile.RunePillar,
+  '8': Tile.ElvenWaystone,
 };
 
 export interface Marker {
@@ -1744,6 +1755,187 @@ const greatdenCourt = sketch('poi_greatden_court', 'Great den court', [
   '______,,______',
 ]);
 
+// ------------------------------------------------------------------
+// THE EVERWOOD (the Evenfall epic): the old folk's wild grounds.
+// Everything swept, nothing lashed — and everything spaced to breathe
+// (the curation law walks in the wild too).
+// ------------------------------------------------------------------
+
+/**
+ * A waystone in a tended ring: the Evenway's mile-keeping, where the
+ * road-faith's lamps never reached. The stone is swept, the benches
+ * face the miles, and the grass inside the ring is shorter than the
+ * grass outside it. Nobody is ever seen tending these.
+ */
+const waystoneRing = sketch('poi_waystone_ring', 'Waystone ring', [
+  '_____,,,,,_____',
+  '___,,.....,,___',
+  '__,..Y...Y..,__',
+  '_,....SSS....,_',
+  '_,.6..S8S..6.,_',
+  ',,....SSS....,,',
+  '_,.....s.....,_',
+  '_,..Y.....Y..,_',
+  '__,..B...B..,__',
+  '___,,.....,,___',
+  '_____,,,,,_____',
+]);
+
+/**
+ * The small handoff stone: one waystone, one bench, and the yews
+ * leaning in to listen. The first of these stands where the last
+ * lamp's reach gives out — the wood picking up the watch.
+ */
+const waystoneBench = sketch('poi_waystone_bench', 'Waystone', [
+  '___,,,,,___',
+  '__,.....,__',
+  '_,..Y.Y..,_',
+  '_,.S...B.,_',
+  '_,.8..6..,_',
+  '_,.S.....,_',
+  '_,..s..h.,_',
+  '__,.....,__',
+  '___,,,,,___',
+]);
+
+/**
+ * A sentinel arbor: an open-sided bough-lodge, grown more than built
+ * — rails and floor and a kept fire, no walls at all (an Evenguard
+ * post does not hide; being SEEN keeping the mile is the point). The
+ * rune pillars light the approach violet and green.
+ */
+const arborBough = sketch('poi_arbor_bough', 'Sentinel arbor', [
+  '____,,,,,,,,____',
+  '__,,........,,__',
+  '_,..7......7..,_',
+  '_,...llllll...,_',
+  '_,...lppppl...,_',
+  ',,...lppHpl...,,',
+  '_,...lpppp....,_',
+  '_,...llll.....,_',
+  '_,..e....k....,_',
+  '_,....Y....6..,_',
+  '__,,........,,__',
+  '____,,,,,,,,____',
+]);
+
+/**
+ * The arbor at the old hearth: a sentinel post keeping a fire that
+ * was old when the roads were young. The waystone stands where the
+ * lodge's fourth wall would be — the Evenguard sleep against the
+ * mile itself.
+ */
+const arborHearth = sketch('poi_arbor_hearth', 'Evenguard hearth', [
+  '____,,,,,,____',
+  '__,........,__',
+  '_,..7....Y.,__',
+  '_,..lllll..,__',
+  '_,..lppppl.,__',
+  ',,..lpHppl.,,_',
+  '_,..lpppp8.,__',
+  '_,..lllll..,__',
+  '_,...e..6..,__',
+  '__,........,__',
+  '____,,,,,,____',
+]);
+
+/**
+ * A fallen light: an old folk beacon-site gone dark, and the dark
+ * moved in under it. The runestones still stand; the household that
+ * rose beneath them keeps a watch nobody set. What the wood's quiet
+ * actually holds down, shown once per country.
+ */
+const fallenBeacon = sketch('poi_fallen_beacon', 'Fallen light', [
+  '_____,,,,,_____',
+  '__,,,.....,,,__',
+  '_,...5...r...,_',
+  '_,..r..o.....,_',
+  ',,....SSS..5.,,',
+  '_,.o..S4S....,_',
+  '_,....SSS..o.,_',
+  '_,.5.....W...,_',
+  '_,....r......,_',
+  '__,,,.....,,,__',
+  '_____,,,,,_____',
+]);
+
+/**
+ * The fallen ring: the beacon's outlier stones, tipped and mossed,
+ * with the ground between them dug by nothing that carries a spade
+ * the right way up.
+ */
+const fallenRing = sketch('poi_fallen_ring', 'Dark ring', [
+  '____,,,,,,____',
+  '__,,......,,__',
+  '_,..5..r...,__',
+  '_,....o..5.,__',
+  ',,.r..W....,,_',
+  '_,...o...r.,__',
+  '_,.5....o..,__',
+  '_,......5..,__',
+  '__,,......,,__',
+  '____,,,,,,____',
+]);
+
+/**
+ * A fellers' camp: the Red Company probing the Everwood's hem for
+ * silverbark, half-built and half-dismantled — the palisade run
+ * stops mid-course, and half the stakes are already pulled. The
+ * Company keeps finding its camps politely taken apart by morning.
+ * The crew has standing orders and dwindling nerve.
+ */
+const fellersCamp = sketch('poi_fellers_camp', "Fellers' camp", [
+  '_____,,::,,_____',
+  '__,::::::::::,__',
+  '_,:|:|..u.u..:,_',
+  '_,:.....d....:,_',
+  ',::.^..f..c..::,',
+  ',::.....W.a..::,',
+  '_,:.u..!...u.:,_',
+  '_,:....<.....:,_',
+  '__,::::::::::,__',
+  '_____,,::,,_____',
+]);
+
+/**
+ * The fellers' boom: the log landing by the wet ground, stacked with
+ * silverbark lengths nobody has come back for. The saw went quiet a
+ * week ago. The crew tells itself the wood is just a wood.
+ */
+const fellersBoom = sketch('poi_fellers_boom', "Fellers' boom", [
+  '____,,,,,,,____',
+  '__,::::::::,___',
+  '_,:.u..u...:,__',
+  '_,:..c.c.d.:,__',
+  ',::.f......::,_',
+  ',::...W.^..::,_',
+  '_,:.!....u.:,__',
+  '_,::::::::,,___',
+  '____,,,,,,_____',
+]);
+
+/**
+ * THE HEARTWOOD DOOR — the one threshold (weight-0, authored once).
+ * A ward arch the delve epic gets to be invited through, flanked by
+ * waystones and kept by the Evenguard. The arch is not sealed with
+ * masonry; it is sealed with PERMISSION, which is harder work to
+ * break. The trees past it are taller than trees.
+ */
+const heartwoodDoor = sketch('poi_heartwood_door', 'The Heartwood door', [
+  '______,,,,,______',
+  '___,,,.....,,,___',
+  '__,...Y...Y...,__',
+  '_,..5.......5..,_',
+  '_,....S,,,S....,_',
+  ',,..8.S,3,S.8..,,',
+  '_,....S,,,S....,_',
+  '_,.....SSS.....,_',
+  '_,..6...S...6..,_',
+  '__,....7.7....,__',
+  '___,,,.....,,,___',
+  '______,,,,,______',
+]);
+
 export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
   [
     goblinCampRing,
@@ -1815,6 +2007,16 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     // The parliament (great owls of the deep wood):
     roostShadewood,
     roostPinehollow,
+    // THE EVERWOOD (the Evenfall epic): the old folk's wild grounds.
+    waystoneRing,
+    waystoneBench,
+    arborBough,
+    arborHearth,
+    fallenBeacon,
+    fallenRing,
+    fellersCamp,
+    fellersBoom,
+    heartwoodDoor,
     // THE LANDMARKS (the hybrid charter): expansive authored grounds,
     // 3-5x the camp shelf — built in landmarks.ts the Foundry way.
     ...LANDMARK_PREFABS,

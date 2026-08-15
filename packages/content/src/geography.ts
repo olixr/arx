@@ -874,6 +874,26 @@ const AUTHORED_PLAN: GeographyDef = {
     // THE HOARGATE — the garrison across the pass, and the last
     // authored thing before the Rimeward.
     { id: 'hoargate', defId: 'hoargate_watch', x: -334, y: -262 },
+    // THE FIRST WAYSTONE — where the trail bends into the wood and
+    // the stones pick up the watch the lamps handed off leagues ago.
+    // The first draft pinned it at the heath handoff itself, but the
+    // handoff country is crag to the horizon and the honest scan
+    // refused every candidate (the influence law again: a glade's
+    // real footprint is ~2.5x its sketch) — so the stone stands where
+    // the ground opens, which is where the wood begins, which is the
+    // truer story anyway.
+    { id: 'first_waystone', defId: 'waystone_glade', x: -500, y: -198 },
+    // THE MIDWOOD ARBOR — the Evenguard's manned post at the long
+    // walk's waist: the first elven faces a traveler meets, courteous
+    // and exact. Cell-forced so the honest scan seats the lodge off
+    // the carve.
+    { id: 'midwood_arbor', defId: 'sentinel_arbor', cell: [-5, -2] },
+    // THE HEARTWOOD DOOR — the one threshold (weight-0, exactly
+    // once): the ward arch at the reserve's hem, east of the rect
+    // with apron room (the oldcrown_door lesson), where the Heartwood
+    // Walk ends and permission begins. The delve epic knows the
+    // address.
+    { id: 'heartwood_door', defId: 'heartwood_door', x: -770, y: -290 },
     // The shelf walk under Silverfall's crags gets one roof.
     { id: 'spineshelf_rest', defId: 'waystation', x: -232, y: -236 },
     // THE OLD ROAD'S ONE ROOF (the Kingsdelf epic) — the Third Stone,
