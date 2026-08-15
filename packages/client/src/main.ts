@@ -115,27 +115,19 @@ const DOCK_BUTTONS = [
   ['btn-audio', 'sound', 'Settings', 'screenSettings', 'audio'],
 ] as const;
 
+/* THE RAIL RESTS QUIET: the keys wear no permanent shortcut chips —
+   eleven overhanging tokens were most of the old keypad's noise. The
+   binding lives in the one tooltip instead (tipname + tipsub), read
+   LIVE from the keymap so a rebind in Controls reteaches every key. */
 function renderDockBadges(): void {
   for (const [id, , tip, action] of DOCK_BUTTONS) {
     const btn = document.getElementById(id);
-    const badge = document.querySelector<HTMLElement>(`#${id} .dock-badge`);
-    if (!btn || !badge) continue;
-    badge.innerHTML = '';
+    if (!btn) continue;
+    // The tooltip carries the name; a native title would double it.
+    btn.removeAttribute('title');
+    btn.setAttribute('aria-label', tip);
     const kbKey = bindings.kbBadge(action);
-    btn.title = kbKey ? `${tip} (${kbKey})` : tip;
-    if (kbKey) {
-      const kb = document.createElement('span');
-      kb.className = 'kb-glyph small';
-      kb.textContent = kbKey;
-      badge.appendChild(kb);
-    }
-    const padG = bindings.padBadge(action);
-    if (padG) {
-      const pad = document.createElement('span');
-      pad.className = `pad-glyph ${padG.cls}`;
-      pad.textContent = padG.text;
-      badge.appendChild(pad);
-    }
+    btn.dataset.tipsub = kbKey ? `Press ${kbKey}` : '';
   }
 }
 
@@ -146,7 +138,9 @@ for (const [id, kind, tip] of [
   const btn = document.getElementById(id);
   if (btn) {
     const img = document.createElement('img');
-    img.src = dockGlyphUrl(kind, id === 'touch-attack' ? 48 : 30);
+    // Painted at double the resting display size so the sigils stay
+    // crisp under the root scale's 4K stretch.
+    img.src = dockGlyphUrl(kind, 48);
     img.draggable = false;
     btn.appendChild(img);
     if (tip) {
@@ -154,9 +148,6 @@ for (const [id, kind, tip] of [
       btn.dataset.navkey = `dock:${id}`;
       btn.dataset.tipname = tip;
       btn.dataset.acta = 'Open';
-      const badge = document.createElement('span');
-      badge.className = 'dock-badge';
-      btn.appendChild(badge);
     }
   }
 }
@@ -1075,6 +1066,23 @@ function currentScreen(): (typeof SCREEN_ORDER)[number] | null {
   if (mapScreen.isOpen) return 'map';
   if (audioMenu.isOpen) return 'audio';
   return null;
+}
+
+/* THE LIT KEY: the rail marks whichever screen owns the stage.
+   Screens open and close down a dozen paths (hotkeys, dock clicks,
+   the ring, bumpers, close buttons, walking off a station), so the
+   frame loop re-reads the one truth — currentScreen() — and touches
+   the DOM only when the answer changes. */
+let litDockKey: (typeof SCREEN_ORDER)[number] | null = null;
+function syncDockActive(): void {
+  const cur = currentScreen();
+  if (cur === litDockKey) return;
+  litDockKey = cur;
+  for (let i = 0; i < DOCK_BUTTONS.length; i++) {
+    document
+      .getElementById(DOCK_BUTTONS[i]![0])
+      ?.classList.toggle('active', SCREEN_ORDER[i] === cur);
+  }
 }
 
 function cycleScreen(dir: -1 | 1): void {
@@ -3169,6 +3177,7 @@ function frame(now: number): void {
     voice.setListener(ear.x, ear.y);
   }
   panelAudioCues();
+  syncDockActive();
   // The station being talked to (open panel) animates its in-use
   // choreography — chest lid open, furnace stoked — via renderer heat.
   renderer.stationFocus = stationPanels.anchorTile;

@@ -124,13 +124,13 @@ body:not(.pad-mode) .pad-glyph { display: none; }
    strip teaches those verbs instead. */
 body.pad-mode .hint-inline { display: none; }
 
-/* ---- hotbar + dock badges ---- */
+/* ---- hotbar badges ---- */
 
 /* The shortcut token: a small solid tab that overhangs the tile's
    bottom-right corner — big enough to read at a glance, hanging off
-   the edge so it never covers the icon it belongs to. */
-.hotbar-key .kb-glyph,
-.dock-badge .kb-glyph {
+   the edge so it never covers the icon it belongs to. (The dock rail
+   carries no resting badges — its shortcuts live in the tooltip.) */
+.hotbar-key .kb-glyph {
   min-width: 1.1875rem;
   height: 1.1875rem;
   padding: 0 0.25rem;
@@ -144,21 +144,13 @@ body.pad-mode .hint-inline { display: none; }
 }
 
 /* Pad glyphs keep their console-color language at the same weight. */
-.hotbar-key .pad-glyph,
-.dock-badge .pad-glyph {
+.hotbar-key .pad-glyph {
   min-width: 1.3125rem;
   height: 1.3125rem;
   font-size: 0.6875rem;
   background: rgba(12, 9, 5, 0.92);
   border-width: 0.09375rem;
   box-shadow: var(--punch-small);
-}
-
-.dock-badge {
-  position: absolute;
-  right: -0.4375rem;
-  bottom: -0.4375rem;
-  pointer-events: none;
 }
 
 /* ---- focus ring: the pad cursor ---- */
