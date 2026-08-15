@@ -84,6 +84,16 @@ test('every route starts and ends at a planned zone (gates meet roads)', () => {
       assert.ok(inAnyRect(b.x, b.y), `${route.name} end is loose`);
       continue;
     }
+    // The Evenway forks off the Hoargate Road at the bend where the
+    // wains turn north for the climb — north to the cold gate, west
+    // to the wood. The fork IS the start; the end is Evenfall's gate.
+    if (route.id === 'evenway') {
+      const hoargate = ROAD_ROUTES.find((r) => r.id === 'hoargate_road')!;
+      const onHoargate = hoargate.pts.some((p) => p.x === a.x && p.y === a.y);
+      assert.ok(onHoargate, `${route.name} must start on a Hoargate Road waypoint (the fork)`);
+      assert.ok(inAnyRect(b.x, b.y), `${route.name} end is loose`);
+      continue;
+    }
     assert.ok(inAnyRect(a.x, a.y), `${route.name} start is loose`);
     assert.ok(inAnyRect(b.x, b.y), `${route.name} end is loose`);
   }

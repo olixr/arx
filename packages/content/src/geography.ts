@@ -286,6 +286,53 @@ export const ASHMERE = { x: -368, y: 368, r: 80 } as const;
  */
 export const ASHMARCH = { x: -296, y: 176, r: 150 } as const;
 
+/**
+ * Evenfall — the city of the old folk in the Everwood (the eighth
+ * town, the Evenfall epic; docs/evenfall-plan.md). Centre (-680,-176):
+ * ~655 tiles from Dawnmead's hearth, past the Silverspine's west
+ * skirt, in ground the band march saturated long ago — the far west
+ * is base-5 country end to end, which is the design. The SIXTH haven:
+ * tier 0 under the boughs, tier 3 at the hem, the deep wood past the
+ * waystones tier 4-5 (levels 32-48), the exact country a 35-50 town
+ * asks for with no dial touched. The old folk kept this city before
+ * the roads were roads; it has been closed for a hundred and fifty
+ * years, and it is open now.
+ */
+export const EVENFALL_RECT: ZoneRect = { x: -760, y: -232, w: 160, h: 112 };
+
+/**
+ * THE HEARTWOOD — ground RESERVED, not built (the Rimeward law: a
+ * road that ends nowhere is a road the plan is lying about). The
+ * Heartwood Walk leaves Evenfall's north wicket and ends here, at the
+ * hem of the grove the old folk keep and do not explain — the door a
+ * future delve epic gets to be invited through. Deliberately NOT
+ * aproned: the deep wood keeps its own counsel until then.
+ */
+export const HEARTWOOD_RECT: ZoneRect = { x: -880, y: -352, w: 96, h: 64 };
+
+/**
+ * THE EVERWOOD — the great wood of the far west, and the first
+ * landform beyond the Silverspine. THREE veil hearts (the paired-
+ * hearts grammar the Amberfen and the Spinewall taught: a landform
+ * has no strength dial, so a wood that must not thin tiles its
+ * hearts instead) stand the old wood up honestly — oak and willow
+ * and yew at veil density around the whole city ring and down the
+ * Evenway's last league, with the wood BEGINNING at a legible line
+ * on the approach: east of the east heart the land is open heath,
+ * and then it is not. Humans named it for the one thing every failed
+ * map agrees on: it does not thin. The wood is Evenfall's wall, and
+ * it was never planted; the city was built where the wood already
+ * was, which is the other way round from every human town and reads
+ * like it. (The Heartwood's own damp is the base noise's — the deep
+ * grove was always going to be there; the plan just tells the truth
+ * about it.)
+ */
+export const EVERWOOD = { x: -724, y: -204, r: 185 } as const;
+export const EVERWOOD_SOUTH = { x: -696, y: -104, r: 140 } as const;
+export const EVERWOOD_EAST = { x: -596, y: -186, r: 120 } as const;
+/** The deep grove's own damp — the Heartwood out-greens everything. */
+export const EVERWOOD_DEEP = { x: -832, y: -316, r: 120 } as const;
+
 export interface RoadRoute {
   id: string;
   name: string;
@@ -694,6 +741,63 @@ const AUTHORED_PLAN: GeographyDef = {
         { x: -140, y: -96 },
       ],
     },
+    {
+      id: 'evenway',
+      name: 'The Evenway',
+      kind: 'trail',
+      // The way west, and the one approach in the Dawnlands where the
+      // road-faith's light gives out and something older takes over.
+      // It forks off the Hoargate Road at the last level bend before
+      // the climb — north to the cold gate, west to the wood — and
+      // runs the Silverspine's south skirt into the Everwood, keeping
+      // a respectful league off the Hoargate's narrows (the garrison
+      // holds the pass, and the pass's honest ground is the
+      // garrison's; the first draft brushed its apron and the compose
+      // test refused it, correctly). A trail by KIND (the wood does
+      // not pave) but tended by something, because the line never
+      // wanders into a bog and the deadfall is always cleared by
+      // morning. No lamps. The waystones pick it up where the last
+      // lamp's reach ends, and the waystones do not answer to the
+      // road-faith. Tier 4-5 the whole long way: the journey is the
+      // introduction.
+      pts: [
+        { x: -278, y: -252 },
+        { x: -296, y: -228 },
+        { x: -326, y: -220 },
+        { x: -360, y: -224 },
+        { x: -398, y: -232 },
+        { x: -428, y: -226 },
+        // The dry shelf north of the reed basin: the line rides the
+        // crag foot rather than wade the wet ground the first draft
+        // found at (-486,-221) — the span law taught it (13-tile deck
+        // refused; walk the shore).
+        { x: -458, y: -227 },
+        { x: -492, y: -226 },
+        { x: -514, y: -210 },
+        { x: -540, y: -196 },
+        { x: -566, y: -188 },
+        { x: -590, y: -180 },
+        { x: -601, y: -176 },
+      ],
+    },
+    {
+      id: 'heartwood_walk',
+      name: 'The Heartwood Walk',
+      kind: 'trail',
+      // Evenfall's north wicket to the hem of the grove the old folk
+      // keep. The city end is swept and stone-stepped; the far end is
+      // not a path so much as a permission, and the permission has
+      // not been granted to anyone living who was not born under the
+      // boughs. It ends at a door the maps do not draw (the Rimeward
+      // law: the reserve tells the truth about where it goes).
+      pts: [
+        { x: -744, y: -232 },
+        { x: -756, y: -252 },
+        { x: -772, y: -268 },
+        { x: -788, y: -284 },
+        { x: -800, y: -296 },
+      ],
+    },
   ],
   sites: [
     // The High Road mileposts — a lamp for each leg of the great
@@ -813,7 +917,13 @@ const AUTHORED_PLAN: GeographyDef = {
     { id: 'cairnfell', ...CAIRNFELL },
     { id: 'the_brand', ...THE_BRAND },
   ],
-  veils: [{ id: 'thornveil', ...THORNVEIL }],
+  veils: [
+    { id: 'thornveil', ...THORNVEIL },
+    { id: 'everwood', ...EVERWOOD },
+    { id: 'everwood_south', ...EVERWOOD_SOUTH },
+    { id: 'everwood_east', ...EVERWOOD_EAST },
+    { id: 'everwood_deep', ...EVERWOOD_DEEP },
+  ],
   fens: [
     { id: 'amberfen_west', ...AMBERFEN_WEST },
     { id: 'amberfen_east', ...AMBERFEN_EAST },
@@ -841,6 +951,8 @@ const AUTHORED_PLAN: GeographyDef = {
     { id: 'rimeward', name: 'The Rimeward', ...RIMEWARD_RECT },
     { id: 'kingsdelf', name: 'Kingsdelf', ...KINGSDELF_RECT, apron: true },
     { id: 'oldcrown', name: 'The Oldcrown', ...OLDCROWN_RECT },
+    { id: 'evenfall', name: 'Evenfall', ...EVENFALL_RECT, apron: true },
+    { id: 'heartwood', name: 'The Heartwood', ...HEARTWOOD_RECT },
   ],
 };
 export const AUTHORED_GEOGRAPHY: GeographyDef = Object.freeze(AUTHORED_PLAN);

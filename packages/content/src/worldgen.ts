@@ -232,7 +232,20 @@ export function moistureAt(seed: number, tx: number, ty: number): number {
 export function coldAt(seed: number, tx: number, ty: number): number {
   const lat = Math.min(1, Math.max(0, (-ty - 40) / 180));
   const rag = (fbm(seed + 31337, tx * 0.025, ty * 0.025, 2) - 0.5) * 0.35;
-  return Math.min(1, Math.max(0, lat + rag + pinelandAt(tx, ty) * 0.55));
+  // THE CANOPY HOLDS THE WARMTH: a veil is old broadleaf wood by
+  // definition, and a closed broadleaf canopy buffers its own floor —
+  // the pine front parts around a veil the way it parts around a
+  // south slope. The term is inert at warm latitudes (the Thornveil's
+  // cold sits far below every species threshold with or without it);
+  // it exists so a high-latitude veil (the Everwood) deals oak and
+  // willow and yew instead of borrowing the Pinereach's voice. The
+  // falloff does the composition for free: pine fringe at the wood's
+  // rim, old broadleaf at its hearts — the deeper in, the older it
+  // reads, which is the Everwood's whole story told by the treeline.
+  return Math.min(
+    1,
+    Math.max(0, lat + rag + pinelandAt(tx, ty) * 0.55 - thornveilAt(tx, ty) * 0.6),
+  );
 }
 
 /** Below this world-y everything defaults to solid cave (dungeon land). */

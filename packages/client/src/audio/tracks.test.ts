@@ -36,7 +36,7 @@ test('the mood law: town outranks all, caves brood, the deep frontier darkens th
   assert.equal(moodFor(wild, 12, 3), 'adventure'); // tier 3 is still adventure
 });
 
-test('every hearth reaches the ear: all seven towns play town, day or night, any tier', () => {
+test('every hearth reaches the ear: all eight towns play town, day or night, any tier', () => {
   const seats: Array<[number, number]> = [
     [-64, 48], // Dawnmead
     [352, 24], // Amberford
@@ -45,6 +45,7 @@ test('every hearth reaches the ear: all seven towns play town, day or night, any
     [584, -136], // Pinewatch
     [848, -392], // Hartfell — its country bands tier 5; the walls must not
     [-256, 288], // Kingsdelf — its country reads the Overband; the bowl must not
+    [-680, -176], // Evenfall — the far west is tier-5 country; the groves must not
   ];
   for (const [x, y] of seats) {
     assert.equal(moodFor(zoneWeights(x, y), 12, 5), 'town', `day at ${x},${y}`);

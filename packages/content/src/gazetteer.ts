@@ -61,6 +61,11 @@ export const GAZETTEER: Readonly<Record<string, GazetteerEntry>> = {
     line: 'The Returning keeps a town in the old quarry bowl, under the mountain that still burns.',
     country: 6,
   },
+  evenfall: {
+    epithet: 'The city the old folk kept',
+    line: 'The wood is the wall, the light does not burn, and the gate stood closed for a hundred and fifty years. It is open now.',
+    country: 5,
+  },
   undercroft: {
     epithet: 'The buried works',
     line: 'Old mason halls under the mountain, dug deep and left to the dark.',

@@ -79,6 +79,17 @@ export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
   // clears Kingsdelf's north wall — the town lives BESIDE the
   // furnace, never in it. Nobody put this here either; a star did.
   { x: -320, y: 104, safeR: 96, dread: 3 },
+  // Evenfall — the city of the old folk, and the SIXTH haven. Its
+  // light keeps the groves and the terraces tier 0 and the relief
+  // grades the hem: tier 3 under the outermost boughs, 4 a waystone
+  // on, 5 where the Everwood stops pretending to be a park — because
+  // the base band this far west saturated at 5 long before the first
+  // human map, and the city is a cool ring in it, not a hole through
+  // it (the Hartfell law, worn silver). It is a haven for the same
+  // reason every town past the ford is: a settled anchor out here
+  // would re-origin the whole west's band march, and the west was
+  // never anyone's to calm.
+  { x: -680, y: -176, safeR: 64, haven: true },
 ];
 
 /**
