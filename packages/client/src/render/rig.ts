@@ -16055,13 +16055,24 @@ export function paintTurtleBody(
 
   // THE BODY UNDER THE KEEP: a skin mass filling the rim's shadow so
   // legs and neck root into flesh instead of poking from an empty
-  // shelf (the hollow-crate cheat, retired).
+  // shelf (the hollow-crate cheat, retired). THE BELLY TUCKS LIKE A
+  // LION'S: the mass is a GROUND-frame lens — its screen width
+  // follows the facing between the two half-dims, its depth squashes
+  // with ys, and its ground LINE is authored bottom-up with real
+  // clearance (daylight under the mountain, the snapper's keel a
+  // finger off the dirt). The old body-rotated blob projected the
+  // hull's full lateral width as belly DEPTH at profile — a bloated
+  // sack scraping the ground.
+  const ax = Math.abs(fx);
+  const ay = Math.abs(fy);
+  const brx = (hl * 0.76 * ax + hw * 0.82 * ay) * s;
+  const bry = (hw * 0.34 * ax + hl * 0.3 * ay) * ys * s;
+  const bellyClear = (look.ancient ? 0.06 : 0.02) * s;
   ctx.fillStyle = f.hurt ? '#ffffff' : shade(look.skin, -20);
   ctx.save();
-  ctx.translate(bx, gy - look.rimBot * 0.55 * s - lift * 0.6);
-  ctx.rotate(Math.atan2(fy * ys, fx));
+  ctx.translate(bx, gy - bellyClear - lift * 0.6 - bry);
   ctx.beginPath();
-  facetBlob(ctx, 0, 0, hl * 0.8 * s, f.seed | 5, 8, (hw * 0.78) / (hl * 0.8), 0.5);
+  facetBlob(ctx, 0, 0, brx, f.seed | 5, 8, bry / brx, 0.5);
   ctx.fill();
   ctx.restore();
 
