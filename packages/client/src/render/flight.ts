@@ -1627,7 +1627,7 @@ export const CAVE_BAT_LOOK: BatLook = {
   earLen: 0.23,
   earW: 0.075,
   earBack: 0.12,
-  wingSpan: 1.15,
+  wingSpan: 1.0,
   fingers: 3,
   scallop: 0.5,
   ragged: 0,
@@ -1666,7 +1666,7 @@ export const GIANT_BAT_LOOK: BatLook = {
   earLen: 0.15,
   earW: 0.055,
   earBack: 0.32,
-  wingSpan: 2.05,
+  wingSpan: 1.75,
   fingers: 4,
   scallop: 0.3,
   ragged: 0,
@@ -1704,7 +1704,7 @@ export const DIRE_BAT_LOOK: BatLook = {
   earLen: 0.3,
   earW: 0.07,
   earBack: 0.72,
-  wingSpan: 2.4,
+  wingSpan: 2.05,
   fingers: 5,
   scallop: 0.85,
   ragged: 1,
@@ -1909,22 +1909,24 @@ export function drawBat(
     const tips: V3[] = [];
     for (let k = 0; k < N; k++) {
       const u = N === 1 ? 1 : k / (N - 1);
-      // THE WING IS THE ANIMAL: long fingers with a gentle taper —
-      // the outermost still carries most of the reach, so the sail
-      // reads LONG at every phase (the user's exaggeration verdict).
-      const len = handL * (1 - 0.22 * u);
+      // THE FAT WING: barely-tapered fingers — the innermost rib is
+      // nearly as long as the leading one, so the sail keeps its
+      // surface all the way in to the body.
+      const len = handL * (1 - 0.12 * u);
       const lagK = lag[Math.min(k, lag.length - 1)] ?? 0;
-      // THE SAIL LOADS UP AT SPEED: the hover's deep finger droop
-      // eases toward level as cruise takes over, and lift arches the
-      // tips — real membrane physics, and the projection fix in one:
-      // a full anhedral droop at cruise nearly cancels the back-sweep
-      // under the camera's y-squash at the south bands, collapsing
-      // the whole sail to a wire exactly where players see it most.
-      const droop = (0.16 + 0.5 * u) * spread * 0.6 * (1 - 0.5 * fr.cruiseK);
-      const tipRaise = fr.raiseHand - droop - lagK * 0.5;
-      // A DEEP chord: the inner fingers rake far back, so the sail
-      // carries real vertical body instead of a shallow sliver.
-      const backW = (0.12 + 1.05 * u) * len * fr.sweepK;
+      // THE SAIL IS TALL, NOT WIDE (the user's coverage verdict): the
+      // fingers RADIATE from the wrist through a ~90° arc — the
+      // leading rib rides near the arm line, the innermost sweeps
+      // DOWN toward the body's flank — so the membrane skin drapes
+      // the hull's whole vertical height and then some, the fat
+      // dragon-wing read. The arc breathes with the sim (each rib
+      // still drags its station's lag) and compresses a quarter at
+      // cruise so speed streamlines without giving up the coverage.
+      const fanArc = (0.22 + 1.38 * u) * spread * (1 - 0.22 * fr.cruiseK);
+      const tipRaise = fr.raiseHand - fanArc - lagK * 0.5;
+      // Back-sweep stays modest — depth lives in the fan now, and the
+      // vertical drape projects at full height (never y-squashed).
+      const backW = (0.05 + 0.45 * u) * len * fr.sweepK;
       const rise =
         Math.sin(tipRaise) * len * 0.95 +
         flex * u * u * span * 0.3 +
