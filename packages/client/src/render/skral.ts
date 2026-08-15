@@ -333,409 +333,422 @@ export interface SkralHeadFrame {
 }
 
 /**
- * The skral head, drawn in the head block's own frame. Reads skral by
- * SILHOUETTE first: a broad low fish skull WIDER than tall between
- * two lantern eye domes, the needle grin sweeping ear to ear under
- * them, no neck at all — the skull sits IN the shoulders and the
- * gular throat pools where a chin would be, pulsing on the idle
- * clock. The crest paints separately (the sim owns it). From behind
- * there is no face: wet occiput, the gill nape seams, and the eye
- * domes swelling the outline.
+ * THE HEAD IS ONE HULL (user-directed structural round: "rethink the
+ * models — proper perspective, skews, and orientations; the eyes
+ * float; the mouth was a hodgepodge"). The per-band blends are GONE.
+ * The head is an ellipsoid hull with semi-axes (aF fwd, aL lat, aZ
+ * up), and every feature — both eye domes, the mouth arc, the teeth,
+ * the nostrils, the gills, the crown ring, the barbels, the scar —
+ * is a STATION in head space projected through the fixed bird's-eye
+ * camera (YK 0.6). Orientation, foreshortening, which eye shows,
+ * where the grin wraps out of sight, and what peeks over the skyline
+ * from behind all fall out BY CONSTRUCTION (the motion doctrine, law
+ * three — the lesson the goblin head paid for three times):
+ * - a station's camera-side depth d = F·fy + L·py orders it against
+ *   the skull slab: d < 0 paints BEFORE the hull (hidden, or peeking
+ *   past the silhouette), d > 0 paints OVER it;
+ * - a feature's INK draws only while its outward normal faces the
+ *   camera — so the face vanishes from behind with no gate at all;
+ * - the mouth is a sampled 3D arc around the muzzle: the visible run
+ *   is wherever its samples hold the camera side, so the grin is
+ *   full at the bow, wraps honestly at the quarters, runs one-sided
+ *   at profile, and is gone from behind — and the teeth ride the
+ *   samples, narrowing with the arc's own foreshortening.
  */
 export function paintSkralHead(
   ctx: CanvasRenderingContext2D,
   sk: SkralLook,
   f: SkralHeadFrame,
 ): void {
-  const { headX, headY, hw, hh, cut, fx, profileK, backK, lead, hurt, nowMs, gape } = f;
+  const { headX, headY, hw, hh, cut, fx, fy, lead, hurt, nowMs, gape } = f;
+  const s = f.s;
   const hv = sk.heavy;
+  const jawK = sk.jaw ?? 1;
   const hide = hurt ? '#ffffff' : sk.hide;
   const belly = hurt ? '#ffffff' : sk.belly;
-  const back = backK > 0.55;
-  const pk = profileK;
-  // The skull turns as a WIDE block: cheeks bulge past hw face-on and
-  // the muzzle runs forward at profile. Width compresses through the
-  // turn, depth arrives — one pair of dials, no per-band branches.
-  const skW = hw * (1.24 - 0.26 * pk) * (0.94 + 0.12 * hv);
-  const skH = hh * 0.92;
-  const mzl = hw * 0.5 * pk; // profile muzzle run-out, toward lead
-  // The gular pulse: the throat breathes at rest and INFLATES with
-  // the croak — one clock, shared with nothing else on the body.
+  // The camera frame: facing (fx, fy), lateral (px, py), YK vertical.
+  const px = -fy;
+  const py = fx;
+  const YK = 0.6;
+  // The hull: one ellipsoid every feature rides. Wider than long than
+  // tall — the murloc argument in three numbers.
+  const aF = hw * 0.95;
+  const aL = hw * (1.18 + 0.1 * (hv - 1));
+  const aZ = hh * 0.92;
+  /** A station: head-frame (F fwd, L lat, Z up; unit-ish) → screen. */
+  const st = (F: number, L: number, Z: number): { x: number; y: number; d: number } => ({
+    x: headX + F * aF * fx + L * aL * px,
+    y: headY + (F * aF * fy + L * aL * py) * YK - Z * aZ,
+    d: F * fy + L * py,
+  });
+  // The slab: the hull's screen footprint — wide at the bow, long at
+  // profile, with a slight muzzle-forward weight shift.
+  const W = Math.sqrt(aF * fx * (aF * fx) + aL * px * (aL * px));
+  const cx = headX + fx * aF * 0.1;
   const gular = (hurt ? 0 : 0.06 * Math.sin(nowMs / 520)) + 0.55 * gape;
 
-  // ---- the skull mass (one chamfered slab, wider than tall).
+  // ---- THE CROWN RING (deepking): stations around the crown's rim.
+  // Far studs paint BEFORE the hull — from behind they peek over the
+  // skyline like the coral they are; near studs paint last.
+  type Stud = { x: number; y: number; d: number; r: number };
+  const studs: Stud[] = [];
+  if (sk.crowned && !hurt) {
+    for (const th of [-2.0, -1.2, -0.45, 0.45, 1.2, 2.0]) {
+      const p = st(Math.cos(th) * 0.55, Math.sin(th) * 0.8, 0.92);
+      studs.push({ ...p, r: s * (0.018 + 0.009 * Math.max(0, Math.cos(th))) });
+    }
+    studs.sort((a, b) => a.d - b.d);
+  }
+  const paintStud = (u: Stud): void => {
+    ctx.fillStyle = shade(SKRAL_TOOTH, u.d > 0 ? -4 : -12);
+    ctx.beginPath();
+    ctx.moveTo(u.x - u.r, u.y + u.r * 0.8);
+    ctx.lineTo(u.x - u.r * 0.2, u.y - u.r * 1.5);
+    ctx.lineTo(u.x + u.r * 0.6, u.y + u.r * 0.6);
+    ctx.closePath();
+    ctx.fill();
+  };
+  for (const u of studs) if (u.d <= 0) paintStud(u);
+
+  // ---- THE EYE DOMES, far pass: a dome on the camera-far side sits
+  // behind the hull. Deep in the rear quarters it returns as the
+  // occiput-side bulge (a hypertrophied fish eye swells the outline
+  // from every direction — the crab doctrine).
+  type Eye = { x: number; y: number; d: number; dot: number; side: number };
+  const eyes: Eye[] = [-1, 1].map((side) => {
+    const p = st(0.3, side * 0.92, 0.42);
+    return { ...p, dot: 0.3 * fy + side * 0.95 * py, side };
+  });
+  const eyeR = hw * (0.3 + 0.05 * hv) * (1 - 0.08 * Math.abs(fx));
+  const paintDome = (e: Eye, rear: boolean): void => {
+    ctx.fillStyle = hurt ? '#ffffff' : shade(sk.hide, rear ? -9 : e.dot > 0.12 ? 6 : -2);
+    ctx.beginPath();
+    ctx.ellipse(e.x, e.y, eyeR, eyeR * 0.92, 0, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  const rearRead = fy < -0.25;
+  for (const e of eyes) if (e.d <= 0.02 && !rearRead) paintDome(e, false);
+
+  // ---- the hull slab + its lit crown plane.
   ctx.fillStyle = hide;
   ctx.beginPath();
-  chamferRect(
-    ctx,
-    headX - skW + lead * mzl * 0.35,
-    headY - skH,
-    skW * 2 + Math.abs(mzl) * 0.55,
-    skH * 1.72,
-    cut * 1.05,
-  );
+  chamferRect(ctx, cx - W, headY - aZ, W * 2, aZ * 1.72, cut * 1.05);
   ctx.fill();
-  // The crown's lit top plane — every big mass shows one.
   if (!hurt) {
     ctx.fillStyle = shade(sk.hide, 8);
     ctx.beginPath();
-    chamferRect(
-      ctx,
-      headX - skW * 0.78 + lead * mzl * 0.3,
-      headY - skH * 0.98,
-      skW * 1.56,
-      skH * 0.34,
-      cut * 0.7,
-    );
+    chamferRect(ctx, cx - W * 0.78, headY - aZ * 0.98, W * 1.56, aZ * 0.34, cut * 0.7);
     ctx.fill();
   }
 
-  // ---- the gular throat: a pale pouch under the jaw line, pooled
-  // into the shoulders — the no-neck read AND the croak's bellows.
-  const thY = headY + skH * 0.66;
-  const thW = skW * (0.72 - 0.18 * pk);
-  const thH = skH * (0.34 + 0.3 * gular);
-  ctx.fillStyle = back ? (hurt ? '#ffffff' : shade(sk.hide, -8)) : belly;
+  // ---- the gular throat: pooled into the shoulders, breathing on
+  // the idle clock, ballooning with the croak. A front-hemisphere
+  // mass: its pale face turns away with the head.
+  const gu = st(0.3, 0, -0.86);
+  const thW = W * 0.72;
+  const thH = aZ * (0.34 + 0.3 * gular);
+  ctx.fillStyle = hurt ? '#ffffff' : gu.d > -0.1 ? belly : shade(sk.hide, -8);
   ctx.beginPath();
-  ctx.ellipse(headX + lead * mzl * 0.25, thY + thH * 0.3, thW, thH, 0, 0, Math.PI * 2);
+  ctx.ellipse(gu.x, gu.y + thH * 0.3, thW, thH, 0, 0, Math.PI * 2);
   ctx.fill();
-  if (!hurt && !back && gular > 0.2) {
-    // The loaded croak's sheen.
+  if (!hurt && gu.d > 0.1 && gular > 0.2) {
     ctx.fillStyle = shade(sk.belly, 9);
     ctx.beginPath();
-    ctx.ellipse(headX + lead * mzl * 0.25 - thW * 0.25, thY + thH * 0.12, thW * 0.34, thH * 0.3, 0, 0, Math.PI * 2);
+    ctx.ellipse(gu.x - thW * 0.25, gu.y + thH * 0.1, thW * 0.34, thH * 0.3, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // ---- THE LANTERN EYES: domes first (they survive every band),
-  // ink only where the face gates allow.
-  // Eye stations ride the skull's sides and slide forward with pk;
-  // the far dome hides once the near cheek truly owns the corner.
-  const eyeR = hw * (0.3 + 0.05 * hv) * (1 - 0.12 * pk);
-  const eyeY = headY - skH * 0.38;
-  const eyeXn = headX + lead * (skW * 0.66 + mzl * 0.18); // near
-  const eyeXf = headX - lead * (skW * 0.66 - mzl * 0.42); // far
-  const domes: Array<{ x: number; near: boolean }> = [{ x: eyeXn, near: true }];
-  if (pk < 0.62) domes.push({ x: eyeXf, near: false });
-  for (const d of domes) {
-    // The dome: hide-toned from behind (a socket has a back — a full
-    // tone step down, or the bulge melts into the occiput), lidded
-    // scale up front.
-    ctx.fillStyle = hurt ? '#ffffff' : shade(sk.hide, back ? -9 : 6);
-    ctx.beginPath();
-    ctx.ellipse(d.x, eyeY, eyeR, eyeR * 0.92, 0, 0, Math.PI * 2);
-    ctx.fill();
-    if (hurt || back) continue;
-    // The lantern: pale iris filling most of the dome, ink pupil
-    // slid toward the facing — the wall-eye never quite looks AT you,
-    // which is worse.
-    ctx.fillStyle = sk.eye;
-    ctx.beginPath();
-    ctx.ellipse(d.x, eyeY, eyeR * 0.78, eyeR * 0.74, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = sk.ink;
-    ctx.beginPath();
-    ctx.ellipse(
-      d.x + lead * eyeR * 0.22 * (d.near ? 1 : 0.6),
-      eyeY + eyeR * 0.06,
-      eyeR * 0.3,
-      eyeR * 0.34,
-      0,
-      0,
-      Math.PI * 2,
-    );
-    ctx.fill();
-    // The wet glint — one pale chip, upper-left of the pupil.
-    ctx.fillStyle = '#f4f6ee';
-    ctx.beginPath();
-    ctx.arc(d.x - eyeR * 0.16, eyeY - eyeR * 0.22, eyeR * 0.12, 0, Math.PI * 2);
-    ctx.fill();
-    // The lid: a heavy upper seam — unblinking is a choice.
-    ctx.strokeStyle = shade(sk.hide, -18);
-    ctx.lineWidth = Math.max(1, f.s * 0.014);
-    ctx.beginPath();
-    ctx.ellipse(d.x, eyeY - eyeR * 0.1, eyeR * 0.72, eyeR * 0.6, 0, Math.PI * 1.15, Math.PI * 1.85);
-    ctx.stroke();
-    // The scar: the deepking's near lid carries the old argument.
-    if (sk.scarred && d.near) {
-      ctx.strokeStyle = shade(sk.hide, -24);
-      ctx.lineWidth = Math.max(1, f.s * 0.016);
-      ctx.beginPath();
-      ctx.moveTo(d.x - eyeR * 0.5, eyeY - eyeR * 1.15);
-      ctx.lineTo(d.x + eyeR * 0.2, eyeY + eyeR * 1.05);
-      ctx.stroke();
-    }
-  }
+  // ---- rear-quarter domes: over the hull, as silhouette bulges.
+  if (rearRead) for (const e of eyes) paintDome(e, true);
 
-  // ---- from behind: gill nape seams and out — no face ever.
-  if (back) {
-    if (!hurt) {
-      ctx.strokeStyle = shade(sk.hide, -18);
-      ctx.lineWidth = Math.max(1, f.s * 0.02);
-      for (const o of [-0.42, 0, 0.42] as const) {
-        ctx.beginPath();
-        ctx.moveTo(headX + skW * o - skW * 0.14, headY + skH * 0.28);
-        ctx.quadraticCurveTo(headX + skW * o, headY + skH * 0.52, headX + skW * o + skW * 0.14, headY + skH * 0.3);
-        ctx.stroke();
-      }
-    }
-    paintSkralCrown(ctx, sk, f, skW, skH);
-    return;
-  }
-
-  // ---- THE MOUTH IS BUILT (user-directed premium round): never
-  // again a wire with ticks. A lip VAULT with weight, two corner
-  // stations that track the turn HONESTLY (the far corner wraps
-  // BEHIND the muzzle as the head turns — stretching it across the
-  // cheek at profile was the orientation lie), a jaw HINGED at those
-  // corners, teeth in two courses, a tongue in a throat you can see
-  // into mid-croak, and an underlip that gives the shut grin a chin.
-  const jawK = sk.jaw ?? 1;
-  const s = f.s;
-  const mY = headY + skH * (0.3 - 0.04 * pk);
-  const mSpan = skW * (1.0 - 0.1 * pk) * jawK;
-  const cxm = headX + lead * mzl * 0.45;
-  // Corner stations. Both corners RISE (the grim grin); the near
-  // corner sweeps further up as the head turns (the fish profile's
-  // up-cut mouth line, rising toward the eye), while the far corner
-  // slides toward the muzzle line and around it — past the ¾ band
-  // the mouth is one-sided BY CONSTRUCTION, not by a gate.
-  const farK = Math.max(0.12, 1 - 0.95 * pk);
-  const nX = cxm + lead * mSpan;
-  const nY = mY - skH * (0.05 + 0.1 * pk);
-  const fX = cxm - lead * mSpan * farK;
-  const fY = mY - skH * 0.05 * (1 - pk);
-  // The sag control: the seam pools low mid-muzzle, biased to lead.
-  const sagX = cxm + lead * mzl * 0.2;
-  const sagY = mY + skH * 0.3;
-  const qx = (t: number): number => (1 - t) * (1 - t) * fX + 2 * (1 - t) * t * sagX + t * t * nX;
-  const qy = (t: number): number => (1 - t) * (1 - t) * fY + 2 * (1 - t) * t * sagY + t * t * nY;
-  const drop = gape * skH * (0.48 + 0.14 * hv) * jawK;
-  const dropCtl = drop * 2.2; // control-point depth → true mid-gap ≈ drop
-  const seamW = Math.max(1.5, s * (0.022 + 0.009 * hv));
-  const lipH = s * (0.02 + 0.009 * hv);
-  const open = gape > 0.1;
-
-  // The far side of everything below fades out as the corner wraps.
-  const farSide = pk < 0.55;
-
-  if (open) {
-    // THE MOUTH-ROOM: upper boundary is the LIP LINE (it never
-    // moves); the lower boundary is the jaw's inner rim, hinged at
-    // the corners and dropping through the croak. Filled ink — the
-    // dark a mouth full of needles deserves.
-    ctx.fillStyle = hurt ? '#ffffff' : sk.ink;
-    ctx.beginPath();
-    ctx.moveTo(fX, fY);
-    ctx.quadraticCurveTo(sagX, sagY, nX, nY);
-    ctx.quadraticCurveTo(sagX, sagY + dropCtl, fX, fY);
-    ctx.fill();
-    if (!hurt) {
-      // THE TONGUE: a coral mass lying in the jaw's floor — the one
-      // warm note on a cold body, and what makes the open mouth a
-      // MOUTH instead of a hole. Rises slightly as the croak loads.
-      const jawMidY = 0.25 * fY + 0.5 * (sagY + dropCtl) + 0.25 * nY;
-      if (pk < 0.8 && drop > s * 0.02) {
-        ctx.fillStyle = '#a05c56';
-        ctx.beginPath();
-        ctx.ellipse(
-          qx(0.5),
-          jawMidY - drop * 0.16 - gular * s * 0.012,
-          mSpan * 0.4 * (1 - 0.3 * pk),
-          Math.min(drop * 0.34, s * 0.034),
-          0,
-          Math.PI,
-          Math.PI * 2,
-        );
-        ctx.fill();
-        // The tongue's center crease.
-        ctx.strokeStyle = '#7a423e';
-        ctx.lineWidth = Math.max(1, s * 0.01);
-        ctx.beginPath();
-        ctx.moveTo(qx(0.5) - mSpan * 0.2 * (1 - 0.3 * pk), jawMidY - drop * 0.18);
-        ctx.quadraticCurveTo(qx(0.5), jawMidY - drop * 0.3, qx(0.5) + mSpan * 0.2 * (1 - 0.3 * pk), jawMidY - drop * 0.18);
-        ctx.stroke();
-      }
-      // LOWER TEETH: short needles standing UP from the jaw rim into
-      // the room — sparser than the upper course, and never at the
-      // hinge corners.
-      ctx.fillStyle = SKRAL_TOOTH;
-      for (const t of pk > 0.62 ? [0.42, 0.68] : [0.3, 0.5, 0.7]) {
-        const jy = (1 - t) * (1 - t) * fY + 2 * (1 - t) * t * (sagY + dropCtl) + t * t * nY;
-        const tl = s * (0.022 + 0.008 * hv) * (0.6 + 0.5 * gape);
-        const txp = qx(t);
-        ctx.beginPath();
-        ctx.moveTo(txp - s * 0.012, jy);
-        ctx.lineTo(txp, jy - tl);
-        ctx.lineTo(txp + s * 0.012, jy);
-        ctx.closePath();
-        ctx.fill();
-      }
-    }
-    // THE SHOVEL: the lower jaw's own pale mass — a band of real
-    // thickness under the room, hinged at the same corners, with a
-    // darker rim so the chin reads as a form, not a smear.
-    const jawTh = s * (0.028 + 0.014 * hv) * (0.5 + 0.5 * gape);
-    ctx.fillStyle = hurt ? '#ffffff' : belly;
-    ctx.beginPath();
-    ctx.moveTo(fX, fY);
-    ctx.quadraticCurveTo(sagX, sagY + dropCtl, nX, nY);
-    ctx.quadraticCurveTo(sagX, sagY + dropCtl + jawTh * 2.4, fX, fY + jawTh * 0.4);
-    ctx.fill();
-    if (!hurt) {
-      ctx.strokeStyle = shade(sk.belly, -16);
-      ctx.lineWidth = Math.max(1, s * 0.012);
-      ctx.beginPath();
-      ctx.moveTo(fX + lead * mSpan * 0.1, fY + jawTh * 0.5);
-      ctx.quadraticCurveTo(sagX, sagY + dropCtl + jawTh * 1.9, nX - lead * mSpan * 0.08, nY + jawTh * 0.7);
-      ctx.stroke();
-    }
-  }
+  // ---- THE GILLS: cheek arcs on whichever flank faces the camera,
+  // nape seams when the occiput does. One anatomy, two projections.
   if (!hurt) {
-    // UPPER TEETH: the needle course hangs from UNDER the lip — the
-    // overbite shows even shut (the reference art's law: a skral
-    // never fully sheathes its argument). Corner teeth run longer:
-    // the fang gradient, not a picket fence.
-    ctx.fillStyle = SKRAL_TOOTH;
-    const uppers = pk > 0.62 ? [0.2, 0.42, 0.62, 0.82] : [0.12, 0.28, 0.44, 0.58, 0.72, 0.86];
-    for (const t of uppers) {
-      const txp = qx(t);
-      const typ = qy(t) + seamW * 0.25;
-      const cornerK = 1 + 0.7 * Math.max(0, Math.abs(t - 0.5) - 0.22) * 2;
-      const tl = s * (0.026 + 0.011 * hv) * (1 + 0.55 * gape) * cornerK;
-      ctx.beginPath();
-      ctx.moveTo(txp - s * 0.014, typ);
-      ctx.lineTo(txp + s * 0.002, typ + tl);
-      ctx.lineTo(txp + s * 0.016, typ);
-      ctx.closePath();
-      ctx.fill();
-    }
-    // THE LIP VAULT: a filled band riding ABOVE the seam — the mouth
-    // gets WEIGHT, the teeth get a gum to grow from, and the lit top
-    // edge models the muzzle's underside plane (flat forge law).
-    ctx.fillStyle = shade(sk.hide, -6);
-    ctx.beginPath();
-    ctx.moveTo(fX, fY);
-    ctx.quadraticCurveTo(sagX, sagY, nX, nY);
-    ctx.lineTo(nX - lead * s * 0.006, nY - lipH);
-    ctx.quadraticCurveTo(sagX, sagY - lipH * 2.1, fX + lead * s * 0.005, fY - lipH);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = shade(sk.hide, 7);
-    ctx.lineWidth = Math.max(1, s * 0.011);
-    ctx.beginPath();
-    ctx.moveTo(fX + lead * mSpan * farK * 0.25, fY - lipH * 0.95);
-    ctx.quadraticCurveTo(sagX, sagY - lipH * 2.0, nX - lead * mSpan * 0.12, nY - lipH * 0.95);
-    ctx.stroke();
-    // THE SEAM: the lip's own lower edge — bold, one stroke.
-    ctx.strokeStyle = sk.ink;
-    ctx.lineWidth = seamW;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(fX, fY);
-    ctx.quadraticCurveTo(sagX, sagY, nX, nY);
-    ctx.stroke();
-    // THE UNDERLIP: shut, the lower lip's shadow line gives the grin
-    // a chin to sit on (open, the shovel owns that read).
-    if (!open) {
-      ctx.strokeStyle = shade(sk.hide, -15);
-      ctx.lineWidth = Math.max(1, s * 0.013);
-      ctx.beginPath();
-      ctx.moveTo(qx(0.16), qy(0.16) + seamW * 1.1);
-      ctx.quadraticCurveTo(sagX, sagY + seamW * 2.6, qx(0.86), qy(0.86) + seamW * 1.2);
-      ctx.stroke();
-    }
-    // CORNER FANGS: the tall up-needles proud of the lip at the
-    // hinges — the near one always, the far one until the corner
-    // wraps. They ride the CORNERS now, so every band seats them on
-    // the mouth's true ends.
-    ctx.fillStyle = SKRAL_TOOTH;
-    const fangs: Array<[number, number, number]> = [[nX - lead * s * 0.01, nY, lead]];
-    if (farSide) fangs.push([fX + lead * s * 0.012, fY, -lead]);
-    for (const [txp, typ, sgn] of fangs) {
-      const fl = s * (0.042 + 0.015 * hv) * (0.9 + 0.25 * jawK);
-      ctx.beginPath();
-      ctx.moveTo(txp - s * 0.015, typ + drop * 0.25);
-      ctx.lineTo(txp + sgn * s * 0.008, typ - fl + drop * 0.25);
-      ctx.lineTo(txp + s * 0.016, typ + drop * 0.25);
-      ctx.closePath();
-      ctx.fill();
-    }
-    // CORNER CREASES: one short rising cut past each live corner —
-    // the muscle that works a jaw this wide.
-    ctx.strokeStyle = sk.ink;
-    ctx.globalAlpha = 0.55;
-    ctx.lineWidth = Math.max(1, s * 0.012);
-    ctx.beginPath();
-    ctx.moveTo(nX + lead * s * 0.004, nY - s * 0.004);
-    ctx.lineTo(nX + lead * s * 0.022, nY - s * 0.026);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-    // Barbels: one whisker off each LIVE corner, ink, hanging on the
-    // slow clock.
-    ctx.strokeStyle = sk.ink;
-    ctx.lineWidth = Math.max(1, s * 0.012);
-    const barbs: Array<[number, number, number]> = [[nX, nY, lead]];
-    if (farSide) barbs.push([fX, fY, -lead]);
-    for (const [bx, by, sgn] of barbs) {
-      ctx.beginPath();
-      ctx.moveTo(bx, by + drop * 0.3 + s * 0.008);
-      ctx.quadraticCurveTo(
-        bx + sgn * s * 0.02,
-        by + drop * 0.3 + s * 0.05,
-        bx + sgn * s * 0.008,
-        by + drop * 0.3 + s * (0.075 + 0.008 * Math.sin(nowMs / 480 + sgn)),
-      );
-      ctx.stroke();
-    }
-    // Nostril pits: two ink dots high on the muzzle's center line.
-    ctx.fillStyle = sk.ink;
-    for (const sgn of [-1, 1]) {
-      ctx.beginPath();
-      ctx.arc(cxm + sgn * skW * 0.1 * (1 - pk * 0.5) + lead * mzl * 0.2, headY - skH * 0.52, s * 0.011, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    // Gill seams: three curved cuts on the near cheek behind the
-    // grin's rising corner — they live on the head's SIDE, so they
-    // read at the ¾ bands and vanish into the turn honestly.
-    if (pk > 0.2) {
+    for (const side of [-1, 1] as const) {
+      const dotG = side * py;
+      if (dotG < 0.25) continue;
       ctx.strokeStyle = shade(sk.hide, -16);
       ctx.lineWidth = Math.max(1, s * 0.014);
       for (let g = 0; g < 3; g++) {
-        const gx = nX - lead * (s * 0.02 + g * s * 0.03);
+        const gp = st(-0.02 - g * 0.16, side * 0.88, -0.1);
         ctx.beginPath();
-        ctx.moveTo(gx, nY - skH * 0.14);
-        ctx.quadraticCurveTo(gx - lead * s * 0.014, nY, gx, nY + skH * 0.12);
+        ctx.moveTo(gp.x, gp.y - aZ * 0.22);
+        ctx.quadraticCurveTo(gp.x - side * px * s * 0.02, gp.y, gp.x, gp.y + aZ * 0.22);
+        ctx.stroke();
+      }
+    }
+    if (-fy > 0.5) {
+      ctx.strokeStyle = shade(sk.hide, -18);
+      ctx.lineWidth = Math.max(1, s * 0.02);
+      for (const o of [-0.42, 0, 0.42] as const) {
+        ctx.beginPath();
+        ctx.moveTo(cx + W * o - W * 0.14, headY + aZ * 0.28);
+        ctx.quadraticCurveTo(cx + W * o, headY + aZ * 0.52, cx + W * o + W * 0.14, headY + aZ * 0.3);
         ctx.stroke();
       }
     }
   }
-  paintSkralCrown(ctx, sk, f, skW, skH);
-}
 
-/** The deepking's coral studs — a brow crown worn at every band. */
-function paintSkralCrown(
-  ctx: CanvasRenderingContext2D,
-  sk: SkralLook,
-  f: SkralHeadFrame,
-  skW: number,
-  skH: number,
-): void {
-  if (!sk.crowned || f.hurt) return;
-  ctx.fillStyle = shade(SKRAL_TOOTH, -6);
-  const n = f.profileK > 0.62 ? 3 : 4;
-  for (let i = 0; i < n; i++) {
-    const t = (i + 0.5) / n - 0.5;
-    const bx = f.headX + t * skW * 1.3 + f.lead * f.hw * 0.2 * f.profileK;
-    const by = f.headY - skH * 0.86;
-    const r = f.s * (0.02 + 0.008 * (1 - Math.abs(t)));
-    ctx.beginPath();
-    ctx.moveTo(bx - r, by + r * 0.8);
-    ctx.lineTo(bx - r * 0.2, by - r * 1.4);
-    ctx.lineTo(bx + r * 0.6, by + r * 0.6);
-    ctx.closePath();
-    ctx.fill();
+  // ---- THE MOUTH: a sampled 3D arc around the muzzle. The seam, the
+  // lip vault, the jaw, both tooth courses, the tongue, the fangs,
+  // and the barbels all ride the SAME samples — one truth, and every
+  // part of the mouth agrees at every heading by construction.
+  const N = 13;
+  const THMAX = 1.25;
+  type MPt = { x: number; y: number; d: number; th: number };
+  const seamZ = (th: number): number => -0.34 + 0.2 * Math.pow(Math.abs(th) / THMAX, 1.6);
+  const dropZ = gape * (0.42 + 0.12 * hv) * jawK;
+  const jawZ = (th: number): number => seamZ(th) - dropZ * Math.cos(((th / THMAX) * Math.PI) / 2);
+  const arc = (zOf: (th: number) => number): MPt[] => {
+    const pts: MPt[] = [];
+    for (let i = 0; i < N; i++) {
+      const th = -THMAX + (2 * THMAX * i) / (N - 1);
+      const p = st(Math.cos(th) * 0.88 + 0.04, Math.sin(th) * 0.98, zOf(th));
+      pts.push({ ...p, th });
+    }
+    return pts;
+  };
+  const seam = arc(seamZ).filter((p) => p.d > -0.04);
+  const open = gape > 0.1;
+  if (seam.length >= 3) {
+    const jaw = arc(jawZ).filter((p) => p.d > -0.04);
+    const head = seam[0]!;
+    const tail = seam[seam.length - 1]!;
+    const trace = (pts: MPt[], rev = false): void => {
+      const list = rev ? [...pts].reverse() : pts;
+      for (let i = 0; i < list.length; i++) {
+        if (i === 0 && !rev) ctx.moveTo(list[i]!.x, list[i]!.y);
+        else ctx.lineTo(list[i]!.x, list[i]!.y);
+      }
+    };
+    if (open) {
+      // The mouth-room: seam down to the hinged jaw — filled ink.
+      ctx.fillStyle = hurt ? '#ffffff' : sk.ink;
+      ctx.beginPath();
+      trace(seam);
+      trace(jaw, true);
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        // The tongue: a coral mass in the jaw's floor — drawn only
+        // while the mouth's center holds the camera side.
+        const mid = seam[Math.floor(seam.length / 2)]!;
+        if (mid.d > 0.25 && dropZ > 0.05) {
+          const jmid = jaw[Math.floor(jaw.length / 2)]!;
+          ctx.fillStyle = '#a05c56';
+          ctx.beginPath();
+          ctx.ellipse(
+            jmid.x,
+            jmid.y - dropZ * aZ * 0.3 - gular * s * 0.01,
+            Math.abs(tail.x - head.x) * 0.24,
+            Math.min(dropZ * aZ * 0.36, s * 0.034),
+            0,
+            Math.PI,
+            Math.PI * 2,
+          );
+          ctx.fill();
+          ctx.strokeStyle = '#7a423e';
+          ctx.lineWidth = Math.max(1, s * 0.01);
+          ctx.beginPath();
+          ctx.moveTo(jmid.x - Math.abs(tail.x - head.x) * 0.13, jmid.y - dropZ * aZ * 0.32);
+          ctx.quadraticCurveTo(
+            jmid.x,
+            jmid.y - dropZ * aZ * 0.46,
+            jmid.x + Math.abs(tail.x - head.x) * 0.13,
+            jmid.y - dropZ * aZ * 0.32,
+          );
+          ctx.stroke();
+        }
+        // Lower teeth: up-needles standing off the jaw rim at every
+        // OTHER interior sample — sparser than the upper course.
+        ctx.fillStyle = SKRAL_TOOTH;
+        for (let i = 2; i < jaw.length - 2; i += 2) {
+          const p = jaw[i]!;
+          const wT = Math.min(s * 0.014, Math.abs(jaw[i + 1]!.x - jaw[i - 1]!.x) * 0.22);
+          const tl = s * (0.02 + 0.008 * hv) * (0.6 + 0.5 * gape);
+          ctx.beginPath();
+          ctx.moveTo(p.x - wT, p.y);
+          ctx.lineTo(p.x, p.y - tl);
+          ctx.lineTo(p.x + wT, p.y);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      // The shovel: the jaw's own pale thickness under the room, with
+      // a rimmed chin — hinged at the arc's ends by construction.
+      const jawTh = s * (0.026 + 0.013 * hv) * (0.5 + 0.5 * gape);
+      ctx.fillStyle = hurt ? '#ffffff' : belly;
+      ctx.beginPath();
+      trace(jaw);
+      for (let i = jaw.length - 1; i >= 0; i--) {
+        const k = Math.sin((Math.PI * i) / Math.max(1, jaw.length - 1));
+        ctx.lineTo(jaw[i]!.x, jaw[i]!.y + jawTh * (0.4 + 1.6 * k));
+      }
+      ctx.closePath();
+      ctx.fill();
+      if (!hurt) {
+        ctx.strokeStyle = shade(sk.belly, -16);
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        for (let i = 0; i < jaw.length; i++) {
+          const k = Math.sin((Math.PI * i) / Math.max(1, jaw.length - 1));
+          const yy = jaw[i]!.y + jawTh * (0.3 + 1.3 * k);
+          if (i === 0) ctx.moveTo(jaw[i]!.x, yy);
+          else ctx.lineTo(jaw[i]!.x, yy);
+        }
+        ctx.stroke();
+      }
+    }
+    if (!hurt) {
+      // Upper teeth: needles hanging from under the lip at every
+      // other sample — width from the arc's own local spacing, so
+      // the course foreshortens into the turn like everything else.
+      // The fang gradient rides |th|: corner teeth run longer.
+      ctx.fillStyle = SKRAL_TOOTH;
+      for (let i = 1; i < seam.length - 1; i += 2) {
+        const p = seam[i]!;
+        const wT = Math.min(s * 0.016, Math.abs(seam[i + 1]!.x - seam[i - 1]!.x) * 0.26);
+        // Where the arc foreshortens into the wrap the samples crowd —
+        // a needle needs standing room or the course smears white.
+        if (wT < s * 0.008) continue;
+        const cornerK = 1 + 0.8 * Math.pow(Math.abs(p.th) / THMAX, 2);
+        const tl = s * (0.024 + 0.011 * hv) * (1 + 0.55 * gape) * cornerK;
+        ctx.beginPath();
+        ctx.moveTo(p.x - wT, p.y);
+        ctx.lineTo(p.x + wT * 0.1, p.y + tl);
+        ctx.lineTo(p.x + wT, p.y);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // THE LIP VAULT: the muzzle's underside plane — a filled band
+      // above the seam with a lit top edge, riding the same samples.
+      const lipH = s * (0.02 + 0.009 * hv);
+      ctx.fillStyle = shade(sk.hide, -6);
+      ctx.beginPath();
+      trace(seam);
+      for (let i = seam.length - 1; i >= 0; i--) ctx.lineTo(seam[i]!.x, seam[i]!.y - lipH);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = shade(sk.hide, 7);
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      ctx.beginPath();
+      for (let i = 1; i < seam.length - 1; i++) {
+        if (i === 1) ctx.moveTo(seam[i]!.x, seam[i]!.y - lipH * 0.95);
+        else ctx.lineTo(seam[i]!.x, seam[i]!.y - lipH * 0.95);
+      }
+      ctx.stroke();
+      // THE SEAM: one bold stroke down the lip's lower edge.
+      ctx.strokeStyle = sk.ink;
+      ctx.lineWidth = Math.max(1.5, s * (0.022 + 0.009 * hv));
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      trace(seam);
+      ctx.stroke();
+      // The underlip: shut, the grin gets a chin shadow.
+      if (!open && seam.length >= 5) {
+        ctx.strokeStyle = shade(sk.hide, -15);
+        ctx.lineWidth = Math.max(1, s * 0.013);
+        ctx.beginPath();
+        for (let i = 1; i < seam.length - 1; i++) {
+          const yy = seam[i]!.y + s * 0.03;
+          if (i === 1) ctx.moveTo(seam[i]!.x, yy);
+          else ctx.lineTo(seam[i]!.x, yy);
+        }
+        ctx.stroke();
+      }
+      // CORNER FANGS + BARBELS: seated on the arc's true ends, when
+      // that end still holds the camera side.
+      for (const [end, sgn] of [
+        [head, -lead],
+        [tail, lead],
+      ] as Array<[MPt, number]>) {
+        if (end.d < 0.05 || Math.abs(end.th) < THMAX * 0.92) continue;
+        ctx.fillStyle = SKRAL_TOOTH;
+        const fl = s * (0.04 + 0.014 * hv) * (0.9 + 0.25 * jawK);
+        ctx.beginPath();
+        ctx.moveTo(end.x - s * 0.015, end.y + dropZ * aZ * 0.2);
+        ctx.lineTo(end.x + sgn * s * 0.008, end.y - fl + dropZ * aZ * 0.2);
+        ctx.lineTo(end.x + s * 0.016, end.y + dropZ * aZ * 0.2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = sk.ink;
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(end.x, end.y + dropZ * aZ * 0.25 + s * 0.008);
+        ctx.quadraticCurveTo(
+          end.x + sgn * s * 0.02,
+          end.y + dropZ * aZ * 0.25 + s * 0.05,
+          end.x + sgn * s * 0.008,
+          end.y + dropZ * aZ * 0.25 + s * (0.075 + 0.008 * Math.sin(nowMs / 480 + sgn)),
+        );
+        ctx.stroke();
+      }
+    }
   }
+
+  // ---- THE NOSTRILS: paired pits high on the muzzle — stations that
+  // simply leave with the muzzle.
+  if (!hurt) {
+    for (const side of [-1, 1] as const) {
+      const np = st(0.82, side * 0.16, 0.18);
+      if (np.d < 0.12) continue;
+      ctx.fillStyle = sk.ink;
+      ctx.beginPath();
+      ctx.arc(np.x, np.y, s * 0.011, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // ---- THE LANTERNS, near pass: iris, pupil, glint, lid, and the
+  // deepking's scar — ink only while the dome's normal faces camera.
+  for (const e of eyes) {
+    if (e.d <= 0.02 || rearRead) continue;
+    paintDome(e, false);
+  }
+  if (!hurt) {
+    for (const e of eyes) {
+      if (e.dot < 0.12) continue;
+      // The iris narrows as the dome turns — a sphere's window, not
+      // a sticker: foreshorten by the dome's own facing.
+      const irisK = 0.5 + 0.5 * Math.min(1, e.dot * 1.6);
+      ctx.fillStyle = sk.eye;
+      ctx.beginPath();
+      ctx.ellipse(e.x, e.y, eyeR * 0.78 * irisK, eyeR * 0.74, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = sk.ink;
+      ctx.beginPath();
+      ctx.ellipse(
+        e.x + fx * eyeR * 0.24 * irisK,
+        e.y + eyeR * 0.06 + fy * eyeR * 0.1,
+        eyeR * 0.3 * irisK,
+        eyeR * 0.34,
+        0,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+      ctx.fillStyle = '#f4f6ee';
+      ctx.beginPath();
+      ctx.arc(e.x - eyeR * 0.16, e.y - eyeR * 0.22, eyeR * 0.12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = shade(sk.hide, -18);
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.beginPath();
+      ctx.ellipse(e.x, e.y - eyeR * 0.1, eyeR * 0.72 * irisK, eyeR * 0.6, 0, Math.PI * 1.15, Math.PI * 1.85);
+      ctx.stroke();
+      if (sk.scarred && e.side === lead && e.dot > 0.3) {
+        ctx.strokeStyle = shade(sk.hide, -24);
+        ctx.lineWidth = Math.max(1, s * 0.016);
+        ctx.beginPath();
+        ctx.moveTo(e.x - eyeR * 0.5, e.y - eyeR * 1.15);
+        ctx.lineTo(e.x + eyeR * 0.2, e.y + eyeR * 1.05);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // ---- the crown's near studs ride over everything.
+  for (const u of studs) if (u.d > 0) paintStud(u);
 }
 
 // ---------------------------------------------------------------------------
