@@ -618,6 +618,20 @@ export const RIG_DEBUG = {
   anchorMainX: 0,
   anchorOffX: 0,
   sockets: [] as Array<{ x: number; y: number; depthK: number }>,
+  // THE HUNCH AUDIT extras: the hand-orbit ring, the clamped fist
+  // targets, the final torso lean, and the head hull — plus every
+  // solved arm chain (shoulder→elbow→hand) as drawArm actually drew
+  // it. Labs overlay these in distinct colors to convict anchor bugs.
+  armY: 0,
+  lean: 0,
+  headX: 0,
+  headY: 0,
+  headR: 0,
+  mainFistX: 0,
+  mainFistY: 0,
+  offFistX: 0,
+  offFistY: 0,
+  arms: [] as Array<{ sx: number; sy: number; kx: number; ky: number; ex: number; ey: number }>,
 };
 /** The hang-width lane's flare off the waist line (hangW's ww term). */
 export const HANG_WAIST_K = 1.08;
@@ -778,9 +792,21 @@ function drawArm(
   // THE KNUCKLE HANG: the ogre alone solves UNEQUAL bones — a short
   // heavy upper arm over a LONG forearm (total reach past the knee),
   // so the rest hang crooks at the elbow like an ape's, not a man's.
+  // THE APE BONES (the stoop lane): the hunched dialects carry a short
+  // humerus over a LONG forearm — skeleton facts like the lynx's
+  // segSplit, so the rest hang crooks high and reaches low the way
+  // every knuckle-walker reference draws. Each total·stretch exceeds
+  // the human arm's clamped span, so every fist target the frame
+  // hands down stays reachable — mitt and steel meet at one point.
   const { ex, ey, kx, ky } = ogr
     ? solveLimb2Into(ARM_SOLVE, sx, sy, hx, hy, ARM_LEN * 0.88 * s, ARM_LEN * 1.26 * s, 1.08, prefX, prefY)
-    : solveLimbInto(ARM_SOLVE, sx, sy, hx, hy, ARM_LEN * s, 1.08, prefX, prefY);
+    : gno
+      ? solveLimb2Into(ARM_SOLVE, sx, sy, hx, hy, ARM_LEN * 0.94 * s, ARM_LEN * 1.24 * s, 1.08, prefX, prefY)
+      : skr
+        ? solveLimb2Into(ARM_SOLVE, sx, sy, hx, hy, ARM_LEN * 0.92 * s, ARM_LEN * 1.18 * s, 1.08, prefX, prefY)
+        : solveLimbInto(ARM_SOLVE, sx, sy, hx, hy, ARM_LEN * s, 1.08, prefX, prefY);
+
+  if (RIG_DEBUG.on) RIG_DEBUG.arms.push({ sx, sy, kx, ky, ex, ey });
 
   if (gol) {
     drawGolemArm(ctx, gol, sx, sy, kx, ky, ex, ey, s, hurt ?? false, nowMs ?? 0);
@@ -6067,6 +6093,37 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const tw = SHOULDER_HALF_S * s * (gno ? 1.28 : gob ? 0.92 : gol ? 1.4 * (0.94 + 0.12 * gol.heavy) : ogr ? 1.32 * (0.94 + 0.1 * ogr.heavy) : skr ? 0.88 : 1); // shoulder half-width
   const ww = WAIST_HALF_S * s * (gno ? 1.06 : gob ? 1.16 + 0.14 * gob.heavy : gol ? 1.22 : ogr ? 1.4 + 0.12 * ogr.heavy : skr ? 1.1 + 0.1 * skr.heavy : 1); // waist half-width
   const th = TORSO_RISE_S * s * (1 - 0.12 * crouch); // hip line → shoulders
+  // ---- THE STOOP LANE (the hunched-biped carriage). The gnoll and
+  // the skral carry their spine pitched and their skull sunk INTO the
+  // shoulder girdle — but the hunch used to be paint only: the dialect
+  // lean was added AFTER the arm frame solved, so the arms hung from
+  // an upright skeleton behind the stooped body (roots inside the head
+  // hull at the profiles), and the whole hand vocabulary — authored
+  // against a human frame whose face sits a full head ABOVE the
+  // shoulder line — worked at what is, on these bodies, face height
+  // (the hilt-across-the-muzzle packlord, the deepking punching its
+  // own jaw). The lane makes the stoop a SKELETON fact:
+  //   pitch      the standing spine pitch (the same value the paint
+  //              lean consumes below — one truth), projected by fx
+  //              like every carriage read;
+  //   handDropS  THE FACE OWNS ITS AIR: the whole hand-orbit ring
+  //              (armY) drops below the sunken jaw, so rest hangs,
+  //              walk pumps, guards, and strike arcs all ride at gut
+  //              height on a body whose face lives at chest height;
+  //   hangFwdS/  THE KNUCKLE REST (the ogre's giant-reach law with
+  //   hangDropS  dialect numbers): relaxed fists hang forward-low
+  //              under the leaned chest — the ape hang.
+  // THE APE BONES (short humerus over a long forearm — the lynx
+  // segSplit law spoken for arms) live in drawArm's solve, and THE
+  // GIRDLE RIDES THE STOOP (roots rotate about the hip by the same
+  // pitch the torso paints) lands at the shoulder solve below.
+  // The ogre predates the lane and keeps its own hand-tuned patches —
+  // its numbers are the precedent, not a client.
+  const stoop = gno
+    ? { pitch: 0.18, handDropS: 0.1, hangFwdS: 0.07, hangDropS: 0.05 }
+    : skr
+      ? { pitch: 0.18, handDropS: 0.09, hangFwdS: 0.06, hangDropS: 0.04 }
+      : null;
 
   // Melee combo stages — THE CUT LIVES IN THE WORLD (strikes.ts, the
   // one strike engine): every cut is authored as a world-space arc —
@@ -6415,7 +6472,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // camera-line facings — but the hand-orbit line hung at a fixed drop,
   // so the shoulder→hand span quietly stretched ~6% on every N/S
   // facing. Both ends of the arm frame now agree about the squash.
-  const armY = hipY - ARM_RING_DROP_S * s * hScale;
+  // THE FACE OWNS ITS AIR (the stoop lane): on the hunched dialects
+  // the sunken skull's jaw reaches the human frame's hand-orbit line,
+  // so the whole ring drops — every consumer (rest hangs, walk pumps,
+  // guards, strike arcs, cast presents) rides down with it coherently
+  // instead of each branch dodging the face on its own.
+  const armY = hipY - (ARM_RING_DROP_S * hScale - (stoop?.handDropS ?? 0)) * s;
   const shoulderY = hipY - th * hScale + SHOULDER_Y_DROP_S * s;
   // ==================== THE ONE MOUTH BEGINS ====================
   // (arms-v3 Phase 2) Every write to the arm channels — heldAngle,
@@ -6722,6 +6784,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // shoulders — the arms hang where the carriage put the weight.
       hx += fx * 0.06 * s;
       hy += 0.12 * s;
+    } else if (stoop) {
+      // THE KNUCKLE REST (the stoop lane): the same law with dialect
+      // numbers — the ape-bone surplus spends as a forward-low hang
+      // under the leaned chest, never as elbow slack.
+      hx += fx * stoop.hangFwdS * s;
+      hy += stoop.hangDropS * s;
     }
     // How "at rest" the rest really is: flourishes and wrist life only
     // play when the figure is planted (no gait, no sneak crouch) —
@@ -6782,13 +6850,17 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       hFore = gf.fore;
       hx = rig.x + gf.dx * s * wS + gf.fwd * s;
       hy = armY + gf.dy * s;
-      if (ogr) {
+      if (ogr || stoop) {
         // THE LOG CARRY: the woodcutter's flat-back shoulder carry
         // threw a tree-length club far behind a stooped giant. An
         // ogre carries the club the way anyone carries a felled log:
         // the mass UPRIGHTED against the shoulder, butt-fist dropped
         // to the gut line — one motion from the overhead toll, and
         // the head stays clear at every idle band.
+        // The stoop lane joins the branch (the packlord's audit: the
+        // flat carry laid the blade ACROSS THE FACE and parked the
+        // hilt fist on the muzzle at every toward-camera band — a
+        // sunken skull leaves no shoulder shelf for a flat carry).
         hAngle += angleDelta(hAngle, -Math.PI / 2 + sideW * 0.38) * 0.5;
         hy += 0.11 * s;
         hx += fx * 0.04 * s;
@@ -6861,6 +6933,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // The off fist hangs the same giant rest (THE GIANT REACH).
       ox += fx * 0.06 * s;
       oy += 0.12 * s;
+    } else if (stoop) {
+      // The off fist hangs the same knuckle rest (the stoop lane).
+      ox += fx * stoop.hangFwdS * s;
+      oy += stoop.hangDropS * s;
     }
     if (offBlade) {
       // The carriage mirrors on FACING, not on the hanging side — the
@@ -7639,8 +7715,32 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const rootB2 = Math.sin(rig.nowMs * 0.0019 + 1.1) * rootRest;
   const rootSw = ((rig.feet[0]?.lift ?? 0) - (rig.feet[1]?.lift ?? 0)) / LIFT_AMP;
   const rootRoll = 0.012 * s * rig.runF * Math.min(1, rig.poleStrength);
-  const mainShY = shoulderY + rootB * 0.008 * s + rootSw * rootRoll * mainSideSign;
-  const offShY = shoulderY + rootB2 * 0.009 * s - rootSw * rootRoll * mainSideSign;
+  let mainShY = shoulderY + rootB * 0.008 * s + rootSw * rootRoll * mainSideSign;
+  let offShY = shoulderY + rootB2 * 0.009 * s - rootSw * rootRoll * mainSideSign;
+  // THE GIRDLE RIDES THE STOOP (the stoop lane): the hunched dialects'
+  // torso paints rotated about the hip by the standing pitch — so the
+  // shoulder roots take the SAME rotation, and the arms hang from the
+  // girdle the painter actually draws. Before this, the roots kept the
+  // upright station: at the profiles they sat INSIDE the head hull and
+  // the arms hung from behind the leaned body (the audit's green-dot-
+  // in-the-magenta-circle conviction, both species, every profile
+  // band). One truth: the same pitch·fx·(1−sit) the paint lean adds.
+  if (stoop) {
+    const sl = stoop.pitch * fx * (1 - sit);
+    const cs = Math.cos(sl);
+    const sn = Math.sin(sl);
+    const rootRot = (px: number, py: number): { x: number; y: number } => {
+      const dx = px - rig.x;
+      const dy = py - hipY;
+      return { x: rig.x + cs * dx - sn * dy, y: hipY + sn * dx + cs * dy };
+    };
+    const mR = rootRot(mainShX, mainShY);
+    const oR = rootRot(offShX, offShY);
+    mainShX = mR.x;
+    mainShY = mR.y;
+    offShX = oR.x;
+    offShY = oR.y;
+  }
   if (RIG_DEBUG.on) {
     RIG_DEBUG.x = rig.x;
     RIG_DEBUG.hipY = hipY;
@@ -7657,6 +7757,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       rig.x + sideS * tw * SHOULDER_SETTLE_K * barTuck * wS + barStag * 0.06;
     RIG_DEBUG.anchorOffX =
       rig.x - sideS * tw * SHOULDER_SETTLE_K * barTuck * wS - barStag * 0.12;
+    RIG_DEBUG.armY = armY;
+    RIG_DEBUG.mainFistX = mainX;
+    RIG_DEBUG.mainFistY = mainY;
+    RIG_DEBUG.offFistX = offX;
+    RIG_DEBUG.offFistY = offY;
+    RIG_DEBUG.arms.length = 0;
     RIG_DEBUG.sockets.length = 0;
   }
   // THE PIERCED CARRY: a LONG rest carry crossing the body no longer
@@ -8299,8 +8405,14 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   if (kob) lean += 0.12 * fx * (1 - sit);
   // The gnoll hunch: seven feet of scavenger carried low — a heavier
   // standing tip than the kobold's (the lore's stoop), easing out
-  // when seated.
-  if (gno) lean += 0.18 * fx * (1 - sit);
+  // when seated. The pitch is the stoop lane's own number (ONE TRUTH:
+  // the shoulder roots above rotated by exactly this), and THE LOPE
+  // rides on top: the scavenger nods INTO each footfall — a pitch
+  // pulse on the stride clock, profile-read like every carriage term.
+  if (gno) {
+    lean += stoop!.pitch * fx * (1 - sit);
+    lean += Math.abs(swS) * 0.05 * fx * Math.min(1, rig.poleStrength) * (1 - sit);
+  }
   // The goblin hunch: between the kobold's and the gnoll's — the
   // slouch of a body led everywhere by its own nose, easing out when
   // seated.
@@ -8310,8 +8422,16 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   if (gol) lean += (gol.build === 'rock' ? 0.06 : 0.015) * fx * (1 - sit);
   // The wader's crouch: the deepest hunch of any walker — a body
   // built to stand thigh-deep in current leads with its whole skull,
-  // easing out when seated.
-  if (skr) lean += 0.18 * fx * (1 - sit);
+  // easing out when seated. The pitch is the stoop lane's own number
+  // (ONE TRUTH with the shoulder roots), and THE FROG WADDLE rides on
+  // top: at the camera-line facings a screen-plane lean is a SIDE
+  // tilt, so the stride's lift differential rocks the body over each
+  // planted foot — the web-footed gait read the profile can't carry
+  // (there the pitch owns the lean, so the waddle fades on profileK).
+  if (skr) {
+    lean += stoop!.pitch * fx * (1 - sit);
+    lean += swS * 0.07 * (1 - profileK) * Math.min(1, rig.poleStrength) * (1 - sit);
+  }
   // The giant's stoop: the heaviest carriage in the game leads with
   // its brow — the gut hangs, the hump rises, the head arrives last.
   // THE MARCH STRAIGHTENS IT: a standing ogre looms over its supper;
@@ -8539,6 +8659,19 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const hw = headR * 1.04; // half-width
   const hh = headR * 1.0; // half-height
   const cut = headR * 0.34;
+  if (RIG_DEBUG.on) {
+    // World-space head seat through the torso frame (the ear-anchor
+    // approximation: per-axis squash, then the lean rotation about
+    // the hip) — the overlay's reference for face-crossing hands.
+    const cosH = Math.cos(lean);
+    const sinH = Math.sin(lean);
+    const dhx = headX * rig.wScale;
+    const dhy = headY * hScale;
+    RIG_DEBUG.lean = lean;
+    RIG_DEBUG.headX = rig.x + cosH * dhx - sinH * dhy;
+    RIG_DEBUG.headY = hipY + sinH * dhx + cosH * dhy;
+    RIG_DEBUG.headR = headR;
+  }
   const helm = itemDef(rig.headItem ?? '');
   // THE WORN LIGHT reaches the head too: the brow band (drawArxBrow)
   // only paints when the resolved style carries the working, exactly
