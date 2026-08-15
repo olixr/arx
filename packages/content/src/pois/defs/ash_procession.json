@@ -2,7 +2,7 @@
   "id": "ash_procession",
   "name": "Processional of the Old Crown",
   "description": "A reach of the old realm's paved way, lych pillars in facing pairs and the centerline swept bare through a century of ash. By daylight it is a ruin with good pickings and a bad feeling. After dusk the Ashen Court walks it home to a capital that is not there anymore — soldiers of the Old Crown in the delf's own mithril, keeping an order of march nobody living has ever seen the end of. They do not argue about right of way.",
-  "tiers": [5, 6],
+  "tiers": [5, 8],
   "weight": 2.5,
   "prefabs": ["poi_procession_way", "poi_procession_rest"],
   "garrison": [

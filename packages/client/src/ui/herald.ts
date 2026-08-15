@@ -21,7 +21,7 @@
  */
 
 export interface HeraldFacts {
-  /** Danger pips: this many lit of five. Absent = no pips. */
+  /** Danger pips: this many lit of the full ladder. Absent = no pips. */
   tier?: number;
   /** Plain notes, spoken in a row with quiet separators. */
   notes: string[];
@@ -49,6 +49,13 @@ let killTimer = 0;
 
 /** The bow-out length — matches the herald-leave keyframes. */
 const EXIT_MS = 700;
+
+/**
+ * The pip row speaks the WHOLE danger ladder (DANGER_LAWS rows 1..10,
+ * the Overband included) — a two-pip town and a nine-pip waste must
+ * read against the same ruler or the pips say nothing.
+ */
+const HERALD_PIPS = 10;
 
 export function raiseHerald(spec: HeraldSpec): void {
   dismissHerald();
@@ -113,7 +120,7 @@ export function raiseHerald(spec: HeraldSpec): void {
     if (spec.facts.tier !== undefined) {
       const pips = document.createElement('span');
       pips.className = 'herald-pips';
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < HERALD_PIPS; i++) {
         const pip = document.createElement('span');
         pip.className = 'herald-pip';
         pip.style.setProperty('--pi', String(i));

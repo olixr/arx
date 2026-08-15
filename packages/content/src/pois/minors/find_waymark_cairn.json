@@ -2,7 +2,7 @@
   "id": "find_waymark_cairn",
   "name": "Waymark cairn",
   "description": "Stacked stones older than any road. Somebody wanted this spot found again.",
-  "tiers": [1, 5],
+  "tiers": [1, 9],
   "weight": 2,
   "prefabs": ["find_waymark_cairn"]
 }

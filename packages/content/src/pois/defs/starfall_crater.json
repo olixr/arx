@@ -2,7 +2,7 @@
   "id": "starfall_crater",
   "name": "Starfall crater",
   "description": "Where a piece of the star that woke the Brand broke up on the skirt. The thrown-rock ring has had a hundred and fifty years to gather moss; the heart has not. Starfall metal in the open, obsidian where the heat glassed the floor — the richest open ground in the Dawnlands, and the fire's own bodies stand on the claim without ever being told to.",
-  "tiers": [5, 6],
+  "tiers": [5, 9],
   "weight": 2,
   "prefabs": ["poi_starfall_crater"],
   "garrison": [

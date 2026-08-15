@@ -300,10 +300,12 @@ export function composeFinds(
 
     // THE HUMBLE CACHE: a chest tile survives with cache.chance, one
     // tier under the slot's law (floor tier 1) — else it composes
-    // away to grass. Texture is not treasure.
+    // away to grass. Texture is not treasure — and the humble read
+    // caps at tier 4 (the gilded shelf) no matter how deep the ladder
+    // runs: a boss strongbox is a court's crown, never a ditch find.
     const keepCache =
       def.cache !== undefined && hashCoords(slotBase, 5, 0) % 1000 < def.cache.chance * 1000;
-    const cacheKind = dangerLaw(Math.max(1, f.tier - 1)).chest;
+    const cacheKind = dangerLaw(Math.max(1, Math.min(4, f.tier - 1))).chest;
 
     for (let dy = 0; dy < prefab.height; dy++) {
       for (let dx = 0; dx < prefab.width; dx++) {

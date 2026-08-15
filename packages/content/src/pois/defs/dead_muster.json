@@ -2,7 +2,7 @@
   "id": "dead_muster",
   "name": "The old muster",
   "description": "A battlefield where the ranks re-form every night: trench scars, standards fallen in the order they fell, a drill line still drilling against nobody, and a command knoll running a war that ended before your grandmother's grandmother. The line holds. It's all it remembers.",
-  "tiers": [3, 5],
+  "tiers": [3, 7],
   "weight": 2,
   "prefabs": ["poi_dead_muster"],
   "garrison": [

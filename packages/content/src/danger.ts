@@ -5,55 +5,50 @@ import { dangerAt, type ChestKind, type DangerAnchor } from '@arx/shared';
  * field (shared/world/danger.ts owns the math).
  *
  * Anchors are the lights of civilization: inside safeR the world is
- * tier 0 — no POIs, no wild threats. The laws table is the ONE place a
- * danger tier turns into concrete numbers; every consumer (POI
- * scaffold, garrison levels, chest kinds, future wild spawns) indexes
- * this table rather than hard-coding its own ladder — the
- * DUNGEON_TIER_LAWS precedent, walked out into the open world.
+ * tier 0 — no POIs, no wild threats. Every town carries its WORD
+ * (`country`) — the tier of its own hinterland — and the field is the
+ * worded march over the lot (THE LADDER PAST THE LAMPS; the shared
+ * header owns the law). The laws table is the ONE place a danger tier
+ * turns into concrete numbers; every consumer (POI scaffold, garrison
+ * levels, chest kinds, wild spawns) indexes this table rather than
+ * hard-coding its own ladder — the DUNGEON_TIER_LAWS precedent,
+ * walked out into the open world.
  */
 
 export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
-  // Dawnmead — the awakening village. Its safe radius covers the
-  // village, its worked meadows, and the first stretch of the east
-  // lane toward Amberford.
-  { x: -64, y: 48, safeR: 64 },
+  // Dawnmead — the awakening village, and the softest word in the
+  // Dawnlands. Its safe radius covers the village, its worked meadows,
+  // and the first stretch of the east lane toward Amberford; its word
+  // keeps the whole first province a country of firsts — the basin
+  // runs a full band-width in every direction before the land asks
+  // anything of anyone.
+  { x: -64, y: 48, safeR: 64, country: 1 },
   // Amberford — the crossroads market town (the master plan's second
-  // hearth), a real journey east across the Amberfen now. The corridor
-  // bands tier 1 at the hems up to tier 3 at its deep middle — but the
-  // ROAD stays spawn-calm the whole way and the Fenside Crofts' lamp
-  // breaks the journey at the waist: dangers stand BESIDE the road
-  // (the toll camp law), so the walk has teeth without being a
-  // gauntlet. The northwest march toward Silverfall stays deep.
-  { x: 520, y: -4, safeR: 72 },
-  // Silverfall — the mountain capital, and a HAVEN, not a hearth
-  // (the haven law): its lamp keeps the terraces tier 0 and relieves
-  // a graded rim, but it never joins the band march — the High Road
-  // approach stays tier 4-5 to the last brazier, exactly as the
-  // master plan demands. The walk is the game; the walls are the
-  // reward.
-  { x: -448, y: -280, safeR: 72, haven: true },
-  // Saltmere — the town at the water's end, and the second HAVEN:
-  // its lamp keeps the quay and the pans tier 0, but the Salt Road
-  // south stays an earned walk — tier 2 past the halfway lamp, tier 3
-  // for the last league to the gate. Beyond the mere the far shore
-  // runs tier 4-5: the deep south is a frontier the town lights, not
+  // hearth), a real journey east across the Amberfen. The corridor
+  // between the two hearth-words bands 1 at the hems to 2-3 at its
+  // deep middle — and the ROAD stays spawn-calm the whole way:
+  // dangers stand BESIDE the road (the toll camp law), so the walk
+  // has teeth without being a gauntlet.
+  { x: 520, y: -4, safeR: 72, country: 2 },
+  // Silverfall — the mountain capital: a haven (lamp + relief) AND a
+  // worded town. The High Road approach climbs the march to the last
+  // brazier; the Silverspine past the walls holds at the city's word.
+  // The walk is the game; the walls are the reward.
+  { x: -448, y: -280, safeR: 72, haven: true, country: 4 },
+  // Saltmere — the town at the water's end. The Salt Road south stays
+  // an earned walk, and beyond the mere the far shore begins the long
+  // climb toward the southern rim — a frontier the town lights, not
   // one it tames.
-  { x: 760, y: 330, safeR: 64, haven: true },
-  // Pinewatch — the town that watches the deep wood, and the third
-  // HAVEN. Its lamp keeps the muster yard and the boom tier 0, and
-  // its country bands tier 4 (levels 22-34) all the way round: the
-  // first town the Dawnlands ask a made adventurer to earn. North
-  // across the Glasswater and east past the Wardline the field goes
-  // to 5 and stays there — the old wood is watched, never held.
-  { x: 1160, y: -356, safeR: 64, haven: true },
-  // Hartfell — the town past the treeline, and the fourth HAVEN. Its
-  // lamp keeps the Kettle and the folds tier 0, and the relief grades
-  // the walk-out: tier 3 at the walls, 4 a stone's throw on, 5 past
-  // that — because the base band this far north-east is 5 everywhere,
-  // and the town is a warm ring in it, not a hole through it. No
-  // dread stands on the Barrowfell for the same reason a candle isn't
-  // lit at noon: the field is already at its ceiling up there.
-  { x: 1304, y: -616, safeR: 64, haven: true },
+  { x: 760, y: 330, safeR: 64, haven: true, country: 3 },
+  // Pinewatch — the town that watches the deep wood. Its word bands
+  // the muster country at 4 (levels 22-34): the first town the
+  // Dawnlands ask a made adventurer to earn. North across the
+  // Glasswater the march climbs past it and keeps climbing.
+  { x: 1160, y: -356, safeR: 64, haven: true, country: 4 },
+  // Hartfell — the town past the treeline. Its word holds the fells
+  // at 5; past the folds the Barrowdeep march runs 6, 7, and on — the
+  // town is a warm ring in the climb, not the top of it.
+  { x: 1304, y: -616, safeR: 64, haven: true, country: 5 },
   // THE BLACKPINE — the first DREAD in the Dawnlands, and the reason
   // the Sparway is the bad way. The trail between Amberford and
   // Pinewatch is barely half the Timber Road's length and passes far
@@ -64,33 +59,46 @@ export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
   // into a hearth). Nobody put this here; the wood was always like
   // this, and the Timber Road's whole existence is the argument.
   { x: 886, y: -108, safeR: 72, dread: 2 },
-  // Kingsdelf — the town in the King's Delf, and the fifth HAVEN. Its
-  // lamp keeps the quarry bowl tier 0 and the relief grades the
-  // walk-out; past the relief the whole south-west is tier-5 country
-  // by plain distance — the town is ~307 tiles from Dawnmead, the
-  // only hearth that reaches. A level-50 town needs no dial: the land
-  // was already the far dark, and the Returning built inside it.
-  { x: -480, y: 328, safeR: 64, haven: true },
-  // THE BRAND — the burned mountain, and the first dread-3 heart in
-  // the Dawnlands: the key that opens the OVERBAND (tier 6, the
-  // lampless dark — shared/world/danger.ts owns the law). The march
-  // out here already saturates at 5, so the heart reads 6 across the
-  // burn while the rim keeps the classic law; the reach (safeR + 48)
-  // clears Kingsdelf's north wall — the town lives BESIDE the
-  // furnace, never in it. Nobody put this here either; a star did.
+  // Kingsdelf — the town in the King's Delf. Its word is 6: the delf
+  // country deals level-44s at the walls' relief and worse past it —
+  // a level-50 town wrapped in level-50 land, with the furnace next
+  // door. The Returning built INSIDE the far dark, and the map says
+  // so now without needing the Brand to say it for them.
+  { x: -480, y: 328, safeR: 64, haven: true, country: 6 },
+  // THE BRAND — the burned mountain, the first dread-3 heart in the
+  // Dawnlands. The heart adds its full dread to the marched field:
+  // with the delf's word at 6 beside it, the burn reads 7 to 9 across
+  // the heart — the hottest standing ground in the shipped world.
+  // The Overband proper (tier 10) stays closed here by law: the Brand
+  // stands in base-5 country, and the noise can never fake remoteness.
+  // The reach (safeR + 48) clears Kingsdelf's north wall — the town
+  // lives BESIDE the furnace, never in it. Nobody put this here
+  // either; a star did.
   { x: -544, y: 144, safeR: 96, dread: 3 },
-  // Evenfall — the city of the old folk, and the SIXTH haven. Its
-  // light keeps the groves and the terraces tier 0 and the relief
-  // grades the hem: tier 3 under the outermost boughs, 4 a waystone
-  // on, 5 where the Everwood stops pretending to be a park — because
-  // the base band this far west saturated at 5 long before the first
-  // human map, and the city is a cool ring in it, not a hole through
-  // it (the Hartfell law, worn silver). It is a haven for the same
-  // reason every town past the ford is: a settled anchor out here
-  // would re-origin the whole west's band march, and the west was
-  // never anyone's to calm.
-  { x: -1032, y: -358, safeR: 64, haven: true },
+  // Evenfall — the city of the old folk, and the hottest word a town
+  // speaks: 7. The Everwood is the wall, and the wall is the point —
+  // level-55s under the outermost boughs, worse in the deep veil, and
+  // the Heartwood march past the city runs 8 and 9 to the western
+  // rim. The relief grades the last waystones so the gate can be
+  // reached at all; everything before them must be EARNED. A town of
+  // the old blood was never anyone's to walk to at level twenty.
+  { x: -1032, y: -358, safeR: 64, haven: true, country: 7 },
 ];
+
+/**
+ * THE WORD BACKFILL — the authored word of every shipped anchor,
+ * keyed by position and FROZEN at module load (before any live swap
+ * can touch SETTLED_ANCHORS). A geography doc saved before anchors
+ * learned to speak carries wordless towns; the validator backfills
+ * each one from this map so a stale Studio save can never silence
+ * Evenfall (the FRONTIER backfill law, walked over to the anchors).
+ */
+export const AUTHORED_ANCHOR_WORDS: ReadonlyMap<string, number> = new Map(
+  SETTLED_ANCHORS.filter((a) => a.country !== undefined).map((a) => [
+    `${a.x},${a.y}`,
+    a.country as number,
+  ]),
+);
 
 /**
  * Swap the settled anchors live (the geography live-registry law —
@@ -144,15 +152,29 @@ export const DANGER_LAWS: readonly DangerLaw[] = [
   { npcLevel: [15, 24], chest: 'iron', rarityBonus: 2, poiChance: 0.42, wildDensity: 0.45, findChance: 0.2, holdChance: 0.1 },
   // 4 — deep frontier: champions wear names out here.
   { npcLevel: [22, 34], chest: 'gilded', rarityBonus: 4, poiChance: 0.45, wildDensity: 0.5, findChance: 0.22, holdChance: 0.14 },
-  // 5 — the far dark: the overworld's dungeon-grade band.
+  // 5 — the far dark: the overworld's first dungeon-grade band.
   { npcLevel: [32, 48], chest: 'boss', rarityBonus: 6, poiChance: 0.5, wildDensity: 0.55, findChance: 0.22, holdChance: 0.18 },
-  // 6 — THE OVERBAND: the lampless dark. Distance never deals this
-  // row — only named country does: a dread-3 heart standing in ground
-  // the march already saturates (shared/world/danger.ts owns the law;
-  // the first such heart is the Brand, the Kingsdelf epic). Chest kind
-  // holds at 'boss' — the strongbox ladder's honest cap — and the
+  // 6 — the lampless dark: Kingsdelf's word, the ogres' floor, and
+  // the first band no road promises to cross. Chest kind holds at
+  // 'boss' from here up — the strongbox ladder's honest cap — and the
   // rarity bonus carries the difference.
   { npcLevel: [44, 60], chest: 'boss', rarityBonus: 8, poiChance: 0.5, wildDensity: 0.55, findChance: 0.2, holdChance: 0.18 },
+  // 7 — the howling dark: Evenfall's word. The Everwood, the deep
+  // fells, the land past every lamp but the old folk's.
+  { npcLevel: [55, 72], chest: 'boss', rarityBonus: 10, poiChance: 0.5, wildDensity: 0.58, findChance: 0.2, holdChance: 0.2 },
+  // 8 — the nameless waste: no town speaks for this land. The march
+  // alone deals it, and the march does not stop dealing it.
+  { npcLevel: [66, 84], chest: 'boss', rarityBonus: 12, poiChance: 0.5, wildDensity: 0.6, findChance: 0.2, holdChance: 0.2 },
+  // 9 — the world's rim: the ladder's last honest rung, level-90s in
+  // the open air. Everything out here outranks every crown in the
+  // shipped towns; the reward table knows it.
+  { npcLevel: [78, 95], chest: 'boss', rarityBonus: 14, poiChance: 0.5, wildDensity: 0.62, findChance: 0.2, holdChance: 0.22 },
+  // 10 — THE OVERBAND: the sundered dark. Distance never deals this
+  // row — only named country can: a dread-3 heart standing on ground
+  // the march already saturates (shared/world/danger.ts owns the
+  // law). No shipped heart qualifies yet; the row waits for the
+  // world's rim to earn a name.
+  { npcLevel: [88, 99], chest: 'boss', rarityBonus: 16, poiChance: 0.5, wildDensity: 0.62, findChance: 0.2, holdChance: 0.22 },
 ];
 
 /** Danger tier at a world tile over the settled anchors. */

@@ -3,7 +3,7 @@
   "name": "Waystone glade",
   "description": "A tended ring in the wild wood: a waystone, swept stone, benches facing the miles. The road-faith's lamps never reached this far. Something older keeps the watch instead, and it keeps it very well.",
   "family": "elf",
-  "tiers": [3, 5],
+  "tiers": [3, 7],
   "weight": 2,
   "prefabs": ["poi_waystone_ring", "poi_waystone_bench"],
   "garrison": [],

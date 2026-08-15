@@ -2,7 +2,7 @@
   "id": "hoargate_watch",
   "name": "The Hoargate",
   "description": "The Crown's garrison across the narrows north of Silverfall. Weight 0: the master plan pins it (the authored-sites law) to the one place the mountain leaves open. Nine bodies, two braziers, three boards, and no opinion at all about whether you should keep walking.",
-  "tiers": [5, 5],
+  "tiers": [5, 6],
   "weight": 0,
   "prefabs": ["poi_hoargate"],
   "garrison": [],

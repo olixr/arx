@@ -112,14 +112,14 @@ export const WILD_ROSTER: readonly WildEntry[] = [
   // --------------------------------------------- the standing perils
   { npc: 'wolf', weight: 2, tiers: [2, 5], biomes: ['forest'], band: [2, 3], habitat: 'den', family: 'wolfkin' },
   { npc: 'adder', weight: 1, tiers: [2, 4], biomes: ['grass'] },
-  { npc: 'bear', weight: 1.5, tiers: [3, 5], biomes: ['forest'] },
+  { npc: 'bear', weight: 1.5, tiers: [3, 7], biomes: ['forest'] },
   // THE SHELL WALKS: giant turtles bask in the open by day, in ones
   // and twos — a keep does not hide, and a pair of keeps is a wall.
   { npc: 'giant_turtle', weight: 1, tiers: [2, 4], biomes: ['grass'], hours: DAY, band: [1, 2], spread: 2 },
   // THE HILL THAT WATCHES: the colossus stands alone at any hour —
   // it does not sleep so much as pause, and a sighting is a landmark
   // that was not on yesterday's map.
-  { npc: 'colossus_turtle', weight: 0.5, tiers: [4, 6], biomes: ['grass', 'forest'] },
+  { npc: 'colossus_turtle', weight: 0.5, tiers: [4, 8], biomes: ['grass', 'forest'] },
   // ------------------------------------------------- the night shift
   // After dark the sounder runs behind the old razorback — the same
   // promotion the dire wolf earned: straggler to leader.
@@ -148,7 +148,7 @@ export const WILD_ROSTER: readonly WildEntry[] = [
     // promoted from straggler to leader.
     npc: 'wolf',
     weight: 2,
-    tiers: [5, 5],
+    tiers: [5, 7],
     biomes: ['forest', 'grass'],
     hours: NIGHT,
     band: [3, 4],
@@ -167,7 +167,7 @@ export const WILD_ROSTER: readonly WildEntry[] = [
   {
     npc: 'lynx',
     weight: 1.5,
-    tiers: [4, 5],
+    tiers: [4, 6],
     biomes: ['forest'],
     hours: NIGHT,
     band: [2, 3],
@@ -186,7 +186,7 @@ export const WILD_ROSTER: readonly WildEntry[] = [
   {
     npc: 'fox',
     weight: 1.5,
-    tiers: [4, 5],
+    tiers: [4, 6],
     biomes: ['forest'],
     hours: NIGHT,
     band: [2, 3],
@@ -195,9 +195,9 @@ export const WILD_ROSTER: readonly WildEntry[] = [
     habitat: 'den',
   },
   { npc: 'cave_bat', weight: 2, tiers: [2, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 3], spread: 2 },
-  { npc: 'giant_spider', weight: 1.5, tiers: [3, 5], biomes: ['forest'], hours: NIGHT },
-  { npc: 'skeleton', weight: 1, tiers: [3, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 3], habitat: 'barrow', family: 'dead' },
-  { npc: 'worg', weight: 1.5, tiers: [4, 5], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 2], family: 'wolfkin' },
+  { npc: 'giant_spider', weight: 1.5, tiers: [3, 7], biomes: ['forest'], hours: NIGHT },
+  { npc: 'skeleton', weight: 1, tiers: [3, 7], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 3], habitat: 'barrow', family: 'dead' },
+  { npc: 'worg', weight: 1.5, tiers: [4, 8], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 2], family: 'wolfkin' },
   // The parliament: great owls hunt the moonlit glades in wings of
   // two and three — the wide-eyed answer to the wolf pack, and the
   // one night beast no approach angle sneaks past.
@@ -207,7 +207,7 @@ export const WILD_ROSTER: readonly WildEntry[] = [
     // an elder — the screech calls every bough down on you at once.
     npc: 'great_owl',
     weight: 1.5,
-    tiers: [5, 5],
+    tiers: [5, 8],
     biomes: ['forest'],
     hours: NIGHT,
     band: [2, 3],
@@ -216,24 +216,29 @@ export const WILD_ROSTER: readonly WildEntry[] = [
     habitat: 'glade',
     family: 'parliament',
   },
-  { npc: 'troll', weight: 0.5, tiers: [5, 5], biomes: ['forest'], hours: NIGHT },
+  // The troll walks every rung of the deep dark: a level-14 word near
+  // the far woods' hem, a level-90 horror at the world's rim — the
+  // band rescales the body, the silhouette keeps the promise.
+  { npc: 'troll', weight: 0.5, tiers: [5, 9], biomes: ['forest'], hours: NIGHT },
   // THE EARTH STANDS UP (docs/golems-plan.md): golems stand alone,
   // day and night — a construct does not sleep, and a sighting is an
   // event, not a lawn. No family yet: the territory chain law wants a
   // POI to declare 'golem' before the wilds may lean on it.
-  { npc: 'rock_golem', weight: 0.5, tiers: [3, 4], biomes: ['grass', 'forest'] },
-  { npc: 'iron_golem', weight: 0.4, tiers: [4, 4], biomes: ['grass', 'forest'] },
+  { npc: 'rock_golem', weight: 0.5, tiers: [3, 5], biomes: ['grass', 'forest'] },
+  { npc: 'iron_golem', weight: 0.4, tiers: [4, 7], biomes: ['grass', 'forest'] },
   // The banked furnace walks at night, when the glow owns the dark.
-  { npc: 'fire_golem', weight: 0.5, tiers: [4, 5], biomes: ['grass', 'forest'], hours: NIGHT },
-  { npc: 'ice_golem', weight: 0.4, tiers: [5, 5], biomes: ['grass', 'forest'] },
+  { npc: 'fire_golem', weight: 0.5, tiers: [4, 7], biomes: ['grass', 'forest'], hours: NIGHT },
+  // The glacier stands at every rung past the far dark — at the
+  // world's rim it is the day-country's answer to the troll.
+  { npc: 'ice_golem', weight: 0.4, tiers: [5, 9], biomes: ['grass', 'forest'] },
   // Daylight gnolls range in scavenging pairs, wide of the squat.
-  { npc: 'gnoll', weight: 1.5, tiers: [3, 4], biomes: ['grass', 'forest'], hours: DAY, band: [1, 2], spread: 3, habitat: 'den', family: 'gnoll' },
+  { npc: 'gnoll', weight: 1.5, tiers: [3, 5], biomes: ['grass', 'forest'], hours: DAY, band: [1, 2], spread: 3, habitat: 'den', family: 'gnoll' },
   {
     // The night raid: the warband runs behind its packlord, and the
     // cackle carries further than any fire-light.
     npc: 'gnoll',
     weight: 2,
-    tiers: [4, 5],
+    tiers: [4, 7],
     biomes: ['grass', 'forest'],
     hours: NIGHT,
     band: [2, 3],
@@ -245,13 +250,16 @@ export const WILD_ROSTER: readonly WildEntry[] = [
   // THE HILL COMES DOWN (docs/ogres-plan.md): ogres walk in ones and
   // twos by day — a giant needs no escort — and the camp's muscle
   // strolls at night behind the Bonegrinder, dragging the club.
-  { npc: 'ogre', weight: 0.7, tiers: [4, 5], biomes: ['grass', 'forest'], hours: DAY, band: [1, 2], spread: 3, habitat: 'den', family: 'ogre' },
+  // THE GIANTS KEEP THE HIGH COUNTRY: no ogre stands below tier 6 —
+  // the band floor is level 44, and meeting one before the lampless
+  // dark would cheapen every story told about them. Test-pinned.
+  { npc: 'ogre', weight: 0.7, tiers: [6, 9], biomes: ['grass', 'forest'], hours: DAY, band: [1, 2], spread: 3, habitat: 'den', family: 'ogre' },
   {
     // The night forage: the camp walks out together, and the ground
     // tells you long before your eyes do.
     npc: 'ogre',
     weight: 0.9,
-    tiers: [5, 6],
+    tiers: [7, 9],
     biomes: ['grass', 'forest'],
     hours: NIGHT,
     band: [1, 2],

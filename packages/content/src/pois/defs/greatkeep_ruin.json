@@ -2,7 +2,7 @@
   "id": "greatkeep_ruin",
   "name": "The fallen keep",
   "description": "A curtain wall that lost its war a kingdom ago. The keep still holds its floor, the braziers still get lit, and whatever lights them never left the garrison.",
-  "tiers": [3, 5],
+  "tiers": [3, 7],
   "weight": 2,
   "prefabs": ["poi_ruin_greatkeep"],
   "garrison": [

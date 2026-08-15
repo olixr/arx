@@ -1,4 +1,8 @@
+import { DANGER_LAWS } from '../danger.js';
 import type { MinorDef, MinorGarrisonEntry } from './minorTypes.js';
+
+/** The ladder's last row (the validatePoiDef precedent). */
+const MAX_TIER = DANGER_LAWS.length - 1;
 
 export type ValidateMinorResult =
   | { ok: true; def: MinorDef }
@@ -45,10 +49,10 @@ export function validateMinorDef(
     !Number.isInteger(tiers[0]) ||
     !Number.isInteger(tiers[1]) ||
     (tiers[0] as number) < 1 ||
-    (tiers[1] as number) > 5 ||
+    (tiers[1] as number) > MAX_TIER ||
     (tiers[0] as number) > (tiers[1] as number)
   ) {
-    errors.push('tiers must be integers [min, max] inside [1, 5]');
+    errors.push(`tiers must be integers [min, max] inside [1, ${MAX_TIER}]`);
   } else {
     tiersOk = [tiers[0] as number, tiers[1] as number];
   }
@@ -102,8 +106,8 @@ export function validateMinorDef(
         } else {
           countOk = [count[0] as number, count[1] as number];
         }
-        if (e.minTier !== undefined && (!Number.isInteger(e.minTier) || (e.minTier as number) < 1 || (e.minTier as number) > 5)) {
-          errors.push(`${at}.minTier must be an integer in [1, 5]`);
+        if (e.minTier !== undefined && (!Number.isInteger(e.minTier) || (e.minTier as number) < 1 || (e.minTier as number) > MAX_TIER)) {
+          errors.push(`${at}.minTier must be an integer in [1, ${MAX_TIER}]`);
         }
         if (e.levelOffset !== undefined && (!Number.isInteger(e.levelOffset) || Math.abs(e.levelOffset as number) > 8)) {
           errors.push(`${at}.levelOffset must be an integer within ±8`);

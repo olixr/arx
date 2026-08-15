@@ -2,7 +2,7 @@
   "id": "barrowfield_great",
   "name": "The great barrowfield",
   "description": "A whole valley of the old dead: kerbed mounds in rows past counting, a stone processional nobody living laid, and a great barrow whose door stands open. Where the kerbs are broken, the households walk.",
-  "tiers": [3, 5],
+  "tiers": [3, 7],
   "weight": 2,
   "prefabs": ["poi_barrowfield_great"],
   "garrison": [

@@ -211,3 +211,78 @@
 @keyframes net-pill-pulse {
   50% { opacity: 0.35; }
 }
+
+/* ---------------------------------- THE DANGER GAUGE
+   The ladder on your wrist (ui/dangerGauge.ts): a smoked-glass chip,
+   top-left, that names the danger band underfoot — pips against the
+   full DANGER_LAWS ruler, the threat word, the level range. It only
+   whispers: settled land dims it to a murmur, and a band crossing
+   breathes exactly once (transform/opacity, gated on no-ui-motion). */
+
+#danger-gauge {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.875rem;
+  padding: 0.4375rem 0.625rem 0.375rem;
+  background: rgba(13, 10, 6, 0.66);
+  border: 0.0625rem solid rgba(222, 190, 128, 0.16);
+  border-radius: var(--r-chip);
+  box-shadow: 0 0.125rem 0.3125rem rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  z-index: 40;
+}
+
+#danger-gauge.is-settled {
+  opacity: 0.62;
+}
+
+.danger-pips {
+  display: flex;
+  gap: 0.3125rem;
+  margin-bottom: 0.3125rem;
+}
+
+.danger-pip {
+  width: 0.375rem;
+  height: 0.375rem;
+  rotate: 45deg;
+  box-shadow: inset 0 0 0 0.0625rem var(--parchment-faint);
+  opacity: 0.5;
+}
+
+.danger-pip[data-lit] {
+  background: var(--danger-ink);
+  box-shadow: 0.0625rem 0.0625rem 0 var(--ink-line);
+  opacity: 1;
+}
+
+.danger-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4375rem;
+  white-space: nowrap;
+}
+
+.danger-word {
+  font-size: var(--t-whisper);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+}
+
+.danger-band {
+  font-size: var(--t-label);
+  font-weight: 600;
+  color: var(--danger-ink);
+  text-shadow: 0.0625rem 0.0625rem 0 var(--ink-line);
+}
+
+body:not(.no-ui-motion) #danger-gauge.is-crossing {
+  animation: danger-cross 640ms cubic-bezier(0.2, 1.2, 0.4, 1);
+}
+
+@keyframes danger-cross {
+  0% { transform: scale(1); }
+  28% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); }
+}

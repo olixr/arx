@@ -64,7 +64,7 @@ export const GAZETTEER: Readonly<Record<string, GazetteerEntry>> = {
   evenfall: {
     epithet: 'The city the old folk kept',
     line: 'The wood is the wall, the light does not burn, and the gate stood closed for a hundred and fifty years. It is open now.',
-    country: 5,
+    country: 7,
   },
   undercroft: {
     epithet: 'The buried works',
@@ -91,4 +91,8 @@ export const THREAT_WORDS: readonly string[] = [
   'The deep frontier',
   'The far dark',
   'The lampless dark',
+  'The howling dark',
+  'The nameless waste',
+  'The world’s rim',
+  'The sundered dark',
 ];

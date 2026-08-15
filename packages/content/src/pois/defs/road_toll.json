@@ -4,7 +4,7 @@
   "description": "A bar of planks and rope thrown across the way — the creep answered: when a full-strength camp stands unanswered in a town's marches, its crew forks the road and charges for the crossing. Never rolls on its own (weight 0); only tickFrontier's creep fork stands one, always owned by its core family.",
   "tiers": [
     1,
-    5
+    9
   ],
   "weight": 0,
   "prefabs": [

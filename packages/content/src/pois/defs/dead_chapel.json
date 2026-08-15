@@ -2,7 +2,7 @@
   "id": "dead_chapel",
   "name": "The sunken chapel",
   "description": "A sanctum half under the turf: the pews still face the lectern, the braziers are still lit, and the congregation never took the hint. Bone is stacked along the aisles with terrible neatness. Keep silence, or don't — they'll stand either way.",
-  "tiers": [3, 5],
+  "tiers": [3, 7],
   "weight": 2,
   "prefabs": ["poi_dead_chapel"],
   "garrison": [

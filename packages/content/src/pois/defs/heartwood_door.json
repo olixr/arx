@@ -3,7 +3,7 @@
   "name": "The Heartwood door",
   "description": "A ward arch at the hem of the grove the old folk keep and do not explain. It is not sealed with masonry; it is sealed with permission, which is harder work to break. The Evenguard here are courteous the way a drawn bow is courteous.",
   "family": "elf",
-  "tiers": [4, 5],
+  "tiers": [4, 8],
   "weight": 0,
   "prefabs": ["poi_heartwood_door"],
   "garrison": [],

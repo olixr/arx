@@ -2,7 +2,7 @@
   "id": "find_standing_stone",
   "name": "Standing stone",
   "description": "One worked stone on a worn plinth, from before the towns had names.",
-  "tiers": [2, 5],
+  "tiers": [2, 9],
   "weight": 2,
   "prefabs": ["find_standing_stone"]
 }

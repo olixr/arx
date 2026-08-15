@@ -2,7 +2,7 @@
   "id": "peddler_rest",
   "name": "Peddler's rest",
   "description": "A trader's handcart pulled off the verge for a few hours — THE ROAD'S FORTUNE (living-frontier Phase 5). Never rolls on its own (weight 0): the renewal path occasionally deals fortune instead of trouble, road-true and rare. The ember clock is stamped ON ARRIVAL — nobody solves a peddler; she packs the cart and moves on, and the chart remembers her as rumor.",
-  "tiers": [1, 5],
+  "tiers": [1, 9],
   "weight": 0,
   "prefabs": ["poi_peddler_rest"],
   "garrison": [],

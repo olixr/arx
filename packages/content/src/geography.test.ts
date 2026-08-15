@@ -389,16 +389,18 @@ test("Hartfell's relief grades the walk-out and the far fell stays at the ceilin
 // promise, so it is pinned.
 // ------------------------------------------------------------------
 
-test("Kingsdelf's bowl is calm, and the Brand's heart reads the Overband", () => {
+test("Kingsdelf's bowl is calm, and the Brand's heart is the hottest shipped ground", () => {
   const anchors = AUTHORED_GEOGRAPHY.anchors.map((a) => ({ ...a }));
   assert.equal(dangerAt(SEED, -480, 328, anchors), 0, 'the delf floor is a hearth');
   assert.equal(dangerAt(SEED, -454, 310, anchors), 0, 'the benches stand inside the lamp');
-  // The Brand's full heart: the march runs within a band of its
-  // ceiling out here, so the dread-3 core crosses it. Sample a ring
-  // inside safeR — the town-facing arc is one band softer and the
-  // jitter wanders tier-5 pockets everywhere (band borders wander in
-  // this world), but the Overband must genuinely open.
-  let overs = 0;
+  // The Brand's full heart under THE LADDER PAST THE LAMPS: the burn
+  // adds its whole dread to the worded march (the delf's word 6 heats
+  // this country), so the heart reads 6 at its softest jittered dip
+  // and burns to 8-9 across the core — the hottest standing ground in
+  // the shipped world. The Overband proper (tier 10) stays CLOSED by
+  // law: the Brand stands in mid-march country, and neither noise nor
+  // dread can fake remoteness.
+  let deep = 0;
   for (let i = 0; i < 200; i++) {
     const ang = (i / 200) * Math.PI * 2;
     const tier = dangerAt(
@@ -407,16 +409,18 @@ test("Kingsdelf's bowl is calm, and the Brand's heart reads the Overband", () =>
       Math.round(144 + Math.sin(ang) * 60),
       anchors,
     );
-    assert.ok(tier >= 5 && tier <= DANGER_OVER, `burn heart read ${tier}`);
-    if (tier === DANGER_OVER) overs++;
+    assert.ok(tier >= 6 && tier < DANGER_OVER, `burn heart read ${tier}`);
+    if (tier >= 8) deep++;
   }
-  assert.ok(overs > 60, `the Overband barely opened: ${overs}/200`);
+  assert.ok(deep > 40, `the burn barely burns: ${deep}/200 at 8+`);
   // The dread reach clears the town's north wall: beside the furnace,
   // never in it.
   const northWall = dangerAt(SEED, -480, 280, anchors);
-  assert.ok(northWall <= 5, `the north wall must stay under the Overband, got ${northWall}`);
+  assert.ok(northWall <= 5, `the north wall must stay clear of the burn, got ${northWall}`);
   // The Old Road's last league grades in under the haven's relief —
-  // an artery, not a gauntlet; the burn is where the 44-60 band lives.
+  // an artery, not a gauntlet. The delf's word is 6 now, so the
+  // relieved league reads 3-5: a level-50 town's doorstep, not a
+  // meadow.
   const lastLeague = dangerAt(SEED, -398, 302, anchors);
-  assert.ok(lastLeague >= 1 && lastLeague <= 4, `the last league should read 1-4, got ${lastLeague}`);
+  assert.ok(lastLeague >= 3 && lastLeague <= 5, `the last league should read 3-5, got ${lastLeague}`);
 });

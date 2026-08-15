@@ -3,7 +3,7 @@
   "name": "Fallen light",
   "description": "An old folk beacon-site gone dark, and the dark moved in under it. The runestones still stand their circle; what rose beneath them keeps a watch nobody living set. This is what the Everwood's quiet is actually holding down.",
   "family": "elf",
-  "tiers": [4, 5],
+  "tiers": [4, 7],
   "weight": 3,
   "prefabs": ["poi_fallen_beacon", "poi_fallen_ring"],
   "garrison": [

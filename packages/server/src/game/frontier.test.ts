@@ -59,8 +59,12 @@ interface LedgerRow {
   originCell: string | null;
 }
 
-const CELL_X = 6;
-const CELL_Y = 1; // surface band (y 128..255), deep frontier — never authored
+// Surface band (y 128..255), deep frontier — never authored, and far
+// enough east (~700 tiles past every anchor under the worded march)
+// that no town's marches reach it: the marches tests below lean on
+// this cell being honestly wild.
+const CELL_X = 12;
+const CELL_Y = 1;
 const KEY = poiCellKey(CELL_X, CELL_Y);
 
 function site(over: Partial<PoiSite> = {}): PoiSite {

@@ -8,16 +8,30 @@ import { fbm } from '../math/noise.js';
  * bonuses, key tiers) reads this field instead of inventing its own
  * distance math. One law, many readers.
  *
- * The field is a pure function of (seed, tx, ty, anchors): distance to
- * the nearest settled anchor sets a base tier in bands, and a slow
- * noise wobble bends the band borders so tier edges wander organically
- * instead of drawing circles on the map. Inside an anchor's safe radius
- * the tier is 0 by construction — the jitter never reaches into town.
+ * THE LADDER PAST THE LAMPS (2026-08-14): the field is a pure function
+ * of (seed, tx, ty, anchors). Every worded anchor — a town that KNOWS
+ * what its country is — contributes two readings:
+ *
+ *   march = country + one tier per DANGER_BAND past its safe edge
+ *   heat  = country − one tier per HEAT_FADE past its safe edge
+ *
+ * The tile's base tier is max(min(all marches), max(all heats)): the
+ * SAFEST word in reach sets the floor of the climb (so the basin
+ * around the low hearths stays broad and gentle), while a hot town's
+ * own word brands the belt around it (so the country wrapping a
+ * level-50 city reads level-50 even where a far-off village's march
+ * would have called it a meadow). Between any two towns the two terms
+ * hand off continuously — no cliffs, only rungs.
+ *
+ * A slow noise wobble bends the band borders so tier edges wander
+ * organically instead of drawing circles on the map. Inside an
+ * anchor's safe radius the tier is 0 by construction — the jitter
+ * never reaches into town.
  *
  * Anchors are supplied by the caller (content owns the settled list;
- * phase-4 waystations append to it at runtime), so the same function
+ * materialized waystations append at runtime), so the same function
  * serves the server's spawn logic and any client surface (map tint,
- * ambience) without protocol work.
+ * the danger gauge, ambience) without protocol work.
  */
 
 export interface DangerAnchor {
@@ -26,16 +40,27 @@ export interface DangerAnchor {
   /** Tiles of guaranteed tier-0 calm around the anchor. */
   safeR: number;
   /**
-   * THE HAVEN LAW: a haven is a lamp, not a hearth. Settled anchors
-   * define the band march — every tile's tier is its distance past the
-   * NEAREST one. A haven (a materialized waystation) must never join
-   * that march, or one campfire in the deep frontier would re-origin
-   * the bands and flatten fifty tiles of tier-4 land to tier 1.
-   * Instead a haven carves a small tier-0 bubble inside safeR and
-   * RELIEVES the surrounding field on a graded rim (−2 tiers within
-   * HAVEN_FADE past the edge, −1 within twice that, floor 1) — the
-   * lamplight pushes the dark back, and the dark closes in again a
-   * stone's throw down the road.
+   * THE WORD — the danger tier of this anchor's own country, the tier
+   * read just past its relief. A worded anchor joins the band march
+   * (see the header law). Settled anchors default to 1 when silent;
+   * a haven with no word is a pure lamp (see the haven law below).
+   * Never valid on a dread — bad country has no townsfolk to ask.
+   */
+  country?: number;
+  /**
+   * THE HAVEN LAW: a WORDLESS haven is a lamp, not a hearth. A
+   * materialized waystation must never join the march, or one campfire
+   * in the deep frontier would re-origin the bands and flatten fifty
+   * tiles of tier-8 land to tier 1. It carves a small tier-0 bubble
+   * inside safeR and RELIEVES the surrounding field on a graded rim
+   * (−2 tiers within HAVEN_FADE past the edge, −1 within twice that,
+   * floor 1) — the lamplight pushes the dark back, and the dark
+   * closes in again a stone's throw down the road.
+   *
+   * A haven WITH a word is a town: it keeps the lamp and the relief,
+   * AND its word joins the march — because a city in the far dark
+   * knows exactly what stands outside its walls, and the map should
+   * say so.
    */
   haven?: boolean;
   /**
@@ -59,41 +84,57 @@ export interface DangerAnchor {
   dread?: number;
 }
 
-/** Highest danger tier the band march itself can reach. */
-export const DANGER_MAX = 5;
+/**
+ * Highest danger tier the band march itself can reach. Nine rungs:
+ * the ladder now runs the whole way to the player cap — the far rim
+ * of the world deals level-90s wherever the walk is long enough, in
+ * every direction, without end.
+ */
+export const DANGER_MAX = 9;
 
 /**
  * THE OVERBAND — the one tier past the march's ceiling, and the only
- * tier distance can never deal. The band march is a model of REMOTENESS,
- * and remoteness ran out of meaning at DANGER_MAX: past five bands out,
- * farther is just farther. What lies past the far dark is not farther —
- * it is named country so wrong the map keeps a separate word for it.
+ * tier distance can never deal. The band march is a model of
+ * REMOTENESS, and remoteness runs out of meaning at DANGER_MAX: past
+ * nine bands out, farther is just farther. What lies past the world's
+ * rim is not farther — it is named country so wrong the map keeps a
+ * separate word for it.
  *
  * The law: a tile reads DANGER_OVER only where ALL THREE hold —
- *   1. the un-jittered march (base, from distance alone) stands within
- *      one band of its ceiling: base >= DANGER_MAX − 1. The noise can
- *      never fake remoteness — a dread-3 heart planted near a town
- *      (base <= 3 country) can never open the Overband, ever;
+ *   1. the un-jittered march (base, from distance and words alone)
+ *      stands within one band of its ceiling: base >= DANGER_MAX − 1.
+ *      The noise can never fake remoteness — a dread-3 heart planted
+ *      near a town can never open the Overband, ever;
  *   2. the wobbled march (base + jitter − relief, before any dread)
  *      also reads DANGER_MAX − 1 or better — so no jitter-dipped
- *      pocket ever jumps three tiers in one step; and
+ *      pocket ever jumps tiers in one step; and
  *   3. the tile stands INSIDE the safe radius (the full heart, not the
  *      graded rim) of an anchor with dread >= OVERBAND_DREAD.
- * Everywhere else the classic clamped law answers, byte for byte. A
- * dread-2 wood (the Blackpine) can never deal it, and the rim of a
- * dread-3 heart never deals it. The jitter still wanders tier-5
- * pockets through an open heart — band borders wander everywhere in
- * this world — and on the heart's town-facing skirt (base one band
- * softer) the Overband thins before the classic law takes over: the
- * burn deepens AWAY from the lamps, which is what a burn does.
+ * Everywhere else the classic clamped law answers. No shipped heart
+ * deals it yet — the Brand stands in base-5 country and burns at the
+ * classic law's ceiling instead. The Overband is the map's held
+ * breath: the row is written, the ground is not.
  */
 export const DANGER_OVER = DANGER_MAX + 1;
 
 /** Dread strength required (at full heart) before the Overband opens. */
 export const OVERBAND_DREAD = 3;
 
-/** Width in tiles of each danger band past the safe radius. */
-export const DANGER_BAND = 56;
+/**
+ * Width in tiles of each danger band past the safe radius — one rung
+ * per POI macro-cell (128 tiles), so the land climbs one tier per
+ * cell of honest travel and the low basin around the hearths stays a
+ * true province, not a dooryard.
+ */
+export const DANGER_BAND = 128;
+
+/**
+ * Tiles per rung of a hot word's fade (see the header law). Half a
+ * band: a town's own heat grips its belt hard and lets go quickly, so
+ * a level-50 city brands its hinterland without swallowing the calm
+ * province a low hearth's march promised two valleys away.
+ */
+export const HEAT_FADE = DANGER_BAND / 2;
 
 /** Tiles of graded relief past a haven's safe edge (see DangerAnchor.haven). */
 export const HAVEN_FADE = 24;
@@ -102,9 +143,10 @@ export const HAVEN_FADE = 24;
 const JITTER_SALT = 0xda2e17;
 
 /**
- * Danger tier at a world tile: 0 (settled) .. DANGER_MAX (deep
- * frontier). Outside every safe radius the tier never drops below 1 —
- * "settled" is a property of anchors, not of a lucky noise roll.
+ * Danger tier at a world tile: 0 (settled) .. DANGER_MAX (the world's
+ * rim), DANGER_OVER only inside a qualifying dread heart. Outside
+ * every safe radius the tier never drops below 1 — "settled" is a
+ * property of anchors, not of a lucky noise roll.
  */
 export function dangerAt(
   seed: number,
@@ -112,11 +154,13 @@ export function dangerAt(
   ty: number,
   anchors: readonly DangerAnchor[],
 ): number {
-  // Distance past the nearest SETTLED anchor's safe edge sets the band
-  // march; havens only relieve it (see the haven law above). With no
-  // anchors at all, the world origin plays the hearth so the field
-  // stays defined.
-  let edge = Infinity;
+  // The worded march (see the header law): the safest word in reach
+  // sets the climb's floor, the hottest word brands its own belt.
+  // Wordless havens only relieve; dreads only worsen; neither ever
+  // joins the march.
+  let march = Infinity;
+  let heat = -Infinity;
+  let inside = false;
   let relief = 0;
   let dread = 0;
   let dreadCore = 0;
@@ -130,26 +174,42 @@ export function dangerAt(
       // The Overband reads only full hearts, never rims (see the law
       // at DANGER_OVER).
       if (d <= 0 && a.dread > dreadCore) dreadCore = a.dread;
-    } else if (a.haven) {
+      continue;
+    }
+    if (a.haven) {
       if (d <= 0) return 0;
       const r = d < HAVEN_FADE ? 2 : d < HAVEN_FADE * 2 ? 1 : 0;
       if (r > relief) relief = r;
-    } else if (d < edge) {
-      edge = d;
+      if (a.country === undefined) continue; // a wordless lamp
+    } else if (d <= 0) {
+      // A town is a town: no wood's reputation reaches inside a hearth.
+      inside = true;
+      continue;
     }
+    const word = a.country ?? 1;
+    const out = Math.max(0, d);
+    const m = word + Math.floor(out / DANGER_BAND);
+    if (m < march) march = m;
+    const h = word - Math.floor(out / HEAT_FADE);
+    if (h > heat) heat = h;
   }
-  if (edge === Infinity) edge = Math.hypot(tx, ty);
-  // A town is a town: no wood's reputation reaches inside a hearth.
-  if (edge <= 0) return 0;
+  if (inside) return 0;
+  // With no worded anchor at all, the world origin plays the hearth so
+  // the field stays defined.
+  if (march === Infinity) {
+    const edge = Math.hypot(tx, ty);
+    if (edge <= 0) return 0;
+    march = 1 + Math.floor(edge / DANGER_BAND);
+  }
 
-  const base = Math.min(DANGER_MAX, 1 + Math.floor(edge / DANGER_BAND));
+  const base = Math.min(DANGER_MAX, Math.max(march, heat, 1));
   // Slow wobble bends band borders by at most one tier either way.
   const j = fbm(seed ^ JITTER_SALT, tx * 0.011, ty * 0.011, 2);
   const jitter = j > 0.62 ? 1 : j < 0.38 ? -1 : 0;
   // THE OVERBAND (see DANGER_OVER): where the march runs within one
   // band of its ceiling — by honest distance AND after the wobble —
   // and the tile stands in a full dread-3 heart, the field crosses
-  // the old ceiling. Everywhere else, the classic clamped law answers
+  // the ceiling. Everywhere else, the classic clamped law answers
   // exactly as it always has.
   const marched = Math.max(1, Math.min(DANGER_MAX, base + jitter - relief));
   if (dreadCore >= OVERBAND_DREAD && base >= DANGER_MAX - 1 && marched >= DANGER_MAX - 1) {

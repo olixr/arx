@@ -2,7 +2,7 @@
   "id": "wolfkin_killfield",
   "name": "The kill-field",
   "description": "Where the pack drags what it takes. Bone drifts older than the trees around them, den mouths under rock lips, and a ring of skulls around the things the pack will not share.",
-  "tiers": [3, 5],
+  "tiers": [3, 7],
   "weight": 2,
   "prefabs": ["poi_wolfkin_killfield"],
   "garrison": [

@@ -37,6 +37,7 @@ import { KeyRingPanel } from './ui/keyRing.js';
 import { RepScreen } from './ui/repScreen.js';
 import { showRepBanner } from './ui/repBanner.js';
 import { ObjectiveTracker } from './ui/objectiveTracker.js';
+import { DangerGauge } from './ui/dangerGauge.js';
 import { showQuestBanner } from './ui/questBanner.js';
 import { RiftgatePanel } from './ui/riftgate.js';
 import { showDungeonClear, showDungeonEntry } from './ui/dungeonBanner.js';
@@ -1780,6 +1781,11 @@ const objectiveTracker = new ObjectiveTracker(game, () => questLog.trackedId(), 
   },
   onShowArea: showAreaOnChart,
 });
+
+// THE DANGER GAUGE: the ladder on your wrist — which band the ground
+// under your feet deals, spoken as pips, a threat word, and a level
+// range (ui/dangerGauge.ts).
+const dangerGauge = new DangerGauge();
 
 // THE STANDING SCREEN: the name you carry, read back (L).
 const repScreen = new RepScreen(game);
@@ -3768,6 +3774,14 @@ function frame(now: number): void {
         ? dangerAt(game.worldSeed, own.x, own.y, game.dangerAnchors)
         : 0;
     music.update(w, hours, dangerTier);
+    // The gauge reads the same field the music does — one law, every
+    // surface. Underground, the cinema, and the workbench stand it
+    // down; the dark keeps its own chrome.
+    dangerGauge.update(
+      game.worldSeed === null || own.y >= UNDERGROUND_Y || cinema.open || buildMode !== null
+        ? null
+        : dangerTier,
+    );
     // The Riftgate's hum: a throttled scan (2.5 Hz, ~440 tile reads)
     // finds the nearest portal in earshot; closeness drives the drone.
     if (now >= nextPortalScanAt) {
@@ -3802,6 +3816,9 @@ function frame(now: number): void {
       );
     }
     ambience.update(own.x, own.y, w, hours, now / 1000, portalNear, fallEar);
+  } else {
+    // Logged out: no ground underfoot, nothing to gauge.
+    dangerGauge.update(null);
   }
 
   fpsCounter++;

@@ -4,7 +4,7 @@
   "description": "The Red Company's one open door (factions Phase 4): a bar across the High Road's first climb where the Company talks before it takes. Weight 0 — the authored-sites law pins it to its one cell; the broker is untargetable, the guards invulnerable, and nobody here draws first. The closed throat still rules: spill Company blood and only the blood-price reopens the conversation.",
   "tiers": [
     1,
-    5
+    9
   ],
   "weight": 0,
   "prefabs": [

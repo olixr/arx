@@ -2,7 +2,7 @@
   "id": "dead_cloister",
   "name": "The cold cloister",
   "description": "A monastery the mountain forgot: a colonnade round kept turf, a refectory where the brothers still sit at a table laid with nothing, and a bell mound keeping hours nobody living hears. The garth is the only green thing the dead still tend.",
-  "tiers": [3, 5],
+  "tiers": [3, 6],
   "weight": 2,
   "prefabs": ["poi_dead_cloister"],
   "garrison": [

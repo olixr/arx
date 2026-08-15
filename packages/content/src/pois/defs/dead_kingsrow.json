@@ -2,7 +2,7 @@
   "id": "dead_kingsrow",
   "name": "The kings' row",
   "description": "Five great cairns of an older crown laid in a line, offering-lights burning before every door, and an honor guard that still changes at each one. Whose kings? Theirs. Whose land? That question is why the guard still stands.",
-  "tiers": [4, 5],
+  "tiers": [4, 8],
   "weight": 2,
   "prefabs": ["poi_dead_kingsrow"],
   "garrison": [

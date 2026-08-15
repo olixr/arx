@@ -4,7 +4,7 @@
   "description": "Red Company spades out of the south, camped below the Barrowfell with fresh spoil on their boots. Weight 0: authored only — there is one dig, it is a crime with an address, and when the camp is broken it stays broken. Breaking it sets poi_diggers_broken; Hartfell's whole quest spine leans on this ground.",
   "tiers": [
     4,
-    5
+    6
   ],
   "weight": 0,
   "prefabs": [

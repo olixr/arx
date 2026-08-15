@@ -2,7 +2,7 @@
   "id": "goblin_warstage",
   "name": "The raid muster",
   "description": "A staging ground, not a home: a banner avenue dressed to be feared, a drill yard that never rests, worg pickets, a plunder depot, and a signal pyre waiting for its night. This camp is going somewhere, and soon.",
-  "tiers": [3, 5],
+  "tiers": [3, 6],
   "weight": 2,
   "prefabs": ["poi_goblin_warstage"],
   "garrison": [

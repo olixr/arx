@@ -3,8 +3,8 @@
   "name": "Ogre camp",
   "description": "You smell the fire first, then the midden, then you feel the footsteps through your boots. Giants live here — the drag-furrows in the grass all point home, and nothing that made them ever learned to share.",
   "tiers": [
-    4,
-    6
+    6,
+    9
   ],
   "weight": 1.2,
   "prefabs": [
@@ -29,7 +29,7 @@
       ],
       "role": "sentry",
       "patrol": true,
-      "minTier": 4
+      "minTier": 6
     },
     {
       "npc": "ogre_bellower",
@@ -38,7 +38,7 @@
         1
       ],
       "role": "holdfast",
-      "minTier": 5
+      "minTier": 7
     },
     {
       "npc": "ogre_champion",
@@ -47,7 +47,7 @@
         1
       ],
       "role": "holdfast",
-      "minTier": 5,
+      "minTier": 8,
       "levelOffset": 2,
       "names": [
         "Bonegrinder",
@@ -137,7 +137,7 @@
               1
             ],
             "role": "holdfast",
-            "minTier": 5,
+            "minTier": 7,
             "names": [
               "Bonegrinder",
               "Kettlebelly",

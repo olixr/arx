@@ -77,8 +77,16 @@ export const TIER_WASH = [
   'rgba(230, 140, 60, 0.18)',
   'rgba(220, 80, 60, 0.20)',
   'rgba(170, 40, 90, 0.24)',
-  // The Overband — the lampless dark: past red, into ember-on-char.
+  // 6 — the lampless dark: past red, into ember-on-char.
   'rgba(112, 22, 128, 0.28)',
+  // 7 — the howling dark: the ember cools to a bruised violet.
+  'rgba(74, 28, 148, 0.30)',
+  // 8 — the nameless waste: violet drowns toward midnight.
+  'rgba(44, 34, 110, 0.34)',
+  // 9 — the world's rim: the ink itself, barely a color at all.
+  'rgba(22, 18, 52, 0.40)',
+  // 10 — THE OVERBAND, the sundered dark: char shot through with blood.
+  'rgba(64, 6, 14, 0.46)',
 ];
 
 export type MapBand = 'surface' | 'dungeon';

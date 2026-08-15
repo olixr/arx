@@ -4,7 +4,7 @@
   "description": "A lamplit rest on the long road — a keeper's stall, a warm fire, and the Wayward Watch holding the quiet. Danger keeps its distance while the lamps burn.",
   "tiers": [
     2,
-    4
+    8
   ],
   "weight": 2,
   "prefabs": [

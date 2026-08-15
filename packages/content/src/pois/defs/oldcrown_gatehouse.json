@@ -2,7 +2,7 @@
   "id": "oldcrown_gatehouse",
   "name": "Gatehouse of the Oldcrown",
   "description": "The buried capital's east gatehouse, kept half dug out of the ash by nobody anyone has seen digging. The Hewers hold it because a gate is on the maintenance rolls, and the rolls have no end date. Behind the garrison the arch is sealed with masonry finer than anything living hands cut — the Guild says their sealing craft came FROM this door, and the Guild does not say it loudly. The garrison does not discuss what it is a gate to.",
-  "tiers": [5, 6],
+  "tiers": [6, 9],
   "weight": 0,
   "prefabs": ["poi_oldcrown_gate"],
   "garrison": [

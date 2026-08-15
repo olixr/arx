@@ -3,7 +3,7 @@
   "name": "Sentinel arbor",
   "description": "An open-sided bough-lodge of the Evenguard, grown more than built. The sentinels do not hide; being seen keeping the mile is the point. They are courteous to travelers and exact about which way travelers are walking.",
   "family": "elf",
-  "tiers": [3, 5],
+  "tiers": [3, 7],
   "weight": 2,
   "prefabs": ["poi_arbor_bough", "poi_arbor_hearth"],
   "garrison": [],
