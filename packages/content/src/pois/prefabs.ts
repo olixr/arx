@@ -524,6 +524,70 @@ const skralDrying = sketch(
   skralLegend,
 );
 
+/** The salt-camp: the pan-folk's small works — brine finger, worked
+ *  pans, the withies keeping the season's take. The bank's money in
+ *  its smallest honest denomination. */
+const skralSaltcamp = sketch(
+  'poi_skral_saltcamp',
+  'Skral salt-garth',
+  [
+    '____,,,,,,____',
+    '__,::::::::,__',
+    '_,:A.h..s..:,_',
+    ',::1.~~~.2.:,_',
+    '_,:s~~~~~.s:,_',
+    ',::..~~~..-:,_',
+    '_,:sW..3.w.:,_',
+    '__,::!:?::,,__',
+    '____,,,,______',
+  ],
+  skralMarks,
+  undefined,
+  skralLegend,
+);
+
+/** The kelp-garth: the winter larder on its lines, the live larder
+ *  circling beside it — the camp that feeds the lean months. */
+const skralKelpcamp = sketch(
+  'poi_skral_kelpcamp',
+  'Skral kelp-garth',
+  [
+    '____,,,,,,____',
+    '__,::::::::,__',
+    '_,:k.k.k..A:,_',
+    ',::1.~~~.2.:,_',
+    '_,:O~~~~~.O:,_',
+    ',::.^.Wf...:,_',
+    '_,:k.b.-.3.:,_',
+    '__,:::!:`:,,__',
+    '____,,,,______',
+  ],
+  skralMarks,
+  undefined,
+  skralLegend,
+);
+
+/** The chime-hollow: the shoal's small culture — shell strings on
+ *  the wind, the tide's table, the spawning bank kept quiet. */
+const skralChimehollow = sketch(
+  'poi_skral_chimehollow',
+  'Skral chime-hollow',
+  [
+    '____,,,,____',
+    '__,::::::,__',
+    '_,:x.".x.:,_',
+    ',::?.&.?.:,_',
+    ',:2.~~~.1:,_',
+    '_,:0~~We.:,_',
+    '_,:.o.x.3:,_',
+    '__,::!:::,__',
+    '____,,,,____',
+  ],
+  skralMarks,
+  undefined,
+  skralLegend,
+);
+
 const ogreMarks: Record<string, Marker> = {
   // A giant wanders wide of its post — the radius is the read.
   '1': { npc: 'ogre', radius: 3, under: Tile.Dirt },
@@ -2338,6 +2402,9 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     skralMidden,
     skralWreck,
     skralDrying,
+    skralSaltcamp,
+    skralKelpcamp,
+    skralChimehollow,
     // THE HILL COMES DOWN (the giant-kin grounds):
     ogreCamp,
     ogreMidden,

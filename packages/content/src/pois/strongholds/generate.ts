@@ -255,6 +255,13 @@ export const FAMILY_STYLES: ReadonlyMap<string, FamilyStyle> = new Map<string, F
         'ward_sk_netyard',
         'ward_sk_wrecks',
         'ward_sk_totems',
+        // The craftsmen's wards (the drowned villages): the working
+        // shelf reaches the capital — ten districts deep, no two
+        // Great Weirs deal alike.
+        'ward_sk_saltgarth',
+        'ward_sk_menders',
+        'ward_sk_shelters',
+        'ward_sk_chimeway',
       ],
       watchPiece: 'ward_sk_watch',
       bossPiece: 'ward_sk_kingspool',

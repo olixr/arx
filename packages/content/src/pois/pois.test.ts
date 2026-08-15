@@ -311,6 +311,11 @@ test('THE LANDMARKS: expansive authored grounds, each with one modest cache', ()
     'poi_dead_muster',
     'poi_dead_cloister',
     'poi_dead_kingsrow',
+    // THE DROWNED VILLAGES (docs/skral-decor-plan.md): the banks'
+    // landmark grounds — they carry their own dug water, so the
+    // meadow-fringe law reads through a sand hem instead.
+    'poi_skral_village_longbanks',
+    'poi_skral_village_saltgarth',
   ];
   // Livestock may be penned by hand (the stolen-cows law: authored
   // levels, never the danger band); hostiles always come from defs.
@@ -358,6 +363,8 @@ test('THE PEOPLED LANDMARKS: every landmark carries a walked round with stations
     'poi_dead_muster',
     'poi_dead_cloister',
     'poi_dead_kingsrow',
+    'poi_skral_village_longbanks',
+    'poi_skral_village_saltgarth',
   ];
   // The post signs the compose scan reads — a landmark must offer
   // real work: fires, drill gear, tents, seats, lights, or charges.
@@ -367,6 +374,12 @@ test('THE PEOPLED LANDMARKS: every landmark carries a walked round with stations
     Tile.TentHide, Tile.TentWar, Tile.Bench, Tile.Chair,
     Tile.SkullTotem, Tile.Brazier, Tile.WarBrazier, Tile.StandingTorch,
     Tile.PrisonCage, Tile.BeastNest,
+    // The skral working shelf (the POI post table reads these):
+    // shelters sleep, smokers cook, benches and pools and pans are
+    // KEPT, racks drill, totems and lures keep vigil.
+    Tile.ReedShelter, Tile.SmokeTripod, Tile.MendingBench, Tile.ShellBench,
+    Tile.KeepPool, Tile.SaltPan, Tile.HarpoonRack, Tile.LurePole,
+    Tile.TideTotem,
   ]);
   for (const id of LANDMARKS) {
     const p = POI_PREFABS.get(id)!;
@@ -387,7 +400,7 @@ test('THE PEOPLED LANDMARKS: every landmark carries a walked round with stations
     // The living families sit at their fires; the dead keep standing
     // rounds (sit stops are a fire-and-hearth thing).
     const sits = p.routes!.flatMap((r) => r.pts).filter((pt) => pt.sit).length;
-    if (id.includes('goblin') || id.includes('brigand')) {
+    if (id.includes('goblin') || id.includes('brigand') || id.includes('skral')) {
       assert.ok(sits >= 1, `${id}: a living camp's round sits down somewhere`);
     }
   }
@@ -399,4 +412,45 @@ test('THE PEOPLED LANDMARKS: every landmark carries a walked round with stations
     a.ground.length === a.width * a.height && a.ground.some((t) => t === Tile.Bonfire),
     'mootfield lost its heart',
   );
+});
+
+test('THE DROWNED VILLAGES: the banks carry their own water, worked and walked', () => {
+  // The village def: shore-flagged, family skral, both grounds dealt.
+  const def = POI_DEFS.get('skral_village')!;
+  assert.ok(def, 'skral_village missing');
+  assert.equal(def.shore, true, 'a skral village stands on a bank or not at all');
+  assert.equal(def.family, 'skral');
+  assert.deepEqual(def.prefabs, ['poi_skral_village_longbanks', 'poi_skral_village_saltgarth']);
+  assert.ok(
+    def.garrison.some((g) => g.crowned && (g.names?.length ?? 0) >= 4),
+    'a village answers to a named crowned deepking',
+  );
+  for (const id of def.prefabs) {
+    const p = POI_PREFABS.get(id)!;
+    // The '~' law at landmark scale: the village CARRIES its water —
+    // the dug vein is the whole reason the ground exists.
+    let wet = 0;
+    let sand = 0;
+    for (const t of p.ground) {
+      if (t === Tile.WaterShallow) wet++;
+      if (t === Tile.Sand) sand++;
+    }
+    assert.ok(wet >= 40, `${id}: only ${wet} wet cells — the vein went dry`);
+    assert.ok(sand >= 20, `${id}: only ${sand} sand cells — the bank lost its hem`);
+    // Two walked rounds each: the works and the watch.
+    assert.equal(p.routes?.length, 2, `${id}: a village keeps two rounds`);
+    // The whole craftsman shelf is present — a village, not a camp.
+    const WORKED = [
+      Tile.ReedShelter, Tile.SmokeTripod, Tile.MendingBench, Tile.WeirPanels,
+      Tile.KelpLine, Tile.SaltPan, Tile.ShellBench, Tile.WithyStore,
+      Tile.KeepPool, Tile.TideChimes, Tile.LurePole, Tile.TideAltar,
+      Tile.WhaleRibs, Tile.Dugout, Tile.HarpoonRack,
+    ];
+    for (const tile of WORKED) {
+      assert.ok(
+        p.ground.some((t) => t === tile),
+        `${id}: tile ${Tile[tile]} missing — the shelf is not all here`,
+      );
+    }
+  }
 });

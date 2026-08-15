@@ -356,3 +356,133 @@ berry bush photobombed all three passes; the piece reads honest in
 context); no main.ts boom rows (thatch and wicker keep no drum); the
 smoker's hanging fish read small past 1.5 zoom — the haze carries the
 read, revisit only if flagged.
+
+# THE DROWNED VILLAGES — the curated grounds (landmark lane)
+
+**SHIPPED 2026-08-15, one session, two audit passes on lane 10
+(arx_skralland).** The 22-piece shelf earns its PLACES: whole
+fish-folk villages at landmark scale, hand-seated at the plan's own
+waters, plus enough pool depth below them that no two skral grounds
+ever share a read.
+
+## The ladder after this arc
+
+find → camp (POOL OF 8) → tidehold compound (wings from 7) →
+**VILLAGE (landmark, organic + 4 curated seats)** → capital (wards
+from 10). Every rung deals differently by hash; the village rung is
+new.
+
+## The two villages (landmarks.ts, canvas-built, pinned seeds)
+
+- `poi_skral_village_longbanks` "The long banks" (60×46): a dug
+  tidal VEIN walking the full width, weir gates at both narrows,
+  dwelling bank north (two reed hamlets), the deepking's pool at the
+  heart ringed in ancestor bone (ribs pair + altar + the one iron
+  cache + lure pair), working bank south (drying → mending → shell →
+  salt → kelp, west to east), keep row + roe bank in the quiet east,
+  dugouts beached on the hems, harpoon watch at the west mouth,
+  lure-lit south approach. TWO walked rounds (the works round sits
+  at the fire; the dwelling watch keeps both gates).
+- `poi_skral_village_saltgarth` "The salt garth" (54×44): the
+  works-village — a three-lobed BAY at the south hem (hurdles and
+  traps standing in the shallows, roe nests in the quiet corner),
+  the pan yard in two worked ranks at the heart, smoker terrace
+  east, kelp garth west, keep row + mending bench on the bay line,
+  dwelling knots on the north rise under the rib shrine (cache
+  beside it, shell-carver at its flank), totem-marked lure-lit west
+  approach. Two rounds (the panmaster sits at the shrine).
+- **THE SKRAL MODULE SHELF** (modules.ts): reedHamlet / dryingGround
+  / mendingRow / saltGarth / kelpGarth / keepRow / ribShrine /
+  lureWay — post-sign furniture first, so every module peoples
+  itself. New landmark helpers in landmarks.ts: `wetLine` (water
+  walked along a polyline) and `sandHem` (every unpainted cell
+  touching water takes the wet sand hem — the ground line the whole
+  kit was authored for).
+- Audit verdicts: **THE SHRINE HOLDS ITS POOL** (pass-two: the bone
+  head's pad must walk down to the water — a grass wedge between
+  ribs and pool reads as furniture beside a river, not a pool ringed
+  in bone; pool fattened r5→r6, south totems to the new lip, dugout
+  re-beached); route legs must CLOSE within 12 hops (the panmaster's
+  round grew a return stop through the kelp garth — prefabFromJson
+  refuses long legs at load, which is how it was caught).
+
+## The def + the curated seats
+
+- `skral_village` (tiers 2-6, weight 1, shore, family skral): both
+  prefabs, garrison with patrol sentries (the authored rounds deal
+  verbatim — server pois.test THE ROUND HAS STATIONS extended to pin
+  it), named CROWNED deepkings (Weirmother Sog / King Panbrine /
+  Croakfather Hulm / Mudqueen Berl / The Salt Crown), warded iron
+  cache (landmark law: exactly one, no boss chest).
+- **THE WILD CROWN BUG**: `crowned` was typed in PoiDef and read by
+  the server's champion forge but SILENTLY DROPPED by validatePoiDef
+  — every wild crowned row shipped since the flag was born lost its
+  crown at registry build. Vetted + carried now.
+- **A shore LANDMARK is judged like a shore compound** (pois.ts):
+  shoreReach = margin − 14 + SHORE_CAMP_REACH for any ≥34-tile
+  footprint — anchor-reach-10 on a 60-tile ground would demand the
+  heart stand IN the lake; the village carries its own vein and its
+  HEM works the real waterline.
+- **Four curated seats** (AUTHORED_WILD_SITES, all CELL-FORCED like
+  the named dens — a village is deliberately off every road, and the
+  pinned-site law requires pins to hug roads): `croakwater_banks`
+  cell [-5,-1] (Kingswater south bank — stood at -574,-69, tier 4,
+  salt garth), `amberfen_shoal` [1,1] (the fen's south hem —
+  196,182, tier 1, long banks: the ACCESSIBLE one), `saltflat_garth`
+  [6,3] (the Salt Flats — 828,464, tier 3, salt garth: the pan-folk
+  at the one country that is all money), `coldwater_shoal` [-2,-3]
+  (east of the tarn — -210,-331, tier 2, long banks). The hash dealt
+  the semantically right prefab at every seat unprompted. Glasswater
+  was tried and LAWFULLY REFUSED (Pinewatch owns its east shore; the
+  lake's heart owns every cell center a landmark scan can use) —
+  Ashmere likewise (Kingsdelf clearance) and the Salt Flats' own
+  center cell (too rough); cell [-3,-3]/[-3,-4] Coldtarn crag
+  refused too. **The refusals are the law working** — probe with a
+  forced poiForCell sweep before arguing with it.
+- Cell-mode pins skip the road-distance law AND the y≥400 dark-band
+  pin check (decideSite still enforces DARK_BAND_Y 512 honestly).
+
+## The variety below (no two grounds alike)
+
+- **Three new camps** widen skral_shoal's pool to EIGHT:
+  `poi_skral_saltcamp` (pans round a brine finger),
+  `poi_skral_kelpcamp` (lines + keep pools + the mend bench),
+  `poi_skral_chimehollow` (the culture camp: chimes, the tide's
+  table, the spawning bank). All three joined the tidehold's wing
+  pool (now 7) and WING_CAP.
+- **Four new ward pieces** take the Drowned Charter's pool to TEN:
+  `ward_sk_saltgarth` / `ward_sk_menders` / `ward_sk_shelters`
+  (knots: skral sleepers) / `ward_sk_chimeway`. Every new piece
+  carries an HOUR-KEEPING sign, and the four charter pieces that had
+  none (pools/racks/middens/netyard) each grew a lure or totem —
+  **any ward deal now keeps a clock** (the tidefast's seed-4 re-deal
+  had gone hourless and the Third Charter test caught it; layout
+  seeds were NOT re-pinned — the ghost-seat law holds).
+- POI_POST_SIGNS grew the Charter's remaining rows at POI scale:
+  HarpoonRack drills 6-20, TideTotem/LurePole keep vigil 18-6 — the
+  villages people their watch without a single spawn marker.
+
+## Proving (lane 10, arx_skralland)
+
+Boot log: all four sites stand at their probed anchors. Live: the
+coldwater Long Banks walked (King Panbrine crowned, WADING his weir
+gate with a harpooner beside him; drying racks heavy; pans crusting;
+keep pools circling), the fen village at tier 1 (Weirmother Sog in
+her pool), the Salt Flats garth at the flats' hem (pans + bay +
+shrine + skral at both fires, harpooner walking the round south).
+Pass-two re-shot proved THE SHRINE HOLDS ITS POOL. Prefab data
+audited by dump (all 15 craftsman kinds present in each village).
+Suites: content 61/61 (geography+pois+strongholds scoped), server
+pois 22/22 (mid-flight a neighbor's then-untracked hobgoblin family
+re-dealt the territory voronoi and failed the epoch-jitter test —
+they landed ff6beef1 with the horizon fix and it cleared).
+
+Debts (deliberate): night portrait of a village not landed — the
+headless lane ran at 1-2fps and the static layer's night band never
+rebaked (clock + moonlit flag PROVEN flipped via __arx probe; the
+LurePole light rows are untouched from 46d42efc and the tidehold's
+night was proven last session at 18fps) — reshoot on a healthy lane
+if flagged; the Great Weir's re-dealt ten-piece wards are validator-
+and-test-proven but not re-walked live (seat unchanged); organic
+village rolls (weight 1) not hunted live — the same composer deals
+them and the density sweep says they stand.

@@ -282,8 +282,14 @@ export function poiForCell(
       // COMPOUND is judged from its whole extent: the court (which
       // carries its own dug pool) may stand a wing-ring inland while
       // the hold's outermost camps work the actual waterline — the
-      // court's own margin already measures that reach.
-      const shoreReach = def.compound ? margin - 14 + SHORE_CAMP_REACH : SHORE_CAMP_REACH;
+      // court's own margin already measures that reach. A shore
+      // LANDMARK (the drowned villages) is judged the same way: the
+      // village carries its own dug vein at heart, and its hem is
+      // what works the real waterline — anchor-reach-10 on a 60-tile
+      // footprint would demand the heart itself stand IN the lake.
+      const expanse =
+        def.compound || Math.max(prefab.width, prefab.height) >= 34;
+      const shoreReach = expanse ? margin - 14 + SHORE_CAMP_REACH : SHORE_CAMP_REACH;
       if (def.shore && !shoreProbeAt(seed, tx, ty, shoreReach)) continue;
       const fx0 = tx - Math.floor(prefab.width / 2);
       const fy0 = ty - Math.floor(prefab.height / 2);
@@ -1051,6 +1057,11 @@ export function composePoi(
       { match: [Tile.ReedShelter], kind: 'rest', seats: 1, hours: { from: 19, to: 7 } },
       { match: [Tile.SmokeTripod], kind: 'cook', seats: 1 },
       { match: [Tile.MendingBench, Tile.ShellBench, Tile.KeepPool, Tile.SaltPan], kind: 'keeper', seats: 1 },
+      // THE DROWNED VILLAGES: the Charter's remaining rows arrive at
+      // POI scale — harpoon yards drill by day, the totems and the
+      // lure keep the dark hours (the shoal's own night watch).
+      { match: [Tile.HarpoonRack], kind: 'drill', seats: 1, hours: { from: 6, to: 20 } },
+      { match: [Tile.TideTotem, Tile.LurePole], kind: 'vigil', seats: 1, hours: { from: 18, to: 6 } },
     ];
     const claimed: Array<[number, number]> = [];
     for (const sign of POI_POST_SIGNS) {

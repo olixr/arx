@@ -292,6 +292,129 @@ export const ossuaryRun = (
   }
 };
 
+// --------------------------------------------------------------------
+// THE SKRAL SHELF (docs/skral-decor-plan.md — the drowned villages):
+// the brine-folk's material culture, shelved so every waterside
+// ground works the same way. FOUND, NEVER FELLED — nothing below was
+// sawn, forged, or bought. Same post-sign law as the war shelf:
+// shelters sleep their tenants, smokers cook, benches and pools and
+// pans are KEPT — author the furniture and the village peoples
+// itself.
+
+/**
+ * The reed hamlet: shelters round a shared fire, the chimes at one
+ * door, the withies where a keeper can reach them — the village's
+ * bedroom, wet to the ankles.
+ */
+export const reedHamlet = (
+  c: Canvas,
+  cx: number,
+  cy: number,
+  n: number,
+  rng: Rng,
+): void => {
+  blob(c, cx, cy, 5, Tile.Dirt, rng, 0.15);
+  put(c, cx, cy, Tile.Campfire);
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + rng.range(-0.3, 0.3);
+    put(c, Math.round(cx + Math.cos(a) * 4), Math.round(cy + Math.sin(a) * 3), Tile.ReedShelter);
+  }
+  // One door hangs its chimes; the stores sit inside the fire's reach.
+  put(c, cx + 2, cy - 2, Tile.TideChimes);
+  if (rng.chance(0.7)) put(c, cx - 2, cy + 2, Tile.WithyStore);
+};
+
+/**
+ * The drying ground: rack rows heavy with the catch, the smoker
+ * breathing over them, the day's baskets waiting between.
+ */
+export const dryingGround = (c: Canvas, cx: number, cy: number, rng: Rng): void => {
+  blob(c, cx, cy, 4, Tile.Dirt, rng, 0.12);
+  for (const dx of [-3, 0, 3] as const) put(c, cx + dx, cy - 1, Tile.FishRack);
+  put(c, cx - 2, cy + 1, Tile.CatchBasket);
+  put(c, cx + 2, cy + 1, Tile.SmokeTripod);
+  if (rng.chance(0.6)) put(c, cx + 4, cy + 2, Tile.ShellMidden);
+};
+
+/** The mending row: the works that never end — nets spread mid-
+ *  repair, the shell-carver's slab beside them. */
+export const mendingRow = (c: Canvas, cx: number, cy: number, rng: Rng): void => {
+  blob(c, cx, cy, 4, Tile.Dirt, rng, 0.15);
+  put(c, cx - 2, cy, Tile.MendingBench);
+  put(c, cx + 2, cy, Tile.ShellBench);
+  put(c, cx - 3, cy - 2, Tile.NetFrame);
+  put(c, cx + 1, cy - 2, Tile.NetFrame);
+  if (rng.chance(0.7)) put(c, cx + 3, cy + 2, Tile.CatchBasket);
+};
+
+/**
+ * The salt garth: pans in a worked rank, the withies keeping the
+ * season's take — the bank's money, laid out to be tended.
+ */
+export const saltGarth = (c: Canvas, cx: number, cy: number, n: number, rng: Rng): void => {
+  blob(c, cx, cy, n + 2, Tile.Dirt, rng, 0.1);
+  const half = Math.floor((n - 1) / 2);
+  for (let i = 0; i < n; i++) put(c, cx + (i - half) * 3, cy, Tile.SaltPan);
+  put(c, cx - half * 3, cy + 2, Tile.WithyStore);
+  put(c, cx + half * 3, cy + 2, Tile.CatchBasket);
+};
+
+/** The kelp garth: the winter larder swaying on its ranked lines. */
+export const kelpGarth = (c: Canvas, cx: number, cy: number, rows: number, rng: Rng): void => {
+  blob(c, cx, cy, rows + 2, Tile.Dirt, rng, 0.2);
+  const half = Math.floor((rows - 1) / 2);
+  for (let i = 0; i < rows; i++) {
+    put(c, cx + rng.int(-1, 1), cy + (i - half) * 2, Tile.KelpLine);
+  }
+};
+
+/** The keep row: live larders in a line along the water's edge —
+ *  dark water, circling backs, the tally kept. */
+export const keepRow = (c: Canvas, x0: number, y0: number, n: number, rng: Rng): void => {
+  for (let i = 0; i < n; i++) {
+    blob(c, x0 + i * 3, y0, 2, Tile.Dirt, rng, 0.25);
+    put(c, x0 + i * 3, y0, Tile.KeepPool);
+  }
+  if (rng.chance(0.6)) put(c, x0 + n * 3 - 1, y0 + 1, Tile.CatchBasket);
+};
+
+/** The rib shrine: the ancestor's crescent over the tide's own
+ *  table, the totems keeping its flanks. */
+export const ribShrine = (c: Canvas, cx: number, cy: number, rng: Rng): void => {
+  blob(c, cx, cy, 4, Tile.Dirt, rng, 0.1);
+  put(c, cx, cy - 2, Tile.WhaleRibs);
+  put(c, cx - 2, cy, Tile.TideTotem);
+  put(c, cx + 2, cy, Tile.TideTotem);
+  put(c, cx, cy, Tile.TideAltar);
+};
+
+/**
+ * The lure way: the shoal's own street lights pacing a walk — the
+ * caged deep-jelly, never a torch (the Drowned Charter's road law).
+ * Step generous: the night hierarchy keeps its lights scarce.
+ */
+export const lureWay = (
+  c: Canvas,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  step: number,
+  rng: Rng,
+): void => {
+  track(c, x0, y0, x1, y1, rng);
+  const dist = Math.hypot(x1 - x0, y1 - y0);
+  const n = Math.max(1, Math.floor(dist / step));
+  const vertical = Math.abs(y1 - y0) >= Math.abs(x1 - x0);
+  for (let i = 0; i <= n; i++) {
+    const x = Math.round(x0 + ((x1 - x0) * i) / n);
+    const y = Math.round(y0 + ((y1 - y0) * i) / n);
+    const side = i % 2 === 0 ? -2 : 2;
+    if (vertical) put(c, x + side, y, Tile.LurePole);
+    else put(c, x, y + side, Tile.LurePole);
+  }
+};
+
 /** The tent cluster: hides around a shared yard, the camp's bedroom. */
 export const tentCluster = (
   c: Canvas,

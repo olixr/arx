@@ -10,6 +10,7 @@ import forestRuin from './defs/forest_ruin.json';
 import gnollSquat from './defs/gnoll_squat.json';
 import skralShoal from './defs/skral_shoal.json';
 import skralTidehold from './defs/skral_tidehold.json';
+import skralVillage from './defs/skral_village.json';
 import ogreCamp from './defs/ogre_camp.json';
 import hobgoblinWarcamp from './defs/hobgoblin_warcamp.json';
 import goblinWarcamp from './defs/goblin_warcamp.json';
@@ -79,6 +80,11 @@ const SOURCES: readonly unknown[] = [
   // must stand on a bank (court and promotion both honor the shore
   // probe; a landlocked region keeps goblin holds instead).
   skralTidehold,
+  // THE DROWNED VILLAGES (docs/skral-decor-plan.md): the banks'
+  // landmark grounds — an entire fish-folk village at its work.
+  // Weight-1 so wet country deals them organically; the curated ones
+  // stand through AUTHORED_WILD_SITES at the plan's own waters.
+  skralVillage,
   ogreCamp,
   // THE LEGION (docs/hobgoblin-plan.md): the hobgoblins' drilled
   // war-camps — square palisades where the goblin sprawls, sentries

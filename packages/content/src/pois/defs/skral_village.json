@@ -1,0 +1,41 @@
+{
+  "id": "skral_village",
+  "name": "Skral village",
+  "description": "An entire people at their work: reed roofs over a dug tidal vein, weir gates and salt pans and keep-pools all tended, the ancestors' ribs over the one thing the water ever gave back. The croaking is a town's noise here. It has never once stopped.",
+  "tiers": [2, 6],
+  "weight": 1,
+  "shore": true,
+  "prefabs": ["poi_skral_village_longbanks", "poi_skral_village_saltgarth"],
+  "garrison": [
+    { "npc": "skral", "count": [4, 6], "role": "holdfast" },
+    { "npc": "skral", "count": [2, 3], "role": "sentry", "patrol": true },
+    { "npc": "skral_harpooner", "count": [2, 3], "role": "holdfast" },
+    { "npc": "skral_tidecaller", "count": [1, 2], "role": "holdfast", "minTier": 3 },
+    {
+      "npc": "skral_champion",
+      "count": [1, 1],
+      "role": "holdfast",
+      "levelOffset": 4,
+      "names": [
+        "Weirmother Sog",
+        "King Panbrine",
+        "Croakfather Hulm",
+        "Mudqueen Berl",
+        "The Salt Crown"
+      ],
+      "crowned": true
+    }
+  ],
+  "chestTierBonus": 0,
+  "chestWarded": true,
+  "clearedFlag": "poi_skral_village_broken",
+  "cues": {
+    "clearing": 4,
+    "approachPath": true,
+    "scatter": [
+      { "tile": "ShellMidden", "count": 2 },
+      { "tile": "FishTrap", "count": 1 }
+    ]
+  },
+  "family": "skral"
+}

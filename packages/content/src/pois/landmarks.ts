@@ -8,10 +8,18 @@ import {
   cairn,
   drillYard,
   drumRing,
+  dryingGround,
   feastTrestles,
   fireCircle,
+  kelpGarth,
+  keepRow,
   kerbMound,
+  lureWay,
+  mendingRow,
   ossuaryRun,
+  reedHamlet,
+  ribShrine,
+  saltGarth,
   spoilYard,
   standardRow,
   tentCluster,
@@ -864,6 +872,329 @@ function buildDeadKingsrow(): PrefabDef {
   return finish(c, 'poi_dead_kingsrow', "The kings' row");
 }
 
+// --------------------------------------------------------------------
+// THE DROWNED VILLAGES (skral — docs/skral-decor-plan.md): the banks'
+// landmark grounds. A skral village CARRIES ITS OWN WATER (the '~'
+// law: the dug vein is the village's whole reason), so the builders
+// paint the channel first, hem it in sand, and only then let the
+// meadow in. FOUND, NEVER FELLED throughout — the one cache is iron
+// only because somebody LOST it to the water long ago.
+
+/** Water walked along a polyline — the dug vein the village lives on. */
+function wetLine(
+  c: ReturnType<typeof canvas>,
+  pts: ReadonlyArray<readonly [number, number]>,
+  r: number,
+  rng: ReturnType<typeof seedOf>,
+): void {
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const [ax, ay] = pts[i]!;
+    const [bx, by] = pts[i + 1]!;
+    const steps = Math.max(1, Math.round(Math.hypot(bx - ax, by - ay)));
+    for (let s = 0; s <= steps; s++) {
+      const x = Math.round(ax + ((bx - ax) * s) / steps);
+      const y = Math.round(ay + ((by - ay) * s) / steps);
+      blob(c, x, y, r, Tile.WaterShallow, rng, 0);
+    }
+  }
+}
+
+/** Every unpainted cell touching the water takes the wet sand hem —
+ *  the ground line every skral prop is authored to sit on. */
+function sandHem(c: ReturnType<typeof canvas>): void {
+  const hem: Array<[number, number]> = [];
+  for (let y = 1; y < c.h - 1; y++) {
+    for (let x = 1; x < c.w - 1; x++) {
+      if (at(c, x, y) !== TILE_SKIP) continue;
+      let wet = false;
+      for (let dy = -1; dy <= 1 && !wet; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (at(c, x + dx, y + dy) === Tile.WaterShallow) {
+            wet = true;
+            break;
+          }
+        }
+      }
+      if (wet) hem.push([x, y]);
+    }
+  }
+  for (const [x, y] of hem) put(c, x, y, Tile.Sand);
+}
+
+// --------------------------------------------------------------------
+// THE LONG BANKS (skral) — the whole race in one ground: a dug tidal
+// vein walking the width of the village, weir gates at both narrows,
+// the dwelling bank north, the working bank south, and the deepking's
+// pool at the heart ringed in ancestor bone. Everything the craftsman
+// shelf owns is HERE, laid out the way it is worked.
+function buildSkralLongbanks(): PrefabDef {
+  const c = canvas(60, 46);
+  const rng = seedOf('poi_skral_village_longbanks');
+  // The vein: west mouth to east mouth, swelling to the heart pool.
+  wetLine(
+    c,
+    [
+      [3, 26],
+      [10, 25],
+      [16, 24],
+      [23, 24],
+      [29, 23],
+      [34, 21],
+    ],
+    2,
+    rng,
+  );
+  wetLine(
+    c,
+    [
+      [34, 21],
+      [42, 20],
+      [48, 20],
+      [56, 21],
+    ],
+    2,
+    rng,
+  );
+  blob(c, 34, 22, 6, Tile.WaterShallow, rng, 0);
+  sandHem(c);
+  // Worked ground claims its pads BEFORE the meadow fills in.
+  blob(c, 14, 10, 6, Tile.Dirt, rng, 0.1); // the dwelling bank
+  blob(c, 25, 8, 4, Tile.Dirt, rng, 0.12);
+  // THE SHRINE HOLDS ITS POOL (pass-two verdict): the bone head's
+  // pad walks all the way down to the water — a grass wedge between
+  // the ribs and the pool read as furniture beside a river, not a
+  // pool ringed in bone.
+  blob(c, 34, 14, 5, Tile.Dirt, rng, 0.08); // the shrine head
+  blob(c, 34, 17, 3, Tile.Dirt, rng, 0);
+  blob(c, 30, 17, 2, Tile.Dirt, rng, 0);
+  blob(c, 38, 17, 2, Tile.Dirt, rng, 0);
+  blob(c, 16, 32, 5, Tile.Dirt, rng, 0.12); // the working bank
+  blob(c, 26, 34, 5, Tile.Dirt, rng, 0.12);
+  blob(c, 34, 32, 4, Tile.Dirt, rng, 0.12);
+  blob(c, 44, 34, 5, Tile.Dirt, rng, 0.12);
+  blob(c, 52, 31, 4, Tile.Dirt, rng, 0.15);
+  blob(c, 46, 26, 4, Tile.Dirt, rng, 0.15); // the keep row
+  blob(c, 52, 18, 4, Tile.Dirt, rng, 0.15); // the roe bank
+  blob(c, 9, 21, 3, Tile.Dirt, rng, 0.1); // the west watch
+  blob(c, 30, 23, 31, Tile.Grass, rng, 0);
+  for (let i = 0; i < 80; i++) {
+    const x = rng.int(3, 56);
+    const y = rng.int(3, 42);
+    if (at(c, x, y) === Tile.Grass && rng.chance(0.8)) put(c, x, y, Tile.GrassTall);
+  }
+  // The dwelling bank: two reed hamlets sharing the north light.
+  reedHamlet(c, 14, 10, 4, rng);
+  reedHamlet(c, 25, 8, 3, rng);
+  // The heart: the ancestors' crescents flanking the tide's table,
+  // the lost cache warded between them, the lures lighting the rim.
+  put(c, 30, 14, Tile.WhaleRibs);
+  put(c, 38, 14, Tile.WhaleRibs);
+  put(c, 34, 15, Tile.TideAltar);
+  put(c, 34, 13, Tile.ChestIron);
+  put(c, 28, 18, Tile.TideTotem);
+  put(c, 40, 18, Tile.TideTotem);
+  put(c, 29, 27, Tile.TideTotem);
+  put(c, 39, 27, Tile.TideTotem);
+  put(c, 31, 16, Tile.LurePole);
+  put(c, 37, 16, Tile.LurePole);
+  // The weir gates: hurdles at both narrows, traps in the funnels.
+  put(c, 16, 22, Tile.WeirPanels);
+  put(c, 16, 26, Tile.WeirPanels);
+  put(c, 15, 24, Tile.FishTrap);
+  put(c, 48, 18, Tile.WeirPanels);
+  put(c, 48, 22, Tile.WeirPanels);
+  put(c, 49, 20, Tile.FishTrap);
+  // The working bank, west to east: the catch dried, the nets mended,
+  // the shells carved, the salt won, the kelp hung.
+  dryingGround(c, 16, 32, rng);
+  mendingRow(c, 26, 34, rng);
+  put(c, 33, 32, Tile.ShellBench);
+  put(c, 35, 34, Tile.ShellMidden);
+  put(c, 32, 30, Tile.TideChimes);
+  saltGarth(c, 44, 34, 3, rng);
+  kelpGarth(c, 53, 31, 3, rng);
+  // The live larder and the spawning bank keep the quiet east.
+  keepRow(c, 43, 26, 3, rng);
+  put(c, 51, 17, Tile.RoeNest);
+  put(c, 54, 19, Tile.RoeNest);
+  put(c, 49, 16, Tile.FishTrap);
+  // The west watch: harpoons by the mouth, a lure over the water.
+  put(c, 9, 21, Tile.HarpoonRack);
+  put(c, 8, 24, Tile.LurePole);
+  // Hulls drawn up past the tide line.
+  put(c, 12, 27, Tile.Dugout);
+  put(c, 20, 28, Tile.Dugout);
+  put(c, 39, 28, Tile.Dugout);
+  // The south approach, lure-lit the Charter's way.
+  lureWay(c, 31, 43, 31, 36, 8, rng);
+  // Worn tracks: the working bank's spine, the dwelling bank's walk.
+  track(c, 10, 29, 16, 31, rng);
+  track(c, 16, 31, 26, 33, rng);
+  track(c, 26, 33, 34, 31, rng);
+  track(c, 34, 31, 44, 32, rng);
+  track(c, 44, 32, 52, 30, rng);
+  track(c, 9, 19, 13, 13, rng);
+  track(c, 14, 12, 24, 9, rng);
+  track(c, 25, 9, 33, 14, rng);
+  track(c, 38, 16, 44, 25, rng);
+  track(c, 46, 25, 51, 18, rng);
+  scatter(c, 30, 23, 24, 10, [Tile.ShellMidden, Tile.BonePile], rng);
+  // The works round: down the lure way, the full working bank, the
+  // larder, and a long watch at the pool's south lip.
+  route(c, [
+    { dx: 31, dy: 42 },
+    { dx: 31, dy: 36 },
+    { dx: 27, dy: 36, dwell: 80 },
+    { dx: 22, dy: 34 },
+    { dx: 17, dy: 34, dwell: 100 },
+    { dx: 12, dy: 30, dwell: 60 },
+    { dx: 20, dy: 31 },
+    { dx: 29, dy: 32, dwell: 80 },
+    { dx: 36, dy: 31 },
+    { dx: 43, dy: 32, dwell: 80 },
+    { dx: 48, dy: 34 },
+    { dx: 52, dy: 29, dwell: 60 },
+    { dx: 49, dy: 27, dwell: 80 },
+    { dx: 44, dy: 28 },
+    { dx: 36, dy: 28, dwell: 100 },
+    { dx: 32, dy: 36 },
+  ]);
+  // The dwelling watch: the fire, the shelters, the shrine head, and
+  // both weir gates — the bank walked the way it is kept.
+  route(c, [
+    { dx: 15, dy: 12, dwell: 100, sit: true },
+    { dx: 21, dy: 10 },
+    { dx: 26, dy: 10, dwell: 60 },
+    { dx: 31, dy: 12 },
+    { dx: 33, dy: 16, dwell: 100 },
+    { dx: 28, dy: 16 },
+    { dx: 22, dy: 20 },
+    { dx: 17, dy: 21, dwell: 80 },
+    { dx: 10, dy: 20, dwell: 60 },
+    { dx: 12, dy: 16 },
+  ]);
+  return finish(c, 'poi_skral_village_longbanks', 'The long banks');
+}
+
+// --------------------------------------------------------------------
+// THE SALT GARTH (skral) — the works-village: the bank's money. A
+// broad bay at the south hem, the pan yard at the heart, the smoker
+// terrace east, the kelp garth west, and the dwelling knots on the
+// north rise under the shrine's one crescent. A different grammar
+// from the Long Banks on purpose — no two skral grounds share a read.
+function buildSkralSaltgarth(): PrefabDef {
+  const c = canvas(54, 44);
+  const rng = seedOf('poi_skral_village_saltgarth');
+  // The bay: the water the works drink.
+  blob(c, 27, 37, 5, Tile.WaterShallow, rng, 0);
+  blob(c, 18, 36, 4, Tile.WaterShallow, rng, 0);
+  blob(c, 36, 36, 4, Tile.WaterShallow, rng, 0);
+  blob(c, 27, 32, 2, Tile.WaterShallow, rng, 0);
+  sandHem(c);
+  // Worked pads before the meadow.
+  blob(c, 24, 22, 7, Tile.Dirt, rng, 0.1); // the pan yard
+  blob(c, 43, 21, 4, Tile.Dirt, rng, 0.12); // the smoker terrace
+  blob(c, 9, 22, 4, Tile.Dirt, rng, 0.15); // the kelp garth
+  blob(c, 17, 9, 6, Tile.Dirt, rng, 0.1); // the dwelling rise
+  blob(c, 31, 8, 4, Tile.Dirt, rng, 0.12);
+  blob(c, 44, 10, 4, Tile.Dirt, rng, 0.08); // the shrine knoll
+  blob(c, 25, 30, 3, Tile.Dirt, rng, 0.15); // the bay work line
+  blob(c, 27, 21, 27, Tile.Grass, rng, 0);
+  for (let i = 0; i < 70; i++) {
+    const x = rng.int(3, 50);
+    const y = rng.int(3, 40);
+    if (at(c, x, y) === Tile.Grass && rng.chance(0.8)) put(c, x, y, Tile.GrassTall);
+  }
+  // The pan yard: two worked ranks, the lure watching the money.
+  saltGarth(c, 22, 20, 4, rng);
+  saltGarth(c, 24, 25, 3, rng);
+  put(c, 32, 23, Tile.LurePole);
+  // The smoker terrace: the catch cured where the wind leaves east.
+  dryingGround(c, 43, 21, rng);
+  put(c, 41, 18, Tile.SmokeTripod);
+  // The kelp garth holds the west.
+  kelpGarth(c, 9, 21, 4, rng);
+  // The keep row drinks from the bay; the hulls rest on the sand.
+  // A village mends its nets wherever it works — the bench keeps the
+  // bay line even here (the pan yard is the money, not the meal).
+  keepRow(c, 22, 30, 3, rng);
+  put(c, 24, 28, Tile.MendingBench);
+  put(c, 14, 33, Tile.Dugout);
+  put(c, 33, 32, Tile.Dugout);
+  put(c, 40, 34, Tile.Dugout);
+  put(c, 35, 30, Tile.HarpoonRack);
+  put(c, 37, 31, Tile.LurePole);
+  // The bay works: hurdles standing in the shallows, traps in the run,
+  // the spawning nests in the quiet west corner.
+  put(c, 20, 34, Tile.WeirPanels);
+  put(c, 33, 35, Tile.WeirPanels);
+  put(c, 26, 35, Tile.FishTrap);
+  put(c, 31, 36, Tile.FishTrap);
+  put(c, 12, 31, Tile.RoeNest);
+  put(c, 10, 33, Tile.RoeNest);
+  // The dwelling rise: two knots of reed under the shrine's crescent.
+  reedHamlet(c, 17, 9, 4, rng);
+  reedHamlet(c, 31, 8, 3, rng);
+  ribShrine(c, 44, 10, rng);
+  put(c, 46, 12, Tile.ChestIron);
+  // The shell-carver works beside the shrine — the fans are for the
+  // ancestors before they are for anyone's neck.
+  put(c, 42, 12, Tile.ShellBench);
+  // The west approach, totem-marked and lure-lit.
+  lureWay(c, 4, 27, 13, 25, 9, rng);
+  put(c, 5, 25, Tile.TideTotem);
+  put(c, 9, 28, Tile.TideTotem);
+  // Worn tracks: garth to yard to terrace, rise to yard, bay line.
+  track(c, 6, 26, 16, 24, rng);
+  track(c, 16, 24, 22, 22, rng);
+  track(c, 22, 22, 28, 24, rng);
+  track(c, 28, 24, 34, 22, rng);
+  track(c, 34, 22, 40, 21, rng);
+  track(c, 17, 12, 20, 18, rng);
+  track(c, 31, 10, 30, 17, rng);
+  track(c, 30, 17, 42, 12, rng);
+  track(c, 22, 28, 27, 30, rng);
+  track(c, 27, 30, 34, 30, rng);
+  scatter(c, 27, 21, 20, 9, [Tile.ShellMidden, Tile.BonePile], rng);
+  // The panmaster's round: garth, both pan ranks, the keep row, the
+  // bay watch, the terrace, and the long sit at the shrine.
+  route(c, [
+    { dx: 5, dy: 27 },
+    { dx: 12, dy: 25, dwell: 60 },
+    { dx: 18, dy: 22, dwell: 100 },
+    { dx: 23, dy: 23 },
+    { dx: 26, dy: 27, dwell: 100 },
+    { dx: 23, dy: 29, dwell: 80 },
+    { dx: 30, dy: 28 },
+    { dx: 34, dy: 30, dwell: 60 },
+    { dx: 41, dy: 23, dwell: 100 },
+    { dx: 44, dy: 17 },
+    { dx: 44, dy: 13, dwell: 120, sit: true },
+    { dx: 36, dy: 14 },
+    { dx: 28, dy: 16 },
+    { dx: 20, dy: 18 },
+    { dx: 12, dy: 22 },
+  ]);
+  // The bay watch: the fires, the rise, the harpoons, the roe bank.
+  route(c, [
+    { dx: 17, dy: 11, dwell: 80, sit: true },
+    { dx: 24, dy: 12 },
+    { dx: 31, dy: 10, dwell: 60 },
+    { dx: 31, dy: 16 },
+    { dx: 30, dy: 22 },
+    { dx: 30, dy: 27 },
+    { dx: 34, dy: 29, dwell: 100 },
+    { dx: 27, dy: 29 },
+    { dx: 20, dy: 30, dwell: 60 },
+    { dx: 15, dy: 31 },
+    { dx: 12, dy: 29, dwell: 80 },
+    { dx: 10, dy: 25 },
+    { dx: 13, dy: 18 },
+    { dx: 15, dy: 13 },
+  ]);
+  return finish(c, 'poi_skral_village_saltgarth', 'The salt garth');
+}
+
 /** The landmark shelf — built once at module load, pinned forever. */
 export const LANDMARK_PREFABS: readonly PrefabDef[] = [
   buildBarrowfield(),
@@ -879,4 +1210,7 @@ export const LANDMARK_PREFABS: readonly PrefabDef[] = [
   buildDeadMuster(),
   buildDeadCloister(),
   buildDeadKingsrow(),
+  // THE DROWNED VILLAGES (skral): the banks' landmark grounds.
+  buildSkralLongbanks(),
+  buildSkralSaltgarth(),
 ];

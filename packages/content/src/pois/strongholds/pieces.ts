@@ -477,7 +477,7 @@ const skPools = piece(
     '__,::::::::,____',
     '_:.0~~..~~0.:___',
     '_:.~~~..~~~.,___',
-    '_:0....O....0___',
+    '_:0..!.O....0___',
     '_:.~~~..~~~.:___',
     '_:.0~~..~~0.,___',
     '__,::::::::,____',
@@ -495,7 +495,7 @@ const skRacks = piece(
     '_______________',
     '_)::):::)::)___',
     '_::::::::::::__',
-    '_:-...f.h.-:,__',
+    '_:-..?f.h.-:,__',
     '_:::k::::::::__',
     '_)::):::)::)___',
     '__,____,_______',
@@ -514,7 +514,7 @@ const skMiddens = piece(
     '__o::{:::o::____',
     '_,::::::::::o___',
     '_:o:..o...::{___',
-    '_::..o..-.w:,___',
+    '_::.?o..-.w:,___',
     '_:{:..:..o.::___',
     '_::::o:::::o____',
     '__o::{::o::_____',
@@ -534,7 +534,7 @@ const skNetyard = piece(
     '_::::::::::::,__',
     '_:{....b......__',
     '_::::::::::::,__',
-    '_`::{:::-::`____',
+    '_`::{:!:-::`____',
     '__,____,________',
     '________________',
   ],
@@ -615,6 +615,81 @@ const skKingspool = piece(
   skralLegend,
 );
 
+// THE CRAFTSMEN'S WARDS (docs/skral-decor-plan.md — the drowned
+// villages): the working shelf reaches the capital, so no two Great
+// Weirs deal the same districts. Same voice: FOUND, NEVER FELLED.
+const skSaltgarth = piece(
+  'ward',
+  'ward_sk_saltgarth',
+  'salt garth',
+  [
+    '_______________',
+    '_s::s:::s::s___',
+    '_::::::::::::__',
+    '_:w..!.-..w:,__',
+    '_::::::::::::__',
+    '_s::s:::s::s___',
+    '__,____,_______',
+    '_______________',
+  ],
+  undefined,
+  skralLegend,
+);
+
+const skMenders = piece(
+  'ward',
+  'ward_sk_menders',
+  'mending row',
+  [
+    '________________',
+    '_`::`:::`::`____',
+    '_::::::::::::,__',
+    '_:b...e...b..:__',
+    '_:..?.-....w.:__',
+    '_::::::::::::,__',
+    '__,____,________',
+    '________________',
+  ],
+  undefined,
+  skralLegend,
+);
+
+const skShelters = piece(
+  'ward',
+  'ward_sk_shelters',
+  'shelter row',
+  [
+    '_________________',
+    '__A::x::A:::A____',
+    '_,::::::::::::,__',
+    '_:.f...h....-.:__',
+    '_,::::::::::::,__',
+    '__A::x:::A::,____',
+    '___,________,____',
+    '_________________',
+  ],
+  [{ npc: 'skral', band: [2, 3] }],
+  skralLegend,
+);
+
+const skChimeway = piece(
+  'ward',
+  'ward_sk_chimeway',
+  'chime way',
+  [
+    '________________',
+    '__x::e::::e::x__',
+    '_::::::::::::,__',
+    '_:.O...x...O.:__',
+    '_::::::::::::,__',
+    '__x::!::::e::x__',
+    '___,________,___',
+    '________________',
+  ],
+  undefined,
+  skralLegend,
+);
+
 /** Every piece, by id — the Foundry's shelf. */
 export const WARD_PIECES: ReadonlyMap<string, WardPiece> = new Map(
   [
@@ -658,5 +733,9 @@ export const WARD_PIECES: ReadonlyMap<string, WardPiece> = new Map(
     skTotems,
     skWatch,
     skKingspool,
+    skSaltgarth,
+    skMenders,
+    skShelters,
+    skChimeway,
   ].map((p) => [p.prefab.id, p]),
 );

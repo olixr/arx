@@ -72,6 +72,9 @@ const WING_CAP = new Set([
   'poi_skral_midden',
   'poi_skral_wreck',
   'poi_skral_drying',
+  'poi_skral_saltcamp',
+  'poi_skral_kelpcamp',
+  'poi_skral_chimehollow',
 ]);
 
 /** Quiet wayside types: expanded gently, never into a sprawl. */
@@ -131,6 +134,10 @@ const EXEMPT = new Set([
   'poi_dead_muster',
   'poi_dead_cloister',
   'poi_dead_kingsrow',
+  // THE DROWNED VILLAGES: born expansive, and they carry their own
+  // water — influence must never redraw a bank the builder dug.
+  'poi_skral_village_longbanks',
+  'poi_skral_village_saltgarth',
 ]);
 
 export function expandInfluence(prefab: PrefabDef): PrefabDef {

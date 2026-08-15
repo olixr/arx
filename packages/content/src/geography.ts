@@ -765,6 +765,29 @@ const AUTHORED_PLAN: GeographyDef = {
     // east of the reserve with room for the prefab's INFLUENCE apron.
     // Weight-0: this door exists exactly once.
     { id: 'oldcrown_door', defId: 'oldcrown_gatehouse', x: -632, y: 62 },
+    // THE DROWNED VILLAGES (docs/skral-decor-plan.md) — the skral's
+    // curated waters: whole fish-folk villages standing where the
+    // plan's own lakes always wanted them. CELL-FORCED like the named
+    // dens (never pinned): a village is deliberately off every road —
+    // the discovery is the reward for walking a shore the roads never
+    // reach — and the cell scan finds the honest bank itself (the
+    // shore def's probe does the curating the pin can't).
+    // The Kingswater's south bank — the croaking Silverfall's
+    // fisherfolk have always rowed wide of.
+    { id: 'croakwater_banks', defId: 'skral_village', cell: [-5, -1] },
+    // The Amberfen's south hem — the weir-folk deep in the marsh
+    // the fen road only ever walks PAST. (The Glasswater was tried
+    // and lawfully refused: Pinewatch owns its east shore and the
+    // lake's heart owns every cell center a landmark scan can use.)
+    { id: 'amberfen_shoal', defId: 'skral_village', cell: [1, 1] },
+    // The Salt Flats' hem — the pan-folk working the one country
+    // that is ALL money, a league past Saltmere's patience.
+    { id: 'saltflat_garth', defId: 'skral_village', cell: [6, 3] },
+    // The cold water east of the tarn — the shoal in the Spinewall's
+    // shadow, the one village a new traveler can actually survive
+    // finding (the tarn's own cells are crag and were lawfully
+    // refused; this bank composes at tier 2 on the capital's flank).
+    { id: 'coldwater_shoal', defId: 'skral_village', cell: [-2, -3] },
   ],
   anchors: SETTLED_ANCHORS.map((a) => ({ ...a })),
   massifs: [

@@ -62,7 +62,10 @@
         "poi_skral_weir",
         "poi_skral_midden",
         "poi_skral_wreck",
-        "poi_skral_drying"
+        "poi_skral_drying",
+        "poi_skral_saltcamp",
+        "poi_skral_kelpcamp",
+        "poi_skral_chimehollow"
       ],
       "count": [2, 4]
     },

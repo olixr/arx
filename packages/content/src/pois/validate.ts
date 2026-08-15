@@ -209,6 +209,15 @@ export function validatePoiDef(
           }
         }
       }
+      // THE WILD CROWN: the flag the server's champion forge reads.
+      // It was silently dropped here before the drowned villages —
+      // the type promised it, the forge read it, the vet ate it.
+      const crowned =
+        g.crowned === undefined
+          ? undefined
+          : typeof g.crowned === 'boolean'
+            ? g.crowned
+            : (errors.push(`${at}: crowned must be a boolean`), undefined);
       if (role) {
         out.push({
           npc,
@@ -220,6 +229,7 @@ export function validatePoiDef(
           ...(patrol !== undefined ? { patrol } : {}),
           ...(hours !== undefined ? { hours } : {}),
           ...(names !== undefined ? { names } : {}),
+          ...(crowned !== undefined ? { crowned } : {}),
         });
       }
     }

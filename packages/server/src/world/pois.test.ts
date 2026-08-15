@@ -752,9 +752,13 @@ test('THE ROUND HAS STATIONS: authored landmark routes reach the composed patrol
   // the authored round (dwell and sit stops included) reached the
   // patrol sentry translated, not re-derived.
   const landmarkDefs = [...POI_DEFS.values()].filter((d) =>
-    ['goblin_mootfield', 'dead_chapel', 'goblin_warren', 'dead_muster'].includes(d.id),
+    // skral_village: the drowned villages walk two rounds each — the
+    // patrol proof covers the shore-gated landmark lane too.
+    ['goblin_mootfield', 'dead_chapel', 'goblin_warren', 'dead_muster', 'skral_village'].includes(
+      d.id,
+    ),
   );
-  assert.equal(landmarkDefs.length, 4, 'landmark defs missing from the registry');
+  assert.equal(landmarkDefs.length, 5, 'landmark defs missing from the registry');
   const ctx: PoiContext = { ...CTX, defs: landmarkDefs };
   let proved = 0;
   outer: for (let cy = -SCAN; cy <= SCAN && proved < 2; cy++) {
