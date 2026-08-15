@@ -15579,6 +15579,15 @@ export function drawBearHead(
  * two chunky pincers held forward (the left one the bigger crusher),
  * and stalked eyes off the front rim. The whole animal is the body
  * painter — head and tail branches return early.
+ *
+ * THE LIVING STALKS, inherited (the giant crab's doctrine come home):
+ * the eyes ride the ear sim — they lag the turn, sway with the
+ * scuttle, and pin flat through the clamp. The old rigged eyes hid
+ * behind two facing gates (`fy > -0.5`, the far-eye profile skip);
+ * stalks that grow off the TOP of the animal have no business
+ * disappearing at any band — THE SOCKET RIDES THE CROWN slides the
+ * root station onto visible shell instead, and the stalks always
+ * paint over the hull.
  */
 export interface CrabLook {
   shell: string;
@@ -15603,6 +15612,9 @@ export function paintCrabBody(
   look: CrabLook,
   f: BeastBlockFrame,
   at = 0,
+  nowMs = 0,
+  /** THE LIVING STALKS: the live ear sim; absent = the ONE REST chain. */
+  eyes?: EarSim,
 ): void {
   const hl = spec.bodyLen;
   const hw = look.bodyW;
@@ -15708,20 +15720,95 @@ export function paintCrabBody(
     },
   );
 
-  // Stalked eyes off the front rim — the far one hides at profile.
-  if (!dead && !f.hurt && fy > -0.5) {
-    for (const es of [-1, 1]) {
-      if (Math.abs(fx) > 0.7 && es * py < 0) continue;
-      const ex1 = bx + (fx * hl * 0.8 + px * es * hw * 0.3) * s;
-      const ey1 = gy + (fy * hl * 0.8 + py * es * hw * 0.3) * ys * s - look.shellH * 0.92 * s - lift;
-      ctx.strokeStyle = shade(look.shell, -22);
-      ctx.lineWidth = Math.max(1.2, s * 0.024);
+  // THE LIVING STALKS, mudcrab-sized — the giant crab's whole
+  // attachment doctrine at pebble scale: a turret socket seated on
+  // the shell's true curve, THE SOCKET RIDES THE CROWN (the station
+  // slides from the front rim onto the visible crown as the bow
+  // turns from the camera — the old rigged eyes simply VANISHED at
+  // the back bands and at profile, and stalks that grow off the top
+  // of the animal must show at every band), and THE GRAFT (one
+  // continuous curve from the socket's surface point into the live
+  // sim — or the ONE REST chain when no sim rides along).
+  if (!dead && !f.hurt) {
+    const dir = Math.atan2(fy, fx);
+    const phase = ((f.seed % 89) + 89) * 0.53;
+    const backK = Math.min(1, Math.max(0, (fy + 0.75) / 0.85));
+    const sockF = hl * 0.78 * (0.28 + 0.72 * backK);
+    const topAt = (X: number, Y: number): number =>
+      0.05 + look.shellH * (1 - 0.35 * Math.pow(X / hl, 2)) * (1 - 0.25 * Math.pow(Y / hw, 2));
+    const axp = bx + fx * (sockF + hl * 0.04) * s;
+    const ayp = gy + fy * (sockF + hl * 0.04) * ys * s - topAt(sockF, 0) * tk * s - lift;
+    // The socket stations and the chain roots must agree on spacing —
+    // a socket wider than its chain root bows every stem inward and
+    // the pair reads crossed (pass-one failure, paid).
+    const carriage: EarCarriage = {
+      azimuth: 0.55,
+      rootR: 0.055,
+      rootLift: 0.005,
+      length: 0.14,
+      spread: 0.4,
+      rise: 1.5,
+      curl: [0.1, 0.13, 0.16],
+    };
+    // The stalks pin flat through the clamp — the animal aims itself.
+    const pin = at > 0.55 ? Math.min(1, (at - 0.55) / 0.25) : 0;
+    if (eyes) eyes.update(axp, ayp, s, carriage, dir, pin, nowMs);
+    for (const side of [-1, 1] as const) {
+      const chain = eyes
+        ? eyes.chain(side, carriage, dir, pin)
+        : earRestChain(side, carriage, {
+            dir,
+            pin,
+            sway: 0.06 * Math.sin(nowMs / 560 + phase + side * 1.7),
+          });
+      const pts = chain.pts;
+      // The socket: a small dome on the shell at the slid station.
+      const sockY = side * hw * 0.2;
+      const sock = {
+        x: bx + (fx * sockF + px * sockY) * s,
+        y: gy + (fy * sockF + py * sockY) * ys * s - topAt(sockF, sockY) * tk * s - lift,
+      };
+      ctx.fillStyle = shade(shell, -10);
       ctx.beginPath();
-      ctx.moveTo(ex1, ey1 + s * 0.05);
-      ctx.lineTo(ex1, ey1 - s * 0.05);
+      facetCircle(ctx, sock.x, sock.y, s * 0.026, 6, side * 1.1);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(26, 20, 36, 0.35)';
+      ctx.lineWidth = Math.max(1, s * 0.01);
       ctx.stroke();
+      // THE GRAFT: base exactly ON the shell, tip exactly where the
+      // physics put it, one continuous curve between — no seam for
+      // any projection to open.
+      ctx.strokeStyle = shade(look.shell, -22);
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(1.2, s * 0.02);
+      ctx.beginPath();
+      const gx0 = sock.x;
+      const gy0 = sock.y - s * 0.008;
+      let ex1 = gx0;
+      let ey1 = gy0;
+      ctx.moveTo(gx0, gy0);
+      for (let i = 0; i < pts.length; i++) {
+        const t = pts.length > 1 ? i / (pts.length - 1) : 1;
+        const w2 = t * t * (3 - 2 * t);
+        ex1 = gx0 + (axp + pts[i]!.x * s - gx0) * (0.35 + 0.65 * w2);
+        ey1 = gy0 + (ayp + pts[i]!.y * s - gy0) * (0.35 + 0.65 * w2);
+        if (i === 0) {
+          ex1 = gx0 + (ex1 - gx0) * 0.4;
+          ey1 = gy0 + (ey1 - gy0) * 0.4;
+        }
+        ctx.lineTo(ex1, ey1);
+      }
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      // The eye bead stays the mudcrab's humble dark chip (the
+      // anti-twin law: only the rampart earns the amber lamp) — but
+      // it earns one wet glint.
       ctx.fillStyle = look.eye;
-      ctx.fillRect(ex1 - s * 0.024, ey1 - s * 0.095, s * 0.048, s * 0.048);
+      ctx.beginPath();
+      facetCircle(ctx, ex1, ey1, s * 0.03, 5, side * 1.3);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 250, 235, 0.7)';
+      ctx.fillRect(ex1 + s * 0.004, ey1 - s * 0.012, s * 0.009, s * 0.009);
     }
   }
 
@@ -20721,7 +20808,9 @@ export function drawBeast(
       return;
     }
     if (crabL) {
-      paintCrabBody(ctx, spec, crabL, blockFrame(), at);
+      // The mudcrab's live stalks ride the caller's ear sim too (the
+      // giant crab's contract, pebble-sized).
+      paintCrabBody(ctx, spec, crabL, blockFrame(), at, now, opts.ears);
       return;
     }
     if (giantCrabL) {

@@ -36974,11 +36974,13 @@ export class Renderer {
       if (anim.canidBrush) anim.canidBrush = undefined;
       if (anim.canidEars) anim.canidEars = undefined;
     }
-    // THE LIVING STALKS: the giant crab's eye stalks ride the ear
-    // contract — the body painter ticks the sim at the bow anchor it
-    // computes; the renderer owns lifecycle and the re-bake cue.
+    // THE LIVING STALKS: the crabs' eye stalks ride the ear contract
+    // — the body painter ticks the sim at the bow anchor it computes;
+    // the renderer owns lifecycle and the re-bake cue. Both crabs
+    // qualify: the giant's rampart stalks and the mudcrab's pebble
+    // pair run the same sim.
     let crabEyeSim: EarSim | undefined;
-    if (defId === 'giant_crab') {
+    if (defId.endsWith('crab')) {
       anim.crabEyes ??= new EarSim(eid);
       crabEyeSim = anim.crabEyes;
     } else if (anim.crabEyes) {

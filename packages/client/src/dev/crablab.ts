@@ -66,7 +66,7 @@ interface Fig {
   legs?: LegRig;
   knee?: number[];
   walkPhase?: number;
-  /** THE LIVING STALKS: live eye-stalk pair per giant-crab fig. */
+  /** THE LIVING STALKS: live eye-stalk pair per crab fig (both). */
   eyes?: EarSim;
   manLegs?: LegSolver;
   manKnee?: number[];
@@ -171,8 +171,9 @@ function drawQuad(
   // the snap all read.
   const attackT = mode === 'clamp' ? (now * 0.0011) % 1 : 0;
   const hurt = mode === 'hurt';
-  // THE LIVING STALKS: giant-crab figs run the live sim the game runs.
-  if (f.defId === 'giant_crab') f.eyes ??= new EarSim(seed * 31 + 7);
+  // THE LIVING STALKS: crab figs run the live sim the game runs —
+  // the giant AND the mudcrab (the doctrine come home).
+  if (f.defId.endsWith('crab')) f.eyes ??= new EarSim(seed * 31 + 7);
   drawBeast(ctx, {
     x,
     y,

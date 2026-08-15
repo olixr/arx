@@ -15,6 +15,7 @@ import {
   CRAB_LOOK,
   GIANTCRAB_LOOK,
   beastSpec,
+  paintCrabBody,
   paintGiantCrabBody,
 } from './rig.js';
 import { EarSim } from './earPhysics.js';
@@ -149,6 +150,73 @@ function mockCtx(): CanvasRenderingContext2D {
     },
   }) as unknown as CanvasRenderingContext2D;
 }
+
+/** A counting stand-in: rejects NaN AND tallies eye-bead fills. */
+function countingCtx(onEyeFill: () => void): CanvasRenderingContext2D {
+  const state = {
+    fillStyle: '#000' as string,
+    strokeStyle: '#000' as string,
+    lineWidth: 1,
+    lineCap: 'butt',
+    lineJoin: 'miter',
+    globalAlpha: 1,
+  };
+  return new Proxy(state, {
+    get(target, prop: string) {
+      if (prop in target) return target[prop as keyof typeof target];
+      if (prop === 'fill') {
+        return (...args: unknown[]) => {
+          check(args);
+          if (state.fillStyle === CRAB_LOOK.eye) onEyeFill();
+        };
+      }
+      return (...args: unknown[]) => check(args);
+    },
+    set(target, prop: string, value) {
+      (target as Record<string, unknown>)[prop] = value;
+      return true;
+    },
+  }) as unknown as CanvasRenderingContext2D;
+}
+
+test('THE LIVING STALKS come home: the mudcrab eyes stand at every band', () => {
+  // The old rigged eyes hid behind facing gates (`fy > -0.5`, the
+  // far-eye profile skip) — extensions off the TOP of the animal
+  // have no business vanishing at any band. Both beads must paint
+  // at all eight facings, on the live sim AND the stateless rest,
+  // NaN-free throughout.
+  const g = globalThis as { Path2D?: unknown };
+  const hadPath = g.Path2D;
+  g.Path2D = FakePath2D;
+  try {
+    const spec = beastSpec('mudcrab', 0.24, 2.2);
+    const eyes = new EarSim(11);
+    for (let band = 0; band < 8; band++) {
+      const dir = (band / 8) * Math.PI * 2;
+      const frame = {
+        bx: 100,
+        gy: 100,
+        s: 48,
+        fx: Math.cos(dir),
+        fy: Math.sin(dir),
+        ys: 0.6,
+        seed: 77 + band,
+        hurt: false,
+        bob: 0,
+        roll: 0,
+      };
+      for (const sim of [undefined, eyes]) {
+        for (const at of [0, 0.9]) {
+          let beads = 0;
+          paintCrabBody(countingCtx(() => beads++), spec, CRAB_LOOK, frame, at, band * 120, sim);
+          assert.equal(beads, 2, `band ${band} at ${at}: both eye beads stand`);
+        }
+      }
+    }
+  } finally {
+    g.Path2D = hadPath;
+  }
+});
 
 test('the whole animal paints clean: 8 bands, live and dead, coiled and clamped', () => {
   const g = globalThis as { Path2D?: unknown };
