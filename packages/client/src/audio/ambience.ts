@@ -5,10 +5,14 @@
  *
  * Layers, all crossfaded continuously by zone weight and clock:
  *  - LEAF RUSTLE (the "wind"): a GRANULAR texture — a pre-rendered
- *    stereo loop of hundreds of overlapping micro-grains (each a
- *    15-80ms flutter), so the sound flickers like foliage instead of
- *    washing like water. Gated by the squared gust curve of the SAME
- *    wind field the grass and trees bend to; silent between gusts.
+ *    stereo loop of long, heavily overlapped grains breathing over a
+ *    floor, pink-tinted and seated dark, so a gust reads as a calm
+ *    exhale through the canopy (the BOTW register: chill, never
+ *    busy). v2 by user verdict: the first build's fast micro-grain
+ *    flicker read as a paper bag scrunching — fast deep flicker on
+ *    bright noise IS crinkle, so this voice may never carry it.
+ *    Gated by the squared gust curve of the SAME wind field the
+ *    grass and trees bend to; silent between gusts.
  *    THE BAN (two user rejections): NO continuous filtered-noise bed
  *    may ever play, in any band — a smooth gain envelope on noise
  *    reads as waves crashing, full stop. Granular or nothing.
@@ -130,8 +134,8 @@ export class AmbienceSystem {
       // like the grass is still. No floor term, ever.
       const windLevel = (w.wild * 1 + w.town * 0.5) * wind * wind * (0.6 + 0.4 * day) * 0.06;
       this.windGain!.gain.setTargetAtTime(windLevel, t, 0.4);
-      // A cresting gust flutters slightly brighter — leaves, not a tone.
-      this.windFilter!.frequency.setTargetAtTime(4000 + wind * 700, t, 0.5);
+      // A cresting gust opens slightly brighter — a breath, not a hiss.
+      this.windFilter!.frequency.setTargetAtTime(2400 + wind * 500, t, 0.6);
       this.rumbleGain!.gain.setTargetAtTime(w.cave * 0.1, t, 0.8);
       const cr = night * outdoor * 0.038;
       for (const g of this.cricketGains) g.gain.setTargetAtTime(cr, t, 0.6);
@@ -216,18 +220,18 @@ export class AmbienceSystem {
       return src;
     };
 
-    // LEAF RUSTLE — granular, never a noise bed. Smooth noise with a
-    // gain envelope IS the sound of surf, whatever band it sits in
-    // (two user rejections). Foliage flickers: hundreds of tiny
-    // flutter-grains, decorrelated left/right, looping seamlessly.
-    // The gain is driven on a squared gust curve in update().
+    // LEAF RUSTLE — granular, never a flat noise bed (the surf law),
+    // and never a fast flicker (the paper-bag law). The texture
+    // undulates INSIDE the loop; the squared gust curve in update()
+    // still owns when it sounds at all. Seated dark and wide — calm
+    // canopy, not bright crinkle.
     const rustle = ctx.createBufferSource();
     rustle.buffer = this.makeRustleBuffer(ctx);
     rustle.loop = true;
     this.windFilter = ctx.createBiquadFilter();
     this.windFilter.type = 'bandpass';
-    this.windFilter.frequency.value = 4300;
-    this.windFilter.Q.value = 0.45;
+    this.windFilter.frequency.value = 2600;
+    this.windFilter.Q.value = 0.3;
     this.windGain = ctx.createGain();
     this.windGain.gain.value = 0;
     rustle.connect(this.windFilter);
@@ -342,11 +346,17 @@ export class AmbienceSystem {
   }
 
   /**
-   * Pre-render the leaf texture: white noise multiplied by a granular
-   * envelope — ~55 overlapping sin²-windowed grains per second, each
-   * 20-80ms with squared-random amplitude (many soft, few loud), wrapped
-   * at the loop seam. The chaotic 8-25 Hz amplitude flicker this makes
-   * is what separates leaves from water; a smooth envelope cannot.
+   * Pre-render the leaf texture, v2 — THE CALM CANOPY. The first
+   * build's 20-80ms micro-grains flickering to silence read as a
+   * paper bag scrunching (user verdict): fast, deep amplitude
+   * flicker on bright noise IS crinkle. What a gust through leaves
+   * actually does is BREATHE — so this loop is long (120-350ms),
+   * heavily overlapped sin²-windowed grains riding OVER a floor
+   * (the texture undulates, it never blinks), on pink-tinted noise
+   * so the energy leans dark, with two slow whole-loop swells
+   * (seam-safe sine multiples, phase-offset per channel) letting
+   * the canopy inhale and exhale. Decorrelated left/right. The
+   * paper-bag law: no fast bright flicker in this voice, ever.
    */
   private makeRustleBuffer(ctx: AudioContext): AudioBuffer {
     const secs = 6;
@@ -354,12 +364,14 @@ export class AmbienceSystem {
     const buf = ctx.createBuffer(2, rate * secs, rate);
     for (let ch = 0; ch < 2; ch++) {
       const d = buf.getChannelData(ch);
+      // The undulation: ~30 long grains/sec, average overlap ~7 deep,
+      // so the summed surface rolls gently instead of sparkling.
       const env = new Float32Array(d.length);
-      const grains = secs * 55;
+      const grains = secs * 30;
       for (let g = 0; g < grains; g++) {
         const start = Math.floor(Math.random() * d.length);
-        const glen = Math.floor(rate * (0.02 + Math.random() * 0.06));
-        const amp = Math.random() * Math.random();
+        const glen = Math.floor(rate * (0.12 + Math.random() * 0.23));
+        const amp = 0.4 + 0.6 * Math.random();
         for (let i = 0; i < glen; i++) {
           const w = Math.sin((Math.PI * i) / glen);
           const idx = (start + i) % d.length;
@@ -369,7 +381,22 @@ export class AmbienceSystem {
       let peak = 0;
       for (let i = 0; i < env.length; i++) peak = Math.max(peak, env[i]!);
       const inv = peak > 0 ? 1 / peak : 1;
-      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * env[i]! * inv;
+      // Kellet's economy pink filter — the darkness is in the source,
+      // not just the seat, so nothing bright survives to crinkle.
+      let b0 = 0;
+      let b1 = 0;
+      let b2 = 0;
+      const phase = ch * 2.1;
+      for (let i = 0; i < d.length; i++) {
+        const u = (i / d.length) * Math.PI * 2;
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99765 * b0 + white * 0.099046;
+        b1 = 0.963 * b1 + white * 0.2965164;
+        b2 = 0.57 * b2 + white * 1.0526913;
+        const pink = (b0 + b1 + b2 + white * 0.1848) * 0.22;
+        const breath = 1 + 0.1 * Math.sin(u * 2 + phase) + 0.06 * Math.sin(u * 5 + phase * 1.7);
+        d[i] = pink * (0.45 + 0.55 * env[i]! * inv) * breath;
+      }
     }
     return buf;
   }
