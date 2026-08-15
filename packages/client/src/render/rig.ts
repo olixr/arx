@@ -16152,19 +16152,30 @@ export function paintGiantCrabBody(
     [0, -hw],
     [hl * 0.45, -hw * 0.8],
   ];
-  // THE LIVING STALKS peek over the skyline from behind: walking away
-  // they paint under the hull's own overdraw, tips clearing the crown.
-  const stalksFirst = fy < -0.45;
   const drawStalks = (): void => {
     if (dead || f.hurt) return;
     // THE STALK GROWS FROM A SOCKET (the attachment law): every
     // appendage roots at a visible fixture ON the body's surface, at
     // every band — a stem that begins in open air reads as a severed
     // prop. Each stalk owns a turret socket seated on the shell's
-    // true curve; the stem's path STARTS at that socket point, so no
+    // true curve; the stem GRAFTS onto that socket point, so no
     // projection can ever open daylight between stalk and shell.
-    const axp = bx + fx * hl * 0.55 * s;
-    const ayp = gy + fy * hl * 0.55 * ys * s - (look.rimBot + topH(hl * 0.55)) * tk * s - lift;
+    //
+    // THE SOCKET RIDES THE CROWN (the ridge law, applied to a
+    // fixture): anatomically the stalks root at the bow, but a bow
+    // socket walks behind the skyline as the facing turns away and
+    // the stems read severed at the back quarters (user-flagged
+    // twice — paint-order tricks cannot fix what the projection
+    // hides). The socket station slides toward the crown's peak as
+    // the bow turns from the camera: dead-on it sits at the bow;
+    // from behind it rides the visible crown top. The stalks then
+    // always paint OVER the hull — dome and stem on readable
+    // surface at all eight bands, by construction.
+    const backK = Math.min(1, Math.max(0, (fy + 0.75) / 0.85));
+    const sockF = domeC + (hl * 0.52 - domeC) * (0.25 + 0.75 * backK);
+    const axp = bx + fx * (sockF + hl * 0.03) * s;
+    const ayp =
+      gy + fy * (sockF + hl * 0.03) * ys * s - (look.rimBot + topH(sockF)) * tk * s - lift;
     const carriage: EarCarriage = {
       azimuth: 0.5,
       rootR: 0.09,
@@ -16187,8 +16198,9 @@ export function paintGiantCrabBody(
           });
       const pts = chain.pts;
       // The socket: a small turret dome on the shell at this stalk's
-      // own station, painted first so the stem rises out of it.
-      const sockX = hl * 0.52;
+      // own station (the slid crown station), painted first so the
+      // stem rises out of it.
+      const sockX = sockF;
       const sockY = side * hw * 0.16;
       const sock = P3(sockX, sockY, surf(sockX, sockY));
       ctx.fillStyle = shade(shell, -8);
@@ -16244,8 +16256,6 @@ export function paintGiantCrabBody(
       ctx.fillRect(ex1 - s * 0.006 + s * 0.012, ey1 - s * 0.018, s * 0.012, s * 0.012);
     }
   };
-  if (stalksFirst) drawStalks();
-
   paintBlockBody(
     ctx,
     f,
@@ -16452,7 +16462,7 @@ export function paintGiantCrabBody(
     }
   }
 
-  if (!stalksFirst) drawStalks();
+  drawStalks();
 
   if (!deferNearClaws) paintGiantCrabClaws(ctx, spec, look, f, 'near', at, nowMs);
 }
