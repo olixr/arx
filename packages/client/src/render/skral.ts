@@ -72,6 +72,13 @@ export interface SkralLook {
   trident?: boolean;
   /** An eye that lost an argument: lid seam + a notched crest. */
   scarred?: boolean;
+  /**
+   * Jaw-span multiplier (default 1) — a HEAD dial, not a limb one
+   * (the dialect law): the deepking's maw out-spans its shoal, the
+   * tidecaller's is a shade daintier. Feeds the mouth span, the
+   * gape's drop, and the corner fangs.
+   */
+  jaw?: number;
   /** Frame multiplier: jaw span, crest reach, belly swell. */
   heavy: number;
   /** Spawn seed carried on the resolved look — per-body wear. */
@@ -118,6 +125,7 @@ export const SKRAL_LOOKS: Record<string, SkralLook> = {
     ray: '#3d6a62',
     cloth: '#4a4a3e',
     garb: '#3d4a54',
+    jaw: 0.94,
     heavy: 0.95,
   },
   // THE DEEPKING: abyss-grey bulk, a tall crimson crest, coral studs
@@ -134,6 +142,7 @@ export const SKRAL_LOOKS: Record<string, SkralLook> = {
     crowned: true,
     trident: true,
     scarred: true,
+    jaw: 1.14,
     heavy: 1.3,
   },
 };
@@ -474,76 +483,208 @@ export function paintSkralHead(
     return;
   }
 
-  // ---- THE GAPE: the cut, the teeth, and the dropped shovel.
-  // The mouth line sweeps the skull's whole width — sagging at the
-  // middle, rising to corners BELOW the eyes: the grim fish grin.
+  // ---- THE MOUTH IS BUILT (user-directed premium round): never
+  // again a wire with ticks. A lip VAULT with weight, two corner
+  // stations that track the turn HONESTLY (the far corner wraps
+  // BEHIND the muzzle as the head turns — stretching it across the
+  // cheek at profile was the orientation lie), a jaw HINGED at those
+  // corners, teeth in two courses, a tongue in a throat you can see
+  // into mid-croak, and an underlip that gives the shut grin a chin.
+  const jawK = sk.jaw ?? 1;
+  const s = f.s;
   const mY = headY + skH * (0.3 - 0.04 * pk);
-  const mSpan = skW * (1.0 - 0.12 * pk);
+  const mSpan = skW * (1.0 - 0.1 * pk) * jawK;
   const cxm = headX + lead * mzl * 0.45;
-  const sag = skH * 0.14;
-  const drop = gape * skH * (0.5 + 0.15 * hv);
-  if (gape > 0.12) {
-    // The mouth-room: dark, then the pale shovel swinging under it.
+  // Corner stations. Both corners RISE (the grim grin); the near
+  // corner sweeps further up as the head turns (the fish profile's
+  // up-cut mouth line, rising toward the eye), while the far corner
+  // slides toward the muzzle line and around it — past the ¾ band
+  // the mouth is one-sided BY CONSTRUCTION, not by a gate.
+  const farK = Math.max(0.12, 1 - 0.95 * pk);
+  const nX = cxm + lead * mSpan;
+  const nY = mY - skH * (0.05 + 0.1 * pk);
+  const fX = cxm - lead * mSpan * farK;
+  const fY = mY - skH * 0.05 * (1 - pk);
+  // The sag control: the seam pools low mid-muzzle, biased to lead.
+  const sagX = cxm + lead * mzl * 0.2;
+  const sagY = mY + skH * 0.3;
+  const qx = (t: number): number => (1 - t) * (1 - t) * fX + 2 * (1 - t) * t * sagX + t * t * nX;
+  const qy = (t: number): number => (1 - t) * (1 - t) * fY + 2 * (1 - t) * t * sagY + t * t * nY;
+  const drop = gape * skH * (0.48 + 0.14 * hv) * jawK;
+  const dropCtl = drop * 2.2; // control-point depth → true mid-gap ≈ drop
+  const seamW = Math.max(1.5, s * (0.022 + 0.009 * hv));
+  const lipH = s * (0.02 + 0.009 * hv);
+  const open = gape > 0.1;
+
+  // The far side of everything below fades out as the corner wraps.
+  const farSide = pk < 0.55;
+
+  if (open) {
+    // THE MOUTH-ROOM: upper boundary is the LIP LINE (it never
+    // moves); the lower boundary is the jaw's inner rim, hinged at
+    // the corners and dropping through the croak. Filled ink — the
+    // dark a mouth full of needles deserves.
     ctx.fillStyle = hurt ? '#ffffff' : sk.ink;
     ctx.beginPath();
-    ctx.moveTo(cxm - mSpan, mY);
-    ctx.quadraticCurveTo(cxm, mY + sag + drop * 0.4, cxm + mSpan, mY);
-    ctx.quadraticCurveTo(cxm, mY + sag * 0.2, cxm - mSpan, mY);
+    ctx.moveTo(fX, fY);
+    ctx.quadraticCurveTo(sagX, sagY, nX, nY);
+    ctx.quadraticCurveTo(sagX, sagY + dropCtl, fX, fY);
     ctx.fill();
-    ctx.fillStyle = belly;
+    if (!hurt) {
+      // THE TONGUE: a coral mass lying in the jaw's floor — the one
+      // warm note on a cold body, and what makes the open mouth a
+      // MOUTH instead of a hole. Rises slightly as the croak loads.
+      const jawMidY = 0.25 * fY + 0.5 * (sagY + dropCtl) + 0.25 * nY;
+      if (pk < 0.8 && drop > s * 0.02) {
+        ctx.fillStyle = '#a05c56';
+        ctx.beginPath();
+        ctx.ellipse(
+          qx(0.5),
+          jawMidY - drop * 0.16 - gular * s * 0.012,
+          mSpan * 0.4 * (1 - 0.3 * pk),
+          Math.min(drop * 0.34, s * 0.034),
+          0,
+          Math.PI,
+          Math.PI * 2,
+        );
+        ctx.fill();
+        // The tongue's center crease.
+        ctx.strokeStyle = '#7a423e';
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        ctx.moveTo(qx(0.5) - mSpan * 0.2 * (1 - 0.3 * pk), jawMidY - drop * 0.18);
+        ctx.quadraticCurveTo(qx(0.5), jawMidY - drop * 0.3, qx(0.5) + mSpan * 0.2 * (1 - 0.3 * pk), jawMidY - drop * 0.18);
+        ctx.stroke();
+      }
+      // LOWER TEETH: short needles standing UP from the jaw rim into
+      // the room — sparser than the upper course, and never at the
+      // hinge corners.
+      ctx.fillStyle = SKRAL_TOOTH;
+      for (const t of pk > 0.62 ? [0.42, 0.68] : [0.3, 0.5, 0.7]) {
+        const jy = (1 - t) * (1 - t) * fY + 2 * (1 - t) * t * (sagY + dropCtl) + t * t * nY;
+        const tl = s * (0.022 + 0.008 * hv) * (0.6 + 0.5 * gape);
+        const txp = qx(t);
+        ctx.beginPath();
+        ctx.moveTo(txp - s * 0.012, jy);
+        ctx.lineTo(txp, jy - tl);
+        ctx.lineTo(txp + s * 0.012, jy);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    // THE SHOVEL: the lower jaw's own pale mass — a band of real
+    // thickness under the room, hinged at the same corners, with a
+    // darker rim so the chin reads as a form, not a smear.
+    const jawTh = s * (0.028 + 0.014 * hv) * (0.5 + 0.5 * gape);
+    ctx.fillStyle = hurt ? '#ffffff' : belly;
     ctx.beginPath();
-    ctx.moveTo(cxm - mSpan * 0.88, mY + drop * 0.35);
-    ctx.quadraticCurveTo(cxm, mY + sag + drop, cxm + mSpan * 0.88, mY + drop * 0.35);
-    ctx.quadraticCurveTo(cxm, mY + sag * 0.5 + drop * 0.75, cxm - mSpan * 0.88, mY + drop * 0.35);
+    ctx.moveTo(fX, fY);
+    ctx.quadraticCurveTo(sagX, sagY + dropCtl, nX, nY);
+    ctx.quadraticCurveTo(sagX, sagY + dropCtl + jawTh * 2.4, fX, fY + jawTh * 0.4);
     ctx.fill();
+    if (!hurt) {
+      ctx.strokeStyle = shade(sk.belly, -16);
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(fX + lead * mSpan * 0.1, fY + jawTh * 0.5);
+      ctx.quadraticCurveTo(sagX, sagY + dropCtl + jawTh * 1.9, nX - lead * mSpan * 0.08, nY + jawTh * 0.7);
+      ctx.stroke();
+    }
   }
   if (!hurt) {
-    // The cut: one long BOLD ink seam, always worn — shut or gaping.
-    // The grin is half the species; a timid seam is a costume.
+    // UPPER TEETH: the needle course hangs from UNDER the lip — the
+    // overbite shows even shut (the reference art's law: a skral
+    // never fully sheathes its argument). Corner teeth run longer:
+    // the fang gradient, not a picket fence.
+    ctx.fillStyle = SKRAL_TOOTH;
+    const uppers = pk > 0.62 ? [0.2, 0.42, 0.62, 0.82] : [0.12, 0.28, 0.44, 0.58, 0.72, 0.86];
+    for (const t of uppers) {
+      const txp = qx(t);
+      const typ = qy(t) + seamW * 0.25;
+      const cornerK = 1 + 0.7 * Math.max(0, Math.abs(t - 0.5) - 0.22) * 2;
+      const tl = s * (0.026 + 0.011 * hv) * (1 + 0.55 * gape) * cornerK;
+      ctx.beginPath();
+      ctx.moveTo(txp - s * 0.014, typ);
+      ctx.lineTo(txp + s * 0.002, typ + tl);
+      ctx.lineTo(txp + s * 0.016, typ);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // THE LIP VAULT: a filled band riding ABOVE the seam — the mouth
+    // gets WEIGHT, the teeth get a gum to grow from, and the lit top
+    // edge models the muzzle's underside plane (flat forge law).
+    ctx.fillStyle = shade(sk.hide, -6);
+    ctx.beginPath();
+    ctx.moveTo(fX, fY);
+    ctx.quadraticCurveTo(sagX, sagY, nX, nY);
+    ctx.lineTo(nX - lead * s * 0.006, nY - lipH);
+    ctx.quadraticCurveTo(sagX, sagY - lipH * 2.1, fX + lead * s * 0.005, fY - lipH);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = shade(sk.hide, 7);
+    ctx.lineWidth = Math.max(1, s * 0.011);
+    ctx.beginPath();
+    ctx.moveTo(fX + lead * mSpan * farK * 0.25, fY - lipH * 0.95);
+    ctx.quadraticCurveTo(sagX, sagY - lipH * 2.0, nX - lead * mSpan * 0.12, nY - lipH * 0.95);
+    ctx.stroke();
+    // THE SEAM: the lip's own lower edge — bold, one stroke.
     ctx.strokeStyle = sk.ink;
-    ctx.lineWidth = Math.max(1.5, f.s * (0.026 + 0.01 * hv));
+    ctx.lineWidth = seamW;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(cxm - mSpan, mY);
-    ctx.quadraticCurveTo(cxm, mY + sag + drop * 0.4, cxm + mSpan, mY);
+    ctx.moveTo(fX, fY);
+    ctx.quadraticCurveTo(sagX, sagY, nX, nY);
     ctx.stroke();
-    // Needle ticks riding the cut — down-teeth off the upper lip,
-    // two up-needles at the corners: chunky pale fills, never hairs.
+    // THE UNDERLIP: shut, the lower lip's shadow line gives the grin
+    // a chin to sit on (open, the shovel owns that read).
+    if (!open) {
+      ctx.strokeStyle = shade(sk.hide, -15);
+      ctx.lineWidth = Math.max(1, s * 0.013);
+      ctx.beginPath();
+      ctx.moveTo(qx(0.16), qy(0.16) + seamW * 1.1);
+      ctx.quadraticCurveTo(sagX, sagY + seamW * 2.6, qx(0.86), qy(0.86) + seamW * 1.2);
+      ctx.stroke();
+    }
+    // CORNER FANGS: the tall up-needles proud of the lip at the
+    // hinges — the near one always, the far one until the corner
+    // wraps. They ride the CORNERS now, so every band seats them on
+    // the mouth's true ends.
     ctx.fillStyle = SKRAL_TOOTH;
-    const teeth = pk > 0.62 ? 4 : 6;
-    for (let i = 0; i < teeth; i++) {
-      const t = (i + 0.5) / teeth;
-      const txp = cxm - mSpan + t * mSpan * 2;
-      const typ = mY + Math.sin(t * Math.PI) * sag * 0.9 + drop * 0.38 * Math.sin(t * Math.PI);
-      const tl = f.s * (0.034 + 0.012 * hv) * (1 + 0.5 * gape);
+    const fangs: Array<[number, number, number]> = [[nX - lead * s * 0.01, nY, lead]];
+    if (farSide) fangs.push([fX + lead * s * 0.012, fY, -lead]);
+    for (const [txp, typ, sgn] of fangs) {
+      const fl = s * (0.042 + 0.015 * hv) * (0.9 + 0.25 * jawK);
       ctx.beginPath();
-      ctx.moveTo(txp - f.s * 0.015, typ);
-      ctx.lineTo(txp, typ + tl);
-      ctx.lineTo(txp + f.s * 0.015, typ);
+      ctx.moveTo(txp - s * 0.015, typ + drop * 0.25);
+      ctx.lineTo(txp + sgn * s * 0.008, typ - fl + drop * 0.25);
+      ctx.lineTo(txp + s * 0.016, typ + drop * 0.25);
       ctx.closePath();
       ctx.fill();
     }
-    for (const sgn of pk > 0.62 ? [lead] : [-1, 1]) {
-      const txp = cxm + sgn * mSpan * 0.84;
-      ctx.beginPath();
-      ctx.moveTo(txp - f.s * 0.016, mY + drop * 0.3);
-      ctx.lineTo(txp + sgn * f.s * 0.007, mY - f.s * 0.042 - 0.014 * f.s * hv + drop * 0.3);
-      ctx.lineTo(txp + f.s * 0.016, mY + drop * 0.3);
-      ctx.closePath();
-      ctx.fill();
-    }
-    // Barbels: one whisker off each mouth corner, ink, hanging.
+    // CORNER CREASES: one short rising cut past each live corner —
+    // the muscle that works a jaw this wide.
     ctx.strokeStyle = sk.ink;
-    ctx.lineWidth = Math.max(1, f.s * 0.012);
-    for (const sgn of pk > 0.62 ? [lead] : [-1, 1]) {
-      const bx = cxm + sgn * mSpan * 0.98;
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = Math.max(1, s * 0.012);
+    ctx.beginPath();
+    ctx.moveTo(nX + lead * s * 0.004, nY - s * 0.004);
+    ctx.lineTo(nX + lead * s * 0.022, nY - s * 0.026);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    // Barbels: one whisker off each LIVE corner, ink, hanging on the
+    // slow clock.
+    ctx.strokeStyle = sk.ink;
+    ctx.lineWidth = Math.max(1, s * 0.012);
+    const barbs: Array<[number, number, number]> = [[nX, nY, lead]];
+    if (farSide) barbs.push([fX, fY, -lead]);
+    for (const [bx, by, sgn] of barbs) {
       ctx.beginPath();
-      ctx.moveTo(bx, mY + f.s * 0.005);
+      ctx.moveTo(bx, by + drop * 0.3 + s * 0.008);
       ctx.quadraticCurveTo(
-        bx + sgn * f.s * 0.02,
-        mY + f.s * 0.045,
-        bx + sgn * f.s * 0.008,
-        mY + f.s * (0.07 + (hurt ? 0 : 0.008 * Math.sin(nowMs / 480 + sgn))),
+        bx + sgn * s * 0.02,
+        by + drop * 0.3 + s * 0.05,
+        bx + sgn * s * 0.008,
+        by + drop * 0.3 + s * (0.075 + 0.008 * Math.sin(nowMs / 480 + sgn)),
       );
       ctx.stroke();
     }
@@ -551,20 +692,20 @@ export function paintSkralHead(
     ctx.fillStyle = sk.ink;
     for (const sgn of [-1, 1]) {
       ctx.beginPath();
-      ctx.arc(cxm + sgn * skW * 0.1 * (1 - pk * 0.5) + lead * mzl * 0.2, headY - skH * 0.52, f.s * 0.011, 0, Math.PI * 2);
+      ctx.arc(cxm + sgn * skW * 0.1 * (1 - pk * 0.5) + lead * mzl * 0.2, headY - skH * 0.52, s * 0.011, 0, Math.PI * 2);
       ctx.fill();
     }
-    // Gill seams: three curved cuts on the near cheek, under the eye
-    // — front-gated (they live on the head's SIDE, so they read best
-    // at the ¾ bands and vanish into the turn honestly).
+    // Gill seams: three curved cuts on the near cheek behind the
+    // grin's rising corner — they live on the head's SIDE, so they
+    // read at the ¾ bands and vanish into the turn honestly.
     if (pk > 0.2) {
       ctx.strokeStyle = shade(sk.hide, -16);
-      ctx.lineWidth = Math.max(1, f.s * 0.014);
+      ctx.lineWidth = Math.max(1, s * 0.014);
       for (let g = 0; g < 3; g++) {
-        const gx = cxm + lead * (mSpan * 0.72 - g * f.s * 0.028);
+        const gx = nX - lead * (s * 0.02 + g * s * 0.03);
         ctx.beginPath();
-        ctx.moveTo(gx, mY - skH * 0.16);
-        ctx.quadraticCurveTo(gx - lead * f.s * 0.014, mY - skH * 0.02, gx, mY + skH * 0.1);
+        ctx.moveTo(gx, nY - skH * 0.14);
+        ctx.quadraticCurveTo(gx - lead * s * 0.014, nY, gx, nY + skH * 0.12);
         ctx.stroke();
       }
     }
