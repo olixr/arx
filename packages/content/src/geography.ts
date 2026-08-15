@@ -1,5 +1,5 @@
 import { DANGER_MAX, fbm, type Vec2, type DangerAnchor } from '@arx/shared';
-import { AUTHORED_ANCHOR_WORDS, SETTLED_ANCHORS, replaceSettledAnchors } from './danger.js';
+import { SETTLED_ANCHORS, replaceSettledAnchors } from './danger.js';
 
 /**
  * THE GEOGRAPHY — the master plan's fixed points, in one place.
@@ -1052,7 +1052,9 @@ export function validateGeographyDef(
       // doc saved before anchors learned to speak backfills from the
       // authored map by position (the FRONTIER backfill law); a dread
       // has no townsfolk to ask, so a worded dread is refused.
-      const country = a.country ?? AUTHORED_ANCHOR_WORDS.get(`${a.x},${a.y}`);
+      // (Backfill-by-position joins this line when the worded march
+      // lands — the anchors speak plainly until then.)
+      const country = a.country;
       if (country !== undefined && (!isInt(country) || country < 1 || country > DANGER_MAX)) {
         errors.push(`${at}.country must be an integer in [1, ${DANGER_MAX}] (or absent)`);
         continue;
