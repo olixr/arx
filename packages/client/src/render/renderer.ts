@@ -46581,8 +46581,6 @@ export class Renderer {
       // A named humanoid actor falls on the player rig's proportions,
       // wearing its own skin, hair, and tunic colors — and every piece
       // of gear it died in. Defeat never strips the body.
-      rag = buildHumanoidRagdoll(1, seed);
-      rag.launch(sx, sy, sev, HUMANOID_UPPER, HUMANOID_FEET);
       const eq = death.equip;
       const gear =
         eq &&
@@ -46600,6 +46598,10 @@ export class Renderer {
               offhandEnch: death.ench?.offhand,
             }
           : undefined;
+      // A worn cape rides the sim: the rag grows its cloth stations so
+      // the banner streams through the tumble and freezes at settle.
+      rag = buildHumanoidRagdoll(1, seed, !!gear?.cape);
+      rag.launch(sx, sy, sev, HUMANOID_UPPER, HUMANOID_FEET);
       look = {
         kind: 'humanoid',
         h: {
@@ -46676,7 +46678,7 @@ export class Renderer {
               cape: kit.cape,
             }
           : undefined;
-      rag = buildHumanoidRagdoll(size, seed);
+      rag = buildHumanoidRagdoll(size, seed, !!kitGear?.cape);
       rag.launch(sx, sy, sev, HUMANOID_UPPER, HUMANOID_FEET);
       look = {
         kind: 'humanoid',

@@ -127,6 +127,10 @@ export interface RagPoint {
 }
 
 interface RagStick {
+  /** Fraction of the constraint correction the `b` end absorbs
+   *  (0.5 = symmetric). Light cloth anchored on heavy bone rides at
+   *  0.75–0.9 so the cape follows the body, never drags it. */
+  bias?: number;
   a: number;
   b: number;
   len: number;
@@ -204,11 +208,16 @@ export class Ragdoll {
         const dx = b.x - a.x;
         const dy = b.y - a.y;
         const d = Math.hypot(dx, dy) || 1e-5;
-        const k = ((d - st.len) / d) * 0.5 * st.stiffness;
-        a.x += dx * k;
-        a.y += dy * k;
-        b.x -= dx * k;
-        b.y -= dy * k;
+        const k = ((d - st.len) / d) * st.stiffness;
+        // Mass-weighted split: `bias` is the fraction of the correction
+        // the `b` end absorbs (default symmetric). Cloth hangs off the
+        // body at bias≈0.9 — the cape streams and flops, the trunk
+        // barely feels the tug.
+        const wb = st.bias ?? 0.5;
+        a.x += dx * k * (1 - wb);
+        a.y += dy * k * (1 - wb);
+        b.x -= dx * k * wb;
+        b.y -= dy * k * wb;
       }
       for (const p of this.pts) {
         if (p.y > p.floor) p.y = p.floor;
@@ -321,12 +330,23 @@ const pt = (x: number, y: number, floor: number): RagPoint => ({
   grounded: false,
 });
 
+/** Simulated cape stations riding a caped ragdoll: the mid-cloth
+ *  point and three hem stations, in `Ragdoll.pts` index space. */
+export interface RagCapeIdx {
+  mid: number;
+  hem: [number, number, number];
+}
+
 /**
  * Standing humanoid skeleton, proportioned like the live rig (HEIGHT=1
  * scaled by `size`). Floor scatter comes from the seed so two goblins
- * never sprawl identically.
+ * never sprawl identically. `cape` appends a light cloth chain off the
+ * chest — mid-cloth plus three hem stations on mass-biased soft sticks
+ * — so the banner STREAMS through the tumble on the same simulation,
+ * floors with the body, and freezes with it when the sim sleeps: the
+ * settled corpse costs exactly what it cost before.
  */
-export function buildHumanoidRagdoll(size: number, seed: number): Ragdoll {
+export function buildHumanoidRagdoll(size: number, seed: number, cape = false): Ragdoll {
   const k = size;
   const j = (n: number, amp: number): number => ((((seed >> (n * 3)) & 7) / 7 - 0.5) * 2 * amp) * k;
   const pts: RagPoint[] = [
@@ -342,10 +362,10 @@ export function buildHumanoidRagdoll(size: number, seed: number): Ragdoll {
     pt(0.17 * k, -0.66 * k, j(1, 0.04)), // elbowR
     pt(0.19 * k, -0.48 * k, 0.03 * k + j(2, 0.03)), // handR
   ];
-  const st = (a: number, b: number, stiffness = 1): RagStick => {
+  const st = (a: number, b: number, stiffness = 1, bias?: number): RagStick => {
     const pa = pts[a]!;
     const pb = pts[b]!;
-    return { a, b, len: Math.hypot(pb.x - pa.x, pb.y - pa.y), stiffness };
+    return { a, b, len: Math.hypot(pb.x - pa.x, pb.y - pa.y), stiffness, ...(bias !== undefined ? { bias } : {}) };
   };
   const sticks: RagStick[] = [
     st(H.pelvis, H.chest),
@@ -361,7 +381,36 @@ export function buildHumanoidRagdoll(size: number, seed: number): Ragdoll {
     // Soft trunk brace: the spine bends, it doesn't fold in half.
     st(H.pelvis, H.head, 0.35),
   ];
-  return new Ragdoll(pts, sticks, [H.pelvis, H.chest, H.head], seed);
+  let capeIdx: RagCapeIdx | undefined;
+  if (cape) {
+    // The cloth hangs off the shoulders at build: mid-cloth behind the
+    // trunk, the hem fan below it. Appended AFTER the body so every H
+    // index — and the launch groups — stands untouched.
+    const mid = pts.length;
+    pts.push(pt(-0.04 * k, -0.55 * k, 0.01 * k + j(3, 0.02))); // mid-cloth
+    const hemL = pts.length;
+    pts.push(pt(-0.26 * k, -0.28 * k, 0.015 * k + j(4, 0.025))); // hem left
+    const hemC = pts.length;
+    pts.push(pt(-0.05 * k, -0.23 * k, 0.015 * k + j(5, 0.025))); // hem center
+    const hemR = pts.length;
+    pts.push(pt(0.16 * k, -0.28 * k, 0.015 * k + j(6, 0.025))); // hem right
+    // Cloth rig: clasp tether off the chest, hem rays off the mid, the
+    // fan held together softly at the hem — every stick mass-biased so
+    // the cape follows the fall and never steers it.
+    sticks.push(st(H.chest, mid, 0.55, 0.9));
+    sticks.push(st(mid, hemL, 0.5, 0.72));
+    sticks.push(st(mid, hemC, 0.5, 0.72));
+    sticks.push(st(mid, hemR, 0.5, 0.72));
+    sticks.push(st(hemL, hemC, 0.35));
+    sticks.push(st(hemC, hemR, 0.35));
+    // Long stretch-limit tether: the streaming cloth can billow, it
+    // can never tear off the shoulders.
+    sticks.push(st(H.chest, hemC, 0.22, 0.92));
+    capeIdx = { mid, hem: [hemL, hemC, hemR] };
+  }
+  const rag = new Ragdoll(pts, sticks, [H.pelvis, H.chest, H.head], seed);
+  if (capeIdx) (rag as Ragdoll & { capeIdx?: RagCapeIdx }).capeIdx = capeIdx;
+  return rag;
 }
 
 /** Upper-body / feet index groups for launch(). */
@@ -663,18 +712,63 @@ function drawFallenCape(
   // Clasp points at the shoulder line; the fan runs past the chest.
   const c1 = { x: chest.x + nx * shoulderHw, y: chest.y + ny * shoulderHw };
   const c2 = { x: chest.x - nx * shoulderHw, y: chest.y - ny * shoulderHw };
-  const hx = chest.x + ux * clothL + nx * drift * clothL * 0.55;
-  const hy = chest.y + uy * clothL + ny * drift * clothL * 0.55;
   // Ragged hem: five stations across the hem arc, lie jittered by the
   // seed — ground cloth never lands in a ruler line.
   const hem: Array<{ x: number; y: number }> = [];
-  for (let i = 0; i < 5; i++) {
-    const t = i / 4 - 0.5;
-    const wob = ((((seed >>> (i * 4)) & 15) / 15) - 0.5) * 0.14 * s;
-    hem.push({
-      x: hx + nx * t * hemHw * 2 + ux * wob,
-      y: hy + ny * t * hemHw * 2 + uy * wob,
-    });
+  const capeIdx = (rag as Ragdoll & { capeIdx?: RagCapeIdx }).capeIdx;
+  let emblemAt: { x: number; y: number };
+  // The cloth's own outward axis — the hem cuts (notch, spikes,
+  // scallops) push along it, whichever way the cloth is streaming.
+  let cutX = ux;
+  let cutY = uy;
+  if (capeIdx) {
+    // THE CLOTH IS SIMULATED: the hem rides the ragdoll's own cape
+    // stations — it streams through the tumble, floors with the body,
+    // and holds its frozen lie once the sim sleeps. The seeded wobble
+    // stays on top so the resting cloth still reads ragged, and the
+    // station order follows the clasp line so a flipped cloth never
+    // bow-ties the fill.
+    const M = P(f, g[capeIdx.mid]!);
+    let hs = capeIdx.hem.map((i) => P(f, g[i]!));
+    const tx = c1.x - c2.x;
+    const ty = c1.y - c2.y;
+    if ((hs[0]!.x - hs[2]!.x) * tx + (hs[0]!.y - hs[2]!.y) * ty < 0) hs = hs.reverse();
+    const cx2 = (hs[0]!.x + hs[1]!.x + hs[2]!.x) / 3 - chest.x;
+    const cy2 = (hs[0]!.y + hs[1]!.y + hs[2]!.y) / 3 - chest.y;
+    const cl = Math.hypot(cx2, cy2) || 1e-4;
+    const wx = cx2 / cl;
+    const wy = cy2 / cl;
+    const five = [
+      hs[0]!,
+      { x: (hs[0]!.x + hs[1]!.x) / 2, y: (hs[0]!.y + hs[1]!.y) / 2 },
+      hs[1]!,
+      { x: (hs[1]!.x + hs[2]!.x) / 2, y: (hs[1]!.y + hs[2]!.y) / 2 },
+      hs[2]!,
+    ];
+    for (let i = 0; i < 5; i++) {
+      const wob = ((((seed >>> (i * 4)) & 15) / 15) - 0.5) * 0.1 * s;
+      hem.push({ x: five[i]!.x + wx * wob, y: five[i]!.y + wy * wob });
+    }
+    emblemAt = M;
+    cutX = wx;
+    cutY = wy;
+  } else {
+    // Static synthesis — a caped look on a rag built without cloth
+    // stations still lies on its banner.
+    const hx = chest.x + ux * clothL + nx * drift * clothL * 0.55;
+    const hy = chest.y + uy * clothL + ny * drift * clothL * 0.55;
+    for (let i = 0; i < 5; i++) {
+      const t = i / 4 - 0.5;
+      const wob = ((((seed >>> (i * 4)) & 15) / 15) - 0.5) * 0.14 * s;
+      hem.push({
+        x: hx + nx * t * hemHw * 2 + ux * wob,
+        y: hy + ny * t * hemHw * 2 + uy * wob,
+      });
+    }
+    emblemAt = {
+      x: chest.x + ux * clothL * 0.5 + nx * drift * clothL * 0.25,
+      y: chest.y + uy * clothL * 0.5 + ny * drift * clothL * 0.25,
+    };
   }
   const ground = shade(st.color, -8);
   ctx.fillStyle = ground;
@@ -686,19 +780,19 @@ function drawFallenCape(
     const h = hem[i]!;
     if (st.hem === 'swallowtail' && i === 2) {
       // The banner's notch bites back toward the shoulders.
-      ctx.lineTo(h.x - ux * 0.16 * s, h.y - uy * 0.16 * s);
+      ctx.lineTo(h.x - cutX * 0.16 * s, h.y - cutY * 0.16 * s);
     } else if (st.hem === 'scallop') {
       const pv = hem[i - 1]!;
       ctx.quadraticCurveTo(
-        (pv.x + h.x) / 2 + ux * 0.05 * s,
-        (pv.y + h.y) / 2 + uy * 0.05 * s,
+        (pv.x + h.x) / 2 + cutX * 0.05 * s,
+        (pv.y + h.y) / 2 + cutY * 0.05 * s,
         h.x,
         h.y,
       );
       continue;
     } else if (st.hem === 'tattered') {
       const pv = hem[i - 1]!;
-      ctx.lineTo((pv.x + h.x) / 2 + ux * 0.07 * s, (pv.y + h.y) / 2 + uy * 0.07 * s);
+      ctx.lineTo((pv.x + h.x) / 2 + cutX * 0.07 * s, (pv.y + h.y) / 2 + cutY * 0.07 * s);
     }
     ctx.lineTo(h.x, h.y);
   }
@@ -720,10 +814,11 @@ function drawFallenCape(
   ctx.moveTo(hem[0]!.x, hem[0]!.y);
   for (let i = 1; i < 5; i++) ctx.lineTo(hem[i]!.x, hem[i]!.y);
   ctx.stroke();
-  // The stitched mark, halfway down the spilled cloth.
+  // The stitched mark, riding the mid-cloth (the simulated station
+  // when the cloth is live, the synthesized center otherwise).
   if (st.emblem) {
-    const ex = chest.x + ux * clothL * 0.5 + nx * drift * clothL * 0.25;
-    const ey = chest.y + uy * clothL * 0.5 + ny * drift * clothL * 0.25;
+    const ex = emblemAt.x;
+    const ey = emblemAt.y;
     const er = 0.07 * s;
     ctx.fillStyle = st.trim;
     ctx.beginPath();

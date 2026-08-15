@@ -227,7 +227,9 @@ test('the banner comes down with its bearer — a caped corpse paints the cloth'
     size: 1,
   };
   const paint = (look: HumanoidCorpseLook): number => {
-    const rag = buildHumanoidRagdoll(1, 77);
+    // Caped looks build the rag WITH its cloth stations, exactly as
+    // spawnCorpse does — the paint runs the simulated-hem path.
+    const rag = buildHumanoidRagdoll(1, 77, !!look.gear?.cape);
     rag.launch(0.8, 0, 0.6, HUMANOID_UPPER, HUMANOID_FEET);
     settle(rag, 2.5);
     const ctx = mockCtx();
@@ -240,6 +242,35 @@ test('the banner comes down with its bearer — a caped corpse paints the cloth'
     caped > bare,
     `the spilled cape must paint under the body (bare ${bare}, caped ${caped})`,
   );
+});
+
+test('the cloth rides the sim — cape stations tumble, keep their clasp, and freeze at settle', () => {
+  const rag = buildHumanoidRagdoll(1, 909, true);
+  // Four cloth stations appended past the 11 bones.
+  assert.equal(rag.pts.length, 15);
+  rag.launch(1, 0, 0.9, HUMANOID_UPPER, HUMANOID_FEET);
+  // Mid-flight the cloth is genuinely moving.
+  rag.step(1 / 60, 0, 0);
+  const cloth = rag.pts.slice(11);
+  assert.ok(
+    cloth.some((p) => Math.hypot(p.vx, p.vy) > 0.5),
+    'cape stations must move during the tumble',
+  );
+  settle(rag, 5.5, 8);
+  assert.ok(rag.settled, 'a caped ragdoll must still come to rest');
+  // The stretch-limit tether held: the hem never tore off the body.
+  const chest = rag.pts[1]!;
+  for (const p of cloth) {
+    const d = Math.hypot(p.x - chest.x, p.y - chest.y);
+    assert.ok(d < 1.6, `cape station drifted ${d.toFixed(2)} t from the chest — the clasp tore`);
+  }
+  // Sleep freezes the cloth exactly like the bones.
+  const frozen = cloth.map((p) => ({ x: p.x, y: p.y }));
+  for (let i = 0; i < 30; i++) rag.step(1 / 60, 0.4, -0.2);
+  for (let i = 0; i < cloth.length; i++) {
+    assert.equal(cloth[i]!.x, frozen[i]!.x);
+    assert.equal(cloth[i]!.y, frozen[i]!.y);
+  }
 });
 
 test('a settled ragdoll sleeps — stepping it further moves nothing', () => {
