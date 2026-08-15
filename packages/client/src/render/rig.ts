@@ -9851,6 +9851,13 @@ export interface BeastSpec {
   /** Upper-leg thickness (tiles). */
   legW: number;
   foot: 'hoof' | 'paw' | 'claw' | 'bearpaw' | 'turtleclaw';
+  /**
+   * Species foot-size dial: multiplies the foot painter's base width
+   * (which derives from legW). Heavy-bodied walkers whose legs are
+   * already thick relative to their feet (cattle) push past 1; absent
+   * = 1, the proportion the mid-size walkers wear.
+   */
+  footScale?: number;
   /** Bare shanks (chicken) instead of body-shaded legs. */
   legColor?: string;
   /**
@@ -9888,6 +9895,9 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     hipSide: 0.5,
     legW: 0.095,
     foot: 'hoof',
+    // The dairy body dwarfs a mid-size hoof: the block scales up to
+    // meet the leg it carries.
+    footScale: 1.3,
     legColor: '#d9ccb8',
   },
   bull: {
@@ -9906,6 +9916,7 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     hipSide: 0.5,
     legW: 0.105,
     foot: 'hoof',
+    footScale: 1.3,
     legColor: '#584a3d',
   },
   wolf: {
@@ -10223,9 +10234,13 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     kneeFwd: [1, 1, -1, -1],
     hipFwd: 0.9,
     hipSide: 0.5,
-    legW: 0.13,
+    // A bear's limbs are TRUNKS: the thickest legs of the mid-size
+    // walkers, with the long-femur/low-hock bone split — anything
+    // thinner reads as a boar on stilts under the new clawed paws.
+    legW: 0.2,
     foot: 'bearpaw',
     legColor: '#302620',
+    segSplit: [0.52, 0.6],
   },
   // THE SNAPPER: a low long vault DRAGGING its rim near the ground on
   // a crocodilian sprawl — the widest relative track in the wood,
@@ -18839,10 +18854,18 @@ export function drawBeast(
     : foxLegL
       ? shade(foxLegL.sock, -22)
       : shade(spec.legColor ?? legBase, -55);
-  const drawLeg = (i: number): void => {
+  const drawLeg = (i: number, dim = false): void => {
     const foot = opts.feet[i];
     const leg = spec.rig.legs[i];
     if (!foot || !leg) return;
+    // THE FAR LEG STEPS INTO THE SHELL'S SHADOW (shell-mount only):
+    // a far foot poking past the hull's overhang is drawn BEHIND the
+    // keep, but without a depth cue the visible sliver reads as
+    // riding ON the rim — one tone step down tells the eye where it
+    // stands. `dim` is the depth loop's verdict; every color the leg
+    // and its foot wear routes through tone().
+    const dimK = dim && !opts.hurt ? -16 : 0;
+    const tone = (c: string): string => (dimK ? shade(c, dimK) : c);
     // Hip: body-frame attach point, projected like the world plane and
     // raised to the rig's (crouch-scaled) hip height. THE ROOT RIDES
     // THE BODY: the hip dips with the gait bob at the belly line's own
@@ -18921,13 +18944,13 @@ export function drawBeast(
     }
 
     ctx.lineCap = 'round';
-    ctx.strokeStyle = legColor;
+    ctx.strokeStyle = tone(legColor);
     ctx.lineWidth = Math.max(2, spec.legW * s);
     ctx.beginPath();
     ctx.moveTo(hipX, hipY);
     ctx.lineTo(kx, ky);
     ctx.stroke();
-    ctx.strokeStyle = shinColor;
+    ctx.strokeStyle = tone(shinColor);
     ctx.lineWidth = Math.max(1.5, spec.legW * s * 0.78);
     ctx.beginPath();
     ctx.moveTo(kx, ky);
@@ -18986,7 +19009,7 @@ export function drawBeast(
       // rides one wall-height up — the foreshortened-top law at
       // ankle scale. The cloven species split the toe with a center
       // cleft; a courser's horn stays whole.
-      const W = spec.legW * 1.5;
+      const W = spec.legW * 1.5 * (spec.footScale ?? 1);
       const wallH = W * 0.55 * s;
       const HX = (u: number, v: number): number => ex + (ffx * u + fsx * v) * s;
       const HY = (u: number, v: number): number => ey + (ffy * u + fsy * v) * s;
@@ -19009,10 +19032,10 @@ export function drawBeast(
         ctx.lineTo(HX(-0.42 * W, 0.34 * W), HY(-0.42 * W, 0.34 * W) - dz);
         ctx.closePath();
       };
-      ctx.fillStyle = footColor;
+      ctx.fillStyle = tone(footColor);
       trace(0);
       ctx.fill();
-      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(spec.legColor ?? legBase, -38);
+      ctx.fillStyle = opts.hurt ? '#ffffff' : tone(shade(spec.legColor ?? legBase, -38));
       trace(wallH);
       ctx.fill();
       if (CLOVEN_HOOF.test(opts.defId)) {
@@ -19029,14 +19052,16 @@ export function drawBeast(
       // edge, and four honest keratin claws — filled curved wedges,
       // never scratch-lines. The fore paws splay INWARD (negative
       // splay above): bears walk pigeon-toed, the field mark of the
-      // amble.
-      const W = spec.legW * 1.25;
+      // amble. The base rides trunk-thick bear legs, so the paw's
+      // multiplier is small — the paw grew first and the legs grew
+      // to meet it, not the reverse.
+      const W = spec.legW * 0.85 * (spec.footScale ?? 1);
       const curl = 1 - 0.26 * digitCurl;
       const skin = spec.legColor ?? opts.color;
       ctx.save();
       ctx.transform(ffx * s, ffy * s, fsx * s, fsy * s, ex, ey);
       // Claws first — the roots hide under the digits.
-      ctx.fillStyle = opts.hurt ? '#ffffff' : '#d8cbb2';
+      ctx.fillStyle = opts.hurt ? '#ffffff' : tone('#d8cbb2');
       for (const v of BEAR_TOES) {
         const ru = (0.5 + 0.12 * (1 - Math.abs(v))) * W * curl;
         const rv = v * W;
@@ -19052,7 +19077,7 @@ export function drawBeast(
       }
       // The pad: heel arc behind the ankle, flanks swelling to the
       // toe line.
-      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(skin, -8);
+      ctx.fillStyle = opts.hurt ? '#ffffff' : tone(shade(skin, -8));
       ctx.beginPath();
       ctx.moveTo(-0.5 * W, -0.52 * W);
       ctx.quadraticCurveTo(-0.85 * W, 0, -0.5 * W, 0.52 * W);
@@ -19061,7 +19086,7 @@ export function drawBeast(
       ctx.closePath();
       ctx.fill();
       // Knuckle lobes, one per digit, a step lighter than the pad.
-      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(skin, 7);
+      ctx.fillStyle = opts.hurt ? '#ffffff' : tone(shade(skin, 7));
       for (const v of BEAR_TOES) {
         const u = (0.48 + 0.12 * (1 - Math.abs(v))) * W * curl;
         ctx.beginPath();
@@ -19084,7 +19109,7 @@ export function drawBeast(
       // round column base rimmed with three BLUNT toenail wedges —
       // no web, no rake, just weight.
       const heavy = opts.defId === 'colossus_turtle';
-      const W = spec.legW * (heavy ? 1.05 : 1.2);
+      const W = spec.legW * (heavy ? 1.05 : 1.2) * (spec.footScale ?? 1);
       const curl = 1 - 0.3 * digitCurl;
       const skin = spec.legColor ?? opts.color;
       ctx.save();
@@ -19094,17 +19119,17 @@ export function drawBeast(
         // elephant's nails ride the visible face of the column base,
         // never hide beneath it (buried roots left only the tips
         // showing, and they read as scattered debris chips).
-        ctx.fillStyle = opts.hurt ? '#ffffff' : shade(skin, -12);
+        ctx.fillStyle = opts.hurt ? '#ffffff' : tone(shade(skin, -12));
         ctx.beginPath();
         ctx.ellipse(0.05 * W, 0, 0.78 * W, 0.68 * W, 0, 0, Math.PI * 2);
         ctx.fill();
         // The base's front rim catches the light — the column seats.
-        ctx.strokeStyle = opts.hurt ? '#ffffff' : shade(skin, 6);
+        ctx.strokeStyle = opts.hurt ? '#ffffff' : tone(shade(skin, 6));
         ctx.lineWidth = 0.09 * W;
         ctx.beginPath();
         ctx.ellipse(0.05 * W, 0, 0.64 * W, 0.55 * W, 0, -0.9, 0.9);
         ctx.stroke();
-        ctx.fillStyle = opts.hurt ? '#ffffff' : '#b9b193';
+        ctx.fillStyle = opts.hurt ? '#ffffff' : tone('#b9b193');
         for (const v of TURTLE_CLAW_FAN) {
           const rv = v * 0.95 * W;
           const u0 = 0.42 * W * curl;
@@ -19119,7 +19144,7 @@ export function drawBeast(
         }
       } else {
         // Horn claws first — long, curved, fanned on the sprawl.
-        ctx.fillStyle = opts.hurt ? '#ffffff' : '#cfc49e';
+        ctx.fillStyle = opts.hurt ? '#ffffff' : tone('#cfc49e');
         for (const v of TURTLE_CLAW_FAN) {
           const ru = (0.5 + 0.1 * (1 - Math.abs(v))) * W * curl;
           const rv = v * 0.95 * W;
@@ -19135,7 +19160,7 @@ export function drawBeast(
         }
         // The webbed pad: heel arc, flank swell, and a leading edge
         // SCALLOPED between the claw knuckles — the web.
-        ctx.fillStyle = opts.hurt ? '#ffffff' : shade(skin, -6);
+        ctx.fillStyle = opts.hurt ? '#ffffff' : tone(shade(skin, -6));
         ctx.beginPath();
         ctx.moveTo(-0.38 * W, -0.62 * W);
         ctx.quadraticCurveTo(-0.75 * W, 0, -0.38 * W, 0.62 * W);
@@ -19160,14 +19185,14 @@ export function drawBeast(
       // Paw chip: a ground oval set toes-forward of the ankle on the
       // facing's bearing, its leading edge split by two soft digit
       // seams — the read of a paw at the cost the zoom can afford.
-      const W = spec.legW * 1.35;
+      const W = spec.legW * 1.35 * (spec.footScale ?? 1);
       ctx.save();
       ctx.transform(ffx * s, ffy * s, fsx * s, fsy * s, ex, ey);
-      ctx.fillStyle = footColor;
+      ctx.fillStyle = tone(footColor);
       ctx.beginPath();
       ctx.ellipse(0.22 * W * (1 - 0.2 * digitCurl), 0, 0.68 * W, 0.5 * W, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = opts.hurt ? '#ffffff' : shade(spec.legColor ?? legBase, -30);
+      ctx.strokeStyle = opts.hurt ? '#ffffff' : tone(shade(spec.legColor ?? legBase, -30));
       ctx.lineWidth = 0.06 * W;
       for (const v of [-0.2, 0.2] as const) {
         ctx.beginPath();
@@ -19205,7 +19230,15 @@ export function drawBeast(
     if (shellMount) {
       const leg = spec.rig.legs[i]!;
       const hipDepth = fy * leg.fwd * spec.hipFwd + py * leg.side * spec.hipSide;
-      (hipDepth < 0 ? farLegs : nearLegs).push(i);
+      // THE MARGIN TUCKS BEHIND: every hip sits strictly INSIDE the
+      // hull's footprint (hipFwd/hipSide < 1), so a near-classified
+      // leg paints over the shell face from its hip down — honest
+      // only when the hip is deep enough toward the camera that the
+      // leg emerges under the skirt. A hip riding the silhouette
+      // tangent (the quarter bands) drew its whole leg ACROSS the
+      // flank; the near verdict now demands real depth margin, and
+      // everything marginal tucks behind the keep.
+      (hipDepth < spec.bodyLen * 0.15 ? farLegs : nearLegs).push(i);
     } else {
       ((opts.feet[i]?.y ?? opts.y) < nearEdge ? farLegs : nearLegs).push(i);
     }
@@ -20730,7 +20763,7 @@ export function drawBeast(
   if (!tailFront) paintTail();
   if (headBack) paintHead();
   if (udderBehind) paintUdder();
-  for (const i of farLegs) drawLeg(i);
+  for (const i of farLegs) drawLeg(i, shellMount);
   paintBody();
   paintCollar();
   if (!udderBehind) paintUdder();
