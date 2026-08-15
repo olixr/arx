@@ -394,24 +394,60 @@ export function paintSkralHead(
   const cx = headX + fx * aF * 0.1;
   const gular = (hurt ? 0 : 0.06 * Math.sin(nowMs / 520)) + 0.55 * gape;
 
-  // ---- THE CROWN RING (deepking): stations around the crown's rim.
-  // Far studs paint BEFORE the hull — from behind they peek over the
-  // skyline like the coral they are; near studs paint last.
-  type Stud = { x: number; y: number; d: number; r: number };
+  // ---- THE CROWN RING (deepking): a diadem of coral thorns seated
+  // ON the hull surface — every station is unit-length in head frame
+  // (the old ring floated 34% off the skull and its studs were fixed
+  // screen triangles: stickers, not stations). Each thorn's base sits
+  // on the skull and its spike runs along the SURFACE NORMAL projected
+  // through the camera, so which way a stud leans, how it foreshortens
+  // and when it hides all fall out of the turn by construction. Far
+  // studs paint BEFORE the hull and clamp tangent to the skyline (the
+  // far-dome-sinks law: the flat slab top never rises with the far
+  // side, so an unclamped far station floats as a detached thorn).
+  type Stud = { x: number; y: number; d: number; r: number; nx: number; ny: number };
   const studs: Stud[] = [];
+  const skyY = headY - aZ;
   if (sk.crowned && !hurt) {
-    for (const th of [-2.0, -1.2, -0.45, 0.45, 1.2, 2.0]) {
-      const p = st(Math.cos(th) * 0.55, Math.sin(th) * 0.8, 0.92);
-      studs.push({ ...p, r: s * (0.018 + 0.009 * Math.max(0, Math.cos(th))) });
+    for (const th of [-2.4, -1.7, -1.05, -0.45, 0.45, 1.05, 1.7, 2.4]) {
+      // The ring rides the brow: colatitude opens toward the occiput
+      // so the crown sits worn, not balanced — lower at the back.
+      const phi = 0.9 - 0.12 * Math.cos(th);
+      const F0 = Math.sin(phi) * Math.cos(th);
+      const L0 = Math.sin(phi) * Math.sin(th);
+      const Z0 = Math.cos(phi);
+      const p = st(F0, L0, Z0);
+      const q = st(F0 * 1.4, L0 * 1.4, Z0 * 1.4);
+      let nx = q.x - p.x;
+      let ny = q.y - p.y;
+      const nl = Math.hypot(nx, ny);
+      // A thorn aimed straight at the camera projects to nothing —
+      // hold a nub's worth of length and stand it upright.
+      if (nl < 1e-3) {
+        nx = 0;
+        ny = -1;
+      } else {
+        nx /= nl;
+        ny /= nl;
+      }
+      const r = s * (0.018 + 0.009 * Math.max(0, Math.cos(th)));
+      const short = Math.max(0.35, Math.min(1, nl / (aZ * 0.4)));
+      studs.push({ x: p.x, y: p.y, d: F0 * fy + L0 * py, r, nx: nx * short, ny: ny * short });
     }
     studs.sort((a, b) => a.d - b.d);
   }
   const paintStud = (u: Stud): void => {
+    // Far studs may only peek over the skull's own skyline — never
+    // hover above it: the base rides down to tangent.
+    const by = u.d <= 0 ? Math.max(u.y, skyY - u.r * 0.4) : u.y;
+    const len = u.r * 2.7;
+    const wl = Math.hypot(u.nx, u.ny) || 1;
+    const bx = (-u.ny / wl) * u.r * 0.85;
+    const bw = (u.nx / wl) * u.r * 0.85;
     ctx.fillStyle = shade(SKRAL_TOOTH, u.d > 0 ? -4 : -12);
     ctx.beginPath();
-    ctx.moveTo(u.x - u.r, u.y + u.r * 0.8);
-    ctx.lineTo(u.x - u.r * 0.2, u.y - u.r * 1.5);
-    ctx.lineTo(u.x + u.r * 0.6, u.y + u.r * 0.6);
+    ctx.moveTo(u.x - bx, by - bw);
+    ctx.lineTo(u.x + u.nx * len, by + u.ny * len);
+    ctx.lineTo(u.x + bx, by + bw);
     ctx.closePath();
     ctx.fill();
   };
@@ -534,25 +570,48 @@ export function paintSkralHead(
   // lip vault, the jaw, both tooth courses, the tongue, the fangs,
   // and the barbels all ride the SAME samples — one truth, and every
   // part of the mouth agrees at every heading by construction.
-  const N = 13;
+  const N = 15;
   const THMAX = 1.25;
   type MPt = { x: number; y: number; d: number; th: number };
-  const seamZ = (th: number): number => -0.34 + 0.2 * Math.pow(Math.abs(th) / THMAX, 1.6);
+  const seamZ = (th: number): number => -0.34 + 0.22 * Math.pow(Math.abs(th) / THMAX, 1.6);
   const dropZ = gape * (0.42 + 0.12 * hv) * jawK;
   const jawZ = (th: number): number => seamZ(th) - dropZ * Math.cos(((th / THMAX) * Math.PI) / 2);
+  // The grin is an EGG, not a circle: the corners pull all the way
+  // back to the silhouette (F ≈ -0.02 — a hair past the head's widest
+  // point), so at profile the mouth slices back under the eye instead
+  // of clustering at the snout, and at the bow it spans the full
+  // cheek. The lateral term widens toward the corners for the same
+  // reason — the grin's ends live at the cheek, not on the muzzle.
+  const arcF = (u: number): number => 0.92 - 0.94 * Math.pow(Math.abs(u), 1.7);
+  const arcL = (u: number): number => 0.98 * u * (1.5 - 0.5 * u * u);
   const arc = (zOf: (th: number) => number): MPt[] => {
     const pts: MPt[] = [];
     for (let i = 0; i < N; i++) {
       const th = -THMAX + (2 * THMAX * i) / (N - 1);
-      const p = st(Math.cos(th) * 0.88 + 0.04, Math.sin(th) * 0.98, zOf(th));
+      const u = th / THMAX;
+      const p = st(arcF(u), arcL(u), zOf(th));
       pts.push({ ...p, th });
     }
     return pts;
   };
-  const seam = arc(seamZ).filter((p) => p.d > -0.04);
+  // Visibility is the longest CONTIGUOUS camera-side run — with the
+  // corners at the silhouette, a plain filter could keep both far
+  // corners from behind and bridge a seam clear across the occiput.
+  const visRun = (pts: MPt[]): MPt[] => {
+    let best: MPt[] = [];
+    let run: MPt[] = [];
+    for (const p of pts) {
+      if (p.d > -0.04) {
+        run.push(p);
+        if (run.length > best.length) best = run;
+      } else run = [];
+    }
+    return best;
+  };
+  const seam = visRun(arc(seamZ));
   const open = gape > 0.1;
   if (seam.length >= 3) {
-    const jaw = arc(jawZ).filter((p) => p.d > -0.04);
+    const jaw = visRun(arc(jawZ));
     const head = seam[0]!;
     const tail = seam[seam.length - 1]!;
     const trace = (pts: MPt[], rev = false): void => {
@@ -606,6 +665,9 @@ export function paintSkralHead(
         for (let i = 2; i < jaw.length - 2; i += 2) {
           const p = jaw[i]!;
           const wT = Math.min(s * 0.014, Math.abs(jaw[i + 1]!.x - jaw[i - 1]!.x) * 0.22);
+          // The wrap crowds the samples — a needle with no standing
+          // room smears the course white (the upper course's law).
+          if (wT < s * 0.007) continue;
           const tl = s * (0.02 + 0.008 * hv) * (0.6 + 0.5 * gape);
           ctx.beginPath();
           ctx.moveTo(p.x - wT, p.y);
@@ -703,7 +765,11 @@ export function paintSkralHead(
         [head, -lead],
         [tail, lead],
       ] as Array<[MPt, number]>) {
-        if (end.d < 0.05 || Math.abs(end.th) < THMAX * 0.92) continue;
+        // The corners now live AT the silhouette: at the bow the run
+        // ends just before the wrap (d ≈ 0), so the gates loosen —
+        // the fang seats wherever the visible grin truly ends, as
+        // long as that end is a real corner and not the snout.
+        if (end.d < -0.03 || Math.abs(end.th) < THMAX * 0.78) continue;
         ctx.fillStyle = SKRAL_TOOTH;
         const fl = s * (0.04 + 0.014 * hv) * (0.9 + 0.25 * jawK);
         ctx.beginPath();
@@ -752,15 +818,23 @@ export function paintSkralHead(
       // The iris narrows as the dome turns — a sphere's window, not
       // a sticker: foreshorten by the dome's own facing.
       const irisK = 0.5 + 0.5 * Math.min(1, e.dot * 1.6);
+      // THE WALLEYE GAZE: the pupil is not a sticker on the dome —
+      // it sits where the eye LOOKS, and a wall-eyed fish looks
+      // outward-and-forward. Project that gaze through the camera:
+      // at the bow the pupils diverge (the murloc stare), at the
+      // quarters they slide to the dome's limb, and from the rear
+      // bands they've slid away instead of staring backward.
+      const gzx = (0.38 * fx + e.side * 0.9 * px) * eyeR * 0.34;
+      const gzy = ((0.38 * fy + e.side * 0.9 * py) * YK + 0.18) * eyeR * 0.34;
       ctx.fillStyle = sk.eye;
       ctx.beginPath();
-      ctx.ellipse(e.x, e.y, eyeR * 0.78 * irisK, eyeR * 0.74, 0, 0, Math.PI * 2);
+      ctx.ellipse(e.x + gzx * 0.35, e.y + gzy * 0.35, eyeR * 0.78 * irisK, eyeR * 0.74, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = sk.ink;
       ctx.beginPath();
       ctx.ellipse(
-        e.x + fx * eyeR * 0.24 * irisK,
-        e.y + eyeR * 0.06 + fy * eyeR * 0.1,
+        e.x + gzx,
+        e.y + gzy + eyeR * 0.04,
         eyeR * 0.3 * irisK,
         eyeR * 0.34,
         0,
@@ -841,7 +915,10 @@ export function paintSkralBody(
   const py = fx;
   // Trident carry stations (body frame: F fwd, L lat with L = -1 the
   // body's LEFT shoulder; screen side falls out of px/py).
-  const latPx = tw * 0.58 + s * 0.24; // clears the game's widest skull
+  // Clears the game's widest skull WHOLE: a half-clipped tine comb at
+  // the bow reads as quills growing out of the cheek — the carry is
+  // either fully behind the head or fully beside it, never straddling.
+  const latPx = tw * 0.58 + s * 0.31;
   const fwdPx = ww * 0.55;
   const bs = (F: number, L: number, y0: number): { x: number; y: number; d: number } => ({
     x: F * fwdPx * fx + L * latPx * px,
