@@ -79,6 +79,13 @@ export class AmbienceSystem {
   private fallPan: StereoPannerNode | null = null;
   /** Debug mirrors for live verification. */
   gates = { wind: 0, birds: 0, crickets: 0, cave: 0, portal: 0, fall: 0 };
+  /**
+   * Dev lever (soundlab.html): when set, stands in for the wind
+   * field's gust scalar (0..1) so the rustle texture can be
+   * auditioned on demand instead of waiting on a natural gust.
+   * The game never sets it.
+   */
+  devWindOverride: number | null = null;
 
   constructor(private engine: AudioEngine) {}
 
@@ -112,7 +119,8 @@ export class AmbienceSystem {
       this.lastParamAt = t;
       // windScalarAt runs ~[-0.6, 1.4] (what the trees lean on) — remap
       // the full swell onto [0, 1] so lulls truly hush and gusts crest.
-      const wind = Math.max(0, Math.min(1, (windScalarAt(x, y, tSec) + 0.3) / 1.55));
+      const wind =
+        this.devWindOverride ?? Math.max(0, Math.min(1, (windScalarAt(x, y, tSec) + 0.3) / 1.55));
       // Squared gust curve: the leaf-grain loop sounds ONLY while a
       // gust crests — between gusts the trees are silent, exactly
       // like the grass is still. No floor term, ever.

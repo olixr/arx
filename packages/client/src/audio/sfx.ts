@@ -60,6 +60,9 @@ const SAMPLE_TRIM = {
 } as const;
 export type SampleName = keyof typeof SAMPLE_TRIM;
 
+/** The shelf's roster, for the sound lab and future pickers. */
+export const SAMPLE_NAMES = Object.keys(SAMPLE_TRIM) as SampleName[];
+
 /** Seats the whole recorded shelf in the synth voices' mix. */
 const SAMPLE_LEVEL = 0.55;
 
