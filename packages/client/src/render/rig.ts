@@ -13489,7 +13489,6 @@ export function drawOwlHead(
   const h = look.headH * s;
   const C = (c: string): string => (o.hurt ? '#ffffff' : c);
   const screech = o.dead ? 0 : (o.screech ?? 0);
-  const profileK = faceProfileK(fx);
 
   // Ear tufts on the crown — the horned silhouette. A fore/aft
   // stagger keeps the pair from collapsing to one sliver at profile
@@ -13536,131 +13535,149 @@ export function drawOwlHead(
     ctx.restore();
   }
 
-  // THE FACIAL DISC — only while the face can meet the camera.
-  if (fy > -0.38) {
-    const dcx = cx + fx * w * 0.16;
-    const dcy = cy + fy * w * 0.14 * ys + h * 0.03;
-    const lobeR = w * 0.3 * (1 - 0.3 * profileK);
-    for (const es of [-1, 1]) {
-      // The far lobe hides as the head goes profile.
-      if (profileK > 0.55 && es * py < 0) continue;
-      const lx = dcx + px * es * w * 0.21 * (1 - 0.45 * profileK) + fx * es * w * 0.02;
-      const ly = dcy + py * es * w * 0.21 * (1 - 0.45 * profileK) * ys;
-      ctx.fillStyle = C(look.disc);
+  // THE FACE IS A TURNED SURFACE (user verdict: a feature may NEVER
+  // pop). Every face station — disc lobe, eye, brow, beak — lives at
+  // an AZIMUTH on the skull: the head's facing plus the station's own
+  // offset. Projection is continuous: a station SLIDES around the
+  // dome as the head turns, its width foreshortens toward the
+  // silhouette edge (style-compressed, so the read survives deep into
+  // the three-quarter), and it thins to nothing EXACTLY as it crosses
+  // the horizon onto the backskull — no gate, no cull, no pop, at any
+  // of the 360 degrees. Everything inside a lobe draws in the lobe's
+  // own foreshortened space, so eyes, brows, blinks and shut-lines
+  // all turn with the face for free.
+  const hAng = Math.atan2(fy, fx);
+  const SRX = w * 0.46;
+  const SRY = h * 0.24;
+  const faceY = cy + h * 0.12;
+  /** Screen seat + surface tangent + foreshorten of a dome station. */
+  const station = (aOff: number): { x: number; y: number; tang: number; fore: number } => {
+    const a = hAng + aOff;
+    const ca = Math.cos(a);
+    const sa = Math.sin(a);
+    return {
+      x: cx + ca * SRX,
+      y: faceY + sa * SRY * ys,
+      tang: Math.atan2(ca * SRY * ys, -sa * SRX),
+      fore: sa,
+    };
+  };
+  // The two disc lobes, far-first: ascending foreshorten IS the
+  // correct overlap order — the near lobe always wins the seam.
+  const lobes = [-1, 1]
+    .map((es) => ({ es, st: station(es * 0.58) }))
+    .sort((p, q) => p.st.fore - q.st.fore);
+  const lobeR = w * 0.3;
+  for (const { es, st } of lobes) {
+    if (st.fore <= 0.02) continue; // width has reached zero — invisible
+    const widthK = Math.pow(st.fore, 0.45);
+    ctx.save();
+    ctx.translate(st.x, st.y);
+    ctx.rotate(st.tang);
+    ctx.scale(widthK, 1);
+    // Local space from here: +x runs along the dome surface toward
+    // higher azimuth; the transform owns ALL the foreshortening.
+    ctx.fillStyle = C(look.disc);
+    ctx.beginPath();
+    facetCircle(ctx, 0, 0, lobeR, 7, es * 0.35, 1.02);
+    ctx.fill();
+    if (!o.hurt) {
+      ctx.strokeStyle = look.discRim;
+      ctx.lineWidth = Math.max(1.2, s * 0.02);
       ctx.beginPath();
-      facetCircle(ctx, lx, ly, lobeR, 7, es * 0.35 + fx * 0.3, 1.06);
+      facetCircle(ctx, 0, 0, lobeR * 0.95, 7, es * 0.35, 1.02);
+      ctx.stroke();
+      // The elder's court seal: a WHISPER of a second ring — never
+      // loud enough to goggle-eye the face (flier-sheet verdict).
+      if (look.elder) {
+        ctx.strokeStyle = shade(look.discRim, 12);
+        ctx.lineWidth = Math.max(1, s * 0.01);
+        ctx.beginPath();
+        facetCircle(ctx, 0, 0, lobeR * 0.78, 7, -es * 0.2, 1.02);
+        ctx.stroke();
+      }
+    }
+    // The eye: a LARGE forward lamp crowded toward the beak — owl
+    // eyes own the disc; the strike narrows the pupil to a pin.
+    const er = lobeR * (look.elder ? 0.46 : 0.4);
+    const exl = -es * lobeR * 0.2;
+    const eyl = lobeR * 0.02;
+    if (!o.dead) {
+      ctx.fillStyle = C(look.eye);
+      ctx.beginPath();
+      facetCircle(ctx, exl, eyl, er, 6, es * 0.5);
       ctx.fill();
       if (!o.hurt) {
-        // The rim ring — and the elder's SECOND ring inside it.
-        ctx.strokeStyle = look.discRim;
-        ctx.lineWidth = Math.max(1.2, s * 0.02);
+        const pr = er * 0.62 * (1 - 0.35 * screech);
+        ctx.fillStyle = OUTLINE;
         ctx.beginPath();
-        facetCircle(ctx, lx, ly, lobeR * 0.95, 7, es * 0.35 + fx * 0.3, 1.06);
-        ctx.stroke();
-        // The second ring only while both lobes read — at profile it
-        // stacked into goggle circles on one lobe (harness-audited).
-        // A WHISPER of a ring: the flier-sheet audit convicted the
-        // loud inner ring of goggle-eyeing the elder at the frontal
-        // bands — the court seal reads as wear, never as eyewear.
-        if (look.elder && profileK < 0.55) {
-          ctx.strokeStyle = shade(look.discRim, 12);
-          ctx.lineWidth = Math.max(1, s * 0.01);
-          ctx.beginPath();
-          facetCircle(ctx, lx, ly, lobeR * 0.78, 7, es * 0.35 - fx * 0.2, 1.06);
-          ctx.stroke();
-        }
-      }
-      if (!o.dead) {
-        // The eye: pulled INWARD toward the beak (owl eyes crowd the
-        // center of the disc — dead-center lobes read as goggles) and
-        // set a touch along the facing so the pair aims where the head
-        // points. The strike narrows the pupil to a hunting pin. The
-        // elder's lamp is LARGER in its lobe — a small dot lost in a
-        // big pale disc is the other goggle read (flier-sheet audit).
-        const er = lobeR * (look.elder ? 0.46 : 0.37);
-        const ex = lx - px * es * lobeR * 0.24 + fx * lobeR * 0.08;
-        const ey = ly + fy * lobeR * 0.06 * ys;
-        ctx.fillStyle = C(look.eye);
-        ctx.beginPath();
-        facetCircle(ctx, ex, ey, er, 6, fx * 0.5);
+        facetCircle(ctx, exl, eyl + er * 0.04, pr, 6, 0.3);
         ctx.fill();
-        if (!o.hurt) {
-          // Round pupil, offset along the gaze — a directed stare,
-          // never the flat cartoon square.
-          // The pupil OWNS the lamp: a thin amber ring around a deep
-          // black center reads raptor; a wide iris reads plush toy.
-          const pr = er * 0.62 * (1 - 0.35 * screech);
-          const ppx = ex + fx * er * 0.1;
-          const ppy = ey + fy * er * 0.08 * ys;
-          ctx.fillStyle = OUTLINE;
-          ctx.beginPath();
-          facetCircle(ctx, ppx, ppy, pr, 6, fx * 0.3);
-          ctx.fill();
-          // One small glint, up-INNER on each lobe (mirrored — a
-          // same-side pair reads walleyed) — the lamp's live point.
-          ctx.fillStyle = '#fff7e0';
-          ctx.beginPath();
-          facetCircle(ctx, ex - px * es * er * 0.3, ey - er * 0.34, er * 0.13, 5, 0.4);
-          ctx.fill();
-          // The slow blink: a disc-toned lid dropping over the lamp.
-          const blink = o.blink ?? 0;
-          if (blink > 0.05) {
-            ctx.fillStyle = look.disc;
-            ctx.fillRect(ex - er * 1.05, ey - er * 1.05, er * 2.1, er * 2.1 * Math.min(1, blink));
-          }
-          // THE BROW RIDGE: a hard slanted ledge over each eye, high
-          // at the center of the face and cutting down-outward — the
-          // one stroke that turns a staring toy into a raptor. The
-          // elder's ledge is heavier: the court's scowl.
-          ctx.strokeStyle = C(shade(look.discRim, -8));
-          ctx.lineWidth = Math.max(1.6, s * (look.elder ? 0.04 : 0.031));
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(ex - px * es * er * 0.8, ey - er * (1.3 + 0.12 * screech));
-          ctx.lineTo(ex + px * es * er * 0.95, ey - er * (0.85 - 0.12 * screech));
-          ctx.stroke();
-          ctx.lineCap = 'butt';
-        }
-      } else {
-        // Dead: the lamps are out — a shut-line across each lobe.
-        ctx.strokeStyle = C(look.discRim);
-        ctx.lineWidth = Math.max(1.2, s * 0.018);
+        // One glint, up-inner and mirrored — a same-side pair reads
+        // walleyed.
+        ctx.fillStyle = '#fff7e0';
         ctx.beginPath();
-        ctx.moveTo(lx - lobeR * 0.4, ly);
-        ctx.lineTo(lx + lobeR * 0.4, ly + lobeR * 0.08);
+        facetCircle(ctx, exl - es * er * 0.3, eyl - er * 0.34, er * 0.13, 5, 0.4);
+        ctx.fill();
+        const blink = o.blink ?? 0;
+        if (blink > 0.05) {
+          ctx.fillStyle = look.disc;
+          ctx.fillRect(exl - er * 1.05, eyl - er * 1.05, er * 2.1, er * 2.1 * Math.min(1, blink));
+        }
+        // THE BROW RIDGE: the hard slanted ledge that turns a staring
+        // toy into a raptor — heavier on the elder (the court scowl).
+        ctx.strokeStyle = C(shade(look.discRim, -8));
+        ctx.lineWidth = Math.max(1.6, s * (look.elder ? 0.04 : 0.031));
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(exl - es * er * 0.9, eyl - er * (1.28 + 0.12 * screech));
+        ctx.lineTo(exl + es * er * 0.95, eyl - er * (0.8 - 0.12 * screech));
         ctx.stroke();
+        ctx.lineCap = 'butt';
       }
-    }
-    // The beak: a small dark hook seated between the lobes, pulled
-    // back so it overlaps the disc instead of floating at profile.
-    if (fy > -0.2) {
-      // An owl's beak TUCKS UNDER the disc: full presence only on the
-      // frontal face, shrinking to a small leading-edge hook as the
-      // head turns — the disc owns the profile silhouette.
-      const bkx = dcx + fx * w * (0.18 - 0.05 * profileK);
-      const bky = dcy + fy * w * 0.1 * ys + h * (0.2 - 0.02 * profileK);
-      const bw = w * 0.08 * (1 - 0.55 * profileK);
-      ctx.fillStyle = C(look.horn);
+    } else {
+      // Dead: the lamps are out — a shut-line across the lobe.
+      ctx.strokeStyle = C(look.discRim);
+      ctx.lineWidth = Math.max(1.2, s * 0.018);
       ctx.beginPath();
-      ctx.moveTo(bkx - px * bw - fx * w * 0.03 * profileK, bky - h * 0.05);
-      ctx.lineTo(bkx + px * bw + fx * w * 0.01 * profileK, bky - h * (0.05 - 0.02 * profileK));
-      ctx.lineTo(
-        bkx + fx * w * (0.04 + 0.05 * profileK),
-        bky + h * (0.22 - 0.1 * profileK + 0.06 * screech),
-      );
+      ctx.moveTo(-lobeR * 0.4, 0);
+      ctx.lineTo(lobeR * 0.4, lobeR * 0.08);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  // THE BEAK: a protruding hook, not a surface decal — it keeps its
+  // presence at profile (the silhouette's leading hook, riding just
+  // proud of the dome) and only slips away as it truly rounds the
+  // horizon, fading by SIZE — never a gate.
+  const bst = station(0);
+  const bT = (bst.fore + 0.32) / 0.4;
+  const bSizeK = bT <= 0 ? 0 : bT >= 1 ? 1 : bT * bT * (3 - 2 * bT);
+  if (bSizeK > 0.02) {
+    ctx.save();
+    ctx.translate(
+      cx + Math.cos(hAng) * SRX * 1.14,
+      faceY + Math.sin(hAng) * SRY * ys * 1.14 + h * 0.16,
+    );
+    const bw2 = w * 0.085 * bSizeK;
+    ctx.fillStyle = C(look.horn);
+    ctx.beginPath();
+    ctx.moveTo(-bw2, -h * 0.06);
+    ctx.lineTo(bw2, -h * 0.06);
+    ctx.lineTo(0, h * (0.2 + 0.06 * screech));
+    ctx.closePath();
+    ctx.fill();
+    if (screech > 0.15 && !o.hurt && !o.dead) {
+      // The scream: the lower mandible drops, dark gape under it.
+      ctx.fillStyle = '#2a1420';
+      ctx.beginPath();
+      ctx.moveTo(-bw2 * 0.6, h * 0.1);
+      ctx.lineTo(bw2 * 0.6, h * 0.1);
+      ctx.lineTo(0, h * (0.12 + 0.16 * screech));
       ctx.closePath();
       ctx.fill();
-      if (screech > 0.15 && !o.hurt && !o.dead) {
-        // The scream: the lower mandible drops, dark gape under it.
-        ctx.fillStyle = '#2a1420';
-        ctx.beginPath();
-        ctx.moveTo(bkx - px * w * 0.05, bky + h * 0.08);
-        ctx.lineTo(bkx + px * w * 0.05, bky + h * 0.08);
-        ctx.lineTo(bkx + fx * w * 0.03, bky + h * (0.1 + 0.16 * screech));
-        ctx.closePath();
-        ctx.fill();
-      }
     }
+    ctx.restore();
   }
 }
 

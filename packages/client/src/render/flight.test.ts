@@ -150,6 +150,43 @@ test('the glide is a feathered cruise privilege; the bat never earns one', () =>
   }
 });
 
+test('THE TAIL IS A SIMULATION: it exists, streams behind, snaps on teleport — and a bat has none', () => {
+  // Cruise east: the chain must stream BEHIND the flight line.
+  const rig = new FlightRig(OWL_FLIER, 7);
+  let f = run(rig, 300, 1);
+  assert.equal(f.tail.length, 5, 'the owl carries its chain');
+  for (const n of f.tail) {
+    assert.ok(Number.isFinite(n.dx) && Number.isFinite(n.dy) && Number.isFinite(n.z));
+  }
+  const dock = f.tail[0]!;
+  const tip = f.tail[f.tail.length - 1]!;
+  assert.ok(tip.dx < dock.dx - 0.15, `the fan streams behind at cruise (${tip.dx} vs ${dock.dx})`);
+  // Teleport: the chain arrives WITH the bird, never whips across.
+  f = rig.update({ x: 400, y: -300, dir: 0, moveK: 0, dt: DT });
+  for (const n of f.tail) {
+    assert.ok(Math.hypot(n.dx, n.dy) < 1.5, 'the tail snaps to the new anchor');
+  }
+  // Settled hover: the chain hangs close under the stern, finite and calm.
+  const hover = run(new FlightRig(OWL_FLIER, 3), 400, 0);
+  const hoverTip = hover.tail[hover.tail.length - 1]!;
+  assert.ok(hoverTip.z < hover.lift, 'the hover tail hangs below the body');
+  // The bat has no tail chain at all.
+  const bat = run(new FlightRig(BAT_FLIER, 3), 60, 0.5);
+  assert.equal(bat.tail.length, 0);
+});
+
+test('THE DIVE: the windup rears the body, the strike pitches nose-down and lunges deep', () => {
+  const calm = stagedFlight(OWL_FLIER, { seed: 9, moveK: 0.5 });
+  const windup = stagedFlight(OWL_FLIER, { seed: 9, moveK: 0.5, attackT: 0.5 });
+  assert.ok(
+    windup.pitchA > calm.pitchA + 0.15,
+    `the windup REARS the hull back (${windup.pitchA} vs ${calm.pitchA})`,
+  );
+  const strike = stagedFlight(OWL_FLIER, { seed: 9, moveK: 0.5, attackT: 0.85 });
+  assert.ok(strike.pitchA < -0.25, `the strike is a NOSE-DOWN dive (${strike.pitchA})`);
+  assert.ok(strike.lungeF > 0.5, `the dive lunges deep (${strike.lungeF})`);
+});
+
 test('the swoop speaks through the rig: mantle flash, then talons and the dive', () => {
   const windup = stagedFlight(OWL_FLIER, { seed: 9, moveK: 0.5, attackT: 0.5 });
   assert.ok(windup.under, 'the windup flashes the pale underside');

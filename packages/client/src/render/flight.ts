@@ -223,6 +223,10 @@ export interface FlierSpec {
   tone: number;
   /** Hover pitch-up (radians from level — the near-vertical tread). */
   uprightA: number;
+  /** Simulated tail-chain length (tiles); 0 = the species has none. */
+  tail: number;
+  /** Stern reach (tiles aft of the anchor) where the tail docks. */
+  stern: number;
 }
 
 /** The great owl: slow heavy feathered beats, seeded glides. */
@@ -234,6 +238,8 @@ export const OWL_FLIER: FlierSpec = {
   stations: 5,
   tone: 1,
   uprightA: 0.92,
+  tail: 0.36,
+  stern: 0.44,
 };
 
 /** The elder: more mass on the wing — slower still, higher seat. */
@@ -245,6 +251,8 @@ export const ELDER_OWL_FLIER: FlierSpec = {
   stations: 5,
   tone: 1,
   uprightA: 0.88,
+  tail: 0.5,
+  stern: 0.6,
 };
 
 /** The cave bat: quick loose membrane flutter, never a glide. */
@@ -256,6 +264,8 @@ export const BAT_FLIER: FlierSpec = {
   stations: 4,
   tone: 0.55,
   uprightA: 0.72,
+  tail: 0,
+  stern: 0,
 };
 
 /** The rig ledger by def id — the renderer's one lookup. */
@@ -314,6 +324,15 @@ export interface FlightFrame {
   /** Tip angular velocity per wing — the painter's flex cue (rad/s). */
   portTipVel: number;
   starTipVel: number;
+  /**
+   * THE TAIL IS A SIMULATION: world-relative chain node offsets from
+   * the ground anchor (dx, dy in world tiles; z tiles up). The tail
+   * lives in WORLD space — it drags, streams and flops behind the
+   * body by physics, and deliberately does NOT ride the bank roll
+   * (a free appendage lags the body's roll; that IS the read).
+   * Empty for tailless species.
+   */
+  tail: ReadonlyArray<{ dx: number; dy: number; z: number }>;
   /** True while any sim still moves — the renderer's re-bake cue. */
   restless: boolean;
 }
@@ -338,6 +357,19 @@ const smooth = (x: number, lo: number, hi: number): number => {
  * its own wing sims, because it computes the exact bone carriage they
  * hang from (the owner-ticks law).
  */
+/** One verlet node of the simulated tail chain (world tiles). */
+interface TailNode {
+  x: number;
+  y: number;
+  z: number;
+  px: number;
+  py: number;
+  pz: number;
+}
+
+/** Tail chain segment count — short, feathered, floppy. */
+const TAIL_SEGS = 4;
+
 export class FlightRig {
   private readonly portWing: WingSim;
   private readonly starWing: WingSim;
@@ -354,6 +386,10 @@ export class FlightRig {
   private lastY = Number.NaN;
   private lastDir = 0;
   private readonly seedF: number;
+  /** The simulated tail chain (world space); empty when spec.tail=0. */
+  private readonly tailNodes: TailNode[] = [];
+  /** Scratch: world-relative tail offsets handed out each frame. */
+  private readonly tailOut: Array<{ dx: number; dy: number; z: number }> = [];
 
   constructor(
     readonly spec: FlierSpec,
@@ -366,6 +402,99 @@ export class FlightRig {
     this.phase = this.seedF;
     this.t = this.seedF * 1.7;
     this.pitchA = spec.uprightA; // first sight of a still body = hover
+  }
+
+  /** Lay the tail chain at rest behind the facing — first sight and
+   *  teleports never whip an appendage across the map. */
+  private snapTail(x: number, y: number, z: number, fx: number, fy: number): void {
+    const seg = this.spec.tail / TAIL_SEGS;
+    this.tailNodes.length = 0;
+    for (let i = 0; i <= TAIL_SEGS; i++) {
+      const nx = x - fx * seg * i;
+      const ny = y - fy * seg * i;
+      const nz = z - 0.06 * i * seg * TAIL_SEGS;
+      this.tailNodes.push({ x: nx, y: ny, z: nz, px: nx, py: ny, pz: nz });
+    }
+  }
+
+  /**
+   * Advance the tail one frame: a world-space verlet chain rooted at
+   * the vent, with feather TONE — every node springs toward the rest
+   * carriage (streamed behind the facing, drooping toward the tip) so
+   * the fan drags through turns, streams at speed, flops past a hard
+   * stop, and always comes home. The dive whips it up and behind by
+   * pure physics — nothing here is posed.
+   */
+  private tickTail(
+    rx: number,
+    ry: number,
+    rz: number,
+    fx: number,
+    fy: number,
+    dt: number,
+    droopA: number,
+  ): void {
+    const seg = this.spec.tail / TAIL_SEGS;
+    if (
+      this.tailNodes.length !== TAIL_SEGS + 1 ||
+      Math.hypot(rx - this.tailNodes[0]!.x, ry - this.tailNodes[0]!.y) > 2
+    ) {
+      this.snapTail(rx, ry, rz, fx, fy);
+      return;
+    }
+    const root = this.tailNodes[0]!;
+    root.x = rx;
+    root.y = ry;
+    root.z = rz;
+    const damp = Math.pow(0.0025, dt); // heavy air damping on feathers
+    for (let i = 1; i <= TAIL_SEGS; i++) {
+      const n = this.tailNodes[i]!;
+      const u = i / TAIL_SEGS;
+      // Rest carriage PITCHES WITH THE BODY: streamed straight behind
+      // at cruise, hanging down-behind through the hover (a treading
+      // bird braces its fan under itself — and a decisive rest keeps
+      // the hanging chain from wandering forward under the belly,
+      // where the fan read as a pair of feet on the sheet).
+      const cd = Math.cos(droopA);
+      const sd = Math.sin(droopA);
+      const restX = rx - fx * seg * i * cd;
+      const restY = ry - fy * seg * i * cd;
+      const restZ = rz - seg * i * sd - 0.04 * u * this.spec.tail;
+      const tone = 26 * (1 - 0.45 * u); // stiff at the dock, free at the fan
+      const vx = (n.x - n.px) * damp + (restX - n.x) * tone * dt * dt;
+      const vy = (n.y - n.py) * damp + (restY - n.y) * tone * dt * dt;
+      const vz = (n.z - n.pz) * damp + (restZ - n.z) * tone * dt * dt - 0.35 * dt * dt;
+      n.px = n.x;
+      n.py = n.y;
+      n.pz = n.z;
+      n.x += vx;
+      n.y += vy;
+      n.z += vz;
+    }
+    // Distance constraints keep the chain a chain (two passes).
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = 1; i <= TAIL_SEGS; i++) {
+        const a = this.tailNodes[i - 1]!;
+        const b = this.tailNodes[i]!;
+        const ddx = b.x - a.x;
+        const ddy = b.y - a.y;
+        const ddz = b.z - a.z;
+        const d = Math.hypot(ddx, ddy, ddz) || 1e-6;
+        const k = (d - seg) / d;
+        if (i === 1) {
+          b.x -= ddx * k;
+          b.y -= ddy * k;
+          b.z -= ddz * k;
+        } else {
+          b.x -= ddx * k * 0.5;
+          b.y -= ddy * k * 0.5;
+          b.z -= ddz * k * 0.5;
+          a.x += ddx * k * 0.5;
+          a.y += ddy * k * 0.5;
+          a.z += ddz * k * 0.5;
+        }
+      }
+    }
   }
 
   /**
@@ -476,12 +605,17 @@ export class FlightRig {
     const driftL = Math.sin(this.t * 0.68 + this.seedF * 1.4) * 0.055 * hoverK;
     const driftF = Math.sin(this.t * 0.47 + this.seedF * 0.9) * 0.03 * hoverK;
 
-    // ---- the swoop: windup brakes, climbs and mantles high (pale
-    // undersides out); the strike dives along the facing with the
-    // wings swept past level. Shaped HERE so the vane sims feel the
-    // snap and drag behind it — the whip is physics, not paint.
+    // ---- THE SWOOP, spoken in the body: the windup REARS — the hull
+    // pitches back, climbs, wings mantle to the full pale-underside
+    // bloom, talons cocking under the chest — a drawn bow. The strike
+    // is a NOSE-DOWN DIVE: the body whips through level into a hard
+    // downward attitude, lunging deep along the facing, wings snapped
+    // back into a delta, both talons thrown. All shaped HERE so the
+    // vane sims and the tail chain feel the snap and drag behind it —
+    // the violence is physics, not paint.
     let lungeF = 0;
     let talonK = 0;
+    let atkPitch = 0;
     let under = raise > 0.4;
     if (at > 0) {
       const quiet = Math.min(1, at * 3);
@@ -489,25 +623,33 @@ export class FlightRig {
       gust *= 1 - quiet;
       if (at < 0.7) {
         const w = at / 0.7;
-        lift += 0.12 * w;
-        raise += (1.05 - raise) * w;
-        raiseHand += (1.1 - raiseHand) * w;
-        spread = Math.min(1, spread + w * 0.3);
-        sweepK = sweepK + (0.22 - sweepK) * w;
-        talonK = Math.max(talonK, w);
+        const wE = w * w * (3 - 2 * w);
+        atkPitch = 0.42 * wE;
+        lift += 0.2 * wE;
+        raise += (1.15 - raise) * wE;
+        raiseHand += (1.28 - raiseHand) * wE;
+        spread = Math.min(1, spread + wE * 0.35);
+        sweepK = sweepK + (0.16 - sweepK) * wE;
+        talonK = wE * 0.7;
         under = true;
       } else {
-        const k = Math.sin(Math.PI * Math.min(1, (at - 0.7) / 0.3));
-        lungeF = 0.45 * k;
-        lift -= 0.32 * k;
-        raise += (-0.42 - raise) * k;
-        raiseHand += (-0.5 - raiseHand) * k;
-        spread += (0.8 - spread) * k;
-        sweepK = sweepK + (1 - sweepK) * k;
+        const wp = Math.min(1, (at - 0.7) / 0.3);
+        const k = Math.sin(Math.PI * wp);
+        // The rear decays as the dive takes over — the whole attitude
+        // whips from +0.42 back through level to −0.66 nose-down.
+        atkPitch = 0.42 * (1 - wp) - 0.66 * k;
+        lungeF = 0.78 * k;
+        lift -= 0.48 * k;
+        raise += (-0.55 - raise) * k;
+        raiseHand += (-0.74 - raiseHand) * k;
+        spread += (0.85 - spread) * k;
+        sweepK = sweepK + (1.2 - sweepK) * k;
         talonK = 1;
         under = false;
       }
     }
+    const pitchEff = this.pitchA + atkPitch;
+    const pitchKEff = 1 - clamp(Math.max(0, pitchEff) / spec.uprightA, 0, 1);
 
     // ---- the vanes: each wing's sim rides the finished carriage.
     // Banking twists them apart — the inside wing's surface loads up,
@@ -516,11 +658,34 @@ export class FlightRig {
     this.portWing.update(raise + twist, dt);
     this.starWing.update(raise - twist, dt);
 
+    // ---- the tail: simulated in WORLD space off the PAINTED stern
+    // (lunge and drift included — the tail rides the pounce), so the
+    // fan drags turns, streams the cruise, flops the stop, and gets
+    // whipped up-and-over by the dive without a single posed frame.
+    this.tailOut.length = 0;
+    if (spec.tail > 0) {
+      const fx = Math.cos(o.dir);
+      const fy = Math.sin(o.dir);
+      const lx = -fy;
+      const ly = fx;
+      const sternR = spec.stern * Math.cos(pitchEff);
+      const rootX = o.x + fx * (lungeF + driftF - sternR) + lx * driftL;
+      const rootY = o.y + fy * (lungeF + driftF - sternR) + ly * driftL;
+      const rootZ = lift - Math.sin(pitchEff) * spec.stern;
+      // The fan's rest droop follows the hull pitch — down-braced in
+      // the upright hover, streamed flat at cruise and in the dive.
+      const droopA = 0.12 + Math.max(0, pitchEff) * 0.8;
+      this.tickTail(rootX, rootY, rootZ, fx, fy, dt, droopA);
+      for (const n of this.tailNodes) {
+        this.tailOut.push({ dx: n.x - o.x, dy: n.y - o.y, z: n.z });
+      }
+    }
+
     return {
       hoverK,
       cruiseK,
-      pitchK,
-      pitchA: this.pitchA,
+      pitchK: pitchKEff,
+      pitchA: pitchEff,
       bank: this.bank,
       lift,
       driftF,
@@ -540,6 +705,7 @@ export class FlightRig {
       star: this.starWing.lag,
       portTipVel: this.portWing.vel[spec.stations - 1] ?? 0,
       starTipVel: this.starWing.vel[spec.stations - 1] ?? 0,
+      tail: this.tailOut,
       restless: this.portWing.restless || this.starWing.restless || this.moveS > 0.02,
     };
   }
@@ -671,36 +837,97 @@ function owlWingSim(
   const midL = (inner[1] + rootL) * 0.5;
   const midZ = (inner[2] + rootZ) * 0.5 - pf.wuZ * secDroop * span * 0.18;
 
-  // One solid slab: shoulder → leading edge → fingered tips (stepped
-  // notches of the facet dialect) → sim-drooped secondaries → root.
-  ctx.fillStyle = base;
-  ctx.beginPath();
+  // THE ROOT TUCK: the wing's inner anchor lives INSIDE the hull —
+  // a point at the body's core that the slab polygon always includes,
+  // so no raise angle, bank, or drift can ever open daylight between
+  // wing and body (the user's separation verdict). The visible
+  // shoulder is just where the wing CLEARS the hull, not where it
+  // attaches.
+  const tuckF = pf.aF * 0.02 + pf.dF * 0.04;
+  const tuckZ = pf.aZ * 0.02 + pf.dZ * 0.04;
+  const tuckL = es * look.bodyW * 0.18;
+
+  // One solid slab: core tuck → shoulder → leading edge → fingered
+  // tips (stepped notches of the facet dialect) → sim-drooped
+  // secondaries → root, closing back through the core. The outline is
+  // COLLECTED first: its shoelace area is the honest measure of how
+  // edge-on the wing is (a probe along any single chord lies — the
+  // plane can collapse in a direction the probe misses).
+  const outline: Array<[number, number]> = [];
+  const pt0 = P(tuckF, tuckL, tuckZ);
+  outline.push(pt0);
   const p0 = P(shF, shL, shZ);
-  ctx.moveTo(p0[0], p0[1]);
+  outline.push(p0);
   const pw = P(wrF, wrL, wrZ);
-  ctx.lineTo(pw[0], pw[1]);
+  outline.push(pw);
   for (let k = 0; k < N; k++) {
     const t = tips[k]!;
-    const pt = P(t[0], t[1], t[2]);
-    ctx.lineTo(pt[0], pt[1]);
+    outline.push(P(t[0], t[1], t[2]));
     if (k < N - 1) {
       const nx = tips[k + 1]!;
-      const nn = P(
-        t[0] * 0.35 + nx[0] * 0.35 + wrF * 0.3,
-        t[1] * 0.35 + nx[1] * 0.35 + wrL * 0.3,
-        t[2] * 0.35 + nx[2] * 0.35 + wrZ * 0.3,
+      outline.push(
+        P(
+          t[0] * 0.35 + nx[0] * 0.35 + wrF * 0.3,
+          t[1] * 0.35 + nx[1] * 0.35 + wrL * 0.3,
+          t[2] * 0.35 + nx[2] * 0.35 + wrZ * 0.3,
+        ),
       );
-      ctx.lineTo(nn[0], nn[1]);
     }
   }
   const pm = P(midF, midL, midZ);
-  ctx.lineTo(pm[0], pm[1]);
+  outline.push(pm);
   const pr = P(rootF, rootL, rootZ);
-  ctx.lineTo(pr[0], pr[1]);
+  outline.push(pr);
+  // The gate measures the OUTER slab only (shoulder → tips → mid) —
+  // the root wedge at the body always keeps area and would blind the
+  // gate to an edge-on outer wing.
+  let area2 = 0;
+  const outer = outline.slice(1, outline.length - 1);
+  for (let k = 0; k < outer.length; k++) {
+    const a = outer[k]!;
+    const b = outer[(k + 1) % outer.length]!;
+    area2 += a[0] * b[1] - b[0] * a[1];
+  }
+  const slabArea = Math.abs(area2) / 2;
+  /** 1 = a full broad slab, →0 as the wing turns edge-on. */
+  const slabK = Math.min(1, slabArea / (0.1 * span * span * s * s));
+  /** Detail ink fades out with the slab: an edge-on wing keeps its
+   *  pale sliver, but bands, barring, coverts and bones — the DARK
+   *  ink — vanish with the surface they decorate (the wire verdict). */
+  const detailA = slabK <= 0.22 ? 0 : Math.min(1, (slabK - 0.22) / 0.3);
+  ctx.fillStyle = base;
+  ctx.beginPath();
+  ctx.moveTo(outline[0]![0], outline[0]![1]);
+  for (let k = 1; k < outline.length; k++) ctx.lineTo(outline[k]![0], outline[k]![1]);
   ctx.closePath();
   ctx.fill();
+  // THE WING HAS THICKNESS: seen edge-on, a real wing shows the
+  // folded feather-stack edge — never a screen hairline. As the
+  // projected slab thins, an edge-mass stroke along the leading
+  // polyline fattens to take its place, so the far wing at the
+  // quarter bands reads as a pale blade with body, at every phase
+  // of the beat, with no pop and no vanish.
+  if (slabK < 0.3) {
+    const edgeW = s * span * 0.05 * (1 - slabK / 0.3);
+    if (edgeW > 1) {
+      ctx.strokeStyle = base;
+      ctx.lineWidth = edgeW;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(p0[0], p0[1]);
+      ctx.lineTo(pw[0], pw[1]);
+      const lead0 = tips[0]!;
+      const pl0 = P(lead0[0], lead0[1], lead0[2]);
+      ctx.lineTo(pl0[0], pl0[1]);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      ctx.lineJoin = 'miter';
+    }
+  }
 
-  if (!o.hurt) {
+  if (!o.hurt && detailA > 0.02) {
+    ctx.globalAlpha = detailA;
     // The flight-feather band: the outer half a step darker —
     // primaries and secondaries against the paler coverts.
     ctx.fillStyle = flightInk;
@@ -756,43 +983,53 @@ function owlWingSim(
       ctx.lineTo(b[0], b[1]);
       ctx.stroke();
     }
+    ctx.globalAlpha = 1;
   }
-  // The leading arm — the wing's bone line. The hand segment thins:
-  // an edge-on far wing collapses its slab to a sliver, and a
-  // full-weight bone past the wrist reads as a stray wire there
-  // (flier-sheet audit) — the arm carries the weight, the hand tapers.
-  ctx.strokeStyle = boneInk;
-  ctx.lineCap = 'round';
-  ctx.lineWidth = Math.max(1.5, s * 0.042);
-  ctx.beginPath();
-  ctx.moveTo(p0[0], p0[1]);
-  ctx.lineTo(pw[0], pw[1]);
-  ctx.stroke();
-  const lead = tips[0]!;
-  const pl = P(lead[0], lead[1], lead[2]);
-  ctx.lineWidth = Math.max(1.1, s * 0.026);
-  ctx.beginPath();
-  ctx.moveTo(pw[0], pw[1]);
-  ctx.lineTo(pl[0], pl[1]);
-  ctx.stroke();
-  ctx.lineCap = 'butt';
-  // THE DOWNWASH: right after the power stroke bottoms out, pale air
-  // falls away beneath the outer primaries and fades.
-  if (fr.gust > 0.03 && !o.hurt) {
-    const fall = (1 - fr.gust) * 0.3;
-    ctx.strokeStyle = `rgba(238, 234, 218, ${(0.3 * fr.gust).toFixed(3)})`;
-    ctx.lineWidth = Math.max(1.4, s * 0.032);
+  // The leading arm — the wing's bone line. The whole stroke FADES
+  // WITH THE SLAB: when a wing turns edge-on its surface collapses to
+  // a sliver, and a full-weight bone there reads as a stray wire
+  // hanging in the air (flier-sheet audit, twice) — so the bone's
+  // weight follows the projected chord. The hand segment thins
+  // further; the arm carries what weight remains.
+  // Below a fraction of its broad-side area the wing is a sliver —
+  // the bone vanishes WITH its slab (alpha, not just width: a 2px
+  // wire at high zoom still read as a stray hair on the sheet).
+  if (detailA > 0.02) {
+    const boneA = detailA;
+    const boneW = 0.35 + 0.65 * slabK;
+    ctx.globalAlpha = boneA;
+    ctx.strokeStyle = boneInk;
     ctx.lineCap = 'round';
-    for (const k of [0, 2]) {
-      const t = tips[k]!;
-      const a = P(t[0] - 0.03, t[1] * 1.01, t[2] - 0.08 - fall);
-      const b = P(t[0] - 0.16, t[1] * 1.07, t[2] - 0.22 - fall * 1.3);
-      ctx.beginPath();
-      ctx.moveTo(a[0], a[1]);
-      ctx.lineTo(b[0], b[1]);
-      ctx.stroke();
-    }
+    ctx.lineWidth = Math.max(1.2, s * 0.042 * boneW);
+    ctx.beginPath();
+    ctx.moveTo(p0[0], p0[1]);
+    ctx.lineTo(pw[0], pw[1]);
+    ctx.stroke();
+    const lead = tips[0]!;
+    const pl = P(lead[0], lead[1], lead[2]);
+    ctx.lineWidth = Math.max(1, s * 0.026 * boneW);
+    ctx.beginPath();
+    ctx.moveTo(pw[0], pw[1]);
+    ctx.lineTo(pl[0], pl[1]);
+    ctx.stroke();
     ctx.lineCap = 'butt';
+    ctx.globalAlpha = 1;
+  }
+  // THE SCAPULAR: a feather mass over the wing root, seating the
+  // wing INTO the hull silhouette — the second half of the no-gap
+  // law (the tuck guarantees overlap; the scapular sells the joint).
+  // NO wind/air effect lines live on the model — air is the particle
+  // system's job, never the rig's.
+  if (!o.hurt) {
+    const sc = P(
+      shF * 0.55 + tuckF * 0.45,
+      shL * 0.7 + tuckL * 0.3,
+      shZ * 0.55 + tuckZ * 0.45,
+    );
+    ctx.fillStyle = shade(base, -4);
+    ctx.beginPath();
+    facetCircle(ctx, sc[0], sc[1], look.bodyW * s * 0.34, 7, es * 0.7, 0.72);
+    ctx.fill();
   }
 }
 
@@ -879,61 +1116,82 @@ export function drawGreatOwl(
   const ventZ = -pf.aZ * ventA;
 
   const drawTail = (): void => {
-    // The steering fan: rooted at the vent, trailing the flight line
-    // at cruise and bracing DOWN-UNDER through the hover — the fan is
-    // the hover's rudder and the flare's brake. It spreads with the
-    // bank and the strike, and bar ticks ride the tips.
-    const tSpread =
-      0.5 + 0.55 * (1 - fr.pitchK) + Math.min(0.5, Math.abs(fr.bank)) * 0.5 + (at >= 0.7 ? 0.3 : 0);
-    const tLen = look.tailLen * (1.05 + 0.25 * (1 - fr.pitchK));
-    const rootF = ventF - pf.aF * 0.06;
-    const rootZ = ventZ - pf.aZ * 0.06 + 0.02;
+    // THE TAIL IS A SIMULATION: the rig hands a world-space verlet
+    // chain (dragged, streamed, flopped, dive-whipped by physics) and
+    // the painter dresses it — a covert dock wedge blending into the
+    // stern, then the stepped feather fan fanned around the chain's
+    // OWN tip direction. Nothing here is posed; the floppy life IS
+    // the sim. The chain deliberately ignores the bank roll — a free
+    // appendage lags the body's roll.
+    const chain = fr.tail;
+    if (chain.length < 2) return;
+    const S = (n: { dx: number; dy: number; z: number }): [number, number] => [
+      o.x + n.dx * s,
+      o.y + n.dy * ys * s - n.z * s,
+    ];
+    const pts = chain.map(S);
+    const dock = pts[0]!;
+    const mid = pts[Math.max(1, pts.length - 3)]!;
+    const last = pts[pts.length - 1]!;
+    const prev = pts[pts.length - 2]!;
+    let ang = Math.atan2(last[1] - prev[1], last[0] - prev[0]);
+    if (Math.hypot(last[0] - prev[0], last[1] - prev[1]) < s * 0.02) {
+      // Chain streaming dead toward/away from the camera: fall back
+      // to the screen-projected reverse facing so the fan never spins.
+      ang = Math.atan2(-fy * ys, -fx);
+    }
+    // The fan keeps its feather length even when the chain hangs
+    // nearly vertical under the hover (a compressed screen chain must
+    // not shrink the plumage).
+    const fanLen = Math.max(
+      Math.hypot(last[0] - mid[0], last[1] - mid[1]) + look.tailLen * s * 0.55,
+      look.tailLen * s * 0.85,
+    );
+    const tSpread = 0.55 + 0.72 * (1 - fr.pitchK) + Math.min(0.5, Math.abs(fr.bank)) * 0.4;
+    // The dock: covert wedge seating the fan INTO the stern silhouette.
+    ctx.fillStyle = C(shade(look.mantle, -3));
+    ctx.beginPath();
+    ctx.moveTo(dock[0] - Math.sin(ang) * s * 0.09, dock[1] + Math.cos(ang) * s * 0.09 * 0.6);
+    ctx.lineTo(dock[0] + Math.sin(ang) * s * 0.09, dock[1] - Math.cos(ang) * s * 0.09 * 0.6);
+    ctx.lineTo(mid[0], mid[1]);
+    ctx.closePath();
+    ctx.fill();
+    // The fan: five stepped blades around the chain's live direction.
     const TN = 5;
-    const tip = (k: number): [number, number, number] => {
-      const u = k / (TN - 1) - 0.5;
-      const ln = tLen * (1 - 0.3 * Math.abs(u) * 2);
-      // Fan plane: back along the hull axis, drooping harder as the
-      // body swings upright — the brace under the treading watch.
-      const back = Math.cos(u * tSpread) * ln;
-      return [
-        rootF - pf.aF * back * 0.9 - pf.dF * back * 0.45 * (1 - fr.pitchK),
-        Math.sin(u * tSpread) * ln,
-        rootZ - pf.aZ * back * 0.9 * fr.pitchK - pf.dZ * back * 0.45 * (1 - fr.pitchK) -
-          0.12 * (1 - Math.abs(u)) * fr.pitchK,
-      ];
-    };
     ctx.fillStyle = C(shade(look.mantle, -6));
     ctx.beginPath();
-    const r0 = P(rootF, 0, rootZ);
-    ctx.moveTo(r0[0], r0[1]);
+    ctx.moveTo(mid[0], mid[1]);
+    const tips: Array<[number, number]> = [];
     for (let k = 0; k < TN; k++) {
-      const tp = tip(k);
-      const pp = P(tp[0], tp[1], tp[2]);
-      ctx.lineTo(pp[0], pp[1]);
+      const u = k / (TN - 1) - 0.5;
+      const a = ang + u * tSpread;
+      const ln = fanLen * (1 - 0.32 * Math.abs(u) * 2);
+      tips.push([mid[0] + Math.cos(a) * ln, mid[1] + Math.sin(a) * ln]);
+    }
+    for (let k = 0; k < TN; k++) {
+      const t = tips[k]!;
+      ctx.lineTo(t[0], t[1]);
       if (k < TN - 1) {
-        const a = tip(k);
-        const b = tip(k + 1);
-        const pn = P(
-          a[0] * 0.41 + b[0] * 0.41 + rootF * 0.18,
-          a[1] * 0.41 + b[1] * 0.41,
-          a[2] * 0.41 + b[2] * 0.41 + rootZ * 0.18,
+        const n = tips[k + 1]!;
+        ctx.lineTo(
+          t[0] * 0.35 + n[0] * 0.35 + mid[0] * 0.3,
+          t[1] * 0.35 + n[1] * 0.35 + mid[1] * 0.3,
         );
-        ctx.lineTo(pn[0], pn[1]);
       }
     }
     ctx.closePath();
     ctx.fill();
-    if (!o.hurt) {
+    if (!o.hurt && fanLen > s * 0.3) {
+      // Bar ticks riding every blade tip — the parliament's barring.
+      // (Skipped on a tightly folded fan, where tip ticks read as
+      // toes — the sheet's talon-mirage verdict.)
       ctx.strokeStyle = look.bar;
       ctx.lineWidth = Math.max(1.2, s * 0.02);
       ctx.lineCap = 'round';
-      for (let k = 0; k < TN; k++) {
-        const tp = tip(k);
-        const a = P(tp[0] * 0.8 + rootF * 0.2, tp[1] * 0.8, tp[2] * 0.8 + rootZ * 0.2);
-        const b = P(tp[0] * 0.92 + rootF * 0.08, tp[1] * 0.92, tp[2] * 0.92 + rootZ * 0.08);
+      for (const t of tips) {
         ctx.beginPath();
-        ctx.moveTo(a[0], a[1]);
-        ctx.lineTo(b[0], b[1]);
+        ctx.moveTo(mid[0] + (t[0] - mid[0]) * 0.8, mid[1] + (t[1] - mid[1]) * 0.8);
+        ctx.lineTo(mid[0] + (t[0] - mid[0]) * 0.92, mid[1] + (t[1] - mid[1]) * 0.92);
         ctx.stroke();
       }
       ctx.lineCap = 'butt';
@@ -1046,22 +1304,26 @@ export function drawGreatOwl(
       const hipZ = ventZ * 0.3 - look.bodyW * 0.48;
       const footF = hipF + (at >= 0.7 ? 0.3 * talonK : talonK * 0.1 - (1 - talonK) * 0.12);
       const footZ = hipZ - (0.05 + 0.12 * talonK) + (at >= 0.7 ? 0.08 : 0);
+      const striking = at >= 0.7;
       const a = P(hipF, hipL, hipZ);
       const b = P(footF, hipL * 1.15, footZ);
       ctx.strokeStyle = shankInk;
-      ctx.lineWidth = Math.max(2, spec.legW * s * 0.95);
+      ctx.lineWidth = Math.max(2, spec.legW * s * (striking ? 1.2 : 0.95));
       ctx.beginPath();
       ctx.moveTo(a[0], a[1]);
       ctx.lineTo(b[0], b[1]);
       ctx.stroke();
       if (talonK > 0.25) {
+        // The business end: cocked claws curl under through the
+        // windup; the strike SPLAYS them — long, spread, and thrown
+        // at the prey. The talons are the swoop's exclamation mark.
         ctx.strokeStyle = clawInk;
-        ctx.lineWidth = Math.max(1.3, spec.legW * s * 0.5);
+        ctx.lineWidth = Math.max(1.4, spec.legW * s * (striking ? 0.62 : 0.5));
         for (const ta of [-1, 0, 1]) {
           const c = P(
-            footF + (at >= 0.7 ? 0.1 : 0.03) * talonK + ta * 0.02,
-            hipL * 1.15 + es * ta * 0.045 * talonK,
-            footZ - 0.07 * talonK,
+            footF + (striking ? 0.17 : 0.03) * talonK + ta * (striking ? 0.045 : 0.02),
+            hipL * 1.15 + es * ta * (striking ? 0.085 : 0.045) * talonK,
+            footZ - (striking ? 0.11 : 0.07) * talonK + (striking ? 0.02 : 0) * Math.abs(ta),
           );
           ctx.beginPath();
           ctx.moveTo(b[0], b[1]);
