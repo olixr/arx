@@ -43,6 +43,16 @@ const SINGLE_TEACHER_RECIPES: ReadonlySet<string> = new Set([
   'craft_yew_shortbow',
   'craft_yew_hunting_bow',
   'craft_yew_longbow',
+  // The Silk Hall's lane (the second single-teacher shelf): the
+  // moonpale weave and the star cloth it carries.
+  'craft_moonpale_silk',
+  'craft_starweaver_circlet',
+  'craft_starweaver_robe',
+  'craft_starweaver_skirts',
+  'craft_starweaver_slippers',
+  'craft_starweaver_gloves',
+  // The Third Table's cold work.
+  'craft_moonglass_lens',
 ]);
 
 /** Every trainer-taught scroll for the given professions, by level. */
@@ -881,6 +891,7 @@ const defs: ShopDef[] = [
       { item: recipeScrollId('craft_yew_hunting_bow'), price: 2900 },
       { item: recipeScrollId('craft_yew_longbow'), price: 3200 },
       { item: 'yew_log', price: 110 },
+      { item: 'silverbark', price: 130 },
       { item: 'heartwood', price: 900 },
     ],
   },
@@ -892,6 +903,13 @@ const defs: ShopDef[] = [
     name: 'The Silk Hall',
     stock: [
       ...trainerStock(['tailoring']),
+      { item: recipeScrollId('craft_moonpale_silk'), price: 900 },
+      { item: recipeScrollId('craft_starweaver_circlet'), price: 2300 },
+      { item: recipeScrollId('craft_starweaver_slippers'), price: 2400 },
+      { item: recipeScrollId('craft_starweaver_gloves'), price: 2400 },
+      { item: recipeScrollId('craft_starweaver_skirts'), price: 2600 },
+      { item: recipeScrollId('craft_starweaver_robe'), price: 3000 },
+      { item: 'moonpale_silk', price: 300 },
       { item: 'cloth', price: 45 },
       { item: 'linen', price: 38 },
       { item: 'gloomsilk', price: 180 },
@@ -904,6 +922,7 @@ const defs: ShopDef[] = [
     name: 'The Third Table',
     stock: [
       ...trainerStock(['enchanting']),
+      { item: recipeScrollId('craft_moonglass_lens'), price: 1100 },
       { item: 'arcane_dust', price: 55 },
       { item: 'stormpearl', price: 120 },
       { item: 'mithril_bar', price: 380 },
@@ -914,6 +933,7 @@ const defs: ShopDef[] = [
     id: 'selorne_glass',
     name: 'The Moonglass Hall',
     stock: [
+      { item: 'moonglass_lens', price: 340 },
       { item: 'frostshard', price: 90 },
       { item: 'moonbell', price: 18 },
       { item: 'dried_moonbell', price: 130 },
@@ -939,6 +959,7 @@ const defs: ShopDef[] = [
       { item: 'raw_trout', price: 12 },
       { item: 'honey', price: 48 },
       { item: 'yew_log', price: 120 },
+      { item: 'silverbark', price: 140 },
     ],
   },
   // Elarin feeds travelers and collects their idioms in change.

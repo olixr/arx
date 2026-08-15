@@ -518,6 +518,36 @@ const defs: Array<Omit<RecipeDef, 'unlock'>> = [
     output: { item: 'gloomsilk', qty: 1 },
     ticks: 60,
   },
+  // THE MOONPALE WEAVE (the Evenfall epic): the Silk Hall's own
+  // cloth — wild fibre and moonbell on the loom, a hundred quiet
+  // years compressed to sixty ticks of very good technique. Taught
+  // by Myrren ALONE (SINGLE_TEACHER_RECIPES, the bowyer's law).
+  {
+    id: 'craft_moonpale_silk',
+    name: 'Moonpale silk',
+    skill: 'tailoring',
+    levelReq: 30,
+    xp: 170,
+    station: 'loom',
+    inputs: [{ item: 'plant_fibre', qty: 4 }, { item: 'moonbell', qty: 2 }],
+    output: { item: 'moonpale_silk', qty: 1 },
+    ticks: 70,
+  },
+  // THE COLD WORK (the Evenfall epic): moonglass, worked at the
+  // table the way Selorne works it in the hall — no fire, only
+  // patience. Taught by Vessa ALONE; Selorne sells the finished
+  // lens to those who will not learn.
+  {
+    id: 'craft_moonglass_lens',
+    name: 'Moonglass lens',
+    skill: 'enchanting',
+    levelReq: 34,
+    xp: 210,
+    station: 'enchanting_table',
+    inputs: [{ item: 'frostshard', qty: 1 }, { item: 'arcane_dust', qty: 3 }],
+    output: { item: 'moonglass_lens', qty: 1 },
+    ticks: 80,
+  },
   {
     id: 'fletch_arrows',
     name: 'Arrows (x10)',
@@ -1341,7 +1371,10 @@ const enchantRecipes: RecipeDef[] = ENCHANT_DEFS.map((e) => {
   if (e.tier === 3) inputs.push({ item: ELEMENT_GEM[e.element] ?? 'gold_bar', qty: 1 });
   const focused = FOCUSED_BY_TIER[e.tier];
   if (focused) inputs.push({ item: 'focused_dust', qty: focused });
-  if (e.tier === 4) inputs.push({ item: 'mithril_bar', qty: 1 });
+  // The mithril tier is the elven tier: since the gate opened, every
+  // tier-4 working is focused through a cold lens (the Evenfall
+  // epic's dispersal — the lens joins the bar, found lore unchanged).
+  if (e.tier === 4) inputs.push({ item: 'mithril_bar', qty: 1 }, { item: 'moonglass_lens', qty: 1 });
   if (e.tier === 5) inputs.push({ item: 'starsteel_bar', qty: 1 });
   return {
     id: `inscribe_${e.id}`,
@@ -1531,6 +1564,10 @@ const INLINE_UNLOCK: Record<string, RecipeUnlock> = {
   craft_hardened_leather: 'core',
   weave_linen: 'core',
   weave_gloomsilk: 'core',
+  // The fair materials (the Evenfall epic): taught, single-teacher
+  // (shop.ts SINGLE_TEACHER_RECIPES keeps them off the guild shelves).
+  craft_moonpale_silk: 'trainer',
+  craft_moonglass_lens: 'trainer',
   craft_twine: 'core',
   craft_cloth: 'core',
   fletch_arrows: 'core',

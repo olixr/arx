@@ -971,6 +971,13 @@ const defs: ItemDef[] = [
   // Trade-prepared materials — the tanner's and weaver's stock in trade.
   { id: 'linen', name: 'Linen', stackable: true, maxStack: 10, value: 20, desc: 'A bolt woven from salvaged scrap — humble, tough, everywhere.', color: '#e4dcc4', code: 'Ln' },
   { id: 'gloomsilk', name: 'Gloomsilk', stackable: true, maxStack: 10, value: 90, desc: 'A bolt of woven midnight. Tailors whisper around it.', color: '#6a5690', code: 'Gs' },
+  // THE FAIR MATERIALS (the Evenfall epic): the old folk's three
+  // trades, dispersed into the whole craft economy — the silk into
+  // the star cloth, the bark into the bows, the lens into the deep
+  // workings. Never bulk goods: the finest, never the most.
+  { id: 'moonpale_silk', name: 'Moonpale silk', stackable: true, maxStack: 10, value: 150, desc: 'Not white. Look again, slower. A hundred quiet years in every thread.', color: '#cdd8ec', code: 'Mp' },
+  { id: 'silverbark', name: 'Silverbark', stackable: true, maxStack: 10, value: 60, desc: 'Pale timber the Everwood gives and no axe takes. The grain remembers agreeing.', color: '#a39072', code: 'Sv' },
+  { id: 'moonglass_lens', name: 'Moonglass lens', stackable: true, maxStack: 5, value: 180, desc: 'Glass worked cold over years. It holds a light the way a promise holds a word.', color: '#9fe0d8', code: 'Ml' },
   { id: 'hardened_leather', name: 'Hardened leather', stackable: true, maxStack: 10, value: 45, desc: 'Leather boiled with oak tannin until it argues back.', color: '#7d5636', code: 'Hl' },
 
   // Daggers live in equipment/defs.ts (the rogue's roster) — rolled gear.
