@@ -2031,7 +2031,10 @@ game.onFx = (fx) => {
       sfx.propSmash(
         kind === 'barrel' || kind === 'drum' || kind === 'pot' || kind === 'harp' || kind === 'chimes' ||
         // Shattering crystal rings like the instruments do.
-        kind === 'beacon' || kind === 'crystals',
+        kind === 'beacon' || kind === 'crystals' ||
+        // Hollow vessels of the deep: a rotten cask and fired grave
+        // clay both boom when they let go.
+        kind === 'mossbarrel' || kind === 'urns',
       ),
     );
     // Stone-weight pieces land heavy: marble, mithril, and old
@@ -2039,7 +2042,9 @@ game.onFx = (fx) => {
     if (dist < 6) {
       renderer.shake(
         kind === 'table' || kind === 'palisade' || kind === 'statue' || kind === 'fountain' || kind === 'waystone' ||
-          kind === 'anvil' || kind === 'runestone' || kind === 'wardarch' || kind === 'runepillar'
+          kind === 'anvil' || kind === 'runestone' || kind === 'wardarch' || kind === 'runepillar' ||
+          // Kingdom-stone and joined iron land like the masonry they are.
+          kind === 'sarcophagus' || kind === 'brokenpillar' || kind === 'oldstatue' || kind === 'minecart'
           ? 3.2
           : 2.2,
       );

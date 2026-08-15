@@ -638,6 +638,31 @@ export enum Tile {
   TopiaryBall = 347,
   /** A clipped spire tapering to a leaf-tuft finial. */
   TopiarySpire = 348,
+  // THE LONG DARK FURNISHED — dungeon dressing with a memory. Every
+  // piece tells who was down here and what became of them: stores
+  // gone green with the damp, a cart abandoned mid-shift, a prisoner
+  // the dark forgot, and the carved stone of whatever kingdom the
+  // mountain swallowed.
+  /** A waterlogged barrel gone green — staves sprung, hoops bleeding rust. */
+  MossBarrel = 349,
+  /** An ore cart abandoned on a stub of rail, still half loaded. */
+  MineCart = 350,
+  /** A prisoner the dark forgot: bones slumped in wall shackles. */
+  ChainedSkeleton = 351,
+  /** A wrought-iron cage bracket on the wall; its flame keeps the dark honest. */
+  WallSconce = 352,
+  /** Heavy rusted chains bolted high on the stone, cuffs hanging empty. */
+  WallChains = 353,
+  /** A carved stone coffin — the effigy lid is the read; the crypt's anchor. */
+  Sarcophagus = 354,
+  /** A snapped column: the base still stands, the fluted drums lie where they fell. */
+  BrokenPillar = 355,
+  /** A carved column two men tall. It holds the mountain up; it does not break. */
+  GrandPillar = 356,
+  /** Grave urns in a huddle: fired clay, band-painted, wax-sealed. */
+  BurialUrns = 357,
+  /** A weathered king of the swallowed kingdom — moss has taken the crown. */
+  AncientStatue = 358,
 }
 
 export enum Detail {
@@ -1169,6 +1194,21 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.HedgeGateShut]: { name: 'hedge arch', solid: true, color: '#2f5c31', raised: true, topColor: '#4c8342' },
   [Tile.TopiaryBall]: { name: 'topiary', solid: true, color: '#35663a', raised: true, topColor: '#549447' },
   [Tile.TopiarySpire]: { name: 'topiary spire', solid: true, color: '#2c5533', raised: true, topColor: '#4c8342' },
+  // THE LONG DARK FURNISHED — minimap voice: props sit a step warmer
+  // or paler than the '#514b58' flagstone dark, so a dressed chamber
+  // reads furnished at chart scale without shouting. The two wall
+  // fixtures are WALKABLE raised props (the iron rides the wall face;
+  // the corridor runs on beneath them).
+  [Tile.MossBarrel]: { name: 'mossy barrel', solid: true, color: '#4f5a44', raised: true, topColor: '#5e7048' },
+  [Tile.MineCart]: { name: 'ore cart', solid: true, color: '#4c4a52', raised: true, topColor: '#7a6a54' },
+  [Tile.ChainedSkeleton]: { name: 'chained skeleton', solid: true, color: '#6f6a5e', raised: true, topColor: '#cfc7ae' },
+  [Tile.WallSconce]: { name: 'wall sconce', solid: false, color: '#3c3640', raised: true, topColor: '#e8933c' },
+  [Tile.WallChains]: { name: 'wall chains', solid: false, color: '#4a4550', raised: true, topColor: '#6d6875' },
+  [Tile.Sarcophagus]: { name: 'sarcophagus', solid: true, color: '#565062', raised: true, topColor: '#847e91' },
+  [Tile.BrokenPillar]: { name: 'broken pillar', solid: true, color: '#5b5566', raised: true, topColor: '#8c8798' },
+  [Tile.GrandPillar]: { name: 'grand pillar', solid: true, color: '#5b5566', raised: true, topColor: '#938e9f' },
+  [Tile.BurialUrns]: { name: 'burial urns', solid: true, color: '#7a5a40', raised: true, topColor: '#a87e50' },
+  [Tile.AncientStatue]: { name: 'ancient statue', solid: true, color: '#5e5869', raised: true, topColor: '#8f8a7a' },
 };
 
 /** The four awning silhouettes, index order FOREVER (the id math). */
@@ -1375,6 +1415,9 @@ export const LIGHT_BLOCKING_TILES: readonly Tile[] = [
   Tile.WallStoneWindow,
   Tile.WallWoodWindow,
   Tile.PillarStone,
+  // The grand pillar is the underworld's PillarStone: a column of
+  // real girth throws a real shadow.
+  Tile.GrandPillar,
   ...DIAG_WALL_TILES,
   // A shut leaf stops lamplight; the open doorway spills it.
   Tile.DoorwayStoneShut,
@@ -1755,6 +1798,17 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   // WALL stays full-block — it is the garden's architecture.
   [Tile.TopiaryBall, 0.3],
   [Tile.TopiarySpire, 0.3],
+  // THE LONG DARK FURNISHED: centered masses you squeeze past in a
+  // tight corridor — round columns especially (you shoulder around
+  // the drum, never an invisible crate). The sarcophagus keeps its
+  // full block: it is a coffin, not a bollard.
+  [Tile.MossBarrel, 0.3],
+  [Tile.MineCart, 0.36],
+  [Tile.ChainedSkeleton, 0.28],
+  [Tile.BrokenPillar, 0.34],
+  [Tile.GrandPillar, 0.38],
+  [Tile.BurialUrns, 0.3],
+  [Tile.AncientStatue, 0.34],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -1952,7 +2006,16 @@ export type DestructibleKind =
   | 'tome'
   | 'runepillar'
   // THE CLIPPED GREEN: a showpiece bursts in a cloud of leaves.
-  | 'topiary';
+  | 'topiary'
+  // THE LONG DARK FURNISHED: rotten wood folds wet, clay rings dry,
+  // old bone scatters, and worked stone cracks in slabs.
+  | 'mossbarrel'
+  | 'minecart'
+  | 'chainedbones'
+  | 'sarcophagus'
+  | 'brokenpillar'
+  | 'urns'
+  | 'oldstatue';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -2048,6 +2111,18 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   // by a passing club; and the arch is the door law's, not ours.
   [Tile.TopiaryBall, { kind: 'topiary', respawnSec: 420, hits: 2 }],
   [Tile.TopiarySpire, { kind: 'topiary', respawnSec: 420, hits: 2 }],
+  // THE LONG DARK FURNISHED: rot pops in one blow, joined iron and
+  // worked stone hold three or four. The wall fixtures are NOT here —
+  // a sconce is bolted into the mountain and a chain shrugs off a
+  // club — and the grand pillar never breaks: it holds the roof up
+  // (the bonfire law, carried into stone).
+  [Tile.MossBarrel, { kind: 'mossbarrel', respawnSec: 300, hits: 1 }],
+  [Tile.MineCart, { kind: 'minecart', respawnSec: 600, hits: 3 }],
+  [Tile.ChainedSkeleton, { kind: 'chainedbones', respawnSec: 600, hits: 1 }],
+  [Tile.Sarcophagus, { kind: 'sarcophagus', respawnSec: 600, hits: 4 }],
+  [Tile.BrokenPillar, { kind: 'brokenpillar', respawnSec: 600, hits: 3 }],
+  [Tile.BurialUrns, { kind: 'urns', respawnSec: 300, hits: 1 }],
+  [Tile.AncientStatue, { kind: 'oldstatue', respawnSec: 600, hits: 4 }],
 ]);
 
 /** Every smashable prop tile. */

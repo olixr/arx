@@ -132,6 +132,18 @@ export const TILE_CATEGORIES: TileCategory[] = [
     ],
   },
   {
+    // THE LONG DARK FURNISHED: the dungeon dresser's shelf — the
+    // architecture first (pillars set a room's bones), then the wall
+    // iron, then the dead and their goods.
+    id: 'dungeon',
+    label: 'Dungeon',
+    tiles: [
+      Tile.GrandPillar, Tile.BrokenPillar, Tile.Sarcophagus, Tile.AncientStatue,
+      Tile.WallSconce, Tile.WallChains, Tile.ChainedSkeleton,
+      Tile.BurialUrns, Tile.MossBarrel, Tile.MineCart,
+    ],
+  },
+  {
     // THE FAIR HOUSE FURNISHED: the elven shelf — lights and cloth
     // first (the pieces that set a scene), then furniture, stations,
     // and the garden stone.

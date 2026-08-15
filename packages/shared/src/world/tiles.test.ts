@@ -353,6 +353,15 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     // architecture comes down by the demolish lane, like the fence.
     [Tile.TopiaryBall, 'topiary', 2],
     [Tile.TopiarySpire, 'topiary', 2],
+    // THE LONG DARK FURNISHED: rot pops in one blow, joined iron and
+    // worked stone hold three or four.
+    [Tile.MossBarrel, 'mossbarrel', 1],
+    [Tile.MineCart, 'minecart', 3],
+    [Tile.ChainedSkeleton, 'chainedbones', 1],
+    [Tile.Sarcophagus, 'sarcophagus', 4],
+    [Tile.BrokenPillar, 'brokenpillar', 3],
+    [Tile.BurialUrns, 'urns', 1],
+    [Tile.AncientStatue, 'oldstatue', 4],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {
@@ -396,6 +405,13 @@ test('load-bearing scenery is not smashable', () => {
     Tile.Hedge,
     Tile.HedgeDiagNE,
     Tile.HedgeDiagNW,
+    // THE LONG DARK FURNISHED: the grand pillar holds the mountain up
+    // (the bonfire law carried into stone); the wall fixtures are
+    // bolted into it — a sconce is iron in living rock, and a chain
+    // shrugs off a club.
+    Tile.GrandPillar,
+    Tile.WallSconce,
+    Tile.WallChains,
   ]) {
     assert.equal(destructibleInfo(t), null);
   }

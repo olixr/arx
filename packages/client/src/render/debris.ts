@@ -86,7 +86,16 @@ export type SmashKind =
   | 'tome'
   | 'runepillar'
   // THE CLIPPED GREEN: a showpiece bursts in a cloud of leaves.
-  | 'topiary';
+  | 'topiary'
+  // THE LONG DARK FURNISHED: rot folds wet, clay rings dry, old bone
+  // scatters, and worked stone drops in slabs.
+  | 'mossbarrel'
+  | 'minecart'
+  | 'chainedbones'
+  | 'sarcophagus'
+  | 'brokenpillar'
+  | 'urns'
+  | 'oldstatue';
 
 export interface DebrisChunk {
   x: number; // world coords (tile units)
@@ -549,6 +558,14 @@ const CHIP_TONE: Record<SmashKind, string> = {
   runepillar: '#8d8798',
   // Garden wreckage: clipped leaves over a snapped stem.
   topiary: '#3a7539',
+  // Dungeon wreckage: wet wood, dead iron, bone, kingdom-stone, clay.
+  mossbarrel: '#55503a',
+  minecart: '#4c4a52',
+  chainedbones: '#cfc7ae',
+  sarcophagus: '#8c8798',
+  brokenpillar: '#8c8798',
+  urns: '#96704a',
+  oldstatue: '#5e5869',
 };
 
 const pick = <T>(rand: () => number, arr: readonly T[]): T =>
@@ -1226,6 +1243,107 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       }
       for (let i = 0; i < 2; i++) {
         out.push({ len: 0.045, wid: 0.04, color: pick(rand, ['#b04a72', '#ef9ec0']), round: true, pace: 1.4 });
+      }
+      break;
+    }
+    // THE LONG DARK FURNISHED ------------------------------------------
+    case 'mossbarrel': {
+      // Rot folds WET: the staves slump more than they fly, the rusted
+      // hoops drop dead where they stood, the moss cap sails off in
+      // tufts, and the standing water leaves as two dark beads.
+      wood('#55503a', 4 + Math.floor(rand() * 2), 0.2, 0.34, 0.08);
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.2 + rand() * 0.08, wid: 0.04, color: '#7a4a30', stripe: '#a06840', pace: 0.7 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.06 + rand() * 0.04, wid: 0.05, color: pick(rand, ['#4a6138', '#5e7a44']), round: true, pace: 1.2 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.05, wid: 0.045, color: '#2a3438', round: true, pace: 1.1 });
+      }
+      break;
+    }
+    case 'minecart': {
+      // Joined iron lets go plate by plate — heavy slabs that drop
+      // near — while the rivets spray bright and the wheels roll for
+      // the far wall. Whatever ore it held scatters as faceted lumps.
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.22 + rand() * 0.1, wid: 0.1, color: pick(rand, ['#4c4a52', '#3a3444', '#565062']), stripe: rand() < 0.5 ? '#7a4a30' : null, pace: 0.8 });
+      }
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.04, wid: 0.035, color: '#5d5670', round: true, pace: 1.35 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.13, wid: 0.12, color: '#3a3444', stripe: '#5d5670', round: true, pace: 1.15 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.07 + rand() * 0.04, wid: 0.06, color: pick(rand, ['#4f4959', '#2a2530', '#c77b4a']), round: true, pace: 1.0 });
+      }
+      break;
+    }
+    case 'chainedbones': {
+      // The prisoner comes apart the way the years already had it:
+      // long-bones scattering pale, the skull keeping together, and
+      // the chain links raining straight down — iron doesn't bounce.
+      wood('#cfc7ae', 5, 0.18, 0.3, 0.06);
+      out.push({ len: 0.14, wid: 0.12, color: '#cfc7ae', stripe: '#ddd6c0', round: true, pace: 0.9 });
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.05, wid: 0.03, color: '#3a3444', pace: 0.6 });
+      }
+      out.push({ len: 0.08, wid: 0.06, color: '#7a4a30', round: true, pace: 0.7 });
+      break;
+    }
+    case 'sarcophagus': {
+      // Coffin-stone falls in slabs and stays fallen; the carved
+      // effigy head keeps together (the statue law) and the lid's
+      // pale border leaves brightest.
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.24 + rand() * 0.12, wid: 0.11, color: pick(rand, ['#5b5566', '#453f52', '#6b6478']), stripe: rand() < 0.4 ? '#8c8798' : null, pace: 0.72 });
+      }
+      out.push({ len: 0.15, wid: 0.13, color: '#b3aec0', round: true, pace: 0.78 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.2, wid: 0.05, color: '#a09bad', stripe: '#c9c4d6', pace: 1.1 });
+      }
+      break;
+    }
+    case 'brokenpillar': {
+      // Already broken once — the second fall is all drums and flute
+      // shards, round end-grain tumbling like coins too heavy to roll.
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.16 + rand() * 0.06, wid: 0.14, color: pick(rand, ['#5b5566', '#6b6478']), stripe: '#8c8798', round: true, pace: 0.85 });
+      }
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.14 + rand() * 0.1, wid: 0.06, color: pick(rand, ['#5b5566', '#453f52', '#8c8798']), pace: 1.0 });
+      }
+      break;
+    }
+    case 'urns': {
+      // Clay rings DRY: potsherds spin off light and curved, the wax
+      // cap flips whole, the ash goes up as a slow gray sigh — and
+      // one bone chip lands in it, because grave clay keeps receipts.
+      for (let i = 0; i < 6; i++) {
+        out.push({ len: 0.1 + rand() * 0.07, wid: 0.05, color: pick(rand, ['#96704a', '#8a6644', '#b08655']), stripe: rand() < 0.5 ? '#4a3a30' : null, pace: 1.25 });
+      }
+      out.push({ len: 0.09, wid: 0.08, color: '#d8cba8', round: true, pace: 1.3 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.055, wid: 0.05, color: pick(rand, ['#4a4438', '#5c564a']), round: true, pace: 0.6 });
+      }
+      out.push({ len: 0.06, wid: 0.03, color: '#cfc7ae', pace: 1.1 });
+      break;
+    }
+    case 'oldstatue': {
+      // The king falls the way kings fall: in torso-weight granite,
+      // the head keeping together with its crown-band flying bright,
+      // the sword leaving LAST and hardest — and the moss going up
+      // soft over all of it.
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.2 + rand() * 0.14, wid: 0.1, color: pick(rand, ['#5e5869', '#453f52', '#6e6879']), stripe: rand() < 0.35 ? '#8f8a7a' : null, pace: 0.75 });
+      }
+      out.push({ len: 0.15, wid: 0.13, color: '#5e5869', stripe: '#8f8a7a', round: true, pace: 0.72 });
+      out.push({ len: 0.12, wid: 0.04, color: '#8c8798', stripe: '#b3aec0', pace: 1.2 });
+      out.push({ len: 0.34, wid: 0.05, color: '#8c8798', stripe: '#b3aec0', pace: 1.3 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.05, wid: 0.045, color: pick(rand, ['#4a6138', '#5e7a44']), round: true, pace: 1.15 });
       }
       break;
     }

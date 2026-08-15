@@ -59,6 +59,14 @@ interface DecorEntry {
   tile: Tile;
   per: number;
   wall?: boolean;
+  /**
+   * THE LONG DARK FURNISHED: wall-hung pieces (sconce, chains, the
+   * chained prisoner) paint their iron onto the wall face NORTH of
+   * their cell — the only face the camera sees — so they demand rock
+   * directly north, and refuse a cracked wall on any side (a fixture
+   * over the crack's whisper would cork the discovery).
+   */
+  north?: boolean;
   styles?: ReadonlyArray<'cave' | 'hall'>;
 }
 
@@ -66,17 +74,35 @@ const DECOR_KITS: Record<DungeonTheme, DecorEntry[]> = {
   cavern: [
     { tile: Tile.Stalagmite, per: 42, styles: ['cave'] },
     { tile: Tile.GlowShroom, per: 36, wall: true },
+    // The swallowed kingdom: a snapped column and a worn king the
+    // cave took back — nobody carved these HERE, the dark moved in.
+    { tile: Tile.BrokenPillar, per: 130 },
+    { tile: Tile.AncientStatue, per: 200 },
+    { tile: Tile.MossBarrel, per: 160 },
   ],
   crypt: [
     { tile: Tile.BonePile, per: 48 },
     { tile: Tile.SkullPile, per: 110, wall: true },
     { tile: Tile.GlowShroom, per: 60, wall: true, styles: ['cave'] },
+    // THE LONG DARK FURNISHED — the crypt is the kit's showcase: the
+    // honored dead in stone and clay, the dishonored dead in irons.
+    { tile: Tile.Sarcophagus, per: 70, styles: ['hall'] },
+    { tile: Tile.BurialUrns, per: 72 },
+    { tile: Tile.ChainedSkeleton, per: 130, north: true },
+    { tile: Tile.BrokenPillar, per: 120 },
+    { tile: Tile.AncientStatue, per: 150, styles: ['hall'] },
+    { tile: Tile.GrandPillar, per: 170, styles: ['hall'] },
   ],
   mine: [
     { tile: Tile.Crate, per: 80 },
     { tile: Tile.Barrel, per: 90 },
     { tile: Tile.Stalagmite, per: 60, styles: ['cave'] },
     { tile: Tile.GlowShroom, per: 46, wall: true, styles: ['cave'] },
+    // The shift that never clocked out: a cart still half loaded,
+    // stores gone green, chains where the haulage ran.
+    { tile: Tile.MineCart, per: 90 },
+    { tile: Tile.MossBarrel, per: 85 },
+    { tile: Tile.WallChains, per: 150, north: true },
   ],
   stronghold: [
     { tile: Tile.WarBanner, per: 90, wall: true, styles: ['hall'] },
@@ -85,6 +111,12 @@ const DECOR_KITS: Record<DungeonTheme, DecorEntry[]> = {
     { tile: Tile.BonePile, per: 100 },
     { tile: Tile.Crate, per: 100 },
     { tile: Tile.GlowShroom, per: 50, wall: true, styles: ['cave'] },
+    // The garrison's dark side: prisoners in irons, stores gone
+    // green, and the odd column of whoever held these halls first.
+    { tile: Tile.WallChains, per: 120, north: true },
+    { tile: Tile.ChainedSkeleton, per: 140, north: true },
+    { tile: Tile.MossBarrel, per: 110 },
+    { tile: Tile.GrandPillar, per: 170, styles: ['hall'] },
   ],
   warren: [
     { tile: Tile.BonePile, per: 55 },
@@ -93,6 +125,9 @@ const DECOR_KITS: Record<DungeonTheme, DecorEntry[]> = {
     { tile: Tile.BeastNest, per: 140 },
     { tile: Tile.SkullTotem, per: 170, wall: true },
     { tile: Tile.GlowShroom, per: 44, wall: true, styles: ['cave'] },
+    // Dragged home and never opened; the pack's larder tells on it.
+    { tile: Tile.MossBarrel, per: 130 },
+    { tile: Tile.ChainedSkeleton, per: 190, north: true },
   ],
   // THE ROOT-HALLS: runestones grown askew, crystal the roots fed,
   // shroomlight where the moon never reached, the odd fallen light
@@ -104,6 +139,10 @@ const DECOR_KITS: Record<DungeonTheme, DecorEntry[]> = {
     { tile: Tile.GlowShroom, per: 40, wall: true, styles: ['cave'] },
     { tile: Tile.BonePile, per: 110 },
     { tile: Tile.ArcaneBeacon, per: 170, styles: ['hall'] },
+    // What the roots grew through: the old kingdom's columns and its
+    // quiet keepers, half reclaimed.
+    { tile: Tile.BrokenPillar, per: 140 },
+    { tile: Tile.AncientStatue, per: 190, styles: ['hall'] },
   ],
 };
 
@@ -129,6 +168,17 @@ const PLACED_PROP_TILES: ReadonlySet<Tile> = new Set([
   Tile.HideFrame,
   Tile.BeastNest,
   Tile.StandingTorch,
+  // THE LONG DARK FURNISHED
+  Tile.MossBarrel,
+  Tile.MineCart,
+  Tile.ChainedSkeleton,
+  Tile.WallSconce,
+  Tile.WallChains,
+  Tile.Sarcophagus,
+  Tile.BrokenPillar,
+  Tile.GrandPillar,
+  Tile.BurialUrns,
+  Tile.AncientStatue,
 ]);
 
 const FLOORISH: ReadonlySet<Tile> = new Set([Tile.CaveFloor, Tile.DungeonFloor, Tile.CaveRubble]);
@@ -393,6 +443,20 @@ export function dressAll(b: DungeonBuild): void {
     for (const entryDef of kit) {
       if (entryDef.styles && !entryDef.styles.includes(a.style)) continue;
       const pieces = Math.round(area / entryDef.per);
+      if (entryDef.north) {
+        // THE FIXTURE FINDS ITS WALL: random darts almost never land
+        // on the one-cell band under a room's north wall (the first
+        // census hung one skeleton per five dungeons) — so the wall
+        // pieces deal from the scanned band itself. northWallCells
+        // already speaks the whole law: rock due north, open to the
+        // south, never kissing a crack.
+        const cells = northWallCells(a);
+        for (let i = 0; i < pieces && cells.length > 0; i++) {
+          const spot = cells.splice(rDress.int(0, cells.length - 1), 1)[0]!;
+          putProp(spot.x, spot.y, entryDef.tile);
+        }
+        continue;
+      }
       for (let i = 0; i < pieces; i++) {
         const x = a.x + rDress.int(-a.r, a.r);
         const y = a.y + rDress.int(-a.r, a.r);
@@ -441,7 +505,17 @@ export function dressAll(b: DungeonBuild): void {
         }
         if (!wallAdj) continue;
         const worked = c.get(x, y) === Tile.DungeonFloor;
-        const t = worked ? (warTheme ? Tile.StandingTorch : Tile.Brazier) : Tile.GlowShroom;
+        // Worked corridors in the old-kingdom themes light from the
+        // wall itself — a caged sconce leaves the walkway clear —
+        // wherever the cell has honest (uncracked) rock to the north;
+        // war themes plant their torches, and raw rock grows its own.
+        const sconce =
+          (b.spec.theme === 'crypt' || b.spec.theme === 'mine') &&
+          c.isRock(x, y - 1) &&
+          c.get(x, y - 1) !== Tile.CrackedCaveWall;
+        const t = worked
+          ? warTheme ? Tile.StandingTorch : sconce ? Tile.WallSconce : Tile.Brazier
+          : Tile.GlowShroom;
         if (putProp(x, y, t)) {
           placed = true;
           break;

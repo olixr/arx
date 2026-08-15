@@ -541,6 +541,25 @@ const ARC_VIOLET = '#b48fe8';
 const ARC_VIOLET_DEEP = '#7a6aa8';
 const ARC_GREEN = '#7fe8a8';
 const ARC_GREEN_DEEP = '#3fae6e';
+// THE LONG DARK FURNISHED: the dungeon kit's materials. Old iron in
+// the CaveWall's own cold family (fixtures must read GROWN INTO the
+// stone, not shipped down from a smithy), rust where water found it,
+// carved kingdom-stone a half step paler than the cave so worked
+// pieces separate from raw rock, grave clay the one warm voice in
+// the dark, damp moss, and the bone tones the BonePile already owns.
+const DGN_IRON = '#3a3444';
+const DGN_IRON_LIT = '#5d5670';
+const DGN_RUST = '#7a4a30';
+const DGN_RUST_LIT = '#a06840';
+const DGN_STONE = '#5b5566';
+const DGN_STONE_LIT = '#8c8798';
+const DGN_STONE_DARK = '#453f52';
+const DGN_CLAY = '#8a6644';
+const DGN_CLAY_LIT = '#b08655';
+const DGN_MOSS = '#4a6138';
+const DGN_MOSS_LIT = '#5e7a44';
+const DGN_BONE = '#cfc7ae';
+const DGN_BONE_DIM = '#b5ac91';
 /** Solid props too short for a chest-high stick: arrows lodge low. */
 const LOW_STICK_TILES = new Set<number>([
   Tile.Fence,
@@ -4293,6 +4312,16 @@ export class Renderer {
           const flick = 0.85 + Math.sin(t * 11 + tx * 3.1) * 0.1 + Math.sin(t * 23 + ty) * 0.05;
           this.glows.push({ x: tx + 0.5, y: ty + 0.3, r: 1.5 * flick, rgb: '255, 158, 66', a: 0.3 * flick * boost });
           this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 4.4 * flick, rgb: [255, 180, 104], intensity: 0.9 * flame * flick, occlude: true });
+        } else if (tile === Tile.WallSconce) {
+          // THE LONG DARK FURNISHED: the caged wall flame — torch-class
+          // heat mounted a body's height up the stone, so the pool it
+          // throws reaches further down the corridor than a floor fire
+          // of the same size. The bloom rides the basket (raised
+          // fixtures divide their height by yScale — the projAir law);
+          // the punch lights the walkway below it.
+          const flick = 0.8 + Math.sin(t * 13 + tx * 2.9) * 0.13 + Math.sin(t * 29 + ty * 1.1) * 0.07;
+          this.glows.push({ x: tx + 0.5, y: ty - 1.1 / this.camera.yScale, r: 1.15 * flick, rgb: '255, 156, 62', a: 0.28 * flick * boost });
+          this.lights.push({ x: tx + 0.5, y: ty + 0.35, r: 3.4 * flick, rgb: [255, 176, 96], intensity: 0.8 * flame * flick, occlude: true });
         } else if (tile === Tile.StandingTorch) {
           // A camp torch: a small hot pool with a hard flicker — the
           // rag head burns rough, never lamplight-steady.
@@ -16295,6 +16324,38 @@ export class Renderer {
         },
       ]),
     ),
+    // THE LONG DARK FURNISHED: kingdom-stone bursts in its own cold
+    // gray, never the cave wall's purple and never elven chalk.
+    ...Object.fromEntries(
+      (['sarcophagus', 'brokenpillar', 'oldstatue'] as const).map((k) => [
+        k,
+        {
+          dust: ['#8c8798', '#5b5566', '#a09bad'],
+          splinters: ['#a09bad', '#8c8798', '#6b6478'],
+          chips: ['#8c8798', '#a09bad'],
+        },
+      ]),
+    ),
+    mossbarrel: {
+      dust: ['#55503a', '#4a6138', '#6a6448'],
+      splinters: ['#6a6448', '#55503a', '#5e7a44'],
+      chips: ['#5e7a44', '#6a6448'],
+    },
+    minecart: {
+      dust: ['#4c4a52', '#3a3444', '#7a4a30'],
+      splinters: ['#5d5670', '#4c4a52', '#a06840'],
+      chips: ['#5d5670', '#a06840'],
+    },
+    chainedbones: {
+      dust: ['#cfc7ae', '#8b8272', '#e6dfc8'],
+      splinters: ['#e6dfc8', '#cfc7ae', '#3a3444'],
+      chips: ['#cfc7ae', '#e6dfc8'],
+    },
+    urns: {
+      dust: ['#8a6644', '#4a4438', '#b08655'],
+      splinters: ['#b08655', '#96704a', '#d8cba8'],
+      chips: ['#b08655', '#d8cba8'],
+    },
   };
 
   crackProp(wx: number, wy: number, dir: number, kind: SmashKind): void {
@@ -16822,6 +16883,19 @@ export class Renderer {
     Tile.WardArch,
     Tile.ArcaneTome,
     Tile.RunePillar,
+    // THE LONG DARK FURNISHED: all ten ride the cache — the sconce's
+    // flame and the chains' slow sway both sit under 4Hz, and every
+    // light lives in collectStaticLights (the queueGlow law).
+    Tile.MossBarrel,
+    Tile.MineCart,
+    Tile.ChainedSkeleton,
+    Tile.WallSconce,
+    Tile.WallChains,
+    Tile.Sarcophagus,
+    Tile.BrokenPillar,
+    Tile.GrandPillar,
+    Tile.BurialUrns,
+    Tile.AncientStatue,
   ]);
 
   /**
@@ -16900,6 +16974,17 @@ export class Renderer {
     Tile.ElvenBookcase,
     Tile.ElvenStatue,
     Tile.ElvenArmsRack,
+    // Dungeon-kit statics: stone, clay, bone, and dead iron never
+    // read the clock. The sconce (flame) and the chains (sway) stay
+    // on the fast cadence.
+    Tile.MossBarrel,
+    Tile.MineCart,
+    Tile.ChainedSkeleton,
+    Tile.Sarcophagus,
+    Tile.BrokenPillar,
+    Tile.GrandPillar,
+    Tile.BurialUrns,
+    Tile.AncientStatue,
   ]);
 
   /**
@@ -26403,6 +26488,1318 @@ export class Renderer {
                 ctx.fill();
               }
             }
+          },
+        };
+      }
+
+      // ================= THE LONG DARK FURNISHED =================
+      // Ten pieces of dungeon dressing, ids 349-358. The kit's voice:
+      // whatever stood down here was left, not placed — every piece
+      // carries the century between its makers and the player.
+
+      case Tile.MossBarrel: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.22;
+        // A century in the damp: the town cask's silhouette gone soft
+        // — staves bowed, hoops bleeding rust, the head holding a skin
+        // of black water OR lost under a moss cap (hash deals the
+        // fate), and on some casks one sprung stave opens a dark seam.
+        const hw = s * (0.27 + ((h >> 3) & 3) * 0.012);
+        const ht = s * 0.62;
+        const mossy = ((h >> 6) & 3) !== 0;
+        const sprung = ((h >> 8) & 3) === 0;
+        const m = ((h >> 4) & 1) === 0 ? 1 : -1;
+        const topY = baseY - ht;
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.55, 1.0, 0.5),
+          drawShadow: () => this.castContact(p.x, baseY, hw * 1.3, s * 0.1),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.26)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.25, s * 0.09, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The cask: staves bulge at the waist — the cooper's curve
+            // still holding under the rot.
+            const bw = hw * 1.16;
+            ctx.fillStyle = '#55503a';
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw, baseY);
+            ctx.quadraticCurveTo(p.x - bw, baseY - ht * 0.5, p.x - hw * 0.94, topY);
+            ctx.lineTo(p.x + hw * 0.94, topY);
+            ctx.quadraticCurveTo(p.x + bw, baseY - ht * 0.5, p.x + hw, baseY);
+            ctx.closePath();
+            ctx.fill();
+            // Stave seams bow with the belly; one lit lane keeps the
+            // cylinder turned instead of flat.
+            ctx.strokeStyle = 'rgba(24, 20, 16, 0.4)';
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            for (const f of [-0.55, -0.18, 0.2, 0.58]) {
+              ctx.beginPath();
+              ctx.moveTo(p.x + hw * f, baseY);
+              ctx.quadraticCurveTo(p.x + bw * f, baseY - ht * 0.5, p.x + hw * 0.94 * f, topY);
+              ctx.stroke();
+            }
+            ctx.fillStyle = 'rgba(148, 138, 96, 0.28)';
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.5, baseY);
+            ctx.quadraticCurveTo(p.x - bw * 0.52, baseY - ht * 0.5, p.x - hw * 0.47, topY);
+            ctx.lineTo(p.x - hw * 0.24, topY);
+            ctx.quadraticCurveTo(p.x - bw * 0.26, baseY - ht * 0.5, p.x - hw * 0.26, baseY);
+            ctx.closePath();
+            ctx.fill();
+            // The sprung stave: one plank sheared out of the run over
+            // a void seam — rot never breaks clean.
+            if (sprung) {
+              ctx.fillStyle = '#241a2e';
+              ctx.fillRect(p.x + m * hw * 0.38 - s * 0.028, baseY - ht * 0.54, s * 0.056, ht * 0.5);
+              ctx.fillStyle = '#4a4632';
+              ctx.save();
+              ctx.translate(p.x + m * hw * 0.48, baseY - ht * 0.08);
+              ctx.rotate(m * 0.22);
+              ctx.fillRect(-s * 0.03, -ht * 0.44, s * 0.06, ht * 0.46);
+              ctx.restore();
+            }
+            // Two hoops rusted to the wood, each keeping one lit tick
+            // where the damp hasn't eaten the iron yet.
+            for (const [f, wf] of [
+              [0.16, 1.06],
+              [0.72, 1.02],
+            ] as const) {
+              ctx.strokeStyle = DGN_RUST;
+              ctx.lineWidth = Math.max(1.5, s * 0.042);
+              ctx.beginPath();
+              ctx.moveTo(p.x - hw * wf, baseY - ht * f);
+              ctx.quadraticCurveTo(p.x, baseY - ht * f + s * 0.05, p.x + hw * wf, baseY - ht * f);
+              ctx.stroke();
+              ctx.strokeStyle = DGN_RUST_LIT;
+              ctx.lineWidth = Math.max(1, s * 0.02);
+              ctx.beginPath();
+              ctx.moveTo(p.x - hw * wf * 0.5, baseY - ht * f + s * 0.034);
+              ctx.quadraticCurveTo(p.x - hw * wf * 0.1, baseY - ht * f + s * 0.05, p.x + hw * wf * 0.2, baseY - ht * f + s * 0.044);
+              ctx.stroke();
+            }
+            // Rust weeps down from the low hoop.
+            ctx.fillStyle = 'rgba(122, 74, 48, 0.35)';
+            ctx.fillRect(p.x + m * hw * 0.55, baseY - ht * 0.14, s * 0.035, ht * 0.13);
+            // THE TOP PLANE: the cask head is a foreshortened ellipse
+            // — a chime-hoop rim around either standing black water or
+            // the moss cap that took the lid.
+            ctx.fillStyle = '#5f5941';
+            ctx.beginPath();
+            ctx.ellipse(p.x, topY, hw * 0.94, syT * 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = DGN_RUST;
+            ctx.lineWidth = Math.max(1, s * 0.028);
+            ctx.beginPath();
+            ctx.ellipse(p.x, topY, hw * 0.94, syT * 0.3, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            if (mossy) {
+              ctx.fillStyle = DGN_MOSS;
+              ctx.beginPath();
+              ctx.ellipse(p.x, topY, hw * 0.78, syT * 0.24, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = DGN_MOSS_LIT;
+              ctx.beginPath();
+              ctx.ellipse(p.x - hw * 0.2, topY - syT * 0.06, hw * 0.4, syT * 0.11, 0, 0, Math.PI * 2);
+              ctx.fill();
+            } else {
+              ctx.fillStyle = '#20262b';
+              ctx.beginPath();
+              ctx.ellipse(p.x, topY, hw * 0.78, syT * 0.24, 0, 0, Math.PI * 2);
+              ctx.fill();
+              // One cold reflection tick — standing water, not paint.
+              ctx.fillStyle = 'rgba(178, 196, 228, 0.35)';
+              ctx.beginPath();
+              ctx.ellipse(p.x + hw * 0.22, topY - syT * 0.05, hw * 0.2, syT * 0.05, -0.4, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            // Moss climbs the shaded flank from the floor's damp.
+            ctx.fillStyle = 'rgba(74, 97, 56, 0.75)';
+            ctx.beginPath();
+            facetBlob(ctx, p.x - m * hw * 0.72, baseY - ht * 0.16, s * 0.1, h ^ 0x19, 5, 0.8);
+            ctx.fill();
+            ctx.beginPath();
+            facetBlob(ctx, p.x - m * hw * 0.48, baseY - ht * 0.04, s * 0.075, h ^ 0x2b, 5, 0.8);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.MineCart: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.24;
+        // The shift that never clocked out: a hopper cart dead on a
+        // stub of rail. The stub runs E-W under the wheels and STOPS —
+        // the line the cart belonged to is long gone; the hash deals
+        // the load (copper glint, coal, or standing empty) and one
+        // wheel gone shy of true.
+        const loadRoll = (h >> 5) & 3; // 0 empty, 1 coal, 2-3 ore
+        const m = ((h >> 3) & 1) === 0 ? 1 : -1;
+        const hwB = s * 0.34; // hopper half-width at the rim
+        const cartH = s * 0.52; // rim height over the rail
+        const wheelY = baseY - s * 0.05;
+        const rimY = baseY - cartH;
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.72, 1.05, 0.55),
+          drawShadow: () => this.castContact(p.x, baseY, hwB * 1.35, s * 0.11),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            // The rail stub: two iron rails on four rotting sleepers,
+            // running WIDE past the cart on both sides and stopping
+            // dead — the line it belonged to is long gone. The rails
+            // keep a full-length lit edge: track must read as track
+            // even at map scale (first audit: the v1 stub drowned).
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.28)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY, hwB * 1.6, s * 0.13, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#3d3527';
+            for (const f of [-0.56, -0.19, 0.19, 0.56]) {
+              ctx.fillRect(p.x + f * s * 1.3 - s * 0.05, baseY - s * 0.04 + syT * 0.07, s * 0.1, s * 0.12);
+            }
+            for (const dy of [-0.085, 0.085]) {
+              ctx.fillStyle = DGN_IRON;
+              ctx.fillRect(p.x - s * 0.75, baseY + dy * s - s * 0.02, s * 1.5, s * 0.04);
+              ctx.fillStyle = DGN_IRON_LIT;
+              ctx.fillRect(p.x - s * 0.75, baseY + dy * s - s * 0.02, s * 1.5, s * 0.016);
+              // Rust takes both dead ends of the line.
+              ctx.fillStyle = 'rgba(122, 74, 48, 0.55)';
+              ctx.fillRect(p.x - s * 0.75, baseY + dy * s - s * 0.02, s * 0.18, s * 0.04);
+              ctx.fillRect(p.x + s * 0.53, baseY + dy * s - s * 0.02, s * 0.22, s * 0.04);
+            }
+            // Wheels (behind the hopper but proud BELOW it): rimmed
+            // iron discs on rust-bright hubs, the hash's pick leaning
+            // off plumb — a cart must show its wheels or it's a tub.
+            const wheel = (wx: number, tilt: number): void => {
+              ctx.save();
+              ctx.translate(wx, wheelY + s * 0.04);
+              ctx.rotate(tilt);
+              ctx.fillStyle = DGN_IRON;
+              ctx.beginPath();
+              ctx.ellipse(0, 0, s * 0.125, s * 0.125, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = DGN_IRON_LIT;
+              ctx.lineWidth = Math.max(1, s * 0.022);
+              ctx.beginPath();
+              ctx.ellipse(0, 0, s * 0.1, s * 0.1, 0, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.fillStyle = DGN_RUST_LIT;
+              ctx.beginPath();
+              ctx.ellipse(0, 0, s * 0.038, s * 0.038, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            };
+            wheel(p.x - hwB * 0.72, 0);
+            wheel(p.x + hwB * 0.72, m * 0.16);
+            // The hopper: a riveted iron tub, wider at the rim — the
+            // trapezoid IS the silhouette, held a full value step off
+            // the flagstone dark (the kit's value law).
+            const hwF = hwB * 0.78; // half-width at the foot
+            ctx.fillStyle = '#565060';
+            ctx.beginPath();
+            ctx.moveTo(p.x - hwF, wheelY - s * 0.06);
+            ctx.lineTo(p.x - hwB, rimY);
+            ctx.lineTo(p.x + hwB, rimY);
+            ctx.lineTo(p.x + hwF, wheelY - s * 0.06);
+            ctx.closePath();
+            ctx.fill();
+            // Two horizontal strap bands with rivet pips; rust maps
+            // where the straps trapped the wet.
+            for (const f of [0.3, 0.72]) {
+              const yb = wheelY - s * 0.06 - (cartH - s * 0.11) * f;
+              const wb = hwF + (hwB - hwF) * f;
+              ctx.fillStyle = DGN_IRON;
+              ctx.fillRect(p.x - wb, yb - s * 0.026, wb * 2, s * 0.052);
+              ctx.fillStyle = 'rgba(122, 74, 48, 0.55)';
+              ctx.fillRect(p.x - wb, yb - s * 0.026, wb * 0.55, s * 0.052);
+              ctx.fillStyle = DGN_IRON_LIT;
+              for (const rx of [-0.72, -0.28, 0.24, 0.68]) {
+                ctx.fillRect(p.x + wb * rx - s * 0.011, yb - s * 0.011, s * 0.022, s * 0.022);
+              }
+            }
+            // One lit flank lane turns the tub; a dent shadow answers.
+            ctx.fillStyle = 'rgba(168, 164, 188, 0.3)';
+            ctx.beginPath();
+            ctx.moveTo(p.x - hwF * 0.8, wheelY - s * 0.06);
+            ctx.lineTo(p.x - hwB * 0.8, rimY);
+            ctx.lineTo(p.x - hwB * 0.55, rimY);
+            ctx.lineTo(p.x - hwF * 0.5, wheelY - s * 0.06);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+            ctx.beginPath();
+            facetBlob(ctx, p.x + m * hwB * 0.5, rimY + cartH * 0.35, s * 0.07, h ^ 0x47, 5, 0.85);
+            ctx.fill();
+            // THE TOP PLANE: the rim ellipse. Empty carts show the
+            // dark tub and the far inner wall catching what light the
+            // cave has; loaded ones heap their haul over the rim.
+            ctx.fillStyle = DGN_IRON;
+            ctx.beginPath();
+            ctx.ellipse(p.x, rimY, hwB, syT * 0.24, 0, 0, Math.PI * 2);
+            ctx.fill();
+            if (loadRoll === 0) {
+              ctx.fillStyle = '#1c1824';
+              ctx.beginPath();
+              ctx.ellipse(p.x, rimY + s * 0.012, hwB * 0.86, syT * 0.19, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = 'rgba(120, 116, 140, 0.35)';
+              ctx.beginPath();
+              ctx.ellipse(p.x, rimY - syT * 0.1, hwB * 0.7, syT * 0.07, 0, Math.PI, Math.PI * 2);
+              ctx.fill();
+            } else {
+              const oreC = loadRoll === 1 ? '#2a2530' : '#4f4959';
+              const glintC = loadRoll === 1 ? '#4a4456' : '#c77b4a';
+              ctx.fillStyle = oreC;
+              ctx.beginPath();
+              ctx.ellipse(p.x, rimY - s * 0.055, hwB * 0.85, syT * 0.26, 0, 0, Math.PI * 2);
+              ctx.fill();
+              // The heap reads as CHUNKS, not a mound: faceted lumps
+              // dealt across the load, the vein mineral glinting on a
+              // stingy few (a full cart nobody hauled out — the find).
+              for (let k = 0; k < 6; k++) {
+                const hk = hashCoords(101 + k, tx, ty);
+                const ox = (((hk % 100) / 100) - 0.5) * hwB * 1.3;
+                const oy = -s * 0.05 - ((hk >>> 7) % 14) / 100 * s + Math.abs(ox) * 0.16;
+                ctx.fillStyle = (hk & 3) === 0 ? glintC : shade(oreC, ((hk >> 2) & 1) === 0 ? 10 : 20);
+                ctx.beginPath();
+                facetCircle(ctx, p.x + ox, rimY + oy, s * (0.05 + ((hk >>> 4) & 3) * 0.012), 5, 0.3, 0.7);
+                ctx.fill();
+              }
+            }
+          },
+        };
+      }
+
+      case Tile.BurialUrns: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.22;
+        // The quiet dead: a huddle of grave urns — one tall amphora
+        // and its two small kin, dealt back-to-front by hash. Turned
+        // clay with painted grave-bands, wax caps sealed against the
+        // damp; on some huddles one small urn lies cracked, its ash
+        // and a bone chip spilled — somebody got here first.
+        const m = ((h >> 4) & 1) === 0 ? 1 : -1;
+        const robbed = ((h >> 7) & 3) === 0;
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.6, 0.95, 0.5),
+          drawShadow: () => this.castContact(p.x, baseY, s * 0.3, s * 0.1),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.26)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY, s * 0.4, s * 0.11, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // One urn: a turned profile — foot, swollen shoulder, neck
+            // — with the dark flank keeping it a cylinder, two painted
+            // grave-bands, and the wax seal's pale disc on top.
+            const urn = (cx: number, cy: number, ht: number, hs2: number): void => {
+              const w = ht * 0.42;
+              ctx.fillStyle = 'rgba(12, 8, 20, 0.22)';
+              ctx.beginPath();
+              ctx.ellipse(cx, cy + s * 0.008, w * 1.1, s * 0.04, 0, 0, Math.PI * 2);
+              ctx.fill();
+              const body = (hs2 & 1) === 0 ? DGN_CLAY : '#96704a';
+              ctx.fillStyle = body;
+              ctx.beginPath();
+              ctx.moveTo(cx - w * 0.5, cy);
+              ctx.quadraticCurveTo(cx - w * 1.18, cy - ht * 0.42, cx - w * 0.42, cy - ht * 0.78);
+              ctx.lineTo(cx - w * 0.34, cy - ht);
+              ctx.lineTo(cx + w * 0.34, cy - ht);
+              ctx.lineTo(cx + w * 0.42, cy - ht * 0.78);
+              ctx.quadraticCurveTo(cx + w * 1.18, cy - ht * 0.42, cx + w * 0.5, cy);
+              ctx.closePath();
+              ctx.fill();
+              // Turned-form shading: dark flank, lit answer.
+              ctx.fillStyle = 'rgba(58, 38, 26, 0.35)';
+              ctx.beginPath();
+              ctx.moveTo(cx + w * 0.3, cy);
+              ctx.quadraticCurveTo(cx + w * 0.95, cy - ht * 0.42, cx + w * 0.3, cy - ht * 0.82);
+              ctx.lineTo(cx + w * 0.12, cy - ht * 0.82);
+              ctx.quadraticCurveTo(cx + w * 0.6, cy - ht * 0.42, cx + w * 0.14, cy);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = 'rgba(224, 196, 148, 0.3)';
+              ctx.beginPath();
+              ctx.moveTo(cx - w * 0.42, cy - ht * 0.12);
+              ctx.quadraticCurveTo(cx - w * 0.9, cy - ht * 0.42, cx - w * 0.36, cy - ht * 0.7);
+              ctx.lineTo(cx - w * 0.2, cy - ht * 0.7);
+              ctx.quadraticCurveTo(cx - w * 0.62, cy - ht * 0.42, cx - w * 0.24, cy - ht * 0.12);
+              ctx.closePath();
+              ctx.fill();
+              // Two grave-bands: a wide field with tally ticks (the
+              // potter's meander said small) and a thin line under it.
+              const bandY = cy - ht * 0.58;
+              const bandW = w * (1 + 0.16 * Math.sin(1.2));
+              ctx.fillStyle = '#4a3a30';
+              ctx.fillRect(cx - bandW * 0.96, bandY - ht * 0.07, bandW * 1.92, ht * 0.11);
+              ctx.fillStyle = DGN_CLAY_LIT;
+              for (let k2 = -2; k2 <= 2; k2++) {
+                ctx.fillRect(cx + k2 * bandW * 0.36 - w * 0.035, bandY - ht * 0.045, w * 0.07, ht * 0.065);
+              }
+              ctx.fillStyle = '#4a3a30';
+              ctx.fillRect(cx - w * 0.88, cy - ht * 0.32, w * 1.76, Math.max(1, ht * 0.03));
+              // The mouth ring seats the seal — clay first, then wax.
+              ctx.fillStyle = '#4a3a30';
+              ctx.beginPath();
+              ctx.ellipse(cx, cy - ht, w * 0.4, syT * 0.13, 0, 0, Math.PI * 2);
+              ctx.fill();
+              // The wax seal: a SMALL warm disc with one drip run —
+              // kept quiet so the huddle reads as pots, never as eggs
+              // in a basket (the map-scale audit's verdict).
+              ctx.fillStyle = '#c9b791';
+              ctx.beginPath();
+              ctx.ellipse(cx, cy - ht, w * 0.26, syT * 0.08, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = 'rgba(154, 140, 108, 0.8)';
+              ctx.fillRect(cx + w * 0.16, cy - ht + s * 0.008, w * 0.08, ht * 0.09);
+            };
+            // The kin first (behind), then the tall one owns the front.
+            urn(p.x - m * s * 0.24, baseY - syT * 0.1, s * 0.32, hashCoords(113, tx, ty));
+            if (robbed) {
+              // The cracked kin: on its side, mouth toward the camera,
+              // ash fanned out with one bone chip in it.
+              const cx = p.x + m * s * 0.26;
+              ctx.fillStyle = 'rgba(64, 58, 52, 0.6)';
+              ctx.beginPath();
+              ctx.ellipse(cx + m * s * 0.1, baseY + s * 0.02, s * 0.14, s * 0.05, m * 0.3, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.save();
+              ctx.translate(cx, baseY - s * 0.07);
+              ctx.rotate(m * 1.35);
+              ctx.fillStyle = '#96704a';
+              ctx.beginPath();
+              ctx.moveTo(-s * 0.055, 0);
+              ctx.quadraticCurveTo(-s * 0.14, -s * 0.11, -s * 0.05, -s * 0.2);
+              ctx.lineTo(s * 0.05, -s * 0.2);
+              ctx.quadraticCurveTo(s * 0.14, -s * 0.11, s * 0.055, 0);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = '#241a2e';
+              ctx.beginPath();
+              ctx.ellipse(0, -s * 0.2, s * 0.05, s * 0.02, 0, 0, Math.PI * 2);
+              ctx.fill();
+              // The crack: a dark lightning line across the shoulder.
+              ctx.strokeStyle = 'rgba(36, 26, 46, 0.7)';
+              ctx.lineWidth = Math.max(1, s * 0.014);
+              ctx.beginPath();
+              ctx.moveTo(-s * 0.04, -s * 0.04);
+              ctx.lineTo(0, -s * 0.1);
+              ctx.lineTo(-s * 0.025, -s * 0.16);
+              ctx.stroke();
+              ctx.restore();
+              ctx.fillStyle = DGN_BONE;
+              ctx.fillRect(cx + m * s * 0.16, baseY - s * 0.015, s * 0.06, s * 0.025);
+            } else {
+              urn(p.x + m * s * 0.26, baseY - syT * 0.04, s * 0.28, hashCoords(127, tx, ty));
+            }
+            urn(p.x - m * s * 0.02, baseY, s * 0.52, h);
+          },
+        };
+      }
+
+      case Tile.ChainedSkeleton:
+      case Tile.WallSconce:
+      case Tile.WallChains: {
+        const syT = s * this.camera.yScale;
+        // THE WALL FIXTURES: the prop owns a FLOOR cell, but its iron
+        // lives on the wall face NORTH of it — the only face the
+        // camera sees. The wall base line is this tile's north edge;
+        // heights climb the face from there. With no honest wall
+        // behind (a Studio stamp in the open), each piece falls back
+        // to a driven timber post so the art never orphans.
+        const wn = game.world.groundAt(tx, ty - 1);
+        const walled =
+          wn === Tile.CaveWall ||
+          wn === Tile.CrackedCaveWall ||
+          wn === Tile.WallStone ||
+          wn === Tile.WallGarrison ||
+          wn === Tile.WallWood;
+        const wallBase = p.y - syT * 0.5;
+        // Fixtures sort with the wall row they cling to: anything
+        // standing in the cell (the player included) draws over them,
+        // exactly as a body passing a mounted bracket should.
+        const fixSort = ty + 0.3;
+        const post = (px: number, ht: number): void => {
+          const ctx = this.ctx;
+          ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+          ctx.beginPath();
+          ctx.ellipse(px, wallBase + s * 0.02, s * 0.11, s * 0.05, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(PALI_LOG, -6);
+          ctx.fillRect(px - s * 0.05, wallBase - ht, s * 0.1, ht);
+          ctx.fillStyle = shade(PALI_LOG, 10);
+          ctx.fillRect(px - s * 0.05, wallBase - ht, s * 0.032, ht);
+        };
+        // A run of chain: hard-edged figure-8 links laid along a
+        // quadratic sag, alternating tall and flat the way a hung
+        // chain actually turns its links to the eye.
+        const chainRun = (
+          x0: number,
+          y0: number,
+          cx: number,
+          cy: number,
+          x1: number,
+          y1: number,
+          col: string,
+        ): void => {
+          const ctx = this.ctx;
+          const n = Math.max(5, Math.round(Math.hypot(x1 - x0, y1 - y0) / (s * 0.055)));
+          for (let k = 0; k <= n; k++) {
+            const f = k / n;
+            const g = 1 - f;
+            const lx = g * g * x0 + 2 * g * f * cx + f * f * x1;
+            const ly = g * g * y0 + 2 * g * f * cy + f * f * y1;
+            ctx.fillStyle = col;
+            if ((k & 1) === 0) ctx.fillRect(lx - s * 0.014, ly - s * 0.026, s * 0.028, s * 0.052);
+            else ctx.fillRect(lx - s * 0.02, ly - s * 0.016, s * 0.04, s * 0.032);
+          }
+        };
+
+        if (tile === Tile.WallSconce) {
+          // A wrought cage bracket: strap plate bolted to the stone,
+          // scroll arm, three-rib basket, and the flame that keeps the
+          // dark honest — burning at full no matter the surface hour
+          // (the lightmap punch stays flame-gated in the light scan).
+          const mountY = wallBase - s * 1.02;
+          const flick = 0.8 + Math.sin(t * 13 + h) * 0.13 + Math.sin(t * 29 + h * 0.3) * 0.07;
+          return {
+            sortY: fixSort,
+            body: stationBody(0.5, 2.1, 0.15),
+            draw: () => {
+              // Draw-time ctx capture: the outline pass swaps this.ctx
+              // to its scratch — the build-time capture would paint past it.
+              const ctx = this.ctx;
+              if (!walled) post(p.x, s * 1.35);
+              const bx = p.x;
+              // Firelight laps the floor of the cell below — a
+              // whisper only (the live light pass throws the real
+              // pool; the first audit read a louder lap as a stain).
+              ctx.fillStyle = `rgba(232, 122, 51, ${0.04 * flick})`;
+              ctx.beginPath();
+              ctx.ellipse(bx, p.y + syT * 0.1, s * 0.5, s * 0.2, 0, 0, Math.PI * 2);
+              ctx.fill();
+              // …and washes the stone around the basket.
+              ctx.fillStyle = `rgba(232, 140, 62, ${0.1 * flick})`;
+              ctx.beginPath();
+              ctx.ellipse(bx, mountY - s * 0.1, s * 0.42, s * 0.34, 0, 0, Math.PI * 2);
+              ctx.fill();
+              // Soot fan where a thousand nights went up.
+              ctx.fillStyle = 'rgba(16, 12, 20, 0.35)';
+              ctx.beginPath();
+              ctx.moveTo(bx - s * 0.1, mountY - s * 0.3);
+              ctx.quadraticCurveTo(bx, mountY - s * 0.72, bx + s * 0.02, mountY - s * 0.3);
+              ctx.closePath();
+              ctx.fill();
+              // The strap plate and its two bolt pips.
+              ctx.fillStyle = DGN_IRON;
+              ctx.fillRect(bx - s * 0.045, mountY - s * 0.16, s * 0.09, s * 0.4);
+              ctx.fillStyle = DGN_IRON_LIT;
+              ctx.fillRect(bx - s * 0.045, mountY - s * 0.16, s * 0.028, s * 0.4);
+              for (const dy of [-0.1, 0.18]) {
+                ctx.fillStyle = DGN_RUST_LIT;
+                ctx.fillRect(bx - s * 0.014, mountY + dy * s - s * 0.014, s * 0.028, s * 0.028);
+              }
+              // The scroll arm steps the basket off the stone.
+              ctx.strokeStyle = DGN_IRON;
+              ctx.lineWidth = Math.max(1.5, s * 0.036);
+              ctx.beginPath();
+              ctx.moveTo(bx, mountY + s * 0.16);
+              ctx.quadraticCurveTo(bx + s * 0.02, mountY + s * 0.3, bx, mountY + s * 0.34);
+              ctx.stroke();
+              // The basket: a flared iron cup, three ribs and two
+              // rings, rust taking the down-weather side.
+              const ky = mountY + s * 0.02;
+              ctx.fillStyle = DGN_IRON;
+              ctx.beginPath();
+              ctx.moveTo(bx - s * 0.13, ky - s * 0.12);
+              ctx.lineTo(bx + s * 0.13, ky - s * 0.12);
+              ctx.lineTo(bx + s * 0.055, ky + s * 0.14);
+              ctx.lineTo(bx - s * 0.055, ky + s * 0.14);
+              ctx.closePath();
+              ctx.fill();
+              ctx.strokeStyle = DGN_IRON_LIT;
+              ctx.lineWidth = Math.max(1, s * 0.018);
+              for (const fx of [-0.75, 0, 0.75]) {
+                ctx.beginPath();
+                ctx.moveTo(bx + s * 0.12 * fx, ky - s * 0.12);
+                ctx.lineTo(bx + s * 0.05 * fx, ky + s * 0.13);
+                ctx.stroke();
+              }
+              ctx.strokeStyle = DGN_RUST;
+              ctx.beginPath();
+              ctx.moveTo(bx - s * 0.13, ky - s * 0.12);
+              ctx.lineTo(bx + s * 0.13, ky - s * 0.12);
+              ctx.stroke();
+              // Flame: one ragged lick and its hot core.
+              const fy = ky - s * 0.14;
+              ctx.fillStyle = '#e8823d';
+              ctx.beginPath();
+              ctx.moveTo(bx - s * 0.1 * flick, fy);
+              ctx.quadraticCurveTo(bx - s * 0.08, fy - s * 0.26 * flick, bx + s * 0.01, fy - s * 0.36 * flick);
+              ctx.quadraticCurveTo(bx + s * 0.09, fy - s * 0.2, bx + s * 0.1 * flick, fy);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = '#f2c94c';
+              ctx.beginPath();
+              ctx.moveTo(bx - s * 0.045 * flick, fy);
+              ctx.quadraticCurveTo(bx - s * 0.01, fy - s * 0.18 * flick, bx + s * 0.02, fy - s * 0.22 * flick);
+              ctx.quadraticCurveTo(bx + s * 0.05, fy - s * 0.12, bx + s * 0.045 * flick, fy);
+              ctx.closePath();
+              ctx.fill();
+              // One ember spitting off the cage.
+              const ph = (t * 0.8 + h * 0.11) % 1;
+              ctx.fillStyle = `rgba(255, 190, 110, ${(1 - ph) * 0.7})`;
+              ctx.fillRect(bx + Math.sin(t * 2.9 + h) * s * 0.05, fy - s * 0.2 - ph * s * 0.3, s * 0.022, s * 0.022);
+            },
+          };
+        }
+
+        if (tile === Tile.WallChains) {
+          // Haulage the mountain kept: two bolt plates high on the
+          // stone, a heavy swag sagging between them, and a working
+          // tail ending in an empty shackle — swinging on air nobody
+          // felt move (barely: the deep is still).
+          const m = ((h >> 4) & 1) === 0 ? 1 : -1;
+          const sway = Math.sin(t * 0.7 + h * 0.5) * s * 0.022;
+          const bAx = p.x - s * 0.26 * m;
+          const bBx = p.x + s * 0.3 * m;
+          const bAy = wallBase - s * 1.42;
+          const bBy = wallBase - s * 1.18;
+          const cuffX = bBx + m * s * 0.05 + sway;
+          const cuffY = wallBase - s * 0.38;
+          return {
+            sortY: fixSort,
+            body: stationBody(0.55, 2.05, 0.15),
+            draw: () => {
+              // Draw-time ctx capture: the outline pass swaps this.ctx
+              // to its scratch — the build-time capture would paint past it.
+              const ctx = this.ctx;
+              if (!walled) {
+                post(bAx, s * 1.6);
+                post(bBx, s * 1.36);
+              }
+              // Rust bleeds down the stone from both bolts — the
+              // stain is half the story.
+              for (const [bx2, by2] of [
+                [bAx, bAy],
+                [bBx, bBy],
+              ] as const) {
+                ctx.fillStyle = 'rgba(122, 74, 48, 0.28)';
+                ctx.beginPath();
+                ctx.moveTo(bx2 - s * 0.045, by2);
+                ctx.lineTo(bx2 + s * 0.045, by2);
+                ctx.lineTo(bx2 + s * 0.02, by2 + s * 0.55);
+                ctx.lineTo(bx2 - s * 0.015, by2 + s * 0.55);
+                ctx.closePath();
+                ctx.fill();
+                // The bolt plate: a square pad and its pin.
+                ctx.fillStyle = DGN_IRON;
+                ctx.fillRect(bx2 - s * 0.055, by2 - s * 0.055, s * 0.11, s * 0.11);
+                ctx.fillStyle = DGN_IRON_LIT;
+                ctx.fillRect(bx2 - s * 0.055, by2 - s * 0.055, s * 0.11, s * 0.024);
+                ctx.fillStyle = DGN_RUST_LIT;
+                ctx.beginPath();
+                ctx.ellipse(bx2, by2, s * 0.02, s * 0.02, 0, 0, Math.PI * 2);
+                ctx.fill();
+              }
+              // The dead swag between the bolts hangs heavy…
+              chainRun(bAx, bAy + s * 0.05, (bAx + bBx) / 2, wallBase - s * 0.72, bBx, bBy + s * 0.05, DGN_IRON);
+              chainRun(
+                bAx,
+                bAy + s * 0.05,
+                (bAx + bBx) / 2 + s * 0.01,
+                wallBase - s * 0.73,
+                (bAx + bBx) / 2 + s * 0.04,
+                wallBase - s * 0.7,
+                DGN_IRON_LIT,
+              );
+              // …and the working tail falls to the shackle.
+              chainRun(bBx, bBy + s * 0.05, bBx + m * s * 0.02, wallBase - s * 0.76, cuffX, cuffY - s * 0.07, DGN_IRON);
+              // The empty cuff: an open shackle with its hinge pip
+              // and pin ear — nobody in it, which is its own story.
+              ctx.strokeStyle = DGN_RUST;
+              ctx.lineWidth = Math.max(1.5, s * 0.032);
+              ctx.beginPath();
+              ctx.arc(cuffX, cuffY, s * 0.06, Math.PI * 0.75, Math.PI * 2.55);
+              ctx.stroke();
+              ctx.fillStyle = DGN_IRON_LIT;
+              ctx.fillRect(cuffX - s * 0.014, cuffY - s * 0.088, s * 0.028, s * 0.028);
+            },
+          };
+        }
+
+        // Tile.ChainedSkeleton — the prisoner the dark forgot. Bones
+        // slumped at the wall's foot, both wrists still up in the
+        // irons; the skull has tipped to its shoulder and the ribs
+        // have half let go. Hash deals the slump side, and on some,
+        // one shackle stands EMPTY with the freed arm fallen in the
+        // lap — the crawler's imagination does the rest.
+        const m = ((h >> 4) & 1) === 0 ? 1 : -1;
+        const freed = ((h >> 9) & 3) === 0;
+        const cLx = p.x - s * 0.3;
+        const cRx = p.x + s * 0.3;
+        const cY = wallBase - s * 0.98;
+        const pelvX = p.x + m * s * 0.05;
+        const pelvY = wallBase + syT * 0.16;
+        return {
+          sortY: ty + 0.35,
+          body: stationBody(0.55, 1.75, 0.35),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            if (!walled) post(p.x, s * 1.3);
+            // Contact shade where the bones bed on the floor.
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.26)';
+            ctx.beginPath();
+            ctx.ellipse(pelvX, pelvY + s * 0.06, s * 0.32, s * 0.09, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Wall bolts and the short chains to each cuff.
+            for (const [bx2, cuffX, cuffFull] of [
+              [cLx + s * 0.04, cLx, m > 0 || !freed],
+              [cRx - s * 0.04, cRx, m < 0 || !freed],
+            ] as const) {
+              ctx.fillStyle = DGN_IRON;
+              ctx.fillRect(bx2 - s * 0.04, cY - s * 0.3 - s * 0.04, s * 0.08, s * 0.08);
+              ctx.fillStyle = 'rgba(122, 74, 48, 0.25)';
+              ctx.fillRect(bx2 - s * 0.02, cY - s * 0.26, s * 0.045, s * 0.4);
+              chainRun(bx2, cY - s * 0.26, bx2 + s * 0.015, cY - s * 0.12, cuffX, cY, DGN_IRON);
+              // The cuff — shut on bone, or hanging open and empty.
+              ctx.strokeStyle = DGN_RUST;
+              ctx.lineWidth = Math.max(1.5, s * 0.03);
+              ctx.beginPath();
+              if (cuffFull) ctx.arc(cuffX, cY + s * 0.03, s * 0.045, 0, Math.PI * 2);
+              else ctx.arc(cuffX, cY + s * 0.04, s * 0.05, Math.PI * 0.7, Math.PI * 2.4);
+              ctx.stroke();
+            }
+            // One arm: humerus to a dropped elbow, forearm up to the
+            // cuff — bones read as two straight runs meeting at a
+            // knuckle, never a curve.
+            const arm = (sx: number, sy: number, ex: number, ey: number, wx: number, wy: number): void => {
+              ctx.strokeStyle = DGN_BONE_DIM;
+              ctx.lineWidth = Math.max(1.5, s * 0.036);
+              ctx.beginPath();
+              ctx.moveTo(sx, sy);
+              ctx.lineTo(ex, ey);
+              ctx.stroke();
+              ctx.strokeStyle = DGN_BONE;
+              ctx.beginPath();
+              ctx.moveTo(ex, ey);
+              ctx.lineTo(wx, wy);
+              ctx.stroke();
+              ctx.fillStyle = DGN_BONE;
+              ctx.beginPath();
+              ctx.ellipse(ex, ey, s * 0.028, s * 0.028, 0, 0, Math.PI * 2);
+              ctx.fill();
+            };
+            const shY = wallBase - s * 0.52;
+            const shLx = pelvX - s * 0.14;
+            const shRx = pelvX + s * 0.14;
+            if (m > 0 || !freed) arm(shLx, shY, cLx - s * 0.05, cY + s * 0.3, cLx, cY + s * 0.06);
+            if (m < 0 || !freed) arm(shRx, shY, cRx + s * 0.05, cY + s * 0.32, cRx, cY + s * 0.06);
+            // The freed arm lies across the lap instead.
+            if (freed) {
+              const fx2 = m > 0 ? shRx : shLx;
+              arm(fx2, shY, pelvX + m * s * 0.2, pelvY - s * 0.06, pelvX - m * s * 0.1, pelvY + s * 0.02);
+            }
+            // The spine leans into the slump; ribs hang off it in
+            // three arcs over a chest gone dark.
+            ctx.strokeStyle = DGN_BONE_DIM;
+            ctx.lineWidth = Math.max(1.5, s * 0.03);
+            ctx.beginPath();
+            ctx.moveTo(pelvX, pelvY - s * 0.05);
+            ctx.quadraticCurveTo(pelvX + m * s * 0.03, wallBase - s * 0.3, pelvX + m * s * 0.09, shY - s * 0.06);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(24, 18, 32, 0.55)';
+            ctx.beginPath();
+            ctx.ellipse(pelvX + m * s * 0.02, wallBase - s * 0.32, s * 0.13, s * 0.16, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = DGN_BONE;
+            ctx.lineWidth = Math.max(1, s * 0.024);
+            for (let k = 0; k < 3; k++) {
+              const ry = wallBase - s * (0.42 - k * 0.09);
+              ctx.beginPath();
+              ctx.arc(pelvX + m * s * 0.03, ry, s * (0.15 - k * 0.02), Math.PI * 0.15, Math.PI * 0.85);
+              ctx.stroke();
+            }
+            // Collarbones seat the shoulders.
+            ctx.beginPath();
+            ctx.moveTo(shLx, shY);
+            ctx.lineTo(pelvX + m * s * 0.09, shY - s * 0.03);
+            ctx.lineTo(shRx, shY);
+            ctx.stroke();
+            // The pelvis bowl and folded legs: femur out, shin back —
+            // knees dropped sideways the way a seated body settles.
+            ctx.fillStyle = DGN_BONE_DIM;
+            ctx.beginPath();
+            facetCircle(ctx, pelvX, pelvY - s * 0.03, s * 0.085, 6, 0.35, 0.6);
+            ctx.fill();
+            ctx.strokeStyle = DGN_BONE;
+            ctx.lineWidth = Math.max(1.5, s * 0.038);
+            ctx.beginPath();
+            ctx.moveTo(pelvX + m * s * 0.03, pelvY);
+            ctx.lineTo(pelvX + m * s * 0.3, pelvY + s * 0.03);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(pelvX + m * s * 0.3, pelvY + s * 0.03);
+            ctx.lineTo(pelvX + m * s * 0.44, pelvY - s * 0.05);
+            ctx.stroke();
+            ctx.fillStyle = DGN_BONE;
+            ctx.beginPath();
+            ctx.ellipse(pelvX + m * s * 0.3, pelvY + s * 0.03, s * 0.026, s * 0.026, 0, 0, Math.PI * 2);
+            ctx.ellipse(pelvX + m * s * 0.46, pelvY - s * 0.06, s * 0.03, s * 0.02, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // What's left of the shift: a rag at the hips, hem torn.
+            ctx.fillStyle = ((h >> 11) & 1) === 0 ? '#4a4034' : '#3f4448';
+            ctx.beginPath();
+            ctx.moveTo(pelvX - s * 0.1, pelvY - s * 0.1);
+            ctx.lineTo(pelvX + s * 0.1, pelvY - s * 0.1);
+            ctx.lineTo(pelvX + s * 0.13, pelvY + s * 0.05);
+            ctx.lineTo(pelvX + s * 0.05, pelvY + s * 0.01);
+            ctx.lineTo(pelvX - s * 0.02, pelvY + s * 0.06);
+            ctx.lineTo(pelvX - s * 0.12, pelvY + s * 0.02);
+            ctx.closePath();
+            ctx.fill();
+            // The skull, tipped to the slump shoulder: dome, hard
+            // brow, socket voids — it looks at the floor, not at you.
+            const skx = pelvX + m * s * 0.12;
+            const sky = shY - s * 0.14;
+            ctx.save();
+            ctx.translate(skx, sky);
+            ctx.rotate(m * 0.5);
+            ctx.fillStyle = DGN_BONE;
+            ctx.beginPath();
+            facetCircle(ctx, 0, 0, s * 0.105, 6, 0.4, 0.85);
+            ctx.fill();
+            ctx.fillStyle = '#ddd6c0';
+            ctx.beginPath();
+            facetCircle(ctx, -s * 0.015, -s * 0.025, s * 0.075, 6, 0.4, 0.8);
+            ctx.fill();
+            ctx.fillStyle = '#241a2e';
+            ctx.beginPath();
+            ctx.ellipse(-s * 0.038, s * 0.012, s * 0.023, s * 0.028, 0, 0, Math.PI * 2);
+            ctx.ellipse(s * 0.02, s * 0.012, s * 0.023, s * 0.028, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = DGN_BONE_DIM;
+            ctx.fillRect(-s * 0.05, s * 0.062, s * 0.1, s * 0.024);
+            ctx.restore();
+            // A few finger bones where a hand let go.
+            this.rubble(pelvX + m * s * 0.1, p.y - s * 0.1, s * 0.5, h ^ 0x65, [DGN_BONE, DGN_BONE_DIM]);
+          },
+        };
+      }
+
+      case Tile.Sarcophagus: {
+        const syT = s * this.camera.yScale;
+        // The crypt's anchor. A stone coffin LIES — long axis across
+        // the screen so the eye reads a horizontal box, never a
+        // standing cabinet (the first live audit's verdict). The lid
+        // is the read: a sky-lit top plane carrying the effigy in
+        // two-value relief, head to one end, sword run to the feet.
+        // Longer than the body it holds (the BODY-RULER law: it
+        // overdraws its tile east-west like a lone bed overdraws
+        // south). A quarter of them stand AJAR — the lid walked a
+        // hand's width and nobody talks about why.
+        const m = ((h >> 4) & 1) === 0 ? 1 : -1; // head end
+        const ajar = ((h >> 6) & 3) === 0;
+        const xL = p.x - s * 0.62;
+        const xR = p.x + s * 0.62;
+        const hh = s * 0.42; // box height off the floor
+        const yS = p.y + syT * 0.34; // plan south edge
+        const yN = p.y - syT * 0.3; // plan north edge
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.75, 1.0, 0.55),
+          drawShadow: () => this.castEdgeQuad(xL, yS, xR, yS, 0.45),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            // Contact shade pools along the standing face.
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.28)';
+            ctx.fillRect(xL - s * 0.02, yS - s * 0.012, xR - xL + s * 0.04, s * 0.06);
+            // The south face: coursed stone over a plinth lip — the
+            // one plumb face the camera sees, a full step off the
+            // flagstone dark (the kit's value law).
+            ctx.fillStyle = DGN_STONE;
+            ctx.fillRect(xL, yS - hh, xR - xL, hh);
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+            ctx.fillRect(xL, yS - s * 0.1, xR - xL, s * 0.1);
+            // Two carved course lines and a vent slit break the face.
+            ctx.fillStyle = 'rgba(30, 24, 40, 0.4)';
+            ctx.fillRect(xL, yS - hh * 0.55, xR - xL, Math.max(1, s * 0.016));
+            ctx.fillRect(p.x + m * s * 0.3 - s * 0.02, yS - hh * 0.78, s * 0.04, hh * 0.3);
+            // Side arrises pin the box's ends.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.35)';
+            ctx.fillRect(xR - Math.max(1, s * 0.02), yS - hh, Math.max(1, s * 0.02), hh);
+            ctx.fillStyle = 'rgba(178, 174, 196, 0.4)';
+            ctx.fillRect(xL, yS - hh, Math.max(1, s * 0.02), hh);
+            // THE LID — the foreshortened top plane, sky-lit.
+            const lidN = yN - hh;
+            const lidS = yS - hh - s * 0.02;
+            ctx.save();
+            if (ajar) {
+              // The walked lid: slid toward the foot end; the gap it
+              // opened at the head is a hard black wedge.
+              ctx.fillStyle = '#16121e';
+              ctx.fillRect(m > 0 ? xL : xR - s * 0.22, lidN, s * 0.22, lidS - lidN);
+              ctx.translate(-m * s * 0.1, 0);
+            }
+            ctx.fillStyle = '#9a95a8';
+            ctx.fillRect(xL, lidN, xR - xL, lidS - lidN);
+            // The raised border: shadow inboard, lit north arris.
+            ctx.strokeStyle = 'rgba(38, 32, 48, 0.5)';
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            ctx.strokeRect(xL + s * 0.06, lidN + syT * 0.07, xR - xL - s * 0.12, lidS - lidN - syT * 0.14);
+            ctx.fillStyle = '#c2bdcf';
+            ctx.fillRect(xL, lidN, xR - xL, Math.max(1, s * 0.02));
+            // The effigy lies head-to-one-end: dark cast first, then
+            // the raised stone a half step proud. Weather ate the
+            // face centuries ago — the SHAPE is the story.
+            const hx = p.x + m * s * 0.4; // head end
+            const midY = (lidN + lidS) / 2;
+            const relief = (d: number, col: string): void => {
+              ctx.fillStyle = col;
+              ctx.beginPath();
+              ctx.ellipse(hx + d, midY + d * 0.6, s * 0.075, syT * 0.09, 0, 0, Math.PI * 2);
+              ctx.fill();
+              // Shoulders taper toward the feet.
+              ctx.beginPath();
+              ctx.moveTo(hx - m * s * 0.12 + d, midY - syT * 0.13 + d * 0.6);
+              ctx.lineTo(hx - m * s * 0.72 + d, midY - syT * 0.08 + d * 0.6);
+              ctx.lineTo(hx - m * s * 0.72 + d, midY + syT * 0.08 + d * 0.6);
+              ctx.lineTo(hx - m * s * 0.12 + d, midY + syT * 0.13 + d * 0.6);
+              ctx.closePath();
+              ctx.fill();
+              // The sword runs the body line to the feet; crossguard
+              // bars it under the folded arms; pommel at the chest.
+              ctx.fillRect(hx - m * s * 0.68 + d - s * 0.34 + m * s * 0.34, midY - s * 0.016 + d * 0.6, s * 0.42, s * 0.032);
+              ctx.fillRect(hx - m * s * 0.26 + d - s * 0.016, midY - syT * 0.11 + d * 0.6, s * 0.032, syT * 0.22);
+              ctx.beginPath();
+              ctx.ellipse(hx - m * s * 0.18 + d, midY + d * 0.6, s * 0.028, s * 0.026, 0, 0, Math.PI * 2);
+              ctx.fill();
+            };
+            relief(s * 0.014, 'rgba(38, 32, 48, 0.55)');
+            relief(0, '#c6c1d3');
+            // The chipped corner: a bite of fresh, paler stone.
+            ctx.fillStyle = shade('#9a95a8', 16);
+            ctx.beginPath();
+            ctx.moveTo(m > 0 ? xL : xR, lidS);
+            ctx.lineTo(m > 0 ? xL + s * 0.09 : xR - s * 0.09, lidS);
+            ctx.lineTo(m > 0 ? xL : xR, lidS - syT * 0.09);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+            // Damp creeps up the shaded end of the face.
+            ctx.fillStyle = 'rgba(74, 97, 56, 0.5)';
+            ctx.beginPath();
+            facetBlob(ctx, m > 0 ? xR - s * 0.08 : xL + s * 0.08, yS - s * 0.06, s * 0.075, h ^ 0x33, 5, 0.7);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.BrokenPillar: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        // Ancient violence in stone: the stump still stands on its
+        // stepped plinth — the GRAND pillar's own base language, so
+        // the two read as kin — sheared at a raking angle, and the
+        // drum it dropped lies where it rolled, round end-grain to
+        // the camera. That foreshortened circle is the piece's whole
+        // 3D argument: nothing painted flat has an END. (First audit
+        // verdict: the v1 stump read as a thin gravestone — the
+        // rework gives it the grand pillar's girth and its plinth.)
+        const m = ((h >> 4) & 1) === 0 ? 1 : -1;
+        const stumpH = s * (0.72 + ((h >> 6) & 3) * 0.08);
+        const rw = s * 0.23; // shaft half-width
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.95, 1.3, 0.55),
+          drawShadow: () => this.castBlob(p.x - m * s * 0.16, baseY, stumpH / s, s * 0.26, h ^ 0x41),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            const sx = p.x - m * s * 0.18; // the stump keeps one side
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.28)';
+            ctx.beginPath();
+            ctx.ellipse(sx, baseY + s * 0.01, s * 0.34, s * 0.1, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The stepped plinth, each tread keeping a lit arris —
+            // the grand pillar's base, verbatim.
+            ctx.fillStyle = DGN_STONE_DARK;
+            ctx.fillRect(sx - s * 0.32, baseY - s * 0.08, s * 0.64, s * 0.08);
+            ctx.fillStyle = DGN_STONE;
+            ctx.fillRect(sx - s * 0.26, baseY - s * 0.16, s * 0.52, s * 0.08);
+            ctx.fillStyle = 'rgba(160, 155, 173, 0.5)';
+            ctx.fillRect(sx - s * 0.32, baseY - s * 0.08, s * 0.64, Math.max(1, s * 0.018));
+            ctx.fillRect(sx - s * 0.26, baseY - s * 0.16, s * 0.52, Math.max(1, s * 0.016));
+            // The stump: full shaft girth up to the shear line.
+            ctx.fillStyle = DGN_STONE;
+            ctx.beginPath();
+            ctx.moveTo(sx - rw, baseY - s * 0.16);
+            ctx.lineTo(sx - rw * 0.95, baseY - stumpH + s * 0.12 * m);
+            ctx.lineTo(sx + rw * 0.95, baseY - stumpH - s * 0.14 * m);
+            ctx.lineTo(sx + rw, baseY - s * 0.16);
+            ctx.closePath();
+            ctx.fill();
+            // The turned form: shade flank, lit lane, carved flutes —
+            // the grand pillar's skin so kinship is unmistakable.
+            ctx.fillStyle = 'rgba(20, 14, 30, 0.28)';
+            ctx.beginPath();
+            ctx.moveTo(sx + m * rw, baseY - s * 0.16);
+            ctx.lineTo(sx + m * rw * 0.95, baseY - stumpH - s * 0.14 * m * (m > 0 ? 1 : -1));
+            ctx.lineTo(sx + m * rw * 0.55, baseY - stumpH - s * 0.05 * m * (m > 0 ? 1 : -1));
+            ctx.lineTo(sx + m * rw * 0.55, baseY - s * 0.16);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = 'rgba(178, 174, 196, 0.5)';
+            ctx.fillRect(sx - m * rw * 0.82, baseY - stumpH * 0.88, s * 0.05, stumpH * 0.72);
+            ctx.strokeStyle = 'rgba(38, 32, 48, 0.45)';
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            for (const f of [-0.42, 0.1, 0.56]) {
+              ctx.beginPath();
+              ctx.moveTo(sx + rw * f, baseY - s * 0.16);
+              ctx.lineTo(sx + rw * f * 0.95, baseY - stumpH + s * (0.08 - f * 0.1) * m);
+              ctx.stroke();
+            }
+            // The shear: fresh break reads PALER than weathered skin,
+            // two raking facets meeting in a ridge.
+            ctx.fillStyle = shade(DGN_STONE_LIT, 10);
+            ctx.beginPath();
+            ctx.moveTo(sx - rw * 0.95, baseY - stumpH + s * 0.12 * m);
+            ctx.lineTo(sx - rw * 0.1, baseY - stumpH - s * 0.06 * m);
+            ctx.lineTo(sx + rw * 0.95, baseY - stumpH - s * 0.14 * m);
+            ctx.lineTo(sx + rw * 0.3, baseY - stumpH + s * 0.03 * m);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(DGN_STONE_LIT, 26);
+            ctx.beginPath();
+            ctx.moveTo(sx - rw * 0.95, baseY - stumpH + s * 0.12 * m);
+            ctx.lineTo(sx - rw * 0.1, baseY - stumpH - s * 0.06 * m);
+            ctx.lineTo(sx + rw * 0.3, baseY - stumpH + s * 0.03 * m);
+            ctx.closePath();
+            ctx.fill();
+            // The fallen drum: a full-girth cylinder on its side, its
+            // end-grain circle catching the light, flutes running the
+            // length, half bedded in its own rubble.
+            const dr = s * 0.16;
+            const dl = s * 0.42;
+            const dx = p.x + m * s * 0.34 - (m > 0 ? 0 : dl);
+            const dy = baseY - s * 0.03;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.26)';
+            ctx.beginPath();
+            ctx.ellipse(dx + dl * 0.5, dy + dr * 0.7, dl * 0.66, s * 0.075, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = DGN_STONE_DARK;
+            ctx.fillRect(dx, dy - dr, dl, dr * 2);
+            // A lit top lane keeps the barrel round.
+            ctx.fillStyle = 'rgba(160, 155, 173, 0.35)';
+            ctx.fillRect(dx, dy - dr, dl, dr * 0.42);
+            ctx.strokeStyle = 'rgba(38, 32, 48, 0.5)';
+            for (const f of [-0.35, 0.2, 0.7]) {
+              ctx.beginPath();
+              ctx.moveTo(dx, dy + dr * f);
+              ctx.lineTo(dx + dl, dy + dr * f);
+              ctx.stroke();
+            }
+            // The end face, pale — stone the weather never found.
+            const ex = m > 0 ? dx + dl : dx;
+            ctx.fillStyle = DGN_STONE;
+            ctx.beginPath();
+            ctx.ellipse(ex, dy, dr * 0.58, dr * 1.02, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = DGN_STONE_LIT;
+            ctx.beginPath();
+            ctx.ellipse(ex, dy, dr * 0.44, dr * 0.82, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(38, 32, 48, 0.5)';
+            ctx.beginPath();
+            ctx.ellipse(ex, dy, dr * 0.17, dr * 0.32, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // A second drum behind, half sunk in the floor's dark.
+            ctx.fillStyle = shade(DGN_STONE_DARK, -8);
+            ctx.beginPath();
+            ctx.ellipse(dx + dl * 0.3 - m * s * 0.3, dy - s * 0.16, s * 0.16, s * 0.08, m * 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            // Chips trail from the shear to where the drums bounced.
+            this.rubble(p.x, p.y - s * 0.1, s * 0.8, h ^ 0x59, [DGN_STONE, DGN_STONE_DARK, DGN_STONE_LIT]);
+            // Moss takes the stump's north-facing shade.
+            ctx.fillStyle = 'rgba(74, 97, 56, 0.6)';
+            ctx.beginPath();
+            facetBlob(ctx, sx - m * rw * 0.7, baseY - s * 0.22, s * 0.07, h ^ 0x6d, 5, 0.8);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.GrandPillar: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        // The depth-of-field piece: a carved column at the walls' own
+        // WALL_H so colonnades and corridors agree on the ceiling they
+        // hold. Entasis keeps the shaft alive (a dead-straight column
+        // reads as a painted bar), the capital shows its TOP PLANE,
+        // and one hard lit lane runs the full height — stone earns
+        // one edge the way mithril does.
+        const ht = s * 2.02;
+        const m = ((h >> 5) & 1) === 0 ? 1 : -1;
+        // The shaft's half-width at fraction f of its height —
+        // swelling gently to a third up, drawing to the neck.
+        const wAt = (f: number): number => s * (0.2 + 0.03 * Math.sin(Math.min(f, 1) * Math.PI * 0.82) - 0.045 * f);
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.62, 2.35, 0.5),
+          drawShadow: () => this.castEdgeQuad(p.x - s * 0.2, baseY, p.x + s * 0.2, baseY, 1.4),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.28)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, s * 0.34, s * 0.1, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The stepped plinth, each tread keeping a lit arris.
+            ctx.fillStyle = DGN_STONE_DARK;
+            ctx.fillRect(p.x - s * 0.32, baseY - s * 0.08, s * 0.64, s * 0.08);
+            ctx.fillStyle = DGN_STONE;
+            ctx.fillRect(p.x - s * 0.26, baseY - s * 0.16, s * 0.52, s * 0.08);
+            ctx.fillStyle = 'rgba(160, 155, 173, 0.5)';
+            ctx.fillRect(p.x - s * 0.32, baseY - s * 0.08, s * 0.64, Math.max(1, s * 0.018));
+            ctx.fillRect(p.x - s * 0.26, baseY - s * 0.16, s * 0.52, Math.max(1, s * 0.016));
+            // The shaft with entasis, built as one polygon.
+            const y0 = baseY - s * 0.16;
+            const shaftH = ht - s * 0.42;
+            ctx.fillStyle = DGN_STONE;
+            ctx.beginPath();
+            ctx.moveTo(p.x - wAt(0), y0);
+            for (let f = 0.2; f <= 1.001; f += 0.2) ctx.lineTo(p.x - wAt(f), y0 - shaftH * f);
+            for (let f = 1; f >= -0.001; f -= 0.2) ctx.lineTo(p.x + wAt(f), y0 - shaftH * f);
+            ctx.closePath();
+            ctx.fill();
+            // Turned form: the away flank falls to shadow…
+            ctx.fillStyle = 'rgba(20, 14, 30, 0.28)';
+            ctx.beginPath();
+            ctx.moveTo(p.x + m * wAt(0), y0);
+            for (let f = 0.2; f <= 1.001; f += 0.2) ctx.lineTo(p.x + m * wAt(f), y0 - shaftH * f);
+            for (let f = 1; f >= -0.001; f -= 0.2) ctx.lineTo(p.x + m * wAt(f) * 0.55, y0 - shaftH * f);
+            ctx.closePath();
+            ctx.fill();
+            // …and ONE hard lit lane answers on the near flank.
+            ctx.fillStyle = 'rgba(178, 174, 196, 0.55)';
+            ctx.beginPath();
+            ctx.moveTo(p.x - m * wAt(0) * 0.82, y0);
+            for (let f = 0.25; f <= 1.001; f += 0.25) ctx.lineTo(p.x - m * wAt(f) * 0.82, y0 - shaftH * f);
+            for (let f = 1; f >= -0.001; f -= 0.25) ctx.lineTo(p.x - m * wAt(f) * 0.62, y0 - shaftH * f);
+            ctx.closePath();
+            ctx.fill();
+            // Two carved flutes ride the swell.
+            ctx.strokeStyle = 'rgba(38, 32, 48, 0.4)';
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            for (const g of [-0.12, 0.3]) {
+              ctx.beginPath();
+              ctx.moveTo(p.x + wAt(0) * g, y0);
+              for (let f = 0.25; f <= 1.001; f += 0.25) ctx.lineTo(p.x + wAt(f) * g, y0 - shaftH * f);
+              ctx.stroke();
+            }
+            // The carved band at the kingdom's own height: a belt of
+            // chevron ticks two-thirds up.
+            const bandY = y0 - shaftH * 0.64;
+            const bandW = wAt(0.64);
+            ctx.fillStyle = DGN_STONE_DARK;
+            ctx.fillRect(p.x - bandW, bandY - s * 0.05, bandW * 2, s * 0.1);
+            ctx.strokeStyle = 'rgba(160, 155, 173, 0.6)';
+            ctx.lineWidth = Math.max(1, s * 0.018);
+            for (let k = -2; k <= 2; k++) {
+              ctx.beginPath();
+              ctx.moveTo(p.x + k * bandW * 0.38 - s * 0.028, bandY + s * 0.03);
+              ctx.lineTo(p.x + k * bandW * 0.38, bandY - s * 0.028);
+              ctx.lineTo(p.x + k * bandW * 0.38 + s * 0.028, bandY + s * 0.03);
+              ctx.stroke();
+            }
+            // The capital: a flared echinus under the abacus slab —
+            // and the slab shows its foreshortened TOP (the 2.5D law:
+            // sky-lit plane, shaded south arris).
+            const nkY = y0 - shaftH;
+            ctx.fillStyle = DGN_STONE;
+            ctx.beginPath();
+            ctx.moveTo(p.x - wAt(1), nkY);
+            ctx.lineTo(p.x - s * 0.3, nkY - s * 0.14);
+            ctx.lineTo(p.x + s * 0.3, nkY - s * 0.14);
+            ctx.lineTo(p.x + wAt(1), nkY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = 'rgba(20, 14, 30, 0.25)';
+            ctx.fillRect(p.x - wAt(1) * 0.9, nkY - s * 0.035, wAt(1) * 1.8, s * 0.035);
+            ctx.fillStyle = DGN_STONE;
+            ctx.fillRect(p.x - s * 0.33, nkY - s * 0.26, s * 0.66, s * 0.12);
+            ctx.fillStyle = DGN_STONE_LIT;
+            ctx.fillRect(p.x - s * 0.33, nkY - s * 0.26 - syT * 0.14, s * 0.66, syT * 0.14);
+            ctx.fillStyle = 'rgba(220, 216, 236, 0.45)';
+            ctx.fillRect(p.x - s * 0.33, nkY - s * 0.26 - syT * 0.14, s * 0.66, Math.max(1, s * 0.02));
+            // Damp wicks up from the floor; moss keeps the plinth.
+            ctx.fillStyle = 'rgba(30, 24, 40, 0.25)';
+            ctx.fillRect(p.x - wAt(0.02), y0 - shaftH * 0.09, wAt(0.02) * 2, shaftH * 0.09);
+            ctx.fillStyle = 'rgba(74, 97, 56, 0.6)';
+            ctx.beginPath();
+            facetBlob(ctx, p.x - m * s * 0.22, baseY - s * 0.1, s * 0.07, h ^ 0x51, 5, 0.75);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.AncientStatue: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        // A king of the swallowed kingdom, at watch long past the
+        // point of anyone to watch for. Old granite, not elven marble:
+        // the masses are heavy and the weather has won — the face is
+        // an eroded shadow band, one arm is gone at the elbow, and
+        // moss has taken the crown. The sword he leans on is the one
+        // shape time couldn't blur.
+        const m = ((h >> 4) & 1) === 0 ? 1 : -1; // the surviving arm's side
+        const ht = s * 1.6; // figure over the plinth
+        const plH = s * 0.26;
+        return {
+          sortY: ty + 0.74,
+          body: stationBody(0.6, 2.2, 0.5),
+          drawShadow: () => this.castEdgeQuad(p.x - s * 0.2, baseY, p.x + s * 0.2, baseY, 1.3),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.28)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, s * 0.32, s * 0.1, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The plinth: one block, lit top arris, weather-streaked.
+            ctx.fillStyle = DGN_STONE_DARK;
+            ctx.fillRect(p.x - s * 0.3, baseY - plH, s * 0.6, plH);
+            ctx.fillStyle = 'rgba(160, 155, 173, 0.5)';
+            ctx.fillRect(p.x - s * 0.3, baseY - plH, s * 0.6, Math.max(1, s * 0.02));
+            ctx.fillStyle = 'rgba(143, 138, 122, 0.3)';
+            ctx.fillRect(p.x - s * 0.12, baseY - plH, s * 0.05, plH);
+            ctx.fillRect(p.x + s * 0.16, baseY - plH, s * 0.035, plH);
+            const fy = baseY - plH; // the figure's footing
+            // A full value step off the '#514b58' flagstone (the
+            // kit's value law — the first audit melted him into the
+            // floor at map scale).
+            const body = '#6a6377';
+            const lit = '#9a9486';
+            // The robe: one long fall of stone widening to the hem,
+            // three carved folds — the SWEPT MASS reads at map scale.
+            ctx.fillStyle = body;
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.24, fy);
+            ctx.lineTo(p.x - s * 0.13, fy - ht * 0.62);
+            ctx.lineTo(p.x + s * 0.13, fy - ht * 0.62);
+            ctx.lineTo(p.x + s * 0.24, fy);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(30, 24, 40, 0.45)';
+            ctx.lineWidth = Math.max(1, s * 0.022);
+            for (const g of [-0.5, 0.05, 0.55]) {
+              ctx.beginPath();
+              ctx.moveTo(p.x + s * 0.2 * g, fy);
+              ctx.quadraticCurveTo(p.x + s * 0.16 * g, fy - ht * 0.3, p.x + s * 0.11 * g, fy - ht * 0.6);
+              ctx.stroke();
+            }
+            // Torso and pauldron shoulders: a soldier-king's block.
+            ctx.fillStyle = body;
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.19, fy - ht * 0.58);
+            ctx.lineTo(p.x - s * 0.16, fy - ht * 0.86);
+            ctx.lineTo(p.x + s * 0.16, fy - ht * 0.86);
+            ctx.lineTo(p.x + s * 0.19, fy - ht * 0.58);
+            ctx.closePath();
+            ctx.fill();
+            // One lit flank keeps the figure round.
+            ctx.fillStyle = 'rgba(143, 138, 122, 0.4)';
+            ctx.beginPath();
+            ctx.moveTo(p.x - m * s * 0.2, fy);
+            ctx.lineTo(p.x - m * s * 0.13, fy - ht * 0.8);
+            ctx.lineTo(p.x - m * s * 0.06, fy - ht * 0.8);
+            ctx.lineTo(p.x - m * s * 0.11, fy);
+            ctx.closePath();
+            ctx.fill();
+            // The surviving arm falls to the sword; the other ends at
+            // a fresh-broken stub — the break paler than the skin.
+            ctx.fillStyle = body;
+            const swX = p.x - m * s * 0.3;
+            ctx.beginPath();
+            ctx.moveTo(p.x - m * s * 0.16, fy - ht * 0.8);
+            ctx.lineTo(swX - m * s * 0.02, fy - ht * 0.5);
+            ctx.lineTo(swX + m * s * 0.05, fy - ht * 0.5);
+            ctx.lineTo(p.x - m * s * 0.08, fy - ht * 0.8);
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(p.x + m * s * 0.16, fy - ht * 0.8);
+            ctx.lineTo(p.x + m * s * 0.24, fy - ht * 0.68);
+            ctx.lineTo(p.x + m * s * 0.17, fy - ht * 0.64);
+            ctx.lineTo(p.x + m * s * 0.1, fy - ht * 0.78);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(lit, 18);
+            ctx.beginPath();
+            ctx.ellipse(p.x + m * s * 0.205, fy - ht * 0.66, s * 0.038, s * 0.028, m * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+            // The sword, point down on the plinth: quillons, grip,
+            // and the long blade — the one hard-edged thing left.
+            ctx.fillStyle = DGN_STONE_LIT;
+            ctx.fillRect(swX - s * 0.024, fy - ht * 0.52, s * 0.048, ht * 0.52);
+            ctx.fillStyle = 'rgba(38, 32, 48, 0.5)';
+            ctx.fillRect(swX + s * 0.002, fy - ht * 0.52, s * 0.02, ht * 0.5);
+            ctx.fillStyle = body;
+            ctx.fillRect(swX - s * 0.09, fy - ht * 0.56, s * 0.18, s * 0.038);
+            ctx.beginPath();
+            ctx.ellipse(swX, fy - ht * 0.6, s * 0.03, s * 0.03, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The head under a mossed crown: features surrendered to
+            // one brow shadow — a face the rain finished centuries ago.
+            const hdY = fy - ht * 0.94;
+            ctx.fillStyle = body;
+            ctx.beginPath();
+            facetCircle(ctx, p.x, hdY, s * 0.1, 6, 0.42, 0.8);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(30, 24, 40, 0.5)';
+            ctx.fillRect(p.x - s * 0.07, hdY - s * 0.01, s * 0.14, s * 0.035);
+            ctx.fillStyle = 'rgba(143, 138, 122, 0.5)';
+            ctx.beginPath();
+            ctx.ellipse(p.x - m * s * 0.04, hdY - s * 0.045, s * 0.045, s * 0.03, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The crown: a band and three tines, one snapped short.
+            ctx.fillStyle = DGN_STONE_LIT;
+            ctx.fillRect(p.x - s * 0.085, hdY - s * 0.115, s * 0.17, s * 0.035);
+            for (const [fx2, tall] of [
+              [-0.06, 1],
+              [0, 1.5],
+              [0.06, ((h >> 8) & 1) === 0 ? 0.5 : 1],
+            ] as const) {
+              ctx.fillRect(p.x + fx2 * s - s * 0.014, hdY - s * (0.115 + 0.05 * tall), s * 0.028, s * 0.05 * tall);
+            }
+            // Moss holds the crown and the high shoulder; erosion
+            // streaks bleach the down-weather flank.
+            ctx.fillStyle = 'rgba(74, 97, 56, 0.7)';
+            ctx.beginPath();
+            facetBlob(ctx, p.x + m * s * 0.05, hdY - s * 0.1, s * 0.05, h ^ 0x27, 5, 0.7);
+            ctx.fill();
+            ctx.beginPath();
+            facetBlob(ctx, p.x + m * s * 0.14, fy - ht * 0.84, s * 0.055, h ^ 0x63, 5, 0.7);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(196, 190, 176, 0.22)';
+            ctx.fillRect(p.x + m * s * 0.07, fy - ht * 0.62, s * 0.035, ht * 0.5);
           },
         };
       }
