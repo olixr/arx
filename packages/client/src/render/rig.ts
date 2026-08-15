@@ -13546,37 +13546,47 @@ export function drawOwlHead(
   // of the 360 degrees. Everything inside a lobe draws in the lobe's
   // own foreshortened space, so eyes, brows, blinks and shut-lines
   // all turn with the face for free.
+  // THE SPHERE LAW (user verdict, the core 2.5D rule spoken once):
+  // this camera never rolls. A head yawing on its vertical axis
+  // SLIDES its features horizontally around the skull-sphere and
+  // squashes their WIDTH — height stays screen-vertical, always.
+  // Every face feature is therefore an (azimuth, height) STATION
+  // projected through ONE formula — x slides on the ring, y takes
+  // only the small front-back depth bow plus the feature's own
+  // height — and foreshortening is a pure horizontal scale from the
+  // station's own facing (style-compressed pow 0.45 so the read
+  // survives the three-quarter). No local frames, no tangent
+  // rotation — the earlier tangent-rotated transform ROLLED the lobe
+  // into a lifted pancake at the profile bands, the exact opposite
+  // of wrapping. Features never pop: width reaches zero exactly at
+  // the sphere's horizon.
   const hAng = Math.atan2(fy, fx);
   const SRX = w * 0.46;
   const SRY = h * 0.24;
   const faceY = cy + h * 0.12;
-  /** Screen seat + surface tangent + foreshorten of a dome station. */
-  const station = (aOff: number): { x: number; y: number; tang: number; fore: number } => {
-    const a = hAng + aOff;
-    const ca = Math.cos(a);
-    const sa = Math.sin(a);
-    return {
-      x: cx + ca * SRX,
-      y: faceY + sa * SRY * ys,
-      tang: Math.atan2(ca * SRY * ys, -sa * SRX),
-      fore: sa,
-    };
-  };
+  /** ONE projector: azimuth + height (+ ring-radius scale) → screen. */
+  const proj = (a: number, dy: number, rK = 1): [number, number] => [
+    cx + Math.cos(a) * SRX * rK,
+    faceY + Math.sin(a) * SRY * ys * rK + dy,
+  ];
+  const fore = (a: number): number => Math.sin(a);
+  const wOf = (a: number): number => Math.pow(Math.max(0, fore(a)), 0.45);
   // The two disc lobes, far-first: ascending foreshorten IS the
   // correct overlap order — the near lobe always wins the seam.
-  const lobes = [-1, 1]
-    .map((es) => ({ es, st: station(es * 0.58) }))
-    .sort((p, q) => p.st.fore - q.st.fore);
   const lobeR = w * 0.3;
-  for (const { es, st } of lobes) {
-    if (st.fore <= 0.02) continue; // width has reached zero — invisible
-    const widthK = Math.pow(st.fore, 0.45);
+  const lobes = [-1, 1]
+    .map((es) => ({ es, a: hAng + es * 0.58 }))
+    .sort((p, q) => fore(p.a) - fore(q.a));
+  for (const { es, a } of lobes) {
+    const fL = fore(a);
+    if (fL <= 0.02) continue; // width has reached the horizon — gone
+    const wK = wOf(a);
+    const [lx, ly] = proj(a, 0);
     ctx.save();
-    ctx.translate(st.x, st.y);
-    ctx.rotate(st.tang);
-    ctx.scale(widthK, 1);
-    // Local space from here: +x runs along the dome surface toward
-    // higher azimuth; the transform owns ALL the foreshortening.
+    ctx.translate(lx, ly);
+    ctx.scale(wK, 1);
+    // Horizontal squash only — the lobe is a vertical disc on the
+    // sphere's surface; its height never tips.
     ctx.fillStyle = C(look.disc);
     ctx.beginPath();
     facetCircle(ctx, 0, 0, lobeR, 7, es * 0.35, 1.02);
@@ -13587,8 +13597,7 @@ export function drawOwlHead(
       ctx.beginPath();
       facetCircle(ctx, 0, 0, lobeR * 0.95, 7, es * 0.35, 1.02);
       ctx.stroke();
-      // The elder's court seal: a WHISPER of a second ring — never
-      // loud enough to goggle-eye the face (flier-sheet verdict).
+      // The elder's court seal: a WHISPER of a second ring.
       if (look.elder) {
         ctx.strokeStyle = shade(look.discRim, 12);
         ctx.lineWidth = Math.max(1, s * 0.01);
@@ -13597,74 +13606,83 @@ export function drawOwlHead(
         ctx.stroke();
       }
     }
-    // THE QUIET LAMP (user redesign: the loud amber ring + bulging
-    // pupil read aggressive) — minimal, in the game's own dialect:
-    // the small dark pupil IS the eye, a THIN amber iris ring hints
-    // the night-lamp, one pin of light gives it life, and a soft
-    // short brow keeps the raptor line without the scowl. Calm at
-    // rest; the screech narrows it to a hunting slit.
+    ctx.restore();
+    // THE QUIET LAMP rides its OWN azimuth, crowded toward the face's
+    // center — projected through the same formula as the lobe, so eye
+    // and lobe wrap the sphere together and can never shear apart.
     const er = lobeR * (look.elder ? 0.3 : 0.27);
-    const exl = -es * lobeR * 0.18;
-    const eyl = lobeR * 0.02;
-    if (!o.dead) {
+    const aE = hAng + es * 0.42;
+    const fE = fore(aE);
+    if (!o.dead && fE > 0.03) {
+      const eK = wOf(aE);
+      const [ex, ey] = proj(aE, lobeR * 0.04, 0.98);
+      // "Inner" on screen = toward the face's center column.
+      const inner = -Math.sign(Math.cos(a) || es);
+      ctx.save();
+      ctx.translate(ex, ey);
+      ctx.scale(eK, 1);
       const squint = 1 - 0.3 * screech;
       ctx.fillStyle = o.hurt ? '#ffffff' : OUTLINE;
       ctx.beginPath();
-      facetCircle(ctx, exl, eyl, er, 6, es * 0.5, squint);
+      facetCircle(ctx, 0, 0, er, 6, es * 0.5, squint);
       ctx.fill();
       if (!o.hurt) {
-        // The iris: a whisper of amber around the dark — never a lamp
-        // that outshines the face.
         ctx.strokeStyle = look.eye;
         ctx.lineWidth = Math.max(1, s * 0.013);
         ctx.beginPath();
-        facetCircle(ctx, exl, eyl, er * 0.94, 6, es * 0.5, squint);
+        facetCircle(ctx, 0, 0, er * 0.94, 6, es * 0.5, squint);
         ctx.stroke();
         // One pin of light, up-inner and mirrored.
         ctx.fillStyle = '#fff7e0';
         ctx.beginPath();
-        facetCircle(ctx, exl - es * er * 0.28, eyl - er * 0.3, er * 0.16, 5, 0.4);
+        facetCircle(ctx, inner * er * 0.28, -er * 0.3, er * 0.16, 5, 0.4);
         ctx.fill();
         const blink = o.blink ?? 0;
         if (blink > 0.05) {
           ctx.fillStyle = look.disc;
-          ctx.fillRect(exl - er * 1.15, eyl - er * 1.15, er * 2.3, er * 2.3 * Math.min(1, blink));
+          ctx.fillRect(-er * 1.15, -er * 1.15, er * 2.3, er * 2.3 * Math.min(1, blink));
         }
-        // The brow: a soft short ledge, a line of thought — not a
-        // hard scowl bar.
+      }
+      ctx.restore();
+      if (!o.hurt) {
+        // The brow: TWO stations of its own — inner-high near the
+        // blaze, outer-low past the eye — so the ledge wraps the
+        // sphere like everything else instead of riding a local
+        // frame. A line of thought, not a scowl bar.
+        const b1 = proj(hAng + es * 0.2, -er * (1.6 + 0.15 * screech), 0.99);
+        const b2 = proj(hAng + es * 0.62, -er * (1.2 - 0.15 * screech), 0.99);
         ctx.strokeStyle = C(shade(look.discRim, -4));
         ctx.lineWidth = Math.max(1.2, s * (look.elder ? 0.024 : 0.019));
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(exl - es * er * 1.0, eyl - er * (1.6 + 0.15 * screech));
-        ctx.lineTo(exl + es * er * 0.8, eyl - er * (1.25 - 0.15 * screech));
+        ctx.moveTo(b1[0], b1[1]);
+        ctx.lineTo(b2[0], b2[1]);
         ctx.stroke();
         ctx.lineCap = 'butt';
       }
-    } else {
-      // Dead: the lamps are out — a shut-line across the lobe.
+    } else if (o.dead && fL > 0.03) {
+      // Dead: the lamps are out — a shut-line across the lobe, its
+      // two ends wrapping the sphere like any other stations.
+      const d1 = proj(hAng + es * 0.24, lobeR * 0.02);
+      const d2 = proj(hAng + es * 0.6, lobeR * 0.1);
       ctx.strokeStyle = C(look.discRim);
       ctx.lineWidth = Math.max(1.2, s * 0.018);
       ctx.beginPath();
-      ctx.moveTo(-lobeR * 0.4, 0);
-      ctx.lineTo(lobeR * 0.4, lobeR * 0.08);
+      ctx.moveTo(d1[0], d1[1]);
+      ctx.lineTo(d2[0], d2[1]);
       ctx.stroke();
     }
-    ctx.restore();
   }
-  // THE BEAK: a protruding hook, not a surface decal — it keeps its
-  // presence at profile (the silhouette's leading hook, riding just
-  // proud of the dome) and only slips away as it truly rounds the
-  // horizon, fading by SIZE — never a gate.
-  const bst = station(0);
-  const bT = (bst.fore + 0.32) / 0.4;
+  // THE BEAK: the sphere's front station, a protruding hook — it
+  // keeps its presence at profile (the silhouette's leading hook)
+  // and fades by SIZE as it truly rounds the horizon. Never a gate.
+  const bFore = fore(hAng);
+  const bT = (bFore + 0.32) / 0.4;
   const bSizeK = bT <= 0 ? 0 : bT >= 1 ? 1 : bT * bT * (3 - 2 * bT);
   if (bSizeK > 0.02) {
+    const [bx2, by2] = proj(hAng, h * 0.16, 1.14);
     ctx.save();
-    ctx.translate(
-      cx + Math.cos(hAng) * SRX * 1.14,
-      faceY + Math.sin(hAng) * SRY * ys * 1.14 + h * 0.16,
-    );
+    ctx.translate(bx2, by2);
     const bw2 = w * 0.085 * bSizeK;
     ctx.fillStyle = C(look.horn);
     ctx.beginPath();
