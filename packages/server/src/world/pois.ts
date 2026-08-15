@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 
 import { join } from 'node:path';
 import {
   DANGER_BAND,
+  POI_MACRO_CELL,
   TILE_DEFS,
   TILE_SKIP,
   Tile,
@@ -59,7 +60,7 @@ import { DARK_BAND_Y, groundProbeAt, shoreProbeAt } from '@arx/content';
  * representation, one editor, one retire path.
  */
 
-export const POI_CELL = 128;
+export const POI_CELL = POI_MACRO_CELL;
 
 /** RNG stream salts — the named-streams law. */
 const ST_EXIST = 0x501e57;
@@ -571,8 +572,17 @@ export function composePoi(
   if (!def || !prefab) return null;
   const law = dangerLaw(site.tier);
   const musterBase = stream(seed, ST_MUSTER, site.cellX, site.cellY, site.epoch);
-  const levelRoll = (i: number): number =>
-    law.npcLevel[0] + (hashCoords(musterBase, i, 7) % (law.npcLevel[1] - law.npcLevel[0] + 1));
+  // THE NAMED STREAMS, all the way down (core-audit debt 5): every
+  // muster block rolls levels on its OWN salted stream — prefab
+  // spawns, each garrison row, each wing, each boldness rung. The old
+  // single incrementing counter threaded them all, so a wing skipped
+  // at compose time (a claim ring landed in its ring) silently
+  // re-rolled every LATER body's level across the whole compound —
+  // the file's own prefix-stability law, violated by its own counter.
+  const levelRollAt = (block: number, i: number): number =>
+    law.npcLevel[0] +
+    (hashCoords(hashCoords(musterBase, block, 0x1e51), i, 7) %
+      (law.npcLevel[1] - law.npcLevel[0] + 1));
 
   // THE BOLDNESS LADDER (living frontier, phase 2): active rungs add
   // muster and dressing ON TOP of the base composition. Every rung
@@ -961,19 +971,18 @@ export function composePoi(
   }
 
   const spawns: ZoneSpawn[] = [];
-  let n = 0;
   // Hand-placed prefab spawns, leveled into the band UNLESS the
   // prefab authored a level (the stolen cows in a brigand pen stay
   // level-3 cows — danger scales the threats, not the livestock).
   // Their relative coords are prefab-local — the pad shifts them.
-  for (const s of prefab.spawns) {
+  for (const [si, s] of prefab.spawns.entries()) {
     spawns.push({
       npc: s.npc,
       x: originX + px0 + s.dx + 0.5,
       y: originY + py0 + s.dy + 0.5,
       radius: s.radius,
       count: s.count,
-      level: s.level ?? levelRoll(n++),
+      level: s.level ?? levelRollAt(0x50, si),
       name: s.name,
       hours: s.hours,
     });
@@ -1125,7 +1134,7 @@ export function composePoi(
       ? g.names[hashCoords(musterBase, gi, 41) % g.names.length]
       : g.name;
     if (g.role === 'holdfast') {
-      const level = levelRoll(n++) + (g.levelOffset ?? 0);
+      const level = levelRollAt(0x60, gi) + (g.levelOffset ?? 0);
       // Posted bodies peel off first — never the named champion, and
       // never an hour-windowed entry (its existence window IS its
       // fiction; a post's window would fight it).
@@ -1175,7 +1184,7 @@ export function composePoi(
       for (let i = 0; i < count; i++) {
         sentryWants.push({
           npc: g.npc,
-          level: levelRoll(n++) + (g.levelOffset ?? 0),
+          level: levelRollAt(0x70 + gi, i) + (g.levelOffset ?? 0),
           name: gname,
           patrol: g.patrol,
           hours: g.hours,
@@ -1404,18 +1413,18 @@ export function composePoi(
   // ---- THE WING CHAPTERS (Phase 4): each wing musters its own knot —
   // the wing prefab's posted bodies plus the def's wingGarrison, all
   // tagged with the wing ordinal so a falling wing reads as its own
-  // chapter (the wing-break line). Appended AFTER the whole base court
-  // composition and BEFORE the rungs on the shared level counter, so
-  // stage climbs never reshuffle a standing hold.
+  // chapter (the wing-break line). Every wing rolls on its OWN salted
+  // stream, so a wing skipped at compose (a claim landed in its ring)
+  // never moves a neighbor's levels.
   for (const w of wings) {
-    for (const s of w.prefab.spawns) {
+    for (const [si, s] of w.prefab.spawns.entries()) {
       spawns.push({
         npc: s.npc,
         x: w.x0 + s.dx + 0.5,
         y: w.y0 + s.dy + 0.5,
         radius: s.radius,
         count: s.count,
-        level: s.level ?? levelRoll(n++),
+        level: s.level ?? levelRollAt(0x100 + w.wing, si),
         name: s.name,
         hours: s.hours,
         wing: w.wing,
@@ -1439,7 +1448,7 @@ export function composePoi(
         y: (knotB ? knotB.y : w.cy) + 0.5,
         radius: knotB ? 2.5 : wingHoldR,
         count,
-        level: levelRoll(n++) + (g.levelOffset ?? 0),
+        level: levelRollAt(0x200 + w.wing, gi) + (g.levelOffset ?? 0),
         name: gname,
         hours: g.hours,
         wing: w.wing,
@@ -1452,8 +1461,8 @@ export function composePoi(
   // ring posts from the FAR end (the reinforcements watch the back
   // door — base watchers and staff keep their townward posts
   // untouched); rung patrollers walk the same round with their own
-  // start spread. Level rolls continue the counter AFTER the base, so
-  // base levels never move.
+  // start spread. Rung rolls ride their own salted streams — base
+  // levels never move, whatever stands or falls before them.
   if (rungWants.length > 0) {
     let rungWatchI = 0;
     let rungPatrolI = 0;
@@ -1469,14 +1478,14 @@ export function composePoi(
           y: site.anchorY + 0.5,
           radius: holdR,
           count,
-          level: levelRoll(n++) + (g.levelOffset ?? 0),
+          level: levelRollAt(0x300 + gi, 0) + (g.levelOffset ?? 0),
           name: gname,
           hours: g.hours,
         });
         continue;
       }
       for (let i = 0; i < count; i++) {
-        const level = levelRoll(n++) + (g.levelOffset ?? 0);
+        const level = levelRollAt(0x400 + gi, i) + (g.levelOffset ?? 0);
         if (g.patrol && ring.length >= 3) {
           const start =
             (Math.floor((rungPatrolI * ring.length) / Math.max(1, count)) + rungPatrolI) %

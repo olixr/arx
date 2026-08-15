@@ -312,6 +312,7 @@ import {
   composeKnot,
   familiesOf,
   leanWild,
+  minorRosterFingerprint,
   territoryAt,
   pickWild,
   scatterLingerFor,
@@ -2476,6 +2477,9 @@ export class GameServer {
    * matching after a turn). findsLive is per-uptime standing state.
    */
   private readonly minorLedger = new Map<string, { epoch: number; cleared: number }>();
+
+  /** THE BITS KNOW THEIR ROSTER: the live minor-roster print (debt 6). */
+  private minorRosterFp?: number;
   private readonly findsLive = new Map<
     string,
     { zoneId: string; spawnIdx: number[]; spawnSlots: number[]; finds: MinorFind[] }
@@ -9459,6 +9463,10 @@ export class GameServer {
     for (const m of extras.minors ?? []) {
       this.minorLedger.set(poiCellKey(m.cellX, m.cellY), { epoch: m.epoch, cleared: m.cleared });
     }
+    // The boot reconcile (index.ts) has already compared the stored
+    // print and dropped stale bits before these rows were read — this
+    // seeds the live watermark for the CMS door's own reconcile.
+    this.minorRosterFp = minorRosterFingerprint();
     for (const h of extras.strongholds ?? []) {
       this.strongholdLedger.set(capitalKey(h.latticeX, h.latticeY), {
         layoutId: h.layoutId,
@@ -11612,6 +11620,20 @@ export class GameServer {
       if (!fl.finds.some((f) => f.defId === id)) continue;
       this.retirePoiCell(key);
     }
+    // THE BITS KNOW THEIR ROSTER (core-audit debt 6): the cleared bits
+    // bind by slot index while the deal re-derives from the live
+    // roster — an edit that reshapes any deal re-aims old bits at the
+    // wrong finds. When the roster's fingerprint drifts, every bit
+    // lawfully dies (the texture re-deals whole) and the new print is
+    // stamped beside the frontier state.
+    const fp = minorRosterFingerprint();
+    if (this.minorRosterFp !== undefined && this.minorRosterFp !== fp) {
+      for (const row of this.minorLedger.values()) row.cleared = 0;
+      void this.accounts.clearAllMinorBits();
+      this.accounts.saveMinorRosterFp(fp);
+      console.log('[poi] finds roster changed — cleared bits re-deal whole');
+    }
+    this.minorRosterFp = fp;
   }
 
   /**

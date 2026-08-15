@@ -1201,6 +1201,33 @@ export class AccountStore {
   // --------------------------------------------- frontier state
 
   /** The renewal debt the frontier owes the world (0 if never written). */
+  /** THE BITS KNOW THEIR ROSTER (see db.ts v35): the stored print. */
+  async loadMinorRosterFp(): Promise<number | null> {
+    const rows = (await this.db.query(
+      'SELECT minor_roster_fp AS fp FROM frontier_state WHERE id = 1',
+    )) as Array<{ fp: number | string | null }>;
+    const fp = rows[0]?.fp;
+    return fp === null || fp === undefined ? null : Number(fp);
+  }
+
+  saveMinorRosterFp(fp: number): void {
+    this.db.fire(
+      'INSERT INTO frontier_state (id, minor_roster_fp, updated_at) VALUES (1, ?, ?) ' +
+        'ON CONFLICT (id) DO UPDATE SET minor_roster_fp = excluded.minor_roster_fp, ' +
+        'updated_at = excluded.updated_at',
+      [fp, Date.now()],
+    );
+  }
+
+  /**
+   * Drop every finds cleared bit — the roster the bits indexed
+   * changed. Awaited (not fire()) so a boot reconcile is durably done
+   * before loadMinorCells reads the rows back.
+   */
+  async clearAllMinorBits(): Promise<void> {
+    await this.db.query('UPDATE world_minors SET cleared = 0', []);
+  }
+
   async loadFrontierCredits(): Promise<number> {
     const rows = (await this.db.query(
       'SELECT renewal_credits AS credits FROM frontier_state WHERE id = 1',

@@ -1,4 +1,4 @@
-import { DANGER_MAX, fbm, type Vec2, type DangerAnchor } from '@arx/shared';
+import { DANGER_MAX, POI_MACRO_CELL, fbm, type Vec2, type DangerAnchor } from '@arx/shared';
 import { AUTHORED_ANCHOR_WORDS, SETTLED_ANCHORS, replaceSettledAnchors } from './danger.js';
 
 /**
@@ -930,7 +930,7 @@ const GEO_ID_RE = /^[a-z][a-z0-9_-]{0,63}$/;
 /** Routes must stay far above the dark band (y >= 400 is underground). */
 export const GEOGRAPHY_SURFACE_MAX_Y = 400;
 /** POI macro-cell width — mirrored from the scaffold (POI_CELL). */
-export const GEO_POI_CELL = 128;
+export const GEO_POI_CELL = POI_MACRO_CELL;
 
 export type GeographyValidation =
   | { ok: true; def: GeographyDef }

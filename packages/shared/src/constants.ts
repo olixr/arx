@@ -191,6 +191,17 @@ export const TICK_DT = 1 / TICK_RATE;
 export const CHUNK_SIZE = 32;
 
 /**
+ * THE ONE GRAIN (core-audit debt 9): the world's macro cell, in tiles.
+ * The POI scaffold decides one site per cell of this size, the
+ * geography validator keys one authored site per cell of it, and the
+ * danger march climbs one rung per cell of it ("one rung per POI
+ * macro-cell" is that field's load-bearing design). These were three
+ * unlinked literals of 128 in three packages — changing any one
+ * silently corrupted the other two laws. They all derive from here.
+ */
+export const POI_MACRO_CELL = 128;
+
+/**
  * Signed terrain level range. DOWN is the same law as UP, relative: for
  * every boundary the higher side owns the crown and the faces, and the
  * Cliff-ring + Ramp collision story is identical for sinks and

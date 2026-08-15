@@ -1,3 +1,4 @@
+import { POI_MACRO_CELL } from '../constants.js';
 import { fbm } from '../math/noise.js';
 
 /**
@@ -126,7 +127,7 @@ export const OVERBAND_DREAD = 3;
  * cell of honest travel and the low basin around the hearths stays a
  * true province, not a dooryard.
  */
-export const DANGER_BAND = 128;
+export const DANGER_BAND = POI_MACRO_CELL;
 
 /**
  * Tiles per rung of a hot word's fade (see the header law). Half a

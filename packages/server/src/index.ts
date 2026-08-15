@@ -37,6 +37,7 @@ import {
   replaceGeography,
   replaceGrowth,
   replaceLootTables,
+  minorRosterFingerprint,
   replaceMinorDefs,
   replaceNodes,
   replaceNpcDefs,
@@ -269,6 +270,20 @@ const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
     `[content] finds: ${goodMinors.length} loaded ` +
       `(+${minorSeed.added} ~${minorSeed.updated} !${minorSeed.kept} -${minorSeed.removed} =${minorSeed.unchanged})`,
   );
+  // THE BITS KNOW THEIR ROSTER (core-audit debt 6): the finds cleared
+  // bits bind by slot index while the deal re-derives from this
+  // roster. When the live roster's print differs from the one the bits
+  // were earned under, every bit lawfully dies BEFORE loadMinorCells
+  // reads the rows back — the texture re-deals whole.
+  {
+    const fp = minorRosterFingerprint();
+    const stored = await accounts.loadMinorRosterFp();
+    if (stored !== null && stored !== fp) {
+      await accounts.clearAllMinorBits();
+      console.log('[content] finds roster changed — cleared bits re-deal whole');
+    }
+    if (stored !== fp) accounts.saveMinorRosterFp(fp);
+  }
 
   // THE FOUNDRY's repository (strongholds Phase 1) joins the same
   // law: the pinned-seed shelf seeds as content docs, DB rows load

@@ -1,3 +1,4 @@
+import { hashString } from '@arx/shared';
 import type { MinorDef } from './minorTypes.js';
 import { validateMinorDef } from './minorValidate.js';
 
@@ -73,6 +74,26 @@ export const MINOR_DEFS: ReadonlyMap<string, MinorDef> = buildRegistry();
 
 /** The authored roster exactly as shipped — the CMS revert target. */
 export const AUTHORED_MINOR_DEFS: ReadonlyMap<string, MinorDef> = buildRegistry();
+
+/**
+ * THE BITS KNOW THEIR ROSTER (core-audit debt 6): a stable fingerprint
+ * of the LIVE minor roster's deal-shaping content. The finds layer's
+ * cleared bits bind by slot index while the deal re-derives from this
+ * roster — same bits over a changed roster silently re-aim at the
+ * wrong finds (a cleared boar den stands its replacement down, an
+ * uncleared cache stands back up "cleared"). The server compares this
+ * print to the one stored beside the frontier state and lawfully drops
+ * every bit when it drifts. Sorted by id, whole-def JSON: any field
+ * that could shape a deal counts, and field order can't fake identity.
+ */
+export function minorRosterFingerprint(defs: ReadonlyMap<string, MinorDef> = MINOR_DEFS): number {
+  const ids = [...defs.keys()].sort();
+  let fp = 0x51ab7e11 | 0;
+  for (const id of ids) {
+    fp = (Math.imul(fp, 0x01000193) ^ hashString(JSON.stringify(defs.get(id)))) | 0;
+  }
+  return fp >>> 0;
+}
 
 /** Swap the live registry in place (the replacePoiDefs pattern). */
 export function replaceMinorDefs(defs: Iterable<MinorDef>): void {

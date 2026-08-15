@@ -988,6 +988,14 @@ const MIGRATIONS: string[] = [
     first_held_at BIGINT NOT NULL,
     PRIMARY KEY (character_id, seed)
   );`,
+  // v35: THE BITS KNOW THEIR ROSTER (core-audit debt 6) — the finds
+  // layer's cleared bits bind by slot INDEX while the deal re-derives
+  // from the live minor roster; an edited roster re-aimed old bits at
+  // the wrong finds within an epoch. One global fingerprint of the
+  // deal-shaping roster lives beside the frontier state: when it
+  // drifts, every cleared bit lawfully dies (the texture re-deals
+  // whole) and the new print is stamped.
+  `ALTER TABLE frontier_state ADD COLUMN IF NOT EXISTS minor_roster_fp BIGINT;`,
 ];
 
 /**
