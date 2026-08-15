@@ -564,6 +564,13 @@ export const FX_STYLES: Record<string, FxStyle> = {
   call_the_brotherhood: SHADOW({ mid: '#8a94b8', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.65, wash: 0.35 }),
   throat_lunge: BLOOD({ mid: '#b8bfd4', ring: 'shards', debris: 'blood', decal: 'stain', punch: 0.6, wash: 0.3 }),
   shrilling_dart: SHADOW({ mid: '#8a7458', ring: 'halo', debris: 'spark', decal: undefined, punch: 0.35, wash: 0.2 }),
+  // THE TIDE'S RAMPART (the giant crab) — cold harbor water over
+  // keratin: the grip is TIDE gone hard (teeth ring, the clamp's
+  // heavy punch), the jet is the same water at pressure with a
+  // frost-pale spray. Kelp-dark deeps keep the pair off the golem
+  // glacier and the crypt cold alike.
+  breakwater_grip: TIDE({ mid: '#6d8577', deep: '#22403a', spark: '#d8ecdf', ring: 'teeth', debris: 'ice', decal: 'stain', punch: 0.75, wash: 0.4 }),
+  brine_jet: TIDE({ mid: '#7ab0b8', deep: '#28454e', ring: 'shards', debris: 'ice', decal: 'stain', motif: 'wave', punch: 0.4, wash: 0.35 }),
 
   // ------------------- THE EARTH STANDS UP (golem arts, docs/golems-plan.md)
   // Four constructs, four material voices: the rock arts speak dry

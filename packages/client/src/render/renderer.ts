@@ -657,6 +657,10 @@ interface AnimState {
   /** The canid elastic ear pair — beside the goblin's `ears`, its own
    *  slot for the same no-cross-lane-eviction reason. */
   canidEars?: EarSim;
+  /** THE LIVING STALKS: the giant crab's eye-stalk pair on the ear
+   *  contract — body-painter-ticked at the bow anchor; its own slot
+   *  so the shell lane never evicts a canid's ears. */
+  crabEyes?: EarSim;
   /** The turtles' armored trailer — a low-carried BobtailSim in its
    *  own slot, so the shell lane never evicts a cat's stub. */
   turtleTail?: BobtailSim;
@@ -36062,6 +36066,16 @@ export class Renderer {
       if (anim.canidBrush) anim.canidBrush = undefined;
       if (anim.canidEars) anim.canidEars = undefined;
     }
+    // THE LIVING STALKS: the giant crab's eye stalks ride the ear
+    // contract — the body painter ticks the sim at the bow anchor it
+    // computes; the renderer owns lifecycle and the re-bake cue.
+    let crabEyeSim: EarSim | undefined;
+    if (defId === 'giant_crab') {
+      anim.crabEyes ??= new EarSim(eid);
+      crabEyeSim = anim.crabEyes;
+    } else if (anim.crabEyes) {
+      anim.crabEyes = undefined;
+    }
     // THE FLEECE TELLS THE TIME: the false→true edge on the meta's
     // shorn flag IS the shear landing — puff the fleece off the body.
     const shorn = meta.shorn === true;
@@ -36088,7 +36102,10 @@ export class Renderer {
       // The fox's brush earns the same full-rate courtesy — a settling
       // plume that snaps between cache frames reads as a dropped sim.
       (brushSim !== null && brushSim.restless) ||
-      (foxEarSim !== undefined && foxEarSim.restless);
+      (foxEarSim !== undefined && foxEarSim.restless) ||
+      // The stalks earn it too: a settling eye stalk that snaps
+      // between cache frames reads as a dropped sim.
+      (crabEyeSim !== undefined && crabEyeSim.restless);
     const olDyn = fullDyn || (locomotion && (this.frameNo + eid) % 2 === 0);
     return {
       sortY: s.y,
@@ -36130,7 +36147,7 @@ export class Renderer {
           // marker is the durable fact; ownerEid comes and goes).
           collar: meta.stock ? '#8a6234' : meta.ownerEid !== undefined ? '#6e4a26' : undefined,
           tail: paintBob,
-          ears: foxEarSim,
+          ears: foxEarSim ?? crabEyeSim,
           shorn,
         });
         // The shear moment: loosed tufts drift up and away off the
@@ -36165,7 +36182,7 @@ export class Renderer {
         // antlers ride a raised neck and clip at the top edge without
         // their own headroom (user-flagged walking up-screen).
         const headroom =
-          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'wolf_oldfang' ? 0.32 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : defId === 'fox' ? 0.35 : defId === 'fox_champion' ? 0.5 : defId === 'giant_turtle' ? 0.3 : defId === 'colossus_turtle' ? 0.7 : 0;
+          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'wolf_oldfang' ? 0.32 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : defId === 'fox' ? 0.35 : defId === 'fox_champion' ? 0.5 : defId === 'giant_turtle' ? 0.3 : defId === 'colossus_turtle' ? 0.7 : defId === 'giant_crab' ? 0.45 : 0;
         const top = (spec.bodyRise + (def?.radius ?? 0.3) * 2.2 + headroom) * scale + r;
         const bottom = (spec.rig.legLen + 0.7) * scale;
         return { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom };
@@ -37732,6 +37749,10 @@ export class Renderer {
             ? 0.3
             : c.look.b.defId === 'mudcrab'
               ? 0.35
+              // The bulwark's slack arms and wide hull reach far past
+              // the spine points on every side.
+              : c.look.b.defId === 'giant_crab'
+              ? 0.7
               : c.look.b.defId === 'dire_wolf' || c.look.b.defId === 'wolf_oldfang' || c.look.b.defId === 'worg'
                 ? 0.25
                 // The thrown wing splays a full span past the spine.

@@ -91,6 +91,7 @@ export const NPC_LANES: Record<string, NpcLanes> = {
   // Carapace turns the edge and cracks under crush.
   giant_beetle: CARAPACE,
   mudcrab: CARAPACE,
+  giant_crab: CARAPACE,
   // A hand of fat and hide shrugs the short edge; a body that big
   // cannot dodge the aimed shaft.
   ogre: GIANT,

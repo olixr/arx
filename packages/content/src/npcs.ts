@@ -1556,6 +1556,62 @@ const defs: NpcDef[] = [
     resist: ['bleed', 'venom'],
     weak: ['chill'],
   },
+  // THE TIDE'S RAMPART (the giant crab): the shore's standing bastion.
+  // Where the turtle outlasts and the mudcrab skitters, the giant
+  // crab HOLDS — a walking harbor wall on six stilts that claims its
+  // stretch of bank and closes the great claw on whatever contests
+  // it. Fierce where the turtles are patient: it comes to you, at a
+  // pace that promises the argument will be finished properly.
+  {
+    id: 'giant_crab',
+    name: 'Giant crab',
+    level: 18,
+    // The bulwark: more hull than anything between the keeps — the
+    // tank identity IS the stat line.
+    maxHp: 130,
+    damage: 6,
+    // The crusher's reach: the claw arrives before the body does.
+    attackRange: 1.1,
+    // Heavy machinery: every pinch is a dock crane closing.
+    attackCooldownTicks: 58,
+    // Territorial, not patient: the bank is claimed, and the claim
+    // is enforced.
+    aggroRange: 6,
+    // Stalked eyes see almost the whole tide line at once.
+    sightArc: 300,
+    leashRange: 16,
+    // A scuttle that never hurries and never stops coming.
+    speed: 1.9,
+    xpReward: 300,
+    loot: ['giant_crab', 'heirlooms'],
+    respawnSec: 90,
+    color: '#46655c',
+    radius: 0.5,
+    hitHeight: 1.1,
+    // THE GRIP: even the basic pinch holds cold — what the claw
+    // takes, it keeps a moment longer than you'd like.
+    attackStatus: { status: 'chill', power: 1, durationTicks: 40 },
+    // Storm-forged plate turns the edge; a thing of cold water does
+    // not mind more cold.
+    resist: ['bleed', 'chill'],
+    // Wet armor on a wet shore: the storm's own argument wins.
+    weak: ['shock'],
+    kit: [
+      // The clamp: announced long (the open claw IS the warning),
+      // paid at the full telegraph premium, and the hold is the point.
+      { ability: 'breakwater_grip', cooldownTicks: 180, windupTicks: 24, maxRange: 1.6, weight: 2 },
+      // The reach it should not have: cold brine at pressure, thrown
+      // at where you are going. Closes the gap the stilts cannot.
+      {
+        ability: 'brine_jet',
+        cooldownTicks: 150,
+        windupTicks: 14,
+        minRange: 2.5,
+        maxRange: 8,
+        aim: 'lead',
+      },
+    ],
+  },
   {
     id: 'wolf',
     name: 'Wolf',

@@ -138,7 +138,7 @@ test('BRACKET: the leash holds the ladder — beastcraft caps the climb', () => 
 });
 
 test('THE SPECIES SPEAK: the whole roster stands', () => {
-  assert.equal(TAME_DEFS.length, 15, 'entry trio through the worg capstone, the turtle keep and the razorback among them');
+  assert.equal(TAME_DEFS.length, 16, 'entry trio through the worg capstone, the turtle keep, the razorback and the tide bulwark among them');
 });
 
 test('kits are the species\' own teeth re-aimed, never an invented spellbook', () => {
@@ -151,6 +151,18 @@ test('kits are the species\' own teeth re-aimed, never an invented spellbook', (
   assert.equal(tameDef('mudcrab')?.kit?.bite?.status, 'chill');
   assert.equal(tameDef('great_owl')?.kit?.bite?.status, 'chill');
   assert.ok((tameDef('giant_beetle')?.kit?.armor ?? 0) > 0, 'the shell is armor');
+  // THE SHELL LADDER CLIMBS: beetle, then the keep, then the bulwark
+  // crowns it — and the great claw grips one weight past the pinch.
+  assert.equal(tameDef('giant_crab')?.kit?.bite?.status, 'chill');
+  assert.ok(
+    (tameDef('giant_crab')?.kit?.bite?.power ?? 0) > (tameDef('mudcrab')?.kit?.bite?.power ?? 0),
+    'the great claw grips deeper than the pinch',
+  );
+  assert.ok(
+    (tameDef('giant_crab')?.kit?.armor ?? 0) > (tameDef('giant_turtle')?.kit?.armor ?? 0) &&
+      (tameDef('giant_turtle')?.kit?.armor ?? 0) > (tameDef('giant_beetle')?.kit?.armor ?? 0),
+    'the shell ladder climbs beetle < keep < bulwark',
+  );
   assert.ok((tameDef('boar')?.kit?.knockback ?? 0) > 1, 'the gore shoves');
   assert.equal(tameDef('wolf')?.kit, undefined);
   assert.equal(tameDef('bear')?.kit, undefined);

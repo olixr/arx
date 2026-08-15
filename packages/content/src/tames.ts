@@ -128,6 +128,19 @@ export const TAME_DEFS: readonly TameDef[] = [
     flavor: 'A fortress that decided to like you. It arrives late to every fight and leaves last.',
   },
   {
+    species: 'giant_crab',
+    lure: 'raw_trout',
+    // 30 + 10 × wild level (plan Part 5) — the deepest courtship on
+    // the ladder short of the old razorback.
+    tameXp: 210,
+    // THE BULWARK AT HEEL: the crown of the shell ladder (beetle 4,
+    // turtle 6, crab 7) plus THE GRIP one weight past the mudcrab's
+    // pinch. The keeper who lands this walks behind a harbor wall
+    // that holds the fight still while it happens.
+    kit: { armor: 7, bite: { status: 'chill', power: 2, durationTicks: 60 } },
+    flavor: 'A harbor wall that walks. What the great claw closes on stays where it was closed on.',
+  },
+  {
     species: 'lynx_young',
     lure: 'raw_chicken',
     tameXp: 110,

@@ -4601,6 +4601,85 @@ Object.assign(PLATES, {
     dot(c, st.spark, 0.02, 0.04, 0.022);
   },
 
+  // ----------------- THE TIDE'S RAMPART — the giant crab's plates.
+  // Breakwater Grip — the great claw, open on its long bad promise.
+  breakwater_grip: (st) => (c) => {
+    c.translate(0.46, 0.54);
+    // The palm: the harbor's fist.
+    c.fillStyle = st.deep;
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.arc(-0.12, 0.04, 0.2, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    // Knuckle studs on the palm's crown.
+    dot(c, st.mid, -0.24, -0.1, 0.038);
+    dot(c, st.mid, -0.08, -0.14, 0.038);
+    // The two jaws, gaping right — the heavy fixed slab and the
+    // moving crusher above it, molar teeth waiting in the gap.
+    c.fillStyle = st.mid;
+    c.strokeStyle = st.core;
+    c.beginPath();
+    c.moveTo(0.0, -0.08);
+    c.quadraticCurveTo(0.3, -0.34, 0.46, -0.22);
+    c.quadraticCurveTo(0.34, -0.1, 0.1, 0.0);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.beginPath();
+    c.moveTo(0.02, 0.12);
+    c.quadraticCurveTo(0.32, 0.3, 0.48, 0.16);
+    c.quadraticCurveTo(0.34, 0.06, 0.1, 0.04);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    // The teeth in the gape.
+    fill(c, st.spark, [[0.16, -0.04], [0.22, 0.02], [0.1, 0.01]]);
+    fill(c, st.spark, [[0.3, -0.1], [0.36, -0.02], [0.24, -0.02]]);
+    // The closing arcs: the promise being kept.
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.026;
+    c.beginPath();
+    c.arc(0.2, -0.02, 0.4, -0.5, -0.15);
+    c.stroke();
+    c.beginPath();
+    c.arc(0.2, 0.0, 0.4, 0.2, 0.55);
+    c.stroke();
+  },
+  // Brine Jet — the sea thrown flat and hard.
+  brine_jet: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // The jet: converging pressure lines driven left to right.
+    c.lineCap = 'round';
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.07;
+    c.beginPath();
+    c.moveTo(-0.42, 0.0);
+    c.lineTo(0.18, 0.0);
+    c.stroke();
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.032;
+    for (const q of [-1, 1] as const) {
+      c.beginPath();
+      c.moveTo(-0.4, q * 0.09);
+      c.quadraticCurveTo(-0.1, q * 0.07, 0.14, q * 0.02);
+      c.stroke();
+    }
+    // The burst where it lands: a hard fan of cold spray.
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.036;
+    for (const a of [-0.55, -0.2, 0.2, 0.55] as const) {
+      c.beginPath();
+      c.moveTo(0.2, 0);
+      c.lineTo(0.2 + Math.cos(a) * 0.24, Math.sin(a) * 0.24);
+      c.stroke();
+    }
+    droplet(c, 0.34, -0.24, 0.2, st);
+    droplet(c, 0.38, 0.18, 0.16, st);
+    dot(c, st.spark, 0.22, 0.0, 0.036);
+  },
+
   // ------------------- THE EARTH STANDS UP — the golem arts' plates.
   // Hillstone Throw — the torn-out boulder mid-flight, dust behind it.
   hillstone_throw: (st) => (c) => {

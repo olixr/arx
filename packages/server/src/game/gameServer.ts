@@ -379,7 +379,7 @@ import {
   findsZoneId,
   type MinorFind,
 } from '../world/finds.js';
-import { DARK_BAND_Y, groundProbeAt } from '@arx/content';
+import { DARK_BAND_Y, groundProbeAt, shoreProbeAt } from '@arx/content';
 import {
   COMBO_GRACE_TICKS,
   COMBO_STAGES,
@@ -21409,7 +21409,7 @@ export class GameServer {
         for (let probe = 0; probe < probes; probe++) {
           const spot = this.probeWildAnchor(ppos.x, ppos.y);
           if (!spot) continue;
-          this.spawnWildKnot(spot.tx, spot.ty, spot.tier, spot.biome, hours, budget - near);
+          this.spawnWildKnot(spot.tx, spot.ty, spot.tier, spot.biome, spot.shore, hours, budget - near);
           break;
         }
       }
@@ -21442,7 +21442,7 @@ export class GameServer {
       const spot = this.vetWildAnchor(tx, ty);
       if (!spot) continue;
       return (
-        this.spawnWildKnot(tx, ty, spot.tier, spot.biome, hours, cap, mouth.habitat) > 0
+        this.spawnWildKnot(tx, ty, spot.tier, spot.biome, spot.shore, hours, cap, mouth.habitat) > 0
       );
     }
     return false;
@@ -21460,7 +21460,7 @@ export class GameServer {
   private probeWildAnchor(
     px: number,
     py: number,
-  ): { tx: number; ty: number; tier: number; biome: 'grass' | 'forest' } | null {
+  ): { tx: number; ty: number; tier: number; biome: 'grass' | 'forest'; shore: boolean } | null {
     const ang = Math.random() * Math.PI * 2;
     const r =
       GameServer.WILD_MIN_R + Math.random() * (GameServer.WILD_MAX_R - GameServer.WILD_MIN_R);
@@ -21474,7 +21474,7 @@ export class GameServer {
   private vetWildAnchor(
     tx: number,
     ty: number,
-  ): { tier: number; biome: 'grass' | 'forest' } | null {
+  ): { tier: number; biome: 'grass' | 'forest'; shore: boolean } | null {
     if (ty >= DARK_BAND_Y) return null;
     const ground = this.world.groundAt(tx, ty);
     if (ground !== Tile.Grass && ground !== Tile.GrassTall) return null;
@@ -21486,7 +21486,10 @@ export class GameServer {
     if (this.inClaimRing(tx, ty)) return null;
     const biome = groundProbeAt(config.worldSeed, tx, ty);
     if (biome !== 'grass' && biome !== 'forest') return null;
-    return { tier: spotTier, biome };
+    // THE TIDE LINE: a bank anchor is still a meadow anchor — the
+    // shore flag ADDS the waterside roster, it never replaces the
+    // ordinary one (wildCandidates folds it in).
+    return { tier: spotTier, biome, shore: shoreProbeAt(config.worldSeed, tx, ty) };
   }
 
   /**
@@ -21501,12 +21504,14 @@ export class GameServer {
     ty: number,
     spotTier: number,
     biome: 'grass' | 'forest',
+    /** THE TIDE LINE: the anchor borders open water — banks feed too. */
+    shore: boolean,
     hours: number,
     cap: number,
     /** Habitat deal: only entries of this habitat may muster here. */
     habitat?: string,
   ): number {
-    let candidates = wildCandidates(spotTier, biome, hours);
+    let candidates = wildCandidates(spotTier, biome, hours, shore);
     if (habitat !== undefined) candidates = candidates.filter((e) => e.habitat === habitat);
     // THE TERRITORY LEAN (Phase 5): wolf knots run thicker in wolfkin
     // country, the dead walk their own barrows — the same one atlas
@@ -25811,8 +25816,11 @@ export class GameServer {
       }
       const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
       const biome = groundProbeAt(config.worldSeed, Math.floor(pos.x), Math.floor(pos.y));
+      const shore = shoreProbeAt(config.worldSeed, Math.floor(pos.x), Math.floor(pos.y));
       const pool =
-        biome === 'grass' || biome === 'forest' ? wildCandidates(tier, biome, hours) : [];
+        biome === 'grass' || biome === 'forest'
+          ? wildCandidates(tier, biome, hours, shore)
+          : [];
       const roster = pool
         .map((e) => {
           const [lo, hi] = e.band ?? [1, 1];
@@ -25822,7 +25830,7 @@ export class GameServer {
         .join(', ');
       say(
         `wilds: tier ${tier}, ${near}/${budget} bodies near ` +
-          `(${this.wildBodies.size} world-wide), ${biome} underfoot` +
+          `(${this.wildBodies.size} world-wide), ${biome}${shore ? ' shore' : ''} underfoot` +
           (pool.length > 0 ? ` | roster: ${roster}` : ' | roster: empty here'),
       );
       return;

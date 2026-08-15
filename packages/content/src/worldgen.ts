@@ -394,6 +394,36 @@ export function groundProbeAt(seed: number, tx: number, ty: number): GroundClass
   return moistureAt(seed, tx, ty) > 0.62 ? 'forest' : 'grass';
 }
 
+/** Compass ring for the shore probe's widening sweep. */
+const SHORE_RING: ReadonlyArray<readonly [number, number]> = [
+  [1, 0],
+  [1, 1],
+  [0, 1],
+  [-1, 1],
+  [-1, 0],
+  [-1, -1],
+  [0, -1],
+  [1, -1],
+];
+
+/**
+ * THE TIDE LINE: true when open water (the wading margin or deeper,
+ * the same < 0.37 cut generateChunk floods) lies within `reach` tiles
+ * of the spot. This is the wild spawner's shore refinement — a grass
+ * anchor that passes is a bank, and bank-only kinds (the crabs) may
+ * muster there. It reads the elevation field the water itself is cut
+ * from, so the flag can never disagree with the shoreline it names.
+ * Pure and chunk-free: a suitability probe, like groundProbeAt above.
+ */
+export function shoreProbeAt(seed: number, tx: number, ty: number, reach = 4): boolean {
+  for (let r = 1; r <= reach; r++) {
+    for (const [dx, dy] of SHORE_RING) {
+      if (elevationAt(seed, tx + dx * r, ty + dy * r) < 0.37) return true;
+    }
+  }
+  return false;
+}
+
 /** Sampled-neighborhood margin: rim checks 1 + ramp-top interior 1 + talus 1. */
 const M = 3;
 

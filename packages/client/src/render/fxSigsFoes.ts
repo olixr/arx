@@ -39,7 +39,7 @@
 
 import { srand } from './abilityFx.js';
 import type { AbilitySig, SigCtx } from './fxSignatures.js';
-import { fire, smoke, dust, frost, venom, blood, asMatter } from './matter/index.js';
+import { fire, smoke, dust, frost, venom, blood, water, asMatter } from './matter/index.js';
 
 /** Clamp to 0..1 — every staggered clock in this file runs on it. */
 function cl(v: number): number {
@@ -1559,6 +1559,114 @@ const shrilling_dart: AbilitySig = {
   },
 };
 
+// ----------------------------------------------------- breakwater_grip
+// melee_arc, range 1.7, arc 0.9 — the giant crab's clamp.
+
+/**
+ * BREAKWATER_GRIP — "the harbor closes."
+ * The read is a BITE at field scale: from the two ends of the
+ * crescent, a pair of heavy keratin jaws sweep toward the facing
+ * line while the tide inside the arc pulls dark and taut. They meet
+ * at the mid-line in one white CLAP — cold spray thrown true-height
+ * off the pinch — and where they closed, the crushed band stays:
+ * paired jaw-print curves of wet brine grains lying on the bank six
+ * to eight seconds after the claw has let go. Flank the crescent or
+ * be the thing between the jaws.
+ */
+const breakwater_grip: AbilitySig = {
+  spawn(c) {
+    // The tide gathers at both jaw roots — churn spray at the hinges.
+    const m = asMatter(c);
+    const a0 = c.dir - 0.9;
+    const a1 = c.dir + 0.9;
+    for (const a of [a0, a1]) {
+      water.deployments.spray!(m, c.wx + Math.cos(a) * c.radius * 0.8, c.wy + Math.sin(a) * c.radius * 0.8 * c.squash, {
+        dir: a + Math.PI,
+        scale: 0.4,
+      });
+    }
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx, dir } = c;
+    const halfArc = 0.9;
+    const a0 = dir - halfArc;
+    const a1 = dir + halfArc;
+    // The jaws close through the wire's first 0.45; then the pinch
+    // holds and the water runs out of it.
+    const close = cl(t / 0.45);
+    const fade = 1 - cl((t - 0.7) / 0.3);
+    ctx.save();
+    // THE DARK TIDE: the arc's floor pulls wet and taut as the jaws
+    // come — deepest right before the clap.
+    ctx.globalAlpha = 0.34 * fade * (0.4 + 0.6 * close);
+    ctx.fillStyle = st.deep;
+    ctx.beginPath();
+    ctx.ellipse(px, py, rPx, rPx * squash, 0, a0, a1);
+    ctx.ellipse(px, py, rPx * 0.3, rPx * 0.3 * squash, 0, a1, a0, true);
+    ctx.fill();
+    // THE TWO JAWS: heavy pale crescents sweeping from the ends
+    // toward the facing line, each a keratin edge over a dark wake.
+    if (close < 1) {
+      for (const side of [-1, 1] as const) {
+        const jawA = dir + side * halfArc * (1 - close);
+        for (const [rk, color, w] of [
+          [0.96, '#1c2a24', 0.13],
+          [0.9, st.mid, 0.08],
+          [1.0, c.st.spark, 0.038],
+        ] as const) {
+          ctx.globalAlpha = 0.95;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = Math.max(1.5, sc * w);
+          ctx.beginPath();
+          ctx.ellipse(
+            px, py, rPx * rk, rPx * rk * squash, 0,
+            jawA - side * 0.34, jawA + side * 0.06, side < 0,
+          );
+          ctx.stroke();
+        }
+        // The jaw's leading tooth — a bright tip riding each edge in.
+        const tx = px + Math.cos(jawA) * rPx * 0.98;
+        const ty = py + Math.sin(jawA) * rPx * 0.98 * squash;
+        const g = Math.max(2, sc * 0.055);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(tx - g / 2, ty - g / 2, g, g);
+      }
+    } else {
+      // THE HELD PINCH: one hard line down the facing — the grip that
+      // is still happening to whatever it caught.
+      const hold = 1 - cl((t - 0.45) / 0.5);
+      ctx.globalAlpha = 0.85 * hold;
+      ctx.strokeStyle = st.mid;
+      ctx.lineWidth = Math.max(2, sc * 0.07 * hold);
+      ctx.beginPath();
+      ctx.moveTo(px + Math.cos(dir) * rPx * 0.3, py + Math.sin(dir) * rPx * 0.3 * squash);
+      ctx.lineTo(px + Math.cos(dir) * rPx * 1.02, py + Math.sin(dir) * rPx * 1.02 * squash);
+      ctx.stroke();
+    }
+    ctx.restore();
+    // THE CLAP: the meet — cold spray true-height off the pinch, and
+    // the lasting jaw prints laid along both closed crescents.
+    if (crossed(c, 700, 0.45)) {
+      const m = asMatter(c);
+      const mx = c.wx + Math.cos(dir) * c.radius * 0.75;
+      const my = c.wy + Math.sin(dir) * c.radius * 0.75 * squash;
+      water.deployments.splash!(m, mx, my, { scale: 0.75 });
+      frost.deployments.bloom!(m, mx, my, { radius: c.radius * 0.35, scale: 0.4 });
+      const rand = srand(c.seed ^ 0x9c1);
+      for (const side of [-1, 1] as const) {
+        for (let k = 0; k < 4; k++) {
+          const a = dir + side * (0.1 + k * 0.16);
+          const rr = c.radius * (0.9 + (rand() - 0.5) * 0.12);
+          lay(c, c.wx + Math.cos(a) * rr, c.wy + Math.sin(a) * rr * squash, '#9fc4b5', {
+            life: 6 + rand() * 2, size: 0.055, fade: '#48685c', fadeAt: 0.5,
+            flicker: k === 1 ? 4 : 0,
+          });
+        }
+      }
+    }
+  },
+};
+
 export const FOES_SIGS: Record<string, AbilitySig> = {
   cinder_ring,
   miasma_ring,
@@ -1570,4 +1678,5 @@ export const FOES_SIGS: Record<string, AbilitySig> = {
   marrow_chill,
   rending_lunge,
   shrilling_dart,
+  breakwater_grip,
 };

@@ -389,6 +389,19 @@ export const BREATH_DIALECTS: Record<string, BreathDialect> = {
   rending_lunge: {
     charge: (c, x, y) => dust.deployments.kick!(c, x, y, { scale: 0.45, dur: 0.6 }),
   },
+  // THE TIDE'S RAMPART (the giant crab) — the sea announces both.
+  // Breakwater Grip: the great claw hangs open and the tide churns
+  // around the planted stilts — the harbor drawing breath.
+  breakwater_grip: {
+    charge: (c, x, y, o) =>
+      water.deployments.churn!(c, x, y, { radius: o.radius * 0.5, scale: 0.55, dur: 0.9 }),
+  },
+  // Brine Jet: the water draws IN before it is thrown — an undertow
+  // pulling at the bank around the folding mouthparts.
+  brine_jet: {
+    charge: (c, x, y, o) =>
+      water.deployments.undertow!(c, x, y, { radius: o.radius * 0.45, scale: 0.5, dur: 0.7 }),
+  },
   // THE BROTHERHOOD (the wolf crown) — three breaths, one sentence.
   // Hamstring Bite: he drops LOW — a skirt of grit shivers out under
   // the crouch before the cut.

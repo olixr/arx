@@ -1334,6 +1334,19 @@ const defs: LootTableDef[] = [
     ],
   },
   {
+    id: 'giant_crab',
+    desc: 'The bank pays its toll in plate: storm-worn shell off the bulwark, and whatever the tide owed it.',
+    entries: [
+      { item: 'bones' },
+      { item: 'crab_carapace', chance: 0.7 },
+      // The great claw comes away whole about as often as it lets go.
+      { item: 'crusher_claw', chance: 0.15 },
+      { item: 'raw_trout', qty: [1, 2], chance: 0.5 },
+      { item: 'coins', qty: [12, 40], chance: 0.4 },
+      { item: 'frost_essence', chance: 0.12 },
+    ],
+  },
+  {
     id: 'slime',
     desc: 'What the ooze dissolved, and what it could not.',
     entries: [

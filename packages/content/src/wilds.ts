@@ -22,7 +22,15 @@ import { slotContains } from './routines/schedule.js';
  * alone by nature, not by accident of the spawner.
  */
 
-export type WildBiome = 'grass' | 'forest';
+/**
+ * Ground classes an entry may haunt. 'shore' is a REFINEMENT, not a
+ * ground class of its own: a grass anchor within a few tiles of open
+ * water reads as shore ON TOP of being grass — bank knots stand among
+ * the ordinary meadow life, and a shore-only kind (the crabs) never
+ * wanders inland by construction. The server derives the flag from
+ * the same elevation field the water itself comes from.
+ */
+export type WildBiome = 'grass' | 'forest' | 'shore';
 
 export interface WildEntry {
   /** Bestiary id. */
@@ -109,6 +117,16 @@ export const WILD_ROSTER: readonly WildEntry[] = [
   // THE OLD RAZORBACK roots the deep wood alone by day — a hill of
   // quills glimpsed between the trunks, best walked around.
   { npc: 'dire_boar', weight: 0.7, tiers: [3, 6], biomes: ['forest'] },
+  // ------------------------------------------------- the tide line
+  // THE SHORE FINALLY FEEDS: mudcrabs work the banks in skittering
+  // handfuls at every hour — the tide does not keep town time. Their
+  // whole world is the wet margin; they never wander inland.
+  { npc: 'mudcrab', weight: 2, tiers: [1, 3], biomes: ['shore'], band: [2, 4], spread: 2 },
+  // THE TIDE'S RAMPART: the giant crab stands its claimed stretch of
+  // bank alone, or as a pair walling a narrows. Deeper waters raise
+  // deadlier walls — the band rescales the body, the silhouette
+  // keeps the promise.
+  { npc: 'giant_crab', weight: 1.2, tiers: [3, 7], biomes: ['shore'], band: [1, 2], spread: 2 },
   // --------------------------------------------- the standing perils
   { npc: 'wolf', weight: 2, tiers: [2, 5], biomes: ['forest'], band: [2, 3], habitat: 'den', family: 'wolfkin' },
   { npc: 'adder', weight: 1, tiers: [2, 4], biomes: ['grass'] },
@@ -278,12 +296,14 @@ export function wildCandidates(
   tier: number,
   biome: WildBiome,
   hours: number,
+  /** THE BANK IS ALSO A MEADOW: true when the spot borders open water. */
+  shore = false,
 ): WildEntry[] {
   return WILD_ROSTER.filter(
     (e) =>
       tier >= e.tiers[0] &&
       tier <= e.tiers[1] &&
-      e.biomes.includes(biome) &&
+      (e.biomes.includes(biome) || (shore && e.biomes.includes('shore'))) &&
       (!e.hours || slotContains(e.hours.from, e.hours.to, hours)),
   );
 }

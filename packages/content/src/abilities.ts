@@ -3844,6 +3844,46 @@ const defs: AbilityDef[] = [
     status: { status: 'bleed', power: 1, durationTicks: 50 },
   },
 
+  // ------------------------------ THE TIDE'S RAMPART (the giant crab):
+  // the shore bastion's two words. The grip is the whole animal spoken
+  // once — announced long, paid at the telegraph premium, and what it
+  // closes on is held cold. The jet is the reach it should not have:
+  // the sea thrown flat, a lance of cold brine that flies on the frost
+  // brand and finds where you were going, not where you are.
+  {
+    id: 'breakwater_grip',
+    name: 'Breakwater Grip',
+    desc: 'The great claw swings wide open and hangs there, a long bad promise. Then the harbor closes.',
+    color: '#6d8577',
+    code: 'Bg',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'melee_arc',
+    damage: 9,
+    range: 1.7,
+    // A narrow crescent dead ahead of the crusher — flank it or wear it.
+    arc: 0.9,
+    // THE HOLD: no shove, no throw. The grip's whole argument is that
+    // you stop leaving.
+    status: { status: 'chill', power: 2, durationTicks: 90 },
+  },
+  {
+    id: 'brine_jet',
+    name: 'Brine Jet',
+    desc: 'The mouthparts fold back and the sea comes out of it, flat and hard and colder than the sea has any right to be.',
+    color: '#7ab0b8',
+    code: 'Bj',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'projectile_fan',
+    damage: 5,
+    projectiles: 1,
+    projectileSpeed: 11,
+    range: 8,
+    // THE FLIGHT VOICE: the jet flies as the frost brand — cold water
+    // at pressure IS winter with intent, never a wooden shaft.
+    element: 'frost',
+    status: { status: 'chill', power: 1, durationTicks: 50 },
+  },
+
   // -------------------------------- THE EARTH STANDS UP (golem arts,
   // docs/golems-plan.md): four constructs, and every big die bought at
   // the telegraph premium off a slow heavy basic. A golem's art is

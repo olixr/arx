@@ -37,6 +37,7 @@ import {
   DIREBOAR_LOOK,
   CATTLE_LOOKS,
   CRAB_LOOK,
+  GIANTCRAB_LOOK,
   DIREWOLF_LOOK,
   OLDFANG_LOOK,
   RAM_LOOK,
@@ -70,6 +71,7 @@ import {
   paintBoarBody,
   paintCattleBody,
   paintCrabBody,
+  paintGiantCrabBody,
   paintDireWolfBody,
   paintLynxBody,
   paintOwlBody,
@@ -2155,6 +2157,25 @@ export function drawBeastRagdoll(
       topScale: 0.85,
       botH: 0.02,
     });
+  } else if (look.defId === 'giant_crab') {
+    // The bulwark falls like a fortress falls: mostly it just stops.
+    // The hull keeps over half its height, the arms drop slack to
+    // the ground line, the stalks are gone — the painter's own dead
+    // branch handles all three off topScale.
+    paintGiantCrabBody(ctx, spec, GIANTCRAB_LOOK, {
+      bx: midX,
+      gy: midY + r * 0.4,
+      s,
+      fx: Math.cos(spineA),
+      fy: Math.sin(spineA),
+      ys: 1,
+      seed: look.seed,
+      hurt: false,
+      bob: 0,
+      roll: 0,
+      topScale: 0.6,
+      botH: 0.02,
+    });
   } else if (look.defId === 'mudcrab') {
     // The whole crab — claws slack, no stalk eyes on the dead.
     paintCrabBody(
@@ -2453,7 +2474,7 @@ export function drawBeastRagdoll(
       ys: 1,
       dead: true,
     });
-  } else if (look.defId === 'giant_spider' || look.defId === 'mudcrab' || look.defId === 'giant_beetle') {
+  } else if (look.defId === 'giant_spider' || look.defId === 'mudcrab' || look.defId === 'giant_crab' || look.defId === 'giant_beetle') {
     // No separate head — the body painter drew the whole animal.
   } else if (look.defId === 'adder') {
     // The viper wedge, slack on the floor — no eyes on the dead.

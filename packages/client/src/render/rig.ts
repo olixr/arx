@@ -9850,7 +9850,7 @@ export interface BeastSpec {
   hipSide: number;
   /** Upper-leg thickness (tiles). */
   legW: number;
-  foot: 'hoof' | 'paw' | 'claw' | 'bearpaw' | 'turtleclaw';
+  foot: 'hoof' | 'paw' | 'claw' | 'bearpaw' | 'turtleclaw' | 'crabspike';
   /**
    * Species foot-size dial: multiplies the foot painter's base width
    * (which derives from legW). Heavy-bodied walkers whose legs are
@@ -10432,6 +10432,42 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     legW: 0.032,
     foot: 'claw',
     legColor: '#8a4f38',
+  },
+  // THE TIDE'S RAMPART: six stilts under a walking bastion. Where the
+  // mudcrab squats in the wet, the giant crab STANDS — real daylight
+  // under the hull on the widest tall track in the game, long-boned
+  // high knees (the raised carpus of the true crab), and a siege pace
+  // that re-aims far better than it hurries. Alternating tripods keep
+  // a stable triangle planted at every beat of the march.
+  giant_crab: {
+    rig: {
+      legs: [
+        { fwd: 0.2, side: -0.3, group: 0 },
+        { fwd: 0.2, side: 0.3, group: 1 },
+        { fwd: 0, side: -0.34, group: 1 },
+        { fwd: 0, side: 0.34, group: 0 },
+        { fwd: -0.2, side: -0.3, group: 0 },
+        { fwd: -0.2, side: 0.3, group: 1 },
+      ],
+      legLen: 0.42,
+      rise: 0.26,
+      liftAmp: 0.06,
+      runSpeed: 1.9,
+      turnRate: 6,
+    },
+    // Wider than long is the crab law — the width lives on the look's
+    // bodyW; the spec keeps the fore-aft half-length.
+    bodyLen: 0.34,
+    bodyRise: 0.3,
+    kneeFwd: [1, 1, 1, -1, -1, -1],
+    hipFwd: 0.85,
+    hipSide: 0.8,
+    legW: 0.075,
+    foot: 'crabspike',
+    legColor: '#35493f',
+    // Long merus over a short driven dactyl — the high crab knee is a
+    // SKELETON fact, front and hind alike.
+    segSplit: [0.58, 0.58],
   },
   giant_beetle: {
     rig: {
@@ -15693,6 +15729,618 @@ export function paintCrabBody(
 }
 
 /**
+ * THE TIDE'S RAMPART — the giant crab. Four reads owned by no other
+ * body: THE RAMPART (a storm-worn faceted bastion of a carapace,
+ * wider than long, a crenellated bow wall raked back over the crown
+ * boss and hooked marginal horns off the skirt), THE SIEGE CRUSHER
+ * (the colossal left claw carried across the bow like a tower shield
+ * on a true two-bone arm — the animal is asymmetric at any zoom; the
+ * right cutter rides low and lean), THE STILT MARCH (six tall
+ * armored legs with real daylight under the hull — the mudcrab
+ * squats in the wet, the bulwark STANDS), and THE LIVING STALKS
+ * (eye stalks on the ear sim: they lag the turn, sway with the
+ * march, and pin flat through the clamp).
+ *
+ * NEVER A RESKIN: the mudcrab is a low mottled pebble with stroke
+ * arms. This body shares no table with it — own look, own authored
+ * plate mail, own jointed arms, own foot word, own gait numbers.
+ * THE CLAMP follows the turtles' law: the hull plants (massK damps
+ * the pounce) and the CRUSHER spends the strike — windup coils the
+ * arm home and the jaws gape; the strike drives the palm through
+ * the facing and snaps them shut.
+ */
+export interface GiantCrabLook {
+  /** Carapace base — plates derive a step brighter (the mail law). */
+  shell: string;
+  /** Bow-wall blades, rim horns, and the darker armor accents. */
+  crest: string;
+  claw: string;
+  /** Keratin: jaw edges, palm studs, the pale worn tips. */
+  clawTip: string;
+  barnacle: string;
+  /** The under-mass filling the rim shadow. */
+  under: string;
+  eye: string;
+  /** Tide-line rust wash riding the skirt. */
+  stain: string;
+  /** Half-width across the facing — WIDER than the body is long. */
+  bodyW: number;
+  /** Vault height at the crown boss. */
+  shellH: number;
+  /** Bow-wall blade rise above the vault. */
+  crestH: number;
+  /** Daylight under the hull: the skirt's height off the ground. */
+  rimBot: number;
+}
+
+export const GIANTCRAB_LOOK: GiantCrabLook = {
+  shell: '#46655c',
+  crest: '#2f4a41',
+  // A step brighter and warmer than the shell: the arms and fists
+  // must separate from the hull at any zoom — the claw IS the read.
+  claw: '#5e8272',
+  clawTip: '#cfc9ad',
+  barnacle: '#c9c2a6',
+  under: '#33473f',
+  eye: '#e0a83c',
+  stain: '#7c5a41',
+  bodyW: 0.52,
+  shellH: 0.34,
+  // PASS-ONE FAILURE, paid: tall thin crest pyramids read as PINE
+  // TREES standing on a crate — the wall is LOW and wide, a
+  // crenellation, never a copse.
+  crestH: 0.08,
+  rimBot: 0.16,
+};
+
+/**
+ * THE RAMPART'S MAIL — one row per plate: [X, Y, halfLen, halfWid,
+ * keelK] in body fractions (the turtle mail's grammar, a crab's
+ * layout): a central crown boss, a crenellated BOW WALL of three
+ * storm-raked blades running ACROSS the facing (the perpendicular
+ * signature — the turtle's ridge runs nose-to-tail, the crab's wall
+ * runs shoulder-to-shoulder), branchial terraces on the flanks, and
+ * a stern pair over the tucked abdomen. Authored, never generated.
+ */
+const GIANTCRAB_PLATES: ReadonlyArray<[number, number, number, number, number]> = [
+  // The crown boss — the shield at the center of the shield.
+  [-0.02, 0, 0.3, 0.26, 0.45],
+  // THE BOW WALL: three WIDE low merlons across the bow, tallest at
+  // the center — a battlement, never a treeline (base wider than the
+  // rise by law; the pass-one thin pyramids read as pines).
+  [0.42, 0, 0.16, 0.17, 1],
+  [0.38, -0.46, 0.14, 0.19, 0.78],
+  [0.38, 0.46, 0.14, 0.19, 0.78],
+  // Branchial terraces, port and starboard.
+  [-0.3, -0.56, 0.2, 0.2, 0.5],
+  [-0.3, 0.56, 0.2, 0.2, 0.5],
+  // The stern pair.
+  [-0.68, -0.24, 0.13, 0.14, 0.4],
+  [-0.68, 0.24, 0.13, 0.14, 0.4],
+];
+
+const CRABARM_SOLVE: LimbSolve = { ex: 0, ey: 0, kx: 0, ky: 0 };
+
+export function paintGiantCrabBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: GiantCrabLook,
+  f: BeastBlockFrame,
+  at = 0,
+  nowMs = 0,
+  /** THE LIVING STALKS: the live ear sim; absent = the ONE REST chain. */
+  eyes?: EarSim,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  const { bx, gy, s, fx, fy, ys } = f;
+  const px = -fy;
+  const py = fx;
+  const shell = shade(look.shell, (((f.seed >>> 5) & 7) - 3) * 2);
+  const dead = f.topScale !== undefined && f.topScale < 1;
+  const lift = f.bob * 0.35 * s;
+  const tk = f.topScale ?? 1;
+  const dir = Math.atan2(fy, fx);
+  // Per-body menace phase — a pair of bulwarks never breathes in sync.
+  const phase = ((f.seed % 89) + 89) * 0.53;
+
+  const domeC = -hl * 0.06;
+  const topH = (X: number): number =>
+    Math.max(0.05, look.shellH * (1 - 0.42 * Math.pow((X - domeC) / hl, 2)));
+  const surf = (X: number, Y: number): number => topH(X) * (1 - 0.32 * Math.pow(Y / hw, 2));
+  const P3 = (X: number, Y: number, Z: number): { x: number; y: number } => ({
+    x: bx + (fx * X + px * Y) * s,
+    y: gy + (fy * X + py * Y) * ys * s - (look.rimBot + Z) * tk * s - lift,
+  });
+
+  // ---- THE SIEGE CRUSHER + the cutter: true two-bone arms off the
+  // bow corners. The crusher (left, es = -1) carries across the bow
+  // like a tower shield; the cutter rides low and outboard. Windup
+  // coils the crusher home and gapes the jaws; the strike drives the
+  // palm through the facing and snaps them flat.
+  const drawClaw = (es: number): void => {
+    const crusher = es < 0;
+    // Shoulder: bow corner, seated into the flank under the skirt.
+    const shF = hl * 0.38;
+    const shS = es * hw * 0.62;
+    const shZ = look.rimBot + look.shellH * 0.4;
+    const sx = bx + (fx * shF + px * shS) * s;
+    const sy = gy + (fy * shF + py * shS) * ys * s - shZ * tk * s - lift;
+    // The palm's carry target in body frame. THE GUARD CARRY: both
+    // fists ride HIGH and forward of the bow — face-on they frame the
+    // front like a boxer's hands, profile-on the crusher leads the
+    // silhouette. The clamp is the crusher's alone; the cutter flares.
+    const sway = dead ? 0 : Math.sin(nowMs / 940 + phase + (crusher ? 0 : 2.1)) * 0.02;
+    let tF = crusher ? hl * 1.05 : hl * 0.9;
+    let tS = es * hw * (crusher ? 0.3 : 0.62) + sway;
+    let tZ = look.rimBot + look.shellH * (crusher ? 0.62 : 0.42);
+    let gape = dead ? 0.16 : 0.2 + 0.06 * Math.sin(nowMs / 760 + phase);
+    if (!dead && at > 0 && crusher) {
+      if (at <= 0.7) {
+        // The coil: the claw draws home and up, and the jaws open wide.
+        const w = at / 0.7;
+        tF -= 0.2 * w;
+        tZ += 0.16 * w;
+        gape = 0.25 + w * 0.75;
+      } else {
+        // The clamp: driven through the facing, jaws snapping flat.
+        const k = Math.sin(Math.PI * Math.min(1, (at - 0.7) / 0.3));
+        tF += 0.46 * k;
+        tZ -= 0.06 * k;
+        gape = Math.max(0, 0.25 * (1 - k * 4));
+      }
+    } else if (!dead && at > 0.55 && !crusher) {
+      // The cutter flares open in sympathy — the offhand's threat.
+      gape = 0.5;
+    }
+    if (dead) {
+      // Slack arms: palms dropped to the ground line, jaws ajar.
+      tZ = 0.03;
+      tF = crusher ? hl * 0.7 : hl * 0.6;
+      tS = es * hw * 0.65;
+    }
+    const txp = bx + (fx * tF + px * tS) * s;
+    const typ = gy + (fy * tF + py * tS) * ys * s - tZ * tk * s - lift;
+    // Elbow pole: outward on the claw's own screen side, and up — a
+    // crab's arm breaks upward at the carpus, never underslung.
+    const outSgn = Math.sign(sx - bx) || es;
+    const arm = solveLimbInto(
+      CRABARM_SOLVE,
+      sx,
+      sy,
+      txp,
+      typ,
+      (crusher ? 0.3 : 0.23) * s,
+      1.12,
+      outSgn * 0.8,
+      -0.6,
+    );
+    const armC = f.hurt ? '#ffffff' : shade(look.claw, -8);
+    const foreC = f.hurt ? '#ffffff' : shade(look.claw, 2);
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = armC;
+    ctx.lineWidth = Math.max(2, s * (crusher ? 0.13 : 0.075));
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(arm.kx, arm.ky);
+    ctx.stroke();
+    ctx.strokeStyle = foreC;
+    ctx.lineWidth = Math.max(1.8, s * (crusher ? 0.105 : 0.06));
+    ctx.beginPath();
+    ctx.moveTo(arm.kx, arm.ky);
+    ctx.lineTo(arm.ex, arm.ey);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+    // The elbow spur — one thorn of armor at the carpus break.
+    if (!f.hurt) {
+      const ew = s * (crusher ? 0.05 : 0.034);
+      ctx.fillStyle = look.crest;
+      ctx.beginPath();
+      ctx.moveTo(arm.kx - ew, arm.ky - ew * 0.4);
+      ctx.lineTo(arm.kx + ew * 0.1, arm.ky - ew * 2);
+      ctx.lineTo(arm.kx + ew, arm.ky - ew * 0.3);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // The palm: a faceted fist aimed along the strike line, studded
+    // on its outer edge. The crusher's is the biggest single mass on
+    // the animal after the shell itself — that is the read.
+    const pR = (crusher ? 0.25 : 0.135) * s;
+    const aim = Math.atan2(fy * ys, fx) + es * (crusher ? 0.12 : 0.3);
+    const cxp = arm.ex + Math.cos(aim) * pR * 0.35;
+    const cyp = arm.ey + Math.sin(aim) * pR * 0.35;
+    ctx.fillStyle = f.hurt ? '#ffffff' : shade(look.claw, 6);
+    ctx.beginPath();
+    facetCircle(ctx, cxp, cyp, pR, 7, aim, 0.88);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(26, 20, 36, 0.45)';
+    ctx.lineWidth = Math.max(1, s * 0.018);
+    ctx.stroke();
+    if (!f.hurt) {
+      // Knuckle studs marching the palm's outer edge.
+      ctx.fillStyle = look.crest;
+      for (const q of [-0.55, 0, 0.55]) {
+        const qa = aim + es * (Math.PI / 2) + q;
+        ctx.beginPath();
+        facetCircle(
+          ctx,
+          cxp + Math.cos(qa) * pR * 0.78,
+          cyp + Math.sin(qa) * pR * 0.78,
+          pR * (crusher ? 0.16 : 0.13),
+          5,
+          q * 3.1,
+        );
+        ctx.fill();
+      }
+      // The palm's top catches the light — the fist has a back.
+      ctx.fillStyle = shade(look.claw, 18);
+      ctx.beginPath();
+      facetCircle(ctx, cxp - pR * 0.15, cyp - pR * 0.3, pR * 0.5, 6, aim + 1.3, 0.9);
+      ctx.fill();
+    }
+    // The jaws: CHUNKY PALE KERATIN — the one bright mass on the
+    // animal, so the pincer reads at any zoom (pass-one dark jaws
+    // with thin white edge lines scattered as sticks). Crusher: two
+    // heavy blunt slabs with dark molar teeth waiting in the gape.
+    // Cutter: two lean shear blades. Dark seams, no thin strokes.
+    // THE ASYMMETRY IS THE FIELD MARK: the crusher's jaws are the one
+    // big pale mass; the cutter's shears run slimmer and a step
+    // darker, so no band ever reads two equal claws.
+    const jawL = pR * (crusher ? 1.25 : 1.2);
+    for (const fu of [-1, 1]) {
+      const fa = aim + es * fu * (0.1 + gape * (crusher ? 0.34 : 0.42));
+      const rx = cxp + Math.cos(fa) * pR * 0.5;
+      const ry2 = cyp + Math.sin(fa) * pR * 0.5;
+      const txx = cxp + Math.cos(fa) * (pR * 0.5 + jawL);
+      const tyy = cyp + Math.sin(fa) * (pR * 0.5 + jawL);
+      const pnx = -Math.sin(fa);
+      const pny = Math.cos(fa);
+      const wRoot = pR * (crusher ? 0.46 : 0.22);
+      ctx.fillStyle = f.hurt
+        ? '#ffffff'
+        : shade(look.clawTip, crusher ? (fu < 0 ? 2 : -12) : fu < 0 ? -16 : -26);
+      ctx.beginPath();
+      ctx.moveTo(rx + pnx * wRoot, ry2 + pny * wRoot);
+      // The crusher jaw keeps its depth to the tip; the cutter tapers.
+      ctx.quadraticCurveTo(
+        rx + (txx - rx) * 0.6 + pnx * wRoot * (crusher ? 0.95 : 0.5),
+        ry2 + (tyy - ry2) * 0.6 + pny * wRoot * (crusher ? 0.95 : 0.5),
+        txx,
+        tyy,
+      );
+      ctx.lineTo(txx - pnx * wRoot * 0.1, tyy - pny * wRoot * 0.1);
+      ctx.quadraticCurveTo(
+        rx + (txx - rx) * 0.5 - pnx * wRoot * 0.55,
+        ry2 + (tyy - ry2) * 0.5 - pny * wRoot * 0.55,
+        rx - pnx * wRoot * 0.72,
+        ry2 - pny * wRoot * 0.72,
+      );
+      ctx.closePath();
+      ctx.fill();
+      if (!f.hurt) {
+        ctx.strokeStyle = 'rgba(26, 20, 36, 0.45)';
+        ctx.lineWidth = Math.max(1, pR * 0.06);
+        ctx.stroke();
+        if (crusher) {
+          // Dark molar teeth inside the pale gape — visible exactly
+          // when the jaws stand open, which is when they matter.
+          ctx.fillStyle = shade(look.crest, -6);
+          for (const tt of [0.35, 0.62]) {
+            const mx = rx + (txx - rx) * tt - pnx * wRoot * 0.55;
+            const my = ry2 + (tyy - ry2) * tt - pny * wRoot * 0.55;
+            const mw = pR * 0.11;
+            ctx.beginPath();
+            ctx.moveTo(mx + pnx * mw, my + pny * mw);
+            ctx.lineTo(mx - Math.cos(fa) * mw * 1.4, my - Math.sin(fa) * mw * 1.4);
+            ctx.lineTo(mx - pnx * mw, my - pny * mw);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+      }
+    }
+  };
+
+  // A claw whose shoulder's screen-y sits below the body center is
+  // the near one — it paints over the hull; the other tucks behind.
+  const clawNear = (es: number): boolean => (fy * hl * 0.38 + py * es * hw * 0.62) * ys > 0;
+  for (const es of [-1, 1]) if (!clawNear(es)) drawClaw(es);
+
+  // THE BODY UNDER THE RAMPART: the ground-frame under-mass (THE
+  // BELLY TUCKS LIKE A LION'S) with honest stilt daylight — screen
+  // width follows the facing between the two half-dims, depth
+  // squashes with ys, and the ground line is authored bottom-up.
+  const ax = Math.abs(fx);
+  const ay = Math.abs(fy);
+  const brx = (hl * 0.7 * ax + hw * 0.78 * ay) * s;
+  const bry = (hw * 0.3 * ax + hl * 0.28 * ay) * ys * s;
+  const bellyClear = (dead ? 0.02 : 0.1) * s;
+  ctx.fillStyle = f.hurt ? '#ffffff' : look.under;
+  ctx.save();
+  ctx.translate(bx, gy - bellyClear - lift * 0.6 - bry);
+  ctx.beginPath();
+  facetBlob(ctx, 0, 0, brx, f.seed | 5, 8, bry / brx, 0.5);
+  ctx.fill();
+  ctx.restore();
+
+  // ---- the hull: a wide angular bastion footprint — flat bow face,
+  // lateral horn points at the widest station, drawn stern.
+  const foot: Array<[number, number]> = [
+    [hl * 0.9, -hw * 0.38],
+    [hl * 0.9, hw * 0.38],
+    [hl * 0.45, hw * 0.8],
+    [0, hw],
+    [-hl * 0.55, hw * 0.82],
+    [-hl * 0.95, hw * 0.4],
+    [-hl * 0.95, -hw * 0.4],
+    [-hl * 0.55, -hw * 0.82],
+    [0, -hw],
+    [hl * 0.45, -hw * 0.8],
+  ];
+  // THE LIVING STALKS peek over the skyline from behind: walking away
+  // they paint under the hull's own overdraw, tips clearing the crown.
+  const stalksFirst = fy < -0.45;
+  const drawStalks = (): void => {
+    if (dead || f.hurt) return;
+    const axp = bx + fx * hl * 0.58 * s;
+    const ayp = gy + fy * hl * 0.58 * ys * s - (look.rimBot + topH(hl * 0.58) + 0.02) * tk * s - lift;
+    const carriage: EarCarriage = {
+      azimuth: 0.5,
+      rootR: 0.09,
+      rootLift: 0.01,
+      length: 0.26,
+      spread: 0.32,
+      rise: 1.15,
+      curl: [0.12, 0.16, 0.2],
+    };
+    // The stalks pin flat through the clamp — the animal aims itself.
+    const pin = at > 0.55 ? Math.min(1, (at - 0.55) / 0.25) : 0;
+    if (eyes) eyes.update(axp, ayp, s, carriage, dir, pin, nowMs);
+    for (const side of [-1, 1] as const) {
+      const chain = eyes
+        ? eyes.chain(side, carriage, dir, pin)
+        : earRestChain(side, carriage, {
+            dir,
+            pin,
+            sway: 0.05 * Math.sin(nowMs / 640 + phase + side * 1.7),
+          });
+      const pts = chain.pts;
+      ctx.strokeStyle = shade(look.shell, -20);
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(1.4, s * 0.032);
+      ctx.beginPath();
+      ctx.moveTo(axp + pts[0]!.x * s, ayp + pts[0]!.y * s);
+      for (let i = 1; i < pts.length; i++) {
+        ctx.lineTo(axp + pts[i]!.x * s, ayp + pts[i]!.y * s);
+      }
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      const tip = pts[pts.length - 1]!;
+      const ex1 = axp + tip.x * s;
+      const ey1 = ayp + tip.y * s;
+      // The eye bead: a faceted amber drop with a dark core and one
+      // wet glint — the only warm note on the whole cold animal.
+      ctx.fillStyle = look.eye;
+      ctx.beginPath();
+      facetCircle(ctx, ex1, ey1, s * 0.048, 6, side * 1.3);
+      ctx.fill();
+      ctx.fillStyle = '#241a2e';
+      ctx.beginPath();
+      facetCircle(ctx, ex1, ey1, s * 0.024, 5, side * 2.2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 250, 235, 0.85)';
+      ctx.fillRect(ex1 - s * 0.006 + s * 0.012, ey1 - s * 0.018, s * 0.012, s * 0.012);
+    }
+  };
+  if (stalksFirst) drawStalks();
+
+  paintBlockBody(
+    ctx,
+    f,
+    foot,
+    topH,
+    () => look.rimBot,
+    shell,
+    (gx, gyy, lift2) => {
+      // Quiet under-mail work: value patches so the big vault never
+      // bands flat, and THE TIDE STAIN — the rust waterline riding
+      // the skirt that says this wall stands in the sea half its life.
+      ctx.save();
+      ctx.translate(gx(domeC, 0), gyy(domeC, 0) - look.shellH * tk * s * 0.8 - lift2);
+      ctx.rotate(Math.atan2(fy * ys, fx));
+      ctx.globalAlpha = 0.45;
+      ctx.fillStyle = shade(shell, -9);
+      ctx.beginPath();
+      facetBlob(ctx, -hl * 0.32 * s, hw * 0.28 * s, hl * 0.46 * s, f.seed ^ 0x2b, 7, 0.6, 0.8);
+      ctx.fill();
+      ctx.fillStyle = shade(shell, 7);
+      ctx.beginPath();
+      facetBlob(ctx, hl * 0.22 * s, -hw * 0.24 * s, hl * 0.4 * s, f.seed ^ 0x6d, 7, 0.6, 0.8);
+      ctx.fill();
+      ctx.globalAlpha = 0.3;
+      ctx.strokeStyle = look.stain;
+      ctx.lineWidth = Math.max(2, s * 0.07);
+      ctx.beginPath();
+      ctx.moveTo(hl * 0.8 * s, -hw * 0.62 * s);
+      ctx.quadraticCurveTo(0, -hw * 1.02 * s, -hl * 0.8 * s, -hw * 0.58 * s);
+      ctx.moveTo(hl * 0.8 * s, hw * 0.62 * s);
+      ctx.quadraticCurveTo(0, hw * 1.02 * s, -hl * 0.8 * s, hw * 0.58 * s);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    },
+  );
+
+  // THE HOOKED SKIRT: marginal horns off the near rim — bigger and
+  // meaner than any saw-tooth, hooked back like breakwater iron.
+  if (!f.hurt) {
+    const rimY = (X: number, Y: number): number =>
+      gy + (fy * X + py * Y) * ys * s - look.rimBot * s - lift * 0.6;
+    const rimX = (X: number, Y: number): number => bx + (fx * X + px * Y) * s;
+    const cyd = gy - lift;
+    ctx.fillStyle = shade(look.crest, -4);
+    for (let i = 0; i < foot.length; i++) {
+      const a = foot[i]!;
+      const b = foot[(i + 1) % foot.length]!;
+      const mX = (a[0] + b[0]) / 2;
+      const mY = (a[1] + b[1]) / 2;
+      const sx0 = rimX(mX, mY);
+      const sy0 = rimY(mX, mY);
+      if (sy0 <= cyd - 0.02 * s) continue; // near-side segments only
+      // The bow face stays clean: horns there compete with the claws,
+      // and the claws own the front by law.
+      if (a[0] >= hl * 0.85 && b[0] >= hl * 0.85) continue;
+      let ox = sx0 - bx;
+      let oy = sy0 - cyd;
+      const od = Math.hypot(ox, oy) || 1e-4;
+      ox /= od;
+      oy /= od;
+      const tw = s * 0.075;
+      const ex0 = rimX(a[0] * 0.7 + mX * 0.3, a[1] * 0.7 + mY * 0.3);
+      const ey0 = rimY(a[0] * 0.7 + mX * 0.3, a[1] * 0.7 + mY * 0.3);
+      const ex1 = rimX(b[0] * 0.7 + mX * 0.3, b[1] * 0.7 + mY * 0.3);
+      const ey1 = rimY(b[0] * 0.7 + mX * 0.3, b[1] * 0.7 + mY * 0.3);
+      // The hook: the point sweeps sternward, not straight out.
+      const hx2 = sx0 + ox * tw - fx * tw * 0.55;
+      const hy2 = sy0 + oy * tw + tw * 0.4 - fy * ys * tw * 0.55;
+      ctx.beginPath();
+      ctx.moveTo(ex0, ey0);
+      ctx.quadraticCurveTo(sx0 + ox * tw * 0.5, sy0 + oy * tw * 0.5, hx2, hy2);
+      ctx.lineTo(ex1, ey1);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // ---- THE RAMPART'S MAIL: authored plates, each a 4-facet pyramid
+  // seated on the vault's true curve, lit by screen orientation, far
+  // rows first (the turtle mail's whole discipline; a crab's layout).
+  const ridgeY = -py * hw * 0.66;
+  const plates = GIANTCRAB_PLATES.map(([txx, tyy, lk, wk2, kk], idx) => {
+    const jb = (f.seed ^ (idx * 0x9e3779b9)) >>> 0;
+    const js = 0.93 + ((jb >>> 4) & 15) * 0.009;
+    const jx = (((jb >>> 8) & 7) - 3.5) * 0.008;
+    const X = (txx + jx) * hl;
+    const Y = tyy === 0 ? ridgeY : tyy * hw;
+    const LX = lk * hl * js;
+    const WY = wk2 * hw * js;
+    const zBase = tyy === 0 ? topH(X) : surf(X, Y);
+    const corners = [
+      P3(X + LX, Y - WY, zBase * 0.94),
+      P3(X + LX, Y + WY, zBase * 0.94),
+      P3(X - LX, Y + WY * 0.62, zBase * 0.94),
+      P3(X - LX, Y - WY * 0.62, zBase * 0.94),
+    ];
+    // Storm-raked: every apex sweeps aft, the bow wall hardest.
+    const apex = P3(X - LX * 0.45, Y, zBase + look.crestH * kk * tk);
+    return { corners, apex, sortY: P3(X, Y, 0).y, wall: txx > 0.3 };
+  }).sort((a, b2) => a.sortY - b2.sortY);
+  for (const pl of plates) {
+    const { corners, apex } = pl;
+    if (f.hurt) {
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(apex.x, apex.y);
+      for (const c of corners) ctx.lineTo(c.x, c.y);
+      ctx.closePath();
+      ctx.fill();
+      continue;
+    }
+    // Plates sit a step BRIGHTER than the vault (the window law); the
+    // bow wall wears the crest ink lifted hardest — the crenellation
+    // must read at world zoom.
+    const base = pl.wall ? shade(look.crest, 22) : shade(shell, 7);
+    for (let e = 0; e < 4; e++) {
+      const ci = corners[e]!;
+      const cj = corners[(e + 1) % 4]!;
+      const midY = (ci.y + cj.y) / 2;
+      const dn = Math.hypot((ci.x + cj.x) / 2 - apex.x, midY - apex.y) || 1e-4;
+      const ny = (midY - apex.y) / dn;
+      // The wall carries the relief; the field plates stay quieter so
+      // face-on undercuts never band into dark windows.
+      ctx.fillStyle = shade(base, Math.round(-ny * (pl.wall ? 22 : 15)) + (pl.wall ? 8 : 6));
+      ctx.beginPath();
+      ctx.moveTo(apex.x, apex.y);
+      ctx.lineTo(ci.x, ci.y);
+      ctx.lineTo(cj.x, cj.y);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(26, 20, 36, 0.22)';
+    ctx.lineWidth = Math.max(1, s * 0.013);
+    ctx.beginPath();
+    ctx.moveTo(corners[0]!.x, corners[0]!.y);
+    for (let e = 1; e < 4; e++) ctx.lineTo(corners[e]!.x, corners[e]!.y);
+    ctx.closePath();
+    ctx.stroke();
+    if (pl.wall) {
+      // The wall blades flash their swept edge.
+      ctx.strokeStyle = shade(shell, 30);
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.beginPath();
+      ctx.moveTo(corners[0]!.x, corners[0]!.y);
+      ctx.lineTo(apex.x, apex.y);
+      ctx.lineTo(corners[1]!.x, corners[1]!.y);
+      ctx.stroke();
+    }
+  }
+
+  // THE YEARS ON THE WALL: seeded barnacle clusters — the veteran
+  // read. One colony on the crown's weather side, one at the bow.
+  if (!f.hurt && !dead) {
+    // One tight colony on the weather flank, one small cluster at the
+    // bow shoulder — scattered singles read as dropped rice.
+    const cb = (n: number): number => ((f.seed >>> ((n * 5) % 26)) & 7) / 7;
+    const colX = (-0.35 + cb(0) * 0.3) * hl;
+    const colY = (0.25 + cb(1) * 0.3) * hw * (cb(5) > 0.5 ? 1 : -1);
+    ctx.fillStyle = look.barnacle;
+    for (let k = 0; k < 6; k++) {
+      const b = (n: number): number => ((f.seed >>> ((k * 5 + n * 3) % 27)) & 7) / 7;
+      const cX = (k < 4 ? colX : hl * 0.34) + (b(0) - 0.5) * 0.16 * hl;
+      const cY = (k < 4 ? colY : -colY * 0.5) + (b(1) - 0.5) * 0.2 * hw;
+      const p = P3(cX, cY, surf(cX, cY) + 0.01);
+      const r0 = s * (0.014 + b(2) * 0.014);
+      ctx.beginPath();
+      facetCircle(ctx, p.x, p.y, r0, 5, k * 1.9);
+      ctx.fill();
+      if (r0 > s * 0.02) {
+        ctx.fillStyle = shade(look.barnacle, -26);
+        ctx.beginPath();
+        facetCircle(ctx, p.x, p.y, r0 * 0.4, 4, k * 2.7);
+        ctx.fill();
+        ctx.fillStyle = look.barnacle;
+      }
+    }
+  }
+
+  // THE WORKING MOUTH: two small dim maxilliped chevrons tucked in
+  // the rim shadow under the bow, fluttering — the idle read that
+  // says alive, front bands only. QUIET by law: bright chevrons at
+  // hull height read as floating glyphs, not mouthparts.
+  if (!f.hurt && !dead && fy > 0.2) {
+    ctx.strokeStyle = shade(look.under, 26);
+    ctx.lineWidth = Math.max(1, s * 0.016);
+    for (const mSide of [-1, 1]) {
+      const flut = Math.sin(nowMs / 190 + phase + mSide * 1.6) * 0.01;
+      const mx = bx + (fx * hl * 0.88 + px * mSide * hw * 0.09) * s;
+      const my =
+        gy + (fy * hl * 0.88 + py * mSide * hw * 0.09) * ys * s -
+        (look.rimBot * 0.3 + flut) * s -
+        lift * 0.6;
+      ctx.beginPath();
+      ctx.moveTo(mx - s * 0.02 * mSide, my - s * 0.02);
+      ctx.lineTo(mx, my);
+      ctx.lineTo(mx - s * 0.02 * mSide, my + s * 0.02);
+      ctx.stroke();
+    }
+  }
+
+  if (!stalksFirst) drawStalks();
+
+  for (const es of [-1, 1]) if (clawNear(es)) drawClaw(es);
+}
+
+/**
  * The giant beetle: domed elytra split by a center seam with an
  * iridescent sheen, a darker pronotum plate at the front, and a rhino
  * horn hooking up off the head between two elbowed antennae. Whole
@@ -19160,7 +19808,9 @@ export function drawBeast(
     // The turtles never pounce: the keep plants and the NECK fires
     // (the head branch spends the strike) — the shell only heaves a
     // fraction of the beat, or a fortress would hop like a fox.
-    const massK = opts.defId.endsWith('_turtle') ? 0.3 : 1;
+    // The giant crab plants like the keeps do — THE CLAMP spends the
+    // strike through the crusher arm, never a hopping hull.
+    const massK = opts.defId.endsWith('_turtle') || opts.defId === 'giant_crab' ? 0.3 : 1;
     const pounce =
       (at < 0.7
         ? -0.12 * (at / 0.7) // crouch away
@@ -19343,13 +19993,17 @@ export function drawBeast(
         ? leg.fwd >= 0
           ? 0.38
           : 0.26
-        : spec.foot === 'bearpaw'
+        : spec.foot === 'crabspike'
           ? leg.fwd >= 0
-            ? -0.14
-            : 0.1
-          : spec.foot === 'hoof'
-            ? 0.05
-            : 0.1;
+            ? 0.5
+            : 0.34
+          : spec.foot === 'bearpaw'
+            ? leg.fwd >= 0
+              ? -0.14
+              : 0.1
+            : spec.foot === 'hoof'
+              ? 0.05
+              : 0.1;
     const footA = opts.dir + sideSgn * splay;
     const ffx = Math.cos(footA);
     const ffy = Math.sin(footA) * ys;
@@ -19555,6 +20209,42 @@ export function drawBeast(
         }
       }
       ctx.restore();
+    } else if (spec.foot === 'crabspike') {
+      // THE STILT TIP: a crab walks on the points of its armor — one
+      // down-driven chitin dactyl per leg, no pad at all. A tapered
+      // horn wedge on the ground bearing with a pale worn point and a
+      // joint ring seating it on the shin; mid-swing the point curls
+      // home, and seen from behind it foreshortens to a ferrule under
+      // the leg (THE FOOT SITS UNDER ITS LEG holds at spike scale).
+      const W = spec.legW * 1.1 * (spec.footScale ?? 1);
+      const skin = spec.legColor ?? opts.color;
+      ctx.save();
+      ctx.transform(ffx * s, ffy * s, fsx * s, fsy * s, ex, ey);
+      const tipL = W * (2.1 - 0.85 * digitCurl) * (1 - 0.62 * away);
+      ctx.fillStyle = opts.hurt ? '#ffffff' : tone(shade(skin, -14));
+      ctx.beginPath();
+      ctx.moveTo(-0.3 * W, -0.36 * W);
+      ctx.quadraticCurveTo(tipL * 0.45, -0.3 * W, tipL, 0);
+      ctx.quadraticCurveTo(tipL * 0.45, 0.3 * W, -0.3 * W, 0.36 * W);
+      ctx.closePath();
+      ctx.fill();
+      // The worn point: one quiet chip a stilt leaves in the mud —
+      // short and soft, or eight legs scatter pale debris everywhere.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : tone('#b9b193');
+      ctx.beginPath();
+      ctx.moveTo(tipL * 0.72, -0.11 * W);
+      ctx.lineTo(tipL, 0);
+      ctx.lineTo(tipL * 0.72, 0.11 * W);
+      ctx.closePath();
+      ctx.fill();
+      // Joint ring where the dactyl seats on the shin's armor.
+      ctx.strokeStyle = 'rgba(14, 18, 10, 0.35)';
+      ctx.lineWidth = 0.15 * W;
+      ctx.beginPath();
+      ctx.moveTo(-0.12 * W, -0.3 * W);
+      ctx.quadraticCurveTo(0.02 * W, 0, -0.12 * W, 0.3 * W);
+      ctx.stroke();
+      ctx.restore();
     } else {
       // Paw chip: a ground oval set toes-forward of the ankle on the
       // facing's bearing, its leading edge split by two soft digit
@@ -19607,7 +20297,9 @@ export function drawBeast(
   // the body): near-half hips paint over the skirt, far-half hips
   // tuck behind the keep. Every other beast keeps the foot rule —
   // their bodies never overhang the stride.
-  const shellMount = opts.defId.endsWith('_turtle');
+  // The crabs join the turtles here: a carapace overhangs every foot
+  // at every band, so the foot rule flickers on them the same way.
+  const shellMount = opts.defId.endsWith('_turtle') || opts.defId.endsWith('crab');
   for (let i = 0; i < spec.rig.legs.length; i++) {
     if (shellMount) {
       const leg = spec.rig.legs[i]!;
@@ -19660,6 +20352,7 @@ export function drawBeast(
   const foxL = foxLegL;
   const bearL = opts.defId === 'bear' ? BEAR_LOOK : undefined;
   const crabL = opts.defId === 'mudcrab' ? CRAB_LOOK : undefined;
+  const giantCrabL = opts.defId === 'giant_crab' ? GIANTCRAB_LOOK : undefined;
   const beetleL = opts.defId === 'giant_beetle' ? BEETLE_LOOK : undefined;
   const turtleL =
     opts.defId === 'giant_turtle'
@@ -19743,6 +20436,12 @@ export function drawBeast(
       paintCrabBody(ctx, spec, crabL, blockFrame(), at);
       return;
     }
+    if (giantCrabL) {
+      // THE TIDE'S RAMPART: whole animal in the body painter — the
+      // live stalks ride the caller's ear sim (fox-ear contract).
+      paintGiantCrabBody(ctx, spec, giantCrabL, blockFrame(), at, now, opts.ears);
+      return;
+    }
     if (beetleL) {
       paintBeetleBody(ctx, spec, beetleL, blockFrame(), at);
       return;
@@ -19792,7 +20491,7 @@ export function drawBeast(
   const headR = r * (opts.defId === 'chicken' ? 0.5 : 0.55);
   const paintHead = (): void => {
     if (spiderL) return; // the spider's face lives in its body painter
-    if (crabL || beetleL) return; // whole animal drawn by the body painter
+    if (crabL || giantCrabL || beetleL) return; // whole animal drawn by the body painter
     if (ramL) {
       const hl = spec.bodyLen * s;
       const hw2 = ramL.headW * s;
@@ -20606,7 +21305,7 @@ export function drawBeast(
   };
 
   const paintTail = (): void => {
-    if (spiderL || crabL || beetleL) return;
+    if (spiderL || crabL || giantCrabL || beetleL) return;
     if (turtleL) {
       // THE SIMULATED TAIL: the live game runs the verlet stub (a
       // heavy, low-carried BobtailSim) painted by drawTurtleTail.
@@ -21159,7 +21858,7 @@ export function drawBeast(
     // The turtle keeps its neck, but a strap on a telescoping neck
     // is a lie — the keeper rivets the tag to the front rim over the
     // neck's door instead, same brass, same read.
-    const shellBody = !!(crabL || beetleL || spiderL || turtleL);
+    const shellBody = !!(crabL || giantCrabL || beetleL || spiderL || turtleL);
     // The sheep has no neck to see — the fleece swallows it — so her
     // strap rides the wool line right behind the skull, short and
     // thin, or it reads as a plank across the cloud.
