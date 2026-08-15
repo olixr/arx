@@ -27,9 +27,10 @@ import { buildSaltmere } from './maps/saltmere.js';
 import { buildPinewatch } from './maps/pinewatch.js';
 import { buildHartfell } from './maps/hartfell.js';
 import { buildKingsdelf } from './maps/kingsdelf.js';
+import { buildEvenfall } from './maps/evenfall.js';
 import { buildUndercroft } from './maps/undercroft.js';
 import { buildLowhall } from './maps/lowhall.js';
-import { AMBERFORD_RECT, HARTFELL_RECT, KINGSDELF_RECT, SALTMERE_RECT, SILVERFALL_RECT } from './geography.js';
+import { AMBERFORD_RECT, EVENFALL_RECT, HARTFELL_RECT, KINGSDELF_RECT, SALTMERE_RECT, SILVERFALL_RECT } from './geography.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
 import { compileTemplate, templateHeight, templateWidth } from './structures/stamp.js';
 import { templateFromJson, templateToJson } from './structures/serialize.js';
@@ -2424,6 +2425,141 @@ test('kingsdelf: every door, stall and stone walks from the Unfinished Stone', (
     ['the Sump steps', 80, 70], ['the market round', 61, 65],
     ['the quay dock', 38, 88], ["Denna's shack", 51, 90],
     ['the water gate lane', 45, 89],
+  ] as const) {
+    assert.equal(seen[y * z.width + x], 1, `${what} is severed`);
+  }
+});
+
+test('evenfall: the fair city holds its flame, its stair, and no wall at all', () => {
+  const z = buildEvenfall();
+  assert.equal(z.id, 'evenfall');
+  assert.equal(z.width, EVENFALL_RECT.w);
+  assert.equal(z.height, EVENFALL_RECT.h);
+  assert.equal(z.origin.x, EVENFALL_RECT.x);
+  assert.equal(z.origin.y, EVENFALL_RECT.y);
+  assert.ok(z.elev, 'the terraces carry elevation');
+  const at = (x: number, y: number): Tile => z.ground[y * z.width + x] as Tile;
+  const n = (t: Tile): number => z.ground.reduce((c, g) => (g === t ? c + 1 : c), 0);
+  // THE WALL-LESS LAW: the wood is the wall. Not one garrison tile.
+  assert.equal(n(Tile.WallGarrison), 0, 'Evenfall must never build a curtain');
+  assert.equal(n(Tile.GateGarrison), 0, 'the Evengate is people, not portcullis');
+  // The Moonstair's dry twin: three seven-ramp flights.
+  assert.equal(n(Tile.Ramp), 21, 'the three flights of the ascent');
+  assert.ok(n(Tile.Cliff) >= 400, 'the terrace faces are the composition');
+  // The waters: spring, twin races, the mere, the reed sink.
+  assert.ok(n(Tile.Water) >= 600, 'the races and the mere shrank');
+  assert.ok(n(Tile.WaterDeep) >= 120, "the mere's dark heart");
+  assert.ok(n(Tile.WaterShallow) >= 400, 'the wading rims and the meander');
+  assert.equal(n(Tile.SalmonRun), 1);
+  assert.equal(n(Tile.GlimmerShoal), 1, 'the deep-water shoal the band earns');
+  assert.equal(n(Tile.FishingSpot), 2);
+  // THE FAIR HOUSE FURNISHED, end to end: the city uses the whole
+  // kit — every one of the twenty-five props stands somewhere.
+  assert.equal(n(Tile.Moonwell), 1);
+  assert.equal(n(Tile.Everflame), 1, 'the flame that does not burn');
+  assert.equal(n(Tile.MithrilAnvil), 1);
+  assert.equal(n(Tile.ArcaneBeacon), 17, 'the beacons take the street-light watch');
+  assert.equal(n(Tile.ElvenStatue), 4);
+  assert.equal(n(Tile.ElvenFountain), 2);
+  assert.equal(n(Tile.ElvenWaystone), 2, 'the gate pair');
+  assert.equal(n(Tile.WardArch), 1, "the grove's warded arch");
+  assert.equal(n(Tile.RunePillar), 4);
+  assert.equal(n(Tile.Runestone), 3);
+  assert.equal(n(Tile.CrystalCluster), 1);
+  assert.equal(n(Tile.ArcaneTome), 1);
+  assert.equal(n(Tile.ElvenHarp), 2);
+  assert.equal(n(Tile.ElvenChimes), 3);
+  assert.equal(n(Tile.ElvenLoom), 2, 'the silk lane');
+  assert.equal(n(Tile.ElvenBanner), 4);
+  assert.ok(n(Tile.ElvenBench) >= 12, 'the city sits where the views are');
+  assert.ok(n(Tile.ElvenPlanter) >= 10, 'green stitched to stone');
+  // The trades: the third table, the small fine bank, the one vein.
+  assert.equal(n(Tile.EnchantingTable), 1, 'the third table in the Dawnlands');
+  assert.equal(n(Tile.Vault), 2, 'the Keeping keeps little, perfectly');
+  assert.equal(n(Tile.BankChest), 1);
+  assert.equal(n(Tile.RockMithril), 1, "the old folk's own vein");
+  assert.equal(n(Tile.CarvingBench), 2, "the bowyer's benches");
+  // The gate mouth meets the carved trail tile-exact: the Evenway
+  // lands at local (159,56); the arch pair frames the way.
+  for (const y of [55, 56, 57]) {
+    assert.equal(at(159, y), Tile.Path, `the Evenway mouth must reach the east edge at ${y}`);
+  }
+  assert.equal(at(157, 54), Tile.ArchStone, 'the north arch');
+  assert.equal(at(157, 58), Tile.ArchStone, 'the south arch');
+  // The wicket mouth meets the Heartwood Walk at local (16,0).
+  for (const x of [15, 16, 17]) {
+    assert.equal(at(x, 0), Tile.Dirt, `the Heartwood Walk must reach the north edge at ${x}`);
+  }
+  // The spawn is the gate court: the west's hearth.
+  assert.deepEqual(z.spawn, { x: EVENFALL_RECT.x + 146.5, y: EVENFALL_RECT.y + 56.5 });
+  // The map pass places no people (the Amberford law: the people pass
+  // casts them) and no portals — there is NO Low Hall door here, by
+  // canon, forever.
+  assert.equal((z.actorSpawns ?? []).length, 0);
+  assert.equal((z.portals ?? []).length, 0, 'the Company has no door in Evenfall');
+  assert.ok((z.signs ?? []).length >= 8, 'the city lost its boards');
+  // The elevation layer round-trips (the Silverfall law).
+  const json = zoneToJson(z);
+  assert.ok(json.elev !== undefined, 'the terraces must serialize');
+  assert.deepEqual(zoneToJson(zoneFromJson(json)), json);
+});
+
+test('evenfall: every door, court and stone walks from the gate', () => {
+  const z = buildEvenfall();
+  const lvl = (i: number): number => z.elev![i] ?? 0;
+  const walkable = (x: number, y: number): boolean =>
+    x >= 0 && y >= 0 && x < z.width && y < z.height &&
+    !TILE_DEFS[z.ground[y * z.width + x]! as Tile].solid;
+  const seen = new Uint8Array(z.width * z.height);
+  const start = 56 * z.width + 146; // the gate court under the arch
+  const queue: number[] = [start];
+  seen[start] = 1;
+  while (queue.length > 0) {
+    const i = queue.pop()!;
+    const x = i % z.width;
+    const y = Math.floor(i / z.width);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (!walkable(nx, ny)) continue;
+      const ni = ny * z.width + nx;
+      if (seen[ni]) continue;
+      if (lvl(ni) !== lvl(i) && z.ground[i] !== Tile.Ramp && z.ground[ni] !== Tile.Ramp) continue;
+      seen[ni] = 1;
+      queue.push(ni);
+    }
+  }
+  const unreachable: string[] = [];
+  for (let i = 0; i < z.ground.length; i++) {
+    const t = z.ground[i];
+    if (
+      (t === Tile.DoorwayStone || t === Tile.DoorwayWood ||
+        t === Tile.DoorwayStoneWide || t === Tile.DoorwayWoodWide) && !seen[i]
+    ) {
+      unreachable.push(`(${i % z.width},${Math.floor(i / z.width)})`);
+    }
+  }
+  assert.deepEqual(unreachable, [], `doorways cut off from the gate: ${unreachable.join(' ')}`);
+  for (const [what, x, y] of [
+    ['the gate arch mouth', 158, 56], ['the avenue', 120, 56],
+    ['the Outward House bar', 142, 42], ['the guest wing', 150, 45],
+    ["Corwen's pitch", 143, 53], ['the sentinel arbor', 150, 66],
+    ['the fountain court', 106, 71], ['the mere shore', 135, 78],
+    ['the stair court', 82, 97], ['the south span', 86, 103],
+    ['the reed meadow', 86, 107], ['the cliff-foot walk', 97, 80],
+    ['the Gallery walk', 83, 54], ["the Bowyer's floor", 81, 25],
+    ['the Silk Hall looms', 79, 40], ['the Mithril Forge', 90, 43],
+    ['the Moonglass benches', 78, 64], ['the guest house', 66, 21],
+    ['the orchard bench walk', 57, 90], ['the wicket walk', 16, 5],
+    ['the wicket mouth', 16, 1], ['the Moonwell court', 56, 48],
+    ['the Keeping lobby', 53, 32], ['the Songhouse floor', 65, 31],
+    ["the Inscriber's table", 64, 62], ['the Stillroom', 52, 64],
+    ["the Warden's Roost", 28, 61], ['the hanging gardens', 30, 72],
+    ['the mithril vein walk', 13, 66], ['the west strip north', 12, 28],
+    ['the hall forecourt', 31, 52], ['the feast floor', 31, 45],
+    ['the Everflame step', 31, 42], ['the solar', 38, 44],
+    ['the spring walk', 31, 35], ["the King's Grove", 45, 47],
+    ['the ward arch step', 46, 52],
   ] as const) {
     assert.equal(seen[y * z.width + x], 1, `${what} is severed`);
   }

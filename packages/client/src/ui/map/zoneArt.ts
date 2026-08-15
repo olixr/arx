@@ -5,6 +5,7 @@ import {
   buildPinewatch,
   buildHartfell,
   buildKingsdelf,
+  buildEvenfall,
   buildSaltmere,
   buildSilverfall,
   buildUndercroft,
@@ -74,6 +75,7 @@ export function authoredZoneArt(): ZoneArt[] {
       buildPinewatch(),
       buildHartfell(),
       buildKingsdelf(),
+      buildEvenfall(),
       buildUndercroft(),
       buildLowhall(),
     ].map(bakeZone);
