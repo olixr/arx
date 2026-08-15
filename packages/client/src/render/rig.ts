@@ -16823,7 +16823,7 @@ export const TURTLE_LOOK: TurtleLook = {
   eye: '#d29b3f',
   bodyW: 0.44,
   shellH: 0.3,
-  spikeH: 0.2,
+  spikeH: 0.22,
   headW: 0.27,
   headH: 0.19,
   headRise: 0.22,
@@ -16843,7 +16843,7 @@ export const COLOSSUS_LOOK: TurtleLook = {
   moss: '#5d7442',
   bodyW: 0.62,
   shellH: 0.6,
-  spikeH: 0.32,
+  spikeH: 0.34,
   headW: 0.38,
   headH: 0.26,
   headRise: 0.34,
@@ -16852,72 +16852,26 @@ export const COLOSSUS_LOOK: TurtleLook = {
 };
 
 /**
- * THE THORN LAYOUTS — the carapace is GROWN horn, not appliqué: a
- * vertebral saw plus two costal ranks a side tile the whole dome,
- * staggered so no rank shadows another's gap. One row per thorn:
- * [X, Y, baseR, heightK, rank] in body fractions (X·bodyLen,
- * Y·bodyW, baseR·bodyLen, heightK·spikeH; rank 0 = vertebral,
- * 1 = inner costal, 2 = outer costal — the rank picks the outward
- * cant, so the crown bristles harder toward its rim). Y = 0 rides
- * the crown silhouette (THE RIDGE RIDES THE CROWN). Authored,
- * never generated: each thorn set the way a smith sets a stud.
+ * THE SPIKE IS THE PLATE — the carapace is ONE lattice. A shared
+ * vertex grid tiles the dome into scute plates, and EVERY plate
+ * grows its own horn whose base ring IS the plate's corners (inset
+ * a hair so the seam still reads between neighbors). Base-of-spike
+ * matches base-of-shell at every band by construction — there is
+ * no separate thorn layout left to drift against the mesh at the
+ * quarters. The authored hand lives in the PROFILES: a per-column
+ * height rank (the crown column is the vertebral saw, the flanks
+ * step down toward the rim) and a per-band taper (tallest
+ * amidships, dropping to bow and stern), per species.
  */
-const SNAPPER_THORNS: ReadonlyArray<[number, number, number, number, number]> = [
-  // The vertebral saw — five blades, tallest amidships, raked hard.
-  [0.58, 0, 0.1, 0.68, 0],
-  [0.26, 0, 0.12, 0.94, 0],
-  [-0.07, 0, 0.13, 1, 0],
-  [-0.4, 0, 0.12, 0.88, 0],
-  [-0.71, 0, 0.09, 0.62, 0],
-  // Inner costal rank — set into the spine's gaps, port then starboard.
-  [0.43, -0.37, 0.11, 0.72, 1],
-  [0.09, -0.41, 0.12, 0.8, 1],
-  [-0.25, -0.41, 0.12, 0.76, 1],
-  [-0.57, -0.36, 0.1, 0.62, 1],
-  [0.43, 0.37, 0.11, 0.72, 1],
-  [0.09, 0.41, 0.12, 0.8, 1],
-  [-0.25, 0.41, 0.12, 0.76, 1],
-  [-0.57, 0.36, 0.1, 0.62, 1],
-  // Outer costal rank — the flank bristle, leaning hard to sea.
-  [0.55, -0.68, 0.09, 0.52, 2],
-  [0.24, -0.74, 0.1, 0.58, 2],
-  [-0.09, -0.75, 0.1, 0.56, 2],
-  [-0.42, -0.71, 0.09, 0.5, 2],
-  [-0.7, -0.6, 0.08, 0.42, 2],
-  [0.55, 0.68, 0.09, 0.52, 2],
-  [0.24, 0.74, 0.1, 0.58, 2],
-  [-0.09, 0.75, 0.1, 0.56, 2],
-  [-0.42, 0.71, 0.09, 0.5, 2],
-  [-0.7, 0.6, 0.08, 0.42, 2],
-];
-const COLOSSUS_THORNS: ReadonlyArray<[number, number, number, number, number]> = [
-  // Five vertebral peaks — the mountain ridge line, blunt and broad.
-  [0.6, 0, 0.11, 0.72, 0],
-  [0.31, 0, 0.13, 0.92, 0],
-  [-0.01, 0, 0.14, 1, 0],
-  [-0.33, 0, 0.13, 0.9, 0],
-  [-0.63, 0, 0.11, 0.66, 0],
-  // Inner terraces — near-touching bases, the studded tor.
-  [0.46, -0.34, 0.12, 0.7, 1],
-  [0.15, -0.38, 0.13, 0.78, 1],
-  [-0.17, -0.38, 0.13, 0.76, 1],
-  [-0.49, -0.34, 0.12, 0.64, 1],
-  [0.46, 0.34, 0.12, 0.7, 1],
-  [0.15, 0.38, 0.13, 0.78, 1],
-  [-0.17, 0.38, 0.13, 0.76, 1],
-  [-0.49, 0.34, 0.12, 0.64, 1],
-  // Outer terraces — the stepped skirts, leaning out over the rim.
-  [0.52, -0.62, 0.1, 0.5, 2],
-  [0.22, -0.68, 0.11, 0.56, 2],
-  [-0.1, -0.69, 0.11, 0.54, 2],
-  [-0.42, -0.65, 0.1, 0.48, 2],
-  [-0.68, -0.52, 0.09, 0.4, 2],
-  [0.52, 0.62, 0.1, 0.5, 2],
-  [0.22, 0.68, 0.11, 0.56, 2],
-  [-0.1, 0.69, 0.11, 0.54, 2],
-  [-0.42, 0.65, 0.1, 0.48, 2],
-  [-0.68, 0.52, 0.09, 0.4, 2],
-];
+const SNAPPER_BANDS: readonly number[] = [-0.9, -0.56, -0.2, 0.16, 0.54, 0.97];
+const SNAPPER_BAND_K: readonly number[] = [0.6, 0.9, 1, 0.85, 0.55];
+const COLOSSUS_BANDS: readonly number[] = [-0.86, -0.56, -0.26, 0.06, 0.38, 0.68, 0.95];
+const COLOSSUS_BAND_K: readonly number[] = [0.5, 0.82, 1, 0.95, 0.75, 0.5];
+/** Column edges as fractions of the hull's local half-width. */
+const MESH_COLS: readonly number[] = [-1, -0.6, -0.22, 0.22, 0.6, 1];
+/** Per-column height rank and cant class (crown, inner, outer). */
+const MESH_COL_K: readonly number[] = [0.5, 0.78, 1, 0.78, 0.5];
+const MESH_COL_RANK: readonly number[] = [2, 1, 0, 1, 2];
 
 export function paintTurtleBody(
   ctx: CanvasRenderingContext2D,
@@ -17084,6 +17038,56 @@ export function paintTurtleBody(
   };
   for (const th of skirt) if (!th.near) paintSkirtThorn(th);
 
+  // THE SPIKE IS THE PLATE: one shared lattice serves plate and horn
+  // alike. The vertex grid lives in the BODY frame on the dome's
+  // true surface — jitter is seeded ON the vertex so neighboring
+  // plates always meet edge-to-edge, column widths ride the hull's
+  // own foot polygon band by band, and the center column remaps onto
+  // the crown line (the same slide the old vertebral saw rode) so
+  // the ridge stays dead-center face-on and on the skyline at
+  // profile. Every projection — plate fill, horn base, horn tip —
+  // derives from this one grid, so the mail agrees with itself at
+  // all eight bands by construction.
+  const xs = look.ancient ? COLOSSUS_BANDS : SNAPPER_BANDS;
+  const bandK = look.ancient ? COLOSSUS_BAND_K : SNAPPER_BAND_K;
+  const ridgeY = -py * hw * 0.66;
+  const port = foot.filter((p) => p[1] < 0).sort((p1, p2) => p1[0] - p2[0]);
+  const wAt = (X: number): number => {
+    if (X <= port[0]![0]) return -port[0]![1];
+    for (let i2 = 1; i2 < port.length; i2++) {
+      const p1 = port[i2 - 1]!;
+      const p2 = port[i2]!;
+      if (X <= p2[0]) {
+        const t2 = (X - p1[0]) / (p2[0] - p1[0] || 1e-4);
+        return -(p1[1] + (p2[1] - p1[1]) * t2);
+      }
+    }
+    return -port[port.length - 1]![1];
+  };
+  // One projector for the whole lattice (P3 plus the top face's roll
+  // term, so plates sit exactly on the painted vault).
+  const pv = (X: number, Y: number, z: number): { x: number; y: number } => ({
+    x: bx + (fx * X + px * Y) * s,
+    y: gy + (fy * X + py * Y) * ys * s - z * tk * s - lift + Y * s * f.roll * 0.4,
+  });
+  type MeshV = { X: number; Y: number; z: number; x: number; y: number };
+  const grid: MeshV[][] = [];
+  for (let i2 = 0; i2 < xs.length; i2++) {
+    const row: MeshV[] = [];
+    for (let j2 = 0; j2 < MESH_COLS.length; j2++) {
+      const jb2 = (f.seed ^ ((i2 * 7 + j2) * 0x45d9f3b)) >>> 0;
+      const X = (xs[i2]! + (((jb2 >>> 3) & 7) - 3.5) * 0.008) * hl;
+      const wX = wAt(X) * 0.985;
+      const edge = Math.abs(MESH_COLS[j2]!) > 0.9;
+      const jy2 = (((jb2 >>> 7) & 7) - 3.5) * (edge ? 0.004 : 0.012);
+      const cfr = MESH_COLS[j2]! + jy2;
+      const Yv = cfr * wX + ridgeY * (1 - cfr * cfr);
+      const z2 = topH(X) * (1 - 0.3 * Math.pow((cfr * wX) / hw, 2));
+      row.push({ X, Y: Yv, z: z2, ...pv(X, Yv, z2) });
+    }
+    grid.push(row);
+  }
+
   paintBlockBody(
     ctx,
     f,
@@ -17092,71 +17096,27 @@ export function paintTurtleBody(
     () => look.rimBot,
     shell,
     (gx, gyy, lift2) => {
-      // THE MAIL HAS NO GAPS: the vault is TILED with a connected
-      // scute mesh — ONE shared vertex grid (jitter seeded on the
-      // VERTEX, so neighboring plates always meet edge-to-edge and
-      // never open a sliver of bare dome), five plate columns wide
-      // following the hull's own footprint width band by band, the
-      // center column remapped onto the crown line so the mesh and
-      // the vertebral saw agree at every band. Painted inside the
-      // hull clip (the crab's fixture law): the mesh can no more
-      // escape the silhouette than the shell can — full at the
-      // quarters and the profiles, not just N/S.
-      const port = foot.filter((p) => p[1] < 0).sort((p1, p2) => p1[0] - p2[0]);
-      const wAt = (X: number): number => {
-        if (X <= port[0]![0]) return -port[0]![1];
-        for (let i2 = 1; i2 < port.length; i2++) {
-          const p1 = port[i2 - 1]!;
-          const p2 = port[i2]!;
-          if (X <= p2[0]) {
-            const t2 = (X - p1[0]) / (p2[0] - p1[0] || 1e-4);
-            return -(p1[1] + (p2[1] - p1[1]) * t2);
-          }
-        }
-        return -port[port.length - 1]![1];
-      };
-      const xs = look.ancient
-        ? [-0.86, -0.56, -0.26, 0.06, 0.38, 0.68, 0.95]
-        : [-0.9, -0.56, -0.2, 0.16, 0.54, 0.97];
-      const cf = [-1, -0.6, -0.22, 0.22, 0.6, 1];
-      const ridgeY2 = -py * hw * 0.66;
-      const vxg: number[][] = [];
-      const vyg: number[][] = [];
-      for (let i2 = 0; i2 < xs.length; i2++) {
-        const rowX: number[] = [];
-        const rowY: number[] = [];
-        for (let j2 = 0; j2 < cf.length; j2++) {
-          const jb2 = (f.seed ^ ((i2 * 7 + j2) * 0x45d9f3b)) >>> 0;
-          const X = (xs[i2]! + (((jb2 >>> 3) & 7) - 3.5) * 0.008) * hl;
-          const wX = wAt(X) * 0.985;
-          const edge = Math.abs(cf[j2]!) > 0.9;
-          const jy2 = (((jb2 >>> 7) & 7) - 3.5) * (edge ? 0.004 : 0.012);
-          const cfr = cf[j2]! + jy2;
-          // The crown remap: dead-center face-on, the skyline at
-          // profile — the SAME slide the vertebral thorns ride.
-          const Yv = cfr * wX + ridgeY2 * (1 - cfr * cfr);
-          const z2 = topH(X) * (1 - 0.3 * Math.pow((cfr * wX) / hw, 2));
-          rowX.push(gx(X, Yv));
-          rowY.push(gyy(X, Yv) - z2 * tk * s - lift2 + Yv * s * f.roll * 0.4);
-        }
-        vxg.push(rowX);
-        vyg.push(rowY);
-      }
+      // THE MAIL HAS NO GAPS: the SHARED lattice paints its plates
+      // here, inside the hull clip (the crab's fixture law) — full
+      // at the quarters and the profiles, not just N/S. The horns
+      // grown from these same cells paint after, unclipped, so
+      // their tips break the silhouette while their bases can
+      // never leave it.
       ctx.lineWidth = Math.max(1, s * 0.014);
-      for (let i2 = 0; i2 < xs.length - 1; i2++) {
-        for (let j2 = 0; j2 < cf.length - 1; j2++) {
+      for (let i2 = 0; i2 < grid.length - 1; i2++) {
+        for (let j2 = 0; j2 < MESH_COLS.length - 1; j2++) {
           const jb2 = (f.seed ^ ((i2 * 5 + j2) * 0x9e3779b9)) >>> 0;
           // Plates sit a step brighter than the vault (the law),
           // brightest on the crown column — the global top-face
           // wash and flank shade re-model the dome OVER the mesh.
-          const mid2 = Math.abs(cf[j2]! + cf[j2 + 1]!) / 2;
+          const mid2 = Math.abs(MESH_COLS[j2]! + MESH_COLS[j2 + 1]!) / 2;
           const step = mid2 < 0.15 ? 7 : mid2 < 0.5 ? 4 : 2;
           ctx.fillStyle = shade(shell, step + (((jb2 >>> 5) & 7) - 3.5));
           ctx.beginPath();
-          ctx.moveTo(vxg[i2]![j2]!, vyg[i2]![j2]!);
-          ctx.lineTo(vxg[i2 + 1]![j2]!, vyg[i2 + 1]![j2]!);
-          ctx.lineTo(vxg[i2 + 1]![j2 + 1]!, vyg[i2 + 1]![j2 + 1]!);
-          ctx.lineTo(vxg[i2]![j2 + 1]!, vyg[i2]![j2 + 1]!);
+          ctx.moveTo(grid[i2]![j2]!.x, grid[i2]![j2]!.y);
+          ctx.lineTo(grid[i2 + 1]![j2]!.x, grid[i2 + 1]![j2]!.y);
+          ctx.lineTo(grid[i2 + 1]![j2 + 1]!.x, grid[i2 + 1]![j2 + 1]!.y);
+          ctx.lineTo(grid[i2]![j2 + 1]!.x, grid[i2]![j2 + 1]!.y);
           ctx.closePath();
           ctx.fill();
           // The seams ARE the mesh read — quiet ink, never a grid.
@@ -17185,59 +17145,55 @@ export function paintTurtleBody(
   // The near half of the hem rides over the painted flank.
   for (const th of skirt) if (th.near) paintSkirtThorn(th);
 
-  // ---- THE THORNED MAIL: the whole dome is grown horn — every
-  // thorn a four-facet curved horn seated on the vault's true curve,
-  // raked aft and canted outward by its rank, painted far-to-near so
-  // each near thorn's raked tip overlaps the base behind it (the
-  // imbricated read of grown armor, never a scatter of decals). The
-  // vertebral saw keeps THE RIDGE RIDES THE CROWN: dead-center
-  // face-on, the blade skyline at profile.
-  const rows = look.ancient ? COLOSSUS_THORNS : SNAPPER_THORNS;
-  // The species wears its own horn (TWO BODIES, TWO SPECIES): the
-  // snapper's blades rake hard and curve like sabres; the mountain's
-  // studs rise blunt and broad on near-touching bases.
-  // shadeAmp: the mountain's blunt studs need HARDER facet light —
-  // shallow cones at this camera pitch flatten to lozenges unless
-  // the light carves them (the colossus pass-one failure).
+  // ---- THE HORNS OF THE LATTICE: every plate grows its spike —
+  // the base ring IS the plate's own corners (inset a hair so the
+  // seam still reads between neighbors), the apex rakes aft and
+  // cants outward by the plate's column, and the height follows the
+  // authored column × band profiles (the crown column is the
+  // vertebral saw). Painted far-to-near so each near tip overlaps
+  // the base behind it — the imbricated read of grown armor, with
+  // base-of-spike matching base-of-shell at every band by
+  // construction. The species wears its own horn (TWO BODIES, TWO
+  // SPECIES): the snapper's blades rake hard and curve like sabres;
+  // the mountain's studs rise blunt and broad. shadeAmp: the
+  // mountain's blunt studs need HARDER facet light — shallow cones
+  // at this camera pitch flatten to lozenges unless the light
+  // carves them (the colossus pass-one failure).
   const horn = look.ancient
-    ? { rake: 0.42, cant: [0, 0.62, 1.05], curve: 0.14, baseK: 1.15, shadeAmp: 36 }
-    : { rake: 0.62, cant: [0, 0.4, 0.75], curve: 0.3, baseK: 1, shadeAmp: 26 };
-  const ridgeY = -py * hw * 0.66;
-  const thorns = rows
-    .map(([txx, tyy, rk, hk2, rank], idx) => {
-      // Seeded smith's-hand jitter: no two thorns the same, no two
+    ? { rake: 0.42, cant: [0, 0.62, 1.05], curve: 0.14, shadeAmp: 36 }
+    : { rake: 0.62, cant: [0, 0.4, 0.75], curve: 0.3, shadeAmp: 26 };
+  const thorns = [] as Array<{
+    T: { x: number; y: number };
+    ring: Array<{ x: number; y: number }>;
+    K: { x: number; y: number };
+    R: number;
+    rank: number;
+    sortY: number;
+  }>;
+  for (let ib = 0; ib < grid.length - 1; ib++) {
+    for (let jc = 0; jc < MESH_COLS.length - 1; jc++) {
+      const vs = [grid[ib]![jc]!, grid[ib + 1]![jc]!, grid[ib + 1]![jc + 1]!, grid[ib]![jc + 1]!];
+      // Seeded smith's-hand jitter: no two horns the same, no two
       // shells the same mail — and the same shell forever.
-      const jb = (f.seed ^ (idx * 0x9e3779b9)) >>> 0;
-      const js = 0.9 + ((jb >>> 4) & 15) * 0.0125;
-      const jx = (((jb >>> 8) & 7) - 3.5) * 0.012;
-      const jh = 0.9 + ((jb >>> 12) & 15) * 0.013;
-      const X = (txx + jx) * hl;
-      const Y = tyy === 0 ? ridgeY : tyy * hw;
-      const zB = tyy === 0 ? topH(X) : surf(X, Y);
-      const h = look.spikeH * hk2 * jh;
-      const R = rk * hl * js * horn.baseK;
-      // The lean lives in the BODY frame — aft with the rake,
-      // outward with the rank — so every band inherits the true 3D
-      // cant instead of a per-band cheat.
-      const latSgn = tyy > 0.01 ? 1 : tyy < -0.01 ? -1 : 0;
-      const dX = -horn.rake * h;
-      const dY = latSgn * horn.cant[rank]! * h;
-      const dl = Math.hypot(dX, dY) || 1e-4;
-      const ux = dX / dl;
-      const uy = dY / dl;
-      const T = P3(X + dX, Y + dY, zB + h);
-      // The base ring: nose into the lean's face, heel tucked under
-      // the overhang, shoulders square across it.
-      const ring = [
-        P3(X - uy * R, Y + ux * R, zB * 0.93),
-        P3(X - ux * R * 0.9, Y - uy * R * 0.9, zB * 0.9),
-        P3(X + uy * R, Y - ux * R, zB * 0.93),
-        P3(X + ux * R * 0.62, Y + uy * R * 0.62, zB * 0.96),
-      ];
-      const K = P3(X, Y, zB * 0.93);
-      return { T, ring, K, R, rank, sortY: P3(X, Y, 0).y };
-    })
-    .sort((q1, q2) => q1.sortY - q2.sortY);
+      const jb = (f.seed ^ ((ib * 9 + jc) * 0x2545f491)) >>> 0;
+      const jh = 0.88 + ((jb >>> 12) & 15) * 0.016;
+      const h = look.spikeH * MESH_COL_K[jc]! * bandK[ib]! * jh;
+      const Xc = (vs[0]!.X + vs[1]!.X + vs[2]!.X + vs[3]!.X) / 4;
+      const Yc = (vs[0]!.Y + vs[1]!.Y + vs[2]!.Y + vs[3]!.Y) / 4;
+      const zc = (vs[0]!.z + vs[1]!.z + vs[2]!.z + vs[3]!.z) / 4;
+      const rank = MESH_COL_RANK[jc]!;
+      const latSgn = jc < 2 ? -1 : jc > 2 ? 1 : 0;
+      const T = pv(Xc - horn.rake * h, Yc + latSgn * horn.cant[rank]! * h, zc + h);
+      const K = pv(Xc, Yc, zc);
+      const ring = vs.map((v) => ({
+        x: v.x + (K.x - v.x) * 0.14,
+        y: v.y + (K.y - v.y) * 0.14,
+      }));
+      const R = Math.hypot(ring[0]!.x - ring[2]!.x, ring[0]!.y - ring[2]!.y) / (2 * s);
+      thorns.push({ T, ring, K, R, rank, sortY: pv(Xc, Yc, 0).y });
+    }
+  }
+  thorns.sort((q1, q2) => q1.sortY - q2.sortY);
   const curveK = horn.curve;
   for (const th of thorns) {
     const { T, ring, K } = th;
@@ -17255,18 +17211,8 @@ export function paintTurtleBody(
       }
       continue;
     }
-    // The socket: a dark crevice the horn grows OUT of — every thorn
-    // rooted in the shell, never pasted on it. The sockets between
-    // packed bases are what read as the carapace's seams.
-    ctx.fillStyle = shade(shell, -16);
-    ctx.globalAlpha = 0.5;
-    ctx.beginPath();
-    ctx.moveTo(K.x + (ring[0]!.x - K.x) * 1.18, K.y + (ring[0]!.y - K.y) * 1.18);
-    for (let e = 1; e < 4; e++)
-      ctx.lineTo(K.x + (ring[e]!.x - K.x) * 1.18, K.y + (ring[e]!.y - K.y) * 1.18);
-    ctx.closePath();
-    ctx.fill();
-    ctx.globalAlpha = 1;
+    // No separate socket anymore — the horn's socket IS its plate;
+    // the plate margin left by the base inset does the rooting.
     // Four facets, edges bowed to the tip (the sabre curve —
     // straight triangles read as stamped tin), lit by TRUE screen
     // orientation: sky-facing horn catches the light, the undercut
@@ -17350,7 +17296,12 @@ export function paintTurtleBody(
       ctx.strokeStyle = shade(base, 26);
       ctx.lineWidth = Math.max(1, s * 0.014);
       ctx.globalAlpha = Math.min(1, Math.abs(fx) * 1.3);
-      const nose = ring[1]!;
+      // The keel springs from the bow edge's midpoint — ring[1] and
+      // ring[2] are the plate's bow-ward corners.
+      const nose = {
+        x: (ring[1]!.x + ring[2]!.x) / 2,
+        y: (ring[1]!.y + ring[2]!.y) / 2,
+      };
       const cn = ctrl(nose);
       ctx.beginPath();
       ctx.moveTo(nose.x, nose.y);
@@ -17372,7 +17323,7 @@ export function paintTurtleBody(
       const mx3 = th.K.x + (th.T.x - th.K.x) * 0.35;
       const my3 = th.K.y + (th.T.y - th.K.y) * 0.35;
       ctx.beginPath();
-      facetBlob(ctx, mx3, my3, th.R * s * 0.85, f.seed ^ (idx * 131), 6, 0.7, 0.9);
+      facetBlob(ctx, mx3, my3, th.R * s * 0.7, f.seed ^ (idx * 131), 6, 0.7, 0.9);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
