@@ -1,17 +1,16 @@
 // TEMPORARY rig verification harness (checked-in tooling): THE HOBGOBLIN
 // SHEET — the legion audit (docs/hobgoblin-plan.md, THE LEGION
 // DIALECT). All five bodies across the eight facing bands at idle,
-// walk, and the STRIKE loop (the war-shout + ear pin-back + queue
-// snap beat — shoot the strike rows animated, never just settled),
+// walk, and the STRIKE loop (the war-shout + ear pin-back beat —
+// shoot the strike rows animated, never just settled),
 // plus the hurt-flash silhouette rows, a skin-cluster seed-spread row
 // (one legion, many faces — and ONE banner: the crimson must not
 // vary), and BODY-RULER cells standing the player rig AND a goblin
 // beside the legionary and the warlord — the master-race claim proven
 // on screen, and the anti-twin proof that a hobgoblin shares nothing
 // with the rabble it commands. Every figure owns a live biped
-// LegSolver AND two live EarSims (the swept blades and the war
-// queue) — the sheet plays the same physics the game does: walk rows
-// stream the braid, strike rows pin the ears, stops swing it home.
+// LegSolver AND a live EarSim — the sheet plays the same physics the
+// game does: strike rows pin the swept blades, stops settle them.
 // Levers:
 //   ?s=px       cell scale (px per tile)
 //   ?rows=a-b   draw only sheet rows a..b (screenshot banding)
@@ -161,7 +160,6 @@ interface Fig {
   knee?: number[];
   depth?: RigPose['depthMemory'];
   ears?: EarSim;
-  queue?: EarSim;
   manLegs?: LegSolver;
   manKnee?: number[];
   manDepth?: RigPose['depthMemory'];
@@ -172,9 +170,9 @@ const row = (label: string, defId: string, mode: Mode, seed = 5, bare = false): 
   for (const [lbl, dir] of DIRS) figs.push({ label: `${label} ${lbl}`, defId, dir, mode, seed, bare });
 };
 
-// Sheet rows, top to bottom — the strike rows are where the shout,
-// the pin-back, and the queue snap read; hurt rows are the
-// silhouette truth; the bare rows uncover the war mask.
+// Sheet rows, top to bottom — the strike rows are where the shout
+// and the pin-back read; hurt rows are the silhouette truth; the
+// bare rows uncover the war mask.
 row('legion idle', 'hobgoblin', 'idle');
 row('legion walk', 'hobgoblin', 'walk');
 row('legion strike', 'hobgoblin', 'strike');
@@ -241,9 +239,9 @@ const DET_FRAMES = Math.max(1, parseInt(q.get('detn') ?? '240', 10) || 240);
 let frameIdx = 0;
 let lastNow = 0;
 
-/** One legion body through drawHumanoid with live legs, live swept
- *  blades, and the live war queue. Goblin reference cells run the
- *  greenskin dialect on the same ruler. */
+/** One legion body through drawHumanoid with live legs and live
+ *  swept blades. Goblin reference cells run the greenskin dialect
+ *  on the same ruler. */
 function drawHob(f: Fig, x: number, y: number, now: number, dt: number): void {
   const size = SIZE[f.defId] ?? 1.02;
   const gob = f.defId.startsWith('goblin');
@@ -254,7 +252,6 @@ function drawHob(f: Fig, x: number, y: number, now: number, dt: number): void {
     f.knee = [0, 0];
     f.depth = { mainBehind: false };
     f.ears = new EarSim(f.seed);
-    f.queue = new EarSim(f.seed + 31);
     f.wx = 0;
     f.wy = 0;
   }
@@ -318,7 +315,6 @@ function drawHob(f: Fig, x: number, y: number, now: number, dt: number): void {
     goblin: gb,
     hobgoblin: look ?? undefined,
     earSim: f.ears,
-    queueSim: gob ? undefined : f.queue,
   });
 }
 

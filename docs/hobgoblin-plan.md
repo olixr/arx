@@ -30,14 +30,13 @@ working untouched.
   verdict), officer's trim ring, scar notch. The snarl PINS them
   flat along the skull through the sim (spread and rise both drop
   with pin) — fair warning, by drill.
-- **THE WAR QUEUE** — the braid through iron rings off the occiput:
-  a SECOND EarSim on its own renderer slot (`hobQueue`; a legion body
-  runs ears and queue at once and no lane evicts another's
-  appendage). Both chains root near-superposed (azimuth 3.02) = one
-  rope at every band by projection; rest direction back-and-DOWN
-  (hair hangs); the strike beat kicks reach and rise (the snap); rank
-  grows it (warlord 1.3, juggernaut cropped 0.8 — a full braid slabs
-  on the heaviest frame). Plait chevrons + rings + loose tuft.
+- **THE RANKED CROWN** — hair is a uniform matter and every rank
+  wears its own: soldier's crop under cap or bare crown, the
+  warcaster's bound top-knot (a painted STATION on the rear crown —
+  it walks the turn like any fixture), the officers' helms as their
+  crowns. (Round two: the first build hung one simulated braid on
+  every rank — REMOVED WHOLE on the user's verdict: a shared
+  appendage homogenizes exactly where variants must argue.)
 - **THE IRON HABIT** — the legion wears its wars: banded lapped
   cuirass (alternating values or it slabs), gorget, shoulder caps,
   riveted girdle, studded pteruges skirt (ALWAYS painted — the
@@ -100,10 +99,27 @@ fair). Warcaster resist burn / weak chill (forge-raised).
 HOB_SIZE {1.02/1.0/1.04/1.28/1.62} (+ gameRender MOB_SIZE sync),
 HOBGOBLIN_EQUIP (weapons/offhands only — NO head slot ever),
 startsWith('hobgoblin') gates (npcItem + corpse + gameRender; safe —
-nothing matches 'goblin' prefixes), olSig `H<seed&0xff>`, anim slots
-ears + hobQueue with restless→fullDyn, corpse-coat law + iron-torso
-corpse + bespoke profile corpse head (spilled queue with its rings,
-helm stayed on, fang proud).
+nothing matches 'goblin' prefixes), olSig `H<seed&0xff>`, the ears
+anim slot with restless→fullDyn, corpse-coat law + iron-torso corpse
++ bespoke profile corpse head (helm stayed on, fang proud).
+
+## The diagonal round (round two, user screenshot)
+
+Three foundational fixes, all in the projection itself:
+- **THE THREE-QUARTER KEEPS BOTH EYES**: the far ember's cull gate sat
+  at dot 0.1 while the diagonal's far-eye dot is ~0.085 — the face
+  went one-eyed exactly at SE/SW. Gate 0.02 + a harder foreshorten
+  floor: the far eye slivers out honestly instead of popping.
+- **THE MOUTH ANCHORS TO ITS OWN CENTER**: a survivor-corner run of
+  the mouth arc painted an orphan grin fragment at the cheek edge on
+  the REAR diagonals. No mouth paints unless the arc's center holds
+  the camera side; the run threshold eases to -0.12 so the FRONT
+  diagonals keep a full stern seam instead of a stub. Nose wings gate
+  per-side the same way. Test-pinned both directions (rear diagonals
+  ink-free; front diagonals ≥ both pupils).
+- **THE SHIELD-WALL STANCE**: hob rest fists hang 0.07s outboard
+  (the GIANT REACH pattern, legion numbers) — the diagonal stance no
+  longer pinches under the broad shoulders.
 
 ## Audit
 
@@ -111,6 +127,6 @@ helm stayed on, fang proud).
 driver): 5 bodies × 8 bands × idle/walk/strike/hurt + bare rows +
 goblin anti-twin row + skin-spread row (banner constancy on screen) +
 player/goblin rulers; live LegSolver (statured for the juggernaut) +
-live EarSim ×2 per fig; ?s/?rows/?cols/?only/?ol/?det. Three audit
-passes shipped it (pass-two verdicts recorded in module comments).
-`hobgoblin.test.ts` = 14 law pins.
+a live EarSim per fig; ?s/?rows/?cols/?only/?ol/?det. Three audit
+passes shipped it (pass-two verdicts recorded in module comments)
+plus the diagonal round. `hobgoblin.test.ts` = 15 law pins.

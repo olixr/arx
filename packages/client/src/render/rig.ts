@@ -48,11 +48,8 @@ import {
 import {
   drawHobEar,
   drawHobgoblinArm,
-  drawHobQueue,
   hobEarCarriage,
   hobEarStyle,
-  hobQueueCarriage,
-  hobQueueStyle,
   paintHobgoblinBody,
   paintHobgoblinFoot,
   paintHobgoblinHead,
@@ -492,13 +489,6 @@ export interface RigPose {
    * different argument, not a bigger goblin.
    */
   hobgoblin?: HobgoblinLook;
-  /**
-   * Caller-owned war-queue sim — the ear contract at the occiput
-   * (both chains near-superposed = one braid). The rig ticks it at
-   * the exact skull anchor; absent (posters, sheets, corpses) THE
-   * ONE REST paints the settled braid.
-   */
-  queueSim?: EarSim;
   /** Time-based swing driver for the gather pose. */
   gatherPhase: number;
   /**
@@ -6864,6 +6854,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // under the leaned chest, never as elbow slack.
       hx += fx * stoop.hangFwdS * s;
       hy += stoop.hangDropS * s;
+    } else if (hob) {
+      // THE SHIELD-WALL STANCE: the parade frame hangs its fists off
+      // the shoulder-cap line, not the waist — a drilled soldier
+      // stands WIDE, elbows clear of the cuirass, and the stance must
+      // survive the diagonals (the squeeze there read as a pinched
+      // body under broad shoulders — the user's SE verdict).
+      hx += wSide * 0.07 * s * wS;
     }
     // How "at rest" the rest really is: flourishes and wrist life only
     // play when the figure is planted (no gait, no sneak crouch) —
@@ -7011,6 +7008,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // The off fist hangs the same knuckle rest (the stoop lane).
       ox += fx * stoop.hangFwdS * s;
       oy += stoop.hangDropS * s;
+    } else if (hob) {
+      // The off fist holds the same shield-wall width.
+      ox -= wSide * 0.07 * s * wS;
     }
     if (offBlade) {
       // The carriage mirrors on FACING, not on the hanging side — the
@@ -8563,7 +8563,6 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // azimuth projection owns the perspective at every band; no ear
   // code below ever consults a facing blend.
   let paintEars: ((layer: 'behind' | 'front') => void) | null = null;
-  let paintQueue: ((layer: 'behind' | 'front') => void) | null = null;
   if (gob || skr || hob) {
     const hv = (gob ?? skr ?? hob)!.heavy;
     // The head anchor, through the torso frame's own transform
@@ -8690,43 +8689,6 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       };
     }
     paintEars('behind');
-    // ---- THE WAR QUEUE: the braid is its own elastic body on the
-    // same anchor — both chains root nearly together at the occiput,
-    // so the pair paints as one rope. Behind the body facing the
-    // camera, over it facing away: the chain's own depth term is the
-    // verdict, never a band gate.
-    if (hob && hob.queue > 0) {
-      const qc = hobQueueCarriage(hob, jeer);
-      let qChains: Array<{ c: EarChain }>;
-      if (rig.queueSim) {
-        rig.queueSim.update(eax, eay, s, qc, rig.dir, 0, rig.nowMs);
-        qChains = [-1, 1].map((side) => ({ c: rig.queueSim!.chain(side, qc, rig.dir, 0) }));
-      } else {
-        qChains = [-1, 1].map((side) => ({
-          c: earRestChain(side, qc, {
-            dir: rig.dir,
-            pin: 0,
-            sway: rig.hurt ? 0 : 0.03 * Math.sin(rig.nowMs / 760 + side * 1.7),
-          }),
-        }));
-      }
-      qChains.sort((a, b) => a.c.depth - b.c.depth);
-      const qst = hobQueueStyle(hob, backK > 0.55);
-      const qw = 0.042 * (0.9 + 0.2 * hv) * s;
-      paintQueue = (layer) => {
-        for (const { c } of qChains) {
-          if ((c.depth > 0.05) !== (layer === 'front')) continue;
-          drawHobQueue(
-            ctx,
-            c.pts.map((p) => ({ x: eax + p.x * s, y: eay + p.y * s })),
-            qw,
-            qst,
-            { hurt: rig.hurt },
-          );
-        }
-      };
-      paintQueue('behind');
-    }
   }
 
   // ---- torso + head, drawn in a local frame at the hip line with the
@@ -9938,9 +9900,6 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Camera-side wing ears land over the finished body — the elastic
   // pair's near half, seated on the skull the head painter just drew.
   if (paintEars) paintEars('front');
-  // The war queue's camera-side pass: facing away, the braid hangs
-  // down the backplate OVER everything — the marching read.
-  if (paintQueue) paintQueue('front');
 }
 
 /**

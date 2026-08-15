@@ -725,10 +725,6 @@ interface AnimState {
    *  rig-ticked inside drawHumanoid (it owns the exact skull anchor);
    *  the renderer owns only the lifecycle and the re-bake cue. */
   ears?: EarSim;
-  /** THE WAR QUEUE: the hobgoblin's braid on the same elastic
-   *  contract — its own slot beside `ears` (the legion body runs
-   *  BOTH sims at once, and no lane may evict another's appendage). */
-  hobQueue?: EarSim;
   /** The lynx bobtail sim — present only on the tufted shadows. */
   bobtail?: BobtailSim;
   /** THE BRUSH IS A SIMULATION: the canid brush (fox plume, wolf and
@@ -40881,14 +40877,6 @@ export class Renderer {
     } else if (anim.ears) {
       anim.ears = undefined;
     }
-    // THE WAR QUEUE joins the same law: the braid is a second elastic
-    // body on the SAME skull — its own slot, rig-ticked, lifecycle
-    // only here (a legion body runs ears and queue at once).
-    if (e.hobgoblin) {
-      anim.hobQueue ??= new EarSim(typeof e.eid === 'number' ? e.eid + 31 : 11);
-    } else if (anim.hobQueue) {
-      anim.hobQueue = undefined;
-    }
     // THE GUT AND THE TROPHY JOIN THE SAME LAW: the ogre's belly mass
     // and belt pendant are sims on the anim map — the rig ticks them
     // at its true torso anchor; only lifecycle and the restless cue
@@ -40935,9 +40923,6 @@ export class Renderer {
       // Restless wing ears too — the elastic pair settling after a
       // turn, a stop, or a jeer keeps the body at full rate.
       (anim.ears !== undefined && anim.ears.restless) ||
-      // A restless war queue keeps the legion body at full rate —
-      // the braid's lag and settle IS the read.
-      (anim.hobQueue !== undefined && anim.hobQueue.restless) ||
       // A restless gut or swinging trophy keeps the giant at full
       // rate — the jiggle IS the read; a cadence-sampled bounce skips.
       (anim.ogreGut !== undefined && anim.ogreGut.restless) ||
@@ -41242,7 +41227,6 @@ export class Renderer {
           skral: e.skral,
           hobgoblin: e.hobgoblin,
           earSim: anim.ears,
-          queueSim: anim.hobQueue,
           golem: e.golem,
           ogre: e.ogre,
           ogreGut: anim.ogreGut,

@@ -506,9 +506,9 @@ export interface HumanoidCorpseLook {
   /** Set = this corpse is a skral: the lantern eye gone dull, the
    *  crest flopped flat over the skull, the needle grin slack. */
   skr?: SkralLook;
-  /** Set = this corpse is a hobgoblin: the war queue spilled in the
-   *  dirt, the painted helm still seated, the corner fang proud of a
-   *  jaw that gives no more orders. */
+  /** Set = this corpse is a hobgoblin: the painted helm still
+   *  seated, the corner fang proud of a jaw that gives no more
+   *  orders. */
   hob?: HobgoblinLook;
   /** Worn equipment — the corpse keeps everything it died in. */
   gear?: CorpseGear;
@@ -1142,43 +1142,13 @@ export function drawHumanoidRagdoll(
       }
     }
   } else if (look.hob) {
-    // The hobgoblin corpse head in profile: the war queue SPILLED —
-    // the braid thrown loose past the crown with its iron rings still
-    // cinched — under the painted helm that stayed seated (a soldier
-    // is buried in its iron), one swept ear blade slack along the
-    // skull, the heavy brow shading an eye shut for good, the flat
-    // nose a blunt step, and the corner fang proud of a jaw that
-    // gives no more orders. Identity by silhouette.
+    // The hobgoblin corpse head in profile: the painted helm stayed
+    // seated (a soldier is buried in its iron), one swept ear blade
+    // slack along the skull, the heavy brow shading an eye shut for
+    // good, the flat nose a blunt step, and the corner fang proud of
+    // a jaw that gives no more orders. Identity by silhouette.
     const hb = look.hob;
     const hv = hb.heavy;
-    // The spilled queue: a loose rope of braid past the occiput.
-    if (hb.queue > 0) {
-      ctx.strokeStyle = shade(hb.hair, 0);
-      ctx.lineCap = 'round';
-      ctx.lineWidth = hh * 0.3;
-      ctx.beginPath();
-      ctx.moveTo(-hw * 0.5, -hh * 0.55);
-      ctx.quadraticCurveTo(
-        -hw * (1.3 + 0.3 * hb.queue),
-        -hh * 0.6,
-        -hw * (1.7 + 0.5 * hb.queue),
-        -hh * 0.05,
-      );
-      ctx.stroke();
-      ctx.lineCap = 'butt';
-      // The rings held: two trim bands along the fallen braid.
-      ctx.strokeStyle = hb.trim;
-      ctx.lineWidth = Math.max(1, hh * 0.07);
-      for (const [qx, qy] of [
-        [-1.15, -0.62],
-        [-1.55, -0.32],
-      ] as const) {
-        ctx.beginPath();
-        ctx.moveTo(hw * qx - hh * 0.1, -hh * -qy - hh * 0.12);
-        ctx.lineTo(hw * qx + hh * 0.1, -hh * -qy + hh * 0.12);
-        ctx.stroke();
-      }
-    }
     // The slack ear blade along the skull.
     ctx.fillStyle = shade(hb.hide, -10);
     ctx.beginPath();

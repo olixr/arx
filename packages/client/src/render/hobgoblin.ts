@@ -26,13 +26,14 @@
  *                 like the cheek-lines of a helm — and pin flatter
  *                 through every strike beat: the snarl of a soldier
  *                 who never breaks step.
- *   THE WAR QUEUE — the long dark hair bound through iron rings into
- *                 one heavy braid off the occiput: an ELASTIC BODY on
- *                 the same contract (two near-superposed chains = one
- *                 thick rope at every band). It lags the turn,
- *                 streams at a march, and swings home — the only hair
- *                 in the game that MOVES, and the officer's rank
- *                 grows it longer.
+ *   THE RANKED CROWN — hair is a UNIFORM matter and every rank wears
+ *                 its own: the line and the bow keep the swept
+ *                 soldier's crop under cap or bare crown, the
+ *                 warcaster binds the high knot of the flame-speaker,
+ *                 and the officers' crowns are their helms. (The
+ *                 first build hung one simulated braid on every rank
+ *                 — the user's verdict: a shared appendage HOMOGENIZES
+ *                 exactly where variants must argue. Removed whole.)
  *   THE IRON HABIT — the legion wears its wars: a banded iron
  *                 cuirass, a riveted girdle over a studded pteruges
  *                 skirt, greaved marching boots, and the crimson
@@ -88,8 +89,8 @@ export interface HobgoblinLook {
    * crown, 'none' the bare-crowned specialist.
    */
   helm: 'cap' | 'crest' | 'horns' | 'none';
-  /** Queue reach multiplier — rank grows the braid. 0 = cropped. */
-  queue: number;
+  /** The flame-speaker's bound top-knot on the bare crown. */
+  knot?: boolean;
   /** Jaw-span multiplier (a HEAD dial): the warlord out-jaws the line. */
   jaw?: number;
   /** One argument lost: brow-to-cheek seam + a notched ear blade. */
@@ -120,7 +121,6 @@ export const HOB_LOOKS: Record<string, HobgoblinLook> = {
     banner: '#8e2f2c',
     strap: '#4c3a28',
     helm: 'cap',
-    queue: 1,
     heavy: 1,
   },
   // The longbowman: a lighter kit that trades the skullcap for the
@@ -135,7 +135,6 @@ export const HOB_LOOKS: Record<string, HobgoblinLook> = {
     banner: '#8e2f2c',
     strap: '#514028',
     helm: 'none',
-    queue: 1.05,
     heavy: 0.92,
   },
   // The warcaster: the legion's flame-speaker — ash-worn hide, a
@@ -153,7 +152,7 @@ export const HOB_LOOKS: Record<string, HobgoblinLook> = {
     strap: '#463626',
     garb: '#413a4c',
     helm: 'none',
-    queue: 1.2,
+    knot: true,
     jaw: 0.94,
     heavy: 0.98,
   },
@@ -171,7 +170,6 @@ export const HOB_LOOKS: Record<string, HobgoblinLook> = {
     banner: '#8e2f2c',
     strap: '#503c26',
     helm: 'crest',
-    queue: 1.3,
     jaw: 1.1,
     scarred: true,
     bearded: true,
@@ -192,10 +190,6 @@ export const HOB_LOOKS: Record<string, HobgoblinLook> = {
     banner: '#8e2f2c',
     strap: '#4a3826',
     helm: 'horns',
-    // Cropped short: on the heaviest frame a full braid slabs across
-    // the whole backplate (pass-two verdict) — the breach keeps a
-    // soldier's stub, and the horns carry the silhouette instead.
-    queue: 0.8,
     jaw: 1.18,
     bearded: true,
     heavy: 1.5,
@@ -391,135 +385,6 @@ export function drawHobEar(
     ctx.beginPath();
     ctx.moveTo(rx - w0 * 0.75, ry + w0 * 0.2);
     ctx.lineTo(rx + w0 * 0.75, ry - w0 * 0.2);
-    ctx.stroke();
-  }
-}
-
-// ---------------------------------------------------------------------------
-// THE WAR QUEUE — carriage + painter. Same sim contract: the queue is
-// a braid, and a braid is a tail worn at head height.
-
-/**
- * The queue carriage: BOTH chains root nearly together high on the
- * occiput (azimuth ~π — mirrored sides land a hand's width apart, so
- * the pair reads as one heavy rope with a visible core seam at the
- * bow bands and stacks into one braid at profile by projection
- * alone). The rest direction is back-and-DOWN — hair hangs, it does
- * not stand — and the alarm of the strike beat kicks the reach up a
- * touch: the braid snaps with the swing that launched it.
- */
-export function hobQueueCarriage(look: HobgoblinLook, alarm: number): EarCarriage {
-  return {
-    azimuth: 3.02,
-    rootR: 0.09,
-    rootLift: 0.14,
-    // Long enough to read at world zoom — the braid is a silhouette
-    // feature, not a detail (the officer's reach clears the pauldron).
-    length: (0.3 + 0.1 * (look.heavy - 1)) * look.queue * (1 + 0.1 * alarm),
-    spread: 0.34,
-    rise: -0.82 + 0.25 * alarm,
-    curl: [0, 0.14, 0.3],
-  };
-}
-
-export interface HobQueueStyle {
-  hair: string;
-  seam: string;
-  ring: string;
-}
-
-/** Pre-resolved braid colors off the look (hurt handled by caller). */
-export function hobQueueStyle(hb: HobgoblinLook, back: boolean): HobQueueStyle {
-  return {
-    hair: shade(hb.hair, back ? 2 : -2),
-    // Bright enough to break the rope into PLAITS at world zoom — on
-    // near-black hair a timid seam vanishes and the braid slabs.
-    seam: shade(hb.hair, 26),
-    ring: hb.trim,
-  };
-}
-
-/**
- * One queue chain painted as a bound braid: a tapering rope with the
- * plait chevrons scored across it, iron rings cinched at the third
- * marks, and the loose tuft past the last ring. Two chains of this
- * make one braid — the caller paints both and the near-superposed
- * carriage does the stacking.
- */
-export function drawHobQueue(
-  ctx: CanvasRenderingContext2D,
-  pts: ReadonlyArray<{ x: number; y: number }>,
-  w0: number,
-  st: HobQueueStyle,
-  opts: { hurt: boolean },
-): void {
-  const n = pts.length;
-  if (n < 3) return;
-  const wAt = (t: number): number => w0 * (1 - 0.5 * t);
-  // The rope silhouette.
-  const ea: Array<{ x: number; y: number }> = [];
-  const eb: Array<{ x: number; y: number }> = [];
-  for (let i = 0; i < n; i++) {
-    const a = pts[Math.max(0, i - 1)]!;
-    const b = pts[Math.min(n - 1, i + 1)]!;
-    let tx = b.x - a.x;
-    let ty = b.y - a.y;
-    const tl = Math.hypot(tx, ty) || 1;
-    tx /= tl;
-    ty /= tl;
-    const w = wAt(i / (n - 1));
-    ea.push({ x: pts[i]!.x + ty * w, y: pts[i]!.y - tx * w });
-    eb.push({ x: pts[i]!.x - ty * w, y: pts[i]!.y + tx * w });
-  }
-  ctx.lineJoin = 'round';
-  ctx.fillStyle = opts.hurt ? '#ffffff' : st.hair;
-  ctx.beginPath();
-  ctx.moveTo(ea[0]!.x, ea[0]!.y);
-  for (let i = 1; i < n; i++) ctx.lineTo(ea[i]!.x, ea[i]!.y);
-  // The tuft: the loose end past the last ring flares before the tip.
-  const tip = pts[n - 1]!;
-  const prev = pts[n - 2]!;
-  const dx = tip.x - prev.x;
-  const dy = tip.y - prev.y;
-  ctx.lineTo(tip.x + dx * 0.45 + dy * 0.2, tip.y + dy * 0.45 - dx * 0.2);
-  ctx.lineTo(tip.x + dx * 0.7, tip.y + dy * 0.7);
-  ctx.lineTo(tip.x + dx * 0.45 - dy * 0.2, tip.y + dy * 0.45 + dx * 0.2);
-  for (let i = n - 1; i >= 0; i--) ctx.lineTo(eb[i]!.x, eb[i]!.y);
-  ctx.closePath();
-  ctx.fill();
-  if (opts.hurt) return;
-  // The plait: chevron seams scored across the rope — alternating
-  // diagonals, the braid's own anatomy (an unscored rope reads as a
-  // painted tail, and the hobgoblin binds, never dangles).
-  ctx.strokeStyle = st.seam;
-  ctx.lineCap = 'round';
-  ctx.lineWidth = Math.max(1, w0 * 0.22);
-  for (let i = 0; i < n - 1; i++) {
-    const mt = (i + 0.5) / (n - 1);
-    const mx = (pts[i]!.x + pts[i + 1]!.x) / 2;
-    const my = (pts[i]!.y + pts[i + 1]!.y) / 2;
-    const w = wAt(mt) * 0.8;
-    const sgn = i % 2 === 0 ? 1 : -1;
-    const ax = (ea[i]!.x - eb[i]!.x) / (2 * (wAt(i / (n - 1)) || 1e-4));
-    const ay = (ea[i]!.y - eb[i]!.y) / (2 * (wAt(i / (n - 1)) || 1e-4));
-    ctx.beginPath();
-    ctx.moveTo(mx - ax * w, my - ay * w);
-    ctx.lineTo(mx + ax * w + sgn * ay * w * 0.7, my + ay * w - sgn * ax * w * 0.7);
-    ctx.stroke();
-  }
-  // The iron rings: cinched bands at the third marks — the binding is
-  // what makes it a QUEUE and not a mane.
-  ctx.strokeStyle = st.ring;
-  ctx.lineWidth = Math.max(1, w0 * 0.42);
-  for (const i of [1, 2] as const) {
-    if (i >= n) break;
-    const w = wAt(i / (n - 1)) * 1.15;
-    const ax = ea[i]!.x - eb[i]!.x;
-    const ay = ea[i]!.y - eb[i]!.y;
-    const al = Math.hypot(ax, ay) || 1e-4;
-    ctx.beginPath();
-    ctx.moveTo(pts[i]!.x - (ax / al) * w, pts[i]!.y - (ay / al) * w);
-    ctx.lineTo(pts[i]!.x + (ax / al) * w, pts[i]!.y + (ay / al) * w);
     ctx.stroke();
   }
 }
@@ -763,8 +628,8 @@ export function paintHobgoblinHead(
       }
     } else {
       // The bare crown: the scalp reads as swept-back hair — a dark
-      // widow's-peak cap pulled to the queue's root, never a helmet
-      // shape (the warcaster's rank is the uncovered head).
+      // widow's-peak cap, never a helmet shape (the uncovered ranks
+      // wear the soldier's crop; hair is a uniform matter).
       const rimY = yT + aZ * 0.5;
       ctx.save();
       ctx.beginPath();
@@ -787,7 +652,7 @@ export function paintHobgoblinHead(
       ctx.lineTo(pk.x + hw * 0.22, rimY - s * 0.004);
       ctx.closePath();
       ctx.fill();
-      // Temple sweep: two strokes raking toward the queue root.
+      // Temple sweep: two strokes raking toward the crown's rear.
       ctx.strokeStyle = shade(hb.hair, 12);
       ctx.lineWidth = Math.max(1, s * 0.012);
       for (const side of [-1, 1] as const) {
@@ -799,6 +664,24 @@ export function paintHobgoblinHead(
         ctx.stroke();
       }
       ctx.restore();
+      // THE FLAME-SPEAKER'S KNOT: a bound bun high on the rear crown
+      // — a STATION, so it walks the turn and peeks over the skyline
+      // from behind like any honest fixture (never a screen sticker).
+      if (hb.knot) {
+        const kn = st(-0.45, 0, 0.98);
+        const kr = s * 0.042;
+        const ky = kn.d <= 0 ? Math.max(kn.y, skyY - kr * 0.6) : kn.y;
+        ctx.fillStyle = shade(hb.hair, kn.d > 0 ? 4 : -2);
+        ctx.beginPath();
+        ctx.ellipse(kn.x, ky - kr * 0.4, kr, kr * 0.85, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = hb.trim;
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(kn.x - kr * 0.8, ky + kr * 0.1);
+        ctx.lineTo(kn.x + kr * 0.8, ky + kr * 0.05);
+        ctx.stroke();
+      }
     }
   }
 
@@ -849,12 +732,17 @@ export function paintHobgoblinHead(
 
     // THE EMBER EYES: small, deep-set, and lit — watch-fires in the
     // socket trench. The iris is a sphere's window: it narrows as
-    // its side turns away.
+    // its side turns away. THE THREE-QUARTER KEEPS BOTH EYES (the
+    // diagonal round, user screenshot): the old 0.1 gate culled the
+    // far eye exactly at the diagonals (its dot sits at ~0.085
+    // there), leaving a one-eyed smear that read broken and lost —
+    // the far ember now holds until the turn genuinely takes it,
+    // foreshortening to a sliver on the way out instead of popping.
     for (const side of [-1, 1] as const) {
       const e = st(0.56, side * 0.4, 0.2);
       const dot = 0.56 * fy + side * 0.44 * py;
-      if (dot < 0.1) continue;
-      const irisK = 0.5 + 0.5 * Math.min(1, dot * 1.7);
+      if (dot < 0.02) continue;
+      const irisK = 0.3 + 0.7 * Math.min(1, dot * 1.5);
       const er = hw * 0.17;
       ctx.fillStyle = shade(hb.hide, -30);
       ctx.beginPath();
@@ -900,22 +788,28 @@ export function paintHobgoblinHead(
       ctx.lineTo(nTipL.x, nTipL.y);
       ctx.closePath();
       ctx.fill();
-      // The wings: nostril flare WIDER than the bridge on both sides.
+      // The wings: nostril flare WIDER than the bridge — each wing
+      // gated by ITS OWN station depth, so the far wing tucks behind
+      // the bridge through the turn instead of folding across it.
       ctx.fillStyle = shade(hb.hide, 4);
-      ctx.beginPath();
-      ctx.moveTo(nTipL.x, nTipL.y);
-      ctx.lineTo(wingL.x, wingL.y);
-      ctx.lineTo(wingL.x + hw * 0.12, wingL.y + aZ * 0.11);
-      ctx.lineTo(nTipL.x + hw * 0.07, nTipL.y + aZ * 0.09);
-      ctx.closePath();
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(nTipR.x, nTipR.y);
-      ctx.lineTo(wingR.x, wingR.y);
-      ctx.lineTo(wingR.x - hw * 0.12, wingR.y + aZ * 0.11);
-      ctx.lineTo(nTipR.x - hw * 0.07, nTipR.y + aZ * 0.09);
-      ctx.closePath();
-      ctx.fill();
+      if (wingL.d > -0.02) {
+        ctx.beginPath();
+        ctx.moveTo(nTipL.x, nTipL.y);
+        ctx.lineTo(wingL.x, wingL.y);
+        ctx.lineTo(wingL.x + hw * 0.12, wingL.y + aZ * 0.11);
+        ctx.lineTo(nTipL.x + hw * 0.07, nTipL.y + aZ * 0.09);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (wingR.d > -0.02) {
+        ctx.beginPath();
+        ctx.moveTo(nTipR.x, nTipR.y);
+        ctx.lineTo(wingR.x, wingR.y);
+        ctx.lineTo(wingR.x - hw * 0.12, wingR.y + aZ * 0.11);
+        ctx.lineTo(nTipR.x - hw * 0.07, nTipR.y + aZ * 0.09);
+        ctx.closePath();
+        ctx.fill();
+      }
       // The underside: one dark plane squares the tip.
       ctx.fillStyle = shade(hb.hide, -18);
       ctx.beginPath();
@@ -965,18 +859,27 @@ export function paintHobgoblinHead(
   // Visibility = the longest CONTIGUOUS camera-side run (corners near
   // the cheek can pass a plain filter from behind at both ends and
   // bridge a seam across the occiput — the skral lesson, kept).
+  // THE MOUTH ANCHORS TO ITS OWN CENTER (the diagonal round, user
+  // screenshot): a survivor-corner run with the mouth's center gone
+  // behind painted an orphan grin fragment floating at the cheek
+  // edge on the rear diagonals — no mouth paints at all unless the
+  // arc's CENTER holds the camera side. And the run threshold eases
+  // to -0.12: at the front diagonals the trailing half of the stern
+  // seam holds deeper into the wrap, so the three-quarter face keeps
+  // a FULL mouth instead of a stub.
   const visRun = (pts: MPt[]): MPt[] => {
     let best: MPt[] = [];
     let run: MPt[] = [];
     for (const p of pts) {
-      if (p.d > -0.04) {
+      if (p.d > -0.12) {
         run.push(p);
         if (run.length > best.length) best = run;
       } else run = [];
     }
     return best;
   };
-  const seam = visRun(arc(seamZ));
+  const mouthCenterD = 0.9 * fy;
+  const seam = mouthCenterD > -0.06 ? visRun(arc(seamZ)) : [];
   const open = gape > 0.1;
   if (!hurt && seam.length >= 3) {
     const jaw = visRun(arc(jawZ));

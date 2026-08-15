@@ -6,8 +6,8 @@
  * crimson never varies — a legion sorts by rank, never family), the
  * master race shares not one hide with the goblins it commands, the
  * whole dialect paints clean across all eight facing bands (no NaN
- * geometry), the face never shows from behind, the war queue hangs
- * DOWN and grows with rank, the snarl pins the blades flatter, the
+ * geometry), the face never shows from behind and holds WHOLE at the
+ * three-quarter bands, the snarl pins the blades flatter, the
  * discipline inversion holds (pack without craven — a goblin bolts, a
  * legionary stands), the phalanx lane rides only the shield-bearers,
  * the wilds patrol the expedition line and march at night behind the
@@ -21,12 +21,9 @@ import { LOOT_TABLES, NPCS, POI_DEFS, wildCandidates } from '@arx/content';
 import {
   HOB_LOOKS,
   drawHobEar,
-  drawHobQueue,
   drawHobgoblinArm,
   hobEarCarriage,
   hobEarStyle,
-  hobQueueCarriage,
-  hobQueueStyle,
   hobgoblinLook,
   paintHobgoblinBody,
   paintHobgoblinFoot,
@@ -79,7 +76,13 @@ test('the warlord and the juggernaut are designs, not scale-ups', () => {
   assert.ok(lord.scarred && !line.scarred, 'only the warlord carries the ledger of scars');
   assert.ok(lord.standard && !line.standard && !jugg.standard, 'the standard is the warlord alone');
   assert.ok(lord.bearded && jugg.bearded && !line.bearded, 'the jaw fringe is an officer right');
-  assert.ok(lord.queue > line.queue, 'rank grows the braid');
+  // THE RANKED CROWN: hair is a uniform matter and every rank wears
+  // its own — the flame-speaker alone binds the knot (the shared
+  // simulated braid was removed whole: the user's homogeneity
+  // verdict — a shared appendage flattens exactly where variants
+  // must argue).
+  assert.ok(HOB_LOOKS['hobgoblin_warcaster']!.knot, 'the flame-speaker binds the knot');
+  assert.ok(!line.knot && !lord.knot && !jugg.knot, 'the knot is the warcaster alone');
 });
 
 test('THE BANNER IS ONE: skins roll, the crimson never does', () => {
@@ -186,26 +189,15 @@ test('the loot-story law: the ring, the crest, and the issued steel drop', () =>
   }
 });
 
-test('the carriage laws: the queue HANGS and rank raises it, the snarl pins the blades', () => {
-  const line = HOB_LOOKS['hobgoblin']!;
-  const lord = HOB_LOOKS['hobgoblin_champion']!;
-  // The queue's rest direction is DOWN: the chain's tip must sit
-  // below its root at a calm carriage (hair hangs, it never stands).
-  const qc = hobQueueCarriage(line, 0);
-  const chain = earRestChain(1, qc, { dir: Math.PI / 2, pin: 0, sway: 0 });
-  assert.ok(
-    chain.pts[chain.pts.length - 1]!.y > chain.pts[0]!.y,
-    'the braid hangs below its own root',
-  );
-  // Rank reach: the warlord's carriage out-reaches the line's.
-  assert.ok(
-    hobQueueCarriage(lord, 0).length > hobQueueCarriage(line, 0).length,
-    'the officer braid is the longer',
-  );
-  // The alarm kicks the braid up and out — the strike-beat snap.
-  assert.ok(hobQueueCarriage(line, 1).rise > hobQueueCarriage(line, 0).rise);
-  // The snarl PINS the ear blades: spread narrows as the pin rises.
-  assert.ok(hobEarCarriage(1, 1).spread < hobEarCarriage(1, 0).spread, 'the snarl lays the blades back');
+test('the carriage laws: the ears rake back-and-out and the snarl pins them', () => {
+  // An EAR, not a horn: the rake is back-and-OUT at temple height —
+  // rise well under spread (the pass-two verdict: a near-vertical
+  // blade read as a devil horn and buried the helm).
+  const calm = hobEarCarriage(1, 0);
+  assert.ok(calm.rise < calm.spread, 'the blade rakes out, never up');
+  // The snarl PINS the blades: spread AND rise narrow with the pin.
+  assert.ok(hobEarCarriage(1, 1).spread < calm.spread, 'the snarl lays the blades back');
+  assert.ok(hobEarCarriage(1, 1).rise < calm.rise, 'the snarl lays the blades flat');
 });
 
 /** A recording 2D-context stand-in: counts calls, rejects NaN coords. */
@@ -325,9 +317,33 @@ test('NO FACE FROM BEHIND: the war mask leaves with the turn', () => {
   paintHobgoblinHead(north, hb, headFrame(-Math.PI / 2, 0.6));
   assert.ok(south.inkFills > 0, 'the face reads at the bow');
   assert.equal(north.inkFills, 0, 'no eye, mouth-room, or nostril paints from behind');
+  // THE DIAGONAL HOLDS (user screenshot round): the REAR diagonals
+  // are back bands too — the mouth anchors to its own center, so no
+  // orphan grin fragment may survive at NE/NW (the floating-mouth
+  // read the user called broken and lost).
+  for (const dir of [-Math.PI / 4, (-3 * Math.PI) / 4]) {
+    const rear = mockCtx(hb.ink);
+    paintHobgoblinHead(rear, hb, headFrame(dir, 0.6));
+    assert.equal(rear.inkFills, 0, 'no face ink survives the rear diagonal');
+  }
 });
 
-test('the ear blade and the queue painters hold their anatomy', () => {
+test('THE THREE-QUARTER KEEPS BOTH EYES: the front diagonal face is whole', () => {
+  // The user's diagonal verdict, pinned structurally: at SE/SW the
+  // far ember must still paint (the old gate culled it and the face
+  // went one-eyed and lost). The pupil is ink, so ink fills at the
+  // front diagonal must EXCEED the bow's if the mouth also holds —
+  // pin the simpler truth: the diagonal paints at least two pupil
+  // inks plus the mouth seam's nostril pits, i.e. more than one.
+  const hb = HOB_LOOKS['hobgoblin']!;
+  for (const dir of [Math.PI / 4, (3 * Math.PI) / 4]) {
+    const ctx = mockCtx(hb.ink);
+    paintHobgoblinHead(ctx, hb, headFrame(dir, 0));
+    assert.ok(ctx.inkFills >= 2, 'both embers hold through the three-quarter turn');
+  }
+});
+
+test('the ear blade painter holds its anatomy', () => {
   const hb = HOB_LOOKS['hobgoblin_champion']!;
   // A settled chain from the real projection feeds both painters.
   const ec = hobEarCarriage(hb.heavy, 0);
@@ -337,15 +353,8 @@ test('the ear blade and the queue painters hold their anatomy', () => {
   const ctx = mockCtx(hb.ink);
   drawHobEar(ctx, pts, 2.2, hobEarStyle(hb, false), { hurt: false, back: false, notch: true, ringed: true });
   assert.ok(ctx.fills > 0, 'the blade paints');
-  const qc = hobQueueCarriage(hb, 0);
-  const queue = earRestChain(1, qc, { dir: Math.PI / 2, pin: 0, sway: 0 });
-  const qpts = queue.pts.map((p) => ({ x: p.x * s, y: p.y * s }));
-  const qctx = mockCtx(hb.ink);
-  drawHobQueue(qctx, qpts, 2.4, hobQueueStyle(hb, false), { hurt: false });
-  assert.ok(qctx.fills > 0, 'the braid paints');
-  // Hurt: both painters flash clean.
+  // Hurt: the painter flashes clean.
   const hctx = mockCtx(hb.ink);
   drawHobEar(hctx, pts, 2.2, hobEarStyle(hb, false), { hurt: true, back: false });
-  drawHobQueue(hctx, qpts, 2.4, hobQueueStyle(hb, false), { hurt: true });
-  assert.equal(hctx.inkFills, 0, 'the hurt flash keeps the appendages clean');
+  assert.equal(hctx.inkFills, 0, 'the hurt flash keeps the blade clean');
 });
