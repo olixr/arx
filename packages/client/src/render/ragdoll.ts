@@ -43,6 +43,8 @@ import {
   SPIDER_LOOK,
   HIND_LOOK,
   STAG_LOOK,
+  TURTLE_LOOK,
+  COLOSSUS_LOOK,
   WOLF_LOOK,
   WORG_LOOK,
   drawBearHead,
@@ -74,6 +76,8 @@ import {
   paintRatBody,
   paintSpiderBody,
   paintStagBody,
+  paintTurtleBody,
+  drawTurtleHead,
   paintWolfBody,
   paintWorgBody,
   scaleRibbon,
@@ -2110,6 +2114,24 @@ export function drawBeastRagdoll(
       topScale: 0.55,
       botH: 0.02,
     });
+  } else if (look.defId === 'giant_turtle' || look.defId === 'colossus_turtle') {
+    // The keep barely falls: the shell holds nearly its whole height
+    // in death — a turtle's corpse IS its shell, head slack at the
+    // door. (topScale 0.85 where furred bodies slump to half.)
+    paintTurtleBody(ctx, spec, look.defId === 'colossus_turtle' ? COLOSSUS_LOOK : TURTLE_LOOK, {
+      bx: midX,
+      gy: midY + r * 0.4,
+      s,
+      fx: Math.cos(spineA),
+      fy: Math.sin(spineA),
+      ys: 1,
+      seed: look.seed,
+      hurt: false,
+      bob: 0,
+      roll: 0,
+      topScale: 0.85,
+      botH: 0.02,
+    });
   } else if (look.defId === 'mudcrab') {
     // The whole crab — claws slack, no stalk eyes on the dead.
     paintCrabBody(
@@ -2379,6 +2401,26 @@ export function drawBeastRagdoll(
     });
   } else if (look.defId === 'bear') {
     drawBearHead(ctx, BEAR_LOOK, {
+      x: head.x,
+      y: head.y,
+      s,
+      fx: Math.cos(neckA),
+      fy: Math.sin(neckA),
+      ys: 1,
+      dead: true,
+    });
+  } else if (look.defId === 'giant_turtle' || look.defId === 'colossus_turtle') {
+    // The neck lies slack out of the shell's door, the lids down.
+    const tl = look.defId === 'colossus_turtle' ? COLOSSUS_LOOK : TURTLE_LOOK;
+    ctx.strokeStyle = shade(tl.skin, -4);
+    ctx.lineWidth = Math.max(2, tl.headW * s * 0.8);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(front.x, front.y);
+    ctx.lineTo(head.x, head.y);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+    drawTurtleHead(ctx, tl, {
       x: head.x,
       y: head.y,
       s,

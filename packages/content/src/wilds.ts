@@ -110,6 +110,13 @@ export const WILD_ROSTER: readonly WildEntry[] = [
   { npc: 'wolf', weight: 2, tiers: [2, 5], biomes: ['forest'], band: [2, 3], habitat: 'den', family: 'wolfkin' },
   { npc: 'adder', weight: 1, tiers: [2, 4], biomes: ['grass'] },
   { npc: 'bear', weight: 1.5, tiers: [3, 5], biomes: ['forest'] },
+  // THE SHELL WALKS: giant turtles bask in the open by day, in ones
+  // and twos — a keep does not hide, and a pair of keeps is a wall.
+  { npc: 'giant_turtle', weight: 1, tiers: [2, 4], biomes: ['grass'], hours: DAY, band: [1, 2], spread: 2 },
+  // THE HILL THAT WATCHES: the colossus stands alone at any hour —
+  // it does not sleep so much as pause, and a sighting is a landmark
+  // that was not on yesterday's map.
+  { npc: 'colossus_turtle', weight: 0.5, tiers: [4, 6], biomes: ['grass', 'forest'] },
   // ------------------------------------------------- the night shift
   {
     npc: 'wolf',

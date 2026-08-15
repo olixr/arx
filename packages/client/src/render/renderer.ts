@@ -86,6 +86,8 @@ import {
   WOLF_LOOK,
   DIREWOLF_LOOK,
   OLDFANG_LOOK,
+  TURTLE_LOOK,
+  COLOSSUS_LOOK,
   owlHoverHeight,
   owlLook,
   skeletonLook,
@@ -181,7 +183,7 @@ import {
 } from './reveal.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
-import { BobtailSim, TailSim, drawBobtail, drawFoxBrush, drawTail, drawWolfBrush } from './tail.js';
+import { BobtailSim, TailSim, drawBobtail, drawFoxBrush, drawTail, drawTurtleTail, drawWolfBrush } from './tail.js';
 import { EarSim } from './earPhysics.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
 import { LightingSystem, type WorldLight } from './lighting.js';
@@ -655,6 +657,9 @@ interface AnimState {
   /** The canid elastic ear pair — beside the goblin's `ears`, its own
    *  slot for the same no-cross-lane-eviction reason. */
   canidEars?: EarSim;
+  /** The turtles' armored trailer — a low-carried BobtailSim in its
+   *  own slot, so the shell lane never evicts a cat's stub. */
+  turtleTail?: BobtailSim;
   /** THE GUT KEEPS ITS OWN TIME: the ogre's belly-mass spring —
    *  rig-ticked inside drawHumanoid at the true torso anchor; the
    *  renderer owns only lifecycle and the re-bake cue. */
@@ -35928,6 +35933,45 @@ export class Renderer {
     } else if (anim.bobtail) {
       anim.bobtail = undefined;
     }
+    // THE TAIL TRAILS THE KEEP (tail.ts): the turtles' armored stub
+    // is the bobtail contract on a LOW carriage — heavy damping, a
+    // trailing rest arc off the stern, spikelets in the painter. Its
+    // own anim slot; the shell lane never evicts a cat's stub.
+    if (defId === 'giant_turtle' || defId === 'colossus_turtle') {
+      const colossus = defId === 'colossus_turtle';
+      if (!anim.turtleTail) {
+        anim.turtleTail = new BobtailSim(colossus ? 2.0 : 1.5, eid, 0.3);
+      }
+      bobSim = anim.turtleTail;
+      bobSim.update(
+        s.x,
+        s.y,
+        // The stern rim's height: the trailer roots under the shell's
+        // back door, riding the (small) gait bob.
+        (colossus ? 0.2 : 0.15) + legPose.bob * 0.35,
+        legPose.dir,
+        this.frameDt,
+        performance.now() / 1000,
+        colossus ? 1.7 : 1.15,
+        0,
+      );
+      const st = colossus
+        ? { skin: COLOSSUS_LOOK.skin, spike: COLOSSUS_LOOK.spike, heavy: 1.25 }
+        : { skin: TURTLE_LOOK.skin, spike: TURTLE_LOOK.spike, heavy: 1.0 };
+      const turtleSim = bobSim;
+      paintBob = () => {
+        const pts = turtleSim.nodes.map((nd) => {
+          const sp = this.camera.worldToScreen(nd.x, nd.y, this.w, this.h);
+          return { x: sp.x, y: sp.y - this.renderLift(nd.x, nd.y) * scale - nd.z * scale };
+        });
+        drawTurtleTail(this.ctx, pts, st, scale, {
+          hurt,
+          back: Math.sin(legPose.dir) < -0.2,
+        });
+      };
+    } else if (anim.turtleTail) {
+      anim.turtleTail = undefined;
+    }
     // THE BRUSH IS A SIMULATION (tail.ts): the fox's plume rides the
     // full TailSim chain — nearly the body's own length, streaming
     // out at a lope, settling into the soft low arc at rest — and
@@ -36120,7 +36164,7 @@ export class Renderer {
         // antlers ride a raised neck and clip at the top edge without
         // their own headroom (user-flagged walking up-screen).
         const headroom =
-          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'wolf_oldfang' ? 0.32 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : defId === 'fox' ? 0.35 : defId === 'fox_champion' ? 0.5 : 0;
+          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'wolf_oldfang' ? 0.32 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : defId === 'fox' ? 0.35 : defId === 'fox_champion' ? 0.5 : defId === 'giant_turtle' ? 0.3 : defId === 'colossus_turtle' ? 0.5 : 0;
         const top = (spec.bodyRise + (def?.radius ?? 0.3) * 2.2 + headroom) * scale + r;
         const bottom = (spec.rig.legLen + 0.7) * scale;
         return { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom };

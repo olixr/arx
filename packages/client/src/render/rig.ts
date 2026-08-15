@@ -10219,6 +10219,49 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     foot: 'bearpaw',
     legColor: '#302620',
   },
+  // THE SHELL WALKS: the widest track in the wood under the lowest
+  // lift — pillar legs splayed from beneath the rim, a shuffle that
+  // never truly hurries. Mass-law spoken quadruped: the cadence is
+  // slow, the stride short, and the body barely leaves its own line.
+  giant_turtle: {
+    rig: {
+      legs: quadLegs(0.3, 0.21),
+      legLen: 0.24,
+      rise: 0.17,
+      liftAmp: 0.045,
+      runSpeed: 1.4,
+      turnRate: 2.5,
+    },
+    bodyLen: 0.52,
+    bodyRise: 0.24,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.85,
+    hipSide: 0.72,
+    legW: 0.115,
+    foot: 'bearpaw',
+    legColor: '#6f7c50',
+  },
+  // The colossus is not a scaled turtle: the legs are true columns
+  // (thicker for their length than anything walking), the track is
+  // wider still, and the cadence drops again — a landmark's patience.
+  colossus_turtle: {
+    rig: {
+      legs: quadLegs(0.46, 0.3),
+      legLen: 0.33,
+      rise: 0.23,
+      liftAmp: 0.05,
+      runSpeed: 1.05,
+      turnRate: 2,
+    },
+    bodyLen: 0.8,
+    bodyRise: 0.33,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.85,
+    hipSide: 0.72,
+    legW: 0.185,
+    foot: 'bearpaw',
+    legColor: '#68705a',
+  },
   ram: {
     rig: {
       legs: quadLegs(0.23, 0.13),
@@ -15467,6 +15510,481 @@ export function paintBeetleBody(
 }
 
 /**
+ * THE SHELL WALKS — the giant turtles. Four reads owned by no other
+ * body: THE KEEP (a high scute-plated dome with a serrated rim — the
+ * whole silhouette is the shell), THE HOOK (a beaked shear on a neck
+ * that fires like a sprung trap while the feet stay planted), THE
+ * COLUMNS (pillar legs splayed from under the rim on the widest
+ * track in the wood), and THE RIDGE (keel spikes raked back along
+ * the crown — the profile's saw-tooth skyline). The colossus is a
+ * DESIGN, not a scale: moss saddles grown on the crown plates,
+ * crack-scarred seams, taller spikes, chin barbels — a hill old
+ * enough to have opinions.
+ */
+export interface TurtleLook {
+  /** Crown plates; seams draw as dark strokes over it. */
+  shell: string;
+  /** The marginal band riding the shell's lower edge. */
+  rim: string;
+  /** Keel spikes and rim saw-teeth. */
+  spike: string;
+  /** Hide: neck, legs, tail. */
+  skin: string;
+  /** Pale throat and lower jaw. */
+  throat: string;
+  beak: string;
+  eye: string;
+  /** The colossus wears the years: moss saddles on the crown. */
+  moss?: string;
+  /** Shell half-width (tiles); length comes from the BeastSpec. */
+  bodyW: number;
+  /** Dome height at the peak. */
+  shellH: number;
+  /** Keel spike height above the crown at the tallest station. */
+  spikeH: number;
+  headW: number;
+  headH: number;
+  /** Head carry height above ground (the rim line). */
+  headRise: number;
+  /** Heavier brow, barbels, cracked plates — the ancient read. */
+  ancient?: boolean;
+}
+
+export const TURTLE_LOOK: TurtleLook = {
+  shell: '#4a5238',
+  rim: '#6e7449',
+  spike: '#3a4030',
+  skin: '#7a8455',
+  throat: '#cdc7a3',
+  beak: '#a49b74',
+  eye: '#d29b3f',
+  bodyW: 0.4,
+  shellH: 0.34,
+  spikeH: 0.1,
+  headW: 0.23,
+  headH: 0.17,
+  headRise: 0.24,
+};
+
+export const COLOSSUS_LOOK: TurtleLook = {
+  shell: '#555c49',
+  rim: '#7b775c',
+  spike: '#464c3c',
+  skin: '#6d7462',
+  throat: '#c3bd9d',
+  beak: '#a8a184',
+  eye: '#d0b26a',
+  moss: '#5d7442',
+  bodyW: 0.6,
+  shellH: 0.48,
+  spikeH: 0.17,
+  headW: 0.3,
+  headH: 0.22,
+  headRise: 0.3,
+  ancient: true,
+};
+
+/** Keel spike stations along the shell (fractions of bodyLen) and
+ * their height multipliers — tallest just aft of midship, raked back. */
+const TURTLE_KEEL: ReadonlyArray<[number, number]> = [
+  [0.52, 0.62],
+  [0.16, 0.95],
+  [-0.2, 1],
+  [-0.56, 0.78],
+];
+const COLOSSUS_KEEL: ReadonlyArray<[number, number]> = [
+  [0.56, 0.55],
+  [0.24, 0.85],
+  [-0.06, 1],
+  [-0.38, 0.95],
+  [-0.7, 0.7],
+];
+
+export function paintTurtleBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: TurtleLook,
+  f: BeastBlockFrame,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  const { bx, gy, s, fx, fy, ys } = f;
+  const px = -fy;
+  const py = fx;
+  const shell = shade(look.shell, (((f.seed >>> 5) & 7) - 3) * 2);
+  const lift = f.bob * 0.35 * s;
+  const tk = f.topScale ?? 1;
+  const domeC = -hl * 0.06;
+  const topH = (X: number): number =>
+    Math.max(0.04, look.shellH * (1 - 0.42 * Math.pow((X - domeC) / hl, 2)));
+
+  // The keep's footprint: stern broad, bow eased where the neck
+  // comes out — a rounded ten-gon slightly longer than wide (a
+  // straight bow edge read as a crate at the face-on bands).
+  const foot: Array<[number, number]> = [
+    [hl * 0.98, -hw * 0.38],
+    [hl * 0.98, hw * 0.38],
+    [hl * 0.76, hw * 0.74],
+    [hl * 0.4, hw * 0.95],
+    [-hl * 0.42, hw],
+    [-hl * 0.8, hw * 0.7],
+    [-hl * 0.92, hw * 0.34],
+    [-hl * 0.92, -hw * 0.34],
+    [-hl * 0.8, -hw * 0.7],
+    [-hl * 0.42, -hw],
+    [hl * 0.4, -hw * 0.95],
+    [hl * 0.76, -hw * 0.74],
+  ];
+
+  paintBlockBody(
+    ctx,
+    f,
+    foot,
+    topH,
+    // The rim floats on the columns — daylight under the keep.
+    () => 0.1,
+    shell,
+    (gx, gyy, lift2) => {
+      // Scute work lives in the shell's own rotated frame so every
+      // facing keeps the plates running nose-to-tail. Seams are
+      // STROKES (the fur-dialect law: strokes never count as ink).
+      ctx.save();
+      ctx.translate(gx(domeC, 0), gyy(domeC, 0) - look.shellH * tk * s * 0.82 - lift2);
+      ctx.rotate(Math.atan2(fy * ys, fx));
+      const seam = shade(look.shell, -26);
+      // The central keel column, a value step darker — the ridge the
+      // spikes grow from.
+      ctx.fillStyle = 'rgba(30, 20, 36, 0.14)';
+      ctx.beginPath();
+      ctx.moveTo(hl * 0.95 * s, -hw * 0.2 * s);
+      ctx.lineTo(-hl * 0.85 * s, -hw * 0.16 * s);
+      ctx.lineTo(-hl * 0.85 * s, hw * 0.16 * s);
+      ctx.lineTo(hl * 0.95 * s, hw * 0.2 * s);
+      ctx.closePath();
+      ctx.fill();
+      // Longitudinal seams flanking the column — kept QUIET (a full
+      // grid face-on read as a woven basket, not armor).
+      ctx.strokeStyle = seam;
+      ctx.lineWidth = Math.max(1, s * 0.02);
+      ctx.globalAlpha = 0.55;
+      for (const q of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(hl * 0.9 * s, q * hw * 0.2 * s);
+        ctx.quadraticCurveTo(0, q * hw * 0.26 * s, -hl * 0.8 * s, q * hw * 0.2 * s);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(hl * 0.72 * s, q * hw * 0.58 * s);
+        ctx.quadraticCurveTo(0, q * hw * 0.66 * s, -hl * 0.66 * s, q * hw * 0.58 * s);
+        ctx.stroke();
+      }
+      // Transverse seams cutting the columns into plates.
+      for (const t of [0.55, 0.14, -0.28, -0.66]) {
+        ctx.beginPath();
+        ctx.moveTo(t * hl * s, -hw * 0.72 * s);
+        ctx.quadraticCurveTo((t - 0.06) * hl * s, 0, t * hl * s, hw * 0.72 * s);
+        ctx.stroke();
+      }
+      // The marginal band: the lighter rim scutes, ticked into
+      // segments — the read that says "shell", not "boulder".
+      ctx.strokeStyle = look.rim;
+      ctx.lineWidth = Math.max(1.5, s * 0.042);
+      ctx.globalAlpha = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(hl * 0.94 * s, -hw * 0.48 * s);
+      ctx.quadraticCurveTo(hl * 0.2 * s, -hw * 0.95 * s, -hl * 0.6 * s, -hw * 0.78 * s);
+      ctx.moveTo(hl * 0.94 * s, hw * 0.48 * s);
+      ctx.quadraticCurveTo(hl * 0.2 * s, hw * 0.95 * s, -hl * 0.6 * s, hw * 0.78 * s);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      // The years on the crown: moss saddles and crack scars — the
+      // colossus only. Seeded, so every hill wears its own weather.
+      if (look.moss) {
+        ctx.fillStyle = look.moss;
+        ctx.globalAlpha = 0.75;
+        for (let k = 0; k < 3; k++) {
+          const b = (n: number): number => ((f.seed >>> ((k * 9 + n * 4) % 27)) & 7) / 7;
+          ctx.beginPath();
+          facetBlob(
+            ctx,
+            (b(0) * 1.2 - 0.7) * hl * s,
+            (b(1) * 1.1 - 0.55) * hw * s,
+            (0.18 + b(2) * 0.14) * hl * s,
+            (f.seed ^ (k * 977)) | 1,
+            6,
+            0.55,
+            0.9,
+          );
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        // Crack scars: pale lightning strokes across old plates.
+        ctx.strokeStyle = shade(look.shell, 18);
+        ctx.lineWidth = Math.max(1, s * 0.014);
+        for (let k = 0; k < 2; k++) {
+          const b = (n: number): number => ((f.seed >>> ((k * 11 + n * 5) % 26)) & 7) / 7;
+          const cx0 = (b(0) * 1.3 - 0.65) * hl * s;
+          const cy0 = (b(1) * 1.2 - 0.6) * hw * s;
+          ctx.beginPath();
+          ctx.moveTo(cx0, cy0);
+          ctx.lineTo(cx0 + (0.1 + b(2) * 0.1) * hl * s, cy0 + (b(3) - 0.5) * 0.3 * hw * s);
+          ctx.lineTo(cx0 + (0.22 + b(2) * 0.12) * hl * s, cy0 + (b(4) - 0.5) * 0.5 * hw * s);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    },
+  );
+
+  // THE SAW RIM: marginal teeth hanging off the near rim edge —
+  // drawn only where the rim faces the camera (the far run hides
+  // behind the dome), pointing down-and-out like the references'
+  // serrated skirts. Rim-toned: spike ink vanished against the
+  // shaded flank.
+  if (!f.hurt) {
+    const rimY = (X: number, Y: number): number =>
+      gy + (fy * X + py * Y) * ys * s - 0.1 * s - lift * 0.6;
+    const rimX = (X: number, Y: number): number => bx + (fx * X + px * Y) * s;
+    const cyd = gy - lift;
+    ctx.fillStyle = shade(look.rim, -8);
+    for (let i = 0; i < foot.length; i++) {
+      const a = foot[i]!;
+      const b = foot[(i + 1) % foot.length]!;
+      const mX = (a[0] + b[0]) / 2;
+      const mY = (a[1] + b[1]) / 2;
+      const sx0 = rimX(mX, mY);
+      const sy0 = rimY(mX, mY);
+      // Near-side segments only: below the body center on screen.
+      if (sy0 <= cyd - 0.02 * s) continue;
+      // Outward in screen space, away from the hull center.
+      let ox = sx0 - bx;
+      let oy = sy0 - cyd;
+      const od = Math.hypot(ox, oy) || 1e-4;
+      ox /= od;
+      oy /= od;
+      const tw = s * (look.ancient ? 0.07 : 0.055);
+      const ex0 = rimX(a[0] * 0.75 + mX * 0.25, a[1] * 0.75 + mY * 0.25);
+      const ey0 = rimY(a[0] * 0.75 + mX * 0.25, a[1] * 0.75 + mY * 0.25);
+      const ex1 = rimX(b[0] * 0.75 + mX * 0.25, b[1] * 0.75 + mY * 0.25);
+      const ey1 = rimY(b[0] * 0.75 + mX * 0.25, b[1] * 0.75 + mY * 0.25);
+      ctx.beginPath();
+      ctx.moveTo(ex0, ey0);
+      ctx.lineTo(sx0 + ox * tw, sy0 + oy * tw + tw * 0.5);
+      ctx.lineTo(ex1, ey1);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // THE RIDGE: keel spikes along the crown, raked back — far spikes
+  // first so the near ones overlap true at the N/S bands. THE RIDGE
+  // RIDES THE CROWN (silhouette-hierarchy law): rooted on the 3D
+  // centerline they sink INSIDE the dome at profile, because the
+  // block dome's visible top there is the far rim plus its height —
+  // so the root slides up the crown by the lateral projection,
+  // landing dead-center face-on and on the skyline side-on. The
+  // defining read never collapses.
+  const keel = look.ancient ? COLOSSUS_KEEL : TURTLE_KEEL;
+  const ridgeY = -py * hw * 0.66;
+  const spikes = keel
+    .map(([t, k]) => {
+      const X = t * hl;
+      return {
+        x: bx + (fx * X + px * ridgeY) * s,
+        y: gy + (fy * X + py * ridgeY) * ys * s,
+        base: topH(X) * tk,
+        h: look.spikeH * k * tk,
+        w: hl * (look.ancient ? 0.1 : 0.09),
+      };
+    })
+    .sort((a, b2) => a.y - b2.y);
+  for (const sp of spikes) {
+    const baseY = sp.y - sp.base * s - lift;
+    ctx.fillStyle = f.hurt ? '#ffffff' : look.spike;
+    ctx.beginPath();
+    // Base spans fore-aft along the facing; apex rakes back a third.
+    ctx.moveTo(sp.x + fx * sp.w * s, baseY + fy * sp.w * ys * s + 1);
+    ctx.lineTo(sp.x - fx * sp.w * 0.28 * s, baseY - fy * sp.w * 0.28 * ys * s - sp.h * s);
+    ctx.lineTo(sp.x - fx * sp.w * s, baseY - fy * sp.w * ys * s + 1);
+    ctx.closePath();
+    ctx.fill();
+    if (!f.hurt) {
+      // Lit leading edge so the blade reads against its own shell.
+      ctx.strokeStyle = shade(shell, 24);
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.beginPath();
+      ctx.moveTo(sp.x + fx * sp.w * s, baseY + fy * sp.w * ys * s);
+      ctx.lineTo(sp.x - fx * sp.w * 0.28 * s, baseY - fy * sp.w * 0.28 * ys * s - sp.h * s);
+      ctx.stroke();
+    }
+  }
+}
+
+export function drawTurtleHead(
+  ctx: CanvasRenderingContext2D,
+  look: TurtleLook,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    /** 0..1 jaw gape — open through the windup, clamped on the hit. */
+    gape?: number;
+    /** Corpse: lids down, jaw slack, nothing watching. */
+    dead?: boolean;
+  },
+): void {
+  const { x, y, s, fx, fy, ys } = o;
+  const px = -fy;
+  const py = fx;
+  const hw = look.headW * s;
+  const hh = look.headH * s;
+  const gape = o.dead ? 0.12 : (o.gape ?? 0);
+  const skin = o.hurt ? '#ffffff' : shade(look.skin, 4);
+
+  // The lower jaw first — the skull overhangs it. Pale, and it drops
+  // through the gape while the skull holds its line.
+  const hingeX = x + fx * hw * 0.24;
+  const hingeY = y + fy * hw * 0.24 * ys + hh * 0.2;
+  const jawDrop = gape * hh * 0.52;
+  ctx.fillStyle = o.hurt ? '#ffffff' : look.throat;
+  ctx.beginPath();
+  ctx.moveTo(hingeX - px * hw * 0.3, hingeY - py * hw * 0.3 * ys);
+  ctx.lineTo(x + fx * hw * 0.82, y + fy * hw * 0.82 * ys + hh * 0.24 + jawDrop);
+  ctx.lineTo(hingeX + px * hw * 0.3, hingeY + py * hw * 0.3 * ys);
+  ctx.closePath();
+  ctx.fill();
+  // The mouth's dark interior shows in the gape.
+  if (gape > 0.15 && !o.hurt) {
+    ctx.fillStyle = '#3a231e';
+    ctx.beginPath();
+    ctx.moveTo(hingeX - px * hw * 0.24, hingeY - py * hw * 0.24 * ys);
+    ctx.lineTo(x + fx * hw * 0.86, y + fy * hw * 0.86 * ys + hh * 0.08 + jawDrop * 0.55);
+    ctx.lineTo(hingeX + px * hw * 0.24, hingeY + py * hw * 0.24 * ys);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // The skull: a blunt wedge with a foreshortened crown plane.
+  ctx.fillStyle = skin;
+  ctx.beginPath();
+  facetCircle(ctx, x, y, hw * 0.58, 7, Math.atan2(fy * ys, fx));
+  ctx.fill();
+  if (!o.hurt) {
+    ctx.fillStyle = shade(look.skin, 14);
+    ctx.beginPath();
+    facetCircle(ctx, x - fx * hw * 0.06, y - fy * hw * 0.06 * ys - hh * 0.16, hw * 0.36, 6, 1.1);
+    ctx.fill();
+  }
+
+  // THE HOOK: the upper mandible — a horn shear dropping past the
+  // jaw line. The one bright value on the head; it must read at any
+  // zoom or the species loses its bite.
+  const beakBaseX = x + fx * hw * 0.4;
+  const beakBaseY = y + fy * hw * 0.4 * ys;
+  const beakTipX = x + fx * hw * 1.02;
+  const beakTipY = y + fy * hw * 1.02 * ys + hh * 0.02;
+  ctx.fillStyle = o.hurt ? '#ffffff' : look.beak;
+  ctx.beginPath();
+  ctx.moveTo(beakBaseX - px * hw * 0.34, beakBaseY - py * hw * 0.34 * ys - hh * 0.1);
+  ctx.lineTo(beakTipX, beakTipY - hh * 0.12);
+  // The hook's descending point.
+  ctx.lineTo(beakTipX + fx * hw * 0.04, beakTipY + hh * 0.22);
+  ctx.lineTo(beakBaseX, beakBaseY + hh * 0.16);
+  ctx.lineTo(beakBaseX + px * hw * 0.34, beakBaseY + py * hw * 0.34 * ys - hh * 0.1);
+  ctx.closePath();
+  ctx.fill();
+  if (!o.hurt) {
+    // The cutting edge, inked.
+    ctx.strokeStyle = shade(look.beak, -32);
+    ctx.lineWidth = Math.max(1, s * 0.016);
+    ctx.beginPath();
+    ctx.moveTo(beakBaseX, beakBaseY + hh * 0.16);
+    ctx.lineTo(beakTipX + fx * hw * 0.04, beakTipY + hh * 0.22);
+    ctx.stroke();
+    // Nostril pits at the beak's base, camera-facing bands only.
+    if (fy > 0.05) {
+      ctx.fillStyle = shade(look.beak, -28);
+      for (const es of [-1, 1]) {
+        ctx.beginPath();
+        ctx.arc(
+          beakBaseX + fx * hw * 0.3 + px * es * hw * 0.09,
+          beakBaseY + (fy * hw * 0.3 + py * es * hw * 0.09) * ys - hh * 0.06,
+          Math.max(0.6, s * 0.011),
+          0,
+          Math.PI * 2,
+        );
+        ctx.fill();
+      }
+    }
+  }
+
+  // THE BROW: a heavy ledge over the eyes — the references' armored
+  // scowl. The ancient wears it a value darker and half again wider.
+  if (!o.hurt) {
+    ctx.strokeStyle = shade(look.skin, look.ancient ? -30 : -24);
+    ctx.lineWidth = Math.max(1.2, s * (look.ancient ? 0.034 : 0.024));
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x - px * hw * 0.48 + fx * hw * 0.1, y + (-py * hw * 0.48 + fy * hw * 0.1) * ys - hh * 0.22);
+    ctx.quadraticCurveTo(
+      x + fx * hw * 0.34,
+      y + fy * hw * 0.34 * ys - hh * 0.3,
+      x + px * hw * 0.48 + fx * hw * 0.1,
+      y + (py * hw * 0.48 + fy * hw * 0.1) * ys - hh * 0.22,
+    );
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
+
+  // Eyes: side-set under the ledge — the far one hides at profile.
+  if (!o.hurt && fy > -0.5) {
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.7 && es * py < 0) continue;
+      const ex0 = x + px * es * hw * 0.42 + fx * hw * 0.18;
+      const ey0 = y + (py * es * hw * 0.42 + fy * hw * 0.18) * ys - hh * 0.08;
+      if (o.dead) {
+        // The lid down — a closed seam where the watch was.
+        ctx.strokeStyle = shade(look.skin, -26);
+        ctx.lineWidth = Math.max(1, s * 0.016);
+        ctx.beginPath();
+        ctx.moveTo(ex0 - hw * 0.08, ey0);
+        ctx.lineTo(ex0 + hw * 0.08, ey0 + hw * 0.02);
+        ctx.stroke();
+        continue;
+      }
+      ctx.fillStyle = '#241a14';
+      ctx.beginPath();
+      facetCircle(ctx, ex0, ey0, Math.max(1, hw * 0.13), 5, es * 0.8);
+      ctx.fill();
+      ctx.fillStyle = look.eye;
+      ctx.beginPath();
+      ctx.arc(ex0 - hw * 0.02, ey0 - hw * 0.02, Math.max(0.7, hw * 0.055), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // The ancient's chin barbels — old-catfish whiskers of hide,
+  // hanging where the camera can see the chin at all.
+  if (look.ancient && !o.hurt && !o.dead && fy > -0.2) {
+    ctx.strokeStyle = shade(look.skin, -14);
+    ctx.lineWidth = Math.max(1, s * 0.016);
+    ctx.lineCap = 'round';
+    for (const es of [-1, 1]) {
+      const bx0 = x + fx * hw * 0.5 + px * es * hw * 0.14;
+      const by0 = y + (fy * hw * 0.5 + py * es * hw * 0.14) * ys + hh * 0.26;
+      ctx.beginPath();
+      ctx.moveTo(bx0, by0);
+      ctx.quadraticCurveTo(bx0 + px * es * hw * 0.06, by0 + hh * 0.2, bx0 + px * es * hw * 0.02, by0 + hh * 0.34);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  }
+}
+
+/**
  * The slime: a hopping gel block in the wall-prism dialect — a chamfered
  * cube that squashes on landing, stretches mid-hop, and breathes at
  * rest, with a darker nucleus riding low in the mass. One body reads at
@@ -18026,10 +18544,14 @@ export function drawBeast(
   let bx = opts.x;
   let by = opts.y;
   if (at > 0) {
+    // The turtles never pounce: the keep plants and the NECK fires
+    // (the head branch spends the strike) — the shell only heaves a
+    // fraction of the beat, or a fortress would hop like a fox.
+    const massK = opts.defId.endsWith('_turtle') ? 0.3 : 1;
     const pounce =
-      at < 0.7
+      (at < 0.7
         ? -0.12 * (at / 0.7) // crouch away
-        : 0.3 * Math.sin(Math.PI * Math.min(1, (at - 0.7) / 0.3)); // strike!
+        : 0.3 * Math.sin(Math.PI * Math.min(1, (at - 0.7) / 0.3))) * massK; // strike!
     bx += fx * pounce * s;
     by += fy * pounce * s * ys;
   }
@@ -18291,6 +18813,12 @@ export function drawBeast(
   const bearL = opts.defId === 'bear' ? BEAR_LOOK : undefined;
   const crabL = opts.defId === 'mudcrab' ? CRAB_LOOK : undefined;
   const beetleL = opts.defId === 'giant_beetle' ? BEETLE_LOOK : undefined;
+  const turtleL =
+    opts.defId === 'giant_turtle'
+      ? TURTLE_LOOK
+      : opts.defId === 'colossus_turtle'
+        ? COLOSSUS_LOOK
+        : undefined;
   const idle = 1 - opts.pose.poleStrength;
   const now = opts.nowMs ?? 0;
   const blockFrame = (): BeastBlockFrame => ({
@@ -18368,6 +18896,10 @@ export function drawBeast(
     }
     if (beetleL) {
       paintBeetleBody(ctx, spec, beetleL, blockFrame(), at);
+      return;
+    }
+    if (turtleL) {
+      paintTurtleBody(ctx, spec, turtleL, blockFrame());
       return;
     }
     if (cattle) {
@@ -18735,6 +19267,111 @@ export function drawBeast(
       drawSabercatHead(ctx, sabercatL, { x: chx, y: chy, s, fx, fy, ys, hurt: opts.hurt });
       return;
     }
+    if (turtleL) {
+      // THE SNAP: a turtle's strike lives in the NECK. The windup
+      // draws the head HOME toward the shell mouth (the coil is the
+      // tell), then the neck fires past the rim and the shear clamps
+      // — the feet never leave their plants. One smooth curve start
+      // to finish (the analytic-beat law), shared with the gape.
+      const hl = spec.bodyLen * s;
+      const hw2 = turtleL.headW * s;
+      const nod = opts.pose.bob * 0.35 * s;
+      let ext = 0;
+      let gape = 0;
+      if (at > 0) {
+        if (at < 0.7) {
+          const k = at / 0.7;
+          ext = -k * 0.13 * s;
+          gape = k;
+        } else {
+          const k = Math.sin(Math.PI * Math.min(1, (at - 0.7) / 0.3));
+          ext = k * (turtleL.ancient ? 0.4 : 0.32) * s;
+          gape = Math.max(0, 1 - (at - 0.7) / 0.15);
+        }
+      }
+      // THE BASK: at rest the head eases up sunward on a slow clock —
+      // the idle life of a creature whose hurry is geological.
+      const bask =
+        now > 0 ? Math.max(0, Math.sin(now * 0.00022 + seed * 1.7)) * idle * 0.045 * s : 0;
+      // THE KEEP HIDES THE HEAD: walking away, a snapper shows you
+      // shell — the head settles low and draws in as the facing
+      // crosses up-screen (smooth, so the tuck never pops), instead
+      // of ballooning over the dome the way a raw carry projects.
+      const tuck = Math.min(1, Math.max(0, (-fy - 0.25) / 0.5));
+      const reach = (hl * 0.98 + hw2 * 0.42) * (1 - 0.12 * tuck) + ext;
+      const carry = turtleL.headRise * s * (1 - 0.72 * tuck);
+      const chx = bx + fx * reach;
+      const chy = by + fy * reach * ys - carry - nod - bask * (1 - tuck);
+      // The neck: a thick hide column out of the shell's mouth — it
+      // widens at the root (the keep swallows it whole on the tuck).
+      const rootF = hl * 0.78;
+      const nb = (turtleL.headRise + turtleL.shellH * 0.28) * s + opts.pose.bob * 0.35 * s;
+      const nwx = px * hw2 * 0.62;
+      const nwy = py * hw2 * 0.62;
+      // The column's core: a screen-space stroke shell-mouth → skull,
+      // so the neck keeps its DEPTH at profile where the projected
+      // quad thins to a ribbon (a head on a ribbon floats; a head on
+      // a column belongs to the body).
+      ctx.strokeStyle = opts.hurt ? '#ffffff' : shade(turtleL.skin, -4);
+      ctx.lineWidth = Math.max(2, hw2 * 0.88);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(bx + fx * rootF, by + fy * rootF * ys - nb * 0.72);
+      ctx.lineTo(chx - fx * hw2 * 0.12, chy + turtleL.headH * s * 0.06);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(turtleL.skin, -4);
+      ctx.beginPath();
+      ctx.moveTo(bx + fx * rootF + nwx, by + (fy * rootF + nwy) * ys - nb);
+      ctx.lineTo(bx + fx * rootF - nwx, by + (fy * rootF - nwy) * ys - nb);
+      ctx.lineTo(chx - px * hw2 * 0.52, chy - py * hw2 * 0.52 * ys + turtleL.headH * s * 0.26);
+      ctx.lineTo(chx + px * hw2 * 0.52, chy + py * hw2 * 0.52 * ys + turtleL.headH * s * 0.26);
+      ctx.closePath();
+      ctx.fill();
+      if (!opts.hurt) {
+        // The pale throat under the column — a FRONT-facing read
+        // only: at the profile bands the projected band lands on the
+        // neck's middle and reads as a white sleeve, so it stays home
+        // there (the jaw's pale underside carries the profile).
+        if (fy > 0.28) {
+          ctx.fillStyle = turtleL.throat;
+          ctx.beginPath();
+          ctx.moveTo(bx + fx * rootF + nwx * 0.38, by + (fy * rootF + nwy * 0.38) * ys - nb * 0.8);
+          ctx.lineTo(bx + fx * rootF - nwx * 0.38, by + (fy * rootF - nwy * 0.38) * ys - nb * 0.8);
+          ctx.lineTo(chx - px * hw2 * 0.16, chy - py * hw2 * 0.16 * ys + turtleL.headH * s * 0.42);
+          ctx.lineTo(chx + px * hw2 * 0.16, chy + py * hw2 * 0.16 * ys + turtleL.headH * s * 0.42);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // Hide wrinkles: the telescoping folds, deepest at the root.
+        ctx.strokeStyle = shade(turtleL.skin, -18);
+        ctx.lineWidth = Math.max(1, s * 0.016);
+        ctx.globalAlpha = 0.5;
+        for (const t of [0.3, 0.55]) {
+          const wf = rootF + (reach - rootF) * t;
+          const wh = nb * (1 - t) + (carry + nod + bask - turtleL.headH * s * 0.24) * t;
+          const wx0 = bx + fx * wf;
+          const wy0 = by + fy * wf * ys - wh;
+          const ww = hw2 * (0.6 - 0.14 * t);
+          ctx.beginPath();
+          ctx.moveTo(wx0 - px * ww, wy0 - py * ww * ys);
+          ctx.quadraticCurveTo(wx0, wy0 + s * 0.02, wx0 + px * ww, wy0 + py * ww * ys);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
+      drawTurtleHead(ctx, turtleL, {
+        x: chx,
+        y: chy,
+        s,
+        fx,
+        fy,
+        ys,
+        hurt: opts.hurt,
+        gape,
+      });
+      return;
+    }
     if (bearL) {
       const hl = spec.bodyLen * s;
       const hw2 = bearL.headW * s;
@@ -19043,6 +19680,48 @@ export function drawBeast(
 
   const paintTail = (): void => {
     if (spiderL || crabL || beetleL) return;
+    if (turtleL) {
+      // THE SIMULATED TAIL: the live game runs the verlet stub (a
+      // heavy, low-carried BobtailSim) painted by drawTurtleTail.
+      // The analytic cone below is THE ONE REST for sim-less callers
+      // (portraits, the CMS, corpses): exactly where the sim settles.
+      if (opts.tail) {
+        opts.tail();
+        return;
+      }
+      const hl = spec.bodyLen * s;
+      const lift = opts.pose.bob * 0.35 * s;
+      const rootX = bx - fx * hl * 0.86;
+      const rootY = by - fy * hl * 0.86 * ys - 0.13 * s - lift * 0.6;
+      const backA = Math.atan2(-fy * ys, -fx);
+      const tLen = s * (turtleL.ancient ? 0.5 : 0.34);
+      const sway = now > 0 ? Math.sin(now * 0.0009 + seed * 0.9) * 0.1 : 0;
+      const cxq = rootX + Math.cos(backA + sway * 0.4) * tLen * 0.5;
+      const cyq = rootY + Math.sin(backA + sway * 0.4) * tLen * 0.5 * ys + tLen * 0.22;
+      const tipx = rootX + Math.cos(backA + sway) * tLen;
+      const tipy = cyq + tLen * 0.16;
+      const wk = s * (turtleL.ancient ? 0.075 : 0.06);
+      const cone = taperedSpinePath(rootX, rootY, cxq, cyq, tipx, tipy, (t) => wk * (1 - 0.75 * t));
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(turtleL.skin, -6);
+      ctx.fill(cone);
+      if (!opts.hurt) {
+        // The armored ridge: spikelets marching down the dorsal line.
+        ctx.fillStyle = turtleL.spike;
+        for (const t of [0.22, 0.52, 0.78]) {
+          const u = 1 - t;
+          const sxp = u * u * rootX + 2 * u * t * cxq + t * t * tipx;
+          const syp = u * u * rootY + 2 * u * t * cyq + t * t * tipy;
+          const sw = wk * (1 - 0.6 * t);
+          ctx.beginPath();
+          ctx.moveTo(sxp - sw * 0.5, syp - sw * 0.3);
+          ctx.lineTo(sxp, syp - sw * 1.5);
+          ctx.lineTo(sxp + sw * 0.5, syp - sw * 0.3);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      return;
+    }
     if (ramL) {
       // A wool nub dropped off the fleece stern.
       const hl = spec.bodyLen * s;
@@ -19550,12 +20229,15 @@ export function drawBeast(
   // rides the shell rim instead, same brass, same read.
   const paintCollar = (): void => {
     if (!opts.collar) return;
-    const shellBody = !!(crabL || beetleL || spiderL);
+    // The turtle keeps its neck, but a strap on a telescoping neck
+    // is a lie — the keeper rivets the tag to the front rim over the
+    // neck's door instead, same brass, same read.
+    const shellBody = !!(crabL || beetleL || spiderL || turtleL);
     // The sheep has no neck to see — the fleece swallows it — so her
     // strap rides the wool line right behind the skull, short and
     // thin, or it reads as a plank across the cloud.
-    const cx = bx + fx * len * (shellBody ? 0.5 : sheepL ? 0.95 : 0.72);
-    const cy = bodyY + fy * len * (shellBody ? 0.34 : sheepL ? 0.6 : 0.5) * ys;
+    const cx = bx + fx * len * (turtleL ? 0.82 : shellBody ? 0.5 : sheepL ? 0.95 : 0.72);
+    const cy = bodyY + fy * len * (turtleL ? 0.5 : shellBody ? 0.34 : sheepL ? 0.6 : 0.5) * ys;
     const bw = Math.max(2, r * (shellBody ? 0.4 : sheepL ? 0.34 : 0.58));
     ctx.save();
     ctx.translate(cx, cy);

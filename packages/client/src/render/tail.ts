@@ -250,6 +250,12 @@ export class BobtailSim {
   constructor(
     private readonly heavy: number,
     seed: number,
+    /**
+     * Rest-carriage dial: 1 = the cat's perked stub (the shipped
+     * behavior, exactly); fractions lay the chain down — the turtle's
+     * armored tail TRAILS low off the stern instead of standing.
+     */
+    private readonly standK: number = 1,
   ) {
     this.segs = 3;
     this.segLen = 0.055 * (1 + 0.35 * (heavy - 1));
@@ -307,8 +313,12 @@ export class BobtailSim {
     this.lastAx = ax;
     this.lastAy = ay;
     // The carriage: perked near-vertical at rest and in the crouch,
-    // laying back toward the facing line at a flat run.
-    const stand = Math.max(0.25, 0.85 + 0.35 * perk - Math.min(0.6, spd * 0.13));
+    // laying back toward the facing line at a flat run. standK 1 is
+    // the cat verbatim; a low dial keeps the chain trailed always.
+    const stand = Math.max(
+      0.25 * this.standK,
+      (0.85 + 0.35 * perk - Math.min(0.6, spd * 0.13)) * this.standK,
+    );
 
     const lastI = n - 1;
     for (let i = 1; i < n; i++) {
@@ -336,11 +346,14 @@ export class BobtailSim {
       // The flick: quick lateral tip beats — lazy at rest, agitated
       // while wound or running; the phase step makes it travel.
       const flickHz = 1.6 + Math.min(2.0, spd * 0.5) + perk * 1.6;
+      // The carriage dial tones the beat with it: an armored trailer
+      // sways where a cat's stub whips (standK 1 = the cat verbatim).
       const flick =
         Math.sin(tSec * flickHz * Math.PI + this.phase + ti * 1.9) *
         (0.4 + 0.9 * Math.min(1, spd / 4) + 0.7 * perk) *
         ti *
-        2.6;
+        2.6 *
+        this.standK;
       gx += -fy * flick;
       gy += fx * flick;
 
@@ -482,6 +495,92 @@ export function drawBobtail(
   // The quiet contour that separates the stub from same-fur flanks.
   ctx.strokeStyle = shade(look.coat, -24);
   ctx.lineWidth = Math.max(1, wk * 0.012);
+  silhouette();
+  ctx.stroke();
+}
+
+export interface TurtleTailStyle {
+  skin: string;
+  spike: string;
+  /** Width multiplier — the colossus drags a thicker trailer. */
+  heavy: number;
+}
+
+/**
+ * Paint the projected turtle tail: a tapered armored cone off the
+ * stern with spikelets marching down the dorsal edge — low-carried
+ * muscle, never a plume. The painter never learns a species (the
+ * canid-lane law): dials ride the style. Plain path calls — no
+ * Path2D — so node-side painter tests can walk every coordinate.
+ */
+export function drawTurtleTail(
+  ctx: CanvasRenderingContext2D,
+  pts: Array<{ x: number; y: number }>,
+  st: TurtleTailStyle,
+  wk: number,
+  opts: BobtailDrawOpts,
+): void {
+  const n = pts.length;
+  if (n < 3) return;
+  const left: Array<{ x: number; y: number }> = [];
+  const right: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[Math.max(0, i - 1)]!;
+    const b = pts[Math.min(n - 1, i + 1)]!;
+    let tx = b.x - a.x;
+    let ty = b.y - a.y;
+    const tl = Math.hypot(tx, ty) || 1;
+    tx /= tl;
+    ty /= tl;
+    const t = i / (n - 1);
+    const w = (0.062 - 0.044 * t) * st.heavy * wk;
+    left.push({ x: pts[i]!.x + ty * w, y: pts[i]!.y - tx * w });
+    right.push({ x: pts[i]!.x - ty * w, y: pts[i]!.y + tx * w });
+  }
+
+  const silhouette = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(left[0]!.x, left[0]!.y);
+    for (let i = 1; i < n; i++) ctx.lineTo(left[i]!.x, left[i]!.y);
+    // The tip closes to a point — armor, not fur.
+    const tipX = pts[n - 1]!.x + (pts[n - 1]!.x - pts[n - 2]!.x) * 0.55;
+    const tipY = pts[n - 1]!.y + (pts[n - 1]!.y - pts[n - 2]!.y) * 0.55;
+    ctx.lineTo(tipX, tipY);
+    for (let i = n - 1; i >= 0; i--) ctx.lineTo(right[i]!.x, right[i]!.y);
+    ctx.closePath();
+  };
+
+  ctx.lineJoin = 'round';
+  ctx.fillStyle = opts.hurt ? '#ffffff' : shade(st.skin, opts.back ? -14 : -6);
+  silhouette();
+  ctx.fill();
+  if (opts.hurt) return;
+
+  // Spikelets off the UPPER edge — whichever ribbon side currently
+  // rides higher on screen, so the ridge stays dorsal at every facing.
+  ctx.fillStyle = st.spike;
+  for (let i = 1; i < n - 1; i++) {
+    const hi = left[i]!.y <= right[i]!.y ? left[i]! : right[i]!;
+    const t = i / (n - 1);
+    const sw = (0.05 - 0.028 * t) * st.heavy * wk;
+    ctx.beginPath();
+    ctx.moveTo(hi.x - sw * 0.55, hi.y + sw * 0.2);
+    ctx.lineTo(hi.x - sw * 0.1, hi.y - sw * 1.35);
+    ctx.lineTo(hi.x + sw * 0.55, hi.y + sw * 0.2);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Segment rings: the armored joints, quiet.
+  ctx.strokeStyle = shade(st.skin, -22);
+  ctx.lineWidth = Math.max(1, wk * 0.014);
+  for (let i = 1; i < n - 1; i++) {
+    ctx.beginPath();
+    ctx.moveTo(left[i]!.x, left[i]!.y);
+    ctx.lineTo(right[i]!.x, right[i]!.y);
+    ctx.stroke();
+  }
+  // The quiet contour that separates the trailer from the ground.
   silhouette();
   ctx.stroke();
 }

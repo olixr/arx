@@ -1560,6 +1560,34 @@ const defs: LootTableDef[] = [
       { item: 'redquarry', chance: 0.01 },
     ],
   },
+  {
+    id: 'giant_turtle',
+    desc: 'The pond bank pays in armor: scutes off the keep, and whatever the last careless fish learned too late.',
+    entries: [
+      { item: 'bones' },
+      { item: 'turtle_scute', chance: 0.7 },
+      // A turtle fishes by waiting. It is very good at waiting.
+      { item: 'raw_trout', qty: [1, 2], chance: 0.5 },
+      { item: 'scrap_hide', qty: [1, 3], chance: 0.7 },
+      { item: 'crimson_essence', chance: 0.1 },
+    ],
+  },
+  {
+    id: 'colossus_turtle',
+    desc: 'Fell a hill and the hill settles its estate: plate, moss-buried keepsakes, and a century of other people\'s bad ideas.',
+    rarityBonus: 3,
+    entries: [
+      { item: 'bones' },
+      { item: 'colossus_plate', chance: 0.85 },
+      { item: 'turtle_scute', qty: [1, 3], chance: 0.5 },
+      // Climbers leave things on a hill that never noticed them, and
+      // it kept every one where it lay.
+      { item: 'coins', qty: [40, 100], chance: 0.5 },
+      { item: 'crimson_essence', qty: [1, 3], chance: 0.15 },
+      { item: 'brass_key', chance: 0.06 },
+      { item: 'dungeon_key', chance: 0.03 },
+    ],
+  },
 
   // ------------------------------------------------------------------
   // THE EARTH STANDS UP (docs/golems-plan.md): the golem hoards. No

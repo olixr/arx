@@ -108,6 +108,16 @@ export const TAME_DEFS: readonly TameDef[] = [
     flavor: 'It runs where you look. The pack was practice for you.',
   },
   {
+    species: 'giant_turtle',
+    lure: 'raw_trout',
+    tameXp: 170,
+    // THE KEEP AT HEEL: the hardest shell on the ladder — the beetle
+    // was the first tank; this is the last word in tanks. Slow to
+    // arrive, slower to fall.
+    kit: { armor: 6 },
+    flavor: 'A fortress that decided to like you. It arrives late to every fight and leaves last.',
+  },
+  {
     species: 'lynx_young',
     lure: 'raw_chicken',
     tameXp: 110,
@@ -188,6 +198,9 @@ const NEVER_TAMED = new Set([
   // refusal misses them the same way.
   'ram',
   'bull',
+  // A hill is not owned. The giant turtle answers a patient keeper;
+  // the colossus answers to weather, and slowly.
+  'colossus_turtle',
 ]);
 
 /**

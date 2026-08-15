@@ -1458,6 +1458,77 @@ const defs: NpcDef[] = [
     attackStatus: { status: 'bleed', power: 2, durationTicks: 50 },
     pounce: true,
   },
+  // THE SHELL WALKS (giant turtles): the pond bank's fortress. A
+  // giant turtle hunts nothing — it outlasts everything. Provoke it
+  // and the neck fires like a sprung trap; walk on and it watches
+  // you go. The tank of the tame ladder: more hull than anything
+  // near its rung, on the slowest feet in the wood.
+  {
+    id: 'giant_turtle',
+    name: 'Giant turtle',
+    level: 14,
+    // The keep: out-hulls the black bear two rungs above it — the
+    // shell IS the stat.
+    maxHp: 72,
+    damage: 4,
+    // The neck's reach: the strike arrives from further than the
+    // shuffle ever will.
+    attackRange: 1.2,
+    // A siege pace between snaps: the slowest basic under the ogre.
+    attackCooldownTicks: 55,
+    aggroRange: 0,
+    // A basking eye and a shell at its back: it minds its front and
+    // trusts the keep with the rest.
+    sightArc: 200,
+    leashRange: 14,
+    // Nothing this side of a golem walks slower — and nothing needs
+    // to walk less.
+    speed: 2.2,
+    xpReward: 175,
+    loot: ['giant_turtle', 'heirlooms'],
+    respawnSec: 55,
+    color: '#5d6b46',
+    radius: 0.46,
+    hitHeight: 1.2,
+    // The hooked shear: a beak that takes its bite with it.
+    attackStatus: { status: 'bleed', power: 1, durationTicks: 50 },
+    // Nothing bleeds a shell.
+    resist: ['bleed'],
+    // Cold blood: the chill finds the one gap the armor cannot close.
+    weak: ['chill'],
+  },
+  // THE HILL THAT WATCHES: the colossus is not a bigger turtle — it
+  // is a landmark that decided to move. Moss on the crown plates,
+  // scars older than the towns, and a patience that has never once
+  // been rewarded for hurrying. It asks nothing of anybody; the
+  // mistake has always been asking something of it.
+  {
+    id: 'colossus_turtle',
+    name: 'Colossus turtle',
+    level: 26,
+    maxHp: 210,
+    damage: 9,
+    attackRange: 1.5,
+    attackCooldownTicks: 60,
+    aggroRange: 0,
+    // Old eyes under a stone brow: it sees what stands before it and
+    // outlives the rest.
+    sightArc: 160,
+    leashRange: 12,
+    // The slowest walking thing in the game, and the least worried.
+    speed: 1.7,
+    xpReward: 540,
+    loot: ['colossus_turtle', 'heirlooms'],
+    respawnSec: 160,
+    color: '#59604f',
+    radius: 0.62,
+    hitHeight: 1.9,
+    // A shear that takes a hand's width at a pass.
+    attackStatus: { status: 'bleed', power: 2, durationTicks: 60 },
+    // Ancient plate: neither edge nor fang finds purchase.
+    resist: ['bleed', 'venom'],
+    weak: ['chill'],
+  },
   {
     id: 'wolf',
     name: 'Wolf',

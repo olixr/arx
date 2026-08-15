@@ -138,7 +138,7 @@ test('BRACKET: the leash holds the ladder — beastcraft caps the climb', () => 
 });
 
 test('THE SPECIES SPEAK: the whole roster stands', () => {
-  assert.equal(TAME_DEFS.length, 13, 'entry trio through the worg capstone');
+  assert.equal(TAME_DEFS.length, 14, 'entry trio through the worg capstone, the turtle keep among them');
 });
 
 test('kits are the species\' own teeth re-aimed, never an invented spellbook', () => {
