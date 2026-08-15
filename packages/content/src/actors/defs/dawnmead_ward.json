@@ -2,7 +2,7 @@
   "id": "dawnmead_ward",
   "name": "Vale Ward",
   "title": "Dawnmead Ward",
-  "examine": "Leather that still smells of the tannery and a sword kept sharper than it strictly needs to be. Bryn drills them until walking the lanes feels like soldiering.",
+  "examine": "Leather that still smells of the tannery and a sword kept sharper than it strictly needs to be. Halla drills them until walking the lanes feels like soldiering.",
   "disposition": "neutral",
   "protection": "invulnerable",
   "combat": {
@@ -43,8 +43,8 @@
     }
   ],
   "lines": [
-    "Bryn has us walk the lanes in turns. This one is mine.",
-    "Quiet night, quiet morning. In Dawnmead that counts as news.",
+    "Halla has us walk it in turns. Bridge, green, granary. This turn is mine.",
+    "A fox at the coop and a loose rail at the stalls. Busy week, for Dawnmead.",
     "Keep off the hunters' trail after dark. The wolves know it better than you do."
   ]
 }

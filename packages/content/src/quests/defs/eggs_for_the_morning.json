@@ -1,0 +1,16 @@
+{
+  "id": "eggs_for_the_morning",
+  "name": "Eggs for the Morning",
+  "giver": "farmer_brammel",
+  "stages": [
+    {
+      "id": "gather",
+      "journal": "Brammel is six eggs short of a morning. The hens lay where they please: the coop floor by the farmhouse, mostly, and the long grass along the pasture fence when they're feeling poetic. He'll be at the field gate. He is always at the field gate.",
+      "objectives": [{ "kind": "collect", "item": "egg", "count": 6 }]
+    }
+  ],
+  "rewards": {
+    "coins": 30,
+    "xp": [{ "skill": "farming", "amount": 150 }]
+  }
+}

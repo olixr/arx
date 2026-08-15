@@ -1,0 +1,16 @@
+{
+  "id": "a_line_in_the_water",
+  "name": "A Line in the Water",
+  "giver": "angler_weir",
+  "stages": [
+    {
+      "id": "catch",
+      "journal": "Weir wants four trout, mostly to see if you'll learn what the water has to say. The fishing spots ripple where the brook sounds busiest: by his pier at the crab bank, upstream near the north woods, and down by the wading ford. You'll want a rod from Ottery's counter.",
+      "objectives": [{ "kind": "collect", "item": "raw_trout", "count": 4 }]
+    }
+  ],
+  "rewards": {
+    "coins": 40,
+    "xp": [{ "skill": "fishing", "amount": 200 }]
+  }
+}

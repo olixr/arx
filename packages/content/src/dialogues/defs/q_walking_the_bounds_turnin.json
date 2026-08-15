@@ -1,0 +1,26 @@
+{
+  "id": "q_walking_the_bounds_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:walking_the_bounds:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "innkeep_gilly",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "The copse, the pier, and the stalls. Now Dawnmead's yours: a place belongs to whoever knows where it ends. Supper's on me, and the next road you walk, you'll know what you're walking FROM.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "walking_the_bounds"
+        }
+      ]
+    }
+  ]
+}

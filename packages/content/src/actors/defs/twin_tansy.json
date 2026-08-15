@@ -1,0 +1,24 @@
+{
+  "id": "twin_tansy",
+  "name": "Tansy",
+  "examine": "The elder twin by a shout, and she has never once let Wick forget it. Currently winning.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 4,
+      "hairColor": 3,
+      "eyes": 3,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 1,
+      "pants": 3
+    }
+  },
+  "lines": [
+    "Race you to the well! I already won. You were slow.",
+    "I've seen nine wakings. Wick's seen eight. He was asleep for one. It counts.",
+    "Da says the rats are yours now. GOOD. They chased me off the granary wall."
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "id": "q_a_bird_done_proper_offer",
+  "start": "hub",
+  "requires": [
+    "quest:a_bird_done_proper:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "cook_berrit",
+      "priority": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Now the proper lesson. Take these birds, {item:raw_chicken}, and bring me two cooked through. My fire's right there. You'll burn the first. That's why there's three.",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "a_bird_done_proper"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Two cooked birds. Easy.",
+          "next": "sworn"
+        },
+        {
+          "text": "Maybe later.",
+          "next": "declined"
+        }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Slow is the secret, love. The fire just wants you slower.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "a_bird_done_proper"
+        },
+        {
+          "kind": "give",
+          "item": "raw_chicken",
+          "qty": 3
+        }
+      ]
+    },
+    {
+      "id": "declined",
+      "text": "The pot will still be here when your nerve is."
+    }
+  ]
+}

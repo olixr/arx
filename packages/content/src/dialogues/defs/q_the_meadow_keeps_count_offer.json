@@ -1,0 +1,50 @@
+{
+  "id": "q_the_meadow_keeps_count_offer",
+  "start": "hub",
+  "requires": [
+    "quest:the_meadow_keeps_count:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "yardmaster_halla",
+      "priority": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Count's up at the granary again. Eight down, usual rate. Yours?",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "the_meadow_keeps_count"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Eight. On my way.",
+          "next": "sworn"
+        },
+        {
+          "text": "Someone else's turn.",
+          "next": "declined"
+        }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Go. Count out loud.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "the_meadow_keeps_count"
+        }
+      ]
+    },
+    {
+      "id": "declined",
+      "text": "The count won't shrink by itself."
+    }
+  ]
+}

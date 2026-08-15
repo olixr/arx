@@ -1,0 +1,36 @@
+{
+  "id": "halla_yard",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "yardmaster_halla" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Yard's open. Speak.",
+      "choices": [
+        { "text": "Remind me of the three schools.", "next": "recap" },
+        { "text": "What's out past the hedgerows?", "next": "beyond" },
+        { "text": "How did you end up here?", "next": "knee" },
+        { "text": "Just passing the yard.", "next": "dismiss" }
+      ]
+    },
+    {
+      "id": "recap",
+      "text": "Sword: three cuts, third lands hardest, dash what you can't trade. Bow: Rill says full draw or nothing, and Rill is right. Spark: where you look, not where you wave. That's the drill. Go use it.",
+      "next": "hub"
+    },
+    {
+      "id": "beyond",
+      "text": "Inside the hedgerows, nothing will touch you. Past them it gets braver by the mile: stray wolves first, then camps with watch fires, and out where the maps give up, _things with names_. The road lamps are the only friendly lights out there. Mind your distance.",
+      "next": "hub"
+    },
+    {
+      "id": "knee",
+      "text": "Wayward Watch, nine years, the long dark miles past the Last Lamp. Then a cart, a ditch, and a knee that's honest about rain and nothing else. The Watch sent me somewhere quiet. I drill wakers so the quiet stays quiet.",
+      "next": "hub"
+    },
+    {
+      "id": "dismiss",
+      "text": "Then pass through. Mind the racks."
+    }
+  ]
+}

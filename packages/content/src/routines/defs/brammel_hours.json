@@ -1,0 +1,43 @@
+{
+  "id": "brammel_hours",
+  "base": { "kind": "post", "dir": -1.5707963, "speed": 1.6 },
+  "slots": [
+    {
+      "from": 6,
+      "to": 11,
+      "task": {
+        "kind": "path",
+        "speed": 1.6,
+        "waypoints": [
+          { "x": 0, "y": -1, "waitSec": 4 },
+          { "x": 1, "y": -23 },
+          { "x": 9, "y": -29, "waitSec": 20, "dir": 3.1415927 },
+          { "x": 1, "y": -23 },
+          { "x": -5, "y": -16, "waitSec": 25, "dir": 0 },
+          { "x": 0, "y": -1, "waitSec": 6 }
+        ]
+      }
+    },
+    {
+      "from": 13,
+      "to": 18,
+      "task": { "kind": "wander", "x": 0, "y": -3, "radius": 2.5, "speed": 1.6 }
+    },
+    {
+      "from": 20.5,
+      "to": 5.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.6,
+        "waypoints": [
+          { "x": 1, "y": -23 },
+          { "x": 1, "y": -25 },
+          { "x": 1, "y": -26 },
+          { "x": -1, "y": -30 },
+          { "x": -2, "y": -30, "lie": true }
+        ]
+      }
+    }
+  ]
+}

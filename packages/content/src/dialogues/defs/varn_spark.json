@@ -1,0 +1,22 @@
+{
+  "id": "varn_spark",
+  "start": "spark",
+  "once": true,
+  "bindings": [{ "kind": "actor", "target": "sparkwright_varn", "priority": 10 }],
+  "nodes": [
+    {
+      "id": "spark",
+      "text": "Ah! A new one! Come in, come in, mind the scorch. *Varn*. I keep the spark here. Or it keeps me. We've never settled it.",
+      "next": "lesson"
+    },
+    {
+      "id": "lesson",
+      "text": "The *staff* throws a spark, and the spark goes where you look, not where you wave. Your arm doesn't matter. Your eyes do. The schools warm to you as you work, and the tricks come on their own, like... like remembering. Yes. Like that.",
+      "next": "practice"
+    },
+    {
+      "id": "practice",
+      "text": "Put a few into the dummy there. If you scorch my stones, good, they're notes. I was mid-sentence when I came through the Ring, you know. Something important. Forty years now. It will come back to me."
+    }
+  ]
+}

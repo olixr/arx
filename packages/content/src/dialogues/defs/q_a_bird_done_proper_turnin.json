@@ -1,0 +1,26 @@
+{
+  "id": "q_a_bird_done_proper_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:a_bird_done_proper:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "cook_berrit",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Two birds, done proper. Smell that? That's the difference between owning your supper and being fed it. You're taught, love. Taught for life.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "a_bird_done_proper"
+        }
+      ]
+    }
+  ]
+}

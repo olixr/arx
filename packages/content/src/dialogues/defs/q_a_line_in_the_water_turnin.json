@@ -1,0 +1,26 @@
+{
+  "id": "q_a_line_in_the_water_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:a_line_in_the_water:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "angler_weir",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "...Four. Fat ones. You listened. Here.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "a_line_in_the_water"
+        }
+      ]
+    }
+  ]
+}

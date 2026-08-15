@@ -1,0 +1,31 @@
+{
+  "id": "halla_watch_urgent",
+  "start": "hub",
+  "requires": ["world:threat_bold"],
+  "bindings": [{ "kind": "actor", "target": "yardmaster_halla", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "They've stopped hiding their fires. That means numbers. Numbers mean they're deciding something.",
+      "choices": [
+        { "text": "Mark it. I'll go.", "next": "mark" },
+        { "text": "And if nobody goes?", "next": "noone" },
+        { "text": "Hold the yard. I'll be back.", "next": "hold" }
+      ]
+    },
+    {
+      "id": "mark",
+      "text": "Marked on your chart. Don't scout it. *End* it.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "noone",
+      "text": "Then they get bolder. Then they come down the road. I've seen the order it happens in.",
+      "next": "hub"
+    },
+    {
+      "id": "hold",
+      "text": "Always."
+    }
+  ]
+}

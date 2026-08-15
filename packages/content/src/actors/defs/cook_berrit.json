@@ -1,0 +1,29 @@
+{
+  "id": "cook_berrit",
+  "name": "Berrit",
+  "title": "Hearthmother",
+  "examine": "Fed the whole village out of one pot through a winter nobody names. The long table is hers, and so, at supper, is everyone at it.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 1,
+      "hairColor": 4,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 5,
+      "shirt": 9,
+      "pants": 2
+    }
+  },
+  "inventory": [
+    { "item": "bread", "qty": 3 },
+    { "item": "berries", "qty": 4 }
+  ],
+  "lines": [
+    "Sit. Eat. Then tell me whatever it was.",
+    "The berry banks give more than they're asked. Take a pocketful, love.",
+    "Burnt your first bird? Good. The fire takes one as its fee, then you're taught."
+  ]
+}

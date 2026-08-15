@@ -1,0 +1,36 @@
+{
+  "id": "brammel_gate",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "farmer_brammel" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Latch minds itself now. Sorrel fixed it. Something you need?",
+      "choices": [
+        { "text": "What does the farm give?", "next": "produce" },
+        { "text": "Whose kids are those?", "next": "twins" },
+        { "text": "Anything need fighting around here?", "next": "practice" },
+        { "text": "Nothing. Good fences.", "next": "farewell" }
+      ]
+    },
+    {
+      "id": "produce",
+      "text": "Cow gives *milk* if you walk up gentle. Hens drop *eggs*: coop floor, mornings, long grass when they're feeling poetic. Berries by the brook. That's breakfast, and nothing had to bleed for it.",
+      "next": "hub"
+    },
+    {
+      "id": "twins",
+      "text": "Tansy and Wick. Mine. They'll have counted you already. The girl wins races nobody agreed to run, and the boy knows things that aren't so. They mean nothing by it.",
+      "next": "hub"
+    },
+    {
+      "id": "practice",
+      "text": "Not on my animals. The *old granary* across the ford has rats all over it in broad day, and Halla pays thanks for the thinning. If a hen squares up to you anyway, pay her no mind. She does that.",
+      "next": "hub"
+    },
+    {
+      "id": "farewell",
+      "text": "Aye. Rain by dusk, Halla's knee says. Good enough for me."
+    }
+  ]
+}

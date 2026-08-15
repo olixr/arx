@@ -1,0 +1,26 @@
+{
+  "id": "q_the_last_nest_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:the_last_nest:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "yardmaster_halla",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Quiet granary. Eight down, and you opened the chest, I hope. Never leave a chest shut. This is off my rack: it's iron, it's honest, and it's yours.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "the_last_nest"
+        }
+      ]
+    }
+  ]
+}

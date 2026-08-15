@@ -1,0 +1,30 @@
+{
+  "id": "drover_sorrel",
+  "name": "Sorrel",
+  "title": "Drover",
+  "examine": "First thing she did out of the Ring was gentle a spooked cow, and she took that as instruction. Half her words go to the animal, and the animal answers.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 1,
+      "hair": 3,
+      "hairColor": 2,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 6,
+      "pants": 2
+    }
+  },
+  "inventory": [
+    { "item": "berries", "qty": 3 },
+    { "item": "egg", "qty": 2 }
+  ],
+  "lines": [
+    "Steady. That one is only looking at you.",
+    "Water first, then hay. You know the order, don't you. Yes you do.",
+    "The Ring gave me a cow to calm before it gave me a name. I've trusted it since."
+  ],
+  "shop": "drover_yard"
+}

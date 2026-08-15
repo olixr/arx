@@ -1,0 +1,51 @@
+{
+  "id": "sorrel_hours",
+  "base": { "kind": "post", "dir": 3.1415927, "speed": 1.4 },
+  "slots": [
+    {
+      "from": 7,
+      "to": 8.5,
+      "task": {
+        "kind": "path",
+        "speed": 1.4,
+        "waypoints": [
+          { "x": 2, "y": -9 },
+          { "x": -18, "y": -31, "waitSec": 25, "dir": 0 },
+          { "x": 2, "y": -9 },
+          { "x": 0, "y": 0, "waitSec": 8 }
+        ]
+      }
+    },
+    {
+      "from": 16,
+      "to": 17,
+      "task": {
+        "kind": "path",
+        "speed": 1.4,
+        "waypoints": [
+          { "x": 2, "y": -9 },
+          { "x": -18, "y": -31, "waitSec": 25, "dir": 0 },
+          { "x": 2, "y": -9 },
+          { "x": 0, "y": 0, "waitSec": 8 }
+        ]
+      }
+    },
+    {
+      "from": 21,
+      "to": 6,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.4,
+        "waypoints": [
+          { "x": 2, "y": -9 },
+          { "x": 2, "y": -38 },
+          { "x": -12, "y": -40 },
+          { "x": -12, "y": -41 },
+          { "x": -9, "y": -45 },
+          { "x": -8, "y": -45, "lie": true }
+        ]
+      }
+    }
+  ]
+}

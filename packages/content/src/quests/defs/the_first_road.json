@@ -1,0 +1,38 @@
+{
+  "id": "the_first_road",
+  "name": "The First Road",
+  "giver": "keeper_wren",
+  "turnIn": "captain_aldis",
+  "requires": {
+    "quests": [
+      "the_last_nest",
+      "a_bird_done_proper",
+      "a_bar_of_bronze",
+      "walking_the_bounds"
+    ]
+  },
+  "stages": [
+    {
+      "id": "eastward",
+      "journal": "Every teacher in Dawnmead has signed you off, and Wren says the road has started asking after you. Take the lane east over the brook, where it becomes the First Road, and hold it a day's walk to *Amberford*, the ford town. Rest at the wayfarers' lamps when the light goes. Rowan keeps the gate registry there now: find the North Gate and the captain who keeps it, Aldis, and tell her a waker walked the whole way.",
+      "objectives": [
+        {
+          "kind": "discover",
+          "place": "zone:amberford"
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 60,
+    "xp": [
+      {
+        "skill": "vitality",
+        "amount": 250
+      }
+    ],
+    "flags": [
+      "dawn_road_taken"
+    ]
+  }
+}

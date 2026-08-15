@@ -1,0 +1,42 @@
+{
+  "id": "halla_arms",
+  "start": "size_up",
+  "once": true,
+  "bindings": [{ "kind": "actor", "target": "yardmaster_halla", "priority": 10 }],
+  "nodes": [
+    {
+      "id": "size_up",
+      "text": "Off the stones this morning, were you. Shoulders back. Better. *Halla*. I keep this yard. Open your pack: the village put three arms in it, and I teach the first.",
+      "next": "melee"
+    },
+    {
+      "id": "melee",
+      "text": "The *bronze sword*. Equip it. Get close. Swing. One cut calls the next, and the third lands hardest, so stay in and finish. When something swings back, *dash*. Quick step, any direction. Feet first. Guard second.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Again, or onward?",
+      "choices": [
+        { "text": "Show me the blade again.", "next": "melee" },
+        { "text": "Who teaches the bow?", "next": "bow_ptr" },
+        { "text": "Who teaches magic?", "next": "spark_ptr" },
+        { "text": "I'm ready.", "next": "ready" }
+      ]
+    },
+    {
+      "id": "bow_ptr",
+      "text": "Rill, at the range behind me. Doesn't waste words. Neither does her bow.",
+      "next": "hub"
+    },
+    {
+      "id": "spark_ptr",
+      "text": "Old Varn, at the stone circle west of my yard. Mind the scorch marks. He doesn't.",
+      "next": "hub"
+    },
+    {
+      "id": "ready",
+      "text": "Then take it to the dummies until the swing feels like yours. When you want work that swings back, ask me. The granary rats owe this village rent."
+    }
+  ]
+}

@@ -39,12 +39,12 @@ test('second seed of identical content writes nothing', async () => {
 test('a changed shipped file flows into an untouched seed', async () => {
   const db = await freshDb();
   await seedQuests(db, ALL);
-  const hens = ALL.find((q) => q.id === 'hobbs_hens')!;
+  const hens = ALL.find((q) => q.id === 'eggs_for_the_morning')!;
   const edited: QuestDef = { ...hens, rewards: { ...hens.rewards, coins: 99 } };
-  const res = await seedQuests(db, [edited, ...ALL.filter((q) => q.id !== 'hobbs_hens')]);
+  const res = await seedQuests(db, [edited, ...ALL.filter((q) => q.id !== 'eggs_for_the_morning')]);
   assert.equal(res.updated, 1);
   const loaded = await loadQuests(db);
-  assert.equal(loaded.quests.find((q) => q.id === 'hobbs_hens')!.rewards.coins, 99);
+  assert.equal(loaded.quests.find((q) => q.id === 'eggs_for_the_morning')!.rewards.coins, 99);
 });
 
 test('THE DATABASE IS THE TRUTH: a tool edit survives every re-seed', async () => {
@@ -52,22 +52,22 @@ test('THE DATABASE IS THE TRUTH: a tool edit survives every re-seed', async () =
   await seedQuests(db, ALL);
 
   // The tooling retunes a reward (importQuest = a tool write).
-  const tool = JSON.parse(JSON.stringify(ALL.find((q) => q.id === 'thin_the_meadow')!)) as QuestDef;
+  const tool = JSON.parse(JSON.stringify(ALL.find((q) => q.id === 'the_meadow_count')!)) as QuestDef;
   tool.rewards.coins = 77;
   assert.ok((await importQuest(db, tool)).ok);
 
   // A NEWER shipped version arrives — and must be respectfully kept out.
   const shipped = JSON.parse(
-    JSON.stringify(ALL.find((q) => q.id === 'thin_the_meadow')!),
+    JSON.stringify(ALL.find((q) => q.id === 'the_meadow_count')!),
   ) as QuestDef;
   shipped.rewards.coins = 12345;
-  const res = await seedQuests(db, [shipped, ...ALL.filter((q) => q.id !== 'thin_the_meadow')]);
+  const res = await seedQuests(db, [shipped, ...ALL.filter((q) => q.id !== 'the_meadow_count')]);
   assert.equal(res.kept, 1);
-  const after = (await exportQuest(db, 'thin_the_meadow'))!;
+  const after = (await exportQuest(db, 'the_meadow_count'))!;
   assert.equal(after.rewards.coins, 77);
 
   // ...and the divergence is remembered: the same seed stays quiet.
-  const again = await seedQuests(db, [shipped, ...ALL.filter((q) => q.id !== 'thin_the_meadow')]);
+  const again = await seedQuests(db, [shipped, ...ALL.filter((q) => q.id !== 'the_meadow_count')]);
   assert.equal(again.kept + again.updated + again.added, 0);
 });
 
@@ -79,12 +79,12 @@ test('pruning removes only pure seeds; tool-born rows are permanent', async () =
   const toolBorn = {
     id: 'stones_errand',
     name: "The Stone's Errand",
-    giver: 'elder_rowan',
+    giver: 'keeper_wren',
     stages: [
       {
         id: 'listen',
         journal: 'The stone says nothing. Keep listening.',
-        objectives: [{ kind: 'talk', actor: 'elder_rowan' }],
+        objectives: [{ kind: 'talk', actor: 'keeper_wren' }],
       },
     ],
     // Gear reward with an authored tier: rarity must survive the trip.
@@ -124,7 +124,7 @@ test('a hand-broken DB row is rejected at load, not at play time', async () => {
   await seedQuests(db, ALL);
   await db.run(
     `UPDATE quest_stages SET objectives = '[{"kind":"kill","npc":"ghost_npc","count":1}]'
-     WHERE quest_id = 'thin_the_meadow'`,
+     WHERE quest_id = 'the_meadow_count'`,
   );
   const loaded = await loadQuests(db);
   assert.equal(loaded.quests.length, ALL.length - 1);
@@ -139,7 +139,7 @@ test('the quest state ledger: save, overwrite, delete, reload', async () => {
   const cid = reg.character.id;
 
   accounts.saveQuestRow(cid, {
-    questId: 'hobbs_hens',
+    questId: 'eggs_for_the_morning',
     status: 'active',
     stage: 0,
     progress: '[3]',
@@ -148,7 +148,7 @@ test('the quest state ledger: save, overwrite, delete, reload', async () => {
     cooldownUntil: null,
   });
   accounts.saveQuestRow(cid, {
-    questId: 'hobbs_hens',
+    questId: 'eggs_for_the_morning',
     status: 'done',
     stage: 0,
     progress: '[]',
@@ -162,7 +162,7 @@ test('the quest state ledger: save, overwrite, delete, reload', async () => {
   assert.equal(rows[0]!.completions, 1);
   assert.equal(rows[0]!.cooldownUntil, 2000);
 
-  accounts.deleteQuestRow(cid, 'hobbs_hens');
+  accounts.deleteQuestRow(cid, 'eggs_for_the_morning');
   rows = await accounts.loadQuestRows(cid);
   assert.equal(rows.length, 0);
 });

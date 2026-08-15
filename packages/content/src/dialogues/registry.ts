@@ -17,7 +17,6 @@ import ospreLedger from './defs/ospren_ledger.json';
 import rulloKilns from './defs/rullo_kilns.json';
 import sunnivaBell from './defs/sunniva_bell.json';
 import bramTally from './defs/bram_tally.json';
-import droverStalls from './defs/drover_stalls.json';
 import sigrunRoad from './defs/sigrun_road.json';
 import coppinReeve from './defs/coppin_reeve.json';
 import ninebrassStall from './defs/ninebrass_stall.json';
@@ -96,19 +95,8 @@ import faneMere from './defs/fane_mere.json';
 import perlOrchard from './defs/perl_orchard.json';
 import tamsinCoop from './defs/tamsin_coop.json';
 import tiloPatterns from './defs/tilo_patterns.json';
-import brynArms from './defs/bryn_arms.json';
-import brynYard from './defs/bryn_yard.json';
-import fenBench from './defs/fen_bench.json';
-import hobbFarm from './defs/hobb_farm.json';
-import ionaFireside from './defs/iona_fireside.json';
-import ionaHearth from './defs/iona_hearth.json';
-import rowanAwakening from './defs/rowan_awakening.json';
-import rowanGreen from './defs/rowan_green.json';
 import wayfarerCamp from './defs/wayfarer_camp.json';
 import waywardRoad from './defs/wayward_road.json';
-import brynWatchUneasy from './defs/bryn_watch_uneasy.json';
-import brynWatchUrgent from './defs/bryn_watch_urgent.json';
-import brynWatchRelief from './defs/bryn_watch_relief.json';
 import aldisWatchUneasy from './defs/aldis_watch_uneasy.json';
 import aldisWatchUrgent from './defs/aldis_watch_urgent.json';
 import aldisWatchToll from './defs/aldis_watch_toll.json';
@@ -157,12 +145,6 @@ import orlaKeywright from './defs/orla_keywright.json';
 import haleWatchUneasy from './defs/hale_watch_uneasy.json';
 import haleWatchUrgent from './defs/hale_watch_urgent.json';
 import haleWatchRelief from './defs/hale_watch_relief.json';
-import qLayOffer from './defs/q_the_lay_of_the_land_offer.json';
-import qLayTurnin from './defs/q_the_lay_of_the_land_turnin.json';
-import qThinOffer from './defs/q_thin_the_meadow_offer.json';
-import qThinTurnin from './defs/q_thin_the_meadow_turnin.json';
-import qHensOffer from './defs/q_hobbs_hens_offer.json';
-import qHensTurnin from './defs/q_hobbs_hens_turnin.json';
 import qWordOffer from './defs/q_word_on_the_road_offer.json';
 import qWordTurnin from './defs/q_word_on_the_road_turnin.json';
 import qReaverOffer from './defs/q_the_reavers_mark_offer.json';
@@ -181,8 +163,6 @@ import qPyreOffer from './defs/q_bones_for_the_pyre_offer.json';
 import qPyreTurnin from './defs/q_bones_for_the_pyre_turnin.json';
 import qPeltsOffer from './defs/q_pelts_for_the_road_offer.json';
 import qPeltsTurnin from './defs/q_pelts_for_the_road_turnin.json';
-import qPotOffer from './defs/q_the_pot_never_rests_offer.json';
-import qPotTurnin from './defs/q_the_pot_never_rests_turnin.json';
 import qWarrensOffer from './defs/q_thin_the_warrens_offer.json';
 import qWarrensTurnin from './defs/q_thin_the_warrens_turnin.json';
 import qLedgerActive from './defs/q_the_stolen_ledger_active.json';
@@ -311,7 +291,119 @@ import qTheFifteenthNameOffer from './defs/q_the_fifteenth_name_offer.json';
 import torviTheFifteenth from './defs/torvi_the_fifteenth.json';
 import qTheFifteenthNameTurnin from './defs/q_the_fifteenth_name_turnin.json';
 
+// THE DAWN REMADE — the rebuilt starter cast speaks.
+import wrenAwakening from './defs/wren_awakening.json';
+import wrenGreen from './defs/wren_green.json';
+import hallaArms from './defs/halla_arms.json';
+import hallaYard from './defs/halla_yard.json';
+import hallaWatchUrgent from './defs/halla_watch_urgent.json';
+import hallaWatchUneasy from './defs/halla_watch_uneasy.json';
+import hallaWatchRelief from './defs/halla_watch_relief.json';
+import rillBow from './defs/rill_bow.json';
+import rillRange from './defs/rill_range.json';
+import varnSpark from './defs/varn_spark.json';
+import varnCircle from './defs/varn_circle.json';
+import berritHearth from './defs/berrit_hearth.json';
+import berritTable from './defs/berrit_table.json';
+import alderAxe from './defs/alder_axe.json';
+import alderCopse from './defs/alder_copse.json';
+import otteryBench from './defs/ottery_bench.json';
+import otteryShop from './defs/ottery_shop.json';
+import gillyStones from './defs/gilly_stones.json';
+import gillyCommon from './defs/gilly_common.json';
+import weirLine from './defs/weir_line.json';
+import weirPier from './defs/weir_pier.json';
+import brammelGate from './defs/brammel_gate.json';
+import sorrelStalls from './defs/sorrel_stalls.json';
+import qFirstLightOffer from './defs/q_first_light_offer.json';
+import qFirstLightTurnin from './defs/q_first_light_turnin.json';
+import qTheMeadowCountOffer from './defs/q_the_meadow_count_offer.json';
+import qTheMeadowCountTurnin from './defs/q_the_meadow_count_turnin.json';
+import qShellsOnTheBankOffer from './defs/q_shells_on_the_bank_offer.json';
+import qShellsOnTheBankTurnin from './defs/q_shells_on_the_bank_turnin.json';
+import qTheLastNestOffer from './defs/q_the_last_nest_offer.json';
+import qTheLastNestTurnin from './defs/q_the_last_nest_turnin.json';
+import qBerriesForThePotOffer from './defs/q_berries_for_the_pot_offer.json';
+import qBerriesForThePotTurnin from './defs/q_berries_for_the_pot_turnin.json';
+import qABirdDoneProperOffer from './defs/q_a_bird_done_proper_offer.json';
+import qABirdDoneProperTurnin from './defs/q_a_bird_done_proper_turnin.json';
+import qALineInTheWaterOffer from './defs/q_a_line_in_the_water_offer.json';
+import qALineInTheWaterTurnin from './defs/q_a_line_in_the_water_turnin.json';
+import qTheAxeRemembersOffer from './defs/q_the_axe_remembers_offer.json';
+import qTheAxeRemembersTurnin from './defs/q_the_axe_remembers_turnin.json';
+import qBoardsAndTwineOffer from './defs/q_boards_and_twine_offer.json';
+import qBoardsAndTwineTurnin from './defs/q_boards_and_twine_turnin.json';
+import qABarOfBronzeOffer from './defs/q_a_bar_of_bronze_offer.json';
+import qABarOfBronzeTurnin from './defs/q_a_bar_of_bronze_turnin.json';
+import qEggsForTheMorningOffer from './defs/q_eggs_for_the_morning_offer.json';
+import qEggsForTheMorningTurnin from './defs/q_eggs_for_the_morning_turnin.json';
+import qTheGentleHandOffer from './defs/q_the_gentle_hand_offer.json';
+import qTheGentleHandTurnin from './defs/q_the_gentle_hand_turnin.json';
+import qWalkingTheBoundsOffer from './defs/q_walking_the_bounds_offer.json';
+import qWalkingTheBoundsTurnin from './defs/q_walking_the_bounds_turnin.json';
+import qTheFirstRoadOffer from './defs/q_the_first_road_offer.json';
+import qTheFirstRoadTurnin from './defs/q_the_first_road_turnin.json';
+import qStillWatersOffer from './defs/q_still_waters_offer.json';
+import qStillWatersTurnin from './defs/q_still_waters_turnin.json';
+import qTheMeadowKeepsCountOffer from './defs/q_the_meadow_keeps_count_offer.json';
+import qTheMeadowKeepsCountTurnin from './defs/q_the_meadow_keeps_count_turnin.json';
+
 const SOURCES: readonly unknown[] = [
+  wrenAwakening,
+  wrenGreen,
+  hallaArms,
+  hallaYard,
+  hallaWatchUrgent,
+  hallaWatchUneasy,
+  hallaWatchRelief,
+  rillBow,
+  rillRange,
+  varnSpark,
+  varnCircle,
+  berritHearth,
+  berritTable,
+  alderAxe,
+  alderCopse,
+  otteryBench,
+  otteryShop,
+  gillyStones,
+  gillyCommon,
+  weirLine,
+  weirPier,
+  brammelGate,
+  sorrelStalls,
+  qFirstLightOffer,
+  qFirstLightTurnin,
+  qTheMeadowCountOffer,
+  qTheMeadowCountTurnin,
+  qShellsOnTheBankOffer,
+  qShellsOnTheBankTurnin,
+  qTheLastNestOffer,
+  qTheLastNestTurnin,
+  qBerriesForThePotOffer,
+  qBerriesForThePotTurnin,
+  qABirdDoneProperOffer,
+  qABirdDoneProperTurnin,
+  qALineInTheWaterOffer,
+  qALineInTheWaterTurnin,
+  qTheAxeRemembersOffer,
+  qTheAxeRemembersTurnin,
+  qBoardsAndTwineOffer,
+  qBoardsAndTwineTurnin,
+  qABarOfBronzeOffer,
+  qABarOfBronzeTurnin,
+  qEggsForTheMorningOffer,
+  qEggsForTheMorningTurnin,
+  qTheGentleHandOffer,
+  qTheGentleHandTurnin,
+  qWalkingTheBoundsOffer,
+  qWalkingTheBoundsTurnin,
+  qTheFirstRoadOffer,
+  qTheFirstRoadTurnin,
+  qStillWatersOffer,
+  qStillWatersTurnin,
+  qTheMeadowKeepsCountOffer,
+  qTheMeadowKeepsCountTurnin,
   qWetCountOffer,
   qWetCountTurnin,
   qWardlineOffer,
@@ -328,7 +420,6 @@ const SOURCES: readonly unknown[] = [
   rulloKilns,
   sunnivaBell,
   bramTally,
-  droverStalls,
   sigrunRoad,
   brackHarbor,
   neaveLedger,
@@ -407,23 +498,12 @@ const SOURCES: readonly unknown[] = [
   perlOrchard,
   tamsinCoop,
   tiloPatterns,
-  brynArms,
-  brynYard,
-  fenBench,
-  hobbFarm,
-  ionaFireside,
-  ionaHearth,
-  rowanAwakening,
-  rowanGreen,
   wayfarerCamp,
   waywardRoad,
   // THE TOWN FEELS IT (living-frontier Phase 3): threat-gated watch
   // trees layered by priority over each throat's standing voice —
   // urgent (8, world:threat_bold) > uneasy (7, world:threat_near) >
   // relief (6, world:relief) > the evergreen default.
-  brynWatchUneasy,
-  brynWatchUrgent,
-  brynWatchRelief,
   aldisWatchUneasy,
   aldisWatchUrgent,
   aldisWatchToll,
@@ -466,12 +546,6 @@ const SOURCES: readonly unknown[] = [
   // and once-intros outrank a job pitch) and turn-in trees (21 — a
   // finished errand is the player's earned moment), all gated on the
   // synthetic quest: answers so they appear and retire themselves.
-  qLayOffer,
-  qLayTurnin,
-  qThinOffer,
-  qThinTurnin,
-  qHensOffer,
-  qHensTurnin,
   qWordOffer,
   qWordTurnin,
   qReaverOffer,
@@ -490,8 +564,6 @@ const SOURCES: readonly unknown[] = [
   qPyreTurnin,
   qPeltsOffer,
   qPeltsTurnin,
-  qPotOffer,
-  qPotTurnin,
   qWarrensOffer,
   qWarrensTurnin,
   qLedgerActive,

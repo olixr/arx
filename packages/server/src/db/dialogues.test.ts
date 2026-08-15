@@ -39,12 +39,12 @@ test('second seed of identical content writes nothing', async () => {
 test('a changed shipped file flows into an untouched seed', async () => {
   const db = await freshDb();
   await seedDialogues(db, ALL);
-  const welcome = ALL.find((d) => d.id === 'rowan_awakening')!;
+  const welcome = ALL.find((d) => d.id === 'wren_awakening')!;
   const edited: DialogueDef = { ...welcome, once: undefined };
-  const res = await seedDialogues(db, [edited, ...ALL.filter((d) => d.id !== 'rowan_awakening')]);
+  const res = await seedDialogues(db, [edited, ...ALL.filter((d) => d.id !== 'wren_awakening')]);
   assert.equal(res.updated, 1);
   const loaded = await loadDialogues(db);
-  assert.equal(loaded.dialogues.find((d) => d.id === 'rowan_awakening')!.once, undefined);
+  assert.equal(loaded.dialogues.find((d) => d.id === 'wren_awakening')!.once, undefined);
 });
 
 test('THE DATABASE IS THE TRUTH: a tool edit survives every re-seed', async () => {
@@ -52,20 +52,20 @@ test('THE DATABASE IS THE TRUTH: a tool edit survives every re-seed', async () =
   await seedDialogues(db, ALL);
 
   // The tooling rewrites a line (importDialogue = a tool write).
-  const tool = JSON.parse(JSON.stringify(ALL.find((d) => d.id === 'bryn_yard')!)) as DialogueDef;
+  const tool = JSON.parse(JSON.stringify(ALL.find((d) => d.id === 'halla_yard')!)) as DialogueDef;
   tool.nodes.find((n) => n.id === 'recap')!.text = 'Aye. The village thanks you.';
   assert.ok((await importDialogue(db, tool)).ok);
 
   // A NEWER shipped version arrives — and must be respectfully kept out.
-  const shipped = JSON.parse(JSON.stringify(ALL.find((d) => d.id === 'bryn_yard')!)) as DialogueDef;
+  const shipped = JSON.parse(JSON.stringify(ALL.find((d) => d.id === 'halla_yard')!)) as DialogueDef;
   shipped.nodes.find((n) => n.id === 'recap')!.text = 'SHIPPED CLOBBER ATTEMPT';
-  const res = await seedDialogues(db, [shipped, ...ALL.filter((d) => d.id !== 'bryn_yard')]);
+  const res = await seedDialogues(db, [shipped, ...ALL.filter((d) => d.id !== 'halla_yard')]);
   assert.equal(res.kept, 1);
-  const after = (await exportDialogue(db, 'bryn_yard'))!;
+  const after = (await exportDialogue(db, 'halla_yard'))!;
   assert.equal(after.nodes.find((n) => n.id === 'recap')!.text, 'Aye. The village thanks you.');
 
   // ...and the divergence is remembered: the same seed stays quiet.
-  const again = await seedDialogues(db, [shipped, ...ALL.filter((d) => d.id !== 'bryn_yard')]);
+  const again = await seedDialogues(db, [shipped, ...ALL.filter((d) => d.id !== 'halla_yard')]);
   assert.equal(again.kept + again.updated + again.added, 0);
 });
 
@@ -77,7 +77,7 @@ test('pruning removes only pure seeds; tool-born rows are permanent', async () =
   const toolBorn = {
     id: 'monolith_whisper',
     start: 'a',
-    bindings: [{ kind: 'actor', target: 'elder_rowan' }],
+    bindings: [{ kind: 'actor', target: 'keeper_wren' }],
     nodes: [{ id: 'a', text: 'The stone says nothing. _Loudly._' }],
   };
   assert.ok((await importDialogue(db, toolBorn)).ok);
@@ -105,7 +105,7 @@ test('a hand-broken DB row is rejected at load, not at talk time', async () => {
   const db = await freshDb();
   await seedDialogues(db, ALL);
   await db.run(
-    `UPDATE dialogue_nodes SET next_node = 'ghost' WHERE dialogue_id = 'hobb_farm' AND node_id = 'produce'`,
+    `UPDATE dialogue_nodes SET next_node = 'ghost' WHERE dialogue_id = 'brammel_gate' AND node_id = 'produce'`,
   );
   const loaded = await loadDialogues(db);
   assert.equal(loaded.dialogues.length, ALL.length - 1);
@@ -119,11 +119,11 @@ test('the flag ledger: set, overwrite, clear, reload', async () => {
   assert.ok(reg.ok);
   const cid = reg.character.id;
 
-  accounts.setFlag(cid, 'dlg:rowan_awakening', 1);
+  accounts.setFlag(cid, 'dlg:wren_awakening', 1);
   accounts.setFlag(cid, 'dawn_rats_task', 1);
   accounts.setFlag(cid, 'dawn_rats_task', 2); // upsert overwrites
   let flags = await accounts.loadFlags(cid);
-  assert.equal(flags.get('dlg:rowan_awakening'), 1);
+  assert.equal(flags.get('dlg:wren_awakening'), 1);
   assert.equal(flags.get('dawn_rats_task'), 2);
 
   accounts.clearFlag(cid, 'dawn_rats_task');

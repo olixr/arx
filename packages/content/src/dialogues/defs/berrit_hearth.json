@@ -1,0 +1,27 @@
+{
+  "id": "berrit_hearth",
+  "start": "warm",
+  "once": true,
+  "bindings": [{ "kind": "actor", "target": "cook_berrit", "priority": 10 }],
+  "nodes": [
+    {
+      "id": "warm",
+      "text": "Come in by the fire, love. Ring chill takes half a day to shake, and standing hungry never helped anyone shake anything. I'm *Berrit*. This is my table, which means it's yours.",
+      "next": "forage"
+    },
+    {
+      "id": "forage",
+      "text": "First thing worth knowing out here: the *berry banks* on the brook, south of the bridge. Walk up and pick. They give more than they're asked. A full pocket means you're never far from all right.",
+      "next": "cook"
+    },
+    {
+      "id": "cook",
+      "text": "Second thing: fire makes everything better. Hold what you catch to a flame, wait for the smell to turn friendly. You'll burn your first. Everyone does. The fire takes one as its fee, and after that you're taught.",
+      "next": "table"
+    },
+    {
+      "id": "table",
+      "text": "Supper's at dusk, at this table, and everyone comes: Halla, the twins, old Weir when he remembers what day it is. Sit where you like. That's the village, love. The rest is fences."
+    }
+  ]
+}

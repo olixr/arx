@@ -1,0 +1,26 @@
+{
+  "id": "q_the_axe_remembers_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:the_axe_remembers:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "forester_alder",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Four, and taken clean off the marked ones. The stand approves. So do I, at about the same speed.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "the_axe_remembers"
+        }
+      ]
+    }
+  ]
+}

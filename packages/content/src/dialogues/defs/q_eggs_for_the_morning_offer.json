@@ -1,0 +1,50 @@
+{
+  "id": "q_eggs_for_the_morning_offer",
+  "start": "hub",
+  "requires": [
+    "quest:eggs_for_the_morning:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "farmer_brammel",
+      "priority": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Six eggs short of a morning. The hens know it, too. Coop, mostly. Long grass, some days. Fetch them?",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "eggs_for_the_morning"
+        }
+      ],
+      "choices": [
+        {
+          "text": "I'll find your eggs.",
+          "next": "sworn"
+        },
+        {
+          "text": "I've bigger things to do.",
+          "next": "declined"
+        }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Good. Mind where you step.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "eggs_for_the_morning"
+        }
+      ]
+    },
+    {
+      "id": "declined",
+      "text": "Than eggs. All right."
+    }
+  ]
+}

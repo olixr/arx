@@ -1,0 +1,17 @@
+{
+  "id": "the_meadow_count",
+  "name": "The Meadow Count",
+  "giver": "yardmaster_halla",
+  "requires": { "quests": ["first_light"] },
+  "stages": [
+    {
+      "id": "cull",
+      "journal": "The old granary across the ford is crawling with rats in broad daylight, and Halla counts them from the lane like unpaid rent. Put six of them down in the granary meadow, southeast past the bridge, and report back to her yard.",
+      "objectives": [{ "kind": "kill", "npc": "rat", "count": 6 }]
+    }
+  ],
+  "rewards": {
+    "coins": 45,
+    "xp": [{ "skill": "combat", "amount": 200 }]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "q_the_meadow_keeps_count_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:the_meadow_keeps_count:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "yardmaster_halla",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Eight. The meadow breathes easier and so does my ledger. Same again in a day or two, knowing rats.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "the_meadow_keeps_count"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "ottery_bench",
+  "start": "hands",
+  "once": true,
+  "bindings": [{ "kind": "actor", "target": "wright_ottery", "priority": 10 }],
+  "nodes": [
+    {
+      "id": "hands",
+      "text": "New hands! Good, come here, look at this. No, it's a stool. It WAS a stool. My first. Two legs. It sits on a shelf indoors for humility. *Ottery*. I make things, and by tonight so will you.",
+      "next": "bench"
+    },
+    {
+      "id": "bench",
+      "text": "The *bench* answers to anyone. Logs from the axe, hides from the hunt, ore from the pick: bring them and it shows you what your hands can shape. The sawhorse turns trunks into boards. The carving stand does the fine work.",
+      "next": "forge"
+    },
+    {
+      "id": "forge",
+      "text": "And the *forge corner*, there by the lane. The Scrap Crag south past the copse gives copper and tin, the furnace marries them into bronze, and the anvil argues bronze into everything else. Make your first thing. I don't care what it is. It goes on no shelf but yours."
+    }
+  ]
+}

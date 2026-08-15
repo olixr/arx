@@ -1,0 +1,18 @@
+{
+  "id": "the_meadow_keeps_count",
+  "name": "The Meadow Keeps Count",
+  "giver": "yardmaster_halla",
+  "requires": { "quests": ["the_last_nest"] },
+  "repeat": { "cooldownHours": 16 },
+  "stages": [
+    {
+      "id": "again",
+      "journal": "The granary rats breed faster than Halla can be bothered, and wakers keep the count honest. Eight down in the granary meadow, southeast across the ford, whenever the number climbs. It always climbs.",
+      "objectives": [{ "kind": "kill", "npc": "rat", "count": 8 }]
+    }
+  ],
+  "rewards": {
+    "coins": 55,
+    "xp": [{ "skill": "combat", "amount": 250 }]
+  }
+}

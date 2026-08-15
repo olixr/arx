@@ -1,0 +1,37 @@
+{
+  "id": "berrit_table",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "cook_berrit" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Pot's warm, love. What do you need?",
+      "choices": [
+        { "text": "Where do I cook out in the world?", "next": "fires" },
+        { "text": "Where's good foraging?", "next": "where" },
+        { "text": "Anything warm to spare?", "next": "spare", "forbids": ["berrit_fed"], "set": ["berrit_fed"] },
+        { "text": "Nothing, thanks.", "next": "pass" }
+      ]
+    },
+    {
+      "id": "fires",
+      "text": "Anything you catch, a fire makes better: bird, beef, the brook's fish once you've the patience for a rod. Any village fire serves a traveller, and out in the wild you'll build your own. Same knack everywhere.",
+      "next": "hub"
+    },
+    {
+      "id": "where",
+      "text": "South of the bridge, near bank: berries, fibre for Ottery's twine, and sageroot any healer will thank you for. Take a full pocket. The bank never minds.",
+      "next": "hub"
+    },
+    {
+      "id": "spare",
+      "text": "Go on then, once. {item:cooked_chicken} Careful, it's hot. After this you cook your own, love. I'm not being hard on you. I want you able to manage.",
+      "hooks": [{ "kind": "give", "item": "cooked_chicken", "qty": 1 }],
+      "next": "hub"
+    },
+    {
+      "id": "pass",
+      "text": "Warm hands, dry boots. Off you go."
+    }
+  ]
+}

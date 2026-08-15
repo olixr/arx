@@ -1,0 +1,36 @@
+{
+  "id": "ottery_shop",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "wright_ottery" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Bench is free and the counter's stocked. Which do you want?",
+      "choices": [
+        { "text": "Let me see the counter.", "next": "browse" },
+        { "text": "How do I make boards?", "next": "boards" },
+        { "text": "Tell me about bronze.", "next": "bronze" },
+        { "text": "Neither today.", "next": "pass" }
+      ]
+    },
+    {
+      "id": "boards",
+      "text": "Two logs make a sawhorse, and a sawhorse makes any log three boards. Raise one wherever you fell timber and walk home light. The trees never carry themselves.",
+      "next": "hub"
+    },
+    {
+      "id": "bronze",
+      "text": "Crag copper, crag tin, one furnace, and you've *bronze*. Bronze makes the whole first shelf of your life: axe, pick, blade, buckle. After bronze comes iron, and after iron come arguments.",
+      "next": "hub"
+    },
+    {
+      "id": "browse",
+      "text": "Take your time. Tools on the left, seeds on the right, humility on the shelf indoors.",
+      "hooks": [{ "kind": "shop", "shop": "general_store" }]
+    },
+    {
+      "id": "pass",
+      "text": "Make something anyway. Doesn't matter what."
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "wright_ottery",
+  "name": "Ottery",
+  "title": "Wright",
+  "examine": "Woke with clever hands and no patience, and broke three benches teaching the one the other. The shelf indoors keeps every waker's first mangled craft.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 2,
+      "hairColor": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 7,
+      "pants": 1
+    }
+  },
+  "inventory": [
+    { "item": "board", "qty": 2 },
+    { "item": "twine", "qty": 2 }
+  ],
+  "lines": [
+    "Bench answers to anyone. Bring it a log and see.",
+    "My first craft was a stool with two legs. It's on the shelf. Humility, going spare.",
+    "The furnace is lit when the crag's been generous. Copper and tin make bronze, and bronze makes everything."
+  ],
+  "shop": "general_store"
+}

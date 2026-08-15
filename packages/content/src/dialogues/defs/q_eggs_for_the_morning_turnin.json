@@ -1,0 +1,26 @@
+{
+  "id": "q_eggs_for_the_morning_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:eggs_for_the_morning:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "farmer_brammel",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Six. All sound. Morning's saved. Here.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "eggs_for_the_morning"
+        }
+      ]
+    }
+  ]
+}

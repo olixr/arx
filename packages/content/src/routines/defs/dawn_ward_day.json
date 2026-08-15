@@ -3,45 +3,48 @@
   "base": { "kind": "post", "dir": 0, "speed": 1.6 },
   "slots": [
     {
-      "from": 22.25,
-      "to": 5.5,
-      "task": {
-        "kind": "path",
-        "mode": "once",
-        "speed": 1.5,
-        "waypoints": [
-          { "x": -25, "y": 0 },
-          { "x": -37, "y": 5 },
-          { "x": -37, "y": 7 },
-          { "x": -34, "y": 10 },
-          { "x": -34, "y": 9, "lie": true }
-        ]
-      }
-    },
-    {
       "from": 8,
       "to": 9,
       "task": {
         "kind": "path",
-        "mode": "bounce",
-        "speed": 1.5,
+        "speed": 1.6,
         "waypoints": [
-          { "x": -20, "y": -3, "waitSec": 15 },
-          { "x": -41, "y": 0, "waitSec": 20, "dir": 3.141592653589793 }
+          { "x": 0, "y": 0, "waitSec": 15 },
+          { "x": -25, "y": 0, "waitSec": 20, "dir": 3.1415927 }
         ]
       }
     },
-    { "from": 11.5, "to": 12.1, "task": { "kind": "wander", "radius": 2, "speed": 1.4 } },
+    {
+      "from": 11.5,
+      "to": 12.1,
+      "task": { "kind": "wander", "x": 0, "y": 0, "radius": 2, "speed": 1.6 }
+    },
     {
       "from": 16.5,
       "to": 17.5,
       "task": {
         "kind": "path",
-        "mode": "bounce",
-        "speed": 1.5,
+        "speed": 1.6,
         "waypoints": [
-          { "x": -20, "y": -3, "waitSec": 15 },
-          { "x": -41, "y": 0, "waitSec": 20, "dir": 3.141592653589793 }
+          { "x": 0, "y": 0, "waitSec": 15 },
+          { "x": -25, "y": 0, "waitSec": 20, "dir": 3.1415927 }
+        ]
+      }
+    },
+    {
+      "from": 22.25,
+      "to": 5.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.6,
+        "waypoints": [
+          { "x": -25, "y": 0 },
+          { "x": -38, "y": 8 },
+          { "x": -42, "y": 19 },
+          { "x": -42, "y": 21 },
+          { "x": -42, "y": 25 },
+          { "x": -43, "y": 25, "lie": true }
         ]
       }
     }

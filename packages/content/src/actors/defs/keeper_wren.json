@@ -1,0 +1,28 @@
+{
+  "id": "keeper_wren",
+  "name": "Elder Wren",
+  "title": "Keeper of the Waking Ring",
+  "examine": "She came out of the stones herself, fifty years back. The knitting never stops and the eyes never miss a waker's first step.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 5,
+      "hairColor": 7,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 3,
+      "shirt": 8,
+      "pants": 2
+    }
+  },
+  "inventory": [
+    { "item": "bread", "qty": 2 }
+  ],
+  "lines": [
+    "The frost came off the stones in a ring this morning. That always means somebody.",
+    "Rowan kept this Ring before me. He finally took his own advice and walked east.",
+    "Fifty years of wakings and I still count them. You were one of mine, you know."
+  ]
+}

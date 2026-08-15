@@ -28,7 +28,7 @@ export type ZoneId = keyof ZoneWeights;
  * streets play the wild's music — new settlements add rows as built.
  */
 const TOWNS = [
-  { x: -64, y: 48, full: 22, fade: 36 }, // Dawnmead
+  { x: -64, y: 48, full: 44, fade: 64 }, // Dawnmead (THE DAWN REMADE 128x96 rect)
   { x: 520, y: -4, full: 30, fade: 48 }, // Amberford — the bigger hearth
   { x: -448, y: -280, full: 44, fade: 72 }, // Silverfall — the mountain capital
   { x: 760, y: 330, full: 34, fade: 52 }, // Saltmere — the town at the water's end

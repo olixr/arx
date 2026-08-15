@@ -1,0 +1,32 @@
+{
+  "id": "angler_weir",
+  "name": "Weir",
+  "title": "Angler",
+  "examine": "Sat down at the brook forty years ago and is, broadly speaking, still there. The pier grew around him like bark.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 0,
+      "hairColor": 7,
+      "beard": 1,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 2,
+      "shirt": 3,
+      "pants": 4
+    }
+  },
+  "equipment": {
+    "tool": "fishing_rod"
+  },
+  "inventory": [
+    { "item": "raw_trout", "qty": 2 }
+  ],
+  "lines": [
+    "Fish bite where the water sounds busiest.",
+    "The crabs and I have an understanding. They keep the sand, I keep the pier.",
+    "Patience isn't waiting. It's listening."
+  ]
+}

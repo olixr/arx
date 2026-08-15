@@ -39,7 +39,7 @@ test('changed defs update; retired defs are pruned with their children', async (
   const db = await freshDb();
   await syncNpcActors(db, ALL);
 
-  const guard = ALL.find((a) => a.id === 'warden_bryn')!;
+  const guard = ALL.find((a) => a.id === 'yardmaster_halla')!;
   const renamed: NpcActorDef = { ...guard, name: 'Watch Sergeant' };
   const res = await syncNpcActors(db, [renamed]); // everyone else retires
   assert.equal(res.updated, 1);
@@ -51,7 +51,7 @@ test('changed defs update; retired defs are pruned with their children', async (
   // Child rows of retired actors are gone (cascade).
   const orphan = (await db.get<{ n: number }>(
     'SELECT COUNT(*) AS n FROM npc_actor_inventory WHERE actor_slug = ?',
-    ['tinker_fen'],
+    ['wright_ottery'],
   ))!;
   assert.equal(orphan.n, 0);
 });
@@ -62,9 +62,9 @@ test('a hand-broken DB row is rejected at load, not at spawn time', async () => 
   await db.run('UPDATE npc_actors SET creature_id = ?, model_kind = ? WHERE slug = ?', [
     'dragon',
     'creature',
-    'young_pip',
+    'twin_wick',
   ]);
   const loaded = await loadNpcActors(db);
-  assert.ok(loaded.errors.some((e) => e.includes('young_pip') && e.includes('unknown bestiary')));
+  assert.ok(loaded.errors.some((e) => e.includes('twin_wick') && e.includes('unknown bestiary')));
   assert.equal(loaded.actors.length, ALL.length - 1);
 });

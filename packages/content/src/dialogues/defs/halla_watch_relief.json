@@ -1,0 +1,31 @@
+{
+  "id": "halla_watch_relief",
+  "start": "hub",
+  "requires": ["world:relief"],
+  "bindings": [{ "kind": "actor", "target": "yardmaster_halla", "priority": 6 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Fires came up one short last night. The *right* kind of short. Word says that was you.",
+      "choices": [
+        { "text": "It was.", "next": "praise" },
+        { "text": "Wasn't me.", "next": "someone" },
+        { "text": "Just passing.", "next": "pass" }
+      ]
+    },
+    {
+      "id": "praise",
+      "text": "Good. Rack your blade, eat at Berrit's, sleep behind a door. That's an order.",
+      "next": "hub"
+    },
+    {
+      "id": "someone",
+      "text": "Then somebody out there has my thanks and doesn't know it. Enjoy their quiet anyway.",
+      "next": "hub"
+    },
+    {
+      "id": "pass",
+      "text": "Pass through, then. It's a good day for it."
+    }
+  ]
+}

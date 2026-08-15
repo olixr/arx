@@ -1,0 +1,29 @@
+{
+  "id": "forester_alder",
+  "name": "Alder",
+  "title": "Forester",
+  "examine": "Born here, which makes him the rarity. The copse was his mother's, and he can tell you the planting year of every trunk in it.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 2,
+      "hairColor": 3,
+      "beard": 1,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 2,
+      "shirt": 4,
+      "pants": 4
+    }
+  },
+  "inventory": [
+    { "item": "log", "qty": 3 }
+  ],
+  "lines": [
+    "Take the marked ones. The stand knows which it can spare.",
+    "That big oak by the hut went in the year I was born. We're neither of us done growing.",
+    "An axe wants a whole swing. Half swings are how handles break and knees meet mud."
+  ]
+}

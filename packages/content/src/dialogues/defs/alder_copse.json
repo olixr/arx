@@ -1,0 +1,30 @@
+{
+  "id": "alder_copse",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "forester_alder" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Morning. Or thereabouts. Need something?",
+      "choices": [
+        { "text": "Which trees can I take?", "next": "marked" },
+        { "text": "Tell me about the big oak.", "next": "oak" },
+        { "text": "Just walking the copse.", "next": "pass" }
+      ]
+    },
+    {
+      "id": "marked",
+      "text": "Blaze cut low on the trunk means take it. No blaze means it's still working. The stand knows what it can spare better than either of us, and I just write down its answer.",
+      "next": "hub"
+    },
+    {
+      "id": "oak",
+      "text": "Went in the year I was born, by the hut there. My mother planted it the week she couldn't lift a spade anymore, out of spite at the idea. We're neither of us done growing.",
+      "next": "hub"
+    },
+    {
+      "id": "pass",
+      "text": "Look up before you swing."
+    }
+  ]
+}

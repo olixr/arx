@@ -145,35 +145,62 @@ when an item changes hands or is being pointed at. Never decorate for texture.
 Format — **want / wound / quirk / cadence**. The cadence line is binding:
 it dictates sentence shape. (Pooled actors share one card.)
 
-### Dawnmead
-- **Elder Rowan** (Keeper of the Waking Ring): wants every waker to leave
-  ready; carries the weight of all the ones who didn't come back. Grandfatherly,
-  unhurried. Cadence: full warm sentences, old-fashioned turns, calls you
-  "child" or "waker". The ONE elder allowed gentle wisdom — but his is
-  practical, never cosmic.
-- **Warden Bryn**: wants Dawnmead never to need her; misses real soldiering.
-  Drill-yard bark softened by real fondness. Cadence: imperatives, short.
-  Counts things. "Again." "Good." Never flowery.
-- **Iona** (Hearthkeeper): wants nobody to go hungry; lost someone to the road
-  (never says who). Cadence: plain, kind, food-first. Homely comparisons only
-  — bread, weather, the pot. No epigrams at all.
-- **Tinker Fen**: wants to see what you'll make; a little lonely. Talks to
-  tools and objects mid-sentence ("hold still, you..."). Cadence: distracted,
-  parenthetical, trails off, restarts.
-- **Farmer Hobb**: wants rain at the right time. The most gloriously boring
-  man alive — and content. Cadence: short flat statements about immediate
-  things. Weather, hens, fence posts. Wisdom by accident, never on purpose.
-- **Pip**: a kid. Wants to be sent on errands like Nib. Cadence: fast, literal,
-  too honest, questions back.
-- **Drover Maren** (keeps the stalls): wants animals treated as company, not
-  stock. Forty years on the droves; the wound is every beast she handed over
-  and heard counted like sacks. Quirk: half her words go to the animal, not
-  to you. Cadence: short handler's instructions, plain and unhurried; warmer
-  to beasts than to people; no wit, no hurry.
-- **Vale Wards** (pooled, Bryn's rota): villagers with a season of drill, proud
-  of the turn they walk and a little stiff in the leather. Cadence: plain
-  village speech wearing a soldier's clip it hasn't fully earned; reports
-  small things seriously (a fox, a loose gate); defers to Bryn by name.
+### Dawnmead (THE DAWN REMADE cast — the village that raises wakers;
+almost every adult here came out of the Ring themselves and stayed to
+teach. Rowan retired east two winters back: he keeps Amberford's gate
+registry with Aldis now, and is spoken of warmly, never mourned.)
+- **Elder Wren** (Keeper of the Waking Ring): woke from the Ring fifty years
+  ago, grown and nameless for a week; wants every waker to leave ready.
+  Wound: a drawer of unsent letters to the ones who never wrote. Quirk:
+  knits while she talks; measures time in wakings. Cadence: warm, unhurried,
+  plain; calls you "child" or "waker"; the ONE elder allowed gentle wisdom,
+  and hers is practical, never cosmic.
+- **Halla** (Yardmaster): Wayward Watch, retired on a knee that predicts
+  rain. Wants Dawnmead's wakers to outlive their first mistake. Counts
+  things aloud. Cadence: imperatives, short, drill-clip. "Again." "Better."
+  Never flowery.
+- **Rill** (Fletcher): walked in off the hunters' trail at nine and never
+  said from where; wants the bow respected, not feared. Whittles constantly.
+  Cadence: fewest words in the village, all of them aimed; deflects her own
+  story in one flat sentence.
+- **Old Varn** (Sparkwright): woke mid-sentence and has spent forty years
+  listening for the end of it. Wants one waker to finish the thought.
+  Scorched sleeves, delighted by everything. Cadence: rambling wonder,
+  interrupts himself; the drift and "..." belong to him.
+- **Alder** (Forester): born here, the rarity; the copse was his mother's.
+  Wants trees taken so the stand outlives him. Names his favorite oaks.
+  Cadence: slow, seasonal, patient; talks in years; "told slow."
+- **Berrit** (Hearthmother): fed the village out of one pot through a winter
+  nobody names, and won't discuss it. Wants nobody leaving hungry. Bullies
+  by feeding. Cadence: brisk, warm, food-first, "love"; no epigrams at all.
+- **Ottery** (Wright): woke with clever hands and no patience; broke three
+  benches learning. Wants you to make your first thing, whatever it is.
+  Keeps every waker's first mangled craft on a shelf, his own two-legged
+  stool foremost. Cadence: quick, practical, self-mocking.
+- **Gilly** (Keeper of the Five Stones): walked the road as far as Saltmere
+  and came home to hold the door for the ones just starting. Wants every
+  waker to know the way back. Cadence: publican's warmth, road stories in
+  miniature; wit granted, spent rarely.
+- **Weir** (Angler): sat down at the brook forty years ago; broadly, still
+  there. Wants the water listened to. Cadence: slow, short, opens with
+  "..."; pauses that are waiting, not trailing off.
+- **Brammel** (Farmer): third generation; the only man alive bored by the
+  Waking Ring. Wants rain on Thursday. Cadence: short flat statements about
+  immediate things; wisdom by accident, never on purpose.
+- **Sorrel** (Drover): the Ring gave her a spooked cow to calm before it
+  gave her a name, and she took that as instruction. Wants beasts treated
+  as company. Quirk: half her words go to the animal, mid-sentence.
+  Cadence: handler's murmur, short instructions, no hurry.
+- **Tansy** (elder twin by a shout): runs everywhere, keeps score of
+  everything. Cadence: fast, literal, victorious.
+- **Wick** (younger twin): collects Ring facts; all wrong, all confident.
+  Carries the Ring's mystery as a kid's guesses — the law: nobody explains
+  it. Cadence: solemn nonsense, questions back.
+- **Vale Wards** (pooled, Halla's rota): villagers with a season of drill,
+  proud of the turn they walk and a little stiff in the leather. Cadence:
+  plain village speech wearing a soldier's clip it hasn't fully earned;
+  reports small things seriously (a fox, a loose rail); defers to Halla by
+  name.
 
 ### The roads
 - **Wayfarer Senna / Dray / Petch** (waystations): each keeps a stretch of

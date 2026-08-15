@@ -1,0 +1,47 @@
+{
+  "id": "wren_awakening",
+  "start": "wake",
+  "once": true,
+  "bindings": [{ "kind": "actor", "target": "keeper_wren", "priority": 10 }],
+  "nodes": [
+    {
+      "id": "wake",
+      "text": "Easy, now. The Ring's cold lets go quicker if you don't fight it. There. I'm *Wren*. I keep the Ring you just stepped out of. Breathe a moment. The world will hold.",
+      "next": "stones"
+    },
+    {
+      "id": "stones",
+      "text": "Five stones, and folk walk out of them the way you just did. A few every season, back longer than anyone's grandmother could say. _Where you were before this morning is gone. It's gone for all of us who came that way._ I came through fifty years ago myself, with wool and needles and my name.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "Everyone has the same three questions, child. Ask yours.",
+      "choices": [
+        { "text": "Where am I?", "next": "village" },
+        { "text": "Why can't I remember anything?", "next": "memory" },
+        { "text": "What do I do now?", "next": "guidance" }
+      ]
+    },
+    {
+      "id": "village",
+      "text": "Dawnmead. The village that raises wakers. Every trade here keeps a teacher, and every teacher but two came out of those stones themselves. East past the brook the *First Road* runs to Amberford, the ford town. You'll walk it when you're ready. Not before.",
+      "next": "hub"
+    },
+    {
+      "id": "memory",
+      "text": "You can't. None of us can. You came through with your pack, your strength, and your own name, and that's the whole inheritance. Little Wick will tell you the stones take memory as a toll. His sister will tell you Wick makes things up. Nobody knows. What you do *next* is yours entire.",
+      "next": "hub"
+    },
+    {
+      "id": "guidance",
+      "text": "Learn your hands. Halla drills the yard south of the lane, and her two friends there teach the bow and the spark. Berrit feeds the village at the long table east of the green. Ottery keeps the bench past her. Learn what they'll teach. Then come back to me and we'll talk about the road.",
+      "next": "gift"
+    },
+    {
+      "id": "gift",
+      "text": "And take this: {item:bread}. Baked this morning at Berrit's fire. Welcome to the world, waker. Most of it is kinder than it looks.",
+      "hooks": [{ "kind": "give", "item": "bread", "qty": 1 }]
+    }
+  ]
+}

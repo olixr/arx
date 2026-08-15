@@ -1,0 +1,20 @@
+{
+  "id": "first_light",
+  "name": "First Light",
+  "giver": "keeper_wren",
+  "stages": [
+    {
+      "id": "teachers",
+      "journal": "Wren wants you to meet the three arms teachers before anything else. Halla drills the yard south of the lane, Rill keeps the archery range behind it, and Old Varn holds the stone circle west of the dummies. Each will teach you their school for the asking.",
+      "objectives": [
+        { "kind": "talk", "actor": "yardmaster_halla" },
+        { "kind": "talk", "actor": "fletcher_rill" },
+        { "kind": "talk", "actor": "sparkwright_varn" }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 20,
+    "xp": [{ "skill": "vitality", "amount": 60 }]
+  }
+}

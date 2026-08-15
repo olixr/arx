@@ -1,0 +1,26 @@
+{
+  "id": "q_the_gentle_hand_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:the_gentle_hand:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "drover_sorrel",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Two pails and not a hoofmark on you. That's the gentle hand. Everything wild I could ever teach you starts exactly there.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "the_gentle_hand"
+        }
+      ]
+    }
+  ]
+}

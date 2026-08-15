@@ -42,16 +42,16 @@ test('schedule windows: plain, wrapping, and the authored-order priority', () =>
   assert.ok(slotContains(21, 5.5, 5.4));
   assert.ok(!slotContains(21, 5.5, 12));
 
-  // The hearthkeeper: authored slot order wins, the night walk wraps
-  // midnight, and unclaimed hours fall to the base fire post.
-  const iona = ROUTINES.get('hearth_hours')!;
-  assert.equal(pickRoutineSlot(iona, 10), 0, 'the morning round owns 10:00');
-  assert.equal(pickRoutineSlot(iona, 15), 1, 'the afternoon round owns 15:00');
-  assert.equal(pickRoutineSlot(iona, 23), 2, 'the night walk owns 23:00');
-  assert.equal(pickRoutineSlot(iona, 3), 2, 'the night walk wraps past midnight');
-  assert.equal(pickRoutineSlot(iona, 8), -1, 'breakfast hours fall to base');
-  assert.equal(routineTaskAt(iona, 8).kind, 'post');
-  assert.equal(routineTaskAt(iona, 22).kind, 'path');
+  // The hearthmother: authored slot order wins, the night walk wraps
+  // midnight, and unclaimed hours fall to the base cookpot post.
+  const berrit = ROUTINES.get('berrit_hours')!;
+  assert.equal(pickRoutineSlot(berrit, 12), 0, 'the table round owns 12:00');
+  assert.equal(pickRoutineSlot(berrit, 18), 1, 'the supper fire owns 18:00');
+  assert.equal(pickRoutineSlot(berrit, 23), 2, 'the night walk owns 23:00');
+  assert.equal(pickRoutineSlot(berrit, 3), 2, 'the night walk wraps past midnight');
+  assert.equal(pickRoutineSlot(berrit, 8), -1, 'breakfast hours fall to base');
+  assert.equal(routineTaskAt(berrit, 8).kind, 'post');
+  assert.equal(routineTaskAt(berrit, 22).kind, 'path');
 });
 
 test('validator rejects the dishonest defs', () => {

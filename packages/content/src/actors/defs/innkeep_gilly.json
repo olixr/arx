@@ -1,0 +1,30 @@
+{
+  "id": "innkeep_gilly",
+  "name": "Gilly",
+  "title": "Keeper of the Five Stones",
+  "examine": "Walked the road as far as Saltmere and came home to pour for the ones just starting it. Every guest bed made square, every story half a mile long.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 6,
+      "hair": 1,
+      "hairColor": 5,
+      "eyes": 3,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 5,
+      "pants": 5
+    }
+  },
+  "inventory": [
+    { "item": "bread", "qty": 2 },
+    { "item": "cooked_chicken", "qty": 1 }
+  ],
+  "lines": [
+    "Claim a bed before you claim a road. The bed remembers you. Roads don't.",
+    "I've seen Saltmere. Grey gulls, painted boats, salt in everything including the gossip.",
+    "Four beds in the wing, and every one of them has carried somebody who's somebody now."
+  ],
+  "shop": "gilly_board"
+}

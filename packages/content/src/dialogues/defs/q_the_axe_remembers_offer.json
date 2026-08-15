@@ -1,0 +1,50 @@
+{
+  "id": "q_the_axe_remembers_offer",
+  "start": "hub",
+  "requires": [
+    "quest:the_axe_remembers:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "forester_alder",
+      "priority": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Teaching for timber, that's my trade. Four logs off the marked trunks and the lesson's yours for keeps. Fair?",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "the_axe_remembers"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Four logs. Fair trade.",
+          "next": "sworn"
+        },
+        {
+          "text": "Another day.",
+          "next": "declined"
+        }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Look up before you swing. Every swing.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "the_axe_remembers"
+        }
+      ]
+    },
+    {
+      "id": "declined",
+      "text": "The trees aren't going anywhere. Nor am I."
+    }
+  ]
+}

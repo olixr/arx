@@ -1,0 +1,50 @@
+{
+  "id": "q_still_waters_offer",
+  "start": "hub",
+  "requires": [
+    "quest:still_waters:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "angler_weir",
+      "priority": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "...Rack's empty again. Six trout, whenever the water agrees. I'll smoke a share back to you.",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "still_waters"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Six trout. When the water agrees.",
+          "next": "sworn"
+        },
+        {
+          "text": "Not this time.",
+          "next": "declined"
+        }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Mm. Good.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "still_waters"
+        }
+      ]
+    },
+    {
+      "id": "declined",
+      "text": "The brook doesn't mind waiting. Nor do I."
+    }
+  ]
+}

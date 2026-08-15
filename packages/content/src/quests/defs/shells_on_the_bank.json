@@ -1,0 +1,17 @@
+{
+  "id": "shells_on_the_bank",
+  "name": "Shells on the Bank",
+  "giver": "fletcher_rill",
+  "requires": { "quests": ["first_light"] },
+  "stages": [
+    {
+      "id": "cull",
+      "journal": "Rill wants four mudcrabs off the sand. They sun themselves on the crab bank north of the bridge, across the brook, and they will not rush you: her point exactly. A crab doesn't bleed and doesn't hurry, so pick your moment and your distance like an archer would.",
+      "objectives": [{ "kind": "kill", "npc": "mudcrab", "count": 4 }]
+    }
+  ],
+  "rewards": {
+    "coins": 45,
+    "xp": [{ "skill": "combat", "amount": 200 }]
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "id": "fletcher_rill",
+  "name": "Rill",
+  "title": "Fletcher",
+  "examine": "Walked in off the hunters' trail at nine years old and never said from where. Every arrow on the rack is one of hers.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 1,
+      "hair": 4,
+      "hairColor": 2,
+      "eyes": 3,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 2,
+      "pants": 3
+    }
+  },
+  "equipment": {
+    "weapon": "shortbow",
+    "body": "leather_body",
+    "legs": "woven_trousers",
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    { "item": "arrow", "qty": 40 }
+  ],
+  "lines": [
+    "Full draw or don't loose.",
+    "Wind's off the brook today. Aim a hair upstream.",
+    "The crabs don't rush you. Good first mark for a bow."
+  ]
+}

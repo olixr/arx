@@ -1,6 +1,6 @@
 {
   "id": "dawn_ward_night",
-  "base": { "kind": "post", "dir": 1.5707963267948966, "speed": 1.6 },
+  "base": { "kind": "post", "dir": 1.5707963, "speed": 1.6 },
   "slots": [
     {
       "from": 6.5,
@@ -8,34 +8,35 @@
       "task": {
         "kind": "path",
         "mode": "once",
-        "speed": 1.4,
+        "speed": 1.6,
         "waypoints": [
-          { "x": -5, "y": 3 },
-          { "x": -17, "y": 8 },
-          { "x": -17, "y": 10 },
-          { "x": -14, "y": 13 },
-          { "x": -14, "y": 12, "lie": true }
+          { "x": -1, "y": 3 },
+          { "x": -14, "y": 11 },
+          { "x": -18, "y": 22 },
+          { "x": -18, "y": 24 },
+          { "x": -16, "y": 25 },
+          { "x": -17, "y": 25, "lie": true }
         ]
       }
     },
     {
-      "from": 13.5,
+      "from": 14,
       "to": 21.5,
-      "task": { "kind": "wander", "x": -11, "y": 15, "radius": 2, "speed": 1.4 }
+      "task": { "kind": "wander", "x": 0, "y": 0, "radius": 2, "speed": 1.6 }
     },
     {
       "from": 22.5,
       "to": 4.5,
       "task": {
         "kind": "path",
-        "speed": 1.35,
+        "speed": 1.6,
         "waypoints": [
-          { "x": -21, "y": 3, "waitSec": 20, "dir": 3.141592653589793 },
-          { "x": 0, "y": 0, "waitSec": 15 },
-          { "x": 20, "y": 3, "waitSec": 20, "dir": 0 },
-          { "x": 26, "y": 15, "waitSec": 15, "dir": 1.5707963267948966 },
-          { "x": 0, "y": 18, "waitSec": 10 },
-          { "x": -11, "y": 15, "waitSec": 10 }
+          { "x": 0, "y": 0, "waitSec": 10 },
+          { "x": 24, "y": 3, "waitSec": 15, "dir": 0 },
+          { "x": 38, "y": 7, "waitSec": 15, "dir": 1.5707963 },
+          { "x": 24, "y": 3 },
+          { "x": 9, "y": 16, "waitSec": 10 },
+          { "x": 0, "y": 0, "waitSec": 10 }
         ]
       }
     }

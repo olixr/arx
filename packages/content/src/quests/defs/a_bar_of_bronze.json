@@ -1,0 +1,17 @@
+{
+  "id": "a_bar_of_bronze",
+  "name": "A Bar of Bronze",
+  "giver": "wright_ottery",
+  "requires": { "quests": ["boards_and_twine"] },
+  "stages": [
+    {
+      "id": "smelt",
+      "journal": "Ottery's last lesson: bring him one bronze bar you made yourself. Copper and tin sit in open seams at the Scrap Crag, on the copse's south hem, and his furnace at the bench yard marries them. You'll want a pickaxe off his counter if your pack lacks one.",
+      "objectives": [{ "kind": "collect", "item": "bronze_bar", "count": 1 }]
+    }
+  ],
+  "rewards": {
+    "coins": 50,
+    "xp": [{ "skill": "smithing", "amount": 200 }]
+  }
+}

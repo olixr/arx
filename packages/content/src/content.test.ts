@@ -1143,47 +1143,63 @@ test('structure templates: JSON round-trip is lossless and re-validated', () => 
 test('dawnmead: awakening anchors, stations, pens, and the lane seam hold', () => {
   const z = buildDawnmead();
   const at = (x: number, y: number): Tile => z.ground[y * z.width + x]! as Tile;
-  // The spawn stands inside the Waking Ring (world coords).
+  // The spawn stands inside the Waking Ring, on the SAME world tile it
+  // has kept through every rebuild (respawn + rescue law).
   assert.deepEqual(z.spawn, { x: -81.5, y: 48.5 });
-  assert.equal(TILE_DEFS[at(14, 32)].solid, false, 'spawn tile must be walkable');
-  // The lane exits the east edge on rows that meet Bramblewick's west
-  // road (world y 47-49 = local y 31-33 with origin y 16).
-  for (const y of [31, 32, 33]) {
-    assert.equal(at(95, y), Tile.Path, `lane row ${y} must reach the east edge`);
+  assert.equal(TILE_DEFS[at(46, 48)].solid, false, 'spawn tile must be walkable');
+  // The lane exits the east edge on world rows 47-49, where the First
+  // Road begins at world (0,48).
+  for (const y of [47, 48, 49]) {
+    assert.equal(at(127, y), Tile.Path, `lane row ${y} must reach the east edge`);
   }
   const counts = new Map<number, number>();
   for (const t of z.ground) counts.set(t, (counts.get(t) ?? 0) + 1);
-  assert.equal(counts.get(Tile.Campfire) ?? 0, 1, 'village campfire missing');
-  assert.equal(counts.get(Tile.Workbench) ?? 0, 1, 'village workbench missing');
-  assert.equal(counts.get(Tile.ChestWood) ?? 0, 1, 'the shed chest missing');
-  assert.ok((counts.get(Tile.BerryBush) ?? 0) >= 5, 'the berry banks thinned');
-  // The animals and their teacher-rats stand in the zone spawns.
-  const spawnKinds = new Map((z.spawns ?? []).map((s) => [s.npc, s.count]));
-  assert.equal(spawnKinds.get('chicken'), 4);
-  assert.equal(spawnKinds.get('cow'), 2);
-  assert.equal(spawnKinds.get('sheep'), 2, "Maren's shop-window ewes");
-  assert.equal(spawnKinds.get('rat'), 3);
-  // Seven villagers plus Bryn's two vale wards; all but Maren keep
-  // routine hours — she stands the stalls all day by choice
-  // (beastcraft v2 Phase 4). The wards split the clock on one hot
-  // bunk (THE CHANGING OF THE GUARD).
+  // The singleton stations: one of each, exactly, in the whole zone.
+  assert.equal(counts.get(Tile.Campfire) ?? 0, 1, 'the supper fire missing');
+  assert.equal(counts.get(Tile.Workbench) ?? 0, 1, "Ottery's bench missing");
+  assert.equal(counts.get(Tile.ChestWood) ?? 0, 1, 'the granary chest missing');
+  assert.equal(counts.get(Tile.Furnace) ?? 0, 1, 'the forge corner furnace missing');
+  assert.equal(counts.get(Tile.Anvil) ?? 0, 1, 'the forge corner anvil missing');
+  assert.equal(counts.get(Tile.CookPot) ?? 0, 1, "Berrit's pot missing");
+  assert.equal(counts.get(Tile.BeastPen) ?? 0, 1, 'the stall door missing');
+  // The teaching grounds: forage, ore, straw butts, and dummies.
+  assert.ok((counts.get(Tile.BerryBush) ?? 0) >= 6, 'the berry banks thinned');
+  assert.equal(counts.get(Tile.RockCopper) ?? 0, 2, 'the Scrap Crag copper moved');
+  assert.equal(counts.get(Tile.RockTin) ?? 0, 2, 'the Scrap Crag tin moved');
+  assert.ok((counts.get(Tile.TargetDummy) ?? 0) >= 4, 'the drill yard emptied');
+  assert.ok((counts.get(Tile.FishingSpot) ?? 0) >= 3, 'the brook stopped biting');
+  // The syllabus fights in the OPEN: rats at the granary meadow,
+  // mudcrabs on the bank, and the gentle farm animals.
+  const spawnCount = (npc: string) =>
+    (z.spawns ?? []).filter((s) => s.npc === npc).reduce((n, s) => n + s.count, 0);
+  assert.equal(spawnCount('chicken'), 5);
+  assert.equal(spawnCount('cow'), 2);
+  assert.equal(spawnCount('sheep'), 3);
+  assert.equal(spawnCount('rat'), 7, 'the granary rats moved indoors');
+  assert.equal(spawnCount('mudcrab'), 5, 'the crab bank emptied');
+  // Thirteen named villagers plus Halla's three-ward rota, every one
+  // of them keeping hours (THE CHANGING OF THE GUARD).
   const actors = z.actorSpawns ?? [];
-  assert.equal(actors.length, 9);
+  assert.equal(actors.length, 16);
   for (const slug of [
-    'elder_rowan',
-    'warden_bryn',
-    'hearthkeeper_iona',
-    'farmer_hobb',
-    'tinker_fen',
-    'young_pip',
-    'drover_maren',
+    'keeper_wren',
+    'yardmaster_halla',
+    'fletcher_rill',
+    'sparkwright_varn',
+    'forester_alder',
+    'cook_berrit',
+    'wright_ottery',
+    'innkeep_gilly',
+    'angler_weir',
+    'farmer_brammel',
+    'drover_sorrel',
+    'twin_tansy',
+    'twin_wick',
   ]) {
     assert.ok(actors.some((a) => a.actor === slug), `${slug} missing from the village`);
   }
-  assert.equal(actors.filter((a) => a.actor === 'dawnmead_ward').length, 2, 'the ward rota changed');
-  assert.equal(actors.filter((a) => a.routine).length, 8, 'every villager keeps hours');
-  // The stable door stands by the pasture (THE THREE STALLS).
-  assert.equal(counts.get(Tile.BeastPen) ?? 0, 1, 'the beast pen missing');
+  assert.equal(actors.filter((a) => a.actor === 'dawnmead_ward').length, 3, 'the ward rota changed');
+  assert.equal(actors.filter((a) => a.routine).length, 16, 'every villager keeps hours');
   // The zone survives the editor's JSON round trip. zoneFromJson
   // zero-fills the flat elev layer and the re-export then carries it,
   // so elevation is compared out; everything else must be byte-exact.
@@ -1194,13 +1210,13 @@ test('dawnmead: awakening anchors, stations, pens, and the lane seam hold', () =
   assert.deepEqual(back, src);
 });
 
-test('dawnmead: every doorway (shed included) walks from the spawn', () => {
+test('dawnmead: every doorway (granary included) walks from the spawn', () => {
   const z = buildDawnmead();
   const walkable = (x: number, y: number): boolean =>
     x >= 0 && y >= 0 && x < z.width && y < z.height &&
     !TILE_DEFS[z.ground[y * z.width + x]! as Tile].solid;
   const seen = new Uint8Array(z.width * z.height);
-  const queue: number[] = [32 * z.width + 14]; // the Waking Ring
+  const queue: number[] = [48 * z.width + 46]; // the Waking Ring
   seen[queue[0]!] = 1;
   while (queue.length > 0) {
     const i = queue.pop()!;
@@ -1224,9 +1240,11 @@ test('dawnmead: every doorway (shed included) walks from the spawn', () => {
     }
   }
   assert.deepEqual(unreachable, [], `doorways cut off from spawn: ${unreachable.join(' ')}`);
-  // The east lane truly connects: the edge tile the road leaves by is
-  // reachable from the Ring, so a waker can walk to Bramblewick.
-  assert.equal(seen[32 * z.width + 95], 1, 'the lane east is severed');
+  // The ways out truly connect: the First Road's edge tile, the
+  // hunters' trail head, and the old-road gate all walk from the Ring.
+  assert.equal(seen[48 * z.width + 127], 1, 'the lane east is severed');
+  assert.equal(seen[0 * z.width + 64], 1, "the hunters' trail is severed");
+  assert.equal(seen[95 * z.width + 98], 1, 'the old road is severed');
 });
 
 test('amberford: the crossroads town holds its anchors, stations, and gates', () => {

@@ -1,0 +1,41 @@
+{
+  "id": "sorrel_stalls",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "drover_sorrel" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "text": "Hold. Let them smell you first. Right. Now we can talk.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "text": "What is it, then?",
+      "choices": [
+        { "text": "How do the stalls work?", "next": "pen" },
+        { "text": "How do I tame something wild?", "next": "gentle" },
+        { "text": "What do wild beasts want?", "next": "lure" },
+        { "text": "I'll let you work.", "next": "off" }
+      ]
+    },
+    {
+      "id": "pen",
+      "text": "Three stalls to a household, one friend at your heel. Swap them here. Rest one that limped home. And when a bond has run its course, this is where you slip the collar. Easy, you. Not talking about your collar.",
+      "next": "hub"
+    },
+    {
+      "id": "gentle",
+      "text": "The old drovers' asking. Learn it when your hands know beasts well enough, and keep it ready. Call the beast, hold your ground, carry what it wants in your pack. It will come at you the whole while. Plant yourself where you mean to stay, and stand through it.",
+      "next": "hub"
+    },
+    {
+      "id": "lure",
+      "text": "Depends on the belly. Beetles come for berries. A rat wants an egg, whole, no cracks. Watch what a beast eats when it thinks nobody's minding, and you've learned its price. Yes, I'm still talking about you. Hush.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "text": "Gate on your way out. They notice."
+    }
+  ]
+}

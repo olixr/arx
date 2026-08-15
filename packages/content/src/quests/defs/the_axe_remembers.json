@@ -1,0 +1,16 @@
+{
+  "id": "the_axe_remembers",
+  "name": "The Axe Remembers",
+  "giver": "forester_alder",
+  "stages": [
+    {
+      "id": "fell",
+      "journal": "Alder will trade teaching for timber: four logs off the marked trees in the copse, southwest of the drill yard. Take the trunks with the blaze cut low, look up before you swing, and leave the unmarked ones working. You'll want an axe from Ottery's counter if your pack lacks one.",
+      "objectives": [{ "kind": "collect", "item": "log", "count": 4 }]
+    }
+  ],
+  "rewards": {
+    "coins": 30,
+    "xp": [{ "skill": "woodcutting", "amount": 150 }]
+  }
+}

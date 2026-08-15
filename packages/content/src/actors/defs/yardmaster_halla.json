@@ -1,0 +1,32 @@
+{
+  "id": "yardmaster_halla",
+  "name": "Halla",
+  "title": "Yardmaster of Dawnmead",
+  "examine": "Wayward Watch, retired on a bad knee that predicts rain better than any almanac. The dummies flinch when she counts.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 3,
+      "hairColor": 1,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 4,
+      "shirt": 6,
+      "pants": 1
+    }
+  },
+  "equipment": {
+    "weapon": "bronze_sword",
+    "body": "leather_body",
+    "legs": "leather_chaps",
+    "gloves": "leather_gloves",
+    "boots": "leather_boots"
+  },
+  "lines": [
+    "Third cut lands hardest. Stay in and finish.",
+    "Knee says rain by dusk. The knee has never once been wrong.",
+    "The granary rats keep my wakers honest. Better teachers than me, some mornings."
+  ]
+}

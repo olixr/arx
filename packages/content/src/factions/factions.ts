@@ -53,13 +53,20 @@ export const FACTIONS: FactionsDef = {
         // tremendous courtesy. The Charter thinks in years.
         'buyer_hallward',
         // Dawnmead — one hearth-country with the ford (no politics of its own)
-        'elder_rowan',
-        'warden_bryn',
+        'keeper_wren',
+        'yardmaster_halla',
         'dawnmead_ward',
-        'hearthkeeper_iona',
-        'farmer_hobb',
-        'tinker_fen',
-        'young_pip',
+        'fletcher_rill',
+        'sparkwright_varn',
+        'forester_alder',
+        'cook_berrit',
+        'wright_ottery',
+        'innkeep_gilly',
+        'angler_weir',
+        'farmer_brammel',
+        'drover_sorrel',
+        'twin_tansy',
+        'twin_wick',
         // Kingsdelf — the Charter's far venture: the Returning banked
         // on Charter coin, and the watch wears the Charter's coat.
         'delfmaster_ruen',
@@ -78,7 +85,7 @@ export const FACTIONS: FactionsDef = {
         'kingsdelf_delver',
         'kingsdelf_glasshand',
       ],
-      enforcers: ['amberford_watch', 'captain_aldis', 'warden_bryn', 'dawnmead_ward', 'kingsdelf_watch'],
+      enforcers: ['amberford_watch', 'captain_aldis', 'yardmaster_halla', 'dawnmead_ward', 'kingsdelf_watch'],
       npcPrefixes: [],
       anchors: [
         { x: -64, y: 48 },

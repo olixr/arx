@@ -61,9 +61,19 @@ import crofterHolt from './defs/crofter_holt.json';
 import crofterMaida from './defs/crofter_maida.json';
 import crofterTam from './defs/crofter_tam.json';
 import dawnmeadWard from './defs/dawnmead_ward.json';
-import elderRowan from './defs/elder_rowan.json';
-import farmerHobb from './defs/farmer_hobb.json';
-import hearthkeeperIona from './defs/hearthkeeper_iona.json';
+import keeperWren from './defs/keeper_wren.json';
+import yardmasterHalla from './defs/yardmaster_halla.json';
+import fletcherRill from './defs/fletcher_rill.json';
+import sparkwrightVarn from './defs/sparkwright_varn.json';
+import foresterAlder from './defs/forester_alder.json';
+import cookBerrit from './defs/cook_berrit.json';
+import wrightOttery from './defs/wright_ottery.json';
+import innkeepGilly from './defs/innkeep_gilly.json';
+import anglerWeir from './defs/angler_weir.json';
+import farmerBrammel from './defs/farmer_brammel.json';
+import droverSorrel from './defs/drover_sorrel.json';
+import twinTansy from './defs/twin_tansy.json';
+import twinWick from './defs/twin_wick.json';
 import farmerJorel from './defs/farmer_jorel.json';
 import farmerTamsin from './defs/farmer_tamsin.json';
 import ferrymanPeld from './defs/ferryman_peld.json';
@@ -84,7 +94,6 @@ import storekeepNial from './defs/storekeep_nial.json';
 import tallymanBram from './defs/tallyman_bram.json';
 import boomsmanKettil from './defs/boomsman_kettil.json';
 import nurserymanOdd from './defs/nurseryman_odd.json';
-import droverMaren from './defs/drover_maren.json';
 import wardenSigrun from './defs/warden_sigrun.json';
 import oldTorvi from './defs/old_torvi.json';
 import fisherYlva from './defs/fisher_ylva.json';
@@ -98,8 +107,6 @@ import orchardistPerl from './defs/orchardist_perl.json';
 import outfitterHask from './defs/outfitter_hask.json';
 import sageElowen from './defs/sage_elowen.json';
 import smithBretta from './defs/smith_bretta.json';
-import tinkerFen from './defs/tinker_fen.json';
-import wardenBryn from './defs/warden_bryn.json';
 import wayfarerDray from './defs/wayfarer_dray.json';
 import peddlerNix from './defs/peddler_nix.json';
 import peddlerHetty from './defs/peddler_hetty.json';
@@ -129,7 +136,6 @@ import sentinelVeran from './defs/sentinel_veran.json';
 import sentinelLisse from './defs/sentinel_lisse.json';
 import sentinelThal from './defs/sentinel_thal.json';
 import evenguardWatch from './defs/evenguard_watch.json';
-import youngPip from './defs/young_pip.json';
 import portreeveBrack from './defs/portreeve_brack.json';
 import factorNeave from './defs/factor_neave.json';
 import innkeepDorrit from './defs/innkeep_dorrit.json';
@@ -211,7 +217,6 @@ const SOURCES: readonly unknown[] = [
   tallymanBram,
   boomsmanKettil,
   nurserymanOdd,
-  droverMaren,
   wardenSigrun,
   oldTorvi,
   fisherYlva,
@@ -288,9 +293,19 @@ const SOURCES: readonly unknown[] = [
   crofterMaida,
   crofterTam,
   dawnmeadWard,
-  elderRowan,
-  farmerHobb,
-  hearthkeeperIona,
+  keeperWren,
+  yardmasterHalla,
+  fletcherRill,
+  sparkwrightVarn,
+  foresterAlder,
+  cookBerrit,
+  wrightOttery,
+  innkeepGilly,
+  anglerWeir,
+  farmerBrammel,
+  droverSorrel,
+  twinTansy,
+  twinWick,
   farmerJorel,
   farmerTamsin,
   ferrymanPeld,
@@ -305,8 +320,6 @@ const SOURCES: readonly unknown[] = [
   outfitterHask,
   sageElowen,
   smithBretta,
-  tinkerFen,
-  wardenBryn,
   wayfarerDray,
   wayfarerPetch,
   wayfarerSenna,
@@ -335,7 +348,6 @@ const SOURCES: readonly unknown[] = [
   stillkeeperNaia,
   keeperOthiel,
   fairArtisan,
-  youngPip,
   // The Road's Fortune (living frontier, phase 5) — the peddler pool:
   peddlerNix,
   peddlerHetty,

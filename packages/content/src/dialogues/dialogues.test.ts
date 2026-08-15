@@ -76,17 +76,17 @@ test('markup: unbalanced, nested, empty, and ghost directives are refused', () =
   const bad = validateDialogue({
     id: 'test_markup',
     start: 'a',
-    bindings: [{ kind: 'actor', target: 'elder_rowan' }],
+    bindings: [{ kind: 'actor', target: 'keeper_wren' }],
     nodes: [{ id: 'a', text: 'a ghost gift: {item:nonsense_loaf}' }],
   });
   assert.ok(!bad.ok && bad.errors.some((e) => e.includes('unknown item')));
 });
 
 test('eligibility: once-completion, requires and forbids gate the voice', () => {
-  const welcome = DIALOGUES.get('rowan_awakening')!;
+  const welcome = DIALOGUES.get('wren_awakening')!;
   const none = () => false;
   assert.ok(dialogueEligible(welcome, none), 'fresh player gets the awakening');
-  const done = new Set([dialogueDoneFlag('rowan_awakening')]);
+  const done = new Set([dialogueDoneFlag('wren_awakening')]);
   assert.ok(!dialogueEligible(welcome, (f) => done.has(f)), 'completed once never re-offers');
 
   // A requires-gated tree stays silent until its flag is earned.
@@ -94,7 +94,7 @@ test('eligibility: once-completion, requires and forbids gate the voice', () => 
     id: 'test_gated',
     start: 'a',
     requires: ['earned_it'],
-    bindings: [{ kind: 'actor', target: 'elder_rowan' }],
+    bindings: [{ kind: 'actor', target: 'keeper_wren' }],
     nodes: [{ id: 'a', text: 'You earned this.' }],
   });
   assert.ok(gated.ok);
@@ -103,16 +103,17 @@ test('eligibility: once-completion, requires and forbids gate the voice', () => 
 });
 
 test('pickDialogue: binding priority wins, completion falls to the default', () => {
-  const rowan = offersFor('elder_rowan');
-  // Intro + evergreen + the quest offer (gated on quest:...:available,
-  // which this test's flag predicates answer false — so picks below
+  const wren = offersFor('keeper_wren');
+  // Intro + evergreen + first_light's offer and turn-in + the
+  // capstone's offer (all gated on quest:...:available/:ready, which
+  // this test's flag predicates answer false — so picks below
   // exercise the pre-quest ladder unchanged).
-  assert.equal(rowan.length, 3);
-  const fresh = pickDialogue(rowan, () => false);
-  assert.equal(fresh?.id, 'rowan_awakening', 'the once-intro outranks the default');
-  const flags = new Set([dialogueDoneFlag('rowan_awakening')]);
-  const after = pickDialogue(rowan, (f) => flags.has(f));
-  assert.equal(after?.id, 'rowan_green', 'the repeatable default takes over');
+  assert.equal(wren.length, 5);
+  const fresh = pickDialogue(wren, () => false);
+  assert.equal(fresh?.id, 'wren_awakening', 'the once-intro outranks the default');
+  const flags = new Set([dialogueDoneFlag('wren_awakening')]);
+  const after = pickDialogue(wren, (f) => flags.has(f));
+  assert.equal(after?.id, 'wren_green', 'the repeatable default takes over');
 
   // Branch flags pick between two conditional defaults; a tie on
   // priority breaks by id order (the grib-friend/wary precedent).
@@ -121,7 +122,7 @@ test('pickDialogue: binding priority wins, completion falls to the default', () 
       id,
       start: 'a',
       requires: [flag],
-      bindings: [{ kind: 'actor', target: 'elder_rowan' }],
+      bindings: [{ kind: 'actor', target: 'keeper_wren' }],
       nodes: [{ id: 'a', text: 'Words for a mood.' }],
     });
     assert.ok(res.ok);
@@ -139,8 +140,8 @@ test('bindings make trees interchangeable: one tree, many targets', () => {
     id: 'test_shared',
     start: 'a',
     bindings: [
-      { kind: 'actor', target: 'elder_rowan', priority: 3 },
-      { kind: 'actor', target: 'warden_bryn' },
+      { kind: 'actor', target: 'keeper_wren', priority: 3 },
+      { kind: 'actor', target: 'yardmaster_halla' },
     ],
     nodes: [{ id: 'a', text: 'The same words, wherever they hang.' }],
   });
@@ -163,18 +164,18 @@ test('validator rejects the dishonest defs', () => {
   const base = {
     id: 'test_talk',
     start: 'a',
-    bindings: [{ kind: 'actor', target: 'elder_rowan' }],
+    bindings: [{ kind: 'actor', target: 'keeper_wren' }],
     nodes: [{ id: 'a', text: 'Hello.' }],
   };
   bad({ ...base, id: 'Bad Id!' }, 'must match');
   bad({ ...base, bindings: [{ kind: 'actor', target: 'nobody' }] }, 'unknown actor');
-  bad({ ...base, bindings: [{ kind: 'door', target: 'elder_rowan' }] }, 'unknown');
+  bad({ ...base, bindings: [{ kind: 'door', target: 'keeper_wren' }] }, 'unknown');
   bad(
     {
       ...base,
       bindings: [
-        { kind: 'actor', target: 'elder_rowan' },
-        { kind: 'actor', target: 'elder_rowan' },
+        { kind: 'actor', target: 'keeper_wren' },
+        { kind: 'actor', target: 'keeper_wren' },
       ],
     },
     'duplicates',
@@ -213,7 +214,7 @@ test('validator rejects the dishonest defs', () => {
   bad(
     {
       ...base,
-      nodes: [{ id: 'a', text: 'Pick.', choices: [{ text: 'Done.', set: ['dlg:rowan_awakening'] }] }],
+      nodes: [{ id: 'a', text: 'Pick.', choices: [{ text: 'Done.', set: ['dlg:wren_awakening'] }] }],
     },
     'completions are automatic',
   );
@@ -223,7 +224,7 @@ test('hub cycles are legal: a choice may loop back to its question', () => {
   const res = validateDialogue({
     id: 'test_hub',
     start: 'hub',
-    bindings: [{ kind: 'actor', target: 'elder_rowan' }],
+    bindings: [{ kind: 'actor', target: 'keeper_wren' }],
     nodes: [
       { id: 'hub', text: 'Ask.', choices: [{ text: 'Topic?', next: 'topic' }, { text: 'Bye.' }] },
       { id: 'topic', text: 'An answer.', next: 'hub' },
@@ -236,7 +237,7 @@ test('the world answers: a closed roster, readable everywhere, writable nowhere'
   const base = {
     id: 'test_world',
     start: 'a',
-    bindings: [{ kind: 'actor', target: 'elder_rowan' }],
+    bindings: [{ kind: 'actor', target: 'keeper_wren' }],
   };
   // Every rostered world flag gates cleanly at def and choice level.
   const ok = validateDialogue({
@@ -280,7 +281,7 @@ test('the bounty hook: carries nothing, validates clean, unknown kinds still die
   const base = {
     id: 'test_bounty',
     start: 'a',
-    bindings: [{ kind: 'actor', target: 'elder_rowan' }],
+    bindings: [{ kind: 'actor', target: 'keeper_wren' }],
   };
   const ok = validateDialogue({
     ...base,

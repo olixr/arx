@@ -1,0 +1,26 @@
+{
+  "id": "q_berries_for_the_pot_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:berries_for_the_pot:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "cook_berrit",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Eight, and none squashed. Into the pot they go. Here's your trouble back, love, with interest.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "berries_for_the_pot"
+        }
+      ]
+    }
+  ]
+}

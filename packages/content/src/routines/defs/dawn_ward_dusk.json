@@ -1,0 +1,41 @@
+{
+  "id": "dawn_ward_dusk",
+  "base": { "kind": "post", "dir": 1.5707963, "speed": 1.6 },
+  "slots": [
+    {
+      "from": 9,
+      "to": 15,
+      "task": { "kind": "wander", "x": -38, "y": -7, "radius": 3, "speed": 1.6 }
+    },
+    {
+      "from": 17,
+      "to": 19,
+      "task": {
+        "kind": "path",
+        "speed": 1.6,
+        "waypoints": [
+          { "x": 0, "y": 0, "waitSec": 12 },
+          { "x": 0, "y": 14, "waitSec": 10, "dir": 1.5707963 }
+        ]
+      }
+    },
+    {
+      "from": 0.5,
+      "to": 8,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.6,
+        "waypoints": [
+          { "x": -16, "y": -4 },
+          { "x": -39, "y": -4 },
+          { "x": -52, "y": 4 },
+          { "x": -56, "y": 15 },
+          { "x": -56, "y": 17 },
+          { "x": -54, "y": 18 },
+          { "x": -53, "y": 18, "lie": true }
+        ]
+      }
+    }
+  ]
+}

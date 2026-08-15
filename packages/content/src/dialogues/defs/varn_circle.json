@@ -1,0 +1,36 @@
+{
+  "id": "varn_circle",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "sparkwright_varn" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Come in, come in. Mind the... yes, that. What's on your mind?",
+      "choices": [
+        { "text": "What were you saying when you came through?", "next": "sentence" },
+        { "text": "Tell me about the schools of magic.", "next": "schools" },
+        { "text": "Why the stone circle?", "next": "circle" },
+        { "text": "I'll leave you to it.", "next": "pass" }
+      ]
+    },
+    {
+      "id": "sentence",
+      "text": "Something *important*. It had the shape of an answer, and I had most of it out of my mouth when the stones took me. Forty years I've been listening for the end of it. Write things down, that's my advice. Whatever you're saying, be somebody who writes it down.",
+      "next": "hub"
+    },
+    {
+      "id": "schools",
+      "text": "Flame, frost, storm, and the quiet ones. They warm to you as you work, and the tricks arrive like... like remembering. The staff is just a place for your looking to live.",
+      "next": "hub"
+    },
+    {
+      "id": "circle",
+      "text": "Old stones hold a spark kindly. Wood sulks about it. And the scorch marks are notes, whatever Berrit says when the wind carries the smell to her table.",
+      "next": "hub"
+    },
+    {
+      "id": "pass",
+      "text": "Off you go. If you find the end of a sentence lying about anywhere, it's mine."
+    }
+  ]
+}

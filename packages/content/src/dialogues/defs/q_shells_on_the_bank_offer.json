@@ -1,0 +1,50 @@
+{
+  "id": "q_shells_on_the_bank_offer",
+  "start": "hub",
+  "requires": [
+    "quest:shells_on_the_bank:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "fletcher_rill",
+      "priority": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Crabs on the bank. Four too many. They won't rush you. That's the lesson. Take it?",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "shells_on_the_bank"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Four crabs. I'm on it.",
+          "next": "sworn"
+        },
+        {
+          "text": "Another time.",
+          "next": "declined"
+        }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Distance. Full draw. Go.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "shells_on_the_bank"
+        }
+      ]
+    },
+    {
+      "id": "declined",
+      "text": "Mm."
+    }
+  ]
+}

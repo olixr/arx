@@ -1,0 +1,28 @@
+{
+  "id": "rill_hours",
+  "base": { "kind": "post", "dir": 0, "speed": 1.4 },
+  "slots": [
+    {
+      "from": 13,
+      "to": 14,
+      "task": { "kind": "wander", "x": 2, "y": 0, "radius": 2, "speed": 1.4 }
+    },
+    {
+      "from": 21,
+      "to": 6.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.4,
+        "waypoints": [
+          { "x": -2, "y": 0 },
+          { "x": -2, "y": 5 },
+          { "x": 6, "y": 6 },
+          { "x": 6, "y": 7 },
+          { "x": 7, "y": 8 },
+          { "x": 8, "y": 8, "lie": true }
+        ]
+      }
+    }
+  ]
+}

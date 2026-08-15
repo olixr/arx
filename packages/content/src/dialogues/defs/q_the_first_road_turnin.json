@@ -1,0 +1,26 @@
+{
+  "id": "q_the_first_road_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:the_first_road:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "captain_aldis",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "In off the west road, alone, standing straight. Wren's mark, that. She still sends me the ones worth the walk, same as Rowan did, and he'll want your name for his registry before supper. Amberford's yours to learn, waker. Gate stays open till the horn says otherwise.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "the_first_road"
+        }
+      ]
+    }
+  ]
+}

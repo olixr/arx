@@ -1,0 +1,26 @@
+{
+  "id": "q_first_light_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:first_light:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "keeper_wren",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Met all three, and still standing straight. Halla growled something kind about you, which from her is a parade. Here, child. The day's first coin should always be an easy one.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "first_light"
+        }
+      ]
+    }
+  ]
+}

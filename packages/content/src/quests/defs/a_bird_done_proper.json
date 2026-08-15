@@ -1,0 +1,17 @@
+{
+  "id": "a_bird_done_proper",
+  "name": "A Bird Done Proper",
+  "giver": "cook_berrit",
+  "requires": { "quests": ["berries_for_the_pot"] },
+  "stages": [
+    {
+      "id": "cook",
+      "journal": "Berrit handed you raw birds and pointed at the fire: bring her two chickens cooked through, done at her hearth or any flame you like. She promises the fire will take one as its fee, which is why she gave you a spare. Everyone burns the first. That's the lesson.",
+      "objectives": [{ "kind": "collect", "item": "cooked_chicken", "count": 2 }]
+    }
+  ],
+  "rewards": {
+    "coins": 40,
+    "xp": [{ "skill": "cooking", "amount": 200 }]
+  }
+}

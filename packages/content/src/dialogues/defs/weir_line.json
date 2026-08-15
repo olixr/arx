@@ -1,0 +1,22 @@
+{
+  "id": "weir_line",
+  "start": "pier",
+  "once": true,
+  "bindings": [{ "kind": "actor", "target": "angler_weir", "priority": 10 }],
+  "nodes": [
+    {
+      "id": "pier",
+      "text": "...New, are you. Mm. You'll want a rod off Ottery's counter. Then come stand here. The pier holds two.",
+      "next": "line"
+    },
+    {
+      "id": "line",
+      "text": "Fish bite where the water sounds busiest. Cast. Wait. The waiting isn't empty. It's listening. When the line speaks, answer it.",
+      "next": "crabs"
+    },
+    {
+      "id": "crabs",
+      "text": "Mind the crabs on the sand there. They won't start anything. Doesn't mean they won't finish it."
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "still_waters",
+  "name": "Still Waters",
+  "giver": "angler_weir",
+  "requires": { "quests": ["a_line_in_the_water"] },
+  "repeat": { "cooldownHours": 12 },
+  "stages": [
+    {
+      "id": "six",
+      "journal": "Weir's rack has room and the brook is talking. Six trout, whenever the water and your patience agree: his pier at the crab bank is the busy spot, and the ford downstream runs second. He'll smoke a share back to you, which from Weir is a speech.",
+      "objectives": [{ "kind": "collect", "item": "raw_trout", "count": 6 }]
+    }
+  ],
+  "rewards": {
+    "coins": 50,
+    "items": [{ "item": "trout", "qty": 2 }],
+    "xp": [{ "skill": "fishing", "amount": 200 }]
+  }
+}

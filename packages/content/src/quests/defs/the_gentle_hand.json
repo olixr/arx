@@ -1,0 +1,17 @@
+{
+  "id": "the_gentle_hand",
+  "name": "The Gentle Hand",
+  "giver": "drover_sorrel",
+  "requires": { "quests": ["eggs_for_the_morning"] },
+  "stages": [
+    {
+      "id": "milk",
+      "journal": "Sorrel says a waker who can't walk up to a cow gently has no business walking up to anything wild. Bring her two pails of milk from the pasture herd north of the lane. Slow steps, open hands, and let the beast see you the whole way in.",
+      "objectives": [{ "kind": "collect", "item": "milk", "count": 2 }]
+    }
+  ],
+  "rewards": {
+    "coins": 40,
+    "xp": [{ "skill": "farming", "amount": 150 }]
+  }
+}

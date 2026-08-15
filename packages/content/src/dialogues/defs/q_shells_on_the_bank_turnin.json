@@ -1,0 +1,26 @@
+{
+  "id": "q_shells_on_the_bank_turnin",
+  "start": "paid",
+  "requires": [
+    "quest:shells_on_the_bank:ready"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "fletcher_rill",
+      "priority": 21
+    }
+  ],
+  "nodes": [
+    {
+      "id": "paid",
+      "text": "Four shells still where they dropped. Clean work. A crab teaches patience or it teaches pinching. You picked. Here.",
+      "hooks": [
+        {
+          "kind": "quest_turnin",
+          "quest": "shells_on_the_bank"
+        }
+      ]
+    }
+  ]
+}

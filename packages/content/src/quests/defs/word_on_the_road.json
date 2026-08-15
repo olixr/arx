@@ -2,26 +2,57 @@
   "id": "word_on_the_road",
   "name": "Word on the Road",
   "giver": "captain_aldis",
-  "requires": { "quests": ["the_lay_of_the_land"] },
+  "requires": {
+    "quests": [
+      "the_first_road"
+    ]
+  },
   "stages": [
     {
       "id": "thin_them",
-      "journal": "Aldis wants four brigands off her marches. The camps drift — nobody will draw you a mark. Ask the watch what stands near, or walk the roads until the fences go cut and the fires go cold. That's their country.",
-      "objectives": [{ "kind": "kill", "npc": "brigand", "count": 4 }]
+      "journal": "Aldis wants four brigands off her marches. The camps drift \u2014 nobody will draw you a mark. Ask the watch what stands near, or walk the roads until the fences go cut and the fires go cold. That's their country.",
+      "objectives": [
+        {
+          "kind": "kill",
+          "npc": "brigand",
+          "count": 4
+        }
+      ]
     },
     {
       "id": "proof",
-      "journal": "Now the proof: the writs they carry, orders in a _Redmask_ hand. Take three off the next band you break — the dead don't mind being searched.",
-      "objectives": [{ "kind": "collect", "item": "redmask_writ", "count": 3 }]
+      "journal": "Now the proof: the writs they carry, orders in a _Redmask_ hand. Take three off the next band you break \u2014 the dead don't mind being searched.",
+      "objectives": [
+        {
+          "kind": "collect",
+          "item": "redmask_writ",
+          "count": 3
+        }
+      ]
     }
   ],
   "questDrops": [
-    { "npc": "brigand", "item": "redmask_writ", "chance": 0.55 },
-    { "npc": "brigand_archer", "item": "redmask_writ", "chance": 0.55 }
+    {
+      "npc": "brigand",
+      "item": "redmask_writ",
+      "chance": 0.55
+    },
+    {
+      "npc": "brigand_archer",
+      "item": "redmask_writ",
+      "chance": 0.55
+    }
   ],
   "rewards": {
     "coins": 90,
-    "xp": [{ "skill": "combat", "amount": 300 }],
-    "flags": ["redmask_writs_shown"]
+    "xp": [
+      {
+        "skill": "combat",
+        "amount": 300
+      }
+    ],
+    "flags": [
+      "redmask_writs_shown"
+    ]
   }
 }

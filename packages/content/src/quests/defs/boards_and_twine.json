@@ -1,0 +1,37 @@
+{
+  "id": "boards_and_twine",
+  "name": "Boards and Twine",
+  "giver": "wright_ottery",
+  "requires": {
+    "quests": [
+      "the_axe_remembers"
+    ]
+  },
+  "stages": [
+    {
+      "id": "make",
+      "journal": "Ottery wants proof your hands work: three boards off his sawhorse and two lengths of twine off the bench. Logs come from Alder's copse, and the tall fibre plants stand on the berry banks south of the bridge. His yard is on the lane east of the green, saw and bench both waiting.",
+      "objectives": [
+        {
+          "kind": "collect",
+          "item": "board",
+          "count": 3
+        },
+        {
+          "kind": "collect",
+          "item": "twine",
+          "count": 2
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 45,
+    "xp": [
+      {
+        "skill": "woodworking",
+        "amount": 200
+      }
+    ]
+  }
+}

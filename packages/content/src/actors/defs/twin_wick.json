@@ -1,0 +1,24 @@
+{
+  "id": "twin_wick",
+  "name": "Wick",
+  "examine": "The younger twin. Collects facts about the Waking Ring. All of them are wrong. All of them are delivered with total confidence.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 2,
+      "hairColor": 3,
+      "eyes": 3,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 2,
+      "pants": 1
+    }
+  },
+  "lines": [
+    "The stones hum if you press your ear on them. Tansy says that's my own blood. Tansy is wrong.",
+    "Did you have a horse before? You have a walking-about look. I bet you had a horse.",
+    "There were SIX stones once. The sixth one left. That's what I think happened."
+  ]
+}

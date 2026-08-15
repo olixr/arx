@@ -1,0 +1,27 @@
+{
+  "id": "berries_for_the_pot",
+  "name": "Berries for the Pot",
+  "giver": "cook_berrit",
+  "stages": [
+    {
+      "id": "gather",
+      "journal": "Berrit wants eight handfuls of berries for the supper pot. The berry banks run along the brook's near side, south of the lane bridge, standing in open sun. She says the bank gives more than it's asked and never minds the taking.",
+      "objectives": [
+        {
+          "kind": "collect",
+          "item": "berries",
+          "count": 8
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 30,
+    "xp": [
+      {
+        "skill": "foraging",
+        "amount": 150
+      }
+    ]
+  }
+}

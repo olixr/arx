@@ -1,0 +1,18 @@
+{
+  "id": "the_last_nest",
+  "name": "The Last Nest",
+  "giver": "yardmaster_halla",
+  "requires": { "quests": ["the_meadow_count", "shells_on_the_bank"] },
+  "stages": [
+    {
+      "id": "clear",
+      "journal": "Halla wants the granary properly thinned this time: eight more rats out of the ruin and its meadow, southeast across the ford. She says the traveller's chest inside the broken walls is yours if you're the one standing when it goes quiet. Never leave a chest shut.",
+      "objectives": [{ "kind": "kill", "npc": "rat", "count": 8 }]
+    }
+  ],
+  "rewards": {
+    "coins": 60,
+    "items": [{ "item": "iron_sword", "qty": 1, "rarity": "uncommon" }],
+    "xp": [{ "skill": "combat", "amount": 300 }]
+  }
+}

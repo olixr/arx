@@ -118,10 +118,11 @@ test('different seeds give different terrain', () => {
 test('authored zone overlays the procedural world exactly', () => {
   const town = buildDawnmead();
   const world = new WorldSource(1337, [town]);
-  // The village spans world (-96,16)-(-1,79); its well sits at (-63,43).
+  // The village spans world (-128,0)-(-1,95); its well sits on the
+  // green with its NW stone at (-65,44).
   world.ensure(-3, 1);
   world.ensure(-2, 1);
-  assert.equal(world.groundAt(-63, 43), Tile.WallStone);
+  assert.equal(world.groundAt(-65, 44), Tile.WallStone);
   // The Waking Ring's pad is walkable stone.
   assert.equal(world.groundAt(-82, 48), Tile.StoneFloor);
   assert.equal(world.isSolid(-82, 48), false);
@@ -131,16 +132,16 @@ test('spawn point is walkable and inside the village', () => {
   const town = buildDawnmead();
   const world = new WorldSource(1337, [town]);
   const spawn = world.spawn;
-  assert.ok(spawn.x > -96 && spawn.x < 0 && spawn.y > 16 && spawn.y < 80);
+  assert.ok(spawn.x > -128 && spawn.x < 0 && spawn.y > 0 && spawn.y < 96);
   assert.equal(world.isSolid(Math.floor(spawn.x), Math.floor(spawn.y)), false);
 });
 
 test('village interiors are enterable: every building has a door', () => {
   const town = buildDawnmead();
   const world = new WorldSource(1337, [town]);
-  world.ensure(-3, 1);
-  world.ensure(-2, 1);
-  world.ensure(-1, 1);
+  for (let cx = -4; cx <= -1; cx++) {
+    for (let cy = 0; cy <= 2; cy++) world.ensure(cx, cy);
+  }
   // Flood-fill from the Waking Ring; count reachable walkable tiles.
   const seen = new Set<string>();
   const queue: Array<[number, number]> = [[-81, 48]];
@@ -148,18 +149,18 @@ test('village interiors are enterable: every building has a door', () => {
     const [x, y] = queue.pop()!;
     const key = `${x},${y}`;
     if (seen.has(key)) continue;
-    if (x < -96 || y < 16 || x >= 0 || y >= 80) continue;
+    if (x < -128 || y < 0 || x >= 0 || y >= 96) continue;
     if (world.isSolid(x, y)) continue;
     seen.add(key);
     queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
   }
   // Every floor tile of every building must be reachable from spawn.
   let unreachableFloors = 0;
-  for (let y = 0; y < 64; y++) {
-    for (let x = 0; x < 96; x++) {
-      const g = town.ground[y * 96 + x]!;
+  for (let y = 0; y < 96; y++) {
+    for (let x = 0; x < 128; x++) {
+      const g = town.ground[y * 128 + x]!;
       if ((g === Tile.WoodFloor || g === Tile.StoneFloor) && !isSolidTile(g)) {
-        if (!seen.has(`${x - 96},${y + 16}`)) unreachableFloors++;
+        if (!seen.has(`${x - 128},${y}`)) unreachableFloors++;
       }
     }
   }

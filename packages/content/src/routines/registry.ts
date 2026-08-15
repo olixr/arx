@@ -113,10 +113,22 @@ import amberSage from './defs/amber_sage.json';
 import amberSmith from './defs/amber_smith.json';
 import amberTraderA from './defs/amber_trader_a.json';
 import amberTraderB from './defs/amber_trader_b.json';
-import dawnmeadFarmhand from './defs/dawnmead_farmhand.json';
 import dawnWardDay from './defs/dawn_ward_day.json';
 import dawnWardNight from './defs/dawn_ward_night.json';
-import greenScamp from './defs/green_scamp.json';
+import dawnWardDusk from './defs/dawn_ward_dusk.json';
+import wrenHours from './defs/wren_hours.json';
+import hallaRounds from './defs/halla_rounds.json';
+import rillHours from './defs/rill_hours.json';
+import varnHours from './defs/varn_hours.json';
+import alderHours from './defs/alder_hours.json';
+import berritHours from './defs/berrit_hours.json';
+import otteryHours from './defs/ottery_hours.json';
+import gillyHours from './defs/gilly_hours.json';
+import weirHours from './defs/weir_hours.json';
+import brammelHours from './defs/brammel_hours.json';
+import sorrelHours from './defs/sorrel_hours.json';
+import tansyScamp from './defs/tansy_scamp.json';
+import wickScamp from './defs/wick_scamp.json';
 import saltPortreeve from './defs/salt_portreeve.json';
 import saltFactor from './defs/salt_factor.json';
 import saltInnkeep from './defs/salt_innkeep.json';
@@ -135,10 +147,6 @@ import saltWatchQuay from './defs/salt_watch_quay.json';
 import saltFisherPiers from './defs/salt_fisher_piers.json';
 import saltFisherYard from './defs/salt_fisher_yard.json';
 import saltFisherEast from './defs/salt_fisher_east.json';
-import hearthHours from './defs/hearth_hours.json';
-import rowanHours from './defs/rowan_hours.json';
-import tinkerHours from './defs/tinker_hours.json';
-import wardenRounds from './defs/warden_rounds.json';
 import waystationKeeper from './defs/waystation_keeper.json';
 
 /**
@@ -309,10 +317,22 @@ const SOURCES: readonly unknown[] = [
   amberSmith,
   amberTraderA,
   amberTraderB,
-  dawnmeadFarmhand,
   dawnWardDay,
   dawnWardNight,
-  greenScamp,
+  dawnWardDusk,
+  wrenHours,
+  hallaRounds,
+  rillHours,
+  varnHours,
+  alderHours,
+  berritHours,
+  otteryHours,
+  gillyHours,
+  weirHours,
+  brammelHours,
+  sorrelHours,
+  tansyScamp,
+  wickScamp,
   saltPortreeve,
   saltFactor,
   saltInnkeep,
@@ -331,10 +351,6 @@ const SOURCES: readonly unknown[] = [
   saltFisherPiers,
   saltFisherYard,
   saltFisherEast,
-  hearthHours,
-  rowanHours,
-  tinkerHours,
-  wardenRounds,
   waystationKeeper,
   hartSpeaker,
   kdDelfmaster,

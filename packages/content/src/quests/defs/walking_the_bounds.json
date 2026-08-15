@@ -1,0 +1,40 @@
+{
+  "id": "walking_the_bounds",
+  "name": "Walking the Bounds",
+  "giver": "innkeep_gilly",
+  "stages": [
+    {
+      "id": "bounds",
+      "journal": "Gilly says you don't know a place until you've walked its far corners, and she's poured for enough of the lost to know. Pay a call on Alder at the copse in the southwest, Weir on his pier past the crab bank, and Sorrel at the stalls by the ford. Learn the bounds. Then you'll know what home means before you leave one.",
+      "objectives": [
+        {
+          "kind": "talk",
+          "actor": "forester_alder"
+        },
+        {
+          "kind": "talk",
+          "actor": "angler_weir"
+        },
+        {
+          "kind": "talk",
+          "actor": "drover_sorrel"
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "coins": 30,
+    "xp": [
+      {
+        "skill": "vitality",
+        "amount": 100
+      }
+    ]
+  },
+  "requires": {
+    "quests": [
+      "a_line_in_the_water",
+      "the_gentle_hand"
+    ]
+  }
+}

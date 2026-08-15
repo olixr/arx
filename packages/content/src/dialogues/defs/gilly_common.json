@@ -1,0 +1,36 @@
+{
+  "id": "gilly_common",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "innkeep_gilly" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Pull up. What'll it be?",
+      "choices": [
+        { "text": "What's on the board?", "next": "board" },
+        { "text": "Tell me about the road.", "next": "road" },
+        { "text": "How do the beds work?", "next": "beds" },
+        { "text": "Nothing tonight.", "next": "pass" }
+      ]
+    },
+    {
+      "id": "road",
+      "text": "Walked it as far as Saltmere once. Grey gulls, painted boats, salt in everything including the gossip. Came home because somebody has to hold the door for the ones just starting. That's the whole story. It pours longer after dark.",
+      "next": "hub"
+    },
+    {
+      "id": "beds",
+      "text": "Four in the wing. Claim any free one and it's yours: the world keeps a place that remembers you, and home can pull you back from anywhere. Ask the road how often it does that for people.",
+      "next": "hub"
+    },
+    {
+      "id": "board",
+      "text": "Bread's fresh, the bird's hot, and the trout depends entirely on Weir's morning.",
+      "hooks": [{ "kind": "shop", "shop": "gilly_board" }]
+    },
+    {
+      "id": "pass",
+      "text": "Mind the step, love."
+    }
+  ]
+}

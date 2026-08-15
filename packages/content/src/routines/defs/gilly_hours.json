@@ -1,0 +1,25 @@
+{
+  "id": "gilly_hours",
+  "base": { "kind": "post", "dir": 1.5707963, "speed": 1.2 },
+  "slots": [
+    {
+      "from": 15,
+      "to": 17,
+      "task": { "kind": "wander", "x": 2, "y": 3, "radius": 2, "speed": 1.2 }
+    },
+    {
+      "from": 1,
+      "to": 7,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.2,
+        "waypoints": [
+          { "x": 2, "y": 2 },
+          { "x": -1, "y": 6 },
+          { "x": -2, "y": 6, "lie": true }
+        ]
+      }
+    }
+  ]
+}

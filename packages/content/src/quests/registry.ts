@@ -5,9 +5,6 @@ import theWetCount from './defs/the_wet_count.json';
 import pastTheWardline from './defs/past_the_wardline.json';
 import aNameForTheStone from './defs/a_name_for_the_stone.json';
 import resinForTheRoad from './defs/resin_for_the_road.json';
-import hobbsHens from './defs/hobbs_hens.json';
-import thinTheMeadow from './defs/thin_the_meadow.json';
-import theLayOfTheLand from './defs/the_lay_of_the_land.json';
 import wordOnTheRoad from './defs/word_on_the_road.json';
 import theReaversMark from './defs/the_reavers_mark.json';
 import namesInTheRegistry from './defs/names_in_the_registry.json';
@@ -17,7 +14,6 @@ import theLongWayRound from './defs/the_long_way_round.json';
 import deepSeams from './defs/deep_seams.json';
 import bonesForThePyre from './defs/bones_for_the_pyre.json';
 import peltsForTheRoad from './defs/pelts_for_the_road.json';
-import thePotNeverRests from './defs/the_pot_never_rests.json';
 import thinTheWarrens from './defs/thin_the_warrens.json';
 import theStolenLedger from './defs/the_stolen_ledger.json';
 import theBrothersTools from './defs/the_brothers_tools.json';
@@ -81,15 +77,46 @@ import aStallInAsh from './defs/a_stall_in_ash.json';
 import whatTheNetHeld from './defs/what_the_net_held.json';
 import theFifteenthName from './defs/the_fifteenth_name.json';
 
+import firstLight from './defs/first_light.json';
+import theMeadowCount from './defs/the_meadow_count.json';
+import shellsOnTheBank from './defs/shells_on_the_bank.json';
+import theLastNest from './defs/the_last_nest.json';
+import berriesForThePot from './defs/berries_for_the_pot.json';
+import aBirdDoneProper from './defs/a_bird_done_proper.json';
+import aLineInTheWater from './defs/a_line_in_the_water.json';
+import theAxeRemembers from './defs/the_axe_remembers.json';
+import boardsAndTwine from './defs/boards_and_twine.json';
+import aBarOfBronze from './defs/a_bar_of_bronze.json';
+import eggsForTheMorning from './defs/eggs_for_the_morning.json';
+import theGentleHand from './defs/the_gentle_hand.json';
+import walkingTheBounds from './defs/walking_the_bounds.json';
+import theFirstRoad from './defs/the_first_road.json';
+import stillWaters from './defs/still_waters.json';
+import theMeadowKeepsCount from './defs/the_meadow_keeps_count.json';
+
 const SOURCES: readonly unknown[] = [
   theWetCount,
   pastTheWardline,
   aNameForTheStone,
   resinForTheRoad,
-  // Dawnmead starters — ungated, one lesson each.
-  hobbsHens,
-  thinTheMeadow,
-  theLayOfTheLand,
+  // THE DAWN REMADE — the starter slate: four soft paths, every lesson
+  // a real errand, and the one final quest that opens the road east.
+  firstLight,
+  theMeadowCount,
+  shellsOnTheBank,
+  theLastNest,
+  berriesForThePot,
+  aBirdDoneProper,
+  aLineInTheWater,
+  theAxeRemembers,
+  boardsAndTwine,
+  aBarOfBronze,
+  eggsForTheMorning,
+  theGentleHand,
+  walkingTheBounds,
+  theFirstRoad,
+  stillWaters,
+  theMeadowKeepsCount,
   // The Redmask arc — Amberford's road war, gated link by link.
   wordOnTheRoad,
   theReaversMark,
@@ -102,7 +129,6 @@ const SOURCES: readonly unknown[] = [
   // Standing work — repeatables on their own cooldowns.
   bonesForThePyre,
   peltsForTheRoad,
-  thePotNeverRests,
   thinTheWarrens,
   // Penance work — the road back for the disgraced (factions Phase 3).
   theBadColumn,

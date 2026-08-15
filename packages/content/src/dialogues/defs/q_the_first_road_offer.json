@@ -1,0 +1,50 @@
+{
+  "id": "q_the_first_road_offer",
+  "start": "hub",
+  "requires": [
+    "quest:the_first_road:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "keeper_wren",
+      "priority": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Every teacher in this village has signed you off, waker. The Ring brought you in, and the road takes you out. That's the shape of every waker's story, and yours is ready for its next line. *Amberford*, east down the First Road, a day's walk. Will you go?",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "the_first_road"
+        }
+      ],
+      "choices": [
+        {
+          "text": "I'm ready for the road.",
+          "next": "sworn"
+        },
+        {
+          "text": "Not yet. Not quite.",
+          "next": "declined"
+        }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Then hear the send-off, same as fifty years of wakers before you: keep to the lamps, eat before you're hungry, and find *Aldis* at the North Gate. Tell her a waker walked the whole way. Rowan will want your name for the registry the moment he hears. Go on, child. Make the road ask about you.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "the_first_road"
+        }
+      ]
+    },
+    {
+      "id": "declined",
+      "text": "Then sit a while longer. The road keeps, and so do I."
+    }
+  ]
+}

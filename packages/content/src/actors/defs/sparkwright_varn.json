@@ -1,0 +1,29 @@
+{
+  "id": "sparkwright_varn",
+  "name": "Old Varn",
+  "title": "Sparkwright",
+  "examine": "Woke from the Ring mid-sentence, he says, and has spent forty years trying to finish it. Both sleeves are scorched. He is delighted.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 1,
+      "hair": 0,
+      "hairColor": 7,
+      "beard": 2,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 10,
+      "pants": 6
+    }
+  },
+  "equipment": {
+    "weapon": "apprentice_staff"
+  },
+  "lines": [
+    "The spark goes where you look, not where you wave. Took me nine years to... anyway. Where you look.",
+    "I was saying something important when I came through the stones. It will come back to me.",
+    "Scorch marks are just the circle keeping notes."
+  ]
+}

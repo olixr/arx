@@ -40,8 +40,8 @@ test('registry cross-references resolve', () => {
 });
 
 test('humanoid actors produce wire appearance; creature actors do not', () => {
-  const bryn = NPC_ACTORS.get('warden_bryn')!;
-  const app = actorAppearance(bryn);
+  const halla = NPC_ACTORS.get('yardmaster_halla')!;
+  const app = actorAppearance(halla);
   assert.ok(app);
   assert.equal(app.equip.weapon, 'bronze_sword');
   assert.equal(app.look?.feature, 4);
@@ -73,8 +73,8 @@ test('combat synthesis: scaled base + overrides + neutral aggro clamp', () => {
   assert.equal(def.aggroRange, 0); // neutral never aggros
   assert.deepEqual(def.loot, []);
 
-  const rowan = NPC_ACTORS.get('elder_rowan')!;
-  assert.equal(actorCombatDef(rowan), null); // friendly = unhittable
+  const wren = NPC_ACTORS.get('keeper_wren')!;
+  assert.equal(actorCombatDef(wren), null); // friendly = unhittable
 
   // A creature actor with combat but no base derives from its own body.
   const res = validateNpcActor({

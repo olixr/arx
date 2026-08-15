@@ -1,0 +1,50 @@
+{
+  "id": "q_the_last_nest_offer",
+  "start": "hub",
+  "requires": [
+    "quest:the_last_nest:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "yardmaster_halla",
+      "priority": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "The granary's still breathing. Eight more and the nest breaks for a season. There's an old traveller's chest inside the walls: clear the ruin and it's yours, along with something off my own rack. In?",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "the_last_nest"
+        }
+      ],
+      "choices": [
+        {
+          "text": "I'll clear it.",
+          "next": "sworn"
+        },
+        {
+          "text": "Not yet.",
+          "next": "declined"
+        }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Then finish it. Come back when the ruin goes quiet.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "the_last_nest"
+        }
+      ]
+    },
+    {
+      "id": "declined",
+      "text": "The nest won't wait politely. Say when."
+    }
+  ]
+}

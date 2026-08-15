@@ -64,8 +64,13 @@ export interface Landform {
   r: number;
 }
 
-/** Dawnmead — the awakening village (built; commit 339616a). */
-export const DAWNMEAD_RECT: ZoneRect = { x: -96, y: 16, w: 96, h: 64 };
+/**
+ * Dawnmead — the village that raises wakers (THE DAWN REMADE rebuild;
+ * docs/dawnmead-remade-plan.md). Doubled and re-centered so the rect
+ * sits exactly on the danger anchor (-64,48); the Waking Ring and the
+ * world spawn kept their world tiles through the rebuild.
+ */
+export const DAWNMEAD_RECT: ZoneRect = { x: -128, y: 0, w: 128, h: 96 };
 
 /**
  * Amberford — the crossroads market town (epic 2). Center (520, -4):
@@ -601,9 +606,12 @@ const AUTHORED_PLAN: GeographyDef = {
       // for the gate with the burn country rising beyond. The band
       // march does the rest: tier 1 at Dawnmead's hem, 5 before the
       // walls.
+      // (Rebuild note: it now leaves the grown rect's south hem past
+      // the old granary at world (-30,96) — the ruin and the dark
+      // road share the village's one unkempt corner on purpose.)
       pts: [
-        { x: -64, y: 80 }, { x: -78, y: 98 }, { x: -94, y: 116 }, { x: -112, y: 134 },
-        { x: -132, y: 152 }, { x: -152, y: 170 }, { x: -172, y: 188 }, { x: -194, y: 206 },
+        { x: -30, y: 96 }, { x: -52, y: 112 }, { x: -76, y: 128 }, { x: -102, y: 142 },
+        { x: -128, y: 156 }, { x: -152, y: 170 }, { x: -172, y: 188 }, { x: -194, y: 206 },
         { x: -218, y: 224 }, { x: -244, y: 240 }, { x: -270, y: 256 }, { x: -296, y: 272 },
         { x: -322, y: 286 }, { x: -348, y: 296 }, { x: -374, y: 302 }, { x: -398, y: 302 },
         { x: -412, y: 300 }, { x: -418, y: 300 },
@@ -635,7 +643,7 @@ const AUTHORED_PLAN: GeographyDef = {
       // that threads the wolf dens. Saves half the journey, costs the
       // safety — the map's lesson about roads, taught by counterexample.
       pts: [
-        { x: -64, y: 15 }, { x: -72, y: -8 }, { x: -84, y: -32 }, { x: -98, y: -56 },
+        { x: -64, y: -1 }, { x: -72, y: -8 }, { x: -84, y: -32 }, { x: -98, y: -56 },
         { x: -110, y: -80 }, { x: -118, y: -104 }, { x: -124, y: -128 }, { x: -130, y: -150 },
         { x: -136, y: -166 }, { x: -140, y: -176 },
       ],

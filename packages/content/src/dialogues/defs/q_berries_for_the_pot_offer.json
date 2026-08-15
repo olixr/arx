@@ -1,0 +1,50 @@
+{
+  "id": "q_berries_for_the_pot_offer",
+  "start": "hub",
+  "requires": [
+    "quest:berries_for_the_pot:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "cook_berrit",
+      "priority": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Pot's low, love. Eight handfuls of berries off the banks south of the bridge, and there'll be a bowl in it for you. There always is. Will you?",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "berries_for_the_pot"
+        }
+      ],
+      "choices": [
+        {
+          "text": "I'll pick your berries.",
+          "next": "sworn"
+        },
+        {
+          "text": "Not right now.",
+          "next": "declined"
+        }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Take a pocketful for yourself while you're at it. The bank never minds.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "berries_for_the_pot"
+        }
+      ]
+    },
+    {
+      "id": "declined",
+      "text": "Then come by for a bowl anyway."
+    }
+  ]
+}

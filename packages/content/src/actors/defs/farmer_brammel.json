@@ -1,0 +1,30 @@
+{
+  "id": "farmer_brammel",
+  "name": "Brammel",
+  "title": "Farmer",
+  "examine": "Third generation on this dirt and the only man alive bored by the Waking Ring. His fences are straight and his opinions are about rain.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 2,
+      "hairColor": 3,
+      "beard": 2,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 4,
+      "pants": 4
+    }
+  },
+  "inventory": [
+    { "item": "egg", "qty": 2 },
+    { "item": "carrot", "qty": 2 }
+  ],
+  "lines": [
+    "Wheat's in. Carrots are thinking about it.",
+    "Hens lay where they please. Coop, mostly. Long grass when they're feeling poetic.",
+    "People come out of the stones. Aye. And rain comes out of the sky, and I've a field."
+  ]
+}

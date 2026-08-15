@@ -1,0 +1,50 @@
+{
+  "id": "q_a_bar_of_bronze_offer",
+  "start": "hub",
+  "requires": [
+    "quest:a_bar_of_bronze:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "wright_ottery",
+      "priority": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Last lesson in my pocket: *bronze*. Crag copper, crag tin, my furnace by the lane. Bring me one bar you made yourself and I'll believe all the rest.",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "a_bar_of_bronze"
+        }
+      ],
+      "choices": [
+        {
+          "text": "One bar of bronze. I'll make it.",
+          "next": "sworn"
+        },
+        {
+          "text": "Not yet.",
+          "next": "declined"
+        }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Pick's on the counter if you need one. The crag is patient. The furnace isn't.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "a_bar_of_bronze"
+        }
+      ]
+    },
+    {
+      "id": "declined",
+      "text": "The crag keeps. Bronze has waited three thousand years for you already."
+    }
+  ]
+}

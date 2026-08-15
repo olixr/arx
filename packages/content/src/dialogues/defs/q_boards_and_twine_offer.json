@@ -1,0 +1,50 @@
+{
+  "id": "q_boards_and_twine_offer",
+  "start": "hub",
+  "requires": [
+    "quest:boards_and_twine:available"
+  ],
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "wright_ottery",
+      "priority": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "text": "Prove the hands work! Three boards off my sawhorse, two twine off the bench. Logs from Alder's copse, fibre from the banks. First crafts, best crafts. Go on?",
+      "hooks": [
+        {
+          "kind": "quest_offer",
+          "quest": "boards_and_twine"
+        }
+      ],
+      "choices": [
+        {
+          "text": "Boards and twine. Done.",
+          "next": "sworn"
+        },
+        {
+          "text": "Later.",
+          "next": "declined"
+        }
+      ]
+    },
+    {
+      "id": "sworn",
+      "text": "Saw's sharp, bench is free. Nothing on my shelf started better than this.",
+      "hooks": [
+        {
+          "kind": "quest_accept",
+          "quest": "boards_and_twine"
+        }
+      ]
+    },
+    {
+      "id": "declined",
+      "text": "The stool had two legs and I still kept it. No shame in later."
+    }
+  ]
+}

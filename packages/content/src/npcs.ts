@@ -2698,17 +2698,21 @@ export const TOWN_SPAWNS: readonly SpawnPoint[] = [
   // The wolfkin dens in the north-western woods, past the orchard rim
   // — far enough that only a waker who goes LOOKING for trouble finds
   // the matriarch roaming between her packs.
-  { npc: 'wolf', x: -24, y: -4, radius: 6, count: 2 },
-  { npc: 'wolf', x: -40, y: 2, radius: 6, count: 2 },
-  { npc: 'dire_wolf', x: -32, y: -1, radius: 8, count: 1 },
+  // (Pushed outward for THE DAWN REMADE: the rect grew to
+  // (-128,0)-(0,96), so every den keeps ≥8 tiles off the hems and the
+  // hunters' trail threads them without touching the village.)
+  { npc: 'wolf', x: -24, y: -12, radius: 6, count: 2 },
+  { npc: 'wolf', x: -52, y: -14, radius: 6, count: 2 },
+  { npc: 'dire_wolf', x: -38, y: -14, radius: 8, count: 1 },
   // The Gloamwood — the dark forest south of the brook meadow: webs
-  // above, wings at dusk, and the old threats deeper in.
-  { npc: 'giant_spider', x: -30, y: 96, radius: 7, count: 2 },
-  { npc: 'cave_bat', x: -36, y: 88, radius: 6, count: 2 },
-  { npc: 'bear', x: -48, y: 100, radius: 6, count: 1 },
-  { npc: 'troll', x: -55, y: 108, radius: 6, count: 1 },
+  // above, wings at dusk, and the old threats deeper in. Clear of the
+  // old-road gate at (-30,96).
+  { npc: 'giant_spider', x: -22, y: 108, radius: 7, count: 2 },
+  { npc: 'cave_bat', x: -40, y: 106, radius: 6, count: 2 },
+  { npc: 'bear', x: -54, y: 112, radius: 6, count: 1 },
+  { npc: 'troll', x: -64, y: 120, radius: 6, count: 1 },
   // Gentle life on the village's shoulders: stags browse the east
   // meadow along the lane, rams keep the rocky rise out west.
   { npc: 'stag', x: 12, y: 40, radius: 7, count: 2 },
-  { npc: 'ram', x: -112, y: 28, radius: 7, count: 2 },
+  { npc: 'ram', x: -142, y: 24, radius: 7, count: 2 },
 ];

@@ -78,7 +78,7 @@ export const GENERAL_STORE: readonly ShopEntry[] = [
   // Starter farming: herb seeds are foraging-only finds. THE FULL
   // FIELD widened the racks with the staple and orchard bands; the
   // high herbs, the far roots, and the dark bed sell nowhere but
-  // Jorel's stall (seed_stall) out in the Dawnmead fields.
+  // Jorel's stall (seed_stall) in the Amberford fields.
   { item: 'carrot_seed', price: 5 },
   { item: 'potato_seed', price: 8 },
   { item: 'onion_seed', price: 12 },
@@ -139,8 +139,8 @@ export const HAMLET_LARDER: readonly ShopEntry[] = [
  * priced like the last chance it is.
  */
 /**
- * THE SEED STALL (farming v2 Phase 2) — Jorel's board table out in
- * the Dawnmead fields. The ONLY counter for the high-band seeds: the
+ * THE SEED STALL (farming v2 Phase 2) — Jorel's board table in the
+ * Amberford fields. The ONLY counter for the high-band seeds: the
  * far roots, the brewer's herbs, and the dark bed. Prices are steep
  * on purpose — past the general racks, the seed is the investment —
  * and the plant-door's farming gate does the real gatekeeping.
@@ -160,8 +160,8 @@ export const SEED_STALL: readonly ShopEntry[] = [
 ];
 
 /**
- * THE DROVER'S YARD (farming v2 Phase 3) — Maren's counter at the
- * Dawnmead pen. Crated young for the keeping (released at your own
+ * THE DROVER'S YARD (farming v2 Phase 3) — Sorrel's counter at the
+ * Dawnmead stalls. Crated young for the keeping (released at your own
  * feed trough), the lead that walks one back, and the barley the
  * manger wants. The animal itself is never an item for long: the
  * crate is a promise, the yard is the animal.
@@ -173,6 +173,18 @@ export const DROVER_YARD: readonly ShopEntry[] = [
   { item: 'boarlet_crate', price: 700 },
   { item: 'drovers_lead', price: 40 },
   { item: 'barley_seed', price: 45 },
+];
+
+/**
+ * THE FIVE STONES (THE DAWN REMADE) — Gilly's board at the Dawnmead
+ * inn: plain fare priced for a waker's first coins, and nothing a
+ * kitchen of your own wouldn't beat.
+ */
+export const GILLY_BOARD: readonly ShopEntry[] = [
+  { item: 'bread', price: 8 },
+  { item: 'cooked_chicken', price: 15 },
+  { item: 'trout', price: 14 },
+  { item: 'berries', price: 4 },
 ];
 
 export const LAST_LAMP_STORES: readonly ShopEntry[] = [
@@ -189,7 +201,8 @@ export const LAST_LAMP_STORES: readonly ShopEntry[] = [
 const defs: ShopDef[] = [
   { id: 'general_store', name: 'General Store', stock: GENERAL_STORE },
   { id: 'seed_stall', name: "Jorel's Seed Stall", stock: SEED_STALL },
-  { id: 'drover_yard', name: "Maren's Drover Yard", stock: DROVER_YARD },
+  { id: 'drover_yard', name: "Sorrel's Drover Yard", stock: DROVER_YARD },
+  { id: 'gilly_board', name: 'The Five Stones', stock: GILLY_BOARD },
   { id: 'waystation_supplies', name: "The Wayfarer's Pack", stock: WAYSTATION_SUPPLIES },
   // THE ROAD'S FORTUNE (living frontier, phase 5): the peddler carts.
   // Each carries a thing or two town never sells — drop-unlock recipe

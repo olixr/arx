@@ -92,7 +92,7 @@ test('validator: the laws hold', () => {
   const base = {
     id: 'law_probe',
     name: 'Law Probe',
-    giver: 'farmer_hobb',
+    giver: 'farmer_brammel',
     stages: [
       { id: 'one', journal: 'A probe.', objectives: [{ kind: 'kill', npc: 'goblin', count: 2 }] },
     ],
@@ -164,20 +164,20 @@ test('validator: the laws hold', () => {
 });
 
 test('quest: flag grammar — parse and refuse', () => {
-  assert.deepEqual(parseQuestFlag('quest:hobbs_hens:available'), {
-    quest: 'hobbs_hens',
+  assert.deepEqual(parseQuestFlag('quest:eggs_for_the_morning:available'), {
+    quest: 'eggs_for_the_morning',
     state: 'available',
   });
-  assert.deepEqual(parseQuestFlag('quest:hobbs_hens:stage:gather'), {
-    quest: 'hobbs_hens',
+  assert.deepEqual(parseQuestFlag('quest:eggs_for_the_morning:stage:gather'), {
+    quest: 'eggs_for_the_morning',
     state: 'stage',
     stage: 'gather',
   });
-  assert.equal(parseQuestFlag('quest:hobbs_hens'), null);
-  assert.equal(parseQuestFlag('quest:hobbs_hens:begun'), null);
+  assert.equal(parseQuestFlag('quest:eggs_for_the_morning'), null);
+  assert.equal(parseQuestFlag('quest:eggs_for_the_morning:begun'), null);
   assert.ok(isQuestFlag('quest:x:done'));
   assert.ok(!QUEST_FLAG_RE.test('quest:Bad:done'));
-  assert.equal(questDoneFlag('hobbs_hens'), 'qst:hobbs_hens');
+  assert.equal(questDoneFlag('eggs_for_the_morning'), 'qst:eggs_for_the_morning');
 });
 
 test('dialogue validator: quest hooks and quest: gates', () => {
@@ -185,11 +185,11 @@ test('dialogue validator: quest hooks and quest: gates', () => {
     id: 'probe_tree',
     start: 'hub',
     nodes: [{ id: 'hub', text: 'Well?', ...patch }],
-    bindings: [{ kind: 'actor', target: 'farmer_hobb' }],
+    bindings: [{ kind: 'actor', target: 'farmer_brammel' }],
   });
 
   const offer = validateDialogue(
-    tree({ hooks: [{ kind: 'quest_offer', quest: 'hobbs_hens' }] }),
+    tree({ hooks: [{ kind: 'quest_offer', quest: 'eggs_for_the_morning' }] }),
   );
   assert.ok(offer.ok, 'quest_offer hook validates');
 
@@ -198,22 +198,22 @@ test('dialogue validator: quest hooks and quest: gates', () => {
 
   const crossRef = validateDialogue(
     tree({ hooks: [{ kind: 'quest_accept', quest: 'ghost_quest' }] }),
-    { questIds: new Set(['hobbs_hens']) },
+    { questIds: new Set(['eggs_for_the_morning']) },
   );
   assert.ok(!crossRef.ok && crossRef.errors.some((e) => e.includes('unknown quest')));
 
   const gated = validateDialogue(
-    { ...tree({}), requires: ['quest:hobbs_hens:ready'] },
-    { questIds: new Set(['hobbs_hens']) },
+    { ...tree({}), requires: ['quest:eggs_for_the_morning:ready'] },
+    { questIds: new Set(['eggs_for_the_morning']) },
   );
   assert.ok(gated.ok, 'quest: gates validate with a known id');
 
-  const badGrammar = validateDialogue({ ...tree({}), requires: ['quest:hobbs_hens:begun'] });
+  const badGrammar = validateDialogue({ ...tree({}), requires: ['quest:eggs_for_the_morning:begun'] });
   assert.ok(!badGrammar.ok && badGrammar.errors.some((e) => e.includes('quest:<id>')));
 
   const setQuest = validateDialogue(
     tree({
-      choices: [{ text: 'Yes.', set: ['quest:hobbs_hens:done'] }],
+      choices: [{ text: 'Yes.', set: ['quest:eggs_for_the_morning:done'] }],
     }),
   );
   assert.ok(!setQuest.ok && setQuest.errors.some((e) => e.includes('nobody writes it')));
