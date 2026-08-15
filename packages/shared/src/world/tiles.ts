@@ -807,6 +807,37 @@ export enum Tile {
   HerbRack = 415,
   /** A shopkeeper's tall stocked shelving — jars, crockery, folded goods. */
   ShopShelf = 416,
+  // THE SECOND SHIFT — the working-trades kit, second wave (see
+  // docs/trade-decor-plan.md §THE SECOND SHIFT). The first wave
+  // dressed the forge, the loom, and the oven; this one brings the
+  // street its water and the town its missing tradesfolk — potter,
+  // scribe, chandler, fletcher, cobbler, fishmonger — plus the
+  // merchant's weighing and display furniture. Same voice: TENDED,
+  // NEVER LEFT — every piece mid-shift.
+  /** A carved stone wall-basin, its mask spout still pouring its rope of water. */
+  WallFountain = 417,
+  /** The iron parish pump on its stone step, the pail set to catch the drip. */
+  StreetPump = 418,
+  /** A long staved street trough of still water beside the hitching rail. */
+  WaterTrough = 419,
+  /** The potter's kick-wheel, a wet pot half-risen on the wheelhead. */
+  PottersWheel = 420,
+  /** The bottle kiln mid-firing, greenware boarded and waiting its turn. */
+  PotteryKiln = 421,
+  /** A slant-top scribe's desk — ledger open, ink still wet, scrolls pigeonholed. */
+  ScribesDesk = 422,
+  /** Dipped candles hung in pairs to cure over the chandler's wax tray. */
+  CandleRack = 423,
+  /** The fletcher's bench: arrows bundled, feathers boxed, staves on their pegs. */
+  FletchersBench = 424,
+  /** The cobbler's corner: the iron last, a row of finished boots, scraps below. */
+  CobblersBench = 425,
+  /** The fishmonger's tilted slab, the morning catch laid out in silver rows. */
+  FishmongerSlab = 426,
+  /** A merchant's beam scale on its bracket, one pan left low mid-weigh. */
+  HangingScale = 427,
+  /** The merchant's runner-clothed display table, wares dealt across the top. */
+  DisplayTable = 428,
 }
 
 export enum Detail {
@@ -1430,6 +1461,22 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.ButcherBlock]: { name: "butcher's block", solid: true, color: '#75603e', raised: true, topColor: '#c9856a' },
   [Tile.HerbRack]: { name: 'herb rack', solid: true, color: '#6f5a38', raised: true, topColor: '#7fae6a' },
   [Tile.ShopShelf]: { name: 'shop shelf', solid: true, color: '#75603e', raised: true, topColor: '#c9a76a' },
+  // THE SECOND SHIFT — minimap voice continues the first wave's law:
+  // each trade keys off its own material (water reads WATER for all
+  // three street pieces, kiln brick, scribe paper, chandler wax,
+  // fletch red, cobbler leather, fish silver, merchant brass).
+  [Tile.WallFountain]: { name: 'wall fountain', solid: true, color: '#8a857a', raised: true, topColor: '#8fb4c4' },
+  [Tile.StreetPump]: { name: 'street pump', solid: true, color: '#4c4a52', raised: true, topColor: '#8fb4c4' },
+  [Tile.WaterTrough]: { name: 'water trough', solid: true, color: '#75603e', raised: true, topColor: '#8fb4c4' },
+  [Tile.PottersWheel]: { name: "potter's wheel", solid: true, color: '#75603e', raised: true, topColor: '#b07850' },
+  [Tile.PotteryKiln]: { name: 'pottery kiln', solid: true, color: '#96604a', raised: true, topColor: '#c4a284' },
+  [Tile.ScribesDesk]: { name: "scribe's desk", solid: true, color: '#75603e', raised: true, topColor: '#e8dcc4' },
+  [Tile.CandleRack]: { name: 'candle rack', solid: true, color: '#6f5a38', raised: true, topColor: '#e8d9b0' },
+  [Tile.FletchersBench]: { name: "fletcher's bench", solid: true, color: '#75603e', raised: true, topColor: '#c05a48' },
+  [Tile.CobblersBench]: { name: "cobbler's bench", solid: true, color: '#75603e', raised: true, topColor: '#8a5a36' },
+  [Tile.FishmongerSlab]: { name: "fishmonger's slab", solid: true, color: '#8a857a', raised: true, topColor: '#b8c4cc' },
+  [Tile.HangingScale]: { name: 'hanging scale', solid: true, color: '#6f5a38', raised: true, topColor: '#c2a45c' },
+  [Tile.DisplayTable]: { name: 'display table', solid: true, color: '#75603e', raised: true, topColor: '#c9a13c' },
 };
 
 /** The four awning silhouettes, index order FOREVER (the id math). */
@@ -2098,6 +2145,21 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.ButcherBlock, 0.32],
   [Tile.HerbRack, 0.28],
   [Tile.ShopShelf, 0.38],
+  // THE SECOND SHIFT: the wall fountain and the kiln are the wave's
+  // two true masses; the pump and the scale are poles you sidle
+  // past; the trough runs long and low like the rail it serves.
+  [Tile.WallFountain, 0.42],
+  [Tile.StreetPump, 0.26],
+  [Tile.WaterTrough, 0.42],
+  [Tile.PottersWheel, 0.34],
+  [Tile.PotteryKiln, 0.45],
+  [Tile.ScribesDesk, 0.32],
+  [Tile.CandleRack, 0.28],
+  [Tile.FletchersBench, 0.34],
+  [Tile.CobblersBench, 0.3],
+  [Tile.FishmongerSlab, 0.36],
+  [Tile.HangingScale, 0.24],
+  [Tile.DisplayTable, 0.38],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -2370,7 +2432,23 @@ export type DestructibleKind =
   | 'breadoven'
   | 'butcherblock'
   | 'herbs'
-  | 'shopshelf';
+  | 'shopshelf'
+  // THE SECOND SHIFT: falling water and limestone, ringing pump
+  // iron, slosh, wet clay, fired kiln brick, paper and ink, soft
+  // wax, feather and shaft, leather, market silver, brass chain,
+  // and the display table's rain of dealt goods.
+  | 'wallfountain'
+  | 'streetpump'
+  | 'watertrough'
+  | 'potterswheel'
+  | 'kiln'
+  | 'scribedesk'
+  | 'candlerack'
+  | 'fletcher'
+  | 'cobbler'
+  | 'fishslab'
+  | 'scales'
+  | 'displaytable';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -2548,6 +2626,21 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.ButcherBlock, { kind: 'butcherblock', respawnSec: 300, hits: 2 }],
   [Tile.HerbRack, { kind: 'herbs', respawnSec: 300, hits: 1 }],
   [Tile.ShopShelf, { kind: 'shopshelf', respawnSec: 300, hits: 2 }],
+  // THE SECOND SHIFT: street timber holds a blow or two; carved
+  // limestone holds three; the kiln is this wave's masonry and
+  // holds four on the long clock like the oven before it.
+  [Tile.WallFountain, { kind: 'wallfountain', respawnSec: 600, hits: 3 }],
+  [Tile.StreetPump, { kind: 'streetpump', respawnSec: 300, hits: 2 }],
+  [Tile.WaterTrough, { kind: 'watertrough', respawnSec: 300, hits: 2 }],
+  [Tile.PottersWheel, { kind: 'potterswheel', respawnSec: 300, hits: 2 }],
+  [Tile.PotteryKiln, { kind: 'kiln', respawnSec: 600, hits: 4 }],
+  [Tile.ScribesDesk, { kind: 'scribedesk', respawnSec: 300, hits: 2 }],
+  [Tile.CandleRack, { kind: 'candlerack', respawnSec: 300, hits: 1 }],
+  [Tile.FletchersBench, { kind: 'fletcher', respawnSec: 300, hits: 2 }],
+  [Tile.CobblersBench, { kind: 'cobbler', respawnSec: 300, hits: 1 }],
+  [Tile.FishmongerSlab, { kind: 'fishslab', respawnSec: 300, hits: 2 }],
+  [Tile.HangingScale, { kind: 'scales', respawnSec: 300, hits: 1 }],
+  [Tile.DisplayTable, { kind: 'displaytable', respawnSec: 300, hits: 2 }],
 ]);
 
 /** Every smashable prop tile. */

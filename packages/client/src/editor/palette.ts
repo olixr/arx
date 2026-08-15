@@ -190,6 +190,13 @@ export const TILE_CATEGORIES: TileCategory[] = [
       Tile.QuenchTrough, Tile.Grindstone, Tile.SmithBellows, Tile.IngotRack,
       Tile.LumberRack, Tile.DyeVats, Tile.TailorsDummy, Tile.ClothBolts,
       Tile.BreadOven, Tile.ButcherBlock, Tile.HerbRack, Tile.ShopShelf,
+      // THE SECOND SHIFT: the street's water first (the wave's
+      // loudest ask), then the potter, the quiet trades, and the
+      // merchant's weighing and display furniture.
+      Tile.WallFountain, Tile.StreetPump, Tile.WaterTrough,
+      Tile.PottersWheel, Tile.PotteryKiln, Tile.ScribesDesk,
+      Tile.CandleRack, Tile.FletchersBench, Tile.CobblersBench,
+      Tile.FishmongerSlab, Tile.HangingScale, Tile.DisplayTable,
     ],
   },
   {

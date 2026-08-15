@@ -426,6 +426,20 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.ButcherBlock, 'butcherblock', 2],
     [Tile.HerbRack, 'herbs', 1],
     [Tile.ShopShelf, 'shopshelf', 2],
+    // THE SECOND SHIFT: street timber 1-2; carved limestone 3; the
+    // kiln is the wave's masonry and holds four like the oven.
+    [Tile.WallFountain, 'wallfountain', 3],
+    [Tile.StreetPump, 'streetpump', 2],
+    [Tile.WaterTrough, 'watertrough', 2],
+    [Tile.PottersWheel, 'potterswheel', 2],
+    [Tile.PotteryKiln, 'kiln', 4],
+    [Tile.ScribesDesk, 'scribedesk', 2],
+    [Tile.CandleRack, 'candlerack', 1],
+    [Tile.FletchersBench, 'fletcher', 2],
+    [Tile.CobblersBench, 'cobbler', 1],
+    [Tile.FishmongerSlab, 'fishslab', 2],
+    [Tile.HangingScale, 'scales', 1],
+    [Tile.DisplayTable, 'displaytable', 2],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {

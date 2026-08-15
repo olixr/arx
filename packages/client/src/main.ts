@@ -2063,7 +2063,9 @@ game.onFx = (fx) => {
         kind === 'townbell' || kind === 'barrelstack' ||
         // The baker's dome is one big fired vessel — it booms the
         // way a kiln-hollow breaks.
-        kind === 'breadoven',
+        kind === 'breadoven' ||
+        // And the potter's bottle kiln IS that hollow, full size.
+        kind === 'kiln',
       ),
     );
     // Stone-weight pieces land heavy: marble, mithril, and old
@@ -2081,7 +2083,9 @@ game.onFx = (fx) => {
           kind === 'townfountain' || kind === 'founder' || kind === 'stonebench' ||
           // The bread oven and the grindstone's disc are the trade
           // kit's stone-weight.
-          kind === 'breadoven' || kind === 'grindstone'
+          kind === 'breadoven' || kind === 'grindstone' ||
+          // Second-shift limestone and kiln masonry land the same.
+          kind === 'wallfountain' || kind === 'kiln'
           ? 3.2
           : 2.2,
       );

@@ -177,3 +177,141 @@ towns' trade buildings (the town-kit precedent — via Studio and a
 future authored pass); working-station hookups (none of these twelve
 are STATION_TILES on purpose — they are the dressing AROUND the
 stations); POI prefab legend chars.
+
+---
+
+# THE SECOND SHIFT — the working-trades kit, second wave (2026-08-15)
+
+## Why
+
+THE TRADES KEEP SHOP dressed the seven producing trades' yards — and
+left the rest of the working town standing at the first wave's edge.
+The census reads three louder gaps: the street has ONE water read
+(the plaza fountain) for a town that drinks, washes, quenches, and
+waters its horses all day; the town sells glazed ware on every shelf
+with NO potter anywhere to make it; and five whole tradesfolk — the
+scribe, the chandler, the fletcher, the cobbler, the fishmonger —
+own not one prop between them. Plus the merchant's own furniture
+stops at the shelf: nothing weighs, nothing displays.
+
+## Voice
+
+Same kit, same law: **TENDED, NEVER LEFT** — every piece mid-shift.
+The pump's pail is half-caught, the kiln is mid-firing, the ledger's
+ink is wet, one scale pan hangs low under a sack somebody is STILL
+weighing. If a piece could read as abandoned, it fails.
+
+## Roster — twelve pieces, ids 417–428 (next free: 429)
+
+| id | Tile | trade | read | anim | hits | kind |
+|----|------|-------|------|------|------|------|
+| 417 | WallFountain | civic water | carved wall-basin, mask spout, water rope, drift rings | arc + rings <4Hz | 3 | wallfountain |
+| 418 | StreetPump | civic water | iron swan-neck pump on its stone step, handle parked, pail catching the drip | drip <4Hz | 2 | streetpump |
+| 419 | WaterTrough | civic water | long staved trough, sky sliver on still water, drifting leaf, hung dipper | leaf drift <4Hz | 2 | watertrough |
+| 420 | PottersWheel | pottery | kick-wheel, wet pot half-risen on the wheelhead, slip bucket, rib + wire | static | 2 | potterswheel |
+| 421 | PotteryKiln | pottery | bottle kiln mid-firing, crown wisp, spy-hole glow AS PAINT, greenware board | smoke <4Hz | 4 | kiln |
+| 422 | ScribesDesk | scribing | slant-top desk, open ruled ledger, inkhorn + quill, wax sticks, pigeonholed scrolls | static | 2 | scribedesk |
+| 423 | CandleRack | chandlery | dipped pairs curing over two rails, drip tray, wick coil | static | 1 | candlerack |
+| 424 | FletchersBench | fletching | arrow bundles in the ring crate, feather box spilling fletch, staves on pegs | static | 2 | fletcher |
+| 425 | CobblersBench | cobbling | iron lasting stand, finished boots row, scraps, awl + hammer | static | 1 | cobbler |
+| 426 | FishmongerSlab | fishmongery | tilted stone slab, the morning catch in silver rows, scale dish, drip | drip <4Hz | 2 | fishslab |
+| 427 | HangingScale | shopkeeping | beam scale on its bracket post, one pan low under a sack mid-weigh | sway <4Hz | 1 | scales |
+| 428 | DisplayTable | shopkeeping | runner-clothed table dealing SHELVING-CONTRACT wares, leaning price board | static | 2 | displaytable |
+
+## Variant law: THE HASH DEALS THE STOCK (second verse)
+
+- **DisplayTable** is the contract's second customer: `paintShelfGood`
+  (the ShopShelf dispatcher, HOISTED to one shared painter — the
+  player-stocked seam is now a real method, not a closure) deals its
+  tabletop wares by theme with the same honest 1-in-8 sold-out
+  stand-rings; the runner dye deals from AWNING_CLOTHS.
+- **WallFountain** deals its spout mask (leaf / lion / plain ring)
+  and basin wear; **StreetPump** deals pail side + step stone;
+  **WaterTrough** deals dipper end, leaf phase, and a moss variant.
+- **CandleRack** deals wax tones (tallow cream / beeswax honey) with
+  a 1-in-4 dyed accent pair off the roster; **FletchersBench** deals
+  fletch colors on a stride so no two bundles match; **CobblersBench**
+  deals each boot's leather tone; **FishmongerSlab** deals catch
+  count + species tones; **PottersWheel** deals clay tone + how far
+  the pot has risen; **ScribesDesk** deals scroll ribbons + binding;
+  **PotteryKiln** deals the glazes of the pots cooling on its
+  shoulder; **HangingScale** deals which pan rides low and the
+  sack's burlap tone.
+
+## Laws this kit answers
+
+- **BODY RULER + TOP PLANE**: audited live beside the rig; the kiln,
+  desk, and slab all show foreshortened tops.
+- **ZERO LIGHT ENTRIES**: the kiln is FIRING and still owns no lamp —
+  the spy-hole's orange is paint, proven by the night wide.
+- **CACHED RING**: all twelve ride the ring cache; six statics in
+  STATIC_RING_TILES; six animated pieces keep every term <4Hz.
+- **UNSIGNED HASH LAW**: every hash-modulo index in the twelve
+  painters uses `h >>> k`.
+- **ONE UNIVERSE**: timber breaks amber; the NEW smash voices are
+  falling water + limestone, ringing iron, slosh, wet clay, fired
+  kiln brick (BOOMS like the oven, 3.2 shake with the wall
+  fountain), paper + ink, soft wax, feather + shaft, leather,
+  fish-market silver, brass chain, and the display table's rain of
+  dealt goods.
+
+## As-built ledger — THE SECOND SHIFT (SHIPPED 2026-08-15)
+
+Wired end to end: enum + TILE_DEFS (each trade keyed off its own
+material at chart scale; all three water pieces read WATER) +
+colliders (fountain 0.42 and kiln 0.45 are the wave's true masses;
+scale 0.24 stays under sight-cover) + DESTRUCTIBLE_INFO (all twelve
+pinned in tiles.test.ts; kiln 600s/4-hit masonry, fountain 600s/3
+limestone, the rest 300s street clocks), TRD_ palette second block
+(clay wet + fired, wax, fish silver), twelve painters before `case
+Tile.Table`, ring-cache membership (six animated <4Hz, six statics),
+SMASH_TONES + twelve debris kits (flywheel ROLLS free like the
+grindstone disc; ledger pages SAIL; the catch flips silver; kiln
+pots ring off glazed), kiln boom + 3.2 shakes (wallfountain, kiln),
+terrain underlay range extended `QuenchTrough..DisplayTable`, Studio
+'Trades & shops' shelf grown to 24.
+
+**paintShelfGood HOISTED**: the SHELVING CONTRACT moved out of the
+ShopShelf closure into a real Renderer method — the DisplayTable is
+its second customer, and the player-stocked shelf now has a method
+seam, not a buried lambda. (`'candles'` smash kind was taken by the
+dungeon CandleShrine — the rack's kind is `'candlerack'`.)
+
+### Audit verdicts (two paint passes, fresh lane at Dawnmead's hem)
+
+- **THE TROUGH IS TIMBER FIRST** — pass 1's water ellipse swallowed
+  the body; it read as an oval pool. Pass 2 raises the staved run,
+  gives the bands height, caps the ends, and slims the water to a
+  bright band riding a wooden sleeve.
+- **THE WHEEL MUST READ WOOD / THE CLAY MUST READ WET** — pass 1's
+  oak flywheel melted into the street and the ringed pot read as a
+  cob. Pass 2: deep-toned wheel with radial plank joins and ONE
+  bright kick-worn crescent; the pot is one clean silhouette, shade
+  side and slick side, two crisp finger rings, dark open mouth.
+- **THE BOOT IS THE READ** — pass 1's lasting stand read as a black
+  pipe. Pass 2: short stout stand, and the boot over it BIG —
+  sole-up, welt bright, stitches counted, toe unmistakable; the
+  finished pair grew tall lit shafts and pull straps.
+- **THE CATCH IS THE READ** — pass 1's ranks were slivers. Pass 2:
+  every fish a full size fatter with a bold dorsal stripe, big
+  forked tail, gill stroke and eye; the prize fish deepened, finned,
+  and rayed.
+- Passed clean on pass 1: WallFountain (mask darkened a step in
+  pass 2), StreetPump, PotteryKiln (the wave's anchor read),
+  ScribesDesk, CandleRack (shade edge deepened), FletchersBench
+  (staves moved clear of the legs, fletch grown), HangingScale
+  (pans, chains, and the mid-weigh sack all grew), DisplayTable.
+- **Night hierarchy proven**: midnight wide — the whole field dark,
+  the FIRING kiln's spy-hole inert paint, the only lamps in frame
+  the compound sconces and the road's lampposts.
+- **THE HASH DEALS THE STOCK proven**: five display tables in one
+  strip — five runner dyes, five different spreads, every table its
+  own price board.
+- **Smash theatre proven**: the display table burst on its second
+  blow (debris mid-air in the capture, tile patched, four siblings
+  untouched); the kiln came down on its fourth.
+
+### Gate
+
+shared 217 / client 613 / server 493 / content 514, all pass; tsc
+clean in all four packages.

@@ -521,7 +521,7 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     if (t >= Tile.TownFountain && t <= Tile.ProduceStand) return nearestFloor(ground, tx, ty);
     // THE TRADES KEEP SHOP: workshop gear stands on the shop floor
     // or the yard the trade tramples — never its own material.
-    if (t >= Tile.QuenchTrough && t <= Tile.ShopShelf) return nearestFloor(ground, tx, ty);
+    if (t >= Tile.QuenchTrough && t <= Tile.DisplayTable) return nearestFloor(ground, tx, ty);
     // The palisade stands in open country like the garrison curtain:
     // whatever walkable terrain fronts it continues beneath (south
     // first — that side's base sliver shows), and a family member
