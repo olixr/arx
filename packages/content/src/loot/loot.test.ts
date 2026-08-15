@@ -277,6 +277,11 @@ test('every foe’s tables preserve its signature loot — reserved pieces stay 
     iron_golem: ['forgeplate_scrap', 'golem_core', 'lodestone'],
     ogre: ['ogre_tooth', 'raw_beef', 'ogre_greatclub', 'quarryheart'],
     ogre_champion: ['bonegrinder_girdle', 'ogre_tooth', 'ogre_greatclub', 'bearspine'],
+    // The legion's loot-story: the issued kit on the body really
+    // drops — the line's sword and board, the longbowman's bow, the
+    // warlord's steel and crest.
+    hobgoblin: ['legion_ring', 'iron_sword', 'oak_kiteshield', 'shortbow'],
+    hobgoblin_champion: ['warlord_crest', 'legion_ring', 'steel_sword'],
     elder_great_owl: ['elder_plume', 'palethorn_platebody', 'stormsinger_robe'],
     gnoll_champion: ['packlord_mane', 'jadeskull_platebody', 'lastsheaf'],
     skeleton_barrow_lord: ['nightveil_jerkin_barrowdusk', 'sunhallow_robe'],
@@ -313,7 +318,7 @@ test('the flood law: every foe’s per-kill expectation stays under its station�
   // couple of stacks and treat gear as an event; named foes pay richer;
   // the Champion alone showers. A retune (code or CMS) that breaks a
   // ceiling is a flood, not a balance pass.
-  const NAMED = new Set(['kobold_digmaster', 'brigand_reaver', 'dire_wolf', 'dire_boar', 'gnoll_champion', 'goblin_champion', 'lynx_champion', 'fox_champion', 'elder_great_owl', 'ogre_champion', 'skral_champion']);
+  const NAMED = new Set(['kobold_digmaster', 'brigand_reaver', 'dire_wolf', 'dire_boar', 'gnoll_champion', 'goblin_champion', 'lynx_champion', 'fox_champion', 'elder_great_owl', 'ogre_champion', 'skral_champion', 'hobgoblin_champion']);
   // The crownsguard is the Ashen Court's champion body (the Kingsdelf
   // epic): a minTier-6 singleton that walks only after dusk, carrying
   // the champion's whole purse at the Overband's level. Boss station

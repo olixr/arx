@@ -74,6 +74,13 @@ const GIANT: NpcLanes = { resist: ['onehand'], weak: ['archery'] };
 // the formless speak, but the skral EARN it differently — an arrow
 // skates off angled slime-coated scale where a slime swallows it.)
 const SLICK: NpcLanes = { resist: ['archery'], weak: ['arx'] };
+// The raised shield catches the shaft; the great blade caves the
+// wall. (Same pair the bones speak, but the legion EARNS it
+// differently — flesh stays fair, and the hobgoblin's flesh IS fair:
+// it is the drilled kiteshield that turns the arrow, and the crushing
+// two-hander that no shield rim can answer. The unshielded ranks —
+// the longbowman, the warcaster — keep no lanes at all.)
+const PHALANX: NpcLanes = { resist: ['archery'], weak: ['twohand'] };
 
 export const NPC_LANES: Record<string, NpcLanes> = {
   // Bones turn arrows; the great blade cracks them.
@@ -107,4 +114,11 @@ export const NPC_LANES: Record<string, NpcLanes> = {
   skral_harpooner: SLICK,
   skral_tidecaller: SLICK,
   skral_champion: SLICK,
+  // The legion's shield-bearers: the wall turns the shaft, the crush
+  // caves the wall. Only the ranks that CARRY the kiteshield (or the
+  // juggernaut's plate) earn the lane — the bow and the staff ranks
+  // fight fair.
+  hobgoblin: PHALANX,
+  hobgoblin_champion: PHALANX,
+  hobgoblin_juggernaut: PHALANX,
 };

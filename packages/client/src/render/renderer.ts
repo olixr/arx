@@ -104,6 +104,7 @@ import {
 import { golemLook, type GolemLook } from './golems.js';
 import { GutSim, PendantSim, ogreLook, type OgreLook } from './ogre.js';
 import { skralLook, type SkralLook } from './skral.js';
+import { hobgoblinLook, type HobgoblinLook } from './hobgoblin.js';
 import { LegRig, type LegPose } from './legs.js';
 import { FINISHER_PHASES, strikePhases } from './carriage.js';
 import { GREAT_FINISHER_PHASES, GREAT_PHASES } from './wield.js';
@@ -724,6 +725,10 @@ interface AnimState {
    *  rig-ticked inside drawHumanoid (it owns the exact skull anchor);
    *  the renderer owns only the lifecycle and the re-bake cue. */
   ears?: EarSim;
+  /** THE WAR QUEUE: the hobgoblin's braid on the same elastic
+   *  contract — its own slot beside `ears` (the legion body runs
+   *  BOTH sims at once, and no lane may evict another's appendage). */
+  hobQueue?: EarSim;
   /** The lynx bobtail sim — present only on the tufted shadows. */
   bobtail?: BobtailSim;
   /** THE BRUSH IS A SIMULATION: the canid brush (fox plume, wolf and
@@ -40278,6 +40283,8 @@ export class Renderer {
     ogre?: OgreLook;
     /** Brine-dialect override: this humanoid is a skral. */
     skral?: SkralLook;
+    /** Legion-dialect override: this humanoid is a hobgoblin. */
+    hobgoblin?: HobgoblinLook;
     /** Weapons stowed on the body (snapshot SHEATHED_BIT). */
     sheathed?: boolean;
     /**
@@ -40299,7 +40306,14 @@ export class Renderer {
     // THE GIANT GAIT: giant-kin walk on a statured solver — world-true
     // track, stride, and swing time for the body's real size. Every
     // other humanoid keeps the exact legacy rig (stature 1).
-    const stature = e.ogre ? Math.max(1, e.size ?? 1) : 1;
+    // THE BREACH WALKS LIKE A HILL: the hobgoblin juggernaut crosses
+    // the same threshold — a 1.5+ body on a size-1 track minces and
+    // crosses its feet, so the giant solver takes it (the ogre law).
+    const stature = e.ogre
+      ? Math.max(1, e.size ?? 1)
+      : e.hobgoblin && (e.size ?? 1) >= 1.5
+        ? (e.size ?? 1)
+        : 1;
     const rigKey = stature === 1 ? 'humanoid' : `humanoid@${stature}`;
     if (!anim.legs || anim.rigKey !== rigKey) {
       anim.legs = new LegSolver(stature);
@@ -40858,13 +40872,22 @@ export class Renderer {
     // elastic-body pair (earPhysics.ts) on the anim map. The rig
     // ticks them inside drawHumanoid — only the lifecycle and the
     // restless re-bake cue live here.
-    if (e.goblin || e.skral) {
-      // The skral's crest rides the same slot in its brine verse —
-      // one elastic-body contract, two species (the ear-physics API
-      // was species-agnostic by design, and this is the payoff).
+    if (e.goblin || e.skral || e.hobgoblin) {
+      // The skral's crest and the hobgoblin's swept blades ride the
+      // same slot in their own verses — one elastic-body contract,
+      // three species (the ear-physics API was species-agnostic by
+      // design, and this is the payoff).
       anim.ears ??= new EarSim(typeof e.eid === 'number' ? e.eid : 7);
     } else if (anim.ears) {
       anim.ears = undefined;
+    }
+    // THE WAR QUEUE joins the same law: the braid is a second elastic
+    // body on the SAME skull — its own slot, rig-ticked, lifecycle
+    // only here (a legion body runs ears and queue at once).
+    if (e.hobgoblin) {
+      anim.hobQueue ??= new EarSim(typeof e.eid === 'number' ? e.eid + 31 : 11);
+    } else if (anim.hobQueue) {
+      anim.hobQueue = undefined;
     }
     // THE GUT AND THE TROPHY JOIN THE SAME LAW: the ogre's belly mass
     // and belt pendant are sims on the anim map — the rig ticks them
@@ -40912,6 +40935,9 @@ export class Renderer {
       // Restless wing ears too — the elastic pair settling after a
       // turn, a stop, or a jeer keeps the body at full rate.
       (anim.ears !== undefined && anim.ears.restless) ||
+      // A restless war queue keeps the legion body at full rate —
+      // the braid's lag and settle IS the read.
+      (anim.hobQueue !== undefined && anim.hobQueue.restless) ||
       // A restless gut or swinging trophy keeps the giant at full
       // rate — the jiggle IS the read; a cadence-sampled bounce skips.
       (anim.ogreGut !== undefined && anim.ogreGut.restless) ||
@@ -40943,6 +40969,10 @@ export class Renderer {
       // The skral's water cluster and flank speckle ride the spawn
       // seed — same-water bodies must never share a sprite.
       e.skral ? `S${(e.skral.seed ?? 0) & 0xff}` : ''
+    }${
+      // The hobgoblin's skin cluster rides the spawn seed the same
+      // way — one legion, many faces, no shared sprites.
+      e.hobgoblin ? `H${(e.hobgoblin.seed ?? 0) & 0xff}` : ''
     }${seat ? `|${seat.kind}${seat.head ?? ''}` : ''}${riding ? `|m${anim.mountKey}` : ''}`;
 
     const capeFront = capeSim !== null && capeSim.front(Math.sin(dir));
@@ -41210,7 +41240,9 @@ export class Renderer {
           gnoll: e.gnoll,
           goblin: e.goblin,
           skral: e.skral,
+          hobgoblin: e.hobgoblin,
           earSim: anim.ears,
+          queueSim: anim.hobQueue,
           golem: e.golem,
           ogre: e.ogre,
           ogreGut: anim.ogreGut,
@@ -42383,6 +42415,37 @@ export class Renderer {
   };
 
   /**
+   * Hobgoblin stature (docs/hobgoblin-plan.md): man-height soldiers —
+   * a full head and a half over the goblin rabble they command — the
+   * warlord over any brigand, and the juggernaut on the giant gait.
+   * Hand-sync with gameRender MOB_SIZE.
+   */
+  private static readonly HOB_SIZE: Record<string, number> = {
+    hobgoblin: 1.02,
+    hobgoblin_archer: 1.0,
+    hobgoblin_warcaster: 1.04,
+    hobgoblin_champion: 1.28,
+    hobgoblin_juggernaut: 1.62,
+  };
+
+  /**
+   * Legion kit — the loot-story law: issued pieces that really drop
+   * from the legion's tables (the hobgoblin_arms rack). The line
+   * fights sword-and-board, the longbowman strings the shortbow, the
+   * warcaster carries the ember staff, the warlord bears steel, and
+   * the juggernaut swings the greatblade two-handed. No head slot
+   * EVER: THE FORGE LAW makes item metal full-face, and the legion's
+   * open helms are painted into the war mask itself.
+   */
+  private static readonly HOBGOBLIN_EQUIP: Record<string, Partial<Record<string, string>>> = {
+    hobgoblin: { weapon: 'iron_sword', offhand: 'oak_kiteshield' },
+    hobgoblin_archer: { weapon: 'shortbow', offhand: 'hunters_quiver' },
+    hobgoblin_warcaster: { weapon: 'ember_staff' },
+    hobgoblin_champion: { weapon: 'steel_sword', offhand: 'oak_kiteshield' },
+    hobgoblin_juggernaut: { weapon: 'iron_greatblade' },
+  };
+
+  /**
    * Gnoll kit — the loot-story law: scavenged pieces that really drop
    * from the warband's tables. The skulker swings rusted camp iron;
    * the packlord hauls the greatblade no goblin could lift.
@@ -42648,6 +42711,7 @@ export class Renderer {
       defId.endsWith('_golem') ||
       defId.startsWith('ogre') ||
       defId.startsWith('skral') ||
+      defId.startsWith('hobgoblin') ||
       defId === 'troll'
     ) {
       const def = npcDef(defId);
@@ -42663,6 +42727,10 @@ export class Renderer {
       // The skral wader and harpooner roll their water cluster; the
       // tidecaller and deepking are designs (THE BRINE DIALECT).
       const skr = defId.startsWith('skral') ? skralLook(defId, eid) : undefined;
+      // The legionary and longbowman roll their skin cluster; the
+      // ranked hobgoblins are designs (THE LEGION DIALECT). One
+      // banner, many faces.
+      const hbg = defId.startsWith('hobgoblin') ? hobgoblinLook(defId, eid) : undefined;
       // The rock golem rolls its stone cluster the same way; the other
       // builds are designs whose seed varies layout, never palette.
       const gol = defId.endsWith('_golem') ? golemLook(defId, eid) : undefined;
@@ -42777,11 +42845,11 @@ export class Renderer {
         equip:
           // Static per defId — a fresh literal here would churn the
           // body-sprite signature's identity ids every frame.
-          Renderer.GOBLIN_EQUIP[defId] ?? Renderer.GNOLL_EQUIP[defId] ?? Renderer.KOBOLD_EQUIP[defId] ?? Renderer.SKELETON_EQUIP[defId] ?? Renderer.BRIGAND_EQUIP[defId] ?? Renderer.OGRE_EQUIP[defId] ?? Renderer.NO_EQUIP,
+          Renderer.GOBLIN_EQUIP[defId] ?? Renderer.GNOLL_EQUIP[defId] ?? Renderer.KOBOLD_EQUIP[defId] ?? Renderer.SKELETON_EQUIP[defId] ?? Renderer.BRIGAND_EQUIP[defId] ?? Renderer.OGRE_EQUIP[defId] ?? Renderer.HOBGOBLIN_EQUIP[defId] ?? Renderer.NO_EQUIP,
         // The goblin's garment ground is its own rolled hide — the
         // tunic block under the pot-gut overpaint must never flash a
         // different green at the silhouette edge.
-        color: gob?.hide ?? ogr?.hide ?? skr?.hide ?? def?.color ?? '#999',
+        color: gob?.hide ?? ogr?.hide ?? skr?.hide ?? hbg?.hide ?? def?.color ?? '#999',
         skinColor:
           defId === 'troll'
             ? '#6a7d5c'
@@ -42797,7 +42865,9 @@ export class Renderer {
                       ? ogr.hide
                       : skr
                         ? skr.hide
-                        : Renderer.BRIGAND_SKIN[defId],
+                        : hbg
+                          ? hbg.hide
+                          : Renderer.BRIGAND_SKIN[defId],
         size:
           Renderer.KOBOLD_SIZE[defId] ??
           Renderer.GNOLL_SIZE[defId] ??
@@ -42807,6 +42877,7 @@ export class Renderer {
           Renderer.GOLEM_SIZE[defId] ??
           Renderer.OGRE_SIZE[defId] ??
           Renderer.SKRAL_SIZE[defId] ??
+          Renderer.HOB_SIZE[defId] ??
           (defId === 'troll' ? 1.4 : 0.85),
         nameInk,
         skeletal: skel,
@@ -42816,6 +42887,7 @@ export class Renderer {
         golem: gol,
         ogre: ogr,
         skral: skr,
+        hobgoblin: hbg,
       });
     }
 
@@ -44500,6 +44572,7 @@ export class Renderer {
       death.defId.endsWith('_golem') ||
       death.defId.startsWith('ogre') ||
       death.defId.startsWith('skral') ||
+      death.defId.startsWith('hobgoblin') ||
       death.defId === 'troll';
     let rag: Ragdoll;
     let look: (typeof this.corpses)[number]['look'];
@@ -44546,6 +44619,7 @@ export class Renderer {
         Renderer.GOLEM_SIZE[death.defId] ??
         Renderer.OGRE_SIZE[death.defId] ??
         Renderer.SKRAL_SIZE[death.defId] ??
+        Renderer.HOB_SIZE[death.defId] ??
         (death.defId === 'troll' ? 1.4 : 0.85);
       const corpseKob = death.defId.startsWith('kobold')
         ? koboldLook(death.defId)
@@ -44572,7 +44646,14 @@ export class Renderer {
       const corpseSkr = death.defId.startsWith('skral')
         ? skralLook(death.defId, death.eid)
         : undefined;
-      const bodyColor = corpseGob?.hide ?? corpseOgr?.hide ?? corpseSkr?.hide ?? def.color ?? '#999';
+      // The fallen soldier keeps its rolled skin (the corpse-coat
+      // law: seed by raw eid, never the mixed rag seed).
+      const corpseHob = death.defId.startsWith('hobgoblin')
+        ? hobgoblinLook(death.defId, death.eid)
+        : undefined;
+      // The fallen soldier's torso stays IRON — the cuirass outlives
+      // the body wearing it (the loot-story law's visual half).
+      const bodyColor = corpseGob?.hide ?? corpseOgr?.hide ?? corpseSkr?.hide ?? corpseHob?.iron ?? def.color ?? '#999';
       rag = buildHumanoidRagdoll(size, seed);
       rag.launch(sx, sy, sev, HUMANOID_UPPER, HUMANOID_FEET);
       look = {
@@ -44588,6 +44669,7 @@ export class Renderer {
                 corpseGol?.shell ??
                 corpseOgr?.hide ??
                 corpseSkr?.hide ??
+                corpseHob?.hide ??
                 Renderer.BRIGAND_SKIN[death.defId] ??
                 '#7aa74a'),
           hairColor: shade(bodyColor, -24),
@@ -44597,7 +44679,9 @@ export class Renderer {
           // gnoll corpses keep the fur dialect — muzzle, crest, coat;
           // goblin corpses keep the greenskin dialect — ears and tusks;
           // golem corpses keep the construct dialect — the collapse;
-          // skral corpses keep the brine dialect — the flopped crest.
+          // skral corpses keep the brine dialect — the flopped crest;
+          // hobgoblin corpses keep the legion dialect — the spilled
+          // queue and the helm that stayed on.
           skel: death.defId.startsWith('skeleton')
             ? skeletonLook(death.defId)
             : undefined,
@@ -44607,6 +44691,7 @@ export class Renderer {
           gol: corpseGol,
           ogr: corpseOgr,
           skr: corpseSkr,
+          hob: corpseHob,
         },
       };
     } else {

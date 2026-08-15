@@ -3238,7 +3238,9 @@ function swordDefs(): EquipmentDef[] {
       levelReq: { skill: 'onehand', level: 20 },
       weapon: { style: 'onehand', damage: 3, cooldownTicks: 7, range: 2.05, art: 'shockwave' },
       affixPool: SOLDIER_POOL,
-      acquisition: { craft: true },
+      // Drop-flagged for the hobgoblin warlord's rack (the loot-story
+      // law: the steel on the officer's hip really drops).
+      acquisition: { craft: true, drop: true },
       recipe: {
         skill: 'smithing', levelReq: 33, xp: 250, station: 'anvil', ticks: 80,
         inputs: [{ item: 'steel_bar', qty: 2 }],

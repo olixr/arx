@@ -1,0 +1,168 @@
+{
+  "id": "hobgoblin_warcamp",
+  "name": "Hobgoblin war-camp",
+  "description": "A palisade with true corners and a gate that faces the road. The tents stand in file, the racks hold a straight line, and somebody drilled all of this into being on purpose. Goblins did not build here. Something taller did, and it posts sentries.",
+  "tiers": [
+    3,
+    6
+  ],
+  "weight": 1.3,
+  "prefabs": [
+    "poi_hob_muster",
+    "poi_hob_watch",
+    "poi_hob_forgecamp"
+  ],
+  "garrison": [
+    {
+      "npc": "hobgoblin",
+      "count": [
+        2,
+        3
+      ],
+      "role": "holdfast"
+    },
+    {
+      "npc": "hobgoblin_archer",
+      "count": [
+        1,
+        2
+      ],
+      "role": "sentry",
+      "patrol": true
+    },
+    {
+      "npc": "hobgoblin_warcaster",
+      "count": [
+        1,
+        1
+      ],
+      "role": "holdfast",
+      "minTier": 4
+    },
+    {
+      "npc": "hobgoblin_champion",
+      "count": [
+        1,
+        1
+      ],
+      "role": "holdfast",
+      "minTier": 5,
+      "levelOffset": 2,
+      "names": [
+        "Vazruk Ironmarch",
+        "Skarn Redbanner",
+        "Karguk the Drill",
+        "Old Hundredscars"
+      ]
+    },
+    {
+      "npc": "hobgoblin_juggernaut",
+      "count": [
+        1,
+        1
+      ],
+      "role": "holdfast",
+      "minTier": 6
+    }
+  ],
+  "chestTierBonus": 1,
+  "clearedFlag": "poi_hobgoblin_warcamp_broken",
+  "cues": {
+    "clearing": 4,
+    "approachPath": true,
+    "scatter": [
+      {
+        "tile": "SpikeBarrier",
+        "count": 2
+      },
+      {
+        "tile": "SkullPile",
+        "count": 1
+      }
+    ]
+  },
+  "boldness": {
+    "stages": [
+      {
+        "garrison": [
+          {
+            "npc": "hobgoblin",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "SpikeBarrier",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "hobgoblin",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          },
+          {
+            "npc": "hobgoblin_archer",
+            "count": [
+              1,
+              1
+            ],
+            "role": "sentry",
+            "patrol": true
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "SpikeBarrier",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "garrison": [
+          {
+            "npc": "hobgoblin",
+            "count": [
+              1,
+              2
+            ],
+            "role": "holdfast"
+          },
+          {
+            "npc": "hobgoblin_champion",
+            "count": [
+              1,
+              1
+            ],
+            "role": "holdfast",
+            "minTier": 4,
+            "names": [
+              "Vazruk Ironmarch",
+              "Skarn Redbanner",
+              "Karguk the Drill",
+              "Old Hundredscars"
+            ]
+          }
+        ],
+        "scatter": [
+          {
+            "tile": "SkullPile",
+            "count": 1
+          }
+        ]
+      }
+    ],
+    "satellites": true
+  },
+  "family": "hobgoblin"
+}

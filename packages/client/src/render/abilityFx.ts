@@ -581,6 +581,16 @@ export const FX_STYLES: Record<string, FxStyle> = {
   riptide_ring: TIDE({ mid: '#54889c', deep: '#1e3a48', ring: 'halo', debris: 'ice', decal: 'stain', motif: 'vortex', punch: 0.6, wash: 0.45 }),
   shoal_call: TIDE({ mid: '#7c9c8a', deep: '#28443c', spark: '#d8ecdf', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.6, wash: 0.32 }),
 
+  // ------------------- THE LEGION (docs/hobgoblin-plan.md): iron and
+  // flame with DISCIPLINE in it. The brand is the EMBER family spoken
+  // through a forge — struck-metal shards and smithy sparks, never the
+  // goblin's loose fire; the ring cracks the ground with banked
+  // furnace light; and the horn is not fire at all — brass rings
+  // rolling out of one long note, the officer's word made weather.
+  iron_brand: EMBER({ mid: '#e08a3c', spark: '#ffe2a4', ring: 'shards', debris: 'spark', decal: 'scorch', punch: 0.45 }),
+  forge_ring: EMBER({ mid: '#c25c2e', deep: '#5c2410', ring: 'teeth', debris: 'ember', decal: 'scorch', motif: 'quake', punch: 0.65, wash: 0.55 }),
+  warlord_horn: GOLD({ mid: '#c09a44', deep: '#6a4e1a', spark: '#ffe8b0', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.6, wash: 0.35 }),
+
   // ------------------- THE EARTH STANDS UP (golem arts, docs/golems-plan.md)
   // Four constructs, four material voices: the rock arts speak dry
   // hillstone (earthed STEEL, dust-pale sparks), the iron arts forged

@@ -533,20 +533,25 @@ test('jitter helpers stay in-band and epoch-divergent; the epoch re-deals the wa
   const fw = strongholdFallowFor(config.worldSeed, 3, 3, 0);
   assert.ok(fw >= FRONTIER.strongholdFallowMs[0] && fw <= FRONTIER.strongholdFallowMs[1]);
   // layoutForSeat: epoch 0 is the seat's own layout; the goblin pool
-  // has three layouts, so SOME seat re-deals differently by epoch 3.
+  // has three layouts, so SOME seat re-deals differently across the
+  // horizon. The horizon is twelve epochs, not six: every new POI
+  // family reshuffles the territory lattice (hash % families.length —
+  // the GHOST SEAT law), and after the hobgoblin family joined, the
+  // one goblin seat left in this window first re-deals at epoch 9.
+  // The property under test is epoch-DIVERGENCE, not its speed.
   const seats = sweepSeats().filter((st) => st.family === 'goblin');
   if (seats.length === 0) return;
   const layouts = [...STRONGHOLD_DEFS.values()];
   let changed = false;
   for (const seat of seats) {
     assert.equal(layoutForSeat(SEED, seat, 0, layouts)?.id, seat.layoutId, 'epoch 0 = the seat');
-    for (let e = 1; e <= 6; e++) {
+    for (let e = 1; e <= 12; e++) {
       const dealt = layoutForSeat(SEED, seat, e, layouts);
       assert.ok(dealt && dealt.family === seat.family, 'the deal never leaves the family');
       if (dealt.id !== seat.layoutId) changed = true;
     }
   }
-  assert.ok(changed, 'no seat ever re-dealt different walls across six epochs');
+  assert.ok(changed, 'no seat ever re-dealt different walls across twelve epochs');
 });
 
 test('stage re-mans and thickens: bolder capitals muster more, never deadlier', () => {

@@ -96,6 +96,7 @@ import {
 import { type GolemLook } from './golems.js';
 import { type OgreLook } from './ogre.js';
 import { type SkralLook } from './skral.js';
+import { type HobgoblinLook } from './hobgoblin.js';
 
 const BOOT = '#4a3324';
 
@@ -505,6 +506,10 @@ export interface HumanoidCorpseLook {
   /** Set = this corpse is a skral: the lantern eye gone dull, the
    *  crest flopped flat over the skull, the needle grin slack. */
   skr?: SkralLook;
+  /** Set = this corpse is a hobgoblin: the war queue spilled in the
+   *  dirt, the painted helm still seated, the corner fang proud of a
+   *  jaw that gives no more orders. */
+  hob?: HobgoblinLook;
   /** Worn equipment — the corpse keeps everything it died in. */
   gear?: CorpseGear;
 }
@@ -594,7 +599,9 @@ export function drawHumanoidRagdoll(
         ? shade(look.gob.hide, -6)
         : look.skr
           ? shade(look.skr.hide, -6)
-          : (legSt?.thigh ?? shade(look.bodyColor, -28));
+          : look.hob
+            ? shade(look.hob.strap, 10)
+            : (legSt?.thigh ?? shade(look.bodyColor, -28));
   const shinCol = look.kob
     ? shade(look.kob.hide, -12)
     : look.gno
@@ -603,7 +610,9 @@ export function drawHumanoidRagdoll(
         ? shade(look.gob.hide, -15)
         : look.skr
           ? shade(look.skr.hide, -14)
-          : (legSt?.shin ?? legCol);
+          : look.hob
+            ? shade(look.hob.strap, -4)
+            : (legSt?.shin ?? legCol);
   const sleeveCol = bodySt?.sleeve ?? shade(cloth, -10);
   const footCol = look.kob
     ? shade(look.kob.hide, -8)
@@ -613,7 +622,9 @@ export function drawHumanoidRagdoll(
         ? shade(look.gob.hide, -4)
         : look.skr
           ? shade(look.skr.belly, -8)
-          : (bootSt?.color ?? BOOT);
+          : look.hob
+            ? shade(look.hob.strap, -6)
+            : (bootSt?.color ?? BOOT);
   const mittCol = gloveSt?.color ?? look.skinColor;
   const foreCol = gloveSt ? (gloveSt.bracer ?? shade(gloveSt.color, -8)) : look.skinColor;
 
@@ -1126,6 +1137,135 @@ export function drawHumanoidRagdoll(
         ctx.moveTo(hw * off - hh * 0.05, -hh * 0.58);
         ctx.lineTo(hw * off, -hh * 0.78);
         ctx.lineTo(hw * off + hh * 0.05, -hh * 0.56);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  } else if (look.hob) {
+    // The hobgoblin corpse head in profile: the war queue SPILLED —
+    // the braid thrown loose past the crown with its iron rings still
+    // cinched — under the painted helm that stayed seated (a soldier
+    // is buried in its iron), one swept ear blade slack along the
+    // skull, the heavy brow shading an eye shut for good, the flat
+    // nose a blunt step, and the corner fang proud of a jaw that
+    // gives no more orders. Identity by silhouette.
+    const hb = look.hob;
+    const hv = hb.heavy;
+    // The spilled queue: a loose rope of braid past the occiput.
+    if (hb.queue > 0) {
+      ctx.strokeStyle = shade(hb.hair, 0);
+      ctx.lineCap = 'round';
+      ctx.lineWidth = hh * 0.3;
+      ctx.beginPath();
+      ctx.moveTo(-hw * 0.5, -hh * 0.55);
+      ctx.quadraticCurveTo(
+        -hw * (1.3 + 0.3 * hb.queue),
+        -hh * 0.6,
+        -hw * (1.7 + 0.5 * hb.queue),
+        -hh * 0.05,
+      );
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      // The rings held: two trim bands along the fallen braid.
+      ctx.strokeStyle = hb.trim;
+      ctx.lineWidth = Math.max(1, hh * 0.07);
+      for (const [qx, qy] of [
+        [-1.15, -0.62],
+        [-1.55, -0.32],
+      ] as const) {
+        ctx.beginPath();
+        ctx.moveTo(hw * qx - hh * 0.1, -hh * -qy - hh * 0.12);
+        ctx.lineTo(hw * qx + hh * 0.1, -hh * -qy + hh * 0.12);
+        ctx.stroke();
+      }
+    }
+    // The slack ear blade along the skull.
+    ctx.fillStyle = shade(hb.hide, -10);
+    ctx.beginPath();
+    ctx.moveTo(-hw * 0.3, -hh * 0.45);
+    ctx.lineTo(-hw * (1.25 + 0.15 * hv), -hh * 0.12);
+    ctx.lineTo(-hw * 0.35, -hh * 0.08);
+    ctx.closePath();
+    ctx.fill();
+    // The squared skull block.
+    ctx.fillStyle = hb.hide;
+    ctx.beginPath();
+    chamferRect(ctx, -hw * 1.02, -hh * 0.68, hw * 2.04, hh * 1.36, [cut, cut, cut * 0.7, cut * 0.7]);
+    ctx.fill();
+    // The helm stayed on: the iron bowl over the crown, rim and all.
+    if (hb.helm !== 'none') {
+      ctx.fillStyle = shade(hb.iron, -2);
+      ctx.beginPath();
+      chamferRect(ctx, -hw * 1.06, -hh * 0.72, hw * 2.12, hh * 0.5, [cut * 1.1, cut * 1.1, 0, 0]);
+      ctx.fill();
+      ctx.fillStyle = shade(hb.trim, 2);
+      ctx.fillRect(-hw * 1.06, -hh * 0.24, hw * 2.12, hh * 0.06);
+      // The officer's comb, fallen sideways with the head.
+      if (hb.helm === 'crest') {
+        ctx.fillStyle = shade(hb.banner, -6);
+        ctx.beginPath();
+        ctx.moveTo(-hw * 0.8, -hh * 0.7);
+        ctx.quadraticCurveTo(0, -hh * (1.1 + 0.1 * hv), hw * 0.7, -hh * 0.7);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // The juggernaut's horn still stands off the temple.
+      if (hb.helm === 'horns') {
+        ctx.fillStyle = shade('#e8e0c8', -8);
+        ctx.beginPath();
+        ctx.moveTo(hw * 0.45 - hh * 0.07, -hh * 0.66);
+        ctx.lineTo(hw * 0.62, -hh * 1.0);
+        ctx.lineTo(hw * 0.45 + hh * 0.09, -hh * 0.62);
+        ctx.closePath();
+        ctx.fill();
+      }
+    } else {
+      // Bare crown: the swept scalp, hair to the spilled queue.
+      ctx.fillStyle = shade(hb.hair, 2);
+      ctx.beginPath();
+      chamferRect(ctx, -hw * 1.02, -hh * 0.68, hw * 2.04, hh * 0.4, [cut, cut, 0, 0]);
+      ctx.fill();
+    }
+    // The brow ledge shading the shut eye.
+    ctx.fillStyle = shade(hb.hide, -18);
+    ctx.fillRect(hw * 0.1, -hh * 0.16, hw * 0.85, hh * 0.14);
+    ctx.strokeStyle = hb.ink;
+    ctx.lineWidth = Math.max(1, hh * 0.05);
+    ctx.beginPath();
+    ctx.moveTo(hw * 0.35, hh * 0.06);
+    ctx.lineTo(hw * 0.68, hh * 0.04);
+    ctx.stroke();
+    // The flat nose: a blunt step off the face, never a hook.
+    ctx.fillStyle = shade(hb.hide, 7);
+    ctx.beginPath();
+    ctx.moveTo(hw * 0.95, -hh * 0.08);
+    ctx.lineTo(hw * 1.28, -hh * 0.02);
+    ctx.lineTo(hw * 1.28, hh * 0.2);
+    ctx.lineTo(hw * 0.95, hh * 0.26);
+    ctx.closePath();
+    ctx.fill();
+    // The stern seam fallen slack, and the corner fang still proud.
+    ctx.strokeStyle = hb.ink;
+    ctx.lineWidth = Math.max(1, hh * 0.05);
+    ctx.beginPath();
+    ctx.moveTo(hw * 0.35, hh * 0.44);
+    ctx.quadraticCurveTo(hw * 0.85, hh * 0.52, hw * 1.15, hh * 0.42);
+    ctx.stroke();
+    ctx.fillStyle = '#e8e0c8';
+    ctx.beginPath();
+    ctx.moveTo(hw * 0.42 - hh * 0.05, hh * 0.48);
+    ctx.lineTo(hw * 0.46, hh * 0.16 - hh * 0.1 * (hv - 1));
+    ctx.lineTo(hw * 0.42 + hh * 0.06, hh * 0.48);
+    ctx.closePath();
+    ctx.fill();
+    // The officer's jaw fringe under the chin line.
+    if (hb.bearded) {
+      ctx.fillStyle = shade(hb.hair, -2);
+      for (const off of [0.15, 0.45, 0.75]) {
+        ctx.beginPath();
+        ctx.moveTo(hw * off - hh * 0.04, hh * 0.58);
+        ctx.lineTo(hw * off, hh * 0.78);
+        ctx.lineTo(hw * off + hh * 0.05, hh * 0.58);
         ctx.closePath();
         ctx.fill();
       }

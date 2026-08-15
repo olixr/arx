@@ -46,6 +46,19 @@ import {
   type SkralLook,
 } from './skral.js';
 import {
+  drawHobEar,
+  drawHobgoblinArm,
+  drawHobQueue,
+  hobEarCarriage,
+  hobEarStyle,
+  hobQueueCarriage,
+  hobQueueStyle,
+  paintHobgoblinBody,
+  paintHobgoblinFoot,
+  paintHobgoblinHead,
+  type HobgoblinLook,
+} from './hobgoblin.js';
+import {
   LegRig,
   chooseLimbSign,
   solveLimb,
@@ -468,6 +481,24 @@ export interface RigPose {
    * working untouched.
    */
   skral?: SkralLook;
+  /**
+   * THE LEGION DIALECT (docs/hobgoblin-plan.md): swap the flesh head
+   * for the hobgoblin's war mask — flat broad face, one brow ledge,
+   * painted open helm — under SWEPT ear blades (the earSim slot) and
+   * the SIMULATED war queue (its own sim slot below), square the
+   * carriage, iron the habit, and shoe the feet — while the rig,
+   * carriage, and facing bands keep working untouched. Shares not
+   * one line with the greenskin dialect: the master race is a
+   * different argument, not a bigger goblin.
+   */
+  hobgoblin?: HobgoblinLook;
+  /**
+   * Caller-owned war-queue sim — the ear contract at the occiput
+   * (both chains near-superposed = one braid). The rig ticks it at
+   * the exact skull anchor; absent (posters, sheets, corpses) THE
+   * ONE REST paints the settled braid.
+   */
+  queueSim?: EarSim;
   /** Time-based swing driver for the gather pose. */
   gatherPhase: number;
   /**
@@ -775,6 +806,11 @@ function drawArm(
    *  three-ray hands — overrides the cloth/glove branches the way
    *  bone does; the skral never owned a sleeve. */
   skr?: SkralLook | null,
+  /** Legion dialect: a soldier's arm — bare hide above the elbow,
+   *  the banded bracer below it, a gauntleted fist. Overrides the
+   *  cloth/glove branches the way bone does; the legion issues its
+   *  own kit. */
+  hob?: HobgoblinLook | null,
 ): { ex: number; ey: number; kx: number; ky: number } {
   // THE REMEMBERED ELBOW: the arms carry the same side-choice
   // hysteresis the knees have had since the quadruped rig — score the
@@ -834,6 +870,11 @@ function drawArm(
 
   if (skr) {
     drawSkralArm(ctx, skr, sx, sy, kx, ky, ex, ey, s, hurt ?? false, nowMs ?? 0, armSegPass ?? undefined);
+    return { ex, ey, kx, ky };
+  }
+
+  if (hob) {
+    drawHobgoblinArm(ctx, hob, sx, sy, kx, ky, ex, ey, s, hurt ?? false, nowMs ?? 0);
     return { ex, ey, kx, ky };
   }
 
@@ -5065,6 +5106,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const gol = rig.golem ?? null;
   const ogr = rig.ogre ?? null;
   const skr = rig.skral ?? null;
+  const hob = rig.hobgoblin ?? null;
   const skin = rig.hurt
     ? '#ffffff'
     : (skel?.bone ?? rig.skinColor ?? (rig.look ? SKIN_TONES[rig.look.skin]! : SKIN));
@@ -5217,9 +5259,14 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
                   ? shade(ogr.hide, -5)
                   : skr
                     ? shade(skr.hide, -6)
-                    : rig.look
-                      ? shade(CLOTH_COLORS[rig.look.pants]!, -8)
-                      : shade(bodyColor, -28);
+                    : hob
+                      // The legion marches CLOTHED: wool breeches in
+                      // harness brown — the first dialect leg that
+                      // wears the quartermaster's issue, not its hide.
+                      ? shade(hob.strap, 10)
+                      : rig.look
+                        ? shade(CLOTH_COLORS[rig.look.pants]!, -8)
+                        : shade(bodyColor, -28);
       const thighCol = rig.hurt ? '#ffffff' : (legSt?.thigh ?? baseLeg);
       const shinCol = rig.hurt
         ? '#ffffff'
@@ -5237,7 +5284,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
                     ? shade(ogr.hide, -13)
                     : skr
                       ? shade(skr.hide, -14)
-                      : (legSt?.shin ?? legSt?.thigh ?? baseLeg);
+                      : hob
+                        ? shade(hob.strap, -4)
+                        : (legSt?.shin ?? legSt?.thigh ?? baseLeg);
       // THE FOOT CAPS THE LEG: the shin stroke ends at the ANKLE — the
       // endpoint pulled back up the bone so its round cap tucks inside
       // the footwear painted below. Stroked all the way to the sole, the
@@ -5257,7 +5306,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // haunch above carries all the leg's mass; the shin is a reed.
       const shinLW = Math.max(
         2,
-        s * (skel ? 0.052 * skel.heavy : bootSt ? 0.1 : gno ? 0.078 : gob ? 0.062 : gol ? 0.128 : ogr ? 0.145 : skr ? 0.058 : 0.09),
+        s * (skel ? 0.052 * skel.heavy : bootSt ? 0.1 : gno ? 0.078 : gob ? 0.062 : gol ? 0.128 : ogr ? 0.145 : skr ? 0.058 : hob ? 0.08 : 0.09),
       );
       const ankPull = shinLW * 0.55;
       const ankX = fxx - aux * ankPull;
@@ -5278,18 +5327,22 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
                     ? 0.185 * (0.9 + 0.2 * ogr.heavy)
                     : skr
                       ? 0.105 * (0.85 + 0.2 * skr.heavy)
-                      : 0.09),
+                      // The soldier's leg: a drilled thigh over a
+                      // wrapped shin — sturdy, never bandy.
+                      : hob
+                        ? 0.1 * (0.9 + 0.2 * hob.heavy)
+                        : 0.09),
       );
       ctx.beginPath();
       ctx.moveTo(hipX, hipY);
       ctx.lineTo(kx, ky);
-      if (shinCol === thighCol && !skel && !gno && !gob && !gol && !ogr && !skr) {
+      if (shinCol === thighCol && !skel && !gno && !gob && !gol && !ogr && !skr && !hob) {
         ctx.lineTo(ankX, ankY);
         ctx.stroke();
       } else {
         ctx.stroke();
         ctx.strokeStyle = shinCol;
-        if (skel || gno || gob || gol || ogr || skr) ctx.lineWidth = shinLW;
+        if (skel || gno || gob || gol || ogr || skr || hob) ctx.lineWidth = shinLW;
         ctx.beginPath();
         ctx.moveTo(kx, ky);
         ctx.lineTo(ankX, ankY);
@@ -5385,7 +5438,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       // Each paints ON the limb's own solved geometry (segments and
       // normals), so it rides every gait for free. One-sided words
       // pick the outward side the way the gnoll hock does.
-      if (legSt && !rig.hurt && !skel && !kob && !gno && !gob && !skr) {
+      if (legSt && !rig.hurt && !skel && !kob && !gno && !gob && !skr && !hob) {
         const outX = Math.abs(fx) > 0.35 ? -Math.sign(fx) : i === 0 ? -1 : 1;
         // Thigh segment frame (hip→knee) for thigh-mounted words.
         const tLen = Math.hypot(kx - hipX, ky - hipY) || 1;
@@ -5909,6 +5962,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         // THE FAN FOOT: the murloc footprint — a webbed triangle
         // twice the shank's width (skral.ts owns the anatomy).
         paintSkralFoot(ctx, skr, fxx, fyy, s, lead, rig.hurt);
+      } else if (hob && !bootSt) {
+        // THE MARCHING BOOT: iron toe, greave cuff, hobnails — the
+        // legion is shod (hobgoblin.ts owns the anatomy).
+        paintHobgoblinFoot(ctx, hob, fxx, fyy, s, fx, lead, rig.hurt);
       } else if (gob && !bootSt) {
         // The bare goblin foot: a FLAP a size too big for the spindle
         // shank above it — wide, flat, pale-soled, with two toe seams
@@ -6104,8 +6161,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // silhouette triangle points UP (heroes and golems point down).
   // The skral narrows the shoulders the goblin's way but keeps the
   // waist a frog's: sloped, slick, a little pot — the mass pools LOW.
-  const tw = SHOULDER_HALF_S * s * (gno ? 1.28 : gob ? 0.92 : gol ? 1.4 * (0.94 + 0.12 * gol.heavy) : ogr ? 1.32 * (0.94 + 0.1 * ogr.heavy) : skr ? 0.88 : 1); // shoulder half-width
-  const ww = WAIST_HALF_S * s * (gno ? 1.06 : gob ? 1.16 + 0.14 * gob.heavy : gol ? 1.22 : ogr ? 1.4 + 0.12 * ogr.heavy : skr ? 1.1 + 0.1 * skr.heavy : 1); // waist half-width
+  // THE PARADE FRAME: the hobgoblin's proportion argument INVERTS the
+  // goblin's — broad squared shoulders over a soldier's waist (the
+  // silhouette triangle points DOWN; the goblin's gut points it up).
+  const tw = SHOULDER_HALF_S * s * (gno ? 1.28 : gob ? 0.92 : gol ? 1.4 * (0.94 + 0.12 * gol.heavy) : ogr ? 1.32 * (0.94 + 0.1 * ogr.heavy) : skr ? 0.88 : hob ? 1.14 * (0.95 + 0.08 * hob.heavy) : 1); // shoulder half-width
+  const ww = WAIST_HALF_S * s * (gno ? 1.06 : gob ? 1.16 + 0.14 * gob.heavy : gol ? 1.22 : ogr ? 1.4 + 0.12 * ogr.heavy : skr ? 1.1 + 0.1 * skr.heavy : hob ? 0.94 + 0.1 * (hob.heavy - 1) : 1); // waist half-width
   const th = TORSO_RISE_S * s * (1 - 0.12 * crouch); // hip line → shoulders
   // ---- THE STOOP LANE (the hunched-biped carriage). The gnoll and
   // the skral carry their spine pitched and their skull sunk INTO the
@@ -7909,6 +7969,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       gob,
       ogr,
       skr,
+      hob,
     );
     armSegPass = null;
     if (shieldSt && shieldFr && seg !== 'under') {
@@ -8048,6 +8109,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       gob,
       ogr,
       skr,
+      hob,
     );
     armSegPass = null;
   };
@@ -8501,13 +8563,14 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // azimuth projection owns the perspective at every band; no ear
   // code below ever consults a facing blend.
   let paintEars: ((layer: 'behind' | 'front') => void) | null = null;
-  if (gob || skr) {
-    const hv = (gob ?? skr)!.heavy;
+  let paintQueue: ((layer: 'behind' | 'front') => void) | null = null;
+  if (gob || skr || hob) {
+    const hv = (gob ?? skr ?? hob)!.heavy;
     // The head anchor, through the torso frame's own transform
     // (translate → lean → squash) so the roots ride the drawn skull.
-    const earR = 0.15 * s * (gob ? 1.34 : 1.42);
-    const ehx = fx * (gob ? 0.1 : 0.12) * s * rig.wScale;
-    const ehy = (-th - earR * (gob ? 0.42 : 0.34)) * (1 + (1 - rig.wScale) * 0.55);
+    const earR = 0.15 * s * (gob ? 1.34 : skr ? 1.42 : 1.08);
+    const ehx = fx * (gob ? 0.1 : skr ? 0.12 : 0.06) * s * rig.wScale;
+    const ehy = (-th - earR * (gob ? 0.42 : skr ? 0.34 : 0.66)) * (1 + (1 - rig.wScale) * 0.55);
     const cosE = Math.cos(lean);
     const sinE = Math.sin(lean);
     const eax = rig.x + cosE * ehx - sinE * ehy;
@@ -8528,10 +8591,14 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           rise: 0.95,
           curl: [0, 0.16, 0.34],
         }
-      : skralCrestCarriage(hv, jeer);
+      : skr
+        ? skralCrestCarriage(hv, jeer)
+        : hobEarCarriage(hv, jeer);
     // The crest pins gently, never fully — a fin has no occiput to
     // fold against; its threat is the RISE the carriage already took.
-    const pin = gob ? jeer : jeer * 0.3;
+    // The hobgoblin's blades pin HARD — the snarl lays them along the
+    // skull like a horse's ears going back: fair warning, by drill.
+    const pin = gob ? jeer : skr ? jeer * 0.3 : jeer * 0.85;
     let chains: Array<{ side: number; c: EarChain }>;
     if (rig.earSim) {
       rig.earSim.update(eax, eay, s, carriage, rig.dir, pin, rig.nowMs);
@@ -8580,11 +8647,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           );
         }
       };
-    } else {
+    } else if (skr) {
       // THE CREST: two tight banks of one sail — the far bank paints
       // behind the skull, the near bank over it, and at profile they
       // stack into one deep blade by projection alone.
-      const cst = skralCrestStyle(skr!, backHead);
+      const cst = skralCrestStyle(skr, backHead);
       const crestW = 0.1 * (0.9 + 0.2 * hv) * s;
       paintEars = (layer) => {
         for (const { side, c } of chains) {
@@ -8594,12 +8661,72 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
             c.pts.map((p) => ({ x: eax + p.x * s, y: eay + p.y * s })),
             crestW,
             cst,
-            { hurt: rig.hurt, notch: (skr!.scarred ?? false) && side === lead },
+            { hurt: rig.hurt, notch: (skr.scarred ?? false) && side === lead },
+          );
+        }
+      };
+    } else {
+      // THE SWEPT BLADES: the legion ear rakes back along the skull —
+      // near/far order and the profile stack fall out of the same
+      // projection the goblin wing rides; only the carriage argues.
+      const hst = hobEarStyle(hob!, backHead);
+      const earW = 0.032 * (0.9 + 0.2 * hv) * s;
+      paintEars = (layer) => {
+        for (const { side, c } of chains) {
+          if ((c.depth > 0.05) !== (layer === 'front')) continue;
+          drawHobEar(
+            ctx,
+            c.pts.map((p) => ({ x: eax + p.x * s, y: eay + p.y * s })),
+            earW,
+            hst,
+            {
+              hurt: rig.hurt,
+              back: backHead,
+              notch: (hob!.scarred ?? false) && side === lead,
+              ringed: hob!.helm === 'crest' || hob!.helm === 'none',
+            },
           );
         }
       };
     }
     paintEars('behind');
+    // ---- THE WAR QUEUE: the braid is its own elastic body on the
+    // same anchor — both chains root nearly together at the occiput,
+    // so the pair paints as one rope. Behind the body facing the
+    // camera, over it facing away: the chain's own depth term is the
+    // verdict, never a band gate.
+    if (hob && hob.queue > 0) {
+      const qc = hobQueueCarriage(hob, jeer);
+      let qChains: Array<{ c: EarChain }>;
+      if (rig.queueSim) {
+        rig.queueSim.update(eax, eay, s, qc, rig.dir, 0, rig.nowMs);
+        qChains = [-1, 1].map((side) => ({ c: rig.queueSim!.chain(side, qc, rig.dir, 0) }));
+      } else {
+        qChains = [-1, 1].map((side) => ({
+          c: earRestChain(side, qc, {
+            dir: rig.dir,
+            pin: 0,
+            sway: rig.hurt ? 0 : 0.03 * Math.sin(rig.nowMs / 760 + side * 1.7),
+          }),
+        }));
+      }
+      qChains.sort((a, b) => a.c.depth - b.c.depth);
+      const qst = hobQueueStyle(hob, backK > 0.55);
+      const qw = 0.042 * (0.9 + 0.2 * hv) * s;
+      paintQueue = (layer) => {
+        for (const { c } of qChains) {
+          if ((c.depth > 0.05) !== (layer === 'front')) continue;
+          drawHobQueue(
+            ctx,
+            c.pts.map((p) => ({ x: eax + p.x * s, y: eay + p.y * s })),
+            qw,
+            qst,
+            { hurt: rig.hurt },
+          );
+        }
+      };
+      paintQueue('behind');
+    }
   }
 
   // ---- torso + head, drawn in a local frame at the hip line with the
@@ -8661,9 +8788,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // half the animal (the murloc argument) — and it sits IN the
   // shoulders: the lowest carry of any dialect, because there is no
   // neck to carry it with.
-  const headR = 0.15 * s * (kob ? 1.16 : gno ? 1.22 : gob ? 1.34 : gol ? 1.04 : ogr ? 0.98 : skr ? 1.42 : 1);
+  // The hobgoblin head is a MEASURED oversize — 1.08 on a near-human
+  // frame, carried HIGH on a real neck (the only dialect that stands
+  // parade-straight): every other monstrous head slumps, sinks, or
+  // juts, and the upright carry against them IS the discipline read.
+  const headR = 0.15 * s * (kob ? 1.16 : gno ? 1.22 : gob ? 1.34 : gol ? 1.04 : ogr ? 0.98 : skr ? 1.42 : hob ? 1.08 : 1);
   const headX =
-    kob ? fx * 0.14 * s : gno ? fx * 0.19 * s : gob ? fx * 0.1 * s : gol ? fx * 0.08 * s : ogr ? fx * 0.12 * s : skr ? fx * 0.12 * s : fx * 0.05 * s;
+    kob ? fx * 0.14 * s : gno ? fx * 0.19 * s : gob ? fx * 0.1 * s : gol ? fx * 0.08 * s : ogr ? fx * 0.12 * s : skr ? fx * 0.12 * s : hob ? fx * 0.06 * s : fx * 0.05 * s;
   const headY =
     kob
       ? -th - headR * 0.48
@@ -8677,7 +8808,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
               ? -th - headR * 0.34
               : skr
                 ? -th - headR * 0.34
-                : -th - headR * 0.82;
+                : hob
+                  ? -th - headR * 0.66
+                  : -th - headR * 0.82;
   const hw = headR * 1.04; // half-width
   const hh = headR * 1.0; // half-height
   const cut = headR * 0.34;
@@ -8743,7 +8876,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   };
   // The bone, scale, fur, and greenskin dialects replace head, hair,
   // and face wholesale.
-  if (!skel && !kob && !gno && !gob && !gol && !ogr && !skr) drawHairBack(ctx, hairFrame, hairIx, cover);
+  if (!skel && !kob && !gno && !gob && !gol && !ogr && !skr && !hob) drawHairBack(ctx, hairFrame, hairIx, cover);
 
   // The skral's behind-pass: the slung trident's shaft and the far-
   // side spine finlets paint UNDER the torso — occlusion by paint
@@ -8752,6 +8885,18 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     paintSkralBody(
       ctx,
       skr,
+      { s, tw, ww, th, fx, fy, profileK, backK, lead, hurt: rig.hurt, nowMs: rig.nowMs },
+      bodySt != null,
+      'behind',
+    );
+  }
+  // The hobgoblin's behind-pass: the warlord's standard shaft paints
+  // UNDER the torso — occlusion by paint order, decided by station
+  // depth, never by a band gate (the skral carry law).
+  if (hob) {
+    paintHobgoblinBody(
+      ctx,
+      hob,
       { s, tw, ww, th, fx, fy, profileK, backK, lead, hurt: rig.hurt, nowMs: rig.nowMs },
       bodySt != null,
       'behind',
@@ -9007,6 +9152,19 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     if (lean !== 0) ctx.rotate(lean);
     ctx.scale(wS, hScale);
   }
+  // THE IRON HABIT: the banded cuirass, girdle, sash, and pennant
+  // overpaint the garment quad — but never real armor (the loot-story
+  // law: what a body visibly wears really drops, and nothing may
+  // cover it). The pteruges skirt paints ALWAYS: the harness law —
+  // this body is issued, never bare.
+  if (hob) {
+    paintHobgoblinBody(
+      ctx,
+      hob,
+      { s, tw, ww, th, fx, fy, profileK, backK, lead, hurt: rig.hurt, nowMs: rig.nowMs },
+      bodySt != null,
+    );
+  }
 
   // ---- head (inside the squash frame so turning carries it too).
   // A chamfered block, not a ball — and a BILLBOARD FACE, not a dial:
@@ -9131,6 +9289,33 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         ? Math.sin(Math.min(1, rig.poseT) * Math.PI)
         : 0;
     paintSkralHead(ctx, skr, {
+      s,
+      headX,
+      headY,
+      hw,
+      hh,
+      cut,
+      fx,
+      fy,
+      profileK,
+      backK,
+      lead,
+      hurt: rig.hurt,
+      nowMs: rig.nowMs,
+      gape,
+    });
+  } else if (hob) {
+    // THE LEGION DIALECT head replaces head, hair, and face wholesale
+    // — the war mask under its painted open helm. The strike beat is
+    // a WAR-SHOUT: the jaw drops, the one brow knits, and the swept
+    // blades pin flat on the same clock (the sim block above); the
+    // idle face holds dead STILL — against the goblin's constant
+    // jeer, the stillness is the discipline.
+    const gape =
+      meleeStage >= 0 || rig.pose === PoseState.Cast
+        ? Math.sin(Math.min(1, rig.poseT) * Math.PI)
+        : 0;
+    paintHobgoblinHead(ctx, hob, {
       s,
       headX,
       headY,
@@ -9753,6 +9938,9 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Camera-side wing ears land over the finished body — the elastic
   // pair's near half, seated on the skull the head painter just drew.
   if (paintEars) paintEars('front');
+  // The war queue's camera-side pass: facing away, the braid hangs
+  // down the backplate OVER everything — the marching read.
+  if (paintQueue) paintQueue('front');
 }
 
 /**

@@ -288,6 +288,27 @@ export const WILD_ROSTER: readonly WildEntry[] = [
     habitat: 'den',
     family: 'gnoll',
   },
+  // THE LEGION (docs/hobgoblin-plan.md): hobgoblins do not scavenge —
+  // they PATROL. Day details walk the expedition line in drilled
+  // pairs with a longbowman covering; after dark the column marches
+  // behind its warlord, and the warcaster keeps the late watch. A
+  // tight spread always: a legion never straggles.
+  { npc: 'hobgoblin', weight: 1.4, tiers: [3, 5], biomes: ['grass', 'forest'], hours: DAY, band: [2, 3], spread: 2, family: 'hobgoblin' },
+  { npc: 'hobgoblin_archer', weight: 0.8, tiers: [3, 5], biomes: ['grass', 'forest'], hours: DAY, band: [1, 2], spread: 2, family: 'hobgoblin' },
+  { npc: 'hobgoblin_warcaster', weight: 0.6, tiers: [4, 6], biomes: ['grass', 'forest'], hours: NIGHT, band: [1, 1], family: 'hobgoblin' },
+  {
+    // THE NIGHT MARCH: the column moves under the warlord's crest,
+    // and you hear the boots before you see the banner.
+    npc: 'hobgoblin',
+    weight: 1.6,
+    tiers: [4, 6],
+    biomes: ['grass', 'forest'],
+    hours: NIGHT,
+    band: [2, 4],
+    spread: 3,
+    lead: { npc: 'hobgoblin_champion' },
+    family: 'hobgoblin',
+  },
   // THE HILL COMES DOWN (docs/ogres-plan.md): ogres walk in ones and
   // twos by day — a giant needs no escort — and the camp's muscle
   // strolls at night behind the Bonegrinder, dragging the club.

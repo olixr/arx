@@ -4778,6 +4778,111 @@ Object.assign(PLATES, {
     droplet(c, 0.4, -0.3, 0.15, st);
   },
 
+  // ----------------------- THE LEGION — the hobgoblins' plates.
+  // Iron Brand — the white-hot bar mid-hurl, sparks off the tail.
+  iron_brand: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.lineCap = 'round';
+    // The flight it already crossed.
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.04;
+    c.beginPath();
+    c.moveTo(-0.42, 0.3);
+    c.lineTo(-0.1, 0.06);
+    c.stroke();
+    // The bar itself: straight, squared, and furious — a smith's
+    // billet, never a fireball.
+    c.save();
+    c.rotate(-0.62);
+    c.fillStyle = st.mid;
+    c.fillRect(-0.26, -0.06, 0.52, 0.12);
+    c.fillStyle = st.core;
+    c.fillRect(-0.26, -0.06, 0.52, 0.045);
+    c.fillStyle = st.deep;
+    c.fillRect(0.2, -0.06, 0.06, 0.12);
+    c.restore();
+    // Forge sparks shed along the throw.
+    dot(c, st.spark, -0.24, 0.24, 0.036);
+    dot(c, st.spark, -0.08, -0.02, 0.03);
+    dot(c, st.spark, 0.3, -0.34, 0.034);
+  },
+  // Forge-Ring — the smith's circle staked on the ground, lit from
+  // below by the furnace the earth remembers.
+  forge_ring: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    // The staked ring.
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.05;
+    c.beginPath();
+    c.ellipse(0, 0.08, 0.38, 0.2, 0, 0, Math.PI * 2);
+    c.stroke();
+    // The cracks: furnace light breaking through the circle's floor.
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.032;
+    for (const [a0, a1] of [
+      [-0.3, 0.05],
+      [0.12, -0.04],
+      [0.28, 0.14],
+    ] as const) {
+      c.beginPath();
+      c.moveTo(a0, 0.08 + a1);
+      c.lineTo(a0 * 0.4, 0.02 + a1 * 0.4);
+      c.stroke();
+    }
+    // Heat standing up out of the iron: three rising tongues.
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.036;
+    for (const x of [-0.18, 0, 0.18] as const) {
+      c.beginPath();
+      c.moveTo(x, 0.1);
+      c.quadraticCurveTo(x + 0.05, -0.08, x - 0.02, -0.24);
+      c.stroke();
+    }
+    dot(c, st.deep, 0, 0.08, 0.045);
+  },
+  // Warlord's Horn — the horn mid-note, brass rings rolling out.
+  warlord_horn: (st) => (c) => {
+    c.translate(0.44, 0.5);
+    c.lineCap = 'round';
+    // The horn: a curved bell off a gripped mouthpiece.
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.085;
+    c.beginPath();
+    c.moveTo(-0.32, 0.26);
+    c.quadraticCurveTo(-0.12, 0.3, 0.04, 0.12);
+    c.stroke();
+    c.lineWidth = 0.12;
+    c.beginPath();
+    c.moveTo(0.04, 0.12);
+    c.quadraticCurveTo(0.16, 0.0, 0.2, -0.1);
+    c.stroke();
+    // The bell's mouth.
+    c.fillStyle = st.core;
+    c.beginPath();
+    c.ellipse(0.22, -0.14, 0.085, 0.06, -0.7, 0, Math.PI * 2);
+    c.fill();
+    // The banding: the officer's trim on the tube.
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(-0.06, 0.26);
+    c.lineTo(-0.02, 0.14);
+    c.stroke();
+    // The order going out: rings rolling from the bell.
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.036;
+    for (const r of [0.16, 0.26] as const) {
+      c.beginPath();
+      c.arc(0.26, -0.16, r, -1.9, -0.3);
+      c.stroke();
+    }
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.026;
+    c.beginPath();
+    c.arc(0.26, -0.16, 0.36, -1.7, -0.5);
+    c.stroke();
+  },
+
   // ------------------- THE EARTH STANDS UP — the golem arts' plates.
   // Hillstone Throw — the torn-out boulder mid-flight, dust behind it.
   hillstone_throw: (st) => (c) => {

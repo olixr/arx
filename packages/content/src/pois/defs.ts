@@ -11,6 +11,7 @@ import gnollSquat from './defs/gnoll_squat.json';
 import skralShoal from './defs/skral_shoal.json';
 import skralTidehold from './defs/skral_tidehold.json';
 import ogreCamp from './defs/ogre_camp.json';
+import hobgoblinWarcamp from './defs/hobgoblin_warcamp.json';
 import goblinWarcamp from './defs/goblin_warcamp.json';
 import koboldDigs from './defs/kobold_digs.json';
 import lastLamp from './defs/last_lamp.json';
@@ -79,6 +80,10 @@ const SOURCES: readonly unknown[] = [
   // probe; a landlocked region keeps goblin holds instead).
   skralTidehold,
   ogreCamp,
+  // THE LEGION (docs/hobgoblin-plan.md): the hobgoblins' drilled
+  // war-camps — square palisades where the goblin sprawls, sentries
+  // that patrol, and a warlord seat the deep stages crown.
+  hobgoblinWarcamp,
   goblinWarcamp,
   koboldDigs,
   lastLamp,

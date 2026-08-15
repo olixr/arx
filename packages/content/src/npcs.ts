@@ -1039,6 +1039,144 @@ const defs: NpcDef[] = [
     // the breath voice's charge law, and the fight's one clean read.
     kit: [{ ability: 'shoal_call', cooldownTicks: 200, windupTicks: 12, maxRange: 4.5, rally: true }],
   },
+  // ------------------------- THE LEGION (docs/hobgoblin-plan.md): the
+  // hobgoblins — the goblins' master race, and nothing like them.
+  // Conquerors nurtured in iron and flame: they hold formation, wear
+  // issued armor, wield real steel, and NEVER rout (pack without
+  // craven — the deliberate inversion of the goblin's whole heart).
+  // The expedition line's drilled answer to the greenskin rabble.
+  {
+    id: 'hobgoblin',
+    name: 'Hobgoblin legionary',
+    level: 16,
+    maxHp: 72,
+    damage: 5,
+    attackRange: 1.1,
+    attackCooldownTicks: 46,
+    aggroRange: 6,
+    // The drilled watch: a soldier checks its flanks on a count.
+    sightArc: 220,
+    leashRange: 26,
+    speed: 3.6,
+    xpReward: 200,
+    loot: ['hobgoblin', 'hobgoblin_arms', 'heirlooms'],
+    respawnSec: 45,
+    color: '#b0523a',
+    radius: 0.32,
+    hitHeight: 2.3,
+    // The line holds together — strike one and the column answers.
+    // NO craven flag, ever: a goblin bolts for help, a legionary
+    // stands where it was posted. The discipline IS the species.
+    pack: 'hobgoblin',
+  },
+  {
+    id: 'hobgoblin_archer',
+    name: 'Hobgoblin longbowman',
+    level: 17,
+    maxHp: 58,
+    damage: 5,
+    attackRange: 6.5,
+    attackCooldownTicks: 50,
+    aggroRange: 7,
+    sightArc: 220,
+    leashRange: 26,
+    speed: 3.5,
+    xpReward: 200,
+    loot: ['hobgoblin', 'hobgoblin_arms', 'heirlooms'],
+    respawnSec: 50,
+    color: '#c07038',
+    radius: 0.3,
+    hitHeight: 2.3,
+    // Volley discipline: loosed flat and fast, on the count.
+    ranged: { range: 6.5, projectileSpeed: 12 },
+    pack: 'hobgoblin',
+  },
+  {
+    // The legion's flame-speaker: iron and fire as ARTILLERY — the
+    // brand chases you out of cover, the forge-ring is staked where
+    // you are going (the firecaller's lesson, graduated).
+    id: 'hobgoblin_warcaster',
+    name: 'Hobgoblin warcaster',
+    level: 19,
+    maxHp: 84,
+    damage: 3,
+    attackRange: 7,
+    attackCooldownTicks: 52,
+    aggroRange: 7,
+    sightArc: 220,
+    leashRange: 28,
+    speed: 3.4,
+    xpReward: 270,
+    loot: ['hobgoblin', 'heirlooms'],
+    respawnSec: 60,
+    color: '#8d6a58',
+    radius: 0.3,
+    hitHeight: 2.3,
+    ranged: { range: 7, projectileSpeed: 10 },
+    // Forge-raised: the fire is an old friend; deep cold cracks it.
+    resist: ['burn'],
+    weak: ['chill'],
+    pack: 'hobgoblin',
+    standoff: 5.5,
+    kit: [
+      { ability: 'iron_brand', cooldownTicks: 110, windupTicks: 12, minRange: 1.5, maxRange: 8 },
+      { ability: 'forge_ring', cooldownTicks: 220, windupTicks: 14, maxRange: 7, aim: 'lead' },
+    ],
+  },
+  {
+    // THE WARLORD: the one hobgoblin the legion wheels around — the
+    // war-camp's named heart. The fight is the FORMATION: the pack
+    // tag brings the column, and the horn is an order the drilled
+    // ranks obey at a run.
+    id: 'hobgoblin_champion',
+    name: 'Hobgoblin warlord',
+    level: 22,
+    maxHp: 165,
+    damage: 6,
+    attackRange: 1.2,
+    attackCooldownTicks: 44,
+    aggroRange: 7,
+    sightArc: 260,
+    leashRange: 30,
+    speed: 3.8,
+    xpReward: 450,
+    loot: ['hobgoblin_champion', 'hobgoblin_arms', 'heirlooms'],
+    respawnSec: 90,
+    color: '#9e3f30',
+    radius: 0.4,
+    hitHeight: 2.4,
+    // Officer's steel: the cut is placed, and it keeps arguing.
+    attackStatus: { status: 'bleed', power: 1, durationTicks: 60 },
+    pack: 'hobgoblin',
+    // The horn is WOUND: the warlord plants, draws breath, and
+    // sounds it — the breath voice's charge law, and the fight's
+    // one clean read before the whole camp arrives.
+    kit: [{ ability: 'warlord_horn', cooldownTicks: 210, windupTicks: 14, maxRange: 4.5, rally: true }],
+  },
+  {
+    // THE JUGGERNAUT: the giant of the breed — bred for the breach,
+    // walked on the giant gait, and armored past argument. The helm
+    // slit is the sneak window a walking wall owes you.
+    id: 'hobgoblin_juggernaut',
+    name: 'Hobgoblin juggernaut',
+    level: 24,
+    maxHp: 205,
+    damage: 7,
+    attackRange: 1.6,
+    attackCooldownTicks: 54,
+    aggroRange: 6,
+    sightArc: 160,
+    leashRange: 28,
+    speed: 3.1,
+    xpReward: 550,
+    loot: ['hobgoblin', 'hobgoblin_arms', 'heirlooms'],
+    respawnSec: 80,
+    color: '#84462c',
+    radius: 0.45,
+    hitHeight: 2.8,
+    pack: 'hobgoblin',
+    kit: [{ ability: 'ground_slam', cooldownTicks: 180, maxRange: 4.5, weight: 2 }],
+  },
   {
     id: 'slime',
     name: 'Slime',

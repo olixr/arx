@@ -599,6 +599,80 @@ const ogreSteading = sketch(
   ogreMarks,
 );
 
+const hobMarks: Record<string, Marker> = {
+  // A posted soldier holds a TIGHT radius — the legion stands where
+  // it was told to stand (the goblin wanders; the drill does not).
+  '1': { npc: 'hobgoblin', radius: 1.5, under: Tile.Dirt },
+  '2': { npc: 'hobgoblin', radius: 1.5, under: Tile.Dirt },
+  '3': { npc: 'hobgoblin_archer', radius: 2, under: Tile.Dirt },
+  '4': { npc: 'hobgoblin_warcaster', radius: 2, under: Tile.Dirt },
+};
+
+/**
+ * THE LEGION (docs/hobgoblin-plan.md): the hobgoblin grounds. The
+ * exact inversion of every goblin sprawl on the shelf — a legion camp
+ * is SQUARE: the palisade meets at true corners, the gate faces the
+ * road, the tents stand in file, and the racks hold a straight line.
+ * Order read at world zoom IS the species read.
+ */
+const hobMuster = sketch(
+  'poi_hob_muster',
+  'Legion muster-yard',
+  [
+    '_______________',
+    '__|||||=|||||__',
+    '__|:::::::::|__',
+    '__|:m:m:m:>:|__',
+    '__|:::::::::|__',
+    '__|:1.(.2.]:|__',
+    '__|:::::::::|__',
+    '__|:{:@:-:X:|__',
+    '__|:3.".!.$:|__',
+    '__|||||||||||__',
+    '_______________',
+  ],
+  hobMarks,
+);
+
+/** The watch-post: a road detail's fortlet — one tent, one brazier,
+ *  one target, and two soldiers who saw you first. */
+const hobWatch = sketch(
+  'poi_hob_watch',
+  'Legion watch-post',
+  [
+    '___________',
+    '__|||=|||__',
+    '__|:::::|__',
+    '__|:^:>:|__',
+    '__|:1X]:|__',
+    '__|:&:2:|__',
+    '__|:(.!:|__',
+    '__|||||||__',
+    '___________',
+  ],
+  hobMarks,
+);
+
+/** The forge-camp: iron and flame in the field — the warcaster's
+ *  braziers, the racked issue, and the campaign chest under guard. */
+const hobForgecamp = sketch(
+  'poi_hob_forgecamp',
+  'Legion forge-camp',
+  [
+    '_______________',
+    '__|||||=|||||__',
+    '__|:::::::::|__',
+    '__|:K:&:K:>:|__',
+    '__|:1.:::.2:|__',
+    '__|:m:@:m:]:|__',
+    '__|:4.:::.3:|__',
+    '__|:$:[:X:!:|__',
+    '__|||||||||||__',
+    '_______________',
+  ],
+  hobMarks,
+);
+
 const ruinMarks: Record<string, Marker> = {
   '1': { npc: 'skeleton', radius: 2, under: Tile.StoneFloor },
   '2': { npc: 'skeleton_guard', radius: 2, under: Tile.StoneFloor },
@@ -2268,6 +2342,10 @@ export const POI_PREFABS: ReadonlyMap<string, PrefabDef> = new Map(
     ogreCamp,
     ogreMidden,
     ogreSteading,
+    // THE LEGION (the hobgoblin grounds — square where goblins sprawl):
+    hobMuster,
+    hobWatch,
+    hobForgecamp,
     // The tufted shadows (lynx of the deep wood):
     lairLedge,
     lairDeadfall,

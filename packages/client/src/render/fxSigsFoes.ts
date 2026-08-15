@@ -1768,6 +1768,98 @@ const shoal_call: AbilitySig = {
   },
 };
 
+// ------------------------------------------------------- warlord_horn
+// ground_aoe (self-staked, r 3.2) — the hobgoblin warlord's order.
+
+/**
+ * WARLORD_HORN — "it is not a request."
+ * The deliberate INVERSION of the shoal's croak: where the skral's
+ * word gurgles out in ragged stuttered pairs and the rim answers in a
+ * ragged salute, the horn holds ONE long note — evenly-timed brass
+ * rings, compass-true (a drilled note has no wobble) — and THE RIM
+ * ANSWERS ON THE COUNT: spear-tips stand up around the circle all
+ * together, evenly spaced, and ground in unison. A legion never
+ * straggles, and its weather doesn't either. When the note lands the
+ * ground takes the STAMP — one boot-fall of dust from a thousand
+ * remembered drills — and iron grains lie where the order rolled.
+ */
+const warlord_horn: AbilitySig = {
+  spawn(c) {
+    // The breath drawn: dust shivers at the warlord's planted feet.
+    const m = asMatter(c);
+    dust.deployments.skirt!(m, c.wx, c.wy, { radius: c.radius * 0.4, scale: 0.4 });
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    ctx.save();
+    // THE ONE NOTE: rings leave on a steady count — no pairs, no
+    // wobble. The evenness IS the voice: this sound was drilled.
+    for (const start of [0, 0.18, 0.36, 0.54] as const) {
+      const u = cl((t - start) / 0.4);
+      if (u <= 0 || u >= 1) continue;
+      const rr = rPx * (0.14 + u * 0.86);
+      ctx.globalAlpha = 0.65 * (1 - u);
+      ctx.strokeStyle = u < 0.2 ? '#ffffff' : st.mid;
+      ctx.lineWidth = Math.max(1.5, sc * (0.045 - u * 0.018));
+      ctx.beginPath();
+      ctx.ellipse(px, py, rr, rr * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    // THE RIM ANSWERS ON THE COUNT: twelve spear-tips rise together,
+    // evenly spaced — leaf-head over a straight shaft stub — hold one
+    // beat, and ground again in unison.
+    const ans = cl((t - 0.42) / 0.52);
+    if (ans > 0) {
+      const rand = srand(c.seed ^ 0x1e610);
+      const rise = cl(ans / 0.22);
+      const fold = cl((ans - 0.7) / 0.28);
+      for (let k = 0; k < 12; k++) {
+        // Even spacing, one shared clock: the drill, not the shoal.
+        const a = (k / 12) * Math.PI * 2 + 0.13;
+        if (rise <= 0 || fold >= 1) continue;
+        const sh = sc * (0.16 + rand() * 0.02) * rise * (1 - fold);
+        const bx = px + Math.cos(a) * rPx * 0.97;
+        const by = py + Math.sin(a) * rPx * 0.97 * squash;
+        ctx.globalAlpha = 0.9 * (1 - fold);
+        // The shaft: one straight stroke — nothing in a legion rakes.
+        ctx.strokeStyle = st.deep;
+        ctx.lineWidth = Math.max(1, sc * 0.02);
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx, by - sh);
+        ctx.stroke();
+        // The leaf head, bright edge up.
+        const hw2 = sc * 0.026;
+        ctx.fillStyle = st.spark;
+        ctx.beginPath();
+        ctx.moveTo(bx - hw2, by - sh);
+        ctx.lineTo(bx, by - sh - hw2 * 2.4);
+        ctx.lineTo(bx + hw2, by - sh);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+    // THE STAMP: the note lands as one boot-fall — dust claps out
+    // and iron grains lie in a broken ring where the order rolled.
+    if (crossed(c, 600, 0.42)) {
+      const m = asMatter(c);
+      dust.deployments.billow!(m, c.wx, c.wy, { radius: c.radius * 0.5, scale: 0.5 });
+      const rand = srand(c.seed ^ 0x1e6);
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * Math.PI * 2 + rand() * 0.3;
+        const rr = c.radius * (0.55 + rand() * 0.4);
+        lay(c, c.wx + Math.cos(a) * rr, c.wy + Math.sin(a) * rr * c.squash, '#b8a06a', {
+          life: 5 + rand() * 2,
+          size: 0.045,
+          fade: '#6a5a34',
+          fadeAt: 0.5,
+        });
+      }
+    }
+  },
+};
+
 export const FOES_SIGS: Record<string, AbilitySig> = {
   cinder_ring,
   miasma_ring,
@@ -1781,4 +1873,5 @@ export const FOES_SIGS: Record<string, AbilitySig> = {
   shrilling_dart,
   breakwater_grip,
   shoal_call,
+  warlord_horn,
 };

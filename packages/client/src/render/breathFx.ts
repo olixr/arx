@@ -420,6 +420,22 @@ export const BREATH_DIALECTS: Record<string, BreathDialect> = {
     charge: (c, x, y, o) =>
       water.deployments.churn!(c, x, y, { radius: o.radius * 0.4, scale: 0.5, dur: 0.7 }),
   },
+  // THE LEGION — three winds, all drilled. Iron Brand: molten gobbets
+  // gather as the bar is drawn out of the empty air.
+  iron_brand: {
+    charge: (c, x, y) => fire.deployments.gobbets!(c, x, y, { scale: 0.4, dur: 0.7 }),
+  },
+  // Forge-Ring: the furnace pools where the circle is being staked.
+  forge_ring: {
+    charge: (c, x, y, o) =>
+      fire.deployments.pool!(c, x, y, { radius: o.radius * 0.45, scale: 0.42, dur: 0.8 }),
+  },
+  // Warlord's Horn: the long breath drawn — the ground remembers a
+  // thousand drills and shivers before the note lands.
+  warlord_horn: {
+    charge: (c, x, y, o) =>
+      dust.deployments.skirt!(c, x, y, { radius: o.radius * 0.5, scale: 0.45, dur: 0.8 }),
+  },
   // THE BROTHERHOOD (the wolf crown) — three breaths, one sentence.
   // Hamstring Bite: he drops LOW — a skirt of grit shivers out under
   // the crouch before the cut.

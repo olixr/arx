@@ -1379,6 +1379,46 @@ const defs: LootTableDef[] = [
       ...setDrops('tidecaller', 0.02, { colorway: 'darkwater' }),
     ],
   },
+
+  // ------------------------- THE LEGION (docs/hobgoblin-plan.md): the
+  // hobgoblins pay like the army they are — issued kit on the arms
+  // rack (the loot-story law: the sword and shield you fought are the
+  // sword and shield you loot), the queue-ring off every soldier's
+  // braid, and the warlord's crest for whoever ends the campaign.
+  {
+    id: 'hobgoblin',
+    desc: 'A soldier\'s pockets: pay in coin, the queue-ring off the braid, and the quartermaster\'s ledger settled the hard way.',
+    entries: [
+      { item: 'bones' },
+      { item: 'legion_ring', chance: 0.1 },
+      { item: 'coins', qty: [6, 20], chance: 0.55 },
+      { item: 'crimson_essence', chance: 0.08 },
+      { item: 'brass_key', chance: 0.03 },
+      { item: 'dungeon_key', chance: 0.015 },
+    ],
+  },
+  rack('hobgoblin_arms', 'The legion\'s issue: line steel, drilled boards, and the flame-speaker\'s staff.', 0.045, [
+    { item: 'iron_sword', chance: 0.5 },
+    { item: 'oak_kiteshield', chance: 0.3 },
+    { item: 'shortbow', chance: 0.25 },
+    { item: 'iron_greatblade', chance: 0.12 },
+    { item: 'steel_sword', chance: 0.1 },
+    { item: 'ember_staff', chance: 0.08 },
+  ]),
+  {
+    id: 'hobgoblin_champion',
+    desc: 'The warlord pays out the whole war chest: the crest off the galea, the rings of the fallen, and the campaign\'s take.',
+    rarityBonus: 3,
+    entries: [
+      { item: 'bones' },
+      { item: 'warlord_crest', chance: 0.9 },
+      { item: 'legion_ring', qty: [1, 2], chance: 0.5 },
+      { item: 'coins', qty: [30, 85], chance: 0.7 },
+      { item: 'crimson_essence', qty: [1, 3], chance: 0.35 },
+      { item: 'brass_key', chance: 0.08 },
+      { item: 'dungeon_key', chance: 0.04 },
+    ],
+  },
   {
     id: 'slime',
     desc: 'What the ooze dissolved, and what it could not.',

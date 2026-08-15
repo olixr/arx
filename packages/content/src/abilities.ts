@@ -3936,6 +3936,59 @@ const defs: AbilityDef[] = [
     status: { status: 'chill', power: 1, durationTicks: 40 },
   },
 
+  // ------------------------- THE LEGION (docs/hobgoblin-plan.md): the
+  // hobgoblins' three words, all spoken in iron and flame. The
+  // warcaster speaks two — the brand thrown flat and hard, and the
+  // forge-ring staked where your feet are headed — and the warlord
+  // speaks the third: the horn, which is not a spell at all, just an
+  // ORDER, and the legion is drilled to obey it.
+  {
+    id: 'iron_brand',
+    name: 'Iron Brand',
+    desc: 'The warcaster draws a bar of white-hot iron out of the empty air and hurls it flat. What it touches, it marks.',
+    color: '#e08a3c',
+    code: 'Ib',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'projectile_fan',
+    // Die 4 at a 12-tick wind: the telegraph premium's 1.5x lane over
+    // the warcaster's basic 3 — the burn is the real bill.
+    damage: 4,
+    projectiles: 1,
+    projectileSpeed: 12,
+    range: 8,
+    // Forge-iron flies as the ember brand — heat with a shape to it.
+    element: 'ember',
+    status: { status: 'burn', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'forge_ring',
+    name: 'Forge-Ring',
+    desc: 'The warcaster stakes a smith\'s circle on the ground and the earth inside it remembers the furnace.',
+    color: '#c25c2e',
+    code: 'Fr',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'ground_aoe',
+    damage: 5,
+    range: 0,
+    radius: 2.2,
+    fuseTicks: 22,
+    element: 'ember',
+    status: { status: 'burn', power: 1, durationTicks: 50 },
+  },
+  {
+    id: 'warlord_horn',
+    name: 'Warlord\'s Horn',
+    desc: 'The warlord sounds the horn once. It is not a request, and the legion does not treat it as one.',
+    color: '#b08a3e',
+    code: 'Wh',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'ground_aoe',
+    damage: 4,
+    range: 0,
+    radius: 3.2,
+    fuseTicks: 16,
+  },
+
   // -------------------------------- THE EARTH STANDS UP (golem arts,
   // docs/golems-plan.md): four constructs, and every big die bought at
   // the telegraph premium off a slow heavy basic. A golem's art is

@@ -20,6 +20,7 @@ import {
 } from '../render/rig.js';
 import { ogreLook } from '../render/ogre.js';
 import { skralLook } from '../render/skral.js';
+import { hobgoblinLook } from '../render/hobgoblin.js';
 import { TailSim, drawTail } from '../render/tail.js';
 
 /**
@@ -148,6 +149,12 @@ const MOB_EQUIP: Record<string, MobEquip> = {
     body: 'leather_body',
     legs: 'leather_chaps',
   },
+  // The legion's issue — renderer HOBGOBLIN_EQUIP is the truth.
+  hobgoblin: { weapon: 'iron_sword', offhand: 'oak_kiteshield' },
+  hobgoblin_archer: { weapon: 'shortbow', offhand: 'hunters_quiver' },
+  hobgoblin_warcaster: { weapon: 'ember_staff' },
+  hobgoblin_champion: { weapon: 'steel_sword', offhand: 'oak_kiteshield' },
+  hobgoblin_juggernaut: { weapon: 'iron_greatblade' },
 };
 const MOB_SIZE: Record<string, number> = {
   goblin: 0.72,
@@ -177,6 +184,13 @@ const MOB_SIZE: Record<string, number> = {
   skral_harpooner: 0.84,
   skral_tidecaller: 0.9,
   skral_champion: 1.25,
+  // THE LEGION DIALECT: man-height soldiers, the warlord over any
+  // brigand, the juggernaut on the giant gait.
+  hobgoblin: 1.02,
+  hobgoblin_archer: 1.0,
+  hobgoblin_warcaster: 1.04,
+  hobgoblin_champion: 1.28,
+  hobgoblin_juggernaut: 1.62,
 };
 
 /** Road tans for the human outlaws (the renderer's BRIGAND_SKIN twin). */
@@ -195,6 +209,7 @@ function isHumanoidMob(defId: string): boolean {
     defId.startsWith('gnoll') ||
     defId.startsWith('ogre') ||
     defId.startsWith('skral') ||
+    defId.startsWith('hobgoblin') ||
     defId === 'troll'
   );
 }
@@ -218,6 +233,9 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
   // The skral card pins the tide-green water; the crest paints THE
   // ONE REST through the rig's stateless earRestChain path.
   const skr = def.id.startsWith('skral') ? skralLook(def.id, 0) : undefined;
+  // The hobgoblin card pins the war-brick skin; blades and queue
+  // paint THE ONE REST the same stateless way.
+  const hbg = def.id.startsWith('hobgoblin') ? hobgoblinLook(def.id, 0) : undefined;
   if (gno) {
     // The tail is a simulation in the world (tail.ts); the poster runs
     // it to rest at a pinned moment and paints the settled brush
@@ -261,7 +279,7 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
     // A pinned poster is deliberately STATELESS: no depthMemory, so
     // the rig runs its single-frame fallbacks — fine for a still.
     kneeMemory: [0, 0],
-    bodyColor: gob?.hide ?? ogr?.hide ?? skr?.hide ?? def.color,
+    bodyColor: gob?.hide ?? ogr?.hide ?? skr?.hide ?? hbg?.hide ?? def.color,
     hurt: false,
     isOwn: false,
     weaponItem: eq.weapon,
@@ -273,7 +291,7 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
     skinColor:
       def.id === 'troll'
         ? '#6a7d5c'
-        : (gob?.hide ?? kob?.hide ?? gno?.fur ?? ogr?.hide ?? skr?.hide ?? MOB_SKIN[def.id]),
+        : (gob?.hide ?? kob?.hide ?? gno?.fur ?? ogr?.hide ?? skr?.hide ?? hbg?.hide ?? MOB_SKIN[def.id]),
     size: sizeK,
     skeletal: skel,
     kobold: kob,
@@ -281,6 +299,7 @@ function paintHumanoidMob(ctx: CanvasRenderingContext2D, px: number, def: NpcDef
     goblin: gob,
     ogre: ogr,
     skral: skr,
+    hobgoblin: hbg,
     gatherPhase: 0,
     craftKind: null,
   };
