@@ -1116,6 +1116,12 @@ export function genStronghold(seed: number, spec: StrongholdSpec): StrongholdPro
     { match: [Tile.TideTotem, Tile.LurePole], post: 'vigil' },
     { match: [Tile.RoeNest, Tile.Dugout], post: 'keeper' },
     { match: [Tile.FishRack, Tile.CatchBasket], post: 'cook' },
+    // The craftsmen's shelf: the shelter sleeps its tenant by night
+    // (the tent's law in reed), the smoker is a hearth, and the
+    // benches, pools, and pans are work someone KEEPS.
+    { match: [Tile.ReedShelter], post: 'rest', hours: { from: 19, to: 7 } },
+    { match: [Tile.SmokeTripod], post: 'cook' },
+    { match: [Tile.MendingBench, Tile.ShellBench, Tile.KeepPool, Tile.SaltPan], post: 'keeper' },
   ];
 
   // Gate captains and wardens (THE CAPTAIN LAW), picket watches on

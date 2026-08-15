@@ -274,3 +274,85 @@ walk not re-shot this session (shipped in the skral epic; the roe
 habitat pull is content-tested); the weir's yard reads sparse at
 0.3 zoom between wards — the breathing law's intent, revisit only if
 flagged.
+
+# THE CRAFTSMEN OF THE BANKS — the working shelf (ids 381-390)
+
+**SHIPPED 2026-08-15, one session, three audit passes + one re-shot
+on lane 10.** Ten pieces that turn a camp into a VILLAGE — the
+dwelling, the works, the stores, and the small culture. Same voice,
+same laws as 369-380. Next free tile id: **391**.
+
+## The ten
+
+| id | Tile | read | hits |
+|----|------|------|------|
+| 381 | ReedShelter | the dwelling: arched reed coat, dark mouth | 3 |
+| 382 | SmokeTripod | the smoker: catch curing in a standing haze | 1 |
+| 383 | MendingBench | net spread mid-repair, bone needle parked | 2 |
+| 384 | WeirPanels | woven hurdles at a funnel gap — the namesake | 2 |
+| 385 | KelpLine | the winter larder drying on a sagging cord | 1 |
+| 386 | SaltPan | brine to crust — the bank's money | 1 |
+| 387 | ShellBench | drilled fans, a string half-strung | 2 |
+| 388 | WithyStore | fat BOUND sheaves — every creel starts here | 1 |
+| 389 | KeepPool | the live larder: dark water, circling backs | 1 |
+| 390 | TideChimes | shell strings under a driftwood arch | 1 |
+
+Clocked <4Hz: smoker (wisps + standing haze + ember breathe), kelp
+line (frond sway), keep-pool (orbiting glints + one ripple), chimes
+(pendulum sway). The other six are STATIC_RING. **No light entries —
+the night hierarchy holds (one street light, one shrine).** The
+smoker's ember glow and the sea-glass drop are PAINTED lumen only.
+
+## Audit verdicts (pass 1 → 3, the laws they minted)
+
+- **A HOUSE MUST HOLD ITS TENANT**: the pass-one shelter stood
+  waist-high to the ruler — a dwelling must read enterable by the
+  body that owns it (grown ~35%, door to 0.84 tiles).
+- **THE SMOKE IS THE READ**: wisps alone vanish in a still frame — a
+  smoker needs a standing haze column the cache can hold.
+- **A NET DRAPES, NEVER BRISTLES**: bare mesh strokes over a slab
+  read as teeth; the net is a soft CLOTH fill first, mesh clipped
+  INSIDE it (the hung-net painter's own law).
+- **A HURDLE IS WOVEN, NOT PLANKED**: straight horizontal rows read
+  as crate boards; the weave needs vertical ribs threading sagging
+  horizontals, and stakes standing proud of the panel.
+- **A STORE IS KEPT, NOT DUMPED**: thin leaning sheaves read as a
+  collapsed pile; fat waisted bundles with bold cord BANDS read as
+  wealth. The binding is the store.
+- **THE PAN IS A WORKS, NOT A SAUCER** and **THE CHIMES MUST READ
+  PALE** (grown; shells brightened + dark under-edges so they read
+  on sky and grass alike); the keep-pool's curb took a dark
+  under-lip so the rim holds its water; the kelp line spread its
+  crop (bunched fronds read as a cage — a line must read as a line).
+
+## Wiring
+
+All four tiles.ts blocks + tiles.test rows; 10 painters before `case
+Tile.Table` (SKR_REED/_LIT/_DARK + SKR_POOL + SKR_SALT +
+SKR_SHELL_PEARL joined the palette); ring registries (10 cached, 6
+static); 10 debris kits (thatch SIGHS, the ember bed EXHALES with two
+dying sparks, brine sheets dark, the keep's tenants ESCAPE, the
+sea-glass bead winks out last) — **'chimes' SmashKind was TAKEN (the
+elven wind chimes): TideChimes breaks as 'shellchimes'**; SMASH_TONES
+material groups; terrain underlay range widened to Tile.TideChimes;
+Studio Shore-camp shelf grew to 22. skralLegend grew ten marks (A h b
+# k s e w O x — locals shadow globals per sketch); all five camps,
+the tidehold court, and five ward_sk_* pieces re-dressed (the wreck
+yard's accidental BeastNest ';' became an intentional shelter 'A');
+influence pockets now deal NetFrame/KelpLine/WithyStore. POST SIGNS
+both tables: ReedShelter = the tent's law in reed (rest 19-7),
+SmokeTripod cooks, Mending/Shell benches + KeepPool + SaltPan are
+KEPT. Prefabs + both stronghold layouts reseeded.
+
+Proven live (lane 10, arx_skralland): ten stamped field close-ups
+day/night across three passes; smash lane sword-in-hand (shelter's
+3-hit thatch sigh, keep-pool escape); the re-dressed tidehold walked
+day + night — the court shelter beside King Gullet's pool, the camp
+fire and the lure's teal both keeping the night. Suites 217/506/579 +
+89 world + clean tsc.
+
+Debts (deliberate): kelp line's clean solo portrait still owed (a
+berry bush photobombed all three passes; the piece reads honest in
+context); no main.ts boom rows (thatch and wicker keep no drum); the
+smoker's hanging fish read small past 1.5 zoom — the haze carries the
+read, revisit only if flagged.

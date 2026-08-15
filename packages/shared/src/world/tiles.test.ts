@@ -384,6 +384,18 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.LurePole, 'lure', 2],
     [Tile.CatchBasket, 'catch', 1],
     [Tile.WhaleRibs, 'greatribs', 4],
+    // THE CRAFTSMEN OF THE BANKS: woven walls and worked joinery
+    // hold a blow or three; lines, heaps, and crusts pop in one.
+    [Tile.ReedShelter, 'shelter', 3],
+    [Tile.SmokeTripod, 'smoker', 1],
+    [Tile.MendingBench, 'mendbench', 2],
+    [Tile.WeirPanels, 'weir', 2],
+    [Tile.KelpLine, 'kelpline', 1],
+    [Tile.SaltPan, 'saltpan', 1],
+    [Tile.ShellBench, 'shellbench', 2],
+    [Tile.WithyStore, 'withies', 1],
+    [Tile.KeepPool, 'keeppool', 1],
+    [Tile.TideChimes, 'shellchimes', 1],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {

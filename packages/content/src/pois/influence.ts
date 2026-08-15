@@ -42,7 +42,7 @@ const VOCABS: ReadonlyArray<[RegExp, Vocab]> = [
   // THE BANKS GET THEIR GOODS: the shoal's verge smells of low tide,
   // not woodsmoke — shell heaps, drying racks, and sprung traps where
   // the war camp would drop bones and hides.
-  [/^poi_(skral)/, { litter: [Tile.ShellMidden, Tile.FishRack, Tile.FishTrap], pocket: [Tile.NetFrame, Tile.FishRack, Tile.ShellMidden], fire: Tile.Campfire }],
+  [/^poi_(skral)/, { litter: [Tile.ShellMidden, Tile.FishRack, Tile.FishTrap], pocket: [Tile.NetFrame, Tile.KelpLine, Tile.WithyStore], fire: Tile.Campfire }],
   // Ogre litter is FURNITURE-sized: whole middens, whole skulls, the
   // meat economy of a body that eats a cow a day. The fire is the
   // great bonfire — an ogre camp reads from a hilltop away.

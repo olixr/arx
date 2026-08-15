@@ -1044,6 +1044,13 @@ export function composePoi(
       { match: [Tile.Bench, Tile.Chair], kind: 'rest', seats: 1 },
       { match: [Tile.SkullTotem, Tile.Brazier, Tile.WarBrazier, Tile.StandingTorch], kind: 'vigil', seats: 1, hours: { from: 18, to: 6 } },
       { match: [Tile.PrisonCage, Tile.BeastNest], kind: 'keeper', seats: 1 },
+      // THE CRAFTSMEN OF THE BANKS: the working village keeps its own
+      // hours — the shelter is the shoal's tent (sleepers by night),
+      // the smoker is tended like any hearth, and the mending, shell,
+      // and keep-pool work is KEPT through the day.
+      { match: [Tile.ReedShelter], kind: 'rest', seats: 1, hours: { from: 19, to: 7 } },
+      { match: [Tile.SmokeTripod], kind: 'cook', seats: 1 },
+      { match: [Tile.MendingBench, Tile.ShellBench, Tile.KeepPool, Tile.SaltPan], kind: 'keeper', seats: 1 },
     ];
     const claimed: Array<[number, number]> = [];
     for (const sign of POI_POST_SIGNS) {

@@ -581,6 +581,17 @@ const SKR_WICKER_LIT = '#c2ab6e';
 const SKR_BRINE = '#7fd8c8';
 const SKR_CORAL = '#c98a74';
 const SKR_CORAL_LIT = '#e8ab8a';
+// THE CRAFTSMEN OF THE BANKS: the working shelf's three additions —
+// cut reed (greener and drier than the surf-silvered driftwood, a
+// step warmer than kelp: thatch that grew in fresh margins), the
+// still dark water a keep-pool holds, and salt's near-white crust
+// (the one thing on the bank brighter than bone).
+const SKR_REED = '#8a9a5f';
+const SKR_REED_LIT = '#b5bd7e';
+const SKR_REED_DARK = '#5f6b40';
+const SKR_POOL = '#31454e';
+const SKR_SALT = '#e8ecec';
+const SKR_SHELL_PEARL = '#d8cfd8';
 // The water-cluster fin accents (render/skral.ts family banners):
 // a camp flies its shoal's colors — the hash deals which. The
 // fourth is the deepking's crimson sail, never bone-pale — a pale
@@ -16475,6 +16486,55 @@ export class Renderer {
       splinters: ['#9fe0d0', '#c5e6da', '#5a7a5c'],
       chips: ['#9fe0d0', '#c5e6da'],
     },
+    // THE CRAFTSMEN OF THE BANKS: the working shelf's materials.
+    // Thatch coughs dry reed-gold; the driftwood benches stay
+    // silver-gray; wicker gear keeps the reed-gold; brine-and-stone
+    // pieces spray gray over wet; salt and shellcraft burst PALE.
+    shelter: {
+      dust: ['#8a9a5f', '#5f6b40', '#b5bd7e'],
+      splinters: ['#b5bd7e', '#8a9a5f', '#8d8672'],
+      chips: ['#b5bd7e', '#8a9a5f'],
+    },
+    ...Object.fromEntries(
+      (['smoker', 'mendbench'] as const).map((k) => [
+        k,
+        {
+          dust: ['#8d8672', '#5e5949', '#b5ad94'],
+          splinters: ['#b5ad94', '#8d8672', '#5a7a5c'],
+          chips: ['#b5ad94', '#8d8672'],
+        },
+      ]),
+    ),
+    ...Object.fromEntries(
+      (['weir', 'withies', 'keeppool'] as const).map((k) => [
+        k,
+        {
+          dust: ['#a08b58', '#7c6c44', '#c2ab6e'],
+          splinters: ['#c2ab6e', '#a08b58', '#8a7748'],
+          chips: ['#c2ab6e', '#a08b58'],
+        },
+      ]),
+    ),
+    kelpline: {
+      dust: ['#3f5c48', '#31454e', '#5a7a5c'],
+      splinters: ['#5a7a5c', '#3f5c48', '#8d8672'],
+      chips: ['#5a7a5c', '#3f5c48'],
+    },
+    saltpan: {
+      dust: ['#e8ecec', '#9aa0a0', '#cfd8d8'],
+      splinters: ['#cfd8d8', '#aebfc2', '#7d868b'],
+      chips: ['#e8ecec', '#cfd8d8'],
+    },
+    ...Object.fromEntries(
+      (['shellbench', 'shellchimes'] as const).map((k) => [
+        k,
+        {
+          dust: ['#ded5c4', '#8a8070', '#e6e0d2'],
+          splinters: ['#e6e0d2', '#d8cfd8', '#cfc7ae'],
+          chips: ['#e6e0d2', '#d8cfd8'],
+        },
+      ]),
+    ),
   };
 
   crackProp(wx: number, wy: number, dir: number, kind: SmashKind): void {
@@ -17046,6 +17106,20 @@ export class Renderer {
     Tile.TideAltar,
     Tile.CatchBasket,
     Tile.WhaleRibs,
+    // THE CRAFTSMEN OF THE BANKS: the working shelf rides the cache
+    // too — smoke wisps, kelp sway, the keep-pool's circling backs,
+    // and the chime pendulums all sit under 4Hz; the six still
+    // pieces idle in STATIC_RING_TILES below.
+    Tile.ReedShelter,
+    Tile.SmokeTripod,
+    Tile.MendingBench,
+    Tile.WeirPanels,
+    Tile.KelpLine,
+    Tile.SaltPan,
+    Tile.ShellBench,
+    Tile.WithyStore,
+    Tile.KeepPool,
+    Tile.TideChimes,
   ]);
 
   /**
@@ -17156,6 +17230,14 @@ export class Renderer {
     Tile.RoeNest,
     Tile.CatchBasket,
     Tile.WhaleRibs,
+    // The craftsmen's still pieces — walls, benches, stores, and the
+    // salt's painted sheen keep no clock at all.
+    Tile.ReedShelter,
+    Tile.MendingBench,
+    Tile.WeirPanels,
+    Tile.SaltPan,
+    Tile.ShellBench,
+    Tile.WithyStore,
   ]);
 
   /**
@@ -30948,6 +31030,1416 @@ export class Renderer {
             ctx.fillStyle = 'rgba(52, 62, 60, 0.18)';
             ctx.beginPath();
             ctx.ellipse(p.x + s * 0.05, baseY + s * 0.04, s * 0.55, s * 0.055, 0, 0, Math.PI * 2);
+            ctx.fill();
+          },
+        };
+      }
+
+      // ================ THE CRAFTSMEN OF THE BANKS ================
+      // Ten pieces of working-village gear, ids 381-390
+      // (docs/skral-decor-plan.md, second shelf): the layer that says
+      // people LIVE here and work the water for a living. Same voice,
+      // same laws as the first twelve — found, never felled; kelp for
+      // rope, bone for iron; wet at the ground line.
+
+      case Tile.ReedShelter: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.26;
+        // The shoal's dwelling: a low arched coat of reed bundles
+        // bent over a withy frame, ridge across the screen, the dark
+        // door mouth facing the path. The 2.5D law holds: the roof
+        // shows its foreshortened top plane, lit along the ridge.
+        // PASS-TWO VERDICT — A HOUSE MUST HOLD ITS TENANT: the first
+        // build stood waist-high to the ruler; a dwelling the skral
+        // can enter needs the full body-and-a-bit of height.
+        const hw = s * 0.92;
+        const ridgeY = baseY - s * 1.38;
+        const flapUp = ((h >> 3) & 3) !== 0; // most doors stand open
+        const stringed = ((h >> 6) & 3) === 0; // some hang a shell string
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(1.0, 1.85, 0.55),
+          drawShadow: () => this.castContact(p.x, baseY, hw * 1.05, s * 0.11),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.08, s * 0.09, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Damp seep where the thatch sheds to the ground.
+            ctx.fillStyle = 'rgba(52, 62, 60, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY, hw * 0.95, s * 0.06, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The reed coat: one arched hull, darkest at the eaves.
+            ctx.fillStyle = SKR_REED_DARK;
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw, baseY);
+            ctx.quadraticCurveTo(p.x - hw * 1.04, ridgeY + s * 0.16, p.x - hw * 0.42, ridgeY);
+            ctx.lineTo(p.x + hw * 0.42, ridgeY);
+            ctx.quadraticCurveTo(p.x + hw * 1.04, ridgeY + s * 0.16, p.x + hw, baseY);
+            ctx.closePath();
+            ctx.fill();
+            // The south face in the body tone over it.
+            ctx.fillStyle = SKR_REED;
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.92, baseY);
+            ctx.quadraticCurveTo(p.x - hw * 0.95, ridgeY + s * 0.22, p.x - hw * 0.4, ridgeY + s * 0.07);
+            ctx.lineTo(p.x + hw * 0.4, ridgeY + s * 0.07);
+            ctx.quadraticCurveTo(p.x + hw * 0.95, ridgeY + s * 0.22, p.x + hw * 0.92, baseY);
+            ctx.closePath();
+            ctx.fill();
+            // THE TOP PLANE: the ridge cap reads as a lit roof strip —
+            // tall casework must show a foreshortened top (scale law).
+            ctx.fillStyle = SKR_REED_LIT;
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.42, ridgeY + s * 0.005);
+            ctx.quadraticCurveTo(p.x, ridgeY - s * 0.085, p.x + hw * 0.42, ridgeY + s * 0.005);
+            ctx.quadraticCurveTo(p.x, ridgeY + s * 0.075, p.x - hw * 0.42, ridgeY + s * 0.005);
+            ctx.fill();
+            // Reed-bundle seams: vertical strokes down the coat, the
+            // thatch's grain (never planks — nothing here was sawn).
+            ctx.strokeStyle = SKR_REED_DARK;
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            for (let k = 0; k < 7; k++) {
+              const rx = p.x + (k - 3) * hw * 0.27 + (((h >> k) & 3) - 1.5) * s * 0.01;
+              ctx.beginPath();
+              ctx.moveTo(rx, ridgeY + s * (0.1 + Math.abs(k - 3) * 0.016));
+              ctx.quadraticCurveTo(rx * 0.995 + p.x * 0.005, baseY - s * 0.34, rx + Math.sign(k - 3) * s * 0.05, baseY - s * 0.02);
+              ctx.stroke();
+            }
+            // Two kelp lashing bands holding the coat to the frame.
+            ctx.strokeStyle = SKR_KELP;
+            ctx.lineWidth = Math.max(1, s * 0.024);
+            for (const bandT of [0.36, 0.68]) {
+              const by = ridgeY + (baseY - ridgeY) * bandT;
+              const bw = hw * (0.5 + bandT * 0.45);
+              ctx.beginPath();
+              ctx.moveTo(p.x - bw, by);
+              ctx.quadraticCurveTo(p.x, by + s * 0.045, p.x + bw, by);
+              ctx.stroke();
+            }
+            ctx.strokeStyle = SKR_KELP_LIT;
+            ctx.lineWidth = Math.max(1, s * 0.012);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.5, ridgeY + (baseY - ridgeY) * 0.36 - s * 0.012);
+            ctx.quadraticCurveTo(p.x, ridgeY + (baseY - ridgeY) * 0.36 + s * 0.03, p.x + hw * 0.3, ridgeY + (baseY - ridgeY) * 0.36 - s * 0.006);
+            ctx.stroke();
+            // THE MOUTH: the door hollow keeps its far inner wall — a
+            // dark pit is a hole in the bank, never a void (kit law).
+            const doorW = hw * 0.32;
+            ctx.fillStyle = '#2e3330';
+            ctx.beginPath();
+            ctx.moveTo(p.x - doorW, baseY);
+            ctx.quadraticCurveTo(p.x - doorW * 1.05, baseY - s * 0.72, p.x, baseY - s * 0.84);
+            ctx.quadraticCurveTo(p.x + doorW * 1.05, baseY - s * 0.72, p.x + doorW, baseY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#454d44';
+            ctx.beginPath();
+            ctx.moveTo(p.x - doorW * 0.6, baseY);
+            ctx.quadraticCurveTo(p.x, baseY - s * 0.46, p.x + doorW * 0.6, baseY);
+            ctx.closePath();
+            ctx.fill();
+            // The kelp bedding just inside — somebody sleeps here.
+            ctx.fillStyle = SKR_KELP;
+            ctx.beginPath();
+            ctx.ellipse(p.x + doorW * 0.2, baseY - s * 0.05, doorW * 0.42, s * 0.045, 0, 0, Math.PI * 2);
+            ctx.fill();
+            if (flapUp) {
+              // The woven flap rolled up over the lintel.
+              ctx.fillStyle = SKR_WICKER;
+              ctx.beginPath();
+              ctx.ellipse(p.x, baseY - s * 0.82, doorW * 1.02, s * 0.06, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = SKR_WICKER_LIT;
+              ctx.beginPath();
+              ctx.ellipse(p.x - doorW * 0.3, baseY - s * 0.835, doorW * 0.5, s * 0.03, 0, 0, Math.PI * 2);
+              ctx.fill();
+            } else {
+              // Dropped: the weave hangs across most of the mouth.
+              ctx.fillStyle = SKR_WICKER;
+              ctx.beginPath();
+              ctx.moveTo(p.x - doorW * 0.9, baseY - s * 0.72);
+              ctx.lineTo(p.x + doorW * 0.9, baseY - s * 0.72);
+              ctx.lineTo(p.x + doorW * 0.75, baseY - s * 0.06);
+              ctx.lineTo(p.x - doorW * 0.75, baseY - s * 0.06);
+              ctx.closePath();
+              ctx.fill();
+              ctx.strokeStyle = SKR_WICKER_LIT;
+              ctx.lineWidth = Math.max(1, s * 0.012);
+              for (let k = 0; k < 3; k++) {
+                ctx.beginPath();
+                ctx.moveTo(p.x - doorW * 0.8, baseY - s * (0.58 - k * 0.18));
+                ctx.lineTo(p.x + doorW * 0.8, baseY - s * (0.6 - k * 0.18));
+                ctx.stroke();
+              }
+            }
+            if (stringed) {
+              // A short shell string over the door — the household
+              // charm (hung plumb: strings HANG, never splay).
+              ctx.strokeStyle = 'rgba(214, 220, 204, 0.55)';
+              ctx.lineWidth = Math.max(1, s * 0.01);
+              ctx.beginPath();
+              ctx.moveTo(p.x + doorW * 0.7, baseY - s * 0.86);
+              ctx.lineTo(p.x + doorW * 0.7, baseY - s * 0.6);
+              ctx.stroke();
+              ctx.fillStyle = DGN_BONE;
+              for (let k = 0; k < 3; k++) {
+                ctx.beginPath();
+                ctx.ellipse(p.x + doorW * 0.7, baseY - s * (0.8 - k * 0.08), s * 0.019, s * 0.016, 0, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            }
+            // One dry frond tucked into the ridge, and the drip beads.
+            ctx.strokeStyle = SKR_KELP_LIT;
+            ctx.lineWidth = Math.max(1, s * 0.018);
+            ctx.beginPath();
+            ctx.moveTo(p.x + hw * 0.3, ridgeY + s * 0.02);
+            ctx.quadraticCurveTo(p.x + hw * 0.42, ridgeY - s * 0.12, p.x + hw * 0.52, ridgeY - s * 0.04);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(178, 208, 216, 0.45)';
+            ctx.beginPath();
+            ctx.ellipse(p.x - hw * 0.55, baseY + s * 0.005, s * 0.013, s * 0.01, 0, 0, Math.PI * 2);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.SmokeTripod: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        // The smoker: three driftwood poles lashed at the crown over
+        // a banked ember bed, the day's catch hung INSIDE the cone
+        // where the smoke lives. The wisps ride offset clocks under
+        // 4Hz — the cached ring carries them.
+        // PASS-TWO VERDICT — THE SMOKE IS THE READ: the first build's
+        // wisps vanished in a still frame; a smoker that reads
+        // smokeless is just sticks. The column got body and the
+        // embers got their coal-light.
+        const crownY = baseY - s * 1.15;
+        const fishN = 2 + ((h >> 7) & 1);
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.6, 1.4, 0.45),
+          drawShadow: () => this.castContact(p.x, baseY, s * 0.42, s * 0.08),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, s * 0.44, s * 0.075, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The ember bed: a scraped ring of bank sand, coals
+            // banked low — painted warmth only, no light entry (the
+            // night hierarchy stays: one street light, one shrine).
+            ctx.fillStyle = '#6a6154';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - s * 0.02, s * 0.26, s * 0.09, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#38302c';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - s * 0.03, s * 0.18, s * 0.06, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The coal-light: a warm painted pool under the bed (no
+            // light entry — the hierarchy holds), then the embers.
+            ctx.fillStyle = 'rgba(216, 120, 70, 0.13)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - s * 0.03, s * 0.2, s * 0.08, 0, 0, Math.PI * 2);
+            ctx.fill();
+            const embers = [
+              [-0.08, -0.02, 0.75],
+              [0.06, -0.05, 0.95],
+              [0.0, -0.01, 0.6],
+              [-0.02, -0.055, 0.5],
+            ] as const;
+            for (const [ex, ey, a] of embers) {
+              const breathe = 0.75 + Math.sin(t * 1.6 + h % 7 + ex * 30) * 0.25;
+              ctx.fillStyle = `rgba(224, 132, 76, ${a * breathe})`;
+              ctx.beginPath();
+              ctx.ellipse(p.x + ex * s, baseY + ey * s, s * 0.03, s * 0.02, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.fillStyle = 'rgba(244, 180, 110, 0.85)';
+            ctx.beginPath();
+            ctx.ellipse(p.x + s * 0.055, baseY - s * 0.055, s * 0.013, s * 0.009, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The tripod: three worn poles, knobs up, kelp-lashed at
+            // the crown. The far leg first, thinner and dimmer.
+            ctx.strokeStyle = SKR_DRIFT_DARK;
+            ctx.lineWidth = Math.max(1.5, s * 0.038);
+            ctx.beginPath();
+            ctx.moveTo(p.x + s * 0.02, baseY - s * 0.16);
+            ctx.lineTo(p.x + s * 0.01, crownY);
+            ctx.stroke();
+            for (const m of [-1, 1] as const) {
+              ctx.strokeStyle = SKR_DRIFT;
+              ctx.lineWidth = Math.max(1.5, s * 0.048);
+              ctx.beginPath();
+              ctx.moveTo(p.x + m * s * 0.34, baseY);
+              ctx.quadraticCurveTo(p.x + m * s * 0.2, baseY - s * 0.5, p.x + m * s * 0.045, crownY);
+              ctx.stroke();
+              ctx.strokeStyle = SKR_DRIFT_LIT;
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              ctx.beginPath();
+              ctx.moveTo(p.x + m * s * 0.325, baseY - s * 0.08);
+              ctx.quadraticCurveTo(p.x + m * s * 0.19, baseY - s * 0.5, p.x + m * s * 0.04, crownY + s * 0.04);
+              ctx.stroke();
+              ctx.fillStyle = SKR_DRIFT_LIT;
+              ctx.beginPath();
+              ctx.ellipse(p.x + m * s * 0.05, crownY - s * 0.015, s * 0.026, s * 0.022, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            // The crown lash.
+            ctx.strokeStyle = SKR_KELP;
+            ctx.lineWidth = Math.max(1, s * 0.026);
+            for (let k = 0; k < 3; k++) {
+              ctx.beginPath();
+              ctx.moveTo(p.x - s * 0.06, crownY + s * (0.03 + k * 0.024));
+              ctx.lineTo(p.x + s * 0.06, crownY + s * (0.02 + k * 0.024));
+              ctx.stroke();
+            }
+            ctx.strokeStyle = SKR_KELP_LIT;
+            ctx.lineWidth = Math.max(1, s * 0.013);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.05, crownY + s * 0.032);
+            ctx.lineTo(p.x + s * 0.04, crownY + s * 0.025);
+            ctx.stroke();
+            // The catch in the smoke: small split fish on gut drops
+            // inside the cone — leaf bodies, forks, two-tone (a fish
+            // must read as a fish, at every size).
+            for (let k = 0; k < fishN; k++) {
+              const fx2 = p.x + (k - (fishN - 1) / 2) * s * 0.14;
+              const fy = crownY + s * (0.22 + ((h >> (k * 2)) & 1) * 0.05);
+              ctx.strokeStyle = 'rgba(214, 220, 204, 0.5)';
+              ctx.lineWidth = Math.max(1, s * 0.008);
+              ctx.beginPath();
+              ctx.moveTo(fx2, crownY + s * 0.06);
+              ctx.lineTo(fx2, fy);
+              ctx.stroke();
+              const fl = s * 0.2;
+              ctx.fillStyle = SKR_FISH_DARK;
+              ctx.beginPath();
+              ctx.moveTo(fx2, fy);
+              ctx.lineTo(fx2 - s * 0.03, fy - s * 0.035);
+              ctx.lineTo(fx2, fy - s * 0.01);
+              ctx.lineTo(fx2 + s * 0.03, fy - s * 0.035);
+              ctx.closePath();
+              ctx.fill();
+              // Smoked flanks cure darker than the drying rack's.
+              ctx.fillStyle = '#9aa39b';
+              ctx.beginPath();
+              ctx.moveTo(fx2, fy);
+              ctx.quadraticCurveTo(fx2 - s * 0.055, fy + fl * 0.45, fx2 - s * 0.016, fy + fl);
+              ctx.quadraticCurveTo(fx2, fy + fl * 1.1, fx2 + s * 0.016, fy + fl);
+              ctx.quadraticCurveTo(fx2 + s * 0.055, fy + fl * 0.45, fx2, fy);
+              ctx.fill();
+              ctx.fillStyle = '#c6cfc4';
+              ctx.beginPath();
+              ctx.moveTo(fx2 - s * 0.003, fy + s * 0.01);
+              ctx.quadraticCurveTo(fx2 - s * 0.045, fy + fl * 0.45, fx2 - s * 0.013, fy + fl * 0.96);
+              ctx.lineTo(fx2 - s * 0.002, fy + fl * 0.9);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // THE SMOKE: a standing haze column through the cone (the
+            // read a still frame keeps), and four wisps on offset
+            // clocks rising through it, fattening and thinning away.
+            ctx.fillStyle = 'rgba(182, 192, 194, 0.14)';
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.07, baseY - s * 0.18);
+            ctx.quadraticCurveTo(p.x - s * 0.13, crownY - s * 0.35, p.x - s * 0.04, crownY - s * 0.72);
+            ctx.lineTo(p.x + s * 0.1, crownY - s * 0.7);
+            ctx.quadraticCurveTo(p.x + s * 0.12, crownY - s * 0.2, p.x + s * 0.08, baseY - s * 0.18);
+            ctx.closePath();
+            ctx.fill();
+            for (let k = 0; k < 4; k++) {
+              const ph = (t * 0.24 + k * 0.27 + (h % 83) * 0.012) % 1;
+              const wx = p.x + Math.sin(ph * 4.6 + k * 2.1) * s * (0.04 + ph * 0.09);
+              const wy = baseY - s * 0.2 - ph * s * 1.55;
+              ctx.fillStyle = `rgba(186, 196, 198, ${(1 - ph) * 0.3})`;
+              ctx.beginPath();
+              ctx.ellipse(wx, wy, s * (0.06 + ph * 0.12), s * (0.045 + ph * 0.08), 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          },
+        };
+      }
+
+      case Tile.MendingBench: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        // The net-mender's seat: a driftwood slab on two stone
+        // footings, the work spread mid-repair — a torn gap half
+        // re-laced in paler cord, the bone needle parked upright.
+        // Nets are wealth; somebody sits here every evening.
+        const hw = s * 0.52;
+        const topY = baseY - s * 0.38;
+        const m = ((h >> 4) & 1) === 0 ? 1 : -1; // which side spills
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.72, 0.75, 0.45),
+          drawShadow: () => this.castContact(p.x, baseY, hw * 1.1, s * 0.08),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.12, s * 0.07, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Stone footings — wave-rounded, never quarried.
+            ctx.fillStyle = '#6a747a';
+            for (const ex of [-hw * 0.72, hw * 0.72]) {
+              ctx.beginPath();
+              facetBlob(ctx, p.x + ex, baseY - s * 0.12, s * 0.09, h ^ Math.round(ex), 6, 0.72);
+              ctx.fill();
+            }
+            ctx.fillStyle = '#7d868b';
+            ctx.beginPath();
+            facetBlob(ctx, p.x - hw * 0.72, baseY - s * 0.16, s * 0.055, h ^ 91, 5, 0.7);
+            ctx.fill();
+            // The slab: one thick worn plank of surf-wood, its top
+            // plane lit (foreshortened — the 2.5D read).
+            ctx.fillStyle = SKR_DRIFT_DARK;
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw - s * 0.06, topY + s * 0.1);
+            ctx.lineTo(p.x + hw + s * 0.06, topY + s * 0.1);
+            ctx.lineTo(p.x + hw + s * 0.04, topY + s * 0.2);
+            ctx.lineTo(p.x - hw - s * 0.04, topY + s * 0.2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = SKR_DRIFT;
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw - s * 0.07, topY);
+            ctx.lineTo(p.x + hw + s * 0.07, topY);
+            ctx.lineTo(p.x + hw + s * 0.06, topY + s * 0.105);
+            ctx.lineTo(p.x - hw - s * 0.06, topY + s * 0.105);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = SKR_DRIFT_LIT;
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw - s * 0.07, topY);
+            ctx.lineTo(p.x + hw + s * 0.07, topY);
+            ctx.lineTo(p.x + hw + s * 0.02, topY + s * 0.032);
+            ctx.lineTo(p.x - hw - s * 0.02, topY + s * 0.032);
+            ctx.closePath();
+            ctx.fill();
+            // The net across the slab — PASS-TWO VERDICT: A NET
+            // DRAPES, NEVER BRISTLES. The first build's bare mesh
+            // strokes over the slab read as a row of teeth; the net
+            // is now a soft-bodied CLOTH first (one pale-green fill
+            // with a draped outline), and the diamond mesh lives
+            // INSIDE it — the hung-net painter's own law.
+            const netBody = (path: () => void, tone: string, meshTone: string, skew: number): void => {
+              ctx.save();
+              ctx.beginPath();
+              path();
+              ctx.fillStyle = tone;
+              ctx.fill();
+              ctx.clip();
+              ctx.strokeStyle = meshTone;
+              ctx.lineWidth = Math.max(1, s * 0.01);
+              const step = s * 0.06;
+              for (let i = -10; i <= 10; i++) {
+                ctx.beginPath();
+                ctx.moveTo(p.x + i * step, topY - s * 0.2);
+                ctx.lineTo(p.x + i * step + skew, baseY + s * 0.05);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(p.x + i * step, topY - s * 0.2);
+                ctx.lineTo(p.x + i * step - skew, baseY + s * 0.05);
+                ctx.stroke();
+              }
+              ctx.restore();
+            };
+            // Over the slab: a soft heap with a sagging front hem.
+            netBody(
+              () => {
+                ctx.moveTo(p.x - hw * 0.85, topY + s * 0.02);
+                ctx.quadraticCurveTo(p.x - hw * 0.3, topY - s * 0.085, p.x + hw * 0.5, topY - s * 0.05);
+                ctx.quadraticCurveTo(p.x + hw * 0.9, topY - s * 0.015, p.x + hw * 0.82, topY + s * 0.07);
+                ctx.quadraticCurveTo(p.x, topY + s * 0.11, p.x - hw * 0.85, topY + s * 0.02);
+              },
+              'rgba(112, 140, 110, 0.9)',
+              'rgba(58, 82, 62, 0.75)',
+              s * 0.28,
+            );
+            // The spill down one side, pooling at the foot.
+            netBody(
+              () => {
+                ctx.moveTo(p.x + m * hw * 0.55, topY + s * 0.04);
+                ctx.quadraticCurveTo(p.x + m * hw * 0.85, (topY + baseY) / 2, p.x + m * hw * 0.62, baseY - s * 0.03);
+                ctx.quadraticCurveTo(p.x + m * hw * 0.3, baseY + s * 0.045, p.x + m * hw * 0.08, baseY - s * 0.02);
+                ctx.quadraticCurveTo(p.x + m * hw * 0.22, (topY + baseY) / 2, p.x + m * hw * 0.18, topY + s * 0.06);
+                ctx.closePath();
+              },
+              'rgba(96, 124, 96, 0.85)',
+              'rgba(52, 74, 56, 0.7)',
+              s * 0.22,
+            );
+            // Cork floats riding the hem — the net's own jewelry.
+            ctx.fillStyle = SKR_WICKER_LIT;
+            for (const [fx4, fy4] of [
+              [-hw * 0.6, topY + s * 0.035],
+              [m * hw * 0.4, baseY - s * 0.05],
+            ] as const) {
+              ctx.beginPath();
+              ctx.ellipse(p.x + fx4, fy4, s * 0.028, s * 0.022, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            // THE REPAIR: the torn gap half re-laced in paler cord —
+            // the work is IN PROGRESS, that is the whole read.
+            ctx.strokeStyle = '#c9d3b8';
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            for (let k = 0; k < 3; k++) {
+              ctx.beginPath();
+              ctx.moveTo(p.x - m * hw * 0.34 + k * s * 0.04 * m, topY + s * 0.012);
+              ctx.lineTo(p.x - m * hw * 0.34 + (k + 0.5) * s * 0.04 * m, topY + s * 0.075);
+              ctx.stroke();
+            }
+            // The bone needle parked upright in the slab.
+            ctx.strokeStyle = DGN_BONE;
+            ctx.lineWidth = Math.max(1.5, s * 0.024);
+            ctx.beginPath();
+            ctx.moveTo(p.x - m * hw * 0.55, topY + s * 0.02);
+            ctx.lineTo(p.x - m * hw * 0.62, topY - s * 0.2);
+            ctx.stroke();
+            ctx.fillStyle = DGN_BONE_DIM;
+            ctx.beginPath();
+            ctx.ellipse(p.x - m * hw * 0.625, topY - s * 0.21, s * 0.02, s * 0.026, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Cord spool (a wound stick) and one cork float waiting.
+            ctx.fillStyle = SKR_KELP;
+            ctx.fillRect(p.x + m * hw * 0.62 - s * 0.045, topY - s * 0.075, s * 0.09, s * 0.075);
+            ctx.strokeStyle = SKR_KELP_LIT;
+            ctx.lineWidth = Math.max(1, s * 0.012);
+            for (let k = 0; k < 3; k++) {
+              ctx.beginPath();
+              ctx.moveTo(p.x + m * hw * 0.62 - s * 0.045, topY - s * (0.06 - k * 0.022));
+              ctx.lineTo(p.x + m * hw * 0.62 + s * 0.045, topY - s * (0.065 - k * 0.022));
+              ctx.stroke();
+            }
+            ctx.fillStyle = SKR_WICKER_LIT;
+            ctx.beginPath();
+            ctx.ellipse(p.x + m * hw * 0.4, topY - s * 0.035, s * 0.032, s * 0.026, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Damp ring where the wet net drips off the spill side.
+            ctx.fillStyle = 'rgba(52, 62, 60, 0.22)';
+            ctx.beginPath();
+            ctx.ellipse(p.x + m * hw * 0.3, baseY + s * 0.005, s * 0.2, s * 0.045, 0, 0, Math.PI * 2);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.WeirPanels: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.22;
+        // The camp's namesake, dry-land half: two woven hurdle
+        // panels meeting at a funnel gap — the trap that works while
+        // the shoal sleeps. Stake tops worn round, weave in long
+        // horizontal strokes, the gap dark like the trap mouths.
+        const hw = s * 0.62;
+        const topY = baseY - s * 0.62;
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.8, 0.95, 0.45),
+          drawShadow: () => this.castContact(p.x, baseY, hw * 1.05, s * 0.08),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.06, s * 0.075, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The wet working line: this piece lives half in the
+            // shallows even when stamped dry — puddle glints at foot.
+            ctx.fillStyle = 'rgba(96, 130, 138, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(p.x - hw * 0.4, baseY + s * 0.01, s * 0.16, s * 0.04, 0, 0, Math.PI * 2);
+            ctx.ellipse(p.x + hw * 0.5, baseY - s * 0.005, s * 0.12, s * 0.035, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Two panels angling back to the funnel gap at center.
+            // PASS-TWO VERDICT — A HURDLE IS WOVEN, NOT PLANKED: the
+            // first build's straight rows read as crate boards. The
+            // weave now shows its VERTICAL ribs threading sagging
+            // horizontals, the top hem droops between stakes, and
+            // the stakes stand proud of the panel.
+            const panel = (x0: number, x1: number, y0: number, y1: number, seed2: number): void => {
+              const bY0 = baseY;
+              const bY1 = baseY - s * 0.02;
+              // The woven field, top hem SAGGING between the stakes.
+              ctx.fillStyle = SKR_WICKER;
+              ctx.beginPath();
+              ctx.moveTo(x0, bY0);
+              ctx.lineTo(x0, y0);
+              ctx.quadraticCurveTo((x0 + x1) / 2, (y0 + y1) / 2 + s * 0.09, x1, y1);
+              ctx.lineTo(x1, bY1);
+              ctx.closePath();
+              ctx.fill();
+              // Sagging horizontal withies.
+              ctx.strokeStyle = '#8a7648';
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              for (let k = 1; k < 4; k++) {
+                const f = k / 4;
+                ctx.beginPath();
+                ctx.moveTo(x0, y0 + (bY0 - y0) * f);
+                ctx.quadraticCurveTo((x0 + x1) / 2, y1 + (bY1 - y1) * f + s * 0.055, x1, y1 + (bY1 - y1) * f);
+                ctx.stroke();
+              }
+              // THE RIBS: vertical withies threading the rows — the
+              // over-under is the whole craft.
+              const ribN = 4;
+              for (let k = 0; k < ribN; k++) {
+                const f = (k + 0.7) / (ribN + 0.6);
+                const rxTop = x0 + (x1 - x0) * f;
+                const sagT = y0 + (y1 - y0) * f + Math.sin(f * Math.PI) * s * 0.085;
+                ctx.strokeStyle = ((seed2 >> k) & 1) === 0 ? '#93804a' : SKR_WICKER_LIT;
+                ctx.lineWidth = Math.max(1, s * 0.02);
+                ctx.beginPath();
+                ctx.moveTo(rxTop, sagT + s * 0.02);
+                ctx.quadraticCurveTo(rxTop + s * 0.012, (sagT + bY0) / 2, rxTop - s * 0.008, bY0 - s * 0.015);
+                ctx.stroke();
+              }
+              // The lit hem along the sag.
+              ctx.strokeStyle = SKR_WICKER_LIT;
+              ctx.lineWidth = Math.max(1, s * 0.018);
+              ctx.beginPath();
+              ctx.moveTo(x0, y0);
+              ctx.quadraticCurveTo((x0 + x1) / 2, (y0 + y1) / 2 + s * 0.088, x1, y1);
+              ctx.stroke();
+              // Stakes: driven PROUD of the weave, worn tops, one
+              // lit edge each — posts first, panel hung between.
+              for (const [sx2, sy2] of [
+                [x0, y0],
+                [x1, y1],
+              ] as const) {
+                ctx.strokeStyle = SKR_DRIFT;
+                ctx.lineWidth = Math.max(1.5, s * 0.045);
+                ctx.beginPath();
+                ctx.moveTo(sx2, baseY + s * 0.01);
+                ctx.lineTo(sx2, sy2 - s * 0.16);
+                ctx.stroke();
+                ctx.strokeStyle = SKR_DRIFT_LIT;
+                ctx.lineWidth = Math.max(1, s * 0.014);
+                ctx.beginPath();
+                ctx.moveTo(sx2 - s * 0.012, baseY - s * 0.04);
+                ctx.lineTo(sx2 - s * 0.012, sy2 - s * 0.13);
+                ctx.stroke();
+                ctx.fillStyle = SKR_DRIFT_LIT;
+                ctx.beginPath();
+                ctx.ellipse(sx2, sy2 - s * 0.17, s * 0.026, s * 0.022, 0, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            };
+            // Left panel runs toward the center-back; right mirrors,
+            // leaving the funnel gap between their inner stakes.
+            panel(p.x - hw, p.x - s * 0.12, topY, topY - s * 0.12, h);
+            panel(p.x + hw, p.x + s * 0.12, topY, topY - s * 0.12, h ^ 977);
+            // THE GAP: the funnel's dark mouth — nothing painted flat
+            // has an opening; the dark IS the depth argument.
+            ctx.fillStyle = '#2e3330';
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.085, topY - s * 0.08);
+            ctx.lineTo(p.x + s * 0.085, topY - s * 0.08);
+            ctx.lineTo(p.x + s * 0.06, baseY - s * 0.02);
+            ctx.lineTo(p.x - s * 0.06, baseY - s * 0.02);
+            ctx.closePath();
+            ctx.fill();
+            // One silver stray flagging at the gap on some panels.
+            if (((h >> 8) & 3) === 0) {
+              ctx.fillStyle = SKR_FISH;
+              ctx.beginPath();
+              ctx.ellipse(p.x + s * 0.01, baseY - s * 0.08, s * 0.05, s * 0.02, 0.4, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = SKR_FISH_DARK;
+              ctx.beginPath();
+              ctx.moveTo(p.x + s * 0.05, baseY - s * 0.06);
+              ctx.lineTo(p.x + s * 0.09, baseY - s * 0.1);
+              ctx.lineTo(p.x + s * 0.08, baseY - s * 0.04);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // The kelp ties binding weave to stakes.
+            ctx.strokeStyle = SKR_KELP;
+            ctx.lineWidth = Math.max(1, s * 0.018);
+            for (const kx of [-hw, -s * 0.1, s * 0.1, hw]) {
+              ctx.beginPath();
+              ctx.moveTo(p.x + kx - s * 0.03, topY + s * 0.06);
+              ctx.lineTo(p.x + kx + s * 0.03, topY + s * 0.045);
+              ctx.stroke();
+            }
+          },
+        };
+      }
+
+      case Tile.KelpLine: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        // The winter larder: kelp fronds over a sagging cord between
+        // two leaning poles — food, cordage, and thatch all cure on
+        // the same line. The fronds ride one slow breeze clock.
+        const hw = s * 0.58;
+        const tipY = baseY - s * 1.05;
+        const phase = tx * 1.7 + ty * 2.9;
+        const frondN = 4 + ((h >> 6) & 1);
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.75, 1.35, 0.45),
+          drawShadow: () => this.castContact(p.x, baseY, hw * 1.0, s * 0.08),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.02, s * 0.07, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The poles lean OUT — tension is the joinery here.
+            for (const m of [-1, 1] as const) {
+              ctx.strokeStyle = SKR_DRIFT;
+              ctx.lineWidth = Math.max(1.5, s * 0.05);
+              ctx.beginPath();
+              ctx.moveTo(p.x + m * hw * 0.82, baseY);
+              ctx.quadraticCurveTo(p.x + m * hw * 0.98, baseY - s * 0.55, p.x + m * hw * 1.05, tipY + s * 0.06);
+              ctx.stroke();
+              ctx.strokeStyle = SKR_DRIFT_LIT;
+              ctx.lineWidth = Math.max(1, s * 0.018);
+              ctx.beginPath();
+              ctx.moveTo(p.x + m * hw * 0.81 - s * 0.01, baseY - s * 0.08);
+              ctx.quadraticCurveTo(p.x + m * hw * 0.97, baseY - s * 0.55, p.x + m * hw * 1.04 - s * 0.01, tipY + s * 0.08);
+              ctx.stroke();
+              ctx.fillStyle = SKR_DRIFT_LIT;
+              ctx.beginPath();
+              ctx.ellipse(p.x + m * hw * 1.05, tipY + s * 0.05, s * 0.026, s * 0.022, 0, 0, Math.PI * 2);
+              ctx.fill();
+              // The heel stones pinning each butt.
+              ctx.fillStyle = '#6a747a';
+              ctx.beginPath();
+              facetBlob(ctx, p.x + m * hw * 0.74, baseY - s * 0.015, s * 0.05, h ^ (m * 53), 5, 0.7);
+              ctx.fill();
+            }
+            // The cord, sagging under the crop.
+            ctx.strokeStyle = SKR_KELP;
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 1.04, tipY + s * 0.06);
+            ctx.quadraticCurveTo(p.x, tipY + s * 0.16, p.x + hw * 1.04, tipY + s * 0.06);
+            ctx.stroke();
+            // THE CROP: long olive straps with holdfast bulbs at the
+            // hung end, each on its own sway phase — the body of the
+            // frond swings as one piece (secondary read, never a
+            // screen trick).
+            for (let k = 0; k < frondN; k++) {
+              // The crop spreads the WHOLE line (pass three: bunched
+              // fronds read as a cage — a line must read as a line).
+              const f = (k + 0.5) / frondN;
+              const fx2 = p.x - hw * 1.0 + f * hw * 2.0;
+              const cordY = tipY + s * 0.06 + Math.sin(f * Math.PI) * s * 0.11;
+              const sway = Math.sin(t * 0.9 + phase + k * 1.7) * 0.06 + Math.sin(t * 0.53 + k) * 0.03;
+              const fl = s * (0.5 + ((h >> (k * 2)) & 3) * 0.055);
+              ctx.save();
+              ctx.translate(fx2, cordY);
+              ctx.rotate(sway);
+              // The strap: two long curves, dark then lit half.
+              ctx.fillStyle = SKR_KELP;
+              ctx.beginPath();
+              ctx.moveTo(0, 0);
+              ctx.quadraticCurveTo(-s * 0.052, fl * 0.5, -s * 0.012, fl);
+              ctx.quadraticCurveTo(0, fl * 1.06, s * 0.012, fl);
+              ctx.quadraticCurveTo(s * 0.052, fl * 0.5, 0, 0);
+              ctx.fill();
+              ctx.fillStyle = SKR_KELP_LIT;
+              ctx.beginPath();
+              ctx.moveTo(-s * 0.002, s * 0.02);
+              ctx.quadraticCurveTo(-s * 0.04, fl * 0.5, -s * 0.01, fl * 0.94);
+              ctx.lineTo(-s * 0.001, fl * 0.86);
+              ctx.closePath();
+              ctx.fill();
+              // Curl notch and holdfast bulb at the tip.
+              ctx.strokeStyle = SKR_KELP_LIT;
+              ctx.lineWidth = Math.max(1, s * 0.012);
+              ctx.beginPath();
+              ctx.moveTo(s * 0.008, fl * 0.3);
+              ctx.quadraticCurveTo(s * 0.03, fl * 0.44, s * 0.008, fl * 0.58);
+              ctx.stroke();
+              ctx.fillStyle = SKR_REED_DARK;
+              ctx.beginPath();
+              ctx.ellipse(0, fl + s * 0.02, s * 0.023, s * 0.02, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+            // One fallen frond drying on the ground its own way.
+            ctx.fillStyle = SKR_KELP;
+            ctx.beginPath();
+            ctx.ellipse(p.x - hw * 0.3, baseY - s * 0.015, s * 0.16, s * 0.032, 0.15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = SKR_KELP_LIT;
+            ctx.beginPath();
+            ctx.ellipse(p.x - hw * 0.36, baseY - s * 0.025, s * 0.07, s * 0.014, 0.15, 0, Math.PI * 2);
+            ctx.fill();
+            // The drip line the wet crop keeps.
+            ctx.fillStyle = 'rgba(52, 62, 60, 0.22)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY, hw * 0.8, s * 0.045, 0, 0, Math.PI * 2);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.SaltPan: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        // The salt work: a shallow clay-and-stone basin of brine
+        // evaporating to crust — the white creeps inward from the
+        // rim, and the middle still holds the sky. The scraper rests
+        // where the last shift left it. Salt is the bank's money.
+        // PASS-TWO VERDICT — THE PAN IS A WORKS, NOT A SAUCER: the
+        // first build read as a dropped plate; a season's pay needs
+        // a basin the ruler could wade.
+        const rx = s * 0.74;
+        const ry = s * 0.36;
+        return {
+          sortY: ty + 0.62,
+          body: stationBody(0.85, 0.6, 0.55),
+          drawShadow: () => this.castContact(p.x, baseY, rx * 1.05, s * 0.07),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, rx * 1.08, ry * 0.42, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The rim: packed stones, wave-rounded.
+            ctx.fillStyle = '#7d868b';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - ry * 0.5, rx, ry, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#6a747a';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - ry * 0.44, rx * 0.94, ry * 0.9, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Rim stones as separate worn knuckles around the lip.
+            for (let k = 0; k < 12; k++) {
+              const a = (k / 12) * Math.PI * 2 + (h % 7) * 0.2;
+              const kx = p.x + Math.cos(a) * rx * 0.97;
+              const ky = baseY - ry * 0.5 + Math.sin(a) * ry * 0.95;
+              ctx.fillStyle = (k & 1) === 0 ? '#8b9499' : '#737d82';
+              ctx.beginPath();
+              facetBlob(ctx, kx, ky, s * (0.05 + ((h >> k) & 1) * 0.016), h ^ (k * 67), 5, 0.72);
+              ctx.fill();
+            }
+            // The brine sheet: a pale mirror holding the sky's tone.
+            ctx.fillStyle = '#aebfc2';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - ry * 0.42, rx * 0.78, ry * 0.68, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#c4d2d2';
+            ctx.beginPath();
+            ctx.ellipse(p.x - rx * 0.16, baseY - ry * 0.52, rx * 0.36, ry * 0.26, -0.2, 0, Math.PI * 2);
+            ctx.fill();
+            // THE CRUST: white salt creeping inward from the rim in
+            // an irregular collar — brightest thing on the bank.
+            ctx.fillStyle = SKR_SALT;
+            for (let k = 0; k < 13; k++) {
+              const a = (k / 13) * Math.PI * 2 + (h % 13) * 0.31;
+              const reach = 0.6 + (((h >> k) & 3) / 3) * 0.18;
+              const kx = p.x + Math.cos(a) * rx * reach;
+              const ky = baseY - ry * 0.42 + Math.sin(a) * ry * reach * 0.85;
+              ctx.beginPath();
+              facetBlob(ctx, kx, ky, s * (0.06 + ((h >> (k + 3)) & 1) * 0.024), h ^ (k * 29), 5, 0.6);
+              ctx.fill();
+            }
+            // Crust shore along the whole rim's inner edge.
+            ctx.strokeStyle = 'rgba(232, 236, 236, 0.85)';
+            ctx.lineWidth = Math.max(1.5, s * 0.035);
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - ry * 0.42, rx * 0.8, ry * 0.7, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            // The scraper: a flat bone blade on a driftwood haft,
+            // resting across the rim mid-shift.
+            ctx.strokeStyle = SKR_DRIFT;
+            ctx.lineWidth = Math.max(1.5, s * 0.032);
+            ctx.beginPath();
+            ctx.moveTo(p.x + rx * 0.5, baseY - ry * 1.06);
+            ctx.lineTo(p.x + rx * 1.12, baseY - ry * 0.3);
+            ctx.stroke();
+            ctx.fillStyle = DGN_BONE;
+            ctx.beginPath();
+            ctx.moveTo(p.x + rx * 0.42, baseY - ry * 1.16);
+            ctx.lineTo(p.x + rx * 0.62, baseY - ry * 1.0);
+            ctx.lineTo(p.x + rx * 0.48, baseY - ry * 0.88);
+            ctx.lineTo(p.x + rx * 0.34, baseY - ry * 1.04);
+            ctx.closePath();
+            ctx.fill();
+            // The harvest: a white heap on a woven mat beside — big
+            // enough to be somebody's season.
+            ctx.fillStyle = SKR_WICKER;
+            ctx.beginPath();
+            ctx.ellipse(p.x - rx * 1.02, baseY - s * 0.02, s * 0.18, s * 0.06, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = SKR_SALT;
+            ctx.beginPath();
+            ctx.moveTo(p.x - rx * 1.02 - s * 0.12, baseY - s * 0.03);
+            ctx.quadraticCurveTo(p.x - rx * 1.02, baseY - s * 0.24, p.x - rx * 1.02 + s * 0.12, baseY - s * 0.03);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#cfd8d8';
+            ctx.beginPath();
+            ctx.moveTo(p.x - rx * 1.02 + s * 0.015, baseY - s * 0.035);
+            ctx.quadraticCurveTo(p.x - rx * 1.02 + s * 0.07, baseY - s * 0.14, p.x - rx * 1.02 + s * 0.115, baseY - s * 0.032);
+            ctx.closePath();
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.ShellBench: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        // The shell-carver's bench: where the totem inlays and the
+        // household strings are made. Drilled fans in a tidy row,
+        // one string half-strung and trailing off the slab, the
+        // bone awl at rest — craft mid-thought, tools down.
+        // PASS-TWO VERDICT: the fans were pebbles at arm's length —
+        // the work must read as SHELLS from a body-length away.
+        const hw = s * 0.56;
+        const topY = baseY - s * 0.44;
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.68, 0.8, 0.45),
+          drawShadow: () => this.castContact(p.x, baseY, hw * 1.15, s * 0.08),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.18, s * 0.07, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The chip litter first — pale workshop snow underfoot.
+            ctx.fillStyle = 'rgba(222, 213, 196, 0.55)';
+            for (let k = 0; k < 6; k++) {
+              const cx2 = p.x + (((h >> (k * 3)) & 7) - 3.5) * s * 0.11;
+              const cy2 = baseY - s * 0.02 + (((h >> (k * 2 + 1)) & 3) - 1.5) * s * 0.03;
+              ctx.beginPath();
+              ctx.ellipse(cx2, cy2, s * 0.02, s * 0.013, k, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            // Stone trestles and the worn slab (lit top plane).
+            ctx.fillStyle = '#6a747a';
+            for (const ex of [-hw * 0.7, hw * 0.7]) {
+              ctx.beginPath();
+              facetBlob(ctx, p.x + ex, baseY - s * 0.14, s * 0.085, h ^ Math.round(ex * 3), 6, 0.72);
+              ctx.fill();
+            }
+            ctx.fillStyle = SKR_DRIFT_DARK;
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw - s * 0.05, topY + s * 0.09);
+            ctx.lineTo(p.x + hw + s * 0.05, topY + s * 0.09);
+            ctx.lineTo(p.x + hw + s * 0.03, topY + s * 0.18);
+            ctx.lineTo(p.x - hw - s * 0.03, topY + s * 0.18);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = SKR_DRIFT;
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw - s * 0.06, topY);
+            ctx.lineTo(p.x + hw + s * 0.06, topY);
+            ctx.lineTo(p.x + hw + s * 0.05, topY + s * 0.095);
+            ctx.lineTo(p.x - hw - s * 0.05, topY + s * 0.095);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = SKR_DRIFT_LIT;
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw - s * 0.06, topY);
+            ctx.lineTo(p.x + hw + s * 0.06, topY);
+            ctx.lineTo(p.x + hw + s * 0.015, topY + s * 0.03);
+            ctx.lineTo(p.x - hw - s * 0.015, topY + s * 0.03);
+            ctx.closePath();
+            ctx.fill();
+            // THE ROW: drilled fans stood in a work line, each with
+            // its mother-of-pearl tick — order is the craftsman read
+            // (the display must read; a heap is a midden).
+            for (let k = 0; k < 4; k++) {
+              const sx2 = p.x - hw * 0.64 + k * hw * 0.43;
+              const st = (h >> (k * 4)) & 3;
+              ctx.fillStyle = st === 1 ? '#ded5c4' : st === 2 ? '#cfc4bb' : '#e6e0d2';
+              ctx.beginPath();
+              ctx.moveTo(sx2 - s * 0.072, topY - s * 0.002);
+              ctx.quadraticCurveTo(sx2, topY - s * 0.185, sx2 + s * 0.072, topY - s * 0.002);
+              ctx.closePath();
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(138, 130, 114, 0.65)';
+              ctx.lineWidth = Math.max(1, s * 0.01);
+              for (const fx3 of [-0.034, 0, 0.034]) {
+                ctx.beginPath();
+                ctx.moveTo(sx2 + fx3 * s, topY - s * 0.012);
+                ctx.lineTo(sx2 + fx3 * s * 2.0, topY - s * 0.15);
+                ctx.stroke();
+              }
+              // The drilled eye and its pearl gleam.
+              ctx.fillStyle = '#4a4437';
+              ctx.beginPath();
+              ctx.ellipse(sx2, topY - s * 0.125, s * 0.014, s * 0.014, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = SKR_SHELL_PEARL;
+              ctx.beginPath();
+              ctx.ellipse(sx2 - s * 0.026, topY - s * 0.07, s * 0.018, s * 0.011, -0.6, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            // THE STRING IN PROGRESS: strung shells trailing off the
+            // slab edge and HANGING plumb (strings hang, never splay).
+            const sx3 = p.x + hw * 0.78;
+            ctx.strokeStyle = 'rgba(214, 220, 204, 0.6)';
+            ctx.lineWidth = Math.max(1, s * 0.01);
+            ctx.beginPath();
+            ctx.moveTo(p.x + hw * 0.3, topY - s * 0.01);
+            ctx.quadraticCurveTo(sx3 - s * 0.03, topY + s * 0.01, sx3, topY + s * 0.06);
+            ctx.lineTo(sx3, topY + s * 0.34);
+            ctx.stroke();
+            ctx.fillStyle = DGN_BONE;
+            for (let k = 0; k < 4; k++) {
+              ctx.beginPath();
+              ctx.ellipse(sx3, topY + s * (0.1 + k * 0.075), s * 0.024, s * 0.02, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.fillStyle = SKR_SHELL_PEARL;
+            ctx.beginPath();
+            ctx.ellipse(sx3, topY + s * 0.175, s * 0.011, s * 0.009, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The bone awl, at rest against the near edge.
+            ctx.strokeStyle = DGN_BONE;
+            ctx.lineWidth = Math.max(1.5, s * 0.02);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.2, topY + s * 0.05);
+            ctx.lineTo(p.x - hw * 0.02, topY - s * 0.045);
+            ctx.stroke();
+            ctx.fillStyle = SKR_DRIFT_LIT;
+            ctx.beginPath();
+            ctx.ellipse(p.x - hw * 0.21, topY + s * 0.055, s * 0.022, s * 0.018, 0, 0, Math.PI * 2);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.WithyStore: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.22;
+        // The wicker-craft store: bound sheaves of withies leaned
+        // into an X-stand, tops splaying — every trap, creel, and
+        // weir panel on the bank started here. One binding let go;
+        // its rods lie where they spilled.
+        // PASS-TWO VERDICT — A STORE IS KEPT, NOT DUMPED: the first
+        // build's thin sheaves fanned like a collapsed pile. The
+        // sheaves are now FAT, upright, and visibly BOUND — the
+        // cord bands are what make it a store.
+        const hw = s * 0.44;
+        const sheafN = 3;
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.62, 1.2, 0.45),
+          drawShadow: () => this.castContact(p.x, baseY, hw * 1.15, s * 0.08),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.2, s * 0.075, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The X-stand rail the sheaves lean into.
+            ctx.strokeStyle = SKR_DRIFT_DARK;
+            ctx.lineWidth = Math.max(1.5, s * 0.04);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 1.1, baseY - s * 0.02);
+            ctx.lineTo(p.x - hw * 0.5, baseY - s * 0.52);
+            ctx.moveTo(p.x - hw * 1.25, baseY - s * 0.44);
+            ctx.lineTo(p.x - hw * 0.42, baseY - s * 0.04);
+            ctx.stroke();
+            ctx.strokeStyle = SKR_KELP;
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.88, baseY - s * 0.3);
+            ctx.lineTo(p.x - hw * 0.78, baseY - s * 0.24);
+            ctx.stroke();
+            // The sheaves: leaning bundles, each a fan of rod strokes
+            // under one body fill, banded twice in kelp cord.
+            for (let k = 0; k < sheafN; k++) {
+              const f = (k + 0.5) / sheafN;
+              const bx = p.x - hw * 0.62 + f * hw * 1.5;
+              const lean = -0.12 + f * 0.2 + (((h >> (k * 3)) & 3) - 1.5) * 0.025;
+              const bh = s * (1.0 + ((h >> (k * 2 + 4)) & 3) * 0.06);
+              ctx.save();
+              ctx.translate(bx, baseY);
+              ctx.rotate(lean);
+              // Body: a FAT bound sheaf, waisted at the bands.
+              ctx.fillStyle = k === 1 ? SKR_WICKER : '#93804a';
+              ctx.beginPath();
+              ctx.moveTo(-s * 0.13, 0);
+              ctx.quadraticCurveTo(-s * 0.115, -bh * 0.3, -s * 0.082, -bh * 0.52);
+              ctx.quadraticCurveTo(-s * 0.1, -bh * 0.78, -s * 0.06, -bh);
+              ctx.lineTo(s * 0.06, -bh);
+              ctx.quadraticCurveTo(s * 0.1, -bh * 0.78, s * 0.082, -bh * 0.52);
+              ctx.quadraticCurveTo(s * 0.115, -bh * 0.3, s * 0.13, 0);
+              ctx.closePath();
+              ctx.fill();
+              // Rod grain + the splayed tops past the upper band.
+              ctx.strokeStyle = '#7a683c';
+              ctx.lineWidth = Math.max(1, s * 0.013);
+              for (let r2 = 0; r2 < 5; r2++) {
+                const rx2 = (r2 - 2) * s * 0.042;
+                ctx.beginPath();
+                ctx.moveTo(rx2, -s * 0.05);
+                ctx.lineTo(rx2 * 0.55, -bh * 0.96);
+                ctx.stroke();
+              }
+              ctx.strokeStyle = SKR_WICKER_LIT;
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              for (let r2 = 0; r2 < 4; r2++) {
+                const rx2 = (r2 - 1.5) * s * 0.034;
+                ctx.beginPath();
+                ctx.moveTo(rx2 * 0.5, -bh + s * 0.01);
+                ctx.quadraticCurveTo(rx2 * 1.6, -bh - s * 0.1, rx2 * 2.4 + s * 0.012, -bh - s * (0.15 + (r2 & 1) * 0.03));
+                ctx.stroke();
+              }
+              // THE BANDS: two fat kelp cords cinching the waist —
+              // lit knot on the near face. The binding IS the store.
+              for (const bandY of [-bh * 0.72, -bh * 0.32]) {
+                ctx.strokeStyle = SKR_KELP;
+                ctx.lineWidth = Math.max(1.5, s * 0.034);
+                ctx.beginPath();
+                ctx.moveTo(-s * 0.098, bandY);
+                ctx.quadraticCurveTo(0, bandY + s * 0.022, s * 0.098, bandY);
+                ctx.stroke();
+                ctx.strokeStyle = SKR_KELP_LIT;
+                ctx.lineWidth = Math.max(1, s * 0.014);
+                ctx.beginPath();
+                ctx.moveTo(-s * 0.07, bandY + s * 0.008);
+                ctx.quadraticCurveTo(0, bandY + s * 0.026, s * 0.05, bandY + s * 0.01);
+                ctx.stroke();
+                ctx.fillStyle = SKR_KELP_LIT;
+                ctx.beginPath();
+                ctx.ellipse(s * 0.02, bandY + s * 0.02, s * 0.016, s * 0.013, 0, 0, Math.PI * 2);
+                ctx.fill();
+              }
+              ctx.restore();
+            }
+            // THE SPILL: kept small — two rods slid from the near
+            // sheaf and the slipped band beside them (one accident,
+            // not a habit).
+            for (let k = 0; k < 2; k++) {
+              ctx.strokeStyle = k === 1 ? SKR_WICKER_LIT : '#8a7648';
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              ctx.beginPath();
+              const ox = p.x + hw * 0.6 + k * s * 0.035;
+              ctx.moveTo(ox, baseY - s * 0.015 + k * s * 0.012);
+              ctx.lineTo(ox + s * 0.3, baseY - s * 0.08 + k * s * 0.02);
+              ctx.stroke();
+            }
+            ctx.strokeStyle = SKR_KELP;
+            ctx.lineWidth = Math.max(1, s * 0.018);
+            ctx.beginPath();
+            ctx.ellipse(p.x + hw * 0.6, baseY + s * 0.01, s * 0.045, s * 0.02, 0.4, 0, Math.PI * 2);
+            ctx.stroke();
+            // Damp footing.
+            ctx.fillStyle = 'rgba(52, 62, 60, 0.18)';
+            ctx.beginPath();
+            ctx.ellipse(p.x - hw * 0.2, baseY + s * 0.005, hw * 0.7, s * 0.04, 0, 0, Math.PI * 2);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.KeepPool: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.18;
+        // The live larder: a withy-curbed keep-pool holding the
+        // catch till it is wanted — dark still water, silver backs
+        // circling under the surface on the kit's slowest clock.
+        // The lid panel leans on the curb; the tally stick counts.
+        // PASS TWO: grown a step and the curb deepened — the dark
+        // water is the read, and it needs rim enough to hold it.
+        const rx = s * 0.62;
+        const ry = s * 0.33;
+        const phase = tx * 3.1 + ty * 1.3;
+        const fishN = 2 + ((h >> 9) & 1);
+        return {
+          sortY: ty + 0.62,
+          body: stationBody(0.72, 0.55, 0.5),
+          drawShadow: () => this.castContact(p.x, baseY, rx * 1.06, s * 0.07),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, rx * 1.1, ry * 0.4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The woven curb: a low wicker ring, dark under-lip
+            // first so the rim reads as a raised band, lit near lip.
+            ctx.fillStyle = '#7a683c';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - ry * 0.42, rx * 1.02, ry * 1.04, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = SKR_WICKER;
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - ry * 0.5, rx, ry, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#8a7648';
+            ctx.lineWidth = Math.max(1, s * 0.013);
+            for (let k = 0; k < 2; k++) {
+              ctx.beginPath();
+              ctx.ellipse(p.x, baseY - ry * 0.5, rx * (0.9 - k * 0.06), ry * (0.9 - k * 0.06), 0, Math.PI * 0.15, Math.PI * 0.85);
+              ctx.stroke();
+            }
+            ctx.strokeStyle = SKR_WICKER_LIT;
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - ry * 0.46, rx * 0.96, ry * 0.92, 0, Math.PI * 0.25, Math.PI * 0.75);
+            ctx.stroke();
+            // Stakes pinning the curb, worn tops.
+            for (const a of [0.3, 1.4, 2.6, 3.9, 5.1] as const) {
+              const kx = p.x + Math.cos(a) * rx * 0.98;
+              const ky = baseY - ry * 0.5 + Math.sin(a) * ry * 0.95;
+              ctx.strokeStyle = SKR_DRIFT;
+              ctx.lineWidth = Math.max(1.5, s * 0.03);
+              ctx.beginPath();
+              ctx.moveTo(kx, ky + s * 0.03);
+              ctx.lineTo(kx, ky - s * 0.1);
+              ctx.stroke();
+              ctx.fillStyle = SKR_DRIFT_LIT;
+              ctx.beginPath();
+              ctx.ellipse(kx, ky - s * 0.11, s * 0.018, s * 0.015, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            // THE WATER: dark, still, deep — the one interior on the
+            // bank that is meant to stay wet.
+            ctx.fillStyle = SKR_POOL;
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - ry * 0.44, rx * 0.76, ry * 0.66, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#3d5560';
+            ctx.beginPath();
+            ctx.ellipse(p.x - rx * 0.14, baseY - ry * 0.56, rx * 0.4, ry * 0.28, -0.2, 0, Math.PI * 2);
+            ctx.fill();
+            // THE CIRCLING CATCH: silver backs breaking the dark on a
+            // slow orbit — never the whole fish, just the glint of a
+            // back and the wake tick behind it (<4Hz, cache-safe).
+            for (let k = 0; k < fishN; k++) {
+              const a = t * (0.5 + k * 0.13) + phase + k * 2.6;
+              const orx = rx * (0.42 - k * 0.1);
+              const ory = ry * (0.36 - k * 0.08);
+              const fx2 = p.x + Math.cos(a) * orx;
+              const fy = baseY - ry * 0.44 + Math.sin(a) * ory;
+              const heading = Math.atan2(-Math.sin(a) * ory, -Math.cos(a) * orx) + Math.PI;
+              ctx.save();
+              ctx.translate(fx2, fy);
+              ctx.rotate(heading);
+              ctx.fillStyle = 'rgba(184, 196, 198, 0.75)';
+              ctx.beginPath();
+              ctx.ellipse(0, 0, s * 0.055, s * 0.016, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = 'rgba(74, 90, 94, 0.8)';
+              ctx.beginPath();
+              ctx.ellipse(s * 0.02, -s * 0.004, s * 0.026, s * 0.007, 0, 0, Math.PI * 2);
+              ctx.fill();
+              // The wake tick.
+              ctx.strokeStyle = 'rgba(196, 210, 210, 0.3)';
+              ctx.lineWidth = Math.max(1, s * 0.01);
+              ctx.beginPath();
+              ctx.moveTo(-s * 0.06, 0);
+              ctx.quadraticCurveTo(-s * 0.11, s * 0.008, -s * 0.15, -s * 0.004);
+              ctx.stroke();
+              ctx.restore();
+            }
+            // One resting ripple ring, off-center, barely there.
+            const rip = (t * 0.31 + (h % 31) * 0.03) % 1;
+            ctx.strokeStyle = `rgba(196, 210, 210, ${(1 - rip) * 0.25})`;
+            ctx.lineWidth = Math.max(1, s * 0.01);
+            ctx.beginPath();
+            ctx.ellipse(p.x + rx * 0.2, baseY - ry * 0.4, rx * 0.24 * (0.3 + rip * 0.7), ry * 0.2 * (0.3 + rip * 0.7), 0, 0, Math.PI * 2);
+            ctx.stroke();
+            // The lid: a woven panel leaning against the curb's far
+            // side — the pool is TENDED, not wild.
+            ctx.save();
+            ctx.translate(p.x - rx * 0.95, baseY - ry * 1.1);
+            ctx.rotate(-0.34);
+            ctx.fillStyle = SKR_WICKER;
+            ctx.fillRect(-s * 0.14, -s * 0.24, s * 0.28, s * 0.26);
+            ctx.strokeStyle = '#8a7648';
+            ctx.lineWidth = Math.max(1, s * 0.012);
+            for (let k = 0; k < 3; k++) {
+              ctx.beginPath();
+              ctx.moveTo(-s * 0.13, -s * 0.2 + k * s * 0.08);
+              ctx.lineTo(s * 0.13, -s * 0.21 + k * s * 0.08);
+              ctx.stroke();
+            }
+            ctx.strokeStyle = SKR_WICKER_LIT;
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            ctx.beginPath();
+            ctx.moveTo(-s * 0.13, -s * 0.24);
+            ctx.lineTo(s * 0.13, -s * 0.25);
+            ctx.stroke();
+            ctx.restore();
+            // The tally stick: notches for what the pool owes.
+            ctx.strokeStyle = SKR_DRIFT;
+            ctx.lineWidth = Math.max(1.5, s * 0.026);
+            ctx.beginPath();
+            ctx.moveTo(p.x + rx * 0.95, baseY - ry * 1.02);
+            ctx.lineTo(p.x + rx * 1.02, baseY - ry * 1.9);
+            ctx.stroke();
+            ctx.strokeStyle = SKR_DRIFT_LIT;
+            ctx.lineWidth = Math.max(1, s * 0.012);
+            for (let k = 0; k < 4; k++) {
+              ctx.beginPath();
+              ctx.moveTo(p.x + rx * (0.94 + k * 0.014), baseY - ry * (1.2 + k * 0.18));
+              ctx.lineTo(p.x + rx * (1.04 + k * 0.014), baseY - ry * (1.23 + k * 0.18));
+              ctx.stroke();
+            }
+          },
+        };
+      }
+
+      case Tile.TideChimes: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        // The bank's own music: shell strings under a driftwood
+        // arch, ticking in the sea wind. Culture, not tooling — the
+        // totem's household cousin. Strings HANG and sway as whole
+        // pendulums (kit law: never splay).
+        // PASS-TWO VERDICT — THE CHIMES MUST READ PALE: the first
+        // build's silhouette swallowed its own shells; the shells
+        // are the read, so they grew, brightened, and thinned out,
+        // and the arch takes more of the driftwood's lit tone.
+        const hw = s * 0.44;
+        const lintelY = baseY - s * 1.2;
+        const phase = tx * 2.1 + ty * 3.3;
+        const glassed = ((h >> 5) & 3) !== 3; // most carry sea-glass
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.6, 1.6, 0.4),
+          drawShadow: () => this.castContact(p.x, baseY, hw * 1.0, s * 0.07),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.22)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.05, s * 0.065, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Uprights: two worn poles with heel stones.
+            for (const m of [-1, 1] as const) {
+              ctx.fillStyle = '#6a747a';
+              ctx.beginPath();
+              facetBlob(ctx, p.x + m * hw * 0.9, baseY - s * 0.01, s * 0.045, h ^ (m * 37), 5, 0.7);
+              ctx.fill();
+              ctx.strokeStyle = SKR_DRIFT;
+              ctx.lineWidth = Math.max(1.5, s * 0.045);
+              ctx.beginPath();
+              ctx.moveTo(p.x + m * hw * 0.9, baseY);
+              ctx.quadraticCurveTo(p.x + m * hw * 0.98, baseY - s * 0.6, p.x + m * hw * 0.8, lintelY + s * 0.08);
+              ctx.stroke();
+              ctx.strokeStyle = SKR_DRIFT_LIT;
+              ctx.lineWidth = Math.max(1, s * 0.016);
+              ctx.beginPath();
+              ctx.moveTo(p.x + m * hw * 0.89 - s * 0.01, baseY - s * 0.1);
+              ctx.quadraticCurveTo(p.x + m * hw * 0.97, baseY - s * 0.58, p.x + m * hw * 0.79 - s * 0.01, lintelY + s * 0.1);
+              ctx.stroke();
+            }
+            // The lintel: one naturally-curved branch — found bent,
+            // never steamed. Kelp lashes at both shoulders.
+            ctx.strokeStyle = SKR_DRIFT;
+            ctx.lineWidth = Math.max(1.5, s * 0.05);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.88, lintelY + s * 0.1);
+            ctx.quadraticCurveTo(p.x, lintelY - s * 0.12, p.x + hw * 0.88, lintelY + s * 0.1);
+            ctx.stroke();
+            ctx.strokeStyle = SKR_DRIFT_LIT;
+            ctx.lineWidth = Math.max(1, s * 0.018);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw * 0.7, lintelY + s * 0.05);
+            ctx.quadraticCurveTo(p.x, lintelY - s * 0.1, p.x + hw * 0.5, lintelY + s * 0.02);
+            ctx.stroke();
+            ctx.strokeStyle = SKR_KELP;
+            ctx.lineWidth = Math.max(1, s * 0.022);
+            for (const m of [-1, 1] as const) {
+              for (let k = 0; k < 2; k++) {
+                ctx.beginPath();
+                ctx.moveTo(p.x + m * hw * 0.82 - s * 0.035, lintelY + s * (0.06 + k * 0.03));
+                ctx.lineTo(p.x + m * hw * 0.82 + s * 0.035, lintelY + s * (0.05 + k * 0.03));
+                ctx.stroke();
+              }
+            }
+            // THE STRINGS: three pendulums on offset phases — each
+            // string sways as ONE line from its knot, shells riding
+            // it; the middle one longest, all hanging TRUE.
+            for (let k = 0; k < 3; k++) {
+              const kx = p.x + (k - 1) * hw * 0.52;
+              const knotY = lintelY + s * (0.02 - Math.abs(k - 1) * 0.05);
+              const len = s * (0.62 + (k === 1 ? 0.16 : 0) + ((h >> (k * 2)) & 1) * 0.05);
+              const sway = Math.sin(t * 1.1 + phase + k * 2.3) * 0.075 + Math.sin(t * 0.6 + k * 1.1) * 0.03;
+              ctx.save();
+              ctx.translate(kx, knotY);
+              ctx.rotate(sway);
+              ctx.strokeStyle = 'rgba(228, 232, 216, 0.85)';
+              ctx.lineWidth = Math.max(1, s * 0.012);
+              ctx.beginPath();
+              ctx.moveTo(0, 0);
+              ctx.lineTo(0, len);
+              ctx.stroke();
+              const shellN = 3;
+              for (let j = 0; j < shellN; j++) {
+                const jy = len * ((j + 1) / (shellN + 0.4));
+                const st = (h >> (j * 2 + k)) & 3;
+                if (glassed && k === 1 && j === shellN - 1) {
+                  // The sea-glass drop: the string's one cool jewel —
+                  // painted lumen only, never a light entry.
+                  ctx.fillStyle = 'rgba(148, 214, 202, 0.9)';
+                  ctx.beginPath();
+                  ctx.ellipse(0, jy, s * 0.03, s * 0.038, 0, 0, Math.PI * 2);
+                  ctx.fill();
+                  ctx.fillStyle = 'rgba(226, 248, 240, 0.85)';
+                  ctx.beginPath();
+                  ctx.ellipse(-s * 0.009, jy - s * 0.012, s * 0.011, s * 0.008, -0.5, 0, Math.PI * 2);
+                  ctx.fill();
+                  continue;
+                }
+                ctx.fillStyle = st === 1 ? '#e6ded0' : st === 2 ? '#e2d8e0' : '#e0d9c4';
+                ctx.beginPath();
+                if ((st & 1) === 0) {
+                  // A fan hung tip-down.
+                  ctx.moveTo(-s * 0.036, jy - s * 0.022);
+                  ctx.quadraticCurveTo(0, jy + s * 0.05, s * 0.036, jy - s * 0.022);
+                  ctx.closePath();
+                } else {
+                  ctx.ellipse(0, jy, s * 0.026, s * 0.033, 0.2, 0, Math.PI * 2);
+                }
+                ctx.fill();
+                // Each shell keeps a dark under-edge so it reads
+                // against the sky AND the grass alike.
+                ctx.strokeStyle = 'rgba(90, 84, 70, 0.55)';
+                ctx.lineWidth = Math.max(1, s * 0.008);
+                ctx.beginPath();
+                ctx.moveTo(-s * 0.022, jy + s * 0.014);
+                ctx.quadraticCurveTo(0, jy + s * 0.03, s * 0.022, jy + s * 0.014);
+                ctx.stroke();
+              }
+              ctx.restore();
+            }
+            // The wind's litter: two shells that rang themselves free.
+            ctx.fillStyle = '#ded5c4';
+            ctx.beginPath();
+            ctx.ellipse(p.x - hw * 0.3, baseY - s * 0.02, s * 0.024, s * 0.016, 0.4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = DGN_BONE_DIM;
+            ctx.beginPath();
+            ctx.ellipse(p.x + hw * 0.42, baseY, s * 0.02, s * 0.014, -0.3, 0, Math.PI * 2);
             ctx.fill();
           },
         };

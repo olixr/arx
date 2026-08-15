@@ -718,6 +718,30 @@ export enum Tile {
   CatchBasket = 379,
   /** A sea-beast's ribcage arching from the ground; the camp moved in under it. */
   WhaleRibs = 380,
+  // THE CRAFTSMEN OF THE BANKS (docs/skral-decor-plan.md, second
+  // shelf): the working-village layer — the pieces that say people
+  // LIVE here and work the water for a living, not just camp on it.
+  // Same voice, same laws: found, never felled; wet at the ground.
+  /** A woven reed lean-to — the shoal's dwelling, mouth to the south. */
+  ReedShelter = 381,
+  /** A lashed driftwood tripod smoking the catch over an ember bed. */
+  SmokeTripod = 382,
+  /** A low mending bench, net spread mid-repair, bone needle parked. */
+  MendingBench = 383,
+  /** Woven tidal-weir panels with a funnel gap — the camp's namesake. */
+  WeirPanels = 384,
+  /** Kelp fronds drying on a line between two leaning poles. */
+  KelpLine = 385,
+  /** A shallow evaporation basin rimmed in white salt crust. */
+  SaltPan = 386,
+  /** The shell-carver's bench: drilled fans, strings in progress. */
+  ShellBench = 387,
+  /** Withy and reed bundles leaned in a stand — the wicker-craft store. */
+  WithyStore = 388,
+  /** A withy-ringed keep-pool holding the live catch till market. */
+  KeepPool = 389,
+  /** Shell chimes on a driftwood arch, ticking in the sea wind. */
+  TideChimes = 390,
 }
 
 export enum Detail {
@@ -1294,6 +1318,18 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.TideAltar]: { name: 'tide altar', solid: true, color: '#707a80', raised: true, topColor: '#c98a74' },
   [Tile.CatchBasket]: { name: 'catch baskets', solid: true, color: '#7c6c44', raised: true, topColor: '#b8c4c6' },
   [Tile.WhaleRibs]: { name: 'great ribs', solid: true, color: '#8a8272', raised: true, topColor: '#e6dfc8' },
+  // THE CRAFTSMEN OF THE BANKS: the working layer keeps the kit value
+  // law — every piece a full step off sand, trampled dirt, and meadow.
+  [Tile.ReedShelter]: { name: 'reed shelter', solid: true, color: '#6b7245', raised: true, topColor: '#c2b98a' },
+  [Tile.SmokeTripod]: { name: 'smoke tripod', solid: true, color: '#6b6353', raised: true, topColor: '#9aa3a4' },
+  [Tile.MendingBench]: { name: 'mending bench', solid: true, color: '#75705f', raised: true, topColor: '#5a7a5c' },
+  [Tile.WeirPanels]: { name: 'tidal weir', solid: true, color: '#7c6c44', raised: true, topColor: '#a08b58' },
+  [Tile.KelpLine]: { name: 'kelp line', solid: true, color: '#44584a', raised: true, topColor: '#7fae6a' },
+  [Tile.SaltPan]: { name: 'salt pan', solid: true, color: '#9aa0a0', raised: true, topColor: '#e8ecec' },
+  [Tile.ShellBench]: { name: "shell-carver's bench", solid: true, color: '#8a8272', raised: true, topColor: '#d8cfd8' },
+  [Tile.WithyStore]: { name: 'withy bundles', solid: true, color: '#87764a', raised: true, topColor: '#c9b278' },
+  [Tile.KeepPool]: { name: 'keep-pool', solid: true, color: '#3c545e', raised: true, topColor: '#b8c4c6' },
+  [Tile.TideChimes]: { name: 'shell chimes', solid: true, color: '#6e6858', raised: true, topColor: '#e8d8b8' },
 };
 
 /** The four awning silhouettes, index order FOREVER (the id math). */
@@ -1917,6 +1953,18 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.TideAltar, 0.4],
   [Tile.CatchBasket, 0.32],
   [Tile.WhaleRibs, 0.42],
+  // The craftsmen's gear: benches you lean over, lines you duck
+  // under, the shelter and the keep-pool keep the widest stance.
+  [Tile.ReedShelter, 0.42],
+  [Tile.SmokeTripod, 0.3],
+  [Tile.MendingBench, 0.34],
+  [Tile.WeirPanels, 0.36],
+  [Tile.KelpLine, 0.32],
+  [Tile.SaltPan, 0.36],
+  [Tile.ShellBench, 0.32],
+  [Tile.WithyStore, 0.3],
+  [Tile.KeepPool, 0.38],
+  [Tile.TideChimes, 0.18],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -2143,7 +2191,19 @@ export type DestructibleKind =
   | 'roe'
   | 'lure'
   | 'catch'
-  | 'greatribs';
+  | 'greatribs'
+  // THE CRAFTSMEN OF THE BANKS: the working gear's own wreckage —
+  // reed walls sigh apart, smoke scatters, brine and salt spill.
+  | 'shelter'
+  | 'smoker'
+  | 'mendbench'
+  | 'weir'
+  | 'kelpline'
+  | 'saltpan'
+  | 'shellbench'
+  | 'withies'
+  | 'keeppool'
+  | 'shellchimes';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -2275,6 +2335,18 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.LurePole, { kind: 'lure', respawnSec: 600, hits: 2 }],
   [Tile.CatchBasket, { kind: 'catch', respawnSec: 300, hits: 1 }],
   [Tile.WhaleRibs, { kind: 'greatribs', respawnSec: 600, hits: 4 }],
+  // THE CRAFTSMEN OF THE BANKS: woven walls and worked joinery hold a
+  // blow or three; lashed lines, heaps, and crusts pop in one.
+  [Tile.ReedShelter, { kind: 'shelter', respawnSec: 600, hits: 3 }],
+  [Tile.SmokeTripod, { kind: 'smoker', respawnSec: 300, hits: 1 }],
+  [Tile.MendingBench, { kind: 'mendbench', respawnSec: 300, hits: 2 }],
+  [Tile.WeirPanels, { kind: 'weir', respawnSec: 300, hits: 2 }],
+  [Tile.KelpLine, { kind: 'kelpline', respawnSec: 300, hits: 1 }],
+  [Tile.SaltPan, { kind: 'saltpan', respawnSec: 300, hits: 1 }],
+  [Tile.ShellBench, { kind: 'shellbench', respawnSec: 300, hits: 2 }],
+  [Tile.WithyStore, { kind: 'withies', respawnSec: 300, hits: 1 }],
+  [Tile.KeepPool, { kind: 'keeppool', respawnSec: 300, hits: 1 }],
+  [Tile.TideChimes, { kind: 'shellchimes', respawnSec: 300, hits: 1 }],
 ]);
 
 /** Every smashable prop tile. */

@@ -160,6 +160,11 @@ export const TILE_CATEGORIES: TileCategory[] = [
       Tile.Dugout, Tile.LurePole,
       Tile.FishRack, Tile.NetFrame, Tile.HarpoonRack,
       Tile.FishTrap, Tile.CatchBasket, Tile.ShellMidden, Tile.RoeNest,
+      // THE CRAFTSMEN OF THE BANKS: the working-village layer —
+      // dwelling and works first, then stores and the small culture.
+      Tile.ReedShelter, Tile.SmokeTripod, Tile.WeirPanels, Tile.KeepPool,
+      Tile.MendingBench, Tile.ShellBench, Tile.SaltPan,
+      Tile.KelpLine, Tile.WithyStore, Tile.TideChimes,
     ],
   },
   {

@@ -116,7 +116,20 @@ export type SmashKind =
   | 'roe'
   | 'lure'
   | 'catch'
-  | 'greatribs';
+  | 'greatribs'
+  // THE CRAFTSMEN OF THE BANKS: working wreckage — thatch sighs,
+  // smoke scatters, brine spills, salt puffs, and the keep-pool's
+  // tenants make a break for the water.
+  | 'shelter'
+  | 'smoker'
+  | 'mendbench'
+  | 'weir'
+  | 'kelpline'
+  | 'saltpan'
+  | 'shellbench'
+  | 'withies'
+  | 'keeppool'
+  | 'shellchimes';
 
 export interface DebrisChunk {
   x: number; // world coords (tile units)
@@ -606,6 +619,18 @@ const CHIP_TONE: Record<SmashKind, string> = {
   lure: '#8d8672',
   catch: '#a08b58',
   greatribs: '#cfc7ae',
+  // The craftsmen's wreckage: reed dust, ember ash, wet wicker,
+  // brine-gray stone, salt white, and shell pale.
+  shelter: '#8a9a5f',
+  smoker: '#6b6353',
+  mendbench: '#8d8672',
+  weir: '#a08b58',
+  kelpline: '#3f5c48',
+  saltpan: '#e8ecec',
+  shellbench: '#ded5c4',
+  withies: '#a08b58',
+  keeppool: '#a08b58',
+  shellchimes: '#ded5c4',
 };
 
 const pick = <T>(rand: () => number, arr: readonly T[]): T =>
@@ -1614,6 +1639,151 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
         out.push({ len: 0.04, wid: 0.03, color: '#c5bda8', round: true, pace: 1.2 });
       }
       out.push({ len: 0.24, wid: 0.035, color: '#3f5c48', stripe: '#ded5c4', pace: 1.25 });
+      break;
+    }
+    case 'shelter': {
+      // The dwelling comes apart the way thatch does: the reed coat
+      // SIGHS into loose straw drifting near, the bent withy frame
+      // cartwheels farther, and the kelp bedding slumps dead-last —
+      // somebody's whole house, gone in a breath.
+      for (let i = 0; i < 7; i++) {
+        out.push({ len: 0.12 + rand() * 0.08, wid: 0.02, color: pick(rand, ['#8a9a5f', '#b5bd7e', '#5f6b40']), pace: 0.55 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.2 + rand() * 0.08, wid: 0.035, color: '#8d8672', stripe: '#b5ad94', pace: 1.0 });
+      }
+      out.push({ len: 0.16, wid: 0.09, color: '#3f5c48', stripe: '#5a7a5c', round: true, pace: 0.35 });
+      break;
+    }
+    case 'smoker': {
+      // The tripod scatters: three poles go long, the half-cured
+      // catch flips near, and the banked ember bed EXHALES — one
+      // last gray breath with two bright sparks dying in it.
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.24 + rand() * 0.08, wid: 0.035, color: '#8d8672', stripe: '#b5ad94', pace: 1.15 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.1, wid: 0.04, color: '#9aa39b', stripe: '#c6cfc4', round: true, pace: 0.9 });
+      }
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.07, wid: 0.06, color: '#8e8e8a', round: true, pace: 0.3 });
+      }
+      out.push({ len: 0.035, wid: 0.03, color: '#d87846', round: true, pace: 1.3 });
+      out.push({ len: 0.03, wid: 0.025, color: '#e8a05a', round: true, pace: 1.15 });
+      break;
+    }
+    case 'mendbench': {
+      // The slab splits, the stones roll a hand's width, and the
+      // net drops LIMP over everything — cord has no throw in it;
+      // the bone needle is the one bright thing that flies.
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.2 + rand() * 0.1, wid: 0.05, color: '#8d8672', stripe: '#b5ad94', pace: 0.9 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.1, wid: 0.09, color: '#6a747a', round: true, pace: 0.45 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.13, wid: 0.03, color: '#5a7a5c', stripe: '#3f5c48', pace: 0.4 });
+      }
+      out.push({ len: 0.09, wid: 0.02, color: '#cfc7ae', stripe: '#efe9d8', pace: 1.5 });
+      break;
+    }
+    case 'weir': {
+      // The hurdles spring: weave unwinds into whipping withies,
+      // stakes topple with their points still wet, and the stray at
+      // the gap FLIPS home free.
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.14 + rand() * 0.08, wid: 0.02, color: pick(rand, ['#a08b58', '#c2ab6e', '#8a7648']), pace: 0.85 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.22, wid: 0.04, color: '#8d8672', stripe: '#b5ad94', pace: 1.0 });
+      }
+      out.push({ len: 0.1, wid: 0.035, color: '#b8c4c6', stripe: '#dde6e2', round: true, pace: 1.5 });
+      break;
+    }
+    case 'kelpline': {
+      // The line snaps and the crop comes down WET: heavy straps
+      // that slap flat and stay, the cord curling over them, the
+      // poles falling opposite ways.
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.16 + rand() * 0.08, wid: 0.045, color: pick(rand, ['#3f5c48', '#5a7a5c']), stripe: '#5a7a5c', pace: 0.35 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.26, wid: 0.04, color: '#8d8672', stripe: '#b5ad94', pace: 1.05 });
+      }
+      out.push({ len: 0.18, wid: 0.018, color: '#3f5c48', pace: 0.6 });
+      break;
+    }
+    case 'saltpan': {
+      // The rim breaches and the works spill: brine sheets DARK
+      // across the ground, the crust puffs white and near, rim
+      // stones roll, and the harvest is a season's pay in the mud.
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.06, wid: 0.05, color: pick(rand, ['#e8ecec', '#cfd8d8']), round: true, pace: 0.5 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.1, wid: 0.09, color: pick(rand, ['#7d868b', '#6a747a']), round: true, pace: 0.6 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.12, wid: 0.1, color: '#aebfc2', stripe: '#c4d2d2', round: true, pace: 0.3 });
+      }
+      out.push({ len: 0.06, wid: 0.03, color: '#cfc7ae', stripe: '#efe9d8', pace: 1.1 });
+      break;
+    }
+    case 'shellbench': {
+      // The craft scatters as craft does: whole fans spinning off
+      // pale, the half-strung string leaving LAST still strung, and
+      // a snow of worked chips settling where the bench stood.
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.07, wid: 0.06, color: pick(rand, ['#ded5c4', '#d8cfd8', '#e6e0d2']), round: true, pace: 1.1 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.2, wid: 0.05, color: '#8d8672', stripe: '#b5ad94', pace: 0.85 });
+      }
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.03, wid: 0.02, color: '#e6e0d2', round: true, pace: 0.6 });
+      }
+      out.push({ len: 0.2, wid: 0.03, color: '#ded5c4', stripe: '#cfc7ae', pace: 0.25 });
+      break;
+    }
+    case 'withies': {
+      // The bindings let go all at once: a whole store of rods
+      // fanning out in a dry clatter, the two kelp bands curling
+      // among them like shed skins.
+      for (let i = 0; i < 8; i++) {
+        out.push({ len: 0.18 + rand() * 0.1, wid: 0.018, color: pick(rand, ['#a08b58', '#c2ab6e', '#93804a', '#7a683c']), pace: 0.9 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.1, wid: 0.02, color: '#3f5c48', stripe: '#5a7a5c', pace: 0.45 });
+      }
+      break;
+    }
+    case 'keeppool': {
+      // The curb breaks and the larder ESCAPES: the pool sheets out
+      // dark, and the keep's tenants go flipping for the bank — the
+      // fastest silver since the creels burst.
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.14, wid: 0.02, color: pick(rand, ['#a08b58', '#c2ab6e']), pace: 0.7 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.13, wid: 0.11, color: '#31454e', stripe: '#3d5560', round: true, pace: 0.35 });
+      }
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.1 + rand() * 0.04, wid: 0.03, color: pick(rand, ['#b8c4c6', '#dde6e2']), stripe: '#4a5a5e', round: true, pace: 1.5 });
+      }
+      break;
+    }
+    case 'shellchimes': {
+      // The music ends: the arch drops its strings and every shell
+      // rings once on the way down — pale, light, and near — while
+      // the sea-glass bead winks out where it lands.
+      for (let i = 0; i < 6; i++) {
+        out.push({ len: 0.05, wid: 0.04, color: pick(rand, ['#ded5c4', '#d8cfd8', '#cfc7ae']), round: true, pace: 0.75 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.22, wid: 0.035, color: '#8d8672', stripe: '#b5ad94', pace: 1.0 });
+      }
+      out.push({ len: 0.04, wid: 0.035, color: '#94d6ca', stripe: '#def5ee', round: true, pace: 0.6 });
       break;
     }
   }
