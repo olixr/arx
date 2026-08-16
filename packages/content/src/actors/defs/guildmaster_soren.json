@@ -1,0 +1,32 @@
+{
+  "id": "guildmaster_soren",
+  "name": "Guildmaster Soren",
+  "title": "The Masons' Guild",
+  "examine": "The keeper of the sealed book. He carries the guild's whole weight the way the guild's pillars carry the mountain: without visible strain and without ever, ever shifting.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 3,
+      "hairColor": 6,
+      "beard": 3,
+      "eyes": 3,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 1,
+      "pants": 6
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 140
+    }
+  ],
+  "lines": [
+    "The mountain is a member in good standing. Its dues are the ore. Ours are the shoring.",
+    "The book on the lectern stays open to the same page. Guild law. You may read it. You may not touch it.",
+    "We carved the Undercroft, we sealed the Undercroft, we opened the Undercroft. Each was right when we did it. That is the hardest sentence in our charter."
+  ]
+}

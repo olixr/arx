@@ -206,6 +206,28 @@ import brokerSlate from './defs/broker_slate.json';
 import kingsdelfWatch from './defs/kingsdelf_watch.json';
 import kingsdelfDelver from './defs/kingsdelf_delver.json';
 import kingsdelfGlasshand from './defs/kingsdelf_glasshand.json';
+// THE PEOPLE OF THE VALE (docs/silverfall-vale-plan.md Phase 6).
+import millerBrant from './defs/miller_brant.json';
+import bakerHedda from './defs/baker_hedda.json';
+import tavernerUlf from './defs/taverner_ulf.json';
+import keeperRonnaug from './defs/keeper_ronnaug.json';
+import potterSigne from './defs/potter_signe.json';
+import chandlerWick from './defs/chandler_wick.json';
+import cobblerFinn from './defs/cobbler_finn.json';
+import wainwrightTorvald from './defs/wainwright_torvald.json';
+import hostelkeeperMaeve from './defs/hostelkeeper_maeve.json';
+import gravekeeperAldous from './defs/gravekeeper_aldous.json';
+import fisherBrigga from './defs/fisher_brigga.json';
+import fisherHolm from './defs/fisher_holm.json';
+import bathkeeperUna from './defs/bathkeeper_una.json';
+import guildmasterSoren from './defs/guildmaster_soren.json';
+import mongerPetya from './defs/monger_petya.json';
+import mongerLucan from './defs/monger_lucan.json';
+import sergeantVarn from './defs/sergeant_varn.json';
+import courierPip from './defs/courier_pip.json';
+import valeWatch from './defs/vale_watch.json';
+import valePilgrim from './defs/vale_pilgrim.json';
+import valeCarter from './defs/vale_carter.json';
 
 const SOURCES: readonly unknown[] = [
   reeveHalla,
@@ -399,6 +421,27 @@ const SOURCES: readonly unknown[] = [
   kingsdelfDelver,
   kingsdelfGlasshand,
   hartfellHerder,
+  millerBrant,
+  bakerHedda,
+  tavernerUlf,
+  keeperRonnaug,
+  potterSigne,
+  chandlerWick,
+  cobblerFinn,
+  wainwrightTorvald,
+  hostelkeeperMaeve,
+  gravekeeperAldous,
+  fisherBrigga,
+  fisherHolm,
+  bathkeeperUna,
+  guildmasterSoren,
+  mongerPetya,
+  mongerLucan,
+  sergeantVarn,
+  courierPip,
+  valeWatch,
+  valePilgrim,
+  valeCarter,
 ];
 
 function buildRegistry(): ReadonlyMap<string, NpcActorDef> {

@@ -1,0 +1,32 @@
+{
+  "id": "chandler_wick",
+  "name": "Chandler Wick",
+  "title": "The Chandlery",
+  "examine": "Yes, that is his real name, and no, he did not pick the trade for it — the trade picked him, he'll tell you, grinning like a lit taper. Every shrine candle passed through his hands first.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 3,
+      "hairColor": 5,
+      "beard": 1,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 8,
+      "pants": 6
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 65
+    }
+  ],
+  "lines": [
+    "The shrine's wicks are dipped here. Sella blesses the flame; somebody has to make the part that burns.",
+    "Tallow for the Vale, beeswax for the Row, and one box a month that goes down the Undercroft stair and doesn't come back. I don't ask. The coin's good.",
+    "A candle is a clock you can read in the dark. People forget that. I sell a lot of clocks."
+  ]
+}

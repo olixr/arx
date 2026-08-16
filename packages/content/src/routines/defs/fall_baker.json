@@ -1,0 +1,33 @@
+{
+  "id": "fall_baker",
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963267948966,
+    "work": true,
+    "speed": 1.5
+  },
+  "slots": [
+    {
+      "from": 8,
+      "to": 14,
+      "task": {
+        "kind": "post",
+        "x": 8,
+        "y": -1,
+        "lie": true,
+        "speed": 1.2
+      }
+    },
+    {
+      "from": 15,
+      "to": 17,
+      "task": {
+        "kind": "wander",
+        "x": 6,
+        "y": -14,
+        "radius": 2.5,
+        "speed": 1.5
+      }
+    }
+  ]
+}

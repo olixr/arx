@@ -1,0 +1,33 @@
+{
+  "id": "monger_petya",
+  "name": "Petya",
+  "title": "The Wet Market",
+  "examine": "Fish-scale sequins to the elbow and a voice that carries to the Silver Gate. The wet market's morning bell in human form.",
+  "disposition": "friendly",
+  "shop": "petya_catch",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 11,
+      "hair": 4,
+      "hairColor": 3,
+      "beard": 0,
+      "eyes": 0,
+      "ears": 1,
+      "feature": 2,
+      "shirt": 8,
+      "pants": 5
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 95
+    }
+  ],
+  "lines": [
+    "Pool trout, mere perch, and the pale ones from below that taste better than they look, which is a low bar they clear easily!",
+    "Fresh means it was swimming when Hedda lit her second oven. Ask it yourself, it barely knows it's dead.",
+    "The High City sends servants down for my fish and calls it slumming. Coin doesn't slum, darling."
+  ]
+}

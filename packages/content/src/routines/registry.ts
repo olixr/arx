@@ -206,8 +206,59 @@ import hartPedlar from './defs/hart_pedlar.json';
 import hartWatch from './defs/hart_watch.json';
 import hartWatchBeacon from './defs/hart_watch_beacon.json';
 import hartHerder from './defs/hart_herder.json';
+// THE PEOPLE OF THE VALE (docs/silverfall-vale-plan.md Phase 6).
+import fallMiller from './defs/fall_miller.json';
+import fallBaker from './defs/fall_baker.json';
+import fallTaverner from './defs/fall_taverner.json';
+import fallRestkeeper from './defs/fall_restkeeper.json';
+import fallPotter from './defs/fall_potter.json';
+import fallChandler from './defs/fall_chandler.json';
+import fallCobblersman from './defs/fall_cobblersman.json';
+import fallWainwright from './defs/fall_wainwright.json';
+import fallHostelkeep from './defs/fall_hostelkeep.json';
+import fallGravekeeper from './defs/fall_gravekeeper.json';
+import fallFisherDeep from './defs/fall_fisher_deep.json';
+import fallFisherReed from './defs/fall_fisher_reed.json';
+import fallBathkeeper from './defs/fall_bathkeeper.json';
+import fallGuildmaster from './defs/fall_guildmaster.json';
+import fallMongerFish from './defs/fall_monger_fish.json';
+import fallMongerGreens from './defs/fall_monger_greens.json';
+import fallSergeant from './defs/fall_sergeant.json';
+import fallCourier from './defs/fall_courier.json';
+import valeWatchPost from './defs/vale_watch_post.json';
+import valeWatchGateDay from './defs/vale_watch_gate_day.json';
+import valeWatchGateNight from './defs/vale_watch_gate_night.json';
+import valeWatchMarket from './defs/vale_watch_market.json';
+import valePilgrimRest from './defs/vale_pilgrim_rest.json';
+import valePilgrimWay from './defs/vale_pilgrim_way.json';
+import valeCarterYard from './defs/vale_carter_yard.json';
 
 const SOURCES: readonly unknown[] = [
+  fallMiller,
+  fallBaker,
+  fallTaverner,
+  fallRestkeeper,
+  fallPotter,
+  fallChandler,
+  fallCobblersman,
+  fallWainwright,
+  fallHostelkeep,
+  fallGravekeeper,
+  fallFisherDeep,
+  fallFisherReed,
+  fallBathkeeper,
+  fallGuildmaster,
+  fallMongerFish,
+  fallMongerGreens,
+  fallSergeant,
+  fallCourier,
+  valeWatchPost,
+  valeWatchGateDay,
+  valeWatchGateNight,
+  valeWatchMarket,
+  valePilgrimRest,
+  valePilgrimWay,
+  valeCarterYard,
   efKing,
   efWarden,
   efKeeper,

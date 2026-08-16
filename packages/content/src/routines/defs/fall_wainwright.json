@@ -1,0 +1,33 @@
+{
+  "id": "fall_wainwright",
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963267948966,
+    "work": true,
+    "speed": 1.4
+  },
+  "slots": [
+    {
+      "from": 18,
+      "to": 22,
+      "task": {
+        "kind": "post",
+        "x": -77,
+        "y": -53,
+        "dir": 1.5707963267948966,
+        "speed": 1.4
+      }
+    },
+    {
+      "from": 22,
+      "to": 6,
+      "task": {
+        "kind": "post",
+        "x": -80,
+        "y": -57,
+        "lie": true,
+        "speed": 1.2
+      }
+    }
+  ]
+}

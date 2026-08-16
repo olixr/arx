@@ -1,0 +1,33 @@
+{
+  "id": "taverner_ulf",
+  "name": "Taverner Ulf",
+  "title": "The Last Climb",
+  "examine": "Built like a door and about as easy to move. He keeps the first taproom inside the Silver Gate, which means he has heard every version of every story the High Road tells.",
+  "disposition": "friendly",
+  "shop": "ulf_board",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 9,
+      "hair": 0,
+      "hairColor": 0,
+      "beard": 4,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 1,
+      "pants": 2
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 120
+    }
+  ],
+  "lines": [
+    "The Flagon costs a day's wage and calls it atmosphere. Down here the atmosphere is free and the beer is honest.",
+    "Every carter says the same thing at the door: 'never again, that road.' Every carter is back in a month. I stopped saying goodbye years ago.",
+    "The dice table settles more disputes than the moot. Quieter, too, most nights."
+  ]
+}

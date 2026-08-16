@@ -1,0 +1,66 @@
+{
+  "id": "brigga_far_shore",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "fisher_brigga"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "brigga_far_shore__hub",
+      "text": "You're standing where I gut the catch, so either buy some or talk quick. Both is also allowed.",
+      "choices": [
+        {
+          "text": "What's on the slab today?",
+          "next": "browse"
+        },
+        {
+          "text": "What's across the water?",
+          "next": "across"
+        },
+        {
+          "text": "Ever spoken with them?",
+          "next": "spoken",
+          "set": [
+            "brigga_wave"
+          ]
+        },
+        {
+          "text": "Fair winds, Brigga.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "browse",
+      "voice": "brigga_far_shore__browse",
+      "text": "Mere trout, cold-water fat. Rods too, if you'd rather argue with the lake yourself. The lake usually wins, but it's a fair fight and the loser still eats.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "brigga_catch"
+        }
+      ]
+    },
+    {
+      "id": "across",
+      "voice": "brigga_far_shore__across",
+      "text": "Fires, some nights. Croaking, when the wind lies right. The fish-folk keep the waters past the far shore — always have, since before this quarter had a wall. My grandmother rowed wide of them, my mother rowed wide of them, I row wide of them. Wide is a distance everyone can live at.",
+      "next": "hub"
+    },
+    {
+      "id": "spoken",
+      "voice": "brigga_far_shore__spoken",
+      "text": "Words, no. Waves, yes — the arm kind. Once, a bad-ice winter, I found a keep-pool of mine broken open and a string of dried kelp weighted where the catch had been. Payment, see. Their arithmetic, their manners. We've never spoken and we've never once misunderstood each other. There are marriages that manage less.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "brigga_far_shore__bye",
+      "text": "The mere gives. Say thank you, even if you only borrowed the view."
+    }
+  ]
+}

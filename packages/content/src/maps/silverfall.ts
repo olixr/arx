@@ -1917,6 +1917,40 @@ export function buildSilverfall(): ZoneDef {
   b.actor('fence_calder', 38.5, 25.4, Math.PI / 2, 'fall_fence');
   b.actor('lookout_pike', 42.5, 28.5, Math.PI / 2, 'fall_lookout');
 
+  // THE PEOPLE OF THE VALE (Phase 6) — the lower town's own cast.
+  // Placements are each routine's post (the post-is-the-origin law).
+  b.actor('taverner_ulf', 67.5, 132.5, Math.PI / 2, 'fall_taverner');
+  b.actor('monger_petya', 69.5, 152.4, Math.PI / 2, 'fall_monger_fish');
+  b.actor('monger_lucan', 77.5, 153.4, Math.PI / 2, 'fall_monger_greens');
+  b.actor('baker_hedda', 67.5, 169.5, Math.PI / 2, 'fall_baker');
+  b.actor('wainwright_torvald', 129.5, 226.4, Math.PI / 2, 'fall_wainwright');
+  b.actor('miller_brant', 111.5, 147.5, Math.PI / 2, 'fall_miller');
+  b.actor('potter_signe', 113.5, 170.4, Math.PI / 2, 'fall_potter');
+  b.actor('chandler_wick', 127.5, 172.4, Math.PI / 2, 'fall_chandler');
+  b.actor('cobbler_finn', 138.5, 173.4, Math.PI / 2, 'fall_cobblersman');
+  b.actor('hostelkeeper_maeve', 140.5, 209.4, Math.PI / 2, 'fall_hostelkeep');
+  b.actor('keeper_ronnaug', 13.5, 164.5, Math.PI / 2, 'fall_restkeeper');
+  b.actor('bathkeeper_una', 32.5, 165.4, Math.PI / 2, 'fall_bathkeeper');
+  b.actor('guildmaster_soren', 23.5, 184.4, Math.PI / 2, 'fall_guildmaster');
+  b.actor('gravekeeper_aldous', 33.5, 150.4, Math.PI / 2, 'fall_gravekeeper');
+  b.actor('fisher_brigga', 29.5, 207.4, Math.PI / 2, 'fall_fisher_deep');
+  b.actor('fisher_holm', 29.5, 221.4, Math.PI / 2, 'fall_fisher_reed');
+  b.actor('sergeant_varn', 99.5, 227.5, Math.PI / 2, 'fall_sergeant');
+  b.actor('courier_pip', 88.5, 130.5, Math.PI / 2, 'fall_courier');
+  // The lower watch: the gate rota pair, the beats, the posts.
+  b.actor('vale_watch', 86.5, 239.5, Math.PI / 2, 'vale_watch_gate_day');
+  b.actor('vale_watch', 90.5, 239.5, Math.PI / 2, 'vale_watch_gate_night');
+  b.actor('vale_watch', 72.5, 157.5, Math.PI / 2, 'vale_watch_market');
+  b.actor('vale_watch', 25.5, 215.5, Math.PI / 2, 'vale_watch_post');
+  b.actor('vale_watch', 111.5, 215.5, Math.PI / 2, 'vale_watch_post');
+  b.actor('vale_watch', 88.5, 234.5, Math.PI / 2, 'vale_watch_post');
+  // The way keeps its walkers, and the yard its fires.
+  b.actor('vale_pilgrim', 146.5, 218.5, Math.PI / 2, 'vale_pilgrim_rest');
+  b.actor('vale_pilgrim', 148.5, 200.5, Math.PI / 2, 'vale_pilgrim_way');
+  b.actor('vale_pilgrim', 147.5, 176.5, Math.PI / 2, 'vale_pilgrim_rest');
+  b.actor('vale_carter', 117.5, 227.5, Math.PI / 2, 'vale_carter_yard');
+  b.actor('vale_carter', 121.5, 218.5, Math.PI / 2, 'vale_carter_yard');
+
   // The crag pasture's rams — the city's only livestock, on purpose.
   b.npcSpawn('ram', 157, 49.5, 3, 3);
 

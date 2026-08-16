@@ -1,0 +1,48 @@
+{
+  "id": "torvald_axles",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "wainwright_torvald"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "torvald_axles__hub",
+      "text": "If it rolls, I mend it. If it doesn't roll, that's why you're here. Which cart's yours?",
+      "choices": [
+        {
+          "text": "What breaks most on the High Road?",
+          "next": "road"
+        },
+        {
+          "text": "You live on Garland Row?",
+          "next": "home"
+        },
+        {
+          "text": "Roll easy, Torvald.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "road",
+      "voice": "torvald_axles__road",
+      "text": "The descent. That last league drops like a dropped thing, and carters ride the brake till the shoe glazes, then take the crag corner with glazed shoes. Axles I can save. Wheels, usually. Pride, no. I keep a shelf of the worst failures as a museum. The carters pretend to hate it. They bring visitors.",
+      "next": "hub"
+    },
+    {
+      "id": "home",
+      "voice": "torvald_axles__home",
+      "text": "First cottage on the Row, hedge and all. Built the door myself, hung it myself, planed it three times because the frame and I disagreed about what square meant. My wife keeps the garden through the wicket and I keep the woodpile, and between the two of us the house behaves. Mostly her doing. The woodpile just makes me look useful.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "torvald_axles__bye",
+      "text": "Grease the hubs before the descent, not after. After is a story I get paid to hear."
+    }
+  ]
+}

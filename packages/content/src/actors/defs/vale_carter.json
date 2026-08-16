@@ -1,0 +1,32 @@
+{
+  "id": "vale_carter",
+  "name": "Carter",
+  "title": "The Wagon Yard",
+  "examine": "The High Road's last league is a descent, a crag corner, and a gate, in that order, and every carter at this fire has opinions about all three.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 9,
+      "hair": 2,
+      "hairColor": 3,
+      "beard": 3,
+      "eyes": 0,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 5,
+      "pants": 2
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 25
+    }
+  ],
+  "lines": [
+    "Never again, that road. See you next month.",
+    "Grain up, ingots down. The road only rhymes if you're paid both ways.",
+    "Torvald looked at my axle, sucked his teeth, and named a price. You don't argue with the teeth. The teeth have seen things."
+  ]
+}

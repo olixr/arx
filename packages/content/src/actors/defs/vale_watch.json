@@ -1,0 +1,50 @@
+{
+  "id": "vale_watch",
+  "name": "Vale Watch",
+  "title": "The Lower Watch",
+  "examine": "The youngest company on the city's rolls, walking the newest wall. The kit is newer, the boots are cheaper, and the pride is, if anything, worse.",
+  "disposition": "neutral",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 1,
+      "hairColor": 1,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 0,
+      "pants": 0
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 12
+    }
+  ],
+  "lines": [
+    "Mind the edge. Yes, down here too. It's the same mountain.",
+    "The Silver Gate watch calls us the puddle patrol. The puddle patrol logged forty carts yesterday. They logged nine.",
+    "Fair-days the green fills and the pickpockets come up from the road. Best day of the year for arrests. Worst day for lunch."
+  ],
+  "protection": "invulnerable",
+  "combat": {
+    "level": 24,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 120,
+      "damage": 8,
+      "speed": 3.5,
+      "leashRange": 10
+    }
+  },
+  "equipment": {
+    "head": "iron_helm",
+    "body": "iron_platebody",
+    "legs": "iron_greaves",
+    "boots": "iron_sabatons",
+    "weapon": "iron_sword"
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "id": "aldous_terrace",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "gravekeeper_aldous"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "aldous_terrace__hub",
+      "text": "Mind the moss on the third step. It's older than either of us and I extend it the courtesy.",
+      "choices": [
+        {
+          "text": "Whose graves are these?",
+          "next": "stones"
+        },
+        {
+          "text": "Who lights the candles up there?",
+          "next": "candles"
+        },
+        {
+          "text": "There's a candle like these in the Undercroft. Always fresh.",
+          "next": "below",
+          "requires": [
+            "dlg:coppin_reeve"
+          ],
+          "set": [
+            "aldous_word"
+          ]
+        },
+        {
+          "text": "I'll let you work.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "stones",
+      "voice": "aldous_terrace__stones",
+      "text": "The old rows are the quarry foremen — the ones who worked this mountain before anyone thought to crown it. The Silver Line is five kings deep. The terrace is twenty rows deeper. Kings come up here on foot, you know. Only place in the city they do.",
+      "next": "hub"
+    },
+    {
+      "id": "candles",
+      "voice": "aldous_terrace__candles",
+      "text": "The rule is on the sign: leave the candles be. It is a good rule. It is not my rule, it was here when I was young, and the candles were lit then too. That is everything I have said on the subject in forty years, and you got the long version.",
+      "next": "hub"
+    },
+    {
+      "id": "below",
+      "voice": "aldous_terrace__below",
+      "text": "...Is there. A fresh one. At the memorial. Well. The stair down there is long, and my knees are what they are, so it isn't me — and it isn't nobody, is it. Hm. You'll excuse me. The moss wants looking at. Leave the candles be — up here AND down there, if you take advice.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "aldous_terrace__bye",
+      "text": "Quiet roads. That's the blessing here. We're rather known for quiet."
+    }
+  ]
+}

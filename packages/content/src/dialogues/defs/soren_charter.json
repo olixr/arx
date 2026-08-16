@@ -1,0 +1,64 @@
+{
+  "id": "soren_charter",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "guildmaster_soren"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "soren_charter__hub",
+      "text": "The Masons' Guild. You're standing in the charter hall of the people who cut every terrace you climbed to get here. Ask what you came to ask.",
+      "choices": [
+        {
+          "text": "Tell me about the guild.",
+          "next": "guild"
+        },
+        {
+          "text": "What's the book on the lectern?",
+          "next": "book"
+        },
+        {
+          "text": "Grettir sent word about his brother's crew.",
+          "next": "count",
+          "requires": [
+            "grettir_word"
+          ],
+          "set": [
+            "soren_word"
+          ]
+        },
+        {
+          "text": "I'll leave you to the stone.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "guild",
+      "voice": "soren_charter__guild",
+      "text": "Five generations of us cut this city out of the Silverspine. The terraces, the stair, the Undercroft below — our chisels, our shoring, our dead. The Crown owns what stands on the ground. We remember what the ground cost.",
+      "next": "hub"
+    },
+    {
+      "id": "book",
+      "voice": "soren_charter__book",
+      "text": "The sealed book. Shift rolls from the winter we closed the Undercroft. It stays open to one page — the descent roll of the last crew. Guild law says the book stays open until the count matches. Thirty-one signatures going down. Thirty marks coming up. It has been open a long time.",
+      "next": "hub"
+    },
+    {
+      "id": "count",
+      "voice": "soren_charter__count",
+      "text": "Then you know more than most, and I'll say the part I can. The missing man was Grettir's brother. The seal went up eleven days after the breach; my predecessor swung the mallet and never spoke of it again. If tools with his mark are coming out of the deep now — bring them here as well as to Grettir. The wall below holds a name-space empty. The guild would very much like to stop being wrong about the count.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "soren_charter__bye",
+      "text": "Walk on stone. It's all ours, so walk gently."
+    }
+  ]
+}

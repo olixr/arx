@@ -1,0 +1,19 @@
+{
+  "id": "vale_carter_yard",
+  "base": {
+    "kind": "wander",
+    "radius": 3,
+    "speed": 1.3
+  },
+  "slots": [
+    {
+      "from": 19,
+      "to": 23,
+      "task": {
+        "kind": "post",
+        "dir": 1.5707963267948966,
+        "speed": 1.2
+      }
+    }
+  ]
+}

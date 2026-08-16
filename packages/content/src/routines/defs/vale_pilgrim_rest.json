@@ -1,0 +1,19 @@
+{
+  "id": "vale_pilgrim_rest",
+  "base": {
+    "kind": "wander",
+    "radius": 2.5,
+    "speed": 1.1
+  },
+  "slots": [
+    {
+      "from": 23,
+      "to": 6,
+      "task": {
+        "kind": "post",
+        "dir": 1.5707963267948966,
+        "speed": 1.0
+      }
+    }
+  ]
+}

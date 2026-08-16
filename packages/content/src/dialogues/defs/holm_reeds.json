@@ -1,0 +1,48 @@
+{
+  "id": "holm_reeds",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "fisher_holm"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "holm_reeds__hub",
+      "text": "Mm. You'll scare the fish standing like that. Stand like this instead. Better. What?",
+      "choices": [
+        {
+          "text": "What's in the reeds worth catching?",
+          "next": "reeds"
+        },
+        {
+          "text": "You and Brigga split the water?",
+          "next": "split"
+        },
+        {
+          "text": "Still waters, Holm.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "reeds",
+      "voice": "holm_reeds__reeds",
+      "text": "Perch, eel when the river runs cold, and the fry the whole mere grows up from — which is why you fish the reeds gently or in ten years you fish nothing at all. The reeds are the mere's nursery. I'm less a fisherman there, more a doorman with a rod.",
+      "next": "hub"
+    },
+    {
+      "id": "split",
+      "voice": "holm_reeds__split",
+      "text": "She takes the deep, I take the margins, and we've argued thirty years about which is the braver water. Deep water kills you quick if it decides to. Reed water lets you make your own mistakes slower. Between us we've never once gone hungry, and the argument keeps winters short.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "holm_reeds__bye",
+      "text": "Mm. Gently past the reeds, if you walk that way."
+    }
+  ]
+}

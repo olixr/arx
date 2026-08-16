@@ -1,0 +1,32 @@
+{
+  "id": "courier_pip",
+  "name": "Pip",
+  "title": "Runner of the Whole City",
+  "examine": "Twelve years old, knows every stair, shortcut, and unlatched wicket in the city, and is currently owed small favors by roughly half the population. The other half owe her large ones.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 7,
+      "hairColor": 2,
+      "beard": 0,
+      "eyes": 3,
+      "ears": 1,
+      "feature": 0,
+      "shirt": 7,
+      "pants": 3
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 15
+    }
+  ],
+  "lines": [
+    "Flour to Hedda, soles to Finn, a sealed thing to the Rookery I officially don't know about. Busy morning. Walk with me or talk fast.",
+    "The stairs are only long if you take all of them. There's a rhythm. Nobody over twenty can hear it.",
+    "Ossian reads the Crown's word at the court at midday. I've usually told everyone by ten."
+  ]
+}

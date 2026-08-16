@@ -1,0 +1,53 @@
+{
+  "id": "lucan_boards",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "monger_lucan"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "lucan_boards__hub",
+      "text": "Ignore the shouting from across the square; it comes with the fish. Proper greens, road grain, Greenstair roots. Take your time.",
+      "choices": [
+        {
+          "text": "What's good today?",
+          "next": "browse"
+        },
+        {
+          "text": "How does produce reach a mountain city?",
+          "next": "supply"
+        },
+        {
+          "text": "Good trading, Lucan.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "browse",
+      "voice": "lucan_boards__browse",
+      "text": "Carrots off the Greenstair terraces — Ivo's own rows, picked leaning, which is how you know they'd decided. Berries from the hem woods, eggs and milk off the morning carts, and Brant's flour if you'd rather bake than buy Hedda's. You would not rather. Buy her bread. But the flour's here for the stubborn.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "lucan_greens"
+        }
+      ]
+    },
+    {
+      "id": "supply",
+      "voice": "lucan_boards__supply",
+      "text": "Two roads and a stair. The High Road brings the fields of Amberford up in carts; the Greenstair brings the city's own terraces down in baskets; and the difference in miles is why the carrot costs less than the wheat. People think markets are about money. Markets are about geography with a stall over it.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "lucan_boards__bye",
+      "text": "Eat something that grew in the ground today. Balances out whatever Petya sells you."
+    }
+  ]
+}

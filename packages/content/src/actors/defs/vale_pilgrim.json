@@ -1,0 +1,32 @@
+{
+  "id": "vale_pilgrim",
+  "name": "Pilgrim",
+  "title": "Bound for the Flame",
+  "examine": "Road-dust to the knees and a candle wrapped in cloth against the wind. Every road lamp in the Dawnlands is lit from the fire at the top of this climb, and somebody has to carry the asking up.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 8,
+      "hair": 3,
+      "hairColor": 4,
+      "beard": 1,
+      "eyes": 2,
+      "ears": 1,
+      "feature": 0,
+      "shirt": 2,
+      "pants": 1
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 8
+    }
+  ],
+  "lines": [
+    "Three shrines and the long stair. The keeper at the hostel says the flame doesn't count the days. I'm counting them anyway.",
+    "You carry the candle up unlit. That's the whole of it. The flame does the rest, or it doesn't, and either way you walked.",
+    "The lamps on the road home will all be lit from the fire up there. I like knowing that. Makes the dark on the way back feel borrowed, not owed."
+  ]
+}

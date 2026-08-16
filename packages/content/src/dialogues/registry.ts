@@ -439,8 +439,45 @@ import pikeRoofs from './defs/pike_roofs.json';
 import odeleTheTithe from './defs/odele_the_tithe.json';
 import kestrelTheSweeping from './defs/kestrel_the_sweeping.json';
 import runaTheStamp from './defs/runa_the_stamp.json';
+// THE PEOPLE OF THE VALE (docs/silverfall-vale-plan.md Phase 6).
+import brantStones from './defs/brant_stones.json';
+import heddaOvens from './defs/hedda_ovens.json';
+import ulfClimb from './defs/ulf_climb.json';
+import ronnaugTallies from './defs/ronnaug_tallies.json';
+import signeWheel from './defs/signe_wheel.json';
+import wickTaper from './defs/wick_taper.json';
+import finnAwl from './defs/finn_awl.json';
+import torvaldAxles from './defs/torvald_axles.json';
+import maeveLanterns from './defs/maeve_lanterns.json';
+import aldousTerrace from './defs/aldous_terrace.json';
+import briggaFarShore from './defs/brigga_far_shore.json';
+import holmReeds from './defs/holm_reeds.json';
+import unaSteam from './defs/una_steam.json';
+import sorenCharter from './defs/soren_charter.json';
+import petyaSlab from './defs/petya_slab.json';
+import lucanBoards from './defs/lucan_boards.json';
+import varnGate from './defs/varn_gate.json';
+import pipErrands from './defs/pip_errands.json';
 
 const SOURCES: readonly unknown[] = [
+  brantStones,
+  heddaOvens,
+  ulfClimb,
+  ronnaugTallies,
+  signeWheel,
+  wickTaper,
+  finnAwl,
+  torvaldAxles,
+  maeveLanterns,
+  aldousTerrace,
+  briggaFarShore,
+  holmReeds,
+  unaSteam,
+  sorenCharter,
+  petyaSlab,
+  lucanBoards,
+  varnGate,
+  pipErrands,
   gatewatchEdge,
   castleguardSteel,
   servantStairs,

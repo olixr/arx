@@ -1,0 +1,33 @@
+{
+  "id": "baker_hedda",
+  "name": "Baker Hedda",
+  "title": "The Bakehouse",
+  "examine": "Awake when the city sleeps, asleep when it eats what she made. Her forearms could win the arm-wrestling table at the Delvers' Rest, and once, famously, did.",
+  "disposition": "friendly",
+  "shop": "hedda_loaves",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 7,
+      "hair": 5,
+      "hairColor": 1,
+      "beard": 0,
+      "eyes": 2,
+      "ears": 1,
+      "feature": 2,
+      "shirt": 4,
+      "pants": 5
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 70
+    }
+  ],
+  "lines": [
+    "The ovens never cool. Neither do I, more's the pity.",
+    "Night belongs to me and the watch and nobody else. You learn things about a city, being the only lit window in it.",
+    "First bell, first bread. The castle eats fourth, whatever Ansgar tells you — the miners are walking to a shift, the King is walking to a chair."
+  ]
+}

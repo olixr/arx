@@ -1,0 +1,48 @@
+{
+  "id": "una_steam",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "bathkeeper_una"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "una_steam__hub",
+      "text": "Boots by the door, coin in the box, rank stays outside with both. The Bath House welcomes you exactly as much as you scrub.",
+      "choices": [
+        {
+          "text": "The mine pays for all this?",
+          "next": "mine"
+        },
+        {
+          "text": "Where's the water from?",
+          "next": "spring"
+        },
+        {
+          "text": "Steam on, Una.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "mine",
+      "voice": "una_steam__mine",
+      "text": "Balla and Grettir went up to the bursar together, the one time anyone's seen them agree in public, and argued that clean miners cough less and dig longer. Odele did the sums, the sums came out my way, and here we are: the one luxury in the Vale with the Crown's arithmetic behind it. Everyone else pays at the door and subsidizes the coughing.",
+      "next": "hub"
+    },
+    {
+      "id": "spring",
+      "voice": "una_steam__spring",
+      "text": "A led spring out of the west crag — the mountain being kind, which it is otherwise not known for. The guild stone-lined the channel as a favor I repay in bath tokens. Hot's from the braziers, not the rock; anybody who tells you Silverfall sits on warm springs is selling you land in the Undercroft.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "una_steam__bye",
+      "text": "Come back dirty. It's the only way this works."
+    }
+  ]
+}

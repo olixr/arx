@@ -1,0 +1,21 @@
+{
+  "id": "fall_monger_greens",
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963267948966,
+    "speed": 1.4
+  },
+  "slots": [
+    {
+      "from": 13,
+      "to": 14,
+      "task": {
+        "kind": "wander",
+        "x": -4,
+        "y": 4,
+        "radius": 2.5,
+        "speed": 1.4
+      }
+    }
+  ]
+}

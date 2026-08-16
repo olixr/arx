@@ -1,0 +1,63 @@
+{
+  "id": "petya_slab",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "monger_petya"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "petya_slab__hub",
+      "text": "FRESH off the slab, darling, fresher than the morning and twice as cold! What's your appetite?",
+      "choices": [
+        {
+          "text": "Let's see the catch.",
+          "next": "browse"
+        },
+        {
+          "text": "What are the pale ones?",
+          "next": "pale"
+        },
+        {
+          "text": "You and Lucan always this loud?",
+          "next": "lucan"
+        },
+        {
+          "text": "Sell it all, Petya.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "browse",
+      "voice": "petya_slab__browse",
+      "text": "Mere trout off Brigga's boat, pool trout out of the Roaring Pool itself — city fish, very cultured, practically pays for itself in conversation. Raw or cooked, your knife or mine.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "petya_catch"
+        }
+      ]
+    },
+    {
+      "id": "pale",
+      "voice": "petya_slab__pale",
+      "text": "Cave-fish, love. Blind as justice and sweeter than either of us expected. Varga's broker sends a keep-pool crate up the stair twice a week — the Undercroft's one export you can eat. The High City won't touch them because of the look. More fool the High City; flavor never needed eyes.",
+      "next": "hub"
+    },
+    {
+      "id": "lucan",
+      "voice": "petya_slab__lucan",
+      "text": "LOUD? This is the indoor voice, and no — Lucan and I have run facing stalls for ten years and the bickering is a public service. Watch: LUCAN! YOUR CARROTS ARE SAD TODAY! ...See how he holds one up like a trophy? That's the freshest carrot in the province now. You're welcome, carrot. You're welcome, city.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "petya_slab__bye",
+      "text": "Off you go, and tell the terraces the Vale eats better than they do — they KNOW, but tell them!"
+    }
+  ]
+}

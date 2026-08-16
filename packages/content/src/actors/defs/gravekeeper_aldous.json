@@ -1,0 +1,32 @@
+{
+  "id": "gravekeeper_aldous",
+  "name": "Gravekeeper Aldous",
+  "title": "The Silent Terrace",
+  "examine": "Old enough to have buried the men who buried the men he was named for. He speaks slowly, sweeps carefully, and never, ever discusses the candles.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 8,
+      "hairColor": 8,
+      "beard": 5,
+      "eyes": 0,
+      "ears": 1,
+      "feature": 0,
+      "shirt": 0,
+      "pants": 1
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 30
+    }
+  ],
+  "lines": [
+    "The stones were here before the kings. They'll be here after. I just keep the moss polite.",
+    "Leave the candles be. That's the whole of the rule, and it's not mine to explain.",
+    "The Watcher's name wore off before my grandfather's time. The face wore off before that. It still watches. Names are for the living anyway."
+  ]
+}

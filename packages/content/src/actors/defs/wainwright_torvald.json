@@ -1,0 +1,32 @@
+{
+  "id": "wainwright_torvald",
+  "name": "Wainwright Torvald",
+  "title": "The Wagon Yard",
+  "examine": "A spoke-shave in his belt and a cottage on Garland Row he built the doors for himself. Every axle that survives the High Road's last league does so because Torvald argued with it first.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 8,
+      "hair": 2,
+      "hairColor": 0,
+      "beard": 2,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 2,
+      "shirt": 2,
+      "pants": 3
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 85
+    }
+  ],
+  "lines": [
+    "The descent eats axles. The corner at the crag eats wheels. I eat well.",
+    "A cart is forty arguments held together with iron bands. I win about thirty-eight of them per cart.",
+    "Home is the first cottage on the Row, the one with the woodpile that never shrinks. My wife says I split logs to avoid conversation. My wife is right."
+  ]
+}

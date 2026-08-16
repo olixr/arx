@@ -1,0 +1,48 @@
+{
+  "id": "finn_awl",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "cobbler_finn"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "finn_awl__hub",
+      "text": "Sit. Boots off. I can work and listen, and you look like you've done some miles.",
+      "choices": [
+        {
+          "text": "What do a traveler's boots tell you?",
+          "next": "read"
+        },
+        {
+          "text": "Business good in a city of stairs?",
+          "next": "stairs"
+        },
+        {
+          "text": "Just passing the lane. Good day, Finn.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "read",
+      "voice": "finn_awl__read",
+      "text": "Heels say the road: worn outside edge, that's the High Road's camber, you came up from the east. Toes say the future: scuffed square means stairs coming, and friend, in this city the toes are always right. What the boots don't say, I don't ask. A cobbler who asks questions dies poor and nosy.",
+      "next": "hub"
+    },
+    {
+      "id": "stairs",
+      "voice": "finn_awl__stairs",
+      "text": "Four gates, three grand flights, the mine stair, the lych stair, the Greenstair, and every step of all of them made of the hardest stone the guild could find. I resole the watch on contract, the miners at a rate Ronnaug and I fixed over one very long evening, and the pilgrims at whatever's in the shoe when it comes off. The mountain is my business partner. It never rests and neither do soles.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "finn_awl__bye",
+      "text": "Mind the fourth step past the bridge. Everyone's heels say the same thing about it."
+    }
+  ]
+}

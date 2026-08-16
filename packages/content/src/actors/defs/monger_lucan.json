@@ -1,0 +1,33 @@
+{
+  "id": "monger_lucan",
+  "name": "Lucan",
+  "title": "The Wet Market",
+  "examine": "Produce stacked like masonry and priced like poetry. He and Petya have run facing stalls for a decade and their bickering is the market's second-best entertainment after the fish.",
+  "disposition": "friendly",
+  "shop": "lucan_greens",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 2,
+      "hairColor": 1,
+      "beard": 1,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 3,
+      "pants": 7
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 85
+    }
+  ],
+  "lines": [
+    "Up the road from Amberford, down the stair from the Greenstair, and onto my boards before the dew's off. Geography does my marketing.",
+    "Petya sells things that blink. I sell things that keep. We let the customers decide which is more trustworthy.",
+    "A carrot from the Greenstair terraces has seen a better view than most people. You can taste the altitude. That'll be two coppers."
+  ]
+}

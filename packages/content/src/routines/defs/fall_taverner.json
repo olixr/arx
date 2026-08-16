@@ -1,0 +1,32 @@
+{
+  "id": "fall_taverner",
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963267948966,
+    "speed": 1.4
+  },
+  "slots": [
+    {
+      "from": 9,
+      "to": 10,
+      "task": {
+        "kind": "post",
+        "x": -1,
+        "y": 4,
+        "dir": 3.141592653589793,
+        "speed": 1.4
+      }
+    },
+    {
+      "from": 3.5,
+      "to": 8.5,
+      "task": {
+        "kind": "post",
+        "x": 6,
+        "y": 52,
+        "lie": true,
+        "speed": 1.3
+      }
+    }
+  ]
+}

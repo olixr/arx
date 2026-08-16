@@ -750,6 +750,86 @@ const defs: ShopDef[] = [
       { item: 'dun_courser', price: 3500 },
     ],
   },
+  // ---- THE FALLS VALE — Silverfall's lower town (the Vale epic).
+  // The Vale is the cheap half of the capital ON PURPOSE: every
+  // price here undercuts the terraces above it, because the wealth
+  // gradient is the storytelling.
+  {
+    id: 'brant_flour',
+    name: "The King's Mill",
+    stock: [
+      { item: 'flour', price: 7 },
+      { item: 'wheat', price: 5 },
+      { item: 'bread', price: 8 },
+    ],
+  },
+  {
+    id: 'hedda_loaves',
+    name: 'The Bakehouse',
+    stock: [
+      { item: 'bread', price: 8 },
+      { item: 'fried_egg', price: 10 },
+      { item: 'milk', price: 7 },
+    ],
+  },
+  {
+    id: 'ulf_board',
+    name: 'The Last Climb',
+    stock: [
+      { item: 'hearty_stew', price: 22 },
+      { item: 'bread', price: 8 },
+      { item: 'cooked_beef', price: 20 },
+      { item: 'trout', price: 18 },
+      { item: 'milk', price: 7 },
+    ],
+  },
+  {
+    id: 'ronnaug_board',
+    name: "The Delvers' Rest",
+    stock: [
+      { item: 'hearty_stew', price: 21 },
+      { item: 'bread', price: 8 },
+      { item: 'cooked_beef', price: 20 },
+      { item: 'milk', price: 7 },
+    ],
+  },
+  {
+    id: 'maeve_beds',
+    name: "The Pilgrim's Rest",
+    stock: [
+      { item: 'bread', price: 8 },
+      { item: 'hearty_stew', price: 20 },
+      { item: 'milk', price: 7 },
+    ],
+  },
+  {
+    id: 'brigga_catch',
+    name: 'The Kingshore Catch',
+    stock: [
+      { item: 'raw_trout', price: 12 },
+      { item: 'trout', price: 20 },
+      { item: 'fishing_rod', price: 55 },
+    ],
+  },
+  {
+    id: 'petya_catch',
+    name: "Petya's Slab",
+    stock: [
+      { item: 'raw_trout', price: 13 },
+      { item: 'trout', price: 21 },
+    ],
+  },
+  {
+    id: 'lucan_greens',
+    name: "Lucan's Boards",
+    stock: [
+      { item: 'carrot', price: 4 },
+      { item: 'berries', price: 3 },
+      { item: 'egg', price: 5 },
+      { item: 'milk', price: 7 },
+      { item: 'flour', price: 8 },
+    ],
+  },
   // ---- KINGSDELF — the town in the King's Delf (the Kingsdelf epic).
   // Ore and glass and light; everything else walked here up the unlit
   // road, and the prices say so. The limits are the town: no loom, no

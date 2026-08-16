@@ -1,0 +1,33 @@
+{
+  "id": "fisher_brigga",
+  "name": "Fisher Brigga",
+  "title": "The Kingshore",
+  "examine": "Salt-and-weather hands and a stare that carries clean across the mere. She rows further out than anyone on the Kingshore, and trades what she learns of the far banks very carefully.",
+  "disposition": "friendly",
+  "shop": "brigga_catch",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 10,
+      "hair": 5,
+      "hairColor": 4,
+      "beard": 0,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 2,
+      "shirt": 3,
+      "pants": 2
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 80
+    }
+  ],
+  "lines": [
+    "The mere gives. The mere is thanked. You skip the second part, the first part gets complicated.",
+    "There are fires on the far water some nights. Croaking, if the wind's right. We wave. They wave. That's the whole treaty and it's held longer than most.",
+    "Holm fishes the reeds and I fish the deep, and we've argued which is braver for thirty years. It's the reeds. Don't tell him."
+  ]
+}

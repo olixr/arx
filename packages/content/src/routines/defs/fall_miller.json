@@ -1,0 +1,33 @@
+{
+  "id": "fall_miller",
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963267948966,
+    "work": true,
+    "speed": 1.4
+  },
+  "slots": [
+    {
+      "from": 12,
+      "to": 13,
+      "task": {
+        "kind": "wander",
+        "x": 6,
+        "y": 6,
+        "radius": 2,
+        "speed": 1.4
+      }
+    },
+    {
+      "from": 22.5,
+      "to": 5.5,
+      "task": {
+        "kind": "post",
+        "x": -62,
+        "y": 37,
+        "lie": true,
+        "speed": 1.4
+      }
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "id": "signe_wheel",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "potter_signe"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "signe_wheel__hub",
+      "text": "Careful where you lean — everything in here was soft once and remembers it. The Crockery. Browse with your eyes.",
+      "choices": [
+        {
+          "text": "Where does the clay come from?",
+          "next": "clay"
+        },
+        {
+          "text": "Tell me about the kiln outside.",
+          "next": "kiln"
+        },
+        {
+          "text": "Wheel-work looks like a trance.",
+          "next": "wheel"
+        },
+        {
+          "text": "Spin true, Signe.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "clay",
+      "voice": "signe_wheel__clay",
+      "text": "The river brings it down off the mountain and drops it at the bend by the Low Bridge, same as it's done since before anyone was here to dig. The mountain sends the Emberway its ore and me my clay, and only one of us has to blast for it. I've never once said so at the Delvers' Rest, out of manners.",
+      "next": "hub"
+    },
+    {
+      "id": "kiln",
+      "voice": "signe_wheel__kiln",
+      "text": "The mound. Clay-daubed, coil-built, breathes all night on a burn day like something sleeping rough between the shops. Wick keeps asking to bake wax in the warm side and I keep telling him wax and glaze are enemies. He knows. He just likes the argument. It's a small lane; you take the entertainment that offers.",
+      "next": "hub"
+    },
+    {
+      "id": "wheel",
+      "voice": "signe_wheel__wheel",
+      "text": "It's the opposite. A trance is going somewhere else; the wheel is being exactly here or the pot tells on you. Every wobble is a moment you stopped paying attention, fired permanent. I can read a whole apprenticeship off one bowl. People are the same, but it's ruder to say.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "signe_wheel__bye",
+      "text": "Mind the stack by the door. Soft once, remembers it."
+    }
+  ]
+}

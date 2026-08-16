@@ -1,0 +1,32 @@
+{
+  "id": "potter_signe",
+  "name": "Potter Signe",
+  "title": "The Crockery",
+  "examine": "Clay to the elbows and perfectly content about it. She reads people the way she reads a thrown pot — by where the wobble starts.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 6,
+      "hair": 4,
+      "hairColor": 3,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 1,
+      "feature": 0,
+      "shirt": 3,
+      "pants": 4
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 60
+    }
+  ],
+  "lines": [
+    "River clay, mountain fire, my hands. Everything in this shop is local except the patience.",
+    "The High City eats off silver and calls my work rustic. The High City's kitchens buy from me by the cartload and call it something else.",
+    "The mound out back breathes all night on a burn day. First time you hear it you'll think the mountain's alive. Second time you'll know it is."
+  ]
+}

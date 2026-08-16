@@ -1,0 +1,63 @@
+{
+  "id": "brant_stones",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "miller_brant"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "brant_stones__hub",
+      "text": "Mind the flour dust — it gets in everything, including conversations. The King's Mill. What do you need weighed?",
+      "choices": [
+        {
+          "text": "Sell me flour.",
+          "next": "browse"
+        },
+        {
+          "text": "Why 'the King's Mill'?",
+          "next": "name"
+        },
+        {
+          "text": "Where does the grain come from?",
+          "next": "grain"
+        },
+        {
+          "text": "Grind on, Brant.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "browse",
+      "voice": "brant_stones__browse",
+      "text": "Flour by the sack, wheat by the measure, and a few loaves Hedda trades me at a rate we renegotiate loudly every solstice. All weighed in front of you. The scale's bolted down and so am I.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "brant_flour"
+        }
+      ]
+    },
+    {
+      "id": "name",
+      "voice": "brant_stones__name",
+      "text": "First Aeriex paid for the wheel out of the quarry purse — before the crown, mind, back when he was just the foreman who noticed everyone was hungry. The name stuck because it's true the way the Vale likes things true: the King's mill grinds everyone's grain, and the King queues.",
+      "next": "hub"
+    },
+    {
+      "id": "grain",
+      "voice": "brant_stones__grain",
+      "text": "Amberford, all of it, up the High Road in the grain carts you'll have passed on the descent. The mountains grow silver, stone, and appetite. The granaries hold three months if the road closes. It has never closed longer than two. Nobody likes discussing the gap.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "brant_stones__bye",
+      "text": "Steady grinding. That's both the trade and the advice."
+    }
+  ]
+}

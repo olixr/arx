@@ -1,0 +1,67 @@
+{
+  "id": "wick_taper",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "chandler_wick"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "wick_taper__hub",
+      "text": "Wick. Yes, really. The Chandlery — tallow, beeswax, and every wick the mother-flame ever kissed. What'll it be?",
+      "choices": [
+        {
+          "text": "You make the shrine's candles?",
+          "next": "shrine"
+        },
+        {
+          "text": "Who buys candles in a city of lamps?",
+          "next": "trade"
+        },
+        {
+          "text": "Sella gave me the flame's blessing.",
+          "next": "blessed",
+          "requires": [
+            "sella_blessed"
+          ],
+          "set": [
+            "wick_law"
+          ],
+          "forbids": [
+            "wick_law"
+          ]
+        },
+        {
+          "text": "Stay bright, Wick.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "shrine",
+      "voice": "wick_taper__shrine",
+      "text": "Every one. Sella blesses the flame; I make the part that burns. She'd tell you the flame is the miracle and the candle is just wax that agreed to help — and then she'd pay her bill on time, because the road-faith is very practical about its miracles. The pilgrims buy theirs here and carry them up unlit. Bottom of the way, top of the way. We're the same errand, her and me.",
+      "next": "hub"
+    },
+    {
+      "id": "trade",
+      "voice": "wick_taper__trade",
+      "text": "Lamps are the Crown's light — the streets, the stair, the promises. Candles are people's light. A sickbed, a late letter, a girl reading where her mother can't see the oil go. The Row buys beeswax to look rich. The Vale buys tallow to see. Everybody burns.",
+      "next": "hub"
+    },
+    {
+      "id": "blessed",
+      "voice": "wick_taper__blessed",
+      "text": "Then you've stood at both ends of my whole life's work in one day. Here — when you next buy a light, the dipping's free. Flame-carried is flame-carried; that's chandler's law, and I'm the only chandler, so it passes unanimously.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "wick_taper__bye",
+      "text": "Mind how you go. And if you're minded to go dark places — you know where I am."
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "id": "hostelkeeper_maeve",
+  "name": "Hostelkeeper Maeve",
+  "title": "The Pilgrim's Rest",
+  "examine": "She has watched ten thousand pilgrims arrive footsore and leave lighter, and she can tell within a minute of the door which ones the flame will actually help. She keeps that skill strictly to herself.",
+  "disposition": "friendly",
+  "shop": "maeve_beds",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 1,
+      "hair": 7,
+      "hairColor": 7,
+      "beard": 0,
+      "eyes": 3,
+      "ears": 1,
+      "feature": 1,
+      "shirt": 9,
+      "pants": 0
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 75
+    }
+  ],
+  "lines": [
+    "A bed before the climb. The flame keeps the fee — I keep a roof over the arrangement.",
+    "The way is three shrines and a long stair. Some walk it in an hour. Some take three days. The flame doesn't count either way, so neither do I.",
+    "Whoever sleeps at the wayfarer's bench outside sleeps free. That's not charity, that's the first rule Sella's mother taught mine."
+  ]
+}

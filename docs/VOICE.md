@@ -401,6 +401,72 @@ voice and got its geography re-walked.)
   below ground — patter, invented provenance, self-mythology he may not
   believe either. Cadence: exclamatory, list-happy, but keep each bark short.
 
+### The Falls Vale — Silverfall's lower town (the Vale epic)
+- **Miller Brant**: wants everything weighed in the open — the mill IS the
+  Vale's honesty. Wound: the two-month gap the granaries can't cover; he
+  changes the subject. Quirk: judges sacks by their landing sound. Cadence:
+  measured, ledgered, one dry aside per exchange.
+- **Baker Hedda** (night shift): wants the city fed before it wakes. Wound:
+  sleeps through every festival she provisions. Quirk: keeps every one of
+  Ansgar's correct little notes. Cadence: warm, floury, runs on like proving
+  dough; calls people 'love' without softness lost.
+- **Taverner Ulf** (the Last Climb): wants the Vale's coin to stay in the
+  Vale. Quirk: stopped saying goodbye to carters years ago. Cadence: big,
+  level, publican-plain; prices things by fairness, people by thirst.
+- **Keeper Ronnaug** (the Delvers' Rest): wants every crew home; the right
+  wall of tallies is her scripture. Wound: the third wall nobody chalks.
+  Quirk: free first pour on a mithril day. Cadence: brisk, guarded warmth;
+  speaks of debts and shifts in the same breath because they are.
+- **Potter Signe**: wants attention paid — to clay, to people, to wobbles.
+  Quirk: reads apprenticeships off a bowl. Cadence: calm, tactile, present
+  tense; one gentle unrude observation about you per talk.
+- **Chandler Wick**: wants his name to be the joke he tells first. Keeper of
+  the bottom of the pilgrim way — the flame's practical half. Quirk: one
+  unmarked box a month down the Undercroft stair. Cadence: bright, quick,
+  taper-crackle; ends on small warmths.
+- **Cobbler Finn**: wants nothing from you but your boots off. Quirk: reads
+  roads from heels, futures from toes, and never asks. Cadence: quietest
+  voice on the lane, complete sentences, no hurry, small dry finish.
+- **Wainwright Torvald**: wants the descent to stop winning. Quirk: museum
+  shelf of catastrophic axles; splits logs to avoid conversation (his wife
+  is right). Cadence: craftsman-literal, counts arguments per cart.
+- **Hostelkeeper Maeve**: wants the bench outside never empty in winter and
+  never needed. Wound/quirk: leaves a roll out for Pip; denies it. Cadence:
+  soft-spoken hostel law — no questions in either direction.
+- **Gravekeeper Aldous**: wants the quiet kept — up here AND down there.
+  Wound: knows more about the candles than forty years of silence admits.
+  Quirk: extends courtesy to moss. Cadence: slow, formal, trailing; the one
+  time he stumbles is the fresh candle below (write the stumble).
+- **Fisher Brigga** (the deep water): wants the far shore left exactly as
+  far as it is — the wave IS the treaty. Quirk: the kelp-string payment she
+  never sold. Cadence: weathered, clipped, generous underneath.
+- **Fisher Holm** (the reeds): wants the nursery water fished gently.
+  Quirk: corrects your standing posture before speaking. Cadence: 'Mm.'
+  Sparse. Every sentence earns its place.
+- **Bathkeeper Una**: wants rank left at the door with the boots. Quirk:
+  outdrinks the mine at the Rest, pink as a boiled crab. Cadence: cheerful
+  tyranny; imperatives softened by steam.
+- **Guildmaster Soren**: wants the count to finally match — the sealed book
+  is the guild's open wound. Cadence: load-bearing sentences, nothing
+  ornamental; speaks of stone as a colleague. The hardest line in his
+  charter: each decision was right when made.
+- **Petya** (fish): wants the whole city to hear the morning. Quirk: makes
+  Lucan's produce famous by insulting it. Cadence: LOUD, endearments flying,
+  italics audible.
+- **Lucan** (greens): wants markets understood as geography with stalls.
+  Quirk: sells 'leaning' carrots as the ones that decided. Cadence: dry,
+  professorial patter that undersells how sharp it is.
+- **Sergeant Varn** (the Vale Ward): wants the young wall to earn its
+  seniority the slow way. Quirk: feeds the braziers like a sacrament since
+  Kestrel's six words. Cadence: procedure with a pulse; logs everything,
+  including his own jokes.
+- **Pip** (courier): wants to be owed by everyone and beholden to no one —
+  and secretly to deliver Ivo's first carrot forever. Cadence: breathless,
+  numbered lists, one secret always almost told. Never writes anything down.
+- **Vale watch / pilgrims / carters** (pooled): the young company's pride,
+  the road-faith's footsore patience, the descent's survivors. Lines, no
+  dialogue (the pooled law).
+
 ### Pinewatch — the timber shore
 
 (The tower predates the trade; the Wolfwinter is the town's one story and

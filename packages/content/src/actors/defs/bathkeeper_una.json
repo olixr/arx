@@ -1,0 +1,32 @@
+{
+  "id": "bathkeeper_una",
+  "name": "Bathkeeper Una",
+  "title": "The Bath House",
+  "examine": "Steam-pink and cheerfully tyrannical. Inside her door rank means nothing, ore-dust means a second scrub, and the Crown itself would be handed a brush and told to do its neck.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 7,
+      "hair": 6,
+      "hairColor": 5,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 1,
+      "feature": 1,
+      "shirt": 4,
+      "pants": 4
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 50
+    }
+  ],
+  "lines": [
+    "Ore washes off. The shift takes longer. Sit in the steam till your shoulders drop, that's the actual price of admission.",
+    "The spring is the mountain being kind. It is not otherwise a kind mountain. Say thank you.",
+    "The mine pays for the miners. Everyone else pays for the miners too, they just get a bath out of it."
+  ]
+}

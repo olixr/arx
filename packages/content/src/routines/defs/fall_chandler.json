@@ -1,0 +1,22 @@
+{
+  "id": "fall_chandler",
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963267948966,
+    "work": true,
+    "speed": 1.4
+  },
+  "slots": [
+    {
+      "from": 9,
+      "to": 10.5,
+      "task": {
+        "kind": "post",
+        "x": 18,
+        "y": 37,
+        "dir": 3.141592653589793,
+        "speed": 1.5
+      }
+    }
+  ]
+}

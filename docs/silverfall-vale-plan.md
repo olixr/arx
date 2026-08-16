@@ -536,3 +536,37 @@ windows, no marble. The wealth gradient IS the storytelling.
     SpikeBarrier =1, Dock ≥6, KeepPool =1, MineCart ≥1,
     LootedChest ≥2, chest tiers up one each; width/height re-pinned.
   - content 514/514.
+- **Phase 6 THE PEOPLE OF THE VALE** — 29 placements (64 → 93):
+  18 named + vale_watch x6 (gate rota pair hot-bunking the ward's
+  second bunk, market beat, shore, yard, threshold) + 3 pilgrims
+  (two resting, one walking the way — its route caps at the Silver
+  Gate: the routine offset law's ±128 said the last league belongs
+  to the flame) + 2 carters. Build-truths:
+  - 18 dialogue trees at the house bar; five threads seated: THE
+    SEALED BOOK (soren_charter's count node gates on grettir_word,
+    sets soren_word), THE TWO CANDLES (aldous_terrace's below node
+    gates on dlg:coppin_reeve, sets aldous_word — write the
+    stumble), THE BOTTOM OF THE WAY (wick_taper's blessed node
+    gates on sella_blessed, one-shot wick_law), THE SHORE ACCORD
+    (brigga's kelp-string payment, sets brigga_wave), BREAD AND
+    SHIFTS (hedda's treaty ledger of who eats when).
+  - Grettir's evenings re-thread to the Delvers' Rest corner chair
+    THROUGH the miners' postern; Petra gets cot two's bed. The rest
+    of the standing cast is untouched.
+  - 8 Vale shops, every price undercutting the terraces (the wealth
+    gradient is the storytelling); Signe/Wick/Finn trade in scenery
+    and story, not stock (no crockery/candle/boot items exist — the
+    Tove precedent, kept honest).
+  - Schema lessons paid in the open: set/requires live on CHOICES;
+    examine caps at 200 chars (four trimmed); combat is
+    disposition:neutral + protection:invulnerable + full stats;
+    routine offsets cap at ±128. One period-truth catch: the
+    sergeant's 'coffee' became 'the kettle'.
+  - New-cast waypoint sweep CLEAN after six fixes (both gate
+    sentries stood inside bastion masonry; the market beat stood on
+    the fish slab; the taverner's morning barrel; the wainwright's
+    own table; the deep-fisher posted in open water).
+  - VOICE.md gains the Falls Vale section: 18 cards + the pooled
+    card, want/wound/quirk/cadence.
+  - Pins: fallActors 64→93 (both sites), 18 slugs added, vale_watch
+    =6. content 514/514.

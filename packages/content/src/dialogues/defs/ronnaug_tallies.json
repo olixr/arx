@@ -1,0 +1,63 @@
+{
+  "id": "ronnaug_tallies",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "keeper_ronnaug"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "ronnaug_tallies__hub",
+      "text": "You're not a miner. Miners sit before they talk. Sit, then talk, and we'll make a miner of you yet.",
+      "choices": [
+        {
+          "text": "What's the board?",
+          "next": "browse"
+        },
+        {
+          "text": "What are all the chalk marks?",
+          "next": "tallies"
+        },
+        {
+          "text": "Tell me about your regulars.",
+          "next": "regulars"
+        },
+        {
+          "text": "Keep the corner warm, Ronnaug.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "browse",
+      "voice": "ronnaug_tallies__browse",
+      "text": "Stew, bread, beef when the drovers came through recent, and the beer the mine's wage was half invented to buy. First pour's free on a mithril day. Ask Koll what a mithril day is and watch his whole face change.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "ronnaug_board"
+        }
+      ]
+    },
+    {
+      "id": "tallies",
+      "voice": "ronnaug_tallies__tallies",
+      "text": "Left wall is debts — beer against payday, standard arithmetic. Right wall is shifts come home safe: one stroke per crew per day, going back nine years. When a wall fills I whitewash the left one and I do NOT whitewash the right one. There's a third wall we don't chalk. The Rest remembers it anyway.",
+      "next": "hub"
+    },
+    {
+      "id": "regulars",
+      "voice": "ronnaug_tallies__regulars",
+      "text": "Petra takes the end seat and argues stone with anyone brave enough. Grettir has the corner chair from the last bell — doesn't drink much, doesn't talk much; the crews just like knowing where he is, and if you think about why for a minute you'll know everything about this quarter that matters. Una comes in pink as a boiled crab and outdrinks the lot.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "ronnaug_tallies__bye",
+      "text": "Walk safe. That's not a pleasantry here, it's the house rule."
+    }
+  ]
+}

@@ -1611,7 +1611,9 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   // The capital's cast: the Crown, the districts' masters, the Row's
   // keepers, the Rookery — and the pooled watch, guard, and stalls.
   const fallActors = z.actorSpawns ?? [];
-  assert.equal(fallActors.length, 64, 'Silverfall lost residents');
+  // 64 souls of the Crown remaster + 29 of THE PEOPLE OF THE VALE
+  // (18 named, 6 lower watch, 3 pilgrims, 2 carters).
+  assert.equal(fallActors.length, 93, 'Silverfall lost residents');
   for (const slug of [
     'king_aeriex',
     'queen_kayri',
@@ -1642,9 +1644,33 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
     'magpie_mab',
     'fence_calder',
     'lookout_pike',
+    'miller_brant',
+    'baker_hedda',
+    'taverner_ulf',
+    'keeper_ronnaug',
+    'potter_signe',
+    'chandler_wick',
+    'cobbler_finn',
+    'wainwright_torvald',
+    'hostelkeeper_maeve',
+    'gravekeeper_aldous',
+    'fisher_brigga',
+    'fisher_holm',
+    'bathkeeper_una',
+    'guildmaster_soren',
+    'monger_petya',
+    'monger_lucan',
+    'sergeant_varn',
+    'courier_pip',
   ]) {
     assert.ok(fallActors.some((a) => a.actor === slug), `${slug} missing from Silverfall`);
   }
+  // The lower watch musters six: the Vale Gate rota pair, the wet
+  // market beat, the shore, the wagon yard, and the threshold post.
+  assert.equal(
+    fallActors.filter((a) => a.actor === 'vale_watch').length, 6,
+    'the Vale lost its watch',
+  );
   // THE GARRISON MUSTERS (the Crown remaster): 16 city watch — the
   // 12 standing posts and rota of the garrison pass, plus the Court
   // Gate's second sentry, the bank front, the gate-market beat, and
@@ -1657,7 +1683,7 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   assert.equal(fallActors.filter((a) => a.actor === 'castle_servant').length, 4);
   assert.equal(fallActors.filter((a) => a.actor === 'galleria_trader').length, 3);
   assert.equal(fallActors.filter((a) => a.actor === 'gate_monger').length, 2);
-  assert.equal(fallActors.filter((a) => a.routine).length, 64, 'every keeper keeps hours');
+  assert.equal(fallActors.filter((a) => a.routine).length, 93, 'every keeper keeps hours');
   // The editor JSON round trip holds WITH the elevation layer.
   const json = zoneToJson(z);
   assert.ok(json.elev !== undefined, 'the elevation layer must serialize');

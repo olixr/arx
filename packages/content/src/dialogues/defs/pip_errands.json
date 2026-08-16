@@ -1,0 +1,58 @@
+{
+  "id": "pip_errands",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "courier_pip"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "pip_errands__hub",
+      "text": "Can't stop long — four deliveries and a rumor to place before midday. Talk while I catch my breath. You get one breath's worth.",
+      "choices": [
+        {
+          "text": "What's the fastest way around this city?",
+          "next": "ways"
+        },
+        {
+          "text": "Who do you run for?",
+          "next": "work"
+        },
+        {
+          "text": "What's the best thing you've ever carried?",
+          "next": "best"
+        },
+        {
+          "text": "Run fast, Pip.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "ways",
+      "voice": "pip_errands__ways",
+      "text": "Depends where. Vale to castle: High Street, Silver Gate, stair, stair, stair — no shortcuts, the mountain doesn't do favors. BUT: mill lane beats the market crush at noon, the Delvers' walk beats the garland lane when the wash is out, and there's a fourth way up nobody uses because it goes through — actually, never mind that one. That one's mine.",
+      "next": "hub"
+    },
+    {
+      "id": "work",
+      "voice": "pip_errands__work",
+      "text": "Everyone. Brant's dockets, Finn's finished boots, Tove's sealed letters — she pays double for sealed, so I NEVER peek, that's the whole economy of it — and things to the Rookery I officially don't know about, and things from the castle I officially know even less about. A courier who knows nothing carries everything. First rule. Made it up myself.",
+      "next": "hub"
+    },
+    {
+      "id": "best",
+      "voice": "pip_errands__best",
+      "text": "The Queen's winter thanks to Osa's yard, once — sealed with the actual moon seal, heavier than a brick. And every spring I carry the first Greenstair carrot down to Hedda because Ivo says the first one's hers, always, and nobody will tell me why, and it's the only delivery in this city I'd do for free. Don't tell anyone I said the last part.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "pip_errands__bye",
+      "text": "Right! If anyone asks, you never saw me resting."
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "id": "hedda_ovens",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "baker_hedda"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "hedda_ovens__hub",
+      "text": "If you're here for bread, you're in luck. If you're here for conversation, you're in luck and it's included in the price.",
+      "choices": [
+        {
+          "text": "What's fresh?",
+          "next": "browse"
+        },
+        {
+          "text": "You bake all night?",
+          "next": "night"
+        },
+        {
+          "text": "Who eats all this bread?",
+          "next": "city"
+        },
+        {
+          "text": "Sleep well, Hedda.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "browse",
+      "voice": "hedda_ovens__browse",
+      "text": "Everything. That's the whole trick of a bakery, love — there is no yesterday's. Yesterday's went to the hostel at cost and Maeve knows better than to say where from.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "hedda_loaves"
+        }
+      ]
+    },
+    {
+      "id": "night",
+      "voice": "hedda_ovens__night",
+      "text": "Brant grinds by day, I bake by night, the city eats by morning. Somebody's always awake keeping the next meal moving — that's what a city IS, if you ask me, which nobody does because they're all asleep when I'm proving it. The night watch and I run the whole place for about five hours, you know. We've agreed not to tell anyone.",
+      "next": "hub"
+    },
+    {
+      "id": "city",
+      "voice": "hedda_ovens__city",
+      "text": "The mine eats first — Ronnaug takes forty loaves before dawn shift. Then the market, then the hostel, then the wagon yard. Signy up at the cookhouse takes sixty for the trades' mess and we have a treaty about whose bread it becomes at that point. The castle? Ansgar's four hundred meals a week ride on MY flour and Brant's stones, and the steward sends a very correct little note each month saying so. I've kept every note. So would you.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "hedda_ovens__bye",
+      "text": "Off with you. Some of us have a city to feed at an hour you'll never see."
+    }
+  ]
+}

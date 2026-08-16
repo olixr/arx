@@ -1,0 +1,33 @@
+{
+  "id": "keeper_ronnaug",
+  "name": "Keeper Ronnaug",
+  "title": "The Delvers' Rest",
+  "examine": "Half the chalk tallies on her wall are debts and half are shifts survived, and she guards the difference like a vault. Miners' keeper, miners' banker, miners' memory.",
+  "disposition": "friendly",
+  "shop": "ronnaug_board",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 6,
+      "hairColor": 6,
+      "beard": 0,
+      "eyes": 3,
+      "ears": 1,
+      "feature": 0,
+      "shirt": 6,
+      "pants": 1
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 110
+    }
+  ],
+  "lines": [
+    "First pour free on a mithril day. Second pour costs double. The mine giveth.",
+    "Every pick in that rack outside has a name, and I know whose. You want to make trouble here, start by explaining yourself to the picks.",
+    "Grettir sits in the corner and doesn't drink much. Nobody charges him for the chair. That's not kindness, that's arithmetic — he's the reason half of them come home."
+  ]
+}

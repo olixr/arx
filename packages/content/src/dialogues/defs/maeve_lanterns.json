@@ -1,0 +1,63 @@
+{
+  "id": "maeve_lanterns",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "hostelkeeper_maeve"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "maeve_lanterns__hub",
+      "text": "Welcome to the Rest. Beds inside, bench outside, and no questions in either direction. Which will it be?",
+      "choices": [
+        {
+          "text": "What does a bed cost?",
+          "next": "browse"
+        },
+        {
+          "text": "Tell me about the way up.",
+          "next": "way"
+        },
+        {
+          "text": "Who takes the bench?",
+          "next": "bench"
+        },
+        {
+          "text": "Soft nights, Maeve.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "browse",
+      "voice": "maeve_lanterns__browse",
+      "text": "Less than you'd think — the flame keeps the fee, which means Sella's shrine underwrites the shortfall and has since her mother's day. Board's simple and hot. Hedda's day-old bread at cost, and if you tell anyone it's day-old I'll deny the arrangement exists.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "maeve_beds"
+        }
+      ]
+    },
+    {
+      "id": "way",
+      "voice": "maeve_lanterns__way",
+      "text": "Out the door, turn up the way, and it's three shrines to the Silver Gate: the gate shrine, the mid shrine, the mill shrine. Stop at each, or don't — the stations are for pacing the heart, not the feet. Past the Silver Gate the city carries you: the avenue goes nowhere but up, and up ends at the mother-flame. You can't get lost. You can only get tired, and that's what I'm for.",
+      "next": "hub"
+    },
+    {
+      "id": "bench",
+      "voice": "maeve_lanterns__bench",
+      "text": "Whoever needs it. That's the first rule of this house and it isn't mine — Sella's mother set it with my mother, and the bench has never once been empty a whole winter. Lately it's mostly Pip, when her feet finally lose the argument with midnight. I leave a roll out. We don't discuss it. Twelve-year-olds have their dignity.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "maeve_lanterns__bye",
+      "text": "If you climb today, eat first. The flame's patient. Stomachs aren't."
+    }
+  ]
+}

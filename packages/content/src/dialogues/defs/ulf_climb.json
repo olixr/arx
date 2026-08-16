@@ -1,0 +1,63 @@
+{
+  "id": "ulf_climb",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "taverner_ulf"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "ulf_climb__hub",
+      "text": "The Last Climb. Last drink before the stair, first after. Which are you?",
+      "choices": [
+        {
+          "text": "What's on the board?",
+          "next": "browse"
+        },
+        {
+          "text": "Why 'the Last Climb'?",
+          "next": "name"
+        },
+        {
+          "text": "What's the word in the Vale?",
+          "next": "word"
+        },
+        {
+          "text": "Keep the taps honest, Ulf.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "browse",
+      "voice": "ulf_climb__browse",
+      "text": "Stew that's seen real beef, bread that saw Hedda's oven this morning, and beer that costs what beer should. The Flagon charges for the view. My view is the dice table, and it's free.",
+      "hooks": [
+        {
+          "kind": "shop",
+          "shop": "ulf_board"
+        }
+      ]
+    },
+    {
+      "id": "name",
+      "voice": "ulf_climb__name",
+      "text": "Count the gates from here to the castle. Four, and a stair between each pair like the mountain's testing your commitment. A carter delivers to the Crown terrace, that's the better part of a morning, and every step of it he's thinking about my taproom. I didn't name the tavern. The stair named it. I just wrote it down.",
+      "next": "hub"
+    },
+    {
+      "id": "word",
+      "voice": "ulf_climb__word",
+      "text": "Fair-day's coming and the Fairstead's getting its poles dressed. Torvald's got a three-cart backlog, which means the road's busy, which means good months. And Pip says the castle kitchens ordered double flour, which means a feast, which means the Crown's hosting somebody. Pip's twelve and runs the best news service in the city. I tip her in pastry.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "ulf_climb__bye",
+      "text": "Down the stair's easier. Mind how the bridge cobbles catch your feet after a pint."
+    }
+  ]
+}

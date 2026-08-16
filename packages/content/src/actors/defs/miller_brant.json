@@ -1,0 +1,33 @@
+{
+  "id": "miller_brant",
+  "name": "Miller Brant",
+  "title": "The King's Mill",
+  "examine": "Flour in his eyebrows and a ledger in his head. He can tell you the weight of a sack by the sound it makes hitting the floor, and he will, whether you asked or not.",
+  "disposition": "friendly",
+  "shop": "brant_flour",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 2,
+      "hairColor": 4,
+      "beard": 2,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 7,
+      "pants": 3
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 90
+    }
+  ],
+  "lines": [
+    "Amberford grows it, the road carries it, the river turns it, Hedda bakes it. I'm the part in the middle nobody writes songs about.",
+    "The wheel never stops. You stop the wheel, you explain yourself to the whole city at breakfast.",
+    "Weighed in at the yard, weighed out at the counter. The scale's the only honest conversation in this town."
+  ]
+}

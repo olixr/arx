@@ -1,0 +1,50 @@
+{
+  "id": "sergeant_varn",
+  "name": "Sergeant Varn",
+  "title": "The Vale Ward",
+  "examine": "First posting as a sergeant, newest wall in the city, and absolutely determined that neither fact will show. The Vale Gate's paperwork has never been so thorough.",
+  "disposition": "neutral",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 6,
+      "hair": 0,
+      "hairColor": 0,
+      "beard": 2,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 0,
+      "pants": 0
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 40
+    }
+  ],
+  "lines": [
+    "The young wall, the young watch. We heard it. We repeat it ourselves now, which ruins it for everybody else.",
+    "Everything enters through this gate or the Silver Gate above, and the Silver Gate's watch has seniority, tenure, and opinions. We have the kettle and the actual traffic.",
+    "Marshal Kestrel walked the wall once, nodded twice, and said 'keep the braziers fed.' I have never fed anything so carefully in my life."
+  ],
+  "protection": "invulnerable",
+  "combat": {
+    "level": 26,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 120,
+      "damage": 8,
+      "speed": 3.5,
+      "leashRange": 10
+    }
+  },
+  "equipment": {
+    "head": "iron_helm",
+    "body": "iron_platebody",
+    "legs": "iron_greaves",
+    "boots": "iron_sabatons",
+    "weapon": "iron_sword"
+  }
+}

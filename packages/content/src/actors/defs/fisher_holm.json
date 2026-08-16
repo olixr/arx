@@ -1,0 +1,32 @@
+{
+  "id": "fisher_holm",
+  "name": "Fisher Holm",
+  "title": "The Kingshore",
+  "examine": "Brigga's brother, the reed-water man: patient as a heron and about as talkative. He mends nets the way other people pray.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 10,
+      "hair": 1,
+      "hairColor": 4,
+      "beard": 4,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 6,
+      "pants": 2
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 45
+    }
+  ],
+  "lines": [
+    "Reeds feed you every day. Deep water feeds you once a week, spectacularly. I like eating every day.",
+    "The river brings the mountain's water down cold and the mere warms it slow. The fish sit exactly where the two argue. So do I.",
+    "My sister waves at the far fires. I mend the nets. Between us that's a foreign policy."
+  ]
+}

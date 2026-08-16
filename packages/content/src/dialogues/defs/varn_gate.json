@@ -1,0 +1,48 @@
+{
+  "id": "varn_gate",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "sergeant_varn"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "varn_gate__hub",
+      "text": "Vale Ward. State your business or state your lack of one — both get logged, only one gets follow-up questions.",
+      "choices": [
+        {
+          "text": "What does the Vale Ward actually do?",
+          "next": "duty"
+        },
+        {
+          "text": "How's the new wall holding?",
+          "next": "wall"
+        },
+        {
+          "text": "Carry on, Sergeant.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "duty",
+      "voice": "varn_gate__duty",
+      "text": "Everything below the Silver Gate: the Vale Gate and its traffic, the market's honest weights, the wagon yard's arguments, the shore, and the fair-day crowds that triple all of the above. The garrison above guards the Crown. We guard the part of the city that's awake at four in the morning. Ask Hedda whose lamp she trusts.",
+      "next": "hub"
+    },
+    {
+      "id": "wall",
+      "voice": "varn_gate__wall",
+      "text": "The masons call it the youngest wall like that's an insult. Walls age well here — the Silver Gate was somebody's reckless new project once too. Give us a century and a siege and we'll have seniority of our own. Preferably just the century.",
+      "next": "hub"
+    },
+    {
+      "id": "bye",
+      "voice": "varn_gate__bye",
+      "text": "Logged. Mind the edge — the mountain doesn't check the ledger."
+    }
+  ]
+}

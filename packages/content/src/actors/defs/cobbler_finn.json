@@ -1,0 +1,32 @@
+{
+  "id": "cobbler_finn",
+  "name": "Cobbler Finn",
+  "title": "The Cobbler's",
+  "examine": "He can tell where you've been by your heels and where you're going by your toes, and he considers both strictly your own business. The quietest man on the lane, married to the loudest awl.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 1,
+      "hairColor": 2,
+      "beard": 3,
+      "eyes": 0,
+      "ears": 1,
+      "feature": 0,
+      "shirt": 5,
+      "pants": 7
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 55
+    }
+  ],
+  "lines": [
+    "This city is stairs. I will never be poor.",
+    "Mended while you wait. The wait is the point — sit down, put your feet up, they've earned it and I'm about to prove it.",
+    "Miners' boots Monday, pilgrims' sandals market day, one pair of court slippers a season that I charge like a small house."
+  ]
+}

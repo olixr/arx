@@ -1,0 +1,47 @@
+{
+  "id": "fall_gravekeeper",
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963267948966,
+    "speed": 1.1
+  },
+  "slots": [
+    {
+      "from": 8,
+      "to": 12,
+      "task": {
+        "kind": "path",
+        "mode": "bounce",
+        "speed": 1.0,
+        "waypoints": [
+          { "x": 1, "y": -6, "waitSec": 60 },
+          { "x": -6, "y": -20, "waitSec": 300 },
+          { "x": -15, "y": -22, "waitSec": 300 },
+          { "x": -9, "y": -10, "waitSec": 120 }
+        ]
+      }
+    },
+    {
+      "from": 16,
+      "to": 17,
+      "task": {
+        "kind": "post",
+        "x": -7,
+        "y": -10,
+        "dir": 1.5707963267948966,
+        "speed": 1.0
+      }
+    },
+    {
+      "from": 22,
+      "to": 6,
+      "task": {
+        "kind": "post",
+        "x": -2,
+        "y": -2,
+        "lie": true,
+        "speed": 1.0
+      }
+    }
+  ]
+}
