@@ -16,6 +16,9 @@ import { Hotbar } from './ui/hotbar.js';
 import { SwapSlot } from './ui/swapSlot.js';
 import { BeltSlot, resolveBelt, beltPin } from './ui/beltSlot.js';
 import { BossBanner } from './ui/bossBanner.js';
+import { ArenaBoard } from './ui/arenaBoard.js';
+import { ArenaHud } from './ui/arenaHud.js';
+import { raiseHerald } from './ui/herald.js';
 import { CompanionPlaque } from './ui/companionPlaque.js';
 import { CompanionHall } from './ui/companionHall.js';
 import { Panels, SKILL_FACE, SKILL_STORY } from './ui/panels.js';
@@ -436,6 +439,8 @@ input.setTypingCheck(
     keyRingPanel.isTyping,
 );
 let buildMode: string | null = null;
+/** THE SAND AND THE ROAR: last match phase seen (ceremonies fire on turns). */
+let arenaPhaseSeen = '';
 /** THE TRUE GHOST's dial: the chosen mass for an orientable corner. */
 let buildOrient: 'auto' | 'NE' | 'NW' | 'SE' | 'SW' = 'auto';
 /**
@@ -1005,6 +1010,7 @@ function closeAllUi(): void {
   repScreen.close();
   keyRingPanel.close();
   companionHall.close();
+  arenaBoard.close();
   signHud.close();
 }
 
@@ -1657,6 +1663,39 @@ const game = new ClientGame(input, {
     showDungeonClear(d);
     sfx.discovery();
   },
+  onArenaBoard: (b) => {
+    // The ringmaster's counter: a server-driven door, one gate.
+    closeAllUi();
+    arenaBoard.open(b);
+  },
+  onArenaState: (s) => {
+    // The HUD reads game.arenaMatch per frame; the ceremonies land
+    // here, on the phase TURNS only (heartbeats repeat the phase).
+    if (s.phase === arenaPhaseSeen) return;
+    arenaPhaseSeen = s.phase;
+    if (s.phase === 'gates') {
+      // THE GRAND SHOW: the card takes the stage as the gates shut.
+      raiseHerald({
+        kind: 'arena',
+        accent: '#e8b74a',
+        kicker: 'The gates come down',
+        name: s.name ?? 'The Card',
+        facts: { notes: [`${s.rounds ?? '?'} rounds`] },
+        holdMs: 3000,
+      });
+    } else if (s.phase === 'victory') {
+      raiseHerald({
+        kind: 'arena',
+        accent: '#e8b74a',
+        kicker: 'The sand is yours',
+        name: s.name ?? 'The Card',
+        holdMs: 4200,
+      });
+      sfx.discovery();
+    } else if (s.phase === 'off') {
+      arenaPhaseSeen = '';
+    }
+  },
   onDiscovery: (d) => {
     // The riftgate's threshold banner is the dungeon kind's ceremony —
     // the gate still pins itself on the chart silently.
@@ -1940,6 +1979,11 @@ dressPanel(el('inventory-panel'), {
   icon: uiIconUrl('backpack', 34),
   onClose: () => panels.closeAll(),
 });
+dressPanel(el('arena-board'), {
+  icon: uiIconUrl('attack', 34),
+  hint: 'The stakes board. Pay the fee, take the sand, survive the card.',
+  onClose: () => arenaBoard.close(),
+});
 dressPanel(el('skills-panel'), {
   icon: uiIconUrl('scroll', 34),
   hint: 'Every discipline in one hall — levels, progress, mastery.',
@@ -2021,6 +2065,8 @@ const swapWell = new SwapSlot(() => input.queueSwap());
 // side; the server range-gates the press, so a far body just no-ops.
 // THE DREAD BANNER: the crowned fight, read from meta + snapshots.
 const bossBanner = new BossBanner();
+const arenaBoard = new ArenaBoard(game);
+const arenaHud = new ArenaHud();
 const companionPlaque = new CompanionPlaque();
 const companionHall = new CompanionHall();
 companionHall.onArts = (slot, arts) => game.petArts(slot, arts);
@@ -3947,6 +3993,7 @@ function frame(now: number): void {
   swapWell.update(game);
   companionPlaque.update(game);
   bossBanner.update(game);
+  arenaHud.update(game);
 
   // THE CROSSING VEIL lifts once the hold has passed and the ground
   // under the body has streamed in — the new world arrives standing.

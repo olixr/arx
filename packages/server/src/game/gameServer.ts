@@ -13503,9 +13503,12 @@ export class GameServer {
     match.deadlineTick = this.tickCount + 40;
     this.arenaSetGates(match, true);
     this.arenaBark(match, stockBark('gates', match.seed, 1));
+    // 'field', not 'charge': charge is a pure instrument client-side
+    // (no signature crown) — the gates' iron set-piece rides a field
+    // wire so THE BAR COMES DOWN actually draws.
     this.broadcastFx(plane, {
       t: 'fx',
-      kind: 'charge',
+      kind: 'field',
       x: venue.pit.x,
       y: venue.pit.y,
       radius: Math.max(venue.pit.rx, venue.pit.ry),

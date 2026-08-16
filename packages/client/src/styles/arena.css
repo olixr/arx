@@ -1,0 +1,208 @@
+/* THE SAND AND THE ROAR (docs/arena-plan.md) — two pieces of chrome:
+ * THE STAKES BOARD (a dressed screen: the venue's cards as plates,
+ * the buyer's ladder at the foot) and THE MATCH CARD (the live HUD
+ * worn under the boss banner's band). Tokens only (ONE TRUTH);
+ * motion is transform/opacity and gates on body.no-ui-motion;
+ * the HUD is pointer-blind. */
+
+/* ------------------------------------------------- the stakes board */
+.screen-arena {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  width: min(30rem, 92vw);
+}
+.screen-arena h3 {
+  font-family: var(--serif);
+  font-size: var(--t-title);
+  color: var(--parchment);
+  margin: 0;
+}
+#arena-board-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  overflow-y: auto;
+  min-height: 0;
+}
+.arena-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--raise);
+  border: var(--hairline) solid var(--iron-edge);
+  border-radius: var(--r-plate);
+  color: var(--parchment);
+  text-align: left;
+  cursor: pointer;
+}
+.arena-card:hover:not(.locked),
+.arena-card:focus-visible {
+  border-color: var(--gold);
+}
+.arena-card.locked {
+  cursor: default;
+  opacity: 0.55;
+}
+.arena-card-seal {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: var(--t-lead);
+  color: var(--gold);
+  background: var(--sunk);
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: var(--r-chip);
+}
+.arena-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+.arena-card-name {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: var(--t-lead);
+}
+.arena-card-blurb {
+  font-size: var(--t-whisper);
+  color: var(--parchment-dim);
+}
+.arena-card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font-size: var(--t-label);
+  color: var(--parchment-dim);
+}
+.arena-card-pips {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+.arena-card-pips i {
+  width: 0.375rem;
+  height: 0.375rem;
+  background: var(--brass-ink);
+  border-radius: var(--r-chip);
+}
+.arena-card-fee {
+  color: var(--gold);
+}
+.arena-card-gate {
+  color: var(--red-soft);
+  letter-spacing: 0.06em;
+}
+
+/* The buyer's own ladder at the board's foot. */
+#arena-board-ladder {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-top: var(--sp-2);
+  border-top: var(--hairline) solid var(--rule);
+  font-size: var(--t-label);
+  color: var(--parchment-dim);
+}
+.arena-ladder-title {
+  font-family: var(--serif);
+  font-weight: 700;
+  color: var(--gold);
+}
+.arena-ladder-meter {
+  flex: 1;
+  height: 0.375rem;
+  background: var(--sunk);
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: var(--r-chip);
+  overflow: hidden;
+}
+.arena-ladder-meter i {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  transform-origin: left;
+  transform: scaleX(var(--fill, 0));
+}
+
+/* --------------------------------------------------- the match card */
+#arena-hud {
+  position: fixed;
+  left: 50%;
+  top: var(--sp-2);
+  transform: translateX(-50%);
+  width: min(15rem, 60vw);
+  z-index: 56; /* the boss banner's band: readings, under ceremony */
+  pointer-events: none;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 220ms ease;
+  filter: drop-shadow(0 0.125rem 0.375rem var(--shadow));
+}
+#arena-hud.up {
+  opacity: 1;
+}
+.arena-hud-head {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: var(--t-label);
+  letter-spacing: 0.08em;
+  color: var(--parchment);
+  text-shadow: 0 0.0625rem 0 var(--ink-line);
+}
+.arena-hud-pips {
+  display: flex;
+  justify-content: center;
+  gap: 0.3125rem;
+  margin-top: 0.1875rem;
+}
+.arena-hud-pips i {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  background: var(--sunk);
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: var(--r-chip);
+}
+.arena-hud-pips i.past {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.arena-hud-pips i.now {
+  background: var(--ember-deep);
+  border-color: var(--gold);
+}
+.arena-hud-word {
+  margin-top: 0.1875rem;
+  font-size: var(--t-whisper);
+  letter-spacing: 0.06em;
+  color: var(--parchment-dim);
+  text-shadow: 0 0.0625rem 0 var(--ink-line);
+}
+#arena-hud.won .arena-hud-word {
+  color: var(--gold);
+}
+#arena-hud.lost .arena-hud-word {
+  color: var(--red-soft);
+}
+.arena-hud-rail {
+  height: 0.25rem;
+  margin-top: 0.25rem;
+  background: var(--sunk);
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: var(--r-chip);
+  overflow: hidden;
+  opacity: 0;
+}
+#arena-hud.clocked .arena-hud-rail {
+  opacity: 1;
+}
+.arena-hud-bar {
+  height: 100%;
+  background: var(--gold);
+  transform-origin: left;
+}

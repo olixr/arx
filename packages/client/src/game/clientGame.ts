@@ -85,6 +85,7 @@ import { CROP_TILES, LIVESTOCK, MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, SO
 import { clearFarmMirror, farmApiaries, farmBins, farmJobs, farmKey, farmPlots, farmTroughs, larderFills, noteWellTile, refreshWet, stageOfTile } from './farmCare.js';
 import { EntityKind, INTERIOR_BOUNDARY_TILES, chunkKey, pointHitsSolid, shutDoorTile } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look, PlaneWire } from '@arx/shared';
+import type { S2CArenaBoard, S2CArenaState } from '@arx/shared';
 
 /**
  * A zero-latency predicted shot (v8). Spawned the instant the local
@@ -245,6 +246,10 @@ export interface GameEvents {
   }): void;
   /** THE COURT FALLS: the run's champion is down — the run is cleared. */
   onDungeonClear?(d: { name: string; sigil: string; sec: number }): void;
+  /** THE SAND AND THE ROAR: the ringmaster's stakes board opened. */
+  onArenaBoard?(b: S2CArenaBoard): void;
+  /** The match's state turned a phase (state itself sits on game.arenaMatch). */
+  onArenaState?(s: S2CArenaState): void;
   /**
    * THE CROSSING: the body just moved to another plane. ClientGame has
    * already dropped its own world state (chunks, prediction, entities,
@@ -439,6 +444,21 @@ export class ClientGame {
    *  chart. `until` is a local clock stamp built from the wire's
    *  duration; the server clears it on arrival or expiry. */
   deathMark: { x: number; y: number; until: number; plane?: string } | null = null;
+  /**
+   * THE SAND AND THE ROAR: the live match card, null when no card
+   * holds this soul. `deadlineAt` is a LOCAL clock (performance.now
+   * base) derived from the wire's remainMs duration — the HUD counts
+   * against it without ever trusting a wall clock off the wire.
+   */
+  arenaMatch: {
+    phase: S2CArenaState['phase'];
+    venue?: string;
+    name?: string;
+    round?: number;
+    rounds?: number;
+    deadlineAt: number | null;
+    foes?: number;
+  } | null = null;
   /** THE QUEST LEDGER: active quests by id (status 'ready' = turn in). */
   readonly quests = new Map<string, QuestWire>();
   /** The done shelf, by id. */
@@ -2023,6 +2043,29 @@ export class ClientGame {
         this.events.onDungeonClear?.({ name: msg.name, sigil: msg.sigil, sec: msg.sec });
         break;
       }
+      case 'arenaboard': {
+        this.events.onArenaBoard?.(msg);
+        break;
+      }
+      case 'arena': {
+        // Phase 'off' lowers everything; anything else replaces the
+        // card whole (the ticker is authoritative, the partypos law).
+        this.arenaMatch =
+          msg.phase === 'off'
+            ? null
+            : {
+                phase: msg.phase,
+                venue: msg.venue,
+                name: msg.name,
+                round: msg.round,
+                rounds: msg.rounds,
+                deadlineAt:
+                  msg.remainMs !== undefined ? performance.now() + msg.remainMs : null,
+                foes: msg.foes,
+              };
+        this.events.onArenaState?.(msg);
+        break;
+      }
       case 'plane': {
         // THE CROSSING (docs/planes-plan.md §2.4) — the ONE reset
         // door (the reconnect welcome above is its twin). Drop it
@@ -3325,6 +3368,16 @@ export class ClientGame {
 
   partyJoinRun(name: string): void {
     this.conn?.send({ t: 'partyjoinrun', name });
+  }
+
+  /** THE SAND AND THE ROAR: buy a card off the open stakes board. */
+  arenaQueue(match: string): void {
+    this.conn?.send({ t: 'arenaqueue', match });
+  }
+
+  /** Walk away from the claim (muster cancel or mid-card forfeit). */
+  arenaLeave(): void {
+    this.conn?.send({ t: 'arenaleave' });
   }
 
   /**

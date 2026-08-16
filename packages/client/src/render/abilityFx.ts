@@ -753,6 +753,15 @@ export const FX_STYLES: Record<string, FxStyle> = {
   forge_ring: EMBER({ mid: '#c25c2e', deep: '#5c2410', ring: 'teeth', debris: 'ember', decal: 'scorch', motif: 'quake', punch: 0.65, wash: 0.55 }),
   warlord_horn: GOLD({ mid: '#c09a44', deep: '#6a4e1a', spark: '#ffe8b0', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.6, wash: 0.35 }),
 
+  // ------------- THE SAND AND THE ROAR (arena ceremony, docs/arena-plan.md)
+  // Three house moments, not abilities: the gates speak iron over the
+  // sand's banner-gold, the laurel and the purse speak the crowd's
+  // own gold whole. Faces registered so the signature contract holds
+  // (an orphan ceremony key is the same silent debt as an orphan art).
+  'arena:gates': STEEL({ mid: '#8d8a96', deep: '#3a3644', spark: '#e8b74a', ring: 'teeth', debris: 'rock', decal: undefined, motif: 'quake', punch: 0.5, wash: 0.3 }),
+  'arena:victory': GOLD({ mid: '#e8b74a', deep: '#8a6534', spark: '#f4d98c', ring: 'petals', debris: 'star', decal: undefined, motif: 'crown', punch: 0.7, wash: 0.55 }),
+  'arena:purse': GOLD({ mid: '#c98f2e', deep: '#6a4e1a', spark: '#f4d98c', ring: 'halo', debris: 'spark', decal: undefined, motif: 'rays', punch: 0.35, wash: 0.3 }),
+
   // ------------------- THE EARTH STANDS UP (golem arts, docs/golems-plan.md)
   // Four constructs, four material voices: the rock arts speak dry
   // hillstone (earthed STEEL, dust-pale sparks), the iron arts forged

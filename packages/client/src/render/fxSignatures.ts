@@ -53,6 +53,7 @@ import { FLIGHTS_SIGS } from './fxSigsFlights.js';
 import { BEASTCRAFT_SIGS } from './fxSigsBeastcraft.js';
 import { PETARTS_SIGS } from './fxSigsPetArts.js';
 import { FOES_SIGS } from './fxSigsFoes.js';
+import { ARENA_SIGS } from './fxSigsArena.js';
 import { GOLEM_SIGS } from './fxSigsGolems.js';
 import { OGRE_SIGS } from './fxSigsOgres.js';
 import { ARCHERY_BREATH_SIGS } from './fxSigsArcheryBreath.js';
@@ -1272,6 +1273,7 @@ export const SIGNATURES: Record<string, AbilitySig> = {
   ...BEASTCRAFT_SIGS,
   ...PETARTS_SIGS,
   ...FOES_SIGS,
+  ...ARENA_SIGS,
   ...GOLEM_SIGS,
   ...OGRE_SIGS,
   ...ARCHERY_BREATH_SIGS,
