@@ -286,11 +286,14 @@ const CUT_BOOK: Record<StrikeSchool, [CutSpec[], CutSpec[]]> = {
   polearm: [
     [
       // THE HIGH LINE: gathered at the ear, driven down-forward to a
-      // long low landing — the sentry's first answer.
+      // belly-height landing. The landing stays ABOVE the waist on
+      // purpose — the sheet's verdict: a lower Dy plus the depth
+      // squash at the toward-camera facings drove the point into the
+      // ground, and a thrust that ends in the dirt reads as a miss.
       {
         coilYaw: -0.6, impactYaw: 0.3,
         coilR: 0.5, impactR: 1.75,
-        coilDy: -0.42, impactDy: 0.05,
+        coilDy: -0.38, impactDy: -0.08,
         cock: 0.4, lead: 0.5, lean: 0.2,
         grip: { coil: 0.5, impact: 0.18 },
       },
@@ -299,7 +302,7 @@ const CUT_BOOK: Record<StrikeSchool, [CutSpec[], CutSpec[]]> = {
       {
         coilYaw: -0.4, impactYaw: 0.2,
         coilR: 0.6, impactR: 1.6,
-        coilDy: -0.2, impactDy: -0.05,
+        coilDy: -0.2, impactDy: -0.12,
         cock: 0.35, lead: 0.45, lean: 0.15,
         grip: { coil: 0.45, impact: 0.22 },
       },

@@ -750,13 +750,18 @@ export function poleWield(
     const p = projectCarry(lifelineYaw(f), pitch);
     return {
       dx: sideS * (0.31 - 0.13 * drive),
-      dy: -0.02 + 0.17 * drive,
+      // The plant's butt must END at the ground, never pass it — the
+      // sheet caught the haft running past the platform line. The art
+      // is 1.35s long, so the honest lever is the SHAFT FRACTION below
+      // the fist (0.5 × 1.35 ≈ 0.675s), trimmed with the fist height
+      // so the ferrule kisses the ground band exactly.
+      dy: -0.08 + 0.23 * drive,
       fwd: f.fx * POLE_FWD_LEAN_S,
       angle: p.angle + sideS * STAFF_PLANT_LEAN * (1 - drive),
       fore: p.fore,
       // Planted: fist above the middle of a TALL shaft. Couched: the
       // hand runs back so the point owns the front.
-      grip: 0.6 - 0.32 * drive,
+      grip: 0.5 - 0.22 * drive,
       pumpK: 0.25 + 0.45 * drive,
       offClaim: 0,
     };
