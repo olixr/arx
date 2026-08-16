@@ -1720,6 +1720,361 @@ const hushing_screech: AbilitySig = {
   },
 };
 
+/**
+ * FAERIE_RING — "the ring grows."
+ * The court's fence is GROWN, never cast: seven toadstools rise at
+ * the exact rim on their own clocks — stalk first, cap after, the
+ * way mushrooms actually arrive — around a floor washed with one
+ * faint moon disc. Spores drift up inside for the field's whole
+ * life. THE LASTING MARK: the cap-and-stalk grain pairs hold the
+ * circle ~9 s after the light goes — a fairy ring in the leaf rot,
+ * exactly where the damage circle stood. The rim IS the rules.
+ */
+const faerie_ring: AbilitySig = {
+  spawn(c) {
+    const rand = srand(c.seed ^ 0xfae1);
+    // The standing record: seven cap/stalk pairs at the true rim.
+    for (let k = 0; k < 7; k++) {
+      const a = (k / 7) * Math.PI * 2 + rand() * 0.4;
+      const wx = c.wx + Math.cos(a) * c.radius * 0.96;
+      const wy = c.wy + Math.sin(a) * c.radius * 0.96;
+      lay(c, wx, wy - 0.04, '#9ff0d8', { life: 9, size: 0.05, flicker: 0.25 });
+      lay(c, wx, wy + 0.03, '#e0dcec', { life: 9, size: 0.035 });
+    }
+    // Three spore grains settling inside — the floor remembers.
+    for (let k = 0; k < 3; k++) {
+      lay(c, c.wx + (rand() - 0.5) * c.radius, c.wy + (rand() - 0.5) * c.radius * 0.8,
+        '#c8ecdc', { life: 8, size: 0.03, fade: '#5c5480', fadeAt: 0.5 });
+    }
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, rPx } = c;
+    const rand = srand(c.seed ^ 0xfae2);
+    const fade = t < 0.75 ? 1 : (1 - t) / 0.25;
+    ctx.save();
+    // The moon disc: one faint pool inside the fence — pale, flat,
+    // patient. The court does not decorate; it CLAIMS.
+    ctx.globalAlpha = 0.14 * fade * Math.min(1, t / 0.2);
+    ctx.fillStyle = shade(st.mid, 10);
+    ctx.beginPath();
+    ctx.ellipse(c.px, c.py, rPx * 0.88, rPx * 0.88 * squash, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // THE RING GROWS: seven toadstools rise at the rim, staggered —
+    // stalk first, then the cap swelling over it, a pale gill line
+    // under the near edge.
+    for (let k = 0; k < 7; k++) {
+      const a = (k / 7) * Math.PI * 2 + rand() * 0.4;
+      const born = 0.06 + (k % 4) * 0.07;
+      const u = cl((t - born) / 0.16);
+      if (u <= 0) continue;
+      const p = pt(c, rPx * 0.96, a);
+      const H = sc * 0.13 * u;
+      const capR = sc * (0.055 + (k % 3) * 0.012) * cl((t - born - 0.08) / 0.12);
+      ctx.globalAlpha = 0.95 * fade;
+      // Stalk.
+      ctx.strokeStyle = '#e0dcec';
+      ctx.lineWidth = Math.max(1.5, sc * 0.032);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x, p.y - H);
+      ctx.stroke();
+      // Cap: a domed ellipse in the court's mint, gill line under.
+      if (capR > 0) {
+        ctx.fillStyle = st.mid;
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y - H, capR, capR * 0.62, 0, Math.PI, 0, false);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = shade(st.mid, -22);
+        ctx.lineWidth = Math.max(1, sc * 0.016);
+        ctx.beginPath();
+        ctx.moveTo(p.x - capR * 0.8, p.y - H + sc * 0.006);
+        ctx.lineTo(p.x + capR * 0.8, p.y - H + sc * 0.006);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  },
+  air(c) {
+    const { ctx, st, t, sc, rPx } = c;
+    const fade = t < 0.75 ? 1 : (1 - t) / 0.25;
+    const rand = srand(c.seed ^ 0xfae3);
+    ctx.save();
+    // Spores: six cold motes drifting up inside the fence, each on
+    // its own loop — the field breathing for its whole life.
+    for (let k = 0; k < 6; k++) {
+      const a = rand() * Math.PI * 2;
+      const rr = rand() * 0.7;
+      const cyc = (t * 2.2 + k * 0.37) % 1;
+      const p = pt(c, rPx * rr, a);
+      ctx.globalAlpha = Math.sin(cyc * Math.PI) * 0.8 * fade;
+      ctx.fillStyle = k % 2 === 0 ? st.core : st.mid;
+      const mr = sc * 0.028;
+      const my = p.y - sc * (0.1 + cyc * 0.5);
+      ctx.beginPath();
+      ctx.moveTo(p.x, my - mr);
+      ctx.lineTo(p.x + mr * 0.7, my);
+      ctx.lineTo(p.x, my + mr);
+      ctx.lineTo(p.x - mr * 0.7, my);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+    // The claim pulses soft — never a flare; the court is patient.
+    c.glow(c.wx, c.wy, c.radius * 0.8, 0.22 * fade * (0.7 + 0.3 * Math.sin(c.now / 400)));
+  },
+};
+
+/**
+ * GLOAMING_VEIL — "night arrives early."
+ * The nova runs BACKWARD from every other burst in the book: first
+ * the dusk FALLS IN — a violet disc contracting onto the hound with
+ * one star already lit inside it — and only then does the cold go
+ * OUT, a single hard rim wave leaving frost ticks where it passed.
+ * THE LASTING MARK: a scatter of early stars over the ground ~7 s,
+ * the night the hound borrowed, not quite given back.
+ */
+const gloaming_veil: AbilitySig = {
+  spawn(c) {
+    const rand = srand(c.seed ^ 0x91e1);
+    // The borrowed night: five star grains scattered inside the reach.
+    for (let k = 0; k < 5; k++) {
+      const a = rand() * Math.PI * 2;
+      const rr = 0.25 + rand() * 0.65;
+      lay(c, c.wx + Math.cos(a) * c.radius * rr, c.wy + Math.sin(a) * c.radius * rr,
+        k % 2 === 0 ? '#f2fff6' : '#9ff0d8', { life: 7, size: 0.035, flicker: 0.4, fade: '#5c5480', fadeAt: 0.6 });
+    }
+    // Rim record: paired dusk grains where the wave died.
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2 + rand() * 0.5;
+      lay(c, c.wx + Math.cos(a) * c.radius, c.wy + Math.sin(a) * c.radius,
+        '#8a7fb0', { life: 6.5, size: 0.04 });
+    }
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    ctx.save();
+    // PHASE ONE (t<0.3): the dusk falls IN — a wide violet ring
+    // contracting onto the hound.
+    if (t < 0.3) {
+      const u = t / 0.3;
+      const rr = rPx * (1.5 - 0.5 * u);
+      ctx.globalAlpha = 0.5 * u;
+      ctx.strokeStyle = st.deep;
+      ctx.lineWidth = Math.max(2, sc * (0.16 - 0.08 * u));
+      ctx.beginPath();
+      ctx.ellipse(px, py, rr, rr * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      // The dark pooling under the standing hound.
+      ctx.globalAlpha = 0.3 * u;
+      ctx.fillStyle = st.deep;
+      ctx.beginPath();
+      ctx.ellipse(px, py, rPx * 0.5 * u, rPx * 0.5 * u * squash, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // PHASE TWO (0.28..0.75): the cold goes OUT — one hard rim wave
+    // with frost ticks trailing where it passed.
+    const w = cl((t - 0.28) / 0.47);
+    if (w > 0 && w < 1) {
+      const rr = rPx * (0.3 + 0.7 * w);
+      ctx.globalAlpha = (1 - w) * 0.9;
+      ctx.strokeStyle = st.mid;
+      ctx.lineWidth = Math.max(2, sc * 0.06 * (1 - w * 0.5));
+      ctx.beginPath();
+      ctx.ellipse(px, py, rr, rr * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      // Frost ticks: short radial hairs just inside the wave.
+      const rand = srand(c.seed ^ 0x91e2);
+      ctx.lineWidth = Math.max(1, sc * 0.022);
+      ctx.strokeStyle = st.core;
+      for (let k = 0; k < 6; k++) {
+        const a = rand() * Math.PI * 2;
+        const p0 = pt(c, rr * 0.9, a);
+        const p1 = pt(c, rr * 0.78, a);
+        ctx.globalAlpha = (1 - w) * 0.7;
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  },
+  air(c) {
+    const { ctx, st, t, sc, px, py } = c;
+    const fade = t < 0.6 ? 1 : (1 - t) / 0.4;
+    ctx.save();
+    // THE EARLY STARS: five chips winking on above the hound as the
+    // borrowed night stands — each on its own clock.
+    const rand = srand(c.seed ^ 0x91e3);
+    for (let k = 0; k < 5; k++) {
+      const born = 0.1 + k * 0.08;
+      const u = cl((t - born) / 0.12);
+      if (u <= 0) continue;
+      const sx = px + (rand() - 0.5) * sc * 1.6;
+      const sy = py - sc * (0.9 + rand() * 0.8);
+      ctx.globalAlpha = u * 0.9 * fade;
+      ctx.fillStyle = k % 2 === 0 ? st.core : st.mid;
+      ctx.beginPath();
+      burstStarPath(ctx, sx, sy, sc * 0.05, sc * 0.02, 4, k * 0.7, 1);
+      ctx.fill();
+    }
+    // One thin crescent low over the scene — the moon called down a
+    // little closer than it should stand.
+    const mu = cl((t - 0.2) / 0.15);
+    if (mu > 0) {
+      ctx.globalAlpha = 0.5 * mu * fade;
+      ctx.strokeStyle = st.core;
+      ctx.lineWidth = Math.max(1.5, sc * 0.035);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(px, py - sc * 1.5, sc * 0.22, Math.PI * 0.7, Math.PI * 1.7);
+      ctx.stroke();
+    }
+    ctx.restore();
+    if (t < 0.35) c.glow(c.wx, c.wy, c.radius, 0.35 * (1 - Math.abs(t - 0.28) / 0.35));
+  },
+};
+
+/**
+ * GLIMMER_STEP — "the hound that briefly wasn't."
+ * The dash reads as an UNRAVELING: the hound comes apart at the
+ * departure door and three after-images hang along the lane — each a
+ * small hound glyph facing travel, fading tail-to-head as the real
+ * body outruns its own light — then the arrival flash lands PAST
+ * you, jaws first. THE LASTING MARK: a lane of cooling glimmer
+ * grains and two paw-pairs at both thresholds, ~8 s — where it left
+ * the world, and where the world got it back.
+ */
+const glimmer_step: AbilitySig = {
+  spawn(c) {
+    const rand = srand(c.seed ^ 0x57e1);
+    const dx = c.wx2 - c.wx;
+    const dy = c.wy2 - c.wy;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    // Threshold paw-pairs: where it left, and where it landed.
+    for (const [ex, ey] of [[c.wx, c.wy], [c.wx2, c.wy2]] as Array<[number, number]>) {
+      for (const s of [-1, 1]) {
+        lay(c, ex + nx * 0.18 * s, ey + ny * 0.18 * s, '#c8ecdc', { life: 8.5, size: 0.04 });
+      }
+    }
+    // The lane: cooling glimmer grains, mint going dusk.
+    for (let k = 0; k < 5; k++) {
+      const f = (k + 0.5) / 5;
+      lay(c, c.wx + dx * f + (rand() - 0.5) * 0.12, c.wy + dy * f + (rand() - 0.5) * 0.12,
+        '#f2fff6', {
+          life: 8, size: 0.04, flicker: 0.35,
+          fade: '#9ff0d8', fadeAt: 0.25, fade2: '#5c5480', fade2At: 0.65,
+        });
+    }
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, px2, py2 } = c;
+    const fade = t < 0.6 ? 1 : (1 - t) / 0.4;
+    ctx.save();
+    // The unraveled lane: one low pale band, barely there — light
+    // spilled, not ground burned.
+    const dx = px2 - px;
+    const dy = py2 - py;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    ctx.globalAlpha = 0.2 * fade;
+    ctx.fillStyle = st.mid;
+    ctx.beginPath();
+    ctx.moveTo(px + nx * sc * 0.16, py + ny * sc * 0.16 * squash);
+    ctx.lineTo(px2 + nx * sc * 0.16, py2 + ny * sc * 0.16 * squash);
+    ctx.lineTo(px2 - nx * sc * 0.16, py2 - ny * sc * 0.16 * squash);
+    ctx.lineTo(px - nx * sc * 0.16, py - ny * sc * 0.16 * squash);
+    ctx.closePath();
+    ctx.fill();
+    // The departure door: a small ring contracting to nothing where
+    // the hound stopped being.
+    if (t < 0.22) {
+      const u = t / 0.22;
+      ctx.globalAlpha = (1 - u) * 0.85;
+      ctx.strokeStyle = st.core;
+      ctx.lineWidth = Math.max(1.5, sc * 0.04);
+      ctx.beginPath();
+      ctx.ellipse(px, py, sc * 0.34 * (1 - u * 0.7), sc * 0.34 * (1 - u * 0.7) * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    // The arrival: one hard flash where the world got it back.
+    const au = cl((t - 0.3) / 0.16);
+    if (au > 0 && au < 1) {
+      ctx.globalAlpha = (1 - au) * 0.95;
+      ctx.fillStyle = st.core;
+      ctx.beginPath();
+      burstStarPath(ctx, px2, py2, sc * 0.34 * (0.5 + au * 0.5), sc * 0.12, 5, c.now / 300, squash);
+      ctx.fill();
+    }
+    ctx.restore();
+  },
+  air(c) {
+    const { ctx, st, t, sc, px, py, px2, py2 } = c;
+    ctx.save();
+    const dx = px2 - px;
+    const dy = py2 - py;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    // THE AFTER-IMAGES: three hound glyphs hung along the lane,
+    // facing travel, each fading tail-to-head as the body outruns
+    // its own light. Body lozenge, head wedge, one pricked ear, one
+    // banner stroke — a hound at a glance, gone in a blink.
+    for (let k = 0; k < 3; k++) {
+      const f = 0.22 + k * 0.26;
+      const born = 0.02 + k * 0.07;
+      const gone = 0.3 + k * 0.12;
+      const a = cl((t - born) / 0.06) * (1 - cl((t - gone) / 0.14));
+      if (a <= 0) continue;
+      const gx = px + dx * f;
+      const gy = py + dy * f - sc * 0.42;
+      const L = sc * 0.3;
+      const H = sc * 0.12;
+      ctx.globalAlpha = a * (0.5 - k * 0.08);
+      ctx.fillStyle = k === 2 ? st.core : st.mid;
+      // Body: a lean lozenge along travel.
+      ctx.beginPath();
+      ctx.moveTo(gx - ux * L, gy - uy * L * 0.3);
+      ctx.lineTo(gx - ux * L * 0.2, gy - H);
+      ctx.lineTo(gx + ux * L * 0.5, gy - uy * L * 0.1 - H * 0.6);
+      ctx.lineTo(gx + ux * L * 0.3, gy + H * 0.5);
+      ctx.lineTo(gx - ux * L * 0.6, gy + H * 0.6);
+      ctx.closePath();
+      ctx.fill();
+      // Head wedge thrown forward, ear pricked over it.
+      ctx.beginPath();
+      ctx.moveTo(gx + ux * L * 0.45, gy - H * 0.9);
+      ctx.lineTo(gx + ux * L * 0.95, gy - H * 0.3);
+      ctx.lineTo(gx + ux * L * 0.45, gy + H * 0.1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(gx + ux * L * 0.42, gy - H * 0.85);
+      ctx.lineTo(gx + ux * L * 0.5, gy - H * 1.5);
+      ctx.lineTo(gx + ux * L * 0.62, gy - H * 0.8);
+      ctx.closePath();
+      ctx.fill();
+      // The banner: one stroke streaming behind.
+      ctx.strokeStyle = st.core;
+      ctx.lineWidth = Math.max(1.2, sc * 0.03);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(gx - ux * L * 0.9, gy - H * 0.2);
+      ctx.quadraticCurveTo(gx - ux * L * 1.3, gy - H * 0.9, gx - ux * L * 1.6, gy - H * 0.5);
+      ctx.stroke();
+    }
+    ctx.restore();
+    if (t < 0.1) c.glow(c.wx, c.wy, 0.6, 0.4 * (1 - t / 0.1));
+    const au = cl((t - 0.3) / 0.1);
+    if (au > 0 && au < 1) c.glow(c.wx2, c.wy2, 0.7, 0.5 * (1 - au));
+  },
+};
+
 // -------------------------------------------------------- the registry
 
 /** The relic-wave signatures, keyed by ability id. */
@@ -1740,4 +2095,7 @@ export const RELIC_SIGS: Record<string, AbilitySig> = {
   vixens_scream,
   ravening_cackle,
   hushing_screech,
+  faerie_ring,
+  gloaming_veil,
+  glimmer_step,
 };

@@ -17,6 +17,7 @@
 //               on the first frame; ?detn=N sets the step count.
 import {
   DIREWOLF_LOOK,
+  FAEWOLF_LOOK,
   LegSolver,
   WOLF_LOOK,
   beastSpec,
@@ -26,7 +27,7 @@ import {
   type RigPose,
 } from '../render/rig.js';
 import { LegRig, type LegPose } from '../render/legs.js';
-import { TailSim, drawFoxBrush, drawWolfBrush } from '../render/tail.js';
+import { TailSim, drawFaeBrush, drawFoxBrush, drawWolfBrush } from '../render/tail.js';
 import { EarSim } from '../render/earPhysics.js';
 import { PoseState } from '@arx/shared';
 
@@ -58,6 +59,7 @@ const BODIES: Record<string, { radius: number; speed: number; color: string }> =
   wolf: { radius: 0.34, speed: 4.6, color: '#6a6f7d' },
   lynx: { radius: 0.36, speed: 4.7, color: '#9c7f55' },
   dire_wolf: { radius: 0.44, speed: 4.8, color: '#4b4854' },
+  fae_wolf: { radius: 0.47, speed: 5.2, color: '#9a94b4' },
 };
 
 type Mode = 'idle' | 'walk' | 'run' | 'pounce' | 'hurt';
@@ -78,6 +80,8 @@ interface Fig {
   walkPhase?: number;
   /** THE BRUSH IS A SIMULATION: live verlet plume per fox fig. */
   brush?: TailSim;
+  /** THE TWIN BANNERS: the fae wolf's second live chain. */
+  brush2?: TailSim;
   /** THE EAR IS A SIMULATION: live elastic pair per fox fig. */
   earSim?: EarSim;
   manLegs?: LegSolver;
@@ -124,6 +128,25 @@ row('wolf pounce', 'wolf', 'pounce');
 row('dire idle', 'dire_wolf', 'idle');
 row('dire run', 'dire_wolf', 'run');
 row('dire pounce', 'dire_wolf', 'pounce');
+// THE COURT'S BANDS: the fae wolf across every facing — the twin
+// banners must read crossed at rest, twin streams at a run, and the
+// hurt row must keep the chamfron + motes in silhouette. The dire
+// reference and the ruler pin the ladder: taller than the matriarch,
+// never wider.
+row('fae idle', 'fae_wolf', 'idle');
+row('fae walk', 'fae_wolf', 'walk');
+row('fae run', 'fae_wolf', 'run');
+row('fae pounce', 'fae_wolf', 'pounce');
+row('fae hurt', 'fae_wolf', 'hurt');
+figs.push({ label: 'dire (reference)', defId: 'dire_wolf', dir: Math.PI / 2, mode: 'idle', seed: 5 });
+figs.push({ label: 'fae wolf S', defId: 'fae_wolf', dir: Math.PI / 2, mode: 'idle', seed: 5 });
+figs.push({ label: 'fae wolf E (profile)', defId: 'fae_wolf', dir: 0, mode: 'idle', seed: 5 });
+figs.push({ label: 'fae wolf N (back)', defId: 'fae_wolf', dir: -Math.PI / 2, mode: 'idle', seed: 5 });
+figs.push({ label: 'ruler: player+fae', defId: 'fae_wolf', dir: Math.PI / 2, mode: 'idle', seed: 5, ruler: true });
+// Seed spread: the glimmer motes and dapples must scatter per body.
+for (let k = 0; k < 3; k++) {
+  figs.push({ label: `fae eid ${700 + k}`, defId: 'fae_wolf', dir: Math.PI / 2, mode: 'idle', seed: 700 + k });
+}
 
 const COLS = 8;
 const CW = Math.round(S * 2.3);
@@ -210,6 +233,7 @@ function drawQuad(
     fox_champion: { rootOff: 0.4, rumpH: 0.46, sizeK: 1.3, heavy: 1.15 },
     wolf: { rootOff: 0.38, rumpH: 0.44, sizeK: 1.0, heavy: 1.0 },
     dire_wolf: { rootOff: 0.5, rumpH: 0.52, sizeK: 1.2, heavy: 1.25 },
+    fae_wolf: { rootOff: 0.54, rumpH: 0.6, sizeK: 1.32, heavy: 1.05 },
   };
   let tail: (() => void) | undefined;
   let ears: EarSim | undefined;
@@ -217,11 +241,10 @@ function drawQuad(
   if (canid) {
     // THE ROOT SEATS INSIDE THE STERN — the live renderer's clamp,
     // mirrored so the sheet shows the seated root the game paints.
-    f.brush ??= new TailSim(
-      canid.heavy,
-      seed,
-      Math.min(canid.rootOff, (spec.bodyLen - 0.04) / canid.sizeK),
-    );
+    const rootOff = Math.min(canid.rootOff, (spec.bodyLen - 0.04) / canid.sizeK);
+    f.brush ??= new TailSim(canid.heavy, seed, rootOff);
+    const twin = f.defId === 'fae_wolf';
+    if (twin) f.brush2 ??= new TailSim(canid.heavy, (seed ^ 0x9e37) + 13, rootOff);
     let lunge = 0;
     if (attackT > 0) {
       lunge =
@@ -231,21 +254,44 @@ function drawQuad(
     }
     const lwx = wx + Math.cos(lp.dir) * lunge;
     const lwy = wy + Math.sin(lp.dir) * lunge;
-    f.brush.update(lwx, lwy, canid.rumpH + lp.bob * 0.35, lp.dir, dt, now / 1000, canid.sizeK);
+    const rumpZ = canid.rumpH + lp.bob * 0.35;
+    if (twin && f.brush2) {
+      // THE TWIN BANNERS: splayed anchors, the renderer's own law.
+      const spx = -Math.sin(lp.dir) * 0.08;
+      const spy = Math.cos(lp.dir) * 0.08;
+      f.brush.update(lwx + spx, lwy + spy, rumpZ, lp.dir, dt, now / 1000, canid.sizeK);
+      f.brush2.update(lwx - spx, lwy - spy, rumpZ, lp.dir, dt, now / 1000, canid.sizeK);
+    } else {
+      f.brush.update(lwx, lwy, rumpZ, lp.dir, dt, now / 1000, canid.sizeK);
+    }
     const isFox = f.defId.startsWith('fox');
     const foxL = isFox ? foxLook(f.defId, seed) : undefined;
-    const wolfSt = isFox
+    const faeSt = twin
+      ? { coat: FAEWOLF_LOOK.coat, mantle: FAEWOLF_LOOK.mantle, light: FAEWOLF_LOOK.glimmer, heavy: 1.0 }
+      : undefined;
+    const wolfSt = isFox || twin
       ? undefined
       : f.defId === 'dire_wolf'
         ? { coat: DIREWOLF_LOOK.coat, under: DIREWOLF_LOOK.under, tip: DIREWOLF_LOOK.grizzle, heavy: 1.15 }
         : { coat: WOLF_LOOK.coat, under: WOLF_LOOK.under, tip: WOLF_LOOK.saddle, heavy: 1.0 };
     const brush = f.brush;
+    const brush2 = f.brush2;
     tail = () => {
-      const pts = brush.nodes.map((nd) => ({
-        x: x + (nd.x - wx) * S,
-        y: y + (nd.y - wy) * S * YS - nd.z * S,
-      }));
+      const project = (sim: TailSim): Array<{ x: number; y: number }> =>
+        sim.nodes.map((nd) => ({
+          x: x + (nd.x - wx) * S,
+          y: y + (nd.y - wy) * S * YS - nd.z * S,
+        }));
       const back = Math.sin(lp.dir) < -0.2;
+      if (faeSt && brush2) {
+        const a = project(brush);
+        const b = project(brush2);
+        const [far, near] = (a[0]?.y ?? 0) <= (b[0]?.y ?? 0) ? [a, b] : [b, a];
+        drawFaeBrush(ctx, far, faeSt, S, { hurt, back });
+        drawFaeBrush(ctx, near, faeSt, S, { hurt, back });
+        return;
+      }
+      const pts = project(brush);
       if (foxL) drawFoxBrush(ctx, pts, foxL, S, { hurt, back });
       else drawWolfBrush(ctx, pts, wolfSt!, S, { hurt, back });
     };

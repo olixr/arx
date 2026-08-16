@@ -10474,6 +10474,31 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     foot: 'paw',
     legColor: '#5a5448',
   },
+  // THE COURT'S HOUND: the tallest, longest-legged canid in the wood
+  // — never the dire's wall. The carriage is a gazehound's: stilted
+  // height over a hard tuck, a floating high-lift stride, and the
+  // quickest turn any wolf owns. The speed is the legend — only the
+  // court's hound outpaces a worg.
+  fae_wolf: {
+    rig: {
+      legs: quadLegs(0.37, 0.16),
+      legLen: 0.56,
+      rise: 0.47,
+      liftAmp: 0.115,
+      runSpeed: 5.2,
+      turnRate: 9,
+    },
+    bodyLen: 0.58,
+    bodyRise: 0.56,
+    kneeFwd: [1, 1, -1, -1],
+    hipFwd: 0.9,
+    hipSide: 0.55,
+    // Fine-boned for its height: a dire's leg width on a taller frame
+    // would read draft-horse, not court hound.
+    legW: 0.095,
+    foot: 'paw',
+    legColor: '#7e7a98',
+  },
   // The war-hound: front legs longer than the rear carriage suggests —
   // the hyena slope on the move, fast and wrong-looking.
   worg: {
@@ -12458,6 +12483,474 @@ export function drawDireWolfHead(
   // The near ears return over everything — the projection's z-order;
   // the notch stays on its own ear whichever side the turn puts it.
   for (const e of earPair.front) paintDireEar(e);
+}
+
+/**
+ * THE FAE WOLF: the court's hound — the highest rung of the wolfkin
+ * ladder, designed around TWO silhouette elements no other body owns:
+ * THE TWIN BANNERS (two full simulated brushes off the stern, tips
+ * dipped in cold light — the renderer runs the pair) and THE COURT'S
+ * SILVER (chamfron crown-plate on the skull, gorget at the throat —
+ * worn gear in the collar's tradition, never a palette swap). Never a
+ * scaled dire: where the matriarch is a wall, the hound is a TOWER ON
+ * STILTS — gazehound-tall on the longest canid legs in the wood, a
+ * LEVEL high topline where the dire's spine falls away, a hard
+ * sight-hound tuck, and a coat of moon-lavender under a dusk mantle
+ * that sheds seeded glimmer motes above the spine. The eyes are cold
+ * spring-green lamps; the glow OWNS the socket. It keeps its teeth
+ * covered at rest — the dire never does. Composure is the tell.
+ */
+export interface FaeWolfLook {
+  coat: string;
+  /** The dusk mantle draped over shoulders and back. */
+  mantle: string;
+  under: string;
+  /** The court's cold light: motes, tips, gem, and eye-glow. */
+  glimmer: string;
+  /** The court's silver: chamfron, tines, gorget, ear tips. */
+  silver: string;
+  silverDeep: string;
+  earIn: string;
+  eye: string;
+  eyeCore: string;
+  bodyW: number;
+  backH: number;
+  shoulderH: number;
+  chestH: number;
+  tuckH: number;
+  headW: number;
+  headH: number;
+}
+
+export const FAEWOLF_LOOK: FaeWolfLook = {
+  coat: '#9a94b4',
+  mantle: '#5c5480',
+  under: '#e0dcec',
+  glimmer: '#9ff0d8',
+  silver: '#c8cede',
+  silverDeep: '#6e7590',
+  earIn: '#4a4468',
+  eye: '#8cf0cc',
+  eyeCore: '#f2fff6',
+  bodyW: 0.225,
+  backH: 0.76,
+  shoulderH: 0.1,
+  chestH: 0.38,
+  tuckH: 0.56,
+  headW: 0.36,
+  headH: 0.28,
+};
+
+export function paintFaeWolfBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: FaeWolfLook,
+  f: BeastBlockFrame,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  // The gazehound wedge: a deep-chested front, the waist drawn long
+  // and hard toward a NARROW croup — elegance in plan view where the
+  // dire is mass. The stern pinches so the twin banner roots read
+  // grown from one point.
+  const foot: Array<[number, number]> = [
+    [hl, -hw * 0.78],
+    [hl, hw * 0.78],
+    [hl * 0.55, hw],
+    [-hl * 0.3, hw * 0.8],
+    [-hl, hw * 0.48],
+    [-hl, -hw * 0.48],
+    [-hl * 0.3, -hw * 0.8],
+    [hl * 0.55, -hw],
+  ];
+  const coat = shade(look.coat, (((f.seed >>> 5) & 7) - 3) * 2);
+  // THE LEVEL CARRIAGE: the court hound's topline holds HIGH and
+  // LEVEL the length of the back (the dire falls away; the hound
+  // does not stoop), a swan neck root climbing harder than any
+  // wolf's off gentle withers, then one late clean stern fall into
+  // the banner roots — the handoff law, kept.
+  const topH = (X: number): number =>
+    look.backH +
+    Math.max(0, X / hl) * look.shoulderH +
+    0.065 * Math.max(0, (X / hl - 0.5) / 0.5) -
+    0.018 * Math.max(0, (-X / hl - 0.55) / 0.45) -
+    0.08 * Math.max(0, (-X / hl - 0.78) / 0.22);
+  paintBlockBody(
+    ctx,
+    f,
+    foot,
+    topH,
+    // The sight-hound tuck: the deepest chest-to-waist sweep in the
+    // canid line — daylight under the loin is the stilted read.
+    (X) => look.chestH + (look.tuckH - look.chestH) * Math.min(1, Math.max(0, (0.45 - X / hl) / 0.9)),
+    coat,
+    (gx, gyy, lift) => {
+      const s = f.s;
+      const tk = f.topScale ?? 1;
+      // The dusk mantle: draped like nightfall over shoulders and
+      // back, longer and lower-reaching than any wolf saddle.
+      ctx.save();
+      ctx.translate(gx(hl * 0.06, 0), gyy(hl * 0.06, 0) - look.backH * tk * s * 0.94 - lift);
+      ctx.rotate(Math.atan2(f.fy * f.ys, f.fx));
+      ctx.fillStyle = look.mantle;
+      ctx.beginPath();
+      facetBlob(ctx, 0, 0, hl * s * 0.86, f.seed | 1, 9, (hw * 1.2) / (hl * 0.86), 0.35);
+      ctx.fill();
+      ctx.restore();
+      // Moonlight dapples: three soft pale pools along the upper
+      // flank — light through a canopy that is not there. Seeded, so
+      // no two hounds are dappled alike; near-flank only.
+      if (Math.abs(f.fy) < 0.92) {
+        ctx.fillStyle = 'rgba(224, 220, 236, 0.18)';
+        for (let i = 0; i < 3; i++) {
+          const dseed = (f.seed >>> (i * 5)) & 15;
+          const dxp = hl * (0.42 - i * 0.34 + ((dseed & 3) - 1.5) * 0.04);
+          const dyp = hw * (0.3 + (dseed >> 2) * 0.05);
+          ctx.beginPath();
+          facetCircle(
+            ctx,
+            gx(dxp, dyp),
+            gyy(dxp, dyp) - (look.chestH + 0.24) * s - lift * 0.7,
+            s * (0.042 + (dseed & 1) * 0.012),
+            5,
+            f.fx,
+          );
+          ctx.fill();
+        }
+      }
+      // Moonlight chest bib — only while the chest can face the
+      // camera, riding the hull's own bob (the pinned-bib law).
+      if (f.fy > -0.15) {
+        ctx.fillStyle = look.under;
+        ctx.beginPath();
+        facetBlob(
+          ctx,
+          gx(hl * 0.88, 0),
+          gyy(hl * 0.88, 0) - (look.chestH + 0.12) * s - lift * 0.8,
+          hw * s * 0.78,
+          f.seed ^ 0x33,
+          7,
+          0.85,
+          1.7,
+        );
+        ctx.fill();
+      }
+    },
+  );
+  // THE GLIMMER WAKE — the signature laid where the dire wears her
+  // hackles: the coat sheds cold light. A thin pale dorsal seam rides
+  // the spine crest, and five seeded motes float just above it,
+  // tallest over the withers — painted AFTER the body (the hull clip
+  // eats anything above it), riding the same lift the spine rides so
+  // THE BODY MOVES AS ONE.
+  const { bx, gy, s, fx, fy, ys } = f;
+  const lift = f.bob * 0.35 * s;
+  const tk = f.topScale ?? 1;
+  const spineAt = (X: number): { x: number; y: number } => ({
+    x: bx + fx * X * s,
+    y: gy + fy * X * ys * s - topH(X) * tk * s - lift,
+  });
+  // The dorsal seam: withers to croup, one quiet stroke of light.
+  ctx.strokeStyle = f.hurt ? '#ffffff' : shade(look.under, -6);
+  ctx.lineWidth = Math.max(1, s * 0.014);
+  ctx.lineCap = 'round';
+  const sa = spineAt(hl * 0.7);
+  const sm = spineAt(-hl * 0.05);
+  const sb = spineAt(-hl * 0.72);
+  ctx.beginPath();
+  ctx.moveTo(sa.x, sa.y + s * 0.008);
+  ctx.quadraticCurveTo(sm.x, sm.y + s * 0.004, sb.x, sb.y + s * 0.01);
+  ctx.stroke();
+  ctx.lineCap = 'butt';
+  // The motes: five diamonds hovering off the crest on seeded
+  // stations — the hurt flash keeps them (the signature must
+  // survive the silhouette read).
+  ctx.fillStyle = f.hurt ? '#ffffff' : look.glimmer;
+  for (let i = 0; i < 5; i++) {
+    const t = i / 4;
+    const mseed = (f.seed >>> (i * 3)) & 7;
+    const X = hl * (0.66 - 1.3 * t);
+    const p = spineAt(X);
+    const hgt = s * tk * (0.1 - 0.045 * t + (mseed & 3) * 0.012);
+    const rr = s * (0.02 - 0.006 * t);
+    const mx = p.x + fx * s * ((mseed & 1) === 0 ? 0.02 : -0.02);
+    const my = p.y - hgt;
+    ctx.beginPath();
+    ctx.moveTo(mx, my - rr);
+    ctx.lineTo(mx + rr * 0.7, my);
+    ctx.lineTo(mx, my + rr);
+    ctx.lineTo(mx - rr * 0.7, my);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+/**
+ * The fae wolf head: a fine long skull carried highest of any canid —
+ * narrow where the dire is broad, composed where she glowers. THE
+ * COURT'S SILVER lives here: the chamfron brow-plate with its three
+ * crown tines (worn gear, kept on the corpse) and a glimmer gem at
+ * the center station that slides on the sphere law's cosine. Cold
+ * spring-green eyes; the glow owns the socket. The teeth stay covered
+ * at rest — only the snarl bares them, and the snarl is the last
+ * thing most hunters read. THE EAR IS A SIMULATION: the tallest,
+ * narrowest blades in the wolf line, silver-tipped, on the elastic
+ * pair contract.
+ */
+export function drawFaeWolfHead(
+  ctx: CanvasRenderingContext2D,
+  look: FaeWolfLook,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    dead?: boolean;
+    /** 0..1 through the attack telegraph. */
+    snarl?: number;
+    /** Wall clock for the ear sim tick; absent = the settled rest. */
+    nowMs?: number;
+    /** THE EAR IS A SIMULATION: the live elastic pair. */
+    ears?: EarSim;
+  },
+): void {
+  const { x: cx, y: cy, s, fx, fy, ys } = o;
+  const px = -fy;
+  const py = fx;
+  const w = look.headW * s;
+  const h = look.headH * s;
+  const C = (c: string): string => (o.hurt ? '#ffffff' : c);
+  const snarl = o.snarl ?? 0;
+
+  // THE EAR IS A SIMULATION: the court hound's blades run taller and
+  // narrower than any wolf's — almost elven — with silver tips
+  // carried per ear through the depth split.
+  const earPin = Math.min(1, snarl * 0.6);
+  const earCarr: EarCarriage = {
+    azimuth: 2.05,
+    rootR: look.headW * 0.25,
+    rootLift: look.headH * 0.5,
+    length: look.headW * 0.74,
+    spread: 0.5,
+    rise: 1.28,
+    curl: [0, 0.05, 0.12],
+  };
+  const earSt: CanidEarStyle = {
+    fill: C(shade(look.coat, -6)),
+    inner: look.earIn,
+    seam: shade(look.coat, -20),
+  };
+  const earW0 = w * 0.13;
+  const earPair = canidEarChains(earCarr, o, cx, cy, s, earPin);
+  const fEarFront = fy > 0.05;
+  const paintFaeEar = (e: { c: EarChain; side: number }): void => {
+    const spts = e.c.pts.map((p) => ({ x: cx + p.x * s, y: cy + p.y * s }));
+    paintCanidEar(ctx, spts, earW0, earSt, {
+      front: fEarFront,
+      hurt: o.hurt === true,
+      dead: o.dead === true,
+      notch: false,
+      headX: cx,
+      headY: cy,
+    });
+    // The silver tip: the court's mark on both blades — a small
+    // bright chip seated at the last knuckle, riding the sim.
+    if (!o.hurt) {
+      const tp = spts[3]!;
+      const pv = spts[2]!;
+      const tdx = tp.x - pv.x;
+      const tdy = tp.y - pv.y;
+      ctx.fillStyle = look.silver;
+      ctx.beginPath();
+      ctx.moveTo(tp.x, tp.y);
+      ctx.lineTo(tp.x - tdx * 0.4 + tdy * 0.22, tp.y - tdy * 0.4 - tdx * 0.22);
+      ctx.lineTo(tp.x - tdx * 0.4 - tdy * 0.22, tp.y - tdy * 0.4 + tdx * 0.22);
+      ctx.closePath();
+      ctx.fill();
+    }
+  };
+  for (const e of earPair.behind) paintFaeEar(e);
+
+  // Skull block: narrower than the dire's, chamfered fine — the
+  // fine-boned read against her bone-crusher.
+  ctx.fillStyle = C(look.coat);
+  ctx.beginPath();
+  chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.26, w * 0.26, w * 0.3, w * 0.3]);
+  ctx.fill();
+  if (!o.hurt) {
+    ctx.save();
+    ctx.beginPath();
+    chamferRect(ctx, cx - w / 2, cy - h / 2, w, h, [w * 0.26, w * 0.26, w * 0.3, w * 0.3]);
+    ctx.clip();
+    // Lit crown, then moonlight low — no brow ledge: the hound does
+    // not glower, and the open brow is half its composure.
+    ctx.fillStyle = 'rgba(255, 248, 240, 0.15)';
+    ctx.fillRect(cx - w / 2, cy - h / 2, w, h * 0.2);
+    ctx.fillStyle = C(look.under);
+    ctx.fillRect(cx - w / 2, cy + h * 0.16, w, h * 0.36);
+    ctx.restore();
+  }
+
+  // THE CHAMFRON: the court's brow plate — a silver band across the
+  // upper skull with a shaded lower arris, and the glimmer gem at
+  // the center STATION (the sphere law: it slides on the ring's
+  // cosine as the head yaws, never rotates). Kept on the hurt flash
+  // (the silhouette signature) and on the corpse (silver survives
+  // the hound).
+  const plY = cy - h * 0.3 + fy * h * 0.06;
+  ctx.fillStyle = C(look.silver);
+  ctx.beginPath();
+  chamferRect(ctx, cx - w * 0.42, plY - h * 0.09, w * 0.84, h * 0.18, [w * 0.1, w * 0.1, w * 0.05, w * 0.05]);
+  ctx.fill();
+  if (!o.hurt) {
+    ctx.fillStyle = look.silverDeep;
+    ctx.fillRect(cx - w * 0.42 + w * 0.05, plY + h * 0.045, w * 0.74, h * 0.045);
+  }
+  // THE THREE TINES: the crown read — short silver points off the
+  // plate's top edge, center tallest. The side pair rides ±azimuth
+  // stations (they slide and collapse toward profile on the cosine;
+  // width scales with their own facing — nothing ever pops).
+  const profileK = faceProfileK(fx);
+  const tineW = w * 0.055 * (1 - profileK * 0.4);
+  for (const es of [-1, 0, 1]) {
+    if (es !== 0 && Math.abs(fx) > 0.82 && es * py < 0) continue;
+    const tx0 = cx + px * es * w * 0.24 + fx * w * 0.02;
+    const ty0 = plY - h * 0.07 + py * es * w * 0.05 * ys;
+    const tall = h * (es === 0 ? 0.3 : 0.19);
+    ctx.fillStyle = C(look.silver);
+    ctx.beginPath();
+    ctx.moveTo(tx0 - tineW, ty0);
+    ctx.lineTo(tx0, ty0 - tall);
+    ctx.lineTo(tx0 + tineW, ty0);
+    ctx.closePath();
+    ctx.fill();
+    if (!o.hurt && es === 0) {
+      // The center tine carries one cold spark at its point.
+      ctx.fillStyle = look.glimmer;
+      ctx.beginPath();
+      facetCircle(ctx, tx0, ty0 - tall, w * 0.03, 5, fx);
+      ctx.fill();
+    }
+  }
+  // The gem: seated on the plate at the forward station.
+  if (!o.hurt && fy > -0.35) {
+    ctx.fillStyle = o.dead ? look.silverDeep : look.glimmer;
+    ctx.beginPath();
+    facetCircle(ctx, cx + fx * w * 0.1, plY + fy * h * 0.03, w * 0.045, 5, fx);
+    ctx.fill();
+  }
+
+  // Muzzle: the longest, finest wedge in the wolf line — a hunting
+  // hound's needle against the dire's bone-crusher.
+  if (fy > -0.3) {
+    const bx0 = cx + fx * w * 0.26;
+    const by0 = cy + fy * w * 0.26 * ys + h * 0.12;
+    const sl = w * (0.38 + 0.34 * profileK);
+    const tx = bx0 + fx * sl;
+    const ty = by0 + fy * sl * ys + h * 0.1;
+    const axv = tx - bx0;
+    const ayv = ty - by0;
+    const al = Math.hypot(axv, ayv) || 1e-4;
+    const nx = -ayv / al;
+    const ny = axv / al;
+    const hb = w * 0.19 * (1 - profileK * 0.25);
+    const ht = hb * 0.6;
+    ctx.fillStyle = C(shade(look.coat, 6));
+    ctx.beginPath();
+    ctx.moveTo(bx0 + nx * hb, by0 + ny * hb);
+    ctx.lineTo(tx + nx * ht, ty + ny * ht);
+    ctx.lineTo(tx - nx * ht, ty - ny * ht);
+    ctx.lineTo(bx0 - nx * hb, by0 - ny * hb);
+    ctx.closePath();
+    ctx.fill();
+    if (snarl > 0.15 && !o.dead && !o.hurt) {
+      // The composure breaks all at once: a deep gape, fine fangs,
+      // and cold light curling off the open jaw — the gloaming
+      // breath. Most hunters read this once.
+      const gape = h * 0.4 * Math.min(1, snarl);
+      ctx.fillStyle = '#241a30';
+      ctx.beginPath();
+      ctx.moveTo(tx - nx * ht * 0.92, ty - ny * ht * 0.92);
+      ctx.lineTo(tx + nx * ht * 0.92, ty + ny * ht * 0.92);
+      ctx.lineTo(tx + (axv / al) * ht * 0.42, ty + gape);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#eef2e8';
+      for (const ts of [-0.5, 0.1, 0.45]) {
+        ctx.beginPath();
+        ctx.moveTo(tx + nx * ht * ts - w * 0.018, ty + ny * ht * ts);
+        ctx.lineTo(tx + nx * ht * ts + w * 0.018, ty + ny * ht * ts);
+        ctx.lineTo(tx + nx * ht * ts, ty + ny * ht * ts + gape * 0.48);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // The gloaming breath: two cold wisps off the jaw corners.
+      ctx.strokeStyle = look.glimmer;
+      ctx.lineWidth = Math.max(1, w * 0.03);
+      ctx.lineCap = 'round';
+      for (const ws of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(tx + nx * ht * ws * 0.8, ty + ny * ht * ws * 0.8 + gape * 0.3);
+        ctx.quadraticCurveTo(
+          tx + nx * ht * ws * 1.5 + (axv / al) * w * 0.06,
+          ty + ny * ht * ws * 1.5 + gape * 0.15,
+          tx + nx * ht * ws * 1.9 + (axv / al) * w * 0.12,
+          ty + ny * ht * ws * 1.9 - h * 0.05,
+        );
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+    }
+    // The pale under-jaw at profile — the canid lip line, kept.
+    if (!o.hurt && profileK > 0.25) {
+      const lowSide = ny >= 0 ? 1 : -1;
+      ctx.strokeStyle = C(look.under);
+      ctx.lineWidth = Math.max(1.2, w * 0.045);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(bx0 + nx * hb * 0.72 * lowSide, by0 + ny * hb * 0.72 * lowSide);
+      ctx.lineTo(tx + nx * ht * 0.62 * lowSide, ty + ny * ht * 0.62 * lowSide);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
+    // Nose chip seated on the tip.
+    ctx.fillStyle = C(OUTLINE);
+    ctx.beginPath();
+    facetCircle(ctx, tx - (axv / al) * w * 0.02, ty - (ayv / al) * w * 0.02, w * 0.085, 5, fx);
+    ctx.fill();
+  }
+
+  // Cold spring-green lamps — the glow OWNS the socket (the
+  // tiny-tint law), then the slit, then a white-green core. The
+  // court's light goes out on a corpse.
+  if (!o.dead && fy > -0.45) {
+    for (const es of [-1, 1]) {
+      if (Math.abs(fx) > 0.6 && es * py < 0) continue;
+      const ex = cx + fx * w * 0.12 + px * es * w * 0.29;
+      const ey = cy + (fy * w * 0.12 + py * es * w * 0.29) * ys - h * 0.08;
+      ctx.save();
+      ctx.translate(ex, ey);
+      ctx.rotate(es * (0.32 + snarl * 0.28));
+      if (!o.hurt) {
+        ctx.fillStyle = 'rgba(140, 240, 204, 0.3)';
+        ctx.fillRect(-w * 0.125, -h * 0.095, w * 0.25, h * 0.19);
+      }
+      ctx.fillStyle = C(look.eye);
+      ctx.fillRect(-w * 0.082, -h * 0.055, w * 0.164, h * 0.11);
+      if (!o.hurt) {
+        ctx.fillStyle = look.eyeCore;
+        ctx.fillRect(-w * 0.03, -h * 0.03, w * 0.06, h * 0.06);
+      }
+      ctx.restore();
+    }
+  }
+
+  // The near ears return over everything — the projection's z-order;
+  // the silver tips ride their own blades through every facing.
+  for (const e of earPair.front) paintFaeEar(e);
 }
 
 /**
@@ -21117,6 +21610,7 @@ export function drawBeast(
       : opts.defId === 'wolf_oldfang'
         ? OLDFANG_LOOK
         : undefined;
+  const faeL = opts.defId === 'fae_wolf' ? FAEWOLF_LOOK : undefined;
   const worgL = opts.defId === 'worg' ? WORG_LOOK : undefined;
   const ratL = opts.defId === 'rat' ? RAT_LOOK : undefined;
   const boarL =
@@ -21178,6 +21672,10 @@ export function drawBeast(
     }
     if (direL) {
       paintDireWolfBody(ctx, spec, direL, blockFrame());
+      return;
+    }
+    if (faeL) {
+      paintFaeWolfBody(ctx, spec, faeL, blockFrame());
       return;
     }
     if (worgL) {
@@ -21993,6 +22491,91 @@ export function drawBeast(
       });
       return;
     }
+    if (faeL) {
+      const hl = spec.bodyLen * s;
+      const hw2 = faeL.headW * s;
+      const nod = opts.pose.bob * 0.5 * s;
+      // The court's hound barely stoops through the windup — a small
+      // settle, nothing like the matriarch's kill-line sink. The
+      // composure holds until the composure is the last thing you
+      // read.
+      const stalk = at > 0 ? Math.min(1, at / 0.7) * 0.06 * s : 0;
+      const chx = bx + fx * (hl + hw2 * 0.4);
+      // THE HIGHEST CARRIAGE: the skull rides further above the
+      // withers than any canid in the wood — the swan neck the level
+      // topline was built to offer.
+      const chy =
+        by +
+        fy * (hl + hw2 * 0.4) * ys -
+        (faeL.backH + faeL.shoulderH * 0.6) * 1.24 * s -
+        nod +
+        stalk;
+      // Neck: a SLENDER upright quad — long and narrow where the
+      // dire's ruff is storm mass.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(faeL.coat, -7);
+      ctx.beginPath();
+      const nb = (faeL.backH + faeL.shoulderH) * s + opts.pose.bob * 0.35 * s;
+      const nwx = px * faeL.bodyW * 0.48 * s;
+      const nwy = py * faeL.bodyW * 0.48 * s;
+      const rax = bx + fx * hl * 0.76;
+      const ray = by + fy * hl * 0.76 * ys;
+      const nlx = chx - px * hw2 * 0.34;
+      const nly = chy - py * hw2 * 0.34 * ys + faeL.headH * s * 0.26;
+      const nrx = chx + px * hw2 * 0.34;
+      const nry = chy + py * hw2 * 0.34 * ys + faeL.headH * s * 0.26;
+      ctx.moveTo(rax + nwx, ray + nwy * ys - nb * 0.92);
+      ctx.lineTo(rax - nwx, ray - nwy * ys - nb * 0.92);
+      ctx.lineTo(nlx, nly);
+      ctx.lineTo(nrx, nry);
+      ctx.closePath();
+      ctx.fill();
+      // THE GORGET: the court's collar — a silver band crossing the
+      // neck's lower third (worn gear, the collar law), with the
+      // hanging gem at the forward station while the throat can face
+      // the camera.
+      if (!opts.hurt) {
+        const gt = 0.62;
+        const glx = rax + nwx + (nlx - (rax + nwx)) * gt;
+        const gly = ray + nwy * ys - nb * 0.92 + (nly - (ray + nwy * ys - nb * 0.92)) * gt;
+        const grx = rax - nwx + (nrx - (rax - nwx)) * gt;
+        const gry = ray - nwy * ys - nb * 0.92 + (nry - (ray - nwy * ys - nb * 0.92)) * gt;
+        ctx.strokeStyle = faeL.silver;
+        ctx.lineWidth = Math.max(1.5, s * 0.045);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(glx, gly);
+        ctx.lineTo(grx, gry);
+        ctx.stroke();
+        ctx.strokeStyle = faeL.silverDeep;
+        ctx.lineWidth = Math.max(1, s * 0.016);
+        ctx.beginPath();
+        ctx.moveTo(glx, gly + s * 0.02);
+        ctx.lineTo(grx, gry + s * 0.02);
+        ctx.stroke();
+        ctx.lineCap = 'butt';
+        if (fy > -0.1) {
+          const gmx = (glx + grx) / 2 + fx * s * 0.02;
+          const gmy = (gly + gry) / 2 + s * 0.045;
+          ctx.fillStyle = faeL.glimmer;
+          ctx.beginPath();
+          facetCircle(ctx, gmx, gmy, s * 0.032, 5, fx);
+          ctx.fill();
+        }
+      }
+      drawFaeWolfHead(ctx, faeL, {
+        x: chx,
+        y: chy,
+        s,
+        fx,
+        fy,
+        ys,
+        hurt: opts.hurt,
+        snarl: at > 0 ? Math.min(1, at * 2.2) : 0,
+        nowMs: now > 0 ? now : undefined,
+        ears: opts.ears,
+      });
+      return;
+    }
     if (worgL) {
       const hl = spec.bodyLen * s;
       const hw2 = worgL.headW * s;
@@ -22568,6 +23151,43 @@ export function drawBeast(
       ctx.beginPath();
       facetCircle(ctx, tex, tey, s * 0.05, 5, seed * 0.4);
       ctx.fill();
+      return;
+    }
+    if (faeL) {
+      // THE TWIN BANNERS ARE A SIMULATION — the live game runs two
+      // TailSim chains on splayed anchors, painted by drawFaeBrush
+      // through the caller's tail slot. The analytic pair below is
+      // THE ONE REST for sim-less callers (portraits, the CMS):
+      // exactly the crossed-at-rest carriage the sims settle to.
+      if (opts.tail) {
+        opts.tail();
+        return;
+      }
+      const hl = spec.bodyLen * s;
+      const lift = opts.pose.bob * 0.35 * s;
+      const sway =
+        Math.sin(opts.walkPhase * Math.PI * 2) * 0.03 * s +
+        (now > 0 ? Math.sin(now * 0.0007 + seed) * 0.04 * s * idle : 0);
+      for (const bs of [-1, 1]) {
+        // Each banner roots off its own croup corner and falls
+        // toward the center line — the crossed lyre at rest.
+        const tbx = bx - fx * hl * 0.94 + px * bs * s * 0.07;
+        const tby = by - (fy * hl * 0.94 - py * bs * 0.07) * ys - faeL.backH * 0.76 * s - lift;
+        const cxq = tbx - fx * hl * 0.4 + px * (sway * 0.7 - bs * s * 0.02);
+        const cyq = tby + faeL.backH * 0.14 * s;
+        const tex = tbx - fx * hl * 0.76 + px * (sway * 1.4 - bs * s * 0.09);
+        const tey = tby + faeL.backH * 0.5 * s;
+        const banner = taperedSpinePath(tbx, tby, cxq, cyq, tex, tey, (t) =>
+          s * (0.026 + 0.048 * Math.sin(Math.PI * Math.pow(t, 0.85))),
+        );
+        ctx.fillStyle = opts.hurt ? '#ffffff' : shade(faeL.coat, -3);
+        ctx.fill(banner);
+        // The tip dipped in cold light — the inversion past frost.
+        ctx.fillStyle = opts.hurt ? '#ffffff' : faeL.glimmer;
+        ctx.beginPath();
+        facetCircle(ctx, tex, tey, s * 0.04, 5, seed * 0.4 + bs);
+        ctx.fill();
+      }
       return;
     }
     if (worgL) {

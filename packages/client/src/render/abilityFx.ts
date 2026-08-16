@@ -698,6 +698,13 @@ export const FX_STYLES: Record<string, FxStyle> = {
   hamstring_bite: BLOOD({ mid: '#8f96a8', ring: 'shards', debris: 'blood', decal: 'stain', punch: 0.45, wash: 0.25 }),
   call_the_brotherhood: SHADOW({ mid: '#8a94b8', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.65, wash: 0.35 }),
   throat_lunge: BLOOD({ mid: '#b8bfd4', ring: 'shards', debris: 'blood', decal: 'stain', punch: 0.6, wash: 0.3 }),
+  // THE COURT'S HOUND (the fae wolf) — cold light over dusk: the ring
+  // is grown, not cast (rune ring, star grains, a caged floor); the
+  // veil is night arriving early in one bloom; the step is a cold
+  // seam torn and mended with the bite waiting at the far end.
+  faerie_ring: FROST({ mid: '#9ff0d8', deep: '#2e5a4c', ring: 'runes', debris: 'star', decal: 'glow', motif: 'cage', punch: 0.45, wash: 0.4 }),
+  gloaming_veil: SHADOW({ mid: '#8a7fb0', ring: 'halo', debris: 'star', decal: undefined, motif: 'bloom', punch: 0.6, wash: 0.35 }),
+  glimmer_step: ARCANE({ mid: '#b8ecdc', deep: '#3c6a5e', ring: 'shards', debris: 'star', decal: 'glow', motif: 'tear', punch: 0.6, wash: 0.3 }),
   shrilling_dart: SHADOW({ mid: '#8a7458', ring: 'halo', debris: 'spark', decal: undefined, punch: 0.35, wash: 0.2 }),
   // THE TIDE'S RAMPART (the giant crab) — cold harbor water over
   // keratin: the grip is TIDE gone hard (teeth ring, the clamp's

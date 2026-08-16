@@ -3833,6 +3833,57 @@ const defs: AbilityDef[] = [
     dashTiles: 4,
     status: { status: 'bleed', power: 2, durationTicks: 80 },
   },
+  // ------------------------------------------------------------------
+  // THE COURT'S HOUND (the fae wolf): three words from the estate
+  // that never thawed. The ring is seeded where you are GOING, the
+  // veil is the cold bursting off a crowded hound, and the step is
+  // the legend itself — the hound comes apart into glimmer and
+  // arrives already through you. One sentence: fence, shove, close.
+  // ------------------------------------------------------------------
+  {
+    id: 'faerie_ring',
+    name: 'Faerie Ring',
+    desc: 'Pale toadstool-light stakes a circle under your running feet. Every old story agrees on what happens to those who stand in one.',
+    color: '#9ff0d8',
+    code: 'Fr',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'ground_field',
+    damage: 2, // the ring barely bites — the CAUGHT are the payload
+    range: 0,
+    radius: 2.0,
+    fieldTicks: 90,
+    pulseEveryTicks: 15,
+    // The court's cold climbs from the circle floor — legs go slow
+    // and the hound's next word finds you standing still.
+    status: { status: 'chill', power: 2, durationTicks: 50 },
+  },
+  {
+    id: 'gloaming_veil',
+    name: 'Gloaming Veil',
+    desc: 'The hound stands still and the dusk arrives early, all at once, shoving cold through everyone who crowded it.',
+    color: '#8a7fb0',
+    code: 'Gv',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'nova',
+    damage: 3,
+    radius: 2.2,
+    knockback: 1.2, // the veil MAKES the space the step will use
+    status: { status: 'chill', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'glimmer_step',
+    name: 'Glimmer Step',
+    desc: 'The hound comes apart into cold light and arrives already past you, jaws first. The bite is real. The wolf, briefly, was not.',
+    color: '#b8ecdc',
+    code: 'Gs',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'dash_strike',
+    damage: 8,
+    dashTiles: 5,
+    // The court's jaws tear AND chill — the wound that keeps you
+    // slow enough to be wounded again.
+    status: { status: 'bleed', power: 2, durationTicks: 80 },
+  },
   {
     id: 'shrilling_dart',
     name: 'Shrilling Dart',

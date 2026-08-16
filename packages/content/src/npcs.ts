@@ -2393,6 +2393,63 @@ const defs: NpcDef[] = [
     },
   },
   {
+    // THE COURT'S HOUND: the fae wolf — the highest rung of the
+    // wolfkin ladder (wolf, worg, dire, fae), and the one the winter
+    // court kept. The loot ledger has whispered it for a while now:
+    // "the cold kept a court once, and the packs inherited the
+    // estate" — this is what walked out of that estate still wearing
+    // the silver. Never a scaled-up dire: where the matriarch is a
+    // wall, the hound is a TOWER ON STILTS — the tallest, longest-
+    // legged canid in the wood, moon-lavender under a dusk mantle,
+    // twin banner brushes streaming behind, the court's chamfron
+    // still buckled to its skull. It is the most cunning thing on
+    // four legs: it seeds the ring, veils when crowded, and steps
+    // THROUGH you when you run.
+    id: 'fae_wolf',
+    name: 'Fae wolf',
+    level: 26,
+    maxHp: 175,
+    damage: 7,
+    attackRange: 1.15,
+    // The quickest press in the wolfkin line — cunning never waits.
+    attackCooldownTicks: 32,
+    // The smartest hunter marks you furthest out, and from angles
+    // the dumb packs never watch.
+    aggroRange: 8,
+    sightArc: 270,
+    // A court hound ranges its whole estate.
+    leashRange: 40,
+    // Only the court's hound outpaces a worg — and the worg knows it.
+    speed: 5.2,
+    xpReward: 660,
+    loot: ['fae_wolf', 'wolf_wardrobe', 'wolf_arms', 'heirlooms'],
+    respawnSec: 150,
+    color: '#9a94b4',
+    radius: 0.47,
+    hitHeight: 1.6,
+    // The bite runs court-cold: the chill of the estate that never
+    // thawed, laid two deep.
+    attackStatus: { status: 'chill', power: 2, durationTicks: 70 },
+    pounce: true,
+    pack: 'wolfkin',
+    resist: ['chill'], // the court's own cold cannot bite the court's hound
+    weak: ['burn'], // the gloaming has never liked an honest fire
+    kit: [
+      // The opener, spoken at range: a ring of pale toadstool-light
+      // staked under your feet. Standing in the court's ring is the
+      // mistake — the old stories were instructions.
+      { ability: 'faerie_ring', cooldownTicks: 220, windupTicks: 14, minRange: 2, maxRange: 7, aim: 'lead' },
+      // Crowded, it does not back away — the gloaming bursts OFF it,
+      // cold shoving through everyone in reach, and the ground it
+      // makes is the ground it uses.
+      { ability: 'gloaming_veil', cooldownTicks: 260, windupTicks: 10, maxRange: 2.2 },
+      // The word that made the legends: the hound comes apart into
+      // glimmer and arrives already past you, jaws first. Kiting the
+      // court's hound is never free ground.
+      { ability: 'glimmer_step', cooldownTicks: 200, windupTicks: 12, minRange: 2.5, maxRange: 7, weight: 2 },
+    ],
+  },
+  {
     id: 'lynx_young',
     name: 'Young lynx',
     level: 8,

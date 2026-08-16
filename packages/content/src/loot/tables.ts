@@ -1131,6 +1131,31 @@ const defs: LootTableDef[] = [
       { item: 'winterspire', chance: 0.008 },
     ],
   },
+  {
+    id: 'fae_wolf',
+    desc: 'The court\'s hound pays in the court\'s coin: the glimmering pelt, and the estate\'s silver it never stopped wearing.',
+    rarityBonus: 4,
+    entries: [
+      { item: 'bones' },
+      { item: 'faewolf_pelt', chance: 0.9 },
+      { item: 'wolf_fur', qty: [1, 2], chance: 0.5 },
+      { item: 'coins', qty: [60, 140], chance: 0.8 },
+      { item: 'crimson_essence', qty: [1, 3], chance: 0.35 },
+      { item: 'bloomstone', chance: 0.06 },
+      { item: 'brass_key', chance: 0.1 },
+      { item: 'dungeon_key', chance: 0.06 },
+      // The hound was the court's own — nothing "snagged in its fur";
+      // it WEARS the estate, and pays the wardrobe best of any pack.
+      ...setDrops('wintercourt', 0.02),
+      ...setDrops('rimethorn', 0.01),
+      // The moon's own staff and the bow of night glass: the worgs
+      // howl at these where the camps stole them. The hound carries
+      // theirs by RIGHT, which is why its rates read like a will.
+      { item: 'moonwell', chance: 0.015 },
+      { item: 'moonglass', chance: 0.015 },
+      { item: 'winterspire', chance: 0.012 },
+    ],
+  },
   // ------------------------------------------------------ the tufted shadows
   {
     id: 'lynx',

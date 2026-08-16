@@ -4601,6 +4601,99 @@ Object.assign(PLATES, {
     dot(c, st.spark, 0.02, 0.04, 0.022);
   },
 
+  // ------------- THE COURT'S HOUND — the fae wolf's three plates.
+  // Faerie Ring — the circle of caps, and the one gap nobody takes.
+  faerie_ring: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    // The ring itself: a pale circle, broken where the story says
+    // you may still leave.
+    c.strokeStyle = st.mid;
+    c.lineCap = 'round';
+    c.lineWidth = 0.036;
+    c.beginPath();
+    c.arc(0, 0, 0.34, -Math.PI * 0.35, Math.PI * 1.15);
+    c.stroke();
+    // Five toadstools standing the rim: stalk, then cap.
+    for (const [a, r] of [[-0.15, 0.05], [0.5, 0.045], [1.15, 0.05], [1.85, 0.045], [2.5, 0.05]] as const) {
+      const x = Math.cos(a * Math.PI * 0.72) * 0.34;
+      const y = Math.sin(a * Math.PI * 0.72) * 0.34;
+      c.strokeStyle = st.core;
+      c.lineWidth = 0.026;
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x, y - 0.07);
+      c.stroke();
+      dot(c, st.spark, x, y - 0.09, r);
+    }
+    // The caught feet: two chill chevrons rooted at the center.
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.03;
+    for (const d of [-0.05, 0.07] as const) {
+      c.beginPath();
+      c.moveTo(d - 0.06, 0.1);
+      c.lineTo(d, -0.02);
+      c.lineTo(d + 0.06, 0.1);
+      c.stroke();
+    }
+  },
+  // Gloaming Veil — night arriving early, all at once.
+  gloaming_veil: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // The dusk: a heavy half-disc descending over the plate.
+    c.fillStyle = st.deep;
+    c.beginPath();
+    c.arc(0, -0.1, 0.4, Math.PI, 0, false);
+    c.closePath();
+    c.fill();
+    // One early star inside the fallen dusk.
+    dot(c, st.spark, 0.14, -0.22, 0.032);
+    // The hound under it: the pricked ear pair, composed, unmoved.
+    c.fillStyle = st.mid;
+    for (const s of [-1, 1] as const) {
+      c.beginPath();
+      c.moveTo(s * 0.16 - 0.06, 0.16);
+      c.lineTo(s * 0.13, -0.06);
+      c.lineTo(s * 0.16 + 0.06, 0.16);
+      c.closePath();
+      c.fill();
+    }
+    // The cold shoving outward: three burst strokes off the rim.
+    c.strokeStyle = st.mid;
+    c.lineCap = 'round';
+    c.lineWidth = 0.032;
+    for (const a of [Math.PI * 0.8, Math.PI * 0.5, Math.PI * 0.2] as const) {
+      c.beginPath();
+      c.moveTo(Math.cos(a) * 0.3, 0.18 + Math.sin(a) * 0.1);
+      c.lineTo(Math.cos(a) * 0.46, 0.22 + Math.sin(a) * 0.18);
+      c.stroke();
+    }
+  },
+  // Glimmer Step — the hound that briefly wasn't.
+  glimmer_step: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // The lane: a dead-flat dashed line — the run happened, mostly
+    // elsewhere.
+    c.strokeStyle = st.mid;
+    c.lineCap = 'round';
+    c.lineWidth = 0.05;
+    for (const [x0, x1] of [[-0.46, -0.3], [-0.2, -0.08], [0.04, 0.12]] as const) {
+      c.beginPath();
+      c.moveTo(x0, 0.06);
+      c.lineTo(x1, 0.05);
+      c.stroke();
+    }
+    // Shed motes where the hound came apart.
+    dot(c, st.spark, -0.34, -0.08, 0.028);
+    dot(c, st.spark, -0.14, -0.14, 0.022);
+    dot(c, st.spark, 0.04, -0.08, 0.026);
+    // The arrival: the head wedge REFORMED at the line's end, jaws
+    // already open.
+    fill(c, st.core, [[0.18, -0.06], [0.48, -0.2], [0.34, 0.02]]);
+    fill(c, st.core, [[0.18, 0.1], [0.48, 0.22], [0.32, 0.12]]);
+    // One last star still closing into the body.
+    dot(c, st.spark, 0.22, 0.02, 0.02);
+  },
+
   // ----------------- THE TIDE'S RAMPART — the giant crab's plates.
   // Breakwater Grip — the great claw, open on its long bad promise.
   breakwater_grip: (st) => (c) => {

@@ -260,6 +260,38 @@ export class EarSim {
           q.y = rb.y + ey * kk;
         }
       }
+      // THE CARTILAGE LAW (the fae wolf pass): a blade BENDS, never
+      // BUCKLES. The per-node cap above is rest-relative, so a gait
+      // bob pumping the blade axially can settle a lawful standing
+      // ZIGZAG — alternating deviations that each clear the cap
+      // while the silhouette folds like tin. (First seen on the
+      // court hound's tall blades; the wolf's own walk carried it
+      // too, unphotographed — the old sheet never walked a wolf.)
+      // Clamp local curvature: an interior node may bow past the
+      // straight line of its neighbors only as far as the REST
+      // chain's own bow there, plus a little organic play — smooth
+      // turn-lag arcs pass untouched, the buckle cannot stand.
+      for (let i = 1; i < N - 1; i++) {
+        const p = ch[i - 1]!;
+        const q = ch[i]!;
+        const r = ch[i + 1]!;
+        const rp = rest.pts[i - 1]!;
+        const rq = rest.pts[i]!;
+        const rr = rest.pts[i + 1]!;
+        const restBow = Math.hypot(rq.x - (rp.x + rr.x) / 2, rq.y - (rp.y + rr.y) / 2);
+        const seg = Math.hypot(rr.x - rq.x, rr.y - rq.y);
+        const cap = restBow + seg * 0.3;
+        const mx = (p.x + r.x) / 2;
+        const my = (p.y + r.y) / 2;
+        const dx = q.x - mx;
+        const dy = q.y - my;
+        const d = Math.hypot(dx, dy);
+        if (d > cap) {
+          const kk = cap / d;
+          q.x = mx + dx * kk;
+          q.y = my + dy * kk;
+        }
+      }
     }
 
     // The settle detector — tip speed across both ears.

@@ -1040,6 +1040,155 @@ export function drawWolfBrush(
   ctx.stroke();
 }
 
+/** Pre-resolved fae-banner tones — the painter never learns a species. */
+export interface FaeBrushStyle {
+  coat: string;
+  /** The dusk mantle ink — the banner's quiet contour. */
+  mantle: string;
+  /** The court's cold light: the tip dip, the low seam, the shed motes. */
+  light: string;
+  /** Volume scale — the banners run slimmer than any wolf's brush. */
+  heavy: number;
+}
+
+/**
+ * Paint one projected FAE BANNER — the court hound's tail voice. The
+ * wolves dip their tips in ink or frost; the hound's banners end in
+ * LIGHT: a slim silk taper, a pale seam riding the low edge, the last
+ * knuckle dipped in cold glimmer, and two shed motes trailing off the
+ * tip — deterministic from the chain's own geometry, so the sheet, the
+ * portrait, and the fight all shed the same light. Two of these run
+ * per hound (the TWIN BANNERS, the silhouette signature no other body
+ * owns); each rides its own sim, so no pair ever streams in sync.
+ * Plain path calls — no Path2D — so node-side painter tests can walk
+ * every coordinate.
+ */
+export function drawFaeBrush(
+  ctx: CanvasRenderingContext2D,
+  pts: Array<{ x: number; y: number }>,
+  st: FaeBrushStyle,
+  wk: number,
+  opts: FoxBrushDrawOpts,
+): void {
+  const n = pts.length;
+  if (n < 4) return;
+  const left: Array<{ x: number; y: number }> = [];
+  const right: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[Math.max(0, i - 1)]!;
+    const b = pts[Math.min(n - 1, i + 1)]!;
+    let tx = b.x - a.x;
+    let ty = b.y - a.y;
+    const tl = Math.hypot(tx, ty) || 1;
+    tx /= tl;
+    ty /= tl;
+    const t = i / (n - 1);
+    // The fae profile: a silk flag — slimmer root than any wolf, the
+    // bulge pushed late, and a long honest point.
+    const w =
+      (0.02 + 0.05 * Math.pow(Math.sin(Math.min(1, t * 1.05) * Math.PI), 0.85) + 0.008 * (1 - t)) *
+      st.heavy *
+      wk;
+    left.push({ x: pts[i]!.x + ty * w, y: pts[i]!.y - tx * w });
+    right.push({ x: pts[i]!.x - ty * w, y: pts[i]!.y + tx * w });
+  }
+
+  const silhouette = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(left[0]!.x, left[0]!.y);
+    for (let i = 1; i < n; i++) ctx.lineTo(left[i]!.x, left[i]!.y);
+    const tipX = pts[n - 1]!.x + (pts[n - 1]!.x - pts[n - 2]!.x) * 0.55;
+    const tipY = pts[n - 1]!.y + (pts[n - 1]!.y - pts[n - 2]!.y) * 0.55;
+    ctx.quadraticCurveTo(tipX, tipY, right[n - 1]!.x, right[n - 1]!.y);
+    for (let i = n - 2; i >= 0; i--) ctx.lineTo(right[i]!.x, right[i]!.y);
+    ctx.closePath();
+  };
+
+  ctx.lineJoin = 'round';
+  // The back view dims toward the mantle — the fox's balloon lesson,
+  // spoken in dusk.
+  ctx.fillStyle = opts.hurt ? '#ffffff' : opts.back ? shade(st.mantle, -6) : shade(st.coat, -3);
+  silhouette();
+  ctx.fill();
+  if (opts.hurt) {
+    // The hurt flash keeps the shed motes — the twin-banner signature
+    // must survive the silhouette read.
+    faeMotes(ctx, pts, wk, '#ffffff');
+    return;
+  }
+
+  ctx.save();
+  silhouette();
+  ctx.clip();
+  // THE TIP DIP IN LIGHT: the last knuckle and a half in the court's
+  // own cold glimmer — the inversion of every wolf in the wood, and
+  // the read that survives any zoom.
+  ctx.fillStyle = st.light;
+  ctx.beginPath();
+  const fl = n - 2;
+  ctx.moveTo(left[fl]!.x + (left[fl - 1]!.x - left[fl]!.x) * 0.3, left[fl]!.y + (left[fl - 1]!.y - left[fl]!.y) * 0.3);
+  for (let i = fl; i < n; i++) ctx.lineTo(left[i]!.x, left[i]!.y);
+  const capX = pts[n - 1]!.x + (pts[n - 1]!.x - pts[n - 2]!.x) * 0.6;
+  const capY = pts[n - 1]!.y + (pts[n - 1]!.y - pts[n - 2]!.y) * 0.6;
+  ctx.quadraticCurveTo(capX, capY, right[n - 1]!.x, right[n - 1]!.y);
+  for (let i = n - 2; i >= fl; i--) ctx.lineTo(right[i]!.x, right[i]!.y);
+  ctx.lineTo(right[fl]!.x + (right[fl - 1]!.x - right[fl]!.x) * 0.3, right[fl]!.y + (right[fl - 1]!.y - right[fl]!.y) * 0.3);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // The pale seam along the DOWN-SCREEN edge — moonlight catching the
+  // silk's low side.
+  let leftDown = 0;
+  for (let i = 1; i < n - 1; i++) leftDown += left[i]!.y - right[i]!.y;
+  const low = leftDown >= 0 ? left : right;
+  ctx.strokeStyle = shade(st.light, -18);
+  ctx.lineWidth = Math.max(1, wk * 0.013);
+  ctx.beginPath();
+  ctx.moveTo(low[1]!.x, low[1]!.y);
+  for (let i = 2; i <= n - 2; i++) ctx.lineTo(low[i]!.x, low[i]!.y);
+  ctx.stroke();
+
+  // The quiet contour in mantle ink.
+  ctx.strokeStyle = shade(st.mantle, -10);
+  ctx.lineWidth = Math.max(1, wk * 0.013);
+  silhouette();
+  ctx.stroke();
+
+  // THE SHED MOTES: two cold sparks trailing off the tip along the
+  // banner's own last direction — geometry-deterministic, so every
+  // caller sheds the same light.
+  faeMotes(ctx, pts, wk, st.light);
+}
+
+/** The banner's shed light: two diamonds past the tip, tapering. */
+function faeMotes(
+  ctx: CanvasRenderingContext2D,
+  pts: Array<{ x: number; y: number }>,
+  wk: number,
+  color: string,
+): void {
+  const n = pts.length;
+  const dx = pts[n - 1]!.x - pts[n - 2]!.x;
+  const dy = pts[n - 1]!.y - pts[n - 2]!.y;
+  ctx.fillStyle = color;
+  for (const [f, r] of [
+    [0.55, 0.022],
+    [1.05, 0.014],
+  ] as const) {
+    const mx = pts[n - 1]!.x + dx * f;
+    const my = pts[n - 1]!.y + dy * f;
+    const rr = wk * r;
+    ctx.beginPath();
+    ctx.moveTo(mx, my - rr);
+    ctx.lineTo(mx + rr * 0.7, my);
+    ctx.lineTo(mx, my + rr);
+    ctx.lineTo(mx - rr * 0.7, my);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
 export interface TailDrawOpts {
   hurt: boolean;
 }

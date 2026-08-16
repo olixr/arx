@@ -505,6 +505,24 @@ export const BREATH_DIALECTS: Record<string, BreathDialect> = {
   shrilling_dart: {
     charge: (c, x, y) => shadow.deployments.bloom!(c, x, y, { scale: 0.35, dur: 0.6 }),
   },
+  // THE COURT'S HOUND — three winds off the estate that never thawed.
+  // Faerie Ring: pale light gathers in a halo around the hound while
+  // the ring is being GROWN somewhere else — reading the ground under
+  // your own feet is the skill check.
+  faerie_ring: {
+    charge: (c, x, y, o) =>
+      radiance.deployments.halo!(c, x, y, { radius: o.radius * 0.5, scale: 0.45, dur: 0.8 }),
+  },
+  // Gloaming Veil: the dusk pulls IN around the standing hound —
+  // night arriving early, and you are inside it.
+  gloaming_veil: {
+    charge: (c, x, y) => shadow.deployments.veil!(c, x, y, { scale: 0.5, dur: 0.7 }),
+  },
+  // Glimmer Step: cold blooms on the coat as the hound comes apart —
+  // the one warning the legend allows.
+  glimmer_step: {
+    charge: (c, x, y) => frost.deployments.bloom!(c, x, y, { scale: 0.45, dur: 0.65 }),
+  },
   // Ground Slam (the digmaster's wound reissue): the pick goes UP and
   // the ground already trembles.
   ground_slam: {

@@ -48,12 +48,14 @@ import {
   STAG_LOOK,
   TURTLE_LOOK,
   COLOSSUS_LOOK,
+  FAEWOLF_LOOK,
   WOLF_LOOK,
   WORG_LOOK,
   drawBearHead,
   drawBoarHead,
   drawCattleHead,
   drawDireWolfHead,
+  drawFaeWolfHead,
   drawLynxHead,
   drawOwlHead,
   drawRamHead,
@@ -74,6 +76,7 @@ import {
   paintCrabBody,
   paintGiantCrabBody,
   paintDireWolfBody,
+  paintFaeWolfBody,
   paintLynxBody,
   paintOwlBody,
   paintRamBody,
@@ -2359,6 +2362,31 @@ export function drawBeastRagdoll(
     ctx.beginPath();
     facetCircle(ctx, tx, tipY, s * 0.044, 5, spineA);
     ctx.fill();
+  } else if (look.defId === 'fae_wolf') {
+    // THE TWIN BANNERS lie limp and SPLAYED behind the stern — two
+    // silk falls, never one. The cold light is out of them (the
+    // dead-eyes law reaches the banners), but the tips stay pale:
+    // moonlight, not glimmer, on the dead.
+    for (const splay of [-0.24, 0.24]) {
+      const ba = spineA + splay;
+      const tx = rear.x - Math.cos(ba) * len * 0.6;
+      const tipY = f.ay + g[0]!.floor * f.s + s * 0.02 + Math.sin(splay) * s * 0.05;
+      const banner = taperedSpinePath(
+        rear.x,
+        rear.y,
+        (rear.x + tx) / 2,
+        Math.max(rear.y, tipY) + s * 0.03,
+        tx,
+        tipY,
+        (t) => s * (0.022 + 0.05 * Math.sin(Math.PI * Math.pow(t, 0.85))),
+      );
+      ctx.fillStyle = shade(FAEWOLF_LOOK.coat, -5);
+      ctx.fill(banner);
+      ctx.fillStyle = shade(FAEWOLF_LOOK.under, -10);
+      ctx.beginPath();
+      facetCircle(ctx, tx, tipY, s * 0.036, 5, ba);
+      ctx.fill();
+    }
   } else if (look.defId.startsWith('lynx')) {
     // The bobtail lies flat on the rump — no perk left in it, the
     // black tip still honest on the dead.
@@ -2500,6 +2528,24 @@ export function drawBeastRagdoll(
     // The hackle ridge keeps the corpse's identity — paintDireWolfBody
     // draws it outside the hull, so it survives the collapse.
     paintDireWolfBody(ctx, spec, look.defId === 'wolf_oldfang' ? OLDFANG_LOOK : DIREWOLF_LOOK, {
+      bx: midX,
+      gy: midY + r * 0.4,
+      s,
+      fx: Math.cos(spineA),
+      fy: Math.sin(spineA),
+      ys: 1,
+      seed: look.seed,
+      hurt: false,
+      bob: 0,
+      roll: 0,
+      topScale: 0.5,
+      botH: 0.02,
+    });
+  } else if (look.defId === 'fae_wolf') {
+    // The glimmer wake dims but the motes hold their stations — the
+    // painter keeps the corpse's identity the way the hackle ridge
+    // keeps the matriarch's.
+    paintFaeWolfBody(ctx, spec, FAEWOLF_LOOK, {
       bx: midX,
       gy: midY + r * 0.4,
       s,
@@ -2860,6 +2906,18 @@ export function drawBeastRagdoll(
   } else if (look.defId === 'dire_wolf' || look.defId === 'wolf_oldfang') {
     // The ember goes out — dead eyes law, notch and fangs stay.
     drawDireWolfHead(ctx, look.defId === 'wolf_oldfang' ? OLDFANG_LOOK : DIREWOLF_LOOK, {
+      x: head.x,
+      y: head.y,
+      s,
+      fx: Math.cos(neckA),
+      fy: Math.sin(neckA),
+      ys: 1,
+      dead: true,
+    });
+  } else if (look.defId === 'fae_wolf') {
+    // The cold lamps go out; the chamfron and its tines stay — the
+    // court's silver survives the hound.
+    drawFaeWolfHead(ctx, FAEWOLF_LOOK, {
       x: head.x,
       y: head.y,
       s,
