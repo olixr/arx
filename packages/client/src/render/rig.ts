@@ -95,6 +95,7 @@ import {
   WORK_VOICE_NEUTRAL,
   resolveWork,
   workCycleU,
+  type StationWorkKind,
   type WorkKind,
   type WorkVoice,
 } from './work.js';
@@ -500,11 +501,14 @@ export interface RigPose {
   /** Time-based swing driver for the gather pose. */
   gatherPhase: number;
   /**
-   * Which station a Craft pose is working: picks the choreography
-   * (hammer-and-tongs, furnace stoking, fire tending, bench work) and
-   * the bespoke props that go with it.
+   * Which station a Craft pose is working: picks the choreography and
+   * the conjured prop that goes with it. THE VERB IS VISIBLE — all
+   * ten StationTypes speak their own body language (hammer-and-tongs,
+   * stoking, the ladle stir, the mallet taps, the pour-and-swirl, the
+   * hide scrape, the shuttle pass, the knife strokes, the rune trace,
+   * the saw's push-pull).
    */
-  craftKind?: 'anvil' | 'furnace' | 'fire' | 'workbench' | null;
+  craftKind?: StationWorkKind | null;
   /**
    * The Gather target is a forage plant: bare-handed picking — one
    * hand steadies the stems while the other reaches, plucks, and
@@ -8218,6 +8222,166 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ctx.fill();
       ctx.fillStyle = '#c9a86b';
       ctx.fillRect(0.15 * s, -0.05 * s, 0.07 * s, 0.036 * s);
+      ctx.restore();
+      return;
+    }
+    if (craftKind === 'alembic') {
+      // The alchemist's vial — pale glass, a bright charge of liquor
+      // that pours when the wrist rolls it past level.
+      ctx.save();
+      ctx.translate(mainX, mainY);
+      ctx.rotate(heldAngle);
+      ctx.fillStyle = 'rgba(214, 226, 236, 0.82)';
+      ctx.beginPath();
+      ctx.roundRect(0.02 * s, -0.036 * s, 0.15 * s, 0.072 * s, 0.028 * s);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(122, 210, 168, 0.9)';
+      ctx.beginPath();
+      ctx.roundRect(0.075 * s, -0.026 * s, 0.084 * s, 0.052 * s, 0.02 * s);
+      ctx.fill();
+      // Cork + neck toward the grip.
+      ctx.fillStyle = '#8a6534';
+      ctx.fillRect(-0.008 * s, -0.017 * s, 0.036 * s, 0.034 * s);
+      ctx.restore();
+      return;
+    }
+    if (craftKind === 'tanning_rack') {
+      // The tanner's scraper — a dark curved drawknife bar lying
+      // ACROSS the stroke, both fists on its horns.
+      ctx.save();
+      ctx.translate((mainX + offX) / 2, (mainY + offY) / 2);
+      ctx.rotate(Math.atan2(offY - mainY, offX - mainX));
+      // The horns run PAST both fists — a drawknife's grips live
+      // outside the hands, so the steel shows around the mitts that
+      // are painted over its middle.
+      const half = Math.hypot(offX - mainX, offY - mainY) / 2 + 0.11 * s;
+      ctx.strokeStyle = '#4a4554';
+      ctx.lineWidth = Math.max(2.5, s * 0.05);
+      ctx.beginPath();
+      ctx.moveTo(-half, 0);
+      ctx.quadraticCurveTo(0, 0.05 * s, half, 0);
+      ctx.stroke();
+      ctx.strokeStyle = '#9aa2ac';
+      ctx.lineWidth = Math.max(1.5, s * 0.024);
+      ctx.beginPath();
+      ctx.moveTo(-half * 0.82, 0.026 * s);
+      ctx.quadraticCurveTo(0, 0.062 * s, half * 0.82, 0.026 * s);
+      ctx.stroke();
+      // Grip knobs on the horn tips.
+      ctx.fillStyle = '#6d4a26';
+      for (const hx2 of [-half, half]) {
+        ctx.beginPath();
+        ctx.arc(hx2, 0, 0.026 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      return;
+    }
+    if (craftKind === 'loom') {
+      // The weaver's shuttle — a smooth boat of pale wood with the
+      // weft's eye, gliding level through the pass.
+      ctx.save();
+      ctx.translate(mainX, mainY);
+      ctx.rotate(heldAngle);
+      ctx.fillStyle = '#b08a52';
+      ctx.beginPath();
+      ctx.moveTo(-0.11 * s, 0);
+      ctx.quadraticCurveTo(0, -0.038 * s, 0.11 * s, 0);
+      ctx.quadraticCurveTo(0, 0.038 * s, -0.11 * s, 0);
+      ctx.fill();
+      ctx.fillStyle = '#6d4a26';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 0.032 * s, 0.014 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // The trailing weft thread, back toward the frame.
+      ctx.strokeStyle = 'rgba(216, 196, 148, 0.8)';
+      ctx.lineWidth = Math.max(1, s * 0.01);
+      ctx.beginPath();
+      ctx.moveTo(-0.1 * s, 0.004 * s);
+      ctx.quadraticCurveTo(-0.2 * s, 0.05 * s, -0.3 * s, 0.04 * s);
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+    if (craftKind === 'carving_bench') {
+      // The carver's knife — a short bright blade off a stub handle,
+      // pushed AWAY down the grain.
+      ctx.save();
+      ctx.translate(mainX, mainY);
+      ctx.rotate(heldAngle);
+      ctx.fillStyle = '#6d4a26';
+      ctx.beginPath();
+      ctx.roundRect(-0.06 * s, -0.015 * s, 0.09 * s, 0.03 * s, 0.012 * s);
+      ctx.fill();
+      ctx.fillStyle = '#c9ccd4';
+      ctx.beginPath();
+      ctx.moveTo(0.03 * s, -0.014 * s);
+      ctx.lineTo(0.15 * s, -0.008 * s);
+      ctx.lineTo(0.16 * s, 0.004 * s);
+      ctx.lineTo(0.03 * s, 0.014 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+    if (craftKind === 'enchanting_table') {
+      // THE RUNE TRACE: nothing held — the hand itself carries a soft
+      // working glow, motes orbiting the trace. The conjured prop is
+      // LIGHT.
+      const gl = ctx.createRadialGradient(mainX, mainY, 0, mainX, mainY, 0.13 * s);
+      gl.addColorStop(0, 'rgba(168, 190, 255, 0.5)');
+      gl.addColorStop(1, 'rgba(168, 190, 255, 0)');
+      ctx.fillStyle = gl;
+      ctx.beginPath();
+      ctx.arc(mainX, mainY, 0.13 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(214, 226, 255, 0.9)';
+      for (let i = 0; i < 3; i++) {
+        const a2 = rig.nowMs * 0.0035 + (i * Math.PI * 2) / 3;
+        ctx.beginPath();
+        ctx.arc(
+          mainX + Math.cos(a2) * 0.085 * s,
+          mainY + Math.sin(a2) * 0.05 * s,
+          Math.max(1, 0.012 * s),
+          0,
+          Math.PI * 2,
+        );
+        ctx.fill();
+      }
+      return;
+    }
+    if (craftKind === 'sawhorse') {
+      // The sawyer's handsaw — a tapering blade down the stroke line
+      // with a tooth edge, D-handle at the grip.
+      ctx.save();
+      ctx.translate(mainX, mainY);
+      ctx.rotate(heldAngle);
+      ctx.fillStyle = '#9aa2ac';
+      ctx.beginPath();
+      ctx.moveTo(0.02 * s, -0.05 * s);
+      ctx.lineTo(0.42 * s, -0.028 * s);
+      ctx.lineTo(0.42 * s, 0.008 * s);
+      ctx.lineTo(0.02 * s, 0.028 * s);
+      ctx.closePath();
+      ctx.fill();
+      // Tooth line along the working edge.
+      ctx.strokeStyle = '#c9ccd4';
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const x0 = (0.05 + i * 0.046) * s;
+        ctx.moveTo(x0, 0.024 * s);
+        ctx.lineTo(x0 + 0.023 * s, 0.032 * s);
+      }
+      ctx.stroke();
+      ctx.fillStyle = '#6d4a26';
+      ctx.beginPath();
+      ctx.roundRect(-0.065 * s, -0.045 * s, 0.075 * s, 0.09 * s, 0.03 * s);
+      ctx.fill();
+      ctx.fillStyle = '#2a2733';
+      ctx.beginPath();
+      ctx.roundRect(-0.047 * s, -0.026 * s, 0.04 * s, 0.052 * s, 0.018 * s);
+      ctx.fill();
       ctx.restore();
       return;
     }

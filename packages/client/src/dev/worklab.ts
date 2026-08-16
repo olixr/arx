@@ -87,6 +87,13 @@ const ROWS: WorkRow[] = [
   { label: 'furnace', kind: 'furnace', pose: PoseState.Craft, craftKind: 'furnace', dialect: 'flesh' },
   { label: 'fire', kind: 'fire', pose: PoseState.Craft, craftKind: 'fire', dialect: 'flesh' },
   { label: 'bench', kind: 'workbench', pose: PoseState.Craft, craftKind: 'workbench', dialect: 'flesh' },
+  { label: 'alembic', kind: 'alembic', pose: PoseState.Craft, craftKind: 'alembic', dialect: 'flesh' },
+  { label: 'tanning', kind: 'tanning_rack', pose: PoseState.Craft, craftKind: 'tanning_rack', dialect: 'flesh' },
+  { label: 'loom', kind: 'loom', pose: PoseState.Craft, craftKind: 'loom', dialect: 'flesh' },
+  { label: 'carving', kind: 'carving_bench', pose: PoseState.Craft, craftKind: 'carving_bench', dialect: 'flesh' },
+  { label: 'enchant', kind: 'enchanting_table', pose: PoseState.Craft, craftKind: 'enchanting_table', dialect: 'flesh' },
+  { label: 'saw', kind: 'sawhorse', pose: PoseState.Craft, craftKind: 'sawhorse', dialect: 'flesh' },
+  { label: 'skral saw', kind: 'sawhorse', pose: PoseState.Craft, craftKind: 'sawhorse', dialect: 'skral' },
   // The dialect bodies at work — the stoop lane and the small folk.
   // The skral smith and the gnoll axeman are the acceptance scenarios:
   // a hunched carriage working a station must read as ITS OWN body at
