@@ -1,0 +1,45 @@
+{
+  "id": "company_blade_post",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "company_blade" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "company_blade_post__hub",
+      "text": "Post. You are inside, so somebody vouched. Keep your steel where I can see it stay bored.",
+      "choices": [
+        { "text": "What are the house rules?", "next": "rules" },
+        { "text": "Why hold a door underground?", "next": "pay" },
+        {
+          "text": "Quiet post tonight?",
+          "next": "trusted",
+          "requires": ["faction:reavers:atleast:trusted"]
+        },
+        { "text": "Hold the door, then.", "next": "off" }
+      ]
+    },
+    {
+      "id": "rules",
+      "voice": "company_blade_post__rules",
+      "text": "No blades drawn below. Not a rule, a condition, like the damp. The braziers stay lit, the nursery stays nothing to do with us, and what pays twice does not burn. You want the poetry, ask the captain. I keep the prose.",
+      "next": "hub"
+    },
+    {
+      "id": "pay",
+      "voice": "company_blade_post__pay",
+      "text": "On time. Every month, on time. I held three contracts topside and not one of them managed it. A captain who pays on time can ask me to hold a door until the hills change their minds. So I hold the door.",
+      "next": "hub"
+    },
+    {
+      "id": "trusted",
+      "voice": "company_blade_post__trusted",
+      "text": "Quiet enough now the books like your name. That buys you the small brazier with the rest of us, and nobody watching your hands while you drink. Do not make the books wrong. I like this arrangement, and I have very few of those.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "company_blade_post__off",
+      "text": "Mind the brazier. It is the only warm thing down here with no opinion of you."
+    }
+  ]
+}

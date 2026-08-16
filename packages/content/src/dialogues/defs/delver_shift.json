@@ -1,0 +1,34 @@
+{
+  "id": "delver_shift",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "kingsdelf_delver" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "delver_shift__hub",
+      "text": "Day shift. Off it, technically, so make it short or make it a drink.",
+      "choices": [
+        { "text": "What's the work like?", "next": "work" },
+        { "text": "How deep do the workings go?", "next": "deep" },
+        { "text": "Rest well.", "next": "off" }
+      ]
+    },
+    {
+      "id": "work",
+      "voice": "delver_shift__work",
+      "text": "Mithril by lamplight, tally-string on the wrist, a knot going down and a knot coming up. When the strings match, the horn stays quiet. You learn to love a quiet horn the way farmers love dull weather.",
+      "next": "hub"
+    },
+    {
+      "id": "deep",
+      "voice": "delver_shift__deep",
+      "text": "Deeper than anybody is paid to think about. The night crews say the Hewers never stopped working, that you can put your ear to the old faces and hear it. I say stone settles and echoes lie. I also say I do not work nights, and I have never once asked to.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "delver_shift__off",
+      "text": "Knot going down, knot coming up. That is the whole trade, and it is enough."
+    }
+  ]
+}

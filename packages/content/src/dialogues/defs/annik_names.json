@@ -59,10 +59,21 @@
      "next": "who"
     },
     {
+     "text": "The seal ring came home.",
+     "next": "ring",
+     "requires": ["the_count_stands"]
+    },
+    {
      "text": "I'll think on it.",
      "next": "hub"
     }
    ]
+  },
+  {
+   "id": "ring",
+   "voice": "annik_names__ring",
+   "text": "It did, child, and I keep it in the seal room on the names-stone shelf, where it can hear the reading. The ring that shut the door from the outside, out walking in the burn all these years. I have stopped counting the marks at night. The last one has an answer now, even if the answer is a question wearing a crown.",
+   "next": "hub"
   },
   {
    "id": "who",

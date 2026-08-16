@@ -5,7 +5,8 @@
   "nodes": [
     {
       "id": "hub",
-      "text": "Mind the filings. Every key your hands have ever held is written in my ledger — or rather, in *yours*. I only read it back to the iron. If a door you loved has crumbled, I can cut it again. For a price that respects the rock.",
+      "voice": "orla_keywright__hub",
+      "text": "Mind the filings. Every key your hands have ever held is written in a ledger, and the ledger is your hands. I only read it back to the iron. If a door you loved has crumbled, I can cut it again, for a price that respects the rock.",
       "choices": [
         { "text": "Read me my ledger.", "next": "bench" },
         { "text": "How do you cut a door from memory?", "next": "craft" },
@@ -15,17 +16,20 @@
     },
     {
       "id": "bench",
-      "text": "Sit, then. Name the door and lay the coin on the bench — the file does the rest. A true cut *hums*.",
+      "voice": "orla_keywright__bench",
+      "text": "Sit, then. Name the door and lay the coin on the bench. The file does the rest. A true cut *hums*.",
       "hooks": [{ "kind": "keyforge" }]
     },
     {
       "id": "craft",
-      "text": "The seed of a place never dies — the key only forgets how to say it. Your hands remember the saying. I file until the iron agrees with your remembering, and then the door is the door, _to the last stalagmite_.",
+      "voice": "orla_keywright__craft",
+      "text": "The seed of a place never dies. The key only forgets how to say it. Your hands remember the saying, so I file until the iron agrees with your remembering, and then the door is the door again, _to the last stalagmite_.",
       "next": "hub"
     },
     {
       "id": "price",
-      "text": "Because a cheap memory would empty the deep places of their worth. Three keys' price for one remembered door — enough that you still go looking, not so much that a loved door is ever truly lost.",
+      "voice": "orla_keywright__price",
+      "text": "Because a cheap memory would empty the deep places of their worth. Three keys' price for one remembered door. Enough that you still go looking. Not so much that a loved door is ever truly lost.",
       "next": "hub"
     }
   ]

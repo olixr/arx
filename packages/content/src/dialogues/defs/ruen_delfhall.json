@@ -53,6 +53,19 @@
    "id": "crown",
    "voice": "ruen_delfhall__crown",
    "text": "I have written to Silverfall three times. Three polite silences came back. And yet somebody up there reads Hedda's maps, doesn't he. The Crown knows us the way you know a debt you would rather not name.",
+   "choices": [
+    {
+     "text": "The Crown read the survey. I carried it.",
+     "next": "read",
+     "requires": ["the_crown_read"]
+    },
+    { "text": "So it seems.", "next": "hub" }
+   ]
+  },
+  {
+   "id": "read",
+   "voice": "ruen_delfhall__read",
+   "text": "A letter came. Four lines, the King's own hand, and the first line was an apology for the other three. The delf is on the ledger again. I tapped the stone twice before I believed it, and it held, so I believe it. Do not tell Venn I said anything kind about Silverfall. The rate would move.",
    "next": "hub"
   },
   {

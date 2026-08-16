@@ -401,10 +401,22 @@ import fisherCrews from './defs/fisher_crews.json';
 // herders speak, and the tithe arc's flags finally get read back.
 import fellwatchHorn from './defs/fellwatch_horn.json';
 import herderFolds from './defs/herder_folds.json';
+// THE DELF AND THE CELLAR SPEAK — Kingsdelf's wall, shifts, and kilns
+// get their pooled throats, and the Low Hall's steel and legs answer.
+import delfwatchWall from './defs/delfwatch_wall.json';
+import delverShift from './defs/delver_shift.json';
+import glasshandKilns from './defs/glasshand_kilns.json';
+import companyBladePost from './defs/company_blade_post.json';
+import companyRunnerLegs from './defs/company_runner_legs.json';
 
 const SOURCES: readonly unknown[] = [
   fellwatchHorn,
   herderFolds,
+  delfwatchWall,
+  delverShift,
+  glasshandKilns,
+  companyBladePost,
+  companyRunnerLegs,
   viggaSteel,
   viggaTheCutting,
   ebbaCharter,

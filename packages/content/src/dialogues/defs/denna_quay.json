@@ -53,6 +53,19 @@
    "id": "water",
    "voice": "denna_quay__water",
    "text": "Because once my net came up heavy, and what was in it was not a fish, and I threw it back before my eyes finished arguing with my hands. It went down slow. Like it was deciding. So no, I do not turn my back to the water, and no, that is all you get.",
+   "choices": [
+    {
+     "text": "The word has its answer now.",
+     "next": "named",
+     "requires": ["the_net_named"]
+    },
+    { "text": "Fair enough.", "next": "hub" }
+   ]
+  },
+  {
+   "id": "named",
+   "voice": "denna_quay__named",
+   "text": "It does. Veyle wrote it in the old hand and did not say it twice, and I did not ask for it said once. The pearl sits in the Focus House now, being studied at, and I still do not turn my back to the water. Some things you keep even after they have answers. Especially after.",
    "next": "hub"
   },
   {

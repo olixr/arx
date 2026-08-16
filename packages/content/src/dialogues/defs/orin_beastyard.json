@@ -41,6 +41,19 @@
    "id": "stalls",
    "voice": "orin_beastyard__stalls",
    "text": "Three stalls, because three is what a whistle can hold. Bring me a friend you have gentled and I will keep it fed, brushed, and out of the ash. Call it out whenever you like. The pen does the remembering, I just do the caring.",
+   "choices": [
+    {
+     "text": "How's the string, since the worgs?",
+     "next": "string",
+     "requires": ["the_string_stands"]
+    },
+    { "text": "Good to know.", "next": "hub" }
+   ]
+  },
+  {
+   "id": "string",
+   "voice": "orin_beastyard__string",
+   "text": "Whole. Every head, counted twice, and the drove road walked without one ear going back. Easy, easy. Not you. The string sleeps sound because of what you did in the ash, and so do I, and the lead I gave you was the cheapest thing I ever paid gladly.",
    "next": "hub"
   },
   {

@@ -1,0 +1,45 @@
+{
+  "id": "delfwatch_wall",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "kingsdelf_watch" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "delfwatch_wall__hub",
+      "text": "Delfwatch. Say it walking, my eyes stay on the ash.",
+      "choices": [
+        { "text": "What do you watch for?", "next": "wall" },
+        { "text": "What's the Overband?", "next": "overband" },
+        {
+          "text": "Anything out there the wall can't reach?",
+          "next": "mark",
+          "requires": ["world:threat_near"]
+        },
+        { "text": "Steady watch.", "next": "off" }
+      ]
+    },
+    {
+      "id": "wall",
+      "voice": "delfwatch_wall__wall",
+      "text": "The burn, mostly. Ember-light where ember-light should not be, and the count. This wall exists so the delf can be counted out and counted back, and I was a delver before the Charter put a coat on me, so I count like my shift depends on it. It did, once.",
+      "next": "hub"
+    },
+    {
+      "id": "overband",
+      "voice": "delfwatch_wall__overband",
+      "text": "The high workings past the wall, where the good stone lives at Overband prices. Nothing out there knocks first. If you go, tell the wicket your road, so the horn does not have to guess whose name it is blowing for.",
+      "next": "hub"
+    },
+    {
+      "id": "mark",
+      "voice": "delfwatch_wall__mark",
+      "text": "Since you offer. Something has set up in the ash that the rota cannot leave the wall to answer, and it is not on any shift book. There is your mark. Counted out. Be counted back.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "off",
+      "voice": "delfwatch_wall__off",
+      "text": "The horn means in. The Overband does not knock first."
+    }
+  ]
+}

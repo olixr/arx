@@ -1,0 +1,34 @@
+{
+  "id": "company_runner_legs",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "company_runner" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "company_runner_legs__hub",
+      "text": "Legs. Working. Talk while I stretch, the dark does not wait.",
+      "choices": [
+        { "text": "What do you run?", "next": "route" },
+        { "text": "Five doors, they say.", "next": "doors" },
+        { "text": "Run fast.", "next": "off" }
+      ]
+    },
+    {
+      "id": "route",
+      "voice": "company_runner_legs__route",
+      "text": "Whatever fits a satchel and pays a rate. Down before dawn, up by the reeds, Amberford by midmorning if the fords behave. The Company does not use the roads, because the roads count. I am the road. The mud is a uniform.",
+      "next": "hub"
+    },
+    {
+      "id": "doors",
+      "voice": "company_runner_legs__doors",
+      "text": "Five doors, five cities, one cellar. Which five is a thing you learn by carrying, not by asking. I will say the Saltmere walk is wet, the Hartfell walk is cold, and my favorite is the one where the baker leaves a window open. That is all the map you are getting.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "company_runner_legs__off",
+      "text": "If you see me topside, you do not see me. House rule, and a kindness."
+    }
+  ]
+}

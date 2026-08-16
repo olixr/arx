@@ -41,6 +41,19 @@
    "id": "wagons",
    "voice": "slate_sundries__wagons",
    "text": "Useful things. Unclaimed things. Things whose owners lost interest at exactly the moment I gained it. Commerce is a river, friend. I am just a man standing where it bends.",
+   "choices": [
+    {
+     "text": "This river have a cellar, like the other towns?",
+     "next": "cellar",
+     "requires": ["faction:reavers:atleast:known"]
+    },
+    { "text": "Noted.", "next": "hub" }
+   ]
+  },
+  {
+   "id": "cellar",
+   "voice": "slate_sundries__cellar",
+   "text": "Asking costs, and that one costs double, so here is your coin's worth. No cellar. Forty one miles of road nobody watches is a better door than any door, and the crate you are looking at is the counter at the end of it. You knew that before you asked. I like that in a customer.",
    "next": "hub"
   },
   {

@@ -1,0 +1,34 @@
+{
+  "id": "glasshand_kilns",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "kingsdelf_glasshand" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "glasshand_kilns__hub",
+      "text": "Kilns. Stand back from the eye, your face is not rated for it.",
+      "choices": [
+        { "text": "What comes out of these kilns?", "next": "glass" },
+        { "text": "What's the first rule up here?", "next": "rule" },
+        { "text": "Stay unsinged.", "next": "off" }
+      ]
+    },
+    {
+      "id": "glass",
+      "voice": "glasshand_kilns__glass",
+      "text": "Brand glass. Starfall sand off the burn, melted twice, poured once. Mirena takes the best of it and makes the town rich, and we take turn-and-turn-about on the hot floor, because nobody's eyebrows survive a double.",
+      "next": "hub"
+    },
+    {
+      "id": "rule",
+      "voice": "glasshand_kilns__rule",
+      "text": "You never look straight into the kiln. You learn that once, and after that you teach it, and that is the whole guild examination up here. Everything else is timing and not being brave. Brave is for people who work above ground.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "glasshand_kilns__off",
+      "text": "Mind the carry poles. They do not care who you are."
+    }
+  ]
+}

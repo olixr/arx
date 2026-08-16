@@ -635,6 +635,10 @@ everyone does NOT talk about the seal unless Annik is doing the talking.
   the unwatched road to stay unwatched. Wound: the name he set down on the
   road. Quirk: answers questions with prices. Cadence: flat, amiable,
   frictionless. "Asking costs."
+- **Orla** (Keywright). Want: no loved door ever truly lost. Wound:
+  unstated; the bench faces away from the seal on purpose. Quirk: reads
+  hands the way assayers read ore. Cadence: bench-quiet, file-rhythm
+  sentences; mysticism delivered as pricing, never as wonder.
 - **The Delfwatch** (pooled): a miner or glasshand in a Charter coat.
   Cadence: rota-flat. "The horn means in. The Overband does not knock
   first."
