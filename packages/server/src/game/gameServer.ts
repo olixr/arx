@@ -297,6 +297,10 @@ import {
   isFactionFlag,
   isFenceFaction,
   theftChance,
+  stanceBetween,
+  stanceScanRange,
+  tribeOfActorId,
+  tribeOfNpcId,
   type FactionBand,
   isQuestFlag,
   isWorldFlag,
@@ -899,6 +903,14 @@ interface NpcComp {
    */
   questWounders?: Set<EntityId>;
   /**
+   * THE WILD TAKES SIDES: per-placement tribe override (ZoneSpawn/
+   * garrison `tribe`) — the sub-faction banner this body flies. The
+   * ONLY tribe-shaped state on the comp, and it is PLACEMENT data;
+   * everything else resolves from the live stances doc at call time
+   * through npcTribeOf (the dial law).
+   */
+  tribe?: string;
+  /**
    * THE STATE LADDER (perception rebuild): 'suspicious' = the meter
    * crossed ALERT_SUS — feet planted, eyes on the last-known spot;
    * 'investigate' = the look didn't settle it, walk over and see;
@@ -1202,6 +1214,12 @@ interface ProjectileComp {
   hitEids?: Set<EntityId>;
   /** NPC-fired: seeks players (and decoys) instead of NPCs. */
   fromNpc?: boolean;
+  /**
+   * THE WILD TAKES SIDES: an NPC shaft loosed at an NPC quarry also
+   * hit-tests THIS one body (never a sweep — no friendly fire, no
+   * O(world) cost; the feud is between the two of them).
+   */
+  npcTargetEid?: EntityId;
   /** A companion's bolt: player polarity, viaPet credit, actors skipped. */
   viaPetEid?: EntityId;
   /** Firing NPC's level — pierces the target's armor class on impact. */
@@ -1418,6 +1436,8 @@ interface SpawnState {
   hours?: { from: number; to: number };
   /** THE WAR-GROUND: which wing of a compound hold this body defends. */
   wing?: number;
+  /** THE WILD TAKES SIDES: per-placement tribe banner — survives respawns. */
+  tribe?: string;
   /** THE POST COMES ALIVE: the held idle work — survives respawns. */
   post?: {
     kind: 'cook' | 'drill' | 'rest' | 'vigil' | 'keeper' | 'watch';
@@ -3052,6 +3072,7 @@ export class GameServer {
       patrol?: ReadonlyArray<{ x: number; y: number; dwell?: number; sit?: boolean }>;
       hours?: { from: number; to: number };
       wing?: number;
+      tribe?: string;
       post?: {
         kind: 'cook' | 'drill' | 'rest' | 'vigil' | 'keeper' | 'watch';
         x: number;
@@ -3091,6 +3112,7 @@ export class GameServer {
           patrol: spawn.patrol,
           hours: spawn.hours,
           wing: spawn.wing,
+          tribe: spawn.tribe,
           post: spawn.post,
         };
         // A retired slot is re-tenanted before the array grows — the
@@ -15406,10 +15428,8 @@ export class GameServer {
             }
             if (maxHit > 0) strike(mEid, { x: p2.x, y: p2.y });
           });
-          // ONE VOICE ON THE WIRE: the wave speaks the nova dialect
-          // every watcher already reads (ring grammar + signature).
           this.broadcastFx(p2.plane, {
-            t: 'fx', kind: 'nova', x: p2.x, y: p2.y, radius, id: ab.id, color: ab.color,
+            t: 'fx', kind: 'blast', x: p2.x, y: p2.y, radius, id: ab.id, color: ab.color,
           });
         };
         wave();
@@ -15426,20 +15446,16 @@ export class GameServer {
           const t2 = this.positions.get(targetEid);
           if (!p2 || !t2 || t2.plane !== p2.plane) return;
           if (Math.hypot(t2.x - p2.x, t2.y - p2.y) > (ab.range ?? 2) + 1) return;
-          // Each beat re-reads the live fight and speaks its own arc
-          // (the player drumroll's grammar) — the signature paints
-          // one rake per beat, never a mute flurry.
-          p2.dir = Math.atan2(t2.y - p2.y, t2.x - p2.x);
-          this.broadcastFx(p2.plane, {
-            t: 'fx', kind: 'arc', x: p2.x, y: p2.y, radius: ab.range ?? 2,
-            dir: p2.dir, id: ab.id, color: ab.color,
-          });
           strike(targetEid);
         };
         rake();
         for (let i = 1; i < hits; i++) {
           this.petEchoes.push({ at: this.tickCount + i * (ab.pulseEveryTicks ?? 5), fire: rake });
         }
+        this.broadcastFx(pos.plane, {
+          t: 'fx', kind: 'blast', x: tpos?.x ?? pos.x, y: tpos?.y ?? pos.y,
+          radius: 0.8, id: ab.id, color: ab.color,
+        });
         break;
       }
       case 'melee_arc': {
@@ -15457,16 +15473,15 @@ export class GameServer {
           strike(mEid, { x: pos.x, y: pos.y });
         });
         this.broadcastFx(pos.plane, {
-          t: 'fx', kind: 'arc', x: pos.x, y: pos.y, radius: reach,
-          dir: pos.dir, id: ab.id, color: ab.color,
+          t: 'fx', kind: 'blast', x: pos.x + Math.cos(pos.dir) * reach * 0.6,
+          y: pos.y + Math.sin(pos.dir) * reach * 0.6, radius: reach * 0.7,
+          id: ab.id, color: ab.color,
         });
         break;
       }
       case 'dash_strike':
       case 'leap_slam': {
         if (!tpos || tpos.plane !== pos.plane) break;
-        const startX = pos.x;
-        const startY = pos.y;
         const dd = Math.hypot(tpos.x - pos.x, tpos.y - pos.y);
         if (dd > 0.01) {
           const reach = Math.min(ab.dashTiles ?? 3, Math.max(0, dd - 0.6));
@@ -15492,18 +15507,10 @@ export class GameServer {
             strike(mEid, { x: pos.x, y: pos.y });
           });
         }
-        // The corridor first (the travel every watcher reads), then a
-        // leap's landing speaks its own nova over the struck ground.
         this.broadcastFx(pos.plane, {
-          t: 'fx', kind: 'dash', x: startX, y: startY, x2: pos.x, y2: pos.y,
-          radius: 0, id: ab.id, color: ab.color,
+          t: 'fx', kind: 'blast', x: pos.x, y: pos.y,
+          radius: ab.radius ?? 0.9, id: ab.id, color: ab.color,
         });
-        if (ab.shape === 'leap_slam') {
-          this.broadcastFx(pos.plane, {
-            t: 'fx', kind: 'nova', x: pos.x, y: pos.y,
-            radius: ab.radius ?? 2, id: ab.id, color: ab.color,
-          });
-        }
         break;
       }
       case 'projectile_fan': {
@@ -17717,6 +17724,31 @@ export class GameServer {
     const actor = this.actors.get(eid);
     if (actor) return factionOfActor(actor.actor.id);
     return factionOfNpc(npc.def.id);
+  }
+
+  /**
+   * THE WILD TAKES SIDES (docs/npc-hostility-plan.md): the tribe this
+   * body fights under. Placement banner first (the sub-faction door),
+   * then actors by slug (claim → faction → folk), then the bestiary
+   * (claim → faction prefix → menace/wildfolk) — resolved at CALL
+   * TIME from the live stances doc, the npcFactionOf law exactly.
+   */
+  private npcTribeOf(eid: EntityId, npc: NpcComp): string {
+    if (npc.tribe !== undefined) return npc.tribe;
+    const actor = this.actors.get(eid);
+    if (actor) return tribeOfActorId(actor.actor.id);
+    return tribeOfNpcId(npc.def.id, npc.def.aggroRange > 0);
+  }
+
+  /**
+   * The engage circle this body's tribe holds against that body's
+   * (0 unless the stance is hostile) — chase retention's stance read.
+   */
+  private npcStanceRangeVs(eid: EntityId, npc: NpcComp, targetEid: EntityId): number {
+    const tnpc = this.npcs.get(targetEid);
+    if (!tnpc || this.pets.has(targetEid)) return 0;
+    const ans = stanceBetween(this.npcTribeOf(eid, npc), this.npcTribeOf(targetEid, tnpc));
+    return ans.stance === 'hostile' ? ans.range : 0;
   }
 
   /** The faction this body POLICES (per the live roster), or null. */
@@ -21523,6 +21555,28 @@ export class GameServer {
           }
         }
       }
+      if (!dead && proj.npcTargetEid !== undefined) {
+        // THE WILD TAKES SIDES: the feud's own mark — one body, one
+        // banded test, straight through the one damage door (which
+        // holds every non-player-hand law: no XP, no wounders, and
+        // the wound's retaliation answers the shooter).
+        const tnpc = this.npcs.get(proj.npcTargetEid);
+        const tpos = this.positions.get(proj.npcTargetEid);
+        if (tnpc && tpos && tpos.plane === pos.plane) {
+          const dx = tpos.x - pos.x;
+          const dy = bandDy(pos.y, tpos.y, npcHitHeight(tnpc.def));
+          if (dx * dx + dy * dy < (tnpc.def.radius + 0.25) ** 2) {
+            this.damageNpc(
+              proj.npcTargetEid,
+              Math.floor(Math.random() * (proj.maxHit + 1)),
+              proj.ownerEid,
+              proj.style,
+              { status: proj.status },
+            );
+            dead = true;
+          }
+        }
+      }
     } else if (!dead) {
       this.forEachNpcNear(pos.plane, pos.x, pos.y, 0.25, (npcEid, npc, npos) => {
         if (proj.hitEids?.has(npcEid)) return;
@@ -22584,11 +22638,26 @@ export class GameServer {
       }
     }
 
+    // THE WILD TAKES SIDES: a kill no player touched pays NOTHING —
+    // the wolf eats what it fells, and a bench beside two feuding
+    // camps can never be farmed for purses. Any player hand in the
+    // fight keeps the whole shipped loot law: the killer owns the
+    // drops, or (a quarry dragged to the watch and finished by it)
+    // the first landed wounder does.
+    let lootOwnerEid: EntityId | null = killer ? killerEid : null;
+    if (lootOwnerEid === null) {
+      for (const weid of npc.questWounders ?? []) {
+        if (this.players.has(weid)) {
+          lootOwnerEid = weid;
+          break;
+        }
+      }
+    }
     // Roll the loot table onto the ground.
     const dropLoot = (item: string, qty: number, roll?: ItemRoll) => {
       const scatter = () => (Math.random() - 0.5) * 0.8;
       this.placeDrop(pos.plane, item, qty, pos.x + scatter(), pos.y + scatter(), {
-        ownerEid: killerEid,
+        ownerEid: lootOwnerEid ?? killerEid,
         ownerUntil: Date.now() + 30_000,
         despawnAt: Date.now() + 90_000,
         pickupAfter: Date.now() + 400,
@@ -22608,13 +22677,15 @@ export class GameServer {
       isRiftPlane(pos.plane) && this.spawnPoints[npc.spawnIndex]?.name === undefined
         ? GameServer.DUNGEON_TRASH_LOOT_MULT
         : 1;
-    for (const tableId of npc.def.loot) {
-      for (const drop of rollLoot(tableId, {
-        level: npc.def.level,
-        rand: Math.random,
-        chanceMult: trashDamp,
-      })) {
-        dropLoot(drop.item, drop.qty, drop.roll);
+    if (lootOwnerEid !== null) {
+      for (const tableId of npc.def.loot) {
+        for (const drop of rollLoot(tableId, {
+          level: npc.def.level,
+          rand: Math.random,
+          chanceMult: trashDamp,
+        })) {
+          dropLoot(drop.item, drop.qty, drop.roll);
+        }
       }
     }
 
@@ -22761,10 +22832,13 @@ export class GameServer {
               break;
             }
           }
-          const childEid = this.spawnNpc(childDef, pos.plane, cx, cy, -1);
+          // The halves fly the parent's banner (a redfang ooze splits
+          // into redfang halves — placement identity survives death).
+          const childEid = this.spawnNpc(childDef, pos.plane, cx, cy, -1, undefined, undefined, npc.tribe);
           const child = this.npcs.get(childEid)!;
-          if (this.players.has(killerEid)) {
-            // Children are born INTO the fight the parent died in.
+          if (this.players.has(killerEid) || this.npcs.has(killerEid)) {
+            // Children are born INTO the fight the parent died in —
+            // whoever's hand ended it, player or feuding body.
             this.npcAggro(childEid, child, killerEid, { force: true });
           }
         }
@@ -23217,7 +23291,7 @@ export class GameServer {
           break;
         }
       }
-      spawn.eid = this.spawnNpc(def, spawn.plane, x, y, i, spawn.patrol, spawn.post);
+      spawn.eid = this.spawnNpc(def, spawn.plane, x, y, i, spawn.patrol, spawn.post, spawn.tribe);
     }
 
     // Placed actors stand back up the same way beasts do.
@@ -23560,6 +23634,7 @@ export class GameServer {
       dir: number;
       hours?: { from: number; to: number };
     },
+    tribe?: string,
   ): EntityId {
     const eid = this.ecs.create();
     this.kinds.set(eid, EntityKind.Npc);
@@ -23625,6 +23700,7 @@ export class GameServer {
           : undefined,
       post,
       postPulseTick: 0,
+      tribe,
     });
     this.updateChunkMembership(eid);
     return eid;
@@ -24653,6 +24729,15 @@ export class GameServer {
           if (holds) return;
         }
       }
+      // THE WILD TAKES SIDES: the peace holds at the door for
+      // NPC-shaped quarry too — never a companion (THE QUIET SHADOW),
+      // never a yard animal (THE DROVER'S PEACE reads both ways), and
+      // never kin (a tribe does not eat its own; a rally cry names an
+      // outsider or it names nobody). A BLOW still forces past all of
+      // it, exactly as it forces past the faction peace above.
+      if (this.pets.has(targetEid) || this.livestock.has(targetEid)) return;
+      const tnpc = this.npcs.get(targetEid);
+      if (tnpc && this.npcTribeOf(eid, npc) === this.npcTribeOf(targetEid, tnpc)) return;
     }
     // THE DREAD CROWN: the moment the fight truly opens (a body not
     // already mid-chase marking a player), the crown speaks — once
@@ -24869,9 +24954,21 @@ export class GameServer {
    * meter; the meter drives the state ladder. THE SIZING-UP LAW
    * rides the sight range exactly as it rode the old circle, and
    * sneaking thins both the range and the reflex ring — the entire
-   * stealth surface lives in this method.
+   * stealth surface lives in the PLAYER pass.
+   *
+   * THE WILD TAKES SIDES: people first, then bodies — the second eye
+   * only opens when the first found no fight, so a guard mid-read on
+   * a crouching outlaw still wheels for the worg at the gate, but a
+   * body already locking onto a player never gets distracted by a
+   * feud it can pick any other beat.
    */
   private npcPerception(eid: EntityId, npc: NpcComp, pos: { plane: PlaneId; x: number; y: number; dir: number }): void {
+    if (this.npcPerceivePlayers(eid, npc, pos)) return;
+    this.npcPerceiveNpcs(eid, npc, pos);
+  }
+
+  /** The player sweep — returns true when it opened a fight. */
+  private npcPerceivePlayers(eid: EntityId, npc: NpcComp, pos: { plane: PlaneId; x: number; y: number; dir: number }): boolean {
     const dt = GameServer.PERCEPTION_PERIOD;
     // Only a body truly at rest is limited to its authored arc — a
     // wary one is already turning its head everywhere.
@@ -24962,13 +25059,13 @@ export class GameServer {
         // Point blank in the open detects outright — no meter, no
         // warning. The 170°×5ft lesson every stealth sim learned.
         this.npcAggro(eid, npc, playerEid);
-        return;
+        return true;
       }
       if (npc.state === 'search' && zone === 'cone') {
         // A hunter needs only one clean glimpse — the quarry is
         // KNOWN, re-acquisition never ramps from zero.
         this.npcAggro(eid, npc, playerEid);
-        return;
+        return true;
       }
       const rate = alertRate(dist, sightRange, zone) * vis;
       if (rate > bestRate) {
@@ -24996,7 +25093,7 @@ export class GameServer {
       if (npc.alert < cap) npc.alert = Math.min(cap, npc.alert + bestRate * dt);
       if (npc.alert >= ALERT_MAX && this.players.has(bestEid)) {
         this.npcAggro(eid, npc, bestEid);
-        return;
+        return true;
       }
       if (npc.state === 'idle' && npc.alert >= ALERT_SUS) {
         npc.state = 'suspicious';
@@ -25010,6 +25107,59 @@ export class GameServer {
       // never snaps to zero (the capacitor rule).
       npc.alert = Math.max(0, npc.alert - ALERT_DECAY * dt);
     }
+    return false;
+  }
+
+  /**
+   * THE WILD TAKES SIDES — the second eye. A body whose tribe can
+   * OPEN a fight (stanceScanRange > 0: the watch, a predator, a
+   * feuding camp — a lone goblin, a hen, and every grocer read 0 and
+   * pay nothing) sweeps its neighbors through the chunk index at the
+   * same staggered 4 Hz beat. The old circle law, deliberately: no
+   * awareness meter, no facing cone — the meter and the whole stealth
+   * surface are a PLAYER instrument, and bodies do not sneak up on
+   * bodies. Cheap gates first, ONE sight ray for the winner only,
+   * then the one aggro door (which re-checks kin and the drover's
+   * peace — defense in depth) with the rally riding as ever.
+   */
+  private npcPerceiveNpcs(
+    eid: EntityId,
+    npc: NpcComp,
+    pos: { plane: PlaneId; x: number; y: number; dir: number },
+  ): void {
+    const myTribe = this.npcTribeOf(eid, npc);
+    const scanR = stanceScanRange(myTribe);
+    if (scanR <= 0) return;
+    let bestEid: EntityId | null = null;
+    let bestDist = Infinity;
+    let bestX = 0;
+    let bestY = 0;
+    this.forEachNpcNear(pos.plane, pos.x, pos.y, scanR, (oEid, other, opos) => {
+      if (oEid === eid) return;
+      // Companions and yard animals are nobody's quarry (THE QUIET
+      // SHADOW, THE DROVER'S PEACE) — and the dead are already gone.
+      if (this.pets.has(oEid) || this.livestock.has(oEid)) return;
+      if ((this.healths.get(oEid)?.hp ?? 0) <= 0) return;
+      const dx = opos.x - pos.x;
+      const dy = opos.y - pos.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist >= bestDist) return;
+      const ans = stanceBetween(myTribe, this.npcTribeOf(oEid, other));
+      // The stance names the feud AND who may open it: the watch
+      // charges the worg; the worg holds unless struck (one-way).
+      if (ans.stance !== 'hostile' || !ans.initiates || dist > ans.range) return;
+      bestEid = oEid;
+      bestDist = dist;
+      bestX = opos.x;
+      bestY = opos.y;
+    });
+    if (bestEid === null) return;
+    // Zone survivor: now — and only now — the ray. A wall between
+    // the feud is a peace that holds until someone walks the corner.
+    if (sightVisibility(sightLine(this.worldOf(pos.plane), pos.x, pos.y, bestX, bestY)) <= 0) {
+      return;
+    }
+    this.npcAggro(eid, npc, bestEid);
   }
 
   /**
@@ -25155,6 +25305,14 @@ export class GameServer {
       if ((this.healths.get(targetEid)?.hp ?? 0) <= 0) return null;
       return onPlane(this.positions.get(targetEid));
     }
+    // THE WILD TAKES SIDES: any other combat body is a chaseable
+    // quarry — the guard runs down the worg, the wolf runs down the
+    // stag, on the ordinary rails. A dead or cross-plane body is
+    // simply gone, the same leash-break every other target speaks.
+    if (this.npcs.has(targetEid)) {
+      if ((this.healths.get(targetEid)?.hp ?? 0) <= 0) return null;
+      return onPlane(this.positions.get(targetEid));
+    }
     return null;
   }
 
@@ -25182,6 +25340,15 @@ export class GameServer {
         status: npc.def.attackStatus,
         sourceEid: npcEid,
         attackerLevel: npc.def.level,
+      });
+    } else if (this.npcs.has(targetEid)) {
+      // THE WILD TAKES SIDES: tooth meets hide. The one damage door
+      // already holds every law for a non-player hand — no XP, no
+      // quest wounders, no assault deed (all sit behind the player
+      // read), and the wound's forced retaliation makes every feud
+      // mutual for free. The melee lane carries the blow.
+      this.damageNpc(targetEid, raw, npcEid, 'onehand', {
+        status: npc.def.attackStatus,
       });
     } else {
       this.damageSummon(targetEid, raw);
@@ -25410,7 +25577,8 @@ export class GameServer {
           break;
         }
       }
-      const childEid = this.spawnNpc(def, pos.plane, cx, cy, -1);
+      // A raised body fights under the raiser's banner (tribe rides).
+      const childEid = this.spawnNpc(def, pos.plane, cx, cy, -1, undefined, undefined, caster.tribe);
       // A raised body is EPHEMERAL for real: it joins the ambient
       // ledger so the distance despawn claims it once nobody is near.
       // Without this, a spawnIndex −1 add belonged to no sweep — every
@@ -25700,9 +25868,17 @@ export class GameServer {
         // THE DROVER'S PEACE: a kept animal has no eyes for anyone —
         // a yard boar grazes where a wild one would charge.
         !this.livestock.has(eid) &&
-        (npc.def.aggroRange > 0 || this.npcEnforcerFid(eid) !== null) &&
         this.tickCount >= npc.noAggroUntilTick &&
-        (this.tickCount + eid) % GameServer.PERCEPTION_PERIOD === 0
+        // The stagger gates BEFORE eligibility: the tribe/stance
+        // resolution below is doc reads and string work, and it must
+        // cost nothing 4 ticks out of 5.
+        (this.tickCount + eid) % GameServer.PERCEPTION_PERIOD === 0 &&
+        (npc.def.aggroRange > 0 ||
+          this.npcEnforcerFid(eid) !== null ||
+          // THE WILD TAKES SIDES: a body whose tribe can open a feud
+          // (the watch, a predator, a rival camp) keeps its eyes even
+          // with a posted range of 0.
+          stanceScanRange(this.npcTribeOf(eid, npc)) > 0)
       ) {
         this.npcPerception(eid, npc, pos);
       }
@@ -25725,9 +25901,12 @@ export class GameServer {
           const sdist = Math.hypot(sdx, sdy);
           // An enforcer's eye keeps the doc's enforcement circle in
           // the chase too — the posted 0 must not shrink retention.
+          // A stance feud keeps ITS circle the same way: the guard's
+          // posted 0 must not break the worg chase on the first beat.
           const watchBase = Math.max(
             npc.def.aggroRange,
             this.npcEnforcerFid(eid) !== null ? FACTIONS.enforcerAggro : 0,
+            this.npcStanceRangeVs(eid, npc, npc.targetEid),
           );
           const loseRange = Math.max(
             watchBase * SIGHT_RANGE_MULT * LOSE_SIGHT_FACTOR,
@@ -25878,6 +26057,14 @@ export class GameServer {
                   distLeft: npc.def.ranged.range + 1,
                   status: npc.def.attackStatus,
                   fromNpc: true,
+                  // THE WILD TAKES SIDES: a shaft loosed at an NPC
+                  // quarry knows its one mark (never a sweep).
+                  npcTargetEid:
+                    npc.targetEid !== null &&
+                    !this.pets.has(npc.targetEid) &&
+                    this.npcs.has(npc.targetEid)
+                      ? npc.targetEid
+                      : undefined,
                 });
                 this.updateChunkMembership(proj);
               } else {
