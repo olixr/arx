@@ -46,17 +46,14 @@ export type TrackMood = 'adventure' | 'night' | 'town' | 'dungeon' | 'danger';
 export const TRACK_LIBRARY: Record<TrackMood, string[]> = {
   adventure: [
     'adventure_1', 'adventure_2', 'adventure_3', 'adventure_4', 'adventure_5',
-    'adventure_6', 'adventure_7', 'adventure_8', 'adventure_9', 'adventure_10',
-    'adventure_11', 'adventure_12',
+    'adventure_6', 'adventure_7', 'adventure_8',
   ],
   night: [
     'night_adventure_1', 'night_adventure_2', 'night_adventure_3',
-    'night_adventure_4', 'night_adventure_5', 'night_adventure_6',
-    'night_adventure_7', 'night_adventure_8', 'night_adventure_9',
+    'night_adventure_4', 'night_adventure_5',
   ],
   town: [
     'town_1', 'town_2', 'town_3', 'town_4', 'town_5', 'town_6', 'town_7',
-    'town_8',
   ],
   /** The long dark: everything under the world plays its own shelf. */
   dungeon: ['dungeon_1', 'dungeon_2', 'dungeon_3', 'dungeon_4', 'dungeon_5', 'dungeon_6'],
@@ -106,19 +103,11 @@ const TRACK_TRIM: Record<string, number> = {
   adventure_6: 0.74, // −12.7
   adventure_7: 0.72, // −12.5
   adventure_8: 0.73, // −12.6
-  adventure_9: 0.72, // −12.4
-  adventure_10: 0.7, // −12.2
-  adventure_11: 0.77, // −13.0
-  adventure_12: 0.73, // −12.6
   night_adventure_1: 0.74, // −12.7
   night_adventure_2: 0.78, // −13.1
   night_adventure_3: 0.79, // −13.3
-  night_adventure_4: 0.71, // −12.3
+  night_adventure_4: 0.78, // −13.1
   night_adventure_5: 0.82, // −13.6
-  night_adventure_6: 0.69, // −12.1
-  night_adventure_7: 0.74, // −12.7
-  night_adventure_8: 0.78, // −13.1
-  night_adventure_9: 0.82, // −13.6
   town_1: 0.77, // −13.0
   town_2: 1, // −15.3
   town_3: 0.76, // −12.9
@@ -126,7 +115,6 @@ const TRACK_TRIM: Record<string, number> = {
   town_5: 0.71, // −12.3
   town_6: 0.8, // −13.4
   town_7: 0.83, // −13.7
-  town_8: 0.74, // −12.7
   dungeon_1: 0.65, // −11.6
   dungeon_2: 0.7, // −12.2
   dungeon_3: 0.7, // −12.2
