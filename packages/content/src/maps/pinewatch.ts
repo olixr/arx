@@ -315,10 +315,10 @@ export function buildPinewatch(): ZoneDef {
   b.set(61, 50, Tile.Lectern); // THE ROTA: whose night it is
   b.sign(60, 50, 'THE ROTA', ['every roof takes a night', 'no roof is excused'], Tile.Signpost);
   b.set(66, 52, Tile.Campfire); // the yard fire, fed since the Wolfwinter
-  b.set(63, 52, Tile.Bench).set(69, 52, Tile.Bench).set(66, 54, Tile.Bench);
+  b.set(63, 52, Tile.Bench).set(69, 52, Tile.StoneBench).set(66, 54, Tile.Bench); // the elders' seat went to stone the year Torvi stopped arguing about it
   b.set(56, 48, Tile.LampPost).set(78, 48, Tile.LampPost);
   b.set(56, 54, Tile.LampPost).set(78, 54, Tile.LampPost);
-  b.set(72, 50, Tile.Basin); // the yard trough
+  b.set(72, 50, Tile.WaterTrough); // the yard trough (UPGRADE BEFORE ADD: staved, not stone)
   // The muster yard boards companions too (beastcraft v2): the pen
   // stands past the trough where the rota can see it — every roof
   // takes a night, and somebody's beast is always waiting on one.
@@ -374,7 +374,7 @@ export function buildPinewatch(): ZoneDef {
   b.set(31, 45, Tile.Workbench).set(31, 47, Tile.Workbench);
   b.set(36, 45, Tile.CarvingBench).set(36, 47, Tile.CarvingBench);
   b.set(39, 45, Tile.ToolRack).set(39, 49, Tile.ToolRack);
-  b.set(27, 53, Tile.Crate).set(28, 53, Tile.Crate).set(40, 53, Tile.Barrel);
+  b.set(27, 53, Tile.Crate).set(28, 53, Tile.Crate).set(40, 53, Tile.BarrelStack);
   b.set(26, 50, Tile.CrateGoods).set(27, 50, Tile.CrateGoods);
   b.set(26, 51, Tile.CrateGoods).set(27, 51, Tile.CrateGoods);
   b.set(31, 50, Tile.Hearth); // the sawyers' stove, and the only warm corner
@@ -401,9 +401,11 @@ export function buildPinewatch(): ZoneDef {
   b.set(31, 38, Tile.Stump).set(33, 38, Tile.Stump).set(42, 37, Tile.Stump);
   b.setDetail(35, 39, Detail.Sawdust).setDetail(39, 38, Detail.Sawdust);
   // The board stacks, south, where the wains come.
-  for (const [cx, cy] of [[26, 57], [30, 57], [26, 59], [30, 59], [34, 58]] as const) {
+  for (const [cx, cy] of [[30, 57], [26, 59]] as const) {
     b.set(cx, cy, Tile.CrateGoods).set(cx + 1, cy, Tile.CrateGoods);
   }
+  // The board yard finally racks its boards like the trade it is.
+  b.set(26, 57, Tile.LumberRack).set(30, 59, Tile.LumberRack).set(34, 58, Tile.LumberRack);
   b.sign(38, 58, 'BOARD YARD', ['loads out at first light', 'do not climb the stacks'], Tile.Signpost);
 
   // ---------------------------------------------------------------
@@ -421,7 +423,7 @@ export function buildPinewatch(): ZoneDef {
   b.set(46, 35, Tile.Furnace).set(48, 35, Tile.Furnace);
   b.set(51, 35, Tile.Anvil).set(51, 37, Tile.Anvil);
   b.set(46, 38, Tile.Workbench).set(46, 40, Tile.ToolRack);
-  b.set(52, 40, Tile.Basin); // the quench
+  b.set(52, 40, Tile.QuenchTrough); // the quench, coopered and blade-bitten
   b.set(49, 39, Tile.Counter); // the commission counter, facing the door
   b.set(48, 41, Tile.Crate).set(52, 34, Tile.Barrel);
   b.setDetail(49, 41, Detail.Doormat);
@@ -496,7 +498,7 @@ export function buildPinewatch(): ZoneDef {
   b.setDetail(79, 63, Detail.Tapestry).setDetail(80, 63, Detail.Tapestry);
   b.set(84, 65, Tile.Counter).set(84, 66, Tile.Counter);
   b.set(84, 68, Tile.Counter).set(84, 69, Tile.Counter);
-  b.set(86, 64, Tile.Barrel).set(87, 64, Tile.Barrel).set(88, 64, Tile.Crate);
+  b.set(86, 64, Tile.TapCask).set(87, 64, Tile.Barrel).set(88, 64, Tile.Crate);
   // The keeper's cot behind the bar, and the kitchen walled off east.
   b.set(89, 66, Tile.Bed).set(89, 67, Tile.Bed);
   for (let y = 68; y <= 73; y++) b.set(87, y, Tile.WallWood);
@@ -593,10 +595,10 @@ export function buildPinewatch(): ZoneDef {
     b.set(kx + 1, 80, Tile.DoorwayStone);
     b.set(kx + 1, 79, Tile.Campfire);
   }
-  b.set(90, 84, Tile.Barrel).set(91, 84, Tile.Barrel).set(92, 84, Tile.Barrel);
+  b.set(90, 84, Tile.Barrel).set(91, 84, Tile.BarrelStack).set(92, 84, Tile.Barrel);
   b.set(96, 84, Tile.Barrel).set(97, 84, Tile.Barrel);
   b.set(102, 84, Tile.CrateGoods).set(103, 84, Tile.CrateGoods);
-  b.set(94, 86, Tile.Basin).set(100, 86, Tile.ToolRack);
+  b.set(94, 86, Tile.WaterCask).set(100, 86, Tile.ToolRack); // fire water, staved and full
   b.setDetail(93, 82, Detail.Pebbles).setDetail(99, 83, Detail.Pebbles);
   b.sign(88, 82, 'THE PITCH YARD', ['no open flame past the barrels', 'we mean it, Rullo'], Tile.Signpost);
   // The pitchmaster's hut, upwind at the yard's north-west corner.
@@ -745,7 +747,7 @@ export function buildPinewatch(): ZoneDef {
     for (let x = 89; x <= 95; x += 3) b.set(x, y, Tile.SaplingPine);
   }
   b.fillRect(86, 17, 2, 16, Tile.Dirt); // the barrow walk
-  b.set(84, 32, Tile.Basin).set(95, 33, Tile.Basin);
+  b.set(84, 32, Tile.WaterCask).set(95, 33, Tile.WaterCask); // drawn water for the beds (PERIOD TRUTH)
   b.set(84, 16, Tile.Barrel).set(85, 16, Tile.Crate);
   // The nursery shed: seed trays, a bench, and the count book that
   // nobody outside this fence has ever asked to see.
@@ -786,7 +788,7 @@ export function buildPinewatch(): ZoneDef {
   for (let x = 93; x <= 97; x++) b.set(x, 51, Tile.RailWood);
   for (let x = 100; x <= 103; x++) b.set(x, 51, Tile.RailWood);
   b.set(88, 53, Tile.Basin).set(95, 53, Tile.Basin);
-  b.set(85, 55, Tile.CrateGoods).set(86, 55, Tile.CrateGoods);
+  b.set(85, 55, Tile.CrateStack).set(86, 55, Tile.CrateGoods);
   b.set(89, 56, Tile.CrateGoods).set(90, 56, Tile.CrateGoods);
   b.set(99, 55, Tile.Barrel).set(102, 56, Tile.Crate);
   b.set(93, 55, Tile.Lectern); // the weighbeam's book
@@ -1206,7 +1208,93 @@ export function buildPinewatch(): ZoneDef {
   b.set(16, 42, Tile.Crate).set(13, 45, Tile.Rock);
   b.setDetail(15, 44, Detail.Pebbles).setDetail(13, 43, Detail.Tuft);
 
-  // THE PEOPLE — twenty-one lives on the saw's clock and the rota's.
+  // ---------------------------------------------------------------
+  // THE DRESSING — the shelves seated by fiction (the Dawnmead and
+  // Amberford laws: every prop EARNED, upgrade before add, south and
+  // east and west aprons only, clear air between pieces, and
+  // restraint as binding as the additions). No fountain, no founder
+  // statue, no guardian pair: nobody founds a watch, and the tower is
+  // the only guardian this town has ever needed.
+  // ---------------------------------------------------------------
+  // The muster yard: the rota goes legible, the bell goes real.
+  b.set(60, 51, Tile.NoticeBoard); // the board the sign has always meant
+  b.set(69, 44, Tile.TownBell); // "the bell is not decoration" — now there is a bell
+  b.set(68, 54, Tile.Woodpile); // the yard fire's cord, never allowed low
+  // The Old Watch keeps a light on the watch book.
+  b.set(65, 37, Tile.CandleStand);
+  // The axe-smith: the working wall completed — lungs, stock, stone.
+  b.set(47, 35, Tile.SmithBellows);
+  b.set(52, 36, Tile.IngotRack);
+  b.set(46, 41, Tile.Grindstone); // teeth set here, and only here
+  // The stores: Nial's two-of-everything made visible.
+  b.set(42, 68, Tile.ShopShelf);
+  b.set(46, 68, Tile.DisplayTable);
+  b.set(44, 67, Tile.HangingScale);
+  b.set(50, 67, Tile.GlazedJars); // Maren's salve, jarred and glazed
+  b.set(43, 72, Tile.BasketStack);
+  // The Charterhouse: two ledgers, one roof, and light that behaves.
+  b.set(87, 35, Tile.ScribesDesk); // the Crown's correspondence
+  b.set(86, 43, Tile.ScribesDesk); // the Charter's hand, taught at the ford
+  b.set(89, 35, Tile.CandleRack);
+  // The wain bays weigh what they claim to weigh.
+  b.set(92, 55, Tile.HangingScale);
+  b.set(98, 55, Tile.GrainSacks);
+  // The Pine and Bell earns its warm room.
+  b.set(79, 71, Tile.GameTable);
+  b.set(78, 71, Tile.WoodStool).set(80, 71, Tile.WoodStool);
+  b.set(75, 67, Tile.SettleBench); // the four o'clock seat, nearest the fire
+  b.set(82, 72, Tile.CloakStand); // wet coats stop at the door
+  b.set(88, 68, Tile.BreadOven);
+  b.set(85, 78, Tile.Woodpile);
+  b.set(77, 76, Tile.HitchingPost);
+  // The waterfront: posts for the rafts, a slab for the catch, and
+  // Ylva's punt drawn up where the water can watch it.
+  b.set(49, 26, Tile.MooringPost).set(62, 26, Tile.MooringPost);
+  b.set(87, 15, Tile.FishmongerSlab);
+  b.set(91, 16, Tile.BasketStack);
+  b.set(84, 10, Tile.BeachedSkiff);
+  // The Winter Strand: the ice tools wait all summer, on purpose.
+  b.set(8, 120, Tile.ToolRack); // the ice saws
+  b.set(6, 116, Tile.BeachedSkiff);
+  b.set(5, 110, Tile.MooringPost);
+  // The pitch yard: fire discipline as furniture.
+  b.set(98, 84, Tile.BroomAndPail);
+  b.set(100, 82, Tile.HandCart);
+  // The board yard's cart, loading at first light.
+  b.set(33, 60, Tile.HandCart);
+  // The nursery's public face: the ONE hedge in town, because the
+  // nursery is the one place in Pinewatch that owns shears.
+  for (const hx of [78, 79, 80, 82, 83, 84]) b.set(hx, 27, Tile.Hedge);
+  b.set(81, 27, Tile.HedgeGate);
+  b.set(78, 28, Tile.Hedge); // the ring opens at the barrow walk, and at Ospren's constitutional
+  b.set(86, 20, Tile.Wheelbarrow); // on the barrow walk, where else
+  b.set(79, 26, Tile.LeanLadder); // clear of the shingle at (83,26)
+  // The Northguard's working corners.
+  b.set(114, 20, Tile.IngotRack); // Torger's iron, counted twice
+  b.set(117, 22, Tile.GrainSacks);
+  b.set(99, 13, Tile.WaterTrough); // the kennel trough
+  b.set(100, 14, Tile.Woodpile);
+  // (A second spear rack and a crate stack at the gate died in the
+  // dressing review: with the beacon's cliffs they sealed the gate
+  // pocket whole. Restraint is a placement.)
+  // The ore cut: the charcoal argument, made visible.
+  b.set(40, 111, Tile.Wheelbarrow);
+  b.set(44, 111, Tile.Woodpile); // mill scrap and storm fall, per the licence
+  // The drove yard drinks; the lane hitches.
+  b.set(26, 131, Tile.WaterTrough);
+  b.set(30, 125, Tile.HitchingPost);
+  // The Waykeepers hold this road, and say so at the mouth.
+  b.set(27, 146, Tile.WayShrine);
+  // THE CORDWOOD MOTIF — "a cord a roof, before the first frost,"
+  // made visible at every roof that owes one. Wood is not set
+  // dressing in this town. Wood is the town.
+  b.set(11, 73, Tile.Woodpile).set(22, 73, Tile.Woodpile);
+  b.set(32, 73, Tile.Woodpile).set(57, 73, Tile.Woodpile);
+  b.set(87, 105, Tile.Woodpile).set(97, 105, Tile.Woodpile);
+  b.set(75, 105, Tile.Woodpile); // clear air from the physic sign
+
+  // THE PEOPLE — thirty-seven lives on the saw's clock, the rota's,
+  // and now the Crown's.
   // Placements are the POST each routine measures from; the sleepers
   // walk to real beds by way of a walkable cardinal neighbour (the
   // cardinal-stand law), so nobody wedges on a bedpost at midnight.
