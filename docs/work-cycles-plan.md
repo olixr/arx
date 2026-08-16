@@ -240,13 +240,41 @@ extracted (rod-less NPC anglers get line/bobber/ripples), unified
 fishAt drives slew/cache-exemption/auto-equip/splash-gate,
 sfx.benchKnock + sfx.sawRasp through the one impact door.
 
+**Phase 6 — THE LIVE WALK (paid; lane 19, vite.config.rig19.ts).**
+Isolated rig: server :8871 on arx_worklane19 (fresh-migrated), BUILT
+client via `vite build && vite preview` :5272 — the dev pipeline's
+~600 dialogue-def dynamic imports exhaust a headless browser's
+connection pool and bounce the session (ERR_INSUFFICIENT_RESOURCES);
+the preview lane is the stable wire, and the config carries a
+`build.target: 'es2022'` (the deploy target — top-level await in the
+entry). Driven via window.dcGame (sendChat/interact/buildSend — the
+chat input's FORM submits on programmatic Enter and navigates; never
+type commands through the DOM). VERDICTS, all passing: chop at five
+bearings (mirror true E/W, square-up, world arc, canopy veil doing
+its job, chips at the node edge); mine at two (overhead heave, chips
++ seam sparks); player fishing = pose 18 with rod/line/bobber/ripple
+and the water reflection carrying the rod; build = pose 19 on open
+ground, KNEELING (crouch channel live), knocks at the mallet face,
+campfires standing after; berry forage bare-hand; Ottery the
+Dawnmead joiner working his bench (the 'bench' knock arrived
+own=false before I ever went looking); Ylva the Pinewatch pier
+fisher at pose 18 with the CONJURED ROD and cast line, empty-handed.
+THE IMPACT DOOR INSTRUMENTED (wrapped onGatherImpact +
+particles.burst): tree/rock/fish/forage/build/bench all fire through
+the one door, node- and tip-anchored. Zero renderer errors on the
+built lane. Walk gotchas for the next lane: oak wants woodcutting 15
++ iron axe (a bronze-axe refusal reads as 'nothing happens' if you
+miss the chat); a depleted node ends the gather (the first
+zero-impact probe was a stump, not a bug); the construction skill id
+is 'construction', never 'building'; buildSend refuses rocky ground
+silently.
+
 ## Still owed (next sessions)
 
-- **Phase 6**: the live walk — in-game verification of slew, node
-  shiver, clang lock, patient line, the tend beats, the Build verb,
-  and the town-artisan + pier-fisher drive-by, on a real server lane.
 - Loom/tanning impact beats (visual-only cycles today; candidates
   for soft one-shots later).
-- Consider `work:'fish'` for the six plain-post fisher routines
-  (salt_angler family) after eyeballing their posts against water on
-  the live walk.
+- `work:'fish'` for the six plain-post fisher routines (salt_angler
+  family) — eyeball their posts against water first.
+- The tend beat at a live windmill/churn (needs a work recipe run;
+  choreography sheet-proven, transient pose mechanism live-proven
+  via the same setPose rail as Build).
