@@ -10488,14 +10488,17 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
       runSpeed: 5.2,
       turnRate: 9,
     },
-    bodyLen: 0.58,
+    // The streamline pass: a touch shorter in the barrel than the
+    // first cut — reach lives in the LEGS and the neck, and a long
+    // hull on a narrow beam was starting to read train-car.
+    bodyLen: 0.56,
     bodyRise: 0.56,
     kneeFwd: [1, 1, -1, -1],
     hipFwd: 0.9,
     hipSide: 0.55,
     // Fine-boned for its height: a dire's leg width on a taller frame
     // would read draft-horse, not court hound.
-    legW: 0.095,
+    legW: 0.09,
     foot: 'paw',
     legColor: '#7e7a98',
   },
@@ -12532,11 +12535,19 @@ export const FAEWOLF_LOOK: FaeWolfLook = {
   earIn: '#4a4468',
   eye: '#8cf0cc',
   eyeCore: '#f2fff6',
-  bodyW: 0.225,
-  backH: 0.76,
+  // THE SLENDER BEAM: narrower than the matriarch on a longer body —
+  // the hound's mass is height and reach, never width.
+  bodyW: 0.2,
+  // The streamline pass thins the BARREL too: the height stays in
+  // the legs and the carried head, not in a deep body slab — profile
+  // depth at the chest is now ~0.29 tiles where the first cut ran
+  // 0.38 (the "big long chest" the user called out).
+  backH: 0.73,
   shoulderH: 0.1,
-  chestH: 0.38,
-  tuckH: 0.56,
+  // The chest is a KEEL: deep enough to read athletic, shallow
+  // enough that the front half never becomes the pack's barrel.
+  chestH: 0.44,
+  tuckH: 0.61,
   headW: 0.36,
   headH: 0.28,
 };
@@ -12549,52 +12560,73 @@ export function paintFaeWolfBody(
 ): void {
   const hl = spec.bodyLen;
   const hw = look.bodyW;
-  // The gazehound wedge: a deep-chested front, the waist drawn long
-  // and hard toward a NARROW croup — elegance in plan view where the
-  // dire is mass. The stern pinches so the twin banner roots read
-  // grown from one point.
+  // THE STREAMLINE (the user's second-pass verdict: the first cut
+  // borrowed the pack's broad chest wall — a dire habit the hound
+  // never earned). A gazehound is DEEP, never WIDE: the plan view is
+  // one continuous flowing line — a narrow keeled PROW (the chest is
+  // a blade, not a barrel), the widest point BRIEF at the shoulder,
+  // then a long unbroken taper through the wasp waist, one soft hip
+  // flare where the driving muscle lives, and a pinched croup the
+  // twin banners grow from. No slab-sided run anywhere: every
+  // segment is mid-taper. Twelve stations so the curve flows where
+  // the pack's eight-point wedges chop.
   const foot: Array<[number, number]> = [
-    [hl, -hw * 0.78],
-    [hl, hw * 0.78],
-    [hl * 0.55, hw],
-    [-hl * 0.3, hw * 0.8],
-    [-hl, hw * 0.48],
-    [-hl, -hw * 0.48],
-    [-hl * 0.3, -hw * 0.8],
-    [hl * 0.55, -hw],
+    [hl, -hw * 0.56],
+    [hl, hw * 0.56],
+    [hl * 0.6, hw],
+    [hl * 0.08, hw * 0.86],
+    [-hl * 0.44, hw * 0.6],
+    [-hl * 0.76, hw * 0.64],
+    [-hl, hw * 0.38],
+    [-hl, -hw * 0.38],
+    [-hl * 0.76, -hw * 0.64],
+    [-hl * 0.44, -hw * 0.6],
+    [hl * 0.08, -hw * 0.86],
+    [hl * 0.6, -hw],
   ];
   const coat = shade(look.coat, (((f.seed >>> 5) & 7) - 3) * 2);
-  // THE LEVEL CARRIAGE: the court hound's topline holds HIGH and
-  // LEVEL the length of the back (the dire falls away; the hound
-  // does not stoop), a swan neck root climbing harder than any
-  // wolf's off gentle withers, then one late clean stern fall into
-  // the banner roots — the handoff law, kept.
-  const topH = (X: number): number =>
-    look.backH +
-    Math.max(0, X / hl) * look.shoulderH +
-    0.065 * Math.max(0, (X / hl - 0.5) / 0.5) -
-    0.018 * Math.max(0, (-X / hl - 0.55) / 0.45) -
-    0.08 * Math.max(0, (-X / hl - 0.78) / 0.22);
+  // THE LEVEL CARRIAGE, ARCHED: high and level where the dire falls
+  // away, a swan neck root climbing off gentle withers — and the
+  // streamline pass adds THE LOIN ARCH, the gazehound's signature
+  // roach: a soft rise over the coupling that carries the whole
+  // topline in one drawn bow into the stern fall. Aligned, never
+  // boxy: the back is a curve under tension, not a roof.
+  const topH = (X: number): number => {
+    const lt = Math.min(1, Math.max(0, (-X / hl - 0.05) / 0.55));
+    return (
+      look.backH +
+      Math.max(0, X / hl) * look.shoulderH +
+      0.065 * Math.max(0, (X / hl - 0.5) / 0.5) +
+      0.026 * Math.sin(Math.PI * lt) -
+      0.018 * Math.max(0, (-X / hl - 0.55) / 0.45) -
+      0.08 * Math.max(0, (-X / hl - 0.78) / 0.22)
+    );
+  };
   paintBlockBody(
     ctx,
     f,
     foot,
     topH,
-    // The sight-hound tuck: the deepest chest-to-waist sweep in the
-    // canid line — daylight under the loin is the stilted read.
-    (X) => look.chestH + (look.tuckH - look.chestH) * Math.min(1, Math.max(0, (0.45 - X / hl) / 0.9)),
+    // THE RISING UNDERLINE: the deepest point of the body is the
+    // forechest itself, and the belly line climbs from there in ONE
+    // continuous sweep to the tucked loin — no flat run anywhere
+    // (the flat front half was the "long chest" the user called
+    // out). The streamlined read lives in this line.
+    (X) => look.chestH + (look.tuckH - look.chestH) * Math.min(1, Math.max(0, (0.9 - X / hl) / 1.6)),
     coat,
     (gx, gyy, lift) => {
       const s = f.s;
       const tk = f.topScale ?? 1;
-      // The dusk mantle: draped like nightfall over shoulders and
-      // back, longer and lower-reaching than any wolf saddle.
+      // The dusk mantle: a NARROW fall of nightfall along the spine —
+      // the streamline pass pulled it off the flanks (a full-width
+      // saddle read as bulk), so the moon-lavender coat shows down
+      // both sides and the body reads drawn, not draped.
       ctx.save();
-      ctx.translate(gx(hl * 0.06, 0), gyy(hl * 0.06, 0) - look.backH * tk * s * 0.94 - lift);
+      ctx.translate(gx(hl * 0.04, 0), gyy(hl * 0.04, 0) - look.backH * tk * s * 0.94 - lift);
       ctx.rotate(Math.atan2(f.fy * f.ys, f.fx));
       ctx.fillStyle = look.mantle;
       ctx.beginPath();
-      facetBlob(ctx, 0, 0, hl * s * 0.86, f.seed | 1, 9, (hw * 1.2) / (hl * 0.86), 0.35);
+      facetBlob(ctx, 0, 0, hl * s * 0.82, f.seed | 1, 9, (hw * 0.9) / (hl * 0.82), 0.35);
       ctx.fill();
       ctx.restore();
       // Moonlight dapples: three soft pale pools along the upper
@@ -12610,7 +12642,9 @@ export function paintFaeWolfBody(
           facetCircle(
             ctx,
             gx(dxp, dyp),
-            gyy(dxp, dyp) - (look.chestH + 0.24) * s - lift * 0.7,
+            // Mid-flank, on the visible coat — the slimmed mantle
+            // pulled off the flanks, so the dapples ride below it.
+            gyy(dxp, dyp) - (look.chestH + 0.14) * s - lift * 0.7,
             s * (0.042 + (dseed & 1) * 0.012),
             5,
             f.fx,
@@ -12618,20 +12652,23 @@ export function paintFaeWolfBody(
           ctx.fill();
         }
       }
-      // Moonlight chest bib — only while the chest can face the
-      // camera, riding the hull's own bob (the pinned-bib law).
+      // The moonlight KEEL — the streamline pass traded the pack's
+      // broad bib for a slim vertical blaze down the chest's prow: a
+      // narrow mark that says DEPTH where the old blob said girth.
+      // Only while the chest can face the camera, riding the hull's
+      // own bob (the pinned-bib law).
       if (f.fy > -0.15) {
         ctx.fillStyle = look.under;
         ctx.beginPath();
         facetBlob(
           ctx,
-          gx(hl * 0.88, 0),
-          gyy(hl * 0.88, 0) - (look.chestH + 0.12) * s - lift * 0.8,
-          hw * s * 0.78,
+          gx(hl * 0.9, 0),
+          gyy(hl * 0.9, 0) - (look.chestH + 0.1) * s - lift * 0.8,
+          hw * s * 0.52,
           f.seed ^ 0x33,
           7,
-          0.85,
-          1.7,
+          0.6,
+          2.4,
         );
         ctx.fill();
       }

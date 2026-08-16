@@ -92,6 +92,10 @@ test('the hound is a design, never a scaled dire: tall, fine-boned, disjoint pal
   // Height without bulk is the whole architecture.
   assert.ok(FAEWOLF_LOOK.headW < DIREWOLF_LOOK.headW, 'the hound is fine-boned, never a bone-crusher');
   assert.ok(faeSpec.legW < direSpec.legW);
+  // THE SLENDER BEAM (the streamline pass): narrower in plan than
+  // the matriarch on a longer body — the chest is a keel, never a
+  // barrel. Mass is height and reach, never width.
+  assert.ok(FAEWOLF_LOOK.bodyW < DIREWOLF_LOOK.bodyW, 'the hound is slender, never the pack barrel');
   // The sight-hound tuck: the deepest chest-to-waist sweep in the line.
   assert.ok(
     FAEWOLF_LOOK.tuckH - FAEWOLF_LOOK.chestH > DIREWOLF_LOOK.tuckH - DIREWOLF_LOOK.chestH,
