@@ -1,7 +1,8 @@
 # THE FANG FINDS ITS VOICE — companions learn their own arts
 
-Date: 2026-08-16. Status: PROPOSED — this document is a design review in
-the constitutional sense. `docs/beastcraft-plan.md` Part 6 decided *"kits
+Date: 2026-08-16. Status: **EPIC COMPLETE, five phases shipped the same
+day — Part 6 THE LEDGER is the as-shipped record.** This document is a
+design review in the constitutional sense. `docs/beastcraft-plan.md` Part 6 decided *"kits
 ride the bite, the stat site, and the pounce — never the cast rail"* and
 promised that the day a companion needed more would be argued in a new
 review, not a patch. This is that day and that review. Sibling of
@@ -399,3 +400,99 @@ woven venom field (windup 14).
 - No keeper-level shortcuts: neither focus axis reads beastcraft.
 - No new XP faucets into beastcraft (THE XP CONTRACT holds; bond is a
   pet coin, not a skill coin).
+
+---
+
+## Part 6 — THE LEDGER (as shipped, 2026-08-16)
+
+The epic ran f6bc4c5a (this plan) through five phase commits in one
+day: 9a78e177 THE REPERTOIRE, d098a4a4 THE THIRD MOUTH, 9bcd1fb4
+THE COMPANION'S HALL, 21acf73e THE FLOURISH, and the closing Phase 5
+commit carrying this ledger. Memory topic pet-arts-fang-voice holds
+the per-phase as-built law and every harness truth minted.
+
+### The numbers as they stand
+
+| dial | shipped | note |
+|---|---|---|
+| Repertoire | 71 arts, 16 species | 38 actives (web_snare reused whole), 33 passives |
+| Focus budget | 1 + lvl 20/40/60 + rope 2/3/4, max 7 | three signatures never fit, by arithmetic |
+| Slots | 3 collars | costs 1..3, one 3-focus signature per species |
+| The rope | 0/200/600/1400/2800 | Newly Met .. Heartsworn |
+| Bond faucets | meal +25, shared kill +2, tend +15 | no decay, ever |
+| Mentor's hand | +1%/level over the friend, cap +50% | battle xp only |
+| Art pacing | first arming <= 60t, retry 50t | never opens the fight; punished never disabled |
+| Journey ledger | tamed_at READ, tamed_level, kills, downs | v38; a re-used stall resets everything |
+| Equalizer | lifts 1.10..1.26, spread 2.52 < base 2.63 | guard 2.6; 1.6 stays the live target |
+
+### THE PROVING (Phase 5, isolated rig lane 18, worktree HEAD+mine)
+
+Nineteen live receipts, all green: R1 tame lands with an empty
+loadout and focus 0 of 1 · R2 a 1-focus word takes with its spoken
+confirm · R3 the budget refusal aloud · R4 the foreign-word refusal
+aloud · R5 rank ceremonies speak (Road Worn, then Heartsworn) and
+the mirror carries the rope · R6 the signature seats at Heartsworn,
+4 of 4 · R7 never a mid-bite respec (asked mid-windup,
+deterministically) · R8 the breath on the wire: charge broadcast
+then the FIRE at ~2.77s (the first-arming seed honored to the tick)
+· R8b the surge rides the friend · R8c the stagger law survives
+contact and retries to completion · R9 shared kills pay bond and
+the count · R10 relog: arts, rope, and journey persist whole,
+tamedAt and tamedLevel riding the mirror · R11 the empty loadout
+takes (yesterday's wolf) · H1-H6 THE COMPANION'S HALL walked live:
+opens from the dock, workings read with verb and proving-ground
+diagram, natures fold the ground away, the room slots and unslots
+ON THE WIRE, and the signature's refusal letters in place ("It
+cannot hold so much in mind. Not yet.").
+
+Live-caught and fixed during the proving (the walk earning its
+keep): btn-companions had no click bind and currentScreen() had
+never learned 'companions' — two hand-rolled lists the Phase 3
+sweep missed; both now wired. /petbond joined the dev levers (the
+/xp precedent: it walks the REAL grantPetBond door, so rank
+ceremonies fire, never bypass).
+
+### Staging laws minted (the proving's own)
+- A lone goblin dies inside the first-arming seed — the never-opens
+  law eats its own receipt; stage three in series.
+- A bear refuses a leveled keeper (the sizing-up floor) — never
+  stage a fight on a body that sizes you up.
+- Gap-closers need a gap: gore_charge is mute against adjacent
+  spawns (minRange is the law working).
+- Assert on the WIRE (wrap handleMessage), never on DOM polling —
+  a 500ms windup outruns any evaluate round trip.
+
+### Dialect coverage, witnessed live
+Every wire dialect fired from a real companion on a real mark, on
+the wire and on camera: charge (the wolf's drawn breath), command
+(the first howl's column and rings), field (the venom lattice woven
+under a fight), nova (the crab's clatter, its golden wedge-ring and
+eye-hooks photographed mid-clap), arc (the riptide gate and the
+bear's maul), dash (the bear's charge), and blast (the adder's spit
+landing). The spit earned the proving's one content dial: any
+minRange starved it (a melee-brained body hugs its mark, so edge
+distance lives under every floor) — it now speaks point-blank, its
+maxRange a reach and not a floor; a standoff pet brain stays the
+deferred road if the flavor ever wants more.
+
+### Deviations, decided in the field
+- The plan's 1.6 no-dominance bound became THE EQUALIZER LAW by
+  measurement (the wild bodies were never at parity; the repertoire
+  provably narrows them). 1.6 remains the live-tuning target.
+- FX faces + spell-plates shipped in Phase 1, not Phase 4 — the
+  client's whole-roster FLOURISH sweeps refuse a faceless art
+  immediately, which is exactly what they are for.
+- tusk_sweep reads deliberately thin (a 1-focus word is honestly
+  cheap); the melee-arc reads sit at frame edge on the empty stage
+  and center on the mark in true fights.
+- Proving ran as scratchpad Playwright receipts (the spotcheck
+  precedent) rather than a prove:pets harness chapter — the wire
+  assertions are identical; a tools-harness port stays open as a
+  debt if the suite is ever wanted in CI.
+
+### Deferred, user-ask gated
+- Bond faucet breadth (roads walked together, weathering storms).
+- The Hall's pad round trip walked end-to-end on a live gamepad.
+- Per-species voice moments on art fires (the foot rail already
+  sounds every body).
+- The 1.6 equalizer target, tuned from live play.

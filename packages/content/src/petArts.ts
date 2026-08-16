@@ -698,7 +698,11 @@ export const PET_ART_DEFS: readonly PetArtDef[] = [
     ability: 'venom_spit',
     cooldownTicks: 200,
     windupTicks: 8,
-    minRange: 2,
+    // THE PROVING'S DIAL (Phase 5, second cut): any minRange starves
+    // this word — a melee-brained body hugs its mark, so edge distance
+    // lives under every floor. The spit speaks point-blank (the bolt
+    // still flies); maxRange 7 is its REACH, not its floor. A standoff
+    // pet brain is the deferred road if the flavor ever wants more.
     maxRange: 7,
     tale: 'The adder spends its bite at a distance and lets the venom walk the rest.',
   },

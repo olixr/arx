@@ -27413,6 +27413,24 @@ export class GameServer {
       this.sendPet(player, slot);
       return;
     }
+    if (config.devCommands && text.startsWith('/petbond')) {
+      // The rope lever: '/petbond <slot> <amount>' — walks the bond
+      // through the REAL faucet door (grantPetBond), so rank
+      // ceremonies and focus growth are exercised, never bypassed.
+      // The /xp precedent: a dev lever raises the ledger, the laws
+      // still do all the talking.
+      const parts = text.split(/\s+/).slice(1);
+      const slot = Number(parts[0] ?? '0');
+      const amount = Math.max(0, Math.min(100000, Number(parts[1] ?? '0')));
+      const row = player.pets.find((p) => p.slot === slot);
+      if (!row) {
+        player.session?.sendJson({ t: 'chat', channel: 'system', text: 'No companion keeps that stall.' });
+        return;
+      }
+      this.grantPetBond(player, row, amount);
+      this.sendPet(player);
+      return;
+    }
     if (config.devCommands && text.startsWith('/petarts')) {
       // The collar lever: '/petarts <slot> [id id id]' — the real op,
       // refusals and all, so the harness proves the same door players
