@@ -836,33 +836,45 @@ export const TECHNIQUE_MAX_RANK = 4;
 
 /**
  * Base-level surplus over unlockLevel required for each rank (index =
- * rank - 1). The asymmetry IS the balance: an early art fully matures
+ * rank - 1) — the STANDARD clock, walked by every art anchored at 54
+ * or below. The asymmetry IS the balance: an early art fully matures
  * mid-game while a late art's higher ceiling takes until the 90s —
  * at any level, a mastered old art and a growing new one are both
  * correct choices.
  */
 export const RANK_SURPLUS: readonly number[] = [0, 15, 30, 45];
 
+/**
+ * THE SHORTENED CLIMB (THE LONG ROAD): the levels between rank steps
+ * for a given anchor. The standard stride is 15; past anchor 54 the
+ * full climb no longer fits under the 99 cap, so the stride
+ * compresses — min(15, floor((99 - anchor) / 3)) — and every art,
+ * however late its rung, still masters exactly by 99. The hand that
+ * earned a level-90 art is already a master's hand: it hones the new
+ * motion in years, not decades. Anchors at 54 and below keep the
+ * standard clock unchanged.
+ */
+export function rankStride(anchorLevel: number): number {
+  return Math.max(1, Math.min(15, Math.floor((99 - anchorLevel) / 3)));
+}
+
 export const RANK_ROMAN: readonly string[] = ['', 'I', 'II', 'III', 'IV'];
 
 /**
  * The rank an art stands at for a BASE skill level (gear never jumps
  * a rank — mastery belongs to the hand, not the wardrobe). 0 = not
- * yet unlocked.
+ * yet unlocked. Thresholds walk THE SHORTENED CLIMB's stride.
  */
 export function techniqueRank(unlockLevel: number, baseLevel: number): number {
   if (baseLevel < unlockLevel) return 0;
   const surplus = baseLevel - unlockLevel;
-  let rank = 1;
-  for (let i = 1; i < RANK_SURPLUS.length; i++) {
-    if (surplus >= (RANK_SURPLUS[i] ?? Infinity)) rank = i + 1;
-  }
+  const rank = 1 + Math.floor(surplus / rankStride(unlockLevel));
   return Math.min(rank, TECHNIQUE_MAX_RANK);
 }
 
 /** The base level at which an art reaches `rank` (1-based). */
 export function rankLevel(unlockLevel: number, rank: number): number {
-  return unlockLevel + (RANK_SURPLUS[rank - 1] ?? 0);
+  return unlockLevel + rankStride(unlockLevel) * (rank - 1);
 }
 
 /**

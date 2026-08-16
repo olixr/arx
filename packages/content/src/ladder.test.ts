@@ -12,6 +12,8 @@ import {
   RANK_SURPLUS,
   TECHNIQUE_MAX_RANK,
   honedAbility,
+  rankLevel,
+  rankStride,
   techniqueAnchor,
   techniqueRankFor,
   type AbilityDef,
@@ -85,19 +87,21 @@ test('THE RELEVANCE LAW: every fully-honed art sits within ±20% of its style me
   }
 });
 
-test('the rank clock is uniform and the ladder mastered before 99', () => {
+test('THE SHORTENED CLIMB: the rank clock masters every art exactly by 99', () => {
   assert.deepEqual([...RANK_SURPLUS], [0, 15, 30, 45]);
   for (const tech of TECHNIQUES) {
     const clock = techniqueAnchor(tech);
+    // Anchors at 54 and below walk the standard +15 stride untouched.
+    if (clock <= 54) assert.equal(rankStride(clock), 15, `${tech.ability} keeps the standard clock`);
     assert.ok(
-      clock + RANK_SURPLUS[TECHNIQUE_MAX_RANK - 1]! <= 99,
-      `${tech.ability} reaches Rank IV before 99`,
+      rankLevel(clock, TECHNIQUE_MAX_RANK) <= 99,
+      `${tech.ability} reaches Rank IV by 99 (IV at ${rankLevel(clock, TECHNIQUE_MAX_RANK)})`,
     );
   }
 });
 
-test('THE OPEN LADDER: an art every five levels, 5 through 50, no gaps, no doubles', () => {
-  const RUNGS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+test('THE LONG ROAD: ten-art schools climb 5 to 90 on the widening stride', () => {
+  const RUNGS = [5, 10, 15, 20, 30, 40, 50, 60, 75, 90];
   for (const style of ['combat', 'archery', 'sneak', 'twohand', 'shield', 'dualwield']) {
     const arts = techniquesFor(style).filter((t) => !t.hidden);
     assert.deepEqual(
@@ -109,98 +113,89 @@ test('THE OPEN LADDER: an art every five levels, 5 through 50, no gaps, no doubl
   }
 });
 
-const RUNG_LEVELS = new Set([5, 10, 15, 20, 25, 30, 35, 40, 45, 50]);
+/**
+ * THE LONG ROAD's deep-school clause: a twenty-art school still
+ * carries THE DRAWN BREATH's whole wave — five casted and five
+ * channeled voices — wherever its seats now stand.
+ */
+function assertBreathWave(style: string): void {
+  const arts = techniquesFor(style).filter((t) => !t.hidden);
+  const casted = arts.filter((t) => (abilityDef(t.ability)!.castTicks ?? 0) > 0);
+  const channeled = arts.filter((t) => (abilityDef(t.ability)!.channelTicks ?? 0) > 0);
+  assert.ok(casted.length >= 5, `${style} keeps its five casted breath arts`);
+  assert.ok(channeled.length >= 5, `${style} keeps its five channeled breath arts`);
+}
 
-test('THE BREATH BETWEEN RUNGS: onehand holds exactly its authored ladder', () => {
-  // THE DRAWN BREATH's content wave grew the onehand school ten new
-  // breath arts seated BETWEEN the founding rungs — five casted, five
-  // channeled — so the school's pin becomes an authored table (the
-  // KEEPER LADDER pattern): the deliberate record of what stands,
-  // extended art by art, never by accident.
+test('THE LONG ROAD: onehand holds exactly its authored ladder, 5 to 90', () => {
+  // THE DRAWN BREATH's wave grew the school to twenty arts; THE LONG
+  // ROAD stretches the whole roster in authored order — every 5 to
+  // the founding 50, then every 4 to the capstone at 90. The pin
+  // stays an authored table (the KEEPER LADDER pattern): the
+  // deliberate record of what stands, never an accident.
   const arts = techniquesFor('onehand').filter((t) => !t.hidden);
   assert.deepEqual(
     arts.map((t) => [t.ability, t.unlockLevel]),
     [
       ['heavy_slam', 5],
-      ['ember_edge', 8],
-      ['bull_rush', 10],
-      ['millwork', 13],
-      ['whirlwind', 15],
-      ['levinstroke', 18],
-      ['warcry', 20],
-      ['red_ledger', 23],
-      ['steel_wave', 25],
-      ['cold_iron', 28],
-      ['bloodlust', 30],
-      ['frostwork', 33],
-      ['stagger_stomp', 35],
-      ['first_light', 38],
-      ['headsman_stroke', 40],
-      ['live_iron', 43],
-      ['earthbreaker', 45],
-      ['gloomfall', 46],
-      ['noonfall', 48],
-      ['warlords_descent', 50],
+      ['ember_edge', 10],
+      ['bull_rush', 15],
+      ['millwork', 20],
+      ['whirlwind', 25],
+      ['levinstroke', 30],
+      ['warcry', 35],
+      ['red_ledger', 40],
+      ['steel_wave', 45],
+      ['cold_iron', 50],
+      ['bloodlust', 54],
+      ['frostwork', 58],
+      ['stagger_stomp', 62],
+      ['first_light', 66],
+      ['headsman_stroke', 70],
+      ['live_iron', 74],
+      ['earthbreaker', 78],
+      ['gloomfall', 82],
+      ['noonfall', 86],
+      ['warlords_descent', 90],
     ],
     'the onehand ladder is exactly its authored roster',
   );
   assert.equal(new Set(arts.map((t) => t.ability)).size, arts.length);
-  // The breath wave's own law: every between-rung art is a breath art
-  // (castTicks or channelTicks), never another press-edge instant.
-  for (const t of arts) {
-    if (RUNG_LEVELS.has(t.unlockLevel)) continue;
-    const ab = abilityDef(t.ability)!;
-    assert.ok(
-      (ab.castTicks ?? 0) > 0 || (ab.channelTicks ?? 0) > 0,
-      `${t.ability}: a between-rung seat must breathe (cast or channel)`,
-    );
-  }
+  assertBreathWave('onehand');
 });
 
-test('THE BREATH BETWEEN RUNGS: arx holds exactly its authored ladder', () => {
-  // The mage school's between-rung wave (the second school to go
-  // off-rung, after onehand): ten new breath arts seated BETWEEN the
-  // founding rungs, five casted and five channeled, so the pin becomes
-  // an authored table too.
+test('THE LONG ROAD: arx holds exactly its authored ladder, 5 to 90', () => {
+  // The mage school walks the same stretched road: authored order
+  // kept whole, the founding ten every 5 to 50, the breath wave every
+  // 4 above, Daybreak crowning the ladder at 90.
   const arts = techniquesFor('arx').filter((t) => !t.hidden);
   assert.deepEqual(
     arts.map((t) => [t.ability, t.unlockLevel]),
     [
       ['arc_bolt', 5],
-      ['wickfire', 8],
-      ['frost_lance', 10],
-      ['rime_river', 13],
-      ['blink', 15],
-      ['windshear', 18],
-      ['ward_shell', 20],
-      ['stonerise', 23],
-      ['ember_fan', 25],
-      ['geyser', 28],
-      ['meteor_shard', 30],
-      ['anvil_sky', 33],
-      ['stormcall', 35],
-      ['hollowcall', 38],
-      ['mirror_image', 40],
-      ['burning_glass', 43],
-      ['maelstrom', 45],
-      ['moonrise', 46],
-      ['cometfall', 48],
-      ['daybreak', 50],
+      ['wickfire', 10],
+      ['frost_lance', 15],
+      ['rime_river', 20],
+      ['blink', 25],
+      ['windshear', 30],
+      ['ward_shell', 35],
+      ['stonerise', 40],
+      ['ember_fan', 45],
+      ['geyser', 50],
+      ['meteor_shard', 54],
+      ['anvil_sky', 58],
+      ['stormcall', 62],
+      ['hollowcall', 66],
+      ['mirror_image', 70],
+      ['burning_glass', 74],
+      ['maelstrom', 78],
+      ['moonrise', 82],
+      ['cometfall', 86],
+      ['daybreak', 90],
     ],
     'the arx ladder is exactly its authored roster',
   );
   assert.equal(new Set(arts.map((t) => t.ability)).size, arts.length);
-  // The breath wave's own law holds here too: every between-rung art
-  // is a breath art (castTicks or channelTicks), never another
-  // press-edge instant.
-  for (const t of arts) {
-    if (RUNG_LEVELS.has(t.unlockLevel)) continue;
-    const ab = abilityDef(t.ability)!;
-    assert.ok(
-      (ab.castTicks ?? 0) > 0 || (ab.channelTicks ?? 0) > 0,
-      `${t.ability}: a between-rung seat must breathe (cast or channel)`,
-    );
-  }
+  assertBreathWave('arx');
 });
 
 test('THE KEEPER LADDER: beastcraft holds exactly its authored rungs', () => {
@@ -216,12 +211,12 @@ test('THE KEEPER LADDER: beastcraft holds exactly its authored rungs', () => {
       ['gentle_the_wild', 10],
       ['come_to_heel', 15],
       ['point_the_fang', 20],
-      ['keepers_balm', 25],
-      ['strewn_bait', 30],
-      ['the_quiet_walk', 35],
-      ['blood_of_the_pack', 40],
-      ['the_keepers_cry', 45],
-      ['voice_of_the_wild', 50],
+      ['keepers_balm', 30],
+      ['strewn_bait', 40],
+      ['the_quiet_walk', 50],
+      ['blood_of_the_pack', 60],
+      ['the_keepers_cry', 75],
+      ['voice_of_the_wild', 90],
     ],
     'the beastcraft ladder is exactly its authored roster',
   );
@@ -243,9 +238,9 @@ test('THE GREEN ARTS: farming = exactly its authored roster, every art damage 0'
     [
       ['sowers_step', 5],
       ['gardeners_mend', 15],
-      ['earthen_brace', 25],
-      ['hearthkeepers_calm', 35],
-      ['quickening_touch', 50],
+      ['earthen_brace', 30],
+      ['hearthkeepers_calm', 50],
+      ['quickening_touch', 75],
     ],
     'the farming ladder is exactly its authored roster',
   );

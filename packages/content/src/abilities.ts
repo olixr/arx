@@ -1914,8 +1914,9 @@ const defs: AbilityDef[] = [
   },
 
   // ------------------- THE BREATH BETWEEN RUNGS — onehand breath arts
-  // THE DRAWN BREATH's content wave: ten new blade voices seated
-  // BETWEEN the founding rungs, five casted and five channeled, each
+  // THE DRAWN BREATH's content wave: ten new blade voices (originally
+  // seated between the founding rungs; THE LONG ROAD now interleaves
+  // the whole school across 5..90), five casted and five channeled, each
   // carrying one element so gear may someday favor it. Casted arts
   // carry no castFreezeTicks (the wind-up IS the commit); channels
   // never ride a ground_field.
@@ -2065,8 +2066,9 @@ const defs: AbilityDef[] = [
   },
 
   // ---------------------- THE BREATH BETWEEN RUNGS — arx breath arts
-  // The mage school's between-rung wave: ten new askings of the world
-  // seated between the founding rungs, five casted and five channeled,
+  // The mage school's breath wave: ten new askings of the world
+  // (originally seated between the founding rungs; THE LONG ROAD now
+  // interleaves the whole school across 5..90), five casted and five channeled,
   // each speaking for ONE element the founding roster never claimed
   // whole (wick fire, the rime road, the gale, the quarry, the deep
   // well, the anvil cloud, the hollow, the lens, the early moon, the
@@ -4511,14 +4513,22 @@ export function abilityDef(id: string): AbilityDef | undefined {
  * when. Swapping among unlocked techniques is always free.
  *
  * THE HONED-ART LAW: each art carries three rank steps past Rank I,
- * reached at +15/+30/+45 base levels over its unlock. Rank II sharpens
- * numbers, Rank III adds a beat of utility, Rank IV is the signature —
- * one visible, nameable flourish. Notes are player-facing bench copy.
- * The ladder balance contract in ladder.test.ts keeps every art's
- * mature cycle value inside its style's band — tune there, not by ear.
+ * reached at +15/+30/+45 base levels over its unlock — compressed for
+ * rungs past 54 by THE SHORTENED CLIMB (shared rankStride), so every
+ * art masters exactly by 99. Rank II sharpens numbers, Rank III adds
+ * a beat of utility, Rank IV is the signature — one visible, nameable
+ * flourish. Notes are player-facing bench copy. The ladder balance
+ * contract in ladder.test.ts keeps every art's mature cycle value
+ * inside its style's band — tune there, not by ear.
+ *
+ * THE LONG ROAD: rungs span 5..90, striding wider as the XP curve
+ * steepens — ten-art schools climb [5,10,15,20,30,40,50,60,75,90],
+ * the two twenty-art schools (onehand, arx) walk every 5 to 50 then
+ * every 4 to 90, farming tends [5,15,30,50,75]. The road's whole
+ * length holds an unlock to walk toward; the capstone crowns at 90.
  */
 export const TECHNIQUES: readonly TechniqueDef[] = [
-  // THE GREEN ARTS ladder — rungs 5..50 on the farming skill.
+  // THE GREEN ARTS ladder — rungs 5..75 on the farming skill.
   {
     ability: 'sowers_step',
     style: 'farming',
@@ -4542,7 +4552,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'earthen_brace',
     style: 'farming',
-    unlockLevel: 25,
+    unlockLevel: 30,
     ranks: [
       { note: 'The ground holds harder.', self: { shieldHp: 18, durationTicks: 240 } },
       { note: 'The stance sets quicker.', cooldownTicks: 560 },
@@ -4552,7 +4562,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'hearthkeepers_calm',
     style: 'farming',
-    unlockLevel: 35,
+    unlockLevel: 50,
     ranks: [
       { note: 'The quiet settles deeper.', self: { armor: 5, durationTicks: 300 } },
       { note: 'The calm keeps longer.', self: { armor: 5, durationTicks: 400 } },
@@ -4562,7 +4572,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'quickening_touch',
     style: 'farming',
-    unlockLevel: 50,
+    unlockLevel: 75,
     ranks: [
       { note: 'The touch reaches further.', range: 5.5 },
       { note: 'The hand asks less often.', cooldownTicks: 900 },
@@ -4590,7 +4600,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'ember_edge',
     style: 'onehand',
-    unlockLevel: 8,
+    unlockLevel: 10,
     ranks: [
       { note: 'The edge bites deeper.', damage: 10 },
       {
@@ -4603,7 +4613,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'bull_rush',
     style: 'onehand',
-    unlockLevel: 10,
+    unlockLevel: 15,
     ranks: [
       { note: 'The shoulder hits harder.', damage: 10 },
       { note: 'A longer charge, sooner ready.', dashTiles: 4.2, cooldownTicks: 150 },
@@ -4613,7 +4623,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'millwork',
     style: 'onehand',
-    unlockLevel: 13,
+    unlockLevel: 20,
     ranks: [
       { note: 'Every pass grinds harder.', damage: 5 },
       { note: 'The wheel turns a fourth time.', channelTicks: 64 },
@@ -4623,7 +4633,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'whirlwind',
     style: 'onehand',
-    unlockLevel: 15,
+    unlockLevel: 25,
     ranks: [
       { note: 'Each cut bites deeper.', damage: 5 },
       { note: 'The blade reaches a step farther.', radius: 2.1 },
@@ -4633,7 +4643,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'levinstroke',
     style: 'onehand',
-    unlockLevel: 18,
+    unlockLevel: 30,
     ranks: [
       { note: 'The stroke lands heavier.', damage: 13 },
       {
@@ -4646,7 +4656,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'warcry',
     style: 'onehand',
-    unlockLevel: 20,
+    unlockLevel: 35,
     ranks: [
       {
         note: 'The shout holds more of the blow.',
@@ -4662,7 +4672,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'red_ledger',
     style: 'onehand',
-    unlockLevel: 23,
+    unlockLevel: 40,
     ranks: [
       { note: 'The toll rises.', damage: 5 },
       { note: 'More of the red comes home to you.', drainFrac: 0.5, cooldownTicks: 200 },
@@ -4672,7 +4682,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'steel_wave',
     style: 'onehand',
-    unlockLevel: 25,
+    unlockLevel: 45,
     ranks: [
       { note: 'The edges bite deeper.', damage: 8 },
       { note: 'The wave rolls out oftener.', cooldownTicks: 160 },
@@ -4682,7 +4692,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'cold_iron',
     style: 'onehand',
-    unlockLevel: 28,
+    unlockLevel: 50,
     ranks: [
       { note: 'The frost bites deeper.', damage: 12 },
       {
@@ -4696,7 +4706,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'bloodlust',
     style: 'onehand',
-    unlockLevel: 30,
+    unlockLevel: 54,
     ranks: [
       {
         note: 'The red joy holds for eight seconds.',
@@ -4715,7 +4725,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'frostwork',
     style: 'onehand',
-    unlockLevel: 33,
+    unlockLevel: 58,
     ranks: [
       { note: 'Each beat etches deeper.', damage: 4 },
       {
@@ -4729,7 +4739,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'stagger_stomp',
     style: 'onehand',
-    unlockLevel: 35,
+    unlockLevel: 62,
     ranks: [
       { note: 'The heel falls heavier.', damage: 9 },
       { note: 'The floor passes it farther.', radius: 2.4, cooldownTicks: 180 },
@@ -4744,7 +4754,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'first_light',
     style: 'onehand',
-    unlockLevel: 38,
+    unlockLevel: 66,
     ranks: [
       { note: 'You arrive harder.', damage: 14 },
       { note: 'The doorway opens farther off.', dashTiles: 4.5, cooldownTicks: 190 },
@@ -4754,7 +4764,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'headsman_stroke',
     style: 'onehand',
-    unlockLevel: 40,
+    unlockLevel: 70,
     ranks: [
       { note: 'The arc lands heavier.', damage: 14 },
       { note: 'The stroke returns to the shoulder sooner.', cooldownTicks: 170 },
@@ -4764,7 +4774,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'live_iron',
     style: 'onehand',
-    unlockLevel: 43,
+    unlockLevel: 74,
     ranks: [
       { note: 'The current bites deeper.', damage: 4 },
       { note: 'A fourth throat joins the circuit.', chainTargets: 4 },
@@ -4778,7 +4788,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'earthbreaker',
     style: 'onehand',
-    unlockLevel: 45,
+    unlockLevel: 78,
     ranks: [
       { note: 'You land heavier.', damage: 13 },
       { note: 'The leap carries farther; the verdict spreads wider.', dashTiles: 5.5, radius: 2.5 },
@@ -4788,7 +4798,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'gloomfall',
     style: 'onehand',
-    unlockLevel: 46,
+    unlockLevel: 82,
     ranks: [
       { note: 'The dark falls heavier.', damage: 15 },
       {
@@ -4802,7 +4812,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'noonfall',
     style: 'onehand',
-    unlockLevel: 48,
+    unlockLevel: 86,
     ranks: [
       { note: 'The light hammers harder.', damage: 5 },
       { note: 'Noon is sooner recalled.', cooldownTicks: 250 },
@@ -4812,7 +4822,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'warlords_descent',
     style: 'onehand',
-    unlockLevel: 50,
+    unlockLevel: 90,
     ranks: [
       { note: 'You land heavier still.', damage: 14 },
       { note: 'The banner spreads wider, oftener.', radius: 2.6, cooldownTicks: 220 },
@@ -4875,7 +4885,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'ricochet',
     style: 'archery',
-    unlockLevel: 25,
+    unlockLevel: 30,
     ranks: [
       { note: 'Each carom means it more.', damage: 9 },
       { note: 'A third change of mind.', chainTargets: 3 },
@@ -4885,7 +4895,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'twin_strike',
     style: 'archery',
-    unlockLevel: 30,
+    unlockLevel: 40,
     ranks: [
       { note: 'Heavier shafts.', damage: 11 },
       { note: 'The pair returns to your hand sooner.', cooldownTicks: 170 },
@@ -4895,7 +4905,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'skyfall_shot',
     style: 'archery',
-    unlockLevel: 35,
+    unlockLevel: 50,
     ranks: [
       { note: 'It falls heavier.', damage: 14 },
       { note: 'A wider shadow, called sooner.', radius: 2.2, cooldownTicks: 200 },
@@ -4908,7 +4918,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'phantom_flight',
     style: 'archery',
-    unlockLevel: 40,
+    unlockLevel: 60,
     ranks: [
       { note: 'The ghost cuts deeper.', damage: 10 },
       { note: 'It haunts you oftener.', cooldownTicks: 180 },
@@ -4922,7 +4932,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'storm_of_shafts',
     style: 'archery',
-    unlockLevel: 45,
+    unlockLevel: 75,
     ranks: [
       { note: 'Every falling shaft bites harder.', damage: 4 },
       { note: 'The patch grows.', radius: 2.6 },
@@ -4936,7 +4946,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'arrow_tempest',
     style: 'archery',
-    unlockLevel: 50,
+    unlockLevel: 90,
     ranks: [
       { note: 'Each shaft asks for more.', damage: 6 },
       { note: 'The storm gathers again sooner.', cooldownTicks: 220 },
@@ -4960,7 +4970,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'wickfire',
     style: 'arx',
-    unlockLevel: 8,
+    unlockLevel: 10,
     ranks: [
       { note: 'The flame flies heavier.', damage: 12 },
       {
@@ -4973,7 +4983,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'frost_lance',
     style: 'arx',
-    unlockLevel: 10,
+    unlockLevel: 15,
     ranks: [
       { note: 'The cold line lands harder.', damage: 10 },
       { note: 'Winter answers sooner.', cooldownTicks: 160 },
@@ -4987,7 +4997,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'rime_river',
     style: 'arx',
-    unlockLevel: 13,
+    unlockLevel: 20,
     ranks: [
       { note: 'The river runs deeper.', damage: 5 },
       { note: 'The river reaches farther downhill.', range: 12.5 },
@@ -5001,7 +5011,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'blink',
     style: 'arx',
-    unlockLevel: 15,
+    unlockLevel: 25,
     ranks: [
       { note: 'A longer stride between places.', dashTiles: 4.6 },
       { note: 'The door opens oftener.', cooldownTicks: 170 },
@@ -5011,7 +5021,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'windshear',
     style: 'arx',
-    unlockLevel: 18,
+    unlockLevel: 30,
     ranks: [
       { note: 'The gale leans harder.', damage: 13 },
       { note: 'The whole field bows away from you.', radius: 3.0, knockback: 2.6 },
@@ -5021,7 +5031,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'ward_shell',
     style: 'arx',
-    unlockLevel: 20,
+    unlockLevel: 35,
     ranks: [
       { note: 'The shell thickens.', self: { shieldHp: 14, durationTicks: 160 } },
       { note: 'The light gathers again sooner.', cooldownTicks: 280 },
@@ -5031,7 +5041,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'stonerise',
     style: 'arx',
-    unlockLevel: 23,
+    unlockLevel: 40,
     ranks: [
       { note: 'The rows rise sharper.', damage: 5 },
       { note: 'A wider quarry answers.', radius: 2.4 },
@@ -5041,7 +5051,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'ember_fan',
     style: 'arx',
-    unlockLevel: 25,
+    unlockLevel: 45,
     ranks: [
       { note: 'Each finger burns hotter.', damage: 7 },
       { note: 'A fourth finger opens.', projectiles: 4 },
@@ -5054,7 +5064,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'geyser',
     style: 'arx',
-    unlockLevel: 28,
+    unlockLevel: 50,
     ranks: [
       { note: 'The deep water rises harder.', damage: 14 },
       { note: 'The well mouth widens.', radius: 2.4, knockback: 2.2 },
@@ -5064,7 +5074,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'meteor_shard',
     style: 'arx',
-    unlockLevel: 30,
+    unlockLevel: 54,
     ranks: [
       { note: 'A heavier shard.', damage: 15 },
       { note: 'The burn spreads wider.', radius: 2.6 },
@@ -5077,7 +5087,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'anvil_sky',
     style: 'arx',
-    unlockLevel: 33,
+    unlockLevel: 58,
     ranks: [
       { note: 'The hammer falls heavier.', damage: 4 },
       { note: 'The anvil widens.', radius: 2.8 },
@@ -5091,7 +5101,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'stormcall',
     style: 'arx',
-    unlockLevel: 35,
+    unlockLevel: 62,
     ranks: [
       { note: 'Each strike asks for more.', damage: 6 },
       { note: 'The appointment runs long, and wide.', radius: 2.6, fieldTicks: 120 },
@@ -5101,7 +5111,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'hollowcall',
     style: 'arx',
-    unlockLevel: 38,
+    unlockLevel: 66,
     ranks: [
       { note: 'The nothing bites deeper.', damage: 14 },
       { note: 'The invitation reaches farther.', radius: 2.6, knockback: -2.4 },
@@ -5111,7 +5121,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'mirror_image',
     style: 'arx',
-    unlockLevel: 40,
+    unlockLevel: 70,
     ranks: [
       {
         note: 'The lie stands longer.',
@@ -5127,7 +5137,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'burning_glass',
     style: 'arx',
-    unlockLevel: 43,
+    unlockLevel: 74,
     ranks: [
       { note: 'The line burns finer and hotter.', damage: 5 },
       {
@@ -5140,7 +5150,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'maelstrom',
     style: 'arx',
-    unlockLevel: 45,
+    unlockLevel: 78,
     ranks: [
       { note: 'The drain pulls a deeper draught.', damage: 4 },
       { note: 'The eye widens.', radius: 3.0 },
@@ -5155,7 +5165,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'moonrise',
     style: 'arx',
-    unlockLevel: 46,
+    unlockLevel: 82,
     ranks: [
       { note: 'A heavier moon.', damage: 15 },
       {
@@ -5169,7 +5179,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'cometfall',
     style: 'arx',
-    unlockLevel: 48,
+    unlockLevel: 86,
     ranks: [
       { note: 'Heavier stones from farther away.', damage: 5 },
       { note: 'The sky opens wider.', radius: 2.6 },
@@ -5179,7 +5189,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'daybreak',
     style: 'arx',
-    unlockLevel: 50,
+    unlockLevel: 90,
     ranks: [
       { note: 'Noon weighs more.', damage: 17 },
       { note: 'A wider noon, delivered oftener.', radius: 2.8, cooldownTicks: 260 },
@@ -5242,7 +5252,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'fan_of_knives',
     style: 'sneak',
-    unlockLevel: 25,
+    unlockLevel: 30,
     ranks: [
       { note: 'Every edge asks for more.', damage: 8 },
       { note: 'The fan opens wider, oftener.', radius: 2.6, cooldownTicks: 180 },
@@ -5256,7 +5266,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'envenom',
     style: 'sneak',
-    unlockLevel: 30,
+    unlockLevel: 40,
     ranks: [
       {
         note: 'The oil holds for ten seconds.',
@@ -5278,7 +5288,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'feint_double',
     style: 'sneak',
-    unlockLevel: 35,
+    unlockLevel: 50,
     ranks: [
       {
         note: 'The lie stands longer.',
@@ -5294,7 +5304,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'exposing_strike',
     style: 'sneak',
-    unlockLevel: 40,
+    unlockLevel: 60,
     ranks: [
       { note: 'The seam opens wider.', damage: 10 },
       { note: 'You find it faster.', cooldownTicks: 150 },
@@ -5304,7 +5314,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'night_fangs',
     style: 'sneak',
-    unlockLevel: 45,
+    unlockLevel: 75,
     ranks: [
       { note: 'Sharper fangs.', damage: 6 },
       { note: 'A fourth fang joins the hunt.', projectiles: 4 },
@@ -5317,7 +5327,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'thousand_cuts',
     style: 'sneak',
-    unlockLevel: 50,
+    unlockLevel: 90,
     ranks: [
       { note: 'Each cut counts double.', damage: 4 },
       { note: 'A sixth beat in the drumroll.', hits: 6, cooldownTicks: 200 },
@@ -5372,7 +5382,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'shield_roof',
     style: 'shield',
-    unlockLevel: 25,
+    unlockLevel: 30,
     ranks: [
       { note: 'The roof bears more weather.', self: { shieldHp: 22, speedMult: 0.85, durationTicks: 160 } },
       { note: 'The weight learns your shoulders.', self: { shieldHp: 22, speedMult: 0.95, durationTicks: 160 } },
@@ -5382,7 +5392,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'turned_blow',
     style: 'shield',
-    unlockLevel: 30,
+    unlockLevel: 40,
     ranks: [
       { note: 'More of the blow goes home.', self: { reflectFrac: 0.45, durationTicks: 120 } },
       { note: 'The angle hardens the arm that holds it.', self: { reflectFrac: 0.45, armor: 4, durationTicks: 120 } },
@@ -5392,7 +5402,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'rampart_break',
     style: 'shield',
-    unlockLevel: 35,
+    unlockLevel: 50,
     ranks: [
       { note: 'The rim bites deeper ground.', damage: 15 },
       { note: 'The break spreads wider, oftener.', radius: 2.6, cooldownTicks: 200 },
@@ -5402,7 +5412,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'wheel_of_iron',
     style: 'shield',
-    unlockLevel: 40,
+    unlockLevel: 60,
     ranks: [
       { note: 'The wheel spins heavier.', damage: 11 },
       { note: 'A longer arc out, a shorter wait after.', range: 11, cooldownTicks: 190 },
@@ -5412,7 +5422,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'hold_the_line',
     style: 'shield',
-    unlockLevel: 45,
+    unlockLevel: 75,
     ranks: [
       { note: 'The line argues harder.', damage: 6 },
       { note: 'The ground holds it longer.', fieldTicks: 180 },
@@ -5422,7 +5432,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'unbroken',
     style: 'shield',
-    unlockLevel: 50,
+    unlockLevel: 90,
     ranks: [
       { note: 'The stand holds more.', self: { armor: 14, shieldHp: 26, reflectFrac: 0.45, durationTicks: 160 } },
       { note: 'The stand knits the arm that keeps it.', self: { armor: 14, shieldHp: 26, reflectFrac: 0.45, heal: 6, durationTicks: 160 } },
@@ -5474,7 +5484,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'colossus_stance',
     style: 'twohand',
-    unlockLevel: 25,
+    unlockLevel: 30,
     ranks: [
       { note: 'The wounds you leave open wider.', self: { speedMult: 1.1, onHitStatus: { status: 'bleed', power: 2, durationTicks: 60 }, durationTicks: 160 } },
       { note: 'The stride lengthens with the temper.', self: { speedMult: 1.18, onHitStatus: { status: 'bleed', power: 2, durationTicks: 60 }, durationTicks: 160 } },
@@ -5484,7 +5494,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'skysunder',
     style: 'twohand',
-    unlockLevel: 30,
+    unlockLevel: 40,
     ranks: [
       { note: 'The verdict lands heavier.', damage: 17 },
       { note: 'A longer leap, a shorter wait.', dashTiles: 6.0, cooldownTicks: 240 },
@@ -5494,7 +5504,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'executioners_arc',
     style: 'twohand',
-    unlockLevel: 35,
+    unlockLevel: 50,
     ranks: [
       { note: 'The stroke bites deeper.', damage: 14 },
       { note: 'It reads the sentence earlier.', executeBelow: { frac: 0.4, mult: 2.0 } },
@@ -5504,7 +5514,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'avalanche',
     style: 'twohand',
-    unlockLevel: 40,
+    unlockLevel: 60,
     ranks: [
       { note: 'Every blow falls heavier.', damage: 9 },
       { note: 'The slide starts sooner, ends sooner.', pulseEveryTicks: 7, cooldownTicks: 240 },
@@ -5514,7 +5524,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'breaker_charge',
     style: 'twohand',
-    unlockLevel: 45,
+    unlockLevel: 75,
     ranks: [
       { note: 'The shoulder hits harder.', damage: 15 },
       { note: 'A longer road, sooner open.', dashTiles: 5.0, cooldownTicks: 200 },
@@ -5524,7 +5534,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'titans_verdict',
     style: 'twohand',
-    unlockLevel: 50,
+    unlockLevel: 90,
     ranks: [
       { note: 'The rings strike heavier.', damage: 11 },
       { note: 'The rings come quicker, and shove.', damage: 11, radius: 2.7, pulseEveryTicks: 9, knockback: 2.0 },
@@ -5576,7 +5586,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'turning_reel',
     style: 'dualwield',
-    unlockLevel: 25,
+    unlockLevel: 30,
     ranks: [
       { note: 'The turn cuts deeper.', damage: 12 },
       { note: 'A wider round, called oftener.', radius: 2.5, cooldownTicks: 150 },
@@ -5586,7 +5596,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'red_ribbons',
     style: 'dualwield',
-    unlockLevel: 30,
+    unlockLevel: 40,
     ranks: [
       {
         note: 'The ribbons run redder.',
@@ -5605,7 +5615,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'swallows_dive',
     style: 'dualwield',
-    unlockLevel: 35,
+    unlockLevel: 50,
     ranks: [
       { note: 'The landing bites deeper.', damage: 14 },
       { note: 'A longer flight, a shorter wait.', dashTiles: 5.5, cooldownTicks: 210 },
@@ -5615,7 +5625,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'the_shears',
     style: 'dualwield',
-    unlockLevel: 40,
+    unlockLevel: 60,
     ranks: [
       { note: 'The blades close harder.', damage: 13 },
       { note: 'They read the thread earlier.', executeBelow: { frac: 0.35, mult: 2.2 }, cooldownTicks: 190 },
@@ -5625,7 +5635,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'storm_of_two',
     style: 'dualwield',
-    unlockLevel: 45,
+    unlockLevel: 75,
     ranks: [
       { note: 'Each ring lands heavier.', damage: 7 },
       { note: 'A fourth ring joins the round.', pulses: 4, cooldownTicks: 260 },
@@ -5635,7 +5645,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'hundred_hands',
     style: 'dualwield',
-    unlockLevel: 50,
+    unlockLevel: 90,
     ranks: [
       { note: 'Every hand hits harder.', damage: 6 },
       { note: 'The breath shortens.', cooldownTicks: 280, pulseEveryTicks: 4 },
@@ -5710,7 +5720,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'loose_iron',
     style: 'combat',
-    unlockLevel: 25,
+    unlockLevel: 30,
     ranks: [
       { note: 'Heavier iron in the hand.', damage: 6 },
       { note: 'A fourth thing finds your fingers.', projectiles: 4 },
@@ -5723,7 +5733,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'hold_fast',
     style: 'combat',
-    unlockLevel: 30,
+    unlockLevel: 40,
     ranks: [
       { note: 'The stance sets deeper.', self: { armor: 5, shieldHp: 10, durationTicks: 140 } },
       { note: 'Held longer.', self: { armor: 5, shieldHp: 12, durationTicks: 160 } },
@@ -5736,7 +5746,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'break_the_line',
     style: 'combat',
-    unlockLevel: 35,
+    unlockLevel: 50,
     ranks: [
       { note: 'More of you arrives at once.', damage: 15 },
       { note: 'The line bends further back.', damage: 16, knockback: 2.2 },
@@ -5751,7 +5761,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'the_opening',
     style: 'combat',
-    unlockLevel: 40,
+    unlockLevel: 60,
     ranks: [
       { note: 'The answer arrives heavier.', damage: 15 },
       { note: 'Sharper eyes, sharper price.', damage: 16 },
@@ -5761,7 +5771,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'no_quarter',
     style: 'combat',
-    unlockLevel: 45,
+    unlockLevel: 75,
     ranks: [
       { note: 'You keep more of what you take.', drainFrac: 0.3 },
       { note: 'Each refusal lands harder.', damage: 6, drainFrac: 0.3 },
@@ -5771,7 +5781,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'the_long_fight',
     style: 'combat',
-    unlockLevel: 50,
+    unlockLevel: 90,
     ranks: [
       { note: 'Each wave lands heavier.', damage: 8 },
       { note: 'The fight widens around you.', damage: 8, radius: 2.4 },
@@ -5962,7 +5972,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'keepers_balm',
     style: 'beastcraft',
-    unlockLevel: 25,
+    unlockLevel: 30,
     ranks: [
       { note: 'The poultice is packed thicker.', petHealFrac: 0.45, cooldownTicks: 320 },
       { note: 'The balm sheds whatever rides the friend.', petCleanse: true },
@@ -5976,7 +5986,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'strewn_bait',
     style: 'beastcraft',
-    unlockLevel: 30,
+    unlockLevel: 40,
     ranks: [
       { note: 'A wider table, laid longer.', summon: { kind: 'bait', durationTicks: 400, radius: 8, power: 0 } },
       { note: 'The hand scatters it sooner.', cooldownTicks: 380 },
@@ -5989,7 +5999,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'the_quiet_walk',
     style: 'beastcraft',
-    unlockLevel: 35,
+    unlockLevel: 50,
     ranks: [
       { note: 'The quiet holds longer.', self: { beastTruce: true, durationTicks: 600 } },
       { note: 'The walk begins again sooner.', cooldownTicks: 460 },
@@ -6002,7 +6012,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'blood_of_the_pack',
     style: 'beastcraft',
-    unlockLevel: 40,
+    unlockLevel: 60,
     ranks: [
       { note: 'The howl runs hotter.', petSurge: { dmgMult: 1.4, speedMult: 1.15, durationTicks: 240 } },
       { note: 'The blood stays up longer.', petSurge: { dmgMult: 1.4, speedMult: 1.15, durationTicks: 300 } },
@@ -6015,7 +6025,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'the_keepers_cry',
     style: 'beastcraft',
-    unlockLevel: 45,
+    unlockLevel: 75,
     ranks: [
       { note: 'The friend stands with more of itself.', petHealFrac: 0.5 },
       { note: 'The cry returns to you sooner.', cooldownTicks: 900 },
@@ -6029,7 +6039,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
   {
     ability: 'voice_of_the_wild',
     style: 'beastcraft',
-    unlockLevel: 50,
+    unlockLevel: 90,
     ranks: [
       { note: 'The voice carries further.', radius: 9 },
       { note: 'The awe holds longer, and the friend is mended deeper.', becalmTicks: 240, petHealFrac: 0.35 },

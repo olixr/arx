@@ -204,6 +204,7 @@ import {
   lessonFlag,
   masteryXp,
   rankLevel,
+  rankStride,
   techniqueAnchor,
   techniqueRank,
   techniqueRankFor,
@@ -242,8 +243,21 @@ test('techniqueRank: unlock boundary, surplus thresholds, and the cap', () => {
   assert.equal(RANK_SURPLUS.length, TECHNIQUE_MAX_RANK);
 });
 
+test('THE SHORTENED CLIMB: past anchor 54 the stride compresses toward 99', () => {
+  assert.equal(rankStride(5), 15, 'early anchors walk the standard clock');
+  assert.equal(rankStride(54), 15, '54 is the last standard-clock anchor');
+  assert.equal(rankStride(60), 13);
+  assert.equal(rankStride(90), 3, 'the level-90 capstone hones in threes');
+  assert.equal(techniqueRank(90, 92), 1, 'two shy of the short step stays rank I');
+  assert.equal(techniqueRank(90, 93), 2, 'the short stride steps at +3');
+  assert.equal(techniqueRank(90, 99), 4, 'the capstone masters exactly at 99');
+  for (const unlock of [5, 20, 54, 58, 66, 75, 82, 90]) {
+    assert.ok(rankLevel(unlock, TECHNIQUE_MAX_RANK) <= 99, `unlock ${unlock} masters by 99`);
+  }
+});
+
 test('rankLevel mirrors techniqueRank at every threshold', () => {
-  for (const unlock of [5, 15, 30, 45]) {
+  for (const unlock of [5, 15, 30, 45, 60, 75, 90]) {
     for (let rank = 1; rank <= TECHNIQUE_MAX_RANK; rank++) {
       const lvl = rankLevel(unlock, rank);
       assert.equal(techniqueRank(unlock, lvl), rank);

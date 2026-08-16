@@ -436,3 +436,44 @@ Balance note: cross-school combos (weapon art + off-school technique)
 are the point, not an exploit — each half still scales by its own
 school's level and gear axis, so the PAYOFF BRACKET's per-school
 cycle-value bands still hold; no art got stronger, only more portable.
+
+## Addendum — THE LONG ROAD (2026-08-16)
+
+User mandate: the ladders crammed every unlock below 50 — the first
+~1% of a school's XP journey under the RuneScape-curve table — and
+past 50 the road went silent for half the game. Spread the rungs so
+levels 60, 70, 80, and 90 still hand the player something to walk
+toward.
+
+The law, as shipped:
+
+- **The widening stride.** Ten-art schools (combat, archery, sneak,
+  twohand, shield, dualwield, beastcraft) climb
+  `[5,10,15,20,30,40,50,60,75,90]` — the new-player cadence through
+  20 untouched, then strides that widen as the XP curve steepens.
+  The style capstone crowns the ladder at 90.
+- **The deep schools stretch whole.** Onehand and arx keep their
+  twenty arts in authored order across
+  `[5..50 every 5, then 54,58,62,66,70,74,78,82,86,90]` — the old
+  7-arts-by-level-20 cram is gone; THE DRAWN BREATH's five casted +
+  five channeled voices are now pinned by count, not by seat.
+  Farming tends `[5,15,30,50,75]`.
+- **THE SHORTENED CLIMB.** Rank stride = `min(15, ⌊(99−anchor)/3⌋)`
+  (shared `rankStride`): anchors ≤54 keep the standard +15/+30/+45
+  clock byte-identical (every shipped page and secret art is ≤54);
+  later rungs hone on a compressed clock so every art masters
+  exactly by 99 — the level-90 capstone steps at 93/96/99. The hand
+  that earned a late art is already a master's hand.
+- **Grandfathering is free.** Unlocks derive from level; nothing is
+  stored. A seated art whose rung moved above the owner keeps
+  casting (rank resolution floors at the base def) — only
+  re-slotting asks for the new level. No migration.
+- **The contracts moved with the law.** OPEN LADDER pin → THE LONG
+  ROAD tables; the rank-clock test asserts mastery-by-99 through
+  `rankLevel`; PAYOFF BRACKET (L10/25/50/75/95) and RELEVANCE LAW
+  pass unchanged — no art got stronger, only better paced.
+
+Proven live on lane 14 (:8840/:5240, DB arx_longroad): fresh combat
+codex at 24 reads "4 of 10 arts, next at 30, 5 more past 40"; onehand
+at 91 reads "20 of 20", Warlord's Descent Rank I with studs at
+93/96/99. 218/514/493/613 green, tsc clean.
