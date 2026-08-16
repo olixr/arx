@@ -215,20 +215,38 @@ write-tree + commit-tree + update-ref CAS) — the shared index is
 never touched. (3) A neighbor's commit can ROLL BACK your files if
 they staged from an older base (d14d8efc reverted the six-station
 work and broke tsc on main) — after any interleaved commit, diff
-YOUR files against new HEAD before building on it.
+YOUR files against new HEAD before building on it. (4) **The CAS
+alone is not enough** (cacf1f1a clobbered a6b3ae77's shields the
+same way and cde1c62c repaired it): HEAD can advance between
+read-tree and update-ref, and the CAS parent will happily point at a
+commit your tree never saw. After write-tree, `git diff <CAS-parent>
+<tree> --stat` and ASSERT only your own files appear — rebuild from
+the new head if anything else shows.
+
+**Phase 2 + close-out (cacf1f1a, shields restored in cde1c62c).**
+PoseState.Fish (18) + Build (19). Server: gather-fishing → Fish at
+start AND per-tick; build/demolish → Build; tend joins milk's byte;
+routine `work:'fish'` stops (validator widened — the one non-boolean
+work verb; fall_fisher_deep + pine_fisher flipped); cook posts pulse
+Craft (ladle stir at their fire); nine transient setPose beats:
+workStart/collect/compost/trough → Craft 24 (the 'tend' spec —
+findStation maps windmill/churn/press/keg/smoker/drying-rack/compost/
+apiary tiles to it), plant/water/fertilize/mulch/prune → Gather 20
+(crop tiles classify to the forage kneel). Client: 'build' spec
+(kneeling mallet, crouch channel consumed via the pose const — BOTH
+copies, drawHumanoid + drawBackGear), findFishWater (spot first, open
+water ±4 fallback — the pier case), THE CONJURED ROD + paintFishLine
+extracted (rod-less NPC anglers get line/bobber/ripples), unified
+fishAt drives slew/cache-exemption/auto-equip/splash-gate,
+sfx.benchKnock + sfx.sawRasp through the one impact door.
 
 ## Still owed (next sessions)
 
-- **Phase 2**: PoseState.Build/Harvest server routing — remote
-  builders/demolishers still guess trees; NPC verb fidelity (NPCs
-  play one Craft byte; fishers at work stops animate as station
-  work). Build/demolish kneel-and-tap school.
 - **Phase 6**: the live walk — in-game verification of slew, node
-  shiver, clang lock, patient line at real stations/nodes, plus
-  town-artisan drive-by (the 56 work stops).
-- Milk/tend NPC target: `tend` plays Milk with no cow — fine (bare
-  dairy hands), unaudited.
-- Bench knock + saw rasp sfx one-shots; loom/tanning impact beats.
-- Async station work (windmill/churn/press/keg/smoker/apiary) and
-  farm tending verbs (water/plant/fertilize/mulch/prune) still have
-  no body state — the plan's original inventory stands.
+  shiver, clang lock, patient line, the tend beats, the Build verb,
+  and the town-artisan + pier-fisher drive-by, on a real server lane.
+- Loom/tanning impact beats (visual-only cycles today; candidates
+  for soft one-shots later).
+- Consider `work:'fish'` for the six plain-post fisher routines
+  (salt_angler family) after eyeballing their posts against water on
+  the live walk.
