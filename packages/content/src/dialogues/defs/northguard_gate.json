@@ -1,0 +1,50 @@
+{
+  "id": "northguard_gate",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "pinewatch_northguard" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "northguard_gate__hub",
+      "text": "Northguard. The gate opens at dawn and bars at the beacon. State your road.",
+      "choices": [
+        { "text": "What is north of here?", "next": "north" },
+        {
+          "text": "Anything moving out there?",
+          "next": "mark",
+          "requires": ["world:threat_near"],
+          "forbids": ["world:bounty_open"]
+        },
+        {
+          "text": "Where was that trouble again?",
+          "next": "remark",
+          "requires": ["world:bounty_open"]
+        },
+        { "text": "Just passing, guard.", "next": "off" }
+      ]
+    },
+    {
+      "id": "north",
+      "voice": "northguard_gate__north",
+      "text": "Two days of drove road to Hartfell if you stay on it. Notch country first, then the braid, then the fells. The road is the only promise anyone has made out there, and the Waykeepers keep it and we keep this end. Step off it and you are on ground that owes you nothing.",
+      "next": "hub"
+    },
+    {
+      "id": "mark",
+      "voice": "northguard_gate__mark",
+      "text": "Since you ask. Something has planted itself in the country this post watches, and my orders end at the wall. There is your mark. The captain signs for dead wolves and worse things, if you are collecting.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "remark",
+      "voice": "northguard_gate__remark",
+      "text": "Where it was. The mark is on your chart, and it has not had the decency to leave.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "off",
+      "voice": "northguard_gate__off",
+      "text": "Walk on. If the beacon lights behind you, turn around and walk faster."
+    }
+  ]
+}

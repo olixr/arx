@@ -1,0 +1,28 @@
+{
+  "id": "odd_the_row",
+  "start": "sent",
+  "requires": ["quest:the_cold_signs:stage:the_runs"],
+  "bindings": [{ "kind": "actor", "target": "nurseryman_odd", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "sent",
+      "voice": "odd_the_row__sent",
+      "text": "The water sent you. That is Ylva being careful with both of us. Come. Look at the new row, the one that went in this spring. Look at the lean.",
+      "next": "lean"
+    },
+    {
+      "id": "lean",
+      "voice": "odd_the_row__lean",
+      "text": "Every seedling, the same way, like they are listening to something north of here. The row planted the spring after the ice year grew exactly so. I have spent a month calling it wind. It is not wind.",
+      "choices": [
+        { "text": "How can a tree know?", "next": "know" }
+      ]
+    },
+    {
+      "id": "know",
+      "voice": "odd_the_row__know",
+      "text": "Trees do not know. Trees answer. Cold coming long and slow bends the growth before any of us feel it, and a row is forty answers in a line. Trees take years to finish their sentences. The hounds finish theirs faster. Go and ask Ranka at the fort what her pen has been saying.",
+      "next": "lean"
+    }
+  ]
+}

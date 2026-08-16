@@ -1,0 +1,56 @@
+{
+  "id": "kolbrun_count",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "hunter_kolbrun" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "kolbrun_count__greet",
+      "text": "The Hunters' Hall. Wipe your boots, the floor is the only carpet the cull ever bought us.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "kolbrun_count__hub",
+      "text": "Kolbrun. I keep the count. Ask.",
+      "choices": [
+        { "text": "What is the cull?", "next": "cull" },
+        { "text": "Show me the leathers.", "next": "shop" },
+        { "text": "Any advice for the wood?", "next": "advice" },
+        { "text": "Good hunting.", "next": "off" }
+      ]
+    },
+    {
+      "id": "cull",
+      "voice": "kolbrun_count__cull",
+      "text": "A rota, not a sport. The wood can spare so many wolves, so many boar, so many hides a season, and we take exactly that and write it down. The count is the licence. Lose the count and you are not a hunter, you are just a wolf that pays taxes.",
+      "choices": [
+        { "text": "Who checks the count?", "next": "checks" },
+        { "text": "Understood.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "checks",
+      "voice": "kolbrun_count__checks",
+      "text": "The wood does. Take too many and the deer strip the seedlings and Odd comes for you with forty years of quiet. Take too few and the packs press the drove road and Stellan comes for you with paperwork. The count is where everyone's argument agrees.",
+      "next": "hub"
+    },
+    {
+      "id": "shop",
+      "voice": "kolbrun_count__shop",
+      "text": "Honest leathers, cut for the road north, and the furs the count could spare. First quality goes to Hartfell, and I say so out loud because Ranna would say it louder.",
+      "hooks": [{ "kind": "shop", "shop": "kolbrun_leathers" }]
+    },
+    {
+      "id": "advice",
+      "voice": "kolbrun_count__advice",
+      "text": "Walk like you owe the ground an apology. Downwind is a direction, not a suggestion. And if the wood goes quiet around you, it is not admiring your boots. Leave.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "kolbrun_count__off",
+      "text": "Count what you take. The wood already is."
+    }
+  ]
+}

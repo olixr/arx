@@ -1,0 +1,75 @@
+{
+  "id": "maren_physic",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "herbalist_maren" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "maren_physic__greet",
+      "text": "Salve first. Show me the hands. Mm. You will live, which puts you ahead of most of my mornings.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "maren_physic__hub",
+      "text": "Maren. The garden and the salve are mine. Ask.",
+      "choices": [
+        { "text": "What goes into the salve?", "next": "salve" },
+        { "text": "Your garden is very small.", "next": "garden" },
+        {
+          "text": "You carried four true things to Halla once, they say.",
+          "next": "fifth",
+          "requires": ["cold_signs_known"]
+        },
+        { "text": "Be well, Maren.", "next": "off" }
+      ]
+    },
+    {
+      "id": "salve",
+      "voice": "maren_physic__salve",
+      "text": "Sagewort base, moonbell thread, pine tar because we are where we are. Nial sells it on his shelf at his margin and I let him, because his shelf is dry and mine is a garden. The axe hands buy it by the season. The garrison buys it by the drill.",
+      "next": "hub"
+    },
+    {
+      "id": "garden",
+      "voice": "maren_physic__garden",
+      "text": "A garden should be finishable. Most things are not. I finish this one every evening and it is the best hour I own. The wood out there is four hundred years of unfinished, and I leave it to the people who like that sort of thing.",
+      "next": "hub"
+    },
+    {
+      "id": "fifth",
+      "voice": "maren_physic__fifth",
+      "text": "I carried nothing. You carried. But since you are the one who listens, you can carry a fifth thing, and it is older than the other four.",
+      "choices": [
+        { "text": "Say it.", "next": "count" },
+        { "text": "Another time.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "count",
+      "voice": "maren_physic__count",
+      "text": "The stone counts the fourteen the town could name. But the out-camps held road folk that winter too, a peddler family iced in, faces with no names for the granite. I was four. Somebody wrapped me in a net float, walked me over the ice, set me inside the wall, and went back into the dark. Every Frostfall I count seven faces at my own fire, quietly, because somebody counted me.",
+      "choices": [
+        { "text": "Who carried you?", "next": "who" },
+        { "text": "I will remember them too.", "next": "kept" }
+      ]
+    },
+    {
+      "id": "who",
+      "voice": "maren_physic__who",
+      "text": "I was four. I remember a coat that smelled of pitch, and the sound the ice makes when it is deciding. Every soul in this town has told me it must have been somebody else's somebody. One day the lake will give the answer back. It keeps everything, that water. It is only slow.",
+      "next": "hub"
+    },
+    {
+      "id": "kept",
+      "voice": "maren_physic__kept",
+      "text": "Then there are two of us, and the count is safer by one. That is all keeping ever is. Take a salve from the basket. No coin. That one is between us and Frostfall.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "maren_physic__off",
+      "text": "Salve before blisters, supper before dark, and do not argue with the moonbell. It always wins."
+    }
+  ]
+}

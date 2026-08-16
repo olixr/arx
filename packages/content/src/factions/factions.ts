@@ -148,6 +148,13 @@ export const FACTIONS: FactionsDef = {
         'reeve_halla',
         'pinewatch_watch',
         'pinewatch_sawyer',
+        // The Northguard: the Crown's fort astride the Hartway pass
+        // (PINEWATCH REMADE). The town holds the Crown to it.
+        'captain_stellan',
+        'quartermaster_berget',
+        'serjeant_ove',
+        'houndmistress_ranka',
+        'pinewatch_northguard',
         'buyer_ospren',
         'sawmistress_groa',
         'sparmaster_yannick',
@@ -161,7 +168,7 @@ export const FACTIONS: FactionsDef = {
         'old_torvi',
         'fisher_ylva',
       ],
-      enforcers: ['castle_guard', 'silverfall_watch', 'pinewatch_watch', 'hoargate_watch'],
+      enforcers: ['castle_guard', 'silverfall_watch', 'pinewatch_watch', 'hoargate_watch', 'pinewatch_northguard'],
       npcPrefixes: [],
       anchors: [
         { x: -448, y: -220 },

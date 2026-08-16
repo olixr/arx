@@ -518,6 +518,45 @@ Halla — different woman, colder job.)
 - **Sawyers** (pooled): deck-noise clipped; fond of certain sticks and
   won't say so on the floor.
 
+(PINEWATCH REMADE — the Northguard and the Southreach. The fort is the
+Crown's, the rota is the town's, and everyone reads the difference
+daily. Four of these voices carry one true thing each about the coming
+winter; none of them says it unasked.)
+- **Captain Stellan** (Northguard): wants the pass held without ever
+  proving it needed to be; eleven years bored and proud of it. Cadence:
+  clipped command grammar with a dry self-aware edge; doctrine quoted
+  like scripture, jokes filed as doctrine.
+- **Quartermaster Berget**: wants nothing ever missing, including
+  explanations; sells the makings, never the made. Cadence: requisition
+  forms made flesh; explains a thing exactly once and says so.
+- **Serjeant Ove**: town-born, Crown-sworn, the fort's one bridge;
+  wants never to be made to choose. Cadence: drill-yard bark softened
+  by inn-kitchen roots; counts things aloud.
+- **Houndmistress Ranka**: wants the line kept and the north to stay
+  wrong about them; talks to hounds in full sentences, people in most
+  of one. Her true thing: the pen stopped sleeping north. Cadence:
+  short, certain, dog-first.
+- **Fletcher Espen**: wants the kept dozen never needed; strings bows
+  with the stories of their trees. Cadence: quiet workshop musing,
+  deflects with sales.
+- **Master Hunter Kolbrun**: wants the count to stay boring; her true
+  thing: the wolves are leaving. Cadence: field-report economy; scorn
+  for sport, reverence for the licence.
+- **Herbalist Maren**: wants a finishable garden and the uncounted
+  remembered; carried over the ice at four, counts seven faces every
+  Frostfall. Cadence: brisk healer's triage warming to slow, exact
+  memory; never asks for pity, declines it pre-emptively.
+- **Ironmaster Torger**: wants the seam worked at the mountain's pace
+  and his sell-order beyond question. Cadence: slow, geologic; treats
+  arguments as weather.
+- **Drover Sylvi**: wants every head counted in and out and the gossip
+  delivered at drover rates. Cadence: road-rhythm chatter, one free
+  warning per stranger.
+- **Northguard** (pooled): the Crown's pass post, young enough to think
+  the quiet is normal. Cadence: gate-rules flat, orders quoted.
+- **Hunters** (pooled): patched leathers, tally strings with fewer
+  knots than last year. Cadence: trail-quiet; lines, no dialogue.
+
 ### Saltmere — the town at the water's end
 - **Portreeve Brack**: wants the port to outlive him; the year the mere took
   four boats, he was the one who said go out. Cadence: harbormaster's economy

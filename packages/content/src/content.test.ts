@@ -2265,17 +2265,21 @@ test('pinewatch: the watch town holds its knoll, its waters, and four ways in', 
   assert.deepEqual(z.spawn, { x: 1096 + 66.5, y: -404 + 50.5 });
   // The cast.
   const actors = z.actorSpawns ?? [];
-  assert.equal(actors.length, 22, 'Pinewatch lost residents');
+  assert.equal(actors.length, 37, 'Pinewatch lost residents (REMADE: 22 + the Northguard and the Southreach)');
   for (const slug of [
     'reeve_halla', 'old_torvi', 'sawmistress_groa', 'sparmaster_yannick', 'smith_vigga',
     'innkeep_sunniva', 'pitchmaster_rullo', 'factor_ebba', 'buyer_ospren', 'storekeep_nial',
     'tallyman_bram', 'boomsman_kettil', 'nurseryman_odd', 'warden_sigrun', 'fisher_ylva',
+    'captain_stellan', 'quartermaster_berget', 'serjeant_ove', 'houndmistress_ranka',
+    'fletcher_espen', 'hunter_kolbrun', 'herbalist_maren', 'ironmaster_torger', 'drover_sylvi',
   ]) {
     assert.ok(actors.some((a) => a.actor === slug), `${slug} missing from Pinewatch`);
   }
   assert.equal(actors.filter((a) => a.actor === 'pinewatch_watch').length, 3);
   assert.equal(actors.filter((a) => a.actor === 'pinewatch_sawyer').length, 3);
-  assert.equal(actors.filter((a) => a.routine).length, 22, 'every keeper keeps hours');
+  assert.equal(actors.filter((a) => a.actor === 'pinewatch_northguard').length, 4, 'the gate pair and the patrol pair');
+  assert.equal(actors.filter((a) => a.actor === 'pinewatch_hunter').length, 2, 'the cull keeps two on the board');
+  assert.equal(actors.filter((a) => a.routine).length, 37, 'every keeper keeps hours');
   assert.ok((z.signs ?? []).length >= 16, 'the town lost its boards');
   // The elevation layer round-trips (the Silverfall law, not the flat one).
   const json = zoneToJson(z);

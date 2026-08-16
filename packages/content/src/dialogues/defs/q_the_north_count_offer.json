@@ -1,0 +1,39 @@
+{
+  "id": "q_the_north_count_offer",
+  "start": "hub",
+  "requires": ["quest:the_north_count:available"],
+  "bindings": [{ "kind": "actor", "target": "captain_stellan", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_the_north_count_offer__hub",
+      "text": "You look like somebody whose legs work. Good. The drove season peaks this month and wolves are working the notch country north of the Hartgate, close enough that the beacon watch hears them on still nights. I want six taken. Not five. Not the pack entire. Six.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_north_count" }],
+      "choices": [
+        { "text": "Why exactly six?", "next": "six" },
+        { "text": "Consider it done.", "next": "sworn" },
+        { "text": "Hire a soldier. You have a fort of them.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "six",
+      "voice": "q_the_north_count_offer__six",
+      "text": "Because Kolbrun's rota takes what the wood can spare and the Northguard takes what the road cannot, and six is where those two numbers meet this month. We count here. It is the whole difference between a cull and a slaughter.",
+      "choices": [
+        { "text": "Then six it is.", "next": "sworn" },
+        { "text": "Not my errand.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "voice": "q_the_north_count_offer__sworn",
+      "text": "Out the Hartgate, stay in sight of the road, and do not flatter yourself that they have not already counted you. Come back to me, not to the serjeant. I sign for the dead.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_north_count" }]
+    },
+    {
+      "id": "declined",
+      "voice": "q_the_north_count_offer__declined",
+      "text": "My soldiers hold the gate. The moment they are out chasing wolves, the gate is what the wolves were for. That is the oldest trick the north knows. No. I hire strangers, and I pay them properly."
+    }
+  ]
+}

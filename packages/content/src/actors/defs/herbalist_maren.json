@@ -1,0 +1,36 @@
+{
+  "id": "herbalist_maren",
+  "name": "Maren",
+  "title": "The Herbalist",
+  "examine": "Makes the salve every axe hand in town swears by. Born in the out-camps the Wolfwinter emptied; carried inside the wall at four years old. She keeps a very small garden and a very long memory.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 1,
+      "hairColor": 5,
+      "beard": 0,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 4,
+      "pants": 6
+    }
+  },
+  "inventory": [
+    {
+      "item": "mending_salve",
+      "qty": 2
+    },
+    {
+      "item": "coins",
+      "qty": 26
+    }
+  ],
+  "lines": [
+    "Salve first. Whatever you came for, it is salve first. I have met woodcutters.",
+    "Sagewort forgives poor soil. Moonbell does not. People are one or the other too.",
+    "The garden is small because a garden should be finishable. Most things are not."
+  ]
+}

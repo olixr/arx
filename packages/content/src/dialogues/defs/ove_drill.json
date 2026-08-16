@@ -1,0 +1,47 @@
+{
+  "id": "ove_drill",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "serjeant_ove" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "ove_drill__greet",
+      "text": "Serjeant Ove. Yes, that Ove, Sunniva's cousin's boy, the whole town has told you already. Stand clear of the butts.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "ove_drill__hub",
+      "text": "Quick, I have forty spears to count.",
+      "choices": [
+        { "text": "A town man in Crown colors. How is that?", "next": "both" },
+        { "text": "What do you drill for?", "next": "drill" },
+        { "text": "Who watches whom around here?", "next": "verdict" },
+        { "text": "Carry on, serjeant.", "next": "off" }
+      ]
+    },
+    {
+      "id": "both",
+      "voice": "ove_drill__both",
+      "text": "I stood tower nights before I ever wore the weld. The rota made me, the Crown just pays me. If the two ever disagree I will let you know which way I fall, and so will the whole town, loudly, at the inn, with my aunt leading.",
+      "next": "hub"
+    },
+    {
+      "id": "drill",
+      "voice": "ove_drill__drill",
+      "text": "Forty push of spear at dawn, forty at dusk, and the rack counted twice. The men think I love counting. What I love is that nothing has ever been missing. There is a difference and the difference is the whole job.",
+      "next": "hub"
+    },
+    {
+      "id": "verdict",
+      "voice": "ove_drill__verdict",
+      "text": "The tower watches the water. The fort watches the road. The town watches the fort. It sounds like a joke and it works like a treaty, and in the north you learn not to care which one a thing is, so long as it holds.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "ove_drill__off",
+      "text": "Walk on. If you hear the gong it is not for practice, and if you hear me it is."
+    }
+  ]
+}

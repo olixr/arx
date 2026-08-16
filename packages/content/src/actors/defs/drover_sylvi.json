@@ -1,0 +1,35 @@
+{
+  "id": "drover_sylvi",
+  "name": "Sylvi",
+  "title": "Drover of the Hartway",
+  "examine": "Walks the fell road both ways and carries both towns' gossip at drover rates. Counts every head in and every head out, and has never lost one she will admit to.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 3,
+      "hairColor": 3,
+      "beard": 0,
+      "eyes": 3,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 9,
+      "pants": 7
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 33
+    }
+  ],
+  "lines": [
+    "Two days up, two days down, and the road tells you everything if you walk it enough.",
+    "Hartfell sends meat and leather down. We send boards and iron up. Everybody eats, everybody builds.",
+    "Stay on the road. I say that for free. The second time costs you a drink."
+  ]
+}

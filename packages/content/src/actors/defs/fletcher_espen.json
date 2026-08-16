@@ -1,0 +1,42 @@
+{
+  "id": "fletcher_espen",
+  "name": "Espen",
+  "title": "The Fletcher",
+  "examine": "Strings every bow with the story of the tree it was. Sells arrows by the dozen and keeps the best dozen back, and will not be drawn on the difference.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 1,
+      "hair": 5,
+      "hairColor": 4,
+      "beard": 1,
+      "eyes": 3,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 6,
+      "pants": 7
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "leather_boots",
+    "weapon": "hunting_bow"
+  },
+  "inventory": [
+    {
+      "item": "arrow",
+      "qty": 24
+    },
+    {
+      "item": "coins",
+      "qty": 38
+    }
+  ],
+  "lines": [
+    "A bow is a tree taught a second trade.",
+    "Yannick gets the one tree in a hundred. I get the one branch in a thousand. We do not argue. We trade.",
+    "The dozen on the counter are good. The dozen under it are spoken for. No, not by you."
+  ],
+  "shop": "espen_staves"
+}

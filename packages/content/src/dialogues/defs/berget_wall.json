@@ -1,0 +1,47 @@
+{
+  "id": "berget_wall",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "quartermaster_berget" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "berget_wall__greet",
+      "text": "Quartermaster Berget. Requisitions close at dusk. Purchases close when I say. What is it?",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "berget_wall__hub",
+      "text": "Speak or buy. Both is also allowed.",
+      "choices": [
+        { "text": "Show me the shelves.", "next": "shop" },
+        { "text": "Why does your steel cost more?", "next": "tax" },
+        { "text": "Do you sell weapons?", "next": "makings" },
+        { "text": "Nothing today.", "next": "off" }
+      ]
+    },
+    {
+      "id": "shop",
+      "voice": "berget_wall__shop",
+      "text": "Bar stock, coal, arrows, and the tincture the drill yard goes through like water. Count your coin before I do.",
+      "hooks": [{ "kind": "shop", "shop": "berget_wall" }]
+    },
+    {
+      "id": "tax",
+      "voice": "berget_wall__tax",
+      "text": "One coin more in ten than the Charterhouse. That coin buys the wall you will stand behind the day the price of everything else goes strange. I call it the wall tax. I have now explained it, which happens once.",
+      "next": "hub"
+    },
+    {
+      "id": "makings",
+      "voice": "berget_wall__makings",
+      "text": "I sell the makings, never the made. Issued steel is counted steel, and a civilian blade is earned at an anvil. Vigga's, for preference. Tell her I sent you and she will charge you the same as everyone, because she is Vigga.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "berget_wall__off",
+      "text": "Then stand clear of the window. The window is for people with requisitions, and hope is not a requisition."
+    }
+  ]
+}

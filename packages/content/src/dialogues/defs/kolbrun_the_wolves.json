@@ -1,0 +1,28 @@
+{
+  "id": "kolbrun_the_wolves",
+  "start": "book",
+  "requires": ["quest:the_cold_signs:stage:the_door"],
+  "bindings": [{ "kind": "actor", "target": "hunter_kolbrun", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "book",
+      "voice": "kolbrun_the_wolves__book",
+      "text": "The hounds sent you. Then you have earned the page. Look. A month, nothing written. Not because there was nothing to write. Because I did not want to be the one who wrote it.",
+      "next": "low"
+    },
+    {
+      "id": "low",
+      "voice": "kolbrun_the_wolves__low",
+      "text": "The count is low. You expected high. Everyone expects high, wolves at the door, a hard cull. No. The packs are leaving the near wood. Through my licence, south and east, and not stopping to hunt on the way.",
+      "choices": [
+        { "text": "Why would wolves leave?", "next": "leave" }
+      ]
+    },
+    {
+      "id": "leave",
+      "voice": "kolbrun_the_wolves__leave",
+      "text": "Animals leave first. Ask anyone who ever read a flood plain. Something north of the water is moving them off ground their grandmothers denned on. Take all four of us to Halla, and tell her I said the word she has been waiting for somebody else to say first. Winter.",
+      "next": "low"
+    }
+  ]
+}

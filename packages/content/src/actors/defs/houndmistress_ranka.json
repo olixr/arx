@@ -1,0 +1,36 @@
+{
+  "id": "houndmistress_ranka",
+  "name": "Ranka",
+  "title": "Houndmistress",
+  "examine": "Keeps the fort's hounds — the line bred down from Bern's dog, the one that came back across the ice. She talks to them in full sentences and to people in most of one.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 4,
+      "hairColor": 2,
+      "beard": 0,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 7,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 22
+    }
+  ],
+  "lines": [
+    "They are not pets. They are colleagues with better hearing.",
+    "Bern's dog swam back through broken ice. Everything in that pen remembers it in the blood.",
+    "If a hound of mine does not like you, I want to know why before you leave."
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "id": "pinewatch_hunter",
+  "name": "Pinewatch Hunter",
+  "title": "On the Cull",
+  "examine": "Quiet boots, patched leathers, and a tally string on the belt with fewer knots in it than last year. They have noticed. They do not talk about it.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "combat": {
+    "level": 27,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 110,
+      "damage": 8,
+      "speed": 3.5,
+      "leashRange": 10
+    }
+  },
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 5,
+      "hairColor": 2,
+      "beard": 2,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 7,
+      "pants": 7
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "leather_boots",
+    "weapon": "hunting_bow"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 12
+    }
+  ],
+  "lines": [
+    "The count is the count. Kolbrun writes it, the wood checks it.",
+    "You walk loud. Everything north of the wall already knows your name.",
+    "Wolves first, then boar, then whatever the winter sends. There is always a then."
+  ]
+}

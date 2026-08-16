@@ -1,0 +1,89 @@
+{
+  "id": "stellan_pass",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "captain_stellan" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "stellan_pass__greet",
+      "text": "Captain Stellan, Northguard. State your business or walk on. Both are permitted and one is faster.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "stellan_pass__hub",
+      "text": "Well?",
+      "choices": [
+        { "text": "What is this fort for?", "next": "fort" },
+        { "text": "The town seems wary of you.", "next": "wary" },
+        {
+          "text": "Halla told me what the four of them saw.",
+          "next": "cold",
+          "requires": ["cold_signs_known"]
+        },
+        { "text": "Nothing, captain.", "next": "off" }
+      ]
+    },
+    {
+      "id": "fort",
+      "voice": "stellan_pass__fort",
+      "text": "The pass. Two days north is Hartfell, and between here and there is country that has never once asked anyone's permission. The Crown put a wall at the bottleneck and me inside it.",
+      "choices": [
+        { "text": "Has it ever been attacked?", "next": "bored" },
+        {
+          "text": "I thinned the wolves at the notch.",
+          "next": "thanks",
+          "requires": ["northline_walked"]
+        },
+        { "text": "Fair enough.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "bored",
+      "voice": "stellan_pass__bored",
+      "text": "Never. You drill for the day that stops being true and you pray to stay bored. I have been bored eleven years. I am very good at it now, and I intend to retire undefeated.",
+      "next": "hub"
+    },
+    {
+      "id": "thanks",
+      "voice": "stellan_pass__thanks",
+      "text": "So I heard. The beacon watch hears the notch on still nights, and this week it heard nothing. They sleep better, which means I sleep at all. The Crown pays its debts and so do I.",
+      "next": "hub"
+    },
+    {
+      "id": "wary",
+      "voice": "stellan_pass__wary",
+      "text": "They watched this water four hundred years without help, and then help arrived wearing a banner and drawing a payroll. I would be wary of me too. The rota still stands. We hold the one door it never reached.",
+      "choices": [
+        { "text": "And if the two ever disagree?", "next": "disagree" },
+        { "text": "Understood.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "disagree",
+      "voice": "stellan_pass__disagree",
+      "text": "Then the reeve wins, inside these walls. That is not modesty. It is doctrine, and it is mine, and Hoargate has it in writing whether they like the filing or not.",
+      "next": "hub"
+    },
+    {
+      "id": "cold",
+      "voice": "stellan_pass__cold",
+      "text": "So she told you. Then understand my yard. I do not drill them harder because I enjoy the shouting. Four honest people smelled the same winter, and my whole trade is to be wrong about it loudly and ready for it quietly.",
+      "choices": [
+        { "text": "Do you think it is coming?", "next": "coming" },
+        { "text": "Understood, captain.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "coming",
+      "voice": "stellan_pass__coming",
+      "text": "I think the lake has been a wall for forty years and walls get tested. When it comes, this fort will be the least surprised ground in the north. That is the entire job. There is no other job.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "stellan_pass__off",
+      "text": "Then walk on. Mind the drill yard. The butts do not duck and neither do the recruits, yet."
+    }
+  ]
+}

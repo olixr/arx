@@ -1,0 +1,22 @@
+{
+  "id": "the_north_count",
+  "name": "The North Count",
+  "giver": "captain_stellan",
+  "requires": {
+    "flags": ["dlg:stellan_pass"]
+  },
+  "stages": [
+    {
+      "id": "the_notch",
+      "journal": "Stellan wants the pass mouth thinned before the drove season peaks: wolves have been working the notch country north of the *Hartgate*, close enough that the beacon watch hears them on still nights. Kill six. He was exact about the number, and exact about the reason: the cull rota takes what the wood can spare, and the Northguard takes what the road cannot.",
+      "objectives": [{ "kind": "kill", "npc": "wolf", "count": 6 }]
+    }
+  ],
+  "rewards": {
+    "coins": 320,
+    "xp": [{ "skill": "combat", "amount": 900 }],
+    "items": [{ "item": "arrow", "qty": 40 }],
+    "flags": ["northline_walked"],
+    "standing": [{ "faction": "crown", "delta": 5 }]
+  }
+}

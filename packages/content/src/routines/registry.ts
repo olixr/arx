@@ -49,6 +49,20 @@ import pineFisher from './defs/pine_fisher.json';
 import pineOutrider from './defs/pine_outrider.json';
 import pineWatch from './defs/pine_watch.json';
 import pineSawyer from './defs/pine_sawyer.json';
+import pineCaptain from './defs/pine_captain.json';
+import pineQuartermaster from './defs/pine_quartermaster.json';
+import pineSerjeant from './defs/pine_serjeant.json';
+import pineHoundmistress from './defs/pine_houndmistress.json';
+import pineNorthguardDay from './defs/pine_northguard_day.json';
+import pineNorthguardNight from './defs/pine_northguard_night.json';
+import pineNorthguardPatrolDay from './defs/pine_northguard_patrol_day.json';
+import pineNorthguardPatrolNight from './defs/pine_northguard_patrol_night.json';
+import pineFletcher from './defs/pine_fletcher.json';
+import pineHunterMaster from './defs/pine_hunter_master.json';
+import pineHerbalist from './defs/pine_herbalist.json';
+import pineIronmaster from './defs/pine_ironmaster.json';
+import pineDrover from './defs/pine_drover.json';
+import pineHunter from './defs/pine_hunter.json';
 import fallWatch from './defs/fall_watch.json';
 import fallWatchPostern from './defs/fall_watch_postern.json';
 import fallWatchMuster from './defs/fall_watch_muster.json';
@@ -307,6 +321,20 @@ const SOURCES: readonly unknown[] = [
   pineOutrider,
   pineWatch,
   pineSawyer,
+  pineCaptain,
+  pineQuartermaster,
+  pineSerjeant,
+  pineHoundmistress,
+  pineNorthguardDay,
+  pineNorthguardNight,
+  pineNorthguardPatrolDay,
+  pineNorthguardPatrolNight,
+  pineFletcher,
+  pineHunterMaster,
+  pineHerbalist,
+  pineIronmaster,
+  pineDrover,
+  pineHunter,
   fallWatch,
   fallWatchPostern,
   fallWatchMuster,

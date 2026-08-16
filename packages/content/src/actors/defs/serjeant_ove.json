@@ -1,0 +1,37 @@
+{
+  "id": "serjeant_ove",
+  "name": "Ove",
+  "title": "Drill Serjeant of the Northguard",
+  "examine": "Pinewatch-born, Crown-sworn, and the only man in the fort the town will take a correction from. Counts the weapon rack before he counts the men, and has never once found the rack wrong.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 0,
+      "hairColor": 1,
+      "beard": 4,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 2,
+      "shirt": 10,
+      "pants": 7
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "leather_boots",
+    "weapon": "iron_greatblade"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 45
+    }
+  ],
+  "lines": [
+    "I stood my nights on the tower before I ever wore the weld. The rota made me. The Crown just pays me.",
+    "Shoulders back. No, not you. Him. Always him.",
+    "The town thinks we are guests. The captain thinks we are hosts. I think the wall does not care."
+  ]
+}

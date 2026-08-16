@@ -615,6 +615,47 @@ const defs: ShopDef[] = [
       { item: 'trout', price: 22 },
     ],
   },
+  // PINEWATCH REMADE — the Southreach's counters. Berget sells the
+  // MAKINGS, never the made: issued steel is counted steel, and a
+  // civilian's blade is earned at the anvil. The margin over the
+  // Charterhouse's own rates is called the wall tax, and she will
+  // explain it exactly once.
+  {
+    id: 'berget_wall',
+    name: 'The Northguard Armory',
+    stock: [
+      { item: 'steel_bar', price: 140 },
+      { item: 'iron_bar', price: 46 },
+      { item: 'coal', price: 30 },
+      { item: 'arrow', price: 4 },
+      { item: 'healing_tincture', price: 62 },
+    ],
+  },
+  // Espen strings every bow with the story of the tree it was. The
+  // dozen on the counter are good. The dozen under it are not for you.
+  {
+    id: 'espen_staves',
+    name: 'The Fletcher',
+    stock: [
+      { item: 'hunting_bow', price: 330 },
+      { item: 'arrow', price: 3 },
+      { item: 'feather', price: 2 },
+    ],
+  },
+  // Kolbrun's counter arms the cull and dresses the road north: honest
+  // leathers and the furs the count could spare. Nothing fancier — the
+  // fells' first-quality hides belong to Hartfell, and she says so.
+  {
+    id: 'kolbrun_leathers',
+    name: "The Hunters' Hall",
+    stock: [
+      { item: 'leather_body', price: 118 },
+      { item: 'leather_chaps', price: 92 },
+      { item: 'leather_gloves', price: 58 },
+      { item: 'leather_boots', price: 66 },
+      { item: 'wolf_fur', price: 26 },
+    ],
+  },
   // -------------------------------------------------------- HARTFELL
   // The town past the treeline sells what the fell is worth: the best
   // leather in the Dawnlands, the tallow every road lamp burns, and

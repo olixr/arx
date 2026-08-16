@@ -1,0 +1,42 @@
+{
+  "id": "hunter_kolbrun",
+  "name": "Kolbrun",
+  "title": "Master Hunter",
+  "examine": "Keeps the cull rota and the wolf count, and has kept both long enough to know which number matters. The count is wrong this year. She has not put that in the book yet.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 2,
+      "hairColor": 6,
+      "beard": 0,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 2,
+      "shirt": 7,
+      "pants": 7
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "leather_boots",
+    "weapon": "hunting_bow"
+  },
+  "inventory": [
+    {
+      "item": "wolf_fur",
+      "qty": 3
+    },
+    {
+      "item": "coins",
+      "qty": 52
+    }
+  ],
+  "lines": [
+    "The cull is a rota, not a sport. We take the count the wood can spare and not one hide more.",
+    "A hunter who brags about wolves has never been looked at by one.",
+    "The old wood keeps its own tally. Mine just has to agree with it."
+  ],
+  "shop": "kolbrun_leathers"
+}

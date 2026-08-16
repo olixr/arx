@@ -1,0 +1,43 @@
+{
+  "id": "ironmaster_torger",
+  "name": "Torger",
+  "title": "Ironmaster of the Ore Cut",
+  "examine": "Found the seam the year the fort went up, which everyone agrees is a coincidence. Pays the mountain the respect Odd pays the wood, which is why their argument never quite becomes one.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 0,
+      "hairColor": 0,
+      "beard": 5,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 3,
+      "shirt": 8,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "iron_bar",
+      "qty": 2
+    },
+    {
+      "item": "coal",
+      "qty": 3
+    },
+    {
+      "item": "coins",
+      "qty": 48
+    }
+  ],
+  "lines": [
+    "The mountain pays in iron what the wood pays in years. Neither one pays twice.",
+    "A bloomery eats charcoal and charcoal is trees. Odd says so weekly. He is right, which is the annoying part.",
+    "The seam runs north under the fell. I stop where the stones say. That is the whole conversation."
+  ]
+}

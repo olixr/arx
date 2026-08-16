@@ -1,0 +1,56 @@
+{
+  "id": "espen_staves",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "fletcher_espen" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "espen_staves__greet",
+      "text": "Mind the shavings. They remember being a bow that almost was.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "espen_staves__hub",
+      "text": "Espen. Staves, strings, arrows. Which?",
+      "choices": [
+        { "text": "Show me the counter.", "next": "shop" },
+        { "text": "What makes a good bow?", "next": "bow" },
+        { "text": "What is the dozen under the counter?", "next": "dozen" },
+        { "text": "Loose and true, fletcher.", "next": "off" }
+      ]
+    },
+    {
+      "id": "shop",
+      "voice": "espen_staves__shop",
+      "text": "The counter dozen fly true and the hunting bows are seasoned three winters. Arrows by count, feathers by the fistful. Kolbrun's people shoot my work and come back alive, which is the only advertisement I run.",
+      "hooks": [{ "kind": "shop", "shop": "espen_staves" }]
+    },
+    {
+      "id": "bow",
+      "voice": "espen_staves__bow",
+      "text": "A bow is a tree taught a second trade. Yannick takes the one tree in a hundred for his masts. I take the one branch in a thousand, off the tree he rejected, and we have never once argued, because we are both right.",
+      "next": "hub"
+    },
+    {
+      "id": "dozen",
+      "voice": "espen_staves__dozen",
+      "text": "Spoken for. Every winter I keep twelve of the year's best back, strung and waxed and wrapped. Ask me who they are for and I will sell you an arrow and change the subject. You are watching me do it now.",
+      "choices": [
+        { "text": "The tower rota? The fort?", "next": "kept" },
+        { "text": "Fair enough.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "kept",
+      "voice": "espen_staves__kept",
+      "text": "The people who will be on the ice if the ice ever asks. Some of them do not know they are on my list, and it would only worry them. A fletcher keeps his own rota. That is all you get, and it is more than most.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "espen_staves__off",
+      "text": "Loose and true. And pick up your spent shafts, the wood counts those too."
+    }
+  ]
+}

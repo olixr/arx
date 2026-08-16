@@ -391,6 +391,23 @@ import kettilBoom from './defs/kettil_boom.json';
 import oddNursery from './defs/odd_nursery.json';
 import pinewatchRota from './defs/pinewatch_rota.json';
 import haldisCircuit from './defs/haldis_circuit.json';
+import stellanPass from './defs/stellan_pass.json';
+import bergetWall from './defs/berget_wall.json';
+import oveDrill from './defs/ove_drill.json';
+import rankaKennels from './defs/ranka_kennels.json';
+import rankaTheRuns from './defs/ranka_the_runs.json';
+import kolbrunCount from './defs/kolbrun_count.json';
+import kolbrunTheWolves from './defs/kolbrun_the_wolves.json';
+import espenStaves from './defs/espen_staves.json';
+import marenPhysic from './defs/maren_physic.json';
+import torgerSeam from './defs/torger_seam.json';
+import sylviDrove from './defs/sylvi_drove.json';
+import northguardGate from './defs/northguard_gate.json';
+import oddTheRow from './defs/odd_the_row.json';
+import qTheColdSignsOffer from './defs/q_the_cold_signs_offer.json';
+import qTheColdSignsTurnin from './defs/q_the_cold_signs_turnin.json';
+import qTheNorthCountOffer from './defs/q_the_north_count_offer.json';
+import qTheNorthCountTurnin from './defs/q_the_north_count_turnin.json';
 import sawyerFloor from './defs/sawyer_floor.json';
 import groaTheGap from './defs/groa_the_gap.json';
 import osprenCarefulWords from './defs/ospren_careful_words.json';
@@ -519,6 +536,23 @@ const SOURCES: readonly unknown[] = [
   kettilBoom,
   oddNursery,
   pinewatchRota,
+  stellanPass,
+  bergetWall,
+  oveDrill,
+  rankaKennels,
+  rankaTheRuns,
+  kolbrunCount,
+  kolbrunTheWolves,
+  espenStaves,
+  marenPhysic,
+  torgerSeam,
+  sylviDrove,
+  northguardGate,
+  oddTheRow,
+  qTheColdSignsOffer,
+  qTheColdSignsTurnin,
+  qTheNorthCountOffer,
+  qTheNorthCountTurnin,
   haldisCircuit,
   sawyerFloor,
   groaTheGap,

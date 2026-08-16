@@ -27,6 +27,19 @@
       "id": "water",
       "voice": "pinewatch_rota__water",
       "text": "The water. The roads have Sigrun and the yard has Halla, and the tower has the Glasswater, all night, every night, forty years past the last time it mattered. It matters by not mattering. And the fire at the Pine and Bell is lit at half three for us coming down. You can set your knees by Sunniva.",
+      "choices": [
+        {
+          "text": "I know what the rota is for now.",
+          "next": "kept",
+          "requires": ["cold_signs_known"]
+        },
+        { "text": "Understood.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "kept",
+      "voice": "pinewatch_rota__kept",
+      "text": "So the reeve opened the door for you. Then stand a night with us sometime. The tower is warmer than it looks and colder than it needs to be, and it is ours, and now it is a little bit yours. That is how the board works.",
       "next": "hub"
     },
     {

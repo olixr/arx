@@ -1,0 +1,29 @@
+{
+  "id": "q_the_north_count_turnin",
+  "start": "counted",
+  "requires": ["quest:the_north_count:ready"],
+  "bindings": [{ "kind": "actor", "target": "captain_stellan", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "counted",
+      "voice": "q_the_north_count_turnin__counted",
+      "text": "Six. The watch confirmed it before you cleared the notch, which is the only reason I believe anything. Sign here. No, you do not have to write. The mark is fine. The ledger wants a hand, not a name.",
+      "choices": [
+        { "text": "The road is quieter already.", "next": "quiet" },
+        { "text": "Just the pay, captain.", "next": "paid" }
+      ]
+    },
+    {
+      "id": "quiet",
+      "voice": "q_the_north_count_turnin__quiet",
+      "text": "It is. And Sylvi's next drove walks it easier, and the beacon watch sleeps, and nobody in this town will ever know the week the notch went bad, because it did not get to. That is what good work in the north looks like. Invisible. Take your pay anyway.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_north_count" }]
+    },
+    {
+      "id": "paid",
+      "voice": "q_the_north_count_turnin__paid",
+      "text": "Sensible. Coin, arrows, and the Crown's regard, which weighs the least and lasts the longest. The gate knows your face now. Use it.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_north_count" }]
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "id": "sylvi_drove",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "drover_sylvi" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "sylvi_drove__greet",
+      "text": "Mind the rails, the stock spooks easier than I do. Sylvi. Two days up, two days down, and whatever you heard about the fell road, the truth is better.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "sylvi_drove__hub",
+      "text": "Ask quick, the count starts at dawn.",
+      "choices": [
+        { "text": "What moves on the Hartway?", "next": "trade" },
+        { "text": "What is Hartfell like?", "next": "fell" },
+        {
+          "text": "The notch was quiet on your last run?",
+          "next": "quiet",
+          "requires": ["northline_walked"]
+        },
+        { "text": "Safe roads, drover.", "next": "off" }
+      ]
+    },
+    {
+      "id": "trade",
+      "voice": "sylvi_drove__trade",
+      "text": "Herds walk down alive and come back up as boards and iron. Hartfell sends meat, tallow, and the best leather in the Dawnlands. We send the timber their fells cannot grow and now Torger's bloom besides. Everybody eats, everybody builds, and the road gets two days of my feet either way.",
+      "next": "hub"
+    },
+    {
+      "id": "fell",
+      "voice": "sylvi_drove__fell",
+      "text": "Cold, small, and stubborn as a knot, and I mean every word kindly. Gunvor keeps the watch fed and the beacon dry. When their fire burns, our Wardline bars and this fort lights the answer. When ours burns, they bar the Cairn Path. Two towns, one winter, one agreement older than my grandmother.",
+      "next": "hub"
+    },
+    {
+      "id": "quiet",
+      "voice": "sylvi_drove__quiet",
+      "text": "Quietest in a season. The stock walked the notch without an ear turning, first time since thaw. That was your work, the gate says. Then the next drink at the Bell has an owner, and it is not you.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "sylvi_drove__off",
+      "text": "Stay on the road. I say that one for free. The second telling costs you a drink."
+    }
+  ]
+}

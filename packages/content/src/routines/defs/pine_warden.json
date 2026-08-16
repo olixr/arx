@@ -1,12 +1,66 @@
 {
   "id": "pine_warden",
-  "base": { "kind": "post", "dir": 1.5707963, "speed": 1.7 },
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963,
+    "speed": 1.7
+  },
   "slots": [
-    { "from": 8, "to": 11, "task": { "kind": "path", "speed": 1.6, "waypoints": [
-      { "x": 0, "y": 6, "waitSec": 60, "dir": 1.5707963 },
-      { "x": -20, "y": -8, "waitSec": 60, "dir": 0 },
-      { "x": 0, "y": 0, "waitSec": 60, "dir": 1.5707963 } ] } },
-    { "from": 17, "to": 20, "task": { "kind": "path", "speed": 1.6, "waypoints": [
-      { "x": 0, "y": 6, "waitSec": 90, "dir": 1.5707963 }, { "x": 0, "y": 0, "waitSec": 45 } ] } }
+    {
+      "from": 8,
+      "to": 11,
+      "task": {
+        "kind": "path",
+        "speed": 1.6,
+        "waypoints": [
+          {
+            "x": 0,
+            "y": -2,
+            "waitSec": 60,
+            "dir": -1.5707963
+          },
+          {
+            "x": -10,
+            "y": -10,
+            "waitSec": 90,
+            "dir": 1.5707963
+          },
+          {
+            "x": -13,
+            "y": -19,
+            "waitSec": 60,
+            "dir": 3.1415927
+          },
+          {
+            "x": 0,
+            "y": 0,
+            "waitSec": 60,
+            "dir": 1.5707963
+          }
+        ]
+      }
+    },
+    {
+      "from": 17,
+      "to": 20,
+      "task": {
+        "kind": "path",
+        "speed": 1.6,
+        "waypoints": [
+          {
+            "x": 0,
+            "y": -4,
+            "waitSec": 90,
+            "dir": 1.5707963
+          },
+          {
+            "x": 0,
+            "y": 0,
+            "waitSec": 45,
+            "dir": 1.5707963
+          }
+        ]
+      }
+    }
   ]
 }

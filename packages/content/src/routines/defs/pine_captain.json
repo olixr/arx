@@ -1,0 +1,23 @@
+{
+  "id": "pine_captain",
+  "base": { "kind": "post", "dir": -1.5707963, "speed": 1.6 },
+  "slots": [
+    { "from": 6.5, "to": 7.5, "task": { "kind": "path", "speed": 1.5, "waypoints": [
+      { "x": -8, "y": -8, "waitSec": 30 },
+      { "x": 0, "y": -12, "waitSec": 60, "dir": -1.5707963 },
+      { "x": 0, "y": 0, "waitSec": 45, "dir": -1.5707963 }
+    ] } },
+    { "from": 12, "to": 13, "task": { "kind": "path", "speed": 1.5, "waypoints": [
+      { "x": -10, "y": -8, "waitSec": 150, "dir": 1.5707963 },
+      { "x": 0, "y": 0, "waitSec": 60, "dir": -1.5707963 }
+    ] } },
+    { "from": 18, "to": 19, "task": { "kind": "path", "speed": 1.4, "waypoints": [
+      { "x": -1.5, "y": -8.5, "waitSec": 120, "dir": -1.5707963 },
+      { "x": 0, "y": 0, "waitSec": 60, "dir": -1.5707963 }
+    ] } },
+    { "from": 23.5, "to": 5.5, "task": { "kind": "path", "mode": "once", "speed": 1.3, "waypoints": [
+      { "x": 0.5, "y": -1.5 },
+      { "x": 1.5, "y": -1.5, "lie": true }
+    ] } }
+  ]
+}

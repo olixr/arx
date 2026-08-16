@@ -1146,6 +1146,7 @@ export function buildPinewatch(): ZoneDef {
   b.set(114, 16, Tile.WeaponRack).set(118, 16, Tile.WeaponRack);
   b.set(114, 21, Tile.Crate).set(115, 21, Tile.CrateGoods).set(118, 22, Tile.Barrel);
   b.set(119, 16, Tile.Cabinet);
+  b.set(119, 20, Tile.Bed).set(119, 21, Tile.Bed); // the quartermaster sleeps beside the ledger
   b.setDetail(114, 19, Detail.Doormat);
   b.set(124, 16, Tile.Bed).set(124, 17, Tile.Bed); // the captain sleeps where the maps are
   b.set(121, 16, Tile.Lectern); // the correspondence: Hoargate, the Charterhouse, Hartfell
@@ -1223,14 +1224,33 @@ export function buildPinewatch(): ZoneDef {
   b.actor('tallyman_bram', 72.5, 23.5, Math.PI / 2, 'pine_tallyman');
   b.actor('boomsman_kettil', 60.5, 24.5, Math.PI / 2, 'pine_boomsman');
   b.actor('nurseryman_odd', 94.5, 25.5, Math.PI / 2, 'pine_nurseryman');
-  b.actor('warden_sigrun', 64.5, 84.5, Math.PI / 2, 'pine_warden');
+  // The Waykeeper moved with her road: she keeps the Timber Gate's
+  // cut now, the last lamp of the long way in.
+  b.actor('warden_sigrun', 32.5, 136.5, Math.PI / 2, 'pine_warden');
   b.actor('fisher_ylva', 88.5, 12.5, -Math.PI / 2, 'pine_fisher');
   b.actor('pinewatch_watch', 66.5, 43.5, Math.PI / 2, 'pine_watch');
   // THE SADDLE IN THE SCHEDULE: the mountain Waykeeper rides the
   // Watch Road on a garron, yard to the Timber Road gate and back.
   b.actor('outrider_haldis', 65.5, 58.5, -Math.PI / 2, 'pine_outrider');
-  b.actor('pinewatch_watch', 64.5, 86.5, Math.PI / 2, 'pine_watch');
+  b.actor('pinewatch_watch', 60.5, 111.5, Math.PI / 2, 'pine_watch');
   b.actor('pinewatch_watch', 104.5, 60.5, Math.PI / 2, 'pine_watch');
+  // THE NORTHGUARD — the Crown's souls, on the Crown's clock.
+  b.actor('captain_stellan', 122.5, 18.5, -Math.PI / 2, 'pine_captain');
+  b.actor('quartermaster_berget', 115.5, 16.5, Math.PI / 2, 'pine_quartermaster');
+  b.actor('serjeant_ove', 112.5, 10.5, -Math.PI / 2, 'pine_serjeant');
+  b.actor('houndmistress_ranka', 101.5, 10.5, Math.PI / 2, 'pine_houndmistress');
+  b.actor('pinewatch_northguard', 122.5, 6.5, -Math.PI / 2, 'pine_northguard_day');
+  b.actor('pinewatch_northguard', 120.5, 6.5, -Math.PI / 2, 'pine_northguard_night');
+  b.actor('pinewatch_northguard', 110.5, 14.5, -Math.PI / 2, 'pine_northguard_patrol_day');
+  b.actor('pinewatch_northguard', 114.5, 14.5, -Math.PI / 2, 'pine_northguard_patrol_night');
+  // THE SOUTHREACH — the grown quarter's keepers.
+  b.actor('hunter_kolbrun', 15.5, 107.5, Math.PI / 2, 'pine_hunter_master');
+  b.actor('fletcher_espen', 28.5, 102.5, Math.PI, 'pine_fletcher');
+  b.actor('herbalist_maren', 71.5, 101.5, Math.PI / 2, 'pine_herbalist');
+  b.actor('ironmaster_torger', 42.5, 108.5, Math.PI, 'pine_ironmaster');
+  b.actor('drover_sylvi', 26.5, 126.5, Math.PI / 2, 'pine_drover');
+  b.actor('pinewatch_hunter', 18.5, 106.5, Math.PI / 2, 'pine_hunter');
+  b.actor('pinewatch_hunter', 21.5, 113.5, -Math.PI / 2, 'pine_hunter');
   b.actor('pinewatch_sawyer', 35.5, 45.5, Math.PI / 2, 'pine_sawyer');
   b.actor('pinewatch_sawyer', 28.5, 80.5, Math.PI / 2, 'pine_sawyer');
   b.actor('pinewatch_sawyer', 52.5, 30.5, Math.PI / 2, 'pine_sawyer');

@@ -3,6 +3,8 @@ import { validateQuest } from './validate.js';
 
 import theWetCount from './defs/the_wet_count.json';
 import pastTheWardline from './defs/past_the_wardline.json';
+import theColdSigns from './defs/the_cold_signs.json';
+import theNorthCount from './defs/the_north_count.json';
 import aNameForTheStone from './defs/a_name_for_the_stone.json';
 import resinForTheRoad from './defs/resin_for_the_road.json';
 import wordOnTheRoad from './defs/word_on_the_road.json';
@@ -112,6 +114,9 @@ const SOURCES: readonly unknown[] = [
   pastTheWardline,
   aNameForTheStone,
   resinForTheRoad,
+  // PINEWATCH REMADE — the listening quest and the pass cull.
+  theColdSigns,
+  theNorthCount,
   // THE DAWN REMADE — the starter slate: four soft paths, every lesson
   // a real errand, and the one final quest that opens the road east.
   firstLight,

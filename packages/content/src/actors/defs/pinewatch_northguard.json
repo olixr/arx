@@ -1,0 +1,48 @@
+{
+  "id": "pinewatch_northguard",
+  "name": "Northguard",
+  "title": "The Crown's Pass Post",
+  "examine": "Weld colors, drilled straight, and young enough to think the quiet is normal. The captain is working on that.",
+  "disposition": "neutral",
+  "protection": "invulnerable",
+  "combat": {
+    "level": 30,
+    "respawnSec": 90,
+    "stats": {
+      "maxHp": 140,
+      "damage": 9,
+      "speed": 3.4,
+      "leashRange": 10
+    }
+  },
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 2,
+      "hairColor": 1,
+      "beard": 1,
+      "eyes": 1,
+      "ears": 0,
+      "feature": 0,
+      "shirt": 10,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "iron_platebody",
+    "boots": "leather_boots",
+    "weapon": "iron_sword"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 16
+    }
+  ],
+  "lines": [
+    "The gate opens at dawn and bars at the beacon. Those are the only two rules you need.",
+    "Two days to Hartfell if you stay on the road. Longer if you do not, and then forever.",
+    "The tower watches the water. We watch the road. Everybody watches us. It works."
+  ]
+}

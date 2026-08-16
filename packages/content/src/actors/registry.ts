@@ -100,6 +100,17 @@ import oldTorvi from './defs/old_torvi.json';
 import fisherYlva from './defs/fisher_ylva.json';
 import pinewatchWatch from './defs/pinewatch_watch.json';
 import pinewatchSawyer from './defs/pinewatch_sawyer.json';
+import captainStellan from './defs/captain_stellan.json';
+import quartermasterBerget from './defs/quartermaster_berget.json';
+import serjeantOve from './defs/serjeant_ove.json';
+import houndmistressRanka from './defs/houndmistress_ranka.json';
+import fletcherEspen from './defs/fletcher_espen.json';
+import hunterKolbrun from './defs/hunter_kolbrun.json';
+import herbalistMaren from './defs/herbalist_maren.json';
+import ironmasterTorger from './defs/ironmaster_torger.json';
+import droverSylvi from './defs/drover_sylvi.json';
+import pinewatchNorthguard from './defs/pinewatch_northguard.json';
+import pinewatchHunter from './defs/pinewatch_hunter.json';
 import hoargateWatch from './defs/hoargate_watch.json';
 import serjeantOttar from './defs/serjeant_ottar.json';
 import masterTilo from './defs/master_tilo.json';
@@ -247,6 +258,17 @@ const SOURCES: readonly unknown[] = [
   fisherYlva,
   pinewatchWatch,
   pinewatchSawyer,
+  captainStellan,
+  quartermasterBerget,
+  serjeantOve,
+  houndmistressRanka,
+  fletcherEspen,
+  hunterKolbrun,
+  herbalistMaren,
+  ironmasterTorger,
+  droverSylvi,
+  pinewatchNorthguard,
+  pinewatchHunter,
   hoargateWatch,
   serjeantOttar,
   portreeveBrack,

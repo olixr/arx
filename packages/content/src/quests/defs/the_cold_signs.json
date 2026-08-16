@@ -1,0 +1,36 @@
+{
+  "id": "the_cold_signs",
+  "name": "The Cold Signs",
+  "giver": "fisher_ylva",
+  "requires": {
+    "flags": ["dlg:ylva_steps"]
+  },
+  "stages": [
+    {
+      "id": "the_row",
+      "journal": "Ylva watches the winter edges every Frostfall morning, and this year the ice fringed the shallows a month before it had any right to. She will not say the word she is thinking. She says instead that *Odd* at the nursery reads years the way she reads water, and that somebody who is not from here should go and ask him about the newest row.",
+      "objectives": [{ "kind": "talk", "actor": "nurseryman_odd" }]
+    },
+    {
+      "id": "the_runs",
+      "journal": "The newest sapling row is crooking — every seedling leaning the same way, the way the row planted after the ice year leaned. Odd has been telling himself it is the wind. He stopped telling himself that halfway through saying it. He says *Ranka* at the fort kennels has been walking her hounds at odd hours, and that hounds and trees agree about weather more often than people like.",
+      "objectives": [{ "kind": "talk", "actor": "houndmistress_ranka" }]
+    },
+    {
+      "id": "the_count",
+      "journal": "The hounds have stopped sleeping on the north side of their run. All of them, the same week, and Bern's line does not spook. Ranka says the last person she would call a worrier is *Kolbrun* at the Hunters' Hall, and that the cull book has been sitting open on the same page for a month.",
+      "objectives": [{ "kind": "talk", "actor": "hunter_kolbrun" }]
+    },
+    {
+      "id": "the_door",
+      "journal": "The wolf count is wrong — not high. Low. The packs are leaving the near wood, and wolves leave first for the same reason birds go quiet. Four people have each noticed one true thing and none of them has said it in the same room. Take all four to *Reeve Halla*.",
+      "objectives": [{ "kind": "talk", "actor": "reeve_halla" }]
+    }
+  ],
+  "rewards": {
+    "coins": 180,
+    "xp": [{ "skill": "foraging", "amount": 600 }],
+    "flags": ["cold_signs_known"],
+    "standing": [{ "faction": "crown", "delta": 3 }]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "id": "pine_northguard_patrol_day",
+  "base": { "kind": "post", "dir": -1.5707963, "speed": 1.6 },
+  "slots": [
+    { "from": 6, "to": 21.5, "task": { "kind": "path", "speed": 1.5, "waypoints": [
+      { "x": 11.5, "y": -8.5, "waitSec": 45, "dir": -1.5707963 },
+      { "x": 11, "y": -2, "waitSec": 20 },
+      { "x": 14, "y": 8, "waitSec": 30, "dir": 0 },
+      { "x": -8.5, "y": 12, "waitSec": 45, "dir": 1.5707963 },
+      { "x": -9, "y": -3, "waitSec": 20, "dir": 3.1415927 }
+    ] } },
+    { "from": 22.25, "to": 5.5, "task": { "kind": "path", "mode": "once", "speed": 1.3, "waypoints": [
+      { "x": -6.5, "y": 3.5 },
+      { "x": -7.5, "y": 3.5, "lie": true }
+    ] } }
+  ]
+}

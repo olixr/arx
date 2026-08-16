@@ -1,0 +1,37 @@
+{
+  "id": "captain_stellan",
+  "name": "Stellan",
+  "title": "Captain of the Northguard",
+  "examine": "Career Crown, posted to the one fort that has never been attacked, drilling for the day that stops being true. His letters to Hoargate go out weekly. The answers get filed under nothing-yet.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 2,
+      "hair": 3,
+      "hairColor": 0,
+      "beard": 2,
+      "eyes": 2,
+      "ears": 0,
+      "feature": 3,
+      "shirt": 10,
+      "pants": 10
+    }
+  },
+  "equipment": {
+    "body": "iron_platebody",
+    "boots": "leather_boots",
+    "weapon": "steel_sword"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 90
+    }
+  ],
+  "lines": [
+    "The pass is quiet. I intend to be the reason that stays boring.",
+    "The town watches the water and thinks my road is the safe one. I read the same reports they do not.",
+    "Drill is cheap. The alternative is not."
+  ]
+}

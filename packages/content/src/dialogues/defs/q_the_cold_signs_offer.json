@@ -1,0 +1,39 @@
+{
+  "id": "q_the_cold_signs_offer",
+  "start": "hub",
+  "requires": ["quest:the_cold_signs:available"],
+  "bindings": [{ "kind": "actor", "target": "fisher_ylva", "priority": 5 }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "q_the_cold_signs_offer__hub",
+      "text": "You sat through my talk of edges without changing the subject to fishing, so you can have the rest of it. Frostfall is a month off, and the shallows fringed this morning. Forty years I have watched the edges and they have never once been early. Go and ask Odd about his newest row. Tell him the water sent you.",
+      "hooks": [{ "kind": "quest_offer", "quest": "the_cold_signs" }],
+      "choices": [
+        { "text": "Why me and not the reeve?", "next": "why" },
+        { "text": "I will go and listen.", "next": "sworn" },
+        { "text": "Ice comes early some years. That is all.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "why",
+      "voice": "q_the_cold_signs_offer__why",
+      "text": "Because if I walk into the yard with one fisher's worry, Halla files it under one fisher. Four people have each noticed one true thing this season, and a stranger can carry all four without the town watching the carrying. Then it is not worry. It is a count.",
+      "choices": [
+        { "text": "Then I will carry it.", "next": "sworn" },
+        { "text": "Not my water.", "next": "declined" }
+      ]
+    },
+    {
+      "id": "sworn",
+      "voice": "q_the_cold_signs_offer__sworn",
+      "text": "Odd first, at the nursery. Then wherever he points you, and he will point. When you have all four, take them to Halla and only Halla. The inn hears everything a beat too early in this town.",
+      "hooks": [{ "kind": "quest_accept", "quest": "the_cold_signs" }]
+    },
+    {
+      "id": "declined",
+      "voice": "q_the_cold_signs_offer__declined",
+      "text": "Then forget I spoke. The lake will tell everyone eventually. It is just politer, hearing it from a fisher first."
+    }
+  ]
+}

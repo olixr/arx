@@ -1,0 +1,47 @@
+{
+  "id": "ranka_kennels",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "houndmistress_ranka" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "ranka_kennels__greet",
+      "text": "Mind the rail. They are working, even when it looks like sleeping. Especially then.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "ranka_kennels__hub",
+      "text": "Ranka. Hounds. Ask.",
+      "choices": [
+        { "text": "Where does the line come from?", "next": "line" },
+        { "text": "Who is Bern?", "next": "bern" },
+        { "text": "How do they work?", "next": "work" },
+        { "text": "Good day to the pack.", "next": "off" }
+      ]
+    },
+    {
+      "id": "line",
+      "voice": "ranka_kennels__line",
+      "text": "Bern's dog came back across the breaking ice the night the camps went quiet. Swam the last of it. Every hound in this pen carries her. You do not buy into that line. You are issued a place in it, if the line likes you.",
+      "next": "hub"
+    },
+    {
+      "id": "bern",
+      "voice": "ranka_kennels__bern",
+      "text": "First name on the Wolfwinter stone, by the yard fire. His dog outlived him nine years and patrolled every one of them, nobody asking her to. The fort feeds her line forever. That was the town's one condition for the wall, and the Crown had the sense to write it down.",
+      "next": "hub"
+    },
+    {
+      "id": "work",
+      "voice": "ranka_kennels__work",
+      "text": "Nose first, then ears, then teeth, and it has never yet come to teeth. A hound that growls at the dark is guessing. A hound that goes silent is sure. You want the growling. Pray for the growling.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "ranka_kennels__off",
+      "text": "They heard you say it. They keep accounts. Walk well."
+    }
+  ]
+}

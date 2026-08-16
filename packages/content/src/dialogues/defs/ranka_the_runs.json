@@ -1,0 +1,28 @@
+{
+  "id": "ranka_the_runs",
+  "start": "north",
+  "requires": ["quest:the_cold_signs:stage:the_count"],
+  "bindings": [{ "kind": "actor", "target": "houndmistress_ranka", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "north",
+      "voice": "ranka_the_runs__north",
+      "text": "You came from the nursery. Odd sent you, which means Ylva sent him, which means the water started this, which is right. The water always knows first. So I will say the thing I have only said to the pen.",
+      "next": "quiet"
+    },
+    {
+      "id": "quiet",
+      "voice": "ranka_the_runs__quiet",
+      "text": "They stopped sleeping on the north side of the run. All twelve, the same week, and none of them will say why, because a hound that goes silent is sure. Bern's line has not been wrong about the north in forty years.",
+      "choices": [
+        { "text": "What do you think it means?", "next": "means" }
+      ]
+    },
+    {
+      "id": "means",
+      "voice": "ranka_the_runs__means",
+      "text": "I think the pen remembers the ice better than the town does. Go and ask Kolbrun what her book says. She writes the cull count every day of her life, and it has sat open on the same page for a month. Tell her the hounds sent you. She will not laugh.",
+      "next": "quiet"
+    }
+  ]
+}

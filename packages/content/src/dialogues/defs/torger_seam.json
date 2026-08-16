@@ -1,0 +1,51 @@
+{
+  "id": "torger_seam",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "ironmaster_torger" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "torger_seam__greet",
+      "text": "Mind the terrace edge. The mountain forgives nothing and neither does the drop.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "torger_seam__hub",
+      "text": "Torger. The cut is mine. Say your piece.",
+      "choices": [
+        { "text": "How did you find the seam?", "next": "seam" },
+        { "text": "Odd glares at your bloomery.", "next": "charcoal" },
+        {
+          "text": "Great spars go missing. Does iron?",
+          "next": "order",
+          "requires": ["wardline_doubted"]
+        },
+        { "text": "Good iron to you.", "next": "off" }
+      ]
+    },
+    {
+      "id": "seam",
+      "voice": "torger_seam__seam",
+      "text": "The road cut found it, truth be told. The wains wore the ridge down to its bones and the bones had rust in them. I just listened to what the rock was already saying. That was the year the fort went up, and everyone agrees that is a coincidence, in the tone people use for coincidences.",
+      "next": "hub"
+    },
+    {
+      "id": "charcoal",
+      "voice": "torger_seam__charcoal",
+      "text": "A bloomery eats charcoal and charcoal is trees. Odd says so weekly and he is right, which is the annoying part. So I burn mill scrap and storm fall, the count comes off the cordwood licence, and he checks my woodpile like a customs man. I would not have it otherwise. A town that argues well is a town that lasts.",
+      "next": "hub"
+    },
+    {
+      "id": "order",
+      "voice": "torger_seam__order",
+      "text": "So you are the one who did Bram's arithmetic. Then hear mine. Iron is worth more than its ore if somebody wants war. I sell to the town, to Vigga, and to the fort, in that order, and I write down which. When somebody asks you to wonder about me, and somebody will, ask to see my order. It has not changed since the first bloom.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "torger_seam__off",
+      "text": "The mountain pays in iron what the wood pays in years. Spend both slowly."
+    }
+  ]
+}

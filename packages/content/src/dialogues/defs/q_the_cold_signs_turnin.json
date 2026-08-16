@@ -1,0 +1,35 @@
+{
+  "id": "q_the_cold_signs_turnin",
+  "start": "carrying",
+  "requires": ["quest:the_cold_signs:ready"],
+  "bindings": [{ "kind": "actor", "target": "reeve_halla", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "carrying",
+      "voice": "q_the_cold_signs_turnin__carrying",
+      "text": "You have the look of somebody carrying four things that weigh the same. Sit. Say them in any order.",
+      "next": "four"
+    },
+    {
+      "id": "four",
+      "voice": "q_the_cold_signs_turnin__four",
+      "text": "The edges early. The row leaning. The hounds off the north wall. The wolves leaving. Forty years I have waited to hear those four sentences said in one room, and dreaded it, in exactly that order.",
+      "choices": [
+        { "text": "What happens now?", "next": "now" },
+        { "text": "Will you tell the captain?", "next": "captain" }
+      ]
+    },
+    {
+      "id": "now",
+      "voice": "q_the_cold_signs_turnin__now",
+      "text": "Now you know what the rota is for. Not wolves. It was never wolves. The rota is for the year the lake stops being a wall. Take your pay, and say nothing at the inn. When this town needs to know, it hears it from this chair, in daylight, with the granary numbers already done.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_cold_signs" }]
+    },
+    {
+      "id": "captain",
+      "voice": "q_the_cold_signs_turnin__captain",
+      "text": "Stellan smelled it before any of us. Why do you think the drills got longer. Between his yard and my rota, whatever crosses that ice will find this town standing up. That is all preparation ever buys anyone. It has always been enough. Take your pay, and keep the inn out of it.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_cold_signs" }]
+    }
+  ]
+}

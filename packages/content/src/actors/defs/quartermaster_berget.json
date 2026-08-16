@@ -1,0 +1,41 @@
+{
+  "id": "quartermaster_berget",
+  "name": "Berget",
+  "title": "Quartermaster of the Northguard",
+  "examine": "Runs the armory like a ledger with opinions. Sells the makings to civilians at a margin she calls the wall tax, and considers the wall cheap at the price.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 4,
+      "hair": 1,
+      "hairColor": 3,
+      "beard": 0,
+      "eyes": 3,
+      "ears": 0,
+      "feature": 1,
+      "shirt": 10,
+      "pants": 6
+    }
+  },
+  "equipment": {
+    "body": "leather_body",
+    "boots": "leather_boots"
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 140
+    },
+    {
+      "item": "steel_bar",
+      "qty": 2
+    }
+  ],
+  "lines": [
+    "Issued steel is counted steel. Sold steel is counted twice.",
+    "The wall tax is not a joke. It is a margin with a purpose, which is more than most jokes have.",
+    "Requisitions close at dusk. Emergencies may apply at any hour and had better be one."
+  ],
+  "shop": "berget_wall"
+}

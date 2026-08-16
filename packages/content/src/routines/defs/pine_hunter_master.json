@@ -1,0 +1,73 @@
+{
+  "id": "pine_hunter_master",
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963,
+    "speed": 1.6
+  },
+  "slots": [
+    {
+      "from": 6,
+      "to": 8.5,
+      "task": {
+        "kind": "path",
+        "speed": 1.5,
+        "waypoints": [
+          {
+            "x": -1.5,
+            "y": 6.5,
+            "waitSec": 90,
+            "dir": 1.5707963
+          },
+          {
+            "x": 4.5,
+            "y": 11.5,
+            "waitSec": 120,
+            "dir": 1.5707963
+          },
+          {
+            "x": 0,
+            "y": 0,
+            "waitSec": 60
+          }
+        ]
+      }
+    },
+    {
+      "from": 16,
+      "to": 18,
+      "task": {
+        "kind": "path",
+        "speed": 1.4,
+        "waypoints": [
+          {
+            "x": 1.5,
+            "y": -4.5,
+            "waitSec": 600,
+            "sit": true
+          }
+        ]
+      }
+    },
+    {
+      "from": 22.5,
+      "to": 5.5,
+      "task": {
+        "kind": "path",
+        "mode": "once",
+        "speed": 1.3,
+        "waypoints": [
+          {
+            "x": 3.5,
+            "y": 0.5
+          },
+          {
+            "x": 4.5,
+            "y": 0.5,
+            "lie": true
+          }
+        ]
+      }
+    }
+  ]
+}
