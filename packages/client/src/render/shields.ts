@@ -816,34 +816,30 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
     tier: 6,
   },
   /**
-   * ALDAREN'S GATE — the capital, carried. Moonpale steel under a gold
-   * crown chief whose three points ARE the silhouette's own crest, and
-   * three cascade stripes falling the full height of the face — the
-   * crowned falls of Silverfall as heraldry. The biggest plane in the
-   * game, a hair past the aegis, and the top of the wall ladder: the
-   * king's answer to the sun.
+   * ALDAREN'S GATE — the gate of the capital ITSELF, carried, and the
+   * roster's CURATION STANDARD: three ideas, one per zone, nothing to
+   * decipher. THE ARCH — one gold frame standing off moonpale ashlar.
+   * THE VALE — through the opening, night, a crescent moon, and the
+   * one white fall pouring crown to threshold. THE CROWN — three bold
+   * gold points on a ringed circlet, the King's crimson jewel at the
+   * brow, standing clear above the plateau. The binding is cool steel
+   * so gold speaks exactly twice: the gate, and the king. Biggest
+   * plane in the game; you do not carry this shield, you hold the
+   * capital's door.
    */
   aldarens_gate: {
     shape: 'falls',
     material: 'steel',
     face: '#c9d2e4',
-    faceAlt: '#aab6cc',
-    // The gold chief over the moonpale field — the blazon reads
-    // itself: or, a chief; argent, three falls.
-    field: 'chief',
-    rim: '#d8b76a',
-    // The gate's own gold ring, mounted at the boards' center.
-    boss: '#e6c36a',
+    // The vale night inside the arch — the dark the fall pours out of.
+    faceAlt: '#28324f',
+    // The fall through the arch: a pale, as the rolls would read it.
+    field: 'pale',
+    // Cool steel binding: the gold belongs to the arch and the crown.
+    rim: '#8f9cb5',
     device: 'crown',
     deviceColor: '#e6c36a',
     studs: true,
-    spikes: true,
-    // The crown's three points stand PROUD of the crest — real gold
-    // rising off the binding, not a notch cut into the slab.
-    spikeAngles: [-2.09, -1.57, -1.05],
-    spikeLen: 1.28,
-    spikeW: 0.13,
-    spikeColor: '#e6c36a',
     curve: 0.3,
     strapColor: '#5a4a2a',
     sig: 'falls',
@@ -1036,12 +1032,14 @@ const OUTLINES: Record<ShieldShape, number[]> = {
     -0.45, -1, 0.45, -1, 0.9, -0.6, 0.9, 0.64, 0.6, 1, -0.6, 1,
     -0.9, 0.64, -0.9, -0.6,
   ],
-  // Aldaren's Gate: a broad crested slab falling to a shallow point —
-  // the royal three crown points stand PROUD of this crest as real
-  // gold (the spike plan), not as notches cut into the wall.
+  // Aldaren's Gate: a monumental GATE — the crown plateau between two
+  // tower shoulders that step OUT past it, tower walls falling to a
+  // waist step, then the long taper to a threshold point. The crest
+  // crown mounts on the plateau; the towers carry their own finials.
   falls: [
-    -0.95, -0.84, -0.55, -1, 0.55, -1, 0.95, -0.84, 1.0, 0.56,
-    0.6, 0.94, 0, 1.06, -0.6, 0.94, -1.0, 0.56,
+    -0.62, -1, 0.62, -1, 0.9, -0.84, 1.0, -0.58, 1.0, -0.08, 0.86, 0.06,
+    0.86, 0.52, 0.55, 0.92, 0, 1.06, -0.55, 0.92, -0.86, 0.52, -0.86, 0.06,
+    -1.0, -0.08, -1.0, -0.58, -0.9, -0.84,
   ],
 };
 
@@ -2967,11 +2965,12 @@ function sigRiftward(
 }
 
 /**
- * ALDAREN'S GATE — the crowned falls as heraldry. The gold chief
- * rides the outline's own three crown points, and below it three
- * cascade stripes fall the full height of the face: the capital's
- * water, moonpale on moonpale, each stripe one plate and one bright
- * edge. The king's answer to the sun.
+ * ALDAREN'S GATE — the capital's door, face on, CURATED. Three flat
+ * ideas and not one more: the moonpale ashlar (the plates), the arch
+ * of vale night with its crescent moon, and the one white fall
+ * pouring peak to threshold. The gold — the arch frame, the crown —
+ * is all the raised passes'. Nothing on this face asks to be
+ * deciphered; it reads whole at a glance and from across a field.
  */
 function sigFalls(
   ctx: CanvasRenderingContext2D,
@@ -2980,41 +2979,37 @@ function sigFalls(
   litU: number,
 ): void {
   plates(ctx, st, litU);
-  const gold = st.deviceColor ?? '#e6c36a';
-  // The chief: gold to the crown line, one seam, one lit pass — the
-  // spike plan's three crown points rise out of THIS band, so the
-  // crest reads as solid gold from the standing points to the seam.
-  ctx.fillStyle = SEAM;
-  ctx.fillRect(-1.2, -0.58, 2.4, 0.06);
-  ctx.fillStyle = gold;
-  ctx.fillRect(-1.2, -1.2, 2.4, 0.62);
-  ctx.fillStyle = shade(gold, 24);
-  ctx.fillRect(-1.2, -0.72, 2.4, 0.09);
-  // The falls: three cascades off the chief, the middle one wider —
-  // water finds the middle of a spillway. The field between them
-  // steps DOWN to the alt tone first: white water only reads against
-  // rock, and the first cut washed out into its own face.
-  ctx.fillStyle = st.faceAlt ?? shade(st.face, -14);
-  ctx.fillRect(-1.2, -0.52, 2.4, 1.72);
-  ctx.fillStyle = shade(st.faceAlt ?? st.face, -12);
-  ctx.fillRect(litU > 0 ? -1.2 : 0, -0.52, 1.2, 1.72);
+  // THE ARCH OPENING: a pointed arch of vale night — the darkest
+  // plane on the shield, and the fall only reads white against it.
+  const night = st.faceAlt ?? '#28324f';
+  poly(ctx, night, [0, -0.68, 0.5, -0.24, 0.5, 0.9, -0.5, 0.9, -0.5, -0.24]);
+  // The opening's one depth cue: the off-sun jamb falls deeper.
+  poly(ctx, shade(night, -14), [
+    -litU * 0.5, -0.24, -litU * 0.5, 0.9, -litU * 0.22, 0.9, -litU * 0.22, -0.44,
+  ]);
+  // THE MOON: one bold eight-cut disc rising BEHIND the fall — the
+  // water's dark edge cuts it, and the half that shows is the picture:
+  // this is the door the moon rises behind. One shape, no deciphering.
+  const moonU = -0.2;
+  const moonT = -0.34;
+  const eightCut = (cu: number, ct: number, r: number): number[] => {
+    const p: number[] = [];
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+      p.push(cu + Math.cos(a) * r, ct + Math.sin(a) * r);
+    }
+    return p;
+  };
+  poly(ctx, '#eef4ff', eightCut(moonU, moonT, 0.21));
+  // THE FALL: one cascade, peak to threshold, widening as it spills.
+  // One bright edge on the sun side — moving water carries one light.
   const water = '#eef4fc';
   const bright = '#ffffff';
-  const stripe = (u: number, w: number): void => {
-    ctx.fillStyle = SEAM;
-    ctx.fillRect(u - w / 2 - 0.03, -0.52, w + 0.06, 1.72);
-    ctx.fillStyle = water;
-    ctx.fillRect(u - w / 2, -0.52, w, 1.72);
-    ctx.fillStyle = bright;
-    ctx.fillRect(litU > 0 ? u + w / 2 - 0.05 : u - w / 2, -0.52, 0.05, 1.72);
-  };
-  stripe(-0.55, 0.17);
-  stripe(0, 0.24);
-  stripe(0.55, 0.17);
-  // Two gold rivets where the chief is bolted through the face —
-  // spent low and countable, the ladder's whole discipline.
-  stud(ctx, -0.88, -0.66, 0.075, shade(gold, 30));
-  stud(ctx, 0.88, -0.66, 0.075, shade(gold, 30));
+  poly(ctx, SEAM, [-0.19, -0.58, 0.19, -0.58, 0.26, 1.08, -0.26, 1.08]);
+  poly(ctx, water, [-0.15, -0.56, 0.15, -0.56, 0.22, 1.06, -0.22, 1.06]);
+  poly(ctx, bright, [
+    litU * 0.15, -0.56, litU * 0.08, -0.56, litU * 0.13, 1.06, litU * 0.22, 1.06,
+  ]);
 }
 
 /** The heraldic charge, cut in flat planes with one lit facet. */
@@ -4217,38 +4212,28 @@ function relRiftward(rc: ReliefCtx, st: ShieldStyle): void {
 }
 
 /**
- * ALDAREN'S GATE — the chief physically LAPS the field: a raised
- * plate of gold whose bottom wall shows over the moonpale, each
- * cascade lifted on its own lip, the crown points already standing
- * as solid gold (the spike plan), the ring (the substrate boss)
- * mounted at the boards' center.
+ * ALDAREN'S GATE — the gate's one piece of raised metal on the face:
+ * the pointed arch as a GOLD FRAME standing off the ashlar. One
+ * U-shaped prism (outer arch down both jambs, back up the inner),
+ * ringed as the single object it is, with one lit rake where the sun
+ * catches the slope. The crown rides THE CREST TIER; nothing else on
+ * this face is raised, because a curated door needs nothing else.
  */
 function relFalls(rc: ReliefCtx, st: ShieldStyle): void {
   const gold = st.deviceColor ?? '#e6c36a';
-  prism(rc, [-1.06, -1.02, 1.06, -1.02, 1.06, -0.58, -1.06, -0.58], 0, 0.36, gold, {
-    wallDark: shade(gold, -36),
-  });
-  polyAt(rc, [-1.06, -1.02, 1.06, -1.02, 1.06, -0.93, -1.06, -0.93], 0.36, shade(gold, 26));
-  // The chief's finial studs ride THE CREST TIER, off the raised plate.
-  const water = '#eef4fc';
-  for (const [u, w] of [
-    [-0.55, 0.17],
-    [0, 0.24],
-    [0.55, 0.17],
-  ] as const) {
-    prism(rc, [u - w / 2, -0.56, u + w / 2, -0.56, u + w / 2, 1.02, u - w / 2, 1.02], 0, 0.16, water, {
-      shadow: false,
-      wallDark: shade(water, -30),
-    });
-    polyAt(
-      rc,
-      rc.litU > 0
-        ? [u + w / 2 - 0.05, -0.56, u + w / 2, -0.56, u + w / 2, 1.02, u + w / 2 - 0.05, 1.02]
-        : [u - w / 2, -0.56, u - w / 2 + 0.05, -0.56, u - w / 2 + 0.05, 1.02, u - w / 2, 1.02],
-      0.16,
-      '#ffffff',
-    );
-  }
+  const frame = [
+    -0.64, 0.92, -0.64, -0.28, 0, -0.86, 0.64, -0.28, 0.64, 0.92,
+    0.5, 0.92, 0.5, -0.24, 0, -0.68, -0.5, -0.24, -0.5, 0.92,
+  ];
+  prism(rc, frame, 0, 0.4, gold, { wallDark: shade(gold, -36), outline: true });
+  polyAt(
+    rc,
+    rc.litU > 0
+      ? [0, -0.86, 0.64, -0.28, 0.56, -0.26, 0, -0.78]
+      : [0, -0.86, -0.64, -0.28, -0.56, -0.26, 0, -0.78],
+    0.4,
+    shade(gold, 28),
+  );
 }
 
 // -------------------------------------------------- the crest solids
@@ -4334,13 +4319,33 @@ function crestRiftward(rc: ReliefCtx): void {
 }
 
 /**
- * ALDAREN'S GATE — the chief's twin finial studs, standing off the
- * raised gold plate itself: small spires, royal height.
+ * ALDAREN'S GATE — THE CROWN, mounted. Three bold gold points on a
+ * ringed circlet standing clear above the gate's plateau, the King's
+ * crimson jewel set at the brow — the only warm blood on the rung.
+ * Face-on it crowns the silhouette; turned, it protrudes with its
+ * whole height; from behind, the gate hides its king. Three points,
+ * one band, one stone: a crown you never have to decipher.
  */
 function crestFalls(rc: ReliefCtx, st: ShieldStyle): void {
   const gold = st.deviceColor ?? '#e6c36a';
-  pyramid(rc, -0.88, -0.8, 0.085, 0.1, 0.36, 1.0, shade(gold, 30), { outline: true });
-  pyramid(rc, 0.88, -0.8, 0.085, 0.1, 0.36, 1.0, shade(gold, 30), { outline: true });
+  // The circlet: WIDE, and seated half above the plateau's own edge —
+  // a crown stands ON a gate, it does not hide inside its binding.
+  prism(rc, [-0.58, -1.18, 0.58, -1.18, 0.58, -0.86, -0.58, -0.86], 0, 0.65, gold, {
+    wallDark: shade(gold, -38),
+    outline: true,
+  });
+  polyAt(rc, [-0.58, -1.18, 0.58, -1.18, 0.58, -1.1, -0.58, -1.1], 0.65, shade(gold, 28));
+  // THREE points — a crown in this game's own grammar is three bold
+  // points, not a comb of small ones. Center tallest; the outer pair
+  // leans the way a worn crown spreads.
+  pyramid(rc, 0, -1.08, 0.21, 0.14, 0.65, 2.9, shade(gold, 30), { outline: true });
+  pyramid(rc, -0.42, -1.08, 0.16, 0.12, 0.65, 2.0, gold, { outline: true, du: -0.2 });
+  pyramid(rc, 0.42, -1.08, 0.16, 0.12, 0.65, 2.0, gold, { outline: true, du: 0.2 });
+  // The King's jewel, set LAST at the circlet's brow — a seam seat,
+  // the crimson stone, one lit half: the only warm blood on the rung.
+  polyAt(rc, [0, -1.14, 0.15, -0.99, 0, -0.84, -0.15, -0.99], 0.65, SEAM);
+  polyAt(rc, [0, -1.11, 0.12, -0.99, 0, -0.87, -0.12, -0.99], 0.65, '#a32638');
+  polyAt(rc, [0, -1.11, 0, -0.87, -0.12, -0.99], 0.65, '#c94b56');
 }
 
 /**
