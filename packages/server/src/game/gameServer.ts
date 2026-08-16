@@ -15428,8 +15428,10 @@ export class GameServer {
             }
             if (maxHit > 0) strike(mEid, { x: p2.x, y: p2.y });
           });
+          // ONE VOICE ON THE WIRE: the wave speaks the nova dialect
+          // every watcher already reads (ring grammar + signature).
           this.broadcastFx(p2.plane, {
-            t: 'fx', kind: 'blast', x: p2.x, y: p2.y, radius, id: ab.id, color: ab.color,
+            t: 'fx', kind: 'nova', x: p2.x, y: p2.y, radius, id: ab.id, color: ab.color,
           });
         };
         wave();
@@ -15446,16 +15448,20 @@ export class GameServer {
           const t2 = this.positions.get(targetEid);
           if (!p2 || !t2 || t2.plane !== p2.plane) return;
           if (Math.hypot(t2.x - p2.x, t2.y - p2.y) > (ab.range ?? 2) + 1) return;
+          // Each beat re-reads the live fight and speaks its own arc
+          // (the player drumroll's grammar) — the signature paints
+          // one rake per beat, never a mute flurry.
+          p2.dir = Math.atan2(t2.y - p2.y, t2.x - p2.x);
+          this.broadcastFx(p2.plane, {
+            t: 'fx', kind: 'arc', x: p2.x, y: p2.y, radius: ab.range ?? 2,
+            dir: p2.dir, id: ab.id, color: ab.color,
+          });
           strike(targetEid);
         };
         rake();
         for (let i = 1; i < hits; i++) {
           this.petEchoes.push({ at: this.tickCount + i * (ab.pulseEveryTicks ?? 5), fire: rake });
         }
-        this.broadcastFx(pos.plane, {
-          t: 'fx', kind: 'blast', x: tpos?.x ?? pos.x, y: tpos?.y ?? pos.y,
-          radius: 0.8, id: ab.id, color: ab.color,
-        });
         break;
       }
       case 'melee_arc': {
@@ -15473,15 +15479,16 @@ export class GameServer {
           strike(mEid, { x: pos.x, y: pos.y });
         });
         this.broadcastFx(pos.plane, {
-          t: 'fx', kind: 'blast', x: pos.x + Math.cos(pos.dir) * reach * 0.6,
-          y: pos.y + Math.sin(pos.dir) * reach * 0.6, radius: reach * 0.7,
-          id: ab.id, color: ab.color,
+          t: 'fx', kind: 'arc', x: pos.x, y: pos.y, radius: reach,
+          dir: pos.dir, id: ab.id, color: ab.color,
         });
         break;
       }
       case 'dash_strike':
       case 'leap_slam': {
         if (!tpos || tpos.plane !== pos.plane) break;
+        const startX = pos.x;
+        const startY = pos.y;
         const dd = Math.hypot(tpos.x - pos.x, tpos.y - pos.y);
         if (dd > 0.01) {
           const reach = Math.min(ab.dashTiles ?? 3, Math.max(0, dd - 0.6));
@@ -15507,10 +15514,18 @@ export class GameServer {
             strike(mEid, { x: pos.x, y: pos.y });
           });
         }
+        // The corridor first (the travel every watcher reads), then a
+        // leap's landing speaks its own nova over the struck ground.
         this.broadcastFx(pos.plane, {
-          t: 'fx', kind: 'blast', x: pos.x, y: pos.y,
-          radius: ab.radius ?? 0.9, id: ab.id, color: ab.color,
+          t: 'fx', kind: 'dash', x: startX, y: startY, x2: pos.x, y2: pos.y,
+          radius: 0, id: ab.id, color: ab.color,
         });
+        if (ab.shape === 'leap_slam') {
+          this.broadcastFx(pos.plane, {
+            t: 'fx', kind: 'nova', x: pos.x, y: pos.y,
+            radius: ab.radius ?? 2, id: ab.id, color: ab.color,
+          });
+        }
         break;
       }
       case 'projectile_fan': {
