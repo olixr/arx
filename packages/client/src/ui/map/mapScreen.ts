@@ -1,8 +1,10 @@
 import { DANGER_LAWS } from '@arx/content';
+import type { QuestWire } from '@arx/shared';
 import type { ClientGame } from '../../game/clientGame.js';
 import { padGlyph, padGlyphInline } from '../../input/bindings.js';
 import { dressPanel } from '../panel.js';
 import { dockGlyphUrl } from '../../render/icons.js';
+import { inkCss } from './markers.js';
 import { MapView, TIER_WASH } from './mapView.js';
 
 /**
@@ -53,6 +55,17 @@ export class MapScreen {
   private readonly coordsEl: HTMLElement;
   private readonly reticle: HTMLElement;
   private readonly legend: HTMLElement;
+  private readonly questPane: HTMLElement;
+  private readonly questList: HTMLElement;
+  private readonly allChip: HTMLButtonElement;
+  /** Errands the reader has waved off the chart — persisted per soul. */
+  private readonly hidden = new Set<string>();
+  private hiddenLoaded = false;
+  private paneVersion = -1;
+  private paneFocus: string | null = null;
+  private lastDistBeat = 0;
+  /** The followed errand (the tracker's own), wired by main. */
+  getFollowed: (() => string | null) | null = null;
   private readonly setHint: (text: string) => void;
   private hintMode: 'kb' | 'pad' | '' = '';
   private padPrev = new Set<number>();
@@ -80,9 +93,39 @@ export class MapScreen {
 
     const stage = document.createElement('div');
     stage.className = 'map-stage';
+    // THE ERRAND RAIL — the quest pane on the chart's left, the map's
+    // own legend of what is being sought and where. Built empty here;
+    // dealt from the ledger while the chart is open.
+    this.questPane = document.createElement('div');
+    this.questPane.className = 'map-quests';
+    this.questPane.dataset.region = '';
+    const mqHead = document.createElement('div');
+    mqHead.className = 'mq-head';
+    const mqTitle = document.createElement('span');
+    mqTitle.className = 'mq-title';
+    mqTitle.textContent = 'Errands';
+    this.allChip = document.createElement('button');
+    this.allChip.className = 'sort-chip mq-all';
+    this.allChip.dataset.nav = '';
+    this.allChip.dataset.navkey = 'chartq:all';
+    this.allChip.dataset.acta = 'Toggle';
+    this.allChip.addEventListener('click', () => {
+      if (this.hidden.size > 0) this.hidden.clear();
+      else for (const id of this.game.quests.keys()) this.hidden.add(id);
+      this.saveHidden();
+      this.renderPane(true);
+    });
+    mqHead.append(mqTitle, this.allChip);
+    this.questList = document.createElement('div');
+    this.questList.className = 'mq-list';
+    this.questPane.append(mqHead, this.questList);
+    stage.appendChild(this.questPane);
+
+    const main = document.createElement('div');
+    main.className = 'map-main';
     this.canvas = document.createElement('canvas');
     this.canvas.className = 'map-canvas';
-    stage.appendChild(this.canvas);
+    main.appendChild(this.canvas);
 
     // The chart's rail: the reader's verbs left, whereabouts right.
     const rail = document.createElement('div');
@@ -118,7 +161,8 @@ export class MapScreen {
     this.reticle = document.createElement('div');
     this.reticle.className = 'map-reticle';
     stage.appendChild(this.reticle);
-    stage.appendChild(rail);
+    main.appendChild(rail);
+    stage.appendChild(main);
     this.panel.appendChild(stage);
 
     this.view = new MapView(this.canvas, game, effectiveDpr);
@@ -246,6 +290,7 @@ export class MapScreen {
       this.centered = true;
       this.lastBand = this.view.band();
     }
+    this.renderPane(true);
     const loop = (now: number): void => {
       if (!this.isOpen) return;
       if (this.view.band() !== this.lastBand) {
@@ -253,6 +298,8 @@ export class MapScreen {
         this.centerOnPlayer();
       }
       this.drive(now);
+      this.renderPane();
+      this.updateDistances();
       this.view.render(now);
       const pos = this.game.predictor.pos;
       this.coordsEl.textContent = `${Math.round(pos.x)}, ${Math.round(pos.y)}`;
@@ -273,22 +320,251 @@ export class MapScreen {
     this.view.centerOn(pos.x, pos.y, Math.max(this.view.scale, 3));
   }
 
+  // ------------------------------------------------- the errand rail
+
+  private get hideKey(): string {
+    return 'arx.chartHidden.' + this.game.ownName;
+  }
+
+  private saveHidden(): void {
+    try {
+      localStorage.setItem(this.hideKey, JSON.stringify([...this.hidden]));
+    } catch {
+      /* a full jar loses nothing but a preference */
+    }
+  }
+
+  private loadHidden(): void {
+    if (this.hiddenLoaded) return;
+    this.hiddenLoaded = true;
+    try {
+      const raw = localStorage.getItem(this.hideKey);
+      if (raw) for (const id of JSON.parse(raw) as string[]) this.hidden.add(id);
+    } catch {
+      /* an unreadable preference is an empty one */
+    }
+  }
+
+  /** The view draws active-minus-hidden; the pane owns the set. */
+  private syncShown(): void {
+    this.view.questShown.clear();
+    for (const id of this.game.quests.keys()) {
+      if (!this.hidden.has(id)) this.view.questShown.add(id);
+    }
+  }
+
   /**
-   * THE ERRAND POINTS AT THE CHART: lay an errand's search ring on
-   * the table and frame the view around it (call open() first — the
-   * chart must be standing before it can be framed). The ring stays
-   * across folds until its errand leaves the ledger or another call
-   * re-points it.
+   * THE FINGER LANDS: focus one errand — show it, breathe its
+   * grounds, and frame the chart around them (or around the one
+   * ground passed in, when a journal row pointed at a single ask).
+   * Call open() first; the chart must be standing before it can be
+   * framed.
    */
-  frameSearchRing(ring: NonNullable<MapView['searchRing']>): void {
-    this.view.searchRing = ring;
+  focusQuest(quest: string, ground?: { x: number; y: number; r: number; plane?: string }): void {
+    this.loadHidden();
+    if (this.hidden.delete(quest)) this.saveHidden();
+    this.view.questFocus = quest;
+    this.syncShown();
+    const q = this.game.quests.get(quest);
+    let grounds: Array<{ x: number; y: number; r: number; plane?: string }> = [];
+    if (ground) grounds = [ground];
+    else if (q) {
+      if (q.status === 'ready') {
+        if (q.turnInHint) grounds = [q.turnInHint];
+      } else {
+        for (const o of q.objectives) {
+          if (o.have >= o.need) continue;
+          grounds.push(...(o.hints ?? (o.hint ? [o.hint] : [])));
+        }
+      }
+    }
+    grounds = grounds.filter((g) => (g.plane ?? 'surface') === this.game.plane.id);
+    if (grounds.length > 0) this.frameGrounds(grounds);
+    this.renderPane(true);
+  }
+
+  /** Frame a set of grounds with air around them, never wall to wall. */
+  private frameGrounds(gs: Array<{ x: number; y: number; r: number }>): void {
     const cw = this.canvas.clientWidth || 1;
     const ch = this.canvas.clientHeight || 1;
-    // Frame the neighborhood with air around it, never wall to wall.
-    const scale = Math.min(6, Math.max(0.5, (Math.min(cw, ch) * 0.3) / Math.max(1, ring.r)));
-    this.view.centerOn(ring.x, ring.y, scale);
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const g of gs) {
+      minX = Math.min(minX, g.x - g.r);
+      minY = Math.min(minY, g.y - g.r);
+      maxX = Math.max(maxX, g.x + g.r);
+      maxY = Math.max(maxY, g.y + g.r);
+    }
+    const span = Math.max(maxX - minX, maxY - minY, 24);
+    const scale = Math.min(6, Math.max(0.45, (Math.min(cw, ch) * 0.72) / span));
+    this.view.centerOn((minX + maxX) / 2, (minY + maxY) / 2, scale);
     this.centered = true;
     this.lastBand = this.view.band();
+  }
+
+  /** One unmet ask's whereabouts for the pane's distance foot. */
+  private paneTarget(q: QuestWire): { x: number; y: number; r: number; plane?: string } | null {
+    if (q.status === 'ready') return q.turnInHint ?? null;
+    for (const o of q.objectives) {
+      if (o.have < o.need && o.hint) return o.hint;
+    }
+    return null;
+  }
+
+  /**
+   * THE ERRAND RAIL — dealt from the ledger: the followed errand
+   * first, then work ready to hand in, then the rest by name. Each
+   * row wears its chart ink, tells its asks and their distances, and
+   * carries its own Hide/Show chip; the row itself frames the chart.
+   * Structure repaints only when the ledger clock turns (or a verb
+   * here forces it); the distance feet breathe on their own beat.
+   */
+  private renderPane(force = false): void {
+    if (!force && this.paneVersion === this.game.questVersion && this.paneFocus === this.view.questFocus) return;
+    this.loadHidden();
+    this.paneVersion = this.game.questVersion;
+    // A finished errand takes its focus with it.
+    if (this.view.questFocus !== null && !this.game.quests.has(this.view.questFocus)) {
+      this.view.questFocus = null;
+    }
+    this.paneFocus = this.view.questFocus;
+    this.syncShown();
+    this.questList.replaceChildren();
+    this.allChip.textContent = this.hidden.size > 0 ? 'Show all' : 'Hide all';
+    this.allChip.title =
+      this.hidden.size > 0 ? 'Paint every errand on the chart' : 'Clear the chart of errand grounds';
+    const quests = [...this.game.quests.values()];
+    if (quests.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'mq-empty';
+      empty.textContent = 'No errands underway. The chart keeps its quiet.';
+      this.questList.appendChild(empty);
+      return;
+    }
+    const followed = this.getFollowed?.() ?? null;
+    quests.sort((a, b) => {
+      const fa = a.id === followed ? 0 : 1;
+      const fb = b.id === followed ? 0 : 1;
+      if (fa !== fb) return fa - fb;
+      const ra = a.status === 'ready' ? 0 : 1;
+      const rb = b.status === 'ready' ? 0 : 1;
+      if (ra !== rb) return ra - rb;
+      return a.name < b.name ? -1 : 1;
+    });
+    for (const q of quests) {
+      const hidden = this.hidden.has(q.id);
+      const row = document.createElement('div');
+      row.className = 'mq-row';
+      if (this.view.questFocus === q.id) row.classList.add('sel');
+      if (hidden) row.classList.add('off');
+
+      const main = document.createElement('button');
+      main.className = 'mq-main';
+      main.dataset.nav = '';
+      main.dataset.navkey = 'chartq:' + q.id;
+      main.dataset.acta = 'Frame';
+      main.title = 'Frame this errand on the chart';
+      main.addEventListener('click', () => this.focusQuest(q.id));
+
+      const swatch = document.createElement('span');
+      swatch.className = 'mq-swatch';
+      const ink = this.view.questInk(q.id);
+      swatch.style.background = inkCss(ink, hidden ? 0.28 : 0.95);
+      swatch.style.borderColor = inkCss(ink, hidden ? 0.4 : 1);
+
+      const body = document.createElement('div');
+      body.className = 'mq-body';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'mq-name';
+      nameEl.textContent = q.name;
+      if (q.stages > 1) {
+        const part = document.createElement('span');
+        part.className = 'mq-part';
+        part.textContent = `${q.stage + 1} of ${q.stages}`;
+        nameEl.appendChild(part);
+      }
+      body.appendChild(nameEl);
+
+      const dist = (target: { x: number; y: number; r: number; plane?: string } | null): HTMLElement => {
+        const el = document.createElement('span');
+        el.className = 'mq-dist';
+        if (target) {
+          el.dataset.tx = String(target.x);
+          el.dataset.ty = String(target.y);
+          el.dataset.tr = String(target.r);
+          el.dataset.tplane = target.plane ?? 'surface';
+        }
+        return el;
+      };
+      if (q.status === 'ready') {
+        const obj = document.createElement('div');
+        obj.className = 'mq-obj mq-return';
+        const word = document.createElement('span');
+        word.textContent = `Return to ${q.turnInName}`;
+        obj.append(word, dist(q.turnInHint ?? null));
+        body.appendChild(obj);
+      } else {
+        for (const o of q.objectives) {
+          const obj = document.createElement('div');
+          obj.className = 'mq-obj';
+          if (o.have >= o.need) obj.classList.add('met');
+          const word = document.createElement('span');
+          word.textContent = o.need > 1 ? `${o.label} · ${o.have}/${o.need}` : o.label;
+          obj.appendChild(word);
+          if (o.have < o.need) obj.appendChild(dist(o.hint ?? null));
+          body.appendChild(obj);
+        }
+      }
+      main.append(swatch, body);
+
+      const eye = document.createElement('button');
+      eye.className = 'mq-eye';
+      eye.dataset.nav = '';
+      eye.dataset.navkey = 'chartq:eye:' + q.id;
+      eye.dataset.acta = hidden ? 'Show' : 'Hide';
+      eye.textContent = hidden ? 'Show' : 'Hide';
+      eye.title = hidden ? 'Paint this errand back on the chart' : 'Wave this errand off the chart';
+      eye.addEventListener('click', () => {
+        if (!this.hidden.delete(q.id)) this.hidden.add(q.id);
+        this.saveHidden();
+        this.renderPane(true);
+      });
+
+      row.append(main, eye);
+      this.questList.appendChild(row);
+    }
+    this.updateDistances(true);
+  }
+
+  /** The distance feet: "420 paces NE", "hereabouts", "another realm". */
+  private updateDistances(force = false): void {
+    const now = performance.now();
+    if (!force && now - this.lastDistBeat < 500) return;
+    this.lastDistBeat = now;
+    const pos = this.game.predictor.pos;
+    const winds = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
+    for (const el of this.questList.querySelectorAll<HTMLElement>('.mq-dist')) {
+      const txt = el.dataset.tx;
+      if (txt === undefined) {
+        el.textContent = '';
+        continue;
+      }
+      if (el.dataset.tplane !== this.game.plane.id) {
+        el.textContent = 'another realm';
+        continue;
+      }
+      const dx = Number(txt) - pos.x;
+      const dy = Number(el.dataset.ty) - pos.y;
+      const d = Math.hypot(dx, dy);
+      if (d <= Number(el.dataset.tr)) {
+        el.textContent = 'hereabouts';
+      } else {
+        const oct = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) & 7;
+        el.textContent = `${Math.round(d)} ${winds[oct]}`;
+      }
+    }
   }
 
   /**
@@ -369,7 +645,12 @@ export class MapScreen {
       } else {
         const hit = this.view.pick(e.offsetX, e.offsetY);
         this.view.hover = hit?.kind === 'discovery' ? (hit.d ?? null) : null;
-        this.canvas.style.cursor = hit ? 'pointer' : 'crosshair';
+        this.view.questHover =
+          hit?.kind === 'questground' && hit.quest !== undefined && hit.ground !== undefined
+            ? { quest: hit.quest, ground: hit.ground }
+            : null;
+        // A broad ground never turns the planting hand into a finger.
+        this.canvas.style.cursor = hit && hit.kind !== 'questground' ? 'pointer' : 'crosshair';
       }
     });
     this.canvas.addEventListener('pointerup', (e) => {
@@ -389,6 +670,7 @@ export class MapScreen {
     });
     this.canvas.addEventListener('pointerleave', () => {
       this.view.hover = null;
+      this.view.questHover = null;
     });
     this.canvas.addEventListener(
       'wheel',

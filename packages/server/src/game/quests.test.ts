@@ -203,3 +203,45 @@ test('re-accepting a repeatable keeps its history', () => {
   assert.equal(again.status, 'active');
   assert.equal(again.cooldownUntil, undefined);
 });
+
+test('THE FINGER ON THE CHART: every ground rides the wire, best first', () => {
+  const names = {
+    itemName: (id: string) => id,
+    npcName: (id: string) => id,
+    actorName: (id: string) => id,
+    placeName: (id: string) => id,
+  };
+  const grounds = [
+    { x: 100, y: 100, r: 24 },
+    { x: 300, y: 60, r: 40, sure: false as const, word: 'wolf runs' },
+    { x: -80, y: 220, r: 36, sure: false as const },
+  ];
+  const locate = {
+    actorHint: () => ({ x: 8, y: 8, r: 10 }),
+    objectiveHints: () => grounds,
+  };
+  const q = acceptQuest(HUNT, undefined, ctxOf());
+  const wire = questWire(HUNT, q, ctxOf(), names, locate);
+  const kill = wire.objectives[0]!;
+  assert.deepEqual(kill.hint, grounds[0], 'the compass keeps the best single');
+  assert.deepEqual(kill.hints, grounds, 'the chart gets every ground');
+  assert.equal(kill.hints![1]!.sure, false, 'rumors stay marked');
+  assert.deepEqual(wire.turnInHint, { x: 8, y: 8, r: 10 });
+
+  // One ground = the one hint carries alone; no hints list rides.
+  const single = { ...locate, objectiveHints: () => [grounds[0]!] };
+  const w2 = questWire(HUNT, q, ctxOf(), names, single);
+  assert.deepEqual(w2.objectives[0]!.hint, grounds[0]);
+  assert.equal(w2.objectives[0]!.hints, undefined);
+
+  // Silence falls back to the authored stage mark, as it always did.
+  const marked: QuestDef = {
+    ...HUNT,
+    id: 'marked',
+    stages: [{ ...HUNT.stages[0]!, mark: { x: 50, y: 60 } }],
+  };
+  const silent = { ...locate, objectiveHints: () => [] };
+  const w3 = questWire(marked, acceptQuest(marked, undefined, ctxOf()), ctxOf(), names, silent);
+  assert.deepEqual(w3.objectives[0]!.hint, { x: 50, y: 60, r: 12 });
+  assert.equal(w3.objectives[0]!.hints, undefined);
+});

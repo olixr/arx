@@ -395,6 +395,18 @@ export function wildCandidates(
   );
 }
 
+/**
+ * THE ROSTER READ BACKWARD — every entry that can put this creature on
+ * the ground (as the body itself or as a knot's lead). Pure; this is
+ * how the quest chart asks "where do such things roam?" and gets the
+ * same answer the ambience pass lives by: their tiers, their biomes,
+ * their hours. Empty = the creature never walks wild (camps and
+ * warrens only).
+ */
+export function wildEntriesFor(npc: string): WildEntry[] {
+  return WILD_ROSTER.filter((e) => e.npc === npc || e.lead?.npc === npc);
+}
+
 /** Weighted pick over candidates; `roll` in [0, 1). Null when empty. */
 export function pickWild(
   candidates: readonly WildEntry[],

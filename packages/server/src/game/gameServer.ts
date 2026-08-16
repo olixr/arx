@@ -404,7 +404,13 @@ import {
   findsZoneId,
   type MinorFind,
 } from '../world/finds.js';
-import { groundProbeAt, shoreProbeAt } from '@arx/content';
+import {
+  GATHER_PROSPECTS,
+  groundProbeAt,
+  prospectScoreAt,
+  shoreProbeAt,
+  wildEntriesFor,
+} from '@arx/content';
 import {
   COMBO_GRACE_TICKS,
   COMBO_STAGES,
@@ -2324,6 +2330,16 @@ export class GameServer {
   private readonly questsByTurnIn = new Map<string, string[]>();
   /** Quest-gated drop entries by bestiary def id (the kill-site channel). */
   private readonly questDropsByNpc = new Map<string, Array<{ quest: string; item: string; chance: number }>>();
+  /**
+   * THE FINGER ON THE CHART — an ask's resolved search grounds, memoized
+   * so the collect watcher's ≤2 Hz re-pushes never re-walk the sampling
+   * rings. Keyed by the ask itself (def + target id); short-lived, so a
+   * world that shifts (camps decided, spawns materialized) re-answers
+   * inside a minute.
+   */
+  private readonly questGroundsMemo = new Map<string, { at: number; grounds: QuestHintWire[] }>();
+  /** POI defs that field each creature (base + wings + boldness rungs). */
+  private poiFieldsNpc: Map<string, Set<string>> | null = null;
   /**
    * Quests some ITEM begins (ItemDef.startsQuest). They never join the
    * availability list — nobody offers them, so no head wears their
@@ -16814,25 +16830,65 @@ export class GameServer {
   }
 
   /**
+   * THE POINTED ROSTER — which POI archetypes can field each creature,
+   * read once from every garrison chapter (base, wings, boldness
+   * rungs). A decided camp of a fielding def is honest rumor ground
+   * for a kill ask even before it materializes.
+   */
+  private poiDefsFielding(npc: string): Set<string> {
+    if (!this.poiFieldsNpc) {
+      this.poiFieldsNpc = new Map();
+      const file = (id: string, defId: string): void => {
+        let set = this.poiFieldsNpc!.get(id);
+        if (!set) this.poiFieldsNpc!.set(id, (set = new Set()));
+        set.add(defId);
+      };
+      for (const def of POI_DEFS.values()) {
+        for (const g of def.garrison) file(g.npc, def.id);
+        if (def.compound) for (const g of def.compound.wingGarrison) file(g.npc, def.id);
+        if (def.boldness) {
+          for (const stage of def.boldness.stages) {
+            for (const g of stage.garrison ?? []) file(g.npc, def.id);
+          }
+        }
+      }
+    }
+    return this.poiFieldsNpc.get(npc) ?? new Set();
+  }
+
+  /**
    * THE WORLD ANSWERS "WHERE" — generalized whereabouts for the
-   * journal's chart rings, derived from registries the world already
-   * keeps (actor placements, spawn grounds, zone extents). The center
-   * rounds to a coarse grid and the radius stays generous: a ring is
-   * a neighborhood, never a pin. Kill and drop grounds resolve
-   * nearest the GIVER's own door — the trouble a speaker means is the
-   * trouble on their watch — so the answer holds still across pushes.
-   * THE WORLDS APART: hints resolve on PERSISTENT planes only — a
-   * rift's per-run halls are nobody's neighborhood; the wire carries
-   * the source's plane so the chart files the ring rightly.
+   * journal's chart grounds, derived from registries the world already
+   * keeps (actor placements, spawn grounds, zone extents) and, when
+   * those are silent, from the world's own LAWS (the wild roster read
+   * backward against the pure fields; the gather prospector). Centers
+   * round to a coarse grid and radii stay generous: a ground is a
+   * neighborhood, never a pin. Everything resolves nearest the
+   * GIVER's own door — the trouble a speaker means is the trouble on
+   * their watch — so the answer holds still across pushes. Sure
+   * grounds (a post, a standing spawn, a mapped place) lead; RUMORS
+   * (sure: false) trail, drawn looser by the chart. THE WORLDS APART:
+   * hints resolve on PERSISTENT planes only — a rift's per-run halls
+   * are nobody's neighborhood — and law-derived rumors are sampled on
+   * the SURFACE fields only.
    */
   private questLocateRefs(): QuestLocateRefs {
-    const fuzz = (plane: PlaneId, x: number, y: number, r: number): QuestHintWire => {
+    const seed = config.worldSeed;
+    const fuzz = (
+      plane: PlaneId,
+      x: number,
+      y: number,
+      r: number,
+      opts?: { sure?: false; word?: string },
+    ): QuestHintWire => {
       const hint: QuestHintWire = {
         x: Math.round(x / 8) * 8,
         y: Math.round(y / 8) * 8,
         r: Math.round(r),
       };
       if (plane !== SURFACE_PLANE_ID) hint.plane = plane;
+      if (opts?.sure === false) hint.sure = false;
+      if (opts?.word !== undefined) hint.word = opts.word;
       return hint;
     };
     const persistent = (plane: PlaneId): boolean => !isRiftPlane(plane);
@@ -16844,20 +16900,172 @@ export class GameServer {
       const p = actorSpot(id);
       return p ? fuzz(p.plane, p.x, p.y, 10) : undefined;
     };
-    const npcHint = (id: string, near?: { x: number; y: number }): QuestHintWire | undefined => {
-      let best: { plane: PlaneId; x: number; y: number; radius: number } | undefined;
-      let bestD = Infinity;
+    const d2 = (ax: number, ay: number, bx: number, by: number): number =>
+      (ax - bx) ** 2 + (ay - by) ** 2;
+
+    // Standing spawn grounds — the world's WITNESSED answer, up to
+    // `cap` distinct neighborhoods nearest the asker's door.
+    const npcSpotHints = (
+      id: string,
+      near: { x: number; y: number } | undefined,
+      cap: number,
+    ): QuestHintWire[] => {
+      const posts: Array<{ plane: PlaneId; x: number; y: number; radius: number; d: number }> = [];
       for (const s of this.spawnPoints) {
         if (s.npc !== id || !persistent(s.plane)) continue;
-        const d = near ? (s.x - near.x) ** 2 + (s.y - near.y) ** 2 : 0;
-        if (!best || d < bestD) {
-          best = s;
-          bestD = d;
-        }
-        if (!near) break;
+        posts.push({ plane: s.plane, x: s.x, y: s.y, radius: s.radius, d: near ? d2(s.x, s.y, near.x, near.y) : 0 });
       }
-      return best ? fuzz(best.plane, best.x, best.y, Math.max(18, best.radius + 10)) : undefined;
+      posts.sort((a, b) => a.d - b.d);
+      const out: QuestHintWire[] = [];
+      for (const p of posts) {
+        // One ground per neighborhood — clustered posts share a ring.
+        if (out.some((o) => (o.plane ?? SURFACE_PLANE_ID) === p.plane && d2(o.x, o.y, p.x, p.y) < 96 ** 2)) continue;
+        out.push(fuzz(p.plane, p.x, p.y, Math.max(18, p.radius + 10)));
+        if (out.length >= cap) break;
+      }
+      return out;
     };
+
+    // Decided-but-unproven camps whose archetype fields the creature —
+    // rumor by nature ("a camp, they say"), never named on the chart
+    // so the discovery ceremony keeps its moment.
+    const campHints = (
+      id: string,
+      near: { x: number; y: number } | undefined,
+      cap: number,
+    ): QuestHintWire[] => {
+      const defs = this.poiDefsFielding(id);
+      if (defs.size === 0 || !near) return [];
+      const sites: Array<{ x: number; y: number; d: number }> = [];
+      for (const row of this.poiLedger.values()) {
+        if (!row.site || row.clearedAt !== null || row.emberUntil !== null) continue;
+        if (!defs.has(row.site.defId)) continue;
+        const d = d2(row.site.anchorX, row.site.anchorY, near.x, near.y);
+        if (d > 1200 ** 2) continue; // hereabouts, not across the world
+        sites.push({ x: row.site.anchorX, y: row.site.anchorY, d });
+      }
+      sites.sort((a, b) => a.d - b.d);
+      return sites
+        .slice(0, cap)
+        .map((s) => fuzz(SURFACE_PLANE_ID, s.x, s.y, 30, { sure: false, word: 'a camp, they say' }));
+    };
+
+    // Greedy density clustering over passing samples: the thickest
+    // knot of lawful ground becomes one generous rumor blob, repeat.
+    const clusterGrounds = (
+      pts: Array<{ x: number; y: number }>,
+      near: { x: number; y: number },
+      cap: number,
+      word: string | undefined,
+    ): QuestHintWire[] => {
+      const grounds: Array<{ x: number; y: number; r: number; d: number }> = [];
+      const remaining = [...pts];
+      const REACH = 52;
+      while (grounds.length < cap && remaining.length > 0) {
+        let bestI = 0;
+        let bestKin: number[] = [];
+        for (let i = 0; i < remaining.length; i++) {
+          const kin: number[] = [];
+          for (let j = 0; j < remaining.length; j++) {
+            if (d2(remaining[i]!.x, remaining[i]!.y, remaining[j]!.x, remaining[j]!.y) <= REACH ** 2) kin.push(j);
+          }
+          if (kin.length > bestKin.length) {
+            bestI = i;
+            bestKin = kin;
+          }
+        }
+        if (bestKin.length === 0) bestKin = [bestI];
+        let cx = 0;
+        let cy = 0;
+        for (const j of bestKin) {
+          cx += remaining[j]!.x;
+          cy += remaining[j]!.y;
+        }
+        cx /= bestKin.length;
+        cy /= bestKin.length;
+        let extent = 0;
+        for (const j of bestKin) extent = Math.max(extent, Math.sqrt(d2(remaining[j]!.x, remaining[j]!.y, cx, cy)));
+        grounds.push({
+          x: cx,
+          y: cy,
+          r: Math.min(84, Math.max(28, extent + 18)),
+          d: d2(cx, cy, near.x, near.y),
+        });
+        for (let k = bestKin.length - 1; k >= 0; k--) remaining.splice(bestKin[k]!, 1);
+      }
+      grounds.sort((a, b) => a.d - b.d);
+      return grounds.map((g) => fuzz(SURFACE_PLANE_ID, g.x, g.y, g.r, { sure: false, word }));
+    };
+
+    // Ring-sample the pure surface fields around the asker's door,
+    // keeping spots the given law blesses. ~200 point probes worst
+    // case — the same math the wild spawner runs continuously.
+    const sampleRings = (
+      near: { x: number; y: number },
+      lawful: (tx: number, ty: number) => boolean,
+    ): Array<{ x: number; y: number }> => {
+      const pass: Array<{ x: number; y: number }> = [];
+      for (let ring = 1; ring <= 9; ring++) {
+        const R = ring * 46;
+        const n = 8 + ring * 4;
+        for (let i = 0; i < n; i++) {
+          const ang = (i / n) * Math.PI * 2 + ring * 0.53;
+          const tx = Math.round(near.x + Math.cos(ang) * R);
+          const ty = Math.round(near.y + Math.sin(ang) * R);
+          if (lawful(tx, ty)) pass.push({ x: tx, y: ty });
+        }
+        if (ring >= 4 && pass.length >= 36) break; // enough to cluster
+      }
+      return pass;
+    };
+
+    // THE ROSTER READ BACKWARD: where such creatures roam by law —
+    // their tiers, their biomes, off the calmed roads. Hours are
+    // deliberately ignored (grounds must not flicker with the clock).
+    const wildGroundHints = (
+      id: string,
+      near: { x: number; y: number } | undefined,
+      cap: number,
+    ): QuestHintWire[] => {
+      const entries = wildEntriesFor(id);
+      if (entries.length === 0 || !near) return [];
+      let tierLo = Infinity;
+      let tierHi = -Infinity;
+      const biomes = new Set<string>();
+      let shore = false;
+      for (const e of entries) {
+        tierLo = Math.min(tierLo, e.tiers[0]);
+        tierHi = Math.max(tierHi, e.tiers[1]);
+        for (const b of e.biomes) {
+          if (b === 'shore') shore = true;
+          else biomes.add(b);
+        }
+      }
+      const pass = sampleRings(near, (tx, ty) => {
+        const tier = this.liveDangerTier(tx, ty);
+        if (tier === 0 || tier < tierLo || tier > tierHi) return false;
+        const probe = groundProbeAt(seed, tx, ty);
+        const biomeOk = (probe === 'grass' || probe === 'forest') && biomes.has(probe);
+        const shoreOk =
+          shore && probe !== 'water' && probe !== 'rock' && probe !== 'cave' && shoreProbeAt(seed, tx, ty);
+        if (!biomeOk && !shoreOk) return false;
+        return roadDistanceAt(seed, tx, ty) > ROAD_CALM;
+      });
+      return clusterGrounds(pass, near, cap, undefined);
+    };
+
+    // THE PROSPECTOR: gather country for a worldgen-grown item.
+    const prospectHints = (
+      item: string,
+      near: { x: number; y: number } | undefined,
+      cap: number,
+    ): QuestHintWire[] => {
+      const p = GATHER_PROSPECTS.get(item);
+      if (!p || !near) return [];
+      const pass = sampleRings(near, (tx, ty) => prospectScoreAt(seed, tx, ty, p.ground) > 0.3);
+      return clusterGrounds(pass, near, cap, p.word);
+    };
+
     const placeHint = (place: string): QuestHintWire | undefined => {
       if (!place.startsWith('zone:')) return undefined;
       const zid = place.slice(5);
@@ -16876,22 +17084,77 @@ export class GameServer {
       }
       return undefined;
     };
+
+    // A rumor that lands inside a sure ground's skirt is noise, not
+    // news — the witnessed answer already covers that country.
+    const dedupe = (grounds: QuestHintWire[]): QuestHintWire[] => {
+      const out: QuestHintWire[] = [];
+      for (const g of grounds) {
+        const shadowed = out.some(
+          (o) =>
+            (o.plane ?? SURFACE_PLANE_ID) === (g.plane ?? SURFACE_PLANE_ID) &&
+            d2(o.x, o.y, g.x, g.y) < (o.r + g.r * 0.5) ** 2,
+        );
+        if (!shadowed) out.push(g);
+        if (out.length >= 4) break;
+      }
+      return out;
+    };
+
+    const resolveKillGrounds = (
+      npc: string,
+      near: { x: number; y: number } | undefined,
+    ): QuestHintWire[] => {
+      const sure = npcSpotHints(npc, near, 2);
+      // Rumor sampling anchors on the giver's door, or failing that
+      // the nearest witnessed ground — "locally" needs a here.
+      const anchor = near ?? (sure[0] ? { x: sure[0].x, y: sure[0].y } : undefined);
+      const rumors = [...campHints(npc, anchor, 2), ...wildGroundHints(npc, anchor, 3)];
+      return dedupe([...sure, ...rumors]);
+    };
+
     return {
       actorHint,
-      objectiveHint: (def, obj) => {
+      objectiveHints: (def, obj) => {
+        const memoKey = `${def.id}|${obj.kind}|${
+          obj.kind === 'kill' ? obj.npc
+          : obj.kind === 'collect' ? obj.item
+          : obj.kind === 'talk' ? obj.actor
+          : obj.place
+        }`;
+        const now = Date.now();
+        const held = this.questGroundsMemo.get(memoKey);
+        if (held && now - held.at < 60_000) return held.grounds;
         const near = actorSpot(def.giver);
+        let grounds: QuestHintWire[];
         switch (obj.kind) {
-          case 'talk':
-            return actorHint(obj.actor);
+          case 'talk': {
+            const h = actorHint(obj.actor);
+            grounds = h ? [h] : [];
+            break;
+          }
           case 'kill':
-            return npcHint(obj.npc, near);
+            grounds = resolveKillGrounds(obj.npc, near);
+            break;
           case 'collect': {
             const src = def.questDrops?.find((d) => d.item === obj.item);
-            return src ? npcHint(src.npc, near) : undefined;
+            grounds = src ? resolveKillGrounds(src.npc, near) : prospectHints(obj.item, near, 3);
+            break;
           }
-          case 'discover':
-            return placeHint(obj.place);
+          case 'discover': {
+            const h = placeHint(obj.place);
+            grounds = h ? [h] : [];
+            break;
+          }
         }
+        this.questGroundsMemo.set(memoKey, { at: now, grounds });
+        // The memo never outgrows the quest book itself.
+        if (this.questGroundsMemo.size > 512) {
+          for (const [k, v] of this.questGroundsMemo) {
+            if (now - v.at >= 60_000) this.questGroundsMemo.delete(k);
+          }
+        }
+        return grounds;
       },
     };
   }

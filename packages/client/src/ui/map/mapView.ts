@@ -20,19 +20,24 @@ import { FogLayer, parchmentCanvas } from './fog.js';
 import {
   DEATH_INK,
   PLAYER_INK,
+  QUEST_INKS,
   WAYPOINT_INK,
   drawCompassRose,
   drawDiscoveryMarker,
   drawEdgePointer,
+  drawKnownSpot,
   drawMapLabel,
   drawDeathMark,
   drawPartyToken,
   drawPlayerToken,
+  drawQuestGround,
   drawScaleBar,
-  drawSearchRing,
   drawWaypointFlag,
+  inkCss,
+  inkLabelCss,
   partyColor,
 } from './markers.js';
+import { hashString } from '@arx/shared';
 import { authoredZoneArt } from './zoneArt.js';
 
 /**
@@ -129,8 +134,31 @@ export const TIER_WASH = [
 export type MapBand = 'surface' | 'underworld' | 'dungeon';
 
 export interface MapPick {
-  kind: 'discovery' | 'waypoint';
+  kind: 'discovery' | 'waypoint' | 'questground';
   d?: DiscoveryWire;
+  /** questground: the errand and the ground under the finger. */
+  quest?: string;
+  ground?: { x: number; y: number; r: number; label: string };
+}
+
+/** One errand's drawable grounds, dealt from the wire by the ledger. */
+interface QuestChartEntry {
+  quest: string;
+  name: string;
+  ink: readonly [number, number, number];
+  grounds: Array<{
+    x: number;
+    y: number;
+    r: number;
+    plane: string;
+    sure: boolean;
+    /** A firm known door (a person, a turn-in) vs a searching ground. */
+    person: boolean;
+    label: string;
+    /** True when the server sent its own word — already flavored. */
+    worded: boolean;
+    seed: number;
+  }>;
 }
 
 export class MapView {
@@ -146,12 +174,22 @@ export class MapView {
   /** Overlay mode: quieter marks, no hover, town labels only. */
   overlay = false;
   /**
-   * THE SEARCH RING — an errand's charted neighborhood: a soft
-   * generalized area in world tiles, or null. Pure presentation, set
-   * by the journal and the errand card; `quest` ties it to the ledger
-   * so a finished errand takes its ring with it.
+   * THE FINGER ON THE CHART — which errands paint their grounds. The
+   * quest pane owns this set (and persists it); the view only draws.
+   * `questFocus` is the pane's selected errand: it breathes, wears its
+   * labels, and points from the sheet's edge when its grounds are off
+   * it. The traveler's glass ignores the set and draws only the
+   * followed errand, quietly.
    */
-  searchRing: { x: number; y: number; r: number; label: string; quest: string } | null = null;
+  readonly questShown = new Set<string>();
+  questFocus: string | null = null;
+  /** The followed errand (the tracker's own) — wired by main. */
+  getFollowed: (() => string | null) | null = null;
+  /** The ground under the pointer, set by the screen from pick(). */
+  questHover: { quest: string; ground: { x: number; y: number; r: number; label: string } } | null = null;
+
+  private questDisplay: QuestChartEntry[] = [];
+  private questDisplayStamp = '';
 
   /** Fine (1px/tile) blocks — big canvases, tight cap. */
   private fineBlocks = new Map<string, HTMLCanvasElement>();
@@ -218,6 +256,88 @@ export class MapView {
     const p = this.game.plane;
     if (p.id === 'surface') return 'surface';
     return p.persistent ? 'underworld' : 'dungeon';
+  }
+
+  // ---------------------------------------------------- quest grounds
+
+  /**
+   * THE ERRAND'S INK — stable per quest id (the hash), probed apart
+   * across the ACTIVE ledger so no two errands share a color while
+   * six or fewer are underway. Assignment reads the whole ledger, not
+   * the shown set, so toggling one errand never recolors another.
+   */
+  private questInks(): Map<string, readonly [number, number, number]> {
+    const ids = [...this.game.quests.keys()].sort();
+    const taken = new Array<boolean>(QUEST_INKS.length).fill(false);
+    const out = new Map<string, readonly [number, number, number]>();
+    for (const id of ids) {
+      let slot = hashString(id) % QUEST_INKS.length;
+      for (let probe = 0; probe < QUEST_INKS.length && taken[slot]; probe++) {
+        slot = (slot + 1) % QUEST_INKS.length;
+      }
+      taken[slot] = true;
+      out.set(id, QUEST_INKS[slot]!);
+    }
+    return out;
+  }
+
+  /** The ink an errand wears everywhere (chart, pane, pointers). */
+  questInk(quest: string): readonly [number, number, number] {
+    return this.questInks().get(quest) ?? QUEST_INKS[0]!;
+  }
+
+  /**
+   * Deal the drawable grounds from the quest wire — rebuilt only when
+   * the ledger clock, the shown set, or the focus moves. A finished
+   * errand leaves the chart by construction: it leaves the ledger,
+   * questVersion turns, and the stamp re-deals.
+   */
+  private buildQuestDisplay(): void {
+    const followed = this.overlay ? (this.getFollowed?.() ?? null) : null;
+    const shownKey = this.overlay ? `ov:${followed}` : [...this.questShown].sort().join(',');
+    const stamp = `${this.game.questVersion}|${shownKey}|${this.questFocus}`;
+    if (stamp === this.questDisplayStamp) return;
+    this.questDisplayStamp = stamp;
+    this.questDisplay = [];
+    const inks = this.questInks();
+    for (const q of this.game.quests.values()) {
+      const shown = this.overlay ? q.id === followed : this.questShown.has(q.id);
+      if (!shown) continue;
+      const entry: QuestChartEntry = {
+        quest: q.id,
+        name: q.name,
+        ink: inks.get(q.id) ?? QUEST_INKS[0]!,
+        grounds: [],
+      };
+      const deal = (
+        h: { x: number; y: number; r: number; plane?: string; sure?: boolean; word?: string },
+        person: boolean,
+        label: string,
+      ): void => {
+        entry.grounds.push({
+          x: h.x,
+          y: h.y,
+          r: h.r,
+          plane: h.plane ?? 'surface',
+          sure: h.sure !== false,
+          person,
+          label: h.word ?? label,
+          worded: h.word !== undefined,
+          seed: hashString(`${q.id}|${h.x},${h.y},${h.r}`),
+        });
+      };
+      if (q.status === 'ready') {
+        // Every ask answered: the only ground left is the door home.
+        if (q.turnInHint) deal(q.turnInHint, true, q.turnInName);
+      } else {
+        for (const o of q.objectives) {
+          if (o.have >= o.need) continue;
+          const hs = o.hints ?? (o.hint ? [o.hint] : []);
+          for (const h of hs) deal(h, o.kind === 'talk', o.label);
+        }
+      }
+      if (entry.grounds.length > 0) this.questDisplay.push(entry);
+    }
   }
 
   /**
@@ -634,17 +754,61 @@ export class MapView {
     // 3. Marks over everything — a place once found is never lost to
     // the fog, even when its ground has gone parchment-blank.
 
-    // THE SEARCH RING rides under every pin: ground wash first, marks
-    // over it. A ring whose errand left the ledger lifts itself.
-    if (this.searchRing && !this.game.quests.has(this.searchRing.quest)) this.searchRing = null;
-    if (this.searchRing && band === 'surface') {
-      const ring = this.searchRing;
-      const x = this.sx(ring.x);
-      const y = this.sy(ring.y);
-      const rPx = Math.max(14, ring.r * this.scale);
-      if (x > -rPx - 40 && y > -rPx - 40 && x < cw + rPx + 40 && y < ch + rPx + 40) {
-        drawSearchRing(ctx, x, y, rPx, (nowMs % 2600) / 2600, this.overlay);
-        if (!this.overlay) drawMapLabel(ctx, x, y - rPx - 6, ring.label, '#f2c94c', 12);
+    // THE FINGER ON THE CHART rides under every pin: the errands'
+    // ground washes first, marks over them. The ledger is the truth —
+    // a finished errand takes its grounds with it (the display stamp
+    // watches questVersion).
+    this.buildQuestDisplay();
+    if (this.questDisplay.length > 0) {
+      const qPulse = (nowMs % 2600) / 2600;
+      for (const e of this.questDisplay) {
+        const focus = !this.overlay && this.questFocus === e.quest;
+        for (const g of e.grounds) {
+          // A ground only lands on the plane that holds it.
+          if (g.plane !== this.game.plane.id) continue;
+          const x = this.sx(g.x);
+          const y = this.sy(g.y);
+          const rPx = Math.max(g.person ? 9 : 16, g.r * this.scale);
+          if (x < -rPx - 40 || y < -rPx - 40 || x > cw + rPx + 40 || y > ch + rPx + 40) continue;
+          if (g.person) {
+            drawKnownSpot(ctx, x, y, rPx, e.ink, qPulse, { focus, quiet: this.overlay });
+          } else {
+            drawQuestGround(ctx, x, y, rPx, e.ink, g.seed, qPulse, {
+              sure: g.sure,
+              focus,
+              quiet: this.overlay,
+            });
+          }
+          // Labels stay scarce so many errands never muddy the sheet:
+          // the focused errand speaks, the hovered ground speaks, and
+          // close zoom names everything. Rumors admit they are rumors.
+          const hovered =
+            this.questHover !== null &&
+            this.questHover.quest === e.quest &&
+            this.questHover.ground.x === g.x &&
+            this.questHover.ground.y === g.y;
+          if (!this.overlay && (focus || hovered || this.scale >= 5)) {
+            // A server-worded ground already carries its flavor; only
+            // a bare rumor earns the hearsay suffix.
+            const word = g.worded || g.sure || g.person ? g.label : `${g.label}, they say`;
+            drawMapLabel(ctx, x, y - rPx - 6, word, inkLabelCss(e.ink), 11.5);
+          }
+        }
+      }
+      // THE READER IS NEVER LOST, errand edition: when the focused
+      // errand's nearest ground has left the sheet, its ink points
+      // back from the edge.
+      if (!this.overlay && this.questFocus !== null) {
+        const e = this.questDisplay.find((d) => d.quest === this.questFocus);
+        const g = e?.grounds.find((gr) => gr.plane === this.game.plane.id);
+        if (e && g) {
+          const x = this.sx(g.x);
+          const y = this.sy(g.y);
+          const rPx = g.r * this.scale;
+          if (x < -rPx || y < -rPx || x > cw + rPx || y > ch + rPx) {
+            drawEdgePointer(ctx, cw, ch, x, y, inkCss(e.ink, 1), e.name);
+          }
+        }
       }
     }
 
@@ -753,6 +917,26 @@ export class MapView {
       const dist = Math.hypot(mx - this.sx(d.x + 0.5), my - this.sy(d.y + 0.5));
       if (dist <= 14 && (!best || dist < best.dist)) best = { d, dist };
     }
-    return best ? { kind: 'discovery', d: best.d } : null;
+    if (best) return { kind: 'discovery', d: best.d };
+    // Quest grounds hover LAST — they are broad washes and must never
+    // steal a pin's finger. The smallest ground under the pointer
+    // wins (the most specific rumor).
+    let ground: { quest: string; g: QuestChartEntry['grounds'][number]; rPx: number } | null = null;
+    for (const e of this.questDisplay) {
+      for (const g of e.grounds) {
+        if (g.plane !== this.game.plane.id) continue;
+        const rPx = Math.max(g.person ? 9 : 16, g.r * this.scale);
+        const dist = Math.hypot(mx - this.sx(g.x), my - this.sy(g.y));
+        if (dist <= rPx && (ground === null || rPx < ground.rPx)) ground = { quest: e.quest, g, rPx };
+      }
+    }
+    if (ground) {
+      return {
+        kind: 'questground',
+        quest: ground.quest,
+        ground: { x: ground.g.x, y: ground.g.y, r: ground.g.r, label: ground.g.label },
+      };
+    }
+    return null;
   }
 }

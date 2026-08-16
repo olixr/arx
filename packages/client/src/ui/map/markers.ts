@@ -1,4 +1,4 @@
-import { hashString } from '@arx/shared';
+import { hashString, valueNoise } from '@arx/shared';
 import type { DiscoveryWire } from '@arx/shared';
 import { PLAYER_COLORS } from '../../render/renderer.js';
 import { bakeOutlinedSprite } from '../../render/icons.js';
@@ -501,52 +501,170 @@ export function drawScaleBar(ctx: CanvasRenderingContext2D, x: number, y: number
 }
 
 /**
- * THE SEARCH RING — an errand's "somewhere hereabouts". A soft gold
- * wash inside a slowly walking dashed rim, breathing one quiet beacon
- * ring: deliberately loose, because the ring promises a neighborhood,
- * never a spot. `quiet` mutes it for the traveler's glass.
+ * THE QUEST INKS — the chart's errand colors, chosen to stay apart
+ * from each other AND from the claimed personal inks (waypoint sky,
+ * fall ember, player gold, brass towns) on parchment, glass, and the
+ * danger wash alike. Six is plenty: the pane rarely shows more, and
+ * assignment probes to a free ink when two errands collide.
  */
-export function drawSearchRing(
+export const QUEST_INKS: ReadonlyArray<readonly [number, number, number]> = [
+  [106, 146, 62], // moss — the field errand
+  [52, 142, 122], // teal
+  [140, 90, 182], // plum
+  [84, 104, 180], // indigo
+  [186, 84, 124], // rose
+  [168, 98, 40], // copper — last dealt, nearest the ember
+];
+
+/** One quest ink as a CSS color at the given presence. */
+export function inkCss(ink: readonly [number, number, number], alpha: number): string {
+  return `rgba(${ink[0]}, ${ink[1]}, ${ink[2]}, ${alpha})`;
+}
+
+/** The ink lifted toward bone for label text on the dark plate. */
+export function inkLabelCss(ink: readonly [number, number, number]): string {
+  const lift = (c: number): number => Math.round(c + (236 - c) * 0.55);
+  return `rgb(${lift(ink[0])}, ${lift(ink[1])}, ${lift(ink[2])})`;
+}
+
+/**
+ * The searching ground's ORGANIC rim — a closed loop whose radius
+ * breathes with value noise sampled on a circle, so every ground is a
+ * hand-sketched blob (never a compass circle) that holds its exact
+ * shape frame over frame: the seed is the ground's identity, and the
+ * noise walks the same lattice every draw.
+ */
+export function questGroundPath(
+  ctx: CanvasRenderingContext2D,
+  seed: number,
+  rPx: number,
+  wobble: number,
+): void {
+  const STEPS = 44;
+  ctx.beginPath();
+  for (let i = 0; i <= STEPS; i++) {
+    const t = ((i % STEPS) / STEPS) * Math.PI * 2;
+    // The loop through noise space: radius 1.35 keeps neighboring
+    // samples correlated (a coast, not a saw), the seed offsets the
+    // lattice so no two grounds share a silhouette.
+    const n = valueNoise(seed, Math.cos(t) * 1.35 + 7.3, Math.sin(t) * 1.35 + 3.7) - 0.5;
+    const rr = rPx * (1 + n * 2 * wobble);
+    const px = Math.cos(t) * rr;
+    const py = Math.sin(t) * rr;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
+
+/**
+ * THE SEARCHING GROUND — an errand's "somewhere hereabouts", drawn in
+ * its quest's ink. A soft wash inside a walking dashed rim over a
+ * dark hairline seat, the whole shape a seeded hand-drawn blob.
+ * `sure: false` is a RUMOR — looser silhouette, fainter presence, and
+ * a second loose rim pass like a cartographer sketching over their
+ * own line. `focus` breathes; `quiet` mutes for the traveler's glass.
+ */
+export function drawQuestGround(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   rPx: number,
+  ink: readonly [number, number, number],
+  seed: number,
   pulse01: number,
-  quiet = false,
+  opts: { sure?: boolean; focus?: boolean; quiet?: boolean } = {},
 ): void {
+  const sure = opts.sure !== false;
+  const a = (opts.quiet ? 0.55 : 1) * (sure ? 1 : 0.66) * (opts.focus ? 1.25 : 1);
+  const wobble = sure ? 0.15 : 0.24;
   ctx.save();
   ctx.translate(x, y);
-  const a = quiet ? 0.55 : 1;
   // The wash: barely there at the heart, gathering toward the rim.
-  const g = ctx.createRadialGradient(0, 0, rPx * 0.2, 0, 0, rPx);
-  g.addColorStop(0, `rgba(242, 201, 76, ${0.05 * a})`);
-  g.addColorStop(0.8, `rgba(242, 201, 76, ${0.11 * a})`);
-  g.addColorStop(1, `rgba(242, 201, 76, ${0.02 * a})`);
+  questGroundPath(ctx, seed, rPx, wobble);
+  const g = ctx.createRadialGradient(0, 0, rPx * 0.2, 0, 0, rPx * 1.1);
+  g.addColorStop(0, inkCss(ink, 0.06 * a));
+  g.addColorStop(0.8, inkCss(ink, 0.14 * a));
+  g.addColorStop(1, inkCss(ink, 0.03 * a));
+  ctx.fillStyle = g;
+  ctx.fill();
+  // A dark hairline seats the colored rim on pale ground — quieter
+  // under a rumor, so the ink stays the loudest voice on the line.
+  ctx.strokeStyle = `rgba(12, 9, 5, ${(sure ? 0.3 : 0.2) * a})`;
+  ctx.lineWidth = sure ? 3 : 2.5;
+  ctx.stroke();
+  // The rim: the cartographer's dashed stroke, slowly walking. A sure
+  // hand draws long even dashes; a rumor stipples, then sketches a
+  // second loose line under itself.
+  ctx.setLineDash(sure ? [9, 7] : [4, 7]);
+  ctx.lineDashOffset = -pulse01 * 16;
+  ctx.strokeStyle = inkCss(ink, (sure ? 0.85 : 0.75) * a);
+  ctx.lineWidth = sure ? 2 : 1.75;
+  ctx.stroke();
+  ctx.setLineDash([]);
+  if (!sure) {
+    questGroundPath(ctx, seed + 51, rPx * 0.94, wobble);
+    ctx.strokeStyle = inkCss(ink, 0.34 * a);
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  // The breath: only the focused errand sighs.
+  if (opts.focus) {
+    questGroundPath(ctx, seed, rPx * (1 + pulse01 * 0.12), wobble);
+    ctx.strokeStyle = inkCss(ink, 0.32 * (1 - pulse01) * a);
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/**
+ * THE KNOWN DOOR — a person or place somebody could point a finger
+ * at: a firm, small, TRUE circle (the one shape a sure hand draws)
+ * with a solid rim and a seated heart-dot. Still a neighborhood — the
+ * server fuzzes every center — but the line does not wander.
+ */
+export function drawKnownSpot(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rPx: number,
+  ink: readonly [number, number, number],
+  pulse01: number,
+  opts: { focus?: boolean; quiet?: boolean } = {},
+): void {
+  const a = (opts.quiet ? 0.55 : 1) * (opts.focus ? 1.2 : 1);
+  ctx.save();
+  ctx.translate(x, y);
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rPx);
+  g.addColorStop(0, inkCss(ink, 0.16 * a));
+  g.addColorStop(1, inkCss(ink, 0.03 * a));
   ctx.fillStyle = g;
   ctx.beginPath();
   ctx.arc(0, 0, rPx, 0, Math.PI * 2);
   ctx.fill();
-  // A dark hairline seats the gold rim on pale ground.
-  ctx.beginPath();
-  ctx.arc(0, 0, rPx + (quiet ? 1.25 : 2), 0, Math.PI * 2);
   ctx.strokeStyle = `rgba(12, 9, 5, ${0.35 * a})`;
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 3;
   ctx.stroke();
-  // The rim: the cartographer's dashed compass stroke, slowly walking.
-  ctx.beginPath();
-  ctx.arc(0, 0, rPx, 0, Math.PI * 2);
-  ctx.setLineDash([9, 7]);
-  ctx.lineDashOffset = -pulse01 * 16;
-  ctx.strokeStyle = `rgba(242, 201, 76, ${0.75 * a})`;
-  ctx.lineWidth = quiet ? 1.25 : 2;
-  ctx.stroke();
-  ctx.setLineDash([]);
-  // The breath: one soft ring sighing outward, the beacon's gold kin.
-  ctx.beginPath();
-  ctx.arc(0, 0, rPx * (1 + pulse01 * 0.16), 0, Math.PI * 2);
-  ctx.strokeStyle = `rgba(242, 201, 76, ${0.3 * (1 - pulse01) * a})`;
+  ctx.strokeStyle = inkCss(ink, 0.85 * a);
   ctx.lineWidth = 2;
   ctx.stroke();
+  // The heart-dot: the finger's actual rest, seated in ink.
+  ctx.beginPath();
+  ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(12, 9, 5, ${0.5 * a})`;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(0, 0, 2.3, 0, Math.PI * 2);
+  ctx.fillStyle = inkCss(ink, 0.95 * a);
+  ctx.fill();
+  if (opts.focus) {
+    ctx.beginPath();
+    ctx.arc(0, 0, rPx * (1 + pulse01 * 0.2), 0, Math.PI * 2);
+    ctx.strokeStyle = inkCss(ink, 0.32 * (1 - pulse01) * a);
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
   ctx.restore();
 }
 

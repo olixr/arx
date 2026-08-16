@@ -1840,12 +1840,25 @@ const questLog = new QuestLog(game);
 const keyRingPanel = new KeyRingPanel(game);
 // THE ERRAND POINTS AT THE CHART: one door for the journal's and the
 // errand card's "show me" — open the chart (through the one screen
-// gate) and frame the ask's neighborhood.
-const showAreaOnChart = (ring: { x: number; y: number; r: number; label: string; quest: string }): void => {
+// gate), focus the errand in the chart's own pane, and frame the
+// ask's grounds.
+const showAreaOnChart = (ring: {
+  x: number;
+  y: number;
+  r: number;
+  plane?: string;
+  label: string;
+  quest: string;
+}): void => {
   if (!mapScreen.isOpen) toggleScreen('map');
-  if (mapScreen.isOpen) mapScreen.frameSearchRing(ring);
+  if (mapScreen.isOpen) mapScreen.focusQuest(ring.quest, ring);
 };
 questLog.onShowArea = showAreaOnChart;
+// The chart's errand rail and the traveler's glass both follow the
+// journal's followed errand.
+mapScreen.getFollowed = () => questLog.trackedId();
+mapScreen.view.getFollowed = () => questLog.trackedId();
+mapOverlay.setFollowedSource(() => questLog.trackedId());
 const objectiveTracker = new ObjectiveTracker(game, () => questLog.trackedId(), {
   onOpen: (id) => {
     if (!questLog.isOpen) toggleScreen('quests');

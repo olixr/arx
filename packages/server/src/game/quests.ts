@@ -210,6 +210,14 @@ export interface QuestHintWire {
   r: number;
   /** THE WORLDS APART: the plane the neighborhood lies on (absent = surface). */
   plane?: string;
+  /**
+   * false = a RUMOR: grounds where such things are known to roam,
+   * derived from the world's own laws rather than a witnessed spot.
+   * Absent = someone could point a finger.
+   */
+  sure?: boolean;
+  /** A short word for this one ground ("wolf runs", "a war camp"). */
+  word?: string;
 }
 
 export interface QuestObjectiveWire {
@@ -224,6 +232,12 @@ export interface QuestObjectiveWire {
   need: number;
   /** Where this ask can be answered, when the world knows. */
   hint?: QuestHintWire;
+  /**
+   * THE FINGER ON THE CHART — every ground the world can honestly
+   * offer, best first (`hints[0]` === `hint`), at most four. Absent
+   * when the one `hint` (or silence) is the whole answer.
+   */
+  hints?: QuestHintWire[];
 }
 
 /** Reward summary for the wire — ids and counts only. */
@@ -264,8 +278,13 @@ export interface QuestWire {
 export interface QuestLocateRefs {
   /** A standing actor's home ground (talk asks, the turn-in door). */
   actorHint(actor: string): QuestHintWire | undefined;
-  /** One ask's whereabouts, resolved with the whole def in hand. */
-  objectiveHint(def: QuestDef, obj: QuestObjective): QuestHintWire | undefined;
+  /**
+   * Every ground the world can honestly offer for one ask, best
+   * first: witnessed spots (posts, standing spawns, decided camps)
+   * lead, law-derived rumors trail. Empty = the world can't say and
+   * the journal's written directions carry alone.
+   */
+  objectiveHints(def: QuestDef, obj: QuestObjective): QuestHintWire[];
 }
 
 /** One active quest, shaped for the journal screen and the tracker. */
@@ -286,16 +305,21 @@ export function questWire(
   const objectives: QuestObjectiveWire[] = stage.objectives.map((obj, i) => {
     const have = objectiveHave(obj, q.progress[i] ?? 0, ctx);
     const need = objectiveNeed(obj);
-    const hint = locate?.objectiveHint(def, obj) ?? markHint;
+    // Every ground the world can offer; the authored stage mark
+    // backstops an ask the registries can't place at all.
+    const grounds = locate?.objectiveHints(def, obj) ?? [];
+    if (grounds.length === 0 && markHint) grounds.push(markHint);
+    const hint = grounds[0];
+    const hints = grounds.length > 1 ? grounds : undefined;
     switch (obj.kind) {
       case 'kill':
-        return { kind: obj.kind, npc: obj.npc, label: names.npcName(obj.npc), have, need, hint };
+        return { kind: obj.kind, npc: obj.npc, label: names.npcName(obj.npc), have, need, hint, hints };
       case 'collect':
-        return { kind: obj.kind, item: obj.item, label: names.itemName(obj.item), have, need, hint };
+        return { kind: obj.kind, item: obj.item, label: names.itemName(obj.item), have, need, hint, hints };
       case 'discover':
-        return { kind: obj.kind, place: obj.place, label: names.placeName(obj.place), have, need, hint };
+        return { kind: obj.kind, place: obj.place, label: names.placeName(obj.place), have, need, hint, hints };
       case 'talk':
-        return { kind: obj.kind, actor: obj.actor, label: names.actorName(obj.actor), have, need, hint };
+        return { kind: obj.kind, actor: obj.actor, label: names.actorName(obj.actor), have, need, hint, hints };
     }
   });
   return {

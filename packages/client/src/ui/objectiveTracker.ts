@@ -39,7 +39,14 @@ export class ObjectiveTracker {
       /** Open the journal at this errand's page. */
       onOpen(questId: string): void;
       /** Ring an ask's neighborhood on the chart. */
-      onShowArea(ring: { x: number; y: number; r: number; label: string; quest: string }): void;
+      onShowArea(ring: {
+        x: number;
+        y: number;
+        r: number;
+        plane?: string;
+        label: string;
+        quest: string;
+      }): void;
     },
   ) {
     this.el = document.createElement('div');
@@ -89,7 +96,16 @@ export class ObjectiveTracker {
       const q = this.renderedId ? this.game.quests.get(this.renderedId) : undefined;
       if (!q) return;
       const t = currentTarget(q);
-      if (t) this.hooks.onShowArea({ x: t.hint.x, y: t.hint.y, r: t.hint.r, label: t.label, quest: q.id });
+      if (t) {
+        this.hooks.onShowArea({
+          x: t.hint.x,
+          y: t.hint.y,
+          r: t.hint.r,
+          plane: t.hint.plane,
+          label: t.label,
+          quest: q.id,
+        });
+      }
     });
   }
 

@@ -31,11 +31,12 @@ export class QuestLog {
   private selected: string | null = null;
   private confirmAbandon: string | null = null;
   /**
-   * Set by main: lay an errand's search ring on the chart and open
-   * it. The journal never opens screens itself — the one gate does.
+   * Set by main: focus an errand's grounds on the chart and open it.
+   * The journal never opens screens itself — the one gate does.
    */
-  onShowArea: ((ring: { x: number; y: number; r: number; label: string; quest: string }) => void) | null =
-    null;
+  onShowArea:
+    | ((ring: { x: number; y: number; r: number; plane?: string; label: string; quest: string }) => void)
+    | null = null;
   private renderedVersion = -1;
   /** When the list last painted — the resting shelf's clocks read
    *  Date.now() at render time, so a reopen must know if they moved. */
@@ -252,9 +253,9 @@ export class QuestLog {
     }
   }
 
-  /** Hand a ring to the chart, tagged with its errand. */
+  /** Hand a ground to the chart, tagged with its errand. */
   private showArea(q: QuestWire, hint: QuestHintWire, label: string): void {
-    this.onShowArea?.({ x: hint.x, y: hint.y, r: hint.r, label, quest: q.id });
+    this.onShowArea?.({ x: hint.x, y: hint.y, r: hint.r, plane: hint.plane, label, quest: q.id });
   }
 
   /** A small chart button — the "ring it on the map" affordance. */

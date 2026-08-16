@@ -1835,6 +1835,15 @@ export interface QuestHintWire {
   r: number;
   /** The plane the neighborhood lies on. Absent = surface. */
   plane?: string;
+  /**
+   * false = a RUMOR: grounds where such things are known to roam,
+   * derived from the world's own laws rather than a witnessed spot —
+   * the chart draws these looser and fainter. Absent = someone could
+   * point a finger (a post, a standing camp, a mapped place).
+   */
+  sure?: boolean;
+  /** A short word for this one ground ("wolf runs", "a war camp"). */
+  word?: string;
 }
 
 /** One objective row: the id (in its namespace) keys the client icon. */
@@ -1849,6 +1858,13 @@ export interface QuestObjectiveWire {
   need: number;
   /** Where this ask can be answered, when the world knows. Additive. */
   hint?: QuestHintWire;
+  /**
+   * THE FINGER ON THE CHART — every ground the world can honestly
+   * offer for this ask, best first (the first entry is `hint`), at
+   * most four. Sure grounds lead, rumors trail. Absent when the one
+   * `hint` (or silence) is the whole answer.
+   */
+  hints?: QuestHintWire[];
 }
 
 /**

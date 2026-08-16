@@ -30,6 +30,11 @@ export class MapOverlay {
     this.view.overlay = true;
   }
 
+  /** The glass draws only the FOLLOWED errand's grounds, quietly. */
+  setFollowedSource(fn: () => string | null): void {
+    this.view.getFollowed = fn;
+  }
+
   toggle(): void {
     this.visible = !this.visible;
   }
