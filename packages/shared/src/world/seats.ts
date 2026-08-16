@@ -1,4 +1,5 @@
 import { Tile, WALL_RUN_TILES } from './tiles.js';
+import { hashCoords } from '../math/rng.js';
 
 /**
  * THE SEAT REGISTRY — furniture seating derived from the world itself.
@@ -24,7 +25,7 @@ import { Tile, WALL_RUN_TILES } from './tiles.js';
 /** Anything that can answer "what ground tile is here?". */
 export type SeatGround = (tx: number, ty: number) => number | undefined;
 
-export type SeatKind = 'chair' | 'bench' | 'throne' | 'bed' | 'daybed';
+export type SeatKind = 'chair' | 'bench' | 'throne' | 'bed' | 'daybed' | 'stool';
 
 /** A mounted body's full brief: where to sit, how high, facing where. */
 export interface SeatSpec {
@@ -75,13 +76,30 @@ export function isSeatTile(t: number | undefined): boolean {
     t === Tile.Bench ||
     t === Tile.Throne ||
     t === Tile.Bed ||
-    t === Tile.ElvenDaybed
+    t === Tile.ElvenDaybed ||
+    t === Tile.ElvenChair ||
+    t === Tile.ElvenBench ||
+    t === Tile.StoneBench ||
+    t === Tile.SettleBench ||
+    t === Tile.WoodStool
   );
+}
+
+/**
+ * A table a body sits AT: a chair's backrest turns away from it, a
+ * stool's sitter faces it, a bench between it and the camera locks
+ * its facing. PARITY: the oak chair painter's backrest scan reads
+ * this same family — widen them together or the paint lies.
+ * (Stations you stand at — enchanting, war, display — are absent by
+ * intent: nobody dines at a war table.)
+ */
+export function isSitAtTable(t: number | undefined): boolean {
+  return t === Tile.Table || t === Tile.Counter || t === Tile.ElvenTable || t === Tile.GameTable;
 }
 
 /** The chair painter's table scan — a backrest turns its seat to the table. */
 function chairBack(ground: SeatGround, tx: number, ty: number): 'n' | 's' | 'e' | 'w' {
-  const isT = (t: number | undefined): boolean => t === Tile.Table || t === Tile.Counter;
+  const isT = isSitAtTable;
   return isT(ground(tx, ty - 1))
     ? 's'
     : isT(ground(tx, ty + 1))
@@ -142,22 +160,75 @@ export function seatAt(ground: SeatGround, tx: number, ty: number): SeatSpec | n
         tiles: [{ x: tx, y: ty }],
       };
     }
-    case Tile.Bench: {
-      // Benches run east-west and have no back — face either long
-      // side. A table on one side fixes the facing (a diner looks at
-      // the table); otherwise pickSeatDir turns the body to whichever
-      // side it walked up from. South (the camera) is the default.
-      const isT = (t2: number | undefined): boolean => t2 === Tile.Table || t2 === Tile.Counter;
-      const tableN = isT(ground(tx, ty - 1));
-      const tableS = isT(ground(tx, ty + 1));
+    case Tile.Bench:
+    case Tile.ElvenBench:
+    case Tile.StoneBench: {
+      // Benches have no back — face either long side. A table on one
+      // side fixes the facing (a diner looks at the table); otherwise
+      // pickSeatDir turns the body to whichever side it walked up
+      // from. South (the camera) is the default. The elven bench and
+      // the civic stone slab obey the same law with their painters'
+      // own constants (elven: baseY +0.3, lift 0.36; stone: the
+      // knee-high slab, baseY +0.14, lift 0.30) — both are complete
+      // one-tile pieces, armrest to armrest, so no run merging.
+      const tableN = isSitAtTable(ground(tx, ty - 1));
+      const tableS = isSitAtTable(ground(tx, ty + 1));
       return {
         kind: 'bench',
         pose: 'sit',
         ax: tx + 0.5,
-        ay: ty + 0.66,
+        ay: t === Tile.StoneBench ? ty + 0.5 : ty + 0.66,
         dir: tableN && !tableS ? -Math.PI / 2 : Math.PI / 2,
         fixed: tableN !== tableS,
+        seatH: t === Tile.StoneBench ? 0.3 : 0.36,
+        tiles: [{ x: tx, y: ty }],
+      };
+    }
+    case Tile.ElvenChair:
+      // The fair house's armchair: the painter always draws the back
+      // NORTH (no table scan — silverbark casework is placed, not
+      // turned), so the sitter always faces the camera. Lift 0.36
+      // (seatY = baseY − 0.36s), anchor 0.17 north of the baseY
+      // floor line at ty+0.78 — the oak chair's own calibration.
+      return {
+        kind: 'chair',
+        pose: 'sit',
+        ax: tx + 0.5,
+        ay: ty + 0.61,
+        dir: Math.PI / 2,
         seatH: 0.36,
+        tiles: [{ x: tx, y: ty }],
+      };
+    case Tile.SettleBench:
+      // The hearth settle: a draft-wall you sit IN — high planked
+      // back painted north always, so the facing is the camera's.
+      // Kind 'chair' is the truth of the body: back support, chair
+      // leg spots, and the head-over-the-crest read when a squatter
+      // faces away is impossible by construction (dir is fixed).
+      return {
+        kind: 'chair',
+        pose: 'sit',
+        ax: tx + 0.5,
+        ay: ty + 0.51,
+        dir: Math.PI / 2,
+        seatH: 0.34,
+        tiles: [{ x: tx, y: ty }],
+      };
+    case Tile.WoodStool: {
+      // The universal seat. Round, backless, three legs — any facing
+      // agrees with the paint, so the body takes the chair's law and
+      // faces the table it serves (else the camera). The painter
+      // hash-deals its seat height (0.30 + (h>>>4 & 3)·0.014, salt 41
+      // — objectItem's own seed); the registry mirrors the roll so
+      // the hips land on the plank, not hover over it.
+      const h = hashCoords(41, tx, ty);
+      return {
+        kind: 'stool',
+        pose: 'sit',
+        ax: tx + 0.5,
+        ay: ty + 0.52,
+        dir: faceAwayFrom(chairBack(ground, tx, ty)),
+        seatH: 0.3 + ((h >>> 4) & 3) * 0.014,
         tiles: [{ x: tx, y: ty }],
       };
     }

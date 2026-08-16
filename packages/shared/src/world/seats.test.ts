@@ -1,6 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { Tile } from './tiles.js';
+import { hashCoords } from '../math/rng.js';
 import { isSeatTile, pickSeatDir, seatAt, type SeatGround } from './seats.js';
 
 /** A tiny world: a map of "x,y" → tile, everything else grass. */
@@ -8,15 +9,67 @@ function worldOf(tiles: Record<string, Tile>): SeatGround {
   return (x, y) => tiles[`${x},${y}`] ?? Tile.Grass;
 }
 
-test('seat tiles are exactly the five furniture kinds', () => {
+test('every prop a body can physically sit or lie in answers the registry', () => {
   assert.ok(isSeatTile(Tile.Chair));
   assert.ok(isSeatTile(Tile.Bench));
   assert.ok(isSeatTile(Tile.Throne));
   assert.ok(isSeatTile(Tile.Bed));
   assert.ok(isSeatTile(Tile.ElvenDaybed));
+  assert.ok(isSeatTile(Tile.ElvenChair));
+  assert.ok(isSeatTile(Tile.ElvenBench));
+  assert.ok(isSeatTile(Tile.StoneBench));
+  assert.ok(isSeatTile(Tile.SettleBench));
+  assert.ok(isSeatTile(Tile.WoodStool));
+  // Workbenches are stations, not seats — you stand at a fletcher's
+  // bench, whatever its name says.
+  assert.ok(!isSeatTile(Tile.CarvingBench));
+  assert.ok(!isSeatTile(Tile.FletchersBench));
   assert.ok(!isSeatTile(Tile.Table));
   assert.ok(!isSeatTile(Tile.Grass));
   assert.ok(!isSeatTile(undefined));
+});
+
+test('the elven chair and the settle keep their painted north backs — no table turn', () => {
+  // Both painters draw the back north unconditionally, so the sim
+  // must never turn the body sideways: a table east changes nothing.
+  for (const tile of [Tile.ElvenChair, Tile.SettleBench]) {
+    const seat = seatAt(worldOf({ '5,5': tile, '6,5': Tile.Table }), 5, 5)!;
+    assert.equal(seat.kind, 'chair');
+    assert.equal(seat.dir, Math.PI / 2);
+  }
+  assert.equal(seatAt(worldOf({ '5,5': Tile.ElvenChair }), 5, 5)!.seatH, 0.36);
+  assert.equal(seatAt(worldOf({ '5,5': Tile.SettleBench }), 5, 5)!.seatH, 0.34);
+});
+
+test('the elven bench and stone slab take the bench law; an elven table fixes them', () => {
+  const free = seatAt(worldOf({ '5,5': Tile.StoneBench }), 5, 5)!;
+  assert.equal(free.kind, 'bench');
+  assert.equal(free.fixed, false);
+  assert.equal(free.seatH, 0.3);
+  const fixed = seatAt(worldOf({ '5,5': Tile.ElvenBench, '5,4': Tile.ElvenTable }), 5, 5)!;
+  assert.equal(fixed.fixed, true);
+  assert.equal(fixed.dir, -Math.PI / 2);
+  assert.equal(fixed.seatH, 0.36);
+});
+
+test('the stool faces the table it serves and mirrors the painter’s height roll', () => {
+  // A game table north → the sitter faces it (back south → face north).
+  const atTable = seatAt(worldOf({ '5,5': Tile.WoodStool, '5,4': Tile.GameTable }), 5, 5)!;
+  assert.equal(atTable.kind, 'stool');
+  assert.equal(atTable.dir, -Math.PI / 2);
+  // Alone → the camera, like every seat.
+  assert.equal(seatAt(worldOf({ '7,9': Tile.WoodStool }), 7, 9)!.dir, Math.PI / 2);
+  // PARITY: seat height is the painter's own hash roll (salt 41).
+  const h = hashCoords(41, 5, 5);
+  assert.equal(atTable.seatH, 0.3 + ((h >>> 4) & 3) * 0.014);
+});
+
+test('the oak chair turns its back to the whole sit-at family (painter parity)', () => {
+  // Game table south → back north → the sitter faces south, at it.
+  const seat = seatAt(worldOf({ '5,5': Tile.Chair, '5,6': Tile.GameTable }), 5, 5)!;
+  assert.equal(seat.dir, Math.PI / 2);
+  const east = seatAt(worldOf({ '5,5': Tile.Chair, '6,5': Tile.ElvenTable }), 5, 5)!;
+  assert.equal(east.dir, 0); // faces east, at the elven table
 });
 
 test('the elven daybed lays a sleeper east-west, bolster west, uncovered', () => {

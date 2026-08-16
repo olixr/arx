@@ -45550,8 +45550,13 @@ export class Renderer {
       case Tile.Chair: {
         const syT = s * this.camera.yScale;
         // The back turns away from an adjacent table — a chair is FOR
-        // sitting at something.
-        const isT = (t2: number | undefined) => t2 === Tile.Table || t2 === Tile.Counter;
+        // sitting at something. PARITY: this family is the registry's
+        // isSitAtTable (shared seats.ts) — widen them together.
+        const isT = (t2: number | undefined) =>
+          t2 === Tile.Table ||
+          t2 === Tile.Counter ||
+          t2 === Tile.ElvenTable ||
+          t2 === Tile.GameTable;
         const back = isT(game.world.groundAt(tx, ty - 1))
           ? 's'
           : isT(game.world.groundAt(tx, ty + 1))
@@ -53760,7 +53765,12 @@ export class Renderer {
       if (seat.kind === 'bed') sortY = tN.y + 0.73;
       else if (seat.kind === 'daybed') sortY = tN.y + 0.77; // over the piece's ty+0.76
       else if (seat.kind === 'throne') sortY = t0.y + 0.55;
-      else {
+      else if (seat.kind === 'stool') {
+        // A stool has no back to peek over: the body is ALWAYS the
+        // near side, whatever way it faces — the round seat hides
+        // under the hips, never in front of the shins.
+        sortY = t0.y + 0.69;
+      } else {
         const sin = Math.sin(e.dir);
         if (sin < -0.55) anim.seatAway = true;
         else if (sin > -0.45) anim.seatAway = false;
