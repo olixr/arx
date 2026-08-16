@@ -185,16 +185,14 @@ export type SmashKind =
   | 'displaytable'
   // THE COMMONS: snuffed candles tumbling pale (a knocked flame
   // is OUT — no fire flies), horn panes and forged iron, wayside
-  // fieldstone with its offerings, festival ribbons sailing past
-  // gravity, staves and ale, game pegs scattering mid-argument,
+  // fieldstone with its offerings, staves and ale, game pegs
+  // scattering mid-argument,
   // cloaks flying at last, wicker and glaze, the barrow wheel
   // rolling free, and the skiff's long strakes cartwheeling.
   | 'candlestand'
   | 'streetlantern'
   | 'wayshrine'
-  | 'sundial'
   | 'guardian'
-  | 'maypole'
   | 'tapcask'
   | 'gametable'
   | 'stool'
@@ -781,9 +779,7 @@ const CHIP_TONE: Record<SmashKind, string> = {
   candlestand: '#4c4a52',
   streetlantern: '#6f5a38',
   wayshrine: '#8a857a',
-  sundial: '#a39a86',
   guardian: '#6f6a58',
-  maypole: '#75603e',
   tapcask: '#75603e',
   gametable: '#75603e',
   stool: '#8a6534',
@@ -2555,18 +2551,6 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       }
       break;
     }
-    case 'sundial': {
-      // The pedestal drops in two courses; the dial face flies
-      // WHOLE for one proud arc (a disc rolls in this town), and
-      // the green gnomon pings off bright.
-      out.push({ len: 0.2, wid: 0.2, color: '#c6bda6', stripe: '#ded8ce', round: true, pace: 1.1 });
-      for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.11, wid: 0.07, color: pick(rand, ['#a39a86', '#78705d']), stripe: '#c6bda6', pace: 0.45 });
-      }
-      out.push({ len: 0.09, wid: 0.03, color: '#6d5a34', stripe: '#c2a45c', pace: 1.3 });
-      out.push({ len: 0.05, wid: 0.04, color: '#5f9b84', round: true, pace: 0.9 });
-      break;
-    }
     case 'guardian': {
       // The hound comes down a MONUMENT: plinth blocks landing
       // heavy and staying, the carved mass in big slow pieces —
@@ -2580,24 +2564,6 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       }
       out.push({ len: 0.08, wid: 0.05, color: '#6d5a34', stripe: '#c2a45c', pace: 0.8 });
       out.push({ len: 0.04, wid: 0.035, color: '#b3ada0', round: true, pace: 1.45 });
-      break;
-    }
-    case 'maypole': {
-      // The ribbons FLY — six dyes sailing high past every law
-      // the pole obeyed — the crown ring rolls, and the mast
-      // itself falls LAST and long.
-      for (let i = 0; i < 6; i++) {
-        out.push({
-          len: 0.2 + rand() * 0.06,
-          wid: 0.035,
-          color: pick(rand, ['#c25668', '#5b8fc9', '#8a9a4f', '#c9a13c', '#8a7aa8', '#c4808a']),
-          stripe: '#efe8d4',
-          pace: 1.5,
-        });
-      }
-      out.push({ len: 0.12, wid: 0.12, color: '#8a6534', stripe: '#c9a76a', round: true, pace: 1.2 });
-      out.push({ len: 0.3, wid: 0.05, color: '#75603e', stripe: '#c9a76a', pace: 0.35 });
-      out.push({ len: 0.07, wid: 0.02, color: '#a89263', stripe: '#d8c49a', pace: 1.0 });
       break;
     }
     case 'tapcask': {

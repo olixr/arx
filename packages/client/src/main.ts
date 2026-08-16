@@ -2111,10 +2111,9 @@ game.onFx = (fx) => {
           kind === 'breadoven' || kind === 'grindstone' ||
           // Second-shift limestone and kiln masonry land the same.
           kind === 'wallfountain' || kind === 'kiln' ||
-          // The commons' wayside stone: the guardian hound, the
-          // shrine's rubble, and the dial's pedestal are all the
-          // street's masonry — they land like it.
-          kind === 'guardian' || kind === 'wayshrine' || kind === 'sundial'
+          // The commons' wayside stone: the guardian hound and the
+          // shrine's rubble are the street's masonry — they land like it.
+          kind === 'guardian' || kind === 'wayshrine'
           ? 3.2
           : 2.2,
       );

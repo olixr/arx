@@ -1335,8 +1335,6 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   assert.equal(counts.get(Tile.FishmongerSlab) ?? 0, 1, 'the fish market lost its slab');
   assert.equal(counts.get(Tile.ScribesDesk) ?? 0, 3, 'the town keeps three books');
   assert.equal(counts.get(Tile.NoticeBoard) ?? 0, 1, 'the Round lost its board');
-  assert.equal(counts.get(Tile.Sundial) ?? 0, 1, 'the Round lost midday');
-  assert.equal(counts.get(Tile.Maypole) ?? 0, 1, 'the green lost its pole');
   assert.equal(counts.get(Tile.WayShrine) ?? 0, 1, 'the Salt Road lost its shrine');
   assert.equal(counts.get(Tile.WallFountain) ?? 0, 1, 'the memorial garden spring dried');
   assert.ok((counts.get(Tile.WaterTrough) ?? 0) >= 6, 'the troughs ran dry');

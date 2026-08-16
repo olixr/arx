@@ -213,8 +213,8 @@ export const TILE_CATEGORIES: TileCategory[] = [
     id: 'commons',
     label: 'Commons',
     tiles: [
-      Tile.CandleStand, Tile.StreetLantern, Tile.WayShrine, Tile.Sundial,
-      Tile.GuardianStatue, Tile.Maypole, Tile.TapCask, Tile.GameTable,
+      Tile.CandleStand, Tile.StreetLantern, Tile.WayShrine,
+      Tile.GuardianStatue, Tile.TapCask, Tile.GameTable,
       Tile.WoodStool, Tile.SettleBench, Tile.BasketStack, Tile.GlazedJars,
       Tile.BroomAndPail, Tile.CloakStand, Tile.LeanLadder, Tile.Wheelbarrow,
       Tile.WayfarersRest, Tile.PottedTree, Tile.MooringPost, Tile.BeachedSkiff,

@@ -53,8 +53,8 @@ import type { ZoneDef } from './types.js';
  *    "sacks" -> GrainSacks, the barrel "mooring" -> MooringPost, the
  *    stamped fish cart -> a true FishmongerSlab market), every ADD
  *    earned by the fiction: the three books get slant desks, Peld's
- *    promised bell rings, the OLD HOUND pair guards the bridge, the
- *    green raises its maypole, Tamsin's kitchen garden gets shears.
+ *    promised bell rings, the OLD HOUND pair guards the bridge,
+ *    Tamsin's kitchen garden gets shears.
  *    Restraint is curation: NO TownFountain (the well is the heart),
  *    NO FounderStatue (nobody founded a crossing — a town grew on
  *    it), no potter's or chandler's kit (no such trade keeps shop
@@ -166,7 +166,6 @@ export function buildAmberford(): ZoneDef {
   b.set(63, 61, Tile.TreeOak); // the market oak, shade for the southwest corner
   b.set(65, 62, Tile.Bench);
   b.set(66, 44, Tile.NoticeBoard); // the board that speaks to strangers first — beside the North Gate mouth, where every arrival reads it
-  b.set(76, 55, Tile.Sundial); // 'market at midday' — and here is how the Round knows midday
   b.sign(75, 49, 'THE ROUND', ['market at midday', 'the well is sweet — help yourself'], Tile.Signpost);
   b.set(60, 49, Tile.LampPost).set(84, 49, Tile.LampPost);
   b.set(74, 62, Tile.LampPost);
@@ -718,7 +717,6 @@ export function buildAmberford(): ZoneDef {
   b.set(64, 79, Tile.CarrotMid).set(66, 80, Tile.SunflowerRipe);
   b.fillRect(75, 84, 3, 2, Tile.Tilled);
   b.set(75, 84, Tile.SunflowerMid).set(77, 85, Tile.CarrotRipe);
-  b.set(71, 78, Tile.Maypole); // the festival pole on the walk's axis, clear of the oak's canopy — the ribbons come down after harvest and never quite all the way
   b.set(70, 86, Tile.TreeOak); // the bench oak
   b.set(68, 87, Tile.Bench).set(72, 87, Tile.Bench);
   b.set(75, 80, Tile.LampPost);

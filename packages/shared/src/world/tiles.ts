@@ -843,7 +843,7 @@ export enum Tile {
   // THE COMMONS — the general shelf every town owns (see
   // docs/commons-decor-plan.md). Two town waves and two trade
   // waves dressed the specialists; this shelf is the ORDINARY
-  // life between them — flame and faith, stone and festival,
+  // life between them — flame and faith, stone and street,
   // tavern and table, vessels and chores, yard and water edge.
   // Chosen for REPEATED REUSE: each piece seats in four scenes
   // or it didn't make the shelf. Same voice, TENDED, NEVER LEFT:
@@ -855,12 +855,8 @@ export enum Tile {
   StreetLantern = 430,
   /** A fieldstone wayside niche — the old hound carved worn, offerings on the sill. */
   WayShrine = 431,
-  /** A worn stone pedestal dial, bronze gnomon gone green — the square's kept time. */
-  Sundial = 432,
   /** A seated stone hound on its plinth — mirrored by parity, so gates get PAIRS. */
   GuardianStatue = 433,
-  /** The green's festival mast, six dealt ribbons streaming on the breeze. */
-  Maypole = 434,
   /** A belly-lying cask on its trestle, wooden tap dripping, horn mugs waiting. */
   TapCask = 435,
   /** A barrel-top tafl board mid-game, two stools pulled up, one mug mid-move. */
@@ -1569,9 +1565,7 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.CandleStand]: { name: 'candle stand', solid: true, color: '#4c4a52', raised: true, topColor: '#e8a13c' },
   [Tile.StreetLantern]: { name: 'street lantern', solid: true, color: '#6f5a38', raised: true, topColor: '#e0b060' },
   [Tile.WayShrine]: { name: 'wayshrine', solid: true, color: '#8a857a', raised: true, topColor: '#e8d9b0' },
-  [Tile.Sundial]: { name: 'sundial', solid: true, color: '#8a857a', raised: true, topColor: '#c6bda6' },
   [Tile.GuardianStatue]: { name: 'guardian statue', solid: true, color: '#6f6a58', raised: true, topColor: '#b3ada0' },
-  [Tile.Maypole]: { name: 'maypole', solid: true, color: '#75603e', raised: true, topColor: '#5b8fc9' },
   [Tile.TapCask]: { name: 'tap cask', solid: true, color: '#75603e', raised: true, topColor: '#c9955c' },
   [Tile.GameTable]: { name: 'game table', solid: true, color: '#75603e', raised: true, topColor: '#e2d9c4' },
   [Tile.WoodStool]: { name: 'stool', solid: true, color: '#75603e', raised: true, topColor: '#c9a76a' },
@@ -2289,9 +2283,7 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.CandleStand, 0.22],
   [Tile.StreetLantern, 0.24],
   [Tile.WayShrine, 0.38],
-  [Tile.Sundial, 0.3],
   [Tile.GuardianStatue, 0.4],
-  [Tile.Maypole, 0.24],
   [Tile.TapCask, 0.38],
   [Tile.GameTable, 0.34],
   [Tile.WoodStool, 0.2],
@@ -2611,15 +2603,13 @@ export type DestructibleKind =
   | 'scales'
   | 'displaytable'
   // THE COMMONS: the general shelf breaks in the town's own
-  // materials — snuffed wax and iron, wayside stone, festival
-  // ribbon, spilled ale, scattered game pegs, flying cloaks, and
+  // materials — snuffed wax and iron, wayside stone,
+  // spilled ale, scattered game pegs, flying cloaks, and
   // the skiff's long lapped strakes cartwheeling up the shore.
   | 'candlestand'
   | 'streetlantern'
   | 'wayshrine'
-  | 'sundial'
   | 'guardian'
-  | 'maypole'
   | 'tapcask'
   | 'gametable'
   | 'stool'
@@ -2840,16 +2830,14 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.HangingScale, { kind: 'scales', respawnSec: 300, hits: 1 }],
   [Tile.DisplayTable, { kind: 'displaytable', respawnSec: 300, hits: 2 }],
   // THE COMMONS: street timber pops in one or two like the rest
-  // of the town's; the wayside stone (shrine, dial, guardian)
+  // of the town's; the wayside stone (shrine, guardian)
   // holds three-and-four on the long clock — the watch notices
   // when somebody wrecks the faith. The skiff is forty seasons
   // of clinker and holds three.
   [Tile.CandleStand, { kind: 'candlestand', respawnSec: 300, hits: 1 }],
   [Tile.StreetLantern, { kind: 'streetlantern', respawnSec: 300, hits: 1 }],
   [Tile.WayShrine, { kind: 'wayshrine', respawnSec: 600, hits: 3 }],
-  [Tile.Sundial, { kind: 'sundial', respawnSec: 600, hits: 3 }],
   [Tile.GuardianStatue, { kind: 'guardian', respawnSec: 600, hits: 4 }],
-  [Tile.Maypole, { kind: 'maypole', respawnSec: 300, hits: 2 }],
   [Tile.TapCask, { kind: 'tapcask', respawnSec: 300, hits: 2 }],
   [Tile.GameTable, { kind: 'gametable', respawnSec: 300, hits: 2 }],
   [Tile.WoodStool, { kind: 'stool', respawnSec: 150, hits: 1 }],

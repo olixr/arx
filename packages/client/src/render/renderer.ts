@@ -16859,7 +16859,7 @@ export class Renderer {
     },
     // THE COMMONS: the general shelf breaks in the town's own
     // materials — snuffed wax and forge iron, wayside fieldstone,
-    // festival ribbon, spilled ale, boxwood pegs, flying cloaks,
+    // spilled ale, boxwood pegs, flying cloaks,
     // wicker and glaze, tar and lapped strake.
     candlestand: {
       dust: ['#4c4a52', '#e8d9b0', '#e8a13c'],
@@ -16876,20 +16876,10 @@ export class Renderer {
       splinters: ['#c6bda6', '#a39a86', '#8a9a4f'],
       chips: ['#c6bda6', '#e8d9b0'],
     },
-    sundial: {
-      dust: ['#a39a86', '#78705d', '#5f9b84'],
-      splinters: ['#c6bda6', '#a39a86', '#c2a45c'],
-      chips: ['#c6bda6', '#c2a45c'],
-    },
     guardian: {
       dust: ['#6f6a58', '#8a857a', '#78705d'],
       splinters: ['#b3ada0', '#8a857a', '#6f6a58'],
       chips: ['#b3ada0', '#c6bda6'],
-    },
-    maypole: {
-      dust: ['#8a6534', '#c25668', '#5b8fc9'],
-      splinters: ['#c9a76a', '#c25668', '#8a9a4f'],
-      chips: ['#c25668', '#5b8fc9'],
     },
     tapcask: {
       dust: ['#8a6534', '#c9955c', '#b89a68'],
@@ -17596,17 +17586,15 @@ export class Renderer {
     Tile.HangingScale,
     // THE COMMONS: the general shelf rides the same ring — the
     // candle stand's lick, the hung lantern's sway, the shrine's
-    // guttering stubs, the maypole's streaming ribbons, and the
-    // tap cask's drip bead all sit under 4Hz; the fifteen still
-    // pieces idle in STATIC_RING_TILES. Zero light entries by
+    // guttering stubs, and the tap cask's drip bead all sit
+    // under 4Hz; the still pieces idle in STATIC_RING_TILES.
+    // Zero light entries by
     // law: every flame on this shelf is paint — the LampPost
     // still owns the town night.
     Tile.CandleStand,
     Tile.StreetLantern,
     Tile.WayShrine,
-    Tile.Sundial,
     Tile.GuardianStatue,
-    Tile.Maypole,
     Tile.TapCask,
     Tile.GameTable,
     Tile.WoodStool,
@@ -17793,9 +17781,8 @@ export class Renderer {
     Tile.DisplayTable,
     // Commons statics: carved stone, parked timber, stacked
     // wicker, ranked glaze, and the hauled-out hull never read
-    // the clock. The flames (stand, lantern, shrine), the
-    // ribbons, and the tap's drip stay on the fast cadence.
-    Tile.Sundial,
+    // the clock. The flames (stand, lantern, shrine) and the
+    // tap's drip stay on the fast cadence.
     Tile.GuardianStatue,
     Tile.GameTable,
     Tile.WoodStool,
@@ -40836,134 +40823,6 @@ export class Renderer {
         };
       }
 
-      case Tile.Sundial: {
-        const syT = s * this.camera.yScale;
-        const baseY = p.y + syT * 0.18;
-        // The square's kept time — older than kings (PERIOD
-        // TRUTH's easiest pass). A worn pedestal carries the one
-        // top plane this camera was BUILT for: the dial face,
-        // read whole, hour ticks chiseled, the bronze gnomon gone
-        // green, its painted shadow resting on late afternoon.
-        const m = ((h >>> 4) & 1) ? 1 : -1;
-        const dialY = baseY - s * 0.78;
-        const dR = s * 0.3;
-        return {
-          sortY: ty + 0.68,
-          body: stationBody(0.45, 1.25, 0.35),
-          drawShadow: () => this.castContact(p.x, baseY, s * 0.3, s * 0.05),
-          draw: () => {
-            // Draw-time ctx capture: the outline pass swaps this.ctx
-            // to its scratch — the build-time capture would paint past it.
-            const ctx = this.ctx;
-            // The plinth foot and the pedestal, one nicked corner.
-            ctx.fillStyle = TWN_STONE_DARK;
-            ctx.fillRect(p.x - s * 0.21, baseY - s * 0.1, s * 0.42, s * 0.1);
-            ctx.fillStyle = TWN_STONE;
-            ctx.fillRect(p.x - s * 0.21, baseY - s * 0.1, s * 0.42, s * 0.028);
-            ctx.fillStyle = TWN_STONE;
-            ctx.fillRect(p.x - s * 0.13, dialY, s * 0.26, baseY - s * 0.1 - dialY);
-            ctx.fillStyle = TWN_STONE_LIT;
-            ctx.fillRect(p.x - s * 0.13, dialY, s * 0.09, baseY - s * 0.1 - dialY);
-            ctx.fillStyle = TWN_STONE_DARK;
-            ctx.fillRect(p.x + s * 0.085, dialY + s * 0.04, s * 0.045, baseY - s * 0.16 - dialY);
-            // The old chip out of the west foot — carts happen.
-            ctx.fillStyle = '#4a4438';
-            ctx.beginPath();
-            ctx.moveTo(p.x - m * s * 0.21, baseY - s * 0.04);
-            ctx.lineTo(p.x - m * s * 0.16, baseY - s * 0.07);
-            ctx.lineTo(p.x - m * s * 0.155, baseY - s * 0.028);
-            ctx.closePath();
-            ctx.fill();
-            // The cap flare under the dial.
-            ctx.fillStyle = TWN_STONE;
-            ctx.beginPath();
-            ctx.moveTo(p.x - s * 0.17, dialY);
-            ctx.lineTo(p.x - s * 0.12, dialY + s * 0.06);
-            ctx.lineTo(p.x + s * 0.12, dialY + s * 0.06);
-            ctx.lineTo(p.x + s * 0.17, dialY);
-            ctx.closePath();
-            ctx.fill();
-            // THE DIAL FACE — pass two: the pale plate read as a
-            // BIRDBATH. The plate is now WIDER with a thick dark
-            // side edge, a deep engraved ring, bold ticks, and a
-            // gnomon big enough to throw the hour.
-            const dW = dR * 1.2;
-            ctx.fillStyle = shade(TWN_STONE_DARK, -8);
-            ctx.beginPath();
-            ctx.ellipse(p.x, dialY + s * 0.03, dW, dW * 0.42, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = TWN_STONE_LIT;
-            ctx.beginPath();
-            ctx.ellipse(p.x, dialY - s * 0.012, dW, dW * 0.42, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = shade(TWN_STONE, -26);
-            ctx.lineWidth = Math.max(1.5, s * 0.02);
-            ctx.beginPath();
-            ctx.ellipse(p.x, dialY - s * 0.012, dW * 0.8, dW * 0.335, 0, 0, Math.PI * 2);
-            ctx.stroke();
-            // Hour ticks: chiseled DEEP, honest to the ellipse.
-            ctx.lineWidth = Math.max(1.5, s * 0.022);
-            for (let k = 0; k < 8; k++) {
-              const a = Math.PI * (0.06 + (k / 7) * 0.88);
-              const ca = Math.cos(a);
-              const sa = -Math.sin(a);
-              ctx.beginPath();
-              ctx.moveTo(p.x + ca * dW * 0.8, dialY - s * 0.012 + sa * dW * 0.335);
-              ctx.lineTo(p.x + ca * dW * 0.97, dialY - s * 0.012 + sa * dW * 0.405);
-              ctx.stroke();
-            }
-            // THE GNOMON'S SHADOW, painted at late afternoon —
-            // the lie every sundial tells a tilted camera, and
-            // the read that says TIME at map scale.
-            ctx.fillStyle = 'rgba(58, 52, 40, 0.5)';
-            ctx.beginPath();
-            ctx.moveTo(p.x, dialY - s * 0.01);
-            ctx.lineTo(p.x + m * dW * 0.72, dialY - s * 0.01 + dW * 0.2);
-            ctx.lineTo(p.x + m * dW * 0.52, dialY - s * 0.01 + dW * 0.3);
-            ctx.closePath();
-            ctx.fill();
-            // THE GNOMON: a tall bronze blade gone green at the
-            // heel, its lit edge still true enough to trust.
-            ctx.fillStyle = TWN_BRONZE;
-            ctx.beginPath();
-            ctx.moveTo(p.x - m * dW * 0.5, dialY - s * 0.006);
-            ctx.lineTo(p.x + m * dW * 0.14, dialY - s * 0.006);
-            ctx.lineTo(p.x - m * dW * 0.14, dialY - s * 0.006 - dW * 0.72);
-            ctx.closePath();
-            ctx.fill();
-            ctx.strokeStyle = TWN_BRONZE_LIT;
-            ctx.lineWidth = Math.max(1.5, s * 0.02);
-            ctx.beginPath();
-            ctx.moveTo(p.x - m * dW * 0.5, dialY - s * 0.01);
-            ctx.lineTo(p.x - m * dW * 0.14, dialY - s * 0.01 - dW * 0.72);
-            ctx.stroke();
-            ctx.fillStyle = TWN_VERDIGRIS;
-            ctx.beginPath();
-            ctx.ellipse(p.x - m * dW * 0.32, dialY - s * 0.014, s * 0.04, s * 0.018, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(p.x - m * dW * 0.24, dialY - s * 0.1, s * 0.018, s * 0.026, m * 0.5, 0, Math.PI * 2);
-            ctx.fill();
-            // Moss on the shade flank; the north never dries.
-            ctx.fillStyle = 'rgba(95, 155, 132, 0.45)';
-            for (let k = 0; k < 3; k++) {
-              const sd = (h >>> (k * 5 + 3)) & 15;
-              ctx.beginPath();
-              ctx.ellipse(
-                p.x + s * (0.06 + (sd & 3) * 0.02),
-                baseY - s * (0.16 + ((sd >>> 2) & 3) * 0.14),
-                s * 0.02,
-                s * 0.012,
-                0,
-                0,
-                Math.PI * 2,
-              );
-              ctx.fill();
-            }
-          },
-        };
-      }
-
       case Tile.GuardianStatue: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.18;
@@ -41117,131 +40976,6 @@ export class Renderer {
             ctx.fillStyle = shade(tone, 40);
             ctx.beginPath();
             ctx.ellipse(gx + m * s * 0.295, gb - s * 0.925, s * 0.02, s * 0.016, 0, 0, Math.PI * 2);
-            ctx.fill();
-          },
-        };
-      }
-
-      case Tile.Maypole: {
-        const syT = s * this.camera.yScale;
-        const baseY = p.y + syT * 0.18;
-        // The green's festival mast — the tallest timber this
-        // shelf owns. A shaved pole, rope-whipped, a carved crown
-        // ring, and six ribbons dealt from the dyer's roster
-        // (stride-3: neighbors never share a family) STREAMING on
-        // the breeze clock. A pennant exists to move; so does a
-        // ribbon. Debris flies its colors — the pole falls last.
-        const dyeBase = (h >>> 6) % 10;
-        const crownY = baseY - s * 2.0;
-        return {
-          sortY: ty + 0.68,
-          body: stationBody(0.9, 2.45, 0.35),
-          drawShadow: () => this.castContact(p.x, baseY, s * 0.2, s * 0.045),
-          draw: () => {
-            // Draw-time ctx capture: the outline pass swaps this.ctx
-            // to its scratch — the build-time capture would paint past it.
-            const ctx = this.ctx;
-            // The trampled ring: every festival leaves its orbit.
-            ctx.strokeStyle = 'rgba(58, 46, 26, 0.22)';
-            ctx.lineWidth = Math.max(2, s * 0.09);
-            ctx.beginPath();
-            ctx.ellipse(p.x, baseY + s * 0.01, s * 0.52, s * 0.13, 0, 0, Math.PI * 2);
-            ctx.stroke();
-            // Two dropped petals from the last dance.
-            for (const e of [-1, 1] as const) {
-              ctx.fillStyle = e > 0 ? '#c95a74' : '#e8dcc4';
-              ctx.beginPath();
-              ctx.ellipse(p.x + e * s * (0.3 + ((h >>> (e + 5)) & 3) * 0.06), baseY + s * 0.03, s * 0.016, s * 0.009, e * 0.6, 0, Math.PI * 2);
-              ctx.fill();
-            }
-            // THE POLE: shaved taper, one lit arris the whole
-            // way, rope whippings where the years cracked it.
-            ctx.fillStyle = TWN_OAK_DARK;
-            ctx.beginPath();
-            ctx.moveTo(p.x - s * 0.055, baseY);
-            ctx.lineTo(p.x - s * 0.028, crownY);
-            ctx.lineTo(p.x + s * 0.028, crownY);
-            ctx.lineTo(p.x + s * 0.055, baseY);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = TWN_OAK;
-            ctx.beginPath();
-            ctx.moveTo(p.x - s * 0.055, baseY);
-            ctx.lineTo(p.x - s * 0.028, crownY);
-            ctx.lineTo(p.x - s * 0.004, crownY);
-            ctx.lineTo(p.x - s * 0.012, baseY);
-            ctx.closePath();
-            ctx.fill();
-            ctx.strokeStyle = TWN_ROPE;
-            ctx.lineWidth = Math.max(1, s * 0.02);
-            for (const wy of [0.55, 1.15]) {
-              ctx.beginPath();
-              ctx.moveTo(p.x - s * 0.048 * (1 - wy / 2.4), baseY - s * wy);
-              ctx.lineTo(p.x + s * 0.048 * (1 - wy / 2.4), baseY - s * wy - s * 0.012);
-              ctx.moveTo(p.x - s * 0.048 * (1 - wy / 2.4), baseY - s * wy + s * 0.024);
-              ctx.lineTo(p.x + s * 0.048 * (1 - wy / 2.4), baseY - s * wy + s * 0.012);
-              ctx.stroke();
-            }
-            // THE RIBBONS: six, dealt from the BRIGHT shelf only
-            // (madder, woad, weld, ivy, mulberry, rose — a linen
-            // or charcoal ribbon died against the pole), each
-            // streaming WIDE on its own phase of the one town
-            // breeze. Painted behind the crown ring.
-            const ribbonDyes = [1, 2, 3, 4, 5, 9] as const;
-            for (let k = 0; k < 6; k++) {
-              const cloth = Renderer.AWNING_CLOTHS[ribbonDyes[(dyeBase + k) % 6]!]!;
-              const e = k < 3 ? -1 : 1;
-              const rank = k % 3;
-              const ph = t * (0.75 + rank * 0.14) + k * 1.9 + (h % 11);
-              const bell = Math.sin(ph) * 0.5 + 0.5;
-              const reach = s * (0.5 + rank * 0.22) * (0.72 + bell * 0.28);
-              const droop = s * (0.55 + rank * 0.26) * (1.05 - bell * 0.4);
-              const tipX = p.x + e * reach;
-              const tipY = crownY + droop;
-              const sag = Math.sin(ph * 1.7) * s * 0.06;
-              ctx.strokeStyle = cloth.a;
-              ctx.lineWidth = Math.max(2, s * 0.048);
-              ctx.beginPath();
-              ctx.moveTo(p.x + e * s * 0.02, crownY + s * 0.05);
-              ctx.quadraticCurveTo(
-                p.x + e * reach * 0.6,
-                crownY + droop * 0.3 + sag,
-                tipX,
-                tipY,
-              );
-              ctx.stroke();
-              // The snap tail past the tip, trim-toned.
-              ctx.strokeStyle = cloth.b;
-              ctx.lineWidth = Math.max(1.5, s * 0.024);
-              ctx.beginPath();
-              ctx.moveTo(tipX, tipY);
-              ctx.quadraticCurveTo(
-                tipX + e * s * 0.09,
-                tipY + s * 0.035 - sag,
-                tipX + e * s * 0.15,
-                tipY + s * (0.1 - 0.05 * bell),
-              );
-              ctx.stroke();
-            }
-            // THE CROWN RING: carved, seen slightly from above,
-            // the knob finial catching the light.
-            ctx.strokeStyle = TWN_OAK;
-            ctx.lineWidth = Math.max(2, s * 0.045);
-            ctx.beginPath();
-            ctx.ellipse(p.x, crownY + s * 0.02, s * 0.13, s * 0.055, 0, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.strokeStyle = TWN_OAK_LIT;
-            ctx.lineWidth = Math.max(1, s * 0.016);
-            ctx.beginPath();
-            ctx.ellipse(p.x, crownY + s * 0.014, s * 0.128, s * 0.052, 0, Math.PI * 1.1, Math.PI * 1.9);
-            ctx.stroke();
-            ctx.fillStyle = TWN_OAK;
-            ctx.beginPath();
-            ctx.ellipse(p.x, crownY - s * 0.06, s * 0.032, s * 0.04, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = TWN_OAK_LIT;
-            ctx.beginPath();
-            ctx.ellipse(p.x - s * 0.008, crownY - s * 0.068, s * 0.014, s * 0.02, -0.4, 0, Math.PI * 2);
             ctx.fill();
           },
         };
