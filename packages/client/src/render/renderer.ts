@@ -60,14 +60,7 @@ import { farmApiaries, farmBins, farmJobs, farmPlots, farmTroughs, predictedGrad
 import { shortestAngle } from '../net/interpolation.js';
 import type { ClientGame } from '../game/clientGame.js';
 import { WORD_LIFE_MS } from '../game/clientGame.js';
-import {
-  WORK_BOOK,
-  resolveWork,
-  workCycleN,
-  workCycleU,
-  type StationWorkKind,
-  type WorkKind,
-} from './work.js';
+import { WORK_BOOK, resolveWork, workCycleN, workCycleU, type WorkKind } from './work.js';
 import {
   CATTLE_LOOKS,
   COURSER_LOOKS,
@@ -2108,23 +2101,23 @@ export class Renderer {
   onFootstep: ((x: number, y: number, speed: number, isOwn: boolean, sneaking: boolean) => void) | null =
     null;
 
-  /** Nearest crafting station around a world position, if any. THE
-   *  VERB IS VISIBLE (work.ts): every station keeps its TRUE identity
-   *  — the old grouping collapsed seven trades into one workbench
-   *  pantomime, so the weaver, the tanner, the carver, the alchemist,
-   *  the enchanter, and the sawyer all tapped the same air. */
+  /** Nearest crafting station around a world position, if any. */
   private findStation(
     x: number,
     y: number,
-  ): { tx: number; ty: number; kind: StationWorkKind } | null {
+  ): { tx: number; ty: number; kind: 'anvil' | 'furnace' | 'fire' | 'workbench' } | null {
     const game = this.game;
     if (!game) return null;
     const cx = Math.floor(x);
     const cy = Math.floor(y);
-    let best: { tx: number; ty: number; kind: StationWorkKind; d: number } | null = null;
+    let best: { tx: number; ty: number; kind: 'anvil' | 'furnace' | 'fire' | 'workbench'; d: number } | null =
+      null;
     for (let ty = cy - 2; ty <= cy + 2; ty++) {
       for (let tx = cx - 2; tx <= cx + 2; tx++) {
         const t = game.world.groundAt(tx, ty);
+        // Bench-like stations (workbench, alembic, tanning rack, loom,
+        // carving bench) all share the busy-hands workbench choreography;
+        // anvil/furnace/fire keep their bespoke cycles.
         const kind =
           t === Tile.Anvil
             ? ('anvil' as const)
@@ -2132,21 +2125,15 @@ export class Renderer {
               ? ('furnace' as const)
               : t === Tile.Campfire
                 ? ('fire' as const)
-                : t === Tile.Workbench
+                : t === Tile.Workbench ||
+                    t === Tile.Alembic ||
+                    t === Tile.TanningRack ||
+                    t === Tile.Loom ||
+                    t === Tile.CarvingBench ||
+                    t === Tile.EnchantingTable ||
+                    t === Tile.Sawhorse
                   ? ('workbench' as const)
-                  : t === Tile.Alembic
-                    ? ('alembic' as const)
-                    : t === Tile.TanningRack
-                      ? ('tanning_rack' as const)
-                      : t === Tile.Loom
-                        ? ('loom' as const)
-                        : t === Tile.CarvingBench
-                          ? ('carving_bench' as const)
-                          : t === Tile.EnchantingTable
-                            ? ('enchanting_table' as const)
-                            : t === Tile.Sawhorse
-                              ? ('sawhorse' as const)
-                              : null;
+                  : null;
         if (!kind) continue;
         const d = Math.hypot(tx + 0.5 - x, ty + 0.5 - y);
         if (!best || d < best.d) best = { tx, ty, kind, d };
@@ -54032,21 +54019,6 @@ export class Renderer {
             });
             this.queueGlow(fx2, fy2, 1.4, '255, 138, 52', 0.4);
             this.onGatherImpact?.('furnace', fx2, fy2, e.isOwn === true);
-          }
-        } else if (station?.kind === 'sawhorse') {
-          // Sawdust drifts off the kerf at the end of each push —
-          // visual only (a saw's rasp has no honest one-shot yet).
-          if (impactBeat('sawhorse')) {
-            const rw = resolveWork('sawhorse', WORK_BOOK.sawhorse.impactAt!, dir, now + lifeMs);
-            this.particles.burst(e.x + rw.tipGX, e.y + rw.tipGY, 4, ['#c9b083', '#b08a52', '#e0cfa4'], {
-              speed: 0.7,
-              life: 0.5,
-              size: 0.04,
-              gravity: 3,
-              drag: 0.9,
-              spread: 1.4,
-              dir: Math.PI / 2,
-            });
           }
         }
 

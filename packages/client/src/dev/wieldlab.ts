@@ -55,6 +55,12 @@ const LOADOUTS: Record<string, Loadout> = {
   rogue: { key: 'rogue', weapon: 'bronze_dagger', carry: 'rogue' },
   dual: { key: 'dual', weapon: 'bronze_sword', off: 'bronze_dagger', carryOff: 'rogue' },
   board: { key: 'board', weapon: 'bronze_sword', off: 'oak_kiteshield' },
+  // THE SHIELD WAVE's carry classes: the biggest wall (the plant/
+  // shoulder rig), the legion's door, the fist disc, the arm kite.
+  wall: { key: 'wall', weapon: 'bronze_sword', off: 'aldarens_gate' },
+  doorwall: { key: 'doorwall', weapon: 'steel_sword', off: 'legion_doorwall' },
+  courtfist: { key: 'courtfist', weapon: 'bronze_sword', off: 'wintercourt_rime' },
+  relic: { key: 'relic', weapon: 'bronze_sword', off: 'vale_reliquary' },
   great: { key: 'great', weapon: 'iron_greatblade' },
   staff: { key: 'staff', weapon: 'apprentice_staff' },
   bow: { key: 'bow', weapon: 'stickbow' },
@@ -63,7 +69,7 @@ const LOADOUTS: Record<string, Loadout> = {
   pick: { key: 'pick', weapon: 'bronze_pickaxe' },
 };
 
-type Mode = 'idle' | 'move' | 'walk' | 'strafe' | 'draw' | 'stowed' | 'pose' | 'flip';
+type Mode = 'idle' | 'guard' | 'move' | 'walk' | 'strafe' | 'draw' | 'stowed' | 'pose' | 'flip';
 
 /** Transition probes: the det frame where 'flip' rows enter Attack. */
 const FLIP_AT = 120;
@@ -155,6 +161,19 @@ poseRow('mine', LOADOUTS.pick!, { pose: PoseState.Gather }); // 33
 // glide, not a snap. Row 34 sword, row 35 staff (the grip channel).
 for (const [lbl, dir] of DIRS) figs.push({ label: `flip-sword ${lbl}`, dir, mode: 'flip', load: LOADOUTS.sword! }); // 34
 for (const [lbl, dir] of DIRS) figs.push({ label: `flip-staff ${lbl}`, dir, mode: 'flip', load: LOADOUTS.staff! }); // 35
+
+// ---- THE WALL CARRY rows (the shield wave's second rig): rest, the
+// standing PLANT (mode 'guard' = combat idle, no gait — restT 0 with
+// the body still, which is exactly the branch the plant law owns),
+// and the shouldered run; then the wave's fist disc and arm kite.
+// Appended after the historic sheet so every documented row index
+// above survives untouched.
+row('wall rest', LOADOUTS.wall!, 'idle'); // 36
+row('wall plant', LOADOUTS.wall!, 'guard'); // 37
+row('wall run', LOADOUTS.wall!, 'move'); // 38
+row('doorwall plant', LOADOUTS.doorwall!, 'guard'); // 39
+row('courtfist idle', LOADOUTS.courtfist!, 'idle'); // 40
+row('relic idle', LOADOUTS.relic!, 'idle'); // 41
 
 // ---- THE STRIKE SWEEP (?strike=<loadout>&stage=<0|1|2>): the whole
 // beat, frame by frame — rows are TIME (poseT 0.02→0.98), columns the
@@ -289,7 +308,7 @@ function drawSheet(now: number, dt: number): void {
         flipPose ?? f.pose ?? (drawing ? PoseState.Draw : moving ? PoseState.Walk : PoseState.Idle),
       poseT: f.mode === 'flip' ? flipPoseT : (f.poseT ?? 1),
       drawT: drawing ? 0.95 : 0,
-      restT: f.mode === 'flip' ? flipRest : drawing || posed ? 0 : 1,
+      restT: f.mode === 'flip' ? flipRest : drawing || posed || f.mode === 'guard' ? 0 : 1,
       nowMs: now,
       feet,
       bob: lp.bob,

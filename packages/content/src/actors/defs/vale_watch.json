@@ -45,6 +45,7 @@
     "body": "iron_platebody",
     "legs": "iron_greaves",
     "boots": "iron_sabatons",
-    "weapon": "iron_sword"
+    "weapon": "iron_sword",
+    "offhand": "vale_reliquary"
   }
 }

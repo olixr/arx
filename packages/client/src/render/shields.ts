@@ -116,7 +116,21 @@ export type ShieldShape =
   | 'aegis'
   | 'targe'
   | 'ribwall'
-  | 'thorn';
+  | 'thorn'
+  // THE SHIELD WAVE (docs/shield-wave-plan.md): twelve more, each its
+  // own silhouette — the class law says a new rung is a new OUTLINE.
+  | 'breach'
+  | 'door'
+  | 'palisade'
+  | 'gate'
+  | 'carapace'
+  | 'courtround'
+  | 'pinion'
+  | 'reliquary'
+  | 'furnace'
+  | 'leaf'
+  | 'riftward'
+  | 'falls';
 
 /**
  * The material dialect. Wood is BUILT — staves, seams, a bound rim you
@@ -498,6 +512,334 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
     sig: 'sunforged',
     tier: 6,
   },
+  // ================= THE SHIELD WAVE (docs/shield-wave-plan.md) =====
+  /**
+   * THE RED COMPANY'S — a tool that got promoted. Dark lacquered
+   * boards, an iron boot plate stepping past the heel (you kick a door
+   * with the shield so your foot doesn't have to), two crowbar scars
+   * that never buffed out, and the company's red slash struck across
+   * the top corner. Nothing on it is ceremony; everything on it has
+   * been used twice.
+   */
+  lowhall_breacher: {
+    shape: 'breach',
+    material: 'wood',
+    face: '#4a3a30',
+    faceAlt: '#3a2d25',
+    // The red slash is a BEND in anyone's rolls of arms — the company
+    // just paints theirs faster.
+    field: 'bend',
+    rim: '#565b66',
+    // The knocker came with the door.
+    boss: '#6a707c',
+    device: 'none',
+    studs: true,
+    planks: 3,
+    curve: 0.28,
+    strapColor: '#3f3830',
+    sig: 'breacher',
+    tier: 3,
+  },
+  /**
+   * THE LEGION'S — issue iron, drill-ground geometry. A blackened slab
+   * to the quartermaster's template: two columns of forged diamond
+   * bosses, one crimson campaign band, and three punch spikes off the
+   * OUTER edge only — the shield-wall's free edge, where the line
+   * ends. Ten thousand of these exist and every one is this one.
+   */
+  legion_doorwall: {
+    shape: 'door',
+    material: 'iron',
+    face: '#3f434e',
+    faceAlt: '#33363f',
+    rim: '#565b68',
+    // The charge is the drill columns of forged diamonds themselves.
+    device: 'diamond',
+    deviceColor: '#8e2f2c',
+    studs: true,
+    spikes: true,
+    // The free edge bears the teeth: +u is the outer side.
+    spikeAngles: [-0.5, 0, 0.5],
+    spikeLen: 1.26,
+    spikeW: 0.08,
+    curve: 0.26,
+    strapColor: '#3f3830',
+    sig: 'doorwall',
+    tier: 3,
+  },
+  /**
+   * THE HUNTER'S WALL — fence, carried. Pale ash staves cut to three
+   * stake points across the crown, two rawhide lashings holding the
+   * boards the way a hide is racked, and the stand's own mark — a tar
+   * antler-brow — painted where the stakes part. The shield you plant
+   * at the treeline and shoot beside all season.
+   */
+  stagheart_palisade: {
+    shape: 'palisade',
+    material: 'wood',
+    face: '#b09a6e',
+    faceAlt: '#94805a',
+    rim: '#6a5a40',
+    // An antler burr mounted at the boards' center — the stand's own
+    // trophy, and something to hang a lantern on.
+    boss: '#8a7458',
+    // The tar antler-brow, in the rolls' nearest word.
+    device: 'fang',
+    deviceColor: '#2e2a24',
+    studs: true,
+    planks: 4,
+    curve: 0.3,
+    strapColor: '#4a3524',
+    sig: 'palisade',
+    tier: 4,
+  },
+  /**
+   * THE BARROW GATE — a door off its hinges, and the hinges came too.
+   * Weathered pale planks under an arched crown, iron scroll-straps
+   * still bolted where the jamb used to be, the tar fell-mark low on
+   * the boards, and a fell-ram's skull set at the crown with its horns
+   * curled down the arch. Bone and old iron; nothing on it shines.
+   */
+  fellhorn_gate: {
+    shape: 'gate',
+    material: 'wood',
+    face: '#a89878',
+    faceAlt: '#8c7c60',
+    rim: '#4e535e',
+    device: 'fang',
+    deviceColor: '#ddd4bc',
+    studs: true,
+    spikes: true,
+    // The ram's own horns, rising off the arch either side of the
+    // skull — bone breaking the silhouette, the way the fell marks
+    // its gates.
+    spikeAngles: [-2.03, -1.11],
+    spikeLen: 1.3,
+    spikeW: 0.11,
+    spikeColor: '#ddd4bc',
+    planks: 3,
+    curve: 0.3,
+    strapColor: '#3f3830',
+    sig: 'fellhorn',
+    tier: 4,
+  },
+  /**
+   * THE TIDE'S RAMPART, MADE BEARABLE — a shell wall in storm-green,
+   * three plate courses lapping downward the way a carapace grows,
+   * barnacle studs where they chose to live, and a deepking's pearl
+   * set proud at the heart. The sea builds symmetric and the smith
+   * had the sense not to argue.
+   */
+  brinehold_carapace: {
+    shape: 'carapace',
+    material: 'steel',
+    face: '#46655c',
+    faceAlt: '#3a5148',
+    rim: '#7ba892',
+    boss: '#dfe3d6',
+    device: 'none',
+    studs: true,
+    spikes: true,
+    // Lateral spines, both flanks — a crab grows them and the smith
+    // kept them. Short, pale chitin, nothing forged about them.
+    spikeAngles: [-0.25, 0.3, 2.84, 3.39],
+    spikeLen: 1.16,
+    spikeW: 0.07,
+    spikeColor: '#cfc9b4',
+    curve: 0.42,
+    strapColor: '#3a4652',
+    sig: 'carapace',
+    tier: 4,
+  },
+  /**
+   * THE COURT'S TOKEN — cold ceremony. A birch-silver disc in nine
+   * facets, a court-silver crescent inlaid off-center, and a rime star
+   * struck from the heart in everfrost splinters — uneven, as ice
+   * grows. Fist-gripped and light: the Court does not carry weight,
+   * it confers it.
+   */
+  wintercourt_rime: {
+    shape: 'courtround',
+    material: 'steel',
+    face: '#cfd8d2',
+    faceAlt: '#b4c0bc',
+    rim: '#8fa8b8',
+    boss: '#9ad4e8',
+    device: 'moon',
+    deviceColor: '#dce4f0',
+    studs: true,
+    curve: 0.5,
+    strapColor: '#3a4652',
+    sig: 'wintercourt',
+    tier: 4,
+  },
+  /**
+   * THE VEIL'S WING — blued night-steel with its outer edge FLETCHED:
+   * three swept barbs cut into the silhouette, a gilded rachis seam
+   * running crown to heel where a feather keeps its spine, and one
+   * gold stud bedding each barb. The ladder's warm metal spent the
+   * veil's way: three thin lines in the dark.
+   */
+  nightveil_pinion: {
+    shape: 'pinion',
+    material: 'steel',
+    face: '#2e3345',
+    faceAlt: '#262a38',
+    // The gilded rachis runs crown to heel on the slant — a bend, as
+    // the rolls would blazon it, if the rolls knew what they saw.
+    field: 'bend',
+    rim: '#4a5068',
+    // The barbs, in the nearest heraldic word for a blade.
+    device: 'fang',
+    deviceColor: BRASS,
+    studs: true,
+    curve: 0.3,
+    strapColor: '#3f3830',
+    sig: 'pinion',
+    tier: 5,
+  },
+  /**
+   * THE PILGRIM WAY'S SILVER — wayside-shrine architecture in shield
+   * form. Deep lake-indigo enamel under a worked moonsilver cross,
+   * slender where the bulwark's brass is broad: flared finials at all
+   * four ends and a moonstone at the crossing. Carried down the whole
+   * pilgrim way and polished by every mile of it.
+   */
+  vale_reliquary: {
+    shape: 'reliquary',
+    material: 'steel',
+    face: '#28324f',
+    faceAlt: '#1f2740',
+    rim: '#c9d2e0',
+    // The moonstone stands proud at the crossing — the substrate's
+    // boss, set where the silver meets.
+    boss: '#eef4ff',
+    device: 'cross',
+    deviceColor: '#dce4f0',
+    studs: true,
+    curve: 0.32,
+    strapColor: '#5a4a2a',
+    sig: 'reliquary',
+    tier: 4,
+  },
+  /**
+   * THE BRAND'S FURNACE DOOR — charred iron plates with the fire still
+   * between them: every seam on it is an EMBER seam, the grate mouth
+   * at the heart glows in its own dark plate, and one heat-crack has
+   * opened across the crown corner and been left, because the smiths
+   * of the Brand sign their work with what it survived.
+   */
+  cindermaw_bulwark: {
+    shape: 'furnace',
+    material: 'iron',
+    face: '#3e3a38',
+    faceAlt: '#2e2b29',
+    // Four plates quartered by burning seams: an ember cross on a
+    // quartered field, and every word of that blazon is literal.
+    field: 'quarter',
+    rim: '#5a5248',
+    device: 'cross',
+    deviceColor: '#ff8a3c',
+    studs: true,
+    curve: 0.3,
+    strapColor: '#3f3830',
+    sig: 'cindermaw',
+    tier: 5,
+  },
+  /**
+   * THE EVERWOOD'S GIFT — a silverbark leaf the length of a body. One
+   * midrib spine carrying its own pale light, three vein pairs laid
+   * the way the tree laid them, a green-gold margin shade where the
+   * blade turns from the sun. The Everwood gives and no axe takes;
+   * this one was GIVEN, and the grain remembers agreeing.
+   */
+  everwood_crest: {
+    shape: 'leaf',
+    material: 'wood',
+    face: '#e8e0cc',
+    faceAlt: '#cfc4a8',
+    // The midrib divides the blade its whole height: a pale, grown.
+    field: 'pale',
+    rim: '#a39072',
+    // The imbued heartwood knot, standing proud where the working sits.
+    boss: '#e6f0c2',
+    // The paired veins, in the rolls' word for them.
+    device: 'chevron',
+    deviceColor: '#9db86a',
+    // Silver pins, not soldier studs — the binding is still ELVEN.
+    studs: true,
+    curve: 0.36,
+    strapColor: '#5a4a2a',
+    sig: 'everwood',
+    tier: 5,
+  },
+  /**
+   * THE RIFTWARD — gate-stone, dressed. An obelisk-cut wall in void
+   * violet with a tall bezel of gate glass set clean through it: the
+   * glass carries one bright facet, splinters of its light escape the
+   * bezel at two corners, and four bolts hold a window onto a place
+   * nobody has finished looking into.
+   */
+  gatefall_bulwark: {
+    shape: 'riftward',
+    material: 'steel',
+    face: '#3e3560',
+    faceAlt: '#37304f',
+    // The bezel column runs the face's height: a pale of glass.
+    field: 'pale',
+    rim: '#494259',
+    // The shard that would not sit flush — the substrate's boss, in
+    // gate glass, standing off the window it broke from.
+    boss: '#cbb4ff',
+    device: 'diamond',
+    deviceColor: '#a985ff',
+    studs: true,
+    spikes: true,
+    // Two splinters of the glass's light that got past the binding
+    // entirely and stayed, frozen mid-escape.
+    spikeAngles: [-0.85, 2.55],
+    spikeLen: 1.24,
+    spikeW: 0.06,
+    spikeColor: '#cbb4ff',
+    curve: 0.26,
+    strapColor: '#3f3830',
+    sig: 'riftward',
+    tier: 6,
+  },
+  /**
+   * ALDAREN'S GATE — the capital, carried. Moonpale steel under a gold
+   * crown chief whose three points ARE the silhouette's own crest, and
+   * three cascade stripes falling the full height of the face — the
+   * crowned falls of Silverfall as heraldry. The biggest plane in the
+   * game, a hair past the aegis, and the top of the wall ladder: the
+   * king's answer to the sun.
+   */
+  aldarens_gate: {
+    shape: 'falls',
+    material: 'steel',
+    face: '#c9d2e4',
+    faceAlt: '#aab6cc',
+    // The gold chief over the moonpale field — the blazon reads
+    // itself: or, a chief; argent, three falls.
+    field: 'chief',
+    rim: '#d8b76a',
+    // The gate's own gold ring, mounted at the boards' center.
+    boss: '#e6c36a',
+    device: 'crown',
+    deviceColor: '#e6c36a',
+    studs: true,
+    spikes: true,
+    // The crown's three points stand PROUD of the crest — real gold
+    // rising off the binding, not a notch cut into the slab.
+    spikeAngles: [-2.09, -1.57, -1.05],
+    spikeLen: 1.28,
+    spikeW: 0.13,
+    spikeColor: '#e6c36a',
+    curve: 0.3,
+    strapColor: '#5a4a2a',
+    sig: 'falls',
+    tier: 6,
+  },
 };
 
 /**
@@ -610,6 +952,88 @@ const OUTLINES: Record<ShieldShape, number[]> = {
     -0.7, -1, 0.7, -1, 1.0, -0.62, 0.86, 0.05, 1.0, 0.52, 0.5, 0.92,
     0, 1.14, -0.5, 0.92, -1.0, 0.52, -0.86, 0.05, -1.0, -0.62,
   ],
+  // The Red Company's arguing door: a working slab with clipped top
+  // corners and a narrower iron BOOT PLATE stepping down past the heel
+  // — a tool that got promoted, and the step in the heel is its résumé.
+  breach: [
+    -0.84, -1, 0.84, -1, 1.0, -0.8, 1.0, 0.84, 0.66, 0.84, 0.66, 1.02,
+    -0.66, 1.02, -0.66, 0.84, -1.0, 0.84, -1.0, -0.8,
+  ],
+  // The legion's doorwall: issue iron, corners clipped to the
+  // quartermaster's template. The squarest rectangle in the roster —
+  // drill-ground geometry; the spike plan owns its free edge.
+  door: [
+    -0.9, -1, 0.9, -1, 1.0, -0.84, 1.0, 0.82, 0.86, 1, -0.86, 1,
+    -1.0, 0.82, -1.0, -0.84,
+  ],
+  // The hunter's palisade: three stake-cut points across the crown —
+  // fence, carried. The valleys between the stakes are the read.
+  palisade: [
+    -0.65, -1, -0.33, -0.6, 0, -1, 0.33, -0.6, 0.65, -1, 0.95, -0.55,
+    0.95, 0.78, 0.6, 1, -0.6, 1, -0.95, 0.78, -0.95, -0.55,
+  ],
+  // The barrow gate: an arched crown over straight jambs, heels cut to
+  // a threshold — a door that remembers its hinges.
+  gate: [
+    0, -1, 0.6, -0.93, 0.95, -0.7, 0.95, 0.68, 0.78, 0.9, 0.42, 1,
+    -0.42, 1, -0.78, 0.9, -0.95, 0.68, -0.95, -0.7, -0.6, -0.93,
+  ],
+  // The tide's rampart: a shell wall — domed crown, flared shoulders,
+  // one scallop bitten into each flank, a skirt falling to a point.
+  // Symmetric, unlike the targe: the sea builds true.
+  carapace: [
+    0, -0.96, 0.5, -0.88, 0.9, -0.6, 1.0, -0.15, 0.8, 0.2, 0.92, 0.5,
+    0.55, 0.85, 0, 1, -0.55, 0.85, -0.92, 0.5, -0.8, 0.2, -1.0, -0.15,
+    -0.9, -0.6, -0.5, -0.88,
+  ],
+  // The Court's round: nine facets — between the buckler's eight and
+  // the round's ten, and the odd count seats one facet flat at the
+  // crown with a point at the heel, which no other disc here does.
+  courtround: ngon(9, -Math.PI / 2 + Math.PI / 9),
+  // The veil's pinion: the INNER edge sweeps clean; the OUTER (+u,
+  // off-side) edge is FLETCHED — three swept barbs stepping down the
+  // free edge, a raised wing's trailing feathers cut into the steel.
+  pinion: [
+    0, -1, 0.68, -0.84, 0.5, -0.58, 1.0, -0.42, 0.58, -0.12, 0.98, 0.04,
+    0.56, 0.36, 0.88, 0.54, 0.3, 0.86, 0, 1, -0.58, 0.82, -0.86, 0.42,
+    -0.9, -0.3, -0.58, -0.8,
+  ],
+  // The reliquary: a cusped crown rising to a center finial over long
+  // kite walls — wayside-shrine architecture in shield form.
+  reliquary: [
+    -0.16, -0.86, 0, -1.02, 0.16, -0.86, 0.62, -0.94, 0.92, -0.68,
+    0.92, 0.28, 0.5, 0.74, 0, 1, -0.5, 0.74, -0.92, 0.28, -0.92, -0.68,
+    -0.62, -0.94,
+  ],
+  // The furnace door: stepped shoulders, a vent notch waisting each
+  // wall, and a wedge heel that overshoots — built to be set down in
+  // front of a fire and lived behind.
+  furnace: [
+    -0.7, -1, 0.7, -1, 1.0, -0.74, 0.84, -0.28, 1.0, 0.12, 0.84, 0.46,
+    0.58, 0.9, 0, 1.06, -0.58, 0.9, -0.84, 0.46, -1.0, 0.12, -0.84, -0.28,
+    -1.0, -0.74,
+  ],
+  // The Everwood leaf: tip at the crown, margins swelling past the
+  // waist, and a narrow STEM heel — the one outline here that pinches
+  // in before the ground instead of spreading.
+  leaf: [
+    0, -1, 0.45, -0.74, 0.8, -0.34, 0.95, 0.12, 0.68, 0.56, 0.3, 0.86,
+    0.13, 1, -0.13, 1, -0.3, 0.86, -0.68, 0.56, -0.95, 0.12, -0.8, -0.34,
+    -0.45, -0.74,
+  ],
+  // The riftward obelisk: a narrow flat crown over canted upper walls,
+  // then dead-straight sides to a chamfered heel — gate-stone, dressed.
+  riftward: [
+    -0.45, -1, 0.45, -1, 0.9, -0.6, 0.9, 0.64, 0.6, 1, -0.6, 1,
+    -0.9, 0.64, -0.9, -0.6,
+  ],
+  // Aldaren's Gate: a broad crested slab falling to a shallow point —
+  // the royal three crown points stand PROUD of this crest as real
+  // gold (the spike plan), not as notches cut into the wall.
+  falls: [
+    -0.95, -0.84, -0.55, -1, 0.55, -1, 0.95, -0.84, 1.0, 0.56,
+    0.6, 0.94, 0, 1.06, -0.6, 0.94, -1.0, 0.56,
+  ],
 };
 
 /**
@@ -641,26 +1065,56 @@ const METRIC: Record<
      * between its bearer and the world.
      */
     twistK: number;
+    /**
+     * THE WALL CARRY — the second rig. True marks the full-body class:
+     * tower and everything above it. A wall is not a bigger heater —
+     * settled in guard it PLANTS (grounds, squares, stops breathing),
+     * running it SHOULDERS (rises and cants into the stride like a
+     * carried door), and the finisher is a face-first BASH. The fist
+     * and arm classes keep the living carriage.
+     */
+    wall?: boolean;
   }
 > = {
   buckler: { hw: 0.13, hh: 0.13, hang: -0.25, depth: 0.034, strap: false, fwdK: 0.08, twistK: 0.18 },
   round: { hw: 0.175, hh: 0.175, hang: -0.21, depth: 0.036, strap: false, fwdK: 0.03, twistK: 0.1 },
   heater: { hw: 0.16, hh: 0.21, hang: -0.19, depth: 0.05, strap: true, fwdK: 0, twistK: 0 },
   kite: { hw: 0.152, hh: 0.27, hang: -0.14, depth: 0.05, strap: true, fwdK: 0, twistK: 0 },
-  tower: { hw: 0.185, hh: 0.315, hang: -0.09, depth: 0.06, strap: true, fwdK: -0.01, twistK: -0.04 },
+  tower: { hw: 0.185, hh: 0.315, hang: -0.09, depth: 0.06, strap: true, fwdK: -0.01, twistK: -0.04, wall: true },
   // The greatshield class. Each rung is a little more shield than the
   // last — measured against the rig, `aegis` spans shoulder line to
   // mid-shin, which is as far as a shield can grow before the legs
   // stop reading as legs.
-  wall: { hw: 0.205, hh: 0.33, hang: -0.07, depth: 0.062, strap: true, fwdK: -0.015, twistK: -0.05 },
-  bastion: { hw: 0.195, hh: 0.335, hang: -0.07, depth: 0.062, strap: true, fwdK: -0.015, twistK: -0.05 },
-  aegis: { hw: 0.2, hh: 0.35, hang: -0.06, depth: 0.064, strap: true, fwdK: -0.02, twistK: -0.05 },
+  wall: { hw: 0.205, hh: 0.33, hang: -0.07, depth: 0.062, strap: true, fwdK: -0.015, twistK: -0.05, wall: true },
+  bastion: { hw: 0.195, hh: 0.335, hang: -0.07, depth: 0.062, strap: true, fwdK: -0.015, twistK: -0.05, wall: true },
+  aegis: { hw: 0.2, hh: 0.35, hang: -0.06, depth: 0.064, strap: true, fwdK: -0.02, twistK: -0.05, wall: true },
   // The bitten targe carries like a round — fist-gripped, angled out.
   targe: { hw: 0.165, hh: 0.165, hang: -0.22, depth: 0.036, strap: false, fwdK: 0.04, twistK: 0.12 },
   // The Champion's rib wall: kite-tall, worn on the arm.
   ribwall: { hw: 0.17, hh: 0.3, hang: -0.1, depth: 0.056, strap: true, fwdK: -0.01, twistK: -0.03 },
   // The thornwall: bastion class, and its heel spike wants ground room.
-  thorn: { hw: 0.18, hh: 0.32, hang: -0.08, depth: 0.06, strap: true, fwdK: -0.015, twistK: -0.05 },
+  thorn: { hw: 0.18, hh: 0.32, hang: -0.08, depth: 0.06, strap: true, fwdK: -0.015, twistK: -0.05, wall: true },
+  // THE SHIELD WAVE. The working doors first — tower class, sized a
+  // shade under the greatshields their rungs answer to.
+  breach: { hw: 0.19, hh: 0.31, hang: -0.09, depth: 0.06, strap: true, fwdK: -0.01, twistK: -0.04, wall: true },
+  door: { hw: 0.2, hh: 0.3, hang: -0.1, depth: 0.062, strap: true, fwdK: -0.01, twistK: -0.04, wall: true },
+  palisade: { hw: 0.195, hh: 0.325, hang: -0.075, depth: 0.058, strap: true, fwdK: -0.015, twistK: -0.05, wall: true },
+  gate: { hw: 0.2, hh: 0.33, hang: -0.07, depth: 0.06, strap: true, fwdK: -0.015, twistK: -0.05, wall: true },
+  // The carapace is the BROADEST wall — a shell spreads.
+  carapace: { hw: 0.21, hh: 0.32, hang: -0.08, depth: 0.064, strap: true, fwdK: -0.015, twistK: -0.05, wall: true },
+  // The Court's round carries like the fist discs — punched, angled.
+  courtround: { hw: 0.18, hh: 0.18, hang: -0.21, depth: 0.038, strap: false, fwdK: 0.04, twistK: 0.12 },
+  pinion: { hw: 0.195, hh: 0.34, hang: -0.065, depth: 0.06, strap: true, fwdK: -0.02, twistK: -0.05, wall: true },
+  // The reliquary and the leaf are ARM class: kite-blooded, guarded at
+  // the chest, alive — ceremony does not plant.
+  reliquary: { hw: 0.16, hh: 0.3, hang: -0.11, depth: 0.054, strap: true, fwdK: 0, twistK: 0 },
+  furnace: { hw: 0.2, hh: 0.335, hang: -0.07, depth: 0.064, strap: true, fwdK: -0.015, twistK: -0.05, wall: true },
+  leaf: { hw: 0.165, hh: 0.31, hang: -0.1, depth: 0.05, strap: true, fwdK: 0, twistK: 0 },
+  riftward: { hw: 0.195, hh: 0.35, hang: -0.06, depth: 0.064, strap: true, fwdK: -0.02, twistK: -0.05, wall: true },
+  // The Gate outgrows the aegis by a hair — the biggest plane in the
+  // game, and the last one planned. Its crown clears the bearer's own
+  // by construction: hang −0.055 keeps the crest under the head line.
+  falls: { hw: 0.21, hh: 0.36, hang: -0.055, depth: 0.066, strap: true, fwdK: -0.02, twistK: -0.05, wall: true },
 };
 
 /** The solved plane — everything the painters and the arm both need. */
@@ -842,6 +1296,42 @@ export function solveShield(
   twist += 0.3 * o.crouch;
   lift += 0.02 * o.crouch;
 
+  // ---- THE WALL CARRY, the second rig. The tower class is not a
+  // bigger heater: a body does different things with a door.
+  let plantK = 0;
+  if (m.wall) {
+    // THE PLANT. Settled into guard and standing still, the wall
+    // GROUNDS: the face squares to the threat, the roll drains out of
+    // it, and the whole plane rides low enough that the bottom rim
+    // stands by the shin — a fortification the body lives behind, not
+    // a prop the arm holds up. Every factor is continuous, so a step
+    // or a swing melts the plant back into the living carriage.
+    const planted =
+      guard *
+      (1 - Math.min(1, o.poleStrength)) *
+      (1 - Math.max(0, Math.min(1, o.sling))) *
+      (1 - o.thrust);
+    plantK = planted;
+    twist *= 1 - 0.55 * planted;
+    tilt *= 1 - 0.85 * planted;
+    lift += 0.045 * planted;
+    fwd -= 0.03 * planted;
+    // THE SHOULDER. Running, nobody keeps a door planted — it rises
+    // off the ground line and cants into the stride, carried edge-
+    // forward on the shoulder (the shared run law already turns it).
+    lift -= 0.022 * o.runF;
+    tilt += oside * 0.05 * o.runF;
+    // THE BASH. The finisher is the wall's one attack: it goes in
+    // face-first and square — the shared thrust adds reach and
+    // opening; the wall doubles the drive and refuses the extra roll.
+    fwd += 0.06 * o.thrust;
+    tilt -= oside * 0.05 * o.thrust;
+    // Crouched behind a wall, the body TUCKS — the shield stays tall
+    // and the cover deepens instead of the shield shrinking away.
+    lift += 0.03 * o.crouch;
+    twist -= 0.18 * o.crouch;
+  }
+
   // ---- THE SLING. Put away, the shield rides the back on its guige:
   // the plane turns over (its face now points the way the bearer's
   // BACK does), lies at a rakish angle across the shoulders, and the
@@ -861,14 +1351,18 @@ export function solveShield(
   // ---- the plane's yaw, THE YAW LAW.
   let theta = Math.atan2(Math.abs(o.fx), fyE) - twist;
   // Roll and float from the gait: a carried mass answers the stride
-  // with a lag, never a pump. Damped hard — the shield is heavy.
+  // with a lag, never a pump. Damped hard — the shield is heavy, and
+  // a WALL is heavier still: the tower class answers the stride and
+  // the idle breath at two-thirds weight.
+  const heft = m.wall ? 0.66 : 1;
   const gait = Math.min(1, o.poleStrength);
-  const bob = o.swing * gait;
+  const bob = o.swing * gait * heft;
   tilt += bob * (0.035 + 0.03 * o.runF);
   theta += bob * 0.06;
-  // Standing breath, on the rig's own idle clock.
+  // Standing breath, on the rig's own idle clock — and a PLANTED door
+  // does not breathe: the ground is holding it, not the arm.
   const still = 1 - gait;
-  tilt += Math.sin(o.nowMs * 0.0019 + 0.7) * 0.014 * still;
+  tilt += Math.sin(o.nowMs * 0.0019 + 0.7) * 0.014 * still * heft * (1 - 0.85 * plantK);
 
   // ---- where the plane lands on screen.
   const hipY = o.hipY;
@@ -1320,6 +1814,19 @@ const SIGNATURES: Record<string, FacePainter> = {
   bonespur: sigBonespur,
   kingsward: sigKingsward,
   thornwall: sigThornwall,
+  // THE SHIELD WAVE.
+  breacher: sigBreacher,
+  doorwall: sigDoorwall,
+  palisade: sigPalisade,
+  fellhorn: sigFellhorn,
+  carapace: sigCarapace,
+  wintercourt: sigWintercourt,
+  pinion: sigPinion,
+  reliquary: sigReliquary,
+  cindermaw: sigCindermaw,
+  everwood: sigEverwood,
+  riftward: sigRiftward,
+  falls: sigFalls,
 };
 
 /**
@@ -1894,6 +2401,525 @@ function sigThornwall(
   poly(ctx, SEAM, [0, -0.52, 0.42, 0, 0, 0.52, -0.42, 0]);
   poly(ctx, dark, [0, -0.44, 0.35, 0, 0, 0.44, -0.35, 0]);
   poly(ctx, shade(dark, 26), [0, -0.44, 0, 0.44, -0.35, 0]);
+}
+
+// --------------------------------------- THE SHIELD WAVE's signatures
+
+/**
+ * LOWHALL BREACHER — a tool that got promoted. Three lacquered boards,
+ * the iron boot plate at the heel (one band, two bolts), two crowbar
+ * scars that never buffed out, and the company's red slash struck
+ * across the top corner. Everything on it has been used twice.
+ */
+function sigBreacher(ctx: CanvasRenderingContext2D, st: ShieldStyle): void {
+  staves(ctx, st, 3);
+  // The boot plate: the working end. One iron band low on the boards.
+  band(ctx, st, 0.68, 0.24);
+  stud(ctx, -0.5, 0.8, 0.08, shade(st.rim, 30));
+  stud(ctx, 0.5, 0.8, 0.08, shade(st.rim, 30));
+  // Crowbar scars: two pale nicks where somebody argued back — bare
+  // wood showing through the lacquer, nothing more.
+  const bare = shade(st.face, 38);
+  ctx.save();
+  ctx.rotate(-0.28);
+  ctx.fillStyle = bare;
+  ctx.fillRect(0.28, -0.32, 0.34, 0.05);
+  ctx.fillRect(0.12, 0.1, 0.26, 0.045);
+  ctx.restore();
+  // The company's mark: one broad red slash, painted fast by hand —
+  // it OWNS the door's top corner, because the crew signs a finished
+  // job where everyone will see it, and a short second stroke keeps
+  // the tally. Paint, not metal: no lit plane, one darker drip edge.
+  const red = '#a83430';
+  poly(ctx, red, [-1.1, -1.02, -0.18, -0.42, -0.4, -0.26, -1.1, -0.74]);
+  poly(ctx, shade(red, -24), [-0.4, -0.26, -0.18, -0.42, -0.22, -0.24, -0.38, -0.16]);
+  poly(ctx, red, [-0.62, -1.02, -0.3, -0.82, -0.44, -0.68, -0.78, -0.92]);
+}
+
+/**
+ * LEGION DOORWALL — issue iron. Two forged plates, one crimson
+ * campaign band, and six diamond bosses in two drill columns. The
+ * three edge spikes ride the spike plan on the OUTER edge — where the
+ * shield-wall's line ends and the argument starts.
+ */
+function sigDoorwall(
+  ctx: CanvasRenderingContext2D,
+  st: ShieldStyle,
+  fr: ShieldFrame,
+  litU: number,
+): void {
+  plates(ctx, st, litU);
+  // The campaign band: crimson, high on the slab, one lit edge — the
+  // one thing on the wall that says WHICH war.
+  const red = st.deviceColor ?? '#8e2f2c';
+  ctx.fillStyle = SEAM;
+  ctx.fillRect(-1.2, -0.72, 2.4, 0.28);
+  ctx.fillStyle = red;
+  ctx.fillRect(-1.2, -0.7, 2.4, 0.22);
+  ctx.fillStyle = shade(red, 24);
+  ctx.fillRect(-1.2, -0.7, 2.4, 0.07);
+  // Six forged bosses, two columns of three: the quartermaster's
+  // template, and every one of them a real fitting in two planes.
+  const iron = shade(st.face, 26);
+  for (const u of [-0.5, 0.5]) {
+    for (const t of [-0.18, 0.3, 0.78]) stud(ctx, u, t, 0.135, iron);
+  }
+}
+
+/**
+ * STAGHEART PALISADE — fence, carried. Four ash staves, a dark shadow
+ * wedge under each crown valley (the stakes part and the light does
+ * too), two rawhide lashings racked across the boards, and the tar
+ * antler-brow painted where a hunter marks a claimed stand.
+ */
+function sigPalisade(ctx: CanvasRenderingContext2D, st: ShieldStyle): void {
+  staves(ctx, st, 4);
+  // The valleys between the stakes throw their own shade.
+  poly(ctx, SEAM, [-0.42, -0.66, -0.24, -0.66, -0.33, -0.44]);
+  poly(ctx, SEAM, [0.24, -0.66, 0.42, -0.66, 0.33, -0.44]);
+  // Two rawhide lashings, each a band with one lit pass — hide, not
+  // metal, so they take the strap leather and not the rim.
+  const hide = st.strapColor ?? '#4a3524';
+  for (const t of [-0.32, 0.34]) {
+    ctx.fillStyle = SEAM;
+    ctx.fillRect(-1.2, t + 0.16, 2.4, 0.04);
+    ctx.fillStyle = hide;
+    ctx.fillRect(-1.2, t, 2.4, 0.16);
+    ctx.fillStyle = shade(hide, 24);
+    ctx.fillRect(-1.2, t, 2.4, 0.05);
+  }
+  // The tar antler-brow: two mirrored beams, two tines each, painted
+  // in one sitting with a stick. It is a MARK, not a picture.
+  const tar = st.deviceColor ?? '#2e2a24';
+  for (const sx of [-1, 1]) {
+    poly(ctx, tar, [sx * 0.06, 0.06, sx * 0.5, -0.14, sx * 0.56, -0.06, sx * 0.1, 0.14]);
+    poly(ctx, tar, [sx * 0.3, -0.05, sx * 0.4, -0.3, sx * 0.48, -0.26, sx * 0.38, -0.02]);
+    poly(ctx, tar, [sx * 0.48, -0.12, sx * 0.64, -0.3, sx * 0.7, -0.24, sx * 0.55, -0.05]);
+  }
+}
+
+/**
+ * FELLHORN GATE — a door off its hinges, hinges included. Three
+ * weathered planks, two iron scroll-straps still bolted where the
+ * jambs were, the tar fell-mark low on the boards, and the ram's
+ * skull at the crown: dome, sockets, and two horns curling DOWN the
+ * arch — the one figurative charge in the roster, cut in seven flat
+ * planes and no more.
+ */
+function sigFellhorn(ctx: CanvasRenderingContext2D, st: ShieldStyle): void {
+  staves(ctx, st, 3);
+  // The hinge straps: iron reaching in from each edge, ending in a
+  // rolled scroll — one plate, one lit pass, one curl.
+  const iron = st.rim;
+  for (const sx of [-1, 1]) {
+    const x0 = sx * 1.2;
+    const x1 = sx * 0.3;
+    poly(ctx, SEAM, [x0, -0.06, x1, -0.06, x1, 0.18, x0, 0.18]);
+    poly(ctx, iron, [x0, -0.03, x1, -0.03, x1, 0.15, x0, 0.15]);
+    poly(ctx, shade(iron, 22), [x0, -0.03, x1, -0.03, x1, 0.02, x0, 0.02]);
+    // The scroll: the strap's end rolled back on itself.
+    stud(ctx, sx * 0.3, 0.06, 0.09, shade(iron, 30));
+  }
+  // The fell-mark: a tar chevron POINTING DOWN — the walker's sign for
+  // "barrow below", struck low where a hand reaches.
+  const tar = '#332e26';
+  poly(ctx, tar, [-0.6, 0.42, 0, 0.72, 0.6, 0.42, 0.6, 0.56, 0, 0.86, -0.6, 0.56]);
+  // The ram's skull at the crown: dome, muzzle, brow shade, two dark
+  // sockets. The HORNS are the spike plan's — real bone rising off
+  // the arch either side, breaking the silhouette the way the fell
+  // marks its gates — so the face only mounts the skull between them.
+  const bone = st.deviceColor ?? '#ddd4bc';
+  const boneDk = shade(bone, -24);
+  poly(ctx, SEAM, [-0.36, -0.96, 0.36, -0.96, 0.42, -0.46, 0.19, -0.1, -0.19, -0.1, -0.42, -0.46]);
+  poly(ctx, bone, [-0.31, -0.92, 0.31, -0.92, 0.36, -0.49, 0.16, -0.17, -0.16, -0.17, -0.36, -0.49]);
+  // The brow shelf: one darker plane across the dome's lower third.
+  poly(ctx, boneDk, [-0.34, -0.52, 0.34, -0.52, 0.16, -0.17, -0.16, -0.17]);
+  // The muzzle, a shade lighter than the brow it hangs from.
+  poly(ctx, bone, [-0.1, -0.3, 0.1, -0.3, 0.06, -0.08, -0.06, -0.08]);
+  poly(ctx, SEAM, [-0.24, -0.56, -0.07, -0.56, -0.14, -0.36]);
+  poly(ctx, SEAM, [0.07, -0.56, 0.24, -0.56, 0.14, -0.36]);
+}
+
+/**
+ * BRINEHOLD CARAPACE — the sea builds symmetric. Three shell courses
+ * lapping downward (each one plate, one lit pass, one seam under its
+ * scalloped edge), a keel seam down the middle, and four barnacle
+ * studs where they chose to live. The pearl is the substrate's boss.
+ */
+function sigCarapace(
+  ctx: CanvasRenderingContext2D,
+  st: ShieldStyle,
+  fr: ShieldFrame,
+  litU: number,
+): void {
+  ctx.fillStyle = st.face;
+  ctx.fillRect(-1.2, -1.2, 2.4, 2.4);
+  // Three courses lapping downward, each ending in a SCALLOPED chord:
+  // two arcs meeting at a center point, the way shell actually grows.
+  // The course below is a full step darker so the lap reads as depth,
+  // and the seam is a thin line riding the scallop — never a bar.
+  const alt = st.faceAlt ?? shade(st.face, -16);
+  const scallop = (t0: number, dip: number, tone: string): void => {
+    // The course: everything below its scalloped top edge.
+    ctx.fillStyle = tone;
+    ctx.beginPath();
+    ctx.moveTo(-1.2, t0);
+    ctx.quadraticCurveTo(-0.55, t0 + dip, 0, t0 + dip * 0.45);
+    ctx.quadraticCurveTo(0.55, t0 + dip, 1.2, t0);
+    ctx.lineTo(1.2, 1.25);
+    ctx.lineTo(-1.2, 1.25);
+    ctx.closePath();
+    ctx.fill();
+    // The lap's thin shadow line, riding the same curve.
+    ctx.fillStyle = SEAM;
+    ctx.beginPath();
+    ctx.moveTo(-1.2, t0);
+    ctx.quadraticCurveTo(-0.55, t0 + dip, 0, t0 + dip * 0.45);
+    ctx.quadraticCurveTo(0.55, t0 + dip, 1.2, t0);
+    ctx.lineTo(1.2, t0 + 0.05);
+    ctx.quadraticCurveTo(0.55, t0 + dip + 0.05, 0, t0 + dip * 0.45 + 0.05);
+    ctx.quadraticCurveTo(-0.55, t0 + dip + 0.05, -1.2, t0 + 0.05);
+    ctx.closePath();
+    ctx.fill();
+    // One lit pass under the lap — the new plate catching the sun.
+    ctx.fillStyle = shade(tone, 16);
+    ctx.beginPath();
+    ctx.moveTo(-1.2, t0 + 0.05);
+    ctx.quadraticCurveTo(-0.55, t0 + dip + 0.05, 0, t0 + dip * 0.45 + 0.05);
+    ctx.quadraticCurveTo(0.55, t0 + dip + 0.05, 1.2, t0 + 0.05);
+    ctx.lineTo(1.2, t0 + 0.14);
+    ctx.quadraticCurveTo(0.55, t0 + dip + 0.14, 0, t0 + dip * 0.45 + 0.14);
+    ctx.quadraticCurveTo(-0.55, t0 + dip + 0.14, -1.2, t0 + 0.14);
+    ctx.closePath();
+    ctx.fill();
+  };
+  scallop(-0.5, 0.3, shade(st.face, -8));
+  scallop(0.14, 0.34, alt);
+  scallop(0.72, 0.3, shade(alt, -10));
+  // The keel: one dark seam, one lit side — the ridge the shell grew
+  // out from, and the sun picks its up-screen flank.
+  ctx.fillStyle = SEAM;
+  ctx.fillRect(-0.025, -1.2, 0.05, 2.4);
+  ctx.fillStyle = shade(st.face, 22);
+  ctx.fillRect(litU > 0 ? 0.025 : -0.115, -1.2, 0.09, 2.4);
+  // Barnacles: pale, few, riding the course edges where the water
+  // actually leaves them.
+  const pale = '#cfc9b4';
+  stud(ctx, -0.62, -0.62, 0.07, pale);
+  stud(ctx, 0.72, -0.14, 0.06, pale);
+  stud(ctx, -0.44, 0.52, 0.06, pale);
+}
+
+/**
+ * WINTERCOURT RIME — cold ceremony. Nine pale facets, a court-silver
+ * crescent inlaid high on the off quarter, and the rime star: eight
+ * everfrost splinters struck from the heart at the lengths ice
+ * actually grows — uneven, and each one a single flat shard.
+ */
+function sigWintercourt(ctx: CanvasRenderingContext2D, st: ShieldStyle): void {
+  gores(ctx, st, 4);
+  // The crescent: inlay, not paint — a seam ring under a silver moon,
+  // and the bite cut back out in the FACE's own unshaded tone, so
+  // what remains is honestly a crescent and not a coin.
+  const silver = st.deviceColor ?? '#dce4f0';
+  ctx.fillStyle = SEAM;
+  ctx.beginPath();
+  ctx.arc(-0.42, -0.4, 0.34, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = silver;
+  ctx.beginPath();
+  ctx.arc(-0.42, -0.4, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = st.face;
+  ctx.beginPath();
+  ctx.arc(-0.24, -0.48, 0.28, 0, Math.PI * 2);
+  ctx.fill();
+  // The rime star: splinters at ice's own lengths, each on its own
+  // seam-dark shard so the ice reads against the pale face — the one
+  // charge on the disc, and it has to carry from across a room.
+  const frost = '#6db8d8';
+  const lit = '#b8e6f6';
+  const lens = [0.98, 0.55, 0.84, 0.5, 0.94, 0.52, 0.8, 0.48];
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 - Math.PI / 2 + 0.12;
+    const L = lens[i]!;
+    const w = 0.085 + 0.035 * (L > 0.8 ? 1 : 0);
+    const cu = Math.cos(a);
+    const ct = Math.sin(a);
+    // The shard's shadow first — a hair wider and longer.
+    poly(ctx, SEAM, [
+      -ct * (w + 0.025), cu * (w + 0.025), cu * (L + 0.05), ct * (L + 0.05),
+      ct * (w + 0.025), -cu * (w + 0.025),
+    ]);
+    poly(ctx, i < 2 || i === 7 ? lit : frost, [
+      -ct * w, cu * w, cu * L, ct * L, ct * w, -cu * w,
+    ]);
+  }
+  poly(ctx, SEAM, [0, -0.18, 0.16, 0, 0, 0.18, -0.16, 0]);
+}
+
+/**
+ * NIGHTVEIL PINION — the veil's wing. Two night-steel plates, the
+ * feather shade wedges stepping down the fletched edge so each barb
+ * reads as its own laid feather, the gilded rachis seam crown to
+ * heel, and one gold stud bedding each barb root. The warm metal
+ * spent the veil's way: three thin lines in the dark.
+ */
+function sigPinion(
+  ctx: CanvasRenderingContext2D,
+  st: ShieldStyle,
+  fr: ShieldFrame,
+  litU: number,
+): void {
+  plates(ctx, st, litU);
+  // The laid feathers: a LIGHTER wedge over each barb of the outline,
+  // so the silhouette's steps continue INTO the face as laid vanes —
+  // dark-on-dark hid them entirely; a step of light is the read.
+  const vane = shade(st.face, 14);
+  poly(ctx, vane, [0.24, -0.6, 1.1, -0.46, 0.52, -0.14, 0.2, -0.3]);
+  poly(ctx, vane, [0.22, -0.12, 1.05, 0.02, 0.5, 0.34, 0.16, 0.14]);
+  poly(ctx, vane, [0.18, 0.34, 0.95, 0.52, 0.34, 0.84, 0.12, 0.6]);
+  // The rachis: one gilded seam holding the whole wing, riding NEAR
+  // the fletched edge the way a feather's spine actually does, with
+  // its own shadow line and one bright pass.
+  const gold = st.deviceColor ?? BRASS;
+  poly(ctx, SEAM, [0.14, -1.1, 0.28, -1.1, 0.52, 1.1, 0.34, 1.1]);
+  poly(ctx, gold, [0.17, -1.1, 0.27, -1.1, 0.49, 1.1, 0.37, 1.1]);
+  poly(ctx, shade(gold, 30), [0.17, -1.1, 0.22, -1.1, 0.43, 1.1, 0.37, 1.1]);
+  // A gold bead where each feather beds into the spine.
+  stud(ctx, 0.3, -0.44, 0.07, gold);
+  stud(ctx, 0.36, 0.06, 0.07, gold);
+  stud(ctx, 0.42, 0.52, 0.07, gold);
+}
+
+/**
+ * VALE RELIQUARY — shrine architecture. The enamel field steps once
+ * (a darker border course inside the binding), then the moonsilver
+ * cross: slender bars, flared finials at all four ends, a moonstone
+ * at the crossing. Polished by every mile of the pilgrim way.
+ */
+function sigReliquary(ctx: CanvasRenderingContext2D, st: ShieldStyle): void {
+  const border = st.faceAlt ?? shade(st.face, -20);
+  ctx.fillStyle = border;
+  ctx.fillRect(-1.2, -1.2, 2.4, 2.4);
+  ctx.fillStyle = st.face;
+  ctx.fillRect(-0.74, -0.82, 1.48, 1.66);
+  ctx.fillStyle = shade(st.face, 12);
+  ctx.fillRect(-0.74, -0.82, 0.2, 1.66);
+  // The cross: shadow first, then silver, then one lit pass down the
+  // stem — worked metal, not a painted charge. The crossing sits at
+  // the face's center, because the substrate's moonstone boss lands
+  // there and the stone belongs where the silver meets.
+  const silver = st.deviceColor ?? '#dce4f0';
+  ctx.fillStyle = SEAM;
+  ctx.fillRect(-0.115, -0.78, 0.23, 1.56);
+  ctx.fillRect(-0.54, -0.115, 1.08, 0.23);
+  ctx.fillStyle = silver;
+  ctx.fillRect(-0.08, -0.76, 0.16, 1.5);
+  ctx.fillRect(-0.51, -0.085, 1.02, 0.17);
+  ctx.fillStyle = shade(silver, 24);
+  ctx.fillRect(-0.08, -0.76, 0.055, 1.5);
+  // Diamond finials: each bar ends in a set lozenge on its own seam
+  // seat — reliquary metalwork, not an arrowhead. Four times.
+  const fin = (u: number, t: number): void => {
+    poly(ctx, SEAM, [u, t - 0.17, u + 0.14, t, u, t + 0.17, u - 0.14, t]);
+    poly(ctx, silver, [u, t - 0.13, u + 0.105, t, u, t + 0.13, u - 0.105, t]);
+    poly(ctx, shade(silver, -30), [u, t, u + 0.105, t, u, t + 0.13, u - 0.105, t]);
+  };
+  fin(0, -0.76);
+  fin(0, 0.74);
+  fin(-0.51, 0);
+  fin(0.51, 0);
+}
+
+/**
+ * CINDERMAW BULWARK — the fire is still between the plates. Four
+ * charred panels whose SEAMS are embers (deep coal, live core, one
+ * white-hot hairline), the grate mouth at the heart venting three
+ * slots of the same fire, and a heat-crack across the crown corner,
+ * left there because the Brand signs its work with what it survived.
+ */
+function sigCindermaw(
+  ctx: CanvasRenderingContext2D,
+  st: ShieldStyle,
+  fr: ShieldFrame,
+  litU: number,
+): void {
+  plates(ctx, st, litU);
+  const deep = '#b8481e';
+  const core = st.deviceColor ?? '#ff8a3c';
+  const hot = '#ffc06a';
+  // The ember seams: the cross between the four plates, burning.
+  const emberV = (u: number, t0: number, t1: number): void => {
+    ctx.fillStyle = deep;
+    ctx.fillRect(u - 0.06, t0, 0.12, t1 - t0);
+    ctx.fillStyle = core;
+    ctx.fillRect(u - 0.03, t0, 0.06, t1 - t0);
+    ctx.fillStyle = hot;
+    ctx.fillRect(u - 0.008, t0, 0.016, t1 - t0);
+  };
+  const emberH = (t: number): void => {
+    ctx.fillStyle = deep;
+    ctx.fillRect(-1.2, t - 0.055, 2.4, 0.11);
+    ctx.fillStyle = core;
+    ctx.fillRect(-1.2, t - 0.028, 2.4, 0.056);
+    ctx.fillStyle = hot;
+    ctx.fillRect(-1.2, t - 0.007, 2.4, 0.014);
+  };
+  emberH(-0.38);
+  emberH(0.5);
+  emberV(0, -1.2, -0.38);
+  emberV(0, 0.5, 1.2);
+  // The grate mouth: one dark plate, three burning slots. The heart
+  // of the door, and the reason for its name.
+  ctx.fillStyle = SEAM;
+  ctx.fillRect(-0.5, -0.18, 1.0, 0.5);
+  ctx.fillStyle = shade(st.face, 14);
+  ctx.fillRect(-0.5, -0.18, 1.0, 0.08);
+  for (const u of [-0.3, 0, 0.3]) {
+    ctx.fillStyle = deep;
+    ctx.fillRect(u - 0.065, -0.06, 0.13, 0.3);
+    ctx.fillStyle = core;
+    ctx.fillRect(u - 0.035, -0.06, 0.07, 0.3);
+    ctx.fillStyle = hot;
+    ctx.fillRect(u - 0.012, -0.06, 0.024, 0.14);
+  }
+  // The crack: three chords of ember walking out of the crown corner.
+  poly(ctx, core, [-0.95, -1.1, -0.88, -1.1, -0.62, -0.78, -0.7, -0.62, -0.76, -0.66, -0.68, -0.8]);
+}
+
+/**
+ * EVERWOOD CREST — the tree laid the design. A margin shade where the
+ * blade turns from the sun, the midrib carrying its own pale light
+ * from tip to stem, and three vein pairs at the angles leaves
+ * actually hold. The middle pair is the IMBUED one — the single
+ * brightest thing on the face, and the only working on it.
+ */
+function sigEverwood(
+  ctx: CanvasRenderingContext2D,
+  st: ShieldStyle,
+  fr: ShieldFrame,
+  litU: number,
+): void {
+  ctx.fillStyle = st.face;
+  ctx.fillRect(-1.2, -1.2, 2.4, 2.4);
+  // The margin turns from the sun: one shade plane along the off side.
+  poly(ctx, st.faceAlt ?? shade(st.face, -14), [
+    -litU * 1.2, -1.2, -litU * 0.5, -1.2, -litU * 0.85, 0.2, -litU * 0.4, 1.2, -litU * 1.2, 1.2,
+  ]);
+  const vein = st.deviceColor ?? '#9db86a';
+  const deep = shade(vein, -28);
+  const glow = '#e6f0c2';
+  // Three vein pairs, tip-ward angles. Thin quads, nothing soft —
+  // each on a deeper under-vein so the growth reads on the pale blade.
+  const pair = (t: number, len: number, tone: string, w: number): void => {
+    for (const sx of [-1, 1]) {
+      poly(ctx, tone, [
+        sx * 0.05, t, sx * len, t + len * 0.55, sx * len, t + len * 0.55 + w, sx * 0.05, t + w,
+      ]);
+    }
+  };
+  pair(-0.55, 0.66, deep, 0.075);
+  pair(-0.55, 0.66, vein, 0.04);
+  pair(0.35, 0.58, deep, 0.075);
+  pair(0.35, 0.58, vein, 0.04);
+  // The midrib: seam, rib, and the light it carries.
+  poly(ctx, SEAM, [-0.11, -0.9, 0.11, -0.9, 0.09, 1.05, -0.09, 1.05]);
+  poly(ctx, deep, [-0.085, -0.92, 0.085, -0.92, 0.07, 1.05, -0.07, 1.05]);
+  poly(ctx, glow, [-0.032, -0.92, 0.032, -0.92, 0.024, 1.02, -0.024, 1.02]);
+  // The imbued pair, over the midrib so the light reads as ONE vein
+  // system: the working the Everwood put in, not an ornament bolted
+  // on — and a seam seat at the heart so the knot boss lands SET.
+  pair(-0.12, 0.72, glow, 0.034);
+  poly(ctx, SEAM, [0, -0.2, 0.17, 0, 0, 0.2, -0.17, 0]);
+}
+
+/**
+ * GATEFALL BULWARK — a window onto a place nobody has finished
+ * looking into. Two void plates, the bezel (a seam frame with four
+ * bolts), the gate glass with one bright facet and one deep one, and
+ * two splinters of its light that have escaped the frame and stayed.
+ */
+function sigRiftward(
+  ctx: CanvasRenderingContext2D,
+  st: ShieldStyle,
+  fr: ShieldFrame,
+  litU: number,
+): void {
+  plates(ctx, st, litU);
+  const glass = st.deviceColor ?? '#a985ff';
+  const bright = '#cbb4ff';
+  const deep = '#7a5fd0';
+  // The bezel: one dark frame, standing a seam's width proud.
+  ctx.fillStyle = SEAM;
+  ctx.fillRect(-0.5, -0.82, 1.0, 1.44);
+  // The glass, in three facets: base, one bright diagonal, one deep
+  // heel — cut planes, not a gradient in sight.
+  ctx.fillStyle = glass;
+  ctx.fillRect(-0.42, -0.74, 0.84, 1.28);
+  poly(ctx, bright, [-0.42, -0.74, 0.42, -0.74, -0.42, 0.2]);
+  poly(ctx, deep, [-0.42, 0.54, 0.42, 0.54, 0.42, -0.1]);
+  // The splinters: light that got OUT. Two shards past the frame,
+  // frozen mid-escape — the only asymmetry on the piece.
+  poly(ctx, bright, [0.5, -0.6, 0.78, -0.78, 0.6, -0.44]);
+  poly(ctx, glass, [-0.5, 0.12, -0.76, 0.02, -0.52, 0.3]);
+  // Four bolts holding a window shut.
+  const bolt = shade(st.rim, 34);
+  stud(ctx, -0.58, -0.88, 0.07, bolt);
+  stud(ctx, 0.58, -0.88, 0.07, bolt);
+  stud(ctx, -0.58, 0.68, 0.07, bolt);
+  stud(ctx, 0.58, 0.68, 0.07, bolt);
+}
+
+/**
+ * ALDAREN'S GATE — the crowned falls as heraldry. The gold chief
+ * rides the outline's own three crown points, and below it three
+ * cascade stripes fall the full height of the face: the capital's
+ * water, moonpale on moonpale, each stripe one plate and one bright
+ * edge. The king's answer to the sun.
+ */
+function sigFalls(
+  ctx: CanvasRenderingContext2D,
+  st: ShieldStyle,
+  fr: ShieldFrame,
+  litU: number,
+): void {
+  plates(ctx, st, litU);
+  const gold = st.deviceColor ?? '#e6c36a';
+  // The chief: gold to the crown line, one seam, one lit pass — the
+  // spike plan's three crown points rise out of THIS band, so the
+  // crest reads as solid gold from the standing points to the seam.
+  ctx.fillStyle = SEAM;
+  ctx.fillRect(-1.2, -0.58, 2.4, 0.06);
+  ctx.fillStyle = gold;
+  ctx.fillRect(-1.2, -1.2, 2.4, 0.62);
+  ctx.fillStyle = shade(gold, 24);
+  ctx.fillRect(-1.2, -0.72, 2.4, 0.09);
+  // The falls: three cascades off the chief, the middle one wider —
+  // water finds the middle of a spillway. The field between them
+  // steps DOWN to the alt tone first: white water only reads against
+  // rock, and the first cut washed out into its own face.
+  ctx.fillStyle = st.faceAlt ?? shade(st.face, -14);
+  ctx.fillRect(-1.2, -0.52, 2.4, 1.72);
+  ctx.fillStyle = shade(st.faceAlt ?? st.face, -12);
+  ctx.fillRect(litU > 0 ? -1.2 : 0, -0.52, 1.2, 1.72);
+  const water = '#eef4fc';
+  const bright = '#ffffff';
+  const stripe = (u: number, w: number): void => {
+    ctx.fillStyle = SEAM;
+    ctx.fillRect(u - w / 2 - 0.03, -0.52, w + 0.06, 1.72);
+    ctx.fillStyle = water;
+    ctx.fillRect(u - w / 2, -0.52, w, 1.72);
+    ctx.fillStyle = bright;
+    ctx.fillRect(litU > 0 ? u + w / 2 - 0.05 : u - w / 2, -0.52, 0.05, 1.72);
+  };
+  stripe(-0.55, 0.17);
+  stripe(0, 0.24);
+  stripe(0.55, 0.17);
+  // Two gold rivets where the chief is bolted through the face —
+  // spent low and countable, the ladder's whole discipline.
+  stud(ctx, -0.88, -0.66, 0.075, shade(gold, 30));
+  stud(ctx, 0.88, -0.66, 0.075, shade(gold, 30));
 }
 
 /** The heraldic charge, cut in flat planes with one lit facet. */

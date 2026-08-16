@@ -32,7 +32,8 @@
  "equipment": {
   "body": "leather_body",
   "boots": "leather_boots",
-  "weapon": "mithril_sword"
+  "weapon": "mithril_sword",
+  "offhand": "cindermaw_bulwark"
  },
  "inventory": [
   {

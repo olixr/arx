@@ -3539,6 +3539,21 @@ export const OFFHAND_STYLES: Record<string, OffhandStyle> = {
   bonespur_ward: { kind: 'tower', color: '#d9d2bd', trim: '#4a505c', boss: '#5a616e', spikes: true },
   kingsward: { kind: 'kite', color: '#8a2431', trim: '#d8b76a', boss: '#dfe6f4' },
   dreadforge_thornwall: { kind: 'tower', color: '#3a3d46', trim: '#c9a45e', boss: '#d8b76a', spikes: true },
+  // THE SHIELD WAVE (docs/shield-wave-plan.md): kind only routes each
+  // one into the shield dialect — silhouette and face come from its
+  // authored SHIELD_STYLES record, wall/arm/fist carry included.
+  lowhall_breacher: { kind: 'tower', color: '#4a3a30', trim: '#565b66', boss: '#6a707c' },
+  legion_doorwall: { kind: 'tower', color: '#3f434e', trim: '#565b68', spikes: true },
+  stagheart_palisade: { kind: 'tower', color: '#b09a6e', trim: '#6a5a40', boss: '#8a7458' },
+  fellhorn_gate: { kind: 'tower', color: '#a89878', trim: '#4e535e', spikes: true },
+  brinehold_carapace: { kind: 'tower', color: '#46655c', trim: '#7ba892', boss: '#dfe3d6', spikes: true },
+  wintercourt_rime: { kind: 'buckler', color: '#cfd8d2', trim: '#8fa8b8', boss: '#9ad4e8' },
+  nightveil_pinion: { kind: 'tower', color: '#2e3345', trim: '#4a5068' },
+  vale_reliquary: { kind: 'kite', color: '#28324f', trim: '#c9d2e0', boss: '#eef4ff' },
+  cindermaw_bulwark: { kind: 'tower', color: '#3e3a38', trim: '#5a5248' },
+  everwood_crest: { kind: 'kite', color: '#e8e0cc', trim: '#a39072', boss: '#e6f0c2' },
+  gatefall_bulwark: { kind: 'tower', color: '#3e3560', trim: '#494259', boss: '#cbb4ff', spikes: true },
+  aldarens_gate: { kind: 'tower', color: '#c9d2e4', trim: '#d8b76a', boss: '#e6c36a', spikes: true },
   hunters_quiver: { kind: 'quiver', color: '#8a6a45', trim: '#3f6b3a' },
   scholars_tome: { kind: 'tome', color: '#4a5a9c', trim: '#c8cee8' },
 };

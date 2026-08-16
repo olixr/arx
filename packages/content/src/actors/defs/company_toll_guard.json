@@ -23,7 +23,8 @@
     "body": "leather_body",
     "legs": "leather_chaps",
     "boots": "leather_boots",
-    "weapon": "iron_sword"
+    "weapon": "iron_sword",
+    "offhand": "lowhall_breacher"
   },
   "combat": {
     "level": 24,

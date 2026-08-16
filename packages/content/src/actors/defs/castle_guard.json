@@ -34,7 +34,8 @@
     "body": "steel_platebody",
     "legs": "steel_greaves",
     "boots": "steel_sabatons",
-    "weapon": "steel_sword"
+    "weapon": "steel_sword",
+    "offhand": "aldarens_gate"
   },
   "inventory": [
     {

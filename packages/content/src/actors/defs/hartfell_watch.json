@@ -32,7 +32,8 @@
   "equipment": {
     "body": "leather_body",
     "boots": "leather_boots",
-    "weapon": "iron_sword"
+    "weapon": "iron_sword",
+    "offhand": "stagheart_palisade"
   },
   "inventory": [
     {

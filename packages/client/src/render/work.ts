@@ -49,24 +49,17 @@
 
 import { WIELD_GROUND_K, projectCarry } from './wield.js';
 
-/** The ten station verbs — one per StationType, THE VERB IS VISIBLE:
- *  the weaver, the tanner, the alchemist, the carver, the enchanter,
- *  and the sawyer each speak their own body language now, never the
- *  collapsed workbench pantomime. */
-export type StationWorkKind =
+/** The verbs the engine speaks today (later phases widen this). */
+export type WorkKind =
+  | 'chop'
+  | 'mine'
+  | 'fish'
+  | 'forage'
+  | 'milk'
   | 'anvil'
   | 'furnace'
   | 'fire'
-  | 'workbench'
-  | 'alembic'
-  | 'tanning_rack'
-  | 'loom'
-  | 'carving_bench'
-  | 'enchanting_table'
-  | 'sawhorse';
-
-/** The verbs the engine speaks today (later phases widen this). */
-export type WorkKind = 'chop' | 'mine' | 'fish' | 'forage' | 'milk' | StationWorkKind;
+  | 'workbench';
 
 /**
  * One keyframe station of a cycle. Channels hold the value AT this
@@ -447,144 +440,6 @@ export const WORK_BOOK: Record<WorkKind, WorkSpec> = {
       { at: 0.52, ease: 'smooth', yaw: -0.02, r: 0.25, dy: -0.08, pitch: -0.25, lean: 0.0 },
       // ...second tap.
       { at: 0.72, ease: 'in', yaw: -0.06, r: 0.28, dy: 0.045, pitch: 0.65, lean: 0.02 },
-    ],
-  },
-  /**
-   * The alembic: the alchemist's pour-and-swirl — the vial lifts and
-   * TIPS over the vessel's mouth (the pitch rolls past level, the
-   * pour), rights itself, then rides a small contemplative swirl
-   * while the off hand steadies the glass below.
-   */
-  alembic: {
-    cycleMs: 2400,
-    impactAt: null,
-    tipS: 0.16,
-    mirror: true,
-    off: { mode: 'steady', yawOff: -0.4, r: 0.24, dy: 0.08, sway: 0.008 },
-    stations: [
-      { at: 0, ease: 'smooth', yaw: 0.2, r: 0.22, dy: 0.02, pitch: -0.2, lean: 0.01 },
-      // Lift the vial high over the mouth...
-      { at: 0.2, ease: 'smooth', yaw: 0.05, r: 0.26, dy: -0.2, pitch: -0.35, lean: 0.03 },
-      // ...and POUR: the glass rolls past level, held.
-      { at: 0.34, ease: 'smooth', yaw: 0.02, r: 0.28, dy: -0.16, pitch: 0.85, lean: 0.05 },
-      { at: 0.5, ease: 'hold', yaw: 0.02, r: 0.28, dy: -0.16, pitch: 0.85, lean: 0.05, shiver: 0.004 },
-      // Right the glass, come down to the swirl...
-      { at: 0.66, ease: 'smooth', yaw: 0.18, r: 0.23, dy: 0.0, pitch: -0.25, lean: 0.02 },
-      { at: 0.84, ease: 'smooth', yaw: 0.3, r: 0.2, dy: 0.035, pitch: -0.15, lean: 0.0 },
-    ],
-  },
-  /**
-   * The tanning rack: the two-hand SCRAPE — both fists on the beam,
-   * long strokes drawn down the hide: reach high, drive down-forward
-   * with the shoulders in it, ease back up. Honest leather work.
-   */
-  tanning_rack: {
-    cycleMs: 1150,
-    impactAt: null,
-    tipS: 0.3,
-    mirror: true,
-    off: { mode: 'team', d: 0.15, drop: 0.02 },
-    stations: [
-      // High on the hide, blade across the work (toolYaw near
-      // perpendicular — the scraper bar lies ACROSS the stroke).
-      { at: 0, ease: 'smooth', yaw: 0.08, r: 0.26, dy: -0.22, pitch: 1.35, toolYaw: 1.25, lean: -0.02 },
-      // The stroke: down the hide, weight behind it.
-      { at: 0.4, ease: 'in', yaw: 0.04, r: 0.32, dy: 0.1, pitch: 1.3, toolYaw: 1.3, lean: 0.12 },
-      // Feather off the bottom edge...
-      { at: 0.56, ease: 'smooth', yaw: 0.1, r: 0.28, dy: 0.13, pitch: 1.28, toolYaw: 1.28, lean: 0.06 },
-      // ...and ride back up light.
-      { at: 0.82, ease: 'smooth', yaw: 0.1, r: 0.24, dy: -0.14, pitch: 1.32, toolYaw: 1.26, lean: -0.01 },
-    ],
-  },
-  /**
-   * The loom: the weaver's two beats — the SHUTTLE PASS gliding
-   * level across the warp (the whole travel is a yaw sweep, side to
-   * side), then the BATTEN PULL hauled back toward the chest to seat
-   * the weft. The off hand rides the frame.
-   */
-  loom: {
-    cycleMs: 2000,
-    impactAt: null,
-    tipS: 0.12,
-    mirror: false,
-    off: { mode: 'steady', yawOff: -0.55, r: 0.26, dy: -0.06, sway: 0.006 },
-    stations: [
-      // Shuttle at the near selvedge...
-      { at: 0, ease: 'smooth', yaw: 0.55, r: 0.27, dy: -0.05, pitch: 1.5, toolYaw: 1.5, lean: 0.02 },
-      // ...glides across the warp...
-      { at: 0.3, ease: 'smooth', yaw: -0.55, r: 0.27, dy: -0.05, pitch: 1.5, toolYaw: -1.5, lean: -0.02 },
-      // ...hand rises to the batten...
-      { at: 0.48, ease: 'smooth', yaw: -0.2, r: 0.3, dy: -0.18, pitch: 1.4, toolYaw: -0.4, lean: 0.0 },
-      // ...and PULLS it home to the chest, seating the weft.
-      { at: 0.62, ease: 'in', yaw: 0.1, r: 0.16, dy: -0.02, pitch: 1.45, toolYaw: 0.6, lean: -0.05 },
-      // Back out to the selvedge for the next pass.
-      { at: 0.82, ease: 'smooth', yaw: 0.45, r: 0.25, dy: -0.05, pitch: 1.5, toolYaw: 1.3, lean: 0.01 },
-    ],
-  },
-  /**
-   * The carving bench: knife work — short controlled strokes pushed
-   * AWAY down the grain (every whittler's law: never toward the
-   * body), the off hand clamped on the piece. Quick, busy, precise.
-   */
-  carving_bench: {
-    cycleMs: 820,
-    impactAt: null,
-    tipS: 0.14,
-    mirror: true,
-    off: { mode: 'steady', yawOff: -0.34, r: 0.28, dy: 0.05, sway: 0.005 },
-    stations: [
-      // Set the edge close to the grip hand...
-      { at: 0, ease: 'smooth', yaw: 0.22, r: 0.18, dy: 0.0, pitch: 1.1, lean: 0.02 },
-      // ...push the stroke away down the grain...
-      { at: 0.34, ease: 'in', yaw: 0.02, r: 0.33, dy: 0.05, pitch: 1.25, lean: 0.05 },
-      // ...lift off the work...
-      { at: 0.5, ease: 'smooth', yaw: 0.06, r: 0.3, dy: -0.04, pitch: 0.9, lean: 0.02 },
-      // ...and return to set the next cut.
-      { at: 0.78, ease: 'smooth', yaw: 0.2, r: 0.2, dy: -0.01, pitch: 1.05, lean: 0.01 },
-    ],
-  },
-  /**
-   * The enchanting table: THE RUNE TRACE — the working hand rides a
-   * slow figure over the table, drawing the sigil in the air (the
-   * conjured glow is the prop), while the off hand rests open on the
-   * wood. Deliberate, unhurried, nothing struck.
-   */
-  enchanting_table: {
-    cycleMs: 3400,
-    impactAt: null,
-    tipS: 0,
-    mirror: false,
-    off: { mode: 'steady', yawOff: -0.45, r: 0.25, dy: 0.06, sway: 0.006 },
-    stations: [
-      { at: 0, ease: 'smooth', yaw: 0.4, r: 0.24, dy: -0.1, lean: 0.01 },
-      { at: 0.18, ease: 'smooth', yaw: 0.0, r: 0.3, dy: -0.22, lean: 0.02 },
-      { at: 0.36, ease: 'smooth', yaw: -0.4, r: 0.24, dy: -0.08, lean: 0.0 },
-      { at: 0.54, ease: 'smooth', yaw: -0.05, r: 0.2, dy: -0.16, lean: 0.01 },
-      { at: 0.72, ease: 'smooth', yaw: 0.3, r: 0.27, dy: -0.2, lean: 0.02 },
-      { at: 0.88, ease: 'smooth', yaw: 0.42, r: 0.22, dy: -0.13, lean: 0.01 },
-    ],
-  },
-  /**
-   * The sawhorse: THE SAW — both hands on the grip, the blade level
-   * down the bearing, and the whole body in the push-pull: drive
-   * forward through the cut (fast, weight into it), draw back easy.
-   * The stroke IS the reach channel.
-   */
-  sawhorse: {
-    cycleMs: 950,
-    impactAt: 0.38,
-    tipS: 0.44,
-    mirror: true,
-    off: { mode: 'choke', d: 0.1, drop: 0.03 },
-    stations: [
-      // Drawn back, saw seated in the kerf...
-      { at: 0, ease: 'smooth', yaw: 0.3, r: 0.16, dy: 0.04, pitch: 1.42, lean: -0.04 },
-      // ...the PUSH: drive the blade through the cut.
-      { at: 0.38, ease: 'in', yaw: 0.06, r: 0.38, dy: 0.08, pitch: 1.5, lean: 0.12 },
-      // A breath at full extension...
-      { at: 0.5, ease: 'smooth', yaw: 0.05, r: 0.37, dy: 0.075, pitch: 1.5, lean: 0.09 },
-      // ...and the easy draw back.
-      { at: 0.88, ease: 'smooth', yaw: 0.27, r: 0.18, dy: 0.045, pitch: 1.44, lean: -0.03 },
     ],
   },
 };

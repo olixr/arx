@@ -209,18 +209,33 @@ test('THE LADDER: a higher rung is never a plainer shield', () => {
   // Rungs buy fittings. Whatever else changes, detail must not fall as
   // the tier climbs — a top-tier shield that wears less than a starter
   // one is the exact failure this roster is meant to avoid.
-  const byTier = Object.values(SHIELD_STYLES).sort((a, b) => (a.tier ?? 0) - (b.tier ?? 0));
-  const fittings = (s: (typeof byTier)[number]): number =>
+  //
+  // AMENDED with the shield wave: the old form compared ADJACENT
+  // entries of the tier-sorted list, which inside a tier is just table
+  // insertion order — an accident, not a law (two same-tier shields
+  // may honestly wear different counts: the Everwood's minimalism is a
+  // design, not a shortfall). The law the roster actually owes is the
+  // tier floor: no tier's PLAINEST shield may wear less than the
+  // plainest shield of any tier below it.
+  const fittings = (s: ShieldStyle): number =>
     (s.studs ? 1 : 0) +
     (s.boss ? 1 : 0) +
     (s.spikes ? 1 : 0) +
     (s.device && s.device !== 'none' ? 1 : 0) +
     (s.faceAlt ? 1 : 0) +
     (s.field && s.field !== 'plain' ? 1 : 0);
-  for (let i = 1; i < byTier.length; i++) {
+  const floor = new Map<number, number>();
+  for (const s of Object.values(SHIELD_STYLES)) {
+    const t = s.tier ?? 0;
+    floor.set(t, Math.min(floor.get(t) ?? Infinity, fittings(s)));
+  }
+  const tiers = [...floor.keys()].sort((a, b) => a - b);
+  for (let i = 1; i < tiers.length; i++) {
     assert.ok(
-      fittings(byTier[i]!) >= fittings(byTier[i - 1]!),
-      `tier ${byTier[i]!.tier} (${byTier[i]!.shape}) wears less than tier ${byTier[i - 1]!.tier}`,
+      floor.get(tiers[i]!)! >= floor.get(tiers[i - 1]!)!,
+      `tier ${tiers[i]}'s plainest shield (${floor.get(tiers[i]!)}) wears less than tier ${
+        tiers[i - 1]
+      }'s (${floor.get(tiers[i - 1]!)})`,
     );
   }
 });

@@ -366,6 +366,9 @@ const defs: LootTableDef[] = [
       { item: 'reavers_toll', chance: 0.03 },
       // The war's own trophy, carried by whoever claims the road now.
       { item: 'tollbreaker', chance: 0.01 },
+      // The company's arguing door — the crew that kicks doors for a
+      // living loses one, occasionally, along with the argument.
+      { item: 'lowhall_breacher', chance: 0.02 },
       { item: 'leather_hood', chance: 0.03 },
       ...setDrops('cutpurse', 0.012),
       // THE RED RIGHT HAND: the company's colors fly nowhere else.
@@ -530,6 +533,8 @@ const defs: LootTableDef[] = [
     0.05,
     [
       ...setDrops('nightveil', 0.025, { skip: ['jerkin'] }),
+      // The veil's wing: the prowlers' own wall, fletched and gilded.
+      { item: 'nightveil_pinion', chance: 0.02 },
       ...setDrops('voidwhisper', 0.02, { skip: ['robe'] }),
       ...setDrops('mothwing', 0.016, { colorway: 'dusk' }),
       ...setDrops('fenwalker', 0.012, { colorway: 'graymist' }),
@@ -559,7 +564,12 @@ const defs: LootTableDef[] = [
     // so the old silhouette keeps climbing past its native band.
     id: 'barrow_regalia',
     desc: 'The old kings’ quiet colors: barrow-steeped veil leather, surrendered by the lords alone.',
-    entries: [...setDrops('nightveil', 0.03, { colorway: 'barrowdusk' })],
+    entries: [
+      ...setDrops('nightveil', 0.03, { colorway: 'barrowdusk' }),
+      // The gate off the deep crypt's own door, ram's skull and all —
+      // a lord surrenders the way IN last of everything.
+      { item: 'fellhorn_gate', chance: 0.05 },
+    ],
   },
   rack('crypt_arms', 'Blades, bows, and staves the dead still carry.', 0.045, [
     { item: 'fenreaper', chance: 0.01 },
@@ -723,6 +733,12 @@ const defs: LootTableDef[] = [
       // wall from the armory it was buried with.
       { item: 'bonespur_ward', chance: 0.035 },
       { item: 'dreadforge_thornwall', chance: 0.02 },
+      // THE SHIELD WAVE's chase walls, racked with the rest of the
+      // trophies: the veil's wing, the Brand's burning door, and the
+      // gate-glass wall (whose true home is the riftgate cache).
+      { item: 'nightveil_pinion', chance: 0.02 },
+      { item: 'cindermaw_bulwark', chance: 0.015 },
+      { item: 'gatefall_bulwark', chance: 0.01 },
       // THE ARMORY's chase pieces: the great school's owned steel,
       // and the two heirlooms that only exist legendary.
       { item: 'ashrender', chance: 0.04 },
@@ -1009,6 +1025,9 @@ const defs: LootTableDef[] = [
       { item: 'deepening_sigil', chance: 0.03 },
       // Ground from a pane of this very gate.
       { item: 'riftglass', chance: 0.006 },
+      // A wall with a pane of the gate set through it — the keeper's
+      // own answer to what the keeper was keeping.
+      { item: 'gatefall_bulwark', chance: 0.02 },
       // Woven from the same dark the blade was ground from.
       ...setDrops('riftweave', 0.006),
       // The smith's dragon run went below with whoever ordered it.
@@ -1147,6 +1166,9 @@ const defs: LootTableDef[] = [
       // The hound was the court's own — nothing "snagged in its fur";
       // it WEARS the estate, and pays the wardrobe best of any pack.
       ...setDrops('wintercourt', 0.02),
+      // The Court's token: birch-silver and everfrost, conferred on
+      // whoever the hound was GUARDING. It wasn't guarding you.
+      { item: 'wintercourt_rime', chance: 0.03 },
       ...setDrops('rimethorn', 0.01),
       // The moon's own staff and the bow of night glass: the worgs
       // howl at these where the camps stole them. The hound carries
@@ -1434,6 +1456,9 @@ const defs: LootTableDef[] = [
     { item: 'iron_greatblade', chance: 0.12 },
     { item: 'steel_sword', chance: 0.1 },
     { item: 'ember_staff', chance: 0.08 },
+    // The wall-rank's issue: the drilled doorwall itself, off the
+    // soldiers who anchor the line's free edge.
+    { item: 'legion_doorwall', chance: 0.06 },
   ]),
   {
     id: 'hobgoblin_champion',
@@ -1442,6 +1467,9 @@ const defs: LootTableDef[] = [
     entries: [
       { item: 'bones' },
       { item: 'warlord_crest', chance: 0.9 },
+      // The warlord's own guard carries the doorwall; the campaign
+      // that ends here pays its best-drilled iron forward.
+      { item: 'legion_doorwall', chance: 0.12 },
       { item: 'legion_ring', qty: [1, 2], chance: 0.5 },
       { item: 'coins', qty: [30, 85], chance: 0.7 },
       { item: 'crimson_essence', qty: [1, 3], chance: 0.35 },
@@ -1850,6 +1878,8 @@ const defs: LootTableDef[] = [
       { item: 'coal', qty: [2, 4], chance: 0.4 },
       // The burning bough suits a body that never stopped burning.
       { item: 'ashgarden', chance: 0.008 },
+      // The furnace door the body was BUILT around, seams still lit.
+      { item: 'cindermaw_bulwark', chance: 0.012 },
     ],
   },
   {

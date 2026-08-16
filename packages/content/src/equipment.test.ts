@@ -397,7 +397,12 @@ test('themed leather sets: five pieces each, coherent class and reqs', () => {
   const isLot = (id: string): boolean => id.endsWith('_barrowdusk');
   const byId = new Map(EQUIPMENT_DEFS.map((d) => [d.id, d]));
   for (const set of sets) {
-    const pieces = EQUIPMENT_DEFS.filter((d) => d.id.startsWith(`${set}_`) && !isLot(d.id));
+    // A family may carry a matching offhand (the shield wave's walls:
+    // nightveil_pinion, stagheart_palisade) — the plate test's own
+    // precedent. The five-piece law reads armor pieces only.
+    const pieces = EQUIPMENT_DEFS.filter(
+      (d) => d.id.startsWith(`${set}_`) && !isLot(d.id) && d.slot !== 'offhand',
+    );
     assert.equal(pieces.length, 5, `${set} should have 5 pieces`);
     const slots = new Set(pieces.map((p) => p.slot));
     assert.deepEqual([...slots].sort(), ['body', 'boots', 'gloves', 'head', 'legs'], `${set} covers the armor slots`);
@@ -505,7 +510,11 @@ test('the named wardrobe: thirty-one chase sets, owners keep them, rarity floors
     aetherion: { cls: 'cloth', skill: 'arx', floor: ['legendary'], maxLevel: 52 },
   };
   for (const [set, want] of Object.entries(SETS)) {
-    const pieces = EQUIPMENT_DEFS.filter((d) => d.id.startsWith(`${set}_`));
+    // Offhands excluded per the plate test's precedent — a family may
+    // carry a matching wall (wintercourt_rime, gatefall_bulwark).
+    const pieces = EQUIPMENT_DEFS.filter(
+      (d) => d.id.startsWith(`${set}_`) && d.slot !== 'offhand',
+    );
     assert.equal(pieces.length, 5, `${set} should have 5 pieces`);
     const slots = new Set(pieces.map((p) => p.slot));
     assert.deepEqual(

@@ -154,7 +154,7 @@ const MOB_EQUIP: Record<string, MobEquip> = {
   hobgoblin: { weapon: 'iron_sword', offhand: 'oak_kiteshield' },
   hobgoblin_archer: { weapon: 'shortbow', offhand: 'hunters_quiver' },
   hobgoblin_warcaster: { weapon: 'ember_staff' },
-  hobgoblin_champion: { weapon: 'steel_sword', offhand: 'oak_kiteshield' },
+  hobgoblin_champion: { weapon: 'steel_sword', offhand: 'legion_doorwall' },
   hobgoblin_juggernaut: { weapon: 'iron_greatblade' },
 };
 const MOB_SIZE: Record<string, number> = {
