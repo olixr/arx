@@ -27,6 +27,9 @@ interface FogEntry {
  */
 export class FogLayer {
   private readonly regions = new Map<string, FogEntry>();
+  /** Reusable cell-resolution composite — regions land here unsmoothed
+   *  so the one scaled blit to screen has no interior edges to bleed. */
+  private readonly compose: HTMLCanvasElement = document.createElement('canvas');
 
   regionCanvas(mask: ExploredMask, rx: number, ry: number, version: number): HTMLCanvasElement | null {
     const bytes = mask.regionBytes(rx, ry);
@@ -42,11 +45,16 @@ export class FogLayer {
       maskBitsToAlpha(bytes, img.data);
       ctx.putImageData(img, 0, 0);
       entry = { version, canvas };
-      this.regions.set(key, entry);
-      if (this.regions.size > 256) {
-        const first = this.regions.keys().next().value as string;
-        this.regions.delete(first);
-      }
+    } else {
+      // LRU touch — a far-zoom chart can hold more regions on screen
+      // than the cap; plain FIFO was evicting (and rebaking) canvases
+      // that were still visible, every frame.
+      this.regions.delete(key);
+    }
+    this.regions.set(key, entry);
+    while (this.regions.size > 1024) {
+      const first = this.regions.keys().next().value as string;
+      this.regions.delete(first);
     }
     return entry.canvas;
   }
@@ -68,24 +76,46 @@ export class FogLayer {
     sy: (ty: number) => number,
     scale: number,
   ): void {
-    ctx.imageSmoothingEnabled = true;
     const r0x = Math.floor(tx0 / EXPLORE_REGION);
     const r1x = Math.floor(tx1 / EXPLORE_REGION);
     const r0y = Math.floor(ty0 / EXPLORE_REGION);
     const r1y = Math.floor(ty1 / EXPLORE_REGION);
+    // Regions compose UNSMOOTHED at cell resolution first, then reach
+    // the screen in ONE smoothed blit. Scaling each region canvas up
+    // independently bled its edges against transparent — at far zoom
+    // the chart wore a light gridline at every region seam.
+    const cols = r1x - r0x + 1;
+    const rows = r1y - r0y + 1;
+    const w = cols * REGION_CELLS;
+    const h = rows * REGION_CELLS;
+    if (this.compose.width < w || this.compose.height < h) {
+      this.compose.width = Math.max(this.compose.width, w);
+      this.compose.height = Math.max(this.compose.height, h);
+    }
+    const cctx = this.compose.getContext('2d')!;
+    cctx.clearRect(0, 0, w, h);
+    let any = false;
     for (let ry = r0y; ry <= r1y; ry++) {
       for (let rx = r0x; rx <= r1x; rx++) {
         const cnv = this.regionCanvas(mask, rx, ry, version);
         if (!cnv) continue;
-        ctx.drawImage(
-          cnv,
-          sx(rx * EXPLORE_REGION),
-          sy(ry * EXPLORE_REGION),
-          EXPLORE_REGION * scale,
-          EXPLORE_REGION * scale,
-        );
+        cctx.drawImage(cnv, (rx - r0x) * REGION_CELLS, (ry - r0y) * REGION_CELLS);
+        any = true;
       }
     }
+    if (!any) return;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(
+      this.compose,
+      0,
+      0,
+      w,
+      h,
+      sx(r0x * EXPLORE_REGION),
+      sy(r0y * EXPLORE_REGION),
+      cols * EXPLORE_REGION * scale,
+      rows * EXPLORE_REGION * scale,
+    );
   }
 }
 

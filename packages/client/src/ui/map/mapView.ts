@@ -53,10 +53,42 @@ import { authoredZoneArt } from './zoneArt.js';
  */
 
 const BLOCK = 128;
+/** Far-zoom superblock: 4×4 coarse blocks of ground in one bake, so
+ *  the visible block count stays bounded no matter how far the reader
+ *  pulls back (at min zoom a fullscreen chart is ~2,300 BLOCK-sized
+ *  tiles — enough churn to crash the tab before this LOD existed). */
+const SUPER = 512;
 const FINE_SCALE = 1.25;
-const MAX_BLOCKS = 512;
+const SUPER_SCALE = 0.9;
 const FINE_BUDGET = 1;
-const COARSE_BUDGET = 5;
+const COARSE_BUDGET = 6;
+const DANGER_BUDGET = 8;
+/** Fine blocks are 128×128 canvases (~64 KB each) — cap tight. */
+const FINE_CAP = 384;
+/** Coarse and super blocks are 32×32 (~4 KB) — the cap can breathe. */
+const COARSE_CAP = 1024;
+const PROBE_CAP = 16384;
+
+type BlockLod = 'f' | 'c' | 's';
+
+/** LRU read: a hit re-files the entry at the back of the eviction
+ *  line. Plain Map.get was FIFO-evicting still-visible blocks at far
+ *  zoom — an eternal rebake cycle spawning canvases every frame. */
+function lruGet<V>(map: Map<string, V>, key: string): V | undefined {
+  const v = map.get(key);
+  if (v !== undefined) {
+    map.delete(key);
+    map.set(key, v);
+  }
+  return v;
+}
+
+function lruEvict<V>(map: Map<string, V>, cap: number): void {
+  while (map.size > cap) {
+    const first = map.keys().next().value as string;
+    map.delete(first);
+  }
+}
 
 const colorCache = new Map<number, string>();
 function tileColor(t: number): string {
@@ -116,15 +148,30 @@ export class MapView {
    */
   searchRing: { x: number; y: number; r: number; label: string; quest: string } | null = null;
 
-  private blocks = new Map<string, HTMLCanvasElement | null>();
+  /** Fine (1px/tile) blocks — big canvases, tight cap. */
+  private fineBlocks = new Map<string, HTMLCanvasElement>();
+  /** Coarse + super blocks — small canvases, roomy cap. */
+  private coarseBlocks = new Map<string, HTMLCanvasElement>();
   private dangerBlocks = new Map<string, HTMLCanvasElement>();
+  /** Probe-fill colors for blocks the budget hasn't baked yet — pure
+   *  worldgen, safe to memoize for the session. */
+  private probeColors = new Map<string, string>();
   private dangerRev = 0;
   private lastAnchors: unknown = null;
   private lastWorldVersion = -1;
+  /** Camera/world fingerprint of the last terrain+fog composite. */
+  private lastStamp = '';
+  /** Whether that composite had every visible block baked. */
+  private lastAllBaked = false;
   private readonly fog = new FogLayer();
   private readonly dungeonFog = new FogLayer();
   private layer: HTMLCanvasElement = document.createElement('canvas');
   private fogCnv: HTMLCanvasElement = document.createElement('canvas');
+  /** Reusable block-resolution sheet for the sampled LODs — coarse and
+   *  super blocks compose here unsmoothed (32px each), then reach the
+   *  layer in ONE smoothed blit. Scaling each 32px block up on its own
+   *  bled edges against transparent: a faint seam grid at far zoom. */
+  private sheet: HTMLCanvasElement = document.createElement('canvas');
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -181,29 +228,39 @@ export class MapView {
     const b1y = Math.floor((pos.y + reach) / BLOCK);
     for (let by = b0y; by <= b1y; by++) {
       for (let bx = b0x; bx <= b1x; bx++) {
-        this.blocks.delete(`${bx},${by}:f`);
+        this.fineBlocks.delete(`${bx},${by}:f`);
       }
     }
   }
 
   // ---------------------------------------------------------- baking
 
-  private probeFill(bx: number, by: number): string {
+  private probeFill(bx: number, by: number, span: number): string {
+    const key = `${bx},${by}:${span}`;
+    const hit = this.probeColors.get(key);
+    if (hit) return hit;
     const seed = this.game.worldSeed ?? 0;
-    const tx = bx * BLOCK + BLOCK / 2;
-    const ty = by * BLOCK + BLOCK / 2;
-    if (ty >= UNDERGROUND_Y) return tileColor(Tile.CaveWall);
-    const e = elevationAt(seed, tx, ty);
-    if (e < 0.37) return tileColor(Tile.WaterDeep);
-    if (e < 0.4) return tileColor(Tile.Sand);
-    if (levelAt(seed, tx, ty) !== 0) return tileColor(Tile.Rock);
-    return moistureAt(seed, tx, ty) > 0.62 ? '#3f6b2e' : tileColor(Tile.Grass);
+    const tx = bx * span + span / 2;
+    const ty = by * span + span / 2;
+    let c: string;
+    if (ty >= UNDERGROUND_Y) c = tileColor(Tile.CaveWall);
+    else {
+      const e = elevationAt(seed, tx, ty);
+      if (e < 0.37) c = tileColor(Tile.WaterDeep);
+      else if (e < 0.4) c = tileColor(Tile.Sand);
+      else if (levelAt(seed, tx, ty) !== 0) c = tileColor(Tile.Rock);
+      else c = moistureAt(seed, tx, ty) > 0.62 ? '#3f6b2e' : tileColor(Tile.Grass);
+    }
+    if (this.probeColors.size >= PROBE_CAP) this.probeColors.clear();
+    this.probeColors.set(key, c);
+    return c;
   }
 
-  private bakeCoarse(bx: number, by: number): HTMLCanvasElement {
+  /** Sampled bake — coarse (span 128, step 4) and super (span 512,
+   *  step 16) share the loop; both land on a 32×32 canvas. */
+  private bakeSampled(bx: number, by: number, span: number, step: number): HTMLCanvasElement {
     const seed = this.game.worldSeed ?? 0;
-    const step = 4;
-    const n = BLOCK / step;
+    const n = span / step;
     const cnv = document.createElement('canvas');
     cnv.width = n;
     cnv.height = n;
@@ -216,10 +273,14 @@ export class MapView {
       img.data[i * 4 + 2] = Math.min(255, (v & 0xff) * shade);
       img.data[i * 4 + 3] = 255;
     };
+    // A sparse sample grid needs a fatter road tolerance or the route
+    // decays into stray dots — at the super step the chart keeps a
+    // faint broken trace instead.
+    const roadPad = step >= 16 ? 4 : 0.9;
     for (let iy = 0; iy < n; iy++) {
       for (let ix = 0; ix < n; ix++) {
-        const tx = bx * BLOCK + ix * step + step / 2;
-        const ty = by * BLOCK + iy * step + step / 2;
+        const tx = bx * span + ix * step + step / 2;
+        const ty = by * span + iy * step + step / 2;
         const i = ix + iy * n;
         if (ty >= UNDERGROUND_Y) {
           put(i, tileDef(Tile.CaveWall).color, 1);
@@ -235,7 +296,7 @@ export class MapView {
           continue;
         }
         const hit = roadHitAt(seed, tx, ty);
-        if (hit && hit.dist <= (hit.trail ? TRAIL_HALF : ROAD_HALF) + 0.9) {
+        if (hit && hit.dist <= (hit.trail ? TRAIL_HALF : ROAD_HALF) + roadPad) {
           put(i, hit.trail ? tileDef(Tile.Dirt).color : tileDef(Tile.Path).color, 1);
           continue;
         }
@@ -294,28 +355,23 @@ export class MapView {
     return cnv;
   }
 
-  private dangerBlock(bx: number, by: number): HTMLCanvasElement {
-    // The anchor list is replaced wholesale when havens change — an
-    // identity check is the cheap invalidation.
-    if (this.lastAnchors !== this.game.dangerAnchors) {
-      this.lastAnchors = this.game.dangerAnchors;
-      this.dangerRev++;
-      this.dangerBlocks.clear();
-    }
-    const key = `${bx},${by}:${this.dangerRev}`;
-    let cnv = this.dangerBlocks.get(key);
-    if (cnv) return cnv;
+  /** Danger wash for one block, 16×16 samples whatever the span. The
+   *  render loop owns the cache check and the per-frame bake budget —
+   *  an over-budget block simply waits its turn (the wash fills in
+   *  over a few frames) instead of the whole visible sheet baking in
+   *  one frame, which at far zoom was thousands of canvases at once. */
+  private bakeDanger(bx: number, by: number, span: number, key: string): HTMLCanvasElement {
     const seed = this.game.worldSeed ?? 0;
-    const step = 8;
-    const n = BLOCK / step;
-    cnv = document.createElement('canvas');
+    const step = span / 16;
+    const n = span / step;
+    const cnv = document.createElement('canvas');
     cnv.width = n;
     cnv.height = n;
     const ctx = cnv.getContext('2d')!;
     for (let iy = 0; iy < n; iy++) {
       for (let ix = 0; ix < n; ix++) {
-        const tx = bx * BLOCK + ix * step + step / 2;
-        const ty = by * BLOCK + iy * step + step / 2;
+        const tx = bx * span + ix * step + step / 2;
+        const ty = by * span + iy * step + step / 2;
         if (ty >= UNDERGROUND_Y) continue;
         const tier = dangerAt(seed, tx, ty, this.game.dangerAnchors);
         ctx.fillStyle = TIER_WASH[Math.max(0, Math.min(TIER_WASH.length - 1, tier))]!;
@@ -323,11 +379,22 @@ export class MapView {
       }
     }
     this.dangerBlocks.set(key, cnv);
-    if (this.dangerBlocks.size > 256) {
-      const first = this.dangerBlocks.keys().next().value as string;
-      this.dangerBlocks.delete(first);
-    }
+    lruEvict(this.dangerBlocks, 512);
     return cnv;
+  }
+
+  /** THE STILL SHEET fingerprint — everything the terrain+fog
+   *  composite depends on. While it holds (and every visible block is
+   *  baked), the layer from last frame is still the truth and the
+   *  whole bake/fog pass is skipped; marks re-draw on top each frame
+   *  regardless. Live-chunk versions only matter to the fine LOD —
+   *  coarse and super bakes never read streamed chunks. */
+  private layerStamp(band: MapBand, lod: BlockLod, cw: number, ch: number, dpr: number): string {
+    return (
+      `${this.panX},${this.panY},${this.scale},${cw},${ch},${dpr},${band},${this.parchment},` +
+      `${this.game.chartVersion},${this.showDanger},${this.dangerRev},` +
+      `${lod === 'f' ? this.game.worldVersion : -1}`
+    );
   }
 
   // --------------------------------------------------------- render
@@ -355,109 +422,178 @@ export class MapView {
 
     this.refreshLiveBlocks();
 
-    // 1. Terrain into the offscreen layer.
-    if (this.layer.width !== this.canvas.width || this.layer.height !== this.canvas.height) {
-      this.layer.width = this.canvas.width;
-      this.layer.height = this.canvas.height;
-      this.fogCnv.width = this.canvas.width;
-      this.fogCnv.height = this.canvas.height;
+    // The anchor list is replaced wholesale when havens change — an
+    // identity check is the cheap invalidation.
+    if (this.lastAnchors !== this.game.dangerAnchors) {
+      this.lastAnchors = this.game.dangerAnchors;
+      this.dangerRev++;
+      this.dangerBlocks.clear();
     }
-    const lctx = this.layer.getContext('2d')!;
-    lctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    lctx.clearRect(0, 0, cw, ch);
 
     const band = this.band();
-    const fine = this.scale >= FINE_SCALE || band === 'dungeon';
+    const lod: BlockLod =
+      band === 'dungeon' || this.scale >= FINE_SCALE ? 'f' : this.scale >= SUPER_SCALE ? 'c' : 's';
+    const span = lod === 's' ? SUPER : BLOCK;
     const t0 = this.tileAtFloat(0, 0);
     const t1 = this.tileAtFloat(cw, ch);
-    const b0x = Math.floor(t0.x / BLOCK);
-    const b0y = Math.floor(t0.y / BLOCK);
-    const b1x = Math.floor(t1.x / BLOCK);
-    const b1y = Math.floor(t1.y / BLOCK);
 
-    let budget = fine ? FINE_BUDGET : COARSE_BUDGET;
-    const wanted: Array<{ bx: number; by: number; d: number }> = [];
-    for (let by = b0y; by <= b1y; by++) {
-      for (let bx = b0x; bx <= b1x; bx++) {
-        wanted.push({ bx, by, d: Math.hypot(bx - (b0x + b1x) / 2, by - (b0y + b1y) / 2) });
+    const stamp = this.layerStamp(band, lod, cw, ch, dpr);
+    if (stamp !== this.lastStamp || !this.lastAllBaked) {
+      let allBaked = true;
+
+      // 1. Terrain into the offscreen layer.
+      if (this.layer.width !== this.canvas.width || this.layer.height !== this.canvas.height) {
+        this.layer.width = this.canvas.width;
+        this.layer.height = this.canvas.height;
+        this.fogCnv.width = this.canvas.width;
+        this.fogCnv.height = this.canvas.height;
       }
-    }
-    wanted.sort((a, b) => a.d - b.d);
-    // THE PAINTED GROUND: smooth the tile bake at reading distance —
-    // the chart is a painting of the land, not a screenshot of the
-    // grid. From 4px a tile up the authored town art carries real
-    // shapes, and crispness starts telling truth instead of stairs.
-    lctx.imageSmoothingEnabled = this.scale < 4;
-    for (const { bx, by } of wanted) {
-      const key = `${bx},${by}:${fine ? 'f' : 'c'}`;
-      let block = this.blocks.get(key);
-      if (block === undefined) {
-        if (budget > 0) {
-          block = fine ? this.bakeFine(bx, by) : this.bakeCoarse(bx, by);
-          this.blocks.set(key, block);
-          budget--;
-          if (this.blocks.size > MAX_BLOCKS) {
-            const first = this.blocks.keys().next().value as string;
-            this.blocks.delete(first);
+      const lctx = this.layer.getContext('2d')!;
+      lctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      lctx.clearRect(0, 0, cw, ch);
+
+      const b0x = Math.floor(t0.x / span);
+      const b0y = Math.floor(t0.y / span);
+      const b1x = Math.floor(t1.x / span);
+      const b1y = Math.floor(t1.y / span);
+
+      let budget = lod === 'f' ? FINE_BUDGET : COARSE_BUDGET;
+      let dangerBudget = DANGER_BUDGET;
+      const wanted: Array<{ bx: number; by: number; d: number }> = [];
+      for (let by = b0y; by <= b1y; by++) {
+        for (let bx = b0x; bx <= b1x; bx++) {
+          wanted.push({ bx, by, d: Math.hypot(bx - (b0x + b1x) / 2, by - (b0y + b1y) / 2) });
+        }
+      }
+      wanted.sort((a, b) => a.d - b.d);
+      // THE PAINTED GROUND: smooth the tile bake at reading distance —
+      // the chart is a painting of the land, not a screenshot of the
+      // grid. From 4px a tile up the authored town art carries real
+      // shapes, and crispness starts telling truth instead of stairs.
+      lctx.imageSmoothingEnabled = this.scale < 4;
+      const cache = lod === 'f' ? this.fineBlocks : this.coarseBlocks;
+      // The sampled LODs magnify their 32px bakes several-fold — those
+      // go through the compose sheet. Fine blocks only ever minify (or
+      // sit near 1:1), where edge bleed is invisible: direct draw.
+      const composed = lod !== 'f';
+      const UNIT = 32;
+      let sctx: CanvasRenderingContext2D | null = null;
+      if (composed) {
+        const w = (b1x - b0x + 1) * UNIT;
+        const h = (b1y - b0y + 1) * UNIT;
+        if (this.sheet.width < w || this.sheet.height < h) {
+          this.sheet.width = Math.max(this.sheet.width, w);
+          this.sheet.height = Math.max(this.sheet.height, h);
+        }
+        sctx = this.sheet.getContext('2d')!;
+        sctx.clearRect(0, 0, w, h);
+      }
+      for (const { bx, by } of wanted) {
+        const key = `${bx},${by}:${lod}`;
+        let block = lruGet(cache, key);
+        if (block === undefined) {
+          if (budget > 0) {
+            block =
+              lod === 'f'
+                ? this.bakeFine(bx, by)
+                : lod === 'c'
+                  ? this.bakeSampled(bx, by, BLOCK, 4)
+                  : this.bakeSampled(bx, by, SUPER, 16);
+            cache.set(key, block);
+            budget--;
+            lruEvict(cache, lod === 'f' ? FINE_CAP : COARSE_CAP);
+          } else {
+            allBaked = false;
+          }
+        }
+        if (sctx) {
+          const x = (bx - b0x) * UNIT;
+          const y = (by - b0y) * UNIT;
+          if (block) {
+            sctx.drawImage(block, x, y);
+          } else {
+            sctx.fillStyle = this.probeFill(bx, by, span);
+            sctx.fillRect(x, y, UNIT, UNIT);
           }
         } else {
-          block = null;
+          const x = this.sx(bx * span);
+          const y = this.sy(by * span);
+          const size = span * this.scale;
+          if (block) {
+            lctx.drawImage(block, x, y, size, size);
+          } else {
+            lctx.fillStyle = this.probeFill(bx, by, span);
+            lctx.fillRect(x, y, size, size);
+          }
         }
       }
-      const x = this.sx(bx * BLOCK);
-      const y = this.sy(by * BLOCK);
-      const size = BLOCK * this.scale;
-      if (block) {
-        lctx.drawImage(block, x, y, size, size);
-      } else {
-        lctx.fillStyle = this.probeFill(bx, by);
-        lctx.fillRect(x, y, size, size);
+      if (sctx) {
+        const cols = b1x - b0x + 1;
+        const rows = b1y - b0y + 1;
+        lctx.drawImage(
+          this.sheet,
+          0,
+          0,
+          cols * UNIT,
+          rows * UNIT,
+          this.sx(b0x * span),
+          this.sy(b0y * span),
+          cols * span * this.scale,
+          rows * span * this.scale,
+        );
       }
-    }
 
-    // Bundled town art over procgen (live chunks were baked into the
-    // fine blocks above and already carry the streamed truth).
-    if (band === 'surface') {
-      for (const art of authoredZoneArt()) {
-        if (art.x + art.w < t0.x || art.x > t1.x || art.y + art.h < t0.y || art.y > t1.y) continue;
-        lctx.drawImage(art.canvas, this.sx(art.x), this.sy(art.y), art.w * this.scale, art.h * this.scale);
-      }
-      if (this.showDanger) {
-        for (const { bx, by } of wanted) {
-          lctx.drawImage(
-            this.dangerBlock(bx, by),
-            this.sx(bx * BLOCK),
-            this.sy(by * BLOCK),
-            BLOCK * this.scale,
-            BLOCK * this.scale,
-          );
+      // Bundled town art over procgen (live chunks were baked into the
+      // fine blocks above and already carry the streamed truth).
+      if (band === 'surface') {
+        for (const art of authoredZoneArt()) {
+          if (art.x + art.w < t0.x || art.x > t1.x || art.y + art.h < t0.y || art.y > t1.y) continue;
+          lctx.drawImage(art.canvas, this.sx(art.x), this.sy(art.y), art.w * this.scale, art.h * this.scale);
+        }
+        if (this.showDanger) {
+          for (const { bx, by } of wanted) {
+            const key = `${bx},${by}:${span}:${this.dangerRev}`;
+            let dcnv = lruGet(this.dangerBlocks, key);
+            if (!dcnv) {
+              if (dangerBudget <= 0) {
+                allBaked = false;
+                continue;
+              }
+              dangerBudget--;
+              dcnv = this.bakeDanger(bx, by, span, key);
+            }
+            lctx.drawImage(dcnv, this.sx(bx * span), this.sy(by * span), span * this.scale, span * this.scale);
+          }
         }
       }
-    }
 
-    // 2. THE FOG: charted coverage masks the layer; parchment beneath
-    // shows through everywhere the reader has never walked.
-    const fctx = this.fogCnv.getContext('2d')!;
-    fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    fctx.clearRect(0, 0, cw, ch);
-    const mask = band === 'dungeon' ? this.game.dungeonExplored : this.game.explored;
-    const fogLayer = band === 'dungeon' ? this.dungeonFog : this.fog;
-    fogLayer.draw(
-      fctx,
-      mask,
-      this.game.chartVersion,
-      t0.x,
-      t0.y,
-      t1.x,
-      t1.y,
-      (tx) => this.sx(tx),
-      (ty) => this.sy(ty),
-      this.scale,
-    );
-    lctx.globalCompositeOperation = 'destination-in';
-    lctx.setTransform(1, 0, 0, 1, 0, 0);
-    lctx.drawImage(this.fogCnv, 0, 0);
-    lctx.globalCompositeOperation = 'source-over';
+      // 2. THE FOG: charted coverage masks the layer; parchment beneath
+      // shows through everywhere the reader has never walked.
+      const fctx = this.fogCnv.getContext('2d')!;
+      fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      fctx.clearRect(0, 0, cw, ch);
+      const mask = band === 'dungeon' ? this.game.dungeonExplored : this.game.explored;
+      const fogLayer = band === 'dungeon' ? this.dungeonFog : this.fog;
+      fogLayer.draw(
+        fctx,
+        mask,
+        this.game.chartVersion,
+        t0.x,
+        t0.y,
+        t1.x,
+        t1.y,
+        (tx) => this.sx(tx),
+        (ty) => this.sy(ty),
+        this.scale,
+      );
+      lctx.globalCompositeOperation = 'destination-in';
+      lctx.setTransform(1, 0, 0, 1, 0, 0);
+      lctx.drawImage(this.fogCnv, 0, 0);
+      lctx.globalCompositeOperation = 'source-over';
+
+      this.lastStamp = stamp;
+      this.lastAllBaked = allBaked;
+    }
 
     ctx.drawImage(this.layer, 0, 0, cw, ch);
 

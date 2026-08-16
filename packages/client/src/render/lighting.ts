@@ -493,11 +493,24 @@ export class LightingSystem {
       this.offScaleRebuilds > 0;
     if (!p || offScale || this.frame - p.builtAt > ttl) {
       if (offScale) this.offScaleRebuilds--;
-      const built = this.buildLightPatch(light, blocks, tallH, sx, sy);
+      // THE LAMP KEEPS ITS CANVAS: a TTL rebuild repaints the patch's
+      // existing canvas in place. Fresh canvases are minted only for
+      // lights new to the cache — the per-rebuild createElement was
+      // shedding ~1MB of canvas backing store per lamp per second all
+      // night long (browser canvas memory, invisible to the JS heap).
+      const built = this.buildLightPatch(light, blocks, tallH, sx, sy, p?.c);
       if (!built) return;
-      if (this.patches.size >= 128) this.patches.clear();
+      while (this.patches.size >= 128) {
+        const first = this.patches.keys().next().value as string;
+        this.patches.delete(first);
+      }
+      this.patches.delete(key);
       this.patches.set(key, built);
       p = built;
+    } else {
+      // LRU touch so the cap evicts truly cold lamps, not busy ones.
+      this.patches.delete(key);
+      this.patches.set(key, p);
     }
     // The flicker rides the stamp: intensity as alpha, radius as a
     // center-scale — both hover near 1 while the TTL keeps the patch's
@@ -525,6 +538,7 @@ export class LightingSystem {
     tallH: (tx: number, ty: number) => number,
     sx: number,
     sy: number,
+    reuse?: HTMLCanvasElement,
   ): { c: HTMLCanvasElement; w: number; h: number; r: number; intensity: number; builtAt: number; sx: number; sy: number } | null {
     // Patch bbox in map pixels around the light's WRAP reach.
     const reach = light.r * WRAP_R;
@@ -584,10 +598,15 @@ export class LightingSystem {
     this.paintFaceRuns(t, light, sx, sy, tx, ty);
     t.setTransform(1, 0, 0, 1, 0, 0);
 
-    const c = document.createElement('canvas');
-    c.width = bw;
-    c.height = bh;
-    c.getContext('2d')!.drawImage(this.tmp, 0, 0, bw, bh, 0, 0, bw, bh);
+    const c = reuse ?? document.createElement('canvas');
+    const cc = c.getContext('2d')!;
+    if (c.width !== bw || c.height !== bh) {
+      c.width = bw;
+      c.height = bh;
+    } else {
+      cc.clearRect(0, 0, bw, bh);
+    }
+    cc.drawImage(this.tmp, 0, 0, bw, bh, 0, 0, bw, bh);
     return { c, w: bw, h: bh, r: light.r, intensity: Math.max(0.05, Math.min(1, light.intensity)), builtAt: this.frame, sx, sy };
   }
 
