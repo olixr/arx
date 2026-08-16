@@ -233,6 +233,9 @@ import fallHostelkeep from './defs/fall_hostelkeep.json';
 import fallGravekeeper from './defs/fall_gravekeeper.json';
 import fallFisherDeep from './defs/fall_fisher_deep.json';
 import fallFisherReed from './defs/fall_fisher_reed.json';
+// THE SAND AND THE ROAR (docs/arena-plan.md Phase 5) — the ringmasters' hours.
+import grandRingMaster from './defs/grand_ring_master.json';
+import fordRingMaster from './defs/ford_ring_master.json';
 import fallBathkeeper from './defs/fall_bathkeeper.json';
 import fallGuildmaster from './defs/fall_guildmaster.json';
 import fallMongerFish from './defs/fall_monger_fish.json';
@@ -484,6 +487,8 @@ const SOURCES: readonly unknown[] = [
   hartWatch,
   hartWatchBeacon,
   hartHerder,
+  grandRingMaster,
+  fordRingMaster,
 ];
 
 function buildRegistry(): ReadonlyMap<string, RoutineDef> {

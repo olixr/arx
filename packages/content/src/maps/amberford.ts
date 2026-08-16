@@ -977,6 +977,25 @@ export function buildAmberford(): ZoneDef {
   b.sign(128, 74, "PERL'S ORCHARD", ['windfalls by the basket', 'shade is free, the apples are not'], Tile.Signpost);
 
   // ---------------------------------------------------------------
+  // THE FORD RING (docs/arena-plan.md Phase 5) — a pen with benches
+  // in the working country south of the orchard: palisade dialect,
+  // one gate north for the beasts, one gate south for the fighters,
+  // Old Serle's counter by the walk-out. The starter stage — small
+  // sand, small fees, honest lessons.
+  // ---------------------------------------------------------------
+  b.fillEllipse(135, 102, 6, 5, Tile.Palisade);
+  b.fillEllipse(135, 102, 4.5, 3.5, Tile.Sand);
+  b.set(135, 97, Tile.Grass).set(135, 107, Tile.Grass); // shave the arch bumps
+  b.set(135, 98, Tile.PalisadeGate); // the beasts' gate
+  b.set(135, 106, Tile.PalisadeGate); // the fighters' gate
+  b.fillRect(134, 107, 3, 3, Tile.Path); // the walk-out to the counter
+  b.set(127, 100, Tile.Bench).set(127, 104, Tile.Bench); // the west benches
+  b.set(142, 100, Tile.Bench).set(142, 104, Tile.Bench); // the east benches
+  b.set(133, 108, Tile.Brazier).set(137, 108, Tile.Brazier);
+  b.set(130, 109, Tile.Table).set(129, 109, Tile.WoodStool); // Serle's counter
+  b.sign(132, 110, 'THE FORD RING', ['small sand, small fees.', 'lose small, learn big'], Tile.Signpost);
+
+  // ---------------------------------------------------------------
   // THE FORD QUARTER — through the water gate, the town steps down
   // to the river it was named for. Upstream of the bridge: work.
   // Downstream: memory.
@@ -1205,6 +1224,8 @@ export function buildAmberford(): ZoneDef {
   b.actor('amberford_watch', 72.5, 58.5, Math.PI / 2, 'amber_watch_round_night');
   // The traveling traders: the produce row by day, the guest wing by
   // night — the market has voices.
+  // THE SAND AND THE ROAR: the Ford Ring's keeper, at his counter.
+  b.actor('ringmaster_serle', 130.5, 108.4, Math.PI / 2, 'ford_ring_master');
   b.actor('round_trader', 63.0, 49.8, Math.PI / 2, 'amber_trader_a');
   b.actor('round_trader', 67.0, 49.8, Math.PI / 2, 'amber_trader_b');
 

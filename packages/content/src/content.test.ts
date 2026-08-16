@@ -1390,9 +1390,10 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   assert.equal(spawnKinds.get('sheep'), 3);
   // The people: eighteen named residents (the fifteen, plus Rowan at
   // the gate book, Bray at the stable, and Swale at the tannery),
-  // the two traveling traders, and the watch's ten-body rota.
+  // the two traveling traders, the watch's ten-body rota, and Old
+  // Serle at the Ford Ring's counter (THE SAND AND THE ROAR).
   const amberActors = z.actorSpawns ?? [];
-  assert.equal(amberActors.length, 30, 'Amberford lost residents');
+  assert.equal(amberActors.length, 31, 'Amberford lost residents');
   assert.equal(
     amberActors.filter((a) => a.actor === 'round_trader').length,
     2,
@@ -1425,7 +1426,7 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   ]) {
     assert.ok(amberActors.some((a) => a.actor === slug), `${slug} missing from Amberford`);
   }
-  assert.equal(amberActors.filter((a) => a.routine).length, 30, 'every resident keeps hours');
+  assert.equal(amberActors.filter((a) => a.routine).length, 31, 'every resident keeps hours');
   // The editor JSON round trip holds, flat-zone law included.
   const json = zoneToJson(z);
   assert.equal(json.elev, undefined, 'amberford is a flat zone');
@@ -1533,7 +1534,8 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   const n = (t: Tile): number => counts.get(t) ?? 0;
   // The terraces are fenced and staired by the builder's own law
   // (39 of the Silver Stair + 6 on the Silent Terrace's two flights).
-  assert.equal(n(Tile.Ramp), 45, 'the city lost a flight');
+  // 45 of the Vale epic + the Grand Ring's four stand steps.
+  assert.equal(n(Tile.Ramp), 49, 'the city lost a flight');
   assert.ok(n(Tile.Cliff) > 500, 'the terrace fences are missing');
   // The mountain's ladder: silver in numbers, the deep teases above.
   assert.ok(n(Tile.RockSilver) >= 8, 'Silverfall without silver');
@@ -1587,8 +1589,9 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   // VALE GATE (5) in the new outer curtain, the Silver Gate (5), the
   // Court Gate (9) at the stair crown, the CASTLE GATE (5) in the
   // precinct's south curtain, the Postern's 3 on the east shelf (the
-  // Pinereach epic), and the MINERS' POSTERN (2) in the old west run.
-  assert.equal(n(Tile.GateGarrison), 29, 'the city gates changed');
+  // Pinereach epic), the MINERS' POSTERN (2) in the old west run —
+  // and the Grand Ring's two mouths (3 + 3, THE SAND AND THE ROAR).
+  assert.equal(n(Tile.GateGarrison), 35, 'the city gates changed');
   assert.ok(n(Tile.WallGarrison) >= 240, 'the city curtain came down');
   const fallDiags =
     n(Tile.WallGarrisonDiagNE) + n(Tile.WallGarrisonDiagNW) +
@@ -1613,8 +1616,9 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   // keepers, the Rookery — and the pooled watch, guard, and stalls.
   const fallActors = z.actorSpawns ?? [];
   // 64 souls of the Crown remaster + 29 of THE PEOPLE OF THE VALE
-  // (18 named, 6 lower watch, 3 pilgrims, 2 carters).
-  assert.equal(fallActors.length, 93, 'Silverfall lost residents');
+  // (18 named, 6 lower watch, 3 pilgrims, 2 carters) + Ringmaster
+  // Cato at the Grand Ring's counter (THE SAND AND THE ROAR).
+  assert.equal(fallActors.length, 94, 'Silverfall lost residents');
   for (const slug of [
     'king_aeriex',
     'queen_kayri',
@@ -1684,7 +1688,7 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   assert.equal(fallActors.filter((a) => a.actor === 'castle_servant').length, 4);
   assert.equal(fallActors.filter((a) => a.actor === 'galleria_trader').length, 3);
   assert.equal(fallActors.filter((a) => a.actor === 'gate_monger').length, 2);
-  assert.equal(fallActors.filter((a) => a.routine).length, 93, 'every keeper keeps hours');
+  assert.equal(fallActors.filter((a) => a.routine).length, 94, 'every keeper keeps hours');
   // The editor JSON round trip holds WITH the elevation layer.
   const json = zoneToJson(z);
   assert.ok(json.elev !== undefined, 'the elevation layer must serialize');

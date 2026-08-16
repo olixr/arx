@@ -1649,16 +1649,46 @@ export function buildSilverfall(): ZoneDef {
   b.setDetail(37, 231, Detail.Doormat);
   b.sign(24, 212, 'THE KINGSHORE', ['the mere gives.', 'the mere is thanked'], Tile.Signpost);
   // ---------------------------------------------------------------
-  // THE FAIRSTEAD — the festival green: empty most of the year,
-  // and the emptiness is the point. The statues watch the walk in.
+  // THE FAIRSTEAD — the festival green, and THE GRAND RING standing
+  // on it: the fair that came to stay (docs/arena-plan.md Phase 5).
+  // The green still breathes around the ring, the statues watch the
+  // walk in, and the meeting oak keeps the east walk. Garrison
+  // masonry on purpose — the separate-masonry law means the pit
+  // never reads as a room, and the gates ride the town-wall door
+  // machinery the match engine already speaks.
   // ---------------------------------------------------------------
   b.fillRect(78, 215, 6, 2, Tile.Path); // the green's east walk
   b.set(78, 214, Tile.GuardianStatue).set(83, 214, Tile.GuardianStatue); // parity pair, mirrored
-  b.set(52, 208, Tile.BannerPole).set(72, 208, Tile.BannerPole); // bare until fair-day
-  b.set(58, 220, Tile.TreeOak); // the meeting oak
+  b.set(52, 208, Tile.BannerPole).set(72, 208, Tile.BannerPole); // fair-day poles, kept
+  b.set(77, 220, Tile.TreeOak); // the meeting oak, moved to the walk-in
   b.set(50, 225, Tile.GameTable).set(49, 225, Tile.WoodStool).set(50, 226, Tile.WoodStool);
   b.set(64, 209, Tile.Bench);
-  b.sign(76, 212, 'THE FAIRSTEAD', ['empty on purpose.', 'fair-days fill it'], Tile.Signpost);
+  b.sign(76, 212, 'THE FAIRSTEAD', ['the fair came to stay.', 'match days fill it'], Tile.Signpost);
+  // The pit: sand in a garrison ring. Two gates — the fighters' gate
+  // south toward the counter, the beasts' gate north. Both authored
+  // OPEN (the claim shuts them; no routine crosses a gate line).
+  b.fillEllipse(60, 218, 10, 7, Tile.WallGarrison);
+  b.fillEllipse(60, 218, 8, 5.5, Tile.Sand);
+  b.set(60, 211, Tile.Grass).set(60, 225, Tile.Grass); // shave the arch bumps
+  b.set(59, 212, Tile.GateGarrison).set(60, 212, Tile.GateGarrison).set(61, 212, Tile.GateGarrison);
+  b.set(59, 224, Tile.GateGarrison).set(60, 224, Tile.GateGarrison).set(61, 224, Tile.GateGarrison);
+  b.fillRect(59, 225, 3, 2, Tile.Path); // the fighters' walk-out
+  // The stands: two raised terraces flanking the sand, south-facing
+  // stairs per the stair law, benches one row in from the rims.
+  b.raise(44, 212, 4, 12, 1);
+  b.raise(72, 212, 4, 12, 1);
+  b.stairs(45, 223).stairs(46, 223);
+  b.stairs(73, 223).stairs(74, 223);
+  // Benches on the pit-side column only — the aisle column stays
+  // clear the whole run so every seat walks from the stairs.
+  b.set(46, 214, Tile.Bench).set(46, 216, Tile.Bench).set(46, 218, Tile.Bench).set(46, 220, Tile.Bench);
+  b.set(73, 214, Tile.Bench).set(73, 216, Tile.Bench).set(73, 218, Tile.Bench).set(73, 220, Tile.Bench);
+  // The show's dressing: braziers at the fighters' gate, poles at
+  // the south shoulders, and the ringmaster's counter by the walk.
+  b.set(56, 226, Tile.Brazier).set(64, 226, Tile.Brazier);
+  b.set(50, 227, Tile.BannerPole).set(70, 227, Tile.BannerPole);
+  b.set(63, 227, Tile.Table).set(62, 227, Tile.WoodStool);
+  b.sign(65, 227, 'THE GRAND RING', ['pay, stand, survive.', 'the purse is real'], Tile.Signpost);
   // THE VALE WARD — the lower watch's desk inside the new gate.
   b.fillRect(96, 224, 9, 8, Tile.StoneFloor);
   b.outlineRect(96, 224, 9, 8, Tile.WallStone);
@@ -1936,6 +1966,9 @@ export function buildSilverfall(): ZoneDef {
   b.actor('fisher_brigga', 29.5, 207.4, Math.PI / 2, 'fall_fisher_deep');
   b.actor('fisher_holm', 29.5, 221.4, Math.PI / 2, 'fall_fisher_reed');
   b.actor('sergeant_varn', 99.5, 227.5, Math.PI / 2, 'fall_sergeant');
+  // THE SAND AND THE ROAR: the Grand Ring's own throat, at the
+  // counter by the fighters' gate.
+  b.actor('ringmaster_cato', 63.5, 226.4, Math.PI / 2, 'grand_ring_master');
   b.actor('courier_pip', 88.5, 130.5, Math.PI / 2, 'fall_courier');
   // The lower watch: the gate rota pair, the beats, the posts.
   b.actor('vale_watch', 86.5, 239.5, Math.PI / 2, 'vale_watch_gate_day');

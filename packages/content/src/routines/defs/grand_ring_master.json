@@ -1,0 +1,32 @@
+{
+  "id": "grand_ring_master",
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963267948966,
+    "speed": 1.3
+  },
+  "slots": [
+    {
+      "from": 13,
+      "to": 14,
+      "task": {
+        "kind": "wander",
+        "x": 8,
+        "y": -6,
+        "radius": 2,
+        "speed": 1.3
+      }
+    },
+    {
+      "from": 22,
+      "to": 6,
+      "task": {
+        "kind": "post",
+        "x": 2,
+        "y": 1,
+        "dir": -1.5707963267948966,
+        "speed": 1.3
+      }
+    }
+  ]
+}

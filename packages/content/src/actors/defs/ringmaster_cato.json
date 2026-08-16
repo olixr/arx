@@ -1,0 +1,32 @@
+{
+  "id": "ringmaster_cato",
+  "name": "Ringmaster Cato",
+  "title": "The Grand Ring",
+  "examine": "Half his face is old scar and all of it is showman. He counts the crowd the way a banker counts coin, and the sand the way a farmer counts weather.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 5,
+      "hair": 1,
+      "hairColor": 6,
+      "beard": 3,
+      "eyes": 2,
+      "ears": 1,
+      "feature": 2,
+      "shirt": 6,
+      "pants": 2
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 400
+    }
+  ],
+  "lines": [
+    "Seats are free. Standing on the sand costs.",
+    "I fought nineteen cards on sand worse than this. The twentieth taught me to sell tickets instead.",
+    "The crowd forgets a win in a week. A good LOSS they talk about all winter."
+  ]
+}

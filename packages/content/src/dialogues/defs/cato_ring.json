@@ -1,0 +1,63 @@
+{
+  "id": "cato_ring",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "ringmaster_cato"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "cato_ring__hub",
+      "text": "The Grand Ring. Best sand south of the mountain, and the only honest work I ever found. You here to watch, or to be watched?",
+      "choices": [
+        {
+          "text": "How does a card work?",
+          "next": "rules"
+        },
+        {
+          "text": "What happens if I fall?",
+          "next": "fall"
+        },
+        {
+          "text": "Show me the board.",
+          "next": "board"
+        },
+        {
+          "text": "Just passing.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "rules",
+      "voice": "cato_ring__rules",
+      "text": "Coin up front, purse if you stand. Three rounds through the far gate, each worse than the last. Bring friends if you like, the sand takes parties. When the gates come down, you belong to the crowd until it's done.",
+      "next": "hub"
+    },
+    {
+      "id": "fall",
+      "voice": "cato_ring__fall",
+      "text": "Kind hands carry you out, and your pack spills at the gate for whoever loves you enough to guard it. The fee stays with the house. Nobody has died on my sand who did not bring it in with them.",
+      "next": "hub"
+    },
+    {
+      "id": "board",
+      "voice": "cato_ring__board",
+      "text": "Have a look, then. Pay at the counter, stand on the sand, and listen for my voice. The crowd wants a show. Give them one and the purse is yours.",
+      "hooks": [
+        {
+          "kind": "arena",
+          "venue": "grand_ring"
+        }
+      ]
+    },
+    {
+      "id": "bye",
+      "voice": "cato_ring__bye",
+      "text": "Watch a card first. It teaches faster than the sand does, and it costs nothing but the standing."
+    }
+  ]
+}

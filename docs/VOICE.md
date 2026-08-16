@@ -300,6 +300,10 @@ voice and got its geography re-walked.)
   arrives mid-thought, leaves before finishing, knows everyone's business a
   day early.
 - **Round traders** (pooled): market patter, short and bright.
+- **Old Serle** (the Ford Ring, outside the south wall): Toll War watchman,
+  retired into a pen with benches. Wants first-timers to lose SMALL.
+  Quirk: watches your footwork before your face. Cadence: count-and-
+  command, kind verdicts, no theatre; "again" is praise.
 
 ### Silverfall — the capital
 - **King Aeriex** (fifth of the Line): wants the bargain kept — Crown pays
@@ -466,6 +470,12 @@ voice and got its geography re-walked.)
 - **Vale watch / pilgrims / carters** (pooled): the young company's pride,
   the road-faith's footsore patience, the descent's survivors. Lines, no
   dialogue (the pooled law).
+- **Ringmaster Cato** (the Grand Ring, the Fairstead): a pit fighter from
+  past the Salt Road who outlived his own card and bought the book. Wants
+  the crowd fed and nobody buried. Wound: the one name he never calls.
+  Quirk: names a fighter's style before their name. Cadence: hall voice
+  on the call, counter-quiet off it; wit granted, ONE flourish per card
+  and he saves it for the sand.
 
 ### Pinewatch — the timber shore
 

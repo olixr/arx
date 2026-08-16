@@ -1,0 +1,21 @@
+{
+  "id": "ford_ring_master",
+  "base": {
+    "kind": "post",
+    "dir": 1.5707963267948966,
+    "speed": 1.2
+  },
+  "slots": [
+    {
+      "from": 12,
+      "to": 13,
+      "task": {
+        "kind": "wander",
+        "x": 11,
+        "y": -6,
+        "radius": 2,
+        "speed": 1.2
+      }
+    }
+  ]
+}

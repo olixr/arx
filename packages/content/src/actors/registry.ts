@@ -239,6 +239,9 @@ import courierPip from './defs/courier_pip.json';
 import valeWatch from './defs/vale_watch.json';
 import valePilgrim from './defs/vale_pilgrim.json';
 import valeCarter from './defs/vale_carter.json';
+// THE SAND AND THE ROAR (docs/arena-plan.md Phase 5) — the two throats.
+import ringmasterCato from './defs/ringmaster_cato.json';
+import ringmasterSerle from './defs/ringmaster_serle.json';
 
 const SOURCES: readonly unknown[] = [
   reeveHalla,
@@ -464,6 +467,8 @@ const SOURCES: readonly unknown[] = [
   valeWatch,
   valePilgrim,
   valeCarter,
+  ringmasterCato,
+  ringmasterSerle,
 ];
 
 function buildRegistry(): ReadonlyMap<string, NpcActorDef> {

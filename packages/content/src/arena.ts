@@ -152,18 +152,25 @@ export interface ArenasDef {
  */
 export const ARENAS: ArenasDef = {
   venues: [
+    // Coordinates SEALED by Phase 5's builds (the fillEllipse cell
+    // math is the truth): Silverfall local (60,218) rx8/ry5.5 on the
+    // Fairstead, Amberford local (135,97) rx4.5/ry3.5 in the working
+    // country south of Perl's orchard. World = local + zone origin.
     {
       id: 'grand_ring',
       name: 'The Grand Ring',
       zone: 'silverfall',
-      pit: { x: -471, y: -129, rx: 9, ry: 6 },
+      pit: { x: -476, y: -126, rx: 8, ry: 5.5 },
       gates: [
-        { x: -472, y: -122 },
-        { x: -471, y: -122 },
-        { x: -470, y: -122 },
+        { x: -477, y: -132 },
+        { x: -476, y: -132 },
+        { x: -475, y: -132 },
+        { x: -477, y: -120 },
+        { x: -476, y: -120 },
+        { x: -475, y: -120 },
       ],
-      exit: { x: -471, y: -119 },
-      chest: { x: -471, y: -132 },
+      exit: { x: -476, y: -117 },
+      chest: { x: -476, y: -129 },
       master: 'ringmaster_cato',
       levelBand: [15, 40],
     },
@@ -171,13 +178,13 @@ export const ARENAS: ArenasDef = {
       id: 'ford_ring',
       name: 'The Ford Ring',
       zone: 'amberford',
-      pit: { x: 512, y: 44, rx: 5.5, ry: 4 },
+      pit: { x: 583, y: 46, rx: 4.5, ry: 3.5 },
       gates: [
-        { x: 512, y: 48 },
-        { x: 513, y: 48 },
+        { x: 583, y: 42 },
+        { x: 583, y: 50 },
       ],
-      exit: { x: 512, y: 50 },
-      chest: { x: 512, y: 41 },
+      exit: { x: 583, y: 54 },
+      chest: { x: 583, y: 44 },
       master: 'ringmaster_serle',
       levelBand: [3, 16],
     },

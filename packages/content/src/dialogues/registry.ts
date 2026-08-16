@@ -468,6 +468,9 @@ import torvaldAxles from './defs/torvald_axles.json';
 import maeveLanterns from './defs/maeve_lanterns.json';
 import aldousTerrace from './defs/aldous_terrace.json';
 import briggaFarShore from './defs/brigga_far_shore.json';
+// THE SAND AND THE ROAR (docs/arena-plan.md Phase 5) — the counters.
+import catoRing from './defs/cato_ring.json';
+import serleRing from './defs/serle_ring.json';
 import holmReeds from './defs/holm_reeds.json';
 import unaSteam from './defs/una_steam.json';
 import sorenCharter from './defs/soren_charter.json';
@@ -927,6 +930,8 @@ const SOURCES: readonly unknown[] = [
   qTheFifteenthNameOffer,
   torviTheFifteenth,
   qTheFifteenthNameTurnin,
+  catoRing,
+  serleRing,
 ];
 
 function buildRegistry(): ReadonlyMap<string, DialogueDef> {

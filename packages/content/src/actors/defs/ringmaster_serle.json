@@ -1,0 +1,32 @@
+{
+  "id": "ringmaster_serle",
+  "name": "Old Serle",
+  "title": "The Ford Ring",
+  "examine": "Toll War leather, kept oiled. He watches your footwork before your face, and his verdicts are kind the way cold water is kind.",
+  "disposition": "friendly",
+  "model": {
+    "kind": "humanoid",
+    "look": {
+      "skin": 3,
+      "hair": 3,
+      "hairColor": 5,
+      "beard": 6,
+      "eyes": 1,
+      "ears": 1,
+      "feature": 1,
+      "shirt": 2,
+      "pants": 3
+    }
+  },
+  "inventory": [
+    {
+      "item": "coins",
+      "qty": 120
+    }
+  ],
+  "lines": [
+    "Feet first. Everything else follows the feet.",
+    "The pen has held worse than what you'll draw. Usually.",
+    "Watching is learning. Paying is learning faster."
+  ]
+}

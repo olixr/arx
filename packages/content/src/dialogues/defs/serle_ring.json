@@ -1,0 +1,63 @@
+{
+  "id": "serle_ring",
+  "start": "hub",
+  "bindings": [
+    {
+      "kind": "actor",
+      "target": "ringmaster_serle"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "serle_ring__hub",
+      "text": "The Ford Ring. Small sand, small fees, honest lessons. Speak up.",
+      "choices": [
+        {
+          "text": "What is this place?",
+          "next": "what"
+        },
+        {
+          "text": "Any advice?",
+          "next": "advice"
+        },
+        {
+          "text": "Show me the board.",
+          "next": "board"
+        },
+        {
+          "text": "Another time.",
+          "next": "bye"
+        }
+      ]
+    },
+    {
+      "id": "what",
+      "voice": "serle_ring__what",
+      "text": "A pen with benches. You pay, the gate drops, something with teeth comes on until it stops. Good practice, small stakes. The big ring in the capital is for after you stop tripping.",
+      "next": "hub"
+    },
+    {
+      "id": "advice",
+      "voice": "serle_ring__advice",
+      "text": "Lose small the first time. Watch the far gate, not the crowd. Keep your feet, boars win low. And bring a friend, the pen takes pairs.",
+      "next": "hub"
+    },
+    {
+      "id": "board",
+      "voice": "serle_ring__board",
+      "text": "Board's here. Pick a card you can walk away from.",
+      "hooks": [
+        {
+          "kind": "arena",
+          "venue": "ford_ring"
+        }
+      ]
+    },
+    {
+      "id": "bye",
+      "voice": "serle_ring__bye",
+      "text": "The benches are free. Watching is learning too."
+    }
+  ]
+}
