@@ -816,32 +816,37 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
     tier: 6,
   },
   /**
-   * ALDAREN'S GATE — the gate of the capital ITSELF, carried, and the
-   * roster's CURATION STANDARD: three ideas, one per zone, nothing to
-   * decipher. THE ARCH — one gold frame standing off moonpale ashlar.
-   * THE VALE — through the opening, night, a crescent moon, and the
-   * one white fall pouring crown to threshold. THE CROWN — three bold
-   * gold points on a ringed circlet, the King's crimson jewel at the
-   * brow, standing clear above the plateau. The binding is cool steel
-   * so gold speaks exactly twice: the gate, and the king. Biggest
-   * plane in the game; you do not carry this shield, you hold the
-   * capital's door.
+   * ALDAREN'S GATE — the GATE OF THE SKY. In the north the aurora
+   * over Silverfall is called the sky's gate, and this is that sky,
+   * forged: a storm-steel monolith with the aurora BURNING THROUGH
+   * it — curtains of cold light hanging uneven down the dark, one
+   * white bolt torn crown to heel — under a crown of three leaning
+   * storm-blades with a live arc crawling between their tips, and
+   * forged spikes off both flanks. Three ideas, one per zone, per the
+   * curation standard: the dark steel, the sky in it, the charged
+   * crown over it. The biggest plane in the game, and the one shield
+   * that looks like weather.
    */
   aldarens_gate: {
     shape: 'falls',
     material: 'steel',
-    face: '#c9d2e4',
-    // The vale night inside the arch — the dark the fall pours out of.
-    faceAlt: '#28324f',
-    // The fall through the arch: a pale, as the rolls would read it.
-    field: 'pale',
-    // Cool steel binding: the gold belongs to the arch and the crown.
-    rim: '#8f9cb5',
-    device: 'crown',
-    deviceColor: '#e6c36a',
+    face: '#252b3d',
+    // The aurora's own light — the sky's tincture, not a paint.
+    faceAlt: '#5ce8c4',
+    rim: '#525d78',
+    // The bolt, in the rolls' nearest word.
+    device: 'star',
+    deviceColor: '#b8f4ff',
     studs: true,
+    spikes: true,
+    // Forged storm-steel spikes off both free edges — the monolith
+    // bares its teeth at the world on either side.
+    spikeAngles: [-0.45, 0.45, 2.69, 3.59],
+    spikeLen: 1.35,
+    spikeW: 0.1,
+    spikeColor: '#aab6cc',
     curve: 0.3,
-    strapColor: '#5a4a2a',
+    strapColor: '#3f3830',
     sig: 'falls',
     tier: 6,
   },
@@ -1032,10 +1037,10 @@ const OUTLINES: Record<ShieldShape, number[]> = {
     -0.45, -1, 0.45, -1, 0.9, -0.6, 0.9, 0.64, 0.6, 1, -0.6, 1,
     -0.9, 0.64, -0.9, -0.6,
   ],
-  // Aldaren's Gate: a monumental GATE — the crown plateau between two
-  // tower shoulders that step OUT past it, tower walls falling to a
-  // waist step, then the long taper to a threshold point. The crest
-  // crown mounts on the plateau; the towers carry their own finials.
+  // Aldaren's Gate: a MONOLITH — the crown plateau between two
+  // shoulder steps that jut OUT past it, walls falling to a waist
+  // step, then the long taper to a ground point. The storm-crown
+  // blades mount on the plateau; the flank spikes take the shoulders.
   falls: [
     -0.62, -1, 0.62, -1, 0.9, -0.84, 1.0, -0.58, 1.0, -0.08, 0.86, 0.06,
     0.86, 0.52, 0.55, 0.92, 0, 1.06, -0.55, 0.92, -0.86, 0.52, -0.86, 0.06,
@@ -2965,12 +2970,14 @@ function sigRiftward(
 }
 
 /**
- * ALDAREN'S GATE — the capital's door, face on, CURATED. Three flat
- * ideas and not one more: the moonpale ashlar (the plates), the arch
- * of vale night with its crescent moon, and the one white fall
- * pouring peak to threshold. The gold — the arch frame, the crown —
- * is all the raised passes'. Nothing on this face asks to be
- * deciphered; it reads whole at a glance and from across a field.
+ * ALDAREN'S GATE — the sky, forged. Two flat ideas on the dark steel
+ * and not one more: THE AURORA — five curtains of cold light hanging
+ * uneven down the face, each one deep under-shadow and one bright
+ * shaft, the way the sky's gate actually hangs — and THE BOLT, one
+ * white lightning strike torn crown to heel over them, three hard
+ * jags, a teal charge-halo under its whole length. The dark reads at
+ * any distance as storm steel; the light reads as WEATHER, not as
+ * paint; and nothing on this face asks to be deciphered.
  */
 function sigFalls(
   ctx: CanvasRenderingContext2D,
@@ -2979,37 +2986,54 @@ function sigFalls(
   litU: number,
 ): void {
   plates(ctx, st, litU);
-  // THE ARCH OPENING: a pointed arch of vale night — the darkest
-  // plane on the shield, and the fall only reads white against it.
-  const night = st.faceAlt ?? '#28324f';
-  poly(ctx, night, [0, -0.68, 0.5, -0.24, 0.5, 0.9, -0.5, 0.9, -0.5, -0.24]);
-  // The opening's one depth cue: the off-sun jamb falls deeper.
-  poly(ctx, shade(night, -14), [
-    -litU * 0.5, -0.24, -litU * 0.5, 0.9, -litU * 0.22, 0.9, -litU * 0.22, -0.44,
-  ]);
-  // THE MOON: one bold eight-cut disc rising BEHIND the fall — the
-  // water's dark edge cuts it, and the half that shows is the picture:
-  // this is the door the moon rises behind. One shape, no deciphering.
-  const moonU = -0.2;
-  const moonT = -0.34;
-  const eightCut = (cu: number, ct: number, r: number): number[] => {
-    const p: number[] = [];
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
-      p.push(cu + Math.cos(a) * r, ct + Math.sin(a) * r);
-    }
-    return p;
+  const teal = st.faceAlt ?? '#5ce8c4';
+  const ice = '#b8f4ff';
+  // THE AURORA CURTAINS: uneven lengths, angled hems, alternating
+  // cold tones — a curtain is one deep under-poly and one shaft.
+  // The curtains PART around a dark center corridor — the aurora
+  // opening for the strike. Four curtains, inner pair long and
+  // hot-edged toward the corridor, outer pair short and cooler; the
+  // slab's own dark stays the majority tone, because the storm reads
+  // from the dark, not from the light.
+  const curtains: Array<[number, number, number, string]> = [
+    [-0.74, 0.1, -0.24, teal],
+    [-0.4, 0.13, 0.6, ice],
+    [0.4, 0.13, 0.48, ice],
+    [0.74, 0.1, -0.34, teal],
+  ];
+  for (const [u, w, t1, tone] of curtains) {
+    poly(ctx, shade(tone, -38), [
+      u - w - 0.045, -1.2, u + w + 0.045, -1.2, u + w * 0.8 + 0.045, t1 + 0.16, u - w * 0.8 - 0.045, t1 + 0.02,
+    ]);
+    poly(ctx, tone, [u - w, -1.2, u + w, -1.2, u + w * 0.8, t1 + 0.1, u - w * 0.8, t1]);
+  }
+  // No hot hems: white belongs to the BOLT alone. One element owns
+  // each brightness on this shield, or none of them read.
+  // THE BOLT: one strike, three jags, crown to heel. The halo first —
+  // the charge the air carries around a thing this bright.
+  const seg = (
+    x0: number, t0: number, x1: number, t1: number, w2: number, tone: string,
+  ): void => {
+    const dx = x1 - x0;
+    const dt = t1 - t0;
+    const L = Math.hypot(dx, dt) || 1;
+    const nx = (-dt / L) * w2;
+    const nt = (dx / L) * w2;
+    poly(ctx, tone, [x0 + nx, t0 + nt, x1 + nx, t1 + nt, x1 - nx, t1 - nt, x0 - nx, t0 - nt]);
   };
-  poly(ctx, '#eef4ff', eightCut(moonU, moonT, 0.21));
-  // THE FALL: one cascade, peak to threshold, widening as it spills.
-  // One bright edge on the sun side — moving water carries one light.
-  const water = '#eef4fc';
-  const bright = '#ffffff';
-  poly(ctx, SEAM, [-0.19, -0.58, 0.19, -0.58, 0.26, 1.08, -0.26, 1.08]);
-  poly(ctx, water, [-0.15, -0.56, 0.15, -0.56, 0.22, 1.06, -0.22, 1.06]);
-  poly(ctx, bright, [
-    litU * 0.15, -0.56, litU * 0.08, -0.56, litU * 0.13, 1.06, litU * 0.22, 1.06,
-  ]);
+  const jags: Array<[number, number, number, number]> = [
+    [0.28, -1.12, -0.26, -0.38],
+    [-0.26, -0.38, 0.24, -0.24],
+    [0.24, -0.24, -0.22, 0.48],
+    [-0.22, 0.48, 0.12, 0.56],
+    [0.12, 0.56, -0.04, 1.02],
+  ];
+  for (const [x0, t0, x1, t1] of jags) seg(x0, t0, x1, t1, 0.15, shade(teal, -16));
+  for (const [x0, t0, x1, t1] of jags) seg(x0, t0, x1, t1, 0.07, '#ffffff');
+  // The strike's hard elbows: a bright barb thrown off each turn.
+  poly(ctx, '#ffffff', [-0.26, -0.38, -0.06, -0.46, -0.14, -0.26]);
+  poly(ctx, '#ffffff', [0.24, -0.24, 0.04, -0.32, 0.12, -0.12]);
+  poly(ctx, '#ffffff', [-0.22, 0.48, -0.02, 0.4, -0.1, 0.6]);
 }
 
 /** The heraldic charge, cut in flat planes with one lit facet. */
@@ -4211,30 +4235,9 @@ function relRiftward(rc: ReliefCtx, st: ShieldStyle): void {
   // The standing shard is THE CREST TIER's — it leans, and it is tall.
 }
 
-/**
- * ALDAREN'S GATE — the gate's one piece of raised metal on the face:
- * the pointed arch as a GOLD FRAME standing off the ashlar. One
- * U-shaped prism (outer arch down both jambs, back up the inner),
- * ringed as the single object it is, with one lit rake where the sun
- * catches the slope. The crown rides THE CREST TIER; nothing else on
- * this face is raised, because a curated door needs nothing else.
- */
-function relFalls(rc: ReliefCtx, st: ShieldStyle): void {
-  const gold = st.deviceColor ?? '#e6c36a';
-  const frame = [
-    -0.64, 0.92, -0.64, -0.28, 0, -0.86, 0.64, -0.28, 0.64, 0.92,
-    0.5, 0.92, 0.5, -0.24, 0, -0.68, -0.5, -0.24, -0.5, 0.92,
-  ];
-  prism(rc, frame, 0, 0.4, gold, { wallDark: shade(gold, -36), outline: true });
-  polyAt(
-    rc,
-    rc.litU > 0
-      ? [0, -0.86, 0.64, -0.28, 0.56, -0.26, 0, -0.78]
-      : [0, -0.86, -0.64, -0.28, -0.56, -0.26, 0, -0.78],
-    0.4,
-    shade(gold, 28),
-  );
-}
+// ALDAREN'S GATE carries no furniture: the face is the sky and the
+// crown is the crest's — a curated storm needs nothing riveted to it.
+// (Its RELIEFS entry is gone with the gold arch it used to raise.)
 
 // -------------------------------------------------- the crest solids
 
@@ -4319,33 +4322,51 @@ function crestRiftward(rc: ReliefCtx): void {
 }
 
 /**
- * ALDAREN'S GATE — THE CROWN, mounted. Three bold gold points on a
- * ringed circlet standing clear above the gate's plateau, the King's
- * crimson jewel set at the brow — the only warm blood on the rung.
- * Face-on it crowns the silhouette; turned, it protrudes with its
- * whole height; from behind, the gate hides its king. Three points,
- * one band, one stone: a crown you never have to decipher.
+ * ALDAREN'S GATE — THE STORM CROWN. Three storm-steel blades standing
+ * off the plateau, the center one tallest, the outer pair LEANING the
+ * way lightning rods spread — every blade its own ringed solid — and
+ * between their tips THE ARC: a live charge crawling point to point,
+ * teal halo under a white wire, drawn in the crest's free air where
+ * no clip can touch it. Face-on the blades crown the silhouette;
+ * turned, the arc rides ahead of the leading edge like the shield is
+ * about to answer something.
  */
 function crestFalls(rc: ReliefCtx, st: ShieldStyle): void {
-  const gold = st.deviceColor ?? '#e6c36a';
-  // The circlet: WIDE, and seated half above the plateau's own edge —
-  // a crown stands ON a gate, it does not hide inside its binding.
-  prism(rc, [-0.58, -1.18, 0.58, -1.18, 0.58, -0.86, -0.58, -0.86], 0, 0.65, gold, {
-    wallDark: shade(gold, -38),
-    outline: true,
-  });
-  polyAt(rc, [-0.58, -1.18, 0.58, -1.18, 0.58, -1.1, -0.58, -1.1], 0.65, shade(gold, 28));
-  // THREE points — a crown in this game's own grammar is three bold
-  // points, not a comb of small ones. Center tallest; the outer pair
-  // leans the way a worn crown spreads.
-  pyramid(rc, 0, -1.08, 0.21, 0.14, 0.65, 2.9, shade(gold, 30), { outline: true });
-  pyramid(rc, -0.42, -1.08, 0.16, 0.12, 0.65, 2.0, gold, { outline: true, du: -0.2 });
-  pyramid(rc, 0.42, -1.08, 0.16, 0.12, 0.65, 2.0, gold, { outline: true, du: 0.2 });
-  // The King's jewel, set LAST at the circlet's brow — a seam seat,
-  // the crimson stone, one lit half: the only warm blood on the rung.
-  polyAt(rc, [0, -1.14, 0.15, -0.99, 0, -0.84, -0.15, -0.99], 0.65, SEAM);
-  polyAt(rc, [0, -1.11, 0.12, -0.99, 0, -0.87, -0.12, -0.99], 0.65, '#a32638');
-  polyAt(rc, [0, -1.11, 0, -0.87, -0.12, -0.99], 0.65, '#c94b56');
+  const { ctx } = rc;
+  // Pale storm steel, kin to the flank spikes — the crown must read
+  // against both the dark slab and the dark of the world behind it.
+  const steel = '#aab6cc';
+  pyramid(rc, 0, -1.0, 0.2, 0.13, 0, 2.7, steel, { outline: true });
+  pyramid(rc, -0.42, -0.98, 0.15, 0.11, 0, 1.9, shade(steel, -14), { outline: true, du: -0.3 });
+  pyramid(rc, 0.42, -0.98, 0.15, 0.11, 0, 1.9, shade(steel, -14), { outline: true, du: 0.3 });
+  // THE ARC: the charge leaping blade to blade — a fine jagged wire
+  // through the air between the tips, teal under white.
+  const teal = st.faceAlt ?? '#5ce8c4';
+  const pts: Array<[number, number, number]> = [
+    [-0.6, -0.98, 1.3],
+    [-0.36, -0.98, 1.7],
+    [-0.12, -0.98, 1.5],
+    [0.04, -0.98, 2.2],
+    [0.28, -0.98, 1.55],
+    [0.56, -0.98, 1.75],
+  ];
+  const trace = (w: number, tone: string): void => {
+    ctx.strokeStyle = tone;
+    ctx.lineWidth = w;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let i = 0; i < pts.length; i++) {
+      const [u, t, h] = pts[i]!;
+      const x = rPx(rc, u, h);
+      const y = rPy(rc, u, t, h);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  };
+  trace(rc.ol * 1.1, teal);
+  trace(rc.ol * 0.5, '#ffffff');
 }
 
 /**
@@ -4385,7 +4406,6 @@ const RELIEFS: Record<string, ReliefPainter> = {
   cindermaw: relCindermaw,
   everwood: relEverwood,
   riftward: relRiftward,
-  falls: relFalls,
 };
 
 /**
