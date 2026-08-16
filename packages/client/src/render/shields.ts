@@ -558,10 +558,11 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
     deviceColor: '#8e2f2c',
     studs: true,
     spikes: true,
-    // The free edge bears the teeth: +u is the outer side.
+    // The free edge bears the teeth: +u is the outer side. LONG —
+    // these are the line's answer, not trim.
     spikeAngles: [-0.5, 0, 0.5],
-    spikeLen: 1.26,
-    spikeW: 0.08,
+    spikeLen: 1.42,
+    spikeW: 0.1,
     curve: 0.26,
     strapColor: '#3f3830',
     sig: 'doorwall',
@@ -612,10 +613,10 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
     spikes: true,
     // The ram's own horns, rising off the arch either side of the
     // skull — bone breaking the silhouette, the way the fell marks
-    // its gates.
+    // its gates. Sized to the MOUNTED skull, not to a trinket.
     spikeAngles: [-2.03, -1.11],
-    spikeLen: 1.3,
-    spikeW: 0.11,
+    spikeLen: 1.48,
+    spikeW: 0.14,
     spikeColor: '#ddd4bc',
     planks: 3,
     curve: 0.3,
@@ -1707,27 +1708,32 @@ export function drawShield(
   // the face with real height the way the umbo always was. Painted
   // between the rim and the boss so a proud charge can still duck
   // under a prouder stone.
-  if (!hurt && !fr.seeBack && fr.open >= 0.16) {
+  // THE FURNITURE TIER: raised surface work — plates, bands, lips,
+  // worked charges. Furniture obeys the face's own grazing law (past
+  // open 0.24 the face is a sliver and anything on it collapses into
+  // floating sheets — the steep-yaw verdict), and it is clipped to
+  // THE SWEPT SILHOUETTE: the union of the outline ring at the face
+  // and at the furniture ceiling, which is the volume the shield
+  // actually occupies through its own thickness. Furniture may stand
+  // off the plane; it can never leave the shield.
+  if (!hurt && !fr.seeBack && fr.open >= 0.24) {
     const relief = st.sig ? RELIEFS[st.sig] : undefined;
     if (relief) {
       const litU2 = hxU >= 0 ? -1 : 1;
-      // THE SILHOUETTE KEEPS ITS WORD: relief is FACE furniture — it
-      // may stand off the plane, never off the shield. Clipped to the
-      // outline (a hair generous, so a lip can kiss the binding); the
-      // pieces that honestly break the silhouette are the spike
-      // plan's, and they paint outside this clip on purpose.
       ctx.save();
       ctx.beginPath();
-      const grow = 1.05;
-      for (let i = 0; i < n; i++) {
-        const u = outline[i * 2]! * grow;
-        const t = outline[i * 2 + 1]! * grow;
-        const x = u * hxU + nxU * (crown + 1.2);
-        const y = u * hyU + t * fr.hh + nyU * (crown + 0.5);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+      const grow = 1.03;
+      for (const h of [0, 0.95]) {
+        for (let i = 0; i < n; i++) {
+          const u = outline[i * 2]! * grow;
+          const t = outline[i * 2 + 1]! * grow;
+          const x = u * hxU + nxU * (crown + h);
+          const y = u * hyU + t * fr.hh + nyU * (crown + h);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
       }
-      ctx.closePath();
       ctx.clip();
       relief({ ctx, fr, hxU, hyU, nxU, nyU, crown, litU: litU2 }, st);
       ctx.restore();
@@ -1735,6 +1741,20 @@ export function drawShield(
   }
   if (st.boss && !fr.seeBack) drawBoss(ctx, st, fr, hxU, hyU, nxU, nyU, crown);
   if (st.spikes && !hurt) drawSpikes(ctx, st, fr, outline, hxU, hyU, nxU, nyU, crown);
+  // THE CREST TIER: the free-standing solids — face spires, mounted
+  // bone, crown finials. A crest is a 3D object that happens to be
+  // bolted to a 2.5D plane: face-on its apex foreshortens toward the
+  // eye, turned it PROTRUDES with its whole length, and near edge-on
+  // it is still there, breaking the slab's profile — which is the
+  // entire point of a spiked shield. No clip, no grazing gate; only
+  // the shield's back hides it.
+  if (!hurt && !fr.seeBack) {
+    const crest = st.sig ? CRESTS[st.sig] : undefined;
+    if (crest) {
+      const litU2 = hxU >= 0 ? -1 : 1;
+      crest({ ctx, fr, hxU, hyU, nxU, nyU, crown, litU: litU2 }, st);
+    }
+  }
   if (st.arx && !hurt) drawArxFace(ctx, st.arx, fr, hxU, hyU, nxU, nyU, crown, nowMs);
   ctx.restore();
 }
@@ -3592,7 +3612,9 @@ function pyramid(
     [u, t + rt],
     [u - ru, t],
   ];
-  reliefShadow(rc, [u, t - rt, u + ru, t, u, t + rt, u - ru, t], h1);
+  // Tall spires clamp their cast shadow — a six-inch spike does not
+  // drag a six-inch stain down the boards.
+  reliefShadow(rc, [u, t - rt, u + ru, t, u, t + rt, u - ru, t], Math.min(h1, 0.9));
   const ax = rPx(rc, u, h1);
   const ay = rPy(rc, u, t, h1);
   // Facet order by screen height of the base-edge midpoint: the
@@ -3683,10 +3705,7 @@ function relDoorwall(rc: ReliefCtx, st: ShieldStyle): void {
   const red = st.deviceColor ?? '#8e2f2c';
   prism(rc, [-1.04, -0.72, 1.04, -0.72, 1.04, -0.46, -1.04, -0.46], 0, 0.3, red);
   polyAt(rc, [-1.04, -0.72, 1.04, -0.72, 1.04, -0.65, -1.04, -0.65], 0.3, shade(red, 24));
-  const iron = shade(st.face, 26);
-  for (const u of [-0.5, 0.5]) {
-    for (const t of [-0.14, 0.32, 0.78]) pyramid(rc, u, t, 0.155, 0.19, 0, 0.6, iron);
-  }
+  // The six spikes are THE CREST TIER's — real solids, no clip.
 }
 
 /**
@@ -3716,32 +3735,14 @@ function relPalisade(rc: ReliefCtx, st: ShieldStyle): void {
  * horns were already real — the spike plan carries them.
  */
 function relFellhorn(rc: ReliefCtx, st: ShieldStyle): void {
-  const bone = st.deviceColor ?? '#ddd4bc';
-  const boneDk = shade(bone, -24);
-  // The brow dome.
-  prism(
-    rc,
-    [-0.31, -0.92, 0.31, -0.92, 0.36, -0.49, 0.16, -0.17, -0.16, -0.17, -0.36, -0.49],
-    0,
-    0.85,
-    bone,
-    { wallDark: shade(bone, -40), wallLit: boneDk },
-  );
-  // The brow shelf and the eye sockets, cut into the dome's top.
-  polyAt(rc, [-0.34, -0.52, 0.34, -0.52, 0.16, -0.17, -0.16, -0.17], 0.85, boneDk);
-  polyAt(rc, [-0.24, -0.56, -0.06, -0.56, -0.13, -0.34], 0.85, SEAM);
-  polyAt(rc, [0.06, -0.56, 0.24, -0.56, 0.13, -0.34], 0.85, SEAM);
-  // The muzzle, stepping down off the brow at half its height.
-  prism(rc, [-0.13, -0.24, 0.13, -0.24, 0.08, 0.04, -0.08, 0.04], 0, 0.5, bone, {
-    wallDark: shade(bone, -36),
-  });
-  polyAt(rc, [-0.025, -0.16, 0.025, -0.16, 0.018, -0.02, -0.018, -0.02], 0.5, boneDk);
-  // The hinge scrolls: rolled iron, standing proud where the jambs were.
+  // The skull is THE CREST TIER's now — a mounted solid, no clip.
+  // The furniture keeps the ironwork: the hinge scrolls, standing
+  // proud where the jambs were.
   const iron = st.rim;
   for (const sx of [-1, 1]) {
     prism(
       rc,
-      [sx * 0.24, -0.02, sx * 0.4, -0.02, sx * 0.4, 0.14, sx * 0.24, 0.14],
+      [sx * 0.28, -0.02, sx * 0.46, -0.02, sx * 0.46, 0.14, sx * 0.28, 0.14],
       0,
       0.45,
       shade(iron, 12),
@@ -3960,16 +3961,7 @@ function relRiftward(rc: ReliefCtx, st: ShieldStyle): void {
   pyramid(rc, 0.47, -0.79, 0.075, 0.085, 0.4, 0.72, shade(st.rim, 40));
   pyramid(rc, -0.47, 0.57, 0.075, 0.085, 0.4, 0.72, shade(st.rim, 40));
   pyramid(rc, 0.47, 0.57, 0.075, 0.085, 0.4, 0.72, shade(st.rim, 40));
-  // One shard of glass stands INTO the frame's opening, catching the
-  // light above its own pane — the piece that would not sit flush.
-  const { ctx } = rc;
-  ctx.fillStyle = '#cbb4ff';
-  ctx.beginPath();
-  ctx.moveTo(rPx(rc, -0.12, 0), rPy(rc, -0.12, 0.1, 0));
-  ctx.lineTo(rPx(rc, 0.05, 0.55), rPy(rc, 0.05, -0.28, 0.55));
-  ctx.lineTo(rPx(rc, 0.16, 0), rPy(rc, 0.16, 0.02, 0));
-  ctx.closePath();
-  ctx.fill();
+  // The standing shard is THE CREST TIER's — it leans, and it is tall.
 }
 
 /**
@@ -3985,8 +3977,7 @@ function relFalls(rc: ReliefCtx, st: ShieldStyle): void {
     wallDark: shade(gold, -36),
   });
   polyAt(rc, [-1.06, -1.02, 1.06, -1.02, 1.06, -0.93, -1.06, -0.93], 0.36, shade(gold, 26));
-  pyramid(rc, -0.88, -0.8, 0.08, 0.09, 0.36, 0.62, shade(gold, 30));
-  pyramid(rc, 0.88, -0.8, 0.08, 0.09, 0.36, 0.62, shade(gold, 30));
+  // The chief's finial studs ride THE CREST TIER, off the raised plate.
   const water = '#eef4fc';
   for (const [u, w] of [
     [-0.55, 0.17],
@@ -4007,6 +3998,99 @@ function relFalls(rc: ReliefCtx, st: ShieldStyle): void {
     );
   }
 }
+
+// -------------------------------------------------- the crest solids
+
+/**
+ * LEGION DOORWALL — the six spikes, at LENGTH: pyramidal spires two
+ * and a half shell-depths long, rising off the slab where the flat
+ * pass keeps their seats. Face-on they foreshorten to bosses aimed at
+ * the eye; a quarter turn and they protrude with their whole reach;
+ * edge-on they are the profile of a spiked door, which is the entire
+ * argument for carrying one.
+ */
+function crestDoorwall(rc: ReliefCtx, st: ShieldStyle): void {
+  const iron = shade(st.face, 30);
+  for (const t of [-0.14, 0.32, 0.78]) {
+    for (const u of [-0.5, 0.5]) pyramid(rc, u, t, 0.16, 0.2, 0, 2.4, iron);
+  }
+}
+
+/**
+ * FELLHORN GATE — the skull, MOUNTED: half again the old size and a
+ * full shell-depth proud. Brow dome with its walls and cast shadow,
+ * the shelf and sockets cut into its top plate, the muzzle stepping
+ * down and forward at its own height. It reads as bone bolted to
+ * boards from every angle the boards themselves read at all.
+ */
+function crestFellhorn(rc: ReliefCtx, st: ShieldStyle): void {
+  const bone = st.deviceColor ?? '#ddd4bc';
+  const boneDk = shade(bone, -24);
+  prism(
+    rc,
+    [-0.44, -1.0, 0.44, -1.0, 0.5, -0.42, 0.22, -0.02, -0.22, -0.02, -0.5, -0.42],
+    0,
+    1.15,
+    bone,
+    { wallDark: shade(bone, -42), wallLit: boneDk },
+  );
+  polyAt(rc, [-0.47, -0.46, 0.47, -0.46, 0.22, -0.02, -0.22, -0.02], 1.15, boneDk);
+  polyAt(rc, [-0.34, -0.54, -0.08, -0.54, -0.19, -0.24], 1.15, SEAM);
+  polyAt(rc, [0.08, -0.54, 0.34, -0.54, 0.19, -0.24], 1.15, SEAM);
+  // The muzzle: forward of the brow, lower than it, its own solid.
+  prism(rc, [-0.18, -0.1, 0.18, -0.1, 0.11, 0.3, -0.11, 0.3], 0, 0.72, bone, {
+    wallDark: shade(bone, -36),
+  });
+  polyAt(rc, [-0.035, -0.02, 0.035, -0.02, 0.026, 0.2, -0.026, 0.2], 0.72, boneDk);
+}
+
+/**
+ * GATEFALL BULWARK — the shard that would not sit flush, at its true
+ * size: a leaning crystal spire out of the pane, two facets to an
+ * offset apex, catching more light than the glass it broke from.
+ */
+function crestRiftward(rc: ReliefCtx): void {
+  const { ctx } = rc;
+  const ax = rPx(rc, 0.16, 1.35);
+  const ay = rPy(rc, 0.16, -0.34, 1.35);
+  const e1x = rPx(rc, -0.14, 0);
+  const e1y = rPy(rc, -0.14, 0.12, 0);
+  const e2x = rPx(rc, 0.2, 0);
+  const e2y = rPy(rc, 0.2, 0.02, 0);
+  const mBase = rPy(rc, 0.03, 0.07, 0);
+  reliefShadow(rc, [-0.14, 0.12, 0.2, 0.02, 0.24, 0.18, -0.1, 0.26], 0.7);
+  ctx.fillStyle = e1y < e2y ? '#e2d6ff' : '#a985ff';
+  ctx.beginPath();
+  ctx.moveTo(e1x, e1y);
+  ctx.lineTo(ax, ay);
+  ctx.lineTo(rPx(rc, 0.03, 0), mBase);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = e2y <= e1y ? '#e2d6ff' : '#8a6ade';
+  ctx.beginPath();
+  ctx.moveTo(e2x, e2y);
+  ctx.lineTo(ax, ay);
+  ctx.lineTo(rPx(rc, 0.03, 0), mBase);
+  ctx.closePath();
+  ctx.fill();
+}
+
+/**
+ * ALDAREN'S GATE — the chief's twin finial studs, standing off the
+ * raised gold plate itself: small spires, royal height.
+ */
+function crestFalls(rc: ReliefCtx, st: ShieldStyle): void {
+  const gold = st.deviceColor ?? '#e6c36a';
+  pyramid(rc, -0.88, -0.8, 0.085, 0.1, 0.36, 1.0, shade(gold, 30));
+  pyramid(rc, 0.88, -0.8, 0.085, 0.1, 0.36, 1.0, shade(gold, 30));
+}
+
+const CRESTS: Record<string, ReliefPainter> = {
+  doorwall: crestDoorwall,
+  fellhorn: crestFellhorn,
+  riftward: crestRiftward,
+  falls: crestFalls,
+};
 
 const RELIEFS: Record<string, ReliefPainter> = {
   breacher: relBreacher,
