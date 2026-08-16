@@ -522,6 +522,15 @@ const HEDGE_LIT = '#4f8f44';
 const HEDGE_WOOD = '#5a4226';
 const HEDGE_BLOOM = '#b04a72';
 const HEDGE_BLOOM_LIT = '#ef9ec0';
+// THE GARDEN DYES: the human towns' curated bloom triads — every
+// cottage planter, box, and barrel deals ONE of these three dye-house
+// palettes by world hash, so a street of planters varies but never
+// clashes (madder/weld/chalk, woad/chalk/rose, rose/cream/violet).
+const GARDEN_DYES: ReadonlyArray<readonly [string, string, string]> = [
+  ['#c95a74', '#d8c454', '#f0ede4'],
+  ['#8f9ed6', '#f0ede4', '#d977a8'],
+  ['#d977a8', '#e8dcc4', '#8a7aa8'],
+];
 // THE FAIR HOUSE FURNISHED: the elven material trinity. Silverbark
 // timber (pale and cool — never the camp's mud), mithril (the ore's
 // canonical sky-blue #7fa8d9 for veins and devices, a greyer body
@@ -22413,76 +22422,161 @@ export class Renderer {
             // the gust at cadence rate — a garden tree, not grass.
             const wind = windScalarAt(tx + 0.5, ty + 0.5, tSec);
             const lean = wind * 0.032 * s;
-            // The stem: turned garden wood, a lit west arris.
-            ctx.fillStyle = HEDGE_WOOD;
-            ctx.fillRect(p.x - s * 0.035, baseY - s * 0.34, s * 0.07, s * 0.34);
-            ctx.fillStyle = shade(HEDGE_WOOD, 14);
-            ctx.fillRect(p.x - s * 0.035, baseY - s * 0.34, s * 0.024, s * 0.34);
-            if (spire) {
-              // THE SPIRE: three clipped tiers shrinking to a tuft
-              // finial — each tier rolls dark-to-lit and shows the
-              // bird's eye its shoulder.
-              const tiers: ReadonlyArray<readonly [number, number, number]> = [
-                [0.62, 0.3, 0],
-                [0.98, 0.24, 1],
-                [1.28, 0.17, 2],
-              ];
-              for (const [hgt, r, k] of tiers) {
-                const cx2 = p.x + lean * (0.4 + k * 0.3);
-                const cy = baseY - hgt * s;
-                const cr = r * s;
-                ctx.fillStyle = HEDGE_DARK;
-                ctx.beginPath();
-                facetBlob(ctx, cx2 + cr * 0.12, cy + cr * 0.16, cr, h ^ (k * 0x2f), 7, 0.9);
-                ctx.fill();
-                ctx.fillStyle = HEDGE_LEAF;
-                ctx.beginPath();
-                facetBlob(ctx, cx2, cy, cr * 0.94, h ^ (k * 0x55), 7, 0.9);
-                ctx.fill();
-                ctx.fillStyle = shade(HEDGE_LIT, 12);
-                ctx.beginPath();
-                facetBlob(ctx, cx2 - cr * 0.24, cy - cr * 0.3, cr * 0.46, h ^ (k * 0x71), 6, 0.9);
-                ctx.fill();
-              }
-              // The finial tuft catches the most sky.
-              ctx.fillStyle = shade(HEDGE_LIT, 22);
+            // THE TURNED VOLUME: one fused silhouette, three light
+            // bands CLIPPED inside it with BOWED boundaries — the
+            // flat facet-stamp draft read as a sticker at street
+            // zoom (the user's own screenshot), because a sphere is
+            // sold by its band curvature, never by its outline.
+            const mass = (mx: number, my: number, r: number, sq: number, seed: number) => {
+              const ry = r * sq;
+              ctx.save();
               ctx.beginPath();
-              facetBlob(ctx, p.x + lean * 1.4, baseY - 1.5 * s, s * 0.075, h ^ 0x1b, 6, 0.85);
-              ctx.fill();
-            } else {
-              // THE BALL: one clipped sphere — dark underside, mid
-              // body, lit crown facet high to the west (the sun the
-              // whole world agrees on).
-              const cx2 = p.x + lean * 0.7;
-              const cy = baseY - 0.78 * s;
-              const cr = s * 0.4;
+              facetBlob(ctx, mx, my, r, seed, 10, sq, -Math.PI / 2 + ((seed >>> 5) & 7) * 0.08);
+              ctx.clip();
+              ctx.fillStyle = HEDGE_LEAF;
+              ctx.fillRect(mx - r * 1.25, my - ry * 1.3, r * 2.5, ry * 2.6);
+              // The shaded seat hugs the belly and rises east.
               ctx.fillStyle = HEDGE_DARK;
               ctx.beginPath();
-              facetBlob(ctx, cx2 + cr * 0.1, cy + cr * 0.16, cr, h ^ 0x2f, 8, 0.92);
+              ctx.moveTo(mx - r * 1.15, my + ry * 0.34);
+              ctx.quadraticCurveTo(mx - r * 0.3, my + ry * 0.78, mx + r * 0.45, my + ry * 0.44);
+              ctx.quadraticCurveTo(mx + r * 1.0, my + ry * 0.18, mx + r * 1.2, my - ry * 0.1);
+              ctx.lineTo(mx + r * 1.25, my + ry * 1.35);
+              ctx.lineTo(mx - r * 1.25, my + ry * 1.35);
+              ctx.closePath();
               ctx.fill();
+              // The lit crown rolls high toward the west sun.
+              ctx.fillStyle = HEDGE_LIT;
+              ctx.beginPath();
+              ctx.moveTo(mx - r * 1.2, my - ry * 0.22);
+              ctx.quadraticCurveTo(mx - r * 0.5, my + ry * 0.1, mx + r * 0.12, my - ry * 0.2);
+              ctx.quadraticCurveTo(mx + r * 0.68, my - ry * 0.48, mx + r * 0.85, my - ry * 1.3);
+              ctx.lineTo(mx - r * 1.25, my - ry * 1.35);
+              ctx.closePath();
+              ctx.fill();
+              // One sunstruck cap — the mass TURNS.
+              ctx.fillStyle = shade(HEDGE_LIT, 16);
+              ctx.beginPath();
+              facetBlob(ctx, mx - r * 0.3, my - ry * 0.6, r * 0.4, seed ^ 0x71, 7, 0.72);
+              ctx.fill();
+              // Shear ticks dapple the band edges — hand-tended.
+              ctx.strokeStyle = shade(HEDGE_DARK, -6);
+              ctx.lineWidth = Math.max(1, s * 0.012);
+              for (let i = 0; i < 4; i++) {
+                const sd = hashCoords(137, tx * 8 + i, ty ^ (seed & 15));
+                const a = 0.4 + (((sd >>> 3) % 100) / 100) * 2.3;
+                const lx = mx + Math.cos(a) * r * (0.5 + ((sd >>> 8) & 3) * 0.11);
+                const ly = my + Math.sin(a) * ry * (0.5 + ((sd >>> 5) & 3) * 0.09);
+                ctx.beginPath();
+                ctx.moveTo(lx, ly);
+                ctx.lineTo(lx + Math.cos(a + 0.9) * s * 0.034, ly + Math.sin(a + 0.9) * s * 0.028);
+                ctx.stroke();
+              }
+              ctx.restore();
+            };
+            // The planting collar: turned earth mounded at the stem —
+            // the piece GROWS from its ground instead of resting on it.
+            ctx.fillStyle = '#4e3a28';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY, s * 0.16, syT * 0.09, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#3a2e20';
+            ctx.beginPath();
+            ctx.ellipse(p.x + s * 0.01, baseY - s * 0.008, s * 0.115, syT * 0.06, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The stem: tapered garden wood, root-flared, lit west.
+            const stemTop = baseY - s * 0.46;
+            ctx.fillStyle = HEDGE_WOOD;
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.06, baseY);
+            ctx.quadraticCurveTo(p.x - s * 0.034, baseY - s * 0.1, p.x - s * 0.028, stemTop);
+            ctx.lineTo(p.x + s * 0.028 + lean * 0.3, stemTop);
+            ctx.quadraticCurveTo(p.x + s * 0.034, baseY - s * 0.1, p.x + s * 0.06, baseY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(HEDGE_WOOD, 14);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.052, baseY);
+            ctx.quadraticCurveTo(p.x - s * 0.03, baseY - s * 0.1, p.x - s * 0.026, stemTop);
+            ctx.lineTo(p.x - s * 0.006, stemTop);
+            ctx.quadraticCurveTo(p.x - s * 0.014, baseY - s * 0.1, p.x - s * 0.024, baseY);
+            ctx.closePath();
+            ctx.fill();
+            if (spire) {
+              // THE SPIRE: four clipped plates shrinking to a FUSED
+              // tip. Every tier overlaps its neighbor — a detached
+              // finial mints its own ink ring in the outline pass
+              // and floats as a halo (shipped once; never again).
+              const spiral = ((h >>> 9) & 1) === 1;
+              const tiers: ReadonlyArray<readonly [number, number, number]> = [
+                [0.56, 0.3, 0.6],
+                [0.9, 0.245, 0.58],
+                [1.19, 0.185, 0.56],
+                [1.43, 0.125, 0.6],
+              ];
+              for (let k = 0; k < tiers.length; k++) {
+                const [hgt, r, sq] = tiers[k]!;
+                const sway = lean * (0.35 + k * 0.28);
+                const twist = spiral ? (k & 1 ? 1 : -1) * s * 0.026 : 0;
+                mass(p.x + sway + twist, baseY - hgt * s, r * s, sq, h ^ (k * 0x2f));
+              }
+              if (spiral) {
+                // The gardener's spiral groove: one shaded crease
+                // riding each waist, west-low to east-high.
+                ctx.strokeStyle = 'rgba(22, 44, 26, 0.55)';
+                ctx.lineWidth = Math.max(1, s * 0.016);
+                for (let k = 0; k < 3; k++) {
+                  const [hgt, r] = tiers[k]!;
+                  const wy = baseY - (hgt + 0.17) * s;
+                  const sway = lean * (0.35 + k * 0.28);
+                  ctx.beginPath();
+                  ctx.moveTo(p.x + sway - r * s * 0.7, wy + s * 0.03);
+                  ctx.quadraticCurveTo(p.x + sway, wy + s * 0.055, p.x + sway + r * s * 0.72, wy - s * 0.015);
+                  ctx.stroke();
+                }
+              }
+              // The tip: a clipped point SUNK into the top plate.
+              const tipX = p.x + lean * 1.45 + (spiral ? -s * 0.013 : 0);
               ctx.fillStyle = HEDGE_LEAF;
               ctx.beginPath();
-              facetBlob(ctx, cx2, cy, cr * 0.94, h, 8, 0.92);
+              ctx.moveTo(tipX - s * 0.065, baseY - 1.44 * s);
+              ctx.lineTo(tipX + lean * 0.12, baseY - 1.64 * s);
+              ctx.lineTo(tipX + s * 0.065, baseY - 1.44 * s);
+              ctx.closePath();
               ctx.fill();
-              ctx.fillStyle = shade(HEDGE_LIT, 12);
+              ctx.fillStyle = HEDGE_LIT;
               ctx.beginPath();
-              facetBlob(ctx, cx2 - cr * 0.26, cy - cr * 0.32, cr * 0.5, h ^ 0x55, 7, 0.9);
+              ctx.moveTo(tipX - s * 0.055, baseY - 1.445 * s);
+              ctx.lineTo(tipX + lean * 0.12, baseY - 1.63 * s);
+              ctx.lineTo(tipX + s * 0.004, baseY - 1.445 * s);
+              ctx.closePath();
               ctx.fill();
-              // Clipped-face flecks keep the sphere hand-tended.
-              for (let i = 0; i < 3; i++) {
-                const fseed = hashCoords(137, tx * 8 + i, ty);
-                const fx2 = cx2 + ((((fseed >>> 3) % 100) - 50) / 100) * cr * 1.1;
-                const fy2 = cy + ((((fseed >>> 8) % 80) - 40) / 100) * cr;
-                ctx.fillStyle = (fseed & 4) === 0 ? HEDGE_DARK : shade(HEDGE_LEAF, 8);
-                ctx.fillRect(fx2, fy2, s * 0.04, s * 0.032);
+            } else {
+              // THE TRAINED FORMS: ball, double-standard, egg — a
+              // garden path deals siblings, never clones.
+              const form = (h >>> 6) % 3;
+              if (form === 1) {
+                // The gatepost double: a neck of stem between tiers.
+                ctx.fillStyle = HEDGE_WOOD;
+                ctx.fillRect(p.x - s * 0.02 + lean * 0.8, baseY - s * 1.04, s * 0.04, s * 0.14);
+                mass(p.x + lean * 0.7, baseY - 0.66 * s, s * 0.34, 0.92, h);
+                mass(p.x + lean * 1.1, baseY - 1.18 * s, s * 0.2, 0.9, h ^ 0x3d);
+              } else if (form === 2) {
+                // The egg: one tall clipped oval.
+                mass(p.x + lean * 0.7, baseY - 0.84 * s, s * 0.34, 1.32, h);
+              } else {
+                mass(p.x + lean * 0.7, baseY - 0.78 * s, s * 0.4, 0.92, h);
               }
-              // A third of the balls flower.
+              // A third of the balls flower from the GARDEN DYES.
               if ((h & 3) === 0) {
+                const dye = GARDEN_DYES[(h >>> 4) % 3]!;
+                const cy = baseY - (form === 2 ? 0.84 : 0.78) * s;
+                const cr = s * (form === 1 ? 0.34 : 0.38);
                 for (let i = 0; i < 3; i++) {
                   const bseed = hashCoords(139, tx * 8 + i, ty);
-                  const bx = cx2 + ((((bseed >>> 2) % 90) - 45) / 100) * cr;
+                  const bx = p.x + lean * 0.7 + ((((bseed >>> 2) % 90) - 45) / 100) * cr;
                   const by = cy + ((((bseed >>> 7) % 70) - 40) / 100) * cr;
-                  ctx.fillStyle = i === 2 ? HEDGE_BLOOM_LIT : HEDGE_BLOOM;
+                  ctx.fillStyle = i === 2 ? shade(dye[0]!, 24) : dye[0]!;
                   ctx.beginPath();
                   facetCircle(ctx, bx, by, s * (i === 2 ? 0.02 : 0.026), 5, 0.4, 0.8);
                   ctx.fill();
@@ -26353,7 +26447,7 @@ export class Renderer {
         const { sway, lag } = this.breezeAt(tx, ty, t, tx * 1.6 + ty * 2.4, s, 0.008, 0.018);
         return {
           sortY: ty + 0.64,
-          body: stationBody(0.52, 1.15, 0.4),
+          body: stationBody(0.55, 1.45, 0.4),
           drawShadow: () => this.castContact(p.x, baseY + s * 0.02, s * 0.26, s * 0.09),
           draw: () => {
             // Draw-time ctx capture: the outline pass swaps this.ctx.
@@ -26403,8 +26497,11 @@ export class Renderer {
             ctx.beginPath();
             ctx.ellipse(p.x, rimY + s * 0.1, s * 0.15, syT * 0.06, 0, 0, Math.PI * 2);
             ctx.fill();
-            // SILVERLEAF: pale spade leaves and three moon-white
-            // blooms standing over the mouth, each stem its own bow.
+            // SILVERBELL TRACERY: the fair house does not MOUND its
+            // planting — it TRAINS it. Five pale fronds rise from the
+            // mouth and weep outward in one drawn fan; moon-white
+            // bells hang from the two tallest arcs; the whole piece
+            // carries a breath of cool light (paint, never a lamp).
             const leaf = (lx: number, ly: number, ang: number, tone: string) => {
               ctx.save();
               ctx.translate(lx, ly);
@@ -26417,53 +26514,103 @@ export class Renderer {
               ctx.fill();
               ctx.restore();
             };
-            ctx.strokeStyle = '#8aa892';
-            ctx.lineWidth = Math.max(1, s * 0.014);
-            for (const [ox, oy, bend] of [
-              [-0.1, -0.34, -0.05],
-              [0.02, -0.42, 0.02],
-              [0.12, -0.3, 0.07],
-            ] as const) {
+            // The moon-breath: one soft cool wash behind the crown.
+            ctx.fillStyle = 'rgba(196, 224, 255, 0.12)';
+            ctx.beginPath();
+            facetCircle(ctx, p.x + sway * 0.4, rimY - s * 0.32, s * 0.34, 8, 0.4, 0.85);
+            ctx.fill();
+            // The frond fan: each arc its own reach and droop, the
+            // silver tones dealt symmetrically — drawn tracery, not
+            // a spill. Tips carry the wind; roots hold the mouth.
+            const fronds: ReadonlyArray<readonly [number, number, number, string]> = [
+              [-0.3, -0.34, -0.24, '#a8c4b0'],
+              [-0.16, -0.52, -0.1, '#cfe0d4'],
+              [0.0, -0.62, 0.03, '#b8d4c0'],
+              [0.16, -0.5, 0.12, '#cfe0d4'],
+              [0.3, -0.3, 0.26, '#a8c4b0'],
+            ];
+            for (const [reach, rise, tipDx, tone] of fronds) {
+              const rootX = p.x + reach * s * 0.24;
+              const apexX = p.x + reach * s * 0.7 + sway * 0.35;
+              const apexY = rimY + rise * s;
+              const tipX = p.x + (reach + tipDx) * s + sway * 0.6;
+              const tipY = apexY + s * 0.14;
+              // A FILLED blade, wide at the root, drawn to a point —
+              // stroke-thin fronds drown in the outline pass's ink
+              // and read as dark tentacles (shipped once; the blade
+              // fill is what survives the ring).
+              const bw2 = s * 0.05;
+              ctx.fillStyle = tone;
               ctx.beginPath();
-              ctx.moveTo(p.x + s * ox * 0.3, rimY + s * 0.08);
-              ctx.quadraticCurveTo(
-                p.x + s * (ox * 0.6 + bend), rimY + s * (oy * 0.5),
-                p.x + s * ox + sway * 0.5, rimY + s * oy,
-              );
+              ctx.moveTo(rootX - bw2, rimY + s * 0.09);
+              ctx.quadraticCurveTo(apexX - bw2 * 0.7, apexY - s * 0.012, tipX, tipY);
+              ctx.quadraticCurveTo(apexX + bw2 * 0.7, apexY + s * 0.03, rootX + bw2, rimY + s * 0.1);
+              ctx.closePath();
+              ctx.fill();
+              // The blade's shaded keel — the fold that turns it.
+              ctx.strokeStyle = shade(tone, -16);
+              ctx.lineWidth = Math.max(1, s * 0.011);
+              ctx.beginPath();
+              ctx.moveTo(rootX, rimY + s * 0.095);
+              ctx.quadraticCurveTo(apexX, apexY + s * 0.008, tipX, tipY);
               ctx.stroke();
+              leaf(tipX, tipY, reach * 2.2, shade(tone, -8));
             }
-            leaf(p.x - s * 0.16, rimY - s * 0.06, -0.5, '#b8d4c0');
-            leaf(p.x - s * 0.05, rimY - s * 0.12, -0.1, '#cfe0d4');
-            leaf(p.x + s * 0.09, rimY - s * 0.04, 0.45, '#b8d4c0');
-            leaf(p.x + s * 0.17, rimY - s * 0.1, 0.75, '#a8c4b0');
-            for (const [ox, oy] of [
-              [-0.1, -0.34],
-              [0.02, -0.42],
-              [0.12, -0.3],
-            ] as const) {
+            // The bells: two hung from the tall arcs, one budding
+            // upright at the crown — moonglass white with a cool
+            // shaded cheek and the gold clapper pip earning its glint.
+            const bell = (bx: number, by: number, r: number, hang: number) => {
+              ctx.save();
+              ctx.translate(bx, by);
+              ctx.rotate(hang);
               ctx.fillStyle = '#e8f4ff';
               ctx.beginPath();
-              facetCircle(ctx, p.x + s * ox + sway * 0.5, rimY + s * oy, s * 0.035, 5, 0.3, 1);
+              ctx.moveTo(-r * 0.4, 0);
+              ctx.quadraticCurveTo(-r * 0.5, r * 0.75, -r * 0.85, r * 1.15);
+              ctx.lineTo(r * 0.85, r * 1.15);
+              ctx.quadraticCurveTo(r * 0.5, r * 0.75, r * 0.4, 0);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = 'rgba(140, 170, 210, 0.4)';
+              ctx.beginPath();
+              ctx.moveTo(r * 0.2, r * 0.05);
+              ctx.quadraticCurveTo(r * 0.4, r * 0.7, r * 0.8, r * 1.12);
+              ctx.lineTo(r * 0.3, r * 1.12);
+              ctx.quadraticCurveTo(r * 0.12, r * 0.6, r * 0.05, r * 0.05);
+              ctx.closePath();
               ctx.fill();
               ctx.fillStyle = ELF_GOLD;
-              ctx.fillRect(p.x + s * ox + sway * 0.5 - s * 0.008, rimY + s * oy - s * 0.008, s * 0.016, s * 0.016);
-            }
-            // One vine escapes the rim and trails to the ground; the
-            // tip flutters — the only restless thing on the piece.
+              ctx.fillRect(-r * 0.14, r * 1.05, r * 0.28, r * 0.32);
+              ctx.restore();
+            };
+            bell(p.x - s * 0.24 + sway * 0.5, rimY - s * 0.36, s * 0.068, -0.18 + sway * 0.02);
+            bell(p.x + s * 0.26 + sway * 0.55, rimY - s * 0.34, s * 0.068, 0.22 + sway * 0.02);
+            // The crown bud: closed, upright, waiting its night.
+            ctx.fillStyle = '#dcecfc';
+            ctx.beginPath();
+            ctx.ellipse(p.x + s * 0.005 + sway * 0.6, rimY - s * 0.66, s * 0.028, s * 0.044, sway * 0.02, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = ELF_GOLD;
+            ctx.fillRect(p.x - s * 0.006 + sway * 0.6, rimY - s * 0.71, s * 0.012, s * 0.012);
+            // One staggered star over the crown — the imbued lane's
+            // quiet signature, a breath, never a beacon.
+            const tw = Math.max(0, Math.sin(t * 0.7 + h * 0.4) - 0.92) / 0.08;
+            if (tw > 0) this.sparkle(p.x + s * 0.14, rimY - s * 0.72, s * 0.055, 0.55 * tw, '#dce8ff');
+            // The trained tendril: one deliberate S down the east
+            // flank, paired leaves, ending in a gardener's curl — a
+            // TRAINED line, not an escape (the spill read as a stain).
             ctx.strokeStyle = ELF_LEAF;
             ctx.lineWidth = Math.max(1, s * 0.016);
             ctx.beginPath();
             ctx.moveTo(p.x + s * 0.17, rimY + s * 0.1);
-            ctx.quadraticCurveTo(p.x + s * 0.28, baseY - s * 0.32, p.x + s * 0.24, baseY - s * 0.1);
-            ctx.quadraticCurveTo(p.x + s * 0.22, baseY - s * 0.02, p.x + s * 0.3 + lag, baseY + s * 0.02);
+            ctx.quadraticCurveTo(p.x + s * 0.3, baseY - s * 0.34, p.x + s * 0.22, baseY - s * 0.16);
+            ctx.quadraticCurveTo(p.x + s * 0.16, baseY - s * 0.06, p.x + s * 0.26 + lag * 0.5, baseY - s * 0.05);
             ctx.stroke();
-            for (const [vx, vy] of [
-              [0.26, -0.36],
-              [0.22, -0.18],
-            ] as const) {
-              leaf(p.x + s * vx, baseY + s * vy, 1.2, ELF_LEAF);
-            }
-            leaf(p.x + s * 0.3 + lag, baseY + s * 0.02, 1.5 + lag * 0.04, shade(ELF_LEAF, 12));
+            ctx.beginPath();
+            ctx.arc(p.x + s * 0.29 + lag * 0.5, baseY - s * 0.075, s * 0.028, 0.6, 3.6);
+            ctx.stroke();
+            leaf(p.x + s * 0.27, baseY - s * 0.34, 1.1, ELF_LEAF);
+            leaf(p.x + s * 0.2, baseY - s * 0.18, 1.5, shade(ELF_LEAF, 12));
           },
         };
       }
@@ -35753,14 +35900,15 @@ export class Renderer {
       case Tile.StreetPlanter: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.14;
-        // The half-barrel reborn: town color at door scale. Blooms
-        // over a green mound, one vine trailing the staves, the soil
-        // still damp at the line — watered THIS morning.
-        const r = s * 0.24;
-        const rimY = baseY - s * 0.34;
+        // The half-barrel reborn: town color at door scale, planted
+        // in LAYERS like a gardener plants — tall spikes at the back,
+        // big dealt blooms amidships, greenery spilling the front rim
+        // — and the soil still damp at the line: watered THIS morning.
+        const r = s * 0.3;
+        const rimY = baseY - s * 0.46;
         return {
           sortY: ty + 0.66,
-          body: stationBody(0.42, 0.85, 0.35),
+          body: stationBody(0.55, 1.2, 0.4),
           drawShadow: () => this.castContact(p.x, baseY, r * 1.35, s * 0.055),
           draw: () => {
             // Draw-time ctx capture: the outline pass swaps this.ctx
@@ -35811,51 +35959,106 @@ export class Renderer {
             ctx.beginPath();
             ctx.ellipse(p.x, rimY, r * 0.9, r * 0.3, 0, 0, Math.PI * 2);
             ctx.fill();
-            // The green mound, then the blooms — madder and weld,
-            // BIG enough to read at street scale (the fish law).
+            // THE BACK RANK: spike blooms rising behind the mound —
+            // foxglove towers in the town's own dye triad, each
+            // nodding on its own phase (alive, never plastic).
+            const dye = GARDEN_DYES[(h >>> 5) % 3]!;
+            for (let k = 0; k < 3; k++) {
+              const sd = hashCoords(157 + k, tx, ty);
+              const sx2 = p.x + (k - 1) * r * 0.5 + ((sd % 5) - 2) * s * 0.014;
+              const rise = s * (0.34 + ((sd >>> 4) % 4) * 0.05);
+              const nod = this.breezeAt(tx, ty, t, sd * 0.4, s, 0.014, 0.014).sway;
+              const tipX = sx2 + nod;
+              const tipY = rimY - s * 0.1 - rise;
+              ctx.strokeStyle = '#4f7a40';
+              ctx.lineWidth = Math.max(1, s * 0.02);
+              ctx.beginPath();
+              ctx.moveTo(sx2, rimY - s * 0.04);
+              ctx.quadraticCurveTo(sx2 + nod * 0.4, rimY - s * 0.06 - rise * 0.55, tipX, tipY + s * 0.03);
+              ctx.stroke();
+              const spikeC = dye[k % 3]!;
+              for (let b = 0; b < 4; b++) {
+                const f = b / 3;
+                const bellX = sx2 + nod * (0.35 + f * 0.65);
+                const bellY = rimY - s * 0.09 - rise * (0.3 + f * 0.68);
+                const br2 = s * (0.046 - f * 0.018);
+                ctx.fillStyle = b === 3 ? shade(spikeC, 24) : shade(spikeC, b * 5 - 4);
+                ctx.beginPath();
+                ctx.ellipse(bellX, bellY, br2, br2 * 0.82, 0, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            }
+            // The mound: two greens, shade under the blooms' feet.
             ctx.fillStyle = '#4a6b3d';
             ctx.beginPath();
-            ctx.ellipse(p.x, rimY - s * 0.1, r * 0.85, r * 0.5, 0, 0, Math.PI * 2);
+            ctx.ellipse(p.x, rimY - s * 0.1, r * 0.88, r * 0.5, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.fillStyle = '#5d8449';
             ctx.beginPath();
-            ctx.ellipse(p.x - r * 0.3, rimY - s * 0.16, r * 0.42, r * 0.3, -0.2, 0, Math.PI * 2);
+            ctx.ellipse(p.x - r * 0.3, rimY - s * 0.16, r * 0.46, r * 0.3, -0.2, 0, Math.PI * 2);
             ctx.fill();
+            // THE MID DEAL: five big petal clusters — BIG enough to
+            // read at street scale (the fish law), dark-seated so
+            // each head sits IN the green instead of floating on it.
             const blooms = [
-              { bx: -0.5, by: -0.3, c: '#c95a74' },
-              { bx: 0.05, by: -0.42, c: '#d8c454' },
-              { bx: 0.52, by: -0.26, c: '#c95a74' },
-              { bx: -0.14, by: -0.18, c: '#e8e0d0' },
-              { bx: 0.3, by: -0.12, c: '#d8c454' },
+              { bx: -0.55, by: -0.36, c: dye[0]! },
+              { bx: 0.05, by: -0.5, c: dye[1]! },
+              { bx: 0.56, by: -0.32, c: dye[0]! },
+              { bx: -0.16, by: -0.2, c: dye[2]! },
+              { bx: 0.32, by: -0.14, c: dye[1]! },
             ];
             for (let k = 0; k < blooms.length; k++) {
               const b = blooms[k]!;
               const bx = p.x + b.bx * r;
               const by = rimY + b.by * s;
+              ctx.fillStyle = 'rgba(24, 40, 22, 0.5)';
+              ctx.beginPath();
+              ctx.ellipse(bx + s * 0.01, by + s * 0.024, s * 0.075, s * 0.045, 0, 0, Math.PI * 2);
+              ctx.fill();
               ctx.fillStyle = b.c;
               for (let pt = 0; pt < 5; pt++) {
                 const a = (pt / 5) * Math.PI * 2 + k;
                 ctx.beginPath();
-                ctx.ellipse(bx + Math.cos(a) * s * 0.022, by + Math.sin(a) * s * 0.018, s * 0.016, s * 0.012, a, 0, Math.PI * 2);
+                ctx.ellipse(bx + Math.cos(a) * s * 0.045, by + Math.sin(a) * s * 0.035, s * 0.03, s * 0.022, a, 0, Math.PI * 2);
                 ctx.fill();
               }
-              ctx.fillStyle = shade(b.c, -30);
+              ctx.fillStyle = shade(b.c, 30);
               ctx.beginPath();
-              ctx.ellipse(bx, by, s * 0.011, s * 0.009, 0, 0, Math.PI * 2);
+              ctx.ellipse(bx, by, s * 0.018, s * 0.015, 0, 0, Math.PI * 2);
               ctx.fill();
             }
-            // The trailing vine: down the front stave, three leaves.
+            // THE FRONT SPILL: trailing greenery tumbling the south
+            // rim in three tongues — the pot overflows, the street
+            // side wears the show. One tongue carries a stray bloom.
             ctx.strokeStyle = '#4a6b3d';
-            ctx.lineWidth = Math.max(1, s * 0.014);
-            ctx.beginPath();
-            ctx.moveTo(p.x + r * 0.6, rimY + s * 0.02);
-            ctx.quadraticCurveTo(p.x + r * 0.78, baseY - s * 0.16, p.x + r * 0.62, baseY - s * 0.02);
-            ctx.stroke();
-            ctx.fillStyle = '#5d8449';
-            for (const [lx, ly, la] of [[0.72, -0.24, 0.4], [0.66, -0.13, -0.3], [0.64, -0.04, 0.6]] as const) {
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            const tongues: ReadonlyArray<readonly [number, number, number]> = [
+              [-0.62, 0.3, -0.1],
+              [0.08, 0.42, 0.06],
+              [0.6, 0.26, 0.12],
+            ];
+            for (let k = 0; k < tongues.length; k++) {
+              const [ox, drop, bow] = tongues[k]!;
+              const x0 = p.x + ox * r;
               ctx.beginPath();
-              ctx.ellipse(p.x + r * lx, baseY + ly * s, s * 0.026, s * 0.016, la, 0, Math.PI * 2);
-              ctx.fill();
+              ctx.moveTo(x0, rimY + s * 0.03);
+              ctx.quadraticCurveTo(x0 + bow * s + s * 0.05, rimY + drop * s * 0.6, x0 + bow * s, rimY + drop * s);
+              ctx.stroke();
+              ctx.fillStyle = k === 1 ? '#5d8449' : '#527a44';
+              for (let l = 0; l < 3; l++) {
+                const f = 0.3 + l * 0.3;
+                const lx = x0 + bow * s * f + ((l & 1) ? s * 0.034 : -s * 0.03);
+                const ly = rimY + drop * s * f + s * 0.01;
+                ctx.beginPath();
+                ctx.ellipse(lx, ly, s * 0.036, s * 0.022, (l & 1) ? 0.5 : -0.4, 0, Math.PI * 2);
+                ctx.fill();
+              }
+              if (k === 2) {
+                ctx.fillStyle = dye[2]!;
+                ctx.beginPath();
+                facetCircle(ctx, x0 + bow * s, rimY + drop * s + s * 0.02, s * 0.02, 5, 0.3, 0.85);
+                ctx.fill();
+              }
             }
           },
         };
@@ -42696,10 +42899,13 @@ export class Renderer {
         // family's discipline gone PORTABLE. Underplanted blooms
         // deal at the soil line; one dropped leaf keeps it honest.
         const m = ((h >>> 4) & 1) ? 1 : -1;
-        const tubTop = baseY - s * 0.36;
-        const tubR = s * 0.19;
-        const ballY = baseY - s * 1.06;
-        const ballR = s * 0.3;
+        // One doorstep in four trains a CONE instead of the ball —
+        // a flanked door reads richer when the pair aren't twins.
+        const cone = ((h >>> 8) & 3) === 0;
+        const tubTop = baseY - s * 0.38;
+        const tubR = s * 0.22;
+        const ballY = baseY - s * 1.12;
+        const ballR = s * 0.34;
         return {
           sortY: ty + 0.68,
           body: stationBody(0.52, 1.6, 0.35),
@@ -42770,69 +42976,109 @@ export class Renderer {
               ctx.arc(bx2, tubTop - s * 0.034, s * 0.012, 0, Math.PI * 2);
               ctx.fill();
             }
-            // THE STEM: clean, tied once to its hidden cane.
-            ctx.strokeStyle = '#6f5a38';
-            ctx.lineWidth = Math.max(1.5, s * 0.026);
+            // THE STEM: a real turned trunk, root-swollen at the
+            // soil, tapering into the crown — the stroke-thin first
+            // draft read as a balloon on a string beside the body.
+            const stemTopY = ballY + ballR * 0.6;
+            ctx.fillStyle = '#6f5a38';
             ctx.beginPath();
-            ctx.moveTo(p.x, tubTop - s * 0.02);
-            ctx.lineTo(p.x + m * s * 0.012, ballY + ballR * 0.7);
-            ctx.stroke();
+            ctx.moveTo(p.x - s * 0.045, tubTop - s * 0.01);
+            ctx.quadraticCurveTo(p.x - s * 0.026, tubTop - s * 0.24, p.x - s * 0.02 + m * s * 0.012, stemTopY);
+            ctx.lineTo(p.x + s * 0.02 + m * s * 0.012, stemTopY);
+            ctx.quadraticCurveTo(p.x + s * 0.026, tubTop - s * 0.24, p.x + s * 0.045, tubTop - s * 0.01);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade('#6f5a38', 16);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.038, tubTop - s * 0.01);
+            ctx.quadraticCurveTo(p.x - s * 0.022, tubTop - s * 0.24, p.x - s * 0.016 + m * s * 0.012, stemTopY);
+            ctx.lineTo(p.x - s * 0.002 + m * s * 0.012, stemTopY);
+            ctx.quadraticCurveTo(p.x - s * 0.008, tubTop - s * 0.24, p.x - s * 0.014, tubTop - s * 0.01);
+            ctx.closePath();
+            ctx.fill();
             ctx.strokeStyle = TWN_ROPE;
             ctx.lineWidth = Math.max(1, s * 0.01);
             ctx.beginPath();
             ctx.moveTo(p.x - s * 0.02, tubTop - s * 0.22);
             ctx.lineTo(p.x + s * 0.024, tubTop - s * 0.235);
             ctx.stroke();
-            // THE BAY BALL: three values, clipped TRUE — dark
-            // mass, mid lobes, lit crown lobes, leaf ticks where
-            // the shears passed last week.
-            ctx.fillStyle = shade(CMN_BAY, -16);
-            ctx.beginPath();
-            ctx.arc(p.x + m * s * 0.008, ballY, ballR, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = CMN_BAY;
-            for (let k = 0; k < 5; k++) {
-              const a = 0.6 + k * 1.15;
+            // THE CROWN: a turned volume — one faceted silhouette,
+            // three bay values clipped inside on BOWED boundaries,
+            // leaf ticks where the shears passed last week. The old
+            // stacked-arc draft read flat beside the grown trees.
+            const crown = (mx: number, my: number, r: number, sq: number, seed: number) => {
+              const ry = r * sq;
+              ctx.save();
               ctx.beginPath();
-              ctx.arc(
-                p.x + m * s * 0.008 + Math.cos(a) * ballR * 0.42,
-                ballY + Math.sin(a) * ballR * 0.4 - s * 0.01,
-                ballR * 0.42,
-                0,
-                Math.PI * 2,
-              );
+              facetBlob(ctx, mx, my, r, seed, 10, sq, -Math.PI / 2 + ((seed >>> 4) & 7) * 0.09);
+              ctx.clip();
+              ctx.fillStyle = CMN_BAY;
+              ctx.fillRect(mx - r * 1.25, my - ry * 1.3, r * 2.5, ry * 2.6);
+              ctx.fillStyle = shade(CMN_BAY, -18);
+              ctx.beginPath();
+              ctx.moveTo(mx - r * 1.15, my + ry * 0.36);
+              ctx.quadraticCurveTo(mx - r * 0.25, my + ry * 0.8, mx + r * 0.5, my + ry * 0.42);
+              ctx.quadraticCurveTo(mx + r * 1.05, my + ry * 0.14, mx + r * 1.2, my - ry * 0.12);
+              ctx.lineTo(mx + r * 1.25, my + ry * 1.35);
+              ctx.lineTo(mx - r * 1.25, my + ry * 1.35);
+              ctx.closePath();
               ctx.fill();
-            }
-            ctx.fillStyle = CMN_BAY_LIT;
-            for (let k = 0; k < 3; k++) {
-              const a = 3.6 + k * 0.9;
+              ctx.fillStyle = CMN_BAY_LIT;
               ctx.beginPath();
-              ctx.arc(
-                p.x + m * s * 0.008 + Math.cos(a) * ballR * 0.46,
-                ballY + Math.sin(a) * ballR * 0.44 - s * 0.025,
-                ballR * (0.36 - k * 0.05),
-                0,
-                Math.PI * 2,
-              );
+              ctx.moveTo(mx - r * 1.2, my - ry * 0.24);
+              ctx.quadraticCurveTo(mx - r * 0.5, my + ry * 0.08, mx + r * 0.14, my - ry * 0.22);
+              ctx.quadraticCurveTo(mx + r * 0.7, my - ry * 0.5, mx + r * 0.86, my - ry * 1.3);
+              ctx.lineTo(mx - r * 1.25, my - ry * 1.35);
+              ctx.closePath();
               ctx.fill();
-            }
-            // The crown's one sunstruck lobe — the ball TURNS.
-            ctx.fillStyle = shade(CMN_BAY_LIT, 14);
-            ctx.beginPath();
-            ctx.arc(p.x + m * s * 0.008 - ballR * 0.34, ballY - ballR * 0.42, ballR * 0.22, 0, Math.PI * 2);
-            ctx.fill();
-            // Leaf ticks along the lit shoulder.
-            ctx.strokeStyle = shade(CMN_BAY_LIT, 12);
-            ctx.lineWidth = Math.max(1, s * 0.01);
-            for (let k = 0; k < 4; k++) {
-              const sd = (h >>> (k * 3 + 11)) & 7;
-              const a = 3.5 + k * 0.55 + (sd & 1) * 0.2;
-              const lx = p.x + m * s * 0.008 + Math.cos(a) * ballR * 0.82;
-              const ly = ballY + Math.sin(a) * ballR * 0.78;
+              ctx.fillStyle = shade(CMN_BAY_LIT, 16);
               ctx.beginPath();
-              ctx.moveTo(lx, ly);
-              ctx.lineTo(lx + Math.cos(a) * s * 0.03, ly + Math.sin(a) * s * 0.028);
-              ctx.stroke();
+              facetBlob(ctx, mx - r * 0.3, my - ry * 0.58, r * 0.38, seed ^ 0x59, 7, 0.72);
+              ctx.fill();
+              // Leaf ticks along the lit shoulder.
+              ctx.strokeStyle = shade(CMN_BAY_LIT, 12);
+              ctx.lineWidth = Math.max(1, s * 0.01);
+              for (let k = 0; k < 4; k++) {
+                const sd = (seed >>> (k * 3 + 5)) & 7;
+                const a = 3.5 + k * 0.55 + (sd & 1) * 0.2;
+                const lx = mx + Math.cos(a) * r * 0.74;
+                const ly = my + Math.sin(a) * ry * 0.7;
+                ctx.beginPath();
+                ctx.moveTo(lx, ly);
+                ctx.lineTo(lx + Math.cos(a) * s * 0.03, ly + Math.sin(a) * s * 0.028);
+                ctx.stroke();
+              }
+              ctx.restore();
+            };
+            if (cone) {
+              // The trained cone: three clipped plates to a fused tip.
+              crown(p.x + m * s * 0.006, baseY - s * 0.86, ballR * 0.86, 0.62, h);
+              crown(p.x + m * s * 0.01, baseY - s * 1.1, ballR * 0.64, 0.6, h ^ 0x2f);
+              crown(p.x + m * s * 0.014, baseY - s * 1.3, ballR * 0.4, 0.62, h ^ 0x55);
+              ctx.fillStyle = CMN_BAY;
+              ctx.beginPath();
+              ctx.moveTo(p.x + m * s * 0.014 - s * 0.05, baseY - s * 1.32);
+              ctx.lineTo(p.x + m * s * 0.02, baseY - s * 1.46);
+              ctx.lineTo(p.x + m * s * 0.014 + s * 0.05, baseY - s * 1.32);
+              ctx.closePath();
+              ctx.fill();
+            } else {
+              crown(p.x + m * s * 0.008, ballY, ballR, 0.94, h);
+            }
+            // One doorstep in four carries the bay's autumn berries —
+            // dark garnets dealt along the shaded shoulder.
+            if (((h >>> 10) & 3) === 1 && !cone) {
+              ctx.fillStyle = '#7a2f38';
+              for (let k = 0; k < 4; k++) {
+                const sd = hashCoords(163 + k, tx, ty);
+                const a = 0.3 + ((sd >>> 3) % 100) / 100 * 1.8;
+                const bx2 = p.x + m * s * 0.008 + Math.cos(a) * ballR * 0.62;
+                const by2 = ballY + Math.sin(a) * ballR * 0.58;
+                ctx.beginPath();
+                ctx.arc(bx2, by2, s * 0.014, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = k === 3 ? '#a34a52' : '#7a2f38';
+              }
             }
             // The one dropped leaf — clipped last week, remember.
             ctx.fillStyle = shade(CMN_BAY, -6);
@@ -45453,46 +45699,142 @@ export class Renderer {
       case Tile.FlowerBox: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.24;
-        const BLOOMS = ['#d977a8', '#e8c06a', '#f0ede4', '#8f9ed6'];
+        // THE DOORYARD TROUGH: joined carpentry, not a floor tray —
+        // the box stands on two splayed legs so it reads as a made
+        // thing beside the body, and the planting PACKS it: a shaded
+        // back rank, a lit front rank half a pitch off, and ivy
+        // tumbling both ends. Dye triad dealt by world hash — a lane
+        // of boxes varies but never clashes (the garden-dye law).
+        const dye = GARDEN_DYES[(h >>> 3) % 3]!;
+        const boxBot = baseY - s * 0.13;
+        const boxTop = boxBot - s * 0.26;
+        const hw = s * 0.38;
         return {
           sortY: ty + 0.6,
-          body: stationBody(0.7, 0.85, 0.45),
+          body: stationBody(0.7, 1.0, 0.45),
           draw: () => {
             // Draw-time ctx capture: the outline pass swaps this.ctx
             // to its scratch — the build-time capture would paint past it.
             const ctx = this.ctx;
-            // Contact shade + planter on little feet.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
-            ctx.fillRect(p.x - s * 0.36, baseY - s * 0.005, s * 0.72, s * 0.04);
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY, hw * 1.15, s * 0.045, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Splayed legs, oak-dark, feet a hair proud of the box.
+            ctx.fillStyle = '#54381c';
+            for (const m2 of [-1, 1] as const) {
+              ctx.beginPath();
+              ctx.moveTo(p.x + m2 * hw * 0.72, boxBot);
+              ctx.lineTo(p.x + m2 * (hw * 0.72 + s * 0.05), baseY);
+              ctx.lineTo(p.x + m2 * (hw * 0.72 + s * 0.1), baseY);
+              ctx.lineTo(p.x + m2 * (hw * 0.72 + s * 0.045), boxBot);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // The trough: chamfered body, lit top rail, plank seam,
+            // end-grain dovetail ticks at both corners.
             ctx.fillStyle = '#6f4d26';
             ctx.beginPath();
-            chamferRect(ctx, p.x - s * 0.36, baseY - s * 0.24, s * 0.72, s * 0.24, s * 0.03);
+            chamferRect(ctx, p.x - hw, boxTop, hw * 2, boxBot - boxTop, s * 0.028);
             ctx.fill();
             ctx.fillStyle = shade('#6f4d26', 12);
-            ctx.fillRect(p.x - s * 0.36, baseY - s * 0.24, s * 0.72, s * 0.04);
+            ctx.fillRect(p.x - hw, boxTop, hw * 2, s * 0.04);
+            ctx.strokeStyle = 'rgba(50, 34, 16, 0.45)';
+            ctx.lineWidth = Math.max(1, s * 0.01);
+            ctx.beginPath();
+            ctx.moveTo(p.x - hw + s * 0.03, boxTop + (boxBot - boxTop) * 0.55);
+            ctx.lineTo(p.x + hw - s * 0.03, boxTop + (boxBot - boxTop) * 0.55);
+            ctx.stroke();
+            for (const m2 of [-1, 1] as const) {
+              for (let d2 = 0; d2 < 2; d2++) {
+                ctx.fillStyle = d2 ? '#8a6534' : '#54381c';
+                ctx.fillRect(
+                  p.x + m2 * (hw - s * 0.035) - s * 0.015,
+                  boxTop + s * 0.07 + d2 * s * 0.09,
+                  s * 0.03,
+                  s * 0.045,
+                );
+              }
+            }
+            // The soil line, damp where it was watered.
             ctx.fillStyle = '#4a3520';
-            ctx.fillRect(p.x - s * 0.32, baseY - s * 0.2, s * 0.64, s * 0.05);
-            // Five blooms nodding gently out of phase — alive, not
-            // plastic. Stems lean with their flower heads.
-            for (let k = 0; k < 5; k++) {
+            ctx.fillRect(p.x - hw + s * 0.045, boxTop + s * 0.012, hw * 2 - s * 0.09, s * 0.05);
+            // THE BACK RANK: four shaded heads peeking over the rim.
+            for (let k = 0; k < 4; k++) {
               const hh = hashCoords(61 + k, tx, ty);
-              const nod = this.breezeAt(tx, ty, t, hh * 0.3, s, 0.012, 0.012).sway;
-              const fx = p.x - s * 0.26 + k * s * 0.13 + ((hh % 5) - 2) * s * 0.01;
-              const fy = baseY - s * 0.32 - ((hh >> 4) % 4) * s * 0.025;
-              ctx.strokeStyle = '#5f8a44';
-              ctx.lineWidth = Math.max(1, s * 0.024);
+              const nod = this.breezeAt(tx, ty, t, hh * 0.3, s, 0.01, 0.01).sway;
+              const fx = p.x - hw * 0.72 + k * hw * 0.48 + ((hh % 5) - 2) * s * 0.012;
+              const fy = boxTop - s * 0.16 - ((hh >> 4) % 3) * s * 0.03;
+              ctx.strokeStyle = '#4f7a40';
+              ctx.lineWidth = Math.max(1, s * 0.018);
               ctx.beginPath();
-              ctx.moveTo(fx, baseY - s * 0.2);
+              ctx.moveTo(fx, boxTop + s * 0.02);
+              ctx.lineTo(fx + nod * 0.7, fy + s * 0.02);
+              ctx.stroke();
+              const c = dye[(hh >>> 2) % 3]!;
+              ctx.fillStyle = shade(c, -14);
+              ctx.beginPath();
+              facetCircle(ctx, fx + nod * 0.7, fy, s * 0.058, 6, (hh % 7) * 0.3);
+              ctx.fill();
+            }
+            // THE FRONT RANK: four lit heads, half a pitch off, each
+            // a petal cluster with its pale eye — street-legible.
+            for (let k = 0; k < 4; k++) {
+              const hh = hashCoords(97 + k, tx, ty);
+              const nod = this.breezeAt(tx, ty, t, hh * 0.3 + 2, s, 0.012, 0.012).sway;
+              const fx = p.x - hw * 0.48 + k * hw * 0.44 + ((hh % 5) - 2) * s * 0.012;
+              const fy = boxTop - s * 0.07 - ((hh >> 4) % 4) * s * 0.022;
+              ctx.strokeStyle = '#5f8a44';
+              ctx.lineWidth = Math.max(1, s * 0.02);
+              ctx.beginPath();
+              ctx.moveTo(fx, boxTop + s * 0.03);
               ctx.lineTo(fx + nod, fy + s * 0.02);
               ctx.stroke();
-              ctx.fillStyle = BLOOMS[hh % BLOOMS.length]!;
-              ctx.beginPath();
-              facetCircle(ctx, fx + nod, fy, s * 0.055, 6, (hh % 7) * 0.3);
-              ctx.fill();
-              ctx.fillStyle = 'rgba(255, 244, 200, 0.7)';
+              const c = dye[hh % 3]!;
+              ctx.fillStyle = c;
+              for (let pt = 0; pt < 5; pt++) {
+                const a = (pt / 5) * Math.PI * 2 + k * 1.1;
+                ctx.beginPath();
+                ctx.ellipse(
+                  fx + nod + Math.cos(a) * s * 0.04,
+                  fy + Math.sin(a) * s * 0.032,
+                  s * 0.028,
+                  s * 0.021,
+                  a,
+                  0,
+                  Math.PI * 2,
+                );
+                ctx.fill();
+              }
+              ctx.fillStyle = 'rgba(255, 244, 200, 0.85)';
               ctx.beginPath();
               facetCircle(ctx, fx + nod, fy, s * 0.018, 6, (hh % 7) * 0.3);
               ctx.fill();
+            }
+            // Ivy tumbles both ends — the joinery wears its garden.
+            ctx.strokeStyle = '#4a6b3d';
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            for (const m2 of [-1, 1] as const) {
+              const x0 = p.x + m2 * (hw - s * 0.04);
+              ctx.beginPath();
+              ctx.moveTo(x0, boxTop + s * 0.03);
+              ctx.quadraticCurveTo(x0 + m2 * s * 0.12, boxTop + s * 0.2, x0 + m2 * s * 0.09, boxBot + s * 0.1);
+              ctx.stroke();
+              ctx.fillStyle = '#527a44';
+              for (let l = 0; l < 3; l++) {
+                const f = 0.25 + l * 0.32;
+                ctx.beginPath();
+                ctx.ellipse(
+                  x0 + m2 * s * (0.05 + f * 0.06) + ((l & 1) ? m2 * s * 0.024 : 0),
+                  boxTop + s * 0.05 + f * s * 0.27,
+                  s * 0.032,
+                  s * 0.02,
+                  m2 * (0.4 + l * 0.3),
+                  0,
+                  Math.PI * 2,
+                );
+                ctx.fill();
+              }
             }
           },
         };
