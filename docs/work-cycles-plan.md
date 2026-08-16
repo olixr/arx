@@ -166,4 +166,69 @@ law.
 
 ## As-built notes
 
-(appended per phase)
+**Phase 1+4+5 (e3223f05).** work.ts engine as planned; keyframe
+stations with in/out/smooth/hold eases (holds interp-freeze on the
+previous station's channels). Voices shipped WITH phase 1 — the first
+worklab audit convicted the blanket immediately (gnoll axe across the
+muzzle, kobold pick over the skull), so raiseK/clearYaw/dropS/reachK/
+leanK landed same-day: gnoll .55/.5/.04/1.06/.8, skral .6/.45/.03/1/.8,
+goblin .7/.35/.02/.96/.9, kobold .6/.55/.03/1/.9, ogre .85/.15/0/1.1/
+.7, golem .9/.1/0/1.05/.6. The engine's crouch channel is authored but
+UNCONSUMED (milk keeps its pose-based crouch; wire when a verb needs
+it). Bearing slew 70ms on anim.workDir. Impact one-truth: gates read
+WORK_BOOK; anvil sparks at tipGX/tipGY; stationClang latches the
+painter flash; nodeStruck/nodeShiverAt ring trees (.028s) and rocks
+(.012s). Ladle + mallet conjured; bench respec'd tap-tap (impactAt
+0.24, ungated — no knock sfx yet). worklab ?dbg adds bearing ray, tip
+path, impact ring over the skrallab skeleton overlay.
+
+**Phase 3a (7ff2faa0).** THE PATIENT LINE client-only — the pose byte
+never needed splitting for fish (gatherKindAt already classified;
+renderer now forwards fishing+fishTo). Hold stations carry toolYaw
+0.62 outboard (the lifeline argument — S/N plumb-line collapse caught
+on-sheet). Line anchors on the rod art's tip (0.62s,−0.235s) through
+rotate+fore; dangle suppressed via drawTool rodCast. Crop harvest =
+forage via isCropTile in gatherKindAt (bare hands, tool stows). Fish
+impact: droplet burst + sfx.splash(0.5) + rumble .08/.18/55.
+**(29c10565)** anglers are EXEMPT from the body-sprite cache (olKey
+undefined → direct pass) — the cast line out-spans the bake canvas;
+the sheet draws direct so only live carried the clip.
+
+**Phase 3b (4d61d93b, restored whole in b905f368).** findStation
+returns all ten true kinds; craftKind union = StationWorkKind. Six
+specs: alembic POUR (pitch rolls past level, held on a shiver), THE
+SCRAPE (team-mode drawknife whose horns run PAST the mitts — the
+invisible-scraper defect, caught on-sheet), loom SHUTTLE PASS +
+BATTEN PULL (full yaw sweep, trailing weft), carving knife strokes
+pushed AWAY down the grain, RUNE TRACE (prop is LIGHT: radial glow +
+3 orbiting motes), THE SAW (push-pull on the reach channel, sawdust
+off the tip at impactAt 0.38, visual-only). Skral sawyer row = the
+hunched-folk-at-station acceptance, passing.
+
+**Shared-tree lessons (this epic, hard-won).** (1) `git commit` from
+the SHARED index swept a neighbor's half-staged stream into 7ff2faa0
+(their tests landed without their server half; the tree self-healed
+via 132b9dbd + 18c936e4 before my repair landed — always re-check
+HEAD before repairing). (2) From then on: scratch-index plumbing
+(GIT_INDEX_FILE + read-tree HEAD + update-index --cacheinfo +
+write-tree + commit-tree + update-ref CAS) — the shared index is
+never touched. (3) A neighbor's commit can ROLL BACK your files if
+they staged from an older base (d14d8efc reverted the six-station
+work and broke tsc on main) — after any interleaved commit, diff
+YOUR files against new HEAD before building on it.
+
+## Still owed (next sessions)
+
+- **Phase 2**: PoseState.Build/Harvest server routing — remote
+  builders/demolishers still guess trees; NPC verb fidelity (NPCs
+  play one Craft byte; fishers at work stops animate as station
+  work). Build/demolish kneel-and-tap school.
+- **Phase 6**: the live walk — in-game verification of slew, node
+  shiver, clang lock, patient line at real stations/nodes, plus
+  town-artisan drive-by (the 56 work stops).
+- Milk/tend NPC target: `tend` plays Milk with no cow — fine (bare
+  dairy hands), unaudited.
+- Bench knock + saw rasp sfx one-shots; loom/tanning impact beats.
+- Async station work (windmill/churn/press/keg/smoker/apiary) and
+  farm tending verbs (water/plant/fertilize/mulch/prune) still have
+  no body state — the plan's original inventory stands.
