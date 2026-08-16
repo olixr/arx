@@ -681,6 +681,26 @@ export interface C2SPartyJoinRun {
 }
 
 /**
+ * THE SAND AND THE ROAR: buy a card off the stakes board the server
+ * just showed (S2CArenaBoard). The server is the judge of everything
+ * — the fee, the rank gate, the venue's claim — and answers with
+ * refusal notices or the muster ceremony, never with trust.
+ */
+export interface C2SArenaQueue {
+  t: 'arenaqueue';
+  match: string;
+}
+
+/**
+ * Walk away from an arena claim you are enrolled in (or mustering
+ * for). Mid-match this is a forfeit for you alone; the fellows fight
+ * on, and the wipe law judges what remains.
+ */
+export interface C2SArenaLeave {
+  t: 'arenaleave';
+}
+
+/**
  * Rewrite the words on a sign you raised. The server is the judge of
  * ownership and of length — it re-sanitizes through the shared law and
  * echoes the stored result back, so the board can never hold anything
@@ -777,6 +797,8 @@ export type C2SMessage =
   | C2SPartyKick
   | C2SPartyDisband
   | C2SPartyJoinRun
+  | C2SArenaQueue
+  | C2SArenaLeave
   | C2SSignEdit
   | C2SWaypoint
   | C2SQuestAbandon;
@@ -1592,6 +1614,65 @@ export interface S2CDungeonClear {
 }
 
 /**
+ * THE SAND AND THE ROAR: one card on the stakes board, as the counter
+ * shows it. `locked` carries the rank gate the buyer has not met —
+ * shown, never hidden (the price in rank is part of the intrigue).
+ */
+export interface ArenaCardWire {
+  id: string;
+  name: string;
+  blurb?: string;
+  level: number;
+  fee: number;
+  rounds: number;
+  rankReq?: number;
+  locked?: boolean;
+}
+
+/**
+ * The stakes board, opened by the ringmaster's counter (the shopopen
+ * pattern: a dialogue that ends well drops the frame and raises the
+ * board). Carries the buyer's own ladder standing so the board can
+ * show rank, title, and the climb to the next rung without a second
+ * ask. Additive alongside v33 — an old client simply never sees a
+ * board it cannot ask for.
+ */
+export interface S2CArenaBoard {
+  t: 'arenaboard';
+  venue: string;
+  name: string;
+  matches: ArenaCardWire[];
+  rank: number;
+  title: string;
+  /** Lifetime arena xp banked. */
+  xp: number;
+  /** Lifetime xp at which the next rank lands (absent at the cap). */
+  xpNext?: number;
+}
+
+/**
+ * The match's living state, sent to every enrolled soul on each
+ * phase turn and on a slow heartbeat while a clock runs. `remainMs`
+ * is a DURATION (the deathmark law: never a wall clock on the wire).
+ * phase 'off' lowers the HUD — sent at reset, wipe teardown, and to
+ * a member who leaves. Additive alongside v33.
+ */
+export interface S2CArenaState {
+  t: 'arena';
+  phase: 'muster' | 'gates' | 'round' | 'breather' | 'victory' | 'wipe' | 'off';
+  venue?: string;
+  /** The card's name, for the HUD's header. */
+  name?: string;
+  /** 1-based round now fighting (or next, during a breather). */
+  round?: number;
+  rounds?: number;
+  /** Clock remaining on the current phase, if one runs. */
+  remainMs?: number;
+  /** Foes still standing in the round. */
+  foes?: number;
+}
+
+/**
  * THE WORLDS APART: the law of one plane, as the client needs it —
  * enough to pick ambience, chart behavior, and fog persistence for
  * ANY plane, static or minted at runtime, without a content lookup.
@@ -2057,6 +2138,8 @@ export type S2CMessage =
   | S2CKeyForgeOpen
   | S2CDungeonEnter
   | S2CDungeonClear
+  | S2CArenaBoard
+  | S2CArenaState
   | S2CPlane
   | S2CSigns
   | S2CDialogueOpen
@@ -2492,6 +2575,12 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (typeof msg.name !== 'string' || msg.name.length > 32) return null;
       return { t: 'partyjoinrun', name: msg.name };
     }
+    case 'arenaqueue': {
+      if (typeof msg.match !== 'string' || msg.match.length > 40) return null;
+      return { t: 'arenaqueue', match: msg.match };
+    }
+    case 'arenaleave':
+      return { t: 'arenaleave' };
     default:
       return null;
   }

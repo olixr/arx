@@ -190,6 +190,14 @@
 // (Also with the split: the band treaty constants — DARK_BAND_Y,
 // UNDERGROUND_Y, DUNGEON_MIN_Y, SURFACE_AUTHOR_MARGIN — died here;
 // planes carry the law now, and the migration SQL keeps its literals.)
+// THE SAND AND THE ROAR (docs/arena-plan.md) — still v33, recorded on
+// purpose: C2SArenaQueue/C2SArenaLeave and S2CArenaBoard/S2CArenaState
+// are a whole new lane, additive JSON end to end. An old client never
+// sends the C2S verbs, drops the unknown S2C records, and still sees
+// the match itself perfectly — gates are ordinary tile patches, foes
+// are ordinary bodies, barks are ordinary speech. A missing stakes
+// board is a missing nicety, not a wrong world (the v26 judgment,
+// answered the other way).
 export const PROTOCOL_VERSION = 33;
 
 /** The most souls one party can hold. */

@@ -214,9 +214,18 @@ function validateHooks(
       // Carries nothing — the shop-hook pattern: armed on the walk,
       // the forge lights when the conversation ends well.
       out.push({ kind: 'keyforge' });
+    } else if (h.kind === 'arena') {
+      // The venue id is checked against the arena LIVE DOC at raise
+      // time, not here — the doc and the trees save independently and
+      // neither may hold the other's edit hostage (the stances lamp).
+      if (typeof h.venue !== 'string' || !SLUG_RE.test(h.venue) || h.venue.length > 32) {
+        errors.push(`${where}.hooks[${i}].venue must be an arena venue slug`);
+        continue;
+      }
+      out.push({ kind: 'arena', venue: h.venue });
     } else {
       errors.push(
-        `${where}.hooks[${i}].kind must be 'flag', 'give', 'shop', 'bounty', 'standing', 'fine', 'quest_offer', 'quest_accept', 'quest_turnin', or 'keyforge'`,
+        `${where}.hooks[${i}].kind must be 'flag', 'give', 'shop', 'bounty', 'standing', 'fine', 'quest_offer', 'quest_accept', 'quest_turnin', 'keyforge', or 'arena'`,
       );
     }
   }

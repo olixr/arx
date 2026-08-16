@@ -1851,6 +1851,36 @@ export class AccountStore {
    * with no id sequence anywhere near the tick path. The DB row is
    * the animal; the world entity is only its visit.
    */
+  /**
+   * THE SAND AND THE ROAR: the ladder's ledger, absent = unranked.
+   * xp is lifetime truth; rank is stored so a retuned curve never
+   * demotes anyone silently (rank only climbs, at award time).
+   */
+  async loadArena(
+    characterId: number,
+  ): Promise<{ xp: number; rank: number; wins: number; losses: number } | null> {
+    const rows = await this.db.query<{ xp: number; rank: number; wins: number; losses: number }>(
+      'SELECT xp, rank, wins, losses FROM character_arena WHERE character_id = ?',
+      [characterId],
+    );
+    const r = rows[0];
+    if (!r) return null;
+    return { xp: Number(r.xp), rank: Number(r.rank), wins: Number(r.wins), losses: Number(r.losses) };
+  }
+
+  /** The award's write: the whole row, fired at the ceremony. */
+  saveArena(
+    characterId: number,
+    row: { xp: number; rank: number; wins: number; losses: number },
+  ): void {
+    this.db.fire(
+      'INSERT INTO character_arena (character_id, xp, rank, wins, losses, updated_at) VALUES (?, ?, ?, ?, ?, now()) ' +
+        'ON CONFLICT (character_id) DO UPDATE SET xp = excluded.xp, rank = excluded.rank, ' +
+        'wins = excluded.wins, losses = excluded.losses, updated_at = now()',
+      [characterId, row.xp, row.rank, row.wins, row.losses],
+    );
+  }
+
   async loadPets(characterId: number): Promise<PetRow[]> {
     const rows = await this.db.query<{
       slot: number;

@@ -1061,6 +1061,19 @@ const MIGRATIONS: string[] = [
   ALTER TABLE character_pets ADD COLUMN IF NOT EXISTS tamed_level SMALLINT;
   ALTER TABLE character_pets ADD COLUMN IF NOT EXISTS kills BIGINT NOT NULL DEFAULT 0;
   ALTER TABLE character_pets ADD COLUMN IF NOT EXISTS downs INT NOT NULL DEFAULT 0;`,
+  // v39: THE SAND AND THE ROAR (docs/arena-plan.md) — the ladder's
+  // ledger. Lifetime arena xp is the truth, rank is derived-but-
+  // stored (the ladder curve is a live content dial; a re-tune never
+  // demotes anyone silently — rank only ever climbs at award time).
+  // wins/losses are the crowd's honest memory, leaderboard-ready.
+  `CREATE TABLE IF NOT EXISTS character_arena (
+    character_id INTEGER PRIMARY KEY REFERENCES characters(id) ON DELETE CASCADE,
+    xp BIGINT NOT NULL DEFAULT 0,
+    rank INT NOT NULL DEFAULT 0,
+    wins INT NOT NULL DEFAULT 0,
+    losses INT NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  );`,
 ];
 
 /**

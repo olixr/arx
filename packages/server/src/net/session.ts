@@ -304,6 +304,18 @@ export class Session {
         this.game.partyJoinRun(this.playerEid, this, msg.name);
         return;
       }
+      case 'arenaqueue': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.arenaQueue(this.playerEid, msg.match);
+        return;
+      }
+      case 'arenaleave': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.arenaLeave(this.playerEid);
+        return;
+      }
       case 'use': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

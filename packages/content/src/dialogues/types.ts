@@ -151,6 +151,19 @@ export interface DialogueHookFine {
 }
 
 /**
+ * THE SAND AND THE ROAR: raise the venue's stakes board when this
+ * conversation ENDS WELL (the shop-hook law: terminal node or a
+ * farewell, never Esc or an interrupt). The ringmaster keeps both a
+ * voice and a counter — the talk explains the ring, the good ending
+ * shows the card. The venue id names an ArenaVenueDef in the arena
+ * live doc; the server validates the claim at raise time.
+ */
+export interface DialogueHookArena {
+  kind: 'arena';
+  venue: string;
+}
+
+/**
  * Node effects, executed server-side when the node is entered. This
  * union is THE open socket: quest grants, faction shifts, and shop
  * unlocks land here as new kinds without touching the walk logic.
@@ -165,7 +178,8 @@ export type DialogueHook =
   | DialogueHookQuestOffer
   | DialogueHookQuestAccept
   | DialogueHookQuestTurnin
-  | DialogueHookKeyForge;
+  | DialogueHookKeyForge
+  | DialogueHookArena;
 
 /** One answer the player may pick (at most 4 per node). */
 export interface DialogueChoice {
