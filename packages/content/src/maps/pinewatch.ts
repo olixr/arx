@@ -891,7 +891,7 @@ export function buildPinewatch(): ZoneDef {
   b.set(11, 119, Tile.Brazier).set(13, 119, Tile.Brazier);
   b.sign(15, 123, 'THE SHORE BASTION', [
     'when the water goes hard, this beach is a gate',
-    'the braziers stay laid. ask Torvi why',
+    'the braziers stay fed. ask Torvi why',
   ], Tile.Signpost);
 
   // ---------------------------------------------------------------
@@ -1078,6 +1078,7 @@ export function buildPinewatch(): ZoneDef {
   // THE ANSWERING BEACON — the standing reply to Hartfell's fellwatch:
   // when their fire burns, Pinewatch bars the Wardline and lights this.
   b.raise(119, 8, 6, 4, 1);
+  b.fillRect(119, 8, 6, 4, Tile.StoneFloor); // a laid platform, not bare earth
   b.stairs(121, 11);
   b.stairs(122, 11);
   b.set(120, 9, Tile.Brazier).set(123, 9, Tile.Brazier);

@@ -285,4 +285,54 @@ tree at prio 21 gated `:ready`, and every reward flag gets a reader.
 
 ## 10. As-built ledger
 
-*(appended per phase as the work lands)*
+**EPIC COMPLETE 2026-08-16, six commits:** fae3873b the plan, 3d5219f3
+the ground, 921bc2a6 the quarters, 13292d02 the people, 35c35133 the
+dressing, + the walk.
+
+- **The shape shipped as planned**: 128x152 origin-fixed, four ways in
+  (the Timber Gate in the cut at (31–33,140), the Hartgate in the notch
+  at (121–123,5), the Wardline kept, the Winter Strand open), the tarn
+  authored to the measured worldgen shore, the curtain dying into water
+  twice, the west road-gate and its wall against open water deleted.
+- **Anchors moved with the town**: haven (1160,−330) safeR 80, crown
+  anchor ditto, audio (1160,−330) 44/64. Timber Road tail ends
+  (1129,−262); its carve crosses the hem at local x≈32 tile-exact.
+- **The cast**: 37 placements, 24 named. Hot bunks proven live (the
+  night pair asleep at 10:00, pose-16 census clean at 23:30). SWEEP
+  CLEAN after 13 fixes, two of them PRE-EXISTING (Bram's boom waypoint
+  in pond water, Kettil's in the tally-shed wall).
+- **Validator tolls paid on the way**: the sealed-pocket law took the
+  beacon's banner pole; the sign law took a lean ladder off the nursery
+  shingle; the reachability law killed a spear rack and a crate stack
+  that (with the beacon cliffs) sealed the Hartgate pocket whole.
+  Restraint is a placement.
+- **THE WALK (lane 17, :8870/:5270, DB arx_pinewatch17, fresh migrate,
+  vite.config.rig17.ts checked in)**: eighteen stops, day and night,
+  ZERO console errors. The discovery herald fires on the grown rect
+  ("THE WATCH ON THE OLD WOOD"). The rota layer executed unprompted:
+  Halla at the board, Torvi crossing the yard, Vigga at her fires, Ove
+  drilling between the butts, Berget at the requisition window, Stellan
+  at the map desk by day and asleep by night, the gate pair swapping on
+  the rota, Maren SITTING in her physic rows, Ylva at her slab, Sigrun
+  at her new gate, Sylvi at the paddock, sleepers in real beds. Night
+  pools the gate fires in the notch exactly as designed. Curation
+  verdicts: two, both paid (the beacon top went laid stone; the bastion
+  sign now says "fed", since a brazier in this world burns).
+
+## 11. Debts (ledgered)
+
+- **Voice assignments**: eleven new throats have VOICE.md cards but no
+  tools/voice/characters.json entries — assigning ttsVoices needs the
+  voicelab roster (no repeats law) and generation is user-run
+  (`tools/voice/run_all.sh`). All new nodes carry voice ids; the
+  resolver degrades to silence until then.
+- **The north lake seam**: the authored Glasswater's top hem meets
+  procgen land north of the rect (pre-existing, pre-dates this epic).
+  Belongs to a future far-shore epic; the apron blends it for now.
+- **Deploy notes**: db:refresh --content --world; the grown rows may
+  hold player built_tiles and stale POI rows (the Vale precedent).
+- **The next epic's door**: THE COLD SIGNS ends with Halla's closed
+  door and four true things. The winter it foreshadows is authored
+  nowhere yet — deliberately. Maren's carrier ("a coat that smelled of
+  pitch, and the sound the ice makes when it is deciding") is the
+  thread to pull.
