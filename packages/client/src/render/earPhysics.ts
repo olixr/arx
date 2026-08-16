@@ -260,7 +260,7 @@ export class EarSim {
           q.y = rb.y + ey * kk;
         }
       }
-      // THE CARTILAGE LAW (the fae wolf pass): a blade BENDS, never
+      // THE CARTILAGE LAW (the fey wolf pass): a blade BENDS, never
       // BUCKLES. The per-node cap above is rest-relative, so a gait
       // bob pumping the blade axially can settle a lawful standing
       // ZIGZAG — alternating deviations that each clear the cap

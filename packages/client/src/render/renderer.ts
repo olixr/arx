@@ -89,7 +89,7 @@ import {
   foxLook,
   WOLF_LOOK,
   DIREWOLF_LOOK,
-  FAEWOLF_LOOK,
+  FEYWOLF_LOOK,
   OLDFANG_LOOK,
   TURTLE_LOOK,
   COLOSSUS_LOOK,
@@ -190,7 +190,7 @@ import {
 } from './reveal.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
-import { BobtailSim, TailSim, drawBobtail, drawFaeBrush, drawFoxBrush, drawHorseTail, drawSabercatTail, drawTail, drawTurtleTail, drawWolfBrush } from './tail.js';
+import { BobtailSim, TailSim, drawBobtail, drawFeyBrush, drawFoxBrush, drawHorseTail, drawSabercatTail, drawTail, drawTurtleTail, drawWolfBrush } from './tail.js';
 import { FlightRig, batLook, drawBat, drawGreatOwl, flierSpec } from './flight.js';
 import { EarSim } from './earPhysics.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
@@ -876,7 +876,7 @@ interface AnimState {
    *  dire-wolf hangs) — its own slot beside the gnoll's humanoid-lane
    *  `tail`, so neither lane's lifecycle evicts the other's appendage. */
   canidBrush?: TailSim;
-  /** THE TWIN BANNERS (fae wolf only): the second simulated brush —
+  /** THE TWIN BANNERS (fey wolf only): the second simulated brush —
    *  its own chain with its own seed, so the pair never streams in
    *  sync. Evicted beside canidBrush. */
   canidBrush2?: TailSim;
@@ -55775,7 +55775,7 @@ export class Renderer {
       // The court's hound: the highest rump line in the lane (the
       // gazehound stern), slim banners — TWO of them; the twin logic
       // below runs the pair on splayed anchors.
-      fae_wolf: { rootOff: 0.54, rumpH: 0.6, sizeK: 1.32, heavy: 1.05 },
+      fey_wolf: { rootOff: 0.54, rumpH: 0.6, sizeK: 1.32, heavy: 1.05 },
     };
     const canid = CANID[defId];
     if (canid) {
@@ -55792,10 +55792,10 @@ export class Renderer {
         anim.canidBrush = new TailSim(canid.heavy, eid, rootOff);
       }
       brushSim = anim.canidBrush;
-      // THE TWIN BANNERS: the fae wolf alone runs a second chain —
+      // THE TWIN BANNERS: the fey wolf alone runs a second chain —
       // its own seed (a pack of hounds never streams in sync, and
       // neither do one hound's own banners), same clamped root.
-      const twin = defId === 'fae_wolf';
+      const twin = defId === 'fey_wolf';
       if (twin && !anim.canidBrush2) {
         const rootOff = Math.min(canid.rootOff, (spec.bodyLen - 0.04) / canid.sizeK);
         anim.canidBrush2 = new TailSim(canid.heavy, (eid ^ 0x9e37) + 13, rootOff);
@@ -55841,13 +55841,13 @@ export class Renderer {
       }
       const isFox = defId.startsWith('fox');
       const foxL = isFox ? foxLook(defId, eid) : undefined;
-      const faeSt =
-        defId === 'fae_wolf'
+      const feySt =
+        defId === 'fey_wolf'
           ? // The court's banners: dusk silk dipped in cold light —
             // the tip inversion turned all the way to LIGHT.
-            { coat: FAEWOLF_LOOK.coat, mantle: FAEWOLF_LOOK.mantle, light: FAEWOLF_LOOK.glimmer, heavy: 1.0 }
+            { coat: FEYWOLF_LOOK.coat, mantle: FEYWOLF_LOOK.mantle, light: FEYWOLF_LOOK.glimmer, heavy: 1.0 }
           : undefined;
-      const wolfSt = isFox || faeSt
+      const wolfSt = isFox || feySt
         ? undefined
         : defId === 'dire_wolf'
           ? { coat: DIREWOLF_LOOK.coat, under: DIREWOLF_LOOK.under, tip: DIREWOLF_LOOK.grizzle, heavy: 1.15 }
@@ -55864,15 +55864,15 @@ export class Renderer {
             return { x: sp.x, y: sp.y - this.renderLift(nd.x, nd.y) * scale - nd.z * scale };
           });
         const back = Math.sin(legPose.dir) < -0.2;
-        if (faeSt && brush2) {
+        if (feySt && brush2) {
           // Twin depth: the up-screen root is the FAR banner — it
           // paints first so the near banner reads over it at the
           // quarter bands.
           const a = project(brushSim!);
           const b = project(brush2);
           const [far, near] = (a[0]?.y ?? 0) <= (b[0]?.y ?? 0) ? [a, b] : [b, a];
-          drawFaeBrush(this.ctx, far, faeSt, scale, { hurt, back });
-          drawFaeBrush(this.ctx, near, faeSt, scale, { hurt, back });
+          drawFeyBrush(this.ctx, far, feySt, scale, { hurt, back });
+          drawFeyBrush(this.ctx, near, feySt, scale, { hurt, back });
           return;
         }
         const pts = project(brushSim!);
@@ -56018,7 +56018,7 @@ export class Renderer {
         // antlers ride a raised neck and clip at the top edge without
         // their own headroom (user-flagged walking up-screen).
         const headroom =
-          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'wolf_oldfang' ? 0.32 : defId === 'fae_wolf' ? 0.45 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : defId === 'fox' ? 0.35 : defId === 'fox_champion' ? 0.5 : defId === 'giant_turtle' ? 0.45 : defId === 'colossus_turtle' ? 0.85 : defId === 'giant_crab' ? 0.45 : 0;
+          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'wolf_oldfang' ? 0.32 : defId === 'fey_wolf' ? 0.45 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : defId === 'fox' ? 0.35 : defId === 'fox_champion' ? 0.5 : defId === 'giant_turtle' ? 0.45 : defId === 'colossus_turtle' ? 0.85 : defId === 'giant_crab' ? 0.45 : 0;
         const top = (spec.bodyRise + (def?.radius ?? 0.3) * 2.2 + headroom) * scale + r;
         const bottom = (spec.rig.legLen + 0.7 + snapRoom) * scale;
         return { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom };
@@ -57791,7 +57791,7 @@ export class Renderer {
               // The court's hound overhangs furthest of the canids:
               // twin limp banners past the stern, crown tines past
               // the skull.
-              : c.look.b.defId === 'fae_wolf'
+              : c.look.b.defId === 'fey_wolf'
                 ? 0.4
                 // The thrown wing splays a full span past the spine.
                 : c.look.b.defId === 'elder_great_owl'

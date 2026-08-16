@@ -3834,7 +3834,7 @@ const defs: AbilityDef[] = [
     status: { status: 'bleed', power: 2, durationTicks: 80 },
   },
   // ------------------------------------------------------------------
-  // THE COURT'S HOUND (the fae wolf): three words from the estate
+  // THE COURT'S HOUND (the fey wolf): three words from the estate
   // that never thawed. The ring is seeded where you are GOING, the
   // veil is the cold bursting off a crowded hound, and the step is
   // the legend itself — the hound comes apart into glimmer and

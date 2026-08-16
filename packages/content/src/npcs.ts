@@ -2393,8 +2393,8 @@ const defs: NpcDef[] = [
     },
   },
   {
-    // THE COURT'S HOUND: the fae wolf — the highest rung of the
-    // wolfkin ladder (wolf, worg, dire, fae), and the one the winter
+    // THE COURT'S HOUND: the fey wolf — the highest rung of the
+    // wolfkin ladder (wolf, worg, dire, fey), and the one the winter
     // court kept. The loot ledger has whispered it for a while now:
     // "the cold kept a court once, and the packs inherited the
     // estate" — this is what walked out of that estate still wearing
@@ -2405,8 +2405,8 @@ const defs: NpcDef[] = [
     // still buckled to its skull. It is the most cunning thing on
     // four legs: it seeds the ring, veils when crowded, and steps
     // THROUGH you when you run.
-    id: 'fae_wolf',
-    name: 'Fae wolf',
+    id: 'fey_wolf',
+    name: 'Fey wolf',
     level: 26,
     maxHp: 175,
     damage: 7,
@@ -2422,7 +2422,7 @@ const defs: NpcDef[] = [
     // Only the court's hound outpaces a worg — and the worg knows it.
     speed: 5.2,
     xpReward: 660,
-    loot: ['fae_wolf', 'wolf_wardrobe', 'wolf_arms', 'heirlooms'],
+    loot: ['fey_wolf', 'wolf_wardrobe', 'wolf_arms', 'heirlooms'],
     respawnSec: 150,
     color: '#9a94b4',
     radius: 0.47,

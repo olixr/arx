@@ -698,7 +698,7 @@ export const FX_STYLES: Record<string, FxStyle> = {
   hamstring_bite: BLOOD({ mid: '#8f96a8', ring: 'shards', debris: 'blood', decal: 'stain', punch: 0.45, wash: 0.25 }),
   call_the_brotherhood: SHADOW({ mid: '#8a94b8', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.65, wash: 0.35 }),
   throat_lunge: BLOOD({ mid: '#b8bfd4', ring: 'shards', debris: 'blood', decal: 'stain', punch: 0.6, wash: 0.3 }),
-  // THE COURT'S HOUND (the fae wolf) — cold light over dusk: the ring
+  // THE COURT'S HOUND (the fey wolf) — cold light over dusk: the ring
   // is grown, not cast (rune ring, star grains, a caged floor); the
   // veil is night arriving early in one bloom; the step is a cold
   // seam torn and mended with the bite waiting at the far end.

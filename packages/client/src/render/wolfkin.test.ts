@@ -11,15 +11,15 @@ import assert from 'node:assert/strict';
 import { NPCS, PACK_RALLY_RANGE } from '@arx/content';
 import {
   DIREWOLF_LOOK,
-  FAEWOLF_LOOK,
+  FEYWOLF_LOOK,
   WOLF_LOOK,
   WORG_LOOK,
   beastSpec,
   drawDireWolfHead,
-  drawFaeWolfHead,
+  drawFeyWolfHead,
   drawWorgHead,
   paintDireWolfBody,
-  paintFaeWolfBody,
+  paintFeyWolfBody,
   paintWorgBody,
 } from './rig.js';
 
@@ -43,62 +43,62 @@ test('the bestiary fields both wolfkin, packed and armed', () => {
   assert.ok(worg.speed > wolf.speed, 'you do not outrun a worg');
 });
 
-test('THE COURT\'S HOUND: the fae wolf crowns the ladder', () => {
-  const fae = NPCS.get('fae_wolf');
+test('THE COURT\'S HOUND: the fey wolf crowns the ladder', () => {
+  const fey = NPCS.get('fey_wolf');
   const dire = NPCS.get('dire_wolf');
   const worg = NPCS.get('worg');
-  assert.ok(fae && dire && worg);
+  assert.ok(fey && dire && worg);
   // The highest rung: above the matriarch in level, body, and reach.
-  assert.ok(fae.level > dire.level, 'the hound outranks the matriarch');
-  assert.ok(fae.maxHp > dire.maxHp);
-  assert.ok(fae.xpReward > dire.xpReward);
+  assert.ok(fey.level > dire.level, 'the hound outranks the matriarch');
+  assert.ok(fey.maxHp > dire.maxHp);
+  assert.ok(fey.xpReward > dire.xpReward);
   // Only the court's hound outpaces a worg.
-  assert.ok(fae.speed > worg.speed, 'the legend is the speed');
+  assert.ok(fey.speed > worg.speed, 'the legend is the speed');
   // The smartest hunter: widest mark, widest watch.
-  assert.ok(fae.aggroRange > dire.aggroRange);
-  assert.ok((fae.sightArc ?? 0) > (dire.sightArc ?? 0));
+  assert.ok(fey.aggroRange > dire.aggroRange);
+  assert.ok((fey.sightArc ?? 0) > (dire.sightArc ?? 0));
   // It runs the wolfkin web (the rally answers it) and bites cold.
-  assert.equal(fae.pack, 'wolfkin');
-  assert.equal(fae.attackStatus?.status, 'chill');
-  assert.ok(fae.pounce);
+  assert.equal(fey.pack, 'wolfkin');
+  assert.equal(fey.attackStatus?.status, 'chill');
+  assert.ok(fey.pounce);
   // The three words, in the authored order: fence, shove, close.
   assert.deepEqual(
-    fae.kit?.map((k) => k.ability),
+    fey.kit?.map((k) => k.ability),
     ['faerie_ring', 'gloaming_veil', 'glimmer_step'],
   );
   // The court's own cold cannot bite the court's hound.
-  assert.ok(fae.resist?.includes('chill'));
-  assert.ok(fae.weak?.includes('burn'));
+  assert.ok(fey.resist?.includes('chill'));
+  assert.ok(fey.weak?.includes('burn'));
 });
 
 test('the hound is a design, never a scaled dire: tall, fine-boned, disjoint palette', () => {
-  // No tone shared with the wolf OR the matriarch — the fae wolf
+  // No tone shared with the wolf OR the matriarch — the fey wolf
   // arrives from the court, not from the pack's paint pots.
   const kinTones = new Set([
     WOLF_LOOK.coat, WOLF_LOOK.saddle, WOLF_LOOK.under, WOLF_LOOK.eye,
     DIREWOLF_LOOK.coat, DIREWOLF_LOOK.saddle, DIREWOLF_LOOK.under, DIREWOLF_LOOK.eye,
   ]);
-  for (const tone of [FAEWOLF_LOOK.coat, FAEWOLF_LOOK.mantle, FAEWOLF_LOOK.under, FAEWOLF_LOOK.eye, FAEWOLF_LOOK.glimmer]) {
-    assert.ok(!kinTones.has(tone), `fae wolf shares a wolfkin tone ${tone}`);
+  for (const tone of [FEYWOLF_LOOK.coat, FEYWOLF_LOOK.mantle, FEYWOLF_LOOK.under, FEYWOLF_LOOK.eye, FEYWOLF_LOOK.glimmer]) {
+    assert.ok(!kinTones.has(tone), `fey wolf shares a wolfkin tone ${tone}`);
   }
   const direSpec = beastSpec('dire_wolf', 0.44, 4.8);
-  const faeSpec = beastSpec('fae_wolf', 0.47, 5.2);
+  const feySpec = beastSpec('fey_wolf', 0.47, 5.2);
   // THE TOWER ON STILTS: the longest legs and the biggest frame in
   // the canid line, on a HIGHER topline than the matriarch's —
-  assert.ok(faeSpec.rig.legLen > direSpec.rig.legLen, 'the longest canid legs in the wood');
-  assert.ok(faeSpec.bodyLen > direSpec.bodyLen);
-  assert.ok(FAEWOLF_LOOK.backH > DIREWOLF_LOOK.backH);
+  assert.ok(feySpec.rig.legLen > direSpec.rig.legLen, 'the longest canid legs in the wood');
+  assert.ok(feySpec.bodyLen > direSpec.bodyLen);
+  assert.ok(FEYWOLF_LOOK.backH > DIREWOLF_LOOK.backH);
   // — but FINE-BONED: a narrower skull and slimmer legs than hers.
   // Height without bulk is the whole architecture.
-  assert.ok(FAEWOLF_LOOK.headW < DIREWOLF_LOOK.headW, 'the hound is fine-boned, never a bone-crusher');
-  assert.ok(faeSpec.legW < direSpec.legW);
+  assert.ok(FEYWOLF_LOOK.headW < DIREWOLF_LOOK.headW, 'the hound is fine-boned, never a bone-crusher');
+  assert.ok(feySpec.legW < direSpec.legW);
   // THE SLENDER BEAM (the streamline pass): narrower in plan than
   // the matriarch on a longer body — the chest is a keel, never a
   // barrel. Mass is height and reach, never width.
-  assert.ok(FAEWOLF_LOOK.bodyW < DIREWOLF_LOOK.bodyW, 'the hound is slender, never the pack barrel');
+  assert.ok(FEYWOLF_LOOK.bodyW < DIREWOLF_LOOK.bodyW, 'the hound is slender, never the pack barrel');
   // The sight-hound tuck: the deepest chest-to-waist sweep in the line.
   assert.ok(
-    FAEWOLF_LOOK.tuckH - FAEWOLF_LOOK.chestH > DIREWOLF_LOOK.tuckH - DIREWOLF_LOOK.chestH,
+    FEYWOLF_LOOK.tuckH - FEYWOLF_LOOK.chestH > DIREWOLF_LOOK.tuckH - DIREWOLF_LOOK.chestH,
     'the gazehound tuck must out-sweep the matriarch',
   );
 });
@@ -176,7 +176,7 @@ test('both painters run clean across all eight facings, live and dead', () => {
   try {
     const direSpec = beastSpec('dire_wolf', 0.44, 4.8);
     const worgSpec = beastSpec('worg', 0.37, 5.0);
-    const faeSpec = beastSpec('fae_wolf', 0.47, 5.2);
+    const feySpec = beastSpec('fey_wolf', 0.47, 5.2);
     for (let band = 0; band < 8; band++) {
       const dir = (band / 8) * Math.PI * 2;
       const fx = Math.cos(dir);
@@ -198,9 +198,9 @@ test('both painters run clean across all eight facings, live and dead', () => {
         };
         paintDireWolfBody(mockCtx(), direSpec, DIREWOLF_LOOK, frame);
         paintWorgBody(mockCtx(), worgSpec, WORG_LOOK, frame);
-        paintFaeWolfBody(mockCtx(), faeSpec, FAEWOLF_LOOK, frame);
+        paintFeyWolfBody(mockCtx(), feySpec, FEYWOLF_LOOK, frame);
         // The hurt flash keeps the glimmer signature — walk it too.
-        paintFaeWolfBody(mockCtx(), faeSpec, FAEWOLF_LOOK, { ...frame, hurt: true });
+        paintFeyWolfBody(mockCtx(), feySpec, FEYWOLF_LOOK, { ...frame, hurt: true });
       }
       for (const dead of [false, true]) {
         drawDireWolfHead(mockCtx(), DIREWOLF_LOOK, {
@@ -230,7 +230,7 @@ test('both painters run clean across all eight facings, live and dead', () => {
         // The court's hound: chamfron, tines, gorget gem, glow eyes,
         // snarl breath — every station must project finite at every
         // band, live and dead (the silver survives the corpse).
-        drawFaeWolfHead(mockCtx(), FAEWOLF_LOOK, {
+        drawFeyWolfHead(mockCtx(), FEYWOLF_LOOK, {
           x: 100,
           y: 80,
           s: 48,

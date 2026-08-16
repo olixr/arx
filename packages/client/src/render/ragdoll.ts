@@ -48,14 +48,14 @@ import {
   STAG_LOOK,
   TURTLE_LOOK,
   COLOSSUS_LOOK,
-  FAEWOLF_LOOK,
+  FEYWOLF_LOOK,
   WOLF_LOOK,
   WORG_LOOK,
   drawBearHead,
   drawBoarHead,
   drawCattleHead,
   drawDireWolfHead,
-  drawFaeWolfHead,
+  drawFeyWolfHead,
   drawLynxHead,
   drawOwlHead,
   drawRamHead,
@@ -76,7 +76,7 @@ import {
   paintCrabBody,
   paintGiantCrabBody,
   paintDireWolfBody,
-  paintFaeWolfBody,
+  paintFeyWolfBody,
   paintLynxBody,
   paintOwlBody,
   paintRamBody,
@@ -2362,7 +2362,7 @@ export function drawBeastRagdoll(
     ctx.beginPath();
     facetCircle(ctx, tx, tipY, s * 0.044, 5, spineA);
     ctx.fill();
-  } else if (look.defId === 'fae_wolf') {
+  } else if (look.defId === 'fey_wolf') {
     // THE TWIN BANNERS lie limp and SPLAYED behind the stern — two
     // silk falls, never one. The cold light is out of them (the
     // dead-eyes law reaches the banners), but the tips stay pale:
@@ -2380,9 +2380,9 @@ export function drawBeastRagdoll(
         tipY,
         (t) => s * (0.022 + 0.05 * Math.sin(Math.PI * Math.pow(t, 0.85))),
       );
-      ctx.fillStyle = shade(FAEWOLF_LOOK.coat, -5);
+      ctx.fillStyle = shade(FEYWOLF_LOOK.coat, -5);
       ctx.fill(banner);
-      ctx.fillStyle = shade(FAEWOLF_LOOK.under, -10);
+      ctx.fillStyle = shade(FEYWOLF_LOOK.under, -10);
       ctx.beginPath();
       facetCircle(ctx, tx, tipY, s * 0.036, 5, ba);
       ctx.fill();
@@ -2541,11 +2541,11 @@ export function drawBeastRagdoll(
       topScale: 0.5,
       botH: 0.02,
     });
-  } else if (look.defId === 'fae_wolf') {
+  } else if (look.defId === 'fey_wolf') {
     // The glimmer wake dims but the motes hold their stations — the
     // painter keeps the corpse's identity the way the hackle ridge
     // keeps the matriarch's.
-    paintFaeWolfBody(ctx, spec, FAEWOLF_LOOK, {
+    paintFeyWolfBody(ctx, spec, FEYWOLF_LOOK, {
       bx: midX,
       gy: midY + r * 0.4,
       s,
@@ -2914,10 +2914,10 @@ export function drawBeastRagdoll(
       ys: 1,
       dead: true,
     });
-  } else if (look.defId === 'fae_wolf') {
+  } else if (look.defId === 'fey_wolf') {
     // The cold lamps go out; the chamfron and its tines stay — the
     // court's silver survives the hound.
-    drawFaeWolfHead(ctx, FAEWOLF_LOOK, {
+    drawFeyWolfHead(ctx, FEYWOLF_LOOK, {
       x: head.x,
       y: head.y,
       s,

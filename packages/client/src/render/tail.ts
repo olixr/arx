@@ -1040,8 +1040,8 @@ export function drawWolfBrush(
   ctx.stroke();
 }
 
-/** Pre-resolved fae-banner tones — the painter never learns a species. */
-export interface FaeBrushStyle {
+/** Pre-resolved fey-banner tones — the painter never learns a species. */
+export interface FeyBrushStyle {
   coat: string;
   /** The dusk mantle ink — the banner's quiet contour. */
   mantle: string;
@@ -1063,10 +1063,10 @@ export interface FaeBrushStyle {
  * Plain path calls — no Path2D — so node-side painter tests can walk
  * every coordinate.
  */
-export function drawFaeBrush(
+export function drawFeyBrush(
   ctx: CanvasRenderingContext2D,
   pts: Array<{ x: number; y: number }>,
-  st: FaeBrushStyle,
+  st: FeyBrushStyle,
   wk: number,
   opts: FoxBrushDrawOpts,
 ): void {
@@ -1083,7 +1083,7 @@ export function drawFaeBrush(
     tx /= tl;
     ty /= tl;
     const t = i / (n - 1);
-    // The fae profile: a silk flag — slimmer root than any wolf, the
+    // The fey profile: a silk flag — slimmer root than any wolf, the
     // bulge pushed late, and a long honest point.
     const w =
       (0.02 + 0.05 * Math.pow(Math.sin(Math.min(1, t * 1.05) * Math.PI), 0.85) + 0.008 * (1 - t)) *
@@ -1113,7 +1113,7 @@ export function drawFaeBrush(
   if (opts.hurt) {
     // The hurt flash keeps the shed motes — the twin-banner signature
     // must survive the silhouette read.
-    faeMotes(ctx, pts, wk, '#ffffff');
+    feyMotes(ctx, pts, wk, '#ffffff');
     return;
   }
 
@@ -1158,11 +1158,11 @@ export function drawFaeBrush(
   // THE SHED MOTES: two cold sparks trailing off the tip along the
   // banner's own last direction — geometry-deterministic, so every
   // caller sheds the same light.
-  faeMotes(ctx, pts, wk, st.light);
+  feyMotes(ctx, pts, wk, st.light);
 }
 
 /** The banner's shed light: two diamonds past the tip, tapering. */
-function faeMotes(
+function feyMotes(
   ctx: CanvasRenderingContext2D,
   pts: Array<{ x: number; y: number }>,
   wk: number,

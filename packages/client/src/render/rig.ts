@@ -10479,7 +10479,7 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
   // height over a hard tuck, a floating high-lift stride, and the
   // quickest turn any wolf owns. The speed is the legend — only the
   // court's hound outpaces a worg.
-  fae_wolf: {
+  fey_wolf: {
     rig: {
       legs: quadLegs(0.37, 0.16),
       legLen: 0.56,
@@ -12492,7 +12492,7 @@ export function drawDireWolfHead(
 }
 
 /**
- * THE FAE WOLF: the court's hound — the highest rung of the wolfkin
+ * THE FEY WOLF: the court's hound — the highest rung of the wolfkin
  * ladder, designed around TWO silhouette elements no other body owns:
  * THE TWIN BANNERS (two full simulated brushes off the stern, tips
  * dipped in cold light — the renderer runs the pair) and THE COURT'S
@@ -12506,7 +12506,7 @@ export function drawDireWolfHead(
  * spring-green lamps; the glow OWNS the socket. It keeps its teeth
  * covered at rest — the dire never does. Composure is the tell.
  */
-export interface FaeWolfLook {
+export interface FeyWolfLook {
   coat: string;
   /** The dusk mantle draped over shoulders and back. */
   mantle: string;
@@ -12528,7 +12528,7 @@ export interface FaeWolfLook {
   headH: number;
 }
 
-export const FAEWOLF_LOOK: FaeWolfLook = {
+export const FEYWOLF_LOOK: FeyWolfLook = {
   coat: '#9a94b4',
   mantle: '#5c5480',
   under: '#e0dcec',
@@ -12555,10 +12555,10 @@ export const FAEWOLF_LOOK: FaeWolfLook = {
   headH: 0.28,
 };
 
-export function paintFaeWolfBody(
+export function paintFeyWolfBody(
   ctx: CanvasRenderingContext2D,
   spec: BeastSpec,
-  look: FaeWolfLook,
+  look: FeyWolfLook,
   f: BeastBlockFrame,
 ): void {
   const hl = spec.bodyLen;
@@ -12756,7 +12756,7 @@ export function paintFaeWolfBody(
 }
 
 /**
- * The fae wolf head: a fine long skull carried highest of any canid —
+ * The fey wolf head: a fine long skull carried highest of any canid —
  * narrow where the dire is broad, composed where she glowers. THE
  * COURT'S SILVER lives here: the chamfron brow-plate with its three
  * crown tines (worn gear, kept on the corpse) and a glimmer gem at
@@ -12767,9 +12767,9 @@ export function paintFaeWolfBody(
  * narrowest blades in the wolf line, silver-tipped, on the elastic
  * pair contract.
  */
-export function drawFaeWolfHead(
+export function drawFeyWolfHead(
   ctx: CanvasRenderingContext2D,
-  look: FaeWolfLook,
+  look: FeyWolfLook,
   o: {
     x: number;
     y: number;
@@ -12816,7 +12816,7 @@ export function drawFaeWolfHead(
   const earW0 = w * 0.13;
   const earPair = canidEarChains(earCarr, o, cx, cy, s, earPin);
   const fEarFront = fy > 0.05;
-  const paintFaeEar = (e: { c: EarChain; side: number }): void => {
+  const paintFeyEar = (e: { c: EarChain; side: number }): void => {
     const spts = e.c.pts.map((p) => ({ x: cx + p.x * s, y: cy + p.y * s }));
     paintCanidEar(ctx, spts, earW0, earSt, {
       front: fEarFront,
@@ -12842,7 +12842,7 @@ export function drawFaeWolfHead(
       ctx.fill();
     }
   };
-  for (const e of earPair.behind) paintFaeEar(e);
+  for (const e of earPair.behind) paintFeyEar(e);
 
   // Skull block: narrower than the dire's, chamfered fine — the
   // fine-boned read against her bone-crusher.
@@ -13020,7 +13020,7 @@ export function drawFaeWolfHead(
 
   // The near ears return over everything — the projection's z-order;
   // the silver tips ride their own blades through every facing.
-  for (const e of earPair.front) paintFaeEar(e);
+  for (const e of earPair.front) paintFeyEar(e);
 }
 
 /**
@@ -21680,7 +21680,7 @@ export function drawBeast(
       : opts.defId === 'wolf_oldfang'
         ? OLDFANG_LOOK
         : undefined;
-  const faeL = opts.defId === 'fae_wolf' ? FAEWOLF_LOOK : undefined;
+  const feyL = opts.defId === 'fey_wolf' ? FEYWOLF_LOOK : undefined;
   const worgL = opts.defId === 'worg' ? WORG_LOOK : undefined;
   const ratL = opts.defId === 'rat' ? RAT_LOOK : undefined;
   const boarL =
@@ -21744,8 +21744,8 @@ export function drawBeast(
       paintDireWolfBody(ctx, spec, direL, blockFrame());
       return;
     }
-    if (faeL) {
-      paintFaeWolfBody(ctx, spec, faeL, blockFrame());
+    if (feyL) {
+      paintFeyWolfBody(ctx, spec, feyL, blockFrame());
       return;
     }
     if (worgL) {
@@ -22561,9 +22561,9 @@ export function drawBeast(
       });
       return;
     }
-    if (faeL) {
+    if (feyL) {
       const hl = spec.bodyLen * s;
-      const hw2 = faeL.headW * s;
+      const hw2 = feyL.headW * s;
       const nod = opts.pose.bob * 0.5 * s;
       // The court's hound barely stoops through the windup — a small
       // settle, nothing like the matriarch's kill-line sink. The
@@ -22577,22 +22577,22 @@ export function drawBeast(
       const chy =
         by +
         fy * (hl + hw2 * 0.4) * ys -
-        (faeL.backH + faeL.shoulderH * 0.6) * 1.24 * s -
+        (feyL.backH + feyL.shoulderH * 0.6) * 1.24 * s -
         nod +
         stalk;
       // Neck: a SLENDER upright quad — long and narrow where the
       // dire's ruff is storm mass.
-      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(faeL.coat, -7);
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(feyL.coat, -7);
       ctx.beginPath();
-      const nb = (faeL.backH + faeL.shoulderH) * s + opts.pose.bob * 0.35 * s;
-      const nwx = px * faeL.bodyW * 0.48 * s;
-      const nwy = py * faeL.bodyW * 0.48 * s;
+      const nb = (feyL.backH + feyL.shoulderH) * s + opts.pose.bob * 0.35 * s;
+      const nwx = px * feyL.bodyW * 0.48 * s;
+      const nwy = py * feyL.bodyW * 0.48 * s;
       const rax = bx + fx * hl * 0.76;
       const ray = by + fy * hl * 0.76 * ys;
       const nlx = chx - px * hw2 * 0.34;
-      const nly = chy - py * hw2 * 0.34 * ys + faeL.headH * s * 0.26;
+      const nly = chy - py * hw2 * 0.34 * ys + feyL.headH * s * 0.26;
       const nrx = chx + px * hw2 * 0.34;
-      const nry = chy + py * hw2 * 0.34 * ys + faeL.headH * s * 0.26;
+      const nry = chy + py * hw2 * 0.34 * ys + feyL.headH * s * 0.26;
       ctx.moveTo(rax + nwx, ray + nwy * ys - nb * 0.92);
       ctx.lineTo(rax - nwx, ray - nwy * ys - nb * 0.92);
       ctx.lineTo(nlx, nly);
@@ -22609,14 +22609,14 @@ export function drawBeast(
         const gly = ray + nwy * ys - nb * 0.92 + (nly - (ray + nwy * ys - nb * 0.92)) * gt;
         const grx = rax - nwx + (nrx - (rax - nwx)) * gt;
         const gry = ray - nwy * ys - nb * 0.92 + (nry - (ray - nwy * ys - nb * 0.92)) * gt;
-        ctx.strokeStyle = faeL.silver;
+        ctx.strokeStyle = feyL.silver;
         ctx.lineWidth = Math.max(1.5, s * 0.045);
         ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.moveTo(glx, gly);
         ctx.lineTo(grx, gry);
         ctx.stroke();
-        ctx.strokeStyle = faeL.silverDeep;
+        ctx.strokeStyle = feyL.silverDeep;
         ctx.lineWidth = Math.max(1, s * 0.016);
         ctx.beginPath();
         ctx.moveTo(glx, gly + s * 0.02);
@@ -22626,13 +22626,13 @@ export function drawBeast(
         if (fy > -0.1) {
           const gmx = (glx + grx) / 2 + fx * s * 0.02;
           const gmy = (gly + gry) / 2 + s * 0.045;
-          ctx.fillStyle = faeL.glimmer;
+          ctx.fillStyle = feyL.glimmer;
           ctx.beginPath();
           facetCircle(ctx, gmx, gmy, s * 0.032, 5, fx);
           ctx.fill();
         }
       }
-      drawFaeWolfHead(ctx, faeL, {
+      drawFeyWolfHead(ctx, feyL, {
         x: chx,
         y: chy,
         s,
@@ -23223,9 +23223,9 @@ export function drawBeast(
       ctx.fill();
       return;
     }
-    if (faeL) {
+    if (feyL) {
       // THE TWIN BANNERS ARE A SIMULATION — the live game runs two
-      // TailSim chains on splayed anchors, painted by drawFaeBrush
+      // TailSim chains on splayed anchors, painted by drawFeyBrush
       // through the caller's tail slot. The analytic pair below is
       // THE ONE REST for sim-less callers (portraits, the CMS):
       // exactly the crossed-at-rest carriage the sims settle to.
@@ -23242,18 +23242,18 @@ export function drawBeast(
         // Each banner roots off its own croup corner and falls
         // toward the center line — the crossed lyre at rest.
         const tbx = bx - fx * hl * 0.94 + px * bs * s * 0.07;
-        const tby = by - (fy * hl * 0.94 - py * bs * 0.07) * ys - faeL.backH * 0.76 * s - lift;
+        const tby = by - (fy * hl * 0.94 - py * bs * 0.07) * ys - feyL.backH * 0.76 * s - lift;
         const cxq = tbx - fx * hl * 0.4 + px * (sway * 0.7 - bs * s * 0.02);
-        const cyq = tby + faeL.backH * 0.14 * s;
+        const cyq = tby + feyL.backH * 0.14 * s;
         const tex = tbx - fx * hl * 0.76 + px * (sway * 1.4 - bs * s * 0.09);
-        const tey = tby + faeL.backH * 0.5 * s;
+        const tey = tby + feyL.backH * 0.5 * s;
         const banner = taperedSpinePath(tbx, tby, cxq, cyq, tex, tey, (t) =>
           s * (0.026 + 0.048 * Math.sin(Math.PI * Math.pow(t, 0.85))),
         );
-        ctx.fillStyle = opts.hurt ? '#ffffff' : shade(faeL.coat, -3);
+        ctx.fillStyle = opts.hurt ? '#ffffff' : shade(feyL.coat, -3);
         ctx.fill(banner);
         // The tip dipped in cold light — the inversion past frost.
-        ctx.fillStyle = opts.hurt ? '#ffffff' : faeL.glimmer;
+        ctx.fillStyle = opts.hurt ? '#ffffff' : feyL.glimmer;
         ctx.beginPath();
         facetCircle(ctx, tex, tey, s * 0.04, 5, seed * 0.4 + bs);
         ctx.fill();

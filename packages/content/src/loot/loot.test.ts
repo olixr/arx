@@ -324,7 +324,7 @@ test('the flood law: every foeâ€™s per-kill expectation stays under its stationâ
   // couple of stacks and treat gear as an event; named foes pay richer;
   // the Champion alone showers. A retune (code or CMS) that breaks a
   // ceiling is a flood, not a balance pass.
-  const NAMED = new Set(['kobold_digmaster', 'brigand_reaver', 'dire_wolf', 'fae_wolf', 'dire_boar', 'gnoll_champion', 'goblin_champion', 'lynx_champion', 'fox_champion', 'elder_great_owl', 'ogre_champion', 'skral_champion', 'hobgoblin_champion']);
+  const NAMED = new Set(['kobold_digmaster', 'brigand_reaver', 'dire_wolf', 'fey_wolf', 'dire_boar', 'gnoll_champion', 'goblin_champion', 'lynx_champion', 'fox_champion', 'elder_great_owl', 'ogre_champion', 'skral_champion', 'hobgoblin_champion']);
   // The crownsguard is the Ashen Court's champion body (the Kingsdelf
   // epic): a minTier-6 singleton that walks only after dusk, carrying
   // the champion's whole purse at the Overband's level. Boss station

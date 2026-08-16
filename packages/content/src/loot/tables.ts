@@ -1132,12 +1132,12 @@ const defs: LootTableDef[] = [
     ],
   },
   {
-    id: 'fae_wolf',
+    id: 'fey_wolf',
     desc: 'The court\'s hound pays in the court\'s coin: the glimmering pelt, and the estate\'s silver it never stopped wearing.',
     rarityBonus: 4,
     entries: [
       { item: 'bones' },
-      { item: 'faewolf_pelt', chance: 0.9 },
+      { item: 'feywolf_pelt', chance: 0.9 },
       { item: 'wolf_fur', qty: [1, 2], chance: 0.5 },
       { item: 'coins', qty: [60, 140], chance: 0.8 },
       { item: 'crimson_essence', qty: [1, 3], chance: 0.35 },

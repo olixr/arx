@@ -263,11 +263,11 @@ export const WILD_ROSTER: readonly WildEntry[] = [
   { npc: 'giant_spider', weight: 1.5, tiers: [3, 7], biomes: ['forest'], hours: NIGHT },
   { npc: 'skeleton', weight: 1, tiers: [3, 7], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 3], habitat: 'barrow', family: 'dead' },
   { npc: 'worg', weight: 1.5, tiers: [4, 8], biomes: ['grass', 'forest'], hours: NIGHT, band: [2, 2], family: 'wolfkin' },
-  // THE COURT'S HOUND: the fae wolf walks the moonlit deep frontier
+  // THE COURT'S HOUND: the fey wolf walks the moonlit deep frontier
   // ALONE — a glimpse of silver between the trunks that was not a
   // deer, met on the court's hours only. The glade is its ground:
   // the moon reaches the floor there, and the ring wants room.
-  { npc: 'fae_wolf', weight: 0.7, tiers: [5, 9], biomes: ['forest'], hours: NIGHT, habitat: 'glade', family: 'wolfkin' },
+  { npc: 'fey_wolf', weight: 0.7, tiers: [5, 9], biomes: ['forest'], hours: NIGHT, habitat: 'glade', family: 'wolfkin' },
   {
     // THE COURT'S HUNT: in the deepest dark the ladder walks in one
     // knot — dire wolves running BEHIND the court's hound, matriarchs
@@ -278,7 +278,7 @@ export const WILD_ROSTER: readonly WildEntry[] = [
     biomes: ['forest', 'grass'],
     hours: NIGHT,
     band: [2, 3],
-    lead: { npc: 'fae_wolf' },
+    lead: { npc: 'fey_wolf' },
     habitat: 'den',
     family: 'wolfkin',
   },

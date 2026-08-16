@@ -4601,7 +4601,7 @@ Object.assign(PLATES, {
     dot(c, st.spark, 0.02, 0.04, 0.022);
   },
 
-  // ------------- THE COURT'S HOUND — the fae wolf's three plates.
+  // ------------- THE COURT'S HOUND — the fey wolf's three plates.
   // Faerie Ring — the circle of caps, and the one gap nobody takes.
   faerie_ring: (st) => (c) => {
     c.translate(0.5, 0.54);
