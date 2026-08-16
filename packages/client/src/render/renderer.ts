@@ -20943,6 +20943,32 @@ export class Renderer {
       const bow = (0.02 + ((kseed >>> 5) & 3) * 0.012) * Math.min(1, Math.abs(u1 - u0) / 0.5);
       t.quadraticCurveTo(X((u0 + u1) / 2 + mo), Y(v) + bow * syT, X(u1), Y(v));
     };
+    // THE ROOTLINE (round five — the user's cut-off verdict): the
+    // face's ground edge is not a ruled line, it is where foliage
+    // meets turf — per half-tile drooping lobes hanging just below
+    // the ground line, world-keyed like the crown's so both tiles at
+    // any seam agree (lobes return to baseline at every station).
+    // Fill, seat shadow (via the face clip), and the struct ink all
+    // ride this one curve — the outline finally CLOSES around the
+    // mass the way every tree and bush in this style closes.
+    const rootTo = (t: Path2D | CanvasRenderingContext2D, u0: number, v: number, u1: number) => {
+      const dir = Math.sign(u1 - u0);
+      let cur = u0;
+      let guard = 0;
+      const yG0 = YG(v);
+      while (guard++ < 8 && Math.abs(u1 - cur) > 0.005) {
+        const st = dir > 0 ? Math.floor(cur * 2 + 1e-4) / 2 + 0.5 : Math.ceil(cur * 2 - 1e-4) / 2 - 0.5;
+        const next = dir > 0 ? Math.min(u1, st) : Math.max(u1, st);
+        const w = next - cur;
+        const col = tx * 2 + Math.round(((cur + next) / 2 + 0.5) * 2 - 0.5);
+        const rseed = hashCoords(193, col, ty * 3 + salt);
+        const amp = (0.03 + ((rseed >>> 3) & 7) * 0.004) * s * Math.min(1, Math.abs(w) / 0.42);
+        const mo = (((rseed >>> 7) % 14) - 7) / 100;
+        t.quadraticCurveTo(X(cur + w * (0.3 + mo)), yG0 + amp * 1.8, X(cur + w * 0.55), yG0 + amp * 0.6);
+        t.quadraticCurveTo(X(cur + w * 0.78), yG0 + amp * 1.5, X(next), yG0);
+        cur = next;
+      }
+    };
     const pinchOf = (vi: number, ch: number) =>
       0.045 + ((hashCoords(ch, tx * 3 + salt, vi) >>> 3) & 7) * 0.0055;
     const sideTo = (
@@ -21089,6 +21115,8 @@ export class Renderer {
       const jA = radii[(i + n - 1) % n]!;
       const jB = radii[i]!;
       const gy = YG(g.av);
+      const footA = jA > 0 ? g.au + du * cheekOf(g.au, g.av).tuck : g.au;
+      const footB = jB > 0 ? g.bu - du * cheekOf(g.bu, g.bv).tuck : g.bu;
       const face = new Path2D();
       if (jA > 0) {
         face.moveTo(X(g.au), Y(g.av - jA));
@@ -21097,12 +21125,10 @@ export class Renderer {
         face.moveTo(X(g.au), Y(g.av));
         face.lineTo(X(g.au), gy);
       }
+      rootTo(face, footA, g.av, footB);
       if (jB > 0) {
-        const ckB = cheekOf(g.bu, g.bv);
-        face.lineTo(X(g.bu - du * ckB.tuck), gy);
         cheekUp(face, g.bu, g.bv, du, jB);
       } else {
-        face.lineTo(X(g.bu), gy);
         face.lineTo(X(g.bu), Y(g.bv));
       }
       face.lineTo(X(g.au), Y(g.av - jA));
@@ -21129,8 +21155,11 @@ export class Renderer {
       ctx.lineTo(fx0 + fw + s * 0.1, gy);
       ctx.closePath();
       ctx.fill();
+      // The seat shadow reaches BELOW the ground line so the
+      // rootline's hanging lobes render dark — shadowed roots
+      // seating the mass into the turf, never leaf-lit fringe.
       ctx.fillStyle = 'rgba(20, 14, 26, 0.28)';
-      ctx.fillRect(fx0 - s * 0.1, gy - s * 0.04, fw + s * 0.2, s * 0.04);
+      ctx.fillRect(fx0 - s * 0.1, gy - s * 0.04, fw + s * 0.2, s * 0.18);
       // Clipped clusters break the face; tufts break the ground line.
       const nCl = Math.max(1, Math.round(fw / (s * 0.24)));
       for (let j = 0; j < nCl; j++) {
@@ -21143,13 +21172,16 @@ export class Renderer {
         ctx.fill();
       }
       ctx.restore();
+      // Ground tufts sit BELOW the rootline now (round five) — little
+      // clumps at the foot of the hedge, softening the seat without
+      // breaking the closed silhouette ring above them.
       for (let j = 0; j < nCl; j++) {
         const tseed = hashCoords(151, Math.round(fx0 / s) * 8 + j + salt, ty);
         const tx3 = fx0 + s * 0.05 + (((tseed >>> 5) % 100) / 100) * Math.max(0, fw - s * 0.1);
         const tr = s * (0.04 + ((tseed >>> 9) & 3) * 0.013);
         ctx.fillStyle = (tseed & 4) === 0 ? HEDGE_DARK : shade(HEDGE_LEAF, -4);
         ctx.beginPath();
-        facetBlob(ctx, tx3, gy - tr * 0.3, tr, tseed, 5, 0.8);
+        facetBlob(ctx, tx3, gy + s * 0.05 + tr * 0.4, tr, tseed, 5, 0.8);
         ctx.fill();
       }
     }
@@ -21265,25 +21297,31 @@ export class Renderer {
       ctx.beginPath();
       emitLoop(ctx, true);
       if (inkSides) {
-        // The face's side ink is the SAME cheek the fill drew: it
-        // picks up exactly where the crown side's stroke stopped
-        // (r above the skirt) and rolls to the turf in one S — the
-        // silhouette turns the plan-to-elevation corner without a
-        // single square break.
+        // The face's ink is ONE continuous stroke per face (round
+        // five — the cut-off verdict): it picks up exactly where the
+        // crown side's stroke stopped (r above the skirt), rolls
+        // down the cheek, runs the ROOTLINE along the turf, and
+        // rises up the far cheek — the silhouette ring finally
+        // CLOSES around the mass. At a cut seam the root lands on
+        // the station baseline, so neighboring tiles' root strokes
+        // meet point-true and a merged run wears one unbroken ring.
         for (let i = 0; i < n; i++) {
           const g = parts[i]!;
           if (g.k !== 2) continue;
           const du = Math.sign(g.bu - g.au);
           const jA = radii[(i + n - 1) % n]!;
           const jB = radii[i]!;
+          const footA = jA > 0 ? g.au + du * cheekOf(g.au, g.av).tuck : g.au;
+          const footB = jB > 0 ? g.bu - du * cheekOf(g.bu, g.bv).tuck : g.bu;
           if (parts[(i + n - 1) % n]!.k !== 0) {
             ctx.moveTo(X(g.au), Y(g.av - jA));
             if (jA > 0) cheekDown(ctx, g.au, g.av, -du);
             else ctx.lineTo(X(g.au), YG(g.av));
+          } else {
+            ctx.moveTo(X(footA), YG(g.av));
           }
+          rootTo(ctx, footA, g.av, footB);
           if (parts[(i + 1) % n]!.k !== 0) {
-            const ckB = cheekOf(g.bu, g.bv);
-            ctx.moveTo(X(g.bu - du * (jB > 0 ? ckB.tuck : 0)), YG(g.bv));
             if (jB > 0) cheekUp(ctx, g.bu, g.bv, du, jB);
             else ctx.lineTo(X(g.bu), Y(g.bv));
           }
