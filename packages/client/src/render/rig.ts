@@ -10483,7 +10483,10 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     rig: {
       legs: quadLegs(0.37, 0.16),
       legLen: 0.56,
-      rise: 0.47,
+      // Hips seated INSIDE the haunch: the rise meets the stifle
+      // drop's belly line so the leg roots emerge from the body at
+      // every band, never from the air beside a pinched stern.
+      rise: 0.49,
       liftAmp: 0.115,
       runSpeed: 5.2,
       turnRate: 9,
@@ -12570,16 +12573,22 @@ export function paintFaeWolfBody(
   // twin banners grow from. No slab-sided run anywhere: every
   // segment is mid-taper. Twelve stations so the curve flows where
   // the pack's eight-point wedges chop.
+  // ...and THE HAUNCH (the rear-end pass): the wasp waist hands off
+  // to a REAL hindquarter — the plan flares back out over the thigh
+  // (that muscle is where a gazehound's whole engine lives, and the
+  // hull must reach out to OWN the leg roots), then pinches to the
+  // croup. The first streamline cut pinched the whole rear and left
+  // the hip anchors rooting in open air beside the body.
   const foot: Array<[number, number]> = [
     [hl, -hw * 0.56],
     [hl, hw * 0.56],
     [hl * 0.6, hw],
     [hl * 0.08, hw * 0.86],
     [-hl * 0.44, hw * 0.6],
-    [-hl * 0.76, hw * 0.64],
-    [-hl, hw * 0.38],
-    [-hl, -hw * 0.38],
-    [-hl * 0.76, -hw * 0.64],
+    [-hl * 0.72, hw * 0.74],
+    [-hl, hw * 0.34],
+    [-hl, -hw * 0.34],
+    [-hl * 0.72, -hw * 0.74],
     [-hl * 0.44, -hw * 0.6],
     [hl * 0.08, -hw * 0.86],
     [hl * 0.6, -hw],
@@ -12607,12 +12616,17 @@ export function paintFaeWolfBody(
     f,
     foot,
     topH,
-    // THE RISING UNDERLINE: the deepest point of the body is the
-    // forechest itself, and the belly line climbs from there in ONE
-    // continuous sweep to the tucked loin — no flat run anywhere
-    // (the flat front half was the "long chest" the user called
-    // out). The streamlined read lives in this line.
-    (X) => look.chestH + (look.tuckH - look.chestH) * Math.min(1, Math.max(0, (0.9 - X / hl) / 1.6)),
+    // THE RISING UNDERLINE, THEN THE STIFLE DROP: the belly's
+    // deepest point is the forechest, climbing in one sweep to the
+    // tuck APEX AT THE LOIN — and then the flank FALLS again over
+    // the hindquarter (the gazehound's flank-to-stifle line), so
+    // the hull reaches down to seat the hind-leg roots instead of
+    // leaving thighs hanging from open air under a high stern.
+    (X) => {
+      const sweep = Math.min(1, Math.max(0, (0.9 - X / hl) / 1.6));
+      const stifle = Math.min(1, Math.max(0, (-X / hl - 0.3) / 0.7));
+      return look.chestH + (look.tuckH - look.chestH) * sweep - 0.13 * Math.pow(stifle, 1.5);
+    },
     coat,
     (gx, gyy, lift) => {
       const s = f.s;
@@ -12651,6 +12665,25 @@ export function paintFaeWolfBody(
           );
           ctx.fill();
         }
+      }
+      // THE THIGH LINE: one quiet contour bowed over the haunch —
+      // the muscle that drives the fastest thing in the wood, read
+      // as anatomy instead of a box corner. Near flank only.
+      if (Math.abs(f.fy) < 0.9) {
+        ctx.strokeStyle = shade(look.coat, -16);
+        ctx.lineWidth = Math.max(1, s * 0.016);
+        ctx.lineCap = 'round';
+        const h0x = gx(-hl * 0.38, hw * 0.42);
+        const h0y = gyy(-hl * 0.38, hw * 0.42) - (look.tuckH - 0.06) * s - lift * 0.65;
+        const h1x = gx(-hl * 0.66, hw * 0.56);
+        const h1y = gyy(-hl * 0.66, hw * 0.56) - (look.chestH + 0.05) * s - lift * 0.6;
+        const hcx = gx(-hl * 0.62, hw * 0.62);
+        const hcy = gyy(-hl * 0.62, hw * 0.62) - (look.tuckH - 0.02) * s - lift * 0.62;
+        ctx.beginPath();
+        ctx.moveTo(h0x, h0y);
+        ctx.quadraticCurveTo(hcx, hcy, h1x, h1y);
+        ctx.stroke();
+        ctx.lineCap = 'butt';
       }
       // The moonlight KEEL — the streamline pass traded the pack's
       // broad bib for a slim vertical blaze down the chest's prow: a
