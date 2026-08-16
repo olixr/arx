@@ -54,6 +54,12 @@ import { BEASTCRAFT_SIGS } from './fxSigsBeastcraft.js';
 import { FOES_SIGS } from './fxSigsFoes.js';
 import { GOLEM_SIGS } from './fxSigsGolems.js';
 import { OGRE_SIGS } from './fxSigsOgres.js';
+import { ARCHERY_BREATH_SIGS } from './fxSigsArcheryBreath.js';
+import { SNEAK_BREATH_SIGS } from './fxSigsSneakBreath.js';
+import { SHIELD_BREATH_SIGS } from './fxSigsShieldBreath.js';
+import { TWOHAND_BREATH_SIGS } from './fxSigsTwohandBreath.js';
+import { DUALWIELD_BREATH_SIGS } from './fxSigsDualwieldBreath.js';
+import { COMBAT_BREATH_SIGS } from './fxSigsCombatBreath.js';
 
 // --------------------------------------------------------------- ctx
 
@@ -233,6 +239,26 @@ export const MATTER_MIGRATED: readonly string[] = [
   // stay bespoke by GRAMMAR REFUSAL — see fxSigsFoes.ts header.
   'cinder_ring', 'miasma_ring', 'grave_mist', 'raise_the_fallen',
   'marrow_chill', 'rending_lunge', 'shrilling_dart',
+  // Wave 4 — THE SECOND BREATH SPEAKS: the six new breath waves
+  // arrive already fluent — fifty-two of sixty compose the library
+  // from birth. The eight that stay bespoke are all unowned matter:
+  // grindstone's armor curls and ore_song's ore are their own metal,
+  // twin_moons / the_weave / first_and_last / hummingbird speak
+  // dualwield's silver, thread, and glass, long_watch's lantern owns
+  // its light, and last_lesson's chalk was never the storm's to lend.
+  'kingshot', 'stringsong', 'hawks_hour', 'winterflight', 'emberhead',
+  'skyloom', 'gloamshaft', 'harrier', 'zenith', 'crowsong',
+  'opened_vein', 'threadwork', 'nightshade_kiss', 'quiet_knife',
+  'redwork', 'gallows_thread', 'widows_draw', 'bloodletting',
+  'lights_out', 'red_hour',
+  'iron_toll', 'doorfall', 'held_gate', 'sunbrass', 'millwall',
+  'anchorfall', 'patient_wall', 'standing_sun', 'winterhold',
+  'fell_timber', 'quarry_work', 'forgefall', 'wheelbreaker',
+  'gravedigger', 'long_lever', 'skyweight', 'sunhammer', 'worlds_rim',
+  'two_bells', 'ribbonwork', 'silver_reel', 'matched_flame',
+  'stormstitch', 'mirrorfall',
+  'measured_blow', 'drumbeat', 'thrown_iron', 'ironbreath',
+  'fifth_road', 'old_thunder', 'gathered_breath', 'scarworn',
 ];
 
 // ------------------------------------------------------- exemplars
@@ -1246,4 +1272,10 @@ export const SIGNATURES: Record<string, AbilitySig> = {
   ...FOES_SIGS,
   ...GOLEM_SIGS,
   ...OGRE_SIGS,
+  ...ARCHERY_BREATH_SIGS,
+  ...SNEAK_BREATH_SIGS,
+  ...SHIELD_BREATH_SIGS,
+  ...TWOHAND_BREATH_SIGS,
+  ...DUALWIELD_BREATH_SIGS,
+  ...COMBAT_BREATH_SIGS,
 };

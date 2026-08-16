@@ -67,3 +67,36 @@ test('THE BRINE CROWNS: all eight boss arts wear bespoke signatures', () => {
     assert.ok(SIGNATURES[id]!.air, `'${id}' air hook: this read stands at true height`);
   }
 });
+
+/**
+ * THE SECOND BREATH SPEAKS: the sixty breath arts of the six grown
+ * schools arrived under the v4 SIGNATURE LAW late — this pin makes
+ * sure none of them ever slips back to shared grammar. Every art
+ * carries a bespoke signature with at least two hooks (a one-hook
+ * signature cannot hold an impact AND an aftermath).
+ */
+test('THE SECOND BREATH SPEAKS: all sixty breath arts wear layered signatures', () => {
+  const WAVES: Record<string, string[]> = {
+    archery: ['kingshot', 'stringsong', 'hawks_hour', 'winterflight', 'emberhead',
+      'skyloom', 'gloamshaft', 'harrier', 'zenith', 'crowsong'],
+    sneak: ['opened_vein', 'threadwork', 'nightshade_kiss', 'quiet_knife', 'redwork',
+      'gallows_thread', 'widows_draw', 'bloodletting', 'lights_out', 'red_hour'],
+    shield: ['iron_toll', 'grindstone', 'doorfall', 'held_gate', 'sunbrass',
+      'millwall', 'anchorfall', 'patient_wall', 'standing_sun', 'winterhold'],
+    twohand: ['fell_timber', 'quarry_work', 'forgefall', 'wheelbreaker', 'gravedigger',
+      'ore_song', 'skyweight', 'long_lever', 'sunhammer', 'worlds_rim'],
+    dualwield: ['two_bells', 'ribbonwork', 'twin_moons', 'silver_reel', 'matched_flame',
+      'stormstitch', 'mirrorfall', 'the_weave', 'first_and_last', 'hummingbird'],
+    combat: ['measured_blow', 'drumbeat', 'thrown_iron', 'ironbreath', 'fifth_road',
+      'old_thunder', 'gathered_breath', 'long_watch', 'scarworn', 'last_lesson'],
+  };
+  for (const [school, arts] of Object.entries(WAVES)) {
+    assert.equal(arts.length, 10, `${school}: the wave is ten arts`);
+    for (const id of arts) {
+      const sig = SIGNATURES[id];
+      assert.ok(sig, `${school} breath art '${id}' lost its bespoke signature`);
+      const hooks = [sig.spawn, sig.ground, sig.air].filter(Boolean).length;
+      assert.ok(hooks >= 2, `'${id}' carries ${hooks} hook(s) — impact and aftermath need two`);
+    }
+  }
+});
