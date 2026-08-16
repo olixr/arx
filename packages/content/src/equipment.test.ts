@@ -670,7 +670,9 @@ test('early-game leather sets: four dye lots each, colorways mirror their base',
 test('blade roster: 20 designs, metal ladders climb, arts resolve, rarity gates hold', async () => {
   const { ABILITIES } = await import('./abilities.js');
   const weapons = EQUIPMENT_DEFS.filter((d) => d.slot === 'weapon');
-  assert.equal(weapons.length, 250, 'swords 66 + daggers 58 + bows 41 + staves 55 + greatweapons 30');
+  // THE ARMORY's polearm pass (2026-08-16): the spear line's 8 metals
+  // plus the bespoke twelve joined the census.
+  assert.equal(weapons.length, 270, 'swords 66 + daggers 58 + bows 41 + staves 55 + greatweapons 30 + polearms 20');
   const swords = weapons.filter((d) => d.weapon?.style === 'onehand');
   assert.equal(swords.length, 124, 'swords 66 + daggers 58');
   for (const s of swords) {

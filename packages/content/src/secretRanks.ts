@@ -622,4 +622,26 @@ export const SECRET_RANKS: Record<string, Steps> = {
     { note: 'The wound in the world opens wider.', width: 0.78 },
     { note: 'The realm remembers being torn.', status: { status: 'shock', power: 2, durationTicks: 70 } },
   ],
+
+  // --------------------------------------------- polearm, the hafts
+  reaching_thrust: [
+    { note: 'The point lands heavier.', damage: 10 },
+    { note: 'The reach lengthens and the hand asks again sooner.', range: 3.9, cooldownTicks: 140 },
+    { note: 'The full extension becomes the whole argument.', damage: 11 },
+  ],
+  reapers_turn: [
+    { note: 'The wheel cuts deeper.', damage: 11 },
+    { note: 'The turn opens wider and shoves harder.', arc: 2.7, knockback: 1.8 },
+    { note: 'The row lies down, and the next row is soon.', damage: 12, cooldownTicks: 160 },
+  ],
+  skullhook: [
+    { note: 'The hook bites deeper.', damage: 10 },
+    { note: 'The drag comes harder, and the cold stays in the collar.', knockback: -2.6, status: { status: 'chill', power: 1, durationTicks: 60 } },
+    { note: 'What the hook claims, it keeps claiming.', damage: 11, cooldownTicks: 170 },
+  ],
+  couched_charge: [
+    { note: 'The arrival lands heavier.', damage: 12 },
+    { note: 'The road runs longer and opens sooner.', dashTiles: 4.0, cooldownTicks: 170 },
+    { note: 'The horizon signs the charge by name.', damage: 13, knockback: 2.4 },
+  ],
 };

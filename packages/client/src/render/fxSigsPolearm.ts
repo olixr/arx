@@ -19,12 +19,16 @@
  *    else. It means MOMENTUM AND STATION, the school's two poles;
  *    spent on anything cheaper it stops meaning anything.
  *
- * THE SWEEP EXEMPTION: crescent_reap and sweeping_gyre are the
- * hafted-blade's two lawful sweeps. They read as a swept EDGE WITH A
- * WAKE — a hard leading line trailing receding edge-ghosts — never as
- * the ring flashes the nova schools own. crescent_reap takes a partial
- * arc with a trailing wake; sweeping_gyre takes the FULL lap with an
- * opposed counterweight. Nothing else in the school swings.
+ * THE SWEEP EXEMPTION: crescent_reap, sweeping_gyre and reapers_turn
+ * are the hafted-blade's three lawful sweeps. They read as a swept
+ * EDGE — a hard leading line — never as the ring flashes the nova
+ * schools own, and no two carry the same second idea. crescent_reap
+ * takes a partial arc with a trailing WAKE of receding edge-ghosts;
+ * sweeping_gyre takes the FULL lap with an opposed counterweight;
+ * reapers_turn (THE ARMORY, the glaive's own art) takes the arc as a
+ * spoked WHEEL that ends in a SHOVE — one bar struck square off the
+ * end of the turn, the furrows thrown outward from it. Nothing else
+ * in the school swings.
  *
  * Same binding laws as every wave: hard edges only (no blur, no
  * gradients), save/restore around every hook body, squash on ground
@@ -2441,6 +2445,459 @@ const sundering_lance: AbilitySig = {
   },
 };
 
+// ------------------------------------------------------- reaching_thrust
+
+/**
+ * REACHING_THRUST — "the hands give up the pole."
+ * THE ARMORY's founding lesson, and the school's whole thesis said in
+ * one gesture: the body stops, and the point KEEPS GOING. The
+ * centerpiece nothing else owns is THE SLIDE — a short bright grip
+ * band that runs forward down the corridor as the haft is fed through
+ * the fists, arriving at the head exactly when the reach tops out.
+ * On the floor there is a stop-line where the front foot planted and
+ * a long empty gap beyond it: the distance the wielder bought without
+ * taking a step. No withdraw, no measure, no flourish — one honest
+ * extension held a beat and let go.
+ */
+const reaching_thrust: AbilitySig = {
+  spawn(c) {
+    const m = asMatter(c);
+    const w = runW(c);
+    blood.deployments.spray!(m, w.x1, w.y1, { dir: c.dir, scale: 0.45 });
+    dust.deployments.kick!(m, c.wx + Math.cos(c.dir) * 0.3, c.wy + Math.sin(c.dir) * 0.26, { scale: 0.25 });
+    const rand = srand(c.seed ^ 0x9a1c);
+    // Two grains at the plant, one at the far end — the gap between
+    // them IS the art, kept on the ground for eight seconds.
+    for (const side of [-1, 1] as const) {
+      lay(c, c.wx + Math.cos(c.dir + side * 1.5) * 0.2, c.wy + Math.sin(c.dir + side * 1.5) * 0.17,
+        ASH, { life: 7, size: 0.042, fade: ASH_DARK, fadeAt: 0.55 });
+    }
+    lay(c, w.x1 + (rand() - 0.5) * 0.18, w.y1 + (rand() - 0.5) * 0.16, STEEL_PALE,
+      { life: 8, size: 0.042, flicker: 4, fade: STRAW, fadeAt: 0.6 });
+  },
+  air(c) {
+    const { ctx, sc, squash } = c;
+    const r = run(c);
+    const fade = 1 - cl((c.t - 0.72) / 0.28);
+    const nx = -Math.sin(r.a);
+    const ny = Math.cos(r.a) * squash;
+    const lift = sc * 0.4;
+    ctx.save();
+    ctx.translate(0, -lift);
+    // THE EXTENSION: the corridor grows to full reach on an ease-out
+    // and simply HOLDS there — the school's plainest statement.
+    const outU = cl(c.t / 0.4);
+    const reach = 1 - (1 - outU) * (1 - outU);
+    const tipX = r.x0 + Math.cos(r.a) * r.len * reach;
+    const tipY = r.y0 + Math.sin(r.a) * r.len * reach;
+    seam(c, r.x0, r.y0, tipX, tipY, { alpha: fade });
+    leafHead(ctx, tipX, tipY, r.a, sc * 0.18, squash, STEEL_MID, STEEL_WHITE);
+    // THE SLIDE: the grip band fed forward down the haft, a short
+    // bright bar crossing the corridor and chasing the point.
+    const g = r.len * (0.12 + 0.72 * reach);
+    const q = pt(c, g, r.a);
+    const gw = sc * 0.1;
+    ctx.globalAlpha = 0.9 * fade;
+    ctx.strokeStyle = ASH;
+    ctx.lineWidth = Math.max(2.5, sc * 0.06);
+    ctx.beginPath();
+    ctx.moveTo(q.x + nx * gw, q.y + ny * gw - lift * 0);
+    ctx.lineTo(q.x - nx * gw, q.y - ny * gw);
+    ctx.stroke();
+    ctx.globalAlpha = 0.75 * fade;
+    ctx.strokeStyle = STRAW;
+    ctx.lineWidth = Math.max(1, sc * 0.018);
+    ctx.beginPath();
+    ctx.moveTo(q.x + nx * gw * 0.7, q.y + ny * gw * 0.7);
+    ctx.lineTo(q.x - nx * gw * 0.7, q.y - ny * gw * 0.7);
+    ctx.stroke();
+    ctx.restore();
+    if (outU >= 1) c.glow(runW(c).x1, runW(c).y1, 0.6, 0.3 * fade);
+  },
+  ground(c) {
+    const { ctx, sc, squash, dir } = c;
+    const r = run(c);
+    const fade = 1 - cl((c.t - 0.6) / 0.4);
+    ctx.save();
+    // THE STOP-LINE: one hard bar across the aim where the foot went
+    // down, close to the body — everything past it was bought by reach.
+    const b = pt(c, sc * 0.3, dir);
+    ctx.globalAlpha = 0.6 * fade;
+    ctx.strokeStyle = ASH_DARK;
+    ctx.lineWidth = Math.max(2.5, sc * 0.055);
+    ctx.beginPath();
+    ctx.moveTo(b.x - Math.sin(dir) * sc * 0.2, b.y + Math.cos(dir) * sc * 0.2 * squash);
+    ctx.lineTo(b.x + Math.sin(dir) * sc * 0.2, b.y - Math.cos(dir) * sc * 0.2 * squash);
+    ctx.stroke();
+    // THE GAP: the bought distance, drawn as a hairline that only
+    // starts where the foot stopped. Edges only — no slab.
+    ctx.globalAlpha = 0.4 * fade;
+    ctx.strokeStyle = shade(IRON_DARK, -4);
+    ctx.lineWidth = Math.max(1.2, sc * 0.026);
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y);
+    ctx.lineTo(r.x1, r.y1);
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
+// ---------------------------------------------------------- reapers_turn
+
+/**
+ * REAPERS_TURN — "the wheel, and the shove off the end of it."
+ * THE SWEEP EXEMPTION's third and last. The glaive's own art reads as
+ * a WHEEL: the haft is a spoke turning out of the heart, the edge
+ * rides the rim ahead of it, and there are no trailing ghosts — this
+ * turn is heavy and single. What ends it is the thing nothing else in
+ * the school does: a SHOVE. On the final bearing one hard bar is
+ * struck square across the rim, and the floor's furrows are thrown
+ * OUTWARD from that spot — the opposite of the hook's homeward drag,
+ * and the reason the art moves bodies.
+ */
+const reapers_turn: AbilitySig = {
+  spawn(c) {
+    const m = asMatter(c);
+    const rand = srand(c.seed ^ 0x9a1d);
+    const end = c.dir + 1.2;
+    blood.deployments.spray!(m, c.wx + Math.cos(c.dir) * c.radius * 0.8,
+      c.wy + Math.sin(c.dir) * c.radius * 0.8, { dir: c.dir, scale: 0.5 });
+    // The shove's earth goes AWAY down the finishing bearing.
+    dust.deployments.gouge!(m, c.wx + Math.cos(end) * c.radius * 0.85,
+      c.wy + Math.sin(end) * c.radius * 0.85, { dir: end, scale: 0.65 });
+    for (let k = 0; k < 4; k++) {
+      const a = c.dir - 1.2 + (k / 3) * 2.4 + (rand() - 0.5) * 0.16;
+      lay(c, c.wx + Math.cos(a) * c.radius * 0.9, c.wy + Math.sin(a) * c.radius * 0.9,
+        k === 3 ? STEEL_PALE : STRAW, { life: 7 + rand(), size: 0.044, fade: ASH_DARK, fadeAt: 0.55 });
+    }
+  },
+  air(c) {
+    const { ctx, sc, squash, dir } = c;
+    const fade = 1 - cl((c.t - 0.66) / 0.34);
+    const span = 2.4;
+    const a0 = dir - span / 2;
+    const turn = cl(c.t / 0.5);
+    const edge = a0 + span * (1 - (1 - turn) * (1 - turn));
+    const rr = c.rPx * 0.95;
+    const lift = sc * 0.44;
+    const cy = c.py - lift;
+    ctx.save();
+    ctx.lineCap = 'butt';
+    // THE SPOKE: the haft turning out of the heart. The wheel's axle
+    // is the body, and the read is a lever, not a ribbon.
+    const sx = c.px + Math.cos(edge) * rr;
+    const sy = cy + Math.sin(edge) * rr * squash;
+    ctx.globalAlpha = 0.85 * fade;
+    ctx.strokeStyle = ASH_DARK;
+    ctx.lineWidth = Math.max(3, sc * 0.06);
+    ctx.beginPath();
+    ctx.moveTo(c.px, cy);
+    ctx.lineTo(sx, sy);
+    ctx.stroke();
+    ctx.globalAlpha = 0.7 * fade;
+    ctx.strokeStyle = ASH;
+    ctx.lineWidth = Math.max(1.2, sc * 0.02);
+    ctx.beginPath();
+    ctx.moveTo(c.px, cy);
+    ctx.lineTo(sx, sy);
+    ctx.stroke();
+    // THE RIM: sleeve under one hard leading line, ahead of the spoke.
+    ctx.globalAlpha = 0.55 * fade;
+    ctx.strokeStyle = IRON_DARK;
+    ctx.lineWidth = Math.max(4, sc * 0.12);
+    ctx.beginPath();
+    ctx.ellipse(c.px, cy, rr, rr * squash, 0, edge - 0.5, edge + 0.06);
+    ctx.stroke();
+    ctx.globalAlpha = 0.95 * fade;
+    ctx.strokeStyle = STEEL_WHITE;
+    ctx.lineWidth = Math.max(1.5, sc * 0.028);
+    ctx.beginPath();
+    ctx.ellipse(c.px, cy, rr * 1.02, rr * 1.02 * squash, 0, edge - 0.26, edge + 0.06);
+    ctx.stroke();
+    // THE SHOVE: the bar struck square across the rim as the turn
+    // finishes — the school's one outward push, painted once.
+    if (turn >= 1) {
+      const k = 1 - cl((c.t - 0.5) / 0.36);
+      const bx = c.px + Math.cos(edge) * rr;
+      const by = cy + Math.sin(edge) * rr * squash;
+      const nx = Math.cos(edge);
+      const ny = Math.sin(edge) * squash;
+      const bw = sc * (0.3 + 0.26 * (1 - k));
+      ctx.globalAlpha = 0.95 * k;
+      ctx.strokeStyle = STEEL_PALE;
+      ctx.lineWidth = Math.max(3, sc * 0.07 * k);
+      ctx.beginPath();
+      ctx.moveTo(bx - ny * bw, by + nx * bw * squash);
+      ctx.lineTo(bx + ny * bw, by - nx * bw * squash);
+      ctx.stroke();
+      c.glow(c.wx + Math.cos(edge) * c.radius, c.wy + Math.sin(edge) * c.radius, 0.8, 0.4 * k);
+    }
+    ctx.restore();
+  },
+  ground(c) {
+    const { ctx, sc, squash, dir } = c;
+    const fade = 1 - cl((c.t - 0.55) / 0.45);
+    const turn = cl(c.t / 0.5);
+    const rand = srand(c.seed ^ 0x9a1e);
+    ctx.save();
+    // The turned ground: one scuff band under the wheel, no fill ring.
+    ctx.globalAlpha = 0.32 * fade;
+    ctx.strokeStyle = shade(ASH_DARK, -6);
+    ctx.lineWidth = Math.max(3, sc * 0.12);
+    ctx.beginPath();
+    ctx.ellipse(c.px, c.py, c.rPx * 0.88, c.rPx * 0.88 * squash, 0, dir - 1.2, dir - 1.2 + 2.4 * turn);
+    ctx.stroke();
+    // THE OUTWARD FURROWS: three drags thrown away from the finish —
+    // the exact inversion of hooking_reap's homeward chevrons.
+    if (turn > 0.6) {
+      const k = cl((turn - 0.6) / 0.4);
+      ctx.globalAlpha = 0.55 * fade;
+      ctx.strokeStyle = STRAW;
+      ctx.lineWidth = Math.max(1.5, sc * 0.03);
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = dir + 1.2 + (i - 1) * 0.32 + (rand() - 0.5) * 0.14;
+        const inner = c.rPx * 0.8;
+        const outer = inner + c.rPx * 0.42 * k;
+        ctx.moveTo(c.px + Math.cos(a) * inner, c.py + Math.sin(a) * inner * squash);
+        ctx.lineTo(c.px + Math.cos(a) * outer, c.py + Math.sin(a) * outer * squash);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
+};
+
+// ------------------------------------------------------------- skullhook
+
+/**
+ * SKULLHOOK — "the ladder of the haul."
+ * The halberd's beak, set behind the head and REELED. Like the
+ * ladder's hooking_reap this is a pull — everything runs inward, and
+ * that inversion is the read of the verb — but the mechanism is
+ * different and so is the picture: the haul is a LADDER, two rails
+ * scraped from the catch to the wielder with rungs of torn ground
+ * between them, and the rungs pass and vanish as the catch comes in,
+ * so the eye can count the distance being taken. Where the beak bit,
+ * the iron leaves its cold: a small rime star opens on the catch and
+ * stays after the rails are gone. No ring, no bloom, no bar.
+ */
+const skullhook: AbilitySig = {
+  spawn(c) {
+    const m = asMatter(c);
+    const rand = srand(c.seed ^ 0x9a1f);
+    const back = c.dir + Math.PI;
+    const w = runW(c);
+    blood.deployments.spray!(m, w.x1, w.y1, { dir: back, scale: 0.45 });
+    dust.deployments.gouge!(m, w.x1, w.y1, { dir: back, scale: 0.5 });
+    // The rungs left on the floor: paired grains stepping home.
+    for (let k = 0; k < 3; k++) {
+      const f = 0.9 - k * 0.26;
+      for (const side of [-1, 1] as const) {
+        lay(c, c.wx + Math.cos(c.dir) * c.radius * f + Math.cos(c.dir + side * 1.57) * 0.16,
+          c.wy + Math.sin(c.dir) * c.radius * f + Math.sin(c.dir + side * 1.57) * 0.14,
+          k === 0 ? STEEL_PALE : STRAW,
+          { life: 7 + rand(), size: 0.042, fade: ASH_DARK, fadeAt: 0.6 });
+      }
+    }
+  },
+  air(c) {
+    const { ctx, sc, squash, dir } = c;
+    const fade = 1 - cl((c.t - 0.7) / 0.3);
+    const pull = cl((c.t - 0.1) / 0.6);
+    const at = 1 - pull * pull * 0.72;
+    const lift = sc * 0.38;
+    const hx = c.px + Math.cos(dir) * c.rPx * at;
+    const hy = c.py + Math.sin(dir) * c.rPx * at * squash - lift;
+    const nx = -Math.sin(dir);
+    const ny = Math.cos(dir) * squash;
+    ctx.save();
+    // THE TAUT HAFT: from the fists out to the beak, ash under load.
+    seam(c, c.px, c.py - lift, hx, hy,
+      { w: 0.85, alpha: fade, sleeve: ASH_DARK, core: ASH, heart: STRAW });
+    // THE BEAK: a closed iron hook whose opening faces the wielder —
+    // the catch cannot come off it, and the shape says so.
+    const hs = sc * 0.22;
+    ctx.globalAlpha = 0.95 * fade;
+    ctx.strokeStyle = IRON_DARK;
+    ctx.lineWidth = Math.max(3, sc * 0.07);
+    ctx.beginPath();
+    ctx.moveTo(hx + Math.cos(dir) * hs * 0.5, hy + Math.sin(dir) * hs * 0.5 * squash);
+    ctx.lineTo(hx + nx * hs * 0.85, hy + ny * hs * 0.85);
+    ctx.lineTo(hx - Math.cos(dir) * hs * 0.7 + nx * hs * 0.35,
+      hy - Math.sin(dir) * hs * 0.7 * squash + ny * hs * 0.35);
+    ctx.stroke();
+    ctx.globalAlpha = 0.85 * fade;
+    ctx.strokeStyle = STEEL_WHITE;
+    ctx.lineWidth = Math.max(1.2, sc * 0.022);
+    ctx.beginPath();
+    ctx.moveTo(hx + Math.cos(dir) * hs * 0.4, hy + Math.sin(dir) * hs * 0.4 * squash);
+    ctx.lineTo(hx + nx * hs * 0.65, hy + ny * hs * 0.65);
+    ctx.stroke();
+    // THE RIME STAR: the cold the iron leaves on the catch, opening
+    // once as the beak sets and holding after the haul.
+    if (c.t > 0.12) {
+      const g = cl((c.t - 0.12) / 0.3);
+      ctx.globalAlpha = 0.8 * fade;
+      ctx.strokeStyle = STEEL_PALE;
+      ctx.lineWidth = Math.max(1, sc * 0.02);
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = dir + 0.5 + (i / 3) * Math.PI;
+        const rr = sc * 0.16 * g;
+        ctx.moveTo(hx - Math.cos(a) * rr, hy - Math.sin(a) * rr * squash);
+        ctx.lineTo(hx + Math.cos(a) * rr, hy + Math.sin(a) * rr * squash);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
+  ground(c) {
+    const { ctx, sc, squash, dir } = c;
+    const fade = 1 - cl((c.t - 0.62) / 0.38);
+    const pull = cl((c.t - 0.08) / 0.62);
+    ctx.save();
+    // THE RAILS: two scrapes running from the catch back to the heels,
+    // shortening at the far end as the ground is taken.
+    const far = c.rPx * (1 - 0.7 * pull);
+    const nx = -Math.sin(dir);
+    const ny = Math.cos(dir) * squash;
+    ctx.globalAlpha = 0.5 * fade;
+    ctx.strokeStyle = shade(ASH_DARK, -8);
+    ctx.lineWidth = Math.max(2.5, sc * 0.06);
+    ctx.beginPath();
+    for (const side of [-1, 1] as const) {
+      const o = sc * 0.16 * side;
+      ctx.moveTo(c.px + nx * o, c.py + ny * o);
+      ctx.lineTo(c.px + Math.cos(dir) * far + nx * o, c.py + Math.sin(dir) * far * squash + ny * o);
+    }
+    ctx.stroke();
+    // THE RUNGS: the distance being counted off — each rung passes
+    // out of the ladder as the catch reaches it.
+    ctx.globalAlpha = 0.65 * fade;
+    ctx.strokeStyle = STRAW;
+    ctx.lineWidth = Math.max(1.2, sc * 0.026);
+    ctx.beginPath();
+    for (let k = 0; k < 4; k++) {
+      const f = 0.22 + k * 0.24;
+      if (f > 1 - 0.7 * pull) continue;
+      const d = c.rPx * f;
+      const bx = c.px + Math.cos(dir) * d;
+      const by = c.py + Math.sin(dir) * d * squash;
+      ctx.moveTo(bx + nx * sc * 0.15, by + ny * sc * 0.15);
+      ctx.lineTo(bx - nx * sc * 0.15, by - ny * sc * 0.15);
+    }
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
+// -------------------------------------------------------- couched_charge
+
+/**
+ * COUCHED_CHARGE — "the short run, honestly priced."
+ * The knight's secret, and the second gold art the WEAPONS teach: it
+ * is knights_charge's smaller cousin and must never be mistaken for
+ * it, so it refuses the lane. The run is ONE gold thread — a single
+ * rail, the width of a couched lance and not a road — and the arrival
+ * is not a bar but a SHIVER: three gold splinters thrown back off the
+ * point as the shaft takes the blow, gone in a breath. Two heel skids
+ * where the run began, one stamp where it stopped. Everything about
+ * it is smaller than the crown's charge on purpose.
+ */
+const couched_charge: AbilitySig = {
+  spawn(c) {
+    const m = asMatter(c);
+    const w = runW(c);
+    const rand = srand(c.seed ^ 0x9a20);
+    dust.deployments.kick!(m, c.wx, c.wy, { scale: 0.4 });
+    dust.deployments.slam!(m, w.x1, w.y1, { scale: 0.5 });
+    blood.deployments.spray!(m, w.x1, w.y1, { dir: c.dir, scale: 0.45 });
+    for (let k = 0; k < 3; k++) {
+      const f = 0.3 + (k / 2) * 0.6;
+      lay(c, c.wx + (w.x1 - c.wx) * f + (rand() - 0.5) * 0.14,
+        c.wy + (w.y1 - c.wy) * f + (rand() - 0.5) * 0.12,
+        STRAW, { life: 7, size: 0.042, fade: ASH_DARK, fadeAt: 0.6 });
+    }
+    lay(c, w.x1, w.y1, GOLD_PALE, { life: 8, size: 0.04, flicker: 5, fade: GOLD_DEEP, fadeAt: 0.55 });
+  },
+  ground(c) {
+    const { ctx, sc, squash } = c;
+    const r = run(c);
+    const fade = 1 - cl((c.t - 0.58) / 0.42);
+    const nx = -Math.sin(r.a);
+    const ny = Math.cos(r.a) * squash;
+    ctx.save();
+    // THE THREAD: one gold rail down the run. No road, no second rail.
+    ctx.globalAlpha = 0.8 * fade;
+    ctx.strokeStyle = GOLD_LEAF;
+    ctx.lineWidth = Math.max(1.5, sc * 0.032);
+    ctx.beginPath();
+    ctx.moveTo(r.x0, r.y0);
+    ctx.lineTo(r.x1, r.y1);
+    ctx.stroke();
+    // The two heel skids at the push-off, thrown back off the line.
+    ctx.globalAlpha = 0.5 * fade;
+    ctx.strokeStyle = ASH_DARK;
+    ctx.lineWidth = Math.max(2, sc * 0.045);
+    ctx.beginPath();
+    for (const side of [-1, 1] as const) {
+      const o = sc * 0.12 * side;
+      ctx.moveTo(r.x0 + nx * o, r.y0 + ny * o);
+      ctx.lineTo(r.x0 + nx * o - Math.cos(r.a) * sc * 0.26, r.y0 + ny * o - Math.sin(r.a) * sc * 0.26 * squash);
+    }
+    ctx.stroke();
+    // The stamp where the run stopped — one short bar, nothing round.
+    if (c.t > 0.36) {
+      const k = 1 - cl((c.t - 0.36) / 0.5);
+      ctx.globalAlpha = 0.6 * k;
+      ctx.strokeStyle = STRAW;
+      ctx.lineWidth = Math.max(2, sc * 0.05);
+      ctx.beginPath();
+      ctx.moveTo(r.x1 + nx * sc * 0.2, r.y1 + ny * sc * 0.2);
+      ctx.lineTo(r.x1 - nx * sc * 0.2, r.y1 - ny * sc * 0.2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
+  air(c) {
+    const { ctx, sc, squash } = c;
+    const r = run(c);
+    const fade = 1 - cl((c.t - 0.68) / 0.32);
+    const lift = sc * 0.4;
+    ctx.save();
+    ctx.translate(0, -lift);
+    // THE COUCHED LINE: the lance held dead level, riding forward with
+    // the body — a short corridor that TRAVELS instead of extending.
+    const runU = cl(c.t / 0.38);
+    const back = Math.max(0, runU - 0.3);
+    const hx = r.x0 + Math.cos(r.a) * r.len * back;
+    const hy = r.y0 + Math.sin(r.a) * r.len * back;
+    const px = r.x0 + Math.cos(r.a) * r.len * runU;
+    const py = r.y0 + Math.sin(r.a) * r.len * runU;
+    seam(c, hx, hy, px, py, { w: 0.9, alpha: fade, sleeve: GOLD_DEEP, core: GOLD_LEAF, heart: GOLD_PALE });
+    leafHead(ctx, px, py, r.a, sc * 0.16, squash, GOLD_LEAF, GOLD_PALE);
+    // THE SHIVER: three splinters thrown BACK off the point as the
+    // shaft takes the arrival. The blow, at the weapon's own scale.
+    if (runU >= 1) {
+      const k = 1 - cl((c.t - 0.38) / 0.34);
+      ctx.globalAlpha = 0.95 * k;
+      ctx.strokeStyle = GOLD_PALE;
+      ctx.lineWidth = Math.max(1.5, sc * 0.03 * k);
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = r.a + Math.PI + (i - 1) * 0.42;
+        const l = sc * (0.16 + 0.2 * (1 - k));
+        ctx.moveTo(r.x1, r.y1);
+        ctx.lineTo(r.x1 + Math.cos(a) * l, r.y1 + Math.sin(a) * l * squash);
+      }
+      ctx.stroke();
+      c.glow(runW(c).x1, runW(c).y1, 0.8, 0.42 * k);
+    }
+    ctx.restore();
+  },
+};
+
 // ---------------------------------------------------------------- registry
 
 /**
@@ -2474,4 +2931,12 @@ export const POLEARM_SIGS: Record<string, AbilitySig> = {
   sweeping_gyre,
   hold_the_line_polearm,
   sundering_lance,
+  // THE ARMORY — the four the WEAPONS teach, in the same grammar and
+  // sharing no centerpiece with the twenty: the hands sliding down
+  // the haft, the wheel that shoves, the ladder of the haul, and the
+  // short gold run that shivers instead of striking a bar.
+  reaching_thrust,
+  reapers_turn,
+  skullhook,
+  couched_charge,
 };

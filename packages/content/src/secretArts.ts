@@ -290,6 +290,19 @@ const SEATS: readonly TechniqueDef[] = [
   { ability: 'void_rift', style: 'arx', unlockLevel: 0, secret: { anchorLevel: 42 } },
   // taught by worldsplinter
   { ability: 'realm_rend', style: 'arx', unlockLevel: 0, secret: { anchorLevel: 54 } },
+
+  // ------------ polearm: the knight's roster — the spear line and the bespoke twelve
+  // The polearm ruler reads the school's own gates: the bronze spear at
+  // 1, the steel-band halberd and glaive near 26, the silver lances
+  // near 44 — anchors climb with the cheapest teacher, never against it.
+  // taught by spear, iron_spear … 11 teachers
+  { ability: 'reaching_thrust', style: 'polearm', unlockLevel: 0, secret: { anchorLevel: 1 } },
+  // taught by steel_glaive, moonglaive
+  { ability: 'reapers_turn', style: 'polearm', unlockLevel: 0, secret: { anchorLevel: 26 } },
+  // taught by watch_halberd, gatewarden_halberd
+  { ability: 'skullhook', style: 'polearm', unlockLevel: 0, secret: { anchorLevel: 26 } },
+  // taught by knights_lance, fellwinter_lance, dawnlance
+  { ability: 'couched_charge', style: 'polearm', unlockLevel: 0, secret: { anchorLevel: 44 } },
 ];
 
 export const SECRET_ARTS: readonly TechniqueDef[] = SEATS.map((s) => ({

@@ -6234,6 +6234,66 @@ const defs: AbilityDef[] = [
     dashTiles: 6.0,
     knockback: 2.8,
   },
+
+  // -------------- THE ARMORY: the polearm secret arts (weapon-taught).
+  // Four instant seats for the knight's roster, one per weapon family:
+  // the spear line's founding thrust, the glaive's wheel, the halberd's
+  // hook (a PULL — ground_aoe negative knockback per the vortex law,
+  // hooking_reap's grammar), and the lance's charge, priced honestly
+  // under knights_charge (the L50 rung is the school's; the weapon's
+  // cousin is smaller by design).
+  {
+    id: 'reaching_thrust',
+    name: 'Reaching Thrust',
+    desc: 'The school\'s first lesson at its full length. Everything begins out of reach.',
+    color: '#c8d4e0',
+    code: 'Rr',
+    cooldownTicks: 150, // 7.5 s
+    shape: 'melee_arc',
+    damage: 8,
+    range: 3.6,
+    arc: 0.4,
+  },
+  {
+    id: 'reapers_turn',
+    name: "Reaper's Turn",
+    desc: 'The glaive remembers the harvest. One wide turn, and the row lies down.',
+    color: '#aab6a0',
+    code: 'Rn',
+    cooldownTicks: 170, // 8.5 s
+    shape: 'melee_arc',
+    damage: 9,
+    range: 2.7,
+    arc: 2.4,
+    knockback: 1.5,
+  },
+  {
+    id: 'skullhook',
+    name: 'Skullhook',
+    desc: 'The hook goes over the collar and the line runs backward. Yours now.',
+    color: '#8a94a6',
+    code: 'Sk',
+    cooldownTicks: 180, // 9 s
+    shape: 'ground_aoe',
+    damage: 8,
+    range: 3.4,
+    radius: 1.0,
+    fuseTicks: 6,
+    knockback: -2.2, // the hook PULLS (the vortex law)
+    status: { status: 'chill', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'couched_charge',
+    name: 'Couched Charge',
+    desc: 'Set the lance in the crook and spend the road. The arrival signs for you.',
+    color: '#d8c48a',
+    code: 'Cq',
+    cooldownTicks: 180, // 9 s
+    shape: 'dash_strike',
+    damage: 10,
+    dashTiles: 3.5,
+    knockback: 2.0,
+  },
 ];
 
 export const ABILITIES: ReadonlyMap<string, AbilityDef> = new Map(defs.map((d) => [d.id, d]));

@@ -8,9 +8,11 @@ import {
   bowStyle,
   drawBow,
   drawGreatweapon,
+  drawPole,
   drawSword,
   drawStaff,
   greatStyle,
+  poleStyle,
   staffStyle,
   wieldClass,
   type BladeFx,
@@ -111,6 +113,7 @@ import {
   BOW_PLANE_SOFT,
   GREAT_FINISHER_PHASES,
   GREAT_POMMEL_CHOKE_S,
+  POLE_GUARD_PITCH,
   STAFF_GUARD_CHOKE_S,
   WIELD_GROUND_K,
   armPump,
@@ -127,6 +130,7 @@ import {
   greatFinisherLean,
   greatFinisherPath,
   greatWield,
+  poleWield,
   projectCarry,
   runnerLift,
   settleElbowPole,
@@ -595,6 +599,13 @@ export const REST_HANG_DROP_S = 0.17;
 /** The off blade's hang below the arm ring — a touch higher than the
  *  main: the trailing blade of a paired stance, never a mirror image. */
 export const OFF_BLADE_HANG_DROP_S = 0.15;
+/**
+ * THE WAR GRIP's drive-fist seat: this far BEHIND the main fist along
+ * the haft (negative = behind, the sign the cut book speaks). The
+ * school's own cuts hand their weld down through ResolvedStrike.weldS;
+ * this is the same seat held in the guard, where no cut is running.
+ */
+const POLE_WAR_WELD_S = -0.2;
 /** Shoulder half-width (the torso trapezoid's top, before dialects). */
 export const SHOULDER_HALF_S = 0.185;
 /** Waist half-width (the trapezoid's bottom — the hang-width lane). */
@@ -6125,6 +6136,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // grip-aware strike vocabulary (incl. the reverse grip).
   const isSword = heldKind === 'blade';
   const isStaff = heldKind === 'staff';
+  const isPole = heldKind === 'pole';
+  // THE VERSATILE GRIP, render side — the server's own war-grip test
+  // (gameServer's damage door): a quiver is WORN, not held, so only a
+  // held offhand couches the haft. War grip = both fists on the wood;
+  // couched = the shield keeps its arm and the pole goes one-handed.
+  const poleCouched =
+    isPole && rig.offhandItem !== undefined && itemDef(rig.offhandItem)?.backMounted !== true;
   // A reversed main fist changes the ATTACK choreography, not just the
   // carriage — tighter rakes, locked wrist, icepick finisher.
   const rogueMelee = isSword && rig.carryStyle === 'rogue';
@@ -6276,13 +6294,24 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   let greatFinPitch: number | null = null;
   // The shoulder carry's run-claim on the off fist (greatWield).
   let greatRunClaim = 0;
+  // The port carry's war-grip claim on the off fist (poleWield); zero
+  // under the couch — that hand belongs to the shield.
+  let poleRunClaim = 0;
   // THE LATCHED SWING: the beat's variant and mirror side freeze at
   // the swing's first frame (a mid-swing turn can never flip the arc,
   // and the variant counter walks one step per pose-byte change — the
   // POSE ALTERNATION law guarantees every beat is a value change).
   // Stateless callers (CMS portraits) take variant 0 on the raw side.
   if (meleeStage >= 0) {
-    strikeSchool = isStaff ? 'staff' : isGreat ? 'great' : rogueMelee ? 'rogue' : 'sword';
+    strikeSchool = isStaff
+      ? 'staff'
+      : isGreat
+        ? 'great'
+        : isPole
+          ? 'polearm'
+          : rogueMelee
+            ? 'rogue'
+            : 'sword';
     const smem = rig.depthMemory;
     if (smem) {
       if (smem.strikePose !== rig.pose) {
@@ -6800,6 +6829,24 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       armSwingK += (gf.pumpK - armSwingK) * restSettle;
       greatRunClaim = gf.offClaim;
     }
+    if (isPole) {
+      // THE TWO CARRIES (wield.ts): war grip rides THE PORT — the
+      // soldier's diagonal across the body, point up-forward over the
+      // lead shoulder, the run lowering it down the travel line and
+      // welding the second fist (the claim below reads pf.offClaim).
+      // Couched, the same haft rides THE PLANT — the sentry's vertical
+      // beside the wall — dropping to the level hip couch at a run.
+      const pf = poleWield(face, Math.min(1, rig.poleStrength), rig.runF, swS, rig.poleX, poleCouched);
+      hAngle = pf.angle;
+      hFore = pf.fore;
+      hx = rig.x + pf.dx * s * wS + pf.fwd * s;
+      hy = armY + pf.dy * s;
+      // THE GRIP JOINS THE LADDER: the fist slides along the haft on
+      // the settle, never in one frame.
+      staffGrip += (pf.grip - staffGrip) * restSettle;
+      armSwingK += (pf.pumpK - armSwingK) * restSettle;
+      poleRunClaim = pf.offClaim;
+    }
     if (isStaff) {
       // THE STAFF LADDER v2 (wield.ts): planted walking stick at
       // idle, rocking with the stride at a walk (in the TRAVEL plane
@@ -6905,6 +6952,21 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     offY += (oy - offY) * restSettle;
   }
 
+  // ---- THE READY CARRY (the reaching school). Out of rest the pole
+  // levels into its guard — point forward, a breath above the horizon
+  // (POLE_GUARD_PITCH) — the pitch every polearm cut coils from, and
+  // the one carry both grips share once the fight starts. Projected on
+  // the lifeline like the rest carries, so the point keeps a readable
+  // diagonal at the camera lines and draws honestly short. The engines
+  // that own the whole frame (a resolved cut, the finisher's ram, the
+  // work cycles) keep it; the guard only holds the space between them.
+  if (isPole && restSettle < 1 && !workRes && !strikeRes && thrustR === null) {
+    const g = projectCarry(lifelineYaw(face), POLE_GUARD_PITCH);
+    const guardK = 1 - restSettle;
+    heldAngle += angleDelta(heldAngle, g.angle) * guardK;
+    mainFore += (g.fore - mainFore) * guardK;
+  }
+
   // Walking: arms swing counter to the legs along the travel direction.
   // Sneak walks the same law at a stalker's amplitude — the old gate
   // froze a sneaking figure's arms dead from the first crouched step.
@@ -6937,7 +6999,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       Math.min(1, rig.poleStrength) *
       (1 - 0.45 * crouch) *
       alignK;
-    const armed = isSword || isBow || isStaff || isGreat;
+    const armed = isSword || isBow || isStaff || isGreat || isPole;
     const p = armPump(rig.poleX, rig.poleY, sw, amp, armed ? restSettle : 0);
     // THE PENDULUM ARC: a hand swinging from a shoulder rises at both
     // ends of its sweep — sw² is that arc. (|sw| had the same shape
@@ -7232,14 +7294,18 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const wornGreat = wornKind === 'great';
   const wornBow = wornKind === 'bow';
   const wornStaff = wornKind === 'staff';
-  const wornBack = wornBow || wornStaff || wornGreat;
+  const wornPole = wornKind === 'pole';
+  const wornBack = wornBow || wornStaff || wornGreat || wornPole;
   let mainStow: { x: number; y: number; angle: number } | null = null;
   if (wornDef) {
     if (wornBack) {
       // stowBack speaks painter space directly: staff angle = grip→
       // crown along local +X (the greatblade slings the same, lower
       // and steeper), bow angle = the mirrored-sling law.
-      const spot = stowBack(wornBow ? 'bow' : wornGreat ? 'great' : 'staff', sideS);
+      const spot = stowBack(
+        wornBow ? 'bow' : wornGreat ? 'great' : wornPole ? 'pole' : 'staff',
+        sideS,
+      );
       mainStow = {
         x: rig.x - fx * 0.14 * s + spot.dx * s * wS,
         y: shoulderY + spot.dy * s,
@@ -7329,6 +7395,28 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       const chokeS = GREAT_POMMEL_CHOKE_S * mainFore;
       const cx = mainX - Math.cos(heldAngle) * chokeS * s;
       const cy = mainY - Math.sin(heldAngle) * chokeS * s + 0.03 * s;
+      offX += (cx - offX) * claim;
+      offY += (cy - offY) * claim;
+    }
+  }
+
+  // ---- THE WAR GRIP (the reaching school's second fist). Both hands
+  // belong on a war-gripped haft: the drive hand rides BEHIND the main
+  // fist, near the butt, where the school's own cuts weld it
+  // (ResolvedStrike.weldS — negative is behind). Combat welds it on,
+  // and the port's run calls it back too (poleWield's offClaim). THE
+  // COUCH NEVER ARGUES: poleCouched gates the whole claim off, so a
+  // shielded off hand never leaves its boards, mid-strike included.
+  if (isPole && !poleCouched) {
+    let claim = Math.max(1 - restSettle, poleRunClaim);
+    claim *= (1 - sit) * (1 - castPunch);
+    claim *= 1 - sheathePhases(sheath).grabK;
+    if (claim > 0) {
+      // Same screen-space law as the staff and great chokes: the drive
+      // fist sits ON the drawn haft at every facing.
+      const weldS = (strikeRes?.weldS ?? POLE_WAR_WELD_S) * mainFore;
+      const cx = mainX + Math.cos(heldAngle) * weldS * s;
+      const cy = mainY + Math.sin(heldAngle) * weldS * s + 0.03 * s;
       offX += (cx - offX) * claim;
       offY += (cy - offY) * claim;
     }
@@ -10067,7 +10155,9 @@ export function drawBackGear(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const stowedGreat = stowedKind === 'great';
   const stowedBow = stowedKind === 'bow';
   const stowedStaff = stowedKind === 'staff';
-  const sling = (rig.sheathT ?? 0) >= STOW_HANDOFF && (stowedBow || stowedStaff || stowedGreat);
+  const stowedPole = stowedKind === 'pole';
+  const sling =
+    (rig.sheathT ?? 0) >= STOW_HANDOFF && (stowedBow || stowedStaff || stowedGreat || stowedPole);
   if (st?.kind !== 'quiver' && !sling) return;
   const k = rig.size ?? 1;
   const s = rig.scale * k;
@@ -10095,7 +10185,10 @@ export function drawBackGear(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // A stowed bow/staff straps over the cape exactly like the quiver.
   if (sling && worn) {
     const side = rig.depthMemory?.side ?? (Math.sign(fx) || 1);
-    const spot = stowBack(stowedBow ? 'bow' : stowedGreat ? 'great' : 'staff', side);
+    const spot = stowBack(
+      stowedBow ? 'bow' : stowedGreat ? 'great' : stowedPole ? 'pole' : 'staff',
+      side,
+    );
     drawHeldItem(
       ctx,
       worn.id,
@@ -10326,6 +10419,17 @@ function drawHeldItem(
     // Unknown '*sword'/'*dagger' ids get color-derived fallbacks.
     env = [-0.5, 1.2, 0.32];
     paint = (c) => drawSword(c, enchantedStyle(bladeStyle(itemId, color)!, extra?.ench, 'blade'), s, rig.nowMs, rig.hurt);
+  } else if (kind === 'pole') {
+    // The reaching school's roster: head archetype, haft, wrap and
+    // furniture. Sits AHEAD of the tool probe for the check-great-first
+    // reason — a 'poleaxe' is a weapon, not a woodcutter's axe. The
+    // grip slides with the carry exactly as the staff's does: mid-haft
+    // at the port, back toward the butt through the thrusts.
+    // DEFERRED: enchantedStyle speaks the 'blade'/'staff' families
+    // only and drawPole paints no fx channel yet — the pole's enchant
+    // look lands with THE ARMORY (docs/polearm-plan.md Phase 4).
+    env = [-1.2, 1.6, 0.35];
+    paint = (c) => drawPole(c, poleStyle(itemId, color)!, s, rig.nowMs, rig.hurt, extra?.grip ?? 0.44);
   } else if (toolStyle(itemId, color) && !itemId.includes('rod')) {
     // The gatherer's roster: every axe and pickaxe resolves a style —
     // bespoke head, haft furniture, collar lashing, starsteel fx.

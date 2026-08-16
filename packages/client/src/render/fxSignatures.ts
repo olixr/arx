@@ -276,6 +276,14 @@ export const MATTER_MIGRATED: readonly string[] = [
   'wall_of_points', 'knights_charge', 'rampart_breaker', 'serpents_tongue',
   'skydriver_fall', 'banner_advance', 'moulinet_guard', 'stormpoint',
   'gatebreaker', 'sweeping_gyre', 'hold_the_line_polearm', 'sundering_lance',
+  // Wave 5b — THE ARMORY: the four arts the polearm WEAPONS teach
+  // arrive on the same library the ladder does. Same two materials
+  // and the same reason: the extension plants and pierces, the
+  // wheel's shove throws earth outward, the beak's haul tears it
+  // homeward, and the couched run kicks off and lands. The gold,
+  // the cold steel and the oiled ash stay bespoke — the library was
+  // never lent a spear.
+  'reaching_thrust', 'reapers_turn', 'skullhook', 'couched_charge',
 ];
 
 // ------------------------------------------------------- exemplars

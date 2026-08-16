@@ -18,6 +18,7 @@ import {
   bladeStyle,
   bowStyle,
   greatStyle,
+  poleStyle,
   staffStyle,
   wieldClass,
   type WieldKind,
@@ -30,15 +31,24 @@ test('the roster is single-class: no weapon id satisfies two style registries (p
     // The legacy rig derivation: blades were probed AFTER greats, so
     // the great/blade fallback overlap ('*greatsword') was resolved by
     // ordering. Everything else was assumed disjoint — now pinned.
-    const isBlade = !isGreat && bladeStyle(def.id) !== null;
+    // The pole/blade overlap is ordering-resolved the same way the
+    // great/blade one is (the probe chain asks pole before blade), so
+    // the disjointness pin excludes a pole-classified id from the
+    // blade count exactly as it excludes a great one.
+    const isPole = poleStyle(def.id) !== null;
+    const isBlade = !isGreat && !isPole && bladeStyle(def.id) !== null;
     const isStaff = staffStyle(def.id) !== null;
     const isBow = bowStyle(def.id) !== null;
-    const hits = [isGreat, isBlade, isStaff, isBow].filter(Boolean).length;
+    const hits = [isGreat, isPole, isBlade, isStaff, isBow].filter(Boolean).length;
     assert.ok(hits <= 1, `${def.id} satisfies ${hits} weapon-class registries`);
   }
 });
 
-test('wieldClass matches the legacy four-probe derivation over the whole equipment roster', () => {
+test('wieldClass matches the reference five-probe derivation over the whole equipment roster', () => {
+  // Extended from the founding four-probe pin when THE REACHING
+  // SCHOOL landed (THE LONG STEEL): pole probes after bow, before
+  // blade — the reference derivation is the probe chain's own law,
+  // restated independently so a probe-order edit must touch BOTH.
   let weapons = 0;
   for (const def of EQUIPMENT_DEFS) {
     if (def.slot !== 'weapon') continue;
@@ -50,9 +60,11 @@ test('wieldClass matches the legacy four-probe derivation over the whole equipme
         ? 'staff'
         : bowStyle(def.id) !== null
           ? 'bow'
-          : bladeStyle(def.id) !== null
-            ? 'blade'
-            : 'none';
+          : poleStyle(def.id) !== null
+            ? 'pole'
+            : bladeStyle(def.id) !== null
+              ? 'blade'
+              : 'none';
     assert.equal(wieldClass(def.id), legacy, def.id);
   }
   // The roster is real: an import failure or a filter typo must not
@@ -90,4 +102,15 @@ test('wieldClass caches and stays stable across calls', () => {
   assert.equal(wieldClass('iron_greatblade'), 'great');
   assert.equal(wieldClass(undefined), 'none');
   assert.equal(wieldClass('oak_log'), 'none');
+});
+
+test('THE FISH CLAUSE: the river pike never classifies as the pikeman one', () => {
+  // items.ts's 'pike'/'raw_pike' are fish; the pole fallback excludes
+  // the bare ids the way 'greataxe' guards the woodcutter's rack. A
+  // roster pike ('iron_pike') still reads as reach.
+  assert.equal(wieldClass('pike'), 'none');
+  assert.equal(wieldClass('raw_pike'), 'none');
+  assert.equal(wieldClass('iron_pike'), 'pole');
+  assert.equal(wieldClass('boar_spear'), 'pole');
+  assert.equal(wieldClass('watch_halberd'), 'pole');
 });

@@ -689,6 +689,101 @@ export function greatWield(
   };
 }
 
+// ---------------------------------------------------- the reaching school
+//
+// THE VERSATILE GRIP is a RENDER truth here: the same haft carries two
+// whole rest ladders, picked by what the off hand holds. War grip
+// (off fist empty) = THE PORT: the soldier's diagonal across the body,
+// point up-forward over the lead shoulder, both hands on the wood; the
+// run lowers the point down the travel line, butt trailing. Couched
+// (a shield on the off arm) = THE PLANT: the sentry's vertical beside
+// the body through idle and walk — the patrol silhouette beside the
+// wall — dropping to THE COUCH at a run: one hand, haft just above
+// level at the hip, point forward. Both ladders ride the projection
+// law, the lifeline, and the crown guard exactly as the staff does.
+
+export interface PoleWield {
+  /** Main-hand offset from (x, armY), units of s (dx pre-squash). */
+  dx: number;
+  dy: number;
+  /** UN-squashed forward lean along the facing (StaffWield.fwd's law). */
+  fwd: number;
+  /** Haft angle, fist→point, screen radians (projected). */
+  angle: number;
+  /** Foreshortened length for the painter. */
+  fore: number;
+  /** Fraction of the haft trailing behind the fist (painter grip). */
+  grip: number;
+  /** How much the carrying hand joins the arm pump (0 planted…1 free). */
+  pumpK: number;
+  /** The war grip's call on the off fist (0 under the couch — the
+   *  shield owns that hand and this never argues). */
+  offClaim: number;
+}
+
+/** The pole carry's forward lean (StaffWield.fwd's law), units of s. */
+export const POLE_FWD_LEAN_S = 0.05;
+/** Combat's ready pitch: point forward-level, a breath above the
+ *  horizon — the guard every polearm strike coils from. */
+export const POLE_GUARD_PITCH = Math.PI / 2 + 0.3;
+
+export function poleWield(
+  f: FacingFrame,
+  moveK: number,
+  runK: number,
+  sw: number,
+  px: number,
+  couched: boolean,
+): PoleWield {
+  const { sideS } = f;
+  const m = Math.max(0, Math.min(1, moveK));
+  const drive = smooth(runK);
+  const digK = smooth(Math.max(0, f.fy));
+  if (couched) {
+    // THE PLANT: vertical beside the lead side, butt grounded, the
+    // stride rocking it on the staff's own walk law (a patrol keeps
+    // its spear planted); THE COUCH takes over at the run — the haft
+    // levels at the hip, point forward, hand slid back toward the
+    // butt to buy the reach.
+    const rock = sw * (0.16 * Math.abs(px) + 0.09 * (1 - Math.abs(px))) * (1 - drive) * m;
+    const pitch = Math.PI - rock - drive * (Math.PI / 2 - 0.12 - STAFF_CROWN_GUARD * digK);
+    const p = projectCarry(lifelineYaw(f), pitch);
+    return {
+      dx: sideS * (0.31 - 0.13 * drive),
+      dy: -0.02 + 0.17 * drive,
+      fwd: f.fx * POLE_FWD_LEAN_S,
+      angle: p.angle + sideS * STAFF_PLANT_LEAN * (1 - drive),
+      fore: p.fore,
+      // Planted: fist above the middle of a TALL shaft. Couched: the
+      // hand runs back so the point owns the front.
+      grip: 0.6 - 0.32 * drive,
+      pumpK: 0.25 + 0.45 * drive,
+      offClaim: 0,
+    };
+  }
+  // THE PORT: the diagonal across the body — point up-forward over
+  // the lead shoulder (the great rests BACK over the trailing one;
+  // the port aims where its bearer is going). The mass answers the
+  // stride a beat late, softer than great iron; the run lowers the
+  // point toward the travel line, never past the crown guard's floor.
+  const rock = sw * (0.08 * Math.abs(px) + 0.05 * (1 - Math.abs(px))) * m;
+  const pitch = Math.PI - 0.52 - rock - drive * (0.72 - STAFF_CROWN_GUARD * digK);
+  const p = projectCarry(lifelineYaw(f), pitch);
+  return {
+    dx: sideS * (0.22 - 0.06 * drive),
+    dy: -0.08 + 0.12 * drive,
+    fwd: f.fx * POLE_FWD_LEAN_S,
+    angle: p.angle,
+    fore: p.fore,
+    // Port holds near the balance point; the run slides the hand back
+    // as the point drops — the trail that is one motion from a thrust.
+    grip: 0.44 - 0.1 * drive,
+    pumpK: 0.2 + 0.3 * drive,
+    // Both hands belong on a war-gripped haft; the run welds them.
+    offClaim: (0.55 + 0.45 * drive) * Math.max(m, 0.55),
+  };
+}
+
 /**
  * THE HIGH GUARD — combat's carry. Both fists on the long grip, blade
  * up-forward at the ready diagonal; the main hand rides at the cross,

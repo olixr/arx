@@ -241,3 +241,49 @@ pick, stow call sites, painter dispatch, weld gate; wield.ts poleWield
 carry; sheath.ts stowBack; clientGame.ts STRIKE_CLOCKS mirror picks
 the polearm row; panels.ts Reach label + SKILL_FACE/STORY/WINGS
 (Martial wing); wieldlab rows APPENDED (historic indices survive).
+
+### Phases 3+4 — THE CARRY AND THE CUT + THE ARMORY: as-built (2026-08-16)
+
+Phase 3 (render): strikes.ts grew the 'polearm' school exactly as
+authored above (radius-track thrusts, grip slide, WAKE_TIP 1.05, weld
+-0.2); wield.ts poleWield = THE PORT / THE PLANT+COUCH ladders +
+POLE_GUARD_PITCH; sheath.ts stowBack 'pole' (steeper than the staff
+sling); weapons.ts PoleStyle/POLE_STYLES/poleStyle/drawPole (six head
+archetypes, ferrule law, butt cap, vamplate on lances, langets on the
+bladed heads) + WieldKind 'pole' probing AFTER bow, BEFORE blade;
+wieldClass.test extended to the five-probe reference + THE FISH CLAUSE
+(the river pike never classifies; iron_pike does). rig.ts wiring: held
+solve + poleCouched (render twin of the server war-grip test), rest
+carriage block beside the staff ladder, fenced ready-carry stage at
+POLE_GUARD_PITCH, strike school pick, war-grip second fist (claim =
+max(rest, runClaim), seat = strikeRes weldS else POLE_WAR_WELD_S;
+couched never runs, mid-strike included), both stow sites, painter
+dispatch after blade before the tool probe (the poleaxe/axe-tool trap),
+enchant styling DEFERRED by comment. armAssembly census pins extended
+deliberately (heldAngle 10, mainFore 6, offX/offY 20, staffGrip 7,
+armSwingK 4), layered over a neighbor's in-flight pin edits.
+clientGame + renderer STRIKE_CLOCKS mirrors pick the polearm row (the
+mirror's melee gate had refused polearm — fixed to match the server).
+wieldlab: LOADOUTS pole (steel_spear) + lancer (knights_lance +
+kiteshield); rows 42-51 appended (port idle/walk/run, guard, plant,
+lancer walk, couch run, lancer guard, two frozen thrust rows);
+?strike=pole|lancer rides the standing sweep.
+
+Phase 4 (armory): poleLine helper (bars + haft log recipes, polearm
+gates) → 8-step spear line; the bespoke twelve per the fixed table
+(boar_spear 12 → dawnlance 88; KNIGHTS_POOL polearm/defence/vitality/
+maxHp, LANCER_POOL swaps vitality→combat on the lances; drop chase
+pieces restrict rarities; loot placements ride precedents — fey_wolf
+moonglaive, ice_golem fellwinter, riftgate chests + champion_armory
+for the crowns). Four secret arts (all instant): reaching_thrust
+anchor 1, reapers_turn 26, skullhook 26 (ground_aoe pull per the
+vortex law + chill), couched_charge 44 (priced honestly under the L50
+rung knights_charge); anchors monotonic, SECRET BAND rank I+IV inside
+the polearm rung envelope, ranks HONABLE-only. Pins extended: weapon
+census 250→270, WEAPON_SCHOOLS + polearm. Client: 20 authored
+POLE_STYLES looks (one identity idea each; drawPoleFx head-only motes
+— never a second silhouette), 4 plates/faces/sigs (Wave 5b ledger),
+panels SKILL_FACE/STORY/WINGS + Reach label.
+
+Gates at as-built: shared 225, content 567, client 618, live tsc
+clean; server suite fresh-run same session; commit ceremony below.

@@ -7492,6 +7492,104 @@ Object.assign(PLATES, {
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
+// ---------------- THE ARMORY — the four arts the polearm WEAPONS
+// teach. Same glyph, same lean, and each takes exactly one cue the
+// ladder's twenty never used: a measured reach bracket, a spoked
+// wheel with the shove leaving it, a beak with the haul coming home,
+// and a couched lance shivering on its own arrival.
+Object.assign(PLATES, {
+  // Reaching Thrust — the school's founding lesson: the longest glyph
+  // on the hotbar, and under it the surveyor's bracket that MEASURES
+  // the reach. Nothing else in the school is drawn being measured.
+  reaching_thrust: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.rotate(POLE_LEAN);
+    pole(c, 0, -0.06, 1.02, st, 0);
+    // The bracket: one bar with a stop tick at each end — butt to
+    // point, the whole distance claimed.
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.03;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.46, 0.28);
+    c.lineTo(0.46, 0.28);
+    for (const x of [-0.46, 0.46]) {
+      c.moveTo(x, 0.19);
+      c.lineTo(x, 0.37);
+    }
+    c.stroke();
+    // The far tick doubles as the mark the point passed.
+    star4(c, 0.5, -0.06, 0.08, st.spark);
+    dot(c, st.deep, -0.46, 0.28, 0.03);
+  },
+  // Reaper's Turn — the glaive's wheel: the haft is the SPOKE, the
+  // blade rides the rim, and the shove leaves the far side of the
+  // turn as chevrons thrown outward. The wheel, not the crescent.
+  reapers_turn: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // The rim: a full faint track, bright only where the edge has been.
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.032;
+    c.beginPath();
+    c.arc(0, 0, 0.38, 0, Math.PI * 2);
+    c.stroke();
+    crescent(c, 0, 0, 0.32, 0.44, -Math.PI * 0.78, Math.PI * 0.1, st.mid, 0.032);
+    fill(c, st.core, [[0.16, -0.38], [0.4, -0.18], [0.2, -0.28]]);
+    pole(c, 0, 0, 0.7, st, -Math.PI * 0.16);
+    // The shove: thrown off the end of the turn, away from the body.
+    chevrons(c, 0.36, 0.28, 0.7, st, 2, 1.0);
+  },
+  // Skullhook — the beak on the back of the head, set and HAULING:
+  // the drag runs inward to the haft, and the cold it leaves settles
+  // on the catch. The only plate whose motion arrives at the wielder.
+  skullhook: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    pole(c, -0.1, 0.04, 0.82, st, POLE_LEAN * 0.55);
+    // The beak: a hard hook curling back off the head.
+    crescent(c, 0.24, -0.14, 0.09, 0.2, -Math.PI * 0.15, Math.PI * 0.72, st.mid, 0.03);
+    // The haul: the caught body coming in, chevrons pointing HOME.
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.032;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(0.48, 0.24);
+    c.lineTo(0.16, 0.06);
+    c.stroke();
+    chevrons(c, 0.3, 0.14, Math.PI * 0.82, st, 2, 0.85);
+    ringDot(c, st.deep, 0.48, 0.24, 0.06, 0.026);
+    // The chill that stays on the catch.
+    snowflake(c, 0.34, -0.34, 0.09, st.spark, 0.03);
+  },
+  // Couched Charge — the knight's short run, the weapon's own cousin
+  // of the crown charge: ONE gold thread of a road (never the full
+  // lane), the lance held dead level on it, and the arrival splitting
+  // into splinters off the point.
+  couched_charge: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.rotate(-0.1);
+    // The thread: the run, drawn as one line and not a road.
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.038;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.46, 0.18);
+    c.lineTo(0.24, 0.1);
+    c.stroke();
+    chevrons(c, -0.3, 0.16, Math.PI, st, 2, 0.95);
+    pole(c, -0.02, -0.04, 0.86, st, 0);
+    // The shiver: three splinters thrown back off the point on arrival.
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.03;
+    for (const a of [-0.5, 0, 0.5]) {
+      c.beginPath();
+      c.moveTo(0.42, -0.04);
+      c.lineTo(0.42 + Math.cos(a + Math.PI) * 0.16, -0.04 + Math.sin(a + Math.PI) * 0.16);
+      c.stroke();
+    }
+    star4(c, 0.46, -0.04, 0.09, st.spark);
+  },
+} satisfies Record<string, (st: FxStyle) => Painter>);
+
 // ------------------------------------------------------------ lookup
 
 /** Data URL for an ability's spell-plate at `size`. */

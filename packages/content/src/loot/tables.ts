@@ -525,6 +525,9 @@ const defs: LootTableDef[] = [
       // The shrine blade the watch swore in on. The guard that holds
       // it still thinks the words are being read to him.
       { item: 'brightword', chance: 0.006 },
+      // THE ARMORY's loot-story: the issue halberd the watch fell on
+      // duty with. The relief never came; the shift never ended.
+      { item: 'watch_halberd', chance: 0.012 },
     ],
   },
   rack(
@@ -746,6 +749,15 @@ const defs: LootTableDef[] = [
       { item: 'stormhewer', chance: 0.035 },
       { item: 'colossus_vow', chance: 0.005 },
       { item: 'mountains_end', chance: 0.005 },
+      // THE ARMORY's knights among everyone who tried: the lance off
+      // the last unhorsing, and the school's legendary-only dawn.
+      { item: 'knights_lance', chance: 0.03 },
+      { item: 'dawnlance', chance: 0.004 },
+      // The gate pieces rack here too (their true home is the
+      // riftgate cache, the gatefall_bulwark precedent): the warden's
+      // halberd and the pike that fell pointing up.
+      { item: 'gatewarden_halberd', chance: 0.012 },
+      { item: 'heavens_reach', chance: 0.006 },
       // THE VAULT OF NAMES' legendary pair: the gate-glass blade and
       // the cracked bell, both legendary or not at all.
       { item: 'riftglass', chance: 0.004 },
@@ -1028,6 +1040,10 @@ const defs: LootTableDef[] = [
       // A wall with a pane of the gate set through it — the keeper's
       // own answer to what the keeper was keeping.
       { item: 'gatefall_bulwark', chance: 0.02 },
+      // THE ARMORY at the gate: the warden's own halberd, and the
+      // pike that fell pointing up — the cache keeps both watches.
+      { item: 'gatewarden_halberd', chance: 0.015 },
+      { item: 'heavens_reach', chance: 0.008 },
       // Woven from the same dark the blade was ground from.
       ...setDrops('riftweave', 0.006),
       // The smith's dragon run went below with whoever ordered it.
@@ -1235,6 +1251,9 @@ const defs: LootTableDef[] = [
       // howl at these where the camps stole them. The hound carries
       // theirs by RIGHT, which is why its rates read like a will.
       { item: 'moonwell', chance: 0.015 },
+      // THE ARMORY's court piece: the estate's crescent glaive, worn
+      // the way the estate wears everything — by right.
+      { item: 'moonglaive', chance: 0.012 },
       { item: 'moonglass', chance: 0.015 },
       { item: 'winterspire', chance: 0.012 },
     ],
@@ -1696,6 +1715,9 @@ const defs: LootTableDef[] = [
       // little cousin — and wins far more often.
       ...setDrops('aurochs', 0.012),
       ...setDrops('hartsong', 0.012),
+      // THE ARMORY's loot-story: the winged spear that promised to
+      // stop it, still in the shoulder. It kept the receipt.
+      { item: 'boar_spear', chance: 0.03 },
     ],
   },
   {
@@ -1954,6 +1976,9 @@ const defs: LootTableDef[] = [
       // The tower of ice answers to the winter that outlasted it.
       { item: 'winterspire', chance: 0.008 },
       { item: 'northlight', chance: 0.006 },
+      // THE ARMORY's cold lance: the fell's icicle, quarried whole
+      // with the winter that kept it.
+      { item: 'fellwinter_lance', chance: 0.008 },
     ],
   },
 

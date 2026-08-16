@@ -114,10 +114,17 @@ export function stowBlade(hand: 'main' | 'off', side: number, rake: number, sit 
  * its own bearer's skull (user verdict) — never point the tip at the
  * head again.
  */
-export function stowBack(kind: 'bow' | 'staff' | 'great', side: number): StowSpot {
+export function stowBack(kind: 'bow' | 'staff' | 'great' | 'pole', side: number): StowSpot {
   const sd = firmSide(side);
   if (kind === 'staff') {
     return { dx: -sd * 0.05, dy: 0.3, angle: -Math.PI / 2 + sd * 0.5 };
+  }
+  if (kind === 'pole') {
+    // The longest art on the back rides STEEPER than the staff's
+    // sling — closer to the spine's own line — so neither end outruns
+    // the silhouette; point up past the shoulder (a point dragged low
+    // would read aimed at the ground it walks on).
+    return { dx: -sd * 0.05, dy: 0.34, angle: -Math.PI / 2 + sd * 0.36 };
   }
   if (kind === 'great') {
     return { dx: -sd * 0.04, dy: 0.38, angle: Math.PI / 2 + sd * 0.38 };

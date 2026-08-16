@@ -923,6 +923,22 @@ export const FX_STYLES: Record<string, FxStyle> = {
   sweeping_gyre: STEEL({ mid: '#a89060', deep: '#50442a', spark: '#f0dcb0', ring: 'petals', debris: 'rock', decal: undefined, motif: 'vortex', punch: 0.6, wash: 0.3 }),
   // The Sundering Lance — the crown of the school: gold at full weight.
   sundering_lance: GOLD({ mid: '#f0d070', ring: 'teeth', debris: 'star', decal: 'cracks', motif: 'crown', punch: 1.0, wash: 0.6 }),
+
+  // ------------------ THE ARMORY — the four arts the polearm WEAPONS
+  // teach (the twenty above are the ladder's; these are the roster's).
+  // Same school voice, same COLD STEEL AND OILED ASH: the founding
+  // thrust is plain bright steel, the glaive's wheel is colder and
+  // heavier than the ladder's reap, the halberd's hook bites iron and
+  // leaves a chill, and the knight's short charge is the school's gold
+  // spent one rung down from knights_charge.
+  // Reaching Thrust — the founding lesson: full extension, nothing else.
+  reaching_thrust: STEEL({ mid: '#cddae6', ring: 'shards', debris: 'spark', decal: undefined, motif: 'rays', punch: 0.35, wash: 0.22 }),
+  // Reaper's Turn — the hafted blade's wheel: a cold crest that SHOVES.
+  reapers_turn: STEEL({ mid: '#8c98a4', deep: '#414b55', ring: 'petals', debris: 'blood', decal: 'stain', motif: 'vortex', punch: 0.55, wash: 0.28 }),
+  // Skullhook — the beak that hauls: cold iron in, and the cold stays.
+  skullhook: STEEL({ mid: '#6a7c8a', deep: '#313c46', spark: '#dbe9f4', ring: 'frost', debris: 'blood', decal: 'rime', motif: 'vortex', punch: 0.5, wash: 0.26 }),
+  // Couched Charge — the knight's short run: gold under the crown's.
+  couched_charge: GOLD({ mid: '#d4ac52', ring: 'shards', debris: 'spark', decal: 'cracks', motif: 'wave', punch: 0.6, wash: 0.4 }),
 };
 
 /**

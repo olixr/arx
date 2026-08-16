@@ -59,11 +59,17 @@
 import { strikePhases, STRIKE_REST_ARM, type Grip } from './carriage.js';
 import { WIELD_GROUND_K, GREAT_PHASES } from './wield.js';
 
-export type StrikeSchool = 'sword' | 'rogue' | 'great' | 'staff';
+export type StrikeSchool = 'sword' | 'rogue' | 'great' | 'staff' | 'polearm';
 
 /** The pole school's beat (moved here — the one strike clock source
  *  alongside the blade schools' strikePhases and GREAT_PHASES). */
 export const STAFF_STRIKE_PHASES = { coil: 0.24, hold: 0.3, impact: 0.42, ext: 0.58 };
+
+/** THE REACHING SCHOOL's beat: a longer gather than the staff's turn
+ *  (the point draws back before it flies), impact at the half, and a
+ *  long held extension — the thrust hangs at full reach before the
+ *  withdraw. Lives inside the polearm STRIKE_CLOCKS (340/520ms). */
+export const POLEARM_STRIKE_PHASES = { coil: 0.26, hold: 0.34, impact: 0.5, ext: 0.7 };
 
 export interface StrikePhaseTable {
   coil: number;
@@ -75,6 +81,7 @@ export interface StrikePhaseTable {
 export function schoolPhases(school: StrikeSchool): StrikePhaseTable {
   if (school === 'great') return GREAT_PHASES;
   if (school === 'staff') return STAFF_STRIKE_PHASES;
+  if (school === 'polearm') return POLEARM_STRIKE_PHASES;
   return strikePhases(school === 'rogue' ? 'rogue' : 'normal');
 }
 
@@ -264,6 +271,57 @@ const CUT_BOOK: Record<StrikeSchool, [CutSpec[], CutSpec[]]> = {
         coilDy: 0.05, impactDy: -0.38,
         cock: 0.5, lead: 0.4, lean: 0.11, bar: -1,
         grip: { coil: 0.42, impact: 0.5 },
+      },
+    ],
+  ],
+  // THE REACHING SCHOOL: a thrust is the RADIUS TRACK doing the
+  // talking — yaw nearly fixed (just enough lateral travel for the
+  // wake to read as a streak), radius exploding coil→impact to the
+  // longest extension in the book. RADIAL (no bar): the shaft
+  // continues the arm, so the point leads outward by construction at
+  // every facing. THE SLIDE LIVES IN THE GRIP NUMBERS: the shaft
+  // fraction behind the fist collapses through the thrust — the drive
+  // hand runs toward the butt to buy the reach, real spear technique
+  // spoken in the engine's own vocabulary.
+  polearm: [
+    [
+      // THE HIGH LINE: gathered at the ear, driven down-forward to a
+      // long low landing — the sentry's first answer.
+      {
+        coilYaw: -0.6, impactYaw: 0.3,
+        coilR: 0.5, impactR: 1.75,
+        coilDy: -0.42, impactDy: 0.05,
+        cock: 0.4, lead: 0.5, lean: 0.2,
+        grip: { coil: 0.5, impact: 0.18 },
+      },
+      // THE MEASURED JAB: shorter gather, flatter line — the probing
+      // beat that keeps a foe honest at the point.
+      {
+        coilYaw: -0.4, impactYaw: 0.2,
+        coilR: 0.6, impactR: 1.6,
+        coilDy: -0.2, impactDy: -0.05,
+        cock: 0.35, lead: 0.45, lean: 0.15,
+        grip: { coil: 0.45, impact: 0.22 },
+      },
+    ],
+    [
+      // THE RISING DRIVE: coiled at the hip, driven up the low line
+      // to the chest — the underneath answer.
+      {
+        coilYaw: 0.55, impactYaw: -0.25,
+        coilR: 0.5, impactR: 1.7,
+        coilDy: 0.18, impactDy: -0.3,
+        cock: 0.4, lead: 0.5, lean: 0.18,
+        grip: { coil: 0.5, impact: 0.18 },
+      },
+      // THE UNDER SLIP: the flatter reverse — slipped past a guard at
+      // the ribs, quick home and quick back.
+      {
+        coilYaw: 0.4, impactYaw: -0.2,
+        coilR: 0.55, impactR: 1.65,
+        coilDy: 0.1, impactDy: -0.15,
+        cock: 0.35, lead: 0.45, lean: 0.15,
+        grip: { coil: 0.45, impact: 0.2 },
       },
     ],
   ],
@@ -471,7 +529,10 @@ export function resolveStrike(
     depthSin: Math.sin(yawWorld),
     lean: spec.lean * c.leanK * side,
     grip: c.gripF,
-    weldS: school === 'staff' ? 0.18 : school === 'great' ? -0.13 : null,
+    // The polearm weld sits BEHIND the main fist — the drive hand near
+    // the butt. The rig gates it on the WAR GRIP only (a shielded off
+    // fist never welds); resolveStrike itself is equipment-blind.
+    weldS: school === 'staff' ? 0.18 : school === 'great' ? -0.13 : school === 'polearm' ? -0.2 : null,
     counterYaw: -(side === 1 ? c.yawRel : mirroredYaw(c.yawRel)) * 0.55,
   };
 }
@@ -533,6 +594,9 @@ const WAKE_TIP: Record<StrikeSchool, number> = {
   rogue: 0.34,
   great: 0.95,
   staff: 0.55,
+  // The point leads far out the longest art in the game; the near-
+  // fixed yaw collapses the ribbon into the thrust's own line streak.
+  polearm: 1.05,
 };
 
 /**

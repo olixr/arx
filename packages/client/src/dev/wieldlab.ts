@@ -63,6 +63,11 @@ const LOADOUTS: Record<string, Loadout> = {
   relic: { key: 'relic', weapon: 'bronze_sword', off: 'vale_reliquary' },
   great: { key: 'great', weapon: 'iron_greatblade' },
   staff: { key: 'staff', weapon: 'apprentice_staff' },
+  // THE LONG STEEL's two grips: the war grip (empty off fist — THE
+  // PORT carry, both hands) and the knight's couch (shield worn —
+  // THE PLANT at rest, THE COUCH on the move).
+  pole: { key: 'pole', weapon: 'steel_spear' },
+  lancer: { key: 'lancer', weapon: 'knights_lance', off: 'oak_kiteshield' },
   bow: { key: 'bow', weapon: 'stickbow' },
   tome: { key: 'tome', weapon: 'bronze_sword', off: 'tome_of_embers' },
   axe: { key: 'axe', weapon: 'bronze_axe' },
@@ -174,6 +179,22 @@ row('wall run', LOADOUTS.wall!, 'move'); // 38
 row('doorwall plant', LOADOUTS.doorwall!, 'guard'); // 39
 row('courtfist idle', LOADOUTS.courtfist!, 'idle'); // 40
 row('relic idle', LOADOUTS.relic!, 'idle'); // 41
+
+// ---- THE LONG STEEL rows (the polearm's two grips), appended so the
+// historic indices above survive. Port: idle/walk/run + the ready
+// guard; couched: the sentry's plant through idle and walk, the couch
+// at a run, and the guard beside the wall. Strike rows come free via
+// ?strike=pole / ?strike=lancer on the standing sweep.
+row('pole port idle', LOADOUTS.pole!, 'idle'); // 42
+row('pole port walk', LOADOUTS.pole!, 'walk'); // 43
+row('pole port run', LOADOUTS.pole!, 'move'); // 44
+row('pole guard', LOADOUTS.pole!, 'guard'); // 45
+row('lancer plant', LOADOUTS.lancer!, 'idle'); // 46
+row('lancer walk', LOADOUTS.lancer!, 'walk'); // 47
+row('lancer couch run', LOADOUTS.lancer!, 'move'); // 48
+row('lancer guard', LOADOUTS.lancer!, 'guard'); // 49
+poseRow('pole thrust', LOADOUTS.pole!, { pose: PoseState.Attack, poseT: 0.5 }); // 50
+poseRow('lancer thrust', LOADOUTS.lancer!, { pose: PoseState.Attack, poseT: 0.5 }); // 51
 
 // ---- THE STRIKE SWEEP (?strike=<loadout>&stage=<0|1|2>): the whole
 // beat, frame by frame — rows are TIME (poseT 0.02→0.98), columns the

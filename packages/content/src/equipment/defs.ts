@@ -1278,6 +1278,16 @@ export const EQUIPMENT_DEFS: EquipmentDef[] = [
   // foraged from the land), three bespoke crafts, and a trail of wild
   // finds rising to the legendary-only Worldsplinter.
   ...staffDefs(),
+
+  // ==================================================== the knight's roster
+  // THE ARMORY: twenty polearms. REACH IS THE IDENTITY — every haft
+  // outranges the greatblade, and the pike line holds the ceiling.
+  // One spear design forged across the eight metals (poleLine, the
+  // metal ladder with a haft log in every recipe), then the bespoke
+  // twelve: boar spears and pikes for the field, halberds for the
+  // watch, glaives for the reapers, and the lance line rising to a
+  // legendary-only dawn. Every weapon teaches a secret art.
+  ...polearmDefs(),
 ];
 
 // ---------------------------------------------------------- set makers
@@ -5618,6 +5628,282 @@ function staffDefs(): EquipmentDef[] {
   ];
 
   return [...carved, ...battlestaffs, ...classics, ...crafts, ...finds, ...masterworks, ...voices];
+}
+
+// ---------------------------------------------------- the knight's roster
+// THE ARMORY's polearm content pass. The school shipped its mechanics
+// (skill, style, moveset, the 20-rung ladder) first; this is the steel.
+// Class dials: cooldownTicks 9 (pikes 10), range 2.7..3.2 — reach past
+// the greatblade's 2.6 is the identity. Damage holds the sword band per
+// tier; the war grip's damage door prices the committed build.
+
+/** One polearm design forged across the metal ladder — metalLine's
+ * cousin for the polearm skill. A polearm is steel AND timber, so every
+ * step names its haft log beside the bars; the equip gate reads the
+ * knight's own skill, never the sword's. */
+interface PoleStep {
+  metal: 'bronze' | 'iron' | 'steel' | 'gold' | 'mithril' | 'adamant' | 'obsidian' | 'starsteel';
+  bar: string;
+  /** The haft: the log the head is drawn onto. */
+  log: string;
+  color: string;
+  damage: number;
+  poleReq: number;
+  smithReq: number;
+  xp: number;
+  value: number;
+  code: string;
+  desc: string;
+  /** Override the level-band unlock default (compile.ts) — THE FIRST
+   * TRADE keeps every bronze design core knowledge. */
+  unlock?: 'core' | 'trainer' | 'drop';
+}
+
+function poleLine(
+  design: {
+    key: string;
+    name: string;
+    cooldownTicks: number;
+    range: number;
+    art: string;
+    bars: number;
+    ticks: number;
+    pool: AffixPoolEntry[];
+  },
+  steps: PoleStep[],
+): EquipmentDef[] {
+  return steps.map((m) => {
+    const def: EquipmentDef = {
+      id: m.metal === 'bronze' ? design.key : `${m.metal}_${design.key}`,
+      name: m.metal === 'bronze'
+        ? design.name
+        : `${m.metal.charAt(0).toUpperCase()}${m.metal.slice(1)} ${design.name.toLowerCase()}`,
+      slot: 'weapon',
+      weapon: {
+        style: 'polearm',
+        damage: m.damage,
+        cooldownTicks: design.cooldownTicks,
+        range: design.range,
+        art: design.art,
+      },
+      affixPool: design.pool,
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: m.smithReq, xp: m.xp, station: 'anvil',
+        ticks: design.ticks,
+        inputs: [{ item: m.bar, qty: design.bars }, { item: m.log, qty: 1 }],
+        ...(m.unlock ? { unlock: m.unlock } : {}),
+      },
+      value: m.value, color: m.color, code: m.code, desc: m.desc,
+    };
+    if (m.poleReq > 1) def.levelReq = { skill: 'polearm', level: m.poleReq };
+    return def;
+  });
+}
+
+function polearmDefs(): EquipmentDef[] {
+  // The school's pool (the knight's): the haft leans on its own skill
+  // and the wall it keeps; the lance variant trades the constitution
+  // for the charge's whole body of training.
+  const KNIGHTS_POOL: AffixPoolEntry[] = [
+    { stat: 'polearm', w: 2 },
+    { stat: 'defence', w: 2 },
+    { stat: 'vitality' },
+    { stat: 'maxHp' },
+  ];
+  const LANCER_POOL: AffixPoolEntry[] = [
+    { stat: 'polearm', w: 2 },
+    { stat: 'defence', w: 2 },
+    { stat: 'combat' },
+    { stat: 'maxHp' },
+  ];
+
+  // ---- the metal spear line: one design, eight metals, the school's
+  // founding lesson on every step (reaching_thrust).
+  const spear = poleLine(
+    {
+      key: 'spear', name: 'Spear', cooldownTicks: 9, range: 2.9,
+      art: 'reaching_thrust', bars: 2, ticks: 80, pool: KNIGHTS_POOL,
+    },
+    [
+      { metal: 'bronze', bar: 'bronze_bar', log: 'log', color: '#a4744b', damage: 1, poleReq: 1, smithReq: 8, xp: 60, value: 40, code: 'Pa',
+        desc: 'A leaf of bronze on a straight ash pole. The oldest argument for keeping your distance.' },
+      { metal: 'iron', bar: 'iron_bar', log: 'oak_log', color: '#8d9299', damage: 2, poleReq: 10, smithReq: 20, xp: 135, value: 110, code: 'Pi',
+        desc: 'Iron gives the point patience. It waits at the end of nine feet of oak.' },
+      { metal: 'steel', bar: 'steel_bar', log: 'oak_log', color: '#b8bec8', damage: 3, poleReq: 20, smithReq: 36, xp: 260, value: 290, code: 'Pj',
+        desc: 'Soldier steel drawn to a socketed point. The drill yard\'s first and last word.' },
+      { metal: 'gold', bar: 'gold_bar', log: 'oak_log', color: '#e8c04c', damage: 3, poleReq: 30, smithReq: 42, xp: 320, value: 720, code: 'Pk',
+        desc: 'A procession spear that never learned it was ceremonial. The honor guard keeps it sharp.' },
+      { metal: 'mithril', bar: 'mithril_bar', log: 'willow_log', color: '#7fa8d9', damage: 4, poleReq: 40, smithReq: 52, xp: 580, value: 1500, code: 'P4',
+        desc: 'Sky-metal on a willow haft. The thrust lands before the step that threw it.' },
+      { metal: 'adamant', bar: 'adamant_bar', log: 'yew_log', color: '#5fa06a', damage: 5, poleReq: 55, smithReq: 67, xp: 950, value: 3000, code: 'P5',
+        desc: 'Deep green and utterly sure of itself. Shields are a rumor it declines to believe.' },
+      { metal: 'obsidian', bar: 'obsidian_shard', log: 'yew_log', color: '#4e4260', damage: 6, poleReq: 68, smithReq: 80, xp: 1350, value: 4900, code: 'P6',
+        desc: 'A splinter of cooled night, hafted. It goes in quiet and comes out quieter.' },
+      { metal: 'starsteel', bar: 'starsteel_bar', log: 'yew_log', color: '#cabdf2', damage: 7, poleReq: 80, smithReq: 92, xp: 1950, value: 8600, code: 'P7',
+        desc: 'The smith\'s proof at full extension: a fallen star held out at arm\'s length, and then some.' },
+    ],
+  );
+
+  // ---- the bespoke twelve: winged spears and pikes, the watch's
+  // halberds, the reaper's glaives, and the lance line. Drop-only
+  // pieces restrict rarities as they climb (the blade-roster chase law).
+  const bespoke: EquipmentDef[] = [
+    {
+      // The huntsman's cross-bar spear: the wings exist so what you
+      // pin stays pinned. Forged in every lodge, carried off by the
+      // quarry often enough to drop.
+      id: 'boar_spear', name: 'Boar spear', slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 12 },
+      weapon: { style: 'polearm', damage: 3, cooldownTicks: 9, range: 2.7, art: 'reaching_thrust' },
+      affixPool: KNIGHTS_POOL,
+      acquisition: { craft: true, drop: true },
+      recipe: {
+        skill: 'smithing', levelReq: 18, xp: 150, station: 'anvil', ticks: 85,
+        inputs: [{ item: 'iron_bar', qty: 2 }, { item: 'oak_log', qty: 1 }],
+      },
+      value: 180, color: '#8a7a5c', code: 'Bp',
+      desc: 'Iron wings behind the point so the pig stops where you said. The razorbacks collect the ones that lied.',
+    },
+    {
+      id: 'iron_pike', name: 'Iron pike', slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 18 },
+      weapon: { style: 'polearm', damage: 3, cooldownTicks: 10, range: 3.2, art: 'reaching_thrust' },
+      affixPool: KNIGHTS_POOL,
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 24, xp: 190, station: 'anvil', ticks: 90,
+        inputs: [{ item: 'iron_bar', qty: 2 }, { item: 'oak_log', qty: 1 }],
+      },
+      value: 240, color: '#8d9299', code: 'Pq',
+      desc: 'Sixteen feet of the shortest possible conversation. The far end of it is not your problem.',
+    },
+    {
+      // The town watch's issue halberd — the loot-story law: the
+      // watch that fell on duty still carries it.
+      id: 'watch_halberd', name: 'Watch halberd', slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 26 },
+      weapon: { style: 'polearm', damage: 4, cooldownTicks: 10, range: 2.7, art: 'skullhook' },
+      affixPool: KNIGHTS_POOL,
+      acquisition: { craft: true, drop: true },
+      recipe: {
+        skill: 'smithing', levelReq: 34, xp: 300, station: 'anvil', ticks: 95,
+        inputs: [{ item: 'steel_bar', qty: 2 }, { item: 'oak_log', qty: 1 }],
+      },
+      value: 420, color: '#77808f', code: 'Wh',
+      desc: 'Axe, hook, and point on one honest pole: the watch\'s whole rulebook. Lean on it between bells.',
+    },
+    {
+      id: 'steel_glaive', name: 'Steel glaive', slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 30 },
+      weapon: { style: 'polearm', damage: 4, cooldownTicks: 9, range: 2.8, art: 'reapers_turn' },
+      affixPool: KNIGHTS_POOL,
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 38, xp: 340, station: 'anvil', ticks: 95,
+        inputs: [{ item: 'steel_bar', qty: 2 }, { item: 'oak_log', qty: 1 }],
+      },
+      value: 480, color: '#b8bec8', code: 'Sv',
+      desc: 'A single-edged blade laid along the haft\'s own line. The field learns what the harvest knew.',
+    },
+    {
+      id: 'steel_pike', name: 'Steel pike', slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 34 },
+      weapon: { style: 'polearm', damage: 4, cooldownTicks: 10, range: 3.2, art: 'reaching_thrust' },
+      affixPool: KNIGHTS_POOL,
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 40, xp: 380, station: 'anvil', ticks: 100,
+        inputs: [{ item: 'steel_bar', qty: 3 }, { item: 'oak_log', qty: 1 }],
+      },
+      value: 540, color: '#c2c8d2', code: 'Pz',
+      desc: 'The wall the drill sergeants dream in. Set the butt, hold the count, and nothing arrives.',
+    },
+    {
+      id: 'silver_partisan', name: 'Silver partisan', slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 44 },
+      weapon: { style: 'polearm', damage: 5, cooldownTicks: 9, range: 2.9, art: 'reaching_thrust' },
+      affixPool: KNIGHTS_POOL,
+      acquisition: { craft: true },
+      recipe: {
+        skill: 'smithing', levelReq: 48, xp: 560, station: 'anvil', ticks: 105,
+        inputs: [{ item: 'silver_bar', qty: 2 }, { item: 'steel_bar', qty: 1 }, { item: 'willow_log', qty: 1 }],
+      },
+      value: 980, color: '#dce4f0', code: 'Pn',
+      desc: 'Winged silver over a steel core, bright enough for the palace door it was made to keep.',
+    },
+    {
+      // The tourney lance made honest: silver-chased, war-pointed,
+      // and dropped by whoever the horse threw last.
+      id: 'knights_lance', name: "Knight's lance", slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 48 },
+      weapon: { style: 'polearm', damage: 5, cooldownTicks: 10, range: 3.0, art: 'couched_charge' },
+      affixPool: LANCER_POOL,
+      acquisition: { craft: true, drop: true },
+      recipe: {
+        skill: 'smithing', levelReq: 54, xp: 680, station: 'anvil', ticks: 110,
+        inputs: [{ item: 'silver_bar', qty: 2 }, { item: 'steel_bar', qty: 2 }, { item: 'willow_log', qty: 1 }],
+      },
+      value: 1300, color: '#96a8c8', code: 'Kl',
+      desc: 'Tapered to ride a charge from grip to point. Couch it, pick a horizon, and apologize to nobody.',
+    },
+    {
+      // The court's glaive: the fey hound's estate keeps the silver.
+      id: 'moonglaive', name: 'Moonglaive', slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 52 },
+      weapon: { style: 'polearm', damage: 5, cooldownTicks: 9, range: 2.9, art: 'reapers_turn' },
+      affixPool: KNIGHTS_POOL,
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 1700, color: '#d8e2e8', code: 'Mv',
+      desc: 'A crescent of pale silver that turns like the month does. Whatever it reaps grows back stranger.',
+    },
+    {
+      // The frost accent rides the def color and the client fx table.
+      id: 'fellwinter_lance', name: 'Fellwinter lance', slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 62 },
+      weapon: { style: 'polearm', damage: 6, cooldownTicks: 10, range: 3.0, art: 'couched_charge' },
+      affixPool: LANCER_POOL,
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 2100, color: '#cfe2f0', code: 'Fl',
+      desc: 'An icicle the fell kept a hundred winters and never let melt. The charge arrives cold and stays.',
+    },
+    {
+      id: 'gatewarden_halberd', name: 'Gatewarden halberd', slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 70 },
+      weapon: { style: 'polearm', damage: 7, cooldownTicks: 10, range: 2.8, art: 'skullhook' },
+      affixPool: KNIGHTS_POOL,
+      rarities: ['rare', 'epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 2400, color: '#6e7a8c', code: 'Gh',
+      desc: 'The warden stood the riftgate longer than any relief came. The hook still pulls toward the door.',
+    },
+    {
+      // The astral accent rides the def color and the client fx table.
+      id: 'heavens_reach', name: 'Heavens Reach', slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 78 },
+      weapon: { style: 'polearm', damage: 7, cooldownTicks: 10, range: 3.2, art: 'reaching_thrust' },
+      affixPool: KNIGHTS_POOL,
+      rarities: ['epic', 'legendary'],
+      acquisition: { drop: true },
+      value: 2800, color: '#9aa2c4', code: 'Hv',
+      desc: 'A pike ground from something that fell pointing up. On clear nights the tip goes looking for home.',
+    },
+    {
+      // The school's heirloom: exists legendary or not at all.
+      id: 'dawnlance', name: 'Dawnlance', slot: 'weapon',
+      levelReq: { skill: 'polearm', level: 88 },
+      weapon: { style: 'polearm', damage: 8, cooldownTicks: 10, range: 3.1, art: 'couched_charge' },
+      affixPool: LANCER_POOL,
+      rarities: ['legendary'],
+      acquisition: { drop: true },
+      value: 2000, color: '#f0dfae', code: 'Dl',
+      desc: 'Gold on white, warm to the grip in any weather. Every charge it ever ran ended with a sunrise.',
+    },
+  ];
+
+  return [...spear, ...bespoke];
 }
 
 /** Compiled once at module load — throws loudly on any malformed def. */

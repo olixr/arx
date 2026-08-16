@@ -1320,7 +1320,15 @@ export class ClientGame {
   private trackOwnMelee(frame: InputFrame, now: number): void {
     const worn = this.equipment.weapon;
     const weapon = this.equippedWeaponDef();
-    if (!worn || !weapon || (weapon.style !== 'onehand' && weapon.style !== 'twohand')) return;
+    // The melee schools the mirror predicts — THE REACHING SCHOOL
+    // joins the two it was born beside (the server's own swing gate
+    // already counts polearm a melee style).
+    if (
+      !worn ||
+      !weapon ||
+      (weapon.style !== 'onehand' && weapon.style !== 'twohand' && weapon.style !== 'polearm')
+    )
+      return;
     // ONE LAW, TWO MIRRORS: the predicted sheathe + the seq-domain
     // draw lock — never the snapshot bit alone (a round trip stale;
     // it predicted swings the server's SAFETY was busy refusing).
@@ -1352,7 +1360,15 @@ export class ClientGame {
     const finisher = stage === len - 1;
     this.meleeReadySeq = frame.seq + Math.round(weapon.cooldownTicks * strike.recoveryMult);
     this.comboLocal.graceUntilTick = this.meleeReadySeq + moveset.graceTicks;
-    const clocks = weapon.style === 'twohand' ? STRIKE_CLOCKS.twohand : STRIKE_CLOCKS.onehand;
+    // THE REACHING SCHOOL owns its own clock — between the sword's
+    // time and the mountain's — so the mirror's beat matches the
+    // server's hold exactly, as it does for the other two.
+    const clocks =
+      weapon.style === 'twohand'
+        ? STRIKE_CLOCKS.twohand
+        : weapon.style === 'polearm'
+          ? STRIKE_CLOCKS.polearm
+          : STRIKE_CLOCKS.onehand;
     const ms = finisher ? clocks.finisher.ms : clocks.swing.ms;
     this.ownSwing = {
       pose: strikePose(moveset.poseDialect, stage, len),

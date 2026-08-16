@@ -114,7 +114,7 @@ import { hobgoblinLook, type HobgoblinLook } from './hobgoblin.js';
 import { LegRig, type LegPose } from './legs.js';
 import { FINISHER_PHASES, strikePhases } from './carriage.js';
 import { GREAT_FINISHER_PHASES, GREAT_PHASES } from './wield.js';
-import { greatStyle } from './weapons.js';
+import { greatStyle, poleStyle } from './weapons.js';
 import {
   BEAST_UPPER,
   HUMANOID_FEET,
@@ -53441,11 +53441,19 @@ export class Renderer {
     // longer payoff clock; THE GREAT SCHOOL owns a longer clock
     // entirely — mass never moves on a sword's time.
     const greatArms = greatStyle(e.equip.weapon) !== null;
-    const strikeClocks = greatArms ? STRIKE_CLOCKS.twohand : STRIKE_CLOCKS.onehand;
+    // THE REACHING SCHOOL owns its own clock too (the great probe wins
+    // the tie, as the wield chain has it) — a body swinging six feet of
+    // haft must play the beat the server actually holds.
+    const poleArms = !greatArms && poleStyle(e.equip.weapon) !== null;
+    const strikeClocks = greatArms
+      ? STRIKE_CLOCKS.twohand
+      : poleArms
+        ? STRIKE_CLOCKS.polearm
+        : STRIKE_CLOCKS.onehand;
     const poseMs =
       e.pose === PoseState.Attack3
         ? strikeClocks.finisher.ms
-        : greatArms && (e.pose === PoseState.Attack || e.pose === PoseState.Attack2)
+        : (greatArms || poleArms) && (e.pose === PoseState.Attack || e.pose === PoseState.Attack2)
           ? strikeClocks.swing.ms
           : STRIKE_CLOCKS.onehand.swing.ms;
     const poseT = Math.min(1, (now - anim.poseStartedAt) / poseMs);

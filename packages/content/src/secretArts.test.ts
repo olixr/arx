@@ -19,8 +19,10 @@ import { HONABLE, cycleValue, isUtilityArt } from './ladderModel.js';
 import { ITEMS } from './items.js';
 import { NPCS, scaleNpcDef } from './npcs.js';
 
-/** The four schools that own weapons — the only schools a secret may sit in. */
-const WEAPON_SCHOOLS = ['onehand', 'twohand', 'archery', 'arx'] as const;
+/** The five schools that own weapons — the only schools a secret may
+ * sit in. THE ARMORY's polearm roster joined 2026-08-16: the knight's
+ * school teaches through its weapons like every other. */
+const WEAPON_SCHOOLS = ['onehand', 'twohand', 'archery', 'arx', 'polearm'] as const;
 
 /**
  * THE RANK DEBT — PAID IN FULL by RANKS FOR THE SHELF: every secret

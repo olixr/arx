@@ -127,6 +127,7 @@ export const SKILL_FACE: Record<string, { icon: string; color: string }> = {
   beastcraft: { icon: 'bones', color: '#c4b590' },
   sneak: { icon: 'bronze_dagger', color: '#8a7fae' },
   twohand: { icon: 'iron_greatblade', color: '#c47a3d' },
+  polearm: { icon: 'spear', color: '#9a8560' },
   dualwield: { icon: 'bronze_dagger', color: '#d9a441' },
   shield: { icon: 'tower_shield', color: '#9db6cc' },
 };
@@ -158,6 +159,7 @@ export const SKILL_STORY: Record<string, string> = {
   beastcraft: 'The wild answers a gentle hand',
   sneak: 'Unseen, unheard, unhurried',
   twohand: 'Both hands, one argument',
+  polearm: 'The point that gets there first',
   dualwield: 'A blade in each fist',
   shield: 'What the wall stops, the wall learns',
 };
@@ -169,7 +171,7 @@ export const SKILL_STORY: Record<string, string> = {
 const SKILL_WINGS: Array<{ title: string; skills: SkillId[] }> = [
   {
     title: 'Combat Arts',
-    skills: ['vitality', 'combat', 'onehand', 'twohand', 'defence', 'archery', 'arx'],
+    skills: ['vitality', 'combat', 'onehand', 'twohand', 'polearm', 'defence', 'archery', 'arx'],
   },
   {
     title: 'Fieldcraft',
@@ -1153,7 +1155,13 @@ export class Panels {
     const w = def.weapon;
     if (w) {
       // Damage already leads the headline; the fine print starts here.
-      stat(w.style === 'onehand' || w.style === 'twohand' ? 'Reach' : 'Range', `${w.range} tiles`, '#c9a23c');
+      // The reaching school reads as Reach beside the other melee
+      // hands — a pike's 3.2 tiles is measured in arm, not in flight.
+      stat(
+        w.style === 'onehand' || w.style === 'twohand' || w.style === 'polearm' ? 'Reach' : 'Range',
+        `${w.range} tiles`,
+        '#c9a23c',
+      );
       // THE WEAPON'S OWN HAND: the card names the fight this weapon
       // teaches the body — its page in the moveset book.
       const page = movesetFor(w, def.id);

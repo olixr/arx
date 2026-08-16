@@ -24,17 +24,17 @@ const SRC = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'rig.ts')
 
 /** The fenced arm channels and their PINNED writer counts. */
 const CENSUS: Record<string, number> = {
-  heldAngle: 8, // strike resolve · rest lerp · wrist-follow ×2 · cast · bellows fill+throw (THE GIANT CAST) · sheathe
+  heldAngle: 9, // strike resolve · rest lerp · wrist-follow ×2 · pole ready carry · cast · bellows fill+throw (THE GIANT CAST) · sheathe
   mainX: 17, // work frame (THE WORK LIVES IN THE WORLD) · pose targets · rest · pump/sway/breath · seat · cast · draw · sheathe · strike arc
   mainY: 17, // (the old per-branch forage/milk drops died with the work engine)
-  offX: 19, // work frame folded six off-hand branches (chop/mine, forage, milk, tongs, furnace) into ONE resolved write
-  offY: 19,
+  offX: 20, // work frame folded six off-hand branches (chop/mine, forage, milk, tongs, furnace) into ONE resolved write; + the pole's war-grip weld
+  offY: 20,
   offAngle: 2, // counter-swing init (world engine) · echo brace
   offBladeAngle: 5, // guard init · echo · rest · flourish path · sheathe
-  mainFore: 4, // strike resolve · rest lerp · cast present (Phase 3) · bellows throw
+  mainFore: 5, // strike resolve · rest lerp · pole ready carry · cast present (Phase 3) · bellows throw
   offFore: 3, // init · echo · rest lerp
-  staffGrip: 6, // combat default · strike override · mountain-falls grip · great rest · staff rest · sheathe
-  armSwingK: 3, // default · great pumpK · staff pumpK
+  staffGrip: 7, // combat default · strike override · mountain-falls grip · great rest · pole rest · staff rest · sheathe
+  armSwingK: 4, // default · great pumpK · pole pumpK · staff pumpK
 };
 
 function stripComments(s: string): string {
