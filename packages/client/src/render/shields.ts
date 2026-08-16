@@ -542,10 +542,12 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
   },
   /**
    * THE LEGION'S — issue iron, drill-ground geometry. A blackened slab
-   * to the quartermaster's template: two columns of forged diamond
-   * bosses, one crimson campaign band, and three punch spikes off the
-   * OUTER edge only — the shield-wall's free edge, where the line
-   * ends. Ten thousand of these exist and every one is this one.
+   * to the quartermaster's template: riveted bindings at crown and
+   * heel, two drill columns of long socketed spikes on bolted seats,
+   * the campaign insignia stencilled in the legion's crimson with its
+   * tally strokes, and three punch spikes off the OUTER edge only —
+   * the shield-wall's free edge, where the line ends. Ten thousand of
+   * these exist and every one is this one.
    */
   legion_doorwall: {
     shape: 'door',
@@ -641,11 +643,14 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
     device: 'none',
     studs: true,
     spikes: true,
-    // Lateral spines, both flanks — a crab grows them and the smith
-    // kept them. Short, pale chitin, nothing forged about them.
-    spikeAngles: [-0.25, 0.3, 2.84, 3.39],
-    spikeLen: 1.16,
-    spikeW: 0.07,
+    // Dorsal spines off the shell's crown — a crab grows its armor
+    // pointing UP off the ridge, and the smith kept them. Pale chitin
+    // in iron collars: grown weapon, mounted fitting. (The old flank
+    // spikes hung sideways off the waist like afterthoughts — the
+    // pasted-spikes verdict.)
+    spikeAngles: [-2.0, -1.57, -1.14],
+    spikeLen: 1.34,
+    spikeW: 0.1,
     spikeColor: '#cfc9b4',
     curve: 0.42,
     strapColor: '#3a4652',
@@ -675,11 +680,14 @@ export const SHIELD_STYLES: Record<string, ShieldStyle> = {
     tier: 4,
   },
   /**
-   * THE VEIL'S WING — blued night-steel with its outer edge FLETCHED:
-   * three swept barbs cut into the silhouette, a gilded rachis seam
-   * running crown to heel where a feather keeps its spine, and one
-   * gold stud bedding each barb. The ladder's warm metal spent the
-   * veil's way: three thin lines in the dark.
+   * THE VEIL'S WING — a wing BUILT, not painted. Blued night-steel
+   * laid in four feather courses that sweep from the leading edge down
+   * the fletched one, each course lapping the next at real height; a
+   * worked gold rachis RIDGE running crown to heel where a feather
+   * keeps its spine, a gold ferrule bedding each barb; and off the
+   * wing's shoulder the alula — two swept steel blades standing clear
+   * of the silhouette, the pinion's own talons. The ladder's warm
+   * metal spent the veil's way: one gold spine in the dark.
    */
   nightveil_pinion: {
     shape: 'pinion',
@@ -1735,7 +1743,7 @@ export function drawShield(
         ctx.closePath();
       }
       ctx.clip();
-      relief({ ctx, fr, hxU, hyU, nxU, nyU, crown, litU: litU2 }, st);
+      relief({ ctx, fr, hxU, hyU, nxU, nyU, crown, litU: litU2, ol }, st);
       ctx.restore();
     }
   }
@@ -1752,7 +1760,7 @@ export function drawShield(
     const crest = st.sig ? CRESTS[st.sig] : undefined;
     if (crest) {
       const litU2 = hxU >= 0 ? -1 : 1;
-      crest({ ctx, fr, hxU, hyU, nxU, nyU, crown, litU: litU2 }, st);
+      crest({ ctx, fr, hxU, hyU, nxU, nyU, crown, litU: litU2, ol }, st);
     }
   }
   if (st.arx && !hurt) drawArxFace(ctx, st.arx, fr, hxU, hyU, nxU, nyU, crown, nowMs);
@@ -2487,10 +2495,14 @@ function sigBreacher(ctx: CanvasRenderingContext2D, st: ShieldStyle): void {
 }
 
 /**
- * LEGION DOORWALL — issue iron. Two forged plates, one crimson
- * campaign band, and six diamond bosses in two drill columns. The
- * three edge spikes ride the spike plan on the OUTER edge — where the
- * shield-wall's line ends and the argument starts.
+ * LEGION DOORWALL — issue iron, and every piece of it construction.
+ * Two forged plates under two riveted cross-straps (the relief pass
+ * raises them), six spike seats in drill columns, and the legion's
+ * crimson spent ONE way: the campaign insignia stencilled high on the
+ * slab with its tally strokes — paint a quartermaster budgeted, not a
+ * band nobody can explain. The three edge spikes ride the spike plan
+ * on the OUTER edge — where the shield-wall's line ends and the
+ * argument starts.
  */
 function sigDoorwall(
   ctx: CanvasRenderingContext2D,
@@ -2499,20 +2511,25 @@ function sigDoorwall(
   litU: number,
 ): void {
   plates(ctx, st, litU);
-  // The campaign band: crimson, high on the slab, one lit edge — the
-  // one thing on the wall that says WHICH war.
+  // Strap shadow seats at the crown and the heel — where the riveted
+  // door bindings (relief) cross, the flat pass keeps their dark
+  // lines so a grazing view still reads the door as BUILT.
+  ctx.fillStyle = shade(st.face, -16);
+  ctx.fillRect(-1.2, -0.98, 2.4, 0.24);
+  ctx.fillRect(-1.2, 0.74, 2.4, 0.24);
+  // THE CAMPAIGN MARK: the legion's diamond stencilled dead center
+  // between the drill columns, two tally strokes under it — one per
+  // war the door stood through. Paint on iron: no lit plane, one
+  // darker drip edge where the stencil ran.
   const red = st.deviceColor ?? '#8e2f2c';
-  ctx.fillStyle = SEAM;
-  ctx.fillRect(-1.2, -0.72, 2.4, 0.28);
-  ctx.fillStyle = red;
-  ctx.fillRect(-1.2, -0.7, 2.4, 0.22);
-  ctx.fillStyle = shade(red, 24);
-  ctx.fillRect(-1.2, -0.7, 2.4, 0.07);
-  // The six forged bosses are THE RELIEF PASS's now — pyramids at
-  // real height (relDoorwall). The flat pass keeps only their seat
-  // shadows so a grazing view still hints at the drill columns.
+  poly(ctx, red, [0, -0.38, 0.2, -0.14, 0, 0.1, -0.2, -0.14]);
+  poly(ctx, shade(red, -26), [0, 0.1, 0.2, -0.14, 0.13, -0.06, 0.035, 0.13]);
+  poly(ctx, red, [-0.11, 0.24, -0.035, 0.24, -0.055, 0.52, -0.13, 0.52]);
+  poly(ctx, red, [0.035, 0.24, 0.11, 0.24, 0.13, 0.52, 0.055, 0.52]);
+  // The six spike seats keep their shadows for the grazing view; the
+  // spires themselves are THE CREST TIER's, socketed and ringed.
   for (const u of [-0.5, 0.5]) {
-    for (const t of [-0.14, 0.32, 0.78]) {
+    for (const t of [-0.36, 0.08, 0.52]) {
       poly(ctx, shade(st.face, -20), [u, t - 0.2, u + 0.165, t, u, t + 0.2, u - 0.165, t]);
     }
   }
@@ -2711,11 +2728,15 @@ function sigWintercourt(ctx: CanvasRenderingContext2D, st: ShieldStyle): void {
 }
 
 /**
- * NIGHTVEIL PINION — the veil's wing. Two night-steel plates, the
- * feather shade wedges stepping down the fletched edge so each barb
- * reads as its own laid feather, the gilded rachis seam crown to
- * heel, and one gold stud bedding each barb root. The warm metal
- * spent the veil's way: three thin lines in the dark.
+ * NIGHTVEIL PINION — THE LAID WING. The face is four feather courses
+ * sweeping from the high leading edge down toward the fletched one,
+ * each course a full flat plate a step brighter than the one above it
+ * (a wing is darkest at the coverts, palest at the tips), a hard seam
+ * where each course laps the next, and one moonlit sliver down the
+ * leading edge. The gold — the rachis ridge, the barb ferrules — is
+ * all THE RELIEF PASS's, at real height; the alula blades are the
+ * crest's. Nothing on this shield is a line painted to suggest a
+ * thing: every thing IS.
  */
 function sigPinion(
   ctx: CanvasRenderingContext2D,
@@ -2724,24 +2745,46 @@ function sigPinion(
   litU: number,
 ): void {
   plates(ctx, st, litU);
-  // The laid feathers: a LIGHTER wedge over each barb of the outline,
-  // so the silhouette's steps continue INTO the face as laid vanes —
-  // dark-on-dark hid them entirely; a step of light is the read.
-  const vane = shade(st.face, 14);
-  poly(ctx, vane, [0.24, -0.6, 1.1, -0.46, 0.52, -0.14, 0.2, -0.3]);
-  poly(ctx, vane, [0.22, -0.12, 1.05, 0.02, 0.5, 0.34, 0.16, 0.14]);
-  poly(ctx, vane, [0.18, 0.34, 0.95, 0.52, 0.34, 0.84, 0.12, 0.6]);
-  // The rachis: one gilded seam holding the whole wing, riding NEAR
-  // the fletched edge the way a feather's spine actually does, with
-  // its own shadow line and one bright pass.
-  const gold = st.deviceColor ?? BRASS;
-  poly(ctx, SEAM, [0.14, -1.1, 0.28, -1.1, 0.52, 1.1, 0.34, 1.1]);
-  poly(ctx, gold, [0.17, -1.1, 0.27, -1.1, 0.49, 1.1, 0.37, 1.1]);
-  poly(ctx, shade(gold, 30), [0.17, -1.1, 0.22, -1.1, 0.43, 1.1, 0.37, 1.1]);
-  // A gold bead where each feather beds into the spine.
-  stud(ctx, 0.3, -0.44, 0.07, gold);
-  stud(ctx, 0.36, 0.06, 0.07, gold);
-  stud(ctx, 0.42, 0.52, 0.07, gold);
+  // The four courses. Boundaries slope +0.35 from the inner (leading)
+  // edge to the outer (fletched) one — the sweep of laid feathers.
+  const s = 0.35;
+  const bounds = [-1.35, -0.55, 0.0, 0.55, 1.35];
+  const tones = [shade(st.face, -6), shade(st.face, 6), shade(st.face, 18), shade(st.face, 30)];
+  for (let k = 0; k < 4; k++) {
+    const tA = bounds[k]!;
+    const tB = bounds[k + 1]!;
+    poly(ctx, tones[k]!, [-1.2, tA, 1.2, tA + s, 1.2, tB + s, -1.2, tB]);
+  }
+  // THE FEATHER TIPS: each course ends in a row of pointed tips
+  // hanging over the course below — a shadow zigzag first, then the
+  // tips in the upper course's own tone. This is what makes the wing
+  // read as PLUMAGE instead of a slab wearing straps.
+  const tAt = (tB: number, u: number): number => tB + (s * (u + 1.2)) / 2.4;
+  for (let k = 0; k < 3; k++) {
+    const tB = bounds[k + 1]!;
+    const tone = tones[k]!;
+    // Alternate rows stagger by half a tip — feathers overlap in
+    // BROKEN ranks, and a perfect grid reads as machine trim.
+    const off = (k % 2) * 0.2;
+    for (let i = -1; i < 7; i++) {
+      const u0 = -1.2 + i * 0.4 + off;
+      const u1 = u0 + 0.4;
+      const um = u0 + 0.2;
+      poly(ctx, SEAM, [
+        u0, tAt(tB, u0) + 0.03, u1, tAt(tB, u1) + 0.03, um, tAt(tB, um) + 0.2,
+      ]);
+      poly(ctx, tone, [u0, tAt(tB, u0) - 0.02, u1, tAt(tB, u1) - 0.02, um, tAt(tB, um) + 0.15]);
+    }
+  }
+  // The moonlit leading edge: the one pale light on the veil's steel,
+  // down the INNER edge where the wing meets the sky.
+  poly(ctx, shade(st.face, 30), [-1.2, -1.2, -0.82, -1.2, -1.0, 1.2, -1.2, 1.2]);
+  // The barb vanes: a brighter wedge running into each silhouette
+  // barb, so the fletched edge's steps read as feather TIPS.
+  const vane = shade(st.face, 26);
+  poly(ctx, vane, [0.3, -0.62, 1.1, -0.46, 0.56, -0.16, 0.26, -0.34]);
+  poly(ctx, vane, [0.26, -0.1, 1.05, 0.02, 0.52, 0.34, 0.22, 0.12]);
+  poly(ctx, vane, [0.2, 0.38, 0.95, 0.52, 0.36, 0.84, 0.16, 0.62]);
 }
 
 /**
@@ -3415,6 +3458,25 @@ function drawSpikes(
   const pxh = (u2: number, h: number): number => u2 * hxU + nxU * (crown + h);
   const pyh = (u2: number, t2: number, h: number): number =>
     u2 * hyU + t2 * fr.hh + nyU * (crown + h);
+  // The outline-law context: spikes ring themselves like every other
+  // free-standing fitting (strokeHull below).
+  const rc: ReliefCtx = {
+    ctx,
+    fr,
+    hxU,
+    hyU,
+    nxU,
+    nyU,
+    crown,
+    litU: hxU >= 0 ? -1 : 1,
+    ol: fr.hh * 0.062,
+  };
+  // THE FERRULE metal: a spike is BEDDED in a collar of the shield's
+  // own fitting iron, whatever the spike itself is made of — bone
+  // fangs and gate glass alike are MOUNTED, and the mount is what
+  // separates a fitted weapon from a pasted decal.
+  const ferrule = shade(st.rim, -10);
+  const ferruleLit = shade(st.rim, 16);
   for (const a of angles) {
     const cu = Math.cos(a);
     const ct2 = Math.sin(a);
@@ -3455,6 +3517,56 @@ function drawSpikes(
     };
     facet(e1x, e1y, e1y <= e2y ? shade(c, 26) : shade(c, -14));
     facet(e2x, e2y, e2y < e1y ? shade(c, 26) : shade(c, -14));
+    // THE FERRULE: the collar the spike is bedded in, riding the root
+    // a step above the spine. Its corners join the outline hull so
+    // the ring wraps ONE mounted object — collar and blade together.
+    const fA = root - 0.02 * reach;
+    const fB = root + 0.13 * reach;
+    const fw = 1.5;
+    const c1x = pxh(cu * fA + wu * fw, 0.55);
+    const c1y = pyh(cu * fA + wu * fw, ct2 * fA + wt * fw, 0.55);
+    const c2x = pxh(cu * fB + wu * fw * 0.82, 0.55);
+    const c2y = pyh(cu * fB + wu * fw * 0.82, ct2 * fB + wt * fw * 0.82, 0.55);
+    const c3x = pxh(cu * fB - wu * fw * 0.82, 0.55);
+    const c3y = pyh(cu * fB - wu * fw * 0.82, ct2 * fB - wt * fw * 0.82, 0.55);
+    const c4x = pxh(cu * fA - wu * fw, 0.55);
+    const c4y = pyh(cu * fA - wu * fw, ct2 * fA - wt * fw, 0.55);
+    ctx.fillStyle = ferrule;
+    ctx.beginPath();
+    ctx.moveTo(c1x, c1y);
+    ctx.lineTo(c2x, c2y);
+    ctx.lineTo(c3x, c3y);
+    ctx.lineTo(c4x, c4y);
+    ctx.closePath();
+    ctx.fill();
+    // One lit pass along the collar's tip-ward edge.
+    ctx.fillStyle = ferruleLit;
+    ctx.beginPath();
+    ctx.moveTo(c2x, c2y);
+    ctx.lineTo(c3x, c3y);
+    const m2x = pxh(cu * (fB - 0.045 * reach) - wu * fw * 0.82, 0.55);
+    const m2y = pyh(
+      cu * (fB - 0.045 * reach) - wu * fw * 0.82,
+      ct2 * (fB - 0.045 * reach) - wt * fw * 0.82,
+      0.55,
+    );
+    const m1x = pxh(cu * (fB - 0.045 * reach) + wu * fw * 0.82, 0.55);
+    const m1y = pyh(
+      cu * (fB - 0.045 * reach) + wu * fw * 0.82,
+      ct2 * (fB - 0.045 * reach) + wt * fw * 0.82,
+      0.55,
+    );
+    ctx.lineTo(m2x, m2y);
+    ctx.lineTo(m1x, m1y);
+    ctx.closePath();
+    ctx.fill();
+    // THE FITTING OUTLINE LAW: one black ring around the whole spike —
+    // root corners, tip, raised spine, ferrule collar — the same line
+    // the world's outline shader owes every separate object.
+    strokeHull(rc, [
+      e1x, e1y, e2x, e2y, tipX, tipY, spineX, spineY,
+      c1x, c1y, c2x, c2y, c3x, c3y, c4x, c4y,
+    ]);
   }
 }
 
@@ -3495,6 +3607,8 @@ interface ReliefCtx {
   nyU: number;
   crown: number;
   litU: number;
+  /** The shield's own outline weight — THE FITTING OUTLINE LAW below. */
+  ol: number;
 }
 
 type ReliefPainter = (rc: ReliefCtx, st: ShieldStyle) => void;
@@ -3505,6 +3619,79 @@ function rPx(rc: ReliefCtx, u: number, h: number): number {
 }
 function rPy(rc: ReliefCtx, u: number, t: number, h: number): number {
   return u * rc.hyU + t * rc.fr.hh + rc.nyU * (rc.crown + h);
+}
+
+/* ==================== THE FITTING OUTLINE LAW =======================
+ *
+ * (2026-08-16, the pasted-spikes verdict.) The world's outline shader
+ * rings every OBJECT — and a spike, a mounted skull, a standing spire
+ * is its own object bolted to the shield, not a region of its face.
+ * Un-ringed, a raised solid reads as a decal the moment it leaves the
+ * shield's silhouette: the black line is what this art style uses to
+ * say "this is a THING", and the fittings were saying nothing.
+ *
+ * So the raised tiers stroke their own outlines, in the same SEAM the
+ * shield's own ring uses and at the same proportional weight — one
+ * ring per OBJECT, never per facet, so a skull wears one line and a
+ * six-spike column wears six. Surface furniture (bands, lips, laps)
+ * stays un-ringed: it is worked INTO the face, and ringing it would
+ * double every seam into clutter.
+ */
+
+/** Stroke a design-space polygon at height h in the outline SEAM. */
+function strokeAt(rc: ReliefCtx, pts: number[], h: number): void {
+  const { ctx } = rc;
+  ctx.strokeStyle = SEAM;
+  ctx.lineWidth = rc.ol;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  for (let i = 0; i < pts.length; i += 2) {
+    const x = rPx(rc, pts[i]!, h);
+    const y = rPy(rc, pts[i]!, pts[i + 1]!, h);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.stroke();
+}
+
+/**
+ * Stroke the convex hull of already-projected screen points — the one
+ * honest silhouette of a convex solid (a pyramid, a spike with its
+ * ferrule) at any yaw, with no interior edges to double up.
+ */
+function strokeHull(rc: ReliefCtx, xy: number[]): void {
+  const { ctx } = rc;
+  const pts: Array<[number, number]> = [];
+  for (let i = 0; i < xy.length; i += 2) pts.push([xy[i]!, xy[i + 1]!]);
+  pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o: [number, number], a: [number, number], b: [number, number]): number =>
+    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lower: Array<[number, number]> = [];
+  for (const p of pts) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2]!, lower[lower.length - 1]!, p) <= 0)
+      lower.pop();
+    lower.push(p);
+  }
+  const upper: Array<[number, number]> = [];
+  for (let i = pts.length - 1; i >= 0; i--) {
+    const p = pts[i]!;
+    while (upper.length >= 2 && cross(upper[upper.length - 2]!, upper[upper.length - 1]!, p) <= 0)
+      upper.pop();
+    upper.push(p);
+  }
+  const hull = lower.slice(0, -1).concat(upper.slice(0, -1));
+  if (hull.length < 3) return;
+  ctx.strokeStyle = SEAM;
+  ctx.lineWidth = rc.ol;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  for (let i = 0; i < hull.length; i++) {
+    if (i === 0) ctx.moveTo(hull[0]![0], hull[0]![1]);
+    else ctx.lineTo(hull[i]![0], hull[i]![1]);
+  }
+  ctx.closePath();
+  ctx.stroke();
 }
 
 /** A flat polygon projected at height h — top-plate detail work. */
@@ -3555,11 +3742,24 @@ function prism(
   h0: number,
   h1: number,
   top: string,
-  opts?: { wallDark?: string; wallLit?: string; shadow?: boolean; topFill?: boolean },
+  opts?: {
+    wallDark?: string;
+    wallLit?: string;
+    shadow?: boolean;
+    topFill?: boolean;
+    /**
+     * THE FITTING OUTLINE LAW: true = this prism is its own OBJECT
+     * (a mounted skull, a worked cross) and wears the world's black
+     * ring — base ring struck under the walls, top ring over the
+     * finished plate. Surface furniture leaves it false.
+     */
+    outline?: boolean;
+  },
 ): void {
   const { ctx } = rc;
   const n = pts.length / 2;
   if (opts?.shadow !== false) reliefShadow(rc, pts, h1);
+  if (opts?.outline) strokeAt(rc, pts, h0);
   // Centroid of the top ring — the up/down screen split.
   let cy0 = 0;
   for (let i = 0; i < n; i++) cy0 += rPy(rc, pts[i * 2]!, pts[i * 2 + 1]!, h1);
@@ -3588,6 +3788,7 @@ function prism(
   wall(opts?.wallDark ?? shade(top, -34), false);
   wall(opts?.wallLit ?? shade(top, -8), true);
   if (opts?.topFill !== false) polyAt(rc, pts, h1, top);
+  if (opts?.outline) strokeAt(rc, pts, h1);
 }
 
 /**
@@ -3604,6 +3805,13 @@ function pyramid(
   h0: number,
   h1: number,
   tone: string,
+  opts?: {
+    /** THE FITTING OUTLINE LAW: ring the whole solid as one object. */
+    outline?: boolean;
+    /** Apex lean in design space — a swept spur, not a plumb spire. */
+    du?: number;
+    dt?: number;
+  },
 ): void {
   const { ctx } = rc;
   const base: Array<[number, number]> = [
@@ -3615,8 +3823,8 @@ function pyramid(
   // Tall spires clamp their cast shadow — a six-inch spike does not
   // drag a six-inch stain down the boards.
   reliefShadow(rc, [u, t - rt, u + ru, t, u, t + rt, u - ru, t], Math.min(h1, 0.9));
-  const ax = rPx(rc, u, h1);
-  const ay = rPy(rc, u, t, h1);
+  const ax = rPx(rc, u + (opts?.du ?? 0), h1);
+  const ay = rPy(rc, u + (opts?.du ?? 0), t + (opts?.dt ?? 0), h1);
   // Facet order by screen height of the base-edge midpoint: the
   // up-screen facet takes the light, the down-screen one the shade.
   const faces: Array<{ i: number; midY: number }> = [];
@@ -3639,6 +3847,11 @@ function pyramid(
     ctx.closePath();
     ctx.fill();
   }
+  if (opts?.outline) {
+    const xy: number[] = [ax, ay];
+    for (const [bu, bt] of base) xy.push(rPx(rc, bu, h0), rPy(rc, bu, bt, h0));
+    strokeHull(rc, xy);
+  }
 }
 
 // ------------------------------------------------ the twelve reliefs
@@ -3653,8 +3866,10 @@ function relBreacher(rc: ReliefCtx, st: ShieldStyle): void {
   const iron = shade(st.rim, 6);
   // The boot plate's working lip.
   prism(rc, [-1.02, 0.66, 1.02, 0.66, 1.02, 0.76, -1.02, 0.76], 0, 0.3, shade(st.rim, 14));
-  // The knocker mount.
-  prism(rc, [-0.2, -0.13, 0.2, -0.13, 0.26, 0.03, 0, 0.13, -0.26, 0.03], 0, 0.42, iron);
+  // The knocker mount — its own ringed fitting.
+  prism(rc, [-0.2, -0.13, 0.2, -0.13, 0.26, 0.03, 0, 0.13, -0.26, 0.03], 0, 0.42, iron, {
+    outline: true,
+  });
   // The ring, hanging from the mount: an annulus at height, evenodd.
   const { ctx } = rc;
   reliefShadow(rc, [-0.22, 0.12, 0.22, 0.12, 0.22, 0.5, -0.22, 0.5], 0.5);
@@ -3697,15 +3912,38 @@ function relBreacher(rc: ReliefCtx, st: ShieldStyle): void {
 }
 
 /**
- * LEGION DOORWALL — the drill columns FORGED: six pyramid bosses at
- * real height, and the campaign band raised as its own riveted plate
- * lapping the slab.
+ * LEGION DOORWALL — construction at height. The crown and heel
+ * bindings are riveted iron straps standing off the slab, each bolt a
+ * forged pyramid ringed as its own fixing; under every spire a bolted
+ * seat plate waits, so the crest's spikes rise out of METAL, not out
+ * of paint. The old crimson band is gone — the legion's red is the
+ * stencilled insignia now, and everything raised on this door is iron.
  */
 function relDoorwall(rc: ReliefCtx, st: ShieldStyle): void {
-  const red = st.deviceColor ?? '#8e2f2c';
-  prism(rc, [-1.04, -0.72, 1.04, -0.72, 1.04, -0.46, -1.04, -0.46], 0, 0.3, red);
-  polyAt(rc, [-1.04, -0.72, 1.04, -0.72, 1.04, -0.65, -1.04, -0.65], 0.3, shade(red, 24));
-  // The six spikes are THE CREST TIER's — real solids, no clip.
+  const iron = shade(st.face, -4);
+  for (const t of [-0.98, 0.74]) {
+    prism(rc, [-0.94, t, 0.94, t, 0.94, t + 0.24, -0.94, t + 0.24], 0, 0.3, iron, {
+      wallDark: shade(iron, -36),
+    });
+    polyAt(rc, [-0.94, t, 0.94, t, 0.94, t + 0.07, -0.94, t + 0.07], 0.3, shade(iron, 16));
+    // The bolts, one at each strap end — ringed fixings.
+    pyramid(rc, -0.8, t + 0.12, 0.07, 0.085, 0.3, 0.58, shade(st.rim, 22), { outline: true });
+    pyramid(rc, 0.8, t + 0.12, 0.07, 0.085, 0.3, 0.58, shade(st.rim, 22), { outline: true });
+  }
+  // The spire seats: a raised diamond plate under each of the six,
+  // a hair wider than the spike root it carries.
+  for (const u of [-0.5, 0.5]) {
+    for (const t of [-0.36, 0.08, 0.52]) {
+      prism(
+        rc,
+        [u, t - 0.25, u + 0.2, t, u, t + 0.25, u - 0.2, t],
+        0,
+        0.26,
+        shade(st.face, 10),
+        { wallDark: shade(st.face, -30), shadow: false },
+      );
+    }
+  }
 }
 
 /**
@@ -3831,19 +4069,27 @@ function relWintercourt(rc: ReliefCtx, st: ShieldStyle): void {
 }
 
 /**
- * NIGHTVEIL PINION — the rachis is a RIDGE of gold now, standing off
- * the wing its whole length, and each barb root beds under a raised
- * gold ferrule instead of a painted bead.
+ * NIGHTVEIL PINION — the wing at height. Each feather course laps the
+ * next on a raised lip (the same law the carapace grows by, swept the
+ * wing's way); the rachis is a worked gold RIDGE standing off the
+ * steel its whole length, ringed as its own object; and a gold
+ * ferrule pyramid beds each barb root into the spine.
  */
 function relPinion(rc: ReliefCtx, st: ShieldStyle): void {
+  // The feather courses lap FLAT (the tips are the face's own work) —
+  // the relief budget is spent where the wing keeps its metal:
+  // The rachis ridge: gold, tall, and its own ringed object — the
+  // spine that holds the whole wing together.
   const gold = st.deviceColor ?? BRASS;
-  prism(rc, [0.17, -1.05, 0.27, -1.05, 0.49, 1.05, 0.37, 1.05], 0, 0.42, gold, {
-    wallDark: shade(gold, -38),
+  prism(rc, [0.14, -1.05, 0.28, -1.05, 0.5, 1.05, 0.36, 1.05], 0, 0.55, gold, {
+    wallDark: shade(gold, -40),
+    outline: true,
   });
-  polyAt(rc, [0.18, -1.02, 0.22, -1.02, 0.43, 1.02, 0.38, 1.02], 0.42, shade(gold, 30));
-  pyramid(rc, 0.16, -0.44, 0.09, 0.1, 0, 0.55, gold);
-  pyramid(rc, 0.24, 0.06, 0.09, 0.1, 0, 0.55, gold);
-  pyramid(rc, 0.32, 0.52, 0.09, 0.1, 0, 0.55, gold);
+  polyAt(rc, [0.15, -1.02, 0.21, -1.02, 0.44, 1.02, 0.37, 1.02], 0.55, shade(gold, 30));
+  // The ferrules, bedding each barb into the spine.
+  pyramid(rc, 0.28, -0.46, 0.1, 0.11, 0, 0.62, gold, { outline: true });
+  pyramid(rc, 0.35, 0.04, 0.1, 0.11, 0, 0.62, gold, { outline: true });
+  pyramid(rc, 0.42, 0.5, 0.1, 0.11, 0, 0.62, gold, { outline: true });
 }
 
 /**
@@ -3854,18 +4100,22 @@ function relPinion(rc: ReliefCtx, st: ShieldStyle): void {
  */
 function relReliquary(rc: ReliefCtx, st: ShieldStyle): void {
   const silver = st.deviceColor ?? '#dce4f0';
+  // The worked cross rings itself — reliquary silver is an OBJECT set
+  // on enamel, and the black line is what says so at a glance.
   prism(rc, [-0.08, -0.76, 0.08, -0.76, 0.08, 0.74, -0.08, 0.74], 0, 0.34, silver, {
     wallDark: shade(silver, -42),
+    outline: true,
   });
   polyAt(rc, [-0.08, -0.76, -0.025, -0.76, -0.025, 0.74, -0.08, 0.74], 0.34, shade(silver, 24));
   prism(rc, [-0.51, -0.085, 0.51, -0.085, 0.51, 0.085, -0.51, 0.085], 0.2, 0.5, silver, {
     wallDark: shade(silver, -42),
+    outline: true,
   });
   polyAt(rc, [-0.51, -0.085, 0.51, -0.085, 0.51, -0.03, -0.51, -0.03], 0.5, shade(silver, 24));
-  pyramid(rc, 0, -0.82, 0.13, 0.15, 0, 0.5, silver);
-  pyramid(rc, 0, 0.8, 0.13, 0.15, 0, 0.5, silver);
-  pyramid(rc, -0.58, 0, 0.13, 0.15, 0, 0.5, silver);
-  pyramid(rc, 0.58, 0, 0.13, 0.15, 0, 0.5, silver);
+  pyramid(rc, 0, -0.82, 0.13, 0.15, 0, 0.5, silver, { outline: true });
+  pyramid(rc, 0, 0.8, 0.13, 0.15, 0, 0.5, silver, { outline: true });
+  pyramid(rc, -0.58, 0, 0.13, 0.15, 0, 0.5, silver, { outline: true });
+  pyramid(rc, 0.58, 0, 0.13, 0.15, 0, 0.5, silver, { outline: true });
 }
 
 /**
@@ -3898,18 +4148,20 @@ function relCindermaw(rc: ReliefCtx, st: ShieldStyle): void {
     0.42,
     '#ff8a3c',
   );
-  // The grate mouth: the proudest plate, slots venting the bed below.
+  // The grate mouth: the proudest plate, slots venting the bed below —
+  // the door's own mounted object, ringed.
   const mouth = shade(st.face, -6);
   prism(rc, [-0.52, -0.2, 0.52, -0.2, 0.52, 0.32, -0.52, 0.32], 0, 0.7, mouth, {
     wallDark: shade(mouth, -38),
+    outline: true,
   });
   for (const u of [-0.3, 0, 0.3]) {
     polyAt(rc, [u - 0.07, -0.12, u + 0.07, -0.12, u + 0.07, 0.24, u - 0.07, 0.24], 0.7, '#b8481e');
     polyAt(rc, [u - 0.04, -0.12, u + 0.04, -0.12, u + 0.04, 0.24, u - 0.04, 0.24], 0.7, '#ff8a3c');
     polyAt(rc, [u - 0.07, -0.12, u + 0.07, -0.12, u + 0.07, -0.06, u - 0.07, -0.06], 0.7, SEAM);
   }
-  pyramid(rc, -0.42, 0.06, 0.07, 0.08, 0.7, 0.95, shade(st.rim, 16));
-  pyramid(rc, 0.42, 0.06, 0.07, 0.08, 0.7, 0.95, shade(st.rim, 16));
+  pyramid(rc, -0.42, 0.06, 0.07, 0.08, 0.7, 0.95, shade(st.rim, 16), { outline: true });
+  pyramid(rc, 0.42, 0.06, 0.07, 0.08, 0.7, 0.95, shade(st.rim, 16), { outline: true });
 }
 
 /**
@@ -3957,10 +4209,10 @@ function relRiftward(rc: ReliefCtx, st: ShieldStyle): void {
     [0.4, -0.86, 0.54, -0.86, 0.54, 0.64, 0.4, 0.64],
   ];
   for (const b of bars) prism(rc, b, 0, 0.4, frame, { wallDark: shade(frame, -30) });
-  pyramid(rc, -0.47, -0.79, 0.075, 0.085, 0.4, 0.72, shade(st.rim, 40));
-  pyramid(rc, 0.47, -0.79, 0.075, 0.085, 0.4, 0.72, shade(st.rim, 40));
-  pyramid(rc, -0.47, 0.57, 0.075, 0.085, 0.4, 0.72, shade(st.rim, 40));
-  pyramid(rc, 0.47, 0.57, 0.075, 0.085, 0.4, 0.72, shade(st.rim, 40));
+  pyramid(rc, -0.47, -0.79, 0.075, 0.085, 0.4, 0.72, shade(st.rim, 40), { outline: true });
+  pyramid(rc, 0.47, -0.79, 0.075, 0.085, 0.4, 0.72, shade(st.rim, 40), { outline: true });
+  pyramid(rc, -0.47, 0.57, 0.075, 0.085, 0.4, 0.72, shade(st.rim, 40), { outline: true });
+  pyramid(rc, 0.47, 0.57, 0.075, 0.085, 0.4, 0.72, shade(st.rim, 40), { outline: true });
   // The standing shard is THE CREST TIER's — it leans, and it is tall.
 }
 
@@ -4011,8 +4263,9 @@ function relFalls(rc: ReliefCtx, st: ShieldStyle): void {
  */
 function crestDoorwall(rc: ReliefCtx, st: ShieldStyle): void {
   const iron = shade(st.face, 30);
-  for (const t of [-0.14, 0.32, 0.78]) {
-    for (const u of [-0.5, 0.5]) pyramid(rc, u, t, 0.16, 0.2, 0, 2.4, iron);
+  for (const t of [-0.36, 0.08, 0.52]) {
+    for (const u of [-0.5, 0.5])
+      pyramid(rc, u, t, 0.16, 0.2, 0.26, 2.4, iron, { outline: true });
   }
 }
 
@@ -4026,22 +4279,25 @@ function crestDoorwall(rc: ReliefCtx, st: ShieldStyle): void {
 function crestFellhorn(rc: ReliefCtx, st: ShieldStyle): void {
   const bone = st.deviceColor ?? '#ddd4bc';
   const boneDk = shade(bone, -24);
+  // THE FITTING OUTLINE LAW: the muzzle is painted and ringed FIRST,
+  // then the brow dome over it — skull over jaw, each wearing its own
+  // black line, the way the outline shader rings two stacked objects.
+  prism(rc, [-0.18, -0.1, 0.18, -0.1, 0.11, 0.34, -0.11, 0.34], 0, 0.72, bone, {
+    wallDark: shade(bone, -36),
+    outline: true,
+  });
+  polyAt(rc, [-0.035, 0.0, 0.035, 0.0, 0.026, 0.24, -0.026, 0.24], 0.72, boneDk);
   prism(
     rc,
     [-0.44, -1.0, 0.44, -1.0, 0.5, -0.42, 0.22, -0.02, -0.22, -0.02, -0.5, -0.42],
     0,
     1.15,
     bone,
-    { wallDark: shade(bone, -42), wallLit: boneDk },
+    { wallDark: shade(bone, -42), wallLit: boneDk, outline: true },
   );
   polyAt(rc, [-0.47, -0.46, 0.47, -0.46, 0.22, -0.02, -0.22, -0.02], 1.15, boneDk);
   polyAt(rc, [-0.34, -0.54, -0.08, -0.54, -0.19, -0.24], 1.15, SEAM);
   polyAt(rc, [0.08, -0.54, 0.34, -0.54, 0.19, -0.24], 1.15, SEAM);
-  // The muzzle: forward of the brow, lower than it, its own solid.
-  prism(rc, [-0.18, -0.1, 0.18, -0.1, 0.11, 0.3, -0.11, 0.3], 0, 0.72, bone, {
-    wallDark: shade(bone, -36),
-  });
-  polyAt(rc, [-0.035, -0.02, 0.035, -0.02, 0.026, 0.2, -0.026, 0.2], 0.72, boneDk);
 }
 
 /**
@@ -4073,6 +4329,8 @@ function crestRiftward(rc: ReliefCtx): void {
   ctx.lineTo(rPx(rc, 0.03, 0), mBase);
   ctx.closePath();
   ctx.fill();
+  // The shard rings itself — glass is still an object.
+  strokeHull(rc, [e1x, e1y, e2x, e2y, ax, ay, rPx(rc, 0.03, 0), mBase]);
 }
 
 /**
@@ -4081,8 +4339,25 @@ function crestRiftward(rc: ReliefCtx): void {
  */
 function crestFalls(rc: ReliefCtx, st: ShieldStyle): void {
   const gold = st.deviceColor ?? '#e6c36a';
-  pyramid(rc, -0.88, -0.8, 0.085, 0.1, 0.36, 1.0, shade(gold, 30));
-  pyramid(rc, 0.88, -0.8, 0.085, 0.1, 0.36, 1.0, shade(gold, 30));
+  pyramid(rc, -0.88, -0.8, 0.085, 0.1, 0.36, 1.0, shade(gold, 30), { outline: true });
+  pyramid(rc, 0.88, -0.8, 0.085, 0.1, 0.36, 1.0, shade(gold, 30), { outline: true });
+}
+
+/**
+ * NIGHTVEIL PINION — THE ALULA: the wing's own talons. Two swept
+ * steel blades off the pinion's shoulder, leaning up and OUT past the
+ * fletched edge — face-on they foreshorten to bright thorns; turned,
+ * they rake clear of the silhouette with their whole length, and the
+ * wing finally has the weapon its name promised.
+ */
+function crestPinion(rc: ReliefCtx, st: ShieldStyle): void {
+  const steel = shade(st.face, 36);
+  pyramid(rc, 0.6, -0.72, 0.14, 0.17, 0, 1.6, steel, { outline: true, du: 0.5, dt: -0.4 });
+  pyramid(rc, 0.88, -0.26, 0.11, 0.13, 0, 1.05, shade(st.face, 28), {
+    outline: true,
+    du: 0.42,
+    dt: -0.2,
+  });
 }
 
 const CRESTS: Record<string, ReliefPainter> = {
@@ -4090,6 +4365,7 @@ const CRESTS: Record<string, ReliefPainter> = {
   fellhorn: crestFellhorn,
   riftward: crestRiftward,
   falls: crestFalls,
+  pinion: crestPinion,
 };
 
 const RELIEFS: Record<string, ReliefPainter> = {
