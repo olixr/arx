@@ -469,3 +469,37 @@ windows, no marble. The wealth gradient IS the storytelling.
   - content 514/514 first run after the build — the builder's own
     reachability, doorway, sign, and stall laws all passed on the
     paper-checked coordinates; content tsc clean.
+- **Phase 4 THE HIGH CITY KEEPS ITS DAY** — ~40 placements across
+  every existing district, UPGRADE BEFORE ADD wherever the old
+  build used a placeholder:
+  - Castle: solar CandleStand + chamber/hall CloakStands, drill-butt
+    TargetDummy pair, the kitchens' one broom by the service door
+    (the interior was full — two attempted adds sealed pockets and
+    DIED to the builder's own law; restraint won).
+  - Court: TownBell (the sign's 'first bell' promise kept),
+    NoticeBoard beside the crier's lectern, the clerks' lunch
+    GameTable.
+  - Bank/Guildhall/Charts: four Table→ScribesDesk upgrades + the
+    bridgehead charter NoticeBoard; assay scales Table→HangingScale.
+  - Emberway: forge Basin→QuenchTrough x2 + SmithBellows +
+    IngotRack + Grindstone; smelter ingot crate→IngotRack; mine
+    barrel→WaterCask; masons' Wheelbarrow.
+  - Timberway: seasoned-timber crates→LumberRack x2, commission
+    crate→DisplayTable, FletchersBench beside the carving bench
+    (CarvingBench pin kept at 3), cookhouse jars+baskets, dispensary
+    HerbRack, mess barrel→TapCask.
+  - Lantern Row: the four lamps→StreetLantern (the name literal),
+    Flagon cellar barrel→TapCask + BarrelStack + door CloakStand,
+    Cloth Hall wool crate→ClothBolts + TailorsDummy, Charts
+    ScribesDesk + late-hours CandleStand.
+  - Gatefront: caravanserai Basin→WaterTrough x3 + HitchingPost,
+    wardhouse SpearRack + WaterCask, gate market FishmongerSlab +
+    BasketStack ('fish, ore, arrivals' — the fish delivered).
+  - The Rookery UNTOUCHED; the Silver Shrine ring stays BARE (the
+    Quiet Stones lesson) — zero adds at either.
+  - PRE-VALIDATE ran as a real sweep: a routine-waypoint probe over
+    all 68 placements' schedules against the built grid — 44 hits,
+    ALL pre-existing sit/work station addressing, ZERO on this
+    pass's tiles; the two sealed pockets the builder caught were
+    both this pass's and both fixed by deletion, not relocation.
+  - content 514/514.

@@ -254,6 +254,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(82, 18, Tile.Chair).set(82, 20, Tile.Chair).set(82, 22, Tile.Chair);
   b.set(84, 19, Tile.Chair).set(84, 21, Tile.Chair);
   b.set(71, 23, Tile.BannerPole).set(84, 23, Tile.BannerPole);
+  b.set(75, 23, Tile.CloakStand); // petitioners hang their road here
   b.setDetail(77, 25, Detail.Doormat).setDetail(78, 25, Detail.Doormat);
 
   // THE GARRISON RANGE (x55-68): armory and barracks north, the
@@ -303,6 +304,10 @@ export function buildSilverfall(): ZoneDef {
   b.set(92, 19, Tile.Hearth);
   b.set(89, 21, Tile.Table).set(88, 21, Tile.Chair).set(90, 21, Tile.Chair);
   for (let x = 88; x <= 91; x++) b.setDetail(x, 22, Detail.Rug);
+  // The household reads (the dressing pass): the Queen's candle by
+  // the solar hearth, the cloaks at the chamber door.
+  b.set(91, 19, Tile.CandleStand);
+  b.set(92, 13, Tile.CloakStand);
   b.setDetail(89, 25, Detail.Doormat);
 
   // THE BAILEY — parade stone between the keep and the curtain.
@@ -315,6 +320,7 @@ export function buildSilverfall(): ZoneDef {
   b.fillRect(61, 26, 12, 6, Tile.Dirt);
   b.set(61, 27, Tile.Fence).set(61, 30, Tile.Fence);
   b.setDetail(62, 27, Detail.Straw).setDetail(62, 30, Detail.Straw);
+  b.set(62, 28, Tile.TargetDummy).set(62, 30, Tile.TargetDummy); // the butts, finally literal
   b.set(71, 26, Tile.WeaponRack).set(71, 31, Tile.ToolRack);
   b.setDetail(66, 29, Detail.Pebbles);
   b.sign(73, 30, 'THE DRILL YARD', ['loose only west', 'the King watches on seventh-days']);
@@ -327,6 +333,10 @@ export function buildSilverfall(): ZoneDef {
   b.set(56, 26, Tile.Basin);
   b.set(52, 28, Tile.Counter).set(53, 28, Tile.Counter); // the pass
   b.set(52, 29, Tile.CrateGoods).set(53, 29, Tile.Barrel); // the larder row
+  // (The kitchen interior is full — restraint is curation: the one
+  // trace of the four hundred meals is the broom by the service
+  // door, and that is enough.)
+  b.set(58, 28, Tile.BroomAndPail);
   b.set(52, 27, Tile.Bed); // the steward's cot, warm side of the hearth
   b.set(55, 28, Tile.Table).set(56, 28, Tile.Chair); // the steward's ledger
   b.setDetail(56, 27, Detail.Doormat);
@@ -479,6 +489,9 @@ export function buildSilverfall(): ZoneDef {
   b.set(77, 39, Tile.Bench).set(80, 39, Tile.Bench);
   b.set(77, 46, Tile.Bench).set(80, 46, Tile.Bench);
   b.set(73, 40, Tile.Lectern); // the crier reads the Crown's word here
+  b.set(75, 40, Tile.NoticeBoard); // the word STAYS posted after he stops
+  b.set(71, 40, Tile.TownBell); // 'first bell of the month' — the sign kept a promise
+  b.set(74, 47, Tile.GameTable).set(75, 47, Tile.WoodStool); // the clerks' lunch game
   b.sign(71, 42, 'THE GRAND COURT', ['the Crown hears moot', 'first bell of the month']);
   // The falls-side nook: benches and planters on the plunge bank —
   // the court's one quiet corner, facing the water.
@@ -514,8 +527,8 @@ export function buildSilverfall(): ZoneDef {
   // gate, vault door, and front door share one line.
   for (const y of [40, 41, 42, 44, 45, 46]) b.set(54, y, Tile.Counter);
   b.set(50, 39, Tile.Bookshelf).set(51, 39, Tile.Bookshelf).set(52, 39, Tile.Bookshelf);
-  b.set(51, 41, Tile.Table).set(52, 41, Tile.Chair);
-  b.set(51, 46, Tile.Table).set(52, 46, Tile.Chair);
+  b.set(51, 41, Tile.ScribesDesk).set(52, 41, Tile.Chair); // the counting desks earn
+  b.set(51, 46, Tile.ScribesDesk).set(52, 46, Tile.Chair); // their slant tops (upgrade law)
   b.set(50, 48, Tile.Cabinet).set(51, 48, Tile.Cabinet);
   // The lobby: the Crown's aisle in crimson to the teller gate, the
   // public ledgers, the waiting bench, the bank chests.
@@ -561,8 +574,9 @@ export function buildSilverfall(): ZoneDef {
   b.setDetail(110, 38, Detail.BannerCrown).setDetail(119, 38, Detail.BannerMoon);
   b.set(127, 39, Tile.Cabinet).set(127, 44, Tile.Cabinet).set(124, 48, Tile.Cabinet);
   b.set(125, 39, Tile.Bookshelf).set(126, 39, Tile.Bookshelf);
-  b.set(125, 46, Tile.Table).set(126, 46, Tile.Chair);
+  b.set(125, 46, Tile.ScribesDesk).set(126, 46, Tile.Chair); // the records clerk's slant
   b.set(127, 48, Tile.CrateGoods);
+  b.set(104, 46, Tile.NoticeBoard); // charters posted at the bridgehead
   // The court walks: bank front -> Silver Setting -> Arcanum, and
   // the court -> chapter house link. Streets first.
   b.fillRect(48, 50, 22, 2, Tile.StoneFloor);
@@ -618,7 +632,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(52, 52, Tile.WallStoneWindow).set(60, 52, Tile.WallStoneWindow);
   b.set(50, 56, Tile.WallStoneWindow).set(62, 56, Tile.WallStoneWindow);
   b.set(53, 55, Tile.Counter).set(54, 55, Tile.Counter).set(55, 55, Tile.Counter);
-  b.set(51, 53, Tile.Cabinet).set(52, 53, Tile.Cabinet); // the display cases
+  b.set(51, 53, Tile.DisplayTable).set(52, 53, Tile.Cabinet); // the mountain made small, shown small
   b.set(59, 53, Tile.Workbench); // the setting bench
   b.set(61, 54, Tile.Furnace); // the small silver furnace
   b.set(51, 59, Tile.CrateGoods).set(61, 59, Tile.Cabinet);
@@ -638,7 +652,8 @@ export function buildSilverfall(): ZoneDef {
   b.setDetail(109, 59, pennantDetail(3));
   b.set(105, 55, Tile.WallWoodWindow).set(115, 55, Tile.WallWoodWindow);
   b.set(107, 53, Tile.Loom).set(107, 56, Tile.Loom);
-  b.set(109, 52, Tile.Crate); // raw wool off the High Road
+  b.set(109, 52, Tile.ClothBolts); // the bolts the sign promises
+  b.set(114, 53, Tile.TailorsDummy); // the commission stands fitted
   b.set(109, 57, Tile.Counter).set(110, 57, Tile.Counter).set(111, 57, Tile.Counter);
   b.set(113, 52, Tile.Cabinet).set(114, 52, Tile.Bookshelf);
   b.setDetail(111, 51, Detail.Tapestry).setDetail(112, 51, Detail.Tapestry);
@@ -658,7 +673,8 @@ export function buildSilverfall(): ZoneDef {
   b.set(119, 52, Tile.Bookshelf).set(120, 52, Tile.Bookshelf);
   b.set(124, 52, Tile.Bookshelf).set(125, 52, Tile.Bookshelf);
   b.set(121, 54, Tile.Lectern); // the chart desk — the honest maps
-  b.set(119, 56, Tile.Table).set(120, 56, Tile.Chair);
+  b.set(119, 56, Tile.ScribesDesk).set(120, 56, Tile.Chair); // deeds drawn at a true slant
+  b.set(124, 53, Tile.CandleStand); // the late copying hours
   b.set(123, 56, Tile.Counter).set(124, 56, Tile.Counter);
   b.set(125, 57, Tile.CrateGoods);
   b.setDetail(122, 58, Detail.Doormat);
@@ -674,7 +690,8 @@ export function buildSilverfall(): ZoneDef {
   b.set(129, 54, Tile.WallWoodWindow).set(134, 50, Tile.WallWoodWindow);
   b.set(130, 51, Tile.Hearth);
   b.set(131, 56, Tile.Counter).set(132, 56, Tile.Counter).set(133, 56, Tile.Counter);
-  b.set(130, 52, Tile.Barrel).set(130, 58, Tile.Barrel); // the cellar row
+  b.set(130, 52, Tile.TapCask).set(130, 58, Tile.BarrelStack); // the cellar works, and shows it
+  b.set(138, 52, Tile.CloakStand); // the road hangs by the door
   b.set(133, 52, Tile.Table).set(132, 52, Tile.Chair).set(134, 52, Tile.Chair);
   b.set(136, 54, Tile.Table).set(135, 54, Tile.Chair).set(137, 54, Tile.Chair);
   b.setDetail(131, 53, Detail.Rug).setDetail(132, 53, Detail.Rug);
@@ -694,9 +711,10 @@ export function buildSilverfall(): ZoneDef {
   // The bridgehead stalls: two pitches on the west bank of the falls.
   b.stamp(MARKET_STALL, 94, 53);
   b.stamp(MARKET_STALL, 94, 57);
-  // The Row's lamps — the name is the promise.
-  b.set(105, 62, Tile.LampPost).set(117, 62, Tile.LampPost);
-  b.set(128, 62, Tile.LampPost).set(144, 62, Tile.LampPost);
+  // The Row's LANTERNS — the name is finally literal: wrought
+  // street lanterns where the avenue makes do with posts.
+  b.set(105, 62, Tile.StreetLantern).set(117, 62, Tile.StreetLantern);
+  b.set(128, 62, Tile.StreetLantern).set(144, 62, Tile.StreetLantern);
   b.sign(104, 62, 'LANTERN ROW', ['shopfronts to the falls'], Tile.Signpost);
   // The east promenade: pines and lamps along the hall-terrace walk.
   b.set(141, 42, Tile.TreePine).set(143, 47, Tile.TreePine);
@@ -735,7 +753,7 @@ export function buildSilverfall(): ZoneDef {
   b.setDetail(19, 87, Detail.Pebbles).setDetail(21, 91, Detail.Pebbles);
   b.set(27, 70, Tile.RockSilver);
   b.set(29, 80, Tile.Crate).set(30, 81, Tile.Crate).set(31, 79, Tile.Crate);
-  b.set(30, 78, Tile.ToolRack).set(28, 79, Tile.Barrel);
+  b.set(30, 78, Tile.ToolRack).set(28, 79, Tile.WaterCask); // the shift drinks drawn water
   b.set(19, 78, Tile.Brazier).set(15, 88, Tile.Brazier);
   // THE SMELTER HALL: three furnaces, charge bins, slag trough,
   // tally desk.
@@ -747,7 +765,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(34, 68, Tile.Furnace).set(38, 68, Tile.Furnace).set(42, 68, Tile.Furnace);
   b.set(36, 68, Tile.CrateGoods).set(40, 68, Tile.CrateGoods); // the charge bins
   b.set(45, 68, Tile.Basin); // the slag trough
-  b.set(45, 74, Tile.CrateGoods).set(46, 76, Tile.CrateGoods); // ingots, stacked
+  b.set(45, 74, Tile.IngotRack).set(46, 76, Tile.CrateGoods); // ingots RACKED, not crated (upgrade law)
   b.set(34, 75, Tile.Counter).set(35, 75, Tile.Counter).set(36, 75, Tile.Counter);
   b.set(35, 74, Tile.Chair).set(33, 76, Tile.Cabinet); // the tally desk
   b.setDetail(39, 79, Detail.Doormat).setDetail(40, 79, Detail.Doormat);
@@ -763,7 +781,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(55, 91, Tile.WallStoneWindow);
   b.set(54, 88, Tile.Counter).set(55, 88, Tile.Counter).set(56, 88, Tile.Counter);
   b.set(53, 90, Tile.Vault); // the tithe vault
-  b.set(57, 90, Tile.Table).set(57, 89, Tile.Chair); // the scales table
+  b.set(57, 90, Tile.HangingScale).set(57, 89, Tile.Chair); // the scales ARE scales now
   b.set(58, 86, Tile.Cabinet);
   b.setDetail(56, 86, Detail.Doormat);
   b.setDetail(58, 85, Detail.BannerCrown);
@@ -786,7 +804,10 @@ export function buildSilverfall(): ZoneDef {
   b.set(63, 69, Tile.Furnace).set(63, 74, Tile.Furnace);
   b.set(62, 67, Tile.Crate).set(62, 76, Tile.Crate); // the coal
   b.set(66, 69, Tile.Anvil).set(66, 74, Tile.Anvil).set(69, 71, Tile.Anvil);
-  b.set(68, 69, Tile.Basin).set(68, 74, Tile.Basin); // the quench tubs
+  b.set(68, 69, Tile.QuenchTrough).set(68, 74, Tile.QuenchTrough); // the quench earns its steam
+  b.set(64, 68, Tile.SmithBellows); // the lungs between the fires
+  b.set(79, 69, Tile.IngotRack); // the day's pour, racked
+  b.set(77, 71, Tile.Grindstone); // edges before fittings
   b.set(76, 68, Tile.Workbench); // finishing bench
   b.set(80, 68, Tile.ToolRack).set(80, 71, Tile.WeaponRack).set(80, 74, Tile.WeaponRack);
   b.set(67, 78, Tile.Counter).set(68, 78, Tile.Counter).set(69, 78, Tile.Counter);
@@ -811,6 +832,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(36, 86, Tile.Crate).set(36, 90, Tile.Crate); // rough blocks
   b.set(39, 86, Tile.Workbench).set(39, 90, Tile.Workbench);
   b.set(43, 86, Tile.CrateGoods); // finished ashlar
+  b.set(41, 88, Tile.Wheelbarrow); // the yard moves its own stone
   b.set(44, 90, Tile.CaveRubble).set(45, 91, Tile.CaveRubble);
   b.setDetail(37, 88, Detail.Pebbles).setDetail(42, 91, Detail.Pebbles);
   // THE DEEP GALLERIES: the west arm's old workings.
@@ -848,11 +870,11 @@ export function buildSilverfall(): ZoneDef {
   b.set(112, 78, Tile.WallWoodWindow).set(117, 78, Tile.WallWoodWindow);
   b.set(109, 68, Tile.CarvingBench).set(112, 68, Tile.CarvingBench);
   b.set(115, 68, Tile.Workbench).set(118, 69, Tile.Workbench);
-  b.set(118, 67, Tile.Crate); // seasoned timber
+  b.set(118, 67, Tile.LumberRack); // seasoned timber, racked to read (upgrade law)
   b.setDetail(110, 70, Detail.Sawdust).setDetail(114, 70, Detail.Sawdust);
   b.set(110, 75, Tile.Counter).set(111, 75, Tile.Counter).set(112, 75, Tile.Counter);
   b.set(118, 76, Tile.Bookshelf); // the pattern books
-  b.set(108, 77, Tile.CrateGoods);
+  b.set(108, 77, Tile.DisplayTable); // finished commissions, shown (upgrade law)
   b.set(115, 76, Tile.Table).set(116, 76, Tile.Chair);
   b.setDetail(108, 71, Detail.Doormat).setDetail(108, 72, Detail.Doormat);
   for (let x = 110; x <= 112; x++) b.setDetail(x, 74, Detail.Rug);
@@ -861,7 +883,7 @@ export function buildSilverfall(): ZoneDef {
   b.fillRect(124, 64, 11, 7, Tile.Dirt);
   b.set(124, 65, Tile.Stump).set(125, 65, Tile.Stump).set(126, 65, Tile.Stump);
   b.set(124, 67, Tile.Stump).set(125, 67, Tile.Stump);
-  b.set(132, 65, Tile.Crate).set(133, 66, Tile.Crate); // planks, strapped
+  b.set(132, 65, Tile.LumberRack).set(133, 66, Tile.Crate); // planks racked, offcuts crated
   b.set(127, 70, Tile.Sawhorse).set(128, 70, Tile.Sawhorse);
   b.setDetail(127, 69, Detail.Sawdust).setDetail(128, 69, Detail.Sawdust);
   b.setDetail(126, 68, Detail.Sawdust);
@@ -874,6 +896,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(126, 79, Tile.DoorwayWood);
   b.set(124, 79, Tile.WallWoodWindow).set(129, 79, Tile.WallWoodWindow);
   b.set(124, 75, Tile.CarvingBench);
+  b.set(127, 75, Tile.FletchersBench); // shafts get their own bench beside the staves
   b.set(129, 75, Tile.WeaponRack); // the finished bows
   b.set(128, 77, Tile.Crate); // feathers and staves
   b.set(125, 77, Tile.Counter);
@@ -903,7 +926,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(116, 90, Tile.Bench).set(117, 90, Tile.Bench).set(118, 90, Tile.Bench);
   b.set(109, 84, Tile.Brazier).set(120, 92, Tile.Brazier);
   b.set(109, 88, Tile.Bench); // the channel overlook
-  b.set(120, 83, Tile.Barrel);
+  b.set(120, 83, Tile.TapCask); // the shift's beer, coopered and cradled
   // THE COOKHOUSE feeds both districts from the middle.
   b.fillRect(124, 82, 13, 11, Tile.WoodFloor);
   b.outlineRect(124, 82, 13, 11, Tile.WallWood);
@@ -916,6 +939,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(135, 83, Tile.Basin);
   b.set(126, 86, Tile.Counter).set(126, 88, Tile.Counter); // the serving pass
   b.set(134, 90, Tile.CrateGoods).set(135, 88, Tile.Barrel).set(133, 91, Tile.Crate);
+  b.set(131, 90, Tile.GlazedJars).set(127, 90, Tile.BasketStack); // the pantry reads
   b.set(129, 89, Tile.Table).set(128, 89, Tile.Chair);
   b.setDetail(125, 87, Detail.Doormat);
   b.fillRect(122, 87, 2, 1, Tile.Path); // doorstep to the terrace
@@ -927,6 +951,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(141, 82, Tile.WallWoodWindow).set(147, 82, Tile.WallWoodWindow);
   b.set(140, 87, Tile.WallWoodWindow).set(149, 87, Tile.WallWoodWindow);
   b.set(142, 84, Tile.Alembic);
+  b.set(146, 84, Tile.HerbRack); // the drying frame beside the still
   b.set(141, 89, Tile.Cabinet).set(147, 83, Tile.Bookshelf);
   b.set(148, 89, Tile.Bed); // Wyn sleeps over the shop
   b.set(143, 86, Tile.Counter).set(144, 86, Tile.Counter);
@@ -1012,6 +1037,8 @@ export function buildSilverfall(): ZoneDef {
   b.set(22, 100, Tile.Bed).set(22, 101, Tile.Bed);
   b.set(15, 103, Tile.Cabinet);
   b.set(15, 106, Tile.WeaponRack).set(17, 106, Tile.WeaponRack).set(19, 106, Tile.ToolRack);
+  b.set(21, 106, Tile.SpearRack); // the wall's own reach
+  b.set(27, 105, Tile.WaterCask); // the watch drinks drawn
   b.set(26, 100, Tile.Bookshelf); // the duty board
   b.set(23, 104, Tile.Table).set(24, 104, Tile.Table);
   b.set(23, 103, Tile.Chair).set(24, 105, Tile.Chair);
@@ -1123,7 +1150,8 @@ export function buildSilverfall(): ZoneDef {
   b.setDetail(53, 101, Detail.Straw).setDetail(55, 101, Detail.Straw);
   b.setDetail(59, 101, Detail.Straw).setDetail(61, 101, Detail.Straw);
   b.setDetail(65, 101, Detail.Straw).setDetail(67, 101, Detail.Straw);
-  b.set(54, 102, Tile.Basin).set(60, 102, Tile.Basin).set(66, 102, Tile.Basin);
+  b.set(54, 102, Tile.WaterTrough).set(60, 102, Tile.WaterTrough).set(66, 102, Tile.WaterTrough); // troughs, not basins (upgrade law)
+  b.set(68, 99, Tile.HitchingPost);
   b.set(70, 99, Tile.Crate).set(71, 100, Tile.Crate).set(70, 103, Tile.CrateGoods);
   b.set(71, 105, Tile.Barrel);
   b.set(56, 106, Tile.Campfire);
@@ -1160,6 +1188,7 @@ export function buildSilverfall(): ZoneDef {
   b.stamp(MARKET_STALL, 129, 107);
   b.set(118, 106, Tile.LampPost).set(137, 106, Tile.LampPost);
   b.set(118, 102, bannerPoleTile(6)).set(137, 102, bannerPoleTile(6)); // ochre — the market's color
+  b.set(121, 109, Tile.BasketStack).set(135, 109, Tile.FishmongerSlab); // 'fish, ore, arrivals' — the fish, delivered
   b.set(117, 104, Tile.Bench); // the pool overlook
   b.sign(136, 101, 'THE GATE MARKET', ['fish, ore, arrivals']);
   // The quay: planks to the Roaring Pool's deep water.
