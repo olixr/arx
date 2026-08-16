@@ -32,6 +32,7 @@ import { buildUndercroft } from './maps/undercroft.js';
 import { buildLowhall } from './maps/lowhall.js';
 import { AMBERFORD_RECT, EVENFALL_RECT, HARTFELL_RECT, KINGSDELF_RECT, SALTMERE_RECT, SILVERFALL_RECT } from './geography.js';
 import { zoneFromJson, zoneToJson } from './maps/serialize.js';
+import { UNDERWORLD_PLANE_ID } from './planes.js';
 import { compileTemplate, templateHeight, templateWidth } from './structures/stamp.js';
 import { templateFromJson, templateToJson } from './structures/serialize.js';
 import {
@@ -1793,6 +1794,9 @@ test('undercroft: the cavern district holds its story, its metal, and its teeth'
   assert.equal(z.id, 'undercroft');
   // The district lives in the dark band, directly under the mountain.
   assert.ok(z.origin.y >= 512, 'the Undercroft must sit below DARK_BAND_Y');
+  // THE WORLDS APART: the y is history, the tag is the law — the
+  // declaration is what actually seats the district in the rock.
+  assert.equal(z.plane, UNDERWORLD_PLANE_ID, 'the Undercroft declares the underworld plane');
   // THE REVOICE grew the rect east+south into solid dark rock —
   // origin fixed, both portals untouched.
   assert.equal(z.width, 128);
@@ -2763,6 +2767,8 @@ test('lowhall: the Red Company keeps six doors, a hearth, and clean books', () =
   const z = buildLowhall();
   assert.equal(z.id, 'lowhall');
   assert.ok(z.origin.y >= 512, 'the Low Hall must sit below DARK_BAND_Y');
+  // THE WORLDS APART: the declaration, not the y, seats the hall.
+  assert.equal(z.plane, UNDERWORLD_PLANE_ID, 'the Low Hall declares the underworld plane');
   assert.equal(z.width, 88);
   assert.equal(z.height, 56);
   // Dying on the low roads wakes you at the ring (nearest-spawn law).

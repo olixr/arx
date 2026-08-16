@@ -96,7 +96,7 @@ function slate(opts: { hp?: { hp: number; maxHp: number } } = {}) {
     positions: { get: () => pos, must: () => pos },
     healths: new Map([[7, opts.hp ?? { hp: 100, maxHp: 100 }]]),
     world: { isSolid: () => false },
-    broadcastFx: (f: Record<string, unknown>) => fx.push(f),
+    broadcastFx: (_plane: unknown, f: Record<string, unknown>) => fx.push(f),
     broadcastMetaUpdate: (eid: number) => metaSends.push(eid),
     castAbility: (_eid: number, ab: { id: string }) => casts.push({ ab }),
     setNpcPose: () => {},

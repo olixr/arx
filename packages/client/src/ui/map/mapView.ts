@@ -569,25 +569,28 @@ export class MapView {
 
       // Bundled town art over procgen (live chunks were baked into the
       // fine blocks above and already carry the streamed truth).
-      if (band === 'surface') {
-        for (const art of authoredZoneArt()) {
-          if (art.x + art.w < t0.x || art.x > t1.x || art.y + art.h < t0.y || art.y > t1.y) continue;
-          lctx.drawImage(art.canvas, this.sx(art.x), this.sy(art.y), art.w * this.scale, art.h * this.scale);
-        }
-        if (this.showDanger) {
-          for (const { bx, by } of wanted) {
-            const key = `${bx},${by}:${span}:${this.dangerRev}`;
-            let dcnv = lruGet(this.dangerBlocks, key);
-            if (!dcnv) {
-              if (dangerBudget <= 0) {
-                allBaked = false;
-                continue;
-              }
-              dangerBudget--;
-              dcnv = this.bakeDanger(bx, by, span, key);
+      // THE WORLDS APART: art draws only on ITS plane's chart — the
+      // underworld's towns stop painting over the open surface
+      // wilderness they merely share coordinates with, and the
+      // underworld band gains the art it was silently missing.
+      for (const art of authoredZoneArt()) {
+        if (art.plane !== this.game.plane.id) continue;
+        if (art.x + art.w < t0.x || art.x > t1.x || art.y + art.h < t0.y || art.y > t1.y) continue;
+        lctx.drawImage(art.canvas, this.sx(art.x), this.sy(art.y), art.w * this.scale, art.h * this.scale);
+      }
+      if (band === 'surface' && this.showDanger) {
+        for (const { bx, by } of wanted) {
+          const key = `${bx},${by}:${span}:${this.dangerRev}`;
+          let dcnv = lruGet(this.dangerBlocks, key);
+          if (!dcnv) {
+            if (dangerBudget <= 0) {
+              allBaked = false;
+              continue;
             }
-            lctx.drawImage(dcnv, this.sx(bx * span), this.sy(by * span), span * this.scale, span * this.scale);
+            dangerBudget--;
+            dcnv = this.bakeDanger(bx, by, span, key);
           }
+          lctx.drawImage(dcnv, this.sx(bx * span), this.sy(by * span), span * this.scale, span * this.scale);
         }
       }
 

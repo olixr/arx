@@ -115,6 +115,35 @@ test('sessions resume and persist character position', async () => {
   assert.ok(!(await store.resumeSession('bogus-token')).ok);
 });
 
+test('THE WORLDS APART: login and resume carry the plane columns', async () => {
+  // The post-ship audit found the two character-load SELECTs never read
+  // plane/waypoint_plane, so every cold login received undefined and
+  // the whole login-side plane law (underworld resume, rift rescue,
+  // waypoint plane) was dead code behind a TypeError. This pins the
+  // columns to the row for both doors.
+  const store = await makeStore();
+  const reg = await store.register('eric', 'hunter22', 'Aeriek', SPAWN);
+  assert.ok(reg.ok);
+  if (!reg.ok) return;
+  assert.equal(reg.character.plane, 'surface', 'register seats the spawn plane');
+
+  store.saveCharacter(reg.character.id, 'underworld', -336.5, 552.5, 40);
+  store.saveWaypoint(reg.character.id, -300, 560, 'underworld');
+
+  const login = await store.login('eric', 'hunter22');
+  assert.ok(login.ok);
+  if (!login.ok) return;
+  assert.equal(login.character.plane, 'underworld', 'login reads the saved plane');
+  assert.equal(login.character.waypoint_plane, 'underworld', 'login reads the waypoint plane');
+
+  const token = await store.createSession(reg.accountId);
+  const resumed = await store.resumeSession(token);
+  assert.ok(resumed.ok);
+  if (!resumed.ok) return;
+  assert.equal(resumed.character.plane, 'underworld', 'resume reads the saved plane');
+  assert.equal(resumed.character.waypoint_plane, 'underworld', 'resume reads the waypoint plane');
+});
+
 test('inventory + equipment round-trip item rolls; legacy NULLs load as no roll', async () => {
   const store = await makeStore();
   const reg = await store.register('eric', 'hunter22', 'Aeriek', SPAWN);

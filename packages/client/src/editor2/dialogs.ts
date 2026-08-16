@@ -621,6 +621,10 @@ export function savePrefabDialog(deps: DialogDeps): void {
                 dy: p.y - z.origin.y - r.y0,
                 ...(p.delve ? { delve: true } : {}),
                 ...(p.dest ? { dest: { ...p.dest } } : {}),
+                // The far side's plane rides the capture (THE WORLDS
+                // APART) — dropping it here re-filed the door by dest.y
+                // on every future stamp.
+                ...(p.destPlane ? { destPlane: p.destPlane } : {}),
               });
             }
           }

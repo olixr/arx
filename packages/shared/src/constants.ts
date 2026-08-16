@@ -187,6 +187,9 @@
 // plane hop as a same-plane teleport and render the OLD plane's
 // cached chunks as the ground underfoot — the world itself would be
 // wrong, so the handshake turns the old client away.
+// (Also with the split: the band treaty constants — DARK_BAND_Y,
+// UNDERGROUND_Y, DUNGEON_MIN_Y, SURFACE_AUTHOR_MARGIN — died here;
+// planes carry the law now, and the migration SQL keeps its literals.)
 export const PROTOCOL_VERSION = 33;
 
 /** The most souls one party can hold. */
@@ -210,23 +213,6 @@ export const CHUNK_SIZE = 32;
  * silently corrupted the other two laws. They all derive from here.
  */
 export const POI_MACRO_CELL = 128;
-
-/**
- * Below this world-y everything defaults to solid cave (dungeon land).
- * Lives beside the other world-structure constants so geography can
- * DERIVE its authoring ceiling from it (worldgen re-exports it for its
- * old consumers) — the two used to be free literals 112 rows apart
- * with a governed-by-nobody band between them (core-audit debt 13).
- */
-export const DARK_BAND_Y = 512;
-
-/**
- * The authoring hem: routes and pinned sites stay this many rows above
- * the cave roof, so hand-authored content never crowds the band the
- * runtime clearance laws govern. GEOGRAPHY_SURFACE_MAX_Y derives from
- * these two — never a free 400 again.
- */
-export const SURFACE_AUTHOR_MARGIN = 112;
 
 /**
  * Signed terrain level range. DOWN is the same law as UP, relative: for
@@ -265,15 +251,6 @@ export const BODY_RADIUS = 0.35;
  * 65-tile margin keeps streaming comfortably outside any viewport.
  */
 export const INTEREST_CHUNK_RADIUS = 2;
-
-/**
- * The world's Y-bands. One continuous tile plane holds them all: the
- * surface, the dark band (authored underground + delve mouths), and the
- * far-off per-player dungeon instance slots. Map layers, respawn law,
- * and fog persistence all split on these two lines.
- */
-export const UNDERGROUND_Y = 512;
-export const DUNGEON_MIN_Y = 8192;
 
 /** Fixed-point scale for positions in binary snapshots. */
 export const POS_SCALE = 256;

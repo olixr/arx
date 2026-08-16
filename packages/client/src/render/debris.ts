@@ -286,6 +286,17 @@ export class Debris {
   }
 
   /**
+   * THE CROSSING: every chunk in flight (or settled) lies at old-plane
+   * coordinates — drop the lot. Dead records return to the free list;
+   * the warm pool stays warm.
+   */
+  clear(): void {
+    for (const c of this.pool) this.free.push(c);
+    this.pool.length = 0;
+    this.capCursor = 0;
+  }
+
+  /**
    * Burst a prop at (x,y): chunks fly in a cone around `dir` — WITH
    * the blow, away from whoever swung it. `rand` is injectable so the
    * break-up laws are testable; live smashes ride Math.random and

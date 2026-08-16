@@ -1,3 +1,4 @@
+import type { PlaneId } from '../planes.js';
 import type { PortalDef, ZoneActorSpawn, ZoneSpawn } from './types.js';
 import { base64ToI8, base64ToU16, i8ToBase64, u16ToBase64 } from './serialize.js';
 
@@ -16,6 +17,14 @@ export interface PrefabPortal {
   dx: number;
   dy: number;
   dest?: { x: number; y: number };
+  /**
+   * The plane `dest` lives on (THE WORLDS APART). Absent falls to the
+   * minted portal's legacy derivation like any untagged door; a prefab
+   * that names its far side keeps it through capture and every stamp —
+   * without this field a cross-plane door was silently re-filed by
+   * dest.y the moment it rode a prefab.
+   */
+  destPlane?: PlaneId;
   delve?: boolean;
 }
 

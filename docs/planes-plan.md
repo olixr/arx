@@ -308,3 +308,99 @@ Prefab portals don't carry destPlane (PrefabPortal unchanged).
 sendOwnBuilt overlays the current plane only. Rift building refused
 rather than scoped. Prod rollout needs only the ordinary deploy (the
 migration is additive + backfill; no db:refresh).
+
+## §7 THE AUDIT AFTER THE SUNDERING (post-ship, same day)
+
+Six parallel read-only audits (server threading, client reset door,
+persistence, protocol/ordering, content/editor, gameplay systems)
+swept the shipped refactor plus the three epics that landed on top of
+it. The verdict: the plane law held everywhere the refactor routed
+through the plane-first chunk index — every defect was a pre-existing
+whole-world scan, serializer, or key dialect that predated the split.
+All fixed, gated, and proven the same day.
+
+**The two criticals:**
+- **THE COLD DOOR** — `login()`/`resumeSession()` never SELECTed the
+  `plane`/`waypoint_plane` columns v36 added; every cold login of a
+  registered account threw `isRiftPlane(undefined)` and hung. (The
+  ship-day proof passed because a warm reload takes the rebind
+  short-circuit.) Columns added; accounts.test pins them to the row.
+- **THE SLEEPING WORLD** — THE UNWATCHED WORLD DOZES compared the
+  entity index's new `plane|cx,cy` keys against sessions' bare
+  `cx,cy` known-chunks: no match, ever — so every idle NPC dozed
+  permanently (no sight aggro anywhere, companions frozen, hens never
+  laying). The awake union now speaks plane-first
+  (`rebuildAwakeChunks`, pinned by planesAwake.test.ts).
+
+**The crash:** an arrow in flight when its rift tore down asked
+`worldOf()` for a dead plane next tick and killed the process (the
+tick loop is unguarded). Teardown now sweeps the plane's ephemera —
+projectiles, drops, summons, scheduled blasts/fields, dead chunk-index
+keys — and tickProjectiles quietly spends any shot whose plane no
+longer stands.
+
+**The damage lanes:** every NPC→player fan was plane-blind (players/
+decoys/pets loops in blastPlayers, all five NPC projectile hit/splash
+scans, the lunge sweep, chain-zap, line shapes, heal totem, and
+npcTargetPos/chase retention) while player→NPC lanes were already
+plane-scoped via forEachNpcNear. All guarded now; `blastPlayers` and
+`broadcastFx` take a required plane (compiler-enumerated, 62 fx call
+sites threaded), followCaster blasts die when the caster crosses,
+boomerang return legs spend themselves rather than homing cross-plane.
+
+**The ceremony gaps:** transferPlane now closes dialogue, drops
+pendingStrike, clears crossing pets' fight marks, and applies the
+saddle law BEFORE the coordinates move (the dismount broadcast used to
+leak new-plane coords pre-ceremony). dialogueGuard, interactNpc,
+nearShopkeeper, keywrightNear, pickupDrop, theftWitnesses (plane-
+scoped sight rays through the theft's OWN world), rallyPack,
+npcSeekHelp, playerWithin, resolveGroundTarget, the beastcraft scans
+(tame cone, bait, becalm, howl, pet command), pet leash, idle gaze,
+and the wild parting all carry plane guards.
+
+**The client's second door:** `welcome` on a plane other than the one
+on screen now runs the same reset as S2CPlane (`crossPlane()`,
+extracted) — the LIVE WIRE reconnect race that kept the old world's
+tile field is closed. The reset door also clears the ephemeral layer
+the audit caught surviving at old-plane coordinates: corpses, downed
+rags, stuck arrows, falling shafts, fx decals/beats, trail prints,
+the particle pool (LASTING MARK formations included), smash debris,
+active fx telegraphs/fields, queued npc deaths, floaties, risen
+words, ownBuilt, and (entering scratch) the run chart. Deathmark and
+S2C waypoint handlers keep their plane tags; session.ts threads the
+C2S waypoint plane (an underworld pin no longer migrates to the
+surface chart at relog).
+
+**Content law:** `zoneToJson` writes `plane ?? surface` — the frozen
+y-law is for READS of legacy files only (adopting a south POI used to
+write `plane:"underworld"` and vanish the town into rock on reboot;
+pinned in serialize.test). composePoi declares surface. PrefabPortal
+carries destPlane end to end (capture, stamp, POI stamp). AUTHORED_
+LOCKS declare their plane. Zone art draws per-plane on the chart (the
+underworld towns stop painting over the open south; the underworld
+chart gains its art). CMS zoneAt filters by plane. The band constants
+are DELETED (zero consumers proven).
+
+**Migration v37 (aftercare):** pre-split instance-band rows —
+crash-abandoned characters at y>=8192 re-tagged onto `rift:legacy` so
+the standing rescue wakes them at spawn (that band is real frontier
+now); stale instance-band waypoints cleared; dungeon-wall hangings
+(the one pre-split build verb without a band refusal) swept out of
+the underworld along with tile/sign symmetry rows. Sign boot-load
+refuses planes that no longer stand (recycled rift slot ids).
+
+**Gates (standalone HEAD+mine tree; two neighbors mid-edit next
+door):** shared 216, content 517, server 497, client 616, four-package
+tsc clean. **Live proof** (lane 15, gate tree, fresh DB migrated
+1→37): register → server RESTART → login lands on the exact saved
+tile with the plane read from the row (the cold door, previously a
+hang); standing in brigand country gets you noticed, shot, and
+hearth-respawned inside ~2s (the waking world, previously eternal
+doze); zero console errors across every phase.
+
+**Still deferred, named:** QuestStage.mark carries no plane (first
+underworld-marked quest needs it); seat occupancy keys (`seatOcc`)
+are coordinate-only — cross-rift furniture collisions are possible at
+the shared DUNGEON_ORIGIN (posted garrison cooks refusing a seat in
+another run); teardown leaves nothing live but the poiChests sweep
+still walks the whole map; stale y-band prose in a few comments.

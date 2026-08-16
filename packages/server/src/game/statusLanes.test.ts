@@ -51,7 +51,7 @@ function npcSlate(def: Record<string, unknown> = {}) {
     actors: new Map(),
     positions: new Map([[9, { x: 0, y: 0, dir: 0 }]]),
     statuses,
-    broadcastFx: (m: { text?: string }) => fx.push(m),
+    broadcastFx: (_plane: unknown, m: { text?: string }) => fx.push(m),
     damageNpc: (eid: unknown, dmg: unknown) => hits.push({ eid, dmg }),
     applyStatusToNpc: proto.applyStatusToNpc,
     // The reaction rings walk the chunk index now (core-audit debt

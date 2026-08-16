@@ -23,6 +23,13 @@ import {
 
 export interface ZoneArt {
   canvas: HTMLCanvasElement;
+  /**
+   * THE WORLDS APART: the plane whose chart this art belongs on.
+   * Planes legitimately overlap in coordinates — the Undercroft lies
+   * over open surface wilderness — so the drawer must match plane,
+   * never just rectangle.
+   */
+  plane: string;
   x: number;
   y: number;
   w: number;
@@ -59,7 +66,7 @@ function bakeZone(zone: ZoneDef): ZoneArt {
     img.data[i * 4 + 3] = 255;
   }
   ctx.putImageData(img, 0, 0);
-  return { canvas: cnv, x: zone.origin.x, y: zone.origin.y, w, h };
+  return { canvas: cnv, plane: zone.plane ?? 'surface', x: zone.origin.x, y: zone.origin.y, w, h };
 }
 
 let cache: ZoneArt[] | null = null;

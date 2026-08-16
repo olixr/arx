@@ -342,7 +342,6 @@ import {
   SURFACE_PLANE_ID,
   UNDERWORLD_PLANE_ID,
   isRiftPlane,
-  legacyPlaneOfY,
   portalDestPlane,
   riftPlaneDef,
   riftPlaneId,
@@ -2675,9 +2674,9 @@ export class GameServer {
     // before the door can be read; guarded by doorInfo after that, so
     // a redrawn map quietly retires a stale entry.
     for (const l of AUTHORED_LOCKS) {
-      // Locks were authored before the split — the frozen law names
-      // their plane exactly.
-      const lockPlane = legacyPlaneOfY(l.y);
+      // Every lock declares its plane (the y-derivation died with the
+      // post-ship audit — a south lock would have misfiled into rock).
+      const lockPlane = l.plane;
       const world = this.worldOf(lockPlane);
       world.ensure(Math.floor(l.x / CHUNK_SIZE), Math.floor(l.y / CHUNK_SIZE));
       const g = world.groundAt(l.x, l.y);
@@ -2793,7 +2792,13 @@ export class GameServer {
   loadSigns(
     rows: Array<{ plane: PlaneId; tx: number; ty: number; title: string; lines: string[]; owner: number }>,
   ): void {
-    for (const row of rows) this.playerSigns.set(`${row.plane}|${row.tx},${row.ty}`, row);
+    for (const row of rows) {
+      // A sign filed on a plane that no longer stands must not board:
+      // rift slot ids recycle, and a stale rift row would be served
+      // inside a future unrelated run at the same coordinates.
+      if (!this.planes.get(row.plane)) continue;
+      this.playerSigns.set(`${row.plane}|${row.tx},${row.ty}`, row);
+    }
   }
 
   /**
@@ -4619,7 +4624,7 @@ export class GameServer {
     // chests stay the ordinary loot loop; unseen is unswayed.
     const townFid = pos.plane === SURFACE_PLANE_ID ? this.townFactionAt(cx, cy) : null;
     if (townFid !== null) {
-      this.chargeTheft(eid, player, cx, cy, this.theftWitnesses(cx, cy, eid), townFid);
+      this.chargeTheft(eid, player, cx, cy, this.theftWitnesses(pos.plane, cx, cy, eid), townFid);
     }
   }
 
@@ -4764,7 +4769,7 @@ export class GameServer {
           // dark answers to nobody but the dark.
           const townFid = plane === SURFACE_PLANE_ID ? this.townFactionAt(cx, cy) : null;
           if (townFid !== null) {
-            this.chargeTheft(eid, player, cx, cy, this.theftWitnesses(cx, cy, eid), townFid);
+            this.chargeTheft(eid, player, cx, cy, this.theftWitnesses(plane, cx, cy, eid), townFid);
           }
           // The latch is worked — fall through and swing it open.
         }
@@ -4777,7 +4782,7 @@ export class GameServer {
         );
       }
       if (this.doorLocks.has(lockKey)) {
-        this.broadcastFx({
+        this.broadcastFx(plane, {
           t: 'fx',
           kind: 'rattle',
           x: unit.ax + 0.5,
@@ -7968,7 +7973,7 @@ export class GameServer {
 
     // Ceremony FIRST (the smashProp precedent): the collapse fx must
     // land before the patch that erases what is collapsing.
-    this.broadcastFx({
+    this.broadcastFx(plane, {
       t: 'fx',
       kind: 'demolish',
       x: tx + 0.5,
@@ -8041,7 +8046,7 @@ export class GameServer {
     const southBuilt = world.builtAt(tx, ty + 1);
     if (southBuilt && awningInfo(southBuilt.tile) !== null) {
       const adef = buildableForTile(southBuilt.tile as Tile);
-      this.broadcastFx({
+      this.broadcastFx(plane, {
         t: 'fx',
         kind: 'demolish',
         x: tx + 0.5,
@@ -8283,7 +8288,7 @@ export class GameServer {
     for (const [aeid, comp] of this.actors) {
       if (comp.actor.shop !== shop) continue;
       const apos = this.positions.get(aeid);
-      if (!apos) continue;
+      if (!apos || apos.plane !== pos.plane) continue;
       const dx = apos.x - pos.x;
       const dy = apos.y - pos.y;
       // Forgiving reach: routines may shuffle the keeper a step or two
@@ -9477,7 +9482,7 @@ export class GameServer {
       const gx = Number(gxs);
       const gy = Number(gys);
       // Dignity at citadel scale: nobody within the walls' reach.
-      if (this.playerWithin(row.anchorX, row.anchorY, FRONTIER.dignityTiles + 64)) continue;
+      if (this.playerWithin(SURFACE_PLANE_ID, row.anchorX, row.anchorY, FRONTIER.dignityTiles + 64)) continue;
       this.retireCapital(key);
       row.epoch += 1;
       row.wardsCleared = 0;
@@ -9506,7 +9511,7 @@ export class GameServer {
       const gx = Number(gxs);
       const gy = Number(gys);
       if (this.calmNear(poiCellOf(row.anchorX), poiCellOf(row.anchorY), now)) continue;
-      if (this.playerWithin(row.anchorX, row.anchorY, FRONTIER.dignityTiles + 64)) continue;
+      if (this.playerWithin(SURFACE_PLANE_ID, row.anchorX, row.anchorY, FRONTIER.dignityTiles + 64)) continue;
       row.fallowUntil = null;
       this.saveStrongholdRow(gx, gy);
       console.log(`[stronghold] ${key}: the seat is ready — new walls rise on approach`);
@@ -9524,7 +9529,7 @@ export class GameServer {
       const gy = Number(gys);
       if (now < row.stageAt + stageWaitFor(config.worldSeed, gx, gy, row.stage)) continue;
       if (this.calmNear(poiCellOf(row.anchorX), poiCellOf(row.anchorY), now)) continue;
-      if (this.playerWithin(row.anchorX, row.anchorY, FRONTIER.dignityTiles + 64)) continue;
+      if (this.playerWithin(SURFACE_PLANE_ID, row.anchorX, row.anchorY, FRONTIER.dignityTiles + 64)) continue;
       row.stage += 1;
       row.stageAt = now;
       this.saveStrongholdRow(gx, gy);
@@ -10432,7 +10437,7 @@ export class GameServer {
       // satellite (emberUntil without clearedAt) both dissolve here.
       if (row.site === null || row.emberUntil === null || now < row.emberUntil) continue;
       if (authored.has(key)) continue; // landmarks never ember
-      if (this.playerWithin(row.site.anchorX, row.site.anchorY, FRONTIER.dignityTiles)) continue;
+      if (this.playerWithin(SURFACE_PLANE_ID, row.site.anchorX, row.site.anchorY, FRONTIER.dignityTiles)) continue;
       const { cellX, cellY, defId } = row.site;
       const cleared = row.clearedAt !== null;
       const hadHaven = POI_DEFS.get(defId)?.haven !== undefined;
@@ -10494,7 +10499,7 @@ export class GameServer {
       if (this.calmNear(cx!, cy!, now)) continue;
       const ctx = this.poiCtx(cx!, cy!);
       const site = poiForCell(config.worldSeed, cx!, cy!, row.epoch, ctx);
-      if (site && this.playerWithin(site.anchorX, site.anchorY, FRONTIER.dignityTiles)) {
+      if (site && this.playerWithin(SURFACE_PLANE_ID, site.anchorX, site.anchorY, FRONTIER.dignityTiles)) {
         return true; // someone is standing on the meadow — retry next pass
       }
       this.accounts.recordPoiCell(
@@ -10586,7 +10591,7 @@ export class GameServer {
       const epoch = (row?.epoch ?? 0) + 1;
       const site = poiForCell(config.worldSeed, cx, cy, epoch, ctx, true);
       if (!site) continue;
-      if (this.playerWithin(site.anchorX, site.anchorY, FRONTIER.dignityTiles)) continue;
+      if (this.playerWithin(SURFACE_PLANE_ID, site.anchorX, site.anchorY, FRONTIER.dignityTiles)) continue;
       this.accounts.recordPoiCell(cx, cy, epoch, {
         poiId: site.defId,
         prefabId: site.prefabId,
@@ -10663,7 +10668,7 @@ export class GameServer {
       const epoch = (row?.epoch ?? 0) + 1;
       const site = poiForCell(config.worldSeed, cx, cy, epoch, ctx, 'peddler_rest');
       if (!site) continue;
-      if (this.playerWithin(site.anchorX, site.anchorY, FRONTIER.dignityTiles)) continue;
+      if (this.playerWithin(SURFACE_PLANE_ID, site.anchorX, site.anchorY, FRONTIER.dignityTiles)) continue;
       const emberUntil = now + peddlerLingerFor(config.worldSeed, cx, cy, epoch);
       this.accounts.recordPoiCell(cx, cy, epoch, {
         poiId: site.defId,
@@ -10788,7 +10793,7 @@ export class GameServer {
       ) {
         continue; // the regional roof holds
       }
-      if (this.playerWithin(row.site.anchorX, row.site.anchorY, FRONTIER.dignityTiles)) continue;
+      if (this.playerWithin(SURFACE_PLANE_ID, row.site.anchorX, row.site.anchorY, FRONTIER.dignityTiles)) continue;
       row.stage += 1;
       row.stageAt = now;
       this.accounts.markPoiStage(cellX, cellY, row.stage, now);
@@ -10896,7 +10901,7 @@ export class GameServer {
         const satDefId = def.boldness?.satelliteDef ?? def.id;
         const site = poiForCell(config.worldSeed, cand.ncx, cand.ncy, epoch, ctx, satDefId);
         if (!site) { this.satTrace.push(`${nkey}:noground`); continue; }
-        if (this.playerWithin(site.anchorX, site.anchorY, FRONTIER.dignityTiles)) { this.satTrace.push(`${nkey}:dignity`); continue; }
+        if (this.playerWithin(SURFACE_PLANE_ID, site.anchorX, site.anchorY, FRONTIER.dignityTiles)) { this.satTrace.push(`${nkey}:dignity`); continue; }
         this.accounts.recordPoiCell(
           cand.ncx,
           cand.ncy,
@@ -11020,7 +11025,7 @@ export class GameServer {
         const epoch = (nrow?.epoch ?? 0) + 1;
         const site = poiForCell(config.worldSeed, cand.ncx, cand.ncy, epoch, ctx, 'road_toll');
         if (!site) { this.tollTrace.push(`${nkey}:noground`); continue; }
-        if (this.playerWithin(site.anchorX, site.anchorY, FRONTIER.dignityTiles))
+        if (this.playerWithin(SURFACE_PLANE_ID, site.anchorX, site.anchorY, FRONTIER.dignityTiles))
           { this.tollTrace.push(`${nkey}:dignity`); continue; }
         this.accounts.recordPoiCell(
           cand.ncx,
@@ -11188,7 +11193,7 @@ export class GameServer {
       const dHome = Math.hypot(site.anchorX - home.x, site.anchorY - home.y);
       if (dHome < ringR + FRONTIER.raidStandoffTiles)
         { this.raidTrace.push(`${nkey}:tooclose`); continue; }
-      if (this.playerWithin(site.anchorX, site.anchorY, FRONTIER.dignityTiles))
+      if (this.playerWithin(SURFACE_PLANE_ID, site.anchorX, site.anchorY, FRONTIER.dignityTiles))
         { this.raidTrace.push(`${nkey}:dignity`); continue; }
       this.accounts.recordPoiCell(
         cand.cx,
@@ -11221,7 +11226,7 @@ export class GameServer {
       // squat pays through the one Phase 3 pipeline; and the chart
       // takes the pip through the one discovery ceremony.
       const horn: S2CFx = { t: 'fx', kind: 'horn', x: site.anchorX, y: site.anchorY, radius: 1 };
-      this.broadcastFx(horn);
+      this.broadcastFx(SURFACE_PLANE_ID, horn);
       const opos = this.positions.get(pick.eid);
       if (opos && (Math.abs(opos.x - horn.x) >= 40 || Math.abs(opos.y - horn.y) >= 40)) {
         pick.player.session?.sendJson(horn);
@@ -11278,7 +11283,7 @@ export class GameServer {
             const info = doorInfo(built.tile);
             if (!info || info.open) continue;
             if (Math.random() < 0.5) continue; // sometimes they just breathe
-            this.broadcastFx({ t: 'fx', kind: 'rattle', x: tx + 0.5, y: ty + 0.5, radius: 0.5 });
+            this.broadcastFx(SURFACE_PLANE_ID, { t: 'fx', kind: 'rattle', x: tx + 0.5, y: ty + 0.5, radius: 0.5 });
             return; // one knock per beat is plenty of dread
           }
         }
@@ -12037,15 +12042,23 @@ export class GameServer {
       this.cancelCasting(eid, player);
       this.standUp(eid, player, pos, false);
       player.inputQueue.length = 0;
+      // A windup traded on one world must not land on another.
+      player.pendingStrike = null;
+      // The conversation ends at the door — the partner stays behind,
+      // and the guard's bare distance would keep it alive through the
+      // rock (a stair crossing barely moves the coordinates).
+      this.dialogueClose(player);
+      // The plane speaks its own saddle law — no y-line. Dismount
+      // BEFORE the coordinates move: the meta update it broadcasts
+      // must describe the world the watchers still stand in.
+      if (player.mountId && (this.planes.defOf(plane)?.underground ?? true)) {
+        this.dismount(eid, player);
+      }
     }
     pos.x = x;
     pos.y = y;
     pos.plane = plane;
     this.updateChunkMembership(eid);
-    // The plane speaks its own saddle law — no y-line.
-    if (player?.mountId && (this.planes.defOf(plane)?.underground ?? true)) {
-      this.dismount(eid, player);
-    }
     // The heel crosses with the keeper: a companion left on the far
     // side of a world border isn't "out of leash", it's ORPHANED.
     if (player) {
@@ -12056,6 +12069,10 @@ export class GameServer {
         petPos.x = x;
         petPos.y = y + 0.8;
         petPos.plane = plane;
+        // The fight stays behind: a mark carried through the door
+        // would keep the friend striking a body on the OLD plane at
+        // aliased leash distances.
+        pet.target = null;
         this.updateChunkMembership(petEid);
       }
     }
@@ -12160,7 +12177,7 @@ export class GameServer {
     for (const [actorEid, comp] of this.actors) {
       if (comp.actor.id !== 'keywright_orla') continue;
       const apos = this.positions.get(actorEid);
-      if (!apos) continue;
+      if (!apos || apos.plane !== pos.plane) continue;
       if (Math.hypot(apos.x - pos.x, apos.y - pos.y) <= 6) return true;
     }
     return false;
@@ -12372,6 +12389,10 @@ export class GameServer {
         name: 'Riftgate',
         x: gate.x,
         y: gate.y,
+        // The gate pins on the chart of the plane it stands on — the
+        // first underworld-authored riftgate must not misfile onto
+        // the surface's parchment.
+        plane: pos.plane,
       });
     }
     this.enterDungeon(eid, player, spec, { plane: pos.plane, x: pos.x, y: pos.y });
@@ -12502,9 +12523,41 @@ export class GameServer {
       this.removeFromChunks(neid);
       this.ecs.destroy(neid);
     }
+    // THE PLANE'S EPHEMERA GO WITH IT (post-ship audit): a projectile
+    // still in flight would ask worldOf() for a plane that no longer
+    // stands on the very next tick — one arrow loosed at the exit door
+    // used to kill the whole server. Drops and summons share the sweep
+    // (loot on a dead plane is loot nobody can ever reach), and
+    // scheduled blasts and fields on the plane die unexploded.
+    const ephemera: EntityId[] = [];
+    for (const [peid] of this.projectiles) {
+      if (this.positions.get(peid)?.plane === dungeon.plane) ephemera.push(peid);
+    }
+    for (const [deid] of this.drops) {
+      if (this.positions.get(deid)?.plane === dungeon.plane) ephemera.push(deid);
+    }
+    for (const [seid] of this.summons) {
+      if (this.positions.get(seid)?.plane === dungeon.plane) ephemera.push(seid);
+    }
+    for (const eeid of ephemera) {
+      this.removeFromChunks(eeid);
+      this.ecs.destroy(eeid);
+    }
+    for (let i = this.pendingBlasts.length - 1; i >= 0; i--) {
+      if (this.pendingBlasts[i]!.plane === dungeon.plane) this.pendingBlasts.splice(i, 1);
+    }
+    for (let i = this.activeFields.length - 1; i >= 0; i--) {
+      if (this.activeFields[i]!.plane === dungeon.plane) this.activeFields.splice(i, 1);
+    }
     // THE UNLOAD IS THE POINT: the whole plane goes — zones, chunks,
     // portals, signs, memory — in one drop.
     this.planes.drop(dungeon.plane);
+    // The chunk index sheds the dead plane's now-empty sets — slot ids
+    // recycle, but these keys used to pile up for the whole uptime.
+    const deadPrefix = `${dungeon.plane}|`;
+    for (const [key, set] of this.chunks) {
+      if (set.size === 0 && key.startsWith(deadPrefix)) this.chunks.delete(key);
+    }
     this.dungeons.delete(characterId);
     // The court's ward retires with its halls.
     for (const [tileKey, over] of this.poiChests) {
@@ -12584,7 +12637,7 @@ export class GameServer {
     const sec = Math.max(1, Math.round((Date.now() - inst.cutAt) / 1000));
     if (inst.courtExit) {
       this.setWorldTile(inst.plane, inst.courtExit.x, inst.courtExit.y, Tile.PortalUp);
-      this.broadcastFx({
+      this.broadcastFx(inst.plane, {
         t: 'fx',
         kind: 'summon',
         x: inst.courtExit.x + 0.5,
@@ -12815,7 +12868,7 @@ export class GameServer {
     const pos = this.positions.get(eid);
     if (pos) {
       const ench = enchantDef(taken.roll?.ench);
-      this.broadcastFx({
+      this.broadcastFx(pos.plane, {
         t: 'fx',
         kind: 'proc',
         x: pos.x,
@@ -12930,7 +12983,7 @@ export class GameServer {
 
     const pos = this.positions.get(eid);
     if (pos) {
-      this.broadcastFx({
+      this.broadcastFx(pos.plane, {
         t: 'fx',
         kind: 'proc',
         x: pos.x,
@@ -13091,7 +13144,7 @@ export class GameServer {
       });
       const pos = this.positions.get(eid);
       if (pos) {
-        this.broadcastFx({
+        this.broadcastFx(pos.plane, {
           t: 'fx',
           kind: 'proc',
           x: pos.x,
@@ -13542,7 +13595,10 @@ export class GameServer {
     const sys = (text: string) => player.session!.sendJson({ t: 'chat', channel: 'system', text });
 
     const npos = this.positions.get(targetEid);
-    if (!npos) return;
+    // Reach is distance on ONE plane — eids are guessable and planes
+    // alias coordinates, so the bare hypot let a modified client talk,
+    // trade, and pickpocket through the rock.
+    if (!npos || npos.plane !== pos.plane) return;
     const dx = npos.x - pos.x;
     const dy = npos.y - pos.y;
     if (dx * dx + dy * dy > 2.2 * 2.2) return;
@@ -13901,7 +13957,7 @@ export class GameServer {
       if (this.pets.has(npcEid) || this.actors.has(npcEid)) continue;
       if (!tameDef(npc.def.id)) continue;
       const npos = this.positions.get(npcEid);
-      if (!npos) continue;
+      if (!npos || npos.plane !== pos.plane) continue;
       const dx = npos.x - pos.x;
       const dy = npos.y - pos.y;
       const d = Math.hypot(dx, dy) - npc.def.radius;
@@ -14000,7 +14056,7 @@ export class GameServer {
     pos.dir = Math.atan2(best.y - pos.y, best.x - pos.x);
     this.setPose(eid, PoseState.Art, ticks + 4);
     player.session?.sendJson({ t: 'action', state: 'start', ticks });
-    this.broadcastFx({ t: 'fx', kind: 'tame', x: pos.x, y: pos.y, x2: best.x, y2: best.y, radius: 0, id: ab.id, color: ab.color });
+    this.broadcastFx(pos.plane, { t: 'fx', kind: 'tame', x: pos.x, y: pos.y, x2: best.x, y2: best.y, radius: 0, id: ab.id, color: ab.color });
     this.bodyMoment(eid, player, 'cast', { x: pos.x, y: pos.y, style: 'beastcraft' });
     this.sendCooldowns(player);
   }
@@ -14047,7 +14103,7 @@ export class GameServer {
     // THE VISIBLE WORKING: the calm drifts hand-to-beast while the
     // asking runs — watchers see it too, on a quiet pulse.
     if (action.ticksLeft % 20 === 0) {
-      this.broadcastFx({ t: 'fx', kind: 'tame', x: pos.x, y: pos.y, x2: npos.x, y2: npos.y, radius: 0, id: 'gentle_the_wild' });
+      this.broadcastFx(pos.plane, { t: 'fx', kind: 'tame', x: pos.x, y: pos.y, x2: npos.x, y2: npos.y, radius: 0, id: 'gentle_the_wild' });
     }
     if (--action.ticksLeft > 0) return;
 
@@ -14101,7 +14157,7 @@ export class GameServer {
     // and the companion stands up exactly where the asking held it.
     const at = { x: npos.x, y: npos.y };
     // The bond closing is a moment everyone nearby can read.
-    this.broadcastFx({ t: 'fx', kind: 'tame', x: pos.x, y: pos.y, x2: at.x, y2: at.y, radius: 1.4, id: 'gentle_the_wild' });
+    this.broadcastFx(pos.plane, { t: 'fx', kind: 'tame', x: pos.x, y: pos.y, x2: at.x, y2: at.y, radius: 1.4, id: 'gentle_the_wild' });
     this.removeTamedNpc(action.targetEid, eid);
     this.trySpawnPet(eid, player, at);
     this.grantXp(eid, player, 'beastcraft', tame.tameXp);
@@ -14163,7 +14219,7 @@ export class GameServer {
    * table's draw, and never further from home than the leash allows.
    */
   private baitNear(
-    pos: { x: number; y: number },
+    pos: { plane: PlaneId; x: number; y: number },
     npc: NpcComp,
   ): { x: number; y: number; power: number } | null {
     let best: { x: number; y: number; power: number } | null = null;
@@ -14171,7 +14227,8 @@ export class GameServer {
     for (const [sumEid, sum] of this.summons) {
       if (sum.kind !== 'bait') continue;
       const spos = this.positions.get(sumEid);
-      if (!spos) continue;
+      // A bait laid on another plane smells of nothing here.
+      if (!spos || spos.plane !== pos.plane) continue;
       const d = Math.hypot(spos.x - pos.x, spos.y - pos.y);
       if (d > sum.radius || d >= bestD) continue;
       if (Math.hypot(spos.x - npc.originX, spos.y - npc.originY) > npc.def.leashRange) continue;
@@ -14206,7 +14263,7 @@ export class GameServer {
 
   /** The nearest wild beast in the aim cone (the tame door's own eye). */
   private wildBeastInCone(
-    pos: { x: number; y: number },
+    pos: { plane: PlaneId; x: number; y: number },
     aim: number,
     range: number,
   ): { eid: EntityId; npc: NpcComp; x: number; y: number } | null {
@@ -14217,7 +14274,7 @@ export class GameServer {
       if (!isWildBeast(npc.def)) continue;
       if ((this.healths.get(npcEid)?.hp ?? 0) <= 0) continue;
       const npos = this.positions.get(npcEid);
-      if (!npos) continue;
+      if (!npos || npos.plane !== pos.plane) continue;
       const dx = npos.x - pos.x;
       const dy = npos.y - pos.y;
       const d = Math.hypot(dx, dy) - npc.def.radius;
@@ -14274,11 +14331,12 @@ export class GameServer {
           if (oEid === best.eid || this.pets.has(oEid) || this.actors.has(oEid)) continue;
           if (!isWildBeast(other.def) || isBeastSovereign(other.def)) continue;
           const opos = this.positions.get(oEid);
-          if (!opos || Math.hypot(opos.x - best.x, opos.y - best.y) > spread) continue;
+          if (!opos || opos.plane !== pos.plane) continue;
+          if (Math.hypot(opos.x - best.x, opos.y - best.y) > spread) continue;
           this.becalmNpc(oEid, other, hold);
         }
       }
-      this.broadcastFx({
+      this.broadcastFx(pos.plane, {
         t: 'fx', kind: 'becalm', x: best.x, y: best.y, radius: spread,
         ticks: hold, id: ab.id, color: ab.color,
       });
@@ -14293,7 +14351,8 @@ export class GameServer {
         if (!isWildBeast(npc.def) || isBeastSovereign(npc.def)) continue;
         if ((this.healths.get(npcEid)?.hp ?? 0) <= 0) continue;
         const npos = this.positions.get(npcEid);
-        if (!npos || Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius > radius) continue;
+        if (!npos || npos.plane !== pos.plane) continue;
+        if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius > radius) continue;
         ears.push({ eid: npcEid, npc });
       }
       const petEid = player.petEid;
@@ -14324,7 +14383,7 @@ export class GameServer {
           }
         }
       }
-      this.broadcastFx({
+      this.broadcastFx(pos.plane, {
         t: 'fx', kind: 'howl', x: pos.x, y: pos.y, radius,
         ticks: hold, id: ab.id, color: ab.color,
       });
@@ -14333,7 +14392,7 @@ export class GameServer {
       for (const ear of ears.slice(0, 8)) {
         const epos = this.positions.get(ear.eid);
         if (!epos) continue;
-        this.broadcastFx({
+        this.broadcastFx(pos.plane, {
           t: 'fx', kind: 'becalm', x: epos.x, y: epos.y, radius: 0,
           ticks: hold, id: ab.id, color: ab.color,
         });
@@ -14386,7 +14445,7 @@ export class GameServer {
           }
           const ppos = this.positions.get(player.petEid);
           if (ppos) {
-            this.broadcastFx({
+            this.broadcastFx(pos.plane, {
               t: 'fx', kind: 'command', x: pos.x, y: pos.y, x2: ppos.x, y2: ppos.y,
               radius: 0, id: ab.id, color: ab.color,
             });
@@ -14413,7 +14472,7 @@ export class GameServer {
           if (this.pets.has(npcEid) || this.actors.has(npcEid)) continue;
           if ((this.healths.get(npcEid)?.hp ?? 0) <= 0) continue;
           const npos = this.positions.get(npcEid);
-          if (!npos) continue;
+          if (!npos || npos.plane !== pos.plane) continue;
           const dx = npos.x - pos.x;
           const dy = npos.y - pos.y;
           const d = Math.hypot(dx, dy) - npc.def.radius;
@@ -14462,7 +14521,7 @@ export class GameServer {
             this.npcAggro(oEid, other, petEid, { force: true });
           }
         }
-        this.broadcastFx({
+        this.broadcastFx(pos.plane, {
           t: 'fx', kind: 'command', x: pos.x, y: pos.y, x2: mark.x, y2: mark.y,
           radius: dare, id: ab.id, color: ab.color,
         });
@@ -14494,7 +14553,7 @@ export class GameServer {
         if (pet && ab.petGuard) {
           pet.guard = { armor: ab.petGuard.armor, untilTick: this.tickCount + ab.petGuard.durationTicks };
         }
-        this.broadcastFx({
+        this.broadcastFx(pos.plane, {
           t: 'fx', kind: 'command', x: pos.x, y: pos.y, x2: ppos.x, y2: ppos.y,
           radius: 0, id: ab.id, color: ab.color,
         });
@@ -14521,7 +14580,7 @@ export class GameServer {
           };
         }
         const ppos = this.positions.get(petEid);
-        this.broadcastFx({
+        this.broadcastFx(pos.plane, {
           t: 'fx', kind: 'command', x: pos.x, y: pos.y,
           x2: ppos?.x ?? pos.x, y2: ppos?.y ?? pos.y,
           radius: 0, ticks: ab.petSurge?.durationTicks ?? 0, id: ab.id, color: ab.color,
@@ -14566,7 +14625,7 @@ export class GameServer {
         if (ab.petGuard) {
           pet.guard = { armor: ab.petGuard.armor, untilTick: this.tickCount + ab.petGuard.durationTicks };
         }
-        this.broadcastFx({
+        this.broadcastFx(pos.plane, {
           t: 'fx', kind: 'command', x: pos.x, y: pos.y, x2: ppos.x, y2: ppos.y,
           radius: 1, id: ab.id, color: ab.color,
         });
@@ -14694,7 +14753,7 @@ export class GameServer {
     // that lit it pulses quietly at its shoulders (the tame channel's
     // cadence), so the working stays readable for its whole life.
     if (pet.surge && this.tickCount < pet.surge.untilTick && (this.tickCount + eid) % 25 === 0) {
-      this.broadcastFx({
+      this.broadcastFx(pos.plane, {
         t: 'fx',
         kind: 'command',
         x: pos.x,
@@ -14716,6 +14775,9 @@ export class GameServer {
         !thp ||
         thp.hp <= 0 ||
         !tpos ||
+        // A mark left on another plane is gone, not merely far —
+        // aliased coordinates would read as still inside the leash.
+        tpos.plane !== pos.plane ||
         // The heel outranks the hunt: a keeper walking away ends the
         // fight — the companion is a defender, never a send-and-forget.
         dist > PET_FIGHT_LEASH ||
@@ -15777,7 +15839,10 @@ export class GameServer {
   private dialogueGuard(eid: EntityId, player: PlayerComp, dlg: ActiveDialogue): boolean {
     const pos = this.positions.get(eid);
     const npos = this.positions.get(dlg.targetEid);
-    if (!pos || !npos || !this.actors.has(dlg.targetEid)) {
+    // Earshot never spans planes: a stair crossing keeps near-
+    // identical coordinates, and the bare distance used to let the
+    // conversation keep running through the rock.
+    if (!pos || !npos || npos.plane !== pos.plane || !this.actors.has(dlg.targetEid)) {
       this.dialogueClose(player);
       return false;
     }
@@ -16732,14 +16797,25 @@ export class GameServer {
    * witness too: a grocer watching you rob the smith is a witness;
    * only bodies with a combat brain can also turn suspicious.
    */
-  private theftWitnesses(x: number, y: number, markEid: EntityId): Array<{ eid: EntityId; fid: string }> {
+  private theftWitnesses(
+    plane: PlaneId,
+    x: number,
+    y: number,
+    markEid: EntityId,
+  ): Array<{ eid: EntityId; fid: string }> {
     const out: Array<{ eid: EntityId; fid: string }> = [];
     const r = FACTIONS.theft.witnessRadius;
-    const seen = (opos: { x: number; y: number }): boolean => {
+    // Eyes live on the theft's OWN plane, and the sight ray runs
+    // through that plane's walls — the Deep Market's keepers judge a
+    // lifted purse by the Undercroft's rock, not by whatever the
+    // surface happens to have built at the same coordinates.
+    const world = this.worldOf(plane);
+    const seen = (opos: { plane: PlaneId; x: number; y: number }): boolean => {
+      if (opos.plane !== plane) return false;
       const dx = opos.x - x;
       const dy = opos.y - y;
       if (dx * dx + dy * dy > r * r) return false;
-      return sightVisibility(sightLine(this.surface, opos.x, opos.y, x, y)) > 0;
+      return sightVisibility(sightLine(world, opos.x, opos.y, x, y)) > 0;
     };
     for (const [oEid, actor] of this.actors) {
       if (oEid === markEid) continue;
@@ -16804,10 +16880,10 @@ export class GameServer {
   private pickpocket(
     eid: EntityId,
     player: PlayerComp,
-    pos: { x: number; y: number; dir: number },
+    pos: { plane: PlaneId; x: number; y: number; dir: number },
     targetEid: EntityId,
     actorComp: ActorComp,
-    npos: { x: number; y: number; dir: number },
+    npos: { plane: PlaneId; x: number; y: number; dir: number },
     sys: (text: string) => void,
   ): void {
     const rows = actorComp.actor.inventory ?? [];
@@ -16863,7 +16939,7 @@ export class GameServer {
     const cries = ['Hey — my pocket!', 'Thief! A thief!', 'Hands! I felt hands!'];
     this.sayAloud(targetEid, actorComp.actor.name, cries[(targetEid + this.tickCount) % cries.length]!);
     sys('The grab misses.');
-    const witnesses = this.theftWitnesses(pos.x, pos.y, targetEid);
+    const witnesses = this.theftWitnesses(pos.plane, pos.x, pos.y, targetEid);
     const markFid = factionOfActor(actorComp.actor.id);
     if (markFid !== null) witnesses.unshift({ eid: targetEid, fid: markFid });
     this.chargeTheft(eid, player, pos.x, pos.y, witnesses);
@@ -17853,7 +17929,7 @@ export class GameServer {
     const left = (this.propDamage.get(key) ?? info.hits) - 1;
     if (left > 0) {
       this.propDamage.set(key, left);
-      this.broadcastFx({
+      this.broadcastFx(plane, {
         t: 'fx',
         kind: 'smash',
         x: tx + 0.5,
@@ -17887,7 +17963,7 @@ export class GameServer {
   ): void {
     // Fx FIRST: it carries the impact heading + kind, and must land
     // before the tile patch that erases the prop.
-    this.broadcastFx({
+    this.broadcastFx(plane, {
       t: 'fx',
       kind: 'smash',
       x: tx + 0.5,
@@ -18130,7 +18206,7 @@ export class GameServer {
     player.hidden = hidden;
     const pos = this.positions.get(eid);
     if (pos) {
-      this.broadcastFx({ t: 'fx', kind: 'vanish', x: pos.x, y: pos.y, radius: 0.6, color: '#8a7fae' });
+      this.broadcastFx(pos.plane, { t: 'fx', kind: 'vanish', x: pos.x, y: pos.y, radius: 0.6, color: '#8a7fae' });
     }
   }
 
@@ -18142,15 +18218,18 @@ export class GameServer {
   }
 
   /** Combat FX go to every session close enough to possibly see them. */
-  private broadcastFx(fx: S2CFx): void {
+  private broadcastFx(plane: PlaneId, fx: S2CFx): void {
     // Stringify ONCE, fan the same bytes: a busy fight's fx used to
     // pay one JSON.stringify per fx per session for identical output
     // (a casting NPC alone emits a charge every 10 ticks).
+    // The fan is plane-gated: coordinates alias across worlds by
+    // design, and a fight's bursts used to ghost into the dungeon
+    // (or the town above it) at the same x/y.
     let json: string | undefined;
     for (const s of this.sessions) {
       if (s.playerEid === null) continue;
       const pos = this.positions.get(s.playerEid);
-      if (!pos) continue;
+      if (!pos || pos.plane !== plane) continue;
       if (Math.abs(pos.x - fx.x) < 40 && Math.abs(pos.y - fx.y) < 40) {
         s.sendJsonRaw((json ??= JSON.stringify(fx)));
       }
@@ -18343,7 +18422,7 @@ export class GameServer {
     // which reads as the fizzle it is; the fuse telegraph at the fire
     // still speaks with its own exact clock.
     if (targetPos) {
-      this.broadcastFx({
+      this.broadcastFx(this.positions.get(eid)?.plane ?? SURFACE_PLANE_ID, {
         t: 'fx',
         kind: 'telegraph',
         x: targetPos.x,
@@ -18361,7 +18440,7 @@ export class GameServer {
     // wind-up on the BODY, not just the bar.
     const cpos = this.positions.get(eid);
     if (cpos) {
-      this.broadcastFx({ t: 'fx', kind: 'charge', x: cpos.x, y: cpos.y, radius: 1.5, id: ab.id, color: ab.color });
+      this.broadcastFx(cpos.plane, { t: 'fx', kind: 'charge', x: cpos.x, y: cpos.y, radius: 1.5, id: ab.id, color: ab.color });
     }
     player.session?.sendJson({ t: 'cast', state: 'start', slot, ticks: ab.castTicks });
   }
@@ -18404,7 +18483,7 @@ export class GameServer {
     if (this.tickCount % 10 === 0) {
       const pos = this.positions.get(eid);
       if (pos) {
-        this.broadcastFx({
+        this.broadcastFx(pos.plane, {
           t: 'fx',
           kind: 'charge',
           x: pos.x,
@@ -18514,7 +18593,7 @@ export class GameServer {
     // while the note holds (tickChannel), so the quiet stretches
     // between pulses never read as a finished cast.
     if (cp) {
-      this.broadcastFx({ t: 'fx', kind: 'note', x: cp.x, y: cp.y, radius: 0.9, id: ab.id, color: ab.color });
+      this.broadcastFx(cp.plane, { t: 'fx', kind: 'note', x: cp.x, y: cp.y, radius: 0.9, id: ab.id, color: ab.color });
     }
     this.sendCooldowns(player);
   }
@@ -18549,7 +18628,7 @@ export class GameServer {
     if (a.ticksLeft % 20 === 0) {
       const pos = this.positions.get(eid);
       if (pos) {
-        this.broadcastFx({ t: 'fx', kind: 'note', x: pos.x, y: pos.y, radius: 0.9, id: a.ab.id, color: a.ab.color });
+        this.broadcastFx(pos.plane, { t: 'fx', kind: 'note', x: pos.x, y: pos.y, radius: 0.9, id: a.ab.id, color: a.ab.color });
       }
     }
   }
@@ -18621,7 +18700,7 @@ export class GameServer {
    * cone so gamepad and touch don't need pixel-perfect targeting.
    */
   private resolveGroundTarget(
-    pos: { x: number; y: number },
+    pos: { plane: PlaneId; x: number; y: number },
     aim: number,
     range: number,
   ): { x: number; y: number } {
@@ -18630,7 +18709,8 @@ export class GameServer {
     for (const [npcEid] of this.npcs) {
       if (!this.assistMark(npcEid)) continue;
       const npos = this.positions.get(npcEid);
-      if (!npos) continue;
+      // The magnet never pulls a cast toward a body in another world.
+      if (!npos || npos.plane !== pos.plane) continue;
       const dx = npos.x - pos.x;
       const dy = npos.y - pos.y;
       const dist = Math.hypot(dx, dy);
@@ -18709,7 +18789,7 @@ export class GameServer {
       case 'melee_arc': {
         const arc = ab.arc ?? Math.PI / 3;
         const range = ab.range ?? 2;
-        this.broadcastFx({
+        this.broadcastFx(pos.plane, {
           t: 'fx',
           kind: 'arc',
           x: pos.x,
@@ -18722,7 +18802,7 @@ export class GameServer {
         // THE KIT: an NPC's sweep cuts the OTHER side of the fight —
         // same crescent, same whiff-0 roll, THREAT LAW mitigation.
         if (fromNpc) {
-          this.blastPlayers(pos.x, pos.y, range, maxHit, ab.status, level, {
+          this.blastPlayers(pos.plane, pos.x, pos.y, range, maxHit, ab.status, level, {
             sourceEid: casterEid,
             arcAim: aim,
             arcHalf: arc,
@@ -18757,7 +18837,7 @@ export class GameServer {
 
       case 'nova': {
         const radius = ab.radius ?? 2;
-        this.broadcastFx({
+        this.broadcastFx(pos.plane, {
           t: 'fx',
           kind: 'nova',
           x: pos.x,
@@ -18767,7 +18847,7 @@ export class GameServer {
           color: ab.color,
         });
         if (fromNpc) {
-          this.blastPlayers(pos.x, pos.y, radius, maxHit, ab.status, level, {
+          this.blastPlayers(pos.plane, pos.x, pos.y, radius, maxHit, ab.status, level, {
             sourceEid: casterEid,
           });
         } else {
@@ -18818,7 +18898,7 @@ export class GameServer {
               if (struck.has(pEid)) continue;
               if (p.session === null && p.disconnectedAt !== null) continue;
               const ppos = this.positions.get(pEid);
-              if (!ppos) continue;
+              if (!ppos || ppos.plane !== pos.plane) continue;
               if (Math.hypot(ppos.x - pos.x, ppos.y - pos.y) > 0.8) continue;
               struck.add(pEid);
               this.damagePlayer(pEid, Math.floor(Math.random() * (maxHit + 1)), {
@@ -18830,7 +18910,7 @@ export class GameServer {
             for (const [petEid] of this.pets) {
               if (struck.has(petEid)) continue;
               const ppos = this.positions.get(petEid);
-              if (!ppos) continue;
+              if (!ppos || ppos.plane !== pos.plane) continue;
               if (Math.hypot(ppos.x - pos.x, ppos.y - pos.y) > 0.8) continue;
               struck.add(petEid);
               this.damagePet(petEid, Math.floor(Math.random() * (maxHit + 1)), {
@@ -18856,7 +18936,7 @@ export class GameServer {
           });
         }
         this.updateChunkMembership(casterEid);
-        this.broadcastFx({
+        this.broadcastFx(pos.plane, {
           t: 'fx',
           kind: 'dash',
           x: startX,
@@ -18918,12 +18998,16 @@ export class GameServer {
               if (zdone.has(pEid)) continue;
               if (p.session === null && p.disconnectedAt !== null) continue;
               const ppos = this.positions.get(pEid);
-              if (ppos) cands.push({ eid: pEid, x: ppos.x, y: ppos.y, pet: false });
+              if (ppos && ppos.plane === pos.plane) {
+                cands.push({ eid: pEid, x: ppos.x, y: ppos.y, pet: false });
+              }
             }
             for (const [petEid] of this.pets) {
               if (zdone.has(petEid)) continue;
               const ppos = this.positions.get(petEid);
-              if (ppos) cands.push({ eid: petEid, x: ppos.x, y: ppos.y, pet: true });
+              if (ppos && ppos.plane === pos.plane) {
+                cands.push({ eid: petEid, x: ppos.x, y: ppos.y, pet: true });
+              }
             }
             let best: { eid: EntityId; x: number; y: number; pet: boolean } | null = null;
             let bestDist = Infinity;
@@ -18946,7 +19030,7 @@ export class GameServer {
             }
             if (!best) break;
             zdone.add(best.eid);
-            this.broadcastFx({
+            this.broadcastFx(pos.plane, {
               t: 'fx',
               kind: 'bolt',
               x: zfrom.x,
@@ -18999,7 +19083,7 @@ export class GameServer {
           const tpos = this.positions.must(best);
           // Each hop is a real bolt segment — the client draws jagged
           // lightning from strike point to strike point.
-          this.broadcastFx({
+          this.broadcastFx(pos.plane, {
             t: 'fx',
             kind: 'bolt',
             x: from.x,
@@ -19121,7 +19205,7 @@ export class GameServer {
           crop.boostMs += Math.round(growMs(crop.def) * 0.25);
           this.saveCrop(crop);
           this.tickCrops(Date.now());
-          this.broadcastFx({
+          this.broadcastFx(SURFACE_PLANE_ID, {
             t: 'fx',
             kind: 'telegraph',
             x: ctx2 + 0.5,
@@ -19155,7 +19239,7 @@ export class GameServer {
           executeBelow: ab.executeBelow,
           drainFrac: ab.drainFrac,
         });
-        this.broadcastFx({
+        this.broadcastFx(pos.plane, {
           t: 'fx',
           kind: 'telegraph',
           x: target.x,
@@ -19191,7 +19275,7 @@ export class GameServer {
           knockback: ab.knockback ?? 0,
           drainFrac: ab.drainFrac,
         });
-        this.broadcastFx({
+        this.broadcastFx(pos.plane, {
           t: 'fx',
           kind: 'field',
           x: target.x,
@@ -19221,7 +19305,7 @@ export class GameServer {
         }
         const ex = pos.x + dirX * len;
         const ey = pos.y + dirY * len;
-        this.broadcastFx({
+        this.broadcastFx(pos.plane, {
           t: 'fx',
           kind: 'beam',
           x: pos.x,
@@ -19244,7 +19328,7 @@ export class GameServer {
           for (const [playerEid, player] of this.players) {
             if (player.session === null && player.disconnectedAt !== null) continue;
             const ppos = this.positions.get(playerEid);
-            if (!ppos) continue;
+            if (!ppos || ppos.plane !== pos.plane) continue;
             if (!strike(playerEid, BODY_RADIUS, ppos.x, ppos.y)) continue;
             this.damagePlayer(playerEid, Math.floor(Math.random() * (maxHit + 1)), {
               status: ab.status,
@@ -19293,7 +19377,7 @@ export class GameServer {
           pos.y = next.y;
         }
         this.updateChunkMembership(casterEid);
-        this.broadcastFx({
+        this.broadcastFx(pos.plane, {
           t: 'fx',
           kind: 'dash',
           x: startX,
@@ -19305,7 +19389,7 @@ export class GameServer {
           color: ab.color,
         });
         const radius = ab.radius ?? 2;
-        this.broadcastFx({
+        this.broadcastFx(pos.plane, {
           t: 'fx',
           kind: 'blast',
           x: pos.x,
@@ -19317,7 +19401,7 @@ export class GameServer {
         const cx = pos.x;
         const cy = pos.y;
         if (fromNpc) {
-          this.blastPlayers(cx, cy, radius, maxHit, ab.status, level, { sourceEid: casterEid });
+          this.blastPlayers(pos.plane, cx, cy, radius, maxHit, ab.status, level, { sourceEid: casterEid });
         } else {
           // Knockback re-chunks a struck body mid-walk — pay once.
           const struck = new Set<EntityId>();
@@ -19403,7 +19487,7 @@ export class GameServer {
         });
         if (spec.kind === 'decoy') this.healths.set(eid, { hp: 12, maxHp: 12 });
         this.updateChunkMembership(eid);
-        this.broadcastFx({
+        this.broadcastFx(pos.plane, {
           t: 'fx',
           kind: 'summon',
           x: at.x,
@@ -19458,7 +19542,7 @@ export class GameServer {
     casterEid: EntityId,
     ab: AbilityDef,
     powerMult: number,
-    pos: { x: number; y: number },
+    pos: { plane: PlaneId; x: number; y: number },
   ): void {
     const player = this.players.get(casterEid);
     const self = ab.self;
@@ -19475,7 +19559,7 @@ export class GameServer {
         : Math.round((self.heal ?? 0) * powerMult);
       if (mend <= 0) return;
       health.hp = Math.min(health.maxHp, health.hp + mend);
-      this.broadcastFx({
+      this.broadcastFx(pos.plane, {
         t: 'fx',
         kind: 'buff',
         x: pos.x,
@@ -19487,7 +19571,7 @@ export class GameServer {
       });
       return;
     }
-    this.broadcastFx({
+    this.broadcastFx(pos.plane, {
       t: 'fx',
       kind: 'buff',
       x: pos.x,
@@ -19554,6 +19638,7 @@ export class GameServer {
    * melee_arc law.
    */
   private blastPlayers(
+    plane: PlaneId,
     x: number,
     y: number,
     radius: number,
@@ -19570,10 +19655,13 @@ export class GameServer {
       if (diff > Math.PI) diff = Math.PI * 2 - diff;
       return diff <= opts.arcHalf;
     };
+    // Planes share coordinates by design (a plane is a tag, not a
+    // translation) — every body test below must name the blast's
+    // plane or a rift boss's nova bleeds into the world next door.
     for (const [playerEid, player] of this.players) {
       if (player.session === null && player.disconnectedAt !== null) continue;
       const ppos = this.positions.get(playerEid);
-      if (!ppos) continue;
+      if (!ppos || ppos.plane !== plane) continue;
       if (Math.hypot(ppos.x - x, ppos.y - y) > radius) continue;
       if (!inArc(ppos.x, ppos.y)) continue;
       this.damagePlayer(playerEid, Math.floor(Math.random() * (maxHit + 1)), {
@@ -19585,7 +19673,7 @@ export class GameServer {
     for (const [sumEid, sum] of this.summons) {
       if (sum.kind !== 'decoy') continue;
       const spos = this.positions.get(sumEid);
-      if (!spos) continue;
+      if (!spos || spos.plane !== plane) continue;
       if (Math.hypot(spos.x - x, spos.y - y) > radius) continue;
       if (!inArc(spos.x, spos.y)) continue;
       this.damageSummon(sumEid, Math.floor(Math.random() * (maxHit + 1)));
@@ -19594,7 +19682,7 @@ export class GameServer {
     // in a blast — splash is physical, not perceptual.
     for (const [petEid] of this.pets) {
       const ppos = this.positions.get(petEid);
-      if (!ppos) continue;
+      if (!ppos || ppos.plane !== plane) continue;
       if (Math.hypot(ppos.x - x, ppos.y - y) > radius) continue;
       if (!inArc(ppos.x, ppos.y)) continue;
       this.damagePet(petEid, Math.floor(Math.random() * (maxHit + 1)), {
@@ -19643,7 +19731,7 @@ export class GameServer {
     if (npc.def.resist?.includes(apply.status)) {
       const pos = this.positions.get(npcEid);
       if (pos) {
-        this.broadcastFx({
+        this.broadcastFx(pos.plane, {
           t: 'fx',
           kind: 'reaction',
           x: pos.x,
@@ -19720,7 +19808,7 @@ export class GameServer {
       list.splice(list.indexOf(other), 1);
       const pos = this.positions.get(npcEid);
       if (pos) {
-        this.broadcastFx({
+        this.broadcastFx(pos.plane, {
           t: 'fx',
           kind: 'reaction',
           x: pos.x,
@@ -19996,17 +20084,18 @@ export class GameServer {
       const pos = this.positions.must(eid);
 
       if (sum.kind === 'heal_totem') {
-        // A steady pulse of mending for everyone standing close.
+        // A steady pulse of mending for everyone standing close — on
+        // the totem's OWN plane; mending never crosses the rock.
         if (sum.ticksLeft % 40 === 0) {
           for (const [playerEid, player] of this.players) {
             if (player.session === null && player.disconnectedAt !== null) continue;
             const ppos = this.positions.get(playerEid);
-            if (!ppos) continue;
+            if (!ppos || ppos.plane !== pos.plane) continue;
             if (Math.hypot(ppos.x - pos.x, ppos.y - pos.y) > sum.radius) continue;
             const health = this.healths.must(playerEid);
             if (health.hp < health.maxHp) {
               health.hp = Math.min(health.maxHp, health.hp + sum.power);
-              this.broadcastFx({
+              this.broadcastFx(pos.plane, {
                 t: 'fx',
                 kind: 'reaction',
                 x: ppos.x,
@@ -20050,12 +20139,16 @@ export class GameServer {
       if (blast.followCaster) {
         const cpos = this.positions.get(blast.ownerEid);
         if (!cpos) continue; // the storm dies with its caster
+        // ...and with the caster's crossing: re-anchoring onto NEW-
+        // plane coordinates while the blast keeps its minted plane
+        // would detonate on whoever stands there in the OLD world.
+        if (cpos.plane !== blast.plane) continue;
         blast.x = cpos.x;
         blast.y = cpos.y;
       }
       // Flurry strikes face where the caster aimed and paint as swings.
       const isArc = blast.arcAim !== undefined;
-      this.broadcastFx({
+      this.broadcastFx(blast.plane, {
         t: 'fx',
         kind: isArc ? 'arc' : 'blast',
         x: blast.x,
@@ -20068,7 +20161,7 @@ export class GameServer {
       if (blast.fromNpc) {
         // NPC flurries keep their authored crescent now that the
         // blast resolver speaks arc — full circles were the old debt.
-        this.blastPlayers(blast.x, blast.y, blast.radius, blast.damage, blast.status, blast.attackerLevel, {
+        this.blastPlayers(blast.plane, blast.x, blast.y, blast.radius, blast.damage, blast.status, blast.attackerLevel, {
           sourceEid: blast.ownerEid,
           arcAim: blast.arcAim,
           arcHalf: blast.arcHalf,
@@ -20116,7 +20209,7 @@ export class GameServer {
       }
       if (field.ticksLeft % field.everyTicks !== 0) continue;
       if (field.fromNpc) {
-        this.blastPlayers(field.x, field.y, field.radius, field.damage, field.status, field.attackerLevel, {
+        this.blastPlayers(field.plane, field.x, field.y, field.radius, field.damage, field.status, field.attackerLevel, {
           sourceEid: field.ownerEid,
         });
         continue;
@@ -20145,7 +20238,10 @@ export class GameServer {
   private tickProjectiles(): void {
     for (const [eid, proj] of this.projectiles) {
       const pos = this.positions.must(eid);
-      if (this.stepProjectile(eid, proj, pos)) {
+      // A shot whose plane died under it (rift teardown sweeps these,
+      // but no future caller gets to crash the tick loop) spends
+      // itself quietly.
+      if (!this.planes.get(pos.plane) || this.stepProjectile(eid, proj, pos)) {
         this.removeFromChunks(eid);
         this.ecs.destroy(eid);
       } else {
@@ -20198,6 +20294,9 @@ export class GameServer {
     // Boomerangs home on the owner's LIVE position on the way back.
     if (proj.returning) {
       const opos = this.positions.get(proj.ownerEid);
+      // An owner who crossed planes is beyond the catch — the shot
+      // spends itself rather than homing on aliased coordinates.
+      if (opos && opos.plane !== pos.plane) return true;
       if (opos) {
         const hx = opos.x - pos.x;
         const hy = opos.y - pos.y;
@@ -20288,7 +20387,7 @@ export class GameServer {
     // close to the miss still pays the splash. That is what dodging
     // means: not being near where it comes down.
     if (dead && proj.fromNpc && proj.abilityId) {
-      this.broadcastFx({
+      this.broadcastFx(pos.plane, {
         t: 'fx',
         kind: 'blast',
         x: pos.x,
@@ -20302,7 +20401,9 @@ export class GameServer {
         for (const [playerEid, player] of this.players) {
           if (player.session === null && player.disconnectedAt !== null) continue;
           const ppos = this.positions.get(playerEid);
-          if (!ppos) continue;
+          // The shot lives on ONE plane — bodies at aliased
+          // coordinates in other worlds are not in its story.
+          if (!ppos || ppos.plane !== pos.plane) continue;
           if (Math.hypot(ppos.x - pos.x, ppos.y - pos.y) > proj.splashRadius) continue;
           this.damagePlayer(playerEid, Math.floor(Math.random() * (splashHit + 1)), {
             status: proj.status,
@@ -20318,7 +20419,7 @@ export class GameServer {
       for (const [playerEid, player] of this.players) {
         if (player.session === null && player.disconnectedAt !== null) continue;
         const ppos = this.positions.get(playerEid);
-        if (!ppos) continue;
+        if (!ppos || ppos.plane !== pos.plane) continue;
         const dx = ppos.x - pos.x;
         const dy = bandDy(pos.y, ppos.y, PLAYER_HIT_HEIGHT);
         if (dx * dx + dy * dy < 0.45 ** 2) {
@@ -20332,7 +20433,7 @@ export class GameServer {
           // signature speaks at the wound (the golem's boulder lies
           // where it fell). Basic ranged shafts stay quiet.
           if (proj.abilityId) {
-            this.broadcastFx({
+            this.broadcastFx(pos.plane, {
               t: 'fx',
               kind: 'blast',
               x: pos.x,
@@ -20350,7 +20451,7 @@ export class GameServer {
               if (otherEid === playerEid) continue;
               if (other.session === null && other.disconnectedAt !== null) continue;
               const opos = this.positions.get(otherEid);
-              if (!opos) continue;
+              if (!opos || opos.plane !== pos.plane) continue;
               if (Math.hypot(opos.x - pos.x, opos.y - pos.y) > proj.splashRadius) continue;
               this.damagePlayer(otherEid, Math.floor(Math.random() * (splashHit + 1)), {
                 status: proj.status,
@@ -20367,7 +20468,7 @@ export class GameServer {
         for (const [sumEid, sum] of this.summons) {
           if (sum.kind !== 'decoy') continue;
           const spos = this.positions.get(sumEid);
-          if (!spos) continue;
+          if (!spos || spos.plane !== pos.plane) continue;
           const dx = spos.x - pos.x;
           const dy = spos.y - pos.y;
           if (dx * dx + dy * dy < 0.5 ** 2) {
@@ -20383,7 +20484,7 @@ export class GameServer {
         for (const [petEid] of this.pets) {
           const ppos = this.positions.get(petEid);
           const pnpc = this.npcs.get(petEid);
-          if (!ppos || !pnpc) continue;
+          if (!ppos || !pnpc || ppos.plane !== pos.plane) continue;
           const dx = ppos.x - pos.x;
           const dy = bandDy(pos.y, ppos.y, npcHitHeight(pnpc.def));
           if (dx * dx + dy * dy < 0.5 ** 2) {
@@ -20439,7 +20540,7 @@ export class GameServer {
           // attacks stay quiet; heavy wand bolts keep their old
           // anonymous burst.
           if (proj.abilityId && !proj.basic) {
-            this.broadcastFx({
+            this.broadcastFx(pos.plane, {
               t: 'fx',
               kind: 'blast',
               x: pos.x,
@@ -20449,7 +20550,7 @@ export class GameServer {
               color: proj.abilityColor,
             });
           } else if (proj.splashRadius) {
-            this.broadcastFx({
+            this.broadcastFx(pos.plane, {
               t: 'fx',
               kind: 'blast',
               x: pos.x,
@@ -20744,7 +20845,7 @@ export class GameServer {
         for (const npcEid of hit) {
           const tp = this.positions.get(npcEid);
           if (tp) {
-            this.broadcastFx({
+            this.broadcastFx(procPlane, {
               t: 'fx',
               kind: 'proc',
               x: from.x,
@@ -20819,7 +20920,7 @@ export class GameServer {
       }
     }
 
-    this.broadcastFx({
+    this.broadcastFx(procPlane, {
       t: 'fx',
       kind: 'proc',
       x: ctx.x,
@@ -21029,7 +21130,7 @@ export class GameServer {
         npc.laneFxTick = this.tickCount;
         const pos = this.positions.get(npcEid);
         if (pos) {
-          this.broadcastFx({
+          this.broadcastFx(pos.plane, {
             t: 'fx',
             kind: 'reaction',
             x: pos.x,
@@ -21731,7 +21832,7 @@ export class GameServer {
           const spos =
             opts.sourceEid !== undefined ? this.positions.get(opts.sourceEid) : undefined;
           if (ppos) {
-            this.broadcastFx({
+            this.broadcastFx(ppos.plane, {
               t: 'fx',
               kind: 'block',
               x: ppos.x,
@@ -22096,7 +22197,7 @@ export class GameServer {
       const npc = this.npcs.get(eid);
       if (!npc || npc.state !== 'idle') continue;
       const pos = this.positions.get(eid);
-      if (pos && this.playerWithin(pos.x, pos.y, 20)) continue;
+      if (pos && this.playerWithin(pos.plane, pos.x, pos.y, 20)) continue;
       this.removeFromChunks(eid);
       this.ecs.destroy(eid);
       spawn.eid = null;
@@ -22105,11 +22206,11 @@ export class GameServer {
   }
 
   /** Any connected player within `r` tiles of a point? */
-  private playerWithin(x: number, y: number, r: number): boolean {
+  private playerWithin(plane: PlaneId, x: number, y: number, r: number): boolean {
     for (const [eid, player] of this.players) {
       if (player.session === null && player.disconnectedAt !== null) continue;
       const pos = this.positions.get(eid);
-      if (pos && Math.hypot(pos.x - x, pos.y - y) <= r) return true;
+      if (pos && pos.plane === plane && Math.hypot(pos.x - x, pos.y - y) <= r) return true;
     }
     return false;
   }
@@ -22130,6 +22231,23 @@ export class GameServer {
 
   /** Per-tick union of every session's streamed chunks (see tickNpcs). */
   private readonly awakeChunks = new Set<string>();
+
+  /**
+   * THE UNWATCHED WORLD DOZES, the union half: knownChunks are bare
+   * "cx,cy" (plane-implicit per session), while entityChunk keys are
+   * plane-first — the union must speak the entity's dialect or no
+   * doze check ever matches. The post-ship audit caught exactly that:
+   * a bare-key union left every idle body world-wide dozing (no sight
+   * aggro, companions frozen, hens never laying).
+   */
+  private rebuildAwakeChunks(): void {
+    this.awakeChunks.clear();
+    for (const s of this.sessions) {
+      const plane = this.sessionPlane(s);
+      if (plane === null) continue;
+      for (const k of s.knownChunks) this.awakeChunks.add(`${plane}|${k}`);
+    }
+  }
 
   /** Ambient spawns keep this far out / this near a player (tiles). */
   private static readonly WILD_MIN_R = 34;
@@ -22159,12 +22277,12 @@ export class GameServer {
       }
       const pos = this.positions.get(eid);
       if (!pos) continue;
-      const farGone = !this.playerWithin(pos.x, pos.y, GameServer.WILD_DESPAWN_R);
+      const farGone = !this.playerWithin(pos.plane, pos.x, pos.y, GameServer.WILD_DESPAWN_R);
       const overstayed =
         window !== null &&
         !slotContains(window.from, window.to, hours) &&
         this.npcs.get(eid)?.state === 'idle' &&
-        !this.playerWithin(pos.x, pos.y, 20);
+        !this.playerWithin(pos.plane, pos.x, pos.y, 20);
       if (!farGone && !overstayed) continue;
       this.removeFromChunks(eid);
       this.ecs.destroy(eid);
@@ -22620,7 +22738,7 @@ export class GameServer {
       for (const [playerEid, player] of this.players) {
         if (player.session === null && player.disconnectedAt !== null) continue;
         const ppos = this.positions.get(playerEid);
-        if (!ppos) continue;
+        if (!ppos || ppos.plane !== pos.plane) continue;
         const dx = ppos.x - pos.x;
         const dy = ppos.y - pos.y;
         const d = dx * dx + dy * dy;
@@ -23473,7 +23591,7 @@ export class GameServer {
       this.sayAloud(eid, npc.def.name, npc.def.boss.engageBark);
       const bpos = this.positions.get(eid);
       if (bpos) {
-        this.broadcastFx({
+        this.broadcastFx(bpos.plane, {
           t: 'fx',
           kind: 'buff',
           x: bpos.x,
@@ -23559,7 +23677,9 @@ export class GameServer {
       if (!this.npcAtPeace(other) || other.def.damage <= 0) continue;
       if (this.tickCount < other.noAggroUntilTick) continue;
       const opos = this.positions.get(oEid);
-      if (!opos) continue;
+      // The cry carries through air, never through a plane boundary —
+      // same-theme rifts cut at the SAME coordinates share pack ids.
+      if (!opos || opos.plane !== pos.plane) continue;
       const d = Math.hypot(opos.x - pos.x, opos.y - pos.y);
       if (d > range) continue;
       cands.push({ eid: oEid, npc: other, d });
@@ -23603,7 +23723,7 @@ export class GameServer {
       if (other.state !== 'idle' || other.def.damage <= 0) continue;
       if (this.tickCount < other.noAggroUntilTick) continue;
       const opos = this.positions.get(oEid);
-      if (!opos) continue;
+      if (!opos || opos.plane !== pos.plane) continue;
       const d = Math.hypot(opos.x - pos.x, opos.y - pos.y);
       if (d < bestDist) {
         bestDist = d;
@@ -23927,18 +24047,26 @@ export class GameServer {
     return wps;
   }
 
-  /** Resolve an NPC's chase target: a live player or a straw decoy. */
-  private npcTargetPos(targetEid: EntityId): { x: number; y: number } | null {
+  /**
+   * Resolve an NPC's chase target: a live player or a straw decoy.
+   * `plane` is the chaser's own — a body that crossed to another
+   * world is simply GONE (planes share coordinates, so without this
+   * a quarry stepping down a stair would read as still standing at
+   * near-identical x/y and eat strikes through the rock).
+   */
+  private npcTargetPos(targetEid: EntityId, plane: PlaneId): { x: number; y: number } | null {
+    const onPlane = (p: { x: number; y: number; plane: PlaneId } | undefined) =>
+      p !== undefined && p.plane === plane ? p : null;
     const player = this.players.get(targetEid);
     if (player) {
       if (player.session === null && player.disconnectedAt !== null) return null;
       // A target that melts into full stealth is simply gone — the chase
       // breaks through the same leash path as a vanished decoy.
       if (player.hidden) return null;
-      return this.positions.get(targetEid) ?? null;
+      return onPlane(this.positions.get(targetEid));
     }
     if (this.summons.get(targetEid)?.kind === 'decoy') {
-      return this.positions.get(targetEid) ?? null;
+      return onPlane(this.positions.get(targetEid));
     }
     // THE FANG BESIDE YOU: a companion is a chaseable body. It can
     // only ever BE a target through its own teeth or the harry —
@@ -23949,7 +24077,7 @@ export class GameServer {
     // friend (THE FALL IS NEVER THE END).
     if (this.pets.has(targetEid)) {
       if ((this.healths.get(targetEid)?.hp ?? 0) <= 0) return null;
-      return this.positions.get(targetEid) ?? null;
+      return onPlane(this.positions.get(targetEid));
     }
     return null;
   }
@@ -24091,7 +24219,7 @@ export class GameServer {
     if (pos) {
       // eid + ticks ride the charge: the watcher's overhead pip
       // anchors to the body and counts the wind down (S2CFx.eid).
-      this.broadcastFx({
+      this.broadcastFx(pos.plane, {
         t: 'fx',
         kind: 'charge',
         x: pos.x,
@@ -24182,7 +24310,7 @@ export class GameServer {
     if (room <= 0) return;
     const lvl = Math.max(1, level + (spec.levelDelta ?? 0));
     const def = lvl === base.level ? base : scaleNpcDef(base, lvl);
-    this.broadcastFx({
+    this.broadcastFx(pos.plane, {
       t: 'fx',
       kind: 'summon',
       x: pos.x,
@@ -24246,7 +24374,7 @@ export class GameServer {
     const ab = entry ? abilityDef(entry.ability) : undefined;
     const pos = this.positions.get(eid);
     if (ab && pos) {
-      this.broadcastFx({
+      this.broadcastFx(pos.plane, {
         t: 'fx',
         kind: 'charge',
         x: pos.x,
@@ -24289,7 +24417,7 @@ export class GameServer {
     this.broadcastMetaUpdate(eid);
     const tpos2 = this.positions.get(eid);
     if (tpos2) {
-      this.broadcastFx({
+      this.broadcastFx(tpos2.plane, {
         t: 'fx',
         kind: 'summon',
         x: tpos2.x,
@@ -24298,7 +24426,7 @@ export class GameServer {
         ticks: 30,
         color: npc.def.color,
       });
-      this.broadcastFx({
+      this.broadcastFx(tpos2.plane, {
         t: 'fx',
         kind: 'nova',
         x: tpos2.x,
@@ -24424,10 +24552,7 @@ export class GameServer {
     // beyond any aggroRange — so a body always wakes well off-screen;
     // combat, search, return, and patrol states never doze, and damage
     // force-wakes through npcAggro regardless.
-    this.awakeChunks.clear();
-    for (const s of this.sessions) {
-      for (const k of s.knownChunks) this.awakeChunks.add(k);
-    }
+    this.rebuildAwakeChunks();
     for (const [eid, npc] of this.npcs) {
       const pos = this.positions.must(eid);
       if (npc.attackCooldown > 0) npc.attackCooldown--;
@@ -24449,15 +24574,9 @@ export class GameServer {
         const lays = npc.def.lays;
         npc.nextLayAt = now + (lays.minSec + Math.random() * (lays.maxSec - lays.minSec)) * 1000;
         const key = this.entityChunk.get(eid);
-        let watched = false;
-        if (key) {
-          for (const s of this.sessions) {
-            if (s.knownChunks.has(key)) {
-              watched = true;
-              break;
-            }
-          }
-        }
+        // The awake union above already speaks plane-first keys — the
+        // same watcher test the doze gate uses.
+        const watched = key !== undefined && this.awakeChunks.has(key);
         if (watched && this.nearbyDropCount(pos.plane, lays.item, pos.x, pos.y, 6) < 4) {
           const scatter = () => (Math.random() - 0.5) * 0.7;
           this.spawnDrop(pos.plane, lays.item, 1, pos.x + scatter(), pos.y + scatter(), null, {
@@ -24516,7 +24635,7 @@ export class GameServer {
       let moveY = 0;
 
       if (npc.state === 'chase' && npc.targetEid !== null) {
-        const tpos = this.npcTargetPos(npc.targetEid);
+        const tpos = this.npcTargetPos(npc.targetEid, pos.plane);
         const fromOrigin = Math.hypot(pos.x - npc.originX, pos.y - npc.originY);
         // THE EYE ON THE QUARRY, sampled at scan cadence: seen — the
         // ledger refreshes and the LKP rides the true position;
@@ -24648,7 +24767,7 @@ export class GameServer {
               const centry = npc.def.kit?.[npc.casting.idx];
               const cab = centry ? abilityDef(centry.ability) : undefined;
               if (cab) {
-                this.broadcastFx({
+                this.broadcastFx(pos.plane, {
                   t: 'fx',
                   kind: 'charge',
                   x: pos.x,
@@ -24826,7 +24945,7 @@ export class GameServer {
         // The craven run: still bound to the quarry and the leash,
         // but the legs belong to the errand — reach the packmate,
         // shout, and wheel back into the fight.
-        const tpos = npc.targetEid !== null ? this.npcTargetPos(npc.targetEid) : null;
+        const tpos = npc.targetEid !== null ? this.npcTargetPos(npc.targetEid, pos.plane) : null;
         const fromOrigin = Math.hypot(pos.x - npc.originX, pos.y - npc.originY);
         if (!tpos || npc.targetEid === null || fromOrigin > npc.def.leashRange) {
           // The quarry vanished (or the run outran the leash): the
@@ -25138,7 +25257,7 @@ export class GameServer {
             const pr = beastPartRadius(walker, this.tickCount);
             if (pr <= 0) continue;
             const wpos = this.positions.get(wEid);
-            if (!wpos) continue;
+            if (!wpos || wpos.plane !== pos.plane) continue;
             const pd = Math.hypot(pos.x - wpos.x, pos.y - wpos.y);
             if (pd > pr || pd < 0.01) continue;
             moveX = ((pos.x - wpos.x) / pd) * 0.5;
@@ -25308,7 +25427,9 @@ export class GameServer {
     if (!drop) return;
     const pos = this.positions.get(dropEid);
     const ppos = this.positions.get(eid);
-    if (!pos || !ppos) return;
+    // Same plane or no reach: all rifts share coordinates, and a
+    // guessed eid must never loot another run's floor.
+    if (!pos || !ppos || pos.plane !== ppos.plane) return;
     const dx = ppos.x - pos.x;
     const dy = ppos.y - pos.y;
     // Interact radius plus a little slack for a moving reacher.

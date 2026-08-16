@@ -227,7 +227,7 @@ export class AccountStore {
       return { ok: false, reason: 'Unknown username or wrong password' };
     }
     const character = await this.db.get<CharacterRow>(
-      'SELECT id, account_id, name, x, y, hp, home_x, home_y, hearth_at, waypoint_x, waypoint_y, raid_calm_until, hearth_warded FROM characters WHERE account_id = ? ORDER BY id LIMIT 1',
+      'SELECT id, account_id, name, plane, x, y, hp, home_x, home_y, hearth_at, waypoint_x, waypoint_y, waypoint_plane, raid_calm_until, hearth_warded FROM characters WHERE account_id = ? ORDER BY id LIMIT 1',
       [acc.id],
     );
     if (!character) return { ok: false, reason: 'Account has no character' };
@@ -258,7 +258,7 @@ export class AccountStore {
     );
     if (!row) return { ok: false, reason: 'Session expired' };
     const character = await this.db.get<CharacterRow>(
-      'SELECT id, account_id, name, x, y, hp, home_x, home_y, hearth_at, waypoint_x, waypoint_y, raid_calm_until, hearth_warded FROM characters WHERE account_id = ? ORDER BY id LIMIT 1',
+      'SELECT id, account_id, name, plane, x, y, hp, home_x, home_y, hearth_at, waypoint_x, waypoint_y, waypoint_plane, raid_calm_until, hearth_warded FROM characters WHERE account_id = ? ORDER BY id LIMIT 1',
       [row.account_id],
     );
     if (!character) return { ok: false, reason: 'Account has no character' };

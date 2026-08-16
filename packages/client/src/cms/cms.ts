@@ -277,9 +277,16 @@ export async function refreshSites(): Promise<void> {
   }
 }
 
-/** Zone whose rect contains a world tile, for "open in Map Studio". */
-export function zoneAt(x: number, y: number): ZoneRect | null {
+/**
+ * Zone whose rect contains a world tile, for "open in Map Studio".
+ * THE WORLDS APART: rects legitimately overlap across planes (the
+ * Undercroft lies over open surface wilderness), so containment
+ * filters by plane. Callers without plane context read the surface —
+ * spawn-site rows carry no plane on the wire today.
+ */
+export function zoneAt(x: number, y: number, plane = 'surface'): ZoneRect | null {
   for (const z of state.zones) {
+    if ((z.plane ?? 'surface') !== plane) continue;
     if (x >= z.origin.x && y >= z.origin.y && x < z.origin.x + z.width && y < z.origin.y + z.height) {
       return z;
     }

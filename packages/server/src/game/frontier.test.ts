@@ -661,7 +661,7 @@ function raidSlate(player: Partial<RaidPlayer> = {}) {
     players: new Map([[11, p]]),
     positions: new Map([[11, { plane: 'surface', x: p.home?.x ?? 0, y: p.home?.y ?? 0 }]]),
     characterEids: new Map([[p.characterId, 11]]),
-    broadcastFx: (f: { kind: string }) => fx.push(f.kind),
+    broadcastFx: (_plane: unknown, f: { kind: string }) => fx.push(f.kind),
     setPlayerFlag: (pl: RaidPlayer, flag: string) => pl.flags.set(flag, 1),
     recordDiscovery: (_pl: unknown, d: { id: string }) => discovered.push(d.id),
     raidTrace: [] as string[],

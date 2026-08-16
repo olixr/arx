@@ -476,7 +476,11 @@ export class Session {
       case 'waypoint': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;
-        this.game.setWaypoint(this.playerEid, msg.x, msg.y);
+        // The pin names its plane (post-ship audit: dropping the tag
+        // here silently migrated every underworld waypoint onto the
+        // surface chart at relog). setWaypoint still owns the law —
+        // persistent planes only, garbage refused.
+        this.game.setWaypoint(this.playerEid, msg.x, msg.y, msg.plane);
         return;
       }
       case 'questabandon': {

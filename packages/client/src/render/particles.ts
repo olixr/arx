@@ -1214,6 +1214,26 @@ export class Particles {
   private readonly boltNx: number[] = new Array(16).fill(0);
   private readonly boltNy: number[] = new Array(16).fill(0);
 
+  /**
+   * THE CROSSING: every live grain dies where it flew and every
+   * emitter falls silent — particles are position-keyed matter, and a
+   * survivor would rain another plane's weather here. The dead return
+   * to the free lists, so the warm pool stays warm; the landing queue
+   * empties too (those contacts happened on ground we just left).
+   */
+  clear(): void {
+    for (const p of this.pool) this.free.push(p);
+    this.pool.length = 0;
+    this.capCursor = 0;
+    for (const e of this.emitters) {
+      e.alive = false;
+      e.pops = null;
+      this.emitterFree.push(e);
+    }
+    this.emitters.length = 0;
+    this.landingCount = 0;
+  }
+
   /** Live particle count (tests + budget audits). */
   count(): number {
     return this.pool.length;

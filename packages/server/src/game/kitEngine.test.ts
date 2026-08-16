@@ -64,7 +64,7 @@ function slate(opts: { hp?: { hp: number; maxHp: number } } = {}) {
     healths: new Map([[7, opts.hp ?? { hp: 100, maxHp: 100 }]]),
     world: { isSolid: () => false },
     worldOf: () => ({ isSolid: () => false }),
-    broadcastFx: (f: Record<string, unknown>) => fx.push(f),
+    broadcastFx: (_plane: unknown, f: Record<string, unknown>) => fx.push(f),
     castAbility: (_eid: number, ab: { id: string }, aim: number, ...rest: unknown[]) => {
       casts.push({ ab, aim, pt: rest[3] as { x: number; y: number } | undefined });
     },

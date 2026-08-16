@@ -1028,6 +1028,27 @@ const MIGRATIONS: string[] = [
   ALTER TABLE signs ADD PRIMARY KEY (plane, tx, ty);
   ALTER TABLE character_explored DROP CONSTRAINT character_explored_pkey;
   ALTER TABLE character_explored ADD PRIMARY KEY (character_id, plane, rx, ry);`,
+  // v37: THE WORLDS APART aftercare — the post-ship audit found two
+  // classes of pre-split instance-band rows (y >= 8192, the old
+  // dungeon slots) that survived v36's frozen treaty on the wrong
+  // plane. A character crash-abandoned mid-dungeon kept y >= 8192 and
+  // was left tagged 'surface' — but that band is now real open
+  // frontier, so the old coordinate rescue can no longer recognize
+  // them; re-tag them onto a rift plane that no longer stands and the
+  // standing login rescue wakes them at spawn, exactly as the old law
+  // did. Their stale instance-band waypoint (if any) dies with the
+  // run it pointed into. Wall hangings nailed to old instance walls
+  // (the one pre-split build verb that never refused the band) were
+  // swept into 'underworld' by v36's unbounded ty backfill and would
+  // rehydrate forever as unreachable orphans in solid rock — those
+  // rows die here, with the same sweep over tiles and signs for
+  // symmetry (no write path could create them; a hand-planted row
+  // must not resurrect either).
+  `UPDATE characters SET plane = 'rift:legacy' WHERE plane = 'surface' AND y >= 8192;
+  UPDATE characters SET waypoint_x = NULL, waypoint_y = NULL, waypoint_plane = NULL WHERE waypoint_y >= 8192;
+  DELETE FROM built_details WHERE plane = 'underworld' AND ty >= 8192;
+  DELETE FROM built_tiles WHERE plane = 'underworld' AND ty >= 8192;
+  DELETE FROM signs WHERE plane = 'underworld' AND ty >= 8192;`,
 ];
 
 /**

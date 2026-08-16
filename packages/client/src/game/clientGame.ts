@@ -1479,6 +1479,59 @@ export class ClientGame {
     ];
   }
 
+  /**
+   * THE CROSSING's reset work (docs/planes-plan.md §2.4), shared by
+   * BOTH doors — the 'plane' message and a reconnect welcome that
+   * wakes on a different plane than the one on screen. Everything
+   * streamed before this moment belongs to a space that no longer
+   * surrounds the player: drop it all and let the fresh plane stream
+   * in behind the veil. POST-SHIP AUDIT: ephemeral matter is world
+   * matter too — a queued death, a floating word, a spent shaft all
+   * carry old-plane coordinates.
+   *
+   * `at` is the carried standing point; the welcome door passes none
+   * (welcome carries no coordinates — the own body's 'enter' seats
+   * the predictor, exactly as every welcome always has).
+   */
+  private crossPlane(plane: PlaneWire, at?: Vec2): void {
+    this.plane = plane;
+    this.world.dropAll();
+    this.chunkWallFlags.clear();
+    this.entities.clear();
+    this.projHandoffs.clear();
+    this.ownShots.length = 0;
+    if (at) this.predictor.reset({ x: at.x, y: at.y });
+    this.autoPath = null;
+    this.pendingPickup = null;
+    clearFarmMirror();
+    this.signs.clear();
+    this.fx.length = 0;
+    // A same-tick kill drains AFTER the switch — an unswept queue
+    // would ragdoll the victim onto the new plane.
+    this.npcDeaths.length = 0;
+    this.floaties.length = 0;
+    this.words.length = 0;
+    this.projectileEnds.length = 0;
+    // Keyed "x,y" with no plane; the client re-requests the ledger on
+    // entering build mode, so clearing is correct.
+    this.ownBuilt = new Set();
+    // Defense-in-depth: entering a scratch plane must never inherit a
+    // previous run's fog (a harmless double-clear when the 'dungeon'
+    // message also arrives).
+    if (!plane.persistent) this.dungeonExplored.clear();
+    this.worldVersion++;
+    this.interiorsVersion++;
+    this.chartVersion++;
+    this.events.onPlane?.(plane);
+  }
+
+  /**
+   * True once a welcome has seated this client in a world — the gate
+   * that keeps THE SECOND DOOR shut over the login screen (a first
+   * welcome's caches are empty; no veil is wanted there).
+   */
+  private stoodInWorld = false;
+
   private handleMessage(msg: S2CMessage): void {
     switch (msg.t) {
       case 'welcome': {
@@ -1501,12 +1554,24 @@ export class ClientGame {
         // THE WORLDS APART: the welcome names the waking plane; every
         // chart starts over (the login push refills the persistent
         // masks plane by plane).
-        this.plane = msg.plane ?? {
+        const wake: PlaneWire = msg.plane ?? {
           id: 'surface',
           name: '',
           underground: false,
           persistent: true,
         };
+        // THE SECOND DOOR (post-ship audit): a reconnect can wake on a
+        // DIFFERENT plane than the one on screen — the wire died during
+        // a server-side transfer, and the 'plane' message it carried
+        // died with it. Without the crossing reset every old-plane
+        // cache survives and the client renders a mixed world. The
+        // first welcome of a session never fires it.
+        if (this.stoodInWorld && wake.id !== this.plane.id) {
+          this.crossPlane(wake);
+        } else {
+          this.plane = wake;
+        }
+        this.stoodInWorld = true;
         this.exploredByPlane.clear();
         this.dungeonExplored.clear();
         this.discoveries.clear();
@@ -1960,25 +2025,10 @@ export class ClientGame {
       }
       case 'plane': {
         // THE CROSSING (docs/planes-plan.md §2.4) — the ONE reset
-        // door. Everything streamed before this message belongs to a
-        // space that no longer surrounds the player: drop it all,
-        // stand the body at the carried point, and let the fresh
-        // plane stream in behind the veil.
-        this.plane = msg.plane;
-        this.world.dropAll();
-        this.chunkWallFlags.clear();
-        this.entities.clear();
-        this.projHandoffs.clear();
-        this.ownShots.length = 0;
-        this.predictor.reset({ x: msg.x, y: msg.y });
-        this.autoPath = null;
-        this.pendingPickup = null;
-        clearFarmMirror();
-        this.signs.clear();
-        this.worldVersion++;
-        this.interiorsVersion++;
-        this.chartVersion++;
-        this.events.onPlane?.(msg.plane);
+        // door (the reconnect welcome above is its twin). Drop it
+        // all, stand the body at the carried point, and let the
+        // fresh plane stream in behind the veil.
+        this.crossPlane(msg.plane, { x: msg.x, y: msg.y });
         break;
       }
       case 'dlgopen': {
@@ -2254,15 +2304,25 @@ export class ClientGame {
       case 'waypoint': {
         // The server plants the mark (a guard's bounty) — adopted
         // exactly as if the player pinned it: pin, pill, chart redraw.
-        this.waypoint = msg.x !== undefined && msg.y !== undefined ? { x: msg.x, y: msg.y } : null;
+        // The plane rides along so a tagged mark files onto its own
+        // chart (server pushes today are surface; absent = surface).
+        this.waypoint =
+          msg.x !== undefined && msg.y !== undefined ? { x: msg.x, y: msg.y, plane: msg.plane } : null;
         this.chartVersion++;
         break;
       }
       case 'deathmark': {
         // The walk-back beacon: duration on the wire, stamped against
-        // the local clock here (clocks drift; durations don't).
+        // the local clock here (clocks drift; durations don't). The
+        // plane rides along so the skull files onto the RIGHT chart —
+        // a death in the underworld must not mark the surface.
         this.deathMark = msg.mark
-          ? { x: msg.mark.x, y: msg.mark.y, until: Date.now() + msg.mark.remainMs }
+          ? {
+              x: msg.mark.x,
+              y: msg.mark.y,
+              until: Date.now() + msg.mark.remainMs,
+              plane: msg.mark.plane,
+            }
           : null;
         this.chartVersion++;
         break;

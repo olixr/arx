@@ -1438,6 +1438,19 @@ export class Renderer {
     this.bedFlips.clear();
     this.lighting.dropWorld();
     this.grass.dropWorld();
+    // POST-SHIP AUDIT: ephemeral matter is world matter too. A corpse,
+    // a stuck arrow, a footprint, or a live spark holds old-plane
+    // coordinates — left alone it would haunt the identical address in
+    // the world we just arrived in.
+    this.corpses.length = 0;
+    this.downedRags.clear();
+    this.stuckArrows.length = 0;
+    this.fallingShafts.length = 0;
+    this.fxDecals.length = 0;
+    this.fxBeats.length = 0;
+    this.trailPrints.length = 0;
+    this.particles.clear();
+    this.debris.clear();
   }
   /** Per-frame queue of chunks with pending sliced bakes (scan order:
    *  visible chunks first, then the pre-bake ring). Scratch, rebuilt

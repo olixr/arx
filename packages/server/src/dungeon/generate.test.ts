@@ -376,6 +376,23 @@ test('THE WAY HOME OPENS: the court keeps a sealed rift-mouth, floor until earne
   }
 });
 
+test('THE WAY HOME NAMES ITS PLANE: both exits carry the return plane explicitly', () => {
+  // A rift plane's coordinates mean nothing to the frozen y-law — an
+  // exit without a declared destPlane would be re-filed by dest.y and
+  // could strand the run's survivors on the wrong world.
+  const { zone, courtExit } = gen(7919);
+  assert.ok(courtExit, 'the court seats a way home');
+  const portals = zone.portals ?? [];
+  assert.equal(portals.length, 2, 'the landing exit and the court rift-mouth');
+  for (const p of portals) {
+    assert.equal(
+      p.destPlane,
+      RETURN.plane,
+      `exit portal at ${p.x},${p.y} forgot the plane it returns to`,
+    );
+  }
+});
+
 test('THE TURNED SEED: modifiers are pure, tier-budgeted, and distinct', () => {
   for (let seed = 1; seed <= 200; seed++) {
     for (const tier of RARITY_TIERS) {

@@ -76,7 +76,7 @@ function slate(player: FakePlayer) {
   const self = {
     tickCount: 100,
     positions: { get: () => pos, must: () => pos },
-    broadcastFx: (fx: Record<string, unknown>) => fxOut.push(fx),
+    broadcastFx: (_plane: unknown, fx: Record<string, unknown>) => fxOut.push(fx),
     setPose: () => undefined,
     revealPlayer: () => undefined,
     sendCooldowns: () => undefined,

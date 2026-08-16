@@ -506,6 +506,13 @@ export interface ZoneRect {
   origin: { x: number; y: number };
   width: number;
   height: number;
+  /**
+   * THE WORLDS APART: the plane this rect stamps. Planes legitimately
+   * overlap in coordinates, so a containment scan must filter by
+   * plane or a surface site inside the Undercroft's rect resolves to
+   * the underworld zone. Absent (older server) = 'surface'.
+   */
+  plane?: string;
 }
 
 export async function listZoneRects(): Promise<ZoneRect[]> {

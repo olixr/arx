@@ -1068,6 +1068,10 @@ export class EditorOps {
           x: z.origin.x + at.x + pt.dx,
           y: z.origin.y + at.y + pt.dy,
           ...(pt.delve ? { delve: true } : { dest: pt.dest ?? { x: z.origin.x, y: z.origin.y } }),
+          // A captured cross-plane door keeps its far side (THE WORLDS
+          // APART) — absent falls to the legacy derivation like any
+          // untagged portal.
+          ...(pt.destPlane ? { destPlane: pt.destPlane } : {}),
         });
       }
       for (const s of p.spawns) {

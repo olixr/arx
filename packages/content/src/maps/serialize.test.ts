@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Tile } from '@arx/shared';
+import { SURFACE_PLANE_ID, UNDERWORLD_PLANE_ID, portalDestPlane } from '../planes.js';
 import { zoneFromJson, zoneToJson } from './serialize.js';
 import { validateZone, zonePlacementErrors } from './validateZone.js';
 import type { ZoneDef } from './types.js';
@@ -76,6 +77,49 @@ test('zone JSON round trip carries every ZoneDef field whole', () => {
     return rest;
   };
   assert.deepEqual(strip(back), strip(zone));
+});
+
+/**
+ * THE ASYMMETRY IS THE LAW (planes audit findings 1/2): reads backfill
+ * by the frozen y-law — exact for legacy data authored before the
+ * split — but writes DECLARE. An untagged live ZoneDef is a surface
+ * zone (builders default to surface), and deriving its plane from
+ * origin.y on save once filed adopted south-frontier POIs and Studio
+ * saves at y>=512 as underworld — the zone vanished into rock on the
+ * next boot.
+ */
+test('an untagged live zone saves as surface even deep in the south', () => {
+  const zone = fullZone();
+  delete zone.plane;
+  zone.origin = { x: 100, y: 700 }; // south of the old y=512 treaty line
+  assert.equal(
+    zoneToJson(zone).plane,
+    SURFACE_PLANE_ID,
+    'zoneToJson must declare surface for an untagged live def, never consult the frozen y-law',
+  );
+});
+
+test('zoneFromJson backfills ONLY untagged (legacy) files, by the frozen y-law', () => {
+  const json = JSON.parse(JSON.stringify(zoneToJson(fullZone())));
+  delete json.plane;
+  json.origin = { x: 100, y: 200 };
+  assert.equal(zoneFromJson(json).plane, SURFACE_PLANE_ID, 'legacy north reads surface');
+  json.origin = { x: 100, y: 700 };
+  assert.equal(zoneFromJson(json).plane, UNDERWORLD_PLANE_ID, 'legacy south reads underworld');
+  // A tagged file is taken at its word — the south is open frontier now.
+  json.plane = SURFACE_PLANE_ID;
+  assert.equal(zoneFromJson(json).plane, SURFACE_PLANE_ID, 'the explicit tag always wins');
+});
+
+test('portalDestPlane: explicit tag wins, legacy law only for untagged doors', () => {
+  // The explicit tag beats the y-derivation on BOTH sides of 512.
+  assert.equal(portalDestPlane({ dest: { x: 0, y: 700 }, destPlane: SURFACE_PLANE_ID }), SURFACE_PLANE_ID);
+  assert.equal(portalDestPlane({ dest: { x: 0, y: 100 }, destPlane: UNDERWORLD_PLANE_ID }), UNDERWORLD_PLANE_ID);
+  // Untagged doors fall to the frozen law, exact for pre-split authors.
+  assert.equal(portalDestPlane({ dest: { x: 0, y: 511 } }), SURFACE_PLANE_ID);
+  assert.equal(portalDestPlane({ dest: { x: 0, y: 512 } }), UNDERWORLD_PLANE_ID);
+  // A destless delve mints its dest at run time — it answers surface.
+  assert.equal(portalDestPlane({}), SURFACE_PLANE_ID);
 });
 
 test('the placement vet refuses the corrupt shapes the decoder passed through', () => {

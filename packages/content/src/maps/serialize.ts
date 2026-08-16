@@ -1,4 +1,4 @@
-import { legacyPlaneOfY, type PlaneId } from '../planes.js';
+import { SURFACE_PLANE_ID, legacyPlaneOfY, type PlaneId } from '../planes.js';
 import type { PortalDef, ZoneActorSpawn, ZoneDef, ZoneSign, ZoneSpawn } from './types.js';
 
 /**
@@ -14,7 +14,11 @@ export interface ZoneJson {
    * The plane this zone stamps. Absent in legacy files (pre-split);
    * zoneFromJson backfills those by the frozen y-law. Every new save
    * writes it explicitly — after the south opened, origin.y no longer
-   * implies a plane.
+   * implies a plane. The asymmetry is the whole law: READS backfill
+   * (the frozen y-law is exact for data authored before the split),
+   * WRITES declare (a live ZoneDef without a tag IS a surface zone —
+   * builders default to surface — and must never be re-derived from
+   * a y that stopped meaning anything).
    */
   plane?: PlaneId;
   origin: { x: number; y: number };
@@ -89,9 +93,13 @@ export function zoneToJson(zone: ZoneDef): ZoneJson {
   return {
     id: zone.id,
     name: zone.name,
-    // Always explicit on the way out: a re-saved legacy file gains the
-    // tag and leaves the frozen y-derivation behind forever.
-    plane: zone.plane ?? legacyPlaneOfY(zone.origin.y),
+    // Always explicit on the way out — and DECLARED, never derived.
+    // An untagged live ZoneDef is a surface zone by law (builders
+    // default to surface; zoneFromJson already backfilled any legacy
+    // file at load). Consulting the frozen y-law here once sank
+    // adopted south-frontier POIs and Studio saves at y>=512 into
+    // underworld rock on the next boot.
+    plane: zone.plane ?? SURFACE_PLANE_ID,
     origin: zone.origin,
     width: zone.width,
     height: zone.height,

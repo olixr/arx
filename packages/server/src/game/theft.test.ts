@@ -60,9 +60,9 @@ function slate(opts: {
     tickCount: 100,
     players: new Map([[11, player]]),
     positions: new Map([
-      [11, { x: 5, y: 5, dir: 0 }],
-      [21, { x: 6, y: 5, dir: 0 }],
-      [31, { x: 9, y: 5, dir: 0 }],
+      [11, { plane: 'surface', x: 5, y: 5, dir: 0 }],
+      [21, { plane: 'surface', x: 6, y: 5, dir: 0 }],
+      [31, { plane: 'surface', x: 9, y: 5, dir: 0 }],
     ]),
     actors,
     npcs: new Map(),
@@ -72,6 +72,11 @@ function slate(opts: {
       isSolid: (px: number) => opts.walled === true && px === 7,
     },
     get surface() {
+      return this['world'];
+    },
+    // THE WORLDS APART: the witness eye asks for the theft's own
+    // plane's walls now — the slate's one world answers for it.
+    worldOf() {
       return this['world'];
     },
     effectiveLevel: () => 50,
@@ -104,10 +109,10 @@ function lift(s: Record<string, unknown>, rolls: number[]): string[] {
       s,
       11,
       (s.players as Map<number, FakePlayer>).get(11),
-      { x: 5, y: 5, dir: 0 },
+      { plane: 'surface', x: 5, y: 5, dir: 0 },
       21,
       (s.actors as Map<number, unknown>).get(21),
-      { x: 6, y: 5, dir: 0 },
+      { plane: 'surface', x: 6, y: 5, dir: 0 },
       (t: string) => lines.push(t),
     );
   } finally {

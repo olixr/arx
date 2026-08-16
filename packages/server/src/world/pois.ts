@@ -17,6 +17,7 @@ import {
 import {
   FRONTIER,
   MINOR_DEFS,
+  SURFACE_PLANE_ID,
   PLANNED_ZONE_RECTS,
   POI_DEFS,
   POI_PREFABS,
@@ -1683,6 +1684,10 @@ export function composePoi(
     x: originX + px0 + p.dx,
     y: originY + py0 + p.dy,
     ...(p.dest !== undefined ? { dest: p.dest } : {}),
+    // A cross-plane door rides the stamp whole (THE WORLDS APART):
+    // absent falls to portalDestPlane's legacy law like any untagged
+    // portal, but a prefab that names its far side keeps it.
+    ...(p.destPlane !== undefined ? { destPlane: p.destPlane } : {}),
     ...(p.delve !== undefined ? { delve: p.delve } : {}),
   }));
 
@@ -1711,6 +1716,11 @@ export function composePoi(
   return {
     id: poiZoneId(site.cellX, site.cellY),
     name: def.name,
+    // POIs are surface sites by law — the danger field, the site scan,
+    // and the frontier lifecycle are all surface-implicit — so the
+    // composed zone DECLARES it (the frozen y-law is for legacy files
+    // only; a south-frontier site must never be filed by its y).
+    plane: SURFACE_PLANE_ID,
     origin: { x: originX, y: originY },
     width: zw,
     height: zh,

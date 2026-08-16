@@ -302,6 +302,9 @@ test('a live surge sharpens the basic shaft where it lands', () => {
     broadcastFx: () => {},
     removeFromChunks: () => {},
     updateChunkMembership: () => {},
+    // THE WORLDS APART: the tick refuses shots on planes that no
+    // longer stand — the slate's one plane always stands.
+    planes: { get: () => ({}) },
     ecs: { destroy: () => {} },
     tickProjectiles: proto.tickProjectiles,
     // ONE STEP OF FLIGHT: the loop body lives in its own door now, so
@@ -340,7 +343,7 @@ test('chain per-jump fx carry the `<action>:<procId>` id, same as the closing br
     forEachNpcNear: proto.forEachNpcNear,
     npcsWithin: proto.npcsWithin,
     damageNpc: () => {},
-    broadcastFx: (m: { id?: string; x2?: number }) => fx.push(m),
+    broadcastFx: (_plane: unknown, m: { id?: string; x2?: number }) => fx.push(m),
     runProc: proto.runProc,
   };
   const player = { gear: { procs: [chainProc] }, procs: new Map(), buffs: [] };

@@ -92,7 +92,8 @@ function slate(opts: {
     },
     setWorldDetail: (_plane: string, _tx: number, _ty: number, detail: number) =>
       events.push(`detailPatch:${detail}`),
-    broadcastFx: (fx: Record<string, unknown>) => events.push(`fx:${fx['kind']}:${fx['id']}`),
+    broadcastFx: (_plane: unknown, fx: Record<string, unknown>) =>
+      events.push(`fx:${fx['kind']}:${fx['id']}`),
     setWorldTile: (_plane: string, _tx: number, _ty: number, tile: number) => events.push(`patch:${tile}`),
     placeDrop: (_plane: string, item: string, qty: number) => drops.push({ item, qty }),
     tileHoldsBody: () => opts.bodyOnTile ?? false,
