@@ -1044,6 +1044,19 @@ interface NpcComp {
    * the walk home + the sulk. Seeded at the aggro door.
    */
   gritTicksLeft?: number;
+  /**
+   * THE COMMITTED PURSUIT: the tick the eye's grace ran out and the
+   * blind run began — set once per sight-break (the anticipated goal
+   * is minted the same beat), cleared the moment the eye holds the
+   * quarry again. undefined = the eye is (or was last) on them.
+   */
+  pursuitSinceTick?: number;
+  /**
+   * The escape bearing the spent stride pointed down (radians) — a
+   * search's FIRST second look leans this way: they check ahead
+   * before they fan out. Cleared when the hunt ends or a fight opens.
+   */
+  huntBiasDir?: number;
   /** Memoized resolved heart (npcTemper) — recut when the def swaps. */
   temper?: ResolvedTemperament;
   temperFor?: NpcDef;
@@ -24902,11 +24915,14 @@ export class GameServer {
     npc.losUntilTick = 0;
     // The interest ledger opens with the fight: full awareness, eyes
     // on the quarry, sight-loss clock freshly wound, stride ledger
-    // cleared (a stale stride would fling the first search sideways).
+    // cleared (a stale stride would fling the first search sideways),
+    // and any old blind run or hunt bias forgotten with it.
     npc.alert = ALERT_MAX;
     npc.alertEid = targetEid;
     npc.alertVelX = 0;
     npc.alertVelY = 0;
+    npc.pursuitSinceTick = undefined;
+    npc.huntBiasDir = undefined;
     npc.alertSeenTick = this.tickCount;
     const tpos = this.positions.get(targetEid);
     if (tpos) {
@@ -25306,11 +25322,62 @@ export class GameServer {
   }
 
   /**
-   * The quarry slipped the eye mid-fight: the chase becomes a HUNT.
-   * Feet go to the last-known ground, then a ring of nearby second
-   * looks, then the body gives it up and walks home. targetEid drops
-   * here — the DETECTED chip goes dark, which is exactly the
-   * player's signal that the chain is broken and hiding is working.
+   * "HE WENT THAT WAY" — THE COMMITTED PURSUIT's anticipation, and
+   * the search's, as ONE unit: project the last-seen point along the
+   * quarry's last-seen stride, capped at the heart's anticipateTiles
+   * (a wolf cuts the corner six tiles deep; a skeleton runs to where
+   * it SAW you). A projection landing inside a solid falls back by
+   * halves. The stride is SPENT here (zeroed) so the projection can
+   * never compound — the blind run consumes it, and a later search
+   * start finds nothing left to re-project — and its bearing is kept
+   * as the hunt's forward bias (they check ahead before fanning out).
+   */
+  private npcAnticipatePursuit(eid: EntityId, npc: NpcComp): void {
+    const stride = Math.hypot(npc.alertVelX, npc.alertVelY);
+    if (stride <= 0.02) return;
+    npc.huntBiasDir = Math.atan2(npc.alertVelY, npc.alertVelX);
+    const lead = this.npcTemper(npc).anticipateTiles;
+    if (lead > 0) {
+      const capK = Math.min(1, lead / (stride * 30));
+      for (const k of [capK, capK / 2]) {
+        const px = npc.alertX + npc.alertVelX * 30 * k;
+        const py = npc.alertY + npc.alertVelY * 30 * k;
+        if (!circleHitsSolid(this.worldOf(this.positions.must(eid).plane), px, py, npc.def.radius)) {
+          npc.alertX = px;
+          npc.alertY = py;
+          break;
+        }
+      }
+    }
+    npc.alertVelX = 0;
+    npc.alertVelY = 0;
+  }
+
+  /**
+   * THE COMMITTED PURSUIT's verdict: the blind run concedes when the
+   * body REACHES the anticipated ground with nothing there, or when
+   * the heart's pursuitSec runs out on a corner it never reached.
+   * Never before — the eye's grace ending does NOT end the chase on
+   * the spot; the legs finish the corner first. False while the eye
+   * still holds (pursuitSinceTick unset).
+   */
+  private npcPursuitSpent(npc: NpcComp, pos: { x: number; y: number }): boolean {
+    if (npc.pursuitSinceTick === undefined) return false;
+    if (Math.hypot(npc.alertX - pos.x, npc.alertY - pos.y) < 0.9) return true;
+    return (
+      this.tickCount - npc.pursuitSinceTick >
+      Math.round(this.npcTemper(npc).pursuitSec * TICK_RATE)
+    );
+  }
+
+  /**
+   * The quarry slipped the eye mid-fight AND the committed blind run
+   * came up empty: the chase becomes a HUNT. Feet comb the ground
+   * where the run concluded — a ring of second looks, the first
+   * leaning down the escape bearing — then the body gives it up and
+   * walks home. targetEid drops here — the DETECTED chip goes dark,
+   * which is exactly the player's signal that the chain is broken
+   * and hiding is working.
    */
   private npcStartSearch(eid: EntityId, npc: NpcComp): void {
     npc.state = 'search';
@@ -25319,6 +25386,7 @@ export class GameServer {
     // A lost quarry ends the cast, the combo, and the run as one act.
     this.resetBossEngagement(eid, npc);
     npc.helpEid = null;
+    npc.pursuitSinceTick = undefined;
     // The hunt's clock is the heart's: the authored searchSec through
     // this body's quirk, then a fresh ×1..1.5 roll per hunt — the
     // default 20 s lives as the 20–30 s window, and no two escapes
@@ -25331,23 +25399,12 @@ export class GameServer {
     npc.huntIdx = 0;
     npc.huntWaitUntilTick = 0;
     npc.standTicks = 0;
-    // "HE WENT THAT WAY": project the last-seen point along the
-    // quarry's last-seen stride (capped ~4 tiles), so the hunt
-    // carries past the corner instead of stopping dead at it. A
-    // projection that lands inside a solid falls back by halves.
-    const stride = Math.hypot(npc.alertVelX, npc.alertVelY);
-    if (stride > 0.02) {
-      const capK = Math.min(1, 4 / (stride * 30));
-      for (const k of [capK, capK / 2]) {
-        const px = npc.alertX + npc.alertVelX * 30 * k;
-        const py = npc.alertY + npc.alertVelY * 30 * k;
-        if (!circleHitsSolid(this.worldOf(this.positions.must(eid).plane), px, py, npc.def.radius)) {
-          npc.alertX = px;
-          npc.alertY = py;
-          break;
-        }
-      }
-    }
+    // A quarry that VANISHED outright (stealth melt, a burst decoy, a
+    // plane crossed) never ran the committed leg — the stride is
+    // still live, so the projection fires here instead. After a blind
+    // run it was already spent (zeroed) and this is a no-op: the one
+    // stride is never cashed twice.
+    this.npcAnticipatePursuit(eid, npc);
     // THE HUNT UNCHAINED: the search anchors WHERE THE QUARRY
     // VANISHED — a sight-break at the end of a long pull hunts the
     // hedgerow the player ducked behind, never a spot teleported back
@@ -25369,6 +25426,7 @@ export class GameServer {
     npc.state = 'return';
     npc.windupTicks = 0;
     npc.huntWps = null;
+    npc.huntBiasDir = undefined;
     // Below the suspicious threshold, or arrival would re-trip it.
     npc.alert = Math.min(npc.alert, ALERT_SUS - 5);
     npc.navBest = Infinity;
@@ -25402,7 +25460,15 @@ export class GameServer {
   private mintHuntRing(npc: NpcComp, plane: PlaneId, count: number): Array<{ x: number; y: number }> {
     const wps: Array<{ x: number; y: number }> = [];
     for (let attempt = 0; attempt < count * 5 && wps.length < count; attempt++) {
-      const a = Math.random() * Math.PI * 2;
+      // THE FORWARD BIAS: the FIRST second look leans down the escape
+      // bearing the spent stride pointed (±~35°) — a searcher checks
+      // AHEAD before it fans out, which is exactly what a real
+      // pursuer does at a cold corner. The rest of the ring stays
+      // random by design: a search should read as guessing.
+      const a =
+        wps.length === 0 && npc.huntBiasDir !== undefined
+          ? npc.huntBiasDir + (Math.random() - 0.5) * 1.2
+          : Math.random() * Math.PI * 2;
       const r = 2.5 + Math.random() * 2;
       // The ring belongs to the LKP wherever the hunt stands (THE
       // HUNT UNCHAINED) — reachability and solids still gate every
@@ -26036,10 +26102,14 @@ export class GameServer {
         const fromOrigin = Math.hypot(pos.x - npc.originX, pos.y - npc.originY);
         // THE EYE ON THE QUARRY, sampled at scan cadence: seen — the
         // ledger refreshes and the LKP rides the true position;
-        // unseen past the grace — the chase breaks to a HUNT at the
-        // last place the eye held it. Doors slammed, corners cut,
-        // groves crossed: the environment finally pays out.
-        let sightBroke = false;
+        // unseen past the grace — THE COMMITTED PURSUIT: the legs do
+        // NOT concede on the spot. They run the corner to the
+        // last-seen ground projected down the quarry's stride, at
+        // full chase speed, chip still lit — and only ARRIVING with
+        // nothing there (or the heart's pursuitSec running out on a
+        // corner never reached) begins the search. Doors slammed,
+        // corners cut, groves crossed: the environment pays out, but
+        // it pays a body that finishes the corner first.
         if (tpos && (this.tickCount + eid) % GameServer.PERCEPTION_PERIOD === 0) {
           const sdx = tpos.x - pos.x;
           const sdy = tpos.y - pos.y;
@@ -26072,9 +26142,19 @@ export class GameServer {
             npc.alertSeenTick = this.tickCount;
             npc.alertX = tpos.x;
             npc.alertY = tpos.y;
-          } else if (this.tickCount - npc.alertSeenTick >= GameServer.LOSE_SIGHT_TICKS) {
-            sightBroke = true;
           }
+        }
+        // The blind-run ledger, kept EVERY tick (the eye samples at
+        // scan cadence, but arrival at a corner must not wait for a
+        // beat): grace intact — no run; the grace's first expired
+        // tick — mint the anticipated goal once and start the clock;
+        // the eye back on them — the run never happened.
+        const eyeLost = this.tickCount - npc.alertSeenTick >= GameServer.LOSE_SIGHT_TICKS;
+        if (!eyeLost) {
+          npc.pursuitSinceTick = undefined;
+        } else if (npc.pursuitSinceTick === undefined) {
+          npc.pursuitSinceTick = this.tickCount;
+          this.npcAnticipatePursuit(eid, npc);
         }
         // THE ARENA LAW: a crowned foe's fight has authored bounds —
         // arenaR outranks the def's leash when the crown wears one, and
@@ -26105,10 +26185,12 @@ export class GameServer {
           if (!arenaBound) {
             npc.noAggroUntilTick = this.tickCount + GameServer.NO_AGGRO_TICKS;
           }
-        } else if (!tpos || sightBroke) {
-          // The quarry vanished — melted into stealth, slipped the
-          // eye, logged off, or the decoy burst. Nobody shrugs at
-          // that: hunt the last-known ground before walking home.
+        } else if (!tpos || this.npcPursuitSpent(npc, pos)) {
+          // The quarry vanished outright (stealth melt, logout, a
+          // burst decoy) — or the committed blind run came up empty:
+          // arrived at the anticipated corner with nothing there, or
+          // ran out its heart's clock. NOW the hunt begins, exactly
+          // where the pursuit concluded.
           this.npcStartSearch(eid, npc);
         } else {
           const dx = tpos.x - pos.x;
@@ -26355,15 +26437,25 @@ export class GameServer {
               npc.navBest = prog.dist;
               npc.navStuck = 0;
             } else if (++npc.navStuck >= GameServer.CHASE_STALL_TICKS) {
-              // The target is unreachable — parked behind a fence or a
-              // tree pocket the fan can't round. Give up, leash home
-              // (which heals), and sulk: the trap stops paying.
-              npc.state = 'return';
-              npc.targetEid = null;
-              npc.windupTicks = 0;
-              npc.navBest = Infinity;
-              npc.navStuck = 0;
-              npc.noAggroUntilTick = this.tickCount + GameServer.NO_AGGRO_TICKS;
+              if (eyeLost) {
+                // A BLIND run that stalls has hit a sealed corner —
+                // the anticipated ground is walled off. That is not
+                // trap-cheese (nobody is visibly parked anywhere);
+                // the honest read is "lost them": hunt from right
+                // here instead of sulking home.
+                this.npcStartSearch(eid, npc);
+              } else {
+                // The target is VISIBLE and unreachable — parked
+                // behind a fence or a tree pocket the fan can't
+                // round. Give up, leash home (which heals), and
+                // sulk: the trap stops paying.
+                npc.state = 'return';
+                npc.targetEid = null;
+                npc.windupTicks = 0;
+                npc.navBest = Infinity;
+                npc.navStuck = 0;
+                npc.noAggroUntilTick = this.tickCount + GameServer.NO_AGGRO_TICKS;
+              }
             }
           }
         }

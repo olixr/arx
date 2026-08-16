@@ -283,6 +283,22 @@ export interface NpcTemperament {
    */
   gritSec?: number;
   /**
+   * THE COMMITTED PURSUIT: seconds a body keeps RUNNING blind after
+   * the eye loses the quarry — around the corner, to the last-seen
+   * ground and its anticipated overshoot — before conceding to a
+   * search. Arrival with nothing there concedes sooner; this clock
+   * is the cap for a corner it never reaches.
+   */
+  pursuitSec?: number;
+  /**
+   * How far ahead of the last-seen point the blind run leads its
+   * quarry, in tiles along their last stride — "he went THAT way."
+   * High is cunning (wolves cut the corner), low is literal (a
+   * skeleton runs to where it SAW you, not where you went), 0 turns
+   * anticipation off entirely.
+   */
+  anticipateTiles?: number;
+  /**
    * THE QUIRK's reach: per-body spread on one timid↔bold axis rolled
    * once per life. 0 = a uniform species (the drilled, the dead);
    * 0.4 = a rabble where no two bodies share a heart.
@@ -297,6 +313,8 @@ export interface ResolvedTemperament {
   investigateSec: number;
   searchSec: number;
   gritSec: number;
+  pursuitSec: number;
+  anticipateTiles: number;
   variance: number;
 }
 
@@ -314,6 +332,8 @@ export const TEMPERAMENT_DEFAULTS: ResolvedTemperament = {
   investigateSec: 15,
   searchSec: 20,
   gritSec: 45,
+  pursuitSec: 5,
+  anticipateTiles: 4,
   variance: 0.15,
 };
 
@@ -324,6 +344,8 @@ export const TEMPERAMENT_BOUNDS: Record<keyof NpcTemperament, readonly [number, 
   investigateSec: [3, 60],
   searchSec: [5, 90],
   gritSec: [0, 600],
+  pursuitSec: [1, 30],
+  anticipateTiles: [0, 12],
   variance: [0, 0.5],
 };
 
@@ -337,6 +359,8 @@ export function npcTemperament(def: NpcDef): ResolvedTemperament {
     investigateSec: t.investigateSec ?? TEMPERAMENT_DEFAULTS.investigateSec,
     searchSec: t.searchSec ?? TEMPERAMENT_DEFAULTS.searchSec,
     gritSec: t.gritSec ?? TEMPERAMENT_DEFAULTS.gritSec,
+    pursuitSec: t.pursuitSec ?? TEMPERAMENT_DEFAULTS.pursuitSec,
+    anticipateTiles: t.anticipateTiles ?? TEMPERAMENT_DEFAULTS.anticipateTiles,
     variance: t.variance ?? TEMPERAMENT_DEFAULTS.variance,
   };
 }
@@ -362,6 +386,10 @@ export function quirkTemperament(base: ResolvedTemperament, quirk: number): Reso
     investigateSec: base.investigateSec,
     searchSec: clamp(base.searchSec * (1 + q * v * 0.5), TEMPERAMENT_BOUNDS.searchSec),
     gritSec: clamp(base.gritSec * bold, TEMPERAMENT_BOUNDS.gritSec),
+    // The bold run the corner longer; anticipation is species CUNNING,
+    // not courage — the quirk leaves it alone.
+    pursuitSec: clamp(base.pursuitSec * bold, TEMPERAMENT_BOUNDS.pursuitSec),
+    anticipateTiles: base.anticipateTiles,
     variance: v,
   };
 }
@@ -854,8 +882,10 @@ const defs: NpcDef[] = [
     resist: ['bleed'],
     weak: ['burn'],
     // Dull sockets, but the dead do not tire and do not differ: slow
-    // to notice, then a long unhurried hunt with zero variance.
-    temperament: { keen: 0.6, searchSec: 35, gritSec: 150, variance: 0 },
+    // to notice, then a long unhurried hunt with zero variance. The
+    // blind run is LITERAL — bones run to where they SAW you, not
+    // where you went (anticipation 1), and keep coming a long time.
+    temperament: { keen: 0.6, searchSec: 35, gritSec: 150, pursuitSec: 12, anticipateTiles: 1, variance: 0 },
   },
   {
     id: 'skeleton_guard',
@@ -1372,7 +1402,7 @@ const defs: NpcDef[] = [
     pack: 'hobgoblin',
     // The drilled legion: keen, quick to commit, tireless — and
     // UNIFORM on purpose; the discipline is the variance dial at 0.05.
-    temperament: { keen: 1.2, nerve: 0.6, gritSec: 75, variance: 0.05 },
+    temperament: { keen: 1.2, nerve: 0.6, gritSec: 75, pursuitSec: 7, anticipateTiles: 5, variance: 0.05 },
   },
   {
     id: 'hobgoblin_archer',
@@ -2251,7 +2281,7 @@ const defs: NpcDef[] = [
     pounce: true,
     // Short temper, long memory: the stare breaks in half the time,
     // and the pursuit outlasts most legs.
-    temperament: { nerve: 0.5, gritSec: 60, searchSec: 25 },
+    temperament: { nerve: 0.5, gritSec: 60, searchSec: 25, pursuitSec: 6 },
   },
   // THE SHELL WALKS (giant turtles): the pond bank's fortress. A
   // giant turtle hunts nothing — it outlasts everything. Provoke it
@@ -2402,9 +2432,10 @@ const defs: NpcDef[] = [
     attackStatus: { status: 'bleed', power: 1, durationTicks: 60 },
     pounce: true,
     pack: 'wolfkin',
-    // The relentless pack: keen noses, and a chase that survives far
-    // past the circle — the classic drag-it-to-the-gates lure.
-    temperament: { keen: 1.3, gritSec: 90, variance: 0.2 },
+    // The relentless pack: keen noses, a chase that survives far past
+    // the circle (the drag-it-to-the-gates lure), and a corner-cutting
+    // blind run — a wolf chases where you're GOING.
+    temperament: { keen: 1.3, gritSec: 90, pursuitSec: 8, anticipateTiles: 6, variance: 0.2 },
   },
   {
     id: 'worg',
@@ -2432,7 +2463,7 @@ const defs: NpcDef[] = [
     pounce: true,
     pack: 'worg',
     // Wolf heart, harder: the bonded pair does not give up a hunt.
-    temperament: { keen: 1.3, gritSec: 120, variance: 0.2 },
+    temperament: { keen: 1.3, gritSec: 120, pursuitSec: 9, anticipateTiles: 6, variance: 0.2 },
   },
   {
     id: 'dire_wolf',
@@ -2462,7 +2493,7 @@ const defs: NpcDef[] = [
     // answers — the champion fight is the PACK, not the duel.
     kit: [{ ability: 'rallying_howl', cooldownTicks: 150, maxRange: 4.5, rally: true }],
     // The matriarch commits fast and hunts longest of the line.
-    temperament: { keen: 1.4, nerve: 0.6, gritSec: 150, variance: 0.1 },
+    temperament: { keen: 1.4, nerve: 0.6, gritSec: 150, pursuitSec: 10, anticipateTiles: 6, variance: 0.1 },
   },
   {
     // OLD FANG (docs/boss-system-plan.md, the wolf crown): the
@@ -2709,8 +2740,10 @@ const defs: NpcDef[] = [
     pounce: true,
     pack: 'foxkin',
     // The skulk: sees everything, commits late, abandons early — a
-    // fox is a WATCHER first, and only barely a fighter.
-    temperament: { keen: 1.6, nerve: 2.5, gritSec: 12, searchSec: 10, variance: 0.25 },
+    // fox is a WATCHER first, and only barely a fighter. When it DOES
+    // run a corner it reads the line like a hunter (cunning high,
+    // commitment short).
+    temperament: { keen: 1.6, nerve: 2.5, gritSec: 12, searchSec: 10, pursuitSec: 2.5, anticipateTiles: 6, variance: 0.25 },
   },
   // THE DIRE FOX — the smokebrush vixen, the matriarch of the skulk.
   // Never the dire wolf's wall: she is RANGY and faster than anything

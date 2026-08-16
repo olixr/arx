@@ -400,7 +400,7 @@ function npcDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
     // temperament dials — this bench is exactly why they exist.
     // Writing any slider mints the block; the defaults shown are the
     // shared heart every unauthored def already lives by.
-    const heartDial = (key: 'keen' | 'nerve' | 'investigateSec' | 'searchSec' | 'gritSec' | 'variance', v: number) => {
+    const heartDial = (key: 'keen' | 'nerve' | 'investigateSec' | 'searchSec' | 'gritSec' | 'pursuitSec' | 'anticipateTiles' | 'variance', v: number) => {
       (draft.temperament ??= {})[key] = v;
       markDirty();
     };
@@ -411,6 +411,8 @@ function npcDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
       statSlider({ label: 'investigate', value: draft.temperament?.investigateSec ?? TEMPERAMENT_DEFAULTS.investigateSec, min: 3, max: 60, unit: 'sec', note: 'walk-over-and-look budget', onInput: (v) => heartDial('investigateSec', v) }),
       statSlider({ label: 'search', value: draft.temperament?.searchSec ?? TEMPERAMENT_DEFAULTS.searchSec, min: 5, max: 90, unit: 'sec', note: 'post-sight-break hunt; each hunt rolls ×1..1.5', onInput: (v) => heartDial('searchSec', v) }),
       statSlider({ label: 'grit', value: draft.temperament?.gritSec ?? TEMPERAMENT_DEFAULTS.gritSec, min: 0, max: 600, unit: 'sec', note: 'chase life past the leash circle; 0 = hard wall', onInput: (v) => heartDial('gritSec', v) }),
+      statSlider({ label: 'pursuit', value: draft.temperament?.pursuitSec ?? TEMPERAMENT_DEFAULTS.pursuitSec, min: 1, max: 30, step: 0.5, unit: 'sec', note: 'blind run after sight breaks, before the search', onInput: (v) => heartDial('pursuitSec', v) }),
+      statSlider({ label: 'anticipate', value: draft.temperament?.anticipateTiles ?? TEMPERAMENT_DEFAULTS.anticipateTiles, min: 0, max: 12, unit: 'tiles', note: 'blind-run lead down the escape line; 0 = literal', onInput: (v) => heartDial('anticipateTiles', v) }),
       statSlider({ label: 'variance', value: draft.temperament?.variance ?? TEMPERAMENT_DEFAULTS.variance, min: 0, max: 0.5, step: 0.05, note: 'per-BODY spread on one timid↔bold axis', onInput: (v) => heartDial('variance', v) }),
     );
     body.appendChild(

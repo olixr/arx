@@ -177,11 +177,53 @@ Shipped exactly as planned; deltas and law refinements only:
 Gates: content 552 · server 525 · client 617 · tsc clean on
 content/server/client.
 
+## Second pass — THE COMMITTED PURSUIT (2026-08-16, same day)
+
+The user's deepened ask: a sight-break must NOT flip straight into search mode.
+Run the corner first. The audit confirmed the cheat: the first pass (and the
+perception epic before it) broke to 'search' on a flat 2.5 s timer — a body
+still twenty tiles from your corner would drop its chip, slow to 0.85×, and
+start "searching" ground it never reached. Now the blind run is its own
+cohesive unit between the eye and the hunt:
+
+- **The eye's grace ends, the legs do not.** `eyeLost` (grace expired) is kept
+  EVERY tick, not just scan beats. Its first expired tick mints THE ANTICIPATED
+  GOAL once: the LKP projected down the quarry's last stride, capped at the
+  heart's `anticipateTiles`, wall-fallback by halves — and the stride is SPENT
+  (zeroed) so the one stride is never cashed twice. The chase continues at
+  FULL speed, state 'chase', chip lit — the honest-pursuit law already ran
+  blind legs to the LKP, so the anticipation rides the existing rails.
+- **The verdict (`npcPursuitSpent`)**: concede only on ARRIVAL with nothing
+  there (< 0.9 tiles), or when the heart's `pursuitSec` runs out on a corner
+  never reached. `npcStartSearch` then hunts exactly where the pursuit
+  concluded. A quarry that VANISHED outright (stealth melt, burst decoy,
+  plane cross) still searches immediately — the projection fires inside
+  npcStartSearch via the same spent-stride helper, no-op after a blind run.
+- **THE FORWARD BIAS**: the spent stride's bearing is kept (`huntBiasDir`) and
+  the hunt ring's FIRST second look leans down it (±~35°) — a searcher checks
+  ahead before it fans out. The rest of the ring stays random (a search reads
+  as guessing). Cleared at hunt end and at every fight open.
+- **The blind stall is not trap-cheese**: a blind run that stalls against a
+  sealed corner now searches where it stands; only a VISIBLE-and-unreachable
+  target still earns the sulk-home (the trap law intact).
+- **Two new heart dials** (bounds-validated, quirk-scaled, CMS sliders):
+  `pursuitSec` [1, 30] default 5 (bold runs longer — quirk ×) and
+  `anticipateTiles` [0, 12] default 4 (species CUNNING, quirk leaves it
+  alone). Authored: wolves 8–10 s / 6 tiles (they chase where you're GOING),
+  fox 2.5 s / 6 (reads the line, quits fast), skeleton 12 s / 1 (runs to
+  where it SAW you — literal, tireless), hobgoblin 7 / 5, bear 6 / default.
+
+Tests: content +1 (dials + quirk-leaves-cunning), server +5 (anticipation
+leads and spends, lead-0 literal, sealed-ground fallback, the verdict's
+never-before-the-corner law, forward-bias lean; `npcAnticipatePursuit` joined
+the slate binds). Gates: content 553 · server 530 · client 617 · tsc clean.
+
 ## Debts (deliberate)
 
 - The LIVE WALK is owed: the lure-to-town proof (wolf dragged to the Amberford
-  watch through THE WILD TAKES SIDES) belongs on a rig lane with the walk
-  harness — unit clocks are proven, the felt experience is not yet.
+  watch through THE WILD TAKES SIDES) AND the corner-chase read (blind run →
+  overshoot → fan-out) belong on a rig lane with the walk harness — unit
+  clocks are proven, the felt experience is not yet.
 - No hearing/noise stimulus layer (footfall radius behind full walls) — the
   peripheral band still stands in for it.
 - Pet-side temperament (companion grit/keen) untouched — pets ride tickPet.

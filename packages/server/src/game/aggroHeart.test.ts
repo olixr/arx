@@ -95,6 +95,9 @@ function slate(): Record<string, unknown> {
     npcTemper: proto.npcTemper,
     npcRefillGrit: proto.npcRefillGrit,
     npcGritHolds: proto.npcGritHolds,
+    // THE COMMITTED PURSUIT: the search start spends the stride here.
+    npcAnticipatePursuit: (GameServer.prototype as unknown as { npcAnticipatePursuit: AnyFn })
+      .npcAnticipatePursuit,
     npcAggro: proto.npcAggro,
     cancelNpcCast: proto.cancelNpcCast,
     resetBossEngagement: proto.resetBossEngagement,
@@ -208,4 +211,106 @@ test('the shipped hearts: authored species differ where the doc says they do', (
   assert.ok(fox.gritSec < TEMPERAMENT_DEFAULTS.gritSec, 'the skulk abandons early');
   assert.ok(fox.nerve > wolf.nerve, 'the fox studies you longest');
   assert.equal(bones.variance, 0, 'the dead do not differ');
+});
+
+// ─── THE COMMITTED PURSUIT (second pass) ───────────────────────────
+
+const protoPursuit = GameServer.prototype as unknown as {
+  npcAnticipatePursuit: AnyFn;
+  npcPursuitSpent: AnyFn;
+  mintHuntRing: AnyFn;
+};
+
+/** A positions store the proto's `.must` reads can stand on. */
+function positionsStore(): Map<number, unknown> & { must: (eid: number) => unknown } {
+  const m = new Map<number, unknown>() as Map<number, unknown> & {
+    must: (eid: number) => unknown;
+  };
+  m.must = (eid: number) => m.get(eid);
+  return m;
+}
+
+test('THE COMMITTED PURSUIT: anticipation leads the corner and SPENDS the stride', () => {
+  const s = slate();
+  const positions = positionsStore();
+  positions.set(7, { x: 0, y: 0, dir: 0, plane: 0 });
+  s.positions = positions;
+  const npc = fakeNpc({ quirk: 0 }); // default heart: anticipateTiles 4
+  npc.alertX = 10;
+  npc.alertY = 0;
+  npc.alertVelX = 0.2; // a sprinting quarry, due east
+  npc.alertVelY = 0;
+  call(protoPursuit.npcAnticipatePursuit, s, 7, npc);
+  assert.ok(
+    (npc.alertX as number) > 10 && (npc.alertX as number) <= 14.01,
+    `led ${npc.alertX} — must overshoot the corner by up to the lead`,
+  );
+  assert.equal(npc.alertY, 0);
+  assert.equal(npc.huntBiasDir, 0, 'the escape bearing is kept for the hunt');
+  assert.equal(npc.alertVelX, 0, 'the stride is spent');
+  // The one stride is never cashed twice: a second call is a no-op.
+  const led = npc.alertX;
+  call(protoPursuit.npcAnticipatePursuit, s, 7, npc);
+  assert.equal(npc.alertX, led);
+});
+
+test('anticipateTiles 0: the literal runner goes to where it SAW you', () => {
+  const s = slate();
+  const positions = positionsStore();
+  positions.set(7, { x: 0, y: 0, dir: 0, plane: 0 });
+  s.positions = positions;
+  const npc = fakeNpc({ temperament: { anticipateTiles: 0 }, quirk: 0 });
+  npc.alertX = 10;
+  npc.alertVelX = 0.2;
+  call(protoPursuit.npcAnticipatePursuit, s, 7, npc);
+  assert.equal(npc.alertX, 10, 'no overshoot');
+  assert.equal(npc.alertVelX, 0, 'the stride is still spent');
+  assert.equal(npc.huntBiasDir, 0, 'the bearing is still known');
+});
+
+test('a projection into sealed ground falls back and never lands in a wall', () => {
+  const s = slate();
+  s.worldOf = () => ({ isSolid: () => true });
+  const positions = positionsStore();
+  positions.set(7, { x: 0, y: 0, dir: 0, plane: 0 });
+  s.positions = positions;
+  const npc = fakeNpc({ quirk: 0 });
+  npc.alertX = 10;
+  npc.alertVelX = 0.2;
+  call(protoPursuit.npcAnticipatePursuit, s, 7, npc);
+  assert.equal(npc.alertX, 10, 'both fallbacks sealed: the corner itself is the goal');
+  assert.equal(npc.alertVelX, 0);
+});
+
+test("the pursuit's verdict: never before the corner, always at it or past the clock", () => {
+  const s = slate();
+  const npc = fakeNpc({ temperament: { pursuitSec: 5, variance: 0 }, quirk: 0 });
+  npc.alertX = 20;
+  npc.alertY = 0;
+  const far = { x: 0, y: 0 };
+  // The eye still holds — no run, no verdict.
+  assert.equal(call(protoPursuit.npcPursuitSpent, s, npc, far), false);
+  // The run is young and the corner is far: the chase lives.
+  npc.pursuitSinceTick = (s.tickCount as number) - 10;
+  assert.equal(call(protoPursuit.npcPursuitSpent, s, npc, far), false);
+  // Arrived with nothing there: concede on the spot.
+  assert.equal(call(protoPursuit.npcPursuitSpent, s, npc, { x: 19.5, y: 0 }), true);
+  // A corner never reached: the heart's clock is the cap.
+  npc.pursuitSinceTick = (s.tickCount as number) - 5 * TICK_RATE - 1;
+  assert.equal(call(protoPursuit.npcPursuitSpent, s, npc, far), true);
+});
+
+test('THE FORWARD BIAS: the first second look leans down the escape line', () => {
+  const s = slate();
+  for (let i = 0; i < 16; i++) {
+    const npc = fakeNpc({});
+    npc.alertX = 0;
+    npc.alertY = 0;
+    npc.huntBiasDir = 0; // the quarry fled due east
+    const wps = call(protoPursuit.mintHuntRing, s, npc, 0, 3) as Array<{ x: number; y: number }>;
+    assert.ok(wps.length > 0);
+    const first = wps[0]!;
+    const ang = Math.abs(Math.atan2(first.y, first.x));
+    assert.ok(ang <= 0.75, `first look at ${ang} rad — must lean down the escape bearing`);
+  }
 });

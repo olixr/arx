@@ -339,3 +339,19 @@ test('the quirk: one timid↔bold axis, coherent and clamped', async () => {
     assert.ok(t.gritSec >= 0 && t.gritSec <= TEMPERAMENT_BOUNDS.gritSec[1]);
   }
 });
+
+test('temperament: the committed-pursuit dials — bold runs longer, cunning is not courage', async () => {
+  const { npcTemperament, quirkTemperament, TEMPERAMENT_DEFAULTS } = await import('./npcs.js');
+  assert.equal(TEMPERAMENT_DEFAULTS.pursuitSec, 5);
+  assert.equal(TEMPERAMENT_DEFAULTS.anticipateTiles, 4);
+  // The wolf cuts the corner; the skeleton runs to where it SAW you.
+  const wolf = npcTemperament(npcDef('wolf')!);
+  const bones = npcTemperament(npcDef('skeleton')!);
+  assert.ok(wolf.anticipateTiles > bones.anticipateTiles, 'cunning separates the hunters');
+  assert.ok(bones.pursuitSec > wolf.pursuitSec, 'but the dead keep coming longest');
+  // The quirk scales commitment, never cunning.
+  const base = npcTemperament(npcDef('goblin')!); // variance 0.4
+  const bold = quirkTemperament(base, 1);
+  assert.ok(bold.pursuitSec > base.pursuitSec, 'the bold run the corner longer');
+  assert.equal(bold.anticipateTiles, base.anticipateTiles, 'anticipation is species, not mood');
+});
