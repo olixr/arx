@@ -200,6 +200,21 @@ export const TILE_CATEGORIES: TileCategory[] = [
     ],
   },
   {
+    // THE COMMONS: the general shelf — flame and faith first
+    // (the pieces that set a scene anywhere), then the town's
+    // stone and festival pride, the social layer, the domestic
+    // vessels and chores, and the yard and water edge last.
+    id: 'commons',
+    label: 'Commons',
+    tiles: [
+      Tile.CandleStand, Tile.StreetLantern, Tile.WayShrine, Tile.Sundial,
+      Tile.GuardianStatue, Tile.Maypole, Tile.TapCask, Tile.GameTable,
+      Tile.WoodStool, Tile.SettleBench, Tile.BasketStack, Tile.GlazedJars,
+      Tile.BroomAndPail, Tile.CloakStand, Tile.LeanLadder, Tile.Wheelbarrow,
+      Tile.WayfarersRest, Tile.PottedTree, Tile.MooringPost, Tile.BeachedSkiff,
+    ],
+  },
+  {
     // THE FAIR HOUSE FURNISHED: the elven shelf — lights and cloth
     // first (the pieces that set a scene), then furniture, stations,
     // and the garden stone.

@@ -840,6 +840,55 @@ export enum Tile {
   HangingScale = 427,
   /** The merchant's runner-clothed display table, wares dealt across the top. */
   DisplayTable = 428,
+  // THE COMMONS — the general shelf every town owns (see
+  // docs/commons-decor-plan.md). Two town waves and two trade
+  // waves dressed the specialists; this shelf is the ORDINARY
+  // life between them — flame and faith, stone and festival,
+  // tavern and table, vessels and chores, yard and water edge.
+  // Chosen for REPEATED REUSE: each piece seats in four scenes
+  // or it didn't make the shelf. Same voice, TENDED, NEVER LEFT:
+  // the candle is burning, the game is mid-move, the skiff is
+  // hauled up but never abandoned. PERIOD TRUTH holds the door.
+  /** A smith's wrought floor candelabrum, dealt arms lit and dripping. */
+  CandleStand = 429,
+  /** A porch-scale crook post, a hooded horn lantern swaying on the hook. */
+  StreetLantern = 430,
+  /** A fieldstone wayside niche — the old hound carved worn, offerings on the sill. */
+  WayShrine = 431,
+  /** A worn stone pedestal dial, bronze gnomon gone green — the square's kept time. */
+  Sundial = 432,
+  /** A seated stone hound on its plinth — mirrored by parity, so gates get PAIRS. */
+  GuardianStatue = 433,
+  /** The green's festival mast, six dealt ribbons streaming on the breeze. */
+  Maypole = 434,
+  /** A belly-lying cask on its trestle, wooden tap dripping, horn mugs waiting. */
+  TapCask = 435,
+  /** A barrel-top tafl board mid-game, two stools pulled up, one mug mid-move. */
+  GameTable = 436,
+  /** The universal three-legged stool, tenons wedged, seat worn to a shine. */
+  WoodStool = 437,
+  /** The hearth's high-backed settle, a thrown cloak over the arm. */
+  SettleBench = 438,
+  /** A lidded wicker hamper stacked two high, contents peeking, lid ajar. */
+  BasketStack = 439,
+  /** Three glazed jars ranked tall to small — corked, sealed, and open-mouthed. */
+  GlazedJars = 440,
+  /** A birch besom on its peg-post, pail and rag, the sweepings still piled. */
+  BroomAndPail = 441,
+  /** A turned cloak post — two dealt cloaks, a traveler's hat, one peg empty. */
+  CloakStand = 442,
+  /** A joiner's ladder leaned north to the eaves, a sickle hung on a rung. */
+  LeanLadder = 443,
+  /** The yard's one-wheeled mule, box open to the sky, dealt load aboard. */
+  Wheelbarrow = 444,
+  /** A wayfarer's kit by the door: bedroll, pack, staff, and waterskin. */
+  WayfarersRest = 445,
+  /** A coopered tub holding a clipped bay ball — the merchant's doorstep pride. */
+  PottedTree = 446,
+  /** A tarred bollard leaning seaward, the lead coiled, weed at the foot. */
+  MooringPost = 447,
+  /** A clinker skiff hauled ashore on its keel, oars shipped, painter coiled. */
+  BeachedSkiff = 448,
 }
 
 export enum Detail {
@@ -1479,6 +1528,30 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.FishmongerSlab]: { name: "fishmonger's slab", solid: true, color: '#8a857a', raised: true, topColor: '#b8c4cc' },
   [Tile.HangingScale]: { name: 'hanging scale', solid: true, color: '#6f5a38', raised: true, topColor: '#c2a45c' },
   [Tile.DisplayTable]: { name: 'display table', solid: true, color: '#75603e', raised: true, topColor: '#c9a13c' },
+  // THE COMMONS — minimap voice: the general shelf keys warm and
+  // quiet (candle wax, wicker, worn stone) so the SPECIALIST kits
+  // beside it keep their loud material keys; only the festival
+  // pole and the skiff's dyed strake fly color at chart scale.
+  [Tile.CandleStand]: { name: 'candle stand', solid: true, color: '#4c4a52', raised: true, topColor: '#e8a13c' },
+  [Tile.StreetLantern]: { name: 'street lantern', solid: true, color: '#6f5a38', raised: true, topColor: '#e0b060' },
+  [Tile.WayShrine]: { name: 'wayshrine', solid: true, color: '#8a857a', raised: true, topColor: '#e8d9b0' },
+  [Tile.Sundial]: { name: 'sundial', solid: true, color: '#8a857a', raised: true, topColor: '#c6bda6' },
+  [Tile.GuardianStatue]: { name: 'guardian statue', solid: true, color: '#6f6a58', raised: true, topColor: '#b3ada0' },
+  [Tile.Maypole]: { name: 'maypole', solid: true, color: '#75603e', raised: true, topColor: '#5b8fc9' },
+  [Tile.TapCask]: { name: 'tap cask', solid: true, color: '#75603e', raised: true, topColor: '#c9955c' },
+  [Tile.GameTable]: { name: 'game table', solid: true, color: '#75603e', raised: true, topColor: '#e2d9c4' },
+  [Tile.WoodStool]: { name: 'stool', solid: true, color: '#75603e', raised: true, topColor: '#c9a76a' },
+  [Tile.SettleBench]: { name: 'settle bench', solid: true, color: '#6f4d26', raised: true, topColor: '#7a86b8' },
+  [Tile.BasketStack]: { name: 'basket stack', solid: true, color: '#a88f5c', raised: true, topColor: '#d8c49a' },
+  [Tile.GlazedJars]: { name: 'glazed jars', solid: true, color: '#5c748a', raised: true, topColor: '#8fa8bd' },
+  [Tile.BroomAndPail]: { name: 'broom and pail', solid: true, color: '#6f5a38', raised: true, topColor: '#d8c49a' },
+  [Tile.CloakStand]: { name: 'cloak stand', solid: true, color: '#6f5a38', raised: true, topColor: '#c4808a' },
+  [Tile.LeanLadder]: { name: 'leaning ladder', solid: true, color: '#75603e', raised: true, topColor: '#c9a76a' },
+  [Tile.Wheelbarrow]: { name: 'wheelbarrow', solid: true, color: '#75603e', raised: true, topColor: '#a3814a' },
+  [Tile.WayfarersRest]: { name: "wayfarer's rest", solid: true, color: '#8a744e', raised: true, topColor: '#8a9a4f' },
+  [Tile.PottedTree]: { name: 'potted bay', solid: true, color: '#75603e', raised: true, topColor: '#5d7c42' },
+  [Tile.MooringPost]: { name: 'mooring post', solid: true, color: '#4e4438', raised: true, topColor: '#a89263' },
+  [Tile.BeachedSkiff]: { name: 'beached skiff', solid: true, color: '#6f5a38', raised: true, topColor: '#8fa8bd' },
 };
 
 /** The four awning silhouettes, index order FOREVER (the id math). */
@@ -2161,6 +2234,29 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.FishmongerSlab, 0.36],
   [Tile.HangingScale, 0.24],
   [Tile.DisplayTable, 0.38],
+  // THE COMMONS: the guardian and the skiff are the shelf's two
+  // true masses; the stands and posts are poles you brush past;
+  // the stool barely owns its shadow.
+  [Tile.CandleStand, 0.22],
+  [Tile.StreetLantern, 0.24],
+  [Tile.WayShrine, 0.38],
+  [Tile.Sundial, 0.3],
+  [Tile.GuardianStatue, 0.4],
+  [Tile.Maypole, 0.24],
+  [Tile.TapCask, 0.38],
+  [Tile.GameTable, 0.34],
+  [Tile.WoodStool, 0.2],
+  [Tile.SettleBench, 0.36],
+  [Tile.BasketStack, 0.3],
+  [Tile.GlazedJars, 0.28],
+  [Tile.BroomAndPail, 0.24],
+  [Tile.CloakStand, 0.24],
+  [Tile.LeanLadder, 0.26],
+  [Tile.Wheelbarrow, 0.36],
+  [Tile.WayfarersRest, 0.3],
+  [Tile.PottedTree, 0.28],
+  [Tile.MooringPost, 0.24],
+  [Tile.BeachedSkiff, 0.45],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -2449,7 +2545,31 @@ export type DestructibleKind =
   | 'cobbler'
   | 'fishslab'
   | 'scales'
-  | 'displaytable';
+  | 'displaytable'
+  // THE COMMONS: the general shelf breaks in the town's own
+  // materials — snuffed wax and iron, wayside stone, festival
+  // ribbon, spilled ale, scattered game pegs, flying cloaks, and
+  // the skiff's long lapped strakes cartwheeling up the shore.
+  | 'candlestand'
+  | 'streetlantern'
+  | 'wayshrine'
+  | 'sundial'
+  | 'guardian'
+  | 'maypole'
+  | 'tapcask'
+  | 'gametable'
+  | 'stool'
+  | 'settle'
+  | 'baskets'
+  | 'glazedjars'
+  | 'broompail'
+  | 'cloakstand'
+  | 'ladder'
+  | 'barrow'
+  | 'wayfarer'
+  | 'pottedtree'
+  | 'mooring'
+  | 'skiff';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -2642,6 +2762,31 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.FishmongerSlab, { kind: 'fishslab', respawnSec: 300, hits: 2 }],
   [Tile.HangingScale, { kind: 'scales', respawnSec: 300, hits: 1 }],
   [Tile.DisplayTable, { kind: 'displaytable', respawnSec: 300, hits: 2 }],
+  // THE COMMONS: street timber pops in one or two like the rest
+  // of the town's; the wayside stone (shrine, dial, guardian)
+  // holds three-and-four on the long clock — the watch notices
+  // when somebody wrecks the faith. The skiff is forty seasons
+  // of clinker and holds three.
+  [Tile.CandleStand, { kind: 'candlestand', respawnSec: 300, hits: 1 }],
+  [Tile.StreetLantern, { kind: 'streetlantern', respawnSec: 300, hits: 1 }],
+  [Tile.WayShrine, { kind: 'wayshrine', respawnSec: 600, hits: 3 }],
+  [Tile.Sundial, { kind: 'sundial', respawnSec: 600, hits: 3 }],
+  [Tile.GuardianStatue, { kind: 'guardian', respawnSec: 600, hits: 4 }],
+  [Tile.Maypole, { kind: 'maypole', respawnSec: 300, hits: 2 }],
+  [Tile.TapCask, { kind: 'tapcask', respawnSec: 300, hits: 2 }],
+  [Tile.GameTable, { kind: 'gametable', respawnSec: 300, hits: 2 }],
+  [Tile.WoodStool, { kind: 'stool', respawnSec: 150, hits: 1 }],
+  [Tile.SettleBench, { kind: 'settle', respawnSec: 300, hits: 2 }],
+  [Tile.BasketStack, { kind: 'baskets', respawnSec: 300, hits: 1 }],
+  [Tile.GlazedJars, { kind: 'glazedjars', respawnSec: 300, hits: 1 }],
+  [Tile.BroomAndPail, { kind: 'broompail', respawnSec: 300, hits: 1 }],
+  [Tile.CloakStand, { kind: 'cloakstand', respawnSec: 300, hits: 1 }],
+  [Tile.LeanLadder, { kind: 'ladder', respawnSec: 300, hits: 1 }],
+  [Tile.Wheelbarrow, { kind: 'barrow', respawnSec: 300, hits: 2 }],
+  [Tile.WayfarersRest, { kind: 'wayfarer', respawnSec: 300, hits: 1 }],
+  [Tile.PottedTree, { kind: 'pottedtree', respawnSec: 300, hits: 1 }],
+  [Tile.MooringPost, { kind: 'mooring', respawnSec: 300, hits: 2 }],
+  [Tile.BeachedSkiff, { kind: 'skiff', respawnSec: 600, hits: 3 }],
 ]);
 
 /** Every smashable prop tile. */

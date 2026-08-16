@@ -522,6 +522,9 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     // THE TRADES KEEP SHOP: workshop gear stands on the shop floor
     // or the yard the trade tramples — never its own material.
     if (t >= Tile.QuenchTrough && t <= Tile.DisplayTable) return nearestFloor(ground, tx, ty);
+    // THE COMMONS: the general shelf stands on whatever the scene
+    // laid — boards, flags, path, green, or the shore's own sand.
+    if (t >= Tile.CandleStand && t <= Tile.BeachedSkiff) return nearestFloor(ground, tx, ty);
     // The palisade stands in open country like the garrison curtain:
     // whatever walkable terrain fronts it continues beneath (south
     // first — that side's base sliver shows), and a family member

@@ -2065,7 +2065,11 @@ game.onFx = (fx) => {
         // way a kiln-hollow breaks.
         kind === 'breadoven' ||
         // And the potter's bottle kiln IS that hollow, full size.
-        kind === 'kiln',
+        kind === 'kiln' ||
+        // The commons' hollows: an ale cask lets go like a drum,
+        // fired jars ring like the urns, and the hauled-out skiff
+        // is forty seasons of hollowed clinker — the dugout's kin.
+        kind === 'tapcask' || kind === 'glazedjars' || kind === 'skiff',
       ),
     );
     // Stone-weight pieces land heavy: marble, mithril, and old
@@ -2085,7 +2089,11 @@ game.onFx = (fx) => {
           // kit's stone-weight.
           kind === 'breadoven' || kind === 'grindstone' ||
           // Second-shift limestone and kiln masonry land the same.
-          kind === 'wallfountain' || kind === 'kiln'
+          kind === 'wallfountain' || kind === 'kiln' ||
+          // The commons' wayside stone: the guardian hound, the
+          // shrine's rubble, and the dial's pedestal are all the
+          // street's masonry — they land like it.
+          kind === 'guardian' || kind === 'wayshrine' || kind === 'sundial'
           ? 3.2
           : 2.2,
       );

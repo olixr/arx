@@ -182,7 +182,33 @@ export type SmashKind =
   | 'cobbler'
   | 'fishslab'
   | 'scales'
-  | 'displaytable';
+  | 'displaytable'
+  // THE COMMONS: snuffed candles tumbling pale (a knocked flame
+  // is OUT — no fire flies), horn panes and forged iron, wayside
+  // fieldstone with its offerings, festival ribbons sailing past
+  // gravity, staves and ale, game pegs scattering mid-argument,
+  // cloaks flying at last, wicker and glaze, the barrow wheel
+  // rolling free, and the skiff's long strakes cartwheeling.
+  | 'candlestand'
+  | 'streetlantern'
+  | 'wayshrine'
+  | 'sundial'
+  | 'guardian'
+  | 'maypole'
+  | 'tapcask'
+  | 'gametable'
+  | 'stool'
+  | 'settle'
+  | 'baskets'
+  | 'glazedjars'
+  | 'broompail'
+  | 'cloakstand'
+  | 'ladder'
+  | 'barrow'
+  | 'wayfarer'
+  | 'pottedtree'
+  | 'mooring'
+  | 'skiff';
 
 export interface DebrisChunk {
   x: number; // world coords (tile units)
@@ -729,6 +755,31 @@ const CHIP_TONE: Record<SmashKind, string> = {
   fishslab: '#8a857a',
   scales: '#6d5a34',
   displaytable: '#8a6534',
+  // Commons wreckage: forged iron, lantern oak, wayside stone,
+  // dial stone, guardian granite, festival pole, ale oak, board
+  // oak, stool oak, settle oak, wicker, glaze, broom birch, cloak
+  // post, ladder rail, barrow oak, road burlap, tub oak, tarred
+  // bollard, and lapped hull strake.
+  candlestand: '#4c4a52',
+  streetlantern: '#6f5a38',
+  wayshrine: '#8a857a',
+  sundial: '#a39a86',
+  guardian: '#6f6a58',
+  maypole: '#75603e',
+  tapcask: '#75603e',
+  gametable: '#75603e',
+  stool: '#8a6534',
+  settle: '#6f4d26',
+  baskets: '#a88f5c',
+  glazedjars: '#5c748a',
+  broompail: '#6f5a38',
+  cloakstand: '#6f5a38',
+  ladder: '#8a6534',
+  barrow: '#75603e',
+  wayfarer: '#8a744e',
+  pottedtree: '#75603e',
+  mooring: '#4e4438',
+  skiff: '#6f5a38',
 };
 
 const pick = <T>(rand: () => number, arr: readonly T[]): T =>
@@ -2422,6 +2473,315 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       for (let i = 0; i < 2; i++) {
         out.push({ len: 0.08, wid: 0.05, color: pick(rand, ['#7c9a6a', '#b08a45']), stripe: '#d2dae2', round: true, pace: 1.0 });
       }
+      break;
+    }
+    case 'candlestand': {
+      // The stand goes down IRON-first — the stem clangs and
+      // stays, the pan skims — and every candle tumbles pale and
+      // SNUFFED: a knocked flame is out, nothing burning flies.
+      out.push({ len: 0.22, wid: 0.03, color: '#4c4a52', stripe: '#8a94a0', pace: 0.5 });
+      out.push({ len: 0.1, wid: 0.07, color: '#3a3842', stripe: '#8a94a0', round: true, pace: 0.9 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.08, wid: 0.022, color: '#4c4a52', stripe: '#8a94a0', pace: 1.1 });
+      }
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.07 + rand() * 0.04, wid: 0.026, color: pick(rand, ['#e8d9b0', '#f6ecd2']), stripe: '#f6ecd2', pace: 1.25 });
+      }
+      out.push({ len: 0.05, wid: 0.04, color: '#e8d9b0', round: true, pace: 0.55 });
+      break;
+    }
+    case 'streetlantern': {
+      // The post cracks long; the lantern dies as a LANTERN —
+      // hood spinning off, horn panes fluttering warm and light
+      // (horn bends, never shatters), the ring pinging free.
+      out.push({ len: 0.24, wid: 0.05, color: pick(rand, ['#6f5a38', '#8a6534']), stripe: '#c9a76a', pace: 0.6 });
+      out.push({ len: 0.09, wid: 0.07, color: '#4c4a52', stripe: '#8a94a0', pace: 1.2 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.08, wid: 0.06, color: pick(rand, ['#e0b060', '#c99848']), stripe: '#f8e8b0', pace: 1.4 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.06, wid: 0.018, color: '#4c4a52', stripe: '#8a94a0', pace: 1.0 });
+      }
+      out.push({ len: 0.04, wid: 0.04, color: '#4c4a52', round: true, pace: 1.5 });
+      break;
+    }
+    case 'wayshrine': {
+      // Fieldstone comes apart as the rubble it always was —
+      // heavy, down — while the sill's small faith scatters: the
+      // posy, the bread heel, two coins ringing, snuffed stubs.
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.1 + rand() * 0.04, wid: 0.07, color: pick(rand, ['#a39a86', '#78705d', '#8a857a']), stripe: '#c6bda6', pace: 0.4 });
+      }
+      out.push({ len: 0.09, wid: 0.06, color: '#c6bda6', stripe: '#ded8ce', pace: 0.5 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.05, wid: 0.024, color: pick(rand, ['#e8d9b0', '#f6ecd2']), stripe: '#f6ecd2', pace: 1.2 });
+      }
+      out.push({ len: 0.04, wid: 0.035, color: pick(rand, ['#c95a74', '#e8dcc4']), round: true, pace: 1.35 });
+      out.push({ len: 0.05, wid: 0.035, color: '#c9955c', stripe: '#e8c48e', round: true, pace: 1.0 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.035, wid: 0.03, color: '#c2a45c', round: true, pace: 1.5 });
+      }
+      break;
+    }
+    case 'sundial': {
+      // The pedestal drops in two courses; the dial face flies
+      // WHOLE for one proud arc (a disc rolls in this town), and
+      // the green gnomon pings off bright.
+      out.push({ len: 0.2, wid: 0.2, color: '#c6bda6', stripe: '#ded8ce', round: true, pace: 1.1 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.11, wid: 0.07, color: pick(rand, ['#a39a86', '#78705d']), stripe: '#c6bda6', pace: 0.45 });
+      }
+      out.push({ len: 0.09, wid: 0.03, color: '#6d5a34', stripe: '#c2a45c', pace: 1.3 });
+      out.push({ len: 0.05, wid: 0.04, color: '#5f9b84', round: true, pace: 0.9 });
+      break;
+    }
+    case 'guardian': {
+      // The hound comes down a MONUMENT: plinth blocks landing
+      // heavy and staying, the carved mass in big slow pieces —
+      // and the worn-bright nose stone skipping out last, small
+      // and terrible.
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.15, wid: 0.1, color: pick(rand, ['#a39a86', '#8a857a']), stripe: '#c6bda6', pace: 0.35 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.13, wid: 0.09, color: pick(rand, ['#6f6a58', '#5c5648']), stripe: '#b3ada0', pace: 0.45 });
+      }
+      out.push({ len: 0.08, wid: 0.05, color: '#6d5a34', stripe: '#c2a45c', pace: 0.8 });
+      out.push({ len: 0.04, wid: 0.035, color: '#b3ada0', round: true, pace: 1.45 });
+      break;
+    }
+    case 'maypole': {
+      // The ribbons FLY — six dyes sailing high past every law
+      // the pole obeyed — the crown ring rolls, and the mast
+      // itself falls LAST and long.
+      for (let i = 0; i < 6; i++) {
+        out.push({
+          len: 0.2 + rand() * 0.06,
+          wid: 0.035,
+          color: pick(rand, ['#c25668', '#5b8fc9', '#8a9a4f', '#c9a13c', '#8a7aa8', '#c4808a']),
+          stripe: '#efe8d4',
+          pace: 1.5,
+        });
+      }
+      out.push({ len: 0.12, wid: 0.12, color: '#8a6534', stripe: '#c9a76a', round: true, pace: 1.2 });
+      out.push({ len: 0.3, wid: 0.05, color: '#75603e', stripe: '#c9a76a', pace: 0.35 });
+      out.push({ len: 0.07, wid: 0.02, color: '#a89263', stripe: '#d8c49a', pace: 1.0 });
+      break;
+    }
+    case 'tapcask': {
+      // The cooper's break at tavern pitch: staves clap out,
+      // hoops roll, the head disc with its chalk tally flies
+      // whole — and the ale goes out in one amber slosh the
+      // whole street will smell till rain.
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.17, wid: 0.045, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.75 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.11, wid: 0.022, color: '#4c4a52', stripe: '#8a94a0', pace: 1.3 });
+      }
+      out.push({ len: 0.13, wid: 0.11, color: '#96713c', stripe: '#e8e2d0', round: true, pace: 1.1 });
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.06, wid: 0.05, color: pick(rand, ['#c9955c', '#a3703c']), round: true, pace: 0.4 });
+      }
+      out.push({ len: 0.06, wid: 0.045, color: '#6f5a38', stripe: '#a3814a', round: true, pace: 1.0 });
+      break;
+    }
+    case 'gametable': {
+      // The barrel bursts; the GAME scatters — pale pegs and
+      // dark king pinging every direction, the board disc
+      // sailing, the mug's last swallow gone with it. Nobody
+      // will ever agree who was winning.
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.15, wid: 0.045, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.7 });
+      }
+      out.push({ len: 0.16, wid: 0.14, color: '#e2d9c4', stripe: '#efe8d4', round: true, pace: 1.15 });
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.035, wid: 0.03, color: pick(rand, ['#e8dcc4', '#c9bb9c']), round: true, pace: 1.5 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.035, wid: 0.03, color: '#4a4038', round: true, pace: 1.45 });
+      }
+      out.push({ len: 0.05, wid: 0.04, color: '#38302a', stripe: '#5c524a', pace: 1.3 });
+      out.push({ len: 0.06, wid: 0.045, color: '#5c748a', stripe: '#8fa8bd', round: true, pace: 1.0 });
+      break;
+    }
+    case 'stool': {
+      // Three legs, one seat, no ceremony: the seat disc skims,
+      // the legs cartwheel, the wedges vanish into the floor
+      // cracks forever (every joiner knows).
+      out.push({ len: 0.13, wid: 0.11, color: '#8a6534', stripe: '#c9a76a', round: true, pace: 1.15 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.11, wid: 0.026, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.95 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.028, wid: 0.02, color: '#d8c0a0', round: true, pace: 1.5 });
+      }
+      break;
+    }
+    case 'settle': {
+      // Joined furniture holds its shape into the air: the back
+      // panel flies as boards, the arms as blocks — and the
+      // thrown cloak sails FREE, the one soft thing in the wreck.
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.18, wid: 0.05, color: pick(rand, ['#6f4d26', '#8a6534']), stripe: '#c9a76a', pace: 0.6 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.09, wid: 0.07, color: '#6f4d26', stripe: '#c9a76a', pace: 0.5 });
+      }
+      out.push({ len: 0.16, wid: 0.09, color: pick(rand, ['#7a86b8', '#c4808a', '#8a9a4f']), stripe: '#efe8d4', pace: 1.45 });
+      break;
+    }
+    case 'baskets': {
+      // Wicker doesn't shatter, it UNRAVELS: hoops of weave
+      // springing loose, both lids rolling, and the contents
+      // bouncing away on their own errands.
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.12, wid: 0.028, color: pick(rand, ['#a88f5c', '#7d6840']), stripe: '#cdb078', pace: 1.1 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.1, wid: 0.09, color: '#a88f5c', stripe: '#cdb078', round: true, pace: 1.25 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.05, wid: 0.045, color: pick(rand, ['#c05a3a', '#efe9de', '#c9a13c']), round: true, pace: 0.85 });
+      }
+      out.push({ len: 0.06, wid: 0.02, color: '#d8c49a', stripe: '#e8dcc4', pace: 1.4 });
+      break;
+    }
+    case 'glazedjars': {
+      // Fired hollows go all at once — three glazes' worth of
+      // curved shards ringing out, the cork popping free, and
+      // whatever the tall one held darkening the ground.
+      for (let i = 0; i < 6; i++) {
+        out.push({ len: 0.07, wid: 0.05, color: pick(rand, ['#6f8a5c', '#5c748a', '#a3703c', '#c9ab8e']), stripe: '#d8e0d4', round: true, pace: 1.2 });
+      }
+      out.push({ len: 0.04, wid: 0.032, color: '#b89a68', round: true, pace: 1.5 });
+      out.push({ len: 0.05, wid: 0.04, color: '#a83c34', round: true, pace: 1.0 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.05, wid: 0.04, color: '#9a6248', round: true, pace: 0.4 });
+      }
+      break;
+    }
+    case 'broompail': {
+      // The post cracks, the pail claps its staves out in a wet
+      // ring, and the besom dies mid-chore — handle one way,
+      // bound head the other, sweepings back where they started.
+      out.push({ len: 0.16, wid: 0.04, color: pick(rand, ['#6f5a38', '#8a6534']), stripe: '#c9a76a', pace: 0.6 });
+      out.push({ len: 0.18, wid: 0.022, color: '#a3814a', stripe: '#d8c49a', pace: 1.2 });
+      out.push({ len: 0.09, wid: 0.06, color: '#8a7448', stripe: '#d8c49a', pace: 1.0 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.1, wid: 0.032, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.85 });
+      }
+      out.push({ len: 0.05, wid: 0.04, color: '#efe8d4', stripe: '#f8f2e0', round: true, pace: 1.35 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.04, wid: 0.018, color: '#8a7448', pace: 1.45 });
+      }
+      break;
+    }
+    case 'cloakstand': {
+      // The post drops plainly — and then the WARDROBE flies:
+      // two cloaks streaming their dyes, the hat spinning on its
+      // brim, the bright empty peg nobody will find again.
+      out.push({ len: 0.22, wid: 0.04, color: pick(rand, ['#6f5a38', '#8a6534']), stripe: '#c9a76a', pace: 0.55 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.17, wid: 0.09, color: pick(rand, ['#c4808a', '#7a86b8', '#8a9a4f', '#c25668']), stripe: '#efe8d4', pace: 1.45 });
+      }
+      out.push({ len: 0.09, wid: 0.07, color: '#6f5a3e', stripe: '#8a7454', round: true, pace: 1.3 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.05, wid: 0.02, color: pick(rand, ['#8a6534', '#c9a76a']), stripe: '#c9a76a', pace: 1.1 });
+      }
+      break;
+    }
+    case 'ladder': {
+      // Rails long and slow, rungs clattering out between them,
+      // and the fletcher's cousin — the hung sickle — spinning
+      // off bright to bury itself in the thatch.
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.26, wid: 0.04, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.5 });
+      }
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.1, wid: 0.024, color: '#8a6534', stripe: '#d4b98a', pace: 1.15 });
+      }
+      out.push({ len: 0.08, wid: 0.03, color: '#8a94a0', stripe: '#d2dae2', pace: 1.4 });
+      break;
+    }
+    case 'barrow': {
+      // The wheel ROLLS FREE (the grindstone's exit, iron-shod),
+      // the box boards fold out flat, the legs and handles
+      // cartwheel — and the dealt load goes wherever loads go.
+      out.push({ len: 0.19, wid: 0.19, color: '#8a6534', stripe: '#4c4a52', round: true, pace: 1.5 });
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.15, wid: 0.05, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.65 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.14, wid: 0.028, color: '#8a6534', stripe: '#c9a76a', pace: 0.9 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.05, wid: 0.04, color: pick(rand, ['#4e3a2c', '#6f5a44', '#b89a68']), round: true, pace: 0.45 });
+      }
+      break;
+    }
+    case 'wayfarer': {
+      // Somebody's whole road in the air: the bedroll unrolling
+      // as it flies, the pack tumbling heavy, the staff spearing
+      // long, the waterskin flopping — and the tin cup ringing
+      // off the cobbles, the loudest small thing in town.
+      out.push({ len: 0.2, wid: 0.09, color: pick(rand, ['#8a9a4f', '#7a86b8', '#c4808a']), stripe: '#efe8d4', pace: 1.3 });
+      out.push({ len: 0.13, wid: 0.1, color: '#b89a68', stripe: '#d8c49a', round: true, pace: 0.55 });
+      out.push({ len: 0.26, wid: 0.026, color: '#a3814a', stripe: '#d4b98a', pace: 1.0 });
+      out.push({ len: 0.08, wid: 0.05, color: '#8a5a36', stripe: '#b5824e', round: true, pace: 0.8 });
+      out.push({ len: 0.04, wid: 0.035, color: '#8a94a0', stripe: '#d2dae2', round: true, pace: 1.5 });
+      break;
+    }
+    case 'pottedtree': {
+      // The tub claps out cooper-fashion, the soil goes DOWN in
+      // clods — and the clipped bay ball bounces once, whole and
+      // absurd, before shedding its green.
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.13, wid: 0.04, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.75 });
+      }
+      out.push({ len: 0.08, wid: 0.02, color: '#4c4a52', stripe: '#8a94a0', pace: 1.2 });
+      out.push({ len: 0.14, wid: 0.13, color: '#5d7c42', stripe: '#7fae6a', round: true, pace: 0.85 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.045, wid: 0.035, color: pick(rand, ['#4e3a2c', '#3a2e20']), round: true, pace: 0.4 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.04, wid: 0.02, color: pick(rand, ['#5d7c42', '#7fae6a']), pace: 1.4 });
+      }
+      break;
+    }
+    case 'mooring': {
+      // Tarred oak splits HEAVY and stays put; the bronze cap
+      // pings; the coiled lead leaps off in one piece the way a
+      // sprung coil does — and the weed just settles back where
+      // the tide will want it.
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.16, wid: 0.06, color: pick(rand, ['#4e4438', '#3a3228']), stripe: '#6e614c', pace: 0.4 });
+      }
+      out.push({ len: 0.06, wid: 0.045, color: '#6d5a34', stripe: '#c2a45c', round: true, pace: 1.35 });
+      out.push({ len: 0.13, wid: 0.05, color: '#a89263', stripe: '#d8c49a', round: true, pace: 1.1 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.05, wid: 0.025, color: '#4a5e3e', pace: 0.6 });
+      }
+      break;
+    }
+    case 'skiff': {
+      // Forty seasons of clinker lets go all at once: the long
+      // lapped strakes cartwheel up the shore, the dyed sheer
+      // strake flying its color, thwarts and oars tumbling, the
+      // painter's coil springing free — and the stem post lands
+      // last, upright for one heartbeat, like she means to sail.
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.24 + rand() * 0.05, wid: 0.05, color: pick(rand, ['#6f5a38', '#7d6840', '#4e4438']), stripe: '#c9a76a', pace: 0.7 });
+      }
+      out.push({ len: 0.26, wid: 0.05, color: pick(rand, ['#c25668', '#5b8fc9', '#8a9a4f']), stripe: '#efe8d4', pace: 0.95 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.12, wid: 0.05, color: '#8a6534', stripe: '#c9a76a', pace: 0.85 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.2, wid: 0.024, color: '#a3814a', stripe: '#d4b98a', pace: 1.2 });
+      }
+      out.push({ len: 0.1, wid: 0.05, color: '#a89263', stripe: '#d8c49a', round: true, pace: 1.35 });
+      out.push({ len: 0.11, wid: 0.04, color: '#6f5a38', stripe: '#c9a76a', pace: 0.45 });
       break;
     }
   }

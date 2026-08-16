@@ -441,6 +441,29 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.FishmongerSlab, 'fishslab', 2],
     [Tile.HangingScale, 'scales', 1],
     [Tile.DisplayTable, 'displaytable', 2],
+    // THE COMMONS: street timber 1-2 like the town's; the wayside
+    // stone holds three-and-four on the long clock; the clinker
+    // skiff is forty seasons of hollow and holds three.
+    [Tile.CandleStand, 'candlestand', 1],
+    [Tile.StreetLantern, 'streetlantern', 1],
+    [Tile.WayShrine, 'wayshrine', 3],
+    [Tile.Sundial, 'sundial', 3],
+    [Tile.GuardianStatue, 'guardian', 4],
+    [Tile.Maypole, 'maypole', 2],
+    [Tile.TapCask, 'tapcask', 2],
+    [Tile.GameTable, 'gametable', 2],
+    [Tile.WoodStool, 'stool', 1],
+    [Tile.SettleBench, 'settle', 2],
+    [Tile.BasketStack, 'baskets', 1],
+    [Tile.GlazedJars, 'glazedjars', 1],
+    [Tile.BroomAndPail, 'broompail', 1],
+    [Tile.CloakStand, 'cloakstand', 1],
+    [Tile.LeanLadder, 'ladder', 1],
+    [Tile.Wheelbarrow, 'barrow', 2],
+    [Tile.WayfarersRest, 'wayfarer', 1],
+    [Tile.PottedTree, 'pottedtree', 1],
+    [Tile.MooringPost, 'mooring', 2],
+    [Tile.BeachedSkiff, 'skiff', 3],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {
