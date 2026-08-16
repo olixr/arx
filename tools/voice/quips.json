@@ -1,110 +1,198 @@
 {
-  "elder_rowan": {
-    "greet": ["Well met, child.", "Come, waker. Speak.", "There you are, child."],
-    "ack": ["Mm. Go on.", "I hear you, child."],
-    "yes": ["It is so."],
-    "no": ["No, child."],
-    "hm": ["Hm. Let me think on that."],
-    "farewell": ["Walk gently, waker.", "Go well, child."],
-    "bark": ["Mm.", "Ah, there you are."]
-  },
-  "warden_bryn": {
-    "greet": ["Speak.", "You again. Good.", "Report."],
-    "ack": ["Go on.", "Noted."],
-    "yes": ["Aye."],
-    "no": ["No."],
-    "hm": ["Hm."],
-    "farewell": ["Dismissed.", "Keep your feet."],
-    "bark": ["Hup.", "Eyes up."]
-  },
-  "hearthkeeper_iona": {
-    "greet": ["Sit, love. There's bread.", "Come in out of the wind.", "Hungry?"],
-    "ack": ["Mm, I know.", "Aye, love."],
-    "yes": ["Aye, that's so."],
-    "no": ["No, love."],
-    "hm": ["Hm, now."],
-    "farewell": ["Eat something, mind.", "Off you go, warm and fed."],
-    "bark": ["Mind the pot.", "Mm."]
-  },
-  "tinker_fen": {
-    "greet": ["Hold still, you... ah, company.", "Hm? Oh. Hello.", "Just a moment... there."],
-    "ack": ["Mm, yes, go on...", "Right, right."],
-    "yes": ["Yes. Yes, that'll do."],
-    "no": ["No... no, that won't hold."],
-    "hm": ["Hm... let me see."],
-    "farewell": ["Bench is here when you want it.", "Now where was I... ah."],
-    "bark": ["Hold still, you...", "Hm."]
-  },
-  "farmer_hobb": {
-    "greet": ["Morning.", "Hobb.", "You'll want something."],
-    "ack": ["Aye.", "So it goes."],
-    "yes": ["Aye."],
-    "no": ["Nope."],
-    "hm": ["Huh."],
-    "farewell": ["Right then.", "Mind the mud."],
-    "bark": ["Hens.", "Weather's turning."]
-  },
-  "young_pip": {
-    "greet": ["Hullo! Are you going somewhere?", "It's you! Hullo!", "What's that? Can I see?"],
-    "ack": ["Uh-huh.", "Then what?"],
-    "yes": ["Yes!"],
-    "no": ["No."],
-    "hm": ["Ummm."],
-    "farewell": ["Bye! Come back!", "See you!"],
-    "bark": ["Race you!", "Whoa."]
-  },
   "smith_bretta": {
-    "greet": ["Forge's hot. Speak.", "Speak.", "Work or talk. Pick one."],
-    "ack": ["Mm.", "Go on."],
-    "yes": ["Aye."],
-    "no": ["No."],
-    "hm": ["Hm."],
-    "farewell": ["Done. Forge calls.", "Mind the sparks."],
-    "bark": ["Hah.", "Mm."]
+    "greet": [
+      "Forge's hot. Speak.",
+      "Speak.",
+      "Work or talk. Pick one."
+    ],
+    "ack": [
+      "Mm.",
+      "Go on."
+    ],
+    "yes": [
+      "Aye."
+    ],
+    "no": [
+      "No."
+    ],
+    "hm": [
+      "Hm."
+    ],
+    "farewell": [
+      "Done. Forge calls.",
+      "Mind the sparks."
+    ],
+    "bark": [
+      "Hah.",
+      "Mm."
+    ]
   },
   "captain_aldis": {
-    "greet": ["Gate's quiet. What is it?", "Captain Aldis. Speak your business.", "You. Good."],
-    "ack": ["Understood.", "Go on."],
-    "yes": ["Aye."],
-    "no": ["Denied."],
-    "hm": ["Hm."],
-    "farewell": ["Stay sharp out there.", "Gate's open. Move along."],
-    "bark": ["Eyes north.", "Steady."]
+    "greet": [
+      "Gate's quiet. What is it?",
+      "Captain Aldis. Speak your business.",
+      "You. Good."
+    ],
+    "ack": [
+      "Understood.",
+      "Go on."
+    ],
+    "yes": [
+      "Aye."
+    ],
+    "no": [
+      "Denied."
+    ],
+    "hm": [
+      "Hm."
+    ],
+    "farewell": [
+      "Stay sharp out there.",
+      "Gate's open. Move along."
+    ],
+    "bark": [
+      "Eyes north.",
+      "Steady."
+    ]
   },
   "innkeep_dunna": {
-    "greet": ["Well now, look who's in.", "Welcome to the Rest. Sit anywhere dry.", "What'll it be?"],
-    "ack": ["Mm, I heard that too.", "Go on, I'm listening."],
-    "yes": ["That's the truth."],
-    "no": ["Not a chance, love."],
-    "hm": ["Hm, now there's a thing."],
-    "farewell": ["Door's always open.", "Mind how you go."],
-    "bark": ["Coming through.", "Hah!"]
+    "greet": [
+      "Well now, look who's in.",
+      "Welcome to the Rest. Sit anywhere dry.",
+      "What'll it be?"
+    ],
+    "ack": [
+      "Mm, I heard that too.",
+      "Go on, I'm listening."
+    ],
+    "yes": [
+      "That's the truth."
+    ],
+    "no": [
+      "Not a chance, love."
+    ],
+    "hm": [
+      "Hm, now there's a thing."
+    ],
+    "farewell": [
+      "Door's always open.",
+      "Mind how you go."
+    ],
+    "bark": [
+      "Coming through.",
+      "Hah!"
+    ]
   },
   "grocer_merra": {
-    "greet": ["Oh, hello dear, come in, come in.", "There you are, I was just saying.", "What news, then?"],
-    "ack": ["Mm, yes, and then?", "I know, I know."],
-    "yes": ["Oh, aye."],
-    "no": ["Oh no, dear, no."],
-    "hm": ["Hm, well now."],
-    "farewell": ["Give my best to everyone.", "Off with you, and eat properly."],
-    "bark": ["Fresh in today.", "Oh!"]
+    "greet": [
+      "Oh, hello dear, come in, come in.",
+      "There you are, I was just saying.",
+      "What news, then?"
+    ],
+    "ack": [
+      "Mm, yes, and then?",
+      "I know, I know."
+    ],
+    "yes": [
+      "Oh, aye."
+    ],
+    "no": [
+      "Oh no, dear, no."
+    ],
+    "hm": [
+      "Hm, well now."
+    ],
+    "farewell": [
+      "Give my best to everyone.",
+      "Off with you, and eat properly."
+    ],
+    "bark": [
+      "Fresh in today.",
+      "Oh!"
+    ]
   },
   "outfitter_hask": {
-    "greet": ["Let's see your straps.", "Hask. What do you need?", "Heading out?"],
-    "ack": ["Aye, go on.", "Right."],
-    "yes": ["Aye, that'll serve."],
-    "no": ["No. Won't hold."],
-    "hm": ["Hm."],
-    "farewell": ["Check your boots before the road.", "Come back whole."],
-    "bark": ["Straps first. Then the road.", "Hm."]
+    "greet": [
+      "Let's see your straps.",
+      "Hask. What do you need?",
+      "Heading out?"
+    ],
+    "ack": [
+      "Aye, go on.",
+      "Right."
+    ],
+    "yes": [
+      "Aye, that'll serve."
+    ],
+    "no": [
+      "No. Won't hold."
+    ],
+    "hm": [
+      "Hm."
+    ],
+    "farewell": [
+      "Check your boots before the road.",
+      "Come back whole."
+    ],
+    "bark": [
+      "Straps first. Then the road.",
+      "Hm."
+    ]
   },
   "banker_cormund": {
-    "greet": ["Ah. A depositor, or a story?", "Come in. The ledger can wait.", "Cormund. How may the bank serve?"],
-    "ack": ["Noted.", "Mm, continue."],
-    "yes": ["Agreed."],
-    "no": ["The bank declines."],
-    "hm": ["Hm. Interesting."],
-    "farewell": ["The vault holds. Good day.", "Spend it wisely, or don't. It all comes back."],
-    "bark": ["Balance holds.", "Mm."]
+    "greet": [
+      "Ah. A depositor, or a story?",
+      "Come in. The ledger can wait.",
+      "Cormund. How may the bank serve?"
+    ],
+    "ack": [
+      "Noted.",
+      "Mm, continue."
+    ],
+    "yes": [
+      "Agreed."
+    ],
+    "no": [
+      "The bank declines."
+    ],
+    "hm": [
+      "Hm. Interesting."
+    ],
+    "farewell": [
+      "The vault holds. Good day.",
+      "Spend it wisely, or don't. It all comes back."
+    ],
+    "bark": [
+      "Balance holds.",
+      "Mm."
+    ]
+  },
+  "registrar_rowan": {
+    "greet": [
+      "Well met, child.",
+      "Come, waker. Speak.",
+      "There you are, child."
+    ],
+    "ack": [
+      "Mm. Go on.",
+      "I hear you, child."
+    ],
+    "yes": [
+      "It is so."
+    ],
+    "no": [
+      "No, child."
+    ],
+    "hm": [
+      "Hm. Let me think on that."
+    ],
+    "farewell": [
+      "Walk gently, waker.",
+      "Go well, child."
+    ],
+    "bark": [
+      "Mm.",
+      "Ah, there you are."
+    ]
   }
 }
