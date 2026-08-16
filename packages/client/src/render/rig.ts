@@ -17729,15 +17729,19 @@ export function drawTurtleHead(
 }
 
 /**
- * THE OOZE FAMILY (docs/ooze-family-plan.md): five body plans, one
- * dialect. A variant earns its id with a different BODY, never a
- * different fill — the hopper is a chamfered gel block, the puddle a
- * lobed pool, the amoeba a throbbing colony, the column a standing
- * dripping pillar, the cube a translucent prism carrying everything
- * it ever engulfed. Eyes are the CHARM TIER: only hoppers have them;
- * the eyeless plans read as the danger they are.
+ * THE OOZE FAMILY (docs/ooze-family-plan.md): four body plans, one
+ * dialect — and THE SLIME SHAPE LAW (user verdict 2026-08-15): an
+ * ooze is CUBE-LIKE or BLOB-LIKE, nothing else. The flat puddle and
+ * the standing pillar are dead — a variant earns its id with a
+ * different BODY inside the two silhouettes the family owns: the
+ * hopper is a chamfered gel block, the blob a domed mound (low and
+ * wet for the gray, tall and heaving tar for the pudding), the
+ * amoeba a lobed throbbing colony, the cube a translucent prism
+ * carrying everything it ever engulfed. Eyes are the CHARM TIER:
+ * only hoppers have them; the eyeless plans read as the danger they
+ * are.
  */
-export type OozePlan = 'hopper' | 'puddle' | 'amoeba' | 'column' | 'cube';
+export type OozePlan = 'hopper' | 'blob' | 'amoeba' | 'cube';
 
 export interface OozeLook {
   plan: OozePlan;
@@ -17745,18 +17749,22 @@ export interface OozeLook {
   giant: boolean;
   /** Dark cores in the mass — plural is the colony read. */
   nuclei: number;
+  /** Blobs: a tall heaving mound instead of a low dome. */
+  tall?: boolean;
+  /** Blobs: seeded drip clocks run the flanks (the tar voice). */
+  drips?: boolean;
 }
 
 const OOZE_LOOKS: Record<string, OozeLook> = {
   slime: { plan: 'hopper', giant: false, nuclei: 1 },
   slime_small: { plan: 'hopper', giant: false, nuclei: 1 },
   giant_slime: { plan: 'hopper', giant: true, nuclei: 1 },
-  gray_ooze: { plan: 'puddle', giant: false, nuclei: 1 },
+  gray_ooze: { plan: 'blob', giant: false, nuclei: 1 },
   ochre_jelly: { plan: 'amoeba', giant: false, nuclei: 3 },
   ochre_half: { plan: 'amoeba', giant: false, nuclei: 1 },
   gelatinous_cube: { plan: 'cube', giant: true, nuclei: 0 },
-  black_pudding: { plan: 'column', giant: false, nuclei: 0 },
-  pudding_half: { plan: 'column', giant: false, nuclei: 0 },
+  black_pudding: { plan: 'blob', giant: false, nuclei: 0, tall: true, drips: true },
+  pudding_half: { plan: 'blob', giant: false, nuclei: 0, tall: true, drips: true },
 };
 
 /** The family register, painter-side: routing + the no-corpse law. */
@@ -17791,12 +17799,12 @@ export function oozeExtents(
   radius: number,
 ): { halfW: number; top: number; bottom: number } {
   switch (look.plan) {
-    case 'puddle':
-      return { halfW: radius * 3.2 + 0.35, top: radius * 1.4 + 0.2, bottom: 0.5 };
+    case 'blob':
+      return look.tall
+        ? { halfW: radius * 2.4 + 0.35, top: radius * 2.9 + 0.3, bottom: 0.5 }
+        : { halfW: radius * 2.6 + 0.35, top: radius * 1.9 + 0.25, bottom: 0.5 };
     case 'amoeba':
       return { halfW: radius * 2.7 + 0.35, top: radius * 2.1 + 0.2, bottom: 0.5 };
-    case 'column':
-      return { halfW: radius * 2.4 + 0.35, top: radius * 3.7 + 0.25, bottom: 0.5 };
     case 'cube':
       return { halfW: radius * 1.6 + 0.5, top: radius * 2.5 + 0.3, bottom: 0.45 };
     default:
@@ -17819,14 +17827,11 @@ function oozeStrike(at: number): { gath: number; spr: number } {
 /** One ooze, routed by its body plan. */
 export function drawOoze(ctx: CanvasRenderingContext2D, look: OozeLook, o: OozeOpts): void {
   switch (look.plan) {
-    case 'puddle':
-      drawOozePuddle(ctx, o);
+    case 'blob':
+      drawOozeBlob(ctx, o, look);
       break;
     case 'amoeba':
       drawOozeAmoeba(ctx, o, look.nuclei);
-      break;
-    case 'column':
-      drawOozeColumn(ctx, o);
       break;
     case 'cube':
       drawOozeCube(ctx, o);
@@ -18039,80 +18044,136 @@ function oozeArm(
 }
 
 /**
- * THE PUDDLE (gray ooze): wet stone that moves — a low lobed pool,
- * EYELESS, hugging the floor it pretends to be. The danger read is
- * the absence: no face, no height, just a rim that breathes and a
- * swallowed-grit cluster where a heart should be. Strikes by whipping
- * a pseudopod out of the leading lobe.
+ * THE BLOB (gray ooze low; black pudding tall): THE SLIME SHAPE LAW's
+ * second silhouette — a domed mound of gel, EYELESS, breathing on its
+ * own slow clock. The gray is a low wet-stone dome: smooth rim, one
+ * dark heart with swallowed grit, a single gleam dash riding the
+ * crown contour. The pudding is the same mound grown TALL and turned
+ * to tar: it HEAVES (the whole dome swells and settles), seeded drip
+ * clocks run its flanks and are drunk by the base, and two hard
+ * specular chips are the only light it gives back. Both strike on the
+ * family clock — the gather coils the leading rim, the spring throws
+ * a thick pseudopod.
  */
-function drawOozePuddle(ctx: CanvasRenderingContext2D, o: OozeOpts): void {
+function drawOozeBlob(ctx: CanvasRenderingContext2D, o: OozeOpts, look: OozeLook): void {
   const s = o.s;
+  const t = o.nowMs * 0.001;
   const { gath, spr } = oozeStrike(o.attackT ?? 0);
-  const R = o.radius * 2.7 * s;
-  // TRULY FLAT: the whole danger is that it reads as floor. The mass
-  // is a ground ellipse, center pinned just off the anchor so the
-  // south rim laps the ground line — never a hovering boulder.
-  const ysq = 0.3;
+  const tall = look.tall === true;
+  const R = o.radius * (tall ? 2.0 : 2.15) * s;
+  // The heave: the tall mound breathes with its whole body — a slow
+  // vertical swell the low dome only whispers.
+  const heave = 1 + Math.sin(t * (tall ? 0.9 : 1.3) + o.seed) * (tall ? 0.05 : 0.025);
+  const ysq = (tall ? 0.95 : 0.6) * heave * (1 - gath * 0.14 + spr * 0.08);
   const cx = o.x;
-  const cy = o.y - R * ysq * 0.3;
+  const cy = o.y - o.radius * (tall ? 0.85 : 0.45) * s;
   const hsh = (o.seed * 2654435761) >>> 8;
   const body = o.hurt ? '#ffffff' : o.color;
+  const smooth = tall ? 0.05 : 0.04;
 
   ctx.fillStyle = body;
   if (spr > 0) {
-    oozeArm(ctx, o, cx, cy, R * 0.9, ysq, spr * 0.85 * s, R * 0.3);
+    oozeArm(ctx, o, cx, cy, R * 0.85, ysq, spr * 0.9 * s, R * (tall ? 0.36 : 0.3));
   }
-  oozeRim(ctx, o, cx, cy, R, ysq, 11, 0.05, spr, gath);
+  oozeRim(ctx, o, cx, cy, R, ysq, 10, smooth, spr, gath);
   ctx.fill();
   if (!o.hurt) {
     ctx.save();
-    oozeRim(ctx, o, cx, cy, R, ysq, 11, 0.05, spr, gath);
+    oozeRim(ctx, o, cx, cy, R * 1.01, ysq, 10, smooth, spr, gath);
     ctx.clip();
-    // The wet heart: a darker inner pool, deepest at the middle.
-    ctx.fillStyle = shade(o.color, -16);
-    ctx.beginPath();
-    facetBlob(ctx, cx + R * 0.04, cy + R * ysq * 0.12, R * 0.68, hsh, 8, ysq);
-    ctx.fill();
-    // Swallowed grit, clustered LOW in the heart — never a face.
-    ctx.fillStyle = shade(o.color, -32);
-    for (let k = 0; k < 3; k++) {
-      const kx = cx + (((hsh >> (k * 4)) & 15) / 15 - 0.5) * R * 0.4;
-      const ky = cy + R * ysq * (0.1 + (((hsh >> (k * 3 + 2)) & 7) / 7) * 0.3);
+    // Dark contact band at the base — the mound sits, never floats.
+    ctx.fillStyle = shade(o.color, tall ? -18 : -14);
+    ctx.fillRect(cx - R * 1.3, cy + R * ysq * 0.45, R * 2.6, R * ysq * 0.75);
+    if (tall) {
+      // TAR VALUES: the shade flank drinks the light; the lit side is
+      // a facet PATCH riding the dome's slope — a vertical bar here
+      // reads as a door on a hut, so every light lives on the curve,
+      // and the shade boundary LEANS like a facet arris (a plumb
+      // vertical seam whispers "structure" on an organic mass).
+      ctx.fillStyle = shade(o.color, -16);
       ctx.beginPath();
-      facetCircle(ctx, kx, ky, R * (0.05 + ((hsh >> k) & 3) * 0.008), 5, k * 1.7, ysq);
+      ctx.moveTo(cx + R * 0.02, cy - R * ysq * 1.2);
+      ctx.lineTo(cx + R * 1.02, cy - R * ysq * 1.2);
+      ctx.lineTo(cx + R * 1.02, cy + R * ysq * 0.5);
+      ctx.lineTo(cx + R * 0.3, cy + R * ysq * 0.5);
+      ctx.closePath();
       ctx.fill();
+      ctx.fillStyle = shade(o.color, 18);
+      ctx.beginPath();
+      facetBlob(ctx, cx - R * 0.34, cy - R * ysq * 0.5, R * 0.36, hsh >> 3, 7, ysq * 0.8);
+      ctx.fill();
+      // Tar shine: two hard chips STAGGERED down the lit slope.
+      ctx.fillStyle = shade(o.color, 72);
+      ctx.fillRect(cx - R * 0.4, cy - R * ysq * 0.64, R * 0.13, R * ysq * 0.06);
+      ctx.fillRect(cx - R * 0.19, cy - R * ysq * 0.4, R * 0.06, R * ysq * 0.1);
+    } else {
+      // The wet heart: one darker inner pool, deepest low-center,
+      // with swallowed grit clustered inside it — never a face.
+      ctx.fillStyle = shade(o.color, -16);
+      ctx.beginPath();
+      facetBlob(ctx, cx + R * 0.05, cy + R * ysq * 0.18, R * 0.6, hsh, 8, ysq);
+      ctx.fill();
+      ctx.fillStyle = shade(o.color, -32);
+      for (let k = 0; k < 3; k++) {
+        const kx = cx + (((hsh >> (k * 4)) & 15) / 15 - 0.5) * R * 0.38;
+        const ky = cy + R * ysq * (0.12 + (((hsh >> (k * 3 + 2)) & 7) / 7) * 0.26);
+        ctx.beginPath();
+        facetCircle(ctx, kx, ky, R * (0.05 + ((hsh >> k) & 3) * 0.008), 5, k * 1.7, ysq);
+        ctx.fill();
+      }
+      // One gloss chip on the lit shoulder of the dome.
+      ctx.fillStyle = shade(o.color, 26);
+      ctx.fillRect(cx - R * 0.44, cy - R * ysq * 0.66, R * 0.18, R * ysq * 0.1);
     }
     ctx.restore();
   }
-  // The only thing that betrays the pool is the light lying on it:
-  // two SHORT wet gleam dashes riding the far inner rim — they follow
-  // the contour station-to-station, never a floating chip, never a
-  // bar long enough to read as an object.
+  // The crown gleam: one SHORT wet dash riding the far rim contour —
+  // the light lying on the mound, never a floating chip. The tar
+  // mound wears it too, in its own cold sheen.
   if (!o.hurt) {
-    ctx.strokeStyle = 'rgba(240, 246, 252, 0.26)';
+    ctx.strokeStyle = tall ? 'rgba(214, 206, 232, 0.28)' : 'rgba(240, 246, 252, 0.24)';
     ctx.lineWidth = Math.max(1, R * 0.035);
-    const t = o.nowMs * 0.001;
-    for (const [i0, i1] of [
-      [6.3, 7.1],
-      [8.1, 8.8],
-    ] as const) {
-      ctx.beginPath();
-      for (let k = 0; k <= 3; k++) {
-        const fi = i0 + ((i1 - i0) * k) / 3;
-        const a = (fi / 11) * Math.PI * 2;
-        const j = 0.82 + (((hsh >> ((Math.round(fi) % 11) * 3 % 28)) & 7) / 7) * 0.26;
-        const breathe = 1 + Math.sin(t * 0.9 + (Math.round(fi) % 11) * 2.4 + o.seed) * 0.05;
-        const vx = cx + Math.cos(a) * R * j * breathe * 0.78;
-        const vy = cy + Math.sin(a) * R * j * breathe * 0.78 * ysq;
-        if (k === 0) ctx.moveTo(vx, vy);
-        else ctx.lineTo(vx, vy);
+    ctx.beginPath();
+    for (let k = 0; k <= 3; k++) {
+      const fi = 6.4 + 0.7 * (k / 3);
+      const a = (fi / 10) * Math.PI * 2;
+      const j = 0.82 + (((hsh >> ((Math.round(fi) % 10) * 3 % 28)) & 7) / 7) * 0.26;
+      const vx = cx + Math.cos(a) * R * j * 0.76;
+      const vy = cy + Math.sin(a) * R * j * 0.76 * ysq;
+      if (k === 0) ctx.moveTo(vx, vy);
+      else ctx.lineTo(vx, vy);
+    }
+    ctx.stroke();
+  }
+  // The drips: seeded stations high on the tar mound's flanks run
+  // slow clocks; each bead accelerates (t²) down the dome line,
+  // lands, flattens, and the base drinks it.
+  if (!o.hurt && look.drips === true) {
+    // No standing lip: a resting rect mid-body reads as a rivet on
+    // tar — the falling bead alone is the read, run bright enough to
+    // catch light on the way down.
+    ctx.fillStyle = shade(o.color, 34);
+    for (let k = 0; k < 4; k++) {
+      const side = k % 2 === 0 ? -1 : 1;
+      const dxr = side * R * (0.5 + (((hsh >> (k * 3)) & 7) / 7) * 0.3);
+      const startY = cy - R * ysq * (0.15 + (((hsh >> (k * 4)) & 15) / 15) * 0.45);
+      const clock = (t * 0.42 + ((hsh >> (k * 5)) & 31) / 31) % 1;
+      if (clock < 0.82) {
+        const fall = clock * clock * (o.y - startY);
+        ctx.beginPath();
+        facetCircle(ctx, cx + dxr, startY + fall, R * 0.035 * (1 - clock * 0.4), 5, k);
+        ctx.fill();
+      } else {
+        const kk = (clock - 0.82) / 0.18;
+        ctx.beginPath();
+        facetCircle(ctx, cx + dxr, o.y - R * 0.01, R * 0.05 * (1 - kk), 5, k, 0.35);
+        ctx.fill();
       }
-      ctx.stroke();
     }
   }
   ctx.strokeStyle = OOZE_INK;
   ctx.lineWidth = 1;
-  oozeRim(ctx, o, cx, cy, R, ysq, 11, 0.05, spr, gath);
+  oozeRim(ctx, o, cx, cy, R, ysq, 10, smooth, spr, gath);
   ctx.stroke();
 }
 
@@ -18199,108 +18260,6 @@ function drawOozeAmoeba(ctx: CanvasRenderingContext2D, o: OozeOpts, nuclei: numb
   ctx.strokeStyle = OOZE_INK;
   ctx.lineWidth = 1;
   oozeRim(ctx, o, cx, cy, R, ysq, 9, 0.1, spr, gath);
-  ctx.stroke();
-}
-
-/**
- * THE COLUMN (black pudding): a standing pillar of tar. The base
- * leads and the crown LAGS — gel inertia told in one offset — and
- * seeded drip stations run their own slow clocks down the flanks
- * (<1 Hz, reabsorbed at the skirt). Two hard specular chips are the
- * only light the body gives back; everything else drinks it. Strikes
- * by leaning back and slamming the whole upper mass forward.
- */
-function drawOozeColumn(ctx: CanvasRenderingContext2D, o: OozeOpts): void {
-  const s = o.s;
-  const t = o.nowMs * 0.001;
-  const { gath, spr } = oozeStrike(o.attackT ?? 0);
-  const W = o.radius * 2.5 * s;
-  const H = o.radius * 3.3 * s;
-  const cx = o.x;
-  const cy = o.y;
-  const hsh = (o.seed * 2654435761) >>> 8;
-  const body = o.hurt ? '#ffffff' : o.color;
-  const fx = Math.cos(o.dir);
-  const fy = Math.sin(o.dir);
-
-  // The crown's own weather: a slow sway, plus travel lag, plus the
-  // strike's back-gather → forward slam. One offset, three stories.
-  const sway = Math.sin(t * 0.7 + o.seed) * W * 0.05;
-  const lagX = sway + fx * (-o.moveK * 0.16 - gath * 0.3 + spr * 0.55) * W;
-  const lagY = (fy * (-o.moveK * 0.1 - gath * 0.2 + spr * 0.4) * W) * o.ys;
-  const crownH = H * (1 - gath * 0.16 + spr * 0.06);
-
-  // The skirt: a lobed contact pool — the pillar stands IN its own
-  // spread, never on a pasted ellipse.
-  ctx.fillStyle = o.hurt ? '#ffffff' : shade(o.color, -14);
-  oozeRim(ctx, o, cx, cy, W * 0.68, 0.4, 9, 0.06, spr * 0.4, gath * 0.4);
-  ctx.fill();
-
-  // The pillar: a faceted silhouette with a waist — base wide, one
-  // pinch, crown domed. Vertices, not curves: the house dialect.
-  const wob = (i: number): number => Math.sin(t * 0.9 + i * 1.9 + o.seed) * W * 0.025;
-  const pillar = (): void => {
-    ctx.beginPath();
-    ctx.moveTo(cx - W * 0.42, cy);
-    ctx.lineTo(cx - W * 0.34 + wob(1), cy - crownH * 0.38);
-    ctx.lineTo(cx - W * 0.27 + wob(2) + lagX * 0.5, cy - crownH * 0.66 + lagY * 0.5);
-    ctx.lineTo(cx - W * 0.18 + lagX, cy - crownH * 0.92 + lagY);
-    ctx.lineTo(cx + lagX, cy - crownH + lagY);
-    ctx.lineTo(cx + W * 0.2 + lagX, cy - crownH * 0.9 + lagY);
-    ctx.lineTo(cx + W * 0.28 + wob(3) + lagX * 0.5, cy - crownH * 0.6 + lagY * 0.5);
-    ctx.lineTo(cx + W * 0.35 + wob(4), cy - crownH * 0.34);
-    ctx.lineTo(cx + W * 0.43, cy);
-    ctx.closePath();
-  };
-  ctx.fillStyle = body;
-  pillar();
-  ctx.fill();
-  if (!o.hurt) {
-    ctx.save();
-    pillar();
-    ctx.clip();
-    // The shade flank away from the light; the lit arris toward it.
-    // TAR VALUES: on a near-black body the bands must SHOUT or the
-    // pillar reads as matte rock — the shine is the material.
-    ctx.fillStyle = shade(o.color, -16);
-    ctx.fillRect(cx + W * 0.1, cy - crownH, W * 0.5, crownH);
-    ctx.fillStyle = shade(o.color, 26);
-    ctx.fillRect(cx - W * 0.34, cy - crownH * 0.95, W * 0.12, crownH * 0.8);
-    // Tar shine: two hard chips high on the lit flank.
-    ctx.fillStyle = shade(o.color, 72);
-    ctx.fillRect(cx - W * 0.2, cy - crownH * 0.82 + lagY, W * 0.09, crownH * 0.06);
-    ctx.fillRect(cx - W * 0.12, cy - crownH * 0.62, W * 0.05, crownH * 0.1);
-    ctx.restore();
-  }
-  // The drips: seeded stations run slow clocks down the flanks; each
-  // bead accelerates (t²), lands, and the skirt drinks it. Beads run
-  // a breath LIGHTER than the body — wet catches light on the fall.
-  if (!o.hurt) {
-    ctx.fillStyle = shade(o.color, 16);
-    for (let k = 0; k < 4; k++) {
-      const side = k % 2 === 0 ? -1 : 1;
-      const dxr = side * W * (0.24 + (((hsh >> (k * 3)) & 7) / 7) * 0.14);
-      const startY = cy - crownH * (0.3 + (((hsh >> (k * 4)) & 15) / 15) * 0.45);
-      const clock = (t * 0.42 + ((hsh >> (k * 5)) & 31) / 31) % 1;
-      // The lip: a half-formed bead always hangs at the station.
-      ctx.fillRect(dxr + cx - W * 0.02, startY, W * 0.045, crownH * 0.05);
-      if (clock < 0.82) {
-        const fall = clock * clock * (cy - startY);
-        ctx.beginPath();
-        facetCircle(ctx, cx + dxr, startY + fall, W * 0.035 * (1 - clock * 0.4), 5, k);
-        ctx.fill();
-      } else {
-        // Touchdown: the bead flattens into the skirt and is gone.
-        const kk = (clock - 0.82) / 0.18;
-        ctx.beginPath();
-        facetCircle(ctx, cx + dxr, cy - W * 0.01, W * 0.05 * (1 - kk), 5, k, 0.35);
-        ctx.fill();
-      }
-    }
-  }
-  ctx.strokeStyle = OOZE_INK;
-  ctx.lineWidth = 1;
-  pillar();
   ctx.stroke();
 }
 

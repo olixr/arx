@@ -1429,10 +1429,11 @@ const defs: NpcDef[] = [
     kit: [{ ability: 'ground_slam', cooldownTicks: 200, maxRange: 4, weight: 2 }],
   },
   {
-    // Wet stone that moves: a low eyeless pool the torchlight misses
-    // until it is close enough to reach. The acid keeps the argument
-    // with your armor (sunder), and the cold means nothing to a body
-    // that is already the temperature of the floor.
+    // Wet stone that moves: a low eyeless DOME of gray gel (THE SLIME
+    // SHAPE LAW: cube-like or blob-like, nothing else) the torchlight
+    // misses until it is close enough to reach. The acid keeps the
+    // argument with your armor (sunder), and the cold means nothing
+    // to a body already the temperature of the floor.
     id: 'gray_ooze',
     name: 'Gray ooze',
     level: 13,
@@ -1451,7 +1452,7 @@ const defs: NpcDef[] = [
     respawnSec: 40,
     color: '#8b8d90',
     radius: 0.4,
-    hitHeight: 0.35,
+    hitHeight: 0.5,
     attackStatus: { status: 'sunder', power: 1, durationTicks: 60 },
     resist: ['bleed', 'venom', 'chill'],
     weak: ['burn'],
@@ -1532,7 +1533,8 @@ const defs: NpcDef[] = [
     weak: ['burn'],
   },
   {
-    // The deep's last word: a standing pillar of tar that eats steel
+    // The deep's last word: a tall HEAVING BLOB of tar (THE SLIME
+    // SHAPE LAW holds — a mound, never a pillar) that eats steel
     // (sunder 2) and shrugs everything but fire. It divides once,
     // and the halves are still worse than most whole things.
     id: 'black_pudding',
@@ -1551,7 +1553,7 @@ const defs: NpcDef[] = [
     respawnSec: 70,
     color: '#2e2a33',
     radius: 0.42,
-    hitHeight: 1.3,
+    hitHeight: 1.0,
     attackStatus: { status: 'sunder', power: 2, durationTicks: 70 },
     resist: ['bleed', 'venom', 'shock', 'chill'],
     weak: ['burn'],
@@ -1574,7 +1576,7 @@ const defs: NpcDef[] = [
     respawnSec: 70,
     color: '#3a3542',
     radius: 0.28,
-    hitHeight: 0.9,
+    hitHeight: 0.7,
     attackStatus: { status: 'sunder', power: 1, durationTicks: 50 },
     resist: ['bleed', 'venom', 'shock', 'chill'],
     weak: ['burn'],

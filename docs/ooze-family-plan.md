@@ -6,17 +6,21 @@ FAMILY: five distinct BODY PLANS (never a reskin), a three-stage split
 chain, real hop attacks, a glistening trail, and homes in both the wild
 and the deep.
 
-## THE BODY-PLAN LAW
+## THE BODY-PLAN LAW + THE SLIME SHAPE LAW
 
-A variant earns its id with a different BODY, not a different fill:
+A variant earns its id with a different BODY, not a different fill —
+and (user verdict 2026-08-15, the shape-law rework) an ooze is
+**CUBE-LIKE or BLOB-LIKE, nothing else**. The flat puddle and the
+standing pillar shipped first and were struck down: a super-flat pool
+and a monolith pillar are not this game's slime language.
 
-| plan   | read at scale                                   | members |
-|--------|--------------------------------------------------|---------|
-| hopper | chamfered gel block, hop-squash, eyes            | slime, slime_small, giant_slime |
-| puddle | low lobed pool, eyeless, leading pseudopod       | gray_ooze |
-| amoeba | mid-height multi-lobe colony, several nuclei     | ochre_jelly, ochre_half |
-| column | standing tar pillar, drips, crown lag            | black_pudding, pudding_half |
-| cube   | translucent prism, top plane, swallowed debris   | gelatinous_cube |
+| plan   | read at scale                                        | members |
+|--------|-------------------------------------------------------|---------|
+| hopper | chamfered gel block, hop-squash, eyes                 | slime, slime_small, giant_slime |
+| blob   | low wet dome, eyeless, dark heart + grit              | gray_ooze |
+| blob (tall) | heaving tar mound, drips, hard shine, leaning facet arris | black_pudding, pudding_half |
+| amoeba | mid-height multi-lobe colony, several nuclei          | ochre_jelly, ochre_half |
+| cube   | translucent prism, top plane, swallowed debris        | gelatinous_cube |
 
 Eyes are the CHARM TIER: only the hoppers have them. The dungeon oozes
 are eyeless — that absence is the danger read.
@@ -92,3 +96,17 @@ corpse — the splat is the funeral).
   crowns); no bespoke engulf mechanic (the cube speaks through chill +
   the existing melee law); trail is per-entity memory, never a decal
   system.
+
+## THE SLIME SHAPE LAW rework (user round two)
+
+The puddle and column plans are DEAD — `drawOozeBlob` replaces both
+(`OozePlan` is now hopper/blob/amoeba/cube; blob takes `tall` +
+`drips` dials on the look). Gray ooze = low smooth dome (single wet
+heart, grit, crown gleam dash riding the contour). Black pudding =
+the same mound grown tall and turned tar: whole-body HEAVE, drip
+clocks kept from the pillar (beads only — a standing lip rect read as
+a rivet), two staggered shine chips, and the shade boundary LEANS
+like a facet arris (audit verdicts paid in three rounds: the lit
+vertical band read as a DOOR on a hut; a plumb seam whispers
+"structure" on an organic mass). hitHeights re-pinned to the new
+silhouettes: gray 0.5, pudding 1.0, half 0.7.
