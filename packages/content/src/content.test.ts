@@ -1515,15 +1515,24 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   let maxLvl = 0;
   for (const l of z.elev!) maxLvl = Math.max(maxLvl, l);
   assert.equal(maxLvl, 3, 'the Hold stands on the third terrace');
-  // The gate road reaches the south border where the High Road lands.
-  for (const y of [126, 127]) {
+  // The gate road reaches the south border where the High Road lands
+  // (the Vale growth moved the front door 128 rows down the mountain).
+  for (const y of [254, 255]) {
     assert.equal(at(88, y), Tile.Path, `the approach road must reach row ${y}`);
   }
+  // The High Street runs the whole Vale on stone: Silver Gate to
+  // Vale Gate, one avenue, four gates on one line.
+  for (const y of [120, 160, 220]) {
+    assert.equal(at(88, y), Tile.StoneFloor, `the High Street breaks at row ${y}`);
+  }
+  // The Vale Bridge carries the avenue over the river's west leg.
+  assert.equal(at(88, 197), Tile.Bridge, 'the Vale Bridge is down');
   const counts = new Map<number, number>();
   for (const t of z.ground) counts.set(t, (counts.get(t) ?? 0) + 1);
   const n = (t: Tile): number => counts.get(t) ?? 0;
-  // The terraces are fenced and staired by the builder's own law.
-  assert.equal(n(Tile.Ramp), 39, 'the Silver Stair lost a flight');
+  // The terraces are fenced and staired by the builder's own law
+  // (39 of the Silver Stair + 6 on the Silent Terrace's two flights).
+  assert.equal(n(Tile.Ramp), 45, 'the city lost a flight');
   assert.ok(n(Tile.Cliff) > 500, 'the terrace fences are missing');
   // The mountain's ladder: silver in numbers, the deep teases above.
   assert.ok(n(Tile.RockSilver) >= 8, 'Silverfall without silver');
@@ -1551,11 +1560,12 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   assert.ok(n(Tile.MarketStall) >= 8, 'the stalls thinned');
   assert.ok(n(Tile.FishingSpot) >= 4, 'the mere and the pool must fish');
   assert.ok(n(Tile.ArchStone) >= 1, 'the Undercroft mouth lost its arch');
-  // THE FORTIFICATION LADDER (the Crown remaster): the Silver Gate
-  // (5) in the outer curtain, the Court Gate (9) at the stair crown,
-  // the CASTLE GATE (5) in the precinct's south curtain, and the
-  // Postern's 3 on the east shelf (the Pinereach epic).
-  assert.equal(n(Tile.GateGarrison), 22, 'the city gates changed');
+  // THE FORTIFICATION LADDER (the Crown remaster + the Vale): the
+  // VALE GATE (5) in the new outer curtain, the Silver Gate (5), the
+  // Court Gate (9) at the stair crown, the CASTLE GATE (5) in the
+  // precinct's south curtain, the Postern's 3 on the east shelf (the
+  // Pinereach epic), and the MINERS' POSTERN (2) in the old west run.
+  assert.equal(n(Tile.GateGarrison), 29, 'the city gates changed');
   assert.ok(n(Tile.WallGarrison) >= 240, 'the city curtain came down');
   const fallDiags =
     n(Tile.WallGarrisonDiagNE) + n(Tile.WallGarrisonDiagNW) +
@@ -1680,10 +1690,22 @@ test('silverfall: the Silver Stair connects every terrace and every doorway walk
   }
   assert.deepEqual(unreachable, [], `doorways cut off from the gate: ${unreachable.join(' ')}`);
   // The gate mouth, the three stair crowns, and the deep gallery.
-  assert.equal(seen[127 * z.width + 88], 1, 'the High Road mouth is severed');
+  assert.equal(seen[255 * z.width + 88], 1, 'the High Road mouth is severed');
+  assert.equal(seen[127 * z.width + 88], 1, 'the Silver Gate mouth is severed');
   assert.equal(seen[95 * z.width + 88], 1, 'the first flight is severed');
   assert.equal(seen[63 * z.width + 88], 1, 'the second flight is severed');
   assert.equal(seen[36 * z.width + 88], 1, 'the third flight is severed');
+  // THE VALE WALKS: the Vale Gate passage, both river banks, the
+  // Delvers' lane, the Silent Terrace (up its lych stair), the mill
+  // lane, the wagon yard, and the Kingshore lane all reach the same
+  // one city the spawn stands in.
+  assert.equal(seen[237 * z.width + 88], 1, 'the Vale Gate passage is severed');
+  assert.equal(seen[160 * z.width + 43], 1, "the Delvers' lane is severed");
+  assert.equal(seen[130 * z.width + 20], 1, 'the Silent Terrace is severed');
+  assert.equal(seen[157 * z.width + 120], 1, 'the mill lane is severed');
+  assert.equal(seen[220 * z.width + 120], 1, 'the wagon yard is severed');
+  assert.equal(seen[215 * z.width + 30], 1, 'the Kingshore lane is severed');
+  assert.equal(seen[110 * z.width + 33], 1, "the miners' postern throat is severed");
   // The castle opens: the gate passage, the hall gate, the throne
   // dais approach, the bailey, and the drill yard all walk.
   assert.equal(seen[31 * z.width + 88], 1, 'the castle gate passage is severed');

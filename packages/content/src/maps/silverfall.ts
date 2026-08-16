@@ -13,6 +13,15 @@ import type { ZoneDef } from './types.js';
  *   L0  THE GATEFRONT — the siege curtain and the Silver Gate, the
  *       wardhouse where the city watch actually lives, the
  *       caravanserai, the gate market, the Roaring Pool.
+ *   L0  THE FALLS VALE — the lower town (THE CAPITAL COMES DOWN THE
+ *       MOUNTAIN, docs/silverfall-vale-plan.md): everything south
+ *       of the old wall. The Vale River out the water gate to the
+ *       Kingswater, the High Street to the VALE GATE, the wet
+ *       market, the Millward, the Delvers' Terrace and the miners'
+ *       postern, the Silent Terrace graveyard shelf, the Kingshore
+ *       quay, the Pilgrim's Way, the wagon yard, the Fairstead.
+ *       Poorer than the High City ON PURPOSE — the wealth gradient
+ *       is the storytelling.
  *   L1  THE TRADES — the Emberway west (mine, smelter, assay, Great
  *       Forge, masons), the Timberway east (saw yard, carpenters,
  *       fletcher, cooperage), the cookhouse and Greenstair feeding
@@ -71,6 +80,10 @@ export function buildSilverfall(): ZoneDef {
   b.raise(8, 4, 160, 92, 1); // L1: x8-167, y4-95
   b.raise(30, 6, 116, 58, 2); // L2: x30-145, y6-63
   b.raise(46, 10, 92, 27, 3); // L3: x46-137, y10-36
+  // THE SILENT TERRACE — the one raised shelf of the lower city: the
+  // graveyard ledge under the west crags, older than every wall
+  // above it. The barrows knew this mountain first.
+  b.raise(10, 120, 30, 24, 1); // x10-39, y120-143
 
   // The Silver Stair — three grand flights on the avenue axis.
   for (let x = 84; x <= 92; x++) b.stairs(x, 95); // L0 -> L1
@@ -82,6 +95,10 @@ export function buildSilverfall(): ZoneDef {
   // Side stairs to the Hall Terrace (L1 -> L2).
   for (let x = 36; x <= 38; x++) b.stairs(x, 63);
   for (let x = 136; x <= 138; x++) b.stairs(x, 63);
+  // The Silent Terrace's two flights: the lych stair (west, the
+  // mourners' way) and the keeper's stair (east).
+  for (let x = 15; x <= 17; x++) b.stairs(x, 143);
+  for (let x = 32; x <= 34; x++) b.stairs(x, 143);
 
   // ---------------------------------------------------------------
   // THE AVENUE — the High Road continued: stone from gate to Crown.
@@ -968,7 +985,7 @@ export function buildSilverfall(): ZoneDef {
   // The flanking crags first: backdrop scatter, skipping the ground
   // the wardhouse claims.
   for (const [rx, ry, rw, rh] of [
-    [10, 98, 22, 24], [140, 98, 24, 24],
+    [10, 98, 22, 13], [140, 98, 24, 13],
   ] as const) {
     for (let y = ry; y < ry + rh; y += 3) {
       for (let x = rx; x < rx + rw; x += 4) {
@@ -1030,8 +1047,18 @@ export function buildSilverfall(): ZoneDef {
   b.fillRect(20, 110, 3, 1, Tile.Snow).fillRect(155, 110, 3, 1, Tile.Snow);
   // The curtain runs: garrison masonry sinking into the ridges.
   b.fillRect(84, 113, 9, 2, Tile.StoneFloor); // the gate threshold first
-  b.fillRect(26, 112, 55, 1, Tile.WallGarrison); // west run, into the scree
-  b.fillRect(96, 112, 55, 1, Tile.WallGarrison); // east run, into the scree
+  // The west run — cut once at x32-33 for THE MINERS' POSTERN: the
+  // Delvers' Terrace's own door, opening onto the wardhouse drill
+  // ground so the watch counts every shift in and out. The wall
+  // learned to admit what it exists to protect.
+  b.fillRect(26, 112, 6, 1, Tile.WallGarrison); // x26-31
+  b.set(32, 112, Tile.GateGarrison).set(33, 112, Tile.GateGarrison);
+  b.fillRect(34, 112, 47, 1, Tile.WallGarrison); // x34-80
+  // The east run — parted where the Roaring Pool finally overflows:
+  // THE WATER GATE. The wall dies into the banks (the mole law) and
+  // the Vale River runs out under the city's oldest masonry.
+  b.fillRect(96, 112, 3, 1, Tile.WallGarrison); // x96-98, to the west bank
+  b.fillRect(107, 112, 44, 1, Tile.WallGarrison); // x107-150, from the east bank
   // The flanking towers: solid drums proud of the line.
   for (const tx of [40, 60, 110, 132] as const) {
     b.fillRect(tx, 113, 3, 2, Tile.WallGarrison);
@@ -1142,11 +1169,173 @@ export function buildSilverfall(): ZoneDef {
   b.set(94, 110, Tile.Crate).set(116, 108, Tile.LampPost);
   b.set(78, 104, Tile.LampPost).set(98, 111, Tile.Bench);
   b.set(118, 96, Tile.TreeWillow);
-  // THE APPROACH — outside the wall the city still owns the road.
-  b.fillRect(86, 115, 5, 13, Tile.Path);
-  b.set(84, 117, Tile.Brazier).set(92, 117, Tile.Brazier);
-  b.set(84, 122, Tile.Brazier).set(92, 122, Tile.Brazier);
-  b.sign(93, 119, 'SILVERFALL', ['Seat of the Silver Line.', 'Mind the edge.'], Tile.Signpost);
+  // ---------------------------------------------------------------
+  // THE FALLS VALE — the lower town (THE CAPITAL COMES DOWN THE
+  // MOUNTAIN, docs/silverfall-vale-plan.md). Everything south of the
+  // Silver Gate wall is the city's missing half: the ground where
+  // the miners sleep, the bread is baked, the pilgrims rest, the
+  // dead are buried, and the mountain's water finishes its journey
+  // in the Kingswater. Phase 2 lays the SKELETON — terrain, water,
+  // walls, streets, bridges, crag frames; the districts themselves
+  // rise in Phase 3.
+  //
+  // THE ONE GRAND AXIS, completed: the fortification ladder gains
+  // its lowest rung. VALE GATE (y236) -> Silver Gate (y112) ->
+  // Court Gate (y62) -> Castle Gate (y32). Four gates, one avenue,
+  // every gate outranking the last — and the climb now starts in a
+  // town instead of a wilderness.
+  // ---------------------------------------------------------------
+  // THE HIGH STREET — the avenue continued, Silver Gate to Vale
+  // Gate. Stone the whole way: coin walked this street before most
+  // of the High City existed.
+  b.fillRect(84, 115, 9, 121, Tile.StoneFloor); // y115-235
+  // THE VALE RIVER — the Roaring Pool's overflow, out the water gate
+  // and south through the town. North leg first (x100-105 water,
+  // x99/x106 the banks the wall dies into). The leg starts at y108,
+  // one row shy of the pool's rim — the quay's fishing water at
+  // (99,107) keeps its cast.
+  b.fillRect(99, 108, 1, 88, Tile.WaterShallow); // west bank, y108-195
+  b.fillRect(106, 108, 1, 88, Tile.WaterShallow); // east bank
+  b.fillRect(100, 108, 6, 88, Tile.Water); // the river proper
+  // The west leg: the river turns for the lake at y195, running
+  // west under three spans to the Kingswater's reed mouth.
+  b.fillRect(12, 194, 94, 1, Tile.WaterShallow); // north rim, x12-105
+  b.fillRect(12, 200, 94, 1, Tile.WaterShallow); // south rim
+  b.fillRect(10, 195, 96, 5, Tile.Water); // x10-105, y195-199
+  // THE KINGSHORE — the authored lake: the Kingswater's east lobe
+  // inside the walls, stepping wider to the south hem where the
+  // west hem's water rows hand the mere back to the field.
+  b.fillRect(0, 178, 5, 12, Tile.Water); // y178-189
+  b.fillRect(5, 182, 2, 8, Tile.WaterShallow);
+  b.fillRect(0, 190, 10, 12, Tile.Water); // y190-201
+  b.fillRect(10, 192, 2, 10, Tile.WaterShallow);
+  b.fillRect(0, 202, 15, 12, Tile.Water); // y202-213
+  b.fillRect(15, 204, 2, 10, Tile.WaterShallow);
+  b.fillRect(0, 214, 20, 12, Tile.Water); // y214-225
+  b.fillRect(20, 216, 2, 10, Tile.WaterShallow);
+  b.fillRect(0, 226, 25, 12, Tile.Water); // y226-237
+  b.fillRect(25, 228, 2, 10, Tile.WaterShallow);
+  b.fillRect(0, 238, 30, 18, Tile.Water); // y238-255, the open mere
+  b.fillRect(30, 240, 2, 16, Tile.WaterShallow);
+  b.fillRect(0, 208, 6, 34, Tile.WaterDeep); // the cold heart offshore
+  // The reed mouth where river meets mere — the city's one soft
+  // edge, on purpose.
+  b.set(13, 192, Tile.Swamp).set(16, 202, Tile.Swamp).set(11, 203, Tile.Swamp);
+  b.set(19, 193, Tile.GrassTall).set(14, 205, Tile.GrassTall).set(22, 214, Tile.GrassTall);
+  // THE THREE SPANS — a capital crosses its river; it never fords.
+  // The Vale Bridge carries the avenue itself: the grandest span in
+  // the province, parapet braziers at both banks.
+  b.fillRect(84, 194, 9, 7, Tile.Bridge); // the Vale Bridge, y194-200
+  b.set(83, 193, Tile.Brazier).set(93, 193, Tile.Brazier);
+  b.set(83, 201, Tile.Brazier).set(93, 201, Tile.Brazier);
+  b.fillRect(98, 156, 10, 3, Tile.Bridge); // the Mill Bridge, x98-107
+  b.fillRect(98, 180, 10, 2, Tile.Bridge); // the Low Bridge, x98-107
+  b.fillRect(42, 194, 4, 7, Tile.Bridge); // the Shore Bridge (the Delvers' lane)
+  // THE STREETS FIRST (the town-plan law). The lanes are dirt-worn
+  // Path — the Vale is poorer than the High City on purpose; only
+  // the avenue and the market walk on stone.
+  b.fillRect(93, 156, 5, 2, Tile.StoneFloor); // avenue -> Mill Bridge
+  b.fillRect(93, 180, 5, 2, Tile.Path); // avenue -> Low Bridge
+  b.fillRect(108, 157, 30, 2, Tile.Path); // the mill lane east, x108-137
+  b.fillRect(108, 180, 30, 2, Tile.Path); // the craft lane east
+  b.fillRect(138, 157, 3, 79, Tile.Path); // THE PILGRIM'S WAY, y157-235
+  // The miners' postern's throat — the old scree rows part for the
+  // new door: cleared north to the drill ground, stone through the
+  // wall, worn path south to the lane.
+  b.fillRect(32, 108, 2, 4, Tile.Path); // y108-111, to the drill ground
+  b.set(32, 113, Tile.StoneFloor).set(33, 113, Tile.StoneFloor); // the threshold
+  b.fillRect(32, 114, 2, 3, Tile.Path); // the postern step
+  b.fillRect(32, 117, 12, 2, Tile.Path); // postern -> the Delvers' lane
+  b.fillRect(42, 119, 3, 75, Tile.Path); // THE DELVERS' LANE, y119-193
+  b.fillRect(42, 201, 3, 35, Tile.Path); // the lane south of the Shore Bridge
+  b.fillRect(20, 215, 22, 2, Tile.Path); // the Kingshore lane, to the quay
+  // THE WET MARKET's square — stone flags west of the avenue; the
+  // stalls and slabs rise in Phase 3.
+  b.fillRect(64, 146, 20, 19, Tile.StoneFloor); // x64-83, y146-164
+  // The mill yard and the wagon yard take their worked ground now.
+  b.fillRect(108, 148, 22, 12, Tile.Dirt); // the Millward pad
+  b.fillRect(110, 210, 26, 22, Tile.Dirt); // the Wagon Yard
+  // ---------------------------------------------------------------
+  // THE OUTER CURTAIN — the third-generation wall: plainer, faster
+  // work than the Silver Gate, the masonry of a city that outgrew
+  // its plan. West it DIES IN THE LAKE (the mole law); east it sinks
+  // into the crag band's scree.
+  // ---------------------------------------------------------------
+  b.fillRect(84, 232, 9, 4, Tile.StoneFloor); // the gate threshold
+  b.fillRect(27, 236, 54, 2, Tile.WallGarrison); // west run, x27-80, to the bank
+  b.fillRect(96, 236, 55, 2, Tile.WallGarrison); // east run, x96-150
+  // The gate bastions — the five-square drums a third time, smaller:
+  // the youngest masons quoting their grandmothers.
+  for (const bx of [81, 91] as const) {
+    b.fillRect(bx, 234, 5, 5, Tile.WallGarrison);
+    b.set(bx, 234, Tile.WallGarrisonDiagSE);
+    b.set(bx + 4, 234, Tile.WallGarrisonDiagSW);
+    b.set(bx, 238, Tile.WallGarrisonDiagNE);
+    b.set(bx + 4, 238, Tile.WallGarrisonDiagNW);
+  }
+  // THE VALE GATE — the capital's new front door, standing open (the
+  // war-measure law: shutting gates is the players' business).
+  for (let x = 86; x <= 90; x++) b.set(x, 236, Tile.GateGarrison);
+  b.fillRect(86, 237, 5, 2, Tile.StoneFloor); // the gate passage
+  b.set(84, 233, Tile.Brazier).set(92, 233, Tile.Brazier);
+  b.sign(82, 240, 'THE VALE GATE', ['the youngest wall,', 'the busiest door'], Tile.Signpost);
+  // Flanking towers on the runs, proud of the line southward.
+  for (const tx of [46, 64, 108, 130] as const) {
+    b.fillRect(tx, 238, 3, 2, Tile.WallGarrison);
+    b.set(tx, 239, Tile.WallGarrisonDiagNE);
+    b.set(tx + 2, 239, Tile.WallGarrisonDiagNW);
+  }
+  // The east scree seal: the outer wall's flank is CLOSED, rock to
+  // the hem — the Vale admits nobody the gates don't see.
+  b.fillRect(151, 236, 25, 2, Tile.Rock); // x151-175, solid both rows
+  for (let x = 151; x <= 175; x += 3) b.set(x, 235, Tile.Rock);
+  for (let x = 152; x <= 175; x += 4) b.set(x, 238, Tile.Rock);
+  // The west bank stones where the wall meets the water.
+  b.set(26, 236, Tile.Rock).set(26, 237, Tile.Rock).set(27, 238, Tile.Rock);
+  // ---------------------------------------------------------------
+  // THE CRAG FRAMES — the mountain cups the Vale: the west band
+  // under the Silent Terrace, the east band walling the town from
+  // the wild. Deterministic scatter (fallRng) — identical every boot.
+  // ---------------------------------------------------------------
+  for (let y = 114; y <= 176; y += 2) {
+    for (let x = 0; x <= 8; x += 2) {
+      const j = fallRng(x * 3 + 7, y * 5 + 1);
+      if (j < 0.45) b.set(x, y, Tile.Rock);
+      else if (j < 0.6) b.set(x + 1, y + 1, Tile.TreePine);
+      else if (j < 0.7) b.set(x, y + 1, Tile.Stump);
+    }
+  }
+  b.fillRect(2, 124, 3, 1, Tile.Snow).fillRect(1, 150, 2, 1, Tile.Snow);
+  for (let y = 115; y <= 234; y += 2) {
+    for (let x = 152; x <= 174; x += 3) {
+      const j = fallRng(x * 11 + 3, y * 7 + 5);
+      if (j < 0.5) b.set(x, y, Tile.Rock);
+      else if (j < 0.68) b.set(x + 1, y + 1, Tile.TreePine);
+      else if (j < 0.76) b.set(x, y + 1, Tile.Stump);
+    }
+  }
+  b.fillRect(160, 126, 3, 1, Tile.Snow).fillRect(168, 158, 2, 1, Tile.Snow);
+  b.fillRect(155, 190, 3, 1, Tile.Snow).fillRect(165, 222, 2, 1, Tile.Snow);
+  // ---------------------------------------------------------------
+  // THE HIGH STREET'S LIGHT — braziers at the gates (the stair
+  // burns), lamps pacing the long stretches between.
+  // ---------------------------------------------------------------
+  b.set(83, 126, Tile.LampPost).set(93, 126, Tile.LampPost);
+  b.set(83, 140, Tile.LampPost).set(93, 140, Tile.LampPost);
+  b.set(83, 154, Tile.LampPost).set(93, 154, Tile.LampPost);
+  b.set(83, 168, Tile.LampPost).set(93, 168, Tile.LampPost);
+  b.set(83, 182, Tile.LampPost).set(93, 182, Tile.LampPost);
+  b.set(83, 206, Tile.LampPost).set(93, 206, Tile.LampPost);
+  b.set(83, 218, Tile.LampPost).set(93, 218, Tile.LampPost);
+  b.set(83, 229, Tile.LampPost).set(93, 229, Tile.LampPost);
+  // ---------------------------------------------------------------
+  // THE APPROACH — outside the Vale Gate the city still owns the
+  // road: the High Road's last league between crag and water.
+  // ---------------------------------------------------------------
+  b.fillRect(86, 239, 5, 17, Tile.Path); // y239-255, to the carved road
+  b.set(84, 242, Tile.Brazier).set(92, 242, Tile.Brazier);
+  b.set(84, 249, Tile.Brazier).set(92, 249, Tile.Brazier);
+  b.sign(93, 244, 'SILVERFALL', ['Seat of the Silver Line.', 'Mind the edge.'], Tile.Signpost);
 
   // ---------------------------------------------------------------
   // Mountain life and the soft edges.

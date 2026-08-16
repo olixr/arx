@@ -37,7 +37,11 @@ export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
   // worded town. The High Road approach climbs the march to the last
   // brazier; the Silverspine past the walls holds at the city's word.
   // The walk is the game; the walls are the reward.
-  { x: -448, y: -280, safeR: 72, haven: true, country: 4 },
+  // (THE CAPITAL COMES DOWN THE MOUNTAIN doubled the rect south —
+  // the calm re-centers on the grown city and safeR 124 keeps the
+  // castle crown, the Vale, and both gates inside the word; the
+  // approach past the Vale Gate stays the march it always was.)
+  { x: -448, y: -220, safeR: 124, haven: true, country: 4 },
   // Saltmere — the town at the water's end. The Salt Road south stays
   // an earned walk, and beyond the mere the far shore begins the long
   // climb toward the southern rim — a frontier the town lights, not

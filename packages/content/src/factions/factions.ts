@@ -164,7 +164,7 @@ export const FACTIONS: FactionsDef = {
       enforcers: ['castle_guard', 'silverfall_watch', 'pinewatch_watch', 'hoargate_watch'],
       npcPrefixes: [],
       anchors: [
-        { x: -448, y: -280 },
+        { x: -448, y: -220 },
         { x: 1160, y: -356 },
       ],
       refusals: [

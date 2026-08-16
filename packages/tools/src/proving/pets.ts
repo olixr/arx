@@ -2178,7 +2178,10 @@ const main = async () => {
   // THE ROAD SOAK: every authored pen answers — the caravanserai bay
   // at Silverfall and the Pinewatch muster yard, the whole map apart.
   for (const [px, py, label] of [
-    [-323, -120, 'Silverfall'],
+    // Silverfall's caravanserai bay, local (53,104) — re-based onto
+    // the post-regen rect origin (-536,-344); the pre-regen world
+    // coords sat a whole epoch stale and outside the zone entirely.
+    [-483, -240, 'Silverfall'],
     [595, -133, 'Pinewatch'],
   ] as Array<[number, number, string]>) {
     await tp(c, px, py);

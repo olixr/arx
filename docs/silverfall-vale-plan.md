@@ -395,4 +395,41 @@ windows, no marble. The wealth gradient IS the storytelling.
 
 ## AS-BUILT LEDGER
 
-(appended per phase)
+- **Phase 1 THE PLAN** a41e3ae4 — this document.
+- **Phase 2 THE GROUND GROWS** — as designed, with these build-truths:
+  - SILVERFALL_RECT h 128 → 256; all local coords and world
+    couplings survived verbatim (origin fixed, growth pure south).
+  - high_road tail re-threaded: after (-336,-202) the DESCENT leg
+    (-342,-172) (-346,-140) (-350,-110) rounds the SE corner at
+    (-352,-80) and walks the west miles (-380,-76) (-412,-76)
+    (-436,-80) to the Vale Gate mouth (-448,-89). All waypoints
+    ≥9 tiles off the rect except the endpoint (route law: end
+    within rect±1).
+  - spineshelf_rest → (-408,-64), cell (-4,-1) (its old cell (-4,-2)
+    is entirely inside the city now). SPINEWALL_SOUTH → (-330,-40).
+  - veil_den cell [-3,-1] → [-2,-1]: the re-seated Spinewall
+    blanketed its old cell; the den wanted deep wood anyway.
+  - croakwater_banks cell [-5,-1] → [-6,-2], PROBED (a scratch
+    poiForCell sweep): the rect's basin damp took the south bank's
+    water and the mere's heart drowns the west cell's own center —
+    [-6,-2] is the first honest bank beyond the far shore.
+    [-6,-1] also composes if it ever needs to move again.
+  - Anchors: danger (-448,-220) safeR 124 haven; crown faction
+    follows; audio seat (-448,-220) full 72 fade 104.
+  - THE VALE RIVER starts at y108 — one row shy of the pool rim, so
+    the quay's pinned FishingSpot at (99,107) keeps its cast.
+  - THE MINERS' POSTERN (x32-33, y112, GateGarrison pair): the old
+    scree rows y111/y113 needed explicit clearing (path y108-111,
+    stone threshold y113) or the scree seals the new door — the
+    scree loops run before the curtain fills.
+  - Vale Gate sign stands at (82,240): (94,234) was inside the east
+    bastion fill and sign() lawfully refused it.
+  - Pins: Ramp 39→45 (the Silent Terrace's two flights),
+    GateGarrison 22→29 (+5 Vale Gate, +2 miners' postern), road
+    mouth rows 126/127→254/255, BFS adds seven Vale reach pins +
+    keeps the Silver Gate mouth at 127.
+  - prove:pets Silverfall road-soak stop re-based (-323,-120) →
+    (-483,-240) — it was one epoch stale and outside the zone.
+  - Gates: content 514/514, client 614/614, server 492/493 (the one
+    red is fromProc XP — pre-existing neighbor churn, fails without
+    these changes), five-package tsc clean.

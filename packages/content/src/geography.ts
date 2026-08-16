@@ -91,16 +91,18 @@ export const DAWNMEAD_RECT: ZoneRect = { x: -128, y: 0, w: 128, h: 96 };
 export const AMBERFORD_RECT: ZoneRect = { x: 448, y: -56, w: 144, h: 144 };
 
 /**
- * Silverfall — the mountain capital (epic 4). Center (-448, -280):
- * deep in the Silverspine, ~530 tiles from Dawnmead, so the band
- * march keeps its approach at tier 4-5 forever. The city anchors as a
- * HAVEN (a lamp, not a hearth) — tier 0 inside, wild at the walls.
- * Re-seated by the great regen onto seed 24601's own highland belt —
- * the massif now amplifies real crag country instead of inventing it,
- * and a north-flowing river passes east of the walls for the High
- * Road's last bridge below the falls.
+ * Silverfall — the mountain capital (epic 4; doubled by THE CAPITAL
+ * COMES DOWN THE MOUNTAIN, docs/silverfall-vale-plan.md). The rect
+ * grew straight SOUTH — origin fixed, so every local coordinate and
+ * every hardcoded world coupling survived the growth verbatim. The
+ * High City keeps the crown of the Silverspine; below the old wall
+ * the FALLS VALE runs down to the Kingswater, and the city finally
+ * has the lower town a capital's history owes it. Center of the
+ * grown rect (-448, -216); the haven anchor sits at (-448, -220)
+ * (danger.ts) — tier 0 inside, wild at the walls, the approach at
+ * tier 4-5 forever (a lamp, not a hearth).
  */
-export const SILVERFALL_RECT: ZoneRect = { x: -536, y: -344, w: 176, h: 128 };
+export const SILVERFALL_RECT: ZoneRect = { x: -536, y: -344, w: 176, h: 256 };
 
 /**
  * Saltmere — the town at the water's end (the southern epic). Center
@@ -128,12 +130,15 @@ export const SILVERSPINE = { x: -480, y: -312, r: 210 } as const;
  * EAST: crag country standing a clean thirty tiles off the city's
  * east wall (the zone apron holds the plateau field down inside that
  * ring, so the crags crowd the approach without ever fencing a gate).
- * SOUTH: the shoulder the High Road's last league squeezes past —
- * with the Kingswater on the other side, the final approach to
- * Silverfall is a gap between crag and deep water. One road in.
+ * SOUTH: the shoulder the High Road's last league squeezes past.
+ * Re-seated south-east when the Vale claimed its old heart: the road
+ * now DESCENDS the city's east flank, rounds the south-east corner
+ * between this crag and the walls, and walks the last west miles
+ * along the hem with the Kingswater ahead — still a gap between
+ * crag and deep water, still one road in, one league lower.
  */
 export const SPINEWALL_EAST = { x: -312, y: -296, r: 116 } as const;
-export const SPINEWALL_SOUTH = { x: -398, y: -154, r: 82 } as const;
+export const SPINEWALL_SOUTH = { x: -330, y: -40, r: 82 } as const;
 
 /**
  * THE KINGSWATER + THE COLDTARN — the capital's water. The Kingswater
@@ -144,7 +149,12 @@ export const SPINEWALL_SOUTH = { x: -398, y: -154, r: 82 } as const;
  *
  * Both hearts sit OFF the zone rect (the Amberfen heart law): the
  * city authors its own ground and the border's edge class carries the
- * water outward, so no shoreline is ever sliced by a rect.
+ * water outward, so no shoreline is ever sliced by a rect. Since the
+ * Vale growth, the Kingswater's east lobe laps the rect's south-west
+ * — ON PURPOSE: the KINGSHORE quarter authors its own shore inside
+ * the rect, the west hem's water rows hand the mere back to the
+ * field, and the capital finally has a waterfront. The heart itself
+ * stays four tiles off the west hem; the law holds.
  */
 export const KINGSWATER = { x: -540, y: -190, r: 84 } as const;
 export const COLDTARN = { x: -326, y: -370, r: 44 } as const;
@@ -472,8 +482,12 @@ const AUTHORED_PLAN: GeographyDef = {
       // channel and the northwest water, takes the second channel at
       // its six-tile narrows, and then runs the long west miles: the
       // Thornveil crossing (T3), the fork country, and the crag skirt
-      // past the Last Lamp (T4-5) to the gate between the Spinewall
-      // and the Kingswater. One road in.
+      // past the Last Lamp (T4-5). Then THE DESCENT (the Vale epic):
+      // the road turns down the city's east flank, rounds the south-
+      // east corner between the Spinewall's re-seated shoulder and
+      // the walls, and walks its last west miles along the south hem
+      // with the Kingswater ahead — to the VALE GATE, the capital's
+      // new front door. One road in, one league lower than it was.
       pts: [
         { x: 518, y: -56 }, { x: 508, y: -62 }, { x: 496, y: -72 }, { x: 482, y: -84 },
         { x: 472, y: -94 }, { x: 465, y: -104 }, { x: 462, y: -114 }, { x: 452, y: -118 },
@@ -484,7 +498,8 @@ const AUTHORED_PLAN: GeographyDef = {
         { x: 24, y: -156 }, { x: -8, y: -162 }, { x: -40, y: -166 }, { x: -72, y: -168 },
         { x: -104, y: -172 }, { x: -140, y: -176 }, { x: -176, y: -182 }, { x: -208, y: -186 },
         { x: -240, y: -192 }, { x: -272, y: -196 }, { x: -304, y: -200 }, { x: -336, y: -202 },
-        { x: -368, y: -206 }, { x: -400, y: -210 }, { x: -426, y: -214 }, { x: -448, y: -218 },
+        { x: -342, y: -172 }, { x: -346, y: -140 }, { x: -350, y: -110 }, { x: -352, y: -80 },
+        { x: -380, y: -76 }, { x: -412, y: -76 }, { x: -436, y: -80 }, { x: -448, y: -89 },
       ],
     },
     {
@@ -697,7 +712,10 @@ const AUTHORED_PLAN: GeographyDef = {
     { id: 'last_lamp', defId: 'last_lamp', x: -264, y: -202 },
     // The named dens of the wild — the veil and the spine have ALWAYS
     // held these; the cell-forced scan finds them honest ground.
-    { id: 'veil_den', defId: 'wolfkin_den', cell: [-3, -1] },
+    // (The den moved one cell east into the veil proper when the
+    // Spinewall's south shoulder re-seated onto its old cell — a
+    // wolfkin den wants deep wood, not crag.)
+    { id: 'veil_den', defId: 'wolfkin_den', cell: [-2, -1] },
     { id: 'spine_digs', defId: 'kobold_digs', cell: [-5, -4] },
     // The First Road ambush — every waker's first lesson that the
     // space BETWEEN safeties is the game: the camp watches the fen-
@@ -752,8 +770,12 @@ const AUTHORED_PLAN: GeographyDef = {
     // with apron room, where the Heartwood Walk ends and permission
     // begins.
     { id: 'heartwood_door', defId: 'heartwood_door', x: -1118, y: -482 },
-    // The crag skirt under Silverfall's walls gets one roof.
-    { id: 'spineshelf_rest', defId: 'waystation', x: -398, y: -202 },
+    // The crag skirt under Silverfall's walls gets one roof — re-
+    // seated a league south when the Vale claimed its old ground:
+    // the last lamp OF the last league now stands on the west miles
+    // between the south hem and the Kingswater, in sight of the
+    // Vale Gate's braziers.
+    { id: 'spineshelf_rest', defId: 'waystation', x: -408, y: -64 },
     // THE OLD ROAD'S ONE ROOF — the Third Stone, kept by returners,
     // not Waykeepers: the one hearth on the dark road, the town's
     // standing argument with the order, built in stone and firewood.
@@ -772,9 +794,15 @@ const AUTHORED_PLAN: GeographyDef = {
     // the discovery is the reward for walking a shore the roads never
     // reach — and the cell scan finds the honest bank itself (the
     // shore def's probe does the curating the pin can't).
-    // The Kingswater's south bank — the croaking Silverfall's
-    // fisherfolk have always rowed wide of.
-    { id: 'croakwater_banks', defId: 'skral_village', cell: [-5, -1] },
+    // The water PAST the Kingswater's west bank — the croaking
+    // Silverfall's fisherfolk have always rowed wide of. The Vale
+    // growth put the city's Kingshore on the mere's east lobe, the
+    // basin damp took the old south-bank cell's water, and the
+    // mere's own heart drowns its west cell's center — so the
+    // village keeps the first honest bank beyond the far shore
+    // (probed: cell [-6,-2] composes; [-5,-1], [-5,-2] cannot).
+    // Two peoples, one water country, a careful distance.
+    { id: 'croakwater_banks', defId: 'skral_village', cell: [-6, -2] },
     // The Amberfen's south hem — the weir-folk deep in the marsh
     // the fen road only ever walks PAST. (The Glasswater was tried
     // and lawfully refused: Pinewatch owns its east shore and the
