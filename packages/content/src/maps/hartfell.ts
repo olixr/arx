@@ -747,6 +747,11 @@ export function buildHartfell(): ZoneDef {
   // The piers reach for deep water; the border carries the lake on.
   for (let x = 1; x <= 6; x++) b.set(x, 68, Tile.Dock);
   for (let x = 2; x <= 7; x++) b.set(x, 74, Tile.Dock);
+  // The boardwalk spur: the lower pier stood as an ISLAND — planks
+  // ringed by deep water, Eyvor's net round unreachable (the
+  // committed routine sweep's catch). Three boards north join its
+  // east end to the shallows at (8,71), and the shore walks on.
+  for (let y = 72; y <= 74; y++) b.set(8, y, Tile.Dock);
   b.set(0, 66, Tile.SalmonRun).set(1, 72, Tile.SalmonRun).set(0, 78, Tile.FishingSpot);
   // The racks: salmon split and hung in the cold wind.
   b.set(9, 64, Tile.RailWood).set(10, 64, Tile.RailWood).set(11, 64, Tile.RailWood);

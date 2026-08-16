@@ -35,6 +35,7 @@ import {
   wallHungInfo,
   diagWallInfo,
   doorInfo,
+  BED_RUN_CAP,
   hashCoords,
   hashString,
   pointHitsSolid,
@@ -835,6 +836,14 @@ interface AnimState {
   seat?: SeatSpec | null;
   seatTx?: number;
   seatTy?: number;
+  /**
+   * Sticky facing-away flag for the seated paint-order flip. The raw
+   * threshold (sin(dir) < -0.5) flips the layer in a single frame as
+   * the interpolated dir drifts past it — a visible pop. This latch
+   * only flips outside a small dead band (±0.05), so a sitter turning
+   * to a speaker crosses the line once, cleanly.
+   */
+  seatAway?: boolean;
   /**
    * Smoothed 0..1 sheathe blend (the sitK pattern): 1 = weapons stowed
    * on the body. Initialized AT its target on first sight so a body
@@ -45990,8 +45999,13 @@ export class Renderer {
         let runX1 = tx;
         let head: 'n' | 'e' | 'w';
         if (horiz) {
-          while (isBed(game.world.groundAt(runX0 - 1, ty))) runX0--;
-          while (isBed(game.world.groundAt(runX1 + 1, ty))) runX1++;
+          // PARITY LAW: the walk window is the registry's own
+          // (BED_RUN_CAP, shared seats.ts) — an uncapped walk here
+          // gave a long player-built run a different bed than the
+          // one the sim mounts the sleeper on.
+          while (runX0 > tx - BED_RUN_CAP && isBed(game.world.groundAt(runX0 - 1, ty))) runX0--;
+          while (runX1 < runX0 + BED_RUN_CAP - 1 && isBed(game.world.groundAt(runX1 + 1, ty)))
+            runX1++;
           head = isWall(game.world.groundAt(runX1 + 1, ty))
             ? 'e'
             : isWall(game.world.groundAt(runX0 - 1, ty))
@@ -46021,7 +46035,9 @@ export class Renderer {
         let runY1 = ty;
         if (head === 'n' && (bn || bs)) {
           if (bn) return { sortY: ty + 0.72, draw: () => {} };
-          while (isBed(game.world.groundAt(tx, runY1 + 1))) runY1++;
+          // PARITY LAW: capped exactly like the registry's N-S walk.
+          while (runY1 < ty + BED_RUN_CAP - 1 && isBed(game.world.groundAt(tx, runY1 + 1)))
+            runY1++;
         }
         const runV = runY1 - ty;
         // N-S runs merge into one long bed; the quilt colorway is keyed
@@ -53730,15 +53746,28 @@ export class Renderer {
     // 0.68); facing away, the backrest is the near side and the whole
     // piece paints over the body — head peeking above the crest IS
     // the read. A sleeper paints over the bed run (0.72). The throne
-    // keeps its own ty+0.42 carve-out and needs no bump.
+    // always faces the camera, so its sitter is ALWAYS the near side:
+    // an explicit bump over the throne's ty+0.42 paint, never a bet
+    // that the raw network y lands south of the carve-out. The
+    // override holds only while the pose byte says resting — a body
+    // easing upright already stands at the walk-up spot and must sort
+    // by where it STANDS, not pin to the old chair row through the
+    // whole stand-up blend.
     let sortY = e.y;
-    if (seat && (sitE > 0 || lieE > 0)) {
+    if (seat && (e.pose === PoseState.Sit || e.pose === PoseState.Lie) && (sitE > 0 || lieE > 0)) {
       const t0 = seat.tiles[0]!;
       const tN = seat.tiles[seat.tiles.length - 1]!;
       if (seat.kind === 'bed') sortY = tN.y + 0.73;
-      else if (seat.kind !== 'throne') {
-        sortY = Math.sin(e.dir) < -0.5 ? t0.y + 0.4 : t0.y + 0.69;
+      else if (seat.kind === 'daybed') sortY = tN.y + 0.77; // over the piece's ty+0.76
+      else if (seat.kind === 'throne') sortY = t0.y + 0.55;
+      else {
+        const sin = Math.sin(e.dir);
+        if (sin < -0.55) anim.seatAway = true;
+        else if (sin > -0.45) anim.seatAway = false;
+        sortY = anim.seatAway ? t0.y + 0.4 : t0.y + 0.69;
       }
+    } else {
+      anim.seatAway = false;
     }
     return {
       sortY,
@@ -53992,7 +54021,8 @@ export class Renderer {
         // quilt repaints OVER the lower body after the rig — the
         // classic RPG read: head and shoulders out on the pillow,
         // everything else under the covers. The blend IS the recline.
-        const lying = lieE > 0 && seat !== null && seat.kind === 'bed';
+        const lying =
+          lieE > 0 && seat !== null && (seat.kind === 'bed' || seat.kind === 'daybed');
         let tuck: (() => void) | null = null;
         if (lying) {
           const head = seat!.head ?? 'n';
@@ -54077,13 +54107,17 @@ export class Renderer {
             // hand from the frame so the cloth never rides the post.
             const qW = halfLen * 2 * 0.58;
             const qX = sgn > 0 ? p.x - halfLen + 0.1 * s : p.x + halfLen - qW - 0.1 * s;
-            tuck = () => {
-              if (tuckA <= 0 || this.bedFlips.has(flipKey)) return;
-              ctx.save();
-              ctx.globalAlpha = tuckA;
-              this.bedCoversSide(qX, qW, dTop, dBot, sgn, qMain, qDark);
-              ctx.restore();
-            };
+            // A daybed has no covers — the sleeper rests ON the silk,
+            // so the quilt tuck stands down and the whole figure shows.
+            if (seat!.kind === 'bed') {
+              tuck = () => {
+                if (tuckA <= 0 || this.bedFlips.has(flipKey)) return;
+                ctx.save();
+                ctx.globalAlpha = tuckA;
+                this.bedCoversSide(qX, qW, dTop, dBot, sgn, qMain, qDark);
+                ctx.restore();
+              };
+            }
           }
         }
         // Layer law with a cape worn: gear straps OVER the cloth, so

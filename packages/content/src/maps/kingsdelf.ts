@@ -345,7 +345,11 @@ export function buildKingsdelf(): ZoneDef {
     doors: [{ side: 'w', at: 5 }],
     windows: [{ side: 'w', at: 2 }, { side: 'n', at: 5 }, { side: 'n', at: 11 }],
   });
-  b.set(77, 48, Tile.Counter).set(78, 48, Tile.Counter).set(79, 48, Tile.Counter);
+  // The bar flap stands OPEN at the west end (77,48): the serving row
+  // behind the counters was a sealed pocket — Brekka spawned into it
+  // and could never walk out to her own cot, pacing the bar all
+  // night (the committed routine sweep's first catch).
+  b.set(78, 48, Tile.Counter).set(79, 48, Tile.Counter);
   b.set(76, 47, Tile.BrewKeg).set(75, 47, Tile.Bed); // Brekka's cot behind the bar
   b.set(80, 47, Tile.Bookshelf); // the day-book
   // The kitchen, walled, east.

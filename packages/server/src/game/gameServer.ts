@@ -1499,6 +1499,8 @@ interface RoutineComp {
    * (slot flip, linger end, combat) dismounts to (retX, retY) first.
    */
   seat: {
+    /** The plane the furniture stands on — occupancy keys carry it. */
+    plane: PlaneId;
     tiles: Array<{ x: number; y: number }>;
     retX: number;
     retY: number;
@@ -1736,7 +1738,14 @@ interface PlayerComp {
    * returns it to (retX, retY) — the spot it walked up from — and
    * releases the occupancy claim. Facing locks to `dir` while mounted.
    */
-  seat: { tiles: Array<{ x: number; y: number }>; retX: number; retY: number; dir: number } | null;
+  seat: {
+    /** The plane the furniture stands on — occupancy keys carry it. */
+    plane: PlaneId;
+    tiles: Array<{ x: number; y: number }>;
+    retX: number;
+    retY: number;
+    dir: number;
+  } | null;
   /**
    * THE SADDLE IS A STANCE: the active mount def id, or null afoot.
    * The mount is the player's appearance, never a second entity.
@@ -5055,15 +5064,28 @@ export class GameServer {
    * (mount writes, standUp erases) with LAZY EVICTION: any claim whose
    * holder no longer exists or no longer sits there clears on sight,
    * so death and despawn paths never need to remember the furniture.
+   * Keys are PLANE-FIRST: every rift shares DUNGEON_ORIGIN and the
+   * underworld aliases the surface south, so bare coordinates would
+   * let a sleeper down a rift hold a phantom claim on a surface
+   * throne at the same x,y — forever, since the tile-only eviction
+   * check would keep calling the claim valid.
    */
   private readonly seatOcc = new Map<string, EntityId>();
 
-  private seatHolder(tx: number, ty: number): EntityId | null {
-    const key = `${tx},${ty}`;
+  /** Unreachable posts that already spoke (routine id + slot). */
+  private readonly routineSnapWarned = new Set<string>();
+
+  private seatKey(plane: PlaneId, tx: number, ty: number): string {
+    return `${plane}:${tx},${ty}`;
+  }
+
+  private seatHolder(plane: PlaneId, tx: number, ty: number): EntityId | null {
+    const key = this.seatKey(plane, tx, ty);
     const eid = this.seatOcc.get(key);
     if (eid === undefined) return null;
-    const covers = (s: { tiles: Array<{ x: number; y: number }> } | null | undefined): boolean =>
-      s != null && s.tiles.some((t) => t.x === tx && t.y === ty);
+    const covers = (
+      s: { plane: PlaneId; tiles: Array<{ x: number; y: number }> } | null | undefined,
+    ): boolean => s != null && s.plane === plane && s.tiles.some((t) => t.x === tx && t.y === ty);
     if (covers(this.players.get(eid)?.seat)) return eid;
     if (covers(this.routines.get(eid)?.seat)) return eid;
     this.seatOcc.delete(key);
@@ -5184,11 +5206,11 @@ export class GameServer {
    */
   private releaseSeat(
     eid: EntityId,
-    seat: { tiles: Array<{ x: number; y: number }>; retX: number; retY: number },
+    seat: { plane: PlaneId; tiles: Array<{ x: number; y: number }>; retX: number; retY: number },
     pos: PositionComp | null,
   ): void {
     for (const t of seat.tiles) {
-      const key = `${t.x},${t.y}`;
+      const key = this.seatKey(seat.plane, t.x, t.y);
       if (this.seatOcc.get(key) === eid) this.seatOcc.delete(key);
     }
     if (!pos) return;
@@ -5226,14 +5248,37 @@ export class GameServer {
     pos: PositionComp,
     dir: number | undefined,
   ): void {
-    const spec = seatAt(
-      (x, y) => this.worldOf(pos.plane).groundAt(x, y),
-      Math.floor(rc.targetX),
-      Math.floor(rc.targetY),
-    );
+    const ground = (x: number, y: number): number | undefined =>
+      this.worldOf(pos.plane).groundAt(x, y);
+    const ttx = Math.floor(rc.targetX);
+    const tty = Math.floor(rc.targetY);
+    let spec = seatAt(ground, ttx, tty);
+    // THE FORGIVING TILE: a sit stop aimed at a SOLID tile that isn't
+    // itself furniture (the table beside the chair, a station-addressed
+    // stop, a POI post rolled at runtime) can never be a floor sit —
+    // the body can't stand there — so the intent is unmistakably the
+    // furniture beside it. Probe the eight neighbors, nearest to the
+    // walk-up stand first, and take the first real seat. Open-ground
+    // targets are untouched: the wayside floor sit stays authorable.
+    if (!spec && this.worldOf(pos.plane).isSolid(ttx, tty)) {
+      const near = [
+        [0, 1], [0, -1], [1, 0], [-1, 0],
+        [1, 1], [-1, 1], [1, -1], [-1, -1],
+      ]
+        .map(([dx, dy]) => ({ x: ttx + dx!, y: tty + dy! }))
+        .sort(
+          (a, b) =>
+            Math.hypot(a.x + 0.5 - pos.x, a.y + 0.5 - pos.y) -
+            Math.hypot(b.x + 0.5 - pos.x, b.y + 0.5 - pos.y),
+        );
+      for (const n of near) {
+        spec = seatAt(ground, n.x, n.y);
+        if (spec) break;
+      }
+    }
     if (!spec) return;
     for (const t of spec.tiles) {
-      const holder = this.seatHolder(t.x, t.y);
+      const holder = this.seatHolder(pos.plane, t.x, t.y);
       // Taken (a player on the King's throne!) — rest on foot beside.
       if (holder !== null && holder !== eid) return;
     }
@@ -5250,13 +5295,14 @@ export class GameServer {
           : pickSeatDir(spec, pos.x, pos.y)
         : spec.dir;
     rc.seat = {
+      plane: pos.plane,
       tiles: spec.tiles,
       retX: pos.x,
       retY: pos.y,
       dir: face,
       lie: spec.pose === 'lie',
     };
-    for (const t of spec.tiles) this.seatOcc.set(`${t.x},${t.y}`, eid);
+    for (const t of spec.tiles) this.seatOcc.set(this.seatKey(pos.plane, t.x, t.y), eid);
     pos.x = spec.ax;
     pos.y = spec.ay;
     pos.dir = face;
@@ -5320,9 +5366,9 @@ export class GameServer {
     }
     // One body per seat; a bed sleeps one, whole mattress.
     for (const t of spec.tiles) {
-      const holder = this.seatHolder(t.x, t.y);
+      const holder = this.seatHolder(pos.plane, t.x, t.y);
       if (holder !== null && holder !== eid) {
-        sys(spec.kind === 'bed' ? 'Someone is already resting here.' : 'The seat is taken.');
+        sys(spec.pose === 'lie' ? 'Someone is already resting here.' : 'The seat is taken.');
         return;
       }
     }
@@ -5337,8 +5383,8 @@ export class GameServer {
     player.drawTicks = 0;
     this.standUp(eid, player, pos, false);
     const dir = pickSeatDir(spec, retX, retY);
-    player.seat = { tiles: spec.tiles, retX, retY, dir };
-    for (const t of spec.tiles) this.seatOcc.set(`${t.x},${t.y}`, eid);
+    player.seat = { plane: pos.plane, tiles: spec.tiles, retX, retY, dir };
+    for (const t of spec.tiles) this.seatOcc.set(this.seatKey(pos.plane, t.x, t.y), eid);
     pos.x = spec.ax;
     pos.y = spec.ay;
     pos.dir = dir;
@@ -5348,8 +5394,11 @@ export class GameServer {
       // Lying in a claimable bed makes it home (town beds are open to
       // all; the builder gate above already spoke for built ones).
       // Home is a SURFACE institution — resting below is welcome, but
-      // no bed off the surface takes the claim.
-      if (pos.plane !== SURFACE_PLANE_ID) {
+      // no bed off the surface takes the claim. And home is a BED
+      // institution: a daybed is a nap, never a hearth.
+      if (spec.kind !== 'bed') {
+        // The uncovered rest — no claim, no ceremony.
+      } else if (pos.plane !== SURFACE_PLANE_ID) {
         sys('You settle in for a rest, but no hearth takes root down here.');
       } else if (!home || !spec.tiles.some((t) => t.x === home.x && t.y === home.y)) {
         player.home = { x: tx, y: ty };
@@ -24054,11 +24103,23 @@ export class GameServer {
 
       if (rc.phase === 'linger') {
         // Knocked (or leashed) off the spot? Walk back — the errand
-        // re-establishes itself, never teleports.
+        // re-establishes itself, never teleports. A MOUNTED body is
+        // measured against the furniture it holds, not the authored
+        // target: the seat anchor may lawfully stand over a tile away
+        // from the target (a bed run's mid-deck, a neighbor-probed
+        // chair), and measuring the target would read a clean mount
+        // as a knock and loop it forever.
         const ddx = rc.targetX - pos.x;
         const ddy = rc.targetY - pos.y;
         const holdR = arriveR + 0.5;
-        if (ddx * ddx + ddy * ddy > holdR * holdR) {
+        const knocked = rc.seat
+          ? rc.seat.tiles.every((t) => {
+              const kx = t.x + 0.5 - pos.x;
+              const ky = t.y + 0.5 - pos.y;
+              return kx * kx + ky * ky > 1.2 * 1.2;
+            })
+          : ddx * ddx + ddy * ddy > holdR * holdR;
+        if (knocked) {
           // Knocked clear off a mounted seat: release the claim where
           // the body lies — restoring would teleport it back.
           const seat = rc.seat;
@@ -24247,6 +24308,19 @@ export class GameServer {
           this.routineRollWander(rc, pos.plane, task);
         } else if (!this.worldOf(pos.plane).isSolid(Math.floor(rc.targetX), Math.floor(rc.targetY))) {
           // A post has nowhere else to go — snap the last stretch.
+          // The snap keeps the schedule honest, but it is also how a
+          // body ends up standing in a room it never walked into —
+          // an unreachable post is ALWAYS a content bug, so it speaks
+          // once per routine instead of failing silently forever.
+          const snapKey = `${rc.def.id}#${rc.slot}`;
+          if (!this.routineSnapWarned.has(snapKey)) {
+            this.routineSnapWarned.add(snapKey);
+            console.warn(
+              `[routine] '${rc.def.id}' slot ${rc.slot} post at ` +
+                `${rc.targetX.toFixed(1)},${rc.targetY.toFixed(1)} (plane ${pos.plane}) was ` +
+                `unreachable from ${pos.x.toFixed(1)},${pos.y.toFixed(1)} — body snapped to it`,
+            );
+          }
           pos.x = rc.targetX;
           pos.y = rc.targetY;
           this.updateChunkMembership(eid);

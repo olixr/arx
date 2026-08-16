@@ -8,14 +8,30 @@ function worldOf(tiles: Record<string, Tile>): SeatGround {
   return (x, y) => tiles[`${x},${y}`] ?? Tile.Grass;
 }
 
-test('seat tiles are exactly the four furniture kinds', () => {
+test('seat tiles are exactly the five furniture kinds', () => {
   assert.ok(isSeatTile(Tile.Chair));
   assert.ok(isSeatTile(Tile.Bench));
   assert.ok(isSeatTile(Tile.Throne));
   assert.ok(isSeatTile(Tile.Bed));
+  assert.ok(isSeatTile(Tile.ElvenDaybed));
   assert.ok(!isSeatTile(Tile.Table));
   assert.ok(!isSeatTile(Tile.Grass));
   assert.ok(!isSeatTile(undefined));
+});
+
+test('the elven daybed lays a sleeper east-west, bolster west, uncovered', () => {
+  // Painter parity: hw 0.58 → span 1.16, the leaf-green bolster at
+  // the WEST end, deck lifted 0.3 — and the art hangs from the
+  // tile's SOUTH edge, so the anchor rides south of a cot's.
+  const seat = seatAt(worldOf({ '5,5': Tile.ElvenDaybed }), 5, 5)!;
+  assert.equal(seat.kind, 'daybed');
+  assert.equal(seat.pose, 'lie');
+  assert.equal(seat.head, 'w');
+  assert.equal(seat.span, 1.16);
+  assert.equal(seat.seatH, 0.3);
+  assert.equal(seat.ax, 5.5);
+  assert.equal(seat.ay, 5.96);
+  assert.deepEqual(seat.tiles, [{ x: 5, y: 5 }]);
 });
 
 test('a lone chair faces the camera (painter default back=n)', () => {

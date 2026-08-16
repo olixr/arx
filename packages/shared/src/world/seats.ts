@@ -24,7 +24,7 @@ import { Tile, WALL_RUN_TILES } from './tiles.js';
 /** Anything that can answer "what ground tile is here?". */
 export type SeatGround = (tx: number, ty: number) => number | undefined;
 
-export type SeatKind = 'chair' | 'bench' | 'throne' | 'bed';
+export type SeatKind = 'chair' | 'bench' | 'throne' | 'bed' | 'daybed';
 
 /** A mounted body's full brief: where to sit, how high, facing where. */
 export interface SeatSpec {
@@ -60,12 +60,23 @@ export interface SeatSpec {
 
 const WALLS: ReadonlySet<number> = new Set<number>(WALL_RUN_TILES);
 
-/** Longest bed run the painter merges (RUN_RING_TILES law). */
-const BED_RUN_CAP = 4;
+/**
+ * Longest bed run the painter merges (RUN_RING_TILES law). Exported
+ * for the PARITY LAW: the renderer's bed painter must walk exactly
+ * this window or a long run gives sim and paint different beds —
+ * different tiles, anchor, span, and sort row for the same sleeper.
+ */
+export const BED_RUN_CAP = 4;
 
 /** A tile a body can sit or lie in. */
 export function isSeatTile(t: number | undefined): boolean {
-  return t === Tile.Chair || t === Tile.Bench || t === Tile.Throne || t === Tile.Bed;
+  return (
+    t === Tile.Chair ||
+    t === Tile.Bench ||
+    t === Tile.Throne ||
+    t === Tile.Bed ||
+    t === Tile.ElvenDaybed
+  );
 }
 
 /** The chair painter's table scan — a backrest turns its seat to the table. */
@@ -159,6 +170,27 @@ export function seatAt(ground: SeatGround, tx: number, ty: number): SeatSpec | n
         ay: ty + 0.55,
         dir: Math.PI / 2,
         seatH: 0.48,
+        tiles: [{ x: tx, y: ty }],
+      };
+    case Tile.ElvenDaybed:
+      // THE FAIR HOUSE NAPS UNCOVERED: one tile, lies east-west, the
+      // leaf-green bolster (the pillow) at the WEST end, deck lifted
+      // 0.3 like a bed — every constant the daybed painter's own
+      // (hw 0.58 → span 1.16; baseY south edge − 0.3s deck). No
+      // quilt exists on this piece, so the client's tuck stands
+      // down by kind — the sleeper rests ON the silk.
+      return {
+        kind: 'daybed',
+        pose: 'lie',
+        ax: tx + 0.5,
+        // The daybed's art hangs from the tile's SOUTH edge (baseY),
+        // unlike the cot's centre — the anchor rides south so the
+        // supine body lands mid-mattress, not on the head rail.
+        ay: ty + 0.96,
+        dir: Math.PI / 2,
+        seatH: 0.3,
+        head: 'w',
+        span: 1.16,
         tiles: [{ x: tx, y: ty }],
       };
     case Tile.Bed: {

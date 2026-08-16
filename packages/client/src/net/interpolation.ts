@@ -219,6 +219,26 @@ export class InterpBuffer {
       if (a.t <= t) {
         const b = this.samples[i + 1]!;
         const f = (t - a.t) / (b.t - a.t);
+        // THE SEAT IS A TELEPORT, NOT A WALK: the server moves a body
+        // ONTO the furniture anchor the tick it sits (and back to the
+        // walk-up stand the tick it rises). Gliding across that flip
+        // shows a floor-sitting body sliding into the chair — and the
+        // seat resolve reads the approach tile, mis-sorting the rig
+        // behind the furniture for the whole glide. Present the new
+        // side of the boundary whole; the pose blends do the easing.
+        const sitLie = (p: PoseState): boolean => p === PoseState.Sit || p === PoseState.Lie;
+        if (sitLie(a.pose) !== sitLie(b.pose)) {
+          return {
+            t,
+            x: b.x,
+            y: b.y,
+            dir: b.dir,
+            pose: b.pose,
+            hpPct: b.hpPct,
+            status: b.status,
+            alert: b.alert,
+          };
+        }
         return {
           t,
           x: a.x + (b.x - a.x) * f,

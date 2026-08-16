@@ -399,8 +399,12 @@ hearth-respawned inside ~2s (the waking world, previously eternal
 doze); zero console errors across every phase.
 
 **Still deferred, named:** QuestStage.mark carries no plane (first
-underworld-marked quest needs it); seat occupancy keys (`seatOcc`)
-are coordinate-only — cross-rift furniture collisions are possible at
-the shared DUNGEON_ORIGIN (posted garrison cooks refusing a seat in
-another run); teardown leaves nothing live but the poiChests sweep
-still walks the whole map; stale y-band prose in a few comments.
+underworld-marked quest needs it); teardown leaves nothing live but
+the poiChests sweep still walks the whole map; stale y-band prose in
+a few comments.
+
+**Paid 08-16 (the seating audit):** seat occupancy keys (`seatOcc`)
+now carry the plane (`plane:x,y`), the seat structs remember the
+plane they claimed on, and the lazy-eviction check compares planes —
+a sleeper down a rift can no longer hold a phantom claim on surface
+furniture at aliased coordinates (pinned by seatPlanes.test.ts).
