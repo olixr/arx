@@ -389,6 +389,20 @@ export function createMapsApi(
             sendJson(res, 400, { error: result.errors.join('; ') });
             return true;
           }
+          // THE TWO DOCS AGREE (stances cross-law): a faction id equal
+          // to a declared stances tribe would silently hand that tribe
+          // watch semantics. The stances validator refuses the collision
+          // in one direction; this refuses the other (the validator
+          // can't import stances — the docs only meet here).
+          const tribeClash = result.def.roster.find((f) =>
+            STANCES.tribes.some((t) => t.id === f.id),
+          );
+          if (tribeClash) {
+            sendJson(res, 400, {
+              error: `faction id '${tribeClash.id}' collides with a declared stances tribe`,
+            });
+            return true;
+          }
           await importContentDoc(db, 'factions', 'world', result.def);
           replaceFactions(result.def);
           console.log('[content] factions doc saved + live (no reload needed — call-time reads)');
@@ -432,7 +446,7 @@ export function createMapsApi(
           await importContentDoc(db, 'stances', 'world', result.def);
           replaceStances(result.def);
           console.log('[content] stances doc saved + live (no reload needed — call-time reads)');
-          sendJson(res, 200, { ok: true });
+          sendJson(res, 200, { ok: true, warnings: result.warnings });
           return true;
         }
         if (req.method === 'DELETE') {

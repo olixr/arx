@@ -31,13 +31,28 @@ export type Stance = 'ally' | 'neutral' | 'hostile';
 
 /** One matrix row: how the two tribes of its pair key regard each other. */
 export interface StanceEntryDef {
-  stance: 'hostile' | 'neutral';
+  /**
+   * 'hostile' — the pair feuds; 'neutral' — an authored truce that
+   * OUTRANKS every default (the way to exempt one tribe from the
+   * watch); 'ally' — an authored kinship: neither side may open a
+   * fight on the other (the kin-peace law extended across tribes —
+   * the worgs that run with the wolfkin, the hounds that serve the
+   * watch).
+   */
+  stance: 'hostile' | 'neutral' | 'ally';
   /**
    * The engage circle for this feud, in tiles — the distance at which
    * a body will OPEN the fight (its own posted aggroRange never
    * shrinks it). Absent = the doc's defaultRange.
    */
   range?: number;
+  /**
+   * THE ONE-WAY FEUD: the tribe id (one of the pair) that alone may
+   * OPEN this fight — the hunt reads predator-side only, the prey
+   * answers through forced retaliation like everything else. Absent =
+   * both sides initiate. Only meaningful on hostile entries.
+   */
+  initiator?: string;
 }
 
 /** A declared tribe — a named side in the wild's politics. */
@@ -133,7 +148,10 @@ export const STANCES: StancesDef = {
   matrix: {
     // The hunt: wolves take the WILD sheep — the yard sheep is
     // livestock and structurally untouchable at both combat doors.
-    'grazers|predators': { stance: 'hostile', range: 6 },
+    // ONE-WAY (the proving pass's F1): only the predator OPENS the
+    // hunt — a stag never charges a wolf on sight; a struck boar
+    // still turns and fights through forced retaliation.
+    'grazers|predators': { stance: 'hostile', range: 6, initiator: 'predators' },
   },
   watchVsMenace: true,
   opposeHostile: true,
@@ -244,7 +262,14 @@ export function stanceBetween(a: string, b: string, doc: StancesDef = STANCES): 
   const entry = doc.matrix[stancePairKey(a, b)];
   if (entry !== undefined) {
     if (entry.stance === 'neutral') return NEUTRAL;
-    return { stance: 'hostile', range: entry.range ?? doc.defaultRange, initiates: true };
+    if (entry.stance === 'ally') return { stance: 'ally', range: 0, initiates: false };
+    return {
+      stance: 'hostile',
+      range: entry.range ?? doc.defaultRange,
+      // THE ONE-WAY FEUD: an authored initiator holds the other side's
+      // hand — the prey answers only through forced retaliation.
+      initiates: entry.initiator === undefined || entry.initiator === a,
+    };
   }
   const aFaction = isFactionTribe(a);
   const bFaction = isFactionTribe(b);
@@ -274,8 +299,14 @@ export function stanceBetween(a: string, b: string, doc: StancesDef = STANCES): 
  */
 export function stanceScanRange(tribe: string, doc: StancesDef = STANCES): number {
   let r = 0;
-  for (const [key, entry] of Object.entries(doc.matrix)) {
+  // for-in, no entry-array allocations: this runs in the perception
+  // dispatch gate at 4 Hz per eligible body.
+  for (const key in doc.matrix) {
+    const entry = doc.matrix[key]!;
     if (entry.stance !== 'hostile') continue;
+    // THE ONE-WAY FEUD holds here too: a side the entry's initiator
+    // excludes never scans for this feud at all.
+    if (entry.initiator !== undefined && entry.initiator !== tribe) continue;
     const bar = key.indexOf('|');
     if (key.slice(0, bar) !== tribe && key.slice(bar + 1) !== tribe) continue;
     r = Math.max(r, entry.range ?? doc.defaultRange);
@@ -283,7 +314,8 @@ export function stanceScanRange(tribe: string, doc: StancesDef = STANCES): numbe
   if (isFactionTribe(tribe)) {
     if (doc.watchVsMenace) r = Math.max(r, doc.watchRange);
     if (doc.opposeHostile) {
-      for (const [key, w] of Object.entries(FACTIONS.oppose)) {
+      for (const key in FACTIONS.oppose) {
+        const w = FACTIONS.oppose[key];
         if (w === undefined || w <= 0) continue;
         const bar = key.indexOf('|');
         if (key.slice(0, bar) === tribe || key.slice(bar + 1) === tribe) {
@@ -299,17 +331,22 @@ export function stanceScanRange(tribe: string, doc: StancesDef = STANCES): numbe
 // --------------------------------------------------- the Studio's half
 
 export type ValidateStancesResult =
-  | { ok: true; def: StancesDef }
+  | { ok: true; def: StancesDef; warnings: string[] }
   | { ok: false; errors: string[] };
 
 /**
  * Refuse-don't-repair, the house validator law: unknown keys die
  * loudly, absent dials adopt the shipped default (THE BACKFILL LAW —
  * a doc saved before a dial existed keeps its edits when the table
- * grows), malformed values are errors, never coercions.
+ * grows), malformed values are errors, never coercions. Matrix pair
+ * sides may name ids the doc has never heard of — that is the
+ * spawn-minted-tribe door, deliberately open — so those come back as
+ * WARNINGS, never errors: the typo'd feud that silently never fires
+ * is this system's worst curation trap, and the warning is its lamp.
  */
 export function validateStances(raw: unknown): ValidateStancesResult {
   const errors: string[] = [];
+  const warnings: string[] = [];
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
     return { ok: false, errors: ['stances doc must be an object'] };
   }
@@ -340,7 +377,10 @@ export function validateStances(raw: unknown): ValidateStancesResult {
     if (!Array.isArray(doc.tribes)) {
       errors.push('tribes must be an array');
     } else {
+      if ((doc.tribes as unknown[]).length > 32) errors.push('at most 32 tribes');
       const seen = new Set<string>();
+      const seenActors = new Map<string, string>();
+      const seenPrefixes = new Map<string, string>();
       for (const t of doc.tribes as unknown[]) {
         if (typeof t !== 'object' || t === null || Array.isArray(t)) {
           errors.push('each tribe must be an object');
@@ -348,23 +388,26 @@ export function validateStances(raw: unknown): ValidateStancesResult {
         }
         const tr = t as Record<string, unknown>;
         const id = typeof tr.id === 'string' ? tr.id : '';
-        if (!SLUG_RE.test(id)) errors.push(`tribe id '${String(tr.id)}' must be a slug`);
+        if (!SLUG_RE.test(id) || id.length > 32) {
+          errors.push(`tribe id '${String(tr.id)}' must be a slug of at most 32 chars`);
+        }
         if (RESERVED_TRIBES.has(id)) errors.push(`tribe id '${id}' is reserved (implicit tribe)`);
         if (FACTIONS.roster.some((f) => f.id === id)) {
           errors.push(`tribe id '${id}' collides with a faction — faction tribes are implicit`);
         }
         if (seen.has(id)) errors.push(`tribe id '${id}' declared twice`);
         seen.add(id);
-        if (typeof tr.name !== 'string' || tr.name.length === 0) {
-          errors.push(`tribe '${id}' needs a name`);
+        if (typeof tr.name !== 'string' || tr.name.length === 0 || tr.name.length > 48) {
+          errors.push(`tribe '${id}' needs a name of at most 48 chars`);
         }
-        const strs = (key: 'npcPrefixes' | 'actors'): string[] => {
+        const strs = (key: 'npcPrefixes' | 'actors', cap: number): string[] => {
           const v = tr[key];
           if (v === undefined) return [];
           if (!Array.isArray(v) || v.some((s) => typeof s !== 'string' || s.length === 0)) {
             errors.push(`tribe '${id}' ${key} must be an array of non-empty strings`);
             return [];
           }
+          if (v.length > cap) errors.push(`tribe '${id}' ${key} holds at most ${cap}`);
           return v as string[];
         };
         if (tr.menace !== undefined && typeof tr.menace !== 'boolean') {
@@ -375,11 +418,43 @@ export function validateStances(raw: unknown): ValidateStancesResult {
             errors.push(`tribe '${id}' has unknown field '${k}'`);
           }
         }
+        const npcPrefixes = strs('npcPrefixes', 16);
+        const actors = strs('actors', 64);
+        // ONE NAME, ONE BANNER (the factions membership law's mirror):
+        // a body claimed by two tribes would resolve by Map order —
+        // silent politics. Refused instead.
+        for (const slug of actors) {
+          const prior = seenActors.get(slug);
+          if (prior !== undefined) {
+            errors.push(`actor '${slug}' claimed by both '${prior}' and '${id}'`);
+          }
+          seenActors.set(slug, id);
+        }
+        for (const p of npcPrefixes) {
+          const prior = seenPrefixes.get(p);
+          if (prior !== undefined) {
+            errors.push(`prefix '${p}' claimed by both '${prior}' and '${id}'`);
+          }
+          seenPrefixes.set(p, id);
+          // A tribe prefix shadowing a faction's npcPrefixes claim
+          // quietly pulls those bodies out of the political map —
+          // legal (claims outrank), but never silent.
+          for (const f of FACTIONS.roster) {
+            for (const fp of f.npcPrefixes) {
+              if (p.startsWith(fp) || fp.startsWith(p)) {
+                warnings.push(
+                  `tribe '${id}' prefix '${p}' overlaps faction '${f.id}' claim '${fp}' — ` +
+                    `the tribe claim wins those bodies`,
+                );
+              }
+            }
+          }
+        }
         tribes.push({
           id,
           name: typeof tr.name === 'string' ? tr.name : id,
-          npcPrefixes: strs('npcPrefixes'),
-          actors: strs('actors'),
+          npcPrefixes,
+          actors,
           ...(tr.menace === true ? { menace: true } : {}),
         });
       }
@@ -393,7 +468,13 @@ export function validateStances(raw: unknown): ValidateStancesResult {
     if (typeof doc.matrix !== 'object' || doc.matrix === null || Array.isArray(doc.matrix)) {
       errors.push('matrix must be an object of pair keys');
     } else {
-      for (const [key, e] of Object.entries(doc.matrix as Record<string, unknown>)) {
+      const entries = Object.entries(doc.matrix as Record<string, unknown>);
+      if (entries.length > 256) errors.push('at most 256 matrix entries');
+      const knownSide = (p: string): boolean =>
+        RESERVED_TRIBES.has(p) ||
+        tribes.some((t) => t.id === p) ||
+        FACTIONS.roster.some((f) => f.id === p);
+      for (const [key, e] of entries) {
         const parts = key.split('|');
         if (
           parts.length !== 2 ||
@@ -404,13 +485,24 @@ export function validateStances(raw: unknown): ValidateStancesResult {
           errors.push(`matrix key '${key}' must be 'a|b' with distinct sorted slugs`);
           continue;
         }
+        // THE LAMP ON THE TYPO: an unknown side is legal (spawn-minted
+        // tribes are authored before their camps stand) but named, so
+        // 'predetors|grazers' never dies silently in a drawer.
+        for (const p of parts) {
+          if (!knownSide(p)) {
+            warnings.push(
+              `matrix key '${key}' side '${p}' names no declared tribe, faction, or implicit ` +
+                `tribe — spawn-minted banner, or a typo that will never fire`,
+            );
+          }
+        }
         if (typeof e !== 'object' || e === null || Array.isArray(e)) {
           errors.push(`matrix['${key}'] must be an object`);
           continue;
         }
         const entry = e as Record<string, unknown>;
-        if (entry.stance !== 'hostile' && entry.stance !== 'neutral') {
-          errors.push(`matrix['${key}'].stance must be 'hostile' or 'neutral'`);
+        if (entry.stance !== 'hostile' && entry.stance !== 'neutral' && entry.stance !== 'ally') {
+          errors.push(`matrix['${key}'].stance must be 'hostile', 'neutral', or 'ally'`);
           continue;
         }
         if (
@@ -420,14 +512,22 @@ export function validateStances(raw: unknown): ValidateStancesResult {
         ) {
           errors.push(`matrix['${key}'].range must be in [1, 24]`);
         }
+        if (entry.initiator !== undefined) {
+          if (entry.stance !== 'hostile') {
+            errors.push(`matrix['${key}'].initiator is only meaningful on a hostile entry`);
+          } else if (entry.initiator !== parts[0] && entry.initiator !== parts[1]) {
+            errors.push(`matrix['${key}'].initiator must be one of the pair`);
+          }
+        }
         for (const k of Object.keys(entry)) {
-          if (k !== 'stance' && k !== 'range') {
+          if (k !== 'stance' && k !== 'range' && k !== 'initiator') {
             errors.push(`matrix['${key}'] has unknown field '${k}'`);
           }
         }
         matrix[key] = {
           stance: entry.stance,
           ...(typeof entry.range === 'number' ? { range: entry.range } : {}),
+          ...(typeof entry.initiator === 'string' ? { initiator: entry.initiator } : {}),
         };
       }
     }
@@ -453,5 +553,15 @@ export function validateStances(raw: unknown): ValidateStancesResult {
     }
   }
   if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, def };
+  return { ok: true, def, warnings };
+}
+
+// The shipped seed must pass its own law — a module that ships an
+// invalid doc dies at build time, never at a Studio save (the
+// factions precedent).
+{
+  const res = validateStances(JSON.parse(JSON.stringify(AUTHORED_STANCES)));
+  if (!res.ok) {
+    throw new Error(`AUTHORED_STANCES fails its own validator: ${res.errors[0]}`);
+  }
 }

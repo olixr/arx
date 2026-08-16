@@ -181,9 +181,54 @@ client 617 · tsc clean on shared/content/server/tools (client blocked by a
 NEIGHBOR stream's in-flight work.ts 'fish' WorkKind — not this change; zero
 client files touched).
 
-Debts (beyond the deliberate ones above): a rig-lane LIVE walk — drag a worg
-to a gate guard, watch a wolf take a wild sheep, flip a goblin-camp feud in
-Studio — has NOT been run; the seams are unit-proven but the emergent picture
-ships unseen. First live session should also watch the perf ledger around
-large camps (the second eye is stagger+chunk-bounded and doze-gated, but the
-proof is a profile, not an argument).
+## The proving pass (2026-08-16, same day — audit + regressions + LIVE WALK)
+
+Three adversarial review agents (feud seams, player regressions, content
+layer) + a full rig-lane live walk (lane 19, :5263/:8863, arx_wild19,
+vite.config.rig19.ts, since dropped). The regression hunt proved the player
+sweep BYTE-IDENTICAL to the pre-image, censused all ~21 npcAggro call sites
+(no silently-refused path), and re-proved eid-reuse impossible (EcsWorld ids
+are monotonic). Findings found, FIXED, and pinned same-session:
+
+- **F1 THE TOOTHLESS NEVER CHARGE**: matrix pairs answered `initiates: true`
+  both ways — a 0-damage wild sheep CHARGED wolves and whiff-spammed the
+  wire until eaten. Fixed twice over: `StanceEntryDef.initiator` (THE
+  ONE-WAY FEUD — the named tribe alone opens the fight; shipped hunt is
+  `initiator: 'predators'`) and a `def.damage <= 0` gate on the scanner.
+- **F2 THE WORLD REMEMBERS PLAYERS**: playerless kills still stamped
+  notePoiKill/noteMinorKill/noteHoldWing/noteStrongholdKill/
+  noteDungeonCleared — a gate guard grinding a wolf knot retired the find /
+  embered the camp for the whole epoch. All five now gated on player
+  participation (`lootOwnerEid !== null`); respawn clocks untouched.
+- **F3 TWO WARDS NEVER LOCK**: two opposed invulnerable actors could fight
+  forever (scanner opened it, the ward's forced retaliation locked it).
+  Fixed at both ends: the scanner skips invulnerable targets (THE UNKILLABLE
+  ARE NOT QUARRY) and the ward refuses the forced flip when the attacker is
+  also warded.
+- **Content-layer hardening**: `stance: 'ally'` (kin peace across banners,
+  honored at the aggro door), warnings channel (THE LAMP ON THE TYPO —
+  unknown matrix sides warn instead of dying silently; faction-prefix
+  shadowing warns), ONE NAME ONE BANNER (duplicate actor/prefix claims
+  refused), caps (32 tribes / 16 prefixes / 64 actors / 256 matrix rows),
+  module-load self-validation, `initiator` validation, PUT returns warnings,
+  cross-doc guard (a factions PUT refusing a roster id colliding with a
+  declared tribe), `PrefabSpawn.tribe` + both composePoi prefab mouths,
+  validateZone tribe slug check, allocation-free `stanceScanRange`.
+
+**LIVE-PROVEN** (walk transcripts + screenshots, zero console errors across
+every pass): THE WATCH ANSWERS — a spawned Amberford watch trio executed a
+goblin at the gate in ~3s, NO loot dropped (kill law live); THE STARTER-BOAR
+LAW — a boar stood beside those same guards for 42s untouched; THE HUNT — a
+wolf opened on a fresh boar in open wilderness and killed it inside ~6s, no
+loot; KIN PEACE — a goblin pair stood side by side for 15s attacking only
+the PLAYER, never each other; PLAYER REGRESSION — a worg ran the tester's hp
+231→141 through the untouched player-perception path.
+
+Gates after the pass: shared 225 · content 547 · server 517 · client 617 ·
+tsc clean shared/content/server/tools.
+
+Remaining debts: NPC kit blasts/splash wound players only; no prey-flight
+verb (grazers stand and answer); no CMS bench (dev endpoints + warnings only);
+wild-entry knot tribe overrides unplumbed; a perf profile around large camps
+under many watchers (the second eye is stagger+chunk+doze-bounded by
+construction, but the proof is a profile, not an argument).

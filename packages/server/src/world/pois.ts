@@ -1138,6 +1138,7 @@ export function composePoi(
       level: s.level ?? levelRollAt(0x50, si),
       name: s.name,
       hours: s.hours,
+      tribe: s.tribe,
     });
   }
 
@@ -1589,6 +1590,7 @@ export function composePoi(
         name: s.name,
         hours: s.hours,
         wing: w.wing,
+        tribe: s.tribe,
       });
     }
     const wingHoldR = Math.max(2, Math.min(w.prefab.width, w.prefab.height) / 2 - 1);

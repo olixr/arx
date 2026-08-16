@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import {
+  AUTHORED_STANCES,
+  replaceStances,
+  stancePairKey,
+  type StancesDef,
+} from '@arx/content';
 import { GameServer } from './gameServer.js';
 
 /**
@@ -25,11 +31,21 @@ const proto = GameServer.prototype as unknown as {
   playerBandWith: AnyFn;
 };
 
-function fakeNpc(defId: string, opts: { aggroRange?: number; tribe?: string } = {}): Record<string, unknown> {
+function fakeNpc(
+  defId: string,
+  opts: { aggroRange?: number; tribe?: string; damage?: number } = {},
+): Record<string, unknown> {
   return {
     state: 'idle',
     targetEid: null,
-    def: { id: defId, pack: undefined, aggroRange: opts.aggroRange ?? 5, level: 10, attackStatus: undefined },
+    def: {
+      id: defId,
+      pack: undefined,
+      aggroRange: opts.aggroRange ?? 5,
+      level: 10,
+      attackStatus: undefined,
+      damage: opts.damage ?? 2,
+    },
     tribe: opts.tribe,
     navBest: 0,
     navStuck: 0,
@@ -100,13 +116,15 @@ function addBody(
   npc: Record<string, unknown>,
   x: number,
   y: number,
-  opts: { actorSlug?: string; hp?: number } = {},
+  opts: { actorSlug?: string; hp?: number; protection?: string } = {},
 ): void {
   (s.npcs as Map<number, unknown>).set(eid, npc);
   (s.positions as Map<number, unknown>).set(eid, { x, y, dir: 0, plane: 0 });
   (s.healths as Map<number, unknown>).set(eid, { hp: opts.hp ?? 10, maxHp: 10 });
   if (opts.actorSlug) {
-    (s.actors as Map<number, unknown>).set(eid, { actor: { id: opts.actorSlug } });
+    (s.actors as Map<number, unknown>).set(eid, {
+      actor: { id: opts.actorSlug, protection: opts.protection },
+    });
   }
 }
 
@@ -266,6 +284,58 @@ test('a wall is a peace that holds: the ray refuses the blocked feud', () => {
     (s.positions as Map<number, { x: number; y: number; dir: number; plane: number }>).get(1),
   );
   assert.equal(guard.state, 'idle', 'no line, no fight');
+});
+
+test('THE TOOTHLESS NEVER CHARGE: a 0-damage body opens no feud', () => {
+  const s = slate();
+  const wolf = fakeNpc('wolf', { damage: 0 });
+  const stag = fakeNpc('stag');
+  addBody(s, 1, wolf, 5, 5);
+  addBody(s, 2, stag, 8, 5);
+  (proto.npcPerceiveNpcs as (...a: unknown[]) => void).call(
+    s,
+    1,
+    wolf,
+    (s.positions as Map<number, { x: number; y: number; dir: number; plane: number }>).get(1),
+  );
+  assert.equal(wolf.state, 'idle', 'no teeth, no hunt — retaliation still rides force');
+});
+
+test('THE UNKILLABLE ARE NOT QUARRY: the scanner skips warded bodies', () => {
+  const s = slate();
+  const guard = fakeNpc('actor:castle_guard', { aggroRange: 0 });
+  const tollGuard = fakeNpc('actor:company_toll_guard', { aggroRange: 0 });
+  addBody(s, 1, guard, 5, 5, { actorSlug: 'castle_guard' });
+  addBody(s, 2, tollGuard, 10, 5, {
+    actorSlug: 'company_toll_guard',
+    protection: 'invulnerable',
+  });
+  (proto.npcPerceiveNpcs as (...a: unknown[]) => void).call(
+    s,
+    1,
+    guard,
+    (s.positions as Map<number, { x: number; y: number; dir: number; plane: number }>).get(1),
+  );
+  assert.equal(guard.state, 'idle', 'two wards never lock — the fight has no possible end');
+});
+
+test('AN ALLY ROW holds the door: unforced aggro on a sworn friend is refused', () => {
+  const doc = JSON.parse(JSON.stringify(AUTHORED_STANCES)) as StancesDef;
+  doc.matrix[stancePairKey('kennels', 'yard_dogs')] = { stance: 'ally' };
+  replaceStances(doc);
+  try {
+    const s = slate();
+    const a = fakeNpc('goblin', { tribe: 'kennels' });
+    const b = fakeNpc('goblin', { tribe: 'yard_dogs' });
+    addBody(s, 1, a, 5, 5);
+    addBody(s, 2, b, 6, 5);
+    aggro(s, 1, a, 2);
+    assert.equal(a.state, 'idle', 'sworn allies never open on each other');
+    aggro(s, 1, a, 2, { force: true });
+    assert.equal(a.state, 'chase', 'a blow still forces');
+  } finally {
+    replaceStances(JSON.parse(JSON.stringify(AUTHORED_STANCES)) as StancesDef);
+  }
 });
 
 test('chase retention: the stance circle rides watchBase for NPC quarry', () => {

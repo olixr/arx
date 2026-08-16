@@ -38,6 +38,12 @@ export interface PrefabSpawn {
   name?: string;
   /** Activity window (game hours, midnight-wrapping) — see ZoneSpawn.hours. */
   hours?: { from: number; to: number };
+  /**
+   * THE WILD TAKES SIDES: sub-faction banner — see ZoneSpawn.tribe.
+   * A hand-placed prefab body fights under the same banner as the
+   * garrison rows beside it, or the camp's politics split.
+   */
+  tribe?: string;
 }
 
 export interface PrefabActor {

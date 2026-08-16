@@ -70,6 +70,11 @@ export function zonePlacementErrors(zone: ZoneDef): string[] {
     if (s.post !== undefined && (!num(s.post.x) || !num(s.post.y) || !num(s.post.dir))) {
       errors.push(`${at}.post needs finite x/y/dir`);
     }
+    // THE WILD TAKES SIDES: a malformed banner would poison every
+    // stance read for the body ('' !== undefined wins the override).
+    if (s.tribe !== undefined && (typeof s.tribe !== 'string' || !/^[a-z][a-z0-9_]*$/.test(s.tribe))) {
+      errors.push(`${at}.tribe must be a slug`);
+    }
   }
   for (const [i, a] of (zone.actorSpawns ?? []).entries()) {
     const at = `actorSpawns[${i}]`;

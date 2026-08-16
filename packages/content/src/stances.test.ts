@@ -56,13 +56,28 @@ test('WILD SIDES: actor tribes resolve slug claim → faction → folk', () => {
   assert.equal(tribeOfActorId('some_unaffiliated_grocer'), 'folk');
 });
 
-test('WILD SIDES: kin are allies; the matrix is symmetric hostility', () => {
+test('WILD SIDES: kin are allies; THE ONE-WAY FEUD reads initiator-side only', () => {
   assert.equal(stanceBetween('predators', 'predators').stance, 'ally');
   const hunt = stanceBetween('predators', 'grazers');
   assert.equal(hunt.stance, 'hostile');
   assert.equal(hunt.range, 6);
   assert.equal(hunt.initiates, true);
-  assert.equal(stanceBetween('grazers', 'predators').initiates, true);
+  // The prey never OPENS the hunt (proving pass F1) — it answers
+  // through forced retaliation only.
+  const hunted = stanceBetween('grazers', 'predators');
+  assert.equal(hunted.stance, 'hostile');
+  assert.equal(hunted.initiates, false);
+  assert.equal(stanceScanRange('grazers'), 0);
+});
+
+test('WILD SIDES: an ally row extends kin peace across banners', () => {
+  const doc = docCopy();
+  doc.matrix[stancePairKey('watch_hounds', FACTIONS.roster[0]!.id)] = { stance: 'ally' };
+  withDoc(doc, () => {
+    assert.equal(stanceBetween('watch_hounds', FACTIONS.roster[0]!.id).stance, 'ally');
+    assert.equal(stanceBetween(FACTIONS.roster[0]!.id, 'watch_hounds').stance, 'ally');
+    assert.equal(stanceBetween('watch_hounds', FACTIONS.roster[0]!.id).initiates, false);
+  });
 });
 
 test('THE WATCH ANSWERS: faction vs menace is hostile one-way', () => {
@@ -138,6 +153,55 @@ test('WILD SIDES: validator refuses malformed matrix keys and unknown fields', (
   assert.equal(validateStances({ matrix: { 'a|b': { stance: 'hostile', foo: 1 } } }).ok, false);
   assert.equal(validateStances({ matrix: { 'a|b': { stance: 'hostile', range: 99 } } }).ok, false);
   assert.equal(validateStances({ nonsense: true }).ok, false);
+  // THE ONE-WAY FEUD's own law: the initiator must be one of the pair,
+  // and only a hostile entry carries one.
+  assert.equal(
+    validateStances({ matrix: { 'a|b': { stance: 'hostile', initiator: 'c' } } }).ok,
+    false,
+  );
+  assert.equal(
+    validateStances({ matrix: { 'a|b': { stance: 'neutral', initiator: 'a' } } }).ok,
+    false,
+  );
+});
+
+test('THE LAMP ON THE TYPO: unknown matrix sides warn, never refuse', () => {
+  const shipped = validateStances(JSON.parse(JSON.stringify(AUTHORED_STANCES)));
+  assert.ok(shipped.ok);
+  if (shipped.ok) assert.deepEqual(shipped.warnings, []);
+  const res = validateStances({ matrix: { 'grazers|predetors': { stance: 'hostile' } } });
+  assert.ok(res.ok);
+  if (res.ok) {
+    assert.equal(res.warnings.length, 1);
+    assert.ok(res.warnings[0]!.includes('predetors'));
+  }
+});
+
+test('ONE NAME, ONE BANNER: duplicate claims across tribes are refused', () => {
+  const dupActor = validateStances({
+    tribes: [
+      { id: 'a_side', name: 'A', npcPrefixes: [], actors: ['odd_gardener'] },
+      { id: 'b_side', name: 'B', npcPrefixes: [], actors: ['odd_gardener'] },
+    ],
+  });
+  assert.equal(dupActor.ok, false);
+  const dupPrefix = validateStances({
+    tribes: [
+      { id: 'a_side', name: 'A', npcPrefixes: ['wolf'], actors: [] },
+      { id: 'b_side', name: 'B', npcPrefixes: ['wolf'], actors: [] },
+    ],
+  });
+  assert.equal(dupPrefix.ok, false);
+});
+
+test('WILD SIDES: a tribe prefix shadowing a faction claim warns', () => {
+  const reaverPrefix = FACTIONS.roster.find((f) => f.id === 'reavers')?.npcPrefixes[0];
+  if (!reaverPrefix) return;
+  const res = validateStances({
+    tribes: [{ id: 'poachers', name: 'P', npcPrefixes: [reaverPrefix], actors: [] }],
+  });
+  assert.ok(res.ok);
+  if (res.ok) assert.ok(res.warnings.some((w) => w.includes('reavers')));
 });
 
 test('THE BACKFILL LAW: absent dials adopt the shipped defaults', () => {

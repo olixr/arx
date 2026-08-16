@@ -22182,7 +22182,15 @@ export class GameServer {
     // guard you swing at swings back.
     if (this.actors.get(npcEid)?.actor.protection === 'invulnerable') {
       this.broadcastHit(npcEid, 0, false, 0, 0, false, true);
-      if (this.npcAtPeace(npc) && npc.def.damage > 0) {
+      if (
+        this.npcAtPeace(npc) &&
+        npc.def.damage > 0 &&
+        // TWO WARDS NEVER LOCK (proving pass F3): a warded body does
+        // not answer a fellow warded body's insult — the fight has no
+        // possible end, and a locked pair of essential actors is a
+        // dead tollhouse and a dead gate.
+        this.actors.get(attackerEid)?.actor.protection !== 'invulnerable'
+      ) {
         // THE ASSAULT IS THE PEACE-BREAK: charged at the flip from
         // rest to war, never per swing — one fight, one deed. The
         // whiff-0 law holds upstream: a 0-roll still drew on the law.
@@ -22761,18 +22769,26 @@ export class GameServer {
             : baseSec;
         spawn.respawnAt = Date.now() + sec * 1000;
       }
-      this.noteHoldWing(npc.spawnIndex, killerEid);
-      this.noteStrongholdKill(npc.spawnIndex, killerEid);
-      this.notePoiKill(npc.spawnIndex, killerEid);
-      this.noteMinorKill(npc.spawnIndex);
-      // THE UNWRITTEN PAGE: felling a delve's named keeper (the boss,
-      // a hidden warden) is the riftwalker's deed.
-      if (spawn.name !== undefined && isRiftPlane(pos.plane)) {
-        const killer = this.players.get(killerEid);
-        if (killer) this.grantArt(killer, 'riftwalker_step');
-        // THE COURT FALLS: if this was the run's own champion, the run
-        // is cleared — the ceremony fires and the way home opens.
-        this.noteDungeonCleared(npc.spawnIndex, pos.plane);
+      // THE WORLD REMEMBERS PLAYERS (proving pass F2): the lifecycle
+      // ledgers — camp clears, embers, find retirements, wing breaks,
+      // dungeon ceremonies — are the PLAYER economy's memory. A feud
+      // kill no player touched respawns on the ordinary clock above
+      // and writes NOTHING: a gate guard grinding a wolf knot must
+      // never retire the find or ember the camp for the whole epoch.
+      if (lootOwnerEid !== null) {
+        this.noteHoldWing(npc.spawnIndex, killerEid);
+        this.noteStrongholdKill(npc.spawnIndex, killerEid);
+        this.notePoiKill(npc.spawnIndex, killerEid);
+        this.noteMinorKill(npc.spawnIndex);
+        // THE UNWRITTEN PAGE: felling a delve's named keeper (the boss,
+        // a hidden warden) is the riftwalker's deed.
+        if (spawn.name !== undefined && isRiftPlane(pos.plane)) {
+          const killer = this.players.get(killerEid);
+          if (killer) this.grantArt(killer, 'riftwalker_step');
+          // THE COURT FALLS: if this was the run's own champion, the
+          // run is cleared — the ceremony fires and the way home opens.
+          this.noteDungeonCleared(npc.spawnIndex, pos.plane);
+        }
       }
     }
     // THE UNWRITTEN PAGE: felling a champion with the wall still on
@@ -24763,12 +24779,19 @@ export class GameServer {
       // THE WILD TAKES SIDES: the peace holds at the door for
       // NPC-shaped quarry too — never a companion (THE QUIET SHADOW),
       // never a yard animal (THE DROVER'S PEACE reads both ways), and
-      // never kin (a tribe does not eat its own; a rally cry names an
-      // outsider or it names nobody). A BLOW still forces past all of
+      // never kin or a sworn ALLY (a tribe does not eat its own, and
+      // an authored 'ally' row extends that law across banners — the
+      // hounds that serve the watch). A BLOW still forces past all of
       // it, exactly as it forces past the faction peace above.
       if (this.pets.has(targetEid) || this.livestock.has(targetEid)) return;
       const tnpc = this.npcs.get(targetEid);
-      if (tnpc && this.npcTribeOf(eid, npc) === this.npcTribeOf(targetEid, tnpc)) return;
+      if (
+        tnpc &&
+        stanceBetween(this.npcTribeOf(eid, npc), this.npcTribeOf(targetEid, tnpc)).stance ===
+          'ally'
+      ) {
+        return;
+      }
     }
     // THE DREAD CROWN: the moment the fight truly opens (a body not
     // already mid-chase marking a player), the crown speaks — once
@@ -25158,6 +25181,11 @@ export class GameServer {
     npc: NpcComp,
     pos: { plane: PlaneId; x: number; y: number; dir: number },
   ): void {
+    // THE TOOTHLESS NEVER CHARGE (proving pass F1): a body that cannot
+    // wound never OPENS a feud — whatever the matrix says, a 0-damage
+    // grazer charging a wolf to whiff at it forever is a sim bug, not
+    // an ecosystem. Retaliation stays untouched: it rides force.
+    if (npc.def.damage <= 0) return;
     const myTribe = this.npcTribeOf(eid, npc);
     const scanR = stanceScanRange(myTribe);
     if (scanR <= 0) return;
@@ -25171,6 +25199,12 @@ export class GameServer {
       // SHADOW, THE DROVER'S PEACE) — and the dead are already gone.
       if (this.pets.has(oEid) || this.livestock.has(oEid)) return;
       if ((this.healths.get(oEid)?.hp ?? 0) <= 0) return;
+      // THE UNKILLABLE ARE NOT QUARRY (proving pass F3): opening on a
+      // warded body is a fight that can only end one way — or, when
+      // BOTH sides are warded, no way at all (the tollhouse-vs-gate
+      // livelock). The watch does not waste its steel; the ward's own
+      // forced retaliation still answers any warded body that swings.
+      if (this.actors.get(oEid)?.actor.protection === 'invulnerable') return;
       const dx = opos.x - pos.x;
       const dy = opos.y - pos.y;
       const dist = Math.hypot(dx, dy);
