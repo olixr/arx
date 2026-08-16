@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DISCOVER_TILES, DUNGEON_MIN_Y } from '@arx/shared';
+import { DISCOVER_TILES } from '@arx/shared';
 import {
   dungeonDiscoveryId,
   findDiscoveries,
@@ -11,9 +11,9 @@ import {
 
 const ZONES = [
   { id: 'amberford', name: 'Amberford', origin: { x: 296, y: -16 }, width: 112, height: 80 },
-  { id: 'undercroft', name: 'The Undercroft', origin: { x: -344, y: 520 }, width: 96, height: 64 },
+  { id: 'undercroft', name: 'The Undercroft', plane: 'underworld', origin: { x: -344, y: 520 }, width: 96, height: 64 },
   { id: 'poi:1,0', name: 'Goblin warcamp', origin: { x: 140, y: 20 }, width: 30, height: 30 },
-  { id: 'delve_9', name: 'The Mossgrown Barrow', origin: { x: 8192, y: 8192 }, width: 100, height: 100 },
+  { id: 'delve_9', name: 'The Mossgrown Barrow', plane: 'rift:9', origin: { x: 32, y: 32 }, width: 100, height: 100 },
 ];
 
 const CAMP: DiscoverySite = { cellX: 1, cellY: 0, tier: 3, anchorX: 147, anchorY: 30, defId: 'goblin_warcamp' };
@@ -29,32 +29,35 @@ const DEF_INFO = (defId: string) =>
 const NONE = new Map<string, { faded?: boolean }>();
 
 test('zone containment discovers the town once, at its center', () => {
-  const found = findDiscoveries(340, 20, ZONES, [], DEF_INFO, NONE);
+  const found = findDiscoveries('surface', 340, 20, ZONES, [], DEF_INFO, NONE);
   assert.equal(found.length, 1);
   assert.equal(found[0]!.d.id, zoneDiscoveryId('amberford'));
   assert.equal(found[0]!.d.kind, 'town');
   assert.equal(found[0]!.d.name, 'Amberford');
   assert.deepEqual([found[0]!.d.x, found[0]!.d.y], [352, 24]);
   // One tile west of the rect: nothing.
-  assert.equal(findDiscoveries(295, 20, ZONES, [], DEF_INFO, NONE).length, 0);
+  assert.equal(findDiscoveries('surface', 295, 20, ZONES, [], DEF_INFO, NONE).length, 0);
   // Already known: nothing.
   const known = new Map([[zoneDiscoveryId('amberford'), {}]]);
-  assert.equal(findDiscoveries(340, 20, ZONES, [], DEF_INFO, known).length, 0);
+  assert.equal(findDiscoveries('surface', 340, 20, ZONES, [], DEF_INFO, known).length, 0);
 });
 
-test('composed poi zones and instance-band zones never discover as towns', () => {
-  assert.equal(findDiscoveries(150, 30, ZONES, [], DEF_INFO, NONE).length, 0, 'poi: zone skipped');
+test('composed poi zones and rift-plane zones never discover as towns', () => {
+  assert.equal(findDiscoveries('surface', 150, 30, ZONES, [], DEF_INFO, NONE).length, 0, 'poi: zone skipped');
   assert.equal(
-    findDiscoveries(8200, 8200, ZONES, [], DEF_INFO, NONE).length,
+    findDiscoveries('rift:9', 60, 60, ZONES, [], DEF_INFO, NONE).length,
     0,
-    'dungeon instance skipped',
+    'rift zone skipped even for a walker standing in it',
   );
 });
 
-test('the dark band authored zone IS discoverable', () => {
-  const found = findDiscoveries(-300, 550, ZONES, [], DEF_INFO, NONE);
+test('the underworld authored zone IS discoverable — on its own plane', () => {
+  const found = findDiscoveries('underworld', -300, 550, ZONES, [], DEF_INFO, NONE);
   assert.equal(found[0]?.d.name, 'The Undercroft');
-  assert.ok(550 > 512 && 550 < DUNGEON_MIN_Y);
+  assert.equal(found[0]?.d.plane, 'underworld');
+  // A surface walker at the same coordinates finds nothing — the
+  // coordinates alias across planes by design.
+  assert.equal(findDiscoveries('surface', -300, 550, ZONES, [], DEF_INFO, NONE).length, 0);
 });
 
 test('sites discover by anchor radius; havens read as towns', () => {
@@ -63,27 +66,27 @@ test('sites discover by anchor radius; havens read as towns', () => {
     { site: WAYSTATION, epoch: 0 },
   ];
   // Standing at the camp: camp within DISCOVER_TILES, waystation not.
-  const found = findDiscoveries(147 + DISCOVER_TILES - 1, 30, ZONES.slice(0, 2), sites, DEF_INFO, NONE);
+  const found = findDiscoveries('surface', 147 + DISCOVER_TILES - 1, 30, ZONES.slice(0, 2), sites, DEF_INFO, NONE);
   assert.equal(found.length, 1);
   assert.equal(found[0]!.d.id, poiDiscoveryId(1, 0));
   assert.equal(found[0]!.d.kind, 'poi');
   assert.equal(found[0]!.d.tier, 3);
   assert.equal(found[0]!.epoch, 2);
   // At the waystation: haven kind reads 'town'.
-  const atHaven = findDiscoveries(300, 41, [], sites, DEF_INFO, NONE);
+  const atHaven = findDiscoveries('surface', 300, 41, [], sites, DEF_INFO, NONE);
   assert.equal(atHaven.length, 1);
   assert.equal(atHaven[0]!.d.kind, 'town');
   // Unknown archetype yields nothing rather than a nameless marker.
-  const ghost = findDiscoveries(300, 41, [], [{ site: { ...WAYSTATION, defId: 'gone' }, epoch: 0 }], DEF_INFO, NONE);
+  const ghost = findDiscoveries('surface', 300, 41, [], [{ site: { ...WAYSTATION, defId: 'gone' }, epoch: 0 }], DEF_INFO, NONE);
   assert.equal(ghost.length, 0);
 });
 
 test('a standing known site stays quiet; a faded one rediscovers', () => {
   const sites = [{ site: CAMP, epoch: 3 }];
   const knownLive = new Map([[poiDiscoveryId(1, 0), {}]]);
-  assert.equal(findDiscoveries(147, 30, [], sites, DEF_INFO, knownLive).length, 0);
+  assert.equal(findDiscoveries('surface', 147, 30, [], sites, DEF_INFO, knownLive).length, 0);
   const knownFaded = new Map([[poiDiscoveryId(1, 0), { faded: true }]]);
-  const again = findDiscoveries(147, 30, [], sites, DEF_INFO, knownFaded);
+  const again = findDiscoveries('surface', 147, 30, [], sites, DEF_INFO, knownFaded);
   assert.equal(again.length, 1);
   assert.ok(again[0]!.rediscovered);
   assert.equal(again[0]!.epoch, 3);

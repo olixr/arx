@@ -52,46 +52,49 @@ function slate(opts: {
     action: { kind: 'demolish', tx: 4, ty: 5, ticksLeft: 1 },
     session: { sendJson: (m: Record<string, unknown>) => sent.push(m) },
   };
+  const world = {
+    // The demolish action targets (4,5); (4,6) is the tile south of
+    // the wall — the canopy-falls probe reads it.
+    builtAt: (_tx: number, ty: number) => (ty === 6 ? southNow : ty === 5 ? builtNow : undefined),
+    unregisterBuilt: (_tx: number, ty: number) => {
+      events.push(ty === 6 ? 'unregisterSouth' : 'unregister');
+      if (ty === 6) southNow = undefined;
+      else builtNow = undefined;
+    },
+    naturalGround: () => Tile.Grass,
+    registerBuilt: (_tx: number, _ty: number, tile: number, owner: number, prevTile: number) => {
+      events.push('register');
+      registered.push({ tile, owner, prevTile });
+    },
+    builtDetailAt: () => hungNow,
+    unregisterBuiltDetail: () => {
+      events.push('unregisterDetail');
+      hungNow = undefined;
+    },
+  };
+  const pos = { plane: 'surface', x: 4.5, y: 6.5 };
   return {
     players: new Map([[1, player]]),
-    positions: { get: () => ({ x: 4.5, y: 6.5 }) },
+    positions: { get: () => pos, must: () => pos },
     crops: new Map(),
     playerSigns: new Map(),
     homesByCharacter: new Map(),
     ringCache: null,
-    world: {
-      // The demolish action targets (4,5); (4,6) is the tile south of
-      // the wall — the canopy-falls probe reads it.
-      builtAt: (_tx: number, ty: number) => (ty === 6 ? southNow : ty === 5 ? builtNow : undefined),
-      unregisterBuilt: (_tx: number, ty: number) => {
-        events.push(ty === 6 ? 'unregisterSouth' : 'unregister');
-        if (ty === 6) southNow = undefined;
-        else builtNow = undefined;
-      },
-      naturalGround: () => Tile.Grass,
-      registerBuilt: (_tx: number, _ty: number, tile: number, owner: number, prevTile: number) => {
-        events.push('register');
-        registered.push({ tile, owner, prevTile });
-      },
-      builtDetailAt: () => hungNow,
-      unregisterBuiltDetail: () => {
-        events.push('unregisterDetail');
-        hungNow = undefined;
-      },
-    },
+    world,
+    worldOf: () => world,
     accounts: {
       deleteBuiltTile: () => events.push('deleteRow'),
-      saveBuiltTile: (_tx: number, _ty: number, tile: number, owner: number, prevTile: number) =>
+      saveBuiltTile: (_plane: string, _tx: number, _ty: number, tile: number, owner: number, prevTile: number) =>
         saved.push({ tile, owner, prevTile }),
       deleteBuiltDetail: () => events.push('deleteDetailRow'),
       deleteSign: () => {},
       clearHome: () => {},
     },
-    setWorldDetail: (_tx: number, _ty: number, detail: number) =>
+    setWorldDetail: (_plane: string, _tx: number, _ty: number, detail: number) =>
       events.push(`detailPatch:${detail}`),
     broadcastFx: (fx: Record<string, unknown>) => events.push(`fx:${fx['kind']}:${fx['id']}`),
-    setWorldTile: (_tx: number, _ty: number, tile: number) => events.push(`patch:${tile}`),
-    placeDrop: (item: string, qty: number) => drops.push({ item, qty }),
+    setWorldTile: (_plane: string, _tx: number, _ty: number, tile: number) => events.push(`patch:${tile}`),
+    placeDrop: (_plane: string, item: string, qty: number) => drops.push({ item, qty }),
     tileHoldsBody: () => opts.bodyOnTile ?? false,
     cancelAction: (_eid: number, p: { action: unknown }, reason?: string) => {
       p.action = null;

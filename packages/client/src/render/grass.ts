@@ -420,6 +420,19 @@ export class GrassSystem {
   private readonly tiles = new Map<number, GrassTileState>();
   /** Position → live state, for waking tiles bodies move through. */
   private readonly posIndex = new Map<number, GrassTileState>();
+
+  /**
+   * THE CROSSING: every tuft and disturbance is position-keyed on the
+   * CURRENT plane — a plane switch drops the meadow whole, or another
+   * world's grass would sway here.
+   */
+  dropWorld(): void {
+    this.tiles.clear();
+    this.posIndex.clear();
+    this.disturberIndex.clear();
+    this.lastPos.clear();
+    this.live.length = 0;
+  }
   private readonly lastPos = new Map<number | 'own', { x: number; y: number; tx: number; ty: number }>();
   private live: LiveDisturber[] = [];
   private tSec = 0;

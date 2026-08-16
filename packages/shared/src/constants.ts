@@ -177,7 +177,17 @@
 // Additive — a v32 client that ignores them shows a plainer entry
 // banner, reads the clear off the chest and chat line, and corrupts
 // nothing. Recorded on purpose.)
-export const PROTOCOL_VERSION = 32;
+// v33 — THE WORLDS APART: the one continuous tile plane splits into
+// true planes (docs/planes-plan.md). S2CPlane is the crossing
+// ceremony (drop every world cache, stand at the carried pos, wait
+// behind the veil), S2CWelcome carries the waking plane, and party
+// positions / waypoints / discoveries / quest hints / the death mark
+// all gain plane tags so no pointer ever aims across spaces whose
+// coordinates now legitimately overlap. A v32 client would treat a
+// plane hop as a same-plane teleport and render the OLD plane's
+// cached chunks as the ground underfoot — the world itself would be
+// wrong, so the handshake turns the old client away.
+export const PROTOCOL_VERSION = 33;
 
 /** The most souls one party can hold. */
 export const PARTY_CAP = 10;

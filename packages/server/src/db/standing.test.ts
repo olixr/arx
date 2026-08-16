@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { freshDb } from './testDb.js';
 import { AccountStore } from './accounts.js';
 
-const SPAWN = { x: 48.5, y: 52.5 };
+const SPAWN = { plane: 'surface', x: 48.5, y: 52.5 };
 
 async function makeStore(): Promise<{ store: AccountStore; id: number }> {
   const store = new AccountStore(await freshDb());

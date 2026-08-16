@@ -1,5 +1,4 @@
 import {
-  DARK_BAND_Y,
   STRONGHOLD_DEFS,
   STRONGHOLD_MAX_DIM,
   dangerLaw,

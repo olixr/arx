@@ -7,10 +7,11 @@ import {
   type ChunkData,
   type Vec2,
 } from '@arx/shared';
-import type { GrowthRow, PortalDef, ZoneDef, ZoneSign } from '@arx/content';
+import type { GrowthRow, PlaneDef, PortalDef, ZoneDef, ZoneSign } from '@arx/content';
 import {
-  DARK_BAND_Y,
   EDGE_BASIN_DAMP_RANGE,
+  SURFACE_PLANE_ID,
+  generateCaveChunk,
   generateChunk,
   projectGrowth,
   replaceZoneEdgeProfiles,
@@ -18,10 +19,14 @@ import {
 } from '@arx/content';
 
 /**
- * The server's world: procedural chunks with authored zones stamped on
+ * ONE PLANE of the world (THE WORLDS APART, docs/planes-plan.md):
+ * base terrain by the plane's law — procedural fields on 'worldgen'
+ * planes, solid rock on 'cave' planes — with authored zones stamped on
  * top, generated lazily and cached. Implements CollisionSource (via
  * ChunkStore) — movement and AI query it directly. Zones can be added
- * and removed at runtime (delve instances).
+ * and removed at runtime (delve instances). Coordinates are
+ * plane-local; nothing outside this object may compare positions
+ * across planes.
  */
 export class WorldSource extends ChunkStore {
   private readonly zones: ZoneDef[];
@@ -31,6 +36,7 @@ export class WorldSource extends ChunkStore {
 
   constructor(
     private readonly seed: number,
+    readonly plane: PlaneDef,
     initialZones: ZoneDef[],
   ) {
     super();
@@ -38,7 +44,22 @@ export class WorldSource extends ChunkStore {
     for (const zone of initialZones) this.addZone(zone);
   }
 
+  /** The base chunk this plane deals before any zone stamps it. */
+  private generateBase(cx: number, cy: number): ChunkData {
+    return this.plane.base === 'cave'
+      ? generateCaveChunk(cx, cy)
+      : generateChunk(this.seed, cx, cy);
+  }
+
   addZone(zone: ZoneDef): void {
+    // A zone stamps exactly the plane it is tagged for — a mismatch is
+    // an authoring error, never a silent cross-plane stamp.
+    const zonePlane = zone.plane ?? SURFACE_PLANE_ID;
+    if (zonePlane !== this.plane.id) {
+      throw new Error(
+        `zone '${zone.id}' is tagged for plane '${zonePlane}', not '${this.plane.id}'`,
+      );
+    }
     this.zones.push(zone);
     for (const portal of zone.portals ?? []) {
       this.portals.set(`${portal.x},${portal.y}`, portal);
@@ -90,13 +111,13 @@ export class WorldSource extends ChunkStore {
   /**
    * THE EDGE-HARMONY LAW: every surface zone publishes its border's
    * terrain intentions to the live registry the worldgen fields blend
-   * toward. Dark-band and instance zones sit in solid cave — they
-   * claim nothing from a wilderness they don't touch.
+   * toward. Cave planes sit in solid rock — they claim nothing from a
+   * wilderness they don't touch, so only the surface plane publishes.
    */
   private refreshEdgeProfiles(): void {
+    if (this.plane.id !== SURFACE_PLANE_ID) return;
     replaceZoneEdgeProfiles(
       this.zones
-        .filter((z) => z.origin.y < DARK_BAND_Y)
         .map((z) => zoneEdgeProfileOf(z))
         .filter((p): p is NonNullable<typeof p> => p !== null),
     );
@@ -184,27 +205,16 @@ export class WorldSource extends ChunkStore {
   }
 
   /**
-   * Where death sends you: the NEAREST settled spawn. With Dawnmead
-   * the world's only hearth that means the Waking Ring; as new
-   * settlements declare spawns, the walk back shortens on its own.
-   * Underground deaths (the dark band, dungeons, delves) always
-   * surface at the world spawn: distance means nothing down there.
+   * The NEAREST settled spawn ON THIS PLANE, or null if no zone here
+   * declares one. The full respawn law (scratch planes rescue home,
+   * planes with no hearth fall to the world spawn) lives with the
+   * plane registry — this plane only answers for its own hearths.
    */
-  respawnAt(x: number, y: number): Vec2 {
-    // The instance band always surfaces — the rescue law: a personal
-    // dungeon may be torn down under the corpse, so its dead go home.
-    if (y >= 8192) return this.spawn;
-    // Everywhere else the nearest hearth answers — but only within
-    // the SAME band: the authored underground (the Undercroft's
-    // Landing) catches its own dead, and a surface death can never
-    // wake in the dark just because the dark was closer as the crow
-    // digs. No band-mate found ⇒ the world spawn, as ever.
-    const underground = y >= 512;
-    let best = this.spawn;
+  nearestSpawnTo(x: number, y: number): Vec2 | null {
+    let best: Vec2 | null = null;
     let bestD = Infinity;
     for (const zone of this.zones) {
       if (!zone.spawn) continue;
-      if (zone.spawn.y >= 512 !== underground) continue;
       const d = Math.hypot(zone.spawn.x - x, zone.spawn.y - y);
       if (d < bestD) {
         bestD = d;
@@ -409,14 +419,14 @@ export class WorldSource extends ChunkStore {
   /**
    * THE KEPT AND THE WILD: which growth domain a tile belongs to,
    * decided by where its ground comes from — never by the node def.
-   * The dark band is kept (delves and the authored underground answer
-   * to their own generators); a zone that OWNS the tile (non-skip
-   * cell) answers with its mark, default kept; raw worldgen ground is
-   * wild. Zones scan in reverse overlay order so the zone that wins
-   * the ground also names the domain.
+   * Cave planes are kept whole (delves and the authored underground
+   * answer to their own generators); a zone that OWNS the tile
+   * (non-skip cell) answers with its mark, default kept; raw worldgen
+   * ground is wild. Zones scan in reverse overlay order so the zone
+   * that wins the ground also names the domain.
    */
   growthDomainAt(tx: number, ty: number): 'kept' | 'wild' {
-    if (ty >= DARK_BAND_Y) return 'kept';
+    if (this.plane.base === 'cave') return 'kept';
     for (let i = this.zones.length - 1; i >= 0; i--) {
       const zone = this.zones[i]!;
       if (
@@ -478,7 +488,7 @@ export class WorldSource extends ChunkStore {
     if (hit >= 0) {
       entry = this.pristineMemo.splice(hit, 1)[0]!;
     } else {
-      const chunk = generateChunk(this.seed, cx, cy);
+      const chunk = this.generateBase(cx, cy);
       for (const zone of this.zones) this.overlayZone(chunk, zone);
       entry = { cx, cy, chunk };
     }
@@ -496,7 +506,7 @@ export class WorldSource extends ChunkStore {
     const existing = this.get(cx, cy);
     if (existing) return existing;
     this.generatedCount++;
-    const chunk = generateChunk(this.seed, cx, cy);
+    const chunk = this.generateBase(cx, cy);
     // Every overlay ledger reads through its per-chunk index — only
     // THIS chunk's entries, never a world-wide sweep (the indexes stay
     // in sync in the register/unregister pairs above).

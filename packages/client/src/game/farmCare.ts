@@ -53,6 +53,21 @@ export function farmKey(tx: number, ty: number): string {
   return `${tx},${ty}`;
 }
 
+/**
+ * THE CROSSING: every yard mirror is tile-keyed on the CURRENT plane —
+ * a plane switch must drop them whole or another world's coordinates
+ * would wear this one's care. (The larder board is shop-id-keyed and
+ * survives; the server re-mirrors farm state as its chunks restream.)
+ */
+export function clearFarmMirror(): void {
+  farmPlots.clear();
+  farmBins.clear();
+  farmTroughs.clear();
+  farmJobs.clear();
+  farmApiaries.clear();
+  wellTiles.clear();
+}
+
 /** A crop tile's stage, or null for anything that is not a crop. */
 export function stageOfTile(tile: Tile | undefined): 0 | 1 | 2 | null {
   if (tile === undefined) return null;

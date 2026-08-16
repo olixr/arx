@@ -5,7 +5,6 @@ import {
   ChunkStore,
   DRAW_FULL_TICKS,
   DRAW_MIN_TICKS,
-  DUNGEON_MIN_Y,
   ExploredMask,
   INTERP_DELAY_MS,
   b64ToU8,
@@ -83,9 +82,9 @@ import {
   type Vec2,
 } from '@arx/shared';
 import { CROP_TILES, LIVESTOCK, MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, SOIL_RICH, WORK_STATION_TILES, bandAtLeast, isCropTile, abilityDef, itemDef, movesetFor, npcDef, replaceGeography, strikePose, tameDef, techniquePoolDef, type FactionBand, type GeographyDef, type WorkStation } from '@arx/content';
-import { farmApiaries, farmBins, farmJobs, farmKey, farmPlots, farmTroughs, larderFills, noteWellTile, refreshWet, stageOfTile } from './farmCare.js';
+import { clearFarmMirror, farmApiaries, farmBins, farmJobs, farmKey, farmPlots, farmTroughs, larderFills, noteWellTile, refreshWet, stageOfTile } from './farmCare.js';
 import { EntityKind, INTERIOR_BOUNDARY_TILES, chunkKey, pointHitsSolid, shutDoorTile } from '@arx/shared';
-import type { AbilityDef, AbilitySlot, DangerAnchor, Look } from '@arx/shared';
+import type { AbilityDef, AbilitySlot, DangerAnchor, Look, PlaneWire } from '@arx/shared';
 
 /**
  * A zero-latency predicted shot (v8). Spawned the instant the local
@@ -246,6 +245,13 @@ export interface GameEvents {
   }): void;
   /** THE COURT FALLS: the run's champion is down — the run is cleared. */
   onDungeonClear?(d: { name: string; sigil: string; sec: number }): void;
+  /**
+   * THE CROSSING: the body just moved to another plane. ClientGame has
+   * already dropped its own world state (chunks, prediction, entities,
+   * versions); this event is where the renderer, chart, and audio drop
+   * theirs and the veil covers the cut.
+   */
+  onPlane?(p: PlaneWire): void;
   onHit(hit: {
     x: number;
     y: number;
@@ -392,21 +398,47 @@ export class ClientGame {
   /** Recipes known beyond the core set (server-owned; see 'recipes'). */
   knownRecipes: ReadonlySet<string> = new Set();
   /**
-   * THE CHART: persistent fog-of-war, seeded by the login snapshot and
-   * cleared locally with the shared deterministic disc — the server
-   * marks the identical cells, so no reveal ever travels the wire.
+   * THE WORLDS APART: the law of the plane the body stands on —
+   * ambience, cutaway, chart behavior, and fog persistence all read
+   * from here instead of any y-line. Set by the welcome and by every
+   * S2CPlane crossing.
    */
-  readonly explored = new ExploredMask();
-  /** The per-run dungeon chart (y >= DUNGEON_MIN_Y) — never persisted. */
+  plane: PlaneWire = { id: 'surface', name: '', underground: false, persistent: true };
+  /**
+   * THE CHART: persistent fog-of-war, ONE MASK PER PLANE (coordinates
+   * across planes legitimately overlap). Seeded by the login snapshot
+   * and cleared locally with the shared deterministic disc — the
+   * server marks the identical cells, so no reveal ever travels the
+   * wire. Scratch planes chart into dungeonExplored instead.
+   */
+  private readonly exploredByPlane = new Map<string, ExploredMask>();
+  /** The per-run scratch chart (rift planes) — never persisted. */
   readonly dungeonExplored = new ExploredMask();
+
+  /** The named plane's persistent mask, materialized on first touch. */
+  exploredFor(planeId: string): ExploredMask {
+    let mask = this.exploredByPlane.get(planeId);
+    if (!mask) this.exploredByPlane.set(planeId, (mask = new ExploredMask()));
+    return mask;
+  }
+
+  /**
+   * The CURRENT plane's chart — the mask every reader (map, reveal)
+   * sees. Persistent planes read their own mask; scratch planes read
+   * the per-run chart. The getter keeps the one-mask call sites honest
+   * across every crossing.
+   */
+  get explored(): ExploredMask {
+    return this.plane.persistent ? this.exploredFor(this.plane.id) : this.dungeonExplored;
+  }
   /** The place ledger, keyed by discovery id. */
   readonly discoveries = new Map<string, DiscoveryWire>();
   /** The one active waypoint (optimistic; server keeps the durable copy). */
-  waypoint: Vec2 | null = null;
+  waypoint: { x: number; y: number; plane?: string } | null = null;
   /** Where the reader last fell — the spilled pack's skull on the
    *  chart. `until` is a local clock stamp built from the wire's
    *  duration; the server clears it on arrival or expiry. */
-  deathMark: { x: number; y: number; until: number } | null = null;
+  deathMark: { x: number; y: number; until: number; plane?: string } | null = null;
   /** THE QUEST LEDGER: active quests by id (status 'ready' = turn in). */
   readonly quests = new Map<string, QuestWire>();
   /** The done shelf, by id. */
@@ -437,7 +469,7 @@ export class ClientGame {
   /** The party snapshot — empty members = partyless. Refetched on events. */
   party: { members: PartyMemberWire[]; invites: string[]; outgoing: string[] } | null = null;
   /** Fellow positions from the partypos ticker, keyed by name. */
-  readonly partyPos = new Map<string, { x: number; y: number; at: number }>();
+  readonly partyPos = new Map<string, { x: number; y: number; plane: string; at: number }>();
   /** Bumped whenever fog, discoveries, or the waypoint change — map surfaces re-draw on it. */
   chartVersion = 0;
   private lastRevealAt = 0;
@@ -1466,7 +1498,16 @@ export class ClientGame {
         this.waypoint = msg.waypoint ?? null;
         this.party = null;
         this.partyPos.clear();
-        this.explored.clear();
+        // THE WORLDS APART: the welcome names the waking plane; every
+        // chart starts over (the login push refills the persistent
+        // masks plane by plane).
+        this.plane = msg.plane ?? {
+          id: 'surface',
+          name: '',
+          underground: false,
+          persistent: true,
+        };
+        this.exploredByPlane.clear();
         this.dungeonExplored.clear();
         this.discoveries.clear();
         this.chartVersion++;
@@ -1917,6 +1958,29 @@ export class ClientGame {
         this.events.onDungeonClear?.({ name: msg.name, sigil: msg.sigil, sec: msg.sec });
         break;
       }
+      case 'plane': {
+        // THE CROSSING (docs/planes-plan.md §2.4) — the ONE reset
+        // door. Everything streamed before this message belongs to a
+        // space that no longer surrounds the player: drop it all,
+        // stand the body at the carried point, and let the fresh
+        // plane stream in behind the veil.
+        this.plane = msg.plane;
+        this.world.dropAll();
+        this.chunkWallFlags.clear();
+        this.entities.clear();
+        this.projHandoffs.clear();
+        this.ownShots.length = 0;
+        this.predictor.reset({ x: msg.x, y: msg.y });
+        this.autoPath = null;
+        this.pendingPickup = null;
+        clearFarmMirror();
+        this.signs.clear();
+        this.worldVersion++;
+        this.interiorsVersion++;
+        this.chartVersion++;
+        this.events.onPlane?.(msg.plane);
+        break;
+      }
       case 'dlgopen': {
         this.events.onDialogueOpen?.({
           eid: msg.eid,
@@ -2150,8 +2214,9 @@ export class ClientGame {
         break;
       }
       case 'explored': {
+        const mask = this.exploredFor(msg.plane ?? 'surface');
         for (const [rx, ry, b64] of msg.regions) {
-          this.explored.loadRegion(rx, ry, b64ToU8(b64));
+          mask.loadRegion(rx, ry, b64ToU8(b64));
         }
         this.chartVersion++;
         break;
@@ -2297,7 +2362,9 @@ export class ClientGame {
         // The ticker is authoritative for who is placed right now.
         this.partyPos.clear();
         const at = performance.now();
-        for (const m of msg.members) this.partyPos.set(m.name, { x: m.x, y: m.y, at });
+        for (const m of msg.members) {
+          this.partyPos.set(m.name, { x: m.x, y: m.y, plane: m.plane ?? 'surface', at });
+        }
         break;
       }
       case 'fx': {
@@ -2640,11 +2707,14 @@ export class ClientGame {
 
   /** Pin the one active waypoint (optimistic; the server keeps the durable copy). */
   setWaypoint(x: number, y: number): void {
+    // The pin lands on the plane whose chart you are reading — only
+    // persistent planes take one (the server enforces the same law).
+    if (!this.plane.persistent) return;
     const wx = Math.round(x);
     const wy = Math.round(y);
-    this.waypoint = { x: wx, y: wy };
+    this.waypoint = { x: wx, y: wy, plane: this.plane.id };
     this.chartVersion++;
-    this.conn?.send({ t: 'waypoint', x: wx, y: wy });
+    this.conn?.send({ t: 'waypoint', x: wx, y: wy, plane: this.plane.id });
   }
 
   /** Walk away from an active quest (the journal's Abandon button). */
@@ -3196,13 +3266,15 @@ export class ClientGame {
    * ticker position, self excluded. Entries older than two beats are
    * dropped — a stopped ticker must never leave ghosts on the chart.
    */
-  partyFellowsPlaced(now = performance.now()): Array<{ name: string; x: number; y: number }> {
+  partyFellowsPlaced(
+    now = performance.now(),
+  ): Array<{ name: string; x: number; y: number; plane: string }> {
     if (this.partyPos.size === 0) return [];
-    const out: Array<{ name: string; x: number; y: number }> = [];
+    const out: Array<{ name: string; x: number; y: number; plane: string }> = [];
     for (const [name, p] of this.partyPos) {
       if (name === this.ownName) continue;
       if (now - p.at > 5000) continue;
-      out.push({ name, x: p.x, y: p.y });
+      out.push({ name, x: p.x, y: p.y, plane: p.plane });
     }
     return out;
   }
@@ -3497,8 +3569,9 @@ export class ClientGame {
     if (now - this.lastRevealAt >= CLIENT_REVEAL_MS) {
       this.lastRevealAt = now;
       const pos = this.predictor.pos;
-      const mask = pos.y >= DUNGEON_MIN_Y ? this.dungeonExplored : this.explored;
-      if (mask.markDisc(pos.x, pos.y).length > 0) this.chartVersion++;
+      // The current plane's own chart — the explored getter resolves
+      // persistent vs scratch by the plane's law.
+      if (this.explored.markDisc(pos.x, pos.y).length > 0) this.chartVersion++;
     }
 
     this.accumulator += frameDt;

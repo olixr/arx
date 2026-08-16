@@ -1,4 +1,5 @@
-import { DISCOVER_TILES, DUNGEON_MIN_Y, type DiscoveryWire } from '@arx/shared';
+import { DISCOVER_TILES, type DiscoveryWire } from '@arx/shared';
+import { SURFACE_PLANE_ID, isRiftPlane } from '@arx/content';
 
 /**
  * THE PLACE LEDGER — pure discovery detection (the SocialSystem law:
@@ -20,6 +21,8 @@ import { DISCOVER_TILES, DUNGEON_MIN_Y, type DiscoveryWire } from '@arx/shared';
 export interface DiscoveryZone {
   id: string;
   name: string;
+  /** THE WORLDS APART: the plane the zone stands on (absent = surface). */
+  plane?: string;
   origin: { x: number; y: number };
   width: number;
   height: number;
@@ -55,6 +58,7 @@ export function dungeonDiscoveryId(tx: number, ty: number): string {
 }
 
 export function findDiscoveries(
+  plane: string,
   x: number,
   y: number,
   zones: Iterable<DiscoveryZone>,
@@ -66,28 +70,33 @@ export function findDiscoveries(
 
   for (const z of zones) {
     // Composed POI zones (id 'poi:cx,cy') belong to the site path, and
-    // anything standing in instance space is a per-run dungeon, not a
-    // place. The dark band's authored zones DO count — finding the
-    // Undercroft is a discovery.
-    if (z.id.startsWith('poi:') || z.origin.y >= DUNGEON_MIN_Y) continue;
+    // a zone on a scratch rift plane is a per-run dungeon, not a
+    // place. PERSISTENT planes' authored zones DO count — finding the
+    // Undercroft is a discovery — but only for a walker on THEIR
+    // plane (coordinates alias across planes by design).
+    const zonePlane = z.plane ?? SURFACE_PLANE_ID;
+    if (z.id.startsWith('poi:') || isRiftPlane(zonePlane)) continue;
+    if (zonePlane !== plane) continue;
     if (x < z.origin.x || x >= z.origin.x + z.width) continue;
     if (y < z.origin.y || y >= z.origin.y + z.height) continue;
     const id = zoneDiscoveryId(z.id);
     if (known.has(id)) continue;
-    out.push({
-      d: {
-        id,
-        kind: 'town',
-        name: z.name,
-        x: Math.round(z.origin.x + z.width / 2),
-        y: Math.round(z.origin.y + z.height / 2),
-      },
-      rediscovered: false,
-    });
+    const d: DiscoveryWire = {
+      id,
+      kind: 'town',
+      name: z.name,
+      x: Math.round(z.origin.x + z.width / 2),
+      y: Math.round(z.origin.y + z.height / 2),
+    };
+    if (zonePlane !== SURFACE_PLANE_ID) d.plane = zonePlane;
+    out.push({ d, rediscovered: false });
   }
 
   const r2 = DISCOVER_TILES * DISCOVER_TILES;
-  for (const { site, epoch } of sites) {
+  // The frontier ledger is surface law — sites never match a walker
+  // on another plane, whatever the coordinates say.
+  const surfaceSites = plane === SURFACE_PLANE_ID ? sites : [];
+  for (const { site, epoch } of surfaceSites) {
     const dx = site.anchorX - x;
     const dy = site.anchorY - y;
     if (dx * dx + dy * dy > r2) continue;

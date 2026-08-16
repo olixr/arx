@@ -704,13 +704,13 @@ function buildLedgers(root: HTMLElement, deps: WorldPanelDeps): void {
     'No planned rects — drag one out with P before building a town.',
   );
 
-  // Zones (the world's actual overlays, surface first).
-  const surface = ws.zones.filter((z) => !z.poi && z.origin.y < 512);
-  const dark = ws.zones.filter((z) => !z.poi && z.origin.y >= 512);
-  const zoneEntries = [...surface, ...dark].map((z) => ({
+  // Zones (the world's actual overlays, surface plane first).
+  const surface = ws.zones.filter((z) => !z.poi && (z.plane ?? 'surface') === 'surface');
+  const underworld = ws.zones.filter((z) => !z.poi && (z.plane ?? 'surface') !== 'surface');
+  const zoneEntries = [...surface, ...underworld].map((z) => ({
     sel: { kind: 'zone', id: z.id } as WorldSel,
     label: z.name,
-    sub: `${z.width}×${z.height} @ ${z.origin.x},${z.origin.y}${z.origin.y >= 512 ? ' · dark band' : ''}${z.hasFile ? ' · file' : ''}`,
+    sub: `${z.width}×${z.height} @ ${z.origin.x},${z.origin.y}${(z.plane ?? 'surface') !== 'surface' ? ' · underworld' : ''}${z.hasFile ? ' · file' : ''}`,
   }));
   section(`Zones (${zoneEntries.length})`, zoneEntries, 'No authored zones on the server.');
 }

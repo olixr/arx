@@ -1,6 +1,9 @@
 import {
   STRUCTURE_TEMPLATES,
+  SURFACE_PLANE_ID,
   TOWN_SPAWNS,
+  UNDERWORLD_PLANE_ID,
+  portalDestPlane,
   templateWidth,
   templateHeight,
   zoneEdgeProfileOf,
@@ -455,7 +458,9 @@ function buildZoneCard(deps: PanelDeps): HTMLElement {
   box.appendChild(verdict);
 
   // THE EDGE STRIP: the perimeter the wild grows toward, unrolled.
-  const profile = zoneEdgeProfileOf(z);
+  // Edge harmony is a surface law — cave planes blend toward nothing.
+  const profile =
+    (z.plane ?? SURFACE_PLANE_ID) === SURFACE_PLANE_ID ? zoneEdgeProfileOf(z) : null;
   if (profile) {
     const EDGE_INK: Record<string, string> = {
       open: '#787e8c',
@@ -1009,6 +1014,26 @@ function buildInspector(deps: PanelDeps, ref: PlacementRef): HTMLElement {
     );
     box.appendChild(field('kind', kindSel));
     if (!p.delve) {
+      // THE WORLDS APART: the plane the crossing lands on. An unset
+      // portal shows the frozen legacy y-derivation as its truth;
+      // choosing writes the explicit tag, and the y-treaty never
+      // speaks for this portal again.
+      box.appendChild(
+        field(
+          'dest plane',
+          selectInput(
+            [
+              { value: SURFACE_PLANE_ID, label: 'surface' },
+              { value: UNDERWORLD_PLANE_ID, label: 'underworld' },
+            ],
+            portalDestPlane(p),
+            (v) =>
+              actions.editPlacement(ref, 'portal dest plane', (z) => {
+                z.portals![ref.index]!.destPlane = v;
+              }),
+          ),
+        ),
+      );
       box.appendChild(
         field(
           'dest x',

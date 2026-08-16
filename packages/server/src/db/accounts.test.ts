@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { freshDb } from './testDb.js';
 import { AccountStore } from './accounts.js';
 
-const SPAWN = { x: 48.5, y: 52.5 };
+const SPAWN = { plane: 'surface', x: 48.5, y: 52.5 };
 
 async function makeStore(): Promise<AccountStore> {
   return new AccountStore(await freshDb());
@@ -104,7 +104,7 @@ test('sessions resume and persist character position', async () => {
   if (!reg.ok) return;
   const token = await store.createSession(reg.accountId);
 
-  store.saveCharacter(reg.character.id, 100.25, -42.5, 7);
+  store.saveCharacter(reg.character.id, 'surface', 100.25, -42.5, 7);
   const resumed = await store.resumeSession(token);
   assert.ok(resumed.ok);
   if (!resumed.ok) return;

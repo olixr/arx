@@ -1,6 +1,6 @@
 import { procShape } from './render/wornLight.js';
 import { deckFillAt, fillContains } from './render/terrain.js';
-import { AWNING_HOST_TILES, AWNING_SHAPES, EntityKind, FENCE_TILES, GARRISON_TILES, HEDGE_TILES, PoseState, ROCK_TILES, SWAP_BEAT_MS, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, hangHostTiles, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo, type EntityMeta } from '@arx/shared';
+import { AWNING_HOST_TILES, AWNING_SHAPES, CHUNK_SIZE, EntityKind, FENCE_TILES, GARRISON_TILES, HEDGE_TILES, PoseState, ROCK_TILES, SWAP_BEAT_MS, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, hangHostTiles, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo, type EntityMeta } from '@arx/shared';
 import { BUILDABLES, DYE_PIGMENTS, ELEMENT_COLORS, POI_DEFS, RECIPES, SIGN_MOTIFS, TRELLIS_SPECIES, buildableForTile, buildableGround, enchantDef, isDaggerStats, itemDef, npcActor, npcDef, resonanceShift, type BuildableDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { farmBins, farmJobs, farmKey } from './game/farmCare.js';
@@ -47,7 +47,7 @@ import { TrackPlayer } from './audio/tracks.js';
 import { AmbienceSystem } from './audio/ambience.js';
 import { VoicePlayer } from './audio/voice.js';
 import { AudioMenu } from './ui/audioMenu.js';
-import { UNDERGROUND_Y, skySeam, zoneWeights } from './audio/zones.js';
+import { skySeam, zoneWeights } from './audio/zones.js';
 import { scanFallEar, SILENT_EAR, type FallEar } from './audio/falls.js';
 import { setupTouch } from './input/touch.js';
 import { DYE_SWATCHES, buildableIconUrl, dockGlyphUrl, itemIconUrl, uiIconUrl } from './render/icons.js';
@@ -179,6 +179,17 @@ const loginChosen = document.getElementById('login-chosen')!;
 const loginOther = document.getElementById('login-other') as HTMLButtonElement;
 const hud = document.getElementById('hud')!;
 const debugEl = document.getElementById('debug')!;
+
+// THE CROSSING VEIL — the beat between worlds (docs/planes-plan.md
+// §2.4). Dropped by the onPlane event, lifted by the frame loop once
+// the minimum hold has passed AND the destination's ground stands
+// under the body (the center chunk arrived), so the new world is
+// never seen half-streamed.
+const crossingVeil = document.createElement('div');
+crossingVeil.id = 'crossing-veil';
+document.body.appendChild(crossingVeil);
+let veilHoldUntil = 0;
+let veilWaiting = false;
 
 let registerMode = false;
 let authReady = false;
@@ -1613,6 +1624,22 @@ const game = new ClientGame(input, {
   onDungeon: (d) => {
     // A toast, not a screen — it overlays like the level-up card.
     showDungeonEntry(d);
+  },
+  onPlane: (p) => {
+    // THE CROSSING: clientGame already dropped its own world state;
+    // here every other position-keyed holder drops theirs, and the
+    // veil turns the cut into a passage.
+    renderer.onPlaneSwitch();
+    mapScreen.view.onPlaneSwitch();
+    mapOverlay.onPlaneSwitch();
+    crossingVeil.classList.add('on');
+    veilHoldUntil = performance.now() + 480;
+    veilWaiting = true;
+    // The passage speaks: rift entries already have their own banner
+    // (the dungeon toast), so only the standing worlds are announced.
+    if (p.name && !p.id.startsWith('rift:')) {
+      chat.addLine({ channel: 'system', text: `You cross into ${p.name}.` });
+    }
   },
   onDungeonClear: (d) => {
     // THE COURT FALLS: the clear is a ceremony, not a chat line.
@@ -3882,24 +3909,42 @@ function frame(now: number): void {
   companionPlaque.update(game);
   bossBanner.update(game);
 
+  // THE CROSSING VEIL lifts once the hold has passed and the ground
+  // under the body has streamed in — the new world arrives standing.
+  if (veilWaiting && now >= veilHoldUntil) {
+    const pos = game.predictor.pos;
+    const groundIn =
+      game.world.get(Math.floor(pos.x / CHUNK_SIZE), Math.floor(pos.y / CHUNK_SIZE)) !== undefined;
+    if (groundIn || now >= veilHoldUntil + 4000) {
+      // The 4s backstop: a stalled stream must never trap the player
+      // behind a black frame — the wire watchdogs own that story.
+      veilWaiting = false;
+      crossingVeil.classList.remove('on');
+    }
+  }
+
   // The world's voice: zone-weighted music and ambience follow the
   // listener's position and the game clock every frame.
   if (game.ownEid !== null) {
     const own = game.predictor.renderPos();
-    const w = zoneWeights(own.x, own.y);
+    // THE WORLDS APART: whether the ear is underground is the plane's
+    // law — cave planes drown the compass zones whole.
+    const under = game.plane.underground;
+    const w = zoneWeights(own.x, own.y, under);
     const hours = game.clockHoursNow();
     // The danger field reaches the ear: same seed, same field, same
     // anchors the server spawns by — havens included, so the music
-    // calms exactly where a waystation's lamplight does.
+    // calms exactly where a waystation's lamplight does. The field is
+    // a surface law; other planes read 0.
     const dangerTier =
-      game.worldSeed !== null && own.y < UNDERGROUND_Y
+      game.worldSeed !== null && game.plane.id === 'surface'
         ? dangerAt(game.worldSeed, own.x, own.y, game.dangerAnchors)
         : 0;
     music.update(w, hours, dangerTier);
     // THE SKY'S SEAM: dusk and dawn each speak once as the light
     // turns — surface only (there is no sky underground; the clock
     // still advances so a delver never surfaces into a stale seam).
-    if (own.y < UNDERGROUND_Y) {
+    if (!under) {
       if (lastSkyHours !== null) {
         const seam = skySeam(lastSkyHours, hours);
         if (seam === 'dusk') sfx.sample('day_to_night');
@@ -3918,7 +3963,7 @@ function frame(now: number): void {
     if (now >= nextDreadStabAt) {
       nextDreadStabAt = now + 170_000 + Math.random() * 220_000;
       const deepNight = hours < 4.5 || hours > 21.5;
-      if (deepNight && w.wild > 0.7 && dangerTier >= 2 && own.y < UNDERGROUND_Y) {
+      if (deepNight && w.wild > 0.7 && dangerTier >= 2 && !under) {
         sfx.sample(nextDreadStab(), 0.6);
       }
     }
@@ -3926,7 +3971,7 @@ function frame(now: number): void {
     // surface. Underground, the cinema, and the workbench stand it
     // down; the dark keeps its own chrome.
     dangerGauge.update(
-      game.worldSeed === null || own.y >= UNDERGROUND_Y || cinema.open || buildMode !== null
+      game.worldSeed === null || game.plane.id !== 'surface' || cinema.open || buildMode !== null
         ? null
         : dangerTier,
     );

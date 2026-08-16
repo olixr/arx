@@ -8,6 +8,7 @@ import {
   wallBannerDetail,
 } from '@arx/shared';
 import { HARTFELL_RECT } from '../geography.js';
+import { UNDERWORLD_PLANE_ID } from '../planes.js';
 import { ZoneBuilder } from './builder.js';
 import type { ZoneDef } from './types.js';
 
@@ -920,7 +921,7 @@ export function buildHartfell(): ZoneDef {
   // sign, no name. You find it or you're told.
   // ---------------------------------------------------------------
   b.fillRect(60, 55, 4, 4, Tile.Dirt);
-  b.portal(61, 56, Tile.PortalDown, { x: 225.5, y: 569.5 }); // the Hartfell alcove
+  b.portal(61, 56, Tile.PortalDown, { x: 225.5, y: 569.5 }, UNDERWORLD_PLANE_ID); // the Hartfell alcove
   b.set(63, 55, Tile.Crate).set(60, 58, Tile.Rock);
   b.setDetail(62, 57, Detail.Pebbles).setDetail(60, 56, Detail.Tuft);
 

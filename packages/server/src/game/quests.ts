@@ -208,6 +208,8 @@ export interface QuestHintWire {
   y: number;
   /** Radius in tiles — deliberately generous. */
   r: number;
+  /** THE WORLDS APART: the plane the neighborhood lies on (absent = surface). */
+  plane?: string;
 }
 
 export interface QuestObjectiveWire {

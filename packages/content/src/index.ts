@@ -84,6 +84,7 @@ export * from './structures/stamp.js';
 export * from './structures/serialize.js';
 export * from './structures/templates.js';
 export * from './geography.js';
+export * from './planes.js';
 export * from './worldgen.js';
 export * from './zoneEdges.js';
 export * from './maps/types.js';

@@ -22,6 +22,8 @@ import { WORLD_SEED,
   roadHitAt,
 } from '@arx/content';
 import {
+  SURFACE_PLANE,
+  UNDERWORLD_PLANE,
   basinFieldAt,
   elevationAt,
   generateChunk,
@@ -30,6 +32,7 @@ import {
   moistureAt,
 } from '@arx/content';
 import { WorldSource } from './worldSource.js';
+import { Planes } from './planes.js';
 
 /**
  * A (2r+1)² chunk block flattened to a world-tile map so adjacency
@@ -117,7 +120,7 @@ test('different seeds give different terrain', () => {
 
 test('authored zone overlays the procedural world exactly', () => {
   const town = buildDawnmead();
-  const world = new WorldSource(1337, [town]);
+  const world = new WorldSource(1337, SURFACE_PLANE, [town]);
   // The village spans world (-128,0)-(-1,95); its well stands on the
   // green at (-65,44) — a real wellhead since the dressing pass.
   world.ensure(-3, 1);
@@ -130,7 +133,7 @@ test('authored zone overlays the procedural world exactly', () => {
 
 test('spawn point is walkable and inside the village', () => {
   const town = buildDawnmead();
-  const world = new WorldSource(1337, [town]);
+  const world = new WorldSource(1337, SURFACE_PLANE, [town]);
   const spawn = world.spawn;
   assert.ok(spawn.x > -128 && spawn.x < 0 && spawn.y > 0 && spawn.y < 96);
   assert.equal(world.isSolid(Math.floor(spawn.x), Math.floor(spawn.y)), false);
@@ -138,7 +141,7 @@ test('spawn point is walkable and inside the village', () => {
 
 test('village interiors are enterable: every building has a door', () => {
   const town = buildDawnmead();
-  const world = new WorldSource(1337, [town]);
+  const world = new WorldSource(1337, SURFACE_PLANE, [town]);
   for (let cx = -4; cx <= -1; cx++) {
     for (let cy = 0; cy <= 2; cy++) world.ensure(cx, cy);
   }
@@ -665,20 +668,35 @@ test('chunk boundaries are seamless (tiles agree across the seam)', () => {
   assert.ok(left.ground.length === CHUNK_SIZE * CHUNK_SIZE);
 });
 
-test('respawnAt: bands keep their own dead (the Undercroft law)', () => {
-  const world = new WorldSource(1337, [buildDawnmead(), buildSilverfall(), buildUndercroft()]);
+test('respawnAt: planes keep their own dead (the Undercroft law)', () => {
+  // THE WORLDS APART: the Undercroft lives on the underworld plane
+  // now — the split registry IS the isolation the y-band used to fake.
+  const planes = new Planes(1337);
+  planes.add(SURFACE_PLANE, [buildDawnmead(), buildSilverfall()]);
+  planes.add(UNDERWORLD_PLANE, [buildUndercroft()]);
   const dawn = buildDawnmead().spawn!;
   const fall = buildSilverfall().spawn!;
   const croft = buildUndercroft().spawn!;
   // A death in the Undercroft wakes at the Landing, not the surface.
-  assert.deepEqual(world.respawnAt(croft.x + 40, croft.y + 5), croft);
+  assert.deepEqual(planes.respawnAt(UNDERWORLD_PLANE.id, croft.x + 40, croft.y + 5), {
+    plane: UNDERWORLD_PLANE.id,
+    x: croft.x,
+    y: croft.y,
+  });
   // A surface death near Silverfall wakes at Silverfall...
-  assert.deepEqual(world.respawnAt(fall.x + 10, fall.y + 10), fall);
-  // ...and a surface death SOUTH of the map can never wake in the
-  // dark, even when the dark band is closer as the crow digs — the
-  // nearest SURFACE hearth answers instead (Dawnmead, from here).
-  assert.deepEqual(world.respawnAt(croft.x, 400), dawn);
-  // The instance band (personal dungeons) always surfaces to the
-  // world spawn — the rescue law stands.
-  assert.deepEqual(world.respawnAt(croft.x, 9000), dawn);
+  assert.deepEqual(planes.respawnAt(SURFACE_PLANE.id, fall.x + 10, fall.y + 10), {
+    plane: SURFACE_PLANE.id,
+    x: fall.x,
+    y: fall.y,
+  });
+  // ...and a surface death at the Undercroft's coordinates can never
+  // wake in the dark — the coordinates alias but the planes do not;
+  // the nearest SURFACE hearth answers instead (Dawnmead, from here).
+  assert.deepEqual(planes.respawnAt(SURFACE_PLANE.id, croft.x, 400), {
+    plane: SURFACE_PLANE.id,
+    x: dawn.x,
+    y: dawn.y,
+  });
+  // A scratch rift plane always rescues to the world spawn.
+  assert.deepEqual(planes.respawnAt('rift:0', 40, 40), planes.worldSpawn);
 });

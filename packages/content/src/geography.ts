@@ -1,4 +1,4 @@
-import { DANGER_MAX, DARK_BAND_Y, POI_MACRO_CELL, SURFACE_AUTHOR_MARGIN, fbm, type Vec2, type DangerAnchor } from '@arx/shared';
+import { DANGER_MAX, POI_MACRO_CELL, fbm, type Vec2, type DangerAnchor } from '@arx/shared';
 import { AUTHORED_ANCHOR_WORDS, SETTLED_ANCHORS, replaceSettledAnchors } from './danger.js';
 
 /**
@@ -955,10 +955,6 @@ export function replaceGeography(def: GeographyDef): void {
 // --------------------------------------------------------------------
 
 const GEO_ID_RE = /^[a-z][a-z0-9_-]{0,63}$/;
-/** Routes and pins stay a full authoring hem above the cave roof —
- *  DERIVED from the dark band (core-audit debt 13: 400 and 512 were
- *  two free literals with an ungoverned 112-row band between them). */
-export const GEOGRAPHY_SURFACE_MAX_Y = DARK_BAND_Y - SURFACE_AUTHOR_MARGIN;
 /** POI macro-cell width — mirrored from the scaffold (POI_CELL). */
 export const GEO_POI_CELL = POI_MACRO_CELL;
 
@@ -1018,13 +1014,12 @@ export function validateGeographyDef(
       }
       let bad = false;
       for (const [j, p] of rt.pts.entries()) {
+        // THE WORLDS APART: the old dark-band authoring ceiling is
+        // gone — the underworld lives on its own plane and the south
+        // is open procedural wilderness, so a route may ride as far
+        // as any other compass point.
         if (!p || !isInt(p.x) || !isInt(p.y) || Math.abs(p.x) > 100000 || Math.abs(p.y) > 100000) {
           errors.push(`${at}.pts[${j}] must be integer world tiles`);
-          bad = true;
-        } else if (p.y >= GEOGRAPHY_SURFACE_MAX_Y) {
-          errors.push(
-            `${at}.pts[${j}] (${p.x},${p.y}) rides toward the dark band (y >= ${GEOGRAPHY_SURFACE_MAX_Y})`,
-          );
           bad = true;
         }
       }
@@ -1078,10 +1073,6 @@ export function validateGeographyDef(
           errors.push(`site '${s.id}' pin must be integer world tiles`);
           continue;
         }
-        if (s.y >= GEOGRAPHY_SURFACE_MAX_Y) {
-          errors.push(`site '${s.id}' pin rides toward the dark band`);
-          continue;
-        }
         cx = Math.floor(s.x / GEO_POI_CELL);
         cy = Math.floor(s.y / GEO_POI_CELL);
         sites.push({ id: s.id, defId: s.defId, x: s.x, y: s.y });
@@ -1093,15 +1084,6 @@ export function validateGeographyDef(
         }
         cx = c[0];
         cy = c[1];
-        // Cell mode lawfully skips the road law and the dark-band PIN
-        // check — but never the surface itself: a forced cell whose
-        // rows start past the authoring ceiling would stand a landmark
-        // on ground no pin may name (the audit's governed-by-nobody
-        // band, closed).
-        if (cy * GEO_POI_CELL >= GEOGRAPHY_SURFACE_MAX_Y) {
-          errors.push(`site '${s.id}' cell [${cx},${cy}] starts past the surface ceiling (y >= ${GEOGRAPHY_SURFACE_MAX_Y})`);
-          continue;
-        }
         sites.push({ id: s.id, defId: s.defId, cell: [cx, cy] });
       }
       const key = `${cx},${cy}`;

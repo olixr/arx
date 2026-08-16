@@ -1,0 +1,31 @@
+/**
+ * THE CROSSING VEIL (docs/planes-plan.md §2.4) — the beat between
+ * worlds. A plane switch drops every streamed cache and waits for the
+ * new ground; the veil turns that cut into a deliberate passage: a
+ * fast iris to black (the portal burst covers the first frames), a
+ * held breath while the destination streams in, and a slower lift as
+ * the new world stands. Pure presentation — input keeps its ordinary
+ * rules and the server never waits on it.
+ */
+#crossing-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 260; /* over the HUD, under nothing — the crossing owns the frame */
+  pointer-events: none;
+  opacity: 0;
+  /* Not flat black: a deep iris — edges land first, the center keeps
+     a breath of the old light, so the fade reads as passage. */
+  background: radial-gradient(
+    ellipse 120% 90% at 50% 46%,
+    rgba(4, 3, 6, 0.94) 0%,
+    rgba(3, 2, 5, 0.985) 55%,
+    rgb(2, 1, 3) 100%
+  );
+  /* The lift: slow enough to read the new world arriving. */
+  transition: opacity 420ms ease-out;
+}
+#crossing-veil.on {
+  opacity: 1;
+  /* The drop: quick — the cut happens behind the portal's flash. */
+  transition: opacity 130ms ease-in;
+}

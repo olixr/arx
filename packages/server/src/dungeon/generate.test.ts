@@ -9,11 +9,11 @@ import {
   isSolidTile,
   type RarityTier,
 } from '@arx/shared';
-import { NPCS } from '@arx/content';
-import { dungeonOrigin, generateDungeon } from './generate.js';
+import { NPCS, riftPlaneId } from '@arx/content';
+import { DUNGEON_ORIGIN, generateDungeon } from './generate.js';
 
-const ORIGIN = { x: 8192, y: 8192 };
-const RETURN = { x: 60, y: 34 };
+const ORIGIN = DUNGEON_ORIGIN;
+const RETURN = { plane: 'surface', x: 60, y: 34 };
 
 function gen(seed: number, tier: RarityTier = 'rare', pwr?: number) {
   const spec = dungeonSpecFromRoll({ rar: tier, seed, pwr });
@@ -209,10 +209,14 @@ test('corridors are wide enough to read: 1-wide pinches stay rare', () => {
   }
 });
 
-test('dungeon origin slots never overlap', () => {
-  const a = dungeonOrigin(0);
-  const b = dungeonOrigin(1);
-  assert.ok(b.x - a.x >= 200 + 32, 'slot spacing clears the largest tier');
+test('THE WORLDS APART: each run cuts on its own rift plane', () => {
+  // Fixed origin, isolated by PLANE — the slot names the plane, and
+  // the zone the cut registers is tagged to it.
+  const spec = dungeonSpecFromRoll({ rar: 'rare', seed: 42 });
+  const a = generateDungeon(spec, ORIGIN, RETURN, 0);
+  const b = generateDungeon(spec, ORIGIN, RETURN, 1);
+  assert.equal(a.zone.plane, riftPlaneId(0));
+  assert.equal(b.zone.plane, riftPlaneId(1));
 });
 
 /** BFS walk length from the landing to a target's doorstep, in tiles. */

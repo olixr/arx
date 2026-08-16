@@ -1,4 +1,3 @@
-import { DUNGEON_MIN_Y } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
 import type { Renderer } from '../render/renderer.js';
 import { INK } from './kit/tokens.js';
@@ -67,7 +66,9 @@ export class WaypointHud {
   update(game: ClientGame, renderer: Renderer, hidden: boolean): void {
     const wp = game.waypoint;
     const pos = game.predictor.pos;
-    if (!wp || hidden || game.ownEid === null || pos.y >= DUNGEON_MIN_Y) {
+    // THE WORLDS APART: a compass only points within its own plane —
+    // a bearing across worlds is a lie in degrees.
+    if (!wp || hidden || game.ownEid === null || (wp.plane ?? 'surface') !== game.plane.id) {
       this.el.classList.add('hidden');
       return;
     }

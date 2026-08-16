@@ -757,7 +757,7 @@ export function createMapsApi(
           sendJson(res, 400, { error: `zone id must match ${ID_RE}` });
           return true;
         }
-        if (game.world.zoneById(id) || builtinZones.has(id)) {
+        if (game.planes.planeOfZone(id) || builtinZones.has(id)) {
           sendJson(res, 400, { error: `zone id '${id}' is taken` });
           return true;
         }
@@ -1563,12 +1563,16 @@ export function createMapsApi(
       }
       if (url.pathname === '/dev/maps' && req.method === 'GET') {
         const onDisk = await fileIds();
-        const zones = game.world.zoneDefs.map((z) => ({
+        // THE WORLDS APART: the browser lists every plane's zones.
+        const allZones = [...game.planes.all()].flatMap((w) => w.zoneDefs);
+        const zones = allZones.map((z) => ({
           id: z.id,
           name: z.name,
           width: z.width,
           height: z.height,
           origin: z.origin,
+          // THE WORLDS APART: the browser groups by plane, not by y.
+          plane: z.plane ?? 'surface',
           spawn: z.spawn ?? null,
           builtin: builtinZones.has(z.id),
           hasFile: onDisk.has(z.id),
@@ -1598,7 +1602,7 @@ export function createMapsApi(
             const m = /^poi:(-?\d+),(-?\d+)$/.exec(id);
             const zone = m
               ? game.poiCellZone(Number(m[1]), Number(m[2]))
-              : (game.world.zoneById(id) ?? null);
+              : (game.surface.zoneById(id) ?? null);
             if (zone) sendJson(res, 200, zoneToJson(zone));
             else sendJson(res, 404, { error: `cell '${id}' holds no site` });
             return true;
@@ -1612,7 +1616,7 @@ export function createMapsApi(
         // owns their ground; the studio may look.
         if (id.startsWith('stronghold:')) {
           if (req.method === 'GET') {
-            const zone = game.world.zoneById(id) ?? null;
+            const zone = game.surface.zoneById(id) ?? null;
             if (zone) sendJson(res, 200, zoneToJson(zone));
             else sendJson(res, 404, { error: `no capital stands as '${id}'` });
             return true;
@@ -1628,7 +1632,7 @@ export function createMapsApi(
         }
 
         if (req.method === 'GET') {
-          const live = game.world.zoneById(id);
+          const live = game.planes.planeOfZone(id)?.zoneById(id);
           if (live) {
             sendJson(res, 200, zoneToJson(live));
             return true;

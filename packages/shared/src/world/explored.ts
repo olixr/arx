@@ -1,5 +1,3 @@
-import { DUNGEON_MIN_Y } from '../constants.js';
-
 /**
  * THE CHART — per-player fog-of-war coverage.
  *
@@ -17,9 +15,10 @@ import { DUNGEON_MIN_Y } from '../constants.js';
  * bounded by one sample interval of movement — under a cell — and the
  * client's generous fringe self-heals on the next login.
  *
- * Dungeon instances (y >= DUNGEON_MIN_Y) are per-run scratch space:
- * their cells may live in a mask during a session but must NEVER be
- * persisted or pushed — persistRegion() is the one gate.
+ * THE WORLDS APART: one mask charts ONE plane. Persistence is the
+ * PLANE'S law now (PlaneDef.persistent), not a y-band's — scratch
+ * planes (dungeon runs) keep their mask in RAM for the run and never
+ * touch the DB or the wire.
  */
 
 /** Tiles per explored cell (one fog bit covers a 4×4 square). */
@@ -53,14 +52,6 @@ export function regionKey(rx: number, ry: number): string {
   return `${rx},${ry}`;
 }
 
-/**
- * True when a region row may be persisted/pushed. Dungeon-instance rows
- * (starting at DUNGEON_MIN_Y — region 32 begins exactly on the line)
- * are per-run scratch and must never touch the DB or the wire.
- */
-export function persistRegion(ry: number): boolean {
-  return ry * EXPLORE_REGION < DUNGEON_MIN_Y;
-}
 
 /**
  * Sparse per-player fog mask. Bit layout inside a region is row-major
@@ -162,13 +153,6 @@ export class ExploredMask {
     return dirty;
   }
 
-  /** Drop every region whose row intersects the dungeon-instance band. */
-  dropDungeonBand(): void {
-    for (const key of [...this.regions.keys()]) {
-      const ry = Number(key.slice(key.indexOf(',') + 1));
-      if (!persistRegion(ry)) this.regions.delete(key);
-    }
-  }
 }
 
 // Base64 helpers that run identically in Node and the browser — the

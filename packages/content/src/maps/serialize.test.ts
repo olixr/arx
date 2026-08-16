@@ -25,6 +25,9 @@ function fullZone(): ZoneDef {
   return {
     id: 'roundtrip_probe',
     name: 'The Round Trip',
+    // THE WORLDS APART: the plane rides the round trip explicitly —
+    // a re-saved file never leans on the frozen y-derivation again.
+    plane: 'surface',
     origin: { x: 100, y: 200 },
     width: w,
     height: h,
@@ -35,7 +38,7 @@ function fullZone(): ZoneDef {
     growth: 'wild',
     actorSpawns: [{ actor: 'torvi_stone', x: 101, y: 201, dir: 1.5, routine: 'shopkeep_day' }],
     portals: [
-      { x: 103, y: 203, dest: { x: 50, y: 60 } },
+      { x: 103, y: 203, dest: { x: 50, y: 60 }, destPlane: 'underworld' },
       { x: 104, y: 203, delve: true },
     ],
     spawns: [

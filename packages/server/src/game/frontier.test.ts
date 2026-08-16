@@ -115,10 +115,13 @@ function slate(rows: Array<[string, LedgerRow]>, opts: { credits?: number } = {}
     poiLive: new Map<string, { spawnIdx: number[] }>(),
     poiPrefabs: POI_PREFABS,
     world: { zoneDefs: [] as unknown[], builtKeysOf: () => undefined },
+    get surface() {
+      return this.world;
+    },
     homesByCharacter: new Map<number, { x: number; y: number }>(),
     ringCache: null as unknown,
     players: new Map<number, { session: unknown; disconnectedAt: number | null }>(),
-    positions: new Map<number, { x: number; y: number }>(),
+    positions: new Map<number, { plane: string; x: number; y: number }>(),
     spawnPoints: [] as Array<{ npc: string; eid: number | null; respawnAt: number; active: boolean }>,
     frontierCredits: opts.credits ?? 0,
     frontierCalm: new Map<string, number>(),
@@ -173,7 +176,7 @@ function slate(rows: Array<[string, LedgerRow]>, opts: { credits?: number } = {}
 
 function addPlayer(s: ReturnType<typeof slate>, eid: number, x: number, y: number): void {
   s.players.set(eid, { session: {}, disconnectedAt: null });
-  s.positions.set(eid, { x, y });
+  s.positions.set(eid, { plane: 'surface', x, y });
 }
 
 test('the test cell is not an authored landmark (precondition)', () => {
@@ -238,7 +241,7 @@ test('dignity: an ember never dissolves in front of someone', () => {
   const s = slate([[KEY, row({ site: st, clearedAt: now - 600_000, emberUntil: now - 1000 })]]);
   addPlayer(s, 1, st.anchorX + FRONTIER.dignityTiles - 2, st.anchorY);
   assert.equal(proto.dissolveOneEmber.call(s, now), false);
-  s.positions.set(1, { x: st.anchorX + FRONTIER.dignityTiles + 20, y: st.anchorY });
+  s.positions.set(1, { plane: 'surface', x: st.anchorX + FRONTIER.dignityTiles + 20, y: st.anchorY });
   assert.equal(proto.dissolveOneEmber.call(s, now), true);
 });
 
@@ -656,7 +659,7 @@ function raidSlate(player: Partial<RaidPlayer> = {}) {
     tickRaidDice: proto4.tickRaidDice,
     liveDangerTier: proto4.liveDangerTier,
     players: new Map([[11, p]]),
-    positions: new Map([[11, { x: p.home?.x ?? 0, y: p.home?.y ?? 0 }]]),
+    positions: new Map([[11, { plane: 'surface', x: p.home?.x ?? 0, y: p.home?.y ?? 0 }]]),
     characterEids: new Map([[p.characterId, 11]]),
     broadcastFx: (f: { kind: string }) => fx.push(f.kind),
     setPlayerFlag: (pl: RaidPlayer, flag: string) => pl.flags.set(flag, 1),
@@ -690,7 +693,7 @@ test('the covetous dice: every mercy gate refuses', () => {
   }
   // Away from home: the owner is not there to answer, so nobody comes.
   const away = raidSlate();
-  away.positions.set(11, { x: 0, y: 0 });
+  away.positions.set(11, { plane: 'surface', x: 0, y: 0 });
   assert.equal((away as unknown as { tickRaidDice: Fn }).tickRaidDice.call(away, now, true), false);
   assert.ok((away as unknown as { raidTrace: string[] }).raidTrace.some((t) => t.endsWith(':away')));
 });

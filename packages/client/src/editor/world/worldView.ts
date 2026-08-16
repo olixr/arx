@@ -145,7 +145,9 @@ export class WorldView {
       y1 = Math.max(y1, y);
     };
     for (const z of this.ws.zones) {
-      if (z.origin.y >= 512) continue; // the dark band skews the frame
+      // THE WORLDS APART: the chart is the SURFACE plane — off-plane
+      // zones live at their own coordinates and would skew the frame.
+      if ((z.plane ?? 'surface') !== 'surface') continue;
       grow(z.origin.x, z.origin.y);
       grow(z.origin.x + z.width, z.origin.y + z.height);
     }
@@ -214,7 +216,6 @@ export class WorldView {
   private probeFill(bx: number, by: number): string {
     const tx = bx * BLOCK + BLOCK / 2;
     const ty = by * BLOCK + BLOCK / 2;
-    if (ty >= 512) return tileColor(Tile.CaveWall);
     const e = elevationAt(this.ws.seed, tx, ty);
     if (e < 0.37) return tileColor(Tile.WaterDeep);
     if (e < 0.4) return tileColor(Tile.Sand);
@@ -244,10 +245,6 @@ export class WorldView {
         const tx = bx * BLOCK + ix * step + step / 2;
         const ty = by * BLOCK + iy * step + step / 2;
         const i = ix + iy * n;
-        if (ty >= 512) {
-          put(i, tileDef(Tile.CaveWall).color, 1);
-          continue;
-        }
         const e = elevationAt(seed, tx, ty);
         if (e < 0.37) {
           put(i, tileDef(Tile.WaterDeep).color, 1);
@@ -395,7 +392,6 @@ export class WorldView {
       for (let ix = 0; ix < n; ix++) {
         const tx = bx * BLOCK + ix * step + step / 2;
         const ty = by * BLOCK + iy * step + step / 2;
-        if (ty >= 512) continue;
         const tier = dangerAt(this.ws.seed, tx, ty, anchors);
         ctx.fillStyle = TIER_WASH[Math.max(0, Math.min(5, tier))]!;
         ctx.fillRect(ix, iy, 1, 1);
@@ -429,7 +425,6 @@ export class WorldView {
       for (let ix = 0; ix < n; ix++) {
         const tx = bx * BLOCK + ix * step + step / 2;
         const ty = by * BLOCK + iy * step + step / 2;
-        if (ty >= 512) continue;
         const fam = territoryAt(this.ws.seed, tx, ty, families);
         if (fam === null) continue;
         ctx.fillStyle = WorldView.TERRITORY_INK[fam] ?? 'rgba(150, 150, 150, 0.12)';
@@ -520,11 +515,11 @@ export class WorldView {
       }
     }
 
-    // Authored zones wear their real ground (surface zones only —
-    // the dark band's galleries belong to their own view).
+    // Authored zones wear their real ground (surface-plane zones
+    // only — the other planes' galleries belong to their own view).
     if (this.ws.show.zones) {
       for (const z of this.ws.zones) {
-        if (z.origin.y >= 512) continue;
+        if ((z.plane ?? 'surface') !== 'surface') continue;
         if (
           z.origin.x + z.width < t0.x ||
           z.origin.x > t1.x ||
@@ -1048,7 +1043,7 @@ export class WorldView {
   ): void {
     if (!this.ws.show.zones) return;
     for (const z of this.ws.zones) {
-      if (z.origin.y >= 512) continue;
+      if ((z.plane ?? 'surface') !== 'surface') continue;
       if (
         z.origin.x + z.width < tx0 ||
         z.origin.x > tx1 ||
@@ -1360,7 +1355,7 @@ export class WorldView {
       const t = this.tileAtFloat(mx, my);
       let best: { id: string; area: number } | null = null;
       for (const z of this.ws.zones) {
-        if (z.origin.y >= 512) continue;
+        if ((z.plane ?? 'surface') !== 'surface') continue;
         if (
           t.x >= z.origin.x &&
           t.x < z.origin.x + z.width &&

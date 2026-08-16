@@ -1,9 +1,7 @@
 import {
   CHUNK_SIZE,
-  DUNGEON_MIN_Y,
   INTEREST_CHUNK_RADIUS,
   Tile,
-  UNDERGROUND_Y,
   dangerAt,
   tileDef,
   type DiscoveryWire,
@@ -46,10 +44,10 @@ import { authoredZoneArt } from './zoneArt.js';
  * EVERYTHING renders through the fog — unexplored ground is blank
  * parchment, full stop.
  *
- * Bands: the surface and the dark band chart on the persistent mask;
- * dungeon instances (y >= DUNGEON_MIN_Y) chart on the session mask
- * from streamed chunks only — the client cannot procgen a dungeon,
- * which is exactly the per-run secrecy the design wants.
+ * Bands (THE WORLDS APART): each plane charts on its OWN mask — the
+ * surface and the underworld persist, rift runs chart on the session
+ * scratch mask from streamed chunks only — the client cannot procgen
+ * a dungeon, which is exactly the per-run secrecy the design wants.
  */
 
 const BLOCK = 128;
@@ -121,7 +119,14 @@ export const TIER_WASH = [
   'rgba(64, 6, 14, 0.46)',
 ];
 
-export type MapBand = 'surface' | 'dungeon';
+/**
+ * THE WORLDS APART: the chart's three postures — the surface (the full
+ * instrument: procgen fill, danger wash, markers), the underworld (a
+ * persistent chart of carved rock — what you've walked is remembered,
+ * the unstreamed dark reads as stone), and a rift (the per-run scratch
+ * chart, forgotten when the run ends).
+ */
+export type MapBand = 'surface' | 'underworld' | 'dungeon';
 
 export interface MapPick {
   kind: 'discovery' | 'waypoint';
@@ -208,9 +213,27 @@ export class MapView {
     this.panY = this.canvas.clientHeight / 2 - ty * this.scale;
   }
 
-  /** The band the reader is charting right now. */
+  /** The band the reader is charting right now — the plane's law. */
   band(): MapBand {
-    return this.game.predictor.pos.y >= DUNGEON_MIN_Y ? 'dungeon' : 'surface';
+    const p = this.game.plane;
+    if (p.id === 'surface') return 'surface';
+    return p.persistent ? 'underworld' : 'dungeon';
+  }
+
+  /**
+   * THE CROSSING: every block, probe, and fog canvas is keyed by
+   * coordinates that just changed worlds — drop them all. Called from
+   * the onPlane event (main.ts wires it).
+   */
+  onPlaneSwitch(): void {
+    this.fineBlocks.clear();
+    this.coarseBlocks.clear();
+    this.dangerBlocks.clear();
+    this.probeColors.clear();
+    this.fog.clear();
+    this.dungeonFog.clear();
+    this.lastStamp = '';
+    this.lastWorldVersion = -1;
   }
 
   // ------------------------------------------------------ invalidation
@@ -243,7 +266,9 @@ export class MapView {
     const tx = bx * span + span / 2;
     const ty = by * span + span / 2;
     let c: string;
-    if (ty >= UNDERGROUND_Y) c = tileColor(Tile.CaveWall);
+    // Off-surface planes have no worldgen to probe — unwalked space
+    // is solid rock by law.
+    if (this.band() !== 'surface') c = tileColor(Tile.CaveWall);
     else {
       const e = elevationAt(seed, tx, ty);
       if (e < 0.37) c = tileColor(Tile.WaterDeep);
@@ -282,10 +307,6 @@ export class MapView {
         const tx = bx * span + ix * step + step / 2;
         const ty = by * span + iy * step + step / 2;
         const i = ix + iy * n;
-        if (ty >= UNDERGROUND_Y) {
-          put(i, tileDef(Tile.CaveWall).color, 1);
-          continue;
-        }
         const e = elevationAt(seed, tx, ty);
         if (e < 0.37) {
           put(i, tileDef(Tile.WaterDeep).color, 1);
@@ -328,11 +349,13 @@ export class MapView {
     const chunksPer = BLOCK / CHUNK_SIZE;
     const c0x = (bx * BLOCK) / CHUNK_SIZE;
     const c0y = (by * BLOCK) / CHUNK_SIZE;
+    // Off-surface: unstreamed space is solid rock (never procgen) —
+    // the per-plane secrecy of a carved world falls out for free.
+    const offSurface = this.band() !== 'surface';
     for (let cy = 0; cy < chunksPer; cy++) {
       for (let cx = 0; cx < chunksPer; cx++) {
-        const dungeonBand = (c0y + cy) * CHUNK_SIZE >= DUNGEON_MIN_Y;
         const live = this.game.world.get(c0x + cx, c0y + cy);
-        const chunk = live ?? (dungeonBand ? null : generateChunk(seed, c0x + cx, c0y + cy));
+        const chunk = live ?? (offSurface ? null : generateChunk(seed, c0x + cx, c0y + cy));
         for (let ly = 0; ly < CHUNK_SIZE; ly++) {
           for (let lx = 0; lx < CHUNK_SIZE; lx++) {
             const t = chunk ? chunk.ground[lx + ly * CHUNK_SIZE]! : Tile.CaveWall;
@@ -372,7 +395,6 @@ export class MapView {
       for (let ix = 0; ix < n; ix++) {
         const tx = bx * span + ix * step + step / 2;
         const ty = by * span + iy * step + step / 2;
-        if (ty >= UNDERGROUND_Y) continue;
         const tier = dangerAt(seed, tx, ty, this.game.dangerAnchors);
         ctx.fillStyle = TIER_WASH[Math.max(0, Math.min(TIER_WASH.length - 1, tier))]!;
         ctx.fillRect(ix, iy, 1, 1);
@@ -391,7 +413,7 @@ export class MapView {
    *  coarse and super bakes never read streamed chunks. */
   private layerStamp(band: MapBand, lod: BlockLod, cw: number, ch: number, dpr: number): string {
     return (
-      `${this.panX},${this.panY},${this.scale},${cw},${ch},${dpr},${band},${this.parchment},` +
+      `${this.game.plane.id},${this.panX},${this.panY},${this.scale},${cw},${ch},${dpr},${band},${this.parchment},` +
       `${this.game.chartVersion},${this.showDanger},${this.dangerRev},` +
       `${lod === 'f' ? this.game.worldVersion : -1}`
     );
@@ -431,8 +453,10 @@ export class MapView {
     }
 
     const band = this.band();
+    // Off-surface charts are carved space: only streamed truth ever
+    // draws, so the fine LOD is the only honest one.
     const lod: BlockLod =
-      band === 'dungeon' || this.scale >= FINE_SCALE ? 'f' : this.scale >= SUPER_SCALE ? 'c' : 's';
+      band !== 'surface' || this.scale >= FINE_SCALE ? 'f' : this.scale >= SUPER_SCALE ? 'c' : 's';
     const span = lod === 's' ? SUPER : BLOCK;
     const t0 = this.tileAtFloat(0, 0);
     const t1 = this.tileAtFloat(cw, ch);
@@ -572,7 +596,9 @@ export class MapView {
       const fctx = this.fogCnv.getContext('2d')!;
       fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       fctx.clearRect(0, 0, cw, ch);
-      const mask = band === 'dungeon' ? this.game.dungeonExplored : this.game.explored;
+      // The explored getter already answers with the CURRENT plane's
+      // mask (persistent or scratch by the plane's law).
+      const mask = this.game.explored;
       const fogLayer = band === 'dungeon' ? this.dungeonFog : this.fog;
       fogLayer.draw(
         fctx,
@@ -619,9 +645,11 @@ export class MapView {
       }
     }
 
-    if (band === 'surface') {
+    if (band !== 'dungeon') {
       const markerR = this.overlay ? 7 : Math.max(10, Math.min(16, this.scale * 2.8));
       for (const d of this.game.discoveries.values()) {
+        // A mark only lands on the plane that holds its place.
+        if ((d.plane ?? 'surface') !== this.game.plane.id) continue;
         const x = this.sx(d.x + 0.5);
         const y = this.sy(d.y + 0.5);
         if (x < -30 || y < -30 || x > cw + 30 || y > ch + 30) continue;
@@ -637,7 +665,7 @@ export class MapView {
     }
 
     const wp = this.game.waypoint;
-    if (wp && band === 'surface') {
+    if (wp && (wp.plane ?? 'surface') === this.game.plane.id) {
       const pulse = (nowMs % 1600) / 1600;
       const wx = this.sx(wp.x + 0.5);
       const wy = this.sy(wp.y + 0.5);
@@ -651,7 +679,7 @@ export class MapView {
     // surface mark (rift deaths spill at the surface gate), dimming
     // through its last two minutes as the ground gets ready to forget.
     const dm = this.game.deathMark;
-    if (dm && band === 'surface' && dm.until > Date.now()) {
+    if (dm && (dm.plane ?? 'surface') === this.game.plane.id && dm.until > Date.now()) {
       const x = this.sx(dm.x);
       const y = this.sy(dm.y);
       const remain = dm.until - Date.now();
@@ -670,8 +698,7 @@ export class MapView {
     // reader's own token. Positions ride the slow partypos ticker, so
     // a dot is a bearing, not a bootprint.
     for (const f of this.game.partyFellowsPlaced()) {
-      const inBandF = band === 'dungeon' ? f.y >= DUNGEON_MIN_Y : f.y < DUNGEON_MIN_Y;
-      if (!inBandF) continue;
+      if (f.plane !== this.game.plane.id) continue;
       const x = this.sx(f.x);
       const y = this.sy(f.y);
       if (x < -30 || y < -30 || x > cw + 30 || y > ch + 30) continue;
@@ -680,9 +707,10 @@ export class MapView {
       if (!this.overlay && this.scale >= 1.2) drawMapLabel(ctx, x, y - pr - 4, f.name, '#cfe7f2', 11);
     }
 
+    // The reader's own token — the body is always on the charted
+    // plane (the chart IS the current plane's).
     const pos = this.game.predictor.pos;
-    const inBand = band === 'dungeon' ? pos.y >= DUNGEON_MIN_Y : pos.y < DUNGEON_MIN_Y;
-    if (inBand) {
+    {
       const px = this.sx(pos.x);
       const py = this.sy(pos.y);
       const r = this.overlay ? 7 : Math.max(8.5, Math.min(12, this.scale * 2));
@@ -706,13 +734,19 @@ export class MapView {
   // ----------------------------------------------------------- pick
 
   pick(mx: number, my: number): MapPick | null {
-    if (this.band() !== 'surface') return null;
+    // Scratch planes take no pins and hold no ledger marks.
+    if (this.band() === 'dungeon') return null;
     const wp = this.game.waypoint;
-    if (wp && Math.hypot(mx - this.sx(wp.x + 0.5), my - this.sy(wp.y + 0.5)) <= 14) {
+    if (
+      wp &&
+      (wp.plane ?? 'surface') === this.game.plane.id &&
+      Math.hypot(mx - this.sx(wp.x + 0.5), my - this.sy(wp.y + 0.5)) <= 14
+    ) {
       return { kind: 'waypoint' };
     }
     let best: { d: DiscoveryWire; dist: number } | null = null;
     for (const d of this.game.discoveries.values()) {
+      if ((d.plane ?? 'surface') !== this.game.plane.id) continue;
       const dist = Math.hypot(mx - this.sx(d.x + 0.5), my - this.sy(d.y + 0.5));
       if (dist <= 14 && (!best || dist < best.dist)) best = { d, dist };
     }

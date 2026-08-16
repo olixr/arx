@@ -115,7 +115,7 @@ test('a hand-broken DB row is rejected at load, not at talk time', async () => {
 test('the flag ledger: set, overwrite, clear, reload', async () => {
   const db = await freshDb();
   const accounts = new AccountStore(db);
-  const reg = await accounts.register('flagger', 'hunter22', 'Flagger', { x: 48, y: 52 });
+  const reg = await accounts.register('flagger', 'hunter22', 'Flagger', { plane: 'surface', x: 48, y: 52 });
   assert.ok(reg.ok);
   const cid = reg.character.id;
 

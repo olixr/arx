@@ -996,6 +996,38 @@ const MIGRATIONS: string[] = [
   // drifts, every cleared bit lawfully dies (the texture re-deals
   // whole) and the new print is stamped.
   `ALTER TABLE frontier_state ADD COLUMN IF NOT EXISTS minor_roster_fp BIGINT;`,
+  // v36: THE WORLDS APART (docs/planes-plan.md) — the one continuous
+  // tile plane splits into true planes, and every world-position row
+  // names the plane its coordinates are measured on. The backfill is
+  // the FROZEN one-plane treaty at migration time: everything at
+  // y >= 512 was the authored underworld (nothing persisted ever sat
+  // in the instance band at y >= 8192 — dungeon runs are RAM), and a
+  // character saved there is login-rescued exactly as before. Farm,
+  // crop, growth, and livestock ledgers stay surface-implicit: the
+  // tended earth is a surface craft by design and its verbs are gated
+  // to the surface plane, so those tables carry no column at all.
+  `ALTER TABLE characters ADD COLUMN IF NOT EXISTS plane TEXT NOT NULL DEFAULT 'surface';
+  ALTER TABLE characters ADD COLUMN IF NOT EXISTS waypoint_plane TEXT;
+  UPDATE characters SET plane = 'underworld' WHERE y >= 512 AND y < 8192;
+  UPDATE characters SET waypoint_plane = 'underworld' WHERE waypoint_y IS NOT NULL AND waypoint_y >= 512 AND waypoint_y < 8192;
+  ALTER TABLE built_tiles ADD COLUMN IF NOT EXISTS plane TEXT NOT NULL DEFAULT 'surface';
+  UPDATE built_tiles SET plane = 'underworld' WHERE ty >= 512;
+  ALTER TABLE built_details ADD COLUMN IF NOT EXISTS plane TEXT NOT NULL DEFAULT 'surface';
+  UPDATE built_details SET plane = 'underworld' WHERE ty >= 512;
+  ALTER TABLE signs ADD COLUMN IF NOT EXISTS plane TEXT NOT NULL DEFAULT 'surface';
+  UPDATE signs SET plane = 'underworld' WHERE ty >= 512;
+  ALTER TABLE character_explored ADD COLUMN IF NOT EXISTS plane TEXT NOT NULL DEFAULT 'surface';
+  UPDATE character_explored SET plane = 'underworld' WHERE ry * 256 >= 512 AND ry * 256 < 8192;
+  ALTER TABLE character_discoveries ADD COLUMN IF NOT EXISTS plane TEXT NOT NULL DEFAULT 'surface';
+  UPDATE character_discoveries SET plane = 'underworld' WHERE y >= 512 AND y < 8192;
+  ALTER TABLE built_tiles DROP CONSTRAINT built_tiles_pkey;
+  ALTER TABLE built_tiles ADD PRIMARY KEY (plane, tx, ty);
+  ALTER TABLE built_details DROP CONSTRAINT built_details_pkey;
+  ALTER TABLE built_details ADD PRIMARY KEY (plane, tx, ty);
+  ALTER TABLE signs DROP CONSTRAINT signs_pkey;
+  ALTER TABLE signs ADD PRIMARY KEY (plane, tx, ty);
+  ALTER TABLE character_explored DROP CONSTRAINT character_explored_pkey;
+  ALTER TABLE character_explored ADD PRIMARY KEY (character_id, plane, rx, ry);`,
 ];
 
 /**

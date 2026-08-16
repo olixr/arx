@@ -37,8 +37,8 @@ function slate(inventory: InvSlot[], drop: Drop, opts: { sneaking?: boolean } = 
   const destroyed: number[] = [];
   const xp: Array<{ skill: string; amount: number }> = [];
   const positions = new Map([
-    [1, { x: 5.5, y: 5.5 }],
-    [9, { x: 5.5, y: 5.5 }],
+    [1, { plane: 'surface', x: 5.5, y: 5.5 }],
+    [9, { plane: 'surface', x: 5.5, y: 5.5 }],
   ]);
   const player = {
     characterId: 7,
@@ -52,7 +52,7 @@ function slate(inventory: InvSlot[], drop: Drop, opts: { sneaking?: boolean } = 
     drops: new Map([[9, drop]]),
     // The vacuum reads the chunk index now (THE INDEX SERVES THE PILE).
     forEachDropNear: proto.forEachDropNear,
-    chunks: new Map([['0,0', new Set([9])]]),
+    chunks: new Map([['surface|0,0', new Set([9])]]),
     graves: new Map(),
     deathMarks: new Map(),
     positions: {

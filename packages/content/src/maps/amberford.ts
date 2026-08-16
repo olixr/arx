@@ -12,6 +12,7 @@ import {
 } from '@arx/shared';
 import { AMBERFORD_RECT } from '../geography.js';
 import { MARKET_STALL } from '../structures/templates.js';
+import { UNDERWORLD_PLANE_ID } from '../planes.js';
 import { ZoneBuilder } from './builder.js';
 import type { ZoneDef } from './types.js';
 
@@ -1090,7 +1091,7 @@ export function buildAmberford(): ZoneDef {
   // downstream of the tannery smell. A hatch, a barrel, no lamp, no
   // sign, no name. World (578,70); lowhall.ts points here.
   b.fillRect(128, 124, 5, 4, Tile.Dirt);
-  b.portal(130, 126, Tile.PortalDown, { x: 217.5, y: 568.5 }); // the Amberford alcove below
+  b.portal(130, 126, Tile.PortalDown, { x: 217.5, y: 568.5 }, UNDERWORLD_PLANE_ID); // the Amberford alcove below
   b.set(132, 125, Tile.Barrel).set(128, 127, Tile.Crate);
   b.setDetail(129, 125, Detail.Pebbles).setDetail(131, 124, Detail.Tuft);
   b.set(133, 124, Tile.Swamp).set(127, 126, Tile.Swamp);

@@ -56,6 +56,8 @@ export interface CharacterRow {
   id: number;
   account_id: number;
   name: string;
+  /** THE WORLDS APART: the plane (x, y) is measured on. */
+  plane: string;
   x: number;
   y: number;
   hp: number;
@@ -67,6 +69,8 @@ export interface CharacterRow {
   /** The one active waypoint TILE; null when none is set. */
   waypoint_x: number | null;
   waypoint_y: number | null;
+  /** The plane the waypoint lives on; null follows waypoint_x. */
+  waypoint_plane: string | null;
   /** THE HEARTH WATCH: no raid covets this settler until this passes (ms). */
   raid_calm_until: number;
   /** The opt-out dial: 1 = warded, the covetous dice never pick them. */
@@ -110,7 +114,7 @@ export class AccountStore {
     username: string,
     password: string,
     charName: string,
-    spawn: { x: number; y: number },
+    spawn: { plane: string; x: number; y: number },
     invite?: { required: boolean; code?: string },
   ): Promise<AuthResult> {
     const user = username.trim();
@@ -161,8 +165,8 @@ export class AccountStore {
         [user, hash, salt, now, invite?.required ? code : null],
       );
       const ch = await tx.get<{ id: number }>(
-        'INSERT INTO characters (account_id, name, x, y, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
-        [acc!.id, name, spawn.x, spawn.y, now, now],
+        'INSERT INTO characters (account_id, name, plane, x, y, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id',
+        [acc!.id, name, spawn.plane, spawn.x, spawn.y, now, now],
       );
       return { accountId: acc!.id, characterId: ch!.id };
     });
@@ -175,6 +179,7 @@ export class AccountStore {
         id: result.characterId,
         account_id: result.accountId,
         name,
+        plane: spawn.plane,
         x: spawn.x,
         y: spawn.y,
         hp: 10,
@@ -183,6 +188,7 @@ export class AccountStore {
         hearth_at: 0,
         waypoint_x: null,
         waypoint_y: null,
+        waypoint_plane: null,
         raid_calm_until: 0,
         hearth_warded: 0,
       },
@@ -259,14 +265,11 @@ export class AccountStore {
     return { ok: true, accountId: row.account_id, character };
   }
 
-  saveCharacter(id: number, x: number, y: number, hp: number): void {
-    this.db.fire('UPDATE characters SET x = ?, y = ?, hp = ?, last_seen = ? WHERE id = ?', [
-      x,
-      y,
-      hp,
-      Date.now(),
-      id,
-    ]);
+  saveCharacter(id: number, plane: string, x: number, y: number, hp: number): void {
+    this.db.fire(
+      'UPDATE characters SET plane = ?, x = ?, y = ?, hp = ?, last_seen = ? WHERE id = ?',
+      [plane, x, y, hp, Date.now(), id],
+    );
   }
 
   /** Claim (or move) the home bed — written the moment it's claimed. */
@@ -314,12 +317,18 @@ export class AccountStore {
   }
 
   /** Pin (or move) the one active waypoint — written the moment it's set. */
-  saveWaypoint(id: number, x: number, y: number): void {
-    this.db.fire('UPDATE characters SET waypoint_x = ?, waypoint_y = ? WHERE id = ?', [x, y, id]);
+  saveWaypoint(id: number, x: number, y: number, plane: string): void {
+    this.db.fire(
+      'UPDATE characters SET waypoint_x = ?, waypoint_y = ?, waypoint_plane = ? WHERE id = ?',
+      [x, y, plane, id],
+    );
   }
 
   clearWaypoint(id: number): void {
-    this.db.fire('UPDATE characters SET waypoint_x = NULL, waypoint_y = NULL WHERE id = ?', [id]);
+    this.db.fire(
+      'UPDATE characters SET waypoint_x = NULL, waypoint_y = NULL, waypoint_plane = NULL WHERE id = ?',
+      [id],
+    );
   }
 
   /**
@@ -328,18 +337,26 @@ export class AccountStore {
    * on the periodic save; a lost interval of walking is acceptable in
    * a crash, so this is the batched cadence, not fire-at-the-moment.
    */
-  async loadExplored(characterId: number): Promise<{ rx: number; ry: number; bits: Buffer }[]> {
-    return await this.db.query<{ rx: number; ry: number; bits: Buffer }>(
-      'SELECT rx, ry, bits FROM character_explored WHERE character_id = ?',
+  async loadExplored(
+    characterId: number,
+  ): Promise<{ plane: string; rx: number; ry: number; bits: Buffer }[]> {
+    return await this.db.query<{ plane: string; rx: number; ry: number; bits: Buffer }>(
+      'SELECT plane, rx, ry, bits FROM character_explored WHERE character_id = ?',
       [characterId],
     );
   }
 
-  saveExploredRegion(characterId: number, rx: number, ry: number, bits: Uint8Array): void {
+  saveExploredRegion(
+    characterId: number,
+    plane: string,
+    rx: number,
+    ry: number,
+    bits: Uint8Array,
+  ): void {
     this.db.fire(
-      'INSERT INTO character_explored (character_id, rx, ry, bits, updated_at) VALUES (?, ?, ?, ?, ?) ' +
-        'ON CONFLICT (character_id, rx, ry) DO UPDATE SET bits = excluded.bits, updated_at = excluded.updated_at',
-      [characterId, rx, ry, Buffer.from(bits.buffer, bits.byteOffset, bits.byteLength), Date.now()],
+      'INSERT INTO character_explored (character_id, plane, rx, ry, bits, updated_at) VALUES (?, ?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (character_id, plane, rx, ry) DO UPDATE SET bits = excluded.bits, updated_at = excluded.updated_at',
+      [characterId, plane, rx, ry, Buffer.from(bits.buffer, bits.byteOffset, bits.byteLength), Date.now()],
     );
   }
 
@@ -354,6 +371,7 @@ export class AccountStore {
       id: string;
       kind: string;
       name: string;
+      plane: string;
       x: number;
       y: number;
       tier: number | null;
@@ -362,24 +380,24 @@ export class AccountStore {
     }[]
   > {
     return await this.db.query(
-      'SELECT id, kind, name, x, y, tier, epoch, faded FROM character_discoveries WHERE character_id = ?',
+      'SELECT id, kind, name, plane, x, y, tier, epoch, faded FROM character_discoveries WHERE character_id = ?',
       [characterId],
     );
   }
 
   addDiscovery(
     characterId: number,
-    d: { id: string; kind: string; name: string; x: number; y: number; tier?: number },
+    d: { id: string; kind: string; name: string; plane: string; x: number; y: number; tier?: number },
     epoch?: number,
   ): void {
     // Upsert: rediscovering a faded marker refreshes what stands there
     // now; discovered_at keeps the FIRST footfall.
     this.db.fire(
-      'INSERT INTO character_discoveries (character_id, id, kind, name, x, y, tier, epoch, faded, discovered_at) ' +
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?) ' +
+      'INSERT INTO character_discoveries (character_id, id, kind, name, plane, x, y, tier, epoch, faded, discovered_at) ' +
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?) ' +
         'ON CONFLICT (character_id, id) DO UPDATE SET kind = excluded.kind, name = excluded.name, ' +
-        'x = excluded.x, y = excluded.y, tier = excluded.tier, epoch = excluded.epoch, faded = 0',
-      [characterId, d.id, d.kind, d.name, d.x, d.y, d.tier ?? null, epoch ?? null, Date.now()],
+        'plane = excluded.plane, x = excluded.x, y = excluded.y, tier = excluded.tier, epoch = excluded.epoch, faded = 0',
+      [characterId, d.id, d.kind, d.name, d.plane, d.x, d.y, d.tier ?? null, epoch ?? null, Date.now()],
     );
   }
 
@@ -782,53 +800,81 @@ export class AccountStore {
   }
 
   async loadBuiltTiles(): Promise<
-    Array<{ tx: number; ty: number; tile: number; owner: number; prevTile: number }>
+    Array<{ plane: string; tx: number; ty: number; tile: number; owner: number; prevTile: number }>
   > {
-    return this.db.query<{ tx: number; ty: number; tile: number; owner: number; prevTile: number }>(
-      'SELECT tx, ty, tile, owner_character_id AS owner, prev_tile AS "prevTile" FROM built_tiles',
+    return this.db.query<{
+      plane: string;
+      tx: number;
+      ty: number;
+      tile: number;
+      owner: number;
+      prevTile: number;
+    }>(
+      'SELECT plane, tx, ty, tile, owner_character_id AS owner, prev_tile AS "prevTile" FROM built_tiles',
     );
   }
 
-  saveBuiltTile(tx: number, ty: number, tile: number, owner: number, prevTile: number): void {
+  saveBuiltTile(
+    plane: string,
+    tx: number,
+    ty: number,
+    tile: number,
+    owner: number,
+    prevTile: number,
+  ): void {
     // THE LAYER LAW (building v2): prev_tile is what stood there AT
     // THIS BUILD — a wall raised on your floor remembers the floor, so
     // demolishing tears down one layer, never through it to grass.
     // (The demolish path re-registers a restored player floor with the
     // pristine ground beneath, keeping the chain honest at depth 1.)
     this.db.fire(
-      'INSERT INTO built_tiles (tx, ty, tile, owner_character_id, created_at, prev_tile) VALUES (?, ?, ?, ?, ?, ?) ' +
-        'ON CONFLICT (tx, ty) DO UPDATE SET tile = excluded.tile, owner_character_id = excluded.owner_character_id, prev_tile = excluded.prev_tile',
-      [tx, ty, tile, owner, Date.now(), prevTile],
+      'INSERT INTO built_tiles (plane, tx, ty, tile, owner_character_id, created_at, prev_tile) VALUES (?, ?, ?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (plane, tx, ty) DO UPDATE SET tile = excluded.tile, owner_character_id = excluded.owner_character_id, prev_tile = excluded.prev_tile',
+      [plane, tx, ty, tile, owner, Date.now(), prevTile],
     );
   }
 
-  deleteBuiltTile(tx: number, ty: number): void {
-    this.db.fire('DELETE FROM built_tiles WHERE tx = ? AND ty = ?', [tx, ty]);
+  deleteBuiltTile(plane: string, tx: number, ty: number): void {
+    this.db.fire('DELETE FROM built_tiles WHERE plane = ? AND tx = ? AND ty = ?', [plane, tx, ty]);
   }
 
   // ------------------------------- THE SECOND LAYER (wall hangings)
 
   async loadBuiltDetails(): Promise<
-    Array<{ tx: number; ty: number; detail: number; owner: number; prevDetail: number }>
+    Array<{ plane: string; tx: number; ty: number; detail: number; owner: number; prevDetail: number }>
   > {
-    return this.db.query<{ tx: number; ty: number; detail: number; owner: number; prevDetail: number }>(
-      'SELECT tx, ty, detail, owner_character_id AS owner, prev_detail AS "prevDetail" FROM built_details',
+    return this.db.query<{
+      plane: string;
+      tx: number;
+      ty: number;
+      detail: number;
+      owner: number;
+      prevDetail: number;
+    }>(
+      'SELECT plane, tx, ty, detail, owner_character_id AS owner, prev_detail AS "prevDetail" FROM built_details',
     );
   }
 
-  saveBuiltDetail(tx: number, ty: number, detail: number, owner: number, prevDetail: number): void {
+  saveBuiltDetail(
+    plane: string,
+    tx: number,
+    ty: number,
+    detail: number,
+    owner: number,
+    prevDetail: number,
+  ): void {
     // The LAYER LAW, one lane over: prev_detail is what hung here AT
     // THIS HANG. Re-hanging replaces the row whole (built_tiles'
     // always-update shape) — the chain stays honest at depth 1.
     this.db.fire(
-      'INSERT INTO built_details (tx, ty, detail, owner_character_id, created_at, prev_detail) VALUES (?, ?, ?, ?, ?, ?) ' +
-        'ON CONFLICT (tx, ty) DO UPDATE SET detail = excluded.detail, owner_character_id = excluded.owner_character_id, prev_detail = excluded.prev_detail',
-      [tx, ty, detail, owner, Date.now(), prevDetail],
+      'INSERT INTO built_details (plane, tx, ty, detail, owner_character_id, created_at, prev_detail) VALUES (?, ?, ?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (plane, tx, ty) DO UPDATE SET detail = excluded.detail, owner_character_id = excluded.owner_character_id, prev_detail = excluded.prev_detail',
+      [plane, tx, ty, detail, owner, Date.now(), prevDetail],
     );
   }
 
-  deleteBuiltDetail(tx: number, ty: number): void {
-    this.db.fire('DELETE FROM built_details WHERE tx = ? AND ty = ?', [tx, ty]);
+  deleteBuiltDetail(plane: string, tx: number, ty: number): void {
+    this.db.fire('DELETE FROM built_details WHERE plane = ? AND tx = ? AND ty = ?', [plane, tx, ty]);
   }
 
   // ------------------------------------------------- player signs
@@ -839,16 +885,18 @@ export class AccountStore {
    * this runs once at boot.
    */
   async loadSigns(): Promise<
-    Array<{ tx: number; ty: number; title: string; lines: string[]; owner: number }>
+    Array<{ plane: string; tx: number; ty: number; title: string; lines: string[]; owner: number }>
   > {
     const rows = await this.db.query<{
+      plane: string;
       tx: number;
       ty: number;
       title: string;
       lines: string;
       owner: number;
-    }>('SELECT tx, ty, title, lines, owner_character_id AS owner FROM signs');
+    }>('SELECT plane, tx, ty, title, lines, owner_character_id AS owner FROM signs');
     return rows.map((r) => ({
+      plane: r.plane,
       tx: r.tx,
       ty: r.ty,
       title: r.title,
@@ -857,20 +905,27 @@ export class AccountStore {
     }));
   }
 
-  saveSign(tx: number, ty: number, title: string, lines: string[], owner: number): void {
+  saveSign(
+    plane: string,
+    tx: number,
+    ty: number,
+    title: string,
+    lines: string[],
+    owner: number,
+  ): void {
     // The owner is written ONCE. A conflict update carries the old
     // owner forward on purpose: whoever raised the post keeps the pen
     // even if the row is rewritten through some other path.
     this.db.fire(
-      'INSERT INTO signs (tx, ty, title, lines, owner_character_id, updated_at) VALUES (?, ?, ?, ?, ?, ?) ' +
-        'ON CONFLICT (tx, ty) DO UPDATE SET title = excluded.title, lines = excluded.lines, ' +
+      'INSERT INTO signs (plane, tx, ty, title, lines, owner_character_id, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (plane, tx, ty) DO UPDATE SET title = excluded.title, lines = excluded.lines, ' +
         'updated_at = excluded.updated_at',
-      [tx, ty, title, lines.join('\n'), owner, Date.now()],
+      [plane, tx, ty, title, lines.join('\n'), owner, Date.now()],
     );
   }
 
-  deleteSign(tx: number, ty: number): void {
-    this.db.fire('DELETE FROM signs WHERE tx = ? AND ty = ?', [tx, ty]);
+  deleteSign(plane: string, tx: number, ty: number): void {
+    this.db.fire('DELETE FROM signs WHERE plane = ? AND tx = ? AND ty = ?', [plane, tx, ty]);
   }
 
   // --------------------------------------------- world_pois ledger

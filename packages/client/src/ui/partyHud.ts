@@ -1,4 +1,3 @@
-import { DUNGEON_MIN_Y } from '@arx/shared';
 import type { ClientGame } from '../game/clientGame.js';
 import type { Renderer } from '../render/renderer.js';
 import { partyColor } from './map/markers.js';
@@ -27,7 +26,6 @@ export class PartyHud {
     const seen = new Set<string>();
     const w = window.innerWidth;
     const h = window.innerHeight;
-    const selfBand = pos.y >= DUNGEON_MIN_Y;
     // Same chrome margins as the waypoint pill, nudged up a step so a
     // fellow and the flag on one bearing stack instead of overlap.
     const mx = 74;
@@ -35,7 +33,9 @@ export class PartyHud {
     const myBot = 176;
 
     for (const f of fellows) {
-      if (f.y >= DUNGEON_MIN_Y !== selfBand) continue;
+      // THE WORLDS APART: fellows across the plane veil are
+      // unpointable — coordinates in another world mean nothing here.
+      if (f.plane !== game.plane.id) continue;
       const p = renderer.camera.worldToScreen(f.x, f.y, w, h);
       p.y -= renderer.renderLift(f.x, f.y) * renderer.camera.scale;
       const onScreen = p.x >= 0 && p.x <= w && p.y >= 0 && p.y <= h;

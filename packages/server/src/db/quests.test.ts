@@ -134,7 +134,7 @@ test('a hand-broken DB row is rejected at load, not at play time', async () => {
 test('the quest state ledger: save, overwrite, delete, reload', async () => {
   const db = await freshDb();
   const accounts = new AccountStore(db);
-  const reg = await accounts.register('quester', 'hunter22', 'Quester', { x: 48, y: 52 });
+  const reg = await accounts.register('quester', 'hunter22', 'Quester', { plane: 'surface', x: 48, y: 52 });
   assert.ok(reg.ok);
   const cid = reg.character.id;
 

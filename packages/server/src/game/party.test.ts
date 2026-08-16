@@ -6,7 +6,7 @@ import { AccountStore } from '../db/accounts.js';
 import { PartySystem, INVITE_TTL_MS } from './party.js';
 import type { PartyHost } from './party.js';
 
-const SPAWN = { x: 48.5, y: 52.5 };
+const SPAWN = { plane: 'surface', x: 48.5, y: 52.5 };
 
 interface Rig {
   party: PartySystem;
@@ -46,7 +46,7 @@ async function makeRig(): Promise<Rig> {
       sent.set(id, box);
       return true;
     },
-    positionOfCharacter: (id) => (online.has(id) ? { x: 10 + id, y: 20 + id } : null),
+    positionOfCharacter: (id) => (online.has(id) ? { plane: 'surface', x: 10 + id, y: 20 + id } : null),
     onMemberSevered: (id) => severed.push(id),
   };
   const party = new PartySystem(store, host, () => clock.now);

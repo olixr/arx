@@ -3,6 +3,7 @@ import type {
   FrontierDef,
   GeographyDef,
   PackedZoneEdgeProfile,
+  PlaneId,
   PrefabJson,
   ZoneJson,
 } from '@arx/content';
@@ -20,6 +21,8 @@ export interface MapListEntry {
   width: number;
   height: number;
   origin: { x: number; y: number };
+  /** THE WORLDS APART: the plane the zone stamps (absent = surface). */
+  plane?: PlaneId;
   spawn: { x: number; y: number } | null;
   builtin: boolean;
   hasFile: boolean;

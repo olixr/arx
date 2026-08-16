@@ -26,7 +26,8 @@ test('every music file on disk sits on a shelf, and every shelf entry exists', (
 test('the mood law: town outranks all, the underdark plays its own shelf, the deep frontier darkens the day', () => {
   const town = zoneWeights(-64, 48);
   const wild = zoneWeights(300, 48);
-  const cave = zoneWeights(300, 9000);
+  // A cave PLANE (the underworld, a rift) — the flag, not the y.
+  const cave = zoneWeights(300, 9000, true);
   assert.equal(moodFor(town, 12, 5), 'town'); // settled land never plays dread
   assert.equal(moodFor(cave, 12, 5), 'dungeon'); // underground outranks even tier-5 dread
   assert.equal(moodFor(cave, 23, 0), 'dungeon'); // …and the night: no sky down there

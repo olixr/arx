@@ -36,10 +36,7 @@ function slate(opts: {
     characterId: opts.characterId ?? 7,
     session: { sendJson: (m: Record<string, unknown>) => sent.push(m) },
   };
-  return {
-    players: new Map([[1, player]]),
-    positions: { get: () => ({ x: 4.5, y: 6.5 }) },
-    world: {
+  const world = {
       ensure: () => {},
       groundAt: (_tx: number, ty: number) =>
         ty === 5 ? (opts.ground ?? Tile.WallWood) : (opts.south ?? Tile.Grass),
@@ -61,13 +58,20 @@ function slate(opts: {
         events.push('unregister');
         hungNow = undefined;
       },
-    },
+  };
+  return {
+    players: new Map([[1, player]]),
+    positions: { get: () => ({ plane: 'surface', x: 4.5, y: 6.5 }) },
+    world,
+    worldOf: () => world,
+    // THE ROCK KEEPS NOTHING gate reads the plane's persistence law.
+    planes: { defOf: () => ({ persistent: true, underground: false }) },
     accounts: {
-      saveBuiltDetail: (_tx: number, _ty: number, detail: number, owner: number, prevDetail: number) =>
+      saveBuiltDetail: (_plane: string, _tx: number, _ty: number, detail: number, owner: number, prevDetail: number) =>
         saved.push({ detail, owner, prevDetail }),
       deleteBuiltDetail: () => events.push('deleteRow'),
     },
-    setWorldDetail: (_tx: number, _ty: number, detail: number) => {
+    setWorldDetail: (_plane: string, _tx: number, _ty: number, detail: number) => {
       events.push(`detailPatch:${detail}`);
       detailNow = detail;
     },

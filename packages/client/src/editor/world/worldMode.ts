@@ -793,7 +793,8 @@ export class WorldMode {
     const t = this.view.tileAtFloat(mx, my);
     let best: { id: string; area: number } | null = null;
     for (const z of this.ws.zones) {
-      if (z.origin.y >= 512) continue;
+      // The chart shows the surface plane — only its zones answer.
+      if ((z.plane ?? 'surface') !== 'surface') continue;
       if (
         t.x >= z.origin.x &&
         t.x < z.origin.x + z.width &&

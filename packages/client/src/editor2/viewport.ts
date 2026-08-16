@@ -768,7 +768,10 @@ export class Viewport {
 
     // ---- EDGE PROFILE (what the wild will grow toward).
     if (this.lenses.edges) {
-      const profile = zoneEdgeProfileOf(z);
+      // Edge harmony is a SURFACE law — worldgen only blends toward
+      // fringes on the plane it deals; cave planes have no wild.
+      const onSurface = (z.plane ?? 'surface') === 'surface';
+      const profile = onSurface ? zoneEdgeProfileOf(z) : null;
       if (profile) {
         const T = Math.max(3, s * 0.22);
         for (let x = 0; x < z.width; x++) {
@@ -784,8 +787,10 @@ export class Viewport {
           ctx.fillRect(sx(z.width) + 2, sy(y), T, s * ys);
         }
         chip('edges — the border classes worldgen blends toward', chipSlot++);
+      } else if (onSurface) {
+        chip('edges — no profile (all-open fringe)', chipSlot++);
       } else {
-        chip('edges — no profile (dark band or all-skip fringe)', chipSlot++);
+        chip('edges — underworld plane; solid rock owns the fringe', chipSlot++);
       }
     }
 

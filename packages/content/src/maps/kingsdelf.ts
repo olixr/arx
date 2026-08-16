@@ -1,5 +1,6 @@
 import { Detail, Tile } from '@arx/shared';
 import { KINGSDELF_RECT } from '../geography.js';
+import { UNDERWORLD_PLANE_ID } from '../planes.js';
 import { ZoneBuilder } from './builder.js';
 import type { ZoneDef } from './types.js';
 
@@ -589,7 +590,7 @@ export function buildKingsdelf(): ZoneDef {
   // know, and if you don't, it's a storage corner.
   // ---------------------------------------------------------------
   b.fillRect(101, 82, 5, 3, Tile.Dirt);
-  b.portal(103, 83, Tile.PortalDown, { x: 224.5, y: 591.5 });
+  b.portal(103, 83, Tile.PortalDown, { x: 224.5, y: 591.5 }, UNDERWORLD_PLANE_ID);
   b.set(105, 83, Tile.Crate).set(101, 84, Tile.Barrel);
   b.set(106, 82, Tile.CrateGoods); // Slate's stock, such as it is
 

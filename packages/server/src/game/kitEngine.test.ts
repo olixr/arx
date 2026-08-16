@@ -53,7 +53,7 @@ function mkNpc(kit: NpcKitEntry[], over: Partial<FakeNpc> = {}): FakeNpc {
 }
 
 function slate(opts: { hp?: { hp: number; maxHp: number } } = {}) {
-  const pos = { x: 10, y: 10, dir: 0 };
+  const pos = { plane: 'surface', x: 10, y: 10, dir: 0 };
   const fx: Array<Record<string, unknown>> = [];
   const casts: Array<{ ab: { id: string }; aim: number; pt?: { x: number; y: number } }> = [];
   const poses: number[] = [];
@@ -63,6 +63,7 @@ function slate(opts: { hp?: { hp: number; maxHp: number } } = {}) {
     positions: { get: () => pos, must: () => pos },
     healths: new Map([[7, opts.hp ?? { hp: 100, maxHp: 100 }]]),
     world: { isSolid: () => false },
+    worldOf: () => ({ isSolid: () => false }),
     broadcastFx: (f: Record<string, unknown>) => fx.push(f),
     castAbility: (_eid: number, ab: { id: string }, aim: number, ...rest: unknown[]) => {
       casts.push({ ab, aim, pt: rest[3] as { x: number; y: number } | undefined });

@@ -71,6 +71,9 @@ function slate(opts: {
     world: {
       isSolid: (px: number) => opts.walled === true && px === 7,
     },
+    get surface() {
+      return this['world'];
+    },
     effectiveLevel: () => 50,
     grantXp: () => {},
     revealPlayer: () => {},

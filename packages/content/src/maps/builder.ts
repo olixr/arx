@@ -14,6 +14,7 @@ import {
 } from '@arx/shared';
 import { stampTemplate } from '../structures/stamp.js';
 import type { StructureTemplate } from '../structures/types.js';
+import type { PlaneId } from '../planes.js';
 import type { PortalDef, ZoneActorSpawn, ZoneDef, ZoneSign, ZoneSpawn } from './types.js';
 
 /**
@@ -31,6 +32,7 @@ export class ZoneBuilder {
   /** True once any elevation primitive ran; flat zones export no layer. */
   private hasElev = false;
   private spawnPoint: Vec2 | undefined;
+  private zonePlane: PlaneId | undefined;
   private readonly portals: PortalDef[] = [];
   private readonly zoneSpawns: ZoneSpawn[] = [];
   private readonly zoneActorSpawns: ZoneActorSpawn[] = [];
@@ -280,15 +282,26 @@ export class ZoneBuilder {
     return this;
   }
 
-  /** Place a portal tile (local coords; dest in world coords). */
-  portal(x: number, y: number, tile: Tile, dest: Vec2 | 'delve'): this {
+  /**
+   * Place a portal tile (local coords; dest in world coords, on
+   * `destPlane` — absent falls to the legacy y-derivation, which is
+   * exact for pre-split content and wrong for anything new; state it).
+   */
+  portal(x: number, y: number, tile: Tile, dest: Vec2 | 'delve', destPlane?: PlaneId): this {
     this.set(x, y, tile);
     this.portals.push({
       x: this.origin.x + x,
       y: this.origin.y + y,
       dest: dest === 'delve' ? undefined : dest,
+      destPlane: dest === 'delve' ? undefined : destPlane,
       delve: dest === 'delve' ? true : undefined,
     });
+    return this;
+  }
+
+  /** THE WORLDS APART: which plane this zone stamps (default surface). */
+  onPlane(plane: PlaneId): this {
+    this.zonePlane = plane;
     return this;
   }
 
@@ -556,6 +569,7 @@ export class ZoneBuilder {
     return {
       id: this.id,
       name: this.name,
+      plane: this.zonePlane,
       origin: this.origin,
       width: this.width,
       height: this.height,

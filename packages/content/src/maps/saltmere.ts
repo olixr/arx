@@ -10,6 +10,7 @@ import {
 } from '@arx/shared';
 import { SALTMERE_RECT } from '../geography.js';
 import { MARKET_STALL } from '../structures/templates.js';
+import { UNDERWORLD_PLANE_ID } from '../planes.js';
 import { ZoneBuilder } from './builder.js';
 import type { ZoneDef } from './types.js';
 
@@ -602,7 +603,7 @@ export function buildSaltmere(): ZoneDef {
   // A hatch, a crate, no lamp, no sign, no name.
   // ---------------------------------------------------------------
   b.fillRect(66, 38, 4, 4, Tile.Dirt);
-  b.portal(67, 39, Tile.PortalDown, { x: 207.5, y: 589.5 }); // the Saltmere alcove
+  b.portal(67, 39, Tile.PortalDown, { x: 207.5, y: 589.5 }, UNDERWORLD_PLANE_ID); // the Saltmere alcove
   b.set(69, 38, Tile.Crate).set(66, 41, Tile.Barrel);
   b.setDetail(68, 40, Detail.Pebbles).setDetail(66, 39, Detail.Tuft);
 

@@ -5,20 +5,25 @@ import { birdsK, cricketsK, dominantZone, skySeam, zoneWeights } from './zones.j
 test('zone weights always sum to 1 and never leave [0,1]', () => {
   for (let x = -200; x <= 200; x += 7) {
     for (const y of [-150, 0, 30, 48, 90, 511, 512, 1040, 9000]) {
-      const w = zoneWeights(x, y);
-      assert.ok(Math.abs(w.town + w.wild + w.cave - 1) < 1e-9, `sum at ${x},${y}`);
-      for (const v of [w.town, w.wild, w.cave]) assert.ok(v >= 0 && v <= 1);
+      for (const under of [false, true]) {
+        const w = zoneWeights(x, y, under);
+        assert.ok(Math.abs(w.town + w.wild + w.cave - 1) < 1e-9, `sum at ${x},${y}`);
+        for (const v of [w.town, w.wild, w.cave]) assert.ok(v >= 0 && v <= 1);
+      }
     }
   }
 });
 
-test('the green is town, the far field is wild, underground is cave', () => {
+test('the green is town, the far field is wild, cave planes are cave', () => {
   assert.equal(zoneWeights(-64, 48).town, 1);
   assert.equal(dominantZone(zoneWeights(-64, 48)), 'town');
   assert.equal(zoneWeights(300, 48).wild, 1);
   assert.equal(dominantZone(zoneWeights(300, 48)), 'wild');
-  assert.equal(zoneWeights(20, 1040).cave, 1);
-  assert.equal(dominantZone(zoneWeights(20, 1040)), 'cave');
+  // THE WORLDS APART: underground is the PLANE'S flag, never a y-line
+  // — the far south is open wilderness now.
+  assert.equal(zoneWeights(20, 1040, true).cave, 1);
+  assert.equal(dominantZone(zoneWeights(20, 1040, true)), 'cave');
+  assert.equal(zoneWeights(20, 1040).wild, 1);
 });
 
 test('the town edge fades — no cliff in the crossfade', () => {

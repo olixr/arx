@@ -65,8 +65,8 @@ function slate(inventory: InvSlot[], drop: Drop | null, ring: Array<{ id: number
   const destroyed: number[] = [];
   const placed: Array<Record<string, unknown>> = [];
   const positions = new Map([
-    [1, { x: 5.5, y: 5.5, dir: 0 }],
-    [9, { x: 5.5, y: 5.5, dir: 0 }],
+    [1, { plane: 'surface', x: 5.5, y: 5.5, dir: 0 }],
+    [9, { plane: 'surface', x: 5.5, y: 5.5, dir: 0 }],
   ]);
   const player = {
     characterId: 7,
@@ -78,7 +78,7 @@ function slate(inventory: InvSlot[], drop: Drop | null, ring: Array<{ id: number
     discoveries: new Set<string>(),
     session: { sendJson: (m: Record<string, unknown>) => sent.push(m) },
   };
-  positions.set(50, { x: 6.5, y: 5.5, dir: 0 }); // the Keywright's bench
+  positions.set(50, { plane: 'surface', x: 6.5, y: 5.5, dir: 0 }); // the Keywright's bench
   const loreWrites: KeyLore[] = [];
   const labelWrites: Array<{ seed: number; label: string | null }> = [];
   return {
@@ -94,7 +94,7 @@ function slate(inventory: InvSlot[], drop: Drop | null, ring: Array<{ id: number
     drops: new Map(drop ? [[9, drop]] : []),
     // The vacuum reads the chunk index now (THE INDEX SERVES THE PILE).
     forEachDropNear: proto.forEachDropNear,
-    chunks: new Map(drop ? [['0,0', new Set([9])]] : []),
+    chunks: new Map(drop ? [['surface|0,0', new Set([9])]] : []),
     dungeons: new Map<number, { seed: number; tier: string; power: number }>(),
     graves: new Map(),
     deathMarks: new Map(),
@@ -112,11 +112,12 @@ function slate(inventory: InvSlot[], drop: Drop | null, ring: Array<{ id: number
       must: (eid: number) => positions.get(eid)!,
     },
     world: { isSolid: () => false },
+    worldOf: () => ({ isSolid: () => false }),
     grantXp: () => {},
     removeFromChunks: () => {},
     recordDiscovery: () => {},
     riftgateNear: () => ({ x: 5, y: 5 }),
-    placeDrop: (item: string, qty: number, _x: number, _y: number, comp: Record<string, unknown>) => {
+    placeDrop: (_plane: string, item: string, qty: number, _x: number, _y: number, comp: Record<string, unknown>) => {
       placed.push({ item, qty, ...comp });
       return 99;
     },

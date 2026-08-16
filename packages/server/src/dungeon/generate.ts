@@ -8,7 +8,7 @@ import {
   type DungeonSpec,
   type Vec2,
 } from '@arx/shared';
-import type { PortalDef, ZoneDef } from '@arx/content';
+import { riftPlaneId, type PlanePos, type PortalDef, type ZoneDef } from '@arx/content';
 import { carveAll, carveSecrets } from './carve.js';
 import { dressAll } from './dress.js';
 import { garrisonAll } from './garrison.js';
@@ -61,18 +61,18 @@ export interface DungeonResult {
   courtExit: Vec2 | null;
 }
 
-/** Largest tier size — instance slots are spaced by it. */
-const MAX_SIZE = 200;
-
-/** Dungeon instances live on their own row of the dark band. */
-export function dungeonOrigin(slot: number): Vec2 {
-  return { x: 8192 + slot * (MAX_SIZE + CHUNK_SIZE * 2), y: 8192 };
-}
+/**
+ * THE WORLDS APART: every run lives on its own rift plane now, so the
+ * old x-marching slot lanes are gone — each dungeon generates at the
+ * same quiet origin and the PLANE is the isolation. A margin off true
+ * zero keeps the carve clear of negative-chunk seams.
+ */
+export const DUNGEON_ORIGIN: Vec2 = { x: CHUNK_SIZE, y: CHUNK_SIZE };
 
 export function generateDungeon(
   spec: DungeonSpec,
   origin: Vec2,
-  returnTo: Vec2,
+  returnTo: PlanePos,
   slot: number,
 ): DungeonResult {
   const b: DungeonBuild = {
@@ -119,7 +119,12 @@ export function generateDungeon(
     }
   }
   const portals: PortalDef[] = [
-    { x: origin.x + entry.x, y: origin.y + entry.y, dest: returnTo },
+    {
+      x: origin.x + entry.x,
+      y: origin.y + entry.y,
+      dest: { x: returnTo.x, y: returnTo.y },
+      destPlane: returnTo.plane,
+    },
   ];
 
   // THE WAY HOME OPENS: seat the sealed rift-mouth on clear floor in
@@ -145,12 +150,20 @@ export function generateDungeon(
         break outer;
       }
     }
-    if (courtExit) portals.push({ x: courtExit.x, y: courtExit.y, dest: returnTo });
+    if (courtExit) {
+      portals.push({
+        x: courtExit.x,
+        y: courtExit.y,
+        dest: { x: returnTo.x, y: returnTo.y },
+        destPlane: returnTo.plane,
+      });
+    }
   }
 
   const zone: ZoneDef = {
     id: `dungeon-${slot}-${spec.sigil}-${spec.seed}`,
     name: spec.name,
+    plane: riftPlaneId(slot),
     origin,
     width: spec.size,
     height: spec.size,

@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { CHUNK_SIZE, TILE_SKIP, TREE_TILES, Tile } from '@arx/shared';
 import {
   AUTHORED_GROWTH,
-  DARK_BAND_Y,
   GROWTH,
+  SURFACE_PLANE,
+  UNDERWORLD_PLANE,
   GROWTH_BARE,
   GROWTH_DRIFTED,
   GROWTH_SAPLING,
@@ -63,15 +64,17 @@ function slate(world: WorldSource) {
   const deleted: Array<[number, number]> = [];
   const s = {
     world,
+    surface: world,
+    worldOf: () => world,
     accounts: {
       saveGrowth: (r: GrowthRow) => saved.push({ ...r }),
       deleteGrowth: (tx: number, ty: number) => deleted.push([tx, ty]),
     },
-    setWorldTile: (tx: number, ty: number, tile: Tile) => {
+    setWorldTile: (_plane: string, tx: number, ty: number, tile: Tile) => {
       world.setGround(tx, ty, tile);
       patched.push({ tx, ty, tile });
     },
-    bodyOnTile: (() => false) as (tx: number, ty: number) => boolean,
+    bodyOnTile: (() => false) as (plane: string, tx: number, ty: number) => boolean,
     inClaimRing: (() => false) as (tx: number, ty: number) => boolean,
     growthRand: (() => 0.5) as () => number,
     tickGermination: proto.tickGermination,
@@ -150,21 +153,24 @@ test('THE KEPT AND THE WILD: the domain router answers by ground provenance', ()
     origin: { x: 64, y: 32 },
     growth: 'wild',
   };
-  const world = new WorldSource(SEED, [zone, wildZone]);
+  const world = new WorldSource(SEED, SURFACE_PLANE, [zone, wildZone]);
   assert.equal(world.growthDomainAt(36, 36), 'kept', 'authored zone ground is kept by default');
   assert.equal(world.growthDomainAt(32, 32), 'wild', 'a TILE_SKIP cell is transparent');
   assert.equal(world.growthDomainAt(200, 200), 'wild', 'raw worldgen ground is wild');
   assert.equal(world.growthDomainAt(68, 36), 'wild', 'the zone mark overrides the default');
+  // THE WORLDS APART: the surface opens south — past-512 ground is
+  // ordinary wilderness; the underworld (a cave plane) keeps its own.
+  assert.equal(world.growthDomainAt(36, 562), 'wild', 'the south is open wilderness now');
   assert.equal(
-    world.growthDomainAt(36, DARK_BAND_Y + 50),
+    new WorldSource(SEED, UNDERWORLD_PLANE, []).growthDomainAt(36, 562),
     'kept',
-    'the dark band answers to its own generators',
+    'a cave plane answers to its own generators',
   );
 });
 
 test('the ensure() overlay serves the pure projection — restarts included', () => {
   const now = Date.now();
-  const spot = findWildTree(new WorldSource(SEED, []));
+  const spot = findWildTree(new WorldSource(SEED, SURFACE_PLANE, []));
   const fresh: GrowthRow = {
     tx: spot.tx,
     ty: spot.ty,
@@ -175,7 +181,7 @@ test('the ensure() overlay serves the pure projection — restarts included', ()
     owner: null,
     firstSeenAt: now,
   };
-  const world = new WorldSource(SEED, []);
+  const world = new WorldSource(SEED, SURFACE_PLANE, []);
   world.registerGrowth(fresh);
   world.ensure(Math.floor(spot.tx / CHUNK_SIZE), Math.floor(spot.ty / CHUNK_SIZE));
   assert.equal(world.groundAt(spot.tx, spot.ty), Tile.Stump, 'a fresh scar generates as the stump');
@@ -188,7 +194,7 @@ test('the ensure() overlay serves the pure projection — restarts included', ()
     since: now - 90 * 24 * 3_600_000,
     firstSeenAt: now - 90 * 24 * 3_600_000,
   };
-  const world2 = new WorldSource(SEED, []);
+  const world2 = new WorldSource(SEED, SURFACE_PLANE, []);
   world2.registerGrowth(old);
   world2.ensure(Math.floor(spot.tx / CHUNK_SIZE), Math.floor(spot.ty / CHUNK_SIZE));
   assert.equal(
@@ -200,7 +206,7 @@ test('the ensure() overlay serves the pure projection — restarts included', ()
 });
 
 test('felling wild ground writes the ledger, not the respawn queue', () => {
-  const world = new WorldSource(SEED, []);
+  const world = new WorldSource(SEED, SURFACE_PLANE, []);
   const s = slate(world);
   const spot = findWildTree(world);
   const row = fellAt(s, spot.tx, spot.ty, spot.tile);
@@ -212,7 +218,7 @@ test('felling wild ground writes the ledger, not the respawn queue', () => {
 });
 
 test('the beat relaxes the scar to DORMANT bare — and time alone never sprouts it', () => {
-  const world = new WorldSource(SEED, []);
+  const world = new WorldSource(SEED, SURFACE_PLANE, []);
   const s = slate(world);
   const spot = findWildTree(world);
   const row = fellAt(s, spot.tx, spot.ty, spot.tile);
@@ -234,7 +240,7 @@ test('the beat relaxes the scar to DORMANT bare — and time alone never sprouts
 });
 
 test('THE REST FLOOR: bare ground may not even roll before the soil recovers', () => {
-  const world = new WorldSource(SEED, []);
+  const world = new WorldSource(SEED, SURFACE_PLANE, []);
   const s = slate(world);
   const spot = findWildTree(world);
   const row = fellAt(s, spot.tx, spot.ty, spot.tile);
@@ -249,7 +255,7 @@ test('THE REST FLOOR: bare ground may not even roll before the soil recovers', (
 });
 
 test('germination walks the tile to a clean heal when truth rises', () => {
-  const world = new WorldSource(SEED, []);
+  const world = new WorldSource(SEED, SURFACE_PLANE, []);
   const s = slate(world);
   const spot = findWildTree(world);
   const row = fellAt(s, spot.tx, spot.ty, spot.tile);
@@ -273,7 +279,7 @@ test('germination walks the tile to a clean heal when truth rises', () => {
 });
 
 test('a drifted species rests as a crown, and the next felling re-aims at truth', () => {
-  const world = new WorldSource(SEED, []);
+  const world = new WorldSource(SEED, SURFACE_PLANE, []);
   const s = slate(world);
   const spot = findWildTree(world);
   const row = fellAt(s, spot.tx, spot.ty, spot.tile);
@@ -303,7 +309,7 @@ test('a drifted species rests as a crown, and the next felling re-aims at truth'
 });
 
 test("THE BUILDER'S CLEARING: germination waits at the fence, and on-tile claims end the row", () => {
-  const world = new WorldSource(SEED, []);
+  const world = new WorldSource(SEED, SURFACE_PLANE, []);
   const s = slate(world);
   const spot = findWildTree(world);
   const row = fellAt(s, spot.tx, spot.ty, spot.tile);
@@ -326,7 +332,7 @@ test("THE BUILDER'S CLEARING: germination waits at the fence, and on-tile claims
   assert.ok(row.due !== null, 'the forest grows back the day the claim lapses');
 
   // A claimed yard refuses the same way (fresh ground, ring stubbed).
-  const world2 = new WorldSource(SEED, []);
+  const world2 = new WorldSource(SEED, SURFACE_PLANE, []);
   const s2 = slate(world2);
   const spot2 = findWildTree(world2);
   const row2 = fellAt(s2, spot2.tx, spot2.ty, spot2.tile);
@@ -342,7 +348,7 @@ test("THE BUILDER'S CLEARING: germination waits at the fence, and on-tile claims
 });
 
 test('a tree never stands up through a body — the defer courtesy', () => {
-  const world = new WorldSource(SEED, []);
+  const world = new WorldSource(SEED, SURFACE_PLANE, []);
   const s = slate(world);
   const spot = findWildTree(world);
   const row = fellAt(s, spot.tx, spot.ty, spot.tile);
@@ -366,7 +372,7 @@ test('the beat is budgeted in writes — a harvest heals as a drizzle', () => {
   if (!base.ok) return;
   replaceGrowth({ ...base.def, beatBudget: 2 });
   try {
-    const world = new WorldSource(SEED, []);
+    const world = new WorldSource(SEED, SURFACE_PLANE, []);
     const s = slate(world);
     const herbs = findWildTruth(
       world,
@@ -388,7 +394,7 @@ test('the beat is budgeted in writes — a harvest heals as a drizzle', () => {
 });
 
 test('THE QUICK MEADOW: a picked wild bush returns by succession, not the clock', () => {
-  const world = new WorldSource(SEED, []);
+  const world = new WorldSource(SEED, SURFACE_PLANE, []);
   const s = slate(world);
   const spot = findWildTruth(world, (t) => t === Tile.BerryBush)[0]!;
   const row = fellAt(s, spot.tx, spot.ty, spot.tile);
@@ -413,7 +419,7 @@ test('THE QUICK MEADOW: a picked wild bush returns by succession, not the clock'
 });
 
 test('THE WANDERING PATCH: out with the pick, home with the next — and the ledger empties', () => {
-  const world = new WorldSource(SEED, []);
+  const world = new WorldSource(SEED, SURFACE_PLANE, []);
   const s = slate(world);
   const spot = findWildTruth(
     world,
@@ -447,7 +453,7 @@ test('THE WANDERING PATCH: out with the pick, home with the next — and the led
 });
 
 test('THE PATIENT STONE: a re-opening vein either heals home or migrates conserving ore', () => {
-  const world = new WorldSource(SEED, []);
+  const world = new WorldSource(SEED, SURFACE_PLANE, []);
   const s = slate(world);
   const ores = new Set([
     Tile.RockCopper,
@@ -478,7 +484,7 @@ test('THE PATIENT STONE: a re-opening vein either heals home or migrates conserv
 });
 
 test('a dial edit re-aims live regrowth on the next beat (call-time reads)', () => {
-  const world = new WorldSource(SEED, []);
+  const world = new WorldSource(SEED, SURFACE_PLANE, []);
   const s = slate(world);
   const row = fellAt(s, 230, 230, Tile.RockGold);
   const before = projectGrowth(SEED, row, row.since).due!;
@@ -524,7 +530,7 @@ function plantSlate(world: WorldSource) {
 }
 
 test('THE SOWN LINE: a seed takes wild earth, owner-stamped and pre-germinated', () => {
-  const world = new WorldSource(SEED, []);
+  const world = new WorldSource(SEED, SURFACE_PLANE, []);
   const s = plantSlate(world);
   const spot = findWildTruth(world, (t) => t === Tile.Grass)[0]!;
   world.ensure(Math.floor(spot.tx / CHUNK_SIZE), Math.floor(spot.ty / CHUNK_SIZE));
@@ -559,7 +565,7 @@ test('THE SOWN LINE: tended ground refuses wild seeds', () => {
     ground: new Uint16Array(size).fill(Tile.Grass),
     detail: new Uint16Array(size),
   };
-  const world = new WorldSource(SEED, [zone]);
+  const world = new WorldSource(SEED, SURFACE_PLANE, [zone]);
   const s = plantSlate(world);
   world.ensure(1, 1);
   const { player, inventory } = mkPlanter('acorn');
@@ -571,7 +577,7 @@ test('THE SOWN LINE: tended ground refuses wild seeds', () => {
 });
 
 test('the orchard: sown oak grows on grass-truth, rests drifted, and refelling keeps the mark', () => {
-  const world = new WorldSource(SEED, []);
+  const world = new WorldSource(SEED, SURFACE_PLANE, []);
   const s = plantSlate(world);
   const spot = findWildTruth(world, (t) => t === Tile.Grass)[0]!;
   world.ensure(Math.floor(spot.tx / CHUNK_SIZE), Math.floor(spot.ty / CHUNK_SIZE));
@@ -596,7 +602,7 @@ test('the orchard: sown oak grows on grass-truth, rests drifted, and refelling k
 });
 
 test('THE SEED TAKES THE PLOT: sowing on a garden plot consumes the built record', () => {
-  const world = new WorldSource(SEED, []);
+  const world = new WorldSource(SEED, SURFACE_PLANE, []);
   const s = plantSlate(world) as ReturnType<typeof plantSlate> & { ringCache: unknown };
   s.ringCache = {};
   const spot = findWildTruth(world, (t) => t === Tile.Grass)[0]!;
@@ -618,7 +624,7 @@ test('THE SEED TAKES THE PLOT: sowing on a garden plot consumes the built record
 });
 
 test('THE SOWN EXCEPTION: owned ground germinates inside its claim ring; wild ground waits', () => {
-  const world = new WorldSource(SEED, []);
+  const world = new WorldSource(SEED, SURFACE_PLANE, []);
   const s = plantSlate(world);
   const spot = findWildTree(world);
   const row = fellAt(s, spot.tx, spot.ty, spot.tile);

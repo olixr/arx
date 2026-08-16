@@ -1,3 +1,4 @@
+import { legacyPlaneOfY, type PlaneId } from '../planes.js';
 import type { PortalDef, ZoneActorSpawn, ZoneDef, ZoneSign, ZoneSpawn } from './types.js';
 
 /**
@@ -9,6 +10,13 @@ import type { PortalDef, ZoneActorSpawn, ZoneDef, ZoneSign, ZoneSpawn } from './
 export interface ZoneJson {
   id: string;
   name: string;
+  /**
+   * The plane this zone stamps. Absent in legacy files (pre-split);
+   * zoneFromJson backfills those by the frozen y-law. Every new save
+   * writes it explicitly — after the south opened, origin.y no longer
+   * implies a plane.
+   */
+  plane?: PlaneId;
   origin: { x: number; y: number };
   width: number;
   height: number;
@@ -81,6 +89,9 @@ export function zoneToJson(zone: ZoneDef): ZoneJson {
   return {
     id: zone.id,
     name: zone.name,
+    // Always explicit on the way out: a re-saved legacy file gains the
+    // tag and leaves the frozen y-derivation behind forever.
+    plane: zone.plane ?? legacyPlaneOfY(zone.origin.y),
     origin: zone.origin,
     width: zone.width,
     height: zone.height,
@@ -107,6 +118,9 @@ export function zoneFromJson(json: ZoneJson): ZoneDef {
   return {
     id: json.id,
     name: json.name,
+    // Legacy files predate the split, so the frozen y-law names their
+    // plane correctly; tagged files are taken at their word.
+    plane: json.plane ?? legacyPlaneOfY(json.origin.y),
     origin: json.origin,
     width: json.width,
     height: json.height,

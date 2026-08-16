@@ -31,6 +31,12 @@ export class FogLayer {
    *  so the one scaled blit to screen has no interior edges to bleed. */
   private readonly compose: HTMLCanvasElement = document.createElement('canvas');
 
+  /** THE CROSSING: region canvases are (rx,ry)-keyed on one plane —
+   *  a plane switch drops them whole. */
+  clear(): void {
+    this.regions.clear();
+  }
+
   regionCanvas(mask: ExploredMask, rx: number, ry: number, version: number): HTMLCanvasElement | null {
     const bytes = mask.regionBytes(rx, ry);
     if (!bytes) return null;

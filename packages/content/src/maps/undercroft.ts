@@ -1,4 +1,5 @@
 import { Detail, Tile } from '@arx/shared';
+import { SURFACE_PLANE_ID, UNDERWORLD_PLANE_ID } from '../planes.js';
 import { MARKET_STALL } from '../structures/templates.js';
 import { ZoneBuilder } from './builder.js';
 import type { ZoneDef } from './types.js';
@@ -57,6 +58,8 @@ export function buildUndercroft(): ZoneDef {
     96,
     Tile.CaveWall,
   );
+  // THE WORLDS APART: the Undercroft carves the underworld plane.
+  b.onPlane(UNDERWORLD_PLANE_ID);
 
   // ---------------------------------------------------------------
   // THE LANDING — the guild stair. Dressed stone in raw rock.
@@ -64,7 +67,7 @@ export function buildUndercroft(): ZoneDef {
   b.fillRect(6, 28, 12, 9, Tile.CaveFloor);
   b.fillRect(7, 31, 9, 3, Tile.StoneFloor);
   // The way home: lands you on the Undercroft apron at Silverfall.
-  b.portal(8, 32, Tile.PortalUp, { x: -497.5, y: -323.5 });
+  b.portal(8, 32, Tile.PortalUp, { x: -497.5, y: -323.5 }, SURFACE_PLANE_ID);
   b.set(10, 30, Tile.PillarStone).set(10, 34, Tile.PillarStone);
   b.set(13, 30, Tile.PillarStone).set(13, 34, Tile.PillarStone);
   b.set(7, 30, Tile.Brazier).set(7, 34, Tile.Brazier);

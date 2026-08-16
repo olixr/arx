@@ -8,7 +8,6 @@ import {
   REGION_CELLS,
   REVEAL_RADIUS,
   b64ToU8,
-  persistRegion,
   regionKey,
   u8ToB64,
 } from './explored.js';
@@ -77,23 +76,9 @@ test('re-marking charted ground reports no dirty regions', () => {
   assert.deepEqual(again, []);
 });
 
-test('persistRegion excludes the dungeon band exactly', () => {
-  assert.ok(persistRegion(0));
-  assert.ok(persistRegion(-4));
-  assert.ok(persistRegion(31)); // 7936..8191 — dark band edge, persists
-  assert.ok(!persistRegion(32)); // 8192.. — instance space, never persists
-  assert.ok(!persistRegion(40));
-});
-
-test('dropDungeonBand clears instance rows and keeps the surface', () => {
-  const m = new ExploredMask();
-  m.markDisc(100, 100);
-  m.markDisc(8300, 8300); // inside an instance slot
-  assert.ok(m.isRevealed(8300, 8300));
-  m.dropDungeonBand();
-  assert.ok(!m.isRevealed(8300, 8300));
-  assert.ok(m.isRevealed(100, 100));
-});
+// THE WORLDS APART: persistence is the PLANE'S law now — one mask
+// charts one plane, and scratch planes simply never touch the DB.
+// The old persistRegion/dropDungeonBand y-band gates are gone.
 
 test('b64 roundtrip, all byte values, both paddings', () => {
   const full = new Uint8Array(256);

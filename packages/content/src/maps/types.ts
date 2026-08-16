@@ -1,11 +1,20 @@
 import type { Vec2 } from '@arx/shared';
+import type { PlaneId } from '../planes.js';
 
 export interface PortalDef {
   /** World-tile position of the portal tile. */
   x: number;
   y: number;
-  /** Where it drops you (world coords). */
+  /** Where it drops you (world coords, on `destPlane`). */
   dest?: Vec2;
+  /**
+   * The plane `dest` lives on. Absent = the legacy derivation
+   * (legacyPlaneOfY of dest.y — valid exactly because no portal
+   * authored before the split pointed at what is now open southern
+   * wilderness). New authoring states it explicitly; the editor's
+   * portal inspector offers the picker.
+   */
+  destPlane?: PlaneId;
   /** Instead of a fixed dest, generate a personal delve instance. */
   delve?: boolean;
 }
@@ -148,6 +157,13 @@ export interface ZoneSign {
 export interface ZoneDef {
   id: string;
   name: string;
+  /**
+   * THE WORLDS APART: which plane this zone's rectangle stamps.
+   * Absent = 'surface'. Coordinates are plane-local world tiles —
+   * a plane is a tag, not a translation, so the authored underground
+   * kept its long-standing coordinates when it moved off the surface.
+   */
+  plane?: PlaneId;
   /** World-tile coordinates of the top-left corner. */
   origin: Vec2;
   /** Size in tiles. */

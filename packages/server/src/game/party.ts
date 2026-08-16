@@ -17,7 +17,7 @@ export interface PartyHost {
   /** Deliver a message to that character's session; false if offline. */
   sendToCharacter(characterId: number, msg: S2CMessage): boolean;
   /** Live position of an online character; null when they can't be placed. */
-  positionOfCharacter(characterId: number): { x: number; y: number } | null;
+  positionOfCharacter(characterId: number): { plane: string; x: number; y: number } | null;
   /**
    * A character just stopped being party to `ofPartyWith` (left, kicked,
    * or the party dissolved) — the world evicts them from any fellow's
@@ -304,19 +304,31 @@ export class PartySystem {
    */
   tickPositions(): void {
     for (const party of this.parties.values()) {
-      const placed: Array<{ id: number; name: string; x: number; y: number }> = [];
+      const placed: Array<{ id: number; name: string; plane: string; x: number; y: number }> = [];
       for (const id of party.members) {
         if (!this.host.isOnline(id)) continue;
         const pos = this.host.positionOfCharacter(id);
         const name = this.accounts.characterName(id);
         if (!pos || !name) continue;
-        placed.push({ id, name, x: Math.round(pos.x * 10) / 10, y: Math.round(pos.y * 10) / 10 });
+        placed.push({
+          id,
+          name,
+          plane: pos.plane,
+          x: Math.round(pos.x * 10) / 10,
+          y: Math.round(pos.y * 10) / 10,
+        });
       }
       if (placed.length < 2) continue;
       for (const self of placed) {
         this.host.sendToCharacter(self.id, {
           t: 'partypos',
-          members: placed.filter((m) => m.id !== self.id).map(({ name, x, y }) => ({ name, x, y })),
+          // THE WORLDS APART: the plane rides the wire (absent =
+          // surface); the client filters pills by plane, names stay.
+          members: placed
+            .filter((m) => m.id !== self.id)
+            .map(({ name, plane, x, y }) =>
+              plane === 'surface' ? { name, x, y } : { name, x, y, plane },
+            ),
         });
       }
     }

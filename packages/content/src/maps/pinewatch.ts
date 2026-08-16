@@ -8,6 +8,7 @@ import {
   wallBannerDetail,
 } from '@arx/shared';
 import { PINEWATCH_RECT } from '../geography.js';
+import { UNDERWORLD_PLANE_ID } from '../planes.js';
 import { ZoneBuilder } from './builder.js';
 import type { ZoneDef } from './types.js';
 
@@ -790,7 +791,7 @@ export function buildPinewatch(): ZoneDef {
   // sand. A hatch, a crate, no lamp, no sign, no name.
   // ---------------------------------------------------------------
   b.fillRect(13, 42, 4, 4, Tile.Dirt);
-  b.portal(14, 43, Tile.PortalDown, { x: 217.5, y: 594.5 }); // the Pinewatch alcove
+  b.portal(14, 43, Tile.PortalDown, { x: 217.5, y: 594.5 }, UNDERWORLD_PLANE_ID); // the Pinewatch alcove
   b.set(16, 42, Tile.Crate).set(13, 45, Tile.Rock);
   b.setDetail(15, 44, Detail.Pebbles).setDetail(13, 43, Detail.Tuft);
 

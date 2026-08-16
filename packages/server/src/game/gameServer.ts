@@ -72,6 +72,7 @@ import {
   type PetInfo,
   type EntityId,
   type EntityMeta,
+  type PlaneWire,
   type InputFrame,
   type CarryStyle,
   type Look,
@@ -338,6 +339,15 @@ import {
   PLANNED_ZONE_RECTS,
   strongholdEmberFor,
   strongholdFallowFor,
+  SURFACE_PLANE_ID,
+  UNDERWORLD_PLANE_ID,
+  isRiftPlane,
+  legacyPlaneOfY,
+  portalDestPlane,
+  riftPlaneDef,
+  riftPlaneId,
+  type PlaneId,
+  type PlanePos,
 } from '@arx/content';
 import {
   collectVoicePrefetch,
@@ -381,7 +391,7 @@ import {
   findsZoneId,
   type MinorFind,
 } from '../world/finds.js';
-import { DARK_BAND_Y, groundProbeAt, shoreProbeAt } from '@arx/content';
+import { groundProbeAt, shoreProbeAt } from '@arx/content';
 import {
   COMBO_GRACE_TICKS,
   COMBO_STAGES,
@@ -560,11 +570,10 @@ import { config } from '../config.js';
 import { Session, sanitizeName } from '../net/session.js';
 import type { AccountStore, CharacterRow, PetRow } from '../db/accounts.js';
 import type { WorldSource } from '../world/worldSource.js';
-import { dungeonOrigin, generateDungeon } from '../dungeon/generate.js';
+import type { Planes } from '../world/planes.js';
+import { DUNGEON_ORIGIN, generateDungeon } from '../dungeon/generate.js';
 import {
   DUNGEON_KEY_ITEM,
-  DUNGEON_MIN_Y,
-  UNDERGROUND_Y,
   EXPLORED_PUSH_BATCH,
   ExploredMask,
   RARITY_TIERS,
@@ -579,7 +588,6 @@ import {
   keyUsesLeft,
   mintKeyPower,
   sanitizeKeyLabel,
-  persistRegion,
   u8ToB64,
   type DangerAnchor,
   type DiscoveryWire,
@@ -629,6 +637,13 @@ interface PositionComp {
   x: number;
   y: number;
   dir: number;
+  /**
+   * THE WORLDS APART: the plane (x, y) is measured on. Every world
+   * query about this body goes through its plane's WorldSource, and
+   * no distance, interest, or containment test may ever span two
+   * planes — coordinates across planes are meaningless.
+   */
+  plane: PlaneId;
 }
 
 interface HealthComp {
@@ -1271,6 +1286,7 @@ interface PetComp {
 
 /** A telegraphed blast waiting on its fuse. */
 interface PendingBlast {
+  plane: PlaneId;
   x: number;
   y: number;
   radius: number;
@@ -1303,6 +1319,7 @@ interface PendingBlast {
 
 /** A lingering hazard zone pulsing damage while it lives. */
 interface ActiveField {
+  plane: PlaneId;
   x: number;
   y: number;
   radius: number;
@@ -1327,6 +1344,8 @@ interface ActiveField {
 
 interface SpawnState {
   npc: string;
+  /** THE WORLDS APART: the plane this seat spawns onto. */
+  plane: PlaneId;
   x: number;
   y: number;
   radius: number;
@@ -1365,6 +1384,8 @@ interface SpawnState {
 /** One placed actor's post — exact spot, no scatter, no count. */
 interface ActorSpawnState {
   actor: string;
+  /** THE WORLDS APART: the plane this post stands on. */
+  plane: PlaneId;
   x: number;
   y: number;
   dir?: number;
@@ -1455,22 +1476,24 @@ interface DungeonInstance {
   zoneId: string;
   spawnIndexes: number[];
   slot: number;
+  /**
+   * THE WORLDS APART: the rift plane this run lives on. Membership is
+   * plane equality now — the old x-band containment lanes are gone.
+   */
+  plane: PlaneId;
   entry: { x: number; y: number };
   seed: number;
   tier: string;
   /** Recommended combat level — dungeon chests roll at least this. */
   power: number;
-  /** Zone x-extent, for locating which instance owns a tile. */
-  x0: number;
-  x1: number;
   /** The keyholder. The run lives and dies with them. */
   ownerId: number;
   /**
    * Where the owner stood at the gate they turned the key in — the
-   * surface point their pack spills to if they fall inside (guests
-   * have the same promise via the guests map).
+   * point (plane included) their pack spills to if they fall inside
+   * (guests have the same promise via the guests map).
    */
-  ownerReturn: { x: number; y: number };
+  ownerReturn: PlanePos;
   /** Spec identity the entry banner needs when a party member joins. */
   name: string;
   sigil: string;
@@ -1480,7 +1503,7 @@ interface DungeonInstance {
    * when they stepped through, so every exit hands them back to their
    * own gate, not the owner's.
    */
-  guests: Map<number, { x: number; y: number }>;
+  guests: Map<number, PlanePos>;
   /**
    * THE COURT WARDS THE PRIZE: global spawnPoints index of the
    * champion. The boss chest's ward reads his life through it —
@@ -1780,18 +1803,21 @@ interface PlayerComp {
   /** The ward-the-hearth dial: true = the covetous dice skip them. */
   hearthWarded: boolean;
   /**
-   * THE CHART: this character's fog-of-war mask. The server marks the
-   * same deterministic reveal disc the client draws, so the two never
-   * argue; only the login snapshot ever travels. Guests chart in
+   * THE CHART: this character's fog-of-war masks, ONE PER PLANE
+   * (THE WORLDS APART — coordinates across planes legitimately
+   * overlap, so a shared mask would smear worlds together). The
+   * server marks the same deterministic reveal disc the client
+   * draws, so the two never argue; only the login snapshot ever
+   * travels. Scratch planes never enter this map. Guests chart in
    * memory only.
    */
-  explored: ExploredMask;
-  /** Region keys touched since the last periodic flush. */
+  explored: Map<PlaneId, ExploredMask>;
+  /** Region keys ("plane|rx,ry") touched since the last flush. */
   exploredDirty: Set<string>;
   /** The place ledger: everything this character has ever discovered. */
   discoveries: Map<string, DiscoveryWire>;
   /** The one active waypoint; pure navigation state. */
-  waypoint: { x: number; y: number } | null;
+  waypoint: { x: number; y: number; plane: PlaneId } | null;
   /**
    * THE QUEST LEDGER: every quest this character has touched, by quest
    * id. Persisted whole at every mutation site (accept, credit, stage
@@ -2179,7 +2205,10 @@ export class GameServer {
    * drops it points at are memory too — consistent by construction).
    * Cleared on arrival, expiry, or the next death overwriting it.
    */
-  private readonly deathMarks = new Map<number, { x: number; y: number; until: number }>();
+  private readonly deathMarks = new Map<
+    number,
+    { plane: PlaneId; x: number; y: number; until: number }
+  >();
 
   /**
    * ONE STONE PER SOUL: each character's standing gravestone, so a
@@ -2262,8 +2291,8 @@ export class GameServer {
    * spawn (config.startZoneId). Death respawn and rescue keep using
    * world.spawn: only a FIRST arrival ever starts here.
    */
-  private get startSpawn(): Vec2 {
-    return this.world.spawnOf(config.startZoneId) ?? this.world.spawn;
+  private get startSpawn(): PlanePos {
+    return this.planes.spawnOf(config.startZoneId) ?? this.planes.worldSpawn;
   }
 
   /**
@@ -2342,6 +2371,8 @@ export class GameServer {
   /** Depleted nodes waiting to come back. */
   private readonly respawnQueue: Array<{
     at: number;
+    /** THE WORLDS APART: the plane whose ground restores. */
+    plane: PlaneId;
     tx: number;
     ty: number;
     tile: Tile;
@@ -2556,7 +2587,8 @@ export class GameServer {
   }
 
   private zoneOwnsTownSpawn(key: string): boolean {
-    for (const z of this.world.zoneDefs) {
+    // Town rings are a surface institution.
+    for (const z of this.surface.zoneDefs) {
       for (const sp of z.spawns ?? []) {
         if (GameServer.townSpawnKey(sp) === key) return true;
       }
@@ -2564,15 +2596,38 @@ export class GameServer {
     return false;
   }
 
+  /**
+   * THE WORLDS APART accessors. Every world query names its plane:
+   * surface-only systems (POIs, strongholds, frontier, wild spawns,
+   * growth, territory) read `this.surface`; anything about a BODY
+   * reads the body's own plane. There is deliberately no bare
+   * `this.world` any more — the compiler holds the line.
+   */
+  get surface(): WorldSource {
+    return this.planes.surface;
+  }
+
+  worldOf(plane: PlaneId): WorldSource {
+    return this.planes.require(plane);
+  }
+
+  /** The world under an entity's feet (throws on a bodiless eid —
+   *  querying ground for a body that has no position is a bug). */
+  worldAt(eid: EntityId): WorldSource {
+    const pos = this.positions.get(eid);
+    if (!pos) throw new Error(`worldAt: entity ${eid} has no position`);
+    return this.planes.require(pos.plane);
+  }
+
   constructor(
-    // Public: the dev maps API reads the live zone list off it.
-    readonly world: WorldSource,
+    // Public: the dev maps API reads the live zone lists off it.
+    readonly planes: Planes,
     private readonly accounts: AccountStore,
   ) {
     for (const s of TOWN_SPAWNS) {
       const key = GameServer.townSpawnKey(s);
       if (this.zoneOwnsTownSpawn(key)) continue; // adopted — the file rules
-      this.townRing.push({ key, indexes: this.registerSpawns([s]) });
+      this.townRing.push({ key, indexes: this.registerSpawns([s], SURFACE_PLANE_ID) });
     }
     this.social = new SocialSystem(accounts, {
       isOnline: (characterId) => this.characterEids.has(characterId),
@@ -2580,7 +2635,7 @@ export class GameServer {
         const eid = this.characterEids.get(characterId);
         if (eid === undefined) return null;
         const pos = this.positions.get(eid);
-        return pos ? this.zoneNameAt(pos.x, pos.y) : null;
+        return pos ? this.zoneNameAt(pos.plane, pos.x, pos.y) : null;
       },
       sendToCharacter: (characterId, msg) => {
         const eid = this.characterEids.get(characterId);
@@ -2597,7 +2652,7 @@ export class GameServer {
         const eid = this.characterEids.get(characterId);
         if (eid === undefined) return null;
         const pos = this.positions.get(eid);
-        return pos ? this.zoneNameAt(pos.x, pos.y) : null;
+        return pos ? this.zoneNameAt(pos.plane, pos.x, pos.y) : null;
       },
       sendToCharacter: (characterId, msg) => {
         const eid = this.characterEids.get(characterId);
@@ -2611,7 +2666,7 @@ export class GameServer {
         const eid = this.characterEids.get(characterId);
         if (eid === undefined) return null;
         const pos = this.positions.get(eid);
-        return pos ? { x: pos.x, y: pos.y } : null;
+        return pos ? { plane: pos.plane, x: pos.x, y: pos.y } : null;
       },
       onMemberSevered: (characterId) => this.evictFromGuestDungeon(characterId),
     });
@@ -2620,12 +2675,16 @@ export class GameServer {
     // before the door can be read; guarded by doorInfo after that, so
     // a redrawn map quietly retires a stale entry.
     for (const l of AUTHORED_LOCKS) {
-      this.world.ensure(Math.floor(l.x / CHUNK_SIZE), Math.floor(l.y / CHUNK_SIZE));
-      const g = this.world.groundAt(l.x, l.y);
+      // Locks were authored before the split — the frozen law names
+      // their plane exactly.
+      const lockPlane = legacyPlaneOfY(l.y);
+      const world = this.worldOf(lockPlane);
+      world.ensure(Math.floor(l.x / CHUNK_SIZE), Math.floor(l.y / CHUNK_SIZE));
+      const g = world.groundAt(l.x, l.y);
       const info = g === undefined ? null : doorInfo(g);
       if (!info) continue;
-      const unit = this.doorUnit(l.x, l.y, info);
-      this.doorLocks.add(`${unit.ax},${unit.ay}`);
+      const unit = this.doorUnit(lockPlane, l.x, l.y, info);
+      this.doorLocks.add(`${lockPlane}|${unit.ax},${unit.ay}`);
     }
   }
 
@@ -2640,8 +2699,10 @@ export class GameServer {
    * instance — registers a ZoneDef rectangle, so one containment scan
    * covers town streets and delve halls alike; everywhere else is wilds.
    */
-  private zoneNameAt(x: number, y: number): string {
-    for (const z of this.world.zoneDefs) {
+  private zoneNameAt(plane: PlaneId, x: number, y: number): string {
+    const world = this.planes.get(plane);
+    if (!world) return 'The Wilds';
+    for (const z of world.zoneDefs) {
       if (x >= z.origin.x && x < z.origin.x + z.width && y >= z.origin.y && y < z.origin.y + z.height) {
         return z.name;
       }
@@ -2690,7 +2751,8 @@ export class GameServer {
       const stage = stageForElapsed(def, this.cropElapsed(state, now));
       state.lastStage = stage;
       this.crops.set(`${row.tx},${row.ty}`, state);
-      this.world.registerCropTile(row.tx, row.ty, tileForStage(def, stage));
+      // THE TENDED EARTH is a surface craft — nothing grows without sky.
+      this.surface.registerCropTile(row.tx, row.ty, tileForStage(def, stage));
     }
   }
 
@@ -2724,14 +2786,14 @@ export class GameServer {
    */
   private readonly playerSigns = new Map<
     string,
-    { tx: number; ty: number; title: string; lines: string[]; owner: number }
+    { plane: PlaneId; tx: number; ty: number; title: string; lines: string[]; owner: number }
   >();
 
   /** Load persisted player signs at boot. */
   loadSigns(
-    rows: Array<{ tx: number; ty: number; title: string; lines: string[]; owner: number }>,
+    rows: Array<{ plane: PlaneId; tx: number; ty: number; title: string; lines: string[]; owner: number }>,
   ): void {
-    for (const row of rows) this.playerSigns.set(`${row.tx},${row.ty}`, row);
+    for (const row of rows) this.playerSigns.set(`${row.plane}|${row.tx},${row.ty}`, row);
   }
 
   /**
@@ -2740,8 +2802,13 @@ export class GameServer {
    * authored copy on the same tile (they built over it), and `mine` is
    * decided here, never by the client.
    */
-  private signInfoAt(tx: number, ty: number, forCharacterId: number): SignInfo | null {
-    const own = this.playerSigns.get(`${tx},${ty}`);
+  private signInfoAt(
+    plane: PlaneId,
+    tx: number,
+    ty: number,
+    forCharacterId: number,
+  ): SignInfo | null {
+    const own = this.playerSigns.get(`${plane}|${tx},${ty}`);
     if (own) {
       const info: SignInfo = { tx, ty, title: own.title, lines: own.lines };
       if (own.owner === forCharacterId && forCharacterId > 0) info.mine = true;
@@ -2749,7 +2816,7 @@ export class GameServer {
       if (by) info.by = by;
       return info;
     }
-    const authored = this.world.signAt(tx, ty);
+    const authored = this.planes.get(plane)?.signAt(tx, ty);
     if (!authored) return null;
     return { tx, ty, title: authored.title, lines: authored.lines ?? [] };
   }
@@ -2761,11 +2828,15 @@ export class GameServer {
    * owner needs the record to find the edit affordance.
    */
   private sendChunkSigns(session: Session, cx: number, cy: number): void {
+    const plane = this.sessionPlane(session);
+    if (plane === null) return;
     const charId = this.players.get(session.playerEid!)?.characterId ?? -1;
     const signs: SignInfo[] = [];
-    for (const authored of this.world.signsInChunk(cx, cy)) {
+    const world = this.planes.get(plane);
+    if (!world) return;
+    for (const authored of world.signsInChunk(cx, cy)) {
       // A player sign on the same tile is emitted by the sweep below.
-      if (this.playerSigns.has(`${authored.x},${authored.y}`)) continue;
+      if (this.playerSigns.has(`${plane}|${authored.x},${authored.y}`)) continue;
       signs.push({
         tx: authored.x,
         ty: authored.y,
@@ -2776,9 +2847,10 @@ export class GameServer {
     const x0 = cx * CHUNK_SIZE;
     const y0 = cy * CHUNK_SIZE;
     for (const own of this.playerSigns.values()) {
+      if (own.plane !== plane) continue;
       if (own.tx < x0 || own.tx >= x0 + CHUNK_SIZE) continue;
       if (own.ty < y0 || own.ty >= y0 + CHUNK_SIZE) continue;
-      const info = this.signInfoAt(own.tx, own.ty, charId);
+      const info = this.signInfoAt(plane, own.tx, own.ty, charId);
       if (info) signs.push(info);
     }
     if (signs.length > 0) session.sendJson({ t: 'signs', signs });
@@ -2788,16 +2860,17 @@ export class GameServer {
    * Tell everyone who can see this tile what it now says. Each watcher
    * gets their OWN record because `mine` differs per reader.
    */
-  private broadcastSign(tx: number, ty: number, gone = false): void {
+  private broadcastSign(plane: PlaneId, tx: number, ty: number, gone = false): void {
     const key = chunkKey(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
     for (const [eid, player] of this.players) {
       const session = player.session;
       if (!session || !session.knownChunks.has(key)) continue;
+      if (this.sessionPlane(session) !== plane) continue;
       if (gone) {
         session.sendJson({ t: 'signs', signs: [{ tx, ty, title: '', lines: [], gone: true }] });
         continue;
       }
-      const info = this.signInfoAt(tx, ty, this.players.get(eid)?.characterId ?? -1);
+      const info = this.signInfoAt(plane, tx, ty, this.players.get(eid)?.characterId ?? -1);
       if (info) session.sendJson({ t: 'signs', signs: [info] });
     }
   }
@@ -2841,7 +2914,7 @@ export class GameServer {
       sys('Guests cannot write on signs — make an account!');
       return;
     }
-    const built = this.world.builtAt(tx, ty);
+    const built = this.worldOf(pos.plane).builtAt(tx, ty);
     if (!built || !isSignTile(built.tile)) {
       sys('There is nothing here to write on.');
       return;
@@ -2851,15 +2924,16 @@ export class GameServer {
       return;
     }
     const text = sanitizeSignText({ title, lines });
-    this.playerSigns.set(`${tx},${ty}`, {
+    this.playerSigns.set(`${pos.plane}|${tx},${ty}`, {
+      plane: pos.plane,
       tx,
       ty,
       title: text.title,
       lines: text.lines,
       owner: player.characterId,
     });
-    this.accounts.saveSign(tx, ty, text.title, text.lines, player.characterId);
-    this.broadcastSign(tx, ty);
+    this.accounts.saveSign(pos.plane, tx, ty, text.title, text.lines, player.characterId);
+    this.broadcastSign(pos.plane, tx, ty);
   }
 
   /**
@@ -2907,6 +2981,7 @@ export class GameServer {
         hours?: { from: number; to: number };
       };
     }>,
+    plane: PlaneId,
     zoneId?: string,
   ): number[] {
     const indexes: number[] = [];
@@ -2923,6 +2998,7 @@ export class GameServer {
         const r = spawn.radius * 0.6;
         const rec = {
           npc: spawn.npc,
+          plane,
           x: spawn.x + Math.cos(angle) * r,
           y: spawn.y + Math.sin(angle) * r,
           radius: spawn.radius,
@@ -2973,7 +3049,11 @@ export class GameServer {
   }
 
   /** Register placed actors — exact posts, one body each. */
-  registerActorSpawns(spawns: ReadonlyArray<ZoneActorSpawn>, zoneId?: string): void {
+  registerActorSpawns(
+    spawns: ReadonlyArray<ZoneActorSpawn>,
+    plane: PlaneId,
+    zoneId?: string,
+  ): void {
     for (const spawn of spawns) {
       if (!this.actorDefs.has(spawn.actor)) {
         console.warn(`[npc] placement references unknown actor '${spawn.actor}' — skipped`);
@@ -2986,6 +3066,7 @@ export class GameServer {
       }
       const rec = {
         actor: spawn.actor,
+        plane,
         x: spawn.x,
         y: spawn.y,
         dir: spawn.dir,
@@ -3030,7 +3111,11 @@ export class GameServer {
 
   /** Live zone ids — the 'zone' bank owner axis validates against these. */
   zoneIds(): ReadonlySet<string> {
-    return new Set([...this.world.zoneDefs].map((z) => z.id));
+    const ids = new Set<string>();
+    for (const world of this.planes.all()) {
+      for (const z of world.zoneDefs) ids.add(z.id);
+    }
+    return ids;
   }
 
   registerDialogues(defs: Iterable<DialogueDef>): void {
@@ -3111,7 +3196,7 @@ export class GameServer {
     let next = performance.now();
     const loop = () => {
       next += TICK_MS;
-      const gensBefore = this.world.generatedCount;
+      const gensBefore = this.planes.generatedCount;
       const t0 = performance.now();
       this.tick();
       // THE TICK NAMES ITS DEBT: chunk generation runs synchronously
@@ -3120,7 +3205,7 @@ export class GameServer {
       // leading-edge cost; a burst big enough to threaten the budget
       // gets logged with the tick time so a stall is attributable
       // instead of mysterious.
-      const gens = this.world.generatedCount - gensBefore;
+      const gens = this.planes.generatedCount - gensBefore;
       if (gens >= 20) {
         const ms = (performance.now() - t0).toFixed(1);
         console.warn(`[world] ${gens} chunks generated in one tick (${ms}ms tick)`);
@@ -3199,6 +3284,7 @@ export class GameServer {
         id: this.nextGuestId--,
         account_id: 0,
         name,
+        plane: spawn.plane,
         x: spawn.x,
         y: spawn.y,
         hp: 10,
@@ -3207,6 +3293,7 @@ export class GameServer {
         hearth_at: 0,
         waypoint_x: null,
         waypoint_y: null,
+        waypoint_plane: null,
         raid_calm_until: 0,
         hearth_warded: 0,
       };
@@ -3387,17 +3474,22 @@ export class GameServer {
       if (character.id > 0) this.accounts.upsertKeyLore(character.id, lore);
     }
 
-    // Rescue characters saved somewhere that no longer exists — a delve
-    // instance that died with the server, or any solid tile.
+    // Rescue characters saved somewhere that no longer exists — a rift
+    // plane that died with the server (or was never this uptime's), a
+    // plane that doesn't stand, or any solid tile.
+    let spawnPlane: PlaneId = character.plane;
     let spawnX = character.x;
     let spawnY = character.y;
+    const savedWorld = this.planes.get(spawnPlane);
     if (
-      spawnY >= 8192 ||
-      this.world.isSolid(Math.floor(spawnX), Math.floor(spawnY))
+      isRiftPlane(spawnPlane) ||
+      !savedWorld ||
+      savedWorld.isSolid(Math.floor(spawnX), Math.floor(spawnY))
     ) {
-      const safe = this.world.spawn;
-      spawnX = safe.x;
-      spawnY = safe.y;
+      const home = this.planes.worldSpawn;
+      spawnPlane = home.plane;
+      spawnX = home.x;
+      spawnY = home.y;
     }
 
     // The loads above awaited — re-check the double-login guard in case
@@ -3414,11 +3506,13 @@ export class GameServer {
 
     // The chart and the place ledger — loaded whole before the body
     // stands (guests chart in memory only).
-    const explored = new ExploredMask();
+    const explored = new Map<PlaneId, ExploredMask>();
     const discoveries = new Map<string, DiscoveryWire>();
     if (character.id > 0) {
       for (const row of await this.accounts.loadExplored(character.id)) {
-        explored.loadRegion(row.rx, row.ry, row.bits);
+        let mask = explored.get(row.plane);
+        if (!mask) explored.set(row.plane, (mask = new ExploredMask()));
+        mask.loadRegion(row.rx, row.ry, row.bits);
       }
       for (const row of await this.accounts.loadDiscoveries(character.id)) {
         const d: DiscoveryWire = {
@@ -3430,6 +3524,7 @@ export class GameServer {
           tier: row.tier ?? undefined,
           faded: row.faded ? true : undefined,
         };
+        if (row.plane !== SURFACE_PLANE_ID) d.plane = row.plane;
         // Belt-and-braces: the frontier may have turned while this
         // character slept through the live fade push. A 'poi:' marker
         // whose cell no longer holds its epoch's site reads as rumor.
@@ -3477,7 +3572,7 @@ export class GameServer {
 
     const eid = this.ecs.create();
     this.kinds.set(eid, EntityKind.Player);
-    this.positions.set(eid, { x: spawnX, y: spawnY, dir: 0 });
+    this.positions.set(eid, { x: spawnX, y: spawnY, dir: 0, plane: spawnPlane });
     this.poses.set(eid, PoseState.Idle);
     this.healths.set(eid, { hp: Math.min(character.hp, maxHp), maxHp });
     const grips =
@@ -3580,7 +3675,11 @@ export class GameServer {
       discoveries,
       waypoint:
         character.waypoint_x !== null && character.waypoint_y !== null
-          ? { x: character.waypoint_x, y: character.waypoint_y }
+          ? {
+              x: character.waypoint_x,
+              y: character.waypoint_y,
+              plane: character.waypoint_plane ?? SURFACE_PLANE_ID,
+            }
           : null,
       quests,
       questAvailSig: '',
@@ -3686,6 +3785,9 @@ export class GameServer {
       havens: this.havenWire(),
       anchors: this.anchorWire(),
       waypoint: player.waypoint ?? undefined,
+      // THE WORLDS APART: the plane the body wakes on — the client
+      // sets its whole world law from this before the first chunk.
+      plane: this.planeWireOf(this.positions.must(eid).plane),
       // The plan is editable data — the map must chart the live truth,
       // never the client's bundled copy.
       geo: geographySnapshot(),
@@ -3727,28 +3829,31 @@ export class GameServer {
       if (mark) {
         const remainMs = mark.until - Date.now();
         if (remainMs > 0) {
-          session.sendJson({ t: 'deathmark', mark: { x: mark.x, y: mark.y, remainMs } });
+          session.sendJson({
+            t: 'deathmark',
+            mark: { x: mark.x, y: mark.y, remainMs, plane: mark.plane },
+          });
         } else {
           this.deathMarks.delete(player.characterId);
         }
       }
     }
     // The chart snapshot — after this, fog only ever clears locally on
-    // both sides (the deterministic-reveal law).
-    {
+    // both sides (the deterministic-reveal law). One batch stream per
+    // plane: the client files each region into that plane's own mask.
+    for (const [maskPlane, mask] of player.explored) {
       let batch: [number, number, string][] = [];
-      for (const key of player.explored.regionKeys()) {
+      for (const key of mask.regionKeys()) {
         const [rx, ry] = key.split(',').map(Number) as [number, number];
-        if (!persistRegion(ry)) continue;
-        const bytes = player.explored.regionBytes(rx, ry);
+        const bytes = mask.regionBytes(rx, ry);
         if (!bytes) continue;
         batch.push([rx, ry, u8ToB64(bytes)]);
         if (batch.length >= EXPLORED_PUSH_BATCH) {
-          session.sendJson({ t: 'explored', regions: batch });
+          session.sendJson({ t: 'explored', plane: maskPlane, regions: batch });
           batch = [];
         }
       }
-      if (batch.length > 0) session.sendJson({ t: 'explored', regions: batch });
+      if (batch.length > 0) session.sendJson({ t: 'explored', plane: maskPlane, regions: batch });
     }
     // The ledger travels with each poi: marker's LIVE stage merged in —
     // stage is world truth, refreshed at bind, never stored per character.
@@ -3810,10 +3915,14 @@ export class GameServer {
     const dungeon = this.dungeons.get(player.characterId);
     if (dungeon) {
       const pos = this.positions.must(eid);
-      if (pos.y >= 8192) {
-        const spawn = this.world.spawn;
-        pos.x = spawn.x;
-        pos.y = spawn.y;
+      if (isRiftPlane(pos.plane)) {
+        // The session is gone — no S2CPlane ceremony, just move the
+        // body off the plane before it is dropped from under it.
+        const back = dungeon.ownerReturn;
+        pos.plane = back.plane;
+        pos.x = back.x;
+        pos.y = back.y;
+        this.updateChunkMembership(eid);
       }
       this.teardownDungeon(player.characterId);
     }
@@ -3824,9 +3933,11 @@ export class GameServer {
       if (back === undefined) continue;
       inst.guests.delete(player.characterId);
       const pos = this.positions.get(eid);
-      if (pos && pos.y >= 8192 && pos.x >= inst.x0 && pos.x < inst.x1) {
+      if (pos && pos.plane === inst.plane) {
+        pos.plane = back.plane;
         pos.x = back.x;
         pos.y = back.y;
+        this.updateChunkMembership(eid);
       }
     }
     this.savePlayer(eid);
@@ -3971,7 +4082,7 @@ export class GameServer {
     if (!player || player.characterId < 0) return; // guests aren't saved
     const pos = this.positions.must(eid);
     const health = this.healths.must(eid);
-    this.accounts.saveCharacter(player.characterId, pos.x, pos.y, health.hp);
+    this.accounts.saveCharacter(player.characterId, pos.plane, pos.x, pos.y, health.hp);
     this.accounts.saveSkills(player.characterId, player.skills as Record<string, number>);
     this.accounts.saveInventory(player.characterId, player.inventory);
     this.accounts.saveEquipment(player.characterId, player.equipment);
@@ -3986,14 +4097,15 @@ export class GameServer {
       this.accounts.saveKeyRing(player.characterId, player.keyRing.map((k) => k.roll));
       player.keyRingDirty = false;
     }
-    // Dirty-region chart flush (the bankDirty pattern). Instance-band
-    // rows never reach the DB — a dungeon is re-charted every run.
+    // Dirty-region chart flush (the bankDirty pattern). Scratch-plane
+    // rows never exist here — tickReveal only marks persistent planes.
     if (player.exploredDirty.size > 0) {
       for (const key of player.exploredDirty) {
-        const [rx, ry] = key.split(',').map(Number) as [number, number];
-        if (!persistRegion(ry)) continue;
-        const bytes = player.explored.regionBytes(rx, ry);
-        if (bytes) this.accounts.saveExploredRegion(player.characterId, rx, ry, bytes);
+        const bar = key.indexOf('|');
+        const maskPlane = key.slice(0, bar);
+        const [rx, ry] = key.slice(bar + 1).split(',').map(Number) as [number, number];
+        const bytes = player.explored.get(maskPlane)?.regionBytes(rx, ry);
+        if (bytes) this.accounts.saveExploredRegion(player.characterId, maskPlane, rx, ry, bytes);
       }
       player.exploredDirty.clear();
     }
@@ -4011,9 +4123,9 @@ export class GameServer {
 
   /**
    * THE CHART marches with the walker: every SERVER_REVEAL_TICKS each
-   * online body clears the shared deterministic disc around itself.
-   * Instance space (y >= DUNGEON_MIN_Y) is skipped wholesale — the
-   * client keeps its own session-only dungeon chart.
+   * online body clears the shared deterministic disc around itself —
+   * into the mask of the plane it walks. Scratch planes are skipped
+   * wholesale: the client keeps its own session-only dungeon chart.
    */
   private tickReveal(): void {
     for (const session of this.sessions) {
@@ -4021,9 +4133,12 @@ export class GameServer {
       if (eid === null) continue;
       const player = this.players.get(eid);
       const pos = this.positions.get(eid);
-      if (!player || !pos || pos.y >= DUNGEON_MIN_Y) continue;
-      for (const key of player.explored.markDisc(pos.x, pos.y)) {
-        player.exploredDirty.add(key);
+      if (!player || !pos) continue;
+      if (!(this.planes.defOf(pos.plane)?.persistent ?? false)) continue;
+      let mask = player.explored.get(pos.plane);
+      if (!mask) player.explored.set(pos.plane, (mask = new ExploredMask()));
+      for (const key of mask.markDisc(pos.x, pos.y)) {
+        player.exploredDirty.add(`${pos.plane}|${key}`);
       }
     }
   }
@@ -4038,7 +4153,7 @@ export class GameServer {
   private checkDiscoveries(eid: EntityId): void {
     const player = this.players.get(eid);
     const pos = this.positions.get(eid);
-    if (!player || !pos || pos.y >= DUNGEON_MIN_Y) return;
+    if (!player || !pos || isRiftPlane(pos.plane)) return;
     const cellX = poiCellOf(pos.x);
     const cellY = poiCellOf(pos.y);
     const sites: { site: PoiSite; epoch: number }[] = [];
@@ -4049,9 +4164,10 @@ export class GameServer {
       }
     }
     const found = findDiscoveries(
+      pos.plane,
       pos.x,
       pos.y,
-      this.world.zoneDefs,
+      this.worldOf(pos.plane).zoneDefs,
       sites,
       (defId) => {
         const def = POI_DEFS.get(defId);
@@ -4079,7 +4195,9 @@ export class GameServer {
       if (stage > 0) d.stage = stage;
     }
     player.discoveries.set(d.id, d);
-    if (player.characterId > 0) this.accounts.addDiscovery(player.characterId, d, epoch);
+    if (player.characterId > 0) {
+      this.accounts.addDiscovery(player.characterId, { ...d, plane: d.plane ?? SURFACE_PLANE_ID }, epoch);
+    }
     player.session?.sendJson({ t: 'discovery', d });
     // One choke point catches every "chart this place" quest ask.
     this.creditQuestEvent(player, 'discover', d.id);
@@ -4167,31 +4285,35 @@ export class GameServer {
     const dy = ty + 0.5 - pos.y;
     if (dx * dx + dy * dy > 2.2 * 2.2) return; // out of reach — silent
 
-    this.world.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
-    const ground = this.world.groundAt(tx, ty);
+    const world = this.worldOf(pos.plane);
+    world.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+    const ground = world.groundAt(tx, ty);
 
     // Portals teleport; Riftgates open the key panel instead.
     if (ground === Tile.PortalDown || ground === Tile.PortalUp) {
-      const portal = this.world.portalAt(tx, ty);
+      const portal = world.portalAt(tx, ty);
       if (!portal) return;
       if (portal.delve) {
         this.openRiftgate(eid, player);
       } else if (portal.dest) {
-        if (ty >= 8192) {
+        if (isRiftPlane(pos.plane)) {
           // A dungeon's exit. The run is the OWNER's: their step out
           // ends it (teardown evacuates any guests); a guest stepping
           // out simply goes home to their own gate, run untouched.
-          const host = this.dungeonAt(tx, ty);
+          const host = this.dungeonOnPlane(pos.plane);
           if (host && host.ownerId !== player.characterId) {
             const back = host.guests.get(player.characterId);
             host.guests.delete(player.characterId);
-            this.teleport(eid, back?.x ?? portal.dest.x, back?.y ?? portal.dest.y);
+            if (back) this.transferPlane(eid, back.plane, back.x, back.y);
+            else this.transferPlane(eid, portalDestPlane(portal), portal.dest.x, portal.dest.y);
           } else {
-            this.teleport(eid, portal.dest.x, portal.dest.y);
+            this.transferPlane(eid, portalDestPlane(portal), portal.dest.x, portal.dest.y);
             this.teardownDungeon(player.characterId);
           }
         } else {
-          this.teleport(eid, portal.dest.x, portal.dest.y);
+          // THE CROSSING: same-plane portals stay a bare step; a
+          // cross-plane door runs the full ceremony.
+          this.transferPlane(eid, portalDestPlane(portal), portal.dest.x, portal.dest.y);
         }
       }
       return;
@@ -4221,7 +4343,7 @@ export class GameServer {
     // stands in the way), shut swings open (unless the lock holds).
     const door = ground === undefined ? null : doorInfo(ground);
     if (door) {
-      this.interactDoor(eid, tx, ty, door, sys);
+      this.interactDoor(eid, pos.plane, tx, ty, door, sys);
       return;
     }
 
@@ -4229,7 +4351,7 @@ export class GameServer {
     // with the chunk), so the server only answers the case the client
     // cannot decide alone — a board with nothing written on it.
     if (isSignTile(ground)) {
-      const info = this.signInfoAt(tx, ty, player.characterId);
+      const info = this.signInfoAt(pos.plane, tx, ty, player.characterId);
       if (!info || (info.title === '' && info.lines.length === 0)) {
         sys(info?.mine ? 'The board is blank — write something on it.' : 'The board is blank.');
       }
@@ -4318,7 +4440,7 @@ export class GameServer {
       return;
     }
 
-    const ticks = this.gatherTicks(player, node, ty);
+    const ticks = this.gatherTicks(player, node, pos.plane);
     player.action = { kind: 'gather', tx, ty, node, ticksLeft: ticks };
     this.poses.set(eid, PoseState.Gather);
     player.session.sendJson({ t: 'action', state: 'start', ticks });
@@ -4360,10 +4482,12 @@ export class GameServer {
       return;
     }
     const law = GameServer.CHEST_LAWS[chest.kind];
+    const pos = this.positions.get(eid);
+    if (!pos) return;
     // THE WARD: a POI chest whose def wards it stays shut while any
     // garrison body of its site stands — the champion's cache cannot
     // be sneaked out from under him.
-    const over = this.poiChests.get(`${tx},${ty}`);
+    const over = this.poiChests.get(`${pos.plane}|${tx},${ty}`);
     const wardStands = over?.warded
       ? over.cell.startsWith('sh:')
         ? this.strongholdCacheWarded(over.cell.slice(3))
@@ -4400,8 +4524,6 @@ export class GameServer {
         'good',
       );
     }
-    const pos = this.positions.get(eid);
-    if (!pos) return;
     // The take lands between chest and opener — always reachable, and
     // the merge/label pipeline handles the pile from there.
     const cx = tx + 0.5;
@@ -4418,11 +4540,11 @@ export class GameServer {
     // opened in tier-4 land pays tier-4 wages (level floor + rarity
     // bonus), one field, many readers. The underground keeps its own
     // ladders.
-    const tier = ty < DARK_BAND_Y ? this.liveDangerTier(tx, ty) : 0;
+    const tier = pos.plane === SURFACE_PLANE_ID ? this.liveDangerTier(tx, ty) : 0;
     const dlaw = dangerLaw(tier);
     const chestLevel = Math.max(
       law.level,
-      this.dungeonPowerAt(tx, ty) ?? 0,
+      this.dungeonPowerOn(pos.plane) ?? 0,
       tier > 0 ? dlaw.npcLevel[1] : 0,
     );
     const table = over?.table ?? law.table;
@@ -4442,6 +4564,7 @@ export class GameServer {
     })) {
       if (dgRun && drop.item === DUNGEON_KEY_ITEM) continue;
       this.placeDrop(
+        pos.plane,
         drop.item,
         drop.qty,
         cx + dx * 0.95 + (Math.random() - 0.5) * 0.7,
@@ -4460,7 +4583,7 @@ export class GameServer {
       for (const [peid, p] of this.players) {
         if (p.characterId !== dgRun.ownerId && !dgRun.guests.has(p.characterId)) continue;
         const pp = this.positions.get(peid);
-        if (!pp || pp.y < 8192 || pp.x < dgRun.x0 || pp.x >= dgRun.x1) continue;
+        if (!pp || pp.plane !== dgRun.plane) continue;
         if (Math.random() >= 0.6) continue;
         const seed = Math.floor(Math.random() * 0x100000000) >>> 0;
         this.addKeyToRing(p, {
@@ -4477,13 +4600,14 @@ export class GameServer {
         });
       }
     }
-    this.setWorldTile(tx, ty, openChestTile(chest.kind));
+    this.setWorldTile(pos.plane, tx, ty, openChestTile(chest.kind));
     // THE CLEARED HALL STAYS CLEARED: a delve chest never re-arms
     // while the instance lives — the re-cut on the next key turn is
     // the reset. Surface chests keep the reclose clock.
-    if (ty < DUNGEON_MIN_Y) {
+    if (!isRiftPlane(pos.plane)) {
       this.respawnQueue.push({
         at: now + law.recloseSec * 1000,
+        plane: pos.plane,
         tx,
         ty,
         tile: closedChestTile(chest.kind),
@@ -4493,7 +4617,7 @@ export class GameServer {
     // stash — the lid lifting on town ground, seen by a faction body,
     // is a theft charged to the town's own ledger. Wilds and dungeon
     // chests stay the ordinary loot loop; unseen is unswayed.
-    const townFid = this.townFactionAt(cx, cy);
+    const townFid = pos.plane === SURFACE_PLANE_ID ? this.townFactionAt(cx, cy) : null;
     if (townFid !== null) {
       this.chargeTheft(eid, player, cx, cy, this.theftWitnesses(cx, cy, eid), townFid);
     }
@@ -4528,13 +4652,15 @@ export class GameServer {
    * Plain doorways never merge: each is its own unit.
    */
   private doorUnit(
+    plane: PlaneId,
     tx: number,
     ty: number,
     info: DoorInfo,
   ): { ax: number; ay: number; tiles: Array<{ x: number; y: number }> } {
-    const t = this.world.groundAt(tx, ty);
+    const world = this.worldOf(plane);
+    const t = world.groundAt(tx, ty);
     if (!info.wide || t === undefined) return { ax: tx, ay: ty, tiles: [{ x: tx, y: ty }] };
-    const same = (x: number, y: number) => this.world.groundAt(x, y) === t;
+    const same = (x: number, y: number) => world.groundAt(x, y) === t;
     const tiles: Array<{ x: number; y: number }> = [];
     if (same(tx, ty - 1) || same(tx, ty + 1)) {
       // A N-S run: the wide side doorway, merged along the wall.
@@ -4555,12 +4681,12 @@ export class GameServer {
    * never closes INTO someone half-across the threshold and leaves
    * them embedded in a solid tile.
    */
-  private bodyOnTile(tx: number, ty: number, pad = 0.4): boolean {
+  private bodyOnTile(plane: PlaneId, tx: number, ty: number, pad = 0.4): boolean {
     const cx = Math.floor((tx + 0.5) / CHUNK_SIZE);
     const cy = Math.floor((ty + 0.5) / CHUNK_SIZE);
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
-        const set = this.chunks.get(chunkKey(cx + dx, cy + dy));
+        const set = this.chunks.get(`${plane}|${chunkKey(cx + dx, cy + dy)}`);
         if (!set) continue;
         for (const other of set) {
           const opos = this.positions.get(other);
@@ -4587,13 +4713,15 @@ export class GameServer {
    */
   private interactDoor(
     eid: EntityId,
+    plane: PlaneId,
     tx: number,
     ty: number,
     info: DoorInfo,
     sys: (text: string) => void,
   ): void {
-    const unit = this.doorUnit(tx, ty, info);
-    const lockKey = `${unit.ax},${unit.ay}`;
+    const world = this.worldOf(plane);
+    const unit = this.doorUnit(plane, tx, ty, info);
+    const lockKey = `${plane}|${unit.ax},${unit.ay}`;
     const gate =
       info.material === 'fence' ||
       info.material === 'garrison' ||
@@ -4601,19 +4729,19 @@ export class GameServer {
       info.material === 'hedge';
     if (info.open) {
       for (const t of unit.tiles) {
-        if (this.bodyOnTile(t.x, t.y)) {
+        if (this.bodyOnTile(plane, t.x, t.y)) {
           sys(gate ? 'Someone is standing in the gateway.' : 'Someone is standing in the doorway.');
           return;
         }
       }
       for (const t of unit.tiles) {
-        const g = this.world.groundAt(t.x, t.y);
+        const g = world.groundAt(t.x, t.y);
         const shut = g === undefined ? null : shutDoorTile(g);
-        if (shut !== null && shut !== g) this.setWorldTile(t.x, t.y, shut);
+        if (shut !== null && shut !== g) this.setWorldTile(plane, t.x, t.y, shut);
         // A hand on the door outranks the auto-close timer.
         for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
           const e = this.respawnQueue[i]!;
-          if (e.tx === t.x && e.ty === t.y) this.respawnQueue.splice(i, 1);
+          if (e.plane === plane && e.tx === t.x && e.ty === t.y) this.respawnQueue.splice(i, 1);
         }
       }
       return;
@@ -4632,7 +4760,9 @@ export class GameServer {
           sys('The lock gives with a click.');
           const cx = unit.ax + 0.5;
           const cy = unit.ay + 0.5;
-          const townFid = this.townFactionAt(cx, cy);
+          // Town law is a surface institution — a pick worked in the
+          // dark answers to nobody but the dark.
+          const townFid = plane === SURFACE_PLANE_ID ? this.townFactionAt(cx, cy) : null;
           if (townFid !== null) {
             this.chargeTheft(eid, player, cx, cy, this.theftWitnesses(cx, cy, eid), townFid);
           }
@@ -4658,15 +4788,16 @@ export class GameServer {
       }
     }
     for (const t of unit.tiles) {
-      const g = this.world.groundAt(t.x, t.y);
+      const g = world.groundAt(t.x, t.y);
       const open = g === undefined ? null : openDoorTile(g);
-      if (open !== null && open !== g) this.setWorldTile(t.x, t.y, open);
+      if (open !== null && open !== g) this.setWorldTile(plane, t.x, t.y, open);
     }
-    const anchorTile = this.world.groundAt(unit.ax, unit.ay);
+    const anchorTile = world.groundAt(unit.ax, unit.ay);
     const shutAnchor = anchorTile === undefined ? null : shutDoorTile(anchorTile);
     if (shutAnchor !== null) {
       this.respawnQueue.push({
         at: Date.now() + GameServer.DOOR_AUTOCLOSE_MS,
+        plane,
         tx: unit.ax,
         ty: unit.ay,
         tile: shutAnchor,
@@ -4687,7 +4818,7 @@ export class GameServer {
    * (The repeat path once rebuilt its ticks from the brew alone — a
    * starsteel axe that only bit once was a bug, not a law.)
    */
-  private gatherTicks(player: PlayerComp, node: NodeDef, ty: number): number {
+  private gatherTicks(player: PlayerComp, node: NodeDef, plane: PlaneId): number {
     let tool = node.tool ? bestTool(player.inventory, node.tool) : { item: '', power: 1 };
     if (node.tool && player.equipment.tool) {
       const worn = itemDef(player.equipment.tool.id)?.tool;
@@ -4703,7 +4834,8 @@ export class GameServer {
     // The gathering Callings: a per-trade pace (Heartwood/Verdant Eye),
     // Deep Lungs below the dark band, Night Angler once the sun is down.
     speedup *= player.perks.gatherSpeed[node.skill] ?? 1;
-    if (ty >= DARK_BAND_Y) speedup *= player.perks.undergroundGatherMult;
+    // Deep Lungs reads the plane's law, not a y-band.
+    if (this.planes.defOf(plane)?.underground ?? true) speedup *= player.perks.undergroundGatherMult;
     if (node.skill === 'fishing' && player.perks.nightGatherMult !== 1) {
       const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
       if (hours < SUNRISE || hours > SUNSET) speedup *= player.perks.nightGatherMult;
@@ -4746,8 +4878,10 @@ export class GameServer {
 
   private tickGather(eid: EntityId, player: PlayerComp): void {
     const action = player.action! as GatherAction;
+    const plane = this.positions.must(eid).plane;
+    const world = this.worldOf(plane);
     // Node vanished (someone else got it) or player drifted away?
-    if (this.world.groundAt(action.tx, action.ty) !== action.node.tile) {
+    if (world.groundAt(action.tx, action.ty) !== action.node.tile) {
       this.cancelAction(eid, player, 'gone');
       return;
     }
@@ -4808,18 +4942,18 @@ export class GameServer {
       // seconds-fast in-place queue; wild ground writes the persistent
       // growth ledger and heals slowly through the ages.
       if (
-        this.world.growthDomainAt(action.tx, action.ty) === 'wild' &&
+        world.growthDomainAt(action.tx, action.ty) === 'wild' &&
         growthDialectOf(node.tile) !== null
       ) {
         this.fellWild(action.tx, action.ty, node);
       } else {
         // felled ⇒ depletedTile is non-null (the roll requires it).
-        this.setWorldTile(action.tx, action.ty, node.depletedTile!);
+        this.setWorldTile(plane, action.tx, action.ty, node.depletedTile!);
         // THE CLEARED HALL STAYS CLEARED: a delve vein never regrows
         // while the instance lives — the ore a key holds is finite
         // per run, and the re-cut restocks it. Surface nodes keep
         // their regrowth clocks.
-        if (action.ty < DUNGEON_MIN_Y) {
+        if (!isRiftPlane(plane)) {
           // Trees regrow in stages: the stump sprouts a sapling partway
           // through the wait, then the sapling stands up into the tree.
           // Both entries share the tile, so a build/demolish cancel that
@@ -4828,6 +4962,7 @@ export class GameServer {
           if (sapling !== null) {
             this.respawnQueue.push({
               at: Date.now() + node.respawnSec * 1000 * 0.45,
+              plane,
               tx: action.tx,
               ty: action.ty,
               tile: sapling,
@@ -4835,6 +4970,7 @@ export class GameServer {
           }
           this.respawnQueue.push({
             at: Date.now() + node.respawnSec * 1000,
+            plane,
             tx: action.tx,
             ty: action.ty,
             tile: node.tile,
@@ -4844,7 +4980,7 @@ export class GameServer {
       this.cancelAction(eid, player, 'done');
     } else {
       // Keep gathering the same node — same clock as the first swing.
-      action.ticksLeft = this.gatherTicks(player, node, action.ty);
+      action.ticksLeft = this.gatherTicks(player, node, plane);
       player.session?.sendJson({ t: 'action', state: 'start', ticks: action.ticksLeft });
     }
   }
@@ -4964,11 +5100,10 @@ export class GameServer {
       });
       return;
     }
-    // The whole underground refuses the saddle: the dark band (the
-    // Undercroft, the delve galleries) as much as the far dungeon
-    // slots. Beasts do not go down the stairs. UNDERGROUND_Y covers
-    // both bands (512 <= 8192).
-    if (pos.y >= UNDERGROUND_Y) {
+    // The whole underground refuses the saddle: the underworld and
+    // the delve rifts alike. Beasts do not go down the stairs —
+    // plane law, not a y-band.
+    if (this.planes.defOf(pos.plane)?.underground ?? true) {
       this.speak(player, 'Not down here', 'No room to ride down here.', undefined, 'note');
       return;
     }
@@ -5003,7 +5138,8 @@ export class GameServer {
       if (this.seatOcc.get(key) === eid) this.seatOcc.delete(key);
     }
     if (!pos) return;
-    if (!circleHitsSolid(this.world, seat.retX, seat.retY, 0.35)) {
+    const world = this.worldOf(pos.plane);
+    if (!circleHitsSolid(world, seat.retX, seat.retY, 0.35)) {
       pos.x = seat.retX;
       pos.y = seat.retY;
     } else {
@@ -5014,7 +5150,7 @@ export class GameServer {
         [1, 1], [-1, 1], [1, -1], [-1, -1],
       ];
       for (const [dx, dy] of steps) {
-        if (!this.world.isSolid(cx + dx!, cy + dy!)) {
+        if (!world.isSolid(cx + dx!, cy + dy!)) {
           pos.x = cx + dx! + 0.5;
           pos.y = cy + dy! + 0.5;
           break;
@@ -5037,7 +5173,7 @@ export class GameServer {
     dir: number | undefined,
   ): void {
     const spec = seatAt(
-      (x, y) => this.world.groundAt(x, y),
+      (x, y) => this.worldOf(pos.plane).groundAt(x, y),
       Math.floor(rc.targetX),
       Math.floor(rc.targetY),
     );
@@ -5096,7 +5232,7 @@ export class GameServer {
     ty: number,
     sys: (text: string) => void,
   ): void {
-    const spec = seatAt((x, y) => this.world.groundAt(x, y), tx, ty);
+    const spec = seatAt((x, y) => this.worldOf(pos.plane).groundAt(x, y), tx, ty);
     if (!spec) return;
     // Interacting with the seat you already occupy: your own home bed
     // tends the hearth (THE HEARTH-SIDE DIAL, Frontier Phase 4.3 —
@@ -5122,7 +5258,7 @@ export class GameServer {
     }
     // A bed another settler built answers only to its builder.
     if (spec.kind === 'bed') {
-      const built = this.world.builtAt(tx, ty);
+      const built = this.worldOf(pos.plane).builtAt(tx, ty);
       if (built && built.owner !== player.characterId) {
         sys('This bed was built by another settler. Only its builder may rest here.');
         return;
@@ -5157,7 +5293,11 @@ export class GameServer {
       player.lying = true;
       // Lying in a claimable bed makes it home (town beds are open to
       // all; the builder gate above already spoke for built ones).
-      if (!home || !spec.tiles.some((t) => t.x === home.x && t.y === home.y)) {
+      // Home is a SURFACE institution — resting below is welcome, but
+      // no bed off the surface takes the claim.
+      if (pos.plane !== SURFACE_PLANE_ID) {
+        sys('You settle in for a rest, but no hearth takes root down here.');
+      } else if (!home || !spec.tiles.some((t) => t.x === home.x && t.y === home.y)) {
         player.home = { x: tx, y: ty };
         if (player.characterId > 0) this.accounts.saveHome(player.characterId, tx, ty);
         this.noteHomeChanged(player.characterId, player.home);
@@ -5178,8 +5318,8 @@ export class GameServer {
   private homeBedside(player: PlayerComp): { x: number; y: number } | null {
     const home = player.home;
     if (!home) return null;
-    this.world.ensure(Math.floor(home.x / CHUNK_SIZE), Math.floor(home.y / CHUNK_SIZE));
-    if (this.world.groundAt(home.x, home.y) !== Tile.Bed) {
+    this.surface.ensure(Math.floor(home.x / CHUNK_SIZE), Math.floor(home.y / CHUNK_SIZE));
+    if (this.surface.groundAt(home.x, home.y) !== Tile.Bed) {
       player.home = null;
       if (player.characterId > 0) this.accounts.clearHome(player.characterId);
       this.noteHomeChanged(player.characterId, null);
@@ -5194,7 +5334,7 @@ export class GameServer {
     for (const [dx, dy] of steps) {
       const bx = home.x + dx!;
       const by = home.y + dy!;
-      if (!this.world.isSolid(bx, by)) return { x: bx + 0.5, y: by + 0.5 };
+      if (!this.surface.isSolid(bx, by)) return { x: bx + 0.5, y: by + 0.5 };
     }
     return null; // walled in on all eight sides — no floor to wake on
   }
@@ -5206,12 +5346,14 @@ export class GameServer {
     ty: number,
     sys: (text: string) => void,
   ): void {
+    const pos = this.positions.get(eid);
+    if (!pos || this.refuseFarmingOffSurface(player, pos)) return;
     const key = `${tx},${ty}`;
     const state = this.crops.get(key);
     if (!state) {
       // A crop tile with no record (stale data) — repair back to soil.
-      this.world.unregisterCropTile(tx, ty);
-      this.setWorldTile(tx, ty, Tile.Tilled);
+      this.surface.unregisterCropTile(tx, ty);
+      this.setWorldTile(SURFACE_PLANE_ID, tx, ty, Tile.Tilled);
       return;
     }
     const now = Date.now();
@@ -5377,11 +5519,11 @@ export class GameServer {
       [tx - range, ty + range],
       [tx + range, ty + range],
     ]) {
-      this.world.ensure(Math.floor(cx! / CHUNK_SIZE), Math.floor(cy! / CHUNK_SIZE));
+      this.surface.ensure(Math.floor(cx! / CHUNK_SIZE), Math.floor(cy! / CHUNK_SIZE));
     }
     for (let dy = -range; dy <= range; dy++) {
       for (let dx = -range; dx <= range; dx++) {
-        if (this.world.groundAt(tx + dx, ty + dy) === Tile.Well) return true;
+        if (this.surface.groundAt(tx + dx, ty + dy) === Tile.Well) return true;
       }
     }
     return false;
@@ -5395,11 +5537,22 @@ export class GameServer {
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
         if (dx === 0 && dy === 0) continue;
-        if (this.world.groundAt(tx + dx, ty + dy) !== Tile.IrrigationChannel) continue;
+        if (this.surface.groundAt(tx + dx, ty + dy) !== Tile.IrrigationChannel) continue;
         if (this.wellNear(tx + dx, ty + dy, CHANNEL_FEED_RANGE)) return true;
       }
     }
     return false;
+  }
+
+  /**
+   * THE WORLDS APART farm gate: every farming/husbandry verb answers
+   * from the surface ledgers, so off-surface hands are turned away
+   * politely before any ledger is touched. Returns true when refused.
+   */
+  private refuseFarmingOffSurface(player: PlayerComp, pos: PositionComp): boolean {
+    if (pos.plane === SURFACE_PLANE_ID) return false;
+    this.speak(player, 'Nothing grows here', 'Nothing grows here — no sun ever reaches this ground.', undefined, 'note');
+    return true;
   }
 
   /**
@@ -5419,9 +5572,10 @@ export class GameServer {
     const dx = tx + 0.5 - pos.x;
     const dy = ty + 0.5 - pos.y;
     if (dx * dx + dy * dy > 2.2 * 2.2) return;
+    if (this.refuseFarmingOffSurface(player, pos)) return;
     const state = this.crops.get(`${tx},${ty}`);
     if (!state) {
-      if (this.world.groundAt(tx, ty) === Tile.Tilled) {
+      if (this.surface.groundAt(tx, ty) === Tile.Tilled) {
         sys('Plant first. The soil takes its meal through roots.');
       }
       return;
@@ -5476,6 +5630,7 @@ export class GameServer {
     const dx = tx + 0.5 - pos.x;
     const dy = ty + 0.5 - pos.y;
     if (dx * dx + dy * dy > 2.2 * 2.2) return;
+    if (this.refuseFarmingOffSurface(player, pos)) return;
     const state = this.crops.get(`${tx},${ty}`);
     if (!state) return;
     if (state.def.bed === 'log') {
@@ -5523,6 +5678,7 @@ export class GameServer {
     const dx = tx + 0.5 - pos.x;
     const dy = ty + 0.5 - pos.y;
     if (dx * dx + dy * dy > 2.2 * 2.2) return;
+    if (this.refuseFarmingOffSurface(player, pos)) return;
     const state = this.crops.get(`${tx},${ty}`);
     if (!state || !state.def.recurring) return;
     const stage = stageForElapsed(state.def, this.cropElapsed(state, Date.now()));
@@ -5631,7 +5787,8 @@ export class GameServer {
     const dx = tx + 0.5 - pos.x;
     const dy = ty + 0.5 - pos.y;
     if (dx * dx + dy * dy > 2.6 * 2.6) return;
-    const ground = this.world.groundAt(tx, ty);
+    if (this.refuseFarmingOffSurface(player, pos)) return;
+    const ground = this.surface.groundAt(tx, ty);
     const station = ground === undefined ? undefined : WORK_STATION_TILES.get(ground as Tile);
     const recipe = WORK_RECIPES.get(recipeId);
     if (!station || !recipe || recipe.station !== station) return;
@@ -5717,6 +5874,8 @@ export class GameServer {
     ty: number,
     sys: (text: string) => void,
   ): void {
+    const wsPos = this.positions.get(eid);
+    if (!wsPos || this.refuseFarmingOffSurface(player, wsPos)) return;
     const key = `${tx},${ty}`;
     const job = this.farmJobs.get(key);
     if (!job || job.qty <= 0) {
@@ -5739,7 +5898,7 @@ export class GameServer {
     const itemId = workOutputId(recipe, job.grade as 0 | 1 | 2);
     for (let i = 0; i < done * recipe.output.qty; i++) {
       if (addItem(player.inventory, itemId, 1) === 0) {
-        this.spawnDrop(itemId, 1, tx + 0.5, ty + 0.5, eid);
+        this.spawnDrop(SURFACE_PLANE_ID, itemId, 1, tx + 0.5, ty + 0.5, eid);
       }
     }
     this.grantXp(eid, player, recipe.skill, recipe.xp * done);
@@ -5771,7 +5930,9 @@ export class GameServer {
     sys: (text: string) => void,
   ): void {
     if (player.characterId < 0) return;
-    const built = this.world.builtAt(tx, ty);
+    const hivePos = this.positions.get(eid);
+    if (!hivePos || this.refuseFarmingOffSurface(player, hivePos)) return;
+    const built = this.surface.builtAt(tx, ty);
     if (built && built.owner !== player.characterId) {
       sys('These bees answer another keeper.');
       return;
@@ -5799,7 +5960,7 @@ export class GameServer {
     let flowers = 0;
     for (let fy = ty - APIARY_FLOWER_RANGE; fy <= ty + APIARY_FLOWER_RANGE; fy++) {
       for (let fx = tx - APIARY_FLOWER_RANGE; fx <= tx + APIARY_FLOWER_RANGE; fx++) {
-        const g = this.world.groundAt(fx, fy);
+        const g = this.surface.groundAt(fx, fy);
         if (
           g === Tile.FlowerBox ||
           g === Tile.SunflowerMid ||
@@ -5816,8 +5977,8 @@ export class GameServer {
     const grade = apiaryGrade(flowers);
     const honeyId = grade > 0 ? gradedId('honey', grade) : 'honey';
     for (let i = 0; i < units; i++) {
-      if (addItem(player.inventory, honeyId, 1) === 0) this.spawnDrop(honeyId, 1, tx + 0.5, ty + 0.5, eid);
-      if (addItem(player.inventory, 'beeswax', 1) === 0) this.spawnDrop('beeswax', 1, tx + 0.5, ty + 0.5, eid);
+      if (addItem(player.inventory, honeyId, 1) === 0) this.spawnDrop(SURFACE_PLANE_ID, honeyId, 1, tx + 0.5, ty + 0.5, eid);
+      if (addItem(player.inventory, 'beeswax', 1) === 0) this.spawnDrop(SURFACE_PLANE_ID, 'beeswax', 1, tx + 0.5, ty + 0.5, eid);
     }
     this.grantXp(eid, player, 'farming', 12 * units);
     hive.since = now;
@@ -5859,12 +6020,12 @@ export class GameServer {
   private spawnLivestockEntity(row: LivestockRow): EntityId | null {
     const def = npcDef(row.species);
     if (!def || !LIVESTOCK.has(row.species)) return null;
-    this.world.ensure(Math.floor(row.tx / CHUNK_SIZE), Math.floor(row.ty / CHUNK_SIZE));
+    this.surface.ensure(Math.floor(row.tx / CHUNK_SIZE), Math.floor(row.ty / CHUNK_SIZE));
     // Scatter the herd on the trough's south apron, dealt by slot so
     // a yard reloads into the same loose arrangement.
     const x = row.tx + 0.5 + ((row.slot % 3) - 1) * 1.2 + ((row.slot * 7) % 5) * 0.1;
     const y = row.ty + 1.6 + Math.floor(row.slot / 3) * 1.1;
-    const eid = this.spawnNpc(def, x, y, -1);
+    const eid = this.spawnNpc(def, SURFACE_PLANE_ID, x, y, -1);
     this.livestock.set(eid, {
       row,
       shornShown: row.species === 'sheep' ? row.nextProduceAt > Date.now() : undefined,
@@ -5954,8 +6115,8 @@ export class GameServer {
       for (let dx = -2; dx <= 2 && !trough; dx++) {
         const tx = Math.floor(pos.x) + dx;
         const ty = Math.floor(pos.y) + dy;
-        if (this.world.groundAt(tx, ty) !== Tile.FeedTrough) continue;
-        const built = this.world.builtAt(tx, ty);
+        if (this.surface.groundAt(tx, ty) !== Tile.FeedTrough) continue;
+        const built = this.surface.builtAt(tx, ty);
         if (built && built.owner === player.characterId) trough = { tx, ty };
       }
     }
@@ -6124,7 +6285,8 @@ export class GameServer {
     const dx = tx + 0.5 - pos.x;
     const dy = ty + 0.5 - pos.y;
     if (dx * dx + dy * dy > 2.2 * 2.2) return;
-    if (this.world.groundAt(tx, ty) !== Tile.CompostBin) return;
+    if (this.refuseFarmingOffSurface(player, pos)) return;
+    if (this.surface.groundAt(tx, ty) !== Tile.CompostBin) return;
     const key = `${tx},${ty}`;
     const bin = this.farmBins.get(key) ?? { tx, ty, fill: 0, graded: 0, startedAt: 0 };
     if (bin.startedAt !== 0) {
@@ -6176,7 +6338,8 @@ export class GameServer {
     const dx = tx + 0.5 - pos.x;
     const dy = ty + 0.5 - pos.y;
     if (dx * dx + dy * dy > 2.2 * 2.2) return;
-    if (this.world.groundAt(tx, ty) !== Tile.FeedTrough) return;
+    if (this.refuseFarmingOffSurface(player, pos)) return;
+    if (this.surface.groundAt(tx, ty) !== Tile.FeedTrough) return;
     const key = `${tx},${ty}`;
     const trough = this.farmTroughs.get(key) ?? { tx, ty, feed: 0 };
     if (trough.feed >= TROUGH_FEED_CAP) {
@@ -6224,6 +6387,8 @@ export class GameServer {
     ty: number,
     sys: (text: string) => void,
   ): void {
+    const binPos = this.positions.get(eid);
+    if (!binPos || this.refuseFarmingOffSurface(player, binPos)) return;
     const key = `${tx},${ty}`;
     const bin = this.farmBins.get(key);
     if (!bin || (bin.fill === 0 && bin.startedAt === 0)) {
@@ -6242,7 +6407,7 @@ export class GameServer {
       return;
     }
     // Collect: the bin answers its builder (the built tile's owner).
-    const built = this.world.builtAt(tx, ty);
+    const built = this.surface.builtAt(tx, ty);
     if (built && built.owner !== player.characterId) {
       sys('This bin is not yours to empty.');
       return;
@@ -6251,7 +6416,7 @@ export class GameServer {
     // batch turns out prime compost — deterministically, never rolled.
     const item = bin.graded >= COMPOST_PRIME_WORTH ? 'prime_compost' : 'compost';
     if (addItem(player.inventory, item, 1) === 0) {
-      this.spawnDrop(item, 1, tx + 0.5, ty + 0.5, eid);
+      this.spawnDrop(SURFACE_PLANE_ID, item, 1, tx + 0.5, ty + 0.5, eid);
     }
     this.grantXp(eid, player, 'farming', COMPOST_COLLECT_XP);
     this.farmBins.delete(key);
@@ -6280,9 +6445,10 @@ export class GameServer {
     const dx = tx + 0.5 - pos.x;
     const dy = ty + 0.5 - pos.y;
     if (dx * dx + dy * dy > 2.2 * 2.2) return;
+    if (this.refuseFarmingOffSurface(player, pos)) return;
 
-    this.world.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
-    const ground = this.world.groundAt(tx, ty);
+    this.surface.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+    const ground = this.surface.groundAt(tx, ty);
     const key = `${tx},${ty}`;
     if (this.crops.has(key)) return; // someone beat you to the plot
     // THE SOWN LINE (second-growth Phase 4): tree and bush seeds skip
@@ -6340,9 +6506,9 @@ export class GameServer {
     };
     const sproutTile = tileForStage(def, 0);
     this.crops.set(key, state);
-    this.world.registerCropTile(tx, ty, sproutTile);
+    this.surface.registerCropTile(tx, ty, sproutTile);
     this.saveCrop(state);
-    this.setWorldTile(tx, ty, sproutTile);
+    this.setWorldTile(SURFACE_PLANE_ID, tx, ty, sproutTile);
     if (state.framed) this.mirrorPlot(state);
     this.grantXp(eid, player, 'farming', Math.max(1, Math.ceil(def.xp / 4)));
     player.session.sendJson({ t: 'inv', slots: player.inventory });
@@ -6367,11 +6533,11 @@ export class GameServer {
     species: Tile,
     sys: (text: string) => void,
   ): void {
-    if (this.world.growthDomainAt(tx, ty) !== 'wild') {
+    if (this.surface.growthDomainAt(tx, ty) !== 'wild') {
       sys('This ground is tended. Wild seeds want wild earth.');
       return;
     }
-    if (this.world.growthAt(tx, ty) !== undefined) {
+    if (this.surface.growthAt(tx, ty) !== undefined) {
       sys('Something already grows here. Give it room.');
       return;
     }
@@ -6380,9 +6546,9 @@ export class GameServer {
     // to wild earth — otherwise the growth beat would read the plot's
     // built-tile record as a builder's claim and end the very growth
     // it hosted. The plot is the price of the planting.
-    if (this.world.builtAt(tx, ty) !== undefined) {
-      this.world.unregisterBuilt(tx, ty);
-      this.accounts.deleteBuiltTile(tx, ty);
+    if (this.surface.builtAt(tx, ty) !== undefined) {
+      this.surface.unregisterBuilt(tx, ty);
+      this.accounts.deleteBuiltTile(SURFACE_PLANE_ID, tx, ty);
       this.ringCache = null;
     this.capitalCache?.clear();
     }
@@ -6397,9 +6563,9 @@ export class GameServer {
       owner: player.characterId,
       firstSeenAt: now,
     };
-    this.world.registerGrowth(row);
+    this.surface.registerGrowth(row);
     this.accounts.saveGrowth(row);
-    this.setWorldTile(tx, ty, Tile.Grass);
+    this.setWorldTile(SURFACE_PLANE_ID, tx, ty, Tile.Grass);
     const node = NODES_BY_TILE.get(species);
     this.grantXp(eid, player, 'farming', Math.max(4, Math.ceil((node?.xp ?? 20) / 5)));
     player.session!.sendJson({ t: 'inv', slots: player.inventory });
@@ -6411,7 +6577,7 @@ export class GameServer {
     const key = `${action.tx},${action.ty}`;
     const state = this.crops.get(key);
     // Demolished, /grow-raced, or otherwise gone from under us.
-    if (!state || this.world.groundAt(action.tx, action.ty) !== state.def.matureTile) {
+    if (!state || this.surface.groundAt(action.tx, action.ty) !== state.def.matureTile) {
       this.cancelAction(eid, player, 'gone');
       return;
     }
@@ -6423,7 +6589,7 @@ export class GameServer {
     const giveOrDrop = (item: string, qty: number) => {
       const added = addItem(player.inventory, item, qty);
       if (added < qty) {
-        this.spawnDrop(item, qty - added, action.tx + 0.5, action.ty + 0.5, eid);
+        this.spawnDrop(SURFACE_PLANE_ID, item, qty - added, action.tx + 0.5, action.ty + 0.5, eid);
       }
     };
     // Bounty doubles the basket some seasons; Green Thumb sometimes
@@ -6475,8 +6641,8 @@ export class GameServer {
       state.lastStage = 1;
       this.crops.set(key, state);
       this.saveCrop(state);
-      this.world.registerCropTile(action.tx, action.ty, def.midTile);
-      this.setWorldTile(action.tx, action.ty, def.midTile);
+      this.surface.registerCropTile(action.tx, action.ty, def.midTile);
+      this.setWorldTile(SURFACE_PLANE_ID, action.tx, action.ty, def.midTile);
       this.mirrorPlot(state);
       player.session?.sendJson({ t: 'inv', slots: player.inventory });
       this.cancelAction(eid, player, 'done');
@@ -6489,8 +6655,8 @@ export class GameServer {
 
     this.crops.delete(key);
     this.accounts.deleteCrop(action.tx, action.ty);
-    this.world.unregisterCropTile(action.tx, action.ty);
-    this.setWorldTile(action.tx, action.ty, bedTileFor(def, state.framed === 1));
+    this.surface.unregisterCropTile(action.tx, action.ty);
+    this.setWorldTile(SURFACE_PLANE_ID, action.tx, action.ty, bedTileFor(def, state.framed === 1));
     // The care mirror lets go of the harvested row.
     for (const s of this.sessions) {
       s.sendJson({ t: 'farm', remove: [{ tx: action.tx, ty: action.ty }] });
@@ -6522,8 +6688,8 @@ export class GameServer {
       if (stage > state.lastStage) {
         state.lastStage = stage;
         const tile = tileForStage(state.def, stage);
-        this.world.registerCropTile(state.tx, state.ty, tile);
-        this.setWorldTile(state.tx, state.ty, tile);
+        this.surface.registerCropTile(state.tx, state.ty, tile);
+        this.setWorldTile(SURFACE_PLANE_ID, state.tx, state.ty, tile);
       }
     }
   }
@@ -6536,20 +6702,21 @@ export class GameServer {
    * checkpoint's `due` is seeded from the pure projection so the lever
    * and the Studio can read an honest deadline without walking.
    */
+  // Wild growth is surface law — the caller's domain gate guarantees it.
   private fellWild(tx: number, ty: number, node: NodeDef): void {
-    this.setWorldTile(tx, ty, node.depletedTile!);
+    this.setWorldTile(SURFACE_PLANE_ID, tx, ty, node.depletedTile!);
     const now = Date.now();
     // THE LAND REMEMBERS ITS NATURE: the regrowth AIMS at worldgen's
     // seed-truth, not at what fell — felling a drifted pine over
     // oak-truth re-aims the ground at oak, so drift decays over
     // harvest cycles instead of compounding. A truth of a different
     // dialect (or none) keeps the felled species as the aim.
-    const truth = this.world.naturalGround(tx, ty) as Tile;
+    const truth = this.surface.naturalGround(tx, ty) as Tile;
     const dialect = growthDialectOf(node.tile);
     const aim = growthDialectOf(truth) === dialect ? truth : node.tile;
     // A felled SOWN stand keeps its planter's mark — the orchard
     // remembers whose hand set it, however many times it falls.
-    const prior = this.world.growthAt(tx, ty);
+    const prior = this.surface.growthAt(tx, ty);
     // A picked bush's ground is grass from the first moment — bush
     // rows start DORMANT (succession, no scar age); everything else
     // wears its scar on the fixed window.
@@ -6564,7 +6731,7 @@ export class GameServer {
       firstSeenAt: now,
     };
     if (dialect !== 'bush') row.due = projectGrowth(config.worldSeed, row, now).due;
-    this.world.registerGrowth(row);
+    this.surface.registerGrowth(row);
     this.accounts.saveGrowth(row);
   }
 
@@ -6581,7 +6748,7 @@ export class GameServer {
   private tickGrowth(now: number): void {
     let writes = 0;
     const seed = config.worldSeed;
-    for (const row of this.world.growthLedger.values()) {
+    for (const row of this.surface.growthLedger.values()) {
       if (writes >= GROWTH.beatBudget) break;
       // A drifted crown is at rest — only an axe moves it again.
       if (row.state === GROWTH_DRIFTED) continue;
@@ -6595,17 +6762,17 @@ export class GameServer {
       // in, a built tile, or a crop ends the regrowth — the land
       // yields to the hand that holds it (THE BUILDER'S CLEARING).
       if (
-        this.world.growthDomainAt(row.tx, row.ty) !== 'wild' ||
-        this.world.builtAt(row.tx, row.ty) !== undefined ||
-        this.world.hasCropTile(row.tx, row.ty)
+        this.surface.growthDomainAt(row.tx, row.ty) !== 'wild' ||
+        this.surface.builtAt(row.tx, row.ty) !== undefined ||
+        this.surface.hasCropTile(row.tx, row.ty)
       ) {
-        this.world.unregisterGrowth(row.tx, row.ty);
+        this.surface.unregisterGrowth(row.tx, row.ty);
         this.accounts.deleteGrowth(row.tx, row.ty);
         continue;
       }
       const cx = Math.floor(row.tx / CHUNK_SIZE);
       const cy = Math.floor(row.ty / CHUNK_SIZE);
-      const loaded = this.world.hasChunk(cx, cy);
+      const loaded = this.surface.hasChunk(cx, cy);
       const target = proj.ripe ? row.tile : proj.tile;
       if (loaded) {
         // The world may have moved on under the checkpoint (a chest
@@ -6615,16 +6782,16 @@ export class GameServer {
         // the stored checkpoint's tile, or the projection's (a chunk
         // that generated after a sleep already wears the projected
         // age — the checkpoint just hasn't caught up yet).
-        const cur = this.world.groundAt(row.tx, row.ty);
+        const cur = this.surface.groundAt(row.tx, row.ty);
         if (cur !== growthTileForState(seed, row) && cur !== target) {
-          this.world.unregisterGrowth(row.tx, row.ty);
+          this.surface.unregisterGrowth(row.tx, row.ty);
           this.accounts.deleteGrowth(row.tx, row.ty);
           continue;
         }
         // Never stand a solid up through a body — the doors' courtesy.
         const becomingSolid =
           TILE_DEFS[target]?.solid && !(cur !== undefined && TILE_DEFS[cur as Tile]?.solid);
-        if (becomingSolid && this.bodyOnTile(row.tx, row.ty)) {
+        if (becomingSolid && this.bodyOnTile(SURFACE_PLANE_ID, row.tx, row.ty)) {
           row.deferUntil = now + 5000;
           continue;
         }
@@ -6645,10 +6812,10 @@ export class GameServer {
         // deleting it would resurrect the truth on the next chunk
         // regen, so the row is the stand's memory (THE LAND REMEMBERS
         // ITS NATURE — the next harvest re-aims at truth).
-        if (loaded) this.setWorldTile(row.tx, row.ty, row.tile);
-        const truth = this.world.naturalGround(row.tx, row.ty) as Tile;
+        if (loaded) this.setWorldTile(SURFACE_PLANE_ID, row.tx, row.ty, row.tile);
+        const truth = this.surface.naturalGround(row.tx, row.ty) as Tile;
         if (row.tile === truth) {
-          this.world.unregisterGrowth(row.tx, row.ty);
+          this.surface.unregisterGrowth(row.tx, row.ty);
           this.accounts.deleteGrowth(row.tx, row.ty);
         } else {
           row.state = GROWTH_DRIFTED;
@@ -6662,7 +6829,7 @@ export class GameServer {
         row.state = proj.state;
         row.since = proj.stateSince;
         row.due = proj.due;
-        if (loaded) this.setWorldTile(row.tx, row.ty, proj.tile);
+        if (loaded) this.setWorldTile(SURFACE_PLANE_ID, row.tx, row.ty, proj.tile);
         this.accounts.saveGrowth(row);
       }
       writes++;
@@ -6692,7 +6859,7 @@ export class GameServer {
     // an ore surfacing one terrace over renders punched through the
     // rock face between them. Levels read through the pristine oracle
     // (naturalLevel), never live elevAt: unloaded space reads 0 there.
-    const srcLevel = this.world.naturalLevel(row.tx, row.ty);
+    const srcLevel = this.surface.naturalLevel(row.tx, row.ty);
     const homing: Array<{ tx: number; ty: number }> = [];
     const fresh: Array<{ tx: number; ty: number }> = [];
     for (let dy = -reach; dy <= reach; dy++) {
@@ -6701,13 +6868,13 @@ export class GameServer {
         if (dx * dx + dy * dy > reach * reach) continue;
         const tx = row.tx + dx;
         const ty = row.ty + dy;
-        if (this.world.growthDomainAt(tx, ty) !== 'wild') continue;
-        if (this.world.builtAt(tx, ty) !== undefined) continue;
-        if (this.world.hasCropTile(tx, ty)) continue;
+        if (this.surface.growthDomainAt(tx, ty) !== 'wild') continue;
+        if (this.surface.builtAt(tx, ty) !== undefined) continue;
+        if (this.surface.hasCropTile(tx, ty)) continue;
         if (this.inClaimRing(tx, ty)) continue;
-        if (this.world.naturalLevel(tx, ty) !== srcLevel) continue;
-        const other = this.world.growthAt(tx, ty);
-        const truth = this.world.naturalGround(tx, ty) as Tile;
+        if (this.surface.naturalLevel(tx, ty) !== srcLevel) continue;
+        const other = this.surface.growthAt(tx, ty);
+        const truth = this.surface.naturalGround(tx, ty) as Tile;
         if (other) {
           if (other.state === GROWTH_DRIFTED && other.tile === host && truth === row.tile) {
             homing.push({ tx, ty });
@@ -6725,23 +6892,23 @@ export class GameServer {
     let target: { tx: number; ty: number } | null = null;
     for (let i = 0; i < pool.length; i++) {
       const cand = pool[(start + i) % pool.length]!;
-      const candLoaded = this.world.hasChunk(
+      const candLoaded = this.surface.hasChunk(
         Math.floor(cand.tx / CHUNK_SIZE),
         Math.floor(cand.ty / CHUNK_SIZE),
       );
-      if (candLoaded && this.bodyOnTile(cand.tx, cand.ty)) continue;
+      if (candLoaded && this.bodyOnTile(SURFACE_PLANE_ID, cand.tx, cand.ty)) continue;
       target = cand;
       break;
     }
     if (target === null) return false;
     // Surface the resource at the target.
-    const targetLoaded = this.world.hasChunk(
+    const targetLoaded = this.surface.hasChunk(
       Math.floor(target.tx / CHUNK_SIZE),
       Math.floor(target.ty / CHUNK_SIZE),
     );
-    if (this.world.growthAt(target.tx, target.ty) !== undefined) {
+    if (this.surface.growthAt(target.tx, target.ty) !== undefined) {
       // Homing: the sealed truth-site heals — its row cancels.
-      this.world.unregisterGrowth(target.tx, target.ty);
+      this.surface.unregisterGrowth(target.tx, target.ty);
       this.accounts.deleteGrowth(target.tx, target.ty);
     } else {
       const stand: GrowthRow = {
@@ -6754,18 +6921,18 @@ export class GameServer {
         owner: null,
         firstSeenAt: now,
       };
-      this.world.registerGrowth(stand);
+      this.surface.registerGrowth(stand);
       this.accounts.saveGrowth(stand);
     }
-    if (targetLoaded) this.setWorldTile(target.tx, target.ty, row.tile);
+    if (targetLoaded) this.setWorldTile(SURFACE_PLANE_ID, target.tx, target.ty, row.tile);
     // Seal the old mouth to host ground.
-    const srcLoaded = this.world.hasChunk(
+    const srcLoaded = this.surface.hasChunk(
       Math.floor(row.tx / CHUNK_SIZE),
       Math.floor(row.ty / CHUNK_SIZE),
     );
-    const srcTruth = this.world.naturalGround(row.tx, row.ty) as Tile;
+    const srcTruth = this.surface.naturalGround(row.tx, row.ty) as Tile;
     if (srcTruth === host) {
-      this.world.unregisterGrowth(row.tx, row.ty);
+      this.surface.unregisterGrowth(row.tx, row.ty);
       this.accounts.deleteGrowth(row.tx, row.ty);
     } else {
       row.state = GROWTH_DRIFTED;
@@ -6774,7 +6941,7 @@ export class GameServer {
       row.due = null;
       this.accounts.saveGrowth(row);
     }
-    if (srcLoaded) this.setWorldTile(row.tx, row.ty, host);
+    if (srcLoaded) this.setWorldTile(SURFACE_PLANE_ID, row.tx, row.ty, host);
     return true;
   }
 
@@ -6802,7 +6969,7 @@ export class GameServer {
   private tickGermination(now: number): void {
     const seed = config.worldSeed;
     const dormant: GrowthRow[] = [];
-    for (const row of this.world.growthLedger.values()) {
+    for (const row of this.surface.growthLedger.values()) {
       if (row.state === GROWTH_BARE && row.due === null) dormant.push(row);
     }
     if (dormant.length === 0) return;
@@ -6844,8 +7011,8 @@ export class GameServer {
     const ring = GROWTH.courtesyRing;
     for (let dy = -ring; dy <= ring; dy++) {
       for (let dx = -ring; dx <= ring; dx++) {
-        if (this.world.builtAt(row.tx + dx, row.ty + dy) !== undefined) return;
-        if (this.world.hasCropTile(row.tx + dx, row.ty + dy)) return;
+        if (this.surface.builtAt(row.tx + dx, row.ty + dy) !== undefined) return;
+        if (this.surface.hasCropTile(row.tx + dx, row.ty + dy)) return;
       }
     }
     // Count the standing sources in dispersal reach: seed-truth stands
@@ -6863,20 +7030,20 @@ export class GameServer {
         if (dx * dx + dy * dy > reach * reach) continue;
         const tx = row.tx + dx;
         const ty = row.ty + dy;
-        const other = this.world.growthAt(tx, ty);
+        const other = this.surface.growthAt(tx, ty);
         if (other) {
           if (other.state === GROWTH_DRIFTED && isSource(other.tile)) crowns.push(other.tile);
           continue;
         }
-        if (this.world.growthDomainAt(tx, ty) !== 'wild') continue;
-        const truth = this.world.naturalGround(tx, ty) as Tile;
+        if (this.surface.growthDomainAt(tx, ty) !== 'wild') continue;
+        const truth = this.surface.naturalGround(tx, ty) as Tile;
         if (isSource(truth)) crowns.push(truth);
       }
     }
     if (this.growthRand() >= germinationChance(crowns.length, dialect)) return;
     if (dialect === 'tree') {
       // THE DISPERSAL DRAW — trees only; a bush is always a bush.
-      const truthHere = this.world.naturalGround(row.tx, row.ty) as Tile;
+      const truthHere = this.surface.naturalGround(row.tx, row.ty) as Tile;
       row.tile = drawSpecies(
         TREE_TILES.has(truthHere) ? truthHere : null,
         crowns,
@@ -6891,6 +7058,7 @@ export class GameServer {
 
   /** Spawn a free-for-all ground drop (harvest overflow, laid eggs). */
   private spawnDrop(
+    plane: PlaneId,
     item: string,
     qty: number,
     x: number,
@@ -6898,7 +7066,7 @@ export class GameServer {
     _byEid: EntityId | null,
     xpOnPickup?: { skill: SkillId; xp: number },
   ): EntityId {
-    return this.placeDrop(item, qty, x, y, {
+    return this.placeDrop(plane, item, qty, x, y, {
       ownerEid: null,
       ownerUntil: 0,
       despawnAt: Date.now() + 12 * 60_000,
@@ -6923,6 +7091,7 @@ export class GameServer {
    * spill was O(28 × world drops)). Return true to stop early.
    */
   private forEachDropNear(
+    plane: PlaneId,
     x: number,
     y: number,
     r: number,
@@ -6933,7 +7102,7 @@ export class GameServer {
     const ccy = Math.floor(y / CHUNK_SIZE);
     for (let dy = -ring; dy <= ring; dy++) {
       for (let dx = -ring; dx <= ring; dx++) {
-        const set = this.chunks.get(chunkKey(ccx + dx, ccy + dy));
+        const set = this.chunks.get(`${plane}|${chunkKey(ccx + dx, ccy + dy)}`);
         if (!set) continue;
         for (const eid of set) {
           const drop = this.drops.get(eid);
@@ -6947,6 +7116,7 @@ export class GameServer {
   }
 
   private placeDrop(
+    plane: PlaneId,
     item: string,
     qty: number,
     x: number,
@@ -6954,7 +7124,7 @@ export class GameServer {
     comp: Omit<DropComp, 'item' | 'qty'>,
   ): EntityId {
     let merged: EntityId | null = null;
-    this.forEachDropNear(x, y, DROP_MERGE_RADIUS, (eid, drop, pos) => {
+    this.forEachDropNear(plane, x, y, DROP_MERGE_RADIUS, (eid, drop, pos) => {
       if (!canMergeDrop(drop, item, comp.roll, comp.ownerEid, comp.xpOnPickup, comp.stolen)) {
         return;
       }
@@ -6971,7 +7141,7 @@ export class GameServer {
     if (merged !== null) return merged;
     const dropEid = this.ecs.create();
     this.kinds.set(dropEid, EntityKind.ItemDrop);
-    this.positions.set(dropEid, { x, y, dir: 0 });
+    this.positions.set(dropEid, { x, y, dir: 0, plane });
     this.drops.set(dropEid, { ...comp, item, qty });
     this.updateChunkMembership(dropEid);
     return dropEid;
@@ -6983,11 +7153,12 @@ export class GameServer {
   private nearTile(eid: EntityId, tile: Tile): boolean {
     const pos = this.positions.get(eid);
     if (!pos) return false;
+    const world = this.worldOf(pos.plane);
     const cx = Math.floor(pos.x);
     const cy = Math.floor(pos.y);
     for (let ty = cy - 2; ty <= cy + 2; ty++) {
       for (let tx = cx - 2; tx <= cx + 2; tx++) {
-        if (this.world.groundAt(tx, ty) !== tile) continue;
+        if (world.groundAt(tx, ty) !== tile) continue;
         const dx = tx + 0.5 - pos.x;
         const dy = ty + 0.5 - pos.y;
         if (dx * dx + dy * dy <= 2.2 * 2.2) return true;
@@ -7172,8 +7343,16 @@ export class GameServer {
       sys('Guests cannot build — make an account!');
       return;
     }
+    // THE ROCK KEEPS NOTHING: scratch planes (dungeon runs) refuse
+    // permanent construction — a wall raised in a rift would persist a
+    // row for a world that stops existing when the key-holder leaves.
+    if (!(this.planes.defOf(pos.plane)?.persistent ?? false)) {
+      this.speak(player, 'The rock refuses', 'Nothing built here would outlast the rift.');
+      return;
+    }
     const def = BUILDABLES.get(buildableId);
     if (!def) return;
+    const world = this.worldOf(pos.plane);
 
     const dx = tx + 0.5 - pos.x;
     const dy = ty + 0.5 - pos.y;
@@ -7194,7 +7373,7 @@ export class GameServer {
       );
       return;
     }
-    this.world.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+    world.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
     // Homesteader: walls rise quickly for the practiced hand.
     const buildTicks = Math.max(1, Math.round(def.ticks * player.perks.buildSpeedMult));
     // The variant dial (dye / trade motif / vine species) rides the
@@ -7208,12 +7387,12 @@ export class GameServer {
     // face law is the one gate, and re-dressing your own hanging of
     // the same family costs only the new pigment: the cloth is up.
     if (def.detail !== undefined) {
-      if (!this.hangFaceOk(tx, ty, def.detail)) {
+      if (!this.hangFaceOk(pos.plane, tx, ty, def.detail)) {
         sys('There is no wall face there to carry it.');
         return;
       }
-      const current = this.world.detailAt(tx, ty);
-      const hung = this.world.builtDetailAt(tx, ty);
+      const current = world.detailAt(tx, ty);
+      const hung = world.builtDetailAt(tx, ty);
       if (current !== 0 && (!hung || hung.owner !== player.characterId)) {
         sys('That wall already bears its cloth.');
         return;
@@ -7245,13 +7424,13 @@ export class GameServer {
 
     const pieceTile = def.tile;
     if (pieceTile === undefined) return;
-    const ground = this.world.groundAt(tx, ty);
+    const ground = world.groundAt(tx, ty);
     if (ground === undefined || !buildableGround(def).includes(ground as Tile)) {
       this.speak(player, 'Not here', "You can't build there.", { x: tx + 0.5, y: ty + 0.5 });
       return;
     }
     // Nobody standing on the target tile.
-    if (this.tileHoldsBody(tx, ty)) {
+    if (this.tileHoldsBody(pos.plane, tx, ty)) {
       this.speak(
         player,
         'In the way',
@@ -7265,7 +7444,7 @@ export class GameServer {
     // footing is the tile NORTH of the canopy, and only a framed
     // south face (full wall, glazing, straight doorway) takes bolts.
     if (awningInfo(pieceTile) !== null) {
-      const host = this.world.groundAt(tx, ty - 1);
+      const host = world.groundAt(tx, ty - 1);
       if (host === undefined || !AWNING_HOST_TILES.has(host as Tile)) {
         this.speak(player, 'Needs a wall', 'An awning needs a wall behind it.', {
           x: tx + 0.5,
@@ -7313,9 +7492,10 @@ export class GameServer {
    * the classic hangable faces — hangHostTiles is the one resolver)
    * presenting its south face to open ground.
    */
-  private hangFaceOk(tx: number, ty: number, detail: number): boolean {
-    const ground = this.world.groundAt(tx, ty);
-    const south = this.world.groundAt(tx, ty + 1);
+  private hangFaceOk(plane: PlaneId, tx: number, ty: number, detail: number): boolean {
+    const world = this.worldOf(plane);
+    const ground = world.groundAt(tx, ty);
+    const south = world.groundAt(tx, ty + 1);
     return (
       ground !== undefined &&
       hangHostTiles(detail).has(ground as Tile) &&
@@ -7352,8 +7532,8 @@ export class GameServer {
   }
 
   /** Anyone — player or NPC — standing on this tile right now? */
-  private tileHoldsBody(tx: number, ty: number): boolean {
-    const chunkSet = this.chunks.get(this.chunkKeyOf(tx + 0.5, ty + 0.5));
+  private tileHoldsBody(plane: PlaneId, tx: number, ty: number): boolean {
+    const chunkSet = this.chunks.get(this.chunkKeyOf(plane, tx + 0.5, ty + 0.5));
     if (!chunkSet) return false;
     for (const other of chunkSet) {
       const opos = this.positions.get(other);
@@ -7366,6 +7546,8 @@ export class GameServer {
     const action = player.action! as BuildAction;
     if (--action.ticksLeft > 0) return;
     const def = action.buildable;
+    const plane = this.positions.must(eid).plane;
+    const world = this.worldOf(plane);
 
     // THE WALL TAKES A HANGING — completion, one lane over: the face
     // may have fallen or been dressed mid-swing, so everything
@@ -7373,12 +7555,12 @@ export class GameServer {
     // of the same family pays pigment only and earns NO xp (a
     // pigment-cheap swap must never become an xp faucet).
     if (def.detail !== undefined) {
-      if (!this.hangFaceOk(action.tx, action.ty, def.detail)) {
+      if (!this.hangFaceOk(plane, action.tx, action.ty, def.detail)) {
         this.cancelAction(eid, player, 'blocked');
         return;
       }
-      const current = this.world.detailAt(action.tx, action.ty);
-      const hung = this.world.builtDetailAt(action.tx, action.ty);
+      const current = world.detailAt(action.tx, action.ty);
+      const hung = world.builtDetailAt(action.tx, action.ty);
       if (current !== 0 && (!hung || hung.owner !== player.characterId)) {
         this.cancelAction(eid, player, 'blocked');
         return;
@@ -7405,15 +7587,15 @@ export class GameServer {
       const placedDetail = this.hangVariant(def.detail, action.dye);
       // The layer law, detail lane: the FIRST hang's capture carries.
       const prevDetail = hung ? hung.prevDetail : current;
-      this.world.registerBuiltDetail(
+      world.registerBuiltDetail(
         action.tx,
         action.ty,
         placedDetail,
         player.characterId,
         prevDetail,
       );
-      this.accounts.saveBuiltDetail(action.tx, action.ty, placedDetail, player.characterId, prevDetail);
-      this.setWorldDetail(action.tx, action.ty, placedDetail);
+      this.accounts.saveBuiltDetail(plane, action.tx, action.ty, placedDetail, player.characterId, prevDetail);
+      this.setWorldDetail(plane, action.tx, action.ty, placedDetail);
       if (!redye) this.grantXp(eid, player, def.skill ?? 'construction', def.xp);
       player.session?.sendJson({ t: 'inv', slots: player.inventory });
       this.cancelAction(eid, player, 'done');
@@ -7426,21 +7608,21 @@ export class GameServer {
       this.cancelAction(eid, player, 'blocked');
       return;
     }
-    const ground = this.world.groundAt(action.tx, action.ty);
+    const ground = world.groundAt(action.tx, action.ty);
     if (ground === undefined || !buildableGround(def).includes(ground as Tile)) {
       this.cancelAction(eid, player, 'blocked');
       return;
     }
     // Someone may have wandered onto the tile during the swing — the
     // start-time check alone would finish the wall on top of them.
-    if (this.tileHoldsBody(action.tx, action.ty)) {
+    if (this.tileHoldsBody(plane, action.tx, action.ty)) {
       this.cancelAction(eid, player, 'occupied');
       return;
     }
     // The host wall may have fallen mid-swing — a canopy bolted to
     // open air is not a thing this world contains.
     if (awningInfo(pieceTile) !== null) {
-      const host = this.world.groundAt(action.tx, action.ty - 1);
+      const host = world.groundAt(action.tx, action.ty - 1);
       if (host === undefined || !AWNING_HOST_TILES.has(host as Tile)) {
         this.cancelAction(eid, player, 'blocked');
         return;
@@ -7486,7 +7668,7 @@ export class GameServer {
         // neighbours, a building corner spans building-wall neighbours
         // — the two families never orient off each other.
         const isWall = (x: number, y: number): boolean => {
-          const t = this.world.groundAt(x, y);
+          const t = world.groundAt(x, y);
           if (t === undefined) return false;
           return dw.material === 'garrison'
             ? GARRISON_TILES.has(t as Tile)
@@ -7524,7 +7706,7 @@ export class GameServer {
             : Tile.FenceDiagNW;
       } else {
         const isFence = (x: number, y: number): boolean => {
-          const t = this.world.groundAt(x, y);
+          const t = world.groundAt(x, y);
           return t !== undefined && FENCE_TILES.has(t as Tile);
         };
         placed = orientDiagFence(
@@ -7546,7 +7728,7 @@ export class GameServer {
             : Tile.HedgeDiagNW;
       } else {
         const isHedge = (x: number, y: number): boolean => {
-          const t = this.world.groundAt(x, y);
+          const t = world.groundAt(x, y);
           return t !== undefined && HEDGE_TILES.has(t as Tile);
         };
         placed = orientDiagHedge(
@@ -7561,9 +7743,9 @@ export class GameServer {
     // building over an earlier construction the register/save layers
     // keep the original capture, so 'ground' here is only the first
     // link in the chain.
-    this.world.registerBuilt(action.tx, action.ty, placed, player.characterId, ground);
-    this.accounts.saveBuiltTile(action.tx, action.ty, placed, player.characterId, ground);
-    this.setWorldTile(action.tx, action.ty, placed);
+    world.registerBuilt(action.tx, action.ty, placed, player.characterId, ground);
+    this.accounts.saveBuiltTile(plane, action.tx, action.ty, placed, player.characterId, ground);
+    this.setWorldTile(plane, action.tx, action.ty, placed);
     // A homestead grew — its claim ring re-derives on the next read.
     if (this.homesByCharacter.has(player.characterId)) this.ringCache = null;
     this.capitalCache?.clear();
@@ -7572,15 +7754,16 @@ export class GameServer {
     // first moment so the builder sees an edit affordance the instant
     // the post lands, and everyone else sees an empty sign.
     if (isSignTile(placed) && player.characterId > 0) {
-      this.playerSigns.set(`${action.tx},${action.ty}`, {
+      this.playerSigns.set(`${plane}|${action.tx},${action.ty}`, {
+        plane,
         tx: action.tx,
         ty: action.ty,
         title: '',
         lines: [],
         owner: player.characterId,
       });
-      this.accounts.saveSign(action.tx, action.ty, '', [], player.characterId);
-      this.broadcastSign(action.tx, action.ty);
+      this.accounts.saveSign(plane, action.tx, action.ty, '', [], player.characterId);
+      this.broadcastSign(plane, action.tx, action.ty);
     }
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
     this.cancelAction(eid, player, 'done');
@@ -7589,7 +7772,9 @@ export class GameServer {
     // stomp the new construction and desync it from built_tiles.
     for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
       const entry = this.respawnQueue[i]!;
-      if (entry.tx === action.tx && entry.ty === action.ty) this.respawnQueue.splice(i, 1);
+      if (entry.plane === plane && entry.tx === action.tx && entry.ty === action.ty) {
+        this.respawnQueue.splice(i, 1);
+      }
     }
   }
 
@@ -7606,9 +7791,11 @@ export class GameServer {
       return;
     }
     // Both layers answer: built tiles AND hung details — the overlay
-    // marks every coordinate the armed hand may touch.
-    const keys = new Set<string>(this.world.builtKeysOf(player.characterId) ?? []);
-    for (const k of this.world.builtDetailKeysOf(player.characterId) ?? []) keys.add(k);
+    // marks every coordinate the armed hand may touch, on the plane
+    // the hand is standing on (keys are plane-implicit, like chunks).
+    const world = this.worldAt(eid);
+    const keys = new Set<string>(world.builtKeysOf(player.characterId) ?? []);
+    for (const k of world.builtDetailKeysOf(player.characterId) ?? []) keys.add(k);
     player.session.sendJson({ t: 'ownbuilt', keys: [...keys] });
   }
 
@@ -7620,11 +7807,12 @@ export class GameServer {
     const player = this.players.get(eid);
     const pos = this.positions.get(eid);
     if (!player || !pos || player.session === null) return;
-    const built = this.world.builtAt(tx, ty);
+    const world = this.worldOf(pos.plane);
+    const built = world.builtAt(tx, ty);
     // THE SECOND LAYER: your own hanging is the TOP layer — it comes
     // down before the wall under it ever could, and a hanging on an
     // authored wall (no built record at all) is still yours to take.
-    const hung = this.world.builtDetailAt(tx, ty);
+    const hung = world.builtDetailAt(tx, ty);
     const ownHanging = !!hung && hung.owner === player.characterId;
     const ownTile = !!built && built.owner === player.characterId;
     if (!ownHanging && !ownTile) {
@@ -7648,8 +7836,8 @@ export class GameServer {
       if (crop.def.recurring && crop.owner === player.characterId) {
         this.crops.delete(`${tx},${ty}`);
         this.accounts.deleteCrop(tx, ty);
-        this.world.unregisterCropTile(tx, ty);
-        this.setWorldTile(tx, ty, bedTileFor(crop.def, crop.framed === 1));
+        this.surface.unregisterCropTile(tx, ty);
+        this.setWorldTile(SURFACE_PLANE_ID, tx, ty, bedTileFor(crop.def, crop.framed === 1));
         for (const s of this.sessions) s.sendJson({ t: 'farm', remove: [{ tx, ty }] });
         player.session.sendJson({ t: 'chat', channel: 'system', text: 'You grub the old wood out. The plot stands ready.' });
         return;
@@ -7683,7 +7871,7 @@ export class GameServer {
         });
         return;
       }
-      if (!ownHanging && this.world.groundAt(tx, ty) === Tile.Apiary && this.farmApiaries.has(`${tx},${ty}`)) {
+      if (!ownHanging && world.groundAt(tx, ty) === Tile.Apiary && this.farmApiaries.has(`${tx},${ty}`)) {
         // The hive leaves with its box — the clock simply ends.
         this.farmApiaries.delete(`${tx},${ty}`);
         this.accounts.deleteFarmApiary(tx, ty);
@@ -7693,7 +7881,7 @@ export class GameServer {
     // THE ANIMALS OF THE YARD: a trough with a herd anchored (or a
     // heaped manger) will not come down — lead the animals away and
     // let them eat it empty first.
-    if (!ownHanging && this.world.groundAt(tx, ty) === Tile.FeedTrough) {
+    if (!ownHanging && world.groundAt(tx, ty) === Tile.FeedTrough) {
       if (this.livestockAtTrough(tx, ty) > 0) {
         this.speak(player, 'Herd needs it', 'The herd still answers to this trough.', {
           x: tx + 0.5,
@@ -7722,12 +7910,14 @@ export class GameServer {
     const action = player.action! as DemolishAction;
     if (--action.ticksLeft > 0) return;
     const { tx, ty } = action;
+    const plane = this.positions.must(eid).plane;
+    const world = this.worldOf(plane);
     // THE SECOND LAYER's teardown: the cloth comes down quietly (no
     // collapse ceremony — a banner is lifted off its rod, not felled),
     // hands back ceil-half of its ledger, and the face's prior detail
     // returns. Re-dye pigment is spent color and never refunds.
     if (action.hanging) {
-      const hung = this.world.builtDetailAt(tx, ty);
+      const hung = world.builtDetailAt(tx, ty);
       if (!hung || hung.owner !== player.characterId) {
         this.cancelAction(eid, player, 'blocked');
         return;
@@ -7739,7 +7929,7 @@ export class GameServer {
           const back = Math.ceil(m.qty / 2);
           const kept = addItem(player.inventory, m.item, back);
           if (kept < back) {
-            this.placeDrop(m.item, back - kept, tx + 0.5, ty + 1.5, {
+            this.placeDrop(plane, m.item, back - kept, tx + 0.5, ty + 1.5, {
               ownerEid: eid,
               ownerUntil: Date.now() + 30_000,
               despawnAt: Date.now() + 12 * 60_000,
@@ -7757,21 +7947,21 @@ export class GameServer {
         }
         player.session?.sendJson({ t: 'inv', slots: player.inventory });
       }
-      this.world.unregisterBuiltDetail(tx, ty);
-      this.accounts.deleteBuiltDetail(tx, ty);
-      this.setWorldDetail(tx, ty, hung.prevDetail);
+      world.unregisterBuiltDetail(tx, ty);
+      this.accounts.deleteBuiltDetail(plane, tx, ty);
+      this.setWorldDetail(plane, tx, ty, hung.prevDetail);
       this.cancelAction(eid, player, 'done');
       return;
     }
     // Re-validate at the moment of the last swing: the record may have
     // changed hands or vanished while the bar filled.
-    const built = this.world.builtAt(tx, ty);
+    const built = world.builtAt(tx, ty);
     if (!built || built.owner !== player.characterId || this.crops.has(`${tx},${ty}`)) {
       this.cancelAction(eid, player, 'blocked');
       return;
     }
     // A restored solid layer may never trap a standing body.
-    if (tileDef(built.prevTile).solid && this.tileHoldsBody(tx, ty)) {
+    if (tileDef(built.prevTile).solid && this.tileHoldsBody(plane, tx, ty)) {
       this.cancelAction(eid, player, 'occupied');
       return;
     }
@@ -7796,7 +7986,7 @@ export class GameServer {
         const back = Math.ceil(m.qty / 2);
         const kept = addItem(player.inventory, m.item, back);
         if (kept < back) {
-          this.placeDrop(m.item, back - kept, tx + 0.5, ty + 0.5, {
+          this.placeDrop(plane, m.item, back - kept, tx + 0.5, ty + 0.5, {
             ownerEid: eid,
             ownerUntil: Date.now() + 30_000,
             despawnAt: Date.now() + 12 * 60_000,
@@ -7817,21 +8007,21 @@ export class GameServer {
 
     // The words fall with the post: no orphan record may outlive its
     // board, or a rebuild on the same tile would inherit dead copy.
-    if (this.playerSigns.delete(`${tx},${ty}`)) {
-      this.accounts.deleteSign(tx, ty);
-      this.broadcastSign(tx, ty, true);
+    if (this.playerSigns.delete(`${plane}|${tx},${ty}`)) {
+      this.accounts.deleteSign(plane, tx, ty);
+      this.broadcastSign(plane, tx, ty, true);
     }
     // THE SECOND LAYER: a hanging falls with its wall — the cloth has
     // no face left to hold it, and an orphan detail row would re-dress
     // whatever rises here next. Its ceil-half salvage spills at the
     // wall's foot as an UNOWNED pile (the wall's owner may not be the
     // hanging's — the canopy-falls law, one lane over).
-    const hungHere = this.world.builtDetailAt(tx, ty);
+    const hungHere = world.builtDetailAt(tx, ty);
     if (hungHere) {
       const hdef = buildableForDetail(hungHere.detail);
       if (hdef) {
         for (const m of hdef.materials) {
-          this.placeDrop(m.item, Math.ceil(m.qty / 2), tx + 0.5, ty + 1.5, {
+          this.placeDrop(plane, m.item, Math.ceil(m.qty / 2), tx + 0.5, ty + 1.5, {
             ownerEid: null,
             ownerUntil: 0,
             despawnAt: Date.now() + 12 * 60_000,
@@ -7839,16 +8029,16 @@ export class GameServer {
           });
         }
       }
-      this.world.unregisterBuiltDetail(tx, ty);
-      this.accounts.deleteBuiltDetail(tx, ty);
-      this.setWorldDetail(tx, ty, hungHere.prevDetail);
+      world.unregisterBuiltDetail(tx, ty);
+      this.accounts.deleteBuiltDetail(plane, tx, ty);
+      this.setWorldDetail(plane, tx, ty, hungHere.prevDetail);
     }
     // THE CANOPY FALLS WITH ITS WALL: if the doomed tile hosts an
     // awning on its south side, the brackets have nothing left to
     // bolt to — the awning comes down WITH the wall, its ceil-half
     // salvage spilling at the site for whoever owned it (an unowned
     // ground pile: the wall's owner may not be the awning's).
-    const southBuilt = this.world.builtAt(tx, ty + 1);
+    const southBuilt = world.builtAt(tx, ty + 1);
     if (southBuilt && awningInfo(southBuilt.tile) !== null) {
       const adef = buildableForTile(southBuilt.tile as Tile);
       this.broadcastFx({
@@ -7861,7 +8051,7 @@ export class GameServer {
       });
       if (adef) {
         for (const m of adef.materials) {
-          this.placeDrop(m.item, Math.ceil(m.qty / 2), tx + 0.5, ty + 1.5, {
+          this.placeDrop(plane, m.item, Math.ceil(m.qty / 2), tx + 0.5, ty + 1.5, {
             ownerEid: null,
             ownerUntil: 0,
             despawnAt: Date.now() + 12 * 60_000,
@@ -7869,12 +8059,12 @@ export class GameServer {
           });
         }
       }
-      this.world.unregisterBuilt(tx, ty + 1);
-      this.accounts.deleteBuiltTile(tx, ty + 1);
-      this.setWorldTile(tx, ty + 1, southBuilt.prevTile as Tile);
+      world.unregisterBuilt(tx, ty + 1);
+      this.accounts.deleteBuiltTile(plane, tx, ty + 1);
+      this.setWorldTile(plane, tx, ty + 1, southBuilt.prevTile as Tile);
     }
-    this.world.unregisterBuilt(tx, ty);
-    this.accounts.deleteBuiltTile(tx, ty);
+    world.unregisterBuilt(tx, ty);
+    this.accounts.deleteBuiltTile(plane, tx, ty);
     // THE LAYER LAW: give back what stood here at build time — a wall
     // cut into your floor tears down to the FLOOR, a rail off the
     // porch tears down to the DECK. A restored player floor
@@ -7885,11 +8075,11 @@ export class GameServer {
       built.prevTile === Tile.StoneFloor ||
       built.prevTile === Tile.PorchDeck
     ) {
-      const natural = this.world.naturalGround(tx, ty);
-      this.world.registerBuilt(tx, ty, built.prevTile, built.owner, natural);
-      this.accounts.saveBuiltTile(tx, ty, built.prevTile, built.owner, natural);
+      const natural = world.naturalGround(tx, ty);
+      world.registerBuilt(tx, ty, built.prevTile, built.owner, natural);
+      this.accounts.saveBuiltTile(plane, tx, ty, built.prevTile, built.owner, natural);
     }
-    this.setWorldTile(tx, ty, built.prevTile);
+    this.setWorldTile(plane, tx, ty, built.prevTile);
     if (this.homesByCharacter.has(player.characterId)) this.ringCache = null;
     this.capitalCache?.clear();
     // Tearing down your own claimed bed dissolves the claim NOW —
@@ -7962,7 +8152,7 @@ export class GameServer {
               if (addItem(player.inventory, taken.item, 1, taken.roll) === 0) {
                 const pos = this.positions.get(eid);
                 if (pos) {
-                  this.placeDrop(taken.item, 1, pos.x, pos.y, {
+                  this.placeDrop(pos.plane, taken.item, 1, pos.x, pos.y, {
                     ownerEid: eid,
                     ownerUntil: Date.now() + 30_000,
                     despawnAt: Date.now() + 12 * 60_000,
@@ -8385,12 +8575,12 @@ export class GameServer {
    * THE SECOND LAYER's mirror of setWorldTile: mutate one detail-layer
    * id and stream the DetailPatch to everyone who knows the chunk.
    */
-  private setWorldDetail(tx: number, ty: number, detail: number): void {
-    this.world.setDetail(tx, ty, detail);
+  private setWorldDetail(plane: PlaneId, tx: number, ty: number, detail: number): void {
+    this.worldOf(plane).setDetail(tx, ty, detail);
     const key = chunkKey(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
     const patch = encodeDetailPatch({ tx, ty, detail });
     for (const s of this.sessions) {
-      if (s.knownChunks.has(key)) s.sendBinary(patch);
+      if (this.sessionPlane(s) === plane && s.knownChunks.has(key)) s.sendBinary(patch);
     }
   }
 
@@ -8412,17 +8602,24 @@ export class GameServer {
       sys('Guests cannot hang decor. Make an account!');
       return false;
     }
+    // THE ROCK KEEPS NOTHING: scratch planes refuse the second layer
+    // for the same reason they refuse walls.
+    if (!(this.planes.defOf(pos.plane)?.persistent ?? false)) {
+      this.speak(player, 'The rock refuses', 'Nothing hung here would outlast the rift.');
+      return false;
+    }
     if (wallHungInfo(detail) === null) return false;
     const dx = tx + 0.5 - pos.x;
     const dy = ty + 0.5 - pos.y;
     if (dx * dx + dy * dy > 3 * 3) return false;
-    this.world.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
-    if (!this.hangFaceOk(tx, ty, detail)) {
+    const world = this.worldOf(pos.plane);
+    world.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+    if (!this.hangFaceOk(pos.plane, tx, ty, detail)) {
       sys('There is no wall face there to carry it.');
       return false;
     }
-    const current = this.world.detailAt(tx, ty);
-    const hung = this.world.builtDetailAt(tx, ty);
+    const current = world.detailAt(tx, ty);
+    const hung = world.builtDetailAt(tx, ty);
     if (current !== 0 && (!hung || hung.owner !== player.characterId)) {
       sys('That wall already bears its cloth.');
       return false;
@@ -8430,9 +8627,9 @@ export class GameServer {
     // Re-hanging your own replaces the row whole; the prev captured at
     // the FIRST hang carries through (depth-1 layer law, detail lane).
     const prevDetail = hung ? hung.prevDetail : current;
-    this.world.registerBuiltDetail(tx, ty, detail, player.characterId, prevDetail);
-    this.accounts.saveBuiltDetail(tx, ty, detail, player.characterId, prevDetail);
-    this.setWorldDetail(tx, ty, detail);
+    world.registerBuiltDetail(tx, ty, detail, player.characterId, prevDetail);
+    this.accounts.saveBuiltDetail(pos.plane, tx, ty, detail, player.characterId, prevDetail);
+    this.setWorldDetail(pos.plane, tx, ty, detail);
     return true;
   }
 
@@ -8441,7 +8638,8 @@ export class GameServer {
     const player = this.players.get(eid);
     const pos = this.positions.get(eid);
     if (!player || !pos || player.session === null) return false;
-    const hung = this.world.builtDetailAt(tx, ty);
+    const world = this.worldOf(pos.plane);
+    const hung = world.builtDetailAt(tx, ty);
     if (!hung || hung.owner !== player.characterId) {
       player.session.sendJson({
         t: 'chat',
@@ -8453,22 +8651,24 @@ export class GameServer {
     const dx = tx + 0.5 - pos.x;
     const dy = ty + 0.5 - pos.y;
     if (dx * dx + dy * dy > 3 * 3) return false;
-    this.world.unregisterBuiltDetail(tx, ty);
-    this.accounts.deleteBuiltDetail(tx, ty);
-    this.setWorldDetail(tx, ty, hung.prevDetail);
+    world.unregisterBuiltDetail(tx, ty);
+    this.accounts.deleteBuiltDetail(pos.plane, tx, ty);
+    this.setWorldDetail(pos.plane, tx, ty, hung.prevDetail);
     return true;
   }
 
   /** Mutate the world and stream the patch to everyone nearby. */
-  private setWorldTile(tx: number, ty: number, tile: Tile): void {
+  private setWorldTile(plane: PlaneId, tx: number, ty: number, tile: Tile): void {
     // Fresh tile, fresh wood: any change at this coord resets prop
     // durability (respawn, build, demolish, the burst itself).
-    this.propDamage.delete(`${tx},${ty}`);
-    this.world.setGround(tx, ty, tile);
+    this.propDamage.delete(`${plane}|${tx},${ty}`);
+    this.worldOf(plane).setGround(tx, ty, tile);
     const key = chunkKey(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
     const patch = encodeTilePatch({ tx, ty, ground: tile });
     for (const s of this.sessions) {
-      if (s.knownChunks.has(key)) s.sendBinary(patch);
+      // A patch may only reach sessions whose streamed plane owns the
+      // tile — the same "cx,cy" names different ground elsewhere.
+      if (this.sessionPlane(s) === plane && s.knownChunks.has(key)) s.sendBinary(patch);
     }
   }
 
@@ -8484,14 +8684,18 @@ export class GameServer {
    * register; tickSpawns stands the new residents up next tick.
    */
   reloadZone(zone: ZoneDef): void {
-    const old = this.world.zoneById(zone.id);
-    this.world.replaceZone(zone);
-    this.dropClientChunks(old);
-    this.dropClientChunks(zone);
+    const zonePlane = zone.plane ?? SURFACE_PLANE_ID;
+    const world = this.worldOf(zonePlane);
+    const old = world.zoneById(zone.id);
+    world.replaceZone(zone);
+    this.dropClientChunks(zonePlane, old);
+    this.dropClientChunks(zonePlane, zone);
     this.retireZonePlacements(zone.id);
-    if (zone.spawns && zone.spawns.length > 0) this.registerSpawns(zone.spawns, zone.id);
+    if (zone.spawns && zone.spawns.length > 0) {
+      this.registerSpawns(zone.spawns, zonePlane, zone.id);
+    }
     if (zone.actorSpawns && zone.actorSpawns.length > 0) {
-      this.registerActorSpawns(zone.actorSpawns, zone.id);
+      this.registerActorSpawns(zone.actorSpawns, zonePlane, zone.id);
     }
     // THE ADOPTED RING: a save that took over a code-side town spawn
     // retires the constant's live copy in place (deactivate-never-
@@ -8644,10 +8848,13 @@ export class GameServer {
 
   /** Remove an authored zone live; its ground reverts to procgen. */
   unloadZone(zoneId: string): void {
-    const old = this.world.zoneById(zoneId);
+    const world = this.planes.planeOfZone(zoneId);
+    if (!world) return;
+    const plane = world.plane.id;
+    const old = world.zoneById(zoneId);
     if (!old) return;
-    this.world.removeZone(zoneId);
-    this.dropClientChunks(old);
+    world.removeZone(zoneId);
+    this.dropClientChunks(plane, old);
     this.retireZonePlacements(zoneId);
     // Purge pending tile respawns inside the unloaded rect — a chest
     // reclose or smashed-prop regrow firing after the zone is gone
@@ -8658,6 +8865,7 @@ export class GameServer {
     for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
       const e = this.respawnQueue[i]!;
       if (
+        e.plane === plane &&
         e.tx >= old.origin.x &&
         e.tx < old.origin.x + old.width &&
         e.ty >= old.origin.y &&
@@ -8668,7 +8876,14 @@ export class GameServer {
     }
   }
 
-  private dropClientChunks(zone: ZoneDef | undefined): void {
+  /** The plane a session is currently streaming, if it has a body. */
+  private sessionPlane(s: Session): PlaneId | null {
+    const eid = s.playerEid;
+    if (eid === null) return null;
+    return this.positions.get(eid)?.plane ?? null;
+  }
+
+  private dropClientChunks(plane: PlaneId, zone: ZoneDef | undefined): void {
     if (!zone) return;
     const c0x = Math.floor(zone.origin.x / CHUNK_SIZE);
     const c0y = Math.floor(zone.origin.y / CHUNK_SIZE);
@@ -8677,7 +8892,11 @@ export class GameServer {
     for (let cy = c0y; cy <= c1y; cy++) {
       for (let cx = c0x; cx <= c1x; cx++) {
         const key = chunkKey(cx, cy);
-        for (const s of this.sessions) s.knownChunks.delete(key);
+        // knownChunks keys are bare "cx,cy" — plane-implicit per
+        // session, so only same-plane sessions may drop them.
+        for (const s of this.sessions) {
+          if (this.sessionPlane(s) === plane) s.knownChunks.delete(key);
+        }
       }
     }
   }
@@ -8736,7 +8955,7 @@ export class GameServer {
     const rings: ClaimRing[] = [];
     for (const [characterId, home] of this.homesByCharacter) {
       let r: number = FRONTIER.claimR;
-      const keys = this.world.builtKeysOf(characterId);
+      const keys = this.surface.builtKeysOf(characterId);
       if (keys) {
         for (const key of keys) {
           const comma = key.indexOf(',');
@@ -8775,7 +8994,7 @@ export class GameServer {
   private poiCtx(cellX: number, cellY: number): PoiContext {
     return poiContext(
       this.dangerAnchors(),
-      this.world.zoneDefs,
+      this.surface.zoneDefs,
       this.poiPrefabs!,
       this.claimRings(),
       this.capitalRectsNear(cellX * POI_CELL, cellY * POI_CELL, POI_CELL, POI_CELL),
@@ -8790,7 +9009,7 @@ export class GameServer {
     return {
       anchors: SETTLED_ANCHORS,
       zoneRects: [
-        ...this.world.zoneDefs
+        ...this.surface.zoneDefs
           .filter((z) => !z.id.startsWith('poi:') && !z.id.startsWith('stronghold:'))
           .map((z) => ({ x: z.origin.x, y: z.origin.y, w: z.width, h: z.height })),
         ...PLANNED_ZONE_RECTS,
@@ -9055,8 +9274,8 @@ export class GameServer {
       if (session.playerEid === null) continue;
       const pos = this.positions.get(session.playerEid);
       if (!pos) continue;
+      if (pos.plane !== SURFACE_PLANE_ID) continue;
       const py = pos.y;
-      if (py >= DARK_BAND_Y) continue;
       const px = pos.x;
       const r = capitalLatticeRange(
         px - CAPITAL_PAD_TILES,
@@ -9138,9 +9357,9 @@ export class GameServer {
         if (info && !info.open) zone.ground[i] = openChestTile(info.kind);
       }
     }
-    this.world.addZone(zone);
-    this.dropClientChunks(zone);
-    const spawnIdx = this.registerSpawns(zone.spawns ?? [], zone.id);
+    this.surface.addZone(zone);
+    this.dropClientChunks(SURFACE_PLANE_ID, zone);
+    const spawnIdx = this.registerSpawns(zone.spawns ?? [], SURFACE_PLANE_ID, zone.id);
     for (const i of spawnIdx) this.strongholdSpawnCells.set(i, key);
     // THE BITS BELONG TO THEIR WALLS: wardsCleared indexes THIS
     // layout's ward list by position. When the dealt layout differs
@@ -9190,7 +9409,7 @@ export class GameServer {
         layout.wards[wi]!.knots.some((k) => k.title);
       const wx = zone.origin.x + lx;
       const wy = zone.origin.y + ly;
-      this.poiChests.set(`${wx},${wy}`, {
+      this.poiChests.set(`${SURFACE_PLANE_ID}|${wx},${wy}`, {
         cell: captained ? `sh:${key}:${wi}` : `sh:${key}`,
         warded: true,
       });
@@ -9835,7 +10054,7 @@ export class GameServer {
    */
   reloadGeography(def: GeographyDef): { evicted: number; orphaned: number } {
     replaceGeography(def);
-    this.world.dropAll();
+    this.surface.dropAll();
     for (const s of this.sessions) s.knownChunks.clear();
     this.anchorCache = null;
     // The authored-cells projection died with the roster it projected
@@ -10028,7 +10247,7 @@ export class GameServer {
                 : ('unstood' as const),
         };
       }),
-      growth: [...this.world.growthLedger.values()].map((r) => ({
+      growth: [...this.surface.growthLedger.values()].map((r) => ({
         tx: r.tx,
         ty: r.ty,
         state: r.state,
@@ -10131,7 +10350,7 @@ export class GameServer {
       this.materializePoiCell(cellX, cellY);
       live = this.poiLive.get(key);
     }
-    return live?.zoneId ? (this.world.zoneById(live.zoneId) ?? null) : null;
+    return live?.zoneId ? (this.surface.zoneById(live.zoneId) ?? null) : null;
   }
 
   /**
@@ -10146,7 +10365,7 @@ export class GameServer {
     for (const session of this.sessions) {
       if (session.playerEid === null) continue;
       const pos = this.positions.get(session.playerEid);
-      if (!pos || pos.y >= DARK_BAND_Y) continue; // the underworld has its own generator
+      if (!pos || pos.plane !== SURFACE_PLANE_ID) continue; // the frontier is surface law
       const c0x = poiCellOf(pos.x - pad);
       const c1x = poiCellOf(pos.x + pad);
       const c0y = poiCellOf(pos.y - pad);
@@ -10327,7 +10546,7 @@ export class GameServer {
     for (const [eid, player] of this.players) {
       if (player.session === null && player.disconnectedAt !== null) continue;
       const pos = this.positions.get(eid);
-      if (pos && pos.y < DARK_BAND_Y) surface.push(eid);
+      if (pos && pos.plane === SURFACE_PLANE_ID) surface.push(eid);
     }
     if (surface.length === 0) return false;
     const around = this.positions.get(surface[Math.floor(Math.random() * surface.length)]!)!;
@@ -10353,7 +10572,6 @@ export class GameServer {
     }
     const authored = this.authoredCells();
     for (const { tx, ty } of points) {
-      if (ty >= DARK_BAND_Y - ZONE_CLEARANCE) continue;
       const cx = poiCellOf(tx);
       const cy = poiCellOf(ty);
       const ctx = this.poiCtx(cx, cy);
@@ -10418,7 +10636,6 @@ export class GameServer {
       .map((p) => ({ ...p, road: roadDistanceAt(config.worldSeed, p.tx, p.ty) }))
       .sort((a, b) => a.road - b.road);
     for (const { tx, ty } of ranked) {
-      if (ty >= DARK_BAND_Y - ZONE_CLEARANCE) continue;
       const cx = poiCellOf(tx);
       const cy = poiCellOf(ty);
       const ctx = this.poiCtx(cx, cy);
@@ -11056,7 +11273,7 @@ export class GameServer {
           for (let dx = -1; dx <= 1; dx++) {
             const tx = Math.floor(bpos.x) + dx;
             const ty = Math.floor(bpos.y) + dy;
-            const built = this.world.builtAt(tx, ty);
+            const built = this.surface.builtAt(tx, ty);
             if (!built || built.owner !== who) continue;
             const info = doorInfo(built.tile);
             if (!info || info.open) continue;
@@ -11156,16 +11373,16 @@ export class GameServer {
         if (info && !info.open) zone.ground[i] = openChestTile(info.kind);
       }
     }
-    this.world.addZone(zone);
-    this.dropClientChunks(zone);
-    const spawnIdx = this.registerSpawns(zone.spawns ?? [], zone.id);
+    this.surface.addZone(zone);
+    this.dropClientChunks(SURFACE_PLANE_ID, zone);
+    const spawnIdx = this.registerSpawns(zone.spawns ?? [], SURFACE_PLANE_ID, zone.id);
     for (const i of spawnIdx) this.poiSpawnCells.set(i, key);
     if (broken) this.standDownGarrison(spawnIdx);
     // The friendly staff stands up through the actor machinery —
     // identity, disposition, protection, dialogue, and shop all ride
     // the same laws the town's own people keep.
     if (zone.actorSpawns && zone.actorSpawns.length > 0) {
-      this.registerActorSpawns(zone.actorSpawns, zone.id);
+      this.registerActorSpawns(zone.actorSpawns, SURFACE_PLANE_ID, zone.id);
     }
     // Strongbox overrides: the def's loot table and ward, addressed by
     // the chest's world tile (the tile is the state — the override
@@ -11177,7 +11394,7 @@ export class GameServer {
         if (!info || info.open) continue;
         const wx = zone.origin.x + (i % zone.width);
         const wy = zone.origin.y + Math.floor(i / zone.width);
-        this.poiChests.set(`${wx},${wy}`, {
+        this.poiChests.set(`${SURFACE_PLANE_ID}|${wx},${wy}`, {
           cell: key,
           ...(def.chestLoot !== undefined ? { table: def.chestLoot } : {}),
           ...(def.chestWarded ? { warded: true } : {}),
@@ -11218,9 +11435,9 @@ export class GameServer {
     const composed = composeFinds(config.worldSeed, cellX, cellY, epoch, finds, ctx);
     if (!composed) return;
     const { zone, spawnSlots } = composed;
-    this.world.addZone(zone);
-    this.dropClientChunks(zone);
-    const spawnIdx = this.registerSpawns(zone.spawns ?? [], zone.id);
+    this.surface.addZone(zone);
+    this.dropClientChunks(SURFACE_PLANE_ID, zone);
+    const spawnIdx = this.registerSpawns(zone.spawns ?? [], SURFACE_PLANE_ID, zone.id);
     const ledger = this.minorLedger.get(key);
     const cleared = ledger && ledger.epoch === epoch ? ledger.cleared : 0;
     for (const [j, idx] of spawnIdx.entries()) {
@@ -11574,7 +11791,7 @@ export class GameServer {
     if (added >= qty) return;
     const pos = eid !== undefined ? this.positions.get(eid) : undefined;
     if (!pos) return;
-    this.placeDrop(item, qty - added, pos.x, pos.y, {
+    this.placeDrop(pos.plane, item, qty - added, pos.x, pos.y, {
       ownerEid: null,
       ownerUntil: 0,
       despawnAt: Date.now() + 12 * 60_000,
@@ -11763,7 +11980,7 @@ export class GameServer {
     const pad = 1024;
     const ctx = poiContext(
       this.dangerAnchors(),
-      this.world.zoneDefs,
+      this.surface.zoneDefs,
       this.poiPrefabs,
       this.claimRings(),
       this.capitalRectsNear(x0 - pad, y0 - pad, x1 - x0 + pad * 2, y1 - y0 + pad * 2),
@@ -11786,6 +12003,72 @@ export class GameServer {
     pos.x = x;
     pos.y = y;
     this.updateChunkMembership(eid);
+  }
+
+  /** The wire form of a plane's law (welcome + the crossing). */
+  private planeWireOf(plane: PlaneId): PlaneWire {
+    const def = this.planes.defOf(plane);
+    return def
+      ? { id: def.id, name: def.name, underground: def.underground, persistent: def.persistent }
+      : // A plane that no longer stands (dead rift in a stale row):
+        // conservative law — dark, scratch. The rescue paths never
+        // actually leave a body here.
+        { id: plane, name: plane, underground: true, persistent: false };
+  }
+
+  /**
+   * THE CROSSING — the ONLY door between planes (docs/planes-plan.md
+   * §2.3). Same body teardown as teleport, then: the body re-files
+   * under the new plane, the plane's saddle law applies, heel pets
+   * cross WITH their keeper, the session resets exactly as a rebind
+   * does, and S2CPlane goes out BEFORE the next interest flush so the
+   * client has dropped the old world before the new one streams.
+   */
+  transferPlane(eid: EntityId, plane: PlaneId, x: number, y: number): void {
+    const pos = this.positions.get(eid);
+    if (!pos) return;
+    if (pos.plane === plane) {
+      this.teleport(eid, x, y);
+      return;
+    }
+    const player = this.players.get(eid);
+    if (player) {
+      this.cancelAction(eid, player);
+      this.cancelCasting(eid, player);
+      this.standUp(eid, player, pos, false);
+      player.inputQueue.length = 0;
+    }
+    pos.x = x;
+    pos.y = y;
+    pos.plane = plane;
+    this.updateChunkMembership(eid);
+    // The plane speaks its own saddle law — no y-line.
+    if (player?.mountId && (this.planes.defOf(plane)?.underground ?? true)) {
+      this.dismount(eid, player);
+    }
+    // The heel crosses with the keeper: a companion left on the far
+    // side of a world border isn't "out of leash", it's ORPHANED.
+    if (player) {
+      for (const [petEid, pet] of this.pets.entries()) {
+        if (pet.ownerEid !== eid) continue;
+        const petPos = this.positions.get(petEid);
+        if (!petPos) continue;
+        petPos.x = x;
+        petPos.y = y + 0.8;
+        petPos.plane = plane;
+        this.updateChunkMembership(petEid);
+      }
+    }
+    const session = player?.session;
+    if (session) {
+      // Exactly the rebind reset: the old plane's streamed state is
+      // another world's furniture now.
+      session.knownEntities.clear();
+      session.knownChunks.clear();
+      session.sentSnapSig.clear();
+      session.lastCenterChunk = null;
+      session.sendJson({ t: 'plane', plane: this.planeWireOf(plane), x, y });
+    }
   }
 
   // ------------------------------------------------- THE KEY RING
@@ -11975,11 +12258,11 @@ export class GameServer {
     // a wall in the way puts it at their feet instead of in the masonry.
     let dx = pos.x + Math.cos(pos.dir) * 0.9;
     let dy = pos.y + Math.sin(pos.dir) * 0.9;
-    if (this.world.isSolid(Math.floor(dx), Math.floor(dy))) {
+    if (this.worldOf(pos.plane).isSolid(Math.floor(dx), Math.floor(dy))) {
       dx = pos.x;
       dy = pos.y;
     }
-    this.placeDrop(DUNGEON_KEY_ITEM, 1, dx, dy, {
+    this.placeDrop(pos.plane, DUNGEON_KEY_ITEM, 1, dx, dy, {
       ownerEid: null,
       ownerUntil: 0,
       despawnAt: Date.now() + 12 * 60_000,
@@ -12026,14 +12309,15 @@ export class GameServer {
   }
 
   /** A riftgate portal tile within reach of this position, or null. */
-  private riftgateNear(pos: { x: number; y: number }): { x: number; y: number } | null {
+  private riftgateNear(pos: { plane: PlaneId; x: number; y: number }): { x: number; y: number } | null {
+    const world = this.worldOf(pos.plane);
     const cx = Math.floor(pos.x);
     const cy = Math.floor(pos.y);
     for (let dy = -2; dy <= 2; dy++) {
       for (let dx = -2; dx <= 2; dx++) {
-        const t = this.world.groundAt(cx + dx, cy + dy);
+        const t = world.groundAt(cx + dx, cy + dy);
         if (t !== Tile.PortalDown && t !== Tile.PortalUp) continue;
-        const portal = this.world.portalAt(cx + dx, cy + dy);
+        const portal = world.portalAt(cx + dx, cy + dy);
         if (portal?.delve) return { x: cx + dx, y: cy + dy };
       }
     }
@@ -12090,7 +12374,7 @@ export class GameServer {
         y: gate.y,
       });
     }
-    this.enterDungeon(eid, player, spec, { x: pos.x, y: pos.y });
+    this.enterDungeon(eid, player, spec, { plane: pos.plane, x: pos.x, y: pos.y });
     if (!reenter) {
       // THE WORN WARD: the fresh cut spends one use, stamped onto the
       // roll so the wear rides every save, drop, and trade.
@@ -12107,29 +12391,31 @@ export class GameServer {
     eid: EntityId,
     player: PlayerComp,
     spec: DungeonSpec,
-    returnTo: { x: number; y: number },
+    returnTo: PlanePos,
   ): void {
     let inst = this.dungeons.get(player.characterId);
     if (inst && inst.seed === spec.seed && inst.tier === spec.tier && inst.power === spec.power) {
-      this.teleport(eid, inst.entry.x, inst.entry.y);
+      this.transferPlane(eid, inst.plane, inst.entry.x, inst.entry.y);
       return;
     }
     if (inst) this.teardownDungeon(player.characterId);
     const slot = this.nextDungeonSlot++;
-    const origin = dungeonOrigin(slot);
-    const result = generateDungeon(spec, origin, returnTo, slot);
-    this.world.addZone(result.zone);
-    const spawnIndexes = this.registerSpawns(result.zone.spawns ?? []);
+    // THE WORLDS APART: the run is cut onto its own rift plane —
+    // minted here, dropped whole at teardown. The plane IS the
+    // isolation; every run generates at the same quiet origin.
+    const plane = riftPlaneId(slot);
+    const result = generateDungeon(spec, DUNGEON_ORIGIN, returnTo, slot);
+    this.planes.add(riftPlaneDef(plane, spec.name), [result.zone]);
+    const spawnIndexes = this.registerSpawns(result.zone.spawns ?? [], plane);
     inst = {
       zoneId: result.zone.id,
       spawnIndexes,
       slot,
+      plane,
       entry: result.entry,
       seed: spec.seed,
       tier: spec.tier,
       power: spec.power,
-      x0: origin.x,
-      x1: origin.x + spec.size,
       ownerId: player.characterId,
       ownerReturn: returnTo,
       name: spec.name,
@@ -12153,7 +12439,7 @@ export class GameServer {
     // THE COURT WARDS THE PRIZE: the champion's chest refuses the hand
     // while he stands — the fight is the key, not the sneak.
     if (result.bossChest) {
-      this.poiChests.set(`${result.bossChest.x},${result.bossChest.y}`, {
+      this.poiChests.set(`${plane}|${result.bossChest.x},${result.bossChest.y}`, {
         cell: `dg:${player.characterId}`,
         warded: true,
       });
@@ -12173,7 +12459,7 @@ export class GameServer {
       channel: 'system',
       text: `${spec.name} — sigil ${spec.sigil}, power ${spec.power}${modNames.length > 0 ? `, ${modNames.join(', ').toLowerCase()}` : ''}. The way out is where you land; the boss is where you'd least like him.`,
     });
-    this.teleport(eid, result.entry.x, result.entry.y);
+    this.transferPlane(eid, plane, result.entry.x, result.entry.y);
     // Offer the fellowship the door (any riftgate carries them in).
     if (player.characterId > 0) {
       this.party.notifyDelve(player.characterId, player.name, spec.name);
@@ -12188,9 +12474,9 @@ export class GameServer {
     for (const [eid, player] of this.players) {
       if (player.characterId === characterId) continue;
       const pos = this.positions.get(eid);
-      if (!pos || pos.y < 8192 || pos.x < dungeon.x0 || pos.x >= dungeon.x1) continue;
-      const back = dungeon.guests.get(player.characterId) ?? this.world.spawn;
-      this.teleport(eid, back.x, back.y);
+      if (!pos || pos.plane !== dungeon.plane) continue;
+      const back = dungeon.guests.get(player.characterId) ?? this.planes.worldSpawn;
+      this.transferPlane(eid, back.plane, back.x, back.y);
       player.session?.sendJson({
         t: 'chat',
         channel: 'system',
@@ -12201,23 +12487,24 @@ export class GameServer {
     // The run's slots return to the pool — every dungeon ever cut used
     // to permanently fatten spawnPoints (the one retirement door law).
     for (const idx of dungeon.spawnIndexes) this.freeSpawnSlot(idx);
-    // THE ROCK TAKES ITS DEAD: anything still breathing in the band
+    // THE ROCK TAKES ITS DEAD: anything still breathing on the plane
     // that the roster never knew — a crown's raised adds spawn with
-    // spawnIndex -1 — goes with the zone, or the next instance dealt
-    // this slot inherits live teeth in its rock. Companions are the
-    // one exception: a friend follows its keeper, never the rubble.
+    // spawnIndex -1 — goes with the world it stood in. Companions are
+    // the one exception: a friend follows its keeper, never the rubble.
     const strays: EntityId[] = [];
     for (const [neid] of this.npcs) {
       if (this.pets.has(neid)) continue;
       const npos = this.positions.get(neid);
-      if (!npos || npos.y < 8192 || npos.x < dungeon.x0 || npos.x >= dungeon.x1) continue;
+      if (!npos || npos.plane !== dungeon.plane) continue;
       strays.push(neid);
     }
     for (const neid of strays) {
       this.removeFromChunks(neid);
       this.ecs.destroy(neid);
     }
-    this.world.removeZone(dungeon.zoneId);
+    // THE UNLOAD IS THE POINT: the whole plane goes — zones, chunks,
+    // portals, signs, memory — in one drop.
+    this.planes.drop(dungeon.plane);
     this.dungeons.delete(characterId);
     // The court's ward retires with its halls.
     for (const [tileKey, over] of this.poiChests) {
@@ -12232,18 +12519,18 @@ export class GameServer {
     }
   }
 
-  /** The live instance whose x-band holds this tile, if any. */
-  private dungeonAt(tx: number, ty: number): DungeonInstance | null {
-    if (ty < 8192) return null;
+  /** The live instance living on this plane, if any. */
+  private dungeonOnPlane(plane: PlaneId): DungeonInstance | null {
+    if (!isRiftPlane(plane)) return null;
     for (const inst of this.dungeons.values()) {
-      if (tx >= inst.x0 && tx < inst.x1) return inst;
+      if (inst.plane === plane) return inst;
     }
     return null;
   }
 
-  /** The dungeon instance owning this tile, if any (chests scale by it). */
-  private dungeonPowerAt(tx: number, ty: number): number | null {
-    return this.dungeonAt(tx, ty)?.power ?? null;
+  /** The dungeon instance owning this plane, if any (chests scale by it). */
+  private dungeonPowerOn(plane: PlaneId): number | null {
+    return this.dungeonOnPlane(plane)?.power ?? null;
   }
 
   /**
@@ -12254,15 +12541,15 @@ export class GameServer {
    * and stiffens its arm, so a fellowship fights a fight instead of
    * a harvest, and a key's power reads as the SOLO recommendation.
    */
-  private dungeonHeadcount(tx: number, ty: number): number {
-    const inst = this.dungeonAt(tx, ty);
+  private dungeonHeadcount(plane: PlaneId): number {
+    const inst = this.dungeonOnPlane(plane);
     if (!inst) return 1;
     let n = 0;
     for (const [peid, p] of this.players) {
       if (p.characterId !== inst.ownerId && !inst.guests.has(p.characterId)) continue;
       if (p.session === null && p.disconnectedAt !== null) continue;
       const pp = this.positions.get(peid);
-      if (pp && pp.y >= 8192 && pp.x >= inst.x0 && pp.x < inst.x1) n++;
+      if (pp && pp.plane === inst.plane) n++;
     }
     return Math.max(1, n);
   }
@@ -12291,12 +12578,12 @@ export class GameServer {
    * cleared spine back. Fires at most once per cut: THE CLEARED HALL
    * pins the champion's respawn to Infinity, so he falls only once.
    */
-  private noteDungeonCleared(spawnIndex: number, tx: number, ty: number): void {
-    const inst = this.dungeonAt(tx, ty);
+  private noteDungeonCleared(spawnIndex: number, plane: PlaneId): void {
+    const inst = this.dungeonOnPlane(plane);
     if (!inst || inst.bossSpawnIdx !== spawnIndex) return;
     const sec = Math.max(1, Math.round((Date.now() - inst.cutAt) / 1000));
     if (inst.courtExit) {
-      this.setWorldTile(inst.courtExit.x, inst.courtExit.y, Tile.PortalUp);
+      this.setWorldTile(inst.plane, inst.courtExit.x, inst.courtExit.y, Tile.PortalUp);
       this.broadcastFx({
         t: 'fx',
         kind: 'summon',
@@ -12312,7 +12599,7 @@ export class GameServer {
     for (const [peid, p] of this.players) {
       if (p.characterId !== inst.ownerId && !inst.guests.has(p.characterId)) continue;
       const pp = this.positions.get(peid);
-      if (!pp || pp.y < 8192 || pp.x < inst.x0 || pp.x >= inst.x1) continue;
+      if (!pp || pp.plane !== inst.plane) continue;
       p.session?.sendJson({ t: 'dgclear', name: inst.name, sigil: inst.sigil, sec });
       p.session?.sendJson({ t: 'chat', channel: 'system', text: line });
     }
@@ -12341,7 +12628,7 @@ export class GameServer {
       }
       const inst = this.dungeons.get(target.id);
       if (!inst) return sys(`${target.name} holds no rift open.`);
-      inst.guests.set(actor.id, { x: pos.x, y: pos.y });
+      inst.guests.set(actor.id, { plane: pos.plane, x: pos.x, y: pos.y });
       // The banner + fog-mask reset ride the same message the owner got.
       const guestMods = dungeonModifiers(inst.seed, inst.tier as ItemRoll['rar']).map((m) => m.name);
       session.sendJson({
@@ -12353,7 +12640,7 @@ export class GameServer {
         power: inst.power,
         mods: guestMods.length > 0 ? guestMods : undefined,
       });
-      this.teleport(eid, inst.entry.x, inst.entry.y);
+      this.transferPlane(eid, inst.plane, inst.entry.x, inst.entry.y);
       const ownerEid = this.characterEids.get(target.id);
       if (ownerEid !== undefined) {
         this.players.get(ownerEid)?.session?.sendJson({
@@ -12377,8 +12664,8 @@ export class GameServer {
       inst.guests.delete(characterId);
       if (eid === undefined) continue;
       const pos = this.positions.get(eid);
-      if (!pos || pos.y < 8192 || pos.x < inst.x0 || pos.x >= inst.x1) continue;
-      this.teleport(eid, back.x, back.y);
+      if (!pos || pos.plane !== inst.plane) continue;
+      this.transferPlane(eid, back.plane, back.x, back.y);
       this.players.get(eid)?.session?.sendJson({
         t: 'chat',
         channel: 'system',
@@ -12447,11 +12734,11 @@ export class GameServer {
     const pos = this.positions.must(eid);
     let dx = pos.x + Math.cos(pos.dir) * 0.9;
     let dy = pos.y + Math.sin(pos.dir) * 0.9;
-    if (this.world.isSolid(Math.floor(dx), Math.floor(dy))) {
+    if (this.worldOf(pos.plane).isSolid(Math.floor(dx), Math.floor(dy))) {
       dx = pos.x;
       dy = pos.y;
     }
-    this.placeDrop(item, n, dx, dy, {
+    this.placeDrop(pos.plane, item, n, dx, dy, {
       ownerEid: null,
       ownerUntil: 0,
       despawnAt: Date.now() + 12 * 60_000,
@@ -14314,14 +14601,14 @@ export class GameServer {
         const r = 1.0 + Math.random() * 1.4;
         const tx = opos.x + Math.cos(a) * r;
         const ty = opos.y + Math.sin(a) * r;
-        if (!this.world.isSolid(Math.floor(tx), Math.floor(ty))) {
+        if (!this.worldOf(opos.plane).isSolid(Math.floor(tx), Math.floor(ty))) {
           x = tx;
           y = ty;
           break;
         }
       }
     }
-    const petEid = this.spawnNpc(def, x, y, -1);
+    const petEid = this.spawnNpc(def, opos.plane, x, y, -1);
     this.pets.set(petEid, {
       ownerEid: eid,
       slot: row.slot,
@@ -14454,7 +14741,7 @@ export class GameServer {
                   { mx: ldx, my: ldy },
                   leap,
                   1 / 4,
-                  this.world,
+                  this.worldOf(pos.plane),
                   npc.def.radius,
                 );
                 pos.x = next.x;
@@ -14508,7 +14795,7 @@ export class GameServer {
         if (d > npc.def.attackRange * 1.5 + 0.3) {
           ({ mx, my } = this.separateHeading(eid, pos, npc.def.radius, mx, my));
         }
-        const next = stepMovement(pos, { mx, my }, speed, TICK_DT, this.world, npc.def.radius);
+        const next = stepMovement(pos, { mx, my }, speed, TICK_DT, this.worldOf(pos.plane), npc.def.radius);
         if (next.x !== pos.x || next.y !== pos.y) {
           pos.dir = Math.atan2(my, mx);
           pos.x = next.x;
@@ -14532,7 +14819,7 @@ export class GameServer {
       let mx = dx / dist;
       let my = dy / dist;
       ({ mx, my } = this.separateHeading(eid, pos, npc.def.radius, mx, my));
-      const next = stepMovement(pos, { mx, my }, speed, TICK_DT, this.world, npc.def.radius);
+      const next = stepMovement(pos, { mx, my }, speed, TICK_DT, this.worldOf(pos.plane), npc.def.radius);
       const moved = next.x !== pos.x || next.y !== pos.y;
       if (moved) {
         pos.dir = Math.atan2(my, mx);
@@ -15574,7 +15861,7 @@ export class GameServer {
         if (added < hook.qty) {
           // A full pack never eats a gift — the rest lands at your feet.
           const pos = this.positions.get(eid);
-          if (pos) this.spawnDrop(hook.item, hook.qty - added, pos.x, pos.y, eid);
+          if (pos) this.spawnDrop(pos.plane, hook.item, hook.qty - added, pos.x, pos.y, eid);
         }
         break;
       }
@@ -15622,7 +15909,7 @@ export class GameServer {
       if (d2 > watch * watch) continue;
       const layoutName =
         this.strongholdLive.get(ckey) !== undefined
-          ? this.world.zoneById(this.strongholdLive.get(ckey)!.zoneId)?.name
+          ? this.surface.zoneById(this.strongholdLive.get(ckey)!.zoneId)?.name
           : undefined;
       const capStage = 3 + row.stage;
       if (!bestCap || capStage > bestCap.stage || (capStage === bestCap.stage && d2 < bestCap.d2)) {
@@ -15723,7 +16010,9 @@ export class GameServer {
       placeName: (id) => {
         if (!id.startsWith('zone:')) return id;
         const zoneId = id.slice(5);
-        for (const z of this.world.zoneDefs) if (z.id === zoneId) return z.name;
+        for (const world of this.planes.all()) {
+          for (const z of world.zoneDefs) if (z.id === zoneId) return z.name;
+        }
         return zoneId;
       },
     };
@@ -15737,28 +16026,34 @@ export class GameServer {
    * a neighborhood, never a pin. Kill and drop grounds resolve
    * nearest the GIVER's own door — the trouble a speaker means is the
    * trouble on their watch — so the answer holds still across pushes.
-   * Surface band only; the chart's rings cannot reach the dark.
+   * THE WORLDS APART: hints resolve on PERSISTENT planes only — a
+   * rift's per-run halls are nobody's neighborhood; the wire carries
+   * the source's plane so the chart files the ring rightly.
    */
   private questLocateRefs(): QuestLocateRefs {
-    const fuzz = (x: number, y: number, r: number): QuestHintWire => ({
-      x: Math.round(x / 8) * 8,
-      y: Math.round(y / 8) * 8,
-      r: Math.round(r),
-    });
-    const surface = (y: number): boolean => y < DUNGEON_MIN_Y;
-    const actorSpot = (id: string): { x: number; y: number } | undefined => {
+    const fuzz = (plane: PlaneId, x: number, y: number, r: number): QuestHintWire => {
+      const hint: QuestHintWire = {
+        x: Math.round(x / 8) * 8,
+        y: Math.round(y / 8) * 8,
+        r: Math.round(r),
+      };
+      if (plane !== SURFACE_PLANE_ID) hint.plane = plane;
+      return hint;
+    };
+    const persistent = (plane: PlaneId): boolean => !isRiftPlane(plane);
+    const actorSpot = (id: string): { plane: PlaneId; x: number; y: number } | undefined => {
       const p = this.actorSpawnPoints.find((s) => s.actor === id);
-      return p && surface(p.y) ? p : undefined;
+      return p && persistent(p.plane) ? p : undefined;
     };
     const actorHint = (id: string): QuestHintWire | undefined => {
       const p = actorSpot(id);
-      return p ? fuzz(p.x, p.y, 10) : undefined;
+      return p ? fuzz(p.plane, p.x, p.y, 10) : undefined;
     };
     const npcHint = (id: string, near?: { x: number; y: number }): QuestHintWire | undefined => {
-      let best: { x: number; y: number; radius: number } | undefined;
+      let best: { plane: PlaneId; x: number; y: number; radius: number } | undefined;
       let bestD = Infinity;
       for (const s of this.spawnPoints) {
-        if (s.npc !== id || !surface(s.y)) continue;
+        if (s.npc !== id || !persistent(s.plane)) continue;
         const d = near ? (s.x - near.x) ** 2 + (s.y - near.y) ** 2 : 0;
         if (!best || d < bestD) {
           best = s;
@@ -15766,16 +16061,23 @@ export class GameServer {
         }
         if (!near) break;
       }
-      return best ? fuzz(best.x, best.y, Math.max(18, best.radius + 10)) : undefined;
+      return best ? fuzz(best.plane, best.x, best.y, Math.max(18, best.radius + 10)) : undefined;
     };
     const placeHint = (place: string): QuestHintWire | undefined => {
       if (!place.startsWith('zone:')) return undefined;
       const zid = place.slice(5);
-      for (const z of this.world.zoneDefs) {
-        if (z.id !== zid) continue;
-        const cy = z.origin.y + z.height / 2;
-        if (!surface(cy)) return undefined;
-        return fuzz(z.origin.x + z.width / 2, cy, Math.max(14, Math.max(z.width, z.height) / 2));
+      for (const world of this.planes.all()) {
+        if (isRiftPlane(world.plane.id)) continue;
+        for (const z of world.zoneDefs) {
+          if (z.id !== zid) continue;
+          const cy = z.origin.y + z.height / 2;
+          return fuzz(
+            world.plane.id,
+            z.origin.x + z.width / 2,
+            cy,
+            Math.max(14, Math.max(z.width, z.height) / 2),
+          );
+        }
       }
       return undefined;
     };
@@ -15977,7 +16279,7 @@ export class GameServer {
         for (let i = 0; i < qty; i++) {
           const roll = makeRoll(rar);
           if (addItem(player.inventory, item, 1, roll) < 1 && pos) {
-            this.placeDrop(item, 1, pos.x, pos.y, {
+            this.placeDrop(pos.plane, item, 1, pos.x, pos.y, {
               ownerEid: null,
               ownerUntil: 0,
               despawnAt: Date.now() + 12 * 60_000,
@@ -15989,7 +16291,7 @@ export class GameServer {
         return;
       }
       const added = addItem(player.inventory, item, qty);
-      if (added < qty && pos) this.spawnDrop(item, qty - added, pos.x, pos.y, eid);
+      if (added < qty && pos) this.spawnDrop(pos.plane, item, qty - added, pos.x, pos.y, eid);
     };
     for (const e of def.rewards.xp ?? []) this.grantXp(eid, player, e.skill, e.amount);
     for (const e of def.rewards.items ?? []) grant(e.item, e.qty, e.rarity);
@@ -16098,6 +16400,7 @@ export class GameServer {
    */
   private rollQuestDrops(
     npc: NpcComp,
+    plane: PlaneId,
     x: number,
     y: number,
     participants: Iterable<[EntityId, PlayerComp]>,
@@ -16112,7 +16415,7 @@ export class GameServer {
         if (!questDropWanted(def, player.quests.get(entry.quest), entry.item, ctx)) continue;
         if (Math.random() >= entry.chance) continue;
         const scatter = () => (Math.random() - 0.5) * 0.8;
-        this.placeDrop(entry.item, 1, x + scatter(), y + scatter(), {
+        this.placeDrop(plane, entry.item, 1, x + scatter(), y + scatter(), {
           ownerEid: peid,
           ownerUntil: Date.now() + 60_000,
           despawnAt: Date.now() + 120_000,
@@ -16363,7 +16666,7 @@ export class GameServer {
    * doors stay the ordinary loot loop; theft is a town crime.
    */
   private townFactionAt(x: number, y: number): string | null {
-    for (const z of this.world.zoneDefs) {
+    for (const z of this.surface.zoneDefs) {
       if (x < z.origin.x || x >= z.origin.x + z.width) continue;
       if (y < z.origin.y || y >= z.origin.y + z.height) continue;
       if (z.id === 'dawnmead' || z.id === 'amberford' || z.id === 'silverfall' || z.id === 'saltmere') {
@@ -16436,7 +16739,7 @@ export class GameServer {
       const dx = opos.x - x;
       const dy = opos.y - y;
       if (dx * dx + dy * dy > r * r) return false;
-      return sightVisibility(sightLine(this.world, opos.x, opos.y, x, y)) > 0;
+      return sightVisibility(sightLine(this.surface, opos.x, opos.y, x, y)) > 0;
     };
     for (const [oEid, actor] of this.actors) {
       if (oEid === markEid) continue;
@@ -17176,7 +17479,7 @@ export class GameServer {
       // its flight is already the honest travel (windup 0 by authoring).
       const proj = this.ecs.create();
       this.kinds.set(proj, EntityKind.Projectile);
-      this.positions.set(proj, { x: pos.x, y: pos.y, dir: aim });
+      this.positions.set(proj, { x: pos.x, y: pos.y, dir: aim, plane: pos.plane });
       this.projectiles.set(proj, {
         ownerEid: eid,
         style: 'arx',
@@ -17259,9 +17562,9 @@ export class GameServer {
    * what the asking player's screen showed — via the same history
    * ring melee lag comp reads.
    */
-  private foeWithin(pos: { x: number; y: number }, range: number, rewindTicks = 0): boolean {
+  private foeWithin(pos: { plane: PlaneId; x: number; y: number }, range: number, rewindTicks = 0): boolean {
     let found = false;
-    this.forEachNpcNear(pos.x, pos.y, range, (npcEid, npc) => {
+    this.forEachNpcNear(pos.plane, pos.x, pos.y, range, (npcEid, npc) => {
       if (this.pets.has(npcEid)) return;
       const hp = this.healths.get(npcEid);
       if (!hp || hp.hp <= 0) return;
@@ -17412,7 +17715,7 @@ export class GameServer {
     let bestTarget: EntityId | null = null;
     let bestDist = Infinity;
     const inArc: EntityId[] = [];
-    this.forEachNpcNear(pos.x, pos.y, range, (npcEid, npc) => {
+    this.forEachNpcNear(pos.plane, pos.x, pos.y, range, (npcEid, npc) => {
       // A companion is not a target — the blade picks the mob behind it.
       if (this.pets.has(npcEid)) return;
       const npos = this.npcPosAt(npcEid, rewind);
@@ -17496,17 +17799,18 @@ export class GameServer {
    * the fantasy.
    */
   private smashPropsInArc(
-    pos: { x: number; y: number },
+    pos: { plane: PlaneId; x: number; y: number },
     aim: number,
     range: number,
     arcHalf = Math.PI / 3,
   ): void {
+    const world = this.worldOf(pos.plane);
     const r = Math.ceil(range + 1);
     const ptx = Math.floor(pos.x);
     const pty = Math.floor(pos.y);
     for (let ty = pty - r; ty <= pty + r; ty++) {
       for (let tx = ptx - r; tx <= ptx + r; tx++) {
-        const g = this.world.groundAt(tx, ty);
+        const g = world.groundAt(tx, ty);
         if (g === undefined) continue;
         const info = destructibleInfo(g);
         if (!info) continue;
@@ -17518,7 +17822,7 @@ export class GameServer {
         let diff = Math.abs(angleTo - aim) % (Math.PI * 2);
         if (diff > Math.PI) diff = Math.PI * 2 - diff;
         if (diff > arcHalf && dist > 0.9) continue;
-        this.hitProp(tx, ty, g as Tile, info, angleTo);
+        this.hitProp(pos.plane, tx, ty, g as Tile, info, angleTo);
       }
     }
   }
@@ -17538,13 +17842,14 @@ export class GameServer {
    * spits chips); the last blow runs the full burst.
    */
   private hitProp(
+    plane: PlaneId,
     tx: number,
     ty: number,
     tile: Tile,
     info: DestructibleInfo,
     dir: number,
   ): void {
-    const key = `${tx},${ty}`;
+    const key = `${plane}|${tx},${ty}`;
     const left = (this.propDamage.get(key) ?? info.hits) - 1;
     if (left > 0) {
       this.propDamage.set(key, left);
@@ -17560,7 +17865,7 @@ export class GameServer {
       return;
     }
     this.propDamage.delete(key);
-    this.smashProp(tx, ty, tile, info, dir);
+    this.smashProp(plane, tx, ty, tile, info, dir);
   }
 
   /**
@@ -17573,6 +17878,7 @@ export class GameServer {
    * simulates a splinter.
    */
   private smashProp(
+    plane: PlaneId,
     tx: number,
     ty: number,
     tile: Tile,
@@ -17592,19 +17898,21 @@ export class GameServer {
     });
     // A player-built prop remembers its true ground; authored clutter
     // reveals the same floor the client bakes beneath it.
-    const built = this.world.builtAt(tx, ty);
+    const world = this.worldOf(plane);
+    const built = world.builtAt(tx, ty);
     const floor =
       built && !TILE_DEFS[built.prevTile as Tile]?.solid
         ? (built.prevTile as Tile)
-        : nearestFloorTile((x, y) => this.world.groundAt(x, y), tx, ty);
-    this.setWorldTile(tx, ty, floor);
+        : nearestFloorTile((x, y) => world.groundAt(x, y), tx, ty);
+    this.setWorldTile(plane, tx, ty, floor);
     // THE CLEARED HALL STAYS CLEARED: inside a live delve nothing
     // stands back up — a smashed cracked wall stays open (never
     // resealing a hidden room mid-run), a scattered bone pile stays
     // scattered. The re-cut on the next key turn is the reset.
-    if (ty < DUNGEON_MIN_Y) {
+    if (!isRiftPlane(plane)) {
       this.respawnQueue.push({
         at: Date.now() + info.respawnSec * 1000,
+        plane,
         tx,
         ty,
         tile,
@@ -17797,7 +18105,7 @@ export class GameServer {
    * what the map asked for and echoes nothing (the client renders its
    * own pin optimistically).
    */
-  setWaypoint(eid: EntityId, x?: number, y?: number): void {
+  setWaypoint(eid: EntityId, x?: number, y?: number, plane?: string): void {
     const player = this.players.get(eid);
     if (!player) return;
     if (x === undefined || y === undefined) {
@@ -17805,8 +18113,12 @@ export class GameServer {
       if (player.characterId > 0) this.accounts.clearWaypoint(player.characterId);
       return;
     }
-    player.waypoint = { x, y };
-    if (player.characterId > 0) this.accounts.saveWaypoint(player.characterId, x, y);
+    const wpPlane: PlaneId = plane ?? SURFACE_PLANE_ID;
+    // A pin only lands on a plane whose chart persists — nobody marks
+    // a dungeon that stops existing when the key-holder walks out.
+    if (!(this.planes.defOf(wpPlane)?.persistent ?? false)) return;
+    player.waypoint = { x, y, plane: wpPlane };
+    if (player.characterId > 0) this.accounts.saveWaypoint(player.characterId, x, y, wpPlane);
   }
 
   /**
@@ -18286,9 +18598,9 @@ export class GameServer {
    * first. The fan hands these out round-robin so three seekers pick
    * three different throats instead of stacking on one.
    */
-  private homingMarks(pos: { x: number; y: number }, aim: number, range: number): EntityId[] {
+  private homingMarks(pos: { plane: PlaneId; x: number; y: number }, aim: number, range: number): EntityId[] {
     const found: Array<{ eid: EntityId; d: number }> = [];
-    this.forEachNpcNear(pos.x, pos.y, range, (npcEid, npc, npos) => {
+    this.forEachNpcNear(pos.plane, pos.x, pos.y, range, (npcEid, npc, npos) => {
       if (!this.assistMark(npcEid)) return;
       const dx = npos.x - pos.x;
       const dy = npos.y - pos.y;
@@ -18420,7 +18732,7 @@ export class GameServer {
         // Knockback re-chunks a struck body mid-walk — pay each body
         // once, as the old whole-map walk guaranteed.
         const struck = new Set<EntityId>();
-        this.forEachNpcNear(pos.x, pos.y, range, (npcEid, npc, npos) => {
+        this.forEachNpcNear(pos.plane, pos.x, pos.y, range, (npcEid, npc, npos) => {
           if (struck.has(npcEid)) return;
           const dx = npos.x - pos.x;
           const dy = npos.y - pos.y;
@@ -18461,7 +18773,7 @@ export class GameServer {
         } else {
           // Knockback re-chunks a struck body mid-walk — pay once.
           const struck = new Set<EntityId>();
-          this.forEachNpcNear(pos.x, pos.y, radius, (npcEid, npc, npos) => {
+          this.forEachNpcNear(pos.plane, pos.x, pos.y, radius, (npcEid, npc, npos) => {
             if (struck.has(npcEid)) return;
             const dx = npos.x - pos.x;
             const dy = npos.y - pos.y;
@@ -18494,7 +18806,7 @@ export class GameServer {
         const struck = new Set<EntityId>();
         const steps = Math.ceil(dist / 0.4);
         for (let i = 0; i < steps; i++) {
-          const next = stepMovement(pos, { mx: dirX, my: dirY }, dist / steps, 1, this.world);
+          const next = stepMovement(pos, { mx: dirX, my: dirY }, dist / steps, 1, this.worldOf(pos.plane));
           pos.x = next.x;
           pos.y = next.y;
           if (maxHit <= 0) continue;
@@ -18528,7 +18840,7 @@ export class GameServer {
             }
             continue;
           }
-          this.forEachNpcNear(pos.x, pos.y, 0.8, (npcEid, npc, npos) => {
+          this.forEachNpcNear(pos.plane, pos.x, pos.y, 0.8, (npcEid, npc, npos) => {
             if (struck.has(npcEid)) return;
             if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius > 0.8) return;
             struck.add(npcEid);
@@ -18566,7 +18878,7 @@ export class GameServer {
               count > 1 ? aim - spread / 2 + (spread * i) / (count - 1) : aim;
             const proj = this.ecs.create();
             this.kinds.set(proj, EntityKind.Projectile);
-            this.positions.set(proj, { x: pos.x, y: pos.y, dir: shotAim });
+            this.positions.set(proj, { x: pos.x, y: pos.y, dir: shotAim, plane: pos.plane });
             this.projectiles.set(proj, {
               ownerEid: casterEid,
               style: ab.element ? 'arx' : style === 'arx' ? 'arx' : 'archery',
@@ -18664,7 +18976,7 @@ export class GameServer {
         for (let hop = 0; hop < maxTargets; hop++) {
           let best: EntityId | null = null;
           let bestDist = Infinity;
-          this.forEachNpcNear(from.x, from.y, hop === 0 ? range : chainRadius, (npcEid, npc, npos) => {
+          this.forEachNpcNear(pos.plane, from.x, from.y, hop === 0 ? range : chainRadius, (npcEid, npc, npos) => {
             if (zapped.has(npcEid)) return;
             const dx = npos.x - from.x;
             const dy = npos.y - from.y;
@@ -18715,6 +19027,7 @@ export class GameServer {
         const radius = ab.radius ?? 2;
         for (let i = 0; i < pulses; i++) {
           this.pendingBlasts.push({
+            plane: pos.plane,
             x: pos.x, // updated to the caster's live position at burst
             y: pos.y,
             radius,
@@ -18752,7 +19065,7 @@ export class GameServer {
           const angle = count === 1 ? aim : aim - spread / 2 + (spread * i) / (count - 1);
           const proj = this.ecs.create();
           this.kinds.set(proj, EntityKind.Projectile);
-          this.positions.set(proj, { x: pos.x, y: pos.y, dir: angle });
+          this.positions.set(proj, { x: pos.x, y: pos.y, dir: angle, plane: pos.plane });
           this.projectiles.set(proj, {
             ownerEid: casterEid,
             style: projStyle,
@@ -18824,6 +19137,7 @@ export class GameServer {
         const fuse = ab.fuseTicks ?? 12;
         const radius = ab.radius ?? 1.5;
         this.pendingBlasts.push({
+          plane: pos.plane,
           x: target.x,
           y: target.y,
           radius,
@@ -18861,6 +19175,7 @@ export class GameServer {
         const radius = ab.radius ?? 2;
         const life = ab.fieldTicks ?? 100;
         this.activeFields.push({
+          plane: pos.plane,
           x: target.x,
           y: target.y,
           radius,
@@ -18899,7 +19214,7 @@ export class GameServer {
         let len = range;
         // March to find the wall the ray dies on.
         for (let d = 0.4; d <= range; d += 0.25) {
-          if (pointHitsSolid(this.world, pos.x + dirX * d, pos.y + dirY * d)) {
+          if (pointHitsSolid(this.worldOf(pos.plane), pos.x + dirX * d, pos.y + dirY * d)) {
             len = d;
             break;
           }
@@ -18940,7 +19255,7 @@ export class GameServer {
         } else {
           // Knockback re-chunks a struck body mid-walk — pay once.
           const struck = new Set<EntityId>();
-          this.forEachNpcNear(pos.x, pos.y, len + halfW, (npcEid, npc, npos) => {
+          this.forEachNpcNear(pos.plane, pos.x, pos.y, len + halfW, (npcEid, npc, npos) => {
             if (struck.has(npcEid)) return;
             if (!strike(npcEid, npc.def.radius, npos.x, npos.y)) return;
             struck.add(npcEid);
@@ -18973,7 +19288,7 @@ export class GameServer {
         const startY = pos.y;
         const steps = Math.ceil(dist / 0.4);
         for (let i = 0; i < steps; i++) {
-          const next = stepMovement(pos, { mx: dirX, my: dirY }, dist / steps, 1, this.world);
+          const next = stepMovement(pos, { mx: dirX, my: dirY }, dist / steps, 1, this.worldOf(pos.plane));
           pos.x = next.x;
           pos.y = next.y;
         }
@@ -19006,7 +19321,7 @@ export class GameServer {
         } else {
           // Knockback re-chunks a struck body mid-walk — pay once.
           const struck = new Set<EntityId>();
-          this.forEachNpcNear(cx, cy, radius, (npcEid, npc, npos) => {
+          this.forEachNpcNear(pos.plane, cx, cy, radius, (npcEid, npc, npos) => {
             if (struck.has(npcEid)) return;
             if (Math.hypot(npos.x - cx, npos.y - cy) - npc.def.radius > radius) return;
             struck.add(npcEid);
@@ -19032,6 +19347,7 @@ export class GameServer {
         const every = ab.pulseEveryTicks ?? 5;
         for (let i = 0; i < hits; i++) {
           this.pendingBlasts.push({
+            plane: pos.plane,
             x: pos.x,
             y: pos.y,
             radius: ab.range ?? 2,
@@ -19077,7 +19393,7 @@ export class GameServer {
           : { x: pos.x, y: pos.y };
         const eid = this.ecs.create();
         this.kinds.set(eid, EntityKind.Prop);
-        this.positions.set(eid, { x: at.x, y: at.y, dir: aim });
+        this.positions.set(eid, { x: at.x, y: at.y, dir: aim, plane: pos.plane });
         this.summons.set(eid, {
           kind: spec.kind,
           ownerEid: casterEid,
@@ -19099,7 +19415,7 @@ export class GameServer {
         });
         // A decoy is only useful if it takes the heat NOW.
         if (spec.kind === 'decoy') {
-          this.forEachNpcNear(at.x, at.y, spec.radius, (npcEid, npc, npos) => {
+          this.forEachNpcNear(pos.plane, at.x, at.y, spec.radius, (npcEid, npc, npos) => {
             if (Math.hypot(npos.x - at.x, npos.y - at.y) > spec.radius) return;
             if (npc.def.damage <= 0) return;
             this.npcAggro(npcEid, npc, eid);
@@ -19123,7 +19439,7 @@ export class GameServer {
     // deaf to it — a shout never turns the watch.
     if (ab.tauntRadius && this.players.has(casterEid)) {
       const tauntRadius = ab.tauntRadius;
-      this.forEachNpcNear(pos.x, pos.y, tauntRadius, (npcEid, npc, npos) => {
+      this.forEachNpcNear(pos.plane, pos.x, pos.y, tauntRadius, (npcEid, npc, npos) => {
         if (Math.hypot(npos.x - pos.x, npos.y - pos.y) > tauntRadius) return;
         if (npc.def.damage <= 0 || this.actors.has(npcEid)) return;
         // A challenge is a deliberate dare — it pierces faction peace
@@ -19428,7 +19744,7 @@ export class GameServer {
             // chunk (or off the books) mid-visit, and the ring must
             // never bill the same body twice for the re-file.
             const paid = new Set<EntityId>([npcEid]);
-            this.forEachNpcNear(pos.x, pos.y, reaction.radius, (otherEid, otherNpc, opos) => {
+            this.forEachNpcNear(pos.plane, pos.x, pos.y, reaction.radius, (otherEid, otherNpc, opos) => {
               if (paid.has(otherEid)) return;
               if (Math.hypot(opos.x - pos.x, opos.y - pos.y) - otherNpc.def.radius > reaction.radius) {
                 return;
@@ -19452,7 +19768,7 @@ export class GameServer {
             // kills and re-chunks bodies under the iterator — and a
             // twice-visited host would double-dip the plague.
             const infected = new Set<EntityId>([npcEid]);
-            this.forEachNpcNear(pos.x, pos.y, reaction.radius, (otherEid, otherNpc, opos) => {
+            this.forEachNpcNear(pos.plane, pos.x, pos.y, reaction.radius, (otherEid, otherNpc, opos) => {
               if (infected.has(otherEid)) return;
               if (Math.hypot(opos.x - pos.x, opos.y - pos.y) - otherNpc.def.radius > reaction.radius) {
                 return;
@@ -19705,7 +20021,7 @@ export class GameServer {
           }
         }
       } else if (sum.kind === 'snare_trap') {
-        this.forEachNpcNear(pos.x, pos.y, sum.radius, (npcEid, npc, npos) => {
+        this.forEachNpcNear(pos.plane, pos.x, pos.y, sum.radius, (npcEid, npc, npos) => {
           if (npcLivestock(npc.def)) return; // livestock won't spring it
           if (this.pets.has(npcEid)) return; // a companion won't either
           if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius > sum.radius) return;
@@ -19760,7 +20076,7 @@ export class GameServer {
       } else {
         // Knockback re-chunks a struck body mid-walk — pay once.
         const struck = new Set<EntityId>();
-        this.forEachNpcNear(blast.x, blast.y, blast.radius, (npcEid, npc, npos) => {
+        this.forEachNpcNear(blast.plane, blast.x, blast.y, blast.radius, (npcEid, npc, npos) => {
           if (struck.has(npcEid)) return;
           const dx = npos.x - blast.x;
           const dy = npos.y - blast.y;
@@ -19807,7 +20123,7 @@ export class GameServer {
       }
       // Knockback re-chunks a struck body mid-walk — pay once.
       const struck = new Set<EntityId>();
-      this.forEachNpcNear(field.x, field.y, field.radius, (npcEid, npc, npos) => {
+      this.forEachNpcNear(field.plane, field.x, field.y, field.radius, (npcEid, npc, npos) => {
         if (struck.has(npcEid)) return;
         if (Math.hypot(npos.x - field.x, npos.y - field.y) - npc.def.radius > field.radius) {
           return;
@@ -19907,7 +20223,7 @@ export class GameServer {
       if (!tpos) {
         proj.targetEid = undefined;
         let bestD = HOMING_SEEK_RANGE;
-        this.forEachNpcNear(pos.x, pos.y, HOMING_SEEK_RANGE, (npcEid, npc, npos) => {
+        this.forEachNpcNear(pos.plane, pos.x, pos.y, HOMING_SEEK_RANGE, (npcEid, npc, npos) => {
           if (proj.hitEids?.has(npcEid)) return;
           // A homing shot never hunts a companion.
           if (this.pets.has(npcEid)) return;
@@ -19939,17 +20255,17 @@ export class GameServer {
       pos.y += proj.dirY * (step / subs);
       // Return legs ghost through walls — a boomerang that dies on the
       // doorframe it left through reads as a bug, not a mechanic.
-      if (!proj.returning && pointHitsSolid(this.world, pos.x, pos.y)) {
+      if (!proj.returning && pointHitsSolid(this.worldOf(pos.plane), pos.x, pos.y)) {
         dead = true;
         // A player's shot spends itself bursting the crate it
         // struck — the arrow's last act is the smash.
         if (!proj.fromNpc) {
           const stx = Math.floor(pos.x);
           const sty = Math.floor(pos.y);
-          const g = this.world.groundAt(stx, sty);
+          const g = this.worldOf(pos.plane).groundAt(stx, sty);
           const dinfo = g === undefined ? null : destructibleInfo(g);
           if (dinfo) {
-            this.hitProp(stx, sty, g as Tile, dinfo, Math.atan2(proj.dirY, proj.dirX));
+            this.hitProp(pos.plane, stx, sty, g as Tile, dinfo, Math.atan2(proj.dirY, proj.dirX));
           }
         }
       }
@@ -20082,7 +20398,7 @@ export class GameServer {
         }
       }
     } else if (!dead) {
-      this.forEachNpcNear(pos.x, pos.y, 0.25, (npcEid, npc, npos) => {
+      this.forEachNpcNear(pos.plane, pos.x, pos.y, 0.25, (npcEid, npc, npos) => {
         if (proj.hitEids?.has(npcEid)) return;
         // Arrows fly past a companion — it neither blocks nor bleeds.
         if (this.pets.has(npcEid)) return;
@@ -20150,7 +20466,7 @@ export class GameServer {
             const splashHit = Math.max(1, Math.round(maxHit * 0.5));
             // Knockback re-chunks a splashed body mid-walk — pay once.
             const splashed = new Set<EntityId>();
-            this.forEachNpcNear(pos.x, pos.y, splashRadius, (otherEid, other, opos) => {
+            this.forEachNpcNear(pos.plane, pos.x, pos.y, splashRadius, (otherEid, other, opos) => {
               if (otherEid === npcEid) return;
               if (splashed.has(otherEid)) return;
               if (Math.hypot(opos.x - pos.x, opos.y - pos.y) - other.def.radius > splashRadius) {
@@ -20374,6 +20690,8 @@ export class GameServer {
     p: ProcEffect,
     ctx: ProcContext,
   ): number {
+    // The working fires on its bearer's plane.
+    const procPlane = this.positions.get(eid)?.plane ?? SURFACE_PLANE_ID;
     const a = p.action;
     const color = ELEMENT_COLORS[p.element ?? 'arcane'];
     const style: SkillId = ctx.style ?? 'arx';
@@ -20406,7 +20724,7 @@ export class GameServer {
       }
       case 'nova': {
         radius = a.radius;
-        for (const npcEid of this.npcsWithin(ctx.x, ctx.y, a.radius)) {
+        for (const npcEid of this.npcsWithin(procPlane, ctx.x, ctx.y, a.radius)) {
           this.damageNpc(npcEid, a.damage, eid, style, {
             knockFrom: { x: ctx.x, y: ctx.y },
             fromProc: true,
@@ -20418,7 +20736,7 @@ export class GameServer {
         // The struck foe first, then the nearest others outward — the
         // same walk the reaction table's chain effect takes.
         const hit = ctx.targetEid !== undefined && this.npcs.has(ctx.targetEid) ? [ctx.targetEid] : [];
-        for (const npcEid of this.npcsWithin(ctx.x, ctx.y, CHAIN_PROC_RANGE)) {
+        for (const npcEid of this.npcsWithin(procPlane, ctx.x, ctx.y, CHAIN_PROC_RANGE)) {
           if (hit.length > a.jumps) break;
           if (!hit.includes(npcEid)) hit.push(npcEid);
         }
@@ -20521,9 +20839,9 @@ export class GameServer {
   }
 
   /** Living foes inside a circle, nearest first. */
-  private npcsWithin(x: number, y: number, radius: number): EntityId[] {
+  private npcsWithin(plane: PlaneId, x: number, y: number, radius: number): EntityId[] {
     const found: Array<{ eid: EntityId; d: number }> = [];
-    this.forEachNpcNear(x, y, radius, (npcEid, npc, np) => {
+    this.forEachNpcNear(plane, x, y, radius, (npcEid, npc, np) => {
       const d = Math.hypot(np.x - x, np.y - y) - npc.def.radius;
       if (d <= radius) found.push({ eid: npcEid, d });
     });
@@ -20546,11 +20864,12 @@ export class GameServer {
   ): void {
     const session = this.players.get(eid)?.session;
     if (!session) return;
+    const procPlane = this.positions.get(eid)?.plane ?? SURFACE_PLANE_ID;
     const mark = (x: number, y: number): void => {
       session.sendJson({ t: 'fx', kind: 'proc', x, y, radius: 0.35, color, id: 'mark:reveal' });
     };
     if (of === 'foe') {
-      for (const npcEid of this.npcsWithin(ctx.x, ctx.y, radius).slice(0, REVEAL_PROC_CAP)) {
+      for (const npcEid of this.npcsWithin(procPlane, ctx.x, ctx.y, radius).slice(0, REVEAL_PROC_CAP)) {
         const np = this.positions.get(npcEid);
         if (np) mark(np.x, np.y);
       }
@@ -20563,7 +20882,7 @@ export class GameServer {
     for (let ty = cy - r; ty <= cy + r && marked < REVEAL_PROC_CAP; ty++) {
       for (let tx = cx - r; tx <= cx + r && marked < REVEAL_PROC_CAP; tx++) {
         if ((tx - cx) ** 2 + (ty - cy) ** 2 > r * r) continue;
-        const ground = this.world.groundAt(tx, ty);
+        const ground = this.worldOf(procPlane).groundAt(tx, ty);
         if (ground === undefined) continue;
         const wanted =
           of === 'node'
@@ -20732,8 +21051,8 @@ export class GameServer {
     // else, and the band check gates the lookup).
     if (dmg > 0) {
       const npos = this.positions.get(npcEid);
-      if (npos && npos.y >= DUNGEON_MIN_Y) {
-        const heads = this.dungeonHeadcount(Math.floor(npos.x), Math.floor(npos.y));
+      if (npos && isRiftPlane(npos.plane)) {
+        const heads = this.dungeonHeadcount(npos.plane);
         if (heads > 1) dmg = Math.max(1, Math.round(dmg / (1 + 0.55 * (heads - 1))));
       }
     }
@@ -20913,7 +21232,7 @@ export class GameServer {
           ny = npc.originY + (ody / od) * hold;
         }
       }
-      if (!circleHitsSolid(this.world, nx, ny, npc.def.radius)) {
+      if (!circleHitsSolid(this.worldOf(npos.plane), nx, ny, npc.def.radius)) {
         npos.x = nx;
         npos.y = ny;
         this.updateChunkMembership(npcEid);
@@ -21119,7 +21438,7 @@ export class GameServer {
     // Roll the loot table onto the ground.
     const dropLoot = (item: string, qty: number, roll?: ItemRoll) => {
       const scatter = () => (Math.random() - 0.5) * 0.8;
-      this.placeDrop(item, qty, pos.x + scatter(), pos.y + scatter(), {
+      this.placeDrop(pos.plane, item, qty, pos.x + scatter(), pos.y + scatter(), {
         ownerEid: killerEid,
         ownerUntil: Date.now() + 30_000,
         despawnAt: Date.now() + 90_000,
@@ -21137,7 +21456,7 @@ export class GameServer {
     // the chest ladder pay in full; this is a source dial, never a
     // player-state one (the flood law).
     const trashDamp =
-      pos.y >= DUNGEON_MIN_Y && this.spawnPoints[npc.spawnIndex]?.name === undefined
+      isRiftPlane(pos.plane) && this.spawnPoints[npc.spawnIndex]?.name === undefined
         ? GameServer.DUNGEON_TRASH_LOOT_MULT
         : 1;
     for (const tableId of npc.def.loot) {
@@ -21161,7 +21480,7 @@ export class GameServer {
       if (p) participants.set(weid, p);
     }
     for (const p of participants.values()) this.creditQuestEvent(p, 'kill', npc.def.id);
-    this.rollQuestDrops(npc, pos.x, pos.y, participants);
+    this.rollQuestDrops(npc, pos.plane, pos.x, pos.y, participants);
     // THE SLAY DEED: a faction member's death marks every hand in it
     // (the same participation law), through the one door — and the
     // border law pays first blood against an enemy exactly once.
@@ -21173,7 +21492,7 @@ export class GameServer {
     const spawn = this.spawnPoints[npc.spawnIndex];
     if (spawn) {
       spawn.eid = null;
-      if (spawn.y >= DUNGEON_MIN_Y) {
+      if (isRiftPlane(spawn.plane)) {
         // THE CLEARED HALL STAYS CLEARED: a delve garrison never
         // restaffs while the instance lives. Ground you win stays won —
         // the run is a clear, not a race against the clock. Leaving
@@ -21199,12 +21518,12 @@ export class GameServer {
       this.noteMinorKill(npc.spawnIndex);
       // THE UNWRITTEN PAGE: felling a delve's named keeper (the boss,
       // a hidden warden) is the riftwalker's deed.
-      if (spawn.name !== undefined && pos.y >= DUNGEON_MIN_Y) {
+      if (spawn.name !== undefined && isRiftPlane(pos.plane)) {
         const killer = this.players.get(killerEid);
         if (killer) this.grantArt(killer, 'riftwalker_step');
         // THE COURT FALLS: if this was the run's own champion, the run
         // is cleared — the ceremony fires and the way home opens.
-        this.noteDungeonCleared(npc.spawnIndex, Math.floor(pos.x), Math.floor(pos.y));
+        this.noteDungeonCleared(npc.spawnIndex, pos.plane);
       }
     }
     // THE UNWRITTEN PAGE: felling a champion with the wall still on
@@ -21287,13 +21606,13 @@ export class GameServer {
           for (let tries = 0; tries < 6; tries++) {
             const tx = pos.x + Math.cos(a + tries) * (0.6 + Math.random() * 0.5);
             const ty = pos.y + Math.sin(a + tries) * (0.6 + Math.random() * 0.5);
-            if (!this.world.isSolid(Math.floor(tx), Math.floor(ty))) {
+            if (!this.worldOf(pos.plane).isSolid(Math.floor(tx), Math.floor(ty))) {
               cx = tx;
               cy = ty;
               break;
             }
           }
-          const childEid = this.spawnNpc(childDef, cx, cy, -1);
+          const childEid = this.spawnNpc(childDef, pos.plane, cx, cy, -1);
           const child = this.npcs.get(childEid)!;
           if (this.players.has(killerEid)) {
             // Children are born INTO the fight the parent died in.
@@ -21327,8 +21646,8 @@ export class GameServer {
     // erase them. Free outside the dungeon band.
     if (raw > 0) {
       const dpp = this.positions.get(eid);
-      if (dpp && dpp.y >= DUNGEON_MIN_Y) {
-        const heads = this.dungeonHeadcount(Math.floor(dpp.x), Math.floor(dpp.y));
+      if (dpp && isRiftPlane(dpp.plane)) {
+        const heads = this.dungeonHeadcount(dpp.plane);
         if (heads > 1) raw = Math.round(raw * Math.min(1.5, 1 + 0.12 * (heads - 1)));
       }
     }
@@ -21525,18 +21844,18 @@ export class GameServer {
       // spills at the surface gate instead: a pile on the rift floor
       // would be a locked room (the key that opens it is IN the pack,
       // and teardown orphans the band).
-      const inst = pos.y >= 8192 ? this.dungeonAt(Math.floor(pos.x), Math.floor(pos.y)) : null;
-      const spillAt = inst
+      const inst = this.dungeonOnPlane(pos.plane);
+      const spillAt: PlanePos = inst
         ? inst.ownerId === player.characterId
           ? inst.ownerReturn
-          : (inst.guests.get(player.characterId) ?? this.world.spawn)
-        : { x: pos.x, y: pos.y };
+          : (inst.guests.get(player.characterId) ?? this.planes.worldSpawn)
+        : { plane: pos.plane, x: pos.x, y: pos.y };
       const parcels = spillInventory(player.inventory);
       if (parcels.length > 0) {
         const spillNow = Date.now();
         const scatter = () => (Math.random() - 0.5) * 0.8;
         for (const parcel of parcels) {
-          this.placeDrop(parcel.item, parcel.qty, spillAt.x + scatter(), spillAt.y + scatter(), {
+          this.placeDrop(spillAt.plane, parcel.item, parcel.qty, spillAt.x + scatter(), spillAt.y + scatter(), {
             ownerEid: null,
             ownerUntil: 0,
             despawnAt: spillNow + DEATH_SPILL_TTL_MS,
@@ -21560,7 +21879,12 @@ export class GameServer {
         // The stone stands at the HEAD of the spill, north of the
         // pile, so the y-sort keeps the goods at its foot instead of
         // burying the marker under its own loot icons.
-        this.positions.set(graveEid, { x: spillAt.x, y: spillAt.y - 0.65, dir: 0 });
+        this.positions.set(graveEid, {
+          x: spillAt.x,
+          y: spillAt.y - 0.65,
+          dir: 0,
+          plane: spillAt.plane,
+        });
         this.graves.set(graveEid, {
           name: player.name,
           despawnAt: spillNow + DEATH_SPILL_TTL_MS,
@@ -21570,13 +21894,14 @@ export class GameServer {
         // The walk-back beacon: a skull on the owner's chart, cleared
         // when they arrive (tickDrops), expire, or fall again.
         this.deathMarks.set(player.characterId, {
+          plane: spillAt.plane,
           x: spillAt.x,
           y: spillAt.y,
           until: spillNow + DEATH_SPILL_TTL_MS,
         });
         player.session?.sendJson({
           t: 'deathmark',
-          mark: { x: spillAt.x, y: spillAt.y, remainMs: DEATH_SPILL_TTL_MS },
+          mark: { x: spillAt.x, y: spillAt.y, remainMs: DEATH_SPILL_TTL_MS, plane: spillAt.plane },
         });
       }
       // THE DOOR STAYS OPEN: a fall inside a rift never ends the run —
@@ -21594,9 +21919,13 @@ export class GameServer {
       // nearest settled spawn — with one hearth in the world that's
       // the Waking Ring; future settlements shorten the walk back.
       const bedside = this.homeBedside(player);
-      const spawn = bedside ?? this.world.respawnAt(pos.x, pos.y);
-      pos.x = spawn.x;
-      pos.y = spawn.y;
+      // THE WORLDS APART: death resolves through the plane registry —
+      // a persistent plane wakes its dead at its own nearest hearth, a
+      // rift rescues home. The claimed bed (surface) still answers first.
+      const home: PlanePos = bedside
+        ? { plane: SURFACE_PLANE_ID, x: bedside.x, y: bedside.y }
+        : this.planes.respawnAt(pos.plane, pos.x, pos.y);
+      this.transferPlane(eid, home.plane, home.x, home.y);
       health.hp = health.maxHp;
       this.statuses.delete(eid); // death is at least a clean slate
       player.buffs = [];
@@ -21617,8 +21946,9 @@ export class GameServer {
         } else {
           const petPos = this.positions.get(player.petEid);
           if (petPos) {
-            petPos.x = spawn.x + 0.9;
-            petPos.y = spawn.y + 0.4;
+            petPos.plane = home.plane;
+            petPos.x = home.x + 0.9;
+            petPos.y = home.y + 0.4;
             this.updateChunkMembership(player.petEid);
           }
         }
@@ -21732,13 +22062,13 @@ export class GameServer {
       for (let tries = 0; tries < 8; tries++) {
         const tryX = spawn.x + (Math.random() - 0.5) * spawn.radius;
         const tryY = spawn.y + (Math.random() - 0.5) * spawn.radius;
-        if (!this.world.isSolid(Math.floor(tryX), Math.floor(tryY))) {
+        if (!this.worldOf(spawn.plane).isSolid(Math.floor(tryX), Math.floor(tryY))) {
           x = tryX;
           y = tryY;
           break;
         }
       }
-      spawn.eid = this.spawnNpc(def, x, y, i, spawn.patrol, spawn.post);
+      spawn.eid = this.spawnNpc(def, spawn.plane, x, y, i, spawn.patrol, spawn.post);
     }
 
     // Placed actors stand back up the same way beasts do.
@@ -21747,7 +22077,7 @@ export class GameServer {
       if (!spawn.active || spawn.eid !== null || spawn.respawnAt > now) continue;
       const def = this.actorDefs.get(spawn.actor);
       if (!def) continue;
-      spawn.eid = this.spawnActor(def, spawn.x, spawn.y, i, spawn.dir, spawn.routine);
+      spawn.eid = this.spawnActor(def, spawn.plane, spawn.x, spawn.y, i, spawn.dir, spawn.routine);
     }
   }
 
@@ -21843,7 +22173,7 @@ export class GameServer {
     for (const [peid, player] of this.players) {
       if (player.session === null) continue;
       const ppos = this.positions.get(peid);
-      if (!ppos || ppos.y >= DARK_BAND_Y) continue;
+      if (!ppos || ppos.plane !== SURFACE_PLANE_ID) continue;
       const tier = this.liveDangerTier(Math.floor(ppos.x), Math.floor(ppos.y));
       if (tier === 0) continue; // settled land keeps only authored life
       const law = dangerLaw(tier);
@@ -21944,8 +22274,7 @@ export class GameServer {
     tx: number,
     ty: number,
   ): { tier: number; biome: 'grass' | 'forest'; shore: boolean } | null {
-    if (ty >= DARK_BAND_Y) return null;
-    const ground = this.world.groundAt(tx, ty);
+    const ground = this.surface.groundAt(tx, ty);
     if (ground !== Tile.Grass && ground !== Tile.GrassTall) return null;
     const spotTier = this.liveDangerTier(tx, ty);
     if (spotTier === 0) return null;
@@ -22011,12 +22340,12 @@ export class GameServer {
           const d = Math.random() * spread;
           const cx = Math.floor(tx + Math.cos(a) * d);
           const cy = Math.floor(ty + Math.sin(a) * d);
-          const g = this.world.groundAt(cx, cy);
+          const g = this.surface.groundAt(cx, cy);
           if (g !== Tile.Grass && g !== Tile.GrassTall) continue;
           // THE CLIFF-FOOT LAW: the pack stands on ONE shelf — a member
           // scattered across a level change spawns on the far side of an
           // unwalkable fence, stranded from its knot.
-          if (this.world.naturalLevel(cx, cy) !== this.world.naturalLevel(tx, ty)) continue;
+          if (this.surface.naturalLevel(cx, cy) !== this.surface.naturalLevel(tx, ty)) continue;
           bx = cx;
           by = cy;
           found = true;
@@ -22039,7 +22368,7 @@ export class GameServer {
           def = scaleNpcDef(base, bandMin + (Math.floor(Math.random() * 3) - 1));
         }
       }
-      const eid = this.spawnNpc(def, bx + 0.5, by + 0.5, -1);
+      const eid = this.spawnNpc(def, SURFACE_PLANE_ID, bx + 0.5, by + 0.5, -1);
       this.wildBodies.set(eid, entry.hours ?? null);
       placed++;
     }
@@ -22053,6 +22382,7 @@ export class GameServer {
    */
   private spawnNpc(
     def: NpcDef,
+    plane: PlaneId,
     x: number,
     y: number,
     spawnIndex: number,
@@ -22067,7 +22397,7 @@ export class GameServer {
   ): EntityId {
     const eid = this.ecs.create();
     this.kinds.set(eid, EntityKind.Npc);
-    this.positions.set(eid, { x, y, dir: Math.random() * Math.PI * 2 });
+    this.positions.set(eid, { x, y, dir: Math.random() * Math.PI * 2, plane });
     this.poses.set(eid, PoseState.Idle);
     this.healths.set(eid, { hp: def.maxHp, maxHp: def.maxHp });
     this.npcs.set(eid, {
@@ -22143,6 +22473,7 @@ export class GameServer {
    */
   private spawnActor(
     actor: NpcActorDef,
+    plane: PlaneId,
     x: number,
     y: number,
     spawnIndex: number,
@@ -22157,7 +22488,7 @@ export class GameServer {
     const seed = Math.sin((spawnIndex + 3) * 12.9898) * 43758.5453;
     const homeDir = dir ?? Math.PI / 2 + (seed - Math.floor(seed) - 0.5) * 1.8;
     this.kinds.set(eid, EntityKind.Npc);
-    this.positions.set(eid, { x, y, dir: homeDir });
+    this.positions.set(eid, { x, y, dir: homeDir, plane });
     this.poses.set(eid, PoseState.Idle);
     this.actors.set(eid, {
       actor,
@@ -22384,28 +22715,29 @@ export class GameServer {
    */
   private navToward(
     state: NavState,
-    pos: { x: number; y: number },
+    pos: { plane: PlaneId; x: number; y: number },
     goalX: number,
     goalY: number,
     radius: number,
     bounds: { cx: number; cy: number; r: number },
-    laneWorld: CollisionSource = this.world,
+    laneWorld: CollisionSource = this.worldOf(pos.plane),
     escalate = false,
   ): { mx: number; my: number } {
+    const world = this.worldOf(pos.plane);
     // Walk-line check, cached a few ticks. A goal that moved (chase
     // target, state flip) invalidates the cache immediately.
     if (
       this.tickCount >= state.losUntilTick ||
       Math.hypot(goalX - state.losGoalX, goalY - state.losGoalY) > 0.6
     ) {
-      state.losClear = lineClear(this.world, pos.x, pos.y, goalX, goalY, radius);
+      state.losClear = lineClear(world, pos.x, pos.y, goalX, goalY, radius);
       state.losUntilTick = this.tickCount + GameServer.LOS_RECHECK_TICKS;
       state.losGoalX = goalX;
       state.losGoalY = goalY;
     }
     if (state.losClear) {
       state.nav = null;
-      return steerToward(pos, goalX, goalY, this.world, radius, state.steer);
+      return steerToward(pos, goalX, goalY, world, radius, state.steer);
     }
 
     const stale =
@@ -22464,12 +22796,12 @@ export class GameServer {
         if (
           next &&
           Math.hypot(next.x - pos.x, next.y - pos.y) < d &&
-          lineClear(this.world, pos.x, pos.y, next.x, next.y, radius)
+          lineClear(world, pos.x, pos.y, next.x, next.y, radius)
         ) {
           nav.idx++;
           continue;
         }
-        return steerToward(pos, wp.x, wp.y, this.world, radius, state.steer);
+        return steerToward(pos, wp.x, wp.y, world, radius, state.steer);
       }
       // Lane walked to its end. A COMPLETE lane ends on the goal tile
       // — drop it and let the fan close the last sub-tile stretch. An
@@ -22486,13 +22818,13 @@ export class GameServer {
 
     // No lane granted (budget) or none cached yet: the fan pushes on
     // and the stall ladder owns what happens next.
-    return steerToward(pos, goalX, goalY, this.world, radius, state.steer);
+    return steerToward(pos, goalX, goalY, world, radius, state.steer);
   }
 
   /** The chase flavor: lane bounded by the pursuer's own leash circle. */
   private npcNavToward(
     npc: NpcComp,
-    pos: { x: number; y: number },
+    pos: { plane: PlaneId; x: number; y: number },
     goalX: number,
     goalY: number,
     escalate = false,
@@ -22508,7 +22840,7 @@ export class GameServer {
         cy: npc.originY,
         r: npc.def.leashRange + 2,
       },
-      this.world,
+      this.worldOf(pos.plane),
       escalate,
     );
   }
@@ -22553,17 +22885,29 @@ export class GameServer {
    * test the real world, so the body still walks up to the shut leaf
    * instead of through it.
    */
-  private readonly errandWorld: CollisionSource = {
-    isSolid: (tx, ty) => {
-      if (!this.world.isSolid(tx, ty)) return false;
-      const g = this.world.groundAt(tx, ty);
-      const info = g === undefined ? null : doorInfo(g);
-      if (!info || info.open) return true;
-      const unit = this.doorUnit(tx, ty, info);
-      return this.doorLocks.has(`${unit.ax},${unit.ay}`);
-    },
-    tileAt: (tx, ty) => this.world.tileAt?.(tx, ty),
-  };
+  private readonly errandWorlds = new Map<PlaneId, CollisionSource>();
+
+  /** THE WORLDS APART: one lane map per plane — the Low Hall's errands
+   *  plan through the underworld's own doors. */
+  private errandWorldOf(plane: PlaneId): CollisionSource {
+    let src = this.errandWorlds.get(plane);
+    if (!src) {
+      src = {
+        isSolid: (tx, ty) => {
+          const world = this.worldOf(plane);
+          if (!world.isSolid(tx, ty)) return false;
+          const g = world.groundAt(tx, ty);
+          const info = g === undefined ? null : doorInfo(g);
+          if (!info || info.open) return true;
+          const unit = this.doorUnit(plane, tx, ty, info);
+          return this.doorLocks.has(`${plane}|${unit.ax},${unit.ay}`);
+        },
+        tileAt: (tx, ty) => this.worldOf(plane).tileAt?.(tx, ty),
+      };
+      this.errandWorlds.set(plane, src);
+    }
+    return src;
+  }
 
   /**
    * An errand walker works latches: when the lane's next step or two
@@ -22572,22 +22916,23 @@ export class GameServer {
    * all. Deliberately routine-only: hostiles never learn doors, so
    * shutting one on a wolf still works.
    */
-  private openDoorsOnLane(rc: RoutineComp, pos: { x: number; y: number }): void {
+  private openDoorsOnLane(rc: RoutineComp, pos: { plane: PlaneId; x: number; y: number }): void {
     const nav = rc.nav;
     if (!nav) return;
+    const world = this.worldOf(pos.plane);
     const end = Math.min(nav.idx + 2, nav.pts.length);
     for (let i = nav.idx; i < end; i++) {
       const wp = nav.pts[i]!;
       if (Math.hypot(wp.x - pos.x, wp.y - pos.y) > 1.6) break;
       const tx = Math.floor(wp.x);
       const ty = Math.floor(wp.y);
-      const g = this.world.groundAt(tx, ty);
+      const g = world.groundAt(tx, ty);
       const info = g === undefined ? null : doorInfo(g);
       if (!info || info.open) continue;
-      const unit = this.doorUnit(tx, ty, info);
-      if (this.doorLocks.has(`${unit.ax},${unit.ay}`)) continue;
+      const unit = this.doorUnit(pos.plane, tx, ty, info);
+      if (this.doorLocks.has(`${pos.plane}|${unit.ax},${unit.ay}`)) continue;
       // Routine hands are nobody's (locked units were skipped above).
-      this.interactDoor(-1 as EntityId, tx, ty, info, () => {});
+      this.interactDoor(-1 as EntityId, pos.plane, tx, ty, info, () => {});
     }
   }
 
@@ -22602,6 +22947,7 @@ export class GameServer {
    * from the visit to stop early (the for-of `break` of the old walks).
    */
   private forEachNpcNear(
+    plane: PlaneId,
     x: number,
     y: number,
     r: number,
@@ -22612,7 +22958,7 @@ export class GameServer {
     const ccy = Math.floor(y / CHUNK_SIZE);
     for (let dy = -ring; dy <= ring; dy++) {
       for (let dx = -ring; dx <= ring; dx++) {
-        const set = this.chunks.get(chunkKey(ccx + dx, ccy + dy));
+        const set = this.chunks.get(`${plane}|${chunkKey(ccx + dx, ccy + dy)}`);
         if (!set) continue;
         for (const eid of set) {
           const npc = this.npcs.get(eid);
@@ -22636,7 +22982,7 @@ export class GameServer {
    */
   private separateHeading(
     eid: EntityId,
-    pos: { x: number; y: number },
+    pos: { x: number; y: number; plane: PlaneId },
     radius: number,
     mx: number,
     my: number,
@@ -22648,7 +22994,7 @@ export class GameServer {
     let crowded = false;
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
-        const set = this.chunks.get(chunkKey(ccx + dx, ccy + dy));
+        const set = this.chunks.get(`${pos.plane}|${chunkKey(ccx + dx, ccy + dy)}`);
         if (!set) continue;
         for (const other of set) {
           if (other === eid) continue;
@@ -22694,13 +23040,13 @@ export class GameServer {
   }
 
   /** Point the comp at its task's current destination (world coords). */
-  private routineRetarget(rc: RoutineComp, task: RoutineTask): void {
+  private routineRetarget(rc: RoutineComp, plane: PlaneId, task: RoutineTask): void {
     if (task.kind === 'path') {
       const wp = task.waypoints[Math.min(rc.wpIndex, task.waypoints.length - 1)]!;
       rc.targetX = rc.anchorX + wp.x;
       rc.targetY = rc.anchorY + wp.y;
     } else if (task.kind === 'wander') {
-      this.routineRollWander(rc, task);
+      this.routineRollWander(rc, plane, task);
     } else {
       rc.targetX = rc.anchorX + (task.x ?? 0);
       rc.targetY = rc.anchorY + (task.y ?? 0);
@@ -22708,7 +23054,7 @@ export class GameServer {
   }
 
   /** Roll a fresh walkable drift target inside the wander circle. */
-  private routineRollWander(rc: RoutineComp, task: { x?: number; y?: number; radius: number }): void {
+  private routineRollWander(rc: RoutineComp, plane: PlaneId, task: { x?: number; y?: number; radius: number }): void {
     const cx = rc.anchorX + (task.x ?? 0);
     const cy = rc.anchorY + (task.y ?? 0);
     rc.targetX = cx;
@@ -22723,7 +23069,7 @@ export class GameServer {
       // body radius, and the walker hovers against the wall jittering
       // until the stuck watchdog rerolls. 0.4 covers every townsfolk
       // radius with margin.
-      if (!circleHitsSolid(this.world, tx, ty, 0.4)) {
+      if (!circleHitsSolid(this.worldOf(plane), tx, ty, 0.4)) {
         rc.targetX = tx;
         rc.targetY = ty;
         break;
@@ -22732,7 +23078,7 @@ export class GameServer {
   }
 
   /** Step the path cursor per its mode; 'once' holds at the last stop. */
-  private routineAdvance(rc: RoutineComp, path: RoutineTaskPath): void {
+  private routineAdvance(rc: RoutineComp, plane: PlaneId, path: RoutineTaskPath): void {
     const n = path.waypoints.length;
     const mode = path.mode ?? 'loop';
     if (n <= 1 || (mode === 'once' && rc.wpIndex >= n - 1)) {
@@ -22753,7 +23099,7 @@ export class GameServer {
     rc.phase = 'travel';
     rc.stuckTicks = 0;
     rc.progressBest = Infinity;
-    this.routineRetarget(rc, path);
+    this.routineRetarget(rc, plane, path);
   }
 
   /** Set a routine body's pose without stomping a combat flinch. */
@@ -22822,7 +23168,7 @@ export class GameServer {
         rc.phase = 'travel';
         rc.stuckTicks = 0;
         rc.progressBest = Infinity;
-        this.routineRetarget(rc, this.routineTask(rc));
+        this.routineRetarget(rc, pos.plane, this.routineTask(rc));
       }
       const task = this.routineTask(rc);
       // THE SADDLE IN THE SCHEDULE: the task names the beast; the
@@ -22863,7 +23209,7 @@ export class GameServer {
       // any cardinal-adjacent stand or closer face-press and rejects
       // diagonal corners. The linger hold-radius rides the same law
       // or arrive/re-travel would flap at the counter.
-      const arriveR = this.world.isSolid(Math.floor(rc.targetX), Math.floor(rc.targetY))
+      const arriveR = this.worldOf(pos.plane).isSolid(Math.floor(rc.targetX), Math.floor(rc.targetY))
         ? 1.05
         : GameServer.ROUTINE_ARRIVE;
 
@@ -22887,9 +23233,9 @@ export class GameServer {
         } else if (this.tickCount >= rc.lingerUntilTick) {
           this.routineDismount(eid, rc, pos);
           if (task.kind === 'path') {
-            this.routineAdvance(rc, task);
+            this.routineAdvance(rc, pos.plane, task);
           } else if (task.kind === 'wander') {
-            this.routineRollWander(rc, task);
+            this.routineRollWander(rc, pos.plane, task);
             rc.phase = 'travel';
             rc.stuckTicks = 0;
             rc.progressBest = Infinity;
@@ -22951,7 +23297,7 @@ export class GameServer {
         rc.stuckTicks = 0;
         if (task.kind === 'path' && !(wp!.waitSec || (task.mode === 'once' && rc.wpIndex >= task.waypoints.length - 1))) {
           // A pass-through stop: no linger, straight to the next leg.
-          this.routineAdvance(rc, task);
+          this.routineAdvance(rc, pos.plane, task);
           this.routinePose(eid, npc, riding ? PoseState.Ride : PoseState.Walk);
           continue;
         }
@@ -23012,12 +23358,12 @@ export class GameServer {
           cy: (pos.y + rc.targetY) / 2,
           r: dist / 2 + 8,
         },
-        this.errandWorld,
+        this.errandWorldOf(pos.plane),
         true,
       );
       this.openDoorsOnLane(rc, pos);
       const sep = this.separateHeading(eid, pos, radius, h.mx, h.my);
-      const next = stepMovement(pos, { mx: sep.mx, my: sep.my }, speed, TICK_DT, this.world, radius);
+      const next = stepMovement(pos, { mx: sep.mx, my: sep.my }, speed, TICK_DT, this.worldOf(pos.plane), radius);
       const stepped = Math.hypot(next.x - pos.x, next.y - pos.y);
       if (stepped > 0.001) {
         // Face the ERRAND's heading, not the sidestep — a body easing
@@ -23057,10 +23403,10 @@ export class GameServer {
         rc.stuckTicks = 0;
         rc.progressBest = Infinity;
         if (task.kind === 'path') {
-          this.routineAdvance(rc, task);
+          this.routineAdvance(rc, pos.plane, task);
         } else if (task.kind === 'wander') {
-          this.routineRollWander(rc, task);
-        } else if (!this.world.isSolid(Math.floor(rc.targetX), Math.floor(rc.targetY))) {
+          this.routineRollWander(rc, pos.plane, task);
+        } else if (!this.worldOf(pos.plane).isSolid(Math.floor(rc.targetX), Math.floor(rc.targetY))) {
           // A post has nowhere else to go — snap the last stretch.
           pos.x = rc.targetX;
           pos.y = rc.targetY;
@@ -23329,7 +23675,7 @@ export class GameServer {
    * sneaking thins both the range and the reflex ring — the entire
    * stealth surface lives in this method.
    */
-  private npcPerception(eid: EntityId, npc: NpcComp, pos: { x: number; y: number; dir: number }): void {
+  private npcPerception(eid: EntityId, npc: NpcComp, pos: { plane: PlaneId; x: number; y: number; dir: number }): void {
     const dt = GameServer.PERCEPTION_PERIOD;
     // Only a body truly at rest is limited to its authored arc — a
     // wary one is already turning its head everywhere.
@@ -23358,7 +23704,8 @@ export class GameServer {
         continue;
       }
       const ppos = this.positions.get(playerEid);
-      if (!ppos) continue;
+      // Cross-plane proximity is impossible by law — coordinates alias.
+      if (!ppos || ppos.plane !== pos.plane) continue;
       const dx = ppos.x - pos.x;
       const dy = ppos.y - pos.y;
       // SEEING IS NOT CHARGING: the eye reaches SIGHT_RANGE_MULT ×
@@ -23413,7 +23760,7 @@ export class GameServer {
       const zone = sightZone(dx, dy, dist, pos.dir, arcDeg, sightRange, closeR);
       if (!zone) continue;
       // Zone survivor: now — and only now — the ray.
-      const vis = sightVisibility(sightLine(this.world, pos.x, pos.y, ppos.x, ppos.y));
+      const vis = sightVisibility(sightLine(this.worldOf(pos.plane), pos.x, pos.y, ppos.x, ppos.y));
       if (vis <= 0) continue;
       if (zone === 'close') {
         // Point blank in the open detects outright — no meter, no
@@ -23498,7 +23845,7 @@ export class GameServer {
       for (const k of [capK, capK / 2]) {
         const px = npc.alertX + npc.alertVelX * 30 * k;
         const py = npc.alertY + npc.alertVelY * 30 * k;
-        if (!circleHitsSolid(this.world, px, py, npc.def.radius)) {
+        if (!circleHitsSolid(this.worldOf(this.positions.must(eid).plane), px, py, npc.def.radius)) {
           npc.alertX = px;
           npc.alertY = py;
           break;
@@ -23543,7 +23890,7 @@ export class GameServer {
     if (npc.huntWps === null) {
       // First arrival — at the LKP itself — mints the ring of second
       // looks. A search (a KNOWN quarry) checks more ground.
-      npc.huntWps = this.mintHuntRing(npc, npc.state === 'search' ? 3 : 2);
+      npc.huntWps = this.mintHuntRing(npc, this.positions.must(eid).plane, npc.state === 'search' ? 3 : 2);
       npc.huntIdx = 0;
     } else {
       npc.huntIdx++;
@@ -23559,7 +23906,7 @@ export class GameServer {
    * inside the leash circle, none inside a solid. Random by design —
    * a search should read as guessing, not sweeping a grid.
    */
-  private mintHuntRing(npc: NpcComp, count: number): Array<{ x: number; y: number }> {
+  private mintHuntRing(npc: NpcComp, plane: PlaneId, count: number): Array<{ x: number; y: number }> {
     const wps: Array<{ x: number; y: number }> = [];
     const maxR = Math.max(0, npc.def.leashRange - 1);
     for (let attempt = 0; attempt < count * 5 && wps.length < count; attempt++) {
@@ -23574,7 +23921,7 @@ export class GameServer {
         x = npc.originX + (ox / od) * maxR;
         y = npc.originY + (oy / od) * maxR;
       }
-      if (circleHitsSolid(this.world, x, y, npc.def.radius)) continue;
+      if (circleHitsSolid(this.worldOf(plane), x, y, npc.def.radius)) continue;
       wps.push({ x, y });
     }
     return wps;
@@ -23798,7 +24145,7 @@ export class GameServer {
       const k = len > GameServer.NPC_LEAD_CAP ? GameServer.NPC_LEAD_CAP / len : 1;
       const px = tpos.x + lx * k;
       const py = tpos.y + ly * k;
-      if (!circleHitsSolid(this.world, px, py, 0.3)) pt = { x: px, y: py };
+      if (!circleHitsSolid(this.worldOf(pos.plane), px, py, 0.3)) pt = { x: px, y: py };
     }
     this.setNpcPose(eid, npc, PoseState.Art, 10);
     this.castAbility(eid, ab, aim, 'onehand', npc.def.level, true, pt);
@@ -23821,7 +24168,7 @@ export class GameServer {
     casterEid: EntityId,
     ab: AbilityDef,
     level: number,
-    pos: { x: number; y: number },
+    pos: { plane: PlaneId; x: number; y: number },
   ): void {
     const spec = ab.summonNpc;
     const caster = this.npcs.get(casterEid);
@@ -23853,13 +24200,13 @@ export class GameServer {
       for (let tries = 0; tries < 6; tries++) {
         const tx = pos.x + Math.cos(a + tries) * (0.8 + Math.random() * 0.6);
         const ty = pos.y + Math.sin(a + tries) * (0.8 + Math.random() * 0.6);
-        if (!this.world.isSolid(Math.floor(tx), Math.floor(ty))) {
+        if (!this.worldOf(pos.plane).isSolid(Math.floor(tx), Math.floor(ty))) {
           cx = tx;
           cy = ty;
           break;
         }
       }
-      const childEid = this.spawnNpc(def, cx, cy, -1);
+      const childEid = this.spawnNpc(def, pos.plane, cx, cy, -1);
       // A raised body is EPHEMERAL for real: it joins the ambient
       // ledger so the distance despawn claims it once nobody is near.
       // Without this, a spawnIndex −1 add belonged to no sweep — every
@@ -24111,9 +24458,9 @@ export class GameServer {
             }
           }
         }
-        if (watched && this.nearbyDropCount(lays.item, pos.x, pos.y, 6) < 4) {
+        if (watched && this.nearbyDropCount(pos.plane, lays.item, pos.x, pos.y, 6) < 4) {
           const scatter = () => (Math.random() - 0.5) * 0.7;
-          this.spawnDrop(lays.item, 1, pos.x + scatter(), pos.y + scatter(), null, {
+          this.spawnDrop(pos.plane, lays.item, 1, pos.x + scatter(), pos.y + scatter(), null, {
             skill: 'beastcraft',
             xp: lays.xp,
           });
@@ -24194,7 +24541,7 @@ export class GameServer {
           );
           const seen =
             sdist <= loseRange &&
-            sightVisibility(sightLine(this.world, pos.x, pos.y, tpos.x, tpos.y)) > 0;
+            sightVisibility(sightLine(this.worldOf(pos.plane), pos.x, pos.y, tpos.x, tpos.y)) > 0;
           if (seen) {
             // A fresh pair of sightings yields the quarry's stride —
             // the "he went that way" a broken chase projects along.
@@ -24324,7 +24671,7 @@ export class GameServer {
                 const proj = this.ecs.create();
                 const angle = Math.atan2(dy, dx);
                 this.kinds.set(proj, EntityKind.Projectile);
-                this.positions.set(proj, { x: pos.x, y: pos.y, dir: angle });
+                this.positions.set(proj, { x: pos.x, y: pos.y, dir: angle, plane: pos.plane });
                 this.projectiles.set(proj, {
                   ownerEid: eid,
                   style: 'archery',
@@ -24349,7 +24696,7 @@ export class GameServer {
                       { mx: dx / dist, my: dy / dist },
                       leap,
                       1 / 4,
-                      this.world,
+                      this.worldOf(pos.plane),
                       npc.def.radius,
                     );
                     pos.x = next.x;
@@ -24866,7 +25213,7 @@ export class GameServer {
         // a target instead of stacking into one sprite; a returning
         // wanderer eases around whoever it meets.
         ({ mx: moveX, my: moveY } = this.separateHeading(eid, pos, npc.def.radius, moveX, moveY));
-        const next = stepMovement(pos, { mx: moveX, my: moveY }, speed, TICK_DT, this.world, npc.def.radius);
+        const next = stepMovement(pos, { mx: moveX, my: moveY }, speed, TICK_DT, this.worldOf(pos.plane), npc.def.radius);
         const moved = next.x !== pos.x || next.y !== pos.y;
         if (moved) {
           pos.dir = Math.atan2(moveY, moveX);
@@ -24911,7 +25258,7 @@ export class GameServer {
       if (!pos) continue;
       let best = 0;
       let bestNpc = null as NpcComp | null;
-      this.forEachNpcNear(pos.x, pos.y, SNEAK_XP_RADIUS, (npcEid, npc, npos) => {
+      this.forEachNpcNear(pos.plane, pos.x, pos.y, SNEAK_XP_RADIUS, (npcEid, npc, npos) => {
         if (npc.def.aggroRange <= 0 || npc.def.damage <= 0) return;
         if ((npc.state === 'chase' || npc.state === 'seekhelp') && npc.targetEid === eid) return;
         const dist = Math.hypot(npos.x - pos.x, npos.y - pos.y);
@@ -24937,9 +25284,9 @@ export class GameServer {
   // ------------------------------------------------------------- drops
 
   /** How many drops of an item lie within `radius` tiles (egg-pile cap). */
-  private nearbyDropCount(item: string, x: number, y: number, radius: number): number {
+  private nearbyDropCount(plane: PlaneId, item: string, x: number, y: number, radius: number): number {
     let count = 0;
-    this.forEachDropNear(x, y, radius, (_eid, drop, pos) => {
+    this.forEachDropNear(plane, x, y, radius, (_eid, drop, pos) => {
       if (drop.item !== item) return;
       const dx = pos.x - x;
       const dy = pos.y - y;
@@ -25030,7 +25377,7 @@ export class GameServer {
       if (player.sneaking) continue;
       const ppos = this.positions.get(playerEid);
       if (!ppos) continue;
-      this.forEachDropNear(ppos.x, ppos.y, 0.55, (eid, drop, pos) => {
+      this.forEachDropNear(ppos.plane, ppos.x, ppos.y, 0.55, (eid, drop, pos) => {
         if (drop.pickupAfter > now) return;
         if (drop.ownerEid !== null && drop.ownerEid !== playerEid && drop.ownerUntil > now) {
           return;
@@ -25086,7 +25433,13 @@ export class GameServer {
       let clear = mark.until <= now;
       if (!clear) {
         const ppos = this.positions.get(playerEid);
-        if (ppos && Math.hypot(ppos.x - mark.x, ppos.y - mark.y) <= 4) clear = true;
+        if (
+          ppos &&
+          ppos.plane === mark.plane &&
+          Math.hypot(ppos.x - mark.x, ppos.y - mark.y) <= 4
+        ) {
+          clear = true;
+        }
       }
       if (clear) {
         this.deathMarks.delete(player.characterId);
@@ -25134,7 +25487,7 @@ export class GameServer {
       let best: { tx: number; ty: number; info: DoorInfo; d: number } | null = null;
       for (let ty = cy - 2; ty <= cy + 2; ty++) {
         for (let tx = cx - 2; tx <= cx + 2; tx++) {
-          const g = this.world.groundAt(tx, ty);
+          const g = this.worldOf(pos.plane).groundAt(tx, ty);
           const info = g === undefined ? null : doorInfo(g);
           if (!info) continue;
           const dx = tx + 0.5 - pos.x;
@@ -25157,8 +25510,8 @@ export class GameServer {
         );
         return;
       }
-      const unit = this.doorUnit(best.tx, best.ty, best.info);
-      const key = `${unit.ax},${unit.ay}`;
+      const unit = this.doorUnit(pos.plane, best.tx, best.ty, best.info);
+      const key = `${pos.plane}|${unit.ax},${unit.ay}`;
       if (this.doorLocks.delete(key)) sys('The lock clicks open.');
       else {
         this.doorLocks.add(key);
@@ -25199,8 +25552,10 @@ export class GameServer {
         return;
       }
       const pos = this.positions.get(eid);
-      const fromInstance = pos !== undefined && pos.y >= 8192;
-      this.teleport(eid, bedside.x, bedside.y);
+      const fromInstance = pos !== undefined && isRiftPlane(pos.plane);
+      // The hearth is a surface institution — THE CROSSING carries the
+      // body home (a bare teleport when already on the surface).
+      this.transferPlane(eid, SURFACE_PLANE_ID, bedside.x, bedside.y);
       // Recalling out of a personal dungeon ends the run, same as
       // walking its exit portal.
       if (fromInstance) this.teardownDungeon(player.characterId);
@@ -25219,6 +25574,8 @@ export class GameServer {
         // teleport can overlap the player's radius into a solid
         // neighbor — an embedded body fails every movement candidate
         // and freezes in place with zero feedback.
+        // /tp stays a SAME-PLANE teleport — the invoker's own world.
+        const tpWorld = this.worldAt(eid);
         const tx0 = Math.floor(x);
         const ty0 = Math.floor(y);
         outer: for (let r = 0; r <= 4; r++) {
@@ -25227,8 +25584,8 @@ export class GameServer {
               if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
               const tx = tx0 + dx;
               const ty = ty0 + dy;
-              this.world.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
-              if (!this.world.isSolid(tx, ty)) {
+              tpWorld.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
+              if (!tpWorld.isSolid(tx, ty)) {
                 this.teleport(eid, tx + 0.5, ty + 0.5);
                 break outer;
               }
@@ -25258,11 +25615,11 @@ export class GameServer {
           if (gapY > 0 && dy % (gapY + 1) === gapY) continue;
           for (let dx = 0; dx < w; dx++) {
             if (gapX > 0 && dx % (gapX + 1) === gapX) continue;
-            this.world.ensure(
+            this.worldOf(pos.plane).ensure(
               Math.floor((tx0 + dx) / CHUNK_SIZE),
               Math.floor((ty0 + dy) / CHUNK_SIZE),
             );
-            this.setWorldTile(tx0 + dx, ty0 + dy, tile as Tile);
+            this.setWorldTile(pos.plane, tx0 + dx, ty0 + dy, tile as Tile);
             n++;
           }
         }
@@ -25375,7 +25732,7 @@ export class GameServer {
           if (this.crops.has(key)) {
             this.crops.delete(key);
             this.accounts.deleteCrop(tx, ty);
-            this.world.unregisterCropTile(tx, ty);
+            this.surface.unregisterCropTile(tx, ty);
             for (const s of this.sessions) s.sendJson({ t: 'farm', remove: [{ tx, ty }] });
           }
           if (this.farmBins.has(key)) {
@@ -25388,15 +25745,15 @@ export class GameServer {
             this.accounts.deleteFarmTrough(tx, ty);
             this.mirrorTrough({ tx, ty, feed: 0 });
           }
-          if (this.world.builtAt(tx, ty)) {
-            this.world.unregisterBuilt(tx, ty);
-            this.accounts.deleteBuiltTile(tx, ty);
+          if (this.worldOf(pos.plane).builtAt(tx, ty)) {
+            this.worldOf(pos.plane).unregisterBuilt(tx, ty);
+            this.accounts.deleteBuiltTile(pos.plane, tx, ty);
             this.ringCache = null;
     this.capitalCache?.clear();
           }
-          const g = this.world.groundAt(tx, ty);
+          const g = this.worldOf(pos.plane).groundAt(tx, ty);
           if (g !== undefined && g !== Tile.Grass) {
-            this.setWorldTile(tx, ty, Tile.Grass);
+            this.setWorldTile(pos.plane, tx, ty, Tile.Grass);
             cleared++;
           }
         }
@@ -25428,7 +25785,7 @@ export class GameServer {
         return;
       }
       const element = (elemRaw && elemRaw in ELEMENT_COLORS ? elemRaw : 'arcane') as ArxElement;
-      const target = this.npcsWithin(pos.x, pos.y, 8)[0];
+      const target = this.npcsWithin(pos.plane, pos.x, pos.y, 8)[0];
       const tp = target !== undefined ? this.positions.get(target) : undefined;
       this.runProc(
         eid,
@@ -25470,7 +25827,7 @@ export class GameServer {
       }
       const power = Math.max(0, Number(powRaw) || 3);
       const durationTicks = Math.max(1, Number(durRaw) || 200);
-      const target = this.npcsWithin(pos.x, pos.y, 8)[0];
+      const target = this.npcsWithin(pos.plane, pos.x, pos.y, 8)[0];
       if (target !== undefined) {
         this.applyStatusToNpc(target, { status: id, power, durationTicks }, eid, 'arx');
       } else {
@@ -25781,13 +26138,13 @@ export class GameServer {
           const r = 1.2 + Math.random() * 2.2;
           const tx = pos.x + Math.cos(a) * r;
           const ty = pos.y + Math.sin(a) * r;
-          if (!this.world.isSolid(Math.floor(tx), Math.floor(ty))) {
+          if (!this.worldOf(pos.plane).isSolid(Math.floor(tx), Math.floor(ty))) {
             x = tx;
             y = ty;
             break;
           }
         }
-        this.spawnNpc(def, x, y, -1);
+        this.spawnNpc(def, pos.plane, x, y, -1);
         placed++;
       }
       player.session?.sendJson({ t: 'chat', channel: 'system', text: `Spawned ${def.name} ×${placed}.` });
@@ -25820,13 +26177,13 @@ export class GameServer {
         const r = 1.5 + Math.random() * 2;
         const tx = pos.x + Math.cos(a) * r;
         const ty = pos.y + Math.sin(a) * r;
-        if (!this.world.isSolid(Math.floor(tx), Math.floor(ty))) {
+        if (!this.worldOf(pos.plane).isSolid(Math.floor(tx), Math.floor(ty))) {
           x = tx;
           y = ty;
           break;
         }
       }
-      this.spawnNpc(forged, x, y, -1);
+      this.spawnNpc(forged, pos.plane, x, y, -1);
       player.session?.sendJson({
         t: 'chat',
         channel: 'system',
@@ -25879,13 +26236,13 @@ export class GameServer {
         const r = 1.2 + Math.random() * 1.6;
         const tx = pos.x + Math.cos(a) * r;
         const ty = pos.y + Math.sin(a) * r;
-        if (!this.world.isSolid(Math.floor(tx), Math.floor(ty))) {
+        if (!this.worldOf(pos.plane).isSolid(Math.floor(tx), Math.floor(ty))) {
           x = tx;
           y = ty;
           break;
         }
       }
-      this.spawnActor(actor, x, y, -1);
+      this.spawnActor(actor, pos.plane, x, y, -1);
       player.session?.sendJson({ t: 'chat', channel: 'system', text: `Spawned ${actor.name}.` });
       return;
     }
@@ -26162,6 +26519,14 @@ export class GameServer {
       // /danger — the field readout at your feet: tier, cell, ledger.
       const pos = this.positions.get(eid);
       if (!pos) return;
+      if (pos.plane !== SURFACE_PLANE_ID) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: 'The danger field is a surface law — there is no field down here.',
+        });
+        return;
+      }
       const tx = Math.floor(pos.x);
       const ty = Math.floor(pos.y);
       const tier = this.liveDangerTier(tx, ty);
@@ -26394,6 +26759,10 @@ export class GameServer {
       if (!pos) return;
       const say = (t: string) =>
         player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
+      if (pos.plane !== SURFACE_PLANE_ID) {
+        say('The danger field is a surface law — there is no wild ambience down here.');
+        return;
+      }
       const tier = this.liveDangerTier(Math.floor(pos.x), Math.floor(pos.y));
       const law = dangerLaw(tier);
       const budget = tier > 0 ? Math.round(FRONTIER.wildBudgetBase * law.wildDensity) : 0;
@@ -26504,12 +26873,12 @@ export class GameServer {
       if (!pos) return;
       const say = (t: string) =>
         player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
-      const domain = this.world.growthDomainAt(Math.floor(pos.x), Math.floor(pos.y));
+      const domain = this.surface.growthDomainAt(Math.floor(pos.x), Math.floor(pos.y));
       const census = new Map<string, number>();
       let nearest: GrowthRow | null = null;
       let nearestD = Infinity;
       const now = Date.now();
-      for (const row of this.world.growthLedger.values()) {
+      for (const row of this.surface.growthLedger.values()) {
         // A sealed mouth (host ground over a wandered-away resource)
         // has no dialect of its own — name it honestly.
         const dialect =
@@ -26546,9 +26915,9 @@ export class GameServer {
           `${nearest.tx},${nearest.ty} (${Math.round(nearestD)} tiles) ` +
           `${GROWTH_STATE_NAMES[proj.state] ?? proj.state}, ${eta}`;
       }
-      const sown = [...this.world.growthLedger.values()].filter((r) => r.owner !== null).length;
+      const sown = [...this.surface.growthLedger.values()].filter((r) => r.owner !== null).length;
       say(
-        `growth: ${domain} ground underfoot | ledger ${this.world.growthLedger.size}` +
+        `growth: ${domain} ground underfoot | ledger ${this.surface.growthLedger.size}` +
           (sown > 0 ? ` (${sown} sown)` : '') +
           (parts.length > 0 ? ` (${parts})` : '') +
           ` | nearest: ${near}`,
@@ -26784,9 +27153,9 @@ export class GameServer {
         const r = 1.4 + Math.floor(tries / 7) * 0.9;
         const tx = Math.floor(pos.x + Math.cos(a) * r);
         const ty = Math.floor(pos.y + Math.sin(a) * r);
-        if (this.world.isSolid(tx, ty)) continue;
+        if (this.worldOf(pos.plane).isSolid(tx, ty)) continue;
         if (Math.floor(pos.x) === tx && Math.floor(pos.y) === ty) continue;
-        this.setWorldTile(tx, ty, closedChestTile(kind));
+        this.setWorldTile(pos.plane, tx, ty, closedChestTile(kind));
         player.session?.sendJson({
           t: 'chat',
           channel: 'system',
@@ -26871,26 +27240,37 @@ export class GameServer {
         // Door auto-close: the unit shuts as ONE (matching the merged
         // opening) and never onto a body — an occupied doorway defers
         // the timer instead of embedding whoever stands in it.
-        const g = this.world.groundAt(entry.tx, entry.ty);
+        const world = this.planes.get(entry.plane);
+        if (!world) {
+          // The plane is gone (a dropped rift) — the entry dies with it.
+          this.respawnQueue.splice(i, 1);
+          continue;
+        }
+        const g = world.groundAt(entry.tx, entry.ty);
         const gi = g === undefined ? null : doorInfo(g);
         if (gi === null || !gi.open) {
           // Already shut by hand, or the doorway is gone — drop it.
           this.respawnQueue.splice(i, 1);
           continue;
         }
-        const unit = this.doorUnit(entry.tx, entry.ty, gi);
-        if (unit.tiles.some((t) => this.bodyOnTile(t.x, t.y))) {
+        const unit = this.doorUnit(entry.plane, entry.tx, entry.ty, gi);
+        if (unit.tiles.some((t) => this.bodyOnTile(entry.plane, t.x, t.y))) {
           entry.at = now + 5000;
           continue;
         }
         for (const t of unit.tiles) {
-          const gg = this.world.groundAt(t.x, t.y)!;
-          this.setWorldTile(t.x, t.y, shutDoorTile(gg)!);
+          const gg = world.groundAt(t.x, t.y)!;
+          this.setWorldTile(entry.plane, t.x, t.y, shutDoorTile(gg)!);
         }
         this.respawnQueue.splice(i, 1);
         continue;
       }
-      const cur = this.world.groundAt(entry.tx, entry.ty);
+      const entryWorld = this.planes.get(entry.plane);
+      if (!entryWorld) {
+        this.respawnQueue.splice(i, 1);
+        continue;
+      }
+      const cur = entryWorld.groundAt(entry.tx, entry.ty);
       if (entry.over !== undefined && cur !== entry.over) {
         // The world moved on under this entry — let it go.
         this.respawnQueue.splice(i, 1);
@@ -26902,7 +27282,7 @@ export class GameServer {
       // free boss-law open every recloseSec (2-3 unguarded dips per
       // stronghold clear). The epoch re-deal is the honest reset.
       if (chestInfo(entry.tile) && !chestInfo(entry.tile)!.open) {
-        const over = this.poiChests.get(`${entry.tx},${entry.ty}`);
+        const over = this.poiChests.get(`${entry.plane}|${entry.tx},${entry.ty}`);
         if (over?.warded && this.chestSiteLiesBroken(over.cell)) {
           entry.at = now + 60_000;
           continue;
@@ -26913,11 +27293,11 @@ export class GameServer {
       // the timer (same courtesy the doors extend).
       const becomingSolid =
         TILE_DEFS[entry.tile]?.solid && !(cur !== undefined && TILE_DEFS[cur as Tile]?.solid);
-      if (becomingSolid && this.bodyOnTile(entry.tx, entry.ty)) {
+      if (becomingSolid && this.bodyOnTile(entry.plane, entry.tx, entry.ty)) {
         entry.at = now + 5000;
         continue;
       }
-      this.setWorldTile(entry.tx, entry.ty, entry.tile);
+      this.setWorldTile(entry.plane, entry.tx, entry.ty, entry.tile);
       this.respawnQueue.splice(i, 1);
     }
 
@@ -26984,9 +27364,10 @@ export class GameServer {
     }
     // Underground refuses the saddle — checked per tick so every way
     // down (delve stair, riftgate, /tp) dismounts honestly at the
-    // threshold. UNDERGROUND_Y covers the dark band AND the dungeon
-    // slots above DUNGEON_MIN_Y.
-    if (player.mountId && pos.y >= UNDERGROUND_Y) this.dismount(eid, player);
+    // threshold. Plane law: any underground plane refuses the saddle.
+    if (player.mountId && (this.planes.defOf(pos.plane)?.underground ?? true)) {
+      this.dismount(eid, player);
+    }
     // A finished convalescence rises on the same beat...
     this.tickPetRest(eid, player);
     // ...and THE ONE LIVE NUMBER: the companion's hp is the one
@@ -27062,7 +27443,7 @@ export class GameServer {
       if (player.seat && (Math.abs(frame.mx) > 0.01 || Math.abs(frame.my) > 0.01)) {
         this.standUp(eid, player, pos);
       }
-      const next = stepMovement(pos, frame, speed, TICK_DT, this.world);
+      const next = stepMovement(pos, frame, speed, TICK_DT, this.worldOf(pos.plane));
       if (next.x !== pos.x || next.y !== pos.y) {
         moved = true;
         const step = Math.hypot(next.x - pos.x, next.y - pos.y);
@@ -27157,7 +27538,7 @@ export class GameServer {
       ) {
         player.lastDodgeSeq = frame.seq;
         player.lastDodgeTick = this.tickCount;
-        const dashed = applyDodge(pos, frame.mx, frame.my, this.world);
+        const dashed = applyDodge(pos, frame.mx, frame.my, this.worldOf(pos.plane));
         pos.x = dashed.x;
         pos.y = dashed.y;
         moved = true;
@@ -27345,7 +27726,7 @@ export class GameServer {
     const fire = (shot: { maxHit: number; speed: number; range: number }, angle: number, fullDraw: boolean) => {
       const proj = this.ecs.create();
       this.kinds.set(proj, EntityKind.Projectile);
-      this.positions.set(proj, { x: pos.x, y: pos.y, dir: angle });
+      this.positions.set(proj, { x: pos.x, y: pos.y, dir: angle, plane: pos.plane });
       this.projectiles.set(proj, {
         ownerEid: eid,
         style: 'archery',
@@ -27427,13 +27808,20 @@ export class GameServer {
 
   // ------------------------------------------------- interest management
 
-  private chunkKeyOf(x: number, y: number): string {
-    return chunkKey(Math.floor(x / CHUNK_SIZE), Math.floor(y / CHUNK_SIZE));
+  /**
+   * THE WORLDS APART: the entity-chunk index is keyed plane-first, so
+   * a proximity scan can only ever see bodies whose coordinates share
+   * a coordinate space. Session.knownChunks stays bare "cx,cy" — a
+   * session streams exactly one plane at a time and is cleared whole
+   * at every crossing.
+   */
+  private chunkKeyOf(plane: PlaneId, x: number, y: number): string {
+    return `${plane}|${chunkKey(Math.floor(x / CHUNK_SIZE), Math.floor(y / CHUNK_SIZE))}`;
   }
 
   private updateChunkMembership(eid: EntityId): void {
     const pos = this.positions.must(eid);
-    const key = this.chunkKeyOf(pos.x, pos.y);
+    const key = this.chunkKeyOf(pos.plane, pos.x, pos.y);
     const prev = this.entityChunk.get(eid);
     if (prev === key) return;
     if (prev !== undefined) this.chunks.get(prev)?.delete(eid);
@@ -27472,6 +27860,10 @@ export class GameServer {
       this.checkDiscoveries(eid);
     }
 
+    // The session streams the player's OWN plane and nothing else —
+    // knownChunks keys stay bare "cx,cy" (the plane is the session's),
+    // while the entity index reads through plane-first keys.
+    const world = this.planes.require(pos.plane);
     const visible = new Set<EntityId>();
     const windowKeys = new Set<string>();
     for (let cy = ccy - INTEREST_CHUNK_RADIUS; cy <= ccy + INTEREST_CHUNK_RADIUS; cy++) {
@@ -27480,11 +27872,11 @@ export class GameServer {
         windowKeys.add(key);
         if (!session.knownChunks.has(key)) {
           session.knownChunks.add(key);
-          session.sendBinary(encodeChunk(this.world.ensure(cx, cy)));
+          session.sendBinary(encodeChunk(world.ensure(cx, cy)));
           // The words ride in with the board they belong to.
           this.sendChunkSigns(session, cx, cy);
         }
-        const set = this.chunks.get(key);
+        const set = this.chunks.get(`${pos.plane}|${key}`);
         if (set) for (const e of set) visible.add(e);
       }
     }
@@ -27532,8 +27924,10 @@ export class GameServer {
       // streaming it, and THE QUIET WIRE makes the ring nearly free (an
       // unchanged row never resends). Hidden players still leave at
       // once (anti-ESP), and a despawned body has no ring to hold.
+      // A body on another plane leaves AT ONCE — hysteresis is a
+      // border comfort, and there is no border between worlds.
       const kept = this.positions.get(e);
-      if (kept && !this.players.get(e)?.hidden) {
+      if (kept && kept.plane === pos.plane && !this.players.get(e)?.hidden) {
         const ecx = Math.floor(kept.x / CHUNK_SIZE);
         const ecy = Math.floor(kept.y / CHUNK_SIZE);
         if (

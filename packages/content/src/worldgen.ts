@@ -1,6 +1,5 @@
 import {
   CHUNK_SIZE,
-  DARK_BAND_Y,
   Detail,
   Tile,
   emptyChunk,
@@ -243,7 +242,6 @@ const BASIN_T2 = 0.8;
 
 /** Exported for tests: they search this field to find chunks with sinks. */
 export function basinFieldAt(seed: number, tx: number, ty: number): number {
-  if (ty >= DARK_BAND_Y) return 0; // caves carve the underworld, not basins
   const f = fbm(seed + 77713, tx * 0.012, ty * 0.012, 3);
   const distFromTown = Math.hypot(tx + 64, ty - 48);
   // Legacy Dawnmead radial + planned-zone rect aprons: a basin's
@@ -346,11 +344,6 @@ export function coldAt(seed: number, tx: number, ty: number): number {
   );
 }
 
-/** Below this world-y everything defaults to solid cave (dungeon land).
- *  Defined in shared beside the other world-structure constants (the
- *  geography validator derives its authoring ceiling from it);
- *  re-exported here for its long-standing consumers. */
-export { DARK_BAND_Y };
 
 /** Signed terrain level (−2..2) at a world tile — the fields combined. */
 export function levelAt(seed: number, tx: number, ty: number): number {
@@ -373,7 +366,6 @@ export type GroundClass = 'water' | 'sand' | 'grass' | 'forest' | 'rock' | 'cave
  * to it, so any final check must read the live world.
  */
 export function groundProbeAt(seed: number, tx: number, ty: number): GroundClass {
-  if (ty >= DARK_BAND_Y) return 'cave';
   const e = elevationAt(seed, tx, ty);
   if (e < 0.37) return 'water';
   if (e < 0.4) return 'sand';
@@ -435,17 +427,23 @@ export function shoreProbeAt(seed: number, tx: number, ty: number, reach = 4): b
 /** Sampled-neighborhood margin: rim checks 1 + ramp-top interior 1 + talus 1. */
 const M = 3;
 
+/**
+ * THE WORLDS APART: the base chunk of a cave plane — solid rock in
+ * every direction, waiting for authored zones (the Undercroft, the Low
+ * Hall, a dungeon run) to carve rooms into it. This is the fill the
+ * surface's old "dark band" used to deal below y=512; now it is a
+ * PLANE'S law, and the surface runs wild on every compass point.
+ */
+export function generateCaveChunk(cx: number, cy: number): ChunkData {
+  const chunk = emptyChunk(cx, cy);
+  chunk.ground.fill(Tile.CaveWall);
+  return chunk;
+}
+
 export function generateChunk(seed: number, cx: number, cy: number): ChunkData {
   const chunk = emptyChunk(cx, cy);
   const baseX = cx * CHUNK_SIZE;
   const baseY = cy * CHUNK_SIZE;
-
-  // The dark band: dungeons overlay carved zones onto solid rock, so no
-  // grass ever peeks through cave walls.
-  if (baseY >= DARK_BAND_Y) {
-    chunk.ground.fill(Tile.CaveWall);
-    return chunk;
-  }
 
   // Precompute the raw elevation and terrain level over the chunk plus a
   // margin — rims, ramps, and talus all read the neighborhood.

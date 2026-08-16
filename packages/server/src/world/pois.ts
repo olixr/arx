@@ -41,7 +41,7 @@ import {
   type ZoneSign,
   type ZoneSpawn,
 } from '@arx/content';
-import { DARK_BAND_Y, groundProbeAt, shoreProbeAt } from '@arx/content';
+import { groundProbeAt, shoreProbeAt } from '@arx/content';
 
 /**
  * THE POI SCAFFOLD — the wilderness sibling of the dungeon generator.
@@ -526,15 +526,10 @@ export function footprintScanLaw(prefab: PrefabDef): {
 export interface SiteScanPolicy {
   /** Zone-rect clearance pad: frontier 24, wings/finds 8, authored 6. */
   zonePad: number;
-  /** Dark-band clearance pad (tiles above DARK_BAND_Y). */
+  /** RETIRED (THE WORLDS APART): the dark band is gone — the south is
+   * open wilderness. The fields stay so presets read unchanged; no
+   * scan consults them any more. */
   darkPad: number;
-  /**
-   * Which edge the dark band measures. 'center' = anchor + h/2, the
-   * cell scans' float compare; 'foot' = footprint bottom (fy0 + h),
-   * the capitals' integer compare. NOT unified: the two forms differ
-   * by one row at odd heights, and the zero-drift law forbids moving
-   * either verdict.
-   */
   darkFrom: 'center' | 'foot';
   /** Ground-scan stride: 1 for strict stamps, LANDMARK_SCAN_STRIDE
    * for landmarks, probeStride for zone-size capital walls. */
@@ -599,8 +594,8 @@ export function siteScan(
 ): SiteScanVerdict | null {
   const fx0 = ax - Math.floor(w / 2);
   const fy0 = ay - Math.floor(h / 2);
-  const foot = policy.darkFrom === 'foot' ? fy0 + h : ay + h / 2;
-  if (foot >= DARK_BAND_Y - policy.darkPad) return null;
+  // THE SOUTH OPENS: the dark-band refusal is gone — south of 512 is
+  // ordinary wilderness now.
   if (intersectsZones(fx0, fy0, w, h, zoneRects, policy.zonePad)) return null;
   if (intersectsRings(fx0, fy0, w, h, claimRings)) return null;
   if (policy.capitals && intersectsZones(fx0, fy0, w, h, policy.capitals, CAPITAL_CLEARANCE)) {
@@ -693,7 +688,6 @@ export function traceTrail(
     wob = Math.max(-2.5, Math.min(2.5, wob + drift));
     const wx = Math.round(originX + ax * t - ay * wob);
     const wy = Math.round(originY + ay * t + ax * wob);
-    if (wy >= DARK_BAND_Y) break;
     // Arrival first: the shoulder itself probes as rock, and stopping
     // BEFORE stepping onto the carve keeps the mouth beside the road,
     // never on it.

@@ -172,6 +172,12 @@ export class LightingSystem {
   private frame = 0;
   private offScaleRebuilds = 0;
 
+  /** THE CROSSING: lamp patches are position-keyed on the current
+   *  plane — drop them whole when the world changes under the lights. */
+  dropWorld(): void {
+    this.patches.clear();
+  }
+
   /**
    * Paint the frame's exposure. `blocks` answers whether a tile stops
    * light (walls, cliffs); it is only consulted near occluding lights.

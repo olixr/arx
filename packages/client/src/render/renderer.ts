@@ -209,7 +209,6 @@ import {
   type StretchBake,
   type StretchRef,
 } from './staticRegister.js';
-import { UNDERGROUND_Y } from '../audio/zones.js';
 import { dealWoodSkin, type WoodSkin } from './woodSkins.js';
 import { drawPortalArch, drawPortalGround, spawnPortalFx, PORTAL_PLANE } from './portal.js';
 import { ELEV_H, solveLiftedY } from './elevPick.js';
@@ -1408,6 +1407,33 @@ export class Renderer {
   private readonly olObjIds = new WeakMap<object, number>();
   private olObjSeq = 1;
   private readonly baked = new Map<string, BakedChunk>();
+
+  /**
+   * THE CROSSING (docs/planes-plan.md §2.4): the world under the
+   * camera just became a DIFFERENT world with legitimately overlapping
+   * coordinates. Every position-keyed cache the renderer holds must
+   * drop whole — a survivor would paint another plane's furniture
+   * here. Version-gated memos (lift/dock/bridge/fall) self-heal off
+   * the worldVersion bump; this clears everything that does not.
+   */
+  onPlaneSwitch(): void {
+    this.baked.clear();
+    this.registers.clear();
+    this.bandCache.clear();
+    this.bandNonce.clear();
+    this.bandEmitted.clear();
+    this.shadowMasks.clear();
+    this.growingTrees.clear();
+    this.chestEases.clear();
+    this.doorEases.clear();
+    this.propShakes.clear();
+    this.treeSprites.clear();
+    this.treeShadows.clear();
+    this.phaseMs.clear();
+    this.bedFlips.clear();
+    this.lighting.dropWorld();
+    this.grass.dropWorld();
+  }
   /** Per-frame queue of chunks with pending sliced bakes (scan order:
    *  visible chunks first, then the pre-bake ring). Scratch, rebuilt
    *  every frame by drawGroundChunks. */
@@ -3747,8 +3773,8 @@ export class Renderer {
     // grade and the flame gate all read the same override — easing
     // over ~1s of real time so a portal hop fades instead of popping.
     {
-      const pos = game.ownEid !== null ? game.predictor.renderPos() : null;
-      const under = pos !== null && pos.y >= UNDERGROUND_Y ? 1 : 0;
+      // THE WORLDS APART: underground is the plane's law, not a y-line.
+      const under = game.ownEid !== null && game.plane.underground ? 1 : 0;
       const step = frameDt; // full swing in one second
       this.ugBlend += Math.max(-step, Math.min(step, under - this.ugBlend));
       if (this.ugBlend > 0.001) this.applyUnderground(this.ugBlend);
@@ -3887,7 +3913,7 @@ export class Renderer {
       // floor()ing here would make the occlusion window pop per row.
       this.ownPX = own.x;
       this.ownPY = own.y;
-      this.ugCutOn = own.y >= UNDERGROUND_Y;
+      this.ugCutOn = game.plane.underground;
       // THE SHELTER GATE: the reveal only arms while you are INSIDE
       // somewhere — underground, in any enclosed region, or standing
       // on man-made floor / a threshold (the floor IS the room: a

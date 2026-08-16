@@ -7,6 +7,8 @@
 
 import { Tile } from '@arx/shared';
 import {
+  SURFACE_PLANE_ID,
+  UNDERWORLD_PLANE_ID,
   prefabToJson,
   validatePrefab,
   type PrefabDef,
@@ -62,7 +64,7 @@ export interface DialogDeps {
 
 /**
  * THE OPEN BROWSER — everything the world holds, one dialog: towns,
- * the dark band, every composed frontier site, files, orphans.
+ * the Underworld, every composed frontier site, files, orphans.
  */
 export async function openBrowser(deps: DialogDeps): Promise<void> {
   const { world } = deps;
@@ -109,8 +111,9 @@ export async function openBrowser(deps: DialogDeps): Promise<void> {
       const recent = recentZones()
         .map((id) => zones.find((z) => z.id === id))
         .filter((z): z is MapListEntry => z !== undefined && match(z));
-      const towns = zones.filter((z) => !z.poi && z.origin.y < 512 && match(z));
-      const dark = zones.filter((z) => !z.poi && z.origin.y >= 512 && match(z));
+      // THE WORLDS APART: sections split on the plane tag, never on y.
+      const towns = zones.filter((z) => !z.poi && (z.plane ?? 'surface') === 'surface' && match(z));
+      const under = zones.filter((z) => !z.poi && (z.plane ?? 'surface') !== 'surface' && match(z));
       const standing = new Set(zones.filter((z) => z.poi).map((z) => z.id));
       const dormant: MapListEntry[] = cells
         .filter((c) => c.site && !standing.has(`poi:${c.cellX},${c.cellY}`))
@@ -138,7 +141,7 @@ export async function openBrowser(deps: DialogDeps): Promise<void> {
       };
       if (q === '' && recent.length > 0) section('Recent', recent);
       section('Towns & authored zones', towns);
-      section('The dark band', dark);
+      section('The Underworld', under);
       section('Frontier sites — composed by the scaffold', sites);
       if (orphans.length > 0 && q === '') {
         listHost.appendChild(
@@ -202,7 +205,7 @@ function openRow(
   if (z.hasFile) badge('file', 'brass');
   if (z.poi) badge('frontier site', 'blue');
   if (z.dormant) badge('dormant');
-  if (!z.dormant && z.origin.y >= 512) badge('dark band');
+  if (!z.dormant && (z.plane ?? 'surface') !== 'surface') badge('underworld');
   facts.appendChild(badges);
   row.appendChild(facts);
 
@@ -219,7 +222,8 @@ function openRow(
     },
   });
   actions.appendChild(open);
-  if (z.origin.y < 512) {
+  // The world map is the surface chart — off-plane zones have no spot on it.
+  if ((z.plane ?? 'surface') === 'surface') {
     actions.appendChild(
       btn('Map', {
         title: 'Show on the world map',
@@ -284,7 +288,7 @@ export function newZoneDialog(deps: DialogDeps): void {
   showModal((body, close) => {
     body.appendChild(el('h2', undefined, 'New zone'));
     const grid = el('div', 'form-grid');
-    const field = (label: string, input: HTMLInputElement): void => {
+    const field = (label: string, input: HTMLElement): void => {
       const lab = el('label', undefined, label + ' ');
       lab.appendChild(input);
       grid.appendChild(lab);
@@ -304,12 +308,20 @@ export function newZoneDialog(deps: DialogDeps): void {
     oxIn.step = '32';
     const oyIn = mk('0', 'number');
     oyIn.step = '32';
+    // THE WORLDS APART: born on a plane, not at a y-band.
+    const planeSel = el('select');
+    const optSurface = el('option', undefined, 'surface');
+    optSurface.value = SURFACE_PLANE_ID;
+    const optUnder = el('option', undefined, 'underworld');
+    optUnder.value = UNDERWORLD_PLANE_ID;
+    planeSel.append(optSurface, optUnder);
     field('id', idIn);
     field('name', nameIn);
     field('width', wIn);
     field('height', hIn);
     field('origin x', oxIn);
     field('origin y', oyIn);
+    field('plane', planeSel);
     body.appendChild(grid);
     body.appendChild(
       el(
@@ -336,6 +348,8 @@ export function newZoneDialog(deps: DialogDeps): void {
             Math.max(8, Math.min(512, Number(hIn.value) || 96)),
           );
           z.origin = { x: Number(oxIn.value) || 0, y: Number(oyIn.value) || 0 };
+          // Absent stays absent — surface is the unwritten default.
+          if (planeSel.value !== SURFACE_PLANE_ID) z.plane = planeSel.value;
           deps.adoptZone(z, false);
           close();
           toast(`new ${z.width}×${z.height} zone '${z.id}'`);
@@ -409,6 +423,18 @@ export function zonePropertiesDialog(deps: DialogDeps): void {
       growthSel,
       "THE KEPT AND THE WILD (second-growth): which renewal law this zone's owned tiles obey. Towns stay kept; authored wilderness may go wild.",
     );
+    const planeSel = el('select');
+    const optSurface = el('option', undefined, 'surface — the open worldgen plane');
+    optSurface.value = SURFACE_PLANE_ID;
+    const optUnder = el('option', undefined, 'underworld — solid rock the zone carves into');
+    optUnder.value = UNDERWORLD_PLANE_ID;
+    planeSel.append(optSurface, optUnder);
+    planeSel.value = z.plane ?? SURFACE_PLANE_ID;
+    row(
+      'plane',
+      planeSel,
+      "THE WORLDS APART: the world this zone's rectangle stamps. Changing it re-bakes the stage's surrounding ground — worldgen fields or solid rock.",
+    );
     body.appendChild(rows);
 
     const actions = el('div', 'dialog-actions');
@@ -438,6 +464,15 @@ export function zonePropertiesDialog(deps: DialogDeps): void {
               { tiles: false },
             );
             changes.push('identity');
+          }
+          const planeVal = planeSel.value;
+          if ((z.plane ?? SURFACE_PLANE_ID) !== planeVal) {
+            // Default tiles:true — the bake base changed, so the full
+            // invalidation re-arms the stage on the new plane's ground.
+            ops.zoneOp('set plane', (zone) => {
+              zone.plane = planeVal === SURFACE_PLANE_ID ? undefined : planeVal;
+            });
+            changes.push(`plane → ${planeVal}`);
           }
           const growthVal = growthSel.value;
           if ((z.growth ?? 'kept') !== growthVal) {

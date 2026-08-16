@@ -688,6 +688,8 @@ export interface C2SWaypoint {
   t: 'waypoint';
   x?: number;
   y?: number;
+  /** The plane the mark lives on. Absent = surface. */
+  plane?: string;
 }
 
 /**
@@ -798,7 +800,12 @@ export interface S2CWelcome {
    */
   anchors?: number[][];
   /** The character's stored active waypoint, if one is set. */
-  waypoint?: { x: number; y: number };
+  waypoint?: { x: number; y: number; plane?: string };
+  /**
+   * THE WORLDS APART: the plane the character wakes on. Absent only
+   * from a pre-planes server; the client then assumes the surface.
+   */
+  plane?: PlaneWire;
   /**
    * The live geography plan (a GeographyDef snapshot — typed loosely
    * here because shared cannot import content). The plan is editable
@@ -1551,6 +1558,37 @@ export interface S2CDungeonClear {
   sec: number;
 }
 
+/**
+ * THE WORLDS APART: the law of one plane, as the client needs it —
+ * enough to pick ambience, chart behavior, and fog persistence for
+ * ANY plane, static or minted at runtime, without a content lookup.
+ */
+export interface PlaneWire {
+  id: string;
+  /** Herald copy — what the crossing veil announces. */
+  name: string;
+  /** Cave law: underground ambience/cutaway, no sky, no danger field. */
+  underground: boolean;
+  /** Fog on this plane persists (vs per-run scratch). */
+  persistent: boolean;
+}
+
+/**
+ * THE CROSSING — the plane-switch ceremony (docs/planes-plan.md §2.3).
+ * Sent BEFORE any chunk or entity of the new plane: the client must
+ * drop every world cache it holds (chunks, bakes, fog layer swap,
+ * prediction) and stand at (x, y) behind the veil until the ground
+ * streams in. Everything after this message is the new plane's truth;
+ * everything before it belongs to a space that no longer surrounds
+ * the player.
+ */
+export interface S2CPlane {
+  t: 'plane';
+  plane: PlaneWire;
+  x: number;
+  y: number;
+}
+
 /** One friend on the social snapshot. */
 export interface SocialFriend {
   name: string;
@@ -1630,7 +1668,10 @@ export interface S2CPartyEvent {
  */
 export interface S2CPartyPos {
   t: 'partypos';
-  members: Array<{ name: string; x: number; y: number }>;
+  /** `plane` names each fellow's plane — the HUD and chart only point
+   *  at kin who share the reader's (coordinates across planes are
+   *  meaningless). Absent = surface. */
+  members: Array<{ name: string; x: number; y: number; plane?: string }>;
 }
 
 /**
@@ -1665,6 +1706,8 @@ export interface S2CSigns {
  */
 export interface S2CExplored {
   t: 'explored';
+  /** The plane these regions chart. Absent = surface. */
+  plane?: string;
   regions: [number, number, string][];
 }
 
@@ -1681,6 +1724,8 @@ export interface DiscoveryWire {
   name: string;
   x: number;
   y: number;
+  /** The plane the place stands on. Absent = surface. */
+  plane?: string;
   tier?: number;
   /** The world rerolled this site — the marker reads as rumor now. */
   faded?: boolean;
@@ -1739,6 +1784,8 @@ export interface S2CWaypoint {
   t: 'waypoint';
   x?: number;
   y?: number;
+  /** The plane the mark lives on. Absent = surface. */
+  plane?: string;
 }
 
 /**
@@ -1753,6 +1800,8 @@ export interface QuestHintWire {
   y: number;
   /** Radius in tiles. */
   r: number;
+  /** The plane the neighborhood lies on. Absent = surface. */
+  plane?: string;
 }
 
 /** One objective row: the id (in its namespace) keys the client icon. */
@@ -1869,7 +1918,7 @@ export interface S2CQuestEvent {
  */
 export interface S2CDeathMark {
   t: 'deathmark';
-  mark?: { x: number; y: number; remainMs: number };
+  mark?: { x: number; y: number; remainMs: number; plane?: string };
 }
 
 /** One faction's standing as the owner reads it (bands server-derived). */
@@ -1959,6 +2008,7 @@ export type S2CMessage =
   | S2CKeyForgeOpen
   | S2CDungeonEnter
   | S2CDungeonClear
+  | S2CPlane
   | S2CSigns
   | S2CDialogueOpen
   | S2CDialogueNode
@@ -2098,7 +2148,12 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (!isFiniteNum(msg.x) || !isFiniteNum(msg.y)) return null;
       if (!Number.isInteger(msg.x) || !Number.isInteger(msg.y)) return null;
       if (Math.abs(msg.x) > 1_000_000 || Math.abs(msg.y) > 1_000_000) return null;
-      return { t: 'waypoint', x: msg.x, y: msg.y };
+      if (msg.plane !== undefined && (typeof msg.plane !== 'string' || msg.plane.length > 64)) {
+        return null;
+      }
+      return msg.plane !== undefined
+        ? { t: 'waypoint', x: msg.x, y: msg.y, plane: msg.plane }
+        : { t: 'waypoint', x: msg.x, y: msg.y };
     }
     case 'questabandon': {
       if (typeof msg.quest !== 'string' || msg.quest.length === 0 || msg.quest.length > 64) {

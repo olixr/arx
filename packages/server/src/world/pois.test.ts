@@ -10,7 +10,7 @@ import { WORLD_SEED,
   SETTLED_ANCHORS,
   dangerLaw,
 } from '@arx/content';
-import { DARK_BAND_Y, groundProbeAt } from '@arx/content';
+import { groundProbeAt } from '@arx/content';
 import {
   POI_CELL,
   composePoi,
@@ -265,7 +265,6 @@ test('every site stands on flat standable ground, clear of zones and the dark ba
       rough / probes <= (landmark ? 0.14 : 0.08),
       `${site.defId}@${site.cellX},${site.cellY}: ${Math.round((rough / probes) * 100)}% rough footprint`,
     );
-    assert.ok(fy0 + prefab.height < DARK_BAND_Y, 'footprint reaches the dark band');
     for (const r of CTX.zoneRects) {
       const clear =
         fx0 >= r.x + r.w || fx0 + prefab.width <= r.x ||

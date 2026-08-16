@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CHUNK_SIZE, Tile } from '@arx/shared';
 import { WORLD_SEED,
+  SURFACE_PLANE,
   elevationAt,
   generateChunk,
   moistureAt,
@@ -52,7 +53,7 @@ test('a water edge keeps flowing: the wild continues an authored shoreline', () 
     // The whole east edge is authored water — a lakefront district.
     for (let ly = 0; ly < zh; ly++) g[ly * zw + (zw - 1)] = Tile.Water;
   });
-  const world = new WorldSource(SEED, [zone]);
+  const world = new WorldSource(SEED, SURFACE_PLANE, [zone]);
   // Just outside the east border, facing the middle of the water run,
   // the wild must be wet — the authored lake continues as a cove.
   let wet = 0;
@@ -84,7 +85,7 @@ test('land edges repel water: a lake is never sliced by a zone border', () => {
   assert.ok(lake, 'no open water found in the search band');
   // Stamp an all-grass zone whose WEST border cuts through the lake.
   const zone = syntheticZone('lakeside', lake!.x, lake!.y - 16, 24, 32);
-  const world = new WorldSource(SEED, [zone]);
+  const world = new WorldSource(SEED, SURFACE_PLANE, [zone]);
   // The tiles hugging the border outside must be LAND: the shoreline
   // curves away from the rect instead of being cut ruler-straight.
   for (let ty = lake!.y - 4; ty <= lake!.y + 4; ty++) {
@@ -110,7 +111,7 @@ test('a forest edge grows outward as wild woods', () => {
   const zone = syntheticZone('greenhold', zx, zy, zw, zh, (g) => {
     for (let lx = 0; lx < zw; lx++) g[(zh - 1) * zw + lx] = Tile.TreeOak;
   });
-  new WorldSource(SEED, [zone]);
+  new WorldSource(SEED, SURFACE_PLANE, [zone]);
   // Every hem tile now reads as forest-grade damp, whatever the noise
   // dealt: the authored tree line thins into real wild woods.
   for (const [tx, ty] of probes) {
@@ -131,7 +132,7 @@ test('beyond the reach the wilderness is byte-identical', () => {
   const zone = syntheticZone('watertown', 600, 200, 24, 32, (g) => {
     for (let ly = 0; ly < 32; ly++) g[ly * 24 + 23] = Tile.Water;
   });
-  new WorldSource(SEED, [zone]);
+  new WorldSource(SEED, SURFACE_PLANE, [zone]);
   const after = [generateChunk(SEED, 22, 3), generateChunk(SEED, 14, 10)];
   for (let i = 0; i < baseline.length; i++) {
     assert.deepEqual(
@@ -150,7 +151,7 @@ test('removing a zone heals the wild (registry refresh + padded drops)', () => {
   const zone = syntheticZone('watertown', zx, zy, 24, 32, (g) => {
     for (let ly = 0; ly < 32; ly++) g[ly * 24 + 23] = Tile.Water;
   });
-  const world = new WorldSource(SEED, [zone]);
+  const world = new WorldSource(SEED, SURFACE_PLANE, [zone]);
   const probeX = zx + 24; // one tile past the water edge
   const probeY = zy + 16;
   world.ensure(Math.floor(probeX / CHUNK_SIZE), Math.floor(probeY / CHUNK_SIZE));
@@ -161,6 +162,6 @@ test('removing a zone heals the wild (registry refresh + padded drops)', () => {
   // gone the wild reverts to what the noise always wanted there.
   const healed = groundVia(world, probeX, probeY);
   replaceZoneEdgeProfiles([]);
-  const bare = new WorldSource(SEED, []);
+  const bare = new WorldSource(SEED, SURFACE_PLANE, []);
   assert.equal(healed, groundVia(bare, probeX, probeY));
 });

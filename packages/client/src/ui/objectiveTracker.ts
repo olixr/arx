@@ -163,11 +163,25 @@ export class ObjectiveTracker {
     }
     this.foot.classList.remove('hidden');
     const pos = this.game.predictor.pos;
+    const lead = q.status === 'ready' ? `Return to ${q.turnInName}` : t.label;
+    // THE WORLDS APART: a needle never points across planes — a hint
+    // in another world gets its name and the honest word "elsewhere".
+    if ((t.hint.plane ?? 'surface') !== this.game.plane.id) {
+      const word = `${lead} · another realm`;
+      if (word !== this.lastBearWord) {
+        this.lastBearWord = word;
+        this.bearEl.textContent = word;
+      }
+      if (this.lastNeedleShown) {
+        this.lastNeedleShown = false;
+        this.needle.classList.add('hidden');
+      }
+      return;
+    }
     const dx = t.hint.x - pos.x;
     const dy = t.hint.y - pos.y;
     const dist = Math.hypot(dx, dy);
     const near = dist <= t.hint.r;
-    const lead = q.status === 'ready' ? `Return to ${q.turnInName}` : t.label;
     const word = near ? `${lead} · hereabouts` : `${lead} · ${Math.round(dist)} paces ${wind(dx, dy)}`;
     if (word !== this.lastBearWord) {
       this.lastBearWord = word;

@@ -38,6 +38,11 @@ export class MapOverlay {
     this.visible = false;
   }
 
+  /** THE CROSSING: forward the plane switch to the owned view. */
+  onPlaneSwitch(): void {
+    this.view.onPlaneSwitch();
+  }
+
   /** Per-frame from the main loop; suppressed while any screen is up. */
   update(now: number, suppressed: boolean): void {
     const show = this.visible && !suppressed && this.game.ownEid !== null;

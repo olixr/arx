@@ -18,7 +18,13 @@ import {
   tileIndex,
   type ChunkData,
 } from '@arx/shared';
-import { WORLD_SEED, generateChunk, type ZoneDef } from '@arx/content';
+import {
+  SURFACE_PLANE_ID,
+  WORLD_SEED,
+  generateCaveChunk,
+  generateChunk,
+  type ZoneDef,
+} from '@arx/content';
 import { ClientGame, type GameEvents } from '../game/clientGame.js';
 import type { InputManager } from '../input/inputManager.js';
 import { Renderer } from '../render/renderer.js';
@@ -91,8 +97,14 @@ export class EditorStage {
    * detail TILE_SKIP → 0; a zone with no elev layer levels its ground).
    */
   private composeChunk(cx: number, cy: number): ChunkData {
-    const chunk = generateChunk(this.seed, cx, cy);
     const zone = this.getZone();
+    // THE WORLDS APART: the bake base follows the zone's plane — cave
+    // planes deal solid rock for the authored rooms to carve into;
+    // the surface reads the procedural worldgen fields as ever.
+    const chunk =
+      (zone.plane ?? SURFACE_PLANE_ID) === SURFACE_PLANE_ID
+        ? generateChunk(this.seed, cx, cy)
+        : generateCaveChunk(cx, cy);
     const baseX = cx * CHUNK_SIZE;
     const baseY = cy * CHUNK_SIZE;
     const x0 = Math.max(baseX, zone.origin.x);

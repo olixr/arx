@@ -9,6 +9,7 @@
 import { Detail, Tile, tileDef } from '@arx/shared';
 import {
   STRUCTURE_TEMPLATES,
+  SURFACE_PLANE_ID,
   flipTemplate,
   templateHeight,
   templateWidth,
@@ -810,7 +811,15 @@ export class EditorOps {
     switch (this.state.tool) {
       case 'portal': {
         z.portals ??= [];
-        z.portals.push({ x: wx, y: wy, dest: { x: z.origin.x, y: z.origin.y } });
+        // THE WORLDS APART: a new portal drops you where you already
+        // are — the zone's own plane, stated explicitly so the legacy
+        // y-treaty never guesses for ground authored after the split.
+        z.portals.push({
+          x: wx,
+          y: wy,
+          dest: { x: z.origin.x, y: z.origin.y },
+          destPlane: z.plane ?? SURFACE_PLANE_ID,
+        });
         const i = t.y * z.width + t.x;
         z.ground[i] = Tile.PortalDown;
         this.view.markDirty(t.x, t.y, t.x, t.y);

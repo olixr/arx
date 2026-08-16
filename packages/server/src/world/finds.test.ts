@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { TILE_SKIP, chestInfo } from '@arx/shared';
+import { DANGER_MAX, TILE_SKIP, chestInfo } from '@arx/shared';
 import { WORLD_SEED, MINOR_DEFS, POI_PREFABS, SETTLED_ANCHORS, dangerLaw, shoreProbeAt } from '@arx/content';
 import { poiContext, poiForCell, poiScanOrder, POI_CELL } from './pois.js';
 import { FIND_SPACING, composeFinds, findsForCell, findsZoneId } from './finds.js';
@@ -39,7 +39,10 @@ test('the lattice is deterministic and honors the spacing law', () => {
         const d = Math.hypot(a[i]!.anchorX - site.x, a[i]!.anchorY - site.y);
         assert.ok(d >= FIND_SPACING, `cell ${cx},${cy}: find ${i} crowds the site (${d.toFixed(1)})`);
       }
-      assert.ok(a[i]!.tier >= 1 && a[i]!.tier <= 5, 'slot tier in band');
+      // THE SOUTH OPENS: the scan now reaches past the old dark band,
+      // where the march climbs the full ladder (THE LADDER PAST THE
+      // LAMPS) — the lawful band is 1..DANGER_MAX, not 1..5.
+      assert.ok(a[i]!.tier >= 1 && a[i]!.tier <= DANGER_MAX, 'slot tier in band');
       const def = MINOR_DEFS.get(a[i]!.defId)!;
       assert.ok(def, `unknown def ${a[i]!.defId}`);
       assert.ok(a[i]!.tier >= def.tiers[0] && a[i]!.tier <= def.tiers[1], 'def eligible at tier');

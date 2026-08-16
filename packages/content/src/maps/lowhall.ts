@@ -1,4 +1,5 @@
 import { Detail, Tile, bannerPoleTile } from '@arx/shared';
+import { SURFACE_PLANE_ID, UNDERWORLD_PLANE_ID } from '../planes.js';
 import { ZoneBuilder } from './builder.js';
 import type { ZoneDef } from './types.js';
 
@@ -47,6 +48,8 @@ const DOOR_UP = {
 
 export function buildLowhall(): ZoneDef {
   const b = new ZoneBuilder('lowhall', 'The Low Hall', { x: 200, y: 552 }, 88, 56, Tile.CaveWall);
+  // THE WORLDS APART: the Low Hall carves the underworld plane.
+  b.onPlane(UNDERWORLD_PLANE_ID);
 
   // ---------------------------------------------------------------
   // THE FIVE DOORS — the arrival ring.
@@ -59,12 +62,12 @@ export function buildLowhall(): ZoneDef {
   b.fillRect(5, 32, 5, 6, Tile.StoneFloor); // Saltmere, southwest
   b.fillRect(15, 37, 5, 6, Tile.StoneFloor); // Pinewatch, south
   b.fillRect(23, 34, 5, 7, Tile.StoneFloor); // Kingsdelf, southeast (the sixth door)
-  b.portal(17, 15, Tile.PortalUp, DOOR_UP.amberford);
-  b.portal(25, 16, Tile.PortalUp, DOOR_UP.hartfell);
-  b.portal(7, 20, Tile.PortalUp, DOOR_UP.silverfall);
-  b.portal(7, 36, Tile.PortalUp, DOOR_UP.saltmere);
-  b.portal(17, 41, Tile.PortalUp, DOOR_UP.pinewatch);
-  b.portal(25, 39, Tile.PortalUp, DOOR_UP.kingsdelf);
+  b.portal(17, 15, Tile.PortalUp, DOOR_UP.amberford, SURFACE_PLANE_ID);
+  b.portal(25, 16, Tile.PortalUp, DOOR_UP.hartfell, SURFACE_PLANE_ID);
+  b.portal(7, 20, Tile.PortalUp, DOOR_UP.silverfall, SURFACE_PLANE_ID);
+  b.portal(7, 36, Tile.PortalUp, DOOR_UP.saltmere, SURFACE_PLANE_ID);
+  b.portal(17, 41, Tile.PortalUp, DOOR_UP.pinewatch, SURFACE_PLANE_ID);
+  b.portal(25, 39, Tile.PortalUp, DOOR_UP.kingsdelf, SURFACE_PLANE_ID);
   b.sign(19, 16, 'THE AMBERFORD DOOR', ['the ford road', 'mind the miller']);
   b.sign(27, 17, 'THE HARTFELL DOOR', ['the fell road', 'wear wool']);
   b.sign(5, 21, 'THE SILVERFALL DOOR', ['the crown road', 'mind the Magpie\'s rent']);

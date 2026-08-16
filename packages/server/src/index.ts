@@ -64,6 +64,10 @@ import {
   type PoiDef,
   type ZoneDef,
   type ZoneJson,
+  SURFACE_PLANE,
+  SURFACE_PLANE_ID,
+  UNDERWORLD_PLANE,
+  UNDERWORLD_PLANE_ID,
 } from '@arx/content';
 import { config } from './config.js';
 import { AccountStore } from './db/accounts.js';
@@ -81,6 +85,7 @@ import { clientIp, ipGuard } from './net/ipGuard.js';
 import { Session } from './net/session.js';
 import { WorldSource } from './world/worldSource.js';
 import { TILE_DEFS } from '@arx/shared';
+import { Planes } from './world/planes.js';
 
 // Authored zones: built-ins from content, plus map-editor JSON saved
 // in data/maps/. Later zones win where they overlap. Dawnmead comes
@@ -455,28 +460,53 @@ const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
   }
 }
 
-const world = new WorldSource(config.worldSeed, zones);
+// THE WORLDS APART: the static planes stand up with their own zones —
+// the surface with the towns, the underworld with the carved dark.
+// Grouping preserves overlay order within each plane (Dawnmead stays
+// first, so the world spawn law is untouched).
+const planes = new Planes(config.worldSeed);
+const world = planes.add(
+  SURFACE_PLANE,
+  zones.filter((z) => (z.plane ?? SURFACE_PLANE_ID) === SURFACE_PLANE_ID),
+);
+const underworld = planes.add(
+  UNDERWORLD_PLANE,
+  zones.filter((z) => z.plane === UNDERWORLD_PLANE_ID),
+);
+/** The persistent plane a rehydrated row registers into. */
+/**
+ * The persistent plane a rehydrated row registers into — null for a
+ * plane that no longer stands (a stray scratch-plane row must NEVER
+ * land on the surface just because its id went unrecognized).
+ */
+const planeWorldOf = (plane: string | undefined): WorldSource | null =>
+  plane === UNDERWORLD_PLANE_ID
+    ? underworld
+    : plane === SURFACE_PLANE_ID || plane === undefined
+      ? world
+      : null;
 for (const built of await accounts.loadBuiltTiles()) {
   // RETIRED BUILDABLES: a built row whose tile id no longer exists
   // (a prop pulled from the game — the topiary pair went with the
   // fair) is dropped here, and the ground beneath simply returns.
   // The client is never handed a tile it cannot name.
   if (!(built.tile in TILE_DEFS)) {
-    accounts.deleteBuiltTile(built.tx, built.ty);
+    accounts.deleteBuiltTile(built.plane ?? SURFACE_PLANE_ID, built.tx, built.ty);
     continue;
   }
-  world.registerBuilt(built.tx, built.ty, built.tile, built.owner, built.prevTile);
+  planeWorldOf(built.plane)?.registerBuilt(built.tx, built.ty, built.tile, built.owner, built.prevTile);
 }
 // THE SECOND LAYER: hung decor rehydrates beside the built tiles, so
 // a chunk's first generation already carries every player's cloth.
 for (const hung of await accounts.loadBuiltDetails()) {
-  world.registerBuiltDetail(hung.tx, hung.ty, hung.detail, hung.owner, hung.prevDetail);
+  planeWorldOf(hung.plane)?.registerBuiltDetail(hung.tx, hung.ty, hung.detail, hung.owner, hung.prevDetail);
 }
 // THE SECOND GROWTH: the wild-harvest ledger rehydrates before any
 // chunk exists — the ensure() overlay projects every row against the
 // clock at generation time, so a regrowth that crossed ages (or fully
 // healed) while the server slept is simply CORRECT on first read; the
-// growth beat only catches the checkpoints up.
+// growth beat only catches the checkpoints up. Growth is a law of the
+// WILD, and the wild lives only on the surface.
 {
   const growthRows = await accounts.loadGrowth();
   for (const row of growthRows) world.registerGrowth(row as GrowthRow);
@@ -484,7 +514,7 @@ for (const hung of await accounts.loadBuiltDetails()) {
     console.log(`[world] growth ledger: ${growthRows.length} wild harvest(s) still healing`);
   }
 }
-const game = new GameServer(world, accounts);
+const game = new GameServer(planes, accounts);
 game.loadCrops(await accounts.loadCrops());
 game.loadFarmBins(await accounts.loadFarmBins());
 game.loadFarmTroughs(await accounts.loadFarmTroughs());
@@ -503,7 +533,9 @@ game.initPois(await accounts.loadPoiCells(), await accounts.loadFrontierCredits(
   strongholds: await accounts.loadStrongholds(),
 });
 for (const zone of zones) {
-  if (zone.spawns && zone.spawns.length > 0) game.registerSpawns(zone.spawns, zone.id);
+  if (zone.spawns && zone.spawns.length > 0) {
+    game.registerSpawns(zone.spawns, zone.plane ?? SURFACE_PLANE_ID, zone.id);
+  }
 }
 
 // NPC actors, DB-first: authored JSON seeds the relational tables,
@@ -527,7 +559,7 @@ console.log(
 
 for (const zone of zones) {
   if (zone.actorSpawns && zone.actorSpawns.length > 0) {
-    game.registerActorSpawns(zone.actorSpawns, zone.id);
+    game.registerActorSpawns(zone.actorSpawns, zone.plane ?? SURFACE_PLANE_ID, zone.id);
   }
 }
 console.log(

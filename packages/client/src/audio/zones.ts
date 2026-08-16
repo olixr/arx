@@ -7,10 +7,11 @@
  * underground). The weights always sum to 1.
  *
  * Geography facts these lean on: the village zone spans (-96,16)-(0,80)
- * with its green near (-64,48); everything at y ≥ 512 is the dark band
- * — per-player delves sit at y ≥ 8192 — where worldgen emits solid
- * cave. The town radii hug the built-up hamlet (~22 tiles) and let the
- * last hedgerows trail off by ~36.
+ * with its green near (-64,48). THE WORLDS APART: whether the ear is
+ * underground is the PLANE'S law now (cave planes: the underworld,
+ * the rifts), passed in by the caller — never a y-line; the surface
+ * runs wild on every compass point. The town radii hug the built-up
+ * hamlet (~22 tiles) and let the last hedgerows trail off by ~36.
  */
 
 import { SUNRISE, SUNSET } from '@arx/shared';
@@ -39,16 +40,14 @@ const TOWNS = [
   { x: -480, y: 328, full: 34, fade: 52 }, // Kingsdelf — the town in the King's Delf
   { x: -1032, y: -358, full: 44, fade: 72 }, // Evenfall — the city of the old folk
 ] as const;
-/** The dark band: worldgen's underground begins here. */
-export const UNDERGROUND_Y = 512;
 
 function smooth(t: number): number {
   const u = Math.max(0, Math.min(1, t));
   return u * u * (3 - 2 * u);
 }
 
-export function zoneWeights(x: number, y: number): ZoneWeights {
-  if (y >= UNDERGROUND_Y) return { town: 0, wild: 0, cave: 1 };
+export function zoneWeights(x: number, y: number, underground = false): ZoneWeights {
+  if (underground) return { town: 0, wild: 0, cave: 1 };
   let town = 0;
   for (const t of TOWNS) {
     const d = Math.hypot(x - t.x, y - t.y);

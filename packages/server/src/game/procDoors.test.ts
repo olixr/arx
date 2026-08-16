@@ -133,7 +133,7 @@ function lowHpSlate(hp: number) {
   const s = {
     tickCount: 1000,
     healths: new Map([[1, health]]),
-    positions: new Map([[1, { x: 0, y: 0, dir: 0 }]]),
+    positions: new Map([[1, { plane: 'surface', x: 0, y: 0, dir: 0 }]]),
     procState: proto.procState,
     runProc: (...a: unknown[]) => {
       runs.push(a);
@@ -201,14 +201,15 @@ function damageNpcSlate(hp: number) {
     livestock: new Map(), npcs: new Map([[9, npc]]),
     healths: new Map([[9, health]]),
     positions: new Map([
-      [9, { x: 5, y: 5, dir: 0 }],
-      [1, { x: 4, y: 5, dir: 0 }],
+      [9, { plane: 'surface', x: 5, y: 5, dir: 0 }],
+      [1, { plane: 'surface', x: 4, y: 5, dir: 0 }],
     ]),
     actors: new Map(),
     statuses: new Map(),
     players: new Map<number, unknown>(),
     ecs: { isAlive: () => true },
     world: { isSolid: () => true },
+    worldOf: () => ({ isSolid: () => true }),
     poiSpawnCells: new Map(),
     poiLive: new Map(),
     broadcastHit: () => {},
@@ -254,7 +255,9 @@ test("THE WORKING'S DAMAGE IS THE WORKING'S: fromProc earns no skill or vitality
   // 5-damage blow credits in full).
   call(proto.damageNpc, s, 9, 5, 1, 'shield', {});
   assert.deepEqual(grants, [
-    ['shield', 5 * XP_PER_DMG_SCHOOL],
+    // THE LONGER ROAD rounds the school grant at its one site ("never
+    // banked as a fraction") — the pin follows that declared law.
+    ['shield', Math.round(5 * XP_PER_DMG_SCHOOL)],
     ['vitality', 5 * XP_PER_DMG_VITALITY],
   ]);
 });
@@ -265,9 +268,9 @@ test('a live surge sharpens the basic shaft where it lands', () => {
     gear: { critPct: 0 },
     buffs: [{ dmgMult: 1.5, critPct: 0, untilTick: 9999 }],
   };
-  const positions = new Map<number, { x: number; y: number; dir: number }>([
-    [100, { x: 5, y: 5, dir: 0 }],
-    [9, { x: 5, y: 5, dir: 0 }],
+  const positions = new Map<number, { plane: string; x: number; y: number; dir: number }>([
+    [100, { plane: 'surface', x: 5, y: 5, dir: 0 }],
+    [9, { plane: 'surface', x: 5, y: 5, dir: 0 }],
   ]);
   const proj = {
     ownerEid: 1,
@@ -289,9 +292,10 @@ test('a live surge sharpens the basic shaft where it lands', () => {
     pets: new Map(),
     livestock: new Map(), npcs: new Map([[9, { def: { radius: 0.4 } }]]),
     summons: new Map(),
-    chunks: new Map([['0,0', new Set([9])]]),
+    chunks: new Map([['surface|0,0', new Set([9])]]),
     forEachNpcNear: proto.forEachNpcNear,
     world: { isSolid: () => false, groundAt: () => undefined },
+    worldOf: () => ({ isSolid: () => false, groundAt: () => undefined }),
     executeAdjust: proto.executeAdjust,
     damageNpc: (_eid: unknown, dmg: number) => dealt.push(dmg),
     drainHeal: () => {},
@@ -321,9 +325,9 @@ test('chain per-jump fx carry the `<action>:<procId>` id, same as the closing br
     icd: 100,
   };
   const positions = new Map([
-    [1, { x: 0, y: 0, dir: 0 }],
-    [9, { x: 1, y: 0, dir: 0 }],
-    [10, { x: 2, y: 0, dir: 0 }],
+    [1, { plane: 'surface', x: 0, y: 0, dir: 0 }],
+    [9, { plane: 'surface', x: 1, y: 0, dir: 0 }],
+    [10, { plane: 'surface', x: 2, y: 0, dir: 0 }],
   ]);
   const s = {
     positions,
@@ -332,7 +336,7 @@ test('chain per-jump fx carry the `<action>:<procId>` id, same as the closing br
       [9, { def: { radius: 0.4 } }],
       [10, { def: { radius: 0.4 } }],
     ]),
-    chunks: new Map([['0,0', new Set([9, 10])]]),
+    chunks: new Map([['surface|0,0', new Set([9, 10])]]),
     forEachNpcNear: proto.forEachNpcNear,
     npcsWithin: proto.npcsWithin,
     damageNpc: () => {},

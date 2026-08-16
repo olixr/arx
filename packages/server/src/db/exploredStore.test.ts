@@ -4,7 +4,7 @@ import { ExploredMask } from '@arx/shared';
 import { freshDb } from './testDb.js';
 import { AccountStore } from './accounts.js';
 
-const SPAWN = { x: 48.5, y: 52.5 };
+const SPAWN = { plane: 'surface', x: 48.5, y: 52.5 };
 
 async function makeStore(): Promise<{ store: AccountStore; id: number }> {
   const store = new AccountStore(await freshDb());
@@ -19,7 +19,7 @@ test('explored region bytes roundtrip through BYTEA', async () => {
   mask.markDisc(100, -300);
   for (const key of mask.regionKeys()) {
     const [rx, ry] = key.split(',').map(Number) as [number, number];
-    store.saveExploredRegion(id, rx, ry, mask.regionBytes(rx, ry)!);
+    store.saveExploredRegion(id, 'surface', rx, ry, mask.regionBytes(rx, ry)!);
   }
   const rows = await store.loadExplored(id);
   assert.equal(rows.length, mask.regionCount);
@@ -40,9 +40,9 @@ test('explored region upsert replaces bits in place', async () => {
   const { store, id } = await makeStore();
   const mask = new ExploredMask();
   mask.markDisc(10, 10);
-  store.saveExploredRegion(id, 0, 0, mask.regionBytes(0, 0)!);
+  store.saveExploredRegion(id, 'surface', 0, 0, mask.regionBytes(0, 0)!);
   mask.markDisc(200, 200);
-  store.saveExploredRegion(id, 0, 0, mask.regionBytes(0, 0)!);
+  store.saveExploredRegion(id, 'surface', 0, 0, mask.regionBytes(0, 0)!);
   const rows = await store.loadExplored(id);
   const region00 = rows.find((r) => r.rx === 0 && r.ry === 0);
   assert.ok(region00);
@@ -55,8 +55,8 @@ test('discoveries insert once, load whole, and fade across characters', async ()
   assert.ok(reg2.ok);
   const id2 = reg2.ok ? reg2.character.id : 0;
 
-  const amberford = { id: 'zone:amberford', kind: 'town', name: 'Amberford', x: 352, y: 24 };
-  const camp = { id: 'poi:1,0', kind: 'poi', name: 'Goblin warcamp', x: 147, y: 30, tier: 3 };
+  const amberford = { id: 'zone:amberford', kind: 'town', name: 'Amberford', plane: 'surface', x: 352, y: 24 };
+  const camp = { id: 'poi:1,0', kind: 'poi', name: 'Goblin warcamp', plane: 'surface', x: 147, y: 30, tier: 3 };
   store.addDiscovery(id, amberford);
   store.addDiscovery(id, amberford); // once-only
   store.addDiscovery(id, camp, 2);
@@ -80,8 +80,8 @@ test('discoveries insert once, load whole, and fade across characters', async ()
 
 test('waypoint set, move, clear round trip through the character row', async () => {
   const { store, id } = await makeStore();
-  store.saveWaypoint(id, 340, 20);
-  store.saveWaypoint(id, -80, 48);
+  store.saveWaypoint(id, 340, 20, 'surface');
+  store.saveWaypoint(id, -80, 48, 'surface');
   let res = await store.login('mapper', 'hunter22');
   assert.ok(res.ok);
   if (res.ok) {
