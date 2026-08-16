@@ -28,10 +28,20 @@
     "above — actually ran at the library default of 0.8. The field is wired up now",
     "(0.1 vs 1.5 measured an 18x spread in take-to-take variation), so this holds",
     "it at the value the numbers above were gathered under. Lower it for steadier",
-    "reads, raise it for more variety between takes."
+    "reads, raise it for more variety between takes.",
+    "",
+    "2026-08-16 pace retune (the reads were landing slow): exaggeration raised",
+    "0.70 -> 0.75, ONTO the measured pace peak — not past it, 0.85 is proven",
+    "slower and flatter. cfgWeight raised 0.55 -> 0.60, the top of the safe",
+    "0.50..0.62 band: the 0.55 -> 0.30 measurement shows lower reads SLOWER on",
+    "this pool, so within-band the anti-slow direction is up. The model's own",
+    "cadence does the work; tempo deliberately NOT raised (it is the atempo",
+    "speed ramp, and past ~1.15 it reads clipped rather than brisk). The recast",
+    "stripped every per-character knob, so these defaults now reach all 188",
+    "characters unshadowed, and touching this file re-stamps the whole pool."
   ],
   "tempo": 1.09,
   "temperature": 0.8,
-  "defaultExaggeration": 0.7,
-  "defaultCfgWeight": 0.55
+  "defaultExaggeration": 0.75,
+  "defaultCfgWeight": 0.6
 }
