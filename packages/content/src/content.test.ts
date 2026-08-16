@@ -1560,6 +1560,28 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   assert.ok(n(Tile.MarketStall) >= 8, 'the stalls thinned');
   assert.ok(n(Tile.FishingSpot) >= 4, 'the mere and the pool must fish');
   assert.ok(n(Tile.ArchStone) >= 1, 'the Undercroft mouth lost its arch');
+  // THE VALE KEEPS SHOP (the lower town's own roster): the mill
+  // grinds, the ovens bake, the commons throw and dip and mend, the
+  // taverns pour, the way keeps its three stations, and the dead
+  // keep their three flames plus the guild's two.
+  assert.ok(n(Tile.BreadOven) >= 2, 'the bakehouse went cold');
+  assert.ok(n(Tile.Grindstone) >= 3, 'the mill lost its stones');
+  assert.equal(n(Tile.PottersWheel), 1, 'the crockery lost its wheel');
+  assert.equal(n(Tile.PotteryKiln), 1, "the potter's mound fell");
+  assert.ok(n(Tile.CandleRack) >= 2, 'the chandlery went dark');
+  assert.equal(n(Tile.CobblersBench), 1, 'the cobbler lost the bench');
+  assert.ok(n(Tile.TapCask) >= 3, 'the Vale taverns ran dry');
+  assert.ok(n(Tile.GameTable) >= 3, 'the dice crowds lost their tables');
+  assert.equal(n(Tile.WayShrine), 3, "the Pilgrim's Way lost a station");
+  assert.equal(n(Tile.GuardianStatue), 3, 'the Vale lost a watcher');
+  assert.equal(n(Tile.CandleShrine), 5, 'the kept flames miscount');
+  assert.ok(n(Tile.BeachedSkiff) >= 2 && n(Tile.MooringPost) >= 2, 'the Kingshore lost its boats');
+  assert.ok(n(Tile.Dock) >= 4, 'the quay planks are gone');
+  assert.ok(n(Tile.HangingScale) >= 3, 'the honest arms miscount');
+  assert.ok(n(Tile.WaterTrough) >= 2, 'the wagon yard went dry');
+  assert.ok(n(Tile.WallFountain) >= 1, 'the bath house lost its spring');
+  assert.ok(n(Tile.Hedge) >= 20, 'Garland Row lost its hedge fronts');
+  assert.ok(n(Tile.HedgeGate) >= 1, "the baker's wicket is gone");
   // THE FORTIFICATION LADDER (the Crown remaster + the Vale): the
   // VALE GATE (5) in the new outer curtain, the Silver Gate (5), the
   // Court Gate (9) at the stair crown, the CASTLE GATE (5) in the

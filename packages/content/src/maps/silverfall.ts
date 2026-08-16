@@ -1236,9 +1236,10 @@ export function buildSilverfall(): ZoneDef {
   // the avenue and the market walk on stone.
   b.fillRect(93, 156, 5, 2, Tile.StoneFloor); // avenue -> Mill Bridge
   b.fillRect(93, 180, 5, 2, Tile.Path); // avenue -> Low Bridge
-  b.fillRect(108, 157, 30, 2, Tile.Path); // the mill lane east, x108-137
-  b.fillRect(108, 180, 30, 2, Tile.Path); // the craft lane east
-  b.fillRect(138, 157, 3, 79, Tile.Path); // THE PILGRIM'S WAY, y157-235
+  b.fillRect(108, 157, 38, 2, Tile.Path); // the mill lane east, x108-145
+  b.fillRect(108, 180, 38, 2, Tile.Path); // the craft lane east
+  b.fillRect(146, 157, 3, 79, Tile.Path); // THE PILGRIM'S WAY, y157-235, under the crags
+  b.fillRect(93, 232, 53, 2, Tile.Path); // gate plaza -> the way's foot
   // The miners' postern's throat — the old scree rows part for the
   // new door: cleared north to the drill ground, stone through the
   // wall, worn path south to the lane.
@@ -1336,6 +1337,439 @@ export function buildSilverfall(): ZoneDef {
   b.set(84, 242, Tile.Brazier).set(92, 242, Tile.Brazier);
   b.set(84, 249, Tile.Brazier).set(92, 249, Tile.Brazier);
   b.sign(93, 244, 'SILVERFALL', ['Seat of the Silver Line.', 'Mind the edge.'], Tile.Signpost);
+
+  // ---------------------------------------------------------------
+  // THE VALE'S WEST BANK — the Last Climb, the wet market, the
+  // bakehouse, Garland Row, the Delvers' Terrace, the Silent
+  // Terrace, the Kingshore, the Fairstead. Bespoke, tile by tile
+  // (the bespoke law): the Vale builds in timber and keeps its
+  // stone for the institutions.
+  // ---------------------------------------------------------------
+  // THE LAST CLIMB — the carters' tavern, first door inside the
+  // Silver Gate: the last drink before the climb, the first after.
+  b.fillRect(64, 128, 16, 14, Tile.WoodFloor);
+  b.outlineRect(64, 128, 16, 14, Tile.WallWood);
+  b.set(79, 134, Tile.DoorwayWood).set(79, 135, Tile.DoorwayWood);
+  b.set(79, 131, Tile.WallWoodWindow).set(79, 138, Tile.WallWoodWindow);
+  b.set(68, 141, Tile.WallWoodWindow).set(74, 141, Tile.WallWoodWindow);
+  b.set(64, 134, Tile.WallWoodWindow);
+  b.set(66, 131, Tile.Counter).set(67, 131, Tile.Counter).set(68, 131, Tile.Counter); // the bar
+  b.set(65, 130, Tile.TapCask).set(65, 132, Tile.Barrel); // the cellar corner
+  b.set(65, 136, Tile.Barrel);
+  b.set(74, 131, Tile.GameTable).set(73, 131, Tile.WoodStool).set(74, 132, Tile.WoodStool); // the dice crowd's table
+  b.set(77, 139, Tile.Hearth);
+  b.set(68, 136, Tile.Table).set(69, 136, Tile.Table);
+  b.set(67, 136, Tile.Chair).set(70, 136, Tile.Chair).set(68, 137, Tile.Chair);
+  b.set(73, 136, Tile.Table).set(73, 137, Tile.Chair).set(74, 136, Tile.Chair);
+  b.set(70, 140, Tile.SettleBench).set(71, 140, Tile.SettleBench);
+  b.setDetail(71, 134, Detail.Rug).setDetail(72, 134, Detail.Rug);
+  b.setDetail(71, 135, Detail.Rug).setDetail(72, 135, Detail.Rug);
+  b.setDetail(78, 134, Detail.Doormat).setDetail(78, 135, Detail.Doormat);
+  b.fillRect(80, 134, 4, 2, Tile.Path); // the doorstep to the avenue
+  b.sign(80, 131, 'THE LAST CLIMB', ['the stair is longer', 'than you remember']);
+  // THE WET MARKET — the lower town's own square: what the river,
+  // the mere, and the road bring in, sold under ochre cloth.
+  b.stamp(MARKET_STALL, 66, 150);
+  b.stamp(MARKET_STALL, 74, 150);
+  b.set(70, 155, Tile.FishmongerSlab); // pool trout and blind cave-fish
+  b.set(76, 155, Tile.ProduceStand).set(79, 151, Tile.ProduceStand);
+  b.set(67, 158, Tile.ButcherBlock);
+  b.set(72, 158, Tile.HangingScale); // the market's honest arm
+  b.set(65, 162, Tile.WaterCask).set(78, 159, Tile.BasketStack);
+  b.set(64, 147, bannerPoleTile(6)).set(83, 147, bannerPoleTile(6)); // ochre, the market's color
+  b.set(81, 162, Tile.Bench).set(64, 157, Tile.Bench);
+  b.sign(65, 145, 'THE WET MARKET', ['weighed under the sky,', 'argued under the cloth'], Tile.Signpost);
+  // THE BAKEHOUSE — the night shift's kingdom: the ovens never
+  // cool, and the baker sleeps at dawn beside them.
+  b.fillRect(64, 166, 13, 11, Tile.WoodFloor);
+  b.outlineRect(64, 166, 13, 11, Tile.WallWood);
+  b.set(70, 166, Tile.DoorwayWood);
+  b.set(67, 166, Tile.WallWoodWindow).set(74, 166, Tile.WallWoodWindow);
+  b.set(64, 171, Tile.WallWoodWindow).set(76, 171, Tile.WallWoodWindow);
+  b.set(65, 168, Tile.BreadOven).set(65, 171, Tile.BreadOven);
+  b.set(68, 169, Tile.Counter).set(68, 170, Tile.Counter); // the pass
+  b.set(71, 168, Tile.Basin);
+  b.set(66, 174, Tile.GrainSacks).set(67, 175, Tile.GrainSacks); // the flour store
+  b.set(72, 172, Tile.Table).set(73, 172, Tile.Chair);
+  b.set(75, 168, Tile.Bed).set(75, 169, Tile.Bed); // the baker sleeps at dawn
+  b.set(74, 167, Tile.CandleStand);
+  b.setDetail(70, 167, Detail.Doormat);
+  b.set(70, 165, Tile.StoneFloor); // the doorstep onto the square
+  // The sign hangs on the WEST flank (the wall-shadow law: north of
+  // the shell is the one place a sign cannot live).
+  b.sign(63, 170, 'THE BAKEHOUSE', ['the ovens never cool.', 'bread at first bell']);
+  // GARLAND ROW — the cottage lanes: hedge fronts, wood smoke,
+  // doors that belong to somebody. The lane is dirt on purpose.
+  b.fillRect(46, 178, 36, 2, Tile.Path); // the garland lane, x46-81
+  // The lane's hedge fronts — one clipped run per household, gaps
+  // where the feet actually walk (the garden wicket law).
+  for (let x = 46; x <= 51; x++) b.set(x, 177, Tile.Hedge);
+  for (let x = 55; x <= 60; x++) b.set(x, 177, Tile.Hedge);
+  b.set(57, 177, Tile.HedgeGate); // the baker's back-yard wicket
+  for (let x = 64; x <= 69; x++) b.set(x, 177, Tile.Hedge);
+  for (let x = 73; x <= 78; x++) b.set(x, 177, Tile.Hedge);
+  // The baker's back yard, through the wicket.
+  b.set(59, 175, Tile.WaterCask).set(61, 175, Tile.Woodpile);
+  b.set(62, 176, Tile.HerbPlanter); // off the lane — the lane stays two clear
+  // Cottage the first (north row): the wainwright's house.
+  b.fillRect(48, 168, 11, 9, Tile.WoodFloor);
+  b.outlineRect(48, 168, 11, 9, Tile.WallWood);
+  b.set(53, 176, Tile.DoorwayWood);
+  b.set(50, 176, Tile.WallWoodWindow).set(56, 176, Tile.WallWoodWindow);
+  b.set(48, 172, Tile.WallWoodWindow);
+  b.set(49, 169, Tile.Bed).set(49, 170, Tile.Bed);
+  b.set(57, 169, Tile.Hearth);
+  b.set(53, 171, Tile.Table).set(52, 171, Tile.Chair).set(54, 171, Tile.Chair);
+  b.set(57, 174, Tile.Cabinet);
+  b.setDetail(53, 175, Detail.Doormat);
+  b.setDetail(52, 172, Detail.Rug).setDetail(53, 172, Detail.Rug);
+  b.set(47, 176, Tile.Woodpile); // the wainwright splits his own
+  // The south row: three cottages, doors on the lane.
+  b.fillRect(48, 182, 9, 9, Tile.WoodFloor);
+  b.outlineRect(48, 182, 9, 9, Tile.WallWood);
+  b.set(52, 182, Tile.DoorwayWood);
+  b.set(49, 182, Tile.WallWoodWindow).set(55, 182, Tile.WallWoodWindow);
+  b.set(48, 186, Tile.WallWoodWindow);
+  b.set(49, 184, Tile.Bed).set(49, 185, Tile.Bed);
+  b.set(52, 186, Tile.Table).set(53, 186, Tile.Chair);
+  b.set(55, 183, Tile.Hearth);
+  b.set(55, 187, Tile.Bookshelf);
+  b.setDetail(52, 183, Detail.Doormat);
+  b.set(47, 183, Tile.Woodpile).set(57, 184, Tile.WaterCask);
+  b.fillRect(60, 182, 9, 9, Tile.WoodFloor);
+  b.outlineRect(60, 182, 9, 9, Tile.WallWood);
+  b.set(64, 182, Tile.DoorwayWood);
+  b.set(61, 182, Tile.WallWoodWindow).set(67, 182, Tile.WallWoodWindow);
+  b.set(68, 186, Tile.WallWoodWindow);
+  b.set(61, 184, Tile.Bed).set(61, 185, Tile.Bed);
+  b.set(67, 184, Tile.Bed).set(67, 185, Tile.Bed);
+  b.set(64, 186, Tile.Table).set(63, 186, Tile.Chair).set(65, 186, Tile.Chair);
+  b.set(61, 188, Tile.Hearth);
+  b.setDetail(64, 183, Detail.Doormat);
+  b.set(69, 183, Tile.HerbPlanter);
+  b.fillRect(72, 182, 9, 9, Tile.WoodFloor);
+  b.outlineRect(72, 182, 9, 9, Tile.WallWood);
+  b.set(76, 182, Tile.DoorwayWood);
+  b.set(73, 182, Tile.WallWoodWindow).set(79, 182, Tile.WallWoodWindow);
+  b.set(80, 186, Tile.WallWoodWindow);
+  b.set(73, 184, Tile.Bed).set(73, 185, Tile.Bed);
+  b.set(76, 186, Tile.Table).set(77, 186, Tile.Chair);
+  b.set(79, 188, Tile.Hearth);
+  b.set(79, 184, Tile.Cabinet);
+  b.setDetail(76, 183, Detail.Doormat);
+  b.set(81, 183, Tile.StreetPlanter);
+  // ---------------------------------------------------------------
+  // THE DELVERS' TERRACE — the miners' quarter: stone cots under
+  // the graveyard shelf, the Rest, the bath, and the Masons'
+  // Guildhall that finally deserves the name.
+  // ---------------------------------------------------------------
+  b.fillRect(17, 174, 25, 1, Tile.Path); // the terrace's own walk, x17-41
+  // Two miners' cots, hot-bunked like everything in this city.
+  b.fillRect(10, 148, 7, 8, Tile.StoneFloor);
+  b.outlineRect(10, 148, 7, 8, Tile.WallStone);
+  b.set(13, 155, Tile.DoorwayStone);
+  b.set(10, 151, Tile.WallStoneWindow);
+  b.set(11, 150, Tile.Bed).set(11, 151, Tile.Bed);
+  b.set(15, 149, Tile.Brazier).set(15, 153, Tile.Crate);
+  b.set(13, 152, Tile.WoodStool);
+  b.setDetail(13, 154, Detail.Doormat);
+  b.fillRect(20, 148, 7, 8, Tile.StoneFloor);
+  b.outlineRect(20, 148, 7, 8, Tile.WallStone);
+  b.set(23, 155, Tile.DoorwayStone);
+  b.set(26, 151, Tile.WallStoneWindow);
+  b.set(21, 150, Tile.Bed).set(21, 151, Tile.Bed);
+  b.set(25, 149, Tile.Brazier).set(25, 153, Tile.ToolRack);
+  b.set(23, 152, Tile.WoodStool);
+  b.setDetail(23, 154, Detail.Doormat);
+  // The gravekeeper's cottage at the keeper's stair — Aldous lives
+  // beside his charges and says nothing about the candles.
+  b.fillRect(30, 146, 9, 9, Tile.WoodFloor);
+  b.outlineRect(30, 146, 9, 9, Tile.WallWood);
+  b.set(34, 154, Tile.DoorwayWood);
+  b.set(31, 154, Tile.WallWoodWindow).set(37, 154, Tile.WallWoodWindow);
+  b.set(31, 148, Tile.Bed).set(31, 149, Tile.Bed);
+  b.set(34, 150, Tile.Table).set(35, 150, Tile.Chair);
+  b.set(37, 147, Tile.Hearth);
+  b.set(36, 152, Tile.Bookshelf).set(37, 152, Tile.Bookshelf); // the burial rolls
+  b.set(32, 152, Tile.CandleStand);
+  b.setDetail(34, 153, Detail.Doormat);
+  // THE DELVERS' REST — rougher than the Last Climb, prouder too.
+  b.fillRect(10, 160, 15, 13, Tile.WoodFloor);
+  b.outlineRect(10, 160, 15, 13, Tile.WallWood);
+  b.set(17, 172, Tile.DoorwayWood);
+  b.set(13, 172, Tile.WallWoodWindow).set(21, 172, Tile.WallWoodWindow);
+  b.set(10, 166, Tile.WallWoodWindow).set(24, 166, Tile.WallWoodWindow);
+  b.set(12, 163, Tile.Counter).set(13, 163, Tile.Counter).set(14, 163, Tile.Counter);
+  b.set(11, 162, Tile.TapCask).set(11, 164, Tile.TapCask); // both taps working — pay day
+  b.set(11, 166, Tile.Barrel);
+  b.set(23, 162, Tile.Hearth);
+  b.set(22, 161, Tile.Cabinet); // the chalk tallies live here
+  b.set(20, 164, Tile.GameTable).set(19, 164, Tile.WoodStool).set(20, 165, Tile.WoodStool); // arm-wrestling ground
+  b.set(15, 167, Tile.Table).set(16, 167, Tile.Table);
+  b.set(14, 167, Tile.Chair).set(17, 167, Tile.Chair).set(15, 168, Tile.Chair);
+  b.set(20, 169, Tile.Table).set(21, 169, Tile.Chair).set(19, 169, Tile.Chair);
+  b.set(12, 170, Tile.SettleBench).set(13, 170, Tile.SettleBench);
+  b.setDetail(17, 171, Detail.Doormat);
+  b.setDetail(16, 165, Detail.Rug).setDetail(17, 165, Detail.Rug);
+  // The shift's kit waits SOUTH of the Rest (the wall-shadow law:
+  // the guildhall's north face would swallow anything at y175).
+  b.set(14, 173, Tile.Grindstone); // edges sharpened after shift
+  b.set(22, 173, Tile.ToolRack); // picks wait outside; the Rest knows its floor
+  b.sign(20, 173, "THE DELVERS' REST", ['first pour free', 'on a mithril day']);
+  // THE BATH HOUSE — the one luxury the mine pays for.
+  b.fillRect(28, 160, 11, 11, Tile.StoneFloor);
+  b.outlineRect(28, 160, 11, 11, Tile.WallStone);
+  b.set(33, 170, Tile.DoorwayStone);
+  b.set(28, 164, Tile.WallStoneWindow).set(38, 164, Tile.WallStoneWindow);
+  b.set(33, 161, Tile.WallFountain); // the led spring, let fall
+  b.set(30, 163, Tile.Basin).set(32, 163, Tile.Basin).set(34, 163, Tile.Basin).set(36, 163, Tile.Basin);
+  b.set(29, 167, Tile.Brazier).set(37, 167, Tile.Brazier); // the steam
+  b.set(31, 168, Tile.Bench).set(35, 168, Tile.Bench);
+  b.set(29, 161, Tile.Crate).set(37, 161, Tile.Barrel);
+  b.setDetail(33, 169, Detail.Doormat);
+  b.fillRect(33, 171, 1, 3, Tile.Path); // the doorstep to the walk
+  b.sign(35, 171, 'THE BATH HOUSE', ['ore washes off.', 'the shift takes longer']);
+  // THE MASONS' GUILDHALL — the guild that carved the city, sealed
+  // the deep, and keeps the book whose count never matched.
+  b.fillRect(14, 176, 21, 15, Tile.StoneFloor);
+  b.outlineRect(14, 176, 21, 15, Tile.WallStone);
+  b.set(34, 183, Tile.DoorwayStone);
+  b.set(34, 179, Tile.WallStoneWindow).set(34, 187, Tile.WallStoneWindow);
+  b.set(20, 176, Tile.WallStoneWindow).set(28, 176, Tile.WallStoneWindow);
+  b.set(20, 190, Tile.WallStoneWindow).set(28, 190, Tile.WallStoneWindow);
+  b.set(14, 180, Tile.WallStoneWindow).set(14, 186, Tile.WallStoneWindow);
+  b.set(19, 180, Tile.Lectern); // THE SEALED BOOK stands open to its one wrong page
+  b.set(15, 178, Tile.Bookshelf).set(16, 178, Tile.Bookshelf).set(17, 178, Tile.Bookshelf);
+  b.set(22, 182, Tile.Table).set(23, 182, Tile.Table).set(24, 182, Tile.Table).set(25, 182, Tile.Table);
+  b.set(21, 182, Tile.Chair).set(26, 182, Tile.Chair);
+  b.set(23, 181, Tile.Chair).set(24, 181, Tile.Chair);
+  b.set(23, 183, Tile.Chair).set(24, 183, Tile.Chair);
+  b.set(20, 186, Tile.PillarStone).set(28, 186, Tile.PillarStone); // the craft, shown
+  b.set(15, 182, Tile.CandleShrine).set(15, 184, Tile.CandleShrine); // the memorial wall
+  b.set(15, 188, Tile.Cabinet).set(32, 188, Tile.Brazier);
+  b.setDetail(26, 176, Detail.Tapestry).setDetail(27, 176, Detail.Tapestry);
+  b.setDetail(23, 185, Detail.Rug).setDetail(24, 185, Detail.Rug);
+  b.setDetail(33, 183, Detail.Doormat);
+  b.fillRect(35, 183, 7, 1, Tile.Path); // the doorstep to the lane
+  b.sign(36, 182, "THE MASONS' GUILDHALL", ['the mountain is a member', 'in good standing']);
+  // ---------------------------------------------------------------
+  // THE SILENT TERRACE — the graveyard shelf. Standing stones,
+  // yews, three kept flames, and the Watcher whose name wore off.
+  // No loot among the dead. The quiet is the design.
+  // ---------------------------------------------------------------
+  b.fillRect(15, 144, 3, 3, Tile.Path).fillRect(32, 144, 3, 3, Tile.Path); // the stair feet
+  // The lych gate at the mourners' stair.
+  b.set(12, 146, Tile.Fence).set(13, 146, Tile.Fence).set(14, 146, Tile.Fence).set(15, 146, Tile.Fence);
+  b.set(16, 146, Tile.FenceGate);
+  b.set(17, 146, Tile.Fence).set(18, 146, Tile.Fence).set(19, 146, Tile.Fence).set(20, 146, Tile.Fence);
+  // The barrow rows: two lines of standing stones, older than the
+  // Silver Line — the foremen who came before the kings.
+  for (const sx of [13, 18, 23, 28, 33] as const) {
+    b.set(sx, 124, Tile.PillarStone);
+    b.set(sx, 132, Tile.PillarStone);
+  }
+  b.set(14, 125, Tile.Rock).set(24, 133, Tile.Rock).set(34, 125, Tile.Rock); // the mounds
+  b.fillRect(12, 122, 2, 1, Tile.Snow).fillRect(26, 127, 2, 1, Tile.Snow);
+  b.fillRect(35, 138, 2, 1, Tile.Snow);
+  b.set(11, 128, Tile.TreeYew).set(37, 128, Tile.TreeYew);
+  b.set(11, 136, Tile.TreeYew).set(37, 136, Tile.TreeYew);
+  b.set(18, 133, Tile.CandleShrine).set(28, 125, Tile.CandleShrine).set(23, 139, Tile.CandleShrine);
+  b.set(23, 128, Tile.GuardianStatue); // the Watcher whose name wore off
+  b.set(26, 140, Tile.Bench); // one seat, for whoever needs it longest
+  b.setDetail(16, 130, Detail.Pebbles).setDetail(30, 136, Detail.Pebbles);
+  b.sign(19, 147, 'THE SILENT TERRACE', ['older than the walls.', 'leave the candles be'], Tile.Signpost);
+  // ---------------------------------------------------------------
+  // THE KINGSHORE — the lake quarter: the city finally owns a wet
+  // net. Quay planks, two fisher households, the boat shed against
+  // the young wall.
+  // ---------------------------------------------------------------
+  b.fillRect(14, 215, 6, 3, Tile.Dock); // the quay, planks over the shallows
+  b.set(20, 213, Tile.MooringPost).set(20, 219, Tile.MooringPost);
+  b.set(23, 210, Tile.BeachedSkiff).set(26, 228, Tile.BeachedSkiff);
+  b.set(10, 220, Tile.FishingSpot).set(5, 232, Tile.FishingSpot);
+  b.set(17, 213, Tile.Crate).set(18, 212, Tile.CrateGoods); // the quay head's cargo
+  b.set(22, 204, Tile.Woodpile);
+  // Fisher house the first — north of the shore lane.
+  b.fillRect(26, 202, 9, 9, Tile.WoodFloor);
+  b.outlineRect(26, 202, 9, 9, Tile.WallWood);
+  b.set(30, 210, Tile.DoorwayWood);
+  b.set(27, 210, Tile.WallWoodWindow).set(33, 210, Tile.WallWoodWindow);
+  b.set(26, 206, Tile.WallWoodWindow);
+  b.set(27, 204, Tile.Bed).set(27, 205, Tile.Bed);
+  b.set(33, 203, Tile.Hearth);
+  b.set(30, 206, Tile.Table).set(31, 206, Tile.Chair);
+  b.set(33, 207, Tile.BasketStack);
+  b.setDetail(30, 209, Detail.Doormat);
+  // Fisher house the second — south of the lane, nearer the reeds.
+  b.fillRect(26, 218, 9, 9, Tile.WoodFloor);
+  b.outlineRect(26, 218, 9, 9, Tile.WallWood);
+  b.set(30, 218, Tile.DoorwayWood);
+  b.set(27, 218, Tile.WallWoodWindow).set(33, 218, Tile.WallWoodWindow);
+  b.set(34, 222, Tile.WallWoodWindow);
+  b.set(27, 220, Tile.Bed).set(27, 221, Tile.Bed);
+  b.set(33, 225, Tile.Hearth);
+  b.set(30, 222, Tile.Table).set(31, 222, Tile.Chair);
+  b.set(33, 219, Tile.Crate);
+  b.setDetail(30, 219, Detail.Doormat);
+  // The boat shed, lined against the young wall (the bailey law).
+  b.fillRect(34, 230, 7, 6, Tile.WoodFloor);
+  b.outlineRect(34, 230, 7, 6, Tile.WallWood);
+  b.set(37, 230, Tile.DoorwayWood);
+  b.set(35, 232, Tile.Sawhorse).set(39, 231, Tile.Workbench);
+  b.set(35, 234, Tile.Barrel).set(39, 234, Tile.ToolRack);
+  b.setDetail(37, 231, Detail.Doormat);
+  b.sign(24, 212, 'THE KINGSHORE', ['the mere gives.', 'the mere is thanked'], Tile.Signpost);
+  // ---------------------------------------------------------------
+  // THE FAIRSTEAD — the festival green: empty most of the year,
+  // and the emptiness is the point. The statues watch the walk in.
+  // ---------------------------------------------------------------
+  b.fillRect(78, 215, 6, 2, Tile.Path); // the green's east walk
+  b.set(78, 214, Tile.GuardianStatue).set(83, 214, Tile.GuardianStatue); // parity pair, mirrored
+  b.set(52, 208, Tile.BannerPole).set(72, 208, Tile.BannerPole); // bare until fair-day
+  b.set(58, 220, Tile.TreeOak); // the meeting oak
+  b.set(50, 225, Tile.GameTable).set(49, 225, Tile.WoodStool).set(50, 226, Tile.WoodStool);
+  b.set(64, 209, Tile.Bench);
+  b.sign(76, 212, 'THE FAIRSTEAD', ['empty on purpose.', 'fair-days fill it'], Tile.Signpost);
+  // THE VALE WARD — the lower watch's desk inside the new gate.
+  b.fillRect(96, 224, 9, 8, Tile.StoneFloor);
+  b.outlineRect(96, 224, 9, 8, Tile.WallStone);
+  b.set(96, 227, Tile.DoorwayStone);
+  b.set(100, 224, Tile.WallStoneWindow).set(104, 227, Tile.WallStoneWindow);
+  b.set(100, 231, Tile.WallStoneWindow);
+  b.set(98, 227, Tile.Table).set(98, 226, Tile.Chair); // the duty desk
+  b.set(102, 225, Tile.Bed).set(102, 226, Tile.Bed);
+  b.set(102, 229, Tile.Bed).set(102, 230, Tile.Bed); // hot bunks, like everything
+  b.set(97, 230, Tile.SpearRack).set(97, 225, Tile.Cabinet);
+  b.set(103, 228, Tile.Brazier);
+  b.setDetail(99, 224, Detail.BannerCrown);
+  b.setDetail(97, 227, Detail.Doormat);
+  b.fillRect(93, 227, 3, 1, Tile.Path); // the doorstep to the avenue
+  b.sign(94, 225, 'THE VALE WARD', ['the young wall,', 'the young watch']);
+  // The river's willows — the banks read planted by time, not code.
+  b.set(98, 122, Tile.TreeWillow).set(107, 136, Tile.TreeWillow);
+  b.set(98, 168, Tile.TreeWillow).set(107, 146, Tile.TreeWillow);
+  b.set(96, 190, Tile.TreeWillow);
+
+  // ---------------------------------------------------------------
+  // THE VALE'S EAST BANK — the Millward, the craft commons, the
+  // Pilgrim's Rest, and the wagon yard: the working half of the
+  // lower town, fed by the river and watched by the crags.
+  // ---------------------------------------------------------------
+  // THE KING'S MILL — the wheel hangs in the river; Amberford grain
+  // becomes Silverfall bread. The one trade the LIMITS law allows
+  // the mountains: grinding what the road brings.
+  b.fillRect(108, 144, 14, 13, Tile.StoneFloor);
+  b.outlineRect(108, 144, 14, 13, Tile.WallStone);
+  b.set(114, 156, Tile.DoorwayStone);
+  b.set(111, 156, Tile.WallStoneWindow).set(118, 156, Tile.WallStoneWindow);
+  b.set(108, 150, Tile.WallStoneWindow); // the window over the water
+  b.set(121, 150, Tile.WallStoneWindow);
+  b.set(110, 146, Tile.Grindstone).set(113, 146, Tile.Grindstone); // the stones
+  b.set(117, 146, Tile.Workbench);
+  b.set(119, 148, Tile.GrainSacks).set(119, 151, Tile.GrainSacks);
+  b.set(112, 152, Tile.Counter).set(113, 152, Tile.Counter); // the flour shop
+  b.set(116, 152, Tile.HangingScale);
+  b.set(109, 153, Tile.Crate).set(120, 154, Tile.Barrel);
+  b.setDetail(114, 155, Detail.Doormat);
+  b.setDetail(111, 148, Detail.Straw).setDetail(116, 149, Detail.Straw);
+  b.sign(116, 159, "THE KING'S MILL", ['Amberford grain,', 'Silverfall bread']);
+  // The granary pair and the weigh yard.
+  b.fillRect(125, 145, 7, 7, Tile.StoneFloor);
+  b.outlineRect(125, 145, 7, 7, Tile.WallStone);
+  b.set(128, 151, Tile.DoorwayStone);
+  b.set(126, 147, Tile.GrainSacks).set(126, 149, Tile.GrainSacks);
+  b.set(130, 147, Tile.Barrel).set(130, 149, Tile.Crate);
+  b.fillRect(135, 145, 7, 7, Tile.StoneFloor);
+  b.outlineRect(135, 145, 7, 7, Tile.WallStone);
+  b.set(138, 151, Tile.DoorwayStone);
+  b.set(136, 147, Tile.GrainSacks).set(136, 149, Tile.GrainSacks);
+  b.set(140, 147, Tile.Crate).set(140, 149, Tile.Barrel);
+  b.set(132, 154, Tile.HangingScale); // the weighbridge
+  b.set(127, 154, Tile.HandCart).set(136, 154, Tile.GrainSacks);
+  b.sign(124, 159, 'THE MILLWARD', ['the granaries hold', "the road's grain"], Tile.Signpost);
+  // THE CRAFT COMMONS — the trades too common for the High City,
+  // which is exactly why the Vale cannot live without them.
+  b.fillRect(110, 166, 11, 13, Tile.WoodFloor);
+  b.outlineRect(110, 166, 11, 13, Tile.WallWood);
+  b.set(115, 178, Tile.DoorwayWood);
+  b.set(112, 178, Tile.WallWoodWindow).set(118, 178, Tile.WallWoodWindow);
+  b.set(110, 172, Tile.WallWoodWindow).set(120, 172, Tile.WallWoodWindow);
+  b.set(112, 169, Tile.PottersWheel);
+  b.set(114, 169, Tile.Basin); // the slip water
+  b.set(111, 167, Tile.Crate); // river clay
+  b.set(118, 168, Tile.GlazedJars).set(119, 171, Tile.GlazedJars);
+  b.set(111, 175, Tile.ShopShelf);
+  b.set(115, 175, Tile.Counter).set(116, 175, Tile.Counter);
+  b.setDetail(115, 177, Detail.Doormat);
+  b.set(122, 174, Tile.PotteryKiln); // the potter's mound, breathing
+  b.sign(113, 179, 'THE CROCKERY', ['thrown, burned,', 'and true']);
+  b.fillRect(124, 168, 9, 11, Tile.WoodFloor);
+  b.outlineRect(124, 168, 9, 11, Tile.WallWood);
+  b.set(128, 178, Tile.DoorwayWood);
+  b.set(125, 178, Tile.WallWoodWindow).set(131, 178, Tile.WallWoodWindow);
+  b.set(124, 173, Tile.WallWoodWindow).set(132, 173, Tile.WallWoodWindow);
+  b.set(125, 170, Tile.CandleRack).set(125, 173, Tile.CandleRack);
+  b.set(128, 174, Tile.Counter).set(129, 174, Tile.Counter);
+  b.set(131, 169, Tile.Cabinet).set(130, 170, Tile.Crate); // the wax
+  b.set(127, 171, Tile.CandleStand); // the shop sells its own light
+  b.setDetail(128, 177, Detail.Doormat);
+  b.sign(126, 179, 'THE CHANDLERY', ["the shrine's wicks", 'are dipped here']);
+  b.fillRect(136, 170, 9, 9, Tile.WoodFloor);
+  b.outlineRect(136, 170, 9, 9, Tile.WallWood);
+  b.set(140, 178, Tile.DoorwayWood);
+  b.set(137, 178, Tile.WallWoodWindow).set(143, 178, Tile.WallWoodWindow);
+  b.set(136, 174, Tile.WallWoodWindow).set(144, 174, Tile.WallWoodWindow);
+  b.set(137, 172, Tile.CobblersBench).set(138, 172, Tile.Chair);
+  b.set(142, 171, Tile.ShopShelf);
+  b.set(140, 174, Tile.Counter).set(141, 174, Tile.Counter);
+  b.set(137, 176, Tile.Crate); // the leather
+  b.setDetail(140, 177, Detail.Doormat);
+  b.sign(142, 179, "THE COBBLER'S", ['soles for the stair,', 'mended while you wait']);
+  // THE PILGRIM'S REST — cheap beds at the way's foot; the flame
+  // keeps the fee.
+  b.fillRect(136, 204, 9, 11, Tile.WoodFloor);
+  b.outlineRect(136, 204, 9, 11, Tile.WallWood);
+  b.set(144, 209, Tile.DoorwayWood);
+  b.set(144, 206, Tile.WallWoodWindow).set(144, 212, Tile.WallWoodWindow);
+  b.set(136, 208, Tile.WallWoodWindow).set(140, 214, Tile.WallWoodWindow);
+  b.set(137, 205, Tile.Bed).set(137, 206, Tile.Bed);
+  b.set(139, 205, Tile.Bed).set(139, 206, Tile.Bed);
+  b.set(137, 211, Tile.Bed).set(137, 212, Tile.Bed);
+  b.set(139, 211, Tile.Bed).set(139, 212, Tile.Bed);
+  b.set(142, 204, Tile.Hearth);
+  b.set(141, 210, Tile.Table).set(141, 209, Tile.Chair);
+  b.set(143, 213, Tile.CandleStand);
+  b.setDetail(143, 209, Detail.Doormat);
+  b.set(145, 209, Tile.Path); // the step onto the way
+  b.set(145, 213, Tile.WayfarersRest); // somebody always sleeps cheaper still
+  b.sign(145, 206, "THE PILGRIM'S REST", ['a bed before the climb.', 'the flame keeps the fee']);
+  // THE WAGON YARD — where the real caravans stop; the high
+  // caravanserai keeps the Crown's post-riders.
+  for (let x = 111; x <= 115; x++) b.set(x, 213, Tile.RailWood);
+  for (let x = 118; x <= 122; x++) b.set(x, 213, Tile.RailWood);
+  b.setDetail(112, 214, Detail.Straw).setDetail(120, 214, Detail.Straw);
+  b.set(113, 215, Tile.WaterTrough).set(120, 215, Tile.WaterTrough);
+  b.set(111, 220, Tile.HitchingPost).set(118, 220, Tile.HitchingPost);
+  b.set(114, 224, Tile.HandCart).set(120, 226, Tile.Wheelbarrow);
+  b.set(117, 228, Tile.Campfire);
+  b.set(115, 228, Tile.Bench).set(119, 229, Tile.Bench);
+  b.set(111, 230, Tile.Crate).set(112, 231, Tile.CrateGoods);
+  // The wainwright's shed, lined into the yard's east edge.
+  b.fillRect(127, 223, 6, 8, Tile.WoodFloor);
+  b.outlineRect(127, 223, 6, 8, Tile.WallWood);
+  b.set(127, 226, Tile.DoorwayWood);
+  b.set(127, 229, Tile.WallWoodWindow);
+  b.set(129, 224, Tile.Sawhorse).set(131, 228, Tile.Workbench);
+  b.set(131, 224, Tile.ToolRack).set(128, 229, Tile.Barrel);
+  b.setDetail(128, 226, Detail.Doormat);
+  b.sign(109, 211, 'THE WAGON YARD', ['axles mended,', 'oxen watered'], Tile.Signpost);
+  // THE PILGRIM'S WAY keeps its stations — three lamps of the
+  // road-faith pacing the climb to Sella's flame.
+  b.set(150, 230, Tile.WayShrine).set(150, 184, Tile.WayShrine).set(150, 158, Tile.WayShrine);
+  // The east bank's north stretch stays open — the river walk
+  // breathes (negative space is a material too).
+  b.set(109, 126, Tile.TreeWillow).set(109, 140, Tile.TreeWillow);
+  b.set(130, 120, Tile.TreePine).set(144, 132, Tile.TreePine).set(115, 134, Tile.TreePine);
 
   // ---------------------------------------------------------------
   // Mountain life and the soft edges.

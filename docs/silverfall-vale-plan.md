@@ -433,3 +433,39 @@ windows, no marble. The wealth gradient IS the storytelling.
   - Gates: content 514/514, client 614/614, server 492/493 (the one
     red is fromProc XP — pre-existing neighbor churn, fails without
     these changes), five-package tsc clean.
+- **Phase 3 THE VALE RISES** — every lower-town district built
+  bespoke, as designed, with these build-truths:
+  - 23 structures: the Last Climb (bar, dice table, settle nook),
+    the wet market (2 stalls + slab/stands/block/scale under ochre),
+    the Bakehouse (oven pair, the baker's dawn cot), Garland Row
+    (4 cottages + hedge fronts x46-78 y177 with the baker's wicket),
+    the Delvers' Terrace (2 stone cots, keeper's cottage, the
+    Delvers' Rest, the Bath House with its led-spring WallFountain,
+    the Masons' Guildhall with the SEALED BOOK lectern + memorial
+    CandleShrine pair), the Silent Terrace (10 standing stones, 4
+    yews, 3 kept flames, the faceless Watcher, ONE bench, lych
+    gate), the Kingshore (quay planks, 2 fisher houses, boat shed
+    lined on the young wall, skiffs/moorings/2 casts), the Fairstead
+    (statue parity pair at -458/-453, meeting oak, EMPTY on
+    purpose), the Vale Ward (hot bunks), the King's Mill + granary
+    pair + weigh yard, the craft commons (Crockery/Chandlery/
+    Cobbler's, stepped rooflines, the potter's mound between), the
+    Pilgrim's Rest (4 beds + WayfarersRest outside), the wagon yard
+    (rails/troughs/carts/campfire + wainwright's shed).
+  - The Pilgrim's Way moved x138-140 → x146-148 under the crags
+    (its first draft ran THROUGH the cobbler's parcel — caught on
+    paper); its three WayShrine stations stand at x150.
+  - Wall-shadow law enforced at authoring time: the Rest's
+    grindstone/toolrack moved off y175 (the guildhall's north face
+    would swallow them), the Bakehouse sign lives on the WEST flank
+    (its door faces north into the market — the one direction a
+    sign cannot).
+  - The lane keeps two clear: the herb planter came off the garland
+    lane's row.
+  - New pins: THE VALE KEEPS SHOP block (BreadOven/Grindstone/
+    wheel/kiln/CandleRack/CobblersBench/TapCask/GameTable/
+    WayShrine 3/GuardianStatue 3/CandleShrine 5/skiffs/docks/
+    scales/troughs/WallFountain/Hedge ≥20/wicket).
+  - content 514/514 first run after the build — the builder's own
+    reachability, doorway, sign, and stall laws all passed on the
+    paper-checked coordinates; content tsc clean.
