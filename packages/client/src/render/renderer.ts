@@ -20841,25 +20841,6 @@ export class Renderer {
    * half-tile boundaries) meet crown-true at every seam. Used for
    * BOTH the fill silhouette and the ink (one geometry, one truth).
    */
-  private hedgeCrownInto(
-    path: Path2D | CanvasRenderingContext2D,
-    segs: ReadonlyArray<readonly [number, number, number]>,
-    yEdge: number,
-    ampK: number,
-  ): void {
-    const s = this.camera.scale;
-    for (let i = 0; i < segs.length; i++) {
-      const [sx0, sx1, amp] = segs[i]!;
-      const w = sx1 - sx0;
-      const a = amp * ampK * s;
-      if (i === 0) path.moveTo(sx0, yEdge);
-      // Lobe, notch, lobe: apexes ride at slightly unequal heights so
-      // no two segments clip identically.
-      path.quadraticCurveTo(sx0 + w * 0.24, yEdge - a * 2.1, sx0 + w * 0.5, yEdge - a * 0.55);
-      path.quadraticCurveTo(sx0 + w * 0.76, yEdge - a * 1.8, sx1, yEdge);
-    }
-  }
-
   /**
    * ONE MASS, ONE SILHOUETTE — the hedge's bespoke unit painter (the
    * round-three verdict: composing slabs, strips, knuckles, and piers
@@ -20905,20 +20886,35 @@ export class Renderer {
     // gardener's squared-off shoulders), a small fillet where
     // concave (the inner turn of an L or tee), NONE beside a cut —
     // a rounded seam would notch the neighbor's continuation.
+    // THE SHOULDER LAW (round four — the user's 90° verdict): a side
+    // meeting the FACE is the biggest turn on the whole body, and it
+    // gets the biggest radius — the crown plane rolls over into the
+    // face through a full clipped shoulder, and the face below picks
+    // the curve up with a bellied cheek (see the face pass), so the
+    // silhouette never breaks square where plan view becomes
+    // elevation. Round three's "radius 0 beside skirts" — a patch
+    // for an ink gap — is what printed the boxy corner; the gap is
+    // now closed the right way, by curving the face itself.
     const radii: number[] = [];
     for (let i = 0; i < n; i++) {
       const a = parts[i]!;
       const b = parts[(i + 1) % n]!;
-      // Cuts must meet the neighbor edge-true, and the face keeps its
-      // clipped SQUARE shoulders (a rounded crown corner beside a
-      // raw-cornered face panel printed a gap in the silhouette ink).
-      if (a.k === 0 || b.k === 0 || a.k === 2 || b.k === 2) {
-        radii.push(0);
-        continue;
-      }
       const cross =
         Math.sign(a.bu - a.au) * Math.sign(b.bv - b.av) -
         Math.sign(a.bv - a.av) * Math.sign(b.bu - b.au);
+      // Cuts must meet the neighbor edge-true; the concave seat where
+      // a face runs into a south arm's flank stays plumb.
+      if (a.k === 0 || b.k === 0) {
+        radii.push(0);
+        continue;
+      }
+      if (a.k === 2 || b.k === 2) {
+        if (cross > 0) {
+          const sseed = hashCoords(173, Math.round((tx + a.bu) * 4), Math.round((ty + a.bv) * 4) + salt);
+          radii.push(0.13 + ((sseed >>> 4) & 3) * 0.018);
+        } else radii.push(0);
+        continue;
+      }
       if (cross > 0) {
         const cseed = hashCoords(173, Math.round((tx + a.bu) * 4), Math.round((ty + a.bv) * 4) + salt);
         radii.push(0.08 + ((cseed >>> 4) & 3) * 0.015);
@@ -21034,24 +21030,107 @@ export class Renderer {
       }
     };
     // --- FACES first (the crown covers their top edge) ---
+    // THE CHEEK (round four): the face is no longer a rectangle. At
+    // every free shoulder its side edge continues the crown side's
+    // line — swelling gently past the plan edge through the upper
+    // face, tucking back in at the roots — one unbroken S from the
+    // last caterpillar waist to the turf. The keyed measures ride
+    // the same corner stations as the shoulder radii, so ink and
+    // fill agree stroke for stroke.
+    const cheekOf = (uCorner: number, vCorner: number) => {
+      const kseed = hashCoords(177, Math.round((tx + uCorner) * 4) + salt, Math.round((ty + vCorner) * 4));
+      return {
+        swell: 0.022 + ((kseed >>> 3) & 3) * 0.009,
+        tuck: 0.03 + ((kseed >>> 6) & 3) * 0.009,
+      };
+    };
+    const cheekDown = (
+      t: Path2D | CanvasRenderingContext2D,
+      uEdge: number,
+      v: number,
+      out: number,
+    ) => {
+      // From the shoulder start (on the side, r above the skirt) the
+      // cheek swells outward through the upper face and roots with a
+      // tucked foot — drawn top-down.
+      const ck = cheekOf(uEdge, v);
+      const yTop = Y(v);
+      const yG = YG(v);
+      t.quadraticCurveTo(
+        X(uEdge + out * ck.swell),
+        yTop + (yG - yTop) * 0.16,
+        X(uEdge + out * ck.swell * 0.85),
+        yTop + (yG - yTop) * 0.55,
+      );
+      t.quadraticCurveTo(X(uEdge + out * ck.swell * 0.35), yG - (yG - yTop) * 0.12, X(uEdge - out * ck.tuck), yG);
+    };
+    const cheekUp = (
+      t: Path2D | CanvasRenderingContext2D,
+      uEdge: number,
+      v: number,
+      out: number,
+      r: number,
+    ) => {
+      const ck = cheekOf(uEdge, v);
+      const yTop = Y(v);
+      const yG = YG(v);
+      t.quadraticCurveTo(
+        X(uEdge + out * ck.swell * 0.35),
+        yG - (yG - yTop) * 0.12,
+        X(uEdge + out * ck.swell * 0.85),
+        yTop + (yG - yTop) * 0.55,
+      );
+      t.quadraticCurveTo(X(uEdge + out * ck.swell), yTop + (yG - yTop) * 0.16, X(uEdge), Y(v - r));
+    };
     for (let i = 0; i < n; i++) {
       const g = parts[i]!;
       if (g.k !== 2) continue;
+      const du = Math.sign(g.bu - g.au);
+      const jA = radii[(i + n - 1) % n]!;
+      const jB = radii[i]!;
+      const gy = YG(g.av);
       const face = new Path2D();
-      face.moveTo(X(g.au), Y(g.av));
-      skirtTo(face, g.au, g.av, g.bu);
-      face.lineTo(X(g.bu), YG(g.bv));
-      face.lineTo(X(g.au), YG(g.av));
+      if (jA > 0) {
+        face.moveTo(X(g.au), Y(g.av - jA));
+        cheekDown(face, g.au, g.av, -du);
+      } else {
+        face.moveTo(X(g.au), Y(g.av));
+        face.lineTo(X(g.au), gy);
+      }
+      if (jB > 0) {
+        const ckB = cheekOf(g.bu, g.bv);
+        face.lineTo(X(g.bu - du * ckB.tuck), gy);
+        cheekUp(face, g.bu, g.bv, du, jB);
+      } else {
+        face.lineTo(X(g.bu), gy);
+        face.lineTo(X(g.bu), Y(g.bv));
+      }
+      face.lineTo(X(g.au), Y(g.av - jA));
       face.closePath();
       ctx.fillStyle = HEDGE_LEAF;
       ctx.fill(face);
       const fx0 = Math.min(X(g.au), X(g.bu));
       const fw = Math.abs(X(g.bu) - X(g.au));
-      const gy = YG(g.av);
+      // The shade band and seat shadow live INSIDE the cheeked
+      // silhouette (a fillRect past a tucked foot printed square
+      // corners right back), and the band's top edge rolls — two
+      // keyed lobes, never a ruled line across the face.
+      ctx.save();
+      ctx.clip(face);
+      const bseed2 = hashCoords(181, tx * 4 + Math.round(g.au + g.bu) + salt, ty * 4);
+      const bh = h * s * (0.42 + ((bseed2 >>> 9) & 3) * 0.02);
+      const wob = s * (0.035 + ((bseed2 >>> 4) & 3) * 0.012);
       ctx.fillStyle = shade(HEDGE_LEAF, -8);
-      ctx.fillRect(fx0, gy - h * s * 0.45, fw, h * s * 0.45);
+      ctx.beginPath();
+      ctx.moveTo(fx0 - s * 0.1, gy);
+      ctx.lineTo(fx0 - s * 0.1, gy - bh);
+      ctx.quadraticCurveTo(fx0 + fw * 0.25, gy - bh - wob, fx0 + fw * 0.5, gy - bh + wob * 0.4);
+      ctx.quadraticCurveTo(fx0 + fw * 0.75, gy - bh + wob, fx0 + fw + s * 0.1, gy - bh - wob * 0.5);
+      ctx.lineTo(fx0 + fw + s * 0.1, gy);
+      ctx.closePath();
+      ctx.fill();
       ctx.fillStyle = 'rgba(20, 14, 26, 0.28)';
-      ctx.fillRect(fx0, gy - s * 0.04, fw, s * 0.04);
+      ctx.fillRect(fx0 - s * 0.1, gy - s * 0.04, fw + s * 0.2, s * 0.04);
       // Clipped clusters break the face; tufts break the ground line.
       const nCl = Math.max(1, Math.round(fw / (s * 0.24)));
       for (let j = 0; j < nCl; j++) {
@@ -21063,6 +21142,7 @@ export class Renderer {
         facetBlob(ctx, cx, gy - h * s * fh, s * (0.038 + ((cseed >>> 11) & 3) * 0.011), cseed, 6, 0.85);
         ctx.fill();
       }
+      ctx.restore();
       for (let j = 0; j < nCl; j++) {
         const tseed = hashCoords(151, Math.round(fx0 / s) * 8 + j + salt, ty);
         const tx3 = fx0 + s * 0.05 + (((tseed >>> 5) % 100) / 100) * Math.max(0, fw - s * 0.1);
@@ -21084,15 +21164,19 @@ export class Renderer {
       ctx.fill(crown);
     }
     // The sunlit arris rides every skirt edge — the break where the
-    // plane rolls over into the face.
+    // plane rolls over into the face — insetting at each shoulder so
+    // the lit line dies into the roll instead of poking past it.
     ctx.strokeStyle = shade(HEDGE_LIT, 24);
     ctx.lineWidth = Math.max(1, s * 0.02);
     for (let i = 0; i < n; i++) {
       const g = parts[i]!;
       if (g.k !== 2) continue;
+      const du = Math.sign(g.bu - g.au);
+      const aIn = radii[(i + n - 1) % n]! * 0.8;
+      const bIn = radii[i]! * 0.8;
       ctx.beginPath();
-      ctx.moveTo(X(g.au), Y(g.av));
-      skirtTo(ctx, g.au, g.av, g.bu);
+      ctx.moveTo(X(g.au + du * aIn), Y(g.av));
+      skirtTo(ctx, g.au + du * aIn, g.av, g.bu - du * bIn);
       ctx.stroke();
     }
     // --- crown life, per half-tile cell: dome sheen, clump, flecks,
@@ -21181,16 +21265,27 @@ export class Renderer {
       ctx.beginPath();
       emitLoop(ctx, true);
       if (inkSides) {
+        // The face's side ink is the SAME cheek the fill drew: it
+        // picks up exactly where the crown side's stroke stopped
+        // (r above the skirt) and rolls to the turf in one S — the
+        // silhouette turns the plan-to-elevation corner without a
+        // single square break.
         for (let i = 0; i < n; i++) {
           const g = parts[i]!;
           if (g.k !== 2) continue;
+          const du = Math.sign(g.bu - g.au);
+          const jA = radii[(i + n - 1) % n]!;
+          const jB = radii[i]!;
           if (parts[(i + n - 1) % n]!.k !== 0) {
-            ctx.moveTo(X(g.au), Y(g.av));
-            ctx.lineTo(X(g.au), YG(g.av));
+            ctx.moveTo(X(g.au), Y(g.av - jA));
+            if (jA > 0) cheekDown(ctx, g.au, g.av, -du);
+            else ctx.lineTo(X(g.au), YG(g.av));
           }
           if (parts[(i + 1) % n]!.k !== 0) {
-            ctx.moveTo(X(g.bu), Y(g.bv));
-            ctx.lineTo(X(g.bu), YG(g.bv));
+            const ckB = cheekOf(g.bu, g.bv);
+            ctx.moveTo(X(g.bu - du * (jB > 0 ? ckB.tuck : 0)), YG(g.bv));
+            if (jB > 0) cheekUp(ctx, g.bu, g.bv, du, jB);
+            else ctx.lineTo(X(g.bu), Y(g.bv));
           }
         }
       }
@@ -21468,16 +21563,20 @@ export class Renderer {
   }
 
   /**
-   * THE LIVING ARCH — the hedge gate. Two clipped piers stand INSIDE
-   * the opening (the gate-post law: at ±0.42 the run-merged
-   * neighbours drawn after never bury them) carrying a floating slab
-   * of trained green overhead: a true crown plane for the bird's eye,
-   * a leafy soffit arcing over the path. Under it swings a waist-high
-   * timber wicket — the one piece of carpentry the garden allows
-   * itself — riding the door law wholesale (doorOpenness eases the
-   * swing, a locked rattle shakes it). N-S arches keep piers-and-leaf
-   * edge-on: a soffit seen end-on is a sliver, so the vertical gate
-   * lets its piers carry the green instead.
+   * THE GARDEN WICKET — the hedge gate, round four. The living arch
+   * DIED here: a 1.42-tile trained span over a 0.5-tile hedgerow was
+   * nearly three times the mass it bridged — the out-of-scale tower
+   * the user called out. What a hip-high garden actually gates its
+   * path with is a hip-high gate: the hedgerow itself runs up to two
+   * post cushions AT ITS OWN HEIGHT AND PLAN (their outer edges are
+   * CUTS, so the neighbor runs fuse in seamlessly — the gate is the
+   * hedge, thickened at the gap), a waist-high timber wicket swings
+   * in the opening (the one piece of carpentry the garden allows,
+   * riding the door law wholesale — doorOpenness eases the swing, a
+   * locked rattle shakes it), and a clipped FINIAL BALL on each post
+   * crown says "gatepost" in the topiary's own voice instead of with
+   * height. N-S gates keep the same body edge-on: two run-width
+   * stubs with cut seams, the wicket a paled bar between them.
    */
   private hedgeGateItem(tile: Tile, tx: number, ty: number, game: ClientGame): DrawItem {
     const s = this.camera.scale;
@@ -21489,11 +21588,9 @@ export class Renderer {
     // span carries the same deep plan as the runs it bridges.
     const baseY = p.y + syT * 0.4;
     const open = doorInfo(tile)!.open;
-    const h = hashCoords(41, tx, ty);
     const vertical =
       (this.hedgeish(game, tx, ty - 1) || this.hedgeish(game, tx, ty + 1)) &&
       !(this.hedgeish(game, tx + 1, ty) || this.hedgeish(game, tx - 1, ty));
-    const DEEP = 0.72 * syT;
     return {
       sortY: ty + (vertical ? 0.75 : 0.8),
       drawShadow: () => {
@@ -21512,16 +21609,16 @@ export class Renderer {
           ctx.translate(shakeX, 0);
         }
 
-        // THE GATEWAY IS CUT FROM THE HEDGE (round three — the old
-        // freestanding pickle piers read as bollards beside gaps,
-        // five objects where a garden shows one): each post is a
-        // PILLAR CUSHION in the mass's own voice — the same deep
-        // plan, crown lobes, pinch-bulge sides, faced skirt front —
-        // planted FLUSH at its seam so the neighboring run (whose
-        // cut edge carries no ink) fuses straight into it, trimmed
-        // proud of the line to carry the span or frame the wicket.
+        // THE GATE IS THE HEDGE, THICKENED AT THE GAP (round four —
+        // the towering arch and its inked pillar towers died as out
+        // of scale): each post is a cushion at the RUN'S OWN height
+        // and plan, and the edge that meets a continuing neighbor is
+        // a CUT — no ink, no profile break — so the hedgerow flows
+        // straight into its gateposts. Only the wicket's timber and
+        // the finial balls say "gate".
         const VN = -0.32;
         const VS = 0.4;
+        const HIP = 0.5;
         const pillar = (
           u0: number,
           v0: number,
@@ -21529,13 +21626,13 @@ export class Renderer {
           v1: number,
           hgt: number,
           saltC: number,
-          cutSide: 'n' | 's' | 'none',
+          cutSide: 'n' | 's' | 'w' | 'e' | 'none',
         ) => {
           const parts: Array<{ au: number; av: number; bu: number; bv: number; k: number }> = [
             { au: u0, av: v0, bu: u1, bv: v0, k: cutSide === 'n' ? 0 : 1 },
-            { au: u1, av: v0, bu: u1, bv: v1, k: 4 },
+            { au: u1, av: v0, bu: u1, bv: v1, k: cutSide === 'e' ? 0 : 4 },
             { au: u1, av: v1, bu: u0, bv: v1, k: cutSide === 's' ? 0 : 2 },
-            { au: u0, av: v1, bu: u0, bv: v0, k: 3 },
+            { au: u0, av: v1, bu: u0, bv: v0, k: cutSide === 'w' ? 0 : 3 },
           ];
           this.hedgeMassPaint(
             p.x,
@@ -21550,6 +21647,41 @@ export class Renderer {
             [],
             [],
           );
+        };
+        // The gatepost's clipped ball — a topiary finial seated on
+        // the post crown. At finial scale (~10px) a rough faceted
+        // blob plus ink ring read as a snarled curl on the first
+        // sheet, so the ball is a CLEAN circle: seat shadow, globe,
+        // one lit crescent, its own thin ink ring — the gardener's
+        // most-clipped shape on the whole hedgerow.
+        const finial = (fu: number, fv: number, saltC: number) => {
+          const fseed = hashCoords(191, tx * 8 + saltC, ty * 8 + Math.round(fv * 4));
+          const r0 = s * (0.12 + ((fseed >>> 3) & 3) * 0.008);
+          const bx = p.x + fu * s;
+          const cy0 = p.y + fv * syT - HIP * s;
+          const by = cy0 - r0 * 0.7;
+          ctx.fillStyle = 'rgba(24, 50, 28, 0.3)';
+          ctx.beginPath();
+          ctx.ellipse(bx, cy0 + r0 * 0.12, r0 * 0.8, r0 * 0.3, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = HEDGE_LEAF;
+          ctx.beginPath();
+          ctx.arc(bx, by, r0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = shade(HEDGE_LIT, 14);
+          ctx.beginPath();
+          ctx.arc(bx - r0 * 0.24, by - r0 * 0.26, r0 * 0.52, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = HEDGE_DARK;
+          ctx.beginPath();
+          ctx.arc(bx + r0 * 0.3, by + r0 * 0.32, r0 * 0.2, 0, Math.PI * 2);
+          ctx.fill();
+          if (this.outlineOn) {
+            this.beginStructOutline();
+            ctx.beginPath();
+            ctx.arc(bx, by, r0, 0, Math.PI * 2);
+            ctx.stroke();
+          }
         };
 
         // The timber wicket: three pales under a capped top rail,
@@ -21591,118 +21723,33 @@ export class Renderer {
         };
 
         if (!vertical) {
-          const pierL = p.x - 0.42 * s;
-          const pierR = p.x + 0.42 * s;
-          // THE TRAINED SPAN: one lintel of gardened green resting on
-          // both piers — ONE PATH carries the scalloped crown, the
-          // plumb ends, and the arched soffit rising over the path
-          // (the pass-2 verdict: a soffit drawn as its own crescent
-          // hung BELOW the mass like a sagging rope).
-          // Low-line measures: span top at 1.42 tiles, soffit mid at
-          // ~1.26 — the 1.15-tile body still walks under clean, but
-          // the arch no longer towers over the waist-high garden.
-          // The span's ends drop onto the pillar cushions' crown
-          // backs (their top pixel rides at ~1.04 with the deep-plan
-          // lift), so the lintel SEATS instead of floating.
-          const yTopArch = baseY - 1.42 * s;
-          const xL = pierL - s * 0.08;
-          const xR = pierR + s * 0.08;
-          const endDrop = s * 0.38;
-          const midDrop = s * 0.16;
-          const seg: ReadonlyArray<readonly [number, number, number]> = [
-            [xL, p.x, this.hedgeLobe(79, tx * 16 + 2, ty)],
-            [p.x, xR, this.hedgeLobe(79, tx * 16 + 3, ty)],
-          ];
-          const spanInto = (path: Path2D | CanvasRenderingContext2D) => {
-            this.hedgeCrownInto(path, seg, yTopArch, 1);
-            path.lineTo(xR, yTopArch + endDrop);
-            path.quadraticCurveTo(p.x, yTopArch + midDrop, xL, yTopArch + endDrop);
-            path.closePath();
-          };
-          const arch = new Path2D();
-          spanInto(arch);
-          ctx.fillStyle = HEDGE_LEAF;
-          ctx.fill(arch);
-          // Crown plane + arris, the slab laws in miniature.
-          const ribbon = new Path2D();
-          this.hedgeCrownInto(ribbon, seg, yTopArch, 1);
-          ribbon.lineTo(xR, yTopArch + DEEP * 0.5);
-          ribbon.lineTo(xL, yTopArch + DEEP * 0.5);
-          ribbon.closePath();
-          ctx.fillStyle = shade(HEDGE_LIT, 10);
-          ctx.fill(ribbon);
-          if (wind.l > 0.05) {
-            ctx.fillStyle = `rgba(214, 236, 176, ${(0.16 * wind.l).toFixed(3)})`;
-            ctx.fill(ribbon);
-          }
-          ctx.fillStyle = shade(HEDGE_LIT, 26);
-          ctx.fillRect(xL + s * 0.03, yTopArch + DEEP * 0.5 - s * 0.011, xR - xL - s * 0.06, s * 0.022);
-          // The soffit: a dark under-band INSIDE the mass, hugging
-          // the arched underside — the span carries its own shadow.
-          ctx.fillStyle = HEDGE_DARK;
-          ctx.beginPath();
-          ctx.moveTo(xR - s * 0.02, yTopArch + endDrop - s * 0.02);
-          ctx.quadraticCurveTo(p.x, yTopArch + midDrop - s * 0.02, xL + s * 0.02, yTopArch + endDrop - s * 0.02);
-          ctx.quadraticCurveTo(p.x, yTopArch + midDrop - s * 0.13, xR - s * 0.02, yTopArch + endDrop - s * 0.02);
-          ctx.closePath();
-          ctx.fill();
-          // A few clipped clusters keep the span hand-tended.
-          for (let i = 0; i < 2; i++) {
-            const cseed = hashCoords(131, tx * 8 + i, ty);
-            const cx2 = pierL + (pierR - pierL) * (0.25 + ((cseed >>> 4) % 50) / 100);
-            ctx.fillStyle = (cseed & 4) === 0 ? HEDGE_DARK : shade(HEDGE_LEAF, 8);
-            ctx.beginPath();
-            facetBlob(ctx, cx2, yTopArch + s * (0.2 + ((cseed >>> 8) & 3) * 0.03), s * 0.055, cseed, 6, 0.85);
-            ctx.fill();
-          }
-          // A few trained tendrils trail off the soffit and flutter.
-          for (let i = 0; i < 3; i++) {
-            const tseed = hashCoords(137, tx * 8 + i, ty);
-            const tx2 = pierL + (pierR - pierL) * (0.22 + ((tseed >>> 4) % 60) / 100);
-            const tl = s * (0.08 + ((tseed >>> 7) & 3) * 0.02);
-            const sway =
-              (wind.bx * 0.3 +
-                Math.sin(tSec * (1.6 + (tseed % 5) * 0.2) + (tseed % 100) * 0.35) * 0.5) *
-              s *
-              0.03;
-            const ty2 = yTopArch + midDrop + s * 0.16;
-            ctx.strokeStyle = shade(HEDGE_LEAF, -4);
-            ctx.lineWidth = Math.max(1, s * 0.02);
-            ctx.beginPath();
-            ctx.moveTo(tx2, ty2);
-            ctx.quadraticCurveTo(tx2 + sway * 0.5, ty2 + tl * 0.6, tx2 + sway, ty2 + tl);
-            ctx.stroke();
-            ctx.fillStyle = HEDGE_LIT;
-            ctx.fillRect(tx2 + sway - s * 0.016, ty2 + tl - s * 0.01, s * 0.032, s * 0.026);
-          }
-          if (this.outlineOn) {
-            // ONE RING: the span's true silhouette — crown lobes,
-            // plumb ends, arched soffit — one path, one stroke.
-            this.beginStructOutline();
-            ctx.beginPath();
-            spanInto(ctx);
-            ctx.stroke();
-          }
-          // THE WICKET swings in the pillar-framed gap, and the
-          // pillars go down LAST so the leaves hinge behind their
-          // inner faces.
-          const leafFull = 0.15 * s;
+          // THE WICKET swings in the post-framed gap; the posts go
+          // down after so the leaves hinge behind their inner faces,
+          // and the finials crown the posts last.
+          const leafFull = 0.2 * s;
           const wNow = leafFull * (1 - o * 0.9);
-          wicket(p.x - s * 0.15, 1, wNow, Math.round(-20 * o));
-          wicket(p.x + s * 0.15, -1, wNow, Math.round(-20 * o));
-          pillar(-0.5, VN, -0.16, VS, 0.85, 21, 'none');
-          pillar(0.16, VN, 0.5, VS, 0.85, 22, 'none');
+          wicket(p.x - s * 0.2, 1, wNow, Math.round(-20 * o));
+          wicket(p.x + s * 0.2, -1, wNow, Math.round(-20 * o));
+          const westH = this.hedgeish(game, tx - 1, ty);
+          const eastH = this.hedgeish(game, tx + 1, ty);
+          pillar(-0.5, VN, -0.2, VS, HIP, 21, westH ? 'w' : 'none');
+          pillar(0.2, VN, 0.5, VS, HIP, 22, eastH ? 'e' : 'none');
+          finial(-0.35, 0.0, 21);
+          finial(0.35, 0.0, 22);
         } else {
-          // The vertical gateway: two pillar STUBS cut from the run
-          // itself — their seam edges are cuts (the neighbor strips
-          // fuse in without a line), their gap faces wear the full
-          // face kit, and the paled bar bars the space between.
-          pillar(-0.44, -0.5, 0.44, -0.18, 0.7, 21, 'n');
+          // The vertical gateway: two run-width STUBS cut from the
+          // hedge itself — their seam edges are cuts (the neighbor
+          // strips fuse in without a line), their gap faces wear the
+          // full face kit, and the paled bar bars the space between.
+          // Edge-on the notch and the timber bar carry the gate read
+          // alone — a finial on the column axis stacked over the bar
+          // printed a lollipop, so the vertical stubs go bare.
+          pillar(-0.44, -0.5, 0.44, -0.18, HIP, 21, 'n');
           if (o < 0.98) {
             // Shut: the wicket edge-on, a paled strip barring the
             // gap, retracting toward its north hinge as it swings.
             const hw2 = 0.055 * s;
-            const top = p.y - 0.18 * syT - 0.62 * s;
+            const top = p.y - 0.18 * syT - 0.56 * s;
             const bot = top + (p.y + 0.18 * syT - 0.02 * s - top) * (1 - o);
             ctx.fillStyle = shade(FENCE_POST, 2);
             ctx.fillRect(p.x - hw2, top, hw2 * 2, bot - top);
@@ -21717,7 +21764,7 @@ export class Renderer {
             const oo = Math.sin((o * Math.PI) / 2);
             wicket(p.x + 0.06 * s, 1, 0.6 * s * oo, 0);
           }
-          pillar(-0.44, 0.18, 0.44, 0.5, 0.7, 22, 's');
+          pillar(-0.44, 0.18, 0.44, 0.5, HIP, 22, 's');
         }
         if (shakeX !== 0) ctx.restore();
       },

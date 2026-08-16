@@ -131,15 +131,15 @@ test('door posture drives solidity and lamplight', () => {
       continue;
     }
     if (info.material === 'hedge') {
-      // The garden arch carves out like the camp gate: it belongs to
-      // the hedge family, and shut, the whole living arch is
-      // full-height green mass — lamplight stops at a sealed garden.
+      // The garden wicket carves out like the fence gate: it belongs
+      // to the hedge family, and even shut it is a waist-high timber
+      // leaf in a hip-high hedgerow — never lamplight mass (the
+      // towering living arch died in round four as out of scale).
       assert.ok(!WALL_RUN_TILES.includes(tile), `${tileDef(tile).name} stays out of wall runs`);
       assert.ok(HEDGE_TILES.has(tile), `${tileDef(tile).name} joins the hedge family`);
-      assert.equal(
-        LIGHT_BLOCKING_TILES.includes(tile),
-        !info.open,
-        `${tileDef(tile).name} lamplight`,
+      assert.ok(
+        !LIGHT_BLOCKING_TILES.includes(tile),
+        `${tileDef(tile).name} never blocks lamplight`,
       );
       continue;
     }
@@ -209,10 +209,11 @@ test('hedge family: the clipped green stands apart and its arch rounds the trip'
       `${tileDef(tile).name} never encloses a room`,
     );
   }
-  // THE WAIST LAW: the hedgerow runs hip-high — lamplight clears the
-  // hedge WALLS like it clears a fence; only the full-height living
-  // arch (shut) is lamplight mass, pinned by the door-posture test.
-  for (const tile of [Tile.Hedge, Tile.HedgeDiagNE, Tile.HedgeDiagNW]) {
+  // THE WAIST LAW: the hedgerow runs hip-high — lamplight clears
+  // EVERY hedge tile like it clears a fence. The gate's towering
+  // arch died in round four (out of scale over a waist-high garden);
+  // a shut timber wicket is no lamplight mass either.
+  for (const tile of HEDGE_TILES) {
     assert.ok(!LIGHT_BLOCKING_TILES.includes(tile), `${tileDef(tile).name} clears lamplight`);
   }
   // The 45° turn joins whichever diagonal already carries the hedge.

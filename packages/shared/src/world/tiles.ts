@@ -1778,11 +1778,11 @@ export const LIGHT_BLOCKING_TILES: readonly Tile[] = [
   Tile.PalisadeDiagNW,
   Tile.PalisadeGateShut,
   // THE WAIST LAW: the hedgerow runs hip-high — lamplight clears a
-  // clipped cushion bed the way it clears a fence, so the hedge WALLS
-  // never block. Only the living arch is full-height green mass:
-  // shut, it seals the garden; open, it spills lantern light down
-  // the path.
-  Tile.HedgeGateShut,
+  // clipped cushion bed the way it clears a fence, so NO hedge tile
+  // blocks. The gate lost its towering arch (round four: a 1.4-tile
+  // span over a 0.5-tile hedge read wildly out of scale) — a shut
+  // waist-high timber wicket no more stops lamplight than the
+  // hedgerow beside it.
 ];
 
 /**
