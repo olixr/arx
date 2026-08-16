@@ -91,6 +91,14 @@ import {
 } from './strikes.js';
 import { STOW_HANDOFF, sheathePhases, stowBack, stowBlade } from './sheath.js';
 import {
+  WORK_BOOK,
+  WORK_VOICE_NEUTRAL,
+  resolveWork,
+  workCycleU,
+  type WorkKind,
+  type WorkVoice,
+} from './work.js';
+import {
   EarSim,
   drawWingEar,
   earRestChain,
@@ -553,18 +561,9 @@ function angleDelta(a: number, b: number): number {
   return Math.atan2(Math.sin(b - a), Math.cos(b - a));
 }
 
-/** Duration of one mining swing (windup→heave→strike→pry), ms. */
-export const MINE_CYCLE_MS = 880;
-/** Duration of one woodcutting chop, ms. */
-export const CHOP_CYCLE_MS = 700;
-/** Duration of one anvil hammer blow, ms. */
-export const ANVIL_CYCLE_MS = 640;
-/** Duration of one forage pluck (reach→tug→snap→pouch), ms. */
-export const FORAGE_CYCLE_MS = 1050;
-/** Duration of one two-hand milking beat (each hand pulls once), ms. */
-export const MILK_CYCLE_MS = 640;
-/** Duration of one furnace stoking push, ms. */
-export const FURNACE_CYCLE_MS = 1700;
+// The work-cycle clocks live in work.ts now (WORK_BOOK — THE IMPACT
+// IS ONE TRUTH): the rig's swing, the renderer's particle gates, the
+// sfx, and the station flash all read the same book.
 
 /** Arm segment length (upper = fore), in tile units. */
 const ARM_LEN = 0.17;
@@ -6132,6 +6131,19 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const chopping = rig.pose === PoseState.Gather && toolType === 'axe' && !foraging;
   const mining = rig.pose === PoseState.Gather && toolType === 'pickaxe' && !foraging;
   const craftKind = rig.pose === PoseState.Craft ? (rig.craftKind ?? 'workbench') : null;
+  // THE WORK LIVES IN THE WORLD (work.ts): the verb the engine speaks
+  // this frame — gather swings, the dairy pull, station craft. Rod
+  // and bare-hand gathers keep the gentle sway below until the fish
+  // school lands (plan Phase 3).
+  const workKind: WorkKind | null = foraging
+    ? 'forage'
+    : milking
+      ? 'milk'
+      : chopping
+        ? 'chop'
+        : mining
+          ? 'mine'
+          : craftKind;
   const gatherSwing =
     rig.pose === PoseState.Gather && !chopping && !mining && !foraging
       ? Math.sin(rig.gatherPhase * 5.5) * 0.5
@@ -6312,224 +6324,45 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   if (drawing) lean = -Math.sign(fx || 1) * 0.07 * drawT; // braced back
 
   let reach = 0.25 * s;
-  // THE SWING MIRROR: the chop/mine cycles are authored for a right-
-  // facer — windup over the shoulder, arc sweeping clockwise down into
-  // the work. Applying rel unmirrored kept that clockwise sweep at
-  // EVERY facing, so a left-facer wound up low behind the hip and
-  // scooped UP into the tree, poll first. Negating rel reflects the
-  // whole arc across the facing line — overhead stays overhead, the
-  // bite lands down-forward — and pairs with the BIT-LEADS flip law in
-  // drawHeldItem (same cos(dir) > 0 test) so the honed edge leads the
-  // sweep on both sides of the node.
-  const workSide = Math.cos(rig.dir) > 0 ? 1 : -1;
-  // The chop: raise the axe up over the shoulder, slam it down into the
-  // node, hold through the bite, recover — every beat readable.
-  if (chopping) {
-    const u = (rig.nowMs % CHOP_CYCLE_MS) / CHOP_CYCLE_MS;
-    let rel: number;
-    if (u < 0.42) {
-      // Windup: haul the axe up and back over the shoulder.
-      const p2 = u / 0.42;
-      const e2 = 1 - (1 - p2) * (1 - p2);
-      rel = 0.35 - 2.4 * e2;
-      reach = (0.2 - 0.02 * e2) * s;
-      lean = -0.08 * e2;
-    } else if (u < 0.54) {
-      // Strike: fast, whole body tips into it.
-      const p2 = (u - 0.42) / 0.12;
-      const e2 = p2 * p2;
-      rel = -2.05 + 2.4 * e2;
-      reach = (0.2 + 0.13 * e2) * s;
-      lean = -0.08 + 0.24 * e2;
-    } else if (u < 0.72) {
-      // The bite: blade buried, arms extended, a shiver of effort.
-      rel = 0.35 + Math.sin(rig.nowMs * 0.15) * 0.02;
-      reach = 0.33 * s;
-      lean = 0.16 - ((u - 0.54) / 0.18) * 0.06;
-    } else {
-      // Recover toward the next windup.
-      const p2 = (u - 0.72) / 0.28;
-      rel = 0.35;
-      reach = (0.33 - 0.1 * p2) * s;
-      lean = 0.1 * (1 - p2);
-    }
-    swingOffset = rel * workSide;
-    lean *= workSide;
-  }
-  // The mine: a pick is NOT an axe. Haul it straight overhead with the
-  // whole back, hang at the top of the heave, drive it down into the
-  // seam, then LEVER it back out — the pry is what says "rock".
-  if (mining) {
-    const u = (rig.nowMs % MINE_CYCLE_MS) / MINE_CYCLE_MS;
-    let rel: number;
-    if (u < 0.32) {
-      // Windup: the pick climbs past the shoulder to straight overhead.
-      const p2 = u / 0.32;
-      const e2 = 1 - (1 - p2) * (1 - p2);
-      rel = 0.4 - 2.9 * e2;
-      reach = (0.22 - 0.06 * e2) * s;
-      lean = -0.11 * e2;
-    } else if (u < 0.44) {
-      // The heave: hanging at the top, gathering weight.
-      const p2 = (u - 0.32) / 0.12;
-      rel = -2.5 + Math.sin(rig.nowMs * 0.02) * 0.03;
-      reach = 0.16 * s;
-      lean = -0.11 - 0.03 * p2;
-    } else if (u < 0.54) {
-      // The drive: everything comes down at once.
-      const p2 = (u - 0.44) / 0.1;
-      const e2 = p2 * p2;
-      rel = -2.5 + 2.95 * e2;
-      reach = (0.16 + 0.2 * e2) * s;
-      lean = -0.14 + 0.42 * e2;
-    } else if (u < 0.7) {
-      // Buried: point deep in the seam, shoulders hunched, quivering.
-      rel = 0.45 + Math.sin(rig.nowMs * 0.16) * 0.018;
-      reach = 0.36 * s;
-      lean = 0.28 - ((u - 0.54) / 0.16) * 0.1;
-    } else if (u < 0.86) {
-      // The pry: lever the head back out of the rock.
-      const p2 = (u - 0.7) / 0.16;
-      const e2 = p2 * p2 * (3 - 2 * p2);
-      rel = 0.45 - 0.55 * e2;
-      reach = (0.36 - 0.08 * e2) * s;
-      lean = 0.18 - 0.2 * e2;
-    } else {
-      // Recover into the next lift.
-      const p2 = (u - 0.86) / 0.14;
-      rel = -0.1 + 0.5 * p2;
-      reach = (0.28 - 0.06 * p2) * s;
-      lean = -0.02 * (1 - p2);
-    }
-    swingOffset = rel * workSide;
-    lean *= workSide;
-  }
-  // The forage: no tool, no swing — herbalist's hands. Bend toward
-  // the plant, reach the working hand deep into it, TUG with a little
-  // shiver of effort, snap the stem free, then carry the pluck back
-  // to the belt pouch. The drop rides mainY below so the reach goes
-  // DOWN into the foliage at every facing.
-  let forageDrop = 0;
-  if (foraging) {
-    const u = (rig.nowMs % FORAGE_CYCLE_MS) / FORAGE_CYCLE_MS;
-    let r: number;
-    if (u < 0.3) {
-      // Reach in, body bending with it.
-      const p2 = u / 0.3;
-      const e2 = 1 - (1 - p2) * (1 - p2);
-      r = 0.14 + 0.22 * e2;
-      forageDrop = 0.08 + 0.08 * e2;
-      lean = 0.13 * e2;
-    } else if (u < 0.42) {
-      // The tug: gripped in the plant, a shiver of effort.
-      r = 0.36 + Math.sin(rig.nowMs * 0.13) * 0.012;
-      forageDrop = 0.16;
-      lean = 0.13 + Math.sin(rig.nowMs * 0.13) * 0.012;
-    } else if (u < 0.5) {
-      // Snap free — quick, the body rocks back with the release.
-      const p2 = (u - 0.42) / 0.08;
-      const e2 = p2 * p2;
-      r = 0.36 - 0.14 * e2;
-      forageDrop = 0.16 - 0.06 * e2;
-      lean = 0.13 - 0.19 * e2;
-    } else if (u < 0.78) {
-      // Carry the pluck to the pouch on the belt.
-      const p2 = (u - 0.5) / 0.28;
-      const e2 = p2 * p2 * (3 - 2 * p2);
-      r = 0.22 - 0.15 * e2;
-      forageDrop = 0.1 - 0.09 * e2;
-      lean = -0.06 * (1 - e2) - 0.01;
-    } else {
-      // Settle, hand drifting back toward the next reach.
-      const p2 = (u - 0.78) / 0.22;
-      r = 0.07 + 0.07 * p2;
-      forageDrop = 0.01 + 0.07 * p2;
-      lean = -0.01 * (1 - p2);
-    }
-    swingOffset = 0.14;
-    reach = r * s;
-    lean *= Math.sign(fx || 1);
-  }
-  // The milking: no tool, no swing — dairy hands. Settled low at the
-  // flank in the working crouch, both arms reach in together and pull
-  // down in alternation — a steady squeeze-and-release rhythm, the
-  // shoulders rocking faintly on the beat.
-  let milkDropMain = 0;
-  let milkDropOff = 0;
-  if (milking) {
-    const u = (rig.nowMs % MILK_CYCLE_MS) / MILK_CYCLE_MS;
-    // One hand's pull: a quick draw down, an easy ride back up.
-    const pull = (p: number) => {
-      const t2 = p < 0.4 ? p / 0.4 : 1 - (p - 0.4) / 0.6;
-      return t2 * t2 * (3 - 2 * t2);
-    };
-    milkDropMain = 0.06 + 0.085 * pull(u);
-    milkDropOff = 0.06 + 0.085 * pull((u + 0.5) % 1);
-    swingOffset = 0.3;
-    reach = 0.3 * s;
-    // Bent to the work, breathing with the alternating pulls.
-    lean = (0.14 + 0.018 * Math.sin(u * Math.PI * 4)) * Math.sign(fx || 1);
-  }
-  // Station work: each craft station has its own body language.
-  if (craftKind === 'anvil') {
-    // Hammer blows: raise over the shoulder, ring it off the billet the
-    // tongs hold on the anvil face, let the head bounce, reset.
-    const u = (rig.nowMs % ANVIL_CYCLE_MS) / ANVIL_CYCLE_MS;
-    let rel: number;
-    if (u < 0.3) {
-      const p2 = u / 0.3;
-      const e2 = 1 - (1 - p2) * (1 - p2);
-      rel = 0.2 - 2.1 * e2;
-      reach = (0.26 - 0.06 * e2) * s;
-      lean = -0.05 * e2;
-    } else if (u < 0.42) {
-      const p2 = (u - 0.3) / 0.12;
-      const e2 = p2 * p2;
-      rel = -1.9 + 1.68 * e2;
-      reach = (0.2 + 0.14 * e2) * s;
-      lean = -0.05 + 0.16 * e2;
-    } else if (u < 0.58) {
-      // The ring: a crisp rebound off the metal.
-      const p2 = (u - 0.42) / 0.16;
-      rel = -0.22 - 0.5 * Math.sin(p2 * Math.PI) * (1 - p2 * 0.5);
-      reach = (0.34 - 0.05 * Math.sin(p2 * Math.PI)) * s;
-      lean = 0.11 - 0.07 * p2;
-    } else {
-      const p2 = (u - 0.58) / 0.42;
-      rel = -0.22 + 0.42 * p2 * p2 * (3 - 2 * p2);
-      reach = (0.29 - 0.03 * p2) * s;
-      lean = 0.04 * (1 - p2);
-    }
-    swingOffset = rel;
-    lean *= Math.sign(fx || 1);
-  } else if (craftKind === 'furnace') {
-    // Stoking: lean in and feed the mouth with both hands, hold against
-    // the heat, pull back.
-    const u = (rig.nowMs % FURNACE_CYCLE_MS) / FURNACE_CYCLE_MS;
-    let push: number;
-    if (u < 0.38) {
-      const p2 = u / 0.38;
-      push = p2 * p2 * (3 - 2 * p2);
-    } else if (u < 0.6) {
-      push = 1;
-    } else {
-      const p2 = (u - 0.6) / 0.4;
-      push = 1 - p2 * p2 * (3 - 2 * p2);
-    }
-    swingOffset = 0.1;
-    reach = (0.18 + 0.19 * push) * s;
-    lean = 0.13 * push * Math.sign(fx || 1);
-  } else if (craftKind === 'fire') {
-    // Tending the pot: a slow, patient stir.
-    swingOffset = 0.45 + Math.sin(rig.gatherPhase * 2.4) * 0.28;
-    reach = (0.26 + Math.sin(rig.gatherPhase * 4.8) * 0.02) * s;
-  } else if (craftKind === 'workbench') {
-    // Bench work: short, busy taps over the surface.
-    const u = (rig.nowMs % 900) / 900;
-    swingOffset = 0.32 + Math.sin(u * Math.PI * 2) * 0.2;
-    reach = (0.27 + 0.035 * Math.sin(u * Math.PI * 4)) * s;
-    lean = 0.03 * Math.sin(u * Math.PI * 2 + 0.8) * Math.sign(fx || 1);
-  }
+  // THE WORK LIVES IN THE WORLD (work.ts, docs/work-cycles-plan.md):
+  // every work cycle — the gather swings, the dairy pull, the station
+  // crafts — resolves through the one world-space engine: yaw, radius,
+  // height, and tool-PITCH tracks authored off the WORK BEARING (the
+  // square-up heading the renderer aims at the worked tile), mirrored
+  // across it by the BIT-LEADS predicate (workSideOf ≡ the cos(dir)
+  // test in drawHeldItem — keep them identical or edge/poll desync
+  // returns), and projected through WIELD_GROUND_K. The resolved
+  // frame carries both fists, the tool rod's angle+fore, the
+  // business-end tip the impact FX spawn at, the torso lean
+  // (projected by the bearing's screen-x, so camera-line workers bow
+  // instead of picking an arbitrary side), and the world depth THE
+  // SWEEP EARNS ITS LAYER reads — an away-facing chop works honestly
+  // behind the body's silhouette. The old screen-circle cycles
+  // (swingOffset + radial reach on the flat card) died here.
+  // EVERY RIG SPEAKS ITS OWN WORK — the voice (worklab's verdict made
+  // law): the flesh frame's overhead haul parked the axe across the
+  // gnoll's muzzle and laid the pick over the kobold's skull, so each
+  // dialect caps its raises, clears its face sideways when the tool
+  // is up, settles toward its own hand ring, and answers with the
+  // lean its spine has left. Parameters into the one engine — never a
+  // fork of the choreography.
+  const workVoice: WorkVoice = gno
+    ? { raiseK: 0.55, reachK: 1.06, clearYaw: 0.5, dropS: 0.04, leanK: 0.8 }
+    : skr
+      ? { raiseK: 0.6, reachK: 1, clearYaw: 0.45, dropS: 0.03, leanK: 0.8 }
+      : gob
+        ? { raiseK: 0.7, reachK: 0.96, clearYaw: 0.35, dropS: 0.02, leanK: 0.9 }
+        : kob
+          ? { raiseK: 0.6, reachK: 1, clearYaw: 0.55, dropS: 0.03, leanK: 0.9 }
+          : ogr
+            ? { raiseK: 0.85, reachK: 1.1, clearYaw: 0.15, dropS: 0, leanK: 0.7 }
+            : gol
+              ? { raiseK: 0.9, reachK: 1.05, clearYaw: 0.1, dropS: 0, leanK: 0.6 }
+              : WORK_VOICE_NEUTRAL;
+  const workRes = workKind
+    ? resolveWork(workKind, workCycleU(workKind, rig.nowMs), rig.dir, rig.nowMs, workVoice)
+    : null;
+  if (workRes) lean = workRes.lean;
   // THE ARM RING RIDES THE SQUASH (arms-v3 Phase 1, the one flagged
   // pixel change): shoulderY has always compensated the fake-3D width
   // squash with hScale — the torso reads TALLER when it narrows at the
@@ -6572,7 +6405,13 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   const aim = projectAim(rig.dir);
   let mainX: number;
   let mainY: number;
-  if (thrustR !== null) {
+  if (workRes) {
+    // THE WORK LIVES IN THE WORLD: the fist rides the resolved work
+    // frame — the same projected geometry the tool rod, the tip, and
+    // the impact FX read, at every heading by construction.
+    mainX = rig.x + workRes.fistDX * s * wS;
+    mainY = armY + workRes.fistDY * s;
+  } else if (thrustR !== null) {
     mainX = rig.x + aim.px * thrustR * s * wS;
     mainY = armY + aim.py * thrustR * s + finLiftS * s;
   } else if (ice) {
@@ -6588,10 +6427,6 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   } else {
     mainX = rig.x + Math.cos(mainAngle) * reach * wS;
     mainY = armY + Math.sin(mainAngle) * reach;
-    // Foraging reaches DOWN into the plant regardless of facing.
-    if (foraging) mainY += forageDrop * s;
-    // Milking pulls DOWN on its half of the beat at every facing.
-    if (milking) mainY += milkDropMain * s;
   }
   // The free hand hangs relaxed by the hip opposite the weapon hand;
   // during swings/casts it rides the counterbalance circle instead.
@@ -6627,35 +6462,14 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // weight of the ram (or of the icepick drive).
     offX = rig.x - fx * 0.17 * s * wS;
     offY = armY + 0.09 * s;
-  } else if (chopping || mining) {
-    // Two-handed grip: the free hand chokes up the haft behind the
-    // striking hand — further down for the heavier pick.
-    const choke = mining ? 0.2 : 0.16;
-    offX = mainX - Math.cos(mainAngle) * choke * s;
-    offY = mainY - Math.sin(mainAngle) * choke * s + 0.03 * s;
-  } else if (foraging) {
-    // The steadying hand: planted low in the foliage off the working
-    // axis, holding the stems still while the main hand plucks — it
-    // barely moves, just a slow breath of grip-shifting.
-    const steadyAngle = rig.dir - 0.42;
-    offX = rig.x + Math.cos(steadyAngle) * 0.23 * s * wS;
-    offY = armY + Math.sin(steadyAngle) * 0.23 * s + (0.11 + Math.sin(rig.nowMs * 0.0021) * 0.012) * s;
-  } else if (milking) {
-    // The other hand works the off-beat: planted just off the working
-    // axis, pulling opposite the main hand's rhythm.
-    const milkAngle = rig.dir - 0.34;
-    offX = rig.x + Math.cos(milkAngle) * 0.27 * s * wS;
-    offY = armY + Math.sin(milkAngle) * 0.27 * s + milkDropOff * s;
-  } else if (craftKind === 'anvil') {
-    // Tongs hand: planted toward the anvil, holding the work steady
-    // while the hammer arm does everything else.
-    const tongsAngle = rig.dir - 0.32;
-    offX = rig.x + Math.cos(tongsAngle) * 0.31 * s * wS;
-    offY = armY + Math.sin(tongsAngle) * 0.31 * s + 0.04 * s;
-  } else if (craftKind === 'furnace') {
-    // Both hands carry the charge into the mouth together.
-    offX = mainX - Math.sin(rig.dir) * 0.13 * s;
-    offY = mainY + Math.cos(rig.dir) * 0.13 * s * 0.5 + 0.02 * s;
+  } else if (workRes) {
+    // The off hand rides the resolved work frame: choked on the haft
+    // behind the striking fist, planted steady (the tongs hand, the
+    // stem-steadier), teamed on the carry, or pulling the off-beat of
+    // the alternation — the spec's off-hand mode decides, projected
+    // through the same geometry as everything else.
+    offX = rig.x + workRes.offDX * s * wS;
+    offY = armY + workRes.offDY * s;
   } else if (meleeStage === -1 && rig.pose !== PoseState.Cast) {
     offX = rig.x - Math.cos(mainAngle) * 0.15 * s * wS;
     offY = armY + 0.13 * s;
@@ -6682,6 +6496,15 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // heldAngle's writers #1 and #2 is now a single resolved input to
   // the assembly below.
   const strikeHeld = ((): { angle: number; fore: number } => {
+    if (workRes && workKind && WORK_BOOK[workKind].tipS > 0) {
+      // THE TOOL IS A 3D ROD (work.ts): the axe, the pick, and the
+      // smith's hammer ride the work engine's pitch track projected
+      // through projectCarry — tip flung up-behind at the windup,
+      // driving down-forward into the work — instead of lying rigid
+      // along the arm ray. Bare-hand kinds fall through (nothing is
+      // held; the blend-out of a sheathing tool keeps the arm ray).
+      return { angle: workRes.toolAngle, fore: workRes.toolFore };
+    }
     if (strikeRes) {
       // THE CUT LIVES IN THE WORLD: blade angle and foreshortening
       // come out of the same resolved arc the fist rides — the wrist
@@ -7907,7 +7730,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // deterministic in the sweep (one crossing per arc, at the station
   // where the steel is most foreshortened), so it needs no hysteresis.
   const strikeSweepBehind = strikeRes !== null && strikeRes.depthSin < -0.32;
-  const weaponBehind = (awayDeep && !greatRestFront && strikeRes === null) || strikeSweepBehind;
+  // THE WORK EARNS ITS LAYER too: an away-facing chop, heave, or
+  // hammer blow carries its tool and striking pair behind the torso —
+  // the work engine's depthSin, same law as the sweep's.
+  const workBehind = workRes !== null && workRes.depthSin < -0.32;
+  const weaponBehind =
+    (awayDeep && !greatRestFront && strikeRes === null) || strikeSweepBehind || workBehind;
   const cuff = bodySt?.sleeves === 'full' ? sleeve : undefined;
   const paintOffArm = (seg?: 'under' | 'over'): void => {
     // DUAL WIELD: the off blade is the real weapon, carried by the off
@@ -8304,10 +8132,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ctx.fillStyle = `rgba(255, 236, 180, ${glow * 0.85})`;
       ctx.fillRect(0.13 * s, -0.016 * s, 0.1 * s, 0.032 * s);
       ctx.restore();
-      // The smith's hammer in the striking hand.
+      // The smith's hammer in the striking hand — rotated by the work
+      // engine's projected haft (heldAngle), never the bare arm ray.
       ctx.save();
       ctx.translate(mainX, mainY);
-      ctx.rotate(mainAngle);
+      ctx.rotate(heldAngle);
       ctx.fillStyle = '#7a552e';
       ctx.beginPath();
       ctx.roundRect(-0.06 * s, -0.02 * s, 0.3 * s, 0.04 * s, 0.015 * s);
@@ -8334,6 +8163,49 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ctx.beginPath();
       chamferRect(ctx, cx2 - 0.08 * s, cy2 - 0.065 * s, 0.16 * s, 0.045 * s, 0.015 * s);
       ctx.fill();
+      return;
+    }
+    if (craftKind === 'fire') {
+      // The cook's ladle — long stem into a dark cup riding the stir,
+      // a wet gleam of broth in the bowl. The empty-handed pot
+      // pantomime dies here (docs/work-cycles-plan.md Phase 3).
+      ctx.save();
+      ctx.translate(mainX, mainY);
+      ctx.rotate(heldAngle);
+      ctx.strokeStyle = '#6d4a26';
+      ctx.lineWidth = Math.max(2, s * 0.035);
+      ctx.beginPath();
+      ctx.moveTo(-0.04 * s, 0);
+      ctx.lineTo(0.26 * s, 0);
+      ctx.stroke();
+      ctx.fillStyle = '#4a4554';
+      ctx.beginPath();
+      ctx.ellipse(0.3 * s, 0, 0.058 * s, 0.042 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 206, 128, 0.85)';
+      ctx.beginPath();
+      ctx.ellipse(0.3 * s, -0.008 * s, 0.038 * s, 0.024 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+    if (craftKind === 'workbench') {
+      // The joiner's mallet — pale wood barrel head on a light haft,
+      // unmistakably NOT the smith's steel. Rides the tap-tap beat.
+      ctx.save();
+      ctx.translate(mainX, mainY);
+      ctx.rotate(heldAngle);
+      ctx.fillStyle = '#7a552e';
+      ctx.beginPath();
+      ctx.roundRect(-0.05 * s, -0.016 * s, 0.24 * s, 0.032 * s, 0.012 * s);
+      ctx.fill();
+      ctx.fillStyle = '#b08a52';
+      ctx.beginPath();
+      chamferRect(ctx, 0.14 * s, -0.062 * s, 0.09 * s, 0.124 * s, 0.024 * s);
+      ctx.fill();
+      ctx.fillStyle = '#c9a86b';
+      ctx.fillRect(0.15 * s, -0.05 * s, 0.07 * s, 0.036 * s);
+      ctx.restore();
       return;
     }
     if (!weapon) return;

@@ -60,18 +60,14 @@ import { farmApiaries, farmBins, farmJobs, farmPlots, farmTroughs, predictedGrad
 import { shortestAngle } from '../net/interpolation.js';
 import type { ClientGame } from '../game/clientGame.js';
 import { WORD_LIFE_MS } from '../game/clientGame.js';
+import { WORK_BOOK, resolveWork, workCycleN, workCycleU, type WorkKind } from './work.js';
 import {
-  ANVIL_CYCLE_MS,
   CATTLE_LOOKS,
-  CHOP_CYCLE_MS,
-  FORAGE_CYCLE_MS,
-  FURNACE_CYCLE_MS,
   COURSER_LOOKS,
   COURSER_SADDLE,
   SABERCAT_LOOKS,
   saddleFor,
   LegSolver,
-  MINE_CYCLE_MS,
   beastSpec,
   mountSpec,
   drawBackGear,
@@ -804,8 +800,12 @@ interface AnimState {
    * visible here instead of being mutated onto a `{mainBehind}` lie.
    */
   armDepth?: NonNullable<RigPose['depthMemory']>;
-  /** Last chop cycle that spawned impact chips (gathering). */
+  /** Last work cycle that spawned impact chips (gathering/stations). */
   lastChopHit?: number;
+  /** THE WORK HAS A BEARING: the slewed square-up heading toward the
+   *  worked tile, eased here so the turn-to-work never snaps. */
+  workDir?: number;
+  workDirMs?: number;
   /** Leg-rig plant counter at the last frame — footstep event diffing. */
   lastPlants?: number;
   /** Smoothed 0..1 travel activity — leg-less bodies (slimes, snakes)
@@ -2335,6 +2335,35 @@ export class Renderer {
    * reading this — lids glide open, fires flare, beams work harder.
    */
   private readonly stationHeat = new Map<number, number>();
+
+  /** THE IMPACT IS ONE TRUTH: the last hammer-clang instant per
+   *  station tile — the anvil painter's white flash and spark fan
+   *  latch to the swung hammer's own beat, never a private sine. */
+  readonly stationClang = new Map<number, number>();
+
+  /** Struck-node timestamps: a worked tree, rock, or bush shivers for
+   *  a beat when the tool lands — the world answers the blow. */
+  private readonly nodeImpacts = new Map<number, number>();
+
+  /** Record an impact on a worked node tile. */
+  nodeStruck(tx: number, ty: number): void {
+    this.nodeImpacts.set(packTile(tx, ty), performance.now());
+    if (this.nodeImpacts.size > 64) {
+      const cut = performance.now() - 1000;
+      for (const [k, t] of this.nodeImpacts) if (t < cut) this.nodeImpacts.delete(k);
+    }
+  }
+
+  /** Screen-x jitter (±1) for a struck node — a damped ring that dies
+   *  inside a quarter second. Zero when the tile is at rest. */
+  private nodeShiverAt(tx: number, ty: number): number {
+    const t0 = this.nodeImpacts.get(packTile(tx, ty));
+    if (t0 === undefined) return 0;
+    const age = performance.now() - t0;
+    if (age < 0 || age > 240) return 0;
+    const k = 1 - age / 240;
+    return Math.sin(age * 0.085) * k * k;
+  }
 
   /** The open station panel's anchor tile (set per frame by main.ts). */
   stationFocus: { tx: number; ty: number } | null = null;
@@ -22682,7 +22711,20 @@ export class Renderer {
           // goes through the per-frame outline pass.
           body: grow < 1 ? this.treeBody(tile, h, p.x, p.y) : undefined,
           drawShadow: () => this.drawTreeShadow(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, grow),
-          draw: () => this.drawTree(p.x, p.y, tx + 0.5, ty + 0.5, h, tile, t, undefined, grow),
+          // A struck trunk answers the axe: a damped screen-x ring on
+          // the whole sprite for a quarter second after each bite.
+          draw: () =>
+            this.drawTree(
+              p.x + this.nodeShiverAt(tx, ty) * s * 0.028,
+              p.y,
+              tx + 0.5,
+              ty + 0.5,
+              h,
+              tile,
+              t,
+              undefined,
+              grow,
+            ),
         };
       }
 
@@ -22741,7 +22783,18 @@ export class Renderer {
             ? undefined
             : { x: p.x - s * 1.2, y: p.y - s * 1.5, w: s * 2.4, h: s * 2.1 },
           drawShadow: () => this.castRockShadow(p.x, p.y, tile, h, crowded),
-          draw: () => this.drawRockFormation(p.x, p.y, s, h, tile, t, crowded),
+          // Struck stone barely gives — a tighter, smaller ring than
+          // the tree's whip: mass answers, it doesn't sway.
+          draw: () =>
+            this.drawRockFormation(
+              p.x + this.nodeShiverAt(tx, ty) * s * 0.012,
+              p.y,
+              s,
+              h,
+              tile,
+              t,
+              crowded,
+            ),
         };
       }
 
@@ -50954,12 +51007,17 @@ export class Renderer {
             }
             // WORKING THE METAL: while someone hammers, the bar
             // flashes white on each strike beat and throws a fan of
-            // sparks off the face — the strike you hear, seen.
+            // sparks off the face — the strike you hear, seen. THE
+            // IMPACT IS ONE TRUTH: the beat is the swung hammer's own
+            // clang instant (stationClang, latched by the smith's
+            // impact gate) — the seen strike and the swung hammer can
+            // no longer drift apart on separate clocks.
             const act = this.stationHeat.get(packTile(tx, ty)) ?? 0;
-            if (act > 0.04) {
-              const cyc = t * 1.7 + h * 0.3;
-              const beat = cyc % 1;
-              const seed = hashCoords(211 + (Math.floor(cyc) % 8), tx, ty);
+            const clangMs = this.stationClang.get(packTile(tx, ty));
+            if (act > 0.04 && clangMs !== undefined) {
+              const sinceS = (performance.now() - clangMs) / 1000;
+              const beat = Math.min(1, sinceS / 0.42);
+              const seed = hashCoords(211 + (Math.floor(clangMs / 64) % 8), tx, ty);
               if (beat < 0.16) {
                 const flash = (1 - beat / 0.16) * act;
                 ctx.save();
@@ -53510,6 +53568,24 @@ export class Renderer {
     // Milking: square up to the animal being worked, same as a node.
     const milkCow = e.pose === PoseState.Milk ? this.findMilkTarget(e.x, e.y) : null;
     if (milkCow) dir = Math.atan2(milkCow.y - e.y, milkCow.x - e.x);
+    // THE WORK HAS A BEARING, and the body TURNS to it: the square-up
+    // used to overwrite the facing the frame the pose flipped — a
+    // walking body snapping a quarter-turn in one frame. The bearing
+    // now slews through a short critically-damped ease (the beat of a
+    // head-check before the first swing); leaving work forgets it.
+    if (site || gather || station || milkCow) {
+      const prev = anim.workDir;
+      if (prev === undefined) {
+        anim.workDir = e.dir + shortestAngle(e.dir, dir) * 0.12;
+      } else {
+        const dtW = Math.min(100, now - (anim.workDirMs ?? now));
+        anim.workDir = prev + shortestAngle(prev, dir) * (1 - Math.exp(-dtW / 70));
+      }
+      anim.workDirMs = now;
+      dir = anim.workDir!;
+    } else {
+      anim.workDir = undefined;
+    }
     // A rider faces the way the beast carries them — never the mouse.
     if (riding && beastPose && rideE > 0.5) dir = beastPose.dir;
 
@@ -53798,14 +53874,23 @@ export class Renderer {
       },
       draw: () => {
         const ctx = this.ctx;
-        // Tool impacts: debris flies off the node at each strike beat,
-        // timed to the tool's own cycle.
+        // Tool impacts — THE IMPACT IS ONE TRUTH (work.ts): every
+        // gate reads the book's own cycle and impact beat — the same
+        // table the rig swings on — latching once per beat. Material
+        // bursts stay anchored on the NODE (chips are the node's own
+        // matter); the smith's sparks ring at the RESOLVED HAMMER
+        // FACE; struck nodes shiver.
         const toolType = itemDef(e.equip.tool ?? '')?.tool?.type;
+        const impactBeat = (kind: WorkKind): boolean => {
+          const at = WORK_BOOK[kind].impactAt;
+          if (at === null) return false;
+          const cycle = workCycleN(kind, now, lifeMs);
+          if (workCycleU(kind, now, lifeMs) < at || anim.lastChopHit === cycle) return false;
+          anim.lastChopHit = cycle;
+          return true;
+        };
         if (gather && gather.kind === 'tree' && toolType === 'axe') {
-          const cycle = Math.floor((performance.now() + lifeMs) / CHOP_CYCLE_MS);
-          const u = ((performance.now() + lifeMs) % CHOP_CYCLE_MS) / CHOP_CYCLE_MS;
-          if (u >= 0.54 && anim.lastChopHit !== cycle) {
-            anim.lastChopHit = cycle;
+          if (impactBeat('chop')) {
             const chipX = gather.tx + 0.5 - Math.cos(dir) * 0.38;
             const chipY = gather.ty + 0.5 - Math.sin(dir) * 0.38;
             this.particles.burst(chipX, chipY, 7, ['#a5793f', '#c9b083', '#8a6a45'], {
@@ -53816,13 +53901,11 @@ export class Renderer {
               dir: dir + Math.PI,
               spread: 1.3,
             });
+            this.nodeStruck(gather.tx, gather.ty);
             this.onGatherImpact?.('tree', gather.tx + 0.5, gather.ty + 0.5, e.isOwn === true);
           }
         } else if (gather && gather.kind === 'rock' && toolType === 'pickaxe') {
-          const cycle = Math.floor((performance.now() + lifeMs) / MINE_CYCLE_MS);
-          const u = ((performance.now() + lifeMs) % MINE_CYCLE_MS) / MINE_CYCLE_MS;
-          if (u >= 0.54 && anim.lastChopHit !== cycle) {
-            anim.lastChopHit = cycle;
+          if (impactBeat('mine')) {
             const chipX = gather.tx + 0.5 - Math.cos(dir) * 0.42;
             const chipY = gather.ty + 0.5 - Math.sin(dir) * 0.42;
             // Stone chips off the face...
@@ -53846,16 +53929,14 @@ export class Renderer {
               up: true,
               spread: 2,
             });
+            this.nodeStruck(gather.tx, gather.ty);
             this.onGatherImpact?.('rock', gather.tx + 0.5, gather.ty + 0.5, e.isOwn === true);
           }
         } else if (gather && gather.kind === 'forage') {
           // The pluck beat: leaves shiver loose as the stem snaps,
           // colored by the plant itself, with a drift of its payload
           // accent — soft debris, never chips of wood or stone.
-          const cycle = Math.floor((performance.now() + lifeMs) / FORAGE_CYCLE_MS);
-          const u = ((performance.now() + lifeMs) % FORAGE_CYCLE_MS) / FORAGE_CYCLE_MS;
-          if (u >= 0.44 && anim.lastChopHit !== cycle) {
-            anim.lastChopHit = cycle;
+          if (impactBeat('forage')) {
             const nodeTile = this.game?.world.groundAt(gather.tx, gather.ty);
             const pal =
               nodeTile === Tile.BerryBush
@@ -53876,16 +53957,19 @@ export class Renderer {
               dir: dir + Math.PI,
               spread: 1.6,
             });
+            this.nodeStruck(gather.tx, gather.ty);
             this.onGatherImpact?.('forage', gather.tx + 0.5, gather.ty + 0.5, e.isOwn === true);
           }
         } else if (station?.kind === 'anvil') {
-          const cycle = Math.floor((performance.now() + lifeMs) / ANVIL_CYCLE_MS);
-          const u = ((performance.now() + lifeMs) % ANVIL_CYCLE_MS) / ANVIL_CYCLE_MS;
-          if (u >= 0.42 && anim.lastChopHit !== cycle) {
-            anim.lastChopHit = cycle;
-            // Sparks ring off the billet between smith and anvil.
-            const sx = e.x + Math.cos(dir) * 0.42;
-            const sy = e.y + Math.sin(dir) * 0.42;
+          if (impactBeat('anvil')) {
+            // Sparks ring off the RESOLVED HAMMER FACE — the same
+            // world geometry the rig swings — and the station's flash
+            // latches to this very clang (tickStationHeat's painters
+            // used to beat on a private sine).
+            const rw = resolveWork('anvil', WORK_BOOK.anvil.impactAt!, dir, now + lifeMs);
+            const sx = e.x + rw.tipGX;
+            const sy = e.y + rw.tipGY;
+            this.stationClang.set(packTile(station.tx, station.ty), now);
             this.particles.burst(sx, sy, 9, ['#fff3c9', '#ffd77a', '#ff9a3d'], {
               speed: 3,
               life: 0.38,
@@ -53898,10 +53982,7 @@ export class Renderer {
             this.onGatherImpact?.('anvil', sx, sy, e.isOwn === true);
           }
         } else if (station?.kind === 'furnace') {
-          const cycle = Math.floor((performance.now() + lifeMs) / FURNACE_CYCLE_MS);
-          const u = ((performance.now() + lifeMs) % FURNACE_CYCLE_MS) / FURNACE_CYCLE_MS;
-          if (u >= 0.42 && anim.lastChopHit !== cycle) {
-            anim.lastChopHit = cycle;
+          if (impactBeat('furnace')) {
             // The mouth flares and a swarm of embers climbs the draft.
             const fx2 = station.tx + 0.5;
             const fy2 = station.ty + 0.6;

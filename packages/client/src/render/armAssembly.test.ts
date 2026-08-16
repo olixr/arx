@@ -25,10 +25,10 @@ const SRC = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'rig.ts')
 /** The fenced arm channels and their PINNED writer counts. */
 const CENSUS: Record<string, number> = {
   heldAngle: 8, // strike resolve · rest lerp · wrist-follow ×2 · cast · bellows fill+throw (THE GIANT CAST) · sheathe
-  mainX: 16, // pose/work targets · rest · pump/sway/breath · seat · cast · draw · sheathe · strike arc (THE CUT LIVES IN THE WORLD)
-  mainY: 18,
-  offX: 23, // the widest channel: every stage owns the free hand somewhere
-  offY: 23,
+  mainX: 17, // work frame (THE WORK LIVES IN THE WORLD) · pose targets · rest · pump/sway/breath · seat · cast · draw · sheathe · strike arc
+  mainY: 17, // (the old per-branch forage/milk drops died with the work engine)
+  offX: 19, // work frame folded six off-hand branches (chop/mine, forage, milk, tongs, furnace) into ONE resolved write
+  offY: 19,
   offAngle: 2, // counter-swing init (world engine) · echo brace
   offBladeAngle: 5, // guard init · echo · rest · flourish path · sheathe
   mainFore: 4, // strike resolve · rest lerp · cast present (Phase 3) · bellows throw
