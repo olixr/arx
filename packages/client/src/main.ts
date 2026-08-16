@@ -36,6 +36,7 @@ import { MapOverlay } from './ui/map/mapOverlay.js';
 import { WaypointHud } from './ui/waypointHud.js';
 import { PartyHud } from './ui/partyHud.js';
 import { showDiscovery } from './ui/discoveryBanner.js';
+import { showPoiCleared } from './ui/victoryBanner.js';
 import { QuestLog } from './ui/questLog.js';
 import { KeyRingPanel } from './ui/keyRing.js';
 import { RepScreen } from './ui/repScreen.js';
@@ -63,6 +64,8 @@ import { installTokens } from './ui/kit/tokens.js';
 import { installScale, setUiSize, uiSize, UI_SIZES } from './ui/kit/scale.js';
 import { bigButton, dressPanel } from './ui/panel.js';
 import { SignHud } from './ui/signs.js';
+import { TrophyHud } from './ui/trophyPlaque.js';
+import { TROPHY_DROP_MS } from './render/trophyBanner.js';
 import { SpeechBubbles } from './ui/speechBubbles.js';
 import { PetNamingCard } from './ui/petNaming.js';
 import { LookCreator } from './ui/lookCreator.js';
@@ -1719,6 +1722,32 @@ const game = new ClientGame(input, {
     renderer.addRing(pos.x, pos.y, '#f2c94c', 1.3);
     renderer.zoomPulse(0.035);
   },
+  onPoiCleared: (e) => {
+    // THE CHAMPION'S MARK: the full-screen CLEARED — participation is
+    // the one trigger (the banner broadcast only stakes the prop).
+    // Chat line BEFORE the herald (the discovery law: pin the log's
+    // scroll before the ceremony insert dirties layout).
+    chat.addLine({
+      channel: 'system',
+      text:
+        e.by.length > 0
+          ? `${e.name} cleared — the banner bears ${e.by.length === 1 ? `${e.by[0]}'s name` : 'their names'} until the land turns.`
+          : `${e.name} cleared — the mark is staked.`,
+    });
+    showPoiCleared(e);
+    sfx.questComplete();
+    const pos = game.predictor.pos;
+    renderer.addRing(pos.x, pos.y, '#e2b356', 1.5);
+    renderer.zoomPulse(0.045);
+    input.rumble(0.3, 0.5, 200);
+  },
+  onTrophyStaked: (t) => {
+    // The stake's THUD, timed to the visual impact (the drop is a
+    // fixed analytic clock) and heard from where the standard lands.
+    window.setTimeout(() => {
+      sfx.spatial({ x: t.x, y: t.y }, 'far', () => sfx.demolishCrash(true));
+    }, TROPHY_DROP_MS);
+  },
   onQuestEvent: (e) => {
     // The five beats: banner + call + a ring at your feet (completion
     // only) + one honest chat line naming the hotkey. Ceremony fires
@@ -1919,6 +1948,7 @@ const repScreen = new RepScreen(game);
 // Signage: the approach plaque over every board, and the sheet that
 // opens when you stop to read one properly.
 const signHud = new SignHud(game);
+const trophyHud = new TrophyHud();
 
 // THE SPOKEN AIR: every line said aloud in the world — chat, barks,
 // refusals, cries — stands up as a bubble over its speaker's head.
@@ -3516,8 +3546,24 @@ function frame(now: number): void {
     } else {
       signHud.update(null);
     }
+    // THE CHAMPION'S MARK: the nearest standing victory banner reads
+    // its names on approach — the same passive law, the gold dialect.
+    const trophy = game.nearestTrophy();
+    if (trophy) {
+      const p = renderer.camera.worldToScreen(
+        trophy.x,
+        trophy.y,
+        window.innerWidth,
+        window.innerHeight,
+      );
+      p.y -= renderer.renderLift(trophy.x, trophy.y) * renderer.camera.scale;
+      trophyHud.update(trophy, p.x, p.y - renderer.camera.scale * 2.75);
+    } else {
+      trophyHud.update(null);
+    }
   } else {
     signHud.update(null);
+    trophyHud.update(null);
   }
 
   if (game.ownEid !== null && !uiOpen && !buildMode && !cinema.open) {

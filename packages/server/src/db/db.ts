@@ -1074,6 +1074,12 @@ const MIGRATIONS: string[] = [
     losses INT NOT NULL DEFAULT 0,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
   );`,
+  // v40: THE CHAMPION'S MARK — a broken camp remembers the hands that
+  // broke it. cleared_by is a JSON array of character names (the
+  // felling hand first, then their sworn party), written with the
+  // clear stamp and erased with it: a fresh decision, a dissolve, and
+  // healPoiCleared all take the signature down with the carcass.
+  `ALTER TABLE world_pois ADD COLUMN IF NOT EXISTS cleared_by TEXT;`,
 ];
 
 /**

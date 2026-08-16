@@ -958,13 +958,15 @@ export class AccountStore {
       stage: number;
       stageAt: number | null;
       originCell: string | null;
+      /** THE CHAMPION'S MARK: JSON array of names, raw off the row. */
+      clearedBy: string | null;
     }>
   > {
     return this.db.query(
       'SELECT cell_x AS "cellX", cell_y AS "cellY", epoch, poi_id AS "poiId", ' +
         'prefab_id AS "prefabId", tier, anchor_x AS "anchorX", anchor_y AS "anchorY", ' +
         'cleared_at AS "clearedAt", ember_until AS "emberUntil", fallow_until AS "fallowUntil", ' +
-        'stage, stage_at AS "stageAt", origin_cell AS "originCell" ' +
+        'stage, stage_at AS "stageAt", origin_cell AS "originCell", cleared_by AS "clearedBy" ' +
         'FROM world_pois',
     ) as ReturnType<AccountStore['loadPoiCells']>;
   }
@@ -1080,13 +1082,13 @@ export class AccountStore {
     originCell: string | null = null,
   ): void {
     this.db.fire(
-      'INSERT INTO world_pois (cell_x, cell_y, epoch, poi_id, prefab_id, tier, anchor_x, anchor_y, first_seen_at, cleared_at, ember_until, fallow_until, stage, stage_at, origin_cell) ' +
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, 0, NULL, ?) ' +
+      'INSERT INTO world_pois (cell_x, cell_y, epoch, poi_id, prefab_id, tier, anchor_x, anchor_y, first_seen_at, cleared_at, ember_until, fallow_until, stage, stage_at, origin_cell, cleared_by) ' +
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, 0, NULL, ?, NULL) ' +
         'ON CONFLICT (cell_x, cell_y) DO UPDATE SET epoch = excluded.epoch, ' +
         'poi_id = excluded.poi_id, prefab_id = excluded.prefab_id, tier = excluded.tier, ' +
         'anchor_x = excluded.anchor_x, anchor_y = excluded.anchor_y, cleared_at = NULL, ' +
         'ember_until = NULL, fallow_until = excluded.fallow_until, ' +
-        'stage = 0, stage_at = NULL, origin_cell = excluded.origin_cell',
+        'stage = 0, stage_at = NULL, origin_cell = excluded.origin_cell, cleared_by = NULL',
       [
         cellX,
         cellY,
@@ -1234,12 +1236,19 @@ export class AccountStore {
   /**
    * Stamp a full garrison wipe. Procedural sites carry ember_until —
    * when the broken camp will dissolve; authored landmarks pass null
-   * (they never ember, the veil has always held its den).
+   * (they never ember, the veil has always held its den). clearedBy
+   * is THE CHAMPION'S MARK: the felling hand first, then their sworn
+   * party — the names the victory banner wears until the dissolve.
    */
-  markPoiCleared(cellX: number, cellY: number, emberUntil: number | null = null): void {
+  markPoiCleared(
+    cellX: number,
+    cellY: number,
+    emberUntil: number | null = null,
+    clearedBy: readonly string[] | null = null,
+  ): void {
     this.db.fire(
-      'UPDATE world_pois SET cleared_at = ?, ember_until = ? WHERE cell_x = ? AND cell_y = ?',
-      [Date.now(), emberUntil, cellX, cellY],
+      'UPDATE world_pois SET cleared_at = ?, ember_until = ?, cleared_by = ? WHERE cell_x = ? AND cell_y = ?',
+      [Date.now(), emberUntil, clearedBy !== null && clearedBy.length > 0 ? JSON.stringify(clearedBy) : null, cellX, cellY],
     );
   }
 
@@ -1251,7 +1260,7 @@ export class AccountStore {
    */
   healPoiCleared(cellX: number, cellY: number): void {
     this.db.fire(
-      'UPDATE world_pois SET cleared_at = NULL, ember_until = NULL WHERE cell_x = ? AND cell_y = ?',
+      'UPDATE world_pois SET cleared_at = NULL, ember_until = NULL, cleared_by = NULL WHERE cell_x = ? AND cell_y = ?',
       [cellX, cellY],
     );
   }

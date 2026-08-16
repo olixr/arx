@@ -591,6 +591,7 @@ import {
   type S2CFx,
   type S2CArenaState,
   type S2CMessage,
+  type TrophyWire,
   type BuffInfo,
   type StatusApply,
   type StatusId,
@@ -2699,6 +2700,13 @@ export class GameServer {
       stageAt: number | null;
       /** Satellite camps point at their core's cell key (the family law). */
       originCell: string | null;
+      /**
+       * THE CHAMPION'S MARK: the victory banner's names (felling hand
+       * first, then their sworn party). Rides only rows with a
+       * clearedAt stamp; omitted everywhere a fresh decision stands —
+       * the banner falls with the carcass, never survives the turn.
+       */
+      clearedBy?: string[] | null;
     }
   >();
   /**
@@ -4032,6 +4040,8 @@ export class GameServer {
       // The plan is editable data — the map must chart the live truth,
       // never the client's bundled copy.
       geo: geographySnapshot(),
+      // THE CHAMPION'S MARK: every victory banner standing right now.
+      trophies: this.trophyWire(),
     });
     session.sendJson({ t: 'skills', xp: player.skills });
     session.sendJson({ t: 'recipes', known: [...player.knownRecipes] });
@@ -9650,7 +9660,7 @@ export class GameServer {
         const row = this.poiLedger.get(cellKey);
         if (!row?.site) continue;
         this.retirePoiCell(cellKey);
-        this.poiLedger.set(cellKey, { ...row, site: null, clearedAt: null, emberUntil: null });
+        this.poiLedger.set(cellKey, { ...row, site: null, clearedAt: null, emberUntil: null, clearedBy: null });
         this.accounts.recordPoiCell(cx, cy, row.epoch, null);
         console.log(`[stronghold] ${key}: cell ${cellKey} yields its ground to the capital`);
       }
@@ -10065,6 +10075,7 @@ export class GameServer {
         stage: row.stage,
         stageAt: row.stageAt,
         originCell: row.originCell,
+        clearedBy: GameServer.parseClearedBy(row.clearedBy),
       });
     }
     console.log(
@@ -10779,6 +10790,11 @@ export class GameServer {
         this.frontierCredits++;
         this.accounts.saveFrontierCredits(this.frontierCredits);
       }
+      // THE CHAMPION'S MARK falls with the carcass: the dissolve is
+      // dignity-gated (nobody within FRONTIER.dignityTiles), so no
+      // player ever watches the banner blink out — travelers find the
+      // meadow, and the names have honestly moved into memory.
+      if (cleared) this.broadcastTrophies();
       if (hadHaven) this.rebuildHavens();
       console.log(
         `[frontier] ${movedOn ? 'moved on' : cleared ? 'ember out' : 'scattered'}: ` +
@@ -11905,6 +11921,55 @@ export class GameServer {
     this.habitatFinds.delete(`${ref.key}#${ref.slot}`);
   }
 
+  /** THE CHAMPION'S MARK: a stored signature, defensively parsed. */
+  private static parseClearedBy(raw: string | null | undefined): string[] | null {
+    if (raw === null || raw === undefined || raw === '') return null;
+    try {
+      const arr: unknown = JSON.parse(raw);
+      if (!Array.isArray(arr)) return null;
+      const names = arr.filter((n): n is string => typeof n === 'string' && n.length > 0);
+      return names.length > 0 ? names : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * THE CHAMPION'S MARK roster: one victory banner per cleared
+   * procedural site still holding its ember. Derived from the ledger
+   * at send time (the stage-pip law) — a restart re-stands every
+   * banner beside its carcass for free.
+   */
+  private trophyWire(): TrophyWire[] {
+    const list: TrophyWire[] = [];
+    for (const [key, row] of this.poiLedger) {
+      if (row.site === null || row.clearedAt === null) continue;
+      const def = POI_DEFS.get(row.site.defId);
+      list.push({
+        id: key,
+        x: row.site.anchorX,
+        y: row.site.anchorY,
+        name: def?.name ?? row.site.defId,
+        by: row.clearedBy ?? [],
+        at: row.clearedAt,
+        tier: row.site.tier,
+      });
+    }
+    return list;
+  }
+
+  /**
+   * The banner roster changed — every soul on the shard sees it (the
+   * havens dialect: whole-list replace, small by construction). The
+   * fresh id is the ceremony cue: that banner flies in and stakes.
+   */
+  private broadcastTrophies(fresh?: string): void {
+    const wire: S2CMessage = { t: 'trophies', list: this.trophyWire(), ...(fresh !== undefined ? { fresh } : {}) };
+    for (const s of this.sessions) {
+      if (s.playerEid !== null) s.sendJson(wire);
+    }
+  }
+
   private notePoiKill(spawnIndex: number, killerEid?: EntityId): void {
     const key = this.poiSpawnCells.get(spawnIndex);
     if (key === undefined) return;
@@ -11917,6 +11982,9 @@ export class GameServer {
     const [cx, cy] = key.split(',').map(Number);
     const row = this.poiLedger.get(key);
     const authored = this.authoredCells();
+    // Non-null exactly when this wipe staked a victory banner (the
+    // procedural branch below) — the ceremony and broadcast key on it.
+    let champions: string[] | null = null;
     if (authored.has(key)) {
       // THE AUTHORED GROUND NEVER EMBERS: a wipe here buys the live
       // grace window and nothing else — no cleared stamp, in memory or
@@ -11936,6 +12004,20 @@ export class GameServer {
     } else {
       if (row) row.clearedAt = Date.now();
       this.standDownGarrison(live.spawnIdx);
+      // THE CHAMPION'S MARK: the felling hand signs the banner first,
+      // then every sworn fellow — party membership is the signature
+      // (the participation ledger below still pays every hand that
+      // bled the garrison; only the fellowship's names ride the land).
+      const slayer = killerEid !== undefined ? this.players.get(killerEid) : undefined;
+      champions = [];
+      if (slayer) {
+        champions.push(slayer.name);
+        for (const fid of this.party.fellowsOf(slayer.characterId)) {
+          const n = this.accounts.characterName(fid);
+          if (n !== null) champions.push(n);
+        }
+      }
+      if (row) row.clearedBy = champions.length > 0 ? champions : null;
       // A felled WAR-GROUND savors longer (Phase 4): the five-minute
       // clear earns the fifteen-minute trophy.
       const isHold = row?.site !== null && POI_DEFS.get(row?.site?.defId ?? '')?.compound;
@@ -11945,7 +12027,7 @@ export class GameServer {
           ? holdEmberFor(config.worldSeed, cx!, cy!, row?.epoch ?? 0)
           : emberLingerFor(config.worldSeed, cx!, cy!, row?.epoch ?? 0));
       if (row) row.emberUntil = emberUntil;
-      this.accounts.markPoiCleared(cx!, cy!, emberUntil);
+      this.accounts.markPoiCleared(cx!, cy!, emberUntil, champions);
     }
     // THE RELAX WINDOW: every garrison wipe buys the valley real quiet —
     // no stage-ups, satellites, wakes, or renewal landings near here
@@ -12017,6 +12099,18 @@ export class GameServer {
     if (def) {
       for (const [p, peid] of parts) {
         if (def.clearedFlag !== undefined) this.setPlayerFlag(p, def.clearedFlag);
+        // THE CHAMPION'S MARK ceremony: every hand that bled the
+        // garrison gets the full-screen CLEARED — participation earns
+        // the celebration even when the banner wears other names.
+        if (champions !== null && row?.site) {
+          p.session?.sendJson({
+            t: 'poicleared',
+            name: def.name,
+            by: champions,
+            tier: row.site.tier,
+            ...(peid === killerEid ? { slayer: true } : {}),
+          });
+        }
         p.session?.sendJson({
           t: 'chat',
           channel: 'system',
@@ -12042,6 +12136,9 @@ export class GameServer {
         }
       }
     }
+    // The mark is staked: the whole shard sees the roster grow, and
+    // the fresh id cues the fly-in for anyone standing near the camp.
+    if (champions !== null && row?.site) this.broadcastTrophies(key);
   }
 
   /**

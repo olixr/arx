@@ -66,6 +66,10 @@ function slate(spawns: FakeSpawn[], opts: { authored?: boolean } = {}) {
     poiSpawnFights: proto.poiSpawnFights,
     standDownGarrison: proto.standDownGarrison,
     stampCalm: proto.stampCalm,
+    // THE CHAMPION'S MARK edges: the slate has no wire and no sworn
+    // fellowships — the banner broadcast is a no-op, parties are empty.
+    party: { fellowsOf: () => [] as number[] },
+    broadcastTrophies: () => {},
     // setPlayerFlag re-answers quest availability at the choke point;
     // the slate has no quest registry, so the answer is a no-op.
     pushQuestAvail: () => {},
@@ -226,6 +230,7 @@ const proto3 = GameServer.prototype as unknown as {
 
 interface FakePlayer {
   characterId: number;
+  name: string;
   raidCalmUntil: number;
   flags: Map<string, number>;
   standing: Map<string, number>;
@@ -237,6 +242,7 @@ interface FakePlayer {
 function fakePlayer(characterId: number, msgs: string[]): FakePlayer {
   return {
     characterId,
+    name: `Hero${characterId}`,
     raidCalmUntil: 0,
     flags: new Map(),
     standing: new Map(),
@@ -416,4 +422,111 @@ test('THE HEARTH WATCH: breaking the squat stamps the settler the full quiet', (
   assert.ok(stamps[0]![1] >= before + 47 * 3_600_000, 'the full raid quiet, not the short one');
   assert.ok((owner as { raidCalmUntil?: number }).raidCalmUntil! >= before + 47 * 3_600_000);
   assert.ok(msgs.some((t) => t.includes('covetous fires go out')));
+});
+
+// ------------------------------------------------- THE CHAMPION'S MARK
+
+test("THE CHAMPION'S MARK: the felling hand signs first, then the sworn party", () => {
+  const s = slate([brigand(), brigand()]);
+  s.poiLedger.get('3,4')!.site = {
+    cellX: 3, cellY: 4, epoch: 0, tier: 2,
+    defId: 'goblin_warcamp', prefabId: 'poi_goblin_camp_ring',
+    anchorX: 448, anchorY: 576,
+  } as never;
+  const msgsA: string[] = [];
+  const msgsB: string[] = [];
+  const a = fakePlayer(101, msgsA); // the last blow
+  const b = fakePlayer(102, msgsB); // bled it, but rides no fellowship
+  const ceremonies: Array<{ to: number; by: string[]; slayer?: boolean }> = [];
+  for (const [cid, pl, sink] of [[101, a, msgsA], [102, b, msgsB]] as const) {
+    pl.session = {
+      sendJson: (m: { t: string; text?: string; by?: string[]; slayer?: boolean }) => {
+        if (m.t === 'chat' && m.text) sink.push(m.text);
+        if (m.t === 'poicleared') ceremonies.push({ to: cid, by: m.by!, slayer: m.slayer });
+      },
+    } as never;
+  }
+  const stamped: Array<string[] | null> = [];
+  let freshKey: string | undefined;
+  Object.assign(s, {
+    players: new Map([[11, a], [12, b]]),
+    positions: new Map([[11, { x: 448, y: 576 }], [12, { x: 449, y: 576 }]]),
+    characterEids: new Map([[101, 11], [102, 12]]),
+    grantArt: () => {},
+    placeDrop: () => {},
+    payBounty: () => {},
+    setPlayerFlag: proto3.setPlayerFlag,
+    // The slayer's fellowship: 102 stands sworn beside 101, and 103
+    // is a sworn fellow who never swung (offline, elsewhere) — the
+    // signature is the party, not the ledger.
+    party: { fellowsOf: (cid: number) => (cid === 101 ? [102, 103] : []) },
+    broadcastTrophies(fresh?: string) { freshKey = fresh; },
+  });
+  s.accounts = {
+    ...s.accounts,
+    markPoiCleared: (_cx: number, _cy: number, _ember: number | null, by: string[] | null = null) =>
+      stamped.push(by),
+    setFlag: () => {},
+    characterName: (cid: number) => (cid === 102 ? 'Hero102' : cid === 103 ? 'Hero103' : null),
+  } as never;
+  (s.poiLive.get('3,4') as { fighters?: Set<number> }).fighters = new Set([102]);
+  proto3.notePoiKill.call(s, 0, 11);
+  // The banner's names: slayer first, then the whole sworn party —
+  // the absent fellow included (the party is the signature).
+  const row = s.poiLedger.get('3,4')! as { clearedBy?: string[] | null };
+  assert.deepEqual(row.clearedBy, ['Hero101', 'Hero102', 'Hero103']);
+  assert.deepEqual(stamped, [['Hero101', 'Hero102', 'Hero103']]);
+  // Every participant got the ceremony; only the slayer wears the mark.
+  assert.deepEqual(
+    ceremonies.map((c) => [c.to, c.slayer === true]).sort((x, y) => (x[0] as number) - (y[0] as number)),
+    [[101, true], [102, false]],
+  );
+  // The staked banner broadcast carried the fresh cell id.
+  assert.equal(freshKey, '3,4');
+});
+
+test("THE CHAMPION'S MARK: the roster derives from the ledger, and the dissolve takes it down", () => {
+  const proto4 = GameServer.prototype as unknown as { trophyWire: WardFn };
+  const mkRow = (defId: string, clearedAt: number | null, by: string[] | null) => ({
+    epoch: 0,
+    site: {
+      cellX: 3, cellY: 4, epoch: 0, tier: 3,
+      defId, prefabId: 'poi_goblin_camp_ring',
+      anchorX: 448, anchorY: 576,
+    },
+    clearedAt,
+    emberUntil: clearedAt !== null ? clearedAt + 600_000 : null,
+    fallowUntil: null,
+    stage: 0,
+    stageAt: null,
+    originCell: null,
+    clearedBy: by,
+  });
+  const s = {
+    poiLedger: new Map([
+      ['3,4', mkRow('goblin_warcamp', 1000, ['Hero101', 'Hero102'])],
+      ['5,5', mkRow('bandit_camp', null, null)], // standing — no banner
+      ['6,6', { ...mkRow('wolfkin_den', 2000, null) }], // lever-cleared: unsigned banner
+    ]),
+  };
+  const wire = proto4.trophyWire.call(s) as Array<{
+    id: string; x: number; y: number; name: string; by: string[]; at: number; tier?: number;
+  }>;
+  assert.deepEqual(wire.map((w) => w.id).sort(), ['3,4', '6,6']);
+  const signed = wire.find((w) => w.id === '3,4')!;
+  assert.deepEqual(signed.by, ['Hero101', 'Hero102']);
+  assert.equal(signed.x, 448);
+  assert.equal(signed.y, 576);
+  assert.equal(signed.at, 1000);
+  assert.equal(signed.tier, 3);
+  assert.ok(signed.name.length > 0 && signed.name !== 'goblin_warcamp', 'the def name, not the id');
+  const unsigned = wire.find((w) => w.id === '6,6')!;
+  assert.deepEqual(unsigned.by, [], 'a lever clear stands an unsigned banner');
+  // The dissolve resets the row — the banner falls with the carcass.
+  s.poiLedger.set('3,4', {
+    epoch: 1, site: null, clearedAt: null, emberUntil: null,
+    fallowUntil: 5000, stage: 0, stageAt: null, originCell: null, clearedBy: null,
+  } as never);
+  const after = proto4.trophyWire.call(s) as Array<{ id: string }>;
+  assert.deepEqual(after.map((w) => w.id), ['6,6']);
 });

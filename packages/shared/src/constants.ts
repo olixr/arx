@@ -198,6 +198,14 @@
 // are ordinary bodies, barks are ordinary speech. A missing stakes
 // board is a missing nicety, not a wrong world (the v26 judgment,
 // answered the other way).
+// THE CHAMPION'S MARK — still v33, recorded on purpose: S2CTrophies /
+// S2CPoiCleared join the catalog and S2CWelcome grows the optional
+// `trophies` roster, additive JSON end to end. An old client drops
+// the unknown records and merely misses the victory banner, its
+// plaque, and the full-screen ceremony — the broken camp itself, the
+// system chat line, and every payout still read true. A missing
+// celebration is a missing nicety, not a wrong world (the arena
+// judgment, held again).
 export const PROTOCOL_VERSION = 33;
 
 /** The most souls one party can hold. */

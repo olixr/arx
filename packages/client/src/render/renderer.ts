@@ -169,7 +169,20 @@ import { dust } from './matter/dust.js';
 import { fire } from './matter/fire.js';
 import { frost } from './matter/frost.js';
 import { storm } from './matter/storm.js';
+import { radiance } from './matter/radiance.js';
 import { asMatter } from './matter/index.js';
+import {
+  TrophyCloth,
+  makeTrophySpine,
+  makeTrophyTassel,
+  trophyDrop,
+  trophyClothPin,
+  trophyTasselPin,
+  drawTrophyBanner,
+  drawTrophyShadow,
+  TROPHY_POLE_H,
+  type Pt as TrophyPt,
+} from './trophyBanner.js';
 import { speakBreath } from './breathFx.js';
 import { StatusEdges, statusLanding, STATUS_INK, STATUS_VIGNETTE_RGB } from './statusFx.js';
 import type { MatterCtx } from './matter/types.js';
@@ -4306,6 +4319,9 @@ export class Renderer {
     // north of you rises BEHIND your body, a bar south of you rises
     // in front. The spell stands in the world, not on the screen.
     this.collectFxVolumes(game, items);
+    // THE CHAMPION'S MARK: standing victory banners are world props —
+    // cloth in the shared wind, y-sorted among the bodies that pass.
+    this.collectTrophies(game, items);
     // The level ceremony's standing matter — the light pillar rising
     // behind the body, the shard orbit wheeling around it — y-sorts
     // with the world so power visibly wraps the character.
@@ -61495,6 +61511,132 @@ export class Renderer {
         const sig = this.sigFor(fx.id);
         if (sig?.ground) sig.ground(this.makeSigCtx(fx, st, t, age, now, seed));
       }
+    }
+  }
+
+  /**
+   * THE CHAMPION'S MARK: living victory banners at cleared camps.
+   * Each standing trophy is a real world prop — cloth simulated on
+   * the cape lineage riding the SHARED wind front, y-sorted among
+   * bodies, ringed by the live outline pass — and a freshly staked
+   * one plays its whole arrival: the accelerating drop, the strike
+   * (dust slam + radiance bloom + the shake), the spring settle, and
+   * the cloth taking the jolt. Sims live on trophyAnims keyed by the
+   * banner's cell id and are evicted when the roster drops them.
+   */
+  private readonly trophyAnims = new Map<
+    string,
+    { spine: TrophyCloth; tl: TrophyCloth; tr: TrophyCloth; impactFired: boolean }
+  >();
+
+  private collectTrophies(game: ClientGame, items: DrawItem[]): void {
+    if (game.trophies.size === 0) {
+      if (this.trophyAnims.size > 0) this.trophyAnims.clear();
+      return;
+    }
+    // The banners stand on the overworld only.
+    if (game.plane.id !== 'surface') return;
+    // Evict sims whose banner dissolved with its camp.
+    if (this.trophyAnims.size > 0) {
+      for (const id of [...this.trophyAnims.keys()]) {
+        if (!game.trophies.has(id)) this.trophyAnims.delete(id);
+      }
+    }
+    const ctx = this.ctx;
+    const sc = this.camera.scale;
+    const now = performance.now();
+    const tSec = now / 1000;
+    const dt = this.frameDt;
+    for (const t of game.trophies.values()) {
+      const gp = this.liftedWTS(t.x, t.y);
+      // Cull generously — the standard is tall and the drop is taller.
+      const pad = sc * (TROPHY_POLE_H + 8);
+      if (gp.x < -pad || gp.x > this.w + pad || gp.y < -pad || gp.y > this.h + pad * 1.5) continue;
+      const born = game.trophyBorn.get(t.id);
+      const age = born !== undefined ? now - born : null;
+      const drop = trophyDrop(age);
+      const seed = ((t.x * 73856093) ^ (t.y * 19349663)) >>> 0;
+      let anim = this.trophyAnims.get(t.id);
+      if (!anim) {
+        anim = {
+          spine: makeTrophySpine(seed),
+          tl: makeTrophyTassel(seed ^ 0x5f),
+          tr: makeTrophyTassel(seed ^ 0xa3),
+          // A settled banner never replays its strike.
+          impactFired: age === null || drop.landed,
+        };
+        this.trophyAnims.set(t.id, anim);
+      }
+      const wind = windAtInto(WIND_TMP, t.x, t.y, tSec);
+      const pin = trophyClothPin(t.x, t.y, drop);
+      const pl = trophyTasselPin(t.x, t.y, drop, -1);
+      const pr = trophyTasselPin(t.x, t.y, drop, 1);
+      if (!drop.landed) {
+        // The falling standard carries everything furled and pinned —
+        // the sim starts its life at THE ONE REST on the strike frame.
+        anim.spine.rest(pin.x, pin.y, pin.z);
+        anim.tl.rest(pl.x, pl.y, pl.z);
+        anim.tr.rest(pr.x, pr.y, pr.z);
+      } else {
+        anim.spine.update(pin.x, pin.y, pin.z, dt, wind, tSec);
+        anim.tl.update(pl.x, pl.y, pl.z, dt, wind, tSec);
+        anim.tr.update(pr.x, pr.y, pr.z, dt, wind, tSec);
+      }
+      // THE STRIKE: the first landed frame of a live drop pays its
+      // matter — the ground answers (dust slam), the sky answers
+      // (radiance bloom), the cloth takes the jolt, the camera feels
+      // the stake go in. Exactly once per staking.
+      if (!anim.impactFired && drop.landed) {
+        anim.impactFired = true;
+        anim.spine.jolt(1);
+        anim.tl.jolt(0.6);
+        anim.tr.jolt(0.6);
+        const mc = { particles: this.particles, glow: (x: number, y: number, r: number, rgb: string, a: number) => this.queueGlow(x, y, r, rgb, a) };
+        dust.deployments.slam?.(mc, t.x, t.y, { scale: 1.35 });
+        radiance.deployments.bloom?.(mc, t.x, t.y, { scale: 0.85 });
+        const own = game.predictor.pos;
+        const d = Math.hypot(own.x - t.x, own.y - t.y);
+        if (d < 26) this.shake(Math.max(1.5, 5 - d * 0.15));
+      }
+      // The settle's afterglow: gold light breathes off the strike.
+      if (drop.strike > 0) {
+        this.queueGlow(t.x, t.y - 0.6, 1.7, '242, 210, 124', 0.28 * drop.strike);
+      }
+      const project = (n: { x: number; y: number; z: number }): TrophyPt => {
+        const p = this.liftedWTS(n.x, n.y);
+        return { x: p.x, y: p.y - n.z * sc };
+      };
+      const spinePts = anim.spine.nodes.map(project);
+      const tlPts = anim.tl.nodes.map(project);
+      const trPts = anim.tr.nodes.map(project);
+      const hemSpd = anim.spine.hemSpd;
+      const strat = this.stratAt(t.x, t.y);
+      items.push({
+        sortY: t.y + 0.04,
+        ...(strat !== undefined ? { strat } : {}),
+        elevated: (strat ?? 0) > 0,
+        body: {
+          x: gp.x - sc * 0.55,
+          y: gp.y - sc * (TROPHY_POLE_H + drop.z + 0.35),
+          w: sc * 1.1,
+          h: sc * (TROPHY_POLE_H + drop.z + 0.55),
+        },
+        drawShadow: () => drawTrophyShadow(ctx, gp.x, gp.y, sc, drop),
+        draw: () =>
+          drawTrophyBanner(ctx, {
+            gx: gp.x,
+            gy: gp.y,
+            s: sc,
+            tier: t.tier ?? 1,
+            seed,
+            nowMs: now,
+            drop,
+            spine: spinePts,
+            tasselL: tlPts,
+            tasselR: trPts,
+            hemSpd,
+          }),
+      });
     }
   }
 

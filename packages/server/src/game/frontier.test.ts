@@ -148,6 +148,9 @@ function slate(rows: Array<[string, LedgerRow]>, opts: { credits?: number } = {}
       s.poiLive.delete(key);
     },
     rebuildHavens: () => {},
+    // THE CHAMPION'S MARK edge: the slate has no wire — the banner
+    // broadcast the dissolve fires is a no-op here.
+    broadcastTrophies: () => {},
     playerWithin: proto.playerWithin,
     authoredCells: proto.authoredCells,
     poiCtx: proto.poiCtx,

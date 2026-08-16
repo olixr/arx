@@ -851,6 +851,12 @@ export interface S2CWelcome {
    * this to replaceGeography before its first terrain bake.
    */
   geo?: unknown;
+  /**
+   * THE CHAMPION'S MARK: every victory banner standing at login.
+   * Additive-optional — absent means no cleared camps hold their
+   * embers right now (or a pre-mark server).
+   */
+  trophies?: TrophyWire[];
 }
 
 /** The haven list changed (a waystation stood up or turned fallow). */
@@ -1888,6 +1894,65 @@ export interface S2CDiscoveryStage {
 }
 
 /**
+ * THE CHAMPION'S MARK: a cleared camp's standing victory banner. One
+ * per broken procedural site, staked at the camp's heart the moment
+ * the last fighting body falls, alive exactly as long as the ember
+ * lingers — the dissolve takes the mark down with the carcass. The
+ * names are the trophy: the felling hand first, then their sworn
+ * party, readable by every traveler who passes before the land turns.
+ */
+export interface TrophyWire {
+  /** The POI cell key ('cx,cy') — the banner's stable id. */
+  id: string;
+  /** World tile anchor (the camp's heart) where the standard stands. */
+  x: number;
+  y: number;
+  /** The broken site's name, for the plaque. */
+  name: string;
+  /**
+   * The champions: the felling hand first, then their party. May be
+   * empty (a lever-cleared or legacy camp) — the banner still stands;
+   * the plaque reads the deed as unsigned.
+   */
+  by: string[];
+  /** When the last of them fell (ms since epoch). */
+  at: number;
+  /** Site danger tier 1..5 — tints the standard's field. */
+  tier?: number;
+}
+
+/**
+ * The victory-banner roster changed: a clear staked one, a dissolve
+ * struck one. Replaces the whole list (the havens dialect — embers
+ * are minutes-long, so the roster stays small by construction).
+ */
+export interface S2CTrophies {
+  t: 'trophies';
+  list: TrophyWire[];
+  /** The freshly staked banner's id — this one flies in and lands. */
+  fresh?: string;
+}
+
+/**
+ * Personal: you stood among a broken camp's champions — the trigger
+ * for the full-screen CLEARED ceremony. Rides beside the system chat
+ * line and the banner broadcast; participants who bled the garrison
+ * but ride no banner (outside the slayer's party) still receive it —
+ * the celebration pays every hand, the signature only the fellowship.
+ */
+export interface S2CPoiCleared {
+  t: 'poicleared';
+  /** The broken site's name. */
+  name: string;
+  /** The banner's champions (felling hand first, then their party). */
+  by: string[];
+  /** Site danger tier 1..5. */
+  tier?: number;
+  /** True for the hand that struck the felling blow. */
+  slayer?: boolean;
+}
+
+/**
  * The server plants (or lifts) the character's ONE waypoint — a
  * guard's bounty mark landing on the chart (living-frontier Phase 3).
  * Same shape as C2SWaypoint; both coordinates absent = clear. The
@@ -2158,6 +2223,8 @@ export type S2CMessage =
   | S2CDiscovery
   | S2CDiscoveryFade
   | S2CDiscoveryStage
+  | S2CTrophies
+  | S2CPoiCleared
   | S2CWaypoint
   | S2CQuests
   | S2CQuestUpd

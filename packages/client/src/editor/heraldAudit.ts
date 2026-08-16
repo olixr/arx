@@ -8,6 +8,7 @@
  */
 import { showDiscovery } from '../ui/discoveryBanner.js';
 import { showDungeonEntry } from '../ui/dungeonBanner.js';
+import { showPoiCleared } from '../ui/victoryBanner.js';
 
 const FIXTURES: ReadonlyArray<() => void> = [
   () => showDiscovery({ id: 'zone:dawnmead', kind: 'town', name: 'Dawnmead', x: 0, y: 0 }),
@@ -46,6 +47,18 @@ const FIXTURES: ReadonlyArray<() => void> = [
   () => showDiscovery({ id: 'zone:the_sisters', kind: 'landmark', name: 'The Sisters', x: 0, y: 0 }),
   () =>
     showDungeonEntry({ name: 'The Sunken Crypt', sigil: 'KAR VOTH', tier: 'rare', theme: 'crypt', power: 30 }),
+  // THE CHAMPION'S MARK: the slayer's read, full fellowship.
+  () =>
+    showPoiCleared({
+      t: 'poicleared',
+      name: 'Goblin warcamp',
+      by: ['Aeriek', 'Brynhild', 'Tam of the Ford'],
+      tier: 3,
+      slayer: true,
+    }),
+  // A fellow participant's read — same broken camp, no felling blow.
+  () =>
+    showPoiCleared({ t: 'poicleared', name: 'Bandit hollow', by: ['Odessa'], tier: 2 }),
 ];
 
 /** A beat longer than the longest hold, so the bow-out fully plays. */

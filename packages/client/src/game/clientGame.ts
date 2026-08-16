@@ -62,6 +62,8 @@ import {
   masteryXp,
   techniqueRankFor,
   type DiscoveryWire,
+  type TrophyWire,
+  type S2CPoiCleared,
   type QuestAvailWire,
   type QuestDoneWire,
   type QuestRewardsWire,
@@ -334,6 +336,13 @@ export interface GameEvents {
   onPartyEvent?(ev: { kind: S2CPartyEvent['kind']; name: string; detail?: string }): void;
   /** A LIVE first-ever discovery — the one trigger for the splash. */
   onDiscovery?(d: DiscoveryWire): void;
+  /**
+   * THE CHAMPION'S MARK: you stood among a broken camp's champions —
+   * the one trigger for the full-screen CLEARED ceremony.
+   */
+  onPoiCleared?(e: S2CPoiCleared): void;
+  /** A fresh victory banner was staked somewhere on the shard. */
+  onTrophyStaked?(t: TrophyWire): void;
   /** A LIVE quest ceremony — the ONLY trigger for banners and fanfare. */
   onQuestEvent?(e: { kind: 'accepted' | 'completed'; id: string; name: string; rewards?: QuestRewardsWire }): void;
   /** The quest ledger changed shape (quiet) — repaint journal surfaces. */
@@ -438,6 +447,18 @@ export class ClientGame {
   }
   /** The place ledger, keyed by discovery id. */
   readonly discoveries = new Map<string, DiscoveryWire>();
+  /**
+   * THE CHAMPION'S MARK: every victory banner standing on the shard,
+   * by cell key. Whole-list replaced by the wire (the havens dialect);
+   * the renderer stakes a living standard at each anchor.
+   */
+  readonly trophies = new Map<string, TrophyWire>();
+  /**
+   * Local fly-in clocks: banner id → performance.now() when its
+   * `fresh` cue arrived. Banners without an entry stand settled (a
+   * welcome-time roster never replays its ceremonies).
+   */
+  readonly trophyBorn = new Map<string, number>();
   /** The one active waypoint (optimistic; server keeps the durable copy). */
   waypoint: { x: number; y: number; plane?: string } | null = null;
   /** Where the reader last fell — the spilled pack's skull on the
@@ -1569,6 +1590,11 @@ export class ClientGame {
           }
         }
         this.waypoint = msg.waypoint ?? null;
+        // THE CHAMPION'S MARK: the standing banners ride the welcome —
+        // they arrive settled (no fly-in replays a stranger's victory).
+        this.trophies.clear();
+        this.trophyBorn.clear();
+        for (const t of msg.trophies ?? []) this.trophies.set(t.id, t);
         this.party = null;
         this.partyPos.clear();
         // THE WORLDS APART: the welcome names the waking plane; every
@@ -2320,6 +2346,28 @@ export class ClientGame {
         this.chartVersion++;
         break;
       }
+      case 'trophies': {
+        // THE CHAMPION'S MARK roster turned: whole-list replace, and
+        // the fresh id starts its local fly-in clock (only the fresh
+        // one — a roster refresh never re-stakes standing banners).
+        this.trophies.clear();
+        for (const t of msg.list) this.trophies.set(t.id, t);
+        for (const id of [...this.trophyBorn.keys()]) {
+          if (!this.trophies.has(id)) this.trophyBorn.delete(id);
+        }
+        if (msg.fresh !== undefined) {
+          const fresh = this.trophies.get(msg.fresh);
+          if (fresh) {
+            this.trophyBorn.set(msg.fresh, performance.now());
+            this.events.onTrophyStaked?.(fresh);
+          }
+        }
+        break;
+      }
+      case 'poicleared': {
+        this.events.onPoiCleared?.(msg);
+        break;
+      }
       case 'discovery': {
         this.discoveries.set(msg.d.id, msg.d);
         this.chartVersion++;
@@ -2775,6 +2823,31 @@ export class ClientGame {
    * The range is wider than arm's reach (2.2) so the words arrive as
    * you walk up rather than when you bump the post.
    */
+  /**
+   * The nearest standing victory banner within approach range, for
+   * the champions plaque — the nearestSign law applied to trophies
+   * (reading is passive, never competes for the interact slot; the
+   * range is generous because the mark is meant to be read from the
+   * road). Surface-plane only: the banners stand on the overworld.
+   */
+  nearestTrophy(radius = 3.4): TrophyWire | null {
+    if (this.ownEid === null || this.plane.id !== 'surface') return null;
+    if (this.trophies.size === 0) return null;
+    const pos = this.predictor.pos;
+    let best: TrophyWire | null = null;
+    let bestD = radius * radius;
+    for (const t of this.trophies.values()) {
+      const dx = t.x - pos.x;
+      const dy = t.y - pos.y;
+      const d = dx * dx + dy * dy;
+      if (d < bestD) {
+        bestD = d;
+        best = t;
+      }
+    }
+    return best;
+  }
+
   nearestSign(radius = 2.9): SignInfo | null {
     if (this.ownEid === null) return null;
     const pos = this.predictor.pos;

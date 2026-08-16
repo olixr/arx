@@ -1,0 +1,113 @@
+/* ---- THE CHAMPION'S PLAQUE (trophyPlaque.ts) ----
+
+   The proximity read on a standing victory banner. Deliberately NOT
+   the sign's parchment: a broken camp's mark is a monument — smoked
+   ink, a gold rule drawn from a center gem (the herald's dialect at
+   plaque scale), the kicker in the standard's gold, the champions in
+   roll order. Pointer-events none; fades on approach, bows after its
+   dwell (.bowed); a clamped card drops its tail. */
+
+#trophy-plaque {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 39;
+  max-width: 20rem;
+  padding: 0.5625rem 1.0625rem 0.625rem;
+  background: rgba(16, 12, 9, 0.88);
+  border: 1px solid rgba(217, 164, 65, 0.55);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.6),
+    0.1875rem 0.25rem 0 var(--shadow);
+  color: #e8dfc9;
+  text-align: center;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+#trophy-plaque.bowed {
+  opacity: 0;
+}
+
+#trophy-plaque .trophy-kicker {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+}
+
+#trophy-plaque .trophy-name {
+  margin-top: 0.125rem;
+  font-family: var(--serif);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: 0.05rem;
+  line-height: 1.15;
+  color: #f4ecd8;
+}
+
+/* The rule: two hairlines drawn outward from a small gold gem. */
+#trophy-plaque .trophy-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0.375rem 0 0.3125rem;
+}
+
+#trophy-plaque .trophy-rule i {
+  flex: 1;
+  height: 1px;
+  background: rgba(217, 164, 65, 0.45);
+}
+
+#trophy-plaque .trophy-rule b {
+  width: 0.3125rem;
+  height: 0.3125rem;
+  background: var(--gold);
+  transform: rotate(45deg);
+}
+
+#trophy-plaque .trophy-line {
+  font-family: var(--serif);
+  font-size: var(--t-label);
+  line-height: 1.4;
+  color: rgba(232, 223, 201, 0.92);
+}
+
+#trophy-plaque .trophy-slayer {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.03125rem;
+  color: var(--gold-hot);
+}
+
+#trophy-plaque .trophy-more,
+#trophy-plaque .trophy-unsigned {
+  font-style: italic;
+  color: rgba(232, 223, 201, 0.6);
+}
+
+#trophy-plaque .trophy-when {
+  margin-top: 0.3125rem;
+  font-size: 0.6875rem;
+  font-style: italic;
+  letter-spacing: 0.01875rem;
+  color: rgba(232, 223, 201, 0.55);
+}
+
+/* The tail: an ink corner pointing down at the standard's shoe. */
+#trophy-plaque .trophy-tail {
+  position: absolute;
+  left: 50%;
+  bottom: -0.75rem;
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-left: -0.375rem;
+  background: rgba(16, 12, 9, 0.88);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+#trophy-plaque.clamped .trophy-tail {
+  display: none;
+}
