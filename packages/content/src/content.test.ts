@@ -1334,6 +1334,8 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   assert.equal(counts.get(Tile.ScribesDesk) ?? 0, 3, 'the town keeps three books');
   assert.equal(counts.get(Tile.NoticeBoard) ?? 0, 1, 'the Round lost its board');
   assert.equal(counts.get(Tile.WayShrine) ?? 0, 1, 'the Salt Road lost its shrine');
+  // THE HERBALIST'S SHELF: Elowen's physic tub stands in her garden.
+  assert.equal(counts.get(Tile.HerbPlanter) ?? 0, 1, "the physic tub left Elowen's garden");
   assert.equal(counts.get(Tile.WallFountain) ?? 0, 1, 'the memorial garden spring dried');
   assert.ok((counts.get(Tile.WaterTrough) ?? 0) >= 6, 'the troughs ran dry');
   assert.ok((counts.get(Tile.WoodStool) ?? 0) >= 4, 'the stools walked off');

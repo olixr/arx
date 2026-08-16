@@ -911,6 +911,15 @@ export enum Tile {
   BossEffigy = 459,
   /** A hollowed half-log slopped for the war-beasts, rim scalloped with bites. */
   GnawTrough = 460,
+  // THE HERBALIST'S SHELF (docs/herbalist-decor-plan.md) — the rustic
+  // give-back after the fair left town. One working piece stands on
+  // the ground; its two siblings hang as wall details (SillHerbs,
+  // HerbBundles). Everything on this shelf grows or dries the game's
+  // OWN botany — sagewort and moonbell, the herbs the player picks
+  // wild, farms in rows, and brews — so the herbalist's shop visibly
+  // lives on the same plants the player's satchel carries.
+  /** The physic tub: a sawn half-cask planted in worked herb rows. */
+  HerbPlanter = 461,
 }
 
 export enum Detail {
@@ -965,6 +974,14 @@ export enum Detail {
   Trellis = 64,
   /** Hanging bloom basket on a bracket arm (80; band 80..95 reserved). */
   WallBasket = 80,
+  // THE HERBALIST'S SHELF — the wall-hung pair. Same banded grammar,
+  // new ground: the sill pots are the FIRST hanging that lives on
+  // glazed walls (their own host gate — the classic hangings law is
+  // never loosened for them).
+  /** Three glazed herb pots on the window's sill course: +mix (96..111 reserved). */
+  SillHerbs = 96,
+  /** A pegged batten of heads-down drying bundles: +mix (112..127 reserved). */
+  HerbBundles = 112,
 }
 
 /**
@@ -981,6 +998,10 @@ export const DETAIL_BAND = 16;
 export const SIGN_MOTIF_COUNT = 8;
 /** Climbing species on the trellis, index order FOREVER. */
 export const TRELLIS_SPECIES_COUNT = 3;
+/** Herb mixes potted on the window sill, index order FOREVER. */
+export const SILL_MIX_COUNT = 3;
+/** Bundle mixes tied to the drying batten, index order FOREVER. */
+export const BUNDLE_MIX_COUNT = 3;
 
 export type WallHungKind =
   | 'crown'
@@ -990,7 +1011,9 @@ export type WallHungKind =
   | 'pennant'
   | 'sign'
   | 'trellis'
-  | 'basket';
+  | 'basket'
+  | 'sill'
+  | 'bundles';
 
 export interface WallHungInfo {
   kind: WallHungKind;
@@ -1000,6 +1023,8 @@ export interface WallHungInfo {
   motif?: number;
   /** Climbing-plant species index (trellis). */
   species?: number;
+  /** Herb-mix index (sill pots / drying bundles). */
+  mix?: number;
 }
 
 /**
@@ -1025,6 +1050,10 @@ export function wallHungInfo(d: number): WallHungInfo | null {
   if (d >= Detail.Trellis && d < Detail.Trellis + TRELLIS_SPECIES_COUNT)
     return { kind: 'trellis', species: d - Detail.Trellis };
   if (d === Detail.WallBasket) return { kind: 'basket' };
+  if (d >= Detail.SillHerbs && d < Detail.SillHerbs + SILL_MIX_COUNT)
+    return { kind: 'sill', mix: d - Detail.SillHerbs };
+  if (d >= Detail.HerbBundles && d < Detail.HerbBundles + BUNDLE_MIX_COUNT)
+    return { kind: 'bundles', mix: d - Detail.HerbBundles };
   return null;
 }
 
@@ -1054,6 +1083,20 @@ export function trellisDetail(species: number): Detail {
   return Detail.Trellis + species;
 }
 
+/** The sill pots growing this herb mix. */
+export function sillHerbsDetail(mix: number): Detail {
+  if (!Number.isInteger(mix) || mix < 0 || mix >= SILL_MIX_COUNT)
+    throw new Error(`bad mix ${mix}`);
+  return Detail.SillHerbs + mix;
+}
+
+/** The drying batten tied with this bundle mix. */
+export function herbBundlesDetail(mix: number): Detail {
+  if (!Number.isInteger(mix) || mix < 0 || mix >= BUNDLE_MIX_COUNT)
+    throw new Error(`bad mix ${mix}`);
+  return Detail.HerbBundles + mix;
+}
+
 /**
  * Details that hang on wall faces instead of lying on the ground —
  * the terrain bake skips them; wall painters own their art. Built
@@ -1078,6 +1121,27 @@ export const HANGABLE_WALL_TILES: ReadonlySet<Tile> = new Set([
   Tile.CrackedCaveWall,
   Tile.WallGarrison,
 ]);
+
+/**
+ * THE SILL LAW: the herb pots are the ONE hanging that lives on
+ * glazed walls — they stand on the sill course the window painters
+ * already dress. The classic hangable set (whose bare faces would
+ * leave the pots floating) refuses them, and the window walls, which
+ * refuse everything else, are exactly their home.
+ */
+export const SILL_HOST_TILES: ReadonlySet<Tile> = new Set([
+  Tile.WallStoneWindow,
+  Tile.WallWoodWindow,
+]);
+
+/**
+ * The ONE host resolver for any wall-hung detail — the build lane,
+ * the dev lever, and both client previews all read through this, so
+ * the sill exception can never drift out of step with the law.
+ */
+export function hangHostTiles(detail: number): ReadonlySet<Tile> {
+  return wallHungInfo(detail)?.kind === 'sill' ? SILL_HOST_TILES : HANGABLE_WALL_TILES;
+}
 
 /**
  * Walls an awning may bolt to (the tile NORTH of the awning): full
@@ -1583,6 +1647,9 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.PlunderCart]: { name: 'plunder cart', solid: true, color: '#6e4a33', raised: true, topColor: '#9c8a62' },
   [Tile.BossEffigy]: { name: 'warboss effigy', solid: true, color: '#6b4a26', raised: true, topColor: '#8a3b34' },
   [Tile.GnawTrough]: { name: 'gnaw trough', solid: true, color: '#5e4023', raised: true, topColor: '#7d5a2e' },
+  // THE HERBALIST'S SHELF — minimap voice: cooper's oak under working
+  // green (the herb rows out-read the rim from the sky).
+  [Tile.HerbPlanter]: { name: 'herb planter', solid: true, color: '#6f4d26', raised: true, topColor: '#5d7c42' },
 };
 
 /** The four awning silhouettes, index order FOREVER (the id math). */
@@ -2295,6 +2362,8 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.PlunderCart, 0.45],
   [Tile.BossEffigy, 0.24],
   [Tile.GnawTrough, 0.36],
+  // THE HERBALIST'S SHELF: waist furniture you brush past.
+  [Tile.HerbPlanter, 0.3],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -2614,7 +2683,10 @@ export type DestructibleKind =
   | 'wartable'
   | 'plundercart'
   | 'effigy'
-  | 'gnawtrough';
+  | 'gnawtrough'
+  // THE HERBALIST'S SHELF: staves clap out, the wet soil goes DOWN,
+  // a green shower, the snips ping bright, the tied bundle flies whole.
+  | 'herbplanter';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -2840,6 +2912,8 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.PlunderCart, { kind: 'plundercart', respawnSec: 600, hits: 3 }],
   [Tile.BossEffigy, { kind: 'effigy', respawnSec: 420, hits: 2 }],
   [Tile.GnawTrough, { kind: 'gnawtrough', respawnSec: 300, hits: 1 }],
+  // THE HERBALIST'S SHELF: cooper's timber on the street clock.
+  [Tile.HerbPlanter, { kind: 'herbplanter', respawnSec: 300, hits: 2 }],
 ]);
 
 /** Every smashable prop tile. */

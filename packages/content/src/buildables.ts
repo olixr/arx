@@ -78,6 +78,20 @@ export const TRELLIS_SPECIES: ReadonlyArray<{ id: string; name: string }> = [
   { id: 'hopvine', name: 'Hopvine' },
 ];
 
+/** The sill pots' herb mixes, index-married to the shared band. */
+export const SILL_MIXES: ReadonlyArray<{ id: string; name: string }> = [
+  { id: 'kitchen', name: 'Kitchen herbs' },
+  { id: 'healer', name: "Healer's row" },
+  { id: 'seedling', name: 'Seedlings' },
+];
+
+/** The drying batten's bundle mixes, index-married to the shared band. */
+export const BUNDLE_MIXES: ReadonlyArray<{ id: string; name: string }> = [
+  { id: 'green', name: 'Green harvest' },
+  { id: 'healer', name: "Healer's mix" },
+  { id: 'seedheads', name: 'Seed heads' },
+];
+
 /** The palette's shelves — every buildable sits on exactly one. */
 export type BuildCategory =
   | 'foundation'
@@ -601,6 +615,25 @@ const defs: BuildableDef[] = [
     ticks: 35,
   },
   {
+    // THE HERBALIST'S SHELF: the physic tub — a sawn half-cask
+    // planted in worked herb rows. The gardener's give-back after
+    // the fair left town: rustic, USED, and grown from the same
+    // sagewort the farmer's rows raise.
+    id: 'herb_planter',
+    cat: 'decor',
+    name: 'Herb planter',
+    tile: Tile.HerbPlanter,
+    skill: 'farming',
+    levelReq: 8,
+    xp: 30,
+    materials: [
+      { item: 'board', qty: 2 },
+      { item: 'sagewort', qty: 2 },
+      { item: 'twine', qty: 1 },
+    ],
+    ticks: 30,
+  },
+  {
     id: 'wood_window',
     cat: 'wall',
     name: 'Wood wall window',
@@ -748,6 +781,39 @@ const defs: BuildableDef[] = [
     levelReq: 9,
     xp: 45,
     materials: [{ item: 'board', qty: 1 }, { item: 'twine', qty: 1 }],
+    ticks: 22,
+  },
+  {
+    // THE HERBALIST'S SHELF: glazed pots on the window's sill course
+    // — the ONE hanging that lives on glazed walls (its own host
+    // gate; the mix is chosen at placement like the trellis vine).
+    id: 'sill_herbs',
+    cat: 'decor',
+    name: 'Sill herb pots',
+    detail: Detail.SillHerbs,
+    skill: 'farming',
+    levelReq: 7,
+    xp: 28,
+    materials: [
+      { item: 'sagewort', qty: 2 },
+      { item: 'twine', qty: 1 },
+    ],
+    ticks: 22,
+  },
+  {
+    // THE HERBALIST'S SHELF: the harvest on the beam — a pegged
+    // batten of heads-down drying bundles, mix chosen at placement.
+    id: 'herb_bundles',
+    cat: 'decor',
+    name: 'Drying bundles',
+    detail: Detail.HerbBundles,
+    skill: 'farming',
+    levelReq: 7,
+    xp: 28,
+    materials: [
+      { item: 'sagewort', qty: 2 },
+      { item: 'twine', qty: 2 },
+    ],
     ticks: 22,
   },
   {
@@ -1212,13 +1278,15 @@ export function buildableForTile(tile: Tile): BuildableDef | undefined {
   return BY_TILE.get(tile);
 }
 
-/** The five hanging families' defs, keyed by wallHungInfo kind. */
+/** The seven hanging families' defs, keyed by wallHungInfo kind. */
 const DETAIL_DEF_ID: Record<string, string> = {
   banner: 'wall_banner',
   pennant: 'pennant_string',
   sign: 'bracket_sign',
   trellis: 'trellis',
   basket: 'wall_basket',
+  sill: 'sill_herbs',
+  bundles: 'herb_bundles',
 };
 
 /**

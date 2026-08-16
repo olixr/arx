@@ -1,6 +1,6 @@
 import { procShape } from './render/wornLight.js';
 import { deckFillAt, fillContains } from './render/terrain.js';
-import { AWNING_HOST_TILES, AWNING_SHAPES, EntityKind, FENCE_TILES, GARRISON_TILES, HANGABLE_WALL_TILES, HEDGE_TILES, PoseState, ROCK_TILES, SWAP_BEAT_MS, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo, type EntityMeta } from '@arx/shared';
+import { AWNING_HOST_TILES, AWNING_SHAPES, EntityKind, FENCE_TILES, GARRISON_TILES, HEDGE_TILES, PoseState, ROCK_TILES, SWAP_BEAT_MS, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, hangHostTiles, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo, type EntityMeta } from '@arx/shared';
 import { BUILDABLES, DYE_PIGMENTS, ELEMENT_COLORS, POI_DEFS, RECIPES, SIGN_MOTIFS, TRELLIS_SPECIES, buildableForTile, buildableGround, enchantDef, isDaggerStats, itemDef, npcActor, npcDef, resonanceShift, type BuildableDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { farmBins, farmJobs, farmKey } from './game/farmCare.js';
@@ -527,7 +527,7 @@ function pumpBuildQueue(): void {
       const south = game.world.groundAt(next.tx, next.ty + 1);
       const faceOk =
         ground !== undefined &&
-        HANGABLE_WALL_TILES.has(ground as Tile) &&
+        hangHostTiles(def.detail).has(ground as Tile) &&
         (south === undefined ||
           (!WALL_RUN_TILES.includes(south as Tile) && !GARRISON_TILES.has(south as Tile)));
       const cur = game.world.detailAt(next.tx, next.ty);
@@ -3605,7 +3605,7 @@ function frame(now: number): void {
       const kind = wallHungInfo(def.detail)?.kind;
       const faceOk =
         ground !== undefined &&
-        HANGABLE_WALL_TILES.has(ground as Tile) &&
+        hangHostTiles(def.detail).has(ground as Tile) &&
         (south === undefined ||
           (!WALL_RUN_TILES.includes(south as Tile) && !GARRISON_TILES.has(south as Tile)));
       const cur = game.world.detailAt(tx, ty);

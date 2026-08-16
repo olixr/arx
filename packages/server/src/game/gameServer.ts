@@ -478,11 +478,15 @@ import {
   orientDiagHedge,
   HEDGE_TILES,
   encodeDetailPatch,
-  HANGABLE_WALL_TILES,
+  hangHostTiles,
   AWNING_HOST_TILES,
   SIGN_MOTIF_COUNT,
   TRELLIS_SPECIES_COUNT,
   wallHungInfo,
+  sillHerbsDetail,
+  herbBundlesDetail,
+  SILL_MIX_COUNT,
+  BUNDLE_MIX_COUNT,
   wallBannerDetail,
   pennantDetail,
   bracketSignDetail,
@@ -7204,7 +7208,7 @@ export class GameServer {
     // face law is the one gate, and re-dressing your own hanging of
     // the same family costs only the new pigment: the cloth is up.
     if (def.detail !== undefined) {
-      if (!this.hangFaceOk(tx, ty)) {
+      if (!this.hangFaceOk(tx, ty, def.detail)) {
         sys('There is no wall face there to carry it.');
         return;
       }
@@ -7304,15 +7308,17 @@ export class GameServer {
 
   /**
    * THE HANGING LAW's face test, shared by the dev lever, the build
-   * lane, and completion re-validation: a hangable wall (one whose
-   * painter dresses faces) presenting its south face to open ground.
+   * lane, and completion re-validation: a wall this detail's family
+   * may dress (sill herbs live on glazed walls, everything else on
+   * the classic hangable faces — hangHostTiles is the one resolver)
+   * presenting its south face to open ground.
    */
-  private hangFaceOk(tx: number, ty: number): boolean {
+  private hangFaceOk(tx: number, ty: number, detail: number): boolean {
     const ground = this.world.groundAt(tx, ty);
     const south = this.world.groundAt(tx, ty + 1);
     return (
       ground !== undefined &&
-      HANGABLE_WALL_TILES.has(ground as Tile) &&
+      hangHostTiles(detail).has(ground as Tile) &&
       (south === undefined ||
         (!WALL_RUN_TILES.includes(south as Tile) && !GARRISON_TILES.has(south as Tile)))
     );
@@ -7336,6 +7342,10 @@ export class GameServer {
         return variant < SIGN_MOTIF_COUNT ? bracketSignDetail(variant) : anchor;
       case 'trellis':
         return variant < TRELLIS_SPECIES_COUNT ? trellisDetail(variant) : anchor;
+      case 'sill':
+        return variant < SILL_MIX_COUNT ? sillHerbsDetail(variant) : anchor;
+      case 'bundles':
+        return variant < BUNDLE_MIX_COUNT ? herbBundlesDetail(variant) : anchor;
       default:
         return anchor;
     }
@@ -7363,7 +7373,7 @@ export class GameServer {
     // of the same family pays pigment only and earns NO xp (a
     // pigment-cheap swap must never become an xp faucet).
     if (def.detail !== undefined) {
-      if (!this.hangFaceOk(action.tx, action.ty)) {
+      if (!this.hangFaceOk(action.tx, action.ty, def.detail)) {
         this.cancelAction(eid, player, 'blocked');
         return;
       }
@@ -8407,7 +8417,7 @@ export class GameServer {
     const dy = ty + 0.5 - pos.y;
     if (dx * dx + dy * dy > 3 * 3) return false;
     this.world.ensure(Math.floor(tx / CHUNK_SIZE), Math.floor(ty / CHUNK_SIZE));
-    if (!this.hangFaceOk(tx, ty)) {
+    if (!this.hangFaceOk(tx, ty, detail)) {
       sys('There is no wall face there to carry it.');
       return false;
     }

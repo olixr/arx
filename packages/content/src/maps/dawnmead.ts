@@ -1,4 +1,4 @@
-import { Detail, Tile, trellisDetail } from '@arx/shared';
+import { Detail, Tile, herbBundlesDetail, sillHerbsDetail, trellisDetail } from '@arx/shared';
 import { ZoneBuilder } from './builder.js';
 import type { ZoneDef } from './types.js';
 
@@ -327,6 +327,13 @@ export function buildDawnmead(): ZoneDef {
   b.set(71, 56, Tile.Cabinet);
   b.set(73, 53, Tile.Basin);
   b.set(73, 57, Tile.HerbRack); // the bank's forage, hung heads-down
+  // THE HERBALIST'S SHELF, cookhouse-voiced: kitchen pots on the
+  // south light, the green harvest over Berrit's own bed (a cottage
+  // dries its herbs where the roof is warmest), and the physic tub
+  // on the south apron under the window's eye.
+  b.setDetail(72, 58, sillHerbsDetail(0));
+  b.setDetail(71, 52, herbBundlesDetail(0));
+  b.set(71, 59, Tile.HerbPlanter);
   b.setDetail(72, 54, Detail.RugRound);
   b.setDetail(73, 55, Detail.Doormat);
   // The open hall: posts, stone floor, stations on the north row.

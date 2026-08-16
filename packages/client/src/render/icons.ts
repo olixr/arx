@@ -2526,6 +2526,92 @@ const PAINTERS: Record<string, IconPainter> = {
     bar(c, '#8a6534', 0.3, 0.72, 0.4, 0.06);
     bar(c, shade('#8a6534', -12), 0.47, 0.52, 0.06, 0.32);
   },
+  herbplanter: (c, col) => {
+    // The physic tub: sawn half-cask, soil line, one silver rosette
+    // and one dusk-blue bell — the shelf's two species in one glyph.
+    c.fillStyle = '#8a6534';
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.moveTo(0.24, 0.52);
+    c.lineTo(0.2, 0.86);
+    c.lineTo(0.8, 0.86);
+    c.lineTo(0.76, 0.52);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    bar(c, '#4c4a52', 0.21, 0.6, 0.58, 0.045);
+    c.fillStyle = '#3a2d1e';
+    c.beginPath();
+    c.ellipse(0.5, 0.52, 0.28, 0.08, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.fillStyle = col;
+    c.beginPath();
+    c.ellipse(0.38, 0.44, 0.1, 0.06, -0.3, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = '#5b8a5e';
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.moveTo(0.62, 0.5);
+    c.quadraticCurveTo(0.66, 0.32, 0.72, 0.24);
+    c.stroke();
+    c.fillStyle = '#8f9ed6';
+    c.beginPath();
+    c.ellipse(0.74, 0.28, 0.05, 0.06, 0.3, 0, Math.PI * 2);
+    c.fill();
+  },
+  sillherbs: (c, col) => {
+    // Three glazed pots on a sill board, sprigs rising.
+    bar(c, '#8a6534', 0.14, 0.72, 0.72, 0.07);
+    const glazes = ['#6f8a5c', '#5c748a', '#a3703c'];
+    for (let k = 0; k < 3; k++) {
+      const px = 0.26 + k * 0.24;
+      c.fillStyle = glazes[k]!;
+      c.strokeStyle = OUTLINE;
+      c.lineWidth = 0.03;
+      c.beginPath();
+      c.moveTo(px - 0.08, 0.5);
+      c.lineTo(px + 0.08, 0.5);
+      c.lineTo(px + 0.055, 0.72);
+      c.lineTo(px - 0.055, 0.72);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      c.strokeStyle = k === 1 ? '#5b8a5e' : '#5f8a44';
+      c.beginPath();
+      c.moveTo(px, 0.5);
+      c.quadraticCurveTo(px + 0.03, 0.38, px + (k - 1) * 0.05, 0.3);
+      c.stroke();
+      c.fillStyle = k === 1 ? '#8f9ed6' : col;
+      c.beginPath();
+      c.ellipse(px + (k - 1) * 0.05, 0.29, 0.045, 0.035, 0, 0, Math.PI * 2);
+      c.fill();
+    }
+  },
+  herbbundles: (c, col) => {
+    // The drying batten: bundles hung heads-down off an oak board.
+    bar(c, '#8a6534', 0.12, 0.2, 0.76, 0.08);
+    for (let k = 0; k < 3; k++) {
+      const px = 0.26 + k * 0.24;
+      c.strokeStyle = '#a89263';
+      c.lineWidth = 0.03;
+      c.beginPath();
+      c.moveTo(px, 0.28);
+      c.lineTo(px, 0.36);
+      c.stroke();
+      c.fillStyle = k === 1 ? '#8f9ed6' : col;
+      c.strokeStyle = OUTLINE;
+      c.beginPath();
+      c.moveTo(px, 0.34);
+      c.quadraticCurveTo(px - 0.09, 0.5, px - 0.045, 0.66);
+      c.quadraticCurveTo(px, 0.74, px + 0.045, 0.66);
+      c.quadraticCurveTo(px + 0.09, 0.5, px, 0.34);
+      c.closePath();
+      c.fill();
+      c.stroke();
+    }
+  },
   barrel: (c, col) => {
     // Bulged oak staves bound by two dark iron hoops.
     c.fillStyle = col;
@@ -6419,6 +6505,9 @@ const BUILDABLE_ICON: Record<string, { icon: string; color: string }> = {
   hedge: { icon: 'hedgebuild', color: '#3a7539' },
   hedge_corner: { icon: 'hedgediag', color: '#3a7539' },
   hedge_arch: { icon: 'hedgearch', color: '#3a7539' },
+  herb_planter: { icon: 'herbplanter', color: '#8fb083' },
+  sill_herbs: { icon: 'sillherbs', color: '#6f9450' },
+  herb_bundles: { icon: 'herbbundles', color: '#8a9058' },
   wood_railing: { icon: 'railing', color: '#a5793f' },
   campfire: { icon: 'campfirebuild', color: '#e8823d' },
   furnace: { icon: 'furnacebuild', color: '#6e6a75' },

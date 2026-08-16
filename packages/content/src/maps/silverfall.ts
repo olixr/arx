@@ -1,4 +1,4 @@
-import { Detail, Tile, awningTile, bannerPoleTile, bracketSignDetail, pennantDetail } from '@arx/shared';
+import { Detail, Tile, awningTile, bannerPoleTile, bracketSignDetail, herbBundlesDetail, pennantDetail, sillHerbsDetail } from '@arx/shared';
 import { SILVERFALL_RECT } from '../geography.js';
 import { MARKET_STALL } from '../structures/templates.js';
 import { ZoneBuilder } from './builder.js';
@@ -919,6 +919,12 @@ export function buildSilverfall(): ZoneDef {
   b.setDetail(142, 88, Detail.Rug).setDetail(143, 88, Detail.Rug);
   b.setDetail(147, 89, Detail.RugRound);
   b.sign(147, 81, 'THE DISPENSARY', ['tinctures for the climb']);
+  // THE HERBALIST'S SHELF: Wyn's shop reads its trade from inside —
+  // the healer's row on the sill over the alembic corner, kitchen
+  // pots by the bookshelf light, and the dispensary's stock hung
+  // heads-down over the counter wall.
+  b.setDetail(141, 82, sillHerbsDetail(1)).setDetail(147, 82, sillHerbsDetail(0));
+  b.setDetail(145, 82, herbBundlesDetail(1));
   // The tanning pad, downwind of everything.
   b.fillRect(152, 84, 4, 4, Tile.Dirt);
   b.set(153, 85, Tile.TanningRack).set(155, 86, Tile.Barrel);
@@ -928,6 +934,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(151, 71, Tile.Grass); // gate, west, on its own lane spur
   b.fillRect(150, 71, 1, 10, Tile.Path); // Greenstair gate spur
   b.set(158, 67, Tile.Basin).set(152, 67, Tile.Crate);
+  b.set(160, 67, Tile.HerbPlanter); // the Greenstair's physic tub — seedlings for the terraces below
   for (let x = 153; x <= 161; x += 1) {
     b.set(x, 68, x % 2 === 0 ? Tile.SagewortRipe : Tile.Tilled);
     b.set(x, 71, x % 2 === 0 ? Tile.Tilled : Tile.MoonbellMid);

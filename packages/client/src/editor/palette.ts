@@ -1,5 +1,5 @@
-import { AWNING_SHAPES, DYE_COUNT, Detail, TILE_PX, TILE_SKIP, Tile, awningTile, bracketSignDetail, pennantDetail, tileDef, trellisDetail, wallBannerDetail } from '@arx/shared';
-import { BUILDABLES, DYES, SIGN_MOTIFS, TRELLIS_SPECIES } from '@arx/content';
+import { AWNING_SHAPES, DYE_COUNT, Detail, TILE_PX, TILE_SKIP, Tile, awningTile, bracketSignDetail, herbBundlesDetail, pennantDetail, sillHerbsDetail, tileDef, trellisDetail, wallBannerDetail } from '@arx/shared';
+import { BUILDABLES, BUNDLE_MIXES, DYES, SIGN_MOTIFS, SILL_MIXES, TRELLIS_SPECIES } from '@arx/content';
 import { bakeChunk, bakeGutter } from '../render/terrain.js';
 import { buildableIconUrl } from '../render/icons.js';
 import { paintTree, treeModel } from '../render/trees.js';
@@ -133,7 +133,7 @@ export const TILE_CATEGORIES: TileCategory[] = [
     label: 'Garden',
     tiles: [
       Tile.Hedge, Tile.HedgeDiagNE, Tile.HedgeDiagNW,
-      Tile.HedgeGate, Tile.HedgeGateShut,
+      Tile.HedgeGate, Tile.HedgeGateShut, Tile.HerbPlanter,
     ],
   },
   {
@@ -309,6 +309,16 @@ export const DETAILS: Array<{ d: Detail; label: string }> = [
     label: `${sp.name.toLowerCase()} trellis (on wall)`,
   })),
   { d: Detail.WallBasket, label: 'wall basket (on wall)' },
+  // THE HERBALIST'S SHELF: the sill pots hang on WINDOW walls (their
+  // own host law); the drying bundles ride the classic faces.
+  ...SILL_MIXES.map((m, i) => ({
+    d: sillHerbsDetail(i),
+    label: `${m.name.toLowerCase()} sill pots (on window)`,
+  })),
+  ...BUNDLE_MIXES.map((m, i) => ({
+    d: herbBundlesDetail(i),
+    label: `${m.name.toLowerCase()} bundles (on wall)`,
+  })),
 ];
 
 /** Palette display name — the transparency sentinel isn't a TileDef. */

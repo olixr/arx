@@ -4,7 +4,9 @@ import {
   awningTile,
   bannerPoleTile,
   bracketSignDetail,
+  herbBundlesDetail,
   pennantDetail,
+  sillHerbsDetail,
   trellisDetail,
   wallBannerDetail,
 } from '@arx/shared';
@@ -490,6 +492,13 @@ export function buildAmberford(): ZoneDef {
   b.set(85, 32, Tile.Basin);
   b.set(85, 35, Tile.Bookshelf);
   b.set(83, 34, Tile.HerbRack); // the harvest drying in bunches, not on the floor — she runs a tighter lab than that
+  // THE HERBALIST'S SHELF: Elowen's shop wears its trade. The street
+  // windows carry her sills — the healer's row on the shopfront, the
+  // seedlings she's raising on the lab light — and the harvest hangs
+  // where it dries: green stock over the remedy jars, the healer's
+  // mix over the lab bench.
+  b.setDetail(76, 42, sillHerbsDetail(1)).setDetail(82, 42, sillHerbsDetail(2));
+  b.setDetail(74, 30, herbBundlesDetail(0)).setDetail(84, 30, herbBundlesDetail(1));
   b.set(85, 39, Tile.Bed);
   b.set(81, 41, Tile.Cabinet);
   b.setDetail(83, 39, Detail.Rug).setDetail(84, 39, Detail.Rug);
@@ -509,6 +518,7 @@ export function buildAmberford(): ZoneDef {
   }
   b.set(91, 38, Tile.GrowingFrame).set(94, 38, Tile.DryingRack);
   b.set(95, 32, Tile.WildSagewort).set(90, 38, Tile.WildMoonbell);
+  b.set(90, 34, Tile.HerbPlanter); // the physic tub just inside the arch — where seedlings start before the rows take them
   b.setDetail(90, 32, Detail.Flowers).setDetail(95, 39, Detail.Flowers);
 
   // ---------------------------------------------------------------

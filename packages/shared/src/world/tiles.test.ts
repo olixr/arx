@@ -16,6 +16,9 @@ import {
   LIGHT_BLOCKING_TILES,
   PALISADE_TILES,
   SIGN_MOTIF_COUNT,
+  SILL_MIX_COUNT,
+  BUNDLE_MIX_COUNT,
+  SILL_HOST_TILES,
   TRELLIS_SPECIES_COUNT,
   WALL_HUNG_DETAILS,
   WALL_RUN_TILES,
@@ -28,6 +31,9 @@ import {
   bracketSignDetail,
   pennantDetail,
   trellisDetail,
+  sillHerbsDetail,
+  herbBundlesDetail,
+  hangHostTiles,
   wallBannerDetail,
   wallHungInfo,
   chestInfo,
@@ -473,6 +479,7 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.PlunderCart, 'plundercart', 3],
     [Tile.BossEffigy, 'effigy', 2],
     [Tile.GnawTrough, 'gnawtrough', 1],
+    [Tile.HerbPlanter, 'herbplanter', 2],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {
@@ -584,6 +591,13 @@ test('wall-hung bands: wallHungInfo reads every id back exactly', () => {
     assert.deepEqual(wallHungInfo(trellisDetail(species)), { kind: 'trellis', species });
   }
   assert.deepEqual(wallHungInfo(Detail.WallBasket), { kind: 'basket' });
+  // THE HERBALIST'S SHELF bands read back mix-true.
+  for (let mix = 0; mix < SILL_MIX_COUNT; mix++) {
+    assert.deepEqual(wallHungInfo(sillHerbsDetail(mix)), { kind: 'sill', mix });
+  }
+  for (let mix = 0; mix < BUNDLE_MIX_COUNT; mix++) {
+    assert.deepEqual(wallHungInfo(herbBundlesDetail(mix)), { kind: 'bundles', mix });
+  }
   // Ground details never read as hangings.
   for (const d of [Detail.None, Detail.Flowers, Detail.Rug, Detail.Doormat, Detail.CarpetRoyal]) {
     assert.equal(wallHungInfo(d), null, `detail ${d} stays on the ground`);
@@ -596,6 +610,11 @@ test('wall-hung bands: wallHungInfo reads every id back exactly', () => {
   assert.throws(() => wallBannerDetail(-1));
   assert.throws(() => bracketSignDetail(SIGN_MOTIF_COUNT));
   assert.throws(() => trellisDetail(TRELLIS_SPECIES_COUNT));
+  assert.throws(() => sillHerbsDetail(SILL_MIX_COUNT));
+  assert.throws(() => herbBundlesDetail(BUNDLE_MIX_COUNT));
+  // Past the mixed rosters the bands stay dark.
+  assert.equal(wallHungInfo(Detail.SillHerbs + SILL_MIX_COUNT), null);
+  assert.equal(wallHungInfo(Detail.HerbBundles + BUNDLE_MIX_COUNT), null);
 });
 
 test('wall-hung bands: the set and the reader agree, and bands never overlap', () => {
@@ -665,6 +684,15 @@ test('HANGABLE_WALL_TILES: solid full walls only, dressed by a hangings pass', (
   assert.ok(HANGABLE_WALL_TILES.has(Tile.WallWood));
   assert.ok(HANGABLE_WALL_TILES.has(Tile.WallStone));
   assert.ok(HANGABLE_WALL_TILES.has(Tile.WallGarrison));
+  // THE SILL LAW: the pots live ONLY on glazed walls, and the one
+  // host resolver routes every family to its own ground.
+  assert.deepEqual([...SILL_HOST_TILES].sort(), [Tile.WallStoneWindow, Tile.WallWoodWindow].sort());
+  assert.equal(hangHostTiles(sillHerbsDetail(0)), SILL_HOST_TILES);
+  assert.equal(hangHostTiles(herbBundlesDetail(0)), HANGABLE_WALL_TILES);
+  assert.equal(hangHostTiles(Detail.WallBanner), HANGABLE_WALL_TILES);
+  for (const t of SILL_HOST_TILES) {
+    assert.ok(!HANGABLE_WALL_TILES.has(t), `${tileDef(t).name} never hosts a full-face hanging`);
+  }
 });
 
 test('AWNING_HOST_TILES: framed south faces only — corners and curtains refuse', () => {

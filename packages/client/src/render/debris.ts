@@ -220,7 +220,10 @@ export type SmashKind =
   | 'wartable'
   | 'plundercart'
   | 'effigy'
-  | 'gnawtrough';
+  | 'gnawtrough'
+  // THE HERBALIST'S SHELF: cooper's staves and wet earth, the green
+  // harvest showering bright, iron snips, one bundle flying whole.
+  | 'herbplanter';
 
 export interface DebrisChunk {
   x: number; // world coords (tile units)
@@ -800,6 +803,7 @@ const CHIP_TONE: Record<SmashKind, string> = {
   plundercart: '#6e4a33',
   effigy: '#9c8a62',
   gnawtrough: '#5e4023',
+  herbplanter: '#6f4d26',
 };
 
 const pick = <T>(rand: () => number, arr: readonly T[]): T =>
@@ -2901,6 +2905,33 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
         out.push({ len: 0.09 + rand() * 0.05, wid: 0.09, color: pick(rand, ['#5d6a34', '#6a5f2e']), round: true, pace: 1.35 });
       }
       out.push({ len: 0.2, wid: 0.05, color: '#c9c2ae', stripe: '#ddd6c0', pace: 1.15 });
+      break;
+    }
+    case 'herbplanter': {
+      // The physic tub breaks a WORKING loss: staves clap out
+      // cooper-fashion, the wet bed goes DOWN in heavy clods, the
+      // green harvest showers bright — and the fiction's two tools
+      // read in the wreck: the snips ping off iron-bright, and the
+      // morning's tied bundle sails out WHOLE. Somebody can still
+      // hang that one.
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.13 + rand() * 0.03, wid: 0.04, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.8 });
+      }
+      out.push({ len: 0.1, wid: 0.02, color: '#4c4a52', stripe: '#8a94a0', pace: 1.25 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.055, wid: 0.05, color: pick(rand, ['#3a2d1e', '#4a3a28']), round: true, pace: 0.35 });
+      }
+      for (let i = 0; i < 6; i++) {
+        out.push({
+          len: 0.04,
+          wid: 0.03,
+          color: pick(rand, ['#5d7c42', '#8fb083', '#8f9ed6', '#6f9450']),
+          round: true,
+          pace: 1.4 + rand() * 0.2,
+        });
+      }
+      out.push({ len: 0.05, wid: 0.03, color: '#4c4a52', stripe: '#c9d6e4', pace: 1.6 });
+      out.push({ len: 0.09, wid: 0.05, color: '#8a9058', stripe: '#a89263', round: true, pace: 1.15 });
       break;
     }
   }

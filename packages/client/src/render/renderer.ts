@@ -663,6 +663,16 @@ const TRD_MEAT = '#a4524a';
 const TRD_HERB = '#5d7c42';
 const TRD_HERB_DRY = '#8a9058';
 const TRD_LAVENDER = '#8a7aa8';
+// THE HERBALIST'S SHELF: the shelf paints the game's OWN botany —
+// sagewort silver-green and moonbell dusk-blue matched to the wild
+// nodes and the farm rows, so the species read as ONE plant whether
+// they stand wild, grow in the physic tub, or dry on the beam.
+const HRB_SAGE = '#8fb083';
+const HRB_SAGE_DEEP = '#5b8a5e';
+const HRB_MOON = '#8f9ed6';
+const HRB_MOON_DEEP = '#5c6693';
+const HRB_SOIL_WET = '#3a2d1e';
+const HRB_STUBBLE = '#7a8a55';
 // THE SECOND SHIFT: the wave's own materials — thrown clay wet on
 // the wheel and fired in the kiln, the chandler's cured wax, the
 // fish market's silver. Street water reuses TWN_WATER (one river).
@@ -705,6 +715,7 @@ const LOW_STICK_TILES = new Set<number>([
   Tile.Bench,
   Tile.Bed,
   Tile.FlowerBox,
+  Tile.HerbPlanter,
   Tile.Basin,
   Tile.Barrel,
   Tile.Crate,
@@ -7851,6 +7862,23 @@ export class Renderer {
             }
             ctx.restore();
           }
+          // THE HERBALIST'S SILL (docs/herbalist-decor-plan.md): the
+          // ONE hanging that lives on glazed walls, painted LAST in
+          // the window stack — after glass and mullions — so the pots
+          // stand proud of the pane on the sill course, and a hearth-
+          // lit casement backlights them for free after dark. It
+          // rides the same gate as the glazing: a sinking wall sheds
+          // its pots with its glass.
+          if (window) {
+            const sillInfo = wallHungInfo(game.world.detailAt(tx, ty));
+            if (sillInfo?.kind === 'sill') {
+              ctx.save();
+              ctx.translate(0, yBase);
+              ctx.transform(1, 0, skew, 1, 0, 0);
+              this.sillHerbsOnSill(tx, ty, wx, wxE, wy + wh2, s, sillInfo.mix ?? 0);
+              ctx.restore();
+            }
+          }
         }
         // REAR RISER (see above): the interior back face exposed when
         // the wall ahead of us sinks lower. Spans from our crown's
@@ -8024,6 +8052,14 @@ export class Renderer {
         return;
       case 'basket':
         this.wallBasketOnFace(tx, ty, px0, s);
+        return;
+      case 'bundles':
+        this.herbBundlesOnFace(tx, ty, px0, s, info.mix ?? 0);
+        return;
+      case 'sill':
+        // The sill pots never route here: their host gate keeps them
+        // on glazed walls, and the window stack paints them itself
+        // (after the glass, so they stand proud of the pane).
         return;
       default:
         break; // crown/moon fall through to the royal banner below
@@ -8746,6 +8782,340 @@ export class Renderer {
     ctx.lineWidth = Math.max(1, s * 0.024);
     ctx.stroke(bowl);
     ctx.restore();
+  }
+
+  /**
+   * THE HERBALIST'S SILL: three glazed pots standing on the window's
+   * sill course, herbs by mix — the one hanging painted by the window
+   * stack itself. Coordinates arrive in the wall's leaned face frame;
+   * sillY is the glass's bottom edge (the sill course paints just
+   * below it). GLAZED WARE NEVER BARE CLAY: the pots deal from the
+   * jar-glaze roster, each with its slip band and lit cheek, and the
+   * row is dealt — heights, jitter, and species stations vary by the
+   * world hash so no two sills in a street read as one stamp.
+   */
+  private sillHerbsOnSill(
+    tx: number,
+    ty: number,
+    wx: number,
+    wxE: number,
+    sillY: number,
+    s: number,
+    mix: number,
+  ): void {
+    const ctx = this.ctx;
+    const t = performance.now() / 1000;
+    const h = hashCoords(173, tx, ty);
+    const cx = (wx + wxE) / 2;
+    const span = Math.min(wxE - wx, s * 0.7);
+    const baseY = sillY + s * 0.055; // standing on the sill course
+    const glazes = ['#6f8a5c', '#5c748a', '#a3703c', '#8a5a6a'];
+    // Seat shade: the row's one soft shadow on the sill board.
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
+    ctx.beginPath();
+    ctx.ellipse(cx, baseY + s * 0.014, span * 0.54, s * 0.028, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Stations west→east; the middle pot stands a breath forward so
+    // the row never reads as a rubber stamp.
+    for (const k of [0, 2, 1]) {
+      const hp = hashCoords(179 + k, tx, ty);
+      const px = cx + (k - 1) * span * 0.37 + (((hp >>> 2) % 5) - 2) * s * 0.012;
+      const py = baseY + (k === 1 ? s * 0.018 : 0);
+      // THE FISH LAW, pot-sized: a sill pot under this camera must
+      // own ~0.16s of width or the whole row reads as sill noise.
+      const pw = s * (0.16 + ((hp >>> 5) & 1) * 0.018);
+      const ph = s * (0.15 + ((hp >>> 7) & 1) * 0.02);
+      const glaze = glazes[(hp >>> 3) & 3]!;
+      // The pot: waisted flowerpot silhouette, rolled rim, slip band.
+      ctx.fillStyle = glaze;
+      ctx.beginPath();
+      ctx.moveTo(px - pw * 0.5, py - ph);
+      ctx.lineTo(px + pw * 0.5, py - ph);
+      ctx.lineTo(px + pw * 0.36, py);
+      ctx.lineTo(px - pw * 0.36, py);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(glaze, 18);
+      ctx.fillRect(px - pw * 0.56, py - ph - s * 0.024, pw * 1.12, s * 0.034);
+      ctx.fillStyle = 'rgba(238, 230, 210, 0.55)';
+      ctx.fillRect(px - pw * 0.46, py - ph + s * 0.026, pw * 0.92, s * 0.016);
+      // One lit cheek — glaze catches the west light.
+      ctx.fillStyle = 'rgba(255, 240, 214, 0.24)';
+      ctx.fillRect(px - pw * 0.34, py - ph + s * 0.016, pw * 0.17, ph - s * 0.04);
+      // The mouth: dark soil behind the rim's near lip.
+      ctx.fillStyle = HRB_SOIL_WET;
+      ctx.beginPath();
+      ctx.ellipse(px, py - ph - s * 0.005, pw * 0.4, s * 0.02, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // The planting, by mix and station.
+      const nod = this.breezeAt(tx, ty, t, tx * 1.7 + ty + k * 2.1, s, 0.006, 0.006).sway;
+      const topY = py - ph - s * 0.008;
+      const role = (mix * 3 + k + ((hp >>> 9) & 1)) % 3;
+      if (mix === 1) {
+        // THE HEALER'S ROW: sagewort rosettes and one moonbell.
+        if (k === 1) {
+          // The moonbell: one arcing stem, two hanging bells.
+          ctx.strokeStyle = HRB_SAGE_DEEP;
+          ctx.lineWidth = Math.max(1.2, s * 0.018);
+          ctx.beginPath();
+          ctx.moveTo(px, topY);
+          ctx.quadraticCurveTo(px + s * 0.03 + nod * 0.5, topY - s * 0.14, px + s * 0.06 + nod, topY - s * 0.21);
+          ctx.stroke();
+          for (const [bx, by] of [
+            [px + s * 0.066 + nod, topY - s * 0.19],
+            [px + s * 0.03 + nod * 0.7, topY - s * 0.13],
+          ] as const) {
+            ctx.fillStyle = HRB_MOON;
+            ctx.beginPath();
+            ctx.moveTo(bx - s * 0.024, by);
+            ctx.quadraticCurveTo(bx, by - s * 0.03, bx + s * 0.024, by);
+            ctx.quadraticCurveTo(bx + s * 0.018, by + s * 0.036, bx, by + s * 0.042);
+            ctx.quadraticCurveTo(bx - s * 0.018, by + s * 0.036, bx - s * 0.024, by);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = 'rgba(238, 240, 252, 0.85)';
+            ctx.fillRect(bx - s * 0.009, by + s * 0.03, s * 0.018, s * 0.011);
+          }
+        } else {
+          // Sagewort rosette: silver blades over the deep seat.
+          ctx.fillStyle = HRB_SAGE_DEEP;
+          ctx.beginPath();
+          ctx.ellipse(px, topY - s * 0.03, pw * 0.44, s * 0.038, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = HRB_SAGE;
+          for (let b = 0; b < 5; b++) {
+            const a = -Math.PI * 0.82 + b * Math.PI * 0.16 + ((hp >>> b) & 1) * 0.08;
+            ctx.beginPath();
+            ctx.ellipse(
+              px + Math.cos(a) * pw * 0.24 + (b === 2 ? nod * 0.5 : 0),
+              topY - s * 0.045 + Math.sin(a) * s * 0.04,
+              s * 0.055,
+              s * 0.022,
+              a,
+              0,
+              Math.PI * 2,
+            );
+            ctx.fill();
+          }
+        }
+      } else if (mix === 2) {
+        // THE SEEDLING ROW: sprout pairs, one leggy sprig, the tag.
+        if (role === 2) {
+          ctx.strokeStyle = '#5f8a44';
+          ctx.lineWidth = Math.max(1.2, s * 0.016);
+          ctx.beginPath();
+          ctx.moveTo(px, topY);
+          ctx.quadraticCurveTo(px + nod * 0.5, topY - s * 0.1, px + nod, topY - s * 0.18);
+          ctx.stroke();
+          ctx.fillStyle = '#6f9450';
+          for (const [ly, lm] of [[0.07, -1], [0.13, 1]] as const) {
+            ctx.beginPath();
+            ctx.ellipse(px + nod * (ly / 0.18) + lm * s * 0.03, topY - s * ly, s * 0.034, s * 0.018, lm * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          // The paper tag on its stick — somebody KEEPS this row.
+          ctx.fillStyle = '#8a6534';
+          ctx.fillRect(px + pw * 0.3, topY - s * 0.08, s * 0.012, s * 0.08);
+          ctx.fillStyle = '#e8dcc4';
+          ctx.fillRect(px + pw * 0.3 - s * 0.028, topY - s * 0.115, s * 0.068, s * 0.04);
+          ctx.fillStyle = 'rgba(60, 50, 40, 0.7)';
+          ctx.fillRect(px + pw * 0.3 - s * 0.016, topY - s * 0.1, s * 0.038, s * 0.008);
+        } else {
+          ctx.strokeStyle = '#5f8a44';
+          ctx.lineWidth = Math.max(1.2, s * 0.015);
+          for (const m of [-1, 1] as const) {
+            ctx.beginPath();
+            ctx.moveTo(px + m * pw * 0.16, topY);
+            ctx.lineTo(px + m * pw * 0.16, topY - s * 0.05);
+            ctx.stroke();
+            ctx.fillStyle = '#7fae6a';
+            ctx.beginPath();
+            ctx.ellipse(px + m * pw * 0.16 - s * 0.02, topY - s * 0.06, s * 0.022, s * 0.014, -0.5, 0, Math.PI * 2);
+            ctx.ellipse(px + m * pw * 0.16 + s * 0.02, topY - s * 0.06, s * 0.022, s * 0.014, 0.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      } else {
+        // THE KITCHEN ROW: a clipped mound, chive spikes, a trailer.
+        if (role === 0) {
+          ctx.fillStyle = shade(TRD_HERB, -12);
+          ctx.beginPath();
+          ctx.ellipse(px, topY - s * 0.045, pw * 0.46, s * 0.055, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#6f9450';
+          ctx.beginPath();
+          ctx.ellipse(px - pw * 0.12, topY - s * 0.062, pw * 0.3, s * 0.034, -0.3, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (role === 1) {
+          ctx.strokeStyle = '#5f8a44';
+          ctx.lineWidth = Math.max(1.2, s * 0.015);
+          for (let b = 0; b < 5; b++) {
+            const bend = b === 2 ? s * 0.03 : 0;
+            ctx.beginPath();
+            ctx.moveTo(px + (b - 2) * s * 0.02, topY);
+            ctx.quadraticCurveTo(
+              px + (b - 2) * s * 0.028 + nod * 0.6,
+              topY - s * 0.1,
+              px + (b - 2) * s * 0.04 + nod + bend,
+              topY - s * (0.15 + (b % 3) * 0.024),
+            );
+            ctx.stroke();
+          }
+        } else {
+          ctx.fillStyle = TRD_HERB;
+          ctx.beginPath();
+          ctx.ellipse(px, topY - s * 0.036, pw * 0.38, s * 0.044, 0, 0, Math.PI * 2);
+          ctx.fill();
+          // The trailer spills the lip — a sprig down the pot cheek.
+          ctx.strokeStyle = '#4f7a40';
+          ctx.lineWidth = Math.max(1.2, s * 0.016);
+          ctx.beginPath();
+          ctx.moveTo(px - pw * 0.3, topY);
+          ctx.quadraticCurveTo(px - pw * 0.64, topY + s * 0.06, px - pw * 0.54, topY + s * 0.13);
+          ctx.stroke();
+          ctx.fillStyle = '#6f9450';
+          for (const [fy, fm] of [[0.05, -1], [0.1, 1]] as const) {
+            ctx.beginPath();
+            ctx.ellipse(px - pw * (0.52 + fm * 0.08), topY + s * fy, s * 0.024, s * 0.015, fm * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * THE HARVEST ON THE BEAM: a pegged oak batten across the wall
+   * face, three heads-down drying bundles and a seed string swinging
+   * on the banner's two-beat breeze — the herbalist's overflow where
+   * the freestanding rack is the workshop station. Bundle heads reuse
+   * the rack's layered-teardrop grammar at wall scale; the mix keys
+   * the hues (green harvest / healer's mix / seed heads).
+   */
+  private herbBundlesOnFace(tx: number, ty: number, px0: number, s: number, mix: number): void {
+    const ctx = this.ctx;
+    const t = performance.now() / 1000;
+    const h = hashCoords(181, tx, ty);
+    const cx = px0 + s * 0.5;
+    const batY = -s * 1.5;
+    const half = s * 0.4;
+    // Shadow seats the batten on the masonry.
+    ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+    ctx.fillRect(cx - half + s * 0.025, batY + s * 0.065, half * 2, s * 0.04);
+    // The batten: riven oak, lit top arris, two forged nails.
+    ctx.fillStyle = TWN_OAK;
+    ctx.fillRect(cx - half, batY, half * 2, s * 0.065);
+    ctx.fillStyle = 'rgba(201, 167, 106, 0.55)';
+    ctx.fillRect(cx - half, batY, half * 2, s * 0.02);
+    ctx.fillStyle = TWN_IRON;
+    for (const m of [-1, 1] as const) {
+      ctx.fillRect(cx + m * half * 0.84 - s * 0.016, batY + s * 0.017, s * 0.032, s * 0.032);
+      ctx.fillStyle = 'rgba(214, 224, 236, 0.5)';
+      ctx.fillRect(cx + m * half * 0.84 - s * 0.016, batY + s * 0.017, s * 0.013, s * 0.013);
+      ctx.fillStyle = TWN_IRON;
+    }
+    // The hue deals, mix-keyed: base greens, the healer's silver and
+    // dusk-blue, or the seed harvest's golds.
+    const HUES: ReadonlyArray<ReadonlyArray<{ lo: string; hi: string }>> = [
+      [
+        { lo: shade(TRD_HERB, -14), hi: '#6f9450' },
+        { lo: shade(TRD_HERB_DRY, -12), hi: TRD_HERB_DRY },
+        { lo: shade(TRD_HERB, -8), hi: TRD_HERB_DRY },
+      ],
+      [
+        { lo: HRB_SAGE_DEEP, hi: HRB_SAGE },
+        { lo: HRB_MOON_DEEP, hi: HRB_MOON },
+        { lo: shade(TRD_HERB_DRY, -12), hi: TRD_HERB_DRY },
+      ],
+      [
+        { lo: '#8a6f30', hi: '#a8823f' },
+        { lo: '#9a8a4a', hi: '#c9b45a' },
+        { lo: shade(TRD_HERB_DRY, -12), hi: TRD_HERB_DRY },
+      ],
+    ];
+    const hues = HUES[mix % 3]!;
+    for (let k = 0; k < 3; k++) {
+      const hue = hues[(k + ((h >>> (k * 3)) & 1)) % 3]!;
+      const kx = cx + (k - 1) * half * 0.64 + ((((h >>> (k * 4)) % 5) - 2) * s) / 90;
+      const { sway, lag } = this.breezeAt(tx, ty, t, k * 1.7 + tx * 1.3 + ty, s, 0.016, 0.024);
+      // THE FISH LAW again: a drying head under this camera owns a
+      // quarter tile or the harvest reads as two leaf ticks.
+      const len = s * (0.22 + (((h >>> (k * 2 + 5)) & 3) / 3) * 0.06);
+      const tieY = batY + s * 0.07;
+      const tipX = kx + lag;
+      const tipY = tieY + len;
+      // Stems from the tie, fanning a hair.
+      ctx.strokeStyle = hue.lo;
+      ctx.lineWidth = Math.max(1.2, s * 0.016);
+      for (const m of [-1, 1] as const) {
+        ctx.beginPath();
+        ctx.moveTo(kx, tieY);
+        ctx.lineTo(kx + sway * 0.5 + m * s * 0.02, tieY + len * 0.45);
+        ctx.stroke();
+      }
+      // The head: layered teardrop, lit cheek, sprig texture.
+      ctx.fillStyle = hue.lo;
+      ctx.beginPath();
+      ctx.moveTo(kx + sway * 0.5, tieY + len * 0.38);
+      ctx.quadraticCurveTo(tipX - s * 0.078, tipY - s * 0.03, tipX - s * 0.028, tipY + s * 0.13);
+      ctx.quadraticCurveTo(tipX, tipY + s * 0.165, tipX + s * 0.028, tipY + s * 0.13);
+      ctx.quadraticCurveTo(tipX + s * 0.078, tipY - s * 0.03, kx + sway * 0.5, tieY + len * 0.38);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = hue.hi;
+      ctx.beginPath();
+      ctx.moveTo(kx + sway * 0.5 - s * 0.012, tieY + len * 0.46);
+      ctx.quadraticCurveTo(tipX - s * 0.052, tipY, tipX - s * 0.016, tipY + s * 0.108);
+      ctx.quadraticCurveTo(tipX + s * 0.01, tipY + s * 0.03, kx + sway * 0.5 + s * 0.015, tieY + len * 0.46);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = hue.lo;
+      ctx.lineWidth = Math.max(1, s * 0.011);
+      for (const m of [-1, 0.2, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(tipX + m * s * 0.025, tipY + s * 0.02);
+        ctx.lineTo(tipX + m * s * 0.046, tipY + s * 0.14);
+        ctx.stroke();
+      }
+      // The healer's mix hangs one moonbell head: two pale bells
+      // still on the stem — dusk-blue reads even dried.
+      if (mix === 1 && (k + ((h >>> (k * 3)) & 1)) % 3 === 1) {
+        ctx.fillStyle = 'rgba(238, 240, 252, 0.8)';
+        ctx.fillRect(tipX - s * 0.026, tipY + s * 0.115, s * 0.02, s * 0.02);
+        ctx.fillRect(tipX + s * 0.012, tipY + s * 0.085, s * 0.02, s * 0.02);
+      }
+      // The twine tie, wrapped twice at the batten.
+      ctx.strokeStyle = TWN_ROPE;
+      ctx.lineWidth = Math.max(1.2, s * 0.016);
+      ctx.beginPath();
+      ctx.ellipse(kx, tieY - s * 0.008, s * 0.018, s * 0.022, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(kx, tieY + s * 0.016, s * 0.015, s * 0.018, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    // The seed string at the east end: three pods on a cord, lagging
+    // the bundles' beat (seed mixes hang a second string west).
+    const strings: number[] = [cx + half * 0.94];
+    if (mix === 2) strings.push(cx - half * 0.94);
+    for (let si = 0; si < strings.length; si++) {
+      const sx = strings[si]!;
+      const { lag } = this.breezeAt(tx, ty, t, sx * 0.31 + ty, s, 0.012, 0.018);
+      ctx.strokeStyle = TWN_ROPE;
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(sx, batY + s * 0.065);
+      ctx.quadraticCurveTo(sx + lag * 0.5, batY + s * 0.17, sx + lag, batY + s * 0.28);
+      ctx.stroke();
+      const podC = mix === 1 ? HRB_MOON : '#c9a13c';
+      for (let pd = 0; pd < 3; pd++) {
+        const f = 0.35 + pd * 0.3;
+        ctx.fillStyle = pd === 1 ? shade(podC, 14) : podC;
+        ctx.beginPath();
+        ctx.ellipse(sx + lag * f, batY + s * (0.09 + f * 0.2), s * 0.022, s * 0.03, lag / s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
   }
 
   /**
@@ -16727,6 +17097,14 @@ export class Renderer {
       splinters: ['#c9a76a', '#8a6534', '#5d8449'],
       chips: ['#c95a74', '#5d8449'],
     },
+    // THE HERBALIST'S SHELF: the physic tub coughs wet earth and
+    // bruised herb — sage-silver and one moonbell-blue chip so even
+    // the hit feedback says what was growing here.
+    herbplanter: {
+      dust: ['#6f4d26', '#3a2d1e', '#5d7c42'],
+      splinters: ['#c9a76a', '#8a6534', '#8fb083'],
+      chips: ['#8fb083', '#8f9ed6'],
+    },
     // THE TRADES KEEP SHOP: each trade breaks in its own material —
     // quench water and steel, grindstone grit, coal-and-metal
     // clatter, dye splashing its own roster colors, fired brick and
@@ -17556,6 +17934,10 @@ export class Renderer {
     Tile.BreadOven,
     Tile.ButcherBlock,
     Tile.HerbRack,
+    // THE HERBALIST'S SHELF: the physic tub's moonbell stems nod on
+    // the same shared breeze — under 4Hz, never a light, never a
+    // particle; the life is in the wind and the fiction.
+    Tile.HerbPlanter,
     Tile.ShopShelf,
     // THE SECOND SHIFT: the wave rides the same ring — the wall
     // fountain's rope and rings, the pump's drip, the trough's
@@ -44364,6 +44746,274 @@ export class Renderer {
             ctx.rotate(-0.2 * m);
             ctx.fillRect(-s * 0.06, -s * 0.016, s * 0.12, s * 0.032);
             ctx.restore();
+          },
+        };
+      }
+
+      case Tile.HerbPlanter: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.16;
+        // THE PHYSIC TUB (docs/herbalist-decor-plan.md): a sawn
+        // half-cask planted in three WORKED rows of the game's own
+        // botany — sagewort rosettes, nodding moonbell, and one row
+        // harvested to stubble THIS morning, its tied bundle lying on
+        // the rim beside the iron snips. Reads working where the
+        // StreetPlanter reads civic: rows and markers, never blooms.
+        // The moonbell stems ride the shared breeze under 4Hz; zero
+        // lights, zero particles — the life is wind and fiction.
+        const r = s * 0.38;
+        const rimY = baseY - s * 0.5;
+        return {
+          sortY: ty + 0.64,
+          body: stationBody(0.62, 1.05, 0.44),
+          drawShadow: () => this.castContact(p.x, baseY, r * 1.3, s * 0.055),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.22)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.01, r * 1.32, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The sawn cask: gentler flare than the street barrel —
+            // this one was CUT DOWN, not coopered proud.
+            ctx.fillStyle = TWN_OAK;
+            ctx.beginPath();
+            ctx.moveTo(p.x - r * 0.94, baseY);
+            ctx.lineTo(p.x - r * 1.04, rimY);
+            ctx.lineTo(p.x + r * 1.04, rimY);
+            ctx.lineTo(p.x + r * 0.94, baseY);
+            ctx.closePath();
+            ctx.fill();
+            // Stave part-lines and one lit stave.
+            ctx.strokeStyle = 'rgba(60, 44, 24, 0.5)';
+            ctx.lineWidth = Math.max(1, s * 0.011);
+            for (let k = -1; k <= 1; k++) {
+              ctx.beginPath();
+              ctx.moveTo(p.x + k * r * 0.52, rimY + s * 0.012);
+              ctx.lineTo(p.x + k * r * 0.46, baseY - s * 0.01);
+              ctx.stroke();
+            }
+            ctx.fillStyle = TWN_OAK_LIT;
+            ctx.fillRect(p.x - r * 0.9, rimY + s * 0.025, r * 0.26, baseY - rimY - s * 0.06);
+            // Hoops: the upper worn BRIGHT by hands, the lower gone
+            // to rust at the damp — iron tells the tub's age.
+            ctx.strokeStyle = TWN_IRON;
+            ctx.lineWidth = Math.max(1.5, s * 0.026);
+            ctx.beginPath();
+            ctx.moveTo(p.x - r * 1.02, rimY + s * 0.06);
+            ctx.lineTo(p.x + r * 1.02, rimY + s * 0.06);
+            ctx.stroke();
+            ctx.strokeStyle = 'rgba(214, 224, 236, 0.4)';
+            ctx.lineWidth = Math.max(1, s * 0.01);
+            ctx.beginPath();
+            ctx.moveTo(p.x - r * 0.5, rimY + s * 0.052);
+            ctx.lineTo(p.x + r * 0.3, rimY + s * 0.052);
+            ctx.stroke();
+            ctx.strokeStyle = '#6e4a3a';
+            ctx.lineWidth = Math.max(1.5, s * 0.026);
+            ctx.beginPath();
+            ctx.moveTo(p.x - r * 0.96, baseY - s * 0.09);
+            ctx.lineTo(p.x + r * 0.96, baseY - s * 0.09);
+            ctx.stroke();
+            // The damp tide mark: watered THIS morning.
+            ctx.fillStyle = 'rgba(60, 44, 30, 0.3)';
+            ctx.fillRect(p.x - r * 0.97, baseY - s * 0.055, r * 1.94, s * 0.045);
+            // The sawn rim: lit edge, two shallow saw notches — a
+            // rim cut by hand, never a cooper's turned croze.
+            ctx.fillStyle = TWN_OAK_LIT;
+            ctx.beginPath();
+            ctx.ellipse(p.x, rimY, r * 1.04, r * 0.36, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(60, 44, 24, 0.45)';
+            ctx.lineWidth = Math.max(1, s * 0.01);
+            for (const nm of [-0.55, 0.35]) {
+              ctx.beginPath();
+              ctx.moveTo(p.x + nm * r - s * 0.02, rimY - r * 0.34);
+              ctx.lineTo(p.x + nm * r + s * 0.02, rimY - r * 0.33);
+              ctx.stroke();
+            }
+            // The wet bed, and THE ROWS: three worked furrows across
+            // the plan ellipse — the top plane TELLS the fiction.
+            ctx.fillStyle = HRB_SOIL_WET;
+            ctx.beginPath();
+            ctx.ellipse(p.x, rimY, r * 0.86, r * 0.27, 0, 0, Math.PI * 2);
+            ctx.fill();
+            for (const fy of [-0.1, 0.02, 0.14]) {
+              ctx.strokeStyle = 'rgba(20, 14, 8, 0.55)';
+              ctx.lineWidth = Math.max(1.2, s * 0.018);
+              ctx.beginPath();
+              ctx.moveTo(p.x - r * 0.7, rimY + r * fy);
+              ctx.quadraticCurveTo(p.x, rimY + r * (fy + 0.05), p.x + r * 0.7, rimY + r * fy);
+              ctx.stroke();
+              // The turned ridge catches the light on its crest.
+              ctx.strokeStyle = 'rgba(122, 96, 66, 0.5)';
+              ctx.lineWidth = Math.max(1, s * 0.01);
+              ctx.beginPath();
+              ctx.moveTo(p.x - r * 0.66, rimY + r * fy - s * 0.014);
+              ctx.quadraticCurveTo(p.x, rimY + r * (fy + 0.05) - s * 0.014, p.x + r * 0.66, rimY + r * fy - s * 0.014);
+              ctx.stroke();
+            }
+            // Rows dealt by the hash: sagewort, moonbell, and the
+            // harvested stubble walk their three seats per tile.
+            const perm = [
+              [0, 1, 2],
+              [2, 0, 1],
+              [1, 2, 0],
+            ][(h >>> 4) % 3]!;
+            const rowY = [rimY - r * 0.16, rimY, rimY + r * 0.17];
+            for (let ri = 0; ri < 3; ri++) {
+              const kind = perm[ri]!;
+              const ry = rowY[ri]!;
+              const back = ri === 0;
+              if (kind === 0) {
+                // Sagewort: three silver rosettes down the row.
+                for (let k2 = 0; k2 < 3; k2++) {
+                  const hs2 = hashCoords(191 + k2 + ri * 7, tx, ty);
+                  const sx2 = p.x + (k2 - 1) * r * 0.44 + ((hs2 % 5) - 2) * s * 0.01;
+                  ctx.fillStyle = HRB_SAGE_DEEP;
+                  ctx.beginPath();
+                  ctx.ellipse(sx2, ry - s * 0.022, s * 0.075, s * 0.036, 0, 0, Math.PI * 2);
+                  ctx.fill();
+                  ctx.fillStyle = HRB_SAGE;
+                  for (let b = 0; b < 4; b++) {
+                    const a = -Math.PI * 0.8 + b * Math.PI * 0.2 + ((hs2 >>> b) & 1) * 0.1;
+                    ctx.beginPath();
+                    ctx.ellipse(
+                      sx2 + Math.cos(a) * s * 0.042,
+                      ry - s * 0.036 + Math.sin(a) * s * 0.024,
+                      s * 0.04,
+                      s * 0.017,
+                      a,
+                      0,
+                      Math.PI * 2,
+                    );
+                    ctx.fill();
+                  }
+                  ctx.fillStyle = 'rgba(240, 244, 236, 0.75)';
+                  ctx.fillRect(sx2 - s * 0.008, ry - s * 0.042, s * 0.016, s * 0.012);
+                }
+              } else if (kind === 1) {
+                // Moonbell: nodding stems, dusk-blue bells riding the
+                // shared breeze — the tub's one clocked motion.
+                for (let k2 = 0; k2 < 3; k2++) {
+                  const hs2 = hashCoords(211 + k2 + ri * 7, tx, ty);
+                  const sx2 = p.x + (k2 - 1) * r * 0.42 + ((hs2 % 5) - 2) * s * 0.012;
+                  const rise = s * (0.2 + ((hs2 >>> 4) % 3) * 0.035);
+                  const nod = this.breezeAt(tx, ty, t, hs2 * 0.37, s, 0.011, 0.011).sway;
+                  ctx.strokeStyle = HRB_SAGE_DEEP;
+                  ctx.lineWidth = Math.max(1.2, s * 0.017);
+                  ctx.beginPath();
+                  ctx.moveTo(sx2, ry);
+                  ctx.quadraticCurveTo(sx2 + nod * 0.5, ry - rise * 0.6, sx2 + nod + s * 0.02, ry - rise);
+                  ctx.stroke();
+                  const bx = sx2 + nod + s * 0.036;
+                  const by = ry - rise + s * 0.018;
+                  ctx.fillStyle = k2 === 1 ? '#a6b4e8' : HRB_MOON;
+                  ctx.beginPath();
+                  ctx.moveTo(bx - s * 0.022, by);
+                  ctx.quadraticCurveTo(bx, by - s * 0.028, bx + s * 0.022, by);
+                  ctx.quadraticCurveTo(bx + s * 0.017, by + s * 0.032, bx, by + s * 0.038);
+                  ctx.quadraticCurveTo(bx - s * 0.017, by + s * 0.032, bx - s * 0.022, by);
+                  ctx.closePath();
+                  ctx.fill();
+                  ctx.fillStyle = 'rgba(238, 240, 252, 0.85)';
+                  ctx.fillRect(bx - s * 0.008, by + s * 0.027, s * 0.016, s * 0.01);
+                }
+              } else {
+                // The harvested row: cut stubble over fresh-turned
+                // earth — the morning's work, visible.
+                ctx.fillStyle = 'rgba(90, 70, 50, 0.55)';
+                ctx.beginPath();
+                ctx.ellipse(p.x + r * 0.05, ry, r * 0.6, s * 0.03, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = HRB_STUBBLE;
+                ctx.lineWidth = Math.max(1.2, s * 0.017);
+                for (let k2 = 0; k2 < 5; k2++) {
+                  const hx = p.x + (k2 - 2) * r * 0.26 + (((h >>> (k2 + ri)) & 3) - 1.5) * s * 0.008;
+                  ctx.beginPath();
+                  ctx.moveTo(hx, ry + s * 0.008);
+                  ctx.lineTo(hx + s * 0.009, ry - s * 0.032);
+                  ctx.stroke();
+                }
+              }
+              // Carved row markers stand the back two rows' west ends.
+              if (!back || ri === 0) {
+                const mk = hashCoords(227 + ri, tx, ty);
+                if ((mk & 3) !== 3 && ri < 2) {
+                  const mx = p.x - r * (0.8 - ri * 0.06);
+                  ctx.fillStyle = TWN_OAK_DARK;
+                  ctx.fillRect(mx - s * 0.013, ry - s * 0.13, s * 0.026, s * 0.13);
+                  ctx.fillStyle = '#e8dcc4';
+                  ctx.fillRect(mx - s * 0.021, ry - s * 0.158, s * 0.042, s * 0.034);
+                  ctx.fillStyle = 'rgba(60, 50, 40, 0.65)';
+                  ctx.fillRect(mx - s * 0.012, ry - s * 0.147, s * 0.024, s * 0.007);
+                }
+              }
+            }
+            // THE RIM FURNITURE (tended, never left): the iron snips
+            // resting at the east rim, the morning's tied bundle
+            // lying at the west — ready for the batten.
+            ctx.save();
+            ctx.translate(p.x + r * 0.68, rimY + r * 0.3);
+            ctx.rotate(0.5);
+            ctx.strokeStyle = TWN_IRON;
+            ctx.lineWidth = Math.max(1.4, s * 0.021);
+            for (const m of [-1, 1] as const) {
+              ctx.beginPath();
+              ctx.moveTo(m * s * 0.011, s * 0.04);
+              ctx.lineTo(m * s * 0.038, -s * 0.068);
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.ellipse(m * s * 0.019, s * 0.056, s * 0.019, s * 0.015, m * 0.4, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+            ctx.strokeStyle = 'rgba(214, 224, 236, 0.6)';
+            ctx.lineWidth = Math.max(1, s * 0.009);
+            ctx.beginPath();
+            ctx.moveTo(-s * 0.008, s * 0.032);
+            ctx.lineTo(-s * 0.03, -s * 0.057);
+            ctx.stroke();
+            ctx.restore();
+            ctx.save();
+            ctx.translate(p.x - r * 0.64, rimY + r * 0.34);
+            ctx.rotate(-1.15);
+            ctx.fillStyle = shade(TRD_HERB_DRY, -12);
+            ctx.beginPath();
+            ctx.moveTo(0, -s * 0.068);
+            ctx.quadraticCurveTo(s * 0.04, 0, s * 0.019, s * 0.068);
+            ctx.quadraticCurveTo(0, s * 0.084, -s * 0.019, s * 0.068);
+            ctx.quadraticCurveTo(-s * 0.04, 0, 0, -s * 0.068);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = TRD_HERB_DRY;
+            ctx.beginPath();
+            ctx.moveTo(0, -s * 0.054);
+            ctx.quadraticCurveTo(s * 0.027, 0, s * 0.011, s * 0.057);
+            ctx.quadraticCurveTo(-s * 0.008, s * 0.04, -s * 0.011, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = TWN_ROPE;
+            ctx.lineWidth = Math.max(1.2, s * 0.016);
+            ctx.beginPath();
+            ctx.ellipse(0, -s * 0.043, s * 0.022, s * 0.016, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+            // Two fallen leaves at the foot — the work leaves traces.
+            ctx.fillStyle = 'rgba(125, 140, 88, 0.5)';
+            for (let k2 = 0; k2 < 2; k2++) {
+              ctx.beginPath();
+              ctx.ellipse(
+                p.x - r * 0.5 + ((h >>> (k2 * 3)) & 3) * r * 0.35,
+                baseY - s * 0.01 + ((h >>> (k2 + 5)) & 1) * s * 0.018,
+                s * 0.02,
+                s * 0.009,
+                k2 * 0.9,
+                0,
+                Math.PI * 2,
+              );
+              ctx.fill();
+            }
           },
         };
       }
