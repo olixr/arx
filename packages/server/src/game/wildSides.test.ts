@@ -21,6 +21,8 @@ const proto = GameServer.prototype as unknown as {
   npcAggro: AnyFn;
   cancelNpcCast: AnyFn;
   resetBossEngagement: AnyFn;
+  npcRefillGrit: AnyFn;
+  npcTemper: AnyFn;
   npcFactionOf: AnyFn;
   npcEnforcerFid: AnyFn;
   npcTribeOf: AnyFn;
@@ -84,6 +86,9 @@ function slate(): Record<string, unknown> {
     summons: new Map(),
     npcAggro: proto.npcAggro,
     cancelNpcCast: proto.cancelNpcCast,
+    // THE HUNTER'S HEART: the door and the strike wind the grit clock.
+    npcRefillGrit: proto.npcRefillGrit,
+    npcTemper: proto.npcTemper,
     resetBossEngagement: proto.resetBossEngagement,
     npcFactionOf: proto.npcFactionOf,
     npcEnforcerFid: proto.npcEnforcerFid,

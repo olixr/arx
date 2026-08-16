@@ -218,6 +218,9 @@ function damageNpcSlate(hp: number) {
     applyStatusToNpc: () => {},
     petDefend: () => {},
     npcAtPeace: () => false,
+    // THE HUNTER'S HEART: the wound winds a chasing body's grit clock
+    // (long pull) — not this suite's law, a quiet clock here.
+    npcRefillGrit: () => {},
     grantXp: (_e: unknown, _p: unknown, skill: string, amount: number) =>
       grants.push([skill, amount]),
     killNpc: (...a: unknown[]) => kills.push(a),

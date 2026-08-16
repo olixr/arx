@@ -10,6 +10,7 @@ import {
   RECONNECT_GRACE_MS,
   TICK_DT,
   TICK_MS,
+  TICK_RATE,
   TIME_NAMES,
   chunkKey,
   clockHoursAtTick,
@@ -136,6 +137,9 @@ import {
   PACK_RALLY_RANGE,
   HELP_SEEK_RANGE,
   levelAggroFactor,
+  npcTemperament,
+  quirkTemperament,
+  type ResolvedTemperament,
   RECIPES,
   STARTER_KIT,
   TOOL_TIER_NAMES,
@@ -1025,6 +1029,24 @@ interface NpcComp {
   navRefY: number;
   /** A failed chase sulks: no aggro scans until this tick. */
   noAggroUntilTick: number;
+  /**
+   * THE QUIRK (docs/aggro-temperament-plan.md): one timid↔bold roll
+   * ∈ [-1, 1] made at spawn and kept for life — scaled by the def's
+   * variance into this body's OWN heart (quirkTemperament). Optional
+   * so fake test slates and old literals read a median 0.
+   */
+  quirk?: number;
+  /**
+   * THE LONG PULL's ledger: ticks of resolve left for a chase running
+   * BEYOND the leash circle. Refilled on home ground and by every
+   * landed exchange (a fight in your face is never abandoned for
+   * homesickness); counts down only past the ring, and empty means
+   * the walk home + the sulk. Seeded at the aggro door.
+   */
+  gritTicksLeft?: number;
+  /** Memoized resolved heart (npcTemper) — recut when the def swaps. */
+  temper?: ResolvedTemperament;
+  temperFor?: NpcDef;
   /**
    * THE HARRY's per-mob rest (beastcraft v2 Phase 2): no companion
    * blow re-takes this body's eye until the tick passes. Optional on
@@ -22518,6 +22540,11 @@ export class GameServer {
       }
     }
 
+    // THE LONG PULL: a wound is the hottest kind of exchange — a body
+    // mid-chase that is being FOUGHT never abandons the fight for
+    // homesickness, however far the pull has come.
+    if (npc.state === 'chase') this.npcRefillGrit(npc);
+
     // Fight back! A wound interrupts any peacetime state — the
     // suspicious, the investigator, and the searcher all wheel on
     // whoever drew blood (pain outranks every meter). The blow
@@ -23717,6 +23744,9 @@ export class GameServer {
       // any watcher's interest set held the body. Forced aggro
       // (a landed blow, a summoner's call) bypasses this untouched.
       noAggroUntilTick: this.tickCount + 20,
+      // THE QUIRK: the one roll of this body's life — no two wolves
+      // share a heart (the def's variance says how far apart).
+      quirk: Math.random() * 2 - 1,
       helpEid: null,
       helpUntilTick: 0,
       helpCalled: false,
@@ -23972,10 +24002,10 @@ export class GameServer {
    * buys the quarry a telegraphed pause — never a free swing.
    */
   private static readonly STANDOFF_NERVE_TICKS = 40;
-  /** An investigation's whole budget: walk, look, shrug (15s). */
-  private static readonly INVESTIGATE_TICKS = 300;
-  /** The hunt for a slipped quarry runs longer — it KNOWS you exist (20s). */
-  private static readonly SEARCH_TICKS = 400;
+  // Investigate/search clocks moved onto the def's HEART — see
+  // npcTemperament (docs/aggro-temperament-plan.md): investigateSec
+  // and searchSec per species, through each body's quirk, and every
+  // search rolls ×1..1.5 fresh (the 20–30 s window).
   /** Sight-loss grace before an engaged chase breaks to 'search' (2.5s). */
   private static readonly LOSE_SIGHT_TICKS = 50;
 
@@ -24744,6 +24774,47 @@ export class GameServer {
    * Rallied joins pass `rally: false` — one hop, never a chain that
    * drags a whole forest of dens into the fight.
    */
+  /**
+   * THE HUNTER'S HEART (docs/aggro-temperament-plan.md): this body's
+   * resolved temperament — the species' authored dials through the
+   * body's own quirk. Memoized per def identity, so the per-tick
+   * tether check costs two field reads; a CMS def swap recuts it on
+   * the next read (the kitCds re-seed idiom).
+   */
+  private npcTemper(npc: NpcComp): ResolvedTemperament {
+    if (npc.temper === undefined || npc.temperFor !== npc.def) {
+      npc.temper = quirkTemperament(npcTemperament(npc.def), npc.quirk ?? 0);
+      npc.temperFor = npc.def;
+    }
+    return npc.temper;
+  }
+
+  /**
+   * THE LONG PULL: a landed exchange — this body wounds or is wounded
+   * — winds the resolve clock back to full. Called from the damage
+   * chokes and from home ground; a fight in your face is never
+   * abandoned for homesickness.
+   */
+  private npcRefillGrit(npc: NpcComp): void {
+    npc.gritTicksLeft = Math.round(this.npcTemper(npc).gritSec * TICK_RATE);
+  }
+
+  /**
+   * The tether verdict, one chase tick's worth: inside the leash
+   * circle the clock refills (home ground asks no resolve); beyond it
+   * the clock runs down, and empty means the hunt is over. gritSec 0
+   * reads as the classic hard leash by construction.
+   */
+  private npcGritHolds(npc: NpcComp, fromOrigin: number): boolean {
+    if (fromOrigin <= npc.def.leashRange) {
+      this.npcRefillGrit(npc);
+      return true;
+    }
+    const left = Math.max(0, (npc.gritTicksLeft ?? 0) - 1);
+    npc.gritTicksLeft = left;
+    return left > 0;
+  }
+
   private npcAggro(
     eid: EntityId,
     npc: NpcComp,
@@ -24846,6 +24917,8 @@ export class GameServer {
     npc.huntIdx = 0;
     npc.huntWaitUntilTick = 0;
     npc.standTicks = 0;
+    // THE LONG PULL: every fight opens with a full tank of resolve.
+    this.npcRefillGrit(npc);
     if (npc.def.pack && (opts.rally ?? true)) {
       this.rallyPack(eid, npc, targetEid, PACK_RALLY_RANGE, 2, opts.force);
     }
@@ -24884,18 +24957,19 @@ export class GameServer {
     const pos = this.positions.get(eid);
     if (!pos) return;
     const cands: Array<{ eid: EntityId; npc: NpcComp; d: number }> = [];
-    for (const [oEid, other] of this.npcs) {
-      if (oEid === eid || other.def.pack !== npc.def.pack) continue;
-      if (!this.npcAtPeace(other) || other.def.damage <= 0) continue;
-      if (this.tickCount < other.noAggroUntilTick) continue;
-      const opos = this.positions.get(oEid);
-      // The cry carries through air, never through a plane boundary —
-      // same-theme rifts cut at the SAME coordinates share pack ids.
-      if (!opos || opos.plane !== pos.plane) continue;
+    // RAID SCALE: the cry sweeps the chunk index, never the world —
+    // it was always bounded to earshot in MEANING; now in COST (a
+    // hundred-body raid rallies without touching every npc alive).
+    // The chunk keys are plane-first, so the cry still never carries
+    // through a plane boundary.
+    this.forEachNpcNear(pos.plane, pos.x, pos.y, range, (oEid, other, opos) => {
+      if (oEid === eid || other.def.pack !== npc.def.pack) return;
+      if (!this.npcAtPeace(other) || other.def.damage <= 0) return;
+      if (this.tickCount < other.noAggroUntilTick) return;
       const d = Math.hypot(opos.x - pos.x, opos.y - pos.y);
-      if (d > range) continue;
+      if (d > range) return;
       cands.push({ eid: oEid, npc: other, d });
-    }
+    });
     cands.sort((a, b) => a.d - b.d);
     const tpos = this.positions.get(targetEid);
     for (let i = 0; i < cands.length && i < maxJoin + 2; i++) {
@@ -24933,18 +25007,18 @@ export class GameServer {
     if (this.pets.get(targetEid)?.bundle?.quietFang) return;
     let bestEid: EntityId | null = null;
     let bestDist = HELP_SEEK_RANGE;
-    for (const [oEid, other] of this.npcs) {
-      if (oEid === eid || other.def.pack !== npc.def.pack) continue;
-      if (other.state !== 'idle' || other.def.damage <= 0) continue;
-      if (this.tickCount < other.noAggroUntilTick) continue;
-      const opos = this.positions.get(oEid);
-      if (!opos || opos.plane !== pos.plane) continue;
+    // RAID SCALE: the craven scan rides the chunk index too — the
+    // run was always bounded to HELP_SEEK_RANGE; now the search is.
+    this.forEachNpcNear(pos.plane, pos.x, pos.y, HELP_SEEK_RANGE, (oEid, other, opos) => {
+      if (oEid === eid || other.def.pack !== npc.def.pack) return;
+      if (other.state !== 'idle' || other.def.damage <= 0) return;
+      if (this.tickCount < other.noAggroUntilTick) return;
       const d = Math.hypot(opos.x - pos.x, opos.y - pos.y);
       if (d < bestDist) {
         bestDist = d;
         bestEid = oEid;
       }
-    }
+    });
     if (bestEid === null) return;
     if (bestDist < 2.5) {
       this.npcCryHelp(eid, npc, targetEid);
@@ -25144,7 +25218,11 @@ export class GameServer {
       // until the eye has them genuinely in reach.
       const cap =
         bestZone === 'peripheral' ? ALERT_SUS : bestInReach ? ALERT_MAX : ALERT_WATCH_CAP;
-      if (npc.alert < cap) npc.alert = Math.min(cap, npc.alert + bestRate * dt);
+      // THE HUNTER'S HEART: keenness prices the meter's climb — a fox
+      // clocks you in half the strides a skeleton needs.
+      if (npc.alert < cap) {
+        npc.alert = Math.min(cap, npc.alert + bestRate * dt * this.npcTemper(npc).keen);
+      }
       if (npc.alert >= ALERT_MAX && this.players.has(bestEid)) {
         this.npcAggro(eid, npc, bestEid);
         return true;
@@ -25241,7 +25319,14 @@ export class GameServer {
     // A lost quarry ends the cast, the combo, and the run as one act.
     this.resetBossEngagement(eid, npc);
     npc.helpEid = null;
-    npc.huntUntilTick = this.tickCount + GameServer.SEARCH_TICKS;
+    // The hunt's clock is the heart's: the authored searchSec through
+    // this body's quirk, then a fresh ×1..1.5 roll per hunt — the
+    // default 20 s lives as the 20–30 s window, and no two escapes
+    // read the same. The roll is per-HUNT on purpose: the same wolf
+    // shrugs quickly one day and combs the grove the next.
+    npc.huntUntilTick =
+      this.tickCount +
+      Math.round(this.npcTemper(npc).searchSec * TICK_RATE * (1 + Math.random() * 0.5));
     npc.huntWps = null;
     npc.huntIdx = 0;
     npc.huntWaitUntilTick = 0;
@@ -25263,15 +25348,12 @@ export class GameServer {
         }
       }
     }
-    // The hunt never outruns the leash: clamp the LKP into the circle.
-    const ox = npc.alertX - npc.originX;
-    const oy = npc.alertY - npc.originY;
-    const od = Math.hypot(ox, oy);
-    const maxR = Math.max(0, npc.def.leashRange - 1);
-    if (od > maxR && od > 0) {
-      npc.alertX = npc.originX + (ox / od) * maxR;
-      npc.alertY = npc.originY + (oy / od) * maxR;
-    }
+    // THE HUNT UNCHAINED: the search anchors WHERE THE QUARRY
+    // VANISHED — a sight-break at the end of a long pull hunts the
+    // hedgerow the player ducked behind, never a spot teleported back
+    // into the home circle (the old clamp made every far escape
+    // absurd). Only the CLOCK ends a search; 'return' then owns the
+    // whole walk home, however long the pull was.
     npc.navBest = Infinity;
     npc.navStuck = 0;
     npc.steer.side = 0;
@@ -25319,19 +25401,14 @@ export class GameServer {
    */
   private mintHuntRing(npc: NpcComp, plane: PlaneId, count: number): Array<{ x: number; y: number }> {
     const wps: Array<{ x: number; y: number }> = [];
-    const maxR = Math.max(0, npc.def.leashRange - 1);
     for (let attempt = 0; attempt < count * 5 && wps.length < count; attempt++) {
       const a = Math.random() * Math.PI * 2;
       const r = 2.5 + Math.random() * 2;
-      let x = npc.alertX + Math.cos(a) * r;
-      let y = npc.alertY + Math.sin(a) * r;
-      const ox = x - npc.originX;
-      const oy = y - npc.originY;
-      const od = Math.hypot(ox, oy);
-      if (od > maxR && od > 0) {
-        x = npc.originX + (ox / od) * maxR;
-        y = npc.originY + (oy / od) * maxR;
-      }
+      // The ring belongs to the LKP wherever the hunt stands (THE
+      // HUNT UNCHAINED) — reachability and solids still gate every
+      // look, and the clock alone ends the whole errand.
+      const x = npc.alertX + Math.cos(a) * r;
+      const y = npc.alertY + Math.sin(a) * r;
       if (circleHitsSolid(this.worldOf(plane), x, y, npc.def.radius)) continue;
       wps.push({ x, y });
     }
@@ -25383,6 +25460,9 @@ export class GameServer {
 
   /** Land an NPC's basic on whatever it is chasing. */
   private npcStrike(npcEid: EntityId, npc: NpcComp, targetEid: EntityId, raw: number): void {
+    // THE LONG PULL: landing a blow is an exchange too — the wolf
+    // that keeps catching you keeps wanting you.
+    this.npcRefillGrit(npc);
     const player = this.players.get(targetEid);
     if (player) {
       this.damagePlayer(targetEid, raw, {
@@ -25999,14 +26079,32 @@ export class GameServer {
         // THE ARENA LAW: a crowned foe's fight has authored bounds —
         // arenaR outranks the def's leash when the crown wears one, and
         // the SEAT's own radius outranks both (a court-stamped crown
-        // fights inside the walls its arena prefab drew).
-        if (fromOrigin > this.arenaRadiusFor(npc)) {
+        // fights inside the walls its arena prefab drew). Crowns and
+        // arena-stamped spawns keep the HARD wall: a lured boss is a
+        // raid mechanic nobody authored.
+        const arenaBound =
+          npc.def.boss !== undefined ||
+          this.spawnPoints[npc.spawnIndex]?.arenaR !== undefined;
+        // THE LONG PULL (docs/aggro-temperament-plan.md): for everyone
+        // else the leash circle is HOME, not a wall — beyond it the
+        // chase lives on the body's grit, refilled by every landed
+        // exchange. Keep the fight warm and a wolf follows you to the
+        // town gate; go cold and quiet, and its nerve fails.
+        const tetherBroke = arenaBound
+          ? fromOrigin > this.arenaRadiusFor(npc)
+          : !this.npcGritHolds(npc, fromOrigin);
+        if (tetherBroke) {
           npc.state = 'return';
           npc.targetEid = null;
           npc.windupTicks = 0;
           this.resetBossEngagement(eid, npc);
           npc.navBest = Infinity;
           npc.navStuck = 0;
+          // A tired hunter goes home and SULKS — the ledger that kills
+          // leash-edge re-pull ping-pong (arena breaks stay as ever).
+          if (!arenaBound) {
+            npc.noAggroUntilTick = this.tickCount + GameServer.NO_AGGRO_TICKS;
+          }
         } else if (!tpos || sightBroke) {
           // The quarry vanished — melted into stealth, slipped the
           // eye, logged off, or the decoy burst. Nobody shrugs at
@@ -26316,9 +26414,11 @@ export class GameServer {
         if (npc.alert < ALERT_SUS * 0.6) {
           npc.state = 'idle';
         } else if (this.tickCount >= npc.huntUntilTick) {
-          // The stare didn't settle it. Go and see.
+          // The stare didn't settle it. Go and see — for as long as
+          // this species' patience runs (the heart's own clock).
           npc.state = 'investigate';
-          npc.huntUntilTick = this.tickCount + GameServer.INVESTIGATE_TICKS;
+          npc.huntUntilTick =
+            this.tickCount + Math.round(this.npcTemper(npc).investigateSec * TICK_RATE);
           npc.huntWps = null;
           npc.huntIdx = 0;
           npc.huntWaitUntilTick = 0;
@@ -26334,10 +26434,15 @@ export class GameServer {
         }
       } else if (npc.state === 'investigate' || npc.state === 'search') {
         // THE HUNT: walk to the last-known ground, then a ring of
-        // second looks, then give it up. The leash binds hunts like
-        // it binds chases; the give-up clock binds them harder.
+        // second looks, then give it up. The leash binds the PEACETIME
+        // curiosity stroll (investigate) near home; a broken CHASE
+        // earned its search wherever the quarry vanished, and only the
+        // clock ends it (THE HUNT UNCHAINED).
         const fromOrigin = Math.hypot(pos.x - npc.originX, pos.y - npc.originY);
-        if (this.tickCount >= npc.huntUntilTick || fromOrigin > npc.def.leashRange) {
+        if (
+          this.tickCount >= npc.huntUntilTick ||
+          (npc.state === 'investigate' && fromOrigin > npc.def.leashRange)
+        ) {
           this.npcEndHunt(npc);
         } else if (this.tickCount < npc.huntWaitUntilTick) {
           // A leg's dwell: stand and sweep the gaze — the slow turn
@@ -26370,8 +26475,14 @@ export class GameServer {
               // shrank under the standoff range could stand nose to
               // nose with a "?" forever and charge a free swing.
               pos.dir = Math.atan2(npc.alertY - pos.y, npc.alertX - pos.x);
+              // The heart's nerve prices the fuse: a bear's stare
+              // breaks in half the time, a fox studies you longest —
+              // and the eid jitter stays so a LINE of watchers never
+              // breaks in unison.
               if (
-                ++npc.standTicks >= GameServer.STANDOFF_NERVE_TICKS + ((eid * 7) % 20) &&
+                ++npc.standTicks >=
+                  Math.round(GameServer.STANDOFF_NERVE_TICKS * this.npcTemper(npc).nerve) +
+                    ((eid * 7) % 20) &&
                 npc.alertEid !== null &&
                 this.players.has(npc.alertEid) &&
                 this.tickCount >= npc.noAggroUntilTick

@@ -234,11 +234,136 @@ export interface NpcDef {
    */
   sightArc?: number;
   /**
+   * THE HUNTER'S HEART (docs/aggro-temperament-plan.md): the species'
+   * temperament — how keen the eye, how quick the nerve, how long the
+   * hunt, how far past the leash circle a chase survives, and how much
+   * each individual BODY differs from its kin. All optional; absent
+   * fields read the shared defaults, so every shipped def behaves
+   * exactly as before the epic (the backfill law).
+   */
+  temperament?: NpcTemperament;
+  /**
    * THE DREAD CROWN (docs/boss-system-plan.md): phases, chains, CC
    * dials, arena law, and the spoken fight. Requires a kit — a boss
    * with no voices is a contradiction the validator refuses.
    */
   boss?: NpcBossDef;
+}
+
+/**
+ * THE HUNTER'S HEART — the tunable temperament of a species. The
+ * state machine every body rides stays ONE machine; these dials are
+ * why a fox, a skeleton, and a legion drillmaster feel nothing alike
+ * on it. Bounds live in TEMPERAMENT_BOUNDS and the validator refuses
+ * anything outside them (a NaN nerve is a combat-law bug, not a
+ * flavor choice).
+ */
+export interface NpcTemperament {
+  /** Alert-gain multiplier: the eye's keenness (hawk vs dull bone). */
+  keen?: number;
+  /**
+   * Standoff-nerve multiplier — how long a wary watcher holds the
+   * stare before committing through the aggro door. LOWER is BOLDER:
+   * a bear at 0.5 charges in half the time, a fox at 2.5 studies you.
+   */
+  nerve?: number;
+  /** Seconds the walk-over-and-look investigation runs. */
+  investigateSec?: number;
+  /**
+   * Seconds the post-line-of-sight-break hunt runs. Each hunt also
+   * rolls ×1..1.5 — the authored 20 becomes the living 20–30 s
+   * window, and no two escapes read the same.
+   */
+  searchSec?: number;
+  /**
+   * THE LONG PULL: seconds a chase survives BEYOND the leash circle.
+   * The clock only runs past the ring, and a landed exchange refills
+   * it — a fight in your face is never abandoned for homesickness.
+   * 0 = the classic hard leash (the wall, for defs that want it).
+   */
+  gritSec?: number;
+  /**
+   * THE QUIRK's reach: per-body spread on one timid↔bold axis rolled
+   * once per life. 0 = a uniform species (the drilled, the dead);
+   * 0.4 = a rabble where no two bodies share a heart.
+   */
+  variance?: number;
+}
+
+/** Resolved temperament — every dial present, defaults filled. */
+export interface ResolvedTemperament {
+  keen: number;
+  nerve: number;
+  investigateSec: number;
+  searchSec: number;
+  gritSec: number;
+  variance: number;
+}
+
+/**
+ * The shared defaults every unauthored def reads — chosen to match
+ * the pre-epic constants exactly, except gritSec: the old behavior
+ * was a hard wall (gritSec 0), and the epic's whole point is that the
+ * DEFAULT world supports the lure. 45 s of grit means a default mob
+ * follows a warm fight well past its circle but still gives up on a
+ * cold silent march; authored hearts push both ways from here.
+ */
+export const TEMPERAMENT_DEFAULTS: ResolvedTemperament = {
+  keen: 1,
+  nerve: 1,
+  investigateSec: 15,
+  searchSec: 20,
+  gritSec: 45,
+  variance: 0.15,
+};
+
+/** Validator bounds, [min, max] per dial — the CMS sliders' rails too. */
+export const TEMPERAMENT_BOUNDS: Record<keyof NpcTemperament, readonly [number, number]> = {
+  keen: [0.25, 3],
+  nerve: [0.25, 4],
+  investigateSec: [3, 60],
+  searchSec: [5, 90],
+  gritSec: [0, 600],
+  variance: [0, 0.5],
+};
+
+/** One resolved heart: authored dials over the shared defaults. */
+export function npcTemperament(def: NpcDef): ResolvedTemperament {
+  const t = def.temperament;
+  if (!t) return TEMPERAMENT_DEFAULTS;
+  return {
+    keen: t.keen ?? TEMPERAMENT_DEFAULTS.keen,
+    nerve: t.nerve ?? TEMPERAMENT_DEFAULTS.nerve,
+    investigateSec: t.investigateSec ?? TEMPERAMENT_DEFAULTS.investigateSec,
+    searchSec: t.searchSec ?? TEMPERAMENT_DEFAULTS.searchSec,
+    gritSec: t.gritSec ?? TEMPERAMENT_DEFAULTS.gritSec,
+    variance: t.variance ?? TEMPERAMENT_DEFAULTS.variance,
+  };
+}
+
+/**
+ * THE QUIRK — one personality axis, timid↔bold, rolled once per life
+ * (quirk ∈ [-1, 1]) and scaled by the species' variance. ONE axis so
+ * a body is COHERENT: the bold wolf commits sooner (nerve ÷), chases
+ * farther (grit ×), and is a shade keener — never "fearless but gives
+ * up early". Multiplicative and clamped inside the validator bounds,
+ * so no roll escapes the rails the dials themselves obey.
+ */
+export function quirkTemperament(base: ResolvedTemperament, quirk: number): ResolvedTemperament {
+  const v = base.variance;
+  if (v <= 0 || quirk === 0) return base;
+  const q = Math.max(-1, Math.min(1, quirk));
+  const bold = 1 + q * v;
+  const clamp = (x: number, b: readonly [number, number]) =>
+    Math.max(b[0], Math.min(b[1], x));
+  return {
+    keen: clamp(base.keen * (1 + q * v * 0.5), TEMPERAMENT_BOUNDS.keen),
+    nerve: clamp(base.nerve / bold, TEMPERAMENT_BOUNDS.nerve),
+    investigateSec: base.investigateSec,
+    searchSec: clamp(base.searchSec * (1 + q * v * 0.5), TEMPERAMENT_BOUNDS.searchSec),
+    gritSec: clamp(base.gritSec * bold, TEMPERAMENT_BOUNDS.gritSec),
+    variance: v,
+  };
 }
 
 /** Bosses may carry more voices than trash — phase gates keep each moment's hand small. */
@@ -388,6 +513,9 @@ const defs: NpcDef[] = [
     // And a goblin's courage lives in its numbers — bloodied, it may
     // bolt for a fellow and drag the whole squabble back with it.
     craven: true,
+    // An unruly rabble: the widest variance in the bestiary — some
+    // squatters are hair-trigger terrors, some barely mind you.
+    temperament: { gritSec: 40, variance: 0.4 },
   },
   {
     id: 'goblin_thrower',
@@ -599,6 +727,8 @@ const defs: NpcDef[] = [
     // A deserter deserts: pressed hard, he may break for the camp and
     // come back with friends — or grit his teeth and finish it.
     craven: true,
+    // Jumpy outlaws: quick eyes on the road, and no two alike.
+    temperament: { keen: 1.15, variance: 0.25 },
   },
   {
     id: 'brigand_archer',
@@ -723,6 +853,9 @@ const defs: NpcDef[] = [
     // Dry bones: nothing to bleed, everything to burn.
     resist: ['bleed'],
     weak: ['burn'],
+    // Dull sockets, but the dead do not tire and do not differ: slow
+    // to notice, then a long unhurried hunt with zero variance.
+    temperament: { keen: 0.6, searchSec: 35, gritSec: 150, variance: 0 },
   },
   {
     id: 'skeleton_guard',
@@ -1237,6 +1370,9 @@ const defs: NpcDef[] = [
     // NO craven flag, ever: a goblin bolts for help, a legionary
     // stands where it was posted. The discipline IS the species.
     pack: 'hobgoblin',
+    // The drilled legion: keen, quick to commit, tireless — and
+    // UNIFORM on purpose; the discipline is the variance dial at 0.05.
+    temperament: { keen: 1.2, nerve: 0.6, gritSec: 75, variance: 0.05 },
   },
   {
     id: 'hobgoblin_archer',
@@ -1636,6 +1772,8 @@ const defs: NpcDef[] = [
     radius: 0.3,
     hitHeight: 0.9,
     pounce: true,
+    // Charges early, tires fast: all temper, no stamina.
+    temperament: { nerve: 0.7, gritSec: 25 },
   },
   {
     // THE OLD RAZORBACK: the deep wood's battering terror — a
@@ -2111,6 +2249,9 @@ const defs: NpcDef[] = [
     // Claws rake deep — provoke it and keep paying.
     attackStatus: { status: 'bleed', power: 2, durationTicks: 50 },
     pounce: true,
+    // Short temper, long memory: the stare breaks in half the time,
+    // and the pursuit outlasts most legs.
+    temperament: { nerve: 0.5, gritSec: 60, searchSec: 25 },
   },
   // THE SHELL WALKS (giant turtles): the pond bank's fortress. A
   // giant turtle hunts nothing — it outlasts everything. Provoke it
@@ -2261,6 +2402,9 @@ const defs: NpcDef[] = [
     attackStatus: { status: 'bleed', power: 1, durationTicks: 60 },
     pounce: true,
     pack: 'wolfkin',
+    // The relentless pack: keen noses, and a chase that survives far
+    // past the circle — the classic drag-it-to-the-gates lure.
+    temperament: { keen: 1.3, gritSec: 90, variance: 0.2 },
   },
   {
     id: 'worg',
@@ -2287,6 +2431,8 @@ const defs: NpcDef[] = [
     attackStatus: { status: 'chill', power: 1, durationTicks: 60 },
     pounce: true,
     pack: 'worg',
+    // Wolf heart, harder: the bonded pair does not give up a hunt.
+    temperament: { keen: 1.3, gritSec: 120, variance: 0.2 },
   },
   {
     id: 'dire_wolf',
@@ -2315,6 +2461,8 @@ const defs: NpcDef[] = [
     // The howl: dread shoves you off her, and every wolf in earshot
     // answers — the champion fight is the PACK, not the duel.
     kit: [{ ability: 'rallying_howl', cooldownTicks: 150, maxRange: 4.5, rally: true }],
+    // The matriarch commits fast and hunts longest of the line.
+    temperament: { keen: 1.4, nerve: 0.6, gritSec: 150, variance: 0.1 },
   },
   {
     // OLD FANG (docs/boss-system-plan.md, the wolf crown): the
@@ -2560,6 +2708,9 @@ const defs: NpcDef[] = [
     attackStatus: { status: 'bleed', power: 1, durationTicks: 40 },
     pounce: true,
     pack: 'foxkin',
+    // The skulk: sees everything, commits late, abandons early — a
+    // fox is a WATCHER first, and only barely a fighter.
+    temperament: { keen: 1.6, nerve: 2.5, gritSec: 12, searchSec: 10, variance: 0.25 },
   },
   // THE DIRE FOX — the smokebrush vixen, the matriarch of the skulk.
   // Never the dire wolf's wall: she is RANGY and faster than anything
@@ -3121,6 +3272,28 @@ export function validateNpcDef(
   }
   if (d.special !== undefined) {
     errors.push("special is retired — author kit: [{ability, cooldownTicks, ...}] (docs/enemy-arts-plan.md)");
+  }
+  // THE HUNTER'S HEART: temperament is combat law like lanes — every
+  // dial rides straight into the state machine's clocks, so a NaN
+  // nerve or a 10-hour grit is refused at the door, and unknown keys
+  // die here instead of silently in a drawer.
+  if (d.temperament !== undefined) {
+    const t = d.temperament as Record<string, unknown>;
+    if (typeof t !== 'object' || t === null || Array.isArray(t)) {
+      errors.push('temperament must be an object');
+    } else {
+      for (const key of Object.keys(t)) {
+        const bounds = TEMPERAMENT_BOUNDS[key as keyof NpcTemperament];
+        if (bounds === undefined) {
+          errors.push(`temperament has unknown field '${key}'`);
+          continue;
+        }
+        const v = t[key];
+        if (typeof v !== 'number' || !Number.isFinite(v) || v < bounds[0] || v > bounds[1]) {
+          errors.push(`temperament.${key} must be a number in [${bounds[0]}, ${bounds[1]}]`);
+        }
+      }
+    }
   }
   if (d.kit !== undefined) {
     const kitMax = d.boss !== undefined ? BOSS_KIT_MAX : 6;

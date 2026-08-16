@@ -14,6 +14,8 @@ const proto = GameServer.prototype as unknown as {
   npcAggro: AnyFn;
   cancelNpcCast: AnyFn;
   resetBossEngagement: AnyFn;
+  npcRefillGrit: AnyFn;
+  npcTemper: AnyFn;
   npcFactionOf: AnyFn;
   npcEnforcerFid: AnyFn;
   playerBandWith: AnyFn;
@@ -81,6 +83,9 @@ function slate(opts: {
     actors: new Map(opts.actorSlug ? [[21, { actor: { id: opts.actorSlug } }]] : []),
     npcAggro: proto.npcAggro,
     cancelNpcCast: proto.cancelNpcCast,
+    // THE HUNTER'S HEART: the door seeds the grit ledger (long pull).
+    npcRefillGrit: proto.npcRefillGrit,
+    npcTemper: proto.npcTemper,
     // The retarget teardown is one owned act now (audit 2026-08-15).
     resetBossEngagement: proto.resetBossEngagement,
     npcFactionOf: proto.npcFactionOf,

@@ -4,6 +4,7 @@ import {
   DANGER_LAWS,
   FACTION_BAND_ORDER,
   RECIPES,
+  TEMPERAMENT_DEFAULTS,
   SHOPS,
   actorCombatDef,
   expectedYield,
@@ -393,6 +394,27 @@ function npcDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
     );
     body.appendChild(
       sect('Combat tuning', 'The gold tick on each track is the bestiary median — where this creature sits among all 27.', combat),
+    );
+
+    // THE HUNTER'S HEART (docs/aggro-temperament-plan.md): the
+    // temperament dials — this bench is exactly why they exist.
+    // Writing any slider mints the block; the defaults shown are the
+    // shared heart every unauthored def already lives by.
+    const heartDial = (key: 'keen' | 'nerve' | 'investigateSec' | 'searchSec' | 'gritSec' | 'variance', v: number) => {
+      (draft.temperament ??= {})[key] = v;
+      markDirty();
+    };
+    const heart = el('div', 'slider-grid');
+    heart.append(
+      statSlider({ label: 'keen', value: draft.temperament?.keen ?? TEMPERAMENT_DEFAULTS.keen, min: 0.25, max: 3, step: 0.05, note: 'alert-gain mult — how fast the eye clocks you', onInput: (v) => heartDial('keen', v) }),
+      statSlider({ label: 'nerve', value: draft.temperament?.nerve ?? TEMPERAMENT_DEFAULTS.nerve, min: 0.25, max: 4, step: 0.05, note: 'standoff-stare mult — LOWER commits sooner', onInput: (v) => heartDial('nerve', v) }),
+      statSlider({ label: 'investigate', value: draft.temperament?.investigateSec ?? TEMPERAMENT_DEFAULTS.investigateSec, min: 3, max: 60, unit: 'sec', note: 'walk-over-and-look budget', onInput: (v) => heartDial('investigateSec', v) }),
+      statSlider({ label: 'search', value: draft.temperament?.searchSec ?? TEMPERAMENT_DEFAULTS.searchSec, min: 5, max: 90, unit: 'sec', note: 'post-sight-break hunt; each hunt rolls ×1..1.5', onInput: (v) => heartDial('searchSec', v) }),
+      statSlider({ label: 'grit', value: draft.temperament?.gritSec ?? TEMPERAMENT_DEFAULTS.gritSec, min: 0, max: 600, unit: 'sec', note: 'chase life past the leash circle; 0 = hard wall', onInput: (v) => heartDial('gritSec', v) }),
+      statSlider({ label: 'variance', value: draft.temperament?.variance ?? TEMPERAMENT_DEFAULTS.variance, min: 0, max: 0.5, step: 0.05, note: 'per-BODY spread on one timid↔bold axis', onInput: (v) => heartDial('variance', v) }),
+    );
+    body.appendChild(
+      sect('Temperament', 'The species’ heart: how keen the eye, how quick the nerve, how long the hunt — and how much each individual differs.', heart),
     );
 
     // Peer comparison.

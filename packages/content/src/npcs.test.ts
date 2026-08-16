@@ -257,3 +257,85 @@ test('validator: THE CHAIN — links land on kit-mates, no loops, no scripts', (
     [],
   );
 });
+
+// ─── THE HUNTER'S HEART (docs/aggro-temperament-plan.md) ───────────
+
+test("temperament: the resolver backfills every dial — an unauthored def IS the defaults", async () => {
+  const { npcTemperament, TEMPERAMENT_DEFAULTS } = await import('./npcs.js');
+  const bare = npcDef('rat')!;
+  assert.equal(bare.temperament, undefined, 'rat authors no heart');
+  assert.deepEqual(npcTemperament(bare), TEMPERAMENT_DEFAULTS);
+  // Partial authorship: unnamed dials still read the defaults.
+  const boar = npcTemperament(npcDef('boar')!);
+  assert.equal(boar.nerve, 0.7);
+  assert.equal(boar.gritSec, 25);
+  assert.equal(boar.keen, TEMPERAMENT_DEFAULTS.keen);
+  assert.equal(boar.searchSec, TEMPERAMENT_DEFAULTS.searchSec);
+});
+
+test('temperament: the default search window is the asked-for 20–30 s', async () => {
+  const { TEMPERAMENT_DEFAULTS } = await import('./npcs.js');
+  // Each hunt rolls ×1..1.5 on top — 20 s authored spans 20–30 s lived.
+  assert.equal(TEMPERAMENT_DEFAULTS.searchSec, 20);
+});
+
+test('temperament: authored hearts land inside the validator rails', async () => {
+  const { TEMPERAMENT_BOUNDS } = await import('./npcs.js');
+  for (const def of NPCS.values()) {
+    if (!def.temperament) continue;
+    for (const [key, v] of Object.entries(def.temperament)) {
+      const b = TEMPERAMENT_BOUNDS[key as keyof typeof TEMPERAMENT_BOUNDS];
+      assert.ok(b, `${def.id} temperament has unknown dial '${key}'`);
+      assert.ok(
+        typeof v === 'number' && v >= b[0] && v <= b[1],
+        `${def.id} temperament.${key}=${v} outside [${b[0]}, ${b[1]}]`,
+      );
+    }
+  }
+});
+
+test('validator: temperament bounds + unknown-key refusal (the lanes law)', () => {
+  const base = npcDef('goblin')!;
+  const refs = { lootTables: new Set(base.loot), npcIds: new Set(['goblin']) };
+  assert.deepEqual(validateNpcDef({ ...base, temperament: { keen: 1.5, gritSec: 0 } }, refs), []);
+  assert.ok(
+    validateNpcDef({ ...base, temperament: { keen: 99 } }, refs).some((e) =>
+      e.includes('temperament.keen'),
+    ),
+  );
+  assert.ok(
+    validateNpcDef({ ...base, temperament: { nerve: Number.NaN } }, refs).some((e) =>
+      e.includes('temperament.nerve'),
+    ),
+  );
+  assert.ok(
+    validateNpcDef({ ...base, temperament: { courage: 2 } }, refs).some((e) =>
+      e.includes("unknown field 'courage'"),
+    ),
+  );
+  assert.ok(
+    validateNpcDef({ ...base, temperament: 7 }, refs).some((e) => e.includes('temperament')),
+  );
+});
+
+test('the quirk: one timid↔bold axis, coherent and clamped', async () => {
+  const { npcTemperament, quirkTemperament, TEMPERAMENT_BOUNDS } = await import('./npcs.js');
+  const base = npcTemperament(npcDef('goblin')!); // variance 0.4, the rabble
+  const bold = quirkTemperament(base, 1);
+  const timid = quirkTemperament(base, -1);
+  // The bold body commits sooner, chases farther, sees a shade keener.
+  assert.ok(bold.nerve < base.nerve, 'bold = quicker nerve');
+  assert.ok(bold.gritSec > base.gritSec, 'bold = longer grit');
+  assert.ok(bold.keen > base.keen, 'bold = keener eye');
+  // The timid body is the coherent mirror — never "fearless but flaky".
+  assert.ok(timid.nerve > base.nerve && timid.gritSec < base.gritSec && timid.keen < base.keen);
+  // Zero variance = a uniform species: the roll changes nothing.
+  const dead = npcTemperament(npcDef('skeleton')!);
+  assert.deepEqual(quirkTemperament(dead, 1), dead);
+  // No roll escapes the rails the dials themselves obey.
+  for (const q of [-1, -0.5, 0.5, 1]) {
+    const t = quirkTemperament(base, q);
+    assert.ok(t.nerve >= TEMPERAMENT_BOUNDS.nerve[0] && t.nerve <= TEMPERAMENT_BOUNDS.nerve[1]);
+    assert.ok(t.gritSec >= 0 && t.gritSec <= TEMPERAMENT_BOUNDS.gritSec[1]);
+  }
+});

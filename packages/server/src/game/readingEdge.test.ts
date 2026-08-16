@@ -80,6 +80,9 @@ function seamSlate(hp = 100) {
     petDefend: () => {},
     grantPetBattleXp: () => {},
     npcAtPeace: () => false,
+    // THE HUNTER'S HEART: the wound winds a chasing body's grit clock
+    // (long pull) — not this suite's law, a quiet clock here.
+    npcRefillGrit: () => {},
     grantXp: () => {},
     killNpc: () => {},
     damageNpc: proto.damageNpc,
