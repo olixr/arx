@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arx — an open world, forged by hand</title>
+    <meta
+      name="description"
+      content="Arx is a free multiplayer open-world RPG that runs in your browser. Eight hand-built towns, ninety quests, key-cut dungeons and a frontier that does not end. Nothing to install."
+    />
+    <meta name="theme-color" content="#14110d" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="canonical" href="https://arx.gg/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Arx" />
+    <meta property="og:title" content="Arx — an open world, forged by hand" />
+    <meta
+      property="og:description"
+      content="A free multiplayer open-world RPG in your browser. Eight hand-built towns, ninety quests, key-cut dungeons, and a frontier that does not end."
+    />
+    <meta property="og:url" content="https://arx.gg/" />
+    <meta property="og:image" content="https://arx.gg/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <!-- ============================================== the nav -->
+    <nav class="nav" id="nav" aria-label="Site">
+      <div class="nav-inner">
+        <a class="nav-mark" href="/">Arx</a>
+        <div class="nav-links">
+          <a href="#world">The World</a>
+          <a href="#dark">The Long Dark</a>
+          <a href="#schools">The Schools</a>
+          <a href="#friends">With Friends</a>
+        </div>
+        <a class="btn-gold" href="/play">Play free</a>
+      </div>
+    </nav>
+
+    <!-- ============================================== the hero -->
+    <header class="hero" id="top">
+      <div class="hero-stage" id="hero-stage">
+        <canvas id="hero-canvas" aria-hidden="true"></canvas>
+        <div class="hero-scrim"></div>
+      </div>
+      <div class="hero-content" id="hero-content">
+        <p class="hero-kicker">Free to play &middot; runs in the browser &middot; nothing to install</p>
+        <h1 class="hero-mark">Arx</h1>
+        <p class="hero-tagline">An open world, forged by hand.</p>
+        <p class="hero-lede">
+          Every blade of grass, every body on the road and every torch after dark is drawn
+          live, in code, as you watch. <strong>This is not a trailer.</strong> The meadow behind
+          these words is the game, running.
+        </p>
+        <div class="hero-cta">
+          <a class="btn-gold" href="/play">Enter the Dawnlands</a>
+          <a class="btn-ghost" href="#world">Walk the road north &darr;</a>
+        </div>
+      </div>
+      <p class="hero-clock" aria-live="off"><span id="scene-clock">evening</span> over the meadow</p>
+    </header>
+
+    <!-- ============================================== the ledger -->
+    <div class="ledger" aria-label="The world in numbers">
+      <div class="ledger-line" id="ledger-line">
+        <span><b>8</b> towns</span>
+        <span><b>90</b> quests</span>
+        <span><b>188</b> voiced characters</span>
+        <span><b>309</b> abilities</span>
+        <span><b>1,675</b> items</span>
+        <span><b>24</b> skills to <b>99</b></span>
+        <span><b>6</b> factions</span>
+        <span><b>8</b> crowned bosses</span>
+        <span>one long road north</span>
+      </div>
+    </div>
+
+    <!-- ============================================== the road north -->
+    <section class="road sec-pad" id="world">
+      <div class="wrap">
+        <div class="road-head reveal">
+          <p class="sec-label">The World</p>
+          <h2 class="sec-title">The Road North</h2>
+          <p class="lede">
+            The Dawnlands hang eight towns on one long road, every one of them built, named
+            and peopled by hand. The country between them is the real story: it comes in
+            eleven grades, and the gazetteer has an honest word for each of them.
+          </p>
+        </div>
+        <div class="road-map" id="road-map">
+          <div class="road-rail"><div class="road-rail-fill" id="road-rail-fill"></div></div>
+          <article class="town reveal">
+            <h3 class="town-name">Dawnmead</h3>
+            <span class="town-levels">Levels 4&ndash;9</span>
+            <p class="town-epithet">The awakening village. You wake here, hands empty.</p>
+          </article>
+          <article class="town reveal">
+            <h3 class="town-name">Amberford</h3>
+            <span class="town-levels">Levels 9&ndash;16</span>
+            <p class="town-epithet">The crossroads market town, and the wall where the settled land ends.</p>
+          </article>
+          <article class="town reveal">
+            <h3 class="town-name">Saltmere</h3>
+            <span class="town-levels">Levels 15&ndash;24</span>
+            <p class="town-epithet">The town at the water&rsquo;s end.</p>
+          </article>
+          <article class="town reveal">
+            <h3 class="town-name">Silverfall</h3>
+            <span class="town-levels">Levels 22&ndash;34</span>
+            <p class="town-epithet">The mountain capital.</p>
+            <p class="town-note">
+              &ldquo;The crown keeps its court above the falls and the terraces climb to meet it.&rdquo;
+            </p>
+          </article>
+          <article class="town reveal">
+            <h3 class="town-name">Pinewatch</h3>
+            <span class="town-levels">Levels 22&ndash;34</span>
+            <p class="town-epithet">The watch on the old wood.</p>
+          </article>
+          <article class="town reveal">
+            <h3 class="town-name">Hartfell</h3>
+            <span class="town-levels">Levels 32&ndash;48</span>
+            <p class="town-epithet">The town past the treeline.</p>
+          </article>
+          <article class="town reveal">
+            <h3 class="town-name">Kingsdelf</h3>
+            <span class="town-levels">Levels 44&ndash;60</span>
+            <p class="town-epithet">The delf that made the crown.</p>
+            <p class="town-note">
+              &ldquo;The Returning keeps a town in the old quarry bowl, under the mountain that still burns.&rdquo;
+            </p>
+          </article>
+          <article class="town reveal">
+            <h3 class="town-name">Evenfall</h3>
+            <span class="town-levels">Levels 55&ndash;72</span>
+            <p class="town-epithet">The city the old folk kept.</p>
+            <p class="town-note">
+              &ldquo;The wood is the wall, the light does not burn, and the gate stood closed for a
+              hundred and fifty years. It is open now.&rdquo;
+            </p>
+          </article>
+        </div>
+        <p class="road-ladder reveal">
+          The gazetteer&rsquo;s own words for the miles between:
+          <b>the settled land &middot; the near frontier &middot; the walk out &middot; the expedition line &middot;
+          the deep frontier &middot; the far dark &middot; the lampless dark &middot; the howling dark &middot;
+          the nameless waste &middot; the world&rsquo;s rim &middot; the sundered dark</b> &mdash; and past the
+          authored miles, the wilderness keeps going. It does not end.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================== the gate speech -->
+    <section class="speech sec-pad">
+      <div class="wrap">
+        <figure class="paper-panel chamfer reveal">
+          <blockquote class="speech-quote">
+            Hold up. New face at the north gate gets the speech. This wall is where the settled
+            land ends. Every mile north is meaner than the last. Goblins in the foothills.
+            Wolves under the Thornveil. Past the Last Lamp, worse. I won&rsquo;t name it at a gate.
+            Walk lamp to lamp. Sleep behind their walls. The day the road starts feeling
+            <em>interested in you</em>, turn around. That&rsquo;s the speech.
+          </blockquote>
+          <figcaption class="speech-cite">Captain Aldis &mdash; at Amberford&rsquo;s north gate</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============================================== the long dark + the crown -->
+    <section class="feat sec-pad" id="dark">
+      <div class="wrap">
+        <div class="feat-row">
+          <div class="feat-copy reveal">
+            <p class="sec-label">The Long Dark</p>
+            <h2 class="sec-title">The key is the dungeon</h2>
+            <p>
+              Dungeons in Arx are cut by their keys. A rift-cut key carries a place inside it:
+              <strong>the same key always opens the same halls</strong>, and its ward holds three
+              turns before it wears through. Six kinds of dark to cut into &mdash; cavern, mine,
+              stronghold, crypt, warren, heartwood &mdash; with a champion standing between you
+              and the chest.
+            </p>
+            <p>
+              Nothing respawns behind you. Clear a hall and it stays cleared until the key wears out.
+            </p>
+          </div>
+          <figure class="reveal" style="--d: 120ms">
+            <div class="stage-well chamfer"><canvas id="riftgate-canvas" aria-hidden="true"></canvas></div>
+            <figcaption class="stage-caption">&ldquo;A rift-cut key, humming with somewhere else.&rdquo;</figcaption>
+          </figure>
+        </div>
+
+        <div class="feat-row flip">
+          <div class="feat-copy reveal">
+            <p class="sec-label">The Dread Crown</p>
+            <h2 class="sec-title">The world crowns its foes</h2>
+            <p>
+              Eight crowned bosses hold ground out there, each with its own phases, its own
+              summons, and a wind-up you can read if you keep your nerve.
+              <strong>The bigger the telegraph, the harder it lands.</strong> When a crown falls,
+              the whole field marks the felling.
+            </p>
+            <p class="feat-roll">
+              Goblin flame-tyrant &middot; The Fallen King &middot; The Barrow Lord &middot; Skral tidelord
+              &middot; Skral deepmaw &middot; Gnoll matriarch &middot; Old Fang &middot; Anvil golem
+            </p>
+          </div>
+          <figure class="reveal" style="--d: 120ms">
+            <div class="stage-well chamfer"><canvas id="crown-canvas" aria-hidden="true"></canvas></div>
+            <figcaption class="stage-caption">The dread presence never sleeps.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================== the schools -->
+    <section class="schools sec-pad" id="schools">
+      <div class="wrap">
+        <div class="schools-head reveal">
+          <p class="sec-label">309 abilities &middot; no classes</p>
+          <h2 class="sec-title">Thirteen schools of light</h2>
+          <p class="lede">
+            Twenty-four skills climb to 99 by doing, two more keep themselves secret until your
+            hands find them, and the deepest arts live in the weapons that teach them.
+            <strong>Every sigil below is live geometry</strong> &mdash; drawn by the same code that
+            draws it in a fight.
+          </p>
+          <p class="schools-fine">
+            Hold the teaching blade and its art is on loan. Win with it, and the lesson sticks.
+          </p>
+        </div>
+        <div class="school-grid" id="school-grid"></div>
+      </div>
+    </section>
+
+    <!-- ============================================== field notes -->
+    <section class="feat sec-pad">
+      <div class="wrap">
+        <div class="reveal">
+          <p class="sec-label">Field Notes</p>
+          <h2 class="sec-title">The rest of the ledger</h2>
+        </div>
+        <div class="notes-grid">
+          <article class="note chamfer reveal">
+            <p class="note-kicker">Beastcraft</p>
+            <h3>The wild at heel</h3>
+            <p>
+              Sixteen wild species will walk beside you once your beastcraft earns them &mdash;
+              wolf, bear, lynx, great owl, worg among them. A companion fights at your side,
+              levels through its own deeds, and falls without ever being lost.
+            </p>
+          </article>
+          <article class="note chamfer reveal" style="--d: 90ms">
+            <p class="note-kicker">Farming &amp; building</p>
+            <h3>The tended earth</h3>
+            <p>
+              Twenty-three crops, livestock that learn to trust your hands, and eighty buildable
+              pieces that persist in the shared world. What you raise stays raised &mdash; and only
+              you can pull your own walls down.
+            </p>
+          </article>
+          <article class="note wide chamfer reveal">
+            <div>
+              <p class="note-kicker">Reputation</p>
+              <h3>Six banners keep books on you</h3>
+              <p>
+                Every faction runs its own ledger, from <b style="color: var(--red)">hunted</b> to
+                <b style="color: var(--gold-bright)">champion</b>. Prices, fines, work and doors all
+                follow the name you carry. <em>&ldquo;Walk on. The watch knows your face.&rdquo;</em>
+              </p>
+            </div>
+            <div class="sigil-row" aria-label="The six factions">
+              <span class="sigil">
+                <svg viewBox="0 0 24 24"><path d="M4 20V9l8-5 8 5v11M9 20v-7h6v7M4 12h16" /></svg>
+                <small>The Charter</small>
+              </span>
+              <span class="sigil">
+                <svg viewBox="0 0 24 24"><path d="M4 18l-1-9 5 4 4-8 4 8 5-4-1 9zM4 18h16v2H4z" /></svg>
+                <small>The Crown</small>
+              </span>
+              <span class="sigil">
+                <svg viewBox="0 0 24 24"><path d="M12 3v2M8 7h8l-1 9a3 3 0 0 1-6 0zM10 21h4M12 18v3M10 10c0 3 4 3 4 0" /></svg>
+                <small>Waykeepers</small>
+              </span>
+              <span class="sigil">
+                <svg viewBox="0 0 24 24"><path d="M20 4c-7 0-11 4-13 9l-3 7 7-3c5-2 9-6 9-13zM7 13l4 4M20 4l-9 9" /></svg>
+                <small>The Rookery</small>
+              </span>
+              <span class="sigil">
+                <svg viewBox="0 0 24 24"><path d="M16 3a9 9 0 1 0 5 14A11 11 0 0 1 16 3z" /></svg>
+                <small>Even Court</small>
+              </span>
+              <span class="sigil">
+                <svg viewBox="0 0 24 24"><path d="M4 6c3 2 13 2 16 0v7c0 3-4 6-8 8-4-2-8-5-8-8zM8 11h2M14 11h2M9 16c2 1 4 1 6 0" /></svg>
+                <small>Red Company</small>
+              </span>
+            </div>
+          </article>
+          <article class="note third chamfer reveal">
+            <p class="note-kicker">The spoken land</p>
+            <h3>188 voices</h3>
+            <p>
+              2,293 lines of dialogue, every character cast and voiced. Two of them may tell you
+              different truths about the same thing. Leave with both.
+            </p>
+          </article>
+          <article class="note third chamfer reveal" style="--d: 90ms">
+            <p class="note-kicker">Mounts</p>
+            <h3>The road grows short</h3>
+            <p>
+              The Dawnlands courser, the shaggy Hoargate garron, the night sabercat. You ride to
+              cross the world; the moment you fight, your boots are back on the ground.
+            </p>
+          </article>
+          <article class="note third chamfer reveal" style="--d: 180ms">
+            <p class="note-kicker">The soundtrack</p>
+            <h3>Eighteen tracks</h3>
+            <p>
+              Town themes, road songs, two kinds of night, and music that only plays when
+              something with a crown has noticed you.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================== fellowship -->
+    <section class="fellow sec-pad" id="friends">
+      <div class="wrap fellow-inner">
+        <div class="reveal">
+          <p class="sec-label">With Friends</p>
+          <h2 class="sec-title">One world, held in common</h2>
+          <p class="lede">
+            Arx is a single, persistent, shared world. Party up and walk the same road, or
+            <strong>step into a friend&rsquo;s live dungeon run mid-fight</strong> &mdash; the run is
+            the owner&rsquo;s, the door is open to the party. Ore veins deplete and come back for
+            everyone. A house someone raised last winter is still standing when you walk past
+            it tomorrow.
+          </p>
+        </div>
+        <p class="fellow-figures reveal" style="--d: 150ms">
+          No download, no launcher, no spec sheet. A browser tab is the whole machine.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================== departure -->
+    <section class="depart">
+      <canvas id="depart-canvas" aria-hidden="true"></canvas>
+      <div class="depart-scrim"></div>
+      <div class="wrap depart-inner">
+        <h2 class="depart-title reveal">The road starts in Dawnmead.</h2>
+        <p class="depart-sub reveal" style="--d: 100ms">
+          You wake in the awakening village with empty hands and the whole map north of you.
+          It&rsquo;s free, and it&rsquo;s already running.
+        </p>
+        <div class="reveal" style="--d: 200ms">
+          <a class="btn-gold" href="/play">Enter the Dawnlands</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================== footer -->
+    <footer>
+      <div class="wrap foot-inner">
+        <span class="foot-mark">Arx</span>
+        <span class="foot-tag">an open world, forged by hand</span>
+        <div class="foot-links">
+          <a href="/play">Play</a>
+          <a href="#top">Back to the meadow</a>
+        </div>
+        <p class="foot-note">
+          Built in-house on canvas, websockets and stubbornness &mdash; no engine, no sprite
+          sheets. Everything you saw on this page was drawn by the game&rsquo;s own code, in this
+          tab, just now.
+        </p>
+      </div>
+    </footer>
+
+    <script type="module" src="/src/landing/landing.ts"></script>
+  </body>
+</html>

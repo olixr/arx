@@ -7,6 +7,30 @@ import { defineConfig } from 'vite';
 const withStudios = process.env.STUDIO === '1';
 
 export default defineConfig({
+  plugins: [
+    {
+      // THE FRONT DOOR: production nginx serves landing.html at `/`
+      // and the game shell at `/play` (deploy/nginx-arx.conf). Dev
+      // keeps `/` as the game so every existing rig and workflow
+      // holds; this shim only teaches the dev server the `/play` and
+      // `/landing` spellings so links work the same in both worlds.
+      name: 'arx-entry-routes',
+      configureServer(server) {
+        server.middlewares.use((req, _res, next) => {
+          if (req.url === '/play') req.url = '/index.html';
+          else if (req.url === '/landing') req.url = '/landing.html';
+          next();
+        });
+      },
+      configurePreviewServer(server) {
+        server.middlewares.use((req, _res, next) => {
+          if (req.url === '/play') req.url = '/index.html';
+          else if (req.url === '/landing') req.url = '/landing.html';
+          next();
+        });
+      },
+    },
+  ],
   build: {
     target: 'es2022',
     // The repo-root public/ directory IS the deploy artifact: point the
@@ -16,6 +40,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
+        landing: resolve(import.meta.dirname, 'landing.html'),
         ...(withStudios
           ? {
               editor: resolve(import.meta.dirname, 'editor.html'),

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- The chamfer is the signature: an ink case, a brass initial. -->
+  <path d="M10 1h44l9 9v44l-9 9H10l-9-9V10z" fill="#14110d"/>
+  <path d="M10 1h44l9 9v44l-9 9H10l-9-9V10z" fill="none" stroke="#4a3f2e" stroke-width="2"/>
+  <path fill="#8a5f1c" d="M34.5 13.5 51 52.5h-9.4l-3.2-8.2H27.1l-3.2 8.2h-9.4l16.5-39zm-2.5 13-4 10.6h8z"/>
+  <path fill="#e8b64c" d="M32.5 11.5 49 50.5h-9.4l-3.2-8.2H25.1l-3.2 8.2H12.5l16.5-39zm-2.5 13-4 10.6h8z"/>
+</svg>

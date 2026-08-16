@@ -82,6 +82,25 @@ location /voice/ {
     proxy_pass http://127.0.0.1:8790;
     proxy_set_header Host $host;
 }
+
+# THE FRONT DOOR — `/` serves the landing page, `/play` the game shell.
+# Both entry documents revalidate on every load (no-cache + etag) so a
+# heuristic cache never pins a player to yesterday's build; /index.html
+# still reaches the game directly for old bookmarks.
+location = / {
+    add_header Cache-Control "no-cache";
+    try_files /landing.html =404;
+}
+location = /landing.html {
+    add_header Cache-Control "no-cache";
+}
+location = /play {
+    add_header Cache-Control "no-cache";
+    try_files /index.html =404;
+}
+location = /index.html {
+    add_header Cache-Control "no-cache";
+}
 ```
 
 What each piece does:
@@ -91,7 +110,12 @@ What each piece does:
 - **`/healthz`** proxies the liveness JSON,
 - **`/dev`** hard-404s the studio API (defense in depth; the server
   also refuses it in production),
-- **`/assets/`** long-caches the content-hashed bundle files.
+- **`/assets/`** long-caches the content-hashed bundle files,
+- **`/` and `/play`** split the front door from the game: the landing
+  page (built from `packages/client/landing.html`) greets the world at
+  the root, the game shell answers at `/play`. The Vite dev server
+  mirrors the `/play` spelling (`vite.config.ts`, arx-entry-routes),
+  so the landing page's Play buttons work identically in dev and prod.
 
 ## 3. Database
 
@@ -284,7 +308,9 @@ deploy at quiet hours once there's a population.
 
 ## 7. Verify
 
-- `https://arx.gg` loads the game and the login panel.
+- `https://arx.gg` loads the landing page — the live meadow hero draws
+  and the day cycle turns (the clock chip bottom-right changes).
+- `https://arx.gg/play` loads the game and the login panel.
 - `https://arx.gg/healthz` returns `{"ok":true,…}`.
 - `https://arx.gg/dev/maps` returns 404.
 - Creating an account WITHOUT the invite code is refused; with it,
