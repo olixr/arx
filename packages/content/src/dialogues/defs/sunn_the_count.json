@@ -2,7 +2,7 @@
  "id": "sunn_the_count",
  "start": "read",
  "requires": [
-  "quest:the_empty_fold:stage:the_count"
+  "quest:the_empty_fold:stage:the_wrong_tracks"
  ],
  "bindings": [
   {

@@ -53,6 +53,30 @@
    "id": "fells",
    "voice": "grimm_wares__fells",
    "text": "I know the dells hold barrows and the barrows hold the sort of stock I buy. I also know the town has a law about it, and I keep every law I am watched keeping. You look like somebody the watching misses.",
+   "choices": [
+    {
+     "text": "A barrow was opened. By people who knew what to dig for.",
+     "next": "dug",
+     "requires": ["barrow_counted_back"]
+    },
+    {
+     "text": "You keep other markets too, I think.",
+     "next": "door",
+     "requires": ["faction:reavers:atleast:known"]
+    },
+    { "text": "Noted.", "next": "hub" }
+   ]
+  },
+  {
+   "id": "dug",
+   "voice": "grimm_wares__dug",
+   "text": "So I heard. Terrible business. Whoever pointed those spades knew the dells better than spades usually do, friend, and I would look hard at any man who buys barrow stock and writes nothing down. Happily for me, I was in Silverfall the whole month. Brandulf will confirm it, because I paid him to.",
+   "next": "hub"
+  },
+  {
+   "id": "door",
+   "voice": "grimm_wares__door",
+   "text": "Friend. What a question. I keep every market I am welcome in, and one or two where the welcome is by arrangement. If your name stands with certain people, you already know that towns keep cellars and cellars keep doors, and this town is no poorer than the others. Ask the hill where the lamplight gives up. You did not hear it from the cloth.",
    "next": "hub"
   },
   {

@@ -1,0 +1,45 @@
+{
+  "id": "fellwatch_horn",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "hartfell_watch" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "fellwatch_horn__hub",
+      "text": "Fellwatch. Well, this week I am. Last week I smoked salmon. Say your piece.",
+      "choices": [
+        { "text": "The town has no soldiers?", "next": "moot" },
+        { "text": "What does the horn mean?", "next": "horn" },
+        {
+          "text": "Anything out there the moot should know about?",
+          "next": "mark",
+          "requires": ["world:threat_near"]
+        },
+        { "text": "Keep the gate.", "next": "off" }
+      ]
+    },
+    {
+      "id": "moot",
+      "voice": "fellwatch_horn__moot",
+      "text": "No soldiers, no wall of spears, no captain. A herder or a smoker or somebody's uncle takes the turn, and the moot pays the lamp, and the tithe does the rest. Pinewatch calls it madness. Forty years says Pinewatch can call it what it likes.",
+      "next": "hub"
+    },
+    {
+      "id": "horn",
+      "voice": "fellwatch_horn__horn",
+      "text": "One long blast means in. Not soon, not finish your row. In. You will know it when you hear it because your legs will know it first. Two blasts is the drove coming home, and that one you may stand about and enjoy.",
+      "next": "hub"
+    },
+    {
+      "id": "mark",
+      "voice": "fellwatch_horn__mark",
+      "text": "Since you offer. Something has made a camp out there that the tithe does not cover, and the watch does not leave the horn. There is your mark. The moot will hear whose legs went.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "off",
+      "voice": "fellwatch_horn__off",
+      "text": "Gate bars at dark. The dark is not a request."
+    }
+  ]
+}

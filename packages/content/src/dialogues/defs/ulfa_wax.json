@@ -47,6 +47,31 @@
    "id": "news",
    "voice": "ulfa_wax__news",
    "text": "The runs are empty and Swein triple counts the folds. Orvar came back from the stones with a face I did not like. And the buyer asked the moot again and got tea again. Poor man. Lovely manners.",
+   "choices": [
+    {
+     "text": "And since then?",
+     "next": "mid",
+     "requires": ["fold_counted"],
+     "forbids": ["barrow_counted_back"]
+    },
+    {
+     "text": "I heard it ended.",
+     "next": "after",
+     "requires": ["barrow_counted_back"]
+    },
+    { "text": "Thanks, Ulfa.", "next": "hub" }
+   ]
+  },
+  {
+   "id": "mid",
+   "voice": "ulfa_wax__mid",
+   "text": "Swein posted his count at last, poor love, and Sunn came off the fell with a face like weather. Orvar's sledge has gone out twice unanswered. Whatever this is, it is not wolves, and I have stopped trimming that story brighter, because it will not trim.",
+   "next": "hub"
+  },
+  {
+   "id": "after",
+   "voice": "ulfa_wax__after",
+   "text": "The runs have voices again, first time since autumn, and Orvar walked the last walk of it alone and came back taller. And the moot sent the Company a LEDGER, which Ashild swears is worse than an army. I trim my stories brighter, you know I do. That one needed no trimming.",
    "next": "hub"
   },
   {

@@ -29,7 +29,8 @@
     },
     {
      "text": "Something is wrong with the fell, is it not?",
-     "next": "wrong"
+     "next": "wrong",
+     "forbids": ["barrow_counted_back"]
     },
     {
      "text": "Never mind.",
@@ -47,6 +48,19 @@
    "id": "fell",
    "voice": "sunn_fell__fell",
    "text": "Dells, becks, the old stones. Barrows past the dells, and you leave those shut. North of the crags nobody goes and nothing worth naming comes back.",
+   "choices": [
+    {
+     "text": "The runs filled again, I heard.",
+     "next": "right",
+     "requires": ["barrow_counted_back"]
+    },
+    { "text": "Noted.", "next": "hub" }
+   ]
+  },
+  {
+   "id": "right",
+   "voice": "sunn_fell__right",
+   "text": "Wolves in the runs and opinions about me again. Good. A fell that ignores you is worse. I put the first fresh track in my book the way Signe puts names in hers. Crossed in. Not crossed off.",
    "next": "hub"
   },
   {

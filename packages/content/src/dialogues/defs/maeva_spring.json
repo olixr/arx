@@ -41,12 +41,34 @@
    "id": "spring",
    "voice": "maeva_spring__spring",
    "text": "The bath, and the moot floor, and the room where aches come to be argued with. The water does most of the work. I take most of the credit.",
+   "choices": [
+    { "text": "People bring you more than aches, I think.", "next": "quiet" },
+    { "text": "Fair enough.", "next": "hub" }
+   ]
+  },
+  {
+   "id": "quiet",
+   "voice": "maeva_spring__quiet",
+   "text": "They bring what the bath loosens. Names not said in years. Debts. The water holds all of it and so do I, and neither of us has ever repeated a word. That is the other half of the trade, and it is not on the shelf.",
    "next": "hub"
   },
   {
    "id": "kettle",
    "voice": "maeva_spring__kettle",
    "text": "Heat from very far down, rising very slowly. It was warm before the first fold and it will be warm after the last. We did not find the Kettle. It permitted us.",
+   "choices": [
+    {
+     "text": "Did it notice the trouble on the fell?",
+     "next": "cloudy",
+     "requires": ["barrow_counted_back"]
+    },
+    { "text": "Huh.", "next": "hub" }
+   ]
+  },
+  {
+   "id": "cloudy",
+   "voice": "maeva_spring__cloudy",
+   "text": "It ran cloudy the week the barrow stood open. Sixty years I have kept this pool and it has run cloudy twice. I swept the steps and waited, and it cleared the morning the band went back under the hill. Make a story of that if you need one. The water does not need it.",
    "next": "hub"
   },
   {

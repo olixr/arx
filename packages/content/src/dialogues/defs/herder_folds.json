@@ -1,0 +1,34 @@
+{
+  "id": "herder_folds",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "hartfell_herder" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "herder_folds__hub",
+      "text": "Ho. Mind the rails, they bolt at strangers. Talk quiet and stand still and you can stay.",
+      "choices": [
+        { "text": "What's the work?", "next": "work" },
+        { "text": "The harts just let you herd them?", "next": "trust" },
+        { "text": "I'll leave you to it.", "next": "off" }
+      ]
+    },
+    {
+      "id": "work",
+      "voice": "herder_folds__work",
+      "text": "Out at thaw, home at horn, counted both ways on the stick. Warm water all winter, which no other herd in the north gets, so ours stand fat while the wild ones starve thin. Swein says the pool is worth more than the vault. Swein is right and the vault knows it.",
+      "next": "hub"
+    },
+    {
+      "id": "trust",
+      "voice": "herder_folds__trust",
+      "text": "They trust the smell of the folds and the sound of the horn and not much else. You they do not trust, no offense meant, they are good judges. Forty years of the same lines. My grandmother knew the great-dams of every hind on this grass.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "herder_folds__off",
+      "text": "Ho. Gate. Latch. Both hands. Good."
+    }
+  ]
+}

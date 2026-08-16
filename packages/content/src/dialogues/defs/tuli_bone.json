@@ -41,6 +41,15 @@
    "id": "carve",
    "voice": "tuli_bone__carve",
    "text": "Combs. Buttons. Knife hafts. Charms for the drove, one hart each, so the herd stays a herd. Silverfall buys the good pieces for the Lantern Row. I have never seen where they end up. I think about it.",
+   "choices": [
+    { "text": "Brandulf says one piece is never for sale.", "next": "kept" },
+    { "text": "Fine work.", "next": "hub" }
+   ]
+  },
+  {
+   "id": "kept",
+   "voice": "tuli_bone__kept",
+   "text": "He would say that. There is a comb, finished ten winters ago, best thing my hands have done. The price is not money, and the woman it waits for has never asked it. That is the whole story you are getting, and it is more than Brandulf ever got.",
    "next": "hub"
   },
   {

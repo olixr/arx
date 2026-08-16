@@ -29,7 +29,8 @@
     },
     {
      "text": "You seem worried.",
-     "next": "worry"
+     "next": "worry",
+     "forbids": ["fold_counted"]
     },
     {
      "text": "I will leave you to it.",
@@ -41,7 +42,14 @@
    "id": "herd",
    "voice": "swein_fold__herd",
    "text": "Hart and hind, forty years of the same lines. They know the horn, the folds, the smell of the warm water. Out at thaw, home at horn. Everything Hartfell is walks on those legs.",
-   "next": "hub"
+   "choices": [
+    {
+     "text": "The fold stands whole again?",
+     "next": "counted",
+     "requires": ["fold_counted"]
+    },
+    { "text": "Good beasts.", "next": "hub" }
+   ]
   },
   {
    "id": "inside",
@@ -53,6 +61,12 @@
    "id": "worry",
    "voice": "swein_fold__worry",
    "text": "We lost beasts from the fold. From INSIDE. No wolf sign, no broken fence, nothing eaten, just gone. I do not say the number aloud. Talk to me again when the moot lets me post it properly.",
+   "next": "hub"
+  },
+  {
+   "id": "counted",
+   "voice": "swein_fold__counted",
+   "text": "Sunn read the ground and I posted the count, all of it, aloud at the moot. Nothing came in. They walked out, and you know what led them, and saying so did not bring it back on us. Gunvor says superstition bends where truth pushes. Maybe. I still count them twice at horn.",
    "next": "hub"
   },
   {

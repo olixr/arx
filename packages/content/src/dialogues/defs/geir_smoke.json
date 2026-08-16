@@ -47,6 +47,15 @@
    "id": "winter",
    "voice": "geir_smoke__winter",
    "text": "You smoke everything that stands still in autumn and you count it in spring. A winter is a long argument with hunger. You win it before it starts or you do not win it.",
+   "choices": [
+    { "text": "You've won it before, then.", "next": "won" },
+    { "text": "Mm.", "next": "hub" }
+   ]
+  },
+  {
+   "id": "won",
+   "voice": "geir_smoke__won",
+   "text": "Forty times. Lost pieces of three. You do not hear about the pieces because there are no songs about smokehouses, and that is fine. A song will not feed you in Frostfall. A shelf will.",
    "next": "hub"
   },
   {

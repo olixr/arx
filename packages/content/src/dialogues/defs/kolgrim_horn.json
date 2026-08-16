@@ -47,12 +47,25 @@
    "id": "game",
    "voice": "kolgrim_horn__game",
    "text": "Hart on the near fell, boar in the pine hem, wolf only if the moot posts it, and it will not. Past the stones you leave the game and the game starts hunting you. Take Sunn if you go far. Listen to her or come back shorter.",
+   "choices": [
+    {
+     "text": "The runs are full again, I hear.",
+     "next": "runs",
+     "requires": ["barrow_counted_back"]
+    },
+    { "text": "Understood.", "next": "hub" }
+   ]
+  },
+  {
+   "id": "runs",
+   "voice": "kolgrim_horn__runs",
+   "text": "The neighbors came back to their runs the week the band went under the hill. Wind first, ground second, shot last, and the fourth thing I do not teach because it cannot be taught: knowing whose woods you are standing in. The fell remembered. See that you do.",
    "next": "hub"
   },
   {
    "id": "browse",
    "voice": "kolgrim_horn__browse",
-   "text": "Bows, points, snares, and traps that hold what they promise. Arrows by the sheaf. If you want prettier, Silverfall is four hundred tiles that way.",
+   "text": "Bows, points, snares, and traps that hold what they promise. Arrows by the sheaf. If you want prettier, Silverfall is a week's walk that way.",
    "hooks": [
     {
      "kind": "shop",

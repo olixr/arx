@@ -53,6 +53,19 @@
    "id": "stones",
    "voice": "orvar_tithe__stones",
    "text": "Older than the bargain, older than every name I know. Whoever set them ate the same problem we do and answered it the same way. Lately the answer lies uneaten on the stone. I do not care for that at all.",
+   "choices": [
+    {
+     "text": "And now? Is the tithe taken again?",
+     "next": "eaten",
+     "requires": ["barrow_counted_back"]
+    },
+    { "text": "I see.", "next": "hub" }
+   ]
+  },
+  {
+   "id": "eaten",
+   "voice": "orvar_tithe__eaten",
+   "text": "The first sledge after the barrow closed, I walked out expecting nothing. The stone was clean by morning. Wiped clean, not scattered, which is the neighbors' way of saying the trouble was not their doing either. The bargain stands. I nod to the hill on the walk back now. It seems only mannerly, knowing who else keeps accounts out there.",
    "next": "hub"
   },
   {

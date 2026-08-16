@@ -397,8 +397,14 @@ import osprenCarefulWords from './defs/ospren_careful_words.json';
 import hallaTheStoneAsk from './defs/halla_the_stone_ask.json';
 import saltwatchLamp from './defs/saltwatch_lamp.json';
 import fisherCrews from './defs/fisher_crews.json';
+// THE FELL ANSWERS — Hartfell coverage: the rota-of-uncles and the
+// herders speak, and the tithe arc's flags finally get read back.
+import fellwatchHorn from './defs/fellwatch_horn.json';
+import herderFolds from './defs/herder_folds.json';
 
 const SOURCES: readonly unknown[] = [
+  fellwatchHorn,
+  herderFolds,
   viggaSteel,
   viggaTheCutting,
   ebbaCharter,
