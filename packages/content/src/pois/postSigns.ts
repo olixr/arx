@@ -54,4 +54,19 @@ export const POST_SIGN_ROWS: readonly PostSignRow[] = [
   { match: [Tile.PrisonCage, Tile.BeastNest], kind: 'keeper', seats: 1 },
   { match: [Tile.RoeNest, Tile.Dugout], kind: 'keeper', seats: 1 },
   { match: [Tile.MendingBench, Tile.ShellBench, Tile.KeepPool, Tile.SaltPan], kind: 'keeper', seats: 1 },
+  // THE WARREN AND THE LEGION: the camps' life furniture seats the
+  // camp's LIFE. The rag nest is the tentless goblin's bed and keeps
+  // tent hours; the knucklebone pit seats BOTH players (the game is
+  // never solitaire) round the clock; the grog tub pours evenings
+  // into the small hours — furniture truth: nobody drinks at dawn
+  // muster. The gong, the brag-stake, and the effigy are watch
+  // furniture (the lane stamps the vigil clock as ever). The war
+  // table, the loot cart, the beast stake, and the critter cage are
+  // work somebody KEEPS: the officer at the map, the guard on the
+  // takings, the beast-keeper, the larder-keeper.
+  { match: [Tile.RagNest], kind: 'rest', seats: 1, hours: { from: 19, to: 7 } },
+  { match: [Tile.KnucklePit], kind: 'rest', seats: 2 },
+  { match: [Tile.GrogTub], kind: 'rest', seats: 1, hours: { from: 16, to: 2 } },
+  { match: [Tile.AlarmGong, Tile.TrophyStake, Tile.BossEffigy], kind: 'vigil', seats: 1 },
+  { match: [Tile.WarTable, Tile.PlunderCart, Tile.BeastStake, Tile.CritterCage], kind: 'keeper', seats: 1 },
 ];

@@ -127,6 +127,9 @@ export const FAMILY_STYLES: ReadonlyMap<string, FamilyStyle> = new Map<string, F
         'ward_gs_greatring',
         'ward_gs_drillyard',
         'ward_gs_twinpens',
+        // GOBLIN ONLY — the warren mocks its own chief; a gnoll fort
+        // mocks nobody but its meal (the piece never joins their pool).
+        'ward_gs_bragyard',
       ],
       watchPiece: 'ward_gs_watch',
       bossPiece: 'ward_gs_bosscourt',
@@ -144,8 +147,11 @@ export const FAMILY_STYLES: ReadonlyMap<string, FamilyStyle> = new Map<string, F
       // the crown's own def carries the boss weight.
       bossNpc: 'goblin_flame_tyrant',
       bossOffset: 3,
-      accents: [Tile.SkullPile, Tile.BonePile, Tile.WarBanner],
-      hearthGear: [Tile.CookPot, Tile.MeatRack, Tile.MeatSpit, Tile.WarDrum, Tile.SkullPile],
+      // The warren's refuse joins the scatter — a goblin hold is
+      // littered with its dinners; the hearth pours grog beside the
+      // pot (the drink lives where the fire is, warren law).
+      accents: [Tile.SkullPile, Tile.BonePile, Tile.WarBanner, Tile.BoneMidden],
+      hearthGear: [Tile.CookPot, Tile.MeatRack, Tile.MeatSpit, Tile.WarDrum, Tile.SkullPile, Tile.GrogTub, Tile.BoneMidden],
     },
   ],
   [
@@ -174,8 +180,11 @@ export const FAMILY_STYLES: ReadonlyMap<string, FamilyStyle> = new Map<string, F
       // matriarch — a true phased crown, not a scaled packlord.
       bossNpc: 'gnoll_matriarch',
       bossOffset: 3,
-      accents: [Tile.SkullPile, Tile.BonePile],
-      hearthGear: [Tile.MeatSpit, Tile.MeatRack, Tile.BonePile, Tile.SkullPile],
+      // The cackle-fort's hearth is a feeding frenzy: the gnaw
+      // trough stands AT the fire (hyena-folk eat as a pack, no pen
+      // needed), and the midden is what the pack leaves behind.
+      accents: [Tile.SkullPile, Tile.BonePile, Tile.BoneMidden],
+      hearthGear: [Tile.MeatSpit, Tile.MeatRack, Tile.BonePile, Tile.SkullPile, Tile.GnawTrough, Tile.BoneMidden],
     },
   ],
   [
@@ -204,7 +213,8 @@ export const FAMILY_STYLES: ReadonlyMap<string, FamilyStyle> = new Map<string, F
       bossNpc: 'brigand_reaver',
       bossOffset: 5,
       accents: [Tile.Crate, Tile.Barrel, Tile.PlunderSacks],
-      hearthGear: [Tile.CookPot, Tile.Barrel, Tile.Crate, Tile.PlunderSacks, Tile.MeatSpit],
+      // Brigands deal dice at the fire — stolen pay moves at night.
+      hearthGear: [Tile.CookPot, Tile.Barrel, Tile.Crate, Tile.PlunderSacks, Tile.MeatSpit, Tile.KnucklePit],
     },
   ],
   [

@@ -178,7 +178,9 @@ const ROSTER: readonly RosterEntry[] = [
     seed: 0,
     bossNames: ['Vex Halfspear', 'Grubbin the Loud', 'Nakka of the Tents', 'Skiv Firstpole'],
     titles: ['The Sprawl of Tents', 'The Loud Field', 'The Marching Ground'],
-    pieces: ['ward_gs_wartents', 'ward_gs_tents', 'ward_gs_cookyard', 'ward_gs_greatring', 'ward_gs_muster'],
+    // The tent city keeps a brag yard — a camp with more cook fires
+    // than sense absolutely mocks its own chief in straw.
+    pieces: ['ward_gs_wartents', 'ward_gs_tents', 'ward_gs_cookyard', 'ward_gs_greatring', 'ward_gs_muster', 'ward_gs_bragyard'],
   },
   {
     id: 'stronghold_gnoll_greatfort',

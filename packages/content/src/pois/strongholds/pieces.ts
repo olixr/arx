@@ -1,5 +1,21 @@
+import { Tile } from '@arx/shared';
 import type { PrefabDef } from '../../maps/prefab.js';
 import { sketch, skralLegend } from '../prefabs.js';
+
+// THE WARREN AND THE LEGION reaches the ward shelf: the camps' life
+// marks, shared by every piece that flies one (the marks collide with
+// no existing piece char — checked piece by piece). 'c' is NOT here:
+// it stays the global crate except where a piece deliberately deals
+// the live larder instead.
+const campExt: Record<string, number> = {
+  E: Tile.RagNest,
+  x: Tile.KnucklePit,
+  J: Tile.BeastStake,
+  u: Tile.GnawTrough,
+  Y: Tile.TrophyStake,
+  e: Tile.BossEffigy,
+  w: Tile.PlunderCart,
+};
 
 /**
  * THE WARD-PIECE SHELF (docs/strongholds-plan.md Phase 1) — the
@@ -46,18 +62,22 @@ const piece = (
   ...(knots ? { knots } : {}),
 });
 
-/** Greenskin cluster (goblin, gnoll — the war-camp look). */
+/** Greenskin cluster (goblin, gnoll — the war-camp look). The tent
+ *  rows sleep somebody outside the tents too (the rag nest is the
+ *  tentless one's bed), and the yard keeps its dice. */
 const gsTents = piece('ward', 'ward_gs_tents', 'tent rows', [
   '____________',
   '_^__^__^____',
   '_:::::::::__',
-  '_:..f..)::__',
+  '_:E.f..)::__',
   '_^::::::::__',
   '_:::-:::`:__',
-  '__::::::::__',
+  '__:::x:E::__',
   '____________',
-]);
+], undefined, campExt);
 
+// The cook yard's crate is dealt as the LIVE larder — a greenskin
+// kitchen keeps its stock squirming, goblin and gnoll alike.
 const gsCookyard = piece('ward', 'ward_gs_cookyard', 'cook yard', [
   '__________',
   '__:::::___',
@@ -66,7 +86,7 @@ const gsCookyard = piece('ward', 'ward_gs_cookyard', 'cook yard', [
   '_::.f.::__',
   '__:c:::___',
   '__________',
-]);
+], undefined, { c: Tile.CritterCage });
 
 const gsTotem = piece('ward', 'ward_gs_totem', 'totem court', [
   '__________',
@@ -79,6 +99,8 @@ const gsTotem = piece('ward', 'ward_gs_totem', 'totem court', [
   '__________',
 ]);
 
+// The pens keep a keeper's furniture now: the chain stake the worgs
+// strain against, the slopped trough at the fence line.
 const gsPens = piece(
   'ward',
   'ward_gs_pens',
@@ -86,25 +108,27 @@ const gsPens = piece(
   [
     '____________',
     '_F;F:F;F____',
-    '_F.....F:___',
+    '_F..J..F:___',
     '_F;...;F:___',
     '_FF.FF.F:___',
     '_:::::::[___',
-    '__:0:::::___',
+    '__:0:u:::___',
     '____________',
   ],
   [{ npc: 'worg', band: [1, 2] }],
+  campExt,
 );
 
+// The muster's brag: stolen kit nailed where the drill can see it.
 const gsMuster = piece('ward', 'ward_gs_muster', 'muster yard', [
   '___________',
   '_(::::(____',
   '_:::::::]__',
   '_:.:.::K___',
-  '_]:::::::__',
+  '_]:::Y:::__',
   '__(:::,____',
   '___________',
-]);
+], undefined, campExt);
 
 const gsWatch = piece('watch', 'ward_gs_watch', 'gate yard', [
   '_________',
@@ -115,20 +139,41 @@ const gsWatch = piece('watch', 'ward_gs_watch', 'gate yard', [
   '_________',
 ]);
 
+// The court parks its takings where the boss can watch them.
 const gsBossCourt = piece('boss', 'ward_gs_bosscourt', 'moot court', [
   '______________',
   '__>::::::>____',
   '_::::m:::::___',
-  '_:::::::::,___',
+  '_::::::w::,___',
   '_:$:."::Z:____',
   '_::::@:::::___',
   '_:0::::::]:___',
   '_::::::::::___',
   '__>::::>______',
   '______________',
-]);
+], undefined, campExt);
+
+/**
+ * The brag yard — GOBLIN ONLY (a gnoll fort mocks nobody but its
+ * meal): the warren's social court. The boss's effigy holds the
+ * heart, trophy stakes flank the walk in, and everything a goblin
+ * does when nobody makes it work — dice, grog, a stolen bed —
+ * happens in the effigy's painted stare.
+ */
+const gsBragyard = piece('ward', 'ward_gs_bragyard', 'brag yard', [
+  '_____________',
+  '__Y:::::Y____',
+  '_::::e:::,___',
+  '_:x::::a::___',
+  '_::::::::,___',
+  '_:E:::0::____',
+  '__,:::,______',
+  '_____________',
+], undefined, { ...campExt, a: Tile.GrogTub });
 
 /** Brigand cluster. */
+// Brigands are human raiders: real barrels, real crates — but the
+// dice come out at the fire like anywhere the pay is stolen.
 const brTents = piece('ward', 'ward_br_tents', 'tent rows', [
   '____________',
   '_^__^__^____',
@@ -136,19 +181,20 @@ const brTents = piece('ward', 'ward_br_tents', 'tent rows', [
   '_:..f..:c___',
   '_:::::::a___',
   '_^::::^:____',
-  '__::::::____',
+  '__::x:::____',
   '____________',
-]);
+], undefined, campExt);
 
+// The plunder yard keeps the cart the takings came in on.
 const brStores = piece('ward', 'ward_br_stores', 'plunder yard', [
   '__________',
   '__$:a:c___',
   '_:G::::a__',
-  '_:::$:::__',
+  '_:::$:w:__',
   '_:c::G:$__',
   '__a:::____',
   '__________',
-]);
+], undefined, campExt);
 
 const brPen = piece('ward', 'ward_br_pen', 'cage yard', [
   '___________',
@@ -169,6 +215,8 @@ const brWatch = piece('watch', 'ward_br_watch', 'gate yard', [
   '_________',
 ]);
 
+// The captain's court nails its brag by the door — the toll's
+// warning, wearing somebody's split shield.
 const brBossCourt = piece('boss', 'ward_br_bosscourt', "captain's court", [
   '_____________',
   '__>:::::>____',
@@ -176,10 +224,10 @@ const brBossCourt = piece('boss', 'ward_br_bosscourt', "captain's court", [
   '_::::::::k___',
   '_:$:."::Z:___',
   '_::::f::::___',
-  '_:a:::::::___',
+  '_:a:::Y:::___',
   '__>::::>_____',
   '_____________',
-]);
+], undefined, campExt);
 
 /** Wolfkin cluster (dens, bones — no fires; beasts keep no flame). */
 const wkNests = piece('ward', 'ward_wk_nests', 'den hollows', [
@@ -274,20 +322,22 @@ const ddCourt = piece('boss', 'ward_dd_court', 'barrow court', [
  * reads as a place you walk through, not a stamp. Content clusters at
  * the rim; the middle breathes.
  */
+// The great ring gambles at its own fire — the pit sits between
+// the drum and the flame, where the arguments are loudest.
 const gsGreatring = piece('ward', 'ward_gs_greatring', 'great tent ring', [
   '__________________',
   '__^___^___^___^___',
   '_::::::::::::::,__',
   '_:.....,......::__',
   '_^:.::::::::::.^__',
-  '_::.::":::f::.,:__',
+  '_::.::":x:f::.,:__',
   '_^:.::::::::::.^__',
   '_:.............::_',
   '_::::::::::::::,__',
   '__^___^___^___^___',
   '__,____.____,_____',
   '__________________',
-]);
+], undefined, campExt);
 
 const gsDrillyard = piece('ward', 'ward_gs_drillyard', 'drill yard', [
   '________________',
@@ -302,6 +352,8 @@ const gsDrillyard = piece('ward', 'ward_gs_drillyard', 'drill yard', [
   '________________',
 ]);
 
+// The twin pens split the keeper's kit: the stake in the west pen
+// (the worg that pulls), the trough on the ground between.
 const gsTwinpens = piece(
   'ward',
   'ward_gs_twinpens',
@@ -309,13 +361,13 @@ const gsTwinpens = piece(
   [
     '__________________',
     '_F;F:FF__FF:F;F___',
-    '_F.....F_F.....F__',
+    '_F..J..F_F.....F__',
     '_F;...;F_F..;..F__',
     '_F..F.FF_FF.F..F__',
     '_F....F___F....F__',
     '_FF.FF:___:FF.FF__',
     '_::::::,_,::::::__',
-    '__:0:::::::::[:___',
+    '__:0::u::::::[:___',
     '___,____,_____,___',
     '__________________',
   ],
@@ -323,21 +375,24 @@ const gsTwinpens = piece(
     { npc: 'worg', band: [1, 2] },
     { npc: 'worg', band: [1, 2] },
   ],
+  campExt,
 );
 
+// The wagon yard finally PARKS ITS WAGONS: two stolen carts on the
+// worn center ground the stores were always stacked around.
 const brWagonyard = piece('ward', 'ward_br_wagonyard', 'wagon yard', [
   '_________________',
   '__a:c::::::c:a___',
   '_::::::::::::::__',
-  '_:c$::......::$:_',
+  '_:c$::.w....::$:_',
   '_::::.:....,::::_',
   '_:G:::......::G:_',
-  '_::::,.....::::,_',
+  '_::::,...w.::::,_',
   '_:$::::::::::c:__',
   '__a::c::c:::a____',
   '___,_____,_______',
   '_________________',
-]);
+], undefined, campExt);
 
 const brSparring = piece('ward', 'ward_br_sparring', 'sparring yard', [
   '_______________',
@@ -716,6 +771,7 @@ export const WARD_PIECES: ReadonlyMap<string, WardPiece> = new Map(
     gsGreatring,
     gsDrillyard,
     gsTwinpens,
+    gsBragyard,
     brWagonyard,
     brSparring,
     wkHollowfield,

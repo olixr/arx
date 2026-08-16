@@ -49,6 +49,7 @@ export const feastTrestles = (
   cy: number,
   len: number,
   rng: Rng,
+  opts: { grog?: boolean } = {},
 ): void => {
   blob(c, cx, cy, Math.ceil(len / 2) + 2, Tile.Dirt, rng, 0.15);
   const half = Math.floor(len / 2);
@@ -57,7 +58,9 @@ export const feastTrestles = (
     if (rng.chance(0.7)) put(c, cx + dx, cy - 1, Tile.Bench);
     if (rng.chance(0.7)) put(c, cx + dx, cy + 1, Tile.Bench);
   }
-  put(c, cx - half - 2, cy, rng.chance(0.5) ? Tile.Barrel : Tile.CrateGoods);
+  // A warren feast pours from the camp's own tub; anyone else
+  // brings a proper barrel to table.
+  put(c, cx - half - 2, cy, opts.grog ? Tile.GrogTub : rng.chance(0.5) ? Tile.Barrel : Tile.CrateGoods);
   put(c, cx + half + 2, cy, Tile.MeatRack);
 };
 
@@ -93,9 +96,16 @@ export const drumRing = (c: Canvas, cx: number, cy: number, r: number, rng: Rng)
     const a = (i / n) * Math.PI * 2 + rng.range(-0.15, 0.15);
     put(c, Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r * 0.75), Tile.WarDrum);
   }
+  // Where drums argue, dice argue louder: half the rings keep a
+  // knucklebone pit worn into the ground just east of the beat.
+  if (rng.chance(0.5) && at(c, cx + r + 2, cy) === Tile.Dirt) {
+    put(c, cx + r + 2, cy, Tile.KnucklePit);
+  }
 };
 
-/** The cage row: the unlucky kept in a line, a torch to watch them by. */
+/** The cage row: the unlucky kept in a line, a torch to watch them
+ *  by — and half the time the keeper's own stock squirming in a
+ *  little cage at the row's end (the jailer feeds both). */
 export const cageRow = (
   c: Canvas,
   cx: number,
@@ -108,6 +118,8 @@ export const cageRow = (
   for (let i = 0; i < n; i++) put(c, cx + (i - half) * 2, cy, Tile.PrisonCage);
   put(c, cx + (n - half) * 2, cy, Tile.StandingTorch);
   if (rng.chance(0.6)) scatter(c, cx, cy + 1, 2, 2, [Tile.BonePile], rng);
+  const kx = cx - (half + 2) * 2 + 2;
+  if (rng.chance(0.5) && at(c, kx, cy + 1) === Tile.Dirt) put(c, kx, cy + 1, Tile.CritterCage);
 };
 
 /** The watch-knoll: high ground, a torch, a standard, the drill gear. */
@@ -148,13 +160,27 @@ export const beastPen = (
     put(c, cx + rng.int(-(x1 - x0) / 2 + 1, (x1 - x0) / 2 - 1), cy + rng.int(-1, 1), Tile.BeastNest);
   }
   scatter(c, cx, cy, Math.max(2, (x1 - x0) / 2), 3, [Tile.BonePile], rng);
+  // A nested pen holds a PREDATOR — it gets the keeper's iron: the
+  // chain stake at the heart, the slopped trough at the rail. A
+  // nestless pen is livestock, and livestock get the farmer's feed
+  // trough by the farmer's own hand, never ours. Both placements
+  // yield to whatever already stands (a nest outranks a stake).
+  if (nests > 0) {
+    const sx = cx - 1;
+    const sy = Math.max(y0 + 1, cy - 1);
+    if (at(c, sx, sy) === Tile.Dirt) put(c, sx, sy, Tile.BeastStake);
+    const ux = Math.min(x1 - 1, cx + 2);
+    if (rng.chance(0.7) && at(c, ux, y1 - 1) === Tile.Dirt) put(c, ux, y1 - 1, Tile.GnawTrough);
+  }
 };
 
-/** The spoil yard: takes sorted where they were dropped. */
+/** The spoil yard: takes sorted where they were dropped — and, most
+ *  raids, the stolen cart they came home on, parked mid-unload. */
 export const spoilYard = (c: Canvas, cx: number, cy: number, rng: Rng): void => {
   blob(c, cx, cy, 3, Tile.Dirt, rng, 0.2);
   const props = [Tile.Crate, Tile.Barrel, Tile.PlunderSacks, Tile.CaveRubble];
   scatter(c, cx, cy, 3, 4 + rng.int(0, 2), props, rng);
+  if (rng.chance(0.6) && at(c, cx + 2, cy - 1) === Tile.Dirt) put(c, cx + 2, cy - 1, Tile.PlunderCart);
 };
 
 /** The drill yard: dummies and racks — the muster keeps its edge. */
@@ -415,7 +441,9 @@ export const lureWay = (
   }
 };
 
-/** The tent cluster: hides around a shared yard, the camp's bedroom. */
+/** The tent cluster: hides around a shared yard, the camp's bedroom.
+ *  A full cluster usually sleeps one more body than it has tents —
+ *  the rag nest at the yard edge is the tentless cousin's bed. */
 export const tentCluster = (
   c: Canvas,
   cx: number,
@@ -430,5 +458,8 @@ export const tentCluster = (
     const tx = Math.round(cx + Math.cos(a) * 4);
     const ty = Math.round(cy + Math.sin(a) * 3);
     put(c, tx, ty, opts.war && i === 0 ? Tile.TentWar : Tile.TentHide);
+  }
+  if (tents >= 3 && rng.chance(0.6) && at(c, cx - 2, cy + 2) === Tile.Dirt) {
+    put(c, cx - 2, cy + 2, Tile.RagNest);
   }
 };

@@ -208,6 +208,10 @@ function buildGoblinSprawl(): PrefabDef {
   put(c, heart[0], heart[1], Tile.Bonfire);
   put(c, heart[0] - 3, heart[1] - 2, Tile.WarDrum);
   put(c, heart[0] + 3, heart[1] - 2, Tile.SkullTotem);
+  // The heart fire pours and discards: the sprawl's shared tub on
+  // one hand, five camps' worth of gnawed dinners on the other.
+  put(c, 37, 27, Tile.GrogTub);
+  put(c, 30, 27, Tile.BoneMidden);
   const clusters: Array<[number, number]> = [
     [14, 12], [50, 11], [56, 32], [16, 36], [36, 40],
   ];
@@ -225,15 +229,21 @@ function buildGoblinSprawl(): PrefabDef {
     track(c, kx, ky + 1, heart[0], heart[1] + 1, rng);
   });
   // The chief's cluster keeps the cache and a cage of the unlucky —
-  // inside the trampled ring, under the war tent's eye.
+  // inside the trampled ring, under the war tent's eye. The southeast
+  // camp sleeps one outside the hides (a sprawl always outgrows its
+  // tents before it raises new ones).
   put(c, 12, 10, Tile.ChestIron);
   put(c, 17, 14, Tile.PrisonCage);
-  // A worg pen gone half to ruin on the east side.
+  put(c, 58, 36, Tile.RagNest);
+  // A worg pen gone half to ruin on the east side — the stake still
+  // stands with its collar thrown open on the ground: the pen is
+  // ruined BECAUSE the worg left, and nobody has argued with it since.
   ruinRect(c, 44, 20, 52, 26, Tile.Fence, Tile.BonePile, rng, 0.25);
   for (let y = 21; y <= 25; y++) for (let x = 45; x <= 51; x++) {
     if (at(c, x, y) === Tile.Grass) put(c, x, y, Tile.Dirt);
   }
   put(c, 48, 23, Tile.BeastNest);
+  put(c, 46, 24, Tile.BeastStake);
   track(c, 48, 27, heart[0], heart[1], rng);
   scatter(c, 34, 25, 28, 20, [Tile.SkullPile, Tile.BonePile, Tile.WarBanner, Tile.MeatSpit], rng);
   // The sprawl's gossip round: camp to camp, a squat at every fire —
@@ -398,6 +408,10 @@ function buildGoblinWarren(): PrefabDef {
   put(c, 29, 9, Tile.CrackedCaveWall);
   put(c, 29, 11, Tile.ChestIron);
   put(c, 27, 11, Tile.Brazier);
+  // The doorkeeper's bed, just inside the mouth — warren goblins dig,
+  // they don't pitch tents; somebody sleeps within arm's reach of
+  // the take.
+  put(c, 31, 13, Tile.RagNest);
   // Spoil heaps below the door — a warren never stops digging.
   blob(c, 24, 17, 3, Tile.Dirt, rng, 0.2);
   blob(c, 34, 17, 3, Tile.Dirt, rng, 0.2);
@@ -408,6 +422,9 @@ function buildGoblinWarren(): PrefabDef {
   put(c, 33, 14, Tile.SkullTotem);
   // The yard: cook terrace, sorting ground, the cage row, the pen.
   fireCircle(c, 20, 22, rng, { pot: true, spit: true });
+  // A warren never carries a bone back inside — the midden grows
+  // an arm's throw from the cook terrace, downwind of nobody.
+  put(c, 17, 23, Tile.BoneMidden);
   spoilYard(c, 38, 22, rng);
   cageRow(c, 16, 30, 2, rng);
   beastPen(c, 38, 30, 46, 36, 2, rng);
@@ -451,13 +468,16 @@ function buildGoblinMoot(): PrefabDef {
   put(c, 31, 21, Tile.Bonfire);
   put(c, 28, 17, Tile.SkullTotem);
   put(c, 34, 17, Tile.SkullTotem);
-  // The feast: trestles drawn up south of the ring.
-  feastTrestles(c, 31, 31, 8, rng);
-  // The meat row — a moot is fed.
+  // The feast: trestles drawn up south of the ring, pouring from
+  // the moot's own tub — a thousand suppers deep.
+  feastTrestles(c, 31, 31, 8, rng, { grog: true });
+  // The meat row — a moot is fed, and the midden behind the rack
+  // proves it (a feast ground is judged by what it throws away).
   put(c, 20, 28, Tile.MeatSpit);
   put(c, 18, 30, Tile.MeatRack);
   put(c, 20, 32, Tile.MeatSpit);
   blob(c, 19, 30, 3, Tile.Dirt, rng, 0.2);
+  put(c, 17, 33, Tile.BoneMidden);
   // The brew corner: a stolen keg and the barrels it earned.
   blob(c, 44, 30, 3, Tile.Dirt, rng, 0.15);
   put(c, 44, 29, Tile.BrewKeg);
@@ -542,9 +562,11 @@ function buildGoblinGrubfarm(): PrefabDef {
   put(c, 44, 30, Tile.CrateGoods);
   put(c, 40, 31, Tile.HayBale);
   put(c, 46, 27, Tile.HayBale);
-  // The farmhands' corner and their fire.
+  // The farmhands' corner and their fire — and the dice they throw
+  // when the rows are done (husbandry pays, goblin-fashion).
   tentCluster(c, 16, 34, 3, rng);
   fireCircle(c, 24, 32, rng, { pot: true });
+  put(c, 27, 34, Tile.KnucklePit);
   track(c, 28, 42, 28, 24, rng);
   track(c, 28, 30, 25, 32, rng);
   track(c, 28, 28, 40, 28, rng);
@@ -587,9 +609,11 @@ function buildGoblinWarstage(): PrefabDef {
   track(c, 32, 44, 32, 24, rng);
   put(c, 27, 38, Tile.SpikeBarrier);
   put(c, 37, 38, Tile.SpikeBarrier);
-  // The drill yard — the muster keeps its edge.
+  // The drill yard — the muster keeps its edge, under the brag of
+  // the last muster's takings nailed at the yard's corner.
   drillYard(c, 24, 20, rng);
   put(c, 20, 18, Tile.TargetDummy);
+  put(c, 27, 21, Tile.TrophyStake);
   // The signal pyre on its mound, waiting for its night.
   blob(c, 47, 14, 4, Tile.Dirt, rng, 0);
   put(c, 47, 13, Tile.Bonfire);
@@ -601,8 +625,12 @@ function buildGoblinWarstage(): PrefabDef {
   tentCluster(c, 50, 35, 3, rng, { war: true });
   put(c, 52, 33, Tile.ChestIron);
   tentCluster(c, 15, 13, 3, rng);
-  // The muster's fire — even a war camp eats.
+  // The muster's fire — even a war camp eats, and it eats under the
+  // boss's straw-stuffed image: the effigy stands where the avenue
+  // meets the fire, so every goblin marches past the chief twice a
+  // day. This camp is going somewhere, and HE is why.
   fireCircle(c, 32, 27, rng, { spit: true, rack: true });
+  put(c, 34, 29, Tile.BossEffigy);
   track(c, 32, 28, 25, 21, rng);
   track(c, 32, 28, 44, 28, rng);
   track(c, 32, 24, 46, 15, rng);

@@ -355,14 +355,20 @@ const gnollSquat = sketch(
     '__,::::::::,__',
     '_,:#z#y#S##:,_',
     '_,:#So..S1#:,_',
-    '_,:S..2..SS:,_',
+    '_,:S..2.ESS:,_',
     '_,:#S..W.S#:,_',
     '_,:##S:S###:,_',
     ',::.0.f-.3.::,',
-    '_,::::o:::,,__',
+    '_,:::uo:::,,__',
     '____,,,,______',
   ],
   gnollMarks,
+  undefined,
+  // Squatters' comforts only: a rag bed inside the shell (gnolls
+  // steal bedding, they never pitch it) and the pack's trough by
+  // the yard fire. NOT the campLife ext — this sketch flies no
+  // goblin marks, and its 'o' stays the honest bone pile.
+  { E: Tile.RagNest, u: Tile.GnawTrough },
 );
 
 /** The kill-ground: an open camp ringed in gnawed bone piles. */
@@ -978,16 +984,21 @@ const banditHollow = declareInfluence(sketch(
     '________,,_______',
     '___,::::::::,____',
     '__,:u.G.c.$u:,___',
-    '_,:.1...f..2.:,__',
+    '_,:.1x..f..2.:,__',
     '_,:..k......X:,__',
     '_,:.3.f..(.>.:,__',
     '_,:.llll.....:,__',
     '_,:.l99l..a.u:,__',
-    '__,:llll...:,____',
+    '__,:llll.w.:,____',
     '___,:::::::,_____',
     '______,,_________',
   ],
   brigandMarks,
+  undefined,
+  // Minimal ext ONLY — this sketch's 'u' is the felled ring's
+  // stumps and its 'a'/'c' are honest coopering: the cart parks by
+  // the stolen cows' pen, the dice come out at the fire.
+  { w: Tile.PlunderCart, x: Tile.KnucklePit },
 ), { cap: WING_POOL_CAP });
 
 /**
@@ -1004,13 +1015,18 @@ const banditToll = declareInfluence(sketch(
     '_,:.c.a..G.:,___',
     '_,:.1..f..2.:,__',
     '_::::::::::::::_',
-    '_,:>..o...>.:,__',
-    '_,:.3...X...:,__',
+    '_,:>..o.Y.>.:,__',
+    '_,:.3...X.w.:,__',
     '_,:!.c.::.a.:,__',
     '__,::::::::,____',
     '______,,________',
   ],
   brigandMarks,
+  undefined,
+  // The trophy stake stands the banner row beside the bones — how
+  // the last argument about the toll went, nailed up for the next
+  // traveler to read; the confiscated cart sits by the strongbox.
+  { Y: Tile.TrophyStake, w: Tile.PlunderCart },
 ), { cap: 22 });
 
 /**
