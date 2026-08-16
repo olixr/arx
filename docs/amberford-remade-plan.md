@@ -378,3 +378,83 @@ is therefore surgical, not wholesale:
 again after geography lands to verify the harmony seam. Live tour rig:
 lane-4 recipe (isolated Postgres, PORT=8797, vite :5180, headless shell;
 chat commands ≥1.6s spacing; /give before collect turn-ins).
+
+---
+
+## 10. THE FORD DRESSED — As-built (the dressing pass, 2026-08-15)
+
+The rebuild shipped hours before the town shelf (391-404), both trade
+waves (405-428), and the Commons shelf (429-448) existed; the zone was
+full of placeholder stand-ins. This pass seats all four shelves by hand
+— ~70 placements/replacements — under the Dawnmead dressing law: every
+prop EARNED by the fiction, restraint is curation, wall-shadow honored
+(south/east/west aprons only), every coordinate pre-validated by a
+probe tool + a routine-waypoint sweep (31 files, zero collisions).
+
+**UPGRADES (the placeholder debt paid).** Basin troughs → `WaterTrough`
+×6 (Round, forge yard, paddock, arrival, coach yard, pasture); the
+forge quench Basin → `QuenchTrough`; crate "grain" → `GrainSacks` ×3
+(mill floor, flour shop, stable oats); the barrel "mooring" →
+`MooringPost` (+ a second at Peld's planks); the barrel "water" →
+`WaterCask` ×2 (Free Furrows, delf); Peld's LampPost → `StreetLantern`
+(the swinging ferry lantern); wooden benches → `StoneBench` at the
+civic stone (Round well ring ×2, chapel garden ×2); the stamped
+MARKET_STALL fish cart is GONE — the fish market is authored:
+`FishmongerSlab` + `HangingScale` + `BasketStack` + `CrateStack` +
+`HandCart` on the quay.
+
+**THE TOWN OF THREE BOOKS.** `ScribesDesk` ×3: Rowan's gate book (+
+`CandleStand` — he writes until the last name is in), Cormund's bank
+office, Ansel's pilgrim register. The identity motif of a town that
+writes things down.
+
+**THE CROSSING GETS ITS GUARDIANS.** `GuardianStatue` pair at the
+bridge's north mouth, (84,120)/(89,120) local — world x 532/537, even/
+odd, so the parity law mirrors them free. The OLD HOUND's fourth and
+fifth sightings; its third is the `WallFountain` spring fount in the
+chapel memorial garden. `WayShrine` on the Salt Road's south bank —
+wayside faith where the mere country begins. Peld's promised bell is
+REAL (`TownBell`, 'ring for Peld'), his punt is a `BeachedSkiff` hauled
+out by the planks, and a fisher's skiff beaches by the jetty (dye deals
+keep them distinct).
+
+**NEW LAYERS.** Round: `NoticeBoard` at the North-Gate mouth, `Sundial`
+('market at midday' made literal). Bank: `PottedTree` pair at the
+charter doors; memorial hedge completed to a true 3-run + `StoneBench`.
+Smithy: `SmithBellows`/`IngotRack`/`Grindstone`/`CrateStack`. Hask:
+`ShopShelf`, `FletchersBench`, porch `DisplayTable` (moved off the door
+axis — the first placement sealed the shop; BFS caught it). Registry:
+`WayfarersRest` by the sign. Stable: `HitchingPost`, `BroomAndPail`
+mid-sweep. Tilo: `ClothBolts`/`TailorsDummy`/`ShopShelf`/`LumberRack`/
+`DyeVats` (east apron)/apron `DisplayTable`. Elowen: `GlazedJars`,
+`HerbRack` (herbs off the floor). Inn: `SettleBench` at the hearth,
+`CloakStand` (one peg empty), bar `WoodStool` ×2, `BarrelStack` cellar,
+kitchen `BreadOven` (the_table_laid's bread has an oven), door
+`HitchingPost`; coach yard `TapCask` + `GameTable` mid-argument with
+stools + `Woodpile` (two fires = wood is the story) + trough. Merra:
+`HangingScale` (first placement sealed the counter aisle — BFS again),
+`ShopShelf`, `GlazedJars`, path `ProduceStand`. Chapel: nave
+`CandleStand`, alcove `CloakStand`, garden spring fount between the
+stone benches. Commons: `Maypole` on the green walk's axis (moved once
+— the oak canopy ate its base at (70,80); (71,78) clears), farmhouse
+`Woodpile`, and TAMSIN'S KITCHEN GARDEN — a new 7×5 hedge ring +
+`HedgeGate` + carrot/sagewort rows + `CompostBin` ("the Free Furrows
+feed strangers; this feeds HERS"). Country: `Wheelbarrow` ×2
+(Furrowfield mid-row, delf spoil), orchard `LeanLadder` on the south
+eave + `BasketStack` windfalls, tannery `WoodStool` (Swale sits to the
+wet work), bridge-approach `StreetLantern`.
+
+**RESTRAINT (deliberate not-dones).** NO TownFountain — the well is
+the Round's heart. NO FounderStatue — nobody founded a crossing; a
+town grew on it (the hound pair is the town's stone instead). NO
+potter's/chandler's kit, no CobblersBench — no such trade keeps shop
+here. No PennantLine — the four dyed banner poles own the Round's
+cloth. StreetPlanter passed over for the garden family doing that job.
+
+**Proof.** Isolated :8817/:5210 frozen lane (fresh DB both boots,
+scratchpad playwright-core driver): 30+ close-zoom shots, every
+district noon + night; night hierarchy holds (zero new light entries —
+candle/lantern flames are paint). Two composition verdicts paid live
+(maypole/oak, guardians/rail). Suites: content 514 (with a 17-pin
+dressing-anchor block), shared 217, server 493; MarketStall pin >= 10
+survives the fish-cart de-stamp at exactly 10.

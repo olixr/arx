@@ -1323,6 +1323,27 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   assert.ok((counts.get(Tile.HedgeGate) ?? 0) >= 4, 'the hedge arches closed');
   assert.equal(counts.get(Tile.TopiaryBall) ?? 0, 2, 'the topiary pair changed');
   assert.equal(counts.get(Tile.TopiarySpire) ?? 0, 2, 'the topiary pair changed');
+  // THE FORD DRESSED — the dressing pass holds its anchors: the OLD
+  // HOUND pair at the bridge, Peld's promised bell, the working
+  // moorings and beached boats, the three books' desks, the fish
+  // market's true slab (the stamped cart is gone for good), and not
+  // one Basin left standing in for a real trough outdoors.
+  assert.equal(counts.get(Tile.GuardianStatue) ?? 0, 2, 'the bridge lost its hounds');
+  assert.equal(counts.get(Tile.TownBell) ?? 0, 1, "Peld's bell went quiet");
+  assert.equal(counts.get(Tile.MooringPost) ?? 0, 2, 'the moorings pulled out');
+  assert.equal(counts.get(Tile.BeachedSkiff) ?? 0, 2, 'the boats drifted off');
+  assert.equal(counts.get(Tile.FishmongerSlab) ?? 0, 1, 'the fish market lost its slab');
+  assert.equal(counts.get(Tile.ScribesDesk) ?? 0, 3, 'the town keeps three books');
+  assert.equal(counts.get(Tile.NoticeBoard) ?? 0, 1, 'the Round lost its board');
+  assert.equal(counts.get(Tile.Sundial) ?? 0, 1, 'the Round lost midday');
+  assert.equal(counts.get(Tile.Maypole) ?? 0, 1, 'the green lost its pole');
+  assert.equal(counts.get(Tile.WayShrine) ?? 0, 1, 'the Salt Road lost its shrine');
+  assert.equal(counts.get(Tile.WallFountain) ?? 0, 1, 'the memorial garden spring dried');
+  assert.ok((counts.get(Tile.WaterTrough) ?? 0) >= 6, 'the troughs ran dry');
+  assert.ok((counts.get(Tile.WoodStool) ?? 0) >= 4, 'the stools walked off');
+  assert.ok((counts.get(Tile.StoneBench) ?? 0) >= 5, 'the stone seats changed');
+  assert.equal(counts.get(Tile.QuenchTrough) ?? 0, 1, 'the forge lost its quench');
+  assert.equal(counts.get(Tile.TapCask) ?? 0, 1, 'the yard cask ran out');
   // The stable — the coaching yard the roads paid for.
   assert.equal(counts.get(Tile.BeastPen) ?? 0, 1, 'the stable lost its stalls');
   assert.ok((counts.get(Tile.FeedTrough) ?? 0) >= 2, 'the feed bins emptied');
