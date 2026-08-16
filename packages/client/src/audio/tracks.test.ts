@@ -44,7 +44,7 @@ test('every hearth reaches the ear: all eight towns play town, day or night, any
     [520, -4], // Amberford
     [-448, -220], // Silverfall — the grown capital's seat (crown to Vale Gate)
     [760, 330], // Saltmere
-    [1160, -356], // Pinewatch
+    [1160, -330], // Pinewatch — the grown town's seat
     [1304, -616], // Hartfell — its country bands tier 5; the walls must not
     [-480, 328], // Kingsdelf — its country reads the Overband; the bowl must not
     [-1032, -358], // Evenfall — the far west is tier-5 country; the groves must not

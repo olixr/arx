@@ -2210,47 +2210,53 @@ test('sign records survive the editor JSON round trip', () => {
 // The town that watches the deep wood. The anchors pinned here are the
 // ones routines and quests measure from: move one and something walks
 // into a wall at midnight.
-test('pinewatch: the watch town holds its knoll, its water, and three gates', () => {
+test('pinewatch: the watch town holds its knoll, its waters, and four ways in', () => {
   const z = buildPinewatch();
   assert.equal(z.id, 'pinewatch');
   assert.equal(z.width, 128);
-  assert.equal(z.height, 96);
+  assert.equal(z.height, 152, 'PINEWATCH REMADE grew the rect south, origin fixed');
   assert.equal(z.origin.x, 1096);
   assert.equal(z.origin.y, -404);
   assert.ok(z.elev, 'the Old Watch stands on a knoll, so the zone carries elevation');
   const at = (x: number, y: number): Tile => z.ground[y * z.width + x] as Tile;
   const n = (t: Tile): number => z.ground.reduce((c, g) => (g === t ? c + 1 : c), 0);
-  // The Glasswater is the fourth wall, and most of the north of the map.
-  assert.ok(n(Tile.WaterDeep) + n(Tile.Water) > 1800, 'the Glasswater shrank');
-  assert.ok(n(Tile.WaterShallow) >= 150, 'the wading margin and the millrace');
-  assert.ok(n(Tile.Sand) >= 150, 'the working strand');
+  // Water on three faces now: the Glasswater north-west AND down the
+  // whole west hem, the tarn owning the south-east.
+  assert.ok(n(Tile.WaterDeep) + n(Tile.Water) > 3000, 'the waters shrank');
+  assert.ok(n(Tile.WaterShallow) >= 250, 'the wading margins and the millrace');
+  assert.ok(n(Tile.Sand) >= 250, 'the working strand and the Winter Strand');
   assert.ok(n(Tile.Dock) >= 40, 'the boom, the piers, the slip, the fisher steps');
-  assert.equal(n(Tile.FishingSpot), 5, 'the pond, the bay, the steps');
-  // The knoll: one stair, and only one.
-  assert.equal(n(Tile.Ramp), 3, 'the Old Watch keeps exactly one flight');
+  assert.equal(n(Tile.FishingSpot), 7, 'the pond, the bay, the steps, the strand, the tarn');
+  // Three flights now: the Old Watch's stair, the Answering Beacon's
+  // pair, the Shore Bastion's one.
+  assert.equal(n(Tile.Ramp), 6, 'the knoll, the beacon, and the bastion keep their flights');
   assert.ok(n(Tile.Cliff) >= 60, 'the knoll lost its rim');
   // The trades that exist nowhere else in the Dawnlands at this scale.
   assert.ok(n(Tile.Sawhorse) >= 14, 'the spar beds and the saw floor');
   assert.ok(n(Tile.Stump) >= 20, 'the timber strand, the skidway, the cordwood');
   assert.ok(n(Tile.SaplingPine) >= 20, 'the nursery is the Wardline is the town');
   assert.ok(n(Tile.TreePine) >= 300, 'the Pinereach comes in over the walls');
+  assert.equal(n(Tile.RockIron), 3, "the ore cut — the mountain pays in iron");
   assert.equal(n(Tile.Furnace), 2, "the axe-smith's forge");
   assert.equal(n(Tile.Anvil), 2);
   assert.equal(n(Tile.Vault), 2, 'the Charterhouse strongroom');
   assert.equal(n(Tile.BankChest), 2);
-  // Three gates and a curtain on three sides only.
-  assert.equal(n(Tile.GateGarrison), 8, 'south, west, and the Wardline');
-  assert.ok(n(Tile.WallGarrison) >= 190, 'the curtain came down');
+  // Four ways in: the Timber Gate in the cut (3), the Hartgate in the
+  // notch (3), the Wardline (2), the Northguard's town door (2) — and
+  // the Winter Strand, which is not a gate eleven months of the year.
+  assert.equal(n(Tile.GateGarrison), 10, 'the cut, the notch, the Wardline, the fort door');
+  assert.ok(n(Tile.WallGarrison) >= 220, 'the curtain came down');
   // The gate mouths meet the carved routes tile-exact.
-  for (const x of [63, 64, 65]) {
-    assert.equal(at(x, 95), Tile.Path, `the Timber Road mouth must reach the south edge at ${x}`);
-    assert.equal(at(x, 88), Tile.GateGarrison, `the south gate stands at ${x}`);
+  for (const x of [31, 32, 33]) {
+    assert.equal(at(x, 151), Tile.Path, `the Timber Road mouth must reach the south edge at ${x}`);
+    assert.equal(at(x, 140), Tile.GateGarrison, `the Timber Gate stands in the cut at ${x}`);
   }
-  for (const y of [47, 48, 49]) {
-    assert.equal(at(0, y), Tile.Path, `the Sparway mouth must reach the west edge at ${y}`);
+  for (const x of [121, 122, 123]) {
+    assert.equal(at(x, 0), Tile.Path, `the Hartway mouth must reach the north edge at ${x}`);
+    assert.equal(at(x, 5), Tile.GateGarrison, `the Hartgate stands in the notch at ${x}`);
   }
-  assert.equal(at(6, 49), Tile.GateGarrison, 'the west gate stands');
   assert.equal(at(106, 60), Tile.GateGarrison, 'the Wardline gate stands');
+  assert.equal(at(101, 27), Tile.GateGarrison, "the Northguard's town door opens on the Fort Lane");
   // The spawn is the muster yard: the respawn hearth of the north-east.
   assert.deepEqual(z.spawn, { x: 1096 + 66.5, y: -404 + 50.5 });
   // The cast.
@@ -2315,7 +2321,10 @@ test('pinewatch: every door, pier, kiln and bed walks from the muster yard', () 
     ['the saw floor', 33, 48], ['the log deck', 36, 38], ['the board yard', 28, 58],
     ['the spar beds', 33, 82], ['the pitch kilns', 96, 82], ['the nursery beds', 94, 24],
     ['the Charterhouse floor', 90, 43], ['the inn hearth room', 79, 69],
-    ['the Timber Road mouth', 64, 95], ['the Sparway mouth', 1, 49],
+    ['the Timber Road mouth in the cut', 32, 148], ['the Timber Gate lane', 32, 138],
+    ['the Hartway mouth in the notch', 122, 2], ['the Northguard parade ground', 112, 12],
+    ['the Answering Beacon', 121, 10], ['the Shore Bastion', 12, 120],
+    ['the Winter Strand', 6, 110], ['the ore terrace', 43, 108],
     ['the Wardline gate', 106, 60], ['the Wardline path', 120, 59],
   ] as const) {
     assert.equal(seen[y * z.width + x], 1, `${what} is severed`);

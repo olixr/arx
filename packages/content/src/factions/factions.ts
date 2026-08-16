@@ -165,7 +165,7 @@ export const FACTIONS: FactionsDef = {
       npcPrefixes: [],
       anchors: [
         { x: -448, y: -220 },
-        { x: 1160, y: -356 },
+        { x: 1160, y: -330 },
       ],
       refusals: [
         'The crown remembers. Move along.',

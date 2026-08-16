@@ -50,12 +50,14 @@ zone has never once acknowledged it:
   nursery shed, the fisher steps, and **the Timber Door hatch at local
   (14,43) → (217.5,594.5) underworld** (Red Company coupling — byte-exact).
 - **Gates after the rework — four, each with a job:**
-  - **The Timber Gate** (south, moved): local (63–65, 146), gatehouse pair,
-    on the Watch Road axis. The Timber Road tail is REDRAWN to bow around
-    the rock spur and arrive from due south (§4).
-  - **The Hartgate** (north, NEW): local (121–123, 4) in the Northguard's
-    curtain; mouth path meets the Hartway at local (124,0) = (1220,−404)
-    tile-exact. The "north wicket" the geography always claimed.
+  - **The Timber Gate** (south, moved): local (31–33, 140), standing IN
+    the rock cut the road already carved through the ridge (§5). The road
+    tail trims to (1129,−262); the carve crosses the hem at local x≈32.
+  - **The Hartgate** (north, NEW): local (121–123, 5) in the Northguard's
+    curtain, in the pass notch whose rock shoulders worldgen already
+    stands at the corner; mouth path meets the Hartway at local (124,0) =
+    (1220,−404) tile-exact. The "north wicket" the geography always
+    claimed. Two rock-cut gates bracket the town — the design rhyme.
   - **The Wardline gate** (east, KEPT): local (106, 59–60). Sacred.
   - **The Strand** (south-west, OPEN): no gate — the lake is the wall. The
     wall dies into the water at both shore ends (the mole law) and the
@@ -119,36 +121,50 @@ stone ("the line's first stone is the fort's cornerstone") and marches south
 as before. The nursery keeps its ground west of the fort wall; its east
 sapling columns trim to x≤97.
 
-**THE SOUTH GROWTH (y96–150):**
-- **The Watch Road extends** yard → new Timber Gate (x64–66, y56–145): one
-  spine, gate to gate to knoll, Hartgate to Timber Gate via the yard.
-- **THE HUNTERS' ROW (west, ~x14–44, y98–126):** the game lodge (the cull
-  rota's hall), the fletcher's shop, the outfitter (leather + iron gear for
-  the road north — the second half of the higher-end gear story), drying
-  racks and a practice butt. The woodsmen-hunters the town always claimed
-  to be, finally standing somewhere.
-- **THE ORE CUT (center-west, ~x46–60, y100–122):** the rock spur worldgen
-  already deals, authored as the town's young iron working — a worked face
-  with iron-bearing rock, the bloomery, the barrow ramp, Ironmaster's hut.
-  Feeds Vigga's forge and the quartermaster's steel. Friction with the
-  nursery ("a bloomery eats charcoal, and charcoal is trees") is text.
-- **THE GATE PRECINCT (x56–80, y128–148):** gatehouse, the drovers' yard
-  (paddock, hitching rail, trough — every herd bound for Hartfell stages
-  here), the wayfarers' camp inside the wall, ONE WayShrine at the mouth
-  (the Waykeepers hold this road).
-- **THE GREEN & THE PHYSIC GARDEN (x82–104, y98–130):** the town's first
-  true commons — open grass, the herbalist's cottage + physic garden (herb
-  planters, sill pots, drying beams; the salve Nial's sign has always
-  promised gets its maker), two new cottages, and the nursery's public
-  face: a low clipped hedge ring with a wicket — the ONE hedge in town,
-  because the nursery is the one place in Pinewatch that owns shears.
-- **THE TARNSIDE (east, x106–127, y96–150):** the tarn takes the corner;
-  reeds, a bench, the wall dying into the water. Deliberately near-empty.
-  Room to breathe is a district too (the Fairstead law).
-- **THE WINTER STRAND (south-west shore, x2–16, y96–150):** the lake runs
-  down the whole west hem; open beach inside the town's embrace, boats
-  drawn up, ice-saw racks, and the **Shore Bastion** — a garrison platform
-  with braziers, because *when the water goes hard, this beach is a gate.*
+**THE SOUTH GROWTH (y96–151) — revised to the measured ground (fine scan
+2026-08-16):** worldgen deals the growth three masters: the lake laps the
+west hem the whole way down, a ROCK RIDGE runs local x≈34–52 from y≈100 to
+the hem with the Timber Road already carved through its west shoulder, and
+the TARN owns everything east and south of an arc from about (54,140) up
+through (78,122)–(85,119) to the east hem at y≈117. The districts live on
+the western isthmus and the meadow band, and the water does the walling:
+
+- **The Watch Road extends** to y≈114; **the Southway** (y112–113) runs
+  west from it; **the Gate Lane** (x31–33) runs south to the new gate;
+  **the Strand Walk** (x8–9) links the millrace country to the shore.
+- **THE TIMBER GATE IN THE CUT (x31–33, y140):** the road's own historic
+  carve climbs through the ridge's west shoulder — the gate stands IN the
+  rock cut, flanked by living stone, the strongest threshold this town
+  could ask for. South curtain runs x4→30, gate, x34→52, and dies into
+  the tarn at ~x53. The Timber Road tail is TRIMMED to end at (1129,−262);
+  its carve crosses the hem at local x≈32, tile-exact under the gate.
+- **THE HUNTERS' ROW (x12–32 along the Southway):** game lodge + fletcher
+  north of the way, the outfitter south of it — leather and northern iron
+  for the road north; the higher-end gear story's civilian half.
+- **THE RIDGE & THE ORE CUT (x34–52, y100–138):** authored crags where
+  worldgen already stands them; the worked north face carries iron-bearing
+  rock, the bloomery, and the Ironmaster's hut at its foot. Feeds Vigga
+  and the quartermaster. "A bloomery eats charcoal, and charcoal is
+  trees" — the argument with the nursery is text, not subtext.
+- **THE DROVERS' YARD (x22–30, y126–138):** paddock, rails, trough,
+  hitching — every herd bound for Hartfell stages beside the gate. ONE
+  WayShrine at the mouth (the Waykeepers hold this road).
+- **THE GREEN & THE PHYSIC GARDEN (x70–102, y94–112):** the meadow band
+  between the pitch yard and the tarn shore — the town's first commons:
+  the herbalist's cottage + physic garden, two cottages, open grass
+  sloping to the water. The nursery's hedge ring stays at the NURSERY
+  (its original ground, trimmed at the fort's wall) — the one hedge in
+  town, because the nursery is the one place in Pinewatch that owns
+  shears.
+- **THE TARNSIDE (the arc from (54,140) to (106,116)):** the authored
+  tarn takes the whole south-east; reeds, one bench, the east curtain
+  dying into the water at ~(106,115). Deliberately near-empty (the
+  Fairstead law). The east curtain now runs y27→114 only; the fort owns
+  the wall north of that.
+- **THE WINTER STRAND (x2–10, y96–140):** the lake inside the hem, sand
+  band, drawn-up boats, ice-saw racks, and the **Shore Bastion** — a
+  raised garrison platform (level 1, braziers) because *when the water
+  goes hard, this beach is a gate.*
 
 ## 6. The people (22 → 37 placements)
 

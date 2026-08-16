@@ -51,7 +51,10 @@ export const SETTLED_ANCHORS: readonly DangerAnchor[] = [
   // the muster country at 4 (levels 22-34): the first town the
   // Dawnlands ask a made adventurer to earn. North across the
   // Glasswater the march climbs past it and keeps climbing.
-  { x: 1160, y: -356, safeR: 64, haven: true, country: 4 },
+  // (PINEWATCH REMADE: the anchor rode the rect's southward growth —
+  // re-centred on the grown town and widened so the Southreach and
+  // both rock-cut gates stay inside the hearth's word.)
+  { x: 1160, y: -330, safeR: 80, haven: true, country: 4 },
   // Hartfell — the town past the treeline. Its word holds the fells
   // at 5; past the folds the Barrowdeep march runs 6, 7, and on — the
   // town is a warm ring in the climb, not the top of it.

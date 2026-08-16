@@ -37,31 +37,38 @@ import type { ZoneDef } from './types.js';
  * road OUT of it. The great spars only grow past the line.
  *
  * THE TOWN-PLAN LAW (Amberford's, kept whole):
- *  - STREETS FIRST. The Watch Road runs gate to muster yard; the
- *    Shore Lane runs the whole working waterfront; Sparwrights' Lane
- *    and the Wardline Path hang off them. Every building fronts one
- *    of the four, with >= 3 open tiles between structures.
+ *  - STREETS FIRST. The Watch Road runs the spine, knoll to the
+ *    Southway; the Shore Lane runs the whole working waterfront;
+ *    Sparwrights' Lane, the Wardline Path, the Gate Lane, and the
+ *    Fort Lane hang off them. Every building fronts a street, with
+ *    >= 3 open tiles between structures.
  *  - A DIAGONAL BUDGET OF TWO, both on the Old Watch's knoll: the
  *    tower's south shoulders. Everything else is honest square,
  *    because everything else was built by people with a saw and a
  *    quota.
  *  - ROOM INTENT. One job per room, furniture proves it.
  *
- * THE SHORE PLAN — the Glasswater is the fourth wall (Saltmere's law,
- * and here it is the town's whole idea). The curtain rings only the
- * three land sides and dies into the water at both ends. West to east
- * along the shore: the reed bay, the millrace mouth and the Great
- * Saw's tail, the timber strand, THE BOOM (the log pond cut into the
- * land, chained across its mouth), the raft dock, the fisher steps.
- * North across the water is the old wood, and nothing crosses the
- * water. Except in a hard winter.
+ * THE WATER PLAN (PINEWATCH REMADE — the town finally admits what it
+ * sits on): a fortress isthmus. The Glasswater is the whole west and
+ * north-west — the reed bay, the millrace, the timber strand, THE
+ * BOOM, the raft dock, the fisher steps, and south of the working
+ * shore THE WINTER STRAND, the open beach the ice-road forms on in a
+ * hard year. The southern TARN owns the whole south-east; the curtain
+ * dies into it twice. Between the waters, two ROCK-CUT GATES bracket
+ * the town: the Timber Gate in the ridge cut the road itself carved,
+ * and the Hartgate in the pass notch where the drovers' road climbs
+ * to Hartfell. Nothing crosses the open water. Except in a hard
+ * winter — which is what the watch is FOR, and now also what the
+ * Northguard is paid for.
  *
- * Anchors that must NOT move (routines hang off them): the Old Watch
- * tower and its bell, the muster yard and the rota board, the boom
- * and both piers, the millrace, every door, every bed, every station,
- * and the three gates. The Timber Road lands at world (584,-89) =
- * local (64,95); the Sparway lands at world (520,-136) = local
- * (0,48). The mouth rows meet the carved routes tile-exact.
+ * Anchors that must NOT move (routines and other epics hang off
+ * them): the Old Watch tower and its bell, the muster yard and the
+ * rota board, the boom and both piers, the millrace, the Wardline
+ * gate, every door, every bed, every station, and the Timber Door
+ * hatch at local (14,43) — the Red Company's, byte-exact. The Timber
+ * Road's carve crosses the south hem at local x~32 and the Hartway
+ * leaves at local (124,0) = world (1220,-404); both mouths meet the
+ * carved routes tile-exact.
  */
 export function buildPinewatch(): ZoneDef {
   const R = PINEWATCH_RECT;
@@ -102,6 +109,87 @@ export function buildPinewatch(): ZoneDef {
   b.set(3, 41, Tile.Swamp).set(5, 43, Tile.Swamp).set(2, 44, Tile.Swamp);
   b.set(6, 40, Tile.FibrePlant).set(4, 45, Tile.FibrePlant);
   b.set(9, 38, Tile.FishingSpot).set(96, 3, Tile.FishingSpot);
+
+  // ---------------------------------------------------------------
+  // THE WEST SHORE — the Glasswater runs down the WHOLE west hem (the
+  // regen's truth, finally authored): open water laps inside the
+  // border, a wading margin, and then THE WINTER STRAND — the long
+  // sand where boats are drawn up and the ice-road forms in a hard
+  // year. The lake is the wall here; the town has always said so and
+  // now the map agrees. The old west curtain and its drowned gate are
+  // gone — the Sparway rejoined the Timber Road leagues ago, and a
+  // wall against open water was a wall against nothing.
+  // ---------------------------------------------------------------
+  for (let y = 42; y <= 137; y++) {
+    const w = 1 + Math.round((Math.sin(y * 0.55) + 1) / 2); // 1..2 wet columns
+    for (let x = 0; x <= w; x++) b.set(x, y, Tile.Water);
+    b.set(w + 1, y, Tile.WaterShallow).set(w + 2, y, Tile.WaterShallow);
+    for (let x = w + 3; x <= 9; x++) b.set(x, y, Tile.Sand);
+  }
+  // South of y137 the shore swings west out of the rect; the strand
+  // narrows to a worked sand hem and hands the lake back to the field.
+  for (let y = 138; y <= 146; y++) {
+    b.set(0, y, Tile.Water).set(1, y, Tile.WaterShallow);
+    for (let x = 2; x <= 6; x++) b.set(x, y, Tile.Sand);
+  }
+  for (let y = 147; y < R.h; y++) {
+    for (let x = 0; x <= 5; x++) b.set(x, y, Tile.Sand);
+  }
+  // Reeds where the strand meets the old reed corner's soakaway, and
+  // along the wading margin the shore loop re-dealt.
+  b.set(4, 46, Tile.FibrePlant).set(3, 52, Tile.Swamp).set(5, 58, Tile.FibrePlant);
+  b.set(4, 92, Tile.Swamp).set(2, 96, Tile.Swamp).set(5, 101, Tile.FibrePlant);
+  b.set(3, 118, Tile.FibrePlant).set(2, 128, Tile.Swamp);
+  b.set(5, 126, Tile.FishingSpot); // the strand's quiet line
+
+  // ---------------------------------------------------------------
+  // THE TARN — the southern water, and the town's other wall. The
+  // regen deals it just here (measured, not guessed: the fine scan of
+  // 2026-08-16); the zone authors its north-west shore so the hem
+  // hands the water off seam-true. Reeds, one bench someday, and
+  // nothing else: the Tarnside is deliberately the quietest ground
+  // in town.
+  // ---------------------------------------------------------------
+  const tarnEdge = (y: number): number => {
+    // West edge of the water at row y (local), following the measured
+    // worldgen shore so the south and east hems agree with the field.
+    if (y < 114) return 999;
+    if (y <= 115) return 88;
+    if (y <= 117) return 83;
+    if (y <= 119) return 80;
+    if (y <= 121) return 78;
+    if (y <= 123) return 76;
+    if (y <= 125) return 73;
+    if (y <= 127) return 70;
+    if (y <= 129) return 66;
+    if (y <= 131) return 62;
+    if (y <= 133) return 58;
+    if (y <= 135) return 56;
+    if (y <= 141) return 54;
+    if (y <= 143) return 55;
+    if (y <= 145) return 56;
+    if (y <= 147) return 57;
+    if (y <= 149) return 59;
+    return 62;
+  };
+  for (let y = 114; y < R.h; y++) {
+    const e = tarnEdge(y) + Math.round(Math.sin(y * 0.9) * 1.2);
+    for (let x = e; x < R.w; x++) {
+      // Deepen toward the heart (south-east); the rim wades.
+      const deep = x > e + 6 && y > 122;
+      b.set(x, y, deep ? Tile.WaterDeep : Tile.Water);
+    }
+    b.set(e, y, Tile.WaterShallow);
+    if (e + 1 < R.w) b.set(e + 1, y, Tile.WaterShallow);
+  }
+  // The tarn's reed hem — the shore grass goes tall and wet.
+  for (let y = 114; y < R.h - 1; y += 2) {
+    const e = tarnEdge(y) + Math.round(Math.sin(y * 0.9) * 1.2);
+    if (e - 1 >= 0 && b.get(e - 1, y) === Tile.Grass) b.set(e - 1, y, Tile.GrassTall);
+    if (y % 6 === 0 && e - 2 >= 0 && b.get(e - 2, y) === Tile.Grass) b.set(e - 2, y, Tile.Swamp);
+    if (y % 8 === 2 && e - 2 >= 0 && b.get(e - 2, y) === Tile.Grass) b.set(e - 2, y, Tile.FibrePlant);
+  }
+  b.set(90, 118, Tile.FishingSpot); // the tarn gives perch, sometimes
 
   // ---------------------------------------------------------------
   // THE MILLRACE — the lake's one outfall, cut straight by somebody's
@@ -249,15 +337,24 @@ export function buildPinewatch(): ZoneDef {
   // ---------------------------------------------------------------
   // THE STREETS — laid before anything was allowed to stand on them.
   // ---------------------------------------------------------------
-  b.path({ x: 65, y: 56 }, { x: 65, y: 94 }, 3); // the Watch Road: yard -> south gate
+  b.path({ x: 65, y: 56 }, { x: 65, y: 113 }, 3); // the Watch Road: yard -> the Southway
   b.path({ x: 44, y: 48 }, { x: 104, y: 48 }, 2); // the Shore Lane: yard hem -> Charterhouse
   b.path({ x: 8, y: 62 }, { x: 64, y: 62 }, 2); // the Mill Lane: the west spine
   b.path({ x: 20, y: 75 }, { x: 100, y: 75 }, 2); // Sparwrights' Lane
   b.path({ x: 66, y: 60 }, { x: 105, y: 60 }, 2); // the Wardline Path
   b.path({ x: 32, y: 56 }, { x: 32, y: 61 }, 2); // the Saw Track, down to the Mill Lane
   b.path({ x: 93, y: 61 }, { x: 93, y: 74 }, 2); // the Kiln Track
-  b.fillRect(63, 89, 3, 7, Tile.Path); // the south mouth meets the Timber Road
-  b.fillRect(0, 47, 7, 3, Tile.Path); // the west mouth meets the Sparway
+  // THE SOUTHREACH's streets (the growth): the Southway crosses the
+  // new quarter east-west; the Gate Lane drops from it to the Timber
+  // Gate in the cut; the Strand Walk runs the shore the whole way; the
+  // Fort Lane threads between the Charterhouse and the curtain up to
+  // the Northguard's town door.
+  b.path({ x: 16, y: 112 }, { x: 66, y: 112 }, 2); // the Southway
+  b.path({ x: 32, y: 114 }, { x: 32, y: 139 }, 3); // the Gate Lane, into the cut
+  b.path({ x: 8, y: 63 }, { x: 8, y: 131 }, 2); // the Strand Walk
+  b.path({ x: 102, y: 28 }, { x: 102, y: 47 }, 2); // the Fort Lane
+  b.fillRect(31, 141, 3, 11, Tile.Path); // the south mouth: the cut meets the Timber Road
+  b.fillRect(121, 0, 3, 5, Tile.Path); // the north mouth: the Hartgate meets the Hartway
   b.fillRect(107, 59, 21, 2, Tile.Dirt); // the Wardline Path, unpaved past the gate
 
   // ---------------------------------------------------------------
@@ -368,7 +465,7 @@ export function buildPinewatch(): ZoneDef {
   b.set(89, 43, Tile.Table).set(89, 44, Tile.Chair);
   b.setDetail(90, 43, Detail.Rug).setDetail(91, 43, Detail.Rug);
   b.setDetail(90, 44, Detail.Doormat).setDetail(91, 44, Detail.Doormat);
-  b.set(83, 40, Tile.LampPost).set(102, 40, Tile.LampPost);
+  b.set(83, 40, Tile.LampPost).set(104, 40, Tile.LampPost); // east lamp clear of the Fort Lane
   // Two houses under one roof, and the facade admits it: the Crown's
   // weld canopy and banner west of the door, the Charter's charcoal
   // east of it — bowed canvas, the only dressed-stone finery in town.
@@ -604,12 +701,16 @@ export function buildPinewatch(): ZoneDef {
     }
   }
   // The blazed line itself: marked pine and pulled-up boundary stone,
-  // marching north and south from the gate as far as anyone has walked.
-  for (let y = 6; y <= 92; y += 5) {
+  // marching south from the gate as far as anyone has walked. Its
+  // NORTH anchor is new: the line's first stone is the Northguard's
+  // cornerstone — the fort stands on the boundary it was sent to
+  // watch, which both parties considered the other side's concession.
+  for (let y = 32; y <= 92; y += 5) {
     const jitter = ((y * 7) % 5) - 2;
     b.set(112 + jitter, y, Tile.Stump); // blazed, not felled: the mark
     if (y % 10 === 0) b.set(113 + jitter, y + 1, Tile.Rock);
   }
+  b.set(110, 30, Tile.Rock); // the first stone, at the fort's shadow
   b.set(112, 58, Tile.Grass).set(112, 60, Tile.Grass);
   // The cut fan outside the Wardline gate: stumps in rows where the
   // town takes its firewood, and the first great trunks standing just
@@ -621,6 +722,11 @@ export function buildPinewatch(): ZoneDef {
   }
   b.set(118, 56, Tile.TreeYew).set(118, 64, Tile.TreeYew);
   b.setDetail(111, 57, Detail.Sawdust).setDetail(114, 62, Detail.Sawdust);
+  // The Wardline's other half, made visible where everyone passes it:
+  // fell inside the line, plant what you fell. The cut fan's stumps
+  // stand among their own replacements.
+  b.set(110, 56, Tile.SaplingPine).set(114, 54, Tile.SaplingPine).set(116, 58, Tile.SaplingPine);
+  b.set(112, 63, Tile.SaplingPine).set(109, 66, Tile.SaplingPine).set(115, 66, Tile.SaplingPine);
 
   // ---------------------------------------------------------------
   // THE NURSERY — the other half of the Wardline's bargain, and the
@@ -629,14 +735,18 @@ export function buildPinewatch(): ZoneDef {
   // the beds are counted the same as the boards are. The rows run
   // north-east where the morning gets at them.
   // ---------------------------------------------------------------
+  // (PINEWATCH REMADE: the beds trimmed their east columns to x<=96 —
+  // the Northguard's west wall stands at x98 now, and the nursery
+  // works in the fort's shadow. Neither party planned the adjacency;
+  // both have decided it means something.)
   for (let row = 0; row < 5; row++) {
     const y = 18 + row * 3;
-    b.fillRect(88, y, 14, 1, Tile.Tilled);
-    for (let x = 89; x <= 101; x += 3) b.set(x, y, Tile.SaplingPine);
+    b.fillRect(88, y, 9, 1, Tile.Tilled);
+    for (let x = 89; x <= 95; x += 3) b.set(x, y, Tile.SaplingPine);
   }
   b.fillRect(86, 17, 2, 16, Tile.Dirt); // the barrow walk
   b.set(84, 32, Tile.Basin).set(95, 33, Tile.Basin);
-  b.set(84, 16, Tile.Barrel).set(103, 20, Tile.Crate);
+  b.set(84, 16, Tile.Barrel).set(85, 16, Tile.Crate);
   // The nursery shed: seed trays, a bench, and the count book that
   // nobody outside this fence has ever asked to see.
   b.fillRect(78, 20, 7, 6, Tile.WoodFloor);
@@ -711,43 +821,137 @@ export function buildPinewatch(): ZoneDef {
   b.setDetail(48, 31, Detail.Sawdust).setDetail(53, 30, Detail.Sawdust);
 
   // ---------------------------------------------------------------
-  // THE CURTAIN — timber-town garrison work on the three land sides,
-  // dying into the water at both ends (the harbor-mole law; here the
-  // Glasswater is the fourth wall and the town's entire argument).
-  // Three gates: the Timber Road south, the Sparway west, the
-  // Wardline east.
+  // THE CURTAIN — timber-town garrison work where there is land to
+  // guard, and open water everywhere there is not (the harbor-mole
+  // law, kept twice over: the wall dies into the Glasswater at the
+  // fort's shoulder and into the tarn at both its own ends). Four
+  // ways in now: the Timber Gate in the southern cut, the Hartgate in
+  // the northern notch, the Wardline east — and the Winter Strand,
+  // which is not a gate eleven months of the year.
   // ---------------------------------------------------------------
-  // West curtain: from the reed bay south to the corner.
-  for (let y = 42; y <= 87; y++) b.set(6, y, Tile.WallGarrison);
-  b.set(6, 48, Tile.GateGarrison).set(6, 49, Tile.GateGarrison).set(6, 50, Tile.GateGarrison);
-  b.set(5, 41, Tile.WallGarrisonDiagSE);
-  // South curtain, with the Timber Road's gate.
-  b.fillRect(7, 88, 56, 1, Tile.WallGarrison);
-  b.set(63, 88, Tile.GateGarrison).set(64, 88, Tile.GateGarrison).set(65, 88, Tile.GateGarrison);
-  b.fillRect(66, 88, 41, 1, Tile.WallGarrison);
-  // The Timber Road gate wears the watch's charcoal on both cheeks —
-  // iron colors over the gate fires; the rest of the curtain keeps
-  // its martial bareness.
-  b.setDetail(62, 88, wallBannerDetail(7)).setDetail(66, 88, wallBannerDetail(7));
-  // East curtain, north from the corner to the water, with the
-  // Wardline gate in it.
-  for (let y = 8; y <= 88; y++) b.set(106, y, Tile.WallGarrison);
-  b.set(106, 59, Tile.GateGarrison).set(106, 60, Tile.GateGarrison);
-  b.set(107, 89, Tile.WallGarrisonDiagNW);
-  b.set(105, 7, Tile.WallGarrisonDiagSE);
-  b.fillRect(97, 7, 8, 1, Tile.WallGarrison); // the short north run, into the lake
-  // The gate fires: every gate in this town burns something at night.
-  b.set(61, 90, Tile.Brazier).set(67, 90, Tile.Brazier);
-  b.set(8, 46, Tile.Brazier).set(8, 52, Tile.Brazier);
-  b.sign(60, 87, 'PINEWATCH', [
+
+  // THE RIDGE — the rock spine worldgen deals across the Southreach,
+  // authored so the wall inside matches the country outside. The
+  // Timber Road's own carve climbs through its west shoulder: THE
+  // CUT, and the gate stands in it.
+  for (let y = 100; y <= 151; y++) {
+    for (let x = 34; x <= 52; x++) {
+      const t = b.get(x, y);
+      if (t !== Tile.Grass && t !== Tile.GrassTall && t !== Tile.Sand) continue;
+      const spine = 43 + Math.round(Math.sin(y * 0.35) * 3);
+      const d = Math.abs(x - spine);
+      const dens = d <= 3 ? 0.6 : d <= 6 ? 0.32 : 0.12;
+      if (pineRng(x * 7, y * 11) < dens) b.set(x, y, Tile.Rock);
+    }
+  }
+  // The cut's cheeks: the lane walks between living stone. East cheek
+  // dense (the ridge proper), west cheek broken.
+  for (let y = 128; y <= 151; y++) {
+    if (b.get(34, y) !== Tile.Path) b.set(34, y, Tile.Rock);
+    if (b.get(35, y) !== Tile.Path && pineRng(35, y) < 0.7) b.set(35, y, Tile.Rock);
+    if (y >= 134 && b.get(29, y) !== Tile.Path && pineRng(29, y) < 0.55) b.set(29, y, Tile.Rock);
+    if (y >= 141 && b.get(28, y) !== Tile.Path && pineRng(28, y) < 0.4) b.set(28, y, Tile.Rock);
+  }
+
+  // THE ORE CUT — the mountain pays in iron what the wood pays in
+  // years. A worked face on the ridge's north brow: the town's young
+  // seam, found the year the Crown's fort went up, which everyone
+  // agrees is a coincidence. The bloomery and the Ironmaster's hut
+  // come with the Southreach's buildings; the stone is cut now.
+  b.fillRect(38, 104, 12, 8, Tile.Dirt); // the quarry terrace
+  for (let x = 38; x <= 49; x++) b.set(x, 103, Tile.Rock); // the face
+  b.set(40, 103, Tile.RockIron).set(44, 103, Tile.RockIron).set(48, 103, Tile.RockIron);
+  b.set(39, 112, Tile.Rock).set(43, 113, Tile.Rock).set(47, 112, Tile.Rock); // the spoil lip
+
+  // South curtain: strand to tarn, the Timber Gate in the cut. The
+  // west end stands in the wading margin; the east end walks into the
+  // tarn. Both deaths are the design.
+  b.fillRect(2, 140, 29, 1, Tile.WallGarrison); // x2-30
+  b.set(31, 140, Tile.GateGarrison).set(32, 140, Tile.GateGarrison).set(33, 140, Tile.GateGarrison);
+  b.fillRect(34, 140, 20, 1, Tile.WallGarrison); // x34-53, threading the ridge foot
+  // The gate wears the watch's charcoal on both cheeks — iron colors
+  // over the gate fires; the rest of the curtain keeps its bareness.
+  b.setDetail(30, 140, wallBannerDetail(7)).setDetail(34, 140, wallBannerDetail(7));
+  b.set(29, 142, Tile.Brazier).set(36, 142, Tile.Brazier); // the gate fires
+  b.set(30, 137, Tile.LampPost); // the lane's last lamp, inside
+  b.sign(26, 143, 'PINEWATCH', [
     'timber out, iron in',
     'the watch is kept nightly',
     'every roof takes a night',
   ], Tile.Signpost);
-  b.sign(9, 51, 'THE SPARWAY', [
-    'this is the short road',
-    'it is short for a reason',
-    'the Timber Road is longer and older and alive',
+
+  // THE SHORE BASTION — the one piece of garrison work on the open
+  // west face: a raised platform over the Winter Strand, because when
+  // the water goes hard, that beach is a gate, and the town has known
+  // it for forty years. Braziers laid ready. Never lit in summer.
+  b.raise(10, 118, 5, 5, 1);
+  b.stairs(12, 122);
+  b.set(11, 119, Tile.Brazier).set(13, 119, Tile.Brazier);
+  b.sign(15, 123, 'THE SHORE BASTION', [
+    'when the water goes hard, this beach is a gate',
+    'the braziers stay laid. ask Torvi why',
+  ], Tile.Signpost);
+
+  // East curtain: from the Northguard's south wall down to the tarn,
+  // with the Wardline gate in it. The wall's south foot stands in the
+  // tarn's wading margin.
+  for (let y = 28; y <= 113; y++) b.set(106, y, Tile.WallGarrison);
+  b.set(106, 59, Tile.GateGarrison).set(106, 60, Tile.GateGarrison);
+
+  // ---------------------------------------------------------------
+  // THE NORTHGUARD — the Crown's fort astride the pass, and the
+  // NORTH WICKET the drovers' road was always owed. The Hartway
+  // climbs from here through the notch to Hartfell; whatever comes
+  // DOWN that road in a bad year meets this first. The fort's west
+  // wall stands at the nursery's last bed — the watch and the
+  // planting, shoulder to shoulder, which neither party planned and
+  // both have decided means something.
+  // (The shell stands with the ground; the garrison moves in with its
+  // own phase.)
+  // ---------------------------------------------------------------
+  // The notch's rock shoulders, continuing the crags the field deals
+  // just outside the hem.
+  for (let y = 0; y <= 4; y++) {
+    for (const x of [117, 118, 119, 120, 124, 125, 126, 127]) {
+      if (b.get(x, y) === Tile.Grass || b.get(x, y) === Tile.GrassTall) {
+        if (pineRng(x * 13, y * 17) < 0.75) b.set(x, y, Tile.Rock);
+      }
+    }
+  }
+  b.fillRect(99, 6, 27, 21, Tile.Dirt); // the parade ground
+  // Walls: north (with the Hartgate), east, south (with the town
+  // door onto the Fort Lane), west (dying toward the water).
+  b.fillRect(98, 5, 23, 1, Tile.WallGarrison); // x98-120
+  b.set(121, 5, Tile.GateGarrison).set(122, 5, Tile.GateGarrison).set(123, 5, Tile.GateGarrison);
+  b.fillRect(124, 5, 3, 1, Tile.WallGarrison); // x124-126
+  for (let y = 6; y <= 26; y++) b.set(126, y, Tile.WallGarrison);
+  b.fillRect(98, 27, 29, 1, Tile.WallGarrison); // x98-126
+  b.set(101, 27, Tile.GateGarrison).set(102, 27, Tile.GateGarrison); // the town door
+  for (let y = 6; y <= 26; y++) b.set(98, y, Tile.WallGarrison);
+  b.set(98, 4, Tile.WallGarrison); // the west wall's foot, in the shallows
+  // THE ANSWERING BEACON — the standing reply to Hartfell's fellwatch:
+  // when their fire burns, Pinewatch bars the Wardline and lights this.
+  b.raise(119, 8, 6, 4, 1);
+  b.stairs(121, 11);
+  b.stairs(122, 11);
+  b.set(120, 9, Tile.Brazier).set(123, 9, Tile.Brazier);
+  b.set(122, 9, Tile.BannerPole); // top row with the fires — the floor stays walkable
+  // The fort cleared its sightlines: no tree stands within bowshot of
+  // the north wall, and the stumps say it was done on purpose.
+  for (let y = 0; y <= 4; y++) {
+    for (let x = 99; x <= 116; x++) {
+      const t = b.get(x, y);
+      if (t === Tile.TreePine || t === Tile.TreeYew) {
+        b.set(x, y, pineRng(x * 5, y * 3) < 0.2 ? Tile.Stump : Tile.Grass);
+      }
+    }
+  }
+  // The Hartgate's fires, cut into the notch rock.
+  b.set(120, 3, Tile.Brazier).set(124, 3, Tile.Brazier);
+  b.sign(118, 7, 'THE HARTGATE', [
+    'the drove road: Hartfell, two days',
+    'when the fell beacon burns, this gate bars',
+    'stay on the road. the north means it',
   ], Tile.Signpost);
 
   // ---------------------------------------------------------------
@@ -773,8 +977,8 @@ export function buildPinewatch(): ZoneDef {
       if (b.levelAt(x, y) !== 0) continue;
       const t = b.get(x, y);
       if (t !== Tile.Grass && t !== Tile.GrassTall) continue;
-      if (Math.abs(x - 64) <= 4 && y >= 88) continue; // the south gate breathes
-      if (Math.abs(y - 49) <= 3 && x <= 7) continue; // the west gate breathes
+      if (Math.abs(x - 32) <= 4 && y >= 134) continue; // the Timber Gate's cut breathes
+      if (Math.abs(x - 122) <= 4 && y <= 8) continue; // the Hartgate's notch breathes
       if (Math.abs(y - 60) <= 3 && x >= 106) continue; // the Wardline path breathes
       const edge = Math.min(x, y, R.w - 1 - x, R.h - 1 - y);
       const density = edge < 3 ? 0.34 : edge < 7 ? 0.14 : 0;

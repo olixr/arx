@@ -218,8 +218,18 @@ export const SALT_FLATS = { x: 760, y: 438, r: 64 } as const;
  * lake chain: the west gate opens onto the Glasswater's own shore,
  * the old wood stands across the water, and both roads arrive by the
  * isthmus between the lake and the southern tarns.
+ *
+ * PINEWATCH REMADE (THE WATCH HOLDS THE NORTH): the rect grew straight
+ * SOUTH, origin fixed, so every pre-growth local coordinate survived
+ * verbatim (the Vale law). The growth takes the isthmus the approach
+ * always threaded: the Glasswater walls the west hem the whole way
+ * down, the southern tarn walls the south-east, and the Timber Road's
+ * own rock cut through the ridge becomes the south gate. The north-east
+ * corner pays the Hartway's standing debt at last — the NORTH WICKET is
+ * real now: the Northguard fort stands astride the pass notch and the
+ * drovers' road finally leaves through a gate instead of a blank hem.
  */
-export const PINEWATCH_RECT: ZoneRect = { x: 1096, y: -404, w: 128, h: 96 };
+export const PINEWATCH_RECT: ZoneRect = { x: 1096, y: -404, w: 128, h: 152 };
 
 /**
  * Hartfell — the town past the treeline (the Hartfell epic). Centre
@@ -533,17 +543,18 @@ const AUTHORED_PLAN: GeographyDef = {
       // channel, then the long south bow AROUND the dread wood (the
       // Blackpine answers for the chord; the road pays in miles for
       // its lamps), north up the east country, and the last league
-      // threads the neck between the Glasswater and the eastern tarn
-      // to the gate under the walls. ~750 tiles against the Sparway's
-      // ~290 — the distance IS the safety.
+      // climbs THE CUT — the road's own carve through the ridge's west
+      // shoulder, with the Timber Gate standing in the rock at the top
+      // of it (the grown rect owns the climb; the tail ends just inside
+      // the gate and the zone authors the street from there). ~700
+      // tiles against the Sparway's ~290 — the distance IS the safety.
       pts: [
         { x: 592, y: 16 }, { x: 608, y: 12 }, { x: 640, y: 6 }, { x: 672, y: -2 },
         { x: 704, y: -8 }, { x: 736, y: -12 }, { x: 768, y: -14 }, { x: 806, y: -6 },
         { x: 844, y: -2 }, { x: 882, y: -4 }, { x: 916, y: -20 }, { x: 944, y: -46 },
         { x: 968, y: -74 }, { x: 986, y: -104 }, { x: 1000, y: -132 }, { x: 1010, y: -160 },
         { x: 1050, y: -170 }, { x: 1084, y: -184 }, { x: 1108, y: -204 }, { x: 1122, y: -228 },
-        { x: 1128, y: -252 }, { x: 1130, y: -276 }, { x: 1136, y: -296 }, { x: 1148, y: -306 },
-        { x: 1160, y: -309 },
+        { x: 1128, y: -252 }, { x: 1129, y: -262 },
       ],
     },
     {

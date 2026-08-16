@@ -35,7 +35,7 @@ const TOWNS = [
   { x: 520, y: 16, full: 56, fade: 80 }, // Amberford — THE FORD COMES HOME 144x144 rect
   { x: -448, y: -220, full: 72, fade: 104 }, // Silverfall — the capital, crown to Vale Gate (176x256 rect)
   { x: 760, y: 330, full: 34, fade: 52 }, // Saltmere — the town at the water's end
-  { x: 1160, y: -356, full: 30, fade: 48 }, // Pinewatch — the wood's muster town
+  { x: 1160, y: -330, full: 44, fade: 64 }, // Pinewatch — the wood's muster town (REMADE: grown 128x152 rect)
   { x: 1304, y: -616, full: 30, fade: 48 }, // Hartfell — the town past the treeline
   { x: -480, y: 328, full: 34, fade: 52 }, // Kingsdelf — the town in the King's Delf
   { x: -1032, y: -358, full: 44, fade: 72 }, // Evenfall — the city of the old folk
