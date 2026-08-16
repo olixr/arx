@@ -817,6 +817,52 @@ export const FX_STYLES: Record<string, FxStyle> = {
   // Voice of the Wild — the whole tongue: deep wildsong green, rings
   // that keep answering, roots left where the word passed.
   voice_of_the_wild: VERDANT({ mid: '#7ac4a0', deep: '#2c5a48', spark: '#eafff4', ring: 'petals', debris: 'leaf', decal: 'roots', motif: 'echo', punch: 0.5, wash: 0.45 }),
+
+  // ------------- THE FANG FINDS ITS VOICE (docs/pet-arts-plan.md):
+  // the companion's own actives. Each family keeps a dialect — gutter
+  // browns and plague greens for the skitterkin, tide-steel for the
+  // shellbacks, loam and iron for the tuskers, russet and winter-blue
+  // for the canids, snow for the cats and the owl, venom green for
+  // the adder, pale silk for the weaver — and every face keeps a
+  // unique ring+debris+motif hand. Punches stay animal-sized: these
+  // are teeth and hide, never spellfire.
+  nip_and_dart: SHADOW({ mid: '#b8a888', deep: '#5c5040', spark: '#e8dcc8', ring: 'teeth', debris: 'spark', decal: undefined, punch: 0.15, wash: 0.15 }),
+  plague_gnaw: VERDANT({ mid: '#8fb04a', deep: '#465a24', spark: '#d8ecb0', ring: 'teeth', debris: 'blood', decal: 'stain', punch: 0.2, wash: 0.2 }),
+  the_rats_hour: VERDANT({ mid: '#8fa050', deep: '#3e4a22', spark: '#e0e8b8', ring: 'teeth', debris: 'blood', decal: 'stain', motif: 'swarm', punch: 0.4, wash: 0.3 }),
+  echo_shriek: STORM({ mid: '#9a8ec4', deep: '#463e6a', spark: '#e0d8f4', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.25, wash: 0.2 }),
+  the_dark_descent: SHADOW({ mid: '#6a5a8c', deep: '#302846', spark: '#c0b0e0', ring: 'shards', debris: 'shadow', decal: undefined, motif: 'wisps', punch: 0.35, wash: 0.15 }),
+  set_the_shell: STEEL({ mid: '#8a92a0', deep: '#464c56', spark: '#d8dce4', ring: 'halo', debris: 'rock', decal: undefined, motif: 'cage', punch: 0.1, wash: 0.15 }),
+  clatter_challenge: GOLD({ mid: '#c9b45e', deep: '#6a5c2a', spark: '#f4ecc0', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.3, wash: 0.25 }),
+  horn_toss: VERDANT({ mid: '#7a8a6a', deep: '#3c4632', spark: '#d0dcc0', ring: 'shards', debris: 'rock', decal: undefined, punch: 0.3, wash: 0.2 }),
+  tide_grip: TIDE({ mid: '#5a9aa8', deep: '#2a4c54', spark: '#c8ecf0', ring: 'frost', debris: 'ice', decal: undefined, punch: 0.2, wash: 0.2 }),
+  the_undertow: TIDE({ mid: '#3d7a8c', deep: '#1c3a44', spark: '#b0dce8', ring: 'frost', debris: 'ice', decal: 'rime', motif: 'vortex', punch: 0.45, wash: 0.35 }),
+  the_standing_stone: STEEL({ mid: '#8a9282', deep: '#44483e', spark: '#d8dcd0', ring: 'runes', debris: 'rock', decal: 'cracks', motif: 'cage', punch: 0.4, wash: 0.3 }),
+  riptide_claw: TIDE({ mid: '#4a8a9c', deep: '#22424c', spark: '#c0e4ec', ring: 'shards', debris: 'ice', decal: undefined, punch: 0.35, wash: 0.25 }),
+  the_kings_pincer: BLOOD({ mid: '#c46a52', deep: '#5e2c20', spark: '#ffd0c0', ring: 'teeth', debris: 'ice', decal: undefined, motif: 'crown', punch: 0.5, wash: 0.3 }),
+  gore_charge: BLOOD({ mid: '#a4744b', deep: '#523823', spark: '#e8cca8', ring: 'teeth', debris: 'rock', decal: 'cracks', punch: 0.35, wash: 0.25 }),
+  tusk_sweep: STEEL({ mid: '#b08a5e', deep: '#58432c', spark: '#e8d4b8', ring: 'shards', debris: 'spark', decal: undefined, punch: 0.2, wash: 0.2 }),
+  mud_wallow: VERDANT({ mid: '#8a6f4a', deep: '#443624', spark: '#d8c8a8', ring: 'halo', debris: 'leaf', decal: 'stain', punch: 0.1, wash: 0.2 }),
+  the_long_furrow: EMBER({ mid: '#8c5a3a', deep: '#442b1a', spark: '#e0b890', ring: 'shards', debris: 'rock', decal: 'cracks', motif: 'quake', punch: 0.6, wash: 0.4 }),
+  worry_the_wound: BLOOD({ mid: '#b85a40', deep: '#582a1e', spark: '#ffc8b0', ring: 'teeth', debris: 'blood', decal: 'stain', punch: 0.25, wash: 0.25 }),
+  hamstring: FROST({ mid: '#7a9ab8', deep: '#3a4c5c', spark: '#d0e4f4', ring: 'teeth', debris: 'ice', decal: undefined, punch: 0.25, wash: 0.2 }),
+  the_first_howl: EMBER({ mid: '#d9925a', deep: '#6e4326', spark: '#ffe4c8', ring: 'halo', debris: 'spark', decal: undefined, motif: 'wave', punch: 0.35, wash: 0.3 }),
+  winters_jaw: FROST({ mid: '#9ac8e0', deep: '#48626e', spark: '#e0f4fc', ring: 'teeth', debris: 'ice', decal: 'rime', punch: 0.35, wash: 0.25 }),
+  the_cowing_snarl: SHADOW({ mid: '#9ab0c4', deep: '#485564', spark: '#dce8f4', ring: 'runes', debris: 'shadow', decal: undefined, motif: 'echo', punch: 0.4, wash: 0.2 }),
+  raking_flurry: BLOOD({ mid: '#c49a6a', deep: '#5e4630', spark: '#f4dcc0', ring: 'shards', debris: 'blood', decal: undefined, punch: 0.25, wash: 0.2 }),
+  the_winter_stalk: FROST({ mid: '#a8c8d8', deep: '#4e6270', spark: '#e8f4fa', ring: 'shards', debris: 'ice', decal: 'rime', motif: 'echo', punch: 0.4, wash: 0.3 }),
+  maul: BLOOD({ mid: '#8c6a4a', deep: '#443122', spark: '#e0c8a8', ring: 'teeth', debris: 'blood', decal: 'stain', punch: 0.45, wash: 0.3 }),
+  the_charge: STEEL({ mid: '#a4845e', deep: '#52402c', spark: '#e8d8c0', ring: 'shards', debris: 'rock', decal: undefined, motif: 'wave', punch: 0.4, wash: 0.25 }),
+  stand_tall: GOLD({ mid: '#c9a45e', deep: '#6a542a', spark: '#f4e8c8', ring: 'halo', debris: 'rock', decal: undefined, motif: 'pillar', punch: 0.5, wash: 0.35 }),
+  talon_stoop: BONE({ mid: '#e0dccf', deep: '#6e6a5e', spark: '#fbf8f0', ring: 'halo', debris: 'spark', decal: undefined, punch: 0.3, wash: 0.2 }),
+  hushing_wing: FROST({ mid: '#8ab8d8', deep: '#405a6e', spark: '#d8ecf8', ring: 'frost', debris: 'ice', decal: undefined, motif: 'wave', punch: 0.25, wash: 0.2 }),
+  preen: BONE({ mid: '#e8e0d0', deep: '#736c5c', spark: '#fffcf4', ring: 'petals', debris: 'spark', decal: undefined, punch: 0.05, wash: 0.12 }),
+  the_white_hush: FROST({ mid: '#c8dce8', deep: '#5c6c78', spark: '#f4fafd', ring: 'frost', debris: 'ice', decal: 'rime', motif: 'rain', punch: 0.4, wash: 0.35 }),
+  venom_spit: VERDANT({ mid: '#9cb84e', deep: '#4c5c22', spark: '#e4f0c0', ring: 'halo', debris: 'leaf', decal: 'stain', punch: 0.2, wash: 0.2 }),
+  coiled_strike: VERDANT({ mid: '#8fa04e', deep: '#464e20', spark: '#dfe8b4', ring: 'teeth', debris: 'spark', decal: undefined, punch: 0.3, wash: 0.2 }),
+  shed_skin: VERDANT({ mid: '#c8c8a0', deep: '#62624a', spark: '#f4f4e0', ring: 'petals', debris: 'leaf', decal: undefined, motif: 'bloom', punch: 0.05, wash: 0.12 }),
+  the_long_fang: VERDANT({ mid: '#6a9a42', deep: '#32491e', spark: '#d0ecb0', ring: 'teeth', debris: 'blood', decal: 'stain', motif: 'tear', punch: 0.45, wash: 0.3 }),
+  pale_silk: BONE({ mid: '#f0f0e6', deep: '#787868', spark: '#ffffff', ring: 'runes', debris: 'spark', decal: undefined, motif: 'cage', punch: 0.05, wash: 0.12 }),
+  the_venom_lattice: VERDANT({ mid: '#84c95e', deep: '#3c6428', spark: '#dcf8c8', ring: 'runes', debris: 'leaf', decal: 'stain', motif: 'cage', punch: 0.4, wash: 0.3 }),
 };
 
 /**

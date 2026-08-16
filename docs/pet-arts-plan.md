@@ -202,12 +202,26 @@ petDefend, tickPet regen, the bond moment, petGoesDown).
   running 3+2+2 must not out-damage-per-second the shipped bracket's
   intent by more than the signature premium (first pass: +35% sustained,
   spikes telegraphed); asserted over a simulated minute in tests.
-- **No species dominates.** The contract test computes, per species,
-  a loadout-optimal (hp x ehp-weighted dps) score at level parity and
-  asserts max/min <= 1.6 across the roster — the number that keeps
-  "your favorite is viable" a law instead of a hope.
+- **No species dominates — THE EQUALIZER LAW (amended by measurement,
+  2026-08-16).** The first-pass 1.6 aspiration met the shipped truth:
+  the wild bodies were NEVER at parity. At level-parity 60 the tame
+  ladder's own deep-courtship crown (giant_crab: hp 802, die 11,
+  armor 22) stands ~2.63x the entry bat (hp 366, die 4) in raw fight
+  math, by decree older than this epic. The contract as pinned in
+  petArts.test.ts is therefore: every species' best loadout is worth
+  slotting (lift >= 1.08 over its bare body); the loadout-optimal
+  spread never EXCEEDS the base-body spread (the arts narrow the
+  field, never widen it — measured 2.52 under 2.63 at ship); and an
+  absolute guard holds the roster inside 2.6. The 1.6 figure remains
+  the live-tuning target, owned by the Phase 5 ledger.
 - Focus prices are the balance dial of record; the ledger in Part 6
-  owns every retune.
+  owns every retune. First equalizer tunes already landed at
+  authoring: the crab's claw eased (riptide die 9->8, pincer 8->7 and
+  vs 1.8->1.6, signature rest lengthened), the bat's teeth sharpened
+  (descent die 3->4, shriek die 1->2, leech 0.5->0.75, cadences
+  quickened), the low shelves quickened (beetle toss, boar sweep and
+  wallow, weaver lattice), and every lift now lands in 1.10..1.26
+  with the weakest body (cave_bat) earning the second-highest lift.
 
 ### LAW 7 — THE JOURNEY IS SHOWN (ledger law)
 
@@ -267,8 +281,11 @@ occult vocabulary; the worg's dread is cold, never dark).
 ## Part 3 — The repertoire (curated roster, v1)
 
 Family pools first, then exclusives. (A)=active, (P)=passive, [n]=focus.
-Dies at base; the pet's level curve does the tier work. ~71 arts unique
-(~38 actives needing faces — the SECOND BREATH scale, priced knowingly);
+Dies at base; the pet's level curve does the tier work. As authored:
+71 arts unique (37 actives, every one wearing an authored FX face and
+a hand-painted spell-plate from Phase 1 — the client's whole-roster
+FLOURISH sweeps enforce both immediately, so the faces could not wait
+for Phase 4; the bespoke SIGNATURES set-pieces still land there);
 every species holds 6 except lynx_young at 5 — the young learn fewer
 words, and the validator pins both numbers.
 

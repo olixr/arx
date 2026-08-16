@@ -118,6 +118,102 @@ export const PET_TRICKLE_DIVISOR = 2;
 /** The kill share on the pet's ladder: fraction of the mark's xpReward. */
 export const PET_KILL_XP_FRAC = 0.5;
 
+/**
+ * THE FANG FINDS ITS VOICE (docs/pet-arts-plan.md) — the companion's
+ * own arts. A pet holds up to three slotted arts from its species'
+ * repertoire, priced in FOCUS; the budget is EARNED TWICE — half by
+ * the pet's own level, half by the bond walked together — and neither
+ * axis ever reads the keeper's beastcraft. Three signatures (9) exceed
+ * the ceiling (7) forever: nobody stacks three crowns, by arithmetic.
+ */
+/** The three collars: slots a companion can hold arts in. */
+export const PET_ART_SLOTS = 3;
+/** The tame's gift: every companion holds one focus from the first day. */
+export const PET_FOCUS_BASE = 1;
+/** The pet's own climb pays a point of focus at each of these levels. */
+export const PET_FOCUS_LEVELS = [20, 40, 60] as const;
+/** The bond pays a point of focus at each of these ranks. */
+export const PET_FOCUS_BOND_RANKS = [2, 3, 4] as const;
+/**
+ * A staggered art re-arms shortly instead of paying its full rest —
+ * punished, not disabled (the NPC cast engine's own retry law).
+ */
+export const PET_ART_RETRY_TICKS = 50;
+/** An art never opens the fight: first arming is capped at this. */
+export const PET_ART_FIRST_CD_TICKS = 60;
+
+/**
+ * THE BOND IS WALKED, NEVER BOUGHT: five ranks on a per-pet ledger.
+ * The faucets are the moments that already exist — the lure meal, the
+ * shared kill, the tend — each paying a second coin now. No decay,
+ * no neglect penalty (KINDNESS PAYS holds), and no keeper-level
+ * shortcut anywhere in the arithmetic.
+ */
+export const PET_BOND_RANK_XP = [0, 200, 600, 1400, 2800] as const;
+/** Spoken in the Companion's Hall — the rope's five knots. */
+export const PET_BOND_RANK_NAMES = [
+  'Newly Met',
+  'Fed From the Hand',
+  'Road Worn',
+  'Blooded Together',
+  'Heartsworn',
+] as const;
+/** The 4-minute lure meal: the deliberate act stays the spine. */
+export const PET_BOND_MOMENT_BOND = 25;
+/** A kill the friend shared. */
+export const PET_BOND_KILL_BOND = 2;
+/** Kneeling to a fallen friend: hardship braids the rope. */
+export const PET_BOND_TEND_BOND = 15;
+
+/** The rope's current knot, 0..4, read from the pet's bond ledger. */
+export function petBondRank(bondXp: number): number {
+  let rank = 0;
+  for (let i = 1; i < PET_BOND_RANK_XP.length; i++) {
+    if (bondXp >= PET_BOND_RANK_XP[i]!) rank = i;
+  }
+  return rank;
+}
+
+/**
+ * FOCUS IS EARNED TWICE — the budget a companion can hold in mind.
+ * 1 (the tame's gift) + a point at pet levels 20/40/60 + a point at
+ * bond ranks 2/3/4. Max 7, and the arithmetic is the design.
+ */
+export function petFocusMax(petLevel: number, bondRank: number): number {
+  let focus = PET_FOCUS_BASE;
+  for (const lvl of PET_FOCUS_LEVELS) if (petLevel >= lvl) focus++;
+  for (const rank of PET_FOCUS_BOND_RANKS) if (bondRank >= rank) focus++;
+  return focus;
+}
+
+/**
+ * THE MENTOR'S HAND: a master keeper raises a young friend faster —
+ * up to half again — but the deeds are still the pet's own. Applied
+ * to battle xp only; the tame never teleports a level.
+ */
+export function petXpMentorMult(bcLevel: number, petLevel: number): number {
+  return 1 + Math.min(0.5, 0.01 * Math.max(0, bcLevel - petLevel));
+}
+
+/**
+ * The slotted-arts column and wire field, made honest: an array of
+ * distinct short ids, at most PET_ART_SLOTS long. Membership in the
+ * species' repertoire and the focus budget are content/server law —
+ * this guard only refuses shapes that could never be a loadout.
+ */
+export function sanitizePetArts(raw: unknown): string[] | null {
+  if (!Array.isArray(raw)) return null;
+  if (raw.length > PET_ART_SLOTS) return null;
+  const out: string[] = [];
+  for (const v of raw) {
+    if (typeof v !== 'string' || v.length < 1 || v.length > 40) return null;
+    if (!/^[a-z][a-z0-9_]*$/.test(v)) return null;
+    if (out.includes(v)) return null;
+    out.push(v);
+  }
+  return out;
+}
+
 /** Follow stride for one tick: settle, walk, or sprint the gap shut. */
 export function petFollowSpeed(speciesSpeed: number, dist: number): number {
   if (dist <= PET_HEEL_DIST) return 0;

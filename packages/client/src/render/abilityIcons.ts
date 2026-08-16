@@ -6782,6 +6782,337 @@ Object.assign(PLATES, {
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
+// -------- THE FANG FINDS ITS VOICE — the companion arts' plates
+// (docs/pet-arts-plan.md). Every active is a concrete pictogram of
+// the animal's own act: teeth, shells, tusks, paws, wings, fangs,
+// silk. No spellfire, no sigils — these are bodies, drawn doing.
+Object.assign(PLATES, {
+  // Nip and Dart — the bite already leaving: two small tooth arcs
+  // and the exit chevrons of a body that was never really there.
+  nip_and_dart: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0.14, -0.06, 0.13, 0.09, Math.PI * 0.1, Math.PI * 0.9, st.core, 0.032);
+    crescent(c, 0.14, 0.08, 0.13, 0.09, -Math.PI * 0.9, -Math.PI * 0.1, st.core, 0.032);
+    chevrons(c, -0.18, 0.02, Math.PI, st, 3, 0.9);
+    dot(c, st.spark, 0.3, -0.24, 0.024);
+  },
+  // Plague Gnaw — the set teeth over the green stain they leave.
+  plague_gnaw: (st) => (c) => {
+    c.translate(0.5, 0.48);
+    crescent(c, 0, -0.08, 0.22, 0.15, Math.PI * 0.08, Math.PI * 0.92, st.core, 0.038);
+    for (const tx of [-0.12, 0, 0.12] as const) {
+      thorn(c, tx, -0.02, Math.PI / 2, 0.5, st.mid);
+    }
+    puff(c, 0, 0.26, 0.12, st.mid);
+    dot(c, st.spark, 0.16, 0.2, 0.026);
+    dot(c, st.spark, -0.16, 0.22, 0.022);
+  },
+  // The Rat's Hour — the gutter crown: a small crown over the whisker
+  // lines, the hour's swarm darting under it.
+  the_rats_hour: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crown(c, 0, -0.2, 0.4, st.mid, st.core);
+    poly(c, st.deep, [[-0.3, 0.08], [0.3, 0.08]], 0.028);
+    poly(c, st.deep, [[-0.28, 0.18], [0.28, 0.18]], 0.028);
+    for (const [dx, dy] of [[-0.2, 0.3], [0, 0.26], [0.2, 0.32]] as const) {
+      dot(c, st.spark, dx, dy, 0.028);
+    }
+  },
+  // Echo Shriek — the open maw point and the rings the dark answers.
+  echo_shriek: (st) => (c) => {
+    c.translate(0.42, 0.5);
+    fill(c, st.deep, [[-0.1, -0.1], [0.08, 0], [-0.1, 0.1]]);
+    crescent(c, 0, 0, 0.16, 0.16, -Math.PI * 0.3, Math.PI * 0.3, st.core, 0.036);
+    crescent(c, 0, 0, 0.26, 0.26, -Math.PI * 0.26, Math.PI * 0.26, st.mid, 0.032);
+    crescent(c, 0, 0, 0.36, 0.36, -Math.PI * 0.22, Math.PI * 0.22, st.spark, 0.028);
+  },
+  // The Dark Descent — the folded wing become a falling knife.
+  the_dark_descent: (st) => (c) => {
+    c.translate(0.5, 0.48);
+    fill(c, st.mid, [[0.1, -0.3], [0.24, -0.18], [0.02, 0.34], [-0.06, 0.1]]);
+    crescent(c, -0.08, -0.2, 0.2, 0.13, Math.PI * 0.9, Math.PI * 1.7, st.deep, 0.034);
+    chevrons(c, 0.22, 0.16, Math.PI / 2.2, st, 2, 0.8);
+    dot(c, st.spark, -0.24, 0.02, 0.024);
+  },
+  // Set the Shell — the dome come down to earth, barred shut.
+  set_the_shell: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    crescent(c, 0, 0.06, 0.34, 0.22, Math.PI * 1.02, Math.PI * 1.98, st.mid, 0.045);
+    for (const bx of [-0.14, 0, 0.14] as const) {
+      poly(c, st.deep, [[bx, -0.16], [bx, 0.04]], 0.032);
+    }
+    ground(c, 0, 0.36, st);
+    dot(c, st.spark, 0.28, -0.28, 0.026);
+  },
+  // Clatter Challenge — shell on shell: two arcs clapped together,
+  // the spark of the noise standing between them.
+  clatter_challenge: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, -0.16, 0, 0.24, 0.16, Math.PI * 0.6, Math.PI * 1.4, st.mid, 0.04);
+    crescent(c, 0.16, 0, 0.24, 0.16, -Math.PI * 0.4, Math.PI * 0.4, st.deep, 0.04);
+    star4(c, 0, -0.02, 0.09, st.core);
+    crescent(c, 0, 0, 0.34, 0.34, -Math.PI * 0.85, -Math.PI * 0.65, st.spark, 0.026);
+    crescent(c, 0, 0, 0.34, 0.34, Math.PI * 0.65, Math.PI * 0.85, st.spark, 0.026);
+  },
+  // Horn Toss — the horn under the problem, the problem airborne.
+  horn_toss: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    thorn(c, -0.06, 0.18, -Math.PI / 2.6, 1.4, st.mid);
+    crescent(c, 0.16, -0.22, 0.12, 0.08, 0, Math.PI * 2, st.deep, 0.032);
+    chevrons(c, 0.16, -0.02, -Math.PI / 2, st, 2, 0.7);
+    ground(c, -0.02, 0.3, st);
+  },
+  // Tide Grip — the pincer closing on the cold.
+  tide_grip: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, -0.04, -0.1, 0.2, 0.13, -Math.PI * 0.15, Math.PI * 0.75, st.mid, 0.04);
+    crescent(c, -0.04, 0.14, 0.2, 0.13, -Math.PI * 0.75, Math.PI * 0.15, st.deep, 0.04);
+    snowflake(c, 0.2, 0.02, 0.1, st.spark, 0.04);
+  },
+  // The Undertow — the sea remembering you seaward: the inward coil.
+  the_undertow: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0, 0, 0.34, 0.34, Math.PI * 0.1, Math.PI * 0.9, st.deep, 0.036);
+    crescent(c, 0, 0, 0.24, 0.24, Math.PI * 0.7, Math.PI * 1.6, st.mid, 0.036);
+    crescent(c, 0, 0, 0.14, 0.14, Math.PI * 1.4, Math.PI * 2.3, st.core, 0.036);
+    droplet(c, 0.02, -0.02, 0.5, st);
+  },
+  // The Standing Stone — the slab that used to be a turtle.
+  the_standing_stone: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    poly(c, st.mid, [[-0.14, -0.32], [0.14, -0.3], [0.18, 0.26], [-0.18, 0.26]], 0.045);
+    ringDot(c, st.core, 0, -0.06, 0.07, 0.03);
+    ground(c, 0, 0.34, st);
+    poly(c, st.deep, [[-0.3, 0.36], [0.3, 0.36]], 0.03);
+  },
+  // Riptide Claw — the harbor gate falling.
+  riptide_claw: (st) => (c) => {
+    c.translate(0.5, 0.48);
+    crescent(c, 0.04, -0.06, 0.3, 0.2, -Math.PI * 0.55, Math.PI * 0.45, st.mid, 0.05);
+    thorn(c, 0.16, 0.2, Math.PI * 0.75, 0.8, st.core);
+    crescent(c, -0.04, 0.3, 0.26, 0.26, Math.PI * 0.15, Math.PI * 0.85, st.spark, 0.03);
+    dot(c, st.spark, -0.26, -0.24, 0.026);
+  },
+  // The King's Pincer — the claw crowned.
+  the_kings_pincer: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    crown(c, 0, -0.3, 0.34, st.core, st.spark);
+    crescent(c, -0.02, 0, 0.22, 0.14, -Math.PI * 0.2, Math.PI * 0.7, st.mid, 0.045);
+    crescent(c, -0.02, 0.2, 0.22, 0.14, -Math.PI * 0.7, Math.PI * 0.2, st.deep, 0.045);
+    star4(c, 0.18, 0.1, 0.06, st.spark);
+  },
+  // Gore Charge — tusks first, the road behind already spent.
+  gore_charge: (st) => (c) => {
+    c.translate(0.52, 0.5);
+    thorn(c, 0.06, -0.04, -Math.PI * 0.12, 1.1, st.core);
+    thorn(c, 0.06, 0.12, Math.PI * 0.12, 1.1, st.core);
+    crescent(c, -0.08, 0.04, 0.2, 0.14, Math.PI * 0.5, Math.PI * 1.5, st.mid, 0.045);
+    chevrons(c, -0.32, 0.04, Math.PI, st, 2, 1);
+  },
+  // Tusk Sweep — the low crescent at shin height.
+  tusk_sweep: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    crescent(c, 0, 0.02, 0.3, 0.42, Math.PI * 0.15, Math.PI * 0.85, st.mid, 0.04);
+    thorn(c, -0.26, 0.12, Math.PI * 1.15, 0.7, st.core);
+    poly(c, st.deep, [[-0.3, -0.22], [0.3, -0.22]], 0.028);
+    dot(c, st.spark, 0.26, 0.28, 0.024);
+  },
+  // Mud Wallow — the happy science of the puddle.
+  mud_wallow: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    ground(c, 0, 0.34, st);
+    crescent(c, 0, -0.02, 0.24, 0.15, Math.PI * 1.05, Math.PI * 1.95, st.mid, 0.045);
+    dot(c, st.deep, 0.1, -0.12, 0.03);
+    for (const [dx, dy] of [[-0.3, -0.08], [0.28, -0.14], [0.34, 0.08]] as const) {
+      droplet(c, dx, dy, 0.28, st);
+    }
+  },
+  // The Long Furrow — the field plowed with everyone in it.
+  the_long_furrow: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    poly(c, st.deep, [[-0.34, 0.3], [0.34, -0.18]], 0.05);
+    poly(c, st.mid, [[-0.24, -0.02], [-0.1, -0.14], [-0.02, 0.02], [-0.16, 0.1]], 0.034);
+    poly(c, st.mid, [[0.08, -0.26], [0.22, -0.34], [0.28, -0.2], [0.14, -0.14]], 0.034);
+    thorn(c, -0.3, 0.34, -Math.PI * 0.3, 0.6, st.core);
+    dot(c, st.spark, 0.3, 0.14, 0.028);
+  },
+  // Worry the Wound — the first door, held open.
+  worry_the_wound: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0, -0.1, 0.2, 0.13, Math.PI * 0.1, Math.PI * 0.9, st.core, 0.038);
+    crescent(c, 0, 0.06, 0.2, 0.13, -Math.PI * 0.9, -Math.PI * 0.1, st.core, 0.038);
+    droplet(c, 0.02, 0.3, 0.5, st);
+    dot(c, st.deep, -0.24, 0.22, 0.026);
+    dot(c, st.deep, 0.28, 0.18, 0.022);
+  },
+  // Hamstring — the bite placed where running lives.
+  hamstring: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    poly(c, st.deep, [[0.04, -0.36], [-0.02, 0.02], [0.12, 0.34]], 0.05);
+    crescent(c, -0.1, 0.06, 0.15, 0.1, Math.PI * 0.4, Math.PI * 1.4, st.mid, 0.036);
+    snowflake(c, -0.24, 0.24, 0.09, st.spark, 0.036);
+  },
+  // The First Howl — the muzzle lifted, the answer rising.
+  the_first_howl: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    fill(c, st.mid, [[-0.2, 0.14], [0.02, -0.12], [0.12, -0.02], [-0.02, 0.3], [-0.2, 0.3]]);
+    dot(c, st.deep, 0.06, -0.08, 0.028);
+    crescent(c, 0.16, -0.24, 0.14, 0.14, -Math.PI * 0.55, Math.PI * 0.1, st.core, 0.032);
+    crescent(c, 0.2, -0.28, 0.24, 0.24, -Math.PI * 0.5, Math.PI * 0.05, st.spark, 0.028);
+  },
+  // Winter's Jaw — the north's own bite radius.
+  winters_jaw: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    novaRing(c, 0, 0.02, 0.26, st, 9, 0.42, 0.045);
+    snowflake(c, 0, 0, 0.11, st.core, 0.04);
+    dot(c, st.spark, 0.3, -0.26, 0.024);
+  },
+  // The Cowing Snarl — one fang raised; the lesser hearts bow.
+  the_cowing_snarl: (st) => (c) => {
+    c.translate(0.5, 0.46);
+    thorn(c, 0, -0.06, Math.PI / 2, 1.1, st.core);
+    crescent(c, 0, -0.14, 0.3, 0.2, Math.PI * 1.1, Math.PI * 1.9, st.mid, 0.04);
+    crescent(c, -0.2, 0.3, 0.1, 0.07, Math.PI * 1.1, Math.PI * 1.9, st.deep, 0.03);
+    crescent(c, 0.2, 0.32, 0.1, 0.07, Math.PI * 1.1, Math.PI * 1.9, st.deep, 0.03);
+  },
+  // Raking Flurry — four opinions, delivered.
+  raking_flurry: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    for (const [i, x] of [-0.18, -0.06, 0.06, 0.18].entries()) {
+      poly(c, i % 2 ? st.mid : st.core, [[x - 0.08, -0.3], [x + 0.08, 0.26]], 0.038);
+    }
+    droplet(c, -0.28, 0.3, 0.32, st);
+    droplet(c, 0.3, 0.24, 0.28, st);
+  },
+  // The Winter Stalk — three bounds, printed in cold.
+  the_winter_stalk: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    for (const [i, [px, py]] of ([[-0.24, 0.26], [0, 0.02], [0.24, -0.24]] as const).entries()) {
+      const col = i === 2 ? st.core : i === 1 ? st.mid : st.deep;
+      dot(c, col, px, py + 0.05, 0.055);
+      dot(c, col, px - 0.05, py - 0.035, 0.026);
+      dot(c, col, px + 0.01, py - 0.05, 0.026);
+      dot(c, col, px + 0.06, py - 0.03, 0.026);
+    }
+    snowflake(c, 0.32, 0.24, 0.08, st.spark, 0.034);
+  },
+  // Maul — the whole arm.
+  maul: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, -0.1, -0.06, 0.26, 0.17, Math.PI * 0.55, Math.PI * 1.5, st.mid, 0.05);
+    for (const [i, a] of [-0.3, -0.05, 0.2].entries()) {
+      thorn(c, 0.08 + i * 0.05, -0.2 + i * 0.16, a, 0.7, st.core);
+    }
+    puff(c, 0.16, 0.3, 0.1, st.deep);
+  },
+  // The Charge — a wall, arriving.
+  the_charge: (st) => (c) => {
+    c.translate(0.52, 0.5);
+    fill(c, st.mid, [[-0.06, -0.28], [0.26, -0.14], [0.3, 0.14], [0.02, 0.3], [-0.14, 0.06]]);
+    dot(c, st.deep, 0.1, -0.04, 0.032);
+    chevrons(c, -0.3, 0.02, Math.PI, st, 3, 1);
+  },
+  // Stand Tall — the whole height, announced.
+  stand_tall: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    poly(c, st.mid, [[-0.12, 0.3], [-0.08, -0.22], [0.08, -0.22], [0.12, 0.3]], 0.05);
+    crescent(c, 0, -0.26, 0.13, 0.09, Math.PI * 1.05, Math.PI * 1.95, st.core, 0.04);
+    haloArcs(c, 0, -0.3, st);
+    ground(c, 0, 0.34, st);
+  },
+  // Talon Stoop — silence, with claws on the end of it.
+  talon_stoop: (st) => (c) => {
+    c.translate(0.5, 0.46);
+    fill(c, st.mid, [[-0.16, -0.3], [0.16, -0.3], [0.04, 0.02], [-0.04, 0.02]]);
+    for (const tx of [-0.09, 0, 0.09] as const) {
+      thorn(c, tx, 0.08, Math.PI / 2, 0.7, st.core);
+    }
+    chevrons(c, -0.26, -0.3, -Math.PI / 2, st, 2, 0.7);
+    dot(c, st.spark, 0.28, 0.3, 0.024);
+  },
+  // Hushing Wing — two slow beats.
+  hushing_wing: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, -0.04, -0.04, 0.32, 0.2, Math.PI * 0.95, Math.PI * 1.8, st.core, 0.045);
+    crescent(c, 0, 0.14, 0.3, 0.3, Math.PI * 0.12, Math.PI * 0.88, st.mid, 0.032);
+    crescent(c, 0, 0.24, 0.26, 0.26, Math.PI * 0.15, Math.PI * 0.85, st.spark, 0.028);
+    snowflake(c, 0.26, -0.22, 0.08, st.spark, 0.034);
+  },
+  // Preen — one feather, put right.
+  preen: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    poly(c, st.deep, [[-0.2, 0.3], [0.18, -0.26]], 0.03);
+    crescent(c, 0.04, -0.04, 0.26, 0.15, -Math.PI * 0.35, Math.PI * 0.5, st.mid, 0.038);
+    crescent(c, -0.08, 0.1, 0.24, 0.14, Math.PI * 0.6, Math.PI * 1.45, st.core, 0.038);
+    star4(c, 0.26, -0.28, 0.07, st.spark);
+  },
+  // The White Hush — winter, filed in under both wings.
+  the_white_hush: (st) => (c) => {
+    c.translate(0.5, 0.46);
+    crescent(c, -0.16, -0.08, 0.26, 0.16, Math.PI * 0.85, Math.PI * 1.75, st.mid, 0.04);
+    crescent(c, 0.16, -0.08, 0.26, 0.16, -Math.PI * 0.75, Math.PI * 0.15, st.mid, 0.04);
+    dot(c, st.deep, 0, -0.16, 0.05);
+    for (const [dx, dy] of [[-0.24, 0.2], [0, 0.3], [0.24, 0.22], [-0.1, 0.38], [0.12, 0.4]] as const) {
+      snowflake(c, dx, dy, 0.05, st.spark, 0.028);
+    }
+  },
+  // Venom Spit — the bite, mailed ahead.
+  venom_spit: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    thorn(c, -0.26, 0.18, -Math.PI * 0.18, 0.8, st.mid);
+    droplet(c, 0.14, -0.08, 0.55, st);
+    dot(c, st.spark, -0.04, 0.02, 0.024);
+    dot(c, st.spark, 0.28, -0.22, 0.02);
+  },
+  // Coiled Strike — the spring, spent.
+  coiled_strike: (st) => (c) => {
+    c.translate(0.46, 0.54);
+    crescent(c, 0, 0.08, 0.2, 0.2, Math.PI * 0.2, Math.PI * 1.7, st.mid, 0.045);
+    crescent(c, 0, 0.08, 0.11, 0.11, Math.PI * 0.6, Math.PI * 2.2, st.deep, 0.04);
+    poly(c, st.core, [[0.12, -0.06], [0.36, -0.22]], 0.05);
+    fill(c, st.core, [[0.32, -0.3], [0.44, -0.22], [0.32, -0.12]]);
+  },
+  // Shed Skin — the hurt, left with the old coat.
+  shed_skin: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.globalAlpha = 0.45;
+    crescent(c, -0.14, 0.1, 0.24, 0.16, Math.PI * 0.3, Math.PI * 1.5, st.deep, 0.04);
+    c.globalAlpha = 1;
+    crescent(c, 0.12, -0.08, 0.24, 0.16, -Math.PI * 0.7, Math.PI * 0.5, st.mid, 0.045);
+    dot(c, st.core, 0.3, -0.2, 0.03);
+    star4(c, -0.3, -0.22, 0.06, st.spark);
+  },
+  // The Long Fang — the second dose, delivered to the marrow.
+  the_long_fang: (st) => (c) => {
+    c.translate(0.5, 0.48);
+    ringDot(c, st.mid, 0, 0.14, 0.16, 0.036);
+    thorn(c, 0, -0.3, Math.PI / 2, 1.5, st.core);
+    droplet(c, 0.22, 0.3, 0.3, st);
+    dot(c, st.spark, -0.24, -0.24, 0.024);
+  },
+  // Pale Silk — the weaver, wearing its work.
+  pale_silk: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0, 0, 0.28, 0.18, -Math.PI * 0.4, Math.PI * 0.6, st.mid, 0.036);
+    crescent(c, 0, 0, 0.28, 0.18, Math.PI * 0.6, Math.PI * 1.6, st.core, 0.036);
+    crescent(c, 0, 0, 0.2, 0.13, Math.PI * 0.1, Math.PI * 1.1, st.spark, 0.03);
+    poly(c, st.deep, [[-0.02, -0.34], [-0.02, -0.44]], 0.024);
+  },
+  // The Venom Lattice — every strand knows where you are.
+  the_venom_lattice: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+      poly(c, st.deep, [[0, 0], [0.36 * Math.cos(a), 0.36 * Math.sin(a)]], 0.026);
+    }
+    novaRing(c, 0, 0, 0.18, st, 6, 0.12, 0.03);
+    novaRing(c, 0, 0, 0.3, st, 6, 0.1, 0.026);
+    for (const [dx, dy] of [[0.2, -0.06], [-0.14, 0.18], [-0.06, -0.22]] as const) {
+      dot(c, st.spark, dx, dy, 0.026);
+    }
+  },
+} satisfies Record<string, (st: FxStyle) => Painter>);
+
 // ------------------------------------------------------------ lookup
 
 /** Data URL for an ability's spell-plate at `size`. */
