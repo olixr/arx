@@ -526,6 +526,141 @@ export const FX_STYLES: Record<string, FxStyle> = {
   // fleck, streaks falling in, craters cracked where they land.
   cometfall: ARCANE({ mid: '#9ae8de', deep: '#2a6a7a', spark: '#e8b0ff', glow: '154, 232, 222', ring: 'shards', debris: 'star', decal: 'cracks', motif: 'rain', punch: 0.8, wash: 0.5 }),
 
+  // ------------------- THE SECOND BREATH — the archery breath wave
+  // Every ten-art school takes the same wave onehand and arx carry.
+  // The law holds: one face per art, unique ring+debris+motif hand
+  // within the family, casted arts gather-then-answer, channels hold.
+  // Kingshot — the oak-hearted draw: a breaking crest down the lane.
+  kingshot: VERDANT({ mid: '#7a9a4a', deep: '#4e3c28', spark: '#e8d8b0', ring: 'shards', debris: 'spark', decal: undefined, motif: 'wave', punch: 0.5, wash: 0.3 }),
+  // Stringsong — the held note: rings repeating off the string.
+  stringsong: STORM({ mid: '#9ab86a', ring: 'shards', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.35, wash: 0.4 }),
+  // Hawk's Hour — the marked field: light blades wheeling like wings.
+  hawks_hour: RADIANT({ mid: '#c8a44a', ring: 'halo', debris: 'spark', decal: 'glow', motif: 'rays', punch: 0.6, wash: 0.55 }),
+  // Winterflight — the cold line: a crest of winter rolling downwind.
+  winterflight: FROST({ mid: '#8ac4e0', ring: 'frost', debris: 'ice', decal: 'rime', motif: 'wave', punch: 0.4, wash: 0.4 }),
+  // Emberhead — the fire-tipped pair: a burst that flowers on impact.
+  emberhead: EMBER({ mid: '#e08a4a', ring: 'teeth', debris: 'ember', decal: 'scorch', motif: 'bloom', punch: 0.55 }),
+  // Skyloom — the stitching shuttle: darting motes trailing thread.
+  skyloom: VERDANT({ mid: '#6b9a7a', ring: 'petals', debris: 'leaf', decal: undefined, motif: 'swarm', punch: 0.4, wash: 0.3 }),
+  // Gloamshaft — the black line: a rift slit down the corridor.
+  gloamshaft: SHADOW({ mid: '#5a5a78', ring: 'runes', debris: 'shadow', decal: 'glow', motif: 'tear', punch: 0.5, wash: 0.2 }),
+  // Harrier — the returning wing: an inward-turning circuit.
+  harrier: STORM({ mid: '#a8946a', ring: 'shards', debris: 'spark', decal: undefined, motif: 'vortex', punch: 0.4, wash: 0.35 }),
+  // Zenith — noon loosed: a pillar of high light hammered down.
+  zenith: RADIANT({ mid: '#e8c874', ring: 'halo', debris: 'star', decal: 'scorch', motif: 'pillar', punch: 0.8 }),
+  // Crowsong — the dark flock: streaking motes over a stained field.
+  crowsong: VOID({ mid: '#4a4458', ring: 'shards', debris: 'shadow', decal: 'stain', motif: 'swarm', punch: 0.5, wash: 0.25 }),
+
+  // --------------------- THE SECOND BREATH — the sneak breath wave
+  // Opened Vein — the drawn cut: one red crest, the stain that keeps.
+  opened_vein: BLOOD({ ring: 'shards', debris: 'blood', decal: 'stain', motif: 'wave', punch: 0.45, mid: '#9a3040' }),
+  // Threadwork — the passing needle: quiet rings on the same seam.
+  threadwork: SHADOW({ mid: '#7a6a8a', ring: 'runes', debris: 'blood', decal: undefined, motif: 'echo', punch: 0.3, wash: 0.15 }),
+  // Nightshade Kiss — the steeped garden: a bloom nobody plants twice.
+  nightshade_kiss: VERDANT({ mid: '#8aa050', ring: 'petals', debris: 'leaf', decal: 'stain', motif: 'bloom', punch: 0.3, wash: 0.2 }),
+  // The Quiet Knife — the hush line: a slit of dark held open.
+  quiet_knife: SHADOW({ mid: '#6a6480', ring: 'shards', debris: 'shadow', decal: undefined, motif: 'tear', punch: 0.35, wash: 0.12 }),
+  // Redwork — the room blooming red: petals of the maker's craft.
+  redwork: BLOOD({ mid: '#a84048', ring: 'petals', debris: 'blood', decal: 'stain', motif: 'bloom', punch: 0.5 }),
+  // Gallows Thread — the passed noose: bars rising on the rim.
+  gallows_thread: VOID({ mid: '#5a5468', ring: 'runes', debris: 'shadow', decal: undefined, motif: 'cage', punch: 0.4, wash: 0.2 }),
+  // Widow's Draw — the dealt needles: a seeking scatter of motes.
+  widows_draw: VERDANT({ mid: '#b0b47a', ring: 'shards', debris: 'leaf', decal: 'stain', motif: 'swarm', punch: 0.4, wash: 0.25 }),
+  // Bloodletting — the old surgery: what is taken drifts to the taker.
+  bloodletting: BLOOD({ mid: '#8a2a34', deep: '#4a0e12', ring: 'shards', debris: 'blood', decal: 'stain', motif: 'wisps', punch: 0.35, wash: 0.3 }),
+  // Lights Out — the pinched wick: the last rays going under.
+  lights_out: SHADOW({ mid: '#3a3450', deep: '#12101e', ring: 'runes', debris: 'shadow', decal: 'glow', motif: 'rays', punch: 0.5, wash: 0.1 }),
+  // The Red Hour — the hungry clock: red rings counting the seconds.
+  red_hour: BLOOD({ mid: '#c4384a', ring: 'teeth', debris: 'blood', decal: 'stain', motif: 'echo', punch: 0.5, wash: 0.35 }),
+
+  // -------------------- THE SECOND BREATH — the shield breath wave
+  // Iron Toll — the struck bell: bright rings off the boss.
+  iron_toll: STEEL({ mid: '#8ea4b8', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.55, wash: 0.35 }),
+  // Grindstone — the turning rim: grit drawn inward, curls thrown off.
+  grindstone: STEEL({ mid: '#9a9484', deep: '#565046', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'vortex', punch: 0.4 }),
+  // Doorfall — the laid-down wall: slabs upthrown where it lands.
+  doorfall: STEEL({ mid: '#7d8a9a', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'quake', punch: 0.7, wash: 0.4 }),
+  // Held Gate — the cold lane: bars of winter holding the corridor.
+  held_gate: FROST({ mid: '#7ab0cc', ring: 'frost', debris: 'ice', decal: 'rime', motif: 'cage', punch: 0.4, wash: 0.35 }),
+  // Sunbrass — noon off the boss: long brass blades of light.
+  sunbrass: GOLD({ mid: '#d9b45e', ring: 'halo', debris: 'ember', decal: 'scorch', motif: 'rays', punch: 0.6 }),
+  // Millwall — the turning wall: crests thrown back with every pass.
+  millwall: STEEL({ mid: '#8a94a4', deep: '#4a525e', ring: 'teeth', debris: 'rock', decal: undefined, motif: 'wave', punch: 0.5, wash: 0.3 }),
+  // Anchorfall — the parted sea: the ground split cold where it lands.
+  anchorfall: TIDE({ mid: '#6a94b0', ring: 'frost', debris: 'ice', decal: 'rime', motif: 'quake', punch: 0.65 }),
+  // The Patient Wall — battlement points riding the advancing ring.
+  patient_wall: STEEL({ mid: '#a4988a', deep: '#5a5046', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'crown', punch: 0.35, wash: 0.25 }),
+  // The Standing Sun — the planted standard: a column of held day.
+  standing_sun: GOLD({ mid: '#e8cc84', ring: 'halo', debris: 'star', decal: 'glow', motif: 'pillar', punch: 0.65 }),
+  // Winterhold — the frozen court: ice spears rising on the rim.
+  winterhold: FROST({ mid: '#a0c8dc', deep: '#3a5c74', ring: 'frost', debris: 'ice', decal: 'rime', motif: 'spikes', punch: 0.5, wash: 0.35 }),
+
+  // ------------------- THE SECOND BREATH — the twohand breath wave
+  // Fell Timber — the felled crown: one green crest coming down.
+  fell_timber: VERDANT({ mid: '#8a7a4e', deep: '#463a24', spark: '#d8c8a0', ring: 'shards', debris: 'leaf', decal: 'cracks', motif: 'wave', punch: 0.6, wash: 0.3 }),
+  // Quarry Work — the split seam: fissures radiating from the swing.
+  quarry_work: STEEL({ mid: '#9a8a78', deep: '#544a3e', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'quake', punch: 0.5 }),
+  // Forgefall — the glowing hammer: a pillar of forge-light on landing.
+  forgefall: EMBER({ mid: '#d97a3d', ring: 'teeth', debris: 'ember', decal: 'scorch', motif: 'pillar', punch: 0.75 }),
+  // The Wheelbreaker — the driven ram: a crest rolling down the lane.
+  wheelbreaker: STORM({ mid: '#b09a6a', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'wave', punch: 0.55, wash: 0.4 }),
+  // Gravedigger — the hungry pit: bone-dark spiral drawing them in.
+  gravedigger: VOID({ mid: '#6a5e6e', deep: '#262030', ring: 'runes', debris: 'bone', decal: 'stain', motif: 'vortex', punch: 0.6, wash: 0.3 }),
+  // Ore Song — the singing seam: ring after ring off the struck stone.
+  ore_song: STEEL({ mid: '#b8a488', deep: '#5e5442', spark: '#f0e0c0', ring: 'teeth', debris: 'rock', decal: undefined, motif: 'echo', punch: 0.5, wash: 0.3 }),
+  // Skyweight — the falling horizon: weight raining inside the ring.
+  skyweight: GOLD({ mid: '#c9a24a', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'rain', punch: 0.7, wash: 0.45 }),
+  // The Long Lever — the world moved: one long rift down the lane.
+  long_lever: STEEL({ mid: '#a08a68', deep: '#54462e', ring: 'shards', debris: 'rock', decal: undefined, motif: 'tear', punch: 0.45, wash: 0.25 }),
+  // Sunhammer — swung noon: long blades of heat off the arc.
+  sunhammer: RADIANT({ mid: '#e0a04c', ring: 'teeth', debris: 'ember', decal: 'scorch', motif: 'rays', punch: 0.7 }),
+  // World's Rim — the grinding edge: cold fissures where it turns.
+  worlds_rim: FROST({ mid: '#8a9aa8', deep: '#3e4a56', ring: 'frost', debris: 'rock', decal: 'rime', motif: 'quake', punch: 0.55, wash: 0.35 }),
+
+  // ----------------- THE SECOND BREATH — the dualwield breath wave
+  // Two Bells — the double peal: bright rings answering each other.
+  two_bells: GOLD({ mid: '#d9c46a', ring: 'halo', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.5, wash: 0.4 }),
+  // Ribbonwork — the crossing ribbons: red crests woven over the arc.
+  ribbonwork: BLOOD({ mid: '#c45a4a', ring: 'petals', debris: 'blood', decal: 'stain', motif: 'wave', punch: 0.4 }),
+  // Twin Moons — the shared orbit: two pale bodies wheeling home.
+  twin_moons: RADIANT({ mid: '#b8c4d8', deep: '#5a6a88', ring: 'halo', debris: 'star', decal: undefined, motif: 'vortex', punch: 0.45, wash: 0.4 }),
+  // Silver Reel — the cold spin: an inward-wound circle of frost.
+  silver_reel: FROST({ mid: '#a8c0cc', ring: 'frost', debris: 'ice', decal: undefined, motif: 'vortex', punch: 0.45, wash: 0.35 }),
+  // Matched Flame — the twin wicks: burning motes darting in pairs.
+  matched_flame: EMBER({ mid: '#e0854a', ring: 'shards', debris: 'ember', decal: 'scorch', motif: 'swarm', punch: 0.5 }),
+  // Stormstitch — the answered throw: a jagged seam torn foe to foe.
+  stormstitch: STORM({ mid: '#c8c86a', ring: 'shards', debris: 'spark', decal: undefined, motif: 'tear', punch: 0.5, wash: 0.45 }),
+  // Mirrorfall — the double landing: the ring lands twice, rimed.
+  mirrorfall: FROST({ mid: '#9ab8c8', deep: '#46687c', ring: 'petals', debris: 'ice', decal: 'rime', motif: 'echo', punch: 0.55, wash: 0.4 }),
+  // The Weave — the held loom: warp-bars rising around the work.
+  the_weave: ARCANE({ mid: '#b0a4c0', ring: 'runes', debris: 'star', decal: undefined, motif: 'cage', punch: 0.4, wash: 0.3 }),
+  // First and Last — the opened door: light blades at the threshold.
+  first_and_last: RADIANT({ mid: '#e8d8a0', ring: 'halo', debris: 'star', decal: 'glow', motif: 'rays', punch: 0.55 }),
+  // Hummingbird — the blur of wings: green motes too quick to count.
+  hummingbird: VERDANT({ mid: '#8ac4a8', ring: 'petals', debris: 'leaf', decal: undefined, motif: 'swarm', punch: 0.35, wash: 0.3 }),
+
+  // ------------------- THE SECOND BREATH — the combat breath wave
+  // Measured Blow — the read seam: one clean crest where it parts.
+  measured_blow: STEEL({ mid: '#b09a7a', deep: '#5e5040', ring: 'teeth', debris: 'rock', decal: undefined, motif: 'wave', punch: 0.45, wash: 0.25 }),
+  // Drumbeat — the old cadence: ground-shaking rings on the count.
+  drumbeat: STORM({ mid: '#c4885a', ring: 'teeth', debris: 'rock', decal: undefined, motif: 'echo', punch: 0.5, wash: 0.4 }),
+  // Thrown Iron — hurled scrap: sparks scattering off the burst.
+  thrown_iron: STEEL({ mid: '#8a8f98', ring: 'shards', debris: 'spark', decal: 'cracks', motif: 'swarm', punch: 0.5 }),
+  // Ironbreath — the cold exhale: a crest of winter down the lane.
+  ironbreath: FROST({ mid: '#9ab4bc', deep: '#42606a', ring: 'frost', debris: 'ice', decal: 'rime', motif: 'wave', punch: 0.4, wash: 0.3 }),
+  // The Fifth Road — the untaught line: a dark rift where you passed.
+  fifth_road: SHADOW({ mid: '#7a6a80', ring: 'shards', debris: 'blood', decal: 'stain', motif: 'tear', punch: 0.5, wash: 0.2 }),
+  // Old Thunder — the remembered storm: the ground answers the joints.
+  old_thunder: STORM({ mid: '#b8a45a', deep: '#6a5a20', ring: 'teeth', debris: 'spark', decal: undefined, motif: 'quake', punch: 0.55, wash: 0.4 }),
+  // The Gathered Breath — all at once: a bloom of held gold let go.
+  gathered_breath: GOLD({ mid: '#d9c084', ring: 'halo', debris: 'spark', decal: 'glow', motif: 'bloom', punch: 0.6, wash: 0.45 }),
+  // The Long Watch — the settled certainty: cold bars on the ground.
+  long_watch: FROST({ mid: '#7a8a94', deep: '#38444e', ring: 'runes', debris: 'ice', decal: undefined, motif: 'cage', punch: 0.4, wash: 0.25 }),
+  // Scarworn — the collected receipts: what they pay drifts to you.
+  scarworn: BLOOD({ mid: '#a05a48', ring: 'teeth', debris: 'blood', decal: 'stain', motif: 'wisps', punch: 0.5 }),
+  // Last Lesson — the passed lesson: bright motes leaping student to student.
+  last_lesson: GOLD({ mid: '#c9b46a', deep: '#6e5c24', ring: 'runes', debris: 'spark', decal: undefined, motif: 'swarm', punch: 0.5, wash: 0.35 }),
+
   // ------------------------------------------------------------ sigils
   bone_tempest: BONE({ motif: 'vortex', punch: 0.9, wash: 0.4 }),
 

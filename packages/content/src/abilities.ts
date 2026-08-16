@@ -4500,6 +4500,913 @@ const defs: AbilityDef[] = [
     petHealFrac: 0.25,
     petSurge: { dmgMult: 1.3, speedMult: 1.15, durationTicks: 200 },
   },
+
+  // ------------------- THE SECOND BREATH — the archery breath arts
+  // THE LONG ROAD's content wave: every ten-art school grows the same
+  // ten breath voices onehand and arx already carry, five casted and
+  // five channeled, interleaved up the stretched ladder. The wave laws
+  // hold: casted arts carry no castFreezeTicks (the wind-up IS the
+  // commit); channels never ride a ground_field.
+  {
+    id: 'kingshot',
+    name: 'Kingshot',
+    desc: 'Draw until the bow remembers the forest. One shaft, and the whole lane kneels.',
+    color: '#7a9a4a',
+    code: 'Kg',
+    cooldownTicks: 200, // 10 s
+    castTicks: 22, // 1.1 s wound, 0.88 s planted
+    shape: 'projectile_fan',
+    damage: 16,
+    range: 18,
+    projectiles: 1,
+    projectileSpeed: 22,
+    pierce: true,
+  },
+  {
+    id: 'stringsong',
+    name: 'Stringsong',
+    desc: 'Hold the note and the bow sings it. Arrows leave on every beat.',
+    color: '#9ab86a',
+    code: 'Sn',
+    cooldownTicks: 160, // 8 s
+    channelTicks: 48, // three beats of the string
+    pulseEveryTicks: 16,
+    shape: 'projectile_fan',
+    damage: 4,
+    range: 14,
+    projectiles: 1,
+    projectileSpeed: 18,
+    element: 'storm',
+  },
+  {
+    id: 'hawks_hour',
+    name: "Hawk's Hour",
+    desc: 'Mark the field the way the hawk does. What stands in it has already lost.',
+    color: '#c8a44a',
+    code: 'Hh',
+    cooldownTicks: 190, // 9.5 s
+    castTicks: 22,
+    shape: 'ground_aoe',
+    damage: 15,
+    range: 13,
+    radius: 2.0,
+    fuseTicks: 14,
+  },
+  {
+    id: 'winterflight',
+    name: 'Winterflight',
+    desc: 'Loose down one cold line and keep loosing. The wind does the rest.',
+    color: '#8ac4e0',
+    code: 'Wf',
+    cooldownTicks: 170, // 8.5 s
+    channelTicks: 48,
+    pulseEveryTicks: 16,
+    shape: 'beam',
+    damage: 4,
+    range: 9,
+    width: 0.6,
+    status: { status: 'chill', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'emberhead',
+    name: 'Emberhead',
+    desc: 'Two shafts tipped at the campfire. They finish burning where they land.',
+    color: '#e08a4a',
+    code: 'Ed',
+    cooldownTicks: 210, // 10.5 s
+    castTicks: 22,
+    shape: 'projectile_fan',
+    damage: 9,
+    range: 15,
+    projectiles: 2,
+    spreadArc: 0.14,
+    projectileSpeed: 17,
+    splashRadius: 1.4,
+    status: { status: 'burn', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'skyloom',
+    name: 'Skyloom',
+    desc: 'Set the shuttle flying and hold it. The thread stitches foe to foe.',
+    color: '#6b9a7a',
+    code: 'Sy',
+    cooldownTicks: 200, // 10 s
+    channelTicks: 48,
+    pulseEveryTicks: 16,
+    shape: 'chain_zap',
+    damage: 4,
+    range: 12,
+    radius: 3.5,
+    chainTargets: 2,
+  },
+  {
+    id: 'gloamshaft',
+    name: 'Gloamshaft',
+    desc: 'Draw in the last light and loose after it. The dark travels in a straight line.',
+    color: '#5a5a78',
+    code: 'Gf',
+    cooldownTicks: 210, // 10.5 s
+    castTicks: 24,
+    shape: 'beam',
+    damage: 19,
+    range: 12,
+    width: 0.55,
+  },
+  {
+    id: 'harrier',
+    name: 'Harrier',
+    desc: 'The wing that circles back. Every pass takes its due twice.',
+    color: '#a8946a',
+    code: 'Hr',
+    cooldownTicks: 220, // 11 s
+    channelTicks: 64, // four passes of the wing
+    pulseEveryTicks: 16,
+    shape: 'projectile_fan',
+    damage: 3,
+    range: 10,
+    projectiles: 1,
+    projectileSpeed: 15,
+    returns: true,
+  },
+  {
+    id: 'zenith',
+    name: 'Zenith',
+    desc: 'Loose at the highest point of the sky. It comes down as noon.',
+    color: '#e8c874',
+    code: 'Zn',
+    cooldownTicks: 230, // 11.5 s
+    castTicks: 26,
+    shape: 'ground_aoe',
+    damage: 16,
+    range: 15,
+    radius: 2.2,
+    fuseTicks: 12,
+    status: { status: 'burn', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'crowsong',
+    name: 'Crowsong',
+    desc: 'Call the dark flock down on a field and keep calling. They are never full.',
+    color: '#4a4458',
+    code: 'Cw',
+    cooldownTicks: 240, // 12 s
+    channelTicks: 64,
+    pulseEveryTicks: 16,
+    shape: 'ground_aoe',
+    damage: 3,
+    range: 13,
+    radius: 2.2,
+    fuseTicks: 10,
+    status: { status: 'bleed', power: 1, durationTicks: 40 },
+  },
+
+  // --------------------- THE SECOND BREATH — the sneak breath arts
+  {
+    id: 'opened_vein',
+    name: 'Opened Vein',
+    desc: 'The breath before the artery. Let it out slow and it never stops.',
+    color: '#9a3040',
+    code: 'Vn',
+    cooldownTicks: 220, // 11 s
+    castTicks: 18,
+    shape: 'melee_arc',
+    damage: 9,
+    range: 2.0,
+    arc: 0.9,
+    status: { status: 'bleed', power: 2, durationTicks: 100 },
+  },
+  {
+    id: 'threadwork',
+    name: 'Threadwork',
+    desc: 'Hold still and sew. The needle passes through the same place three times.',
+    color: '#7a6a8a',
+    code: 'Tk',
+    cooldownTicks: 190, // 9.5 s
+    channelTicks: 48,
+    pulseEveryTicks: 16,
+    shape: 'melee_arc',
+    damage: 4,
+    range: 2.0,
+    arc: 0.8,
+    status: { status: 'bleed', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'nightshade_kiss',
+    name: 'Nightshade Kiss',
+    desc: 'A dart steeped a week in the garden nobody plants twice. One kiss is plenty.',
+    color: '#8aa050',
+    code: 'Nk',
+    cooldownTicks: 230, // 11.5 s
+    castTicks: 20,
+    shape: 'projectile_fan',
+    damage: 8,
+    range: 9,
+    projectiles: 1,
+    projectileSpeed: 16,
+    status: { status: 'venom', power: 1, durationTicks: 80 },
+  },
+  {
+    id: 'quiet_knife',
+    name: 'The Quiet Knife',
+    desc: 'A line of hush laid down the corridor. Everything on it opens.',
+    color: '#6a6480',
+    code: 'Qk',
+    cooldownTicks: 180, // 9 s
+    channelTicks: 48,
+    pulseEveryTicks: 16,
+    shape: 'beam',
+    damage: 4,
+    range: 7,
+    width: 0.5,
+    status: { status: 'bleed', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'redwork',
+    name: 'Redwork',
+    desc: 'The slow inhale, then the room blooms red around you. Craftwork, of a kind.',
+    color: '#a84048',
+    code: 'Rd',
+    cooldownTicks: 220, // 11 s
+    castTicks: 22,
+    shape: 'nova',
+    damage: 10,
+    radius: 2.3,
+    status: { status: 'bleed', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'gallows_thread',
+    name: 'Gallows Thread',
+    desc: 'The noose passes down the line, one neck at a time. Hold the knot.',
+    color: '#5a5468',
+    code: 'Gh',
+    cooldownTicks: 220, // 11 s
+    channelTicks: 48,
+    pulseEveryTicks: 16,
+    shape: 'chain_zap',
+    damage: 4,
+    range: 9,
+    radius: 3.0,
+    chainTargets: 2,
+    status: { status: 'venom', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'widows_draw',
+    name: "Widow's Draw",
+    desc: 'A fan of steeped needles, dealt like cards. Everyone at the table loses.',
+    color: '#b0b47a',
+    code: 'Wd',
+    cooldownTicks: 230, // 11.5 s
+    castTicks: 22,
+    shape: 'projectile_fan',
+    damage: 7,
+    range: 10,
+    projectiles: 3,
+    spreadArc: 0.5,
+    projectileSpeed: 15,
+    element: 'verdant',
+    status: { status: 'venom', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'bloodletting',
+    name: 'Bloodletting',
+    desc: 'The old surgery, held to its rhythm. What they lose is yours to keep.',
+    color: '#8a2a34',
+    code: 'Bt',
+    cooldownTicks: 220, // 11 s
+    channelTicks: 64,
+    pulseEveryTicks: 16,
+    shape: 'melee_arc',
+    damage: 4,
+    range: 2.1,
+    arc: 1.0,
+    drainFrac: 0.15,
+    status: { status: 'bleed', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'lights_out',
+    name: 'Lights Out',
+    desc: 'Pinch the wick of a whole room. The dark arrives before the knife does.',
+    color: '#3a3450',
+    code: 'Lx',
+    cooldownTicks: 220, // 11 s
+    castTicks: 24,
+    shape: 'ground_aoe',
+    damage: 14,
+    range: 10,
+    radius: 2.0,
+    fuseTicks: 10,
+    status: { status: 'chill', power: 1, durationTicks: 50 },
+  },
+  {
+    id: 'red_hour',
+    name: 'The Red Hour',
+    desc: 'The hour where every second cuts. Stand in the middle of it and count.',
+    color: '#c4384a',
+    code: 'Rh',
+    cooldownTicks: 260, // 13 s
+    channelTicks: 64,
+    pulseEveryTicks: 16,
+    shape: 'nova',
+    damage: 4,
+    radius: 2.0,
+    status: { status: 'bleed', power: 1, durationTicks: 40 },
+  },
+
+  // -------------------- THE SECOND BREATH — the shield breath arts
+  {
+    id: 'iron_toll',
+    name: 'Iron Toll',
+    desc: 'Strike the boss and the shield rings like a bell. The toll is paid outward.',
+    color: '#8ea4b8',
+    code: 'Il',
+    cooldownTicks: 190, // 9.5 s
+    castTicks: 20,
+    shape: 'nova',
+    damage: 9,
+    radius: 2.2,
+    knockback: 1.2,
+    status: { status: 'shock', power: 1, durationTicks: 30 },
+  },
+  {
+    id: 'grindstone',
+    name: 'Grindstone',
+    desc: 'Set the rim against them and turn. Armor comes off in curls.',
+    color: '#9a9484',
+    code: 'Gn',
+    cooldownTicks: 200, // 10 s
+    channelTicks: 48,
+    pulseEveryTicks: 16,
+    shape: 'melee_arc',
+    damage: 4,
+    range: 2.0,
+    arc: 1.2,
+    status: { status: 'sunder', power: 10, durationTicks: 60 },
+  },
+  {
+    id: 'doorfall',
+    name: 'Doorfall',
+    desc: 'Lift the wall and lay it down on them. Doors open both ways.',
+    color: '#7d8a9a',
+    code: 'Do',
+    cooldownTicks: 210, // 10.5 s
+    castTicks: 22,
+    shape: 'ground_aoe',
+    damage: 12,
+    range: 4,
+    radius: 2.0,
+    fuseTicks: 8,
+    knockback: 1.4,
+  },
+  {
+    id: 'held_gate',
+    name: 'Held Gate',
+    desc: 'Brace, and hold the cold line of the lane. Nothing crosses while you breathe.',
+    color: '#7ab0cc',
+    code: 'Hg',
+    cooldownTicks: 190, // 9.5 s
+    channelTicks: 48,
+    pulseEveryTicks: 16,
+    shape: 'beam',
+    damage: 4,
+    range: 6,
+    width: 0.7,
+    status: { status: 'chill', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'sunbrass',
+    name: 'Sunbrass',
+    desc: 'Catch noon on the boss and turn it loose. Brass remembers the sun.',
+    color: '#d9b45e',
+    code: 'Sb',
+    cooldownTicks: 230, // 11.5 s
+    castTicks: 24,
+    shape: 'nova',
+    damage: 10,
+    radius: 2.6,
+    knockback: 1.0,
+    status: { status: 'burn', power: 1, durationTicks: 50 },
+  },
+  {
+    id: 'millwall',
+    name: 'Millwall',
+    desc: 'The wall turns like a mill wheel. Every turn throws the water back.',
+    color: '#8a94a4',
+    code: 'Mw',
+    cooldownTicks: 250, // 12.5 s
+    channelTicks: 64,
+    pulseEveryTicks: 16,
+    shape: 'nova',
+    damage: 4,
+    radius: 2.1,
+    knockback: 0.8,
+  },
+  {
+    id: 'anchorfall',
+    name: 'Anchorfall',
+    desc: 'Be the anchor. The sea parts where you land and stays parted.',
+    color: '#6a94b0',
+    code: 'Ac',
+    cooldownTicks: 250, // 12.5 s
+    castTicks: 22,
+    shape: 'leap_slam',
+    damage: 12,
+    dashTiles: 4,
+    radius: 2.2,
+    knockback: 1.6,
+    status: { status: 'chill', power: 1, durationTicks: 50 },
+  },
+  {
+    id: 'patient_wall',
+    name: 'The Patient Wall',
+    desc: 'The wall advances one strike at a time. It has nowhere else to be.',
+    color: '#a4988a',
+    code: 'Pl',
+    cooldownTicks: 230, // 11.5 s
+    channelTicks: 64,
+    pulseEveryTicks: 16,
+    shape: 'melee_arc',
+    damage: 4,
+    range: 2.2,
+    arc: 1.4,
+    knockback: 0.5,
+  },
+  {
+    id: 'standing_sun',
+    name: 'The Standing Sun',
+    desc: 'Plant the light like a standard. Where it stands, the day holds.',
+    color: '#e8cc84',
+    code: 'Su',
+    cooldownTicks: 240, // 12 s
+    castTicks: 26,
+    shape: 'ground_aoe',
+    damage: 14,
+    range: 5,
+    radius: 2.4,
+    fuseTicks: 10,
+    knockback: 1.2,
+    status: { status: 'burn', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'winterhold',
+    name: 'Winterhold',
+    desc: 'The cold keep, held from behind the boss. The court freezes outward.',
+    color: '#a0c8dc',
+    code: 'Wt',
+    cooldownTicks: 270, // 13.5 s
+    channelTicks: 64,
+    pulseEveryTicks: 16,
+    shape: 'nova',
+    damage: 4,
+    radius: 2.3,
+    status: { status: 'chill', power: 1, durationTicks: 60 },
+  },
+
+  // ------------------- THE SECOND BREATH — the twohand breath arts
+  {
+    id: 'fell_timber',
+    name: 'Fell Timber',
+    desc: 'The tree comes down where you say it does. Stand clear or be counted.',
+    color: '#8a7a4e',
+    code: 'Fe',
+    cooldownTicks: 190, // 9.5 s
+    castTicks: 20,
+    shape: 'melee_arc',
+    damage: 12,
+    range: 2.7,
+    arc: 1.3,
+    knockback: 1.5,
+  },
+  {
+    id: 'quarry_work',
+    name: 'Quarry Work',
+    desc: 'Swing after swing into the same seam. Every stone splits eventually.',
+    color: '#9a8a78',
+    code: 'Qy',
+    cooldownTicks: 210, // 10.5 s
+    channelTicks: 48,
+    pulseEveryTicks: 16,
+    shape: 'melee_arc',
+    damage: 5,
+    range: 2.5,
+    arc: 1.7,
+    status: { status: 'sunder', power: 10, durationTicks: 60 },
+  },
+  {
+    id: 'forgefall',
+    name: 'Forgefall',
+    desc: 'The hammer leaves the forge still glowing. It lands like a verdict.',
+    color: '#d97a3d',
+    code: 'Fo',
+    cooldownTicks: 250, // 12.5 s
+    castTicks: 22,
+    shape: 'leap_slam',
+    damage: 13,
+    dashTiles: 4.5,
+    radius: 2.2,
+    knockback: 1.5,
+    status: { status: 'burn', power: 1, durationTicks: 50 },
+  },
+  {
+    id: 'wheelbreaker',
+    name: 'The Wheelbreaker',
+    desc: 'Drive the haft down the lane like a ram. Wheels were a mistake.',
+    color: '#b09a6a',
+    code: 'Wk',
+    cooldownTicks: 200, // 10 s
+    channelTicks: 48,
+    pulseEveryTicks: 16,
+    shape: 'beam',
+    damage: 5,
+    range: 7,
+    width: 0.8,
+    knockback: 0.6,
+    status: { status: 'shock', power: 1, durationTicks: 30 },
+  },
+  {
+    id: 'gravedigger',
+    name: 'Gravedigger',
+    desc: 'Open the ground and it wants filling. Everything nearby obliges.',
+    color: '#6a5e6e',
+    code: 'Gv',
+    cooldownTicks: 240, // 12 s
+    castTicks: 24,
+    shape: 'ground_aoe',
+    damage: 15,
+    range: 4.5,
+    radius: 2.1,
+    fuseTicks: 10,
+    knockback: -1.0, // the grave PULLS
+  },
+  {
+    id: 'ore_song',
+    name: 'Ore Song',
+    desc: 'The maul sings against the seam and the seam sings back. Keep time.',
+    color: '#b8a488',
+    code: 'Oe',
+    cooldownTicks: 260, // 13 s
+    channelTicks: 64,
+    pulseEveryTicks: 16,
+    shape: 'nova',
+    damage: 5,
+    radius: 2.4,
+    knockback: 0.7,
+  },
+  {
+    id: 'skyweight',
+    name: 'Skyweight',
+    desc: 'Lift the whole sky as high as it goes. Then let it remember the ground.',
+    color: '#c9a24a',
+    code: 'Sw',
+    cooldownTicks: 250, // 12.5 s
+    castTicks: 24,
+    shape: 'pulse_nova',
+    damage: 9,
+    radius: 2.4,
+    pulses: 2,
+    pulseEveryTicks: 11,
+    knockback: 1.4,
+  },
+  {
+    id: 'long_lever',
+    name: 'The Long Lever',
+    desc: 'Given a place to stand, you move them. The lever is the whole lane.',
+    color: '#a08a68',
+    code: 'Lv',
+    cooldownTicks: 230, // 11.5 s
+    channelTicks: 64,
+    pulseEveryTicks: 16,
+    shape: 'beam',
+    damage: 4,
+    range: 8,
+    width: 0.7,
+    knockback: 0.5,
+  },
+  {
+    id: 'sunhammer',
+    name: 'Sunhammer',
+    desc: 'Swing the noon itself. Everything it touches keeps a little of the heat.',
+    color: '#e0a04c',
+    code: 'Sm',
+    cooldownTicks: 240, // 12 s
+    castTicks: 26,
+    shape: 'melee_arc',
+    damage: 15,
+    range: 2.8,
+    arc: 1.6,
+    knockback: 1.3,
+    status: { status: 'burn', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'worlds_rim',
+    name: "World's Rim",
+    desc: 'Grind the far edge of the world against a chosen field. It turns slowly.',
+    color: '#8a9aa8',
+    code: 'Wm',
+    cooldownTicks: 260, // 13 s
+    channelTicks: 64,
+    pulseEveryTicks: 16,
+    shape: 'ground_aoe',
+    damage: 4,
+    range: 5,
+    radius: 2.3,
+    fuseTicks: 8,
+    status: { status: 'chill', power: 1, durationTicks: 50 },
+  },
+
+  // ----------------- THE SECOND BREATH — the dualwield breath arts
+  {
+    id: 'two_bells',
+    name: 'Two Bells',
+    desc: 'Both edges ring at once. The pair of them is the whole carillon.',
+    color: '#d9c46a',
+    code: '2b',
+    cooldownTicks: 160, // 8 s
+    castTicks: 18,
+    shape: 'melee_arc',
+    damage: 10,
+    range: 2.2,
+    arc: 1.0,
+    status: { status: 'shock', power: 1, durationTicks: 30 },
+  },
+  {
+    id: 'ribbonwork',
+    name: 'Ribbonwork',
+    desc: 'The ribbons cross, and cross, and cross. Red suits everyone.',
+    color: '#c45a4a',
+    code: 'Rb',
+    cooldownTicks: 210, // 10.5 s
+    channelTicks: 48,
+    pulseEveryTicks: 16,
+    shape: 'melee_arc',
+    damage: 5,
+    range: 2.1,
+    arc: 1.1,
+    status: { status: 'bleed', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'twin_moons',
+    name: 'Twin Moons',
+    desc: 'Both blades loosed on the same orbit. They always come home.',
+    color: '#b8c4d8',
+    code: 'Tn',
+    cooldownTicks: 200, // 10 s
+    castTicks: 20,
+    shape: 'projectile_fan',
+    damage: 6,
+    range: 9,
+    projectiles: 2,
+    spreadArc: 0.18,
+    projectileSpeed: 16,
+    returns: true,
+  },
+  {
+    id: 'silver_reel',
+    name: 'Silver Reel',
+    desc: 'Spin the pair into one cold circle. The reel winds everything in reach.',
+    color: '#a8c0cc',
+    code: 'Sr',
+    cooldownTicks: 230, // 11.5 s
+    channelTicks: 48,
+    pulseEveryTicks: 16,
+    shape: 'nova',
+    damage: 5,
+    radius: 1.9,
+    status: { status: 'chill', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'matched_flame',
+    name: 'Matched Flame',
+    desc: 'Two wicks, one held breath. The burst of strikes lands already burning.',
+    color: '#e0854a',
+    code: 'Mf',
+    cooldownTicks: 220, // 11 s
+    castTicks: 22,
+    shape: 'flurry',
+    damage: 6,
+    range: 2.1,
+    arc: 1.1,
+    hits: 3,
+    pulseEveryTicks: 6,
+    status: { status: 'burn', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'stormstitch',
+    name: 'Stormstitch',
+    desc: 'The left hand throws and the right answers. The seam runs foe to foe.',
+    color: '#c8c86a',
+    code: 'Sh',
+    cooldownTicks: 220, // 11 s
+    channelTicks: 48,
+    pulseEveryTicks: 16,
+    shape: 'chain_zap',
+    damage: 5,
+    range: 8,
+    radius: 3.0,
+    chainTargets: 2,
+    status: { status: 'shock', power: 1, durationTicks: 30 },
+  },
+  {
+    id: 'mirrorfall',
+    name: 'Mirrorfall',
+    desc: 'You and your reflection land together. Only one of you is survivable.',
+    color: '#9ab8c8',
+    code: 'Mi',
+    cooldownTicks: 220, // 11 s
+    castTicks: 20,
+    shape: 'leap_slam',
+    damage: 12,
+    dashTiles: 4,
+    radius: 1.9,
+    status: { status: 'chill', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'the_weave',
+    name: 'The Weave',
+    desc: 'Warp and weft, held to the count. Every thread crosses the loom.',
+    color: '#b0a4c0',
+    code: 'Wv',
+    cooldownTicks: 200, // 10 s
+    channelTicks: 64,
+    pulseEveryTicks: 16,
+    shape: 'melee_arc',
+    damage: 5,
+    range: 2.2,
+    arc: 1.3,
+  },
+  {
+    id: 'first_and_last',
+    name: 'First and Last',
+    desc: 'The first cut opens the door. The last one closes it behind them.',
+    color: '#e8d8a0',
+    code: 'Fx',
+    cooldownTicks: 190, // 9.5 s
+    castTicks: 24,
+    shape: 'melee_arc',
+    damage: 12,
+    range: 2.3,
+    arc: 1.0,
+    executeBelow: { frac: 0.3, mult: 2.0 },
+  },
+  {
+    id: 'hummingbird',
+    name: 'Hummingbird',
+    desc: 'Wings too fast to see, held on one flower. Count the visits if you can.',
+    color: '#8ac4a8',
+    code: 'Hm',
+    cooldownTicks: 240, // 12 s
+    channelTicks: 64,
+    pulseEveryTicks: 16,
+    shape: 'projectile_fan',
+    damage: 3,
+    range: 9,
+    projectiles: 2,
+    spreadArc: 0.16,
+    projectileSpeed: 17,
+  },
+
+  // ------------------- THE SECOND BREATH — the combat breath arts
+  {
+    id: 'measured_blow',
+    name: 'Measured Blow',
+    desc: 'The breath before the fist. Measured twice, landed once.',
+    color: '#b09a7a',
+    code: 'Me',
+    cooldownTicks: 170, // 8.5 s
+    castTicks: 18,
+    shape: 'melee_arc',
+    damage: 11,
+    range: 2.3,
+    arc: 1.0,
+  },
+  {
+    id: 'drumbeat',
+    name: 'Drumbeat',
+    desc: 'The old cadence, kept with your heels. The whole line moves to it.',
+    color: '#c4885a',
+    code: 'Dm',
+    cooldownTicks: 240, // 12 s
+    channelTicks: 48,
+    pulseEveryTicks: 16,
+    shape: 'nova',
+    damage: 5,
+    radius: 2.0,
+    knockback: 0.6,
+  },
+  {
+    id: 'thrown_iron',
+    name: 'Thrown Iron',
+    desc: 'Whatever iron is near, thrown hard enough to matter. Everything is a weapon.',
+    color: '#8a8f98',
+    code: 'Th',
+    cooldownTicks: 180, // 9 s
+    castTicks: 20,
+    shape: 'projectile_fan',
+    damage: 12,
+    range: 9,
+    projectiles: 1,
+    projectileSpeed: 14,
+    splashRadius: 1.3,
+  },
+  {
+    id: 'ironbreath',
+    name: 'Ironbreath',
+    desc: 'The veteran exhales winter down the lane. Cold as pay day, twice as slow.',
+    color: '#9ab4bc',
+    code: 'Ih',
+    cooldownTicks: 210, // 10.5 s
+    channelTicks: 48,
+    pulseEveryTicks: 16,
+    shape: 'beam',
+    damage: 5,
+    range: 6,
+    width: 0.6,
+    status: { status: 'chill', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'fifth_road',
+    name: 'The Fifth Road',
+    desc: 'Four roads are taught. The fifth goes through whoever is standing on it.',
+    color: '#7a6a80',
+    code: '5r',
+    cooldownTicks: 220, // 11 s
+    castTicks: 22,
+    shape: 'dash_strike',
+    damage: 12,
+    dashTiles: 4.5,
+    status: { status: 'bleed', power: 1, durationTicks: 50 },
+  },
+  {
+    id: 'old_thunder',
+    name: 'Old Thunder',
+    desc: 'The joints remember every storm they marched through. Let them speak.',
+    color: '#b8a45a',
+    code: 'Od',
+    cooldownTicks: 210, // 10.5 s
+    channelTicks: 64,
+    pulseEveryTicks: 16,
+    shape: 'melee_arc',
+    damage: 4,
+    range: 2.3,
+    arc: 1.2,
+    status: { status: 'shock', power: 1, durationTicks: 25 },
+  },
+  {
+    id: 'gathered_breath',
+    name: 'The Gathered Breath',
+    desc: 'All of it, held as long as it keeps. Then all of it, at once.',
+    color: '#d9c084',
+    code: 'Gg',
+    cooldownTicks: 210, // 10.5 s
+    castTicks: 24,
+    shape: 'nova',
+    damage: 12,
+    radius: 2.5,
+    knockback: 1.0,
+  },
+  {
+    id: 'long_watch',
+    name: 'The Long Watch',
+    desc: 'You know where they will stand before they do. The watch never lifted.',
+    color: '#7a8a94',
+    code: 'Lh',
+    cooldownTicks: 250, // 12.5 s
+    channelTicks: 64,
+    pulseEveryTicks: 16,
+    shape: 'ground_aoe',
+    damage: 4,
+    range: 6,
+    radius: 2.1,
+    fuseTicks: 8,
+  },
+  {
+    id: 'scarworn',
+    name: 'Scarworn',
+    desc: 'Every scar is a paid receipt. This is where you collect.',
+    color: '#a05a48',
+    code: 'Sx',
+    cooldownTicks: 200, // 10 s
+    castTicks: 24,
+    shape: 'melee_arc',
+    damage: 13,
+    range: 2.4,
+    arc: 1.2,
+    drainFrac: 0.2,
+  },
+  {
+    id: 'last_lesson',
+    name: 'Last Lesson',
+    desc: 'The lesson passes from one student to the next. Nobody graduates.',
+    color: '#c9b46a',
+    code: 'Ln',
+    cooldownTicks: 250, // 12.5 s
+    channelTicks: 64,
+    pulseEveryTicks: 16,
+    shape: 'chain_zap',
+    damage: 4,
+    range: 7,
+    radius: 3.0,
+    chainTargets: 2,
+  },
 ];
 
 export const ABILITIES: ReadonlyMap<string, AbilityDef> = new Map(defs.map((d) => [d.id, d]));
@@ -4844,9 +5751,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
-    ability: 'longshot',
+    ability: 'kingshot',
     style: 'archery',
     unlockLevel: 10,
+    ranks: [
+      { note: 'The draw grows heavier still.', damage: 18 },
+      { note: 'The shaft carries further and faster.', range: 21, projectileSpeed: 24 },
+      { note: 'The king takes the whole lane sooner.', damage: 20, cooldownTicks: 180, castTicks: 18 },
+    ],
+  },
+  {
+    ability: 'longshot',
+    style: 'archery',
+    unlockLevel: 15,
     ranks: [
       { note: 'The line lands heavier.', damage: 11 },
       { note: 'The draw comes back to you sooner.', cooldownTicks: 150 },
@@ -4854,9 +5771,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'stringsong',
+    style: 'archery',
+    unlockLevel: 20,
+    ranks: [
+      { note: 'The note lands harder.', damage: 5 },
+      { note: 'The song holds a fourth beat.', channelTicks: 64 },
+      { note: 'The arrows learn the tune and follow it home.', cooldownTicks: 150, homing: 5 },
+    ],
+  },
+  {
     ability: 'rain_of_arrows',
     style: 'archery',
-    unlockLevel: 15,
+    unlockLevel: 25,
     ranks: [
       { note: 'The sky falls harder.', damage: 11 },
       { note: 'A wider patch of ruin, called sooner.', cooldownTicks: 190, radius: 2.4 },
@@ -4867,9 +5794,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'hawks_hour',
+    style: 'archery',
+    unlockLevel: 30,
+    ranks: [
+      { note: 'The stoop strikes deeper.', damage: 17 },
+      { note: 'The hour claims a wider field.', radius: 2.6, range: 15 },
+      { note: 'What the hawk marks is opened to everyone.', cooldownTicks: 180, status: { status: 'sunder', power: 12, durationTicks: 60 } },
+    ],
+  },
+  {
     ability: 'snare_shot',
     style: 'archery',
-    unlockLevel: 20,
+    unlockLevel: 35,
     ranks: [
       {
         note: 'The snare waits longer.',
@@ -4883,9 +5820,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'winterflight',
+    style: 'archery',
+    unlockLevel: 40,
+    ranks: [
+      { note: 'The wind cuts keener.', damage: 5 },
+      { note: 'The cold clings longer and the line runs wider.', width: 0.8, status: { status: 'chill', power: 1, durationTicks: 60 } },
+      { note: 'The flight holds a fourth breath.', channelTicks: 64, cooldownTicks: 170 },
+    ],
+  },
+  {
     ability: 'ricochet',
     style: 'archery',
-    unlockLevel: 30,
+    unlockLevel: 45,
     ranks: [
       { note: 'Each carom means it more.', damage: 9 },
       { note: 'A third change of mind.', chainTargets: 3 },
@@ -4893,9 +5840,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'emberhead',
+    style: 'archery',
+    unlockLevel: 50,
+    ranks: [
+      { note: 'The heads burn hotter.', damage: 10 },
+      { note: 'The fire keeps its grip longer.', range: 16, status: { status: 'burn', power: 1, durationTicks: 80 } },
+      { note: 'The pair loose quicker and land harder.', damage: 11, cooldownTicks: 190, castTicks: 20 },
+    ],
+  },
+  {
     ability: 'twin_strike',
     style: 'archery',
-    unlockLevel: 40,
+    unlockLevel: 54,
     ranks: [
       { note: 'Heavier shafts.', damage: 11 },
       { note: 'The pair returns to your hand sooner.', cooldownTicks: 170 },
@@ -4903,9 +5860,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'skyloom',
+    style: 'archery',
+    unlockLevel: 58,
+    ranks: [
+      { note: 'The shuttle strikes harder.', damage: 5 },
+      { note: 'The thread reaches further.', range: 14, cooldownTicks: 190 },
+      { note: 'The loom takes a third thread.', chainTargets: 3 },
+    ],
+  },
+  {
     ability: 'skyfall_shot',
     style: 'archery',
-    unlockLevel: 50,
+    unlockLevel: 62,
     ranks: [
       { note: 'It falls heavier.', damage: 14 },
       { note: 'A wider shadow, called sooner.', radius: 2.2, cooldownTicks: 200 },
@@ -4916,9 +5883,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'gloamshaft',
+    style: 'archery',
+    unlockLevel: 66,
+    ranks: [
+      { note: 'The dark line bites deeper.', damage: 21 },
+      { note: 'The gloam runs longer and wider.', range: 15, width: 0.75 },
+      { note: 'The last light leaves quicker, and harder.', damage: 24, cooldownTicks: 190, castTicks: 20 },
+    ],
+  },
+  {
     ability: 'phantom_flight',
     style: 'archery',
-    unlockLevel: 60,
+    unlockLevel: 70,
     ranks: [
       { note: 'The ghost cuts deeper.', damage: 10 },
       { note: 'It haunts you oftener.', cooldownTicks: 180 },
@@ -4930,9 +5907,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'harrier',
+    style: 'archery',
+    unlockLevel: 74,
+    ranks: [
+      { note: 'The wing strikes harder.', damage: 4 },
+      { note: 'The circuit runs longer and faster.', range: 12, projectileSpeed: 17 },
+      { note: 'The wing opens what it passes.', cooldownTicks: 210, status: { status: 'bleed', power: 1, durationTicks: 40 } },
+    ],
+  },
+  {
     ability: 'storm_of_shafts',
     style: 'archery',
-    unlockLevel: 75,
+    unlockLevel: 78,
     ranks: [
       { note: 'Every falling shaft bites harder.', damage: 4 },
       { note: 'The patch grows.', radius: 2.6 },
@@ -4941,6 +5928,26 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
         pulseEveryTicks: 13,
         status: { status: 'chill', power: 1, durationTicks: 40 },
       },
+    ],
+  },
+  {
+    ability: 'zenith',
+    style: 'archery',
+    unlockLevel: 82,
+    ranks: [
+      { note: 'Noon lands heavier.', damage: 17 },
+      { note: 'The light claims a wider court.', radius: 2.6 },
+      { note: 'The sun stays to see it finished.', damage: 18, cooldownTicks: 210, status: { status: 'burn', power: 1, durationTicks: 80 } },
+    ],
+  },
+  {
+    ability: 'crowsong',
+    style: 'archery',
+    unlockLevel: 86,
+    ranks: [
+      { note: 'The flock feeds harder.', damage: 4 },
+      { note: 'The song calls a wider field.', radius: 2.6 },
+      { note: 'The crows remember, and come back hungrier.', cooldownTicks: 220, status: { status: 'bleed', power: 1, durationTicks: 60 } },
     ],
   },
   {
@@ -5211,9 +6218,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
-    ability: 'ghost_step',
+    ability: 'opened_vein',
     style: 'sneak',
     unlockLevel: 10,
+    ranks: [
+      { note: 'The cut sits deeper.', damage: 11 },
+      { note: 'The vein gives more freely.', status: { status: 'bleed', power: 3, durationTicks: 100 } },
+      { note: 'What they lose finds its way to you.', cooldownTicks: 200, drainFrac: 0.15 },
+    ],
+  },
+  {
+    ability: 'ghost_step',
+    style: 'sneak',
+    unlockLevel: 15,
     ranks: [
       { note: 'The passing cut means it.', damage: 9 },
       { note: 'A longer walk, told oftener.', dashTiles: 4.2, cooldownTicks: 150 },
@@ -5224,9 +6241,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'threadwork',
+    style: 'sneak',
+    unlockLevel: 20,
+    ranks: [
+      { note: 'The needle bites harder.', damage: 5 },
+      { note: 'The seam takes a fourth pass.', channelTicks: 64 },
+      { note: 'The thread pulls red behind it.', cooldownTicks: 180, status: { status: 'bleed', power: 1, durationTicks: 60 } },
+    ],
+  },
+  {
     ability: 'smoke_bomb',
     style: 'sneak',
-    unlockLevel: 15,
+    unlockLevel: 25,
     ranks: [
       { note: 'The gray reaches farther.', radius: 2.8 },
       {
@@ -5237,22 +6264,43 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'nightshade_kiss',
+    style: 'sneak',
+    unlockLevel: 30,
+    ranks: [
+      { note: 'The dart strikes truer.', damage: 10 },
+      { note: 'The garden steeps stronger.', status: { status: 'venom', power: 2, durationTicks: 80 } },
+      { note: 'The kiss asks again sooner.', cooldownTicks: 210 },
+    ],
+  },
+  {
     ability: 'caltrops',
     style: 'sneak',
-    unlockLevel: 20,
+    unlockLevel: 35,
     ranks: [
       { note: 'The teeth bite deeper.', damage: 4 },
       { note: 'More iron, sown wider, waiting longer.', radius: 2.2, fieldTicks: 160 },
       {
         note: 'Rusted barbs — the crossing is never forgotten.',
+        damage: 5,
         status: { status: 'bleed', power: 2, durationTicks: 40 },
       },
     ],
   },
   {
+    ability: 'quiet_knife',
+    style: 'sneak',
+    unlockLevel: 40,
+    ranks: [
+      { note: 'The hush cuts deeper.', damage: 5 },
+      { note: 'The line holds a fourth breath.', channelTicks: 64 },
+      { note: 'The quiet arrives sooner each time.', cooldownTicks: 170 },
+    ],
+  },
+  {
     ability: 'fan_of_knives',
     style: 'sneak',
-    unlockLevel: 30,
+    unlockLevel: 45,
     ranks: [
       { note: 'Every edge asks for more.', damage: 8 },
       { note: 'The fan opens wider, oftener.', radius: 2.6, cooldownTicks: 180 },
@@ -5264,9 +6312,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'redwork',
+    style: 'sneak',
+    unlockLevel: 50,
+    ranks: [
+      { note: 'The bloom cuts deeper.', damage: 12 },
+      { note: 'The red reaches the far walls.', radius: 2.6, cooldownTicks: 200 },
+      { note: 'The craft pays its maker.', damage: 13, cooldownTicks: 190, drainFrac: 0.12 },
+    ],
+  },
+  {
     ability: 'envenom',
     style: 'sneak',
-    unlockLevel: 40,
+    unlockLevel: 54,
     ranks: [
       {
         note: 'The oil holds for ten seconds.',
@@ -5286,9 +6344,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'gallows_thread',
+    style: 'sneak',
+    unlockLevel: 58,
+    ranks: [
+      { note: 'The knot draws venom deeper.', status: { status: 'venom', power: 1, durationTicks: 56 } },
+      { note: 'The rope asks again sooner.', cooldownTicks: 200 },
+      { note: 'The noose takes a third neck.', chainTargets: 3 },
+    ],
+  },
+  {
     ability: 'feint_double',
     style: 'sneak',
-    unlockLevel: 50,
+    unlockLevel: 62,
     ranks: [
       {
         note: 'The lie stands longer.',
@@ -5302,19 +6370,39 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'widows_draw',
+    style: 'sneak',
+    unlockLevel: 66,
+    ranks: [
+      { note: 'The needles bite harder.', damage: 8 },
+      { note: 'The steeping runs deeper.', status: { status: 'venom', power: 1, durationTicks: 80 } },
+      { note: 'The needles learn her patience, and seek.', cooldownTicks: 210, homing: 4 },
+    ],
+  },
+  {
     ability: 'exposing_strike',
     style: 'sneak',
-    unlockLevel: 60,
+    unlockLevel: 70,
     ranks: [
       { note: 'The seam opens wider.', damage: 10 },
       { note: 'You find it faster.', cooldownTicks: 150 },
-      { note: 'What is open, ends.', executeBelow: { frac: 0.4, mult: 2.2 } },
+      { note: 'What is open, ends.', damage: 11, executeBelow: { frac: 0.4, mult: 2.2 } },
+    ],
+  },
+  {
+    ability: 'bloodletting',
+    style: 'sneak',
+    unlockLevel: 74,
+    ranks: [
+      { note: 'The surgery cuts deeper.', damage: 5 },
+      { note: 'The rhythm quickens.', cooldownTicks: 200 },
+      { note: 'The taking is thorough now.', drainFrac: 0.25 },
     ],
   },
   {
     ability: 'night_fangs',
     style: 'sneak',
-    unlockLevel: 75,
+    unlockLevel: 78,
     ranks: [
       { note: 'Sharper fangs.', damage: 6 },
       { note: 'A fourth fang joins the hunt.', projectiles: 4 },
@@ -5322,6 +6410,26 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
         note: 'The bites stay open.',
         status: { status: 'bleed', power: 2, durationTicks: 60 },
       },
+    ],
+  },
+  {
+    ability: 'lights_out',
+    style: 'sneak',
+    unlockLevel: 82,
+    ranks: [
+      { note: 'The dark lands heavier.', damage: 16 },
+      { note: 'The room grows, and the cold stays longer.', radius: 2.4, status: { status: 'chill', power: 1, durationTicks: 70 } },
+      { note: 'The wick pinches quicker.', damage: 17, cooldownTicks: 200, castTicks: 22 },
+    ],
+  },
+  {
+    ability: 'red_hour',
+    style: 'sneak',
+    unlockLevel: 86,
+    ranks: [
+      { note: 'Every second cuts deeper.', damage: 5 },
+      { note: 'The hour fills a wider room.', radius: 2.3 },
+      { note: 'The clock runs hungrier.', cooldownTicks: 240, status: { status: 'bleed', power: 1, durationTicks: 50 } },
     ],
   },
   {
@@ -5350,9 +6458,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
-    ability: 'set_the_wall',
+    ability: 'iron_toll',
     style: 'shield',
     unlockLevel: 10,
+    ranks: [
+      { note: 'The bell rings harder.', damage: 11 },
+      { note: 'The toll carries further, and throws.', radius: 2.6, knockback: 1.4 },
+      { note: 'The bell answers sooner, and the ring holds.', damage: 12, cooldownTicks: 170, castTicks: 18, status: { status: 'shock', power: 1, durationTicks: 40 } },
+    ],
+  },
+  {
+    ability: 'set_the_wall',
+    style: 'shield',
+    unlockLevel: 15,
     ranks: [
       { note: 'The stance sets deeper.', self: { armor: 11, durationTicks: 160 } },
       { note: 'A skin of iron over the iron.', self: { armor: 11, shieldHp: 6, durationTicks: 160 } },
@@ -5360,9 +6478,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'grindstone',
+    style: 'shield',
+    unlockLevel: 20,
+    ranks: [
+      { note: 'The rim grinds harder.', damage: 5 },
+      { note: 'The stone turns a fourth time.', channelTicks: 64 },
+      { note: 'The curls come off deeper.', cooldownTicks: 190, status: { status: 'sunder', power: 15, durationTicks: 60 } },
+    ],
+  },
+  {
     ability: 'shield_rush',
     style: 'shield',
-    unlockLevel: 15,
+    unlockLevel: 25,
     ranks: [
       { note: 'The drive hits harder.', damage: 10 },
       { note: 'A longer road, sooner open.', dashTiles: 4.4, cooldownTicks: 170 },
@@ -5370,9 +6498,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'doorfall',
+    style: 'shield',
+    unlockLevel: 30,
+    ranks: [
+      { note: 'The door lands heavier.', damage: 14 },
+      { note: 'The frame is wider than they thought.', radius: 2.3, knockback: 1.8 },
+      { note: 'The hinge learns to swing again sooner.', damage: 15, cooldownTicks: 190, castTicks: 20 },
+    ],
+  },
+  {
     ability: 'draw_iron',
     style: 'shield',
-    unlockLevel: 20,
+    unlockLevel: 35,
     ranks: [
       { note: 'The shout carries farther.', radius: 4.0, tauntRadius: 4.0, cooldownTicks: 300 },
       { note: 'Iron answers those who answer.', radius: 4.0, tauntRadius: 4.0, cooldownTicks: 300, self: { armor: 6, durationTicks: 80 } },
@@ -5380,9 +6518,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'held_gate',
+    style: 'shield',
+    unlockLevel: 40,
+    ranks: [
+      { note: 'The gate bites colder.', damage: 5 },
+      { note: 'The cold holds them longer and the line runs wider.', width: 0.9, status: { status: 'chill', power: 1, durationTicks: 60 } },
+      { note: 'The gate holds a fourth breath.', channelTicks: 64, cooldownTicks: 180 },
+    ],
+  },
+  {
     ability: 'shield_roof',
     style: 'shield',
-    unlockLevel: 30,
+    unlockLevel: 45,
     ranks: [
       { note: 'The roof bears more weather.', self: { shieldHp: 22, speedMult: 0.85, durationTicks: 160 } },
       { note: 'The weight learns your shoulders.', self: { shieldHp: 22, speedMult: 0.95, durationTicks: 160 } },
@@ -5390,9 +6538,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'sunbrass',
+    style: 'shield',
+    unlockLevel: 50,
+    ranks: [
+      { note: 'The brass burns brighter.', damage: 11 },
+      { note: 'Noon reaches the whole yard.', radius: 2.9, status: { status: 'burn', power: 1, durationTicks: 60 } },
+      { note: 'The sun comes back around sooner.', damage: 12, cooldownTicks: 210 },
+    ],
+  },
+  {
     ability: 'turned_blow',
     style: 'shield',
-    unlockLevel: 40,
+    unlockLevel: 54,
     ranks: [
       { note: 'More of the blow goes home.', self: { reflectFrac: 0.45, durationTicks: 120 } },
       { note: 'The angle hardens the arm that holds it.', self: { reflectFrac: 0.45, armor: 4, durationTicks: 120 } },
@@ -5400,9 +6558,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'millwall',
+    style: 'shield',
+    unlockLevel: 58,
+    ranks: [
+      { note: 'The wheel strikes harder.', damage: 5 },
+      { note: 'The wall turns wider.', radius: 2.4 },
+      { note: 'The water is thrown well back.', knockback: 1.2, cooldownTicks: 230 },
+    ],
+  },
+  {
     ability: 'rampart_break',
     style: 'shield',
-    unlockLevel: 50,
+    unlockLevel: 62,
     ranks: [
       { note: 'The rim bites deeper ground.', damage: 15 },
       { note: 'The break spreads wider, oftener.', radius: 2.6, cooldownTicks: 200 },
@@ -5410,9 +6578,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'anchorfall',
+    style: 'shield',
+    unlockLevel: 66,
+    ranks: [
+      { note: 'The anchor lands heavier.', damage: 13 },
+      { note: 'The parted sea reaches further, colder.', radius: 2.6, status: { status: 'chill', power: 1, durationTicks: 70 } },
+      { note: 'The anchor is raised again sooner.', damage: 14, cooldownTicks: 230 },
+    ],
+  },
+  {
     ability: 'wheel_of_iron',
     style: 'shield',
-    unlockLevel: 60,
+    unlockLevel: 70,
     ranks: [
       { note: 'The wheel spins heavier.', damage: 11 },
       { note: 'A longer arc out, a shorter wait after.', range: 11, cooldownTicks: 190 },
@@ -5420,13 +6598,43 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'patient_wall',
+    style: 'shield',
+    unlockLevel: 74,
+    ranks: [
+      { note: 'The advance lands heavier.', damage: 5 },
+      { note: 'The wall reaches wider.', arc: 1.7 },
+      { note: 'Patience moves them after all.', knockback: 0.9, cooldownTicks: 210 },
+    ],
+  },
+  {
     ability: 'hold_the_line',
     style: 'shield',
-    unlockLevel: 75,
+    unlockLevel: 78,
     ranks: [
       { note: 'The line argues harder.', damage: 6 },
       { note: 'The ground holds it longer.', fieldTicks: 180 },
       { note: 'This far. The ground itself agrees.', damage: 7, radius: 2.8, status: { status: 'chill', power: 1, durationTicks: 40 } },
+    ],
+  },
+  {
+    ability: 'standing_sun',
+    style: 'shield',
+    unlockLevel: 82,
+    ranks: [
+      { note: 'The standard burns brighter.', damage: 15 },
+      { note: 'The day holds a wider ground.', radius: 2.8 },
+      { note: 'The light is planted quicker.', damage: 16, cooldownTicks: 220, castTicks: 24 },
+    ],
+  },
+  {
+    ability: 'winterhold',
+    style: 'shield',
+    unlockLevel: 86,
+    ranks: [
+      { note: 'The keep bites colder.', damage: 5 },
+      { note: 'The court freezes wider.', radius: 2.7 },
+      { note: 'Winter keeps them longer.', cooldownTicks: 250, status: { status: 'chill', power: 1, durationTicks: 80 } },
     ],
   },
   {
@@ -5452,9 +6660,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
-    ability: 'haft_check',
+    ability: 'fell_timber',
     style: 'twohand',
     unlockLevel: 10,
+    ranks: [
+      { note: 'The timber lands heavier.', damage: 14 },
+      { note: 'The splinters draw blood.', status: { status: 'bleed', power: 1, durationTicks: 60 } },
+      { note: 'The axe is loose again sooner, and throws.', damage: 15, knockback: 1.8, cooldownTicks: 170, castTicks: 18 },
+    ],
+  },
+  {
+    ability: 'haft_check',
+    style: 'twohand',
+    unlockLevel: 15,
     ranks: [
       { note: 'The shove learns its manners last.', knockback: 3.0 },
       { note: 'The jolt holds them a beat longer.', status: { status: 'shock', power: 1, durationTicks: 50 } },
@@ -5462,9 +6680,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'quarry_work',
+    style: 'twohand',
+    unlockLevel: 20,
+    ranks: [
+      { note: 'The seam splits deeper.', damage: 6 },
+      { note: 'The quarry takes a fourth swing.', channelTicks: 64 },
+      { note: 'The stone comes apart at the grain.', status: { status: 'sunder', power: 14, durationTicks: 60 } },
+    ],
+  },
+  {
     ability: 'iron_pendulum',
     style: 'twohand',
-    unlockLevel: 15,
+    unlockLevel: 25,
     ranks: [
       { note: 'The pendulum swings heavier.', damage: 10 },
       { note: 'The second swing comes sooner.', pulseEveryTicks: 6, cooldownTicks: 190 },
@@ -5472,9 +6700,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'forgefall',
+    style: 'twohand',
+    unlockLevel: 30,
+    ranks: [
+      { note: 'The hammer lands heavier.', damage: 14 },
+      { note: 'The glow spreads further, and lingers.', radius: 2.6, status: { status: 'burn', power: 1, durationTicks: 60 } },
+      { note: 'The forge fires again sooner.', damage: 15, cooldownTicks: 230 },
+    ],
+  },
+  {
     ability: 'fault_line',
     style: 'twohand',
-    unlockLevel: 20,
+    unlockLevel: 35,
     ranks: [
       { note: 'The ground breaks deeper.', damage: 15 },
       { note: 'The crack runs wider.', radius: 2.4, cooldownTicks: 200 },
@@ -5482,9 +6720,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'wheelbreaker',
+    style: 'twohand',
+    unlockLevel: 40,
+    ranks: [
+      { note: 'The ram drives harder.', damage: 6 },
+      { note: 'The lane holds a fourth breath.', channelTicks: 64 },
+      { note: 'The wheels break the further way back.', knockback: 0.9, status: { status: 'shock', power: 1, durationTicks: 40 } },
+    ],
+  },
+  {
     ability: 'colossus_stance',
     style: 'twohand',
-    unlockLevel: 30,
+    unlockLevel: 45,
     ranks: [
       { note: 'The wounds you leave open wider.', self: { speedMult: 1.1, onHitStatus: { status: 'bleed', power: 2, durationTicks: 60 }, durationTicks: 160 } },
       { note: 'The stride lengthens with the temper.', self: { speedMult: 1.18, onHitStatus: { status: 'bleed', power: 2, durationTicks: 60 }, durationTicks: 160 } },
@@ -5492,9 +6740,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'gravedigger',
+    style: 'twohand',
+    unlockLevel: 50,
+    ranks: [
+      { note: 'The grave takes more.', damage: 16 },
+      { note: 'The pull deepens and the pit widens.', radius: 2.4, knockback: -1.4 },
+      { note: 'The digging is quicker now.', damage: 18, cooldownTicks: 220 },
+    ],
+  },
+  {
     ability: 'skysunder',
     style: 'twohand',
-    unlockLevel: 40,
+    unlockLevel: 54,
     ranks: [
       { note: 'The verdict lands heavier.', damage: 17 },
       { note: 'A longer leap, a shorter wait.', dashTiles: 6.0, cooldownTicks: 240 },
@@ -5502,9 +6760,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'ore_song',
+    style: 'twohand',
+    unlockLevel: 58,
+    ranks: [
+      { note: 'The song strikes harder.', damage: 6 },
+      { note: 'The ring carries wider.', radius: 2.7 },
+      { note: 'The seam sings back sooner.', cooldownTicks: 250 },
+    ],
+  },
+  {
     ability: 'executioners_arc',
     style: 'twohand',
-    unlockLevel: 50,
+    unlockLevel: 62,
     ranks: [
       { note: 'The stroke bites deeper.', damage: 14 },
       { note: 'It reads the sentence earlier.', executeBelow: { frac: 0.4, mult: 2.0 } },
@@ -5512,9 +6780,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'skyweight',
+    style: 'twohand',
+    unlockLevel: 66,
+    ranks: [
+      { note: 'The sky lands heavier.', damage: 10 },
+      { note: 'The weight falls a third time.', pulses: 3 },
+      { note: 'The whole horizon comes down.', radius: 2.6, cooldownTicks: 245 },
+    ],
+  },
+  {
     ability: 'avalanche',
     style: 'twohand',
-    unlockLevel: 60,
+    unlockLevel: 70,
     ranks: [
       { note: 'Every blow falls heavier.', damage: 9 },
       { note: 'The slide starts sooner, ends sooner.', pulseEveryTicks: 7, cooldownTicks: 240 },
@@ -5522,13 +6800,43 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'long_lever',
+    style: 'twohand',
+    unlockLevel: 74,
+    ranks: [
+      { note: 'The lever bears harder.', damage: 5 },
+      { note: 'The reach runs longer and wider.', range: 10, width: 0.9 },
+      { note: 'The world moves after all.', knockback: 0.9, cooldownTicks: 200 },
+    ],
+  },
+  {
     ability: 'breaker_charge',
     style: 'twohand',
-    unlockLevel: 75,
+    unlockLevel: 78,
     ranks: [
       { note: 'The shoulder hits harder.', damage: 15 },
       { note: 'A longer road, sooner open.', dashTiles: 5.0, cooldownTicks: 200 },
       { note: 'Through is the only direction left.', damage: 16, knockback: 3.2 },
+    ],
+  },
+  {
+    ability: 'sunhammer',
+    style: 'twohand',
+    unlockLevel: 82,
+    ranks: [
+      { note: 'The noon swings heavier.', damage: 16 },
+      { note: 'The arc takes the whole sky.', arc: 2, knockback: 1.5 },
+      { note: 'The heat stays in the iron.', damage: 17, cooldownTicks: 220, status: { status: 'burn', power: 2, durationTicks: 60 } },
+    ],
+  },
+  {
+    ability: 'worlds_rim',
+    style: 'twohand',
+    unlockLevel: 86,
+    ranks: [
+      { note: 'The rim grinds deeper.', damage: 5 },
+      { note: 'The far edge reaches wider.', radius: 2.7 },
+      { note: 'The cold of the rim settles in.', cooldownTicks: 240, status: { status: 'chill', power: 1, durationTicks: 70 } },
     ],
   },
   {
@@ -5554,9 +6862,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
-    ability: 'heron_step',
+    ability: 'two_bells',
     style: 'dualwield',
     unlockLevel: 10,
+    ranks: [
+      { note: 'The bells ring harder.', damage: 12 },
+      { note: 'The peal carries wider, and holds.', arc: 1.2, status: { status: 'shock', power: 1, durationTicks: 45 } },
+      { note: 'The carillon answers at once.', damage: 14, cooldownTicks: 140, castTicks: 16 },
+    ],
+  },
+  {
+    ability: 'heron_step',
+    style: 'dualwield',
+    unlockLevel: 15,
     ranks: [
       { note: 'The pass cuts deeper.', damage: 11 },
       { note: 'A longer stride through them.', dashTiles: 4.2, cooldownTicks: 160 },
@@ -5564,9 +6882,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'ribbonwork',
+    style: 'dualwield',
+    unlockLevel: 20,
+    ranks: [
+      { note: 'The ribbons cut deeper.', damage: 6 },
+      { note: 'The crossing takes a fourth pass.', channelTicks: 64 },
+      { note: 'The red runs freely now.', cooldownTicks: 200, status: { status: 'bleed', power: 1, durationTicks: 60 } },
+    ],
+  },
+  {
     ability: 'crossed_throw',
     style: 'dualwield',
-    unlockLevel: 15,
+    unlockLevel: 25,
     ranks: [
       { note: 'Each knife argues harder.', damage: 7 },
       { note: 'Thrown oftener, bitten deeper.', damage: 8, cooldownTicks: 150 },
@@ -5574,9 +6902,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'twin_moons',
+    style: 'dualwield',
+    unlockLevel: 30,
+    ranks: [
+      { note: 'The moons strike harder.', damage: 7 },
+      { note: 'The orbit runs longer and faster.', range: 11, projectileSpeed: 18 },
+      { note: 'Both moons come home full.', damage: 9, cooldownTicks: 190 },
+    ],
+  },
+  {
     ability: 'mirrored_hand',
     style: 'dualwield',
-    unlockLevel: 20,
+    unlockLevel: 35,
     ranks: [
       { note: 'The mirror holds longer.', self: { offhandWeight: 0.75, durationTicks: 200 } },
       { note: 'The reflection sharpens.', self: { offhandWeight: 0.9, durationTicks: 200 } },
@@ -5584,9 +6922,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'silver_reel',
+    style: 'dualwield',
+    unlockLevel: 40,
+    ranks: [
+      { note: 'The reel cuts harder.', damage: 6 },
+      { note: 'The reel winds a fourth turn.', channelTicks: 64 },
+      { note: 'The circle widens, and the cold keeps.', radius: 2.2, cooldownTicks: 220, status: { status: 'chill', power: 1, durationTicks: 60 } },
+    ],
+  },
+  {
     ability: 'turning_reel',
     style: 'dualwield',
-    unlockLevel: 30,
+    unlockLevel: 45,
     ranks: [
       { note: 'The turn cuts deeper.', damage: 12 },
       { note: 'A wider round, called oftener.', radius: 2.5, cooldownTicks: 150 },
@@ -5594,9 +6942,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'matched_flame',
+    style: 'dualwield',
+    unlockLevel: 50,
+    ranks: [
+      { note: 'The flames strike harder.', damage: 7 },
+      { note: 'The burning lingers and the reach grows.', range: 2.3, status: { status: 'burn', power: 1, durationTicks: 50 } },
+      { note: 'A fourth strike joins the burst.', hits: 4, cooldownTicks: 200 },
+    ],
+  },
+  {
     ability: 'red_ribbons',
     style: 'dualwield',
-    unlockLevel: 40,
+    unlockLevel: 54,
     ranks: [
       {
         note: 'The ribbons run redder.',
@@ -5613,9 +6971,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'stormstitch',
+    style: 'dualwield',
+    unlockLevel: 58,
+    ranks: [
+      { note: 'The seam strikes harder.', damage: 6 },
+      { note: 'The stitch holds them longer.', status: { status: 'shock', power: 1, durationTicks: 40 } },
+      { note: 'The seam takes a third foe.', chainTargets: 3 },
+    ],
+  },
+  {
     ability: 'swallows_dive',
     style: 'dualwield',
-    unlockLevel: 50,
+    unlockLevel: 62,
     ranks: [
       { note: 'The landing bites deeper.', damage: 14 },
       { note: 'A longer flight, a shorter wait.', dashTiles: 5.5, cooldownTicks: 210 },
@@ -5623,9 +6991,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'mirrorfall',
+    style: 'dualwield',
+    unlockLevel: 66,
+    ranks: [
+      { note: 'The landing strikes harder.', damage: 13 },
+      { note: 'The mirror spreads wider, colder.', radius: 2.2, status: { status: 'chill', power: 1, durationTicks: 50 } },
+      { note: 'Both of you fall again sooner.', damage: 15, cooldownTicks: 210 },
+    ],
+  },
+  {
     ability: 'the_shears',
     style: 'dualwield',
-    unlockLevel: 60,
+    unlockLevel: 70,
     ranks: [
       { note: 'The blades close harder.', damage: 13 },
       { note: 'They read the thread earlier.', executeBelow: { frac: 0.35, mult: 2.2 }, cooldownTicks: 190 },
@@ -5633,13 +7011,43 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'the_weave',
+    style: 'dualwield',
+    unlockLevel: 74,
+    ranks: [
+      { note: 'The threads pull tighter.', damage: 6 },
+      { note: 'The loom reaches wider.', arc: 1.6, range: 2.4 },
+      { note: 'The weft runs red.', cooldownTicks: 190, status: { status: 'bleed', power: 1, durationTicks: 40 } },
+    ],
+  },
+  {
     ability: 'storm_of_two',
     style: 'dualwield',
-    unlockLevel: 75,
+    unlockLevel: 78,
     ranks: [
       { note: 'Each ring lands heavier.', damage: 7 },
       { note: 'A fourth ring joins the round.', pulses: 4, cooldownTicks: 260 },
       { note: 'The storm widens its round.', damage: 8, radius: 2.1 },
+    ],
+  },
+  {
+    ability: 'first_and_last',
+    style: 'dualwield',
+    unlockLevel: 82,
+    ranks: [
+      { note: 'The first cut opens wider.', damage: 14 },
+      { note: 'The door closes harder on the failing.', executeBelow: { frac: 0.35, mult: 2.2 } },
+      { note: 'First and last arrive together.', damage: 15, cooldownTicks: 180, castTicks: 22 },
+    ],
+  },
+  {
+    ability: 'hummingbird',
+    style: 'dualwield',
+    unlockLevel: 86,
+    ranks: [
+      { note: 'The visits land harder.', damage: 4 },
+      { note: 'The flower is further than it looks.', range: 10, projectileSpeed: 18 },
+      { note: 'A third wing joins the blur.', projectiles: 3 },
     ],
   },
   {
@@ -5674,9 +7082,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
-    ability: 'shoulder_check',
+    ability: 'measured_blow',
     style: 'combat',
     unlockLevel: 10,
+    ranks: [
+      { note: 'The measure lands heavier.', damage: 13 },
+      { note: 'The seam is read before the strike.', status: { status: 'sunder', power: 12, durationTicks: 60 } },
+      { note: 'Measured once now. Landed just the same.', damage: 14, cooldownTicks: 150, castTicks: 16 },
+    ],
+  },
+  {
+    ability: 'shoulder_check',
+    style: 'combat',
+    unlockLevel: 15,
     ranks: [
       { note: 'More weight behind the shoulder.', damage: 11 },
       { note: 'A longer run at them.', damage: 12, dashTiles: 3.6 },
@@ -5690,9 +7108,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'drumbeat',
+    style: 'combat',
+    unlockLevel: 20,
+    ranks: [
+      { note: 'The drum strikes harder.', damage: 6 },
+      { note: 'The cadence holds a fourth bar.', channelTicks: 64 },
+      { note: 'The line is driven back to the beat.', radius: 2.3, knockback: 0.9 },
+    ],
+  },
+  {
     ability: 'war_shout',
     style: 'combat',
-    unlockLevel: 15,
+    unlockLevel: 25,
     ranks: [
       { note: 'Louder, and it hurts more.', damage: 11 },
       { note: 'The yard hears it further out.', damage: 11, radius: 2.7 },
@@ -5705,9 +7133,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'thrown_iron',
+    style: 'combat',
+    unlockLevel: 30,
+    ranks: [
+      { note: 'The iron lands harder.', damage: 13 },
+      { note: 'The throw carries further.', range: 11, projectileSpeed: 16 },
+      { note: 'Both hands throw now.', projectiles: 2, spreadArc: 0.15, cooldownTicks: 160, castTicks: 18 },
+    ],
+  },
+  {
     ability: 'second_breath',
     style: 'combat',
-    unlockLevel: 20,
+    unlockLevel: 35,
     ranks: [
       { note: 'A deeper pull of air.', self: { heal: 14, speedMult: 1.1, durationTicks: 100 } },
       { note: 'The legs get their share.', self: { heal: 16, speedMult: 1.12, durationTicks: 100 } },
@@ -5718,9 +7156,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'ironbreath',
+    style: 'combat',
+    unlockLevel: 40,
+    ranks: [
+      { note: 'The breath bites colder.', damage: 6 },
+      { note: 'The cold keeps them longer and the lane runs wider.', width: 0.8, status: { status: 'chill', power: 1, durationTicks: 60 } },
+      { note: 'The exhale holds a fourth count.', channelTicks: 64, cooldownTicks: 200 },
+    ],
+  },
+  {
     ability: 'loose_iron',
     style: 'combat',
-    unlockLevel: 30,
+    unlockLevel: 45,
     ranks: [
       { note: 'Heavier iron in the hand.', damage: 6 },
       { note: 'A fourth thing finds your fingers.', projectiles: 4 },
@@ -5731,9 +7179,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'fifth_road',
+    style: 'combat',
+    unlockLevel: 50,
+    ranks: [
+      { note: 'The road hits harder.', damage: 14 },
+      { note: 'The fifth road runs further.', dashTiles: 5.5 },
+      { note: 'The toll is taken quicker.', damage: 15, cooldownTicks: 200 },
+    ],
+  },
+  {
     ability: 'hold_fast',
     style: 'combat',
-    unlockLevel: 40,
+    unlockLevel: 54,
     ranks: [
       { note: 'The stance sets deeper.', self: { armor: 5, shieldHp: 10, durationTicks: 140 } },
       { note: 'Held longer.', self: { armor: 5, shieldHp: 12, durationTicks: 160 } },
@@ -5744,9 +7202,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'old_thunder',
+    style: 'combat',
+    unlockLevel: 58,
+    ranks: [
+      { note: 'The thunder lands harder.', damage: 5 },
+      { note: 'The storm reaches wider, and holds.', arc: 1.5, status: { status: 'shock', power: 1, durationTicks: 40 } },
+      { note: 'The old storm comes back sooner.', cooldownTicks: 190 },
+    ],
+  },
+  {
     ability: 'break_the_line',
     style: 'combat',
-    unlockLevel: 50,
+    unlockLevel: 62,
     ranks: [
       { note: 'More of you arrives at once.', damage: 15 },
       { note: 'The line bends further back.', damage: 16, knockback: 2.2 },
@@ -5759,9 +7227,19 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'gathered_breath',
+    style: 'combat',
+    unlockLevel: 66,
+    ranks: [
+      { note: 'The breath lands heavier.', damage: 14 },
+      { note: 'The burst takes the whole square.', radius: 2.9, knockback: 1.3 },
+      { note: 'Gathered quicker. Loosed just as whole.', damage: 15, cooldownTicks: 190, castTicks: 22 },
+    ],
+  },
+  {
     ability: 'the_opening',
     style: 'combat',
-    unlockLevel: 60,
+    unlockLevel: 70,
     ranks: [
       { note: 'The answer arrives heavier.', damage: 15 },
       { note: 'Sharper eyes, sharper price.', damage: 16 },
@@ -5769,13 +7247,43 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ],
   },
   {
+    ability: 'long_watch',
+    style: 'combat',
+    unlockLevel: 74,
+    ranks: [
+      { note: 'The watch strikes harder.', damage: 5 },
+      { note: 'The ground covered grows.', radius: 2.5 },
+      { note: 'The cold certainty settles on them.', cooldownTicks: 230, status: { status: 'chill', power: 1, durationTicks: 50 } },
+    ],
+  },
+  {
     ability: 'no_quarter',
     style: 'combat',
-    unlockLevel: 75,
+    unlockLevel: 78,
     ranks: [
       { note: 'You keep more of what you take.', drainFrac: 0.3 },
       { note: 'Each refusal lands harder.', damage: 6, drainFrac: 0.3 },
       { note: 'The fight feeds you as fast as it costs them.', damage: 6, drainFrac: 0.4 },
+    ],
+  },
+  {
+    ability: 'scarworn',
+    style: 'combat',
+    unlockLevel: 82,
+    ranks: [
+      { note: 'The receipts collect deeper.', damage: 15 },
+      { note: 'The taking is thorough.', drainFrac: 0.3 },
+      { note: 'The scars answer at once.', damage: 16, cooldownTicks: 180, castTicks: 22 },
+    ],
+  },
+  {
+    ability: 'last_lesson',
+    style: 'combat',
+    unlockLevel: 86,
+    ranks: [
+      { note: 'The lesson lands harder.', damage: 5 },
+      { note: 'The stunned silence holds the room.', status: { status: 'shock', power: 1, durationTicks: 30 } },
+      { note: 'A third student is called on.', chainTargets: 3 },
     ],
   },
   {
@@ -5824,7 +7332,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     ranks: [
       { note: 'Each shaft means the NO harder.', damage: 7 },
       { note: 'A fifth shaft joins the answer.', projectiles: 5 },
-      { note: 'The wall holds; they do not.', damage: 8, knockback: 2.0, cooldownTicks: 180 },
+      { note: 'The wall holds; they do not.', damage: 9, knockback: 2.0, cooldownTicks: 180 },
     ],
   },
   {
@@ -5884,7 +7392,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
       { note: 'The circle widens to fit four schools.', damage: 13, radius: 2.5 },
       {
         note: 'All four roads, walked at once.',
-        damage: 14,
+        damage: 15,
         radius: 2.5,
         self: { speedMult: 1.14, armor: 2, durationTicks: 100 },
       },

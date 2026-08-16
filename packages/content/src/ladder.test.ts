@@ -100,16 +100,67 @@ test('THE SHORTENED CLIMB: the rank clock masters every art exactly by 99', () =
   }
 });
 
-test('THE LONG ROAD: ten-art schools climb 5 to 90 on the widening stride', () => {
-  const RUNGS = [5, 10, 15, 20, 30, 40, 50, 60, 75, 90];
-  for (const style of ['combat', 'archery', 'sneak', 'twohand', 'shield', 'dualwield']) {
+/**
+ * THE SECOND BREATH: every combat school walks the same twenty-seat
+ * road onehand and arx opened — founding arts on the odd stride, the
+ * breath wave interleaved, the capstone crowning at 90. One pinned
+ * table per school: the deliberate record of what stands.
+ */
+const SECOND_BREATH_LADDERS: Record<string, ReadonlyArray<readonly [string, number]>> = {
+  archery: [
+    ['tumble_shot', 5], ['kingshot', 10], ['longshot', 15], ['stringsong', 20],
+    ['rain_of_arrows', 25], ['hawks_hour', 30], ['snare_shot', 35], ['winterflight', 40],
+    ['ricochet', 45], ['emberhead', 50], ['twin_strike', 54], ['skyloom', 58],
+    ['skyfall_shot', 62], ['gloamshaft', 66], ['phantom_flight', 70], ['harrier', 74],
+    ['storm_of_shafts', 78], ['zenith', 82], ['crowsong', 86], ['arrow_tempest', 90],
+  ],
+  sneak: [
+    ['rend', 5], ['opened_vein', 10], ['ghost_step', 15], ['threadwork', 20],
+    ['smoke_bomb', 25], ['nightshade_kiss', 30], ['caltrops', 35], ['quiet_knife', 40],
+    ['fan_of_knives', 45], ['redwork', 50], ['envenom', 54], ['gallows_thread', 58],
+    ['feint_double', 62], ['widows_draw', 66], ['exposing_strike', 70], ['bloodletting', 74],
+    ['night_fangs', 78], ['lights_out', 82], ['red_hour', 86], ['thousand_cuts', 90],
+  ],
+  shield: [
+    ['shield_bash', 5], ['iron_toll', 10], ['set_the_wall', 15], ['grindstone', 20],
+    ['shield_rush', 25], ['doorfall', 30], ['draw_iron', 35], ['held_gate', 40],
+    ['shield_roof', 45], ['sunbrass', 50], ['turned_blow', 54], ['millwall', 58],
+    ['rampart_break', 62], ['anchorfall', 66], ['wheel_of_iron', 70], ['patient_wall', 74],
+    ['hold_the_line', 78], ['standing_sun', 82], ['winterhold', 86], ['unbroken', 90],
+  ],
+  twohand: [
+    ['wide_swath', 5], ['fell_timber', 10], ['haft_check', 15], ['quarry_work', 20],
+    ['iron_pendulum', 25], ['forgefall', 30], ['fault_line', 35], ['wheelbreaker', 40],
+    ['colossus_stance', 45], ['gravedigger', 50], ['skysunder', 54], ['ore_song', 58],
+    ['executioners_arc', 62], ['skyweight', 66], ['avalanche', 70], ['long_lever', 74],
+    ['breaker_charge', 78], ['sunhammer', 82], ['worlds_rim', 86], ['titans_verdict', 90],
+  ],
+  dualwield: [
+    ['twin_cut', 5], ['two_bells', 10], ['heron_step', 15], ['ribbonwork', 20],
+    ['crossed_throw', 25], ['twin_moons', 30], ['mirrored_hand', 35], ['silver_reel', 40],
+    ['turning_reel', 45], ['matched_flame', 50], ['red_ribbons', 54], ['stormstitch', 58],
+    ['swallows_dive', 62], ['mirrorfall', 66], ['the_shears', 70], ['the_weave', 74],
+    ['storm_of_two', 78], ['first_and_last', 82], ['hummingbird', 86], ['hundred_hands', 90],
+  ],
+  combat: [
+    ['first_blood', 5], ['measured_blow', 10], ['shoulder_check', 15], ['drumbeat', 20],
+    ['war_shout', 25], ['thrown_iron', 30], ['second_breath', 35], ['ironbreath', 40],
+    ['loose_iron', 45], ['fifth_road', 50], ['hold_fast', 54], ['old_thunder', 58],
+    ['break_the_line', 62], ['gathered_breath', 66], ['the_opening', 70], ['long_watch', 74],
+    ['no_quarter', 78], ['scarworn', 82], ['last_lesson', 86], ['the_long_fight', 90],
+  ],
+};
+
+test('THE SECOND BREATH: every combat school holds exactly its authored twenty seats', () => {
+  for (const [style, table] of Object.entries(SECOND_BREATH_LADDERS)) {
     const arts = techniquesFor(style).filter((t) => !t.hidden);
     assert.deepEqual(
-      arts.map((t) => t.unlockLevel),
-      RUNGS,
-      `${style} ladder must fill every rung in order`,
+      arts.map((t) => [t.ability, t.unlockLevel]),
+      table.map((r) => [...r]),
+      `the ${style} ladder is exactly its authored roster`,
     );
-    assert.equal(new Set(arts.map((t) => t.ability)).size, RUNGS.length);
+    assert.equal(new Set(arts.map((t) => t.ability)).size, arts.length);
+    assertBreathWave(style);
   }
 });
 

@@ -602,6 +602,321 @@ export const BREATH_DIALECTS: Record<string, BreathDialect> = {
   haunch_gnaw: {
     charge: (c, x, y) => blood.deployments.drip!(c, x, y, { scale: 0.55, dur: 0.9 }),
   },
+
+  // ------------- THE SECOND BREATH — the archery gathers and notes
+  // Kingshot: the planted draw — grit shivers off the stance while
+  // the string comes all the way back.
+  kingshot: {
+    charge: (c, x, y, o) =>
+      dust.deployments.skirt!(c, x, y, { radius: Math.max(0.35, o.radius * 0.5), scale: 0.55, dur: 0.7 }),
+  },
+  // Stringsong: the string hums — crackle ticking the bow's reach for
+  // as long as the note is held.
+  stringsong: {
+    note: (c, x, y, o) =>
+      storm.deployments.crackle!(c, x, y, { radius: o.radius * 0.7, scale: 0.55, dur: 1.2 }),
+  },
+  // Hawk's Hour: the light comes down first — thin rain of it while
+  // the field is marked.
+  hawks_hour: {
+    charge: (c, x, y, o) =>
+      radiance.deployments.rain!(c, x, y, { radius: o.radius * 0.7, scale: 0.5, dur: 0.7 }),
+  },
+  // Winterflight: the lane fogs — cold wind holding the corridor
+  // while the shafts ride it.
+  winterflight: {
+    note: (c, x, y, o) =>
+      frost.deployments.fog!(c, x, y, { radius: o.radius * 0.8, scale: 0.55, dur: 1.2 }),
+  },
+  // Emberhead: the tips take fire — a fan of small flame off the
+  // nocked pair as the draw settles.
+  emberhead: {
+    charge: (c, x, y, o) =>
+      fire.deployments.fan!(c, x, y, { radius: o.radius * 0.5, scale: 0.45 + (1.5 - o.radius) * 0.4, dur: 0.7 }),
+  },
+  // Skyloom: wind at the feet while the shuttle flies.
+  skyloom: {
+    note: (c, x, y, o) =>
+      dust.deployments.skirt!(c, x, y, { radius: o.radius * 0.7, scale: 0.5, dur: 1.2 }),
+  },
+  // Gloamshaft: the dark gathers along the drawn line.
+  gloamshaft: {
+    charge: (c, x, y, o) =>
+      shadow.deployments.veil!(c, x, y, { radius: o.radius * 0.7, scale: 0.45 + (1.5 - o.radius) * 0.4, dur: 0.7 }),
+  },
+  // Harrier: the circuit hums — small arcs riding the wing's ring.
+  harrier: {
+    note: (c, x, y, o) =>
+      storm.deployments.arc!(c, x, y, { radius: o.radius * 0.8, scale: 0.5, dur: 1.2 }),
+  },
+  // Zenith: noon assembles overhead, tightening as the loose nears.
+  zenith: {
+    charge: (c, x, y, o) =>
+      radiance.deployments.halo!(c, x, y, { radius: o.radius * 0.8, scale: 0.45 + (1.5 - o.radius) * 0.5, dur: 0.7 }),
+  },
+  // Crowsong: the flock's shadow reaches the field before they do.
+  crowsong: {
+    note: (c, x, y, o) =>
+      shadow.deployments.tendrils!(c, x, y, { radius: o.radius * 0.8, scale: 0.55, dur: 1.2 }),
+  },
+
+  // --------------- THE SECOND BREATH — the sneak gathers and notes
+  // Opened Vein: the blade weeps first.
+  opened_vein: {
+    charge: (c, x, y) => blood.deployments.drip!(c, x, y, { scale: 0.5, dur: 0.7 }),
+  },
+  // Threadwork: the quiet work under its veil.
+  threadwork: {
+    note: (c, x, y, o) =>
+      shadow.deployments.veil!(c, x, y, { radius: o.radius * 0.7, scale: 0.5, dur: 1.2 }),
+  },
+  // Nightshade Kiss: venom beads at the dart's tip as the breath holds.
+  nightshade_kiss: {
+    charge: (c, x, y, o) =>
+      venom.deployments.bead!(c, x, y, { radius: o.radius * 0.5, scale: 0.5 + (1.5 - o.radius) * 0.35, dur: 0.7 }),
+  },
+  // The Quiet Knife: hush laid down the corridor, smoke thin over it.
+  quiet_knife: {
+    note: (c, x, y, o) =>
+      smoke.deployments.veil!(c, x, y, { radius: o.radius * 0.8, scale: 0.5, dur: 1.2 }),
+  },
+  // Redwork: the craft drinks inward while the breath is held.
+  redwork: {
+    charge: (c, x, y, o) =>
+      blood.deployments.drink!(c, x, y, { radius: o.radius * 0.7, scale: 0.45 + (1.5 - o.radius) * 0.4, dur: 0.7 }),
+  },
+  // Gallows Thread: the drop opens under the held knot.
+  gallows_thread: {
+    note: (c, x, y, o) =>
+      shadow.deployments.door!(c, x, y, { radius: o.radius * 0.6, scale: 0.5, dur: 1.2 }),
+  },
+  // Widow's Draw: the needles bead as the fan is dealt.
+  widows_draw: {
+    charge: (c, x, y, o) =>
+      venom.deployments.drip!(c, x, y, { radius: o.radius * 0.5, scale: 0.5, dur: 0.7 }),
+  },
+  // Bloodletting: the steady taking, drop by counted drop.
+  bloodletting: {
+    note: (c, x, y) => blood.deployments.drip!(c, x, y, { scale: 0.6, dur: 1.1 }),
+  },
+  // Lights Out: the dark blooms where the light was.
+  lights_out: {
+    charge: (c, x, y, o) =>
+      shadow.deployments.bloom!(c, x, y, { radius: o.radius * 0.7, scale: 0.45 + (1.5 - o.radius) * 0.4, dur: 0.7 }),
+  },
+  // The Red Hour: the hour drinks for as long as it is held.
+  red_hour: {
+    note: (c, x, y, o) =>
+      blood.deployments.drink!(c, x, y, { radius: o.radius * 0.8, scale: 0.55, dur: 1.2 }),
+  },
+
+  // -------------- THE SECOND BREATH — the shield gathers and notes
+  // Iron Toll: charge converges on the raised boss before the ring.
+  iron_toll: {
+    charge: (c, x, y, o) =>
+      storm.deployments.charge!(c, x, y, { radius: o.radius, scale: 0.5 + (1.5 - o.radius) * 0.4, dur: 0.7 }),
+  },
+  // Grindstone: grit off the turning rim, pass after pass.
+  grindstone: {
+    note: (c, x, y, o) =>
+      dust.deployments.gouge!(c, x, y, { radius: o.radius * 0.6, scale: 0.55, dur: 1.2 }),
+  },
+  // Doorfall: the wall's dust stirs as it is lifted.
+  doorfall: {
+    charge: (c, x, y, o) =>
+      dust.deployments.billow!(c, x, y, { radius: o.radius * 0.7, scale: 0.45 + (1.5 - o.radius) * 0.4, dur: 0.7 }),
+  },
+  // Held Gate: rime grows along the braced line.
+  held_gate: {
+    note: (c, x, y, o) =>
+      frost.deployments.bloom!(c, x, y, { radius: o.radius * 0.7, scale: 0.55, dur: 1.2 }),
+  },
+  // Sunbrass: noon gathers on the boss.
+  sunbrass: {
+    charge: (c, x, y, o) =>
+      radiance.deployments.bloom!(c, x, y, { radius: o.radius * 0.7, scale: 0.45 + (1.5 - o.radius) * 0.45, dur: 0.7 }),
+  },
+  // Millwall: the thrown water churns at the wall's rim.
+  millwall: {
+    note: (c, x, y, o) =>
+      water.deployments.churn!(c, x, y, { radius: o.radius * 0.8, scale: 0.55, dur: 1.2 }),
+  },
+  // Anchorfall: the sea readies to part.
+  anchorfall: {
+    charge: (c, x, y, o) =>
+      water.deployments.churn!(c, x, y, { radius: o.radius * 0.6, scale: 0.45 + (1.5 - o.radius) * 0.4, dur: 0.7 }),
+  },
+  // The Patient Wall: the slow dust of the advance.
+  patient_wall: {
+    note: (c, x, y, o) =>
+      dust.deployments.billow!(c, x, y, { radius: o.radius * 0.7, scale: 0.5, dur: 1.2 }),
+  },
+  // The Standing Sun: thin shafts assemble on the planting ground.
+  standing_sun: {
+    charge: (c, x, y, o) =>
+      radiance.deployments.shafts!(c, x, y, { radius: o.radius * 0.6, scale: 0.4 + (1.5 - o.radius) * 0.4, dur: 0.7 }),
+  },
+  // Winterhold: spears of cold stand watch while the court holds.
+  winterhold: {
+    note: (c, x, y, o) =>
+      frost.deployments.lance!(c, x, y, { radius: o.radius * 0.8, scale: 0.55, dur: 1.2 }),
+  },
+
+  // ------------- THE SECOND BREATH — the twohand gathers and notes
+  // Fell Timber: chips fly as the axe winds all the way back.
+  fell_timber: {
+    charge: (c, x, y, o) =>
+      dust.deployments.kick!(c, x, y, { radius: o.radius * 0.6, scale: 0.5, dur: 0.7 }),
+  },
+  // Quarry Work: each swing thuds into the same seam.
+  quarry_work: {
+    note: (c, x, y, o) =>
+      dust.deployments.slam!(c, x, y, { radius: o.radius * 0.7, scale: 0.55, dur: 1.2 }),
+  },
+  // Forgefall: the forge-glow pools at the feet before the leap.
+  forgefall: {
+    charge: (c, x, y, o) =>
+      fire.deployments.pool!(c, x, y, { radius: o.radius * 0.6, scale: 0.45 + (1.5 - o.radius) * 0.4, dur: 0.7 }),
+  },
+  // The Wheelbreaker: the ram's dust rolls ahead of it.
+  wheelbreaker: {
+    note: (c, x, y, o) =>
+      dust.deployments.billow!(c, x, y, { radius: o.radius * 0.8, scale: 0.55, dur: 1.2 }),
+  },
+  // Gravedigger: the ground opens a little early.
+  gravedigger: {
+    charge: (c, x, y, o) =>
+      dust.deployments.gouge!(c, x, y, { radius: o.radius * 0.6, scale: 0.45 + (1.5 - o.radius) * 0.4, dur: 0.7 }),
+  },
+  // Ore Song: chips ring off the seam on every held note.
+  ore_song: {
+    note: (c, x, y, o) =>
+      dust.deployments.kick!(c, x, y, { radius: o.radius * 0.7, scale: 0.55, dur: 1.2 }),
+  },
+  // Skyweight: the air fills with lifted grit while the sky is raised.
+  skyweight: {
+    charge: (c, x, y, o) =>
+      dust.deployments.billow!(c, x, y, { radius: o.radius * 0.8, scale: 0.5 + (1.5 - o.radius) * 0.4, dur: 0.7 }),
+  },
+  // The Long Lever: the ground gouges where the bar bears.
+  long_lever: {
+    note: (c, x, y, o) =>
+      dust.deployments.gouge!(c, x, y, { radius: o.radius * 0.7, scale: 0.5, dur: 1.2 }),
+  },
+  // Sunhammer: heat rings the blade as the arc is gathered.
+  sunhammer: {
+    charge: (c, x, y, o) =>
+      fire.deployments.ring!(c, x, y, { radius: o.radius * 0.6, scale: 0.45 + (1.5 - o.radius) * 0.45, dur: 0.7 }),
+  },
+  // World's Rim: the cold of the far edge fogs the field it grinds.
+  worlds_rim: {
+    note: (c, x, y, o) =>
+      frost.deployments.fog!(c, x, y, { radius: o.radius * 0.8, scale: 0.55, dur: 1.2 }),
+  },
+
+  // ----------- THE SECOND BREATH — the dualwield gathers and notes
+  // Two Bells: both edges crackle as the peal is held back.
+  two_bells: {
+    charge: (c, x, y, o) =>
+      storm.deployments.crackle!(c, x, y, { radius: o.radius * 0.6, scale: 0.5 + (1.5 - o.radius) * 0.35, dur: 0.7 }),
+  },
+  // Ribbonwork: the ribbons trail red while the crossing holds.
+  ribbonwork: {
+    note: (c, x, y, o) =>
+      blood.deployments.spray!(c, x, y, { radius: o.radius * 0.7, scale: 0.5, dur: 1.2 }),
+  },
+  // Twin Moons: the pale pair rises before the throw.
+  twin_moons: {
+    charge: (c, x, y, o) =>
+      radiance.deployments.halo!(c, x, y, { radius: o.radius * 0.7, scale: 0.45 + (1.5 - o.radius) * 0.4, dur: 0.7 }),
+  },
+  // Silver Reel: rime gathers on the spinning circle.
+  silver_reel: {
+    note: (c, x, y, o) =>
+      frost.deployments.bloom!(c, x, y, { radius: o.radius * 0.7, scale: 0.55, dur: 1.2 }),
+  },
+  // Matched Flame: the wicks sputter while the breath is held.
+  matched_flame: {
+    charge: (c, x, y, o) =>
+      fire.deployments.gobbets!(c, x, y, { radius: o.radius * 0.5, scale: 0.45 + (1.5 - o.radius) * 0.4, dur: 0.7 }),
+  },
+  // Stormstitch: the seam arcs from hand to hand while it is sewn.
+  stormstitch: {
+    note: (c, x, y, o) =>
+      storm.deployments.arc!(c, x, y, { radius: o.radius * 0.7, scale: 0.55, dur: 1.2 }),
+  },
+  // Mirrorfall: the mirror mists before you both land.
+  mirrorfall: {
+    charge: (c, x, y, o) =>
+      frost.deployments.fog!(c, x, y, { radius: o.radius * 0.6, scale: 0.45 + (1.5 - o.radius) * 0.4, dur: 0.7 }),
+  },
+  // The Weave: the threads creep across the loom while it works.
+  the_weave: {
+    note: (c, x, y, o) =>
+      smoke.deployments.creep!(c, x, y, { radius: o.radius * 0.7, scale: 0.5, dur: 1.2 }),
+  },
+  // First and Last: the door's light gathers at the threshold.
+  first_and_last: {
+    charge: (c, x, y, o) =>
+      radiance.deployments.halo!(c, x, y, { radius: o.radius * 0.6, scale: 0.45 + (1.5 - o.radius) * 0.45, dur: 0.7 }),
+  },
+  // Hummingbird: the wind of wings at the feet, for as long as they beat.
+  hummingbird: {
+    note: (c, x, y, o) =>
+      dust.deployments.skirt!(c, x, y, { radius: o.radius * 0.6, scale: 0.55, dur: 1.2 }),
+  },
+
+  // ------------- THE SECOND BREATH — the combat gathers and notes
+  // Measured Blow: the planted stance takes its measure.
+  measured_blow: {
+    charge: (c, x, y, o) =>
+      dust.deployments.skirt!(c, x, y, { radius: Math.max(0.35, o.radius * 0.55), scale: 0.5, dur: 0.7 }),
+  },
+  // Drumbeat: the beat thuds through the ground on the count.
+  drumbeat: {
+    note: (c, x, y, o) =>
+      dust.deployments.slam!(c, x, y, { radius: o.radius * 0.7, scale: 0.5, dur: 1.2 }),
+  },
+  // Thrown Iron: scrap scuffed up into the throwing hand.
+  thrown_iron: {
+    charge: (c, x, y, o) =>
+      dust.deployments.kick!(c, x, y, { radius: o.radius * 0.5, scale: 0.45 + (1.5 - o.radius) * 0.4, dur: 0.7 }),
+  },
+  // Ironbreath: the exhale fogs the lane for as long as it lasts.
+  ironbreath: {
+    note: (c, x, y, o) =>
+      frost.deployments.fog!(c, x, y, { radius: o.radius * 0.7, scale: 0.5, dur: 1.2 }),
+  },
+  // The Fifth Road: the untaught way reaches out of the dark.
+  fifth_road: {
+    charge: (c, x, y, o) =>
+      shadow.deployments.tendrils!(c, x, y, { radius: o.radius * 0.6, scale: 0.45 + (1.5 - o.radius) * 0.4, dur: 0.7 }),
+  },
+  // Old Thunder: the standing field hums around the remembered storm.
+  old_thunder: {
+    note: (c, x, y, o) =>
+      storm.deployments.static!(c, x, y, { radius: o.radius * 0.8, scale: 0.55, dur: 1.2 }),
+  },
+  // The Gathered Breath: the gold of it blooms as the chest fills.
+  gathered_breath: {
+    charge: (c, x, y, o) =>
+      radiance.deployments.bloom!(c, x, y, { radius: o.radius * 0.7, scale: 0.45 + (1.5 - o.radius) * 0.45, dur: 0.7 }),
+  },
+  // The Long Watch: the certainty settles low over the marked ground.
+  long_watch: {
+    note: (c, x, y, o) =>
+      smoke.deployments.creep!(c, x, y, { radius: o.radius * 0.7, scale: 0.5, dur: 1.2 }),
+  },
+  // Scarworn: the old wounds open first.
+  scarworn: {
+    charge: (c, x, y, o) =>
+      blood.deployments.spatter!(c, x, y, { radius: o.radius * 0.5, scale: 0.5, dur: 0.7 }),
+  },
+  // Last Lesson: the wire crackles from student to student.
+  last_lesson: {
+    note: (c, x, y, o) =>
+      storm.deployments.crackle!(c, x, y, { radius: o.radius * 0.7, scale: 0.55, dur: 1.2 }),
+  },
 };
 
 /**
