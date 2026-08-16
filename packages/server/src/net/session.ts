@@ -30,6 +30,21 @@ export class Session {
   rttMs = 0;
   private pingSentAt = 0;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
+  /**
+   * THE LIVE WIRE, server side: ws never times a peer out on its own,
+   * so a client that vanished without a FIN (dead route, closed
+   * laptop) would stand its body in the world until TCP gave up —
+   * minutes of a ghost holding aggro, blocking doorways, and eating
+   * snapshot writes. A ping already goes out every 3s; now the
+   * silence is counted, and three unanswered rounds (~9-12s) is the
+   * verdict. terminate() (not close — the peer can't handshake) fires
+   * the ordinary 'close' path, so the body enters the same reconnect
+   * grace an honest disconnect gets. The client's own 5s watchdog
+   * reconnects first and bindSession kicks this ghost anyway; this is
+   * the backstop for clients that never come back.
+   */
+  private awaitingPong = false;
+  private missedPongs = 0;
 
   /** Entities this client currently knows about (interest set). */
   readonly knownEntities = new Set<EntityId>();
@@ -101,15 +116,22 @@ export class Session {
     // it measures the true socket RTT; viewRttMs adds the simulated
     // part back so lag comp behaves the same in fake-lag testing.
     ws.on('pong', () => {
+      this.awaitingPong = false;
+      this.missedPongs = 0;
       if (this.pingSentAt === 0) return;
       const rtt = performance.now() - this.pingSentAt;
       this.rttMs = this.rttMs === 0 ? rtt : this.rttMs * 0.7 + rtt * 0.3;
     });
     this.pingTimer = setInterval(() => {
-      if (ws.readyState === ws.OPEN) {
-        this.pingSentAt = performance.now();
-        ws.ping();
+      if (ws.readyState !== ws.OPEN) return;
+      // Still waiting on the last round: the wire owes an answer.
+      if (this.awaitingPong && ++this.missedPongs >= 3) {
+        ws.terminate();
+        return;
       }
+      this.awaitingPong = true;
+      this.pingSentAt = performance.now();
+      ws.ping();
     }, 3000);
   }
 

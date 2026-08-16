@@ -66,6 +66,32 @@ export class Connection {
     return this.ws?.readyState === WebSocket.OPEN;
   }
 
+  /**
+   * THE LIVE WIRE's teardown: kill the socket NOW and report it closed,
+   * without waiting for the close handshake. A dead route rarely says
+   * goodbye — close() on a blackholed TCP can leave onclose unfired
+   * for minutes while the browser retransmits into the void, and the
+   * whole point of the watchdog is not to wait for that. Handlers
+   * detach first, so if the zombie socket's real close event ever does
+   * arrive it finds nobody listening and cannot double-fire the
+   * reconnect path.
+   */
+  abort(): void {
+    const ws = this.ws;
+    if (!ws) return;
+    this.ws = null;
+    ws.onopen = null;
+    ws.onmessage = null;
+    ws.onclose = null;
+    ws.onerror = null;
+    try {
+      ws.close();
+    } catch {
+      /* already failed — the goal was only to stop the retries */
+    }
+    this.handlers.onClose();
+  }
+
   send(msg: C2SMessage): void {
     if (this.isOpen) this.ws!.send(JSON.stringify(msg));
   }

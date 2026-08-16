@@ -778,6 +778,24 @@ export class ClientGame {
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private reconnectDelay = 500;
   private stopped = false;
+  /**
+   * THE LIVE WIRE: performance.now() of the last byte the server spoke
+   * — any message, snapshot, or chunk. In-game a healthy wire is never
+   * silent longer than one tick (the own body ships in every snapshot,
+   * THE QUIET WIRE notwithstanding), so this clock going stale IS the
+   * connection dying — including the death TCP never reports: a route
+   * change or dropped Wi-Fi leaves the socket reading "open" for
+   * minutes while the world stands frozen at its last sample. The
+   * watchdog in update() reads this and forces the reconnect the
+   * close event would never have delivered.
+   */
+  private lastS2CAt = 0;
+  /**
+   * Arrival stamp of the previous snapshot — the clock discipline's
+   * burst detector (see handleSnapshot): back-to-back arrivals are a
+   * stalled queue draining, not evidence about the remote clock.
+   */
+  private lastSnapArrivalAt = 0;
 
   constructor(
     private readonly input: InputManager,
@@ -1363,8 +1381,18 @@ export class ClientGame {
   }
 
   private openConnection(): void {
+    // THE LIVE WIRE: every S2C handler stamps the clock before it
+    // works — one wrapper here, so no future message type can forget.
+    const touch = <T>(handler: (arg: T) => void) => (arg: T): void => {
+      this.lastS2CAt = performance.now();
+      handler(arg);
+    };
     this.conn = new Connection({
       onOpen: () => {
+        // A fresh socket earns a fresh silence budget — the hello/
+        // welcome round must not inherit the stall that killed the
+        // last socket.
+        this.lastS2CAt = performance.now();
         this.conn!.send({
           t: 'hello',
           v: PROTOCOL_VERSION,
@@ -1379,11 +1407,11 @@ export class ClientGame {
         setTimeout(() => this.openConnection(), this.reconnectDelay);
         this.reconnectDelay = Math.min(this.reconnectDelay * 2, 5000);
       },
-      onMessage: (msg) => this.handleMessage(msg),
-      onSnapshot: (snap) => this.handleSnapshot(snap),
-      onChunk: (chunk) => this.handleChunk(chunk),
-      onTilePatch: (patch) => this.handleTilePatch(patch),
-      onDetailPatch: (patch) => this.handleDetailPatch(patch),
+      onMessage: touch((msg) => this.handleMessage(msg)),
+      onSnapshot: touch((snap) => this.handleSnapshot(snap)),
+      onChunk: touch((chunk) => this.handleChunk(chunk)),
+      onTilePatch: touch((patch) => this.handleTilePatch(patch)),
+      onDetailPatch: touch((patch) => this.handleDetailPatch(patch)),
     });
     this.conn.connect();
   }
@@ -3286,13 +3314,27 @@ export class ClientGame {
   private handleSnapshot(snap: Snapshot): void {
     this.serverTick = snap.serverTick;
     const snapTime = snap.serverTick * TICK_MS;
-    const offset = snapTime - performance.now();
+    const arrivedAt = performance.now();
+    const offset = snapTime - arrivedAt;
+    // THE DRAIN IS NOT THE CLOCK: snapshots landing back-to-back are a
+    // stalled queue emptying, not twenty independent reads of the
+    // remote timeline. A live 20Hz cadence spaces arrivals ~50ms; a
+    // drain delivers them within a millisecond of each other. Burst
+    // arrivals get their samples applied but carry no vote below —
+    // without this gate, a >1.3s stall's backlog walked bigDevRun to
+    // 20 MID-drain and snapped the clock onto a still-stale offset
+    // (one whole-world warp into the past), which then needed a second
+    // 20-sample run to snap back out (a second warp) — both at the
+    // exact moment the connection was recovering.
+    const spaced = arrivedAt - this.lastSnapArrivalAt > 5;
+    this.lastSnapArrivalAt = arrivedAt;
     // CLOCK DISCIPLINE. The offset estimate IS the remote timeline —
     // any wobble here is rubber-banding for every entity at once. Three
     // regimes: fast convergence while young; slew-limited micro-steps
     // (≤1ms per snapshot ≈ 20ms/s) in steady state so one delayed
     // burst can never warp time; and a sustained-jump snap (tab sleep,
-    // route change) once the deviation holds for a full second.
+    // route change) once the deviation holds for a full second of
+    // honestly-spaced arrivals.
     if (this.clockOffset === null) {
       this.clockOffset = offset;
       this.clockSamples = 1;
@@ -3300,10 +3342,13 @@ export class ClientGame {
       this.bigDevRun = 0;
     } else {
       const dev = offset - this.clockOffset;
-      // Arrival jitter feeds the adaptive interp delay.
-      this.jitterEwma += (Math.abs(dev) - this.jitterEwma) * 0.05;
+      // Arrival jitter feeds the adaptive interp delay — spaced
+      // arrivals only, or one drain burst would spike the EWMA to the
+      // 220ms delay cap and tax every remote body ~9 seconds of extra
+      // lag while it slewed back down.
+      if (spaced) this.jitterEwma += (Math.abs(dev) - this.jitterEwma) * 0.05;
       if (Math.abs(dev) > 300) {
-        if (++this.bigDevRun >= 20) {
+        if (spaced && ++this.bigDevRun >= 20) {
           this.clockOffset = offset; // sustained for ~1s: a real clock step
           this.clockSamples = 1;
           this.jitterEwma = 0;
@@ -3391,6 +3436,19 @@ export class ClientGame {
   }
 
   /**
+   * THE LIVE WIRE, read aloud: milliseconds since the server last
+   * spoke, while we believe ourselves in-game on an open socket — 0
+   * whenever that belief doesn't hold (login, reconnect, shutdown).
+   * The HUD reads this to name a stall the moment it starts
+   * (~1.5s), well before the 5s watchdog rules the wire dead: the
+   * frozen world should never be anonymous.
+   */
+  wireSilenceMs(now = performance.now()): number {
+    if (this.connStatus !== 'ingame' || !this.conn?.isOpen || this.lastS2CAt === 0) return 0;
+    return now - this.lastS2CAt;
+  }
+
+  /**
    * Server-NOW estimate — the projectile timeline. Arrows and bolts
    * render extrapolated to where the server actually HAS them, not
    * 100+ms in the past: your shot leaves the bow tracking its true
@@ -3410,10 +3468,29 @@ export class ClientGame {
   /** Fixed-timestep input sampling + prediction; called every frame. */
   update(now: number): void {
     if (this.lastUpdate === 0) this.lastUpdate = now;
-    const frameDt = Math.min(250, now - this.lastUpdate);
+    const rawDt = now - this.lastUpdate;
+    const frameDt = Math.min(250, rawDt);
     this.lastUpdate = now;
 
     if (this.ownEid === null || !this.conn?.isOpen) return;
+
+    // THE LIVE WIRE watchdog. In-game the server speaks every tick
+    // (the own body always ships), so five silent seconds on an
+    // "open" socket is a wire that died without a goodbye — Wi-Fi
+    // drop, route change, a mid-deploy box: TCP can sit on all of
+    // them for minutes while the world stands frozen at its last
+    // sample and prediction happily walks the own body through a
+    // fiction. Abort tears the socket down and reports it closed,
+    // which drops us into the ordinary reconnect path — backoff,
+    // THE THIN THREAD pill, and a server-side bindSession takeover
+    // that kicks the half-dead twin. A tab waking from sleep gets a
+    // one-second grace to hear the wire before the verdict counts:
+    // the frozen page never watched the silence it's blamed for.
+    if (rawDt > 1000) this.lastS2CAt = Math.max(this.lastS2CAt, now - 1000);
+    if (this.connStatus === 'ingame' && this.lastS2CAt > 0 && now - this.lastS2CAt > 5000) {
+      this.conn.abort();
+      return;
+    }
 
     // Self-reveal: the same disc the server marks, cleared here with
     // zero latency (the deterministic-reveal law).

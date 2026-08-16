@@ -192,6 +192,28 @@ let sessionUser: string | null = null;
 /** THE THIN THREAD: the reconnecting pill, live only while the socket is down. */
 let netPill: HTMLElement | null = null;
 
+/**
+ * One door for the pill: text shows it (creating on first need),
+ * null hides it. The thread has two voices now — "Connection
+ * unstable…" while the socket still reads open but the server has
+ * gone quiet (the frame loop speaks it from wireSilenceMs), and
+ * "Reconnecting…" once the watchdog or an honest close hands the
+ * socket to the backoff — so the same element must retell itself.
+ */
+function setNetPill(text: string | null): void {
+  if (text === null) {
+    netPill?.remove();
+    netPill = null;
+    return;
+  }
+  if (!netPill) {
+    netPill = document.createElement('div');
+    netPill.className = 'net-pill';
+    document.body.appendChild(netPill);
+  }
+  if (netPill.textContent !== text) netPill.textContent = text;
+}
+
 const input = new InputManager(canvas);
 const renderer = new Renderer(canvas);
 
@@ -1289,8 +1311,7 @@ const game = new ClientGame(input, {
   },
   onStatus: (status, detail) => {
     if (status === 'ingame') {
-      netPill?.remove();
-      netPill = null;
+      setNetPill(null);
       loginOverlay.classList.add('hidden');
       hud.classList.remove('hidden');
       if (game.sessionToken) localStorage.setItem('arx.token', game.sessionToken);
@@ -1357,12 +1378,7 @@ const game = new ClientGame(input, {
       chat.addLine({ channel: 'system', text: 'Connection lost. Reconnecting…' });
       // THE THIN THREAD: the world on screen is coasting on its last
       // truth until the socket returns — say so, without blocking it.
-      if (!netPill) {
-        netPill = document.createElement('div');
-        netPill.className = 'net-pill';
-        netPill.textContent = 'Reconnecting…';
-        document.body.appendChild(netPill);
-      }
+      setNetPill('Reconnecting…');
     } else if (status === 'connecting') {
       loginStatus.textContent = 'Connecting…';
       loginStatus.classList.remove('hidden');
@@ -3850,6 +3866,16 @@ function frame(now: number): void {
     !buildMode && renderer.lootHitTest(input.mouseX, input.mouseY) ? 'pointer' : '';
 
   game.update(now);
+  // THE THIN THREAD, stretched: the socket still reads open but the
+  // server has gone quiet — snapshots stalled, the world coasting on
+  // its last truth. Name it at 1.5s so the player knows the freeze is
+  // the wire, not the game; the 5s watchdog in game.update() rules
+  // the wire dead and flips this same pill to "Reconnecting…". Only
+  // the in-game state is ours to speak for — the reconnect voice owns
+  // the pill everywhere else.
+  if (game.connStatus === 'ingame') {
+    setNetPill(game.wireSilenceMs(now) > 1500 ? 'Connection unstable…' : null);
+  }
   renderer.render(game, frameDt);
   hotbar.update(game);
   belt.update(game);
