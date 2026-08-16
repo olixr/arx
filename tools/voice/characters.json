@@ -944,5 +944,60 @@
     "where": "lowhall",
     "direction": "Ink on his fingers and a fence's patience in his eyes. The books balance every night, which is more than the bank can say about its conscience. Smooth, unhurried, faintly amused. Provenance is a story, and he pays by weight, not by story.",
     "ttsVoice": "rpg_fantasy/male/gazlow_m"
+  },
+  "captain_stellan": {
+    "where": "pinewatch",
+    "direction": "Captain of the Northguard; eleven years bored at the fort that has never been attacked, and proud of it. Clipped command grammar with a dry self-aware edge; doctrine quoted like scripture; jokes delivered as filed reports.",
+    "ttsVoice": "rpg_fantasy/male/draven_m"
+  },
+  "quartermaster_berget": {
+    "where": "pinewatch",
+    "direction": "Quartermaster; sells the makings, never the made, at a margin she calls the wall tax. Requisition forms made flesh: cool, exact, unhurried; explains a thing precisely once and says so.",
+    "ttsVoice": "rpg_fantasy/female/nightborne_f"
+  },
+  "serjeant_ove": {
+    "where": "pinewatch",
+    "direction": "Drill serjeant, Pinewatch-born and Crown-sworn; the fort's one bridge to the town. Drill-yard bark softened by inn-kitchen roots; counts things aloud; corrections land warm.",
+    "ttsVoice": "rpg_fantasy/male/ilidan_m"
+  },
+  "houndmistress_ranka": {
+    "where": "pinewatch",
+    "direction": "Houndmistress of the line bred from Bern's dog, the one that came back across the ice. Talks to hounds in full sentences and people in most of one; short, certain, weathered; zero sentiment, total devotion.",
+    "ttsVoice": "rpg_fantasy/female/witherbard_f"
+  },
+  "fletcher_espen": {
+    "where": "pinewatch",
+    "direction": "Fletcher; strings every bow with the story of the tree it was and keeps the year's best dozen back. Quiet workshop musing; gentle, unhurried; deflects personal questions by making a sale.",
+    "ttsVoice": "rpg_fantasy/male/belf_m"
+  },
+  "hunter_kolbrun": {
+    "where": "pinewatch",
+    "direction": "Master hunter; keeps the cull count and knows what it means that the wolves are leaving. Field-report economy, low and level; scorn for sport, reverence for the licence; never raises her voice at the wood.",
+    "ttsVoice": "rpg_fantasy/female/hush_morrow"
+  },
+  "herbalist_maren": {
+    "where": "pinewatch",
+    "direction": "Herbalist; the salve every axe hand swears by. Carried over the Wolfwinter ice at four years old; counts the uncounted every Frostfall. Brisk healer's triage warming into slow, exact memory; declines pity before it is offered.",
+    "ttsVoice": "rpg_fantasy/female/faerin_f"
+  },
+  "ironmaster_torger": {
+    "where": "pinewatch",
+    "direction": "Ironmaster of the Ore Cut; found the seam the year the fort went up, which everyone agrees is a coincidence. Slow geologic patience; treats arguments as weather; working-man gravel.",
+    "ttsVoice": "rpg_fantasy/male/ember_tadhg"
+  },
+  "drover_sylvi": {
+    "where": "pinewatch",
+    "direction": "Drover of the Hartway; walks the fell road both ways and carries both towns' gossip at drover rates. Road-rhythm chatter, warm and quick; one free warning per stranger, the second costs a drink.",
+    "ttsVoice": "rpg_fantasy/female/sunny_posy"
+  },
+  "pinewatch_northguard": {
+    "where": "pinewatch",
+    "direction": "Pooled Crown pass post; young enough to think the quiet is normal. Gate-rules flat; orders quoted verbatim; pride kept just under regulation.",
+    "ttsVoice": "rpg_fantasy/male/solder_m"
+  },
+  "pinewatch_hunter": {
+    "where": "pinewatch",
+    "direction": "Pooled cull hunter; patched leathers and a tally string with fewer knots than last year. Trail-quiet clip; says the count and stops talking.",
+    "ttsVoice": "rpg_fantasy/male/arathi_m"
   }
 }

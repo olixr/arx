@@ -87,6 +87,23 @@ it replaced. It is a sort key, not a measurement.
 
 ## Casting
 
+**The runtime truth is `tools/voice/characters.json`** — the tables
+below are a point-in-time reference and predate the 2026-08-16 great
+recast; trust the JSON when they disagree.
+
+**PINEWATCH REMADE wave (2026-08-16, +11 throats, all cast in the
+JSON):** Stellan `draven_m` (the Crown-garrison weight, Ottar's
+register two forts over), Berget `nightborne_f` (the keeper's cool
+formality at the requisition window), Ove `ilidan_m` (watch-bark),
+Ranka `witherbard_f` (weathered and terse), Espen `belf_m` (the
+gardener's gentleness, for a man who talks to trees), Kolbrun
+`hush_morrow` (low field-report calm), Maren `faerin_f` (the sage
+register), Torger `ember_tadhg` (the smeltmaster precedent), Sylvi
+`sunny_posy` (road-warm chatter), northguard pool `solder_m` (the
+standing soldier-pool voice), hunter pool `arathi_m` (outdoor clip).
+Sex-checked against the defs; no voice repeats within Pinewatch's 29
+entries.
+
 `rpg_fantasy/` is split male/female on disk and that split drives casting.
 Check it by ear when a sample is added: `garrosh_f` sat in `female/` at 119 Hz
 until 2026-08-11 and is now `male/garrosh_m`. `highmountain_f` (118 Hz) is
