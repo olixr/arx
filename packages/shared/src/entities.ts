@@ -61,6 +61,21 @@ export enum PoseState {
    * derives gait from motion exactly as it does for beasts.
    */
   Ride = 17,
+  /**
+   * THE PATIENT LINE: fishing — its own byte, so a body needs no rod
+   * in its equip (NPC anglers at routine work stops) and no nearby
+   * node guess for watchers to read the verb. The client aims the
+   * cast at the nearest fishing water and conjures a plain rod when
+   * the hands are empty.
+   */
+  Fish = 18,
+  /**
+   * Building or demolishing — the kneeling mallet work. Split from
+   * Gather so a remote builder never squares up to whatever tree
+   * happens to stand nearby and swings an axe at it (the old
+   * one-byte overload; docs/work-cycles-plan.md Phase 2).
+   */
+  Build = 19,
 }
 
 /**

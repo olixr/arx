@@ -1104,6 +1104,7 @@ function currentScreen(): (typeof SCREEN_ORDER)[number] | null {
   if (questLog.isOpen) return 'quests';
   if (repScreen.isOpen) return 'rep';
   if (keyRingPanel.isOpen) return 'keys';
+  if (companionHall.isOpen) return 'companions';
   if (mapScreen.isOpen) return 'map';
   if (audioMenu.isOpen) return 'audio';
   return null;
@@ -1179,6 +1180,7 @@ document.getElementById('btn-map')!.addEventListener('click', () => toggleScreen
 document.getElementById('btn-quests')!.addEventListener('click', () => toggleScreen('quests'));
 document.getElementById('btn-rep')!.addEventListener('click', () => toggleScreen('rep'));
 document.getElementById('btn-keys')!.addEventListener('click', () => toggleScreen('keys'));
+document.getElementById('btn-companions')!.addEventListener('click', () => toggleScreen('companions'));
 
 function showLoginError(text: string): void {
   loginError.textContent = text;
@@ -2306,6 +2308,8 @@ renderer.onGatherImpact = (kind, x, y, isOwn) => {
     else if (kind === 'furnace') sfx.furnaceRoar();
     else if (kind === 'forage') sfx.forage();
     else if (kind === 'fish') sfx.splash(0.5);
+    else if (kind === 'bench' || kind === 'build') sfx.benchKnock();
+    else if (kind === 'saw') sfx.sawRasp();
     else sfx.chop();
   });
   if (!isOwn) return;
@@ -2314,6 +2318,8 @@ renderer.onGatherImpact = (kind, x, y, isOwn) => {
   else if (kind === 'furnace') input.rumble(0.12, 0.2, 160);
   else if (kind === 'forage') input.rumble(0.06, 0.14, 45);
   else if (kind === 'fish') input.rumble(0.08, 0.18, 55);
+  else if (kind === 'bench' || kind === 'build') input.rumble(0.1, 0.2, 50);
+  else if (kind === 'saw') input.rumble(0.07, 0.16, 90);
   else input.rumble(0.22, 0.32, 60);
 };
 
@@ -3287,7 +3293,7 @@ function frame(now: number): void {
   // same value and never re-fires this edge.
   const effOwnPose = game.effectiveOwnPose(now);
   if (effOwnPose !== lastOwnPose) {
-    if (effOwnPose === PoseState.Gather) autoEquipTool();
+    if (effOwnPose === PoseState.Gather || effOwnPose === PoseState.Fish) autoEquipTool();
     if (effOwnPose === PoseState.Attack) sfx.swingCombo(0);
     else if (effOwnPose === PoseState.Attack2) sfx.swingCombo(1);
     else if (effOwnPose === PoseState.Attack3) {

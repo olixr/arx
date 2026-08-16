@@ -4543,7 +4543,8 @@ export class GameServer {
 
     const ticks = this.gatherTicks(player, node, pos.plane);
     player.action = { kind: 'gather', tx, ty, node, ticksLeft: ticks };
-    this.poses.set(eid, PoseState.Gather);
+    // A water gather is THE PATIENT LINE from the very first frame.
+    this.poses.set(eid, node.skill === 'fishing' ? PoseState.Fish : PoseState.Gather);
     player.session.sendJson({ t: 'action', state: 'start', ticks });
   }
 
@@ -5543,6 +5544,9 @@ export class GameServer {
         swept.push(state);
       }
       if (swept.length > 0) {
+        // A beat of body: the tender kneels to the rows (the crop
+        // tile classifies as the forage pluck client-side).
+        this.setPose(eid, PoseState.Gather, 20);
         for (const c of swept) this.grantXp(eid, player, 'farming', Math.ceil(c.def.xp / 10));
         sys(
           swept.length > 1
@@ -5753,6 +5757,7 @@ export class GameServer {
     }
     // THE PLOT PAYS FOR ITS TIME: tending pays a tenth, same as water.
     this.grantXp(eid, player, 'farming', Math.ceil(state.def.xp / 10));
+    this.setPose(eid, PoseState.Gather, 20);
     this.saveCrop(state);
     this.mirrorPlot(state);
     player.session.sendJson({ t: 'inv', slots: player.inventory });
@@ -5795,6 +5800,7 @@ export class GameServer {
     }
     removeItem(player.inventory, 'plant_fibre', MULCH_FIBRE_COST);
     state.mulched = 1;
+    this.setPose(eid, PoseState.Gather, 20);
     this.grantXp(eid, player, 'farming', Math.ceil(state.def.xp / 10));
     this.saveCrop(state);
     this.mirrorPlot(state);
@@ -5838,6 +5844,7 @@ export class GameServer {
       'farming',
       Math.ceil(harvestXp(state.def, state.cycles) / 10),
     );
+    this.setPose(eid, PoseState.Gather, 20);
     this.saveCrop(state);
     this.mirrorPlot(state);
     sys('You cut the deadwood away. The tree breathes.');
@@ -6000,6 +6007,9 @@ export class GameServer {
     this.farmJobs.set(key, job);
     this.accounts.upsertStationJob(tx, ty, recipeId, batch, job.startedAt, job.grade, job.owner);
     this.mirrorJob(job);
+    // A beat of body at the vessel: the loading read (the client's
+    // 'tend' choreography at the station tile).
+    this.setPose(eid, PoseState.Craft, 24);
     player.session.sendJson({ t: 'inv', slots: player.inventory });
     sys(`The ${itemDef(recipe.output.item)?.name.toLowerCase() ?? recipe.output.item} work begins. It runs while you wander.`);
   }
@@ -6053,6 +6063,7 @@ export class GameServer {
       this.accounts.upsertStationJob(tx, ty, job.recipe, job.qty, job.startedAt, job.grade, job.owner);
       this.mirrorJob(job);
     }
+    this.setPose(eid, PoseState.Craft, 24);
     player.session?.sendJson({ t: 'inv', slots: player.inventory });
     sys(
       `You collect ${done * recipe.output.qty} ${itemDef(itemId)?.name.toLowerCase() ?? itemId}${job.qty > 0 ? `. ${job.qty} still working.` : '. The station rests.'}`,
@@ -6459,6 +6470,7 @@ export class GameServer {
     this.farmBins.set(key, bin);
     this.accounts.upsertFarmBin(tx, ty, bin.fill, bin.graded, bin.startedAt);
     this.mirrorBin(bin);
+    this.setPose(eid, PoseState.Craft, 24);
     player.session.sendJson({ t: 'inv', slots: player.inventory });
   }
 
@@ -6512,6 +6524,7 @@ export class GameServer {
     this.farmTroughs.set(key, trough);
     this.accounts.upsertFarmTrough(tx, ty, trough.feed);
     this.mirrorTrough(trough);
+    this.setPose(eid, PoseState.Craft, 24);
     player.session.sendJson({ t: 'inv', slots: player.inventory });
     sys('You fill the manger. Somebody noticed immediately.');
   }
@@ -6652,6 +6665,7 @@ export class GameServer {
     this.setWorldTile(SURFACE_PLANE_ID, tx, ty, sproutTile);
     if (state.framed) this.mirrorPlot(state);
     this.grantXp(eid, player, 'farming', Math.max(1, Math.ceil(def.xp / 4)));
+    this.setPose(eid, PoseState.Gather, 20);
     player.session.sendJson({ t: 'inv', slots: player.inventory });
     sys(`You plant ${def.name.toLowerCase()}. Ready in about ${def.growMinutes} min.`);
   }
@@ -7558,7 +7572,7 @@ export class GameServer {
         return;
       }
       player.action = { kind: 'build', buildable: def, tx, ty, ticksLeft: buildTicks, dye: variant };
-      this.poses.set(eid, PoseState.Gather);
+      this.poses.set(eid, PoseState.Build);
       player.session.sendJson({ t: 'action', state: 'start', ticks: buildTicks });
       return;
     }
@@ -7622,7 +7636,7 @@ export class GameServer {
       return;
     }
     player.action = { kind: 'build', buildable: def, tx, ty, ticksLeft: buildTicks, orient: orientable, dye: dyed };
-    this.poses.set(eid, PoseState.Gather);
+    this.poses.set(eid, PoseState.Build);
     player.session.sendJson({ t: 'action', state: 'start', ticks: buildTicks });
   }
 
@@ -8043,7 +8057,7 @@ export class GameServer {
     // a floor out from under anyone.
     const ticks = Math.max(1, Math.round(GameServer.DEMOLISH_TICKS * player.perks.buildSpeedMult));
     player.action = { kind: 'demolish', tx, ty, ticksLeft: ticks, hanging: ownHanging };
-    this.poses.set(eid, PoseState.Gather);
+    this.poses.set(eid, PoseState.Build);
     player.session.sendJson({ t: 'action', state: 'start', ticks });
   }
 
@@ -24524,8 +24538,10 @@ export class GameServer {
           this.setActorRide(eid, stopRide ? saddle : null);
           if (working) {
             // The client squares the rig up to the nearest station and
-            // plays the full work choreography off this one byte.
-            this.routinePose(eid, npc, PoseState.Craft);
+            // plays the full work choreography off this one byte. A
+            // 'fish' stop angles the nearest water instead — the pier
+            // fisher finally fishes (docs/work-cycles-plan.md Phase 2).
+            this.routinePose(eid, npc, working === 'fish' ? PoseState.Fish : PoseState.Craft);
             rc.holdFacing = true;
           } else if (seated || lying) {
             // THE SEAT UNDER THE STOP: a rest stop whose target lands
@@ -26504,7 +26520,10 @@ export class GameServer {
             // The work shows its hands: a stir at the pot, a swing at
             // the dummy — poseUntilTick owns the pulse's whole run.
             if (post.kind === 'cook' && Math.random() < 0.5) {
-              this.poses.set(eid, PoseState.Gather);
+              // Craft, not Gather: the client finds the campfire and
+              // plays the LADLE STIR — the cook post finally cooks
+              // (the old Gather byte was a bare-handed tool sway).
+              this.poses.set(eid, PoseState.Craft);
               npc.poseUntilTick = this.tickCount + 14;
             } else if (post.kind === 'drill' && Math.random() < 0.6) {
               this.poses.set(eid, PoseState.Attack);
@@ -29074,16 +29093,23 @@ export class GameServer {
     } else if (this.tickCount < player.poseUntilTick) {
       // Hold a transient combat pose (attack/hurt) briefly.
     } else if (player.action) {
-      // Craft reads as station work (hammering, stoking), milking as
-      // bare-handed dairy work; everything else keeps the
-      // tool-swinging gather pose.
+      // THE VERB IS VISIBLE (docs/work-cycles-plan.md Phase 2): craft
+      // reads as station work, milk/tend as bare-handed animal work,
+      // build AND demolish as the mallet verb (never the old Gather
+      // overload that had remote builders squaring up to trees), a
+      // water gather as the patient line, and everything else keeps
+      // the tool-swinging gather pose.
       this.poses.set(
         eid,
         player.action.kind === 'craft'
           ? PoseState.Craft
-          : player.action.kind === 'milk'
+          : player.action.kind === 'milk' || player.action.kind === 'tend'
             ? PoseState.Milk
-            : PoseState.Gather,
+            : player.action.kind === 'build' || player.action.kind === 'demolish'
+              ? PoseState.Build
+              : player.action.kind === 'gather' && player.action.node.skill === 'fishing'
+                ? PoseState.Fish
+                : PoseState.Gather,
       );
     } else {
       this.poses.set(

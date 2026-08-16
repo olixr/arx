@@ -376,6 +376,24 @@ export class Sfx {
     this.tone(340, 0.05, { type: 'triangle', slide: -140, volume: 0.12, delay: 0.02 });
   }
 
+  /** The joiner's mallet taps the piece home: a woody knock, rounder
+   *  and lighter than the axe's bite — furniture being made, not
+   *  timber being felled. Serves the bench AND the building site. */
+  benchKnock(): void {
+    this.tone(210, 0.045, { type: 'square', slide: -70, volume: 0.22 });
+    this.tone(460, 0.035, { type: 'triangle', slide: -160, volume: 0.1, delay: 0.006 });
+    this.noise(0.03, 0.12, 0, { band: 1400 });
+  }
+
+  /** The saw draws through the kerf: a short fibrous rasp — banded
+   *  noise with a woody undertone, no ring (steel in wood, never
+   *  steel on steel). */
+  sawRasp(): void {
+    this.noise(0.16, 0.16, 0, { band: 2100 });
+    this.noise(0.1, 0.1, 0.03, { band: 3300 });
+    this.tone(140, 0.09, { type: 'sawtooth', slide: -25, volume: 0.08 });
+  }
+
   /** Pick meets rock: a hard stony knock with a metallic tick on top. */
   mineClink(): void {
     this.tone(120, 0.05, { type: 'square', slide: -50, volume: 0.35 });

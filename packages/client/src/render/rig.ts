@@ -95,7 +95,7 @@ import {
   WORK_VOICE_NEUTRAL,
   resolveWork,
   workCycleU,
-  type StationWorkKind,
+  type CraftWorkKind,
   type WorkKind,
   type WorkVoice,
 } from './work.js';
@@ -508,7 +508,7 @@ export interface RigPose {
    * hide scrape, the shuttle pass, the knife strokes, the rune trace,
    * the saw's push-pull).
    */
-  craftKind?: StationWorkKind | null;
+  craftKind?: CraftWorkKind | null;
   /**
    * The Gather target is a forage plant: bare-handed picking — one
    * hand steadies the stems while the other reaches, plucks, and
@@ -5158,7 +5158,12 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ? Math.min(1, rig.poseT)
       : rig.pose === PoseState.Milk
         ? 0.55 * Math.min(1, rig.poseT)
-        : 0;
+        : rig.pose === PoseState.Build
+          ? // The raiser kneels to the work; the stow gear on the
+            // back ducks with the same body (both copies of this
+            // const stay identical — the drawBackGear twin law).
+            0.3 * Math.min(1, rig.poseT)
+          : 0;
   const sit = rig.sitT ?? 0;
   // A furniture sit: the hips ride the SEAT surface, not the ground.
   const chairSit = sit > 0 && rig.sitStyle !== undefined && rig.sitStyle !== 'floor';
@@ -6139,7 +6144,15 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Foraging outranks the belt tool: picking herbs is hand-work even
   // with an axe on the hip (the caller also holsters the tool sprite).
   const foraging = rig.pose === PoseState.Gather && rig.foraging === true;
-  const fishing = rig.pose === PoseState.Gather && rig.fishing === true && !foraging;
+  // THE PATIENT LINE answers two doors: the classic Gather byte with
+  // a classified water node, or the dedicated Fish byte (NPC anglers
+  // at routine 'fish' stops — no rod in their equip, no node needed).
+  const fishing =
+    !foraging &&
+    (rig.pose === PoseState.Fish || (rig.pose === PoseState.Gather && rig.fishing === true));
+  // The raiser's verb — its own byte, so remote builders stopped
+  // squaring up to trees (docs/work-cycles-plan.md Phase 2).
+  const building = rig.pose === PoseState.Build;
   // Milking is its own pose (never Gather): bare-handed dairy work,
   // weapons stowed by the caller's sheathe blend.
   const milking = rig.pose === PoseState.Milk;
@@ -6154,13 +6167,15 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     ? 'forage'
     : fishing
       ? 'fish'
-      : milking
-        ? 'milk'
-        : chopping
-          ? 'chop'
-          : mining
-            ? 'mine'
-            : craftKind;
+      : building
+        ? 'build'
+        : milking
+          ? 'milk'
+          : chopping
+            ? 'chop'
+            : mining
+              ? 'mine'
+              : craftKind;
   const gatherSwing =
     rig.pose === PoseState.Gather && !chopping && !mining && !foraging
       ? Math.sin(rig.gatherPhase * 5.5) * 0.5
@@ -8206,7 +8221,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ctx.restore();
       return;
     }
-    if (craftKind === 'workbench') {
+    if (craftKind === 'workbench' || building) {
       // The joiner's mallet — pale wood barrel head on a light haft,
       // unmistakably NOT the smith's steel. Rides the tap-tap beat.
       ctx.save();
@@ -8385,7 +8400,10 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ctx.restore();
       return;
     }
-    if (!weapon) return;
+    if (!weapon) {
+      if (fishing) paintConjuredRod();
+      return;
+    }
     if (bowX !== null) {
       // The drawn bow points down the PROJECTED aim and compresses at
       // the plane's half-measure — the arrow's angle and length are
@@ -8441,20 +8459,29 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         clipHi: clip?.[1],
         rodCast: fishing && rig.fishTo !== undefined,
       });
-      // THE PATIENT LINE: the cast line lives in the world — it sags
-      // from the ROD'S OWN TIP (the art's tip point, carried through
-      // the same rotate + fore the wood painted with) to a bobber on
-      // the water point the bearing names. The line rides the rod's
-      // layer, so an away-facing angler's line passes behind the
-      // body with the rod that holds it.
-      if (fishing && rig.fishTo && workRes) {
+      // THE PATIENT LINE rides the rod's layer — see paintFishLine.
+      if (fishing && rig.fishTo && workRes) paintFishLine(mainX, mainY);
+    }
+  };
+  /**
+   * THE PATIENT LINE: the cast line lives in the world — it sags from
+   * the ROD'S OWN TIP (the art's tip point, carried through the same
+   * rotate + fore the wood painted with) to a bobber on the water
+   * point the bearing names. Painted with the rod (real or conjured),
+   * so an away-facing angler's line passes behind the body with the
+   * wood that holds it.
+   */
+  const paintFishLine = (fx0: number, fy0: number): void => {
+    if (!rig.fishTo) return;
+    {
+      {
         const fore = mainFore;
         const ca = Math.cos(heldAngle);
         const sa = Math.sin(heldAngle);
         const tipLX = 0.62 * s * fore;
         const tipLY = -0.235 * s;
-        const tx2 = mainX + ca * tipLX - sa * tipLY;
-        const ty2 = mainY + sa * tipLX + ca * tipLY;
+        const tx2 = fx0 + ca * tipLX - sa * tipLY;
+        const ty2 = fy0 + sa * tipLX + ca * tipLY;
         const u = workCycleU('fish', rig.nowMs);
         // Tension: taut through the cast fling and the tug, slack sag
         // through the long wait.
@@ -8501,6 +8528,19 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         }
       }
     }
+  };
+  /** THE CONJURED ROD: an angler with empty hands (NPC 'fish' stops
+   *  carry no equip) still fishes with real wood — the plain rod
+   *  style, the same projected angle and fore, dangle suppressed,
+   *  the cast line painted off its tip. */
+  const paintConjuredRod = (): void => {
+    ctx.save();
+    ctx.translate(mainX, mainY);
+    ctx.rotate(heldAngle);
+    ctx.scale(mainFore, 1);
+    drawTool(ctx, toolStyle('fishing_rod', '#c4a35a')!, s, rig.nowMs, rig.hurt, true);
+    ctx.restore();
+    if (rig.fishTo && workRes) paintFishLine(mainX, mainY);
   };
 
   // Far arm always sits behind the torso; the weapon + striking arm go
@@ -10037,7 +10077,12 @@ export function drawBackGear(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       ? Math.min(1, rig.poseT)
       : rig.pose === PoseState.Milk
         ? 0.55 * Math.min(1, rig.poseT)
-        : 0;
+        : rig.pose === PoseState.Build
+          ? // The raiser kneels to the work; the stow gear on the
+            // back ducks with the same body (both copies of this
+            // const stay identical — the drawBackGear twin law).
+            0.3 * Math.min(1, rig.poseT)
+          : 0;
   const hipY = rig.y - (rig.rise + rig.bob * 0.45) * s + 0.11 * s * crouch;
   const wS = rig.wScale;
   const hScale = 1 + (1 - wS) * 0.55;

@@ -94,6 +94,12 @@ const ROWS: WorkRow[] = [
   { label: 'enchant', kind: 'enchanting_table', pose: PoseState.Craft, craftKind: 'enchanting_table', dialect: 'flesh' },
   { label: 'saw', kind: 'sawhorse', pose: PoseState.Craft, craftKind: 'sawhorse', dialect: 'flesh' },
   { label: 'skral saw', kind: 'sawhorse', pose: PoseState.Craft, craftKind: 'sawhorse', dialect: 'skral' },
+  // Phase 2's verbs: the raiser's kneeling mallet (its own byte now),
+  // the async vessels' handling beat, and the ROD-LESS angler — the
+  // Fish byte conjures the wood (the pier NPC's read).
+  { label: 'build', kind: 'build', pose: PoseState.Build, dialect: 'flesh' },
+  { label: 'tend', kind: 'tend', pose: PoseState.Craft, craftKind: 'tend', dialect: 'flesh' },
+  { label: 'npc fish', kind: 'fish', pose: PoseState.Fish, fishing: true, dialect: 'skral' },
   // The dialect bodies at work — the stoop lane and the small folk.
   // The skral smith and the gnoll axeman are the acceptance scenarios:
   // a hunched carriage working a station must read as ITS OWN body at

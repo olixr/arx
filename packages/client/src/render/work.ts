@@ -65,8 +65,16 @@ export type StationWorkKind =
   | 'enchanting_table'
   | 'sawhorse';
 
+/**
+ * The Craft-pose verbs: the ten true stations plus 'tend' — the
+ * generic vessel-work read the async farm stations (windmill, churn,
+ * press, keg, smoker, drying rack, compost bin, apiary) share for
+ * their brief load/collect beats.
+ */
+export type CraftWorkKind = StationWorkKind | 'tend';
+
 /** The verbs the engine speaks today (later phases widen this). */
-export type WorkKind = 'chop' | 'mine' | 'fish' | 'forage' | 'milk' | StationWorkKind;
+export type WorkKind = 'chop' | 'mine' | 'fish' | 'forage' | 'milk' | 'build' | CraftWorkKind;
 
 /**
  * One keyframe station of a cycle. Channels hold the value AT this
@@ -562,6 +570,51 @@ export const WORK_BOOK: Record<WorkKind, WorkSpec> = {
       { at: 0.54, ease: 'smooth', yaw: -0.05, r: 0.2, dy: -0.16, lean: 0.01 },
       { at: 0.72, ease: 'smooth', yaw: 0.3, r: 0.27, dy: -0.2, lean: 0.02 },
       { at: 0.88, ease: 'smooth', yaw: 0.42, r: 0.22, dy: -0.13, lean: 0.01 },
+    ],
+  },
+  /**
+   * The build: the raiser's mallet — kneeling-low work at the piece,
+   * two firm knocks walked along the joint per beat, the whole body
+   * settled into the work crouch. Serves building AND demolition
+   * (both are mallet-and-frame verbs at this read distance).
+   */
+  build: {
+    cycleMs: 840,
+    impactAt: 0.3,
+    tipS: 0.22,
+    mirror: true,
+    off: { mode: 'steady', yawOff: -0.36, r: 0.27, dy: 0.1, sway: 0.006 },
+    stations: [
+      // Lift over the near joint...
+      { at: 0, ease: 'smooth', yaw: 0.26, r: 0.25, dy: -0.08, pitch: -0.3, lean: 0.03, crouch: 0.3 },
+      // ...KNOCK it home, low.
+      { at: 0.3, ease: 'in', yaw: 0.2, r: 0.3, dy: 0.12, pitch: 0.75, lean: 0.08, crouch: 0.3 },
+      // Walk to the far joint...
+      { at: 0.56, ease: 'smooth', yaw: -0.04, r: 0.26, dy: -0.06, pitch: -0.2, lean: 0.02, crouch: 0.3 },
+      // ...second knock.
+      { at: 0.78, ease: 'in', yaw: -0.08, r: 0.29, dy: 0.11, pitch: 0.7, lean: 0.05, crouch: 0.3 },
+    ],
+  },
+  /**
+   * The tend: generic vessel work — the async stations' brief beat.
+   * Both hands carry a load in low, settle it into the mouth with the
+   * back in it, and draw away. Reads as HANDLING at world zoom: grain
+   * into the hopper, cream into the churn, combs out of the box.
+   */
+  tend: {
+    cycleMs: 1250,
+    impactAt: null,
+    tipS: 0,
+    mirror: false,
+    off: { mode: 'team', d: 0.13, drop: 0.03 },
+    stations: [
+      { at: 0, ease: 'smooth', yaw: 0.08, r: 0.18, dy: -0.04, lean: 0.0 },
+      // Carry in and DOWN into the vessel's mouth...
+      { at: 0.36, ease: 'smooth', yaw: 0.05, r: 0.33, dy: 0.09, lean: 0.12 },
+      // ...settle it, hands working the load...
+      { at: 0.55, ease: 'hold', yaw: 0.05, r: 0.33, dy: 0.09, lean: 0.12, shiver: 0.008 },
+      // ...and draw away for the next armful.
+      { at: 0.8, ease: 'smooth', yaw: 0.12, r: 0.2, dy: -0.02, lean: 0.02 },
     ],
   },
   /**

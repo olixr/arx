@@ -65,7 +65,7 @@ import {
   resolveWork,
   workCycleN,
   workCycleU,
-  type StationWorkKind,
+  type CraftWorkKind,
   type WorkKind,
 } from './work.js';
 import {
@@ -2116,12 +2116,12 @@ export class Renderer {
   private findStation(
     x: number,
     y: number,
-  ): { tx: number; ty: number; kind: StationWorkKind } | null {
+  ): { tx: number; ty: number; kind: CraftWorkKind } | null {
     const game = this.game;
     if (!game) return null;
     const cx = Math.floor(x);
     const cy = Math.floor(y);
-    let best: { tx: number; ty: number; kind: StationWorkKind; d: number } | null = null;
+    let best: { tx: number; ty: number; kind: CraftWorkKind; d: number } | null = null;
     for (let ty = cy - 2; ty <= cy + 2; ty++) {
       for (let tx = cx - 2; tx <= cx + 2; tx++) {
         const t = game.world.groundAt(tx, ty);
@@ -2146,7 +2146,19 @@ export class Renderer {
                             ? ('enchanting_table' as const)
                             : t === Tile.Sawhorse
                               ? ('sawhorse' as const)
-                              : null;
+                              : t === Tile.Windmill ||
+                                  t === Tile.ButterChurn ||
+                                  t === Tile.FruitPress ||
+                                  t === Tile.BrewKeg ||
+                                  t === Tile.Smoker ||
+                                  t === Tile.DryingRack ||
+                                  t === Tile.CompostBin ||
+                                  t === Tile.Apiary
+                                ? // The async farm vessels: the brief
+                                  // load/collect beat plays the 'tend'
+                                  // handling read at the vessel.
+                                  ('tend' as const)
+                                : null;
         if (!kind) continue;
         const d = Math.hypot(tx + 0.5 - x, ty + 0.5 - y);
         if (!best || d < best.d) best = { tx, ty, kind, d };
@@ -2453,6 +2465,46 @@ export class Renderer {
               (t !== undefined && isCropTile(t))
             ? 'forage'
             : null;
+  }
+
+  /**
+   * THE PATIENT LINE's water: the tile a Fish-posed body angles. A
+   * classified fishing spot wins (own player's interact tile first);
+   * failing that, honest open water within reach — the pier NPC's
+   * case, whose stop stands over plain Water with no node at all.
+   */
+  private findFishWater(
+    x: number,
+    y: number,
+    prefer?: { tx: number; ty: number } | null,
+  ): { tx: number; ty: number } | null {
+    const game = this.game;
+    if (!game) return null;
+    if (
+      prefer &&
+      Math.hypot(prefer.tx + 0.5 - x, prefer.ty + 0.5 - y) <= 3 &&
+      this.gatherKindAt(prefer.tx, prefer.ty) === 'fish'
+    ) {
+      return { tx: prefer.tx, ty: prefer.ty };
+    }
+    const cx = Math.floor(x);
+    const cy = Math.floor(y);
+    let best: { tx: number; ty: number; d: number; spot: boolean } | null = null;
+    for (let ty2 = cy - 4; ty2 <= cy + 4; ty2++) {
+      for (let tx2 = cx - 4; tx2 <= cx + 4; tx2++) {
+        const t = game.world.groundAt(tx2, ty2);
+        if (t === undefined) continue;
+        const spot = this.gatherKindAt(tx2, ty2) === 'fish';
+        const water = t === Tile.Water || t === Tile.WaterDeep || t === Tile.WaterShallow;
+        if (!spot && !water) continue;
+        const d = Math.hypot(tx2 + 0.5 - x, ty2 + 0.5 - y);
+        // A true fishing spot outranks plain water at any distance.
+        if (!best || (spot && !best.spot) || (spot === best.spot && d < best.d)) {
+          best = { tx: tx2, ty: ty2, d, spot };
+        }
+      }
+    }
+    return best ? { tx: best.tx, ty: best.ty } : null;
   }
 
   /**
@@ -53574,13 +53626,27 @@ export class Renderer {
     // THE BUILDER FACES THE WORK: the own player's running build or
     // demolish names its tile — square up to it, never to whatever
     // tree happens to stand nearby.
-    const site = e.eid === 'own' && e.pose === PoseState.Gather ? this.buildSite : null;
+    const site =
+      e.eid === 'own' && (e.pose === PoseState.Build || e.pose === PoseState.Gather)
+        ? this.buildSite
+        : null;
     const gather =
       e.pose === PoseState.Gather && !site
         ? this.findGatherNode(e.x, e.y, e.eid === 'own' ? this.game?.lastInteract : null)
         : null;
+    // THE PATIENT LINE's water: the Fish byte finds its own target —
+    // a classified fishing spot if one is near, else honest open
+    // water (the pier NPC's case) — and the Gather byte inherits the
+    // node the classifier already found.
+    const fishAt =
+      e.pose === PoseState.Fish
+        ? this.findFishWater(e.x, e.y, e.eid === 'own' ? this.game?.lastInteract : null)
+        : gather?.kind === 'fish'
+          ? { tx: gather.tx, ty: gather.ty }
+          : null;
     if (site) dir = Math.atan2(site.ty + 0.5 - e.y, site.tx + 0.5 - e.x);
     else if (gather) dir = Math.atan2(gather.ty + 0.5 - e.y, gather.tx + 0.5 - e.x);
+    else if (fishAt) dir = Math.atan2(fishAt.ty + 0.5 - e.y, fishAt.tx + 0.5 - e.x);
     const station = e.pose === PoseState.Craft ? this.findStation(e.x, e.y) : null;
     if (station) dir = Math.atan2(station.ty + 0.5 - e.y, station.tx + 0.5 - e.x);
     // Milking: square up to the animal being worked, same as a node.
@@ -53591,7 +53657,7 @@ export class Renderer {
     // walking body snapping a quarter-turn in one frame. The bearing
     // now slews through a short critically-damped ease (the beat of a
     // head-check before the first swing); leaving work forgets it.
-    if (site || gather || station || milkCow) {
+    if (site || gather || fishAt || station || milkCow) {
       const prev = anim.workDir;
       if (prev === undefined) {
         anim.workDir = e.dir + shortestAngle(e.dir, dir) * 0.12;
@@ -53627,6 +53693,7 @@ export class Renderer {
       e.pose === PoseState.Lie ||
       e.pose === PoseState.Milk ||
       e.pose === PoseState.Ride ||
+      e.pose === PoseState.Build ||
       gather?.kind === 'forage'
         ? 1
         : 0;
@@ -53882,7 +53949,7 @@ export class Renderer {
       // direct pass, and the line is never clipped at a bake canvas
       // edge. A handful of anglers at once is well inside the direct
       // pass's budget.
-      olKey: gather?.kind === 'fish' ? undefined : varEid,
+      olKey: fishAt !== null ? undefined : varEid,
       olSig,
       olDyn,
       baseX: e.x,
@@ -53984,13 +54051,13 @@ export class Renderer {
             this.nodeStruck(gather.tx, gather.ty);
             this.onGatherImpact?.('forage', gather.tx + 0.5, gather.ty + 0.5, e.isOwn === true);
           }
-        } else if (gather && gather.kind === 'fish' && toolType === 'rod') {
+        } else if (fishAt && (toolType === 'rod' || e.pose === PoseState.Fish)) {
           // The tug beat: the water answers the line — a short bright
           // splash off the bobber (the ripple rings ride the rig's
           // own line painter, phase-locked to the same book).
           if (impactBeat('fish')) {
-            const bx = gather.tx + 0.5;
-            const by = gather.ty + 0.5;
+            const bx = fishAt.tx + 0.5;
+            const by = fishAt.ty + 0.5;
             this.particles.burst(bx, by, 6, ['#e2f0f8', '#9fc4dc', '#6f9ec4'], {
               speed: 1.5,
               life: 0.42,
@@ -54040,8 +54107,8 @@ export class Renderer {
             this.onGatherImpact?.('furnace', fx2, fy2, e.isOwn === true);
           }
         } else if (station?.kind === 'sawhorse') {
-          // Sawdust drifts off the kerf at the end of each push —
-          // visual only (a saw's rasp has no honest one-shot yet).
+          // Sawdust drifts off the kerf at the end of each push, and
+          // the stroke rasps (sfx.sawRasp via the one impact door).
           if (impactBeat('sawhorse')) {
             const rw = resolveWork('sawhorse', WORK_BOOK.sawhorse.impactAt!, dir, now + lifeMs);
             this.particles.burst(e.x + rw.tipGX, e.y + rw.tipGY, 4, ['#c9b083', '#b08a52', '#e0cfa4'], {
@@ -54053,6 +54120,32 @@ export class Renderer {
               spread: 1.4,
               dir: Math.PI / 2,
             });
+            this.onGatherImpact?.('saw', e.x + rw.tipGX, e.y + rw.tipGY, e.isOwn === true);
+          }
+        } else if (station?.kind === 'workbench') {
+          // The mallet's tap, heard: the knock rides the same beat
+          // the tap lands on. No debris — a joiner's tap moves wood,
+          // not chips.
+          if (impactBeat('workbench')) {
+            const rw = resolveWork('workbench', WORK_BOOK.workbench.impactAt!, dir, now + lifeMs);
+            this.onGatherImpact?.('bench', e.x + rw.tipGX, e.y + rw.tipGY, e.isOwn === true);
+          }
+        } else if (e.pose === PoseState.Build) {
+          // The raiser's knock: a puff of joinery dust at the mallet
+          // face plus the knock — remote builders read (and sound)
+          // like builders now.
+          if (impactBeat('build')) {
+            const rw = resolveWork('build', WORK_BOOK.build.impactAt!, dir, now + lifeMs);
+            this.particles.burst(e.x + rw.tipGX, e.y + rw.tipGY, 3, ['#c9b083', '#a5793f'], {
+              speed: 0.6,
+              life: 0.4,
+              size: 0.035,
+              gravity: 3.4,
+              drag: 0.9,
+              spread: 1.6,
+              dir: Math.PI / 2,
+            });
+            this.onGatherImpact?.('build', e.x + rw.tipGX, e.y + rw.tipGY, e.isOwn === true);
           }
         }
 
@@ -54095,14 +54188,15 @@ export class Renderer {
           weaponItem:
             lieE > 0.2 || (chairSit && sitE > 0.2)
               ? undefined
-              : e.pose === PoseState.Gather
+              : e.pose === PoseState.Gather || e.pose === PoseState.Fish
                 ? (e.equip.tool ?? e.equip.weapon)
                 : e.equip.weapon,
           // Enchant fx ride the real weapon — in hand OR stowed —
           // never the gather tool.
           weaponEnch:
-            (e.pose === PoseState.Gather ? (e.equip.tool ?? e.equip.weapon) : e.equip.weapon) ===
-            e.equip.weapon
+            (e.pose === PoseState.Gather || e.pose === PoseState.Fish
+              ? (e.equip.tool ?? e.equip.weapon)
+              : e.equip.weapon) === e.equip.weapon
               ? e.ench?.weapon
               : undefined,
           offhandEnch: e.ench?.offhand,
@@ -54137,10 +54231,10 @@ export class Renderer {
           foraging: gather?.kind === 'forage',
           // THE PATIENT LINE: the water point in screen space — the
           // rig sags the cast line from the rod tip to a bobber here.
-          fishing: gather?.kind === 'fish',
+          fishing: fishAt !== null,
           fishTo:
-            gather?.kind === 'fish'
-              ? this.camera.worldToScreen(gather.tx + 0.5, gather.ty + 0.5, this.w, this.h)
+            fishAt !== null
+              ? this.camera.worldToScreen(fishAt.tx + 0.5, fishAt.ty + 0.5, this.w, this.h)
               : undefined,
           sitT: riding ? rideE : sitE,
           sitVariant,

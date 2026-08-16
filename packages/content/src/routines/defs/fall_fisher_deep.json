@@ -13,7 +13,7 @@
         "kind": "post",
         "x": -13,
         "y": 9,
-        "work": true,
+        "work": "fish",
         "speed": 1.3
       }
     },

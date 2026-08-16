@@ -76,7 +76,7 @@ function validateFlag(
 
 /** A stop is ONE posture: working, sitting, and lying are exclusive. */
 function rejectWorkSit(
-  work: boolean | undefined,
+  work: boolean | 'fish' | undefined,
   sit: boolean | undefined,
   lie: boolean | undefined,
   where: string,
@@ -127,7 +127,9 @@ function validateWaypoint(
     }
   }
   wp.dir = validateDir(raw.dir, where, errors);
-  wp.work = validateFlag(raw.work, where, 'work', errors);
+  // THE PATIENT LINE's stop: 'fish' is the one non-boolean work verb
+  // — the body angles the nearest water instead of a station.
+  wp.work = raw.work === 'fish' ? 'fish' : validateFlag(raw.work, where, 'work', errors);
   wp.sit = validateFlag(raw.sit, where, 'sit', errors);
   wp.lie = validateFlag(raw.lie, where, 'lie', errors);
   rejectWorkSit(wp.work, wp.sit, wp.lie, where, errors);
@@ -153,7 +155,7 @@ function validateTask(raw: unknown, where: string, errors: string[]): RoutineTas
     if (off.x !== undefined) task.x = off.x;
     if (off.y !== undefined) task.y = off.y;
     task.dir = validateDir(raw.dir, where, errors);
-    task.work = validateFlag(raw.work, where, 'work', errors);
+    task.work = raw.work === 'fish' ? 'fish' : validateFlag(raw.work, where, 'work', errors);
     task.sit = validateFlag(raw.sit, where, 'sit', errors);
     task.lie = validateFlag(raw.lie, where, 'lie', errors);
     rejectWorkSit(task.work, task.sit, task.lie, where, errors);

@@ -85,6 +85,19 @@ test('validator rejects the dishonest defs', () => {
   bad({ ...base, base: { kind: 'post', dir: 9 } }, 'radians');
   bad({ ...base, base: { kind: 'post', work: 'yes' } }, 'boolean');
   bad({ ...base, base: { kind: 'post', sit: 'yes' } }, 'boolean');
+  // 'fish' is the one non-boolean work verb (THE PATIENT LINE): it
+  // validates, stores as itself, and stays posture-exclusive.
+  {
+    const res = validateRoutine({ ...base, base: { kind: 'post', work: 'fish' } });
+    assert.ok(res.ok, `work:'fish' validates: ${res.ok ? '' : res.errors.join(' | ')}`);
+    assert.equal(
+      (res.routine.base as { work?: boolean | 'fish' }).work,
+      'fish',
+      "work:'fish' stores as itself",
+    );
+  }
+  bad({ ...base, base: { kind: 'post', work: 'fish', sit: true } }, 'cannot both work and sit');
+  bad({ ...base, base: { kind: 'post', sit: 'fish' } }, 'boolean');
   bad({ ...base, base: { kind: 'post', work: true, sit: true } }, 'cannot both work and sit');
   bad(
     { ...base, base: { kind: 'path', waypoints: [{ x: 1, y: 1, work: true, sit: true }] } },

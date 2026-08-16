@@ -42,8 +42,11 @@ export interface RoutineWaypoint {
    * the client squares it up to the nearest station tile with the
    * full choreography — hammer-and-tongs at an anvil, stoking at a
    * furnace. Author the stop beside the station it should work.
+   * `'fish'` = THE PATIENT LINE instead: the body angles the nearest
+   * fishing water (rod conjured if the hands are empty) — the pier
+   * fisher's stop, never station pantomime over open water.
    */
-  work?: boolean;
+  work?: boolean | 'fish';
   /**
    * Rest seated while lingering — the wayside sit (stretched-out RPG
    * rest, never cross-legged). A bandit off the patrol rotation parks
@@ -97,8 +100,9 @@ export interface RoutineTaskPost {
   y?: number;
   /** Facing while posted, radians (absent = the placement's dir). */
   dir?: number;
-  /** Work the nearest station the whole time (see RoutineWaypoint.work). */
-  work?: boolean;
+  /** Work the nearest station the whole time (see RoutineWaypoint.work);
+   *  `'fish'` angles the nearest water instead (THE PATIENT LINE). */
+  work?: boolean | 'fish';
   /** Rest seated the whole time (see RoutineWaypoint.sit). */
   sit?: boolean;
   /** Lie in the bed under the post the whole time (see RoutineWaypoint.lie). */
