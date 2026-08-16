@@ -42,12 +42,19 @@ import type { ZoneDef } from './types.js';
  * actors by design — the Deep Market's keepers are Epic 6.
  */
 export function buildUndercroft(): ZoneDef {
+  // THE UNDERCROFT REVOICED (docs/silverfall-vale-plan.md): the rect
+  // grows east and south into solid dark-band rock (96x64 -> 128x96,
+  // origin fixed, both portals untouched) and the district finally
+  // BREATHES — the drowned working the spring took back, the masons'
+  // deep chapel with its memorial count, the winch head at the end
+  // of the long haulage dark, and the warren's unswept back door.
+  // Negative dark is a material: most of the new claim stays solid.
   const b = new ZoneBuilder(
     'undercroft',
     'The Undercroft',
     { x: -344, y: 520 },
+    128,
     96,
-    64,
     Tile.CaveWall,
   );
 
@@ -63,6 +70,7 @@ export function buildUndercroft(): ZoneDef {
   b.set(7, 30, Tile.Brazier).set(7, 34, Tile.Brazier);
   b.sign(16, 34, 'THE UNDERCROFT', ["the Masons' Guild keeps", 'the stair']);
   b.set(6, 29, Tile.Crate).set(6, 35, Tile.Barrel);
+  b.set(20, 31, Tile.Counter); // the guild's toll desk — the stair is kept, not free
   b.setDetail(11, 31, Detail.Pebbles).setDetail(14, 33, Detail.Pebbles);
 
   // ---------------------------------------------------------------
@@ -93,6 +101,15 @@ export function buildUndercroft(): ZoneDef {
   b.set(54, 35, Tile.MossBarrel); // the cask the damp got to first
   b.sign(30, 29, 'THE DEEP MARKET', ['weights honest, lamps lit']);
   b.set(54, 26, Tile.Stalagmite).set(32, 38, Tile.Stalagmite).set(48, 24, Tile.Stalagmite);
+  // The keepers' trades arrive around their stalls: the broker's
+  // weighing corner, the live catch in the spring's own cold, the
+  // curio dealer's honest lies laid out flat.
+  b.set(34, 30, Tile.IngotRack).set(34, 32, Tile.HangingScale); // Varga weighs true
+  b.set(37, 24, Tile.KeepPool); // blind cave-fish, kept fresh where the spring runs
+  b.set(48, 36, Tile.DisplayTable); // Ninebrass's stories, priced by size
+  // And ONE broom leans where no broom should be. The market floor
+  // was found SWEPT after twenty sealed years. Nobody says whose.
+  b.set(31, 30, Tile.BroomAndPail);
 
   // ---------------------------------------------------------------
   // THE RIFTGATE VAULT — north of the market, up its own tunnel:
@@ -162,6 +179,25 @@ export function buildUndercroft(): ZoneDef {
   // Somebody tried for the starfall before the guild sealed the door:
   // their ring is cold, their bedroll is laid, and they never left.
   b.set(84, 32, Tile.ColdCamp);
+  // THE LONG HAULAGE — the deep walk keeps going (the revoice): past
+  // the starfall the old drift runs east through true dark to THE
+  // WINCH HEAD, where the guild's chains still hang and the second
+  // sealed door has never been reopened. No braziers. No sweeping.
+  // The dark out here is exactly as long as it feels.
+  b.fillRect(91, 29, 17, 3, Tile.CaveFloor); // the drift, x91-107
+  b.set(95, 29, Tile.WallWeb).set(102, 29, Tile.WallWeb);
+  b.set(99, 29, Tile.WallFossil); // ribs older than any guild, again
+  b.fillEllipse(114, 29, 7, 5, Tile.CaveFloor); // the winch head
+  b.set(110, 25, Tile.WallChains).set(116, 25, Tile.WallChains); // the haulage line
+  b.set(114, 29, Tile.MineCart); // the last load never went up
+  b.set(108, 29, Tile.TimberBrace).set(118, 27, Tile.TimberBrace);
+  b.set(111, 33, Tile.BonePile).set(119, 31, Tile.CaveRubble);
+  b.set(109, 26, Tile.Stalagmite).set(117, 33, Tile.Stalagmite);
+  b.set(117, 32, Tile.LootedChest); // the winch pay, long since visited
+  // THE EAST DOOR: the guild sealed two ways down that winter.
+  // This one never reopened. (It is not for this epic to open it.)
+  b.set(120, 28, Tile.CaveRubble).set(121, 29, Tile.CaveRubble).set(120, 30, Tile.CaveRubble);
+  b.sign(118, 31, 'THE EAST DOOR', ['sealed the same winter.', 'never reopened']);
 
   // ---------------------------------------------------------------
   // THE KOBOLD FRONT — southeast. Rubble chokes the market door;
@@ -170,6 +206,7 @@ export function buildUndercroft(): ZoneDef {
   // ---------------------------------------------------------------
   b.fillRect(56, 40, 8, 3, Tile.CaveFloor); // the choked way in
   b.set(57, 40, Tile.CaveRubble).set(59, 42, Tile.CaveRubble).set(61, 41, Tile.CaveRubble);
+  b.set(58, 41, Tile.SpikeBarrier); // the guild's abandoned barricade — the war it walked away from
   b.set(62, 42, Tile.LootedChest); // the first Undercroft's pay, long since visited
   b.sign(55, 39, 'BEYOND THIS MARK', ['the guild does not sweep', 'past the rubble']);
   b.fillEllipse(67, 45, 6, 5, Tile.CaveFloor); // the outer warren
@@ -222,13 +259,76 @@ export function buildUndercroft(): ZoneDef {
   b.set(49, 54, Tile.ChestMossy);
 
   // ---------------------------------------------------------------
+  // THE DROWNED WORKING — south of the cistern: the gallery the
+  // spring took back. The guild cut it, the water claimed it, and
+  // the chest on the islet has been VISIBLE from the north rim for
+  // twenty years — the long way round is the whole design.
+  // ---------------------------------------------------------------
+  b.fillRect(27, 56, 3, 10, Tile.CaveFloor); // the works stair down, y56-65
+  b.fillEllipse(28, 75, 13, 10, Tile.CaveFloor); // the drowned chamber
+  b.fillEllipse(28, 76, 10, 7, Tile.WaterShallow); // the flood's rim
+  b.fillEllipse(28, 76, 8, 5.5, Tile.Water); // the black heart
+  b.fillEllipse(28, 81, 2, 1.5, Tile.CaveFloor); // the islet
+  b.set(28, 81, Tile.ChestIron); // seen for twenty years, reached by few
+  b.fillRect(27, 83, 2, 3, Tile.Dock); // the south planks — the guild's dry-foot walk
+  b.set(22, 70, Tile.DripPool).set(35, 80, Tile.DripPool);
+  b.set(17, 72, Tile.TimberBrace).set(39, 77, Tile.TimberBrace);
+  b.set(21, 79, Tile.IronGrate); // the drain that lost the argument
+  b.set(33, 68, Tile.BonePile);
+  b.set(16, 76, Tile.GlowShroom).set(37, 71, Tile.GlowShroom).set(24, 84, Tile.GlowShroom);
+  b.set(19, 68, Tile.Stalagmite).set(36, 84, Tile.Stalagmite);
+  b.set(30, 66, Tile.MossBarrel); // stores that floated, then didn't
+  b.sign(25, 66, 'THE DROWNED WORKING', ['the spring won.', 'the guild let it']);
+
+  // ---------------------------------------------------------------
+  // THE DEEP CHAPEL — the masons' quiet room, off the market's
+  // south lobe: where the shifts prayed before the seal, and THE
+  // COUNT keeps its one empty name. Lit by its own candles, swept
+  // by nobody official, and NOTHING hostile stands here — the
+  // quiet is load-bearing.
+  // ---------------------------------------------------------------
+  b.fillRect(51, 44, 3, 14, Tile.CaveFloor); // the processional down, y44-57
+  b.fillEllipse(52, 64, 9, 7, Tile.CaveFloor); // the chapel vault
+  b.fillEllipse(52, 64, 4, 3, Tile.StoneFloor); // the dressed circle
+  b.set(48, 61, Tile.GrandPillar).set(56, 61, Tile.GrandPillar);
+  b.set(49, 67, Tile.CandleShrine).set(55, 67, Tile.CandleShrine);
+  b.set(48, 64, Tile.CandleShrine).set(56, 64, Tile.CandleShrine);
+  b.set(51, 68, Tile.Bench).set(53, 68, Tile.Bench);
+  // THE MEMORIAL — the alcove at the chapel's throat: the count
+  // that never matched, cut in stone. Three candles burn. One of
+  // them is always fresh. Nobody official lights it.
+  b.fillRect(50, 55, 5, 3, Tile.CaveFloor);
+  b.set(50, 55, Tile.CandleShrine).set(52, 55, Tile.CandleShrine).set(54, 55, Tile.CandleShrine);
+  b.sign(54, 57, 'THE COUNT', ['thirty-one down, thirty out.', 'the wall holds a name empty']);
+  b.set(44, 61, Tile.Stalagmite).set(60, 68, Tile.Stalagmite);
+  // The west link: chapel to the drowned working — the deep loops.
+  b.fillRect(39, 69, 10, 2, Tile.CaveFloor);
+
+  // ---------------------------------------------------------------
+  // THE BLACKREACH — the warren's unswept back door, south out of
+  // the deep warren: shroom-lit, beetle-walked, and exactly as
+  // unofficial as everything the kobolds keep.
+  // ---------------------------------------------------------------
+  b.fillRect(77, 57, 3, 12, Tile.CaveFloor); // the crack, y57-68
+  b.set(78, 58, Tile.WallWeb);
+  b.fillEllipse(84, 75, 8, 6, Tile.CaveFloor); // the back grotto
+  b.set(79, 72, Tile.GlowShroom).set(88, 79, Tile.GlowShroom).set(83, 70, Tile.GlowShroom).set(90, 73, Tile.GlowShroom);
+  b.set(78, 76, Tile.Stalagmite).set(86, 71, Tile.Stalagmite).set(89, 80, Tile.Stalagmite);
+  b.set(84, 70, Tile.WallFossil);
+  b.set(81, 78, Tile.BonePile).set(87, 74, Tile.BonePile);
+  b.set(89, 78, Tile.ChestMossy); // what the warren hides from the warren
+  b.set(76, 70, Tile.CaveRubble).set(91, 76, Tile.CaveRubble);
+
+  // ---------------------------------------------------------------
   // Cave life: the authored ladder (danger tier is 0 down here — the
   // dark is exactly as dangerous as we say it is). The market spine
   // stays clean; everything else has teeth.
   // ---------------------------------------------------------------
   b.npcSpawn('cave_bat', 65, 24, 4, 3); // the junction flutters
   b.npcSpawn('cave_bat', 46, 51, 4, 4); // the grotto roost
+  b.npcSpawn('cave_bat', 28, 74, 5, 3); // the drowned working's ceiling
   b.npcSpawn('giant_beetle', 16, 50, 4, 3); // the old works skitter
+  b.npcSpawn('giant_beetle', 84, 75, 5, 3); // the Blackreach walks
   b.npcSpawn('giant_spider', 86, 31.5, 3, 1); // what webbed the deep walk
   b.npcSpawn('kobold', 66, 45.5, 4, 4); // the outer warren
   b.npcSpawn('kobold', 78, 51.5, 4, 4); // the deep warren

@@ -503,3 +503,36 @@ windows, no marble. The wealth gradient IS the storytelling.
     pass's tiles; the two sealed pockets the builder caught were
     both this pass's and both fixed by deletion, not relocation.
   - content 514/514.
+- **Phase 5 THE UNDERCROFT REVOICED** — rect 96x64 → 128x96 (origin
+  fixed, both portals untouched, most of the new claim deliberately
+  SOLID — negative dark is a material). Build-truths:
+  - THE LONG HAULAGE: the deep walk continues east past the starfall
+    (drift x91-107, webs + fossil, no braziers — unswept=dark) to
+    THE WINCH HEAD (chains, the cart that never went up, the looted
+    winch pay) and THE EAST DOOR — the guild's second seal, never
+    reopened, left for a future epic on purpose.
+  - THE DROWNED WORKING: south of the cistern — the flood rim, the
+    black heart, and the islet chest VISIBLE from the north rim with
+    the dry approach the long way round (planks trimmed to the
+    chamber floor after a paper check; its sign moved one row south
+    off solid rock — the one builder catch of the phase, which
+    cascaded into all four red tests from a single throw).
+  - THE DEEP CHAPEL + THE MEMORIAL: GrandPillar pair, four chapel
+    flames + three memorial flames over the sign 'THE COUNT'
+    (thirty-one down, thirty out) — zero spawns; the quiet is
+    load-bearing. The chapel-to-drowned west link loops the deep.
+  - THE BLACKREACH: the warren's unswept back door — shrooms,
+    beetles, the chest the warren hides from the warren.
+  - The market keeps its five stalls (the pin held; the keepers'
+    posts stay honest) and the TRADES arrive around them: Varga's
+    IngotRack + scale, the KeepPool in the spring's cold, the
+    curio DisplayTable — and ONE BroomAndPail leaning where no
+    broom should be. The Landing gains the guild's toll counter.
+  - The war-mouth: one SpikeBarrier at the rubble line — the war
+    the guild walked away from.
+  - Kobold count stays EXACTLY 8, spider stays 1 (restraint); bats
+    +3 (drowned ceiling), beetles +3 (Blackreach).
+  - New pins: WallChains ≥3, GrandPillar =2, CandleShrine =9,
+    SpikeBarrier =1, Dock ≥6, KeepPool =1, MineCart ≥1,
+    LootedChest ≥2, chest tiers up one each; width/height re-pinned.
+  - content 514/514.

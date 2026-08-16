@@ -1767,8 +1767,10 @@ test('undercroft: the cavern district holds its story, its metal, and its teeth'
   assert.equal(z.id, 'undercroft');
   // The district lives in the dark band, directly under the mountain.
   assert.ok(z.origin.y >= 512, 'the Undercroft must sit below DARK_BAND_Y');
-  assert.equal(z.width, 96);
-  assert.equal(z.height, 64);
+  // THE REVOICE grew the rect east+south into solid dark rock —
+  // origin fixed, both portals untouched.
+  assert.equal(z.width, 128);
+  assert.equal(z.height, 96);
   // Dying below wakes you at the Landing (nearest-spawn law).
   assert.deepEqual(z.spawn, { x: -332.5, y: 552.5 });
   const counts = new Map<number, number>();
@@ -1781,8 +1783,19 @@ test('undercroft: the cavern district holds its story, its metal, and its teeth'
   assert.ok(n(Tile.RockSilver) >= 3, 'silver runs out before the deep does');
   // The treasure ladder: iron on the walks, gilded behind the crack,
   // mossy where the kobolds and the shrooms keep theirs.
-  assert.ok(n(Tile.ChestIron) >= 2 && n(Tile.ChestGilded) >= 1 && n(Tile.ChestMossy) >= 2);
+  assert.ok(n(Tile.ChestIron) >= 3 && n(Tile.ChestGilded) >= 1 && n(Tile.ChestMossy) >= 3);
   assert.ok(n(Tile.CrackedCaveWall) >= 1, 'the guild keeps one secret');
+  // THE REVOICE's four wings: the winch head's chains, the drowned
+  // working's planks and visible islet chest, the chapel's pillars
+  // and nine kept flames (vault 2 + memorial 3 + chapel 4), and the
+  // war-mouth's abandoned barricade.
+  assert.ok(n(Tile.WallChains) >= 3, 'the haulage line came down');
+  assert.equal(n(Tile.GrandPillar), 2, 'the chapel lost a pillar');
+  assert.equal(n(Tile.CandleShrine), 9, 'the kept flames miscount below');
+  assert.equal(n(Tile.SpikeBarrier), 1, 'the barricade is gone');
+  assert.ok(n(Tile.Dock) >= 6, 'the drowned working lost its planks');
+  assert.equal(n(Tile.KeepPool), 1, 'the cave-fish pool is gone');
+  assert.ok(n(Tile.MineCart) >= 1 && n(Tile.LootedChest) >= 2, 'the long haulage forgot its story');
   // Cave dressing: the dark is furnished.
   assert.ok(n(Tile.GlowShroom) >= 10 && n(Tile.Stalagmite) >= 8 && n(Tile.BonePile) >= 5);
   assert.ok(n(Tile.Brazier) >= 10, 'the guild-swept spine must burn');
