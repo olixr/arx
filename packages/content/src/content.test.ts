@@ -2237,7 +2237,7 @@ test('pinewatch: the watch town holds its knoll, its waters, and four ways in', 
   assert.ok(n(Tile.SaplingPine) >= 20, 'the nursery is the Wardline is the town');
   assert.ok(n(Tile.TreePine) >= 300, 'the Pinereach comes in over the walls');
   assert.equal(n(Tile.RockIron), 3, "the ore cut — the mountain pays in iron");
-  assert.equal(n(Tile.Furnace), 2, "the axe-smith's forge");
+  assert.equal(n(Tile.Furnace), 3, "the axe-smith's two fires and the bloomery");
   assert.equal(n(Tile.Anvil), 2);
   assert.equal(n(Tile.Vault), 2, 'the Charterhouse strongroom');
   assert.equal(n(Tile.BankChest), 2);

@@ -892,6 +892,150 @@ export function buildPinewatch(): ZoneDef {
     'the braziers stay laid. ask Torvi why',
   ], Tile.Signpost);
 
+  // ---------------------------------------------------------------
+  // THE SOUTHREACH — the grown quarter, laid out the way the town
+  // lays everything out: streets first, one job per roof, and the
+  // water deciding what stands where. West of the ridge, the hunters
+  // and the road trade; on the ridge, the iron; east of the Watch
+  // Road, the green and the quiet slope to the tarn.
+  // ---------------------------------------------------------------
+
+  // THE HUNTERS' HALL — the cull rota's own roof. The wolf count
+  // lives here, the winter gear lives here, and the leather trade the
+  // wood always promised finally has a counter. Kolbrun keeps it.
+  b.building(12, 100, 11, 11, {
+    wall: Tile.WallWood, floor: Tile.WoodFloor,
+    doors: [{ side: 's', at: 5 }],
+    windows: [{ side: 'w', at: 5 }, { side: 'e', at: 5 }, { side: 'n', at: 3 }, { side: 'n', at: 7 }],
+  });
+  b.set(13, 101, Tile.Hearth);
+  b.set(15, 104, Tile.Table).set(16, 104, Tile.Table).set(17, 104, Tile.Table);
+  b.set(15, 103, Tile.Chair).set(17, 103, Tile.Chair).set(16, 105, Tile.Chair);
+  b.set(20, 101, Tile.WeaponRack).set(20, 103, Tile.ToolRack);
+  b.set(13, 106, Tile.CarvingBench); // the skinning bench
+  b.set(14, 108, Tile.Counter).set(15, 108, Tile.Counter); // the leather counter
+  b.set(20, 107, Tile.Bed).set(20, 108, Tile.Bed); // the master hunter's corner
+  b.set(13, 108, Tile.Cabinet);
+  b.setDetail(17, 109, Detail.Doormat).setDetail(16, 106, Detail.Rug).setDetail(17, 106, Detail.Rug);
+  b.sign(20, 111, "THE HUNTERS' HALL", [
+    'the cull is a rota, not a sport',
+    'wolves are counted, not collected',
+  ], Tile.HangingSign);
+  b.set(13, 114, Tile.TargetDummy); // the practice butt, across the way
+  b.setDetail(14, 114, Detail.Sawdust);
+
+  // THE FLETCHER — Espen's. Arrows by the dozen, bows by the season,
+  // and the best dozen kept back for reasons he strings but never
+  // says.
+  b.building(26, 100, 7, 8, {
+    wall: Tile.WallWood, floor: Tile.WoodFloor,
+    doors: [{ side: 's', at: 3 }],
+    windows: [{ side: 'w', at: 3 }, { side: 'n', at: 2 }, { side: 'n', at: 4 }],
+  });
+  b.set(27, 102, Tile.FletchersBench);
+  b.set(27, 104, Tile.Workbench);
+  b.set(29, 104, Tile.Counter).set(30, 104, Tile.Counter);
+  b.set(31, 101, Tile.Bed).set(31, 102, Tile.Bed);
+  b.set(31, 105, Tile.Crate);
+  b.setDetail(29, 106, Detail.Doormat);
+  b.sign(31, 108, 'THE FLETCHER', [
+    'arrows by the dozen, bows by the season',
+    'every stave remembers its tree',
+  ], Tile.HangingSign);
+  b.fillRect(29, 108, 1, 3, Tile.Dirt);
+
+  // THE WAYFARERS' GROUND — inside the wall, because the north does
+  // not deserve strangers. A fire, a lean-to, and the gate lamp in
+  // sight: the town's whole opinion of hospitality.
+  b.set(18, 117, Tile.WayfarersRest);
+  b.set(20, 118, Tile.Campfire);
+  b.set(22, 119, Tile.Bench).set(18, 120, Tile.Stump);
+
+  // THE DROVE YARD — every herd bound for Hartfell stages here, and
+  // every drover learns Sylvi counts them in and counts them out.
+  b.building(24, 119, 6, 6, {
+    wall: Tile.WallWood, floor: Tile.WoodFloor,
+    doors: [{ side: 'n', at: 2 }],
+    windows: [{ side: 'e', at: 2 }],
+  });
+  b.set(25, 120, Tile.Bed).set(25, 121, Tile.Bed);
+  b.set(28, 120, Tile.Cabinet);
+  b.set(28, 122, Tile.Table).set(27, 122, Tile.Chair);
+  b.setDetail(26, 120, Detail.Doormat);
+  for (let x = 23; x <= 30; x++) {
+    if (x !== 26 && x !== 27) b.set(x, 127, Tile.RailWood);
+    b.set(x, 135, Tile.RailWood);
+  }
+  for (let y = 128; y <= 134; y++) b.set(23, y, Tile.RailWood).set(30, y, Tile.RailWood);
+  b.setDetail(25, 130, Detail.Straw).setDetail(28, 132, Detail.Straw).setDetail(26, 129, Detail.Straw);
+  b.sign(21, 126, 'THE DROVE YARD', [
+    'stock staged for the fell road',
+    'counted in, counted out',
+  ], Tile.Signpost);
+
+  // THE IRONMASTER — Torger's hut in the stones, and the bloomery on
+  // the terrace above. The seam was found the year the fort went up,
+  // which everyone agrees is a coincidence.
+  for (let y = 112; y <= 115; y++) {
+    for (let x = 38; x <= 40; x++) {
+      if (b.get(x, y) === Tile.Rock) b.set(x, y, Tile.Grass);
+    }
+  }
+  b.fillRect(39, 112, 1, 4, Tile.Dirt); // the barrow track down from the terrace
+  b.building(36, 116, 7, 6, {
+    wall: Tile.WallWood, floor: Tile.WoodFloor,
+    doors: [{ side: 'n', at: 3 }],
+    windows: [{ side: 'w', at: 2 }],
+  });
+  b.set(37, 117, Tile.Bed).set(37, 118, Tile.Bed);
+  b.set(41, 117, Tile.Cabinet);
+  b.set(41, 119, Tile.Table).set(40, 119, Tile.Chair);
+  b.setDetail(39, 117, Detail.Doormat);
+  b.set(41, 108, Tile.Furnace); // the bloomery
+  b.set(44, 109, Tile.Barrel).set(45, 106, Tile.Crate);
+  b.setDetail(42, 106, Detail.Pebbles).setDetail(40, 110, Detail.Pebbles);
+  b.sign(37, 110, 'THE ORE CUT', [
+    'the mountain pays in iron',
+    'what the wood pays in years',
+  ], Tile.Signpost);
+
+  // THE GREEN — the meadow band the pitch yard's smell blows over,
+  // which is why it was free to be a commons. The physic garden at
+  // its west end: the salve Nial's shelf has always promised, made
+  // twenty paces away.
+  b.path({ x: 67, y: 107 }, { x: 98, y: 107 }, 2); // the Green Lane
+  b.building(74, 98, 8, 7, {
+    wall: Tile.WallWood, floor: Tile.WoodFloor,
+    doors: [{ side: 's', at: 3 }],
+    windows: [{ side: 'w', at: 3 }, { side: 'e', at: 3 }, { side: 'n', at: 2 }, { side: 'n', at: 5 }],
+  });
+  b.set(75, 99, Tile.Bed).set(75, 100, Tile.Bed);
+  b.set(79, 99, Tile.Hearth);
+  b.set(80, 102, Tile.Table).set(79, 102, Tile.Chair);
+  b.set(80, 99, Tile.Cabinet);
+  b.setDetail(77, 103, Detail.Doormat);
+  b.fillRect(77, 105, 1, 2, Tile.Dirt);
+  b.fillRect(70, 100, 3, 1, Tile.Tilled);
+  b.fillRect(70, 102, 3, 1, Tile.Tilled);
+  b.fillRect(70, 104, 3, 1, Tile.Tilled);
+  b.set(70, 98, Tile.WildSagewort).set(73, 105, Tile.WildSagewort);
+  b.sign(80, 105, 'THE PHYSIC GARDEN', [
+    'salve, tincture, and honest advice',
+    'the salve first, mostly',
+  ], Tile.HangingSign);
+  // Two more roofs on the green, cut from the Low Row's cloth — the
+  // town grows the way it always grew, alike the way siblings are.
+  cottage(86, 98, true);
+  cottage(96, 98, false);
+  // The Tarnside: one bench, facing the water. Nothing else is
+  // planned here. That is the plan.
+  b.set(92, 111, Tile.Bench);
+  b.set(89, 112, Tile.Stump);
+  // Street lamps where the new lanes meet the dark.
+  b.set(24, 110, Tile.LampPost).set(52, 113, Tile.LampPost);
+  b.set(72, 108, Tile.LampPost).set(94, 108, Tile.LampPost);
+  b.set(20, 122, Tile.LampPost);
+
   // East curtain: from the Northguard's south wall down to the tarn,
   // with the Wardline gate in it. The wall's south foot stands in the
   // tarn's wading margin.
@@ -953,6 +1097,68 @@ export function buildPinewatch(): ZoneDef {
     'when the fell beacon burns, this gate bars',
     'stay on the road. the north means it',
   ], Tile.Signpost);
+
+  // THE FORT'S ROOMS — a garrison is a machine for staying awake.
+  // The Crown flies its weld at the gate; the town's charcoal stays
+  // on the town's own walls. Everyone reads the difference daily.
+  b.setDetail(120, 5, wallBannerDetail(3)).setDetail(124, 5, wallBannerDetail(3));
+  // The drill yard, center of the parade ground: two butts, the spear
+  // rack, and the rack the serjeant counts before he counts the men.
+  b.set(110, 8, Tile.TargetDummy).set(114, 8, Tile.TargetDummy);
+  b.set(117, 12, Tile.SpearRack).set(108, 12, Tile.WeaponRack);
+  b.setDetail(112, 10, Detail.Pebbles).setDetail(110, 12, Detail.Sawdust);
+  // The kennels, north-west corner: the hound line bred down from
+  // Bern's dog — the one that came back across the ice. Rail-penned,
+  // never chained.
+  b.set(99, 7, Tile.RailWood).set(100, 7, Tile.RailWood).set(101, 7, Tile.RailWood).set(102, 7, Tile.RailWood);
+  for (let y = 8; y <= 11; y++) b.set(103, y, Tile.RailWood);
+  b.set(99, 12, Tile.RailWood).set(100, 12, Tile.RailWood); // gap at (101-102,12): the keeper's door
+  b.set(100, 9, Tile.BeastPen);
+  b.setDetail(101, 9, Detail.Straw).setDetail(100, 11, Detail.Straw).setDetail(102, 10, Detail.Straw);
+  // The barracks: four bunks for eight sleepers — the hot-bunk law,
+  // day watch by night and night watch by day. The hearth burns on
+  // the same clock as the Pine and Bell's, for the same reason.
+  b.building(99, 15, 11, 11, {
+    wall: Tile.WallWood, floor: Tile.WoodFloor,
+    doors: [{ side: 'n', at: 5 }],
+    windows: [{ side: 'w', at: 5 }, { side: 's', at: 3 }, { side: 's', at: 7 }],
+  });
+  b.set(101, 17, Tile.Bed).set(101, 18, Tile.Bed);
+  b.set(103, 17, Tile.Bed).set(103, 18, Tile.Bed);
+  b.set(105, 17, Tile.Bed).set(105, 18, Tile.Bed);
+  b.set(107, 17, Tile.Bed).set(107, 18, Tile.Bed);
+  b.set(100, 23, Tile.Hearth);
+  b.set(103, 22, Tile.Table).set(104, 22, Tile.Table);
+  b.set(103, 23, Tile.Chair).set(105, 22, Tile.Chair);
+  b.set(108, 21, Tile.WeaponRack).set(108, 23, Tile.Cabinet);
+  b.setDetail(104, 16, Detail.Doormat).setDetail(104, 20, Detail.Rug).setDetail(105, 20, Detail.Rug);
+  // The armory and the quartermaster's counter, west room; the
+  // captain's quarters, east room — where the letters to Hoargate
+  // get written and the answers get filed under nothing-yet.
+  b.building(113, 15, 13, 9, {
+    wall: Tile.WallStone, floor: Tile.StoneFloor,
+    doors: [{ side: 'w', at: 4 }],
+    windows: [{ side: 'n', at: 3 }, { side: 'n', at: 9 }, { side: 's', at: 6 }],
+  });
+  for (let y = 16; y <= 22; y++) b.set(120, y, Tile.WallStone);
+  b.set(120, 19, Tile.DoorwayStone);
+  b.set(115, 17, Tile.Counter).set(116, 17, Tile.Counter); // the requisition window
+  b.set(114, 16, Tile.WeaponRack).set(118, 16, Tile.WeaponRack);
+  b.set(114, 21, Tile.Crate).set(115, 21, Tile.CrateGoods).set(118, 22, Tile.Barrel);
+  b.set(119, 16, Tile.Cabinet);
+  b.setDetail(114, 19, Detail.Doormat);
+  b.set(124, 16, Tile.Bed).set(124, 17, Tile.Bed); // the captain sleeps where the maps are
+  b.set(121, 16, Tile.Lectern); // the correspondence: Hoargate, the Charterhouse, Hartfell
+  b.set(122, 20, Tile.Table).set(122, 21, Tile.Chair);
+  b.set(124, 21, Tile.Cabinet);
+  b.setDetail(122, 17, Detail.Rug).setDetail(123, 17, Detail.Rug);
+  // The fort's lamps and the yard stores.
+  b.set(107, 6, Tile.LampPost).set(119, 13, Tile.LampPost);
+  b.set(124, 24, Tile.Crate).set(123, 25, Tile.Barrel).set(100, 13, Tile.Barrel);
+  b.sign(104, 29, 'THE NORTHGUARD', [
+    'the Crown holds the pass',
+    'the town holds the Crown to it',
+  ], Tile.HangingSign);
 
   // ---------------------------------------------------------------
   // SOFT EDGES — the Pinereach coming in over the walls. Pine takes
