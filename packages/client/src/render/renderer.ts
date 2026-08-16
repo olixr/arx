@@ -2432,7 +2432,12 @@ export class Renderer {
           : t === Tile.BerryBush ||
               t === Tile.FibrePlant ||
               t === Tile.WildSagewort ||
-              t === Tile.WildMoonbell
+              t === Tile.WildMoonbell ||
+              // THE HARVEST IS HAND-WORK: a crop-tile gather is the
+              // farm harvest — it reads as the forage pluck (stowed
+              // tool, bare hands into the plants), never the old
+              // belt-axe swing at a carrot row.
+              (t !== undefined && isCropTile(t))
             ? 'forage'
             : null;
   }
@@ -53960,6 +53965,23 @@ export class Renderer {
             this.nodeStruck(gather.tx, gather.ty);
             this.onGatherImpact?.('forage', gather.tx + 0.5, gather.ty + 0.5, e.isOwn === true);
           }
+        } else if (gather && gather.kind === 'fish' && toolType === 'rod') {
+          // The tug beat: the water answers the line — a short bright
+          // splash off the bobber (the ripple rings ride the rig's
+          // own line painter, phase-locked to the same book).
+          if (impactBeat('fish')) {
+            const bx = gather.tx + 0.5;
+            const by = gather.ty + 0.5;
+            this.particles.burst(bx, by, 6, ['#e2f0f8', '#9fc4dc', '#6f9ec4'], {
+              speed: 1.5,
+              life: 0.42,
+              size: 0.05,
+              gravity: 6,
+              up: true,
+              spread: 2.2,
+            });
+            this.onGatherImpact?.('fish', bx, by, e.isOwn === true);
+          }
         } else if (station?.kind === 'anvil') {
           if (impactBeat('anvil')) {
             // Sparks ring off the RESOLVED HAMMER FACE — the same
@@ -54079,6 +54101,13 @@ export class Renderer {
           gatherPhase: now / 1000,
           craftKind: station?.kind ?? null,
           foraging: gather?.kind === 'forage',
+          // THE PATIENT LINE: the water point in screen space — the
+          // rig sags the cast line from the rod tip to a bobber here.
+          fishing: gather?.kind === 'fish',
+          fishTo:
+            gather?.kind === 'fish'
+              ? this.camera.worldToScreen(gather.tx + 0.5, gather.ty + 0.5, this.w, this.h)
+              : undefined,
           sitT: riding ? rideE : sitE,
           sitVariant,
           sitStyle: riding
@@ -55279,7 +55308,10 @@ export class Renderer {
     hobgoblin: { weapon: 'iron_sword', offhand: 'oak_kiteshield' },
     hobgoblin_archer: { weapon: 'shortbow', offhand: 'hunters_quiver' },
     hobgoblin_warcaster: { weapon: 'ember_staff' },
-    hobgoblin_champion: { weapon: 'steel_sword', offhand: 'oak_kiteshield' },
+    // The warlord anchors the line behind the legion's own doorwall —
+    // the wall-rank's issue slab, and it drops from this very hand
+    // (hobgoblin_champion table, the loot-story law).
+    hobgoblin_champion: { weapon: 'steel_sword', offhand: 'legion_doorwall' },
     hobgoblin_juggernaut: { weapon: 'iron_greatblade' },
   };
 

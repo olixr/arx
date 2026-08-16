@@ -53,6 +53,7 @@ import { WIELD_GROUND_K, projectCarry } from './wield.js';
 export type WorkKind =
   | 'chop'
   | 'mine'
+  | 'fish'
   | 'forage'
   | 'milk'
   | 'anvil'
@@ -274,6 +275,44 @@ export const WORK_BOOK: Record<WorkKind, WorkSpec> = {
       // The pry: lever the head back out — the haft rocks toward the
       // body while the tip stays low in the seam.
       { at: 0.86, ease: 'smooth', yaw: 0.3, r: 0.3, dy: 0.02, pitch: 1.25, lean: -0.02 },
+    ],
+  },
+  /**
+   * The fish: the PATIENT LINE. A quick two-beat cast — rod hauled
+   * back over the shoulder, flung out over the water — then the long
+   * settled hold, both hands low on the grip, the rod tip breathing
+   * with the angler, and at the beat's end a short TUG as the line
+   * answers. One cycle per gather beat (the 3s server floor). The
+   * rod's own painter carries the cast line to the water tile the
+   * bearing names (rig fishTo); the impact instant is the tug — the
+   * splash and the ripple fire on it.
+   */
+  fish: {
+    cycleMs: 3000,
+    impactAt: 0.82,
+    tipS: 0.62,
+    mirror: true,
+    off: { mode: 'choke', d: 0.13, drop: 0.045 },
+    stations: [
+      // The settled hold: low two-hand grip, tip up-forward. The
+      // toolYaw rides OUTBOARD of the fist yaw (the lifeline law's
+      // argument): at the camera-line facings a bearing-true rod
+      // projects to a plumb line — the outboard bias keeps a readable
+      // diagonal at S/N and reads as the angler's natural cross-body
+      // hold everywhere else.
+      { at: 0, ease: 'smooth', yaw: 0.28, r: 0.23, dy: 0.02, pitch: 1.16, toolYaw: 0.62, lean: 0.02 },
+      // Back-cast: rod hauled up past the shoulder.
+      { at: 0.07, ease: 'out', yaw: 1.7, r: 0.17, dy: -0.28, pitch: -2.45, lean: -0.06 },
+      // The fling: out over the water, body following through.
+      { at: 0.17, ease: 'in', yaw: 0.05, r: 0.31, dy: -0.05, pitch: 1.45, lean: 0.1 },
+      // Settle back into the hold...
+      { at: 0.32, ease: 'smooth', yaw: 0.26, r: 0.24, dy: 0.02, pitch: 1.18, toolYaw: 0.62, lean: 0.03 },
+      // ...and WAIT, breathing (the patient line).
+      { at: 0.78, ease: 'hold', yaw: 0.26, r: 0.24, dy: 0.02, pitch: 1.18, toolYaw: 0.62, lean: 0.03, shiver: 0.006 },
+      // The tug: the tip hauls up short and sharp.
+      { at: 0.86, ease: 'in', yaw: 0.34, r: 0.2, dy: -0.09, pitch: 0.92, toolYaw: 0.56, lean: -0.04 },
+      // Ease the rod back down toward the hold.
+      { at: 0.95, ease: 'smooth', yaw: 0.29, r: 0.23, dy: 0.01, pitch: 1.14, toolYaw: 0.62, lean: 0.01 },
     ],
   },
   /**

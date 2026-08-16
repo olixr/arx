@@ -6,6 +6,7 @@ import type { Db } from '../db/db.js';
 import {
   AUTHORED_FACTIONS,
   AUTHORED_FRONTIER,
+  AUTHORED_STANCES,
   AUTHORED_GROWTH,
   AUTHORED_GEOGRAPHY,
   AUTHORED_LOOT_TABLES,
@@ -37,6 +38,8 @@ import {
   replaceFactions,
   replaceFrontier,
   replaceGrowth,
+  replaceStances,
+  STANCES,
   geographyWarnings,
   ROAD_SPAN_MAX,
   TRAIL_SPAN_MAX,
@@ -52,6 +55,7 @@ import {
   replacePoiDefs,
   validateFactions,
   validateFrontier,
+  validateStances,
   validateGrowth,
   validateGeographyDef,
   validateMinorDef,
@@ -395,6 +399,46 @@ export function createMapsApi(
           const outcome = await revertContentDoc(db, 'factions', 'world', AUTHORED_FACTIONS);
           replaceFactions(JSON.parse(JSON.stringify(AUTHORED_FACTIONS)) as typeof FACTIONS);
           console.log(`[content] factions doc ${outcome} — shipped roster stands`);
+          sendJson(res, 200, { ok: true, outcome });
+          return true;
+        }
+      }
+
+      // ------------------------------------------------ stances doc
+      // THE WILD TAKES SIDES is ONE document under the two-hash law
+      // (docs/npc-hostility-plan.md). Call-time reads + claim-index
+      // rebuild in replaceStances mean a save re-draws the wild's
+      // feuds on the very next perception scan.
+      if (url.pathname === '/dev/content/stances') {
+        if (req.method === 'GET') {
+          const edited =
+            (await loadContentDocs(db, 'stances')).find((d) => d.id === 'world')?.edited ?? false;
+          sendJson(res, 200, { def: JSON.parse(JSON.stringify(STANCES)), edited });
+          return true;
+        }
+        if (req.method === 'PUT') {
+          let raw: unknown;
+          try {
+            raw = JSON.parse(await readBody(req));
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          const result = validateStances(raw);
+          if (!result.ok) {
+            sendJson(res, 400, { error: result.errors.join('; ') });
+            return true;
+          }
+          await importContentDoc(db, 'stances', 'world', result.def);
+          replaceStances(result.def);
+          console.log('[content] stances doc saved + live (no reload needed — call-time reads)');
+          sendJson(res, 200, { ok: true });
+          return true;
+        }
+        if (req.method === 'DELETE') {
+          const outcome = await revertContentDoc(db, 'stances', 'world', AUTHORED_STANCES);
+          replaceStances(JSON.parse(JSON.stringify(AUTHORED_STANCES)) as typeof STANCES);
+          console.log(`[content] stances doc ${outcome} — shipped stances stand`);
           sendJson(res, 200, { ok: true, outcome });
           return true;
         }

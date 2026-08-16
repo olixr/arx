@@ -512,6 +512,16 @@ export interface RigPose {
    */
   foraging?: boolean;
   /**
+   * The Gather target is a fishing water: THE PATIENT LINE — the rod
+   * casts, settles into the low two-hand hold, and tugs on the yield
+   * beat. `fishTo` is the water point in SCREEN space (the caller
+   * projects the node tile) — the cast line sags from the rod tip to
+   * a bobber there, and the tug dips it. Absent, the rod works
+   * without a drawn line (sheets, previews).
+   */
+  fishing?: boolean;
+  fishTo?: { x: number; y: number };
+  /**
    * Seated rest blend, 0..1, SMOOTHED BY THE CALLER (never poseT — it
    * resets on pose flips and would pop the stand-up). Drops the hips
    * to the ground, plants the hands, and forces knees up-screen; the
@@ -6125,6 +6135,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // Foraging outranks the belt tool: picking herbs is hand-work even
   // with an axe on the hip (the caller also holsters the tool sprite).
   const foraging = rig.pose === PoseState.Gather && rig.foraging === true;
+  const fishing = rig.pose === PoseState.Gather && rig.fishing === true && !foraging;
   // Milking is its own pose (never Gather): bare-handed dairy work,
   // weapons stowed by the caller's sheathe blend.
   const milking = rig.pose === PoseState.Milk;
@@ -6137,13 +6148,15 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // school lands (plan Phase 3).
   const workKind: WorkKind | null = foraging
     ? 'forage'
-    : milking
-      ? 'milk'
-      : chopping
-        ? 'chop'
-        : mining
-          ? 'mine'
-          : craftKind;
+    : fishing
+      ? 'fish'
+      : milking
+        ? 'milk'
+        : chopping
+          ? 'chop'
+          : mining
+            ? 'mine'
+            : craftKind;
   const gatherSwing =
     rig.pose === PoseState.Gather && !chopping && !mining && !foraging
       ? Math.sin(rig.gatherPhase * 5.5) * 0.5
@@ -8262,7 +8275,67 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         fore: mainFore,
         clipLo: clip?.[0],
         clipHi: clip?.[1],
+        rodCast: fishing && rig.fishTo !== undefined,
       });
+      // THE PATIENT LINE: the cast line lives in the world — it sags
+      // from the ROD'S OWN TIP (the art's tip point, carried through
+      // the same rotate + fore the wood painted with) to a bobber on
+      // the water point the bearing names. The line rides the rod's
+      // layer, so an away-facing angler's line passes behind the
+      // body with the rod that holds it.
+      if (fishing && rig.fishTo && workRes) {
+        const fore = mainFore;
+        const ca = Math.cos(heldAngle);
+        const sa = Math.sin(heldAngle);
+        const tipLX = 0.62 * s * fore;
+        const tipLY = -0.235 * s;
+        const tx2 = mainX + ca * tipLX - sa * tipLY;
+        const ty2 = mainY + sa * tipLX + ca * tipLY;
+        const u = workCycleU('fish', rig.nowMs);
+        // Tension: taut through the cast fling and the tug, slack sag
+        // through the long wait.
+        const tug = u > 0.8 && u < 0.95 ? 1 - Math.abs((u - 0.86) / 0.09) : 0;
+        const castK = u > 0.07 && u < 0.3 ? 1 : 0;
+        const taut = Math.max(castK * 0.8, tug);
+        // The bobber bobs on the wait, DIPS on the tug.
+        const bobY =
+          rig.fishTo.y +
+          Math.sin(rig.nowMs * 0.0031) * 0.014 * s +
+          Math.max(0, tug) * 0.05 * s;
+        const bobX = rig.fishTo.x;
+        const midX = (tx2 + bobX) / 2;
+        const midY = Math.max(ty2, bobY) + (0.16 - 0.13 * taut) * s;
+        ctx.strokeStyle = 'rgba(232, 226, 212, 0.7)';
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(tx2, ty2);
+        ctx.quadraticCurveTo(midX, midY, bobX, bobY);
+        ctx.stroke();
+        // Bobber: red over white, riding the water line.
+        ctx.fillStyle = '#e8e2d4';
+        ctx.beginPath();
+        ctx.arc(bobX, bobY, 0.028 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#c4553d';
+        ctx.beginPath();
+        ctx.arc(bobX, bobY, 0.028 * s, Math.PI, Math.PI * 2);
+        ctx.fill();
+        // Ripples: a faint standing ring, and on the tug a spreading
+        // pair — the water answering the line (camera-squashed).
+        const ring = (r: number, a: number): void => {
+          ctx.strokeStyle = `rgba(226, 240, 248, ${a})`;
+          ctx.lineWidth = Math.max(1, s * 0.014);
+          ctx.beginPath();
+          ctx.ellipse(bobX, bobY + 0.02 * s, r, r * 0.6, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        };
+        ring(0.07 * s + Math.sin(rig.nowMs * 0.0024) * 0.008 * s, 0.22);
+        if (u > 0.82) {
+          const rp = (u - 0.82) / 0.18;
+          ring((0.08 + rp * 0.2) * s, 0.5 * (1 - rp));
+          if (rp > 0.25) ring((0.05 + (rp - 0.25) * 0.18) * s, 0.4 * (1 - rp));
+        }
+      }
     }
   };
 
@@ -9987,6 +10060,12 @@ function drawHeldItem(
      */
     clipLo?: number;
     clipHi?: number;
+    /**
+     * THE PATIENT LINE: a rod mid-cast — the art's decorative dangle
+     * (line + bobber off the tip) stays home, because the CAST line
+     * to the water is painted by the rig on the real bearing.
+     */
+    rodCast?: boolean;
   },
 ): void {
   ctx.save();
@@ -10070,7 +10149,7 @@ function drawHeldItem(
     paint = (c) => drawStaff(c, enchantedStyle(staffStyle(itemId, color)!, extra?.ench, 'staff'), s, rig.nowMs, rig.hurt, extra?.grip ?? 0.34, castT);
   } else if (itemId.includes('rod')) {
     env = [-0.7, 1.0, 0.35];
-    paint = (c) => drawTool(c, toolStyle(itemId, color)!, s, rig.nowMs, rig.hurt);
+    paint = (c) => drawTool(c, toolStyle(itemId, color)!, s, rig.nowMs, rig.hurt, extra?.rodCast);
   } else {
     env = [-0.1, 0.35, 0.18];
     paint = (c) => {

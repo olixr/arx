@@ -29,6 +29,7 @@ export * from './danger.js';
 export * from './gazetteer.js';
 export * from './locks.js';
 export * from './frontier.js';
+export * from './stances.js';
 export * from './growth.js';
 export * from './voice.js';
 export * from './nodes.js';

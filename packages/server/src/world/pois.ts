@@ -1266,6 +1266,7 @@ export function composePoi(
     name?: string;
     patrol?: boolean;
     hours?: { from: number; to: number };
+    tribe?: string;
   }> = [];
   // Boldness rungs collected up front only to size the sentry ring —
   // their spawns append strictly AFTER the whole base composition
@@ -1304,6 +1305,7 @@ export function composePoi(
             radius: 1.2,
             count: 1,
             level,
+            tribe: g.tribe,
             post: {
               kind: seat.kind,
               x: seat.x,
@@ -1331,6 +1333,7 @@ export function composePoi(
           // next camp over forges a different fight entirely.
           crown: g.crowned ? hashCoords(musterBase, gi, 0x517d) & 0x7fffffff : undefined,
           hours: g.hours,
+          tribe: g.tribe,
         });
       }
     } else {
@@ -1341,6 +1344,7 @@ export function composePoi(
           name: gname,
           patrol: g.patrol,
           hours: g.hours,
+          tribe: g.tribe,
         });
       }
     }
@@ -1398,6 +1402,7 @@ export function composePoi(
         level: want.level,
         name: want.name,
         hours: want.hours,
+        tribe: want.tribe,
       });
     }
     // THE ROUND HAS STATIONS: authored prefab routes deal to the
@@ -1444,6 +1449,7 @@ export function composePoi(
           name: want.name,
           patrol: authored,
           hours: want.hours,
+          tribe: want.tribe,
         });
         continue;
       }
@@ -1459,6 +1465,7 @@ export function composePoi(
           level: want.level,
           name: want.name,
           hours: want.hours,
+          tribe: want.tribe,
         });
         continue;
       }
@@ -1479,6 +1486,7 @@ export function composePoi(
         name: want.name,
         patrol: loop,
         hours: want.hours,
+        tribe: want.tribe,
       });
     }
   }
@@ -1605,6 +1613,7 @@ export function composePoi(
         name: gname,
         hours: g.hours,
         wing: w.wing,
+        tribe: g.tribe,
       });
     }
   }
@@ -1634,6 +1643,7 @@ export function composePoi(
           level: levelRollAt(0x300 + gi, 0) + (g.levelOffset ?? 0),
           name: gname,
           hours: g.hours,
+          tribe: g.tribe,
         });
         continue;
       }
@@ -1658,6 +1668,7 @@ export function composePoi(
             name: gname,
             patrol: loop,
             hours: g.hours,
+            tribe: g.tribe,
           });
         } else {
           const post = byScore[byScore.length - 1 - (rungWatchI % Math.max(1, byScore.length))];
@@ -1672,6 +1683,7 @@ export function composePoi(
             level,
             name: gname,
             hours: g.hours,
+            tribe: g.tribe,
           });
         }
       }

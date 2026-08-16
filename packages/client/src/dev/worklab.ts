@@ -63,6 +63,7 @@ interface WorkRow {
   pose: PoseState;
   weapon?: string;
   foraging?: boolean;
+  fishing?: boolean;
   craftKind?: RigPose['craftKind'];
   dialect: Dialect;
 }
@@ -80,6 +81,7 @@ const ROWS: WorkRow[] = [
   { label: 'chop', kind: 'chop', pose: PoseState.Gather, weapon: 'bronze_axe', dialect: 'flesh' },
   { label: 'mine', kind: 'mine', pose: PoseState.Gather, weapon: 'bronze_pickaxe', dialect: 'flesh' },
   { label: 'forage', kind: 'forage', pose: PoseState.Gather, foraging: true, dialect: 'flesh' },
+  { label: 'fish', kind: 'fish', pose: PoseState.Gather, weapon: 'fishing_rod', fishing: true, dialect: 'flesh' },
   { label: 'milk', kind: 'milk', pose: PoseState.Milk, dialect: 'flesh' },
   { label: 'anvil', kind: 'anvil', pose: PoseState.Craft, craftKind: 'anvil', dialect: 'flesh' },
   { label: 'furnace', kind: 'furnace', pose: PoseState.Craft, craftKind: 'furnace', dialect: 'flesh' },
@@ -289,6 +291,15 @@ function drawSheet(now: number, dt: number): void {
       gatherPhase: now / 1000,
       craftKind: r.craftKind ?? null,
       foraging: r.foraging,
+      fishing: r.fishing,
+      // The sheet's water: 1.5 tiles down the bearing, camera-squashed
+      // — the cast line and bobber ride it exactly as live.
+      fishTo: r.fishing
+        ? {
+            x: homeX + Math.cos(f.dir) * 1.5 * S,
+            y: homeY + Math.sin(f.dir) * 1.5 * S * YS,
+          }
+        : undefined,
       weaponItem: r.weapon,
       gnoll: r.dialect === 'gnoll' ? gnollLook('gnoll') : undefined,
       goblin: r.dialect === 'goblin' ? goblinLook('goblin') : undefined,

@@ -102,6 +102,14 @@ export interface ZoneSpawn {
    * sentry, or an ordinary site's body.
    */
   wing?: number;
+  /**
+   * THE WILD TAKES SIDES (docs/npc-hostility-plan.md): per-placement
+   * tribe override — the sub-faction door. Two camps of the same
+   * bestiary become 'goblin_redfang' and 'goblin_mosstooth' here, and
+   * one stances-doc matrix row makes them feud. Absent = the def's
+   * own tribe (claim → faction prefix → implicit), exactly as before.
+   */
+  tribe?: string;
 }
 
 /**

@@ -75,6 +75,9 @@ function slate(opts: {
     positions: new Map([[11, { x: 5, y: 5 }]]),
     pets: new Map(),
     livestock: new Map(),
+    // THE WILD TAKES SIDES: the door now reads the npc roster for
+    // NPC-shaped targets (kin peace) — empty here, players only.
+    npcs: new Map(),
     actors: new Map(opts.actorSlug ? [[21, { actor: { id: opts.actorSlug } }]] : []),
     npcAggro: proto.npcAggro,
     cancelNpcCast: proto.cancelNpcCast,

@@ -6,6 +6,7 @@ import {
   AUTHORED_FACTIONS,
   AUTHORED_FRONTIER,
   AUTHORED_GEOGRAPHY,
+  AUTHORED_STANCES,
   AUTHORED_GROWTH,
   AUTHORED_VOICE,
   AUTHORED_LOOT_TABLES,
@@ -35,6 +36,7 @@ import {
   replaceFactions,
   replaceFrontier,
   replaceGeography,
+  replaceStances,
   replaceGrowth,
   replaceLootTables,
   minorRosterFingerprint,
@@ -46,6 +48,7 @@ import {
   validateFactions,
   validateFrontier,
   validateGeographyDef,
+  validateStances,
   validateGrowth,
   validateMinorDef,
   validateNodeDoc,
@@ -396,6 +399,28 @@ const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
         `[content] factions: ${res.def.roster.map((f) => f.id).join(', ')} · ` +
           `${res.def.roster.reduce((n, f) => n + f.members.length, 0)} members` +
           (factionsRow.edited ? ' (tool-edited)' : ''),
+      );
+    }
+  }
+
+  // THE WILD TAKES SIDES (docs/npc-hostility-plan.md): the ecosystem's
+  // tribes and stance matrix are one 'world' doc under the same law —
+  // perception, the aggro door, and chase retention all read STANCES
+  // (through the pure helpers) at call time, so a Studio save re-draws
+  // the wild's feuds on the very next scan.
+  await seedContentDocs(db, 'stances', [{ id: 'world', doc: AUTHORED_STANCES }]);
+  const stancesDocs = await loadContentDocs(db, 'stances');
+  const stancesRow = stancesDocs.find((d) => d.id === 'world');
+  if (stancesRow) {
+    const res = validateStances(stancesRow.doc);
+    if (!res.ok) {
+      console.warn(`[content] DB stances doc invalid (${res.errors[0]}) — authored stances stand`);
+    } else {
+      replaceStances(res.def);
+      console.log(
+        `[content] stances: ${res.def.tribes.length} tribes · ` +
+          `${Object.keys(res.def.matrix).length} feuds` +
+          (stancesRow.edited ? ' (tool-edited)' : ''),
       );
     }
   }

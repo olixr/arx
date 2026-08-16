@@ -132,9 +132,12 @@ export function drawTool(
   s: number,
   nowMs: number,
   hurt?: boolean,
+  /** THE PATIENT LINE (work.ts): a rod mid-cast keeps its decorative
+   *  dangle home — the rig paints the real line to the water. */
+  rodCast?: boolean,
 ): void {
   if (st.kind === 'rod') {
-    drawRod(ctx, st, s, hurt);
+    drawRod(ctx, st, s, hurt, rodCast);
     return;
   }
   const color = hurt ? '#ffffff' : st.color;
@@ -324,6 +327,7 @@ function drawRod(
   st: ToolStyle,
   s: number,
   hurt?: boolean,
+  rodCast?: boolean,
 ): void {
   const color = hurt ? '#ffffff' : st.color;
   // Cork grip under the fist, wrapped in twine.
@@ -357,7 +361,10 @@ function drawRod(
   ctx.rotate(-0.4);
   ctx.fillRect(-0.007 * s, -0.018 * s, 0.014 * s, 0.036 * s);
   ctx.restore();
-  // Line from the tip, straight down to a bobber and hook.
+  // Line from the tip, straight down to a bobber and hook — the
+  // CARRIED read. Mid-cast the dangle stays home: the rig paints the
+  // real line out to the water (THE PATIENT LINE).
+  if (rodCast) return;
   ctx.strokeStyle = st.lash ?? '#dcd6c4';
   ctx.lineWidth = Math.max(1, 0.011 * s);
   ctx.beginPath();

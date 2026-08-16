@@ -58,6 +58,13 @@ export interface PoiGarrisonEntry {
    * entries — a pool names one body per site, not a platoon.
    */
   names?: readonly string[];
+  /**
+   * THE WILD TAKES SIDES: per-def tribe override for every body this
+   * row musters — rides the composed ZoneSpawn (maps/types.ts) so a
+   * whole camp family can wear a sub-faction banner and feud through
+   * the stances matrix. Absent = the bestiary's own tribe.
+   */
+  tribe?: string;
 }
 
 /**

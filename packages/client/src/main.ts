@@ -2305,6 +2305,7 @@ renderer.onGatherImpact = (kind, x, y, isOwn) => {
     else if (kind === 'anvil') sfx.anvilClang();
     else if (kind === 'furnace') sfx.furnaceRoar();
     else if (kind === 'forage') sfx.forage();
+    else if (kind === 'fish') sfx.splash(0.5);
     else sfx.chop();
   });
   if (!isOwn) return;
@@ -2312,6 +2313,7 @@ renderer.onGatherImpact = (kind, x, y, isOwn) => {
   else if (kind === 'anvil') input.rumble(0.34, 0.42, 80);
   else if (kind === 'furnace') input.rumble(0.12, 0.2, 160);
   else if (kind === 'forage') input.rumble(0.06, 0.14, 45);
+  else if (kind === 'fish') input.rumble(0.08, 0.18, 55);
   else input.rumble(0.22, 0.32, 60);
 };
 
