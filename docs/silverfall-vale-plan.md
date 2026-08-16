@@ -570,3 +570,46 @@ windows, no marble. The wealth gradient IS the storytelling.
     card, want/wound/quirk/cadence.
   - Pins: fallActors 64→93 (both sites), 18 slugs added, vale_watch
     =6. content 514/514.
+- **Phase 7 THE WALK** — lane 16 (:8860/:5260, DB arx_vale16, fresh
+  planes-era migration 1→36, vite.config.rig16.ts checked in), 19
+  screenshots at gameplay zoom (scratchpad shots/v*.jpeg),
+  120-121fps at every stop, zero console errors. Verdicts:
+  - The Vale Gate reads DEFENDED: bastions, both sentries + Varn
+    posted, the ward interior legible, the SILVERFALL discovery
+    toast firing on the grown rect.
+  - The Vale Bridge is a set piece (parapet braziers all four
+    banks); the river reads wide and real; the Mill Bridge shows
+    upstream from it.
+  - The wet market was ALIVE unprompted: Petya at her slab, Lucan
+    mid-square, Signe on her lunch wander, the watch beat standing,
+    Hedda at her ovens — the routine layer executing as authored.
+  - The Silent Terrace's emptiness works; the Kingshore's young
+    wall dies into the lake on camera (the mole law reads); the
+    Millward shows Brant between his stones with Pip crossing the
+    lane mid-loop; night on the High Street pools lamplight the
+    length of the spine.
+  - Curation findings: NONE blocking. The paper pre-validation
+    (clearance sweeps, wall-shadow checks, waypoint probes) caught
+    everything before the rig did — the first dressing pass in the
+    project's history to walk clean on the first tour.
+  - The Undercroft crossing itself was proven live by the planes
+    epic (its commit walked this exact stair); the revoice's wings
+    are BFS-pinned and portal-pinned by content tests.
+
+THE EPIC IS COMPLETE. Seven phases, seven commits:
+a41e3ae4 plan / 4e12c3ca ground / ebcb9932 Vale / 13f53cd6 High
+City / fab1a0ee Undercroft / 3358b26d People / (this) Walk.
+
+## DEBTS (tracked, deliberate)
+- VO for the Vale's eighteen throats (clip ledger slugs are wired).
+- Fair-day content for the Fairstead (the empty green begs one
+  festival event; the poles stand bare on purpose until then).
+- The Rookery↔memorial fresh-candle payoff as a real quest (the
+  aldous_word / soren_word flags stand ready).
+- Croakwater-facing content on the far shore (brigga_wave is the
+  hook); the reed mouth could someday hold a skral trading stone.
+- The Kingshore's procedural far-shore blend deserves one look on
+  the production world after deploy (edge-harmony vs basin damp).
+- Deploy note: prod re-shape needs db:refresh --content --world;
+  sweep built_tiles inside the new rows if collisions surface;
+  already-discovered characters keep the old map-marker center.
