@@ -43,7 +43,7 @@ import type { ZoneDef } from './types.js';
  *    faceted apse, the bank's plaza shoulders, Aldis's house.
  *  - ROOM INTENT. One job per room and the furniture to prove it.
  *  - THE MODERN KIT, spent at last: every shopfront wears an awning
- *    in its own dye with a bracket sign; the hedge and topiary family
+ *    in its own dye with a bracket sign; the hedge family
  *    debuts on the chapel garden, the Commons green, and the herb
  *    garden; the town well is the world's first Tile.Well; the
  *    farming yard kit dresses everything that grows.
@@ -219,11 +219,8 @@ export function buildAmberford(): ZoneDef {
   b.setDetail(31, 46, Detail.BannerCrown).setDetail(36, 46, Detail.BannerMoon);
   b.setDetail(26, 46, pennantDetail(3)).setDetail(42, 46, pennantDetail(3));
   b.sign(37, 47, 'BANK OF AMBERFORD', ['coin kept, word kept']);
-  // The forecourt: a stone walk down to the west spine, the clipped
-  // bay pair flanking the charter doors — the bank keeps even its
-  // trees in barrels, counted.
+  // The forecourt: a stone walk down to the west spine.
   b.fillRect(32, 47, 4, 3, Tile.StoneFloor);
-  b.set(31, 47, Tile.PottedTree).set(36, 47, Tile.PottedTree);
   b.set(37, 48, Tile.LampPost);
   // THE TOLL WAR MEMORIAL — the reason there is a bank at all: the
   // pillar for the ones who held the ford, braziers the Waykeepers
@@ -646,8 +643,7 @@ export function buildAmberford(): ZoneDef {
   // stone walk: the long nave, the faceted apse, the Pilgrims' Mile
   // runner, the pilgrim alcove (roof first, sermon second), the
   // registry desk — and the memorial garden along the east wall,
-  // clipped hedges and a topiary pair, where the hall's quiet gets a
-  // green room.
+  // clipped hedges, where the hall's quiet gets a green room.
   // ---------------------------------------------------------------
   b.fillRect(22, 58, 15, 23, Tile.StoneFloor);
   b.outlineRect(22, 58, 15, 23, Tile.WallStone);
@@ -692,27 +688,24 @@ export function buildAmberford(): ZoneDef {
   b.set(26, 54, Tile.LampPost).set(32, 54, Tile.LampPost);
   b.set(25, 56, Tile.FlowerBox).set(33, 56, Tile.FlowerBox);
   b.sign(32, 55, "WAYKEEPERS' HALL", ['rest, register, remember']);
-  // The memorial garden along the east wall: hedge line, the topiary
-  // pair, the spring fount the Waykeepers led down from the wall
-  // (the old hound worn into its spout-stone), stone benches facing
-  // the morning.
+  // The memorial garden along the east wall: hedge line, the spring
+  // fount the Waykeepers led down from the wall (the old hound worn
+  // into its spout-stone), stone benches facing the morning.
   for (let y = 60; y <= 76; y++) b.set(40, y, Tile.Hedge);
   b.set(40, 66, Tile.HedgeGate);
-  b.set(39, 60, Tile.TopiaryBall).set(39, 76, Tile.TopiarySpire);
   b.set(38, 63, Tile.StoneBench).set(38, 70, Tile.StoneBench);
   b.set(38, 68, Tile.WallFountain); // the led spring — the hall's quiet, given a voice
   b.setDetail(38, 66, Detail.Flowers).setDetail(39, 72, Detail.Flowers).setDetail(38, 61, Detail.Flowers);
 
   // ---------------------------------------------------------------
   // THE COMMONS — the southeast quarter inside the wall, homes
-  // around a real green. Hedge lines and the topiary gate posts are
-  // the garden family's first outing anywhere in the world.
+  // around a real green. Hedge lines are the garden
+  // family's first outing anywhere in the world.
   // ---------------------------------------------------------------
   // The green itself.
   b.path({ x: 71, y: 62 }, { x: 71, y: 74 }, 2, Tile.Dirt); // the walk down from the Round
   for (let x = 62; x <= 80; x++) if (x !== 70 && x !== 71) b.set(x, 74, Tile.Hedge);
   b.set(70, 74, Tile.HedgeGate).set(71, 74, Tile.HedgeGate); // the arch over the walk
-  b.set(68, 75, Tile.TopiaryBall).set(73, 75, Tile.TopiarySpire); // the gate posts, one of each — the gardener's argument
   b.fillRect(64, 79, 3, 2, Tile.Tilled);
   b.set(64, 79, Tile.CarrotMid).set(66, 80, Tile.SunflowerRipe);
   b.fillRect(75, 84, 3, 2, Tile.Tilled);

@@ -127,14 +127,13 @@ export const TILE_CATEGORIES: TileCategory[] = [
     ],
   },
   {
-    // THE CLIPPED GREEN: the gardener's shelf — the hedge family
-    // first (the wall the garden is drawn with), then the showpieces.
+    // THE CLIPPED GREEN: the gardener's shelf — the hedge family,
+    // the wall the garden is drawn with.
     id: 'garden',
     label: 'Garden',
     tiles: [
       Tile.Hedge, Tile.HedgeDiagNE, Tile.HedgeDiagNW,
       Tile.HedgeGate, Tile.HedgeGateShut,
-      Tile.TopiaryBall, Tile.TopiarySpire,
     ],
   },
   {
@@ -182,7 +181,7 @@ export const TILE_CATEGORIES: TileCategory[] = [
     tiles: [
       Tile.TownFountain, Tile.FounderStatue, Tile.NoticeBoard, Tile.TownBell,
       Tile.ProduceStand, Tile.HandCart, Tile.BarrelStack, Tile.CrateStack,
-      Tile.GrainSacks, Tile.PennantLine, Tile.Woodpile, Tile.HitchingPost,
+      Tile.GrainSacks, Tile.Woodpile, Tile.HitchingPost,
       Tile.StreetPlanter, Tile.StoneBench,
     ],
   },
@@ -217,7 +216,7 @@ export const TILE_CATEGORIES: TileCategory[] = [
       Tile.GuardianStatue, Tile.TapCask, Tile.GameTable,
       Tile.WoodStool, Tile.SettleBench, Tile.BasketStack, Tile.GlazedJars,
       Tile.BroomAndPail, Tile.CloakStand, Tile.LeanLadder, Tile.Wheelbarrow,
-      Tile.WayfarersRest, Tile.PottedTree, Tile.MooringPost, Tile.BeachedSkiff,
+      Tile.WayfarersRest, Tile.MooringPost, Tile.BeachedSkiff,
     ],
   },
   {

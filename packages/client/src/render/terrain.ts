@@ -218,15 +218,12 @@ const GRASS_LIKE = new Set<number>([
   Tile.WildSagewort,
   Tile.WildMoonbell,
   // THE CLIPPED GREEN: a hedgerow grows FROM the meadow — the grass
-  // contour runs beneath it like beneath the fence, and the topiary
-  // pair stand planted, never potted on flags.
+  // contour runs beneath it like beneath the fence.
   Tile.Hedge,
   Tile.HedgeDiagNE,
   Tile.HedgeDiagNW,
   Tile.HedgeGate,
   Tile.HedgeGateShut,
-  Tile.TopiaryBall,
-  Tile.TopiarySpire,
 ]);
 
 /**

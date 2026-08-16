@@ -128,13 +128,6 @@ export function buildDawnmead(): ZoneDef {
   // against the west wall — fifty years of tending, visible.
   for (let y = 37; y <= 43; y++) b.set(30, y, Tile.Hedge);
   b.setDetail(31, 38, Detail.Flowers).setDetail(31, 42, Detail.Flowers);
-  // Her pennant line flies at the porch front, facing the stones —
-  // the VILLAGE'S ONE LINE, the colors she sews for every village
-  // day (a festival prop repeated stops being an occasion, so nobody
-  // else flies one). West of the step so
-  // the wakers' walk stays clear (a line prop is WIDE: give it clear
-  // air east and west — a wall column swallows an end pole).
-  b.set(34, 46, Tile.PennantLine);
 
   // ---------------------------------------------------------------
   // THE GREEN — the village's living room at the world's exact
@@ -157,12 +150,11 @@ export function buildDawnmead(): ZoneDef {
   b.set(58, 42, Tile.BannerPole).set(74, 42, Tile.BannerPole);
   // The green finds its civic voice. The bell calls supper and worse;
   // the board is where the village writes to itself; the town sign
-  // stands between its two clipped sentries. NO fountain and NO
+  // stands at the green's head. NO fountain and NO
   // founder statue, ever: the well and the Ring are Dawnmead's heart,
   // and nobody founded the village that grew around the stones.
   b.set(60, 43, Tile.TownBell);
   b.set(62, 43, Tile.NoticeBoard);
-  b.set(67, 43, Tile.TopiaryBall).set(69, 43, Tile.TopiaryBall);
   // Rowan's seat: the stone bench the village set when the old keeper
   // took his own advice and walked east. Nobody says it's his. It is.
   b.set(58, 45, Tile.StoneBench);
@@ -250,9 +242,7 @@ export function buildDawnmead(): ZoneDef {
   b.setDetail(74, 14, Detail.Doormat);
   b.setDetail(71, 15, trellisDetail(0)); // ivy takes working houses
   // A farm mid-chore: the cart parked off the walk between house and
-  // coop, feed sacks at the coop rail. (Wren's porch line is the
-  // village's ONE pennant line — she sews the colors; nobody else
-  // flies them on an ordinary day.)
+  // coop, feed sacks at the coop rail.
   b.set(81, 16, Tile.HandCart);
   b.set(81, 10, Tile.GrainSacks);
   // The coop: fenced dirt, straw, west gate standing open. The hens
@@ -496,7 +486,6 @@ export function buildDawnmead(): ZoneDef {
   // ---------------------------------------------------------------
   b.outlineRect(18, 8, 23, 17, Tile.Hedge);
   b.set(28, 24, Tile.HedgeGate); // the living arch, wicket swung aside
-  b.set(27, 23, Tile.TopiarySpire).set(29, 23, Tile.TopiarySpire); // the gate's honor guard
   for (let row = 0; row < 4; row++) {
     for (let col = 0; col < 6; col++) {
       b.set(21 + col * 3 + (row % 2), 11 + row * 3, Tile.TreeOak);

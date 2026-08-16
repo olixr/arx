@@ -85,8 +85,6 @@ export type SmashKind =
   | 'wardarch'
   | 'tome'
   | 'runepillar'
-  // THE CLIPPED GREEN: a showpiece bursts in a cloud of leaves.
-  | 'topiary'
   // THE LONG DARK FURNISHED: rot folds wet, clay rings dry, old bone
   // scatters, and worked stone drops in slabs.
   | 'mossbarrel'
@@ -142,7 +140,6 @@ export type SmashKind =
   | 'grainsacks'
   | 'barrelstack'
   | 'cratestack'
-  | 'pennantline'
   | 'hitchpost'
   | 'woodpile'
   | 'streetplanter'
@@ -204,7 +201,6 @@ export type SmashKind =
   | 'ladder'
   | 'barrow'
   | 'wayfarer'
-  | 'pottedtree'
   | 'mooring'
   | 'skiff'
   // THE WARREN AND THE LEGION: camp-life wreckage — marrow bones
@@ -685,8 +681,6 @@ const CHIP_TONE: Record<SmashKind, string> = {
   wardarch: '#8d8798',
   tome: '#d8c4fa',
   runepillar: '#8d8798',
-  // Garden wreckage: clipped leaves over a snapped stem.
-  topiary: '#3a7539',
   // Dungeon wreckage: wet wood, dead iron, bone, kingdom-stone, clay.
   mossbarrel: '#55503a',
   minecart: '#4c4a52',
@@ -736,7 +730,6 @@ const CHIP_TONE: Record<SmashKind, string> = {
   grainsacks: '#b89a68',
   barrelstack: '#8a6534',
   cratestack: '#8a6534',
-  pennantline: '#e2d9c4',
   hitchpost: '#8a6534',
   woodpile: '#8a6534',
   streetplanter: '#8a6534',
@@ -791,7 +784,6 @@ const CHIP_TONE: Record<SmashKind, string> = {
   ladder: '#8a6534',
   barrow: '#75603e',
   wayfarer: '#8a744e',
-  pottedtree: '#75603e',
   mooring: '#4e4438',
   skiff: '#6f5a38',
   // Warren-and-legion wreckage: bone, hewn brown, scrap iron, and
@@ -1469,25 +1461,6 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       }
       break;
     }
-    case 'topiary': {
-      // The stem snaps woody; the crown leaves the world as LEAVES —
-      // a drifting cloud of clipped green, light as the work it took,
-      // with a couple of madder blooms tumbling brighter.
-      wood('#5a4226', 2, 0.12, 0.22, 0.06);
-      for (let i = 0; i < 7; i++) {
-        out.push({
-          len: 0.05 + rand() * 0.04,
-          wid: 0.04,
-          color: pick(rand, ['#24512c', '#3a7539', '#549447', '#4f8f44']),
-          round: true,
-          pace: 1.3 + rand() * 0.25,
-        });
-      }
-      for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.045, wid: 0.04, color: pick(rand, ['#b04a72', '#ef9ec0']), round: true, pace: 1.4 });
-      }
-      break;
-    }
     // THE LONG DARK FURNISHED ------------------------------------------
     case 'mossbarrel': {
       // Rot folds WET: the staves slump more than they fly, the rusted
@@ -2074,20 +2047,6 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       for (let i = 0; i < 4; i++) {
         out.push({ len: 0.07, wid: 0.014, color: pick(rand, ['#d8b878', '#e8d4a0']), pace: 1.2 });
       }
-      break;
-    }
-    case 'pennantline': {
-      // The colors come down flying: the poles drop like the timber
-      // they are, but the PENNANTS scatter high and far — small dyed
-      // points still snapping on the way down — with the swagged
-      // rope falling last as one pale tail. The town's brightest wreck.
-      for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.3, wid: 0.04, color: '#8a6534', stripe: '#c9a76a', pace: 0.6 });
-      }
-      for (let i = 0; i < 5; i++) {
-        out.push({ len: 0.09 + rand() * 0.04, wid: 0.05, color: pick(rand, ['#b0563f', '#4f6d9e', '#c9b45a', '#6d8a4a', '#7a5a8a', '#efe8d4']), pace: 1.6 });
-      }
-      out.push({ len: 0.2, wid: 0.014, color: '#a89263', pace: 0.9 });
       break;
     }
     case 'hitchpost': {
@@ -2728,23 +2687,6 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       out.push({ len: 0.26, wid: 0.026, color: '#a3814a', stripe: '#d4b98a', pace: 1.0 });
       out.push({ len: 0.08, wid: 0.05, color: '#8a5a36', stripe: '#b5824e', round: true, pace: 0.8 });
       out.push({ len: 0.04, wid: 0.035, color: '#8a94a0', stripe: '#d2dae2', round: true, pace: 1.5 });
-      break;
-    }
-    case 'pottedtree': {
-      // The tub claps out cooper-fashion, the soil goes DOWN in
-      // clods — and the clipped bay ball bounces once, whole and
-      // absurd, before shedding its green.
-      for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.13, wid: 0.04, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.75 });
-      }
-      out.push({ len: 0.08, wid: 0.02, color: '#4c4a52', stripe: '#8a94a0', pace: 1.2 });
-      out.push({ len: 0.14, wid: 0.13, color: '#5d7c42', stripe: '#7fae6a', round: true, pace: 0.85 });
-      for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.045, wid: 0.035, color: pick(rand, ['#4e3a2c', '#3a2e20']), round: true, pace: 0.4 });
-      }
-      for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.04, wid: 0.02, color: pick(rand, ['#5d7c42', '#7fae6a']), pace: 1.4 });
-      }
       break;
     }
     case 'mooring': {

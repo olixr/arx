@@ -16712,11 +16712,6 @@ export class Renderer {
       splinters: ['#d8c49a', '#b89a68', '#a89263'],
       chips: ['#d8b878', '#d8c49a'],
     },
-    pennantline: {
-      dust: ['#e2d9c4', '#a89263', '#efe8d4'],
-      splinters: ['#efe8d4', '#b0563f', '#4f6d9e'],
-      chips: ['#c9b45a', '#b0563f'],
-    },
     notices: {
       dust: ['#e2d9c4', '#8a6534', '#f2ead6'],
       splinters: ['#f2ead6', '#e2d9c4', '#c9a76a'],
@@ -16935,11 +16930,6 @@ export class Renderer {
       dust: ['#8a744e', '#8a9a4f', '#a89263'],
       splinters: ['#b89a68', '#8a9a4f', '#8a6534'],
       chips: ['#d8c49a', '#8a9a4f'],
-    },
-    pottedtree: {
-      dust: ['#5d7c42', '#8a6534', '#4e3a2c'],
-      splinters: ['#7fae6a', '#c9a76a', '#5d7c42'],
-      chips: ['#7fae6a', '#c9a76a'],
     },
     mooring: {
       dust: ['#4e4438', '#6e614c', '#a89263'],
@@ -17365,12 +17355,8 @@ export class Renderer {
    */
   private static readonly CACHED_RING_TILES = new Set<Tile>([
     ...Array.from({ length: 10 }, (_, d) => (Tile.BannerPoleDyed + d) as Tile),
-    // The gardener's showpieces sway on the field — tree cadence, so
-    // deliberately NOT in STATIC_RING_TILES. The hedge family is NOT
-    // here at all: it strokes its ink live like the fence and the
-    // palisade (uncapped seamless runs).
-    Tile.TopiaryBall,
-    Tile.TopiarySpire,
+    // The hedge family is NOT here at all: it strokes its ink live
+    // like the fence and the palisade (uncapped seamless runs).
     Tile.Stump,
     Tile.Barrel,
     Tile.Crate,
@@ -17549,7 +17535,6 @@ export class Renderer {
     Tile.GrainSacks,
     Tile.BarrelStack,
     Tile.CrateStack,
-    Tile.PennantLine,
     Tile.HitchingPost,
     Tile.Woodpile,
     Tile.StreetPlanter,
@@ -17606,7 +17591,6 @@ export class Renderer {
     Tile.LeanLadder,
     Tile.Wheelbarrow,
     Tile.WayfarersRest,
-    Tile.PottedTree,
     Tile.MooringPost,
     Tile.BeachedSkiff,
     // THE WARREN AND THE LEGION: the camps' second shelf rides the
@@ -17748,7 +17732,7 @@ export class Renderer {
     Tile.WithyStore,
     // Town statics: the pieces whose painters never read the clock —
     // parked, stacked, ranked, planted, carved. The fountain, board,
-    // bell, and pennant line stay on the fast cadence.
+    // and bell stay on the fast cadence.
     Tile.FounderStatue,
     Tile.HandCart,
     Tile.GrainSacks,
@@ -17794,7 +17778,6 @@ export class Renderer {
     Tile.LeanLadder,
     Tile.Wheelbarrow,
     Tile.WayfarersRest,
-    Tile.PottedTree,
     Tile.MooringPost,
     Tile.BeachedSkiff,
     // Warren-and-legion statics: the truly still pieces — nailed
@@ -22444,193 +22427,11 @@ export class Renderer {
       // tree cadence — their painters sample the wind, so the sprite
       // re-bake IS the sway (the soft-tree law: animation at cadence
       // rate, blit at frame rate).
-      case Tile.TopiaryBall:
-      case Tile.TopiarySpire: {
-        const spire = tile === Tile.TopiarySpire;
-        const syT = s * this.camera.yScale;
-        const baseY = p.y + syT * 0.14;
-        return {
-          sortY: ty + 0.85,
-          body: stationBody(0.52, spire ? 1.78 : 1.4, 0.3),
-          drawShadow: () => this.castContact(p.x, baseY + s * 0.01, s * 0.3, syT * 0.16),
-          draw: () => {
-            const ctx = this.ctx;
-            const tSec = performance.now() / 1000;
-            // The lean: one field sample; the whole crown eases with
-            // the gust at cadence rate — a garden tree, not grass.
-            const wind = windScalarAt(tx + 0.5, ty + 0.5, tSec);
-            const lean = wind * 0.032 * s;
-            // THE TURNED VOLUME: one fused silhouette, three light
-            // bands CLIPPED inside it with BOWED boundaries — the
-            // flat facet-stamp draft read as a sticker at street
-            // zoom (the user's own screenshot), because a sphere is
-            // sold by its band curvature, never by its outline.
-            const mass = (mx: number, my: number, r: number, sq: number, seed: number) => {
-              const ry = r * sq;
-              ctx.save();
-              ctx.beginPath();
-              facetBlob(ctx, mx, my, r, seed, 10, sq, -Math.PI / 2 + ((seed >>> 5) & 7) * 0.08);
-              ctx.clip();
-              ctx.fillStyle = HEDGE_LEAF;
-              ctx.fillRect(mx - r * 1.25, my - ry * 1.3, r * 2.5, ry * 2.6);
-              // The shaded seat hugs the belly and rises east.
-              ctx.fillStyle = HEDGE_DARK;
-              ctx.beginPath();
-              ctx.moveTo(mx - r * 1.15, my + ry * 0.34);
-              ctx.quadraticCurveTo(mx - r * 0.3, my + ry * 0.78, mx + r * 0.45, my + ry * 0.44);
-              ctx.quadraticCurveTo(mx + r * 1.0, my + ry * 0.18, mx + r * 1.2, my - ry * 0.1);
-              ctx.lineTo(mx + r * 1.25, my + ry * 1.35);
-              ctx.lineTo(mx - r * 1.25, my + ry * 1.35);
-              ctx.closePath();
-              ctx.fill();
-              // The lit crown rolls high toward the west sun.
-              ctx.fillStyle = HEDGE_LIT;
-              ctx.beginPath();
-              ctx.moveTo(mx - r * 1.2, my - ry * 0.22);
-              ctx.quadraticCurveTo(mx - r * 0.5, my + ry * 0.1, mx + r * 0.12, my - ry * 0.2);
-              ctx.quadraticCurveTo(mx + r * 0.68, my - ry * 0.48, mx + r * 0.85, my - ry * 1.3);
-              ctx.lineTo(mx - r * 1.25, my - ry * 1.35);
-              ctx.closePath();
-              ctx.fill();
-              // One sunstruck cap — the mass TURNS.
-              ctx.fillStyle = shade(HEDGE_LIT, 16);
-              ctx.beginPath();
-              facetBlob(ctx, mx - r * 0.3, my - ry * 0.6, r * 0.4, seed ^ 0x71, 7, 0.72);
-              ctx.fill();
-              // Shear ticks dapple the band edges — hand-tended.
-              ctx.strokeStyle = shade(HEDGE_DARK, -6);
-              ctx.lineWidth = Math.max(1, s * 0.012);
-              for (let i = 0; i < 4; i++) {
-                const sd = hashCoords(137, tx * 8 + i, ty ^ (seed & 15));
-                const a = 0.4 + (((sd >>> 3) % 100) / 100) * 2.3;
-                const lx = mx + Math.cos(a) * r * (0.5 + ((sd >>> 8) & 3) * 0.11);
-                const ly = my + Math.sin(a) * ry * (0.5 + ((sd >>> 5) & 3) * 0.09);
-                ctx.beginPath();
-                ctx.moveTo(lx, ly);
-                ctx.lineTo(lx + Math.cos(a + 0.9) * s * 0.034, ly + Math.sin(a + 0.9) * s * 0.028);
-                ctx.stroke();
-              }
-              ctx.restore();
-            };
-            // The planting collar: turned earth mounded at the stem —
-            // the piece GROWS from its ground instead of resting on it.
-            ctx.fillStyle = '#4e3a28';
-            ctx.beginPath();
-            ctx.ellipse(p.x, baseY, s * 0.16, syT * 0.09, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#3a2e20';
-            ctx.beginPath();
-            ctx.ellipse(p.x + s * 0.01, baseY - s * 0.008, s * 0.115, syT * 0.06, 0, 0, Math.PI * 2);
-            ctx.fill();
-            // The stem: tapered garden wood, root-flared, lit west.
-            const stemTop = baseY - s * 0.46;
-            ctx.fillStyle = HEDGE_WOOD;
-            ctx.beginPath();
-            ctx.moveTo(p.x - s * 0.06, baseY);
-            ctx.quadraticCurveTo(p.x - s * 0.034, baseY - s * 0.1, p.x - s * 0.028, stemTop);
-            ctx.lineTo(p.x + s * 0.028 + lean * 0.3, stemTop);
-            ctx.quadraticCurveTo(p.x + s * 0.034, baseY - s * 0.1, p.x + s * 0.06, baseY);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = shade(HEDGE_WOOD, 14);
-            ctx.beginPath();
-            ctx.moveTo(p.x - s * 0.052, baseY);
-            ctx.quadraticCurveTo(p.x - s * 0.03, baseY - s * 0.1, p.x - s * 0.026, stemTop);
-            ctx.lineTo(p.x - s * 0.006, stemTop);
-            ctx.quadraticCurveTo(p.x - s * 0.014, baseY - s * 0.1, p.x - s * 0.024, baseY);
-            ctx.closePath();
-            ctx.fill();
-            if (spire) {
-              // THE SPIRE: four clipped plates shrinking to a FUSED
-              // tip. Every tier overlaps its neighbor — a detached
-              // finial mints its own ink ring in the outline pass
-              // and floats as a halo (shipped once; never again).
-              const spiral = ((h >>> 9) & 1) === 1;
-              const tiers: ReadonlyArray<readonly [number, number, number]> = [
-                [0.56, 0.3, 0.6],
-                [0.9, 0.245, 0.58],
-                [1.19, 0.185, 0.56],
-                [1.43, 0.125, 0.6],
-              ];
-              for (let k = 0; k < tiers.length; k++) {
-                const [hgt, r, sq] = tiers[k]!;
-                const sway = lean * (0.35 + k * 0.28);
-                const twist = spiral ? (k & 1 ? 1 : -1) * s * 0.026 : 0;
-                mass(p.x + sway + twist, baseY - hgt * s, r * s, sq, h ^ (k * 0x2f));
-              }
-              if (spiral) {
-                // The gardener's spiral groove: one shaded crease
-                // riding each waist, west-low to east-high.
-                ctx.strokeStyle = 'rgba(22, 44, 26, 0.55)';
-                ctx.lineWidth = Math.max(1, s * 0.016);
-                for (let k = 0; k < 3; k++) {
-                  const [hgt, r] = tiers[k]!;
-                  const wy = baseY - (hgt + 0.17) * s;
-                  const sway = lean * (0.35 + k * 0.28);
-                  ctx.beginPath();
-                  ctx.moveTo(p.x + sway - r * s * 0.7, wy + s * 0.03);
-                  ctx.quadraticCurveTo(p.x + sway, wy + s * 0.055, p.x + sway + r * s * 0.72, wy - s * 0.015);
-                  ctx.stroke();
-                }
-              }
-              // The tip: a clipped point SUNK into the top plate.
-              const tipX = p.x + lean * 1.45 + (spiral ? -s * 0.013 : 0);
-              ctx.fillStyle = HEDGE_LEAF;
-              ctx.beginPath();
-              ctx.moveTo(tipX - s * 0.065, baseY - 1.44 * s);
-              ctx.lineTo(tipX + lean * 0.12, baseY - 1.64 * s);
-              ctx.lineTo(tipX + s * 0.065, baseY - 1.44 * s);
-              ctx.closePath();
-              ctx.fill();
-              ctx.fillStyle = HEDGE_LIT;
-              ctx.beginPath();
-              ctx.moveTo(tipX - s * 0.055, baseY - 1.445 * s);
-              ctx.lineTo(tipX + lean * 0.12, baseY - 1.63 * s);
-              ctx.lineTo(tipX + s * 0.004, baseY - 1.445 * s);
-              ctx.closePath();
-              ctx.fill();
-            } else {
-              // THE TRAINED FORMS: ball, double-standard, egg — a
-              // garden path deals siblings, never clones.
-              const form = (h >>> 6) % 3;
-              if (form === 1) {
-                // The gatepost double: a neck of stem between tiers.
-                ctx.fillStyle = HEDGE_WOOD;
-                ctx.fillRect(p.x - s * 0.02 + lean * 0.8, baseY - s * 1.04, s * 0.04, s * 0.14);
-                mass(p.x + lean * 0.7, baseY - 0.66 * s, s * 0.34, 0.92, h);
-                mass(p.x + lean * 1.1, baseY - 1.18 * s, s * 0.2, 0.9, h ^ 0x3d);
-              } else if (form === 2) {
-                // The egg: one tall clipped oval.
-                mass(p.x + lean * 0.7, baseY - 0.84 * s, s * 0.34, 1.32, h);
-              } else {
-                mass(p.x + lean * 0.7, baseY - 0.78 * s, s * 0.4, 0.92, h);
-              }
-              // A third of the balls flower from the GARDEN DYES.
-              if ((h & 3) === 0) {
-                const dye = GARDEN_DYES[(h >>> 4) % 3]!;
-                const cy = baseY - (form === 2 ? 0.84 : 0.78) * s;
-                const cr = s * (form === 1 ? 0.34 : 0.38);
-                for (let i = 0; i < 3; i++) {
-                  const bseed = hashCoords(139, tx * 8 + i, ty);
-                  const bx = p.x + lean * 0.7 + ((((bseed >>> 2) % 90) - 45) / 100) * cr;
-                  const by = cy + ((((bseed >>> 7) % 70) - 40) / 100) * cr;
-                  ctx.fillStyle = i === 2 ? shade(dye[0]!, 24) : dye[0]!;
-                  ctx.beginPath();
-                  facetCircle(ctx, bx, by, s * (i === 2 ? 0.02 : 0.026), 5, 0.4, 0.8);
-                  ctx.fill();
-                }
-              }
-            }
-          },
-        };
-      }
-
       // ---------------------------------- THE CAMP BARES ITS TEETH
       // The war camp's own material culture (docs/war-camp-decor-plan
       // .md). Every piece measures against the 1.15-tile body, shows
       // its top plane to the tilted bird's eye, and rides the cached
       // ring for its brand outline.
-
       case Tile.StandingTorch: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.16;
@@ -35349,199 +35150,6 @@ export class Renderer {
         };
       }
 
-      case Tile.PennantLine: {
-        const syT = s * this.camera.yScale;
-        const baseY = p.y + syT * 0.18;
-        // THE COLORS FLY: the village's festival line — two turned
-        // poles, one swagged rope, and the town's own dyes snapping
-        // in points down its whole run (the pennants and the awnings
-        // buy from the same dyer). The center flies the long
-        // swallowtail; the spare line waits COILED at the west pole
-        // (a lead coils, never loops). Cloth swings on the breeze
-        // clock — livelier than laundry ever hung: a pennant exists
-        // to move.
-        const hw = s * 0.6;
-        const poleTop = baseY - s * 1.5;
-        const cloths = Renderer.AWNING_CLOTHS;
-        return {
-          sortY: ty + 0.7,
-          body: stationBody(0.9, 1.75, 0.4),
-          drawShadow: () => this.castContact(p.x, baseY, hw * 1.0, s * 0.06),
-          draw: () => {
-            // Draw-time ctx capture: the outline pass swaps this.ctx
-            // to its scratch — the build-time capture would paint past it.
-            const ctx = this.ctx;
-            ctx.fillStyle = 'rgba(12, 8, 20, 0.2)';
-            ctx.beginPath();
-            ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.05, s * 0.055, 0, 0, Math.PI * 2);
-            ctx.fill();
-            // Two turned poles leaning a hair OUT — the line pulls
-            // them. Stone-set feet, a shoulder collar, and a bronze
-            // ball finial catching the light on each.
-            for (const m of [-1, 1] as const) {
-              const fx = p.x + m * hw * 0.94;
-              const txp = p.x + m * hw * 1.04;
-              ctx.fillStyle = TWN_STONE_DARK;
-              ctx.beginPath();
-              facetBlob(ctx, fx, baseY - s * 0.01, s * 0.05, h ^ (m * 29), 5, 0.7);
-              ctx.fill();
-              ctx.strokeStyle = TWN_OAK;
-              ctx.lineWidth = Math.max(1.5, s * 0.048);
-              ctx.beginPath();
-              ctx.moveTo(fx, baseY);
-              ctx.lineTo(txp, poleTop);
-              ctx.stroke();
-              ctx.strokeStyle = TWN_OAK_LIT;
-              ctx.lineWidth = Math.max(1, s * 0.016);
-              ctx.beginPath();
-              ctx.moveTo(fx - s * 0.012, baseY - s * 0.06);
-              ctx.lineTo(txp - s * 0.012, poleTop + s * 0.05);
-              ctx.stroke();
-              // The collar the rope ties off at, then the finial.
-              ctx.fillStyle = TWN_OAK_DARK;
-              ctx.fillRect(txp - s * 0.036, poleTop + s * 0.09, s * 0.072, s * 0.032);
-              ctx.fillStyle = TWN_BRONZE;
-              ctx.beginPath();
-              ctx.ellipse(txp, poleTop - s * 0.035, s * 0.036, s * 0.04, 0, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.fillStyle = TWN_BRONZE_LIT;
-              ctx.beginPath();
-              ctx.ellipse(txp - s * 0.012, poleTop - s * 0.048, s * 0.014, s * 0.016, 0, 0, Math.PI * 2);
-              ctx.fill();
-              // A dyed ribbon streams off each finial — the breeze
-              // made visible above the line's own colors.
-              const rsw = Math.sin(t * 1.6 + tx * 1.9 + ty * 1.3 + m * 2.1) * 0.5 + 0.5;
-              ctx.strokeStyle = cloths[(((h >>> 9) + (m + 1)) >>> 0) % 10]!.a;
-              ctx.lineWidth = Math.max(1, s * 0.02);
-              ctx.beginPath();
-              ctx.moveTo(txp, poleTop - s * 0.02);
-              ctx.quadraticCurveTo(
-                txp + s * (0.1 + rsw * 0.03),
-                poleTop - s * (0.09 - rsw * 0.05),
-                txp + s * (0.17 + rsw * 0.02),
-                poleTop - s * (0.01 + rsw * 0.08),
-              );
-              ctx.stroke();
-            }
-            // THE LINE: one catenary, tied collar to collar, sagging
-            // under its colors.
-            const ax0 = p.x - hw * 1.04;
-            const ax1 = p.x + hw * 1.04;
-            const ayT = poleTop + s * 0.105;
-            const sagY = poleTop + s * 0.42;
-            ctx.strokeStyle = 'rgba(226, 217, 196, 0.85)';
-            ctx.lineWidth = Math.max(1, s * 0.013);
-            ctx.beginPath();
-            ctx.moveTo(ax0, ayT);
-            ctx.quadraticCurveTo(p.x, sagY, ax1, ayT);
-            ctx.stroke();
-            const lineAt = (f: number) => {
-              const u = 1 - f;
-              return {
-                x: u * u * ax0 + 2 * u * f * p.x + f * f * ax1,
-                y: u * u * ayT + 2 * u * f * sagY + f * f * ayT,
-              };
-            };
-            const sway = (k: number) => Math.sin(t * 1.6 + tx * 1.9 + ty * 1.3 + k * 1.7) * 0.16;
-            // SIX PENNANTS, hash-dealt on the stride-3 walk (the
-            // bolts' law: neighbors never share a hue family). Every
-            // third is a swallowtail; each hangs from its own station
-            // on the line's true curve, tip lagging the hoist.
-            const stations = [0.1, 0.24, 0.38, 0.62, 0.76, 0.9] as const;
-            for (let k = 0; k < stations.length; k++) {
-              const a = lineAt(stations[k]!);
-              const dye = cloths[(((h >>> 2) & 15) + k * 3) % 10]!;
-              const sw = sway(k) * (0.8 + ((h >>> (k + 4)) & 1) * 0.35);
-              const w2 = s * 0.075;
-              const len = s * (0.27 + (((h >>> (k * 2 + 1)) & 3) / 3) * 0.05);
-              const tail = ((k + (h >>> 5)) % 3 | 0) === 0;
-              ctx.save();
-              ctx.translate(a.x, a.y);
-              ctx.rotate(sw);
-              ctx.fillStyle = dye.a;
-              ctx.beginPath();
-              ctx.moveTo(-w2, 0);
-              ctx.lineTo(w2, 0);
-              if (tail) {
-                // The swallowtail: two points, the notch riding the
-                // same lag the tip does.
-                ctx.lineTo(w2 * 0.85 + sw * s * 0.5, len);
-                ctx.lineTo(sw * s * 0.55, len * 0.62);
-                ctx.lineTo(-w2 * 0.85 + sw * s * 0.5, len);
-              } else {
-                ctx.lineTo(sw * s * 0.6, len);
-              }
-              ctx.closePath();
-              ctx.fill();
-              // The hoist band (sewn-border law: a fill, never a
-              // stroked outline) and one crease of shade on the lee
-              // half so the point reads as cloth, not paper.
-              ctx.fillStyle = dye.b;
-              ctx.fillRect(-w2, 0, w2 * 2, s * 0.032);
-              ctx.fillStyle = 'rgba(20, 16, 28, 0.12)';
-              ctx.beginPath();
-              ctx.moveTo(w2 * 0.3, s * 0.032);
-              ctx.lineTo(w2, s * 0.032);
-              ctx.lineTo(sw * s * (tail ? 0.55 : 0.6) + (tail ? w2 * 0.2 : 0), tail ? len * 0.62 : len);
-              ctx.closePath();
-              ctx.fill();
-              ctx.restore();
-            }
-            // THE CENTER BANNER: the long swallowtail at the sag's
-            // deepest point — dyed field, trim head, and one pale
-            // roundel. It swings slowest: the heaviest cloth on the
-            // line.
-            {
-              const a = lineAt(0.5);
-              const dye = cloths[(h >>> 6) % 10]!;
-              const sw = sway(7) * 0.6;
-              const bw = s * 0.11;
-              const bl = s * 0.46;
-              ctx.save();
-              ctx.translate(a.x, a.y);
-              ctx.rotate(sw);
-              ctx.fillStyle = dye.a;
-              ctx.beginPath();
-              ctx.moveTo(-bw, 0);
-              ctx.lineTo(bw, 0);
-              ctx.lineTo(bw * 0.94 + sw * s * 0.4, bl);
-              ctx.lineTo(sw * s * 0.45, bl * 0.78);
-              ctx.lineTo(-bw * 0.94 + sw * s * 0.4, bl);
-              ctx.closePath();
-              ctx.fill();
-              ctx.fillStyle = dye.b;
-              ctx.fillRect(-bw, 0, bw * 2, s * 0.04);
-              ctx.beginPath();
-              ctx.ellipse(sw * s * 0.2, bl * 0.42, s * 0.052, s * 0.058, 0, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.fillStyle = 'rgba(20, 16, 28, 0.12)';
-              ctx.beginPath();
-              ctx.moveTo(bw * 0.35, s * 0.04);
-              ctx.lineTo(bw, s * 0.04);
-              ctx.lineTo(bw * 0.94 + sw * s * 0.4, bl);
-              ctx.lineTo(bw * 0.4 + sw * s * 0.42, bl * 0.84);
-              ctx.closePath();
-              ctx.fill();
-              ctx.restore();
-            }
-            // The spare line, coiled at the west pole's foot — a
-            // lead coils, never loops.
-            ctx.strokeStyle = TWN_ROPE;
-            ctx.lineWidth = Math.max(1, s * 0.016);
-            ctx.beginPath();
-            ctx.ellipse(p.x - hw * 0.74, baseY - s * 0.035, s * 0.068, s * 0.03, 0.08, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.ellipse(p.x - hw * 0.74, baseY - s * 0.04, s * 0.044, s * 0.019, 0.08, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(p.x - hw * 0.68, baseY - s * 0.03);
-            ctx.quadraticCurveTo(p.x - hw * 0.62, baseY - s * 0.015, p.x - hw * 0.6, baseY - s * 0.035);
-            ctx.stroke();
-          },
-        };
-      }
-
       case Tile.HitchingPost: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.16;
@@ -42670,205 +42278,6 @@ export class Renderer {
             ctx.fillStyle = TWN_OAK_LIT;
             ctx.beginPath();
             ctx.ellipse(wx2 + s * 0.088, baseY - s * 0.055, s * 0.015, s * 0.021, 0.5, 0, Math.PI * 2);
-            ctx.fill();
-          },
-        };
-      }
-
-      case Tile.PottedTree: {
-        const syT = s * this.camera.yScale;
-        const baseY = p.y + syT * 0.18;
-        // The merchant's doorstep pride: a coopered half-cask tub
-        // (staves, two hoops, honest soil showing at the rim)
-        // raising a clipped bay ball on a clean stem — the hedge
-        // family's discipline gone PORTABLE. Underplanted blooms
-        // deal at the soil line; one dropped leaf keeps it honest.
-        const m = ((h >>> 4) & 1) ? 1 : -1;
-        // One doorstep in four trains a CONE instead of the ball —
-        // a flanked door reads richer when the pair aren't twins.
-        const cone = ((h >>> 8) & 3) === 0;
-        const tubTop = baseY - s * 0.38;
-        const tubR = s * 0.22;
-        const ballY = baseY - s * 1.12;
-        const ballR = s * 0.34;
-        return {
-          sortY: ty + 0.68,
-          body: stationBody(0.52, 1.6, 0.35),
-          drawShadow: () => this.castContact(p.x, baseY, tubR * 1.2, s * 0.05),
-          draw: () => {
-            // Draw-time ctx capture: the outline pass swaps this.ctx
-            // to its scratch — the build-time capture would paint past it.
-            const ctx = this.ctx;
-            // THE TUB: half-cask, staves bowing, two hoops, the
-            // cooper's second sale of the season.
-            ctx.fillStyle = TWN_OAK_DARK;
-            ctx.beginPath();
-            ctx.moveTo(p.x - tubR, tubTop);
-            ctx.quadraticCurveTo(p.x - tubR * 1.16, (tubTop + baseY) / 2, p.x - tubR * 0.9, baseY);
-            ctx.lineTo(p.x + tubR * 0.9, baseY);
-            ctx.quadraticCurveTo(p.x + tubR * 1.16, (tubTop + baseY) / 2, p.x + tubR, tubTop);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = TWN_OAK;
-            ctx.beginPath();
-            ctx.moveTo(p.x - tubR * 0.94, tubTop + s * 0.01);
-            ctx.quadraticCurveTo(p.x - tubR * 1.08, (tubTop + baseY) / 2, p.x - tubR * 0.85, baseY - s * 0.01);
-            ctx.lineTo(p.x - tubR * 0.06, baseY - s * 0.01);
-            ctx.quadraticCurveTo(p.x - tubR * 0.2, (tubTop + baseY) / 2, p.x - tubR * 0.08, tubTop + s * 0.01);
-            ctx.closePath();
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(50, 36, 18, 0.5)';
-            ctx.lineWidth = Math.max(1, s * 0.01);
-            for (const k of [-0.45, 0.05, 0.55]) {
-              ctx.beginPath();
-              ctx.moveTo(p.x + tubR * k, tubTop + s * 0.02);
-              ctx.quadraticCurveTo(p.x + tubR * k * 1.12, (tubTop + baseY) / 2, p.x + tubR * k * 0.92, baseY - s * 0.015);
-              ctx.stroke();
-            }
-            for (const hy of [0.22, 0.72]) {
-              const yh = tubTop + (baseY - tubTop) * hy;
-              const wk = tubR * (1.0 + 0.13 * Math.sin(hy * Math.PI));
-              ctx.fillStyle = TWN_IRON;
-              ctx.fillRect(p.x - wk, yh - s * 0.014, wk * 2, s * 0.028);
-              ctx.fillStyle = 'rgba(210, 218, 226, 0.32)';
-              ctx.fillRect(p.x - wk, yh - s * 0.014, wk * 2, s * 0.009);
-            }
-            // The soil plane and its rim shadow.
-            ctx.fillStyle = '#3a2e20';
-            ctx.beginPath();
-            ctx.ellipse(p.x, tubTop, tubR * 0.92, s * 0.05, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#4e3a28';
-            ctx.beginPath();
-            ctx.ellipse(p.x - s * 0.015, tubTop - s * 0.006, tubR * 0.74, s * 0.038, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = TWN_OAK_LIT;
-            ctx.lineWidth = Math.max(1, s * 0.012);
-            ctx.beginPath();
-            ctx.ellipse(p.x, tubTop, tubR * 0.98, s * 0.055, 0, Math.PI * 1.05, Math.PI * 1.95);
-            ctx.stroke();
-            // The underplanted ring: dealt blooms at the stem.
-            const petals = ['#c95a74', '#e8dcc4', '#c9a13c', '#8a7aa8'];
-            for (let k = 0; k < 3; k++) {
-              const sd = (h >>> (k * 4 + 7)) & 15;
-              const bx2 = p.x + ((sd & 7) - 3.5) * tubR * 0.2;
-              ctx.fillStyle = CMN_BAY;
-              ctx.beginPath();
-              ctx.ellipse(bx2, tubTop - s * 0.02, s * 0.018, s * 0.012, 0, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.fillStyle = petals[(sd >>> 2) & 3]!;
-              ctx.beginPath();
-              ctx.arc(bx2, tubTop - s * 0.034, s * 0.012, 0, Math.PI * 2);
-              ctx.fill();
-            }
-            // THE STEM: a real turned trunk, root-swollen at the
-            // soil, tapering into the crown — the stroke-thin first
-            // draft read as a balloon on a string beside the body.
-            const stemTopY = ballY + ballR * 0.6;
-            ctx.fillStyle = '#6f5a38';
-            ctx.beginPath();
-            ctx.moveTo(p.x - s * 0.045, tubTop - s * 0.01);
-            ctx.quadraticCurveTo(p.x - s * 0.026, tubTop - s * 0.24, p.x - s * 0.02 + m * s * 0.012, stemTopY);
-            ctx.lineTo(p.x + s * 0.02 + m * s * 0.012, stemTopY);
-            ctx.quadraticCurveTo(p.x + s * 0.026, tubTop - s * 0.24, p.x + s * 0.045, tubTop - s * 0.01);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = shade('#6f5a38', 16);
-            ctx.beginPath();
-            ctx.moveTo(p.x - s * 0.038, tubTop - s * 0.01);
-            ctx.quadraticCurveTo(p.x - s * 0.022, tubTop - s * 0.24, p.x - s * 0.016 + m * s * 0.012, stemTopY);
-            ctx.lineTo(p.x - s * 0.002 + m * s * 0.012, stemTopY);
-            ctx.quadraticCurveTo(p.x - s * 0.008, tubTop - s * 0.24, p.x - s * 0.014, tubTop - s * 0.01);
-            ctx.closePath();
-            ctx.fill();
-            ctx.strokeStyle = TWN_ROPE;
-            ctx.lineWidth = Math.max(1, s * 0.01);
-            ctx.beginPath();
-            ctx.moveTo(p.x - s * 0.02, tubTop - s * 0.22);
-            ctx.lineTo(p.x + s * 0.024, tubTop - s * 0.235);
-            ctx.stroke();
-            // THE CROWN: a turned volume — one faceted silhouette,
-            // three bay values clipped inside on BOWED boundaries,
-            // leaf ticks where the shears passed last week. The old
-            // stacked-arc draft read flat beside the grown trees.
-            const crown = (mx: number, my: number, r: number, sq: number, seed: number) => {
-              const ry = r * sq;
-              ctx.save();
-              ctx.beginPath();
-              facetBlob(ctx, mx, my, r, seed, 10, sq, -Math.PI / 2 + ((seed >>> 4) & 7) * 0.09);
-              ctx.clip();
-              ctx.fillStyle = CMN_BAY;
-              ctx.fillRect(mx - r * 1.25, my - ry * 1.3, r * 2.5, ry * 2.6);
-              ctx.fillStyle = shade(CMN_BAY, -18);
-              ctx.beginPath();
-              ctx.moveTo(mx - r * 1.15, my + ry * 0.36);
-              ctx.quadraticCurveTo(mx - r * 0.25, my + ry * 0.8, mx + r * 0.5, my + ry * 0.42);
-              ctx.quadraticCurveTo(mx + r * 1.05, my + ry * 0.14, mx + r * 1.2, my - ry * 0.12);
-              ctx.lineTo(mx + r * 1.25, my + ry * 1.35);
-              ctx.lineTo(mx - r * 1.25, my + ry * 1.35);
-              ctx.closePath();
-              ctx.fill();
-              ctx.fillStyle = CMN_BAY_LIT;
-              ctx.beginPath();
-              ctx.moveTo(mx - r * 1.2, my - ry * 0.24);
-              ctx.quadraticCurveTo(mx - r * 0.5, my + ry * 0.08, mx + r * 0.14, my - ry * 0.22);
-              ctx.quadraticCurveTo(mx + r * 0.7, my - ry * 0.5, mx + r * 0.86, my - ry * 1.3);
-              ctx.lineTo(mx - r * 1.25, my - ry * 1.35);
-              ctx.closePath();
-              ctx.fill();
-              ctx.fillStyle = shade(CMN_BAY_LIT, 16);
-              ctx.beginPath();
-              facetBlob(ctx, mx - r * 0.3, my - ry * 0.58, r * 0.38, seed ^ 0x59, 7, 0.72);
-              ctx.fill();
-              // Leaf ticks along the lit shoulder.
-              ctx.strokeStyle = shade(CMN_BAY_LIT, 12);
-              ctx.lineWidth = Math.max(1, s * 0.01);
-              for (let k = 0; k < 4; k++) {
-                const sd = (seed >>> (k * 3 + 5)) & 7;
-                const a = 3.5 + k * 0.55 + (sd & 1) * 0.2;
-                const lx = mx + Math.cos(a) * r * 0.74;
-                const ly = my + Math.sin(a) * ry * 0.7;
-                ctx.beginPath();
-                ctx.moveTo(lx, ly);
-                ctx.lineTo(lx + Math.cos(a) * s * 0.03, ly + Math.sin(a) * s * 0.028);
-                ctx.stroke();
-              }
-              ctx.restore();
-            };
-            if (cone) {
-              // The trained cone: three clipped plates to a fused tip.
-              crown(p.x + m * s * 0.006, baseY - s * 0.86, ballR * 0.86, 0.62, h);
-              crown(p.x + m * s * 0.01, baseY - s * 1.1, ballR * 0.64, 0.6, h ^ 0x2f);
-              crown(p.x + m * s * 0.014, baseY - s * 1.3, ballR * 0.4, 0.62, h ^ 0x55);
-              ctx.fillStyle = CMN_BAY;
-              ctx.beginPath();
-              ctx.moveTo(p.x + m * s * 0.014 - s * 0.05, baseY - s * 1.32);
-              ctx.lineTo(p.x + m * s * 0.02, baseY - s * 1.46);
-              ctx.lineTo(p.x + m * s * 0.014 + s * 0.05, baseY - s * 1.32);
-              ctx.closePath();
-              ctx.fill();
-            } else {
-              crown(p.x + m * s * 0.008, ballY, ballR, 0.94, h);
-            }
-            // One doorstep in four carries the bay's autumn berries —
-            // dark garnets dealt along the shaded shoulder.
-            if (((h >>> 10) & 3) === 1 && !cone) {
-              ctx.fillStyle = '#7a2f38';
-              for (let k = 0; k < 4; k++) {
-                const sd = hashCoords(163 + k, tx, ty);
-                const a = 0.3 + ((sd >>> 3) % 100) / 100 * 1.8;
-                const bx2 = p.x + m * s * 0.008 + Math.cos(a) * ballR * 0.62;
-                const by2 = ballY + Math.sin(a) * ballR * 0.58;
-                ctx.beginPath();
-                ctx.arc(bx2, by2, s * 0.014, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = k === 3 ? '#a34a52' : '#7a2f38';
-              }
-            }
-            // The one dropped leaf — clipped last week, remember.
-            ctx.fillStyle = shade(CMN_BAY, -6);
-            ctx.beginPath();
-            ctx.ellipse(p.x + m * tubR * 1.35, baseY - s * 0.01, s * 0.022, s * 0.011, m * 0.5, 0, Math.PI * 2);
             ctx.fill();
           },
         };

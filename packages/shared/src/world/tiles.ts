@@ -634,10 +634,6 @@ export enum Tile {
   HedgeGate = 345,
   /** The same archway with its timber wicket latched. */
   HedgeGateShut = 346,
-  /** A clipped sphere on a woody stem — the gardener's showpiece. */
-  TopiaryBall = 347,
-  /** A clipped spire tapering to a leaf-tuft finial. */
-  TopiarySpire = 348,
   // THE LONG DARK FURNISHED — dungeon dressing with a memory. Every
   // piece tells who was down here and what became of them: stores
   // gone green with the damp, a cart abandoned mid-shift, a prisoner
@@ -764,8 +760,6 @@ export enum Tile {
   BarrelStack = 397,
   /** Crates stacked two high, the top lid ajar over straw. */
   CrateStack = 398,
-  /** Dyed pennants flying from a swagged line between two poles. */
-  PennantLine = 399,
   /** A chewed hitching rail, iron rings, one tied lead. */
   HitchingPost = 400,
   /** Cordwood ranked between stakes; the axe stands in the block. */
@@ -879,8 +873,6 @@ export enum Tile {
   Wheelbarrow = 444,
   /** A wayfarer's kit by the door: bedroll, pack, staff, and waterskin. */
   WayfarersRest = 445,
-  /** A coopered tub holding a clipped bay ball — the merchant's doorstep pride. */
-  PottedTree = 446,
   /** A tarred bollard leaning seaward, the lead coiled, weed at the foot. */
   MooringPost = 447,
   /** A clinker skiff hauled ashore on its keel, oars shipped, painter coiled. */
@@ -1448,8 +1440,6 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   // the living arch); the latched wicket bars it like any gate.
   [Tile.HedgeGate]: { name: 'hedge arch', solid: false, color: '#356234', raised: true, topColor: '#4c8342' },
   [Tile.HedgeGateShut]: { name: 'hedge arch', solid: true, color: '#2f5c31', raised: true, topColor: '#4c8342' },
-  [Tile.TopiaryBall]: { name: 'topiary', solid: true, color: '#35663a', raised: true, topColor: '#549447' },
-  [Tile.TopiarySpire]: { name: 'topiary spire', solid: true, color: '#2c5533', raised: true, topColor: '#4c8342' },
   // THE LONG DARK FURNISHED — minimap voice: props sit a step warmer
   // or paler than the '#514b58' flagstone dark, so a dressed chamber
   // reads furnished at chart scale without shouting. The two wall
@@ -1520,7 +1510,6 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.GrainSacks]: { name: 'grain sacks', solid: true, color: '#8a744e', raised: true, topColor: '#d8c49a' },
   [Tile.BarrelStack]: { name: 'stacked barrels', solid: true, color: '#75603e', raised: true, topColor: '#b08a45' },
   [Tile.CrateStack]: { name: 'stacked crates', solid: true, color: '#75603e', raised: true, topColor: '#c9a76a' },
-  [Tile.PennantLine]: { name: 'pennant line', solid: true, color: '#6f6a58', raised: true, topColor: '#c25668' },
   [Tile.HitchingPost]: { name: 'hitching post', solid: true, color: '#6f5a38', raised: true, topColor: '#a8823f' },
   [Tile.Woodpile]: { name: 'woodpile', solid: true, color: '#75603e', raised: true, topColor: '#c9a76a' },
   [Tile.StreetPlanter]: { name: 'street planter', solid: true, color: '#75603e', raised: true, topColor: '#c95a74' },
@@ -1577,7 +1566,6 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.LeanLadder]: { name: 'leaning ladder', solid: true, color: '#75603e', raised: true, topColor: '#c9a76a' },
   [Tile.Wheelbarrow]: { name: 'wheelbarrow', solid: true, color: '#75603e', raised: true, topColor: '#a3814a' },
   [Tile.WayfarersRest]: { name: "wayfarer's rest", solid: true, color: '#8a744e', raised: true, topColor: '#8a9a4f' },
-  [Tile.PottedTree]: { name: 'potted bay', solid: true, color: '#75603e', raised: true, topColor: '#5d7c42' },
   [Tile.MooringPost]: { name: 'mooring post', solid: true, color: '#4e4438', raised: true, topColor: '#a89263' },
   [Tile.BeachedSkiff]: { name: 'beached skiff', solid: true, color: '#6f5a38', raised: true, topColor: '#8fa8bd' },
   // THE WARREN AND THE LEGION: the camp browns again — axe-hewn wood,
@@ -2179,10 +2167,6 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.WardArch, 0.38],
   [Tile.ArcaneTome, 0.24],
   [Tile.RunePillar, 0.2],
-  // THE CLIPPED GREEN: you brush past a topiary's stem, but the hedge
-  // WALL stays full-block — it is the garden's architecture.
-  [Tile.TopiaryBall, 0.3],
-  [Tile.TopiarySpire, 0.3],
   // THE LONG DARK FURNISHED: centered masses you squeeze past in a
   // tight corridor — round columns especially (you shoulder around
   // the drum, never an invisible crate). The sarcophagus keeps its
@@ -2240,7 +2224,6 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.GrainSacks, 0.32],
   [Tile.BarrelStack, 0.38],
   [Tile.CrateStack, 0.34],
-  [Tile.PennantLine, 0.32],
   [Tile.HitchingPost, 0.28],
   [Tile.Woodpile, 0.36],
   [Tile.StreetPlanter, 0.24],
@@ -2295,7 +2278,6 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.LeanLadder, 0.26],
   [Tile.Wheelbarrow, 0.36],
   [Tile.WayfarersRest, 0.3],
-  [Tile.PottedTree, 0.28],
   [Tile.MooringPost, 0.24],
   [Tile.BeachedSkiff, 0.45],
   // THE WARREN AND THE LEGION: the cart is the wave's one true
@@ -2509,8 +2491,6 @@ export type DestructibleKind =
   | 'wardarch'
   | 'tome'
   | 'runepillar'
-  // THE CLIPPED GREEN: a showpiece bursts in a cloud of leaves.
-  | 'topiary'
   // THE LONG DARK FURNISHED: rotten wood folds wet, clay rings dry,
   // old bone scatters, and worked stone cracks in slabs.
   | 'mossbarrel'
@@ -2564,7 +2544,6 @@ export type DestructibleKind =
   | 'grainsacks'
   | 'barrelstack'
   | 'cratestack'
-  | 'pennantline'
   | 'hitchpost'
   | 'woodpile'
   | 'streetplanter'
@@ -2621,7 +2600,6 @@ export type DestructibleKind =
   | 'ladder'
   | 'barrow'
   | 'wayfarer'
-  | 'pottedtree'
   | 'mooring'
   | 'skiff'
   // THE WARREN AND THE LEGION: the camps' second wreckage shelf.
@@ -2726,12 +2704,6 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.WardArch, { kind: 'wardarch', respawnSec: 600, hits: 4 }],
   [Tile.ArcaneTome, { kind: 'tome', respawnSec: 240, hits: 1 }],
   [Tile.RunePillar, { kind: 'runepillar', respawnSec: 600, hits: 3 }],
-  // THE CLIPPED GREEN: the showpieces burst in leaves. The hedge WALL
-  // is deliberately NOT here — like the fence it is player-built
-  // garden architecture that comes down by the demolish lane, never
-  // by a passing club; and the arch is the door law's, not ours.
-  [Tile.TopiaryBall, { kind: 'topiary', respawnSec: 420, hits: 2 }],
-  [Tile.TopiarySpire, { kind: 'topiary', respawnSec: 420, hits: 2 }],
   // THE LONG DARK FURNISHED: rot pops in one blow, joined iron and
   // worked stone hold three or four. The wall fixtures are NOT here —
   // a sconce is bolted into the mountain and a chain shrugs off a
@@ -2793,7 +2765,6 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.GrainSacks, { kind: 'grainsacks', respawnSec: 300, hits: 1 }],
   [Tile.BarrelStack, { kind: 'barrelstack', respawnSec: 300, hits: 2 }],
   [Tile.CrateStack, { kind: 'cratestack', respawnSec: 300, hits: 2 }],
-  [Tile.PennantLine, { kind: 'pennantline', respawnSec: 300, hits: 1 }],
   [Tile.HitchingPost, { kind: 'hitchpost', respawnSec: 300, hits: 2 }],
   [Tile.Woodpile, { kind: 'woodpile', respawnSec: 300, hits: 1 }],
   [Tile.StreetPlanter, { kind: 'streetplanter', respawnSec: 300, hits: 1 }],
@@ -2849,7 +2820,6 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.LeanLadder, { kind: 'ladder', respawnSec: 300, hits: 1 }],
   [Tile.Wheelbarrow, { kind: 'barrow', respawnSec: 300, hits: 2 }],
   [Tile.WayfarersRest, { kind: 'wayfarer', respawnSec: 300, hits: 1 }],
-  [Tile.PottedTree, { kind: 'pottedtree', respawnSec: 300, hits: 1 }],
   [Tile.MooringPost, { kind: 'mooring', respawnSec: 300, hits: 2 }],
   [Tile.BeachedSkiff, { kind: 'skiff', respawnSec: 600, hits: 3 }],
   // THE WARREN AND THE LEGION: camp litter pops in one, lashed

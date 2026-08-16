@@ -353,8 +353,6 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     // THE CLIPPED GREEN: the showpieces burst in leaves. The hedge
     // WALL is deliberately NOT here — player-built garden
     // architecture comes down by the demolish lane, like the fence.
-    [Tile.TopiaryBall, 'topiary', 2],
-    [Tile.TopiarySpire, 'topiary', 2],
     // THE LONG DARK FURNISHED: rot pops in one blow, joined iron and
     // worked stone hold three or four.
     [Tile.MossBarrel, 'mossbarrel', 1],
@@ -408,7 +406,6 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.GrainSacks, 'grainsacks', 1],
     [Tile.BarrelStack, 'barrelstack', 2],
     [Tile.CrateStack, 'cratestack', 2],
-    [Tile.PennantLine, 'pennantline', 1],
     [Tile.HitchingPost, 'hitchpost', 2],
     [Tile.Woodpile, 'woodpile', 1],
     [Tile.StreetPlanter, 'streetplanter', 1],
@@ -460,7 +457,6 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.LeanLadder, 'ladder', 1],
     [Tile.Wheelbarrow, 'barrow', 2],
     [Tile.WayfarersRest, 'wayfarer', 1],
-    [Tile.PottedTree, 'pottedtree', 1],
     [Tile.MooringPost, 'mooring', 2],
     [Tile.BeachedSkiff, 'skiff', 3],
     // THE WARREN AND THE LEGION: camp litter pops in one, lashed

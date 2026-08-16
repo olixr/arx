@@ -1321,8 +1321,6 @@ test('amberford: the crossroads town holds its anchors, stations, and gates', ()
   assert.ok(plumTrees >= 3, 'the plums went missing');
   assert.ok((counts.get(Tile.Hedge) ?? 0) >= 40, 'the hedges went unclipped');
   assert.ok((counts.get(Tile.HedgeGate) ?? 0) >= 4, 'the hedge arches closed');
-  assert.equal(counts.get(Tile.TopiaryBall) ?? 0, 2, 'the topiary pair changed');
-  assert.equal(counts.get(Tile.TopiarySpire) ?? 0, 2, 'the topiary pair changed');
   // THE FORD DRESSED — the dressing pass holds its anchors: the OLD
   // HOUND pair at the bridge, Peld's promised bell, the working
   // moorings and beached boats, the three books' desks, the fish

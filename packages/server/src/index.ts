@@ -80,6 +80,7 @@ import { GameServer } from './game/gameServer.js';
 import { clientIp, ipGuard } from './net/ipGuard.js';
 import { Session } from './net/session.js';
 import { WorldSource } from './world/worldSource.js';
+import { TILE_DEFS } from '@arx/shared';
 
 // Authored zones: built-ins from content, plus map-editor JSON saved
 // in data/maps/. Later zones win where they overlap. Dawnmead comes
@@ -456,6 +457,14 @@ const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
 
 const world = new WorldSource(config.worldSeed, zones);
 for (const built of await accounts.loadBuiltTiles()) {
+  // RETIRED BUILDABLES: a built row whose tile id no longer exists
+  // (a prop pulled from the game — the topiary pair went with the
+  // fair) is dropped here, and the ground beneath simply returns.
+  // The client is never handed a tile it cannot name.
+  if (!(built.tile in TILE_DEFS)) {
+    accounts.deleteBuiltTile(built.tx, built.ty);
+    continue;
+  }
   world.registerBuilt(built.tx, built.ty, built.tile, built.owner, built.prevTile);
 }
 // THE SECOND LAYER: hung decor rehydrates beside the built tiles, so
