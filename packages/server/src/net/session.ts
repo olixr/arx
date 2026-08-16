@@ -455,6 +455,12 @@ export class Session {
         this.game.stableOp(this.playerEid, msg.op, msg.slot);
         return;
       }
+      case 'petarts': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.petArtsOp(this.playerEid, msg.slot, msg.arts);
+        return;
+      }
       case 'pickup': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

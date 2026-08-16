@@ -1049,6 +1049,18 @@ const MIGRATIONS: string[] = [
   DELETE FROM built_details WHERE plane = 'underworld' AND ty >= 8192;
   DELETE FROM built_tiles WHERE plane = 'underworld' AND ty >= 8192;
   DELETE FROM signs WHERE plane = 'underworld' AND ty >= 8192;`,
+  // v38: THE FANG FINDS ITS VOICE (docs/pet-arts-plan.md) — the
+  // companion's journey ledger and its slotted arts. bond_xp is THE
+  // ROPE (walked, never bought); arts is the loadout (validated
+  // against the species' repertoire on every load and every slot op);
+  // tamed_level remembers the keeper's beastcraft on the day of the
+  // asking (elder friends keep NULL and the Hall says 'long before
+  // the ledgers'); kills and downs are the journey's honest count.
+  `ALTER TABLE character_pets ADD COLUMN IF NOT EXISTS bond_xp BIGINT NOT NULL DEFAULT 0;
+  ALTER TABLE character_pets ADD COLUMN IF NOT EXISTS arts TEXT NOT NULL DEFAULT '[]';
+  ALTER TABLE character_pets ADD COLUMN IF NOT EXISTS tamed_level SMALLINT;
+  ALTER TABLE character_pets ADD COLUMN IF NOT EXISTS kills BIGINT NOT NULL DEFAULT 0;
+  ALTER TABLE character_pets ADD COLUMN IF NOT EXISTS downs INT NOT NULL DEFAULT 0;`,
 ];
 
 /**

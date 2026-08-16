@@ -1,5 +1,5 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
-import { isRarityTier, sanitizeLook, type ItemRoll, type KeyLore, type Look, type PetState } from '@arx/shared';
+import { isRarityTier, sanitizeLook, sanitizePetArts, type ItemRoll, type KeyLore, type Look, type PetState } from '@arx/shared';
 import type { Db } from './db.js';
 
 /**
@@ -15,6 +15,18 @@ export interface PetRow {
   state: PetState;
   /** When the limp home began (ms), or null — only 'resting' carries it. */
   restedAt: number | null;
+  /** THE ROPE (pet arts): bond walked together, never bought. */
+  bondXp: number;
+  /** The slotted arts — validated against the repertoire on load. */
+  arts: string[];
+  /** The asking's date (ms) — read at last (THE JOURNEY IS SHOWN). */
+  tamedAt: number | null;
+  /** The keeper's beastcraft on the day of the asking; elder friends
+   *  keep null ('long before the ledgers'). */
+  tamedLevel: number | null;
+  /** The journey's honest count. */
+  kills: number;
+  downs: number;
 }
 
 /** NULL-tolerant roll reader for legacy rows (pre-migration-11). */
@@ -1847,30 +1859,58 @@ export class AccountStore {
       xp: number;
       state: string;
       rested_at: number | null;
+      bond_xp: number;
+      arts: string;
+      tamed_at: number | null;
+      tamed_level: number | null;
+      kills: number;
+      downs: number;
     }>(
-      'SELECT slot, species, name, xp, state, rested_at FROM character_pets WHERE character_id = ? ORDER BY slot',
+      'SELECT slot, species, name, xp, state, rested_at, bond_xp, arts, tamed_at, tamed_level, kills, downs FROM character_pets WHERE character_id = ? ORDER BY slot',
       [characterId],
     );
-    return rows.map((r) => ({
-      slot: Number(r.slot),
-      species: r.species,
-      name: r.name,
-      xp: Number(r.xp),
-      // An unknown state (a future phase's word, an edited row) reads
-      // as safely stabled — never a phantom body at heel.
-      state: r.state === 'heel' || r.state === 'resting' ? r.state : 'stabled',
-      restedAt: r.rested_at === null ? null : Number(r.rested_at),
-    }));
+    return rows.map((r) => {
+      // The loadout column is judged on every load: junk or an
+      // over-long list reads as an empty loadout, never a crash. The
+      // repertoire membership check is the server's slot-op law; a
+      // stale id from a retuned roster simply goes quiet.
+      let arts: string[] = [];
+      try {
+        arts = sanitizePetArts(JSON.parse(r.arts)) ?? [];
+      } catch {
+        arts = [];
+      }
+      return {
+        slot: Number(r.slot),
+        species: r.species,
+        name: r.name,
+        xp: Number(r.xp),
+        // An unknown state (a future phase's word, an edited row) reads
+        // as safely stabled — never a phantom body at heel.
+        state: r.state === 'heel' || r.state === 'resting' ? r.state : 'stabled',
+        restedAt: r.rested_at === null ? null : Number(r.rested_at),
+        bondXp: Number(r.bond_xp),
+        arts,
+        tamedAt: r.tamed_at === null ? null : Number(r.tamed_at),
+        tamedLevel: r.tamed_level === null ? null : Number(r.tamed_level),
+        kills: Number(r.kills),
+        downs: Number(r.downs),
+      };
+    });
   }
 
   /** The gentling ceremony's write: the full row, fired at the moment.
    *  A re-used stall clears any stale rest clock — a fresh bond never
    *  inherits a predecessor's convalescence. */
   savePet(characterId: number, pet: PetRow, tamedAtMs: number): void {
+    // A re-used stall is a NEW animal: every journey column resets
+    // with the row — a fresh bond never inherits a predecessor's
+    // rope, loadout, ledger, or convalescence.
     this.db.fire(
-      'INSERT INTO character_pets (character_id, slot, species, name, xp, state, tamed_at) VALUES (?, ?, ?, ?, ?, ?, ?) ' +
-        'ON CONFLICT (character_id, slot) DO UPDATE SET species = excluded.species, name = excluded.name, xp = excluded.xp, state = excluded.state, rested_at = NULL',
-      [characterId, pet.slot, pet.species, pet.name, pet.xp, pet.state, tamedAtMs],
+      'INSERT INTO character_pets (character_id, slot, species, name, xp, state, tamed_at, tamed_level, bond_xp, arts, kills, downs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0) ' +
+        'ON CONFLICT (character_id, slot) DO UPDATE SET species = excluded.species, name = excluded.name, xp = excluded.xp, state = excluded.state, rested_at = NULL, ' +
+        'tamed_at = excluded.tamed_at, tamed_level = excluded.tamed_level, bond_xp = 0, arts = excluded.arts, kills = 0, downs = 0',
+      [characterId, pet.slot, pet.species, pet.name, pet.xp, pet.state, tamedAtMs, pet.tamedLevel, pet.bondXp, JSON.stringify(pet.arts)],
     );
   }
 
@@ -1904,6 +1944,39 @@ export class AccountStore {
       'UPDATE character_pets SET state = ?, rested_at = ? WHERE character_id = ? AND slot = ?',
       [state, restedAtMs, characterId, slot],
     );
+  }
+
+  /** THE ROPE's ledger write — fired at each faucet moment. */
+  savePetBond(characterId: number, slot: number, bondXp: number): void {
+    this.db.fire('UPDATE character_pets SET bond_xp = ? WHERE character_id = ? AND slot = ?', [
+      bondXp,
+      characterId,
+      slot,
+    ]);
+  }
+
+  /** The loadout write — fired at the slot op, already validated. */
+  savePetArts(characterId: number, slot: number, arts: string[]): void {
+    this.db.fire('UPDATE character_pets SET arts = ? WHERE character_id = ? AND slot = ?', [
+      JSON.stringify(arts),
+      characterId,
+      slot,
+    ]);
+  }
+
+  /** The journey's honest count — plain increments at the moments. */
+  savePetKill(characterId: number, slot: number): void {
+    this.db.fire('UPDATE character_pets SET kills = kills + 1 WHERE character_id = ? AND slot = ?', [
+      characterId,
+      slot,
+    ]);
+  }
+
+  savePetDown(characterId: number, slot: number): void {
+    this.db.fire('UPDATE character_pets SET downs = downs + 1 WHERE character_id = ? AND slot = ?', [
+      characterId,
+      slot,
+    ]);
   }
 
   /** The release. Phase 4 gives it its ceremony; the dev lever uses it today. */

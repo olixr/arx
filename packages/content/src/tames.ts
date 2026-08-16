@@ -22,6 +22,9 @@
 import type { StatusApply } from '@arx/shared';
 import { NPCS, isOozeId, scaleNpcDef, type NpcDef } from './npcs.js';
 import { itemDef } from './items.js';
+// Type-only on purpose: petArts VALUE-imports TAMES from this module,
+// so a value import back would be a runtime cycle. The type erases.
+import type { PetPassive } from './petArts.js';
 
 /**
  * THE SPECIES SPEAK (Phase 5): a tamed kit is the species' own
@@ -323,16 +326,28 @@ export interface PetStats {
   armor: number;
 }
 
-export function petStatBlock(species: string, petLevel: number, bcLevel: number): PetStats | null {
+export function petStatBlock(
+  species: string,
+  petLevel: number,
+  bcLevel: number,
+  // THE FANG FINDS ITS VOICE: the slotted passives' STAT lean, folded
+  // here and nowhere else (petPassiveBundle builds it — this site
+  // cannot import petArts by value without a cycle). Conditional
+  // passives (wounded hide, the vigil, the burnish) stay dynamic at
+  // the damage door; only the always-on stats belong to the block.
+  passives?: PetPassive,
+): PetStats | null {
   const base = NPCS.get(species);
   if (!base) return null;
   const scaled = petLevel > base.level ? scaleNpcDef(base, petLevel) : base;
   return {
-    maxHp: Math.round(scaled.maxHp * (1 + 0.01 * bcLevel)),
+    maxHp: Math.round(scaled.maxHp * (1 + 0.01 * bcLevel) * (passives?.maxHpMult ?? 1)),
     die: scaled.damage,
-    dmgMult: 1 + 0.005 * bcLevel,
-    // The hand's toughening plus THE SHELL where a kit grants one.
-    armor: Math.floor(bcLevel / 4) + (TAMES.get(species)?.kit?.armor ?? 0),
+    dmgMult: (1 + 0.005 * bcLevel) * (passives?.dmgMult ?? 1),
+    // The hand's toughening plus THE SHELL where a kit grants one,
+    // plus the slotted plate.
+    armor:
+      Math.floor(bcLevel / 4) + (TAMES.get(species)?.kit?.armor ?? 0) + (passives?.armor ?? 0),
   };
 }
 

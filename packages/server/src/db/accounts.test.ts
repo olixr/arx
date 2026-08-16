@@ -339,12 +339,27 @@ test('the stalls persist: pet rows round-trip with state discipline', async () =
   // An empty household loads empty, not undefined.
   assert.deepEqual(await store.loadPets(cid), []);
   // The gentling ceremony's write, twice over (THREE STALLS has room).
-  store.savePet(cid, { slot: 0, species: 'giant_beetle', name: 'Giant beetle', xp: 0, state: 'heel', restedAt: null }, Date.now());
-  store.savePet(cid, { slot: 1, species: 'rat', name: 'Whisper', xp: 120, state: 'stabled', restedAt: null }, Date.now());
+  // THE JOURNEY IS SHOWN: tamed_at is READ now, so the round trip
+  // asserts the asking's own date and the keeper's rung come back.
+  const beetleTamed = Date.now();
+  const ratTamed = beetleTamed + 1;
+  store.savePet(cid, { slot: 0, species: 'giant_beetle', name: 'Giant beetle', xp: 0, state: 'heel', restedAt: null, bondXp: 0, arts: [], tamedAt: beetleTamed, tamedLevel: 12, kills: 0, downs: 0 }, beetleTamed);
+  store.savePet(cid, { slot: 1, species: 'rat', name: 'Whisper', xp: 120, state: 'stabled', restedAt: null, bondXp: 0, arts: ['nip_and_dart'], tamedAt: ratTamed, tamedLevel: null, kills: 0, downs: 0 }, ratTamed);
   let pets = await store.loadPets(cid);
   assert.equal(pets.length, 2);
-  assert.deepEqual(pets[0], { slot: 0, species: 'giant_beetle', name: 'Giant beetle', xp: 0, state: 'heel', restedAt: null });
-  assert.deepEqual(pets[1], { slot: 1, species: 'rat', name: 'Whisper', xp: 120, state: 'stabled', restedAt: null });
+  assert.deepEqual(pets[0], { slot: 0, species: 'giant_beetle', name: 'Giant beetle', xp: 0, state: 'heel', restedAt: null, bondXp: 0, arts: [], tamedAt: beetleTamed, tamedLevel: 12, kills: 0, downs: 0 });
+  assert.deepEqual(pets[1], { slot: 1, species: 'rat', name: 'Whisper', xp: 120, state: 'stabled', restedAt: null, bondXp: 0, arts: ['nip_and_dart'], tamedAt: ratTamed, tamedLevel: null, kills: 0, downs: 0 });
+  // THE ROPE, the loadout, and the honest count each write alone.
+  store.savePetBond(cid, 1, 250);
+  store.savePetArts(cid, 1, ['nip_and_dart', 'gutter_quick']);
+  store.savePetKill(cid, 1);
+  store.savePetKill(cid, 1);
+  store.savePetDown(cid, 1);
+  pets = await store.loadPets(cid);
+  assert.equal(pets[1]?.bondXp, 250);
+  assert.deepEqual(pets[1]?.arts, ['nip_and_dart', 'gutter_quick']);
+  assert.equal(pets[1]?.kills, 2);
+  assert.equal(pets[1]?.downs, 1);
   // The collar tag, the stall swap, and the ladder each write alone.
   store.savePetName(cid, 0, 'Bramble');
   store.savePetState(cid, 0, 'stabled');
@@ -370,9 +385,16 @@ test('the stalls persist: pet rows round-trip with state discipline', async () =
   assert.equal(pets[0]?.restedAt, null);
   // A re-used stall never inherits a predecessor's convalescence.
   store.savePetRest(cid, 0, 'resting', fellAt);
-  store.savePet(cid, { slot: 0, species: 'giant_beetle', name: 'Fresh', xp: 0, state: 'heel', restedAt: null }, Date.now());
+  store.savePetBond(cid, 0, 999);
+  store.savePetKill(cid, 0);
+  const freshTamed = Date.now();
+  store.savePet(cid, { slot: 0, species: 'giant_beetle', name: 'Fresh', xp: 0, state: 'heel', restedAt: null, bondXp: 0, arts: [], tamedAt: freshTamed, tamedLevel: 30, kills: 0, downs: 0 }, freshTamed);
   pets = await store.loadPets(cid);
   assert.equal(pets[0]?.restedAt, null);
+  // ...and a fresh bond never inherits a predecessor's rope or ledger.
+  assert.equal(pets[0]?.bondXp, 0);
+  assert.equal(pets[0]?.kills, 0);
+  assert.equal(pets[0]?.tamedLevel, 30);
   // The release removes the row whole.
   store.deletePet(cid, 0);
   pets = await store.loadPets(cid);

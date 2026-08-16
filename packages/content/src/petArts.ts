@@ -952,6 +952,55 @@ export function repertoireFor(species: string): readonly string[] {
 }
 
 /**
+ * Fold a loadout's passives into ONE bundle for the stat site and the
+ * behavioral read points: armor sums, multipliers multiply, booleans
+ * OR, and the structured effects keep the strongest hand. Unknown ids
+ * (a retuned roster's ghosts) fold to nothing — never a crash.
+ */
+export function petPassiveBundle(arts: readonly string[]): PetPassive {
+  const out: PetPassive = {};
+  for (const id of arts) {
+    const p = PET_ARTS.get(id)?.passive;
+    if (!p) continue;
+    if (p.armor) out.armor = (out.armor ?? 0) + p.armor;
+    if (p.maxHpMult) out.maxHpMult = (out.maxHpMult ?? 1) * p.maxHpMult;
+    if (p.dmgMult) out.dmgMult = (out.dmgMult ?? 1) * p.dmgMult;
+    if (p.strideMult) out.strideMult = (out.strideMult ?? 1) * p.strideMult;
+    if (p.nightStrideMult) {
+      out.nightStrideMult = (out.nightStrideMult ?? 1) * p.nightStrideMult;
+    }
+    if (p.biteStatusPower) {
+      out.biteStatusPower = (out.biteStatusPower ?? 0) + p.biteStatusPower;
+    }
+    if (p.statusLeech) out.statusLeech = Math.max(out.statusLeech ?? 0, p.statusLeech);
+    if (p.regenMult) out.regenMult = Math.max(out.regenMult ?? 1, p.regenMult);
+    if (p.downedTicksMult) {
+      out.downedTicksMult = Math.min(out.downedTicksMult ?? 1, p.downedTicksMult);
+    }
+    if (p.firstBlowShrug) out.firstBlowShrug = true;
+    if (p.firstStatusShrug) out.firstStatusShrug = true;
+    if (p.knockbackImmune) out.knockbackImmune = true;
+    if (p.quietFang) out.quietFang = true;
+    if (p.deathDefy) out.deathDefy = true;
+    if (p.killsForage) out.killsForage = true;
+    if (p.statusDurMult) {
+      out.statusDurMult = Math.min(out.statusDurMult ?? 1, p.statusDurMult);
+    }
+    if (p.bondHealMult) out.bondHealMult = Math.max(out.bondHealMult ?? 1, p.bondHealMult);
+    if (p.openerRange) out.openerRange = Math.max(out.openerRange ?? 0, p.openerRange);
+    if (p.firstStrikeMult) {
+      out.firstStrikeMult = Math.max(out.firstStrikeMult ?? 1, p.firstStrikeMult);
+    }
+    if (p.openerStatus && !out.openerStatus) out.openerStatus = p.openerStatus;
+    if (p.vsStatus && !out.vsStatus) out.vsStatus = p.vsStatus;
+    if (p.woundedArmor && !out.woundedArmor) out.woundedArmor = p.woundedArmor;
+    if (p.unhurtArmor && !out.unhurtArmor) out.unhurtArmor = p.unhurtArmor;
+    if (p.nearKeeper && !out.nearKeeper) out.nearKeeper = p.nearKeeper;
+  }
+  return out;
+}
+
+/**
  * THE VARIANT PAIRS, pinned by name: each pair shares its family pool
  * and NEVER an exclusive — the lesser variant keeps exclusivity too.
  */

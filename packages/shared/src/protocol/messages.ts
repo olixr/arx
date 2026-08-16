@@ -2,6 +2,7 @@ import { EQUIP_SLOTS } from '../entities.js';
 import { DYE_COUNT } from '../world/tiles.js';
 import type { CarryStyle, EntityId, EntityMeta, EquipSlot, GripHand } from '../entities.js';
 import { sanitizeLook, type Look } from '../look.js';
+import { sanitizePetArts } from '../sim/pets.js';
 import type { KeyLore } from '../dungeon/key.js';
 import type { ItemRoll } from '../rarity.js';
 import type { InputFrame } from '../sim/input.js';
@@ -510,6 +511,20 @@ export interface C2SStable {
 }
 
 /**
+ * THE THREE COLLARS (pet arts): set a stall's slotted arts whole.
+ * The server re-proves everything — ownership, repertoire membership,
+ * the focus budget from the pet's own level and bond, and that the
+ * friend is out of its own fight — and every refusal speaks. Doable
+ * anywhere (the pet's mind is not a pen fixture); additive at
+ * protocol 33 (the stable-op precedent).
+ */
+export interface C2SPetArts {
+  t: 'petarts';
+  slot: number;
+  arts: string[];
+}
+
+/**
  * Dialogue intents. The server owns the whole walk — the client never
  * sees node ids or conditions, it only answers the beat it was shown:
  * advance a linear line, pick a choice by the index it was sent, or
@@ -735,6 +750,7 @@ export type C2SMessage =
   | C2SInteractNpc
   | C2SPetName
   | C2SStable
+  | C2SPetArts
   | C2SPickup
   | C2STechnique
   | C2SCalling
@@ -1359,6 +1375,23 @@ export interface PetInfo {
    * v27 like restSec; sent for heel rows only.
    */
   bondSec?: number;
+  /**
+   * THE FANG FINDS ITS VOICE (docs/pet-arts-plan.md) — all additive
+   * at protocol 33, the stable-op precedent: THE ROPE's ledger and
+   * knot, the focus budget as the server computed it (the client
+   * never re-derives a rule), the slotted arts, and the journey.
+   */
+  bond?: number;
+  bondRank?: number;
+  focus?: number;
+  focusMax?: number;
+  arts?: string[];
+  /** The asking's date (ms since epoch); absent on elder friends. */
+  tamedAt?: number;
+  /** The keeper's beastcraft on the day of the asking; absent = long before the ledgers. */
+  tamedLevel?: number;
+  kills?: number;
+  downs?: number;
 }
 
 export interface S2CPet {
@@ -2384,6 +2417,16 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (msg.op !== 'heel' && msg.op !== 'stable' && msg.op !== 'release') return null;
       if (msg.slot !== 0 && msg.slot !== 1 && msg.slot !== 2) return null;
       return { t: 'stable', op: msg.op, slot: msg.slot };
+    }
+    case 'petarts': {
+      // Slot bounds are THREE STALLS; the loadout is only shape-gated
+      // here (the shared sanitizer) — repertoire membership, the
+      // focus budget, and the fight gate all render their verdicts
+      // server-side, each aloud.
+      if (msg.slot !== 0 && msg.slot !== 1 && msg.slot !== 2) return null;
+      const arts = sanitizePetArts(msg.arts);
+      if (arts === null) return null;
+      return { t: 'petarts', slot: msg.slot, arts };
     }
     case 'social':
       return { t: 'social' };

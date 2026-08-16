@@ -59,6 +59,15 @@ import {
   PET_REST_HOME_MS,
   PET_BOND_COOLDOWN_MS,
   PET_BOND_XP,
+  PET_BOND_MOMENT_BOND,
+  PET_BOND_KILL_BOND,
+  PET_BOND_TEND_BOND,
+  PET_ART_RETRY_TICKS,
+  PET_ART_FIRST_CD_TICKS,
+  petFocusMax,
+  petBondRank,
+  petXpMentorMult,
+  PET_BOND_RANK_NAMES,
   PET_BOND_PET_XP,
   PET_BOND_HEAL_FRAC,
   PET_REGEN_TICKS,
@@ -227,6 +236,11 @@ import {
   techniquePoolDef,
   techniquesFor,
   tameDef,
+  petArtDef,
+  repertoireFor,
+  petPassiveBundle,
+  type PetPassive,
+  type PetArtDef,
   TAMES,
   isWildBeast,
   isBeastSovereign,
@@ -1182,6 +1196,8 @@ interface ProjectileComp {
   hitEids?: Set<EntityId>;
   /** NPC-fired: seeks players (and decoys) instead of NPCs. */
   fromNpc?: boolean;
+  /** A companion's bolt: player polarity, viaPet credit, actors skipped. */
+  viaPetEid?: EntityId;
   /** Firing NPC's level — pierces the target's armor class on impact. */
   attackerLevel?: number;
   /** The wand's heavy third bolt — fat visual, shove on impact. */
@@ -1281,6 +1297,25 @@ interface PetComp {
   surge?: { dmgMult: number; speedMult: number; untilTick: number; temper?: boolean; artId?: string };
   /** THE KEEPER'S TONGUE: a guard window — flat armor at the mitigate site. */
   guard?: { armor: number; untilTick: number };
+  /**
+   * THE FANG FINDS ITS VOICE (docs/pet-arts-plan.md) — all optional
+   * on purpose (the optional-bank idiom: neither PetComp literal site
+   * carries them). `bundle` is the slotted passives folded once
+   * (petPassiveBundle) — rebuilt at spawn and at the slot op, never
+   * per tick. `artCds` maps art id -> tick it re-arms (lazily seeded
+   * at first fight so a CMS/loadout swap is always safe). `artCast`
+   * is the drawn breath in flight.
+   */
+  bundle?: PetPassive;
+  artCds?: Map<string, number>;
+  artCast?: { artId: string; ticksLeft: number; total: number; targetEid: EntityId };
+  /** Per-fight ledgers (reset at target acquisition / calm re-entry). */
+  fightShrugBlow?: boolean;
+  fightShrugStatus?: boolean;
+  fightDefied?: boolean;
+  fightFirstStruck?: boolean;
+  /** ROOTING SNOUT's patient count — every third kill pays supper. */
+  forageCount?: number;
 }
 
 /** A telegraphed blast waiting on its fuse. */
@@ -1339,6 +1374,13 @@ interface ActiveField {
   attackerLevel?: number;
   knockback: number;
   drainFrac?: number;
+  /**
+   * THE FANG FINDS ITS VOICE: a companion's field — player polarity
+   * (pulses strike the bestiary), credit through damageNpc viaPet,
+   * and THE FANG KNOWS ITS FRIENDS at the pulse site (actors are
+   * skipped outright; pets are refused by damageNpc's own door).
+   */
+  viaPetEid?: EntityId;
 }
 
 interface SpawnState {
@@ -2222,6 +2264,13 @@ export class GameServer {
 
   /** Lingering hazard zones (ground_field) pulsing while they live. */
   private readonly activeFields: ActiveField[] = [];
+  /**
+   * THE PET'S BREATH: pulse-shaped companion arts (the undertow's
+   * three pulls, the flurry's rakes) queue their later waves here —
+   * each wave re-verifies the world when it fires, so a body that
+   * fell or fled between pulses is simply not there.
+   */
+  private petEchoes: Array<{ at: number; fire: () => void }> = [];
 
   private readonly spawnPoints: SpawnState[] = [];
   /** Actor definitions by slug — loaded from the DB at boot (DB-first). */
@@ -13761,15 +13810,22 @@ export class GameServer {
       ) {
         player.petBondAt.set(row.slot, now + PET_BOND_COOLDOWN_MS);
         player.session.sendJson({ t: 'inv', slots: player.inventory });
+        const petObj = this.pets.get(targetEid);
         if (petHealth && petHealth.hp < petHealth.maxHp) {
+          // HONEYED TEMPER: the slotted sweet tooth mends double.
+          const healFrac = Math.min(
+            1,
+            PET_BOND_HEAL_FRAC * (petObj?.bundle?.bondHealMult ?? 1),
+          );
           petHealth.hp = Math.min(
             petHealth.maxHp,
-            petHealth.hp + Math.ceil(petHealth.maxHp * PET_BOND_HEAL_FRAC),
+            petHealth.hp + Math.ceil(petHealth.maxHp * healFrac),
           );
         }
         this.grantXp(eid, player, 'beastcraft', PET_BOND_XP);
-        const petObj = this.pets.get(targetEid);
         if (petObj) this.grantPetXp(player, petObj, row, PET_BOND_PET_XP);
+        // THE ROPE: the deliberate act stays the spine of the bond.
+        this.grantPetBond(player, row, PET_BOND_MOMENT_BOND);
         const lureName = itemDef(tame.lure)?.name.toLowerCase() ?? tame.lure;
         sys(`${row.name} takes the ${lureName} gently from your hand.`);
         return;
@@ -14140,6 +14196,7 @@ export class GameServer {
       this.despawnPetEntity(player);
       sys(`${prev.name} falls back to your stalls.`);
     }
+    const tamedAt = Date.now();
     const row: PetRow = {
       slot,
       species: npc.def.id,
@@ -14147,9 +14204,17 @@ export class GameServer {
       xp: 0,
       state: 'heel',
       restedAt: null,
+      bondXp: 0,
+      arts: [],
+      tamedAt,
+      // THE JOURNEY IS SHOWN: the keeper's beastcraft on the day of
+      // the asking — the number the Hall retells forever.
+      tamedLevel: levelForXp(player.skills.beastcraft ?? 0),
+      kills: 0,
+      downs: 0,
     };
     player.pets.push(row);
-    if (player.characterId > 0) this.accounts.savePet(player.characterId, row, Date.now());
+    if (player.characterId > 0) this.accounts.savePet(player.characterId, row, tamedAt);
     // A fresh bond starts whole: no carried wounds, no snack clock.
     player.petHp = null;
     player.petBondAt.delete(slot);
@@ -14668,6 +14733,9 @@ export class GameServer {
       }
     }
     const petEid = this.spawnNpc(def, opos.plane, x, y, -1);
+    // THE FANG FINDS ITS VOICE: the slotted passives fold ONCE at the
+    // body's birth (and again at the slot op) — never per tick.
+    const bundle = petPassiveBundle(row.arts);
     this.pets.set(petEid, {
       ownerEid: eid,
       slot: row.slot,
@@ -14677,11 +14745,13 @@ export class GameServer {
       trickleTarget: null,
       trickleBank: 0,
       downedUntil: 0,
+      bundle,
     });
     // THE ONE STAT SITE: health from petStatBlock (species curve under
-    // the keeper's hand), wounds carried back in from trailing.
+    // the keeper's hand plus the slotted plate), wounds carried back
+    // in from trailing.
     const bc = levelForXp(player.skills.beastcraft ?? 0);
-    const stats = petStatBlock(row.species, petLevelFor(row.xp, def.level, bc), bc);
+    const stats = petStatBlock(row.species, petLevelFor(row.xp, def.level, bc), bc, bundle);
     if (stats) {
       this.healths.set(petEid, {
         hp: Math.min(player.petHp ?? stats.maxHp, stats.maxHp),
@@ -14766,6 +14836,7 @@ export class GameServer {
     }
 
     // ---- THE FANG BESIDE YOU: the fight, when one is on.
+    if (pet.target === null && pet.artCast) pet.artCast = undefined;
     if (pet.target !== null) {
       const tnpc = this.npcs.get(pet.target);
       const thp = this.healths.get(pet.target);
@@ -14785,7 +14856,25 @@ export class GameServer {
       ) {
         pet.target = null;
         npc.windupTicks = 0;
+        // The drawn breath dies with the fight — never held for the
+        // next mark (firePetArt re-verifies anyway; this keeps the
+        // plant honest too).
+        pet.artCast = undefined;
       } else {
+        // ---- THE PET'S BREATH: a slotted art mid-windup plants the
+        // body exactly as the NPC cast engine plants a caster — the
+        // rooted pet is the counterplay window; the charge fx already
+        // told every watcher.
+        if (pet.artCast) {
+          pos.dir = Math.atan2(tpos.y - pos.y, tpos.x - pos.x);
+          if (--pet.artCast.ticksLeft <= 0) {
+            const cast = pet.artCast;
+            pet.artCast = undefined;
+            this.firePetArt(eid, npc, pet, owner, cast.artId, cast.targetEid);
+            npc.attackCooldown = Math.max(npc.attackCooldown, 10);
+          }
+          return;
+        }
         // Mid-windup: planted, committed — the mob telegraph grammar.
         if (npc.windupTicks > 0) {
           if (--npc.windupTicks === 0) {
@@ -14823,6 +14912,10 @@ export class GameServer {
           return;
         }
         const d = Math.hypot(tpos.x - pos.x, tpos.y - pos.y) - tnpc.def.radius;
+        // A slotted art outranks the basic at the decision point —
+        // range-banded, hp-gated, each on its own rest, and never the
+        // fight's opening word (the first-arming seed).
+        if (npc.windupTicks === 0 && this.beginPetArt(eid, npc, pet, owner, pos, d)) return;
         // THE STAND-GROUND BAND: the pet stops and fights anywhere
         // inside its own LANDING grace (+0.85), not just its opening
         // reach. A tighter stop bred the mutual-dodge orbit (pet
@@ -14832,7 +14925,7 @@ export class GameServer {
         // minute). Standing inside the land grace means both sides'
         // blows connect and the fight RESOLVES. Pouncers open from
         // leap distance: the telegraph is the crouch.
-        if (d <= npc.def.attackRange + (npc.def.pounce ? 1.6 : 0.85)) {
+        if (d <= npc.def.attackRange + (npc.def.pounce ? 1.6 + (pet.bundle?.openerRange ?? 0) : 0.85)) {
           pos.dir = Math.atan2(tpos.y - pos.y, tpos.x - pos.x);
           if (npc.attackCooldown === 0) {
             npc.windupTicks = PET_WINDUP_TICKS;
@@ -14853,6 +14946,8 @@ export class GameServer {
         // keeps its own unhurried law (and the 12 t/s lane is never
         // in question from a wild body's base).
         if (pet.surge && this.tickCount < pet.surge.untilTick) speed *= pet.surge.speedMult;
+        // The slotted stride: pack step, skitter, the night eyes.
+        speed *= this.petStrideMult(pet);
         if (this.isChilled(eid)) speed *= CHILL_SPEED_FACTOR;
         if (d > npc.def.attackRange * 1.5 + 0.3) {
           ({ mx, my } = this.separateHeading(eid, pos, npc.def.radius, mx, my));
@@ -14872,11 +14967,21 @@ export class GameServer {
     // ---- Licked wounds close out of combat: slow, steady, staggered.
     if (this.tickCount - pet.lastHurtTick > PET_REGEN_DELAY_TICKS) {
       const h = this.healths.get(eid);
-      if (h && h.hp < h.maxHp && (this.tickCount + eid) % PET_REGEN_TICKS === 0) h.hp++;
+      // PATIENCE OF STONE (and the vigil): the licked-wound cadence
+      // quickens under the slotted regen — never in a fight.
+      let regenEvery = PET_REGEN_TICKS;
+      const regenMult = Math.max(
+        pet.bundle?.regenMult ?? 1,
+        this.petNearKeeper(pet) ? (pet.bundle?.nearKeeper?.regenMult ?? 1) : 1,
+      );
+      if (regenMult > 1) regenEvery = Math.max(8, Math.round(PET_REGEN_TICKS / regenMult));
+      if (h && h.hp < h.maxHp && (this.tickCount + eid) % regenEvery === 0) h.hp++;
     }
 
     // ---- THE HEEL.
-    const speed = petFollowSpeed(npc.def.speed, dist) * (this.isChilled(eid) ? CHILL_SPEED_FACTOR : 1);
+    const speed =
+      petFollowSpeed(npc.def.speed * this.petStrideMult(pet), dist) *
+      (this.isChilled(eid) ? CHILL_SPEED_FACTOR : 1);
     if (speed > 0) {
       let mx = dx / dist;
       let my = dy / dist;
@@ -14938,6 +15043,13 @@ export class GameServer {
     if (this.actors.has(mobEid)) return;
     const hp = this.healths.get(mobEid);
     if (!hp || hp.hp <= 0) return;
+    // A fresh fight opens fresh ledgers: the feint, the shrug, the
+    // stubborn heart, and the patient first strike all reset when the
+    // teeth come out from a standing start.
+    if (pet.target === null) {
+      pet.fightFirstStruck = false;
+      pet.fightDefied = false;
+    }
     pet.target = mobEid;
   }
 
@@ -14962,25 +15074,490 @@ export class GameServer {
     const base = NPCS.get(row.species);
     if (!base) return;
     const level = petLevelFor(row.xp, base.level, bc);
-    const stats = petStatBlock(row.species, level, bc);
+    const bundle = pet.bundle ?? petPassiveBundle(row.arts);
+    const stats = petStatBlock(row.species, level, bc, bundle);
     if (!stats) return;
     // THE KEEPER'S TONGUE: a live surge window quickens the teeth;
     // THE WHOLE TEMPER doubles the kit's status and lets blows shove.
     const surge = pet.surge && this.tickCount < pet.surge.untilTick ? pet.surge : undefined;
-    const maxHit = Math.round(npcMaxHit(stats.die, level) * stats.dmgMult * (surge?.dmgMult ?? 1));
+    let maxHit = Math.round(npcMaxHit(stats.die, level) * stats.dmgMult * (surge?.dmgMult ?? 1));
+    // THE SLOTTED LEANS: the blooded run and the spinner's patience
+    // lean on a marked target; tufted patience spends its whole
+    // winter on the first blow from an unhurt stand.
+    if (bundle.vsStatus && this.statuses.get(targetEid)?.some((s) => s.id === bundle.vsStatus!.status)) {
+      maxHit = Math.round(maxHit * bundle.vsStatus.mult);
+    }
+    const health = this.healths.get(petEid);
+    const unhurtStand = health !== undefined && health.hp >= health.maxHp;
+    const patientFirst =
+      bundle.firstStrikeMult !== undefined && pet.fightFirstStruck !== true && unhurtStand;
+    if (patientFirst) maxHit = Math.round(maxHit * bundle.firstStrikeMult!);
     const dmg = Math.floor(Math.random() * (maxHit + 1));
     // THE SPECIES SPEAK: the bite carries the kit's status (or the
-    // wild body's own), and the gore shoves — the same teeth it was
-    // born with, re-aimed. Status DoTs are marked fromPet at the
-    // application site so their ticks train nobody's school.
+    // wild body's own) deepened by the slotted dose, and the gore
+    // shoves — the same teeth it was born with, re-aimed. Status DoTs
+    // are marked fromPet at the application site so their ticks train
+    // nobody's school.
     const kit = tameDef(row.species)?.kit;
-    const bite = kit?.bite ?? base.attackStatus;
+    let bite = kit?.bite ?? base.attackStatus;
+    if (bite && bundle.biteStatusPower) {
+      bite = { ...bite, power: bite.power + bundle.biteStatusPower };
+    }
     const temper = surge?.temper === true;
     this.damageNpc(targetEid, dmg, pet.ownerEid, 'beastcraft', {
       viaPet: { petEid },
       status: bite && temper ? { ...bite, power: bite.power * 2 } : bite,
       knockbackMult: temper ? Math.max(kit?.knockback ?? 1, 1.2) : (kit?.knockback ?? 1),
     });
+    if (dmg > 0) {
+      // The first landed blow spends the patient ledger and lays THE
+      // POUNCE PERFECTED's opening wound where one is slotted.
+      if (pet.fightFirstStruck !== true) {
+        pet.fightFirstStruck = true;
+        if (bundle.openerStatus && (this.healths.get(targetEid)?.hp ?? 0) > 0) {
+          this.applyStatusToNpc(targetEid, bundle.openerStatus, pet.ownerEid, 'beastcraft', true);
+        }
+      }
+    }
+  }
+
+  // ================== THE FANG FINDS ITS VOICE (docs/pet-arts-plan.md)
+
+  /** The slotted stride, day and night — folded once, read hot. */
+  private petStrideMult(pet: PetComp): number {
+    let m = pet.bundle?.strideMult ?? 1;
+    const night = pet.bundle?.nightStrideMult;
+    if (night !== undefined && night > 1) {
+      const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
+      if (hours < SUNRISE || hours > SUNSET) m *= night;
+    }
+    return m;
+  }
+
+  /** LONE VIGIL's condition: the keeper stands within the sworn reach. */
+  private petNearKeeper(pet: PetComp): boolean {
+    const within = pet.bundle?.nearKeeper?.within;
+    if (within === undefined) return false;
+    const owner = this.players.get(pet.ownerEid);
+    if (!owner || owner.petEid === null) return false;
+    const ppos = this.positions.get(owner.petEid);
+    const opos = this.positions.get(pet.ownerEid);
+    if (!ppos || !opos || ppos.plane !== opos.plane) return false;
+    return Math.hypot(opos.x - ppos.x, opos.y - ppos.y) <= within;
+  }
+
+  /**
+   * THE FANG KNOWS ITS FRIENDS, checked at the strike site: a
+   * companion's art touches hostile bestiary bodies only — never a
+   * player (structurally: arts iterate npcs), never an actor, never
+   * another keeper's friend, never the dead.
+   */
+  private petLegalMark(eid: EntityId): boolean {
+    if (!this.npcs.has(eid) || this.pets.has(eid) || this.actors.has(eid)) return false;
+    return (this.healths.get(eid)?.hp ?? 0) > 0;
+  }
+
+  /** The slotted actives, resolved in the shelf's own order. */
+  private petActiveArts(row: PetRow): PetArtDef[] {
+    if (row.arts.length === 0) return [];
+    const shelf = new Set(repertoireFor(row.species));
+    const out: PetArtDef[] = [];
+    for (const id of row.arts) {
+      if (!shelf.has(id)) continue;
+      const art = petArtDef(id);
+      if (art && art.kind === 'active') out.push(art);
+    }
+    return out;
+  }
+
+  /**
+   * THE PET'S BREATH, the decision point: a slotted art outranks the
+   * basic when one is armed and in band. Pacing lives on the
+   * PetArtDef (the kit law); the first arming is seeded short of the
+   * full rest so an art never opens the fight; a windup plants the
+   * body and broadcasts the same eid-anchored charge every NPC caster
+   * already speaks. Returns true when the tick is spent.
+   */
+  private beginPetArt(
+    eid: EntityId,
+    npc: NpcComp,
+    pet: PetComp,
+    owner: PlayerComp,
+    pos: PositionComp,
+    dist: number,
+  ): boolean {
+    if (pet.artCast || pet.target === null || npc.attackCooldown > 0) return false;
+    const row = owner.pets.find((p) => p.slot === pet.slot);
+    if (!row) return false;
+    const actives = this.petActiveArts(row);
+    if (actives.length === 0) return false;
+    const cds = (pet.artCds ??= new Map());
+    const health = this.healths.get(eid);
+    const eligible: PetArtDef[] = [];
+    for (const art of actives) {
+      let ready = cds.get(art.id);
+      if (ready === undefined) {
+        ready = this.tickCount + Math.min(art.cooldownTicks ?? 200, PET_ART_FIRST_CD_TICKS);
+        cds.set(art.id, ready);
+      }
+      if (this.tickCount < ready) continue;
+      if (art.minRange !== undefined && dist < art.minRange) continue;
+      if (art.maxRange !== undefined && dist > art.maxRange) continue;
+      if (
+        art.hpBelow !== undefined &&
+        health !== undefined &&
+        health.hp > health.maxHp * art.hpBelow
+      ) {
+        continue;
+      }
+      eligible.push(art);
+    }
+    if (eligible.length === 0) return false;
+    const art = eligible[Math.floor(Math.random() * eligible.length)]!;
+    // The rest is paid at the pick; a staggered breath overwrites it
+    // with the short retry (punished, never disabled).
+    cds.set(art.id, this.tickCount + (art.cooldownTicks ?? 200));
+    const windup = art.windupTicks ?? 0;
+    if (windup <= 0) {
+      this.firePetArt(eid, npc, pet, owner, art.id, pet.target);
+      npc.attackCooldown = Math.max(npc.attackCooldown, 10);
+      return true;
+    }
+    pet.artCast = { artId: art.id, ticksLeft: windup, total: windup, targetEid: pet.target };
+    this.setNpcPose(eid, npc, PoseState.Cast, windup + 2);
+    const ab = abilityDef(art.ability ?? art.id);
+    this.broadcastFx(pos.plane, {
+      t: 'fx',
+      kind: 'charge',
+      x: pos.x,
+      y: pos.y,
+      radius: 1.5,
+      eid,
+      ticks: windup,
+      id: art.id,
+      color: ab?.color,
+    });
+    return true;
+  }
+
+  /**
+   * The drawn breath lands. Every damage point walks damageNpc with
+   * viaPet (credit whole, benefit nowhere — the Phase 2 rails), every
+   * self word speaks the keeper-balm machinery, and the taunts and
+   * the cowing speak the shipped doors (npcAggro force, becalmNpc).
+   */
+  private firePetArt(
+    eid: EntityId,
+    npc: NpcComp,
+    pet: PetComp,
+    owner: PlayerComp,
+    artId: string,
+    targetEid: EntityId,
+  ): void {
+    const art = petArtDef(artId);
+    const ab = art?.ability !== undefined ? abilityDef(art.ability) : undefined;
+    const pos = this.positions.get(eid);
+    const row = owner.pets.find((p) => p.slot === pet.slot);
+    if (!art || !ab || !pos || !row) return;
+    const base = NPCS.get(row.species);
+    if (!base) return;
+    const bc = levelForXp(owner.skills.beastcraft ?? 0);
+    const level = petLevelFor(row.xp, base.level, bc);
+    const bundle = pet.bundle ?? petPassiveBundle(row.arts);
+    const stats = petStatBlock(row.species, level, bc, bundle);
+    if (!stats) return;
+    const maxHit =
+      ab.damage > 0 ? Math.max(1, Math.round(npcMaxHit(ab.damage, level) * stats.dmgMult)) : 0;
+    const strike = (mark: EntityId, knockFrom?: { x: number; y: number }): void => {
+      if (!this.petLegalMark(mark)) return;
+      const dmg = Math.floor(Math.random() * (maxHit + 1));
+      this.damageNpc(mark, dmg, pet.ownerEid, 'beastcraft', {
+        viaPet: { petEid: eid },
+        status: ab.status,
+        vs: ab.vs,
+        knockbackMult: ab.knockback ?? 1,
+        ...(knockFrom !== undefined ? { knockFrom } : {}),
+      });
+    };
+    const selfWords = (): void => {
+      const h = this.healths.get(eid);
+      if (ab.petCleanse) this.statuses.delete(eid);
+      if (ab.petHealFrac !== undefined && h && h.hp > 0) {
+        h.hp = Math.min(h.maxHp, h.hp + Math.ceil(h.maxHp * ab.petHealFrac));
+      }
+      if (ab.petSurge) {
+        pet.surge = {
+          dmgMult: ab.petSurge.dmgMult,
+          speedMult: ab.petSurge.speedMult,
+          untilTick: this.tickCount + ab.petSurge.durationTicks,
+          temper: ab.petSurge.temper,
+          artId: ab.id,
+        };
+      }
+      if (ab.petGuard) {
+        pet.guard = {
+          armor: ab.petGuard.armor,
+          untilTick: this.tickCount + ab.petGuard.durationTicks,
+        };
+      }
+    };
+    const tpos = this.positions.get(targetEid);
+    switch (ab.shape) {
+      case 'self_buff': {
+        selfWords();
+        this.broadcastFx(pos.plane, {
+          t: 'fx', kind: 'command', x: pos.x, y: pos.y, x2: pos.x, y2: pos.y,
+          radius: 1, id: ab.id, color: ab.color,
+        });
+        break;
+      }
+      case 'nova':
+      case 'pulse_nova': {
+        const radius = ab.radius ?? 2;
+        const pulses = ab.shape === 'pulse_nova' ? Math.max(1, ab.pulses ?? 1) : 1;
+        const wave = (): void => {
+          const p2 = this.positions.get(eid);
+          const livePet = this.pets.get(eid);
+          if (!p2 || !livePet) return; // the body left between pulses
+          this.forEachNpcNear(p2.plane, p2.x, p2.y, radius + 1.5, (mEid, m, mpos) => {
+            if (mEid === eid) return;
+            if (Math.hypot(mpos.x - p2.x, mpos.y - p2.y) - m.def.radius > radius) return;
+            // CLATTER, THE STANDING STONE, STAND TALL: the shipped
+            // taunt door, aimed at the SHELL (the harry's cousin).
+            if (ab.tauntRadius !== undefined && this.petLegalMark(mEid)) {
+              this.npcAggro(mEid, m, eid, { force: true });
+            }
+            // THE COWING SNARL: lesser wild hearts remember taking
+            // orders — sovereigns and its betters never bow.
+            if (
+              ab.becalmTicks !== undefined &&
+              isWildBeast(m.def) &&
+              !isBeastSovereign(m.def) &&
+              m.def.level < level &&
+              !this.pets.has(mEid) &&
+              !this.actors.has(mEid)
+            ) {
+              this.becalmNpc(mEid, m, ab.becalmTicks);
+            }
+            if (maxHit > 0) strike(mEid, { x: p2.x, y: p2.y });
+          });
+          this.broadcastFx(p2.plane, {
+            t: 'fx', kind: 'blast', x: p2.x, y: p2.y, radius, id: ab.id, color: ab.color,
+          });
+        };
+        wave();
+        for (let i = 1; i < pulses; i++) {
+          this.petEchoes.push({ at: this.tickCount + i * (ab.pulseEveryTicks ?? 10), fire: wave });
+        }
+        selfWords();
+        break;
+      }
+      case 'flurry': {
+        const hits = Math.max(1, ab.hits ?? 1);
+        const rake = (): void => {
+          const p2 = this.positions.get(eid);
+          const t2 = this.positions.get(targetEid);
+          if (!p2 || !t2 || t2.plane !== p2.plane) return;
+          if (Math.hypot(t2.x - p2.x, t2.y - p2.y) > (ab.range ?? 2) + 1) return;
+          strike(targetEid);
+        };
+        rake();
+        for (let i = 1; i < hits; i++) {
+          this.petEchoes.push({ at: this.tickCount + i * (ab.pulseEveryTicks ?? 5), fire: rake });
+        }
+        this.broadcastFx(pos.plane, {
+          t: 'fx', kind: 'blast', x: tpos?.x ?? pos.x, y: tpos?.y ?? pos.y,
+          radius: 0.8, id: ab.id, color: ab.color,
+        });
+        break;
+      }
+      case 'melee_arc': {
+        const reach = ab.range ?? 2;
+        const half = (ab.arc ?? 1) / 2;
+        this.forEachNpcNear(pos.plane, pos.x, pos.y, reach + 1.5, (mEid, m, mpos) => {
+          if (mEid === eid) return;
+          const dx = mpos.x - pos.x;
+          const dy = mpos.y - pos.y;
+          if (Math.hypot(dx, dy) - m.def.radius > reach) return;
+          let da = Math.atan2(dy, dx) - pos.dir;
+          while (da > Math.PI) da -= Math.PI * 2;
+          while (da < -Math.PI) da += Math.PI * 2;
+          if (Math.abs(da) > half + 0.35) return;
+          strike(mEid, { x: pos.x, y: pos.y });
+        });
+        this.broadcastFx(pos.plane, {
+          t: 'fx', kind: 'blast', x: pos.x + Math.cos(pos.dir) * reach * 0.6,
+          y: pos.y + Math.sin(pos.dir) * reach * 0.6, radius: reach * 0.7,
+          id: ab.id, color: ab.color,
+        });
+        break;
+      }
+      case 'dash_strike':
+      case 'leap_slam': {
+        if (!tpos || tpos.plane !== pos.plane) break;
+        const dd = Math.hypot(tpos.x - pos.x, tpos.y - pos.y);
+        if (dd > 0.01) {
+          const reach = Math.min(ab.dashTiles ?? 3, Math.max(0, dd - 0.6));
+          const ldx = (tpos.x - pos.x) / dd;
+          const ldy = (tpos.y - pos.y) / dd;
+          for (let step = 0; step < 4; step++) {
+            const next = stepMovement(
+              pos, { mx: ldx, my: ldy }, reach, 1 / 4, this.worldOf(pos.plane), npc.def.radius,
+            );
+            pos.x = next.x;
+            pos.y = next.y;
+          }
+          pos.dir = Math.atan2(ldy, ldx);
+          this.updateChunkMembership(eid);
+        }
+        if (ab.shape === 'dash_strike') {
+          strike(targetEid, { x: pos.x, y: pos.y });
+        } else {
+          const radius = ab.radius ?? 2;
+          this.forEachNpcNear(pos.plane, pos.x, pos.y, radius + 1.5, (mEid, m, mpos) => {
+            if (mEid === eid) return;
+            if (Math.hypot(mpos.x - pos.x, mpos.y - pos.y) - m.def.radius > radius) return;
+            strike(mEid, { x: pos.x, y: pos.y });
+          });
+        }
+        this.broadcastFx(pos.plane, {
+          t: 'fx', kind: 'blast', x: pos.x, y: pos.y,
+          radius: ab.radius ?? 0.9, id: ab.id, color: ab.color,
+        });
+        break;
+      }
+      case 'projectile_fan': {
+        if (!tpos || tpos.plane !== pos.plane) break;
+        const aim = Math.atan2(tpos.y - pos.y, tpos.x - pos.x);
+        pos.dir = aim;
+        const proj = this.ecs.create();
+        this.kinds.set(proj, EntityKind.Projectile);
+        this.positions.set(proj, { x: pos.x, y: pos.y, dir: aim, plane: pos.plane });
+        this.projectiles.set(proj, {
+          ownerEid: pet.ownerEid,
+          style: 'arx',
+          maxHit,
+          dirX: Math.cos(aim),
+          dirY: Math.sin(aim),
+          speed: ab.projectileSpeed ?? 9,
+          distLeft: ab.range ?? 7,
+          status: ab.status,
+          vs: ab.vs,
+          element: ab.element,
+          viaPetEid: eid,
+          abilityId: ab.id,
+          abilityColor: ab.color,
+        });
+        this.updateChunkMembership(proj);
+        break;
+      }
+      case 'ground_field': {
+        const at = tpos && tpos.plane === pos.plane ? tpos : pos;
+        this.activeFields.push({
+          plane: pos.plane,
+          x: at.x,
+          y: at.y,
+          radius: ab.radius ?? 2,
+          damage: maxHit,
+          everyTicks: ab.pulseEveryTicks ?? 16,
+          ticksLeft: ab.fieldTicks ?? 100,
+          status: ab.status,
+          vs: ab.vs,
+          ownerEid: pet.ownerEid,
+          style: 'beastcraft',
+          fromNpc: false,
+          knockback: ab.knockback ?? 0,
+          viaPetEid: eid,
+        });
+        this.broadcastFx(pos.plane, {
+          t: 'fx', kind: 'field', x: at.x, y: at.y,
+          radius: ab.radius ?? 2, ticks: ab.fieldTicks ?? 100, id: ab.id, color: ab.color,
+        });
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  /**
+   * THE ROPE's ledger: bond in, knots announced. The rank climb is a
+   * ceremony worth a line — it may have just paid a focus point.
+   */
+  private grantPetBond(owner: PlayerComp, row: PetRow, amount: number): void {
+    if (amount <= 0) return;
+    const before = petBondRank(row.bondXp);
+    row.bondXp += amount;
+    if (owner.characterId > 0) this.accounts.savePetBond(owner.characterId, row.slot, row.bondXp);
+    this.petDirty.add(owner);
+    const after = petBondRank(row.bondXp);
+    if (after > before) {
+      owner.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: `The rope between you and ${row.name} tightens. ${PET_BOND_RANK_NAMES[after]}.`,
+      });
+    }
+  }
+
+  /**
+   * THE THREE COLLARS: set a stall's slotted arts whole. Every law is
+   * re-proven here — ownership, repertoire membership, the focus
+   * budget from the pet's OWN level and bond (neither axis ever reads
+   * the keeper's beastcraft), and never a mid-bite respec — and every
+   * refusal speaks before anything is written.
+   */
+  petArtsOp(eid: EntityId, slot: number, arts: string[]): void {
+    const player = this.players.get(eid);
+    if (!player) return;
+    const sys = (text: string): void => {
+      player.session?.sendJson({ t: 'chat', channel: 'system', text });
+    };
+    const row = player.pets.find((p) => p.slot === slot);
+    if (!row) {
+      sys('No companion keeps that stall.');
+      return;
+    }
+    const shelf = new Set(repertoireFor(row.species));
+    for (const id of arts) {
+      const art = petArtDef(id);
+      if (!art || !shelf.has(id)) {
+        sys(`${row.name} cannot learn that.`);
+        return;
+      }
+    }
+    const bc = levelForXp(player.skills.beastcraft ?? 0);
+    const level = petLevelFor(row.xp, NPCS.get(row.species)?.level ?? 1, bc);
+    const budget = petFocusMax(level, petBondRank(row.bondXp));
+    const spent = arts.reduce((s, id) => s + (petArtDef(id)?.focus ?? 0), 0);
+    if (spent > budget) {
+      sys(`${row.name} cannot hold so much in mind. Not yet.`);
+      return;
+    }
+    const pet = player.petEid !== null ? this.pets.get(player.petEid) : undefined;
+    if (pet && pet.slot === slot && pet.target !== null) {
+      sys('Not while its blood is up.');
+      return;
+    }
+    row.arts = arts;
+    if (player.characterId > 0) this.accounts.savePetArts(player.characterId, slot, arts);
+    if (pet && pet.slot === slot && player.petEid !== null) {
+      // The live body re-reads its whole nature: the folded bundle,
+      // fresh art seeds (the first-arming law re-applies), and the
+      // ceiling the one stat site now grants (thick fat, war pelt).
+      pet.bundle = petPassiveBundle(arts);
+      pet.artCds = undefined;
+      pet.artCast = undefined;
+      const stats = petStatBlock(row.species, level, bc, pet.bundle);
+      const h = this.healths.get(player.petEid);
+      if (stats && h) {
+        h.maxHp = stats.maxHp;
+        h.hp = Math.min(h.hp, stats.maxHp);
+      }
+    }
+    this.petDirty.add(player);
+    this.sendPet(player);
+    sys(`${row.name} takes the words to heart.`);
   }
 
   /**
@@ -15012,28 +15589,98 @@ export class GameServer {
     const row = owner?.pets.find((p) => p.slot === pet.slot);
     const bc = owner ? levelForXp(owner.skills.beastcraft ?? 0) : 1;
     const base = row ? NPCS.get(row.species) : undefined;
+    const bundle = pet.bundle ?? {};
+    // A quiet spell re-opens the defensive ledgers: the feint and the
+    // shrug are per-FIGHT words, and a fight is over once the body has
+    // gone unhurt a whole regen delay.
+    if (this.tickCount - pet.lastHurtTick > PET_REGEN_DELAY_TICKS) {
+      pet.fightShrugBlow = false;
+      pet.fightShrugStatus = false;
+    }
+    // SMALL SHADOW and the PLAYFUL FEINT: the opening DIRECT blow of
+    // a fight whiffs, deterministically (DoT pulses never count —
+    // dodging a poison already in the blood would be a lie).
+    if (bundle.firstBlowShrug && pet.fightShrugBlow !== true && opts.via === undefined) {
+      pet.fightShrugBlow = true;
+      pet.lastHurtTick = this.tickCount;
+      this.broadcastHit(petEid, 0, false, 0, 0, false, false, opts.via);
+      if (owner && opts.sourceEid !== undefined) {
+        this.petDefend(pet.ownerEid, owner, opts.sourceEid, false);
+      }
+      return;
+    }
     const stats =
-      row && base ? petStatBlock(row.species, petLevelFor(row.xp, base.level, bc), bc) : null;
-    // THE KEEPER'S TONGUE: a live guard window thickens the hide.
+      row && base
+        ? petStatBlock(row.species, petLevelFor(row.xp, base.level, bc), bc, bundle)
+        : null;
+    // THE KEEPER'S TONGUE: a live guard window thickens the hide —
+    // and the slotted hide answers its own conditions: the bristles
+    // come up worn, the burnish comes up unstruck, the vigil holds
+    // beside the keeper's knee.
     const guardArmor = pet.guard && this.tickCount < pet.guard.untilTick ? pet.guard.armor : 0;
+    let passiveArmor = 0;
+    if (bundle.woundedArmor && health.hp < health.maxHp * bundle.woundedArmor.belowFrac) {
+      passiveArmor += bundle.woundedArmor.armor;
+    }
+    if (bundle.unhurtArmor && this.tickCount - pet.lastHurtTick > bundle.unhurtArmor.afterTicks) {
+      passiveArmor += bundle.unhurtArmor.armor;
+    }
+    if (bundle.nearKeeper && this.petNearKeeper(pet)) passiveArmor += bundle.nearKeeper.armor;
     const dmg = opts.pierceArmor
       ? raw
-      : mitigate(raw, 0, (stats?.armor ?? 0) + guardArmor, opts.attackerLevel ?? 1);
+      : mitigate(raw, 0, (stats?.armor ?? 0) + guardArmor + passiveArmor, opts.attackerLevel ?? 1);
     this.broadcastHit(petEid, dmg, false, 0, 0, false, false, opts.via);
     pet.lastHurtTick = this.tickCount;
     if (dmg <= 0) return; // the whiff and the clank both write nothing
     health.hp -= dmg;
     this.setNpcPose(petEid, npc, PoseState.Hurt, 4);
     npc.windupTicks = 0; // a solid hit interrupts the bite
+    // ...and staggers the drawn breath: the art re-arms shortly
+    // instead of paying its full rest — punished, never disabled.
+    if (pet.artCast) {
+      pet.artCds?.set(pet.artCast.artId, this.tickCount + PET_ART_RETRY_TICKS);
+      const pos = this.positions.get(petEid);
+      if (pos) {
+        // The gutter: the charge fx re-broadcast at zero ticks is the
+        // fizzle signal every watcher already reads.
+        this.broadcastFx(pos.plane, {
+          t: 'fx', kind: 'charge', x: pos.x, y: pos.y, radius: 1.5,
+          eid: petEid, ticks: 0, id: pet.artCast.artId,
+        });
+      }
+      pet.artCast = undefined;
+    }
     if (health.hp > 0 && opts.status) {
-      // The shell keeps its wild virtues: species resists and
-      // weaknesses answer exactly as they did before the collar.
-      this.applyStatusToNpc(petEid, opts.status, opts.sourceEid ?? petEid, 'beastcraft');
+      // TWITCHING EAR: the first trick played on it each fight simply
+      // does not take; OLD SCARS and COLD BLOOD run what does take at
+      // a fraction of its length. The shell keeps its wild virtues
+      // beneath both — species resists answer exactly as before.
+      if (bundle.firstStatusShrug && pet.fightShrugStatus !== true) {
+        pet.fightShrugStatus = true;
+      } else {
+        const durMult = bundle.statusDurMult ?? 1;
+        const worn =
+          durMult < 1
+            ? { ...opts.status, durationTicks: Math.max(1, Math.round(opts.status.durationTicks * durMult)) }
+            : opts.status;
+        this.applyStatusToNpc(petEid, worn, opts.sourceEid ?? petEid, 'beastcraft');
+      }
     }
     if (owner && opts.sourceEid !== undefined) {
       this.petDefend(pet.ownerEid, owner, opts.sourceEid, false);
     }
     if (health.hp <= 0) {
+      // THE STUBBORN HEART: once a fight, the boar declines to fall.
+      if (bundle.deathDefy && pet.fightDefied !== true) {
+        pet.fightDefied = true;
+        health.hp = 1;
+        owner?.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `${row?.name ?? 'Your companion'} refuses to fall.`,
+        });
+        return;
+      }
       health.hp = 0;
       if (owner) this.petGoesDown(petEid, pet, npc, owner);
     }
@@ -15050,12 +15697,24 @@ export class GameServer {
    */
   private petGoesDown(petEid: EntityId, pet: PetComp, npc: NpcComp, owner: PlayerComp): void {
     const row = owner.pets.find((p) => p.slot === pet.slot);
-    pet.downedUntil = this.tickCount + PET_DOWNED_TICKS;
+    // WINTER SLEEP: the downed clock runs at the slotted fraction —
+    // even felled, it is only wintering.
+    const downedTicks = Math.max(
+      200,
+      Math.round(PET_DOWNED_TICKS * (pet.bundle?.downedTicksMult ?? 1)),
+    );
+    pet.downedUntil = this.tickCount + downedTicks;
+    // THE JOURNEY IS SHOWN: the fall joins the honest count.
+    if (row) {
+      row.downs += 1;
+      if (owner.characterId > 0) this.accounts.savePetDown(owner.characterId, row.slot);
+    }
     pet.target = null;
     npc.windupTicks = 0;
     npc.holdUntilTick = 0;
+    pet.artCast = undefined;
     this.poses.set(petEid, PoseState.Lie);
-    npc.poseUntilTick = this.tickCount + PET_DOWNED_TICKS;
+    npc.poseUntilTick = this.tickCount + downedTicks;
     // The fallen body sheds its afflictions — nothing burns a friend
     // who is already down (the dying-body law's gentler sibling).
     this.statuses.delete(petEid);
@@ -15131,6 +15790,8 @@ export class GameServer {
     const npc = this.npcs.get(action.targetEid);
     if (npc) npc.poseUntilTick = 0;
     this.grantXp(eid, player, 'beastcraft', PET_TEND_XP);
+    // THE ROPE: hardship braids it — the kneel pays bond too.
+    if (row) this.grantPetBond(player, row, PET_BOND_TEND_BOND);
     player.session?.sendJson({
       t: 'chat',
       channel: 'system',
@@ -15235,7 +15896,11 @@ export class GameServer {
     if (!pet) return;
     const row = owner.pets.find((p) => p.slot === pet.slot);
     if (!row) return;
-    this.grantPetXp(owner, pet, row, dmg * PET_XP_PER_DMG);
+    // THE MENTOR'S HAND: a master keeper raises a young friend up to
+    // half again as fast — the deeds are still the pet's own.
+    const bc = levelForXp(owner.skills.beastcraft ?? 0);
+    const level = petLevelFor(row.xp, NPCS.get(row.species)?.level ?? 1, bc);
+    this.grantPetXp(owner, pet, row, Math.round(dmg * PET_XP_PER_DMG * petXpMentorMult(bc, level)));
     if (pet.trickleTarget !== targetEid) {
       pet.trickleTarget = targetEid;
       pet.trickleBank = 0;
@@ -15285,7 +15950,10 @@ export class GameServer {
         .map(
           (p) =>
             `${p.slot}:${p.species}:${p.name}:${p.xp}:${p.state}:${p.restedAt ?? ''}:` +
-            `${p.state === 'heel' ? (player.petEid === null ? 'T' : downed ? 'D' : (petHp?.hp ?? 0)) : ''}`,
+            `${p.state === 'heel' ? (player.petEid === null ? 'T' : downed ? 'D' : (petHp?.hp ?? 0)) : ''}:` +
+            // THE FANG FINDS ITS VOICE: the rope, the loadout, and the
+            // journey all move the mirror when they move.
+            `${p.bondXp}:${p.arts.join(',')}:${p.kills}:${p.downs}`,
         )
         .join('|') + `@${bc}`;
     if (ceremony === undefined && sig === player.petSigSent) return;
@@ -15297,7 +15965,8 @@ export class GameServer {
       const level = petLevelFor(p.xp, base, bc);
       // THE ONE STAT SITE feeds the mirror too — the card must show
       // the same ceiling the fight uses.
-      const maxHp = petStatBlock(p.species, level, bc)?.maxHp ?? def?.maxHp ?? 1;
+      const maxHp =
+        petStatBlock(p.species, level, bc, petPassiveBundle(p.arts))?.maxHp ?? def?.maxHp ?? 1;
       const hp =
         p.state === 'heel'
           ? petHp
@@ -15312,6 +15981,7 @@ export class GameServer {
               ? 'downed'
               : 'heel'
           : p.state;
+      const rank = petBondRank(p.bondXp);
       const info: PetInfo = {
         slot: p.slot,
         species: p.species,
@@ -15321,7 +15991,18 @@ export class GameServer {
         hp,
         maxHp,
         state,
+        // THE FANG FINDS ITS VOICE: the server computes every rule —
+        // the client never re-derives the budget or the knot.
+        bond: p.bondXp,
+        bondRank: rank,
+        focus: p.arts.reduce((s, id) => s + (petArtDef(id)?.focus ?? 0), 0),
+        focusMax: petFocusMax(level, rank),
+        arts: [...p.arts],
+        kills: p.kills,
+        downs: p.downs,
       };
+      if (p.tamedAt !== null) info.tamedAt = p.tamedAt;
+      if (p.tamedLevel !== null) info.tamedLevel = p.tamedLevel;
       if (p.state === 'resting' && p.restedAt !== null) {
         info.restSec = Math.max(0, Math.ceil((p.restedAt + PET_REST_HOME_MS - now) / 1000));
       }
@@ -20049,6 +20730,19 @@ export class GameServer {
     this.broadcastHit(npcEid, dmg, false, 0, 0, false, false, kind);
     health.hp -= dmg;
     const source = this.players.get(sourceEid);
+    // BLOOD DRINK and VENOM SUP: the pet's own DoT ticks feed it a
+    // sip — read from the CURRENT friend at heel (a dose that
+    // outlives its layer simply feeds nobody).
+    if (fromPet && source && source.petEid !== null) {
+      const sipper = this.pets.get(source.petEid);
+      const leech = sipper?.bundle?.statusLeech;
+      if (sipper && leech !== undefined) {
+        const ph = this.healths.get(source.petEid);
+        if (ph && ph.hp > 0 && ph.hp < ph.maxHp) {
+          ph.hp = Math.min(ph.maxHp, ph.hp + Math.max(1, Math.round(dmg * leech)));
+        }
+      }
+    }
     if (source && !fromPet) {
       const style: SkillId = kind === 'burn' ? 'arx' : kind === 'venom' ? 'sneak' : 'onehand';
       // The drip draws the same mark budget as the blow that set it,
@@ -20218,6 +20912,9 @@ export class GameServer {
       const struck = new Set<EntityId>();
       this.forEachNpcNear(field.plane, field.x, field.y, field.radius, (npcEid, npc, npos) => {
         if (struck.has(npcEid)) return;
+        // THE FANG KNOWS ITS FRIENDS: a companion's lattice never
+        // pulses a townsperson (pets are refused downstream).
+        if (field.viaPetEid !== undefined && this.actors.has(npcEid)) return;
         if (Math.hypot(npos.x - field.x, npos.y - field.y) - npc.def.radius > field.radius) {
           return;
         }
@@ -20229,6 +20926,7 @@ export class GameServer {
           status: field.status,
           vs: field.vs,
           knockFrom: { x: field.x, y: field.y },
+          ...(field.viaPetEid !== undefined ? { viaPet: { petEid: field.viaPetEid } } : {}),
         });
         this.drainHeal(field.ownerEid, dmg, field.drainFrac);
       });
@@ -20503,6 +21201,9 @@ export class GameServer {
         if (proj.hitEids?.has(npcEid)) return;
         // Arrows fly past a companion — it neither blocks nor bleeds.
         if (this.pets.has(npcEid)) return;
+        // THE FANG KNOWS ITS FRIENDS: a companion's spit passes every
+        // townsperson clean by.
+        if (proj.viaPetEid !== undefined && this.actors.has(npcEid)) return;
         const dx = npos.x - pos.x;
         // The visual body rises north of the ground point — test the
         // feet→crown band so a shot crossing the chest or head lands.
@@ -20532,6 +21233,7 @@ export class GameServer {
             status: proj.status,
             vs: proj.vs,
             knockbackMult: proj.heavy ? HEAVY_BOLT_KNOCKBACK : proj.fullDraw ? 1.4 : 1,
+            ...(proj.viaPetEid !== undefined ? { viaPet: { petEid: proj.viaPetEid } } : {}),
           });
           this.drainHeal(proj.ownerEid, dmg, proj.drainFrac);
           // THE SIGNATURE LAW: an ability's shot announces its
@@ -21531,6 +22233,25 @@ export class GameServer {
         const kRow = kPet ? killer.pets?.find((p) => p.slot === kPet.slot) : undefined;
         if (kPet && kRow && kPet.target === npcEid) {
           this.grantPetXp(killer, kPet, kRow, Math.round(npc.def.xpReward * PET_KILL_XP_FRAC));
+          // THE ROPE and THE JOURNEY: a shared kill pays a bond coin
+          // and joins the honest count.
+          this.grantPetBond(killer, kRow, PET_BOND_KILL_BOND);
+          kRow.kills += 1;
+          if (killer.characterId > 0) this.accounts.savePetKill(killer.characterId, kRow.slot);
+          // ROOTING SNOUT: every third kill it lands shakes loose a
+          // forage scrap for the keeper's pack (deterministic — the
+          // flood-law's spirit; the counter is the die).
+          if (kPet.bundle?.killsForage) {
+            kPet.forageCount = (kPet.forageCount ?? 0) + 1;
+            if (kPet.forageCount % 3 === 0 && addItem(killer.inventory, 'berries', 1) === 0) {
+              killer.session?.sendJson({ t: 'inv', slots: killer.inventory });
+              killer.session?.sendJson({
+                t: 'chat',
+                channel: 'system',
+                text: `${kRow.name} noses something loose from the fallen and drops it at your feet.`,
+              });
+            }
+          }
           kPet.target = null;
         }
       }
@@ -23716,6 +24437,9 @@ export class GameServer {
     const pos = this.positions.get(eid);
     const targetEid = npc.targetEid;
     if (!pos || targetEid === null) return;
+    // SOFT PAW and SILENT FEATHER: a mark fighting the quiet fang
+    // never gets the breath to cry for its kin.
+    if (this.pets.get(targetEid)?.bundle?.quietFang) return;
     let bestEid: EntityId | null = null;
     let bestDist = HELP_SEEK_RANGE;
     for (const [oEid, other] of this.npcs) {
@@ -26058,6 +26782,7 @@ export class GameServer {
         if (player.characterId > 0) this.accounts.savePetState(player.characterId, prev.slot, 'stabled');
         this.despawnPetEntity(player);
       }
+      const tamedAt = Date.now();
       const row: PetRow = {
         slot,
         species: tame.species,
@@ -26065,14 +26790,29 @@ export class GameServer {
         xp: 0,
         state: 'heel',
         restedAt: null,
+        bondXp: 0,
+        arts: [],
+        tamedAt,
+        tamedLevel: levelForXp(player.skills.beastcraft ?? 0),
+        kills: 0,
+        downs: 0,
       };
       player.pets.push(row);
-      if (player.characterId > 0) this.accounts.savePet(player.characterId, row, Date.now());
+      if (player.characterId > 0) this.accounts.savePet(player.characterId, row, tamedAt);
       player.petHp = null;
       player.petBondAt.delete(slot);
       this.trySpawnPet(eid, player);
       // Ceremony on purpose: the dev whistle exercises the naming card.
       this.sendPet(player, slot);
+      return;
+    }
+    if (config.devCommands && text.startsWith('/petarts')) {
+      // The collar lever: '/petarts <slot> [id id id]' — the real op,
+      // refusals and all, so the harness proves the same door players
+      // use. No ids = an empty loadout (yesterday's wolf).
+      const parts = text.split(/\s+/).slice(1);
+      const slot = Number(parts[0] ?? '0');
+      this.petArtsOp(eid, slot, parts.slice(1));
       return;
     }
     if (config.devCommands && text.startsWith('/petstate')) {
@@ -26101,12 +26841,16 @@ export class GameServer {
           comp?.guard && comp.guard.untilTick > this.tickCount
             ? ` guard=${comp.guard.untilTick - this.tickCount}t +${comp.guard.armor}`
             : '';
+        const bcNow = levelForXp(player.skills.beastcraft ?? 0);
+        const lvlNow = petLevelFor(p.xp, NPCS.get(p.species)?.level ?? 1, bcNow);
+        const spent = p.arts.reduce((s, id) => s + (petArtDef(id)?.focus ?? 0), 0);
         return (
           `${p.slot}: ${p.name} (${p.species}) ${p.state}${restLeft}` +
           (live
             ? ` LIVE d=${d} hp=${hp?.hp}/${hp?.maxHp} tgt=${comp?.target ?? '-'}${downLeft}${surgeLeft}${guardLeft}`
             : '') +
-          ` xp=${p.xp}`
+          ` xp=${p.xp} bond=${p.bondXp}(${petBondRank(p.bondXp)}) focus=${spent}/${petFocusMax(lvlNow, petBondRank(p.bondXp))}` +
+          ` arts=[${p.arts.join(',')}] kills=${p.kills} downs=${p.downs}`
         );
       });
       say(rows.length > 0 ? rows.join(' | ') + ` calm=${player.petCalmTicks}` : 'No companions.');
@@ -27326,6 +28070,14 @@ export class GameServer {
     this.tickSummons();
     this.tickBlasts();
     this.tickFields();
+    // The queued waves of companion arts (each re-verifies at fire).
+    if (this.petEchoes.length > 0) {
+      const due = this.petEchoes.filter((e) => this.tickCount >= e.at);
+      if (due.length > 0) {
+        this.petEchoes = this.petEchoes.filter((e) => this.tickCount < e.at);
+        for (const e of due) e.fire();
+      }
+    }
     this.tickDrops(now);
     this.tickRegen(now);
     if (this.tickCount % 40 === 0) this.tickCrops(now);
