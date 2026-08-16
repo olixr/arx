@@ -262,11 +262,9 @@ export const OOZE_IDS: ReadonlySet<string> = new Set([
   'slime_small',
   'giant_slime',
   'gray_ooze',
-  'ochre_jelly',
-  'ochre_half',
+  'frost_slime',
+  'tar_slime',
   'gelatinous_cube',
-  'black_pudding',
-  'pudding_half',
 ]);
 
 export function isOozeId(id: string): boolean {
@@ -1429,81 +1427,60 @@ const defs: NpcDef[] = [
     kit: [{ ability: 'ground_slam', cooldownTicks: 200, maxRange: 4, weight: 2 }],
   },
   {
-    // Wet stone that moves: a low eyeless DOME of gray gel (THE SLIME
-    // SHAPE LAW: cube-like or blob-like, nothing else) the torchlight
-    // misses until it is close enough to reach. The acid keeps the
-    // argument with your armor (sunder), and the cold means nothing
-    // to a body already the temperature of the floor.
+    // THE STONE DRESS: the base slime's body wearing wet slate — a
+    // gray hopper full of swallowed grit the gel never digested. The
+    // acid keeps the argument with your armor (sunder), and the cold
+    // means nothing to a body already the temperature of the floor.
     id: 'gray_ooze',
-    name: 'Gray ooze',
+    name: 'Gray slime',
     level: 13,
     maxHp: 55,
     damage: 5,
     attackRange: 1.0,
     attackCooldownTicks: 52,
     // The ambusher's bargain: it sees all around but only an arm's
-    // reach out — walking wide of the puddle is the whole lesson.
+    // reach out — walking wide of it is the whole lesson.
     aggroRange: 3,
     sightArc: 360,
     leashRange: 12,
-    speed: 2.0,
+    speed: 2.2,
     xpReward: 200,
     loot: ['gray_ooze'],
     respawnSec: 40,
     color: '#8b8d90',
     radius: 0.4,
-    hitHeight: 0.5,
+    hitHeight: 0.75,
     attackStatus: { status: 'sunder', power: 1, durationTicks: 60 },
     resist: ['bleed', 'venom', 'chill'],
     weak: ['burn'],
+    pounce: true,
   },
   {
-    // A colony pretending to be a creature: lobes, several nuclei,
-    // and no argument that dividing it settles — it halves on death
-    // and both halves keep the grudge. Lightning passes through a
-    // body with no one place to strike.
-    id: 'ochre_jelly',
-    name: 'Ochre jelly',
+    // THE FROST DRESS: winter kept in a jar — an icy-blue hopper with
+    // pale shards adrift in the chill and rime crusting the crown.
+    // The tackle numbs (chill), the cold is home, and the fire is
+    // the argument it cannot win.
+    id: 'frost_slime',
+    name: 'Frost slime',
     level: 16,
-    maxHp: 90,
+    maxHp: 85,
     damage: 5,
-    attackRange: 1.1,
+    attackRange: 1.0,
     attackCooldownTicks: 50,
-    aggroRange: 5,
+    aggroRange: 4,
     sightArc: 360,
     leashRange: 16,
-    speed: 2.3,
+    speed: 2.4,
     xpReward: 260,
-    loot: ['ochre_jelly'],
+    loot: ['frost_slime'],
     respawnSec: 50,
-    color: '#c8973a',
-    radius: 0.46,
-    hitHeight: 0.7,
-    attackStatus: { status: 'sunder', power: 1, durationTicks: 60 },
-    resist: ['bleed', 'venom', 'shock'],
-    weak: ['chill'],
-    splitInto: { npc: 'ochre_half', count: 2 },
-  },
-  {
-    id: 'ochre_half',
-    name: 'Ochre half',
-    level: 8,
-    maxHp: 24,
-    damage: 3,
-    attackRange: 0.9,
-    attackCooldownTicks: 46,
-    aggroRange: 5,
-    sightArc: 360,
-    leashRange: 20,
-    speed: 2.7,
-    xpReward: 70,
-    loot: ['ochre_half'],
-    respawnSec: 50,
-    color: '#d4a54e',
-    radius: 0.3,
-    hitHeight: 0.5,
-    resist: ['bleed', 'venom', 'shock'],
-    weak: ['chill'],
+    color: '#7fc8de',
+    radius: 0.42,
+    hitHeight: 0.8,
+    attackStatus: { status: 'chill', power: 2, durationTicks: 50 },
+    resist: ['bleed', 'venom', 'chill'],
+    weak: ['burn'],
+    pounce: true,
   },
   {
     // THE CORRIDOR MADE FLESH: a tomb-sized prism of gel sweeping the
@@ -1533,53 +1510,31 @@ const defs: NpcDef[] = [
     weak: ['burn'],
   },
   {
-    // The deep's last word: a tall HEAVING BLOB of tar (THE SLIME
-    // SHAPE LAW holds — a mound, never a pillar) that eats steel
-    // (sunder 2) and shrugs everything but fire. It divides once,
-    // and the halves are still worse than most whole things.
-    id: 'black_pudding',
-    name: 'Black pudding',
+    // THE TAR DRESS: the deep's last word wearing the family body —
+    // a near-black hopper that keeps falling off itself (beads run
+    // the face, the ground drinks them), eats steel (sunder 2), and
+    // shrugs everything but fire. Pale eyes: ink would drown here.
+    id: 'tar_slime',
+    name: 'Tar slime',
     level: 24,
-    maxHp: 140,
+    maxHp: 150,
     damage: 8,
     attackRange: 1.1,
     attackCooldownTicks: 54,
-    aggroRange: 6,
+    aggroRange: 5,
     sightArc: 360,
     leashRange: 16,
-    speed: 2.4,
+    speed: 2.3,
     xpReward: 560,
-    loot: ['black_pudding', 'heirlooms'],
+    loot: ['tar_slime', 'heirlooms'],
     respawnSec: 70,
     color: '#2e2a33',
-    radius: 0.42,
-    hitHeight: 1.0,
+    radius: 0.45,
+    hitHeight: 0.85,
     attackStatus: { status: 'sunder', power: 2, durationTicks: 70 },
     resist: ['bleed', 'venom', 'shock', 'chill'],
     weak: ['burn'],
-    splitInto: { npc: 'pudding_half', count: 2 },
-  },
-  {
-    id: 'pudding_half',
-    name: 'Pudding half',
-    level: 12,
-    maxHp: 40,
-    damage: 4,
-    attackRange: 0.9,
-    attackCooldownTicks: 48,
-    aggroRange: 6,
-    sightArc: 360,
-    leashRange: 20,
-    speed: 2.8,
-    xpReward: 130,
-    loot: ['pudding_half'],
-    respawnSec: 70,
-    color: '#3a3542',
-    radius: 0.28,
-    hitHeight: 0.7,
-    attackStatus: { status: 'sunder', power: 1, durationTicks: 50 },
-    resist: ['bleed', 'venom', 'shock', 'chill'],
-    weak: ['burn'],
+    pounce: true,
   },
   {
     // THE FLEECE FINDS ITS BODY: the yard's wool-bearer, a placid

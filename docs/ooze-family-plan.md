@@ -97,7 +97,31 @@ corpse — the splat is the funeral).
   the existing melee law); trail is per-entity memory, never a decal
   system.
 
-## THE SLIME SHAPE LAW rework (user round two)
+## THE FAMILY REFOCUS (user round three — the final roster)
+
+The verdict: the hopper IS the brand (base/giant loved, cube earns its
+seat), and the exotic body plans spread the family thin. Executed:
+
+- **Ochre jelly, ochre half, black pudding, pudding half: DELETED**
+  (defs, loot, lanes, wilds, garrison — no replacements in their
+  bodies). The amoeba and blob painters died with them.
+- **`OozePlan` is hopper | cube, forever.** Variety lives in
+  `OozeDress` (verdant/stone/frost/tar): bespoke MATERIAL dressings
+  painted inside the loved hopper body, never a palette swap.
+- **The roster**: green line (slime L4 / small L1 / giant L9),
+  **Gray slime** (id gray_ooze kept, L13, sunder, swallowed grit +
+  slate sheen), **Frost slime** (L16, chill tackle, ice shards + rime
+  crust), **Tar slime** (L24, sunder 2, falling drip beads + hard
+  shine + PALE eyes — ink drowns on near-black), cube L19.
+- **THE JUMP-SLAM** replaces every strike: crouch (0..0.4) → leap
+  (0.4..0.78, real air + stretch, the server's pounce carries the
+  ground) → flat landing slam (0.78..1). No pseudopods, no punches,
+  ever — A SLIME ATTACKS WITH ITS BODY. All hoppers pounce. The cube
+  keeps its surge (already a body shove).
+- Lab: strike rows stagger the clock per column so one row shows
+  crouch → leap → slam in a single still.
+
+## THE SLIME SHAPE LAW rework (user round two — superseded by round three above)
 
 The puddle and column plans are DEAD — `drawOozeBlob` replaces both
 (`OozePlan` is now hopper/blob/amoeba/cube; blob takes `tall` +

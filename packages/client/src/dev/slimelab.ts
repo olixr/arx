@@ -104,12 +104,10 @@ const BODIES: Record<string, { radius: number; speed: number; color: string }> =
   slime: { radius: 0.32, speed: 2.6, color: '#6fbf4e' },
   slime_small: { radius: 0.18, speed: 3.0, color: '#8fd46a' },
   giant_slime: { radius: 0.55, speed: 2.2, color: '#5cae44' },
-  gray_ooze: { radius: 0.4, speed: 2.0, color: '#8b8d90' },
-  ochre_jelly: { radius: 0.46, speed: 2.3, color: '#c8973a' },
-  ochre_half: { radius: 0.3, speed: 2.7, color: '#d4a54e' },
+  gray_ooze: { radius: 0.4, speed: 2.2, color: '#8b8d90' },
+  frost_slime: { radius: 0.42, speed: 2.4, color: '#7fc8de' },
+  tar_slime: { radius: 0.45, speed: 2.3, color: '#2e2a33' },
   gelatinous_cube: { radius: 0.6, speed: 1.6, color: '#9fd8c8' },
-  black_pudding: { radius: 0.42, speed: 2.4, color: '#2e2a33' },
-  pudding_half: { radius: 0.28, speed: 2.8, color: '#3a3542' },
 };
 
 type Mode = 'idle' | 'move' | 'strike' | 'hurt';
@@ -122,6 +120,9 @@ interface Fig {
   seed: number;
   ruler?: boolean;
   trail?: boolean;
+  /** Column index — strike rows stagger the clock by it so one row
+   *  tells the whole crouch → leap → slam story in a single still. */
+  col?: number;
   manLegs?: LegSolver;
   manKnee?: number[];
   manDepth?: RigPose['depthMemory'];
@@ -129,44 +130,42 @@ interface Fig {
 
 const figs: Fig[] = [];
 const row = (label: string, defId: string, mode: Mode, seed = 11): void => {
-  for (const [lbl, dir] of DIRS) figs.push({ label: `${label} ${lbl}`, defId, dir, mode, seed });
+  DIRS.forEach(([lbl, dir], i) => {
+    figs.push({ label: `${label} ${lbl}`, defId, dir, mode, seed, col: i });
+  });
 };
 
-// Sheet rows, top to bottom: each body plan earns idle/move/strike;
-// hurt rides the line-up row (the flash is one law family-wide).
+// Sheet rows, top to bottom: every dress earns idle/move/strike —
+// the strike rows are THE JUMP-SLAM audit (crouch → leap → flat
+// landing, no pseudopods anywhere on this sheet, ever again).
 row('slime idle', 'slime', 'idle');
 row('slime move', 'slime', 'move');
 row('slime strike', 'slime', 'strike');
 row('giant idle', 'giant_slime', 'idle');
-row('giant move', 'giant_slime', 'move');
 row('giant strike', 'giant_slime', 'strike');
 row('gray idle', 'gray_ooze', 'idle');
-row('gray move', 'gray_ooze', 'move');
 row('gray strike', 'gray_ooze', 'strike');
-row('ochre idle', 'ochre_jelly', 'idle');
-row('ochre move', 'ochre_jelly', 'move');
-row('ochre strike', 'ochre_jelly', 'strike');
+row('frost idle', 'frost_slime', 'idle');
+row('frost strike', 'frost_slime', 'strike');
+row('tar idle', 'tar_slime', 'idle');
+row('tar strike', 'tar_slime', 'strike');
 row('cube idle', 'gelatinous_cube', 'idle');
-row('cube move', 'gelatinous_cube', 'move');
 row('cube strike', 'gelatinous_cube', 'strike');
-row('pudding idle', 'black_pudding', 'idle');
-row('pudding move', 'black_pudding', 'move');
-row('pudding strike', 'black_pudding', 'strike');
-// THE LINE-UP: all nine bodies south-facing — the family must read
-// apart at a glance, and the halves must read as their parents' kin.
+// THE LINE-UP: the whole family south-facing — dresses must read
+// apart at a glance and all must read as KIN of the base hopper.
 for (const id of Object.keys(BODIES)) {
   figs.push({ label: id, defId: id, dir: Math.PI / 2, mode: 'idle', seed: 11 });
 }
-// hurt flashes: one per plan (a white mass must keep its silhouette).
 figs.push({ label: 'hurt slime', defId: 'slime', dir: Math.PI / 2, mode: 'hurt', seed: 11 });
+// hurt flashes: one per dress (a white mass must keep its silhouette).
 figs.push({ label: 'hurt gray', defId: 'gray_ooze', dir: Math.PI / 2, mode: 'hurt', seed: 11 });
-figs.push({ label: 'hurt ochre', defId: 'ochre_jelly', dir: Math.PI / 2, mode: 'hurt', seed: 11 });
+figs.push({ label: 'hurt frost', defId: 'frost_slime', dir: Math.PI / 2, mode: 'hurt', seed: 11 });
+figs.push({ label: 'hurt tar', defId: 'tar_slime', dir: Math.PI / 2, mode: 'hurt', seed: 11 });
 figs.push({ label: 'hurt cube', defId: 'gelatinous_cube', dir: Math.PI / 2, mode: 'hurt', seed: 11 });
-figs.push({ label: 'hurt pudding', defId: 'black_pudding', dir: Math.PI / 2, mode: 'hurt', seed: 11 });
 // Body rulers: the player rig beside the landmark bodies.
 figs.push({ label: 'ruler: giant', defId: 'giant_slime', dir: Math.PI / 2, mode: 'idle', seed: 11, ruler: true });
 figs.push({ label: 'ruler: cube', defId: 'gelatinous_cube', dir: Math.PI / 2, mode: 'idle', seed: 11, ruler: true });
-figs.push({ label: 'ruler: pudding', defId: 'black_pudding', dir: Math.PI / 2, mode: 'idle', seed: 11, ruler: true });
+figs.push({ label: 'ruler: tar', defId: 'tar_slime', dir: Math.PI / 2, mode: 'idle', seed: 11, ruler: true });
 // Seed spread: same body, five seeds — anti-rubber-stamp row.
 for (let k = 0; k < 5; k++) {
   figs.push({ label: `giant seed ${k}`, defId: 'giant_slime', dir: Math.PI / 2, mode: 'idle', seed: 3 + k * 17 });
@@ -174,7 +173,7 @@ for (let k = 0; k < 5; k++) {
 // Trail preview: the dabs the shadow pass prints, at three ages.
 figs.push({ label: 'trail: slime', defId: 'slime', dir: 0, mode: 'move', seed: 11, trail: true });
 figs.push({ label: 'trail: cube', defId: 'gelatinous_cube', dir: 0, mode: 'move', seed: 11, trail: true });
-figs.push({ label: 'trail: pudding', defId: 'black_pudding', dir: 0, mode: 'move', seed: 11, trail: true });
+figs.push({ label: 'trail: tar', defId: 'tar_slime', dir: 0, mode: 'move', seed: 11, trail: true });
 
 const COLS = 8;
 const CW = Math.round(S * 2.6);
@@ -204,7 +203,7 @@ if (colsQ) {
 let lastNow = 0;
 
 function fallbackLook(): OozeLook {
-  return { plan: 'hopper', giant: false, nuclei: 1 };
+  return { plan: 'hopper', giant: false, dress: 'verdant' };
 }
 
 /** One ooze through the game's own painter, on the lab's clocks. */
@@ -215,7 +214,8 @@ function drawBody(f: Fig, x: number, y: number, now: number): void {
   // Travel phase from a distance clock, exactly the anim map's law
   // (walkPhase advances with tiles crossed).
   const walkPhase = f.mode === 'move' ? (now / 1000) * info.speed * 0.5 : 0;
-  const attackT = f.mode === 'strike' ? ((now / 1000) * 1.4) % 1 : 0;
+  const attackT =
+    f.mode === 'strike' ? ((now / 1000) * 1.4 + (f.col ?? 0) * 0.125) % 1 : 0;
   drawOoze(ctx, look, {
     x,
     y,

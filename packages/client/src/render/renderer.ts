@@ -54103,7 +54103,7 @@ export class Renderer {
       draw: () => {
         if (bat) drawBat(this.ctx, batLook(defId, eid), { ...common, flight: batFlight! });
         else if (snake) drawSnake(this.ctx, common);
-        else drawOoze(this.ctx, ooze ?? { plan: 'hopper', giant: false, nuclei: 1 }, common);
+        else drawOoze(this.ctx, ooze ?? { plan: 'hopper', giant: false, dress: 'verdant' }, common);
       },
       body: { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom },
       drawLabel: () => {

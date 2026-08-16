@@ -436,7 +436,7 @@ function paintLegless(ctx: CanvasRenderingContext2D, px: number, def: NpcDef): v
       flight: stagedFlight(flierSpec(def.id), { seed: 7, moveK: 0 }),
     });
   } else if (snake) drawSnake(ctx, common as unknown as Bag);
-  else drawOoze(ctx, ooze ?? { plan: 'hopper', giant: false, nuclei: 1 }, common as unknown as Bag);
+  else drawOoze(ctx, ooze ?? { plan: 'hopper', giant: false, dress: 'verdant' }, common as unknown as Bag);
 }
 
 // ----------------------------------------------------------- the API

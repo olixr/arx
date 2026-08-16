@@ -40,14 +40,14 @@ const ROSTERS: Record<DungeonTheme, ThemeRoster> = {
       { npc: 'adder', w: 2 },
       { npc: 'mudcrab', w: 1, maxPower: 25 },
       // THE OOZE FAMILY (docs/ooze-family-plan.md): the cavern is
-      // ooze country — the ladder deepens with the delve. The gray
-      // puddles first, the colony next, then the corridor made
-      // flesh, and at the bottom the deep's last word.
+      // slime country — the dress ladder deepens with the delve.
+      // Gray grit first, then the jar of winter, the corridor made
+      // flesh, and at the bottom the tar that eats steel.
       { npc: 'giant_slime', w: 1, minPower: 8 },
       { npc: 'gray_ooze', w: 2, minPower: 14 },
-      { npc: 'ochre_jelly', w: 1, minPower: 18 },
+      { npc: 'frost_slime', w: 1, minPower: 18 },
       { npc: 'gelatinous_cube', w: 1, minPower: 24 },
-      { npc: 'black_pudding', w: 1, minPower: 32 },
+      { npc: 'tar_slime', w: 1, minPower: 32 },
       // THE HILL COMES DOWN: deep caverns are giant country — an ogre
       // moved in where the ceiling finally fit it.
       { npc: 'ogre', w: 1, minPower: 35 },
@@ -94,9 +94,9 @@ const ROSTERS: Record<DungeonTheme, ThemeRoster> = {
       { npc: 'cave_bat', w: 1 },
       { npc: 'rock_golem', w: 1, minPower: 30 },
       // Where the shaft floods, the gray waits; the drowned deep
-      // galleries belong to the pudding.
+      // galleries belong to the tar.
       { npc: 'gray_ooze', w: 1, minPower: 14 },
-      { npc: 'black_pudding', w: 1, minPower: 40 },
+      { npc: 'tar_slime', w: 1, minPower: 40 },
     ],
     elite: 'giant_beetle',
     // THE DREAD CROWN: the mine's own keeper, phased iron.
@@ -145,8 +145,6 @@ const ROSTERS: Record<DungeonTheme, ThemeRoster> = {
       { npc: 'skeleton_guard', w: 2, minPower: 12 },
       { npc: 'skeleton_chanter', w: 1, minPower: 24 },
       { npc: 'dire_wolf', w: 1, minPower: 28 },
-      // The leaf-rot between the roots feeds the amber colony.
-      { npc: 'ochre_jelly', w: 1, minPower: 16 },
     ],
     elite: 'lynx',
     // The barrow lord's body wears the root court's name for now —

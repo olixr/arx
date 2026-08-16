@@ -1463,20 +1463,12 @@ const defs: LootTableDef[] = [
     ],
   },
   {
-    id: 'ochre_jelly',
-    desc: 'The colony kept its books in the middle of itself.',
+    id: 'frost_slime',
+    desc: 'The cold kept its keepsakes better than any vault.',
     entries: [
       { item: 'coins', qty: [6, 18], chance: 0.65 },
-      { item: 'verdant_essence', chance: 0.3 },
-      { item: 'arcane_dust', chance: 0.22 },
-    ],
-  },
-  {
-    id: 'ochre_half',
-    desc: 'Half a colony, half a ledger.',
-    entries: [
-      { item: 'coins', qty: [2, 7], chance: 0.5 },
-      { item: 'verdant_essence', chance: 0.1 },
+      { item: 'arcane_dust', chance: 0.3 },
+      { item: 'verdant_essence', chance: 0.12 },
     ],
   },
   {
@@ -1491,19 +1483,11 @@ const defs: LootTableDef[] = [
     ],
   },
   {
-    id: 'black_pudding',
+    id: 'tar_slime',
     desc: 'Steel it ate, coin it could not.',
     entries: [
       { item: 'coins', qty: [12, 30], chance: 0.8 },
       { item: 'arcane_dust', chance: 0.35 },
-    ],
-  },
-  {
-    id: 'pudding_half',
-    desc: 'The lesser share of a bad meal.',
-    entries: [
-      { item: 'coins', qty: [4, 10], chance: 0.55 },
-      { item: 'arcane_dust', chance: 0.12 },
     ],
   },
   {

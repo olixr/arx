@@ -105,11 +105,9 @@ export const NPC_LANES: Record<string, NpcLanes> = {
   slime_small: FORMLESS,
   giant_slime: FORMLESS,
   gray_ooze: FORMLESS,
-  ochre_jelly: FORMLESS,
-  ochre_half: FORMLESS,
+  frost_slime: FORMLESS,
+  tar_slime: FORMLESS,
   gelatinous_cube: FORMLESS,
-  black_pudding: FORMLESS,
-  pudding_half: FORMLESS,
   // Carapace turns the edge and cracks under crush.
   giant_beetle: CARAPACE,
   mudcrab: CARAPACE,

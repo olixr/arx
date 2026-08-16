@@ -166,9 +166,9 @@ export const WILD_ROSTER: readonly WildEntry[] = [
     spread: 2,
     lead: { npc: 'giant_slime' },
   },
-  // The ochre jelly keeps the night wood: a lobed amber colony
-  // browsing the leaf-rot alone, and twice as many once you object.
-  { npc: 'ochre_jelly', weight: 0.8, tiers: [4, 7], biomes: ['forest'], hours: NIGHT },
+  // The frost slime keeps the deep night wood: a jar of winter
+  // hopping the leaf-rot alone where the dark runs coldest.
+  { npc: 'frost_slime', weight: 0.7, tiers: [5, 8], biomes: ['forest'], hours: NIGHT },
   // --------------------------------------------- the standing perils
   { npc: 'wolf', weight: 2, tiers: [2, 5], biomes: ['forest'], band: [2, 3], habitat: 'den', family: 'wolfkin' },
   { npc: 'adder', weight: 1, tiers: [2, 4], biomes: ['grass'] },
