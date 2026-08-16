@@ -103,18 +103,20 @@ ping_server() {
   curl -fsS --max-time 5 "$HEALTH_URL"
 }
 
-# Poll /healthz until it answers (fresh boot takes a few seconds for
-# migrations + content seeding).
+# Poll /healthz until it answers. A production boot runs migrations,
+# content seeding, and first-tick world chunk generation — well over
+# 30s — so the window must be generous or deploys get marked failed
+# while the server is still coming up healthy.
 wait_healthy() {
   local i body
-  for i in $(seq 1 30); do
+  for i in $(seq 1 120); do
     if body=$(ping_server 2>/dev/null); then
       echo "health: ${body}"
       return 0
     fi
     sleep 1
   done
-  echo "server not answering ${HEALTH_URL} after 30s" >&2
+  echo "server not answering ${HEALTH_URL} after 120s" >&2
   return 1
 }
 
