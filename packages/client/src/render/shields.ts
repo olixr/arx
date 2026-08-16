@@ -1698,7 +1698,7 @@ export function drawShield(
   // is read off the h axis's direction, never off a design constant.
   const litU = hxU >= 0 ? -1 : 1;
   if (fr.seeBack) drawBack(ctx, st, fr, litU);
-  else drawFace(ctx, st, fr, litU);
+  else drawFace(ctx, st, fr, litU, nowMs);
   ctx.restore();
 
   // ---- the bound rim: a real band around the face, not a stroke.
@@ -1746,12 +1746,12 @@ export function drawShield(
         ctx.closePath();
       }
       ctx.clip();
-      relief({ ctx, fr, hxU, hyU, nxU, nyU, crown, litU: litU2, ol }, st);
+      relief({ ctx, fr, hxU, hyU, nxU, nyU, crown, litU: litU2, ol, nowMs }, st);
       ctx.restore();
     }
   }
   if (st.boss && !fr.seeBack) drawBoss(ctx, st, fr, hxU, hyU, nxU, nyU, crown);
-  if (st.spikes && !hurt) drawSpikes(ctx, st, fr, outline, hxU, hyU, nxU, nyU, crown);
+  if (st.spikes && !hurt) drawSpikes(ctx, st, fr, outline, hxU, hyU, nxU, nyU, crown, nowMs);
   // THE CREST TIER: the free-standing solids — face spires, mounted
   // bone, crown finials. A crest is a 3D object that happens to be
   // bolted to a 2.5D plane: face-on its apex foreshortens toward the
@@ -1763,7 +1763,7 @@ export function drawShield(
     const crest = st.sig ? CRESTS[st.sig] : undefined;
     if (crest) {
       const litU2 = hxU >= 0 ? -1 : 1;
-      crest({ ctx, fr, hxU, hyU, nxU, nyU, crown, litU: litU2, ol }, st);
+      crest({ ctx, fr, hxU, hyU, nxU, nyU, crown, litU: litU2, ol, nowMs }, st);
     }
   }
   if (st.arx && !hurt) drawArxFace(ctx, st.arx, fr, hxU, hyU, nxU, nyU, crown, nowMs);
@@ -1861,6 +1861,8 @@ type FacePainter = (
   st: ShieldStyle,
   fr: ShieldFrame,
   litU: number,
+  /** THE LIVING CLOCK — most faces ignore it; the storm does not. */
+  nowMs: number,
 ) => void;
 
 const SIGNATURES: Record<string, FacePainter> = {
@@ -1907,6 +1909,7 @@ function drawFace(
   st: ShieldStyle,
   fr: ShieldFrame,
   litU: number,
+  nowMs: number,
 ): void {
   ctx.fillStyle = st.face;
   ctx.fillRect(-1.15, -1.15, 2.3, 2.3);
@@ -1920,7 +1923,7 @@ function drawFace(
     return;
   }
   const sig = st.sig ? SIGNATURES[st.sig] : undefined;
-  if (sig) sig(ctx, st, fr, litU);
+  if (sig) sig(ctx, st, fr, litU, nowMs);
   else {
     drawGenericDialect(ctx, st, fr);
     drawDevice(ctx, st, fr);
@@ -2970,47 +2973,98 @@ function sigRiftward(
 }
 
 /**
- * ALDAREN'S GATE — the sky, forged. Two flat ideas on the dark steel
- * and not one more: THE AURORA — five curtains of cold light hanging
- * uneven down the face, each one deep under-shadow and one bright
- * shaft, the way the sky's gate actually hangs — and THE BOLT, one
- * white lightning strike torn crown to heel over them, three hard
- * jags, a teal charge-halo under its whole length. The dark reads at
- * any distance as storm steel; the light reads as WEATHER, not as
- * paint; and nothing on this face asks to be deciphered.
+ * THE STORM CLOCK. One cycle of the sky: the STRIKE (a hard flash),
+ * its decaying afterglow, then the long charged quiet — and then it
+ * strikes again, down the OTHER path, because lightning never walks
+ * the same road twice. The face bolt and the crest arc both read this
+ * one clock, so the whole shield answers the same weather; and it is
+ * a pure function of nowMs (the FX doctrine), so every viewer of the
+ * same shield sees the same strike at the same moment. At t=0 the
+ * clock reads FLASH — icons and static frames show the shield at its
+ * full argument.
+ */
+const STORM_MS = 2600;
+function stormPhase(nowMs: number): { flash: number; cyc: number } {
+  const cyc = Math.floor(nowMs / STORM_MS);
+  const p = (nowMs - cyc * STORM_MS) / STORM_MS;
+  const flash = p < 0.09 ? 1 : Math.max(0, 1 - (p - 0.09) * 3.2);
+  return { flash, cyc };
+}
+
+/** The two roads the strike walks, swapped every cycle. */
+const STORM_JAGS: Array<Array<[number, number, number, number]>> = [
+  [
+    [0.28, -1.12, -0.26, -0.38],
+    [-0.26, -0.38, 0.24, -0.24],
+    [0.24, -0.24, -0.22, 0.48],
+    [-0.22, 0.48, 0.12, 0.56],
+    [0.12, 0.56, -0.04, 1.02],
+  ],
+  [
+    [0.16, -1.12, 0.28, -0.56],
+    [0.28, -0.56, -0.24, -0.42],
+    [-0.24, -0.42, 0.2, 0.3],
+    [0.2, 0.3, -0.18, 0.42],
+    [-0.18, 0.42, 0.04, 1.02],
+  ],
+];
+
+/**
+ * ALDAREN'S GATE — the sky, forged, and ALIVE. THE AURORA: four
+ * ribbons of cold light parted around a dark corridor, each swaying
+ * at the waist and hem on its own slow clock, breathing brightness,
+ * carrying a faint bloom the way real curtains stain the sky around
+ * them. THE BOLT: down the corridor on the storm clock — it flashes
+ * white, decays to its teal ghost, and restrikes down the other road.
+ * The dark steel stays the majority tone at every instant: the storm
+ * reads from the dark, and nothing here asks to be deciphered.
  */
 function sigFalls(
   ctx: CanvasRenderingContext2D,
   st: ShieldStyle,
   fr: ShieldFrame,
   litU: number,
+  nowMs: number,
 ): void {
   plates(ctx, st, litU);
   const teal = st.faceAlt ?? '#5ce8c4';
   const ice = '#b8f4ff';
-  // THE AURORA CURTAINS: uneven lengths, angled hems, alternating
-  // cold tones — a curtain is one deep under-poly and one shaft.
-  // The curtains PART around a dark center corridor — the aurora
-  // opening for the strike. Four curtains, inner pair long and
-  // hot-edged toward the corridor, outer pair short and cooler; the
-  // slab's own dark stays the majority tone, because the storm reads
-  // from the dark, not from the light.
+  const { flash, cyc } = stormPhase(nowMs);
+  // THE AURORA RIBBONS: crown pinned, waist and hem swaying, the hem
+  // twice as far as the waist — cloth of light in a slow wind. Bloom
+  // first, then the deep edge, then the breathing shaft.
   const curtains: Array<[number, number, number, string]> = [
     [-0.74, 0.1, -0.24, teal],
     [-0.4, 0.13, 0.6, ice],
     [0.4, 0.13, 0.48, ice],
     [0.74, 0.1, -0.34, teal],
   ];
-  for (const [u, w, t1, tone] of curtains) {
-    poly(ctx, shade(tone, -38), [
-      u - w - 0.045, -1.2, u + w + 0.045, -1.2, u + w * 0.8 + 0.045, t1 + 0.16, u - w * 0.8 - 0.045, t1 + 0.02,
-    ]);
-    poly(ctx, tone, [u - w, -1.2, u + w, -1.2, u + w * 0.8, t1 + 0.1, u - w * 0.8, t1]);
+  for (let i = 0; i < curtains.length; i++) {
+    const [u, w, t1, tone] = curtains[i]!;
+    const s1 = 0.045 * Math.sin(nowMs * 0.0008 + i * 2.1);
+    const hem = t1 + 0.09 * Math.sin(nowMs * 0.0006 + i * 1.7);
+    const waistT = -0.38 + (hem + 0.38) * 0.5;
+    const breathe = 0.78 + 0.22 * Math.sin(nowMs * 0.0011 + i * 1.3);
+    const ribbon = (g: number, tone2: string, alpha: number): void => {
+      ctx.globalAlpha = alpha;
+      poly(ctx, tone2, [
+        u - w - g, -1.2,
+        u + w + g, -1.2,
+        u + s1 + (w + g) * 0.92, waistT,
+        u + s1 * 2 + (w + g) * 0.74, hem + g,
+        u + s1 * 2 - (w + g) * 0.74, hem - 0.08 - g,
+        u + s1 - (w + g) * 0.92, waistT - 0.05,
+      ]);
+      ctx.globalAlpha = 1;
+    };
+    ribbon(0.1, tone, 0.13 * breathe);
+    ribbon(0.045, shade(tone, -38), 1);
+    ribbon(0, tone, breathe);
   }
-  // No hot hems: white belongs to the BOLT alone. One element owns
-  // each brightness on this shield, or none of them read.
-  // THE BOLT: one strike, three jags, crown to heel. The halo first —
-  // the charge the air carries around a thing this bright.
+  // THE BOLT, on the storm clock. Always present — the shield's
+  // identity cannot blink out — but the strike OWNS its moment: the
+  // corridor washes with light, the wire burns full white, and the
+  // whole thing decays back to the waiting charge.
   const seg = (
     x0: number, t0: number, x1: number, t1: number, w2: number, tone: string,
   ): void => {
@@ -3021,19 +3075,22 @@ function sigFalls(
     const nt = (dx / L) * w2;
     poly(ctx, tone, [x0 + nx, t0 + nt, x1 + nx, t1 + nt, x1 - nx, t1 - nt, x0 - nx, t0 - nt]);
   };
-  const jags: Array<[number, number, number, number]> = [
-    [0.28, -1.12, -0.26, -0.38],
-    [-0.26, -0.38, 0.24, -0.24],
-    [0.24, -0.24, -0.22, 0.48],
-    [-0.22, 0.48, 0.12, 0.56],
-    [0.12, 0.56, -0.04, 1.02],
-  ];
+  const jags = STORM_JAGS[cyc % 2]!;
+  ctx.globalAlpha = 0.1 * flash;
+  poly(ctx, teal, [-0.32, -1.2, 0.32, -1.2, 0.32, 1.1, -0.32, 1.1]);
+  ctx.globalAlpha = 0.5 + 0.5 * flash;
   for (const [x0, t0, x1, t1] of jags) seg(x0, t0, x1, t1, 0.15, shade(teal, -16));
+  ctx.globalAlpha = 0.55 + 0.45 * flash;
   for (const [x0, t0, x1, t1] of jags) seg(x0, t0, x1, t1, 0.07, '#ffffff');
-  // The strike's hard elbows: a bright barb thrown off each turn.
-  poly(ctx, '#ffffff', [-0.26, -0.38, -0.06, -0.46, -0.14, -0.26]);
-  poly(ctx, '#ffffff', [0.24, -0.24, 0.04, -0.32, 0.12, -0.12]);
-  poly(ctx, '#ffffff', [-0.22, 0.48, -0.02, 0.4, -0.1, 0.6]);
+  // The strike's hard elbows: a bright barb thrown off each interior
+  // turn, toward the side the next jag breaks.
+  for (let j = 0; j + 1 < jags.length; j++) {
+    const jx = jags[j]![2];
+    const jt = jags[j]![3];
+    const dir = jags[j + 1]![2] > jx ? 1 : -1;
+    poly(ctx, '#ffffff', [jx, jt, jx + 0.2 * dir, jt - 0.08, jx + 0.12 * dir, jt + 0.12]);
+  }
+  ctx.globalAlpha = 1;
 }
 
 /** The heraldic charge, cut in flat planes with one lit facet. */
@@ -3453,6 +3510,7 @@ function drawSpikes(
   nxU: number,
   nyU: number,
   crown: number,
+  nowMs: number,
 ): void {
   // Forged from the SHIELD's iron, never from the bright umbo — spikes
   // pitched at boss brightness read as white shards thrown off the
@@ -3489,6 +3547,7 @@ function drawSpikes(
     crown,
     litU: hxU >= 0 ? -1 : 1,
     ol: fr.hh * 0.062,
+    nowMs,
   };
   // THE FERRULE metal: a spike is BEDDED in a collar of the shield's
   // own fitting iron, whatever the spike itself is made of — bone
@@ -3628,6 +3687,14 @@ interface ReliefCtx {
   litU: number;
   /** The shield's own outline weight — THE FITTING OUTLINE LAW below. */
   ol: number;
+  /**
+   * THE LIVING CLOCK: the frame's time, for fittings that MOVE — the
+   * storm crown's arc, a breathing glow. Deterministic functions of
+   * this value only (the FX doctrine): no state, no randomness that
+   * doesn't hash from time, so every viewer of a shield sees the same
+   * weather at the same moment.
+   */
+  nowMs: number;
 }
 
 type ReliefPainter = (rc: ReliefCtx, st: ShieldStyle) => void;
@@ -4339,18 +4406,27 @@ function crestFalls(rc: ReliefCtx, st: ShieldStyle): void {
   pyramid(rc, 0, -1.0, 0.2, 0.13, 0, 2.7, steel, { outline: true });
   pyramid(rc, -0.42, -0.98, 0.15, 0.11, 0, 1.9, shade(steel, -14), { outline: true, du: -0.3 });
   pyramid(rc, 0.42, -0.98, 0.15, 0.11, 0, 1.9, shade(steel, -14), { outline: true, du: 0.3 });
-  // THE ARC: the charge leaping blade to blade — a fine jagged wire
-  // through the air between the tips, teal under white.
+  // THE ARC, ALIVE: the charge crawls blade to blade in stepped
+  // electric ticks — every ~110ms it snaps to a new jagged shape
+  // (hashed from the tick, pure function of time), and when the face
+  // bolt STRIKES, the arc flares with it: one weather, one clock.
   const teal = st.faceAlt ?? '#5ce8c4';
+  const { flash } = stormPhase(rc.nowMs);
+  const tick = Math.floor(rc.nowMs / 110);
+  const jit = (i: number): number => {
+    const x = Math.sin(tick * 12.9898 + i * 78.233) * 43758.5453;
+    return x - Math.floor(x) - 0.5;
+  };
   const pts: Array<[number, number, number]> = [
     [-0.6, -0.98, 1.3],
-    [-0.36, -0.98, 1.7],
-    [-0.12, -0.98, 1.5],
-    [0.04, -0.98, 2.2],
-    [0.28, -0.98, 1.55],
+    [-0.36 + jit(1) * 0.08, -0.98, 1.7 + jit(11) * 0.34],
+    [-0.12 + jit(2) * 0.08, -0.98, 1.5 + jit(12) * 0.34],
+    [0.04 + jit(3) * 0.06, -0.98, 2.2 + jit(13) * 0.28],
+    [0.28 + jit(4) * 0.08, -0.98, 1.55 + jit(14) * 0.34],
     [0.56, -0.98, 1.75],
   ];
-  const trace = (w: number, tone: string): void => {
+  const trace = (w: number, tone: string, alpha: number): void => {
+    ctx.globalAlpha = alpha;
     ctx.strokeStyle = tone;
     ctx.lineWidth = w;
     ctx.lineJoin = 'round';
@@ -4364,9 +4440,19 @@ function crestFalls(rc: ReliefCtx, st: ShieldStyle): void {
       else ctx.lineTo(x, y);
     }
     ctx.stroke();
+    ctx.globalAlpha = 1;
   };
-  trace(rc.ol * 1.1, teal);
-  trace(rc.ol * 0.5, '#ffffff');
+  trace(rc.ol * (1.0 + 0.5 * flash), teal, 0.55 + 0.45 * flash);
+  trace(rc.ol * (0.45 + 0.25 * flash), '#ffffff', 0.6 + 0.4 * flash);
+  // The blade tips take the strike's light — three glints on the
+  // crown the instant the sky answers.
+  if (flash > 0.05) {
+    ctx.globalAlpha = flash * 0.9;
+    polyAt(rc, [0, -1.06, 0.05, -1.0, 0, -0.94, -0.05, -1.0], 2.5, '#ffffff');
+    polyAt(rc, [-0.66, -1.04, -0.62, -0.98, -0.67, -0.92, -0.71, -0.98], 1.75, '#ffffff');
+    polyAt(rc, [0.66, -1.04, 0.71, -0.98, 0.66, -0.92, 0.62, -0.98], 1.75, '#ffffff');
+    ctx.globalAlpha = 1;
+  }
 }
 
 /**
