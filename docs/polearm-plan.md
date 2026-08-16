@@ -185,3 +185,59 @@ the twenty. The build order is therefore:
 - Gates at ship: shared green, content 567/567, client 617/617,
   tsc clean on my files (neighbor arena WIP red in their worktree
   hunks only), server suite run same session.
+
+### Phase 3 — THE CARRY AND THE CUT: authored design (fixed 2026-08-16)
+
+Naming registers: render `WieldKind = 'pole'` (the class word beside
+great/staff/bow/blade); `StrikeSchool = 'polearm'` (the staff school's
+comments already informally say "pole" — the full word keeps the
+registers clean).
+
+**THE THRUST IS A RADIUS TRACK.** The strikes engine authors cuts as
+yaw sweep x radius x height; a thrust is the radius track doing the
+talking: yaw nearly fixed (0.2..0.6 — just enough lateral travel for
+the wake to read), radius exploding coil to impact (0.5 to 1.75, the
+longest extension in the book — REACH IS THE IDENTITY in every frame).
+The school is RADIAL (no `bar`): the shaft continues the arm, so the
+point leads outward by construction at every facing. The wake's 13
+samples over a near-fixed yaw collapse into a LINE STREAK — the thrust
+wake needs zero new wake code.
+
+**THE SLIDE LIVES IN THE GRIP NUMBERS.** CutSpec.grip = shaft fraction
+behind the fist: authored coil 0.5 to impact 0.18 — the drive hand
+visibly slides toward the butt through the thrust, real spear
+technique emerging from the engine's own vocabulary. weldS (the off
+fist's weld) sits BEHIND the main fist (about -0.2, the drive hand
+near the butt) and the rig gates it on the war grip only — a shielded
+off hand never welds.
+
+CUT_BOOK.polearm (authored; stage-0 falls, stage-1 rises):
+- Stage 0 THE HIGH LINE: coilYaw -0.6 to 0.3, R 0.5 to 1.75, Dy -0.42
+  to 0.05, cock 0.4, lead 0.5, lean 0.20, grip 0.50 to 0.18.
+  THE MEASURED JAB: -0.4 to 0.2, R 0.6 to 1.6, Dy -0.2 to -0.05,
+  cock 0.35, lead 0.45, lean 0.15, grip 0.45 to 0.22.
+- Stage 1 THE RISING DRIVE: 0.55 to -0.25, R 0.5 to 1.7, Dy 0.18 to
+  -0.3, cock 0.4, lead 0.5, lean 0.18, grip 0.50 to 0.18.
+  THE UNDER SLIP: 0.4 to -0.2, R 0.55 to 1.65, Dy 0.1 to -0.15,
+  cock 0.35, lead 0.45, lean 0.15, grip 0.45 to 0.20.
+- POLEARM_STRIKE_PHASES { coil .26, hold .34, impact .5, ext .7 } —
+  the reaching school's own beat inside its 340/520ms clocks.
+- WAKE_TIP.polearm about 1.05 (the point leads far out the long art).
+
+**THE TWO CARRIES.** War grip (off fist empty): THE PORT — haft on the
+body diagonal, point up-forward over the lead shoulder at idle; the
+run lowers the point down the movement line, butt trailing (the
+pierced-carry split applies — the far half paints behind the torso).
+Couched (shield worn): THE PLANT at idle — haft vertical beside the
+body, point skyward, the sentry's silhouette beside the wall; motion
+drops it to THE COUCH — one hand, haft level along the forearm line at
+hip height, point forward. Sheathe/stow: the diagonal back cross on
+the great's rig (`stowBack` grows 'pole', longer art, point up).
+
+Integration checklist (from the census): weapons.ts PoleStyle registry
++ drawPole + WieldKind + probe chain (before bladeStyle) +
+wieldClass.test extended derivation; rig.ts held solve, strikeSchool
+pick, stow call sites, painter dispatch, weld gate; wield.ts poleWield
+carry; sheath.ts stowBack; clientGame.ts STRIKE_CLOCKS mirror picks
+the polearm row; panels.ts Reach label + SKILL_FACE/STORY/WINGS
+(Martial wing); wieldlab rows APPENDED (historic indices survive).

@@ -935,6 +935,91 @@ export const BREATH_DIALECTS: Record<string, BreathDialect> = {
     note: (c, x, y, o) =>
       storm.deployments.crackle!(c, x, y, { radius: o.radius * 0.7, scale: 0.55, dur: 1.2 }),
   },
+
+  // ------------- THE TWENTY — the polearm gathers and notes. A haft's
+  // wind is GROUND AND GLINT: the butt spike is set, the heels grind,
+  // the drill-yard grit answers, and only the called strike borrows
+  // weather. The gathers TIGHTEN with the wire's contracting reach.
+  // Perfect Thrust: the stance settles and holds — one skirt of grit
+  // pulling in as the whole body agrees on a single line.
+  perfect_thrust: {
+    charge: (c, x, y, o) =>
+      dust.deployments.skirt!(c, x, y, {
+        radius: Math.max(0.35, o.radius * 0.5),
+        scale: 0.45 + (1.5 - o.radius) * 0.4,
+        dur: 0.7,
+      }),
+  },
+  // Impaling Drive: the ground is scored where the corridor will be —
+  // the butt spike drags the lane before the point takes it.
+  impaling_drive: {
+    charge: (c, x, y, o) =>
+      dust.deployments.gouge!(c, x, y, {
+        radius: o.radius * 0.6,
+        scale: 0.45 + (1.5 - o.radius) * 0.45,
+        dur: 0.7,
+      }),
+  },
+  // Rampart Breaker: the haft butt is SET — the ground takes the brace
+  // in flat thuds while the shoulder loads behind it.
+  rampart_breaker: {
+    charge: (c, x, y, o) =>
+      dust.deployments.slam!(c, x, y, {
+        radius: o.radius * 0.55,
+        scale: 0.45 + (1.5 - o.radius) * 0.4,
+        dur: 0.7,
+      }),
+  },
+  // Banner Advance: the rally gathers as light, not dust — gold blooms
+  // up the raised haft while the line decides to move.
+  banner_advance: {
+    charge: (c, x, y, o) =>
+      radiance.deployments.bloom!(c, x, y, {
+        radius: o.radius * 0.7,
+        scale: 0.4 + (1.5 - o.radius) * 0.45,
+        dur: 0.8,
+      }),
+  },
+  // Stormpoint: the point is raised and the sky converges on it — the
+  // school's one borrowed weather, tightening exactly as it commits.
+  stormpoint: {
+    charge: (c, x, y, o) =>
+      storm.deployments.charge!(c, x, y, {
+        radius: o.radius,
+        scale: 0.5 + (1.5 - o.radius) * 0.45,
+        dur: 0.7,
+      }),
+  },
+  // Flurry of Points: the front foot re-drives on every stab — dirt
+  // kicked forward, beat after beat, for as long as the needle works.
+  flurry_of_points: {
+    note: (c, x, y, o) =>
+      dust.deployments.kick!(c, x, y, { radius: o.radius * 0.6, scale: 0.5, dur: 1.2 }),
+  },
+  // Wall of Points: rime creeps out along the braced line — the cold
+  // of a station nobody walks through, growing ring by held ring.
+  wall_of_points: {
+    note: (c, x, y, o) =>
+      frost.deployments.bloom!(c, x, y, { radius: o.radius * 0.8, scale: 0.55, dur: 1.2 }),
+  },
+  // Serpent's Tongue: the point glints at full reach — small crackling
+  // ticks patrolling the far end of the haft between jabs.
+  serpents_tongue: {
+    note: (c, x, y, o) =>
+      storm.deployments.crackle!(c, x, y, { radius: o.radius * 0.9, scale: 0.5, dur: 1.2 }),
+  },
+  // Hold the Line: the cold stands where the heels are set — lances of
+  // winter holding the corridor for as long as the stance does.
+  hold_the_line_polearm: {
+    note: (c, x, y, o) =>
+      frost.deployments.lance!(c, x, y, { radius: o.radius * 0.85, scale: 0.55, dur: 1.3 }),
+  },
+  // Moulinet Guard: the turning haft scours its own ring — a standing
+  // skirt of torn ground at exactly the reach it defends.
+  moulinet_guard: {
+    note: (c, x, y, o) =>
+      dust.deployments.skirt!(c, x, y, { radius: o.radius + 0.3, scale: 0.65, dur: 1.2 }),
+  },
 };
 
 /**

@@ -5961,6 +5961,279 @@ const defs: AbilityDef[] = [
     radius: 3.0,
     chainTargets: 2,
   },
+
+  // ----------------- THE REACHING SCHOOL — the polearm arts (THE TWENTY)
+  // The school of REACH and the THRUST: the point ends arguments from
+  // outside the answer. Depth over breadth — corridors, pierces, and
+  // lines; sweeps exist only as the hafted blade's answers. The charge
+  // and the braced wall of points are the two poles: momentum and
+  // station. Five casted (the drawn line) and five channeled (the
+  // station held), per THE DRAWN BREATH's law.
+  {
+    id: 'lunging_skewer',
+    name: 'Lunging Skewer',
+    desc: 'The point arrives from a county away. The argument ends where it lands.',
+    color: '#c4d2e2',
+    code: 'Ls',
+    cooldownTicks: 130, // 6.5 s
+    shape: 'melee_arc',
+    damage: 8,
+    range: 3.4,
+    arc: 0.5,
+  },
+  {
+    id: 'haft_strike',
+    name: 'Haft Strike',
+    desc: 'The butt end of the haft, short and rude. Room is a weapon too.',
+    color: '#a08a68',
+    code: 'Hs',
+    cooldownTicks: 120, // 6 s
+    shape: 'melee_arc',
+    damage: 4,
+    range: 1.6,
+    arc: 1.0,
+    knockback: 2.5,
+    status: { status: 'chill', power: 1, durationTicks: 35 },
+  },
+  {
+    id: 'hooking_reap',
+    name: 'Hooking Reap',
+    desc: 'The hook goes behind the knee and the ground changes its mind. Come here.',
+    color: '#7d8696',
+    code: 'Hr',
+    cooldownTicks: 170, // 8.5 s
+    shape: 'ground_aoe',
+    damage: 6,
+    range: 3.4,
+    radius: 1.1,
+    fuseTicks: 6,
+    knockback: -2.0, // the hook PULLS
+    status: { status: 'chill', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'vaulting_step',
+    name: 'Vaulting Step',
+    desc: 'Plant the haft and let it throw you. Arrive point first.',
+    color: '#b09a6a',
+    code: 'Vs',
+    cooldownTicks: 160, // 8 s
+    shape: 'dash_strike',
+    damage: 5,
+    dashTiles: 3.5,
+  },
+  {
+    id: 'perfect_thrust',
+    name: 'Perfect Thrust',
+    desc: 'One drawn breath, one straight line. There is nothing else in the world.',
+    color: '#dce6f0',
+    code: 'Pt',
+    cooldownTicks: 170, // 8.5 s
+    castTicks: 20, // 1 s drawn, 0.8 s planted
+    shape: 'melee_arc',
+    damage: 14,
+    range: 3.6,
+    arc: 0.35,
+  },
+  {
+    id: 'flurry_of_points',
+    name: 'Flurry of Points',
+    desc: 'The point multiplies. Down one narrow lane it is raining steel.',
+    color: '#c6d0dc',
+    code: 'Fp',
+    cooldownTicks: 180, // 9 s
+    channelTicks: 48, // 2.4 s held, three beats of rain
+    pulseEveryTicks: 16,
+    shape: 'melee_arc',
+    damage: 4,
+    range: 3.4,
+    arc: 0.35,
+  },
+  {
+    id: 'crescent_reap',
+    name: 'Crescent Reap',
+    desc: 'The hafted blade remembers it is a blade. One moonwide stroke says so.',
+    color: '#8a94a4',
+    code: 'Cr',
+    cooldownTicks: 170, // 8.5 s
+    shape: 'melee_arc',
+    damage: 9,
+    range: 2.6,
+    arc: 2.2,
+    knockback: 1.4,
+  },
+  {
+    id: 'impaling_drive',
+    name: 'Impaling Drive',
+    desc: 'Drive the line through the crowd. Everybody on it learns the same lesson.',
+    color: '#b8c4d4',
+    code: 'Id',
+    cooldownTicks: 180, // 9 s
+    castTicks: 22, // 1.1 s drawn, 0.88 s planted
+    shape: 'beam',
+    damage: 13,
+    range: 5,
+    width: 0.6,
+  },
+  {
+    id: 'wall_of_points',
+    name: 'Wall of Points',
+    desc: 'Set the pike and be a wall. Walls do not apologize.',
+    color: '#ccd6e2',
+    code: 'Wp',
+    cooldownTicks: 200, // 10 s
+    channelTicks: 64, // 3.2 s braced, four beats of the station
+    pulseEveryTicks: 16,
+    shape: 'melee_arc',
+    damage: 4,
+    range: 3.0,
+    arc: 0.9,
+    status: { status: 'chill', power: 1, durationTicks: 30 },
+  },
+  {
+    id: 'knights_charge',
+    name: "Knight's Charge",
+    desc: 'Lower the point and spend the whole road at once. Knights are a weather.',
+    color: '#e0b054',
+    code: 'Kc',
+    cooldownTicks: 190, // 9.5 s
+    shape: 'dash_strike',
+    damage: 13,
+    dashTiles: 5.0,
+    knockback: 2.6,
+  },
+  {
+    id: 'rampart_breaker',
+    name: 'Rampart Breaker',
+    desc: 'A drawn breath aimed at the seam in the armor. Walls open like doors.',
+    color: '#a89a88',
+    code: 'Rb',
+    cooldownTicks: 190, // 9.5 s
+    castTicks: 20, // 1 s drawn, 0.8 s planted
+    shape: 'melee_arc',
+    damage: 14,
+    range: 3.2,
+    arc: 0.6,
+    status: { status: 'sunder', power: 12, durationTicks: 60 },
+  },
+  {
+    id: 'serpents_tongue',
+    name: "Serpent's Tongue",
+    desc: 'The tongue flickers at full reach. It tastes before it takes.',
+    color: '#d4e0ec',
+    code: 'St',
+    cooldownTicks: 200, // 10 s
+    channelTicks: 48, // 2.4 s held, three flickers
+    pulseEveryTicks: 16,
+    shape: 'melee_arc',
+    damage: 6,
+    range: 3.6,
+    arc: 0.3,
+  },
+  {
+    id: 'skydriver_fall',
+    name: 'Skydriver Fall',
+    desc: 'Up on the haft, then down point first. The sky signs the work.',
+    color: '#9a9484',
+    code: 'Sf',
+    cooldownTicks: 200, // 10 s
+    shape: 'leap_slam',
+    damage: 12,
+    dashTiles: 4.0,
+    radius: 1.6,
+  },
+  {
+    id: 'banner_advance',
+    name: 'Banner Advance',
+    desc: 'Raise the point like a banner and the line moves forward with you.',
+    color: '#e8c468',
+    code: 'Ba',
+    cooldownTicks: 320, // 16 s
+    castTicks: 18, // 0.9 s raised, 0.72 s planted
+    shape: 'self_buff',
+    damage: 0,
+    self: { speedMult: 1.15, armor: 4, durationTicks: 120 },
+  },
+  {
+    id: 'moulinet_guard',
+    name: 'Moulinet Guard',
+    desc: 'Spin the haft in a wheel around you. Close is the one place they cannot stand.',
+    color: '#b8a070',
+    code: 'Mg',
+    cooldownTicks: 190, // 9.5 s
+    channelTicks: 48, // 2.4 s turned, three turns of the wheel
+    pulseEveryTicks: 16,
+    shape: 'nova',
+    damage: 4,
+    radius: 1.8,
+  },
+  {
+    id: 'stormpoint',
+    name: 'Stormpoint',
+    desc: 'Hold the point to the sky until the storm takes an interest. Then point.',
+    color: '#8cb4e8',
+    code: 'Sp',
+    cooldownTicks: 220, // 11 s
+    castTicks: 24, // 1.2 s called, 0.96 s planted
+    shape: 'melee_arc',
+    damage: 18,
+    range: 3.6,
+    arc: 0.4,
+    status: { status: 'shock', power: 1, durationTicks: 40 },
+  },
+  {
+    id: 'gatebreaker',
+    name: 'Gatebreaker',
+    desc: 'The heavy thrust kept for whatever is already leaning. Gates fall inward.',
+    color: '#6e7a8c',
+    code: 'Gb',
+    cooldownTicks: 200, // 10 s
+    shape: 'melee_arc',
+    damage: 12,
+    range: 2.8,
+    arc: 0.5,
+    executeBelow: { frac: 0.3, mult: 1.8 },
+  },
+  {
+    id: 'sweeping_gyre',
+    name: 'Sweeping Gyre',
+    desc: 'The halberd turns the full circle once. The yard is measured and cleared.',
+    color: '#a89468',
+    code: 'Sg',
+    cooldownTicks: 190, // 9.5 s
+    shape: 'nova',
+    damage: 9,
+    radius: 2.2,
+    knockback: 1.6,
+  },
+  {
+    // The shield school holds the 'hold_the_line' id — the polearm
+    // stance carries the school suffix (recorded in THE TWENTY spec).
+    id: 'hold_the_line_polearm',
+    name: 'Hold the Line',
+    desc: 'Root, brace, and hold. The line is exactly where you say it is.',
+    color: '#c2ccda',
+    code: 'Ht',
+    cooldownTicks: 210, // 10.5 s
+    channelTicks: 64, // 3.2 s anchored, four beats of the stand
+    pulseEveryTicks: 16,
+    shape: 'melee_arc',
+    damage: 4,
+    range: 3.0,
+    arc: 0.8,
+    status: { status: 'chill', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'sundering_lance',
+    name: 'The Sundering Lance',
+    desc: "The whole road at full gallop, every body on it pierced. The school's crown.",
+    color: '#e8b84c',
+    code: 'Sl',
+    cooldownTicks: 220, // 11 s
+    shape: 'dash_strike',
+    damage: 15,
+    dashTiles: 6.0,
+    knockback: 2.8,
+  },
 ];
 
 export const ABILITIES: ReadonlyMap<string, AbilityDef> = new Map(defs.map((d) => [d.id, d]));
@@ -7848,6 +8121,208 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
       { note: 'Each wave lands heavier.', damage: 8 },
       { note: 'The fight widens around you.', damage: 8, radius: 2.4 },
       { note: 'It ends the way it always ends. You, standing.', damage: 9, radius: 2.4 },
+    ],
+  },
+
+  // -------------------- THE REACHING SCHOOL — the polearm rungs
+  {
+    ability: 'lunging_skewer',
+    style: 'polearm',
+    unlockLevel: 5,
+    ranks: [
+      { note: 'The point lands heavier.', damage: 10 },
+      { note: 'The reach lengthens; the lunge asks less.', range: 3.7, cooldownTicks: 120 },
+      { note: 'The argument ends sooner every time.', damage: 11, cooldownTicks: 115 },
+    ],
+  },
+  {
+    ability: 'haft_strike',
+    style: 'polearm',
+    unlockLevel: 10,
+    ranks: [
+      { note: 'The shove carries them farther.', knockback: 3.0, cooldownTicks: 110 },
+      { note: 'The jolt hangs in their knees.', damage: 5, status: { status: 'chill', power: 1, durationTicks: 60 } },
+      { note: 'Room made, and made quickly.', knockback: 3.4, cooldownTicks: 100 },
+    ],
+  },
+  {
+    ability: 'hooking_reap',
+    style: 'polearm',
+    unlockLevel: 15,
+    ranks: [
+      { note: 'The bite behind the hook deepens.', damage: 8 },
+      { note: 'The drag is longer and colder.', knockback: -2.5, status: { status: 'chill', power: 1, durationTicks: 60 } },
+      { note: 'Whatever the hook finds, it keeps.', damage: 9, cooldownTicks: 150 },
+    ],
+  },
+  {
+    ability: 'vaulting_step',
+    style: 'polearm',
+    unlockLevel: 20,
+    ranks: [
+      { note: 'The vault carries farther, sooner.', dashTiles: 4.0, cooldownTicks: 150 },
+      { note: 'You land meaning it.', damage: 8 },
+      { note: 'The haft barely touches the ground.', damage: 10, dashTiles: 4.5, cooldownTicks: 130 },
+    ],
+  },
+  {
+    ability: 'perfect_thrust',
+    style: 'polearm',
+    unlockLevel: 25,
+    ranks: [
+      { note: 'The line lands heavier.', damage: 16 },
+      { note: 'The breath draws shorter.', castTicks: 16, cooldownTicks: 160 },
+      { note: 'One line, and the world agrees with it.', damage: 18 },
+    ],
+  },
+  {
+    ability: 'flurry_of_points',
+    style: 'polearm',
+    unlockLevel: 30,
+    ranks: [
+      { note: 'Every point bites deeper.', damage: 5 },
+      { note: 'The rain holds a fourth beat.', channelTicks: 64 },
+      { note: 'The lane clears sooner for the next storm.', cooldownTicks: 170 },
+    ],
+  },
+  {
+    ability: 'crescent_reap',
+    style: 'polearm',
+    unlockLevel: 35,
+    ranks: [
+      { note: 'The crescent lands heavier.', damage: 11 },
+      { note: 'The moon opens wider, oftener.', arc: 2.5, cooldownTicks: 160 },
+      { note: 'The stroke clears the whole field row.', damage: 13, knockback: 1.8, cooldownTicks: 150 },
+    ],
+  },
+  {
+    ability: 'impaling_drive',
+    style: 'polearm',
+    unlockLevel: 40,
+    ranks: [
+      { note: 'The drive lands heavier.', damage: 15 },
+      { note: 'The line is drawn quicker.', castTicks: 20, cooldownTicks: 160 },
+      { note: 'The corridor widens; the lesson is general.', damage: 17, width: 0.7 },
+    ],
+  },
+  {
+    ability: 'wall_of_points',
+    style: 'polearm',
+    unlockLevel: 45,
+    ranks: [
+      { note: 'Every picket bites deeper.', damage: 5 },
+      { note: 'The cold of the wall settles in.', status: { status: 'chill', power: 1, durationTicks: 50 }, cooldownTicks: 190 },
+      { note: 'Nothing crosses. Nothing ever did.', damage: 6 },
+    ],
+  },
+  {
+    ability: 'knights_charge',
+    style: 'polearm',
+    unlockLevel: 50,
+    ranks: [
+      { note: 'The arrival lands heavier.', damage: 15 },
+      { note: 'The road runs longer, and opens sooner.', dashTiles: 5.5, cooldownTicks: 180 },
+      { note: 'The charge answers only to the horizon.', damage: 16, knockback: 3.0 },
+    ],
+  },
+  {
+    ability: 'rampart_breaker',
+    style: 'polearm',
+    unlockLevel: 54,
+    ranks: [
+      { note: 'The breach opens wider.', damage: 16 },
+      { note: 'The crack runs deeper and holds longer.', status: { status: 'sunder', power: 15, durationTicks: 80 } },
+      { note: 'Ramparts learn their place.', damage: 17, cooldownTicks: 180 },
+    ],
+  },
+  {
+    ability: 'serpents_tongue',
+    style: 'polearm',
+    unlockLevel: 58,
+    ranks: [
+      { note: 'The tongue takes more each taste.', damage: 7 },
+      { note: 'The serpent rests less.', cooldownTicks: 180 },
+      { note: 'It flickers faster than the eye votes.', damage: 8 },
+    ],
+  },
+  {
+    ability: 'skydriver_fall',
+    style: 'polearm',
+    unlockLevel: 62,
+    ranks: [
+      { note: 'The fall lands heavier.', damage: 14 },
+      { note: 'The crater spreads wider, sooner.', radius: 1.8, cooldownTicks: 190 },
+      { note: 'The landing scatters whatever survives it.', damage: 15, knockback: 1.5 },
+    ],
+  },
+  {
+    ability: 'banner_advance',
+    style: 'polearm',
+    unlockLevel: 66,
+    ranks: [
+      { note: 'The banner holds the line longer.', self: { speedMult: 1.15, armor: 5, durationTicks: 140 } },
+      { note: 'The call comes sooner.', cooldownTicks: 280 },
+      { note: 'The whole line moves as one body.', self: { speedMult: 1.2, armor: 6, shieldHp: 10, durationTicks: 160 } },
+    ],
+  },
+  {
+    ability: 'moulinet_guard',
+    style: 'polearm',
+    unlockLevel: 70,
+    ranks: [
+      { note: 'Every turn of the wheel bites deeper.', damage: 5 },
+      { note: 'The wheel spins wider and shoves.', radius: 2.0, knockback: 0.6 },
+      { note: 'The guard is ready again sooner.', cooldownTicks: 170 },
+    ],
+  },
+  {
+    ability: 'stormpoint',
+    style: 'polearm',
+    unlockLevel: 74,
+    ranks: [
+      { note: 'The called strike lands heavier.', damage: 20 },
+      { note: 'The charge clings longer; the sky asks less.', status: { status: 'shock', power: 1, durationTicks: 60 }, cooldownTicks: 200 },
+      { note: 'The storm knows the point by name.', damage: 22 },
+    ],
+  },
+  {
+    ability: 'gatebreaker',
+    style: 'polearm',
+    unlockLevel: 78,
+    ranks: [
+      { note: 'The blow lands heavier.', damage: 14 },
+      { note: 'It reads the lean earlier.', executeBelow: { frac: 0.35, mult: 2.0 } },
+      { note: 'Gates fall on the first knock.', damage: 15, cooldownTicks: 180 },
+    ],
+  },
+  {
+    ability: 'sweeping_gyre',
+    style: 'polearm',
+    unlockLevel: 82,
+    ranks: [
+      { note: 'The circle lands heavier.', damage: 11 },
+      { note: 'The gyre reaches wider, oftener.', radius: 2.5, cooldownTicks: 180 },
+      { note: 'One turn, and the yard is yours.', damage: 12, knockback: 2.0 },
+    ],
+  },
+  {
+    ability: 'hold_the_line_polearm',
+    style: 'polearm',
+    unlockLevel: 86,
+    ranks: [
+      { note: 'Every beat of the stand bites deeper.', damage: 5 },
+      { note: 'The cold at the line holds them longer.', status: { status: 'chill', power: 1, durationTicks: 80 }, cooldownTicks: 200 },
+      { note: 'The line was never really in question.', damage: 6 },
+    ],
+  },
+  {
+    ability: 'sundering_lance',
+    style: 'polearm',
+    unlockLevel: 90,
+    ranks: [
+      { note: 'The run lands heavier.', damage: 17 },
+      { note: 'The road runs longer and opens sooner.', dashTiles: 7.0, cooldownTicks: 200 },
+      { note: 'The crown of the school, at full gallop.', damage: 19, knockback: 3.2 },
     ],
   },
 

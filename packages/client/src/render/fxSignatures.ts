@@ -62,6 +62,7 @@ import { SHIELD_BREATH_SIGS } from './fxSigsShieldBreath.js';
 import { TWOHAND_BREATH_SIGS } from './fxSigsTwohandBreath.js';
 import { DUALWIELD_BREATH_SIGS } from './fxSigsDualwieldBreath.js';
 import { COMBAT_BREATH_SIGS } from './fxSigsCombatBreath.js';
+import { POLEARM_SIGS } from './fxSigsPolearm.js';
 
 // --------------------------------------------------------------- ctx
 
@@ -261,6 +262,20 @@ export const MATTER_MIGRATED: readonly string[] = [
   'stormstitch', 'mirrorfall',
   'measured_blow', 'drumbeat', 'thrown_iron', 'ironbreath',
   'fifth_road', 'old_thunder', 'gathered_breath', 'scarworn',
+  // Wave 5 — THE LONG STEEL: the polearm school arrives fluent, all
+  // twenty composing the library from birth. THE POINT AND THE LINE
+  // is a school about what a haft does to EARTH and to BODIES, and
+  // both of those are mastered materials: every butt-plant, brace,
+  // vault, charge lane, and landing speaks dust, every pierce that
+  // reaches meat speaks blood, and stormpoint's called strike is the
+  // storm's own. What stays bespoke is what no material owns — the
+  // school's cold steel, its oiled ash, and the knight's gold, spent
+  // in exactly three arts and never lent to the library to fake.
+  'lunging_skewer', 'haft_strike', 'hooking_reap', 'vaulting_step',
+  'perfect_thrust', 'flurry_of_points', 'crescent_reap', 'impaling_drive',
+  'wall_of_points', 'knights_charge', 'rampart_breaker', 'serpents_tongue',
+  'skydriver_fall', 'banner_advance', 'moulinet_guard', 'stormpoint',
+  'gatebreaker', 'sweeping_gyre', 'hold_the_line_polearm', 'sundering_lance',
 ];
 
 // ------------------------------------------------------- exemplars
@@ -1282,4 +1297,5 @@ export const SIGNATURES: Record<string, AbilitySig> = {
   ...TWOHAND_BREATH_SIGS,
   ...DUALWIELD_BREATH_SIGS,
   ...COMBAT_BREATH_SIGS,
+  ...POLEARM_SIGS,
 };

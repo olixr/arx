@@ -149,6 +149,13 @@ const SECOND_BREATH_LADDERS: Record<string, ReadonlyArray<readonly [string, numb
     ['break_the_line', 62], ['gathered_breath', 66], ['the_opening', 70], ['long_watch', 74],
     ['no_quarter', 78], ['scarworn', 82], ['last_lesson', 86], ['the_long_fight', 90],
   ],
+  polearm: [
+    ['lunging_skewer', 5], ['haft_strike', 10], ['hooking_reap', 15], ['vaulting_step', 20],
+    ['perfect_thrust', 25], ['flurry_of_points', 30], ['crescent_reap', 35], ['impaling_drive', 40],
+    ['wall_of_points', 45], ['knights_charge', 50], ['rampart_breaker', 54], ['serpents_tongue', 58],
+    ['skydriver_fall', 62], ['banner_advance', 66], ['moulinet_guard', 70], ['stormpoint', 74],
+    ['gatebreaker', 78], ['sweeping_gyre', 82], ['hold_the_line_polearm', 86], ['sundering_lance', 90],
+  ],
 };
 
 test('THE SECOND BREATH: every combat school holds exactly its authored twenty seats', () => {
@@ -346,7 +353,7 @@ test('techniques never fork identity: rank steps leave id/shape/fx face alone', 
 });
 
 test('every style ladder still resolves against the ability book', () => {
-  for (const style of ['combat', 'onehand', 'archery', 'arx', 'sneak', 'twohand', 'shield', 'dualwield']) {
+  for (const style of ['combat', 'onehand', 'archery', 'arx', 'sneak', 'twohand', 'polearm', 'shield', 'dualwield']) {
     for (const t of techniquesFor(style)) assert.ok(ABILITIES.has(t.ability));
   }
 });
@@ -380,7 +387,7 @@ test('THE PAYOFF BRACKET: one press never deletes an at-level line fighter', () 
   };
   for (const L of [10, 25, 50, 75, 95]) {
     const fighterHp = scaleNpcDef(skeleton, L).maxHp;
-    for (const style of ['combat', 'onehand', 'archery', 'arx', 'sneak', 'twohand', 'shield', 'dualwield']) {
+    for (const style of ['combat', 'onehand', 'archery', 'arx', 'sneak', 'twohand', 'polearm', 'shield', 'dualwield']) {
       let instantBest = 0;
       let channelBest = 0;
       for (const t of techniquesFor(style)) {

@@ -508,6 +508,54 @@ function fist(c: Ctx, x: number, y: number, s: number, st: FxStyle, ang = 0): vo
   c.restore();
 }
 
+/**
+ * THE LEANING SPEAR — the polearm school's one glyph. A long ash haft
+ * running the whole frame with a SMALL leaf-point head at the far end:
+ * at plate size the argument is the ratio, not the blade. The head is
+ * a two-shouldered leaf (swell, then taper to a single point), seated
+ * on an iron ferrule collar so the point reads as MOUNTED, and the
+ * butt wears its own cap — the haft-strike end is a real end.
+ *
+ * Every plate in the ladder keeps the glyph on the SAME diagonal
+ * (POLE_LEAN, butt low-left to point high-right) so the school reads
+ * as one hand on the hotbar; painters that need another bearing rotate
+ * the whole scene rather than the spear.
+ */
+const POLE_LEAN = -0.86;
+
+function pole(c: Ctx, x: number, y: number, len: number, st: FxStyle, ang = POLE_LEAN, haft = '#6a4a2c'): void {
+  c.save();
+  c.translate(x, y);
+  c.rotate(ang);
+  const h = len / 2;
+  // The haft: butt at -h, running out to the ferrule.
+  c.fillStyle = haft;
+  c.strokeStyle = OUTLINE;
+  c.lineWidth = 0.024;
+  c.fillRect(-h, -0.03, h * 1.62, 0.06);
+  c.strokeRect(-h, -0.03, h * 1.62, 0.06);
+  // One lit grain plane down the top of the haft — the sun law.
+  c.fillStyle = shade(haft, 34);
+  c.fillRect(-h + 0.02, -0.026, h * 1.58 - 0.02, 0.019);
+  // The butt cap — the school's other working end.
+  c.fillStyle = st.deep;
+  c.fillRect(-h - 0.035, -0.045, 0.055, 0.09);
+  c.strokeRect(-h - 0.035, -0.045, 0.055, 0.09);
+  // The ferrule collar: the point is bedded, never pasted on.
+  c.fillStyle = st.deep;
+  c.fillRect(h * 0.56, -0.042, 0.05, 0.084);
+  c.strokeRect(h * 0.56, -0.042, 0.05, 0.084);
+  // The leaf head: shoulders swell, then one clean taper to the point.
+  poly(c, st.mid, [
+    [h * 0.62, -0.026], [h * 0.73, -0.072], [h * 0.87, -0.046], [h, 0],
+    [h * 0.87, 0.046], [h * 0.73, 0.072], [h * 0.62, 0.026],
+  ], 0.026);
+  fill(c, st.core, [
+    [h * 0.66, -0.018], [h * 0.74, -0.055], [h * 0.87, -0.033], [h * 0.96, -0.004], [h * 0.68, -0.004],
+  ]);
+  c.restore();
+}
+
 // ---------------------------------------------------------- painters
 
 /**
@@ -7110,6 +7158,337 @@ Object.assign(PLATES, {
     for (const [dx, dy] of [[0.2, -0.06], [-0.14, 0.18], [-0.06, -0.22]] as const) {
       dot(c, st.spark, dx, dy, 0.026);
     }
+  },
+} satisfies Record<string, (st: FxStyle) => Painter>);
+
+// ---------------- THE TWENTY — the polearm school's plates. Every
+// plate keeps THE LEANING SPEAR in frame and adds exactly ONE shape
+// cue over it: corridor seams for the pierces, chevrons for the
+// dashes and charges, a picket row for the braced walls, a circle
+// track for the gyres and the moulinet. The school's whole argument
+// is REACH, so the glyph is drawn LONG and the cue stays out of the
+// point's way.
+Object.assign(PLATES, {
+  // Lunging Skewer — the opener: the narrow lane closing on the point,
+  // the body's speed still trailing off the butt.
+  lunging_skewer: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.rotate(POLE_LEAN);
+    // The corridor: two seams converging on the head — the arc is thin.
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.028;
+    c.lineCap = 'round';
+    for (const s of [-1, 1]) {
+      c.beginPath();
+      c.moveTo(-0.3, 0.17 * s);
+      c.lineTo(0.42, 0.05 * s);
+      c.stroke();
+    }
+    pole(c, 0, 0, 0.94, st, 0);
+    chevrons(c, -0.38, 0, Math.PI, st, 2, 0.9);
+    star4(c, 0.47, 0, 0.06, st.spark);
+  },
+  // Haft Strike — the butt end, leading: the cap arriving first, the
+  // shove chevrons thrown the other way, the ground taking the jolt.
+  haft_strike: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.rotate(POLE_LEAN + Math.PI);
+    pole(c, -0.04, 0, 0.86, st, 0);
+    c.rotate(Math.PI);
+    // The jolt where the cap lands.
+    star4(c, 0.3, 0, 0.13, st.mid);
+    star4(c, 0.3, 0, 0.07, st.core, Math.PI / 4);
+    chevrons(c, 0.44, 0, 0, st, 2, 1.1);
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.03;
+    for (const a of [-0.6, 0.6]) {
+      c.beginPath();
+      c.moveTo(0.36, 0);
+      c.lineTo(0.36 + Math.cos(a) * 0.16, Math.sin(a) * 0.16);
+      c.stroke();
+    }
+  },
+  // Hooking Reap — the hook behind the knee: the beak off the head and
+  // the mark coming with it, dragged in on its own arc.
+  hooking_reap: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.rotate(POLE_LEAN * 0.7);
+    pole(c, -0.06, 0.06, 0.8, st, 0);
+    // The hook: a beak curling back off the ferrule.
+    crescent(c, 0.3, -0.02, 0.1, 0.19, Math.PI * 0.05, Math.PI * 0.95, st.mid, 0.03);
+    // The drag: the taken body's path, arriving.
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.03;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(0.46, 0.3);
+    c.quadraticCurveTo(0.3, 0.3, 0.24, 0.16);
+    c.stroke();
+    dot(c, st.deep, 0.46, 0.3, 0.05);
+    dot(c, st.spark, 0.36, -0.24, 0.026);
+  },
+  // Vaulting Step — the haft planted and the body already over it: the
+  // pole upright in the ground, the leap chevroned across the top.
+  vaulting_step: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    ground(c, -0.06, 0.24, st);
+    pole(c, -0.06, -0.14, 0.82, st, -Math.PI / 2 - 0.12);
+    // The vault: the arc the body takes over the planted point.
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.034;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.34, 0.06);
+    c.quadraticCurveTo(0.02, -0.42, 0.36, 0.02);
+    c.stroke();
+    chevrons(c, 0.34, 0.06, 0.5, st, 2, 0.9);
+  },
+  // Perfect Thrust — one drawn breath, one line: the corridor lit all
+  // the way down, the point at the far end of it, nothing wasted.
+  perfect_thrust: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.rotate(POLE_LEAN);
+    // The lane, drawn flat and straight — the seam IS the art.
+    fill(c, st.deep, [[-0.44, -0.11], [0.46, -0.05], [0.46, 0.05], [-0.44, 0.11]]);
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.022;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.4, 0);
+    c.lineTo(0.44, 0);
+    c.stroke();
+    pole(c, 0, 0, 0.98, st, 0);
+    star4(c, 0.49, 0, 0.09, st.core);
+    dot(c, st.spark, -0.44, 0, 0.028);
+  },
+  // Flurry of Points — the multi-stab: three heads staggered down the
+  // needle corridor, only the nearest solid, the rest already gone.
+  flurry_of_points: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.rotate(POLE_LEAN);
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.026;
+    c.lineCap = 'round';
+    for (const s of [-1, 1]) {
+      c.beginPath();
+      c.moveTo(-0.34, 0.13 * s);
+      c.lineTo(0.44, 0.06 * s);
+      c.stroke();
+    }
+    // The spent pair, ghosted behind the live thrust.
+    c.globalAlpha = 0.4;
+    pole(c, -0.1, -0.1, 0.64, st, 0);
+    c.globalAlpha = 0.65;
+    pole(c, -0.06, 0.1, 0.72, st, 0);
+    c.globalAlpha = 1;
+    pole(c, 0.02, 0, 0.88, st, 0);
+    star4(c, 0.46, 0, 0.06, st.spark);
+  },
+  // Crescent Reap — the glaive's answer: the school's first lawful
+  // sweep, one wide crescent with the haft still turning through it.
+  crescent_reap: (st) => (c) => {
+    c.translate(0.46, 0.52);
+    crescent(c, 0, 0, 0.27, 0.42, -Math.PI * 0.92, Math.PI * 0.18, st.mid, 0.034);
+    fill(c, st.core, [[0.1, -0.4], [0.34, -0.24], [0.14, -0.32]]);
+    pole(c, -0.02, 0.02, 0.86, st, -Math.PI / 3.4);
+    chevrons(c, -0.3, 0.28, Math.PI * 0.7, st, 2, 0.8);
+  },
+  // Impaling Drive — the driven line: the corridor slab with the spear
+  // down its middle and everything on it already pierced.
+  impaling_drive: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.rotate(POLE_LEAN * 0.85);
+    fill(c, st.deep, [[-0.48, -0.15], [0.48, -0.11], [0.48, 0.11], [-0.48, 0.15]]);
+    // The bodies on the line, each with its own hole.
+    for (const x of [-0.16, 0.14]) {
+      ringDot(c, st.mid, x, 0, 0.075, 0.028);
+      dot(c, st.deep, x, 0, 0.032);
+    }
+    pole(c, 0, 0, 1.0, st, 0);
+    dot(c, st.spark, -0.42, -0.02, 0.026);
+    star4(c, 0.48, 0, 0.07, st.core);
+  },
+  // Wall of Points — the braced pikes: a picket row set into the
+  // ground, the near one solid, the line running back off the frame.
+  wall_of_points: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    ground(c, 0, 0.38, st);
+    for (const [i, x] of [-0.32, -0.11, 0.11, 0.32].entries()) {
+      const lean = -Math.PI / 2 + 0.3 + i * 0.06;
+      c.globalAlpha = i === 1 ? 1 : 0.62;
+      pole(c, x, -0.06, 0.62, st, lean);
+    }
+    c.globalAlpha = 1;
+    // The braced heels — the station this school pays for its reach.
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.03;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.4, 0.2);
+    c.lineTo(0.4, 0.2);
+    c.stroke();
+  },
+  // Knight's Charge — the couched lance: the run held level, the road
+  // going by in chevrons, the crest already breaking off the point.
+  knights_charge: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.rotate(-0.16);
+    chevrons(c, -0.34, 0.02, Math.PI, st, 3, 1.2);
+    pole(c, 0.04, 0.02, 0.92, st, 0);
+    crescent(c, 0.5, 0.02, 0.06, 0.16, -Math.PI * 0.62, Math.PI * 0.62, st.core, 0.03);
+    star4(c, 0.48, 0.02, 0.06, st.spark);
+    dot(c, st.spark, -0.34, -0.24, 0.026);
+  },
+  // Rampart Breaker — the armor opener: the point through a plate that
+  // has stopped being one, the split running out from the hole.
+  rampart_breaker: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // The wall that failed: a slab, cracked around the entry.
+    poly(c, st.deep, [[-0.06, -0.42], [0.34, -0.36], [0.32, 0.4], [-0.08, 0.44]], 0.04);
+    fill(c, st.mid, [[-0.02, -0.34], [0.26, -0.3], [0.25, -0.1], [-0.03, -0.12]]);
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.028;
+    c.lineCap = 'round';
+    for (const [ax, ay] of [[0.3, -0.3], [0.28, 0.3], [-0.02, 0.24]] as const) {
+      c.beginPath();
+      c.moveTo(0.1, 0.02);
+      c.lineTo(ax, ay);
+      c.stroke();
+    }
+    pole(c, -0.08, 0.1, 0.82, st, POLE_LEAN * 0.6);
+    star4(c, 0.12, 0.0, 0.1, st.spark);
+  },
+  // Serpent's Tongue — the flicker: the head arriving three times on
+  // the same line, the two before it still hanging in the air.
+  serpents_tongue: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.rotate(POLE_LEAN);
+    pole(c, -0.04, 0, 0.9, st, 0);
+    // The echo of the last two jabs, riding the same reach.
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.03;
+    c.lineCap = 'round';
+    for (const [r, a] of [[0.36, 0.55], [0.44, 0.38]] as const) {
+      c.globalAlpha = a;
+      c.beginPath();
+      c.arc(0, 0, r, -0.42, 0.42);
+      c.stroke();
+    }
+    c.globalAlpha = 1;
+    star4(c, 0.45, 0, 0.07, st.core);
+    dot(c, st.spark, 0.3, -0.2, 0.024);
+  },
+  // Skydriver Fall — the vault turned over: the spear coming down
+  // point-first onto the marked ground, the splash already leaving.
+  skydriver_fall: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    ground(c, 0, 0.3, st);
+    pole(c, 0.04, -0.16, 0.86, st, Math.PI / 2 + 0.34);
+    novaRing(c, -0.04, 0.16, 0.24, st, 9, 0.36, 0.038);
+    for (const [dx, dy] of [[-0.3, -0.06], [0.3, -0.1], [-0.14, -0.2]] as const) {
+      dot(c, st.spark, dx, dy, 0.028);
+    }
+    chevrons(c, 0.24, -0.36, Math.PI * 0.62, st, 2, 0.8);
+  },
+  // Banner Advance — the line moves forward: the haft planted with the
+  // company's pennon on it, the rally rising off the stance.
+  banner_advance: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    haloArcs(c, 0, 0.12, st);
+    pole(c, 0, -0.02, 0.9, st, -Math.PI / 2 - 0.06);
+    // The pennon: a swallow-tail, one lit fold.
+    poly(c, st.mid, [[0.03, -0.4], [0.4, -0.32], [0.3, -0.22], [0.4, -0.12], [0.03, -0.16]], 0.032);
+    fill(c, st.core, [[0.06, -0.38], [0.34, -0.31], [0.26, -0.26], [0.06, -0.3]]);
+    star4(c, -0.28, -0.22, 0.07, st.spark);
+  },
+  // Moulinet Guard — the spinning haft: the circle track around the
+  // body with the spear caught mid turn, grit thrown off the rim.
+  moulinet_guard: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.036;
+    c.beginPath();
+    c.arc(0, 0, 0.36, 0, Math.PI * 2);
+    c.stroke();
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.03;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.arc(0, 0, 0.36, -Math.PI * 0.9, -Math.PI * 0.15);
+    c.stroke();
+    pole(c, 0, 0, 0.78, st, POLE_LEAN);
+    for (const a of [-0.35, 1.1, 2.6]) {
+      dot(c, st.spark, Math.cos(a) * 0.46, Math.sin(a) * 0.46, 0.026);
+    }
+  },
+  // Stormpoint — the called strike: the point raised and answered, the
+  // sky coming down the haft to meet the hand that lifted it.
+  stormpoint: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    pole(c, -0.04, 0.02, 0.9, st, -Math.PI / 2 + 0.2);
+    bolt(c, 0.16, -0.24, 0.62, st, 0.22);
+    star4(c, 0.1, -0.4, 0.12, st.core);
+    for (const [dx, dy] of [[-0.34, -0.12], [0.36, 0.06]] as const) {
+      dot(c, st.spark, dx, dy, 0.028);
+    }
+    ground(c, -0.02, 0.24, st);
+  },
+  // Gatebreaker — the execute: the head driven through the barred gate,
+  // the bar parting, the seam of the break running past it.
+  gatebreaker: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    // The gate: two heavy bars, broken clean at the middle.
+    for (const y of [-0.24, 0.22]) {
+      poly(c, st.deep, [[-0.44, y - 0.07], [-0.06, y - 0.05], [-0.08, y + 0.06], [-0.44, y + 0.08]], 0.032);
+      poly(c, st.deep, [[0.1, y - 0.05], [0.46, y - 0.07], [0.46, y + 0.08], [0.08, y + 0.06]], 0.032);
+    }
+    // The seam of the break, torn top to bottom.
+    fill(c, st.mid, [[0.0, -0.44], [0.08, -0.14], [0.0, 0.06], [0.09, 0.44], [-0.06, 0.12], [-0.02, -0.1]]);
+    pole(c, -0.02, 0.02, 0.84, st, POLE_LEAN * 0.75);
+    star4(c, 0.32, -0.28, 0.08, st.spark);
+  },
+  // Sweeping Gyre — the halberd turns the whole circle: the full track
+  // closed, the spear riding its rim, everything inside it moved.
+  sweeping_gyre: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    crescent(c, 0, 0, 0.3, 0.42, -Math.PI * 0.98, Math.PI * 0.62, st.mid, 0.032);
+    crescent(c, 0, 0, 0.3, 0.42, Math.PI * 0.72, Math.PI * 0.96, st.deep, 0.028);
+    fill(c, st.core, [[0.12, -0.4], [0.36, -0.22], [0.16, -0.3]]);
+    pole(c, 0, 0, 0.74, st, POLE_LEAN + 0.5);
+    for (const a of [-2.5, -0.3, 1.6]) {
+      dot(c, st.spark, Math.cos(a) * 0.47, Math.sin(a) * 0.47, 0.026);
+    }
+  },
+  // Hold the Line — the anchor stance: the picket set and ROOTED, the
+  // heels dug in behind a bar of cold nothing crosses.
+  hold_the_line_polearm: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    ground(c, 0, 0.4, st);
+    // The rooted bar — the line itself, laid across the frame.
+    poly(c, st.deep, [[-0.46, 0.06], [0.46, 0.06], [0.46, 0.16], [-0.46, 0.16]], 0.03);
+    for (const [i, x] of [-0.3, -0.1, 0.1, 0.3].entries()) {
+      c.globalAlpha = i === 0 || i === 3 ? 0.62 : 1;
+      pole(c, x, -0.1, 0.58, st, -Math.PI / 2 + (i - 1.5) * 0.05);
+    }
+    c.globalAlpha = 1;
+    snowflake(c, -0.34, -0.3, 0.1, st.spark, 0.032);
+    snowflake(c, 0.34, -0.24, 0.08, st.spark, 0.03);
+  },
+  // The Sundering Lance — the crown of the school: the full charge held
+  // level, the road gone to chevrons, every body on the run pierced,
+  // the school's one crown riding the point.
+  sundering_lance: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.rotate(-0.14);
+    fill(c, st.deep, [[-0.48, -0.13], [0.46, -0.09], [0.46, 0.09], [-0.48, 0.13]]);
+    chevrons(c, -0.36, 0.0, Math.PI, st, 3, 1.15);
+    for (const x of [-0.14, 0.12]) {
+      ringDot(c, st.mid, x, 0, 0.07, 0.026);
+      dot(c, st.deep, x, 0, 0.03);
+    }
+    pole(c, 0.06, 0, 1.0, st, 0);
+    crown(c, 0.42, -0.16, 0.22, st.mid, st.core);
+    star4(c, 0.5, 0, 0.07, st.core);
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 

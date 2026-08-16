@@ -872,6 +872,57 @@ export const FX_STYLES: Record<string, FxStyle> = {
   the_long_fang: VERDANT({ mid: '#6a9a42', deep: '#32491e', spark: '#d0ecb0', ring: 'teeth', debris: 'blood', decal: 'stain', motif: 'tear', punch: 0.45, wash: 0.3 }),
   pale_silk: BONE({ mid: '#f0f0e6', deep: '#787868', spark: '#ffffff', ring: 'runes', debris: 'spark', decal: undefined, motif: 'cage', punch: 0.05, wash: 0.12 }),
   the_venom_lattice: VERDANT({ mid: '#84c95e', deep: '#3c6428', spark: '#dcf8c8', ring: 'runes', debris: 'leaf', decal: 'stain', motif: 'cage', punch: 0.4, wash: 0.3 }),
+
+  // ------------------ THE TWENTY (docs/polearm-plan.md) — the polearm
+  // school. The ladder speaks COLD STEEL, OILED ASH AND GOLD FITTINGS:
+  // bright steel for the pierces, oiled wood and kicked dust for the
+  // haft work, colder iron where the hook and the hafted blade bite,
+  // pale picket steel for the braced walls, and the knight's gold for
+  // the charge, the banner and the crown. No element anywhere — the
+  // one exception is Stormpoint, whose called strike borrows STORM on
+  // the FX side only. Every face keeps a unique ring+debris+motif hand.
+  // Lunging Skewer — the opener: a thin bright line, nothing left behind.
+  lunging_skewer: STEEL({ mid: '#c8d4e0', ring: 'shards', debris: 'spark', decal: undefined, punch: 0.4, wash: 0.25 }),
+  // Haft Strike — the butt of the haft: oiled ash, the ground taking it.
+  haft_strike: STEEL({ mid: '#9a7a52', deep: '#4e3a22', spark: '#e8d4b0', ring: 'teeth', debris: 'rock', decal: undefined, motif: 'quake', punch: 0.6, wash: 0.3 }),
+  // Hooking Reap — the beak behind the knee: cold iron, an inward pull.
+  hooking_reap: STEEL({ mid: '#6e7a86', deep: '#343c46', ring: 'shards', debris: 'blood', decal: 'stain', motif: 'vortex', punch: 0.45, wash: 0.25 }),
+  // Vaulting Step — the planted haft: wood and kicked dust, one crest.
+  vaulting_step: STEEL({ mid: '#b09468', deep: '#54432c', spark: '#f0e0c0', ring: 'petals', debris: 'rock', decal: undefined, motif: 'wave', punch: 0.35, wash: 0.2 }),
+  // Perfect Thrust — one drawn line: blades of light down the reach.
+  perfect_thrust: STEEL({ mid: '#e0e8f0', ring: 'shards', debris: 'spark', decal: 'cracks', motif: 'rays', punch: 0.6, wash: 0.3 }),
+  // Flurry of Points — the multi-stab: needles too quick to count.
+  flurry_of_points: STEEL({ mid: '#aebcc8', ring: 'shards', debris: 'spark', decal: undefined, motif: 'swarm', punch: 0.45, wash: 0.25 }),
+  // Crescent Reap — the glaive's answer: one cold crest, the stain of it.
+  crescent_reap: STEEL({ mid: '#7c8894', deep: '#3a444e', ring: 'petals', debris: 'blood', decal: 'stain', motif: 'wave', punch: 0.6, wash: 0.3 }),
+  // Impaling Drive — the driven corridor: a seam torn down the line.
+  impaling_drive: STEEL({ mid: '#9fb0c0', ring: 'teeth', debris: 'spark', decal: 'cracks', motif: 'tear', punch: 0.7, wash: 0.35 }),
+  // Wall of Points — the braced pikes: a picket of points on the rim.
+  wall_of_points: STEEL({ mid: '#8fa0b0', ring: 'teeth', debris: 'rock', decal: undefined, motif: 'spikes', punch: 0.4, wash: 0.3 }),
+  // Knight's Charge — the run: gold arriving as a breaking crest.
+  knights_charge: GOLD({ mid: '#e0b455', ring: 'teeth', debris: 'spark', decal: 'cracks', motif: 'wave', punch: 0.8, wash: 0.45 }),
+  // Rampart Breaker — the armor opener: dust and steel, the ground splits.
+  rampart_breaker: STEEL({ mid: '#a89078', deep: '#4e4234', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'quake', punch: 0.85, wash: 0.5 }),
+  // Serpent's Tongue — the flicker: bright steel, ring after held ring.
+  serpents_tongue: STEEL({ mid: '#d8e4ec', ring: 'shards', debris: 'spark', decal: undefined, motif: 'echo', punch: 0.5, wash: 0.28 }),
+  // Skydriver Fall — point-first out of the air: weight raining down.
+  skydriver_fall: STEEL({ mid: '#94a2ae', deep: '#424a54', ring: 'teeth', debris: 'rock', decal: 'cracks', motif: 'rain', punch: 0.75, wash: 0.4 }),
+  // Banner Advance — the line moves: a column of held gold, no blow.
+  banner_advance: GOLD({ mid: '#d8bc6a', ring: 'halo', debris: 'star', decal: 'glow', motif: 'pillar', punch: 0.3, wash: 0.4 }),
+  // Moulinet Guard — the spinning haft: an inward-turning circle of grit.
+  moulinet_guard: STEEL({ mid: '#c0a878', deep: '#5e5038', spark: '#f4e8c8', ring: 'petals', debris: 'spark', decal: undefined, motif: 'vortex', punch: 0.5, wash: 0.3 }),
+  // Stormpoint — the called strike: the school's one borrowed element.
+  stormpoint: STORM({ mid: '#b8cff0', deep: '#3c4c74', ring: 'teeth', debris: 'spark', decal: 'scorch', motif: 'pillar', punch: 0.85, wash: 0.55 }),
+  // Gatebreaker — the execute: the coldest iron, the gate torn open.
+  gatebreaker: STEEL({ mid: '#5e6a76', deep: '#2c343c', spark: '#dce6f0', ring: 'teeth', debris: 'blood', decal: 'stain', motif: 'tear', punch: 0.8, wash: 0.35 }),
+  // Hold the Line — the anchor stance (the id wears the school's suffix:
+  // the shield ladder took `hold_the_line` first): a rooted picket of
+  // cold, bars of winter standing where nothing gets to walk.
+  hold_the_line_polearm: STEEL({ mid: '#7e94a8', deep: '#39444e', ring: 'frost', debris: 'ice', decal: 'rime', motif: 'cage', punch: 0.45, wash: 0.3 }),
+  // Sweeping Gyre — the full turn: wood and stone thrown off the rim.
+  sweeping_gyre: STEEL({ mid: '#a89060', deep: '#50442a', spark: '#f0dcb0', ring: 'petals', debris: 'rock', decal: undefined, motif: 'vortex', punch: 0.6, wash: 0.3 }),
+  // The Sundering Lance — the crown of the school: gold at full weight.
+  sundering_lance: GOLD({ mid: '#f0d070', ring: 'teeth', debris: 'star', decal: 'cracks', motif: 'crown', punch: 1.0, wash: 0.6 }),
 };
 
 /**
