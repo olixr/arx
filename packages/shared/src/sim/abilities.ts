@@ -689,6 +689,8 @@ export const TECH_SEAT_SLOTS = [SLOT_TECH_Q, SLOT_TECH_E] as const;
  * is the wall's ladder, unlocked by the hidden shield skill; `twohand`
  * is the colossus's ladder, unlocked by swinging great steel;
  * `dualwield` is the twin school, unlocked by every echo that lands;
+ * `polearm` is the reaching school — spear, lance, glaive, halberd,
+ * pike — trained by every thrust down the long haft;
  * `combat` is the veteran's ladder, fed a share of every strike school
  * by THE SHARED LESSON — the one school every fighter is always in.
  */
@@ -699,6 +701,7 @@ export type CombatStyleId =
   | 'arx'
   | 'sneak'
   | 'twohand'
+  | 'polearm'
   | 'shield'
   | 'dualwield';
 
@@ -709,6 +712,7 @@ export const COMBAT_STYLES: readonly CombatStyleId[] = [
   'arx',
   'sneak',
   'twohand',
+  'polearm',
   'shield',
   'dualwield',
 ];

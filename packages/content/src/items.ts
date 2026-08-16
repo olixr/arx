@@ -6,7 +6,7 @@ import { UNLOCKABLE_RECIPES, recipeScrollId } from './recipes.js';
 import { GRADED_PRODUCE, GRADE_NAMES, GRADE_VALUE_MULT, gradedId } from './farming.js';
 
 export type ToolType = 'axe' | 'pickaxe' | 'rod';
-export type CombatStyle = 'onehand' | 'archery' | 'arx' | 'twohand';
+export type CombatStyle = 'onehand' | 'archery' | 'arx' | 'twohand' | 'polearm';
 
 /**
  * The elemental schools of Arx. A staff's element rides its bolts —
@@ -83,7 +83,8 @@ export type MovesetId =
   | 'reaver_arc'
   | 'crusher_drop'
   | 'stormcall_weave'
-  | 'kingsbane_verdict';
+  | 'kingsbane_verdict'
+  | 'line_of_lance';
 
 /**
  * A consumable buff. One buff may be active per channel: drinking a new
@@ -1737,11 +1738,23 @@ export function itemDef(id: string): ItemDef | undefined {
  * style rather than flagged per item so no def can forget it.
  * A two-handed weapon shares the body with nothing HELD in the off
  * fist: no off blade, no shield, no tome, no orb. Back-mounted
- * offhands (quivers) ride the shoulders and are exempt. If one-handed
- * casters (wands) ever land, this is the law to widen.
+ * offhands (quivers) ride the shoulders and are exempt.
+ *
+ * THE VERSATILE GRIP AMENDMENT (the widening this law foretold):
+ * polearms equip ONE-HANDED — the knight's lance shares the body with
+ * a shield — and an empty off fist takes the war grip for the damage
+ * step (POLEARM_WAR_GRIP_MULT, resolved live at the damage door).
+ * Equipment law sees one hand; only the damage door and the render
+ * carry the second. NO SECOND POLE: the equip path sheds a held
+ * offhand WEAPON when a polearm takes the main hand — a haft pairs
+ * with a wall, never with a second edge.
  */
 export function isTwoHanded(def: ItemDef): boolean {
-  return def.weapon !== undefined && def.weapon.style !== 'onehand';
+  return (
+    def.weapon !== undefined &&
+    def.weapon.style !== 'onehand' &&
+    def.weapon.style !== 'polearm'
+  );
 }
 
 /** What a fresh character carries. */

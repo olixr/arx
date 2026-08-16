@@ -1177,6 +1177,11 @@ test('the two-hands law: bows and staves are two-handed, quivers ride the back',
       assert.ok(!isTwoHanded(def), `${def.id}: non-weapons are never two-handed`);
     } else if (def.weapon.style === 'onehand') {
       assert.ok(!isTwoHanded(def), `${def.id}: onehand stays one-handed (dual wield lives)`);
+    } else if (def.weapon.style === 'polearm') {
+      // THE VERSATILE GRIP: the haft equips one-handed — a shield may
+      // ride the off fist — and the war grip is a damage-door truth,
+      // never an equipment law (items.ts amendment, 2026-08-16).
+      assert.ok(!isTwoHanded(def), `${def.id}: polearms equip one-handed (the knight keeps the wall)`);
     } else {
       assert.ok(isTwoHanded(def), `${def.id}: ${def.weapon.style} weapons take both hands`);
     }

@@ -30,6 +30,7 @@ export type SkillId =
   | 'beastcraft'
   | 'sneak'
   | 'twohand'
+  | 'polearm'
   | 'dualwield'
   | 'shield';
 
@@ -56,6 +57,7 @@ export const SKILL_IDS: readonly SkillId[] = [
   'beastcraft',
   'sneak',
   'twohand',
+  'polearm',
   'dualwield',
   'shield',
 ];
@@ -168,6 +170,7 @@ export function combatLevel(skills: SkillXp): number {
       levelForXp(skills.archery ?? 0),
       levelForXp(skills.arx ?? 0),
       levelForXp(skills.twohand ?? 0),
+      levelForXp(skills.polearm ?? 0),
       levelForXp(skills.combat ?? 0),
     ) / 2;
   return Math.max(1, Math.round(stay + strike));
@@ -191,6 +194,7 @@ export function isSkillId(s: string): s is SkillId {
 export const COMBAT_SCHOOL_IDS: readonly SkillId[] = [
   'onehand',
   'twohand',
+  'polearm',
   'archery',
   'arx',
   'dualwield',

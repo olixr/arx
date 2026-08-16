@@ -291,13 +291,16 @@ export interface StrikeClock {
 }
 
 export const STRIKE_CLOCKS: Record<
-  'onehand' | 'twohand' | 'arx',
+  'onehand' | 'twohand' | 'polearm' | 'arx',
   { swing: StrikeClock; finisher: StrikeClock }
 > = {
   onehand: { swing: { ms: 280, holdTicks: 6 }, finisher: { ms: 400, holdTicks: 8 } },
   // THE GREAT SCHOOL owns a longer clock entirely: mass never moves
   // on a sword's time.
   twohand: { swing: { ms: 460, holdTicks: 10 }, finisher: { ms: 640, holdTicks: 14 } },
+  // THE REACHING SCHOOL sits between: a thrust travels farther than a
+  // cut but carries less mass than the mountain — the haft's own time.
+  polearm: { swing: { ms: 340, holdTicks: 8 }, finisher: { ms: 520, holdTicks: 12 } },
   arx: { swing: { ms: 280, holdTicks: 6 }, finisher: { ms: 400, holdTicks: 8 } },
 };
 
@@ -327,6 +330,30 @@ export const TWOHAND_FINISHER_KNOCKBACK_MULT = 2.2;
 export const TWOHAND_FINISHER_RECOVERY_MULT = 1.6;
 /** A heavy string breathes — longer grace to continue the chain. */
 export const TWOHAND_COMBO_GRACE_TICKS = 20;
+
+// ------------------------------------------------------------ polearm
+
+/**
+ * THE REACHING SCHOOL — polearms. Spear, lance, glaive, halberd, pike:
+ * one skill (`polearm`) trains every haft. The class identity is REACH
+ * (the longest melee in the game) and the THRUST (narrow authored
+ * cones, never the class-wide cut) — paid for in cadence and windup.
+ *
+ * THE VERSATILE GRIP (the D&D spear's versatile property, kept honest):
+ * a polearm equips as a ONE-HANDED weapon — the off fist stays open
+ * for a shield — and an EMPTY off fist takes the war grip, both hands
+ * on the haft, multiplying basic damage by the d6→d8 step below. The
+ * grip is resolved live from equipment at the damage door, never
+ * stored, never toggled: the off hand IS the toggle. A back-mounted
+ * offhand (a quiver) rides the shoulders and leaves the grip free.
+ *
+ * NO SECOND POLE: polearms never pair. Not with each other, not with a
+ * one-hander — two-weapon fighting belongs to LIGHT weapons and no
+ * polearm is light. The equip path sheds a held offhand WEAPON when a
+ * polearm takes the main hand; the dual-wield discovery gate keys on
+ * `onehand` both sides and never sees a haft.
+ */
+export const POLEARM_WAR_GRIP_MULT = 4 / 3;
 
 // ---------------------------------------------------------- dual wield
 

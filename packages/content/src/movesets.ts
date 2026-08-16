@@ -70,7 +70,7 @@ export interface MovesetDef {
   id: MovesetId;
   /** The page's spoken name (the item card's Fights as row). */
   name: string;
-  style: 'onehand' | 'twohand' | 'arx';
+  style: 'onehand' | 'twohand' | 'polearm' | 'arx';
   /** Which pose vocabulary the string speaks (steel swings vs casts). */
   poseDialect: 'steel' | 'wand';
   /** Grace ticks stamped after each swing's recovery. */
@@ -363,6 +363,46 @@ const KINGSBANE_VERDICT: MovesetDef = {
   ],
 };
 
+/**
+ * THE LINE OF THE LANCE: the polearm class default — jab, jab, and the
+ * IMPALE, a piercing corridor that runs every body on the line through
+ * (sweepAll inside a needle cone: the reach school's payoff is depth,
+ * never breadth). A rhythm TAP takes THE DRIVE instead — one body,
+ * harder, the point withdrawn clean. Every beat authors its own narrow
+ * cone: THE THRUST IS NOT A CUT, so no polearm beat ever speaks the
+ * class-wide melee arc. Cycle rate 4.5/3.5 ≈ 1.286 defines the school
+ * band; the drive branch sits at 1.357, inside +10%.
+ */
+const LINE_OF_LANCE: MovesetDef = {
+  id: 'line_of_lance',
+  name: 'The Line of the Lance',
+  style: 'polearm',
+  poseDialect: 'steel',
+  graceTicks: COMBO_GRACE_TICKS,
+  string: [
+    { key: 'jab', dmgMult: 1, kbMult: 0.9, sweepAll: false, recoveryMult: 1, windupTicks: 3, arcHalf: 0.45 },
+    { key: 'jab', dmgMult: 1, kbMult: 0.9, sweepAll: false, recoveryMult: 1, windupTicks: 3, arcHalf: 0.45 },
+    {
+      key: 'impale',
+      dmgMult: 2.5,
+      kbMult: 1.5,
+      sweepAll: true,
+      recoveryMult: 1.5,
+      windupTicks: 4,
+      arcHalf: 0.3,
+      alt: {
+        key: 'drive',
+        dmgMult: 2.75,
+        kbMult: 1.2,
+        sweepAll: false,
+        recoveryMult: 1.5,
+        windupTicks: 4,
+        arcHalf: 0.45,
+      },
+    },
+  ],
+};
+
 export const MOVESETS: Record<MovesetId, MovesetDef> = {
   sword_string: SWORD_STRING,
   dagger_flurry: DAGGER_FLURRY,
@@ -373,6 +413,7 @@ export const MOVESETS: Record<MovesetId, MovesetDef> = {
   crusher_drop: CRUSHER_DROP,
   stormcall_weave: STORMCALL_WEAVE,
   kingsbane_verdict: KINGSBANE_VERDICT,
+  line_of_lance: LINE_OF_LANCE,
 };
 
 /**
@@ -439,6 +480,7 @@ export function movesetFor(weapon: WeaponStats, id?: string): MovesetDef | null 
     if (page) return page;
   }
   if (weapon.style === 'twohand') return GREAT_STRING;
+  if (weapon.style === 'polearm') return LINE_OF_LANCE;
   if (weapon.style === 'arx') return WAND_RHYTHM;
   if (weapon.style === 'onehand') return isDaggerStats(weapon) ? DAGGER_FLURRY : SWORD_STRING;
   return null;

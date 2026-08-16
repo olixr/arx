@@ -730,6 +730,7 @@ export const ENCHANT_DEFS: EnchantDef[] = [
     effects: [
       E({ kind: 'styleDmg', style: 'onehand', pct: 10 }),
       E({ kind: 'styleDmg', style: 'twohand', pct: 10 }),
+      E({ kind: 'styleDmg', style: 'polearm', pct: 10 }),
       E({ kind: 'styleDmg', style: 'archery', pct: 10 }),
       E({ kind: 'styleDmg', style: 'arx', pct: 10 }),
       E({

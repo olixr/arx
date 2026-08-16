@@ -561,6 +561,7 @@ import {
   GUARD_SWEEP_WINDUP,
   KNIFE_HUNGER_SPEED,
   KNIFE_HUNGER_TICKS,
+  POLEARM_WAR_GRIP_MULT,
   STRIKE_CLOCKS,
   SNAP_CHAIN,
   VOLLEY_DMG_FACTOR,
@@ -2148,6 +2149,10 @@ interface Perks {
   greatReach: number;
   /** Bonus damage fraction on greatblows vs the nearly-felled (Executioner). */
   greatExecute: number;
+  /** Extra polearm reach, tiles (Longarm). */
+  poleReach: number;
+  /** Extra war-grip damage mult beside POLEARM_WAR_GRIP_MULT (Impaler). */
+  warGripBonus: number;
   undergroundGatherMult: number;
   nightGatherMult: number;
   burnChanceMult: number;
@@ -2193,6 +2198,8 @@ function defaultPerks(): Perks {
     offhandFactorBonus: 0,
     greatReach: 0,
     greatExecute: 0,
+    poleReach: 0,
+    warGripBonus: 0,
     undergroundGatherMult: 1,
     nightGatherMult: 1,
     burnChanceMult: 1,
@@ -3540,6 +3547,11 @@ export class GameServer {
       const main = equipment.weapon ? itemDef(equipment.weapon.id) : undefined;
       const off = equipment.offhand;
       if (main && isTwoHanded(main) && off && !itemDef(off.id)?.backMounted) {
+        if (addItem(inventory, off.id, 1, off.roll) === 1) delete equipment.offhand;
+      }
+      // NO SECOND POLE sanitize: a polearm main never shares the body
+      // with a held offhand WEAPON (same legacy-grace shape as above).
+      if (main?.weapon?.style === 'polearm' && off && itemDef(off.id)?.weapon) {
         if (addItem(inventory, off.id, 1, off.roll) === 1) delete equipment.offhand;
       }
     }
@@ -13270,7 +13282,10 @@ export class GameServer {
       const c = def.coating;
       const worn = player.equipment.weapon;
       const style = worn ? itemDef(worn.id)?.weapon?.style : undefined;
-      if (!worn || (style !== 'onehand' && style !== 'twohand' && style !== 'archery')) {
+      if (
+        !worn ||
+        (style !== 'onehand' && style !== 'twohand' && style !== 'polearm' && style !== 'archery')
+      ) {
         player.session?.sendJson({
           t: 'chat',
           channel: 'system',
@@ -13660,6 +13675,14 @@ export class GameServer {
       if (def.equipSlot === 'weapon' && isTwoHanded(def)) {
         const off = player.equipment[rowOffhand];
         if (off && !itemDef(off.id)?.backMounted) shedSlot = rowOffhand;
+      } else if (def.equipSlot === 'weapon' && def.weapon?.style === 'polearm') {
+        // NO SECOND POLE: the haft is versatile, never paired. A dual
+        // pair trading its mainhand for a lance would otherwise keep
+        // the off blade — shed a held offhand WEAPON (the shield, the
+        // tome, the quiver all stay: the knight's whole point is the
+        // wall beside the point).
+        const off = player.equipment[rowOffhand];
+        if (off && itemDef(off.id)?.weapon) shedSlot = rowOffhand;
       } else if (def.equipSlot === 'offhand' && !def.backMounted) {
         const main = player.equipment[rowWeapon];
         const mainDef = main ? itemDef(main.id) : undefined;
@@ -18495,7 +18518,11 @@ export class GameServer {
     // Old Campaigner: the veteran fights every weapon school a little
     // above their letter — the four schools only, never trades.
     const schooled =
-      skill === 'onehand' || skill === 'twohand' || skill === 'archery' || skill === 'arx'
+      skill === 'onehand' ||
+      skill === 'twohand' ||
+      skill === 'polearm' ||
+      skill === 'archery' ||
+      skill === 'arx'
         ? player.perks.warSchooling
         : 0;
     return Math.min(
@@ -18602,13 +18629,20 @@ export class GameServer {
       weapon.style === 'arx' && weapon.element
         ? (player.gear.elementDmgMult[weapon.element] ?? 1)
         : 1;
+    // THE VERSATILE GRIP: an empty off fist takes the war grip — both
+    // hands on the haft, the d6→d8 step. Resolved live at this door,
+    // never stored; a back-mounted quiver leaves the grip free.
+    const offSlot = player.equipment.offhand;
+    const warGrip =
+      weapon.style === 'polearm' && (!offSlot || itemDef(offSlot.id)?.backMounted === true);
     const maxHit = Math.max(
       1,
       Math.round(
         weapon.damage *
           powerMultFn(level, PLAYER_POWER_PER_LEVEL) *
           player.gear.styleDmgMult[weapon.style] *
-          elementMult,
+          elementMult *
+          (warGrip ? POLEARM_WAR_GRIP_MULT + player.perks.warGripBonus : 1),
       ),
     );
 
@@ -18710,7 +18744,12 @@ export class GameServer {
       // Farcleaver: the edge arrives before the argument.
       range: guard
         ? GUARD_SWEEP_RANGE
-        : weapon.range + (moveset.style === 'twohand' ? player.perks.greatReach : 0),
+        : weapon.range +
+          (moveset.style === 'twohand'
+            ? player.perks.greatReach
+            : moveset.style === 'polearm'
+              ? player.perks.poleReach
+              : 0),
       deed: moveset.style === 'twohand',
       // THE READING EDGE: the beat's consume clause is captured at
       // the press like every other number — the promise made is the
@@ -22864,6 +22903,10 @@ export class GameServer {
         !killer.flags.has(`road:${style}`)
       ) {
         this.setPlayerFlag(killer, `road:${style}`);
+        // DELIBERATE: the deed stays FOUR roads — the founding schools.
+        // Polearm (2026-08-16) is not a fifth: 'four_roads' is a named
+        // art and a walked page; widening it would orphan every page
+        // already filled. The haft's own deeds live in its own school.
         const ROADS: readonly SkillId[] = ['onehand', 'twohand', 'archery', 'arx'];
         const walked = ROADS.filter((r) => killer.flags.has(`road:${r}`)).length;
         if (walked >= ROADS.length) {

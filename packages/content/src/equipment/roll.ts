@@ -221,7 +221,7 @@ export function emptyGearStats(): GearStats {
     maxHp: 0,
     regenPer4s: 0,
     classCounts: { cloth: 0, leather: 0, plate: 0 },
-    styleDmgMult: { onehand: 1, archery: 1, arx: 1, twohand: 1 },
+    styleDmgMult: { onehand: 1, archery: 1, arx: 1, twohand: 1, polearm: 1 },
     speedMult: 1,
     cooldownMult: 1,
     elementDmgMult: {},

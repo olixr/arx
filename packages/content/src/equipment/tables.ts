@@ -82,7 +82,7 @@ export const ARMOR_CLASS_MODS: Record<
     cooldownPct: number;
   }
 > = {
-  plate: { dmgPct: { onehand: 3, twohand: 3, arx: -4 }, speedPct: -1, cooldownPct: 0 },
+  plate: { dmgPct: { onehand: 3, twohand: 3, polearm: 3, arx: -4 }, speedPct: -1, cooldownPct: 0 },
   leather: { dmgPct: { archery: 3 }, speedPct: 0.5, cooldownPct: 0 },
   cloth: { dmgPct: { arx: 4 }, speedPct: 0, cooldownPct: -2.5 },
 };
@@ -91,7 +91,7 @@ export const ARMOR_CLASS_MODS: Record<
 // ASCII hyphen-minus only: U+2212 MINUS SIGN reads as an en dash on a
 // card and slips past the dash-ban regex.
 export const ARMOR_CLASS_BLURB: Record<ArmorClass, string> = {
-  plate: 'Plate: +one-handed and two-handed damage, -Arx damage, slightly slower',
+  plate: 'Plate: +one-handed, two-handed and polearm damage, -Arx damage, slightly slower',
   leather: 'Leather: +archery damage, slightly faster',
   cloth: 'Cloth: +Arx damage, faster ability cooldowns',
 };

@@ -56,8 +56,10 @@ export type PerkId =
   | 'shieldThorns' //        npc strike thorns: +thorns while a shield is raised
   | 'greatReach' //          tryPlayerAttack (twohand): +reach, tiles
   | 'greatExecute' //        meleeSwing (twohand): +damage fraction vs targets under 25% hp
+  | 'poleReach' //           tryPlayerAttack (polearm): +reach, tiles
+  | 'warGripBonus' //        tryPlayerAttack (polearm): +war-grip damage mult (rides POLEARM_WAR_GRIP_MULT)
   | 'marchArmor' //          damagePlayer mitigate: +armor while moving
-  | 'warSchooling' //        effectiveLevel: +levels to the four weapon schools
+  | 'warSchooling' //        effectiveLevel: +levels to the five weapon schools
   | 'inscribeQuality' //    tickCraft: +quality points on every inscription
   // THE GREEN ARTS wave (farming v2 Phase 6): three more one-site dials.
   | 'compostDiscount' //     compostAdd: batch closes this many worth sooner
@@ -126,7 +128,7 @@ const defs: CallingDef[] = [
     unlockLevel: 60,
     focusCost: 2,
     name: 'Old Campaigner',
-    desc: 'Every road taught you something. All four weapon schools fight two levels higher.',
+    desc: 'Every road taught you something. All five weapon schools fight two levels higher.',
     color: '#8f7a4a',
     effect: { kind: 'perk', perk: 'warSchooling', magnitude: 2 },
   },
@@ -255,6 +257,27 @@ const defs: CallingDef[] = [
     desc: 'The nearly-felled are already spoken for. Greatblows bite deeper into them.',
     color: '#8a5a4a',
     effect: { kind: 'perk', perk: 'greatExecute', magnitude: 0.3 },
+  },
+  // -------------------------------------------------------------- polearm
+  {
+    id: 'longarm',
+    skill: 'polearm',
+    unlockLevel: 20,
+    focusCost: 1,
+    name: 'Longarm',
+    desc: 'The point ends the argument a pace sooner. Polearm reach grows.',
+    color: '#9a8560',
+    effect: { kind: 'perk', perk: 'poleReach', magnitude: 0.35 },
+  },
+  {
+    id: 'impaler',
+    skill: 'polearm',
+    unlockLevel: 60,
+    focusCost: 2,
+    name: 'Impaler',
+    desc: 'Both hands answer as one. The war grip drives the point deeper.',
+    color: '#7a5a48',
+    effect: { kind: 'perk', perk: 'warGripBonus', magnitude: 0.1 },
   },
   // ----------------------------------------------------------- dualwield
   {

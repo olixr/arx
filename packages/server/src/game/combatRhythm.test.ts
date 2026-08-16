@@ -74,11 +74,11 @@ function mkRig(weaponId: string) {
     buffs: [] as unknown[],
     equipment: { weapon: { id: weaponId } } as Record<string, { id: string } | undefined>,
     gear: {
-      styleDmgMult: { onehand: 1, twohand: 1, arx: 1, archery: 1 },
+      styleDmgMult: { onehand: 1, twohand: 1, polearm: 1, arx: 1, archery: 1 },
       elementDmgMult: {},
       critPct: 0,
     },
-    perks: { finisherBonusMult: 1, greatReach: 0, offhandDelayTicks: 4, offhandFactorBonus: 0, snapShotMult: 1 },
+    perks: { finisherBonusMult: 1, greatReach: 0, poleReach: 0, warGripBonus: 0, offhandDelayTicks: 4, offhandFactorBonus: 0, snapShotMult: 1 },
     session: { sendJson: (m: Record<string, unknown>) => sent.push(m) },
     skills: {} as Record<string, number>,
     inventory: [] as Array<{ item: string; qty: number } | null>,

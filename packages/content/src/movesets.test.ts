@@ -151,6 +151,7 @@ test('CADENCE BANDS: every page holds within ±10% of its class default', () => 
   const baselines = {
     onehand: cycleRate(MOVESETS.sword_string.string),
     twohand: cycleRate(MOVESETS.great_string.string),
+    polearm: cycleRate(MOVESETS.line_of_lance.string),
     arx: cycleRate(MOVESETS.wand_rhythm.string),
   };
   for (const m of Object.values(MOVESETS)) {
