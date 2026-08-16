@@ -1066,6 +1066,67 @@ const defs: LootTableDef[] = [
     ],
   },
 
+  // --------------------------------------------- THE SAND AND THE ROAR
+  // The arena's purses (docs/arena-plan.md). THE CHEST IS THE PURSE:
+  // arena foes pay no ground loot, so these four banded tables are the
+  // sport's entire payout, priced against the fee and walked by the
+  // same flood-law gate as every chest.
+  {
+    id: 'arena_purse_t1',
+    desc: 'The small ring’s purse: coin over the stake, and a working fighter’s odds and ends.',
+    rarityBonus: 2,
+    entries: [
+      { item: 'coins', qty: [40, 90] },
+      { item: 'bread', qty: [1, 2], chance: 0.5 },
+      { item: 'arcane_dust', qty: [1, 3], chance: 0.4 },
+      { table: 'crypt_arms', mult: 6 },
+      { item: 'brass_key', chance: 0.08 },
+      { table: 'heirlooms' },
+    ],
+  },
+  {
+    id: 'arena_purse_t2',
+    desc: 'The card above the warm-ups: real coin, and the crowd throws things worth keeping.',
+    rarityBonus: 4,
+    entries: [
+      { item: 'coins', qty: [80, 160] },
+      { item: 'arcane_dust', qty: [2, 4], chance: 0.6 },
+      { item: 'crimson_essence', qty: [1, 2], chance: 0.3 },
+      { table: 'crypt_arms', mult: 8 },
+      { table: 'heirlooms', mult: 2 },
+      { item: 'brass_key', chance: 0.1 },
+    ],
+  },
+  {
+    id: 'arena_purse_t3',
+    desc: 'The Grand Ring’s standing purse: champion-grade steel has ended up in it before.',
+    rarityBonus: 6,
+    entries: [
+      { item: 'coins', qty: [140, 260] },
+      { item: 'arcane_dust', qty: [3, 6], chance: 0.7 },
+      { item: 'crimson_essence', qty: [1, 3], chance: 0.4 },
+      { item: 'radiant_essence', qty: [1, 2], chance: 0.25 },
+      { table: 'champion_armory', mult: 2 },
+      { table: 'heirlooms', mult: 2 },
+    ],
+  },
+  {
+    id: 'arena_purse_t4',
+    desc: 'The headline purse: what a crowned name is worth to the house that booked it.',
+    rarityBonus: 8,
+    entries: [
+      { item: 'coins', qty: [220, 420] },
+      { item: 'arcane_dust', qty: [4, 8], chance: 0.8 },
+      { item: 'crimson_essence', qty: [2, 4], chance: 0.45 },
+      { item: 'radiant_essence', qty: [1, 3], chance: 0.3 },
+      { item: 'astral_essence', qty: [1, 2], chance: 0.25 },
+      { table: 'champion_armory', mult: 3 },
+      { table: 'champion_capes' },
+      { table: 'heirlooms', mult: 3 },
+      { item: 'sigil_fallen_champion', chance: 0.1 },
+    ],
+  },
+
   // ------------------------------------------------------- wolf packs
   {
     id: 'wolf',

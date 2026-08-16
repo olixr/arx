@@ -7,6 +7,10 @@ import {
   AUTHORED_FRONTIER,
   AUTHORED_GEOGRAPHY,
   AUTHORED_STANCES,
+  AUTHORED_ARENAS,
+  replaceArenas,
+  validateArenas,
+  arenaValidateRefsNow,
   AUTHORED_GROWTH,
   AUTHORED_VOICE,
   AUTHORED_LOOT_TABLES,
@@ -421,6 +425,27 @@ const liveRoutineIds = new Set(rtnLoad.routines.map((r) => r.id));
         `[content] stances: ${res.def.tribes.length} tribes · ` +
           `${Object.keys(res.def.matrix).length} feuds` +
           (stancesRow.edited ? ' (tool-edited)' : ''),
+      );
+    }
+  }
+
+  // THE SAND AND THE ROAR (docs/arena-plan.md): the arena's venues,
+  // match cards, rank ladder, dials, and barks are one 'world' doc
+  // under the same law — the counter, the match engine, and the
+  // ladder all read ARENAS (through the pure helpers) at call time,
+  // so a Studio save re-writes the card before the next bell.
+  await seedContentDocs(db, 'arena', [{ id: 'world', doc: AUTHORED_ARENAS }]);
+  const arenaDocs = await loadContentDocs(db, 'arena');
+  const arenaRow = arenaDocs.find((d) => d.id === 'world');
+  if (arenaRow) {
+    const res = validateArenas(arenaRow.doc, arenaValidateRefsNow());
+    if (!res.ok) {
+      console.warn(`[content] DB arena doc invalid (${res.errors[0]}) — authored card stands`);
+    } else {
+      replaceArenas(res.def);
+      console.log(
+        `[content] arena: ${res.def.venues.length} venues · ${res.def.matches.length} cards · ` +
+          `ladder to ${res.def.ladder.maxRank}` + (arenaRow.edited ? ' (tool-edited)' : ''),
       );
     }
   }

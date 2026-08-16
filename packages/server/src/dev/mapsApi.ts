@@ -40,6 +40,11 @@ import {
   replaceGrowth,
   replaceStances,
   STANCES,
+  ARENAS,
+  AUTHORED_ARENAS,
+  replaceArenas,
+  validateArenas,
+  arenaValidateRefsNow,
   geographyWarnings,
   ROAD_SPAN_MAX,
   TRAIL_SPAN_MAX,
@@ -453,6 +458,48 @@ export function createMapsApi(
           const outcome = await revertContentDoc(db, 'stances', 'world', AUTHORED_STANCES);
           replaceStances(JSON.parse(JSON.stringify(AUTHORED_STANCES)) as typeof STANCES);
           console.log(`[content] stances doc ${outcome} — shipped stances stand`);
+          sendJson(res, 200, { ok: true, outcome });
+          return true;
+        }
+      }
+
+      // ------------------------------------------------ arena doc
+      // THE SAND AND THE ROAR is ONE document under the two-hash law
+      // (docs/arena-plan.md). Call-time reads + index rebuild in
+      // replaceArenas mean a save re-writes the counter's card before
+      // the next bell; the validator walks the LIVE registries
+      // (bestiary, tables, actors, geography) so a card can never
+      // name a foe that does not stand.
+      if (url.pathname === '/dev/content/arena') {
+        if (req.method === 'GET') {
+          const edited =
+            (await loadContentDocs(db, 'arena')).find((d) => d.id === 'world')?.edited ?? false;
+          sendJson(res, 200, { def: JSON.parse(JSON.stringify(ARENAS)), edited });
+          return true;
+        }
+        if (req.method === 'PUT') {
+          let raw: unknown;
+          try {
+            raw = JSON.parse(await readBody(req));
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          const result = validateArenas(raw, arenaValidateRefsNow());
+          if (!result.ok) {
+            sendJson(res, 400, { error: result.errors.join('; ') });
+            return true;
+          }
+          await importContentDoc(db, 'arena', 'world', result.def);
+          replaceArenas(result.def);
+          console.log('[content] arena doc saved + live (no reload needed — call-time reads)');
+          sendJson(res, 200, { ok: true, warnings: result.warnings });
+          return true;
+        }
+        if (req.method === 'DELETE') {
+          const outcome = await revertContentDoc(db, 'arena', 'world', AUTHORED_ARENAS);
+          replaceArenas(JSON.parse(JSON.stringify(AUTHORED_ARENAS)) as typeof ARENAS);
+          console.log(`[content] arena doc ${outcome} — the shipped card stands`);
           sendJson(res, 200, { ok: true, outcome });
           return true;
         }
