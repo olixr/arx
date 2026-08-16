@@ -129,7 +129,9 @@ export function buildDawnmead(): ZoneDef {
   for (let y = 37; y <= 43; y++) b.set(30, y, Tile.Hedge);
   b.setDetail(31, 38, Detail.Flowers).setDetail(31, 42, Detail.Flowers);
   // Her pennant line flies at the porch front, facing the stones —
-  // the colors she sews for every village day. West of the step so
+  // the VILLAGE'S ONE LINE, the colors she sews for every village
+  // day (a festival prop repeated stops being an occasion, so nobody
+  // else flies one). West of the step so
   // the wakers' walk stays clear (a line prop is WIDE: give it clear
   // air east and west — a wall column swallows an end pole).
   b.set(34, 46, Tile.PennantLine);
@@ -146,8 +148,9 @@ export function buildDawnmead(): ZoneDef {
   // wall stones into a bunker. Same world tile the worldgen probe
   // pins at (-65,44).
   b.set(63, 44, Tile.Well);
-  b.set(59, 44, Tile.Bench).set(70, 44, Tile.Bench);
-  b.set(57, 43, Tile.FlowerBox).set(75, 43, Tile.FlowerBox);
+  // One bench on the east half; the west half is Rowan's. Two seats
+  // in talking distance is company — three in a row is a waiting room.
+  b.set(70, 44, Tile.Bench);
   b.sign(68, 43, 'DAWNMEAD', ['The village that raises wakers.', 'Learn your hands, then the road.'], Tile.Signpost);
   b.setDetail(60, 46, Detail.Pebbles).setDetail(72, 44, Detail.Pebbles);
   b.set(56, 46, Tile.LampPost).set(76, 46, Tile.LampPost);
@@ -163,7 +166,11 @@ export function buildDawnmead(): ZoneDef {
   // Rowan's seat: the stone bench the village set when the old keeper
   // took his own advice and walked east. Nobody says it's his. It is.
   b.set(58, 45, Tile.StoneBench);
-  b.set(61, 46, Tile.StreetPlanter).set(67, 46, Tile.StreetPlanter);
+  // Two planters mark the lane approaches on the south edge — the
+  // rhythm reads lamp, planter, open stone, planter, lamp. (The east
+  // one keeps clear of Wick's standing post at (66,46): a child's
+  // spot on the green is a placement too.)
+  b.set(61, 46, Tile.StreetPlanter).set(71, 46, Tile.StreetPlanter);
 
   // ---------------------------------------------------------------
   // THE FIVE STONES — the inn, named for the only thing every guest
@@ -210,14 +217,11 @@ export function buildDawnmead(): ZoneDef {
   b.set(54, 41, Tile.Dirt).set(55, 41, Tile.Dirt); // the worn threshold
   b.set(47, 41, Tile.LampPost);
   // An inn that works: the brewer's drop on the west service side
-  // (never out back — the wall-shadow law), welcome colors flying at
-  // the same shoulder — one clear tile off the wall so both poles
-  // breathe — a rail for whatever a traveler rides in on, and town
-  // color at the door.
+  // (never out back — the wall-shadow law) and a rail for whatever a
+  // traveler rides in on. The door front carries sign, lamp, and
+  // rail and nothing else — an inn welcomes with clear ground.
   b.set(46, 32, Tile.BarrelStack);
-  b.set(45, 34, Tile.PennantLine);
   b.set(52, 41, Tile.HitchingPost);
-  b.set(56, 41, Tile.StreetPlanter);
 
   // ---------------------------------------------------------------
   // THE FARMSTEAD — Brammel's family and Sorrel the drover: the
@@ -246,12 +250,11 @@ export function buildDawnmead(): ZoneDef {
   b.setDetail(74, 14, Detail.Doormat);
   b.setDetail(71, 15, trellisDetail(0)); // ivy takes working houses
   // A farm mid-chore: the cart parked off the walk between house and
-  // coop, feed sacks at the coop rail, and the twins' pennant line at
-  // the west gable where the morning sun lands (wall-shadow law) —
-  // strung the day of the harvest fair and never taken down.
+  // coop, feed sacks at the coop rail. (Wren's porch line is the
+  // village's ONE pennant line — she sews the colors; nobody else
+  // flies them on an ordinary day.)
   b.set(81, 16, Tile.HandCart);
   b.set(81, 10, Tile.GrainSacks);
-  b.set(68, 10, Tile.PennantLine);
   // The coop: fenced dirt, straw, west gate standing open. The hens
   // roam it and the long grass — the egg errand is honest work.
   b.fillRect(83, 9, 5, 4, Tile.Dirt);
@@ -263,7 +266,7 @@ export function buildDawnmead(): ZoneDef {
   // against winter, the west gate standing open.
   b.outlineRect(68, 18, 19, 13, Tile.Fence);
   b.set(68, 24, Tile.FenceGate);
-  b.set(72, 20, Tile.Basin);
+  b.set(72, 20, Tile.WaterTrough); // coopered and staved — a real trough, not a basin
   b.set(83, 20, Tile.HayBale).set(84, 21, Tile.HayBale);
   b.setDetail(75, 22, Detail.Straw).setDetail(80, 27, Detail.Straw);
   b.setDetail(71, 26, Detail.Straw);
@@ -306,7 +309,6 @@ export function buildDawnmead(): ZoneDef {
   b.set(77, 41, Tile.Stump); // the log that feeds the sawhorse
   b.set(78, 41, Tile.LumberRack); // stump to rack to sawhorse — timber flows east
   b.set(86, 41, Tile.CrateGoods);
-  b.set(77, 45, Tile.Barrel);
   // The forge corner: one furnace, one anvil, facing the lane — and
   // the working triangle between them. Quench beside the anvil,
   // bellows at the fire's shoulder, the ingot rack showing every
@@ -391,7 +393,6 @@ export function buildDawnmead(): ZoneDef {
   b.set(47, 56, Tile.WeaponRack);
   b.set(48, 56, Tile.Grindstone); // the yard keeps its own edges
   b.set(60, 56, Tile.ToolRack);
-  b.set(46, 64, Tile.Barrel);
   b.set(61, 64, Tile.Bench);
   b.setDetail(51, 60, Detail.Straw).setDetail(56, 62, Detail.Straw);
   b.setDetail(48, 63, Detail.Pebbles);
@@ -546,7 +547,7 @@ export function buildDawnmead(): ZoneDef {
   // THE BERRY BANKS — the foraging lesson, on the near bank south of
   // the bridge where Berrit sends you: berries, the tall fibre
   // plants, and sageroot, each standing in open sun.
-  b.set(86, 53, Tile.BerryBush);
+  b.set(87, 62, Tile.BerryBush);
   b.set(88, 59, Tile.BerryBush);
   b.set(85, 64, Tile.BerryBush);
   b.set(87, 66, Tile.BerryBush);
