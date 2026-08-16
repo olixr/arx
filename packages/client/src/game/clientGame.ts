@@ -3242,6 +3242,12 @@ export class ClientGame {
     this.conn?.send({ t: 'stable', op, slot });
   }
 
+  /** THE THREE COLLARS: set a stall's slotted arts whole — the
+   *  server re-proves repertoire, budget, and the fight gate aloud. */
+  petArts(slot: number, arts: string[]): void {
+    this.conn?.send({ t: 'petarts', slot, arts });
+  }
+
   /** Advance the current dialogue beat (the server owns the walk). */
   dialogueAdvance(): void {
     this.conn?.send({ t: 'dlgadv' });

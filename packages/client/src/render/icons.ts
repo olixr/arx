@@ -6896,9 +6896,38 @@ type DockGlyphPainter = (c: CanvasRenderingContext2D) => void;
 /** The one ink every dock sigil is engraved in. */
 const GLYPH_INK = '#d8c08c';
 
-export type DockGlyph = 'pack' | 'skills' | 'arts' | 'handiwork' | 'build' | 'sound' | 'social' | 'attack' | 'map' | 'quest' | 'rep' | 'keys';
+export type DockGlyph = 'pack' | 'skills' | 'arts' | 'handiwork' | 'build' | 'sound' | 'social' | 'attack' | 'map' | 'quest' | 'rep' | 'keys' | 'companion';
 
 const DOCK_GLYPHS: Record<DockGlyph, DockGlyphPainter> = {
+  // The companion's hall: a pawprint over the collar's own band —
+  // the friend at heel, worn at the belt like everything you keep.
+  companion: (c) => {
+    c.lineWidth = 0.06;
+    // The main pad: a wide bean, printed.
+    c.beginPath();
+    c.ellipse(0.5, 0.62, 0.17, 0.13, 0, 0, Math.PI * 2);
+    c.stroke();
+    // Three toes over it, splayed.
+    for (const [tx, ty] of [
+      [0.3, 0.36],
+      [0.5, 0.28],
+      [0.7, 0.36],
+    ] as const) {
+      c.beginPath();
+      c.ellipse(tx, ty, 0.062, 0.075, 0, 0, Math.PI * 2);
+      c.stroke();
+    }
+    // The collar band under the print, brass tag nick at center.
+    c.beginPath();
+    c.moveTo(0.18, 0.88);
+    c.lineTo(0.44, 0.88);
+    c.moveTo(0.56, 0.88);
+    c.lineTo(0.82, 0.88);
+    c.stroke();
+    c.beginPath();
+    c.arc(0.5, 0.88, 0.05, 0, Math.PI * 2);
+    c.stroke();
+  },
   // The key ring: an iron carry-ring with two rift-keys hung from it,
   // bows through the band, teeth splayed — the doors you own, worn at
   // the belt.

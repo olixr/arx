@@ -1,0 +1,603 @@
+/**
+ * THE COMPANION'S HALL (docs/pet-arts-plan.md LAW 8) — the pet room.
+ *
+ * Anatomy (five mounts): THE STALL RAIL across the head; THE STANDING
+ * down the left (portrait, name, THE ROPE, the instruments, THE
+ * JOURNEY); THE REPERTOIRE ribbon and THE READING through the middle
+ * with the proving ground under the reading; THE THREE COLLARS and
+ * the focus-coin ledger across the foot. Zero scrollable columns —
+ * every measure is an instrument, never a card (the Proving Hall's
+ * own laws, worn by a warmer room: suede, straw, collar-brass).
+ */
+
+.screen-hall {
+  width: min(76rem, 94vw);
+  height: min(54rem, 92vh);
+  display: grid;
+  grid-template-rows: repeat(3, auto) minmax(0, 1fr) auto;
+  gap: var(--sp-3);
+}
+.screen-hall > .panel-hint {
+  display: none; /* the room teaches itself in place */
+}
+
+/* ------------------------------------------------- THE STALL RAIL */
+#hall-rail {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--sunk);
+  border-radius: var(--r-plate);
+  box-shadow: inset 0 0.125rem 0.25rem rgba(0, 0, 0, 0.4);
+}
+.hall-stop {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-1);
+  background: transparent;
+  border: var(--hairline) solid transparent;
+  border-radius: 2rem;
+  cursor: pointer;
+  color: var(--parchment-dim);
+}
+.hall-stop.active {
+  background: var(--raise);
+  border-color: rgba(201, 164, 94, 0.45);
+  color: var(--parchment);
+  box-shadow: 0 0.125rem 0.375rem rgba(0, 0, 0, 0.35);
+}
+.hall-stop-ring img {
+  width: 78%;
+  height: 78%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.hall-stop-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+}
+.hall-stop-name {
+  font-family: var(--serif);
+  font-size: var(--t-label);
+  text-shadow: var(--punch-small);
+}
+.hall-stop-sub {
+  font-size: var(--t-whisper);
+  color: var(--parchment-dim);
+}
+.hall-state-heel,
+.hall-state-trailing {
+  color: var(--bond);
+}
+.hall-state-downed {
+  color: #e08a7a;
+}
+.hall-state-resting {
+  color: #8fb8d9;
+}
+.hall-stalls-link {
+  margin-left: auto;
+}
+.hall-empty {
+  font-family: var(--serif);
+  font-size: var(--t-lead);
+  color: var(--parchment-dim);
+  padding: var(--sp-6);
+  text-align: center;
+}
+
+/* -------------------------------------------------- the main floor */
+.hall-main {
+  display: grid;
+  grid-template-columns: 24.5rem minmax(0, 1fr) 23rem;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    'standing shelf shelf'
+    'standing reading ground';
+  gap: var(--sp-3);
+  min-height: 0;
+}
+#hall-standing {
+  grid-area: standing;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  background: var(--raise);
+  border-radius: var(--r-case);
+  box-shadow:
+    inset 0 0.0625rem 0 rgba(255, 244, 214, 0.07),
+    0 0.25rem 0.625rem rgba(0, 0, 0, 0.35);
+  min-height: 0;
+}
+#hall-shelf {
+  grid-area: shelf;
+  min-width: 0;
+}
+#hall-reading {
+  grid-area: reading;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  background: var(--raise);
+  border-radius: var(--r-case);
+  min-height: 0;
+}
+#hall-ground {
+  grid-area: ground;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+#hall-ground.hidden {
+  visibility: hidden;
+}
+
+/* ---------------------------------------------------- THE STANDING */
+.hall-head {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: center;
+}
+.hall-portrait-well {
+  flex: none;
+}
+.hall-portrait-ring img {
+  width: 82%;
+  height: 82%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.hall-names {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.hall-name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.hall-name {
+  font-family: var(--serif);
+  font-size: var(--t-title);
+  color: #f0cf8a;
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hall-lvl {
+  flex: none;
+  min-width: 1.5rem;
+  padding: 0.2rem 0.35rem;
+  clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  background: var(--gold);
+  color: var(--brass-ink);
+  font-size: var(--t-whisper);
+  font-weight: 700;
+  text-align: center;
+}
+.hall-kind {
+  font-size: var(--t-whisper);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--parchment-dim);
+}
+.hall-tale {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: var(--t-label);
+  color: var(--parchment-dim);
+}
+
+/* THE ROPE — the bond drawn as a braided cord with rank knots. */
+.hall-rope-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.hall-rope-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.hall-rope-label {
+  font-size: var(--t-whisper);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--parchment-dim);
+}
+.hall-rope-rank {
+  font-family: var(--serif);
+  font-size: var(--t-label);
+  color: var(--bond);
+  text-shadow: var(--punch-small);
+}
+.hall-rope {
+  position: relative;
+  height: 0.625rem;
+  border-radius: 0.3125rem;
+  background: var(--sunk);
+  box-shadow: inset 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.5);
+}
+.hall-rope-fill {
+  position: absolute;
+  inset: 0.125rem auto 0.125rem 0.125rem;
+  border-radius: 0.25rem;
+  /* The braid: two bond greens laid in alternating strands. */
+  background: repeating-linear-gradient(
+    -55deg,
+    var(--bond) 0 0.375rem,
+    var(--bond-deep) 0.375rem 0.75rem
+  );
+  transition: width 0.5s ease;
+}
+.hall-knot {
+  position: absolute;
+  top: 50%;
+  width: 0.8125rem;
+  height: 0.8125rem;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: var(--sunk);
+  border: var(--rule) solid var(--iron-edge, #4a453c);
+  border-radius: 0.125rem;
+}
+.hall-knot.tied {
+  background: var(--bond-deep);
+  border-color: var(--bond);
+  box-shadow: 0 0 0.375rem rgba(159, 211, 154, 0.5);
+}
+.hall-rope-note {
+  font-size: var(--t-whisper);
+  color: var(--parchment-dim);
+}
+
+/* The instruments — a bar is a COMPARISON across the whole roster. */
+.hall-measures {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.hall-measure {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.hall-m-label {
+  font-size: var(--t-whisper);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--parchment-dim);
+}
+.hall-m-channel {
+  height: 0.5625rem;
+  border-radius: 0.28rem;
+  background: var(--sunk);
+  box-shadow: inset 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  display: block;
+}
+.hall-m-fill {
+  display: block;
+  height: 100%;
+  border-radius: 0.28rem 0 0 0.28rem;
+  background: linear-gradient(180deg, var(--m-tone), color-mix(in srgb, var(--m-tone) 55%, #000));
+  transition: width 0.4s ease;
+}
+.hall-m-value {
+  font-size: var(--t-whisper);
+  color: var(--parchment-dim);
+  white-space: nowrap;
+}
+
+/* THE JOURNEY — written, never tabulated. */
+.hall-journey {
+  margin-top: auto;
+  padding-top: var(--sp-2);
+  border-top: var(--hairline) solid rgba(255, 244, 214, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.hall-journey-line {
+  font-family: var(--serif);
+  font-size: var(--t-label);
+  color: var(--parchment-dim);
+}
+.hall-journey-line:first-child {
+  color: var(--parchment);
+}
+
+/* -------------------------------------------------- THE REPERTOIRE */
+.hall-shelf-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-1) var(--sp-1);
+}
+.hall-shelf-title {
+  font-family: var(--serif);
+  font-size: var(--t-lead);
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+}
+.hall-shelf-sub {
+  font-size: var(--t-whisper);
+  color: var(--parchment-dim);
+}
+.hall-track {
+  display: flex;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  background: var(--sunk);
+  border-radius: var(--r-plate);
+  box-shadow: inset 0 0.125rem 0.3rem rgba(0, 0, 0, 0.45);
+}
+.hall-plate {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: var(--sp-2) var(--sp-1);
+  background: var(--raise);
+  border: var(--hairline) solid rgba(255, 244, 214, 0.1);
+  border-radius: var(--r-plate);
+  cursor: pointer;
+  color: var(--parchment);
+}
+.hall-plate.selected {
+  border-color: rgba(201, 164, 94, 0.7);
+  box-shadow: 0 0 0.5rem rgba(201, 164, 94, 0.25);
+}
+.hall-plate.collared {
+  border-color: var(--bond-deep);
+  background: color-mix(in srgb, var(--raise) 88%, var(--bond-deep));
+}
+.hall-plate.signature .hall-plate-name {
+  color: #f0cf8a;
+}
+.hall-plate-well {
+  position: relative;
+  width: 3.4rem;
+  height: 3.4rem;
+  display: grid;
+  place-items: center;
+  background: var(--well-bed, var(--sunk));
+  border-radius: var(--r-chip);
+  box-shadow: inset 0 0.0625rem 0.25rem rgba(0, 0, 0, 0.5);
+}
+.hall-plate-well img {
+  width: 2.9rem;
+  height: 2.9rem;
+}
+.hall-passive-seal {
+  width: 2rem;
+  height: 2rem;
+  clip-path: polygon(50% 4%, 90% 30%, 78% 88%, 22% 88%, 10% 30%);
+  background: linear-gradient(180deg, #b89b6a, #6e5433);
+  box-shadow: inset 0 0.0625rem 0 rgba(255, 244, 214, 0.35);
+}
+.hall-passive-seal.lg {
+  width: 2.6rem;
+  height: 2.6rem;
+}
+.hall-pips {
+  position: absolute;
+  right: 0.2rem;
+  bottom: 0.2rem;
+  display: flex;
+  gap: 0.15rem;
+}
+.hall-pips.read {
+  position: static;
+}
+.hall-pip {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow:
+    inset 0 -0.0625rem 0.0625rem rgba(0, 0, 0, 0.45),
+    0 0 0.1875rem rgba(0, 0, 0, 0.6);
+}
+.hall-plate-name {
+  font-size: var(--t-whisper);
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.15;
+}
+.hall-plate-kind {
+  font-size: var(--t-whisper);
+  color: var(--parchment-dim);
+}
+.hall-plate.collared .hall-plate-kind {
+  color: var(--bond);
+}
+
+/* ----------------------------------------------------- THE READING */
+.hall-read-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.hall-read-well {
+  flex: none;
+  width: 4rem;
+  height: 4rem;
+  display: grid;
+  place-items: center;
+  background: var(--well-bed, var(--sunk));
+  border-radius: var(--r-chip);
+  box-shadow: inset 0 0.0625rem 0.25rem rgba(0, 0, 0, 0.5);
+}
+.hall-read-well img {
+  width: 3.4rem;
+  height: 3.4rem;
+}
+.hall-read-names {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.hall-read-name {
+  font-family: var(--serif);
+  font-size: var(--t-lead);
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+}
+.hall-read-price {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--t-whisper);
+  color: var(--parchment-dim);
+}
+.hall-read-tale {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: var(--t-label);
+  color: var(--parchment-dim);
+}
+.hall-read-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.hall-chip {
+  padding: 0.15rem 0.5rem;
+  font-size: var(--t-whisper);
+  color: var(--parchment);
+  background: var(--sunk);
+  border: var(--hairline) solid rgba(255, 244, 214, 0.14);
+  clip-path: polygon(0.35rem 0, calc(100% - 0.35rem) 0, 100% 50%, calc(100% - 0.35rem) 100%, 0.35rem 100%, 0 50%);
+}
+.hall-read-acts {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.hall-read-acts .act-btn.refused {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.hall-refusal {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: var(--t-whisper);
+  color: #e0b490;
+}
+
+/* ------------------------------------------- THE THREE COLLARS */
+#hall-collars {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--sunk);
+  border-radius: var(--r-plate);
+  box-shadow: inset 0 0.125rem 0.25rem rgba(0, 0, 0, 0.4);
+}
+.hall-sockets {
+  display: flex;
+  gap: var(--sp-3);
+}
+.hall-socket {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 11rem;
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--raise);
+  border: var(--rule) dashed rgba(255, 244, 214, 0.18);
+  border-radius: 2rem;
+  cursor: pointer;
+  color: var(--parchment);
+}
+.hall-socket.held {
+  border-style: solid;
+  border-color: var(--bond-deep);
+}
+.hall-socket-well {
+  width: 2.4rem;
+  height: 2.4rem;
+  display: grid;
+  place-items: center;
+  background: var(--well-bed, var(--sunk));
+  border-radius: 50%;
+  box-shadow: inset 0 0.0625rem 0.25rem rgba(0, 0, 0, 0.5);
+}
+.hall-socket-well img {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+}
+.hall-socket-name {
+  font-size: var(--t-label);
+  font-weight: 600;
+}
+.hall-socket-empty {
+  font-size: var(--t-whisper);
+  color: var(--parchment-dim);
+  font-style: italic;
+  padding: 0.55rem 0;
+}
+.hall-ledger {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+.hall-coins {
+  display: flex;
+  gap: 0.3rem;
+}
+.hall-coin {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: var(--sunk);
+  border: var(--hairline) solid rgba(255, 244, 214, 0.2);
+  box-shadow: inset 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.5);
+}
+.hall-coin.spent {
+  background: radial-gradient(circle at 35% 30%, #f4e8c8, var(--gold) 55%, #8a6f33);
+  border-color: #8a6f33;
+  box-shadow:
+    inset 0 -0.0625rem 0.0625rem rgba(0, 0, 0, 0.4),
+    0 0 0.25rem rgba(232, 192, 76, 0.35);
+}
+.hall-ledger-word {
+  font-size: var(--t-whisper);
+  color: var(--parchment);
+}
+.hall-ledger-next {
+  font-size: var(--t-whisper);
+  color: var(--parchment-dim);
+  font-style: italic;
+}
+
+/* Motion, behind the one gate. */
+body:not(.no-ui-motion) .hall-coin.spent {
+  animation: hall-coin-set 0.35s ease;
+}
+@keyframes hall-coin-set {
+  from {
+    transform: scale(1.5);
+  }
+  to {
+    transform: scale(1);
+  }
+}

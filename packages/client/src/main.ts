@@ -17,6 +17,7 @@ import { SwapSlot } from './ui/swapSlot.js';
 import { BeltSlot, resolveBelt, beltPin } from './ui/beltSlot.js';
 import { BossBanner } from './ui/bossBanner.js';
 import { CompanionPlaque } from './ui/companionPlaque.js';
+import { CompanionHall } from './ui/companionHall.js';
 import { Panels, SKILL_FACE, SKILL_STORY } from './ui/panels.js';
 import { showLevelUp } from './ui/levelToast.js';
 import { StationPanels, craftStationFace } from './ui/stationPanels.js';
@@ -105,6 +106,7 @@ const DOCK_BUTTONS = [
   ['btn-inventory', 'pack', 'Pack', 'screenPack', 'inv'],
   ['btn-skills', 'skills', 'Skills', 'screenSkills', 'skills'],
   ['btn-arts', 'arts', 'Techniques', 'screenArts', 'arts'],
+  ['btn-companions', 'companion', 'Companions', 'screenCompanions', 'companions'],
   ['btn-craft', 'handiwork', 'Handiwork', 'screenCraft', 'craft'],
   ['btn-build', 'build', 'Build', 'screenBuild', 'build'],
   ['btn-social', 'social', 'Social', 'screenSocial', 'social'],
@@ -1002,11 +1004,12 @@ function closeAllUi(): void {
   questLog.close();
   repScreen.close();
   keyRingPanel.close();
+  companionHall.close();
   signHud.close();
 }
 
 function toggleScreen(
-  which: 'inv' | 'skills' | 'arts' | 'craft' | 'build' | 'audio' | 'loot' | 'social' | 'map' | 'quests' | 'rep' | 'keys',
+  which: 'inv' | 'skills' | 'arts' | 'craft' | 'build' | 'audio' | 'loot' | 'social' | 'map' | 'quests' | 'rep' | 'keys' | 'companions',
 ): void {
   // A conversation owns the stage: no screen may open over it, from
   // any device — hotkeys, dock clicks, and pad shortcuts all pass
@@ -1035,7 +1038,9 @@ function toggleScreen(
                         ? repScreen.isOpen
                         : which === 'keys'
                           ? keyRingPanel.isOpen
-                          : lootPanel.isOpen;
+                          : which === 'companions'
+                            ? companionHall.isOpen
+                            : lootPanel.isOpen;
   closeAllUi();
   if (wasOpen) return;
   switch (which) {
@@ -1072,6 +1077,9 @@ function toggleScreen(
       break;
     case 'keys':
       keyRingPanel.open();
+      break;
+    case 'companions':
+      companionHall.open(game);
       break;
     case 'loot':
       if (game.nearbyLoot(2.4).length > 0) lootPanel.open();
@@ -1152,6 +1160,7 @@ function screenAction(id: ActionId): void {
     screenQuests: 'quests',
     screenRep: 'rep',
     screenKeys: 'keys',
+    screenCompanions: 'companions',
     screenSettings: 'audio',
     screenLoot: 'loot',
   };
@@ -1901,6 +1910,7 @@ game.onPet = () => {
     if (!game.ownPets.some((p) => p.slot === slot)) petStates.delete(slot);
   }
   stationPanels.refreshStable(game.ownPets);
+  companionHall.refresh(game);
 };
 renderer.signHasText = (tx, ty) => {
   const sign = game.signAt(tx, ty);
@@ -1941,6 +1951,11 @@ dressPanel(el('bank-panel'), {
   icon: itemIconUrl('coins', 34),
   hint: 'Tap pack items to deposit. Choose a socket here to take back.',
   onClose: () => stationPanels.closeAll(),
+});
+dressPanel(el('companion-panel'), {
+  icon: dockGlyphUrl('companion', 34),
+  hint: 'The friend told whole. Read its words and choose the three it holds in mind.',
+  onClose: () => companionHall.close(),
 });
 dressPanel(el('stable-panel'), {
   icon: buildableIconUrl('beast_pen', 34) ?? itemIconUrl('egg', 34),
@@ -1992,6 +2007,8 @@ const swapWell = new SwapSlot(() => input.queueSwap());
 // THE DREAD BANNER: the crowned fight, read from meta + snapshots.
 const bossBanner = new BossBanner();
 const companionPlaque = new CompanionPlaque();
+const companionHall = new CompanionHall();
+companionHall.onArts = (slot, arts) => game.petArts(slot, arts);
 companionPlaque.onPat = () => {
   const petEid = game.ownPetEid();
   if (petEid !== null) game.interactNpc(petEid);
@@ -2814,6 +2831,7 @@ const KB_SCREEN_ACTIONS: readonly ActionId[] = [
   'screenQuests',
   'screenRep',
   'screenKeys',
+  'screenCompanions',
   'screenMap',
   'screenSettings',
   'screenLoot',
