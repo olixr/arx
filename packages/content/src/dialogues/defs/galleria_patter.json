@@ -1,0 +1,34 @@
+{
+  "id": "galleria_patter",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "galleria_trader" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "galleria_patter__hub",
+      "text": "Upper market, friend. Upper prices, upper goods, and the view thrown in free because I cannot stop you looking at it.",
+      "choices": [
+        { "text": "Show me the stall.", "next": "browse" },
+        { "text": "What moves through here?", "next": "moves" },
+        { "text": "Just passing.", "next": "off" }
+      ]
+    },
+    {
+      "id": "browse",
+      "voice": "galleria_patter__browse",
+      "text": "Silver rings, mountain cloth, honest scales. The scale sits on my side of the stall, but Runa stamps it twice a year, so it is more honest than I am, and I am reasonably honest.",
+      "hooks": [{ "kind": "shop", "shop": "galleria_stalls" }]
+    },
+    {
+      "id": "moves",
+      "voice": "galleria_patter__moves",
+      "text": "Everything the mine digs and the road hauls crosses this gallery eventually. Ore down, silverwork up, wool in, cloth out. Stand here a season and you can read the whole kingdom's week off what is on the tables. Prices are the truest gossip there is.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "galleria_patter__off",
+      "text": "The looking is free. The wanting catches up with everyone."
+    }
+  ]
+}

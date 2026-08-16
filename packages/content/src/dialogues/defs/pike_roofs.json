@@ -1,0 +1,34 @@
+{
+  "id": "pike_roofs",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "lookout_pike" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "pike_roofs__hub",
+      "text": "One whistle. That's you. Friendly. Don't make me revise it.",
+      "choices": [
+        { "text": "What do you actually do up here?", "next": "watch" },
+        { "text": "What have you seen today?", "next": "seen" },
+        { "text": "I'll leave you to the view.", "next": "off" }
+      ]
+    },
+    {
+      "id": "watch",
+      "voice": "pike_roofs__watch",
+      "text": "I whittle. The knife never finishes anything. The view finishes everything. Roofs don't ask questions, roofs just see, and what they see comes down to Mab tidier than the watch report and two days sooner. Officially there's nobody on the roofs. I'm very good at being nobody.",
+      "next": "hub"
+    },
+    {
+      "id": "seen",
+      "voice": "pike_roofs__seen",
+      "text": "A guard who skips the fourth step on the postern stair. A carter who weighs light when Runa's shutters are closed. You, coming up the alley. Everyone comes up the alley the first time. The interesting ones leave by the ledge. No pressure.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "pike_roofs__off",
+      "text": "Ledge is that way. Alley's that way. Your call. I'll be watching either way, no offense."
+    }
+  ]
+}

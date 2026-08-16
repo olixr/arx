@@ -1,0 +1,34 @@
+{
+  "id": "joss_rounds",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "outrider_joss" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "joss_rounds__hub",
+      "text": "Outrider Joss, Waykeepers. The grey and I are between rounds, so you have until she finishes her feed.",
+      "choices": [
+        { "text": "How's the High Road?", "next": "road" },
+        { "text": "The watch and the Waykeepers split the work?", "next": "split" },
+        { "text": "Ride safe, Joss.", "next": "off" }
+      ]
+    },
+    {
+      "id": "road",
+      "voice": "joss_rounds__road",
+      "text": "Open to the low country. Two bridges, one bad shoulder past the second lamp, and the shoulder is worse in thaw than it looks. Keep your lamp trimmed and give the down-caravans the inside of the bend. They are heavier than you and the edge does not negotiate.",
+      "next": "hub"
+    },
+    {
+      "id": "split",
+      "voice": "joss_rounds__split",
+      "text": "The watch holds the wall, we hold the road. Longer post, ours, and the grey would tell you the harder one, but she is biased and so am I. If you want a horse of your own, ask Osa at the caravanserai. She does the shoeing and the judging. I just do the sitting.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "joss_rounds__off",
+      "text": "Count out, count back. The road keeps its own roll, and I like it balanced."
+    }
+  ]
+}

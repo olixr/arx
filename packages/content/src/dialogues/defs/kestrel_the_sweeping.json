@@ -1,0 +1,25 @@
+{
+  "id": "kestrel_the_sweeping",
+  "start": "word",
+  "requires": ["quest:the_arrangement:ready"],
+  "bindings": [{ "kind": "actor", "target": "marshal_kestrel", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "word",
+      "voice": "kestrel_the_sweeping__word",
+      "text": "Report, then. You have the look of somebody carrying one.",
+      "next": "swept"
+    },
+    {
+      "id": "swept",
+      "voice": "kestrel_the_sweeping__swept",
+      "text": "The sweeping is done. Say it plainer. So. Twenty years of my riders walking past that sealed door, and the floor behind it was clean the whole time, and now the party responsible sends me word like a neighbor returning a borrowed pot.",
+      "next": "real"
+    },
+    {
+      "id": "real",
+      "voice": "kestrel_the_sweeping__real",
+      "text": "Fine. Noted in the roll, unattributed, the way they like it. Go and finish your round. And courier: I am not pleased about being pleased. Record that too, if your party keeps records, which apparently they do not, which is the single most frightening thing about them."
+    }
+  ]
+}

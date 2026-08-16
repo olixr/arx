@@ -1,0 +1,19 @@
+{
+  "id": "runa_the_stamp",
+  "start": "vouch",
+  "requires": ["quest:the_silver_setting:stage:the_silver"],
+  "bindings": [{ "kind": "actor", "target": "assayer_runa", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "vouch",
+      "voice": "runa_the_stamp__vouch",
+      "text": "Vigdis sent you. She wants four bars, true-smelted, and my word that you are worth the metal. State nothing. Put your hands on the counter.",
+      "next": "weigh"
+    },
+    {
+      "id": "weigh",
+      "voice": "runa_the_stamp__weigh",
+      "text": "Calluses in the right places. No ring marks where rings hide things. Good. My stamp vouches for metal, not people, but Vigdis knows my shorthand: I did not refuse. Bring the bars past my counter on your way and I will weigh them free. Silver for that woman's bench travels stamped or it does not travel."
+    }
+  ]
+}

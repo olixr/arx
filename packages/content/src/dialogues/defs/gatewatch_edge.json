@@ -1,0 +1,45 @@
+{
+  "id": "gatewatch_edge",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "silverfall_watch" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "gatewatch_edge__hub",
+      "text": "Silverfall Watch. Welcome to the capital. Mind the edge, and yes, that is the official greeting.",
+      "choices": [
+        { "text": "Why does everyone say mind the edge?", "next": "edge" },
+        { "text": "Who keeps order up here?", "next": "order" },
+        {
+          "text": "Anything on the mountain the wall can't reach?",
+          "next": "mark",
+          "requires": ["world:threat_near"]
+        },
+        { "text": "Steady watch.", "next": "off" }
+      ]
+    },
+    {
+      "id": "edge",
+      "voice": "gatewatch_edge__edge",
+      "text": "Because the city is four shelves cut into a mountainside and the mountain does not catch anybody. We repaint the sign oftener than we would like. It is not a figure of speech, it is the town's one law that enforces itself, and it has never once needed the watch's help.",
+      "next": "hub"
+    },
+    {
+      "id": "order",
+      "voice": "gatewatch_edge__order",
+      "text": "The watch holds the wall, the Waykeepers hold the road, and between us the lamp stays lit. Inside the gates, trouble answers to the Warden. On the road, to the Marshal. On the roofs... ask somebody else about the roofs. Officially there is nobody on the roofs.",
+      "next": "hub"
+    },
+    {
+      "id": "mark",
+      "voice": "gatewatch_edge__mark",
+      "text": "Since you ask it armed. Something is camped on the climb that has no letter of passage, and the wall does not walk. There is your mark. The Warden hears whose boots went.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "off",
+      "voice": "gatewatch_edge__off",
+      "text": "Mind the edge. You will hear it again. It keeps being true."
+    }
+  ]
+}

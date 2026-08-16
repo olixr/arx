@@ -1,0 +1,25 @@
+{
+  "id": "odele_the_tithe",
+  "start": "ask",
+  "requires": ["quest:the_arrangement:stage:the_marshal"],
+  "bindings": [{ "kind": "actor", "target": "bursar_odele", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "ask",
+      "voice": "odele_the_tithe__ask",
+      "text": "You are asking on behalf of a party I will not name in this building whether the tithe balances. An unusual courier. Very well. In figures, since figures are what was asked for.",
+      "next": "answer"
+    },
+    {
+      "id": "answer",
+      "voice": "odele_the_tithe__answer",
+      "text": "It balances. To the grain, every quarter, twenty years, including the years nobody official was watching. Tell your party the ledger has no opinion of them, which from a ledger is high praise. And tell them the second lock on the tithe vault stays. Balance is not the same as trust. It is merely rarer.",
+      "next": "close"
+    },
+    {
+      "id": "close",
+      "voice": "odele_the_tithe__close",
+      "text": "The Marshal is next on your round, I expect. She will pretend not to care about any of this. Watch her face when you say the word swept."
+    }
+  ]
+}

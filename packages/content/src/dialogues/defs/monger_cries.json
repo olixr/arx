@@ -1,0 +1,34 @@
+{
+  "id": "monger_cries",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "gate_monger" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "monger_cries__hub",
+      "text": "Fresh from the Roaring Pool, cold as the falls that filled it! You, yes, you look hungry and I have never once been wrong.",
+      "choices": [
+        { "text": "What are you selling?", "next": "browse" },
+        { "text": "Do prices really climb by dusk?", "next": "dusk" },
+        { "text": "Not today.", "next": "off" }
+      ]
+    },
+    {
+      "id": "browse",
+      "voice": "monger_cries__browse",
+      "text": "Fish for the pot, coal for the grate, ore for them as dig. All of it here at the gate, none of it walked up a single stair, and the price says thank you for that.",
+      "hooks": [{ "kind": "shop", "shop": "gate_market_stock" }]
+    },
+    {
+      "id": "dusk",
+      "voice": "monger_cries__dusk",
+      "text": "When a caravan's in? They climb by the hour. Trout does not keep and carters do not wait, and between those two facts lives my entire fortune. Buy now. I say that to everyone, and by dusk I am always right.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "monger_cries__off",
+      "text": "By dusk you'll wish you had! No hard feelings. Mind the ice on the pool steps."
+    }
+  ]
+}

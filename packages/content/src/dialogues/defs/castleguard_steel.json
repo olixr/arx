@@ -1,0 +1,34 @@
+{
+  "id": "castleguard_steel",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "castle_guard" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "castleguard_steel__hub",
+      "text": "The King's Steel. The hall is open when the banners are out. They are out. State your errand or enjoy the view, both are permitted.",
+      "choices": [
+        { "text": "What's it like, guarding a king?", "next": "king" },
+        { "text": "Is the post as dull as it looks?", "next": "dull" },
+        { "text": "Carry on, guardsman.", "next": "off" }
+      ]
+    },
+    {
+      "id": "king",
+      "voice": "castleguard_steel__king",
+      "text": "He greets travelers who earned the climb, and the Queen remembers their names after, and between the two of them nothing gets past this door that should not. My whole trade is standing where that sentence stays true. Some days it is heavy. Most days it is the best post in the Dawnlands, and I have held the worst, so I would know.",
+      "next": "hub"
+    },
+    {
+      "id": "dull",
+      "voice": "castleguard_steel__dull",
+      "text": "Third watch on the forecourt, and the view is the pay. From here I can see the falls, the Court, the smoke off the Emberway, and the exact spot on the High Road where every new arrival stops walking for a breath. Nobody skips that stop. I like watching it. Forty a day, and it never wears out.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "castleguard_steel__off",
+      "text": "Mind the forecourt stones when they're wet. Polished past argument, same as us."
+    }
+  ]
+}

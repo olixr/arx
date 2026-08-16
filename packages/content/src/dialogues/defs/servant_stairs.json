@@ -1,0 +1,34 @@
+{
+  "id": "servant_stairs",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "castle_servant" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "servant_stairs__hub",
+      "text": "Mind the floor, it was stone this morning and it will be stone again when I have finished with it. Quickly now, what?",
+      "choices": [
+        { "text": "What's the castle like, below stairs?", "next": "below" },
+        { "text": "Any advice for a visitor?", "next": "advice" },
+        { "text": "I'll let you work.", "next": "off" }
+      ]
+    },
+    {
+      "id": "below",
+      "voice": "servant_stairs__below",
+      "text": "The steward counts the candles, the Queen counts the steward, and it all balances, that is the castle for you. I have carried soup past a king without spilling either. He said thank you. She asked after my mother by name. That is the whole of the Silver Line, if you want it in one trip up the stairs.",
+      "next": "hub"
+    },
+    {
+      "id": "advice",
+      "voice": "servant_stairs__advice",
+      "text": "The hall is for gawking and the kitchens are for warmth, and I would take the kitchens. Signy's terrace feeds better than the state table anyway, only do not tell Steward Ansgar I said so, because he would agree, and then write it down, and things Ansgar writes down become true.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "servant_stairs__off",
+      "text": "Around the wet patch, not through it. Thank you kindly."
+    }
+  ]
+}

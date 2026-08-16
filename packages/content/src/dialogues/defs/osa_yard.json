@@ -69,6 +69,7 @@
     },
     {
       "id": "stable",
+      "voice": "osa_yard__stable",
       "text": "The coursers, aye. Not the mules. Bay, grey, and the dun. Sound feet, road manners, shod for the long miles. Coin buys the saddle and the beast wears it. Look them over.",
       "hooks": [
         {

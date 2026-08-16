@@ -427,8 +427,30 @@ import faelarForge from './defs/faelar_forge.json';
 import myrrenSilks from './defs/myrren_silks.json';
 import selorneGlass from './defs/selorne_glass.json';
 import othielKeeping from './defs/othiel_keeping.json';
+// THE CAPITAL'S CROWD FINDS ITS THROAT — Silverfall's 35 silent
+// placements speak, and the errand quests get their responder scenes.
+import gatewatchEdge from './defs/gatewatch_edge.json';
+import castleguardSteel from './defs/castleguard_steel.json';
+import servantStairs from './defs/servant_stairs.json';
+import galleriaPatter from './defs/galleria_patter.json';
+import mongerCries from './defs/monger_cries.json';
+import jossRounds from './defs/joss_rounds.json';
+import pikeRoofs from './defs/pike_roofs.json';
+import odeleTheTithe from './defs/odele_the_tithe.json';
+import kestrelTheSweeping from './defs/kestrel_the_sweeping.json';
+import runaTheStamp from './defs/runa_the_stamp.json';
 
 const SOURCES: readonly unknown[] = [
+  gatewatchEdge,
+  castleguardSteel,
+  servantStairs,
+  galleriaPatter,
+  mongerCries,
+  jossRounds,
+  pikeRoofs,
+  odeleTheTithe,
+  kestrelTheSweeping,
+  runaTheStamp,
   qTheLettersWestTurnin,
   qTheFirstFocusTurnin,
   qABowOfTheWoodTurnin,

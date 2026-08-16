@@ -17,14 +17,14 @@
     {
       "id": "quote",
       "voice": "kestrel_fine__quote",
-      "text": "He checks the roll.",
+      "text": "She checks the roll.",
       "hooks": [{ "kind": "fine", "faction": "waykeepers", "quote": true }],
       "next": "greet"
     },
     {
       "id": "pay",
       "voice": "kestrel_fine__pay",
-      "text": "He takes the count without looking up.",
+      "text": "She takes the count without looking up.",
       "hooks": [{ "kind": "fine", "faction": "waykeepers" }]
     },
     {
