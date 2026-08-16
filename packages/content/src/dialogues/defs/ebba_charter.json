@@ -1,0 +1,73 @@
+{
+  "id": "ebba_charter",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "factor_ebba" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "ebba_charter__greet",
+      "text": "Factor Ebba, for the Charter. Selling timber, the yard buys at the deck, not here. Buying, sit down. If Ospren sent you, the answer is already no.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "ebba_charter__hub",
+      "text": "Well.",
+      "choices": [
+        { "text": "What does the Charter do here?", "next": "charter" },
+        { "text": "You share the house with the Crown's buyer?", "next": "ospren" },
+        { "text": "Eleven years is a long season.", "next": "season" },
+        { "text": "Good books, Factor.", "next": "off" }
+      ]
+    },
+    {
+      "id": "charter",
+      "voice": "ebba_charter__charter",
+      "text": "The Charter buys volume. Boards, beams, pit props, and every stick pays its wain toll home. Amberford sent me north to count one season's cut. The season is eleven years old. Somebody in that bank still thinks I am coming back.",
+      "choices": [
+        {
+          "text": "I know the bank. Cormund keeps it.",
+          "next": "cormund",
+          "requires": ["dlg:cormund_ledger"]
+        },
+        { "text": "Understood.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "cormund",
+      "voice": "ebba_charter__cormund",
+      "text": "You have stood at his counter, then you have seen the ledger hand he taught me. Tell him the hand holds. Tell him it is cold, and that I said so with the stove lit, because he will laugh.",
+      "next": "hub"
+    },
+    {
+      "id": "ospren",
+      "voice": "ebba_charter__ospren",
+      "text": "We share a roof, a strongroom, and nothing else. He buys the one tree in a hundred and calls it taste. I buy the hundred and call it a town's wages. Both of us pay late, which is the only thing we have ever agreed on, and neither of us will say it first.",
+      "choices": [
+        {
+          "text": "The missing sticks were accounted for.",
+          "next": "counted",
+          "requires": ["wardline_kept"]
+        },
+        { "text": "Understood.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "counted",
+      "voice": "ebba_charter__counted",
+      "text": "So I heard. Great spars, cut past the line, and not one crossed my deck, which I could have told the town in spring. The Charter's books were clean. I would say so louder, but clean books are like clean hands. Waving them about makes people wonder.",
+      "next": "hub"
+    },
+    {
+      "id": "season",
+      "voice": "ebba_charter__season",
+      "text": "The mere freezes at the edges in Frostfall and the ink freezes with it. I warm the well on the stove like everyone born here, and I have stopped noticing I do it. That is what a season north costs. You stop noticing.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "ebba_charter__off",
+      "text": "Mind the step. The strongroom sill is iron and it has caught better boots than yours."
+    }
+  ]
+}

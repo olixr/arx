@@ -1,0 +1,67 @@
+{
+  "id": "vigga_steel",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "smith_vigga" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "vigga_steel__greet",
+      "text": "Vigga. Everything in this town with an edge crosses my stone sooner or later. Bench is there. Question is yours.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "vigga_steel__hub",
+      "text": "Go on.",
+      "choices": [
+        { "text": "Show me the shelf.", "next": "browse" },
+        { "text": "What do you do here?", "next": "edges" },
+        { "text": "Tell me about the boom chain.", "next": "chain" },
+        { "text": "Keep your fire, Vigga.", "next": "off" }
+      ]
+    },
+    {
+      "id": "browse",
+      "voice": "vigga_steel__browse",
+      "text": "Heads, hafts, wedges. Take wedges. Everyone forgets wedges until the tree sits down on the blade.",
+      "hooks": [{ "kind": "shop", "shop": "vigga_edges" }]
+    },
+    {
+      "id": "edges",
+      "voice": "vigga_steel__edges",
+      "text": "Sharpen, mostly. Fell heads, bucking heads, hook blades for the raft crews. I can tell whose axe is whose by the wear. Kettil's is all one shoulder. He swings like an argument.",
+      "choices": [
+        { "text": "Whose wear is the worst?", "next": "wear" },
+        {
+          "text": "You cut the letters on the stone.",
+          "next": "cut",
+          "requires": ["aslak_written"]
+        },
+        { "text": "Good to know.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "wear",
+      "voice": "vigga_steel__wear",
+      "text": "Groa's crews keep clean edges. Rullo chips his on kiln stone and lies about it. The worst is any axe that has been past the line. Wild wood eats an edge different, and I notice, and I say so.",
+      "next": "hub"
+    },
+    {
+      "id": "cut",
+      "voice": "vigga_steel__cut",
+      "text": "Re-steeled the chisel first. A name goes on in one sitting or not at all, that is the rule I set myself, and his went on in one. Fifteen. Say it to Torvi, not to me.",
+      "next": "hub"
+    },
+    {
+      "id": "chain",
+      "voice": "vigga_steel__chain",
+      "text": "One forging, every link proved, and it holds every stick this town floats. It is a fortnight of my year and I sleep badly for all fourteen nights. Ask Kettil what happens if it goes. He thinks it is funny.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "vigga_steel__off",
+      "text": "Bring it before it chips. After is a new head and a new price."
+    }
+  ]
+}

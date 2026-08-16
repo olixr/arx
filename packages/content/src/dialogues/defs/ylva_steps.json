@@ -1,0 +1,60 @@
+{
+  "id": "ylva_steps",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "fisher_ylva" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "ylva_steps__greet",
+      "text": "Mind the steps, they are wet and they are mine. Ylva. If you have come to tell me the fishing is better at the ford, save it. I have heard the ford.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "ylva_steps__hub",
+      "text": "Say it, then.",
+      "choices": [
+        { "text": "What do you catch?", "next": "catch" },
+        { "text": "Why fish a water nobody else wants?", "next": "why" },
+        {
+          "text": "Torvi told me about the year it froze.",
+          "next": "freeze",
+          "requires": ["dlg:torvi_stone"]
+        },
+        { "text": "Good lines, Ylva.", "next": "off" }
+      ]
+    },
+    {
+      "id": "catch",
+      "voice": "ylva_steps__catch",
+      "text": "Char and lake trout, the deep kind. Cold water, slow fish, big fish. The Glasswater takes its time with everything it grows. Fish included. Me included.",
+      "choices": [
+        { "text": "Sell me some.", "next": "browse" },
+        { "text": "Fair enough.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "browse",
+      "voice": "ylva_steps__browse",
+      "text": "Off the morning line. The big one is spoken for, and no, I will not say by whom.",
+      "hooks": [{ "kind": "shop", "shop": "ylva_catch" }]
+    },
+    {
+      "id": "why",
+      "voice": "ylva_steps__why",
+      "text": "Because nobody else wants it. I have the whole shore, the first cast and the last, and the only argument I ever get is from the gulls. Show me another trade with that in it.",
+      "next": "hub"
+    },
+    {
+      "id": "freeze",
+      "voice": "ylva_steps__freeze",
+      "text": "Then you had it from the right bench, and I do not have to say it. I watch the edges every Frostfall morning. First one down the steps, every day, forty years of other people's winters. It has never even skimmed. I look anyway.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "ylva_steps__off",
+      "text": "If the gulls sit down, you sit down too. That one is free."
+    }
+  ]
+}

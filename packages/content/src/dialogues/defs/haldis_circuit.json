@@ -1,0 +1,41 @@
+{
+  "id": "haldis_circuit",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "outrider_haldis" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "haldis_circuit__hub",
+      "text": "Outrider Haldis, Waykeepers. The garron is working, so pat her later.",
+      "choices": [
+        { "text": "What's your circuit?", "next": "circuit" },
+        { "text": "How's the road today?", "next": "today" },
+        { "text": "Why a mountain garron?", "next": "garron" },
+        { "text": "Ride safe.", "next": "off" }
+      ]
+    },
+    {
+      "id": "circuit",
+      "voice": "haldis_circuit__circuit",
+      "text": "Timber Road end to end, both lamps, the hamlet at the north turn, back by the shore track. Out with the count, back with the count. The road likes an even ledger and so does the marshal.",
+      "next": "hub"
+    },
+    {
+      "id": "today",
+      "voice": "haldis_circuit__today",
+      "text": "Clear to the first milepost, and past that the usual arguments. Wolves keep to the high side since the frost. If the garron will not walk a stretch, we do not walk it, and I have never once lost that wager.",
+      "next": "hub"
+    },
+    {
+      "id": "garron",
+      "voice": "haldis_circuit__garron",
+      "text": "She knew this road before the town had a wall. Surefoot, iron stomach, no opinion of weather. A tall horse is a fine thing on a flat road. Find me a flat road.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "haldis_circuit__off",
+      "text": "Count out, count back. It works for horses too."
+    }
+  ]
+}

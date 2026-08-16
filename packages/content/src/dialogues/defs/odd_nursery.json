@@ -1,0 +1,60 @@
+{
+  "id": "odd_nursery",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "nurseryman_odd" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "odd_nursery__greet",
+      "text": "Mind the beds. You are walking through the town after next. Odd. The nursery is mine.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "odd_nursery__hub",
+      "text": "Ask what you like. The rows are patient.",
+      "choices": [
+        { "text": "What is the arrangement here?", "next": "covenant" },
+        { "text": "Sixty years for a saw log?", "next": "sixty" },
+        { "text": "What happened to that crooked row?", "next": "crooked" },
+        { "text": "Grow well, Odd.", "next": "off" }
+      ]
+    },
+    {
+      "id": "covenant",
+      "voice": "odd_nursery__covenant",
+      "text": "Every wain that rolls out owes seedlings back. Ebba counts the boards at the deck and I count the beds up here, and the town is square when both books say so. Groa's saw is the loud half of the trade and mine is the quiet half. Fell and plant. That is the whole religion.",
+      "next": "hub"
+    },
+    {
+      "id": "sixty",
+      "voice": "odd_nursery__sixty",
+      "text": "Sixty for a saw log. A hundred for a spar Yannick would look at twice. I will not see one of these cut and neither will you. I plant for a sawyer who is not born yet, and her firewood is my business all the same. Say that out loud once and the work goes easy forever.",
+      "next": "hub"
+    },
+    {
+      "id": "crooked",
+      "voice": "odd_nursery__crooked",
+      "text": "The row by the walk went in the spring after the ice year. Look how it grew. Crooked, every one, and all leaning the same way, away from the water. Trees remember cold the way people do. Sideways.",
+      "choices": [
+        {
+          "text": "Do the wild stands past the line remember anything?",
+          "next": "wild",
+          "requires": ["wardline_kept"]
+        },
+        { "text": "Huh.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "wild",
+      "voice": "odd_nursery__wild",
+      "text": "Everything. That is what old wood is. I am glad the cutting out there has stopped, and not for the timber's sake. You do not take boards off something's memory and call it trade.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "odd_nursery__off",
+      "text": "Take the walk out slow. The seedlings notice a hurry, and it sets a bad example."
+    }
+  ]
+}

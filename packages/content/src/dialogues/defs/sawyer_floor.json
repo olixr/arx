@@ -1,0 +1,34 @@
+{
+  "id": "sawyer_floor",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "pinewatch_sawyer" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "sawyer_floor__hub",
+      "text": "Of the saw. Mind the deck, the slip does not stop for anyone.",
+      "choices": [
+        { "text": "What's it like, working the Great Saw?", "next": "floor" },
+        { "text": "Where does all the timber go?", "next": "where" },
+        { "text": "Carry on.", "next": "off" }
+      ]
+    },
+    {
+      "id": "floor",
+      "voice": "sawyer_floor__floor",
+      "text": "Loud. You go half deaf in the left ear the first year, same as Groa, and then the saw starts talking to you proper. A wet board sings different off the blade. She hears it from across the floor. I hear it if I am lucky.",
+      "next": "hub"
+    },
+    {
+      "id": "where",
+      "voice": "sawyer_floor__where",
+      "text": "Boards to Amberford, beams to the ford towns, spars down to Saltmere for keels, staves to Silverfall for the cooper. We never see any of it again. You get fond of certain sticks. I do not say that out loud on the floor.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "sawyer_floor__off",
+      "text": "If the deck bell rings twice, stand still. Whatever you were about to do, still is better."
+    }
+  ]
+}

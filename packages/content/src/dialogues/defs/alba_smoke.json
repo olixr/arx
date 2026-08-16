@@ -47,6 +47,15 @@
       "id": "smoke",
       "voice": "alba_smoke__smoke",
       "text": "Low fire, long patience, salt done honest. Fast fire feeds you tonight. Slow fire feeds you in the hills three days out, and that's the difference between a meal and a trade.",
+      "choices": [
+        { "text": "What should I learn first?", "next": "first" },
+        { "text": "Noted.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "first",
+      "voice": "alba_smoke__first",
+      "text": "Salt, before anything. Salt is the difference between keeping and hoping. Then trout, because the mere gives them away and a smoked trout forgives a beginner twice. Bread you learn in a kitchen. Smoke you learn here, standing where you're standing.",
       "next": "hub"
     },
     {

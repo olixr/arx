@@ -1,0 +1,50 @@
+{
+  "id": "pinewatch_rota",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "pinewatch_watch" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "pinewatch_rota__hub",
+      "text": "On the rota. My night. Say it quick, the tower does not watch itself.",
+      "choices": [
+        { "text": "What are you watching for?", "next": "water" },
+        {
+          "text": "Anything moving out there?",
+          "next": "mark",
+          "requires": ["world:threat_near"],
+          "forbids": ["world:bounty_open"]
+        },
+        {
+          "text": "Where was that trouble again?",
+          "next": "remark",
+          "requires": ["world:bounty_open"]
+        },
+        { "text": "Quiet watch to you.", "next": "off" }
+      ]
+    },
+    {
+      "id": "water",
+      "voice": "pinewatch_rota__water",
+      "text": "The water. The roads have Sigrun and the yard has Halla, and the tower has the Glasswater, all night, every night, forty years past the last time it mattered. It matters by not mattering. And the fire at the Pine and Bell is lit at half three for us coming down. You can set your knees by Sunniva.",
+      "next": "hub"
+    },
+    {
+      "id": "mark",
+      "voice": "pinewatch_rota__mark",
+      "text": "Since you ask. Something has set a camp where no camp belongs, and the rota watches the water, not the woods. There is your mark. Tell Halla somebody with working legs went to look.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "remark",
+      "voice": "pinewatch_rota__remark",
+      "text": "Same place it was. The mark is on your chart and it has not blinked.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "off",
+      "voice": "pinewatch_rota__off",
+      "text": "Walk on, then. If you hear the bell, it is not for practice."
+    }
+  ]
+}

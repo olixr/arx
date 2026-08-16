@@ -9,10 +9,14 @@
  "voice": "bram_tally__hub", "text": "Yes?", "choices": [
     { "text": "Why count them twice?", "next": "twice" },
     { "text": "I heard your counts have not matched.", "next": "off_count" },
-    { "text": "Nineteen years of this?", "next": "years" },
+    { "text": "Your counts should hold, now.", "next": "hold", "requires": ["wardline_kept"] },
     { "text": "Right. Carry on.", "next": "off" } ] },
   { "id": "twice",
- "voice": "bram_tally__twice", "text": "Wet count at the boom, dry count at the deck. They should match. A log does not stop being a log between the water and the saw.", "next": "hub" },
+ "voice": "bram_tally__twice", "text": "Wet count at the boom, dry count at the deck. They should match. A log does not stop being a log between the water and the saw.", "choices": [
+    { "text": "Nineteen years of this?", "next": "years" },
+    { "text": "Simple enough.", "next": "hub" } ] },
+  { "id": "hold",
+ "voice": "bram_tally__hold", "text": "Spring count, even. First even great-stick count in over a year. I wrote the date in the margin, which I never do. Margins are for weather. Well. It was weather of a kind.", "next": "hub" },
   { "id": "years",
  "voice": "bram_tally__years", "text": "Some people find it dull. I find it restful. I could tell you about the winter of the short rafts but you would have to sit down for it.", "next": "hub" },
   { "id": "off_count",

@@ -8,9 +8,19 @@
   { "id": "hub",
  "voice": "torvi_stone__hub", "text": "Well?", "choices": [
     { "text": "Tell me about the ice.", "next": "ice" },
-    { "text": "Halla says there should be fifteen names.", "next": "fifteen" },
+    { "text": "About the stone and its names.", "next": "names" },
     { "text": "Are you not afraid of the far shore?", "next": "afraid" },
     { "text": "I will let you be.", "next": "off" } ] },
+  { "id": "names",
+ "voice": "torvi_stone__names", "text": "Which part of it?", "choices": [
+    { "text": "Halla says there should be fifteen names.", "next": "fifteen", "forbids": ["aslak_written"] },
+    { "text": "The stone reads fifteen now.", "next": "cut", "requires": ["aslak_written"] },
+    { "text": "You know how he died, now.", "next": "warm", "requires": ["fifteenth_named"] },
+    { "text": "Never mind.", "next": "hub" } ] },
+  { "id": "cut",
+ "voice": "torvi_stone__cut", "text": "I went at dusk when the yard was empty, and I put my thumb in the first letter, and I came home and drank my tea and slept the whole night. First whole night in some years. That is what I have to say about it, and you may keep it.", "next": "hub" },
+  { "id": "warm",
+ "voice": "torvi_stone__warm", "text": "Warm. Forty years I had him under the ice, and he was at a fire the whole time, feeding somebody else's child. I am not angry. I am something, and when I find out what, Gunvor of Hartfell will get a letter with very few words in it.", "next": "hub" },
   { "id": "ice",
  "voice": "torvi_stone__ice", "text": "It was not a hard winter. It was a hard water. Cold came down and sat, and the Glasswater went quiet, and quiet is the wrong sound for a lake.", "choices": [
     { "text": "Then what?", "next": "then" },

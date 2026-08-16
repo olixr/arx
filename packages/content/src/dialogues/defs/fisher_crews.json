@@ -1,0 +1,41 @@
+{
+  "id": "fisher_crews",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "saltmere_fisher" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "fisher_crews__hub",
+      "text": "Crews' side of the quay, this. Mind the gear or mind yourself.",
+      "choices": [
+        { "text": "How's the catch?", "next": "catch" },
+        { "text": "Would you ever net the far shore?", "next": "far" },
+        { "text": "What do the gulls know?", "next": "gulls" },
+        { "text": "Fair catches.", "next": "off" }
+      ]
+    },
+    {
+      "id": "catch",
+      "voice": "fisher_crews__catch",
+      "text": "Dawn tide gave fair, dusk tide will take her share back. The mere feeds this town and charges for it, and the price is patience and the odd boat. We do not say the second part near the slipway.",
+      "next": "hub"
+    },
+    {
+      "id": "far",
+      "voice": "fisher_crews__far",
+      "text": "No. And it is not a rule, and nobody wrote it down, and that is how you know it is serious. Rules get argued. That shore just gets left.",
+      "next": "hub"
+    },
+    {
+      "id": "gulls",
+      "voice": "fisher_crews__gulls",
+      "text": "Weather, first and always. If they sit down on the water, sit down too. If they will not land at all, haul and run for the arm. A fisher who will not read gulls might as well fish blindfolded. Some do. We know their widows.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "fisher_crews__off",
+      "text": "Keep off the wet rope. It has taken smarter ankles than yours."
+    }
+  ]
+}

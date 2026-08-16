@@ -5,7 +5,18 @@
  "bindings": [{ "kind": "actor", "target": "reeve_halla", "priority": 21 }],
  "nodes": [
   { "id": "paid",
- "voice": "q_the_wet_count_turnin__paid", "text": "Give me the books. No, all of them.\n\nGroa says no, Ospren says nothing very carefully, and Bram has been right for a year while this town patted him on the head. That is on me. Take the coin and do not go past the line yet.",
+ "voice": "q_the_wet_count_turnin__paid", "text": "Give me the books. No, all of them.", "next": "read" },
+  { "id": "read",
+ "voice": "q_the_wet_count_turnin__read", "text": "Spring, eleven. Midsummer, nineteen. Same bays, same moon, every stick a great one. A thief with taste, and patience, and a skid road somewhere north of my line.", "next": "verdict" },
+  { "id": "verdict",
+ "voice": "q_the_wet_count_turnin__verdict", "text": "Groa says no, Ospren says nothing very carefully, and Bram has been right for a year while this town patted him on the head. That is on me, and it gets carried, not explained.", "choices": [
+    { "text": "What now?", "next": "now" },
+    { "text": "Bram deserved better.", "next": "bram" } ] },
+  { "id": "now",
+ "voice": "q_the_wet_count_turnin__now", "text": "Now it stops being counting and starts being reeve's work. Take your pay. And do not go past the line on your own account. If I send anyone, I send them knowing, and I do not spend this town cheap.",
+    "hooks": [{ "kind": "quest_turnin", "quest": "the_wet_count" }] },
+  { "id": "bram",
+ "voice": "q_the_wet_count_turnin__bram", "text": "He did. He will get it from me tonight, at the fire, in front of the crowd that laughed. Take your pay. And when the next thing in this town needs believing, I will remember whose legs did this.",
     "hooks": [{ "kind": "quest_turnin", "quest": "the_wet_count" }] }
  ]
 }

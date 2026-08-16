@@ -1,0 +1,47 @@
+{
+  "id": "nial_stores",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "storekeep_nial" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "nial_stores__greet",
+      "text": "Pinewatch Stores. Salve is by the door. Second week on the saws is when the hands go, and nobody believes me in the first.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "nial_stores__hub",
+      "text": "What did you come in for?",
+      "choices": [
+        { "text": "Show me the shelves.", "next": "browse" },
+        { "text": "Why salve by the door?", "next": "salve" },
+        { "text": "What's hard to get up here?", "next": "rope" },
+        { "text": "Just looking.", "next": "off" }
+      ]
+    },
+    {
+      "id": "browse",
+      "voice": "nial_stores__browse",
+      "text": "Two of everything, three of the things people lose. Gloves are the third shelf. They are always the third shelf.",
+      "hooks": [{ "kind": "shop", "shop": "pinewatch_stores" }]
+    },
+    {
+      "id": "salve",
+      "voice": "nial_stores__salve",
+      "text": "A new hand grips too hard. First week the shoulders, second week the palms split, third week they buy gloves, and the gloves are too late. I moved the salve to the door the year I understood the pattern, and I have not moved it since.",
+      "next": "hub"
+    },
+    {
+      "id": "rope",
+      "voice": "nial_stores__rope",
+      "text": "Rope. Good rope comes up from Saltmere, off Jessa's ropewalk by the pans, and it takes a month by wain. I order in Thaw for Harvest. If you want thirty fathoms in a hurry, you want a different town.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "nial_stores__off",
+      "text": "They all say that. The door knows different."
+    }
+  ]
+}

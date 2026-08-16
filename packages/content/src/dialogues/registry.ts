@@ -379,7 +379,41 @@ import qStillWatersTurnin from './defs/q_still_waters_turnin.json';
 import qTheMeadowKeepsCountOffer from './defs/q_the_meadow_keeps_count_offer.json';
 import qTheMeadowKeepsCountTurnin from './defs/q_the_meadow_keeps_count_turnin.json';
 
+// THE TIMBER SHORE SPEAKS — Pinewatch and Saltmere coverage pass: the
+// silent posts get their trees, the quest beats get their scenes, and
+// the towns learn to notice what the player did for them.
+import viggaSteel from './defs/vigga_steel.json';
+import viggaTheCutting from './defs/vigga_the_cutting.json';
+import ebbaCharter from './defs/ebba_charter.json';
+import nialStores from './defs/nial_stores.json';
+import ylvaSteps from './defs/ylva_steps.json';
+import kettilBoom from './defs/kettil_boom.json';
+import oddNursery from './defs/odd_nursery.json';
+import pinewatchRota from './defs/pinewatch_rota.json';
+import haldisCircuit from './defs/haldis_circuit.json';
+import sawyerFloor from './defs/sawyer_floor.json';
+import groaTheGap from './defs/groa_the_gap.json';
+import osprenCarefulWords from './defs/ospren_careful_words.json';
+import hallaTheStoneAsk from './defs/halla_the_stone_ask.json';
+import saltwatchLamp from './defs/saltwatch_lamp.json';
+import fisherCrews from './defs/fisher_crews.json';
+
 const SOURCES: readonly unknown[] = [
+  viggaSteel,
+  viggaTheCutting,
+  ebbaCharter,
+  nialStores,
+  ylvaSteps,
+  kettilBoom,
+  oddNursery,
+  pinewatchRota,
+  haldisCircuit,
+  sawyerFloor,
+  groaTheGap,
+  osprenCarefulWords,
+  hallaTheStoneAsk,
+  saltwatchLamp,
+  fisherCrews,
   wrenAwakening,
   wrenGreen,
   hallaArms,

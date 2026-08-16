@@ -20,7 +20,11 @@
   { "id": "half",
  "voice": "sigrun_road__half", "text": "It is. And it runs through the Blackpine, which is old and unwatched and has never once cared how much of a hurry anybody was in. Take it in daylight or take the road.", "next": "hub" },
   { "id": "lamps",
- "voice": "sigrun_road__lamps", "text": "Two lamps and a hamlet at the turn north. It took the Waykeepers nine years of arguing with the Charter to get them lit, and they are lit, and the lamp is the only reason that road is safe.", "next": "hub" },
+ "voice": "sigrun_road__lamps", "text": "Two lamps and a hamlet at the turn north. It took the Waykeepers nine years of arguing with the Charter to get them lit, and they are lit, and the lamp is the only reason that road is safe.", "choices": [
+    { "text": "Anything off the road lately?", "next": "quiet", "requires": ["wardline_kept"] },
+    { "text": "Understood.", "next": "hub" } ] },
+  { "id": "quiet",
+ "voice": "sigrun_road__quiet", "text": "The Blackpine has gone quiet in the good way. Whoever broke that cutting camp did this road a favor the road will not repay. That is the trade you signed up for, if you are who I think you are. The lamp stays lit.", "next": "hub" },
   { "id": "off",
  "voice": "sigrun_road__off", "text": "Travel in daylight. Travel loud." }
  ]

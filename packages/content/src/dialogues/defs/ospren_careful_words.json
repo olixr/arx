@@ -1,0 +1,40 @@
+{
+  "id": "ospren_careful_words",
+  "start": "bays",
+  "requires": ["quest:the_wet_count:stage:the_word"],
+  "bindings": [{ "kind": "actor", "target": "buyer_ospren", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "bays",
+      "voice": "ospren_careful_words__bays",
+      "text": "Ah. The one doing Bram's arithmetic. I did hear. I hear most things, a little after they are said and a little before they matter.",
+      "next": "words"
+    },
+    {
+      "id": "words",
+      "voice": "ospren_careful_words__words",
+      "text": "Let me be exact, because exact is safest. The Crown buys great spars. I have bought none this year, because none were offered with papers I liked. That is all I have bought, and all I will say about buying.",
+      "choices": [
+        { "text": "That's a careful answer.", "next": "careful" },
+        { "text": "Do you know who is cutting?", "next": "know" }
+      ]
+    },
+    {
+      "id": "careful",
+      "voice": "ospren_careful_words__careful",
+      "text": "It is the only kind I own. A buyer who says the wrong true thing stops being offered things, and then he learns nothing at all, and neither do you. What I can say is this. Somebody believes there is a market for wood that does not exist on paper. Somebody is rarely wrong about markets.",
+      "next": "reeve"
+    },
+    {
+      "id": "know",
+      "voice": "ospren_careful_words__know",
+      "text": "No. And I have been careful not to find out, which is not the same as not caring. If I knew, I would be a witness. As it stands I am a rumor, and rumors may talk to reeves.",
+      "next": "reeve"
+    },
+    {
+      "id": "reeve",
+      "voice": "ospren_careful_words__reeve",
+      "text": "Take it to Halla. She keeps the rota and the boundary both. She will want Bram's books, and Bram has been waiting a year for somebody to want them. Tell her the Crown's buyer said what he said, and said it carefully."
+    }
+  ]
+}

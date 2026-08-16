@@ -28,8 +28,9 @@
           "next": "south"
         },
         {
-          "text": "Who keeps order here?",
-          "next": "watch"
+          "text": "Fane told me to ask about the year of the four boats.",
+          "next": "boats",
+          "requires": ["dlg:fane_mere"]
         },
         {
           "text": "Fair winds, Portreeve.",
@@ -38,10 +39,19 @@
       ]
     },
     {
+      "id": "boats",
+      "voice": "brack_harbor__boats",
+      "text": "He says that to people, does he. Then hear it from the man who gave the order. Four boats, a rising glass, a market waiting on the catch. I read the water wrong and the mere kept four boats and seven names. Every paper I have signed since, I sign slow. That is the whole of it, and the quay is the better for the slowness.",
+      "next": "hub"
+    },
+    {
       "id": "town",
       "voice": "brack_harbor__town",
       "text": "Last town before the water. Salt goes north, coin comes south, and every road in the Dawnlands ends on my quay. The pans pay the wall, the fish pay the rest.",
-      "next": "hub"
+      "choices": [
+        { "text": "Who keeps order here?", "next": "watch" },
+        { "text": "Understood.", "next": "hub" }
+      ]
     },
     {
       "id": "south",
@@ -52,7 +62,7 @@
     {
       "id": "watch",
       "voice": "brack_harbor__watch",
-      "text": "The Waykeepers. This is their port; the road south is their road. Quay trouble comes to me, road trouble goes to the Watch House by the gate. Keep both empty and we'll get on.",
+      "text": "The Waykeepers. This is their port, and the road south is their road. Quay trouble comes to me, road trouble goes to the Watch House by the gate. Keep both empty and we'll get on.",
       "next": "hub"
     },
     {

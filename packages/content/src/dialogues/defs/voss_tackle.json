@@ -47,7 +47,8 @@
       "id": "deep",
       "voice": "voss_tackle__deep",
       "text": "Something past the last post takes hooks and leaves the line. Clean bite, no fight, gone. Twenty years now. A short wait is an hour out here. That one has been a long wait.",
-      "next": "hub"
+      "next": "hub",
+      "hooks": [{ "kind": "flag", "flag": "voss_deep" }]
     },
     {
       "id": "browse",

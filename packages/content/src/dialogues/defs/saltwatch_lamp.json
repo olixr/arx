@@ -1,0 +1,45 @@
+{
+  "id": "saltwatch_lamp",
+  "start": "hub",
+  "bindings": [{ "kind": "actor", "target": "saltmere_watch" }],
+  "nodes": [
+    {
+      "id": "hub",
+      "voice": "saltwatch_lamp__hub",
+      "text": "Harbor Watch. The road ends here, so whatever followed you down it stops at this gate too. State your business or walk on.",
+      "choices": [
+        { "text": "What do Waykeepers do in a port?", "next": "port" },
+        { "text": "What's south of the gate?", "next": "south" },
+        {
+          "text": "Anything out there need a blade?",
+          "next": "mark",
+          "requires": ["world:threat_near"]
+        },
+        { "text": "Keep the gate.", "next": "off" }
+      ]
+    },
+    {
+      "id": "port",
+      "voice": "saltwatch_lamp__port",
+      "text": "Same as on the road. The lamp stays lit. Road trouble is ours, quay trouble is the Portreeve's, and the seam between us is thinner than folk hope. Brack and the sergeant split a pot of tea over it every Restday and call it jurisdiction.",
+      "next": "hub"
+    },
+    {
+      "id": "south",
+      "voice": "saltwatch_lamp__south",
+      "text": "Hard country. The moor, the Gullmoor lamp, and miles that do not forgive a late start. Go fed, go armed, go by day, and tell somebody your road before you take it. The book by the gate exists because people did not.",
+      "next": "hub"
+    },
+    {
+      "id": "mark",
+      "voice": "saltwatch_lamp__mark",
+      "text": "Since you carry one. Something has camped on our miles that has no business camping. There is your mark, and if you have asked before, it has not moved. The post holds the gate. The walk is yours.",
+      "hooks": [{ "kind": "bounty" }]
+    },
+    {
+      "id": "off",
+      "voice": "saltwatch_lamp__off",
+      "text": "The lamp stays lit. Even here. Especially here."
+    }
+  ]
+}

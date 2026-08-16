@@ -31,8 +31,9 @@
           ]
         },
         {
-          "text": "What was Saltmere, before?",
-          "next": "before"
+          "text": "Voss says something takes his hooks, out past the last post.",
+          "next": "deep",
+          "requires": ["voss_deep"]
         },
         {
           "text": "Rest easy, pilot.",
@@ -44,6 +45,15 @@
       "id": "weather",
       "voice": "fane_mere__weather",
       "text": "Swell's wrong for rain and wrong for calm. See the gulls sitting down? When the gulls sit, you sit. That's the first thing I teach and the last thing anyone believes.",
+      "choices": [
+        { "text": "What was Saltmere, before?", "next": "before" },
+        { "text": "Hm.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "deep",
+      "voice": "fane_mere__deep",
+      "text": "Twenty years of it, and he thinks I don't know. The pilot before me called that stretch the Downwater's porch and wouldn't cross it after dusk, and he died old, which on this water is the whole argument. Leave the deep line to Voss. He and it have an arrangement, and arrangements on the mere are not for thirds.",
       "next": "hub"
     },
     {
@@ -55,7 +65,7 @@
     {
       "id": "before",
       "voice": "fane_mere__before",
-      "text": "Six crofts and a salt lick. Then the pans, then the wall, then the road came south to meet us. Towns grow from the water up. Anyone who says different grew up inland.",
+      "text": "Six crofts and a salt lick. Then the pans, then the wall, then the road came south to meet us. Towns grow from the water up. Anyone who says different grew up inland. Ask Brack about the year of the four boats sometime. Stand a respectful distance when you do.",
       "next": "hub"
     },
     {

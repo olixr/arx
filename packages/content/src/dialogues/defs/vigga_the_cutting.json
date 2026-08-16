@@ -1,0 +1,36 @@
+{
+  "id": "vigga_the_cutting",
+  "start": "ask",
+  "requires": ["quest:a_name_for_the_stone:stage:the_cutting"],
+  "bindings": [{ "kind": "actor", "target": "smith_vigga", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "ask",
+      "voice": "vigga_the_cutting__ask",
+      "text": "Halla sent word. The stone, and a name forty years late.",
+      "next": "terms"
+    },
+    {
+      "id": "terms",
+      "voice": "vigga_the_cutting__terms",
+      "text": "I will cut it, and I will cut it right, and for that the chisel gets re-steeled first. Good iron, two bars. Not for the argument, mind. For the stone. A thing like that goes on once.",
+      "choices": [
+        { "text": "Why re-steel for one name?", "next": "why" },
+        { "text": "Did you know him?", "next": "him" },
+        { "text": "You'll have the iron." }
+      ]
+    },
+    {
+      "id": "why",
+      "voice": "vigga_the_cutting__why",
+      "text": "Because the stone is granite off the fell, and a slipped letter cannot be unslipped, and if a man waits forty years for his name, the least the iron can do is be new.",
+      "next": "terms"
+    },
+    {
+      "id": "him",
+      "voice": "vigga_the_cutting__him",
+      "text": "I was not born. That is the point of a stone. It remembers, so the rest of us do not have to be old enough to.",
+      "next": "terms"
+    }
+  ]
+}

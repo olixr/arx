@@ -1,0 +1,51 @@
+{
+  "id": "kettil_boom",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "boomsman_kettil" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "kettil_boom__greet",
+      "text": "Kettil. Boomsman. You are standing on my dock, which is fine, everyone does. Just do not stand on the chain.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "kettil_boom__hub",
+      "text": "What?",
+      "choices": [
+        { "text": "What does a boomsman do?", "next": "boom" },
+        { "text": "Is it dangerous?", "next": "danger" },
+        {
+          "text": "The old wood is quiet again, I hear.",
+          "next": "quiet",
+          "requires": ["wardline_kept"]
+        },
+        { "text": "Stay dry, Kettil.", "next": "off" }
+      ]
+    },
+    {
+      "id": "boom",
+      "voice": "kettil_boom__boom",
+      "text": "The boom is the chain across the bay mouth and the pond behind it. Every stick this town cuts floats in my pond until Groa's deck calls it up. I keep the count for Bram, I keep the rafts apart in a blow, and twice a year I walk the chain, which I am not supposed to do, so I never said that.",
+      "next": "hub"
+    },
+    {
+      "id": "danger",
+      "voice": "kettil_boom__danger",
+      "text": "To me? No. I am quick, and the water and I have an understanding. To you, yes. A raft shifts when it likes. If you ever see the pond move all at once, run up the shore, not along it. Everybody runs along it. I do not know why.",
+      "next": "hub"
+    },
+    {
+      "id": "quiet",
+      "voice": "kettil_boom__quiet",
+      "text": "That is what they say. Halla will not put the far runs back on the licence till spring, but the watch came off double shifts, and Sunniva's fire has the old crowd at it again instead of the worried one. You can tell a town's weather by which crowd is at the fire.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "kettil_boom__off",
+      "text": "It is a log pond. Nobody stays dry. That is the first thing you learn."
+    }
+  ]
+}

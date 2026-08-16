@@ -401,6 +401,57 @@ voice and got its geography re-walked.)
   below ground — patter, invented provenance, self-mythology he may not
   believe either. Cadence: exclamatory, list-happy, but keep each bark short.
 
+### Pinewatch — the timber shore
+
+(The tower predates the trade; the Wolfwinter is the town's one story and
+the rota is its religion. NOTE: Reeve Halla is not Dawnmead's yardmaster
+Halla — different woman, colder job.)
+- **Reeve Halla**: wants the rota unbroken and the line respected; was
+  nine the winter the water went quiet. Cadence: says a thing once,
+  institutional clip, no wasted words; carries blame without ceremony.
+- **Old Torvi** (of the Wolfwinter): eighty-one; wants her father's name
+  said once and everyone to move on. Allergic to pity. Cadence: dry,
+  complete sentences, tells a thing once and closes the drawer.
+- **Groa** (sawmistress): half deaf on the saw side, hears wood better
+  than people. Wants the floor's count beyond question. Cadence: loud,
+  certain, short; praise is a nod.
+- **Yannick** (spar-master): wants the one tree in a hundred and no
+  argument about the other ninety-nine. Cadence: refusals as craft law.
+- **Vigga** (axe-smith): reads the town by its edge wear; the boom chain
+  is her fortnight of bad sleep. Cadence: verdicts, tool-first; affection
+  delivered as maintenance advice.
+- **Sunniva** (the Pine and Bell): the fire is up at half three for the
+  watch coming down. Wants nobody cold at four. Cadence: publican
+  warmth without Dunna's wit; house facts, plainly stated.
+- **Rullo** (pitchmaster): three kiln fires, none his fault. Cadence:
+  comic self-defense, honest about everything except the burns.
+- **Bram** (tallyman): finds counting restful; was right for a year while
+  the town patted his head. Cadence: mild, exact, the word is "missing".
+- **Ebba** (Charter factor): sent north for a season eleven years ago;
+  polite war with Ospren across a shared strongroom. Cadence: cost-first
+  precision; homesickness rationed to one sentence.
+- **Ospren** (Crown's buyer): deniability as a dialect. Cadence: never
+  says a thing plainly that can be said carefully; "exact is safest."
+- **Nial** (stores): two of everything, three of what people lose.
+  Cadence: shelf-logic; watches which shelf you look at.
+- **Kettil** (boomsman): twenty-one and immortal in his own head; walks
+  the chain he shouldn't. Cadence: quick, cocky, accidentally wise about
+  water and never about himself.
+- **Odd** (nurseryman): plants for a sawyer not born yet. Cadence: slow,
+  seasonal; talks to seedlings as colleagues; the crooked ice-year row
+  is his one ghost story.
+- **Sigrun** (waykeeper): the long road is longer, that is the point.
+  Cadence: dry, road-formal, one warning per topic.
+- **Ylva** (fisher steps): fishes the water nobody wants and is fed.
+  Cadence: settled-argument calm; watches the winter edges and won't
+  discuss the freeze with strangers.
+- **Outrider Haldis** (Waykeeper, mounted): route facts first, then the
+  understatement; trusts the garron's judgment over most people's.
+- **Pinewatch Watch** (pooled): a sawyer or a carter on their night.
+  Cadence: rota-flat pride; the tower watches the water.
+- **Sawyers** (pooled): deck-noise clipped; fond of certain sticks and
+  won't say so on the floor.
+
 ### Saltmere — the town at the water's end
 - **Portreeve Brack**: wants the port to outlive him; the year the mere took
   four boats, he was the one who said go out. Cadence: harbormaster's economy

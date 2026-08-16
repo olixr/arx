@@ -47,6 +47,19 @@
       "id": "cormund",
       "voice": "neave_ledger__cormund",
       "text": "Under Cormund, at the Bank of Amberford. He taught me the second count. The first count tells you what you want. The second one tells you what you have. No, I will not explain the third.",
+      "choices": [
+        {
+          "text": "I've stood at Cormund's counter myself.",
+          "next": "third",
+          "requires": ["dlg:cormund_ledger"]
+        },
+        { "text": "Fair enough.", "next": "hub" }
+      ]
+    },
+    {
+      "id": "third",
+      "voice": "neave_ledger__third",
+      "text": "Have you. Then for a friend of the bank, once, quietly. The third count is the one you do after the storm, of what is left, so the ledger starts true again. He taught it to me the spring after the Toll War. I have needed it twice here. You saw the quay. The mere collects.",
       "next": "hub"
     },
     {

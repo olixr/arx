@@ -1,0 +1,34 @@
+{
+  "id": "groa_the_gap",
+  "start": "floor",
+  "requires": ["quest:the_wet_count:stage:the_bays"],
+  "bindings": [{ "kind": "actor", "target": "sawmistress_groa", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "floor",
+      "voice": "groa_the_gap__floor",
+      "text": "You are the one carrying Bram's numbers. Good. Stand there and hear it once, because I will not be saying it weekly.",
+      "next": "count"
+    },
+    {
+      "id": "count",
+      "voice": "groa_the_gap__count",
+      "text": "Nothing leaves my floor uncounted. The deck book and my head agree to the board, nineteen years, and the once they did not, I tore the deck up until I found the stick wedged under the slip. Whatever is eating Bram's great sticks is eating them wet, before they ever smell my saw.",
+      "choices": [
+        { "text": "Then where do wet logs go?", "next": "where" },
+        { "text": "Could Bram be wrong?", "next": "wrong" }
+      ]
+    },
+    {
+      "id": "wrong",
+      "voice": "groa_the_gap__wrong",
+      "text": "Bram has been right for nineteen years and this town treats him like weather. If he says the water count and the deck count do not agree, then somewhere between the water and my deck there is a thief, and it is not the fish.",
+      "next": "where"
+    },
+    {
+      "id": "where",
+      "voice": "groa_the_gap__where",
+      "text": "Into the water they came from, or up somebody's skid road in the dark. Ask the man who buys the kind of stick that goes missing. The Crown's buyer keeps the wain bays past the Charterhouse. He is very polite. Count your fingers after."
+    }
+  ]
+}

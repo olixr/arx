@@ -1,0 +1,34 @@
+{
+  "id": "halla_the_stone_ask",
+  "start": "ask",
+  "requires": ["quest:a_name_for_the_stone:stage:the_cutting"],
+  "bindings": [{ "kind": "actor", "target": "reeve_halla", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "ask",
+      "voice": "halla_the_stone_ask__ask",
+      "text": "Torvi sent you. I know what for. Stand there while I say the reeve part, and then we will do the human part.",
+      "next": "reeve"
+    },
+    {
+      "id": "reeve",
+      "voice": "halla_the_stone_ask__reeve",
+      "text": "The stone writes down what this town buried. That is the rule, and the rule is why the stone is believed, and a believed stone is worth more than a kind one. I held that line for years, and Torvi held the other end, and neither of us let go.",
+      "next": "human"
+    },
+    {
+      "id": "human",
+      "voice": "halla_the_stone_ask__human",
+      "text": "Here is the human part. A reeve who cannot be argued out of a rule can still be argued into a mason. Vigga will cut the name below the fourteen, plain, no box drawn round it. The stone can hold one honest exception. Bring her the iron for the chisel and we are done arguing with granite.",
+      "choices": [
+        { "text": "Why give in now, after years?", "next": "why" },
+        { "text": "Vigga will have her iron." }
+      ]
+    },
+    {
+      "id": "why",
+      "voice": "halla_the_stone_ask__why",
+      "text": "Because a stranger asked. Torvi and I wore the argument so smooth neither of us could hold it any more. You picked it up with bare hands. That is what strangers are for, and if you tell her I said any of this, I will deny it in front of the whole rota."
+    }
+  ]
+}
