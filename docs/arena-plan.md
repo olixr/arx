@@ -1,6 +1,9 @@
 # THE SAND AND THE ROAR — the arena epic
 
-Status: **PLANNED** — phases below flip to SHIPPED as they land.
+Status: **PHASES 1-5 SHIPPED 2026-08-16** (eb68922c plan · d3d2300e
+content · d00ce609 server · f6168ad3 client · 6daf67b1 venues) —
+Phase 6 THE PROVING (the rig-lane live walk) is OWED and ledgered in
+§8 with the receipts it must collect.
 
 The Dawnlands get their sport. A player walks up to the ringmaster's counter,
 pays the stake, and the gates grind shut behind their party. Three rounds of
@@ -311,6 +314,30 @@ the same card field the same sand.
    ceremony), polish (arena TrackMood, spectator touches), the as-built
    ledger written back into this doc.
 
+## 6b. As built (deltas from the plan above)
+
+- The gates fx rides kind `field`, not `charge` — charge is a pure
+  instrument client-side (no signature crown) and THE BAR COMES DOWN
+  would never have drawn. Caught in Phase 4, fixed server-side.
+- The chest-law overlay (`poiChests`) grew an optional `level` — the
+  purse rolls at the CARD's level, never the boss-chest floor 20 (a
+  Ford Ring warm-up must not pay capital steel).
+- Venue coords are sealed from the builder's own fillEllipse cell
+  math (grand pit (-476,-126) rx8/ry5.5 with six gate tiles; ford pit
+  (583,46) rx4.5/ry3.5 with two). The Grand Ring's stands are benches
+  on the pit-side column ONLY — the first alternating pattern plugged
+  the two-wide aisle diagonally and the reachability sweep caught it.
+- The Ford Ring moved one band south of its first placement (the
+  orchard's y96 tree row ran under the sand; the tree census caught
+  it). The town ledgers were re-pinned honestly: Amberford 31
+  residents, Silverfall 94 souls / 49 ramps / 35 garrison gate tiles.
+- Wave seats are ephemeral `spawnNpc(-1)` bodies (not registerSpawns
+  slots): full lifecycle control, swept by the one arenaReset; the
+  physical walls + shut gates are the containment, `arenaR` rides
+  only on crowned champions (forge default 14-20).
+- Board meter shows lifetime xp over the next threshold (the wire
+  carries no per-rung floor yet — polish debt below).
+
 ## 7. Open questions / deferred by design
 
 - PvP wild arenas (the roaming chest that opens a free-for-all) — the venue/
@@ -321,3 +348,32 @@ the same card field the same sand.
   purse tables; the shop wants rank-gated stock, a small later cut.
 - Leaderboard surface (v39 table is query-ready; UI later).
 - Spectator HUD (send `arena` state to non-members near the pit) — polish.
+
+## 8. Phase 6 THE PROVING — the owed walk (rig-lane recipe + receipts)
+
+Rig recipe: lane N (vite.config.rigN.ts precedent), fresh DB
+`arx_arenaN`, own chromium via scratchpad playwright (never the MCP
+browser — it belongs to neighbor sessions), chat via the
+Enter-type-Enter keyboard flow, drive `dcGame.sendChat` never the DOM
+form. Receipts to collect, wire-asserted:
+1. The counter: talk to Serle, good ending raises the board, a locked
+   card shows its rank price, buying charges the exact fee.
+2. The full card: muster clock → gates shut (the iron set-piece +
+   horn) → three rounds with breather countdowns → victory herald →
+   the purse rises warded (a second account's hand refused) → grace
+   expiry rakes the sand whole (props/chest/gates restored,
+   respawnQueue clean).
+3. The wipe: die to the card; the pack spills AT THE GATE; the match
+   resets; losses banked.
+4. The creeper: a non-party body inside the pit at gate-shut walks
+   out with the courtesy line; one teleported in mid-round is evicted
+   on the next beat.
+5. The party: fellow enrolled by standing the sand; fallen member
+   still draws the half share; rank-up ceremony fires on the climb.
+6. /arena start|muster|win|wipe|reset|rank all through real doors.
+7. The champion round: a forged crown fights whole (banner, phases)
+   inside the pit; `arenaR` + walls hold it.
+Polish items riding Phase 6: the 'arena' TrackMood (the 2.5 s
+hysteresis and deck come free), board meter per-rung floor (add
+`xpPrev` to S2CArenaBoard), spectator state fan, arena-exclusive
+vanity item in the t4 purse.
