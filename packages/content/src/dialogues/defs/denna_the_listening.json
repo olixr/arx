@@ -1,0 +1,25 @@
+{
+  "id": "denna_the_listening",
+  "start": "slow",
+  "requires": ["quest:what_the_song_holds:stage:the_word"],
+  "bindings": [{ "kind": "actor", "target": "fisher_denna", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "slow",
+      "voice": "denna_the_listening__slow",
+      "text": "The Loresinger wants to know what the deep water sings. It sings slow, traveler. I have heard it through the hull on the still nights. No words. One note, held longer than breath allows, coming up through sixty feet of gray water like it has all the time that ever was.",
+      "next": "pearl"
+    },
+    {
+      "id": "pearl",
+      "voice": "denna_the_listening__pearl",
+      "text": "The storms leave pearls on the far shelf when they are done shouting. One of those holds the note, if her song is owed one. Bring her a stormpearl, and tell her the coast keeps its half of the listening. She will know what that means. I half do, and the half keeps me company.",
+      "next": "back"
+    },
+    {
+      "id": "back",
+      "voice": "denna_the_listening__back",
+      "text": "And mind the shelf water. I fish it with my back to nothing, and I am the brave one on this quay."
+    }
+  ]
+}

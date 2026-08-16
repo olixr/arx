@@ -1,0 +1,26 @@
+{
+  "id": "q_the_first_focus_turnin",
+  "start": "asked",
+  "requires": ["quest:the_first_focus:ready"],
+  "bindings": [{ "kind": "actor", "target": "inscriber_vessa", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "asked",
+      "voice": "q_the_first_focus_turnin__asked",
+      "text": "You came back with the question in the right order at last. Veyle's question, the one they exiled him for asking. Then the wall owes you its answer. Stand there. Read.",
+      "next": "wall"
+    },
+    {
+      "id": "wall",
+      "voice": "q_the_first_focus_turnin__wall",
+      "text": "One line, in the old hand, cut the year the Arcanum lit its first focus. The branch was *given*. Not taken, not traded, not found. Given, from the Heartwood itself, to hands the wood trusted. They built a guild on a gift and then forgot the giver, and the one man who asked what the first focus was made from was sent into the ash for it.",
+      "next": "debt"
+    },
+    {
+      "id": "debt",
+      "voice": "q_the_first_focus_turnin__debt",
+      "text": "Take your pay, and take this with it. A gift remembered is a debt reopened. The wood does not forget. It waits to see what the remembering does. Tell Veyle the wall answered, and watch what he writes to Solvei this month. I will be keeping a copy.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_first_focus" }]
+    }
+  ]
+}

@@ -15,7 +15,7 @@
    "text": "The west has opened. A city nobody living has seen, at the end of a trail nobody sane has walked, and I have a letter that has waited years for an address.\n\nCarry it for me. Past the Hoargate fork, past the last lamp, to whoever keeps their gate. I would go myself, but the table does not travel, and neither, it turns out, do I.",
    "choices": [
     {
-     "text": "I'll do it.",
+     "text": "I'll carry it.",
      "next": "go"
     },
     {
@@ -36,7 +36,7 @@
    "text": "A question I have asked an exile every month for years, asked politely enough that she has never had to answer. The west will not be so polite, or so patient. That is rather the point of it.",
    "choices": [
     {
-     "text": "Then I'll do it.",
+     "text": "Then I'll carry it.",
      "next": "go"
     }
    ]

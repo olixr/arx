@@ -1,0 +1,47 @@
+{
+  "id": "faelar_forge",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "smith_faelar" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "faelar_forge__greet",
+      "text": "Mind the heat. Mine is the one fire in the city that works for a living, and it has earned its temper.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "faelar_forge__hub",
+      "text": "Speak up. That is a joke. Nobody in Evenfall speaks up. What do you need?",
+      "choices": [
+        { "text": "Show me your work.", "next": "browse" },
+        { "text": "What is a leaf-blade, truly?", "next": "leaf" },
+        { "text": "The delf pulls mithril by the cart, they say.", "next": "delf" },
+        { "text": "Keep your fire, smith.", "next": "off" }
+      ]
+    },
+    {
+      "id": "browse",
+      "voice": "faelar_forge__browse",
+      "text": "Fittings, ferrule collars, edge work. Never ore by the cart. We were never miners. We were listeners who owned a hammer.",
+      "hooks": [{ "kind": "shop", "shop": "faelar_fittings" }]
+    },
+    {
+      "id": "leaf",
+      "voice": "faelar_forge__leaf",
+      "text": "Not a sword shaped like a leaf. A leaf that agreed to be a sword. Different joinery entirely. The shape already knew how to shed force the way a leaf sheds rain, and my whole craft is not insulting that knowledge with a straight line. It took me eighty years to stop insulting it. Good years.",
+      "next": "hub"
+    },
+    {
+      "id": "delf",
+      "voice": "faelar_forge__delf",
+      "text": "They do, and good luck to them. We pulled ours out by the ounce before their realm had a name, and the ounce was enough, because we were not arming anybody. The Everflame stands over there being old and warm and admired. Mine is the fire that sweats. We have an understanding, the two of us. Neither would trade.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "faelar_forge__off",
+      "text": "If you hear the hammer stop, come back. Stopped is when the interesting part happens."
+    }
+  ]
+}

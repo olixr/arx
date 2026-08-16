@@ -1,0 +1,47 @@
+{
+  "id": "naia_stillroom",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "stillkeeper_naia" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "naia_stillroom__greet",
+      "text": "Come in, mind the hanging bundles, they outrank you. Stillroom's mine. I am Naia, the baby of the city, and yes, that is the official title.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "naia_stillroom__hub",
+      "text": "What hurts, or what are you curious about? I stock both.",
+      "choices": [
+        { "text": "Show me your remedies.", "next": "browse" },
+        { "text": "The baby of the city?", "next": "baby" },
+        { "text": "Why no tilled rows?", "next": "garden" },
+        { "text": "Stay well, Naia.", "next": "off" }
+      ]
+    },
+    {
+      "id": "browse",
+      "voice": "naia_stillroom__browse",
+      "text": "Salves, draughts, and the honest tea. Drink it all. Yes, it tastes like that on purpose. The taste is doing half the work.",
+      "hooks": [{ "kind": "shop", "shop": "naia_remedies" }]
+    },
+    {
+      "id": "baby",
+      "voice": "naia_stillroom__baby",
+      "text": "I have seen four human kingdoms. Rise, fall, rise, fall, and one of them managed both twice, which takes talent. Here that makes me the youngest in any room, and the elders still check whether I have eaten. It keeps a person humble. I recommend it, though I grant the arranging is difficult.",
+      "next": "hub"
+    },
+    {
+      "id": "garden",
+      "voice": "naia_stillroom__garden",
+      "text": "Tilling is a demand. We ask. The wood gives what it gives, the garden hangs what it spares, and when a plant will not grow for me I assume it has its reasons and go and sit near it until one of us changes our mind. Your farmers would call that madness. Their sagewort would call it manners.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "naia_stillroom__off",
+      "text": "Eat something green today. I always say that, and I am always right."
+    }
+  ]
+}

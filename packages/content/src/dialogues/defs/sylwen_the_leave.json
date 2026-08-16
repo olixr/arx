@@ -1,0 +1,19 @@
+{
+  "id": "sylwen_the_leave",
+  "start": "count",
+  "requires": ["quest:a_bow_of_the_wood:stage:the_patience"],
+  "bindings": [{ "kind": "actor", "target": "warden_sylwen", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "count",
+      "voice": "sylwen_the_leave__count",
+      "text": "Aewyn sent you. I know. Who enters the yew stand is one of my counts, and you are about to be on it.",
+      "next": "leave"
+    },
+    {
+      "id": "leave",
+      "voice": "sylwen_the_leave__leave",
+      "text": "You asked before cutting. That is the whole test, and most fail it by not knowing it was set. Take the two logs the wind brought down this winter, west side of the stand, already dead and still true. Cut nothing standing. The living trees are not for this century, and we will not need to have the other conversation."
+    }
+  ]
+}

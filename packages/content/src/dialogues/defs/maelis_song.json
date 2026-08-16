@@ -42,8 +42,21 @@
   {
    "id": "water",
    "text": "There is a listening song. The pearls the storms leave were our ears once, for deep water. There is a fisher on the far coast who is owed that song. If the sea sends her, I will sing it true.",
-   "next": "hub",
+   "choices": [
+    {
+     "text": "The song is whole now. I was there.",
+     "next": "answered",
+     "requires": ["the_song_answers"]
+    },
+    { "text": "I hope she comes.", "next": "hub" }
+   ],
    "voice": "maelis_song__water"
+  },
+  {
+   "id": "answered",
+   "text": "You were, and the pearl sits where the harp can see it, and I have not sung it since. Some songs are for having, not for spending. When Denna of the coast comes up the trail at last, it will spend itself, and I intend to be surprised by my own voice when it does.",
+   "next": "hub",
+   "voice": "maelis_song__answered"
   },
   {
    "id": "refusal",

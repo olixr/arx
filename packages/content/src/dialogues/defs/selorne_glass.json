@@ -1,0 +1,47 @@
+{
+  "id": "selorne_glass",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "glasswright_selorne" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "selorne_glass__greet",
+      "text": "Sit, if you like. This lens has nine years left in it, so we are not pressed for time.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "selorne_glass__hub",
+      "text": "Ask. Slowly is fine. Slowly is preferred.",
+      "choices": [
+        { "text": "Show me the moonglass.", "next": "browse" },
+        { "text": "You work glass cold?", "next": "cold" },
+        { "text": "Nine years for one lens?", "next": "years" },
+        { "text": "Take your time, glasswright.", "next": "off" }
+      ]
+    },
+    {
+      "id": "browse",
+      "voice": "selorne_glass__browse",
+      "text": "Lenses, pane work, and the small vessels. Glass is a liquid that made a promise. Moonglass keeps it longer.",
+      "hooks": [{ "kind": "shop", "shop": "selorne_glass" }]
+    },
+    {
+      "id": "cold",
+      "voice": "selorne_glass__cold",
+      "text": "The way a river works a stone. No fire, no hurry, a hand's pressure and a century's patience, and the glass never learns the word for breaking because nobody ever shouted it. The delf melts starfall in a day. Impressive. Loud, but impressive. Their glass remembers the shout, though. Hold a piece of each to your ear sometime.",
+      "next": "hub"
+    },
+    {
+      "id": "years",
+      "voice": "selorne_glass__years",
+      "text": "My eleventh this century, which the hall considers a little hurried, and they are not wrong. The ninth went to the Evenhall. The tenth I ground for a human, though he does not know it yet, and I will not say more, because a gift that arrives early is only a delivery.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "selorne_glass__off",
+      "text": "Go well. The lens and I will both be here."
+    }
+  ]
+}

@@ -28,10 +28,22 @@
     },
     {
      "text": "What's on the rear wall?",
-     "next": "wall"
+     "next": "wall",
+     "forbids": ["the_gift_remembered"]
+    },
+    {
+     "text": "The wall's answer found its asker, then.",
+     "next": "read",
+     "requires": ["the_gift_remembered"]
     }
    ],
    "voice": "vessa_table__hub"
+  },
+  {
+   "id": "read",
+   "text": "It did. You read it with your own question standing in the room, which nobody else alive has done. The dust and I are considering promoting you to furniture. And Veyle's latest letter was four pages. Four. The silence is over, my copies are getting thicker, and I have never been happier in my working life. Not that you can tell.",
+   "next": "hub",
+   "voice": "vessa_table__read"
   },
   {
    "id": "letters",

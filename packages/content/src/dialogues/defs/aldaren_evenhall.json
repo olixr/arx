@@ -76,8 +76,21 @@
   {
    "id": "crown",
    "text": "Are they. Five kings, one name, a foreman's line... I knew a foreman once. Paid his debts in silver and laughed from the belt up. I will not finish this thought. You may, if you walk east again.",
-   "next": "hub",
+   "choices": [
+    {
+     "text": "The delf's sealed door has its count now. The ring came home.",
+     "next": "count",
+     "requires": ["the_count_stands"]
+    },
+    { "text": "Never mind.", "next": "hub" }
+   ],
    "voice": "aldaren_evenhall__crown"
+  },
+  {
+   "id": "count",
+   "text": "Two hundred and fifteen. I taught their masons which end of the stone listens, and that seal was their masterwork, and it was shut from the outside by a man who then walked north and fathered kings... You carried the count that finishes the first sentence of that story. The rest is still being written, east of here, by whoever wears the crown when it ends. Tell Annik the old blood reads her stone. She will know what that is worth.",
+   "next": "hub",
+   "voice": "aldaren_evenhall__count"
   },
   {
    "id": "quiet",

@@ -15,7 +15,7 @@
    "text": "The waystones drink cool light, and the miles are long in both directions. I feed them when the watch allows, which is never often enough.\n\nBring moonbell and a measure of arcane dust, and one more stone keeps its mile through the dark season.",
    "choices": [
     {
-     "text": "I'll do it.",
+     "text": "I'll gather them.",
      "next": "go"
     },
     {
@@ -36,7 +36,7 @@
    "text": "The mile forgets itself. Travelers wander. The wood tidies up. We prefer the stones fed.",
    "choices": [
     {
-     "text": "Then I'll do it.",
+     "text": "Then I'll gather them.",
      "next": "go"
     }
    ]

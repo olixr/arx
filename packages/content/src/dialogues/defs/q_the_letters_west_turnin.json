@@ -1,0 +1,26 @@
+{
+  "id": "q_the_letters_west_turnin",
+  "start": "reply",
+  "requires": ["quest:the_letters_west:ready"],
+  "bindings": [{ "kind": "actor", "target": "enchantress_solvei", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "reply",
+      "voice": "q_the_letters_west_turnin__reply",
+      "text": "You have the look of somebody who walked past the Hoargate fork and kept walking. And that, in your hand... the reply. Give it here.",
+      "next": "hand"
+    },
+    {
+      "id": "hand",
+      "voice": "q_the_letters_west_turnin__hand",
+      "text": "His hand has not changed. A hundred and fifty years, and his hand has not changed. Do you know what that means, for someone like me? No. Sorry. You carried it, you should hear it plainly.",
+      "next": "open"
+    },
+    {
+      "id": "open",
+      "voice": "q_the_letters_west_turnin__open",
+      "text": "The gate is open. Truly open. I asked a question with no address and the answer came back wearing mine. Whatever the Arcanum was before this morning, it starts being something else now. Go and... no. I am not going to finish that sentence. I am going to read this eleven more times.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_letters_west" }]
+    }
+  ]
+}

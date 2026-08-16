@@ -408,8 +408,43 @@ import delverShift from './defs/delver_shift.json';
 import glasshandKilns from './defs/glasshand_kilns.json';
 import companyBladePost from './defs/company_blade_post.json';
 import companyRunnerLegs from './defs/company_runner_legs.json';
+// THE COURT PAYS ITS DEBTS — Evenfall's five quests get the turn-ins
+// they shipped without, the letter walk gets its three scenes, and the
+// six silent masters of the Fair Court finally speak.
+import qTheLettersWestTurnin from './defs/q_the_letters_west_turnin.json';
+import qTheFirstFocusTurnin from './defs/q_the_first_focus_turnin.json';
+import qABowOfTheWoodTurnin from './defs/q_a_bow_of_the_wood_turnin.json';
+import qTheQuietRoadTurnin from './defs/q_the_quiet_road_turnin.json';
+import qWhatTheSongHoldsTurnin from './defs/q_what_the_song_holds_turnin.json';
+import serelTheAddress from './defs/serel_the_address.json';
+import elarinTheLetter from './defs/elarin_the_letter.json';
+import aldarenTheLetter from './defs/aldaren_the_letter.json';
+import sylwenTheLeave from './defs/sylwen_the_leave.json';
+import dennaTheListening from './defs/denna_the_listening.json';
+import serelGate from './defs/serel_gate.json';
+import naiaStillroom from './defs/naia_stillroom.json';
+import faelarForge from './defs/faelar_forge.json';
+import myrrenSilks from './defs/myrren_silks.json';
+import selorneGlass from './defs/selorne_glass.json';
+import othielKeeping from './defs/othiel_keeping.json';
 
 const SOURCES: readonly unknown[] = [
+  qTheLettersWestTurnin,
+  qTheFirstFocusTurnin,
+  qABowOfTheWoodTurnin,
+  qTheQuietRoadTurnin,
+  qWhatTheSongHoldsTurnin,
+  serelTheAddress,
+  elarinTheLetter,
+  aldarenTheLetter,
+  sylwenTheLeave,
+  dennaTheListening,
+  serelGate,
+  naiaStillroom,
+  faelarForge,
+  myrrenSilks,
+  selorneGlass,
+  othielKeeping,
   fellwatchHorn,
   herderFolds,
   delfwatchWall,

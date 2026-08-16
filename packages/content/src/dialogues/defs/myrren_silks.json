@@ -1,0 +1,47 @@
+{
+  "id": "myrren_silks",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "weaver_myrren" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "myrren_silks__greet",
+      "text": "Come in. Hands clean? Then you may touch the second rack. The first rack is for looking, and the difference will make sense to your fingers before it makes sense to you.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "myrren_silks__hub",
+      "text": "Ask, or feel. Both are conversation here.",
+      "choices": [
+        { "text": "Show me the silks.", "next": "browse" },
+        { "text": "The moonpale weave is not white?", "next": "weave" },
+        { "text": "Who taught whom, between us and you?", "next": "taught" },
+        { "text": "Weave well, Myrren.", "next": "off" }
+      ]
+    },
+    {
+      "id": "browse",
+      "voice": "myrren_silks__browse",
+      "text": "Moonpale silk, silver thread, and a bolt of your ford-town wool I keep because honest is a texture and I like it near me.",
+      "hooks": [{ "kind": "shop", "shop": "myrren_silks" }]
+    },
+    {
+      "id": "weave",
+      "voice": "myrren_silks__weave",
+      "text": "Look again. Slower. There. It is every pale the moon owns, laid one against the next, and your eye calls it white because your eye is in a hurry. A hundred quiet years went into teaching the thread to hold that argument. The thread won. Threads usually do, given years, and we had the years.",
+      "next": "hub"
+    },
+    {
+      "id": "taught",
+      "voice": "myrren_silks__taught",
+      "text": "These hands taught the craft to people whose great-grandchildren taught it to yours. I say that without pride. Pride is for things that might have gone otherwise. It was a good trade both ways: we gave the loom, and your folk gave it hurry, and some of what hurry wove surprised us. I keep a piece of it. Second drawer. I do not show everyone.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "myrren_silks__off",
+      "text": "Go gently. You are wearing at least one thing somebody wove with care, whether you know it or not."
+    }
+  ]
+}

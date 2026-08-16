@@ -1,0 +1,19 @@
+{
+  "id": "serel_the_address",
+  "start": "letter",
+  "requires": ["quest:the_letters_west:stage:the_outward_house"],
+  "bindings": [{ "kind": "actor", "target": "sentinel_serel", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "letter",
+      "voice": "serel_the_address__letter",
+      "text": "A letter for the city, with no name on it. A hundred and fifty years of nobody writing, and the Arcanum finally sends... you. Hold still while I decide how historic this is.",
+      "next": "house"
+    },
+    {
+      "id": "house",
+      "voice": "serel_the_address__house",
+      "text": "The address she could not write is the Outward House. Elarin keeps the one room in Evenfall where human things are allowed to arrive. Take it to him, tell him the gate sent you, and tell him I said it was his problem now. He will be delighted. He is always delighted. It is exhausting."
+    }
+  ]
+}

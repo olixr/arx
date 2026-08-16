@@ -1,0 +1,51 @@
+{
+  "id": "serel_gate",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "sentinel_serel" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "serel_gate__greet",
+      "text": "Welcome to Evenfall. The arch is the whole wall. Treat it accordingly.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "serel_gate__hub",
+      "text": "You may ask. I am on watch, which means I am listening anyway.",
+      "choices": [
+        { "text": "One arch is the whole wall?", "next": "arch" },
+        { "text": "May I see the Heartwood?", "next": "heartwood" },
+        {
+          "text": "You know me. I carried the letters.",
+          "next": "letters",
+          "requires": ["evenfall_welcome"]
+        },
+        { "text": "Watch well, captain.", "next": "off" }
+      ]
+    },
+    {
+      "id": "arch",
+      "voice": "serel_gate__arch",
+      "text": "The wood is the wall. The arch is where the wall agrees to open, and I am where the agreement stands in boots. Nothing comes up the Evenway that the trees did not already discuss. My work is mostly to be the face the discussion wears, and to be a good one. I decided that early. It is a discipline.",
+      "next": "hub"
+    },
+    {
+      "id": "heartwood",
+      "voice": "serel_gate__heartwood",
+      "text": "No. Yes, everyone asks. No, asking twice does not help. You may ask twice anyway. I keep a private count of who manages to ask a third time politely, and the count is shorter than you would think, and it is not nothing to be on it.",
+      "next": "hub"
+    },
+    {
+      "id": "letters",
+      "voice": "serel_gate__letters",
+      "text": "I do know you. The gate knows you, which matters more. You were the address for a silence a century and a half old, and you walked it both ways without dropping it. When you come up the Evenway now, I say your name to the arch before you reach it. That is not a formality. That is the wall deciding not to be one, for you.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "serel_gate__off",
+      "text": "The king says the gate stays open. So it stays open, and I stay at it."
+    }
+  ]
+}

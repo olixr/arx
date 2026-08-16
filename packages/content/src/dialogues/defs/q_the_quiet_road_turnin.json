@@ -1,0 +1,14 @@
+{
+  "id": "q_the_quiet_road_turnin",
+  "start": "paid",
+  "requires": ["quest:the_quiet_road:ready"],
+  "bindings": [{ "kind": "actor", "target": "sentinel_serel", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "paid",
+      "voice": "q_the_quiet_road_turnin__paid",
+      "text": "Moonbell and dust, counted. The stones drink tonight, and the mile between them stays a mile instead of forgetting itself. The road thanks you in the only voice it has, which is silence. I have come to like it.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "the_quiet_road" }]
+    }
+  ]
+}

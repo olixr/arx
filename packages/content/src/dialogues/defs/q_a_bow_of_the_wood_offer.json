@@ -15,7 +15,7 @@
    "text": "You want the yew shelf. Everyone with eyes wants the yew shelf. The yew is not mine to give, so we do this properly.\n\nAsk the Warden for leave to take staves from the living wood. If Sylwen grants it, gather kindly and bring twine, and I will teach you what the guild halls stop short of.",
    "choices": [
     {
-     "text": "I'll do it.",
+     "text": "I'll ask the warden.",
      "next": "go"
     },
     {
@@ -36,7 +36,7 @@
    "text": "I do not need permission. I have standing leave, sixty years old. YOU need permission, and watching how you ask will tell me more about your hands than any bench test.",
    "choices": [
     {
-     "text": "Then I'll do it.",
+     "text": "Then I'll ask her.",
      "next": "go"
     }
    ]

@@ -1,0 +1,19 @@
+{
+  "id": "elarin_the_letter",
+  "start": "arrive",
+  "requires": ["quest:the_letters_west:stage:the_evenhall"],
+  "bindings": [{ "kind": "actor", "target": "innkeep_elarin", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "arrive",
+      "voice": "elarin_the_letter__arrive",
+      "text": "A letter! An actual letter, from an actual human hand, at my actual door. Serel sent you? Of course she did, she calls anything wonderful a problem. Give it here, let me...",
+      "next": "up"
+    },
+    {
+      "id": "up",
+      "voice": "elarin_the_letter__up",
+      "text": "Oh. No. This is not mine to open. This hand asks questions the way trees fall. It goes up, my friend, all the way up: the Evenhall, past the flame. Walk slowly. Some letters deserve a slow walk, and this is the first one in my lifetime."
+    }
+  ]
+}

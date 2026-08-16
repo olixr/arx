@@ -1,0 +1,40 @@
+{
+  "id": "othiel_keeping",
+  "start": "greet",
+  "bindings": [{ "kind": "actor", "target": "keeper_othiel" }],
+  "nodes": [
+    {
+      "id": "greet",
+      "voice": "othiel_keeping__greet",
+      "text": "The Keeping. Two vaults, one chest, my memory. State your business.",
+      "next": "hub"
+    },
+    {
+      "id": "hub",
+      "voice": "othiel_keeping__hub",
+      "text": "Yes?",
+      "choices": [
+        { "text": "How does the Keeping work?", "next": "kept" },
+        { "text": "No ledgers at all?", "next": "memory" },
+        { "text": "Good keeping, Othiel.", "next": "off" }
+      ]
+    },
+    {
+      "id": "kept",
+      "voice": "othiel_keeping__kept",
+      "text": "What is kept is kept. That is the whole charter. It has never needed a second line.",
+      "next": "hub"
+    },
+    {
+      "id": "memory",
+      "voice": "othiel_keeping__memory",
+      "text": "The Charter's countinghouse has nine clerks, a tithe vault, and a fire watch. We have a bench and my memory. Same service. I do not count out loud. Counting out loud is for people who might be wrong.",
+      "next": "hub"
+    },
+    {
+      "id": "off",
+      "voice": "othiel_keeping__off",
+      "text": "Your coin is safe here. Safer than you are. You chose the adventuring."
+    }
+  ]
+}

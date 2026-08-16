@@ -1,0 +1,25 @@
+{
+  "id": "aldaren_the_letter",
+  "start": "name",
+  "requires": ["quest:the_letters_west:ready"],
+  "bindings": [{ "kind": "actor", "target": "king_aldaren", "priority": 8 }],
+  "nodes": [
+    {
+      "id": "name",
+      "voice": "aldaren_the_letter__name",
+      "text": "...Solvei. I know the name. The one who asks the rift what it knows. Not afraid enough, once. Wise enough to be afraid later, which is the better order after all.",
+      "next": "answer"
+    },
+    {
+      "id": "answer",
+      "voice": "aldaren_the_letter__answer",
+      "text": "She asks whether the gate is truly open, and whether the old teaching may come east again. Sit while I answer her. It will not take long. The answer has been ready for a hundred and fifty years. Only the question was missing.",
+      "next": "carry"
+    },
+    {
+      "id": "carry",
+      "voice": "aldaren_the_letter__carry",
+      "text": "There. Carry her my hand, and walk the miles kindly. You have been the address for both halves of a very old silence, and that is a thing songs get made of, whatever Maelis pretends."
+    }
+  ]
+}

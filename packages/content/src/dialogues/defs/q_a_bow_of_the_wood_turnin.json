@@ -1,0 +1,20 @@
+{
+  "id": "q_a_bow_of_the_wood_turnin",
+  "start": "grain",
+  "requires": ["quest:a_bow_of_the_wood:ready"],
+  "bindings": [{ "kind": "actor", "target": "bowyer_aewyn", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "grain",
+      "voice": "q_a_bow_of_the_wood_turnin__grain",
+      "text": "Show me. Clean grain, no hurry in the cut, and Sylwen's mark on the leave. The wood said yes twice. It does not do that for me every year.",
+      "next": "wall"
+    },
+    {
+      "id": "wall",
+      "voice": "q_a_bow_of_the_wood_turnin__wall",
+      "text": "The staves go to the wall now, to think. A bow of the wood is not made, it is agreed to, and the agreement takes as long as it takes. What you bought today is the yes. That is the rare half. The rest is only years, and years are the one thing this house has in stock.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "a_bow_of_the_wood" }]
+    }
+  ]
+}

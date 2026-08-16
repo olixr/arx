@@ -1,0 +1,20 @@
+{
+  "id": "q_what_the_song_holds_turnin",
+  "start": "pearl",
+  "requires": ["quest:what_the_song_holds:ready"],
+  "bindings": [{ "kind": "actor", "target": "loresinger_maelis", "priority": 21 }],
+  "nodes": [
+    {
+      "id": "pearl",
+      "voice": "q_what_the_song_holds_turnin__pearl",
+      "text": "You brought the deep water's ear home. Sit. This will take exactly as long as it takes.",
+      "next": "sung"
+    },
+    {
+      "id": "sung",
+      "voice": "q_what_the_song_holds_turnin__sung",
+      "text": "There. The listening song, sung true, first time in an age of the world, and the pearl held its half like it had been waiting. Denna of the delf coast is owed the hearing, when the sea sends her. As for you: the Songhouse keeps what happened, and what happened now has your name in it. That is not a small thing, in a place like this.",
+      "hooks": [{ "kind": "quest_turnin", "quest": "what_the_song_holds" }]
+    }
+  ]
+}

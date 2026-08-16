@@ -10,7 +10,7 @@
  "nodes": [
   {
    "id": "greet",
-   "text": "Welcome to the Outward House! Sit anywhere. As you humans say: my casa is your casa.",
+   "text": "Welcome to the Outward House! Sit anywhere. As you humans say: make yourself at house. Nearly right is my favorite kind of right.",
    "next": "hub",
    "voice": "elarin_outward__greet"
   },
