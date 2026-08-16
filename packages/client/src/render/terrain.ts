@@ -525,6 +525,9 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     // THE COMMONS: the general shelf stands on whatever the scene
     // laid — boards, flags, path, green, or the shore's own sand.
     if (t >= Tile.CandleStand && t <= Tile.BeachedSkiff) return nearestFloor(ground, tx, ty);
+    // THE WARREN AND THE LEGION: the camps' life stands on the same
+    // trampled ground the first war-camp shelf stands on.
+    if (t >= Tile.BoneMidden && t <= Tile.GnawTrough) return nearestFloor(ground, tx, ty);
     // The palisade stands in open country like the garrison curtain:
     // whatever walkable terrain fronts it continues beneath (south
     // first — that side's base sliver shows), and a family member

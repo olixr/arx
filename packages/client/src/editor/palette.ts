@@ -118,6 +118,12 @@ export const TILE_CATEGORIES: TileCategory[] = [
       Tile.MeatSpit, Tile.MeatRack, Tile.CookPot, Tile.PotionRack,
       Tile.BeastNest, Tile.PlunderSacks, Tile.SpearRack,
       Tile.TargetDummy, Tile.WarDrum, Tile.HideFrame,
+      // THE WARREN AND THE LEGION: the camps' life — goblin sprawl,
+      // legion order, and the raider pieces every warband shares.
+      Tile.BoneMidden, Tile.TrophyStake, Tile.GrogTub, Tile.KnucklePit,
+      Tile.RagNest, Tile.BeastStake, Tile.CritterCage,
+      Tile.AlarmGong, Tile.WarTable,
+      Tile.PlunderCart, Tile.BossEffigy, Tile.GnawTrough,
     ],
   },
   {

@@ -889,6 +889,40 @@ export enum Tile {
   MooringPost = 447,
   /** A clinker skiff hauled ashore on its keel, oars shipped, painter coiled. */
   BeachedSkiff = 448,
+  // THE WARREN AND THE LEGION (449-460) — the enemy camps' second
+  // dressing wave. The first shelf (297-316) armed the camp: fire,
+  // wall, larder, loot. This one gives it a LIFE — where the goblin
+  // sleeps, drinks, gambles, brags, and keeps its beast, and where
+  // the hobgoblin officer plans and sounds the alarm. Same kit voice
+  // turned feral: TENDED, NEVER LEFT still holds (the grog drips,
+  // the dice sit mid-throw, the map is pinned mid-argument) — but
+  // everything here is stolen, scavenged, or crudely lashed. The
+  // shelf splits goblin sprawl (449-455), legion order (456-457),
+  // and the shared raider pieces every warband reuses (458-460).
+  /** The camp's refuse heap: cracked gnawed bones, a burst rib cage, flies. */
+  BoneMidden = 449,
+  /** A driven stake nailed with stolen kit — shield, helm, torn tabard. */
+  TrophyStake = 450,
+  /** A staved tub of murky goblin grog, ladle out, one stave leaking. */
+  GrogTub = 451,
+  /** The gambling spot: a scratched board, thrown knucklebones, a claimed pot. */
+  KnucklePit = 452,
+  /** The goblin bed: a trampled ring of stolen rags, sack for a pillow. */
+  RagNest = 453,
+  /** An iron beast-stake, chain coiled to an empty collar — the worg is out. */
+  BeastStake = 454,
+  /** Two lashed wicker cages stacked crooked, something squirming inside. */
+  CritterCage = 455,
+  /** The legion's signal: a scrap-bronze gong in a lashed frame, striker by. */
+  AlarmGong = 456,
+  /** The officer's trestle: a hide map pinned by a dagger, cup markers set. */
+  WarTable = 457,
+  /** A stolen farm cart, one wheel smashed, loot heaped under a lashed net. */
+  PlunderCart = 458,
+  /** The warboss in straw and sacking: pot-helm head, painted grin, real spear. */
+  BossEffigy = 459,
+  /** A hollowed half-log slopped for the war-beasts, rim scalloped with bites. */
+  GnawTrough = 460,
 }
 
 export enum Detail {
@@ -1552,6 +1586,21 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.PottedTree]: { name: 'potted bay', solid: true, color: '#75603e', raised: true, topColor: '#5d7c42' },
   [Tile.MooringPost]: { name: 'mooring post', solid: true, color: '#4e4438', raised: true, topColor: '#a89263' },
   [Tile.BeachedSkiff]: { name: 'beached skiff', solid: true, color: '#6f5a38', raised: true, topColor: '#8fa8bd' },
+  // THE WARREN AND THE LEGION: the camp browns again — axe-hewn wood,
+  // bone, scrap iron — with the wave's few loud notes (the tabard's
+  // madder, the legion's bronze, the effigy's painted grin) on top.
+  [Tile.BoneMidden]: { name: 'bone midden', solid: true, color: '#a89a80', raised: true, topColor: '#c9c2ae' },
+  [Tile.TrophyStake]: { name: 'trophy stake', solid: true, color: '#6b4a26', raised: true, topColor: '#8b93a4' },
+  [Tile.GrogTub]: { name: 'grog tub', solid: true, color: '#5e4023', raised: true, topColor: '#8a7a3a' },
+  [Tile.KnucklePit]: { name: 'knucklebone pit', solid: true, color: '#8a6534', raised: true, topColor: '#c9c2ae' },
+  [Tile.RagNest]: { name: 'rag nest', solid: true, color: '#6e5a44', raised: true, topColor: '#8a3b34' },
+  [Tile.BeastStake]: { name: 'beast stake', solid: true, color: '#57535f', raised: true, topColor: '#3a3444' },
+  [Tile.CritterCage]: { name: 'critter cage', solid: true, color: '#8a713f', raised: true, topColor: '#a88f5c' },
+  [Tile.AlarmGong]: { name: 'alarm gong', solid: true, color: '#6b4a26', raised: true, topColor: '#b08d3c' },
+  [Tile.WarTable]: { name: 'war table', solid: true, color: '#6b4a26', raised: true, topColor: '#c9b684' },
+  [Tile.PlunderCart]: { name: 'plunder cart', solid: true, color: '#6e4a33', raised: true, topColor: '#9c8a62' },
+  [Tile.BossEffigy]: { name: 'warboss effigy', solid: true, color: '#6b4a26', raised: true, topColor: '#8a3b34' },
+  [Tile.GnawTrough]: { name: 'gnaw trough', solid: true, color: '#5e4023', raised: true, topColor: '#7d5a2e' },
 };
 
 /** The four awning silhouettes, index order FOREVER (the id math). */
@@ -2257,6 +2306,21 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.PottedTree, 0.28],
   [Tile.MooringPost, 0.24],
   [Tile.BeachedSkiff, 0.45],
+  // THE WARREN AND THE LEGION: the cart is the wave's one true
+  // mass; the stakes are poles you brush past; the midden, nest,
+  // and pit barely own their shadows.
+  [Tile.BoneMidden, 0.32],
+  [Tile.TrophyStake, 0.22],
+  [Tile.GrogTub, 0.34],
+  [Tile.KnucklePit, 0.3],
+  [Tile.RagNest, 0.32],
+  [Tile.BeastStake, 0.22],
+  [Tile.CritterCage, 0.28],
+  [Tile.AlarmGong, 0.34],
+  [Tile.WarTable, 0.4],
+  [Tile.PlunderCart, 0.45],
+  [Tile.BossEffigy, 0.24],
+  [Tile.GnawTrough, 0.36],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -2569,7 +2633,20 @@ export type DestructibleKind =
   | 'wayfarer'
   | 'pottedtree'
   | 'mooring'
-  | 'skiff';
+  | 'skiff'
+  // THE WARREN AND THE LEGION: the camps' second wreckage shelf.
+  | 'gnawbones'
+  | 'trophies'
+  | 'grogtub'
+  | 'knuckles'
+  | 'ragnest'
+  | 'beaststake'
+  | 'critters'
+  | 'gong'
+  | 'wartable'
+  | 'plundercart'
+  | 'effigy'
+  | 'gnawtrough';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -2787,6 +2864,24 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.PottedTree, { kind: 'pottedtree', respawnSec: 300, hits: 1 }],
   [Tile.MooringPost, { kind: 'mooring', respawnSec: 300, hits: 2 }],
   [Tile.BeachedSkiff, { kind: 'skiff', respawnSec: 600, hits: 3 }],
+  // THE WARREN AND THE LEGION: camp litter pops in one, lashed
+  // work holds two, and the stolen cart is the wave's barricade at
+  // three. Everything here breaks — clearing a camp's LIFE is part
+  // of clearing the camp — and re-dresses on the furniture clock,
+  // because a warband that survives the raid rebuilds its comforts
+  // before its walls.
+  [Tile.BoneMidden, { kind: 'gnawbones', respawnSec: 300, hits: 1 }],
+  [Tile.TrophyStake, { kind: 'trophies', respawnSec: 420, hits: 2 }],
+  [Tile.GrogTub, { kind: 'grogtub', respawnSec: 300, hits: 2 }],
+  [Tile.KnucklePit, { kind: 'knuckles', respawnSec: 240, hits: 1 }],
+  [Tile.RagNest, { kind: 'ragnest', respawnSec: 300, hits: 1 }],
+  [Tile.BeastStake, { kind: 'beaststake', respawnSec: 420, hits: 2 }],
+  [Tile.CritterCage, { kind: 'critters', respawnSec: 300, hits: 1 }],
+  [Tile.AlarmGong, { kind: 'gong', respawnSec: 420, hits: 2 }],
+  [Tile.WarTable, { kind: 'wartable', respawnSec: 420, hits: 2 }],
+  [Tile.PlunderCart, { kind: 'plundercart', respawnSec: 600, hits: 3 }],
+  [Tile.BossEffigy, { kind: 'effigy', respawnSec: 420, hits: 2 }],
+  [Tile.GnawTrough, { kind: 'gnawtrough', respawnSec: 300, hits: 1 }],
 ]);
 
 /** Every smashable prop tile. */

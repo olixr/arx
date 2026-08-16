@@ -266,7 +266,32 @@ const goblinMarks: Record<string, Marker> = {
   '3': { npc: 'goblin_thrower', radius: 2, under: Tile.Dirt },
 };
 
-/** A palisaded goblin ring-camp: fire at the heart, loot behind it. */
+// THE WARREN SPEAKS LOCAL (the skral precedent — the global ASCII
+// ran out at Kingsdelf): the camps' second shelf rides a per-sketch
+// legend, shadowing marks no camp sketch flies in their global
+// sense. The shadows are mnemonic on purpose: the goblin's bed
+// shadows the town's bed ('E'), the war table the table ('k'), the
+// grog tub the barrel ('a'), the critter cage the crate ('c'), the
+// gnaw trough the stump ('u'), the cart the wood wall ('w' — no
+// camp builds in planks), and 'Y' IS the trophy stake's silhouette.
+const campLife: Record<string, number> = {
+  o: Tile.BoneMidden,
+  Y: Tile.TrophyStake,
+  a: Tile.GrogTub,
+  x: Tile.KnucklePit,
+  E: Tile.RagNest,
+  J: Tile.BeastStake,
+  c: Tile.CritterCage,
+  G: Tile.AlarmGong,
+  k: Tile.WarTable,
+  w: Tile.PlunderCart,
+  e: Tile.BossEffigy,
+  u: Tile.GnawTrough,
+};
+
+/** A palisaded goblin ring-camp: fire at the heart, loot behind it —
+ *  and the warren's life around it: a bed-nest by the tent, grog at
+ *  the fire, last week's dinners heaped by the skull count. */
 const goblinCampRing = declareInfluence(sketch(
   'poi_goblin_camp_ring',
   'Goblin ring-camp',
@@ -274,33 +299,38 @@ const goblinCampRing = declareInfluence(sketch(
     '_____,,,_____',
     '__,:::::::,__',
     '_,::|:!:|::,_',
-    '_,:.^.....:,_',
+    '_,:.^E....:,_',
     ',::.1...2.::,',
-    ',:....f..-.:,',
+    ',:...af..-.:,',
     ',::.3...W.::,',
-    '_,:.0.....:,_',
+    '_,:.0..o..:,_',
     '_,::|:>:|::,_',
     '__,:::::::,__',
     '_____,,,_____',
   ],
   goblinMarks,
+  undefined,
+  campLife,
 ), { cap: WING_POOL_CAP });
 
-/** A sprawled two-fire goblin camp on a trampled clearing. */
+/** A sprawled two-fire goblin camp on a trampled clearing — dice by
+ *  the first fire, a rag bed by the tent, the midden at the edge. */
 const goblinCampPair = declareInfluence(sketch(
   'poi_goblin_camp_pair',
   'Goblin twin-fires',
   [
     '______,,,,_____',
     '__,::::::::,___',
-    '_,::f..^.:::,__',
-    ',:.1...2..f::,_',
+    '_,::f.x^.:::,__',
+    ',:.1...2E.f::,_',
     ',::...W...-.:,_',
     '_,:..>...3..:,_',
-    '_,:::0::::::,__',
+    '_,:::0o:::::,__',
     '___,,::::,,____',
   ],
   goblinMarks,
+  undefined,
+  campLife,
 ), { cap: WING_POOL_CAP });
 
 const gnollMarks: Record<string, Marker> = {
@@ -689,9 +719,9 @@ const hobMuster = sketch(
   [
     '_______________',
     '__|||||=|||||__',
-    '__|:::::::::|__',
+    '__|:G:::::::|__',
     '__|:m:m:m:>:|__',
-    '__|:::::::::|__',
+    '__|::::::k::|__',
     '__|:1.(.2.]:|__',
     '__|:::::::::|__',
     '__|:{:@:-:X:|__',
@@ -700,6 +730,8 @@ const hobMuster = sketch(
     '_______________',
   ],
   hobMarks,
+  undefined,
+  campLife,
 );
 
 /** The watch-post: a road detail's fortlet — one tent, one brazier,
@@ -710,7 +742,7 @@ const hobWatch = sketch(
   [
     '___________',
     '__|||=|||__',
-    '__|:::::|__',
+    '__|:G:::|__',
     '__|:^:>:|__',
     '__|:1X]:|__',
     '__|:&:2:|__',
@@ -719,6 +751,8 @@ const hobWatch = sketch(
     '___________',
   ],
   hobMarks,
+  undefined,
+  campLife,
 );
 
 /** The forge-camp: iron and flame in the field — the warcaster's
@@ -731,14 +765,16 @@ const hobForgecamp = sketch(
     '__|||||=|||||__',
     '__|:::::::::|__',
     '__|:K:&:K:>:|__',
-    '__|:1.:::.2:|__',
+    '__|:1.:k:.2:|__',
     '__|:m:@:m:]:|__',
-    '__|:4.:::.3:|__',
+    '__|:4.:w:.3:|__',
     '__|:$:[:X:!:|__',
     '__|||||||||||__',
     '_______________',
   ],
   hobMarks,
+  undefined,
+  campLife,
 );
 
 const ruinMarks: Record<string, Marker> = {
@@ -1424,17 +1460,19 @@ const goblinStockade = sketch(
     '______,,,_______',
     '__,::::::::::,__',
     '_,:||||==||||:,_',
-    '_,:|.^.....0|:,_',
+    '_,:|.^E....0|:,_',
     '_,:|.f.1..f.|:,_',
-    '_,:|...W...-|:,_',
-    '_,:|.2...3..|:,_',
-    '_,:|...f...[|:,_',
+    '_,:|a..W...-|:,_',
+    '_,:|.2...3.o|:,_',
+    '_,:|.u.f.J.[|:,_',
     '_,:||||==||||:,_',
-    '_,::>::!:::>::,_',
+    '_,::>::!:Y:>::,_',
     '__,::::::::::,__',
     '_____,,,________',
   ],
   goblinMarks,
+  undefined,
+  campLife,
 );
 
 /**
@@ -2099,15 +2137,15 @@ const warholdCourt = declareInfluence(sketch('poi_warhold_court', 'War-hold cour
   '_____,,::,,_____',
   '__,::::::::::,__',
   '_,::|::==::|::,_',
-  '_,:|.^....m.|:,_',
-  ',::.!..@...[.::,',
+  '_,:|.^w...m.|:,_',
+  ',::.!..@.a.[.::,',
   ',::.0..?Z..$.::,',
-  ',::.-......".::,',
-  '_,:|.>....!.|:,_',
+  ',::.-..e...".::,',
+  '_,:|.>.x..!.|:,_',
   '_,::|::==::|::,_',
   '__,::::::::::,__',
   '_____,,::,,_____',
-]), { exempt: true });
+], {}, undefined, campLife), { exempt: true });
 
 /** The stockade court: rough timber walls, two gates, the tally's cache. */
 const stockadeCourt = declareInfluence(sketch('poi_stockade_court', 'Stockade court', [

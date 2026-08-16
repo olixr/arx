@@ -510,6 +510,17 @@ const PALI_LOG = '#6a4a28';
 const PALI_ROPE = '#8a713f';
 const PALI_ROPE_DARK = '#4a3a22';
 const PALI_BONE = '#c9c2ae';
+// THE WARREN'S RAGS: the one dye deal every stolen cloth in the
+// camps draws from — madder gone dull, drab field green, mustard,
+// and a gray-woad blue. Four WIDE values (the hide-cluster law:
+// close hues read as one coat), all mud-tempered: a goblin's cloth
+// was somebody else's before the raid. The legion's crimson is NOT
+// here — THE BANNER IS ONE, and the officer's ink never varies.
+const CAMP_RAG = ['#8a3b34', '#5d6a42', '#9a7a35', '#4a5a6e'] as const;
+const CAMP_IRON = '#3a3444';
+const CAMP_BRONZE = '#b08d3c';
+const CAMP_BRONZE_DARK = '#7a6128';
+const LEGION_CRIMSON = '#8f2f2a';
 // THE CLIPPED GREEN: garden foliage in the berry bush's leaf lineage
 // (the one wild green the world already speaks), clipped formal — a
 // half-step deeper and cooler than the meadow so a drawn hedgerow
@@ -723,6 +734,15 @@ const LOW_STICK_TILES = new Set<number>([
   Tile.BasketStack,
   Tile.GlazedJars,
   Tile.BeachedSkiff,
+  // The warren's knee-high pieces: a heap of dinner's wreckage, a
+  // gambling board, a bed of rags, a slopped half-log, a squatting
+  // tub, and the officer's trestle — arrows lodge low in all of them.
+  Tile.BoneMidden,
+  Tile.KnucklePit,
+  Tile.RagNest,
+  Tile.GnawTrough,
+  Tile.GrogTub,
+  Tile.WarTable,
 ]);
 /**
  * Ragdoll rest: how long a settled corpse lingers before it fades. THE
@@ -17601,6 +17621,25 @@ export class Renderer {
     Tile.PottedTree,
     Tile.MooringPost,
     Tile.BeachedSkiff,
+    // THE WARREN AND THE LEGION: the camps' second shelf rides the
+    // ring cache like the first. Five clocked pieces (the midden's
+    // flies, the tub's drip, the cage's squirm, the gong's tassel,
+    // the effigy's streamers) all sit under 4Hz; the seven still
+    // pieces idle in STATIC_RING_TILES. Zero NEW light entries —
+    // this wave lights nothing; the camp's night already burns on
+    // the first shelf's torch, bonfire, and brazier.
+    Tile.BoneMidden,
+    Tile.TrophyStake,
+    Tile.GrogTub,
+    Tile.KnucklePit,
+    Tile.RagNest,
+    Tile.BeastStake,
+    Tile.CritterCage,
+    Tile.AlarmGong,
+    Tile.WarTable,
+    Tile.PlunderCart,
+    Tile.BossEffigy,
+    Tile.GnawTrough,
   ]);
 
   /**
@@ -17771,6 +17810,18 @@ export class Renderer {
     Tile.PottedTree,
     Tile.MooringPost,
     Tile.BeachedSkiff,
+    // Warren-and-legion statics: the truly still pieces — nailed
+    // trophies, thrown dice, dead iron, joined trestle, parked
+    // cart, hollowed log, and a bed nobody is in. The flies, the
+    // drip, the squirm, the tassel, and the streamers stay on the
+    // fast cadence.
+    Tile.TrophyStake,
+    Tile.KnucklePit,
+    Tile.RagNest,
+    Tile.BeastStake,
+    Tile.WarTable,
+    Tile.PlunderCart,
+    Tile.GnawTrough,
   ]);
 
   /**
@@ -43408,6 +43459,1768 @@ export class Renderer {
             ctx.beginPath();
             ctx.ellipse(bowX + m * s * 0.05, baseY + s * 0.04, s * 0.2, s * 0.035, 0, 0, Math.PI * 2);
             ctx.fill();
+          },
+        };
+      }
+
+      // ── THE WARREN AND THE LEGION (449-460) ─────────────────────
+      // The camps' second dressing wave: the goblin's day (sleep,
+      // drink, gamble, brag, beast-keeping) and the legion's order
+      // (signal, command). Same laws as the first shelf: raw hewn
+      // timber, rope lash, scrap iron; every flame already burns on
+      // shelf one, so this wave queues NO light. Clocked terms all
+      // sit under 4Hz for the ring cache.
+
+      case Tile.BoneMidden: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.3;
+        const m = ((h >>> 4) & 1) ? 1 : -1;
+        return {
+          sortY: ty + 0.64,
+          body: stationBody(0.7, 1.0, 0.5),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            // The grease ring first: dinner has been thrown here for
+            // a season — the ground remembers every meal.
+            ctx.fillStyle = 'rgba(52, 40, 24, 0.22)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, s * 0.5, s * 0.13, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.14)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, s * 0.4, s * 0.09, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The long-bone bed: cracked femurs thrown any way they
+            // landed, every one with its knuckle ends — and half of
+            // them SNAPPED for the marrow (a goblin wastes nothing).
+            const bone = (ox: number, oy: number, rot: number, len: number, tone: number, snapped: boolean) => {
+              ctx.save();
+              ctx.translate(p.x + ox * s * m, baseY + oy * s);
+              ctx.rotate(rot * m);
+              ctx.fillStyle = shade(PALI_BONE, tone);
+              if (snapped) {
+                // Two halves, hinged apart at the break — jagged ends.
+                ctx.fillRect(-len * s * 0.5, -s * 0.028, len * s * 0.34, s * 0.056);
+                ctx.beginPath();
+                ctx.moveTo(-len * s * 0.16, -s * 0.028);
+                ctx.lineTo(-len * s * 0.09, 0);
+                ctx.lineTo(-len * s * 0.16, s * 0.028);
+                ctx.closePath();
+                ctx.fill();
+                ctx.save();
+                ctx.translate(len * s * 0.08, s * 0.02);
+                ctx.rotate(0.24);
+                ctx.fillRect(-len * s * 0.16, -s * 0.028, len * s * 0.4, s * 0.056);
+                ctx.fillRect(len * s * 0.24 - s * 0.02, -s * 0.042, s * 0.045, s * 0.084);
+                ctx.restore();
+              } else {
+                ctx.fillRect(-len * s * 0.5, -s * 0.03, len * s, s * 0.06);
+                ctx.fillRect(-len * s * 0.5 - s * 0.02, -s * 0.045, s * 0.045, s * 0.09);
+                ctx.fillRect(len * s * 0.5 - s * 0.024, -s * 0.045, s * 0.045, s * 0.09);
+              }
+              ctx.restore();
+            };
+            bone(-0.26, 0.0, 0.35, 0.36, -16, false);
+            bone(0.24, 0.03, -0.2, 0.32, -8, true);
+            bone(-0.02, 0.06, 0.08, 0.4, -22, false);
+            bone(0.1, -0.06, -0.5, 0.28, -12, true);
+            // The burst rib cage crowns the heap: a spine ridge and
+            // four sprung ribs still holding their curve — the one
+            // shape that says CARCASS at any zoom.
+            const rx = p.x - m * s * 0.06;
+            const ry = baseY - s * 0.2;
+            ctx.strokeStyle = shade(PALI_BONE, 4);
+            ctx.lineWidth = Math.max(1.5, s * 0.035);
+            for (let i = 0; i < 4; i++) {
+              const rr = s * (0.3 - i * 0.052);
+              ctx.beginPath();
+              ctx.arc(rx + m * i * s * 0.085, ry + s * 0.02, rr, Math.PI * 1.05, Math.PI * 1.78);
+              ctx.stroke();
+            }
+            ctx.fillStyle = shade(PALI_BONE, -6);
+            ctx.beginPath();
+            ctx.moveTo(rx - m * s * 0.3, ry + s * 0.06);
+            ctx.quadraticCurveTo(rx, ry - s * 0.02, rx + m * s * 0.34, ry + s * 0.1);
+            ctx.lineTo(rx + m * s * 0.34, ry + s * 0.15);
+            ctx.quadraticCurveTo(rx, ry + s * 0.03, rx - m * s * 0.3, ry + s * 0.11);
+            ctx.closePath();
+            ctx.fill();
+            // The prize haunch bone leans on the cage, bites
+            // scalloped out of its shank — somebody was interrupted.
+            ctx.save();
+            ctx.translate(p.x + m * s * 0.24, baseY - s * 0.14);
+            ctx.rotate(-0.7 * m);
+            ctx.fillStyle = shade(PALI_BONE, 12);
+            ctx.beginPath();
+            ctx.moveTo(-s * 0.035, -s * 0.2);
+            ctx.lineTo(s * 0.035, -s * 0.2);
+            // The gnawed edge: three bite scallops down one side.
+            ctx.lineTo(s * 0.03, -s * 0.08);
+            ctx.arc(s * 0.014, -s * 0.05, s * 0.026, -Math.PI * 0.4, Math.PI * 0.5);
+            ctx.arc(s * 0.012, s * 0.015, s * 0.024, -Math.PI * 0.45, Math.PI * 0.5);
+            ctx.lineTo(s * 0.03, s * 0.1);
+            ctx.lineTo(-s * 0.03, s * 0.1);
+            ctx.closePath();
+            ctx.fill();
+            // The double knob head.
+            ctx.beginPath();
+            facetCircle(ctx, -s * 0.02, -s * 0.22, s * 0.038, 5, -0.3, 0.9);
+            ctx.fill();
+            ctx.beginPath();
+            facetCircle(ctx, s * 0.025, -s * 0.225, s * 0.033, 5, 0.4, 0.9);
+            ctx.fill();
+            ctx.restore();
+            // Teeth and chips around the foot.
+            ctx.fillStyle = shade(PALI_BONE, 16);
+            for (let i = 0; i < 5; i++) {
+              const a = ((h >>> (i * 3)) & 7) / 7;
+              ctx.fillRect(p.x + (a - 0.5) * s * 0.86, baseY + s * (0.03 + (i % 2) * 0.05), s * 0.028, s * 0.022);
+            }
+            // The flies: three specks on lazy crossing orbits, low
+            // over the heap — dark motes, never leaving the mass's
+            // silhouette (the ring bakes clean).
+            ctx.fillStyle = 'rgba(24, 18, 16, 0.75)';
+            for (let i = 0; i < 3; i++) {
+              const fa = t * (1.1 + i * 0.35) + h * 0.3 + i * 2.1;
+              ctx.fillRect(
+                p.x + Math.sin(fa) * s * (0.14 + i * 0.05),
+                baseY - s * 0.24 - Math.abs(Math.sin(fa * 0.7 + i)) * s * 0.12,
+                s * 0.018,
+                s * 0.018,
+              );
+            }
+          },
+        };
+      }
+
+      case Tile.TrophyStake: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.16;
+        const m = ((h >>> 3) & 1) ? 1 : -1;
+        const lean = m * 0.05;
+        const topY = baseY - s * 1.46;
+        const rag = CAMP_RAG[(h >>> 6) % 4]!;
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.75, 2.0, 0.4),
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - s * 0.06, baseY, p.x + s * 0.06, baseY, 1.4);
+          },
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.015, s * 0.14, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            const tipX = p.x + lean * s;
+            // The driven stake: squared, tapered, one lit facet —
+            // the torch's timber without the fire.
+            ctx.fillStyle = shade(PALI_LOG, -4);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.06, baseY);
+            ctx.lineTo(p.x + s * 0.06, baseY);
+            ctx.lineTo(tipX + s * 0.04, topY);
+            ctx.lineTo(tipX - s * 0.04, topY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(PALI_LOG, 12);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.06, baseY);
+            ctx.lineTo(p.x - s * 0.022, baseY);
+            ctx.lineTo(tipX - s * 0.014, topY);
+            ctx.lineTo(tipX - s * 0.04, topY);
+            ctx.closePath();
+            ctx.fill();
+            // The crossbar, lashed at the meeting — the gallows-tree
+            // shape every traveler reads at a hundred yards.
+            const barY = topY + s * 0.34;
+            ctx.fillStyle = shade(PALI_LOG, -10);
+            ctx.save();
+            ctx.translate(tipX, barY);
+            ctx.rotate(-0.06 * m);
+            ctx.fillRect(-s * 0.4, -s * 0.035, s * 0.8, s * 0.07);
+            ctx.restore();
+            ctx.fillStyle = PALI_ROPE;
+            ctx.fillRect(tipX - s * 0.055, barY - s * 0.06, s * 0.11, s * 0.12);
+            ctx.fillStyle = PALI_ROPE_DARK;
+            ctx.fillRect(tipX - s * 0.055, barY - s * 0.012, s * 0.11, s * 0.024);
+            // The torn tabard hangs from the bar's far arm — the
+            // warren's rag deal, hem ripped to points.
+            const tabX = tipX - m * s * 0.28;
+            ctx.fillStyle = rag;
+            ctx.beginPath();
+            ctx.moveTo(tabX - s * 0.09, barY + s * 0.03);
+            ctx.lineTo(tabX + s * 0.09, barY + s * 0.03);
+            ctx.lineTo(tabX + s * 0.075, barY + s * 0.42);
+            ctx.lineTo(tabX + s * 0.03, barY + s * 0.34);
+            ctx.lineTo(tabX - s * 0.005, barY + s * 0.44);
+            ctx.lineTo(tabX - s * 0.045, barY + s * 0.33);
+            ctx.lineTo(tabX - s * 0.08, barY + s * 0.4);
+            ctx.closePath();
+            ctx.fill();
+            // One shaded fold and the ghost of its owner's blazon.
+            ctx.fillStyle = shade(rag, -12);
+            ctx.fillRect(tabX - s * 0.014, barY + s * 0.03, s * 0.028, s * 0.34);
+            ctx.fillStyle = shade(rag, 18);
+            ctx.beginPath();
+            facetCircle(ctx, tabX + s * 0.035, barY + s * 0.15, s * 0.035, 5, 0.2, 1);
+            ctx.fill();
+            // The cracked shield on the near arm: boss, rim rivets,
+            // and one long split — hung by its own cut strap.
+            const shX = tipX + m * s * 0.27;
+            const shY = barY + s * 0.24;
+            ctx.fillStyle = PALI_ROPE_DARK;
+            ctx.fillRect(shX - s * 0.012, barY + s * 0.02, s * 0.024, s * 0.1);
+            ctx.fillStyle = shade('#7d5a2e', -6);
+            ctx.beginPath();
+            facetCircle(ctx, shX, shY, s * 0.17, 8, 0.3 * m, 1);
+            ctx.fill();
+            ctx.fillStyle = shade('#7d5a2e', 10);
+            ctx.beginPath();
+            facetCircle(ctx, shX - s * 0.04 * m, shY - s * 0.04, s * 0.12, 8, 0.3 * m, 1);
+            ctx.fill();
+            ctx.fillStyle = '#8b93a4';
+            ctx.beginPath();
+            facetCircle(ctx, shX, shY, s * 0.05, 6, 0, 1);
+            ctx.fill();
+            // The split: a dark lightning line clean through.
+            ctx.strokeStyle = 'rgba(30, 22, 16, 0.85)';
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            ctx.beginPath();
+            ctx.moveTo(shX - s * 0.06 * m, shY - s * 0.16);
+            ctx.lineTo(shX - s * 0.015 * m, shY - s * 0.04);
+            ctx.lineTo(shX - s * 0.07 * m, shY + s * 0.02);
+            ctx.lineTo(shX - s * 0.03 * m, shY + s * 0.15);
+            ctx.stroke();
+            // The dented pot-helm crowns the stake, knocked askew.
+            const hx = tipX + s * 0.012;
+            const hy = topY - s * 0.02;
+            ctx.save();
+            ctx.translate(hx, hy);
+            ctx.rotate(0.14 * m);
+            ctx.fillStyle = '#57535f';
+            ctx.beginPath();
+            ctx.arc(0, 0, s * 0.11, Math.PI, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade('#57535f', 14);
+            ctx.beginPath();
+            ctx.arc(-s * 0.025, -s * 0.012, s * 0.075, Math.PI * 1.1, Math.PI * 1.75);
+            ctx.stroke();
+            ctx.fillRect(-s * 0.11, 0, s * 0.22, s * 0.035);
+            // The dent: one dark crease in the dome.
+            ctx.fillStyle = 'rgba(28, 24, 34, 0.7)';
+            ctx.beginPath();
+            ctx.ellipse(s * 0.045 * m, -s * 0.055, s * 0.032, s * 0.018, 0.5 * m, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            // A snapped blade lashed low on the shaft — point down,
+            // the way a brag is nailed, with rust bleeding off it.
+            ctx.save();
+            ctx.translate(p.x - m * s * 0.02, baseY - s * 0.42);
+            ctx.rotate(0.5 * m);
+            ctx.fillStyle = '#8b93a4';
+            ctx.beginPath();
+            ctx.moveTo(-s * 0.026, -s * 0.16);
+            ctx.lineTo(s * 0.026, -s * 0.16);
+            ctx.lineTo(s * 0.018, s * 0.1);
+            ctx.lineTo(0, s * 0.16);
+            ctx.lineTo(-s * 0.018, s * 0.1);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade('#8b93a4', -18);
+            ctx.fillRect(-s * 0.006, -s * 0.16, s * 0.012, s * 0.26);
+            ctx.restore();
+            ctx.fillStyle = PALI_ROPE;
+            ctx.fillRect(p.x - s * 0.065, baseY - s * 0.46, s * 0.13, s * 0.04);
+            ctx.fillStyle = 'rgba(122, 62, 30, 0.35)';
+            ctx.fillRect(p.x - m * s * 0.03 - s * 0.01, baseY - s * 0.3, s * 0.02, s * 0.16);
+          },
+        };
+      }
+
+      case Tile.GrogTub: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.32;
+        const m = ((h >>> 5) & 1) ? 1 : -1;
+        // Pass-two proportions: the first cut read as a STUMP — too
+        // wide for its height, mouth staring at the sky. A tub is
+        // TALLER than it is wide and the camera grazes its rim.
+        const tw = s * 0.36;
+        const topY = baseY - s * 0.8;
+        const leak = ((h >>> 7) % 3) - 1;
+        return {
+          sortY: ty + 0.68,
+          body: stationBody(0.8, 1.2, 0.5),
+          drawShadow: () => this.castContact(p.x, baseY, tw * 1.1, s * 0.07),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, tw * 1.06, s * 0.085, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The tub: seven staves with a true BARREL BELLY — the
+            // sides bow out at the waist (a stump has straight
+            // sides; the bulge is what says COOPERED at any zoom).
+            // This cooper was a goblin with an axe and somebody's
+            // barrel.
+            const tones = [-16, 4, -8, 12, -2, 8, -12];
+            const belly = s * 0.075;
+            for (let i = 0; i < 7; i++) {
+              const f0 = i / 7 - 0.5;
+              const f1 = (i + 1) / 7 - 0.5;
+              const bow0 = Math.cos(f0 * Math.PI) * belly;
+              const bow1 = Math.cos(f1 * Math.PI) * belly;
+              const x0 = p.x + f0 * tw * 2;
+              const x1 = p.x + f1 * tw * 2;
+              // Stave tops wander: an uneven crown, cut by eye.
+              const dy = ((h >>> (i * 2)) & 3) * s * 0.018;
+              const midY = (baseY + topY) * 0.5;
+              ctx.fillStyle = shade('#5e4023', tones[i]!);
+              ctx.beginPath();
+              ctx.moveTo(x0, baseY + s * 0.02);
+              ctx.quadraticCurveTo(x0 - bow0, midY, x0, topY + dy);
+              ctx.lineTo(x1, topY + dy - s * 0.008);
+              ctx.quadraticCurveTo(x1 - bow1, midY, x1, baseY + s * 0.02);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // One lit stave edge sells the turn of the belly.
+            ctx.strokeStyle = shade('#5e4023', 22);
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            ctx.beginPath();
+            ctx.moveTo(p.x - tw * 0.72, baseY - s * 0.02);
+            ctx.quadraticCurveTo(p.x - tw * 0.72 - belly * 0.8, (baseY + topY) * 0.5, p.x - tw * 0.72, topY + s * 0.03);
+            ctx.stroke();
+            // Two scavenged hoops riding the bulge: the lower true,
+            // the upper a BENT strap nailed on where it gave — the
+            // mend is the story.
+            ctx.fillStyle = CAMP_IRON;
+            ctx.fillRect(p.x - tw - belly * 0.5 - s * 0.012, baseY - s * 0.18, (tw + belly * 0.5) * 2 + s * 0.024, s * 0.055);
+            ctx.fillStyle = shade(CAMP_IRON, 16);
+            ctx.fillRect(p.x - tw - belly * 0.5 - s * 0.012, baseY - s * 0.18, (tw + belly * 0.5) * 2 + s * 0.024, s * 0.016);
+            ctx.save();
+            ctx.translate(p.x, topY + s * 0.16);
+            ctx.rotate(0.03 * m);
+            ctx.fillStyle = CAMP_IRON;
+            ctx.fillRect(-tw - belly * 0.7 - s * 0.012, -s * 0.026, (tw + belly * 0.7) * 2 + s * 0.024, s * 0.052);
+            ctx.fillStyle = shade(CAMP_IRON, 20);
+            for (const nx of [-0.72, -0.2, 0.35, 0.78]) {
+              ctx.fillRect(nx * tw - s * 0.011, -s * 0.011, s * 0.022, s * 0.022);
+            }
+            ctx.restore();
+            // The top plane: a tight foreshortened mouth (the tub is
+            // TALL — the camera grazes the rim, never stares into
+            // it), dark staved rim, then THE GROG: olive-bright,
+            // scum crescent, bubbles — unmistakably liquid.
+            ctx.fillStyle = shade('#5e4023', -10);
+            ctx.beginPath();
+            ctx.ellipse(p.x, topY, tw * 0.98, tw * 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#7a7a30';
+            ctx.beginPath();
+            ctx.ellipse(p.x, topY + s * 0.012, tw * 0.82, tw * 0.23, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The swirl: a lighter olive sweep off the last stir.
+            ctx.fillStyle = shade('#7a7a30', 16);
+            ctx.beginPath();
+            ctx.ellipse(p.x - m * tw * 0.22, topY + s * 0.012, tw * 0.38, tw * 0.1, 0.25 * m, 0, Math.PI * 2);
+            ctx.fill();
+            // Scum foam: a bold broken crescent hugging one side,
+            // with two stray islands.
+            ctx.strokeStyle = 'rgba(222, 212, 156, 0.85)';
+            ctx.lineWidth = Math.max(1.5, s * 0.032);
+            ctx.beginPath();
+            ctx.ellipse(p.x, topY + s * 0.012, tw * 0.6, tw * 0.16, 0, Math.PI * (0.15 + 0.25 * m), Math.PI * (0.85 + 0.25 * m));
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(222, 212, 156, 0.75)';
+            ctx.beginPath();
+            ctx.ellipse(p.x + m * tw * 0.3, topY + s * 0.005, s * 0.035, s * 0.014, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(p.x - m * tw * 0.42, topY + s * 0.024, s * 0.024, s * 0.01, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The ladle: gourd bowl floating ON the grog, handle
+            // leaned out over the rim — mid-pour, never left.
+            const lx = p.x + m * tw * 0.5;
+            ctx.strokeStyle = shade(PALI_LOG, 10);
+            ctx.lineWidth = Math.max(2, s * 0.04);
+            ctx.beginPath();
+            ctx.moveTo(lx, topY + s * 0.01);
+            ctx.lineTo(lx + m * s * 0.2, topY - s * 0.34);
+            ctx.stroke();
+            ctx.fillStyle = shade(PALI_LOG, -6);
+            ctx.beginPath();
+            facetCircle(ctx, lx - m * s * 0.04, topY + s * 0.025, s * 0.075, 6, 0.3, 0.5);
+            ctx.fill();
+            ctx.fillStyle = shade(PALI_LOG, 12);
+            ctx.beginPath();
+            ctx.ellipse(lx - m * s * 0.04, topY + s * 0.015, s * 0.05, s * 0.018, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The leak: one stave weeps — a dark streak, a hanging
+            // bead on the slow clock, and the puddle it has earned.
+            const wx = p.x + leak * tw * 0.5;
+            ctx.fillStyle = 'rgba(60, 48, 20, 0.5)';
+            ctx.fillRect(wx - s * 0.014, baseY - s * 0.34, s * 0.028, s * 0.34);
+            const ph = (t * 0.6 + h * 0.13) % 1;
+            ctx.fillStyle = 'rgba(150, 136, 66, 0.8)';
+            ctx.fillRect(wx - s * 0.011, baseY - s * 0.34 + ph * s * 0.32, s * 0.022, s * 0.035);
+            ctx.fillStyle = 'rgba(109, 100, 40, 0.4)';
+            ctx.beginPath();
+            ctx.ellipse(wx, baseY + s * 0.045, s * 0.11, s * 0.032, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Two dented tin cups at the foot — one tipped: the
+            // drinker left mid-swallow, or under it.
+            ctx.fillStyle = '#8b93a4';
+            ctx.fillRect(p.x - m * tw * 0.9 - s * 0.045, baseY - s * 0.09, s * 0.09, s * 0.09);
+            ctx.fillStyle = shade('#8b93a4', -16);
+            ctx.fillRect(p.x - m * tw * 0.9 - s * 0.045, baseY - s * 0.09, s * 0.09, s * 0.022);
+            ctx.save();
+            ctx.translate(p.x - m * tw * 0.62, baseY + s * 0.015);
+            ctx.rotate(1.32 * m);
+            ctx.fillStyle = shade('#8b93a4', -8);
+            ctx.fillRect(-s * 0.042, -s * 0.042, s * 0.084, s * 0.084);
+            ctx.restore();
+          },
+        };
+      }
+
+      case Tile.KnucklePit: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.3;
+        const m = ((h >>> 2) & 1) ? 1 : -1;
+        return {
+          sortY: ty + 0.6,
+          body: stationBody(0.75, 0.9, 0.5),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.14)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY, s * 0.5, s * 0.12, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The board: somebody's DOOR, laid flat — plank seams,
+            // a torn hinge still nailed to one edge, top plane
+            // foreshortened per the camera.
+            const bw = s * 0.46;
+            const bd = syT * 0.5;
+            const by = baseY - s * 0.09;
+            ctx.fillStyle = shade('#8a6534', -4);
+            ctx.beginPath();
+            ctx.moveTo(p.x - bw, by + bd * 0.4);
+            ctx.lineTo(p.x - bw * 0.86, by - bd * 0.42);
+            ctx.lineTo(p.x + bw * 0.94, by - bd * 0.4);
+            ctx.lineTo(p.x + bw, by + bd * 0.44);
+            ctx.closePath();
+            ctx.fill();
+            // The front edge: the board's thickness, lit.
+            ctx.fillStyle = shade('#8a6534', -20);
+            ctx.beginPath();
+            ctx.moveTo(p.x - bw, by + bd * 0.4);
+            ctx.lineTo(p.x + bw, by + bd * 0.44);
+            ctx.lineTo(p.x + bw, by + bd * 0.44 + s * 0.07);
+            ctx.lineTo(p.x - bw, by + bd * 0.4 + s * 0.07);
+            ctx.closePath();
+            ctx.fill();
+            // Plank seams, running with the perspective.
+            ctx.strokeStyle = 'rgba(58, 40, 20, 0.5)';
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            for (const f of [-0.33, 0.05, 0.44]) {
+              ctx.beginPath();
+              ctx.moveTo(p.x - bw + (f + 0.5) * bw * 0.3, by + bd * 0.4);
+              ctx.lineTo(p.x - bw * 0.86 + (f + 0.52) * bw * 1.78, by - bd * 0.41);
+              ctx.stroke();
+            }
+            // The torn hinge: a rusted strap on the near edge.
+            ctx.fillStyle = shade(CAMP_IRON, -4);
+            ctx.fillRect(p.x - m * bw * 0.7 - s * 0.07, by + bd * 0.4 - s * 0.012, s * 0.14, s * 0.05);
+            ctx.fillStyle = 'rgba(122, 62, 30, 0.5)';
+            ctx.fillRect(p.x - m * bw * 0.7 - s * 0.05, by + bd * 0.4 + s * 0.03, s * 0.1, s * 0.03);
+            // The scratched ring: the game's chalk circle, redrawn
+            // so many nights it's worn INTO the wood. Pass two:
+            // BOLD — at street zoom the ring is the game's whole
+            // advertisement.
+            ctx.strokeStyle = 'rgba(232, 224, 202, 0.85)';
+            ctx.lineWidth = Math.max(1.5, s * 0.028);
+            ctx.beginPath();
+            ctx.ellipse(p.x + m * s * 0.04, by + s * 0.01, s * 0.25, s * 0.105, 0, 0.3, Math.PI * 2 + 0.1);
+            ctx.stroke();
+            // The knucklebones mid-throw: five bone dice inside and
+            // one BOUNCED OUT — the throw is still being argued.
+            // Pass two sized them up: a die the eye can't find is
+            // a game the street can't read.
+            const die = (ox: number, oy: number, rot: number, tone: number) => {
+              ctx.save();
+              ctx.translate(p.x + ox * s, by + oy * s);
+              ctx.rotate(rot);
+              ctx.fillStyle = shade(PALI_BONE, tone + 8);
+              ctx.fillRect(-s * 0.044, -s * 0.044, s * 0.088, s * 0.088);
+              ctx.fillStyle = shade(PALI_BONE, tone - 22);
+              ctx.fillRect(-s * 0.044, s * 0.022, s * 0.088, s * 0.022);
+              ctx.fillStyle = '#241a2e';
+              ctx.fillRect(-s * 0.011, -s * 0.026, s * 0.022, s * 0.022);
+              if (rot > 0) {
+                ctx.fillRect(-s * 0.032, -s * 0.002, s * 0.018, s * 0.018);
+                ctx.fillRect(s * 0.014, -s * 0.002, s * 0.018, s * 0.018);
+              }
+              ctx.restore();
+            };
+            die(m * -0.11, -0.02, 0.3, 14);
+            die(m * 0.03, 0.055, -0.2, 6);
+            die(m * 0.16, -0.05, 0.7, 18);
+            die(m * 0.07, -0.11, 0, 10);
+            die(m * -0.03, -0.065, 0.5, 2);
+            die(m * 0.6, 0.15, 0.9, 8);
+            // The pot: a heap of coppers claimed by a DAGGER stood
+            // through the board — the only rule a goblin respects.
+            // The coins burn bright (a pot nobody covets is set
+            // dressing, not a stake).
+            const px2 = p.x - m * s * 0.28;
+            const py2 = by - s * 0.03;
+            for (let i = 0; i < 8; i++) {
+              const ca = ((h >>> (i * 2 + 3)) & 3) / 3;
+              ctx.fillStyle = shade('#c9803a', ((i * 7) % 3) * 8 - 4);
+              ctx.beginPath();
+              ctx.ellipse(px2 + (ca - 0.5) * s * 0.16, py2 + (i % 3) * s * 0.024 - s * 0.024, s * 0.042, s * 0.019, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.fillStyle = shade('#c9803a', 30);
+            ctx.beginPath();
+            ctx.ellipse(px2 + s * 0.02, py2 - s * 0.042, s * 0.042, s * 0.019, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#d4d8e0';
+            ctx.beginPath();
+            ctx.ellipse(px2 - s * 0.055, py2 - s * 0.032, s * 0.04, s * 0.018, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The claiming dagger: blade in the wood, grip up —
+            // pass-two size, with a lit edge so the iron reads.
+            ctx.fillStyle = '#8b93a4';
+            ctx.beginPath();
+            ctx.moveTo(px2 - s * 0.02, py2 - s * 0.05);
+            ctx.lineTo(px2 + s * 0.02, py2 - s * 0.05);
+            ctx.lineTo(px2 + s * 0.007, py2 - s * 0.26);
+            ctx.lineTo(px2 - s * 0.007, py2 - s * 0.26);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#aeb6c6';
+            ctx.fillRect(px2 - s * 0.007, py2 - s * 0.26, s * 0.007, s * 0.21);
+            ctx.fillStyle = CAMP_IRON;
+            ctx.fillRect(px2 - s * 0.06, py2 - s * 0.28, s * 0.12, s * 0.028);
+            ctx.fillStyle = shade(PALI_LOG, 20);
+            ctx.fillRect(px2 - s * 0.02, py2 - s * 0.37, s * 0.04, s * 0.09);
+            ctx.fillStyle = CAMP_BRONZE;
+            ctx.beginPath();
+            facetCircle(ctx, px2, py2 - s * 0.385, s * 0.024, 5, 0, 1);
+            ctx.fill();
+            // Two seat stones, butt-polished on top.
+            for (const [ox, r] of [
+              [-0.62, 0.13],
+              [0.66, 0.145],
+            ] as const) {
+              ctx.fillStyle = '#6e6879';
+              ctx.beginPath();
+              facetCircle(ctx, p.x + ox * s * m, baseY - s * 0.03, r * s, 6, ox, 0.6);
+              ctx.fill();
+              ctx.fillStyle = shade('#6e6879', 12);
+              ctx.beginPath();
+              ctx.ellipse(p.x + ox * s * m, baseY - s * 0.03 - r * s * 0.32, r * s * 0.6, r * s * 0.22, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          },
+        };
+      }
+
+      case Tile.RagNest: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.32;
+        const m = ((h >>> 6) & 1) ? 1 : -1;
+        const deal = (h >>> 8) % 4;
+        return {
+          sortY: ty + 0.6,
+          body: stationBody(0.8, 0.9, 0.55),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            // The trampled hollow: a goblin sleeps in a SCRAPE, like
+            // its beast — packed rim lit, bowl in shadow.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, s * 0.52, s * 0.14, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = shade('#6e5a44', -14);
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - s * 0.04, s * 0.5, s * 0.15, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = shade('#6e5a44', 4);
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - s * 0.075, s * 0.44, s * 0.115, 0, Math.PI, Math.PI * 2);
+            ctx.fill();
+            // The rag bed: three stolen cloths in the warren's deal,
+            // each a jagged-edged layer thrown over the last —
+            // ragged POINTS, never straight hems.
+            const rags = [CAMP_RAG[deal]!, CAMP_RAG[(deal + 1) % 4]!, CAMP_RAG[(deal + 2) % 4]!];
+            const layer = (cx: number, cy: number, rw: number, rh: number, col: string, seed: number) => {
+              ctx.fillStyle = col;
+              ctx.beginPath();
+              const pts = 9;
+              for (let i = 0; i <= pts; i++) {
+                const a = (i / pts) * Math.PI * 2;
+                const jag = 1 + (((seed >>> (i * 2)) & 3) - 1.5) * 0.14;
+                const x2 = cx + Math.cos(a) * rw * jag;
+                const y2 = cy + Math.sin(a) * rh * jag;
+                if (i === 0) ctx.moveTo(x2, y2);
+                else ctx.lineTo(x2, y2);
+              }
+              ctx.closePath();
+              ctx.fill();
+            };
+            // Pass two: the first cut sank into a dirt underlay —
+            // same browns, no rim. The bed now KEEPS ITS EDGE (a
+            // dark outline seat under the cloth) and the top layers
+            // run BRIGHT, so bedding separates from any ground the
+            // camp tramples it into.
+            ctx.strokeStyle = 'rgba(30, 22, 16, 0.55)';
+            ctx.lineWidth = Math.max(1.5, s * 0.03);
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - s * 0.08, s * 0.4, s * 0.12, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            layer(p.x - m * s * 0.06, baseY - s * 0.07, s * 0.36, s * 0.1, shade(rags[0]!, -10), h);
+            layer(p.x + m * s * 0.05, baseY - s * 0.1, s * 0.3, s * 0.085, shade(rags[1]!, 6), h >>> 3);
+            layer(p.x - m * s * 0.03, baseY - s * 0.13, s * 0.23, s * 0.07, shade(rags[2]!, 16), h >>> 6);
+            // The quilt corner: ONE piece of real bedding in the
+            // heap — TWO patch squares, stitch ticks — stolen off a
+            // farmhouse line and prized above everything. The bright
+            // note that says BED, not litter.
+            const qx = p.x + m * s * 0.18;
+            const qy = baseY - s * 0.16;
+            ctx.fillStyle = shade(rags[0]!, 30);
+            ctx.beginPath();
+            ctx.moveTo(qx - s * 0.16, qy + s * 0.06);
+            ctx.lineTo(qx + s * 0.11, qy - s * 0.03);
+            ctx.lineTo(qx + s * 0.19, qy + s * 0.075);
+            ctx.lineTo(qx - s * 0.06, qy + s * 0.155);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(rags[1]!, 34);
+            ctx.fillRect(qx - s * 0.03, qy + s * 0.012, s * 0.085, s * 0.058);
+            ctx.fillStyle = shade(rags[2]!, 28);
+            ctx.fillRect(qx + s * 0.075, qy + s * 0.05, s * 0.06, s * 0.045);
+            ctx.strokeStyle = 'rgba(238, 232, 216, 0.8)';
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            ctx.setLineDash([s * 0.022, s * 0.022]);
+            ctx.beginPath();
+            ctx.moveTo(qx - s * 0.13, qy + s * 0.068);
+            ctx.lineTo(qx + s * 0.13, qy - s * 0.008);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            // The pillow: a plunder sack, cinched, head-dented —
+            // plumped up a size so the head-end reads at once.
+            const sx2 = p.x - m * s * 0.3;
+            const sy2 = baseY - s * 0.19;
+            ctx.fillStyle = shade('#9c8a62', 10);
+            ctx.beginPath();
+            facetCircle(ctx, sx2, sy2, s * 0.17, 7, -0.3 * m, 0.66);
+            ctx.fill();
+            ctx.fillStyle = shade('#9c8a62', -12);
+            ctx.beginPath();
+            ctx.ellipse(sx2 + m * s * 0.035, sy2 + s * 0.015, s * 0.085, s * 0.036, 0.3 * m, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = shade('#9c8a62', 26);
+            ctx.beginPath();
+            ctx.ellipse(sx2 - m * s * 0.05, sy2 - s * 0.07, s * 0.07, s * 0.03, -0.2 * m, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = PALI_ROPE_DARK;
+            ctx.fillRect(sx2 - m * s * 0.16 - s * 0.02, sy2 - s * 0.05, s * 0.04, s * 0.055);
+            // Bedside crumbs: one gnawed bone within arm's reach —
+            // breakfast in bed, warren style.
+            ctx.save();
+            ctx.translate(p.x + m * s * 0.42, baseY + s * 0.02);
+            ctx.rotate(0.4 * m);
+            ctx.fillStyle = shade(PALI_BONE, -8);
+            ctx.fillRect(-s * 0.09, -s * 0.022, s * 0.18, s * 0.044);
+            ctx.fillRect(s * 0.07, -s * 0.036, s * 0.036, s * 0.072);
+            ctx.restore();
+          },
+        };
+      }
+
+      case Tile.BeastStake: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.3;
+        const m = ((h >>> 4) & 1) ? 1 : -1;
+        return {
+          sortY: ty + 0.62,
+          body: stationBody(0.75, 1.1, 0.5),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            // The pace-ring first: a beast on a chain walks ONE
+            // circle ten thousand times — the ground confesses it.
+            ctx.strokeStyle = 'rgba(74, 58, 34, 0.4)';
+            ctx.lineWidth = Math.max(2.5, s * 0.08);
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY - s * 0.02, s * 0.44, s * 0.13, 0, 0.2, Math.PI * 2 - 0.4);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.015, s * 0.1, s * 0.04, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The stake: forged iron, driven at the angle the last
+            // lunge left it, an eye-ring at the head.
+            const topX = p.x + m * s * 0.08;
+            const topY = baseY - s * 0.52;
+            ctx.fillStyle = CAMP_IRON;
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.045, baseY);
+            ctx.lineTo(p.x + s * 0.045, baseY);
+            ctx.lineTo(topX + s * 0.028, topY);
+            ctx.lineTo(topX - s * 0.028, topY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(CAMP_IRON, 14);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.045, baseY);
+            ctx.lineTo(p.x - s * 0.02, baseY);
+            ctx.lineTo(topX - s * 0.01, topY);
+            ctx.lineTo(topX - s * 0.028, topY);
+            ctx.closePath();
+            ctx.fill();
+            // Hammer-burr at the head: the stake has been re-driven
+            // after every escape attempt.
+            ctx.fillStyle = shade(CAMP_IRON, -10);
+            ctx.fillRect(topX - s * 0.045, topY - s * 0.028, s * 0.09, s * 0.036);
+            ctx.strokeStyle = shade(CAMP_IRON, 18);
+            ctx.lineWidth = Math.max(1.5, s * 0.03);
+            ctx.beginPath();
+            ctx.arc(topX, topY - s * 0.075, s * 0.05, 0, Math.PI * 2);
+            ctx.stroke();
+            // The chain: caught on the ring, swagging to the ground,
+            // then COILED where the beast dragged it round — every
+            // link its own iron.
+            const link = (lx: number, ly: number, rot: number) => {
+              ctx.save();
+              ctx.translate(lx, ly);
+              ctx.rotate(rot);
+              ctx.strokeStyle = shade(CAMP_IRON, 6);
+              ctx.lineWidth = Math.max(1.2, s * 0.022);
+              ctx.strokeRect(-s * 0.026, -s * 0.017, s * 0.052, s * 0.034);
+              ctx.restore();
+            };
+            // The hanging swag off the ring.
+            const gx = topX + m * s * 0.05;
+            for (let i = 0; i < 5; i++) {
+              const f2 = i / 4;
+              link(
+                gx + m * f2 * s * 0.16,
+                topY - s * 0.06 + f2 * s * 0.44 + Math.sin(f2 * Math.PI) * s * 0.05,
+                0.5 * m + f2 * 0.8 * m,
+              );
+            }
+            // The ground coil: two lapped loops.
+            const cx2 = p.x + m * s * 0.34;
+            const cy2 = baseY + s * 0.015;
+            for (let i = 0; i < 8; i++) {
+              const a = (i / 8) * Math.PI * 2;
+              link(cx2 + Math.cos(a) * s * 0.13, cy2 + Math.sin(a) * s * 0.045, a + Math.PI / 2);
+            }
+            for (let i = 0; i < 6; i++) {
+              const a = (i / 6) * Math.PI * 2 + 0.4;
+              link(cx2 - m * s * 0.05 + Math.cos(a) * s * 0.08, cy2 - s * 0.03 + Math.sin(a) * s * 0.03, a + Math.PI / 2);
+            }
+            // The collar: open on the ground, spiked, hasp thrown —
+            // an empty collar is a LOOSE BEAST, and the camp knows.
+            const kx = cx2 + m * s * 0.16;
+            const ky = cy2 + s * 0.02;
+            ctx.strokeStyle = '#57535f';
+            ctx.lineWidth = Math.max(2, s * 0.045);
+            ctx.beginPath();
+            ctx.ellipse(kx, ky, s * 0.11, s * 0.055, 0.2 * m, Math.PI * 0.2, Math.PI * 1.75);
+            ctx.stroke();
+            ctx.fillStyle = shade('#57535f', 10);
+            for (let i = 0; i < 4; i++) {
+              const a = Math.PI * 0.3 + (i / 3) * Math.PI * 1.2;
+              const vx = kx + Math.cos(a) * s * 0.11;
+              const vy = ky + Math.sin(a) * s * 0.055;
+              ctx.beginPath();
+              ctx.moveTo(vx - s * 0.014, vy);
+              ctx.lineTo(vx + Math.cos(a) * s * 0.045, vy + Math.sin(a) * s * 0.045);
+              ctx.lineTo(vx + s * 0.014, vy);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // What the beast left: two stripped bones and the claw
+            // rakes where it strained against the iron.
+            ctx.fillStyle = shade(PALI_BONE, -10);
+            ctx.save();
+            ctx.translate(p.x - m * s * 0.32, baseY + s * 0.04);
+            ctx.rotate(-0.3 * m);
+            ctx.fillRect(-s * 0.08, -s * 0.02, s * 0.16, s * 0.04);
+            ctx.fillRect(s * 0.06, -s * 0.032, s * 0.032, s * 0.064);
+            ctx.restore();
+            ctx.strokeStyle = 'rgba(74, 58, 34, 0.55)';
+            ctx.lineWidth = Math.max(1, s * 0.018);
+            for (let i = 0; i < 3; i++) {
+              ctx.beginPath();
+              ctx.moveTo(p.x - m * s * (0.12 + i * 0.05), baseY - s * 0.1);
+              ctx.lineTo(p.x - m * s * (0.2 + i * 0.05), baseY + s * 0.02);
+              ctx.stroke();
+            }
+          },
+        };
+      }
+
+      case Tile.CritterCage: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.3;
+        const m = ((h >>> 3) & 1) ? 1 : -1;
+        const swap = ((h >>> 9) & 1) === 1;
+        return {
+          sortY: ty + 0.66,
+          body: stationBody(0.6, 1.4, 0.45),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, s * 0.32, s * 0.08, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Two lashed withy cages, stacked CROOKED — the larder
+            // and the alarm in one: nothing sneaks past a penned
+            // bird. Frame sticks, vertical withies, bone latch pegs.
+            const cage = (cx: number, cy: number, cw: number, chh: number, tilt: number, dark: boolean) => {
+              ctx.save();
+              ctx.translate(cx, cy);
+              ctx.rotate(tilt);
+              // The dark inside first — the withies read against it.
+              ctx.fillStyle = dark ? '#241c22' : '#2c2426';
+              ctx.fillRect(-cw, -chh, cw * 2, chh * 2);
+              // Frame: corner sticks and rails.
+              ctx.fillStyle = shade('#8a713f', -8);
+              ctx.fillRect(-cw - s * 0.02, -chh - s * 0.02, cw * 2 + s * 0.04, s * 0.04);
+              ctx.fillRect(-cw - s * 0.02, chh - s * 0.02, cw * 2 + s * 0.04, s * 0.045);
+              ctx.fillStyle = shade('#8a713f', 4);
+              ctx.fillRect(-cw - s * 0.02, -chh, s * 0.04, chh * 2);
+              ctx.fillRect(cw - s * 0.02, -chh, s * 0.04, chh * 2);
+              // The withies: sprung verticals, no two straight.
+              ctx.strokeStyle = '#a88f5c';
+              ctx.lineWidth = Math.max(1, s * 0.02);
+              for (let i = 1; i < 5; i++) {
+                const wx = -cw + (i / 5) * cw * 2;
+                const bow = (((h >>> (i * 3)) & 3) - 1.5) * s * 0.014;
+                ctx.beginPath();
+                ctx.moveTo(wx, -chh);
+                ctx.quadraticCurveTo(wx + bow, 0, wx, chh);
+                ctx.stroke();
+              }
+              // Bone latch peg on the lit rail.
+              ctx.fillStyle = shade(PALI_BONE, 8);
+              ctx.fillRect(cw - s * 0.045, -s * 0.02, s * 0.07, s * 0.032);
+              ctx.restore();
+            };
+            const lowY = baseY - s * 0.2;
+            const upY = baseY - s * 0.58;
+            cage(p.x, lowY, s * 0.26, s * 0.18, 0, true);
+            cage(p.x + m * s * 0.05, upY, s * 0.22, s * 0.16, 0.09 * m, false);
+            // The lash holding the stack — one honest rope X.
+            ctx.strokeStyle = PALI_ROPE;
+            ctx.lineWidth = Math.max(1.5, s * 0.026);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.2, upY + s * 0.18);
+            ctx.lineTo(p.x + s * 0.24, upY + s * 0.3);
+            ctx.moveTo(p.x + s * 0.22, upY + s * 0.18);
+            ctx.lineTo(p.x - s * 0.2, upY + s * 0.32);
+            ctx.stroke();
+            // THE TENANTS. Lower cage: two ember eyes in the dark,
+            // blinking on the slow clock. Upper: a rattled bird —
+            // a feathered wedge that jumps between two perches.
+            const blink = ((t * 0.5 + h * 0.17) % 1) > 0.12;
+            const eyeCy = swap ? upY : lowY;
+            const birdCy = swap ? lowY : upY;
+            if (blink) {
+              ctx.fillStyle = '#e8a13c';
+              ctx.fillRect(p.x - s * 0.06, eyeCy - s * 0.01, s * 0.026, s * 0.026);
+              ctx.fillRect(p.x + s * 0.015, eyeCy - s * 0.008, s * 0.026, s * 0.026);
+            }
+            const hop = ((t * 0.9 + h * 0.07) % 1) > 0.5 ? 1 : -1;
+            const bx = p.x + hop * m * s * 0.06;
+            ctx.fillStyle = '#57626e';
+            ctx.beginPath();
+            ctx.moveTo(bx - s * 0.07, birdCy + s * 0.03);
+            ctx.quadraticCurveTo(bx - s * 0.02, birdCy - s * 0.05, bx + s * 0.05, birdCy - s * 0.015);
+            ctx.lineTo(bx + s * 0.1, birdCy + s * 0.01);
+            ctx.lineTo(bx + s * 0.05, birdCy + s * 0.025);
+            ctx.quadraticCurveTo(bx - s * 0.02, birdCy + s * 0.055, bx - s * 0.07, birdCy + s * 0.03);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#c9803a';
+            ctx.beginPath();
+            ctx.moveTo(bx + s * 0.1, birdCy + s * 0.002);
+            ctx.lineTo(bx + s * 0.14, birdCy + s * 0.012);
+            ctx.lineTo(bx + s * 0.1, birdCy + s * 0.02);
+            ctx.closePath();
+            ctx.fill();
+            // Shed feathers drift at the foot — the only soft thing
+            // in the camp.
+            ctx.fillStyle = 'rgba(120, 130, 140, 0.8)';
+            for (let i = 0; i < 3; i++) {
+              const fx2 = p.x + (((h >>> (i * 4)) & 7) / 7 - 0.5) * s * 0.5;
+              ctx.save();
+              ctx.translate(fx2, baseY + s * (0.02 + (i % 2) * 0.03));
+              ctx.rotate(((h >>> (i * 2)) & 3) * 0.5);
+              ctx.beginPath();
+              ctx.ellipse(0, 0, s * 0.045, s * 0.014, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+          },
+        };
+      }
+
+      case Tile.AlarmGong: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.16;
+        const m = ((h >>> 5) & 1) ? 1 : -1;
+        const beamY = baseY - s * 1.28;
+        const sway = Math.sin(t * 1.3 + h * 0.4) * 0.05;
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.85, 1.9, 0.45),
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - s * 0.4, baseY, p.x + s * 0.4, baseY, 1.25);
+          },
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, s * 0.42, s * 0.08, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The frame: two driven posts and a beam — LEGION work,
+            // square and true, nothing the warren would build.
+            for (const px3 of [-0.36, 0.36]) {
+              ctx.fillStyle = shade(PALI_LOG, px3 < 0 ? 8 : -6);
+              ctx.fillRect(p.x + px3 * s - s * 0.045, beamY, s * 0.09, baseY - beamY);
+            }
+            ctx.fillStyle = shade(PALI_LOG, -12);
+            ctx.fillRect(p.x - s * 0.46, beamY - s * 0.07, s * 0.92, s * 0.09);
+            ctx.fillStyle = shade(PALI_LOG, 4);
+            ctx.fillRect(p.x - s * 0.46, beamY - s * 0.07, s * 0.92, s * 0.026);
+            // Rope lashings square each joint.
+            ctx.fillStyle = PALI_ROPE;
+            for (const px3 of [-0.36, 0.36]) {
+              ctx.fillRect(p.x + px3 * s - s * 0.06, beamY - s * 0.02, s * 0.12, s * 0.07);
+            }
+            // The gong: scrap bronze beaten round, hung on two hide
+            // cords — hammered facet rings, an off-center boss, the
+            // patina of a hundred rains, and two mallet-dents.
+            const gy = beamY + s * 0.52;
+            const gr = s * 0.34;
+            ctx.strokeStyle = '#6e5a3a';
+            ctx.lineWidth = Math.max(1.5, s * 0.024);
+            for (const cx3 of [-0.16, 0.16]) {
+              ctx.beginPath();
+              ctx.moveTo(p.x + cx3 * s * 1.4, beamY + s * 0.02);
+              ctx.lineTo(p.x + cx3 * s + sway * s, gy - gr * 0.86);
+              ctx.stroke();
+            }
+            const gx2 = p.x + sway * s;
+            ctx.fillStyle = CAMP_BRONZE;
+            ctx.beginPath();
+            facetCircle(ctx, gx2, gy, gr, 9, 0.2, 1);
+            ctx.fill();
+            // Hammered rings: the smith went round and round.
+            ctx.strokeStyle = CAMP_BRONZE_DARK;
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            for (const rr of [0.78, 0.55]) {
+              ctx.beginPath();
+              facetCircle(ctx, gx2, gy, gr * rr, 9, 0.2, 1);
+              ctx.stroke();
+            }
+            // The boss: struck a thumb off center — a field piece.
+            ctx.fillStyle = shade(CAMP_BRONZE, -18);
+            ctx.beginPath();
+            facetCircle(ctx, gx2 + m * gr * 0.08, gy + gr * 0.05, gr * 0.22, 7, 0.3, 1);
+            ctx.fill();
+            ctx.fillStyle = shade(CAMP_BRONZE, 26);
+            ctx.beginPath();
+            facetCircle(ctx, gx2 + m * gr * 0.04, gy - gr * 0.02, gr * 0.11, 6, 0.2, 1);
+            ctx.fill();
+            // The west light catches the upper-left face.
+            ctx.fillStyle = 'rgba(240, 220, 150, 0.18)';
+            ctx.beginPath();
+            ctx.arc(gx2 - gr * 0.3, gy - gr * 0.3, gr * 0.42, 0, Math.PI * 2);
+            ctx.fill();
+            // Verdigris: two teal patches eating in from the rim.
+            ctx.fillStyle = 'rgba(94, 158, 140, 0.5)';
+            ctx.beginPath();
+            ctx.ellipse(gx2 + gr * 0.55 * m, gy - gr * 0.42, gr * 0.16, gr * 0.1, 0.6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(gx2 - gr * 0.5 * m, gy + gr * 0.5, gr * 0.12, gr * 0.08, -0.4, 0, Math.PI * 2);
+            ctx.fill();
+            // Mallet dents: the crescent bruises of a hard year.
+            ctx.strokeStyle = 'rgba(74, 58, 24, 0.6)';
+            ctx.lineWidth = Math.max(1, s * 0.018);
+            ctx.beginPath();
+            ctx.arc(gx2 + m * gr * 0.3, gy + gr * 0.28, gr * 0.12, Math.PI * 0.2, Math.PI * 1.1);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(gx2 - m * gr * 0.15, gy - gr * 0.35, gr * 0.09, Math.PI * 0.4, Math.PI * 1.3);
+            ctx.stroke();
+            // THE ONE CRIMSON: the legion's tassel off the rim knot
+            // — never varies, never faded (THE BANNER IS ONE).
+            const tx2 = gx2 + gr * 0.62 * m + sway * s * 1.6;
+            ctx.fillStyle = LEGION_CRIMSON;
+            ctx.beginPath();
+            ctx.moveTo(tx2 - s * 0.025, gy + gr * 0.6);
+            ctx.lineTo(tx2 + s * 0.025, gy + gr * 0.6);
+            ctx.lineTo(tx2 + s * 0.04 + sway * s * 2, gy + gr * 0.98);
+            ctx.lineTo(tx2 - s * 0.04 + sway * s * 2, gy + gr * 0.98);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(LEGION_CRIMSON, 16);
+            ctx.fillRect(tx2 - s * 0.02, gy + gr * 0.56, s * 0.04, s * 0.045);
+            // The striker: a wrapped-head mallet leaned on the post
+            // — ready, because a watch that hunts its mallet dies.
+            const mx = p.x + m * s * 0.48;
+            ctx.save();
+            ctx.translate(mx, baseY - s * 0.02);
+            ctx.rotate(-0.5 * m);
+            ctx.fillStyle = shade(PALI_LOG, 10);
+            ctx.fillRect(-s * 0.022, -s * 0.52, s * 0.044, s * 0.52);
+            ctx.fillStyle = '#6e5a44';
+            ctx.beginPath();
+            facetCircle(ctx, 0, -s * 0.56, s * 0.075, 6, 0.2, 0.85);
+            ctx.fill();
+            ctx.strokeStyle = PALI_ROPE_DARK;
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            ctx.beginPath();
+            ctx.arc(0, -s * 0.56, s * 0.05, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          },
+        };
+      }
+
+      case Tile.WarTable: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.34;
+        const m = ((h >>> 7) & 1) ? 1 : -1;
+        return {
+          sortY: ty + 0.64,
+          body: stationBody(0.9, 1.2, 0.5),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, s * 0.56, s * 0.11, 0, 0, Math.PI * 2);
+            ctx.fill();
+            const tw2 = s * 0.52;
+            const topY = baseY - s * 0.5;
+            const depth = syT * 0.42;
+            // The trestles: two A-frames — field furniture, made to
+            // march. Far legs first, dimmer.
+            for (const tx3 of [-0.36, 0.36]) {
+              const lx = p.x + tx3 * s * 1.16;
+              ctx.fillStyle = shade(PALI_LOG, -16);
+              ctx.beginPath();
+              ctx.moveTo(lx - s * 0.03, topY - depth * 0.3);
+              ctx.lineTo(lx + s * 0.16, baseY - s * 0.06);
+              ctx.lineTo(lx + s * 0.1, baseY - s * 0.06);
+              ctx.lineTo(lx - s * 0.06, topY - depth * 0.24);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = shade(PALI_LOG, -4);
+              ctx.beginPath();
+              ctx.moveTo(lx - s * 0.02, topY + s * 0.04);
+              ctx.lineTo(lx - s * 0.18, baseY + s * 0.02);
+              ctx.lineTo(lx - s * 0.11, baseY + s * 0.02);
+              ctx.lineTo(lx + s * 0.03, topY + s * 0.06);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // The top: three planks with a true foreshortened plane
+            // — far edge shaded, front arris lit (the crate-lid law).
+            ctx.fillStyle = shade(PALI_LOG, -8);
+            ctx.beginPath();
+            ctx.moveTo(p.x - tw2, topY + depth * 0.4);
+            ctx.lineTo(p.x - tw2 * 0.94, topY - depth * 0.42);
+            ctx.lineTo(p.x + tw2 * 0.96, topY - depth * 0.4);
+            ctx.lineTo(p.x + tw2, topY + depth * 0.42);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(50, 34, 16, 0.55)';
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            for (const f of [-0.15, 0.14]) {
+              ctx.beginPath();
+              ctx.moveTo(p.x - tw2 * 0.96, topY + depth * f + depth * 0.02);
+              ctx.lineTo(p.x + tw2 * 0.97, topY + depth * f);
+              ctx.stroke();
+            }
+            ctx.fillStyle = shade(PALI_LOG, 8);
+            ctx.beginPath();
+            ctx.moveTo(p.x - tw2, topY + depth * 0.4);
+            ctx.lineTo(p.x + tw2, topY + depth * 0.42);
+            ctx.lineTo(p.x + tw2, topY + depth * 0.42 + s * 0.07);
+            ctx.lineTo(p.x - tw2, topY + depth * 0.4 + s * 0.07);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade(PALI_LOG, 18);
+            ctx.fillRect(p.x - tw2, topY + depth * 0.41, tw2 * 2, s * 0.016);
+            // THE MAP: a cured hide, edges the shape the animal
+            // left them, one corner CURLING off the boards.
+            const hide = '#c9b684';
+            ctx.fillStyle = hide;
+            ctx.beginPath();
+            ctx.moveTo(p.x - tw2 * 0.62, topY + depth * 0.22);
+            ctx.quadraticCurveTo(p.x - tw2 * 0.72, topY - depth * 0.05, p.x - tw2 * 0.5, topY - depth * 0.26);
+            ctx.quadraticCurveTo(p.x - tw2 * 0.1, topY - depth * 0.34, p.x + tw2 * 0.4, topY - depth * 0.24);
+            ctx.quadraticCurveTo(p.x + tw2 * 0.66, topY - depth * 0.12, p.x + tw2 * 0.58, topY + depth * 0.1);
+            ctx.quadraticCurveTo(p.x + tw2 * 0.5, topY + depth * 0.3, p.x + tw2 * 0.14, topY + depth * 0.26);
+            ctx.quadraticCurveTo(p.x - tw2 * 0.3, topY + depth * 0.34, p.x - tw2 * 0.62, topY + depth * 0.22);
+            ctx.closePath();
+            ctx.fill();
+            // The curl: underside darker, rolled at the near corner.
+            ctx.fillStyle = shade(hide, -22);
+            ctx.beginPath();
+            ctx.moveTo(p.x - m * tw2 * 0.52, topY + depth * 0.24);
+            ctx.quadraticCurveTo(p.x - m * tw2 * 0.42, topY + depth * 0.3, p.x - m * tw2 * 0.32, topY + depth * 0.24);
+            ctx.quadraticCurveTo(p.x - m * tw2 * 0.42, topY + depth * 0.12, p.x - m * tw2 * 0.52, topY + depth * 0.24);
+            ctx.closePath();
+            ctx.fill();
+            // The country on the hide: a river, a ridge, and the
+            // legion's argument drawn in its one crimson — the
+            // advance arrow and the X where somebody dies.
+            ctx.strokeStyle = '#5c748a';
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            ctx.beginPath();
+            ctx.moveTo(p.x - tw2 * 0.44, topY - depth * 0.16);
+            ctx.quadraticCurveTo(p.x - tw2 * 0.1, topY + depth * (0.04 * m), p.x + tw2 * 0.1, topY - depth * 0.02);
+            ctx.quadraticCurveTo(p.x + tw2 * 0.3, topY + depth * 0.06, p.x + tw2 * 0.46, topY + depth * 0.02);
+            ctx.stroke();
+            ctx.strokeStyle = 'rgba(90, 74, 46, 0.8)';
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            for (let i = 0; i < 3; i++) {
+              const mx2 = p.x - tw2 * 0.2 + i * s * 0.09;
+              const my2 = topY - depth * 0.22 + (i % 2) * s * 0.02;
+              ctx.beginPath();
+              ctx.moveTo(mx2 - s * 0.03, my2 + s * 0.02);
+              ctx.lineTo(mx2, my2 - s * 0.015);
+              ctx.lineTo(mx2 + s * 0.03, my2 + s * 0.02);
+              ctx.stroke();
+            }
+            ctx.strokeStyle = LEGION_CRIMSON;
+            ctx.lineWidth = Math.max(1.2, s * 0.022);
+            const ax = p.x + m * tw2 * 0.06;
+            const ay = topY + depth * 0.08;
+            ctx.beginPath();
+            ctx.moveTo(ax - m * s * 0.2, ay + s * 0.05);
+            ctx.quadraticCurveTo(ax, ay + s * 0.01, ax + m * s * 0.18, ay - s * 0.04);
+            ctx.stroke();
+            ctx.fillStyle = LEGION_CRIMSON;
+            ctx.beginPath();
+            ctx.moveTo(ax + m * s * 0.24, ay - s * 0.06);
+            ctx.lineTo(ax + m * s * 0.12, ay - s * 0.065);
+            ctx.lineTo(ax + m * s * 0.19, ay + s * 0.005);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = LEGION_CRIMSON;
+            ctx.beginPath();
+            ctx.moveTo(ax + m * s * 0.3, ay - s * 0.11);
+            ctx.lineTo(ax + m * s * 0.36, ay - s * 0.05);
+            ctx.moveTo(ax + m * s * 0.36, ay - s * 0.11);
+            ctx.lineTo(ax + m * s * 0.3, ay - s * 0.05);
+            ctx.stroke();
+            // The dagger pins the far corner — the map ARGUES back
+            // in a field wind; the officer won.
+            const dx = p.x + m * tw2 * 0.44;
+            const dy = topY - depth * 0.18;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(dx + s * 0.02, dy + s * 0.02, s * 0.045, s * 0.018, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#8b93a4';
+            ctx.beginPath();
+            ctx.moveTo(dx - s * 0.012, dy);
+            ctx.lineTo(dx + s * 0.012, dy);
+            ctx.lineTo(dx + s * 0.004, dy - s * 0.1);
+            ctx.lineTo(dx - s * 0.004, dy - s * 0.1);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = CAMP_IRON;
+            ctx.fillRect(dx - s * 0.038, dy - s * 0.112, s * 0.076, s * 0.02);
+            ctx.fillStyle = shade(PALI_LOG, 16);
+            ctx.fillRect(dx - s * 0.013, dy - s * 0.17, s * 0.026, s * 0.06);
+            // Cup markers: two iron for the legion's own columns,
+            // one CRIMSON-daubed for the enemy — mid-argument.
+            for (const [ox, oy, foe] of [
+              [-0.26, -0.06, false],
+              [0.1, 0.14, false],
+              [0.3, -0.02, true],
+            ] as const) {
+              const cx3 = p.x + ox * tw2 * m;
+              const cy3 = topY + oy * depth;
+              ctx.fillStyle = foe ? LEGION_CRIMSON : '#57535f';
+              ctx.fillRect(cx3 - s * 0.032, cy3 - s * 0.05, s * 0.064, s * 0.05);
+              ctx.fillStyle = foe ? shade(LEGION_CRIMSON, 18) : shade('#57535f', 16);
+              ctx.beginPath();
+              ctx.ellipse(cx3, cy3 - s * 0.05, s * 0.032, s * 0.014, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            // The second campaign, rolled and bound at the table's
+            // end — this war has a NEXT map.
+            ctx.save();
+            ctx.translate(p.x - m * tw2 * 0.8, topY + depth * 0.05);
+            ctx.rotate(0.12 * m);
+            ctx.fillStyle = shade(hide, -8);
+            ctx.fillRect(-s * 0.05, -s * 0.16, s * 0.1, s * 0.32);
+            ctx.fillStyle = shade(hide, 10);
+            ctx.beginPath();
+            ctx.ellipse(0, -s * 0.16, s * 0.05, s * 0.02, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = PALI_ROPE_DARK;
+            ctx.fillRect(-s * 0.055, -s * 0.04, s * 0.11, s * 0.024);
+            ctx.restore();
+          },
+        };
+      }
+
+      case Tile.PlunderCart: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.34;
+        const m = ((h >>> 6) & 1) ? 1 : -1;
+        const kettle = ((h >>> 10) & 1) === 1;
+        return {
+          sortY: ty + 0.72,
+          body: stationBody(1.0, 1.5, 0.6),
+          drawShadow: () => this.castContact(p.x, baseY, s * 0.66, s * 0.085),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, s * 0.64, s * 0.11, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The cart lists toward its dead corner — the tip is
+            // the whole silhouette's story, read at any zoom.
+            const tilt = -0.07 * m;
+            ctx.save();
+            ctx.translate(p.x, baseY - s * 0.3);
+            ctx.rotate(tilt);
+            const cw = s * 0.56;
+            // The shafts trail on the ground behind: the horse is
+            // long eaten — this cart was PULLED here by goblins.
+            ctx.fillStyle = shade('#6e4a33', -10);
+            ctx.save();
+            ctx.translate(-m * cw, s * 0.1);
+            ctx.rotate(0.38 * m);
+            ctx.fillRect(-s * 0.5, -s * 0.026, s * 0.5, s * 0.052);
+            ctx.restore();
+            ctx.save();
+            ctx.translate(-m * cw, s * 0.16);
+            ctx.rotate(0.52 * m);
+            ctx.fillStyle = shade('#6e4a33', -18);
+            ctx.fillRect(-s * 0.46, -s * 0.026, s * 0.46, s * 0.052);
+            ctx.restore();
+            // Far sideboard peeking over the load.
+            ctx.fillStyle = shade('#6e4a33', -20);
+            ctx.fillRect(-cw * 0.92, -s * 0.34, cw * 1.84, s * 0.12);
+            // THE LOOT under its net — four readable masses (the
+            // silhouette-of-circles law): a grain sack, the banded
+            // chest corner, a rolled rug in stolen dye, and the
+            // bright one — kettle or candlestick by the world's coin.
+            const sackX = -cw * 0.42;
+            ctx.fillStyle = '#9c8a62';
+            ctx.beginPath();
+            facetCircle(ctx, sackX, -s * 0.36, s * 0.17, 7, -0.3, 0.8);
+            ctx.fill();
+            ctx.fillStyle = shade('#9c8a62', -14);
+            ctx.fillRect(sackX - s * 0.03, -s * 0.5, s * 0.06, s * 0.05);
+            const chX = cw * 0.34;
+            ctx.fillStyle = '#7d5a2e';
+            ctx.fillRect(chX - s * 0.17, -s * 0.44, s * 0.34, s * 0.2);
+            ctx.fillStyle = shade('#7d5a2e', 12);
+            ctx.fillRect(chX - s * 0.17, -s * 0.44, s * 0.34, s * 0.05);
+            ctx.fillStyle = CAMP_IRON;
+            ctx.fillRect(chX - s * 0.06, -s * 0.45, s * 0.12, s * 0.21);
+            const rug = CAMP_RAG[(h >>> 12) % 4]!;
+            ctx.save();
+            ctx.translate(-cw * 0.02, -s * 0.32);
+            ctx.rotate(-0.16 * m);
+            ctx.fillStyle = rug;
+            ctx.fillRect(-s * 0.24, -s * 0.07, s * 0.48, s * 0.14);
+            ctx.fillStyle = shade(rug, 14);
+            ctx.beginPath();
+            ctx.ellipse(m * s * 0.24, 0, s * 0.028, s * 0.07, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            if (kettle) {
+              // The copper kettle rides the top — the one glint.
+              ctx.fillStyle = '#b06a30';
+              ctx.beginPath();
+              facetCircle(ctx, cw * 0.04, -s * 0.52, s * 0.1, 7, 0.2, 0.85);
+              ctx.fill();
+              ctx.fillStyle = shade('#b06a30', 26);
+              ctx.beginPath();
+              ctx.ellipse(cw * 0.02, -s * 0.56, s * 0.045, s * 0.022, -0.4, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = shade('#b06a30', -16);
+              ctx.lineWidth = Math.max(1, s * 0.02);
+              ctx.beginPath();
+              ctx.arc(cw * 0.04, -s * 0.56, s * 0.07, Math.PI * 1.1, Math.PI * 1.9);
+              ctx.stroke();
+            } else {
+              // A silver candlestick lies tipped across the sack.
+              ctx.save();
+              ctx.translate(cw * 0.02, -s * 0.5);
+              ctx.rotate(1.2 * m);
+              ctx.fillStyle = '#c9ccd4';
+              ctx.fillRect(-s * 0.02, -s * 0.14, s * 0.04, s * 0.24);
+              ctx.beginPath();
+              ctx.ellipse(0, s * 0.1, s * 0.055, s * 0.024, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.beginPath();
+              ctx.ellipse(0, -s * 0.14, s * 0.035, s * 0.016, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+            // The net: lashed cross-lines over the whole heap,
+            // hitched to the sideboard cleats.
+            ctx.strokeStyle = 'rgba(74, 58, 34, 0.75)';
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            for (let i = 0; i < 4; i++) {
+              ctx.beginPath();
+              ctx.moveTo(-cw * 0.8 + i * cw * 0.44, -s * 0.2);
+              ctx.quadraticCurveTo(-cw * 0.5 + i * cw * 0.44, -s * 0.62, -cw * 0.1 + i * cw * 0.38, -s * 0.2);
+              ctx.stroke();
+            }
+            ctx.beginPath();
+            ctx.moveTo(-cw * 0.88, -s * 0.38);
+            ctx.quadraticCurveTo(0, -s * 0.6, cw * 0.88, -s * 0.4);
+            ctx.stroke();
+            for (const cx4 of [-0.86, -0.3, 0.3, 0.86]) {
+              ctx.fillStyle = PALI_ROPE_DARK;
+              ctx.fillRect(cx4 * cw - s * 0.018, -s * 0.2, s * 0.036, s * 0.05);
+            }
+            // The near sideboard: planked, one plank SPRUNG at the
+            // dead corner, iron strap rusted mid-board.
+            ctx.fillStyle = '#6e4a33';
+            ctx.fillRect(-cw, -s * 0.22, cw * 2, s * 0.3);
+            ctx.strokeStyle = 'rgba(46, 30, 16, 0.6)';
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            ctx.beginPath();
+            ctx.moveTo(-cw, -s * 0.07);
+            ctx.lineTo(cw, -s * 0.07);
+            ctx.stroke();
+            ctx.fillStyle = shade('#6e4a33', 10);
+            ctx.fillRect(-cw, -s * 0.22, cw * 2, s * 0.045);
+            ctx.save();
+            ctx.translate(-m * cw * 0.78, s * 0.04);
+            ctx.rotate(-0.14 * m);
+            ctx.fillStyle = shade('#6e4a33', -8);
+            ctx.fillRect(-s * 0.16, -s * 0.035, s * 0.32, s * 0.07);
+            ctx.restore();
+            ctx.fillStyle = shade(CAMP_IRON, -6);
+            ctx.fillRect(m * cw * 0.4 - s * 0.02, -s * 0.22, s * 0.04, s * 0.3);
+            ctx.fillStyle = 'rgba(122, 62, 30, 0.45)';
+            ctx.fillRect(m * cw * 0.4 - s * 0.014, -s * 0.02, s * 0.028, s * 0.1);
+            ctx.restore();
+            // THE WHEELS, outside the tilt so they sit the ground.
+            // Dead side first: the smashed wheel — a rim fragment
+            // against the axle stub and two snapped spokes flat on
+            // the dirt. Then the prop stone doing the wheel's job.
+            const dwx = p.x - m * s * 0.44;
+            ctx.strokeStyle = '#57402a';
+            ctx.lineWidth = Math.max(2, s * 0.05);
+            ctx.beginPath();
+            ctx.arc(dwx, baseY - s * 0.1, s * 0.2, Math.PI * 0.75, Math.PI * 1.6);
+            ctx.stroke();
+            ctx.fillStyle = shade('#57402a', -8);
+            ctx.save();
+            ctx.translate(dwx + m * s * 0.1, baseY + s * 0.02);
+            ctx.rotate(0.3 * m);
+            ctx.fillRect(-s * 0.13, -s * 0.02, s * 0.26, s * 0.04);
+            ctx.restore();
+            ctx.save();
+            ctx.translate(dwx - m * s * 0.04, baseY + s * 0.05);
+            ctx.rotate(-0.5 * m);
+            ctx.fillRect(-s * 0.1, -s * 0.018, s * 0.2, s * 0.036);
+            ctx.restore();
+            ctx.fillStyle = '#6e6879';
+            ctx.beginPath();
+            facetCircle(ctx, dwx + m * s * 0.06, baseY - s * 0.06, s * 0.1, 6, 0.3, 0.75);
+            ctx.fill();
+            // The live wheel STANDS PROUD (the barrow law): spoked,
+            // iron-tyred, drawn last, rising over the box line.
+            const wx2 = p.x + m * s * 0.46;
+            const wy2 = baseY - s * 0.26;
+            const wr = s * 0.3;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.14)';
+            ctx.beginPath();
+            ctx.ellipse(wx2, baseY + s * 0.02, wr * 0.8, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = CAMP_IRON;
+            ctx.lineWidth = Math.max(2.5, s * 0.06);
+            ctx.beginPath();
+            ctx.arc(wx2, wy2, wr, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.strokeStyle = '#7d5a2e';
+            ctx.lineWidth = Math.max(2, s * 0.045);
+            ctx.beginPath();
+            ctx.arc(wx2, wy2, wr * 0.82, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.lineWidth = Math.max(1.5, s * 0.035);
+            const spin = ((h >>> 3) & 7) * 0.12;
+            for (let i = 0; i < 6; i++) {
+              const a = spin + (i / 6) * Math.PI * 2;
+              ctx.beginPath();
+              ctx.moveTo(wx2, wy2);
+              ctx.lineTo(wx2 + Math.cos(a) * wr * 0.8, wy2 + Math.sin(a) * wr * 0.8);
+              ctx.stroke();
+            }
+            ctx.fillStyle = shade('#7d5a2e', 14);
+            ctx.beginPath();
+            facetCircle(ctx, wx2, wy2, wr * 0.18, 6, 0.2, 1);
+            ctx.fill();
+          },
+        };
+      }
+
+      case Tile.BossEffigy: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.16;
+        const m = ((h >>> 8) & 1) ? 1 : -1;
+        const topY = baseY - s * 1.5;
+        const sway = Math.sin(t * 1.1 + h * 0.5) * 0.04;
+        const rag1 = CAMP_RAG[(h >>> 4) % 4]!;
+        const rag2 = CAMP_RAG[((h >>> 4) + 2) % 4]!;
+        return {
+          sortY: ty + 0.7,
+          body: stationBody(0.85, 2.0, 0.45),
+          drawShadow: () => {
+            this.castEdgeQuad(p.x - s * 0.06, baseY, p.x + s * 0.06, baseY, 1.45);
+          },
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.18)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.015, s * 0.15, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Stone packing holds the pole (the totem's footing).
+            ctx.fillStyle = '#6e6879';
+            for (const [ox, r] of [
+              [-0.1, 0.05],
+              [0.09, 0.045],
+            ] as const) {
+              ctx.beginPath();
+              facetCircle(ctx, p.x + ox * s, baseY - s * 0.01, r * s, 5, ox * 8, 0.7);
+              ctx.fill();
+            }
+            // The cross-pole skeleton.
+            ctx.fillStyle = shade(PALI_LOG, -6);
+            ctx.fillRect(p.x - s * 0.04, topY, s * 0.08, baseY - topY);
+            ctx.fillStyle = shade(PALI_LOG, 8);
+            ctx.fillRect(p.x - s * 0.04, topY, s * 0.028, baseY - topY);
+            const armY = topY + s * 0.42;
+            ctx.save();
+            ctx.translate(p.x, armY);
+            ctx.rotate(-0.07 * m);
+            ctx.fillStyle = shade(PALI_LOG, -12);
+            ctx.fillRect(-s * 0.44, -s * 0.032, s * 0.88, s * 0.064);
+            ctx.restore();
+            ctx.fillStyle = PALI_ROPE;
+            ctx.fillRect(p.x - s * 0.055, armY - s * 0.055, s * 0.11, s * 0.11);
+            // The straw skirt under the body: a tied fringe.
+            ctx.fillStyle = '#b09a52';
+            for (let i = 0; i < 7; i++) {
+              const fx3 = p.x + (i - 3) * s * 0.055;
+              ctx.save();
+              ctx.translate(fx3, baseY - s * 0.52);
+              ctx.rotate((i - 3) * 0.09 + sway);
+              ctx.fillRect(-s * 0.016, 0, s * 0.032, s * 0.24 + ((h >>> i) & 3) * s * 0.02);
+              ctx.restore();
+            }
+            // THE BODY: a stuffed grain sack, straw bursting at the
+            // seams, one patch sewn on with ROPE — goblin tailoring.
+            const bodyY = baseY - s * 0.78;
+            ctx.fillStyle = '#9c8a62';
+            ctx.beginPath();
+            facetCircle(ctx, p.x, bodyY, s * 0.26, 8, 0.15 * m, 1.15);
+            ctx.fill();
+            ctx.fillStyle = shade('#9c8a62', -12);
+            ctx.beginPath();
+            facetCircle(ctx, p.x + m * s * 0.08, bodyY + s * 0.06, s * 0.15, 7, 0.3, 1);
+            ctx.fill();
+            ctx.fillStyle = shade(rag2, -6);
+            ctx.fillRect(p.x - m * s * 0.16 - s * 0.07, bodyY - s * 0.1, s * 0.14, s * 0.12);
+            ctx.strokeStyle = PALI_ROPE;
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            ctx.setLineDash([s * 0.024, s * 0.03]);
+            ctx.strokeRect(p.x - m * s * 0.16 - s * 0.08, bodyY - s * 0.11, s * 0.16, s * 0.14);
+            ctx.setLineDash([]);
+            // Straw tufts spitting from the shoulder seams.
+            ctx.strokeStyle = '#c9b26a';
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            for (const [ox, oy, a0] of [
+              [-0.24, -0.14, 2.6],
+              [0.22, -0.16, 0.5],
+              [0.26, 0.08, 0.2],
+            ] as const) {
+              for (let k = 0; k < 3; k++) {
+                ctx.beginPath();
+                ctx.moveTo(p.x + ox * s, bodyY + oy * s);
+                ctx.lineTo(
+                  p.x + ox * s + Math.cos(a0 + k * 0.35) * s * 0.09,
+                  bodyY + oy * s - Math.abs(Math.sin(a0 + k * 0.35)) * s * 0.08,
+                );
+                ctx.stroke();
+              }
+            }
+            // The belt: a real sword-belt, cinched — the one piece
+            // of the costume that fits, because it's the boss's own
+            // spare and everybody knows it.
+            ctx.fillStyle = '#4a3626';
+            ctx.fillRect(p.x - s * 0.25, bodyY + s * 0.1, s * 0.5, s * 0.06);
+            ctx.fillStyle = CAMP_BRONZE;
+            ctx.fillRect(p.x - s * 0.035, bodyY + s * 0.095, s * 0.07, s * 0.07);
+            // THE HEAD: a pot-helm on a stump neck — dent, painted
+            // EYES, and the jagged white GRIN nobody painted twice
+            // the same. Part brag, part warning, all goblin.
+            const hy2 = topY + s * 0.1;
+            ctx.fillStyle = shade('#9c8a62', -6);
+            ctx.fillRect(p.x - s * 0.05, hy2 + s * 0.1, s * 0.1, s * 0.1);
+            ctx.fillStyle = '#57535f';
+            ctx.beginPath();
+            ctx.arc(p.x, hy2, s * 0.14, Math.PI, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = shade('#57535f', -12);
+            ctx.fillRect(p.x - s * 0.14, hy2, s * 0.28, s * 0.12);
+            ctx.fillStyle = shade('#57535f', 14);
+            ctx.beginPath();
+            ctx.arc(p.x - s * 0.03, hy2 - s * 0.02, s * 0.09, Math.PI * 1.15, Math.PI * 1.7);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(28, 24, 34, 0.7)';
+            ctx.beginPath();
+            ctx.ellipse(p.x + m * s * 0.06, hy2 - s * 0.07, s * 0.035, s * 0.02, 0.5 * m, 0, Math.PI * 2);
+            ctx.fill();
+            // The painted face: white eye-rings, uneven; the grin a
+            // zigzag of TEETH slashed on in one sitting.
+            ctx.strokeStyle = '#e8e2d4';
+            ctx.lineWidth = Math.max(1.2, s * 0.022);
+            ctx.beginPath();
+            ctx.arc(p.x - s * 0.055, hy2 + s * 0.035, s * 0.03, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(p.x + s * 0.055, hy2 + s * 0.03, s * 0.038, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            const gy2 = hy2 + s * 0.09;
+            ctx.moveTo(p.x - s * 0.1, gy2);
+            for (let i = 0; i < 5; i++) {
+              ctx.lineTo(p.x - s * 0.08 + i * s * 0.045, gy2 + (i % 2 === 0 ? s * 0.03 : -s * 0.004));
+            }
+            ctx.lineTo(p.x + s * 0.1, gy2 - s * 0.01);
+            ctx.stroke();
+            // The hide wing-ears lashed to the helm: the SPECIES
+            // read — no scarecrow of a man gets ears like these.
+            for (const side of [-1, 1]) {
+              const ex = p.x + side * s * 0.13;
+              ctx.fillStyle = side * m > 0 ? '#84644a' : shade('#84644a', -10);
+              ctx.beginPath();
+              ctx.moveTo(ex, hy2 - s * 0.02);
+              ctx.lineTo(ex + side * s * 0.2, hy2 - s * 0.1 - sway * side * s * 0.5);
+              ctx.lineTo(ex + side * s * 0.16, hy2 + s * 0.04);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // The jaw trophy on a twine necklace.
+            ctx.strokeStyle = PALI_ROPE_DARK;
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.12, bodyY - s * 0.2);
+            ctx.quadraticCurveTo(p.x, bodyY - s * 0.08, p.x + s * 0.12, bodyY - s * 0.2);
+            ctx.stroke();
+            ctx.fillStyle = shade(PALI_BONE, -4);
+            ctx.beginPath();
+            ctx.moveTo(p.x - s * 0.07, bodyY - s * 0.12);
+            ctx.quadraticCurveTo(p.x, bodyY - s * 0.02, p.x + s * 0.07, bodyY - s * 0.12);
+            ctx.lineTo(p.x + s * 0.05, bodyY - s * 0.06);
+            ctx.quadraticCurveTo(p.x, bodyY + s * 0.01, p.x - s * 0.05, bodyY - s * 0.06);
+            ctx.closePath();
+            ctx.fill();
+            // The spear arm: a REAL spear lashed to the crossbar's
+            // near fist — bent shaft, true head. The other arm ends
+            // in rag streamers that never stop moving.
+            const spX = p.x + m * s * 0.42;
+            ctx.save();
+            ctx.translate(spX, armY);
+            ctx.rotate(0.16 * m);
+            ctx.fillStyle = shade(PALI_LOG, 2);
+            ctx.fillRect(-s * 0.022, -s * 0.5, s * 0.044, s * 0.86);
+            ctx.fillStyle = '#8b93a4';
+            ctx.beginPath();
+            ctx.moveTo(-s * 0.045, -s * 0.5);
+            ctx.lineTo(0, -s * 0.68);
+            ctx.lineTo(s * 0.045, -s * 0.5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+            ctx.fillStyle = PALI_ROPE;
+            ctx.fillRect(spX - s * 0.05, armY - s * 0.04, s * 0.1, s * 0.08);
+            const stX2 = p.x - m * s * 0.42;
+            for (const [col, off] of [
+              [rag1, -0.03],
+              [rag2, 0.035],
+            ] as const) {
+              ctx.fillStyle = col;
+              ctx.beginPath();
+              ctx.moveTo(stX2 + off * s - s * 0.03, armY + s * 0.02);
+              ctx.lineTo(stX2 + off * s + s * 0.03, armY + s * 0.02);
+              ctx.lineTo(stX2 + off * s + s * 0.05 + sway * m * s * 2.2, armY + s * 0.44);
+              ctx.lineTo(stX2 + off * s - s * 0.02 + sway * m * s * 2.2, armY + s * 0.4);
+              ctx.closePath();
+              ctx.fill();
+            }
+          },
+        };
+      }
+
+      case Tile.GnawTrough: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.32;
+        const m = ((h >>> 5) & 1) ? 1 : -1;
+        const slop = ((h >>> 9) & 1) ? '#5d6a34' : '#6a5f2e';
+        return {
+          sortY: ty + 0.6,
+          body: stationBody(0.85, 0.9, 0.5),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.02, s * 0.54, s * 0.1, 0, 0, Math.PI * 2);
+            ctx.fill();
+            const tw3 = s * 0.5;
+            const rimY = baseY - s * 0.3;
+            // The stake cradles: crossed short legs at each end.
+            for (const ex of [-0.78, 0.78]) {
+              for (const flip of [-1, 1]) {
+                ctx.save();
+                ctx.translate(p.x + ex * tw3, baseY - s * 0.1);
+                ctx.rotate(flip * 0.34);
+                ctx.fillStyle = shade(PALI_LOG, flip < 0 ? -12 : 0);
+                ctx.fillRect(-s * 0.028, -s * 0.1, s * 0.056, s * 0.24);
+                ctx.restore();
+              }
+            }
+            // The half-log: bark belly under, hewn faces above —
+            // one tree, one tool, one afternoon.
+            ctx.fillStyle = '#4a3420';
+            ctx.beginPath();
+            ctx.moveTo(p.x - tw3, rimY);
+            ctx.quadraticCurveTo(p.x, rimY + s * 0.38, p.x + tw3, rimY);
+            ctx.lineTo(p.x + tw3, rimY + s * 0.02);
+            ctx.quadraticCurveTo(p.x, rimY + s * 0.42, p.x - tw3, rimY + s * 0.02);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#5e4023';
+            ctx.beginPath();
+            ctx.moveTo(p.x - tw3, rimY);
+            ctx.quadraticCurveTo(p.x, rimY + s * 0.34, p.x + tw3, rimY);
+            ctx.quadraticCurveTo(p.x, rimY + s * 0.12, p.x - tw3, rimY);
+            ctx.closePath();
+            ctx.fill();
+            // Adze tick-marks along the hewn face.
+            ctx.strokeStyle = 'rgba(40, 26, 12, 0.5)';
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            for (let i = 0; i < 5; i++) {
+              const ax2 = p.x - tw3 * 0.7 + i * tw3 * 0.35;
+              ctx.beginPath();
+              ctx.moveTo(ax2 - s * 0.03, rimY + s * 0.14);
+              ctx.lineTo(ax2 + s * 0.03, rimY + s * 0.18);
+              ctx.stroke();
+            }
+            // The hollow: interior wall shadowed, then THE SLOP —
+            // a murky surface with a leg bone standing out of it
+            // and a slick catching what light gets in.
+            ctx.fillStyle = shade('#4a3420', -16);
+            ctx.beginPath();
+            ctx.ellipse(p.x, rimY - s * 0.005, tw3 * 0.94, s * 0.115, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = slop;
+            ctx.beginPath();
+            ctx.ellipse(p.x + s * 0.01, rimY, tw3 * 0.86, s * 0.09, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = shade(slop, 12);
+            ctx.beginPath();
+            ctx.ellipse(p.x - m * tw3 * 0.3, rimY - s * 0.008, tw3 * 0.3, s * 0.035, 0.15 * m, 0, Math.PI * 2);
+            ctx.fill();
+            // Lumps in the slop — dinner is IN there somewhere.
+            ctx.fillStyle = shade(slop, -14);
+            for (const [ox, r] of [
+              [0.34, 0.05],
+              [-0.06, 0.04],
+              [0.14, 0.032],
+            ] as const) {
+              ctx.beginPath();
+              facetCircle(ctx, p.x + ox * tw3 * m, rimY - s * 0.005, r * s * 2, 5, ox, 0.5);
+              ctx.fill();
+            }
+            // The standing leg bone, licked clean to the knob.
+            ctx.save();
+            ctx.translate(p.x + m * tw3 * 0.5, rimY - s * 0.02);
+            ctx.rotate(-0.3 * m);
+            ctx.fillStyle = shade(PALI_BONE, 2);
+            ctx.fillRect(-s * 0.024, -s * 0.24, s * 0.048, s * 0.26);
+            ctx.beginPath();
+            facetCircle(ctx, 0, -s * 0.26, s * 0.04, 5, 0.3, 0.9);
+            ctx.fill();
+            ctx.restore();
+            // THE GNAW: bite scallops chewed out of the near rim —
+            // the beasts eat the TROUGH when the slop runs out.
+            ctx.fillStyle = shade('#5e4023', 22);
+            for (const gx3 of [-0.5, -0.1, 0.32]) {
+              const bx2 = p.x + gx3 * tw3 * m;
+              const by2 = rimY + s * (0.1 + Math.abs(gx3) * 0.12);
+              ctx.beginPath();
+              ctx.arc(bx2, by2, s * 0.045, Math.PI * 1.05, Math.PI * 1.95);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = shade('#5e4023', 22);
+            }
+            // Tooth-rake ticks beside the deepest scallop.
+            ctx.strokeStyle = 'rgba(140, 110, 70, 0.7)';
+            ctx.lineWidth = Math.max(1, s * 0.014);
+            for (let i = 0; i < 3; i++) {
+              ctx.beginPath();
+              ctx.moveTo(p.x - m * tw3 * 0.1 + i * s * 0.03, rimY + s * 0.2);
+              ctx.lineTo(p.x - m * tw3 * 0.1 + i * s * 0.03 + s * 0.012, rimY + s * 0.27);
+              ctx.stroke();
+            }
+            // The spill: slop down the belly and two dropped bones
+            // where an argument happened.
+            ctx.fillStyle = `rgba(${slop === '#5d6a34' ? '93, 106, 52' : '106, 95, 46'}, 0.5)`;
+            ctx.beginPath();
+            ctx.ellipse(p.x - m * tw3 * 0.34, baseY + s * 0.04, s * 0.13, s * 0.038, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = shade(PALI_BONE, -12);
+            ctx.save();
+            ctx.translate(p.x - m * tw3 * 0.9, baseY + s * 0.02);
+            ctx.rotate(0.5 * m);
+            ctx.fillRect(-s * 0.07, -s * 0.018, s * 0.14, s * 0.036);
+            ctx.fillRect(s * 0.05, -s * 0.03, s * 0.03, s * 0.06);
+            ctx.restore();
+            ctx.save();
+            ctx.translate(p.x + m * tw3 * 1.02, baseY - s * 0.01);
+            ctx.rotate(-0.2 * m);
+            ctx.fillRect(-s * 0.06, -s * 0.016, s * 0.12, s * 0.032);
+            ctx.restore();
           },
         };
       }

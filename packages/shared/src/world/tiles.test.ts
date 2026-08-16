@@ -465,6 +465,20 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.PottedTree, 'pottedtree', 1],
     [Tile.MooringPost, 'mooring', 2],
     [Tile.BeachedSkiff, 'skiff', 3],
+    // THE WARREN AND THE LEGION: camp litter pops in one, lashed
+    // work holds two, the stolen cart is the wave's barricade.
+    [Tile.BoneMidden, 'gnawbones', 1],
+    [Tile.TrophyStake, 'trophies', 2],
+    [Tile.GrogTub, 'grogtub', 2],
+    [Tile.KnucklePit, 'knuckles', 1],
+    [Tile.RagNest, 'ragnest', 1],
+    [Tile.BeastStake, 'beaststake', 2],
+    [Tile.CritterCage, 'critters', 1],
+    [Tile.AlarmGong, 'gong', 2],
+    [Tile.WarTable, 'wartable', 2],
+    [Tile.PlunderCart, 'plundercart', 3],
+    [Tile.BossEffigy, 'effigy', 2],
+    [Tile.GnawTrough, 'gnawtrough', 1],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {

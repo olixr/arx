@@ -208,7 +208,25 @@ export type SmashKind =
   | 'wayfarer'
   | 'pottedtree'
   | 'mooring'
-  | 'skiff';
+  | 'skiff'
+  // THE WARREN AND THE LEGION: camp-life wreckage — marrow bones
+  // rattling out with their flies, a brag coming off its nail,
+  // grog going everywhere, dice scattering mid-throw, bedding
+  // flying, chain pouring link by link, the larder ESCAPING, the
+  // gong's one last note, the map's argument in the wind, a
+  // cartload of loot at once, the boss's stuffing, and the slop.
+  | 'gnawbones'
+  | 'trophies'
+  | 'grogtub'
+  | 'knuckles'
+  | 'ragnest'
+  | 'beaststake'
+  | 'critters'
+  | 'gong'
+  | 'wartable'
+  | 'plundercart'
+  | 'effigy'
+  | 'gnawtrough';
 
 export interface DebrisChunk {
   x: number; // world coords (tile units)
@@ -780,6 +798,20 @@ const CHIP_TONE: Record<SmashKind, string> = {
   pottedtree: '#75603e',
   mooring: '#4e4438',
   skiff: '#6f5a38',
+  // Warren-and-legion wreckage: bone, hewn brown, scrap iron, and
+  // the gong's bronze.
+  gnawbones: '#c9c2ae',
+  trophies: '#7d5a2e',
+  grogtub: '#5e4023',
+  knuckles: '#8a6534',
+  ragnest: '#6e5a44',
+  beaststake: '#3a3444',
+  critters: '#a88f5c',
+  gong: '#b08d3c',
+  wartable: '#6a4a28',
+  plundercart: '#6e4a33',
+  effigy: '#9c8a62',
+  gnawtrough: '#5e4023',
 };
 
 const pick = <T>(rand: () => number, arr: readonly T[]): T =>
@@ -2782,6 +2814,185 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       }
       out.push({ len: 0.1, wid: 0.05, color: '#a89263', stripe: '#d8c49a', round: true, pace: 1.35 });
       out.push({ len: 0.11, wid: 0.04, color: '#6f5a38', stripe: '#c9a76a', pace: 0.45 });
+      break;
+    }
+    case 'gnawbones': {
+      // The midden empties: long-bones and snapped halves rattle
+      // out flat and fast, the rib arc sails as one curve, and a
+      // spray of teeth goes up like thrown gravel.
+      const bones = ['#c9c2ae', '#bdb49a', '#a89a80'];
+      for (let i = 0; i < 4 + Math.floor(rand() * 2); i++) {
+        out.push({ len: 0.2 + rand() * 0.12, wid: 0.045, color: pick(rand, bones), stripe: '#ddd6c0' });
+      }
+      out.push({ len: 0.34 + rand() * 0.08, wid: 0.1, color: shade('#c9c2ae', -8), stripe: '#ddd6c0', pace: 0.85 });
+      out.push({ len: 0.14, wid: 0.14, color: pick(rand, bones), round: true, pace: 1.3 });
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.05 + rand() * 0.03, wid: 0.04, color: '#e0d9c2', pace: 1.4 });
+      }
+      break;
+    }
+    case 'trophies': {
+      // The brag comes down: the stake snaps, the cracked shield
+      // finally splits into its two halves, the helm rings off
+      // ROUND, and the tabard flies its stolen dye one last time.
+      out.push({ len: 0.5 + rand() * 0.12, wid: 0.08, color: '#6a4a28', stripe: shade('#6a4a28', 14), pace: 0.75 });
+      out.push({ len: 0.34 + rand() * 0.06, wid: 0.06, color: shade('#6a4a28', -10) });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.2 + rand() * 0.05, wid: 0.14, color: '#7d5a2e', stripe: shade('#7d5a2e', 16), pace: 0.9 });
+      }
+      out.push({ len: 0.15, wid: 0.15, color: '#57535f', stripe: '#8b93a4', round: true, pace: 1.2 });
+      out.push({ len: 0.26 + rand() * 0.06, wid: 0.18, color: pick(rand, ['#8a3b34', '#5d6a42', '#9a7a35', '#4a5a6e']), round: true, pace: 1.4 });
+      out.push({ len: 0.16, wid: 0.04, color: '#8b93a4', stripe: '#aeb6c6', pace: 1.1 });
+      break;
+    }
+    case 'grogtub': {
+      // The tub lets go the way every barrel dreams of: staves
+      // fan out, the bent hoop springs, and the whole murky
+      // brew goes up as fat amber gouts with the ladle riding it.
+      wood('#5e4023', 6 + Math.floor(rand() * 3), 0.26, 0.44, 0.09);
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.24 + rand() * 0.1, wid: 0.045, color: '#3a3444', stripe: '#565064' });
+      }
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.1 + rand() * 0.06, wid: 0.1, color: pick(rand, ['#6d6428', '#8a7a3a']), round: true, pace: 1.35 });
+      }
+      out.push({ len: 0.24, wid: 0.05, color: shade('#6a4a28', 8), stripe: shade('#6a4a28', 20), pace: 1.1 });
+      out.push({ len: 0.09, wid: 0.09, color: '#8b93a4', round: true, pace: 1.25 });
+      break;
+    }
+    case 'knuckles': {
+      // The game ends the only way it ever ends: board planks up,
+      // dice EVERYWHERE, the pot raining coppers, and the dagger
+      // spinning off still claiming everything it lands on.
+      wood('#8a6534', 3, 0.24, 0.4, 0.1);
+      for (let i = 0; i < 5 + Math.floor(rand() * 2); i++) {
+        out.push({ len: 0.06 + rand() * 0.02, wid: 0.06, color: pick(rand, ['#c9c2ae', '#ddd6c2']), pace: 1.45 });
+      }
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.05, wid: 0.05, color: pick(rand, ['#b06a30', '#c9803a']), round: true, pace: 1.5 });
+      }
+      out.push({ len: 0.05, wid: 0.05, color: '#c9ccd4', round: true, pace: 1.5 });
+      out.push({ len: 0.18, wid: 0.045, color: '#8b93a4', stripe: '#aeb6c6', pace: 1.15 });
+      break;
+    }
+    case 'ragnest': {
+      // Bedding flies: three rag layers sail as slow round flaps
+      // in the warren's dyes, the quilt corner flapping brightest,
+      // the sack-pillow bursting in a straw puff.
+      const rags = ['#8a3b34', '#5d6a42', '#9a7a35', '#4a5a6e'];
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.24 + rand() * 0.08, wid: 0.18, color: shade(pick(rand, rags), -8), round: true, pace: 1.35 });
+      }
+      out.push({ len: 0.2, wid: 0.16, color: shade(pick(rand, rags), 18), round: true, pace: 1.45 });
+      out.push({ len: 0.16, wid: 0.13, color: '#9c8a62', round: true, pace: 1.1 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.1 + rand() * 0.05, wid: 0.024, color: '#c9b26a', pace: 1.3 });
+      }
+      out.push({ len: 0.15, wid: 0.04, color: shade('#c9c2ae', -8) });
+      break;
+    }
+    case 'beaststake': {
+      // The stake tears out with a jerk: the iron pin flips heavy
+      // and point-first, the chain pours off in link runs, and
+      // the empty collar cartwheels — spikes out, still hungry.
+      out.push({ len: 0.4 + rand() * 0.1, wid: 0.07, color: '#3a3444', stripe: '#565064', pace: 0.7 });
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.12 + rand() * 0.05, wid: 0.04, color: shade('#3a3444', 6), stripe: '#565064', pace: 0.95 });
+      }
+      out.push({ len: 0.16, wid: 0.16, color: '#57535f', stripe: '#8b93a4', round: true, pace: 1.25 });
+      out.push({ len: 0.16 + rand() * 0.05, wid: 0.045, color: '#bdb49a', stripe: '#ddd6c0' });
+      break;
+    }
+    case 'critters': {
+      // The larder makes its break: withies spring, the frames
+      // crack — and the tenants BOLT, a dark blur low and fast,
+      // a feather-storm where the bird went the other way.
+      wood('#8a713f', 4 + Math.floor(rand() * 2), 0.2, 0.36, 0.05);
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.14 + rand() * 0.06, wid: 0.022, color: '#a88f5c', stripe: '#cdb078', pace: 1.25 });
+      }
+      out.push({ len: 0.12, wid: 0.07, color: '#241c22', round: true, pace: 1.6 });
+      for (let i = 0; i < 5; i++) {
+        out.push({ len: 0.07 + rand() * 0.03, wid: 0.024, color: pick(rand, ['#7a828c', '#9aa2ac']), round: true, pace: 1.55 });
+      }
+      out.push({ len: 0.08, wid: 0.03, color: shade('#c9c2ae', 8) });
+      break;
+    }
+    case 'gong': {
+      // The loudest note it ever plays: the bronze disc rolls off
+      // ROUND and heavy, the frame timbers cross behind it, the
+      // crimson tassel sails free — and stays crimson down.
+      out.push({ len: 0.4, wid: 0.4, color: '#b08d3c', stripe: '#d8b96a', round: true, pace: 0.8 });
+      wood('#6a4a28', 3 + Math.floor(rand() * 2), 0.3, 0.5, 0.08);
+      out.push({ len: 0.3, wid: 0.06, color: shade('#6a4a28', -10), pace: 0.85 });
+      out.push({ len: 0.14, wid: 0.05, color: '#6e5a44', stripe: '#8a713f', round: true, pace: 1.1 });
+      out.push({ len: 0.18, wid: 0.08, color: '#8f2f2a', stripe: '#b04a42', round: true, pace: 1.45 });
+      break;
+    }
+    case 'wartable': {
+      // The plan comes apart: trestle legs kick out, the planks
+      // drop flat, the hide map takes the wind like it always
+      // wanted to, and the cup markers scatter — battle lost.
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.26 + rand() * 0.08, wid: 0.055, color: '#6a4a28', stripe: shade('#6a4a28', 12) });
+      }
+      out.push({ len: 0.4 + rand() * 0.08, wid: 0.14, color: shade('#6a4a28', -6), stripe: shade('#6a4a28', 14), pace: 0.85 });
+      out.push({ len: 0.32, wid: 0.24, color: '#c9b684', stripe: '#e0d0a0', round: true, pace: 1.45 });
+      out.push({ len: 0.14, wid: 0.05, color: '#c9b684', stripe: '#e0d0a0', pace: 1.1 });
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.06, wid: 0.05, color: '#57535f', pace: 1.3 });
+      }
+      out.push({ len: 0.06, wid: 0.05, color: '#8f2f2a', pace: 1.3 });
+      out.push({ len: 0.16, wid: 0.04, color: '#8b93a4', stripe: '#aeb6c6', pace: 1.15 });
+      break;
+    }
+    case 'plundercart': {
+      // The whole raid comes down at once: sideboard planks and
+      // the snapped shaft, the good wheel rolling FREE the way
+      // wheels do, and the loot going up — sack, rug, and the
+      // kettle ringing off brightest of all.
+      wood('#6e4a33', 5 + Math.floor(rand() * 3), 0.3, 0.5, 0.11);
+      out.push({ len: 0.44 + rand() * 0.08, wid: 0.06, color: shade('#6e4a33', -12), pace: 0.8 });
+      out.push({ len: 0.34, wid: 0.34, color: '#7d5a2e', stripe: '#3a3444', round: true, pace: 0.75 });
+      out.push({ len: 0.18, wid: 0.15, color: '#9c8a62', round: true, pace: 1.15 });
+      out.push({ len: 0.26, wid: 0.1, color: pick(rand, ['#8a3b34', '#5d6a42', '#9a7a35', '#4a5a6e']), stripe: '#c9b26a', pace: 1.05 });
+      out.push({ len: 0.12, wid: 0.12, color: '#b06a30', stripe: '#d98a48', round: true, pace: 1.3 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.05, wid: 0.05, color: '#b06a30', round: true, pace: 1.5 });
+      }
+      break;
+    }
+    case 'effigy': {
+      // The boss goes down (again): the pole cracks, the helm
+      // head rings off round, and the BODY is suddenly just
+      // straw — a whole armful of it, sighing down after the
+      // rags. The camp will rebuild him by morning.
+      out.push({ len: 0.5 + rand() * 0.12, wid: 0.08, color: '#6a4a28', stripe: shade('#6a4a28', 14), pace: 0.75 });
+      out.push({ len: 0.36, wid: 0.06, color: shade('#6a4a28', -10) });
+      out.push({ len: 0.16, wid: 0.16, color: '#57535f', stripe: '#8b93a4', round: true, pace: 1.2 });
+      out.push({ len: 0.2, wid: 0.15, color: '#9c8a62', round: true, pace: 1.1 });
+      for (let i = 0; i < 6; i++) {
+        out.push({ len: 0.1 + rand() * 0.06, wid: 0.022, color: pick(rand, ['#c9b26a', '#b09a52']), pace: 1.4 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.16, wid: 0.09, color: pick(rand, ['#8a3b34', '#5d6a42', '#9a7a35', '#4a5a6e']), round: true, pace: 1.45 });
+      }
+      out.push({ len: 0.1, wid: 0.05, color: shade('#c9c2ae', -4), round: true, pace: 1.25 });
+      break;
+    }
+    case 'gnawtrough': {
+      // The half-log splits down its hollow: two long halves fall
+      // OPEN like a book nobody wants to read, the cradle stakes
+      // kick out, and the slop goes up in fat green gouts with
+      // the leg bone riding the tallest one.
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.42 + rand() * 0.08, wid: 0.12, color: pick(rand, ['#5e4023', '#4a3420']), stripe: shade('#5e4023', 16), pace: 0.8 });
+      }
+      wood('#6a4a28', 3, 0.14, 0.24, 0.055);
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.09 + rand() * 0.05, wid: 0.09, color: pick(rand, ['#5d6a34', '#6a5f2e']), round: true, pace: 1.35 });
+      }
+      out.push({ len: 0.2, wid: 0.05, color: '#c9c2ae', stripe: '#ddd6c0', pace: 1.15 });
       break;
     }
   }

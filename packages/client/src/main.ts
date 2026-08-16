@@ -2069,7 +2069,12 @@ game.onFx = (fx) => {
         // The commons' hollows: an ale cask lets go like a drum,
         // fired jars ring like the urns, and the hauled-out skiff
         // is forty seasons of hollowed clinker — the dugout's kin.
-        kind === 'tapcask' || kind === 'glazedjars' || kind === 'skiff',
+        kind === 'tapcask' || kind === 'glazedjars' || kind === 'skiff' ||
+        // The camps' hollows: the grog tub is the warren's barrel,
+        // the gnaw trough a hollowed log like the dugout — and the
+        // gong is the RESONANT class's loudest member: breaking it
+        // rings the alarm it was built to ring, once, for free.
+        kind === 'grogtub' || kind === 'gnawtrough' || kind === 'gong',
       ),
     );
     // Stone-weight pieces land heavy: marble, mithril, and old
