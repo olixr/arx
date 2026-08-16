@@ -309,8 +309,12 @@ deploy at quiet hours once there's a population.
 ## 7. Verify
 
 - `https://arx.gg` loads the landing page — the live meadow hero draws
-  and the day cycle turns (the clock chip bottom-right changes).
-- `https://arx.gg/play` loads the game and the login panel.
+  and the day cycle turns (the clock chip bottom-right changes). On a
+  browser that has signed in before (an `arx.token` or `arx.roster` in
+  localStorage), `/` bounces straight to `/play` once per tab session;
+  `https://arx.gg/?stay` always shows the landing page regardless.
+- `https://arx.gg/play` loads the game and the login panel, which
+  carries a "What is Arx? — the front page" link back to `/?stay`.
 - `https://arx.gg/healthz` returns `{"ok":true,…}`.
 - `https://arx.gg/dev/maps` returns 404.
 - Creating an account WITHOUT the invite code is refused; with it,

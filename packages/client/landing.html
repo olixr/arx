@@ -21,6 +21,33 @@
     <meta property="og:url" content="https://arx.gg/" />
     <meta property="og:image" content="https://arx.gg/og.png" />
     <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      // THE DOOR KNOWS ITS REGULARS. A returning player (a session
+      // token or a remembered-account card in localStorage) is bounced
+      // straight to /play — the front page is for first meetings. Two
+      // ways back in for regulars: `?stay` pins the landing (the login
+      // panel's front-page link uses it), and the bounce marks the tab
+      // session, so simply visiting `/` again shows the page. Inline
+      // and first in <head> so nobody pays a flash of landing paint.
+      (() => {
+        try {
+          if (new URLSearchParams(location.search).has('stay')) {
+            sessionStorage.setItem('arx.stay', '1');
+            return;
+          }
+          if (sessionStorage.getItem('arx.stay')) return;
+          const roster = localStorage.getItem('arx.roster');
+          const returning =
+            localStorage.getItem('arx.token') !== null || (roster !== null && roster !== '[]');
+          if (returning) {
+            sessionStorage.setItem('arx.stay', '1');
+            location.replace('/play');
+          }
+        } catch {
+          /* storage blocked: the landing page simply shows */
+        }
+      })();
+    </script>
   </head>
   <body>
     <!-- ============================================== the nav -->

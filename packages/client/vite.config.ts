@@ -9,22 +9,31 @@ const withStudios = process.env.STUDIO === '1';
 export default defineConfig({
   plugins: [
     {
-      // THE FRONT DOOR: production nginx serves landing.html at `/`
-      // and the game shell at `/play` (deploy/nginx-arx.conf). Dev
-      // keeps `/` as the game so every existing rig and workflow
-      // holds; this shim only teaches the dev server the `/play` and
-      // `/landing` spellings so links work the same in both worlds.
+      // THE FRONT DOOR: the landing page is the default at `/` and the
+      // game shell answers at `/play`, in dev exactly as production
+      // nginx serves it (deploy/nginx-arx.conf) — Forge strips
+      // extensions, so both spellings are extensionless. Only the BARE
+      // `/` rewrites: any query string (`/?fx`, `/?det=1`, the lab
+      // levers) still reaches the game shell, so every dev rig holds.
       name: 'arx-entry-routes',
       configureServer(server) {
         server.middlewares.use((req, _res, next) => {
-          if (req.url === '/play') req.url = '/index.html';
+          // Bare `/` and `/?stay` mirror prod's `location = /` (the
+          // landing, ?stay pinning it); any other query on `/` keeps
+          // the game shell so the dev rigs' levers (?fx, ?det…) hold.
+          if (req.url === '/' || req.url?.startsWith('/?stay')) req.url = '/landing.html';
+          else if (req.url === '/play') req.url = '/index.html';
           else if (req.url === '/landing') req.url = '/landing.html';
           next();
         });
       },
       configurePreviewServer(server) {
         server.middlewares.use((req, _res, next) => {
-          if (req.url === '/play') req.url = '/index.html';
+          // Bare `/` and `/?stay` mirror prod's `location = /` (the
+          // landing, ?stay pinning it); any other query on `/` keeps
+          // the game shell so the dev rigs' levers (?fx, ?det…) hold.
+          if (req.url === '/' || req.url?.startsWith('/?stay')) req.url = '/landing.html';
+          else if (req.url === '/play') req.url = '/index.html';
           else if (req.url === '/landing') req.url = '/landing.html';
           next();
         });
