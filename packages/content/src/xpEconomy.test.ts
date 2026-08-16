@@ -29,9 +29,13 @@ import { RECIPES } from './recipes.js';
 // ------------------------------------------------- the combat pins
 
 test("THE MARK'S WORTH: the combat coefficients are the contract", () => {
-  assert.equal(XP_PER_DMG_SCHOOL, 3, 'school XP per damage point');
+  // THE LONGER ROAD (2026-08-16): school and kill-share rates halved
+  // (3 → 1.5, 0.5 → 0.25) so the strike schools climb at half speed —
+  // an hour of play was reaching 20-30. Vitality keeps its founding
+  // rate; the shared-lesson echo and the mark cap keep their shapes.
+  assert.equal(XP_PER_DMG_SCHOOL, 1.5, 'school XP per damage point');
   assert.equal(XP_PER_DMG_VITALITY, 2, 'vitality rider per damage point');
-  assert.equal(XP_KILL_SCHOOL_FRAC, 0.5, "the felling's school share of xpReward");
+  assert.equal(XP_KILL_SCHOOL_FRAC, 0.25, "the felling's school share of xpReward");
   assert.equal(XP_MARK_CAP_MULT, 1.25, 'per-mark school damage-XP cap, in xpRewards');
   assert.equal(COMBAT_LESSON_FRAC, 0.5, 'the shared lesson echo');
 });

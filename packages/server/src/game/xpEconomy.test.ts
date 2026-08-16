@@ -65,21 +65,21 @@ function markSlate(hp: number, xpReward: number) {
 }
 
 test("THE MARK'S WORTH: a sponge stops teaching at its own price", () => {
-  // xpReward 10 prices an allowance of ceil(10 * 1.25 / 3) = 5 damage
+  // xpReward 10 prices an allowance of ceil(10 * 1.25 / 1.5) = 9 damage
   // points, however much meat the body carries.
   const { s, health, grants } = markSlate(100, 10);
-  assert.equal(xpMarkAllowance(10), 5);
-  call(proto.damageNpc, s, 9, 3, 1, 'onehand', {});
-  call(proto.damageNpc, s, 9, 3, 1, 'onehand', {});
-  call(proto.damageNpc, s, 9, 3, 1, 'onehand', {});
+  assert.equal(xpMarkAllowance(10), 9);
+  call(proto.damageNpc, s, 9, 6, 1, 'onehand', {});
+  call(proto.damageNpc, s, 9, 6, 1, 'onehand', {});
+  call(proto.damageNpc, s, 9, 6, 1, 'onehand', {});
   assert.deepEqual(grants, [
-    ['onehand', 3 * XP_PER_DMG_SCHOOL],
+    ['onehand', Math.round(6 * XP_PER_DMG_SCHOOL)],
+    ['vitality', 6 * XP_PER_DMG_VITALITY],
+    ['onehand', Math.round(3 * XP_PER_DMG_SCHOOL)],
     ['vitality', 3 * XP_PER_DMG_VITALITY],
-    ['onehand', 2 * XP_PER_DMG_SCHOOL],
-    ['vitality', 2 * XP_PER_DMG_VITALITY],
   ]);
   // Damage always lands in full — only the lesson has a bottom.
-  assert.equal(health.hp, 100 - 9);
+  assert.equal(health.hp, 100 - 18);
 });
 
 test('each attacker draws their own budget from the same body', () => {
@@ -92,21 +92,21 @@ test('each attacker draws their own budget from the same body', () => {
   call(proto.damageNpc, s, 9, 5, 1, 'onehand', {});
   call(proto.damageNpc, s, 9, 5, 2, 'archery', {});
   assert.deepEqual(grants, [
-    ['onehand', 5 * XP_PER_DMG_SCHOOL],
+    ['onehand', Math.round(5 * XP_PER_DMG_SCHOOL)],
     ['vitality', 5 * XP_PER_DMG_VITALITY],
-    ['archery', 5 * XP_PER_DMG_SCHOOL],
+    ['archery', Math.round(5 * XP_PER_DMG_SCHOOL)],
     ['vitality', 5 * XP_PER_DMG_VITALITY],
   ]);
 });
 
 test('the drip draws the same budget as the blow that set it', () => {
   const { s, grants } = markSlate(100, 10);
-  call(proto.damageNpc, s, 9, 4, 1, 'onehand', {}); // 4 of 5 spent
+  call(proto.damageNpc, s, 9, 8, 1, 'onehand', {}); // 8 of 9 spent
   grants.length = 0;
   call(proto.dotNpc, s, 9, 3, 1, 'burn'); // 1 point left in the budget
-  assert.deepEqual(grants, [['arx', 1 * 2]]);
+  assert.deepEqual(grants, [['arx', 1]]);
   call(proto.dotNpc, s, 9, 3, 1, 'burn'); // budget dry: burns, teaches nothing
-  assert.deepEqual(grants, [['arx', 1 * 2]]);
+  assert.deepEqual(grants, [['arx', 1]]);
 });
 
 function sneakSlate(npcLevel: number) {

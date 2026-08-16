@@ -19637,9 +19637,10 @@ export class GameServer {
     const source = this.players.get(sourceEid);
     if (source && !fromPet) {
       const style: SkillId = kind === 'burn' ? 'arx' : kind === 'venom' ? 'sneak' : 'onehand';
-      // The drip draws the same mark budget as the blow that set it.
+      // The drip draws the same mark budget as the blow that set it,
+      // and pays under the school rate (1/dmg beside the school's 1.5).
       const credited = this.creditMark(npc, sourceEid, dmg);
-      if (credited > 0) this.grantXp(sourceEid, source, style, credited * 2);
+      if (credited > 0) this.grantXp(sourceEid, source, style, credited);
     }
     // A DoT tail is not a struck blow — no style rides to the deed rail.
     if (health.hp <= 0) this.killNpc(npcEid, npc, sourceEid);
@@ -20941,7 +20942,7 @@ export class GameServer {
         // draws on the mark's budget (shared/skills.ts).
         credited = this.creditMark(npc, attackerEid, dmg);
         if (credited > 0) {
-          this.grantXp(attackerEid, attacker, style, credited * XP_PER_DMG_SCHOOL);
+          this.grantXp(attackerEid, attacker, style, Math.round(credited * XP_PER_DMG_SCHOOL));
           this.grantXp(attackerEid, attacker, 'vitality', credited * XP_PER_DMG_VITALITY);
         }
       }

@@ -216,12 +216,19 @@ export function isCombatSchool(s: SkillId): boolean {
  * bottom under the player's own blade. Damage itself always lands in
  * full: only the LESSON has a floor under it, so whiff-0 and the
  * damage pipeline are untouched.
+ *
+ * THE LONGER ROAD (2026-08-16): the strike rates are HALF their
+ * founding values (school 3 → 1.5, kill share 0.5 → 0.25, drip 2 → 1).
+ * An hour of play was carrying a fresh hand to school 20-30; the climb
+ * now takes about twice as long, so the low levels get lived in. The
+ * fractional rate is rounded at the grant site, never banked as a
+ * fraction; vitality and defence keep their founding rates on purpose.
  */
-export const XP_PER_DMG_SCHOOL = 3;
+export const XP_PER_DMG_SCHOOL = 1.5;
 /** Vitality rides every landed blow at this rate (no echo, no cap change). */
 export const XP_PER_DMG_VITALITY = 2;
 /** The felling pays the school this share of xpReward, on top of damage XP. */
-export const XP_KILL_SCHOOL_FRAC = 0.5;
+export const XP_KILL_SCHOOL_FRAC = 0.25;
 /** School damage-XP per attacker per mark tops out at this many xpRewards. */
 export const XP_MARK_CAP_MULT = 1.25;
 
