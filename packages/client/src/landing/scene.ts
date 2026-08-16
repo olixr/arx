@@ -255,6 +255,150 @@ export function createScene(canvas: HTMLCanvasElement, opts: SceneOptions): ArxS
     groundBake = bake;
   }
 
+  // --------------------------------------------------- the outline shader
+  // renderer.ts paintOutlinedDirect, ported whole: a body paints FLAT
+  // into scratch A (believing it is the frame), scratch B becomes its
+  // alpha dilated through eight integer taps and tinted the one ink
+  // (#241a2e) under source-in, then ring and art blit to the frame.
+  // DEVICE-PIXEL LAW: the scratches work in device pixels or every
+  // outlined body renders soft on retina.
+  const olA = document.createElement('canvas');
+  const olB = document.createElement('canvas');
+  const olACtx = olA.getContext('2d')!;
+  const olBCtx = olB.getContext('2d')!;
+  const OUTLINE_TAPS: ReadonlyArray<readonly [number, number]> = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+    [0.71, 0.71],
+    [-0.71, 0.71],
+    [0.71, -0.71],
+    [-0.71, -0.71],
+  ];
+
+  interface OlGeo {
+    w: number;
+    h: number;
+    m: number;
+  }
+
+  /** Build scratch A (art) + B (ink ring) for a CSS-px body rect. */
+  function buildOutlineScratch(
+    bx: number,
+    by: number,
+    bw: number,
+    bh: number,
+    draw: (g: CanvasRenderingContext2D) => void,
+  ): OlGeo {
+    const r = Math.max(1.25, S * 0.04);
+    const m = Math.ceil(r) + 2;
+    const wCss = Math.ceil(bw) + m * 2;
+    const hCss = Math.ceil(bh) + m * 2;
+    const dw = Math.ceil(wCss * dpr);
+    const dh = Math.ceil(hCss * dpr);
+    if (olA.width < dw) olA.width = olB.width = dw;
+    if (olA.height < dh) olA.height = olB.height = dh;
+    // Apron-clear past the region (the stale-bleed law): the scratches
+    // grow monotonically and keep a bigger body's stale pixels just
+    // outside a smaller one's region.
+    const apron = Math.ceil(r * dpr) + 4;
+    const cw = Math.min(olA.width, dw + apron);
+    const ch = Math.min(olA.height, dh + apron);
+    olACtx.clearRect(0, 0, cw, ch);
+    olACtx.save();
+    olACtx.setTransform(dpr, 0, 0, dpr, (m - bx) * dpr, (m - by) * dpr);
+    draw(olACtx);
+    olACtx.restore();
+    // Integer tap offsets — fractional offsets force a bilinear
+    // resample per tap; a straight copy is ~2× faster and the ring
+    // thickness quantizes by ≤0.5px, invisible at this range.
+    const ri = Math.max(1, Math.round(r * dpr));
+    const rd = Math.max(1, Math.round(r * 0.71 * dpr));
+    olBCtx.clearRect(0, 0, cw, ch);
+    for (const [tx, ty] of OUTLINE_TAPS) {
+      const diag = tx !== 0 && ty !== 0;
+      const ox = Math.sign(tx) * (diag ? rd : ri);
+      const oy = Math.sign(ty) * (diag ? rd : ri);
+      olBCtx.drawImage(olA, 0, 0, dw, dh, ox, oy, dw, dh);
+    }
+    olBCtx.globalCompositeOperation = 'source-in';
+    olBCtx.fillStyle = '#241a2e';
+    olBCtx.fillRect(0, 0, dw, dh);
+    olBCtx.globalCompositeOperation = 'source-over';
+    return { w: dw, h: dh, m };
+  }
+
+  /** Direct outline pass: scratch build + ring-then-art to the frame. */
+  function paintOutlined(
+    bx: number,
+    by: number,
+    bw: number,
+    bh: number,
+    draw: (g: CanvasRenderingContext2D) => void,
+  ): void {
+    const geo = buildOutlineScratch(bx, by, bw, bh, draw);
+    ctx.drawImage(olB, 0, 0, geo.w, geo.h, bx - geo.m, by - geo.m, geo.w / dpr, geo.h / dpr);
+    ctx.drawImage(olA, 0, 0, geo.w, geo.h, bx - geo.m, by - geo.m, geo.w / dpr, geo.h / dpr);
+  }
+
+  // Trees are big regions swaying at wind rate — their outlined
+  // composites bake to sprites on the tree-sprite cadence (~15 Hz,
+  // the law the game's own tree cache proved invisible), staggered so
+  // the bakes never land on one frame.
+  const TREE_CADENCE_MS = 66;
+  interface TreeSprite {
+    canvas: HTMLCanvasElement;
+    w: number;
+    h: number;
+    m: number;
+    bx: number;
+    by: number;
+    nextBakeAt: number;
+  }
+  const treeSprites = new Map<SceneTree, TreeSprite>();
+
+  function drawTreeOutlined(tree: SceneTree, now: number, tSec: number): void {
+    const m = figuresMod;
+    if (!m) return;
+    const p = wts(tree.wx, tree.wy);
+    const bx = p.x - tree.olHalfW * S;
+    const by = p.y - tree.olUp * S;
+    const bw = tree.olHalfW * 2 * S;
+    const bh = (tree.olUp + 0.5) * S;
+    let sp = treeSprites.get(tree);
+    if (!sp || now >= sp.nextBakeAt) {
+      const geo = buildOutlineScratch(bx, by, bw, bh, (g) => m.drawTree(g, tree, wts, S, YS, tSec));
+      if (!sp) {
+        sp = {
+          canvas: document.createElement('canvas'),
+          w: geo.w,
+          h: geo.h,
+          m: geo.m,
+          bx,
+          by,
+          nextBakeAt: 0,
+        };
+        treeSprites.set(tree, sp);
+      }
+      if (sp.canvas.width !== geo.w || sp.canvas.height !== geo.h) {
+        sp.canvas.width = geo.w;
+        sp.canvas.height = geo.h;
+      }
+      const sctx = sp.canvas.getContext('2d')!;
+      sctx.clearRect(0, 0, geo.w, geo.h);
+      sctx.drawImage(olB, 0, 0, geo.w, geo.h, 0, 0, geo.w, geo.h);
+      sctx.drawImage(olA, 0, 0, geo.w, geo.h, 0, 0, geo.w, geo.h);
+      sp.w = geo.w;
+      sp.h = geo.h;
+      sp.m = geo.m;
+      sp.bx = bx;
+      sp.by = by;
+      sp.nextBakeAt = now + TREE_CADENCE_MS + (treeSprites.size % 5) * 13;
+    }
+    ctx.drawImage(sp.canvas, 0, 0, sp.w, sp.h, sp.bx - sp.m, sp.by - sp.m, sp.w / dpr, sp.h / dpr);
+  }
+
   // ------------------------------------------------------- the systems
   const grass = new GrassSystem();
   const particles = new Particles();
@@ -293,6 +437,7 @@ export function createScene(canvas: HTMLCanvasElement, opts: SceneOptions): ArxS
 
   function layoutTrees(): void {
     if (!figuresMod) return;
+    treeSprites.clear();
     const m = figuresMod;
     // The north treeline: crowns break the horizon band, meadow stays
     // open where the fire and the walkers live.
@@ -309,57 +454,57 @@ export function createScene(canvas: HTMLCanvasElement, opts: SceneOptions): ArxS
   // The renderer's own campfire painter (static-item switch), adapted:
   // stone ring, crossed charred logs, pulsing coals, two flat licks,
   // spiralling embers, one smoke wisp.
-  function drawCampfire(t: number, flicker: number): void {
+  function drawCampfire(g: CanvasRenderingContext2D, t: number, flicker: number): void {
     const p = wts(fireX, fireY);
     const s = S;
-    ctx.fillStyle = `rgba(232, 122, 51, ${0.08 * flicker})`;
-    ctx.beginPath();
-    facetCircle(ctx, p.x, p.y + s * 0.08, s * 0.52, 8, 0.3, 0.55);
-    ctx.fill();
-    ctx.fillStyle = '#6e6879';
+    g.fillStyle = `rgba(232, 122, 51, ${0.08 * flicker})`;
+    g.beginPath();
+    facetCircle(g, p.x, p.y + s * 0.08, s * 0.52, 8, 0.3, 0.55);
+    g.fill();
+    g.fillStyle = '#6e6879';
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2;
-      ctx.beginPath();
-      facetCircle(ctx, p.x + Math.cos(a) * s * 0.3, p.y + Math.sin(a) * s * 0.2 + s * 0.08, s * 0.07, 5, a, 0.72);
-      ctx.fill();
+      g.beginPath();
+      facetCircle(g, p.x + Math.cos(a) * s * 0.3, p.y + Math.sin(a) * s * 0.2 + s * 0.08, s * 0.07, 5, a, 0.72);
+      g.fill();
     }
     for (const rot of [-0.5, 0.6]) {
-      ctx.save();
-      ctx.translate(p.x, p.y + s * 0.06);
-      ctx.rotate(rot);
-      ctx.fillStyle = '#6b4a26';
-      ctx.beginPath();
-      chamferRect(ctx, -s * 0.22, -s * 0.045, s * 0.44, s * 0.09, s * 0.03);
-      ctx.fill();
-      ctx.fillStyle = '#3a2a20';
-      ctx.fillRect(-s * 0.1, -s * 0.045, s * 0.2, s * 0.09);
-      ctx.restore();
+      g.save();
+      g.translate(p.x, p.y + s * 0.06);
+      g.rotate(rot);
+      g.fillStyle = '#6b4a26';
+      g.beginPath();
+      chamferRect(g, -s * 0.22, -s * 0.045, s * 0.44, s * 0.09, s * 0.03);
+      g.fill();
+      g.fillStyle = '#3a2a20';
+      g.fillRect(-s * 0.1, -s * 0.045, s * 0.2, s * 0.09);
+      g.restore();
     }
     for (let i = 0; i < 3; i++) {
       const pulse = 0.45 + Math.sin(t * 3.2 + i * 2.1) * 0.45;
-      ctx.fillStyle = `rgba(240, 130, 50, ${Math.min(1, 0.35 + pulse * 0.5)})`;
-      ctx.beginPath();
-      facetCircle(ctx, p.x + (i - 1) * s * 0.09, p.y + s * 0.05, s * 0.05, 5, i * 1.3, 0.6);
-      ctx.fill();
+      g.fillStyle = `rgba(240, 130, 50, ${Math.min(1, 0.35 + pulse * 0.5)})`;
+      g.beginPath();
+      facetCircle(g, p.x + (i - 1) * s * 0.09, p.y + s * 0.05, s * 0.05, 5, i * 1.3, 0.6);
+      g.fill();
     }
-    ctx.fillStyle = '#e8823d';
-    ctx.beginPath();
-    ctx.moveTo(p.x - s * 0.14 * flicker, p.y + s * 0.04);
-    ctx.quadraticCurveTo(p.x - s * 0.1, p.y - s * 0.3 * flicker, p.x, p.y - s * 0.42 * flicker);
-    ctx.quadraticCurveTo(p.x + s * 0.12, p.y - s * 0.26 * flicker, p.x + s * 0.14 * flicker, p.y + s * 0.04);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#f2c94c';
-    ctx.beginPath();
-    ctx.moveTo(p.x - s * 0.07 * flicker, p.y + s * 0.03);
-    ctx.quadraticCurveTo(p.x, p.y - s * 0.18 * flicker, p.x + s * 0.02, p.y - s * 0.22 * flicker);
-    ctx.quadraticCurveTo(p.x + s * 0.07, p.y - s * 0.1, p.x + s * 0.07 * flicker, p.y + s * 0.03);
-    ctx.closePath();
-    ctx.fill();
+    g.fillStyle = '#e8823d';
+    g.beginPath();
+    g.moveTo(p.x - s * 0.14 * flicker, p.y + s * 0.04);
+    g.quadraticCurveTo(p.x - s * 0.1, p.y - s * 0.3 * flicker, p.x, p.y - s * 0.42 * flicker);
+    g.quadraticCurveTo(p.x + s * 0.12, p.y - s * 0.26 * flicker, p.x + s * 0.14 * flicker, p.y + s * 0.04);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#f2c94c';
+    g.beginPath();
+    g.moveTo(p.x - s * 0.07 * flicker, p.y + s * 0.03);
+    g.quadraticCurveTo(p.x, p.y - s * 0.18 * flicker, p.x + s * 0.02, p.y - s * 0.22 * flicker);
+    g.quadraticCurveTo(p.x + s * 0.07, p.y - s * 0.1, p.x + s * 0.07 * flicker, p.y + s * 0.03);
+    g.closePath();
+    g.fill();
     for (let i = 0; i < 2; i++) {
       const ph = (t * (0.55 + i * 0.21) + i * 0.5) % 1;
-      ctx.fillStyle = `rgba(255, 190, 110, ${(1 - ph) * 0.75})`;
-      ctx.fillRect(
+      g.fillStyle = `rgba(255, 190, 110, ${(1 - ph) * 0.75})`;
+      g.fillRect(
         p.x + Math.sin(t * 2.4 + i * 3) * s * 0.08,
         p.y - s * 0.2 - ph * s * 0.42,
         s * 0.025,
@@ -367,10 +512,10 @@ export function createScene(canvas: HTMLCanvasElement, opts: SceneOptions): ArxS
       );
     }
     const sp = (t * 0.3) % 1;
-    ctx.fillStyle = `rgba(146, 140, 152, ${(1 - sp) * 0.22})`;
-    ctx.beginPath();
-    facetCircle(ctx, p.x + Math.sin(t * 1.1) * s * 0.06, p.y - s * 0.5 - sp * s * 0.5, s * (0.06 + sp * 0.1), 6, sp * 2, 0.8);
-    ctx.fill();
+    g.fillStyle = `rgba(146, 140, 152, ${(1 - sp) * 0.22})`;
+    g.beginPath();
+    facetCircle(g, p.x + Math.sin(t * 1.1) * s * 0.06, p.y - s * 0.5 - sp * s * 0.5, s * (0.06 + sp * 0.1), 6, sp * 2, 0.8);
+    g.fill();
   }
 
   // ------------------------------------------------------ the film pass
@@ -571,29 +716,33 @@ export function createScene(canvas: HTMLCanvasElement, opts: SceneOptions): ArxS
     if (figuresMod) {
       const m = figuresMod;
       for (const tree of trees) {
-        items.push({ y: tree.wy, draw: () => m.drawTree(ctx, tree, wts, S, YS, tSec) });
+        items.push({ y: tree.wy, draw: () => drawTreeOutlined(tree, now, tSec) });
       }
+      const figureItem = (fig: Figure, wx: number, wy: number, dir: number, moving: boolean): SortItem => ({
+        y: wy,
+        draw: () => {
+          m.drawFigureShadow(ctx, wx, wy, wts, S, YS, day.shadowAlpha + 0.12);
+          const p = wts(wx, wy);
+          // The body rect, renderer-style: stride reach wide, head-and
+          // -rise tall, a little under the anchor for the planted feet.
+          paintOutlined(p.x - 0.8 * S, p.y - 1.75 * S, 1.6 * S, 2.15 * S, (g) =>
+            m.drawFigure(g, fig, wx, wy, dir, moving, now, dt, wts, S),
+          );
+        },
+      });
       for (const wk of walkers) {
-        if (!wk.fig) continue;
-        const fig = wk.fig;
-        const wwx = wk.wx;
-        const wwy = wk.wy;
-        const wdir = wk.dir;
-        items.push({
-          y: wwy,
-          draw: () => m.drawFigure(ctx, fig, wwx, wwy, wdir, true, now, dt, wts, S, YS, day.shadowAlpha + 0.12),
-        });
+        if (wk.fig) items.push(figureItem(wk.fig, wk.wx, wk.wy, wk.dir, true));
       }
-      if (keeper.fig) {
-        const fig = keeper.fig;
-        items.push({
-          y: keeper.wy,
-          draw: () =>
-            m.drawFigure(ctx, fig, keeper.wx, keeper.wy, 0.35, false, now, dt, wts, S, YS, day.shadowAlpha + 0.12),
-        });
-      }
+      if (keeper.fig) items.push(figureItem(keeper.fig, keeper.wx, keeper.wy, 0.35, false));
     }
-    items.push({ y: fireY + 0.7, draw: () => drawCampfire(t, flicker) });
+    items.push({
+      y: fireY + 0.7,
+      draw: () => {
+        // stationBody(0.8, 1.35, 0.55) — the campfire's own body rect.
+        const p = wts(fireX, fireY);
+        paintOutlined(p.x - 0.8 * S, p.y - 1.35 * S, 1.6 * S, 1.9 * S, (g) => drawCampfire(g, t, flicker));
+      },
+    });
     const pool = particles.livePool();
     for (let i = 0; i < pool.length; i++) {
       const p: Particle = pool[i]!;

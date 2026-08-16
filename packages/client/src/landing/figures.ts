@@ -28,7 +28,30 @@ export function makeFigure(cloth: string): Figure {
 }
 
 /**
- * One body through the game's own biped solver. Feet come back in
+ * The ground shadow the renderer would cast — drawn OUTSIDE the
+ * outline pass, exactly like the game's shadow layer: the ring wraps
+ * the body's silhouette, never its shadow.
+ */
+export function drawFigureShadow(
+  ctx: CanvasRenderingContext2D,
+  wx: number,
+  wy: number,
+  wts: WTS,
+  s: number,
+  ys: number,
+  shadowAlpha: number,
+): void {
+  if (shadowAlpha <= 0.01) return;
+  const p = wts(wx, wy);
+  ctx.fillStyle = `rgba(20, 16, 26, ${shadowAlpha.toFixed(3)})`;
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y, s * 0.34, s * 0.34 * ys * 0.6, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/**
+ * One body through the game's own biped solver, painted FLAT — the
+ * caller runs it through the outline shader. Feet come back in
  * absolute world tiles (the solver plants them); we project each
  * through the caller's camera exactly like the renderer does.
  */
@@ -43,18 +66,9 @@ export function drawFigure(
   dt: number,
   wts: WTS,
   s: number,
-  ys: number,
-  shadowAlpha: number,
 ): void {
   const lp = fig.legs.update(wx, wy, dir, dt);
   const p = wts(wx, wy);
-  // The ground shadow the renderer would cast.
-  if (shadowAlpha > 0.01) {
-    ctx.fillStyle = `rgba(20, 16, 26, ${shadowAlpha.toFixed(3)})`;
-    ctx.beginPath();
-    ctx.ellipse(p.x, p.y, s * 0.34, s * 0.34 * ys * 0.6, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
   const feet = lp.feet.map((f) => {
     const fp = wts(f.x, f.y);
     return { x: fp.x, y: fp.y, lift: f.lift };
@@ -93,6 +107,10 @@ export interface SceneTree {
   model: TreeModel;
   wx: number;
   wy: number;
+  /** Outline-region half-width, tiles (crown reach at full sway). */
+  olHalfW: number;
+  /** Outline-region height above the trunk base, tiles. */
+  olUp: number;
 }
 
 const TREE_TILES: Record<string, Tile> = {
@@ -102,8 +120,17 @@ const TREE_TILES: Record<string, Tile> = {
   willow: Tile.TreeWillow,
 };
 
+/** Generous crown-reach bounds per kind, for the outline scratch. */
+const TREE_BOUNDS: Record<string, { halfW: number; up: number }> = {
+  wild: { halfW: 2.3, up: 4.4 },
+  oak: { halfW: 2.6, up: 4.8 },
+  pine: { halfW: 1.8, up: 5.4 },
+  willow: { halfW: 2.6, up: 4.2 },
+};
+
 export function makeTree(kind: string, seed: number, wx: number, wy: number): SceneTree {
-  return { model: treeModel(TREE_TILES[kind] ?? Tile.Tree, seed), wx, wy };
+  const b = TREE_BOUNDS[kind] ?? TREE_BOUNDS['wild']!;
+  return { model: treeModel(TREE_TILES[kind] ?? Tile.Tree, seed), wx, wy, olHalfW: b.halfW, olUp: b.up };
 }
 
 /** Paint a grown tree through the game's own painter (shared wind). */
