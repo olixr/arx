@@ -1,0 +1,10 @@
+{
+  "id": "town_pinewatch",
+  "label": "Town bounds: pinewatch",
+  "area": { "kind": "zone", "zone": "pinewatch" },
+  "on": "both",
+  "event": "town",
+  "data": { "town": "pinewatch" },
+  "cooldownSec": 180,
+  "minInsideSec": 45
+}

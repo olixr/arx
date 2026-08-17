@@ -6,6 +6,7 @@ export * from './skills.js';
 export * from './math/vec.js';
 export * from './math/rng.js';
 export * from './math/noise.js';
+export * from './math/geom.js';
 export * from './protocol/binary.js';
 export * from './protocol/snapshot.js';
 export * from './protocol/messages.js';

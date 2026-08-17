@@ -1,4 +1,4 @@
-import { DEFAULT_LOOK, RARITY_TIERS, STATUS_IDS, type Look, type RarityTier } from '@arx/shared';
+import { DEFAULT_LOOK, RARITY_TIERS, SKILL_IDS, STATUS_IDS, type Look, type RarityTier } from '@arx/shared';
 import {
   ABILITIES,
   DANGER_LAWS,
@@ -30,7 +30,11 @@ import {
   type StrongholdKnot,
   KNOT_SPACING,
   STRONGHOLD_ROSTER,
+  TRIGGER_CONDITION_KINDS,
   validateStronghold,
+  validateTrigger,
+  type TriggerCondition,
+  type TriggerDef,
 } from '@arx/content';
 import { itemIconUrl } from '../render/icons.js';
 import { iconImg } from '../editor/editorIcons.js';
@@ -4524,7 +4528,339 @@ export function buildDetail(body: HTMLElement, linkage: HTMLElement): void {
   else if (state.section === 'frontier') frontierDetail(body, linkage);
   else if (state.section === 'factions') factionsDetail(body, linkage);
   else if (state.section === 'voice') voiceDetail(body, linkage, id);
+  else if (state.section === 'triggers') triggerDetail(body, linkage, id);
   else itemDetail(body, linkage, id);
+}
+
+// -------------------------------------------------- the watchful ground
+
+/**
+ * THE TRIGGER BENCH (docs/triggers-plan.md): one trigger whole — the
+ * ground it watches (a zone, a rect, or a drawn ring of vertices),
+ * the edge it cares about, the gates it holds, the theatre dials, and
+ * the event it fires. The client pre-validates with THE ONE VALIDATOR
+ * so refusals read at the bench before the server repeats them
+ * strictly against the live world.
+ */
+function triggerDetail(body: HTMLElement, linkage: HTMLElement, id: string): void {
+  const row = state.triggers.find((t) => t.def.id === id);
+  if (!row) {
+    body.appendChild(el('p', 'muted empty', 'No such trigger — pick one on the left.'));
+    return;
+  }
+  const draft = JSON.parse(JSON.stringify(row.def)) as TriggerDef;
+
+  const edgeWord = draft.on === 'both' ? 'enter + exit' : draft.on;
+  const pills: HTMLElement[] = [
+    pill(`fires '${draft.event}'`, 'the event slug server subscribers hook', 'brass'),
+    pill(edgeWord, 'which crossings this trigger speaks to'),
+    pill(
+      draft.cooldownSec ? `cooldown ${draft.cooldownSec}s` : 'no cooldown',
+      'per-character refractory, shared between enter and exit (THE BOUNCE RULE)',
+      draft.cooldownSec ? 'ok' : 'ink',
+    ),
+    pill(
+      `${draft.conditions?.length ?? 0} gate${(draft.conditions?.length ?? 0) === 1 ? '' : 's'}`,
+      'conditions that must all hold at the edge',
+    ),
+  ];
+  if (draft.disabled) pills.push(pill('disabled', 'stands but never fires', 'danger'));
+  if (row.errors) pills.push(pill('invalid', row.errors.join('; '), 'danger'));
+
+  body.appendChild(
+    detailHead(
+      iconWrap27(iconImg('stamp', 34)),
+      draft.label ?? draft.id,
+      `trigger · ${draft.id}`,
+      pills,
+      row.edited,
+      row.authored,
+      () => {
+        const check = validateTrigger(draft);
+        if (!check.ok) {
+          toast(check.errors.join('; '), 5200, 'error');
+          return;
+        }
+        void persistence
+          .saveTriggerDef(check.def)
+          .catch((err) => toast((err as Error).message, 5000, 'error'));
+      },
+      () =>
+        void persistence
+          .revertTriggerDef(draft.id)
+          .catch((err) => toast((err as Error).message, 5000, 'error')),
+    ),
+  );
+
+  const labeled = (label: string, control: HTMLElement): HTMLElement => {
+    const wrap = el('label', 'field');
+    wrap.appendChild(el('span', 'muted', label));
+    wrap.appendChild(control);
+    return wrap;
+  };
+  const selectIn = (
+    options: readonly string[],
+    value: string,
+    onPick: (v: string) => void,
+  ): HTMLSelectElement => {
+    const sel = document.createElement('select');
+    for (const o of options) {
+      const opt = document.createElement('option');
+      opt.value = o;
+      opt.textContent = o;
+      if (o === value) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    sel.onchange = () => {
+      onPick(sel.value);
+      markDirty();
+    };
+    return sel;
+  };
+  const checkIn = (value: boolean, onFlip: (v: boolean) => void): HTMLInputElement => {
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = value;
+    input.onchange = () => {
+      onFlip(input.checked);
+      markDirty();
+    };
+    return input;
+  };
+  const rowOf = (...children: HTMLElement[]): HTMLElement => {
+    const r = el('div', 'hero-pills');
+    for (const c of children) r.appendChild(c);
+    return r;
+  };
+
+  // -------------------------------------------------- the ground
+  const areaBox = el('div');
+  const renderArea = (): void => {
+    areaBox.innerHTML = '';
+    const kindSel = selectIn(['zone', 'rect', 'polygon'], draft.area.kind, (v) => {
+      if (v === 'zone') draft.area = { kind: 'zone', zone: state.zones[0]?.id ?? '' };
+      else if (v === 'rect') draft.area = { kind: 'rect', x: 0, y: 0, w: 8, h: 8 };
+      else
+        draft.area = {
+          kind: 'polygon',
+          points: [
+            { x: 0, y: 0 },
+            { x: 8, y: 0 },
+            { x: 8, y: 8 },
+          ],
+        };
+      renderArea();
+    });
+    areaBox.appendChild(rowOf(labeled('shape', kindSel)));
+    const area = draft.area;
+    if (area.kind === 'zone') {
+      areaBox.appendChild(
+        rowOf(
+          labeled(
+            'zone (the whole rect, resolved live)',
+            combobox(
+              () => state.zones.map((z) => ({ id: z.id, label: `${z.name} (${z.id})` })),
+              area.zone,
+              (zid) => {
+                area.zone = zid;
+                markDirty();
+              },
+              'choose a zone…',
+            ),
+          ),
+        ),
+      );
+    } else if (area.kind === 'rect') {
+      areaBox.appendChild(
+        rowOf(
+          labeled('x', numIn(area.x, (v) => (area.x = v))),
+          labeled('y', numIn(area.y, (v) => (area.y = v))),
+          labeled('w', numIn(area.w, (v) => (area.w = v))),
+          labeled('h', numIn(area.h, (v) => (area.h = v))),
+          labeled('plane', textIn(area.plane ?? '', (v) => (area.plane = v || undefined), 'surface')),
+        ),
+      );
+    } else {
+      const ta = document.createElement('textarea');
+      ta.rows = Math.min(12, area.points.length + 2);
+      ta.value = area.points.map((p) => `${p.x}, ${p.y}`).join('\n');
+      const count = pill(`${area.points.length} vertices`, 'one "x, y" per line, 3..64');
+      ta.oninput = () => {
+        const pts = ta.value
+          .split('\n')
+          .map((line) => line.split(',').map((n) => Number(n.trim())))
+          .filter((ns) => ns.length === 2 && ns.every((n) => Number.isFinite(n)))
+          .map(([x, y]) => ({ x: x!, y: y! }));
+        area.points = pts;
+        count.textContent = `${pts.length} vertices`;
+        markDirty();
+      };
+      areaBox.appendChild(labeled('ring (one "x, y" vertex per line)', ta));
+      areaBox.appendChild(rowOf(count));
+      areaBox.appendChild(
+        rowOf(
+          labeled('plane', textIn(area.plane ?? '', (v) => (area.plane = v || undefined), 'surface')),
+        ),
+      );
+    }
+  };
+  renderArea();
+  body.appendChild(
+    sect('The ground', 'Where the world watches. A zone area follows Studio zone edits live; the drawn-polygon lane lands with the Map Studio phase.', areaBox),
+  );
+
+  // -------------------------------------------------- the edge + event
+  body.appendChild(
+    sect(
+      'The edge and the event',
+      'Which crossings fire, and the event slug subscribers hook. Payload rides beside it.',
+      rowOf(
+        labeled('on', selectIn(['enter', 'exit', 'both'], draft.on, (v) => (draft.on = v as TriggerDef['on']))),
+        labeled('event', textIn(draft.event, (v) => (draft.event = v), 'town')),
+      ),
+      (() => {
+        const ta = document.createElement('textarea');
+        ta.rows = 3;
+        ta.placeholder = 'town = amberford';
+        ta.value = Object.entries(draft.data ?? {})
+          .map(([k, v]) => `${k} = ${v}`)
+          .join('\n');
+        ta.oninput = () => {
+          const data: Record<string, string> = {};
+          for (const line of ta.value.split('\n')) {
+            const at = line.indexOf('=');
+            if (at <= 0) continue;
+            const k = line.slice(0, at).trim();
+            const v = line.slice(at + 1).trim();
+            if (k) data[k] = v;
+          }
+          draft.data = Object.keys(data).length > 0 ? data : undefined;
+          markDirty();
+        };
+        return labeled('payload (one "key = value" per line)', ta);
+      })(),
+    ),
+  );
+
+  // -------------------------------------------------- the gates
+  const condsBox = el('div');
+  const condRow = (cond: TriggerCondition, idx: number): HTMLElement => {
+    const r = el('div', 'hero-pills');
+    r.appendChild(pill(cond.when, '', 'brass'));
+    const c = cond as Record<string, unknown> & TriggerCondition;
+    if (cond.when === 'timeBetween') {
+      r.appendChild(labeled('from (h)', numIn(cond.from, (v) => ((c as { from: number }).from = v), 0.5)));
+      r.appendChild(labeled('to (h)', numIn(cond.to, (v) => ((c as { to: number }).to = v), 0.5)));
+    } else if (cond.when === 'hpBelow' || cond.when === 'hpAbove') {
+      r.appendChild(labeled('fraction', numIn(cond.frac, (v) => ((c as { frac: number }).frac = v), 0.05)));
+    } else if (cond.when === 'hasItem') {
+      r.appendChild(labeled('item', textIn(cond.item, (v) => ((c as { item: string }).item = v))));
+      r.appendChild(
+        labeled('qty', numIn(cond.qty ?? 1, (v) => ((c as { qty?: number }).qty = v > 1 ? v : undefined))),
+      );
+    } else if (cond.when === 'skillAtLeast') {
+      r.appendChild(
+        labeled('skill', selectIn(SKILL_IDS, cond.skill, (v) => ((c as { skill: string }).skill = v))),
+      );
+      r.appendChild(labeled('level', numIn(cond.level, (v) => ((c as { level: number }).level = v))));
+    } else if (cond.when === 'standingAtLeast' || cond.when === 'standingAtMost') {
+      const factionIds = state.factions?.def.roster.map((f) => f.id) ?? [];
+      r.appendChild(
+        labeled(
+          'faction',
+          factionIds.length > 0
+            ? selectIn(factionIds, cond.faction, (v) => ((c as { faction: string }).faction = v))
+            : textIn(cond.faction, (v) => ((c as { faction: string }).faction = v)),
+        ),
+      );
+      r.appendChild(
+        labeled('band', selectIn(FACTION_BAND_ORDER, cond.band, (v) => ((c as { band: string }).band = v))),
+      );
+    } else if (cond.when === 'flag' || cond.when === 'notFlag') {
+      r.appendChild(labeled('flag', textIn(cond.flag, (v) => ((c as { flag: string }).flag = v))));
+    } else if (cond.when === 'discovered' || cond.when === 'undiscovered') {
+      r.appendChild(
+        labeled('place', textIn(cond.place, (v) => ((c as { place: string }).place = v), 'zone:amberford')),
+      );
+    }
+    const rm = el('button', 'danger', '×') as HTMLButtonElement;
+    rm.title = 'remove this gate';
+    rm.onclick = () => {
+      draft.conditions?.splice(idx, 1);
+      if (draft.conditions?.length === 0) draft.conditions = undefined;
+      markDirty();
+      renderConds();
+    };
+    r.appendChild(rm);
+    return r;
+  };
+  const renderConds = (): void => {
+    condsBox.innerHTML = '';
+    for (const [i, cond] of (draft.conditions ?? []).entries()) condsBox.appendChild(condRow(cond, i));
+    condsBox.appendChild(
+      combobox(
+        () => TRIGGER_CONDITION_KINDS.map((k) => ({ id: k, label: k })),
+        undefined,
+        (kind) => {
+          const blank: Record<string, TriggerCondition> = {
+            timeBetween: { when: 'timeBetween', from: 20, to: 6 },
+            hpBelow: { when: 'hpBelow', frac: 0.5 },
+            hpAbove: { when: 'hpAbove', frac: 0.5 },
+            hasItem: { when: 'hasItem', item: '' },
+            skillAtLeast: { when: 'skillAtLeast', skill: 'combat', level: 50 },
+            standingAtLeast: { when: 'standingAtLeast', faction: 'fordgate', band: 'trusted' },
+            standingAtMost: { when: 'standingAtMost', faction: 'fordgate', band: 'outlaw' },
+            flag: { when: 'flag', flag: '' },
+            notFlag: { when: 'notFlag', flag: '' },
+            discovered: { when: 'discovered', place: '' },
+            undiscovered: { when: 'undiscovered', place: '' },
+            sneaking: { when: 'sneaking' },
+            night: { when: 'night' },
+            day: { when: 'day' },
+          };
+          (draft.conditions ??= []).push(blank[kind] ?? { when: 'day' });
+          markDirty();
+          renderConds();
+        },
+        'add a gate…',
+      ),
+    );
+  };
+  renderConds();
+  body.appendChild(
+    sect('The gates', 'Every gate must hold at the edge or the crossing passes in silence. Gates are code; the roster is closed.', condsBox),
+  );
+
+  // -------------------------------------------------- the theatre dials
+  body.appendChild(
+    sect(
+      'The theatre dials',
+      "Cooldown and dwell keep the world from repeating itself (THE BOUNCE RULE); 'once' latches per character forever; a stamped flag chains into dialogue gates.",
+      rowOf(
+        labeled('cooldown (s)', numIn(draft.cooldownSec ?? 0, (v) => (draft.cooldownSec = v > 0 ? v : undefined))),
+        labeled('cooldown group', textIn(draft.cooldownGroup ?? '', (v) => (draft.cooldownGroup = v || undefined), 'defaults to the id')),
+        labeled('min inside (s)', numIn(draft.minInsideSec ?? 0, (v) => (draft.minInsideSec = v > 0 ? v : undefined))),
+      ),
+      rowOf(
+        labeled('once per character', checkIn(draft.once ?? false, (v) => (draft.once = v ? true : undefined))),
+        labeled('set flag on fire', textIn(draft.setFlag ?? '', (v) => (draft.setFlag = v || undefined), 'plain slug')),
+        labeled('disabled', checkIn(draft.disabled ?? false, (v) => (draft.disabled = v ? true : undefined))),
+        labeled('label', textIn(draft.label ?? '', (v) => (draft.label = v || undefined))),
+      ),
+    ),
+  );
+
+  // -------------------------------------------------- linkage
+  linkHead(linkage, 'stamp', 'The event door');
+  linkage.appendChild(
+    el(
+      'p',
+      'muted',
+      `This trigger fires '${draft.event}'. Subscribers are code, registered at the server's construction — ` +
+        `'town' feeds the gate greeting (THE WATCH KNOWS YOUR FACE). A slug with no subscriber fires into silence; ` +
+        `check /triggers in-game for the live roster and who holds you.`,
+    ),
+  );
 }
 
 // ------------------------------------------------------ the weather

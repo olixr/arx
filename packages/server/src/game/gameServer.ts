@@ -398,6 +398,25 @@ import {
   quipWire,
   voiceWireForNode,
 } from '../voice/resolve.js';
+// THE WATCHFUL GROUND (docs/triggers-plan.md): the trigger engine's
+// pure half + the greeting content it feeds (its first subscriber).
+import {
+  compileTriggers,
+  gateCrossing,
+  stampFire,
+  sweepCrossings,
+  type CompiledTrigger,
+  type TriggerFacts,
+  type ZoneRectLive,
+} from './triggers.js';
+import {
+  fameSkillOf,
+  pickGreeting,
+  triggerOnceFlag,
+  type GreetingFacts,
+  type TriggerDef,
+  type TriggerEdge,
+} from '@arx/content';
 import {
   POI_CELL,
   ZONE_CLEARANCE,
@@ -2190,6 +2209,18 @@ interface PlayerComp {
    */
   markWary: Map<EntityId, number>;
   /**
+   * THE WATCHFUL GROUND: the triggers holding this body right now
+   * (id -> the tick it stepped inside) and the shared refractory
+   * stamps (cooldown group -> next lawful tick). In-memory by design:
+   * a cooldown is theatre, not state. Undefined until the first sweep
+   * — WHICH IS A CENSUS, NEVER AN EDGE — so a relog inside the walls
+   * cannot fake a crossing.
+   */
+  triggerInside?: Map<string, number>;
+  triggerCooldowns?: Map<string, number>;
+  /** The last gate greeting this character heard (the no-repeat law). */
+  lastGreeting?: string;
+  /**
    * THE DEEPER SIGIL: live state for every working the player carries,
    * keyed by proc id. One entry per id however many pieces carry it —
    * a matched set shares one rest timer and one meter.
@@ -2568,6 +2599,23 @@ function rollBasic(maxHit: number, critBonusPct = 0): { dmg: number; crit: boole
   return { dmg: Math.max(1, roll.dmg), crit: roll.crit };
 }
 
+/**
+ * THE EVENT DOOR's parcel: one lawful trigger fire, handed to every
+ * subscriber of the def's event slug. Stamps (once-latch, setFlag,
+ * cooldown) land BEFORE dispatch, so handlers read the post-fire
+ * world.
+ */
+export interface TriggerFireEvent {
+  def: TriggerDef;
+  edge: TriggerEdge;
+  eid: EntityId;
+  player: PlayerComp;
+}
+type TriggerHandler = (fire: TriggerFireEvent) => void;
+
+/** A guard hails a lawful crossing from this many tiles (with sight). */
+const GREET_RADIUS = 12;
+
 export class GameServer {
   tickCount = 0;
   /** World-clock offset in ticks; only the dev `/time` command bends it. */
@@ -2704,6 +2752,18 @@ export class GameServer {
    * /quest reload lever, same law as dialogueSource.
    */
   questSource: (() => Promise<{ quests: QuestDef[]; errors: string[] }>) | null = null;
+  /**
+   * THE WATCHFUL GROUND (docs/triggers-plan.md): the live trigger
+   * roster (defs by id + the compiled containment tests) and THE
+   * EVENT DOOR (handlers by event slug). Subscribers are code,
+   * registered at construction; which triggers feed which slug, with
+   * what payload, is the Studio's to compose.
+   */
+  private readonly triggerDefs = new Map<string, TriggerDef>();
+  private triggerRoster: CompiledTrigger[] = [];
+  private readonly triggerHooks = new Map<string, TriggerHandler[]>();
+  /** Re-reads triggers from the DB (wired by index.ts at boot). */
+  triggerSource: (() => Promise<{ defs: TriggerDef[]; errors: string[] }>) | null = null;
 
   private readonly sessions = new Set<Session>();
   /** In-world players by character id (blocks duplicate logins). */
@@ -3128,6 +3188,10 @@ export class GameServer {
       const unit = this.doorUnit(lockPlane, l.x, l.y, info);
       this.doorLocks.add(`${lockPlane}|${unit.ax},${unit.ay}`);
     }
+    // THE EVENT DOOR's founding roster (docs/triggers-plan.md): code
+    // subscribers registered at construction. The 'town' event's first
+    // tenant is the gate greeting.
+    this.onTrigger('town', (fire) => this.greetAtTheGate(fire));
   }
 
   /** Friends, requests, and presence pushes. */
@@ -3566,6 +3630,66 @@ export class GameServer {
       for (const z of world.zoneDefs) ids.add(z.id);
     }
     return ids;
+  }
+
+  /**
+   * THE WATCHFUL GROUND: swap the live trigger roster (boot, the
+   * Studio's routes, /triggers reload). Zone areas resolve LIVE at
+   * sweep time, so a Studio zone edit re-aims a standing trigger with
+   * no reload at all.
+   */
+  registerTriggers(defs: Iterable<TriggerDef>): void {
+    this.triggerDefs.clear();
+    for (const def of defs) this.triggerDefs.set(def.id, def);
+    this.triggerRoster = compileTriggers(this.triggerDefs.values());
+  }
+
+  /** The /triggers reload lever + the Studio's save wire. */
+  async reloadTriggers(): Promise<{ count: number; errors: string[] }> {
+    if (!this.triggerSource) return { count: 0, errors: ['no trigger source wired'] };
+    const fresh = await this.triggerSource();
+    this.registerTriggers(fresh.defs);
+    return { count: fresh.defs.length, errors: fresh.errors };
+  }
+
+  /**
+   * THE EVENT DOOR: subscribe a code handler to an event slug. A slug
+   * nobody subscribes to fires into silence (visible under /triggers),
+   * never a crash — the content side stays free to compose ahead of
+   * the code side.
+   */
+  onTrigger(event: string, handler: TriggerHandler): void {
+    const list = this.triggerHooks.get(event) ?? [];
+    list.push(handler);
+    this.triggerHooks.set(event, list);
+  }
+
+  /** The live zone rect a 'zone' trigger area resolves through. */
+  private zoneRectOf(zoneId: string): ZoneRectLive | null {
+    for (const world of this.planes.all()) {
+      for (const z of world.zoneDefs) {
+        if (z.id === zoneId) {
+          return {
+            plane: world.plane.id,
+            x: z.origin.x,
+            y: z.origin.y,
+            w: z.width,
+            h: z.height,
+          };
+        }
+      }
+    }
+    return null;
+  }
+
+  /** A zone's display name ('Amberford'), for the mouths that greet. */
+  private zoneDisplayName(zoneId: string): string | null {
+    for (const world of this.planes.all()) {
+      for (const z of world.zoneDefs) {
+        if (z.id === zoneId) return z.name;
+      }
+    }
+    return null;
   }
 
   registerDialogues(defs: Iterable<DialogueDef>): void {
@@ -15250,6 +15374,174 @@ export class GameServer {
     if (changed) {
       this.sendBuffs(player);
       if (speedTouched) this.rideDirty?.add(player);
+    }
+  }
+
+  /**
+   * THE WATCHFUL GROUND's sweep (docs/triggers-plan.md), 2 Hz per
+   * player: bbox-gated containment over the compiled roster, edge
+   * bookkeeping, the gate ladder, then the event door. THE FIRST
+   * SWEEP IS A CENSUS, NOT AN EDGE — a fresh login primes the inside
+   * ledger without firing, so standing inside the walls never reads
+   * as walking in. Zone areas resolve live through a per-sweep memo.
+   */
+  private tickTriggers(): void {
+    if (this.triggerRoster.length === 0) return;
+    const zoneMemo = new Map<string, ZoneRectLive | null>();
+    const zones = (id: string): ZoneRectLive | null => {
+      let hit = zoneMemo.get(id);
+      if (hit === undefined) {
+        hit = this.zoneRectOf(id);
+        zoneMemo.set(id, hit);
+      }
+      return hit;
+    };
+    for (const session of this.sessions) {
+      const eid = session.playerEid;
+      if (eid === null) continue;
+      const player = this.players.get(eid);
+      const pos = this.positions.get(eid);
+      if (!player || !pos) continue;
+      const census = player.triggerInside === undefined;
+      const inside = (player.triggerInside ??= new Map());
+      const crossings = sweepCrossings(
+        this.triggerRoster,
+        inside,
+        pos.plane,
+        pos.x,
+        pos.y,
+        this.tickCount,
+        zones,
+        census,
+      );
+      if (crossings.length === 0) continue;
+      const facts = this.triggerFacts(eid, player);
+      const cooldowns = (player.triggerCooldowns ??= new Map());
+      for (const crossing of crossings) {
+        const def = crossing.def;
+        const verdict = gateCrossing(
+          crossing,
+          this.tickCount,
+          cooldowns,
+          facts,
+          def.once ? player.flags.has(triggerOnceFlag(def.id)) : false,
+        );
+        if (verdict !== 'fire') continue;
+        stampFire(cooldowns, def, this.tickCount);
+        // Stamps land BEFORE dispatch — handlers read the post-fire
+        // world, and a handler that throws cannot un-stamp the fire.
+        if (def.once) this.setPlayerFlag(player, triggerOnceFlag(def.id));
+        if (def.setFlag) this.setPlayerFlag(player, def.setFlag);
+        for (const handler of this.triggerHooks.get(def.event) ?? []) {
+          handler({ def, edge: crossing.edge, eid, player });
+        }
+      }
+    }
+  }
+
+  /**
+   * The gate ladder's fact reads — every predicate mirrors the read
+   * its precedent already trusts (the sneak bit, the sun, the skill
+   * curve, the standing ledger, the discovery ledger, the pack).
+   */
+  private triggerFacts(eid: EntityId, player: PlayerComp): TriggerFacts {
+    const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
+    const h = this.healths.get(eid);
+    return {
+      hours,
+      night: hours < SUNRISE || hours > SUNSET,
+      hpFrac: h && h.maxHp > 0 ? h.hp / h.maxHp : 1,
+      sneaking: player.hidden === true,
+      levelOf: (skill) => levelForXp(player.skills[skill as SkillId] ?? 0),
+      standingWith: (fid) => player.standing.get(fid) ?? 0,
+      hasFlag: (flag) => player.flags.has(flag),
+      discovered: (place) => player.discoveries.has(place),
+      countItem: (item) => countItem(player.inventory, item),
+    };
+  }
+
+  /**
+   * THE WATCH KNOWS YOUR FACE (docs/triggers-plan.md Phase 2): the
+   * 'town' subscriber. The nearest live enforcer with a true
+   * sightline turns, holds his round a beat, and hails the crossing
+   * in local air (the bubble every witness sees); the voice lane
+   * speaks only a transcript-matched recording (THE BARK KEEPS ITS
+   * WORD — never a wordless grunt under worded text), broadcast at
+   * the guard's own spot to every ear whose interest holds him. No
+   * guard in sight = silence; the trigger still fired for any other
+   * subscriber.
+   */
+  private greetAtTheGate(fire: TriggerFireEvent): void {
+    const { player, eid, edge, def } = fire;
+    // A guard does not hail what he has not seen, and never the dead.
+    if (player.hidden) return;
+    if ((this.healths.get(eid)?.hp ?? 0) <= 0) return;
+    const pos = this.positions.get(eid);
+    if (!pos) return;
+    const world = this.worldOf(pos.plane);
+    let guardEid: EntityId | null = null;
+    let guardActor: ActorComp | null = null;
+    let bestD2 = GREET_RADIUS * GREET_RADIUS;
+    this.forEachNpcNear(pos.plane, pos.x, pos.y, GREET_RADIUS, (nEid) => {
+      const actorComp = this.actors.get(nEid);
+      if (!actorComp) return;
+      if (!this.npcEnforcerFid(nEid)) return;
+      if ((this.healths.get(nEid)?.hp ?? 0) <= 0) return;
+      const npos = this.positions.get(nEid);
+      if (!npos) return;
+      const dx = npos.x - pos.x;
+      const dy = npos.y - pos.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 >= bestD2) return;
+      // No hailing through the wall.
+      if (sightVisibility(sightLine(world, npos.x, npos.y, pos.x, pos.y)) <= 0) return;
+      bestD2 = d2;
+      guardEid = nEid;
+      guardActor = actorComp;
+    });
+    if (guardEid === null || guardActor === null) return;
+    const chosenEid: EntityId = guardEid;
+    const chosen: ActorComp = guardActor;
+    const townId = def.data?.town ?? null;
+    const townName = (townId ? this.zoneDisplayName(townId) : null) ?? 'town';
+    const fid = this.npcEnforcerFid(chosenEid);
+    const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
+    const facts: GreetingFacts = {
+      edge,
+      townName,
+      playerName: player.name,
+      // The discovery ledger is the "seen you here before" memory —
+      // the zone discovery usually lands a few steps AFTER this hail,
+      // so a true first arrival reads first-visit here.
+      firstVisit: townId !== null && !player.discoveries.has(`zone:${townId}`),
+      band: fid ? this.playerBandWith(player, fid) : null,
+      fameSkill: fameSkillOf((id) => levelForXp(player.skills[id] ?? 0)),
+      night: hours < SUNRISE || hours > SUNSET,
+    };
+    const line = pickGreeting(facts, Math.random(), player.lastGreeting);
+    if (!line) return;
+    player.lastGreeting = line;
+    const npos = this.positions.get(chosenEid);
+    if (!npos) return;
+    // The bark block's law: face the crossing, hold the round a beat.
+    npos.dir = Math.atan2(pos.y - npos.y, pos.x - npos.x);
+    const rc = this.routines.get(chosenEid);
+    if (rc) {
+      rc.pauseUntilTick = this.tickCount + 80;
+      rc.holdFacing = false;
+    }
+    this.sayAloud(chosenEid, chosen.actor.name, line);
+    const matched = matchActorLineClip(chosen.actor.id, line, this.voiceClips);
+    if (!matched) return;
+    const quip = this.drawMatchedQuip(`actor:${chosen.actor.id}`, matched);
+    if (!quip) return;
+    // A greeting is public theatre: unlike the one-ear bark 'vq',
+    // every session whose interest holds the guard hears the breath,
+    // spatial at the speaker's spot.
+    const msg = { t: 'vq' as const, x: npos.x, y: npos.y, url: quip.url, durMs: quip.durMs };
+    for (const s of this.sessions) {
+      if (s.playerEid === null) continue;
+      if (s.playerEid === eid || s.knownEntities.has(chosenEid)) s.sendJson(msg);
     }
   }
 
@@ -31424,6 +31716,74 @@ export class GameServer {
       );
       return;
     }
+    if (config.devCommands && text.startsWith('/triggers')) {
+      // THE WATCHFUL GROUND's lens:
+      //   /triggers        — the roster, who holds you, your cooldown stamps
+      //   /triggers reload — re-read the DB roster (the Studio's lever)
+      const sys = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
+      const [, verb] = text.split(/\s+/);
+      if (verb === 'reload') {
+        void this.reloadTriggers().then((r) => {
+          sys(`triggers reloaded: ${r.count}${r.errors.length ? ` (${r.errors.length} refused)` : ''}`);
+          for (const e of r.errors.slice(0, 4)) sys(`  ${e}`);
+        });
+        return;
+      }
+      const pos = this.positions.get(eid);
+      if (this.triggerRoster.length === 0) {
+        sys('trigger roster: empty');
+        return;
+      }
+      const zones = (id: string) => this.zoneRectOf(id);
+      const rows = this.triggerRoster.map((c) => {
+        const d = c.def;
+        const holding =
+          pos !== undefined && player.triggerInside?.has(d.id) === true;
+        const zoneMissing =
+          d.area.kind === 'zone' && this.zoneRectOf(d.area.zone) === null;
+        const listeners = this.triggerHooks.get(d.event)?.length ?? 0;
+        const bits = [
+          `${d.id} -> ${d.event}${listeners === 0 ? ' (no subscriber)' : ''}`,
+          d.on,
+          holding ? 'HOLDING YOU' : '',
+          d.disabled ? 'disabled' : '',
+          zoneMissing ? 'ZONE MISSING' : '',
+        ].filter(Boolean);
+        return bits.join(' · ');
+      });
+      sys(`triggers (${rows.length}):`);
+      for (const r of rows) sys(`  ${r}`);
+      const stamps = [...(player.triggerCooldowns ?? [])]
+        .filter(([, until]) => until > this.tickCount)
+        .map(([g, until]) => `${g} ${(Math.max(0, until - this.tickCount) / TICK_RATE).toFixed(0)}s`);
+      if (stamps.length > 0) sys(`cooldowns: ${stamps.join(' · ')}`);
+      if (pos) {
+        const here = this.triggerRoster
+          .filter((c) => c.contains(pos.plane, pos.x, pos.y, zones))
+          .map((c) => c.def.id);
+        sys(`under your feet: ${here.length > 0 ? here.join(', ') : 'open ground'}`);
+      }
+      return;
+    }
+    if (config.devCommands && text.startsWith('/trigger ')) {
+      // /trigger <id> [enter|exit] — force-fire through the full door,
+      // gates bypassed (stamps still land, so the theatre reads true).
+      const sys = (t: string) => player.session?.sendJson({ t: 'chat', channel: 'system', text: t });
+      const [, id, edgeArg] = text.split(/\s+/);
+      const def = id !== undefined ? this.triggerDefs.get(id) : undefined;
+      if (!def) {
+        sys(`Usage: /trigger <id> [enter|exit] — ids: ${[...this.triggerDefs.keys()].join(', ')}`);
+        return;
+      }
+      const edge: TriggerEdge = edgeArg === 'exit' ? 'exit' : 'enter';
+      stampFire(player.triggerCooldowns ??= new Map(), def, this.tickCount);
+      if (def.once) this.setPlayerFlag(player, triggerOnceFlag(def.id));
+      if (def.setFlag) this.setPlayerFlag(player, def.setFlag);
+      const handlers = this.triggerHooks.get(def.event) ?? [];
+      for (const handler of handlers) handler({ def, edge, eid, player });
+      sys(`fired ${def.id} (${edge}) -> '${def.event}' (${handlers.length} subscriber${handlers.length === 1 ? '' : 's'})`);
+      return;
+    }
     if (config.devCommands && text.startsWith('/frontier')) {
       // The living-frontier lens + staging levers (the /poi family's kin):
       //   /frontier          — credits + this cell's ember/fallow state + world counts
@@ -31795,6 +32155,11 @@ export class GameServer {
     // Offset 2 keeps it off every slow pass above; cost is zero while
     // no venue is claimed (one empty-map check).
     if (this.tickCount % 4 === 2) this.tickArenas(now);
+    // THE WATCHFUL GROUND: the trigger sweep's 2 Hz beat — offset 5
+    // keeps it off every slow pass above (a walking body moves ~2
+    // tiles between looks, and gate-scale areas cannot be jumped);
+    // zero-cost while the roster is empty.
+    if (this.tickCount % 10 === 5) this.tickTriggers();
     // The quest collect watcher (500ms, diff-guarded) + the 5s
     // availability re-diff; cadence gating lives inside.
     this.tickQuests();

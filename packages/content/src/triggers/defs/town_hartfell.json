@@ -1,0 +1,10 @@
+{
+  "id": "town_hartfell",
+  "label": "Town bounds: hartfell",
+  "area": { "kind": "zone", "zone": "hartfell" },
+  "on": "both",
+  "event": "town",
+  "data": { "town": "hartfell" },
+  "cooldownSec": 180,
+  "minInsideSec": 45
+}

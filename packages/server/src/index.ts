@@ -58,8 +58,11 @@ import {
   validateNodeDoc,
   validateNpcDef,
   validatePoiDef,
+  validateTrigger,
   validateVoice,
   validateZone,
+  TRIGGERS,
+  type TriggerDef,
   zoneFromJson,
   zonePlacementErrors,
   type GrowthRow,
@@ -655,6 +658,37 @@ game.questSource = () => loadQuests(db, { actorIds: game.actorIds() });
 console.log(
   `[npc] quests: ${questLoad.quests.length} loaded ` +
     `(+${questSeed.added} ~${questSeed.updated} !${questSeed.kept} -${questSeed.removed} =${questSeed.unchanged})`,
+);
+
+// THE WATCHFUL GROUND (docs/triggers-plan.md) — triggers, DB-first
+// under the two-hash law (content_docs kind 'trigger', one row per
+// def, no migration). Boot is tolerant: an invalid row warns and
+// stands down; the Studio door validates strictly against the live
+// world. Zone areas resolve live at sweep time, so registration
+// order beside the zones is free.
+const trgSeed = await seedContentDocs(
+  db,
+  'trigger',
+  [...TRIGGERS.values()].map((d) => ({ id: d.id, doc: d })),
+);
+const loadTriggerDefs = async (): Promise<{ defs: TriggerDef[]; errors: string[] }> => {
+  const rows = await loadContentDocs(db, 'trigger');
+  const defs: TriggerDef[] = [];
+  const errors: string[] = [];
+  for (const row of rows) {
+    const res = validateTrigger(row.doc);
+    if (res.ok) defs.push(res.def);
+    else errors.push(...res.errors);
+  }
+  return { defs, errors };
+};
+const trgLoad = await loadTriggerDefs();
+for (const err of trgLoad.errors) console.warn(`[content] invalid DB trigger: ${err}`);
+game.registerTriggers(trgLoad.defs);
+game.triggerSource = loadTriggerDefs;
+console.log(
+  `[content] triggers: ${trgLoad.defs.length} loaded ` +
+    `(+${trgSeed.added} ~${trgSeed.updated} !${trgSeed.kept} -${trgSeed.removed} =${trgSeed.unchanged})`,
 );
 
 game.start();

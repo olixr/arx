@@ -11,6 +11,7 @@ import type {
   PoiDef,
   PrefabJson,
   StrongholdDef,
+  TriggerDef,
   VoiceBankDef,
   VoiceClipDef,
   VoiceDoc,
@@ -101,6 +102,35 @@ export async function saveLoot(def: LootTableDef): Promise<void> {
 export async function revertLoot(id: string): Promise<{ outcome: string }> {
   return (await (
     await request(`/dev/content/loot/${id}`, { method: 'DELETE' })
+  ).json()) as { outcome: string };
+}
+
+/**
+ * THE WATCHFUL GROUND (docs/triggers-plan.md): trigger rows ride the
+ * content_docs lane whole; an invalid tool-owned row carries its
+ * refusals so the bench can show them instead of hiding the def.
+ */
+export interface TriggerRow extends Editable<TriggerDef> {
+  errors?: string[];
+}
+
+export async function listTriggers(): Promise<TriggerRow[]> {
+  return (
+    (await (await request('/dev/content/triggers')).json()) as { triggers: TriggerRow[] }
+  ).triggers;
+}
+
+export async function saveTrigger(def: TriggerDef): Promise<void> {
+  await request(`/dev/content/triggers/${def.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(def),
+  });
+}
+
+export async function revertTrigger(id: string): Promise<{ outcome: string }> {
+  return (await (
+    await request(`/dev/content/triggers/${id}`, { method: 'DELETE' })
   ).json()) as { outcome: string };
 }
 

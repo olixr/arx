@@ -13,6 +13,8 @@ import {
   AUTHORED_MINOR_DEFS,
   AUTHORED_NODES,
   AUTHORED_NPCS,
+  TRIGGERS,
+  validateTrigger,
   AUTHORED_POI_DEFS,
   AUTHORED_STRONGHOLDS,
   STRONGHOLD_DEFS,
@@ -1010,6 +1012,66 @@ export function createMapsApi(
           const outcome = await revertContentDoc(db, 'loot', id, authored);
           replaceLootTables(candidate.values());
           console.log(`[content] loot table '${id}' ${outcome}`);
+          sendJson(res, 200, { ok: true, outcome });
+          return true;
+        }
+      }
+
+      // THE WATCHFUL GROUND (docs/triggers-plan.md): triggers ride the
+      // content_docs lane whole. GET lists the DB truth (an invalid
+      // tool row shows its refusals instead of vanishing); PUT/DELETE
+      // validate strictly against the LIVE world, import, and swap the
+      // running roster through the one reload wire.
+      if (url.pathname === '/dev/content/triggers' && req.method === 'GET') {
+        const rows = await loadContentDocs(db, 'trigger');
+        sendJson(res, 200, {
+          triggers: rows.map((row) => {
+            const check = validateTrigger(row.doc);
+            return {
+              def: row.doc,
+              edited: row.edited,
+              authored: TRIGGERS.has(row.id),
+              ...(check.ok ? {} : { errors: check.errors }),
+            };
+          }),
+        });
+        return true;
+      }
+
+      const triggerMatch = /^\/dev\/content\/triggers\/([^/]+)$/.exec(url.pathname);
+      if (triggerMatch) {
+        const id = triggerMatch[1]!;
+        if (req.method === 'PUT') {
+          let doc: unknown;
+          try {
+            doc = JSON.parse(await readBody(req));
+            const docId = (doc as { id?: unknown }).id;
+            if (docId !== id) throw new Error(`body id '${String(docId)}' does not match URL '${id}'`);
+          } catch (err) {
+            sendJson(res, 400, { error: (err as Error).message });
+            return true;
+          }
+          const check = validateTrigger(doc, {
+            zoneIds: game.zoneIds(),
+            itemIds: new Set(ITEMS.keys()),
+            factionIds: new Set(FACTIONS.roster.map((f) => f.id)),
+            planeIds: new Set([...game.planes.all()].map((w) => w.plane.id)),
+          });
+          if (!check.ok) {
+            sendJson(res, 400, { error: check.errors.join('; ') });
+            return true;
+          }
+          await importContentDoc(db, 'trigger', id, check.def);
+          const reload = await game.reloadTriggers();
+          console.log(`[content] trigger '${id}' saved + live (${reload.count} in the roster)`);
+          sendJson(res, 200, { ok: true });
+          return true;
+        }
+        if (req.method === 'DELETE') {
+          const authored = TRIGGERS.get(id) ?? null;
+          const outcome = await revertContentDoc(db, 'trigger', id, authored);
+          const reload = await game.reloadTriggers();
+          console.log(`[content] trigger '${id}' ${outcome} (${reload.count} in the roster)`);
           sendJson(res, 200, { ok: true, outcome });
           return true;
         }

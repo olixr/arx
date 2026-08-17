@@ -1,0 +1,10 @@
+{
+  "id": "town_amberford",
+  "label": "Town bounds: amberford",
+  "area": { "kind": "zone", "zone": "amberford" },
+  "on": "both",
+  "event": "town",
+  "data": { "town": "amberford" },
+  "cooldownSec": 180,
+  "minInsideSec": 45
+}

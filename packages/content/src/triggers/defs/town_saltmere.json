@@ -1,0 +1,10 @@
+{
+  "id": "town_saltmere",
+  "label": "Town bounds: saltmere",
+  "area": { "kind": "zone", "zone": "saltmere" },
+  "on": "both",
+  "event": "town",
+  "data": { "town": "saltmere" },
+  "cooldownSec": 180,
+  "minInsideSec": 45
+}

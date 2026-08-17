@@ -11,6 +11,7 @@ import type {
   NpcActorDef,
   NpcDef,
   PoiDef,
+  TriggerDef,
   VoiceDoc,
 } from '@arx/content';
 import { iconImg } from '../editor/editorIcons.js';
@@ -57,6 +58,10 @@ import {
   saveMinor,
   saveNpc,
   savePoi,
+  listTriggers,
+  saveTrigger,
+  revertTrigger,
+  type TriggerRow,
   type Editable,
   type ItemRow,
   type SpawnSites,
@@ -89,6 +94,7 @@ export type Section =
   | 'frontier'
   | 'factions'
   | 'voice'
+  | 'triggers'
   | 'items';
 
 export interface CmsState {
@@ -120,6 +126,8 @@ export interface CmsState {
   factions: { def: FactionsDef; edited: boolean } | null;
   /** The spoken world: clips, banks, dials (voiceover Phase 5). */
   voice: VoiceLedger | null;
+  /** THE WATCHFUL GROUND: the trigger roster (docs/triggers-plan.md). */
+  triggers: TriggerRow[];
   items: ItemRow[];
   sites: SpawnSites;
   zones: ZoneRect[];
@@ -147,6 +155,7 @@ export const state: CmsState = {
   frontier: null,
   factions: null,
   voice: null,
+  triggers: [],
   items: [],
   sites: { npcs: [], actors: [] },
   zones: [],
@@ -211,6 +220,8 @@ export async function reloadSection(section: Section): Promise<void> {
     } else if (section === 'voice') {
       state.voice = await getVoice();
       for (const err of state.voice.errors) toast(`DB voice clip invalid: ${err}`, 5000, 'error');
+    } else if (state.section === 'triggers') {
+      state.triggers = await listTriggers();
     } else state.items = await listItems();
     state.online = true;
   } catch (err) {
@@ -222,7 +233,7 @@ export async function reloadSection(section: Section): Promise<void> {
 
 async function loadEverything(): Promise<void> {
   try {
-    const [npcs, loot, actors, dialogues, pois, minors, strongholds, nodes, growth, items, sites, zones, frontier, factions, voice] =
+    const [npcs, loot, actors, dialogues, pois, minors, strongholds, nodes, growth, items, sites, zones, frontier, factions, voice, triggers] =
       await Promise.all([
         listNpcs(),
         listLoot(),
@@ -239,6 +250,7 @@ async function loadEverything(): Promise<void> {
         getFrontier(),
         getFactions(),
         getVoice(),
+        listTriggers(),
       ]);
     state.npcs = npcs;
     state.loot = loot;
@@ -257,6 +269,7 @@ async function loadEverything(): Promise<void> {
     state.frontier = frontier;
     state.factions = factions;
     state.voice = voice;
+    state.triggers = triggers;
     state.online = true;
     $('server-pill').textContent = 'connected';
     $('server-pill').className = 'pill ok';
@@ -364,6 +377,12 @@ const SECTIONS: Array<{ id: Section; label: string; icon: string; hint: string }
     hint: 'The spoken world — the clip library, each throat’s fallback bank, and the quip dials. An upload speaks on the very next line; no reload, no deploy.',
   },
   {
+    id: 'triggers',
+    label: 'Triggers',
+    icon: 'stamp',
+    hint: 'THE WATCHFUL GROUND — slugged patches of watching ground: areas, edges, gates, cooldowns, and the event each fires. A save re-arms the sweep on the very next beat.',
+  },
+  {
     id: 'items',
     label: 'Items',
     icon: 'picker',
@@ -425,7 +444,9 @@ function renderRail(): void {
                     ? (state.factions?.def.roster.length ?? 0)
                     : s.id === 'voice'
                       ? (state.voice?.clips.length ?? 0)
-                      : state.items.length;
+                      : s.id === 'triggers'
+                        ? state.triggers.length
+                        : state.items.length;
     const b = document.createElement('button');
     b.className = 'rail-tab' + (state.section === s.id ? ' active' : '');
     b.appendChild(iconImg(s.icon, 15));
@@ -729,6 +750,28 @@ function listEntries(): ListEntry[] {
       },
     ];
   }
+  if (state.section === 'triggers') {
+    const areaWord = (t: TriggerRow): string =>
+      t.def.area.kind === 'zone'
+        ? `zone ${t.def.area.zone}`
+        : t.def.area.kind === 'rect'
+          ? `rect ${t.def.area.w}×${t.def.area.h}`
+          : `polygon ·${t.def.area.points.length}`;
+    return state.triggers
+      .filter((t) => match(t.def.id, t.def.label ?? '', t.def.event))
+      .sort((a, b) => a.def.event.localeCompare(b.def.event) || a.def.id.localeCompare(b.def.id))
+      .map((t) => ({
+        id: t.def.id,
+        title: t.def.label ?? t.def.id,
+        sub: t.errors
+          ? `INVALID — ${t.errors[0]}`
+          : `${areaWord(t)} · on ${t.def.on}${t.def.disabled ? ' · disabled' : ''}`,
+        badge: t.def.event,
+        badgeEdited: t.edited,
+        ico: iconWrap(iconImg('stamp', 18)),
+        group: `fires '${t.def.event}'`,
+      }));
+  }
   return state.items
     .filter((i) => match(i.id, i.name))
     .sort(
@@ -844,6 +887,8 @@ $('btn-new-entry').onclick = () => {
           ? 'New layout id (must start stronghold_, e.g. stronghold_goblin_highmoot):'
         : state.section === 'dialogues'
           ? 'New dialogue id (lowercase, e.g. ferryman_toll):'
+        : state.section === 'triggers'
+          ? 'New trigger id (lowercase, e.g. gate_market_night):'
           : 'New loot table id (lowercase, e.g. bog_fiend_drops):',
   );
   if (!id) return;
@@ -875,6 +920,25 @@ $('btn-new-entry').onclick = () => {
       return;
     }
     state.pois.push({ def: newPoiDef(id), edited: true, authored: false });
+  } else if (state.section === 'triggers') {
+    if (state.triggers.some((t) => t.def.id === id)) {
+      toast(`'${id}' already exists`, 3000, 'error');
+      return;
+    }
+    // Born a small rect with the sensible theatre dials; the bench
+    // re-aims the area and the event before the first save.
+    state.triggers.push({
+      def: {
+        id,
+        label: id.replace(/_/g, ' '),
+        area: { kind: 'rect', x: 0, y: 0, w: 8, h: 8 },
+        on: 'both',
+        event: id,
+        cooldownSec: 180,
+      },
+      edited: true,
+      authored: false,
+    });
   } else if (state.section === 'minors') {
     if (state.minors.some((m) => m.def.id === id)) {
       toast(`'${id}' already exists`, 3000, 'error');
@@ -956,7 +1020,7 @@ const hash = location.hash.replace(/^#/, '');
 if (hash) {
   const [sect, id] = hash.split('/') as [Section, string?];
   if (
-    ['npcs', 'loot', 'actors', 'dialogues', 'pois', 'minors', 'strongholds', 'resources', 'items', 'frontier', 'factions', 'voice'].includes(sect)
+    ['npcs', 'loot', 'actors', 'dialogues', 'pois', 'minors', 'strongholds', 'resources', 'items', 'frontier', 'factions', 'voice', 'triggers'].includes(sect)
   ) {
     state.section = sect;
     state.selectedId = id ?? null;
@@ -1118,6 +1182,21 @@ export const persistence = {
     await reloadSection('voice');
     renderAll();
     toast('the shipped dials stand again', 3000, 'success');
+  },
+  async saveTriggerDef(def: TriggerDef): Promise<void> {
+    await saveTrigger(def);
+    state.dirty = false;
+    await reloadSection('triggers');
+    setSaveState('all changes saved');
+    toast(`'${def.id}' saved — the sweep re-arms this beat`, 3000, 'success');
+  },
+  async revertTriggerDef(id: string): Promise<void> {
+    const { outcome } = await revertTrigger(id);
+    state.dirty = false;
+    await reloadSection('triggers');
+    if (outcome === 'deleted') state.selectedId = null;
+    renderAll();
+    toast(outcome === 'reverted' ? 'restored the shipped trigger' : 'deleted', 3000, 'success');
   },
   async saveDialogueDef(def: DialogueDef): Promise<void> {
     await saveDialogue(def);

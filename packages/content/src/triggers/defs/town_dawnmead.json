@@ -1,0 +1,10 @@
+{
+  "id": "town_dawnmead",
+  "label": "Town bounds: dawnmead",
+  "area": { "kind": "zone", "zone": "dawnmead" },
+  "on": "both",
+  "event": "town",
+  "data": { "town": "dawnmead" },
+  "cooldownSec": 180,
+  "minInsideSec": 45
+}

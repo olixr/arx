@@ -1,0 +1,10 @@
+{
+  "id": "town_silverfall",
+  "label": "Town bounds: silverfall",
+  "area": { "kind": "zone", "zone": "silverfall" },
+  "on": "both",
+  "event": "town",
+  "data": { "town": "silverfall" },
+  "cooldownSec": 180,
+  "minInsideSec": 45
+}

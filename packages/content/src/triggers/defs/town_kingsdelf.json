@@ -1,0 +1,10 @@
+{
+  "id": "town_kingsdelf",
+  "label": "Town bounds: kingsdelf",
+  "area": { "kind": "zone", "zone": "kingsdelf" },
+  "on": "both",
+  "event": "town",
+  "data": { "town": "kingsdelf" },
+  "cooldownSec": 180,
+  "minInsideSec": 45
+}

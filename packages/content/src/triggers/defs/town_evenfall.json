@@ -1,0 +1,10 @@
+{
+  "id": "town_evenfall",
+  "label": "Town bounds: evenfall",
+  "area": { "kind": "zone", "zone": "evenfall" },
+  "on": "both",
+  "event": "town",
+  "data": { "town": "evenfall" },
+  "cooldownSec": 180,
+  "minInsideSec": 45
+}
