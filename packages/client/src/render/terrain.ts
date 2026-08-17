@@ -4031,18 +4031,42 @@ function paintLayerSkin(
           // between the water and the western sun, the water at its
           // foot sits in shade. All strokes clip inside the water
           // region — the land side stays untouched.
-          const landT = g(
-            Math.floor(mid[0] + bnd.ox * 0.75),
-            Math.floor(mid[1] + bnd.oy * 0.75),
-          );
+          // The face tint samples the land at THREE points along the
+          // run and takes the ends' agreement over the middle — a
+          // single stray tile (one path tile, one snow lick) no longer
+          // flips a whole run's face to a contrasting bar between two
+          // earth runs.
+          const sampleLand = (tt: number): number | undefined => {
+            const q = qpoint(bnd, tt);
+            return g(
+              Math.floor(q[0] + bnd.ox * 0.75),
+              Math.floor(q[1] + bnd.oy * 0.75),
+            );
+          };
+          const lEnds = sampleLand(0.15);
+          const landT = lEnds !== undefined && lEnds === sampleLand(0.85) ? lEnds : sampleLand(0.5);
           const th = lone ? 0.6 : 1;
-          // (a) the drowned bed margin.
+          // (a) the drowned bed margin. Where the bank FACE owns the
+          // edge (camera-facing runs) the margin steps well back —
+          // its pale line peeking from under the dark cut read as a
+          // stray highlight, and the face + foot shadow carry that
+          // edge on their own.
+          const faceness = Math.max(0, -bnd.oy);
+          // A NARROW channel (no water 1.4 tiles in from this run)
+          // quiets its margin: on a one-tile creek both banks' margins
+          // overlap and the whole channel silts up cream — the margin
+          // is a broad-shore instrument.
+          const inW = g(
+            Math.floor(mid[0] - bnd.ox * 1.4),
+            Math.floor(mid[1] - bnd.oy * 1.4),
+          );
+          const bedTh = th * (1 - 0.6 * faceness) * (isWaterTile(inW) ? 1 : 0.45);
           ctx.strokeStyle = '#c9cfa2';
-          ctx.globalAlpha = 0.22 * th;
+          ctx.globalAlpha = 0.22 * bedTh;
           ctx.lineWidth = px * 0.52 * (0.8 + 0.4 * sw);
           ctx.stroke(p);
           ctx.strokeStyle = '#dade9f';
-          ctx.globalAlpha = 0.3 * th;
+          ctx.globalAlpha = 0.3 * bedTh;
           ctx.lineWidth = px * 0.26 * (0.8 + 0.4 * sw);
           ctx.stroke(p);
           // (b) the visible bank face, camera-facing runs only. Both
@@ -4051,11 +4075,14 @@ function paintLayerSkin(
           // between adjacent runs; on-path strokes share their
           // endpoints exactly, so the face runs continuous.
           if (bnd.oy < -0.35) {
+            // Tints stay CLOSE IN VALUE — the face is one continuous
+            // cut of ground, and a pale segment beside a dark one
+            // reads as a broken white bar, not a material change.
             const face =
               landT === Tile.Sand
-                ? '#9c7f52'
+                ? '#8a6f47'
                 : landT === Tile.Snow
-                  ? '#b7c4d8'
+                  ? '#8695ac'
                   : landT === Tile.StoneFloor ||
                       landT === Tile.CaveFloor ||
                       landT === Tile.DungeonFloor
@@ -5664,20 +5691,38 @@ function drawShorelines(
         // (d > 0 pushes OFFSHORE, d < 0 onto the land).
         const wpts: Pt[] = [];
         for (let n = 0; n <= STEPS; n++) wpts.push(qpoint(bnd, n / STEPS));
+        // THE SURF MEETS THE FOOT OF THE BANK. On a camera-facing run
+        // (land north of the water) the painted contour is the TOP LIP
+        // of the cut bank face — the actual water surface meets that
+        // face a face-height LOWER on screen. Every live element of
+        // the shoreline (lap, foam, crest, break, spray, backwash,
+        // wet mark) anchors to this SURFLINE, a pure screen-space drop
+        // scaled by how camera-facing the run is: south runs (no
+        // visible face) keep the contour exactly, side runs barely
+        // move, north runs lap against the base of the earth. Without
+        // this, chunky white foam stamped ACROSS the dark bank face —
+        // disconnected bright pills on the top shore of every pool.
+        const drop = Math.max(0, -bnd.oy) * 0.19 * s;
         const emit = (path: Path2D, d: number, from = 0, to = STEPS): void => {
           for (let n = from; n <= to; n++) {
             const p = worldToScreen(wpts[n]![0] - bnd.ox * d, wpts[n]![1] - bnd.oy * d);
-            if (n === from) path.moveTo(p.x, p.y);
-            else path.lineTo(p.x, p.y);
+            if (n === from) path.moveTo(p.x, p.y + drop);
+            else path.lineTo(p.x, p.y + drop);
           }
         };
         const hh = hashCoords(71 + k, i, j);
         const act = liveliness(bnd.ax, bnd.ay, t);
 
         // THE LAP (both modes): the dark waterline, breathing — water
-        // meeting land, not inked outline.
+        // meeting land, not inked outline. At a bank face this is the
+        // shadow seated under the cut: a touch heavier there.
         const lap = 0.5 + 0.5 * Math.sin(t * 0.8 + (hh % 63) / 10);
-        const wl = bk.stroke('#1a3060', lap > 0.5 ? 0.06 : 0.05, 0.26 + lap * 0.12);
+        const faceness = Math.max(0, -bnd.oy);
+        const wl = bk.stroke(
+          '#1a3060',
+          lap > 0.5 ? 0.06 : 0.05,
+          0.26 + lap * 0.12 + faceness * 0.1,
+        );
         if (wl) emit(wl, 0);
 
         // Ambient foam dash gliding smoothly along the shore (both
@@ -5691,8 +5736,8 @@ function drawShorelines(
             for (let n = 0; n <= 4; n++) {
               const wp = qpoint(bnd, u + (n / 4) * 0.25);
               const p = worldToScreen(wp[0] - bnd.ox * 0.015, wp[1] - bnd.oy * 0.015);
-              if (n === 0) path.moveTo(p.x, p.y);
-              else path.lineTo(p.x, p.y);
+              if (n === 0) path.moveTo(p.x, p.y + drop);
+              else path.lineTo(p.x, p.y + drop);
             }
           }
         }
@@ -5750,8 +5795,8 @@ function drawShorelines(
                 const p = worldToScreen(w[0] - bnd.ox * d + jx, w[1] - bnd.oy * d);
                 const r = (0.028 + ((hh >>> (sp + 9)) % 3) * 0.012) * s;
                 // FLAT-squashed fleck, like everything lying on the
-                // surface.
-                fill.rect(p.x, p.y, r, r * FLAT);
+                // surface — tossed at the surfline, never up the face.
+                fill.rect(p.x, p.y + drop, r, r * FLAT);
               }
             }
           }
