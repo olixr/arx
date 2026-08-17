@@ -22972,6 +22972,203 @@ export class Renderer {
   }
 
   /**
+   * THE STANDING-HOOP LAW: a hoop on an upright cask is a HORIZONTAL
+   * ring, and this tilted camera sees its FRONT ARC bowing DOWN
+   * across the belly — never a straight strip (a flat band is the
+   * side-elevation lie the whole barrel shelf used to tell). One
+   * filled band between two down-bowed curves, a lit upper edge
+   * riding the top curve, and rivets at the crest and both ends.
+   * `dip` is the ring's foreshortened front drop at this hoop's
+   * width (the head-ellipse ry scaled down the belly). Reads
+   * this.ctx at call time — the outline pass swaps it.
+   */
+  private paintStandingHoop(cx: number, yh: number, wk: number, dip: number, s: number): void {
+    const ctx = this.ctx;
+    const bandH = Math.max(2, s * 0.05);
+    ctx.fillStyle = '#3a3444';
+    ctx.beginPath();
+    ctx.moveTo(cx - wk, yh);
+    ctx.quadraticCurveTo(cx, yh + dip * 2, cx + wk, yh);
+    ctx.lineTo(cx + wk, yh + bandH);
+    ctx.quadraticCurveTo(cx, yh + dip * 2 + bandH, cx - wk, yh + bandH);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#565064';
+    ctx.lineWidth = Math.max(1, s * 0.016);
+    ctx.beginPath();
+    ctx.moveTo(cx - wk * 0.98, yh + s * 0.01);
+    ctx.quadraticCurveTo(cx, yh + dip * 2 + s * 0.01, cx + wk * 0.98, yh + s * 0.01);
+    ctx.stroke();
+    ctx.fillStyle = '#6e6a78';
+    for (const [fx, fy] of [
+      [0, dip * 2 + bandH * 0.42],
+      [-0.8, dip * 0.72 + bandH * 0.42],
+      [0.8, dip * 0.72 + bandH * 0.42],
+    ] as const) {
+      ctx.beginPath();
+      ctx.ellipse(cx + fx * wk, yh + fy, s * 0.011, s * 0.01, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  /**
+   * THE STREET CASK — ONE COOPER for the whole game. The upright
+   * barrel as a TURNED VOLUME under this camera: a coopered bulge on
+   * true curves closed over the head's foreshortened ellipse (the
+   * silhouette's top IS the far rim — the old straight-cut hexagon
+   * with a pasted facet lid is dead), stave seams bowing with the
+   * belly, a west sun lane and east shade, down-bowed riveted hoops
+   * (paintStandingHoop), the chime ring that honestly shows as a
+   * ring because the camera looks INTO the head, and a planked lid
+   * sunk in its shadowed rebate — or the rain-butt's open water
+   * with the drifting glint. Tile.Barrel and the BarrelStack both
+   * cast from here (a stack speaks its family's dialect). Draws
+   * from bottom-center (cx, by); `seed` deals plank turn, bung
+   * side, and grain; opts.ink lays the outline pass's own ink under
+   * the silhouette first, for castings that LAP other casks (the
+   * cart-wheel law). Reads this.ctx at call time.
+   */
+  private paintStreetCask(
+    cx: number,
+    by: number,
+    wr: number,
+    bh: number,
+    s: number,
+    tone: number,
+    seed: number,
+    opts: { water?: boolean; ink?: boolean; t?: number } = {},
+  ): void {
+    const ctx = this.ctx;
+    const topY = by - bh;
+    const ery = wr * 0.34;
+    const bulge = wr * 0.16;
+    const OAK = shade('#7a552e', tone);
+    const sil = (g: number) => {
+      const w2 = wr + g;
+      const b2 = by + g * 0.7;
+      const t2 = topY - g * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(cx - w2 * 0.84, b2);
+      ctx.quadraticCurveTo(cx - w2 - bulge, (b2 + t2) / 2, cx - w2 * 0.84, t2);
+      ctx.ellipse(cx, t2, w2 * 0.84, ery + g * 0.6, 0, Math.PI, Math.PI * 2);
+      ctx.quadraticCurveTo(cx + w2 + bulge, (b2 + t2) / 2, cx + w2 * 0.84, b2);
+      ctx.quadraticCurveTo(cx, b2 + ery * 0.72, cx - w2 * 0.84, b2);
+      ctx.closePath();
+    };
+    if (opts.ink) {
+      ctx.fillStyle = '#241a2e';
+      sil(s * 0.04);
+      ctx.fill();
+    }
+    ctx.fillStyle = OAK;
+    sil(0);
+    ctx.fill();
+    // The turned form: west sun lane and east shade, both bowing
+    // with the belly so the cylinder reads round, never a card.
+    const lane = (f0: number, f1: number, fill: string) => {
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      ctx.moveTo(cx + wr * 0.84 * f0, by - s * 0.015);
+      ctx.quadraticCurveTo(cx + (wr + bulge) * f0, by - bh * 0.5, cx + wr * 0.84 * f0, topY + ery * 0.4);
+      ctx.lineTo(cx + wr * 0.84 * f1, topY + ery * 0.4);
+      ctx.quadraticCurveTo(cx + (wr + bulge) * f1, by - bh * 0.5, cx + wr * 0.84 * f1, by - s * 0.015);
+      ctx.closePath();
+      ctx.fill();
+    };
+    lane(-0.92, -0.55, shade(OAK, 13));
+    lane(0.6, 0.94, shade(OAK, -13));
+    // Stave seams bow with the belly; the hash turns the deal so
+    // no two casks split their planks alike.
+    ctx.strokeStyle = 'rgba(36, 22, 10, 0.42)';
+    ctx.lineWidth = Math.max(1, s * 0.014);
+    for (let k = 0; k < 3; k++) {
+      const f = -0.42 + k * 0.36 + (((seed >>> (k * 3 + 2)) & 3) - 1.5) * 0.045;
+      ctx.beginPath();
+      ctx.moveTo(cx + wr * 0.84 * f, by - s * 0.02);
+      ctx.quadraticCurveTo(cx + (wr + bulge) * f, by - bh * 0.5, cx + wr * 0.84 * f, topY + ery * 0.5);
+      ctx.stroke();
+    }
+    // The bottom chime's front arc sits in its own shade.
+    ctx.strokeStyle = 'rgba(36, 22, 10, 0.5)';
+    ctx.lineWidth = Math.max(1, s * 0.02);
+    ctx.beginPath();
+    ctx.moveTo(cx - wr * 0.8, by - s * 0.01);
+    ctx.quadraticCurveTo(cx, by + ery * 0.62, cx + wr * 0.8, by - s * 0.01);
+    ctx.stroke();
+    // THE HOOPS: quarter and lower-third bands, each bowing down
+    // with its own ring's foreshortening (the standing-hoop law).
+    for (const fh of [0.3, 0.72] as const) {
+      const tt = fh;
+      const wk = wr * (0.84 + 0.64 * tt * (1 - tt)) * 0.99;
+      const dip = ery * (wk / (wr * 0.84)) * 0.42;
+      this.paintStandingHoop(cx, by - bh * fh, wk, dip, s);
+    }
+    // THE HEAD: the camera looks INTO the top, so here — and only
+    // here — the hoop honestly shows as a ring: the chime, with a
+    // lit north arc where the far rim takes the sky.
+    ctx.strokeStyle = '#3a3444';
+    ctx.lineWidth = Math.max(1.5, s * 0.042);
+    ctx.beginPath();
+    ctx.ellipse(cx, topY, wr * 0.84, ery, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#565064';
+    ctx.lineWidth = Math.max(1, s * 0.014);
+    ctx.beginPath();
+    ctx.ellipse(cx, topY - s * 0.008, wr * 0.8, ery * 0.92, 0, Math.PI * 1.15, Math.PI * 1.85);
+    ctx.stroke();
+    // The rebate shadow: the lid sits DOWN inside the chime.
+    ctx.fillStyle = 'rgba(26, 16, 8, 0.55)';
+    ctx.beginPath();
+    ctx.ellipse(cx, topY + s * 0.012, wr * 0.72, ery * 0.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (opts.water) {
+      // The rain butt: open to the sky, holding it.
+      ctx.fillStyle = '#2c4a6e';
+      ctx.beginPath();
+      ctx.ellipse(cx, topY + s * 0.014, wr * 0.66, ery * 0.72, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#3a629e';
+      ctx.beginPath();
+      ctx.ellipse(cx - wr * 0.06, topY + s * 0.008, wr * 0.56, ery * 0.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (opts.t !== undefined) {
+        const gx2 = cx - wr * 0.3 + ((opts.t * 0.2 + (seed & 255) * 0.13) % 1) * wr * 0.5;
+        ctx.fillStyle = 'rgba(214, 230, 255, 0.5)';
+        ctx.fillRect(gx2, topY - s * 0.004, s * 0.06, s * 0.016);
+      }
+    } else {
+      // The planked lid, end-grain pale, split by its two seams —
+      // the seam run turned by the hash so stacked lids never twin.
+      const la = (((seed >>> 6) & 3) / 3 - 0.5) * 0.7;
+      ctx.fillStyle = shade('#94693a', tone + 4);
+      ctx.beginPath();
+      ctx.ellipse(cx, topY + s * 0.006, wr * 0.68, ery * 0.74, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = shade('#a5793f', tone + 8);
+      ctx.beginPath();
+      ctx.ellipse(cx - wr * 0.08, topY - s * 0.002, wr * 0.56, ery * 0.58, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(90, 60, 28, 0.55)';
+      ctx.lineWidth = Math.max(1, s * 0.012);
+      for (const off of [-0.3, 0.26] as const) {
+        ctx.beginPath();
+        ctx.moveTo(cx - wr * 0.6 * Math.cos(la), topY + off * ery + wr * 0.2 * Math.sin(la) * 0.4);
+        ctx.lineTo(cx + wr * 0.6 * Math.cos(la), topY + off * ery - wr * 0.2 * Math.sin(la) * 0.4);
+        ctx.stroke();
+      }
+      // The bung knot, dealt off-center.
+      const bs = ((seed >>> 9) & 1) ? 1 : -1;
+      ctx.fillStyle = shade('#6b4a26', tone);
+      ctx.beginPath();
+      ctx.ellipse(cx + bs * wr * 0.28, topY + ery * 0.16, s * 0.028, s * 0.02, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(36, 22, 10, 0.5)';
+      ctx.lineWidth = Math.max(1, s * 0.008);
+      ctx.stroke();
+    }
+  }
+
+  /**
    * THE SHELVING CONTRACT — one dispatcher, nine goods kinds, every
    * good drawn from its bottom-center (gx, gy) so anything seats on
    * any surface: 0 potions, 1 cloth, 2 crockery(bowls), 3 boxes,
@@ -28445,11 +28642,20 @@ export class Renderer {
       case Tile.Barrel: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.18;
-        // Waist-high on the 1.15-tile body — a barrel you'd lean on.
+        // THE STREET BARREL, recut at the root (user verdict): the
+        // old cask was a straight-cut hexagon wearing dead-flat
+        // rectangle bands under a flat facet lid — a side elevation
+        // with a cap pasted on, the exact read this camera cannot
+        // honestly produce. It now casts from paintStreetCask (the
+        // ONE COOPER law): true coopered bulge, bowed staves, the
+        // standing-hoop law's down-bowed riveted bands, the chimed
+        // foreshortened head — and it keeps its rain-butt fate: one
+        // street barrel in three stands open to the sky, a glint
+        // drifting its caught water.
         const wr = s * 0.28;
         const bh = s * 0.78;
-        // Some barrels are rain butts — an open water top sells "used".
         const water = h % 3 === 0;
+        const tone = (((h >>> 5) & 3) - 1) * 5;
         return {
           sortY: ty + 0.7,
           body: stationBody(0.6, 1.0, 0.55),
@@ -28458,60 +28664,11 @@ export class Renderer {
             // Draw-time ctx capture: the outline pass swaps this.ctx
             // to its scratch — the build-time capture would paint past it.
             const ctx = this.ctx;
-            // Contact shade roots it to the floor.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
             ctx.beginPath();
-            ctx.ellipse(p.x, baseY + s * 0.015, wr * 1.05, s * 0.08, 0, 0, Math.PI * 2);
+            ctx.ellipse(p.x, baseY + s * 0.015, wr * 1.08, s * 0.08, 0, 0, Math.PI * 2);
             ctx.fill();
-            // Coopered trunk: straight-cut bulge, brutalist not round.
-            ctx.fillStyle = '#7a552e';
-            ctx.beginPath();
-            ctx.moveTo(p.x - wr * 0.8, baseY);
-            ctx.lineTo(p.x - wr, baseY - bh * 0.32);
-            ctx.lineTo(p.x - wr, baseY - bh * 0.68);
-            ctx.lineTo(p.x - wr * 0.8, baseY - bh);
-            ctx.lineTo(p.x + wr * 0.8, baseY - bh);
-            ctx.lineTo(p.x + wr, baseY - bh * 0.68);
-            ctx.lineTo(p.x + wr, baseY - bh * 0.32);
-            ctx.lineTo(p.x + wr * 0.8, baseY);
-            ctx.closePath();
-            ctx.fill();
-            // Stave seams; the west flank catches sun, the east falls
-            // into shade — a turned form, not a flat card.
-            ctx.fillStyle = 'rgba(36, 22, 10, 0.35)';
-            ctx.fillRect(p.x - wr * 0.32, baseY - bh * 0.96, s * 0.03, bh * 0.94);
-            ctx.fillRect(p.x + wr * 0.34, baseY - bh * 0.96, s * 0.03, bh * 0.94);
-            ctx.fillStyle = shade('#7a552e', 14);
-            ctx.fillRect(p.x - wr * 0.88, baseY - bh * 0.92, s * 0.06, bh * 0.84);
-            ctx.fillStyle = shade('#7a552e', -12);
-            ctx.fillRect(p.x + wr * 0.8, baseY - bh * 0.92, s * 0.06, bh * 0.84);
-            // Iron bands, riveted, with a lit upper edge each.
-            ctx.fillStyle = '#3a3444';
-            ctx.fillRect(p.x - wr * 0.99, baseY - bh * 0.3, wr * 1.98, s * 0.06);
-            ctx.fillRect(p.x - wr * 0.99, baseY - bh * 0.76, wr * 1.98, s * 0.06);
-            ctx.fillStyle = '#565064';
-            ctx.fillRect(p.x - wr * 0.99, baseY - bh * 0.3, wr * 1.98, s * 0.02);
-            ctx.fillRect(p.x - wr * 0.99, baseY - bh * 0.76, wr * 1.98, s * 0.02);
-            // Lid: lit rim over a shaded inset, or standing water.
-            ctx.fillStyle = '#94693a';
-            ctx.beginPath();
-            facetCircle(ctx, p.x, baseY - bh, wr * 0.84, 6, 0.3, 0.55);
-            ctx.fill();
-            if (water) {
-              ctx.fillStyle = '#3a629e';
-              ctx.beginPath();
-              facetCircle(ctx, p.x, baseY - bh, wr * 0.62, 6, 0.3, 0.55);
-              ctx.fill();
-              // A live glint drifts across the water.
-              const gx2 = p.x - wr * 0.3 + ((t * 0.2 + h * 0.13) % 1) * wr * 0.5;
-              ctx.fillStyle = 'rgba(214, 230, 255, 0.5)';
-              ctx.fillRect(gx2, baseY - bh - s * 0.01, s * 0.07, s * 0.02);
-            } else {
-              ctx.fillStyle = shade('#94693a', -10);
-              ctx.beginPath();
-              facetCircle(ctx, p.x, baseY - bh + s * 0.015, wr * 0.6, 6, 0.3, 0.55);
-              ctx.fill();
-            }
+            this.paintStreetCask(p.x, baseY, wr, bh, s, tone, h, { water, t });
           },
         };
       }
@@ -36115,18 +36272,21 @@ export class Renderer {
       case Tile.BarrelStack: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.18;
-        // The cellar's street face, rebuilt in the STREET BARREL's own
-        // dialect (the lone cask two doors down is the reference): two
+        // The cellar's street face — recast with the street barrel
+        // from the ONE COOPER's own hand (paintStreetCask): two
         // upright casks shoulder to shoulder, a bearer plank across
-        // their lids, and a third cask crowning the middle. ONE cooper
-        // made every barrel on this street — same straight-cut bulge,
-        // same riveted iron, same lit facet lid.
+        // their chimes, and a third cask crowning the middle. The
+        // crown cask LAPS the pair, so it rides its own ink bed
+        // (the cart-wheel law) and keeps its flat-art line where
+        // the outline pass cannot reach.
         const hw = s * 0.5;
-        // The cooper's variety, dealt: tone and lid-facet turn per
-        // cask, a lean for the crown — never three rubber stamps.
+        // The cooper's variety, dealt: tone per cask, a lean for
+        // the crown — never three rubber stamps.
         const tones: [number, number, number] =
-          h % 3 === 0 ? [0, 5, -5] : h % 3 === 1 ? [5, -5, 0] : [-5, 0, 5];
+          h % 3 === 0 ? [0, 6, -6] : h % 3 === 1 ? [6, -6, 0] : [-6, 0, 6];
         const lean = (((h >>> 4) & 3) - 1.5) * s * 0.02;
+        const wr = s * 0.235;
+        const bh = s * 0.6;
         return {
           sortY: ty + 0.7,
           body: stationBody(0.62, 1.1, 0.45),
@@ -36139,70 +36299,28 @@ export class Renderer {
             ctx.beginPath();
             ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.12, s * 0.075, 0, 0, Math.PI * 2);
             ctx.fill();
-            // ONE cask painter, three castings — the Tile.Barrel look
-            // exactly: straight-cut bulge, twin stave seams, west sun
-            // and east shade, riveted bands with a lit upper edge,
-            // and the facet lid over its shaded inset.
-            const cask = (cx: number, by: number, wr: number, bh: number, tone: number, rot: number) => {
-              ctx.fillStyle = shade('#7a552e', tone);
-              ctx.beginPath();
-              ctx.moveTo(cx - wr * 0.8, by);
-              ctx.lineTo(cx - wr, by - bh * 0.32);
-              ctx.lineTo(cx - wr, by - bh * 0.68);
-              ctx.lineTo(cx - wr * 0.8, by - bh);
-              ctx.lineTo(cx + wr * 0.8, by - bh);
-              ctx.lineTo(cx + wr, by - bh * 0.68);
-              ctx.lineTo(cx + wr, by - bh * 0.32);
-              ctx.lineTo(cx + wr * 0.8, by);
-              ctx.closePath();
-              ctx.fill();
-              ctx.fillStyle = 'rgba(36, 22, 10, 0.35)';
-              ctx.fillRect(cx - wr * 0.32, by - bh * 0.96, s * 0.026, bh * 0.94);
-              ctx.fillRect(cx + wr * 0.34, by - bh * 0.96, s * 0.026, bh * 0.94);
-              ctx.fillStyle = shade('#7a552e', tone + 14);
-              ctx.fillRect(cx - wr * 0.88, by - bh * 0.92, s * 0.05, bh * 0.84);
-              ctx.fillStyle = shade('#7a552e', tone - 12);
-              ctx.fillRect(cx + wr * 0.82, by - bh * 0.92, s * 0.05, bh * 0.84);
-              ctx.fillStyle = '#3a3444';
-              ctx.fillRect(cx - wr * 0.99, by - bh * 0.3, wr * 1.98, s * 0.05);
-              ctx.fillRect(cx - wr * 0.99, by - bh * 0.76, wr * 1.98, s * 0.05);
-              ctx.fillStyle = '#565064';
-              ctx.fillRect(cx - wr * 0.99, by - bh * 0.3, wr * 1.98, s * 0.018);
-              ctx.fillRect(cx - wr * 0.99, by - bh * 0.76, wr * 1.98, s * 0.018);
-              ctx.fillStyle = shade('#94693a', tone);
-              ctx.beginPath();
-              facetCircle(ctx, cx, by - bh, wr * 0.84, 6, rot, 0.55);
-              ctx.fill();
-              ctx.fillStyle = shade('#94693a', tone - 10);
-              ctx.beginPath();
-              facetCircle(ctx, cx, by - bh + s * 0.012, wr * 0.6, 6, rot, 0.55);
-              ctx.fill();
-            };
-            const wr = s * 0.235;
-            const bh = s * 0.6;
             // The pair on the ground, a hair of settle between them.
-            cask(p.x - s * 0.26, baseY, wr, bh, tones[0], 0.3);
-            cask(p.x + s * 0.26, baseY - s * 0.012, wr, bh, tones[1], 1.35);
+            this.paintStreetCask(p.x - s * 0.26, baseY, wr, bh, s, tones[0], h, {});
+            this.paintStreetCask(p.x + s * 0.26, baseY - s * 0.012, wr, bh, s, tones[1], h >>> 7, {});
             // The crevice where the bulges meet — two casks, not one.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
-            ctx.fillRect(p.x - s * 0.012, baseY - bh * 0.86, s * 0.024, bh * 0.8);
-            // The bearer plank across both lids: the joinery that
+            ctx.fillRect(p.x - s * 0.012, baseY - bh * 0.86, s * 0.024, bh * 0.78);
+            // The bearer plank across both chimes: the joinery that
             // makes the crown believable — nobody stands a cask on
             // two round rims.
-            const plankY = baseY - bh - s * 0.045;
+            const plankY = baseY - bh - wr * 0.34 - s * 0.045;
             ctx.fillStyle = TWN_OAK_DARK;
             ctx.fillRect(p.x - s * 0.46, plankY, s * 0.92, s * 0.05);
             ctx.fillStyle = TWN_OAK_LIT;
             ctx.fillRect(p.x - s * 0.46, plankY, s * 0.92, s * 0.018);
-            // Contact shade roots the crown to its plank (painted
-            // under the cask, exactly as the street barrel roots to
-            // its floor).
+            // Contact shade roots the crown to its plank.
             ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
             ctx.beginPath();
             ctx.ellipse(p.x + lean, plankY + s * 0.008, wr * 0.82, s * 0.035, 0, 0, Math.PI * 2);
             ctx.fill();
-            // The crown cask, leaned a dealt hair off true.
-            cask(p.x + lean, plankY + s * 0.005, wr * 0.96, bh * 0.94, tones[2], 0.85);
+            // The crown cask, leaned a dealt hair off true, on its
+            // own ink bed because it laps the pair below.
+            this.paintStreetCask(p.x + lean, plankY + s * 0.005, wr * 0.96, bh * 0.94, s, tones[2], h >>> 13, { ink: true });
           },
         };
       }
@@ -39593,14 +39711,15 @@ export class Renderer {
               ctx.quadraticCurveTo(p.x + ckR * k * 1.18, (lidY + seatY) / 2, p.x + ckR * k * 0.9, seatY - s * 0.03);
               ctx.stroke();
             }
-            // THE HOOPS: the smith's contribution, one lit edge each.
+            // THE HOOPS: the smith's contribution — and each one
+            // bows DOWN across the belly with its ring's own
+            // foreshortening (the standing-hoop law): the camera
+            // sees the front arc of a horizontal ring, never a
+            // straight strip.
             for (const hy of [0.16, 0.5, 0.84]) {
               const yh = lidY + (seatY - lidY) * hy;
               const wk = ckR * (0.88 + 0.24 * Math.sin(hy * Math.PI));
-              ctx.fillStyle = TWN_IRON;
-              ctx.fillRect(p.x - wk, yh - s * 0.017, wk * 2, s * 0.034);
-              ctx.fillStyle = 'rgba(210, 218, 226, 0.35)';
-              ctx.fillRect(p.x - wk, yh - s * 0.017, wk * 2, s * 0.011);
+              this.paintStandingHoop(p.x, yh - s * 0.017, wk, s * 0.085 * (wk / (ckR * 0.9)) * 0.42, s);
             }
             // THE LID: a planked round the camera sees the top of,
             // and the stone that keeps the leaves out of the water.
@@ -42709,20 +42828,37 @@ export class Renderer {
               ctx.quadraticCurveTo(p.x, cy + ckR2 * k * 1.16, p.x + ckL * 0.97, cy + ckR2 * k * 0.82);
               ctx.stroke();
             }
-            // THE HOOPS stand upright at the quarters.
-            for (const hx2 of [-0.6, -0.22, 0.22, 0.6]) {
+            // THE HOOPS stand upright at the quarters — and this
+            // camera NEVER sees a hoop on a lying cask as a ring
+            // (user verdict: the full ellipses read as hula hoops
+            // floating over the belly). THE LYING-HOOP LAW: a
+            // cross-section circle projects to a vertical BAND
+            // wrapping the visible surface — silhouette to
+            // silhouette, bowed a hair outboard with the head's own
+            // curvature, poking a touch proud of the crown so the
+            // outline pass inks its crest, a lit west edge, and one
+            // rivet where the band crosses the top.
+            for (const hx2 of [-0.62, -0.22, 0.22, 0.62]) {
               const wx2 = p.x + hx2 * ckL;
-              const rr = ckR2 * (0.86 + 0.28 * Math.cos((hx2 * Math.PI) / 2) * 0.45);
+              const tt = (hx2 + 1) / 2;
+              const rr = ckR2 * (0.82 + 0.72 * tt * (1 - tt)) + s * 0.014;
+              const bow = hx2 * s * 0.06;
               ctx.strokeStyle = TWN_IRON;
-              ctx.lineWidth = Math.max(1.5, s * 0.026);
+              ctx.lineWidth = Math.max(2, s * 0.05);
               ctx.beginPath();
-              ctx.ellipse(wx2, cy, s * 0.035, rr, 0, 0, Math.PI * 2);
+              ctx.moveTo(wx2 - bow * 0.2, cy + rr);
+              ctx.quadraticCurveTo(wx2 + bow, cy, wx2 - bow * 0.2, cy - rr);
               ctx.stroke();
-              ctx.strokeStyle = 'rgba(210, 218, 226, 0.3)';
-              ctx.lineWidth = Math.max(1, s * 0.009);
+              ctx.strokeStyle = 'rgba(210, 218, 226, 0.35)';
+              ctx.lineWidth = Math.max(1, s * 0.014);
               ctx.beginPath();
-              ctx.ellipse(wx2 - s * 0.008, cy, s * 0.03, rr * 0.96, 0, Math.PI * 0.9, Math.PI * 2.1);
+              ctx.moveTo(wx2 - bow * 0.2 - s * 0.017, cy + rr * 0.86);
+              ctx.quadraticCurveTo(wx2 + bow - s * 0.017, cy, wx2 - bow * 0.2 - s * 0.017, cy - rr * 0.86);
               ctx.stroke();
+              ctx.fillStyle = '#6e6a78';
+              ctx.beginPath();
+              ctx.ellipse(wx2 - bow * 0.2, cy - rr + s * 0.024, s * 0.011, s * 0.01, 0, 0, Math.PI * 2);
+              ctx.fill();
             }
             // THE HEAD: the tap end faces the dealt street side —
             // carved tally above the tap, because the keeper counts
@@ -42731,6 +42867,13 @@ export class Renderer {
             ctx.beginPath();
             ctx.ellipse(headX, cy, s * 0.075, ckR2 * 0.95, 0, 0, Math.PI * 2);
             ctx.fill();
+            // The chime hoop rings the head — at the END the ring
+            // truly faces the camera, so a ring is honest here.
+            ctx.strokeStyle = TWN_IRON;
+            ctx.lineWidth = Math.max(1.5, s * 0.03);
+            ctx.beginPath();
+            ctx.ellipse(headX, cy, s * 0.082, ckR2 * 0.99, 0, 0, Math.PI * 2);
+            ctx.stroke();
             ctx.strokeStyle = 'rgba(50, 36, 18, 0.45)';
             ctx.lineWidth = Math.max(1, s * 0.01);
             ctx.beginPath();
@@ -51313,17 +51456,26 @@ export class Renderer {
               ctx.beginPath();
               ctx.ellipse(p.x - s * 0.13, yB - s * 0.46, s * 0.13, s * 0.075, -0.4, 0, Math.PI * 2);
               ctx.fill();
-              // Iron hoops, dark with a lit top edge.
+              // Iron hoops: THE LYING-HOOP LAW — a hoop on a
+              // lying keg is a vertical band wrapping the belly,
+              // silhouette to silhouette, never a floating ring
+              // arc. Bowed a hair outboard with the head's own
+              // curvature, lit up the west edge.
               for (const u of [-0.17, 0.17]) {
+                const kx = p.x + u * s;
+                const rr = s * 0.29 * Math.sqrt(Math.max(0, 1 - (u / 0.37) * (u / 0.37))) + s * 0.008;
+                const bow = (u / 0.37) * s * 0.075;
                 ctx.strokeStyle = '#3f3a48';
-                ctx.lineWidth = Math.max(1.8, s * 0.045);
+                ctx.lineWidth = Math.max(1.8, s * 0.05);
                 ctx.beginPath();
-                ctx.ellipse(p.x + u * s, yB - s * 0.36, s * 0.31, s * 0.27, 0, -0.75, 0.75);
+                ctx.moveTo(kx - bow * 0.2, yB - s * 0.36 + rr);
+                ctx.quadraticCurveTo(kx + bow, yB - s * 0.36, kx - bow * 0.2, yB - s * 0.36 - rr);
                 ctx.stroke();
                 ctx.strokeStyle = '#6e6a78';
                 ctx.lineWidth = Math.max(1, s * 0.014);
                 ctx.beginPath();
-                ctx.ellipse(p.x + u * s - s * 0.012, yB - s * 0.36, s * 0.31, s * 0.27, 0, -0.7, -0.2);
+                ctx.moveTo(kx - bow * 0.2 - s * 0.014, yB - s * 0.36 + rr * 0.82);
+                ctx.quadraticCurveTo(kx + bow - s * 0.014, yB - s * 0.36, kx - bow * 0.2 - s * 0.014, yB - s * 0.36 - rr * 0.82);
                 ctx.stroke();
               }
               // The head disc facing camera-east, ringed.
