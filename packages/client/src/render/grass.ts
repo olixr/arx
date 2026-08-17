@@ -8,23 +8,35 @@ import { Tile, hashCoords, valueNoise } from '@arx/shared';
  * - BLOCKY: blades are tapered flat-top slabs (chisel-cut quads), never
  *   soft strokes — the same brutalist language as shapes.ts. Tall blades
  *   bend as two rigid segments, like a slab cracking at a knuckle.
- * - VARIED: a coverage noise field deals each tile a hand — bare dirt
- *   patches, lone strands, medium stands, or dense clumps rooted in a
- *   shared crown chip. Meadows breathe; nothing tiles.
+ * - THE COAT: the meadow is a CARPET, not a scatter. Two registers do
+ *   the work — a dense low NAP of squat near-turf chips that coats the
+ *   ground continuously (density riding the SAME lush field 907 the
+ *   baked turf stubble uses, so live and baked thicken in the same
+ *   reaches — one landform), and sparser accent STANDS above it that
+ *   read as individual grass. No grass tile is ever bald; variation is
+ *   density waves, never holes of flat paint.
+ * - VARIED: a coverage noise field deals each tile a hand — thin nap,
+ *   lone strands, medium stands, or dense clumps rooted in a shared
+ *   crown chip. Meadows breathe; nothing tiles. Seed-head stalks gather
+ *   in prairie drifts on their own slow field.
  * - ONE WIND: every blade, flower, and tree samples the same vector
  *   wind field. Gust fronts are CURVED (the front's phase is bent by a
  *   slow cross-wave) and a perpendicular meander makes swaths snake
  *   across the field — fluid motion without a fluid sim.
  * - SHIMMER: a long-wavelength luminance swell relights blades from a
  *   graded ramp — broad swaths of light rolling through the meadow.
- *   THE FLOOR LAW: grass never renders darker than the turf beneath
- *   it; light lifts from the ground tone, never digs holes in it.
+ *   THE FLOOR LAW (coat amendment): ACCENT blades never render darker
+ *   than the turf beneath them — a lone dark tick reads as a hole. The
+ *   nap's deepest row may sit a hair under the turf, but ONLY inside a
+ *   dense coat where it reads as carpet weave, never as a lone mark.
  * - INHABITED: tall grass y-sorts around entities (you walk THROUGH
  *   it), bodies part and flatten nearby blades, and a passage leaves a
  *   springy rustle wobble + leaf specks behind.
- * - CHEAP: per-tile blade geometry is generated once and cached; every
- *   frame batches all quads into a handful of Path2D color buckets, so
- *   thousands of blades cost ~20 canvas fills.
+ * - CHEAP: per-tile blade geometry is generated once and cached, and
+ *   THE CALM CANVAS bakes every undisturbed tile into an offscreen
+ *   canvas at wind cadence — a whole meadow of quads costs ONE
+ *   drawImage per frame, so the coat's density is effectively free.
+ *   Only tiles a body can reach rebuild live at frame rate.
  */
 
 // ------------------------------------------------------------------ wind
@@ -128,6 +140,17 @@ export interface Flower {
   phase: number;
 }
 
+/** A wild grain stalk: thin stem streaming in the wind, gold ear at the tip. */
+export interface SeedHead {
+  bx: number;
+  by: number;
+  h: number; // stalk height in tiles
+  size: number; // grain chip half-extent in tiles
+  lean: number; // static windswept lean
+  phase: number;
+  bin: number; // quantized phase → flutter-table index
+}
+
 export interface GrassTileGeom {
   /** Short blades — always drawn under entities. */
   under: Blade[];
@@ -137,6 +160,7 @@ export interface GrassTileGeom {
   /** Clump crowns: dark root chips anchoring dense tufts. */
   roots: Array<{ x: number; y: number; w: number }>;
   flowers: Flower[];
+  seeds: SeedHead[];
 }
 
 /** Live per-tile state layered over the immutable geometry. */
@@ -163,6 +187,7 @@ function makeBlade(
   tall: boolean,
   clumpAt: { x: number; y: number } | null,
   tileTone: number,
+  nap = false,
 ): Blade {
   const h = hashCoords(salt + i * 7, tx, ty);
   let bx: number;
@@ -177,34 +202,42 @@ function makeBlade(
     bx = tx + rand01(h, 2);
     by = ty + rand01(h, 12);
   }
-  const height = tall
-    ? 0.36 + rand01(h, 5) * 0.28
-    : 0.15 + rand01(h, 5) * 0.19;
+  const height = nap
+    ? 0.09 + rand01(h, 5) * 0.09
+    : tall
+      ? 0.36 + rand01(h, 5) * 0.28
+      : 0.15 + rand01(h, 5) * 0.19;
   const phase = rand01(h, 18);
   return {
     bx,
     by,
     h: height,
     // Chunky slabs, not strokes: a blade is a visible block of green.
-    w: 0.034 + rand01(h, 8) * 0.028 + (tall ? 0.012 : 0),
-    lean: (rand01(h, 15) - 0.42) * 0.1,
+    // Nap chips run squat and a touch wider — carpet weave, not ticks.
+    w: nap
+      ? 0.046 + rand01(h, 8) * 0.026
+      : 0.034 + rand01(h, 8) * 0.028 + (tall ? 0.012 : 0),
+    lean: (rand01(h, 15) - 0.42) * (nap ? 0.05 : 0.1),
     phase,
     bin: Math.min(31, Math.floor(phase * 32)),
     // Small jitter: just enough to dither ramp thresholds — big values
     // shred the light swaths into per-blade sparkle.
     lumJit: (rand01(h, 21) - 0.5) * 0.18,
     // Tone follows the tile's patch, drifting ±1 — meadow-scale color
-    // regions, not per-blade confetti.
-    tone: Math.max(0, Math.min(4, tileTone + (h % 3) - 1)),
+    // regions, not per-blade confetti. Nap deals its own three rows.
+    tone: nap ? NAP_ROW0 + (h % 3) : Math.max(0, Math.min(4, tileTone + (h % 3) - 1)),
     seg2: tall && height > 0.42,
   };
 }
 
 /**
- * Deterministic geometry for one grass tile. Coverage noise deals the
- * hand: bare / strands / stand / clump. Detail.Tuft forces a clump,
- * Detail.Flowers plants a bloom patch, and a low-frequency meadow noise
- * scatters lone flowers so they gather into natural drifts.
+ * Deterministic geometry for one grass tile. THE COAT lays a dense low
+ * nap on every tile (density riding the lush field), then coverage
+ * noise deals the accent hand above it: strands / stand / clump.
+ * Detail.Tuft forces a clump, Detail.Flowers plants a bloom patch, a
+ * low-frequency meadow noise scatters lone flowers so they gather into
+ * natural drifts, and a prairie field raises seed-head stalks in
+ * golden reaches.
  */
 export function generateGrassTile(
   tx: number,
@@ -213,7 +246,14 @@ export function generateGrassTile(
   detailId: number,
   snowMask = 0,
 ): GrassTileGeom {
-  const geom: GrassTileGeom = { under: [], north: [], south: [], roots: [], flowers: [] };
+  const geom: GrassTileGeom = {
+    under: [],
+    north: [],
+    south: [],
+    roots: [],
+    flowers: [],
+    seeds: [],
+  };
   const tall = tileId === Tile.GrassTall;
   // THE BURIED MARGIN: a snow neighbor's baked contour overhangs up to
   // half a tile into this one — blades rooted under the blanket must
@@ -232,30 +272,51 @@ export function generateGrassTile(
   // Tone patches at meadow scale — neighbouring tiles share a palette.
   const tileTone = Math.min(4, Math.floor(valueNoise(905, tx * 0.05, ty * 0.05) * 5));
 
+  // THE LUSH FIELD: the same 907 landform the baked turf stubble rides —
+  // the live nap and the baked flecks thicken in the SAME reaches, so
+  // near and far zoom read one meadow.
+  const lush = valueNoise(907, tx * 0.04, ty * 0.04);
+
   if (tall) {
-    // A tall tile is a thicket: dense long slabs + a little underbrush.
+    // A tall tile is a thicket: dense long slabs + nap underbrush so
+    // the thicket floor never shows bald turf between the stems.
     const h = hashCoords(151, tx, ty);
-    const count = 9 + (h % 5);
+    const count = 13 + (h % 5);
     for (let i = 0; i < count; i++) {
       const b = makeBlade(tx, ty, 157, i, true, null, tileTone);
       if (buried?.(b.bx, b.by)) continue;
       (b.by < ty + 0.5 ? geom.north : geom.south).push(b);
     }
-    for (let i = 0; i < 2; i++) {
-      const b = makeBlade(tx, ty, 163, i, false, null, tileTone);
+    for (let i = 0; i < 4; i++) {
+      const b = makeBlade(tx, ty, 163, i, false, null, tileTone, true);
       if (!buried?.(b.bx, b.by)) geom.under.push(b);
     }
     return geom;
   }
 
-  // Short grass, dealt as TUFTLETS: cluster seeds land anywhere in the
-  // tile (edges included, so groups straddle borders), each growing 1-3
-  // blades — and the budget jitters tile to tile on top of the meadow
-  // coverage. Uniform per-tile counts are what make a lattice read.
+  // THE COAT: every short-grass tile wears a nap of squat near-turf
+  // chips — the carpet that makes the ground read COATED instead of
+  // dotted. Count rides the lush field (thin worn reaches, thick lush
+  // ones) but never drops to zero: bald tiles are what made the old
+  // meadow read as nodules on flat paint.
+  const hn = hashCoords(661, tx, ty);
+  const napN = Math.max(2, Math.round((3 + (hn % 3)) * (0.5 + 0.9 * lush)));
+  for (let i = 0; i < napN; i++) {
+    const b = makeBlade(tx, ty, 673 + i * 17, i, false, null, tileTone, true);
+    // Floor-law gate: the shade row only lives inside a dense coat.
+    if (napN < 4 && b.tone === NAP_ROW0) b.tone = NAP_ROW0 + 1;
+    if (!buried?.(b.bx, b.by)) geom.under.push(b);
+  }
+
+  // Accent stands above the nap, dealt as TUFTLETS: cluster seeds land
+  // anywhere in the tile (edges included, so groups straddle borders),
+  // each growing 1-3 blades — and the budget jitters tile to tile on
+  // top of the meadow coverage. Uniform per-tile counts are what make
+  // a lattice read.
   const clump = detailId === DETAIL_TUFT || cov > 0.74;
-  if (!clump) {
+  {
     const hc = hashCoords(167, tx, ty);
-    const budget = cov < 0.32 ? hc % 2 : cov < 0.56 ? 1 + (hc % 3) : 2 + (hc % 4);
+    const budget = cov < 0.32 ? 1 + (hc % 2) : cov < 0.56 ? 2 + (hc % 2) : 3 + (hc % 3);
     let placed = 0;
     let seed = 0;
     while (placed < budget) {
@@ -269,7 +330,8 @@ export function generateGrassTile(
       placed += size;
       seed++;
     }
-  } else {
+  }
+  if (clump) {
     const h = hashCoords(179, tx, ty);
     const cx = tx + 0.1 + rand01(h, 3) * 0.8;
     const cy = ty + 0.1 + rand01(h, 13) * 0.8;
@@ -285,6 +347,38 @@ export function generateGrassTile(
     // A satellite strand beside the clump.
     const sat = makeBlade(tx, ty, 191, 0, false, null, tileTone);
     if (!buried?.(sat.bx, sat.by)) geom.under.push(sat);
+  }
+
+  // THE GOLDEN REACH: wild grain stalks gather in prairie drifts on
+  // their own slow field — inside a drift roughly half the tiles raise
+  // one or two stalks (gaps keep the drift organic), everywhere else
+  // the meadow stays pure green.
+  const prairie = valueNoise(911, tx * 0.045, ty * 0.045);
+  if (prairie > 0.64) {
+    const hs = hashCoords(919, tx, ty);
+    if (hs % 100 < 52) {
+      const n = 1 + (hs % 2);
+      const scx = tx + rand01(hs, 3);
+      const scy = ty + rand01(hs, 13);
+      for (let i = 0; i < n; i++) {
+        const h2 = hashCoords(929 + i * 7, tx, ty);
+        const ang = rand01(h2, 3) * 6.283;
+        const rad = rand01(h2, 13) * 0.34;
+        const bx = scx + Math.cos(ang) * rad;
+        const by = scy + Math.sin(ang) * rad * 0.8;
+        if (buried?.(bx, by)) continue;
+        const phase = rand01(h2, 17);
+        geom.seeds.push({
+          bx,
+          by,
+          h: 0.38 + rand01(h2, 6) * 0.16,
+          size: 0.036 + rand01(h2, 9) * 0.016,
+          lean: (rand01(h2, 15) - 0.5) * 0.14,
+          phase,
+          bin: Math.min(31, Math.floor(phase * 32)),
+        });
+      }
+    }
   }
 
   // Flowers grow as PATCHES: a seed point lands anywhere (edges too),
@@ -312,7 +406,7 @@ export function generateGrassTile(
         by: pcy + Math.sin(ang) * rad * 0.8,
         h: 0.2 + rand01(h, 6) * 0.12,
         size: 0.05 + rand01(h, 9) * 0.025,
-        pal: h % 3,
+        pal: h % FLOWER_PALS.length,
         phase: rand01(h, 17),
       });
     }
@@ -323,17 +417,31 @@ export function generateGrassTile(
 // ------------------------------------------------------------- palette
 
 /**
- * Base tones, deep → light. THE FLOOR LAW: the DARKEST possible blade
- * is still a visible step lighter than the LIGHTEST ground green
- * (GRASS_TONES peak at #608e45). The ramp only ever LIFTS from these —
- * there is no downward shade mix at all, because a blade that fades
- * into the turf color reads as transparent and the effect is lost.
+ * Base tones, deep → light, in two registers.
+ *
+ * ACCENT rows (0-4) keep THE FLOOR LAW: the darkest accent blade is
+ * still a step lighter than the lightest ground green (GRASS_TONES
+ * peak at #608e45), and the ramp only ever LIFTS — a blade that fades
+ * into the turf color reads as transparent. The rows sit CLOSER to
+ * the turf than the old set (#6f9e4e+): when every blade popped a
+ * full step above the ground, each one read as a separate nodule —
+ * the rolling light swaths are what should carry the drama.
+ *
+ * NAP rows (5-7) are the coat's weave, hugging the turf from a hair
+ * below to a step above. The shade row (#547e3b) is the COAT
+ * AMENDMENT to the floor law: inside a dense carpet a slightly-sunk
+ * chip is texture, not a hole — generation gates it out of thin coats.
  */
-const TONE_BASE = ['#6f9e4e', '#74a452', '#79a956', '#7eae5a', '#83b35e'];
+const TONE_BASE = ['#659245', '#6a9749', '#6f9c4d', '#74a251', '#79a755'];
+const NAP_BASE = ['#547e3b', '#5e8a43', '#679349'];
+const NAP_ROW0 = TONE_BASE.length;
+const ALL_TONES = [...TONE_BASE, ...NAP_BASE];
 const LIT_TARGET = '#d9e37f'; // sun catching a bent blade
+const NAP_LIT = '#c4d375'; // the carpet's softer glow under the same swell
 const ROOT_COLOR = '#699a49';
-const FLOWER_PALS = ['#e88a9e', '#f0d264', '#efe3c2'];
+const FLOWER_PALS = ['#e88a9e', '#f0d264', '#efe3c2', '#9fa8dd'];
 const FLOWER_CORE = '#f7efd8';
+const SEED_GOLD = '#c8b671'; // ripe grain ears in the golden reaches
 
 function mixHex(a: string, b: string, t: number): string {
   const pa = parseInt(a.slice(1), 16);
@@ -352,26 +460,29 @@ function mixHex(a: string, b: string, t: number): string {
  * passing gust GLIDE across the field — three coarse steps popped.
  */
 const LIGHTS = 7;
-const BLADE_FILLS: string[] = TONE_BASE.flatMap((tone) =>
+const BLADE_FILLS: string[] = ALL_TONES.flatMap((tone, row) =>
   Array.from({ length: LIGHTS }, (_, i) => {
-    // Lift-only ramp: the trough IS the base tone (already above the
-    // turf), and the swell adds a modest glow on top. Never downward.
+    // Lift-only ramp: the trough IS the base tone, and the swell adds
+    // a modest glow on top. Never downward. The nap lifts a touch less
+    // toward a softer target — the carpet glows, the accents flash.
     const t = i / (LIGHTS - 1);
-    return mixHex(tone, LIT_TARGET, 0.22 * t);
+    return row >= NAP_ROW0 ? mixHex(tone, NAP_LIT, 0.17 * t) : mixHex(tone, LIT_TARGET, 0.22 * t);
   }),
 );
 
-// Bucket layout: blade ramp first, then roots, petals, cores, stems.
-const B_ROOT = TONE_BASE.length * LIGHTS;
+// Bucket layout: blade ramp first, then roots, petals, cores, seeds, stems.
+const B_ROOT = ALL_TONES.length * LIGHTS;
 const B_PETAL0 = B_ROOT + 1;
-const B_CORE = B_PETAL0 + 3;
-const B_STEM = B_CORE + 1;
+const B_CORE = B_PETAL0 + FLOWER_PALS.length;
+const B_SEED = B_CORE + 1;
+const B_STEM = B_SEED + 1;
 const BUCKETS = B_STEM + 1;
 const BUCKET_FILLS: string[] = [
   ...BLADE_FILLS,
   ROOT_COLOR,
   ...FLOWER_PALS,
   FLOWER_CORE,
+  SEED_GOLD,
   TONE_BASE[0]!, // stems: the deepest blade green — never below the turf
 ];
 
@@ -435,8 +546,19 @@ const UNDER_PAD = 2;
 /** A disturber's blade-influence box half-extent, tiles (matches the
  *  disturberIndex footprint). */
 const DISTURB_REACH = 2.3;
-/** Flower buckets in paint order — hoisted (flush runs per frame). */
-const FLOWER_BUCKETS = [B_STEM, B_PETAL0, B_PETAL0 + 1, B_PETAL0 + 2, B_CORE] as const;
+/** Ear chip scale from tip down: pointed tip, swollen middle, eased foot. */
+const SEED_EAR_TAPER = [0.55, 0.9, 1.0, 0.75] as const;
+
+/** Flower/seed buckets in paint order — hoisted (flush runs per frame). */
+const FLOWER_BUCKETS = [
+  B_STEM,
+  B_PETAL0,
+  B_PETAL0 + 1,
+  B_PETAL0 + 2,
+  B_PETAL0 + 3,
+  B_CORE,
+  B_SEED,
+] as const;
 
 export class GrassSystem {
   private readonly tiles = new Map<number, GrassTileState>();
@@ -454,6 +576,9 @@ export class GrassSystem {
     this.disturberIndex.clear();
     this.lastPos.clear();
     this.live.length = 0;
+    // The calm canvas holds the OLD world's meadow — drop it too, or
+    // a stale coat blits for a beat after the crossing.
+    this.underCache = null;
   }
   private readonly lastPos = new Map<number | 'own', { x: number; y: number; tx: number; ty: number }>();
   private live: LiveDisturber[] = [];
@@ -478,26 +603,33 @@ export class GrassSystem {
   /** Disturbers near the tile currently being built. */
   private near: LiveDisturber[] = [];
   /**
-   * THE CALM CACHE. Re-tessellating every visible blade every frame
+   * THE CALM CANVAS. Re-tessellating every visible blade every frame
    * cost ~2ms steady at 0.85× zoom (and its allocation churn drew GC
-   * pauses of up to 15ms into this very pass). But a calm meadow only
-   * MOVES at wind rate — so the under-layer bakes all undisturbed
-   * tiles into a persistent set of bucket paths at UNDER_CACHE_MS
+   * pauses of up to 15ms into this very pass) — and even the Path2D
+   * cache that fixed THAT still re-FILLED every bucket every frame,
+   * which is what kept the meadow's density starved. A calm meadow
+   * only MOVES at wind rate — so the under-layer now RENDERS all
+   * undisturbed tiles into an offscreen canvas at UNDER_CACHE_MS
    * cadence (~15Hz wind sampling, the tree-cadence law) and each frame
-   * just re-FILLS them translated by the camera delta. Only tiles a
-   * body (or its predicted path — a swept box over the cache window)
+   * blits it with ONE drawImage translated by the camera delta. The
+   * coat's 3-4× blade density rides on this: quads are only paid at
+   * bake time. Grass shadows bake into a second canvas the same way
+   * (opaque at bake, alpha at blit — overlaps inside the meadow's own
+   * shade merge instead of stacking, the shadow-layer law). Only tiles
+   * a body (or its predicted path — a swept box over the cache window)
    * can reach, plus fresh wakes, are excluded and rebuilt live per
    * frame. A disturber that escapes its predicted box forces an
    * immediate rebake, so displacement NEVER lags a frame.
    */
   private underCache: {
-    paths: Path2D[];
-    flags: Uint8Array;
-    shadow: Path2D | null;
-    /** Screen position of world (0,0) at bake — fills translate by the delta. */
+    /** Screen position of world (0,0) at bake — blits translate by the delta. */
     ox: number;
     oy: number;
+    /** Screen (CSS px) origin of the canvas's top-left at bake. */
+    canvasX0: number;
+    canvasY0: number;
     scale: number;
+    dpr: number;
     bakedAtMs: number;
     /** Padded tile bounds the bake covered. */
     minTx: number;
@@ -509,7 +641,17 @@ export class GrassSystem {
     shKx: number;
     shKy: number;
     shOn: boolean;
+    shFill: string;
+    /** Whether the shadow canvas holds any content this bake. */
+    hasShadow: boolean;
   } | null = null;
+  /** The calm canvas + its shadow twin, reused across bakes. */
+  private underCanvas: HTMLCanvasElement | null = null;
+  private underCtx: CanvasRenderingContext2D | null = null;
+  private shadowCanvas: HTMLCanvasElement | null = null;
+  private shadowCtx: CanvasRenderingContext2D | null = null;
+  /** The shadow fill the NEXT bake will use (set via setShadow). */
+  private shFill = '#000';
   /** This frame's cached-fill translation (drawUnder → flushShadows). */
   private cacheDx = 0;
   private cacheDy = 0;
@@ -645,36 +787,50 @@ export class GrassSystem {
     }
   }
 
-  /** Arm (or disarm) this frame's blade shadow projection. */
-  setShadow(kx: number, ky: number, on: boolean): void {
+  /**
+   * Arm (or disarm) this frame's blade shadow projection. `fill` is
+   * the shade color the calm canvas will bake its casts in — pass the
+   * same color flushShadows will be given, or the cached shade lags a
+   * bake behind at a sun/moon flip.
+   */
+  setShadow(kx: number, ky: number, on: boolean, fill = this.shFill): void {
     this.shKx = kx;
     this.shKy = ky;
     this.shOn = on;
+    this.shFill = fill;
     if (!on) this.shadowPath = null;
   }
 
   /**
-   * Fill the frame's accumulated blade shadows — called by the
+   * Composite the frame's accumulated blade shadows — called by the
    * renderer inside the ground-shadow prepass so grass shade lands on
-   * the same batched layer as every other caster.
+   * the same batched layer as every other caster. The calm meadow's
+   * casts arrive as one canvas blit (baked opaque, drawn at `alpha` —
+   * the meadow's own overlaps merged at bake); live tiles' casts fill
+   * as a path exactly as before.
    */
   flushShadows(ctx: CanvasRenderingContext2D, fill: string, alpha: number): void {
-    const cached = this.underCache?.shadow ?? null;
+    const c = this.underCache;
+    const cached = c !== null && c.hasShadow ? this.shadowCanvas : null;
     if (!this.shadowPath && !cached) return;
-    ctx.fillStyle = fill;
     ctx.globalAlpha = alpha;
     // The calm meadow's casts ride the cache, translated exactly like
     // its blades (cacheDx/Dy were computed by this frame's drawUnder).
-    if (cached) {
-      const moved = this.cacheDx !== 0 || this.cacheDy !== 0;
-      if (moved) {
-        ctx.save();
-        ctx.translate(this.cacheDx, this.cacheDy);
-      }
-      ctx.fill(cached);
-      if (moved) ctx.restore();
+    if (cached && c) {
+      const m = ctx.getTransform();
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(
+        cached,
+        Math.round(m.a * (c.canvasX0 + this.cacheDx) + m.e),
+        Math.round(m.d * (c.canvasY0 + this.cacheDy) + m.f),
+      );
+      ctx.restore();
     }
-    if (this.shadowPath) ctx.fill(this.shadowPath);
+    if (this.shadowPath) {
+      ctx.fillStyle = fill;
+      ctx.fill(this.shadowPath);
+    }
     ctx.globalAlpha = 1;
     this.shadowPath = null;
   }
@@ -910,6 +1066,85 @@ export class GrassSystem {
     core.rect(hx - pr * 0.45, hy - pr * 0.45, pr * 0.9, pr * 0.9);
   }
 
+  /**
+   * A wild grain stalk: thin stem streaming further than any blade
+   * (long lever, light head), three gold chips laid up the tip like a
+   * ripening ear. Sparse by construction — the prairie field deals
+   * them — so each one reads as a find, not a crop.
+   */
+  private buildSeed(
+    sd: SeedHead,
+    st: GrassTileState,
+    wind: WindSample,
+    fr: TileFrame,
+    s: number,
+    cast = false,
+  ): void {
+    let bob = (wind.bx + wind.by * 0.35) * sd.h * 0.85 + sd.lean;
+    bob += this.flutter[sd.bin]! * (0.9 + Math.abs(wind.s));
+    let hMul = 1;
+    for (const d of this.near) {
+      const dx = sd.bx - d.x;
+      const dy = sd.by - d.y;
+      const fall = disturbFalloff(Math.hypot(dx, dy), d.r + 0.6);
+      if (fall <= 0) continue;
+      bob += (dx > 0 ? 1 : -1) * fall * 0.28;
+      hMul *= 1 - 0.4 * fall;
+    }
+    if (st.wakeAt > 0) {
+      const e = 1 - (this.nowMs - st.wakeAt) / 700;
+      if (e > 0) bob += this.wakeWobble[sd.bin]! * e * e * 1.4;
+    }
+
+    const px = fr.x0 + (sd.bx - st.tx) * fr.sx;
+    const py = fr.y0 + (sd.by - st.ty) * fr.sy;
+    const hpx = sd.h * hMul * s;
+    if (hpx < 3) return;
+    const hx = px + bob * s;
+    const hy = py - hpx;
+    const paths = this.paths as Path2D[];
+
+    // The cast: stem line + a chip where the ear lands (bin parity —
+    // same half-the-herd law the blades follow).
+    if (cast && this.shOn && hpx >= 6 && (sd.bin & 1) === 0) {
+      const sp = (this.shadowPath ??= new Path2D());
+      const ssw = Math.max(0.8, 0.013 * s);
+      const sx = hx + this.shKx * hpx;
+      const sy = py + this.shKy * hpx;
+      sp.moveTo(px - ssw, py);
+      sp.lineTo(px + ssw, py);
+      sp.lineTo(sx + ssw, sy);
+      sp.lineTo(sx - ssw, sy);
+    }
+
+    // Stem: a thin slab streaming to the ear.
+    const stem = paths[B_STEM]!;
+    this.mark(B_STEM);
+    const sw = Math.max(0.8, 0.013 * s);
+    stem.moveTo(px - sw, py);
+    stem.lineTo(px + sw, py);
+    stem.lineTo(hx + sw * 0.6, hy);
+    stem.lineTo(hx - sw * 0.6, hy);
+
+    // The ear: four gold chips stepping up the last stretch of stalk,
+    // alternating tight off its axis and TAPERING to the tip — an ear
+    // silhouette, not a stack of squares (the first cut's fat equal
+    // chips merged into popcorn blobs at gameplay zoom).
+    const pr = sd.size * s;
+    const gold = paths[B_SEED]!;
+    this.mark(B_SEED);
+    const dxs = hx - px;
+    const dys = hy - py;
+    for (let i = 0; i < 4; i++) {
+      const t = 1 - i * 0.13;
+      const k = SEED_EAR_TAPER[i]! * pr;
+      const side = (i & 1) === 0 ? 1 : -1;
+      const cx = px + dxs * t + side * pr * 0.4;
+      const cy = py + dys * t;
+      gold.rect(cx - k * 0.7, cy - k * 0.55, k * 1.4, k * 1.1);
+    }
+  }
+
   private buildRoots(st: GrassTileState, f: TileFrame, s: number): void {
     if (st.geom.roots.length === 0) return;
     const path = (this.paths as Path2D[])[B_ROOT]!;
@@ -971,20 +1206,21 @@ export class GrassSystem {
       for (const b of st.geom.north) this.buildBlade(b, st, wind, f, s, true, false);
       for (const b of st.geom.south) this.buildBlade(b, st, wind, f, s, true, false);
     }
-    if (st.geom.flowers.length > 0) flowerTiles.push(st);
+    if (st.geom.flowers.length > 0 || st.geom.seeds.length > 0) flowerTiles.push(st);
   }
 
-  /** Flowers are their own layer: heads always read above the lawn. */
+  /** Flowers and seed-heads are their own layer: heads read above the lawn. */
   private buildFlowerTiles(flowerTiles: GrassTileState[], wts: WTS, s: number): void {
     for (const st of flowerTiles) {
       const wind = windAtInto(WIND_SCRATCH, st.tx + 0.5, st.ty + 0.5, this.tSec);
       const f = this.tileFrame(st.tx, st.ty, wts);
       this.gatherNear(st.tx, st.ty);
       for (const fl of st.geom.flowers) this.buildFlower(fl, st, wind, f, s, true);
+      for (const sd of st.geom.seeds) this.buildSeed(sd, st, wind, f, s, true);
     }
   }
 
-  /** Rebake the calm cache (see underCache). */
+  /** Rebake the calm canvas (see underCache). */
   private bakeUnder(
     ground: Sampler,
     detail: DetailFn,
@@ -993,6 +1229,7 @@ export class GrassSystem {
     s: number,
     ox: number,
     oy: number,
+    dpr: number,
   ): void {
     const minTx = bounds.minTx - UNDER_PAD;
     const maxTx = bounds.maxTx + UNDER_PAD;
@@ -1044,13 +1281,58 @@ export class GrassSystem {
       }
     }
     this.buildFlowerTiles(flowerTiles, wts, s);
+
+    // Render the bake into the calm canvas: the geometry was built in
+    // screen space (CSS px), so the canvas ctx maps that space onto a
+    // dpr-resolution backing anchored at the padded bounds' top-left.
+    // Margin covers blade lean + height past a tile's own box.
+    const pTL = wts(minTx, minTy);
+    const pBR = wts(maxTx + 1, maxTy + 1);
+    const margin = 1.5 * s;
+    const canvasX0 = Math.floor(Math.min(pTL.x, pBR.x) - margin);
+    const canvasY0 = Math.floor(Math.min(pTL.y, pBR.y) - margin);
+    const cw = Math.ceil(Math.abs(pBR.x - pTL.x) + margin * 2);
+    const chh = Math.ceil(Math.abs(pBR.y - pTL.y) + margin * 2);
+    const bw = Math.ceil(cw * dpr);
+    const bh = Math.ceil(chh * dpr);
+    if (!this.underCanvas) {
+      this.underCanvas = document.createElement('canvas');
+      this.underCtx = this.underCanvas.getContext('2d');
+      this.shadowCanvas = document.createElement('canvas');
+      this.shadowCtx = this.shadowCanvas.getContext('2d');
+    }
+    const uc = this.underCanvas;
+    const scv = this.shadowCanvas!;
+    if (uc.width !== bw || uc.height !== bh) {
+      uc.width = bw;
+      uc.height = bh;
+      scv.width = bw;
+      scv.height = bh;
+    }
+    const uctx = this.underCtx!;
+    uctx.setTransform(dpr, 0, 0, dpr, -canvasX0 * dpr, -canvasY0 * dpr);
+    uctx.clearRect(canvasX0, canvasY0, cw, chh);
+    this.fillBuckets(uctx, paths, this.touchedFlag);
+    const hasShadow = this.shadowPath !== null;
+    if (hasShadow || this.underCache?.hasShadow) {
+      const sctx = this.shadowCtx!;
+      sctx.setTransform(dpr, 0, 0, dpr, -canvasX0 * dpr, -canvasY0 * dpr);
+      sctx.clearRect(canvasX0, canvasY0, cw, chh);
+      if (this.shadowPath) {
+        // Opaque at bake: the meadow's own overlapping casts merge into
+        // one density here; flushShadows applies the layer alpha.
+        sctx.fillStyle = this.shFill;
+        sctx.fill(this.shadowPath);
+      }
+    }
+
     this.underCache = {
-      paths,
-      flags: this.touchedFlag,
-      shadow: this.shadowPath,
       ox,
       oy,
+      canvasX0,
+      canvasY0,
       scale: s,
+      dpr,
       bakedAtMs: this.nowMs,
       minTx,
       maxTx,
@@ -1060,6 +1342,8 @@ export class GrassSystem {
       shKx: this.shKx,
       shKy: this.shKy,
       shOn: this.shOn,
+      shFill: this.shFill,
+      hasShadow,
     };
     this.paths = prevPaths;
     this.touchedFlag = prevFlags;
@@ -1068,11 +1352,12 @@ export class GrassSystem {
   }
 
   /**
-   * The under-layer: every short blade, clump, and flower in bounds —
-   * drawn beneath entities. Tall thickets contribute only their sparse
-   * underbrush here; their mass y-sorts via collectTall. Calm tiles
-   * come from the cadence-baked cache (one translated fill per bucket);
-   * only disturbed/waking tiles rebuild per frame.
+   * The under-layer: every short blade, nap chip, clump, flower, and
+   * seed-head in bounds — drawn beneath entities. Tall thickets
+   * contribute only their nap underbrush here; their mass y-sorts via
+   * collectTall. Calm tiles come from the cadence-baked calm canvas
+   * (ONE drawImage, however dense the coat); only disturbed/waking
+   * tiles rebuild per frame.
    */
   drawUnder(
     ctx: CanvasRenderingContext2D,
@@ -1083,14 +1368,21 @@ export class GrassSystem {
     s: number,
   ): void {
     const o = wts(0, 0);
+    // The ctx's device-pixel ratio, read off its transform (a pure
+    // dpr scale in both the renderer and the landing scene) — the calm
+    // canvas bakes at this resolution so the blit is 1:1 device px.
+    const m = ctx.getTransform();
+    const dpr = m.a || 1;
     let c = this.underCache;
     let needBake =
       !c ||
       c.scale !== s ||
+      c.dpr !== dpr ||
       this.nowMs - c.bakedAtMs >= UNDER_CACHE_MS ||
       Math.abs(c.shKx - this.shKx) > 0.004 ||
       Math.abs(c.shKy - this.shKy) > 0.004 ||
       c.shOn !== this.shOn ||
+      c.shFill !== this.shFill ||
       bounds.minTx < c.minTx ||
       bounds.maxTx > c.maxTx ||
       bounds.minTy < c.minTy ||
@@ -1119,21 +1411,25 @@ export class GrassSystem {
       }
     }
     if (needBake) {
-      this.bakeUnder(ground, detail, bounds, wts, s, o.x, o.y);
+      this.bakeUnder(ground, detail, bounds, wts, s, o.x, o.y, dpr);
       c = this.underCache;
     }
     const cache = c!;
-    // 1. The calm meadow: cached buckets, translated by the camera
-    // delta (both origins are pixel-snapped, so the delta is integer).
+    // 1. The calm meadow: one canvas blit, translated by the camera
+    // delta (both origins are pixel-snapped, so the delta is integer)
+    // and landed on whole device pixels so the coat never softens.
     this.cacheDx = o.x - cache.ox;
     this.cacheDy = o.y - cache.oy;
-    const moved = this.cacheDx !== 0 || this.cacheDy !== 0;
-    if (moved) {
+    if (this.underCanvas) {
       ctx.save();
-      ctx.translate(this.cacheDx, this.cacheDy);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(
+        this.underCanvas,
+        Math.round(m.a * (cache.canvasX0 + this.cacheDx) + m.e),
+        Math.round(m.d * (cache.canvasY0 + this.cacheDy) + m.f),
+      );
+      ctx.restore();
     }
-    this.fillBuckets(ctx, cache.paths, cache.flags);
-    if (moved) ctx.restore();
     // 2. The living edge: excluded tiles rebuild at frame rate.
     this.ensurePaths();
     const flowerTiles: GrassTileState[] = [];
@@ -1224,6 +1520,7 @@ export class GrassSystem {
         for (const b of st.geom.north) this.buildBlade(b, st, wind, f, s);
         for (const b of st.geom.south) this.buildBlade(b, st, wind, f, s);
         for (const fl of st.geom.flowers) this.buildFlower(fl, st, wind, f, s);
+        for (const sd of st.geom.seeds) this.buildSeed(sd, st, wind, f, s);
       }
     }
     this.flush(ctx);

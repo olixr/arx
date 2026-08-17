@@ -4581,6 +4581,7 @@ export class Renderer {
       this.sky.shadowX * this.sky.shadowLen,
       this.sky.shadowY * this.sky.shadowLen * this.camera.yScale,
       this.sky.shadowAlpha >= 0.02,
+      this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN,
     );
     this.grass.drawUnder(this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
 

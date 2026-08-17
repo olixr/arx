@@ -47,21 +47,46 @@ test('every blade roots inside (or fanning just past) its tile, heights sane', (
     for (const b of [...g.under, ...g.north, ...g.south]) {
       assert.ok(b.bx > tx - 0.25 && b.bx < tx + 1.25, `bx ${b.bx} strays from tile ${tx}`);
       assert.ok(b.by > ty - 0.25 && b.by < ty + 1.25, `by ${b.by} strays from tile ${ty}`);
-      assert.ok(b.h > 0.1 && b.h < 0.75, `height ${b.h} out of band`);
+      assert.ok(b.h > 0.08 && b.h < 0.75, `height ${b.h} out of band`);
     }
   }
 });
 
-test('coverage varies: bare patches, strands, and dense clumps all occur', () => {
-  let bare = 0;
+test('THE COAT: no short-grass tile is ever bald — the carpet has a floor', () => {
+  for (let i = 0; i < 400; i++) {
+    const n = generateGrassTile(i * 5, (i * 13) % 500, Tile.Grass, 0).under.length;
+    assert.ok(n >= 3, `tile dealt only ${n} blades — bald paint reads as nodules`);
+  }
+});
+
+test('coverage varies: thin worn reaches and dense lush stands both occur', () => {
+  let thin = 0;
   let dense = 0;
   for (let i = 0; i < 400; i++) {
     const n = generateGrassTile(i * 5, (i * 13) % 500, Tile.Grass, 0).under.length;
-    if (n <= 1) bare++;
-    if (n >= 6) dense++;
+    if (n <= 5) thin++;
+    if (n >= 10) dense++;
   }
-  assert.ok(bare > 10, `only ${bare} bare tiles — meadow reads uniform`);
-  assert.ok(dense > 10, `only ${dense} dense tiles — no clusters`);
+  assert.ok(thin > 30, `only ${thin} thin tiles — the coat reads uniform`);
+  assert.ok(dense > 30, `only ${dense} dense tiles — no lush waves`);
+});
+
+test('seed-heads gather in prairie drifts — present, sparse, and rooted in-tile', () => {
+  let seedTiles = 0;
+  for (let i = 0; i < 400; i++) {
+    const tx = i * 5;
+    const ty = (i * 13) % 500;
+    const g = generateGrassTile(tx, ty, Tile.Grass, 0);
+    if (g.seeds.length > 0) seedTiles++;
+    assert.ok(g.seeds.length <= 2, 'a tile is a drift member, never a crop row');
+    for (const sd of g.seeds) {
+      assert.ok(sd.bx > tx - 0.4 && sd.bx < tx + 1.4, `seed bx ${sd.bx} strays from tile ${tx}`);
+      assert.ok(sd.by > ty - 0.4 && sd.by < ty + 1.4, `seed by ${sd.by} strays from tile ${ty}`);
+      assert.ok(sd.h > 0.3 && sd.h < 0.55, `stalk height ${sd.h} out of band`);
+    }
+  }
+  assert.ok(seedTiles > 20, `only ${seedTiles} seed tiles — the golden reaches are missing`);
+  assert.ok(seedTiles < 200, `${seedTiles} seed tiles — gold everywhere is not a drift`);
 });
 
 test('tall thickets split cleanly at the midline for y-sorting', () => {
