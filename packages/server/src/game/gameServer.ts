@@ -1806,6 +1806,13 @@ interface PlayerComp {
   carryStyle: CarryStyle;
   /** Off-fist grip preference — a dual wielder sets each hand its own. */
   carryOff: CarryStyle;
+  /**
+   * THE CHOSEN HAND (looting v2): does the walk-over vacuum serve
+   * this body? Persisted per character; default true. False means
+   * every take is chosen by hand — the vacuum skips this player the
+   * same way it skips a sneak.
+   */
+  autoLoot: boolean;
   /** DB character id; negative for ephemeral guests. */
   characterId: number;
   accountId: number | null;
@@ -3948,6 +3955,7 @@ export class GameServer {
       character.id > 0
         ? await this.accounts.loadCarryStyles(character.id)
         : { main: 'normal' as CarryStyle, off: 'normal' as CarryStyle };
+    const autoLoot = character.id > 0 ? await this.accounts.loadLootPref(character.id) : true;
     this.players.set(eid, {
       // The comp knows its own entity (the buffs push reads riding
       // status pages by eid — the one back-reference, stamped once).
@@ -3957,6 +3965,7 @@ export class GameServer {
       look: character.id > 0 ? await this.accounts.loadLook(character.id) : null,
       carryStyle: grips.main,
       carryOff: grips.off,
+      autoLoot,
       characterId: character.id,
       accountId,
       token,
@@ -4160,6 +4169,9 @@ export class GameServer {
       havens: this.havenWire(),
       anchors: this.anchorWire(),
       waypoint: player.waypoint ?? undefined,
+      // THE CHOSEN HAND: the walk-over preference rides in with the
+      // welcome so the settings chip shows the persisted truth.
+      lootAuto: player.autoLoot,
       // THE WORLDS APART: the plane the body wakes on — the client
       // sets its whole world law from this before the first chunk.
       plane: this.planeWireOf(this.positions.must(eid).plane),
@@ -7599,8 +7611,9 @@ export class GameServer {
     comp: Omit<DropComp, 'item' | 'qty'>,
   ): EntityId {
     let merged: EntityId | null = null;
+    const now = Date.now();
     this.forEachDropNear(plane, x, y, DROP_MERGE_RADIUS, (eid, drop, pos) => {
-      if (!canMergeDrop(drop, item, comp.roll, comp.ownerEid, comp.xpOnPickup, comp.stolen)) {
+      if (!canMergeDrop(drop, { ...comp, item }, now)) {
         return;
       }
       const dx = pos.x - x;
@@ -19674,6 +19687,18 @@ export class GameServer {
     this.broadcastMetaUpdate(eid);
   }
 
+  /**
+   * THE CHOSEN HAND: walk-over looting is a preference, not a fate.
+   * No echo — the client toggles optimistically and the welcome
+   * carries the persisted truth at every login.
+   */
+  setLootPref(eid: EntityId, auto: boolean): void {
+    const player = this.players.get(eid);
+    if (!player || player.autoLoot === auto) return;
+    player.autoLoot = auto;
+    if (player.characterId > 0) this.accounts.saveLootPref(player.characterId, auto);
+  }
+
   /** Re-send an entity's meta to every session that can see it. */
   private broadcastMetaUpdate(eid: EntityId): void {
     const meta = this.buildMeta(eid);
@@ -29153,6 +29178,84 @@ export class GameServer {
     this.ecs.destroy(dropEid);
   }
 
+  /**
+   * ONE SWEEP, ONE ANSWER (looting v2): take everything within reach
+   * on one message. Each pile passes the explicit-pickup gates —
+   * others' LIVE claims are skipped in silence (a sweep never nags
+   * about spoils it wasn't owed), keys clip to the ring, pickup-XP
+   * grants once, partial fits leave their remainder — but the answer
+   * is coalesced: ONE inventory push and at most ONE pack-full
+   * refusal, however many piles wouldn't fit. Piles are taken
+   * best-first by rarity so a tight pack spends its last slots on
+   * the payoff, never the bones. Like the explicit pickup, the sweep
+   * deliberately ignores the anti-vacuum beat: intent beats it.
+   */
+  takeAllDrops(eid: EntityId): void {
+    const player = this.players.get(eid);
+    if (!player || player.session === null) return;
+    const ppos = this.positions.get(eid);
+    if (!ppos) return;
+    const now = Date.now();
+    // Census before taking: destroying entities edits the chunk sets
+    // the walk is standing in.
+    const found: Array<{ dropEid: EntityId; drop: DropComp }> = [];
+    this.forEachDropNear(ppos.plane, ppos.x, ppos.y, 2.6, (dropEid, drop, pos) => {
+      const dx = ppos.x - pos.x;
+      const dy = ppos.y - pos.y;
+      if (dx * dx + dy * dy > 2.6 * 2.6) return;
+      if (drop.ownerEid !== null && drop.ownerEid !== eid && drop.ownerUntil > now) return;
+      found.push({ dropEid, drop });
+    });
+    if (found.length === 0) return;
+    found.sort(
+      (a, b) =>
+        rarityIndex(b.drop.roll?.rar ?? 'common') - rarityIndex(a.drop.roll?.rar ?? 'common'),
+    );
+    let took = false;
+    let refused = false;
+    for (const { dropEid, drop } of found) {
+      if (itemDef(drop.item)?.dungeonKey) {
+        // THE KEY RING: keys never contend for pack space — the ring
+        // has no cap, so a key find survives even a full-pack sweep.
+        for (let n = 0; n < Math.max(1, drop.qty); n++) this.addKeyToRing(player, drop.roll);
+        const spec = dungeonSpecFromRoll(drop.roll);
+        player.session.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `The key to ${spec.name} (${spec.sigil}) clips onto your key ring.`,
+        });
+        this.removeFromChunks(dropEid);
+        this.ecs.destroy(dropEid);
+        continue;
+      }
+      if (!hasSpaceFor(player.inventory, drop.item, drop.stolen)) {
+        refused = true;
+        continue;
+      }
+      const got = addItem(player.inventory, drop.item, drop.qty, drop.roll, drop.stolen);
+      if (got === 0) {
+        refused = true;
+        continue;
+      }
+      took = true;
+      if (drop.xpOnPickup) {
+        this.grantXp(eid, player, drop.xpOnPickup.skill, drop.xpOnPickup.xp);
+        drop.xpOnPickup = undefined;
+      }
+      if (got < drop.qty) {
+        drop.qty -= got;
+        refused = true;
+        continue;
+      }
+      this.removeFromChunks(dropEid);
+      this.ecs.destroy(dropEid);
+    }
+    if (took) player.session.sendJson({ t: 'inv', slots: player.inventory });
+    if (refused) {
+      this.speak(player, 'Pack full', 'Your pack is full — the rest stays where it fell.');
+    }
+  }
+
   private tickDrops(now: number): void {
     // The despawn sweep still reads every drop (one time compare each);
     // the walk-over vacuum below inverts to per-PLAYER chunk scans —
@@ -29167,8 +29270,10 @@ export class GameServer {
       if (player.session === null) continue;
       // Sneaking steps lightly — nothing sticks to careful feet. This
       // is also the deliberate way to stand IN a pile and pick from
-      // it without the walk-over vacuum grabbing the lot.
-      if (player.sneaking) continue;
+      // it without the walk-over vacuum grabbing the lot. And THE
+      // CHOSEN HAND: a player who waved the vacuum off entirely is
+      // choosing every take by hand — same skip, standing preference.
+      if (player.sneaking || !player.autoLoot) continue;
       const ppos = this.positions.get(playerEid);
       if (!ppos) continue;
       this.forEachDropNear(ppos.plane, ppos.x, ppos.y, 0.55, (eid, drop, pos) => {

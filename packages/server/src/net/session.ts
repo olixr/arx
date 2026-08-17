@@ -479,6 +479,18 @@ export class Session {
         this.game.pickupDrop(this.playerEid, msg.eid);
         return;
       }
+      case 'takeall': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.takeAllDrops(this.playerEid);
+        return;
+      }
+      case 'lootpref': {
+        if (this.playerEid === null) return;
+        if (!this.miscBucket.consume()) return;
+        this.game.setLootPref(this.playerEid, msg.auto);
+        return;
+      }
       case 'technique': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;

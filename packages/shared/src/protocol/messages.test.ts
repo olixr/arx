@@ -45,6 +45,20 @@ test('pickup targets one drop entity and rejects bad eids', () => {
   assert.equal(parseC2S(JSON.stringify({ t: 'pickup' })), null);
 });
 
+test('THE GILDED HAND: take-all and the loot preference parse honestly', () => {
+  assert.deepEqual(parseC2S(JSON.stringify({ t: 'takeall' })), { t: 'takeall' });
+  assert.deepEqual(parseC2S(JSON.stringify({ t: 'lootpref', auto: false })), {
+    t: 'lootpref',
+    auto: false,
+  });
+  assert.deepEqual(parseC2S(JSON.stringify({ t: 'lootpref', auto: true })), {
+    t: 'lootpref',
+    auto: true,
+  });
+  assert.equal(parseC2S(JSON.stringify({ t: 'lootpref' })), null);
+  assert.equal(parseC2S(JSON.stringify({ t: 'lootpref', auto: 'yes' })), null);
+});
+
 test('dialogue intents parse; choice index stays inside the plate row', () => {
   assert.deepEqual(parseC2S(JSON.stringify({ t: 'dlgadv' })), { t: 'dlgadv' });
   assert.deepEqual(parseC2S(JSON.stringify({ t: 'dlgend' })), { t: 'dlgend' });

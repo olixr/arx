@@ -1776,6 +1776,26 @@ export class AccountStore {
   }
 
   /**
+   * THE CHOSEN HAND: does the walk-over vacuum serve this character?
+   * Stored inverted (auto_loot_off) so a fresh row reads true — the
+   * founding behavior — and returns true for guests/missing rows.
+   */
+  async loadLootPref(characterId: number): Promise<boolean> {
+    const row = await this.db.get<{ auto_loot_off: number | null }>(
+      'SELECT auto_loot_off FROM characters WHERE id = ?',
+      [characterId],
+    );
+    return !row?.auto_loot_off;
+  }
+
+  saveLootPref(characterId: number, auto: boolean): void {
+    this.db.fire('UPDATE characters SET auto_loot_off = ? WHERE id = ?', [
+      auto ? 0 : 1,
+      characterId,
+    ]);
+  }
+
+  /**
    * THE SECOND HAND: two seated techniques per character, kept under
    * the reserved keys 'slotq' (the Q seat) and 'slot' (the R seat —
    * THE FREE HAND's original key, so no row rewrites on the cutover).

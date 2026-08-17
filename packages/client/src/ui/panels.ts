@@ -593,9 +593,18 @@ export class Panels {
         over.classList.add('drop-hover');
       }
     }
-    // Over open world the ghost arms itself: release here drops the
-    // item on the ground at your feet.
-    d.ghost!.classList.toggle('drop-armed', this.overWorld(e));
+    // THE OPEN GROUND: hovering the ground tray lights a lay-down.
+    const ground = this.groundUnder(e);
+    if (ground) ground.classList.add('drop-hover');
+    // Over open world (or the ground tray) the ghost arms itself:
+    // release here drops the item on the ground at your feet.
+    d.ghost!.classList.toggle('drop-armed', this.overWorld(e) || ground !== null);
+  }
+
+  /** The inventory's ground tray under the pointer, if it stands. */
+  private groundUnder(e: PointerEvent): HTMLElement | null {
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    return (el?.closest('.char-ground') as HTMLElement | null) ?? null;
   }
 
   /** True when the pointer floats over the game canvas, not any UI. */
@@ -627,6 +636,10 @@ export class Panels {
       // A drag onto a slot is deliberate — same-kind stacks pour
       // together (THE MEASURED STACK's hand-merge) instead of swapping.
       if (to !== d.from) this.onInvMove(d.from, to, true);
+    } else if (this.groundUnder(e)) {
+      // THE OPEN GROUND: laid on the ground tray — it goes down at
+      // your feet and folds into the pile by the merge law.
+      this.onDropToWorld(d.from);
     } else if (this.overWorld(e)) {
       // Dragged out of the pack onto the world: let it go.
       this.onDropToWorld(d.from);

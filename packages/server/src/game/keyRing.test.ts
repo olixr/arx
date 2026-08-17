@@ -71,6 +71,7 @@ function slate(inventory: InvSlot[], drop: Drop | null, ring: Array<{ id: number
   const player = {
     characterId: 7,
     sneaking: false,
+    autoLoot: true,
     inventory,
     keyRing: ring,
     keyRingDirty: false,

@@ -1080,6 +1080,12 @@ const MIGRATIONS: string[] = [
   // clear stamp and erased with it: a fresh decision, a dissolve, and
   // healPoiCleared all take the signature down with the carcass.
   `ALTER TABLE world_pois ADD COLUMN IF NOT EXISTS cleared_by TEXT;`,
+  // v41: THE CHOSEN HAND (docs/looting-v2-plan.md) — walk-over
+  // looting becomes a per-character preference. Stored inverted
+  // (auto_loot_off, 0/1 INTEGER per convention) so DEFAULT 0 keeps
+  // every existing character on the founding behavior: the vacuum
+  // serves unless this hand deliberately waved it off.
+  `ALTER TABLE characters ADD COLUMN IF NOT EXISTS auto_loot_off INTEGER NOT NULL DEFAULT 0;`,
 ];
 
 /**

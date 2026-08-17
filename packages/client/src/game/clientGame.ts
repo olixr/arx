@@ -815,6 +815,12 @@ export class ClientGame {
   private autoPath: Vec2[] | null = null;
   /** Drop entity to take the moment the auto-walk brings it in reach. */
   private pendingPickup: EntityId | null = null;
+  /**
+   * THE CHOSEN HAND (looting v2): whether the walk-over vacuum serves
+   * this character. Mirrors the server's persisted truth (welcome
+   * carries it; setLootPref writes it optimistically).
+   */
+  lootAuto = true;
   /** Own hit-flash timer. */
   ownHurtUntil = 0;
   ownHpPct = 255;
@@ -1649,6 +1655,9 @@ export class ClientGame {
           }
         }
         this.waypoint = msg.waypoint ?? null;
+        // THE CHOSEN HAND: the persisted walk-over preference (an
+        // older server sends nothing — the founding behavior).
+        this.lootAuto = msg.lootAuto ?? true;
         // THE CHAMPION'S MARK: the standing banners ride the welcome —
         // they arrive settled (no fly-in replays a stranger's victory).
         this.trophies.clear();
@@ -3379,6 +3388,26 @@ export class ClientGame {
   /** Take a specific ground drop (server validates reach and claim). */
   pickup(eid: EntityId): void {
     this.conn?.send({ t: 'pickup', eid });
+  }
+
+  /**
+   * ONE SWEEP, ONE ANSWER: take everything within reach on one
+   * message — the server runs the sweep and coalesces the refusals.
+   */
+  takeAll(): void {
+    this.conn?.send({ t: 'takeall' });
+  }
+
+  /** THE CHOSEN HAND: set the walk-over preference (persisted). */
+  setLootPref(auto: boolean): void {
+    if (this.lootAuto === auto) return;
+    this.lootAuto = auto;
+    this.conn?.send({ t: 'lootpref', auto });
+  }
+
+  /** Whether a walk-and-take errand (ONWARD, far click) is in flight. */
+  get hasPickupErrand(): boolean {
+    return this.pendingPickup !== null;
   }
 
   /**

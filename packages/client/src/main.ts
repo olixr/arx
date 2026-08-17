@@ -28,6 +28,8 @@ import { CraftHud } from './ui/craftHud.js';
 import { BuildTray } from './ui/buildTray.js';
 import { UiNav } from './ui/padUI.js';
 import { LootPanel } from './ui/lootPanel.js';
+import { GroundList } from './ui/groundList.js';
+import { registerSheetProvider, type SheetVerb } from './ui/kit/contextSheet.js';
 import { forgetAccount, loadRoster, rememberAccount, type RememberedAccount } from './ui/loginRoster.js';
 import { chosenPlate, renderRosterShelf } from './ui/loginShelf.js';
 import { SocialPanel } from './ui/socialPanel.js';
@@ -360,6 +362,8 @@ renderer.waterFxFull = localStorage.getItem('arx.waterfx') !== 'basic';
   foot.appendChild(btn);
 }
 
+/** THE CHOSEN HAND's settings box — frame-synced to the server truth. */
+let walkoverBox: HTMLInputElement | null = null;
 {
   const rows = document.getElementById('display-rows')!;
   const toggle = (label: string, initial: boolean, apply: (on: boolean) => void): void => {
@@ -393,6 +397,17 @@ renderer.waterFxFull = localStorage.getItem('arx.waterfx') !== 'basic';
     localStorage.setItem('arx.uimotion', on ? 'on' : 'off');
     document.body.classList.toggle('no-ui-motion', !on);
   });
+
+  // THE CHOSEN HAND: walk-over looting is a preference, not a fate.
+  // Server-persisted per character (the welcome carries the truth —
+  // the frame loop keeps this box honest to it); its twin chip lives
+  // in the loot tray's head, right where the itch is felt.
+  toggle('Walk-over looting', true, (on) => game.setLootPref(on));
+  walkoverBox = rows.lastElementChild!.querySelector('input');
+  if (walkoverBox) {
+    walkoverBox.dataset.tipsub =
+      'Off = running over loot picks up nothing; you choose every take from the ground list.';
+  }
 
   // The player's hand on the one ruler: Snug / Standard / Grand
   // multiply the automatic fit. Applies live, no restart.
@@ -1908,7 +1923,50 @@ if (new URLSearchParams(location.search).has('fx')) {
 }
 
 // The ground manager: choose from a pile instead of vacuuming it.
-const lootPanel = new LootPanel(game);
+// THE HERO LANDING: opening in pad mode lands the ring on Take all.
+const lootPanel = new LootPanel(game, {
+  requestFocus: (key) => {
+    if (input.padPrimary()) nav.focusNavKey(key);
+  },
+});
+
+// THE OPEN GROUND: the inventory's fourth tray — the same ground
+// ledger as the quick tray, standing only while loot is in reach.
+// Rows drag INTO the pack (the take is the drop); pack slots drag
+// onto the tray (the lay-down). Fed each frame below.
+const groundPane = new GroundList(
+  document.getElementById('ground-pane')!,
+  'gnd',
+  {
+    pickup: (eid) => game.pickup(eid),
+    takeAll: () => game.takeAll(),
+  },
+  { dragToPack: true },
+);
+const groundTray = document.querySelector<HTMLElement>('.char-ground')!;
+
+// THE GILDED WHEEL: loot rows fan their verbs on Ⓨ through the shared
+// context sheet — take, sweep, the walk-over toggle, and the door.
+{
+  const lootVerbs = (el: HTMLElement): SheetVerb[] => {
+    const key = el.dataset.navkey ?? '';
+    const rest = key.slice(key.indexOf(':') + 1);
+    const verbs: SheetVerb[] = [];
+    const eid = Number(rest);
+    if (Number.isFinite(eid) && rest !== 'all' && rest !== 'onward' && rest !== 'pref') {
+      verbs.push({ label: 'Take this', act: () => game.pickup(eid) });
+    }
+    verbs.push({ label: 'Take everything', act: () => game.takeAll() });
+    verbs.push({
+      label: game.lootAuto ? 'Still your feet' : 'Loose your feet',
+      act: () => game.setLootPref(!game.lootAuto),
+    });
+    verbs.push({ label: 'Walk away', act: () => lootPanel.close(), danger: true });
+    return verbs;
+  };
+  registerSheetProvider('loot', lootVerbs);
+  registerSheetProvider('gnd', lootVerbs);
+}
 
 // The Riftgate's key chooser — opens when the gate answers an interact.
 const riftgate = new RiftgatePanel(game);
@@ -3396,6 +3454,28 @@ function frame(now: number): void {
     stationPanels.enforceAnchor(pos.x, pos.y);
     // The loot panel is the same kind of conversation, with the pile.
     lootPanel.update(pos.x, pos.y);
+    // THE OPEN GROUND: while the inventory stands, the ground pane
+    // owns the loot conversation — the quick tray yields to it.
+    if (panels.invOpen) {
+      if (lootPanel.isOpen) lootPanel.close();
+      const near = game.nearbyLoot(2.4);
+      const stood = !groundTray.classList.contains('hidden');
+      if (near.length > 0) {
+        if (!stood) {
+          groundPane.reset();
+          groundTray.classList.remove('hidden');
+        }
+        groundPane.update(near);
+      } else if (stood) {
+        groundTray.classList.add('hidden');
+      }
+    } else if (!groundTray.classList.contains('hidden')) {
+      groundTray.classList.add('hidden');
+    }
+    // THE CHOSEN HAND: the settings box mirrors the persisted truth.
+    if (walkoverBox && walkoverBox.checked !== game.lootAuto) {
+      walkoverBox.checked = game.lootAuto;
+    }
     // The spatial-audio listener rides the rendered body — every
     // world-born sound measures its distance and pan against this.
     const ear = game.predictor.renderPos();

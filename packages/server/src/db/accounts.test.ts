@@ -331,6 +331,21 @@ test('per-hand grip preferences persist independently', async () => {
   assert.deepEqual(await store.loadCarryStyles(id), { main: 'rogue', off: 'normal' });
 });
 
+test('THE CHOSEN HAND: the walk-over loot preference persists', async () => {
+  const store = await makeStore();
+  const reg = await store.register('vex', 'hunter22', 'Vexley', SPAWN);
+  assert.ok(reg.ok);
+  const id = reg.ok ? reg.character.id : -1;
+  // A fresh character keeps the founding behavior: the vacuum serves.
+  assert.equal(await store.loadLootPref(id), true);
+  store.saveLootPref(id, false);
+  assert.equal(await store.loadLootPref(id), false);
+  store.saveLootPref(id, true);
+  assert.equal(await store.loadLootPref(id), true);
+  // A missing row (guest) reads as the default, never a throw.
+  assert.equal(await store.loadLootPref(999_999), true);
+});
+
 test('the stalls persist: pet rows round-trip with state discipline', async () => {
   const store = await makeStore();
   const reg = await store.register('keeper', 'hunter22', 'Keeper', SPAWN);

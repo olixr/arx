@@ -337,6 +337,18 @@ export class UiNav {
   }
 
   /**
+   * THE HERO LANDING: a panel names its own default seat (the loot
+   * tray lands the ring on Take all). Lands only if the control
+   * stands; a missing key simply leaves the ring where it was.
+   */
+  focusNavKey(key: string): void {
+    const el = document.querySelector<HTMLElement>(
+      `[data-navkey="${CSS.escape(key)}"]:not(.hidden)`,
+    );
+    if (el) this.setFocus(el);
+  }
+
+  /**
    * One directional step: a focused slider consumes ◀ ▶ as value
    * nudges (the audio menu's volumes, any future range row); everything
    * else moves the focus ring spatially.

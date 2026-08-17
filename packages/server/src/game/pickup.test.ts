@@ -16,6 +16,7 @@ import type { InvSlot } from '@arx/shared';
 type Fn = (...a: unknown[]) => unknown;
 const proto = GameServer.prototype as unknown as {
   pickupDrop: Fn;
+  takeAllDrops: Fn;
   tickDrops: Fn;
   forEachDropNear: Fn;
   speak: Fn;
@@ -32,27 +33,37 @@ interface Drop {
   xpOnPickup?: { skill: string; xp: number };
 }
 
-function slate(inventory: InvSlot[], drop: Drop, opts: { sneaking?: boolean } = {}) {
+function sweepSlate(
+  inventory: InvSlot[],
+  dropList: Drop[],
+  opts: { sneaking?: boolean; autoLoot?: boolean } = {},
+) {
   const sent: Array<Record<string, unknown>> = [];
   const destroyed: number[] = [];
   const xp: Array<{ skill: string; amount: number }> = [];
-  const positions = new Map([
-    [1, { plane: 'surface', x: 5.5, y: 5.5 }],
-    [9, { plane: 'surface', x: 5.5, y: 5.5 }],
-  ]);
+  const positions = new Map([[1, { plane: 'surface', x: 5.5, y: 5.5 }]]);
+  const drops = new Map<number, Drop>();
+  const chunkSet = new Set<number>();
+  dropList.forEach((d, i) => {
+    const eid = 9 + i;
+    drops.set(eid, d);
+    positions.set(eid, { plane: 'surface', x: 5.5, y: 5.5 });
+    chunkSet.add(eid);
+  });
   const player = {
     characterId: 7,
     sneaking: opts.sneaking ?? false,
+    autoLoot: opts.autoLoot ?? true,
     inventory,
     session: { sendJson: (m: Record<string, unknown>) => sent.push(m) },
   };
   return {
     speak: proto.speak,
     players: new Map([[1, player]]),
-    drops: new Map([[9, drop]]),
+    drops,
     // The vacuum reads the chunk index now (THE INDEX SERVES THE PILE).
     forEachDropNear: proto.forEachDropNear,
-    chunks: new Map([['surface|0,0', new Set([9])]]),
+    chunks: new Map([['surface|0,0', chunkSet]]),
     graves: new Map(),
     deathMarks: new Map(),
     positions: {
@@ -68,6 +79,10 @@ function slate(inventory: InvSlot[], drop: Drop, opts: { sneaking?: boolean } = 
     destroyed,
     xp,
   };
+}
+
+function slate(inventory: InvSlot[], drop: Drop, opts: { sneaking?: boolean } = {}) {
+  return sweepSlate(inventory, [drop], opts);
 }
 
 function packWithFreeSlots(free: number): InvSlot[] {
@@ -125,4 +140,73 @@ test('walk-over vacuum clears a pile that fully fits', () => {
   const s = slate(packWithFreeSlots(10), pile(10));
   proto.tickDrops.call(s, Date.now());
   assert.deepEqual(s.destroyed, [9]);
+});
+
+test('sneaking feet trigger no vacuum at all', () => {
+  const s = slate(packWithFreeSlots(10), pile(10), { sneaking: true });
+  proto.tickDrops.call(s, Date.now());
+  assert.deepEqual(s.destroyed, [], 'a sneak stands in the pile untouched');
+  assert.equal(countItem(s.players.get(1)!.inventory, 'bronze_axe'), 18);
+});
+
+test('THE CHOSEN HAND: auto-loot off means the vacuum never serves', () => {
+  const s = sweepSlate(packWithFreeSlots(10), [pile(10)], { autoLoot: false });
+  proto.tickDrops.call(s, Date.now());
+  assert.deepEqual(s.destroyed, [], 'the pile lies where it fell');
+  assert.equal(countItem(s.players.get(1)!.inventory, 'bronze_axe'), 18);
+});
+
+test('ONE SWEEP: take-all clears every reachable pile with one inventory push', () => {
+  const s = sweepSlate(packWithFreeSlots(10), [pile(2), pile(3), pile(1)]);
+  proto.takeAllDrops.call(s, 1);
+  assert.equal(countItem(s.players.get(1)!.inventory, 'bronze_axe'), 24, 'all six axes taken');
+  assert.deepEqual([...s.destroyed].sort((a, b) => a - b), [9, 10, 11], 'every pile entity destroyed');
+  assert.equal(s.sent.filter((m) => m['t'] === 'inv').length, 1, 'ONE inventory push');
+  assert.equal(s.sent.filter((m) => m['t'] === 'notice').length, 0, 'no refusal when all fits');
+});
+
+test('ONE ANSWER: however many piles refuse, the sweep speaks pack-full once', () => {
+  const s = sweepSlate(packWithFreeSlots(1), [pile(1), pile(1), pile(1)]);
+  proto.takeAllDrops.call(s, 1);
+  assert.equal(countItem(s.players.get(1)!.inventory, 'bronze_axe'), 28, 'the one slot filled');
+  assert.equal(s.destroyed.length, 1, 'one pile taken, two remain');
+  const notices = s.sent.filter((m) => m['t'] === 'notice');
+  assert.equal(notices.length, 1, 'exactly one coalesced refusal');
+  assert.ok(String(notices[0]!['text']).includes('stays where it fell'));
+  assert.equal(s.sent.filter((m) => m['t'] === 'inv').length, 1);
+});
+
+test('the sweep spends a tight pack on the payoff first (rarity order)', () => {
+  const s = sweepSlate(packWithFreeSlots(1), [
+    pile(1),
+    pile(1, { roll: { rar: 'rare', seed: 41 } }),
+  ]);
+  proto.takeAllDrops.call(s, 1);
+  assert.deepEqual(s.destroyed, [10], 'the rare pile was taken');
+  const kept = s.players.get(1)!.inventory.find((slot) => (slot?.roll as { rar?: string } | undefined)?.rar === 'rare');
+  assert.ok(kept, 'the rare instance is in the pack');
+  assert.equal(s.drops.get(9)!.qty, 1, 'the common pile still lies there');
+});
+
+test("the sweep skips another hand's live claim in silence", () => {
+  const now = Date.now();
+  const s = sweepSlate(packWithFreeSlots(10), [
+    pile(2, { ownerEid: 4, ownerUntil: now + 30_000 }),
+    pile(3),
+  ]);
+  proto.takeAllDrops.call(s, 1);
+  assert.deepEqual(s.destroyed, [10], 'only the free pile was taken');
+  assert.ok(
+    !s.sent.some((m) => m['t'] === 'notice' && String(m['text']).includes('belongs to another')),
+    'a sweep never nags about spoils it was not owed',
+  );
+});
+
+test('take-all grants pickup XP exactly once per pile', () => {
+  const s = sweepSlate(packWithFreeSlots(10), [
+    pile(1, { xpOnPickup: { skill: 'farming', xp: 4 } }),
+    pile(1, { xpOnPickup: { skill: 'farming', xp: 4 } }),
+  ]);
+  proto.takeAllDrops.call(s, 1);
+  assert.equal(s.xp.length, 2, 'each pile pays its own xp once');
 });

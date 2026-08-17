@@ -600,6 +600,29 @@ export interface C2SCarryStyle {
   hand?: GripHand;
 }
 
+/**
+ * THE CHOSEN HAND (looting v2): set whether the walk-over vacuum
+ * serves this character. Persisted per character; the server gates
+ * its pickup loop on it. Additive JSON — an old server drops the
+ * message at its parse door and keeps vacuuming, the founding
+ * behavior.
+ */
+export interface C2SLootPref {
+  t: 'lootpref';
+  auto: boolean;
+}
+
+/**
+ * ONE SWEEP, ONE ANSWER (looting v2): take every unclaimed drop
+ * within reach in one message — the server runs the whole sweep with
+ * the explicit-pickup gates and answers with ONE inventory push and
+ * at most one refusal, replacing the old client-side loop of N
+ * pickup messages.
+ */
+export interface C2STakeAll {
+  t: 'takeall';
+}
+
 /** Ask for the full social snapshot (friends + pending requests). */
 export interface C2SSocial {
   t: 'social';
@@ -786,6 +809,8 @@ export type C2SMessage =
   | C2SCalling
   | C2SSetLook
   | C2SCarryStyle
+  | C2SLootPref
+  | C2STakeAll
   | C2SUseKey
   | C2SKeyDrop
   | C2SKeyLabel
@@ -849,6 +874,12 @@ export interface S2CWelcome {
   anchors?: number[][];
   /** The character's stored active waypoint, if one is set. */
   waypoint?: { x: number; y: number; plane?: string };
+  /**
+   * THE CHOSEN HAND (looting v2): whether the walk-over vacuum serves
+   * this character. Absent (an older server) reads as true — the
+   * founding behavior.
+   */
+  lootAuto?: boolean;
   /**
    * THE WORLDS APART: the plane the character wakes on. Absent only
    * from a pre-planes server; the client then assumes the surface.
@@ -2635,6 +2666,13 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (msg.style !== 'normal' && msg.style !== 'rogue') return null;
       if (msg.hand !== undefined && msg.hand !== 'main' && msg.hand !== 'off') return null;
       return { t: 'carrystyle', style: msg.style, hand: msg.hand };
+    }
+    case 'lootpref': {
+      if (typeof msg.auto !== 'boolean') return null;
+      return { t: 'lootpref', auto: msg.auto };
+    }
+    case 'takeall': {
+      return { t: 'takeall' };
     }
     case 'petname': {
       // Slot bounds are THREE STALLS; the name is only length-gated

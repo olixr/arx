@@ -13,6 +13,8 @@ export const DROP_MERGE_RADIUS = 1.05;
 export interface DropLike {
   item: string;
   ownerEid: EntityId | null;
+  /** When the owner claim lapses (epoch ms); 0 = never claimed. */
+  ownerUntil: number;
   xpOnPickup?: { skill: SkillId; xp: number };
   roll?: ItemRoll;
   /** The theft facet survives the ground (Phase 5). */
@@ -62,22 +64,23 @@ export function spillInventory(slots: InvSlot[]): SpilledSlot[] {
 /**
  * May a landing drop fold into this existing pile? Only true twins
  * merge: same item, same instance roll (two rolled swords are two
- * swords), same owner claim (merging would otherwise transfer or
- * launder loot locks), same provenance (a stolen loaf never hides in
- * an honest pile). XP-bearing drops (laid eggs) never merge — each
- * egg is its own find and its own reward.
+ * swords), same provenance (a stolen loaf never hides in an honest
+ * pile). XP-bearing drops (laid eggs) never merge — each egg is its
+ * own find and its own reward. Owner claims split piles while they
+ * are LIVE (merging would otherwise transfer or launder loot locks) —
+ * but THE PATIENT PILE (looting v2): once BOTH claims have lapsed a
+ * lock has no force left to launder, and a battlefield's leftovers
+ * tidy themselves into one pile instead of wearing every kill's
+ * paperwork forever.
  */
-export function canMergeDrop(
-  existing: DropLike,
-  item: string,
-  roll: ItemRoll | undefined,
-  ownerEid: EntityId | null,
-  xpOnPickup: DropLike['xpOnPickup'],
-  stolen?: boolean,
-): boolean {
-  if (existing.item !== item) return false;
-  if (existing.xpOnPickup || xpOnPickup) return false;
-  if (existing.ownerEid !== ownerEid) return false;
-  if (!existing.stolen !== !stolen) return false;
-  return sameRoll(existing.roll, roll);
+export function canMergeDrop(existing: DropLike, incoming: DropLike, now: number): boolean {
+  if (existing.item !== incoming.item) return false;
+  if (existing.xpOnPickup || incoming.xpOnPickup) return false;
+  if (!existing.stolen !== !incoming.stolen) return false;
+  if (existing.ownerEid !== incoming.ownerEid) {
+    const existingLive = existing.ownerEid !== null && existing.ownerUntil > now;
+    const incomingLive = incoming.ownerEid !== null && incoming.ownerUntil > now;
+    if (existingLive || incomingLive) return false;
+  }
+  return sameRoll(existing.roll, incoming.roll);
 }

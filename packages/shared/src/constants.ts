@@ -221,6 +221,13 @@
 // wave-one roster rides bits 16-21, the count-model stack nibble
 // bits 22-25, and 26-31 stay free — this widening is meant to be the
 // last the status wire ever needs.
+// THE GILDED HAND (looting v2) — still v34, recorded on purpose:
+// C2SLootPref + C2STakeAll and the optional S2CWelcome.lootAuto are
+// additive JSON. An old server drops the new asks at its parse door
+// (the vacuum keeps running, take-all falls back to the client's
+// per-pile pickups) and an old client simply never sends them —
+// plainer answers to deliberate asks, not a wrong world; every gate
+// stays server-side either way.
 export const PROTOCOL_VERSION = 34;
 
 /** The most souls one party can hold. */

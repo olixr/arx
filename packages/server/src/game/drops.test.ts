@@ -9,41 +9,63 @@ import {
   type DropLike,
 } from './drops.js';
 
+const NOW = 1_000_000;
+
 const bones = (over: Partial<DropLike> = {}): DropLike => ({
   item: 'bones',
   ownerEid: null,
+  ownerUntil: 0,
   ...over,
 });
 
 test('twin drops merge: same item, no rolls, both unowned', () => {
-  assert.equal(canMergeDrop(bones(), 'bones', undefined, null, undefined), true);
+  assert.equal(canMergeDrop(bones(), bones(), NOW), true);
 });
 
 test('different items never merge', () => {
-  assert.equal(canMergeDrop(bones(), 'feather', undefined, null, undefined), false);
+  assert.equal(canMergeDrop(bones(), bones({ item: 'feather' }), NOW), false);
 });
 
-test('kill loot merges only for the same claim holder', () => {
-  const mine = bones({ ownerEid: 7 });
-  assert.equal(canMergeDrop(mine, 'bones', undefined, 7, undefined), true);
-  assert.equal(canMergeDrop(mine, 'bones', undefined, 9, undefined), false);
-  // A free bag never folds into a claimed pile (nor the reverse) —
-  // merging across claims would transfer or launder the loot lock.
-  assert.equal(canMergeDrop(mine, 'bones', undefined, null, undefined), false);
-  assert.equal(canMergeDrop(bones(), 'bones', undefined, 7, undefined), false);
+test('kill loot merges only for the same LIVE claim holder', () => {
+  const mine = bones({ ownerEid: 7, ownerUntil: NOW + 30_000 });
+  assert.equal(canMergeDrop(mine, bones({ ownerEid: 7, ownerUntil: NOW + 30_000 }), NOW), true);
+  assert.equal(canMergeDrop(mine, bones({ ownerEid: 9, ownerUntil: NOW + 30_000 }), NOW), false);
+  // A free bag never folds into a LIVE-claimed pile (nor the reverse) —
+  // merging across live claims would transfer or launder the loot lock.
+  assert.equal(canMergeDrop(mine, bones(), NOW), false);
+  assert.equal(canMergeDrop(bones(), mine, NOW), false);
+});
+
+test('THE PATIENT PILE: lapsed claims fold across owners', () => {
+  const yesterdays = bones({ ownerEid: 7, ownerUntil: NOW - 1 });
+  // Two expired claims from different killers tidy into one pile.
+  assert.equal(canMergeDrop(yesterdays, bones({ ownerEid: 9, ownerUntil: NOW - 1 }), NOW), true);
+  // A free bag joins a lapsed pile, and the reverse.
+  assert.equal(canMergeDrop(yesterdays, bones(), NOW), true);
+  assert.equal(canMergeDrop(bones(), yesterdays, NOW), true);
+  // But one LIVE claim on either side still splits — the lock holds
+  // until its last millisecond.
+  assert.equal(
+    canMergeDrop(yesterdays, bones({ ownerEid: 9, ownerUntil: NOW + 1 }), NOW),
+    false,
+  );
+  assert.equal(
+    canMergeDrop(bones({ ownerEid: 9, ownerUntil: NOW + 1 }), yesterdays, NOW),
+    false,
+  );
 });
 
 test('rolled instances merge only when the roll is identical', () => {
   const sword = bones({ item: 'bronze_sword', roll: { rar: 'rare', seed: 41 } });
   assert.equal(
-    canMergeDrop(sword, 'bronze_sword', { rar: 'rare', seed: 41 }, null, undefined),
+    canMergeDrop(sword, bones({ item: 'bronze_sword', roll: { rar: 'rare', seed: 41 } }), NOW),
     true,
   );
   assert.equal(
-    canMergeDrop(sword, 'bronze_sword', { rar: 'rare', seed: 42 }, null, undefined),
+    canMergeDrop(sword, bones({ item: 'bronze_sword', roll: { rar: 'rare', seed: 42 } }), NOW),
     false,
   );
-  assert.equal(canMergeDrop(sword, 'bronze_sword', undefined, null, undefined), false);
+  assert.equal(canMergeDrop(sword, bones({ item: 'bronze_sword' }), NOW), false);
 });
 
 test('an enchant on the roll keeps instances apart', () => {
@@ -52,16 +74,14 @@ test('an enchant on the roll keeps instances apart', () => {
     roll: { rar: 'common', seed: 0, ench: 'kindled_edge' },
   });
   assert.equal(
-    canMergeDrop(kindled, 'bronze_sword', { rar: 'common', seed: 0 }, null, undefined),
+    canMergeDrop(kindled, bones({ item: 'bronze_sword', roll: { rar: 'common', seed: 0 } }), NOW),
     false,
   );
   assert.equal(
     canMergeDrop(
       kindled,
-      'bronze_sword',
-      { rar: 'common', seed: 0, ench: 'kindled_edge' },
-      null,
-      undefined,
+      bones({ item: 'bronze_sword', roll: { rar: 'common', seed: 0, ench: 'kindled_edge' } }),
+      NOW,
     ),
     true,
   );
@@ -69,11 +89,8 @@ test('an enchant on the roll keeps instances apart', () => {
 
 test('xp-bearing drops (laid eggs) never merge', () => {
   const egg = bones({ item: 'egg', xpOnPickup: { skill: 'farming', xp: 4 } });
-  assert.equal(canMergeDrop(egg, 'egg', undefined, null, undefined), false);
-  assert.equal(
-    canMergeDrop(bones({ item: 'egg' }), 'egg', undefined, null, { skill: 'farming', xp: 4 }),
-    false,
-  );
+  assert.equal(canMergeDrop(egg, bones({ item: 'egg' }), NOW), false);
+  assert.equal(canMergeDrop(bones({ item: 'egg' }), egg, NOW), false);
 });
 
 test('merge radius is a local law, not a room-wide one', () => {
@@ -115,13 +132,7 @@ test('the spill outlives the walk back: ten to fifteen minutes', () => {
 });
 
 test('THE STOLEN FACET: provenance splits piles', () => {
-  assert.equal(canMergeDrop(bones({}), 'bones', undefined, null, undefined, true), false);
-  assert.equal(
-    canMergeDrop(bones({ stolen: true }), 'bones', undefined, null, undefined, undefined),
-    false,
-  );
-  assert.equal(
-    canMergeDrop(bones({ stolen: true }), 'bones', undefined, null, undefined, true),
-    true,
-  );
+  assert.equal(canMergeDrop(bones(), bones({ stolen: true }), NOW), false);
+  assert.equal(canMergeDrop(bones({ stolen: true }), bones(), NOW), false);
+  assert.equal(canMergeDrop(bones({ stolen: true }), bones({ stolen: true }), NOW), true);
 });

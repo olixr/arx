@@ -1,40 +1,52 @@
-import { RARITY_COLORS } from '@arx/shared';
 import type { EntityId } from '@arx/shared';
-import { instanceName } from '@arx/content';
-import { itemIconUrl } from '../render/icons.js';
-import { bigButton, iconTile } from './panel.js';
-import { rarityColor } from './rarity.js';
+import { GroundList } from './groundList.js';
 import type { ClientGame } from '../game/clientGame.js';
 
 /** How far the panel reaches — a shade past the 2.2 interact radius. */
 const REACH = 2.4;
+/** ONWARD's horizon: how far the panel looks for the next stop. */
+const HORIZON = 8;
 
 /**
- * The ground manager: everything lying within reach, as a list you
- * can actually choose from — the answer to a battlefield of
- * overlapping bags. Each row is one pile (the server already merged
- * twins): icon, rarity-tinted instance name, count, and a Take
- * button; Take All sweeps the lot. Rows carry the same inspect
- * dataset as pack cells, so hover (mouse) and focus (pad) raise the
- * full item card — rolled affixes, enchants and all — for gear you
- * haven't picked up yet.
+ * The ground manager tray (THE GILDED HAND): everything lying within
+ * reach as a best-first ledger you can actually choose from — the
+ * answer to a battlefield of overlapping bags. Rendering, order, and
+ * motion live in the shared GroundList (one component behind this
+ * tray AND the inventory's ground pane); this shell owns the tray's
+ * conversation:
  *
- * The list is LIVE (drops land, merge, get taken by someone else) but
- * row ORDER is sticky: existing piles keep their place, newcomers
- * append, so a pad cursor never has the list reshuffled under it.
+ * - THE ANCHOR LAW: opened here, closed by walking >3 tiles away —
+ *   EXCEPT while ONWARD carries you: the errand keeps the tray open,
+ *   and arrival at the next pile re-anchors it. The sweep is a
+ *   rhythm, not a re-open.
+ * - THE HERO LANDING: opening in pad mode lands the ring on Take all
+ *   (or the lone Take) — one press before the hand ever moves.
+ * - THE CHOSEN HAND CHIP: the walk-over toggle lives in the head,
+ *   right where the itch is felt, beside its Settings twin.
  */
 export class LootPanel {
   private readonly panel = document.getElementById('loot-panel')!;
-  private readonly list = document.getElementById('loot-list')!;
+  private readonly ground: GroundList;
   /** Where the panel was opened — walking away from here closes it. */
   private anchor: { x: number; y: number } | null = null;
-  /** Sticky row order: pile eid → row rank. */
-  private order = new Map<EntityId, number>();
-  private nextRank = 0;
-  private sig = '';
+  /** ONWARD in flight: the walk errand holds the tray open. */
+  private traveling = false;
+  private prefChip: HTMLButtonElement | null = null;
 
   // The close chip + header dressing come from dressPanel in main.
-  constructor(private readonly game: ClientGame) {}
+  constructor(
+    private readonly game: ClientGame,
+    private readonly hooks: {
+      /** Land the pad ring on a navkey (main gates on pad mode). */
+      requestFocus: (key: string) => void;
+    },
+  ) {
+    this.ground = new GroundList(document.getElementById('loot-list')!, 'loot', {
+      pickup: (eid) => this.game.pickup(eid),
+      takeAll: () => this.game.takeAll(),
+      onward: (eid) => this.travel(eid),
+    });
+  }
 
   get isOpen(): boolean {
     return !this.panel.classList.contains('hidden');
@@ -43,99 +55,96 @@ export class LootPanel {
   open(): void {
     const pos = this.game.predictor.pos;
     this.anchor = { x: pos.x, y: pos.y };
-    this.order.clear();
-    this.nextRank = 0;
-    this.sig = '';
+    this.traveling = false;
+    this.ground.reset();
+    this.ensurePrefChip();
     this.panel.classList.remove('hidden');
     this.refresh();
+    const key = this.ground.bestFocusKey();
+    if (key) this.hooks.requestFocus(key);
   }
 
   close(): void {
     this.panel.classList.add('hidden');
     this.anchor = null;
+    this.traveling = false;
+  }
+
+  /** ONWARD: walk to the next pile; the tray rides along. */
+  private travel(eid: EntityId): void {
+    if (!this.game.pickupWalk(eid)) return;
+    this.traveling = true;
+    this.anchor = null;
   }
 
   /** Called every frame with the player's position (anchor law). */
   update(px: number, py: number): void {
-    if (!this.isOpen || !this.anchor) return;
-    const dx = this.anchor.x - px;
-    const dy = this.anchor.y - py;
-    if (dx * dx + dy * dy > 3 * 3) {
-      this.close();
-      return;
+    if (!this.isOpen) return;
+    if (this.traveling) {
+      // Arrival re-anchors; a cancelled errand with nothing in reach
+      // ends the conversation.
+      if (this.game.nearbyLoot(REACH).length > 0) {
+        this.traveling = false;
+        this.anchor = { x: px, y: py };
+      } else if (!this.game.hasPickupErrand) {
+        this.close();
+        return;
+      }
+    } else if (this.anchor) {
+      const dx = this.anchor.x - px;
+      const dy = this.anchor.y - py;
+      if (dx * dx + dy * dy > 3 * 3) {
+        this.close();
+        return;
+      }
     }
     this.refresh();
   }
 
   private refresh(): void {
-    const loot = this.game.nearbyLoot(REACH);
-    // Everything picked clean: the conversation is over.
-    if (loot.length === 0) {
+    const near = this.game.nearbyLoot(REACH);
+    const far = this.game.nearbyLoot(HORIZON).filter((l) => l.d > REACH);
+    // Picked clean with nothing on the horizon: the conversation is
+    // over. (While ONWARD walks, the errand holds the door.)
+    if (near.length === 0 && far.length === 0 && !this.traveling) {
       this.close();
       return;
     }
-    for (const l of loot) {
-      if (!this.order.has(l.eid)) this.order.set(l.eid, this.nextRank++);
-    }
-    loot.sort((a, b) => this.order.get(a.eid)! - this.order.get(b.eid)!);
-    const sig = loot.map((l) => `${l.eid}:${l.qty}`).join(',');
-    if (sig === this.sig) return;
-    this.sig = sig;
+    this.ground.update(near, far);
+    this.paintPrefChip();
+  }
 
-    this.list.innerHTML = '';
-    if (loot.length > 1) {
-      const all = document.createElement('div');
-      all.className = 'loot-row loot-all';
-      const mid = document.createElement('div');
-      mid.className = 'loot-mid';
-      const total = loot.reduce((n, l) => n + l.qty, 0);
-      const name = document.createElement('div');
-      name.className = 'loot-name';
-      name.textContent = 'Everything here';
-      const sub = document.createElement('span');
-      sub.className = 'loot-sub';
-      sub.textContent = `${loot.length} piles · ${total.toLocaleString()} items`;
-      mid.append(name, sub);
-      all.appendChild(mid);
-      const actions = document.createElement('div');
-      actions.className = 'loot-actions';
-      actions.appendChild(
-        bigButton('Take all', 'loot:all', () => {
-          for (const l of this.game.nearbyLoot(REACH)) this.game.pickup(l.eid);
-        }),
-      );
-      all.appendChild(actions);
-      this.list.appendChild(all);
-    }
-    for (const l of loot) {
-      const row = document.createElement('div');
-      row.className = 'loot-row';
-      // The pile's rarity paints the row's leading edge.
-      const tint = (l.roll ? RARITY_COLORS[l.roll.rar] : rarityColor(l.itemId)) ?? '';
-      if (tint) row.style.setProperty('--loot-tint', tint);
-      // The inspect dataset: hover and pad focus raise the item card.
-      row.dataset.lootitem = l.itemId;
-      row.dataset.lootqty = String(l.qty);
-      if (l.roll) row.dataset.lootroll = JSON.stringify(l.roll);
-      row.appendChild(iconTile(itemIconUrl(l.itemId, 40), 'sm'));
-      const mid = document.createElement('div');
-      mid.className = 'loot-mid';
-      const name = document.createElement('div');
-      name.className = 'loot-name';
-      name.textContent = instanceName(l.itemId, l.roll);
-      if (tint) name.style.color = tint;
-      const sub = document.createElement('span');
-      sub.className = 'loot-sub';
-      sub.textContent = l.qty > 1 ? `× ${l.qty.toLocaleString()}` : (l.roll?.rar ?? '');
-      mid.append(name, sub);
-      row.appendChild(mid);
-      const actions = document.createElement('div');
-      actions.className = 'loot-actions';
-      actions.appendChild(
-        bigButton('Take', `loot:${l.eid}`, () => this.game.pickup(l.eid)),
-      );
-      row.appendChild(actions);
-      this.list.appendChild(row);
-    }
+  /**
+   * THE CHOSEN HAND's head chip — built once, after dressPanel has
+   * assembled the head (main dresses panels before the first open).
+   */
+  private ensurePrefChip(): void {
+    if (this.prefChip) return;
+    const head = this.panel.querySelector('.panel-head');
+    if (!head) return;
+    const chip = document.createElement('button');
+    chip.className = 'sort-chip loot-pref-chip';
+    chip.dataset.nav = '';
+    chip.dataset.navkey = 'loot:pref';
+    chip.dataset.acta = 'Toggle';
+    chip.dataset.tipname = 'Walk-over looting';
+    chip.dataset.tipsub = 'Off = nothing sticks to your feet; you choose every take here.';
+    chip.addEventListener('click', () => {
+      this.game.setLootPref(!this.game.lootAuto);
+      this.paintPrefChip();
+    });
+    const close = head.querySelector('.panel-close');
+    if (close) head.insertBefore(chip, close);
+    else head.appendChild(chip);
+    this.prefChip = chip;
+    this.paintPrefChip();
+  }
+
+  private paintPrefChip(): void {
+    if (!this.prefChip) return;
+    const on = this.game.lootAuto;
+    const label = on ? 'Walk-over: on' : 'Walk-over: off';
+    if (this.prefChip.textContent !== label) this.prefChip.textContent = label;
+    this.prefChip.classList.toggle('active', on);
   }
 }
