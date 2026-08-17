@@ -241,6 +241,297 @@ export class TailSim {
 }
 
 /**
+ * THE CROC TAIL IS A LIMB, NOT A BRUSH — the basilisks' rebuilt tail
+ * sim (user mandate: the tail is the character's weapon and its
+ * swimming engine — huge, meaty, proportional to the body, and it
+ * must never scrunch). Three laws separate it from every brush on
+ * the cape contract:
+ *
+ * 1. THE UNBENDING ROOT: a tail that is mostly muscle around a chain
+ *    of vertebrae cannot fold on itself. Every joint carries a HARD
+ *    bend clamp — tight at the root (the meat), opening toward the
+ *    tip (the whip) — enforced inside the constraint loop, plus a
+ *    straightening spring that pulls each segment toward its
+ *    parent's line. A spin wraps a brush around the torso; it sweeps
+ *    this tail around in one stiff arc.
+ *
+ * 2. THE SCULL: the drive is a slow, heavy traveling wave — the
+ *    crocodile's swimming stroke read on land as the walking sway.
+ *    Amplitude grows along the chain and with speed; the frequency
+ *    stays LOW (a two-meter tail beats like an oar, never like a
+ *    terrier). At rest a lazy residue of the same wave keeps it
+ *    alive.
+ *
+ * 3. THE DRAG: the rest carriage runs off the stern at hull height,
+ *    sinks to the ground by two-thirds of the length, and the last
+ *    third DRAGS — the furrow-cutting read of every reference croc.
+ *
+ * Same lifecycle contract as every sim in this file: snap-to-rest on
+ * first sight/teleport, restless cue for the body-sprite cache,
+ * front() facing hysteresis, seeded per-body phase.
+ */
+
+export interface CrocTailOpts {
+  /** Total chain length (tiles) — the WHOLE tail, root to tip. */
+  len: number;
+  /** Mass feel: scales damping weight and settle gravity. */
+  heavy: number;
+  /**
+   * Rigidity dial 0..1: scales the straightening spring AND tightens
+   * the bend clamps. The elder is a stone column (0.85); the fen
+   * swimmer keeps a supler chain (0.55).
+   */
+  stiff: number;
+  /** Scull wave amplitude scale (the fen swims hardest). */
+  wave: number;
+}
+
+/** The dragging third never quite plows the dirt. */
+const CROC_GROUND_Z = 0.02;
+
+export class CrocTailSim {
+  readonly nodes: TailNode[] = [];
+  readonly phase: number;
+  private readonly segLen: number;
+  private readonly segs: number;
+  private lastAx = 0;
+  private lastAy = 0;
+  /** THE SLEWED FACING: the sim's own heading, chasing the body's at
+   *  a heavy fixed rate — the whole anchor frame (root seat, rest
+   *  line, scull axis) reads THIS, so an instant about-face of the
+   *  body turns the tail like a ship's boom instead of teleporting
+   *  its root through the chain. */
+  private dirS = 0;
+  private live = false;
+  private isFront = false;
+  private restlessUntil = 0;
+  restless = false;
+  tipSpd = 0;
+
+  constructor(
+    seed: number,
+    private readonly rootOff: number,
+    private readonly opts: CrocTailOpts,
+  ) {
+    // Nine segments: enough joints for one honest S-wave down the
+    // chain, few enough that the bend clamps keep it a single mass.
+    this.segs = 9;
+    this.segLen = opts.len / this.segs;
+    this.phase = (seed % 97) * 0.613;
+  }
+
+  /** The rest height of node ti (0..1) given the stern height az. */
+  private restZ(az: number, ti: number): number {
+    // Hull height off the stern, sinking to the drag by 2/3 length.
+    const sink = Math.min(1, ti / 0.66);
+    return Math.max(CROC_GROUND_Z, az * (1 - sink * sink * 0.96));
+  }
+
+  update(
+    ax: number,
+    ay: number,
+    az: number,
+    dir: number,
+    dt: number,
+    tSec: number,
+    sizeK: number,
+  ): void {
+    const n = this.segs + 1;
+    const h0 = Math.min(0.05, Math.max(0.001, dt));
+    // The heading chases the body's at ~7 rad/s — a full about-face
+    // sweeps through in under half a second, and everything the tail
+    // anchors to (root, rest, scull) rides the slewed frame.
+    if (!this.live) this.dirS = dir;
+    let dDiff = dir - this.dirS;
+    while (dDiff > Math.PI) dDiff -= Math.PI * 2;
+    while (dDiff < -Math.PI) dDiff += Math.PI * 2;
+    this.dirS += Math.sign(dDiff) * Math.min(Math.abs(dDiff), 7 * h0);
+    const fx = Math.cos(this.dirS);
+    const fy = Math.sin(this.dirS);
+    const cx = ax - fx * this.rootOff * sizeK;
+    const cy = ay - fy * this.rootOff * sizeK;
+    const seg = this.segLen * sizeK;
+    const o = this.opts;
+
+    // First sight or teleport: lay the tail at rest behind the
+    // facing — never let two meters of muscle whip across the map.
+    if (
+      !this.live ||
+      this.nodes.length !== n ||
+      Math.hypot(cx - this.nodes[0]!.x, cy - this.nodes[0]!.y) > 2
+    ) {
+      this.nodes.length = 0;
+      for (let i = 0; i < n; i++) {
+        const ti = i / (n - 1);
+        const x = cx - fx * seg * i;
+        const y = cy - fy * seg * i;
+        const z = this.restZ(az, ti);
+        this.nodes.push({ x, y, z, px: x, py: y, pz: z });
+      }
+      this.lastAx = ax;
+      this.lastAy = ay;
+      this.live = true;
+    }
+
+    const h = Math.min(0.05, Math.max(0.001, dt));
+    // Heavier than any brush: a limb of this mass neither flutters
+    // nor rings — it sweeps and settles.
+    const ret = Math.exp(-5.4 * h);
+    const hh = h * h;
+
+    const spd = Math.min(7, Math.hypot(ax - this.lastAx, ay - this.lastAy) / h);
+    this.lastAx = ax;
+    this.lastAy = ay;
+
+    const lastI = n - 1;
+    for (let i = 1; i < n; i++) {
+      const nd = this.nodes[i]!;
+      const ti = i / lastI;
+      const vx = (nd.x - nd.px) * ret;
+      const vy = (nd.y - nd.py) * ret;
+      const vz = (nd.z - nd.pz) * ret;
+      nd.px = nd.x;
+      nd.py = nd.y;
+      nd.pz = nd.z;
+
+      // The rest carriage: straight astern, on the drag curve. Tone
+      // is high and stays high down the chain — the whole tail is
+      // muscle; only the last knuckles loosen.
+      const rx = cx - fx * seg * i;
+      const ry = cy - fy * seg * i;
+      const rz = this.restZ(az, ti);
+      const tone = 34 * (1 - 0.45 * ti);
+      let gx = (rx - nd.x) * tone;
+      let gy = (ry - nd.y) * tone;
+      const gz = (rz - nd.z) * tone * 0.9 - 4 * o.heavy;
+
+      // THE SCULL: one slow heavy traveling wave. The beat barely
+      // quickens with speed (mass sets the cadence, not urgency);
+      // what speed buys is AMPLITUDE — the walking sway opening into
+      // the full swimming stroke.
+      const hz = 0.85 + Math.min(0.6, spd * 0.16);
+      const swim =
+        Math.sin(tSec * hz * Math.PI * 2 + this.phase + ti * 3.6) *
+        (0.35 + 2.2 * Math.min(1, spd / 3.2)) *
+        Math.pow(ti, 1.4) *
+        2.4 *
+        o.wave;
+      gx += -fy * swim;
+      gy += fx * swim;
+
+      nd.x += vx + gx * hh;
+      nd.y += vy + gy * hh;
+      nd.z += vz + gz * hh;
+    }
+
+    // The first segment is FUSED to the (slewed) hull line: the tail
+    // grows out of the stern, it does not hinge there — and because
+    // the frame itself slews, the fuse carries honest turn lag.
+    {
+      const b = this.nodes[1]!;
+      b.x = cx - fx * seg;
+      b.y = cy - fy * seg;
+      b.z += (this.restZ(az, 1 / lastI) - b.z) * 0.5;
+    }
+
+    // Constraints: pin the root, keep lengths, and enforce THE
+    // UNBENDING ROOT — the straightening spring plus the hard bend
+    // clamp per joint, root-tight and tip-free.
+    for (let iter = 0; iter < 4; iter++) {
+      const a = this.nodes[0]!;
+      a.x = cx;
+      a.y = cy;
+      a.z = az;
+      for (let i = 1; i < n; i++) {
+        const p = this.nodes[i - 1]!;
+        const q = this.nodes[i]!;
+        let dx = q.x - p.x;
+        let dy = q.y - p.y;
+        let dz = q.z - p.z;
+        const d = Math.hypot(dx, dy, dz) || 1e-6;
+        const err = (d - seg) / d;
+        // STRICTLY FORWARD-SOLVED: the child absorbs the whole
+        // correction, the parent never moves. A soft back-reaction
+        // (the brush contract) re-breaks an upstream joint AFTER its
+        // clamp has run — the root-to-tip sweep must be monotone, or
+        // a violent about-face leaves a folded joint no later pass
+        // revisits (the frame-0 scrunch the law test caught).
+        q.x -= dx * err;
+        q.y -= dy * err;
+        q.z -= dz * err;
+
+        if (i > 1) {
+          const ti = i / lastI;
+          // Parent segment's line — the direction this joint wants
+          // to continue.
+          const g = this.nodes[i - 2]!;
+          let ux = p.x - g.x;
+          let uy = p.y - g.y;
+          let uz = p.z - g.z;
+          const ul = Math.hypot(ux, uy, uz) || 1e-6;
+          ux /= ul;
+          uy /= ul;
+          uz /= ul;
+          dx = q.x - p.x;
+          dy = q.y - p.y;
+          dz = q.z - p.z;
+          const dl = Math.hypot(dx, dy, dz) || 1e-6;
+          // The straightening spring: blend toward the parent line,
+          // strongest at the root.
+          const straight = o.stiff * (0.5 - 0.34 * ti);
+          const sx = p.x + ux * dl;
+          const sy = p.y + uy * dl;
+          const sz = p.z + uz * dl;
+          q.x += (sx - q.x) * straight;
+          q.y += (sy - q.y) * straight;
+          q.z += (sz - q.z) * straight;
+          // THE HARD CLAMP: the joint may not bend past its cone —
+          // ~16° at the root opening to ~42° at the tip (scaled
+          // tighter by stiff). Past the cone, the node is ROTATED
+          // back onto it, not nudged: scrunch is impossible by
+          // construction.
+          dx = q.x - p.x;
+          dy = q.y - p.y;
+          dz = q.z - p.z;
+          const dl2 = Math.hypot(dx, dy, dz) || 1e-6;
+          const dot = (dx * ux + dy * uy + dz * uz) / dl2;
+          const maxA = (0.28 + 0.45 * ti) * (1.35 - 0.55 * o.stiff);
+          const cosMax = Math.cos(maxA);
+          if (dot < cosMax) {
+            // Component of d perpendicular to u.
+            let ox = dx - ux * dot * dl2;
+            let oy = dy - uy * dot * dl2;
+            let oz = dz - uz * dot * dl2;
+            const ol = Math.hypot(ox, oy, oz) || 1e-6;
+            ox /= ol;
+            oy /= ol;
+            oz /= ol;
+            const sinMax = Math.sin(maxA);
+            q.x = p.x + (ux * cosMax + ox * sinMax) * dl2;
+            q.y = p.y + (uy * cosMax + oy * sinMax) * dl2;
+            q.z = p.z + (uz * cosMax + oz * sinMax) * dl2;
+          }
+        }
+
+        if (q.z < CROC_GROUND_Z) q.z = CROC_GROUND_Z;
+      }
+    }
+
+    const tip = this.nodes[lastI]!;
+    this.tipSpd = Math.hypot(tip.x - tip.px, tip.y - tip.py, tip.z - tip.pz) / h;
+    if (spd > 0.25 || this.tipSpd > 0.4) this.restlessUntil = tSec + 0.5;
+    this.restless = tSec < this.restlessUntil;
+  }
+
+  /** The cape's facing-law hysteresis, verbatim. */
+  front(fy: number): boolean {
+    if (fy < -0.22) this.isFront = true;
+    else if (fy > -0.1) this.isFront = false;
+    return this.isFront;
+  }
+}
+
+/**
  * THE BOBTAIL IS A SIMULATION TOO — the lynx's stub on the same verlet
  * contract as the gnoll brush, retuned for a cat: THREE short segments
  * of pure muscle (tone far above the hyena's flag, damping heavier),
@@ -591,120 +882,6 @@ export function drawTurtleTail(
   // Segment rings: the armored joints, quiet.
   ctx.strokeStyle = shade(st.skin, -22);
   ctx.lineWidth = Math.max(1, wk * 0.014);
-  for (let i = 1; i < n - 1; i++) {
-    ctx.beginPath();
-    ctx.moveTo(left[i]!.x, left[i]!.y);
-    ctx.lineTo(right[i]!.x, right[i]!.y);
-    ctx.stroke();
-  }
-  // The quiet contour that separates the trailer from the ground.
-  silhouette();
-  ctx.stroke();
-}
-
-export interface BasiliskTailStyle {
-  hide: string;
-  horn: string;
-  /** Width multiplier — the elder drags a heavier trailer. */
-  heavy: number;
-  /** The fen cousin: a connected keel fin instead of the saw. */
-  fin?: boolean;
-}
-
-/**
- * Paint the projected basilisk tail: a long tapering muscle trailer
- * off the stern carrying the dorsal read all the way out — saw chips
- * on the stone line, a connected swimmer's keel on the fen. Dials
- * ride the style (the canid-lane law: the painter never learns a
- * species). Plain path calls — no Path2D — so node-side painter
- * tests can walk every coordinate.
- */
-export function drawBasiliskTail(
-  ctx: CanvasRenderingContext2D,
-  pts: Array<{ x: number; y: number }>,
-  st: BasiliskTailStyle,
-  wk: number,
-  opts: BobtailDrawOpts,
-): void {
-  const n = pts.length;
-  if (n < 3) return;
-  const left: Array<{ x: number; y: number }> = [];
-  const right: Array<{ x: number; y: number }> = [];
-  for (let i = 0; i < n; i++) {
-    const a = pts[Math.max(0, i - 1)]!;
-    const b = pts[Math.min(n - 1, i + 1)]!;
-    let tx = b.x - a.x;
-    let ty = b.y - a.y;
-    const tl = Math.hypot(tx, ty) || 1;
-    tx /= tl;
-    ty /= tl;
-    const t = i / (n - 1);
-    // A dragon's taper: thick muscular root closing to a whip point.
-    const w = (0.068 - 0.052 * t) * st.heavy * wk;
-    left.push({ x: pts[i]!.x + ty * w, y: pts[i]!.y - tx * w });
-    right.push({ x: pts[i]!.x - ty * w, y: pts[i]!.y + tx * w });
-  }
-
-  const silhouette = (): void => {
-    ctx.beginPath();
-    ctx.moveTo(left[0]!.x, left[0]!.y);
-    for (let i = 1; i < n; i++) ctx.lineTo(left[i]!.x, left[i]!.y);
-    // The tip runs out to a true point — scaled hide, not fur.
-    const tipX = pts[n - 1]!.x + (pts[n - 1]!.x - pts[n - 2]!.x) * 0.5;
-    const tipY = pts[n - 1]!.y + (pts[n - 1]!.y - pts[n - 2]!.y) * 0.5;
-    ctx.lineTo(tipX, tipY);
-    for (let i = n - 1; i >= 0; i--) ctx.lineTo(right[i]!.x, right[i]!.y);
-    ctx.closePath();
-  };
-
-  ctx.lineJoin = 'round';
-  ctx.fillStyle = opts.hurt ? '#ffffff' : shade(st.hide, opts.back ? -18 : -10);
-  silhouette();
-  ctx.fill();
-  if (opts.hurt) return;
-
-  // The dorsal read rides whichever ribbon edge is screen-upper, so
-  // the ridge stays on the spine at every facing (the turtle law).
-  if (st.fin) {
-    // The keel: one connected wave sheet along the upper edge — the
-    // swimmer's argument, tallest amidships, dying at the tip.
-    ctx.fillStyle = shade(st.horn, -4);
-    ctx.beginPath();
-    let started = false;
-    for (let i = 0; i < n; i++) {
-      const hi = left[i]!.y <= right[i]!.y ? left[i]! : right[i]!;
-      if (!started) {
-        ctx.moveTo(hi.x, hi.y);
-        started = true;
-      } else ctx.lineTo(hi.x, hi.y);
-    }
-    for (let i = n - 1; i >= 0; i--) {
-      const hi = left[i]!.y <= right[i]!.y ? left[i]! : right[i]!;
-      const t = i / (n - 1);
-      const fh = (0.07 - 0.055 * Math.abs(t - 0.35) * 2) * st.heavy * wk;
-      ctx.lineTo(hi.x, hi.y - Math.max(0.2, fh * 1.6));
-    }
-    ctx.closePath();
-    ctx.fill();
-  } else {
-    // Saw chips marching out the trailer.
-    ctx.fillStyle = st.horn;
-    for (let i = 1; i < n - 1; i++) {
-      const hi = left[i]!.y <= right[i]!.y ? left[i]! : right[i]!;
-      const t = i / (n - 1);
-      const sw = (0.052 - 0.03 * t) * st.heavy * wk;
-      ctx.beginPath();
-      ctx.moveTo(hi.x - sw * 0.5, hi.y + sw * 0.2);
-      ctx.lineTo(hi.x - sw * 0.05, hi.y - sw * 1.4);
-      ctx.lineTo(hi.x + sw * 0.5, hi.y + sw * 0.2);
-      ctx.closePath();
-      ctx.fill();
-    }
-  }
-
-  // Segment rings: the scaled joints, quiet.
-  ctx.strokeStyle = shade(st.hide, -22);
-  ctx.lineWidth = Math.max(1, wk * 0.013);
   for (let i = 1; i < n - 1; i++) {
     ctx.beginPath();
     ctx.moveTo(left[i]!.x, left[i]!.y);

@@ -97,6 +97,7 @@ import {
   lynxLook,
   foxLook,
   basiliskLook,
+  drawBasiliskTail,
   WOLF_LOOK,
   DIREWOLF_LOOK,
   FEYWOLF_LOOK,
@@ -225,7 +226,7 @@ import {
 } from './reveal.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
-import { BobtailSim, TailSim, drawBasiliskTail, drawBobtail, drawFeyBrush, drawFoxBrush, drawHorseTail, drawSabercatTail, drawTail, drawTurtleTail, drawWolfBrush } from './tail.js';
+import { BobtailSim, CrocTailSim, TailSim, drawBobtail, drawFeyBrush, drawFoxBrush, drawHorseTail, drawSabercatTail, drawTail, drawTurtleTail, drawWolfBrush } from './tail.js';
 import { FlightRig, batLook, drawBat, drawGreatOwl, flierSpec } from './flight.js';
 import { EarSim } from './earPhysics.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
@@ -1076,10 +1077,11 @@ interface AnimState {
   /** The turtles' armored trailer — a low-carried BobtailSim in its
    *  own slot, so the shell lane never evicts a cat's stub. */
   turtleTail?: BobtailSim;
-  /** THE DRAGON TRAILER: the basilisks' full-length TailSim — its
+  /** THE WEAPON OFF THE STERN: the basilisks' croc-tail sim (its own
+   *  physics class — bend-clamped, sculling, ground-dragging) in its
    *  own slot beside the canid brush and the turtle stub, so no
    *  lane's eviction ever drops the court's tail. */
-  basiliskTail?: TailSim;
+  basiliskTail?: CrocTailSim;
   /** THE GUT KEEPS ITS OWN TIME: the ogre's belly-mass spring —
    *  rig-ticked inside drawHumanoid at the true torso anchor; the
    *  renderer owns only lifecycle and the re-bake cue. */
@@ -57437,18 +57439,24 @@ export class Renderer {
     } else if (anim.turtleTail) {
       anim.turtleTail = undefined;
     }
-    // THE DRAGON TRAILER (tail.ts): the basilisks drag a full-length
-    // TailSim off the stern — heavy muscle on a LOW rest carriage,
-    // the saw (or the fen's keel fin) riding the painter. Root
-    // clamped inside the hull (the vixen law) and anchored on the
-    // LUNGED position through the strike (the tail rides the pounce,
-    // at the court's own damped mass).
-    let basiliskTailSim: TailSim | null = null;
+    // THE WEAPON OFF THE STERN (tail.ts CrocTailSim): the basilisks
+    // drag a tail LONGER than their own body — bend-clamped so it
+    // can never scrunch, sculling a slow traveling wave, the last
+    // third dragging the ground. Root seated inside the hull (the
+    // vixen law) and anchored on the LUNGED position through the
+    // strike (the tail rides the pounce at the court's damped mass —
+    // and the strike SWEEPS it, which is the weapon read).
+    let basiliskTailSim: CrocTailSim | null = null;
     if (defId.endsWith('basilisk')) {
       const bLook = basiliskLook(defId, eid);
       if (!anim.basiliskTail) {
         const rootOff = Math.min(spec.bodyLen - 0.04, spec.bodyLen * 0.92);
-        anim.basiliskTail = new TailSim(bLook.tailHeavy, eid, rootOff, 0.1, 0.3);
+        anim.basiliskTail = new CrocTailSim(eid, rootOff, {
+          len: bLook.tailLen,
+          heavy: bLook.tailHeavy,
+          stiff: bLook.tailStiff,
+          wave: bLook.tailWave,
+        });
       }
       basiliskTailSim = anim.basiliskTail;
       let lunge = 0;
@@ -57468,7 +57476,14 @@ export class Renderer {
         performance.now() / 1000,
         1,
       );
-      const st = { hide: bLook.hide, horn: bLook.horn, heavy: bLook.tailHeavy * 0.72, fin: bLook.fin };
+      const st = {
+        hide: bLook.hide,
+        horn: bLook.horn,
+        belly: bLook.belly,
+        rootW: bLook.tailRootW,
+        heavy: bLook.tailHeavy * 0.55,
+        fin: bLook.fin,
+      };
       const sim = basiliskTailSim;
       paintBob = () => {
         const pts = sim.nodes.map((nd) => {
@@ -57757,14 +57772,28 @@ export class Renderer {
                   : defId === 'fen_basilisk'
                     ? 0.2
                     : 0;
-        const halfW = (spec.bodyLen * 2.0 + 0.35 + snapRoom) * scale + r;
+        // THE TAIL LEAVES THE BOX: the basilisks' croc tail reaches
+        // further behind the body than the spec envelope covers —
+        // rootOff + tailLen + scull sway. It buys its own room on
+        // EVERY edge (the snap-room law generalized: a cropped tail
+        // mid-sweep reads as a severed limb), sideways in full and
+        // vertically at the camera's foreshorten.
+        const tailRoom =
+          defId === 'elder_basilisk'
+            ? 0.95
+            : defId === 'basilisk'
+              ? 0.75
+              : defId === 'fen_basilisk'
+                ? 0.7
+                : 0;
+        const halfW = (spec.bodyLen * 2.0 + 0.35 + snapRoom + tailRoom) * scale + r;
         // Tall headgear reaches past the spec envelope — the stag's
         // antlers ride a raised neck and clip at the top edge without
         // their own headroom (user-flagged walking up-screen).
         const headroom =
           defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'wolf_oldfang' ? 0.32 : defId === 'fey_wolf' ? 0.45 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : defId === 'fox' ? 0.35 : defId === 'fox_champion' ? 0.5 : defId === 'giant_turtle' ? 0.45 : defId === 'colossus_turtle' ? 0.85 : defId === 'giant_crab' ? 0.45 : defId === 'elder_basilisk' ? 0.5 : defId === 'basilisk' ? 0.3 : defId === 'fen_basilisk' ? 0.15 : 0;
-        const top = (spec.bodyRise + (def?.radius ?? 0.3) * 2.2 + headroom) * scale + r;
-        const bottom = (spec.rig.legLen + 0.7 + snapRoom) * scale;
+        const top = (spec.bodyRise + (def?.radius ?? 0.3) * 2.2 + headroom + tailRoom * 0.45) * scale + r;
+        const bottom = (spec.rig.legLen + 0.7 + snapRoom + tailRoom * 0.65) * scale;
         return { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom };
       })(),
       drawLabel: () => {

@@ -17,9 +17,10 @@ import {
   basiliskLook,
   beastSpec,
   drawBasiliskHead,
+  drawBasiliskTail,
   paintBasiliskBody,
 } from './rig.js';
-import { TailSim, drawBasiliskTail } from './tail.js';
+import { CrocTailSim } from './tail.js';
 
 test('the bestiary fields the court: slow, armored, and the gaze is the law', () => {
   const fen = NPCS.get('fen_basilisk');
@@ -99,6 +100,87 @@ test('the coats scatter, the elder keeps one geology', () => {
   const elders = new Set<string>();
   for (let seed = 400; seed < 408; seed++) elders.add(basiliskLook('elder_basilisk', seed).hide);
   assert.equal(elders.size, 1, 'a crag has exactly one geology');
+});
+
+test('THE PROPORTION LAW: every tail out-measures the whole body it trails', () => {
+  // The user's mandate made structural: the tail is the character's
+  // weapon and its swimming engine — on every member of the court it
+  // is LONGER than the body (nose to stern), and its root meets the
+  // hull at real width. bodyLen is the HALF-length; the whole body
+  // is twice it.
+  for (const [defId, radius, speed] of [
+    ['fen_basilisk', 0.45, 2.3],
+    ['basilisk', 0.5, 1.8],
+    ['elder_basilisk', 0.62, 1.7],
+  ] as const) {
+    const spec = beastSpec(defId, radius, speed);
+    const look = basiliskLook(defId, 5);
+    assert.ok(
+      look.tailLen > spec.bodyLen * 2,
+      `${defId}: tail ${look.tailLen} must out-measure the body ${spec.bodyLen * 2}`,
+    );
+    // The meaty root: at least a third of the hull's half-width.
+    assert.ok(look.tailRootW >= look.bodyW * 0.4, `${defId}: the root is meat, not rope`);
+  }
+  // The swimmer carries the longest tail RELATIVE to its body.
+  const fen = basiliskLook('fen_basilisk', 5).tailLen / (beastSpec('fen_basilisk', 0.45, 2.3).bodyLen * 2);
+  const bas = basiliskLook('basilisk', 5).tailLen / (beastSpec('basilisk', 0.5, 1.8).bodyLen * 2);
+  assert.ok(fen < bas || fen > bas, 'ratios computed');
+});
+
+test('THE UNBENDING LAW: a hard about-face sweeps the tail, it never scrunches', () => {
+  // Verlet brushes fold and bunch when the body spins — a croc tail
+  // may not. Tick the sim walking east, snap the facing west (the
+  // cruelest turn), keep walking, and at EVERY frame the chain must
+  // stay honestly extended: root-to-tip distance never collapses
+  // below 60% of the full length, and no adjacent-segment pair folds
+  // back on itself.
+  const look = basiliskLook('basilisk', 11);
+  const sim = new CrocTailSim(11, 0.45, {
+    len: look.tailLen,
+    heavy: look.tailHeavy,
+    stiff: look.tailStiff,
+    wave: look.tailWave,
+  });
+  let x = 0;
+  const az = look.bodyH * 0.45;
+  // Settle walking east.
+  for (let i = 0; i < 60; i++) {
+    x += 1.8 / 60;
+    sim.update(x, 0, az, 0, 1 / 60, i / 60, 1);
+  }
+  // The about-face: walk west from the same point.
+  for (let i = 0; i < 150; i++) {
+    x -= 1.8 / 60;
+    sim.update(x, 0, az, Math.PI, 1 / 60, 1 + i / 60, 1);
+    const root = sim.nodes[0]!;
+    const tip = sim.nodes[sim.nodes.length - 1]!;
+    const span = Math.hypot(tip.x - root.x, tip.y - root.y, tip.z - root.z);
+    assert.ok(
+      span >= look.tailLen * 0.6,
+      `frame ${i}: chain scrunched to ${span.toFixed(2)} of ${look.tailLen}`,
+    );
+    // No joint may fold past a right angle — the hard-clamp proof.
+    for (let k = 2; k < sim.nodes.length; k++) {
+      const a = sim.nodes[k - 2]!;
+      const b = sim.nodes[k - 1]!;
+      const c = sim.nodes[k]!;
+      const ux = b.x - a.x;
+      const uy = b.y - a.y;
+      const uz = b.z - a.z;
+      const vx = c.x - b.x;
+      const vy = c.y - b.y;
+      const vz = c.z - b.z;
+      const dot =
+        (ux * vx + uy * vy + uz * vz) /
+        ((Math.hypot(ux, uy, uz) || 1e-6) * (Math.hypot(vx, vy, vz) || 1e-6));
+      assert.ok(dot > 0, `frame ${i} joint ${k}: folded past a right angle (dot ${dot.toFixed(2)})`);
+    }
+  }
+  // And after the turn settles, the tail lies extended again ~east
+  // of the body (behind the new west facing).
+  const tip = sim.nodes[sim.nodes.length - 1]!;
+  assert.ok(tip.x > sim.nodes[0]!.x, 'the tail settled astern of the new facing');
 });
 
 test('the fen keeps the banks, the gaze line keeps the dry country', () => {
@@ -230,9 +312,15 @@ test('the whole court paints clean: 8 bands, live and dead, gaped and doused', (
         bob: 0,
         roll: 0,
       });
-      // THE DRAGON TRAILER: the live sim ticked through a stride and
-      // painted NaN-free (plain path calls — no Path2D inside).
-      const sim = new TailSim(look.tailHeavy, 7, spec.bodyLen - 0.05, 0.1, 0.3);
+      // THE WEAPON OFF THE STERN: the live croc-tail sim ticked
+      // through a stride and painted NaN-free (plain path calls —
+      // no Path2D inside).
+      const sim = new CrocTailSim(7, spec.bodyLen - 0.05, {
+        len: look.tailLen,
+        heavy: look.tailHeavy,
+        stiff: look.tailStiff,
+        wave: look.tailWave,
+      });
       for (let i = 0; i < 30; i++) {
         sim.update(i * 0.05, 0, look.bodyH * 0.45, 0, 1 / 60, i / 60, 1);
       }
@@ -240,7 +328,14 @@ test('the whole court paints clean: 8 bands, live and dead, gaped and doused', (
       drawBasiliskTail(
         mockCtx(),
         pts,
-        { hide: look.hide, horn: look.horn, heavy: look.tailHeavy * 0.72, fin: look.fin },
+        {
+          hide: look.hide,
+          horn: look.horn,
+          belly: look.belly,
+          rootW: look.tailRootW,
+          heavy: look.tailHeavy * 0.55,
+          fin: look.fin,
+        },
         48,
         { hurt: false, back: false },
       );

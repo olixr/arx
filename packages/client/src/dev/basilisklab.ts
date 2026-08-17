@@ -19,13 +19,13 @@ import {
   LegSolver,
   basiliskLook,
   beastSpec,
+  drawBasiliskTail,
   drawBeast,
   drawHumanoid,
   type RigPose,
 } from '../render/rig.js';
 import { LegRig, type LegPose } from '../render/legs.js';
-import { TailSim } from '../render/tail.js';
-import { drawBasiliskTail } from '../render/tail.js';
+import { CrocTailSim } from '../render/tail.js';
 import { PoseState } from '@arx/shared';
 
 const canvas = document.getElementById('lab') as HTMLCanvasElement;
@@ -69,8 +69,8 @@ interface Fig {
   legs?: LegRig;
   knee?: number[];
   walkPhase?: number;
-  /** THE DRAGON TRAILER: live TailSim per basilisk fig. */
-  tail?: TailSim;
+  /** THE WEAPON OFF THE STERN: live CrocTailSim per basilisk fig. */
+  tail?: CrocTailSim;
   manLegs?: LegSolver;
   manKnee?: number[];
   manDepth?: RigPose['depthMemory'];
@@ -113,7 +113,7 @@ figs.push({ label: 'basilisk E (profile)', defId: 'basilisk', dir: 0, mode: 'idl
 figs.push({ label: 'elder SW (quarter)', defId: 'elder_basilisk', dir: (3 * Math.PI) / 4, mode: 'bite', seed: 5 });
 
 const COLS = 8;
-const CW = Math.round(S * 2.8);
+const CW = Math.round(S * 3.8);
 const CH = Math.round(S * 3.0);
 
 let rowFrom = 0;
@@ -194,7 +194,12 @@ function drawQuad(
     const bl = basiliskLook(f.defId, seed);
     if (!f.tail) {
       const rootOff = Math.min(spec.bodyLen - 0.04, spec.bodyLen * 0.92);
-      f.tail = new TailSim(bl.tailHeavy, seed, rootOff, 0.1, 0.3);
+      f.tail = new CrocTailSim(seed, rootOff, {
+        len: bl.tailLen,
+        heavy: bl.tailHeavy,
+        stiff: bl.tailStiff,
+        wave: bl.tailWave,
+      });
     }
     let lunge = 0;
     if (attackT > 0) {
@@ -212,7 +217,7 @@ function drawQuad(
       now / 1000,
       1,
     );
-    const st = { hide: bl.hide, horn: bl.horn, heavy: bl.tailHeavy * 0.72, fin: bl.fin };
+    const st = { hide: bl.hide, horn: bl.horn, belly: bl.belly, rootW: bl.tailRootW, heavy: bl.tailHeavy * 0.55, fin: bl.fin };
     const sim = f.tail;
     paintTail = () => {
       const pts = sim.nodes.map((nd) => ({
@@ -299,8 +304,8 @@ function drawSheet(now: number, dt: number): void {
     ctx.strokeStyle = 'rgba(232, 228, 216, 0.18)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(homeX - 1.3 * S, homeY);
-    ctx.lineTo(homeX + 1.3 * S, homeY);
+    ctx.moveTo(homeX - 1.8 * S, homeY);
+    ctx.lineTo(homeX + 1.8 * S, homeY);
     ctx.stroke();
 
     if (f.ruler) {

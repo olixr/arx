@@ -2,6 +2,9 @@ import { CLOTH_COLORS, HAIR_COLORS, PoseState, SKIN_TONES, type Look } from '@ar
 import { ELEMENT_COLORS, enchantDef, itemDef } from '@arx/content';
 import { arxMark, markPulse, resolveWornLight, SLOT_GLINT_PHASE, type ArxMark, type SlotLight } from './wornLight.js';
 import { chamferRect, facetBlob, facetCircle } from './shapes.js';
+// Type-only: erased at runtime, so the tail.ts → rig.ts import stays
+// one-directional in the emitted graph (no cycle).
+import type { BobtailDrawOpts } from './tail.js';
 import {
   BOW_GRIP_X,
   bladeStyle,
@@ -18749,8 +18752,20 @@ export interface BasiliskLook {
   /** Head-carry height above the ground line (tiles) — LOW: the
    *  court carries its skull level with the back, never raised. */
   headRise: number;
-  /** Tail sim weight dial. */
+  /** Tail sim weight dial (crest heights, ring weights, settle mass). */
   tailHeavy: number;
+  /** THE WEAPON OFF THE STERN: total tail length (tiles) — longer
+   *  than the body on every member of the court; the sim, painter,
+   *  analytic rest, corpse, and sprite bounds all read this ONE
+   *  number so the tail can never be cropped or shortchanged. */
+  tailLen: number;
+  /** Tail root half-width (tiles) — meets the hull's stern width so
+   *  the tail is the body continuing, never a rope tied on. */
+  tailRootW: number;
+  /** Sim rigidity 0..1 (THE UNBENDING ROOT dial). */
+  tailStiff: number;
+  /** Scull wave amplitude scale (the swimmer beats hardest). */
+  tailWave: number;
   /** The fen cousin: keeled swimming fin instead of the saw. */
   fin?: boolean;
   /** The elder alone: horn crown, plate mass, lichen, barbels. */
@@ -18767,7 +18782,7 @@ export interface BasiliskLook {
  */
 const BASILISK_CLUSTERS: readonly Omit<
   BasiliskLook,
-  'bodyW' | 'bodyH' | 'ridgeH' | 'headW' | 'headH' | 'headRise' | 'tailHeavy'
+  'bodyW' | 'bodyH' | 'ridgeH' | 'headW' | 'headH' | 'headRise' | 'tailHeavy' | 'tailLen' | 'tailRootW' | 'tailStiff' | 'tailWave'
 >[] = [
   // Greystone: the bestiary plate — dull grey-brown, pale-green fire.
   { hide: '#6b6a52', belly: '#c9bd8e', plate: '#7d7c62', horn: '#8a8567', eye: '#b9d18c' },
@@ -18780,7 +18795,7 @@ const BASILISK_CLUSTERS: readonly Omit<
 ];
 const FEN_CLUSTERS: readonly Omit<
   BasiliskLook,
-  'bodyW' | 'bodyH' | 'ridgeH' | 'headW' | 'headH' | 'headRise' | 'tailHeavy'
+  'bodyW' | 'bodyH' | 'ridgeH' | 'headW' | 'headH' | 'headRise' | 'tailHeavy' | 'tailLen' | 'tailRootW' | 'tailStiff' | 'tailWave'
 >[] = [
   // Peat: the standing water's own olive-dark.
   { hide: '#57603f', belly: '#b9b284', plate: '#68724c', horn: '#7d7a55', eye: '#a3b578' },
@@ -18806,6 +18821,12 @@ const ELDER_BASILISK_LOOK: BasiliskLook = {
   headH: 0.26,
   headRise: 0.28,
   tailHeavy: 2.3,
+  // The crag's tail is a felled tree: half again the body's length,
+  // stone-stiff, slow.
+  tailLen: 2.0,
+  tailRootW: 0.2,
+  tailStiff: 0.85,
+  tailWave: 0.75,
   elder: true,
 };
 
@@ -18823,6 +18844,12 @@ export function basiliskLook(defId: string, seed: number): BasiliskLook {
       headH: 0.15,
       headRise: 0.1,
       tailHeavy: 1.5,
+      // The swimmer: the longest tail RELATIVE to its body in the
+      // court, supple, and the hardest sculler.
+      tailLen: 1.5,
+      tailRootW: 0.12,
+      tailStiff: 0.55,
+      tailWave: 1.35,
       fin: true,
     };
   }
@@ -18836,6 +18863,10 @@ export function basiliskLook(defId: string, seed: number): BasiliskLook {
     headH: 0.2,
     headRise: 0.2,
     tailHeavy: 1.8,
+    tailLen: 1.55,
+    tailRootW: 0.15,
+    tailStiff: 0.7,
+    tailWave: 1,
   };
 }
 
@@ -19430,6 +19461,209 @@ export function drawBasiliskHead(
       }
     }
   }
+}
+
+export interface BasiliskTailStyle {
+  hide: string;
+  horn: string;
+  /** The yellowish underbelly, carried down the tail's lower edge. */
+  belly: string;
+  /** Root half-width (tiles) — MUST meet the body's stern width so
+   *  the tail reads as the hull continuing, never a rope tied on. */
+  rootW: number;
+  /** Mass dial: crest heights and ring weights. */
+  heavy: number;
+  /** The fen cousin: the tall swimmer's fin instead of the crests. */
+  fin?: boolean;
+}
+
+/**
+ * THE WEAPON OFF THE STERN — the basilisk tail painter, rebuilt for
+ * the croc-tail sim (user mandate: huge, meaty, dramatic). The
+ * silhouette is a MUSCLE WEDGE: root as wide as the hull's stern,
+ * holding most of its width through the first half (meat), then
+ * closing on a hard whip point. The reads, in croc grammar: the
+ * DOUBLE CREST — two scute rows riding the tail base that MERGE into
+ * one tall keel saw at mid-length (the signature of every reference
+ * crocodilian) — the BELLY BAND carried down the lower edge, and
+ * quiet muscle rings at the joints. The fen swaps the crests for one
+ * tall swimmer's fin. Dials ride the style (the canid-lane law);
+ * plain path calls — no Path2D — so node tests walk every coordinate.
+ */
+export function drawBasiliskTail(
+  ctx: CanvasRenderingContext2D,
+  pts: Array<{ x: number; y: number }>,
+  st: BasiliskTailStyle,
+  wk: number,
+  opts: BobtailDrawOpts,
+): void {
+  const n = pts.length;
+  if (n < 3) return;
+  const left: Array<{ x: number; y: number }> = [];
+  const right: Array<{ x: number; y: number }> = [];
+  const widths: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[Math.max(0, i - 1)]!;
+    const b = pts[Math.min(n - 1, i + 1)]!;
+    let tx = b.x - a.x;
+    let ty = b.y - a.y;
+    const tl = Math.hypot(tx, ty) || 1;
+    tx /= tl;
+    ty /= tl;
+    const t = i / (n - 1);
+    // THE MEAT PROFILE: barely tapering through the muscular first
+    // half, then the power curve closes it to the whip.
+    const w = st.rootW * (1 - 0.88 * Math.pow(t, 1.6)) * wk;
+    widths.push(w);
+    left.push({ x: pts[i]!.x + ty * w, y: pts[i]!.y - tx * w });
+    right.push({ x: pts[i]!.x - ty * w, y: pts[i]!.y + tx * w });
+  }
+
+  const tipX = pts[n - 1]!.x + (pts[n - 1]!.x - pts[n - 2]!.x) * 0.6;
+  const tipY = pts[n - 1]!.y + (pts[n - 1]!.y - pts[n - 2]!.y) * 0.6;
+  const silhouette = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(left[0]!.x, left[0]!.y);
+    for (let i = 1; i < n; i++) ctx.lineTo(left[i]!.x, left[i]!.y);
+    ctx.lineTo(tipX, tipY);
+    for (let i = n - 1; i >= 0; i--) ctx.lineTo(right[i]!.x, right[i]!.y);
+    ctx.closePath();
+  };
+
+  ctx.lineJoin = 'round';
+  ctx.fillStyle = opts.hurt ? '#ffffff' : shade(st.hide, opts.back ? -14 : -6);
+  silhouette();
+  ctx.fill();
+  if (opts.hurt) return;
+
+  // Which ribbon edge is dorsal on screen (the turtle law) — the
+  // crests ride it; the belly band takes the other.
+  const upperAt = (i: number): { x: number; y: number } =>
+    left[i]!.y <= right[i]!.y ? left[i]! : right[i]!;
+  const lowerAt = (i: number): { x: number; y: number } =>
+    left[i]!.y <= right[i]!.y ? right[i]! : left[i]!;
+
+  // THE BELLY BAND: the yellowish underside carried out of the body
+  // read, hugging the lower edge through the meaty half then fading.
+  ctx.fillStyle = shade(st.belly, -8);
+  ctx.globalAlpha = 0.5;
+  ctx.beginPath();
+  const bellyN = Math.max(3, Math.floor(n * 0.62));
+  for (let i = 0; i < bellyN; i++) {
+    const lo = lowerAt(i);
+    if (i === 0) ctx.moveTo(lo.x, lo.y);
+    else ctx.lineTo(lo.x, lo.y);
+  }
+  for (let i = bellyN - 1; i >= 0; i--) {
+    const lo = lowerAt(i);
+    const t = i / (n - 1);
+    ctx.lineTo(lo.x, lo.y - widths[i]! * (0.42 - 0.3 * t));
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  if (st.fin) {
+    // THE SWIMMER'S FIN: one tall connected sheet off the dorsal
+    // edge, rising past mid-length and running out the tip — the
+    // sculling engine made visible. A step DARKER than the horn: a
+    // pale fin read as a separate paddle lying on the tail.
+    ctx.fillStyle = shade(st.horn, -16);
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const hi = upperAt(i);
+      if (i === 0) ctx.moveTo(hi.x, hi.y);
+      else ctx.lineTo(hi.x, hi.y);
+    }
+    ctx.lineTo(tipX, tipY);
+    for (let i = n - 1; i >= 0; i--) {
+      const hi = upperAt(i);
+      const t = i / (n - 1);
+      const fh = st.rootW * wk * (0.38 + 0.5 * Math.sin(Math.PI * Math.min(1, t * 1.15)));
+      ctx.lineTo(hi.x, hi.y - Math.max(0.3, fh));
+    }
+    ctx.closePath();
+    ctx.fill();
+    // The fin's ray seams, quiet.
+    ctx.strokeStyle = shade(st.horn, -18);
+    ctx.globalAlpha = 0.45;
+    ctx.lineWidth = Math.max(0.8, wk * 0.012);
+    for (let i = 2; i < n - 1; i += 2) {
+      const hi = upperAt(i);
+      const t = i / (n - 1);
+      const fh = st.rootW * wk * (0.38 + 0.5 * Math.sin(Math.PI * Math.min(1, t * 1.15)));
+      ctx.beginPath();
+      ctx.moveTo(hi.x, hi.y);
+      ctx.lineTo(hi.x + wk * 0.012, hi.y - fh * 0.9);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  } else {
+    // THE DOUBLE CREST: two scute rows on the meaty base — one on
+    // the dorsal edge, its twin inset a third of the width — that
+    // MERGE at mid-length into the single tall keel saw running out
+    // to the tip. Blades bow aft (grown horn, never stamped tin).
+    ctx.fillStyle = st.horn;
+    const mergeT = 0.42;
+    for (let i = 1; i < n - 1; i++) {
+      const t = i / (n - 1);
+      const hi = upperAt(i);
+      const w = widths[i]!;
+      // Row heights: base rows are short studs; past the merge the
+      // single keel takes the full blade height.
+      if (t < mergeT) {
+        for (const inset of [0, 0.38]) {
+          const bx = hi.x + (pts[i]!.x - hi.x) * inset * 0.9;
+          const by = hi.y + (pts[i]!.y - hi.y) * inset * 0.9;
+          const sw = w * 0.34 * st.heavy;
+          ctx.fillStyle = inset === 0 ? st.horn : shade(st.horn, -10);
+          ctx.beginPath();
+          ctx.moveTo(bx - sw * 0.6, by + sw * 0.15);
+          ctx.quadraticCurveTo(bx - sw * 0.05, by - sw * 1.15, bx + sw * 0.32, by - sw * 0.95);
+          ctx.lineTo(bx + sw * 0.55, by + sw * 0.15);
+          ctx.closePath();
+          ctx.fill();
+        }
+      } else {
+        const rise = Math.min(1, (t - mergeT) / 0.18);
+        const sw = w * (0.42 + 0.34 * rise) * st.heavy + wk * 0.012;
+        ctx.fillStyle = st.horn;
+        ctx.beginPath();
+        ctx.moveTo(hi.x - sw * 0.62, hi.y + sw * 0.15);
+        ctx.quadraticCurveTo(hi.x - sw * 0.05, hi.y - sw * 1.5, hi.x + sw * 0.3, hi.y - sw * 1.15);
+        ctx.lineTo(hi.x + sw * 0.6, hi.y + sw * 0.15);
+        ctx.closePath();
+        ctx.fill();
+        // BROKEN INK off the keel's shadow edge — partial, never a
+        // closed ring (the thorned-mail law).
+        ctx.strokeStyle = '#241a2e';
+        ctx.globalAlpha = 0.4;
+        ctx.lineWidth = Math.max(0.7, wk * 0.01);
+        ctx.beginPath();
+        ctx.moveTo(hi.x + sw * 0.3, hi.y - sw * 1.15);
+        ctx.lineTo(hi.x + sw * 0.55, hi.y - sw * 0.2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+
+  // Muscle rings at the joints: quiet, heavier through the meat.
+  ctx.strokeStyle = shade(st.hide, -20);
+  for (let i = 1; i < n - 1; i++) {
+    const t = i / (n - 1);
+    ctx.globalAlpha = 0.5 - 0.25 * t;
+    ctx.lineWidth = Math.max(1, wk * 0.016 * (1 - 0.4 * t));
+    ctx.beginPath();
+    ctx.moveTo(left[i]!.x, left[i]!.y);
+    ctx.lineTo(right[i]!.x, right[i]!.y);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  // The quiet contour that seats the mass on the ground plane.
+  ctx.lineWidth = Math.max(1, wk * 0.013);
+  silhouette();
+  ctx.stroke();
 }
 
 /**
@@ -24078,50 +24312,56 @@ export function drawBeast(
   const paintTail = (): void => {
     if (spiderL || crabL || giantCrabL || beetleL) return;
     if (basiliskL) {
-      // THE DRAGON TRAILER: the live game runs the full TailSim
-      // chain (muscle, low carriage) painted by drawBasiliskTail.
-      // The analytic spine below is THE ONE REST for sim-less
-      // callers (portraits, CMS, sheets): exactly where it settles.
+      // THE WEAPON OFF THE STERN: the live game runs the CrocTailSim
+      // chain painted by drawBasiliskTail. Sim-less callers
+      // (portraits, CMS, sheets) get THE ONE REST the honest way:
+      // the sim's exact settled chain is BUILT here — straight
+      // astern on the drag curve — and fed through the SAME painter,
+      // so one painter serves both sources and the rest can never
+      // drift from where the physics settles.
       if (opts.tail) {
         opts.tail();
         return;
       }
-      const hl = spec.bodyLen * s;
+      const hl = spec.bodyLen;
       const lift = opts.pose.bob * 0.35 * s;
-      const rootX = bx - fx * hl * 0.85;
-      const rootY = by - fy * hl * 0.85 * ys - basiliskL.bodyH * 0.42 * s - lift * 0.6;
-      const backA = Math.atan2(-fy * ys, -fx);
-      const tLen = s * (basiliskL.elder ? 0.9 : basiliskL.fin ? 0.78 : 0.72);
-      const sway = now > 0 ? Math.sin(now * 0.0008 + seed * 1.1) * 0.12 : 0;
-      const cxq = rootX + Math.cos(backA + sway * 0.4) * tLen * 0.5;
-      const cyq = rootY + Math.sin(backA + sway * 0.4) * tLen * 0.5 * ys + tLen * 0.24;
-      const tipx = rootX + Math.cos(backA + sway) * tLen;
-      const tipy = cyq + tLen * 0.2;
-      const wk = s * (basiliskL.elder ? 0.085 : basiliskL.fin ? 0.06 : 0.07);
-      const cone = taperedSpinePath(rootX, rootY, cxq, cyq, tipx, tipy, (t) => wk * (1 - 0.8 * t));
-      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(basiliskL.hide, -6);
-      ctx.fill(cone);
-      if (!opts.hurt) {
-        // The ridge marches down the trailer — saw chips on the
-        // stone line, fin waves on the fen.
-        ctx.fillStyle = basiliskL.fin ? shade(basiliskL.horn, -4) : basiliskL.horn;
-        for (const t of [0.18, 0.42, 0.64, 0.84]) {
-          const u = 1 - t;
-          const sxp = u * u * rootX + 2 * u * t * cxq + t * t * tipx;
-          const syp = u * u * rootY + 2 * u * t * cyq + t * t * tipy;
-          const sw = wk * (1 - 0.55 * t) * (basiliskL.fin ? 1.3 : 1);
-          ctx.beginPath();
-          ctx.moveTo(sxp - sw * 0.5, syp - sw * 0.3);
-          if (basiliskL.fin) {
-            ctx.quadraticCurveTo(sxp - sw * 0.1, syp - sw * 1.6, sxp + sw * 0.45, syp - sw * 0.3);
-          } else {
-            ctx.lineTo(sxp - sw * 0.05, syp - sw * 1.5);
-            ctx.lineTo(sxp + sw * 0.5, syp - sw * 0.3);
-          }
-          ctx.closePath();
-          ctx.fill();
-        }
+      const az = basiliskL.bodyH * 0.45;
+      const rootOff = hl * 0.92;
+      const segCount = 9;
+      const segLen = basiliskL.tailLen / segCount;
+      // A slow idle sweep keeps the standing portrait alive — the
+      // scull's residue, rotating the whole rest line a few degrees.
+      const sway = now > 0 ? Math.sin(now * 0.0006 + seed * 1.1) * 0.1 : 0;
+      const bA = Math.atan2(fy, fx) + Math.PI + sway;
+      const bfx = Math.cos(bA);
+      const bfy = Math.sin(bA);
+      const pts: Array<{ x: number; y: number }> = [];
+      for (let i = 0; i <= segCount; i++) {
+        const ti = i / segCount;
+        const d = rootOff + segLen * i;
+        // The drag: hull height at the root, sunk to the ground by
+        // two-thirds, the last third dragging (the sim's restZ law).
+        const sink = Math.min(1, ti / 0.66);
+        const z = Math.max(0.02, az * (1 - sink * sink * 0.96));
+        pts.push({
+          x: bx + bfx * d * s,
+          y: by + bfy * d * ys * s - z * s - lift * 0.5 * (1 - ti),
+        });
       }
+      drawBasiliskTail(
+        ctx,
+        pts,
+        {
+          hide: basiliskL.hide,
+          horn: basiliskL.horn,
+          belly: basiliskL.belly,
+          rootW: basiliskL.tailRootW,
+          heavy: basiliskL.tailHeavy * 0.55,
+          fin: basiliskL.fin,
+        },
+        s,
+        { hurt: opts.hurt, back: fy < -0.2 },
+      );
       return;
     }
     if (turtleL) {

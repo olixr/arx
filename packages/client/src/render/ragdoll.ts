@@ -2476,34 +2476,46 @@ export function drawBeastRagdoll(
     ctx.fillStyle = RAT_LOOK.skin;
     ctx.fill(tail);
   } else if (look.defId.endsWith('basilisk')) {
-    // The dragon trailer lies where it fell — a long limp run of
-    // scaled muscle, the ridge chips still marching out the dead.
+    // THE WEAPON LIES WHERE IT FELL: the corpse keeps the tail's
+    // full stature — longer than the body, root as wide as the
+    // stern, a last shallow sweep frozen in it, the keel saw still
+    // standing off the dead. A basilisk corpse is mostly tail, the
+    // same truth the living silhouette carries.
     const bl = basiliskLook(look.defId, look.seed);
-    const tx = rear.x - Math.cos(spineA) * len * (bl.elder ? 1.0 : 0.85);
-    const tipY = f.ay + g[0]!.floor * f.s + s * 0.015;
+    const reach = bl.tailLen * s * 0.95;
+    // The frozen sweep: a gentle settled curve off the spine line —
+    // seeded so each corpse falls its own way, never a rubber stamp.
+    const bend = (((look.seed * 2654435761) >>> 6) % 100) / 100 - 0.5;
+    const sweepA = spineA + bend * 0.55;
+    const tx = rear.x - Math.cos(sweepA) * reach;
+    const tipY = f.ay + g[0]!.floor * f.s + s * 0.012;
+    const mxq = rear.x - Math.cos(spineA + bend * 0.2) * reach * 0.5;
+    const myq = Math.max(rear.y, tipY) + s * 0.05;
     const trailer = taperedSpinePath(
       rear.x,
       rear.y,
-      (rear.x + tx) / 2,
-      Math.max(rear.y, tipY) + s * 0.04,
+      mxq,
+      myq,
       tx,
       tipY,
-      (t) => s * bl.tailHeavy * 0.72 * (0.05 - 0.038 * t),
+      (t) => s * bl.tailRootW * (1 - 0.85 * Math.pow(t, 1.5)),
     );
     ctx.fillStyle = shade(bl.hide, -8);
     ctx.fill(trailer);
-    ctx.fillStyle = shade(bl.horn, -6);
-    for (const t of [0.25, 0.5, 0.75]) {
+    // The keel: base double studs, then the tall saw out the tip —
+    // the living crest grammar on the dead.
+    for (const t of [0.14, 0.26, 0.4, 0.55, 0.7, 0.84]) {
       const u = 1 - t;
-      const mxq = (rear.x + tx) / 2;
-      const myq = Math.max(rear.y, tipY) + s * 0.04;
       const qx = u * u * rear.x + 2 * u * t * mxq + t * t * tx;
       const qy = u * u * rear.y + 2 * u * t * myq + t * t * tipY;
-      const sw = s * bl.tailHeavy * 0.72 * (0.045 - 0.024 * t);
+      const w = s * bl.tailRootW * (1 - 0.85 * Math.pow(t, 1.5));
+      const tall = t >= 0.4;
+      const sw = w * (tall ? 0.75 : 0.4) + s * 0.006;
+      ctx.fillStyle = tall ? shade(bl.horn, -6) : shade(bl.horn, -12);
       ctx.beginPath();
-      ctx.moveTo(qx - sw * 0.5, qy);
-      ctx.lineTo(qx, qy - sw * 1.3);
-      ctx.lineTo(qx + sw * 0.5, qy);
+      ctx.moveTo(qx - sw * 0.6, qy - w * 0.5);
+      ctx.lineTo(qx - sw * 0.05, qy - w * 0.5 - sw * (tall ? 1.4 : 1.0));
+      ctx.lineTo(qx + sw * 0.55, qy - w * 0.5);
       ctx.closePath();
       ctx.fill();
     }
