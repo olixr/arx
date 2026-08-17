@@ -1249,9 +1249,28 @@ const enum BulkKind {
 }
 
 /** THE SHELF LAW's one comparator, hoisted — a fresh closure per frame
- *  de-optimized the hottest sort in the engine. */
+ *  de-optimized the hottest sort in the engine.
+ *
+ *  THE SHELF CLAMP (2026-08-17): positive shelves flatten to ONE rank
+ *  before comparing. A shelf exists so raised content can beat the
+ *  crown ROWS beneath it (shelf 0) and so pit content sinks with its
+ *  floor (negative levels, untouched here) — but between two RAISED
+ *  items the raw world row is the true camera depth, and unclamped
+ *  shelf-major let anything on shelf N+1 paint over a shelf-N stander
+ *  standing rows SOUTH of it. The visible wound: a tree at a stair
+ *  mouth (shelf 1) had its whole canopy cut by the terrace wall two
+ *  levels up (shelf 2) — the "stair apron over the trees" report.
+ *  Clamped, raised-vs-raised resolves by row like flat land always
+ *  has; every within-terrace contract the law names (climber over
+ *  flight, wall over the body behind it, face under its own crown's
+ *  standers — billboards paint no pixels below their feet, so row
+ *  order never bleeds) still holds, now by row instead of by rank. */
+const SHELF = (v: number | undefined): number => {
+  const s = v ?? 0;
+  return s > 1 ? 1 : s;
+};
 const DRAW_ORDER = (a: DrawItem, b: DrawItem): number =>
-  (a.strat ?? 0) - (b.strat ?? 0) || a.sortY - b.sortY;
+  SHELF(a.strat) - SHELF(b.strat) || a.sortY - b.sortY;
 
 /** The dynamic-glow falloff profile, hoisted — a per-glow-per-frame
  *  array literal defeated the glow sprite cache's identity memo. */
