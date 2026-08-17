@@ -132,6 +132,7 @@ import {
   type RagImpact,
 } from './ragdoll.js';
 import { BLOB_M, chamferRect, facetBlob, facetCircle, unitBlob } from './shapes.js';
+import { drawGroundDrop, drawsOwnPile, groundGlowFor, groundShadowSpread, type GroundDropEnv } from './groundItems.js';
 import { LAYER_GROUND, LAYER_WORLD, Particles, type Particle } from './particles.js';
 import {
   FALL_LOOKAHEAD,
@@ -57611,11 +57612,13 @@ export class Renderer {
   }
 
   /**
-   * Ground loot. Coins pile up as actual gold; everything else is a
-   * cinched leather loot bag whose topper tells you the cargo at a
-   * glance — a blade for weapons and tools, arrow shafts for ammo, a
-   * draped cloth for wearables, a round loaf for food, a stitched
-   * patch in the item's color for raw goods. High-value drops shimmer.
+   * Ground loot — THE DROPPED WORLD (groundItems.ts): every item's
+   * honest form on the dirt. Weapons and tools lie at true held scale
+   * under their own style painters, armor drops as its slot's smith's
+   * bundle, materials and food are 1:1 matter, rolled rarity speaks
+   * from the ground. This frame owns the drop's LIFE — landing pop,
+   * bob, contact shadow, hover, ground glow, stack echoes, and the
+   * loot label anchor; the matter itself is painted by drawGroundDrop.
    */
   private dropItem(
     eid: number,
@@ -57626,29 +57629,10 @@ export class Renderer {
     roll?: ItemRoll,
   ): DrawItem {
     const ctx = this.ctx;
-    const def = itemDef(itemId);
-    const col = def?.color ?? '#b0a49a';
     const k = this.camera.scale;
     const terrainLift = this.renderLift(s.x, s.y) * k;
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
     p.y -= terrainLift;
-
-    const cat: 'gold' | 'ore' | 'egg' | 'gear' | 'ammo' | 'wear' | 'eat' | 'stuff' =
-      itemId === 'coins'
-        ? 'gold'
-        : itemId.endsWith('_ore') || itemId === 'coal' || itemId === 'obsidian_shard'
-          ? 'ore'
-          : itemId === 'egg'
-            ? 'egg'
-            : itemId === 'arrow'
-              ? 'ammo'
-              : def?.weapon || def?.tool
-                ? 'gear'
-                : def?.equipSlot
-                  ? 'wear'
-                  : def?.heals
-                    ? 'eat'
-                    : 'stuff';
 
     // Landing pop: freshly spawned loot drops in and settles with a
     // small overshoot. animFor's poseStartedAt is its first-seen time.
@@ -57671,326 +57655,34 @@ export class Renderer {
       Math.hypot(this.lootHud.mx - p.x, this.lootHud.my - (p.y - k * 0.2)) < k * 0.45;
     this.frameLoot.push({ eid, x: s.x, y: s.y, sx: p.x, sy: p.y - k * 0.55, itemId, qty, hovered, roll });
 
-    // Premium cargo announces itself: a soft glow in the item's color.
-    if (cat === 'gold' && qty >= 25) {
-      this.queueGlow(s.x, s.y, 0.7, '232, 182, 76', 0.1);
-    } else if ((def?.value ?? 0) >= 300) {
-      const c = parseInt(col.slice(1), 16);
-      this.queueGlow(s.x, s.y, 0.7, `${(c >> 16) & 255}, ${(c >> 8) & 255}, ${c & 255}`, 0.12);
-    }
+    // The drop announces itself: rolled rarity glows in its tier's
+    // color, crystal matter in its school's, gold and premium goods
+    // keep their classic shimmer.
+    const glow = groundGlowFor(itemId, qty, roll);
+    if (glow) this.queueGlow(s.x, s.y, glow.r, glow.rgb, glow.a);
 
     const outline = hovered ? '#f6ecd4' : '#241a2e';
-    const lw = Math.max(1.5, k * 0.042);
-
-    const drawGold = (): void => {
-      // Real gold on the ground: a pile that grows with the sum.
-      const n = qty >= 200 ? 9 : qty >= 50 ? 6 : qty >= 10 ? 4 : 3;
-      ctx.strokeStyle = outline;
-      ctx.lineWidth = Math.max(1.2, k * 0.032);
-      for (let i = 0; i < n; i++) {
-        // Rows stack back-to-front; jitter keeps piles individual.
-        const row = i < Math.ceil(n / 2) ? 0 : i < n - 1 ? 1 : 2;
-        const inRow = row === 0 ? i : row === 1 ? i - Math.ceil(n / 2) : 0;
-        const rowN = row === 0 ? Math.ceil(n / 2) : Math.max(1, n - 1 - Math.ceil(n / 2));
-        const cx = (inRow - (rowN - 1) / 2) * k * 0.13 + (rnd(i) - 0.5) * k * 0.05;
-        const cy = -row * k * 0.075 + (rnd(i + 9) - 0.5) * k * 0.02;
-        ctx.fillStyle = row === 2 ? '#f2cd5e' : row === 1 ? '#e8b64c' : '#d9a441';
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, k * 0.085, k * 0.055, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.strokeStyle = 'rgba(122, 84, 30, 0.75)';
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, k * 0.048, k * 0.028, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.strokeStyle = outline;
-        ctx.lineWidth = Math.max(1.2, k * 0.032);
-      }
-      // A wandering twinkle so gold catches the eye across a field.
-      const tw = Math.sin(now / 260 + eid * 2.3);
-      if (tw > 0.55) {
-        const a = (tw - 0.55) / 0.45;
-        const gx = (rnd(31) - 0.5) * k * 0.3;
-        const gy = -k * 0.07 - rnd(32) * k * 0.08;
-        ctx.fillStyle = `rgba(255, 244, 214, ${0.9 * a})`;
-        const gr = k * 0.045 * a;
-        ctx.beginPath();
-        ctx.moveTo(gx, gy - gr);
-        ctx.lineTo(gx + gr * 0.4, gy);
-        ctx.lineTo(gx, gy + gr);
-        ctx.lineTo(gx - gr * 0.4, gy);
-        ctx.closePath();
-        ctx.fill();
-      }
-    };
-
-    const drawEgg = (): void => {
-      // A hen's egg lying where it was laid — no bag, just the egg
-      // (or a small clutch for a stack), nestled in a grass shadow.
-      const n = Math.min(3, qty);
-      ctx.strokeStyle = outline;
-      ctx.lineWidth = Math.max(1.2, k * 0.034);
-      for (let i = 0; i < n; i++) {
-        const ex = (i - (n - 1) / 2) * k * 0.15 + (rnd(i + 3) - 0.5) * k * 0.04;
-        const ey = (rnd(i + 7) - 0.5) * k * 0.05;
-        const rot = (rnd(i + 11) - 0.5) * 0.7;
-        ctx.fillStyle = i % 2 ? '#efe3c8' : '#e8d9b0';
-        ctx.beginPath();
-        ctx.ellipse(ex, ey, k * 0.075, k * 0.095, rot, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = '#f8f2e0';
-        ctx.beginPath();
-        ctx.ellipse(ex - k * 0.02, ey - k * 0.035, k * 0.026, k * 0.034, rot, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    };
-
-    const drawOre = (): void => {
-      // Raw stone on the ground reads as stone — no bag pretends
-      // otherwise. One hefty chunk plus spall, cut in the same blocky
-      // node language as the deposits, in the metal's identity colors
-      // (the same hues its icon speaks, not the item-list grey).
-      const ORE_DROP: Record<string, string> = {
-        copper_ore: '#c47b3d',
-        tin_ore: '#cfd3dc',
-        iron_ore: '#a05038',
-        coal: '#4a4456',
-        gold_ore: '#e8b64c',
-        silver_ore: '#c6cfe0',
-        mithril_ore: '#8fb4e4',
-        adamant_ore: '#6cb47a',
-        obsidian_shard: '#3b3247',
-        starmetal_ore: '#d6cbf6',
-      };
-      const oreCol = ORE_DROP[itemId] ?? col;
-      const accent =
-        itemId === 'coal' ? '#8a86a0'
-        : itemId === 'obsidian_shard' ? '#b8a8d8'
-        : itemId === 'tin_ore' || itemId === 'silver_ore' || itemId === 'starmetal_ore' ? '#ffffff'
-        : itemId === 'mithril_ore' ? '#d8ecff'
-        : itemId === 'adamant_ore' ? '#d2f0d0'
-        : '#fff6d8';
-      const chunk = (cx: number, cy: number, w: number, rot: number): void => {
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(rot);
-        const hh = w * 0.8;
-        const cut = w * 0.2;
-        ctx.fillStyle = shade(oreCol, -32);
-        ctx.strokeStyle = outline;
-        ctx.lineWidth = Math.max(1.4, k * 0.038);
-        ctx.beginPath();
-        chamferRect(ctx, -w / 2, -hh / 2, w, hh, cut);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = oreCol;
-        ctx.beginPath();
-        chamferRect(ctx, -w * 0.38, -hh * 0.4, w * 0.72, hh * 0.66, cut * 0.7);
-        ctx.fill();
-        ctx.fillStyle = accent;
-        ctx.fillRect(-w * 0.28, -hh * 0.3, w * 0.24, hh * 0.18);
-        ctx.restore();
-      };
-      chunk(-k * 0.1, -k * 0.14, k * 0.36, -0.1);
-      chunk(k * 0.17, -k * 0.07, k * 0.24, 0.16);
-      if (itemId === 'copper_ore') {
-        // Verdigris kiss on the big chunk's shadowed flank.
-        ctx.fillStyle = '#3fa98e';
-        ctx.globalAlpha = 0.6;
-        ctx.fillRect(-k * 0.2, -k * 0.08, k * 0.07, k * 0.06);
-        ctx.globalAlpha = 1;
-      } else if (itemId === 'iron_ore') {
-        // One rust band across the face.
-        ctx.fillStyle = shade(oreCol, -24);
-        ctx.fillRect(-k * 0.24, -k * 0.16, k * 0.26, Math.max(1.2, k * 0.032));
-      } else if (itemId === 'gold_ore') {
-        // Gold catches the eye across a field — same twinkle law as coins.
-        const tw = Math.sin(now / 260 + eid * 2.3);
-        if (tw > 0.55) {
-          const a = (tw - 0.55) / 0.45;
-          const gx = (rnd(31) - 0.5) * k * 0.3;
-          const gy = -k * 0.2 - rnd(32) * k * 0.08;
-          ctx.fillStyle = `rgba(255, 244, 214, ${0.9 * a})`;
-          const gr = k * 0.045 * a;
-          ctx.beginPath();
-          ctx.moveTo(gx, gy - gr);
-          ctx.lineTo(gx + gr * 0.4, gy);
-          ctx.lineTo(gx, gy + gr);
-          ctx.lineTo(gx - gr * 0.4, gy);
-          ctx.closePath();
-          ctx.fill();
-        }
-      }
-    };
-
-    const drawBag = (): void => {
-      const bw = k * 0.34;
-
-      // Toppers that live BEHIND the bag mouth rise first.
-      if (cat === 'gear') {
-        // A blade left leaning out of the bag — unmistakably arms.
-        ctx.save();
-        ctx.translate(k * 0.015, -k * 0.31);
-        ctx.rotate(-0.32);
-        ctx.fillStyle = col;
-        ctx.strokeStyle = outline;
-        ctx.lineWidth = lw * 0.8;
-        ctx.beginPath();
-        ctx.moveTo(-k * 0.035, 0);
-        ctx.lineTo(-k * 0.035, -k * 0.3);
-        ctx.lineTo(0, -k * 0.4);
-        ctx.lineTo(k * 0.035, -k * 0.3);
-        ctx.lineTo(k * 0.035, 0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        ctx.strokeStyle = shade(col, 30);
-        ctx.lineWidth = Math.max(1, k * 0.02);
-        ctx.beginPath();
-        ctx.moveTo(0, -k * 0.05);
-        ctx.lineTo(0, -k * 0.34);
-        ctx.stroke();
-        ctx.fillStyle = '#6b4a26';
-        ctx.strokeStyle = outline;
-        ctx.lineWidth = lw * 0.8;
-        ctx.beginPath();
-        chamferRect(ctx, -k * 0.075, -k * 0.01, k * 0.15, k * 0.045, k * 0.015);
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
-      } else if (cat === 'ammo') {
-        // Fanned arrow shafts, fletching up.
-        for (let i = -1; i <= 1; i++) {
-          ctx.save();
-          ctx.translate(i * k * 0.045, -k * 0.32);
-          ctx.rotate(i * 0.22);
-          ctx.strokeStyle = '#8a6a45';
-          ctx.lineWidth = Math.max(1.4, k * 0.028);
-          ctx.beginPath();
-          ctx.moveTo(0, 0);
-          ctx.lineTo(0, -k * 0.3);
-          ctx.stroke();
-          ctx.fillStyle = i === 0 ? shade(col, 14) : col;
-          ctx.strokeStyle = outline;
-          ctx.lineWidth = Math.max(1, k * 0.02);
-          ctx.beginPath();
-          ctx.moveTo(0, -k * 0.36);
-          ctx.lineTo(k * 0.038, -k * 0.26);
-          ctx.lineTo(0, -k * 0.29);
-          ctx.lineTo(-k * 0.038, -k * 0.26);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-          ctx.restore();
-        }
-      }
-
-      // The bag: a squarish leather pouch, cinched with a rope tie,
-      // gathered mouth puffing above the knot.
-      const leather = '#8f6c46';
-      ctx.fillStyle = leather;
-      ctx.strokeStyle = outline;
-      ctx.lineWidth = lw;
-      ctx.beginPath();
-      chamferRect(ctx, -bw / 2, -k * 0.31, bw, k * 0.31, k * 0.07);
-      ctx.fill();
-      ctx.stroke();
-      // Gathered mouth above the tie.
-      ctx.fillStyle = shade(leather, -8);
-      ctx.beginPath();
-      chamferRect(ctx, -k * 0.1, -k * 0.415, k * 0.2, k * 0.1, k * 0.035);
-      ctx.fill();
-      ctx.stroke();
-      // Rope cinch + knot.
-      ctx.fillStyle = '#c4a35a';
-      ctx.beginPath();
-      chamferRect(ctx, -k * 0.115, -k * 0.345, k * 0.23, k * 0.05, k * 0.02);
-      ctx.fill();
-      ctx.stroke();
-      // Base weight band + top-left light facet: brutalist two-tone.
-      ctx.fillStyle = shade(leather, -22);
-      ctx.beginPath();
-      chamferRect(ctx, -bw / 2 + k * 0.025, -k * 0.085, bw - k * 0.05, k * 0.06, k * 0.02);
-      ctx.fill();
-      ctx.fillStyle = shade(leather, 20);
-      ctx.beginPath();
-      chamferRect(ctx, -bw / 2 + k * 0.035, -k * 0.28, k * 0.1, k * 0.055, k * 0.02);
-      ctx.fill();
-
-      // Front-of-bag cargo tells.
-      if (cat === 'stuff') {
-        // A stitched patch dyed in the goods' color.
-        ctx.fillStyle = col;
-        ctx.strokeStyle = outline;
-        ctx.lineWidth = Math.max(1, k * 0.022);
-        ctx.beginPath();
-        chamferRect(ctx, -k * 0.065, -k * 0.225, k * 0.13, k * 0.115, k * 0.025);
-        ctx.fill();
-        ctx.stroke();
-        ctx.strokeStyle = shade(col, -34);
-        ctx.setLineDash([k * 0.022, k * 0.022]);
-        ctx.beginPath();
-        chamferRect(ctx, -k * 0.048, -k * 0.208, k * 0.096, k * 0.08, k * 0.018);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      } else if (cat === 'wear') {
-        // A folded garment draped over the rim.
-        ctx.fillStyle = col;
-        ctx.strokeStyle = outline;
-        ctx.lineWidth = Math.max(1, k * 0.024);
-        ctx.beginPath();
-        ctx.moveTo(-k * 0.155, -k * 0.315);
-        ctx.lineTo(-k * 0.005, -k * 0.315);
-        ctx.lineTo(-k * 0.005, -k * 0.15);
-        ctx.quadraticCurveTo(-k * 0.045, -k * 0.115, -k * 0.08, -k * 0.15);
-        ctx.quadraticCurveTo(-k * 0.115, -k * 0.11, -k * 0.155, -k * 0.155);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        ctx.strokeStyle = shade(col, -28);
-        ctx.lineWidth = Math.max(1, k * 0.018);
-        ctx.beginPath();
-        ctx.moveTo(-k * 0.08, -k * 0.3);
-        ctx.lineTo(-k * 0.08, -k * 0.16);
-        ctx.stroke();
-      } else if (cat === 'eat') {
-        // A round loaf resting in the mouth.
-        ctx.fillStyle = col;
-        ctx.strokeStyle = outline;
-        ctx.lineWidth = Math.max(1, k * 0.024);
-        ctx.beginPath();
-        ctx.ellipse(k * 0.02, -k * 0.43, k * 0.085, k * 0.07, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = shade(col, 24);
-        ctx.beginPath();
-        ctx.ellipse(k * 0.0, -k * 0.455, k * 0.038, k * 0.022, -0.4, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    };
 
     return {
       sortY: s.y - 0.2,
       elevated: terrainLift !== 0,
       drawShadow: () => {
-        const spread = cat === 'gold' ? 0.75 : 0.6;
+        // Per-form spread: a lying spear throws a longer shadow than
+        // a coin pile; a feather barely dents the light.
+        const spread = groundShadowSpread(itemId);
         this.castContact(p.x, p.y + k * 0.05, k * 0.3 * spread * pop, k * 0.13 * pop);
       },
       draw: () => {
         ctx.save();
         ctx.translate(p.x, p.y + bob - fall);
         ctx.scale(pop, pop);
-        const paint = (): void => {
-          if (cat === 'gold') drawGold();
-          else if (cat === 'ore') drawOre();
-          else if (cat === 'egg') drawEgg();
-          else drawBag();
-        };
+        const env: GroundDropEnv = { ctx, k, eid, itemId, qty, now, outline, hovered, roll };
+        const paint = (): void => drawGroundDrop(env);
         // A merged stack reads as a HEAP before its label confirms it:
-        // shrunken siblings tucked behind the front bag, one from ×3,
-        // two from ×10. Gold and eggs already draw their own piles.
-        const echoes = cat === 'gold' || cat === 'egg' ? 0 : qty >= 10 ? 2 : qty >= 3 ? 1 : 0;
+        // shrunken siblings tucked behind the front item, one from ×3,
+        // two from ×10 — unless the family draws its own pile grammar
+        // (coin piles, bar pyramids, fanned fish, scroll fans...).
+        const echoes = drawsOwnPile(itemId) ? 0 : qty >= 10 ? 2 : qty >= 3 ? 1 : 0;
         for (let i = echoes; i >= 1; i--) {
           ctx.save();
           const side = rnd(40 + i) > 0.5 ? 1 : -1;
