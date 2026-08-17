@@ -1,7 +1,8 @@
 # THE ANSWERED LIFE — Callings v2, the class system's constitution
 
-Status: **GREEN-LIT 2026-08-17** ("Proceed with Phase 1"). Author:
-design review 2026-08-17.
+Status: **EPIC COMPLETE (core platform) 2026-08-17 — all six phases
+shipped, Ph5 live-proven; the content epoch follows.** Author: design
+review 2026-08-17; green-lit the same day.
 
 ## The green-light record (answers taken 2026-08-17)
 
@@ -51,6 +52,44 @@ state, another answers it) with many combination routes, not authored
 pair tables. Core first, content later.
 
 ---
+
+## THE GOALS AUDIT (epic close, 2026-08-17) — the brief, answered
+
+| The brief asked | Where it stands |
+|---|---|
+| Complete architectural overhaul; deep, configurable, composable, for years | THE CALLING IS A PACKAGE over the four proven engines (gear fold, the ONE proc door, the buff forge, the status book) — no fifth engine, every shape data-authored (Ph1-3). |
+| Dramatic gameplay impact, altered playstyles | The full trigger grammar (every-Nth strike, health thresholds, on-status echoes, kills, blocks, strides), the when clause (nine conditions riding the forge), the self-blessing through the book's boon shelf, cross-craft dials — and THE FELT FLOORS in the ledger so a timid dial cannot ship (Ph2, 3, 6). |
+| Multi-classing by combination; Focus as the budget | THE BUDGET IS THE CLASS: quartile curve to 102, seat bands 1/2/3, RANK IS A CHOICE YOU AFFORD; the economy's archetypes pinned (Ph4, 6). |
+| Crafting skills may benefit combat (the master smith) | THEME IS THE ROOT, NOT THE FENCE — law 5; only trade dials stay self-keyed; the `art` license lane reserved for the smith's sword arm (Ph1; the content epoch authors it). |
+| Procs, passives, regen, thresholds, every-fifth-attack, chance-on-hit — all configurable | `proc` entries speak the whole grammar body-side; `stateApplied` + `boon` earned into the SHARED grammar so gear inherits them too (Ph2). |
+| 10+ per skill, unlocked progressively, rankable | THE DECADE FRAME (seats unique per skill to 99), ranks I-IV by the honed clocks, applied rank chosen and persisted (Ph4); the ladder rendered ONE skill at a time with rank pips (Ph5). |
+| Emergent synergies, many combination routes, not authored pairs | SYNERGY BY VOCABULARY, NEVER BY LOOKUP — lay/read/count/answer the same pages from different skills; THE ANSWERED ECHO is the hinge; THE REGISTER licenses every page touch by name (Ph2, 6). |
+| Robust, reliable core; balance-aware | EVERY FOLD IS DECLARED (the perk table killed a real clobber), THE DOOR REPAIR (one rest law), PROCS NEVER BEGET PROCS made structural, THE NO-LOSS LAW, deliberate sanitize order, hysteresis on hp conditions; 15 slate laws + the ledger's 7 pins (Ph1-6). |
+| Core first, content later | PURE PLATFORM by the green-light's word: zero authored packages; the frozen fifty-three byte-identical; the ledger BINDS the content epoch before it opens (Ph6). |
+
+## As built — Phase 6, THE LEDGER (2026-08-17)
+
+`content/src/callingLedger.test.ts` = the constitution the content
+epoch authors against — every pin reads the LIVE roster at EVERY rank
+step, so the first package that leans on a channel answers here:
+THE FELT FLOORS (a dial entry moves ≥ its channel's floor — armor 4,
+style/element/vsState 6%, speed/cooldown/swing 5%, crit 2, regen 1,
+maxHp 6, skill 3, thorns 3, onKillHaste 10t — or the package carries a
+verb: proc/when/art/trade rhythm/perk/perPiece); THE PROC BUDGET (≤1
+proc per package, damage moments rest ≥160t, cadence ≥4, meters 4..8,
+procMismatch clean, named); the register/book agreement (every page a
+calling lays, reads, or rides exists); THE SWING ASSEMBLY with calling
+sources IN the stack (page × shelf × art × summed deepest-rank gear
+swingSpeed × max when-grant, inside the band before the clamp); RANK
+IS DEPTH (each step changes the package, notes ≤90, any shared dial
+climbs ≤2.5× I→IV — honed depth, never a different calling); THE
+ECONOMY (fresh hand 3, specialist 10, ceiling 102 ≈ a fifth of a
+500-point rank-I world, a capstone at IV = 6). Floors were derived
+from the shipped roster's own minimums, so the register opens with a
+bar the fifty-three already clear. Owed to the content epoch (not
+debts): the live when-chip and calling-proc walks (no shipped def
+authors either lane), THE REGISTER's first license rows, the
+master-smith and synergy-pair exemplars as its opening bench.
 
 ## As built — Phase 5, THE OPEN HALL (2026-08-17) — LIVE-PROVEN
 
