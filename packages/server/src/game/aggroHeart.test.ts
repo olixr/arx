@@ -393,6 +393,31 @@ test('THE PEEK: a cunning species spends its SECOND look farther down the escape
   }
 });
 
+test('THE EYE ABOVE THE HEAD: every rung of the ladder telegraphs its own face', () => {
+  const protoEye = GameServer.prototype as unknown as { npcAlertByte: AnyFn };
+  const s = slate();
+  const npc = fakeNpc({});
+  (s.npcs as Map<number, unknown>).set(1, npc);
+  const byte = () => call(protoEye.npcAlertByte, s, 1) as number;
+  // 0 calm · 1 wary · 2 engaged · 3 hunting · 4 pursuit · 5 looking
+  npc.state = 'idle';
+  assert.equal(byte(), 0);
+  npc.state = 'suspicious';
+  assert.equal(byte(), 1);
+  npc.state = 'investigate';
+  assert.equal(byte(), 5, 'the walk-over wears its own face, not the stare');
+  npc.state = 'chase';
+  assert.equal(byte(), 2, 'the eye ON you is the lock');
+  // The chase never lies about its eye: the blind run telegraphs blind.
+  npc.pursuitSinceTick = 900;
+  assert.equal(byte(), 4, 'sight broken, still coming — the slashed eye');
+  npc.pursuitSinceTick = undefined;
+  npc.state = 'search';
+  assert.equal(byte(), 3);
+  npc.state = 'return';
+  assert.equal(byte(), 0, 'the walk home stands the telegraph down');
+});
+
 test('the peacetime stroll never mints a look past its leash circle', () => {
   const s = slate();
   for (let i = 0; i < 8; i++) {

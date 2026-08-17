@@ -20,8 +20,9 @@ export interface SnapshotEntity {
    */
   status: number;
   /**
-   * NPC alert telegraph (ALERT_ICON_*): 0 calm, 1 wary "?",
-   * 2 engaged "!", 3 hunting a lost quarry. Players always send 0.
+   * NPC alert telegraph (ALERT_ICON_*): 0 calm, 1 wary stare,
+   * 2 engaged lock, 3 hunting a lost quarry, 4 committed blind
+   * pursuit, 5 walking over to look. Players always send 0.
    */
   alert: number;
 }

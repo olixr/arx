@@ -267,6 +267,40 @@ peek, the investigate leash clamp; existing mint calls carry the gyre arg).
 CMS: 'search legs' slider. Gates: shared 226 · content 570 · server 544 ·
 client 618 · tsc clean.
 
+## Fourth pass — THE EYE ABOVE THE HEAD (2026-08-16, same day)
+
+The user's ask: the overhead state icons were two text glyphs ("?"/"!") in
+the SAME serif gold dialect as the QUEST marks — confusable by construction —
+and the blind pursuit wearing the plain "!" read as a stale indicator. The
+telegraph is now ONE bespoke vector EYE on a small dark badge plate (capsule,
+hairline state-ink rim), acting the state it announces; never a glyph, so the
+two grammars can never rhyme (quest = serif gold, no plate, breathing bob;
+perception = plate badge, pops and holds still):
+
+- **WARY** — half-lidded squint, dim amber, pupil peeking UNDER the lid
+  (pass-two verdict off the audit sheet: a fully-hidden pupil left a crescent
+  that read as a MOUTH; lid 0.4 + dropped pupil is the squint).
+- **LOOKING** (new wire value 5) — the open amber eye: investigate finally
+  wears its own face instead of borrowing the stare's.
+- **ENGAGED** — red slit predator pupil + one expanding flare ring at the
+  moment of the lock (the single loudest beat this UI is allowed).
+- **PURSUIT** (new wire value 4) — the slashed ember eye: sight broken,
+  still coming. The chase never lies about its eye anymore; the blind run
+  telegraphs blind (KEEP RUNNING) instead of holding the engaged mark.
+- **HUNTING** — deep-amber eye whose pupil SWEEPS side to side (sin t/430):
+  the searcher is guessing and the player watches it guess.
+- **THE STAND-DOWN** — any rung dropping to calm CLOSES the eye: a grey lid
+  slides shut over 380 ms and the badge sinks — disengagement is shown,
+  never popped out of existence.
+
+Wire: the snapshot alert byte simply grew values 4/5 (full u8, no encoding
+change). Server `npcAlertByte` splits chase on `pursuitSinceTick` and
+investigate from suspicious. Proven on the badge audit sheet (exact drawing
+math transplanted, 3 scales × day-grass/stone/night, sweep time-strip, quest
+marks alongside for the confusion check). Tests: shared +1 (rung uniqueness,
+u8 fit), server +1 (the full ladder verdict incl. the blind-run split).
+Gates: shared 227 · content 570 · server 545 · client 618 · tsc clean.
+
 ## Debts (deliberate)
 
 - The LIVE WALK is owed: the lure-to-town proof (wolf dragged to the Amberford

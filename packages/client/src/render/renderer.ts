@@ -10,6 +10,9 @@ import {
   ALERT_ICON_NONE,
   ALERT_ICON_ENGAGED,
   ALERT_ICON_HUNTING,
+  ALERT_ICON_LOOKING,
+  ALERT_ICON_PURSUIT,
+  ALERT_ICON_WARY,
   STATUS_AMBIENCE_MASK,
   STATUS_BIT,
   afflictionStacksOf,
@@ -55279,17 +55282,33 @@ export class Renderer {
     };
   }
 
-  /** Per-entity alert glyph animation state (icon + when it changed). */
+  /** Per-entity alert badge animation state (icon + when it changed). */
   private readonly alertAnim = new Map<number, { icon: number; since: number }>();
 
+  /** THE EYE ABOVE THE HEAD: one ink per perception rung — the amber
+   *  ladder climbs to red exactly as the danger does. */
+  private static readonly ALERT_INK: Record<number, string> = {
+    [ALERT_ICON_WARY]: '#d9a94c',
+    [ALERT_ICON_LOOKING]: '#e8b64c',
+    [ALERT_ICON_HUNTING]: '#e8993e',
+    [ALERT_ICON_PURSUIT]: '#ef7f4e',
+    [ALERT_ICON_ENGAGED]: '#f0554a',
+  };
+
   /**
-   * THE TELEGRAPH: the "?" / "!" over a wary or engaged head — the
-   * player-facing read of the perception ladder. Gold "?" = something
-   * has its attention (suspicious/investigating); ember "!" = the
-   * hunt is on; the hunting "?" pulses — the chain is broken but the
-   * body is still out there looking. Pops in on every transition so
-   * the moment reads at a glance. Nameplate-dialect glyph text drawn
-   * in the label pass (no outline ring), never emoji.
+   * THE EYE ABOVE THE HEAD: the perception telegraph is ONE bespoke
+   * eye on a small dark badge plate — never a text glyph, so it can
+   * never rhyme with the QUEST marks (serif gold, no plate, breathing
+   * bob; this plate pops and holds still). The eye acts the state:
+   * WARY is half-lidded (a stare at the edge of sense), LOOKING is
+   * the open eye walking over, ENGAGED is the red slit-pupil lock
+   * with a flare ring on the moment of commitment, PURSUIT is the
+   * slashed ember eye (sight broken, still coming — KEEP RUNNING),
+   * HUNTING sweeps its pupil side to side (it is guessing — hide).
+   * A state that drops to calm CLOSES the eye (a grey lid slides
+   * shut and the badge sinks) so disengagement is shown, not popped
+   * out of existence. Drawn in the label pass; the eye is negative
+   * space — a bright almond on the dark plate, pupil punched through.
    */
   private alertIconItem(
     eid: number,
@@ -55298,17 +55317,26 @@ export class Renderer {
     humanoid: boolean,
     radius: number,
     /** Rig-size multiplier for tall biped mobs (golems) — lifts the
-     *  glyph clear of a crown the flat radius math never knew. */
+     *  badge clear of a crown the flat radius math never knew. */
     sizeK = 1,
   ): DrawItem | null {
+    const now = performance.now();
     const prev = this.alertAnim.get(eid);
     if (icon === ALERT_ICON_NONE) {
-      if (prev) this.alertAnim.delete(eid);
-      return null;
+      // THE STAND-DOWN: the eye closes rather than vanishing.
+      if (!prev) return null;
+      if (prev.icon === ALERT_ICON_NONE) {
+        if (now - prev.since > 420) {
+          this.alertAnim.delete(eid);
+          return null;
+        }
+      } else {
+        this.alertAnim.set(eid, { icon: ALERT_ICON_NONE, since: now });
+      }
+    } else if (!prev || prev.icon !== icon) {
+      this.alertAnim.set(eid, { icon, since: now });
     }
-    const now = performance.now();
-    if (!prev || prev.icon !== icon) this.alertAnim.set(eid, { icon, since: now });
-    const since = this.alertAnim.get(eid)!.since;
+    const anim = this.alertAnim.get(eid)!;
     return {
       sortY: s.y,
       draw: () => {},
@@ -55316,34 +55344,132 @@ export class Renderer {
         const ctx = this.ctx;
         const sc = this.camera.scale;
         const p = this.liftedWTS(s.x, s.y);
+        const t = performance.now();
         // Clear of the nameplate: a body's label caps ~1.32 body-
-        // heights up; the glyph floats a step above it.
-        const topY = humanoid
+        // heights up; the badge floats a step above it.
+        const cy = humanoid
           ? p.y - 1.62 * sc
           : sizeK > 1
             ? p.y - 1.62 * sc * sizeK
             : p.y - (radius * 2.6 + 0.55) * sc;
+        const cx = p.x;
+        const closing = anim.icon === ALERT_ICON_NONE;
+        const face = closing ? ALERT_ICON_LOOKING : anim.icon;
+        const ink = closing
+          ? '#9b8f80'
+          : (Renderer.ALERT_INK[anim.icon] ?? '#e8b64c');
         // Pop-in: 180ms ease-out-back — the snap of a head coming up.
-        const k = Math.min(1, (performance.now() - since) / 180);
+        const k = Math.min(1, (t - anim.since) / 180);
         const c1 = 1.70158;
         const c3 = c1 + 1;
         const ease = 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2);
-        const pop = 0.5 + 0.5 * ease;
-        let alpha = 1;
-        if (icon === ALERT_ICON_HUNTING) {
-          alpha = 0.62 + 0.3 * Math.sin(performance.now() / 260);
-        }
-        const engaged = icon === ALERT_ICON_ENGAGED;
-        const glyph = engaged ? '!' : '?';
-        const size = Math.max(13, sc * (engaged ? 0.52 : 0.46)) * pop;
+        const pop = closing ? 1 : 0.5 + 0.5 * ease;
+        // The plate: a small dark capsule — present, quiet, and
+        // instantly "system", never "someone wrote punctuation".
+        const W = Math.max(17, sc * 0.6) * pop;
+        const H = W * 0.62;
+        const shut = closing ? Math.min(1, (t - anim.since) / 380) : 0;
         ctx.save();
-        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-        ctx.font = `700 ${size}px Georgia, 'Times New Roman', serif`;
-        ctx.textAlign = 'center';
-        ctx.fillStyle = 'rgba(24, 14, 32, 0.9)';
-        ctx.fillText(glyph, p.x + 1.5, topY + 1.5);
-        ctx.fillStyle = engaged ? '#f0655a' : '#e8b64c';
-        ctx.fillText(glyph, p.x, topY);
+        ctx.globalAlpha = closing ? 0.9 * (1 - shut * shut) : 0.96;
+        ctx.translate(cx, cy + (closing ? shut * H * 0.35 : 0));
+        ctx.fillStyle = 'rgba(19, 12, 25, 0.86)';
+        ctx.beginPath();
+        ctx.roundRect(-W / 2, -H / 2, W, H, H * 0.42);
+        ctx.fill();
+        ctx.strokeStyle = ink;
+        ctx.globalAlpha *= 0.55;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.globalAlpha /= 0.55;
+        // The almond: bright ink on the dark plate; the pupil is the
+        // plate punching back through.
+        const ew = W * 0.33;
+        const eh = H * 0.31;
+        const almond = () => {
+          ctx.beginPath();
+          ctx.moveTo(-ew, 0);
+          ctx.quadraticCurveTo(0, -eh * 2, ew, 0);
+          ctx.quadraticCurveTo(0, eh * 2, -ew, 0);
+          ctx.closePath();
+        };
+        almond();
+        ctx.fillStyle = ink;
+        ctx.fill();
+        ctx.save();
+        almond();
+        ctx.clip();
+        ctx.fillStyle = 'rgba(19, 12, 25, 0.92)';
+        if (face === ALERT_ICON_ENGAGED && !closing) {
+          // The lock: a predator's slit, contracted on you.
+          ctx.fillRect(-W * 0.032, -eh, W * 0.064, eh * 2);
+        } else {
+          // The round pupil — HUNTING sweeps it side to side: the
+          // searcher is GUESSING, and the player watches it guess.
+          // WARY drops the pupil to peek out UNDER the heavy lid —
+          // the squint; a centered pupil vanished behind the lid and
+          // the leftover crescent read as a MOUTH (pass-two verdict
+          // off the badge audit sheet).
+          const sweep =
+            face === ALERT_ICON_HUNTING && !closing ? Math.sin(t / 430) * ew * 0.52 : 0;
+          const py = face === ALERT_ICON_WARY && !closing ? eh * 0.3 : 0;
+          const pr = H * 0.16;
+          ctx.beginPath();
+          ctx.arc(sweep, py, pr, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // The lid: WARY holds it half-drawn (a stare not yet a
+        // verdict); the stand-down slides it all the way shut.
+        const lid = closing ? shut : face === ALERT_ICON_WARY ? 0.4 : 0;
+        if (lid > 0) {
+          ctx.fillStyle = 'rgba(19, 12, 25, 0.92)';
+          ctx.fillRect(-ew, -eh, ew * 2, eh * 2 * lid);
+        }
+        ctx.restore();
+        if (lid > 0) {
+          // The lid's edge — a thin ink line so the half-closed eye
+          // reads as a LID, not a cropped shape.
+          const ly = -eh + eh * 2 * lid;
+          ctx.strokeStyle = ink;
+          ctx.lineWidth = Math.max(1, W * 0.04);
+          ctx.beginPath();
+          ctx.moveTo(-ew * Math.sqrt(Math.max(0, 1 - (ly / eh) * (ly / eh))), ly);
+          ctx.lineTo(ew * Math.sqrt(Math.max(0, 1 - (ly / eh) * (ly / eh))), ly);
+          ctx.stroke();
+        }
+        if (face === ALERT_ICON_PURSUIT && !closing) {
+          // The slash: sight is BROKEN — struck through, still coming.
+          ctx.strokeStyle = 'rgba(19, 12, 25, 0.95)';
+          ctx.lineWidth = Math.max(2.5, W * 0.11);
+          ctx.beginPath();
+          ctx.moveTo(-W * 0.34, -H * 0.34);
+          ctx.lineTo(W * 0.34, H * 0.34);
+          ctx.stroke();
+          ctx.strokeStyle = ink;
+          ctx.lineWidth = Math.max(1, W * 0.045);
+          ctx.beginPath();
+          ctx.moveTo(-W * 0.34, -H * 0.34);
+          ctx.lineTo(W * 0.34, H * 0.34);
+          ctx.stroke();
+        }
+        if (face === ALERT_ICON_ENGAGED && !closing) {
+          // The flare: one expanding ring at the moment of the lock —
+          // the single loudest beat this UI is allowed.
+          const fk = (t - anim.since) / 300;
+          if (fk < 1) {
+            ctx.globalAlpha = 0.7 * (1 - fk);
+            ctx.strokeStyle = ink;
+            ctx.lineWidth = Math.max(1, W * 0.05);
+            ctx.beginPath();
+            ctx.roundRect(
+              (-W / 2) * (1 + fk * 0.7),
+              (-H / 2) * (1 + fk * 0.7),
+              W * (1 + fk * 0.7),
+              H * (1 + fk * 0.7),
+              H * 0.42 * (1 + fk * 0.7),
+            );
+            ctx.stroke();
+          }
+        }
         ctx.restore();
       },
     };

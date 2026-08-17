@@ -175,3 +175,20 @@ test('constants stay sane as a set', () => {
   assert.ok(SIGHT_RANGE_MULT > 1);
   assert.ok(ALERT_WATCH_CAP < ALERT_MAX && ALERT_WATCH_CAP > ALERT_SUS);
 });
+
+test('THE EYE ABOVE THE HEAD: six distinct rungs, one u8, calm is zero', async () => {
+  const P = await import('./perception.js');
+  const rungs = [
+    P.ALERT_ICON_NONE,
+    P.ALERT_ICON_WARY,
+    P.ALERT_ICON_ENGAGED,
+    P.ALERT_ICON_HUNTING,
+    P.ALERT_ICON_PURSUIT,
+    P.ALERT_ICON_LOOKING,
+  ];
+  assert.equal(new Set(rungs).size, rungs.length, 'every rung wears its own face');
+  assert.equal(P.ALERT_ICON_NONE, 0, 'calm is the zero the wire defaults to');
+  for (const r of rungs) {
+    assert.ok(Number.isInteger(r) && r >= 0 && r <= 255, 'the snapshot byte holds it');
+  }
+});

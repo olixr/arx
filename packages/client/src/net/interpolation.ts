@@ -10,7 +10,7 @@ export interface InterpSample {
   hpPct: number;
   /** STATUS_BIT u16 bitfield (state VFX flags + affliction stack nibble). */
   status: number;
-  /** NPC alert telegraph (ALERT_ICON_*): the ?/! over the head. */
+  /** NPC alert telegraph (ALERT_ICON_*): the eye badge over the head. */
   alert: number;
 }
 

@@ -490,7 +490,9 @@ import {
   ALERT_GRACE_TICKS,
   ALERT_ICON_ENGAGED,
   ALERT_ICON_HUNTING,
+  ALERT_ICON_LOOKING,
   ALERT_ICON_NONE,
+  ALERT_ICON_PURSUIT,
   ALERT_ICON_WARY,
   ALERT_MAX,
   ALERT_SUS,
@@ -31182,16 +31184,23 @@ export class GameServer {
   }
 
   /**
-   * The overhead telegraph, a pure read of the state ladder: wary
-   * bodies wear the "?", engaged ones the "!", a hunter the pulsing
-   * "?" that says the chain is broken but the woods aren't safe yet.
+   * The overhead telegraph, a pure read of the state ladder — THE
+   * EYE ABOVE THE HEAD. Every rung the player can act on wears its
+   * own face: the ENGAGED lock (the eye is ON you), the PURSUIT
+   * slash (the committed blind run — sight broken, still coming:
+   * keep running), the HUNTING sweep (hide now, the chain is
+   * broken), the LOOKING walk-over, the WARY stare. A chase never
+   * lies about its eye anymore: the blind leg telegraphs blind.
    */
   private npcAlertByte(eid: EntityId): number {
     const npc = this.npcs.get(eid);
     if (!npc) return ALERT_ICON_NONE;
-    if (npc.state === 'chase' || npc.state === 'seekhelp') return ALERT_ICON_ENGAGED;
+    if (npc.state === 'chase' || npc.state === 'seekhelp') {
+      return npc.pursuitSinceTick !== undefined ? ALERT_ICON_PURSUIT : ALERT_ICON_ENGAGED;
+    }
     if (npc.state === 'search') return ALERT_ICON_HUNTING;
-    if (npc.state === 'suspicious' || npc.state === 'investigate') return ALERT_ICON_WARY;
+    if (npc.state === 'investigate') return ALERT_ICON_LOOKING;
+    if (npc.state === 'suspicious') return ALERT_ICON_WARY;
     return ALERT_ICON_NONE;
   }
 

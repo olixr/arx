@@ -84,14 +84,23 @@ export const COVER_VIS_FACTOR = 0.45;
 
 /**
  * The snapshot's alert byte — what the world reads over a body's
- * head. WARY draws the "?", ENGAGED the "!", HUNTING the slow-pulse
- * "?" of a searcher that KNOWS someone is out there. One shared law
- * so server encoding and client glyphs can never drift.
+ * head. THE EYE ABOVE THE HEAD: every value is one EYE, drawn by the
+ * client on a small dark badge plate (never a text glyph — glyphs
+ * belong to the QUEST marks, and the two grammars must never rhyme).
+ * WARY = the half-lidded stare (suspicious, planted); LOOKING = the
+ * open eye walking over (investigate); ENGAGED = the red slit-pupil
+ * lock (chase with the eye ON you, and the help-cry run); PURSUIT =
+ * the slashed ember eye (the committed blind run — sight broken,
+ * still coming); HUNTING = the sweeping pupil of a searcher that
+ * KNOWS someone is out there. One shared law so server encoding and
+ * client badges can never drift.
  */
 export const ALERT_ICON_NONE = 0;
 export const ALERT_ICON_WARY = 1;
 export const ALERT_ICON_ENGAGED = 2;
 export const ALERT_ICON_HUNTING = 3;
+export const ALERT_ICON_PURSUIT = 4;
+export const ALERT_ICON_LOOKING = 5;
 
 export interface SightLine {
   /** False when full-height mass seals the line. */
