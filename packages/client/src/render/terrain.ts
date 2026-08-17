@@ -959,8 +959,39 @@ function drawPorchDecks(
         ctx.fillStyle = 'rgba(30, 22, 12, 0.24)';
         ctx.fillRect(gx, gy - liftB - px * 0.045, px, px * 0.045);
       }
-      // The boards, in the house's own wood when a wall adjoins.
-      paintDeckBoards(ctx, tx, ty, gx, gy, px, liftB, 'porch', false, tones);
+      // The boards, in the house's own wood when a wall adjoins. The
+      // joint rhythm follows THE ARM LAW measured on the porch's own
+      // surface, so a walkway wing turns its bond at the corner.
+      const porchArm = (ax: number, ay: number): boolean => {
+        const CAP = 12;
+        let rx = 1;
+        let ry = 1;
+        for (let i = 1; i <= CAP && isPorchSurface(ground, ax - i, ay); i++) rx++;
+        for (let i = 1; i <= CAP && isPorchSurface(ground, ax + i, ay); i++) rx++;
+        for (let i = 1; i <= CAP && isPorchSurface(ground, ax, ay - i); i++) ry++;
+        for (let i = 1; i <= CAP && isPorchSurface(ground, ax, ay + i); i++) ry++;
+        if (ry !== rx) return ry > rx;
+        return false; // a square porch keeps the long-plank read
+      };
+      const armV = porchArm(tx, ty);
+      paintDeckBoards(ctx, tx, ty, gx, gy, px, liftB, 'porch', armV, tones);
+      const dy0 = gy - liftB;
+      // The wall's shadow skirt: the porch floor must never fuse into
+      // the siding's plank courses (one brown field, no plane).
+      const northTile = ground(tx, ty - 1);
+      if (!hasN && northTile !== undefined && WALL_RUN_TILES.includes(northTile as Tile)) {
+        paintDeckWallSkirt(ctx, gx, dy0, px);
+      }
+      // Rim boards edge-on at the open sides, and header beams where
+      // an adjoining porch arm turns its rhythm.
+      if (!hasW) paintDeckSideFascia(ctx, gx, gy, px, liftB, 'porch', true, !hasS, fasciaBase);
+      if (!hasE) paintDeckSideFascia(ctx, gx, gy, px, liftB, 'porch', false, !hasS, fasciaBase);
+      if (isPorchSurface(ground, tx - 1, ty) && porchArm(tx - 1, ty) !== armV) {
+        paintHeaderBeam(ctx, gx, dy0, px, fasciaBase, true);
+      }
+      if (isPorchSurface(ground, tx, ty - 1) && porchArm(tx, ty - 1) !== armV) {
+        paintHeaderBeam(ctx, gx, dy0, px, fasciaBase, false);
+      }
       // South fascia: the rim joist that makes the lift honest, with
       // squared footing blocks carrying it to the ground.
       if (!hasS) {
@@ -1073,19 +1104,16 @@ function drawDocks(
       // Piles: the legs the whole structure stands on.
       if (!hasS && southWater) {
         for (const fpos of [0.18, 0.82]) {
-          const pxl = gx + fpos * px - px * 0.055;
-          const pw = px * 0.11;
-          const top = gy + px - liftB * 0.25;
-          const bot = gy + px + px * 0.14;
-          ctx.fillStyle = '#4e3a22';
-          ctx.fillRect(pxl, top, pw, bot - top);
-          ctx.fillStyle = '#77593a'; // sun-law lit west edge
-          ctx.fillRect(pxl, top, Math.max(1, pw * 0.3), bot - top);
-          ctx.strokeStyle = 'rgba(226, 240, 251, 0.5)';
-          ctx.lineWidth = Math.max(1.2, px * 0.03);
-          ctx.beginPath();
-          ctx.ellipse(pxl + pw / 2, bot, pw * 0.85, pw * 0.85 * FLAT, 0, 0, Math.PI * 2);
-          ctx.stroke();
+          paintDeckPile(
+            ctx,
+            gx + fpos * px,
+            gy + px - liftB * 0.25,
+            px,
+            px * 0.11,
+            hashCoords(149, tx * 2 + (fpos > 0.5 ? 1 : 0), ty),
+            '#4e3a22',
+            '#77593a',
+          );
         }
       }
 
@@ -1108,19 +1136,16 @@ function drawDocks(
         ctx.fillRect(side < 0 ? edgeX - px * 0.21 : edgeX + px * 0.12, gy, px * 0.09, px);
         // The pile: world-keyed row so a 2-tile bay never doubles up.
         if (hashCoords(151, tx * (side + 2), ty) % 2 === 0) {
-          const pw = px * 0.1;
-          const cyp = gy + 0.55 * px;
-          const top = cyp - liftB * 0.22;
-          const bot = cyp + px * 0.12;
-          ctx.fillStyle = '#4e3a22';
-          ctx.fillRect(edgeX - pw / 2, top, pw, bot - top);
-          ctx.fillStyle = '#77593a'; // sun-law lit west edge
-          ctx.fillRect(edgeX - pw / 2, top, Math.max(1, pw * 0.3), bot - top);
-          ctx.strokeStyle = 'rgba(226, 240, 251, 0.45)';
-          ctx.lineWidth = Math.max(1.2, px * 0.03);
-          ctx.beginPath();
-          ctx.ellipse(edgeX, bot, pw * 0.8, pw * 0.8 * FLAT, 0, 0, Math.PI * 2);
-          ctx.stroke();
+          paintDeckPile(
+            ctx,
+            edgeX,
+            gy + 0.55 * px - liftB * 0.22,
+            px,
+            px * 0.1,
+            hashCoords(151, tx * (side + 2), ty) >>> 3,
+            '#4e3a22',
+            '#77593a',
+          );
         }
       }
 
@@ -1135,10 +1160,22 @@ function drawDocks(
         ctx.fillRect(gx, gy + px - liftB, px, Math.max(1, px * 0.02));
       }
 
-      // The deck itself, lifted — the floor-law course painter.
+      // The deck itself, lifted — the floor-law course painter. Board
+      // rhythm follows THE ARM LAW: the arm this tile sits in, so an
+      // L-shaped quay turns its rhythm at the corner it actually has.
       const dy0 = gy - liftB;
-      const vertRun = deckN || deckS || (!deckE && !deckW);
+      const vertRun = deckArmVertical(ground, tx, ty);
       paintDeckBoards(ctx, tx, ty, gx, gy, px, liftB, 'dock', vertRun);
+      // The wall's shadow skirt: a deck butting a building keeps its
+      // floor plane instead of fusing into the siding.
+      if (!hasN && northT !== undefined && WALL_RUN_TILES.includes(northT as Tile)) {
+        paintDeckWallSkirt(ctx, gx, dy0, px);
+      }
+      // Rim boards on the side edges, then the header beams where a
+      // neighboring arm's rhythm (or family) turns.
+      if (!hasW) paintDeckSideFascia(ctx, gx, gy, px, liftB, 'dock', true, !hasS);
+      if (!hasE) paintDeckSideFascia(ctx, gx, gy, px, liftB, 'dock', false, !hasS);
+      paintDeckSeams(ctx, ground, tx, ty, gx, gy, px, liftB, 'dock', vertRun);
 
       // Silhouette ring, exposed edges only (the outline-shader law:
       // the same struct ink walls and props wear, baked once). The
@@ -1250,6 +1287,184 @@ function beginDeckOutline(ctx: CanvasRenderingContext2D, px: number): void {
   ctx.lineWidth = Math.max(1.5, px * 0.055);
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
+}
+
+/** The deck family a raw tile belongs to (rhythm/seam bookkeeping). */
+function deckFamilyOf(t: number | undefined): 'bridge' | 'dock' | null {
+  if (t === Tile.Bridge) return 'bridge';
+  if (t === Tile.Dock) return 'dock';
+  return null;
+}
+
+/** A family's rim-timber tone — the wood every edge kit cuts from. */
+function deckRimTone(family: 'bridge' | 'dock' | 'porch', override?: string): string {
+  if (override !== undefined) return override;
+  return family === 'bridge' ? BRIDGE_TIMBER.rim : '#6d5130';
+}
+
+/**
+ * THE HEADER BEAM (deck platform rework): wherever two deck tiles of
+ * DIFFERENT board rhythm or different family share an edge, a proud
+ * breaker beam runs the joint — the perpendicular course a carpenter
+ * lays where two plank fields meet. The old build butted the fields
+ * raw and every L-junction read as a paste-up seam. Each tile owns
+ * its own WEST and NORTH edges (one owner per edge, no double paint;
+ * the bake pad rows repaint border beams into both chunk canvases so
+ * seams agree across chunks by construction).
+ */
+function paintHeaderBeam(
+  ctx: CanvasRenderingContext2D,
+  gx: number,
+  dy0: number,
+  px: number,
+  tone: string,
+  vertical: boolean,
+): void {
+  const bw = Math.max(2, px * 0.1);
+  const lip = Math.max(1, px * 0.02);
+  const np = Math.max(1, px * 0.022);
+  ctx.fillStyle = shade(tone, -6);
+  if (vertical) {
+    ctx.fillRect(gx - bw / 2, dy0, bw, px);
+    ctx.fillStyle = 'rgba(224, 186, 124, 0.28)'; // sun-law lit west arris
+    ctx.fillRect(gx - bw / 2, dy0, lip, px);
+    ctx.fillStyle = 'rgba(24, 15, 6, 0.4)'; // shade foot east
+    ctx.fillRect(gx + bw / 2 - lip, dy0, lip, px);
+    // Peg pips where the beam is trenailed to the joists.
+    ctx.fillStyle = 'rgba(30, 20, 10, 0.42)';
+    for (const f of [0.22, 0.78]) {
+      ctx.fillRect(gx - np / 2, dy0 + f * px - np / 2, np, np);
+    }
+  } else {
+    ctx.fillRect(gx, dy0 - bw / 2, px, bw);
+    ctx.fillStyle = 'rgba(224, 186, 124, 0.28)'; // lit top arris
+    ctx.fillRect(gx, dy0 - bw / 2, px, lip);
+    ctx.fillStyle = 'rgba(24, 15, 6, 0.4)';
+    ctx.fillRect(gx, dy0 + bw / 2 - lip, px, lip);
+    ctx.fillStyle = 'rgba(30, 20, 10, 0.42)';
+    for (const f of [0.22, 0.78]) {
+      ctx.fillRect(gx + f * px - np / 2, dy0 - np / 2, np, np);
+    }
+  }
+}
+
+function paintDeckSeams(
+  ctx: CanvasRenderingContext2D,
+  ground: GroundSampler,
+  tx: number,
+  ty: number,
+  gx: number,
+  gy: number,
+  px: number,
+  liftB: number,
+  family: 'bridge' | 'dock',
+  myVert: boolean,
+): void {
+  const dy0 = gy - liftB;
+  const tone = deckRimTone(family);
+  const wFam = deckFamilyOf(ground(tx - 1, ty));
+  if (wFam !== null && (wFam !== family || deckArmVertical(ground, tx - 1, ty) !== myVert)) {
+    paintHeaderBeam(ctx, gx, dy0, px, tone, true);
+  }
+  const nFam = deckFamilyOf(ground(tx, ty - 1));
+  if (nFam !== null && (nFam !== family || deckArmVertical(ground, tx, ty - 1) !== myVert)) {
+    paintHeaderBeam(ctx, gx, dy0, px, tone, false);
+  }
+}
+
+/**
+ * THE EDGE HAS A BODY (deck platform rework): every exposed WEST or
+ * EAST deck edge wears its rim board seen edge-on — a narrow timber
+ * sliver, sun-law lit on the west flank and shadowed on the east,
+ * with a seam shadow against the field boards. The old build ended
+ * side edges in a bare ink line, and a whole pier read as a plank
+ * mat laid flat on the water. When the south face is exposed too,
+ * the sliver runs on down the fascia band and the corner reads as
+ * the structure's corner leg.
+ */
+function paintDeckSideFascia(
+  ctx: CanvasRenderingContext2D,
+  gx: number,
+  gy: number,
+  px: number,
+  liftB: number,
+  family: 'bridge' | 'dock' | 'porch',
+  west: boolean,
+  hasS: boolean,
+  tone?: string,
+): void {
+  const dy0 = gy - liftB;
+  const ew = Math.max(2, px * 0.06);
+  const base = deckRimTone(family, tone);
+  const h = px + (hasS ? liftB : 0);
+  const x0 = west ? gx : gx + px - ew;
+  ctx.fillStyle = west ? shade(base, 12) : shade(base, -16);
+  ctx.fillRect(x0, dy0, ew, h);
+  // The seam shadow where the rim meets the field boards.
+  const seamW = Math.max(1, px * 0.016);
+  ctx.fillStyle = 'rgba(24, 15, 6, 0.32)';
+  ctx.fillRect(west ? x0 + ew - seamW : x0, dy0, seamW, h);
+  // A catch-light arris on the outer edge of the lit flank.
+  if (west) {
+    ctx.fillStyle = 'rgba(224, 186, 124, 0.26)';
+    ctx.fillRect(x0, dy0, seamW, h);
+  }
+}
+
+/**
+ * THE WALL CASTS ON THE BOARDS: where a deck run butts a building's
+ * wall band, a firm shadow skirt falls across the boards at the wall
+ * foot — without it the wall's plank courses and the deck's plank
+ * courses fuse into one continuous brown field and the floor loses
+ * its plane (the porch-against-siding read the studio rejected).
+ */
+function paintDeckWallSkirt(
+  ctx: CanvasRenderingContext2D,
+  gx: number,
+  dy0: number,
+  px: number,
+): void {
+  ctx.fillStyle = 'rgba(20, 14, 8, 0.26)';
+  ctx.fillRect(gx, dy0, px, px * 0.12);
+  ctx.fillStyle = 'rgba(20, 14, 8, 0.45)';
+  ctx.fillRect(gx, dy0, px, Math.max(1.5, px * 0.03));
+}
+
+/**
+ * ONE DRIVEN PILE, honestly seated (deck platform rework): seat
+ * shadow on the water, the leg driven visibly DEEP (hash-varied so a
+ * colonnade never reads machine-stamped), sun-law lit west face, and
+ * a TIGHT waterline collar hugging the leg. The old build cut the leg
+ * at a stub and rang it with a wide bright ellipse — from most banks
+ * the deck overhang hid the stub and a row of floating white washers
+ * marched across the water.
+ */
+function paintDeckPile(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  top: number,
+  px: number,
+  pw: number,
+  seed: number,
+  body: string,
+  lit: string,
+): void {
+  const bot = top + px * (0.34 + (seed % 3) * 0.045);
+  // Seat shadow: the water darkens where the leg stands in it.
+  ctx.fillStyle = 'rgba(20, 34, 62, 0.28)';
+  ctx.beginPath();
+  ctx.ellipse(cx, bot, pw * 1.1, pw * 1.1 * FLAT, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = body;
+  ctx.fillRect(cx - pw / 2, top, pw, bot - top);
+  ctx.fillStyle = lit; // sun-law lit west edge
+  ctx.fillRect(cx - pw / 2, top, Math.max(1, pw * 0.3), bot - top);
+  // The waterline collar, tight to the leg.
+  ctx.strokeStyle = 'rgba(226, 240, 251, 0.38)';
+  ctx.lineWidth = Math.max(1, px * 0.022);
+  ctx.beginPath();
+  ctx.ellipse(cx, bot, pw * 0.62, pw * 0.62 * FLAT, 0, 0, Math.PI * 2);
+  ctx.stroke();
 }
 
 /**
@@ -1414,7 +1629,7 @@ function drawBridges(
         // 45° notch fills owned by this pass (deckFillAt).
         const f = deckFillAt(ground, tx, ty);
         if (f !== null && f.family === 'bridge' && (!include || include(tx, ty))) {
-          drawDeckFill(ctx, ground, f, tx, ty, gx, gy, px, axisMemo);
+          drawDeckFill(ctx, ground, f, tx, ty, gx, gy, px);
         }
         continue;
       }
@@ -1466,7 +1681,7 @@ function drawBridges(
       if (!hasS && waterS && (apron === 'none' || apron === 'N')) {
         const pw = px * 0.13;
         const top = gy + px - liftB * 0.3;
-        const bot = gy + px + px * 0.16;
+        const braceBot = gy + px + px * 0.3;
         const c0 = gx + 0.18 * px;
         const c1 = gx + 0.82 * px;
         ctx.strokeStyle = BRIDGE_TIMBER.brace;
@@ -1474,22 +1689,22 @@ function drawBridges(
         ctx.globalAlpha = 0.75;
         ctx.beginPath();
         ctx.moveTo(c0 + pw * 0.3, gy + px - liftB * 0.05);
-        ctx.lineTo(c1 - pw * 0.3, bot - px * 0.02);
+        ctx.lineTo(c1 - pw * 0.3, braceBot - px * 0.06);
         ctx.moveTo(c1 - pw * 0.3, gy + px - liftB * 0.05);
-        ctx.lineTo(c0 + pw * 0.3, bot - px * 0.02);
+        ctx.lineTo(c0 + pw * 0.3, braceBot - px * 0.06);
         ctx.stroke();
         ctx.globalAlpha = 1;
         for (const cx0 of [c0, c1]) {
-          const pxl = cx0 - pw / 2;
-          ctx.fillStyle = BRIDGE_TIMBER.pile;
-          ctx.fillRect(pxl, top, pw, bot - top);
-          ctx.fillStyle = BRIDGE_TIMBER.pileLit; // sun-law lit west edge
-          ctx.fillRect(pxl, top, Math.max(1, pw * 0.32), bot - top);
-          ctx.strokeStyle = 'rgba(226, 240, 251, 0.5)';
-          ctx.lineWidth = Math.max(1.2, px * 0.03);
-          ctx.beginPath();
-          ctx.ellipse(pxl + pw / 2, bot, pw * 0.8, pw * 0.8 * FLAT, 0, 0, Math.PI * 2);
-          ctx.stroke();
+          paintDeckPile(
+            ctx,
+            cx0,
+            top,
+            px,
+            pw,
+            hashCoords(153, tx * 2 + (cx0 > gx + px / 2 ? 1 : 0), ty),
+            BRIDGE_TIMBER.pile,
+            BRIDGE_TIMBER.pileLit,
+          );
         }
       }
 
@@ -1597,7 +1812,15 @@ function drawBridges(
         ctx.fillRect(gx, dy0 - px * 0.05, px, px * 0.05);
       }
 
-      paintDeckBoards(ctx, tx, ty, gx, gy, px, liftB, 'bridge', vertRun);
+      // Board rhythm follows THE ARM LAW (appearance); the walk-axis
+      // flood keeps ruling aprons, kerbs, thresholds and rails.
+      const armVert = deckArmVertical(ground, tx, ty);
+      paintDeckBoards(ctx, tx, ty, gx, gy, px, liftB, 'bridge', armVert);
+      // The wall's shadow skirt where a crossing butts a building.
+      if (!hasN && nT !== undefined && WALL_RUN_TILES.includes(nT as Tile)) {
+        paintDeckWallSkirt(ctx, gx, dy0, px);
+      }
+      paintDeckSeams(ctx, ground, tx, ty, gx, gy, px, liftB, 'bridge', armVert);
 
       // Sides vs ends, by the span's walk axis: the SIDES (the edges
       // a rail runs along) are perpendicular to the walk; the ENDS
@@ -1627,6 +1850,17 @@ function drawBridges(
       if (kerbS) ctx.fillRect(gx, dy0 + px - kerb - lit, px, lit);
       if (kerbW) ctx.fillRect(gx + kerb, dy0, lit, px);
       if (kerbE) ctx.fillRect(gx + px - kerb - lit, dy0, lit, px);
+
+      // Step faces on a ragged span — the W/E edges an E-W walk
+      // exposes over water, which carry neither kerb nor threshold —
+      // wear the rim board edge-on like every dock side (THE EDGE HAS
+      // A BODY); a bare ink line there read as a torn mat.
+      if (!hasW && !kerbW && !thW && apron !== 'W') {
+        paintDeckSideFascia(ctx, gx, gy, px, liftB, 'bridge', true, !hasS);
+      }
+      if (!hasE && !kerbE && !thE && apron !== 'E') {
+        paintDeckSideFascia(ctx, gx, gy, px, liftB, 'bridge', false, !hasS);
+      }
 
       // Land entrances: a proud SILL PLANK across the walk — a warmer,
       // boot-worn board that seats the crossing onto the bank. The
@@ -1725,7 +1959,6 @@ function drawDeckFill(
   gx: number,
   gy: number,
   px: number,
-  axisMemo?: Map<number, boolean>,
 ): void {
   const liftB = Math.round((DOCK_LIFT / FLAT) * px);
   const { legs, family, bank } = fill;
@@ -1789,18 +2022,17 @@ function drawDeckFill(
       const mx = (ax0 + bx0) / 2;
       const myG = (ayG + byG) / 2;
       const pw = bridge ? px * 0.13 : px * 0.11;
-      const pxl = mx - pw / 2;
       const top = myG - liftB * (bridge ? 0.3 : 0.25);
-      const bot = myG + px * (bridge ? 0.16 : 0.14);
-      ctx.fillStyle = bridge ? BRIDGE_TIMBER.pile : '#4e3a22';
-      ctx.fillRect(pxl, top, pw, bot - top);
-      ctx.fillStyle = bridge ? BRIDGE_TIMBER.pileLit : '#77593a'; // sun-law lit west edge
-      ctx.fillRect(pxl, top, Math.max(1, pw * (bridge ? 0.32 : 0.3)), bot - top);
-      ctx.strokeStyle = 'rgba(226, 240, 251, 0.5)';
-      ctx.lineWidth = Math.max(1.2, px * 0.03);
-      ctx.beginPath();
-      ctx.ellipse(mx, bot, pw * 0.8, pw * 0.8 * FLAT, 0, 0, Math.PI * 2);
-      ctx.stroke();
+      paintDeckPile(
+        ctx,
+        mx,
+        top,
+        px,
+        pw,
+        hashCoords(157, tx, ty),
+        bridge ? BRIDGE_TIMBER.pile : '#4e3a22',
+        bridge ? BRIDGE_TIMBER.pileLit : '#77593a',
+      );
     }
 
     // The face under the hyp: deck thickness made visible, sheared
@@ -1826,25 +2058,13 @@ function drawDeckFill(
     }
   }
 
-  // The boards, clipped to the lifted triangle. Direction and tones
-  // come from the span the fill welds into — the bridge asks the
-  // axis flood of its leg neighbor, the dock replays the neighbor's
-  // own per-tile rule — and the row hashes key on the same axes as
-  // the tile painters, so strips continue across the seam.
-  let vertRun: boolean;
+  // The boards, clipped to the lifted triangle. Rhythm comes from THE
+  // ARM LAW read at the leg neighbor the fill welds into, and the row
+  // hashes key on the same axes as the tile painters, so strips
+  // continue across the seam for either family.
   const nx = tx;
   const ny = legs[0] === 'N' ? ty - 1 : ty + 1;
-  if (bridge) {
-    let vr = axisMemo?.get(packDeck(nx, ny));
-    if (vr === undefined) vr = deckWalkIsVertical(ground, nx, ny, axisMemo);
-    vertRun = vr;
-  } else {
-    const dN = isDeckGround(ground(nx, ny - 1));
-    const dS = isDeckGround(ground(nx, ny + 1));
-    const dE = isDeckGround(ground(nx + 1, ny));
-    const dW = isDeckGround(ground(nx - 1, ny));
-    vertRun = dN || dS || (!dE && !dW);
-  }
+  const vertRun = deckArmVertical(ground, nx, ny);
   ctx.save();
   triPath();
   ctx.clip();
@@ -4620,19 +4840,74 @@ function waterNear2(ground: GroundSampler, tx: number, ty: number): boolean {
   return false;
 }
 
-/** Dock tile near water — a raised jetty deck. */
-export function isDockTile(ground: GroundSampler, tx: number, ty: number): boolean {
-  return ground(tx, ty) === Tile.Dock && waterNear2(ground, tx, ty);
+/**
+ * THE STRUCTURE LAW (deck platform rework): the deck gate is decided
+ * for the WHOLE CONNECTED structure, never per tile. The old per-tile
+ * radius test SPLIT one authored crossing mid-span: the water rows
+ * lifted into deck while the bank-approach rows fell out of the law
+ * and rendered as flat blob-layer road boards — a second plank field
+ * at a second scale with a grass seam between the two (the user's
+ * screenshot wound). One flood per structure: if ANY member tile has
+ * water within Chebyshev 2, EVERY member is lifted deck; a corduroy
+ * road far from open water stays flat end to end.
+ *
+ * Memo discipline: samplers are per-frame closures, so the memo keys
+ * on WORLD coords with a 5-second full flush (the channelAt pattern)
+ * — deterministic recompute self-heals plane switches and map edits,
+ * and the per-frame live path (deckFillAt probes) stays one map-get.
+ */
+let deckLiftMemo = new Map<number, boolean>();
+let deckLiftFlushAt = 0;
+
+function deckStructureLifted(ground: GroundSampler, tx: number, ty: number): boolean {
+  const now = performance.now();
+  if (now - deckLiftFlushAt > 5000) {
+    deckLiftMemo = new Map();
+    deckLiftFlushAt = now;
+  }
+  const hit = deckLiftMemo.get(packDeck(tx, ty));
+  if (hit !== undefined) return hit;
+  const seen = new Set<number>([packDeck(tx, ty)]);
+  const queue: Array<[number, number]> = [[tx, ty]];
+  const tiles: Array<[number, number]> = [];
+  let lifted = false;
+  // Generous cap, same reasoning as the axis flood: a capped flood
+  // gives different tiles different subsets and mixed verdicts.
+  const CAP = 4096;
+  while (queue.length > 0 && tiles.length < CAP) {
+    const [x, y] = queue.pop()!;
+    tiles.push([x, y]);
+    if (!lifted && waterNear2(ground, x, y)) lifted = true;
+    for (const [dx, dy] of [
+      [0, -1],
+      [0, 1],
+      [1, 0],
+      [-1, 0],
+    ] as const) {
+      const k = packDeck(x + dx, y + dy);
+      if (!seen.has(k) && isDeckGround(ground(x + dx, y + dy))) {
+        seen.add(k);
+        queue.push([x + dx, y + dy]);
+      }
+    }
+  }
+  for (const [x, y] of tiles) deckLiftMemo.set(packDeck(x, y), lifted);
+  return lifted;
 }
 
-/** Bridge tile near water — a raised, seated crossing. */
+/** Dock tile of a water-touching structure — a raised jetty deck. */
+export function isDockTile(ground: GroundSampler, tx: number, ty: number): boolean {
+  return ground(tx, ty) === Tile.Dock && deckStructureLifted(ground, tx, ty);
+}
+
+/** Bridge tile of a water-touching structure — a raised, seated crossing. */
 export function isBridgeTile(ground: GroundSampler, tx: number, ty: number): boolean {
-  return ground(tx, ty) === Tile.Bridge && waterNear2(ground, tx, ty);
+  return ground(tx, ty) === Tile.Bridge && deckStructureLifted(ground, tx, ty);
 }
 
 /** Either raised deck — everything the water must flow quietly under. */
 export function isDeckTile(ground: GroundSampler, tx: number, ty: number): boolean {
-  return isDeckGround(ground(tx, ty)) && waterNear2(ground, tx, ty);
+  return isDeckGround(ground(tx, ty)) && deckStructureLifted(ground, tx, ty);
 }
 
 /** A notch fill's orientation: which two adjacent tile edges the
@@ -4878,6 +5153,35 @@ export function deckWalkIsVertical(
   const vert = waterEW !== waterNS ? waterEW > waterNS : maxY - minY > maxX - minX;
   if (out) for (const [x, y] of tiles) out.set(packDeck(x, y), vert);
   return vert;
+}
+
+/**
+ * THE ARM LAW (deck platform rework). Board JOINT RHYTHM follows the
+ * ARM a tile sits in, measured on the spot: the contiguous deck run
+ * through the tile along each axis (capped). A long N-S arm breaks
+ * its boards in the brick bond, a long E-W arm runs long planks —
+ * and an L- or T-shaped complex resolves ARM BY ARM instead of
+ * flipping per tile (the old per-tile guess butted the two rhythms
+ * mid-run with no seam at all). Where two arms genuinely meet, the
+ * rhythm verdicts disagree across one shared edge — and that edge is
+ * exactly where the painters lay a HEADER BEAM, so every rhythm
+ * change in the world is carpentry, never an accident.
+ *
+ * This is the APPEARANCE axis only. The WALK axis (aprons, kerbs,
+ * thresholds, rails) stays with deckWalkIsVertical's span flood —
+ * a span keeps one walk even where its board rhythm turns a corner.
+ */
+export function deckArmVertical(ground: GroundSampler, tx: number, ty: number): boolean {
+  const CAP = 12;
+  let rx = 1;
+  let ry = 1;
+  for (let i = 1; i <= CAP && isDeckGround(ground(tx - i, ty)); i++) rx++;
+  for (let i = 1; i <= CAP && isDeckGround(ground(tx + i, ty)); i++) rx++;
+  for (let i = 1; i <= CAP && isDeckGround(ground(tx, ty - i)); i++) ry++;
+  for (let i = 1; i <= CAP && isDeckGround(ground(tx, ty + i)); i++) ry++;
+  if (ry !== rx) return ry > rx;
+  // A square bay ties: side with the neighbors it actually has.
+  return isDeckGround(ground(tx, ty - 1)) || isDeckGround(ground(tx, ty + 1));
 }
 
 /** Which way a bridge tile ramps: the LAND side of an apron, or

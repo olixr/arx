@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Tile } from '@arx/shared';
-import { bridgeApronAt, deckCoverRects, deckFillAt, deckWalkIsVertical, DOCK_LIFT, fillContains, fillCoversEdge } from './terrain.js';
+import { bridgeApronAt, deckArmVertical, deckCoverRects, deckFillAt, deckWalkIsVertical, DOCK_LIFT, fillContains, fillCoversEdge } from './terrain.js';
 
 /**
  * String-map worlds for the bridge laws: one char per tile, row-major,
@@ -69,6 +69,36 @@ test('a dock in the run flattens it — docks never slope', () => {
   const vert = deckWalkIsVertical(g, 2, 1);
   assert.equal(vert, false);
   assert.equal(bridgeApronAt(g, 1, 1, vert), 'none');
+});
+
+test('THE ARM LAW: board rhythm follows the arm, and turns exactly at the L', () => {
+  const g = samplerOf([
+    '~~~~~~~~',
+    '~DDDDDD~', // y1-2: the E-W arm, x1-6
+    '~DDDDDD~',
+    '~~~~DD~~', // y3-5: the N-S arm hanging off it, x4-5
+    '~~~~DD~~',
+    '~~~~DD~~',
+    '~~~~~~~~',
+  ]);
+  assert.equal(deckArmVertical(g, 2, 1), false, 'the long arm lays long planks E-W');
+  assert.equal(deckArmVertical(g, 4, 5), true, 'the hanging arm breaks its bond N-S');
+  // The rhythm turns across ONE shared edge — the exact edge the
+  // painters dress with a header beam, so every turn is carpentry.
+  assert.equal(deckArmVertical(g, 4, 2), false, 'the junction row still rides the long arm');
+  assert.equal(deckArmVertical(g, 4, 3), true, 'the first arm tile below it turns');
+});
+
+test('THE ARM LAW: a clean rectangular span keeps one rhythm end to end', () => {
+  const rows = ['~~~~~~'];
+  for (let i = 0; i < 6; i++) rows.push('~BBBB~');
+  rows.push('~~~~~~');
+  const g = samplerOf(rows);
+  for (let y = 1; y <= 6; y++) {
+    for (let x = 1; x <= 4; x++) {
+      assert.equal(deckArmVertical(g, x, y), true, `uniform at ${x},${y}`);
+    }
+  }
 });
 
 test('THE NOTCH-FILL LAW: a stair-step grows 45° fills on both shoulders', () => {

@@ -1074,7 +1074,7 @@ export function buildAmberford(): ZoneDef {
   b.set(105, 115, Tile.TownBell); // 'ring for Peld' — at last, a bell to ring
   b.set(104, 120, Tile.BeachedSkiff); // the punt itself, hauled out, dye on the sheer strake — Saltmere can wait one more season
   b.fillRect(110, 122, 3, 5, Tile.Dock); // the punt planks, down to the current
-  b.set(109, 122, Tile.RailWood);
+  // (the grade rail that flanked the planks is retired — the dock law)
   b.set(113, 123, Tile.MooringPost); // tarred oak leaning a hair riverward
   b.sign(107, 116, 'THE CROSSING', ['ring for Peld', 'downriver: Saltmere, someday'], Tile.Signpost);
   // THE TANNERY (Swale) — leather made where leather is made: on the
@@ -1124,10 +1124,12 @@ export function buildAmberford(): ZoneDef {
   for (let x = 85; x <= 88; x++) {
     for (let y = 122; y <= 134; y++) b.set(x, y, Tile.Bridge);
   }
-  b.set(84, 120, Tile.GuardianStatue).set(89, 120, Tile.GuardianStatue); // one clear row above the rails — stone reads best with air around it
+  b.set(84, 120, Tile.GuardianStatue).set(89, 120, Tile.GuardianStatue); // one clear row above the bridge mouth — stone reads best with air around it
   b.set(89, 117, Tile.StreetLantern); // the approach lantern on the quay lane's shoulder
-  b.set(84, 122, Tile.RailWood).set(89, 122, Tile.RailWood);
-  b.set(84, 134, Tile.RailWood).set(89, 134, Tile.RailWood);
+  // (The grade-level fence posts that used to flank both mouths are
+  // retired: the bridge's own parapet plants its landfall newels at
+  // the entrances now, and a ground rail beside a lifted deck reads
+  // as furniture floating in the grass — the dock law.)
   for (let x = 78; x <= 82; x++) {
     for (let y = 121; y <= 132; y++) {
       const t = b.get(x, y);

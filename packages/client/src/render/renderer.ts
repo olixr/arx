@@ -7129,9 +7129,21 @@ export class Renderer {
         // like every straight one, so bodies sort against it.
         const f = this.deckFill(game, tx, ty);
         if (f !== null && f.family === 'bridge') {
-          const n0 = items.length;
-          this.deckFillRailItem(tx, ty, f.legs, game, items);
-          this.stampStrat(items, n0, this.stratAt(tx, ty));
+          // The diagonal only carries the parapet where a parapet
+          // actually ARRIVES at one of its corners — a lone slanted
+          // handrail on a dock's chamfered prow read as scaffolding
+          // debris (railArrivesAtCorner).
+          const dm = f.legs === 'NE' || f.legs === 'SW';
+          const arrives = dm
+            ? this.railArrivesAtCorner(game, tx, ty) ||
+              this.railArrivesAtCorner(game, tx + 1, ty + 1)
+            : this.railArrivesAtCorner(game, tx + 1, ty) ||
+              this.railArrivesAtCorner(game, tx, ty + 1);
+          if (arrives) {
+            const n0 = items.length;
+            this.deckFillRailItem(tx, ty, f.legs, game, items);
+            this.stampStrat(items, n0, this.stratAt(tx, ty));
+          }
         }
         return;
       }
@@ -12391,6 +12403,32 @@ export class Renderer {
    * camera-facing hyp draws in front of the bodies north of it, a
    * far-side hyp sorts behind the deck's traffic.
    */
+  /**
+   * THE LANDFALL NEWEL: the chunky chamfer-capped post a parapet
+   * plants where it meets the bank — the crossing's own gate
+   * furniture. Retires the grade-level fence posts maps used to stand
+   * beside bridge mouths to fake this.
+   */
+  private drawRailNewel(x: number, yBase: number, s: number, hr: number, post: string): void {
+    const ctx = this.ctx;
+    const h = hr * 1.16;
+    ctx.fillStyle = post;
+    ctx.beginPath();
+    chamferRect(ctx, x - s * 0.075, yBase - h, s * 0.15, h, [s * 0.045, s * 0.045, 0, 0]);
+    ctx.fill();
+    // Sun-law lit west face and the cap block's top light.
+    ctx.fillStyle = shade(post, 14);
+    ctx.fillRect(x - s * 0.075, yBase - h + s * 0.045, s * 0.035, h - s * 0.045);
+    ctx.fillStyle = shade(post, 22);
+    ctx.fillRect(x - s * 0.055, yBase - h + s * 0.018, s * 0.11, s * 0.045);
+    if (this.outlineOn) {
+      this.beginStructOutline();
+      ctx.beginPath();
+      chamferRect(ctx, x - s * 0.075, yBase - h, s * 0.15, h, [s * 0.045, s * 0.045, 0, 0]);
+      ctx.stroke();
+    }
+  }
+
   private deckFillRailItem(
     tx: number,
     ty: number,
@@ -12469,44 +12507,75 @@ export class Renderer {
    * while both walk ends stay open. These are y-sorted items, never
    * bake: a body crossing the deck sorts behind the south rail.
    */
+  /**
+   * Does the tile at (x,y) carry a parapet rail on its (dx,dy) edge?
+   * A parapet exists to keep walkers out of the WATER: edges facing
+   * the bank carry no rail (land-facing step edges were stacking
+   * little fence boxes down every staircase junction). Ramp aprons
+   * keep their rails over land — the sloping entrance's furniture.
+   * EVERY water-facing edge rails, regardless of the walk axis
+   * (round 7): a stair-stepped span exposes step faces PARALLEL to
+   * the walk, and a walk end can only ever be an entrance where it
+   * meets LAND. An edge welded to a 45° notch fill is interior: the
+   * fill's own diagonal rail item carries the parapet across the
+   * hypotenuse instead. One predicate decides the tile AND all its
+   * neighbors, so runs read as one continuous parapet.
+   */
+  private railEdgeAt(game: ClientGame, x: number, y: number, dx: number, dy: number): boolean {
+    const g = (ax: number, ay: number): number | undefined => game.world.groundAt(ax, ay);
+    if (g(x, y) !== Tile.Bridge || !this.isDockAt(game, x, y)) return false;
+    const nb = g(x + dx, y + dy);
+    if (nb === Tile.Bridge || nb === Tile.Dock) return false;
+    const f = this.deckFill(game, x + dx, y + dy);
+    if (f !== null) {
+      const edge = dy < 0 ? 'S' : dy > 0 ? 'N' : dx < 0 ? 'E' : 'W';
+      if (f.legs[0] === edge || f.legs[1] === edge) return false;
+    }
+    if (isWaterTile(nb)) return true;
+    // Over the bank the parapet keeps running — but ONLY along the
+    // SIDES of the walk (the edges parallel to it), so the rail line
+    // runs bank-to-bank and dies at the entrance newels instead of
+    // stopping mid-span where the water happens to end. Walk-END
+    // edges over land are entrances and never rail (and step faces
+    // welded to bank fills are already interior above).
+    return dy !== 0 ? !this.bridgeWalkVert(game, x, y) : this.bridgeWalkVert(game, x, y);
+  }
+
+  /**
+   * Does any straight parapet rail END at the tile corner (cx,cy)?
+   * The gate that keeps a 45° fill's diagonal rail honest: a lone
+   * slanted handrail floating on a dock's chamfered prow (no straight
+   * rail arriving at either end) read as scaffolding debris — the
+   * diagonal only carries the parapet where a parapet actually
+   * arrives.
+   */
+  private railArrivesAtCorner(game: ClientGame, cx: number, cy: number): boolean {
+    for (const [x, y, dx, dy] of [
+      [cx - 1, cy, 0, -1],
+      [cx, cy, 0, -1], // north edges ending at the corner
+      [cx - 1, cy - 1, 0, 1],
+      [cx, cy - 1, 0, 1], // south edges
+      [cx, cy - 1, -1, 0],
+      [cx, cy, -1, 0], // west edges
+      [cx - 1, cy - 1, 1, 0],
+      [cx - 1, cy, 1, 0], // east edges
+    ] as const) {
+      if (this.railEdgeAt(game, x, y, dx, dy)) return true;
+    }
+    return false;
+  }
+
   private bridgeRailItems(tx: number, ty: number, game: ClientGame, items: DrawItem[]): void {
     const ctx = this.ctx;
     const s = this.camera.scale;
     const syT = s * this.camera.yScale;
-    const isDeck = (t: number | undefined): boolean => t === Tile.Bridge || t === Tile.Dock;
     const g = (x: number, y: number): number | undefined => game.world.groundAt(x, y);
     const fill = (x: number, y: number): DeckFill | null => this.deckFill(game, x, y);
-    // A tile carries this edge's rail if it's a bridge deck whose
-    // matching edge is an exposed SIDE — the same test decides the
-    // neighbors, so runs read as one continuous parapet. An edge
-    // welded to a 45° notch fill is interior: the fill's own diagonal
-    // rail item carries the parapet across the hypotenuse instead.
-    const edgeFilled = (x: number, y: number, dx: number, dy: number): boolean => {
-      const f = fill(x + dx, y + dy);
-      if (f === null) return false;
-      const edge = dy < 0 ? 'S' : dy > 0 ? 'N' : dx < 0 ? 'E' : 'W';
-      return f.legs[0] === edge || f.legs[1] === edge;
-    };
-    // A parapet exists to keep walkers out of the WATER: edges facing
-    // the bank carry no rail (land-facing step edges were stacking
-    // little fence boxes down every staircase junction). Ramp aprons
-    // keep their rails over land — the sloping entrance's furniture.
-    // EVERY water-facing edge rails, regardless of the walk axis
-    // (round 7): a stair-stepped span exposes step faces PARALLEL to
-    // the walk, and the old sides-only gate left those over open
-    // water with nothing but an ink line — a walk end can only ever
-    // be an entrance where it meets LAND, and land edges are already
-    // gated to aprons.
-    const railEdge = (x: number, y: number, dx: number, dy: number): boolean => {
-      if (g(x, y) !== Tile.Bridge || !this.isDockAt(game, x, y)) return false;
-      const nb = g(x + dx, y + dy);
-      if (isDeck(nb) || edgeFilled(x, y, dx, dy)) return false;
-      if (isWaterTile(nb)) return true;
-      return (
-        this.bridgeApron(game, x, y) !== 'none' &&
-        (dy !== 0 ? !this.bridgeWalkVert(game, x, y) : this.bridgeWalkVert(game, x, y))
-      );
-    };
+    const railEdge = (x: number, y: number, dx: number, dy: number): boolean =>
+      this.railEdgeAt(game, x, y, dx, dy);
+    /** Walkable bank — the only thing a parapet may END against. */
+    const isLand = (t: number | undefined): boolean =>
+      t !== undefined && t !== Tile.Bridge && t !== Tile.Dock && !isWaterTile(t);
     // THE PARAPET IS ONE LINE: a rail continues wherever a WATER
     // fill's diagonal picks it up at EXACTLY the shared tile corner.
     // The old legs-table only saw fills straight along the run and
@@ -12558,6 +12627,11 @@ export class Renderer {
         const edgeY = north ? ty : ty + 1;
         const contW = railEdge(tx - 1, ty, dx, dy) || cornerHeld(tx, edgeY);
         const contE = railEdge(tx + 1, ty, dx, dy) || cornerHeld(tx + 1, edgeY);
+        // THE LANDFALL NEWEL: a run ending against the bank (an E-W
+        // walk's entrance mouth) plants the crossing's gate post
+        // instead of the small end cap.
+        const mouthW = !contW && !railEdge(tx, ty, -1, 0) && isLand(g(tx - 1, ty));
+        const mouthE = !contE && !railEdge(tx, ty, 1, 0) && isLand(g(tx + 1, ty));
         items.push({
           sortY: north ? ty + 0.04 : ty + 1.02,
           elevated,
@@ -12569,8 +12643,8 @@ export class Renderer {
             for (const fx of [0.28, 0.72]) {
               ctx.fillRect(p.x + s * fx - s * 0.035, yAt(fx) - hr, s * 0.07, hr);
             }
-            if (!contW) ctx.fillRect(p.x - 0.25, yAt(0) - hr, s * 0.1, hr);
-            if (!contE) ctx.fillRect(p.x + s + 0.25 - s * 0.1, yAt(1) - hr, s * 0.1, hr);
+            if (!contW && !mouthW) ctx.fillRect(p.x - 0.25, yAt(0) - hr, s * 0.1, hr);
+            if (!contE && !mouthE) ctx.fillRect(p.x + s + 0.25 - s * 0.1, yAt(1) - hr, s * 0.1, hr);
             // Members as quads between the two end heights, so a
             // ramp's rail slopes with its deck; on a flat span they
             // collapse to the straight fence law. Mid rail behind
@@ -12604,27 +12678,38 @@ export class Renderer {
               octx.moveTo(p.x - 0.25, yAt(0) - hr + railT * 1.15);
               octx.lineTo(p.x + s + 0.25, yAt(1) - hr + railT * 1.15);
               octx.stroke();
-              if (!contW) octx.strokeRect(p.x - 0.25, yAt(0) - hr, s * 0.1, hr);
-              if (!contE) octx.strokeRect(p.x + s + 0.25 - s * 0.1, yAt(1) - hr, s * 0.1, hr);
+              if (!contW && !mouthW) octx.strokeRect(p.x - 0.25, yAt(0) - hr, s * 0.1, hr);
+              if (!contE && !mouthE) octx.strokeRect(p.x + s + 0.25 - s * 0.1, yAt(1) - hr, s * 0.1, hr);
             }
+            if (mouthW) this.drawRailNewel(p.x, yAt(0), s, hr, post);
+            if (mouthE) this.drawRailNewel(p.x + s, yAt(1), s, hr, post);
           },
         });
       } else {
         const west = dx < 0;
-        // Same corner law as the horizontal rails: the twin verticals
-        // run all the way to the corner where a WATER fill's diagonal
-        // rail takes over, instead of stopping at the half-tile
-        // end-of-run post (bank fills carry no rail). A fill joint
-        // additionally plants a JOINT POST at the exact corner — the
-        // fence family's post-covers-every-joint law — swallowing the
-        // seam where the edge-on strip meets the slanted handrail.
+        // Same corner law as the horizontal rails: the strip runs all
+        // the way to the corner where a WATER fill's diagonal rail
+        // takes over (bank fills carry no rail), and a fill joint
+        // plants a JOINT POST at the exact corner — the fence
+        // family's post-covers-every-joint law. Two more ways a strip
+        // reaches a tile corner: THE TURN (this same tile also rails
+        // its N/S edge — the parapet wraps the deck corner, and the
+        // horizontal rail's own end post covers the joint) and THE
+        // MOUTH (the walk end meets the bank — the strip runs to the
+        // entrance line and plants the landfall NEWEL, the crossing's
+        // own gate furniture; the old half-tile stop left the last
+        // stretch of every entrance unrailed).
         const edgeX = west ? tx : tx + 1;
         const runN = railEdge(tx, ty - 1, dx, dy);
         const runS = railEdge(tx, ty + 1, dx, dy);
         const jointN = !runN && cornerHeld(edgeX, ty);
         const jointS = !runS && cornerHeld(edgeX, ty + 1);
-        const contN = runN || jointN;
-        const contS = runS || jointS;
+        const turnN = railEdge(tx, ty, 0, -1);
+        const turnS = railEdge(tx, ty, 0, 1);
+        const mouthN = !runN && !jointN && !turnN && isLand(g(tx, ty - 1));
+        const mouthS = !runS && !jointS && !turnS && isLand(g(tx, ty + 1));
+        const contN = runN || jointN || turnN || mouthN;
+        const contS = runS || jointS || turnS || mouthS;
         items.push({
           sortY: ty + 1,
           elevated,
@@ -12635,36 +12720,40 @@ export class Renderer {
             const yAt = (f: number): number => p.y + syT * f - liftAt(f) * s;
             const fTop = contN ? 0 : 0.5;
             const fBot = contS ? 1 : 0.5;
-            const cy = yAt(0.5);
-            // Twin thin rails marching in depth through a
-            // chamfer-topped post at the tile's middle.
-            ctx.fillStyle = rail;
-            for (const rx of [-0.045, 0.045]) {
-              const yT = yAt(fTop) - hr * 0.88;
-              const yB = yAt(fBot) + railT;
-              ctx.fillRect(ex + rx * s - railT / 2, yT, railT, yB - yT);
-            }
-            // Outline-shader law (the railNS dialect): the edge-on
-            // pair's outer silhouette marches up-screen, BUTT-capped
-            // so overlapping neighbor segments fuse into one line.
-            // Posts stay UNringed interior detail — ringing them
-            // pinched the strip into capsule segments.
+            // THE EDGE-ON BALUSTRADE (the fence railNS dialect): ONE
+            // solid strip running handrail-top to deck level — the
+            // whole rail assembly seen edge-on — with a sunlit west
+            // arris and a shadowed east arris, overhanging the deck
+            // silhouette a hair so the parapet breaks the edge line.
+            // The old twin hairline rails fused with the deck's own
+            // ink into an unreadable wire (the "black line down the
+            // deck" wound), and a floating band with see-through gaps
+            // read as a chain.
+            const hw2 = s * 0.068;
+            const bandTop = yAt(fTop) - hr;
+            const bandBot = yAt(fBot) + railT * 0.4;
+            ctx.fillStyle = shade(rail, 10);
+            ctx.fillRect(ex - hw2, bandTop, hw2 * 2, bandBot - bandTop);
+            ctx.fillStyle = shade(rail, 32);
+            ctx.fillRect(ex - hw2, bandTop, s * 0.02, bandBot - bandTop);
+            ctx.fillStyle = shade(rail, -20);
+            ctx.fillRect(ex + hw2 - s * 0.018, bandTop, s * 0.018, bandBot - bandTop);
+            // Outline-shader law: only the strip's OUTER edge is
+            // silhouette — the inner edge stands against the deck and
+            // ringing it too drowned the band in ink. BUTT-capped so
+            // neighbor segments fuse into one line; interior posts
+            // stay UNringed — ringing them pinched the strip into
+            // capsule segments.
             if (this.outlineOn) {
               const octx = this.ctx;
               this.beginStructOutline();
               octx.lineCap = 'butt';
-              const xw2 = ex - 0.045 * s - railT / 2;
-              const xe2 = ex + 0.045 * s + railT / 2;
+              const outerX = west ? ex - hw2 : ex + hw2;
               octx.beginPath();
-              octx.moveTo(xw2, yAt(fTop) - hr * 0.88);
-              octx.lineTo(xw2, yAt(fBot) + railT);
-              octx.moveTo(xe2, yAt(fTop) - hr * 0.88);
-              octx.lineTo(xe2, yAt(fBot) + railT);
+              octx.moveTo(outerX, bandTop);
+              octx.lineTo(outerX, bandBot);
               octx.stroke();
             }
-            // The mid post rides over the strip; a fill joint plants
-            // its post at the exact corner, ringed, covering the seam
-            // where the strip's dive meets the diagonal's handrail.
             const postAt = (px2: number, py2: number, ringed: boolean): void => {
               ctx.fillStyle = post;
               ctx.beginPath();
@@ -12680,9 +12769,20 @@ export class Renderer {
                 octx.stroke();
               }
             };
-            postAt(ex, cy, false);
+            // Posts punctuate the strip in depth — the post-and-rail
+            // read the twin wires never had.
+            for (const f of [0.3, 0.7]) {
+              if (f > fTop && f < fBot) postAt(ex, yAt(f) + railT, false);
+            }
+            // A strip stopping mid-tile plants its end post; a fill
+            // joint plants one ringed at the exact corner, covering
+            // the seam where the dive meets the diagonal's handrail.
+            if (fTop === 0.5 || fBot === 0.5) postAt(ex, yAt(0.5) + railT, true);
             if (jointN) postAt(ex, yAt(0) + railT, true);
             if (jointS) postAt(ex, yAt(1) + railT, true);
+            // THE LANDFALL NEWEL at an entrance mouth.
+            if (mouthN) this.drawRailNewel(ex, yAt(0) + railT, s, hr, post);
+            if (mouthS) this.drawRailNewel(ex, yAt(1) + railT, s, hr, post);
           },
         });
       }
