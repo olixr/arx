@@ -14,9 +14,15 @@ import type { ItemRoll } from '@arx/shared';
 import {
   drawGroundDrop,
   drawsOwnPile,
+  dropLandDelay,
+  dropLanding,
   groundForm,
   groundGlowFor,
   groundShadowSpread,
+  LAND_TOTAL,
+  lootLabelAlpha,
+  lootPlateScore,
+  rarTierOf,
   type GroundDropEnv,
   type GroundForm,
 } from './groundItems.js';
@@ -212,6 +218,57 @@ test('THE SHADOW MATCHES THE MASS: lying arms throw long, a feather barely lands
     const sp = groundShadowSpread(d.id);
     assert.ok(sp > 0.2 && sp <= 2, `${d.id} shadow spread ${sp} out of band`);
   }
+});
+
+test('THE TUMBLE: a drop falls, strikes thrice, rocks itself still, and only then rests', () => {
+  const eid = 777;
+  const delay = dropLandDelay(eid);
+  // Before its stagger it holds at the top of the arc.
+  const early = dropLanding(eid, 0);
+  assert.ok(early.lift > 0.9 && early.contacts === 0 && !early.settled);
+  // Sample the whole choreography: lift never dips below the floor,
+  // squash stays in the honest band, contacts only ever count up.
+  let prevContacts = 0;
+  let maxLift = 0;
+  for (let t = 0; t <= LAND_TOTAL + delay + 0.2; t += 0.008) {
+    const l = dropLanding(eid, t);
+    assert.ok(l.lift >= 0, `lift ${l.lift} sank through the floor at ${t}`);
+    assert.ok(l.squash > 0.78 && l.squash < 1.08, `squash ${l.squash} out of band at ${t}`);
+    assert.ok(l.contacts >= prevContacts, 'a contact was un-counted');
+    prevContacts = l.contacts;
+    maxLift = Math.max(maxLift, l.lift);
+  }
+  assert.equal(prevContacts, 3, 'the choreography must land all three strikes');
+  assert.ok(maxLift >= 0.9, 'the fall must start from real height');
+  // At rest: grounded, unsquashed, still, full-size, settled.
+  const done = dropLanding(eid, LAND_TOTAL + delay + 0.5);
+  assert.equal(done.lift, 0);
+  assert.ok(Math.abs(done.wobble) < 0.01, 'the rock must die out');
+  assert.equal(done.squash, 1);
+  assert.equal(done.pop, 1);
+  assert.ok(done.settled);
+  // The stagger is real and deterministic: some pair of drops differs.
+  const delays = new Set([101, 102, 103, 104, 105].map((e) => dropLandDelay(e).toFixed(4)));
+  assert.ok(delays.size >= 3, 'the spill must not land as one synchronized clap');
+});
+
+test('THE QUIET PLATE: commons whisper near, the payoff announces at range, hover always speaks', () => {
+  // A common at mid distance stays quiet — the art is the read.
+  assert.equal(lootLabelAlpha(2.4, false, false, 0), 0);
+  assert.ok(lootLabelAlpha(1.0, false, false, 0) > 0.9, 'arm-in-reach commons still read');
+  // A rare+ roll (tier 2) keeps its plate far out.
+  assert.ok(lootLabelAlpha(4.0, false, false, 2) > 0.9, 'the payoff must never hide');
+  assert.equal(lootLabelAlpha(6.0, false, false, 2), 0, 'even rares respect the horizon');
+  // Hover and the reveal hold override everything.
+  assert.equal(lootLabelAlpha(9, true, false, 0), 1);
+  assert.equal(lootLabelAlpha(9, false, true, 0), 1);
+  // Crowding priority: hover > tier > closeness; a legendary afar
+  // outranks a common at the feet.
+  assert.ok(lootPlateScore(true, 0, 0, 5) > lootPlateScore(false, 4, 9999, 0));
+  assert.ok(lootPlateScore(false, 4, 500, 5) > lootPlateScore(false, 0, 10, 0.2));
+  // Tier keys off the roll, not the def.
+  assert.equal(rarTierOf(undefined), 0);
+  assert.equal(rarTierOf({ rar: 'epic', seed: 1 }), 3);
 });
 
 test('THE DUNGEON KEY WEARS ITS TIER: an epic key is painted, not just labeled', () => {

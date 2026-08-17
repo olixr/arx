@@ -5040,6 +5040,150 @@ export function drawGroundDrop(g: GroundDropEnv): void {
   drawRarityMotes(g);
 }
 
+// ---------------------------------------------------------------- the landing
+
+/**
+ * THE TUMBLE — a drop's landing choreography, as pure kinematics the
+ * renderer samples by age. The item falls a real ballistic arc, takes
+ * two damped bounces with squash-and-stretch at each contact, rocks a
+ * decaying wobble as it settles, and only then hands over to the idle
+ * bob. A per-drop stagger delay means a slain foe's spill POPS like a
+ * split satchel instead of landing as one synchronized clap.
+ *
+ * All lengths are in TILES (the caller multiplies by camera scale).
+ */
+export interface DropLanding {
+  /** Height above the ground, tiles (0 once settled). */
+  lift: number;
+  /** Vertical scale: >1 stretching in flight, <1 squashing at contact. */
+  squash: number;
+  /** Settling rock, radians — apply to the whole drop frame. */
+  wobble: number;
+  /** Appear-grow scale (0.9 → 1 over the first beat). */
+  pop: number;
+  /** Ground contacts so far (0..3) — dust fires on each increase. */
+  contacts: number;
+  /** True once the whole choreography is over. */
+  settled: boolean;
+}
+
+const LAND_G = 14; // tiles/s²
+const LAND_H0 = 0.95; // drop-in height, tiles
+const LAND_TF = Math.sqrt((2 * LAND_H0) / LAND_G); // first fall time
+const LAND_V1 = 0.32 * LAND_G * LAND_TF; // bounce 1 launch speed
+const LAND_TB1 = (2 * LAND_V1) / LAND_G;
+const LAND_V2 = 0.4 * LAND_V1; // bounce 2 launch speed
+const LAND_TB2 = (2 * LAND_V2) / LAND_G;
+/** Full choreography duration (after the per-drop delay). */
+export const LAND_TOTAL = LAND_TF + LAND_TB1 + LAND_TB2 + 0.3;
+
+/** The per-drop stagger: 0..0.14s, deterministic per eid. */
+export function dropLandDelay(eid: number): number {
+  return rnd(eid, 300) * 0.14;
+}
+
+/** Squash pulse after a contact: a half-sine dip, sharper each time. */
+function contactSquash(dt: number, depth: number, span: number): number {
+  if (dt < 0 || dt >= span) return 0;
+  return depth * Math.sin((dt / span) * Math.PI);
+}
+
+export function dropLanding(eid: number, ageSec: number): DropLanding {
+  const t = ageSec - dropLandDelay(eid);
+  if (t <= 0) {
+    // Not yet arrived: hold at the top of the arc, invisible-small pop.
+    return { lift: LAND_H0, squash: 1.05, wobble: 0, pop: 0.9, contacts: 0, settled: false };
+  }
+  const pop = t >= 0.12 ? 1 : 0.9 + (t / 0.12) * 0.1;
+  const tc1 = LAND_TF;
+  const tc2 = LAND_TF + LAND_TB1;
+  const tc3 = tc2 + LAND_TB2;
+  let lift: number;
+  let contacts: number;
+  if (t < tc1) {
+    lift = LAND_H0 - 0.5 * LAND_G * t * t;
+    contacts = 0;
+  } else if (t < tc2) {
+    const u = t - tc1;
+    lift = LAND_V1 * u - 0.5 * LAND_G * u * u;
+    contacts = 1;
+  } else if (t < tc3) {
+    const u = t - tc2;
+    lift = LAND_V2 * u - 0.5 * LAND_G * u * u;
+    contacts = 2;
+  } else {
+    lift = 0;
+    contacts = 3;
+  }
+  if (lift < 0) lift = 0;
+  // Stretch in flight, squash at each floor strike.
+  let squash = 1;
+  if (contacts === 0) {
+    squash = 1 + 0.05 * Math.min(1, (LAND_G * t) / 4);
+  } else {
+    squash =
+      1 -
+      contactSquash(t - tc1, 0.16, 0.1) -
+      contactSquash(t - tc2, 0.09, 0.085) -
+      contactSquash(t - tc3, 0.05, 0.07);
+  }
+  // The settling rock: kicked at first contact, damped to nothing.
+  let wobble = 0;
+  if (t >= tc1) {
+    const u = t - tc1;
+    const dir = rnd(eid, 301) > 0.5 ? 1 : -1;
+    wobble = dir * 0.14 * Math.exp(-u * 5.5) * Math.sin(u * 17);
+  }
+  const settled = t >= tc3 + 0.3;
+  return { lift, squash, wobble, pop, contacts, settled };
+}
+
+// ---------------------------------------------------------------- the label law
+
+/**
+ * THE QUIET PLATE — the loot label's visibility law, pure so the pins
+ * can hold it. With every drop wearing its honest form, the ART is the
+ * first read; a plate is the SECOND read, invited three ways:
+ *  - hover / the reveal hold: full read, always;
+ *  - a rolled rare+ drop or a dungeon key announces at range — the
+ *    payoff beat must never hide;
+ *  - anything else whispers only within arm's reach.
+ */
+export function lootLabelAlpha(
+  dist: number,
+  hovered: boolean,
+  showAll: boolean,
+  rarTier: number,
+): number {
+  if (hovered || showAll) return 1;
+  if (rarTier >= 2) return Math.max(0, Math.min(1, (5.5 - dist) / 1.2));
+  return Math.max(0, Math.min(1, (1.7 - dist) / 0.7));
+}
+
+/** A roll's tier index (0 = common/rollless) — the label law's key. */
+export function rarTierOf(roll?: ItemRoll): number {
+  return roll ? rarityIndex(roll.rar) : 0;
+}
+
+/**
+ * Plate priority under crowding — when more plates want in than the
+ * screen can hold legibly, the payoff wins, then the pointer, then
+ * whatever is closest. Higher score = keeps its plate.
+ */
+export function lootPlateScore(
+  hovered: boolean,
+  rarTier: number,
+  value: number,
+  dist: number,
+): number {
+  return (
+    (hovered ? 1000 : 0) +
+    rarTier * 100 +
+    Math.min(40, Math.sqrt(Math.max(0, value)) * 2) -
+    dist * 8
+  );
+}
+
 /**
  * Whether the renderer should echo shrunken siblings behind the front
  * item for a merged stack. Families that draw their OWN pile grammar

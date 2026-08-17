@@ -133,7 +133,17 @@ import {
   type RagImpact,
 } from './ragdoll.js';
 import { BLOB_M, chamferRect, facetBlob, facetCircle, unitBlob } from './shapes.js';
-import { drawGroundDrop, drawsOwnPile, groundGlowFor, groundShadowSpread, type GroundDropEnv } from './groundItems.js';
+import {
+  dropLanding,
+  drawGroundDrop,
+  drawsOwnPile,
+  groundGlowFor,
+  groundShadowSpread,
+  lootLabelAlpha,
+  lootPlateScore,
+  rarTierOf,
+  type GroundDropEnv,
+} from './groundItems.js';
 import { LAYER_GROUND, LAYER_WORLD, Particles, type Particle } from './particles.js';
 import {
   FALL_LOOKAHEAD,
@@ -2123,6 +2133,14 @@ export class Renderer {
     /** Instance roll — tints the nameplate by the INSTANCE's rarity. */
     roll?: ItemRoll;
   }> = [];
+
+  /**
+   * THE TUMBLE's contact ledger: floor strikes already dust-puffed per
+   * drop eid, so each bounce fires exactly once. Size-capped, cleared
+   * wholesale when it overgrows — a stale zero only re-arms dust for a
+   * drop that is younger than the age gate anyway.
+   */
+  private readonly dropContacts = new Map<number, number>();
 
   /**
    * Screen rects the loot labels landed on last pass — the click
@@ -57644,14 +57662,36 @@ export class Renderer {
     const p = this.camera.worldToScreen(s.x, s.y, this.w, this.h);
     p.y -= terrainLift;
 
-    // Landing pop: freshly spawned loot drops in and settles with a
-    // small overshoot. animFor's poseStartedAt is its first-seen time.
+    // THE TUMBLE: a fresh drop falls a real ballistic arc and takes
+    // two damped bounces before it rests (groundItems.ts owns the pure
+    // kinematics; this frame samples by age). animFor's poseStartedAt
+    // is its first-seen time; the per-eid stagger inside dropLanding
+    // makes a slain foe's spill pop like a split satchel, not land as
+    // one synchronized clap. The idle bob waits for the settle.
     const anim = this.animFor(eid, s.x, s.y, 0, now);
     const age = (now - anim.poseStartedAt) / 1000;
-    const landT = Math.min(1, age / 0.32);
-    const pop = landT >= 1 ? 1 : 0.55 + 0.45 * landT + 0.16 * Math.sin(landT * Math.PI);
-    const fall = (1 - landT) * (1 - landT) * k * 0.55;
-    const bob = Math.sin(now / 460 + eid * 1.7) * k * 0.028;
+    const land = dropLanding(eid, age);
+    const bob = land.settled ? Math.sin(now / 460 + eid * 1.7) * k * 0.028 : 0;
+
+    // Contact dust: each floor strike kicks a puff at the drop's feet,
+    // big on the first, a breath on the rebounds.
+    const prevContacts = this.dropContacts.get(eid) ?? 0;
+    if (land.contacts > prevContacts && age < 3) {
+      if (this.dropContacts.size > 1024) this.dropContacts.clear();
+      this.dropContacts.set(eid, land.contacts);
+      this.particles.burst(s.x, s.y, land.contacts === 1 ? 5 : 2, ['#c9b083', '#a5793f', '#b8a06a'], {
+        speed: land.contacts === 1 ? 1.0 : 0.5,
+        life: 0.38,
+        size: 0.035,
+        gravity: 3.0,
+        drag: 2.4,
+        dir: -Math.PI / 2,
+        spread: 2.4,
+      });
+    } else if (land.contacts > prevContacts) {
+      // Seen long after landing (walked into view): no retroactive dust.
+      this.dropContacts.set(eid, land.contacts);
+    }
 
     // Deterministic per-drop scatter for coin piles and glint timing.
     const rnd = (i: number): number => {
@@ -57678,14 +57718,17 @@ export class Renderer {
       elevated: terrainLift !== 0,
       drawShadow: () => {
         // Per-form spread: a lying spear throws a longer shadow than
-        // a coin pile; a feather barely dents the light.
+        // a coin pile; a feather barely dents the light. Airborne, the
+        // shadow tightens under the falling body and swells at touch.
         const spread = groundShadowSpread(itemId);
-        this.castContact(p.x, p.y + k * 0.05, k * 0.3 * spread * pop, k * 0.13 * pop);
+        const g = 1 / (1 + land.lift * 1.1);
+        this.castContact(p.x, p.y + k * 0.05, k * 0.3 * spread * land.pop * g, k * 0.13 * land.pop * g);
       },
       draw: () => {
         ctx.save();
-        ctx.translate(p.x, p.y + bob - fall);
-        ctx.scale(pop, pop);
+        ctx.translate(p.x, p.y + bob - land.lift * k);
+        ctx.scale(land.pop, land.pop * land.squash);
+        ctx.rotate(land.wobble);
         const env: GroundDropEnv = { ctx, k, eid, itemId, qty, now, outline, hovered, roll };
         const paint = (): void => drawGroundDrop(env);
         // A merged stack reads as a HEAP before its label confirms it:
@@ -57708,7 +57751,7 @@ export class Renderer {
           ctx.strokeStyle = 'rgba(246, 236, 212, 0.75)';
           ctx.lineWidth = Math.max(1.2, k * 0.03);
           ctx.beginPath();
-          ctx.ellipse(0, k * 0.06 - bob + fall, k * 0.31, k * 0.135, 0, 0, Math.PI * 2);
+          ctx.ellipse(0, k * 0.06 - bob + land.lift * k, k * 0.31, k * 0.135, 0, 0, Math.PI * 2);
           ctx.stroke();
         }
         ctx.restore();
@@ -57717,13 +57760,18 @@ export class Renderer {
   }
 
   /**
-   * Loot labels — the "what is that" layer over ground drops:
-   * - hovering a bag with the mouse names it instantly;
-   * - anything within arm's reach fades its label in (the read that
-   *   works with no pointer at all — pads and touch);
+   * Loot labels — THE QUIET PLATE (groundItems.ts owns the pure law).
+   * With every drop wearing its honest form, the ART is the first read
+   * and a plate is the invited second read:
+   * - hovering a drop with the mouse names it instantly;
+   * - a rolled rare+ instance (the payoff beat) announces at range;
+   * - anything else whispers only within arm's reach;
    * - holding the reveal (Alt / left trigger) names every drop on
    *   screen, the ARPG sweep-the-battlefield gesture.
-   * Labels stack upward when drops share a column so none overlap.
+   * Under crowding the plates are rationed by priority (payoff first,
+   * pointer second, proximity third), labels climb out of each other,
+   * and a plate that climbed far from its drop drops a hairline leader
+   * back to it so ownership never muddies.
    */
   private drawLootLabels(game: ClientGame): void {
     this.lootPlates.length = 0;
@@ -57731,6 +57779,7 @@ export class Renderer {
     const ctx = this.ctx;
     const own = game.predictor.renderPos();
     const showAll = this.lootHud.showAll;
+    const k = this.camera.scale;
 
     interface Plate {
       eid: number;
@@ -57740,13 +57789,13 @@ export class Renderer {
       col: string;
       nameCol: string;
       alpha: number;
+      score: number;
     }
     const plates: Plate[] = [];
     for (const d of this.frameLoot) {
       const dist = Math.hypot(d.x - own.x, d.y - own.y);
-      let alpha: number;
-      if (d.hovered || showAll) alpha = 1;
-      else alpha = Math.max(0, Math.min(1, (2.6 - dist) / 0.9));
+      const tier = rarTierOf(d.roll);
+      const alpha = lootLabelAlpha(dist, d.hovered, showAll, tier);
       if (alpha <= 0.03) continue;
       const def = itemDef(d.itemId);
       // Ground loot announces its roll: "Iron helm of Strength".
@@ -57761,21 +57810,26 @@ export class Renderer {
         // A rolled instance's own tier wins over the value-derived tint.
         nameCol: (d.roll ? RARITY_COLORS[d.roll.rar] : rarityColor(d.itemId)) ?? '#f4efe4',
         alpha,
+        score: lootPlateScore(d.hovered, tier, def?.value ?? 0, dist),
       });
     }
     if (plates.length === 0) return;
-    // Nearest labels claim their spot first; the rest climb.
+    // Crowd ration first — the payoff keeps its plate, the junk cedes.
+    plates.sort((a, b) => b.score - a.score);
+    if (plates.length > 12) plates.length = 12;
+    // Then nearest labels claim their spot first; the rest climb.
     plates.sort((a, b) => b.sy - a.sy);
-    if (plates.length > 14) plates.length = 14;
 
     ctx.save();
-    ctx.font = "600 12px 'Trebuchet MS', sans-serif";
+    ctx.font = "600 11px 'Trebuchet MS', sans-serif";
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const h = 20;
+    const h = 18;
     const placed: Array<{ x0: number; x1: number; y0: number; y1: number }> = [];
     for (const pl of plates) {
-      const w = ctx.measureText(pl.text).width + 22;
+      // The swatch chip died with the bag era — the art below IS the
+      // identity now; the plate carries only the name and the count.
+      const w = ctx.measureText(pl.text).width + 14;
       let x = Math.max(w / 2 + 4, Math.min(this.w - w / 2 - 4, pl.sx));
       let y = pl.sy;
       // Climb out of any occupied rect.
@@ -57793,20 +57847,26 @@ export class Renderer {
       this.lootPlates.push({ eid: pl.eid, x0: x - w / 2, x1: x + w / 2, y0: y - h / 2, y1: y + h / 2 });
 
       ctx.globalAlpha = pl.alpha;
-      ctx.fillStyle = 'rgba(24, 16, 30, 0.86)';
+      // A plate that climbed far from its drop keeps a hairline leader
+      // back to the item, so a stacked pile never muddies ownership.
+      const climb = pl.sy - y;
+      if (climb > k * 0.5) {
+        ctx.strokeStyle = 'rgba(240, 232, 212, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, y + h / 2 + 1);
+        ctx.lineTo(pl.sx, pl.sy + k * 0.12);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(24, 16, 30, 0.78)';
       ctx.strokeStyle = pl.col;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.25;
       ctx.beginPath();
-      ctx.roundRect(x - w / 2, y - h / 2, w, h, 5);
+      ctx.roundRect(x - w / 2, y - h / 2, w, h, 4);
       ctx.fill();
       ctx.stroke();
-      // Color swatch chip: the item's identity at a squint.
-      ctx.fillStyle = pl.col;
-      ctx.beginPath();
-      ctx.roundRect(x - w / 2 + 5, y - 4, 8, 8, 2);
-      ctx.fill();
       ctx.fillStyle = pl.nameCol;
-      ctx.fillText(pl.text, x + 7, y + 0.5);
+      ctx.fillText(pl.text, x, y + 0.5);
     }
     ctx.restore();
   }
