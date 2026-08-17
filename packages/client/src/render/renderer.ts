@@ -23036,7 +23036,7 @@ export class Renderer {
     s: number,
     tone: number,
     seed: number,
-    opts: { water?: boolean; ink?: boolean; t?: number } = {},
+    opts: { water?: boolean; ink?: boolean; inkBelowY?: number; t?: number } = {},
   ): void {
     const ctx = this.ctx;
     const topY = by - bh;
@@ -23056,9 +23056,20 @@ export class Renderer {
       ctx.closePath();
     };
     if (opts.ink) {
+      // THE LINE ONLY WHERE IT LAPS (outline-consistency law): the
+      // ink bed exists to separate this cask from art it overlaps —
+      // clipped to the lap zone, so the OUTER silhouette keeps the
+      // outline pass's single-weight ring and never doubles up.
+      ctx.save();
+      if (opts.inkBelowY !== undefined) {
+        ctx.beginPath();
+        ctx.rect(cx - wr * 2, opts.inkBelowY, wr * 4, bh + s);
+        ctx.clip();
+      }
       ctx.fillStyle = '#241a2e';
       sil(s * 0.04);
       ctx.fill();
+      ctx.restore();
     }
     ctx.fillStyle = OAK;
     sil(0);
@@ -35532,9 +35543,10 @@ export class Renderer {
               ctx.quadraticCurveTo(bx + s * 0.24 + grow, bellTop + s * 0.06, bx + s * 0.13 + grow, bellTop - grow * 0.5);
               ctx.closePath();
             };
-            ctx.fillStyle = '#241a2e';
-            bellPath(s * 0.038);
-            ctx.fill();
+            // No ink underlay here (outline-consistency law): the
+            // bell hangs in air on every side, and the outline pass
+            // already rings air-facing edges — a bed under it just
+            // doubled the line weight against the rest of the town.
             ctx.fillStyle = BZ;
             bellPath(0);
             ctx.fill();
@@ -36289,7 +36301,10 @@ export class Renderer {
         const bh = s * 0.6;
         return {
           sortY: ty + 0.7,
-          body: stationBody(0.62, 1.1, 0.45),
+          // THE BOUNDS ARE THE CANVAS: the crown's chimed head tops
+          // out near p.y - 1.3s — size the scratch for it or the
+          // stack ships decapitated at the bake edge.
+          body: stationBody(0.62, 1.45, 0.45),
           drawShadow: () => this.castContact(p.x, baseY, hw * 1.1, s * 0.075),
           draw: () => {
             // Draw-time ctx capture: the outline pass swaps this.ctx
@@ -36319,8 +36334,9 @@ export class Renderer {
             ctx.ellipse(p.x + lean, plankY + s * 0.008, wr * 0.82, s * 0.035, 0, 0, Math.PI * 2);
             ctx.fill();
             // The crown cask, leaned a dealt hair off true, on its
-            // own ink bed because it laps the pair below.
-            this.paintStreetCask(p.x + lean, plankY + s * 0.005, wr * 0.96, bh * 0.94, s, tones[2], h >>> 13, { ink: true });
+            // own ink bed where it laps the plank and the pair below
+            // — clipped there, so its crown keeps the pass's line.
+            this.paintStreetCask(p.x + lean, plankY + s * 0.005, wr * 0.96, bh * 0.94, s, tones[2], h >>> 13, { ink: true, inkBelowY: plankY - s * 0.015 });
           },
         };
       }
@@ -36619,8 +36635,9 @@ export class Renderer {
         // wall. Now the pile is NINE great seasoned rounds in three
         // courses, each log nearly double the old girth, and EVERY
         // ROUND WEARS ITS OWN LINE: an ink underlay beneath each end
-        // face and flank (the cart-wheel law) so every log in the
-        // stack keeps the flat-art edge the lone props get for free.
+        // face and flank, CLIPPED to the region earlier logs painted
+        // (the outline-consistency law) — interior separation at the
+        // pass's weight, the outer silhouette left to the pass.
         // The bird's eye still earns its keep: every course lays its
         // barked flank RUNNING NORTH as a foreshortened top plane and
         // the course above overdraws all but the honest slivers.
@@ -36645,6 +36662,13 @@ export class Renderer {
             ctx.beginPath();
             ctx.ellipse(rcx, baseY + s * 0.012, s * 0.64, s * 0.075, 0, 0, Math.PI * 2);
             ctx.fill();
+            // THE LINE ONLY WHERE IT LAPS (outline-consistency law):
+            // each round's ink is CLIPPED to the region earlier
+            // rounds already painted — interior separation at the
+            // pass's own weight, while the pile's outer silhouette
+            // keeps the single ring the pass draws. `painted` grows
+            // log by log.
+            const painted = new Path2D();
             for (let ri = 0; ri < courses.length; ri++) {
               const row = courses[ri]!;
               const top = ri === courses.length - 1;
@@ -36665,17 +36689,20 @@ export class Renderer {
                 const g = geo(k);
                 const w = g.rr * 1.94;
                 const len = depth * (0.9 + (((h >>> (ri * 2 + k + 3)) & 3) / 3) * 0.16);
-                // The ink bed under the whole round — flank and far
-                // butt — so this log keeps its line where the course
-                // above and the neighbours lap it.
+                // The ink bed under the round's flank — clipped to
+                // what earlier logs painted, so it separates without
+                // ever fattening the pile's outer edge.
+                ctx.save();
+                ctx.clip(painted);
                 ctx.fillStyle = '#241a2e';
                 ctx.beginPath();
-                ctx.moveTo(g.kx - w / 2 - ink, g.ky);
+                ctx.moveTo(g.kx - w / 2 - ink, g.ky + ink * 0.8);
                 ctx.lineTo(g.kx - w * 0.46 - ink, g.ky - len - ink * 0.8);
                 ctx.lineTo(g.kx + w * 0.46 + ink, g.ky - len - ink * 0.8);
-                ctx.lineTo(g.kx + w / 2 + ink, g.ky);
+                ctx.lineTo(g.kx + w / 2 + ink, g.ky + ink * 0.8);
                 ctx.closePath();
                 ctx.fill();
+                ctx.restore();
                 // The flank rides LIGHTER than the bark ring below it
                 // — the top plane is the LIT plane (crate-lid law).
                 const bark = g.birch ? '#bdb5a4' : '#96713c';
@@ -36728,6 +36755,11 @@ export class Renderer {
                     ctx.stroke();
                   }
                 }
+                painted.moveTo(g.kx - w / 2, g.ky);
+                painted.lineTo(g.kx - w * 0.46, g.ky - len);
+                painted.lineTo(g.kx + w * 0.46, g.ky - len);
+                painted.lineTo(g.kx + w / 2, g.ky);
+                painted.closePath();
               }
               // THE END GRAIN: the front face on its own ink ring —
               // bark collar, pale face, ONE quiet growth ring around
@@ -36738,12 +36770,17 @@ export class Renderer {
                 const g = geo(k);
                 const bark = g.birch ? '#b3ac9c' : TWN_OAK_DARK;
                 const face = g.birch ? '#e4d6b2' : '#d4b98a';
-                // The ink ring under the round: this end keeps its
-                // line against every neighbour it laps.
+                // The ink ring under the round — clipped to what is
+                // already painted (its own flank included: that arris
+                // ring is what makes every round read), never the
+                // open air the pass already rings.
+                ctx.save();
+                ctx.clip(painted);
                 ctx.fillStyle = '#241a2e';
                 ctx.beginPath();
                 ctx.ellipse(g.kx, g.ky, g.rr + ink, (g.rr + ink) * 0.94, 0, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.restore();
                 ctx.fillStyle = bark;
                 ctx.beginPath();
                 ctx.ellipse(g.kx, g.ky, g.rr, g.rr * 0.94, 0, 0, Math.PI * 2);
@@ -36817,6 +36854,8 @@ export class Renderer {
                   ctx.ellipse(g.kx, g.ky, g.rr * 0.98, g.rr * 0.92, 0, Math.PI * 1.15, Math.PI * 1.85);
                   ctx.stroke();
                 }
+                painted.moveTo(g.kx + g.rr, g.ky);
+                painted.ellipse(g.kx, g.ky, g.rr, g.rr * 0.94, 0, 0, Math.PI * 2);
               }
             }
           },
@@ -37845,15 +37884,21 @@ export class Renderer {
             ctx.beginPath();
             ctx.ellipse(p.x, tubTopY + s * 0.01, tubW * (0.52 + 0.14 * wp), s * 0.055 * (0.6 + 0.4 * wp), 0, 0.4, Math.PI - 0.4);
             ctx.stroke();
-            // THE WHEEL on its own ink bed (the cart-wheel law: a
-            // discrete round riding a body keeps its full line).
-            ctx.fillStyle = '#241a2e';
+            // THE WHEEL: no full ink bed (outline-consistency law —
+            // a bed under the whole disc doubled the outer line the
+            // pass already draws). The ink lives ONLY where the
+            // wheel laps the tub's mouth: a seam clipped below the
+            // rim, so the stone visibly enters the water.
+            ctx.save();
             ctx.beginPath();
-            ctx.ellipse(cx, cy - te, R + ink, ryF + ink, 0, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.rect(cx - R * 1.4, tubTopY - s * 0.02, R * 2.8, s);
+            ctx.clip();
+            ctx.strokeStyle = '#241a2e';
+            ctx.lineWidth = Math.max(2, s * 0.045);
             ctx.beginPath();
-            ctx.ellipse(cx, cy, R + ink, ryF + ink, 0, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.ellipse(cx, cy, R + s * 0.01, ryF + s * 0.01, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
             // The far rim: the stone's RUNNING SURFACE catching the
             // sky — the crescent that sells the thickness.
             ctx.fillStyle = TRD_GRIT_LIT;
@@ -37873,11 +37918,18 @@ export class Renderer {
               ctx.lineTo(ex + Math.cos(a) * s * 0.02, ey + Math.sin(a) * s * 0.02 + te * 0.55);
               ctx.stroke();
             }
-            // THE FACE: the near disc, worn true.
+            // THE FACE: the near disc, worn true — with one thin
+            // shade stroke along its top arc so the crescent above
+            // reads as THICKNESS, not a paint band.
             ctx.fillStyle = TRD_GRIT;
             ctx.beginPath();
             ctx.ellipse(cx, cy, R, ryF, 0, 0, Math.PI * 2);
             ctx.fill();
+            ctx.strokeStyle = shade(TRD_GRIT, -22);
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, R * 0.995, ryF * 0.99, 0, Math.PI * 1.08, Math.PI * 1.92);
+            ctx.stroke();
             // The face rolls off the light toward the east.
             ctx.fillStyle = shade(TRD_GRIT, -8);
             ctx.beginPath();
