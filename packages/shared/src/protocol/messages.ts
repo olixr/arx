@@ -1170,6 +1170,12 @@ export interface S2CFx {
     /** A locked door refusing at (x,y) — the leaf shudders in its frame. */
     | 'rattle'
     /**
+     * THE KEPT FLAME answering a hand at (x,y): `id` is 'light' (a
+     * soft flare as the wicks take) or 'snuff' (grey wisps curling
+     * off the dead wicks). Scenery feedback, never combat VFX.
+     */
+    | 'candle'
+    /**
      * A raid horn at (x,y) — THE HEARTH WATCH's fuse (Phase 4): the
      * covetous camp announces itself once, far-carrying, spatial.
      */

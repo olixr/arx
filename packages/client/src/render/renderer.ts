@@ -716,6 +716,124 @@ const CMN_TAR_LIT = '#6e614c';
 const CMN_BAY = '#5d7c42';
 const CMN_BAY_LIT = '#7fae6a';
 const CMN_HORN = '#e0b060';
+// THE KEPT FLAME — the candle family's own wax keys (grown from the
+// grave-candle shrine's palette so every candle in the game is dipped
+// from one vat): body, lit face, cooled rim, and the dead wick.
+const WAX = '#d8cba8';
+const WAX_LIT = '#efe6cf';
+const WAX_RIM = '#c9bd9e';
+const WAX_POOL = '#e6dcc0';
+const WICK_DEAD = '#241d18';
+
+/**
+ * THE KEPT FLAME's one fire — every candle in the game burns exactly
+ * this flame, so a hall dressed in dozens reads as ONE order keeping
+ * ONE vigil. Calm by construction: the sway layers two beats UNDER
+ * 2Hz (a draftless room, never a torch's gutter), the breath sits
+ * under 1Hz, and the halo breathes half a beat behind the flame so
+ * the light feels alive without ever flickering hard. Four layers,
+ * back to front: breathing halo, amber lick leaning on the sway, the
+ * molten root where wax drinks fire, and the bright core. PAINT,
+ * never a light entry — the LampPost owns the town night.
+ */
+function paintCandleFlame(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  topY: number,
+  s: number,
+  t: number,
+  phase: number,
+  scale = 1,
+): void {
+  const sway = Math.sin(t * 1.7 + phase) * 0.55 + Math.sin(t * 0.83 + phase * 1.7) * 0.45;
+  const breath = 1 + 0.08 * Math.sin(t * 0.63 + phase * 0.9);
+  const fh = s * 0.105 * scale * breath;
+  const tipX = cx + sway * s * 0.02 * scale;
+  // No painted halo HERE: a translucent aura inside draw() gets its
+  // alpha dilated by the outline pass into a sooty ring (the live rig
+  // caught the crown wearing a dirty cloud). The family's bloom rides
+  // the glow overlay instead — collectStaticLights, THE KEPT FLAME
+  // branch — where no outline can follow it.
+  ctx.fillStyle = CMN_FLAME;
+  ctx.beginPath();
+  ctx.moveTo(cx - s * 0.019 * scale, topY);
+  ctx.quadraticCurveTo(cx - s * 0.024 * scale, topY - fh * 0.5, tipX, topY - fh);
+  ctx.quadraticCurveTo(cx + s * 0.024 * scale, topY - fh * 0.5, cx + s * 0.019 * scale, topY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(201, 92, 42, 0.6)';
+  ctx.beginPath();
+  ctx.ellipse(cx, topY - s * 0.004 * scale, s * 0.014 * scale, s * 0.008 * scale, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = CMN_FLAME_CORE;
+  ctx.beginPath();
+  ctx.ellipse(cx + sway * s * 0.007 * scale, topY - fh * 0.36, s * 0.011 * scale, fh * 0.33, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** A snuffed wick: the little black curl a dead candle keeps. */
+function paintDeadWick(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  topY: number,
+  s: number,
+  scale = 1,
+): void {
+  ctx.strokeStyle = WICK_DEAD;
+  ctx.lineWidth = Math.max(1, s * 0.012 * scale);
+  ctx.beginPath();
+  ctx.moveTo(cx, topY);
+  ctx.quadraticCurveTo(cx + s * 0.004 * scale, topY - s * 0.022 * scale, cx + s * 0.014 * scale, topY - s * 0.024 * scale);
+  ctx.stroke();
+}
+
+/**
+ * One dipped candle standing on whatever holds it: wax body with the
+ * lit west face and the turned shade edge, a cooled rim at the crown,
+ * and 0-2 dealt runnels frozen down the body. The crown Y comes back
+ * so the caller can seat a flame or a dead wick on it.
+ */
+function paintCandleStick(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  baseY: number,
+  w: number,
+  hgt: number,
+  s: number,
+  seed: number,
+): number {
+  const topY = baseY - hgt;
+  ctx.fillStyle = WAX;
+  ctx.fillRect(cx - w / 2, topY, w, hgt);
+  ctx.fillStyle = WAX_LIT;
+  ctx.fillRect(cx - w / 2, topY, w * 0.38, hgt);
+  ctx.fillStyle = shade(WAX, -18);
+  ctx.fillRect(cx + w / 2 - w * 0.16, topY + s * 0.006, w * 0.16, Math.max(0, hgt - s * 0.01));
+  // Dealt runnels: the falls this candle has already cried.
+  if ((seed & 3) !== 0) {
+    ctx.strokeStyle = WAX_LIT;
+    ctx.lineWidth = Math.max(1, w * 0.22);
+    const rm = (seed & 4) ? 1 : -1;
+    ctx.beginPath();
+    ctx.moveTo(cx + rm * w * 0.28, topY + s * 0.012);
+    ctx.quadraticCurveTo(cx + rm * w * 0.42, topY + hgt * 0.45, cx + rm * w * 0.34, topY + hgt * 0.78);
+    ctx.stroke();
+    ctx.fillStyle = WAX_LIT;
+    ctx.beginPath();
+    ctx.ellipse(cx + rm * w * 0.34, topY + hgt * 0.8, w * 0.14, w * 0.18, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // The cooled crown rim, sunken toward the wick.
+  ctx.fillStyle = WAX_RIM;
+  ctx.beginPath();
+  ctx.ellipse(cx, topY, w / 2, w * 0.22, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = shade(WAX_RIM, -10);
+  ctx.beginPath();
+  ctx.ellipse(cx, topY + w * 0.03, w * 0.3, w * 0.13, 0, 0, Math.PI * 2);
+  ctx.fill();
+  return topY;
+}
 /** Solid props too short for a chest-high stick: arrows lodge low. */
 const LOW_STICK_TILES = new Set<number>([
   Tile.Fence,
@@ -736,6 +854,12 @@ const LOW_STICK_TILES = new Set<number>([
   Tile.ChoppingBlock,
   Tile.FelledLog,
   Tile.LogPile,
+  Tile.CandleCluster,
+  Tile.CandleClusterOut,
+  Tile.MeltedCandles,
+  Tile.MeltedCandlesOut,
+  Tile.CandleTable,
+  Tile.CandleTableOut,
   Tile.Basin,
   Tile.Barrel,
   Tile.TiedParcels,
@@ -1652,6 +1776,35 @@ export class Renderer {
   addRing(x: number, y: number, color: string, maxR = 0.5): void {
     this.rings.push({ x, y, color, bornAt: performance.now(), maxR });
     if (this.rings.length > 24) this.rings.shift();
+  }
+
+  /**
+   * THE KEPT FLAME answering a hand: 'light' is a soft amber take —
+   * one warm breath of a ring and a few rising motes; 'snuff' is the
+   * honest grey — slow wisps curling off the dead wicks. Deliberately
+   * the quietest fx in the game: a candle is mood, never an event.
+   */
+  addCandleFx(x: number, y: number, lit: boolean): void {
+    if (lit) {
+      this.addRing(x, y - 0.35, '#f2c94c', 0.4);
+      this.particles.burst(x, y - 0.45, 7, ['#f8e8b0', '#e8a13c', '#f2c94c'], {
+        speed: 0.9,
+        life: 0.55,
+        up: true,
+        gravity: 0.4,
+        shape: 'streak',
+        size: 0.045,
+      });
+    } else {
+      this.particles.burst(x, y - 0.5, 6, ['#8a8794', '#a5a1ad', '#6e6a78'], {
+        speed: 0.5,
+        life: 1.2,
+        up: true,
+        gravity: 0.15,
+        shape: 'streak',
+        size: 0.055,
+      });
+    }
   }
 
   /**
@@ -4699,6 +4852,30 @@ export class Renderer {
           const flick = 0.86 + Math.sin(t * 9 + tx * 2.3) * 0.08 + Math.sin(t * 17 + ty * 1.7) * 0.06;
           this.glows.push({ x: tx + 0.5, y: ty + 0.18, r: 0.85 * flick, rgb: '255, 190, 100', a: 0.24 * flick * boost });
           this.lights.push({ x: tx + 0.5, y: ty + 0.5, r: 2.4 * flick, rgb: [255, 200, 130], intensity: 0.55 * flame * flick, occlude: true });
+        } else if (
+          tile === Tile.CandleCluster ||
+          tile === Tile.MeltedCandles ||
+          tile === Tile.CandleTable ||
+          tile === Tile.CandleStand
+        ) {
+          // THE KEPT FLAME: one breathing bloom per LIT prop, riding
+          // the glow overlay so the outline pass never rings it (an
+          // in-painter halo dies exactly that death — the live rig
+          // caught the crown wearing a sooty cloud). GLOW ONLY,
+          // never a light entry: the LampPost still owns the town
+          // night. The breath is the family's own sub-1Hz clock; the
+          // bloom sits at each form's flame height (the projAir law),
+          // and the snuffed postures fall through to darkness.
+          const breath = 0.85 + 0.15 * Math.sin(t * 0.63 + tx * 1.3 + ty * 0.7);
+          const hgt = tile === Tile.CandleStand ? 1.0 : tile === Tile.CandleTable ? 0.68 : 0.4;
+          const r = tile === Tile.CandleStand ? 0.66 : tile === Tile.CandleCluster ? 0.72 : 0.55;
+          this.glows.push({
+            x: tx + 0.5,
+            y: ty + 0.5 - hgt / this.camera.yScale,
+            r: r * breath,
+            rgb: '255, 190, 100',
+            a: 0.2 * breath * boost,
+          });
         } else if (tile === Tile.StandingTorch) {
           // A camp torch: a small hot pool with a hard flicker — the
           // rag head burns rough, never lamplight-steady.
@@ -18135,6 +18312,16 @@ export class Renderer {
     // law: every flame on this shelf is paint — the LampPost
     // still owns the town night.
     Tile.CandleStand,
+    // THE KEPT FLAME: the lit postures breathe on the fast cadence
+    // (the ONE flame's sub-2Hz sway); the snuffed postures idle in
+    // STATIC_RING_TILES — dead wax never reads the clock.
+    Tile.CandleStandOut,
+    Tile.CandleCluster,
+    Tile.CandleClusterOut,
+    Tile.MeltedCandles,
+    Tile.MeltedCandlesOut,
+    Tile.CandleTable,
+    Tile.CandleTableOut,
     Tile.StreetLantern,
     Tile.WayShrine,
     Tile.GuardianStatue,
@@ -18329,7 +18516,12 @@ export class Renderer {
     // Commons statics: carved stone, parked timber, stacked
     // wicker, ranked glaze, and the hauled-out hull never read
     // the clock. The flames (stand, lantern, shrine) and the
-    // tap's drip stay on the fast cadence.
+    // tap's drip stay on the fast cadence — and THE KEPT FLAME's
+    // snuffed postures join the statics: dead wax holds still.
+    Tile.CandleStandOut,
+    Tile.CandleClusterOut,
+    Tile.MeltedCandlesOut,
+    Tile.CandleTableOut,
     Tile.GuardianStatue,
     Tile.GameTable,
     Tile.WoodStool,
@@ -40773,14 +40965,283 @@ export class Renderer {
       // Every flame below is PAINT (zero light entries — the
       // LampPost owns the town night).
 
-      case Tile.CandleStand: {
+      case Tile.CandleCluster:
+      case Tile.CandleClusterOut: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.16;
+        const lit = tile === Tile.CandleCluster;
+        // THE KEPT FLAME, congregation form: floor candles grown into
+        // their own spilt wax — two ranks, hex-set like the woodpile's
+        // courses, heights dealt so no two candles agree on how long
+        // they have been burning. One stub stands DROWNED in every
+        // cluster (its wick died in its own pool — the prop tells
+        // time), and the ground pool is the story: nobody set these
+        // down tonight; this corner has been kept for years.
+        const cands = [
+          { x: -0.17, y: -0.14, w: 0.06, ht: 0.26, dead: false },
+          { x: 0.01, y: -0.15, w: 0.068, ht: 0.4, dead: false },
+          { x: 0.17, y: -0.13, w: 0.055, ht: 0.2, dead: false },
+          { x: -0.24, y: 0.0, w: 0.062, ht: 0.16, dead: false },
+          { x: -0.07, y: 0.01, w: 0.075, ht: 0.3, dead: false },
+          { x: 0.09, y: 0.005, w: 0.06, ht: 0.09, dead: true },
+          { x: 0.23, y: -0.01, w: 0.065, ht: 0.22, dead: false },
+        ];
+        return {
+          sortY: ty + 0.55,
+          body: stationBody(0.48, 0.85, 0.4),
+          drawShadow: () => this.castContact(p.x, baseY, s * 0.38, s * 0.06),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.22)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.015, s * 0.42, s * 0.09, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // (No painted floor lap: the prop's breathing bloom on
+            // the glow overlay warms the boards without ever meeting
+            // the outline pass.)
+            // The spilt ground pool: years of wax in three cooled
+            // tones, spatter beads at the rim.
+            ctx.fillStyle = WAX_RIM;
+            ctx.beginPath();
+            facetBlob(ctx, p.x, baseY - s * 0.02, s * 0.3, h ^ 0x2a, 7, 0.4);
+            ctx.fill();
+            ctx.fillStyle = WAX_POOL;
+            ctx.beginPath();
+            facetBlob(ctx, p.x - s * 0.03, baseY - s * 0.045, s * 0.24, h ^ 0x51, 6, 0.42);
+            ctx.fill();
+            ctx.fillStyle = WAX_LIT;
+            for (let k = 0; k < 4; k++) {
+              ctx.beginPath();
+              ctx.ellipse(
+                p.x + (((h >>> (k * 3 + 2)) & 7) / 7 - 0.5) * s * 0.62,
+                baseY + s * 0.005 + (((h >>> (k * 2 + 5)) & 3) / 3 - 0.5) * s * 0.05,
+                s * 0.022,
+                s * 0.012,
+                0,
+                0,
+                Math.PI * 2,
+              );
+              ctx.fill();
+            }
+            // Back rank first, then the front — every candle on its
+            // own melt ring, every flame on the ONE fire.
+            for (let k = 0; k < cands.length; k++) {
+              const c = cands[k]!;
+              const cx2 = p.x + c.x * s;
+              const cy2 = baseY + c.y * s;
+              const hgt = s * c.ht * (0.86 + (((h >>> (k * 4 + 1)) & 7) / 7) * 0.28);
+              const w = s * c.w;
+              ctx.fillStyle = WAX_POOL;
+              ctx.beginPath();
+              ctx.ellipse(cx2, cy2, w * 0.9, w * 0.34, 0, 0, Math.PI * 2);
+              ctx.fill();
+              const topY = paintCandleStick(ctx, cx2, cy2, w, hgt, s, (h >>> (k * 3)) & 7);
+              if (lit && !c.dead) {
+                paintCandleFlame(ctx, cx2, topY, s, t, h * 0.13 + k * 1.9, 0.82 + c.w * 3);
+              } else {
+                paintDeadWick(ctx, cx2, topY, s, 0.9);
+              }
+            }
+          },
+        };
+      }
+
+      case Tile.MeltedCandles:
+      case Tile.MeltedCandlesOut: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.16;
+        const lit = tile === Tile.MeltedCandles;
+        // THE KEPT FLAME, generations form: the mound where a hundred
+        // candles died so three could stand. Wax in strata (the
+        // oldest cooled darkest at the skirt), runnels frozen
+        // mid-fall down every side, the drowned pits of wicks nobody
+        // could save — and the three survivors rising from the crown,
+        // one leaning the way a candle sags toward its own heat.
+        return {
+          sortY: ty + 0.5,
+          body: stationBody(0.42, 0.75, 0.38),
+          drawShadow: () => this.castContact(p.x, baseY, s * 0.34, s * 0.055),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.22)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.012, s * 0.36, s * 0.08, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The strata, skirt to crown. (The warmth on the ground
+            // is the glow overlay's job — see THE KEPT FLAME branch
+            // in collectStaticLights.)
+            ctx.fillStyle = WAX_RIM;
+            ctx.beginPath();
+            facetBlob(ctx, p.x, baseY - s * 0.05, s * 0.3, h ^ 0x13, 7, 0.38);
+            ctx.fill();
+            ctx.fillStyle = WAX;
+            ctx.beginPath();
+            facetBlob(ctx, p.x - s * 0.01, baseY - s * 0.14, s * 0.235, h ^ 0x6d, 6, 0.4);
+            ctx.fill();
+            ctx.fillStyle = WAX_POOL;
+            ctx.beginPath();
+            facetBlob(ctx, p.x + s * 0.01, baseY - s * 0.22, s * 0.165, h ^ 0x38, 6, 0.42);
+            ctx.fill();
+            // Runnels: the falls, frozen — each ending in its bead.
+            ctx.strokeStyle = WAX_LIT;
+            ctx.lineWidth = Math.max(1, s * 0.02);
+            for (let k = 0; k < 4; k++) {
+              const rx = ((k / 3 - 0.5) * 2) * s * 0.2 + (((h >>> (k * 3 + 1)) & 3) - 1.5) * s * 0.02;
+              const ry = baseY - s * 0.24 + Math.abs(rx) * 0.3;
+              const ex = rx * 1.7 + (((h >>> (k * 2 + 4)) & 3) - 1.5) * s * 0.03;
+              const ey = baseY - s * 0.015 - (((h >>> (k + 6)) & 3) / 3) * s * 0.03;
+              ctx.beginPath();
+              ctx.moveTo(p.x + rx, ry);
+              ctx.quadraticCurveTo(p.x + rx * 1.5, (ry + ey) / 2 + s * 0.02, p.x + ex, ey);
+              ctx.stroke();
+              ctx.fillStyle = WAX_LIT;
+              ctx.beginPath();
+              ctx.ellipse(p.x + ex, ey + s * 0.012, s * 0.02, s * 0.026, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            // The drowned pits: wicks the wax took back.
+            ctx.fillStyle = 'rgba(36, 29, 24, 0.75)';
+            for (const [px2, py2] of [
+              [-0.1, -0.16],
+              [0.08, -0.2],
+              [0.13, -0.1],
+            ] as const) {
+              ctx.beginPath();
+              ctx.ellipse(p.x + px2 * s, baseY + py2 * s, s * 0.014, s * 0.008, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            // The survivors, crown-rooted; the middle one leans a
+            // dealt hair toward its own heat.
+            const surv = [
+              { x: -0.1, ht: 0.17, w: 0.06, rot: 0 },
+              { x: 0.015, ht: 0.3, w: 0.068, rot: ((h >>> 5) & 1) ? 0.07 : -0.07 },
+              { x: 0.115, ht: 0.13, w: 0.058, rot: 0 },
+            ];
+            for (let k = 0; k < surv.length; k++) {
+              const c = surv[k]!;
+              const cx2 = p.x + c.x * s;
+              const cy2 = baseY - s * 0.24;
+              ctx.save();
+              ctx.translate(cx2, cy2);
+              ctx.rotate(c.rot);
+              const topY = paintCandleStick(ctx, 0, 0, s * c.w, s * c.ht, s, (h >>> (k * 4 + 2)) & 7);
+              if (lit) paintCandleFlame(ctx, 0, topY, s, t, h * 0.17 + k * 2.3, 0.85);
+              else paintDeadWick(ctx, 0, topY, s, 0.9);
+              ctx.restore();
+            }
+          },
+        };
+      }
+
+      case Tile.CandleTable:
+      case Tile.CandleTableOut: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.2;
+        const lit = tile === Tile.CandleTable;
+        // THE KEPT FLAME, bedside form: a small occasional table in
+        // the dining board's own joinery (top a deeper honey than any
+        // floor, trestle-tapered legs) bearing the house's evening —
+        // a brass chamberstick with its drip collar already over the
+        // saucer's edge, and the bare stub beside it standing in the
+        // puddle of the night it finished. The pair burns together
+        // and dies together: one hand tends this table.
+        const th = s * 0.5;
+        const topY = baseY - th;
+        const deep = syT * 0.3;
+        return {
+          sortY: ty + 0.62,
+          body: stationBody(0.5, 1.05, 0.4),
+          drawShadow: () => this.castContact(p.x, baseY, s * 0.32, s * 0.055),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.22)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, baseY + s * 0.012, s * 0.34, s * 0.07, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Legs: the dining board's taper at side-table scale.
+            ctx.fillStyle = '#6f4d26';
+            for (const e of [-1, 1] as const) {
+              ctx.beginPath();
+              ctx.moveTo(p.x + e * s * 0.21 - s * 0.03, topY + s * 0.05);
+              ctx.lineTo(p.x + e * s * 0.21 + s * 0.03, topY + s * 0.05);
+              ctx.lineTo(p.x + e * s * 0.21 + s * 0.022, baseY - s * 0.05);
+              ctx.lineTo(p.x + e * s * 0.21 + s * 0.042, baseY);
+              ctx.lineTo(p.x + e * s * 0.21 - s * 0.042, baseY);
+              ctx.lineTo(p.x + e * s * 0.21 - s * 0.022, baseY - s * 0.05);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // The apron and the top: front edge, then the plane the
+            // camera sees (the crate-lid law at furniture scale).
+            ctx.fillStyle = '#6f4d26';
+            ctx.fillRect(p.x - s * 0.26, topY, s * 0.52, s * 0.05);
+            ctx.fillStyle = '#9c7040';
+            ctx.fillRect(p.x - s * 0.28, topY - deep, s * 0.56, deep);
+            ctx.fillStyle = shade('#9c7040', 14);
+            ctx.fillRect(p.x - s * 0.28, topY - deep, s * 0.56, Math.max(1, s * 0.016));
+            ctx.fillStyle = 'rgba(30, 20, 10, 0.25)';
+            ctx.fillRect(p.x - s * 0.28, topY - s * 0.012, s * 0.56, Math.max(1, s * 0.012));
+            const shelfY = topY - deep * 0.45;
+            // The chamberstick: saucer, ring handle, socket — brass
+            // that has caught wax for years and kept every drop.
+            const bx = p.x - s * 0.08;
+            ctx.fillStyle = '#8a6f2e';
+            ctx.beginPath();
+            ctx.ellipse(bx, shelfY, s * 0.105, s * 0.038, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#c2a45c';
+            ctx.beginPath();
+            ctx.ellipse(bx, shelfY - s * 0.008, s * 0.09, s * 0.03, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#8a6f2e';
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            ctx.beginPath();
+            ctx.arc(bx + s * 0.115, shelfY - s * 0.01, s * 0.026, -0.6, Math.PI * 0.9);
+            ctx.stroke();
+            // The candle in its socket, drip collar over the saucer.
+            const cw = s * 0.07;
+            const chgt = s * 0.2 * (0.85 + ((h >>> 3) & 3) * 0.1);
+            const cTop = paintCandleStick(ctx, bx, shelfY - s * 0.012, cw, chgt, s, (h >>> 2) & 7);
+            ctx.fillStyle = WAX_LIT;
+            ctx.beginPath();
+            ctx.ellipse(bx - s * 0.035, shelfY + s * 0.014, s * 0.026, s * 0.017, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            // The bare stub in the puddle of its own last night.
+            const sx2 = p.x + s * 0.14;
+            ctx.fillStyle = WAX_POOL;
+            ctx.beginPath();
+            facetBlob(ctx, sx2, shelfY + s * 0.008, s * 0.052, h ^ 0x77, 5, 0.4);
+            ctx.fill();
+            const sTop = paintCandleStick(ctx, sx2, shelfY + s * 0.004, s * 0.052, s * 0.085, s, (h >>> 5) & 7);
+            if (lit) {
+              paintCandleFlame(ctx, bx, cTop, s, t, h * 0.19, 0.95);
+              paintCandleFlame(ctx, sx2, sTop, s, t, h * 0.19 + 2.6, 0.7);
+            } else {
+              paintDeadWick(ctx, bx, cTop, s, 1);
+              paintDeadWick(ctx, sx2, sTop, s, 0.8);
+            }
+          },
+        };
+      }
+
+      case Tile.CandleStand:
+      case Tile.CandleStandOut: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.18;
+        const lit = tile === Tile.CandleStand;
         // The smith's floor candelabrum: one forged stem on three
         // scrolled feet, a drip pan that keeps every run it ever
         // lost, and a dealt crown of three or five arms — candles
         // at honest burn heights, flames LICKING on the slow
-        // clock. The town's indoor evening, planted anywhere.
+        // clock. The town's indoor evening, planted anywhere — and
+        // since THE KEPT FLAME, a hand at the wicks flips the whole
+        // crown between its two postures.
         const arms = 3 + ((h >>> 4) & 1) * 2;
         const panY = baseY - s * 0.78;
         const stemW = s * 0.028;
@@ -40905,27 +41366,15 @@ export class Renderer {
                 ctx.quadraticCurveTo(cx2 - s * 0.028, candTop + cl * 0.5, cx2 - s * 0.02, candTop + cl * 0.82);
                 ctx.stroke();
               }
-              // THE FLAME (<4Hz, PAINT): a warm painted halo, an
-              // amber lick, a bright core — big enough to read
-              // as FIRELIGHT from the street, never a light entry.
-              const lick = Math.sin(t * (2.1 + (k % 3) * 0.5) + k * 2.4 + (h % 7));
-              const fh = s * (0.085 + 0.016 * Math.sin(t * 1.4 + k * 1.7));
-              const fx3 = cx2 + lick * s * 0.014;
-              ctx.fillStyle = 'rgba(232, 161, 60, 0.22)';
-              ctx.beginPath();
-              ctx.ellipse(cx2, candTop - fh * 0.45, fh * 0.85, fh * 0.95, 0, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.fillStyle = CMN_FLAME;
-              ctx.beginPath();
-              ctx.moveTo(cx2 - s * 0.019, candTop);
-              ctx.quadraticCurveTo(cx2 - s * 0.022, candTop - fh * 0.55, fx3, candTop - fh);
-              ctx.quadraticCurveTo(cx2 + s * 0.022, candTop - fh * 0.55, cx2 + s * 0.019, candTop);
-              ctx.closePath();
-              ctx.fill();
-              ctx.fillStyle = CMN_FLAME_CORE;
-              ctx.beginPath();
-              ctx.ellipse(cx2 + lick * s * 0.005, candTop - fh * 0.34, s * 0.011, fh * 0.32, 0, 0, Math.PI * 2);
-              ctx.fill();
+              // THE FLAME: since THE KEPT FLAME, every socket burns
+              // the family's ONE fire (calm layered sway under 2Hz,
+              // breathing halo) — or wears the honest dead curl.
+              // PAINT either way, never a light entry.
+              if (lit) {
+                paintCandleFlame(ctx, cx2, candTop, s, t, h * 0.11 + k * 2.4, 0.9);
+              } else {
+                paintDeadWick(ctx, cx2, candTop, s, 0.9);
+              }
             }
           },
         };

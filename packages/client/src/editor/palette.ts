@@ -213,7 +213,13 @@ export const TILE_CATEGORIES: TileCategory[] = [
     id: 'commons',
     label: 'Commons',
     tiles: [
-      Tile.CandleStand, Tile.StreetLantern, Tile.WayShrine,
+      // THE KEPT FLAME: every candle in both postures — dress a hall
+      // pre-lit or pre-snuffed; players flip them from there.
+      Tile.CandleStand, Tile.CandleStandOut,
+      Tile.CandleCluster, Tile.CandleClusterOut,
+      Tile.MeltedCandles, Tile.MeltedCandlesOut,
+      Tile.CandleTable, Tile.CandleTableOut,
+      Tile.StreetLantern, Tile.WayShrine,
       Tile.GuardianStatue, Tile.TapCask, Tile.GameTable,
       Tile.WoodStool, Tile.SettleBench, Tile.BasketStack, Tile.GlazedJars,
       Tile.BroomAndPail, Tile.CloakStand, Tile.LeanLadder, Tile.Wheelbarrow,

@@ -946,6 +946,27 @@ export enum Tile {
   // plank, or wagon bed — goods SOLD and waiting for their owner.
   /** Wrapped parcels twine-tied and stacked, a paper tag on the knot. */
   TiedParcels = 466,
+  // THE KEPT FLAME — the candle family (docs precedent: the commons
+  // CandleStand, 429). Every piece stands in TWO postures, lit and
+  // snuffed, and the tile IS the state (the chest law): a hand at
+  // the wick toggles it, the patch syncs it, and a room stays exactly
+  // as the last hand left it. One flame paints every wick in the
+  // game, so a hall dressed in dozens reads as ONE order keeping ONE
+  // vigil — a monastery of candles, never a bag of separate props.
+  /** A grown congregation of floor candles on their own spilt wax, burning. */
+  CandleCluster = 467,
+  /** The same congregation, every wick snuffed — wax waiting for a hand. */
+  CandleClusterOut = 468,
+  /** Generations of candles melted into one dripping mound; survivors burn. */
+  MeltedCandles = 469,
+  /** The wax mound gone dark, drowned wicks and frozen runnels. */
+  MeltedCandlesOut = 470,
+  /** A small side table bearing a chamberstick and a stub, both burning. */
+  CandleTable = 471,
+  /** The candle table gone dark, wicks curled, wax cold. */
+  CandleTableOut = 472,
+  /** The forged floor candelabrum (429's own body), every flame snuffed. */
+  CandleStandOut = 473,
 }
 
 export enum Detail {
@@ -1684,6 +1705,15 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.LogPile]: { name: 'log pile', solid: true, color: '#6f4d26', raised: true, topColor: '#96713c' },
   [Tile.LogPileEndOn]: { name: 'end-on log pile', solid: true, color: '#6f4d26', raised: true, topColor: '#c9ab74' },
   [Tile.TiedParcels]: { name: 'tied parcels', solid: true, color: '#a08a62', raised: true, topColor: '#c4b491' },
+  // THE KEPT FLAME — minimap voice: lit candles read flame-amber
+  // from the sky; snuffed ones read as the wax they are.
+  [Tile.CandleCluster]: { name: 'candle cluster', solid: true, color: '#8a7d5e', raised: true, topColor: '#e8a13c' },
+  [Tile.CandleClusterOut]: { name: 'candle cluster', solid: true, color: '#8a7d5e', raised: true, topColor: '#d8cba8' },
+  [Tile.MeltedCandles]: { name: 'melted candles', solid: true, color: '#8a7d5e', raised: true, topColor: '#e8a13c' },
+  [Tile.MeltedCandlesOut]: { name: 'melted candles', solid: true, color: '#8a7d5e', raised: true, topColor: '#d8cba8' },
+  [Tile.CandleTable]: { name: 'candle table', solid: true, color: '#6b4a26', raised: true, topColor: '#e8a13c' },
+  [Tile.CandleTableOut]: { name: 'candle table', solid: true, color: '#6b4a26', raised: true, topColor: '#d8cba8' },
+  [Tile.CandleStandOut]: { name: 'candle stand', solid: true, color: '#4c4a52', raised: true, topColor: '#d8cba8' },
 };
 
 /** The four awning silhouettes, index order FOREVER (the id math). */
@@ -2009,6 +2039,47 @@ export function openDoorTile(id: number): Tile | null {
   const t = id as Tile;
   if (SHUT_OF.has(t)) return t;
   return OPEN_OF.get(t) ?? null;
+}
+
+/**
+ * THE KEPT FLAME — every candle prop stands in two postures, lit and
+ * snuffed, and the tile IS the state (the chest law): posture syncs
+ * like any patch, survives the chunk, and stays exactly as the last
+ * hand left it. The candles keep their OWN map, apart from the
+ * doors' — an NPC working latches down a lane must never "open" a
+ * candle, and a candle never auto-closes.
+ */
+const CANDLE_OUT_OF = new Map<Tile, Tile>([
+  [Tile.CandleStand, Tile.CandleStandOut],
+  [Tile.CandleCluster, Tile.CandleClusterOut],
+  [Tile.MeltedCandles, Tile.MeltedCandlesOut],
+  [Tile.CandleTable, Tile.CandleTableOut],
+]);
+const CANDLE_LIT_OF = new Map<Tile, Tile>([...CANDLE_OUT_OF].map(([lit, out]) => [out, lit]));
+
+/** Every candle tile, both postures. */
+export const CANDLE_TILES: ReadonlySet<Tile> = new Set([
+  ...CANDLE_OUT_OF.keys(),
+  ...CANDLE_LIT_OF.keys(),
+]);
+
+export interface CandleInfo {
+  /** True when the wicks burn; false when the prop stands snuffed. */
+  lit: boolean;
+}
+
+/** What a candle tile is (null for everything that isn't one). */
+export function candleInfo(id: number): CandleInfo | null {
+  const t = id as Tile;
+  if (CANDLE_OUT_OF.has(t)) return { lit: true };
+  if (CANDLE_LIT_OF.has(t)) return { lit: false };
+  return null;
+}
+
+/** The other posture of a candle tile (null for non-candles). */
+export function candleToggleTile(id: number): Tile | null {
+  const t = id as Tile;
+  return CANDLE_OUT_OF.get(t) ?? CANDLE_LIT_OF.get(t) ?? null;
 }
 
 /**
@@ -2406,6 +2477,16 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.LogPileEndOn, 0.4],
   // THE PACKED ORDER: a knee-high stack you lean over, not walk through.
   [Tile.TiedParcels, 0.3],
+  // THE KEPT FLAME: knee-high wax you step around; both postures of
+  // a pair keep ONE stance — toggling a candle must never shove the
+  // body standing beside it.
+  [Tile.CandleCluster, 0.24],
+  [Tile.CandleClusterOut, 0.24],
+  [Tile.MeltedCandles, 0.22],
+  [Tile.MeltedCandlesOut, 0.22],
+  [Tile.CandleTable, 0.26],
+  [Tile.CandleTableOut, 0.26],
+  [Tile.CandleStandOut, 0.22],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -2736,7 +2817,13 @@ export type DestructibleKind =
   // that barely fly, great rounds that roll, bark sheeting off.
   | 'greatlog'
   | 'logdeck'
-  | 'logstack';
+  | 'logstack'
+  // THE KEPT FLAME: candles break as WAX — soft stubs showering
+  // pale, the table adds its joinery, nothing here rings iron but
+  // the chamberstick.
+  | 'candlecluster'
+  | 'meltwax'
+  | 'candletable';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -2971,6 +3058,15 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.LogPile, { kind: 'logdeck', respawnSec: 420, hits: 3 }],
   [Tile.LogPileEndOn, { kind: 'logstack', respawnSec: 420, hits: 3 }],
   [Tile.TiedParcels, { kind: 'parcels', respawnSec: 300, hits: 1 }],
+  // THE KEPT FLAME: wax pops in a blow, in either posture — the
+  // pair shares one break-up kit (dark wax breaks the same as lit).
+  [Tile.CandleCluster, { kind: 'candlecluster', respawnSec: 300, hits: 1 }],
+  [Tile.CandleClusterOut, { kind: 'candlecluster', respawnSec: 300, hits: 1 }],
+  [Tile.MeltedCandles, { kind: 'meltwax', respawnSec: 300, hits: 1 }],
+  [Tile.MeltedCandlesOut, { kind: 'meltwax', respawnSec: 300, hits: 1 }],
+  [Tile.CandleTable, { kind: 'candletable', respawnSec: 300, hits: 1 }],
+  [Tile.CandleTableOut, { kind: 'candletable', respawnSec: 300, hits: 1 }],
+  [Tile.CandleStandOut, { kind: 'candlestand', respawnSec: 300, hits: 1 }],
 ]);
 
 /** Every smashable prop tile. */

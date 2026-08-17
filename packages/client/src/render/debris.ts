@@ -231,7 +231,13 @@ export type SmashKind =
   // that barely fly, great rounds that roll, bark sheeting off.
   | 'greatlog'
   | 'logdeck'
-  | 'logstack';
+  | 'logstack'
+  // THE KEPT FLAME: candles break as WAX — soft pale stubs that
+  // barely fly, the table adds its joinery and the chamberstick's
+  // one brass ping.
+  | 'candlecluster'
+  | 'meltwax'
+  | 'candletable';
 
 export interface DebrisChunk {
   x: number; // world coords (tile units)
@@ -796,6 +802,9 @@ const CHIP_TONE: Record<SmashKind, string> = {
   // post, ladder rail, barrow oak, road burlap, tub oak, tarred
   // bollard, and lapped hull strake.
   candlestand: '#4c4a52',
+  candlecluster: '#d8cba8',
+  meltwax: '#d8cba8',
+  candletable: '#6f4d26',
   streetlantern: '#6f5a38',
   wayshrine: '#8a857a',
   guardian: '#6f6a58',
@@ -3008,6 +3017,46 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       }
       for (let i = 0; i < 3; i++) {
         out.push({ len: 0.11, wid: 0.028, color: '#4a3420', stripe: '#6f4d26', pace: 0.9 });
+      }
+      break;
+    }
+    case 'candlecluster': {
+      // The congregation goes out all at once: soft wax stubs
+      // showering pale and LOW (wax barely flies), the ground pool
+      // cracking into cooled shards.
+      for (let i = 0; i < 6; i++) {
+        out.push({ len: 0.07 + rand() * 0.04, wid: 0.05, color: pick(rand, ['#d8cba8', '#efe6cf']), stripe: '#c9bd9e', round: true, pace: 0.5 });
+      }
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.06, wid: 0.02, color: pick(rand, ['#e6dcc0', '#c9bd9e']), pace: 0.7 });
+      }
+      break;
+    }
+    case 'meltwax': {
+      // The mound breaks the way old wax does: heavy cooled clods
+      // going nowhere, two survivors flying whole, a shower of
+      // frozen runnel splinters.
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.09 + rand() * 0.04, wid: 0.07, color: pick(rand, ['#c9bd9e', '#d8cba8']), stripe: '#e6dcc0', round: true, pace: 0.35 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.1, wid: 0.045, color: '#d8cba8', stripe: '#efe6cf', pace: 0.8 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.05, wid: 0.014, color: '#efe6cf', pace: 0.9 });
+      }
+      break;
+    }
+    case 'candletable': {
+      // The side table folds like the joinery it is — legs and the
+      // honey top out low — while the chamberstick rings off brass
+      // and the candles fly as soft wax.
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.15 + rand() * 0.04, wid: 0.045, color: pick(rand, ['#6f4d26', '#9c7040']), stripe: '#c9a76a', pace: 0.6 });
+      }
+      out.push({ len: 0.08, wid: 0.05, color: '#c2a45c', stripe: '#e0c88a', round: true, pace: 1.25 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.06, wid: 0.04, color: pick(rand, ['#d8cba8', '#efe6cf']), stripe: '#c9bd9e', round: true, pace: 0.55 });
       }
       break;
     }

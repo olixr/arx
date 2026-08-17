@@ -4,6 +4,7 @@ import {
   AWNING_HOST_TILES,
   AWNING_SHAPES,
   AWNING_TILES,
+  CANDLE_TILES,
   CHEST_TILES,
   DIAG_WALL_TILES,
   DOOR_TILES,
@@ -36,8 +37,11 @@ import {
   hangHostTiles,
   wallBannerDetail,
   wallHungInfo,
+  candleInfo,
+  candleToggleTile,
   chestInfo,
   closedChestTile,
+  tileColliderRadius,
   destructibleInfo,
   DESTRUCTIBLE_TILES,
   diagWallInfo,
@@ -79,6 +83,38 @@ test('chest tiles are solid props with defs', () => {
 test('non-chest tiles report null', () => {
   assert.equal(chestInfo(Tile.BankChest), null);
   assert.equal(chestInfo(Tile.Crate), null);
+});
+
+test('every candle round-trips lit <-> snuffed and both postures hold one stance', () => {
+  // THE KEPT FLAME: the tile IS the state (the chest law). A pair
+  // must round-trip exactly; both postures stay solid raised props;
+  // and the stance must not move under a toggling hand — same
+  // collider, same break-up kind, in either posture.
+  let pairs = 0;
+  for (const tile of CANDLE_TILES) {
+    const info = candleInfo(tile)!;
+    const other = candleToggleTile(tile)!;
+    assert.notEqual(other, tile);
+    assert.equal(candleToggleTile(other), tile);
+    assert.equal(candleInfo(other)!.lit, !info.lit);
+    assert.ok(tileDef(tile).solid, `${tileDef(tile).name} is solid`);
+    assert.ok(tileDef(tile).raised, `${tileDef(tile).name} renders raised`);
+    assert.equal(tileColliderRadius(tile), tileColliderRadius(other), `${tileDef(tile).name} stance`);
+    assert.equal(
+      destructibleInfo(tile)?.kind,
+      destructibleInfo(other)?.kind,
+      `${tileDef(tile).name} break-up kit`,
+    );
+    // A candle is never a door: the NPC latch-work walks the door
+    // map, and it must not find wax there.
+    assert.equal(doorInfo(tile), null, `${tileDef(tile).name} stays out of the door map`);
+    if (info.lit) pairs++;
+  }
+  // The family ships four pairs: stand, cluster, mound, table.
+  assert.equal(pairs, 4);
+  assert.equal(CANDLE_TILES.size, 8);
+  assert.equal(candleInfo(Tile.Table), null);
+  assert.equal(candleToggleTile(Tile.CandleRack), null);
 });
 
 test('every doorway round-trips open <-> shut', () => {
@@ -486,6 +522,15 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.LogPileEndOn, 'logstack', 3],
     // THE PACKED ORDER: soft goods come apart in one pull.
     [Tile.TiedParcels, 'parcels', 1],
+    // THE KEPT FLAME: wax pops in a blow, in either posture, and a
+    // pair shares one break-up kit.
+    [Tile.CandleCluster, 'candlecluster', 1],
+    [Tile.CandleClusterOut, 'candlecluster', 1],
+    [Tile.MeltedCandles, 'meltwax', 1],
+    [Tile.MeltedCandlesOut, 'meltwax', 1],
+    [Tile.CandleTable, 'candletable', 1],
+    [Tile.CandleTableOut, 'candletable', 1],
+    [Tile.CandleStandOut, 'candlestand', 1],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {

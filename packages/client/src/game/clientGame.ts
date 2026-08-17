@@ -25,6 +25,7 @@ import {
   chargedShot,
   clockHours,
   drawCharge,
+  candleInfo,
   chestInfo,
   doorInfo,
   findPath,
@@ -138,6 +139,7 @@ export type InteractTarget =
   | { kind: 'loot'; tx: number; ty: number; eid: EntityId }
   | { kind: 'chest'; tx: number; ty: number; chest: ChestKind }
   | { kind: 'door'; tx: number; ty: number; open: boolean; gate: boolean }
+  | { kind: 'candle'; tx: number; ty: number; lit: boolean }
   | { kind: 'seat'; tx: number; ty: number }
   | { kind: 'bed'; tx: number; ty: number }
   | { kind: 'sign'; tx: number; ty: number; mine: boolean; blank: boolean };
@@ -2545,10 +2547,10 @@ export class ClientGame {
         break;
       }
       case 'fx': {
-        // Door rattles and prop smashes are scenery feedback, not
-        // combat VFX — hand them straight to the fx hook without
-        // joining the ability list.
-        if (msg.kind === 'rattle' || msg.kind === 'smash') {
+        // Door rattles, prop smashes, and candle flips are scenery
+        // feedback, not combat VFX — hand them straight to the fx
+        // hook without joining the ability list.
+        if (msg.kind === 'rattle' || msg.kind === 'smash' || msg.kind === 'candle') {
           this.onFx?.({
             kind: msg.kind,
             x: msg.x,
@@ -3038,6 +3040,10 @@ export class ClientGame {
       const gate = door.material === 'fence' || door.material === 'garrison';
       return { kind: 'door', tx, ty, open: door.open, gate };
     }
+    // THE KEPT FLAME: a candle offers its wick — lit offers the
+    // snuff, snuffed offers the light. The server owns the flip.
+    const candle = candleInfo(ground);
+    if (candle) return { kind: 'candle', tx, ty, lit: candle.lit };
     if (ground === Tile.BankChest) return { kind: 'bank', tx, ty };
     // THE THREE STALLS: the pen opens the stable door. The household
     // already lives client-side (S2CPet), so the panel needs no

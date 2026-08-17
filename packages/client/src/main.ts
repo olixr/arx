@@ -2163,6 +2163,14 @@ game.onFx = (fx) => {
     sfx.spatial(at, 'near', () => sfx.doorRattle());
     return;
   }
+  if (fx.kind === 'candle') {
+    // THE KEPT FLAME answering a hand: a soft flare as the wicks
+    // take, or grey wisps curling off the dead ones. Quiet scenery
+    // feedback — no rumble, no camera, barely a sound.
+    renderer.addCandleFx(fx.x, fx.y, fx.id === 'light');
+    sfx.spatial(at, 'near', () => sfx.candleFlip(fx.id === 'light'));
+    return;
+  }
   if (fx.kind === 'horn') {
     // THE RAID HORN: the covetous camp announces itself, far-carrying
     // and placed — you hear which side of the yard it stands on.
@@ -2889,6 +2897,11 @@ function activateTarget(target: ReturnType<typeof game.findNearbyTarget>): void 
       // hold it open because someone stands in the way.
       game.interact(target.tx, target.ty);
       break;
+    case 'candle':
+      // The server flips the posture; the flare or the wisp rides
+      // back as fx with the tile patch right behind it.
+      game.interact(target.tx, target.ty);
+      break;
     case 'seat':
     case 'bed':
       // The server decides: seat the body, lay it down (claiming the
@@ -3587,6 +3600,7 @@ function frame(now: number): void {
         : target.kind === 'bin' ? (binReady(target.tx, target.ty) ? 'Turn Out' : 'Compost')
         : target.kind === 'work' ? workVerb(target.tx, target.ty, target.work)
         : target.kind === 'door' ? (target.open ? (target.gate ? 'Close Gate' : 'Close Door') : (target.gate ? 'Open Gate' : 'Open Door'))
+        : target.kind === 'candle' ? (target.lit ? 'Snuff Candles' : 'Light Candles')
         : target.kind === 'sign' ? (target.blank ? 'Write Sign' : target.mine ? 'Read / Write' : 'Read Sign')
         // On the furniture already: the same touch stands you up — or
         // tends the hearth from your own bed (the ward dial).

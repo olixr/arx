@@ -784,6 +784,23 @@ export class Sfx {
   }
 
   /**
+   * THE KEPT FLAME: a wick taking (the strike's soft pip and the
+   * flame's first warm breath) or dying (one puffed breath, the
+   * faintest ember tick). The quietest verb in the game on purpose —
+   * a candle is mood, never an event.
+   */
+  candleFlip(lit: boolean): void {
+    if (lit) {
+      this.noise(0.03, 0.04, 0, { band: 3200 });
+      this.tone(980, 0.06, { type: 'triangle', slide: 180, volume: 0.045, delay: 0.02 });
+      this.tone(520, 0.12, { type: 'sine', slide: 40, volume: 0.04, delay: 0.05 });
+    } else {
+      this.noise(0.14, 0.05, 0, { band: 750 });
+      this.tone(300, 0.1, { type: 'sine', slide: -130, volume: 0.035, delay: 0.03 });
+    }
+  }
+
+  /**
    * A blow landing on a durable prop without finishing it: one solid
    * woody knock and a short splinter spray — the sound of progress.
    */

@@ -108,6 +108,8 @@ import {
   doorInfo,
   openDoorTile,
   shutDoorTile,
+  candleInfo,
+  candleToggleTile,
   type ChestInfo,
   type ChestKind,
   type DoorInfo,
@@ -4619,6 +4621,25 @@ export class GameServer {
     const door = ground === undefined ? null : doorInfo(ground);
     if (door) {
       this.interactDoor(eid, pos.plane, tx, ty, door, sys);
+      return;
+    }
+
+    // THE KEPT FLAME: a candle answers the hand — lit snuffs, snuffed
+    // lights. The tile IS the state (the chest law) so the posture
+    // syncs like any patch, and the room stays exactly as the last
+    // hand left it: no lock, no auto-close, no occupancy — the
+    // smallest door in the game.
+    const wick = ground === undefined ? null : candleToggleTile(ground);
+    if (wick !== null) {
+      this.setWorldTile(pos.plane, tx, ty, wick);
+      this.broadcastFx(pos.plane, {
+        t: 'fx',
+        kind: 'candle',
+        id: candleInfo(wick)?.lit ? 'light' : 'snuff',
+        x: tx + 0.5,
+        y: ty + 0.5,
+        radius: 0.4,
+      });
       return;
     }
 
