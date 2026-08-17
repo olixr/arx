@@ -677,6 +677,13 @@ export const RIG_DEBUG = {
   offFistX: 0,
   offFistY: 0,
   arms: [] as Array<{ sx: number; sy: number; kx: number; ky: number; ex: number; ey: number }>,
+  // THE PRIMARY-COLOR ARMS (the depth wheel's convicting instrument):
+  // when set, each arm paints SOLID in its tint — main vs off become
+  // unmistakable at a glance, so a layer flip that puts the far arm on
+  // the chest convicts itself in a screenshot. Labs only; the game
+  // never writes these. Independent of `on` (the overlay recorder).
+  tintMain: null as string | null,
+  tintOff: null as string | null,
 };
 /** The hang-width lane's flare off the waist line (hangW's ww term). */
 export const HANG_WAIST_K = 1.08;
@@ -7894,6 +7901,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     const armPoleX = freePoleX + (shieldFr ? (shieldFr.poleX - freePoleX) * claim : 0);
     const armPoleY = 1 + (shieldFr ? (shieldFr.poleY - 1) * claim : 0);
     armSegPass = seg ?? null;
+    const offTint = RIG_DEBUG.tintOff;
     const joints = drawArm(
       ctx,
       offShX,
@@ -7902,11 +7910,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       offY,
       armPoleX,
       armPoleY,
-      sleeve,
-      skin,
+      offTint ?? sleeve,
+      offTint ?? skin,
       s,
-      cuff,
-      gloveSt,
+      offTint ? undefined : cuff,
+      offTint ? null : gloveSt,
       rig.hurt,
       skel,
       mem ? (mem.offElbow ??= { sign: 0 }) : undefined,
@@ -8033,6 +8041,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // ladder — after every paint closure exists, before the torso.)
   const paintMainArm = (seg?: 'under' | 'over'): void => {
     armSegPass = seg ?? null;
+    const mainTint = RIG_DEBUG.tintMain;
     drawArm(
       ctx,
       mainShX,
@@ -8042,11 +8051,11 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
       (archer ? -fx : Math.cos(mainAngle) * 0.4) * (1 - settleK) +
         mainSettlePoleX * settleK,
       archer ? -0.6 : 1,
-      sleeve,
-      skin,
+      mainTint ?? sleeve,
+      mainTint ?? skin,
       s,
-      cuff,
-      gloveSt,
+      mainTint ? undefined : cuff,
+      mainTint ? null : gloveSt,
       rig.hurt,
       skel,
       mem ? (mem.mainElbow ??= { sign: 0 }) : undefined,
@@ -8651,7 +8660,21 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // where the depth effect "got lost"). Mirror of the weaponBehind law
   // for the opposite pole, with the same hysteresis pattern so aim
   // jitter at the boundary can never flicker the layering.
-  const offFrontAt = mem ? (mem.offFront ? 0.28 : 0.4) : 0.34;
+  // THE FRONTAL CONE EARNS ITS NAME (the depth-wheel audit): keyed on
+  // fy alone the cone entered ~24° south of pure profile, so a
+  // sideways run with a slight toward-camera tilt threw the far arm
+  // ONTO the chest — at near-profile facings the off hand's lane is
+  // tucked over the body's centerline, and painted on the front layer
+  // it crossed the torso (both arms over the chest, the user's
+  // screenshot). The measure now subtracts the profile weight, so
+  // "facing the camera" demands fy DOMINATE |fx|: the flip lands
+  // between SE and E (enter ≈42°, exit ≈33° south of profile) — the
+  // S/SE/SW verdicts keep their approved both-arms-front read, and
+  // the shallow band inherits the profile's far-arm-behind read,
+  // where the torso honestly occludes the tucked far hand. Mirror
+  // symmetric E/W by construction (|fx|).
+  const offFrontCone = fy - 0.55 * profileK;
+  const offFrontAt = mem ? (mem.offFront ? 0.1 : 0.24) : 0.17;
   // A shield overrides the hand's depth rule with the PLANE's: the arm
   // goes wherever its shield went, in or out of combat, so the boards
   // and the fist behind them can never end up on opposite sides of the
@@ -8659,7 +8682,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
   // edge-on beside the body and the swap is invisible by construction.
   const offFront = shieldFr
     ? shieldFr.front
-    : !mainBehind && restSettle > 0.5 && fy > offFrontAt;
+    : !mainBehind && restSettle > 0.5 && offFrontCone > offFrontAt;
   if (mem) mem.offFront = offFront;
   // THE FAR SIDE GOES BEHIND THE LEGS: facing up-and-away, the hang
   // and the aim live on the body's FAR side — the whole gear layer
