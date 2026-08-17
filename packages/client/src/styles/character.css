@@ -131,14 +131,18 @@
   border-top: var(--rule) solid var(--line);
 }
 
-/* ---- THE STAND TRAY: named by its owner ---- */
+/* ---- THE STAND TRAY: named by its owner, HELD by its owner ----
+   THE HERO'S ALCOVE: the tray's heart is an arched niche where the
+   live rig stands, painted by the world's own hand, wearing every
+   worn piece the moment it lands. The sockets flank the figure:
+   armor spine down the left, trappings down the right, held steel
+   on the plinth shelf, the ready rack beneath. */
 
 .worn-kit {
   flex: none;
-  /* Two columns: the anatomy's true span (3 sockets + straps' gaps =
-     17.875rem) beside the kit manifest's reading column — the stand
-     shows WHERE things hang and says WHAT they give, side by side. */
-  width: 38.5rem;
+  /* Two socket columns plus the alcove between them — the reading
+     column is dead; the figure and the instruments carry its duty. */
+  width: 30.5rem;
 }
 
 .ident-name {
@@ -192,79 +196,22 @@
   text-shadow: 0 0.0625rem 0 rgba(255, 235, 180, 0.4);
 }
 
-/* THE STAND TELLS ITS STORY IN TWO VOICES: the anatomy on the left
-   says WHERE things hang; the manifest beside it names WHAT each
-   piece is and what it gives. The old centered void is dead — the
-   leftover width belongs to the kit's words. */
+/* The stand fills its tray: one anatomy, centered on both axes —
+   the composition never heaps against the head band. THE STAND IS
+   FIXED AND THE SUM YIELDS: the body never shrinks below the
+   anatomy's true height (no socket row may ever clip); a towering
+   kit's foot band gives ground first. */
 .stand-body {
   display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 1rem;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1 0 auto;
   overflow: hidden;
 }
 
 .stand-body #equip-anatomy {
   flex: none;
-}
-
-/* ---- THE KIT MANIFEST: one quiet row per worn piece ---- */
-
-#worn-manifest {
-  flex: 1 1 auto;
   min-width: 0;
-  align-self: stretch;
-  display: flex;
-  flex-direction: column;
-  padding-left: 0.875rem;
-  border-left: var(--rule) solid var(--line);
-  /* Eleven pieces on a snug window may run past the tray — the thin
-     rail is the emergency exit, never the plan. */
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
-}
-
-#worn-manifest .screen-section {
-  margin: 0.375rem 0 0.375rem;
-}
-
-.worn-row {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  min-height: 2.125rem;
-  padding: 0.125rem 0.375rem;
-}
-
-.worn-row:hover {
-  background: var(--raise-hi);
-}
-
-.worn-row img {
-  flex: none;
-  width: 1.75rem;
-  height: 1.75rem;
-}
-
-.worn-row-name {
-  flex: 1;
-  min-width: 0;
-  font-size: var(--t-body);
-  font-weight: 700;
-  text-shadow: var(--punch-small);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.worn-row-note {
-  flex: none;
-  font-size: var(--t-label);
-  color: var(--parchment-dim);
-  text-shadow: var(--punch-small);
-  white-space: nowrap;
 }
 
 /* THE HOUSE COURT (visible-buildcraft V3) — the ONE presentation of a
@@ -426,80 +373,136 @@
   letter-spacing: 0.04em;
 }
 
-/* The manifest's rack rows: named and placed, promising nothing —
-   THE SLEEPING STEEL shows no figure it does not grant. */
-.worn-row.rack-row {
-  opacity: 0.72;
-}
-
-.worn-row.rack-row .worn-row-note {
-  font-style: italic;
-}
-
-/* The stand: sockets hung where they sit on the body — head over
-   chest over legs over boots down the spine, weapon hand left,
-   shield hand right, cape at the shoulder, tools on the belt. */
+/* The stand: the alcove at its heart, sockets hung at their body
+   places around the standing figure — the armor spine reads down the
+   left flank (head, body, legs, boots), the trappings down the right
+   (cape at the shoulder, gloves, relic, sigil at the belt), and the
+   held steel rests on the plinth shelf at the figure's feet. */
 #equip-anatomy {
   position: relative;
-  flex: none;
   display: grid;
   grid-template-areas:
-    'cape   head  sigil'
-    'weapon body  offhand'
-    'gloves legs  relic'
-    'tool   boots .'
+    'head   alcove cape'
+    'body   alcove gloves'
+    'legs   alcove relic'
+    'boots  alcove sigil'
+    'weapon tool   offhand'
     'stowWeapon rackSwap stowOffhand';
-  /* A breath wider than the pack's gap: the straps show through. */
+  grid-template-columns: 5.5rem 1fr 5.5rem;
   gap: 0.6875rem;
   align-content: start;
+  justify-content: center;
 }
 
-/* The rack the kit is lashed to: a stitched leather SPINE STRAP down
-   the center column and a SHOULDER STRAP across the hand row — bold
-   ink-edged bands segmented like lashing, not hairline decoration.
-   HONEST GRID MATH (Grand Refit Ph4): the pseudo-elements are grid
-   ITEMS spanning the stand's own rows and columns — resize the cells
-   and the rack follows; no hand-derived pixel anchors survive. */
-#equip-anatomy::before {
-  content: '';
-  grid-row: 1 / 5;
-  grid-column: 2;
-  justify-self: center;
+/* ---- THE HERO'S ALCOVE: an arched niche cut into the case ----
+   The arch is a HOLE, so its crown eases (THE CORNER TRUTH); the ink
+   ring follows the silhouette because it rides border-radius. The
+   glow is candlelight pooling behind the figure's feet; the plinth
+   is a raised stone shelf the held-steel row appears to rest on. */
+#figure-alcove {
+  grid-area: alcove;
+  position: relative;
   align-self: stretch;
-  margin: 2.25rem 0 0.625rem;
-  width: 0.625rem;
-  background-color: var(--line-strong);
-  background-image: repeating-linear-gradient(
-    180deg,
-    rgba(16, 10, 20, 0) 0,
-    rgba(16, 10, 20, 0) 0.6875rem,
-    rgba(16, 10, 20, 0.55) 0.6875rem,
-    rgba(16, 10, 20, 0.55) 0.875rem
-  );
+  justify-self: stretch;
+  min-width: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0) 34%),
+    var(--sunk);
+  border-radius: 50% 50% 0.375rem 0.375rem / 30% 30% 0.375rem 0.375rem;
   box-shadow:
-    inset 0.125rem 0 0 rgba(16, 10, 20, 0.9),
-    inset -0.125rem 0 0 rgba(16, 10, 20, 0.9);
+    inset 0 0 0 0.15625rem var(--ink-line),
+    inset 0 0.375rem 0 rgba(0, 0, 0, 0.35),
+    inset 0 0 2.25rem rgba(0, 0, 0, 0.55);
+  isolation: isolate;
+}
+
+/* The candle pool: warm light gathered where the hero stands. */
+.alcove-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: radial-gradient(
+    ellipse 62% 44% at 50% 74%,
+    rgba(217, 164, 65, 0.2),
+    rgba(217, 164, 65, 0) 72%
+  );
   pointer-events: none;
 }
 
-#equip-anatomy::after {
+/* THE LANDING BLOOM: a changed kit swells the candlelight for one
+   breath. The swell is its own stronger layer riding the glow,
+   silent at rest — opacity only, compositor-clean, gated like all
+   UI motion. */
+.alcove-glow::before {
   content: '';
-  grid-row: 2;
-  grid-column: 1 / 4;
-  align-self: center;
-  margin: 0 0.9375rem;
-  height: 0.625rem;
-  background-color: var(--line-strong);
-  background-image: repeating-linear-gradient(
-    90deg,
-    rgba(16, 10, 20, 0) 0,
-    rgba(16, 10, 20, 0) 0.6875rem,
-    rgba(16, 10, 20, 0.55) 0.6875rem,
-    rgba(16, 10, 20, 0.55) 0.875rem
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: radial-gradient(
+    ellipse 70% 52% at 50% 70%,
+    rgba(255, 233, 168, 0.38),
+    rgba(255, 233, 168, 0) 72%
   );
+}
+
+body:not(.no-ui-motion) #figure-alcove.bloom .alcove-glow::before {
+  animation: alcove-bloom 700ms ease-out;
+}
+
+@keyframes alcove-bloom {
+  0% {
+    opacity: 0;
+  }
+  28% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #figure-alcove.bloom .alcove-glow::before {
+    animation: none;
+  }
+}
+
+/* The figure: feet planted ON the plinth (the rig's canvas keeps a
+   tenth below the feet; the downward shift buries it behind the
+   stone), cropped a breath at the niche's shoulders so the hero
+   fills the arch like a statue fills its setting. Painted at 512 so
+   a 4K case reads it crisp. */
+.alcove-figure {
+  position: absolute;
+  left: 50%;
+  bottom: 1.1875rem;
+  z-index: 1;
+  width: 146%;
+  transform: translateX(-50%) translateY(8.5%);
+  pointer-events: none;
+}
+
+.alcove-figure .alcove-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* The plinth: one raised stone course at the niche's floor. */
+#figure-alcove::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  height: 1.1875rem;
+  background: linear-gradient(180deg, var(--raise-hi), var(--raise));
   box-shadow:
-    inset 0 0.125rem 0 rgba(16, 10, 20, 0.9),
-    inset 0 -0.125rem 0 rgba(16, 10, 20, 0.9);
+    inset 0 0.1875rem 0 rgba(255, 236, 190, 0.12),
+    inset 0 -0.3125rem 0 rgba(0, 0, 0, 0.35),
+    0 -0.125rem 0 var(--ink-line);
   pointer-events: none;
 }
 
@@ -509,37 +512,230 @@
   z-index: 1;
 }
 
-/* ---- the stand's foot band: what the kit sums to ---- */
+/* THE PLINTH RUNS THE ROOM: the held-steel row stands on one shelf
+   lip spanning the whole stand — the plinth's stone course carried
+   out of the niche, tying weapon, tool, and off hand to one place. */
+#equip-anatomy::before {
+  content: '';
+  grid-row: 5;
+  grid-column: 1 / 4;
+  align-self: end;
+  height: 0.5625rem;
+  margin: 0 -0.125rem -0.65rem;
+  z-index: 0;
+  background: linear-gradient(180deg, var(--raise-hi), var(--raise));
+  box-shadow:
+    inset 0 0.125rem 0 rgba(255, 236, 190, 0.12),
+    inset 0 -0.1875rem 0 rgba(0, 0, 0, 0.35),
+    0 -0.125rem 0 var(--ink-line);
+  pointer-events: none;
+}
+
+/* ---- the stand's foot band: THE SUM AS INSTRUMENTS ----
+   Everything the kit adds up to as a bank of gauges: each stat a
+   sunk chamfered plate wearing its family's material glyph, a serif
+   numeral, and its word engraved beneath — the same instrument
+   grammar the hall speaks everywhere sums are told. */
 
 .stand-foot {
-  /* The sum band holds its shape whether plaques or the ghost line
-     stand in it — the feet of both trays stay on one baseline. */
+  /* The sum band holds its shape whether gauges or the ghost line
+     stand in it — the feet of both trays stay on one baseline. It
+     SHRINKS before the stand ever would: a towering endgame kit
+     scrolls here (the thin rail is the emergency exit, never the
+     plan), and no socket row pays for it. */
+  flex: 0 1 auto;
   min-height: 5.25rem;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* Centered by auto margins, never justify-content — a centered
+   scroll container clips its own head (the Open Case lesson). */
+.stand-foot > #gear-strip,
+.stand-foot > .worn-sum-empty {
+  margin-block: auto;
 }
 
 #gear-strip {
   flex: none;
   display: grid;
-  /* Two plaques per row across the stand's span — wide enough that
-     "One-hand dmg" reads whole, never a cramped whisper. */
-  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(8.25rem, 1fr));
+  gap: 0.3125rem;
   align-content: start;
 }
 
-#gear-strip .stat-plaque {
-  padding: 0.4375rem 0.625rem 0.375rem;
+.gs-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  padding: 0.3125rem 0.5625rem;
+  min-width: 0;
+  background: var(--sunk);
+  box-shadow:
+    inset 0 0 0 var(--hairline) var(--ink-line),
+    inset 0 0.125rem 0.1875rem rgba(0, 0, 0, 0.35);
+  clip-path: polygon(
+    0.3125rem 0,
+    calc(100% - 0.3125rem) 0,
+    100% 0.3125rem,
+    100% calc(100% - 0.3125rem),
+    calc(100% - 0.3125rem) 100%,
+    0.3125rem 100%,
+    0 calc(100% - 0.3125rem),
+    0 0.3125rem
+  );
 }
 
-#gear-strip .stat-plaque-value {
-  font-size: var(--t-lead);
+/* One stage for every family shape: the bank keeps its rhythm. */
+.gs-stage {
+  flex: none;
+  width: 1.375rem;
+  height: 1.375rem;
+  display: grid;
+  place-items: center;
 }
 
-#gear-strip .stat-plaque-label {
+.gs-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.gs-num {
+  font-family: var(--serif);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold-bright);
+  text-shadow: var(--punch);
+}
+
+/* A kit that takes something away says so in ember, honestly. */
+.gs-cell.down .gs-num {
+  color: var(--red-soft);
+}
+
+.gs-word {
+  max-width: 100%;
+  font-size: 0.65625rem;
+  font-weight: 800;
+  letter-spacing: 0.04375rem;
+  text-transform: uppercase;
+  text-align: left;
+  line-height: 1.15;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The gauge glyphs: each stat family's shape in its own material. */
+.gs-glyph {
+  flex: none;
+  width: 0.9375rem;
+  height: 0.9375rem;
+  transform: rotate(45deg);
+  box-shadow:
+    inset 0 0 0 var(--hairline) var(--ink-line),
+    0.125rem 0.125rem 0 rgba(12, 8, 4, 0.4);
+}
+
+.gs-glyph.armor {
+  background: linear-gradient(135deg, #b8c2cc, #6f7b87);
+}
+
+.gs-glyph.health {
+  background: linear-gradient(135deg, #e88a7a, #a83c2e);
+}
+
+.gs-glyph.mending {
+  background: linear-gradient(135deg, #a8d080, #5a8a3a);
+  border-radius: 50% 0 50% 50%;
+}
+
+.gs-glyph.speed {
+  background: linear-gradient(135deg, #a8d8e8, #4a8aaa);
+}
+
+.gs-glyph.skill {
+  background: linear-gradient(135deg, #e8c884, #a87a34);
+}
+
+.gs-glyph.arts {
+  background: linear-gradient(135deg, #c8b4ee, #7a5fae);
+}
+
+.gs-glyph.edge {
+  background: linear-gradient(135deg, #d8e0e8, #8a96a4);
+  width: 0.6875rem;
+  height: 1.125rem;
+  transform: rotate(45deg) skewY(-12deg);
+}
+
+/* ---- THE HOUSE HOLDS COURT AT THE FOOT: a worn family's compact
+   seal — crest ring counting toward five, the name, every word of
+   its court as a pip that lights gold when woken. ---- */
+.gs-house {
+  grid-column: 1 / -1;
+  --ring-size: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.3125rem 0.625rem;
+  min-width: 0;
+  background: var(--ink-wash);
+  border-left: var(--rule) solid var(--gold-deep);
+  box-shadow: inset 0 0 0 var(--hairline) var(--ink-line);
+}
+
+.gs-house-num {
   font-size: var(--t-label);
+  font-weight: 700;
+  color: var(--gold-bright);
+  text-shadow: var(--punch-small);
+}
+
+.gs-house-col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.gs-house-name {
+  font-size: var(--t-label);
+  font-weight: 700;
+  color: var(--gold-bright);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gs-house-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem 0.625rem;
+}
+
+.gs-house-word {
+  font-size: var(--t-whisper);
+  font-weight: 700;
+  color: var(--parchment-faint);
+  text-shadow: var(--punch-small);
+  white-space: nowrap;
+}
+
+.gs-house-word.lit {
+  color: var(--gold-bright);
 }
 
 /* Bare kit: the ghost setting and one quiet line — the foot band is
@@ -605,7 +801,9 @@
    its verbs beneath — see, compare, act, no floating card. ---- */
 
 .char-bench {
-  flex: 0 1 28rem;
+  /* The stand's slimmer figure column pays the bench: the standing
+     inspector reads a full item story without a single fold. */
+  flex: 0 1 31rem;
   min-width: 21.5rem;
 }
 
@@ -696,6 +894,13 @@
   display: flex;
   gap: 0.625rem;
   padding-top: 0.875rem;
+}
+
+/* THE STRIP NEVER COVERS THE VERBS: the floating action strip rides
+   the bench's own lane in pad mode — the verb row steps up clear of
+   it, so Equip and Drop are never half-buried under the hint bar. */
+body.pad-mode .bench-acts {
+  margin-bottom: 4rem;
 }
 
 .bench-acts .act-btn {

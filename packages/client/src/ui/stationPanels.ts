@@ -390,6 +390,18 @@ export class StationPanels {
   private syncBodyClass(): void {
     document.body.classList.toggle('bank-open', this.bankOpen);
     document.body.classList.toggle('shop-open', this.shopOpen);
+    // THE BUMPER YIELDS TO THE COUNTER: the pack's filter rail is the
+    // character room's section rail (data-tabs, so LB/RB step it),
+    // but the paired pack column stands BEFORE the vault in document
+    // order and would steal the bumpers from the vault's family tabs.
+    // While a counter is open the rail sheds both pad markers; the
+    // same chokepoint that stamps the pairing class restores them.
+    const filters = document.getElementById('pack-filters');
+    if (filters) {
+      const paired = this.bankOpen || this.shopOpen;
+      filters.toggleAttribute('data-tabs', !paired);
+      filters.toggleAttribute('data-pager', !paired);
+    }
   }
 
   // ------------------------------------------------- THE THREE STALLS

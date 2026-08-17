@@ -25,6 +25,7 @@ import {
   type EquippedItem,
   type InvSlot,
   type ItemRoll,
+  type Look,
   type SkillId,
   type SkillXp,
   type TechniqueDef,
@@ -67,7 +68,8 @@ import {
 } from '@arx/content';
 import { itemIconUrl, slotGlyphUrl } from '../render/icons.js';
 import { abilityIconUrl, passiveIconUrl, queueAbilityIcon } from '../render/abilityIcons.js';
-import { bigButton, sectionHead, statPlaque } from './panel.js';
+import { bigButton, sectionHead } from './panel.js';
+import { lookFigure } from '../cms/portraits.js';
 import { bindings, padGlyph, type ActionId } from '../input/bindings.js';
 import { RARITY_COLORS, rarityOfInstance } from './rarity.js';
 import { seatChip, glyphLine } from './kit/glyphs.js';
@@ -324,7 +326,17 @@ export class Panels {
     })(),
   );
   private readonly gearStrip = document.getElementById('gear-strip')!;
-  private readonly wornManifest = document.getElementById('worn-manifest')!;
+  /**
+   * THE HERO'S ALCOVE: the arched niche at the stand's heart where the
+   * player's LIVE rig stands, painted by the world's own hand
+   * (cms/portraits lookFigure) wearing every worn piece. Persistent
+   * nodes — renderEquipment re-appends them after each rebuild so the
+   * figure never flickers through an innerHTML wipe.
+   */
+  private readonly figureAlcove = document.createElement('div');
+  private readonly alcoveFigure = document.createElement('div');
+  /** The worn-kit signature of the standing figure (bloom on change). */
+  private figureSig: string | null = null;
   /** THE BENCH: the open case's standing inspector tray. */
   private readonly benchCard = document.getElementById('bench-card')!;
   private readonly benchEmpty = document.getElementById('bench-empty')!;
@@ -383,8 +395,9 @@ export class Panels {
     private readonly carryStyle: (hand: 'main' | 'off') => 'normal' | 'rogue' = () => 'normal',
     private readonly onCarryStyle: (style: 'normal' | 'rogue', hand: 'main' | 'off') => void =
       () => {},
-    /** The case's owner: the adventurer name on the identity line. */
-    private readonly identityInfo: () => { name?: string } = () => ({}),
+    /** The case's owner: the name on the identity line and the look
+     * the alcove's standing figure is painted from. */
+    private readonly identityInfo: () => { name?: string; look?: Look | null } = () => ({}),
     /** Opens the Techniques codex (skill cards link into it). */
     private readonly onOpenArts: () => void = () => {},
     /** Answer or set down a Calling (server enforces THE FOCUS LAW). */
@@ -395,6 +408,8 @@ export class Panels {
     // Dock buttons are wired in main through the one screen-exclusivity
     // gate — no panel opens itself anymore.
     // The pack's filter lens: All / Gear / Food / Mats chips.
+    const filterChips = new Map<'all' | 'gear' | 'food' | 'mats', HTMLButtonElement>();
+    const FILTER_ORDER = ['all', 'gear', 'food', 'mats'] as const;
     for (const [key, label] of [
       ['all', 'All'],
       ['gear', 'Gear'],
@@ -414,8 +429,31 @@ export class Panels {
           .forEach((el) => el.classList.toggle('active', el === chip));
         this.applyPackFilter();
       });
+      filterChips.set(key, chip);
       this.packFilters.appendChild(chip);
     }
+    // THE BUMPER TURNS THE LENS: the filter rail is the room's section
+    // rail, so LB/RB (and LT/RT through the pager fallback) step it —
+    // All to Mats without the ring ever leaving the pack. The rail
+    // yields both markers while a bank or shop counter is open
+    // (stationPanels.syncBodyClass), so the vault's family tabs keep
+    // the bumpers there.
+    this.packFilters.dataset.tabs = '';
+    this.packFilters.dataset.pager = '';
+    this.packFilters.addEventListener('kit-page', (e) => {
+      const dir = (e as CustomEvent<-1 | 1>).detail;
+      const i = FILTER_ORDER.indexOf(this.packFilter);
+      const next = FILTER_ORDER[Math.max(0, Math.min(FILTER_ORDER.length - 1, i + dir))];
+      if (next !== undefined && next !== this.packFilter) filterChips.get(next)?.click();
+    });
+
+    // THE HERO'S ALCOVE: built once, re-seated by every equipment
+    // render. Glow behind, figure on the plinth, arch overhead.
+    this.figureAlcove.id = 'figure-alcove';
+    const alcoveGlow = document.createElement('div');
+    alcoveGlow.className = 'alcove-glow';
+    this.alcoveFigure.className = 'alcove-figure';
+    this.figureAlcove.append(alcoveGlow, this.alcoveFigure);
     // THE TIDY HAND: one press sorts the whole pack server-true — by
     // kind (coins, gear, food, mats, each a-z) or by worth. Built on
     // the same invmove swaps a drag makes; no new wire.
@@ -1946,11 +1984,14 @@ export class Panels {
     this.lastGearStats = aggregateGearStats(
       equipment as Parameters<typeof aggregateGearStats>[0],
     );
-    // The armor stand: every socket hung at its body place.
+    // The armor stand: the alcove at its heart, every socket hung at
+    // its body place around the standing figure.
     this.equipAnatomy.innerHTML = '';
+    this.equipAnatomy.appendChild(this.figureAlcove);
     for (const slot of EQUIP_SLOTS) {
       this.equipAnatomy.appendChild(this.equipCell(slot, equipment));
     }
+    this.paintFigure();
     // THE RACK's trade button sits between the waiting pair, wearing
     // the live key chip — dim when nothing waits (still pressable; the
     // server speaks the refusal, the honest teacher).
@@ -1977,7 +2018,6 @@ export class Panels {
     this.equipAnatomy.appendChild(trade);
 
     this.renderGearStrip();
-    this.renderWornManifest(equipment);
     // Worn houses changed — the pack's advance marks follow.
     this.applyHouseMarks();
 
@@ -2066,130 +2106,168 @@ export class Panels {
   }
 
   /**
-   * THE KIT SPEAKS: the stand's manifest — every worn piece named in
-   * its rarity ink with its headline figure beside it. The anatomy
-   * shows WHERE things hang; this tells WHAT they are and WHAT they
-   * give, with no hover required. Rows carry the loot-card dataset,
-   * so resting the eye on one lays the full story out on the bench.
+   * THE HERO STANDS IN THE CASE: paint the player's live rig into the
+   * alcove — the same drawHumanoid the world uses, wearing every worn
+   * piece, finished with the world's outline ring. Repainted on every
+   * equipment push (the portrait cache makes an unchanged kit free);
+   * a CHANGED kit blooms the alcove's candle glow for one breath.
    */
-  private renderWornManifest(equipment: Partial<Record<string, EquippedItem>>): void {
-    this.wornManifest.innerHTML = '';
-    const rows: HTMLElement[] = [];
-    for (const slot of EQUIP_SLOTS) {
-      const worn = equipment[slot];
-      if (!worn) continue;
-      const def = itemDef(worn.id);
-      if (!def) continue;
-      const stats = rolledStats(worn.id, worn.roll);
-      const row = document.createElement('div');
-      row.className = 'worn-row';
-      row.dataset.nav = '';
-      row.dataset.navkey = `wornrow:${slot}`;
-      row.dataset.acta = 'Inspect';
-      // The loot-card dataset: hover and pad focus raise the full
-      // item story on the bench — the same wire the vault speaks.
-      row.dataset.lootitem = worn.id;
-      row.dataset.lootqty = '1';
-      if (worn.roll) row.dataset.lootroll = JSON.stringify(worn.roll);
-      const img = document.createElement('img');
-      img.src = itemIconUrl(worn.id, 36);
-      img.draggable = false;
-      const name = document.createElement('span');
-      name.className = 'worn-row-name';
-      name.textContent = instanceName(worn.id, worn.roll);
-      // Common wears no treatment — parchment, like every plain word.
-      const ink = RARITY_COLORS[rarityOfInstance(worn.id, worn.roll)];
-      if (ink) name.style.color = ink;
-      // A piece of a lit family carries the court's gold tick.
-      const rowSet = def.gear?.set;
-      if (rowSet && this.setCount(rowSet) >= 2) {
-        const tick = document.createElement('span');
-        tick.className = 'house-tick';
-        tick.textContent = '◆';
-        name.appendChild(tick);
-      }
-      // The headline: the piece's one most honest figure. A RACK piece
-      // says only where it stands — THE SLEEPING STEEL grants nothing,
-      // so its row must promise nothing (a damage figure here would be
-      // the manifest lying about the fold).
-      const note = document.createElement('span');
-      note.className = 'worn-row-note';
-      if (isStowedSlot(slot)) {
-        row.classList.add('rack-row');
-        note.textContent = 'at the ready';
-      } else {
-        const relicArt = def.relic ? abilityDef(def.relic)?.name : undefined;
-        const sigilArt = def.sigil ? abilityDef(def.sigil)?.name : undefined;
-        const passive = def.passive ? PASSIVES[def.passive]?.name : undefined;
-        note.textContent =
-          stats?.damage !== undefined && stats.damage > 0
-            ? `${Math.floor(stats.damage)} dmg${stats.affixes.length > 0 ? ` · ${stats.affixes.length}✦` : ''}`
-            : stats && stats.armor > 0
-              ? `${stats.armor} armor${stats.affixes.length > 0 ? ` · ${stats.affixes.length}✦` : ''}`
-              : (relicArt ?? sigilArt ?? passive ?? (def.armor ? `${def.armor} armor` : slot));
-      }
-      row.append(img, name, note);
-      rows.push(row);
+  private paintFigure(): void {
+    const look = this.identityInfo().look;
+    if (!look) {
+      // No look yet (a fresh account mid-creation): the niche stands
+      // empty and quiet. The next equipment push repaints.
+      this.alcoveFigure.replaceChildren();
+      this.figureSig = null;
+      return;
     }
-    this.wornManifest.classList.toggle('hidden', rows.length === 0);
-    if (rows.length === 0) return;
-    // THE HOUSE LEADS THE KIT: every worn family holds court at the
-    // manifest's head — most pieces first — then the pieces themselves.
-    // No furniture when no family is worn.
-    const families = Object.entries(this.lastGearStats?.setCounts ?? {})
-      .filter(([, n]) => n >= 1)
-      .sort((a, b) => b[1] - a[1]);
-    if (families.length > 0) {
-      this.wornManifest.appendChild(sectionHead(families.length === 1 ? 'The house' : 'The houses'));
-      for (const [setId] of families) {
-        const court = this.houseCourt(setId);
-        if (court) this.wornManifest.appendChild(court);
-      }
+    const equip: Record<string, string> = {};
+    for (const [slot, worn] of Object.entries(this.lastEquipment)) {
+      // The rack's waiting pair is stowed away, never on the body.
+      if (worn && !isStowedSlot(slot as EquipSlot)) equip[slot] = worn.id;
     }
-    this.wornManifest.appendChild(sectionHead('The kit'));
-    for (const row of rows) this.wornManifest.appendChild(row);
+    const sig = JSON.stringify(equip);
+    if (sig === this.figureSig && this.alcoveFigure.childElementCount > 0) return;
+    const changed = this.figureSig !== null && this.figureSig !== sig;
+    this.figureSig = sig;
+    // Painted at 768: the alcove shows the figure near 700 device
+    // pixels on a 4K case, and the portrait cache makes it one-time.
+    const fig = lookFigure(look, 768, equip);
+    if (!fig) return;
+    fig.className = 'alcove-canvas';
+    this.alcoveFigure.replaceChildren(fig);
+    if (changed) {
+      // The landing bloom: restart the glow's one-breath swell.
+      this.figureAlcove.classList.remove('bloom');
+      void this.figureAlcove.offsetWidth;
+      this.figureAlcove.classList.add('bloom');
+    }
   }
 
   /**
-   * The gear ledger: everything the worn kit adds up to, told as stat
-   * plaques under the stage — a big honest number over a plain label.
+   * THE SUM AS INSTRUMENTS: everything the worn kit adds up to, told
+   * as a bank of gauges — each stat a sunk chamfered plate wearing its
+   * family's material glyph, a serif numeral, and its word engraved
+   * beneath. Every gauge explains itself in plain words on its
+   * tooltip, and every worn house holds a compact court beside them.
    */
   private renderGearStrip(): void {
     const gear = this.lastGearStats;
     if (!gear) return;
     this.gearStrip.innerHTML = '';
-    const add = (value: string, label: string, tone: string): void => {
-      this.gearStrip.appendChild(statPlaque(value, label, tone));
+    const add = (value: string, word: string, kind: string, meaning: string, down = false): void => {
+      const cell = document.createElement('div');
+      cell.className = 'gs-cell' + (down ? ' down' : '');
+      cell.dataset.tipname = word;
+      cell.dataset.tipsub = meaning;
+      const stage = document.createElement('span');
+      stage.className = 'gs-stage';
+      const glyph = document.createElement('span');
+      glyph.className = `gs-glyph ${kind}`;
+      stage.appendChild(glyph);
+      const col = document.createElement('span');
+      col.className = 'gs-col';
+      const num = document.createElement('span');
+      num.className = 'gs-num';
+      num.textContent = value;
+      const label = document.createElement('span');
+      label.className = 'gs-word';
+      label.textContent = word;
+      col.append(num, label);
+      cell.append(stage, col);
+      this.gearStrip.appendChild(cell);
     };
-    if (gear.armor > 0) add(String(gear.armor), 'Armor', '#8ac4e8');
-    if (gear.maxHp > 0) add(`+${gear.maxHp}`, 'Max HP', '#d95763');
-    if (gear.regenPer4s > 0) add(`+${gear.regenPer4s}`, 'Regen /4s', '#7ac47a');
+    // THE HOUSE LEADS THE SUM: each worn family a compact
+    // seal — crest ring counting toward five, the family's name, and
+    // every word of its court as a pip, gold when woken.
+    const families = Object.entries(gear.setCounts)
+      .filter(([, n]) => n >= 1)
+      .sort((a, b) => b[1] - a[1]);
+    for (const [setId, count] of families) {
+      const words = setWordsFor(setId);
+      if (words.length === 0) continue;
+      const seal = document.createElement('div');
+      seal.className = 'gs-house';
+      seal.dataset.tipname = setName(setId);
+      seal.dataset.tipsub =
+        count === 1 ? 'One of five pieces worn.' : `${count} of five pieces worn.`;
+      const ring = ringGauge(count / 5, { tone: 'var(--gold)' });
+      const num = document.createElement('span');
+      num.className = 'gs-house-num';
+      num.textContent = String(count);
+      ring.center.appendChild(num);
+      const col = document.createElement('div');
+      col.className = 'gs-house-col';
+      const nm = document.createElement('div');
+      nm.className = 'gs-house-name';
+      nm.textContent = setName(setId);
+      const wordsRow = document.createElement('div');
+      wordsRow.className = 'gs-house-words';
+      for (const word of words) {
+        const lit = count >= word.pieces;
+        const w = document.createElement('span');
+        w.className = `gs-house-word${lit ? ' lit' : ''}`;
+        w.textContent = `◆ ${word.name}`;
+        wordsRow.appendChild(w);
+      }
+      col.append(nm, wordsRow);
+      seal.append(ring.root, col);
+      this.gearStrip.appendChild(seal);
+    }
+    if (gear.armor > 0)
+      add(String(gear.armor), 'Armor', 'armor', 'Blunts every blow the world lands on you.');
+    if (gear.maxHp > 0)
+      add(`+${gear.maxHp}`, 'Max health', 'health', 'More life in the body before it falls.');
+    if (gear.regenPer4s > 0)
+      add(`+${gear.regenPer4s}`, 'Health per 4s', 'mending', 'Health returning every four breaths.');
     for (const [skill, bonus] of Object.entries(gear.skillBonus)) {
-      if (bonus) add(`+${bonus}`, affixName(skill), '#7dc46a');
+      if (bonus)
+        add(
+          `+${bonus}`,
+          affixName(skill),
+          'skill',
+          `Your ${affixName(skill).toLowerCase()} counts ${bonus} higher while this kit is worn.`,
+        );
     }
     for (const [style, mult] of Object.entries(gear.styleDmgMult)) {
       if (Math.abs(mult - 1) > 0.001) {
         const pct = Math.round((mult - 1) * 100);
-        add(`${pct > 0 ? '+' : ''}${pct}%`, `${affixName(style)} dmg`, pct > 0 ? '#e8b64c' : '#d95763');
+        add(
+          `${pct > 0 ? '+' : ''}${pct}%`,
+          `${affixName(style)} dmg`,
+          'edge',
+          pct > 0
+            ? `Every ${affixName(style).toLowerCase()} blow lands ${pct}% harder.`
+            : `${affixName(style)} blows land ${-pct}% softer in this kit.`,
+          pct < 0,
+        );
       }
     }
     if (Math.abs(gear.speedMult - 1) > 0.001) {
       const pct = Math.round((gear.speedMult - 1) * 100);
-      add(`${pct > 0 ? '+' : ''}${pct}%`, 'Move speed', pct > 0 ? '#7ac47a' : '#d9a441');
+      add(
+        `${pct > 0 ? '+' : ''}${pct}%`,
+        'Move speed',
+        'speed',
+        pct > 0 ? 'Quicker on your feet in this kit.' : 'This kit weighs on your stride.',
+        pct < 0,
+      );
     }
     if (Math.abs(gear.cooldownMult - 1) > 0.001) {
       const pct = Math.round((1 - gear.cooldownMult) * 100);
-      add(`−${pct}%`, 'Cooldowns', '#b49af0');
+      add(`−${pct}%`, 'Quicker arts', 'arts', 'Your arts return to hand sooner.');
     }
     this.gearStrip.classList.toggle('hidden', this.gearStrip.childElementCount === 0);
   }
 
   /**
-   * The identity line: adventurer name + total level. The character
-   * itself is not duplicated here — the camera frames the LIVE rig in
-   * the world beside the case, wearing every change as it lands.
+   * The identity line: adventurer name + total level. The hero
+   * HIMSELF stands in the alcove below, painted by paintFigure —
+   * called here too so a case opened before the first equipment push
+   * still shows its owner.
    */
   private renderIdentity(): void {
+    this.paintFigure();
     const total = SKILL_IDS.reduce((n, s) => {
       if (HIDDEN_SKILLS[s] && this.lastSkills[s] === undefined) return n;
       return n + levelForXp(this.lastSkills[s] ?? 0);

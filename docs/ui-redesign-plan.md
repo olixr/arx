@@ -4,6 +4,51 @@
 EPIC COMPLETE** (THE ONE RULER 8839680 → THE WORLD'S WING & THE LIVING
 CHROME). The hall fits the hand. Post-epic: THE INK PASS (below).*
 
+**THE HERO'S ALCOVE as-built (2026-08-17 — the character room rebuilt
+around the hero it never showed):** the user's verdict on the open
+case was final — decent bones, dead space, no showstopper. The old
+camera-slides-the-world trick is retired; the hero now stands INSIDE
+the case: an arched niche (`#figure-alcove`, a HOLE so its crown
+eases; candle-glow pool, vignette, raised plinth course) between the
+socket columns, holding the player's LIVE rig painted by
+`cms/portraits lookFigure` at 768 — the same `drawHumanoid` the world
+runs, wearing every worn piece, outline ring and all, repainted per
+equipment push (cache makes an unchanged kit free) with a one-breath
+candle BLOOM on change (opacity-only, motion-gated both ways).
+`identityInfo` now hands the panel `{ name, look }`. The anatomy
+rebuilt anatomically: armor spine down the left flank (head, body,
+legs, boots), trappings down the right (cape, gloves, relic, sigil),
+held steel on the plinth shelf (weapon, tool, off hand — one shelf
+lip spans the stand), the ready rack beneath. THE KIT MANIFEST
+COLUMN DIED (`#worn-manifest`, `.worn-row*`): the stand slimmed
+38.5rem → 30.5rem (the bench inherited the width), and the manifest's
+duty moved to instruments — THE SUM AS INSTRUMENTS (`.gs-cell` bank
+in the foot: material glyph, serif numeral, engraved word, every
+gauge explaining itself on `data-tipname`/`data-tipsub`, ember
+numerals for honest downsides) with THE HOUSE LEADING THE SUM
+(`.gs-house` compact court: crest ring toward five, word pips lit
+gold when woken — identity outranks arithmetic, so the scroll never
+hides it). THE STAND IS FIXED AND THE SUM YIELDS: the stand body is
+`flex: 1 0 auto` (no socket row may ever clip); the foot band
+shrinks first and scrolls as the emergency exit — and the foot
+centers by AUTO MARGINS, never justify-content (the Open Case
+scroll-clip lesson, paid a second time in proving). THE BUMPER TURNS
+THE LENS: `#pack-filters` wears `data-tabs`/`data-pager` so LB/RB
+step All→Gear→Food→Mats from the couch; the rail YIELDS both markers
+at `stationPanels.syncBodyClass` while a bank/shop counter is open
+(the paired pack column stands before the vault in document order
+and would steal the vault's bumpers). THE STRIP NEVER COVERS THE
+VERBS: `body.pad-mode .bench-acts` steps 4rem clear of the floating
+action strip. Station pairing hooks (`.worn-kit`/`.char-pack-col`)
+untouched. Proven live on rig lane 24 (:5202→:8799, scratch db
+arx_alcove_proof, scratchpad prove-alcove.mjs): naked case, full
+epic-warden case (11 slots, sword+shield IN the figure's hands),
+pad-mode walk (ring, bench verbs, `filters: All → Gear → Food →
+back Gear` off real fake-pad LB/RB presses), 4K identical
+composition; 636 client tests, tsc, build green. GOTCHA BANKED: the
+chat lane rate-limits near 1/s — a proving script's `/give` chain
+needs ~1.15s spacing or every second command silently drops.
+
 **THE SUEDE BED as-built (2026-08-01, post-epic round 5 — the wells
 learn to show the art):** the icons wear the world's dark outline
 ring (`#241a2e`), and a dark ring only cuts against ground LIGHTER

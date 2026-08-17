@@ -908,7 +908,9 @@ const panels = new Panels(
   (): 'kb' | 'pad' => nav.mode,
   (hand) => (hand === 'off' ? game.carryOff : game.carryStyle),
   (style, hand) => game.setCarryStyle(style, hand),
-  () => ({ name: game.ownName }),
+  // The alcove's standing figure is painted from the same look the
+  // world renders — the case shows exactly the hero the world meets.
+  () => ({ name: game.ownName, look: game.ownLook }),
   () => toggleScreen('arts'),
   (calling, on, rank) => game.sendCalling(calling, on, rank),
   // THE SECOND GRIP: the rack's Draw/Trade fires the same one-frame
