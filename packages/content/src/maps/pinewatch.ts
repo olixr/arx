@@ -1241,7 +1241,7 @@ export function buildPinewatch(): ZoneDef {
   b.set(92, 55, Tile.TiedParcels);
   b.set(98, 55, Tile.GrainSacks);
   // The Pine and Bell earns its warm room.
-  b.set(79, 71, Tile.GameTable);
+  b.set(79, 71, Tile.Barrel); // the taproom's standing barrel
   b.set(78, 71, Tile.WoodStool).set(80, 71, Tile.WoodStool);
   b.set(75, 67, Tile.SettleBench); // the four o'clock seat, nearest the fire
   b.set(82, 72, Tile.CloakStand); // wet coats stop at the door

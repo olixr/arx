@@ -607,7 +607,7 @@ export function buildAmberford(): ZoneDef {
   b.set(97, 62, Tile.TapCask); // the yard's own amber water, horn mugs waiting
   b.set(98, 65, Tile.Campfire);
   b.set(96, 64, Tile.Bench).set(100, 66, Tile.Bench);
-  b.set(102, 64, Tile.GameTable); // mid-argument, a mug set down on the corner
+  b.set(102, 64, Tile.Barrel); // the yard's standing barrel — mugs land where they land
   b.set(101, 64, Tile.WoodStool).set(103, 64, Tile.WoodStool);
   b.set(95, 67, Tile.Woodpile); // two fires to feed — hearth and yard — so the wood is the story here
   b.set(106, 63, Tile.WaterTrough); // the coach trough

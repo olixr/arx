@@ -53,8 +53,8 @@ test('the elven bench and stone slab take the bench law; an elven table fixes th
 });
 
 test('the stool faces the table it serves and mirrors the painter’s height roll', () => {
-  // A game table north → the sitter faces it (back south → face north).
-  const atTable = seatAt(worldOf({ '5,5': Tile.WoodStool, '5,4': Tile.GameTable }), 5, 5)!;
+  // A table north → the sitter faces it (back south → face north).
+  const atTable = seatAt(worldOf({ '5,5': Tile.WoodStool, '5,4': Tile.Table }), 5, 5)!;
   assert.equal(atTable.kind, 'stool');
   assert.equal(atTable.dir, -Math.PI / 2);
   // Alone → the camera, like every seat.
@@ -65,8 +65,8 @@ test('the stool faces the table it serves and mirrors the painter’s height rol
 });
 
 test('the oak chair turns its back to the whole sit-at family (painter parity)', () => {
-  // Game table south → back north → the sitter faces south, at it.
-  const seat = seatAt(worldOf({ '5,5': Tile.Chair, '5,6': Tile.GameTable }), 5, 5)!;
+  // Table south → back north → the sitter faces south, at it.
+  const seat = seatAt(worldOf({ '5,5': Tile.Chair, '5,6': Tile.Table }), 5, 5)!;
   assert.equal(seat.dir, Math.PI / 2);
   const east = seatAt(worldOf({ '5,5': Tile.Chair, '6,5': Tile.ElvenTable }), 5, 5)!;
   assert.equal(east.dir, 0); // faces east, at the elven table

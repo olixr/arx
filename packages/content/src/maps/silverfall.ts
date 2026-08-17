@@ -491,7 +491,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(73, 40, Tile.Lectern); // the crier reads the Crown's word here
   b.set(75, 40, Tile.NoticeBoard); // the word STAYS posted after he stops
   b.set(71, 40, Tile.TownBell); // 'first bell of the month' — the sign kept a promise
-  b.set(74, 47, Tile.GameTable).set(75, 47, Tile.WoodStool); // the clerks' lunch game
+  b.set(74, 47, Tile.Barrel).set(75, 47, Tile.WoodStool); // the clerks' lunch corner
   b.sign(71, 42, 'THE GRAND COURT', ['the Crown hears moot', 'first bell of the month']);
   // The falls-side nook: benches and planters on the plunge bank —
   // the court's one quiet corner, facing the water.
@@ -1385,7 +1385,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(66, 131, Tile.Counter).set(67, 131, Tile.Counter).set(68, 131, Tile.Counter); // the bar
   b.set(65, 130, Tile.TapCask).set(65, 132, Tile.Barrel); // the cellar corner
   b.set(65, 136, Tile.Barrel);
-  b.set(74, 131, Tile.GameTable).set(73, 131, Tile.WoodStool).set(74, 132, Tile.WoodStool); // the dice crowd's table
+  b.set(74, 131, Tile.Barrel).set(73, 131, Tile.WoodStool).set(74, 132, Tile.WoodStool); // the dice crowd's corner
   b.set(77, 139, Tile.Hearth);
   b.set(68, 136, Tile.Table).set(69, 136, Tile.Table);
   b.set(67, 136, Tile.Chair).set(70, 136, Tile.Chair).set(68, 137, Tile.Chair);
@@ -1532,8 +1532,8 @@ export function buildSilverfall(): ZoneDef {
   b.set(11, 162, Tile.TapCask).set(11, 164, Tile.TapCask); // both taps working — pay day
   b.set(11, 166, Tile.Barrel);
   b.set(23, 162, Tile.Hearth);
-  b.set(22, 161, Tile.Cabinet); // the chalk tallies live here
-  b.set(20, 164, Tile.GameTable).set(19, 164, Tile.WoodStool).set(20, 165, Tile.WoodStool); // arm-wrestling ground
+  b.set(22, 161, Tile.Cabinet); // the carved tallies live here
+  b.set(20, 164, Tile.Barrel).set(19, 164, Tile.WoodStool).set(20, 165, Tile.WoodStool); // arm-wrestling ground
   b.set(15, 167, Tile.Table).set(16, 167, Tile.Table);
   b.set(14, 167, Tile.Chair).set(17, 167, Tile.Chair).set(15, 168, Tile.Chair);
   b.set(20, 169, Tile.Table).set(21, 169, Tile.Chair).set(19, 169, Tile.Chair);
@@ -1661,7 +1661,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(78, 214, Tile.GuardianStatue).set(83, 214, Tile.GuardianStatue); // parity pair, mirrored
   b.set(52, 208, Tile.BannerPole).set(72, 208, Tile.BannerPole); // fair-day poles, kept
   b.set(77, 220, Tile.TreeOak); // the meeting oak, moved to the walk-in
-  b.set(50, 225, Tile.GameTable).set(49, 225, Tile.WoodStool).set(50, 226, Tile.WoodStool);
+  b.set(50, 225, Tile.Barrel).set(49, 225, Tile.WoodStool).set(50, 226, Tile.WoodStool);
   b.set(64, 209, Tile.Bench);
   b.sign(76, 212, 'THE FAIRSTEAD', ['the fair came to stay.', 'match days fill it'], Tile.Signpost);
   // The pit: sand in a garrison ring. Two gates — the fighters' gate

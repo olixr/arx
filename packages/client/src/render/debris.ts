@@ -191,7 +191,6 @@ export type SmashKind =
   | 'wayshrine'
   | 'guardian'
   | 'tapcask'
-  | 'gametable'
   | 'stool'
   | 'settle'
   | 'baskets'
@@ -812,7 +811,6 @@ const CHIP_TONE: Record<SmashKind, string> = {
   wayshrine: '#8a857a',
   guardian: '#6f6a58',
   tapcask: '#75603e',
-  gametable: '#75603e',
   stool: '#8a6534',
   settle: '#6f4d26',
   baskets: '#a88f5c',
@@ -2563,7 +2561,7 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
     }
     case 'tapcask': {
       // The cooper's break at tavern pitch: staves clap out,
-      // hoops roll, the head disc with its chalk tally flies
+      // hoops roll, the head disc with its carved tally flies
       // whole — and the ale goes out in one amber slosh the
       // whole street will smell till rain.
       for (let i = 0; i < 5; i++) {
@@ -2577,25 +2575,6 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
         out.push({ len: 0.06, wid: 0.05, color: pick(rand, ['#c9955c', '#a3703c']), round: true, pace: 0.4 });
       }
       out.push({ len: 0.06, wid: 0.045, color: '#6f5a38', stripe: '#a3814a', round: true, pace: 1.0 });
-      break;
-    }
-    case 'gametable': {
-      // The barrel bursts; the GAME scatters — pale pegs and
-      // dark king pinging every direction, the board disc
-      // sailing, the mug's last swallow gone with it. Nobody
-      // will ever agree who was winning.
-      for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.15, wid: 0.045, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.7 });
-      }
-      out.push({ len: 0.16, wid: 0.14, color: '#e2d9c4', stripe: '#efe8d4', round: true, pace: 1.15 });
-      for (let i = 0; i < 5; i++) {
-        out.push({ len: 0.035, wid: 0.03, color: pick(rand, ['#e8dcc4', '#c9bb9c']), round: true, pace: 1.5 });
-      }
-      for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.035, wid: 0.03, color: '#4a4038', round: true, pace: 1.45 });
-      }
-      out.push({ len: 0.05, wid: 0.04, color: '#38302a', stripe: '#5c524a', pace: 1.3 });
-      out.push({ len: 0.06, wid: 0.045, color: '#5c748a', stripe: '#8fa8bd', round: true, pace: 1.0 });
       break;
     }
     case 'stool': {

@@ -1576,7 +1576,6 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   assert.ok(n(Tile.CandleRack) >= 2, 'the chandlery went dark');
   assert.equal(n(Tile.CobblersBench), 1, 'the cobbler lost the bench');
   assert.ok(n(Tile.TapCask) >= 3, 'the Vale taverns ran dry');
-  assert.ok(n(Tile.GameTable) >= 3, 'the dice crowds lost their tables');
   assert.equal(n(Tile.WayShrine), 3, "the Pilgrim's Way lost a station");
   assert.equal(n(Tile.GuardianStatue), 3, 'the Vale lost a watcher');
   assert.equal(n(Tile.CandleShrine), 5, 'the kept flames miscount');

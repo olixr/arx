@@ -94,7 +94,7 @@ export function isSeatTile(t: number | undefined): boolean {
  * intent: nobody dines at a war table.)
  */
 export function isSitAtTable(t: number | undefined): boolean {
-  return t === Tile.Table || t === Tile.Counter || t === Tile.ElvenTable || t === Tile.GameTable;
+  return t === Tile.Table || t === Tile.Counter || t === Tile.ElvenTable;
 }
 
 /** The chair painter's table scan — a backrest turns its seat to the table. */

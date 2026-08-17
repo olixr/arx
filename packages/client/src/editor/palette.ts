@@ -222,7 +222,7 @@ export const TILE_CATEGORIES: TileCategory[] = [
       Tile.PillarCandle, Tile.PillarCandleOut,
       Tile.TripleCandles, Tile.TripleCandlesOut,
       Tile.StreetLantern, Tile.WayShrine,
-      Tile.GuardianStatue, Tile.TapCask, Tile.GameTable,
+      Tile.GuardianStatue, Tile.TapCask,
       Tile.WoodStool, Tile.SettleBench, Tile.BasketStack, Tile.GlazedJars,
       Tile.BroomAndPail, Tile.CloakStand, Tile.LeanLadder, Tile.Wheelbarrow,
       Tile.WayfarersRest, Tile.MooringPost, Tile.BeachedSkiff,

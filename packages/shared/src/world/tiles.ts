@@ -774,8 +774,8 @@ export enum Tile {
   // docs/trade-decor-plan.md). The town kit dressed the street;
   // this shelf dresses the SHOPS behind it. Same voice, TENDED,
   // NEVER LEFT — every piece is mid-shift: the blade still cooling
-  // in the quench, the loaves still warm on the peel, the chalk
-  // marks fresh on the dress form. A trade you can read at a
+  // in the quench, the loaves still warm on the peel, the basting
+  // fresh on the dress form. A trade you can read at a
   // glance is a town you believe in.
   /** The smith's slack tub: iron-banded, a blade left cooling, steam rising. */
   QuenchTrough = 405,
@@ -789,7 +789,7 @@ export enum Tile {
   LumberRack = 409,
   /** Two brimming dye vats, a stir paddle resting, drips down the staves. */
   DyeVats = 410,
-  /** The tailor's dress form wearing a pinned, chalk-marked garment. */
+  /** The tailor's dress form wearing a pinned, thread-basted garment. */
   TailorsDummy = 411,
   /** Bolts of dyed cloth rolled and racked, ends spilling color. */
   ClothBolts = 412,
@@ -851,8 +851,7 @@ export enum Tile {
   GuardianStatue = 433,
   /** A belly-lying cask on its trestle, wooden tap dripping, horn mugs waiting. */
   TapCask = 435,
-  /** A barrel-top tafl board mid-game, two stools pulled up, one mug mid-move. */
-  GameTable = 436,
+  // 436 RETIRED (GameTable — the tafl barrel left town; old DBs may hold it, never reuse).
   /** The universal three-legged stool, tenons wedged, seat worn to a shine. */
   WoodStool = 437,
   /** The hearth's high-backed settle, a thrown cloak over the arm. */
@@ -1679,7 +1678,6 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.WayShrine]: { name: 'wayshrine', solid: true, color: '#8a857a', raised: true, topColor: '#e8d9b0' },
   [Tile.GuardianStatue]: { name: 'guardian statue', solid: true, color: '#6f6a58', raised: true, topColor: '#b3ada0' },
   [Tile.TapCask]: { name: 'tap cask', solid: true, color: '#75603e', raised: true, topColor: '#c9955c' },
-  [Tile.GameTable]: { name: 'game table', solid: true, color: '#75603e', raised: true, topColor: '#e2d9c4' },
   [Tile.WoodStool]: { name: 'stool', solid: true, color: '#75603e', raised: true, topColor: '#c9a76a' },
   [Tile.SettleBench]: { name: 'settle bench', solid: true, color: '#6f4d26', raised: true, topColor: '#7a86b8' },
   [Tile.BasketStack]: { name: 'basket stack', solid: true, color: '#a88f5c', raised: true, topColor: '#d8c49a' },
@@ -2458,7 +2456,6 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.WayShrine, 0.38],
   [Tile.GuardianStatue, 0.4],
   [Tile.TapCask, 0.38],
-  [Tile.GameTable, 0.34],
   [Tile.WoodStool, 0.2],
   [Tile.SettleBench, 0.36],
   [Tile.BasketStack, 0.3],
@@ -2805,7 +2802,6 @@ export type DestructibleKind =
   | 'wayshrine'
   | 'guardian'
   | 'tapcask'
-  | 'gametable'
   | 'stool'
   | 'settle'
   | 'baskets'
@@ -3043,7 +3039,6 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.WayShrine, { kind: 'wayshrine', respawnSec: 600, hits: 3 }],
   [Tile.GuardianStatue, { kind: 'guardian', respawnSec: 600, hits: 4 }],
   [Tile.TapCask, { kind: 'tapcask', respawnSec: 300, hits: 2 }],
-  [Tile.GameTable, { kind: 'gametable', respawnSec: 300, hits: 2 }],
   [Tile.WoodStool, { kind: 'stool', respawnSec: 150, hits: 1 }],
   [Tile.SettleBench, { kind: 'settle', respawnSec: 300, hits: 2 }],
   [Tile.BasketStack, { kind: 'baskets', respawnSec: 300, hits: 1 }],
