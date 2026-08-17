@@ -587,6 +587,16 @@ import {
   refreshMax,
   weakestOf,
   ccTicksFor,
+  buffCritPct,
+  buffDmgMult,
+  buffSpeedMult,
+  buffArmor,
+  buffReflectFrac,
+  buffRegenPer4s,
+  buffGatherSpeed,
+  buffLifesteal,
+  swingMult,
+  swingCooldown,
   stateBucket,
   sunderAmp,
   type VsClause,
@@ -946,6 +956,13 @@ interface NpcComp {
   arenaMatch?: string;
   /** THE MARKED WORLD: last tick a lane word floated (teach throttle). */
   laneFxTick?: number;
+  /**
+   * THE WARD SEAT (buff forge, Phase 2): an absorb pool drained
+   * before flesh in damageNpc. No shipped body carries one — the
+   * engine seat for warded bosses and shelled elites; wave one
+   * authors the first and prices it.
+   */
+  ward?: number;
   /**
    * THE QUEST PARTICIPATION LEDGER: every player eid whose landed
    * wound touched this body (whiff-0 sacred — a miss writes nothing).
@@ -2177,9 +2194,22 @@ const CHEST_TILES: ReadonlySet<Tile> = new Set([
   Tile.ChestMossyOpen,
 ]);
 
-/** A timed self-effect; multiple can ride at once (speeds multiply). */
+/**
+ * A timed self-effect; multiple can ride at once. THE FOLD TABLE for
+ * every field lives in shared/sim/buffForge.ts (THE BUFF FORGE) — the
+ * read sites call it, so the stacking physics have ONE home.
+ */
 interface PlayerBuff {
   speedMult: number;
+  /** THE SWING CHANNEL: swing-cadence multiplier (buff forge, band-clamped at the pay site). */
+  attackSpeedMult: number;
+  /**
+   * Stack count for a stacking buff (absent = 1). The forge's table
+   * says how each field reads a count; `restack` is the landing. No
+   * shipped pusher stacks yet — the wave-one boons will.
+   */
+  stacks?: number;
+  maxStacks?: number;
   shieldHp: number;
   meleeLifesteal: number;
   /** Flat bonus armor — folds into the mitigate site's armor term (tank stances). */
@@ -2225,6 +2255,7 @@ interface PlayerBuff {
 function mkBuff(partial: Partial<PlayerBuff> & { untilTick: number }): PlayerBuff {
   return {
     speedMult: 1,
+    attackSpeedMult: 1,
     shieldHp: 0,
     meleeLifesteal: 0,
     armor: 0,
@@ -2241,21 +2272,16 @@ function mkBuff(partial: Partial<PlayerBuff> & { untilTick: number }): PlayerBuf
 }
 
 /**
- * The two surge dials that had no home in PlayerBuff before the proc
- * grammar. Both fold ADDITIVELY across live buffs rather than taking
- * the best: two workings that each sharpen the edge should both be
- * felt, and neither is a stance the other could be said to replace.
+ * The two surge dials, folded by THE BUFF FORGE's declared table
+ * (crit additive, dmgMult additive-of-excess — two workings that each
+ * sharpen the edge are both felt, and neither replaces the other).
  */
 function surgeCritPct(player: PlayerComp): number {
-  let pct = 0;
-  for (const b of player.buffs) pct += b.critPct;
-  return pct;
+  return buffCritPct(player.buffs);
 }
 
 function surgeDmgMult(player: PlayerComp): number {
-  let mult = 1;
-  for (const b of player.buffs) mult += b.dmgMult - 1;
-  return mult;
+  return buffDmgMult(player.buffs);
 }
 
 /** THE QUIET WALK: is a beast truce riding this walker right now? */
@@ -5188,11 +5214,9 @@ export class GameServer {
     }
   }
 
-  /** Best gathering-speed multiplier across active buffs. */
+  /** Best gathering-speed multiplier across active buffs (forge: best-of). */
   private gatherSpeedOf(player: PlayerComp): number {
-    let mult = 1;
-    for (const b of player.buffs) mult = Math.max(mult, b.gatherSpeed);
-    return mult;
+    return buffGatherSpeed(player.buffs);
   }
 
   /**
@@ -5434,8 +5458,7 @@ export class GameServer {
    * needs mirroring for prediction to agree (S2CRide).
    */
   private footSpeedMult(player: PlayerComp): number {
-    let mult = 1;
-    for (const b of player.buffs) mult *= b.speedMult;
+    let mult = buffSpeedMult(player.buffs); // forge: multiplicative
     if (this.hasPassive(player, 'fleet_footed')) mult *= 1.08;
     mult *= player.gear.speedMult; // plate drags, leather springs
     return mult;
@@ -14957,6 +14980,8 @@ export class GameServer {
     if (b.armor > 0) parts.push(`+${b.armor} armor`);
     if (b.speedMult > 1) parts.push(`+${Math.round((b.speedMult - 1) * 100)}% speed`);
     if (b.speedMult < 1) parts.push('slowed');
+    if (b.attackSpeedMult > 1) parts.push(`+${Math.round((b.attackSpeedMult - 1) * 100)}% swing speed`);
+    if (b.attackSpeedMult < 1) parts.push('swings slowed');
     if (b.regenPer4s > 0) parts.push(`mends ${b.regenPer4s} every four breaths`);
     if (b.meleeLifesteal > 0) parts.push(`blows drink ${Math.round(b.meleeLifesteal * 100)}%`);
     if (b.reflectFrac > 0) parts.push(`returns ${Math.round(b.reflectFrac * 100)}% of blows`);
@@ -14980,6 +15005,8 @@ export class GameServer {
     const buffs: BuffInfo[] = [];
     const combat: BuffInfo[] = [];
     for (const b of player.buffs) {
+      // A STACK IS A THING YOU CAN SEE: a stacking buff's chip counts.
+      const stacks = (b.stacks ?? 1) > 1 ? { stacks: b.stacks } : {};
       if (b.channel && b.itemId && b.name) {
         buffs.push({
           id: b.itemId,
@@ -14987,6 +15014,7 @@ export class GameServer {
           channel: b.channel,
           secsLeft: secs(b),
           desc: this.describeBuff(b),
+          ...stacks,
         });
       } else if (b.name && b.channel === undefined) {
         combat.push({
@@ -14995,6 +15023,7 @@ export class GameServer {
           channel: 'combat',
           secsLeft: secs(b),
           desc: this.describeBuff(b),
+          ...stacks,
         });
       }
     }
@@ -15003,7 +15032,10 @@ export class GameServer {
     // cap from the plan's HUD survey).
     combat.sort((a, b) => b.secsLeft - a.secsLeft);
     buffs.push(...combat.slice(0, Math.max(0, 6 - buffs.length)));
-    player.session?.sendJson({ t: 'buffs', buffs });
+    // THE SWING CHANNEL rides the buff push: the client's prediction
+    // lanes pay the same recovery the server pays (absent = 1).
+    const swing = swingMult(player.gear.attackSpeedMult ?? 1, player.buffs);
+    player.session?.sendJson({ t: 'buffs', buffs, ...(swing !== 1 ? { swing } : {}) });
   }
 
   /** Non-combat NPC interaction: milk the cow, one day pet the wolf. */
@@ -19767,6 +19799,10 @@ export class GameServer {
     this.sendCooldowns(player);
     // The roster of stacking meters may have changed with the gear.
     this.sendCharges(player);
+    // THE SWING CHANNEL: worn gear feeds the swing mult, so an equip
+    // change re-sends the buffs push that carries it (the client's
+    // prediction lanes must never pay a stale recovery).
+    this.sendBuffs(player);
     // Appearance changed — update everyone who can see this player.
     this.broadcastMetaUpdate(eid);
   }
@@ -19843,7 +19879,12 @@ export class GameServer {
       return;
     }
 
-    player.attackCooldown = weapon.cooldownTicks;
+    // THE SWING CHANNEL (buff forge): worn gear × riding buffs, band-
+    // clamped — the ONE swing multiplier, paid here and mirrored by
+    // the client's prediction lanes through the same shared math. The
+    // bow keeps its own draw clock (a deliberate Phase 5 door).
+    const swing = swingMult(player.gear.attackSpeedMult ?? 1, player.buffs);
+    player.attackCooldown = swingCooldown(weapon.cooldownTicks, swing);
     player.lastCombatAt = Date.now();
     // Backstab eligibility is judged at the moment of the swing — capture
     // stealth BEFORE the attack reveals us.
@@ -19882,7 +19923,20 @@ export class GameServer {
     const beat = moveset.string[stage]!;
     const strike = tapped && beat.alt ? beat.alt : beat;
     const finisher = stage === len - 1;
-    player.attackCooldown = Math.round(weapon.cooldownTicks * strike.recoveryMult);
+    // The strike's recovery pays through the swing channel too, with
+    // THE CHOREOGRAPHY FLOOR: haste never starts the next swing before
+    // this one's pose hold ends (the client mirror does the same math).
+    const swingClock = STRIKE_CLOCKS[weapon.style as keyof typeof STRIKE_CLOCKS];
+    const holdFloor = swingClock
+      ? finisher
+        ? swingClock.finisher.holdTicks
+        : swingClock.swing.holdTicks
+      : 1;
+    player.attackCooldown = swingCooldown(
+      Math.round(weapon.cooldownTicks * strike.recoveryMult),
+      swing,
+      holdFloor,
+    );
     player.combo.graceUntilTick = this.tickCount + player.attackCooldown + moveset.graceTicks;
     this.speakCombo(player, stage, len);
     // THE GUARD SWEEP: a foe inside the pole's reach turns a wand beat
@@ -22220,6 +22274,7 @@ export class GameServer {
     }
     if (
       self.speedMult !== undefined ||
+      self.attackSpeedMult !== undefined ||
       self.shieldHp !== undefined ||
       self.meleeLifesteal !== undefined ||
       self.onHitStatus !== undefined ||
@@ -22233,6 +22288,8 @@ export class GameServer {
           // THE VISIBLE FIGHT: a stance chip wears its art's name.
           name: ab.name,
           speedMult: self.speedMult ?? 1,
+          // THE SWING CHANNEL: a stance may quicken the hand.
+          attackSpeedMult: self.attackSpeedMult ?? 1,
           // Stonewall thickens every shield the caster raises.
           shieldHp: Math.round((self.shieldHp ?? 0) * powerMult * player.perks.shieldMult),
           meleeLifesteal: self.meleeLifesteal ?? 0,
@@ -23709,13 +23766,15 @@ export class GameServer {
             name: p.name,
             ...(a.stat === 'speed'
               ? { speedMult: 1 + lift, untilTick: until }
-              : a.stat === 'armor'
-                ? { armor: a.pct, untilTick: until }
-                : a.stat === 'regen'
-                  ? { regenPer4s: a.pct, untilTick: until }
-                  : a.stat === 'crit'
-                    ? { critPct: a.pct, untilTick: until }
-                    : { dmgMult: 1 + lift, untilTick: until }),
+              : a.stat === 'swing'
+                ? { attackSpeedMult: 1 + lift, untilTick: until }
+                : a.stat === 'armor'
+                  ? { armor: a.pct, untilTick: until }
+                  : a.stat === 'regen'
+                    ? { regenPer4s: a.pct, untilTick: until }
+                    : a.stat === 'crit'
+                      ? { critPct: a.pct, untilTick: until }
+                      : { dmgMult: 1 + lift, untilTick: until }),
           }),
         );
         this.sendBuffs(player);
@@ -24116,7 +24175,17 @@ export class GameServer {
       kx = kdx / kd;
       ky = kdy / kd;
     }
-    this.broadcastHit(npcEid, dmg, crit, kx, ky, opts.backstab);
+    // THE WARD SEAT: an NPC absorb pool soaks before flesh. A blow
+    // fully swallowed says so in words (the warded flag), never as a
+    // bare zero — the invulnerable-actor precedent's voice.
+    let warded = false;
+    if (npc.ward !== undefined && npc.ward > 0 && dmg > 0) {
+      const soaked = Math.min(npc.ward, dmg);
+      npc.ward -= soaked;
+      dmg -= soaked;
+      if (dmg <= 0) warded = true;
+    }
+    this.broadcastHit(npcEid, dmg, crit, kx, ky, opts.backstab, warded);
     if (dmg <= 0) return;
     health.hp -= dmg;
     this.setNpcPose(npcEid, npc, PoseState.Hurt, 4);
@@ -24216,7 +24285,8 @@ export class GameServer {
       // enchant feeds every basic ITS steel lands, whatever the style.
       let steal = strikeSteal;
       if (style === 'onehand') {
-        for (const b of attacker.buffs) steal = Math.max(steal, b.meleeLifesteal);
+        // Forge: one thirst, the deepest (max) — folded against the steel's.
+        steal = Math.max(steal, buffLifesteal(attacker.buffs));
       }
       if (steal > 0) {
         const ahealth = this.healths.get(attackerEid);
@@ -24672,17 +24742,13 @@ export class GameServer {
     // Bulwark answers only a planted stance: armor for held ground; the
     // tank stances lend buff armor; the raised wall lends its trained
     // craft (and Shieldarm's answered iron) only while the shield is up.
-    let buffArmor = 0;
-    let reflectFrac = 0;
-    for (const b of player.buffs) {
-      buffArmor += b.armor;
-      reflectFrac = Math.max(reflectFrac, b.reflectFrac);
-    }
+    // The forge's table: armor sums, the turned blow takes the sharpest.
+    const reflectFrac = buffReflectFrac(player.buffs);
     // War Footing is Bulwark's mirror: one boundary, two callings —
     // planted ground answers to Bulwark, everything else is the march.
     const armor =
       player.gear.armor +
-      buffArmor +
+      buffArmor(player.buffs) +
       (player.stillTicks >= STILL_ARMOR_TICKS
         ? player.perks.stillArmor
         : player.perks.marchArmor) +
@@ -24751,12 +24817,32 @@ export class GameServer {
       }
     }
     if (opts.status) this.applyStatusToPlayer(eid, opts.status, opts.sourceEid ?? 0);
-    // Ability shields soak damage before flesh does.
+    // Ability shields soak damage before flesh does. THE BREAKING
+    // WORD (buff forge): a pool emptied by a blow announces itself
+    // once — the shell is glass, and glass is heard when it goes.
+    let wardBroke = false;
     for (const b of player.buffs) {
       if (b.shieldHp <= 0 || dmg <= 0) continue;
       const soaked = Math.min(b.shieldHp, dmg);
       b.shieldHp -= soaked;
       dmg -= soaked;
+      if (soaked > 0 && b.shieldHp === 0) wardBroke = true;
+    }
+    if (wardBroke) {
+      const wpos = this.positions.get(eid);
+      if (wpos) {
+        this.broadcastFx(wpos.plane, {
+          t: 'fx',
+          kind: 'reaction',
+          x: wpos.x,
+          y: wpos.y,
+          radius: 0.7,
+          color: '#cfd6e8',
+          text: 'Ward Broken',
+        });
+      }
+      // The chip stops promising a ward it no longer holds.
+      this.sendBuffs(player);
     }
     this.broadcastHit(eid, dmg, false, 0, 0, false, false, opts.via);
     player.lastCombatAt = Date.now();
@@ -28948,8 +29034,9 @@ export class GameServer {
       for (const [eid, player] of this.players) {
         if (player.session === null) continue;
         // Gear regen affixes join the best-of scan alongside consumables.
-        let regen = player.gear.regenPer4s;
-        for (const b of player.buffs) regen = Math.max(regen, b.regenPer4s);
+        // Forge: best-of across buffs, then best-of against the gear
+        // line — mending doesn't compound.
+        const regen = Math.max(player.gear.regenPer4s, buffRegenPer4s(player.buffs));
         if (regen > 0) {
           const health = this.healths.must(eid);
           if (health.hp < health.maxHp) health.hp = Math.min(health.maxHp, health.hp + regen);
@@ -30956,6 +31043,9 @@ export class GameServer {
         if (this.tickCount < b.untilTick) continue;
         if (b.channel !== undefined || b.name !== undefined) chipGone = true;
         if (b.speedMult !== 1) speedGone = true;
+        // A swing buff leaving moves the mirror's mult — the buffs
+        // push carries the fresh channel value (chip or not).
+        if (b.attackSpeedMult !== 1) chipGone = true;
       }
       player.buffs = player.buffs.filter((b) => this.tickCount < b.untilTick);
       if (chipGone) this.sendBuffs(player);

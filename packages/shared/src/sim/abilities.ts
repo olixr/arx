@@ -487,6 +487,14 @@ export interface AbilitySelf {
   healFrac?: number;
   /** Movement multiplier while active. */
   speedMult?: number;
+  /**
+   * THE SWING CHANNEL (buff forge): swing-cadence multiplier while
+   * active (1.15 = swings 15% faster). Folded with worn gear's
+   * channel and clamped to the SWING band at the one pay site —
+   * distinct from ability-cooldown haste. No shipped art authors it
+   * yet; the wave-one boons land here.
+   */
+  attackSpeedMult?: number;
   /** Flat damage soaked before HP. */
   shieldHp?: number;
   /** Fraction of melee damage dealt returned as healing while active. */

@@ -1336,12 +1336,26 @@ export interface BuffInfo {
    * older client shows the bare name.
    */
   desc?: string;
+  /**
+   * Stack count for a stacking buff (absent = 1). Additive wire fact
+   * (buff forge, Phase 2): the chip wears an xN the moment a stacking
+   * boon ships; an older client shows the bare chip.
+   */
+  stacks?: number;
 }
 
 /** The player's active chip-worthy buffs (sent on gain + expiry). */
 export interface S2CBuffs {
   t: 'buffs';
   buffs: BuffInfo[];
+  /**
+   * THE SWING CHANNEL's live multiplier (gear × riding buffs, band-
+   * clamped server-side), sent whenever it is not the trained 1 so
+   * the client's swing-prediction lanes pay the SAME recovery the
+   * server pays (the mirrors must never drift). Additive wire fact;
+   * absent = 1.
+   */
+  swing?: number;
 }
 
 /**

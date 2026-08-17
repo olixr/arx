@@ -88,7 +88,7 @@ import {
 } from '@arx/shared';
 import { CROP_TILES, LIVESTOCK, MATURE_TILES, NODES_BY_TILE, SETTLED_ANCHORS, SOIL_RICH, WORK_STATION_TILES, bandAtLeast, isCropTile, abilityDef, itemDef, movesetFor, npcDef, replaceGeography, strikePose, tameDef, techniquePoolDef, type FactionBand, type GeographyDef, type WorkStation } from '@arx/content';
 import { clearFarmMirror, farmApiaries, farmBins, farmJobs, farmKey, farmPlots, farmTroughs, larderFills, noteWellTile, refreshWet, stageOfTile } from './farmCare.js';
-import { EntityKind, INTERIOR_BOUNDARY_TILES, chunkKey, pointHitsSolid, shutDoorTile } from '@arx/shared';
+import { EntityKind, INTERIOR_BOUNDARY_TILES, chunkKey, pointHitsSolid, shutDoorTile, swingCooldown } from '@arx/shared';
 import type { AbilityDef, AbilitySlot, DangerAnchor, Look, PlaneWire } from '@arx/shared';
 import type { S2CArenaBoard, S2CArenaState } from '@arx/shared';
 
@@ -662,6 +662,13 @@ export class ClientGame {
   callings: string[] = [];
   /** Active consumable buffs (tonic/food) for the HUD chip row. */
   buffs: BuffInfo[] = [];
+  /**
+   * THE SWING CHANNEL's live multiplier, mirrored off S2CBuffs so the
+   * prediction lanes pay the SAME recovery the server pays (absent on
+   * the wire = the trained 1). Never derived locally — the server's
+   * fold is the truth and this is its mirror.
+   */
+  swingMult = 1;
   /** performance.now() when the buffs snapshot arrived (chips count down). */
   buffsAt = 0;
   /** Fires when the buff list changes (HUD refresh). */
@@ -1311,7 +1318,13 @@ export class ClientGame {
     const stage = advanceCombo(this.comboLocal, worn.id, frame.seq, len);
     const strike = moveset.string[stage]!;
     const heavy = stage === len - 1;
-    this.staffReadySeq = frame.seq + Math.round(weapon.cooldownTicks * strike.recoveryMult);
+    // THE SWING CHANNEL, mirrored: the same shared swingCooldown the
+    // server pays, under the mult the buffs push carried, with the
+    // same choreography floor — the two clocks can never drift.
+    const staffHold = heavy ? STRIKE_CLOCKS.arx.finisher.holdTicks : STRIKE_CLOCKS.arx.swing.holdTicks;
+    this.staffReadySeq =
+      frame.seq +
+      swingCooldown(Math.round(weapon.cooldownTicks * strike.recoveryMult), this.swingMult, staffHold);
     this.comboLocal.graceUntilTick = this.staffReadySeq + moveset.graceTicks;
     // THE GUARD SWEEP, mirrored: with a foe at the doorstep the server
     // strikes with the pole — no bolt leaves, so no tracer should.
@@ -1376,8 +1389,6 @@ export class ClientGame {
     const stage = advanceCombo(this.comboLocal, worn.id, frame.seq, len);
     const strike = moveset.string[stage]!;
     const finisher = stage === len - 1;
-    this.meleeReadySeq = frame.seq + Math.round(weapon.cooldownTicks * strike.recoveryMult);
-    this.comboLocal.graceUntilTick = this.meleeReadySeq + moveset.graceTicks;
     // THE REACHING SCHOOL owns its own clock — between the sword's
     // time and the mountain's — so the mirror's beat matches the
     // server's hold exactly, as it does for the other two.
@@ -1387,6 +1398,17 @@ export class ClientGame {
         : weapon.style === 'polearm'
           ? STRIKE_CLOCKS.polearm
           : STRIKE_CLOCKS.onehand;
+    // THE SWING CHANNEL, mirrored: the same shared swingCooldown the
+    // server pays, under the mult the buffs push carried, with the
+    // same choreography floor — the two clocks can never drift.
+    this.meleeReadySeq =
+      frame.seq +
+      swingCooldown(
+        Math.round(weapon.cooldownTicks * strike.recoveryMult),
+        this.swingMult,
+        finisher ? clocks.finisher.holdTicks : clocks.swing.holdTicks,
+      );
+    this.comboLocal.graceUntilTick = this.meleeReadySeq + moveset.graceTicks;
     const ms = finisher ? clocks.finisher.ms : clocks.swing.ms;
     this.ownSwing = {
       pose: strikePose(moveset.poseDialect, stage, len),
@@ -2287,6 +2309,8 @@ export class ClientGame {
       case 'buffs': {
         this.buffs = msg.buffs;
         this.buffsAt = performance.now();
+        // THE SWING CHANNEL rides the buff push; absent = trained pace.
+        this.swingMult = msg.swing ?? 1;
         this.onBuffs?.();
         break;
       }

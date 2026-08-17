@@ -355,6 +355,61 @@ move; wire untouched.
 
 ### Phase 2 — THE BUFF FORGE (boon pages + the missing channels)
 
+**SHIPPED 2026-08-16. As-built:**
+
+- **`shared/sim/buffForge.ts` = THE DECLARED TABLE**: every PlayerBuff
+  fold rule in ONE home (crit additive, dmgMult additive-of-excess,
+  speed multiplicative, armor sum, reflect/lifesteal max, regen/gather
+  best-of), each a pure named function the read sites now call — seven
+  scattered folds became one constitution, byte-identical (full server
+  suite 558 green untouched). STACKS LAW: a buff may carry `stacks`;
+  additive rules multiply by the count, multiplicative rules raise to
+  it, max/best rules IGNORE it (a deeper stance is a bigger number,
+  never a count). `restack` = the landing (climb to the buff's own
+  max, clock refreshes upward). No shipped pusher stacks yet.
+- **THE SWING CHANNEL is born**: `attackSpeedMult` on PlayerBuff,
+  GearStats (`swingSpeed` EnchantEffect kind — additive pct, the
+  speed idiom), `AbilitySelf`, and SurgeStat `'swing'` (all RESERVED —
+  zero authored users; the ledger prices wave one). `swingMult(gear,
+  buffs)` folds and clamps to the band (0.6..1.5, ENGINE law — no
+  assembly of sources escapes); `swingCooldown(base, mult, floor)`
+  pays it at the two server swing sites. **THE CHOREOGRAPHY FLOOR**:
+  haste never starts the next swing before the style's pose hold
+  (STRIKE_CLOCKS) ends — the floor binds the haste, never the
+  weapon's native cadence. The bow keeps its own draw clock (a
+  recorded Phase 5 door). Cooldown haste and swing haste stay
+  distinct stats.
+- **THE MIRROR LEARNS THE CHANNEL**: the client's melee and staff
+  prediction lanes pay recovery through the SAME shared
+  `swingCooldown` under `S2CBuffs.swing` (additive wire fact, absent
+  = 1, server-clamped) — the two clocks cannot drift by
+  construction. The mult re-sends on every buff push, buff expiry
+  (swing-carrying buffs flag the push), and equip change
+  (onEquipmentChanged now sends buffs — a stale mirror recovery is
+  structurally impossible).
+- **THE BREAKING WORD**: a shield pool emptied by a blow announces
+  itself once (reaction-fx 'Ward Broken', pale ink, no glow debt)
+  and refreshes the chips — the on-break moment Phase 4's dome
+  shatter will re-voice. **THE WARD SEAT**: `NpcComp.ward` absorb
+  pool drained before flesh in damageNpc; a fully swallowed blow
+  speaks the `warded` flag (the invulnerable-actor voice), never a
+  bare zero. No shipped body carries one.
+- Wire: `BuffInfo.stacks` (chips count when a stacking boon ships;
+  `icon` deliberately waits for Phase 4's painters — an icon id with
+  no painter would be a lie). `describeBuff` speaks the swing clauses.
+- **Pinned**: buffForge.test.ts (9 laws — the table, stack law, band
+  clamp, choreography floor binds-haste-never-weapon, restack).
+  Gates: shared 263, server 558 (fully green — the breath reds left
+  with the transport ship), content 570, client 618, tsc clean × 4.
+- **Deferred by design, recorded**: full re-founding of PlayerBuff as
+  boon PAGES (the stacking/fold/channel machinery is in place; the
+  page identity lands with the first authored boons in Phase 3 wave
+  one, so content and identity arrive together); generic
+  on-apply/on-expire hooks ride that same landing (on-break shipped
+  now because shields already exist); chill's page statMods still
+  read at the historic sites (the page-statMods fold joins wave one's
+  pricing).
+
 - Boon lane live: `PlayerBuff` re-founded on pages (same fields, same
   folds, one declared table + pins). Lifecycle hooks: on-apply,
   on-expire, on-break (shields), threshold crossings — small, engine-

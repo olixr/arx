@@ -101,9 +101,11 @@ export type StackSource = 'hit' | 'crit' | 'hurt' | 'block' | 'cast' | 'kill' | 
  * speaks them in those units, and no roster working uses them yet.
  * They are held open on purpose for future content, not leftovers —
  * remove one and the /proc dev lever loses a shape the vocabulary
- * already knows how to say.
+ * already knows how to say. `swing` (buff forge, Phase 2) joins them
+ * reserved: a timed swing-cadence surge, resolved through THE SWING
+ * CHANNEL's band clamp — wave one prices its first roster user.
  */
-export type SurgeStat = 'speed' | 'armor' | 'crit' | 'damage' | 'regen';
+export type SurgeStat = 'speed' | 'armor' | 'crit' | 'damage' | 'regen' | 'swing';
 
 /** What a woken working actually does. */
 export type ProcAction =
@@ -217,6 +219,14 @@ export type EnchantEffect =
   | { kind: 'elementDmg'; element: ArxElement; pct: number }
   | { kind: 'cooldown'; pct: number }
   | { kind: 'speed'; pct: number }
+  /**
+   * THE SWING CHANNEL (buff forge, Phase 2): basics swing `pct`%
+   * faster. Aggregate channel, additive across pieces, band-clamped
+   * at the server's one pay site. RESERVED GRAMMAR — no shipped
+   * enchant, temper, or word authors it yet (the armor/regen surge
+   * precedent); wave one prices it against the plan's ledger.
+   */
+  | { kind: 'swingSpeed'; pct: number }
   | { kind: 'thorns'; amount: number }
   | { kind: 'crit'; pct: number }
   | { kind: 'onKillHaste'; ticks: number }
@@ -1454,6 +1464,7 @@ export function describeAction(a: ProcAction): string {
       // so printing them as percentages would be a polite lie.
       if (a.stat === 'armor') return `+${a.pct} armor for ${secs(a.ticks)}`;
       if (a.stat === 'regen') return `+${a.pct} health every 4s for ${secs(a.ticks)}`;
+      if (a.stat === 'swing') return `+${a.pct}% swing speed for ${secs(a.ticks)}`;
       return `+${a.pct}% ${a.stat} for ${secs(a.ticks)}`;
     case 'cleanse':
       return 'every status on you stripped';
@@ -1487,6 +1498,8 @@ export function describeEffect(fx: EnchantEffect): string {
       return `-${fx.pct}% ability cooldowns`;
     case 'speed':
       return `+${fx.pct}% move speed`;
+    case 'swingSpeed':
+      return `+${fx.pct}% swing speed`;
     case 'thorns':
       return `attackers take ${fx.amount} damage`;
     case 'crit':
@@ -1630,6 +1643,7 @@ export function scaleEffect(fx: EnchantEffect, q: number): EnchantEffect {
     case 'elementDmg':
     case 'cooldown':
     case 'speed':
+    case 'swingSpeed':
     case 'crit':
     case 'vsState':
       return { ...fx, pct: scaleN(fx.pct, q) };

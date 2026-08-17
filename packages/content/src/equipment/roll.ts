@@ -179,6 +179,14 @@ export interface GearStats {
   /** Multiplier on each style's max hit (1 = neutral). */
   styleDmgMult: Record<CombatStyle, number>;
   speedMult: number;
+  /**
+   * THE SWING CHANNEL (buff forge, Phase 2): swing-cadence multiplier
+   * (>1 = faster basics), folded with riding buffs and band-clamped
+   * at the one server pay site. Distinct from cooldownMult (ability
+   * slots) — the two hastes never touch. No shipped effect authors it
+   * yet; the kind exists so wave-one gear can.
+   */
+  attackSpeedMult: number;
   /** Multiplier on ability cooldowns (<1 = faster). */
   cooldownMult: number;
   /** Multiplier on Arx max hits of a specific school (1 = neutral). */
@@ -223,6 +231,7 @@ export function emptyGearStats(): GearStats {
     classCounts: { cloth: 0, leather: 0, plate: 0 },
     styleDmgMult: { onehand: 1, archery: 1, arx: 1, twohand: 1, polearm: 1 },
     speedMult: 1,
+    attackSpeedMult: 1,
     cooldownMult: 1,
     elementDmgMult: {},
     thorns: 0,
@@ -273,6 +282,11 @@ export function foldEffect(out: GearStats, fx: EnchantEffect): void {
       break;
     case 'speed':
       out.speedMult += fx.pct / 100;
+      break;
+    case 'swingSpeed':
+      // THE SWING CHANNEL: additive pct onto the mult, the speed
+      // idiom; the band clamp lives at the server's one pay site.
+      out.attackSpeedMult += fx.pct / 100;
       break;
     case 'thorns':
       out.thorns += fx.amount;

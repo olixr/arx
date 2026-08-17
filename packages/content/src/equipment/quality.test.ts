@@ -167,7 +167,7 @@ test('a rough working is weaker and a masterwork is stronger, everywhere', () =>
       case 'skill': case 'maxHp': case 'regen': case 'armor': case 'thorns':
         return [fx.amount];
       case 'styleDmg': case 'elementDmg': case 'cooldown': case 'speed': case 'crit':
-      case 'vsState':
+      case 'vsState': case 'swingSpeed':
         return [fx.pct];
       case 'onKillHaste': return [fx.ticks];
       case 'lifesteal': return [fx.frac];

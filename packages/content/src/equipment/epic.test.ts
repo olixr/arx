@@ -39,6 +39,9 @@ function power(fx: EnchantEffect): number {
     case 'vsState': return fx.pct * 0.7;
     case 'cooldown': return fx.pct * 2;
     case 'speed': return fx.pct * 4;
+    // THE SWING CHANNEL prices as throughput — a swing pct is a
+    // damage pct with extra steps (reserved grammar, no roster user).
+    case 'swingSpeed': return fx.pct * 1.2;
     case 'crit': return fx.pct * 2.5;
     case 'onKillHaste': return fx.ticks * 1.5;
     case 'lifesteal': return fx.frac * 220;

@@ -16,6 +16,7 @@ export * from './sim/combat.js';
 export * from './sim/damage.js';
 export * from './sim/abilities.js';
 export * from './sim/statusBook.js';
+export * from './sim/buffForge.js';
 export * from './sim/sneak.js';
 export * from './sim/perception.js';
 export * from './sim/pets.js';
