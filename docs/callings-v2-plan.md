@@ -52,6 +52,54 @@ pair tables. Core first, content later.
 
 ---
 
+## As built — Phase 4, THE WIDER LADDER (2026-08-17)
+
+The epic's ONE number move, plus the applied-rank persistence the
+green-light chose. What shipped, where it bound:
+
+- **THE FOCUS LAW v2** (shared/skills.ts): `FOCUS_MILESTONES = [25,
+  50, 75, 99]`, `focusBudget` = 2 + 1 per skill per milestone (max
+  102). `focusCostForSeat` = THE SEAT BANDS (1 under 40, 2 at 40..79,
+  3 at 80+); `callingCost(seat, rank) = seat + (rank − 1)` = RANK IS
+  A CHOICE YOU AFFORD. Pinned: the curve, the bands, the ceiling, and
+  THE NO-LOSS LAW — the v2 budget dominates the founding curve at
+  every level, so no login sanitize can ever drop a founding answer
+  (every existing row is Rank I at a seat under 80, price unchanged).
+- **The applied-rank model**: `PlayerComp.callings` is `Map<id, rank>`;
+  `character_callings.rank` (migration 42, DEFAULT 1); `saveCalling`
+  upserts the rank. Wire: `C2SCalling.rank?` (sanitized 1..4) and
+  `S2CCallings.ranks?` (ids past Rank I only) — ADDITIVE v34 facts,
+  no bump; an old client reads `answered[]` unchanged.
+- **setCalling** validates seat → entitlement (`callingRank`, the
+  honed clocks; the refusal names the rank held AND the level the
+  wanted rank waits on) → budget at the applied rank, re-pricing in
+  place on a re-answer (deepen or lighten); the held cost moves only
+  when the PLAYER re-answers. recomputeGear folds `honedCalling(def,
+  appliedRank)` — the package at the applied rank, whole.
+- **sanitizeCallings, deliberate**: dead defs / unmet seats drop; a
+  rank past the entitlement is LOWERED to it (a de-leveled hand keeps
+  the calling at the depth it can hold); then, while overdrawn, the
+  DEEPEST applied rank steps down one at a time (tie → the costlier
+  seat) and a seat is set down only at Rank I across the board — a
+  hand is never emptied when lightening would do. Pinned in
+  callingRanks.test.ts (5 laws).
+- **Ceremony**: focus milestones speak on the new curve; a calling's
+  ENTITLEMENT climbing speaks as an OFFER ("may be answered at Rank
+  N now — <note>"), never a change — the codex is where the hand
+  answers deeper.
+- **Client, honest about ranks now** (the wing rebuild proper is
+  Phase 5): `callingRanks` state mirrored, `sendCalling(id, on,
+  rank?)`, focus meter prices applied ranks, and the bench grew the
+  rank ladder — the held rank + cost, the honed line (earned depth
+  and the level the next rank waits on), Deepen / Lighten / Set down
+  buttons with over-budget `.cant` and the milestone-true teach line.
+- **THE DECADE FRAME** (callings.test.ts): seats unique per skill,
+  inside 1..99, at most one capstone; the exact decades are the
+  content epoch's to fill (THE GREEN ARTS' 35/45 stay legal); every
+  def's `focusCost` must equal its seat band.
+- Gates: shared 268 / content 595 / server 584 / client 636, tsc -b
+  clean ×4. **/calling <id> [off | 1..4]** takes a dev rank.
+
 ## As built — Phase 3, THE WHEN CLAUSE (2026-08-17)
 
 Engine-complete, zero authored content. What shipped, where it bound:

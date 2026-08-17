@@ -9,6 +9,7 @@ import {
   TECHNIQUE_MAX_RANK,
   dungeonSpecFromRoll,
   focusBudget,
+  callingCost,
   honedAbility,
   isStowedSlot,
   keyUsesForTier,
@@ -35,6 +36,8 @@ import {
   aggregateGearStats,
   callingDef,
   callingsFor,
+  callingRank,
+  CALLING_MAX_RANK,
   describeEffect,
   effectiveReq,
   enchantDef,
@@ -278,6 +281,8 @@ export class Panels {
   private callingSel: string | null = null;
   /** Answered Callings, mirrored from the server. */
   private callings: string[] = [];
+  /** APPLIED ranks past I by id (absent = Rank I). */
+  private callingRanks: Record<string, number> = {};
   /** Unlocked techniques the player has inspected — the NEW-pip ledger. */
   private readonly seenTech = new Set<string>(
     (() => {
@@ -365,7 +370,7 @@ export class Panels {
     /** Opens the Techniques codex (skill cards link into it). */
     private readonly onOpenArts: () => void = () => {},
     /** Answer or set down a Calling (server enforces THE FOCUS LAW). */
-    private readonly onCalling: (calling: string, on: boolean) => void = () => {},
+    private readonly onCalling: (calling: string, on: boolean, rank?: number) => void = () => {},
     /** THE SECOND GRIP: fire the swap verb (the rack's Draw/Trade). */
     private readonly onSwapSets: () => void = () => {},
   ) {
@@ -2239,11 +2244,17 @@ export class Panels {
     ];
   }
 
-  /** Server-confirmed answered Callings; re-renders whoever shows them. */
-  setCallings(answered: string[]): void {
+  /** Server-confirmed answered Callings + applied ranks; re-renders whoever shows them. */
+  setCallings(answered: string[], ranks: Record<string, number> = {}): void {
     this.callings = answered;
+    this.callingRanks = ranks;
     this.renderSkills(this.lastSkills);
     if (this.artsOpen) this.renderArts();
+  }
+
+  /** The APPLIED rank an answered Calling is held at (Rank I when unlisted). */
+  private appliedRank(id: string): number {
+    return this.callingRanks[id] ?? 1;
   }
 
   /** Build one skill card for the hall. */
@@ -2755,7 +2766,10 @@ export class Panels {
 
   private focusUsed(): number {
     let used = 0;
-    for (const id of this.callings) used += callingDef(id)?.focusCost ?? 0;
+    for (const id of this.callings) {
+      const def = callingDef(id);
+      if (def) used += callingCost(def.focusCost, this.appliedRank(id));
+    }
     return used;
   }
 
@@ -2921,13 +2935,23 @@ export class Panels {
     head.append(well, names);
     this.artsDetail.appendChild(head);
 
+    // RANK IS A CHOICE YOU AFFORD (callings-v2 Phase 4): the bench
+    // speaks the held rank, the entitlement the hand has earned, and
+    // the price of each step — and offers the ladder as the buttons.
+    const level = levelForXp(this.lastSkills[def.skill] ?? 0);
+    const cap = Math.max(1, callingRank(def, level));
+    const held = st === 'answered' ? this.appliedRank(def.id) : 0;
+    const budget = focusBudget(this.lastSkills);
+    const used = this.focusUsed();
+    const heldCost = held > 0 ? callingCost(def.focusCost, held) : 0;
+
     const state = document.createElement('div');
     state.className = `art-state ${st === 'answered' ? 'equipped' : st}`;
     state.textContent =
       st === 'answered'
-        ? `Answered — holding ${def.focusCost} Focus`
+        ? `Answered at Rank ${RANK_ROMAN[held]} — holding ${heldCost} Focus`
         : st === 'unlocked'
-          ? `Ready to answer — holds ${def.focusCost} Focus`
+          ? `Ready to answer — holds ${def.focusCost} Focus at Rank I`
           : `Answers at ${callingSkill} level ${def.unlockLevel}`;
     this.artsDetail.appendChild(state);
 
@@ -2936,9 +2960,43 @@ export class Panels {
     desc.textContent = def.desc;
     this.artsDetail.appendChild(desc);
 
-    const budget = focusBudget(this.lastSkills);
-    const used = this.focusUsed();
+    if (st !== 'locked') {
+      // The honed line: what depth this hand has earned at this seat.
+      const honed = document.createElement('div');
+      honed.className = 'bench-line';
+      honed.textContent =
+        cap >= CALLING_MAX_RANK
+          ? `Honed to Rank ${RANK_ROMAN[cap]}, the deepest.`
+          : `Honed to Rank ${RANK_ROMAN[cap]}. Rank ${RANK_ROMAN[cap + 1]} at ${callingSkill} level ${rankLevel(def.unlockLevel, cap + 1)}.`;
+      this.artsDetail.appendChild(honed);
+    }
+
+    let cant = false;
     if (st === 'answered') {
+      // Deepen (if entitled and affordable), lighten, set down.
+      if (held < cap) {
+        const next = held + 1;
+        const nextCost = callingCost(def.focusCost, next);
+        const btn = bigButton(
+          `Deepen to Rank ${RANK_ROMAN[next]} — ${nextCost} Focus`,
+          `callrank:${def.id}:${next}`,
+          () => this.onCalling(def.id, true, next),
+        );
+        if (used - heldCost + nextCost > budget) {
+          btn.classList.add('cant');
+          cant = true;
+        }
+        this.artsDetail.appendChild(btn);
+      }
+      if (held > 1) {
+        this.artsDetail.appendChild(
+          bigButton(
+            `Lighten to Rank ${RANK_ROMAN[held - 1]} — ${callingCost(def.focusCost, held - 1)} Focus`,
+            `callrank:${def.id}:${held - 1}`,
+            () => this.onCalling(def.id, true, held - 1),
+          ),
+        );
+      }
       this.artsDetail.appendChild(
         bigButton('Set down', `calloff:${def.id}`, () => this.onCalling(def.id, false)),
       );
@@ -2946,17 +3004,19 @@ export class Panels {
       const btn = bigButton(
         `Answer — ${def.focusCost} Focus`,
         `callon:${def.id}`,
-        () => this.onCalling(def.id, true),
+        () => this.onCalling(def.id, true, 1),
       );
-      if (used + def.focusCost > budget) btn.classList.add('cant');
+      if (used + def.focusCost > budget) {
+        btn.classList.add('cant');
+        cant = true;
+      }
       this.artsDetail.appendChild(btn);
     }
     const teach = document.createElement('div');
     teach.className = 'bench-teach';
-    teach.textContent =
-      used + def.focusCost > budget && st === 'unlocked'
-        ? `Your Focus is ${used}/${budget}. Set another Calling down, or deepen it at skill 50 and 99.`
-        : 'Answering is always free to change. The budget is the only law.';
+    teach.textContent = cant
+      ? `Your Focus is ${used}/${budget}. Set another Calling down, or deepen a skill past 25, 50, 75, or 99.`
+      : 'Answering is always free to change. The budget is the only law; depth is yours to afford.';
     this.artsDetail.appendChild(teach);
   }
 

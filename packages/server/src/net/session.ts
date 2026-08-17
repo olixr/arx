@@ -500,7 +500,7 @@ export class Session {
       case 'calling': {
         if (this.playerEid === null) return;
         if (!this.miscBucket.consume()) return;
-        this.game.setCalling(this.playerEid, msg.calling, msg.on);
+        this.game.setCalling(this.playerEid, msg.calling, msg.on, msg.rank);
         return;
       }
       case 'waypoint': {

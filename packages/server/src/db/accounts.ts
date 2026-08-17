@@ -1832,19 +1832,24 @@ export class AccountStore {
   }
 
   /** Answered Callings — row presence IS the answer. */
-  async loadCallings(characterId: number): Promise<string[]> {
-    const rows = await this.db.query<{ calling: string }>(
-      'SELECT calling FROM character_callings WHERE character_id = ?',
+  /**
+   * The answered Callings with their APPLIED ranks (callings-v2 Phase
+   * 4). Every pre-Phase-4 row reads rank 1 (the column's DEFAULT).
+   */
+  async loadCallings(characterId: number): Promise<Map<string, number>> {
+    const rows = await this.db.query<{ calling: string; rank: number }>(
+      'SELECT calling, rank FROM character_callings WHERE character_id = ?',
       [characterId],
     );
-    return rows.map((r) => r.calling);
+    return new Map(rows.map((r) => [r.calling, Math.max(1, Number(r.rank) || 1)]));
   }
 
-  saveCalling(characterId: number, calling: string): void {
+  /** Answer (or re-answer at a new rank): the row's rank is the truth. */
+  saveCalling(characterId: number, calling: string, rank = 1): void {
     this.db.fire(
-      'INSERT INTO character_callings (character_id, calling) VALUES (?, ?) ' +
-        'ON CONFLICT (character_id, calling) DO NOTHING',
-      [characterId, calling],
+      'INSERT INTO character_callings (character_id, calling, rank) VALUES (?, ?, ?) ' +
+        'ON CONFLICT (character_id, calling) DO UPDATE SET rank = EXCLUDED.rank',
+      [characterId, calling, rank],
     );
   }
 

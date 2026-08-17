@@ -910,7 +910,7 @@ const panels = new Panels(
   (style, hand) => game.setCarryStyle(style, hand),
   () => ({ name: game.ownName }),
   () => toggleScreen('arts'),
-  (calling, on) => game.sendCalling(calling, on),
+  (calling, on, rank) => game.sendCalling(calling, on, rank),
   // THE SECOND GRIP: the rack's Draw/Trade fires the same one-frame
   // queue the backquote press does — one door, every surface.
   () => input.queueSwap(),
@@ -2184,7 +2184,7 @@ companionPlaque.onPat = () => {
   if (petEid !== null) game.interactNpc(petEid);
 };
 game.onTechniques = () => panels.setTechniques(game.techniques, game.earnedArts, game.lessons);
-game.onCallings = () => panels.setCallings(game.callings);
+game.onCallings = () => panels.setCallings(game.callings, game.callingRanks);
 
 // THE HELD SIGIL: hold a point-targeted art to aim its ghost ring,
 // release to cast. The controller rewrites outgoing input frames

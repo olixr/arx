@@ -1086,6 +1086,12 @@ const MIGRATIONS: string[] = [
   // every existing character on the founding behavior: the vacuum
   // serves unless this hand deliberately waved it off.
   `ALTER TABLE characters ADD COLUMN IF NOT EXISTS auto_loot_off INTEGER NOT NULL DEFAULT 0;`,
+  // v42: RANK IS A CHOICE YOU AFFORD (docs/callings-v2-plan.md, Phase
+  // 4, the green-light's word) — an answered Calling holds an APPLIED
+  // rank, chosen up to the honed-clock entitlement and priced by the
+  // focus law. DEFAULT 1 keeps every existing answer at its founding
+  // shape; the row stays presence-keyed.
+  `ALTER TABLE character_callings ADD COLUMN IF NOT EXISTS rank INTEGER NOT NULL DEFAULT 1;`,
 ];
 
 /**

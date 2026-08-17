@@ -13,7 +13,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SKILL_IDS } from '@arx/shared';
+import { MAX_LEVEL, SKILL_IDS, focusCostForSeat } from '@arx/shared';
 import {
   CALLINGS,
   callingsFor,
@@ -73,12 +73,29 @@ test('every Calling speaks under the dash ban', () => {
   }
 });
 
-test('THE FOCUS LAW costs: minors hold 1, majors hold 2', () => {
+test('THE SEAT BANDS: every Calling is priced by its seat (1 / 2 / 3)', () => {
+  // THE WIDER LADDER (callings-v2 Phase 4): the shared law prices the
+  // seat — minors under 40 hold 1, majors 40..79 hold 2, capstones
+  // 80+ hold 3 — and the def must agree. The 53 keep their founding
+  // prices (every shipped seat sits under 80). Applied ranks
+  // surcharge on top (callingCost), never on the def.
   for (const [id, def] of CALLINGS) {
-    // Minors (below 40) hold 1 focus; majors (40+) hold 2. Phase 4
-    // (THE WIDER LADDER) rewrites this table consciously.
-    const expected = def.unlockLevel < 40 ? 1 : 2;
-    assert.equal(def.focusCost, expected, `${id} focus cost matches its rung`);
+    assert.equal(def.focusCost, focusCostForSeat(def.unlockLevel), `${id} focus cost matches its seat band`);
+  }
+});
+
+test('THE DECADE FRAME: seats are unique per skill and never above the ceiling', () => {
+  // The ten-seat ladder is a FRAME (10..90 + the 99 capstone) the
+  // content epoch fills; the law pins uniqueness and the ceiling, not
+  // exact decades (THE GREEN ARTS' 35/45 seats stay legal).
+  for (const skill of SKILL_IDS) {
+    const seats = callingsFor(skill).map((c) => c.unlockLevel);
+    assert.equal(new Set(seats).size, seats.length, `${skill} stacks two Callings on one seat`);
+    for (const seat of seats) {
+      assert.ok(seat >= 1 && seat <= MAX_LEVEL, `${skill} seat ${seat} is off the ladder`);
+    }
+    // A capstone (99) may sit once — the ceiling is a single seat.
+    assert.ok(seats.filter((x) => x === MAX_LEVEL).length <= 1, `${skill} has two capstones`);
   }
 });
 

@@ -22,8 +22,8 @@ import {
   encodeTilePatch,
   combatLevel,
   focusBudget,
-  FOCUS_MILESTONE_LEVEL,
-  FOCUS_MASTERY_LEVEL,
+  FOCUS_MILESTONES,
+  callingCost,
   isSkillId,
   resolveSkillId,
   isCombatSchool,
@@ -40,6 +40,7 @@ import {
   lessonFlag,
   masteryXp,
   RANK_ROMAN,
+  rankLevel,
   rideSpeedMult,
   stepMovement,
   xpForLevel,
@@ -264,7 +265,10 @@ import {
   SECRET_ARTS,
   callingDef,
   callingsFor,
+  callingRank,
   CALLINGS,
+  CALLING_MAX_RANK,
+  honedCalling,
   type CallingCondition,
   type CallingGrant,
   foldEffect,
@@ -623,6 +627,7 @@ import {
   type BuildOrient,
   type ChargeInfo,
   type S2CFx,
+  type S2CCallings,
   type S2CArenaState,
   type S2CMessage,
   type TrophyWire,
@@ -1963,8 +1968,14 @@ interface PlayerComp {
    * the last save — flushed on the savePlayer cadence, never per hit.
    */
   lessonDirty: Set<string>;
-  /** Answered Callings (row-presence mirror of character_callings). */
-  callings: Set<string>;
+  /**
+   * Answered Callings → APPLIED rank (the character_callings mirror;
+   * callings-v2 Phase 4). RANK IS A CHOICE YOU AFFORD: entitlement
+   * derives free from skill depth (callingRank), the applied rank is
+   * chosen up to it and priced by callingCost. Rank 1 is the founding
+   * shape — every pre-Phase-4 row reads as rank 1.
+   */
+  callings: Map<string, number>;
   /**
    * THE WAKING HAND (callings-v2 Phase 2): procs the answered
    * packages carry, rebuilt beside the perks in recomputeGear and
@@ -4058,7 +4069,7 @@ export class GameServer {
       buffs: [],
       techniques: character.id > 0 ? await this.accounts.loadTechniques(character.id) : [null, null],
       lessonDirty: new Set(),
-      callings: character.id > 0 ? new Set(await this.accounts.loadCallings(character.id)) : new Set(),
+      callings: character.id > 0 ? await this.accounts.loadCallings(character.id) : new Map(),
       callingProcs: [],
       callingWhens: [],
       whenEngaged: new Set(),
@@ -4261,7 +4272,7 @@ export class GameServer {
     // are evented now — no per-tick sweep will catch a fresh socket).
     this.sendRide(player);
     this.sendPet(player);
-    session.sendJson({ t: 'callings', answered: [...player.callings] });
+    session.sendJson(this.callingsMessage(player));
     session.sendJson({ t: 'time', ofs: this.timeOfsTicks });
     this.sendCooldowns(player);
     // THE ONE CARE MIRROR: the field's facts, whole, once per session.
@@ -9064,12 +9075,30 @@ export class GameServer {
         });
       }
     }
-    for (const milestone of [FOCUS_MILESTONE_LEVEL, FOCUS_MASTERY_LEVEL]) {
+    for (const milestone of FOCUS_MILESTONES) {
       if (levelBefore < milestone && levelAfter >= milestone) {
         player.session?.sendJson({
           t: 'chat',
           channel: 'system',
           text: `Your Focus deepens — ${focusBudget(player.skills)} to hold Callings with.`,
+        });
+      }
+    }
+    // RANK IS A CHOICE YOU AFFORD: a Calling's ENTITLEMENT climbing is
+    // an offer, not a change — the ceremony names the rank and its
+    // note (authored ranks) or the seat (unranked), and the codex is
+    // where the hand answers deeper.
+    for (const def of callingsFor(skill)) {
+      const before = callingRank(def, levelBefore);
+      const after = callingRank(def, levelAfter);
+      if (after > before && after >= 2) {
+        const step = def.ranks?.[after - 2];
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: step
+            ? `${def.name} may be answered at Rank ${RANK_ROMAN[after]} now — ${step.note}`
+            : `${def.name} may be answered at Rank ${RANK_ROMAN[after]} now.`,
         });
       }
     }
@@ -19918,15 +19947,18 @@ export class GameServer {
     const perks = defaultPerks();
     const callingProcs: ProcEffect[] = [];
     const callingWhens: PlayerComp['callingWhens'] = [];
-    for (const id of player.callings) {
+    for (const [id, appliedRank] of player.callings) {
       const def = callingDef(id);
       if (!def) continue;
       // THE CALLING IS A PACKAGE (callings-v2 Phase 1): every entry
-      // folds. The one reserved lane still waiting on its door (art,
-      // the content epoch's) is typed but unread — the default arm
-      // holds its seat.
-      for (let entryIndex = 0; entryIndex < def.effects.length; entryIndex++) {
-        const fx = def.effects[entryIndex]!;
+      // folds — at the APPLIED rank's package (Phase 4: honedCalling
+      // replaces the package whole per step; unranked defs hold).
+      // The one reserved lane still waiting on its door (art, the
+      // content epoch's) is typed but unread — the default arm holds
+      // its seat.
+      const effects = honedCalling(def, appliedRank);
+      for (let entryIndex = 0; entryIndex < effects.length; entryIndex++) {
+        const fx = effects[entryIndex]!;
         switch (fx.kind) {
           case 'gear':
             if (isAggregateCallingEffect(fx)) foldEffect(player.gear, fx.effect);
@@ -20001,40 +20033,105 @@ export class GameServer {
     this.rideDirty.add(player);
   }
 
-  /** Focus spent by the currently answered set. */
+  /** Focus spent by the currently answered set at its applied ranks. */
   private focusUsed(player: PlayerComp): number {
     let used = 0;
-    for (const id of player.callings) used += callingDef(id)?.focusCost ?? 0;
+    for (const [id, rank] of player.callings) {
+      const def = callingDef(id);
+      if (def) used += callingCost(def.focusCost, rank);
+    }
     return used;
   }
 
+  /** The wire's shape for the answered set: ids + applied ranks (additive). */
+  private callingsMessage(player: PlayerComp): S2CCallings {
+    const ranks: Record<string, number> = {};
+    for (const [id, rank] of player.callings) if (rank > 1) ranks[id] = rank;
+    return {
+      t: 'callings',
+      answered: [...player.callings.keys()],
+      ...(Object.keys(ranks).length > 0 ? { ranks } : {}),
+    };
+  }
+
   /**
-   * Drop answers that no longer exist or no longer fit the budget —
-   * login belt-and-braces only; the toggle path enforces the law live.
+   * Bring the answered set back inside the law — login belt-and-braces
+   * (the toggle path enforces it live). Three passes, each deliberate:
+   * dead defs and unmet seats are dropped; an applied rank past the
+   * current entitlement is LOWERED to it (a de-leveled hand keeps the
+   * calling, at the depth it can still hold); then, while the budget
+   * is overdrawn, the DEEPEST-HELD answers step down one rank at a
+   * time before any answer is set down — a hand is never emptied when
+   * lightening it would do. Never greedy-arbitrary.
    */
   private sanitizeCallings(player: PlayerComp): void {
-    const budget = focusBudget(player.skills);
-    for (const id of [...player.callings]) {
+    const dirty: Array<[string, number | null]> = [];
+    for (const [id, rank] of [...player.callings]) {
       const def = callingDef(id);
       const level = def ? levelForXp(player.skills[def.skill] ?? 0) : 0;
-      if (!def || level < def.unlockLevel || this.focusUsed(player) > budget) {
+      if (!def || level < def.unlockLevel) {
         player.callings.delete(id);
-        if (player.characterId > 0) this.accounts.deleteCalling(player.characterId, id);
+        dirty.push([id, null]);
+        continue;
+      }
+      const cap = Math.max(1, callingRank(def, level));
+      if (rank > cap) {
+        player.callings.set(id, cap);
+        dirty.push([id, cap]);
+      }
+    }
+    const budget = focusBudget(player.skills);
+    while (this.focusUsed(player) > budget && player.callings.size > 0) {
+      // The deepest applied rank steps down first; at rank 1 across
+      // the board, the costliest seat is set down.
+      let pick: string | undefined;
+      let pickRank = 0;
+      let pickCost = 0;
+      for (const [id, rank] of player.callings) {
+        const def = callingDef(id);
+        if (!def) continue;
+        const cost = callingCost(def.focusCost, rank);
+        if (rank > pickRank || (rank === pickRank && cost > pickCost)) {
+          pick = id;
+          pickRank = rank;
+          pickCost = cost;
+        }
+      }
+      if (pick === undefined) break;
+      if (pickRank > 1) {
+        player.callings.set(pick, pickRank - 1);
+        dirty.push([pick, pickRank - 1]);
+      } else {
+        player.callings.delete(pick);
+        dirty.push([pick, null]);
+      }
+    }
+    if (player.characterId > 0) {
+      for (const [id, rank] of dirty) {
+        if (rank === null) this.accounts.deleteCalling(player.characterId, id);
+        else this.accounts.saveCalling(player.characterId, id, rank);
       }
     }
   }
 
   /**
-   * Answer or set down a Calling. Server-validated against the unlock
-   * (BASE level, like techniques) and THE FOCUS LAW's budget; toggling
-   * is always free — the budget is the only law.
+   * Answer, deepen, or set down a Calling. Server-validated against
+   * the seat (BASE level, like techniques), the rank ENTITLEMENT (the
+   * honed clocks — a rank you have not earned cannot be applied), and
+   * THE FOCUS LAW's budget at the applied rank; toggling is always
+   * free — the budget is the only law. `rank` omitted on an answer
+   * means rank I; on an already-answered calling it means "keep the
+   * rank held". Re-answering at a new rank re-prices in place: the
+   * held cost moves only when the PLAYER re-answers deeper (or
+   * shallower), never silently.
    */
-  setCalling(eid: EntityId, calling: string, on: boolean): void {
+  setCalling(eid: EntityId, calling: string, on: boolean, rank?: number): void {
     const player = this.players.get(eid);
     if (!player) return;
     const def = callingDef(calling);
     if (!def) return;
-    if (on && !player.callings.has(calling)) {
+    const held = player.callings.get(calling);
+    if (on) {
       const level = levelForXp(player.skills[def.skill] ?? 0);
       if (level < def.unlockLevel) {
         player.session?.sendJson({
@@ -20044,25 +20141,38 @@ export class GameServer {
         });
         return;
       }
-      const budget = focusBudget(player.skills);
-      if (this.focusUsed(player) + def.focusCost > budget) {
+      const cap = Math.max(1, callingRank(def, level));
+      const wanted = Math.max(1, Math.floor(rank ?? held ?? 1));
+      if (wanted > cap) {
         player.session?.sendJson({
           t: 'chat',
           channel: 'system',
-          text: `Your Focus is spent (${this.focusUsed(player)}/${budget}). Set another Calling down first.`,
+          text: `${def.name} is honed to Rank ${RANK_ROMAN[cap]} in your hands. Rank ${RANK_ROMAN[Math.min(wanted, CALLING_MAX_RANK)] ?? wanted} waits on ${def.skill} level ${rankLevel(def.unlockLevel, wanted)}.`,
         });
         return;
       }
-      player.callings.add(calling);
-      if (player.characterId > 0) this.accounts.saveCalling(player.characterId, calling);
-    } else if (!on && player.callings.has(calling)) {
+      if (held === wanted) return;
+      const budget = focusBudget(player.skills);
+      const others = this.focusUsed(player) - (held !== undefined ? callingCost(def.focusCost, held) : 0);
+      const cost = callingCost(def.focusCost, wanted);
+      if (others + cost > budget) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `Your Focus is spent (${this.focusUsed(player)}/${budget}). ${def.name} at Rank ${RANK_ROMAN[wanted]} holds ${cost}. Set another Calling down first.`,
+        });
+        return;
+      }
+      player.callings.set(calling, wanted);
+      if (player.characterId > 0) this.accounts.saveCalling(player.characterId, calling, wanted);
+    } else if (held !== undefined) {
       player.callings.delete(calling);
       if (player.characterId > 0) this.accounts.deleteCalling(player.characterId, calling);
     } else {
       return;
     }
     this.recomputeGear(eid, player);
-    player.session?.sendJson({ t: 'callings', answered: [...player.callings] });
+    player.session?.sendJson(this.callingsMessage(player));
     this.sendCooldowns(player);
     // THE WAKING HAND: an answer can change the roster of stacking
     // meters (the equip-change law, on the character axis).
@@ -30064,18 +30174,20 @@ export class GameServer {
         });
         return;
       }
+      // /calling <id> [off | <rank 1..4>]
       const on = offRaw !== 'off';
-      if (on) player.callings.add(def.id);
+      const devRank = Math.max(1, Math.min(CALLING_MAX_RANK, Number(offRaw) || 1));
+      if (on) player.callings.set(def.id, devRank);
       else player.callings.delete(def.id);
       this.recomputeGear(eid, player);
-      player.session?.sendJson({ t: 'callings', answered: [...player.callings] });
+      player.session?.sendJson(this.callingsMessage(player));
       this.sendCooldowns(player);
       this.sendCharges(player);
       player.session?.sendJson({
         t: 'chat',
         channel: 'system',
         text: on
-          ? `${def.name} answers (dev, unpersisted).`
+          ? `${def.name} answers at Rank ${RANK_ROMAN[devRank]} (dev, unpersisted).`
           : `${def.name} set down (dev).`,
       });
       return;

@@ -246,23 +246,51 @@ export function xpMarkAllowance(xpReward: number): number {
 
 /** Base Focus every character carries before any milestone. */
 export const FOCUS_BASE = 2;
-/** Each skill at or past this BASE level grants +1 Focus... */
+/**
+ * THE FOCUS LAW v2 (callings-v2 Phase 4, THE WIDER LADDER — the
+ * epic's ONE number move, green-lit): every skill pays +1 Focus at
+ * each quartile milestone. Four milestones × 25 skills + the base
+ * = 102 at the ceiling — a maxed account holds roughly a fifth of a
+ * ten-seat world, so the class stays a CHOICE at every hour of play.
+ * The 50 and 99 milestones keep their founding seats inside the
+ * curve (nothing a character had is taken away).
+ */
+export const FOCUS_MILESTONES: readonly number[] = [25, 50, 75, 99];
+/** The founding milestone constants, kept for the ceremony lines. */
 export const FOCUS_MILESTONE_LEVEL = 50;
-/** ...and +1 more at mastery. */
 export const FOCUS_MASTERY_LEVEL = 99;
 
 /**
  * THE FOCUS LAW: the account's capacity to hold Callings answered.
  * Derived from base skill levels, never stored — the milestone IS the
- * ledger. Breadth and depth both pay: +1 per skill at 50, +1 more at
- * 99, so the completionist visibly runs a richer build.
+ * ledger. Breadth and depth both pay: +1 per skill at each quartile,
+ * so the completionist visibly runs a richer build.
  */
 export function focusBudget(skills: SkillXp): number {
   let focus = FOCUS_BASE;
   for (const xp of Object.values(skills)) {
     const level = levelForXp(xp ?? 0);
-    if (level >= FOCUS_MILESTONE_LEVEL) focus++;
-    if (level >= FOCUS_MASTERY_LEVEL) focus++;
+    for (const m of FOCUS_MILESTONES) if (level >= m) focus++;
   }
   return focus;
+}
+
+/**
+ * THE SEAT BANDS: a Calling's rank-I price follows its seat on the
+ * ladder — minors under 40 hold 1, majors 40..79 hold 2, capstones
+ * 80+ hold 3. Content authors read the band; the contract test pins
+ * every def to it.
+ */
+export function focusCostForSeat(unlockLevel: number): number {
+  return unlockLevel >= 80 ? 3 : unlockLevel >= 40 ? 2 : 1;
+}
+
+/**
+ * RANK IS A CHOICE YOU AFFORD (the green-light's word): the Focus an
+ * answered Calling holds at an APPLIED rank — its seat price plus one
+ * per rank past I. Entitlement to a rank derives free from skill
+ * depth (the honed clocks); holding it deeper is what costs.
+ */
+export function callingCost(seatCost: number, appliedRank: number): number {
+  return seatCost + Math.max(0, appliedRank - 1);
 }

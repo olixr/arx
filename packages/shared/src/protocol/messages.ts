@@ -579,11 +579,16 @@ export interface C2STechnique {
   slot: 0 | 2;
 }
 
-/** Answer or set down a Calling (toggleable skill passive). */
+/**
+ * Answer, deepen, or set down a Calling (toggleable skill passive).
+ * `rank` (callings-v2 Phase 4, additive) = the APPLIED rank to hold;
+ * omitted on an answer means Rank I, on a held calling means "keep".
+ */
 export interface C2SCalling {
   t: 'calling';
   calling: string;
   on: boolean;
+  rank?: number;
 }
 
 /** Choose the character's base look — accepted once, then locked. */
@@ -1342,6 +1347,12 @@ export interface S2CTechniques {
 export interface S2CCallings {
   t: 'callings';
   answered: string[];
+  /**
+   * APPLIED ranks past I, by id (callings-v2 Phase 4, additive v34
+   * fact): absent or missing an id = Rank I. An older client reads
+   * `answered` unchanged.
+   */
+  ranks?: Record<string, number>;
 }
 
 /** One active buff, for the HUD chip row. */
@@ -2658,7 +2669,11 @@ export function parseC2S(raw: string): C2SMessage | null {
     case 'calling': {
       if (typeof msg.calling !== 'string' || msg.calling.length > 64) return null;
       if (typeof msg.on !== 'boolean') return null;
-      return { t: 'calling', calling: msg.calling, on: msg.on };
+      const rank =
+        typeof msg.rank === 'number' && Number.isFinite(msg.rank)
+          ? Math.max(1, Math.min(4, Math.floor(msg.rank)))
+          : undefined;
+      return { t: 'calling', calling: msg.calling, on: msg.on, ...(rank !== undefined ? { rank } : {}) };
     }
     case 'setlook': {
       const look = sanitizeLook(msg.look);

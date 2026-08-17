@@ -659,6 +659,8 @@ export class ClientGame {
   lessons: Record<string, number> = {};
   /** Answered Callings (server truth; Focus derives from skills). */
   callings: string[] = [];
+  /** APPLIED ranks past I by id (callings-v2 Phase 4; absent = Rank I). */
+  callingRanks: Record<string, number> = {};
   /** Active consumable buffs (tonic/food) for the HUD chip row. */
   buffs: BuffInfo[] = [];
   /**
@@ -1032,9 +1034,12 @@ export class ClientGame {
     this.conn?.send({ t: 'technique', ability, slot });
   }
 
-  /** Answer or set down a Calling (server enforces THE FOCUS LAW). */
-  sendCalling(calling: string, on: boolean): void {
-    this.conn?.send({ t: 'calling', calling, on });
+  /**
+   * Answer, deepen, or set down a Calling (server enforces THE FOCUS
+   * LAW and the rank entitlement). `rank` = the applied rank to hold.
+   */
+  sendCalling(calling: string, on: boolean, rank?: number): void {
+    this.conn?.send({ t: 'calling', calling, on, ...(rank !== undefined ? { rank } : {}) });
   }
 
   /** Remaining cooldown fraction for a hotbar slot, 0 = ready. */
@@ -2315,6 +2320,7 @@ export class ClientGame {
       }
       case 'callings': {
         this.callings = msg.answered;
+        this.callingRanks = msg.ranks ?? {};
         this.onCallings?.();
         break;
       }
