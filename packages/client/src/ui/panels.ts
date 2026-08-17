@@ -3003,8 +3003,10 @@ export class Panels {
     for (const g of gauges) {
       const cell = document.createElement('span');
       cell.className = 'sum-cell';
-      cell.dataset.tipname = 'The Sum';
-      cell.dataset.tipsub = `${g.num} ${g.word}, across every answered Calling.`;
+      // The gauge explains itself: what it means, and WHICH answered
+      // Callings feed it.
+      cell.dataset.tipname = `${g.num} ${g.word}`;
+      cell.dataset.tipsub = `${g.tip} From ${g.from.join(', ')}.`;
       // Every glyph stands on the same fixed stage, so the bank's
       // cells hold one rhythm whatever shape the family wears.
       const stage = document.createElement('span');
@@ -3012,13 +3014,16 @@ export class Panels {
       const glyph = document.createElement('span');
       glyph.className = `sum-glyph ${g.kind}`;
       stage.appendChild(glyph);
+      const col = document.createElement('span');
+      col.className = 'sum-col';
       const num = document.createElement('span');
       num.className = 'sum-num';
       num.textContent = g.num;
       const word = document.createElement('span');
       word.className = 'sum-word';
       word.textContent = g.word;
-      cell.append(stage, num, word);
+      col.append(num, word);
+      cell.append(stage, col);
       chips.appendChild(cell);
     }
     sum.append(stitle, chips);
@@ -3027,77 +3032,99 @@ export class Panels {
   }
 
   /**
-   * The always-on aggregates of the answered set summed honestly, and
-   * its verbs counted — conditional edges are never folded into flat
-   * sums (a vsState clause is a clause, not armor). Each total is a
-   * GAUGE: the glyph of its family, the numeral, the word.
+   * THE SUM's gauges: the always-on aggregates summed honestly, the
+   * verbs counted, and EVERY gauge carrying the names of the
+   * Callings that feed it — so the tooltip answers "where is this
+   * from?" without a spreadsheet. Conditional edges are never folded
+   * into flat sums (a vs-state clause is a clause, not armor).
    */
-  private answeredSums(defs: CallingDef[]): Array<{ kind: string; num: string; word: string }> {
-    const flat = { armor: 0, maxHp: 0, regen: 0, speed: 0, crit: 0, cooldown: 0, thorns: 0, skill: 0 };
-    let procs = 0;
-    let whens = 0;
-    let arts = 0;
-    let trades = 0;
-    let edges = 0;
-    let pieces = 0;
-    let knacks = 0;
+  private answeredSums(
+    defs: CallingDef[],
+  ): Array<{ kind: string; num: string; word: string; tip: string; from: string[] }> {
+    const flat: Record<string, { sum: number; from: Set<string> }> = {};
+    const count: Record<string, { n: number; from: Set<string> }> = {};
+    const addFlat = (ch: string, amount: number, who: string): void => {
+      (flat[ch] ??= { sum: 0, from: new Set() }).sum += amount;
+      flat[ch]!.from.add(who);
+    };
+    const addCount = (ch: string, who: string): void => {
+      (count[ch] ??= { n: 0, from: new Set() }).n += 1;
+      count[ch]!.from.add(who);
+    };
     for (const def of defs) {
       for (const fx of honedCalling(def, this.appliedRank(def.id))) {
         switch (fx.kind) {
           case 'gear': {
             const e = fx.effect;
-            if (e.kind === 'armor') flat.armor += e.amount;
-            else if (e.kind === 'maxHp') flat.maxHp += e.amount;
-            else if (e.kind === 'regen') flat.regen += e.amount;
-            else if (e.kind === 'speed') flat.speed += e.pct;
-            else if (e.kind === 'crit') flat.crit += e.pct;
-            else if (e.kind === 'cooldown') flat.cooldown += e.pct;
-            else if (e.kind === 'thorns') flat.thorns += e.amount;
-            else if (e.kind === 'skill') flat.skill += e.amount;
-            else if (e.kind === 'styleDmg' || e.kind === 'elementDmg' || e.kind === 'vsState') edges++;
-            else if (e.kind === 'proc') procs++;
+            if (e.kind === 'armor') addFlat('armor', e.amount, def.name);
+            else if (e.kind === 'maxHp') addFlat('maxHp', e.amount, def.name);
+            else if (e.kind === 'regen') addFlat('regen', e.amount, def.name);
+            else if (e.kind === 'speed') addFlat('speed', e.pct, def.name);
+            else if (e.kind === 'crit') addFlat('crit', e.pct, def.name);
+            else if (e.kind === 'cooldown') addFlat('cooldown', e.pct, def.name);
+            else if (e.kind === 'thorns') addFlat('thorns', e.amount, def.name);
+            else if (e.kind === 'skill') addFlat('skill', e.amount, def.name);
+            else if (e.kind === 'styleDmg' || e.kind === 'elementDmg' || e.kind === 'vsState')
+              addCount('edge', def.name);
+            else if (e.kind === 'proc') addCount('proc', def.name);
             break;
           }
           case 'proc':
-            procs++;
+            addCount('proc', def.name);
             break;
           case 'when':
-            whens++;
+            addCount('when', def.name);
             break;
           case 'art':
-            arts++;
+            addCount('art', def.name);
             break;
           case 'perPiece':
-            pieces++;
+            addCount('piece', def.name);
             break;
           case 'perk':
-            knacks++;
+            addCount('knack', def.name);
             break;
           case 'doubleGather':
           case 'gatherSpeed':
           case 'materialSave':
           case 'craftSpeed':
-            trades++;
+            addCount('trade', def.name);
             break;
         }
       }
     }
-    const out: Array<{ kind: string; num: string; word: string }> = [];
-    if (flat.armor) out.push({ kind: 'armor', num: `+${flat.armor}`, word: 'armor' });
-    if (flat.maxHp) out.push({ kind: 'health', num: `+${flat.maxHp}`, word: 'health' });
-    if (flat.regen) out.push({ kind: 'mending', num: `+${flat.regen}`, word: 'mending' });
-    if (flat.speed) out.push({ kind: 'speed', num: `+${flat.speed}%`, word: 'speed' });
-    if (flat.crit) out.push({ kind: 'crit', num: `+${flat.crit}%`, word: 'crit' });
-    if (flat.cooldown) out.push({ kind: 'arts', num: `${flat.cooldown}%`, word: 'arts sooner' });
-    if (flat.thorns) out.push({ kind: 'thorns', num: `+${flat.thorns}`, word: 'thorns' });
-    if (flat.skill) out.push({ kind: 'skill', num: `+${flat.skill}`, word: 'skill' });
-    if (edges) out.push({ kind: 'edge', num: String(edges), word: edges === 1 ? 'edge' : 'edges' });
-    if (procs) out.push({ kind: 'proc', num: String(procs), word: procs === 1 ? 'working' : 'workings' });
-    if (whens) out.push({ kind: 'when', num: String(whens), word: whens === 1 ? 'clause' : 'clauses' });
-    if (trades) out.push({ kind: 'trade', num: String(trades), word: trades === 1 ? 'trade gift' : 'trade gifts' });
-    if (pieces) out.push({ kind: 'gear', num: String(pieces), word: pieces === 1 ? 'worn gift' : 'worn gifts' });
-    if (knacks) out.push({ kind: 'knack', num: String(knacks), word: knacks === 1 ? 'knack' : 'knacks' });
-    if (arts) out.push({ kind: 'art', num: String(arts), word: arts === 1 ? 'licensed art' : 'licensed arts' });
+    const out: Array<{ kind: string; num: string; word: string; tip: string; from: string[] }> = [];
+    const F = (
+      ch: string,
+      kind: string,
+      num: (n: number) => string,
+      word: string,
+      tip: string,
+    ): void => {
+      const f = flat[ch];
+      if (f && f.sum) out.push({ kind, num: num(f.sum), word, tip, from: [...f.from] });
+    };
+    const C = (ch: string, kind: string, one: string, many: string, tip: string): void => {
+      const c = count[ch];
+      if (c && c.n) {
+        out.push({ kind, num: String(c.n), word: c.n === 1 ? one : many, tip, from: [...c.from] });
+      }
+    };
+    F('armor', 'armor', (n) => `+${n}`, 'armor', 'Flat armor, always on.');
+    F('maxHp', 'health', (n) => `+${n}`, 'max health', 'A deeper well of health, always on.');
+    F('regen', 'mending', (n) => `+${n}`, 'health per 4s', 'Wounds close on their own, always on.');
+    F('speed', 'speed', (n) => `+${n}%`, 'move speed', 'Quicker on your feet, always on.');
+    F('crit', 'crit', (n) => `+${n}%`, 'critical chance', 'Blows strike true more often.');
+    F('cooldown', 'arts', (n) => `${n}%`, 'quicker arts', 'Your abilities return sooner.');
+    F('thorns', 'thorns', (n) => `+${n}`, 'thorns', 'Attackers cut themselves on you.');
+    F('skill', 'skill', (n) => `+${n}`, 'skill levels', 'You work as if levels wiser.');
+    C('edge', 'edge', 'damage bonus', 'damage bonuses', 'Extra damage against certain foes or with certain weapons.');
+    C('proc', 'proc', 'triggered effect', 'triggered effects', 'A working that fires on a moment: a blow, a wound, a rhythm.');
+    C('when', 'when', 'conditional boon', 'conditional boons', 'A standing gift that holds while its condition is true.');
+    C('trade', 'trade', 'trade bonus', 'trade bonuses', 'Faster or richer gathering and crafting.');
+    C('piece', 'gear', 'per-piece bonus', 'per-piece bonuses', 'Grows with each matching armor piece you wear.');
+    C('knack', 'knack', 'special knack', 'special knacks', 'A one-of-a-kind talent read at its own moment.');
+    C('art', 'art', 'art unlocked', 'arts unlocked', 'An ability licensed to your codex while this stays answered.');
     return out;
   }
 
