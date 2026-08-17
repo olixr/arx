@@ -11,8 +11,8 @@
       "to": 13,
       "task": {
         "kind": "wander",
-        "x": 11,
-        "y": -6,
+        "x": -3,
+        "y": -8,
         "radius": 2,
         "speed": 1.2
       }

@@ -133,6 +133,7 @@ export class BossBanner {
       } else if (now - this.felledAt >= FELLED_HOLD_MS) {
         this.root.classList.remove('felled');
         this.root.style.display = 'none';
+        document.body.classList.remove('boss-up');
         this.felledAt = 0;
         this.shown = null;
         this.key = '';
@@ -151,6 +152,7 @@ export class BossBanner {
     if (!best) {
       // Walked away, or never engaged: the banner simply lowers.
       this.root.style.display = 'none';
+      document.body.classList.remove('boss-up');
       this.shown = null;
       return;
     }
@@ -159,6 +161,7 @@ export class BossBanner {
     const turned = !fresh && this.shown !== null && best.phase > this.shown.phase;
 
     this.root.style.display = '';
+    document.body.classList.add('boss-up');
     this.nameEl.textContent = best.name;
     this.titleEl.textContent = best.title;
     this.titleEl.style.display = best.title ? '' : 'none';

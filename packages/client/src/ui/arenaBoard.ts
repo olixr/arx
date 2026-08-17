@@ -80,6 +80,8 @@ export class ArenaBoard {
           this.game.arenaQueue(m.id);
           this.close();
         });
+      } else {
+        plate.setAttribute('aria-disabled', 'true');
       }
       this.cards.appendChild(plate);
     }
@@ -94,14 +96,17 @@ export class ArenaBoard {
       const meter = document.createElement('span');
       meter.className = 'arena-ladder-meter';
       const fill = document.createElement('i');
-      // Fraction of the way from the LAST rung to the next.
-      const span = Math.max(1, b.xpNext - 0);
-      fill.style.setProperty('--fill', String(Math.max(0, Math.min(1, b.xp / span))));
+      // The honest rung: the meter climbs from THIS rank's floor to
+      // the next threshold (xpPrev rides the wire; an old server
+      // without it degrades to the lifetime fraction).
+      const floor = b.xpPrev ?? 0;
+      const span = Math.max(1, b.xpNext - floor);
+      fill.style.setProperty('--fill', String(Math.max(0, Math.min(1, (b.xp - floor) / span))));
       meter.appendChild(fill);
       this.ladder.appendChild(meter);
       const words = document.createElement('span');
       words.className = 'arena-ladder-next';
-      words.textContent = `${b.xp} / ${b.xpNext} marks`;
+      words.textContent = `${b.xp - floor} / ${b.xpNext - floor} marks to the next rung`;
       this.ladder.appendChild(words);
     } else {
       const words = document.createElement('span');

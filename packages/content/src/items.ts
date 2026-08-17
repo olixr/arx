@@ -1293,6 +1293,19 @@ const defs: ItemDef[] = [
     code: 'Qf',
   },
 
+  // THE SAND AND THE ROAR: the arena's own trophy — found ONLY in the
+  // headline purse (arena_purse_t4). Worth a small fortune to a
+  // collector and everything to the shelf it stands on.
+  {
+    id: 'sand_laurel',
+    name: 'Laurel of the Sands',
+    stackable: false,
+    value: 900,
+    desc: 'Hammered gold leaves on an iron band. The crowd remembers who wore one, longer than the wearers did.',
+    color: '#e8b74a',
+    code: 'Ls',
+  },
+
   // Sigils — boss-trophy ultimates (T). One per boss, forever.
   {
     id: 'sigil_fallen_champion',

@@ -263,6 +263,44 @@ test('VALIDATOR: a dead counter warns; ladder titles must ascend', () => {
   );
 });
 
+test('VALIDATOR: the proving-pass laws hold (plane, rim, pinned venue)', () => {
+  const refs = arenaValidateRefsNow();
+  // A typo'd plane is refused with the registry in hand.
+  const badPlane = docCopy();
+  (badPlane.venues[0] as { plane?: string }).plane = 'not_a_plane';
+  let res = validateArenas(JSON.parse(JSON.stringify(badPlane)), refs);
+  assert.ok(!res.ok && res.errors.some((e) => /names no standing plane/.test(e)));
+  // A pit whose RIM overhangs the zone is refused, center be damned.
+  const overhang = docCopy();
+  overhang.venues[1]!.pit.x = 590; // east rim 594.5 > amberford's 592 hem
+  res = validateArenas(JSON.parse(JSON.stringify(overhang)), refs);
+  assert.ok(!res.ok && res.errors.some((e) => /rim.*lies outside zone/.test(e)));
+  // A card pinned to an undeclared venue is an ERROR (unlistable),
+  // and a pin outside the venue's band is the lamp, not the law.
+  const pinned = docCopy();
+  pinned.matches[0]!.venues = ['no_such_ring'];
+  res = validateArenas(JSON.parse(JSON.stringify(pinned)), refs);
+  assert.ok(!res.ok && res.errors.some((e) => /names venue 'no_such_ring'/.test(e)));
+  const offBand = docCopy();
+  offBand.matches.find((m) => m.id === 'the_tyrants_turn')!.venues = ['ford_ring'];
+  res = validateArenas(JSON.parse(JSON.stringify(offBand)), refs);
+  assert.ok(res.ok);
+  if (res.ok) assert.ok(res.warnings.some((w) => /outside its band/.test(w)));
+});
+
+test('PURSE: the laurel is the sand\'s alone (the exclusive law)', () => {
+  // sand_laurel lives in arena_purse_t4 and NOWHERE else.
+  let homes = 0;
+  for (const [id, t] of LOOT_TABLES) {
+    const holds = t.entries.some((e) => 'item' in e && e.item === 'sand_laurel');
+    if (holds) {
+      homes++;
+      assert.equal(id, 'arena_purse_t4', `sand_laurel leaked into '${id}'`);
+    }
+  }
+  assert.equal(homes, 1, 'the laurel must stand in exactly one purse');
+});
+
 // ------------------------------------------------------------------
 // The purse bands
 // ------------------------------------------------------------------

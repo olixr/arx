@@ -38,7 +38,7 @@
   cursor: pointer;
 }
 .arena-card:hover:not(.locked),
-.arena-card:focus-visible {
+.arena-card:focus-visible:not(.locked) {
   border-color: var(--gold);
 }
 .arena-card.locked {
@@ -205,4 +205,38 @@
   height: 100%;
   background: var(--gold);
   transform-origin: left;
+}
+
+/* A crowned round raises both readings: the banner keeps its band,
+ * the match card steps below it (the audit's collision find). */
+body.boss-up #arena-hud {
+  top: calc(var(--sp-6) + 5.25rem);
+}
+
+/* The stands' copy of the card reads a shade quieter. */
+#arena-hud.spec {
+  opacity: 0.82;
+}
+
+/* THE ONE CONTROL: the walk-away chip, muster only. The HUD stays
+ * pointer-blind; the chip alone takes the pointer. */
+.arena-hud-leave {
+  display: none;
+  margin: 0.375rem auto 0;
+  padding: 0.125rem 0.625rem;
+  font-size: var(--t-whisper);
+  letter-spacing: 0.06em;
+  color: var(--parchment-dim);
+  background: var(--sunk);
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: var(--r-chip);
+  pointer-events: auto;
+  cursor: pointer;
+}
+#arena-hud.leavable .arena-hud-leave {
+  display: inline-block;
+}
+.arena-hud-leave:hover {
+  color: var(--parchment);
+  border-color: var(--gold);
 }

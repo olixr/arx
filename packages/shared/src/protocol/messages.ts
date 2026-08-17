@@ -1654,6 +1654,8 @@ export interface S2CArenaBoard {
   xp: number;
   /** Lifetime xp at which the next rank lands (absent at the cap). */
   xpNext?: number;
+  /** Lifetime xp at which the CURRENT rank landed — the meter's floor. */
+  xpPrev?: number;
 }
 
 /**
@@ -1676,6 +1678,13 @@ export interface S2CArenaState {
   remainMs?: number;
   /** Foes still standing in the round. */
   foes?: number;
+  /**
+   * THE STANDS SEE THE CARD: set when this state is fanned to a
+   * SPECTATOR near the pit rather than an enrolled member. A
+   * spectator's HUD clears itself when the fan goes quiet (no 'off'
+   * is owed to a body that can simply walk away).
+   */
+  spec?: true;
 }
 
 /**

@@ -1669,10 +1669,14 @@ interface DungeonInstance {
 interface ArenaMatchState {
   venueId: string;
   /**
-   * The card SNAPSHOT at purchase — a Studio save mid-match retunes
-   * the next match, never a fight already paid for.
+   * The card AND the venue, SNAPSHOTTED at purchase — a Studio save
+   * mid-match retunes the next match, never a fight already paid
+   * for. The venue snapshot is load-bearing (the audit's find): a
+   * live venue edit mid-match would otherwise strand shut gates and
+   * leak an unwarded purse when the teardown re-read moved ground.
    */
   def: ArenaMatchDef;
+  venue: ArenaVenueDef;
   plan: MatchPlan;
   seed: number;
   phase: 'muster' | 'gates' | 'breather' | 'round' | 'victory';
@@ -4890,7 +4894,14 @@ export class GameServer {
     // stash — the lid lifting on town ground, seen by a faction body,
     // is a theft charged to the town's own ledger. Wilds and dungeon
     // chests stay the ordinary loot loop; unseen is unswayed.
-    const townFid = pos.plane === SURFACE_PLANE_ID ? this.townFactionAt(cx, cy) : null;
+    // THE SAND AND THE ROAR carve-out: the arena purse is the house
+    // PAYING — a winner opening the chest they won, in front of the
+    // whole crowd, is the opposite of theft (the audit's first find:
+    // both shipped rings stand on town ground under town witnesses).
+    const townFid =
+      pos.plane === SURFACE_PLANE_ID && !over?.cell.startsWith('arena:')
+        ? this.townFactionAt(cx, cy)
+        : null;
     if (townFid !== null) {
       this.chargeTheft(eid, player, cx, cy, this.theftWitnesses(pos.plane, cx, cy, eid), townFid);
     }
@@ -13156,15 +13167,43 @@ export class GameServer {
     const m = this.arenaOf(characterId);
     if (!m || !m.gatesShut) return undefined;
     if (m.members.get(characterId)?.alive !== true) return undefined;
-    return arenaVenue(m.venueId);
+    return m.venue;
   }
 
   /** Fan a message to every member's live session. */
-  private arenaSend(match: ArenaMatchState, msg: S2CMessage): void {
-    for (const cid of match.members.keys()) {
+  /**
+   * Fan a message to members. Plain state fans reach the LIVING only
+   * (the audit's find: a fallen member's `off` was undone by the very
+   * next fan, riding their corpse home wearing a live match card);
+   * ceremony fans (`all: true` — wipe, off, victory) reach everyone.
+   */
+  private arenaSend(match: ArenaMatchState, msg: S2CMessage, opts: { all?: boolean } = {}): void {
+    for (const [cid, m] of match.members) {
+      if (!opts.all && m.alive !== true) continue;
       const eid = this.characterEids.get(cid);
       if (eid === undefined) continue;
       this.players.get(eid)?.session?.sendJson(msg);
+    }
+  }
+
+  /**
+   * THE STANDS SEE THE CARD: fan a state to members AND to every
+   * bystander near the pit (spec-tagged — their HUD self-clears when
+   * the fan goes quiet, so no teardown owes them an 'off').
+   */
+  private arenaStateFan(match: ArenaMatchState, all = false): void {
+    const state = this.arenaState(match);
+    this.arenaSend(match, state, { all });
+    const venue = match.venue;
+    const plane = venue.plane ?? SURFACE_PLANE_ID;
+    const reach = Math.max(venue.pit.rx, venue.pit.ry) + 14;
+    const spec = { ...state, spec: true as const };
+    for (const [peid, p] of this.players) {
+      if (match.members.has(p.characterId)) continue;
+      const pp = this.positions.get(peid);
+      if (!pp || pp.plane !== plane) continue;
+      if (Math.hypot(pp.x - venue.pit.x, pp.y - venue.pit.y) > reach) continue;
+      p.session?.sendJson(spec);
     }
   }
 
@@ -13204,7 +13243,7 @@ export class GameServer {
    */
   private arenaBark(match: ArenaMatchState, text: string): void {
     if (text.length === 0) return;
-    const venue = arenaVenue(match.venueId);
+    const venue = match.venue;
     if (!venue) return;
     if (match.masterEid === null || !this.ecs.isAlive(match.masterEid)) {
       match.masterEid = null;
@@ -13234,7 +13273,7 @@ export class GameServer {
    * masonry) no-ops politely so the engine can rehearse anywhere.
    */
   private arenaSetGates(match: ArenaMatchState, shut: boolean): void {
-    const venue = arenaVenue(match.venueId);
+    const venue = match.venue;
     if (!venue) return;
     const plane = venue.plane ?? SURFACE_PLANE_ID;
     const world = this.worldOf(plane);
@@ -13293,6 +13332,7 @@ export class GameServer {
       rank: bank.rank,
       title: arenaTitleFor(bank.rank),
       xp: bank.xp,
+      xpPrev: totalXpForArenaRank(bank.rank),
       ...(bank.rank < ARENAS.ladder.maxRank
         ? { xpNext: totalXpForArenaRank(bank.rank + 1) }
         : {}),
@@ -13362,6 +13402,7 @@ export class GameServer {
     const match: ArenaMatchState = {
       venueId: venue.id,
       def: JSON.parse(JSON.stringify(def)) as ArenaMatchDef,
+      venue: JSON.parse(JSON.stringify(venue)) as ArenaVenueDef,
       plan: rollMatchPlan(def, seed),
       seed,
       phase: 'muster',
@@ -13384,11 +13425,14 @@ export class GameServer {
     };
     this.arenaMatches.set(venue.id, match);
     // The muster call reaches the whole party — the fellows see the
-    // clock even from across the district.
+    // clock even from across the district. A fellow already on a live
+    // card keeps their own fight (the audit's find: double enrollment
+    // made arenaOf insertion-order-dependent and misrouted their
+    // leave and their HUD).
     for (const cid of this.party.fellowsOf(player.characterId)) {
-      match.members.set(cid, { alive: true });
+      if (this.arenaOf(cid) === null) match.members.set(cid, { alive: true });
     }
-    this.arenaSend(match, this.arenaState(match));
+    this.arenaStateFan(match);
     this.arenaBark(match, stockBark('muster', seed, 0));
     this.broadcastFx(plane, {
       t: 'fx',
@@ -13414,12 +13458,24 @@ export class GameServer {
       this.arenaReset(match, { silent: true });
       return;
     }
+    if (match.phase === 'muster') {
+      // A fellow declining the muster simply steps off the roster —
+      // gate-shut re-derives enrollment, and a deleted name cannot be
+      // silently re-enrolled by standing in the wrong place.
+      match.members.delete(player.characterId);
+      player.session?.sendJson({ t: 'arena', phase: 'off' });
+      if (match.members.size === 0) this.arenaReset(match, { silent: true });
+      return;
+    }
     const m = match.members.get(player.characterId);
     if (m?.alive === true) {
       m.alive = false;
-      const venue = arenaVenue(match.venueId);
+      const venue = match.venue;
       const pos = this.positions.get(eid);
-      if (venue && pos && pos.plane === (venue.plane ?? SURFACE_PLANE_ID)) {
+      // The walk-of-shame is for a body ON the sand — never a
+      // cross-map ferry (the audit's find: a far-away fellow could
+      // ride the forfeit teleport across the whole plane).
+      if (pos && pos.plane === (venue.plane ?? SURFACE_PLANE_ID) && inPit(venue.pit, pos.x, pos.y, 1.5)) {
         this.teleport(eid, venue.exit.x + 0.5, venue.exit.y + 0.5);
       }
       player.session?.sendJson({ t: 'arena', phase: 'off' });
@@ -13448,7 +13504,7 @@ export class GameServer {
     if (m?.alive !== true) return;
     m.alive = false;
     player.session?.sendJson({ t: 'arena', phase: 'off' });
-    this.arenaSend(match, this.arenaState(match));
+    this.arenaStateFan(match);
     this.arenaWipeCheck(match);
   }
 
@@ -13488,14 +13544,16 @@ export class GameServer {
         void this.accounts
           .loadArena(cid)
           .then((row) => {
-            const bank = row ?? freshArenaBank();
+            const backEid = this.characterEids.get(cid);
+            const back = backEid !== undefined ? this.players.get(backEid) : undefined;
+            const bank = back ? back.arena : (row ?? freshArenaBank());
             bank.losses++;
             this.accounts.saveArena(cid, bank);
           })
           .catch(() => undefined);
       }
     }
-    this.arenaSend(match, { ...this.arenaState(match, 'wipe'), remainMs: undefined });
+    this.arenaSend(match, { ...this.arenaState(match, 'wipe'), remainMs: undefined }, { all: true });
     this.arenaReset(match, { keepWipeWord: true });
   }
 
@@ -13509,7 +13567,7 @@ export class GameServer {
     match: ArenaMatchState,
     opts: { silent?: boolean; keepWipeWord?: boolean } = {},
   ): void {
-    const venue = arenaVenue(match.venueId);
+    const venue = match.venue;
     const plane = venue?.plane ?? SURFACE_PLANE_ID;
     // The sand takes its dead: wave bodies leave with a death burst
     // (the disbandCourt manner) and their own summons go with them.
@@ -13554,11 +13612,13 @@ export class GameServer {
       }
     }
     this.arenaSetGates(match, false);
-    if (!opts.keepWipeWord && !opts.silent) {
-      this.arenaSend(match, { t: 'arena', phase: 'off' });
-    } else if (opts.keepWipeWord) {
-      // The wipe word was just sent; the HUD lowers on its own beat.
-      this.arenaSend(match, { t: 'arena', phase: 'off' });
+    // THE WIPE KEEPS ITS BEAT (the audit's find: 'wipe' then 'off' in
+    // the same tick meant the lost frame never rendered): on the wipe
+    // path no 'off' is sent at all — the client holds the wipe card
+    // for its own 2.6 s beat and lowers itself. Every other path
+    // lowers the HUD for everyone, fallen included.
+    if (!opts.keepWipeWord) {
+      this.arenaSend(match, { t: 'arena', phase: 'off' }, { all: true });
     }
     this.arenaMatches.delete(match.venueId);
     this.arenaCooldowns.set(match.venueId, Date.now() + ARENAS.dials.cooldownSec * 1000);
@@ -13566,7 +13626,7 @@ export class GameServer {
 
   /** Gate-shut: enrollment crystallizes and the sand empties of guests. */
   private arenaGateShut(match: ArenaMatchState): void {
-    const venue = arenaVenue(match.venueId);
+    const venue = match.venue;
     if (!venue) {
       this.arenaReset(match, { silent: true });
       return;
@@ -13612,12 +13672,12 @@ export class GameServer {
       id: 'arena:gates',
       ticks: 40,
     });
-    this.arenaSend(match, this.arenaState(match));
+    this.arenaStateFan(match);
   }
 
   /** Field the current round onto the sand. */
   private arenaSpawnRound(match: ArenaMatchState): void {
-    const venue = arenaVenue(match.venueId);
+    const venue = match.venue;
     const round = match.plan.rounds[match.round];
     if (!venue || !round) {
       this.arenaReset(match, { silent: true });
@@ -13687,7 +13747,7 @@ export class GameServer {
     });
     match.phase = 'round';
     match.deadlineTick = 0;
-    this.arenaSend(match, this.arenaState(match));
+    this.arenaStateFan(match);
   }
 
   /** A wave body left the sand — the kill path's notification. */
@@ -13697,7 +13757,7 @@ export class GameServer {
     match.waveEids.delete(npcEid);
     if (match.phase !== 'round') return;
     if (this.arenaFoesLeft(match) > 0) {
-      this.arenaSend(match, this.arenaState(match));
+      this.arenaStateFan(match);
       return;
     }
     if (match.round >= match.plan.rounds.length - 1) {
@@ -13707,13 +13767,13 @@ export class GameServer {
       match.phase = 'breather';
       match.deadlineTick = this.tickCount + ARENAS.dials.countdownSec * 20;
       this.arenaBark(match, stockBark('round', match.seed, 20 + match.round));
-      this.arenaSend(match, this.arenaState(match));
+      this.arenaStateFan(match);
     }
   }
 
   /** The card is won: the show, the ladder, the purse. */
   private arenaVictory(match: ArenaMatchState): void {
-    const venue = arenaVenue(match.venueId);
+    const venue = match.venue;
     if (!venue) {
       this.arenaReset(match, { silent: true });
       return;
@@ -13755,7 +13815,12 @@ export class GameServer {
         void this.accounts
           .loadArena(cid)
           .then((row) => {
-            const bank = row ?? freshArenaBank();
+            // If the soul relogged while the read was in flight, pay
+            // the LIVE bank (the audit's find: the async save would
+            // otherwise be clobbered by the next live write).
+            const backEid = this.characterEids.get(cid);
+            const back = backEid !== undefined ? this.players.get(backEid) : undefined;
+            const bank = back ? back.arena : (row ?? freshArenaBank());
             bankArenaXp(bank, pay);
             bank.wins++;
             this.accounts.saveArena(cid, bank);
@@ -13794,7 +13859,7 @@ export class GameServer {
       radius: Math.max(venue.pit.rx, venue.pit.ry),
       id: 'arena:victory',
     });
-    this.arenaSend(match, this.arenaState(match));
+    this.arenaStateFan(match, true);
   }
 
   /** THE CLAIM IS THE PARTY'S: walk the uninvited off the sand. */
@@ -13803,7 +13868,13 @@ export class GameServer {
     for (const [peid, p] of this.players) {
       const pp = this.positions.get(peid);
       if (!pp || pp.plane !== plane) continue;
-      if (!inPit(venue.pit, pp.x, pp.y, 0.25)) continue;
+      // The sand, plus the gate line: a body parked ON a gate tile
+      // would hold the bar open all match and rob the death spill of
+      // its gate (the audit's find) — the sweep clears both.
+      const onGate = match.gateTiles.some(
+        (g) => Math.floor(pp.x) === g.x && Math.floor(pp.y) === g.y,
+      );
+      if (!onGate && !inPit(venue.pit, pp.x, pp.y, 0.25)) continue;
       if (match.members.get(p.characterId)?.alive === true) continue;
       this.teleport(peid, venue.exit.x + 0.5, venue.exit.y + 0.5);
       p.session?.sendJson({
@@ -13818,14 +13889,17 @@ export class GameServer {
   private tickArenas(now: number): void {
     if (this.arenaMatches.size === 0) return;
     for (const match of [...this.arenaMatches.values()]) {
-      const venue = arenaVenue(match.venueId);
+      const venue = match.venue;
       if (!venue) {
         this.arenaReset(match, { silent: true });
         continue;
       }
       const plane = venue.plane ?? SURFACE_PLANE_ID;
-      // The backstop: no claim outlives its cap, however it hung.
-      if (now - match.startedAt > ARENAS.dials.matchCapSec * 1000) {
+      // The backstop: no claim outlives its cap, however it hung —
+      // except a card already WON, which is not hung at all: its own
+      // grace deadline ends it (the audit's find: the backstop was
+      // banking a loss on top of a banked win).
+      if (match.phase !== 'victory' && now - match.startedAt > ARENAS.dials.matchCapSec * 1000) {
         this.arenaWipe(match);
         continue;
       }
@@ -13882,7 +13956,7 @@ export class GameServer {
             match.round++;
             match.phase = 'breather';
             match.deadlineTick = this.tickCount + ARENAS.dials.countdownSec * 20;
-            this.arenaSend(match, this.arenaState(match));
+            this.arenaStateFan(match);
           }
           continue;
         }
@@ -13895,7 +13969,7 @@ export class GameServer {
           case 'gates':
             match.phase = 'breather';
             match.deadlineTick = this.tickCount + ARENAS.dials.countdownSec * 20;
-            this.arenaSend(match, this.arenaState(match));
+            this.arenaStateFan(match);
             break;
           case 'breather':
             this.arenaSpawnRound(match);
@@ -13911,7 +13985,7 @@ export class GameServer {
       // The once-a-second heartbeat keeps every running clock honest.
       if (match.deadlineTick > this.tickCount && this.tickCount - match.lastBeatTick >= 20) {
         match.lastBeatTick = this.tickCount;
-        this.arenaSend(match, this.arenaState(match));
+        this.arenaStateFan(match);
       }
     }
   }
@@ -15162,6 +15236,10 @@ export class GameServer {
     let bestD = Infinity;
     for (const [npcEid, npc] of this.npcs) {
       if (this.pets.has(npcEid) || this.actors.has(npcEid)) continue;
+      // THE SAND AND THE ROAR: the sand's bodies are not for courting
+      // — a tamed wave body would leave the round without a fall and
+      // wedge the card open until the backstop (the audit's find).
+      if (npc.arenaMatch !== undefined) continue;
       if (!tameDef(npc.def.id)) continue;
       const npos = this.positions.get(npcEid);
       if (!npos || npos.plane !== pos.plane) continue;
@@ -26877,6 +26955,13 @@ export class GameServer {
       this.wildBodies.set(childEid, null);
       caster.summonedEids.push(childEid);
       const child = this.npcs.get(childEid)!;
+      // THE PURSE LAW rides the whole court: a crowned wave body's
+      // raised adds pay no loot and credit nothing either (the ooze
+      // split's law, extended to the summoning door — the audit found
+      // the court slipping out from under it). Not in waveEids on
+      // purpose: disbandCourt takes them when the crown falls, so the
+      // round never waits on an add.
+      if (caster.arenaMatch !== undefined) child.arenaMatch = caster.arenaMatch;
       // Raised INTO the fight the raiser is in.
       if (caster.targetEid !== null) {
         this.npcAggro(childEid, child, caster.targetEid, { force: true });
@@ -27952,10 +28037,14 @@ export class GameServer {
           pos.y = next.y;
           this.updateChunkMembership(eid);
         }
-        if (this.tickCount >= npc.poseUntilTick) {
+        if (this.tickCount >= npc.poseUntilTick && this.ecs.isAlive(eid)) {
+          // The liveness gate: a strike this very iteration can end
+          // the whole match (the last member falls → the wipe sweeps
+          // the striker) — a pose write on a destroyed eid would be a
+          // permanent component-store leak (eids never recycle).
           this.poses.set(eid, moved ? PoseState.Walk : PoseState.Idle);
         }
-      } else if (this.tickCount >= npc.poseUntilTick) {
+      } else if (this.tickCount >= npc.poseUntilTick && this.ecs.isAlive(eid)) {
         this.poses.set(eid, PoseState.Idle);
       }
     }

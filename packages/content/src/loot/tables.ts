@@ -1140,6 +1140,9 @@ const defs: LootTableDef[] = [
       { table: 'champion_capes' },
       { table: 'heirlooms', mult: 3 },
       { item: 'sigil_fallen_champion', chance: 0.1 },
+      // The arena's OWN trophy — nowhere else in the world (the
+      // exclusive law: some things only the sand pays).
+      { item: 'sand_laurel', chance: 0.05 },
     ],
   },
 

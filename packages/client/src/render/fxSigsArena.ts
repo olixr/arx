@@ -86,9 +86,14 @@ const arena_gates: AbilitySig = {
     // the true rim, staggered by seed so no two matches wake alike.
     const rand = srand(c.seed ^ 0x9a7e);
     for (let k = 0; k < 12; k++) {
-      const wake = cl((t - (0.25 + rand() * 0.5)) / 0.12);
+      // Both draws land BEFORE the wake gate — a conditional draw
+      // would shift every later point's stream as points wake and the
+      // rim would reshuffle mid-animation (the frame-stability law).
+      const th = 0.25 + rand() * 0.5;
+      const jit = rand() * 0.2;
+      const wake = cl((t - th) / 0.12);
       if (wake <= 0) continue;
-      const a = (k / 12) * Math.PI * 2 + rand() * 0.2;
+      const a = (k / 12) * Math.PI * 2 + jit;
       const gx = px + Math.cos(a) * rPx * 1.04;
       const gy = py + Math.sin(a) * rPx * 1.04 * squash;
       ctx.fillStyle = '#e8b74a';

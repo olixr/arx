@@ -2097,6 +2097,8 @@ const swapWell = new SwapSlot(() => input.queueSwap());
 const bossBanner = new BossBanner();
 const arenaBoard = new ArenaBoard(game);
 const arenaHud = new ArenaHud();
+// THE ONE CONTROL: the muster chip's walk-away rides the real verb.
+arenaHud.onLeave = () => game.arenaLeave();
 const companionPlaque = new CompanionPlaque();
 const companionHall = new CompanionHall();
 companionHall.onArts = (slot, arts) => game.petArts(slot, arts);
@@ -4072,7 +4074,16 @@ function frame(now: number): void {
       game.worldSeed !== null && game.plane.id === 'surface'
         ? dangerAt(game.worldSeed, own.x, own.y, game.dangerAnchors)
         : 0;
-    music.update(w, hours, dangerTier);
+    // THE SAND HEARS THE DRUMS: an enrolled match rides the danger
+    // shelf of the deck while it lives — the fight's own music, with
+    // the TrackPlayer's hysteresis, deck, and fades all for free. A
+    // spectator keeps the town's ear (docs/arena-plan.md §8 polish;
+    // a bespoke arena deck is future audio content).
+    const am = game.arenaMatch;
+    const inFight =
+      am !== null && am.specAt === undefined &&
+      (am.phase === 'gates' || am.phase === 'breather' || am.phase === 'round');
+    music.update(w, hours, inFight ? Math.max(dangerTier, 4) : dangerTier);
     // THE SKY'S SEAM: dusk and dawn each speak once as the light
     // turns — surface only (there is no sky underground; the clock
     // still advances so a delver never surfaces into a stale seam).

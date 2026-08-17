@@ -1,9 +1,12 @@
 # THE SAND AND THE ROAR — the arena epic
 
-Status: **PHASES 1-5 SHIPPED 2026-08-16** (eb68922c plan · d3d2300e
-content · d00ce609 server · f6168ad3 client · 6daf67b1 venues) —
-Phase 6 THE PROVING (the rig-lane live walk) is OWED and ledgered in
-§8 with the receipts it must collect.
+Status: **EPIC COMPLETE 2026-08-16** — Phases 1-5 shipped (eb68922c
+plan · d3d2300e content · d00ce609 server · f6168ad3 client ·
+6daf67b1 venues), Phase 6 THE PROVING walked the same day: a
+three-lens adversarial audit (21 confirmed defects, ALL fixed) and
+the rig-lane live walk (lane 20, :8872/:5273, arx_arena20 fresh,
+built client + preview per the BUILT-CLIENT lesson) collecting ALL
+23 receipts — see §8 for the as-walked ledger.
 
 The Dawnlands get their sport. A player walks up to the ringmaster's counter,
 pays the stake, and the gates grind shut behind their party. Three rounds of
@@ -349,31 +352,73 @@ the same card field the same sand.
 - Leaderboard surface (v39 table is query-ready; UI later).
 - Spectator HUD (send `arena` state to non-members near the pit) — polish.
 
-## 8. Phase 6 THE PROVING — the owed walk (rig-lane recipe + receipts)
+## 8. Phase 6 THE PROVING — as walked (2026-08-16, rig lane 20)
 
-Rig recipe: lane N (vite.config.rigN.ts precedent), fresh DB
-`arx_arenaN`, own chromium via scratchpad playwright (never the MCP
-browser — it belongs to neighbor sessions), chat via the
-Enter-type-Enter keyboard flow, drive `dcGame.sendChat` never the DOM
-form. Receipts to collect, wire-asserted:
-1. The counter: talk to Serle, good ending raises the board, a locked
-   card shows its rank price, buying charges the exact fee.
-2. The full card: muster clock → gates shut (the iron set-piece +
-   horn) → three rounds with breather countdowns → victory herald →
-   the purse rises warded (a second account's hand refused) → grace
-   expiry rakes the sand whole (props/chest/gates restored,
-   respawnQueue clean).
-3. The wipe: die to the card; the pack spills AT THE GATE; the match
-   resets; losses banked.
-4. The creeper: a non-party body inside the pit at gate-shut walks
-   out with the courtesy line; one teleported in mid-round is evicted
-   on the next beat.
-5. The party: fellow enrolled by standing the sand; fallen member
-   still draws the half share; rank-up ceremony fires on the climb.
-6. /arena start|muster|win|wipe|reset|rank all through real doors.
-7. The champion round: a forged crown fights whole (banner, phases)
-   inside the pit; `arenaR` + walls hold it.
-Polish items riding Phase 6: the 'arena' TrackMood (the 2.5 s
-hysteresis and deck come free), board meter per-rung floor (add
-`xpPrev` to S2CArenaBoard), spectator state fan, arena-exclusive
-vanity item in the t4 purse.
+**THE AUDIT** — three adversarial reviewers (server engine, content
++ mind, client), 21 confirmed defects, all fixed the same session:
+- THE HOUSE IS NOT A MARK: opening your own purse charged THEFT
+  under town law (both rings stand on town ground under witnesses) —
+  the `arena:` cell is exempt at the one theft choke.
+- THE BACKSTOP SPARES THE WON CARD (it was banking a loss on top of
+  a banked win); THE SAND'S BODIES ARE NOT FOR COURTING (a tamed
+  wave body wedged the round open forever); a crowned wave body's
+  raised court now rides THE PURSE LAW (summons inherit arenaMatch);
+  arenaLeave lost its cross-map ferry (walk-of-shame only from the
+  sand; a muster decline is a roster step-off); fellows already on a
+  live card are never double-enrolled.
+- THE VENUE IS SNAPSHOTTED AT CLAIM (the audit's worst leak: a live
+  Studio venue edit mid-match stranded shut gates and an immortal
+  unwarded purse — all teardown geometry now reads the snapshot).
+- The offline payout no longer races a relog (the live bank wins);
+  the strike-kills-last-member path no longer leaks a pose entry on
+  the destroyed striker; the guard sweep also clears gate-tile
+  squatters (who otherwise held the bar open AND robbed the death
+  spill of its gate).
+- Client: `welcome` lowers a stale match card (the severed-member
+  relog); plain state fans reach the LIVING only (a corpse no longer
+  rides home wearing a live card); THE WIPE KEEPS ITS BEAT (no `off`
+  chases the wipe — the client holds the lost frame 2.6 s and lowers
+  itself); the gates sig is frame-stable (draws hoisted above the
+  wake gate); the match card steps below the boss banner via
+  `body.boss-up`; locked plates carry aria-disabled and no false
+  focus-gold.
+- Content: venue `plane` must name a standing plane; the pit RIM
+  must stand inside the zone; a card pinned to an undeclared venue
+  is an ERROR and an off-band pin warns; the dead-counter lamp runs
+  on the resolved lists; malformed exit/chest no longer double-error;
+  Serle's midday walk moved off his own palisade.
+
+**THE WALK** — all 23 receipts collected on the wire (wrapped
+handleMessage, never DOM polling): the Studio PUT retuning dials
+live; both counters raising their boards through the good ending
+(the grand board showing the tyrant LOCKED at rank 10); the fee
+taken to the coin; gates falling with the iron set-piece on the
+field wire (tile 295→296 and back); three rounds with breather
+clocks; victory; the purse rising (chest tile 119→120), WARDED
+against a second account's hand ("The purse answers the card that
+won it"), paying the winner +49 coins with NO theft charged; the
+spectator fan reaching the stands; the muster walk-away refunding
+the stake; the creeper walked out to the exit at gate-shut; the
+ladder climbing to rank 1 with its ceremony on the third card; the
+wipe landing with its held beat and the pack spilling at the GATE
+(583.5, 54.5 exactly); and the champion round fielding a forged
+crown live — "Snagtooth the Wood's Dread, Matriarch of the Far
+Dens", two phases, dread banner up, match card stepped below it.
+
+**Walk-harness truths** (for the next rig session): the Hero's
+Mirror swallows every key until its button is clicked (chat verbs
+pass through it — the deceptive half); character names are globally
+unique across runs (stamp them); the typewriter law means a LONG hub
+line needs one advance press before the choice plates stand; a
+respawn moves the prover across the map (re-tp before re-queueing);
+the wipe spills the prover's own walk-kit coins (restock); vite
+configs in the repo tree get housekept by neighbors — keep the lane
+config in the session scratchpad with `root` pointed at the client.
+
+**Polish landed with the proving**: `xpPrev` on the board wire (the
+meter climbs from the rank's own floor), the spectator state fan
+(spec-tagged, self-clearing), the enrolled fight riding the danger
+music shelf (a bespoke arena deck is future audio content), the
+Laurel of the Sands in the t4 purse (the exclusive law,
+test-pinned to exactly one table), and the muster walk-away chip on
+the match card (the ONE pointer-enabled control).

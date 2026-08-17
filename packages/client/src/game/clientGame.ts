@@ -479,6 +479,10 @@ export class ClientGame {
     rounds?: number;
     deadlineAt: number | null;
     foes?: number;
+    /** Set on a spectator-tagged state; the HUD self-clears when stale. */
+    specAt?: number;
+    /** Set when the wipe lands; the HUD holds the lost beat 2.6 s. */
+    wipeAt?: number;
   } | null = null;
   /** THE QUEST LEDGER: active quests by id (status 'ready' = turn in). */
   readonly quests = new Map<string, QuestWire>();
@@ -1612,6 +1616,10 @@ export class ClientGame {
         this.trophyBorn.clear();
         for (const t of msg.trophies ?? []) this.trophies.set(t.id, t);
         this.party = null;
+        // THE SAND AND THE ROAR: a reconnect stands a fresh soul — a
+        // severed member gets no 'off' (their socket was gone), so the
+        // welcome lowers the card itself (the audit's find).
+        this.arenaMatch = null;
         this.partyPos.clear();
         // THE WORLDS APART: the welcome names the waking plane; every
         // chart starts over (the login push refills the persistent
@@ -2104,6 +2112,8 @@ export class ClientGame {
                 deadlineAt:
                   msg.remainMs !== undefined ? performance.now() + msg.remainMs : null,
                 foes: msg.foes,
+                ...(msg.spec === true ? { specAt: performance.now() } : {}),
+                ...(msg.phase === 'wipe' ? { wipeAt: performance.now() } : {}),
               };
         this.events.onArenaState?.(msg);
         break;

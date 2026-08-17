@@ -154,7 +154,7 @@ export const ARENAS: ArenasDef = {
   venues: [
     // Coordinates SEALED by Phase 5's builds (the fillEllipse cell
     // math is the truth): Silverfall local (60,218) rx8/ry5.5 on the
-    // Fairstead, Amberford local (135,97) rx4.5/ry3.5 in the working
+    // Fairstead, Amberford local (135,102) rx4.5/ry3.5 in the working
     // country south of Perl's orchard. World = local + zone origin.
     {
       id: 'grand_ring',
@@ -648,6 +648,8 @@ export interface ArenaValidateRefs {
   actorSlugs?: ReadonlySet<string>;
   /** Zone id -> world rect. */
   zoneRects?: ReadonlyMap<string, { x: number; y: number; w: number; h: number }>;
+  /** Standing plane ids (a venue may not be sealed onto a typo). */
+  planeIds?: ReadonlySet<string>;
 }
 
 export type ValidateArenasResult =
@@ -715,7 +717,16 @@ export function validateArenas(raw: unknown, refs: ArenaValidateRefs = {}): Vali
         }
         if (vr.plane !== undefined && typeof vr.plane !== 'string') {
           errors.push(`venue '${id}' plane must be a string`);
+        } else if (
+          typeof vr.plane === 'string' &&
+          refs.planeIds !== undefined &&
+          !refs.planeIds.has(vr.plane)
+        ) {
+          errors.push(`venue '${id}' plane '${vr.plane}' names no standing plane`);
         }
+        // Resolved ONCE (the audit's find: a second call re-pushed the
+        // malformed-shape error and minted a phantom (0,0) containment
+        // error on top of it).
         const pt = (key: 'exit' | 'chest'): { x: number; y: number } => {
           const p = vr[key];
           if (
@@ -792,8 +803,14 @@ export function validateArenas(raw: unknown, refs: ArenaValidateRefs = {}): Vali
               x >= rect.x && x < rect.x + rect.w && y >= rect.y && y < rect.y + rect.h;
             const exit = pt('exit');
             const chest = pt('chest');
+            // The RIM is the claim (the audit's find: a center-only
+            // check let the sand overhang the zone).
             for (const [label, x, y] of [
               ['pit', pit.x, pit.y],
+              ['pit west rim', pit.x - pit.rx, pit.y],
+              ['pit east rim', pit.x + pit.rx, pit.y],
+              ['pit north rim', pit.x, pit.y - pit.ry],
+              ['pit south rim', pit.x, pit.y + pit.ry],
               ['exit', exit.x, exit.y],
               ['chest', chest.x, chest.y],
               ...gates.map((g, i) => [`gates[${i}]`, g.x, g.y] as [string, number, number]),
@@ -1099,8 +1116,17 @@ export function validateArenas(raw: unknown, refs: ArenaValidateRefs = {}): Vali
           } else {
             venuesList = [...(mr.venues as string[])];
             for (const vid of venuesList) {
-              if (!venues.some((v) => v.id === vid)) {
-                warnings.push(`match '${id}' names venue '${vid}' which is not declared`);
+              const v = venues.find((w) => w.id === vid);
+              if (v === undefined) {
+                // The module's own law: a dangling ref is an ERROR — a
+                // pinned card naming no venue is unlistable anywhere,
+                // the exact drawer-death the docstring refuses.
+                errors.push(`match '${id}' names venue '${vid}' which is not declared`);
+              } else if (level < v.levelBand[0] || level > v.levelBand[1]) {
+                warnings.push(
+                  `match '${id}' (L${level}) is pinned to '${vid}' outside its band ` +
+                    `[${v.levelBand[0]}, ${v.levelBand[1]}] — deliberate, or a typo`,
+                );
               }
             }
           }
@@ -1127,18 +1153,20 @@ export function validateArenas(raw: unknown, refs: ArenaValidateRefs = {}): Vali
           ...(venuesList !== undefined ? { venues: venuesList } : {}),
         });
       }
-      // A venue whose counter would list no cards is a dead counter.
-      for (const v of venues) {
-        const listed = matches.some((m) =>
-          m.venues !== undefined
-            ? m.venues.includes(v.id)
-            : m.level >= v.levelBand[0] && m.level <= v.levelBand[1],
-        );
-        if (!listed) warnings.push(`venue '${v.id}' lists no cards under its band`);
-      }
     }
   } else {
     matches.push(...deepCopyDoc(AUTHORED_ARENAS as ArenasDef).matches);
+  }
+  // A venue whose counter would list no cards is a dead counter —
+  // judged over the RESOLVED lists, so a venues-only doc still gets
+  // the lamp (the audit's find).
+  for (const v of venues) {
+    const listed = matches.some((m) =>
+      m.venues !== undefined
+        ? m.venues.includes(v.id)
+        : m.level >= v.levelBand[0] && m.level <= v.levelBand[1],
+    );
+    if (!listed) warnings.push(`venue '${v.id}' lists no cards under its band`);
   }
 
   // ----------------------------------------------------------- ladder

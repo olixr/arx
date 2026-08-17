@@ -3,6 +3,7 @@ import { LOOT_TABLES } from './loot/tables.js';
 import { NPC_ACTORS } from './actors/registry.js';
 import { PLANNED_ZONE_RECTS } from './geography.js';
 import { crownPoolFor } from './crownForge.js';
+import { STATIC_PLANES } from './planes.js';
 import type { ArenaValidateRefs } from './arena.js';
 
 /**
@@ -27,5 +28,8 @@ export function arenaValidateRefsNow(): ArenaValidateRefs {
     zoneRects: new Map(
       PLANNED_ZONE_RECTS.map((p) => [p.id, { x: p.x, y: p.y, w: p.w, h: p.h }]),
     ),
+    // Static planes only: a venue on a scratch rift makes no sense
+    // (rifts are minted per run and dropped whole).
+    planeIds: new Set(STATIC_PLANES.map((p) => p.id)),
   };
 }
