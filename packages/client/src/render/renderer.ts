@@ -35423,11 +35423,18 @@ export class Renderer {
       case Tile.BarrelStack: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.18;
-        // The cellar's street face: two casks chocked on their sides,
-        // a third standing on top. The side casks show their round
-        // END GRAIN to the street (the fallen drum's 3D argument) —
-        // hoops, head staves, and the bung.
+        // The cellar's street face, rebuilt in the STREET BARREL's own
+        // dialect (the lone cask two doors down is the reference): two
+        // upright casks shoulder to shoulder, a bearer plank across
+        // their lids, and a third cask crowning the middle. ONE cooper
+        // made every barrel on this street — same straight-cut bulge,
+        // same riveted iron, same lit facet lid.
         const hw = s * 0.5;
+        // The cooper's variety, dealt: tone and lid-facet turn per
+        // cask, a lean for the crown — never three rubber stamps.
+        const tones: [number, number, number] =
+          h % 3 === 0 ? [0, 5, -5] : h % 3 === 1 ? [5, -5, 0] : [-5, 0, 5];
+        const lean = (((h >>> 4) & 3) - 1.5) * s * 0.02;
         return {
           sortY: ty + 0.7,
           body: stationBody(0.62, 1.1, 0.45),
@@ -35440,113 +35447,70 @@ export class Renderer {
             ctx.beginPath();
             ctx.ellipse(p.x, baseY + s * 0.01, hw * 1.12, s * 0.075, 0, 0, Math.PI * 2);
             ctx.fill();
-            // Two side casks lying E-W — PASS-ONE VERDICT, A CASK
-            // LIES ON ITS BELLY: head-on circles alone read as three
-            // standing lumps; the lying BODY is the read, so each
-            // cask shows its long bulged barrel with horizontal
-            // staves, two upright hoops, and the head ellipse at the
-            // near end.
-            for (const m of [-1, 1] as const) {
-              const cy = baseY - s * 0.19 - (m < 0 ? s * 0.02 : 0);
-              const cx = p.x + m * hw * 0.44;
-              const half = s * 0.34;
-              const cr = s * 0.185;
-              // The lying body: bulged top and belly lines.
-              ctx.fillStyle = TWN_OAK;
+            // ONE cask painter, three castings — the Tile.Barrel look
+            // exactly: straight-cut bulge, twin stave seams, west sun
+            // and east shade, riveted bands with a lit upper edge,
+            // and the facet lid over its shaded inset.
+            const cask = (cx: number, by: number, wr: number, bh: number, tone: number, rot: number) => {
+              ctx.fillStyle = shade('#7a552e', tone);
               ctx.beginPath();
-              ctx.moveTo(cx - half, cy - cr * 0.82);
-              ctx.quadraticCurveTo(cx, cy - cr * 1.18, cx + half, cy - cr * 0.82);
-              ctx.lineTo(cx + half, cy + cr * 0.82);
-              ctx.quadraticCurveTo(cx, cy + cr * 1.18, cx - half, cy + cr * 0.82);
+              ctx.moveTo(cx - wr * 0.8, by);
+              ctx.lineTo(cx - wr, by - bh * 0.32);
+              ctx.lineTo(cx - wr, by - bh * 0.68);
+              ctx.lineTo(cx - wr * 0.8, by - bh);
+              ctx.lineTo(cx + wr * 0.8, by - bh);
+              ctx.lineTo(cx + wr, by - bh * 0.68);
+              ctx.lineTo(cx + wr, by - bh * 0.32);
+              ctx.lineTo(cx + wr * 0.8, by);
               ctx.closePath();
               ctx.fill();
-              // Horizontal staves along the body.
-              ctx.strokeStyle = 'rgba(60, 44, 24, 0.5)';
-              ctx.lineWidth = Math.max(1, s * 0.012);
-              for (let k = -1; k <= 1; k++) {
-                ctx.beginPath();
-                ctx.moveTo(cx - half * 0.92, cy + k * cr * 0.5);
-                ctx.quadraticCurveTo(cx, cy + k * cr * (0.5 + 0.32 * Math.sign(k)), cx + half * 0.92, cy + k * cr * 0.5);
-                ctx.stroke();
-              }
-              // Two iron hoops standing upright on the bulge.
-              ctx.strokeStyle = TWN_IRON;
-              ctx.lineWidth = Math.max(1.5, s * 0.024);
-              for (const hx of [-0.42, 0.42] as const) {
-                ctx.beginPath();
-                ctx.ellipse(cx + hx * half * 2 * 0.5, cy, s * 0.028, cr * (1 - Math.abs(hx) * 0.28), 0, 0, Math.PI * 2);
-                ctx.stroke();
-              }
-              // The head at the near end: lit face, ring, bung.
-              const hx2 = cx + m * half;
-              ctx.fillStyle = TWN_OAK_LIT;
+              ctx.fillStyle = 'rgba(36, 22, 10, 0.35)';
+              ctx.fillRect(cx - wr * 0.32, by - bh * 0.96, s * 0.026, bh * 0.94);
+              ctx.fillRect(cx + wr * 0.34, by - bh * 0.96, s * 0.026, bh * 0.94);
+              ctx.fillStyle = shade('#7a552e', tone + 14);
+              ctx.fillRect(cx - wr * 0.88, by - bh * 0.92, s * 0.05, bh * 0.84);
+              ctx.fillStyle = shade('#7a552e', tone - 12);
+              ctx.fillRect(cx + wr * 0.82, by - bh * 0.92, s * 0.05, bh * 0.84);
+              ctx.fillStyle = '#3a3444';
+              ctx.fillRect(cx - wr * 0.99, by - bh * 0.3, wr * 1.98, s * 0.05);
+              ctx.fillRect(cx - wr * 0.99, by - bh * 0.76, wr * 1.98, s * 0.05);
+              ctx.fillStyle = '#565064';
+              ctx.fillRect(cx - wr * 0.99, by - bh * 0.3, wr * 1.98, s * 0.018);
+              ctx.fillRect(cx - wr * 0.99, by - bh * 0.76, wr * 1.98, s * 0.018);
+              ctx.fillStyle = shade('#94693a', tone);
               ctx.beginPath();
-              ctx.ellipse(hx2, cy, s * 0.055, cr * 0.94, 0, 0, Math.PI * 2);
+              facetCircle(ctx, cx, by - bh, wr * 0.84, 6, rot, 0.55);
               ctx.fill();
-              ctx.strokeStyle = TWN_IRON;
-              ctx.lineWidth = Math.max(1, s * 0.016);
+              ctx.fillStyle = shade('#94693a', tone - 10);
               ctx.beginPath();
-              ctx.ellipse(hx2, cy, s * 0.052, cr * 0.9, 0, 0, Math.PI * 2);
-              ctx.stroke();
-              ctx.fillStyle = TWN_OAK_DARK;
-              ctx.beginPath();
-              ctx.ellipse(hx2, cy, s * 0.018, s * 0.026, 0, 0, Math.PI * 2);
+              facetCircle(ctx, cx, by - bh + s * 0.012, wr * 0.6, 6, rot, 0.55);
               ctx.fill();
-              // A sunlit arris along the top bulge.
-              ctx.strokeStyle = 'rgba(224, 198, 142, 0.55)';
-              ctx.lineWidth = Math.max(1, s * 0.014);
-              ctx.beginPath();
-              ctx.moveTo(cx - half * 0.8, cy - cr * 0.92);
-              ctx.quadraticCurveTo(cx, cy - cr * 1.22, cx + half * 0.8, cy - cr * 0.92);
-              ctx.stroke();
-              // The chock: a wedge pinning the roll.
-              ctx.fillStyle = shade(TWN_OAK_DARK, -8);
-              ctx.beginPath();
-              ctx.moveTo(cx + m * half * 0.5, baseY + s * 0.01);
-              ctx.lineTo(cx + m * half * 0.85, baseY + s * 0.01);
-              ctx.lineTo(cx + m * half * 0.82, baseY - s * 0.08);
-              ctx.closePath();
-              ctx.fill();
-            }
-            // The crown cask: upright, seen a little from above —
-            // staves, two hoops, and the bright top-plane ellipse.
-            const ux = p.x + hw * 0.02;
-            const uBot = baseY - s * 0.42;
-            const ur = s * 0.19;
-            ctx.fillStyle = TWN_OAK;
-            ctx.beginPath();
-            ctx.moveTo(ux - ur, uBot);
-            ctx.quadraticCurveTo(ux - ur * 1.22, uBot - s * 0.26, ux - ur * 0.92, uBot - s * 0.5);
-            ctx.lineTo(ux + ur * 0.92, uBot - s * 0.5);
-            ctx.quadraticCurveTo(ux + ur * 1.22, uBot - s * 0.26, ux + ur, uBot);
-            ctx.closePath();
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(60, 44, 24, 0.5)';
-            ctx.lineWidth = Math.max(1, s * 0.012);
-            for (let k = -1; k <= 1; k += 2) {
-              ctx.beginPath();
-              ctx.moveTo(ux + k * ur * 0.45, uBot - s * 0.01);
-              ctx.quadraticCurveTo(ux + k * ur * 0.58, uBot - s * 0.26, ux + k * ur * 0.42, uBot - s * 0.49);
-              ctx.stroke();
-            }
-            ctx.strokeStyle = TWN_IRON;
-            ctx.lineWidth = Math.max(1.5, s * 0.024);
-            for (const hy of [0.12, 0.4] as const) {
-              ctx.beginPath();
-              ctx.moveTo(ux - ur * (1 + (0.26 - Math.abs(hy - 0.26)) * 0.8), uBot - s * hy);
-              ctx.quadraticCurveTo(ux, uBot - s * (hy + 0.035), ux + ur * (1 + (0.26 - Math.abs(hy - 0.26)) * 0.8), uBot - s * hy);
-              ctx.stroke();
-            }
+            };
+            const wr = s * 0.235;
+            const bh = s * 0.6;
+            // The pair on the ground, a hair of settle between them.
+            cask(p.x - s * 0.26, baseY, wr, bh, tones[0], 0.3);
+            cask(p.x + s * 0.26, baseY - s * 0.012, wr, bh, tones[1], 1.35);
+            // The crevice where the bulges meet — two casks, not one.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.3)';
+            ctx.fillRect(p.x - s * 0.012, baseY - bh * 0.86, s * 0.024, bh * 0.8);
+            // The bearer plank across both lids: the joinery that
+            // makes the crown believable — nobody stands a cask on
+            // two round rims.
+            const plankY = baseY - bh - s * 0.045;
+            ctx.fillStyle = TWN_OAK_DARK;
+            ctx.fillRect(p.x - s * 0.46, plankY, s * 0.92, s * 0.05);
             ctx.fillStyle = TWN_OAK_LIT;
+            ctx.fillRect(p.x - s * 0.46, plankY, s * 0.92, s * 0.018);
+            // Contact shade roots the crown to its plank (painted
+            // under the cask, exactly as the street barrel roots to
+            // its floor).
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.22)';
             ctx.beginPath();
-            ctx.ellipse(ux, uBot - s * 0.5, ur * 0.92, ur * 0.4, 0, 0, Math.PI * 2);
+            ctx.ellipse(p.x + lean, plankY + s * 0.008, wr * 0.82, s * 0.035, 0, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = shade(TWN_OAK, -4);
-            ctx.beginPath();
-            ctx.ellipse(ux, uBot - s * 0.495, ur * 0.72, ur * 0.28, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = TWN_OAK_LIT;
-            ctx.fillRect(ux - ur * 0.86, uBot - s * 0.46, ur * 0.3, s * 0.42);
+            // The crown cask, leaned a dealt hair off true.
+            cask(p.x + lean, plankY + s * 0.005, wr * 0.96, bh * 0.94, tones[2], 0.85);
           },
         };
       }
@@ -41846,16 +41810,21 @@ export class Renderer {
       case Tile.BasketStack: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.18;
-        // The wicker family: a fat lidded hamper with a smaller
-        // basket riding its shoulder, the small lid tipped AJAR
-        // over dealt contents (apples, wool, or roots). Weave
-        // reads as COURSES — over-under ticks along each round,
-        // never hatching — and the whole stack stands on two skid
-        // slats with ground showing through (the pallet law).
+        // The wicker family, recut — PASS-TWO VERDICT: pure
+        // horizontal courses on a straight column read as ROPE
+        // WRAPS, and two like-sized drums fuse into one lumpy
+        // tower. A basket is a FLARE (narrow foot, wide mouth), a
+        // BRICK-PATTERN weave (lit over-strands offset every other
+        // course), a BRAIDED RIM, and twist HANDLES. So: one fat
+        // flared hamper wearing its woven lid, a clearly smaller
+        // open basket riding one shoulder of that lid (dealt
+        // contents — apples, wool, or roots — its own lid tipped
+        // ajar), clear air and a tone step between the two masses,
+        // the whole stack on two skid slats (the pallet law).
         const m = ((h >>> 3) & 1) ? 1 : -1;
         const load = (h >>> 6) & 3;
-        const bR = s * 0.24;
-        const bTop = baseY - s * 0.5;
+        const bR = s * 0.27;
+        const bTop = baseY - s * 0.44;
         return {
           sortY: ty + 0.68,
           body: stationBody(0.48, 1.05, 0.35),
@@ -41884,105 +41853,135 @@ export class Renderer {
               ctx.lineTo(wx2 + s * 0.028, baseY - s * 0.018 - (sd >>> 3) * s * 0.004);
               ctx.stroke();
             }
-            // THE HAMPER: barrel-bellied wicker, coursed.
-            ctx.fillStyle = CMN_WICKER_DARK;
-            ctx.beginPath();
-            ctx.moveTo(p.x - bR * 0.86, bTop);
-            ctx.quadraticCurveTo(p.x - bR * 1.14, (bTop + baseY) / 2, p.x - bR * 0.9, baseY - s * 0.025);
-            ctx.lineTo(p.x + bR * 0.9, baseY - s * 0.025);
-            ctx.quadraticCurveTo(p.x + bR * 1.14, (bTop + baseY) / 2, p.x + bR * 0.86, bTop);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = CMN_WICKER;
-            ctx.beginPath();
-            ctx.moveTo(p.x - bR * 0.8, bTop + s * 0.012);
-            ctx.quadraticCurveTo(p.x - bR * 1.06, (bTop + baseY) / 2, p.x - bR * 0.84, baseY - s * 0.035);
-            ctx.lineTo(p.x + bR * 0.05, baseY - s * 0.035);
-            ctx.quadraticCurveTo(p.x - bR * 0.1, (bTop + baseY) / 2, p.x + bR * 0.02, bTop + s * 0.012);
-            ctx.closePath();
-            ctx.fill();
-            // The courses: rounds following the belly, with the
-            // over-under ticks that say WOVEN at map scale.
-            ctx.strokeStyle = 'rgba(80, 62, 34, 0.5)';
-            ctx.lineWidth = Math.max(1, s * 0.01);
-            for (let k = 1; k < 5; k++) {
-              const fy = k / 5;
-              const yy = bTop + (baseY - s * 0.03 - bTop) * fy;
-              const wk = bR * (0.85 + 0.26 * Math.sin(fy * Math.PI));
+            // ONE basket painter, two castings: flared body, faint
+            // upright stakes, coursed rounds with the brick-offset
+            // lit over-strands, and the two-tone braided rim.
+            const basket = (cx: number, byBase: number, byTop: number, fr: number, mr: number, rows: number, tone: number) => {
+              // The flared body: foot narrower than mouth — the
+              // silhouette that says BASKET before any texture does.
+              ctx.fillStyle = shade(CMN_WICKER_DARK, tone);
               ctx.beginPath();
-              ctx.moveTo(p.x - wk, yy);
-              ctx.quadraticCurveTo(p.x, yy + s * 0.022, p.x + wk, yy);
-              ctx.stroke();
-            }
-            ctx.strokeStyle = 'rgba(205, 176, 120, 0.6)';
-            for (let k = 0; k < 4; k++) {
-              const fy = (k + 0.5) / 5;
-              const yy = bTop + (baseY - s * 0.03 - bTop) * fy;
-              const wk = bR * (0.85 + 0.26 * Math.sin(fy * Math.PI));
-              for (let j = -2; j <= 2; j++) {
+              ctx.moveTo(cx - fr, byBase);
+              ctx.quadraticCurveTo(cx - (fr + mr) * 0.56, (byBase + byTop) / 2, cx - mr, byTop);
+              ctx.lineTo(cx + mr, byTop);
+              ctx.quadraticCurveTo(cx + (fr + mr) * 0.56, (byBase + byTop) / 2, cx + fr, byBase);
+              ctx.closePath();
+              ctx.fill();
+              // West half catches the sun — a turned form.
+              ctx.fillStyle = shade(CMN_WICKER, tone);
+              ctx.beginPath();
+              ctx.moveTo(cx - fr * 0.92, byBase - s * 0.006);
+              ctx.quadraticCurveTo(cx - (fr + mr) * 0.52, (byBase + byTop) / 2, cx - mr * 0.92, byTop + s * 0.008);
+              ctx.lineTo(cx + mr * 0.06, byTop + s * 0.008);
+              ctx.quadraticCurveTo(cx + (fr + mr) * 0.03, (byBase + byTop) / 2, cx + fr * 0.04, byBase - s * 0.006);
+              ctx.closePath();
+              ctx.fill();
+              // The upright stakes, fanning with the flare.
+              ctx.strokeStyle = 'rgba(80, 62, 34, 0.4)';
+              ctx.lineWidth = Math.max(1, s * 0.011);
+              for (let k = -2; k <= 2; k++) {
+                const f = k / 2.9;
                 ctx.beginPath();
-                ctx.moveTo(p.x + j * wk * 0.35 - s * 0.014, yy + s * 0.01);
-                ctx.lineTo(p.x + j * wk * 0.35 + s * 0.014, yy + s * 0.006);
+                ctx.moveTo(cx + f * fr, byBase - s * 0.01);
+                ctx.lineTo(cx + f * mr, byTop + s * 0.015);
                 ctx.stroke();
               }
+              // The courses, sagging a hair mid-run; every other
+              // course offsets its lit over-strands half a step —
+              // the brick pattern that says WOVEN at map scale.
+              const segs = 6;
+              for (let k = 0; k < rows; k++) {
+                const fy = (k + 0.72) / (rows + 0.55);
+                const yy = byTop + (byBase - s * 0.015 - byTop) * fy;
+                const wk = mr + (fr - mr) * fy;
+                const sag = s * 0.02;
+                ctx.strokeStyle = 'rgba(80, 62, 34, 0.55)';
+                ctx.lineWidth = Math.max(1, s * 0.016);
+                ctx.beginPath();
+                ctx.moveTo(cx - wk, yy);
+                ctx.quadraticCurveTo(cx, yy + sag * 2, cx + wk, yy);
+                ctx.stroke();
+                ctx.strokeStyle = `rgba(205, 176, 120, ${0.75 + tone * 0.01})`;
+                ctx.lineWidth = Math.max(1, s * 0.018);
+                for (let j = 0; j < segs; j++) {
+                  if ((j + k) % 2) continue;
+                  const u0 = -1 + (j + 0.12) * (2 / segs);
+                  const u1 = -1 + (j + 0.88) * (2 / segs);
+                  ctx.beginPath();
+                  ctx.moveTo(cx + u0 * wk, yy + (1 - u0 * u0) * sag);
+                  ctx.lineTo(cx + u1 * wk, yy + (1 - u1 * u1) * sag);
+                  ctx.stroke();
+                }
+              }
+              // The braided rim: dark round under a lit round.
+              ctx.strokeStyle = shade(CMN_WICKER_DARK, tone - 4);
+              ctx.lineWidth = Math.max(1.5, s * 0.032);
+              ctx.beginPath();
+              ctx.ellipse(cx, byTop, mr * 1.02, s * 0.055, 0, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.strokeStyle = shade(CMN_WICKER_LIT, tone);
+              ctx.lineWidth = Math.max(1, s * 0.014);
+              ctx.beginPath();
+              ctx.ellipse(cx, byTop - s * 0.008, mr * 1.0, s * 0.05, 0, 0, Math.PI * 2);
+              ctx.stroke();
+            };
+            // THE HAMPER, wearing its lid.
+            basket(p.x, baseY - s * 0.028, bTop, s * 0.185, bR, 4, 0);
+            // Twist handles at the rim — the carrying truth. Thin
+            // wisps half-buried in the body (PASS-TWO: fat freestanding
+            // loops swelled into pig ears under the outline dilate).
+            ctx.strokeStyle = shade(CMN_WICKER_DARK, 8);
+            ctx.lineWidth = Math.max(1, s * 0.016);
+            for (const e of [-1, 1] as const) {
+              ctx.beginPath();
+              ctx.ellipse(p.x + e * bR * 0.98, bTop + s * 0.055, s * 0.026, s * 0.042, e * 0.3, 0, Math.PI * 2);
+              ctx.stroke();
             }
-            // The rim braid, then the big lid's plane (it carries
-            // the small basket, so it sits SNUG).
-            ctx.strokeStyle = CMN_WICKER_DARK;
-            ctx.lineWidth = Math.max(1.5, s * 0.026);
-            ctx.beginPath();
-            ctx.ellipse(p.x, bTop, bR * 0.88, s * 0.055, 0, 0, Math.PI * 2);
-            ctx.stroke();
+            // The hamper's woven lid: a bright plane with radial
+            // strands — it carries the small basket, so it sits SNUG.
             ctx.fillStyle = CMN_WICKER;
             ctx.beginPath();
-            ctx.ellipse(p.x, bTop - s * 0.01, bR * 0.84, s * 0.05, 0, 0, Math.PI * 2);
+            ctx.ellipse(p.x, bTop - s * 0.014, bR * 0.94, s * 0.052, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.fillStyle = CMN_WICKER_LIT;
             ctx.beginPath();
-            ctx.ellipse(p.x - m * bR * 0.12, bTop - s * 0.018, bR * 0.62, s * 0.036, 0, 0, Math.PI * 2);
+            ctx.ellipse(p.x - m * bR * 0.16, bTop - s * 0.022, bR * 0.6, s * 0.032, 0, 0, Math.PI * 2);
             ctx.fill();
-            // THE SHOULDER BASKET, offset the dealt way, lid ajar.
-            const sx2 = p.x + m * bR * 0.34;
-            const sR = bR * 0.62;
-            const sTop = bTop - s * 0.34;
-            ctx.fillStyle = CMN_WICKER_DARK;
-            ctx.beginPath();
-            ctx.moveTo(sx2 - sR * 0.85, sTop);
-            ctx.quadraticCurveTo(sx2 - sR * 1.1, (sTop + bTop) / 2, sx2 - sR * 0.8, bTop - s * 0.02);
-            ctx.lineTo(sx2 + sR * 0.8, bTop - s * 0.02);
-            ctx.quadraticCurveTo(sx2 + sR * 1.1, (sTop + bTop) / 2, sx2 + sR * 0.85, sTop);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = CMN_WICKER;
-            ctx.beginPath();
-            ctx.moveTo(sx2 - sR * 0.78, sTop + s * 0.01);
-            ctx.quadraticCurveTo(sx2 - sR * 1.02, (sTop + bTop) / 2, sx2 - sR * 0.74, bTop - s * 0.03);
-            ctx.lineTo(sx2 - sR * 0.02, bTop - s * 0.03);
-            ctx.quadraticCurveTo(sx2 - sR * 0.14, (sTop + bTop) / 2, sx2 - sR * 0.04, sTop + s * 0.01);
-            ctx.closePath();
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(80, 62, 34, 0.5)';
-            ctx.lineWidth = Math.max(1, s * 0.009);
-            for (let k = 1; k < 3; k++) {
-              const fy = k / 3;
-              const yy = sTop + (bTop - s * 0.03 - sTop) * fy;
-              const wk = sR * (0.82 + 0.24 * Math.sin(fy * Math.PI));
+            ctx.strokeStyle = 'rgba(80, 62, 34, 0.35)';
+            ctx.lineWidth = Math.max(1, s * 0.01);
+            for (let k = 0; k < 7; k++) {
+              const a = (k / 7) * Math.PI * 2 + 0.4;
               ctx.beginPath();
-              ctx.moveTo(sx2 - wk, yy);
-              ctx.quadraticCurveTo(sx2, yy + s * 0.016, sx2 + wk, yy);
+              ctx.moveTo(p.x + Math.cos(a) * bR * 0.3, bTop - s * 0.014 + Math.sin(a) * s * 0.016);
+              ctx.lineTo(p.x + Math.cos(a) * bR * 0.86, bTop - s * 0.014 + Math.sin(a) * s * 0.047);
               ctx.stroke();
             }
-            // DEALT CONTENTS under the tipped lid: apples, wool,
-            // or roots — the lid leans on what it can't cover.
-            const mouthY = sTop + s * 0.012;
+            // THE SHOULDER BASKET: clearly smaller, dealt far enough
+            // aside that its silhouette BREAKS OUT of the hamper's
+            // outline (PASS-TWO: centered it read as one urn with a
+            // raised neck), a shade lighter — two pieces, never one
+            // tower.
+            const sx2 = p.x + m * bR * 0.55;
+            const sR = bR * 0.55;
+            const sBase = bTop - s * 0.035;
+            const sTop = sBase - s * 0.27;
+            // Contact shade seats it on the lid plane.
+            ctx.fillStyle = 'rgba(18, 12, 26, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(sx2, sBase, sR * 0.72, s * 0.028, 0, 0, Math.PI * 2);
+            ctx.fill();
+            basket(sx2, sBase, sTop, sR * 0.68, sR, 2, 9);
+            // DEALT CONTENTS in the open mouth: apples, wool, or
+            // roots — the lid leans on what it can't cover.
+            const mouthY = sTop + s * 0.008;
             ctx.fillStyle = '#3a3020';
             ctx.beginPath();
-            ctx.ellipse(sx2, mouthY, sR * 0.78, s * 0.042, 0, 0, Math.PI * 2);
+            ctx.ellipse(sx2, mouthY, sR * 0.8, s * 0.042, 0, 0, Math.PI * 2);
             ctx.fill();
             if (load !== 3) {
               for (let k = 0; k < 3; k++) {
                 const sd = (h >>> (k * 4 + 9)) & 7;
-                const cx2 = sx2 + (k - 1) * sR * 0.4 + (sd & 1) * s * 0.012;
+                const cx2 = sx2 + (k - 1) * sR * 0.42 + (sd & 1) * s * 0.012;
                 if (load === 0) {
                   ctx.fillStyle = k === 1 ? '#c05a3a' : '#a84a34';
                   ctx.beginPath();
@@ -42008,21 +42007,21 @@ export class Renderer {
             // The small lid, tipped ajar against the far rim.
             ctx.fillStyle = CMN_WICKER;
             ctx.beginPath();
-            ctx.ellipse(sx2 - m * sR * 0.55, mouthY - s * 0.05, sR * 0.66, s * 0.036, m * 0.38, 0, Math.PI * 2);
+            ctx.ellipse(sx2 - m * sR * 0.62, mouthY - s * 0.05, sR * 0.62, s * 0.034, m * 0.42, 0, Math.PI * 2);
             ctx.fill();
             ctx.fillStyle = CMN_WICKER_LIT;
             ctx.beginPath();
-            ctx.ellipse(sx2 - m * sR * 0.58, mouthY - s * 0.058, sR * 0.48, s * 0.024, m * 0.38, 0, Math.PI * 2);
+            ctx.ellipse(sx2 - m * sR * 0.65, mouthY - s * 0.058, sR * 0.45, s * 0.022, m * 0.42, 0, Math.PI * 2);
             ctx.fill();
             ctx.strokeStyle = CMN_WICKER_DARK;
             ctx.lineWidth = Math.max(1, s * 0.012);
             ctx.beginPath();
-            ctx.ellipse(sx2 - m * sR * 0.55, mouthY - s * 0.05, sR * 0.66, s * 0.036, m * 0.38, 0, Math.PI * 2);
+            ctx.ellipse(sx2 - m * sR * 0.62, mouthY - s * 0.05, sR * 0.62, s * 0.034, m * 0.42, 0, Math.PI * 2);
             ctx.stroke();
             // The lid knob.
             ctx.fillStyle = CMN_WICKER_DARK;
             ctx.beginPath();
-            ctx.arc(sx2 - m * sR * 0.55, mouthY - s * 0.075, s * 0.014, 0, Math.PI * 2);
+            ctx.arc(sx2 - m * sR * 0.62, mouthY - s * 0.075, s * 0.014, 0, Math.PI * 2);
             ctx.fill();
           },
         };
