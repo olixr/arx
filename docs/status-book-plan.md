@@ -1,6 +1,70 @@
 # THE BOOK OF STATES — the composable status & buff core
 
-Proposal, 2026-08-16. Status: **AWAITING GREEN-LIGHT.**
+Proposal, 2026-08-16. Status: **GREEN-LIT 2026-08-16 (recommended answers
+taken). Phase 1 SHIPPED the same day — as-built below.**
+
+## As built — Phase 1, THE BOOK OPENS (2026-08-16)
+
+- **`shared/sim/statusBook.ts`** = the book: `StatusPage` (lane,
+  hostile, powerIs, stacking model/max/atMax, ramp, decay, tick,
+  statMods, cc with engine immunity, thresholds, consume, visuals
+  contract) + THE FROZEN SIX transcribed against the LIVE constants
+  (zero tuning constants moved — the pages cite BURN_TICK_EVERY et al,
+  never restate them) + the pure page-parametric machinery:
+  `refreshMax` (the one deepening rule), `weakestOf`, `effectivePower`
+  (ramp math, identity for the six), `thresholdsCrossed`, `applyCount`
+  (THE COUNT DOOR — one entry carries the whole count; atMax refresh
+  or consume; verdict carries spent stacks + detonation + crossed
+  tiers), `consumeDetonation` (spend-don't-mint math; `release`
+  reserved for the boon lane), `decayAtZero` (stepDown sheds one stack
+  and re-arms; expire ends whole), `ccTicksFor`. PURITY LAW: the page
+  is a parameter — every model law tested with synthetic pages, no
+  server, no registry injection.
+- **The server doors read the book** (gameServer.ts): applyStatusToNpc
+  dispatches on `page.stacking.model` — perSource/highest/count/
+  refresh; the spark REACTION grammar keys on `page.lane === 'spark'`;
+  shock's stagger generalized to `page.cc` via `ccTicksFor` (STUBBORN
+  CROWN dialing unchanged); the count door announces threshold names
+  and detonations through the reaction fx channel and rings with the
+  pay-once Set law. applyStatusToPlayer keeps THE PLAYER LAW
+  (one-entry-refresh-max) and gains the count door (a count page's
+  stacking is its authored identity on any body — the spider ramp's
+  seat). tickStatuses reads `page.tick` (clock + damage/heal kind —
+  THE MEND DOOR is live engine, unauthored), pulses `effectivePower`,
+  and leaves through `decayAtZero`; statusBits speaks the book (a
+  perSource entry counts 1, a count entry counts its stacks — the
+  shipped nibble unchanged). `ServerStatus.stacks?` added; FAIR HANDS
+  immunity stamps on expiry and refuses at both doors — **inlined,
+  not a method: THE SLATE-TEST LAW** (the hand-built slates in
+  statusLanes/procDoors call door fns on bare objects; a door may
+  only reach `this.<state>` behind a page-authored gate, and no
+  shipped page authors immunity, so the guard touches nothing today).
+- **The client ink truth moved onto the pages**: statusFx `STATUS_INK`
+  and `STATUS_VIGNETTE_RGB` now DERIVE from `STATUS_BOOK` visuals
+  (every read site unchanged; the vignette record keeps its literal
+  key type for `noUncheckedIndexedAccess` consumers).
+- **Pinned**: `statusBook.test.ts` (20 laws) — roster/lane/clock/cap
+  transcription against the live constants, FROZEN-SIX-author-nothing
+  (no count/ramp/tiers/consume/stepDown/immunity on shipped pages,
+  atMax refresh everywhere), the total visuals contract (ink hex,
+  landing, aura tiers, `status_*` icon ids, DoT vignettes, stacking
+  stack-notes), and the pure machinery laws (count to cap,
+  consume-once-then-fresh, tiers speak once in order jumps included,
+  stepDown step-and-re-arm, cc bounds). Pre-book pins untouched and
+  green: statusLanes 11, readingEdge 10, procDoors 11.
+- **Gates** (on the standalone HEAD+mine twin AND the shared tree):
+  shared 247/247 twin (254 live with a neighbor's travel tests),
+  content 570, client 618 + statusFx 9, all tsc clean; server tsc
+  clean, status suites 32/32 — the server's 16 breath reds are a
+  neighbor session's in-flight cast-channel work, ledgered in HEAD's
+  own commit message, untouched here. Staged at hunk level per the
+  shared-tree law (gameServer 13-of-30 hunks mine; the transport
+  epic's WIP left in flight).
+- **Phase 1 residue, recorded**: the DoT `via` cast still names the
+  three shipped tickers (the wire widening is Phase 3's); STATUS_BIT
+  stays hand-authored per id (THE LOW WORD law); the count door's
+  server splice is pure-verdict-driven and gets its first live walk
+  when wave one authors a count page.
 
 The brief (user, 2026-08-16): buffs and debuffs are a huge gameplay mechanic
 and must rest on a foundational, architectural, COMPOSABLE core — not minor

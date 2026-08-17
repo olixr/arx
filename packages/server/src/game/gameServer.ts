@@ -433,8 +433,6 @@ import {
   FINISHER_RECOVERY_MULT,
   ABILITY_SLOTS,
   BODY_RADIUS,
-  BURN_TICK_EVERY,
-  BLEED_TICK_EVERY,
   CAST_STILL_FACTOR,
   CHILL_SPEED_FACTOR,
   TECHNIQUE_STYLES,
@@ -443,7 +441,6 @@ import {
   HEAVY_BOLT_RECOVERY_MULT,
   HEAVY_BOLT_SPLASH,
   HOMING_SEEK_RANGE,
-  VENOM_TICK_EVERY,
   NPC_POWER_PER_LEVEL,
   PLAYER_POWER_PER_LEVEL,
   npcMaxHit,
@@ -573,10 +570,15 @@ import {
   reactionDamage,
   reactionFor,
   isSpark,
-  isAffliction,
-  AFFLICTION_SOURCE_CAP,
   AFFLICTION_STACKS_SHIFT,
   STATUS_IDS,
+  pageOf,
+  applyCount,
+  decayAtZero,
+  effectivePower,
+  refreshMax,
+  weakestOf,
+  ccTicksFor,
   stateBucket,
   sunderAmp,
   type VsClause,
@@ -1352,6 +1354,12 @@ interface ServerStatus extends ActiveStatus {
   sourceEid: EntityId;
   /** Shock only: remaining hard-stun ticks (shorter than the status). */
   stunLeft?: number;
+  /**
+   * THE BOOK OF STATES: count-model pages carry their whole count on
+   * ONE entry (the legacy models speak through list length and
+   * power). Absent means 1 — every pre-book entry reads unchanged.
+   */
+  stacks?: number;
   /**
    * A companion's tooth put this here (beastcraft v2 Phase 5): the
    * drip still credits the keeper's KILL, but its ticks train no
@@ -2417,6 +2425,15 @@ export class GameServer {
   readonly drops = this.ecs.register<DropComp>();
   readonly projectiles = this.ecs.register<ProjectileComp>();
   readonly statuses = this.ecs.register<ServerStatus[]>();
+  /**
+   * FAIR HANDS (statusBook): per-body immunity clocks for CC pages
+   * with an authored immunityTicks — the door refuses the page until
+   * the tick passes, so CC chains are impossible by construction.
+   * Lazily cleaned at the check (values are bare tick stamps; no
+   * shipped page authors a window yet, so this map stays empty until
+   * wave one).
+   */
+  private readonly ccImmunity = new Map<EntityId, Partial<Record<StatusId, number>>>();
   readonly summons = this.ecs.register<SummonComp>();
   /** Tamed companions at heel — the pointer home; rows on PlayerComp.pets. */
   readonly pets = this.ecs.register<PetComp>();
@@ -22001,26 +22018,29 @@ export class GameServer {
   // ----------------------------------------------------------- statuses
 
   /**
-   * Apply a status to an NPC — THE TWO LANES law lives here.
+   * Apply a status to an NPC — THE TWO LANES law lives here, and the
+   * door reads THE BOOK OF STATES: every lane is now a stacking model
+   * the page declares (statusBook.ts), never an id check.
    *
-   * SPARKS (burn/chill/shock) keep the reaction grammar among
-   * themselves: a DIFFERENT spark already riding DETONATES — burst
-   * damage plus the pair's combined effect, both sparks consumed.
-   * Afflictions and sunder on the same body ride through the flash
-   * untouched; they are wounds, not charges.
+   * perSource (the AFFLICTIONS, bleed/venom): never detonate, never
+   * detonated. One entry per hand per id — a second hunter is never
+   * worthless, the same hand refreshes its own wound, and at the
+   * page's cap the newest source folds into the weakest entry by the
+   * max rules: the wound deepens, no landed apply is ever eaten.
    *
-   * AFFLICTIONS (bleed/venom) never detonate and are never detonated.
-   * They stack PER SOURCE — each attacker holds one entry per
-   * affliction id, so a second hunter is never worthless, while the
-   * same hand re-applying only refreshes its own wound (no self-
-   * stacking by spam). At AFFLICTION_SOURCE_CAP the newest source
-   * folds into the weakest entry by the max rules: the wound deepens,
-   * no landed apply is ever eaten.
+   * highest (the SUNDER mark): a single entry, highest power wins,
+   * never self-stacks.
    *
-   * SUNDER is the one amplifier mark: a single entry, highest power
-   * wins, never self-stacks.
+   * count (no shipped page yet): ONE entry carrying the whole stack —
+   * ramps, thresholds, and consume-at-max per the page.
    *
-   * Resists shrug any lane off; weaknesses double it.
+   * refresh (the SPARKS, burn/chill/shock): the reaction grammar
+   * among themselves — a DIFFERENT spark already riding DETONATES,
+   * both sparks consumed, wounds and the mark riding through the
+   * flash untouched.
+   *
+   * Resists shrug any lane off; weaknesses double it; a CC page with
+   * an authored immunity window is refused while the window holds.
    */
   private applyStatusToNpc(
     npcEid: EntityId,
@@ -22056,27 +22076,42 @@ export class GameServer {
       duration = Math.round(duration * 1.5);
     }
 
+    // THE BOOK OF STATES: the door reads the page and dispatches on
+    // its stacking model — the lanes became data. The six shipped
+    // pages transcribe the exact pre-book behavior (statusLanes pins
+    // it); the count model is the composable workhorse waiting for
+    // wave-one pages.
+    const page = pageOf(apply.status);
+    // FAIR HANDS: a CC page with an authored immunity window is
+    // refused while the window holds (no shipped page authors one, so
+    // this guard costs a field read and passes — and touches no state,
+    // the slate-test law). Expired stamps clean at the check.
+    if (page.cc && page.cc.immunityTicks > 0) {
+      const rec = this.ccImmunity.get(npcEid);
+      const until = rec?.[page.id];
+      if (until !== undefined) {
+        if (this.tickCount < until) return;
+        delete rec![page.id];
+      }
+    }
     const list = this.statuses.get(npcEid) ?? [];
 
-    // ------------------------------------------------ the affliction lane
-    if (isAffliction(apply.status)) {
+    // -------------------------------------- the perSource model (wounds)
+    if (page.stacking.model === 'perSource') {
       const own = list.find(
         (s) =>
           s.id === apply.status && s.sourceEid === sourceEid && (s.fromPet ?? false) === fromPet,
       );
       if (own) {
         // The same hand re-opening its own wound: refresh, never stack.
-        own.ticksLeft = Math.max(own.ticksLeft, duration);
-        own.power = Math.max(own.power, power);
+        refreshMax(own, power, duration);
       } else {
         const riding = list.filter((s) => s.id === apply.status);
-        if (riding.length >= AFFLICTION_SOURCE_CAP) {
+        if (riding.length >= page.stacking.max) {
           // The body is at the cap: the new wound folds into the
           // weakest riding entry, so the blow still counts for
           // something and no source's credit is silently dropped.
-          const weakest = riding.reduce((a, b) => (a.power <= b.power ? a : b));
-          weakest.ticksLeft = Math.max(weakest.ticksLeft, duration);
-          weakest.power = Math.max(weakest.power, power);
+          refreshMax(weakestOf(riding), power, duration);
         } else {
           list.push({
             id: apply.status,
@@ -22091,22 +22126,81 @@ export class GameServer {
       return;
     }
 
-    // ------------------------------------------------------ the mark lane
-    if (apply.status === 'sunder') {
-      const same = list.find((s) => s.id === 'sunder');
+    // --------------------------------------- the highest model (the mark)
+    if (page.stacking.model === 'highest') {
+      const same = list.find((s) => s.id === apply.status);
       if (same) {
         // Highest wins; a lesser mark still keeps the crack open.
-        same.power = Math.max(same.power, power);
-        same.ticksLeft = Math.max(same.ticksLeft, duration);
+        refreshMax(same, power, duration);
       } else {
-        list.push({ id: 'sunder', power, ticksLeft: duration, sourceEid });
+        list.push({ id: apply.status, power, ticksLeft: duration, sourceEid });
       }
       this.statuses.set(npcEid, list);
       return;
     }
 
-    // ----------------------------------------------------- the spark lane
-    const other = list.find((s) => s.id !== apply.status && isSpark(s.id));
+    // ------------------------------------------------------ the count model
+    if (page.stacking.model === 'count') {
+      const verdict = applyCount(list, page, power, duration, () => ({
+        id: apply.status,
+        power,
+        ticksLeft: duration,
+        sourceEid,
+        ...(fromPet ? { fromPet: true } : {}),
+      }));
+      if (list.length > 0) this.statuses.set(npcEid, list);
+      else this.statuses.delete(npcEid);
+      const pos = this.positions.get(npcEid);
+      // A STACK IS A THING YOU CAN SEE: tiers speak as they are reached.
+      if (pos) {
+        for (const t of verdict.crossed) {
+          this.broadcastFx(pos.plane, {
+            t: 'fx',
+            kind: 'reaction',
+            x: pos.x,
+            y: pos.y,
+            radius: 0,
+            color: page.visuals.ink,
+            text: t.name,
+          });
+        }
+      }
+      if (verdict.outcome === 'consumed' && verdict.detonation) {
+        // The filled stack spends itself — spend, don't mint.
+        const det = verdict.detonation;
+        if (pos) {
+          this.broadcastFx(pos.plane, {
+            t: 'fx',
+            kind: 'reaction',
+            x: pos.x,
+            y: pos.y,
+            radius: det.radius,
+            color: page.visuals.ink,
+            text: page.name,
+          });
+        }
+        this.damageNpc(npcEid, det.damage, sourceEid, style, {});
+        if (pos && det.radius > 0) {
+          // The ring pays once (core-audit debt 12's law holds here too).
+          const paid = new Set<EntityId>([npcEid]);
+          this.forEachNpcNear(pos.plane, pos.x, pos.y, det.radius, (otherEid, otherNpc, opos) => {
+            if (paid.has(otherEid)) return;
+            if (Math.hypot(opos.x - pos.x, opos.y - pos.y) - otherNpc.def.radius > det.radius) {
+              return;
+            }
+            paid.add(otherEid);
+            this.damageNpc(otherEid, det.damage, sourceEid, style, {});
+          });
+        }
+      }
+      return;
+    }
+
+    // ------------------------- the refresh model (sparks keep reactions)
+    const other =
+      page.lane === 'spark'
+        ? list.find((s) => s.id !== apply.status && isSpark(s.id))
+        : undefined;
     const reaction = other ? reactionFor(other.id, apply.status) : null;
 
     if (other && reaction) {
@@ -22194,13 +22288,10 @@ export class GameServer {
 
     const same = list.find((s) => s.id === apply.status);
     if (same) {
-      same.ticksLeft = Math.max(same.ticksLeft, duration);
-      same.power = Math.max(same.power, power);
-      if (apply.status === 'shock') {
-        same.stunLeft = Math.max(
-          same.stunLeft ?? 0,
-          bossStunTicks(npc.def, Math.min(duration, SHOCK_MAX_TICKS)),
-        );
+      refreshMax(same, power, duration);
+      if (page.cc) {
+        // The page declares the lock; the body dials it (STUBBORN CROWN).
+        same.stunLeft = Math.max(same.stunLeft ?? 0, bossStunTicks(npc.def, ccTicksFor(page, duration)));
       }
     } else {
       list.push({
@@ -22210,10 +22301,7 @@ export class GameServer {
         sourceEid,
         // The stagger is brief; the charge rides on as reaction fodder.
         // (A crowned body's stagger is dialed — THE STUBBORN CROWN.)
-        stunLeft:
-          apply.status === 'shock'
-            ? bossStunTicks(npc.def, Math.min(duration, SHOCK_MAX_TICKS))
-            : undefined,
+        stunLeft: page.cc ? bossStunTicks(npc.def, ccTicksFor(page, duration)) : undefined,
         ...(fromPet ? { fromPet: true } : {}),
       });
     }
@@ -22223,17 +22311,66 @@ export class GameServer {
   /**
    * Players only receive simple statuses (wolf bleed) — no reactions,
    * and DELIBERATELY no per-source affliction stacking: one entry per
-   * id, refresh by max, exactly the pre-lanes shape. A pack of five
-   * wolves stacking five bleeds would raise damage TAKEN, and Phase 1
-   * moves no numbers — the player-side stacking question waits for
-   * the ledger (buildcraft plan, Part 3) to price it.
+   * id, refresh by max, exactly the pre-lanes shape (THE PLAYER LAW —
+   * a pack of five wolves stacking five bleeds would raise damage
+   * TAKEN; the book-plan Phase 3 ledger prices that door before it
+   * opens). A COUNT-model page walks its own door: its stacking is
+   * the page's authored identity on any body, players included — the
+   * spider that worsens per stack is exactly this lane, and its ramp
+   * is priced when its page is authored.
    */
   private applyStatusToPlayer(eid: EntityId, apply: StatusApply, sourceEid: EntityId): void {
+    const page = pageOf(apply.status);
+    // FAIR HANDS: the immunity window holds at the player door too
+    // (inline for the slate-test law — no state touched unless a page
+    // authors a window).
+    if (page.cc && page.cc.immunityTicks > 0) {
+      const rec = this.ccImmunity.get(eid);
+      const until = rec?.[page.id];
+      if (until !== undefined) {
+        if (this.tickCount < until) return;
+        delete rec![page.id];
+      }
+    }
     const list = this.statuses.get(eid) ?? [];
+    if (page.stacking.model === 'count') {
+      const verdict = applyCount(list, page, apply.power, apply.durationTicks, () => ({
+        id: apply.status,
+        power: apply.power,
+        ticksLeft: apply.durationTicks,
+        sourceEid,
+      }));
+      if (list.length > 0) this.statuses.set(eid, list);
+      else this.statuses.delete(eid);
+      const pos = this.positions.get(eid);
+      if (pos) {
+        for (const t of verdict.crossed) {
+          this.broadcastFx(pos.plane, {
+            t: 'fx',
+            kind: 'reaction',
+            x: pos.x,
+            y: pos.y,
+            radius: 0,
+            color: page.visuals.ink,
+            text: t.name,
+          });
+        }
+      }
+      if (verdict.outcome === 'consumed' && verdict.detonation) {
+        // The filled stack answers on the wearer. The wound is already
+        // inside (the DoT law), so the burst pierces like a pulse; the
+        // radius stays the NPC door's — a player-worn state never
+        // rings the neighbors.
+        this.damagePlayer(eid, verdict.detonation.damage, {
+          pierceArmor: true,
+          sourceEid,
+        });
+      }
+      return;
+    }
     const same = list.find((s) => s.id === apply.status);
     if (same) {
-      same.ticksLeft = Math.max(same.ticksLeft, apply.durationTicks);
-      same.power = Math.max(same.power, apply.power);
+      refreshMax(same, apply.power, apply.durationTicks);
     } else {
       list.push({ id: apply.status, power: apply.power, ticksLeft: apply.durationTicks, sourceEid });
     }
@@ -22247,10 +22384,15 @@ export class GameServer {
       let stacks = 0;
       for (const s of list) {
         bits |= STATUS_BIT[s.id];
-        if (isAffliction(s.id)) stacks++;
+        // The stack nibble speaks the book: a perSource entry is one
+        // wound, a count entry carries its whole count. The six
+        // shipped pages make this exactly the old affliction tally.
+        const model = pageOf(s.id).stacking.model;
+        if (model === 'perSource') stacks++;
+        else if (model === 'count') stacks += s.stacks ?? 1;
       }
-      // The per-source affliction count rides the high nibble so the
-      // Phase 5 nameplate can read stacks with no protocol change.
+      // The stack count rides the high nibble so the nameplate can
+      // read it with no protocol change.
       bits |= Math.min(stacks, 15) << AFFLICTION_STACKS_SHIFT;
     }
     // Stealth bits ride the same byte. Snapshots for a hidden player only
@@ -22294,36 +22436,56 @@ export class GameServer {
         const s = list[i]!;
         s.ticksLeft--;
         if (s.stunLeft !== undefined && s.stunLeft > 0) s.stunLeft--;
-        const dot = s.id === 'burn' || s.id === 'bleed' || s.id === 'venom';
-        const every =
-          s.id === 'burn' ? BURN_TICK_EVERY : s.id === 'venom' ? VENOM_TICK_EVERY : BLEED_TICK_EVERY;
-        if (dot && s.ticksLeft > 0 && s.ticksLeft % every === 0) {
-          if (this.pets.has(eid)) {
+        // THE BOOK OF STATES: the page owns the clock and the ramp.
+        // The six shipped pages pulse exactly the pre-book numbers
+        // (no ramps authored); a count page's pulse deepens per stack.
+        const page = pageOf(s.id);
+        const spec = page.tick;
+        if (spec && s.ticksLeft > 0 && s.ticksLeft % spec.every === 0) {
+          const pulse = effectivePower(page, s);
+          if (spec.kind === 'heal') {
+            // THE MEND DOOR: a heal-kind page raises its holder — the
+            // HoT lane's engine seat. No shipped page authors it yet;
+            // the boon wave gives it a voice when it gives it a name.
+            const h = this.healths.get(eid);
+            if (h && h.hp > 0) h.hp = Math.min(h.maxHp, h.hp + pulse);
+          } else if (this.pets.has(eid)) {
             // A companion's DoT walks the pet rail (dotNpc would hit
             // the friendly-fire wall in damageNpc) — the drip pierces
             // armor exactly as it does for players: the wound's
             // already inside.
-            this.damagePet(eid, s.power, {
+            this.damagePet(eid, pulse, {
               pierceArmor: true,
               sourceEid: s.sourceEid,
               via: s.id as 'burn' | 'bleed' | 'venom',
             });
           } else if (this.npcs.has(eid)) {
-            this.dotNpc(eid, s.power, s.sourceEid, s.id as 'burn' | 'bleed' | 'venom', s.fromPet);
+            this.dotNpc(eid, pulse, s.sourceEid, s.id as 'burn' | 'bleed' | 'venom', s.fromPet);
           } else if (this.players.has(eid)) {
             // Bitter Blood: the herbalist's constitution dulls the drip.
             const p = this.players.get(eid)!;
             // The pulse carries its burner: a hurt moment with no
             // source in hand left every targeted hurt working rolling,
             // winning, and no-oping — its rest banked against nothing.
-            this.damagePlayer(eid, Math.max(1, Math.round(s.power * p.perks.dotResistMult)), {
+            this.damagePlayer(eid, Math.max(1, Math.round(pulse * p.perks.dotResistMult)), {
               pierceArmor: true,
               sourceEid: s.sourceEid,
               via: s.id as 'burn' | 'bleed' | 'venom',
             });
           }
         }
-        if (s.ticksLeft <= 0) list.splice(i, 1);
+        if (s.ticksLeft <= 0) {
+          // The page owns the leaving too: stepDown sheds one stack
+          // and re-arms; expire ends the state whole. A CC page with
+          // an authored immunity window stamps it as the lock lifts.
+          if (decayAtZero(page, s) === 'stepped') continue;
+          list.splice(i, 1);
+          if (page.cc && page.cc.immunityTicks > 0) {
+            const rec = this.ccImmunity.get(eid) ?? {};
+            rec[s.id] = this.tickCount + page.cc.immunityTicks;
+            this.ccImmunity.set(eid, rec);
+          }
+        }
       }
       if (list.length === 0) this.statuses.delete(eid);
     }

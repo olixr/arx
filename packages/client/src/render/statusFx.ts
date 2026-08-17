@@ -36,32 +36,35 @@
 import {
   STATUS_BIT,
   STATUS_AMBIENCE_MASK,
+  STATUS_BOOK,
   afflictionStacksOf,
   type StatusId,
 } from '@arx/shared';
 import type { MatterCtx } from './matter/types.js';
 import { fire, frost, storm, blood, venom, dust } from './matter/index.js';
 
-/** The one status color truth (matches the ambience palettes' lead hex). */
-export const STATUS_INK: Readonly<Record<string, string>> = {
-  sunder: '#b8b2a6',
-  bleed: '#c4372a',
-  venom: '#a0c050',
-  burn: '#ff8a3c',
-  chill: '#8ac4e8',
-  shock: '#e8e06a',
-};
+/**
+ * The one status color truth — read off THE BOOK OF STATES, where
+ * each page's visuals contract declares its ink (statusBook.ts). One
+ * truth, one home; every client surface keeps reading it from here.
+ * (The hexes match the ambience palettes' lead hex, as always.)
+ */
+export const STATUS_INK: Readonly<Record<string, string>> = Object.fromEntries(
+  Object.values(STATUS_BOOK).map((p) => [p.id, p.visuals.ink]),
+);
 
 /**
  * Vignette edge tint for own-body DoT ticks, as 'r, g, b' for the
  * renderer's hurt bands: darkened toward the band's weight so the
- * screen edge reads as a wound, not a highlight.
+ * screen edge reads as a wound, not a highlight. Derived from the
+ * pages that declare a vignette (the DoT tickers).
  */
-export const STATUS_VIGNETTE_RGB: Readonly<Record<'burn' | 'bleed' | 'venom', string>> = {
-  burn: '224, 118, 44',
-  bleed: '196, 60, 40',
-  venom: '124, 158, 48',
-};
+export const STATUS_VIGNETTE_RGB: Readonly<Record<'burn' | 'bleed' | 'venom', string>> =
+  Object.fromEntries(
+    Object.values(STATUS_BOOK).flatMap((p) =>
+      p.visuals.vignette ? [[p.id, p.visuals.vignette] as const] : [],
+    ),
+  ) as Record<'burn' | 'bleed' | 'venom', string>;
 
 export interface StatusEdgeEvent {
   status: StatusId;
