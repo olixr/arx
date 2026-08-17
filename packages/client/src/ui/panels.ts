@@ -43,7 +43,9 @@ import {
   type CallingEffect,
   type CallingGrant,
   type PerkId,
+  describeAction,
   describeEffect,
+  describeTrigger,
   effectiveReq,
   enchantDef,
   bondedEffects,
@@ -3457,6 +3459,12 @@ export class Panels {
   }
 
   private describeGrant(g: CallingGrant): string {
+    const parts = this.grantParts(g);
+    return parts.length > 0 ? `${g.name} (${parts.join(', ')})` : g.name;
+  }
+
+  /** The grant's dials alone, no chip name — the working plate's head. */
+  private grantParts(g: CallingGrant): string[] {
     const parts: string[] = [];
     if (g.armor) parts.push(`+${g.armor} armor`);
     if (g.speedMult && g.speedMult !== 1) parts.push(`${g.speedMult > 1 ? '+' : ''}${Math.round((g.speedMult - 1) * 100)}% speed`);
@@ -3467,7 +3475,7 @@ export class Panels {
     if (g.reflectFrac) parts.push(`returns ${Math.round(g.reflectFrac * 100)}% of blows`);
     if (g.meleeLifesteal) parts.push(`blows drink ${Math.round(g.meleeLifesteal * 100)}%`);
     if (g.gatherSpeed && g.gatherSpeed !== 1) parts.push(`gathers ${Math.round((g.gatherSpeed - 1) * 100)}% faster`);
-    return parts.length > 0 ? `${g.name} (${parts.join(', ')})` : g.name;
+    return parts;
   }
 
   /** The one-site dials in plain words — the map PERK_DIALS documents, spoken. */
@@ -3551,10 +3559,6 @@ export class Panels {
     const line = document.createElement('div');
     line.className = 'bench-line';
     line.textContent = `${callingSkill} · Calling`;
-    names.append(name, line);
-    head.append(well, names);
-    bench.appendChild(head);
-
     const level = levelForXp(this.lastSkills[def.skill] ?? 0);
     const cap = st === 'locked' ? 0 : Math.max(1, callingRank(def, level));
     const held = st === 'answered' ? this.appliedRank(def.id) : 0;
@@ -3562,7 +3566,8 @@ export class Panels {
     const used = this.focusUsed();
     const heldCost = held > 0 ? callingCost(def.focusCost, held) : 0;
 
-    // The state, worn as a seal — a cut banner, not a bordered label.
+    // The state, worn as a seal on the head's shoulder — a cut
+    // banner, never a bordered label, never its own spent row.
     const seal = document.createElement('div');
     seal.className = `call-seal ${st}`;
     seal.textContent =
@@ -3571,33 +3576,54 @@ export class Panels {
         : st === 'unlocked'
           ? `Ready to answer · ${def.focusCost} Focus at Rank I`
           : `Answers at ${callingSkill} level ${def.unlockLevel}`;
-    bench.appendChild(seal);
+    names.append(name, line, seal);
+    head.append(well, names);
+    bench.appendChild(head);
 
     const desc = document.createElement('p');
     desc.className = 'bench-desc';
     desc.textContent = def.desc;
     bench.appendChild(desc);
 
-    // EVERY ANSWER IS SEEN: the package as verses, each led by the
-    // glyph of its kind (steel, spark, moon, trade, knack, sigil).
+    // EVERY ANSWER IS SEEN: the package as WORKING PLATES — the
+    // mechanic in bold display type, the condition beneath it, the
+    // family's emblem on the left. The effect is the star.
     const readAt = held > 0 ? held : 1;
-    const verses = document.createElement('div');
-    verses.className = 'bench-verses';
+    const plates = document.createElement('div');
+    plates.className = 'working-plates';
     for (const fx of honedCalling(def, readAt)) {
+      const w = this.callingWorking(fx);
       const row = document.createElement('div');
-      row.className = 'verse';
+      // An always-on dial needs no second deck: its plate reads on one
+      // line. Conditions and licenses keep the full two-deck plate.
+      row.className = 'wp-plate' + (w.sub === 'Always on' ? ' quiet' : '');
+      const emblem = document.createElement('span');
+      emblem.className = 'wp-emblem';
       const glyph = document.createElement('span');
-      glyph.className = `verse-glyph ${this.callingKindOf(fx)}`;
-      const text = document.createElement('span');
-      text.className = 'verse-text';
-      text.textContent = this.describeCallingEffect(fx);
-      row.append(glyph, text);
-      verses.appendChild(row);
+      glyph.className = `verse-glyph ${w.kind}`;
+      emblem.appendChild(glyph);
+      const col = document.createElement('span');
+      col.className = 'wp-col';
+      const head2 = document.createElement('span');
+      head2.className = 'wp-head';
+      head2.textContent = w.head;
+      const sub2 = document.createElement('span');
+      sub2.className = 'wp-sub';
+      sub2.textContent = w.sub;
+      col.append(head2, sub2);
+      row.append(emblem, col);
+      plates.appendChild(row);
     }
-    bench.appendChild(verses);
+    bench.appendChild(plates);
 
-    // THE RANK SPINE: four studs, the walked depth lit, the earned
-    // depth ringed, each stud pricing its step.
+    // THE FOUR DEPTHS: the rank spine and the next depth's note,
+    // grouped on one inset panel.
+    const depths = document.createElement('div');
+    depths.className = 'depth-block';
+    const depthTitle = document.createElement('span');
+    depthTitle.className = 'depth-title';
+    depthTitle.textContent = 'The Four Depths';
+    depths.appendChild(depthTitle);
     const spine = document.createElement('div');
     spine.className = 'rank-spine call-spine';
     spine.style.setProperty('--walked-n', String(held > 1 ? (held - 1) / (CALLING_MAX_RANK - 1) : 0));
@@ -3624,9 +3650,9 @@ export class Panels {
       stud.appendChild(under);
       spine.appendChild(stud);
     }
-    bench.appendChild(spine);
+    depths.appendChild(spine);
 
-    // The next depth's own note, previewed as a verse of its own.
+    // The next depth's own note, previewed inside the block.
     if (def.ranks && readAt < CALLING_MAX_RANK) {
       const next = def.ranks[readAt - 1];
       if (next) {
@@ -3638,23 +3664,29 @@ export class Panels {
         const text = document.createElement('span');
         text.textContent = next.note;
         nextLine.append(glyph, text);
-        bench.appendChild(nextLine);
+        depths.appendChild(nextLine);
       }
     }
-
     if (st !== 'locked') {
+      // The honed line is rank truth: it lives with the depths.
       const honed = document.createElement('div');
       honed.className = 'bench-line bench-honed';
       honed.textContent =
         cap >= CALLING_MAX_RANK
           ? `Honed to Rank ${RANK_ROMAN[cap]}, the deepest.`
           : `Honed to Rank ${RANK_ROMAN[cap]}. Rank ${RANK_ROMAN[cap + 1]} at ${callingSkill} level ${rankLevel(def.unlockLevel, cap + 1)}.`;
-      bench.appendChild(honed);
+      depths.appendChild(honed);
     }
+    bench.appendChild(depths);
+
+    // THE FOOT: the verbs and the teach, pinned to the bench's floor.
+    const foot = document.createElement('div');
+    foot.className = 'bench-foot';
+    bench.appendChild(foot);
 
     const verbs = document.createElement('div');
     verbs.className = 'bench-verbs';
-    bench.appendChild(verbs);
+    foot.appendChild(verbs);
     let cant = false;
     if (st === 'answered') {
       if (held < cap) {
@@ -3701,11 +3733,66 @@ export class Panels {
     const teach = document.createElement('div');
     teach.className = 'bench-teach';
     teach.textContent = cant
-      ? `Your Focus is ${used}/${budget}. Set another Calling down, or deepen a skill past 25, 50, 75, or 99.`
+      ? `Focus ${used}/${budget}. Set a Calling down, or deepen a skill past a milestone.`
       : st === 'locked'
         ? `Climb ${callingSkill} and this seat will open on its own.`
-        : 'Answering is always free to change. The budget is the only law; depth is yours to afford.';
-    bench.appendChild(teach);
+        : 'Free to change any time. The budget is the only law.';
+    foot.appendChild(teach);
+  }
+
+  /**
+   * THE WORKING, split for its plate: the MECHANIC as the bold head
+   * (what actually happens, numbers first) and the condition as the
+   * line beneath it (when it happens). The star is the effect.
+   */
+  private callingWorking(fx: CallingEffect): { kind: string; head: string; sub: string } {
+    const cap = (t: string): string => t.charAt(0).toUpperCase() + t.slice(1);
+    switch (fx.kind) {
+      case 'gear': {
+        if (fx.effect.kind === 'proc') {
+          const p = fx.effect;
+          return { kind: 'proc', head: cap(describeAction(p.action)), sub: `On ${describeTrigger(p.trigger)}` };
+        }
+        return { kind: 'gear', head: cap(describeEffect(fx.effect)), sub: 'Always on' };
+      }
+      case 'proc':
+        return {
+          kind: 'proc',
+          head: cap(describeAction(fx.proc.action)),
+          sub: `On ${describeTrigger(fx.proc.trigger)}`,
+        };
+      case 'when': {
+        const parts = this.grantParts(fx.grant);
+        return {
+          kind: 'when',
+          head: cap(parts.join(', ') || fx.grant.name),
+          sub: `While ${this.describeCondition(fx.cond)}`,
+        };
+      }
+      case 'perPiece': {
+        const parts: string[] = [];
+        if (fx.speedPct) parts.push(`+${fx.speedPct}% speed`);
+        if (fx.maxHp) parts.push(`+${fx.maxHp} max HP`);
+        if (fx.armor) parts.push(`+${fx.armor} armor`);
+        return { kind: 'gear', head: cap(parts.join(', ')), sub: `Per worn ${fx.armorClass} piece` };
+      }
+      case 'doubleGather':
+        return { kind: 'trade', head: `${Math.round(fx.chance * 100)}% chance the yield doubles`, sub: `${skillName(fx.skill)} harvests` };
+      case 'gatherSpeed':
+        return { kind: 'trade', head: `Gather ${Math.round((fx.mult - 1) * 100)}% faster`, sub: `${skillName(fx.skill)} work` };
+      case 'materialSave':
+        return { kind: 'trade', head: `${Math.round(fx.chance * 100)}% chance materials are saved`, sub: `${skillName(fx.skill)} work` };
+      case 'craftSpeed':
+        return { kind: 'trade', head: `Work ${Math.round((1 - fx.mult) * 100)}% faster`, sub: `${skillName(fx.skill)} craft` };
+      case 'perk':
+        return { kind: 'knack', head: cap(this.describePerk(fx.perk, fx.magnitude)), sub: 'A knack of the trade' };
+      case 'art':
+        return {
+          kind: 'art',
+          head: abilityDef(fx.ability)?.name ?? fx.ability,
+          sub: 'Licensed to your codex, any weapon in hand',
+        };
+    }
   }
 
   /** The glyph family a package entry belongs to, for the verse lead. */
