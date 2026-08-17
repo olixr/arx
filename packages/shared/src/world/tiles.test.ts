@@ -110,9 +110,10 @@ test('every candle round-trips lit <-> snuffed and both postures hold one stance
     assert.equal(doorInfo(tile), null, `${tileDef(tile).name} stays out of the door map`);
     if (info.lit) pairs++;
   }
-  // The family ships four pairs: stand, cluster, mound, table.
-  assert.equal(pairs, 4);
-  assert.equal(CANDLE_TILES.size, 8);
+  // The family ships six pairs: stand, cluster, mound, table, and
+  // THE BOLD WICK's lone pillar and stepped trio.
+  assert.equal(pairs, 6);
+  assert.equal(CANDLE_TILES.size, 12);
   assert.equal(candleInfo(Tile.Table), null);
   assert.equal(candleToggleTile(Tile.CandleRack), null);
 });
@@ -531,6 +532,10 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.CandleTable, 'candletable', 1],
     [Tile.CandleTableOut, 'candletable', 1],
     [Tile.CandleStandOut, 'candlestand', 1],
+    [Tile.PillarCandle, 'pillarcandle', 1],
+    [Tile.PillarCandleOut, 'pillarcandle', 1],
+    [Tile.TripleCandles, 'candlecluster', 1],
+    [Tile.TripleCandlesOut, 'candlecluster', 1],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {

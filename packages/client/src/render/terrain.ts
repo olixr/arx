@@ -528,9 +528,10 @@ function effectiveGround(ground: GroundSampler): GroundSampler {
     // THE CHORE AND THE LOG YARD: the block and the mill timber
     // stand on the yard they serve — never their own material.
     if (t >= Tile.ChoppingBlock && t <= Tile.LogPileEndOn) return nearestFloor(ground, tx, ty);
-    // THE KEPT FLAME: a candle court stands on whatever the room
-    // laid — boards, flags, or the green; wax never paves.
-    if (t >= Tile.CandleCluster && t <= Tile.CandleStandOut) return nearestFloor(ground, tx, ty);
+    // THE KEPT FLAME (+ THE BOLD WICK): a candle court stands on
+    // whatever the room laid — boards, flags, or the green; wax
+    // never paves.
+    if (t >= Tile.CandleCluster && t <= Tile.TripleCandlesOut) return nearestFloor(ground, tx, ty);
     // The palisade stands in open country like the garrison curtain:
     // whatever walkable terrain fronts it continues beneath (south
     // first — that side's base sliver shows), and a family member

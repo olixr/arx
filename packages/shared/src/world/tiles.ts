@@ -967,6 +967,19 @@ export enum Tile {
   CandleTableOut = 472,
   /** The forged floor candelabrum (429's own body), every flame snuffed. */
   CandleStandOut = 473,
+  // THE BOLD WICK — the family's second wave, cut after the first
+  // court was judged NEEDLE-THIN at map scale (user verdict): wax
+  // reads at this camera only when it is THICK — pillar-class
+  // columns, never tapers. These two are the boldest forms: the lone
+  // exclamation mark and the decorator's stepped trio.
+  /** One bold pillar of wax alone on its own spilt base, burning. */
+  PillarCandle = 474,
+  /** The lone pillar snuffed, its heavy collar cold. */
+  PillarCandleOut = 475,
+  /** Three stepped pillar candles sharing one melted base, burning. */
+  TripleCandles = 476,
+  /** The trio snuffed — three cold columns in one pool. */
+  TripleCandlesOut = 477,
 }
 
 export enum Detail {
@@ -1714,6 +1727,10 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.CandleTable]: { name: 'candle table', solid: true, color: '#6b4a26', raised: true, topColor: '#e8a13c' },
   [Tile.CandleTableOut]: { name: 'candle table', solid: true, color: '#6b4a26', raised: true, topColor: '#d8cba8' },
   [Tile.CandleStandOut]: { name: 'candle stand', solid: true, color: '#4c4a52', raised: true, topColor: '#d8cba8' },
+  [Tile.PillarCandle]: { name: 'pillar candle', solid: true, color: '#8a7d5e', raised: true, topColor: '#e8a13c' },
+  [Tile.PillarCandleOut]: { name: 'pillar candle', solid: true, color: '#8a7d5e', raised: true, topColor: '#d8cba8' },
+  [Tile.TripleCandles]: { name: 'triple candles', solid: true, color: '#8a7d5e', raised: true, topColor: '#e8a13c' },
+  [Tile.TripleCandlesOut]: { name: 'triple candles', solid: true, color: '#8a7d5e', raised: true, topColor: '#d8cba8' },
 };
 
 /** The four awning silhouettes, index order FOREVER (the id math). */
@@ -2054,6 +2071,8 @@ const CANDLE_OUT_OF = new Map<Tile, Tile>([
   [Tile.CandleCluster, Tile.CandleClusterOut],
   [Tile.MeltedCandles, Tile.MeltedCandlesOut],
   [Tile.CandleTable, Tile.CandleTableOut],
+  [Tile.PillarCandle, Tile.PillarCandleOut],
+  [Tile.TripleCandles, Tile.TripleCandlesOut],
 ]);
 const CANDLE_LIT_OF = new Map<Tile, Tile>([...CANDLE_OUT_OF].map(([lit, out]) => [out, lit]));
 
@@ -2487,6 +2506,10 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.CandleTable, 0.26],
   [Tile.CandleTableOut, 0.26],
   [Tile.CandleStandOut, 0.22],
+  [Tile.PillarCandle, 0.2],
+  [Tile.PillarCandleOut, 0.2],
+  [Tile.TripleCandles, 0.24],
+  [Tile.TripleCandlesOut, 0.24],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -2823,7 +2846,9 @@ export type DestructibleKind =
   // the chamberstick.
   | 'candlecluster'
   | 'meltwax'
-  | 'candletable';
+  | 'candletable'
+  // THE BOLD WICK: the lone column falls as ONE heavy piece.
+  | 'pillarcandle';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -3067,6 +3092,12 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.CandleTable, { kind: 'candletable', respawnSec: 300, hits: 1 }],
   [Tile.CandleTableOut, { kind: 'candletable', respawnSec: 300, hits: 1 }],
   [Tile.CandleStandOut, { kind: 'candlestand', respawnSec: 300, hits: 1 }],
+  // THE BOLD WICK: one great column falls heavy; the trio breaks
+  // like the cluster it is.
+  [Tile.PillarCandle, { kind: 'pillarcandle', respawnSec: 300, hits: 1 }],
+  [Tile.PillarCandleOut, { kind: 'pillarcandle', respawnSec: 300, hits: 1 }],
+  [Tile.TripleCandles, { kind: 'candlecluster', respawnSec: 300, hits: 1 }],
+  [Tile.TripleCandlesOut, { kind: 'candlecluster', respawnSec: 300, hits: 1 }],
 ]);
 
 /** Every smashable prop tile. */

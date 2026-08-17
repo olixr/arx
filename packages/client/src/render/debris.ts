@@ -237,7 +237,9 @@ export type SmashKind =
   // one brass ping.
   | 'candlecluster'
   | 'meltwax'
-  | 'candletable';
+  | 'candletable'
+  // THE BOLD WICK: the lone column falls as ONE heavy piece.
+  | 'pillarcandle';
 
 export interface DebrisChunk {
   x: number; // world coords (tile units)
@@ -805,6 +807,7 @@ const CHIP_TONE: Record<SmashKind, string> = {
   candlecluster: '#d8cba8',
   meltwax: '#d8cba8',
   candletable: '#6f4d26',
+  pillarcandle: '#d8cba8',
   streetlantern: '#6f5a38',
   wayshrine: '#8a857a',
   guardian: '#6f6a58',
@@ -3044,6 +3047,18 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       }
       for (let i = 0; i < 3; i++) {
         out.push({ len: 0.05, wid: 0.014, color: '#efe6cf', pace: 0.9 });
+      }
+      break;
+    }
+    case 'pillarcandle': {
+      // The great column goes over as ONE piece — a heavy wax drum
+      // that barely rolls — with its collar cracking off in lobes.
+      out.push({ len: 0.22, wid: 0.11, color: '#d8cba8', stripe: '#efe6cf', pace: 0.4 });
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.07, wid: 0.05, color: pick(rand, ['#efe6cf', '#e6dcc0']), stripe: '#c9bd9e', round: true, pace: 0.6 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.05, wid: 0.016, color: '#e6dcc0', pace: 0.8 });
       }
       break;
     }
