@@ -2763,6 +2763,9 @@ export class Panels {
       ) {
         btn.classList.add('in-hand-stop');
       }
+      btn.dataset.tipname = skillName(stop);
+      btn.dataset.tipsub =
+        this.artsWing === 'callings' ? `Level ${level} · ${lv.textContent}` : `Level ${level}`;
       btn.addEventListener('click', () => this.pickRailStop(stop));
       this.artsRail.appendChild(btn);
     }
@@ -2852,6 +2855,9 @@ export class Panels {
     // The room wears its wing: the callings wing folds the proving
     // ground away and hands the stage to the passives (CSS keys on it).
     this.artsPanel.classList.toggle('wing-callings', this.artsWing === 'callings');
+    // The hall names itself for the wing it is showing.
+    const title = this.artsPanel.querySelector('h3');
+    if (title) title.textContent = this.artsWing === 'callings' ? 'Callings' : 'Techniques';
 
     if (this.artsWing === 'callings') {
       this.ground.show(null);
@@ -2909,32 +2915,182 @@ export class Panels {
   }
 
   /**
-   * THE FOCUS LAW's meter: what the milestones have earned, what the
-   * answered set is holding — rendered where the loadout strip lives.
+   * THE ANSWERED LIFE — the callings wing's foot band, the build in
+   * one look: the Focus instrument, the roster of every answered
+   * Calling worn as its gem, and THE SUM of what the whole answered
+   * set gives, told in engraved chips.
    */
-  private renderFocusMeter(): void {
+  private renderAnsweredLife(): void {
     const budget = focusBudget(this.lastSkills);
     const used = this.focusUsed();
     this.artsLoadout.innerHTML = '';
-    const title = document.createElement('span');
-    title.className = 'load-title';
-    title.textContent = 'Focus';
+
+    const focus = document.createElement('div');
+    focus.className = 'life-focus';
+    const ftitle = document.createElement('span');
+    ftitle.className = 'load-title';
+    ftitle.textContent = 'Focus';
     const nums = document.createElement('span');
-    nums.className = 'focus-nums';
+    nums.className = 'focus-nums' + (used > budget ? ' over' : '');
     nums.textContent = `${used} / ${budget}`;
     const bar = document.createElement('div');
-    bar.className = 'focus-bar';
+    bar.className = 'focus-forge';
     const fill = document.createElement('div');
     fill.className = 'focus-fill' + (used >= budget ? ' full' : '');
     fill.style.width = `${budget > 0 ? Math.min(100, (used / budget) * 100) : 0}%`;
     bar.appendChild(fill);
     const teach = document.createElement('span');
     teach.className = 'focus-teach';
-    teach.textContent =
-      used >= budget
-        ? 'Focus spent. Every skill at 25, 50, 75, and 99 deepens it.'
-        : 'Answered Callings hold Focus. Every skill at 25, 50, 75, and 99 deepens it.';
-    this.artsLoadout.append(title, nums, bar, teach);
+    teach.textContent = 'Every skill at 25, 50, 75, and 99 deepens it.';
+    focus.append(ftitle, nums, bar, teach);
+
+    const roster = document.createElement('div');
+    roster.className = 'life-roster';
+    const rtitle = document.createElement('span');
+    rtitle.className = 'load-title';
+    rtitle.textContent = 'The Answered Life';
+    const strip = document.createElement('div');
+    strip.className = 'life-strip';
+    const answeredDefs = this.callings
+      .map((id) => callingDef(id))
+      .filter((d): d is CallingDef => !!d)
+      .sort((a, b) =>
+        a.skill === b.skill ? a.unlockLevel - b.unlockLevel : a.skill < b.skill ? -1 : 1,
+      );
+    if (answeredDefs.length === 0) {
+      const empty = document.createElement('span');
+      empty.className = 'life-empty';
+      empty.textContent = 'Nothing answered yet. The ladders wait.';
+      strip.appendChild(empty);
+    }
+    for (const def of answeredDefs) {
+      const held = this.appliedRank(def.id);
+      const b = document.createElement('button');
+      b.className = 'life-gem' + (this.callingSel === def.id ? ' selected' : '');
+      b.dataset.nav = '';
+      b.dataset.navkey = `life:${def.id}`;
+      b.dataset.acta = 'Visit';
+      b.dataset.tipname = def.name;
+      b.dataset.tipsub = `${skillName(def.skill)} · Rank ${RANK_ROMAN[held]} · ${callingCost(def.focusCost, held)} Focus`;
+      const gem = document.createElement('span');
+      gem.className = 'call-gem';
+      gem.style.setProperty('--gem', def.color);
+      const rank = document.createElement('span');
+      rank.className = 'life-rank';
+      rank.textContent = RANK_ROMAN[held] ?? 'I';
+      b.append(gem, rank);
+      b.addEventListener('click', () => this.jumpToCalling(def.id));
+      strip.appendChild(b);
+    }
+    roster.append(rtitle, strip);
+
+    const sum = document.createElement('div');
+    sum.className = 'life-sum';
+    const stitle = document.createElement('span');
+    stitle.className = 'load-title';
+    stitle.textContent = 'The Sum';
+    const chips = document.createElement('div');
+    chips.className = 'sum-chips';
+    const lines = this.answeredSums(answeredDefs);
+    if (lines.length === 0) {
+      const c = document.createElement('span');
+      c.className = 'sum-chip dim';
+      c.textContent = 'No sums yet';
+      chips.appendChild(c);
+    }
+    for (const line of lines) {
+      const c = document.createElement('span');
+      c.className = 'sum-chip';
+      c.textContent = line;
+      chips.appendChild(c);
+    }
+    sum.append(stitle, chips);
+
+    this.artsLoadout.append(focus, roster, sum);
+  }
+
+  /**
+   * The always-on aggregates of the answered set summed honestly, and
+   * its verbs counted — conditional edges are never folded into flat
+   * sums (a vsState clause is a clause, not armor).
+   */
+  private answeredSums(defs: CallingDef[]): string[] {
+    const flat = { armor: 0, maxHp: 0, regen: 0, speed: 0, crit: 0, cooldown: 0, thorns: 0, skill: 0 };
+    let procs = 0;
+    let whens = 0;
+    let arts = 0;
+    let trades = 0;
+    let edges = 0;
+    let pieces = 0;
+    let knacks = 0;
+    for (const def of defs) {
+      for (const fx of honedCalling(def, this.appliedRank(def.id))) {
+        switch (fx.kind) {
+          case 'gear': {
+            const e = fx.effect;
+            if (e.kind === 'armor') flat.armor += e.amount;
+            else if (e.kind === 'maxHp') flat.maxHp += e.amount;
+            else if (e.kind === 'regen') flat.regen += e.amount;
+            else if (e.kind === 'speed') flat.speed += e.pct;
+            else if (e.kind === 'crit') flat.crit += e.pct;
+            else if (e.kind === 'cooldown') flat.cooldown += e.pct;
+            else if (e.kind === 'thorns') flat.thorns += e.amount;
+            else if (e.kind === 'skill') flat.skill += e.amount;
+            else if (e.kind === 'styleDmg' || e.kind === 'elementDmg' || e.kind === 'vsState') edges++;
+            else if (e.kind === 'proc') procs++;
+            break;
+          }
+          case 'proc':
+            procs++;
+            break;
+          case 'when':
+            whens++;
+            break;
+          case 'art':
+            arts++;
+            break;
+          case 'perPiece':
+            pieces++;
+            break;
+          case 'perk':
+            knacks++;
+            break;
+          case 'doubleGather':
+          case 'gatherSpeed':
+          case 'materialSave':
+          case 'craftSpeed':
+            trades++;
+            break;
+        }
+      }
+    }
+    const out: string[] = [];
+    if (flat.armor) out.push(`+${flat.armor} armor`);
+    if (flat.maxHp) out.push(`+${flat.maxHp} health`);
+    if (flat.regen) out.push(`+${flat.regen} mending`);
+    if (flat.speed) out.push(`+${flat.speed}% speed`);
+    if (flat.crit) out.push(`+${flat.crit}% crit`);
+    if (flat.cooldown) out.push(`arts ${flat.cooldown}% sooner`);
+    if (flat.thorns) out.push(`+${flat.thorns} thorns`);
+    if (flat.skill) out.push(`+${flat.skill} skill`);
+    if (edges) out.push(`${edges} edge${edges === 1 ? '' : 's'}`);
+    if (procs) out.push(`${procs} working${procs === 1 ? '' : 's'}`);
+    if (whens) out.push(`${whens} clause${whens === 1 ? '' : 's'}`);
+    if (trades) out.push(`${trades} trade gift${trades === 1 ? '' : 's'}`);
+    if (pieces) out.push(`${pieces} worn gift${pieces === 1 ? '' : 's'}`);
+    if (knacks) out.push(`${knacks} knack${knacks === 1 ? '' : 's'}`);
+    if (arts) out.push(`${arts} licensed art${arts === 1 ? '' : 's'}`);
+    return out;
+  }
+
+  /** A gem in the foot band pressed: walk the hall to its own seat. */
+  private jumpToCalling(id: string): void {
+    const def = callingDef(id);
+    if (!def) return;
+    this.callingSkillSel = def.skill;
+    this.callingSel = id;
+    this.markCallingSeen(id);
+    this.renderArts();
   }
 
   /**
@@ -2958,10 +3114,9 @@ export class Panels {
         null;
     }
     this.markCallingSeen(this.callingSel);
-    this.renderFocusMeter();
+    this.renderAnsweredLife();
     this.artsSchools.innerHTML = '';
     if (skill) this.artsSchools.appendChild(this.callingStage(skill));
-    this.recenterRibbon();
     this.renderCallingBench();
     this.updateArtsPip();
   }
@@ -2986,7 +3141,13 @@ export class Panels {
     return wrap;
   }
 
-  /** One skill's calling ladder: the stage head and the ribbon of seats. */
+  /**
+   * THE ROAD (the callings wing rebuilt): one skill's sixteen seats
+   * as a serpentine tree — two runs of eight, the second walking
+   * back, joined by a forged turn — so the whole ladder stands on the
+   * stage at once, every seat a large plaque the hand can press. The
+   * pad's down press lands on the true ladder neighbor by geometry.
+   */
   private callingStage(skill: SkillId): HTMLElement {
     const face = SKILL_FACE[skill] ?? { icon: 'bread', color: '#d9a441' };
     const hidden = HIDDEN_SKILLS[skill];
@@ -2997,109 +3158,152 @@ export class Panels {
 
     const head = document.createElement('div');
     head.className = 'stage-head';
+    const crest = document.createElement('span');
+    crest.className = 'stage-crest';
+    const crestImg = document.createElement('img');
+    crestImg.src = itemIconUrl(face.icon, 30);
+    crestImg.draggable = false;
+    crest.appendChild(crestImg);
     const name = document.createElement('span');
     name.className = 'stage-school';
     name.textContent = skillName(skill);
-    const lv = document.createElement('span');
-    lv.className = 'stage-lv';
-    lv.textContent = `Lv ${level}`;
-    head.append(name, lv);
+    const gem = document.createElement('span');
+    gem.className = 'stage-gem';
+    gem.dataset.tipname = 'Skill level';
+    gem.dataset.tipsub = `${skillName(skill)} stands at level ${level}.`;
+    const gn = document.createElement('span');
+    gn.className = 'stage-gem-num';
+    gn.textContent = String(level);
+    gem.appendChild(gn);
+    head.append(crest, name, gem);
+
     const seats = callingsFor(skill).slice().sort((a, b) => a.unlockLevel - b.unlockLevel);
-    const answered = seats.filter((d) => this.callingState(d) === 'answered').length;
+    let answered = 0;
+    const pips = document.createElement('span');
+    pips.className = 'ladder-pips';
+    for (const d of seats) {
+      const st = this.callingState(d);
+      if (st === 'answered') answered++;
+      const p = document.createElement('i');
+      p.className = st;
+      pips.appendChild(p);
+    }
+    pips.dataset.tipname = 'The ladder';
+    pips.dataset.tipsub = `${seats.length} Callings on this ladder; ${answered} answer to you now.`;
     const count = document.createElement('span');
     count.className = 'stage-count';
-    count.textContent = `${answered} of ${seats.length} answered`;
-    count.dataset.tipname = 'The ladder';
-    count.dataset.tipsub = `${seats.length} Callings sit on this skill's ladder; ${answered} answer to you now.`;
-    head.append(count, this.wingToggle());
+    count.textContent = `${answered} answered`;
+    head.append(pips, count, this.wingToggle());
     block.appendChild(head);
 
-    // The shown seats: everything up to the first locked; the veil
-    // condenses the rest exactly as the arts ladder does.
-    const shown = seats.filter((d) => this.callingState(d) !== 'locked');
-    const veiled = seats.filter((d) => this.callingState(d) === 'locked');
-    const ribbon = document.createElement('div');
-    ribbon.className = 'path-ribbon';
-    const track = document.createElement('div');
-    track.className = 'path-track';
-    shown.forEach((def, i) => track.appendChild(this.callingPlate(def, i > 0)));
-    if (veiled.length > 0) {
-      const minLv = veiled.reduce((m, d) => Math.min(m, d.unlockLevel), Infinity);
-      track.appendChild(this.callingVeilCap(skill, veiled, minLv));
+    const tree = document.createElement('div');
+    tree.className = 'calling-tree';
+    const runs = [seats.slice(0, 8), seats.slice(8).reverse()].filter((r) => r.length > 0);
+    runs.forEach((run, r) => {
+      const row = document.createElement('div');
+      row.className = 'tree-row' + (r === 1 ? ' rev' : '');
+      run.forEach((def, i) => {
+        if (i > 0) {
+          // The link belongs to the pair's LATER seat on the ladder —
+          // it lights once that seat's rung is climbed.
+          const later = r === 0 ? def : run[i - 1]!;
+          const link = document.createElement('span');
+          link.className = 'tree-link' + (this.callingState(later) !== 'locked' ? ' lit' : '');
+          row.appendChild(link);
+        }
+        row.appendChild(this.seatPlaque(def));
+      });
+      tree.appendChild(row);
+    });
+    if (runs.length === 2) {
+      // The turn at the road's far edge, down from seat eight to nine.
+      const ninth = seats[8]!;
+      const turn = document.createElement('span');
+      turn.className = 'tree-turn' + (this.callingState(ninth) !== 'locked' ? ' lit' : '');
+      tree.appendChild(turn);
+      // Pin the bend to the two well lines once layout stands — the
+      // rows' heights breathe with their names, so the road measures
+      // itself rather than trusting arithmetic.
+      requestAnimationFrame(() => {
+        const rows = tree.querySelectorAll<HTMLElement>('.tree-row');
+        const wellA = rows[0]?.querySelector<HTMLElement>('.seat-plaque:last-child .plaque-well');
+        const wellB = rows[1]?.querySelector<HTMLElement>('.seat-plaque:last-child .plaque-well');
+        if (!wellA || !wellB) return;
+        const t = tree.getBoundingClientRect();
+        const a = wellA.getBoundingClientRect();
+        const b = wellB.getBoundingClientRect();
+        turn.style.top = `${Math.round(a.top + a.height / 2 - t.top)}px`;
+        turn.style.height = `${Math.round(b.top + b.height / 2 - (a.top + a.height / 2))}px`;
+        turn.style.left = `${Math.round(Math.max(a.right, b.right) - t.left + 10)}px`;
+        turn.style.right = 'auto';
+      });
     }
-    ribbon.appendChild(track);
-    ribbon.addEventListener(
+    tree.addEventListener(
       'wheel',
       (e) => {
         const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
         if (d === 0) return;
         e.preventDefault();
-        this.stepCallingRibbon(d > 0 ? 1 : -1);
+        this.stepCallingLadder(d > 0 ? 1 : -1);
       },
       { passive: false },
     );
-    for (const dir of [-1, 1] as const) {
-      const nudge = document.createElement('button');
-      nudge.className = `ribbon-nudge ${dir < 0 ? 'prev' : 'next'}`;
-      nudge.tabIndex = -1;
-      nudge.textContent = dir < 0 ? '‹' : '›';
-      nudge.addEventListener('click', () => this.stepCallingRibbon(dir));
-      ribbon.appendChild(nudge);
-    }
-    block.appendChild(ribbon);
+    block.appendChild(tree);
     return block;
   }
 
-  /** The wheel and chevrons step the calling ribbon's choice (stepRibbon's twin). */
-  private stepCallingRibbon(dir: -1 | 1): void {
-    const track = this.artsSchools.querySelector<HTMLElement>('.path-track');
-    if (!track) return;
-    const keys = Array.from(track.querySelectorAll<HTMLElement>('[data-navkey]'))
-      .map((el) => el.dataset.navkey ?? '')
-      .filter((k) => k.startsWith('call:') || k.startsWith('callveil:'));
-    const currentKey = this.callingSel?.startsWith('veil:')
-      ? `callveil:${this.callingSel.slice('veil:'.length)}`
-      : `call:${this.callingSel}`;
-    const i = keys.indexOf(currentKey);
-    const next = keys[Math.max(0, Math.min(keys.length - 1, (i < 0 ? 0 : i) + dir))];
-    if (!next || next === currentKey) return;
-    this.inspectCalling(
-      next.startsWith('callveil:') ? `veil:${next.slice('callveil:'.length)}` : next.slice('call:'.length),
-    );
+  /** The wheel walks the ladder in seat order, whatever the road's bends. */
+  private stepCallingLadder(dir: -1 | 1): void {
+    const skill = this.callingSkillSel;
+    if (!skill) return;
+    const seats = callingsFor(skill).slice().sort((a, b) => a.unlockLevel - b.unlockLevel);
+    const i = seats.findIndex((d) => d.id === this.callingSel);
+    const next = seats[Math.max(0, Math.min(seats.length - 1, (i < 0 ? 0 : i) + dir))];
+    if (next && next.id !== this.callingSel) this.inspectCalling(next.id);
   }
 
   /**
-   * One seat as a plate — the tech plate's own body: the gem well,
-   * the name, the sub-line (rank + price / price / seat), the NEW pip,
-   * and THE RANK PIPS: four dots, the applied filled, the entitled
-   * outlined, the rest dim — a build read at a glance.
+   * One seat as a PLAQUE: the painted well holding the calling's gem,
+   * the seat level cut into a corner shield, THE RANK PIPS beneath,
+   * and the name on the plate. States are drawn, never labeled:
+   * answered floods the gem's own color, an open seat sits lit and
+   * waiting, a locked seat is a dark socket with its level engraved.
    */
-  private callingPlate(def: CallingDef, linked: boolean): HTMLElement {
+  private seatPlaque(def: CallingDef): HTMLElement {
     const st = this.callingState(def);
     const level = levelForXp(this.lastSkills[def.skill] ?? 0);
     const cap = st === 'locked' ? 0 : Math.max(1, callingRank(def, level));
     const held = st === 'answered' ? this.appliedRank(def.id) : 0;
     const btn = document.createElement('button');
-    btn.className = `tech-plate-btn calling-plate ${st === 'answered' ? 'equipped' : st}`;
-    if (linked) {
-      btn.classList.add('rail-link');
-      if (st !== 'locked') btn.classList.add('rail-lit');
-    }
+    btn.className = `seat-plaque ${st}`;
     if (this.callingSel === def.id) btn.classList.add('selected');
     btn.dataset.nav = '';
     btn.dataset.navkey = `call:${def.id}`;
     btn.dataset.acta = 'Inspect';
-    const wellEl = document.createElement('span');
-    wellEl.className = 'tech-plate-well';
+    btn.style.setProperty('--gem', def.color);
+    const well = document.createElement('span');
+    well.className = 'plaque-well';
     const gem = document.createElement('span');
-    gem.className = 'call-gem lg';
+    gem.className = 'call-gem xl';
     gem.style.setProperty('--gem', def.color);
-    wellEl.appendChild(gem);
+    well.appendChild(gem);
+    const seat = document.createElement('span');
+    seat.className = 'seat-lv';
+    const sn = document.createElement('span');
+    sn.className = 'seat-lv-num';
+    sn.textContent = String(def.unlockLevel);
+    seat.appendChild(sn);
+    seat.dataset.tipname = 'The seat';
+    seat.dataset.tipsub =
+      st === 'locked'
+        ? `Answers at ${skillName(def.skill)} level ${def.unlockLevel}.`
+        : `Seated at ${skillName(def.skill)} level ${def.unlockLevel}.`;
+    well.appendChild(seat);
     if (st !== 'locked' && !this.seenCallings.has(def.id)) {
       const pip = document.createElement('span');
       pip.className = 'new-pip';
       pip.textContent = 'NEW';
-      wellEl.appendChild(pip);
+      well.appendChild(pip);
     }
     if (st !== 'locked') {
       const pips = document.createElement('span');
@@ -3114,46 +3318,20 @@ export class Panels {
         dot.className = r <= held ? 'applied' : r <= cap ? 'earned' : '';
         pips.appendChild(dot);
       }
-      wellEl.appendChild(pips);
+      well.appendChild(pips);
     }
     const nameEl = document.createElement('span');
-    nameEl.className = 'tech-plate-name';
+    nameEl.className = 'plaque-name';
     nameEl.textContent = def.name;
     const sub = document.createElement('span');
-    sub.className = 'tech-plate-sub';
+    sub.className = 'plaque-sub';
+    // The corner shield already speaks the seat; the sub never repeats it.
     sub.textContent =
       st === 'answered'
         ? `Rank ${RANK_ROMAN[held]} · ${callingCost(def.focusCost, held)} Focus`
-        : st === 'unlocked'
-          ? `${def.focusCost} Focus`
-          : `Lv ${def.unlockLevel}`;
-    btn.append(wellEl, nameEl, sub);
+        : `${def.focusCost} Focus`;
+    btn.append(well, nameEl, sub);
     btn.addEventListener('click', () => this.inspectCalling(def.id));
-    return btn;
-  }
-
-  /** The veil: the seats past the hand's reach, condensed. */
-  private callingVeilCap(skill: SkillId, veiled: CallingDef[], minLevel: number): HTMLElement {
-    const btn = document.createElement('button');
-    btn.className = 'tech-plate-btn veiled veil-cap';
-    if (this.callingSel === `veil:${skill}`) btn.classList.add('selected');
-    btn.dataset.nav = '';
-    btn.dataset.navkey = `callveil:${skill}`;
-    btn.dataset.acta = 'Peer';
-    const wellEl = document.createElement('span');
-    wellEl.className = 'tech-plate-well';
-    const q = document.createElement('span');
-    q.className = 'tech-mystery';
-    q.textContent = '✦';
-    wellEl.appendChild(q);
-    const nameEl = document.createElement('span');
-    nameEl.className = 'tech-plate-name';
-    nameEl.textContent = veiled.length === 1 ? (veiled[0]?.name ?? '1 more') : `${veiled.length} more`;
-    const sub = document.createElement('span');
-    sub.className = 'tech-plate-sub';
-    sub.textContent = veiled.length === 1 ? `Lv ${minLevel}` : `past Lv ${minLevel}`;
-    btn.append(wellEl, nameEl, sub);
-    btn.addEventListener('click', () => this.inspectCalling(`veil:${skill}`));
     return btn;
   }
 
@@ -3166,14 +3344,20 @@ export class Panels {
     if (this.callingSel === id) return;
     this.callingSel = id;
     this.markCallingSeen(id);
-    const key = id.startsWith('veil:') ? `callveil:${id.slice('veil:'.length)}` : `call:${id}`;
+    const key = `call:${id}`;
     this.artsSchools
-      .querySelectorAll('.tech-plate-btn.selected')
+      .querySelectorAll('.seat-plaque.selected')
       .forEach((p) => p.classList.remove('selected'));
     this.artsSchools.querySelector(`[data-navkey="${CSS.escape(key)}"]`)?.classList.add('selected');
-    this.recenterRibbon();
+    // The foot band's roster mirrors the choice.
+    this.artsLoadout
+      .querySelectorAll('.life-gem.selected')
+      .forEach((p) => p.classList.remove('selected'));
+    this.artsLoadout
+      .querySelector(`[data-navkey="${CSS.escape(`life:${id}`)}"]`)
+      ?.classList.add('selected');
     this.renderCallingBench();
-    // The rail's pip and the plate's own pip may have just cleared.
+    // The rail's pip and the plaque's own pip may have just cleared.
     this.artsSchools.querySelector(`[data-navkey="${CSS.escape(key)}"] .new-pip`)?.remove();
     this.updateArtsPip();
   }
@@ -3311,38 +3495,24 @@ export class Panels {
   }
 
   /** The bench: the chosen Calling laid out large, the answer button. */
+  /**
+   * THE BENCH of the callings wing, rebuilt as its own furniture: the
+   * gem in a painted well, the state worn as a forged SEAL (never a
+   * labeled box), the package as illuminated VERSES each led by its
+   * kind's glyph, THE RANK SPINE instrument for the four depths, and
+   * the verbs on brass. Everything drawn, nothing web.
+   */
   private renderCallingBench(): void {
     this.artsDetail.innerHTML = '';
-    if (this.callingSel?.startsWith('veil:')) {
-      // The veil's bench: what waits past the hand's reach, by seat.
-      const skill = this.callingSel.slice('veil:'.length) as SkillId;
-      const veiled = callingsFor(skill)
-        .filter((d) => this.callingState(d) === 'locked')
-        .sort((a, b) => a.unlockLevel - b.unlockLevel);
-      const note = document.createElement('div');
-      note.className = 'bench-empty';
-      note.textContent =
-        veiled.length === 0
-          ? 'Every seat on this ladder is open to you.'
-          : `${veiled.length} Calling${veiled.length === 1 ? '' : 's'} wait${veiled.length === 1 ? 's' : ''} further up the ${skillName(skill)} ladder.`;
-      this.artsDetail.appendChild(note);
-      const list = document.createElement('div');
-      list.className = 'bench-veil-list';
-      for (const d of veiled) {
-        const row = document.createElement('div');
-        row.className = 'bench-line';
-        row.textContent = `Lv ${d.unlockLevel} · ${d.name} · ${d.focusCost} Focus`;
-        list.appendChild(row);
-      }
-      this.artsDetail.appendChild(list);
-      return;
-    }
     const def = this.callingSel ? callingDef(this.callingSel) : undefined;
+    const bench = document.createElement('div');
+    bench.className = 'call-bench';
+    this.artsDetail.appendChild(bench);
     if (!def) {
       const note = document.createElement('div');
       note.className = 'bench-empty';
-      note.textContent = 'Raise a skill to 20 and its first Calling will gather here.';
-      this.artsDetail.appendChild(note);
+      note.textContent = 'Raise a skill to 5 and its first Calling will gather here.';
+      bench.appendChild(note);
       return;
     }
     const st = this.callingState(def);
@@ -3352,8 +3522,9 @@ export class Panels {
     head.className = 'bench-head';
     const well = document.createElement('div');
     well.className = 'bench-plate call-plate';
+    well.style.setProperty('--gem', def.color);
     const gem = document.createElement('span');
-    gem.className = 'call-gem lg';
+    gem.className = 'call-gem xl';
     gem.style.setProperty('--gem', def.color);
     well.appendChild(gem);
     const names = document.createElement('div');
@@ -3366,75 +3537,115 @@ export class Panels {
     line.textContent = `${callingSkill} · Calling`;
     names.append(name, line);
     head.append(well, names);
-    this.artsDetail.appendChild(head);
+    bench.appendChild(head);
 
-    // RANK IS A CHOICE YOU AFFORD (callings-v2 Phase 4): the bench
-    // speaks the held rank, the entitlement the hand has earned, and
-    // the price of each step — and offers the ladder as the buttons.
     const level = levelForXp(this.lastSkills[def.skill] ?? 0);
-    const cap = Math.max(1, callingRank(def, level));
+    const cap = st === 'locked' ? 0 : Math.max(1, callingRank(def, level));
     const held = st === 'answered' ? this.appliedRank(def.id) : 0;
     const budget = focusBudget(this.lastSkills);
     const used = this.focusUsed();
     const heldCost = held > 0 ? callingCost(def.focusCost, held) : 0;
 
-    const state = document.createElement('div');
-    state.className = `art-state ${st === 'answered' ? 'equipped' : st}`;
-    state.textContent =
+    // The state, worn as a seal — a cut banner, not a bordered label.
+    const seal = document.createElement('div');
+    seal.className = `call-seal ${st}`;
+    seal.textContent =
       st === 'answered'
-        ? `Answered at Rank ${RANK_ROMAN[held]} — holding ${heldCost} Focus`
+        ? `Answered at Rank ${RANK_ROMAN[held]} · holding ${heldCost} Focus`
         : st === 'unlocked'
-          ? `Ready to answer — holds ${def.focusCost} Focus at Rank I`
+          ? `Ready to answer · ${def.focusCost} Focus at Rank I`
           : `Answers at ${callingSkill} level ${def.unlockLevel}`;
-    this.artsDetail.appendChild(state);
+    bench.appendChild(seal);
 
     const desc = document.createElement('p');
     desc.className = 'bench-desc';
     desc.textContent = def.desc;
-    this.artsDetail.appendChild(desc);
+    bench.appendChild(desc);
 
-    // EVERY ANSWER IS SEEN: the package read in plain words, one line
-    // per entry, at the rank the bench is looking at (the held rank,
-    // or Rank I for a seat not yet answered) — and the NEXT rank's
-    // note previewed, so a deepen is a decision the hand can read.
+    // EVERY ANSWER IS SEEN: the package as verses, each led by the
+    // glyph of its kind (steel, spark, moon, trade, knack, sigil).
     const readAt = held > 0 ? held : 1;
-    const pkg = document.createElement('ul');
-    pkg.className = 'bench-package';
+    const verses = document.createElement('div');
+    verses.className = 'bench-verses';
     for (const fx of honedCalling(def, readAt)) {
-      const li = document.createElement('li');
-      li.textContent = this.describeCallingEffect(fx);
-      pkg.appendChild(li);
+      const row = document.createElement('div');
+      row.className = 'verse';
+      const glyph = document.createElement('span');
+      glyph.className = `verse-glyph ${this.callingKindOf(fx)}`;
+      const text = document.createElement('span');
+      text.className = 'verse-text';
+      text.textContent = this.describeCallingEffect(fx);
+      row.append(glyph, text);
+      verses.appendChild(row);
     }
-    this.artsDetail.appendChild(pkg);
+    bench.appendChild(verses);
+
+    // THE RANK SPINE: four studs, the walked depth lit, the earned
+    // depth ringed, each stud pricing its step.
+    const spine = document.createElement('div');
+    spine.className = 'rank-spine call-spine';
+    spine.style.setProperty('--walked-n', String(held > 1 ? (held - 1) / (CALLING_MAX_RANK - 1) : 0));
+    for (let r = 1; r <= CALLING_MAX_RANK; r++) {
+      const stud = document.createElement('span');
+      stud.className =
+        'spine-stud' +
+        (r <= held ? ' attained' : r <= cap ? ' earned' : '') +
+        (held > 0 && r === held ? ' current' : '');
+      stud.dataset.tipname = `Rank ${RANK_ROMAN[r]}`;
+      stud.dataset.tipsub =
+        r <= cap
+          ? `Earned. Holds ${callingCost(def.focusCost, r)} Focus when answered at this depth.`
+          : st === 'locked'
+            ? `Waits on the seat itself.`
+            : `Waits on ${callingSkill} level ${rankLevel(def.unlockLevel, r)}.`;
+      const num = document.createElement('span');
+      num.className = 'stud-numeral';
+      num.textContent = RANK_ROMAN[r] ?? String(r);
+      stud.appendChild(num);
+      const under = document.createElement('span');
+      under.className = 'stud-under';
+      under.textContent = `${callingCost(def.focusCost, r)}`;
+      stud.appendChild(under);
+      spine.appendChild(stud);
+    }
+    bench.appendChild(spine);
+
+    // The next depth's own note, previewed as a verse of its own.
     if (def.ranks && readAt < CALLING_MAX_RANK) {
       const next = def.ranks[readAt - 1];
       if (next) {
         const nextLine = document.createElement('div');
-        nextLine.className = 'bench-line bench-next-rank';
-        nextLine.textContent = `Rank ${RANK_ROMAN[readAt + 1]}: ${next.note}`;
-        this.artsDetail.appendChild(nextLine);
+        nextLine.className = 'bench-next-rank';
+        const glyph = document.createElement('span');
+        glyph.className = 'next-rank-glyph';
+        glyph.textContent = RANK_ROMAN[readAt + 1] ?? '';
+        const text = document.createElement('span');
+        text.textContent = next.note;
+        nextLine.append(glyph, text);
+        bench.appendChild(nextLine);
       }
     }
 
     if (st !== 'locked') {
-      // The honed line: what depth this hand has earned at this seat.
       const honed = document.createElement('div');
-      honed.className = 'bench-line';
+      honed.className = 'bench-line bench-honed';
       honed.textContent =
         cap >= CALLING_MAX_RANK
           ? `Honed to Rank ${RANK_ROMAN[cap]}, the deepest.`
           : `Honed to Rank ${RANK_ROMAN[cap]}. Rank ${RANK_ROMAN[cap + 1]} at ${callingSkill} level ${rankLevel(def.unlockLevel, cap + 1)}.`;
-      this.artsDetail.appendChild(honed);
+      bench.appendChild(honed);
     }
 
+    const verbs = document.createElement('div');
+    verbs.className = 'bench-verbs';
+    bench.appendChild(verbs);
     let cant = false;
     if (st === 'answered') {
-      // Deepen (if entitled and affordable), lighten, set down.
       if (held < cap) {
         const next = held + 1;
         const nextCost = callingCost(def.focusCost, next);
         const btn = bigButton(
-          `Deepen to Rank ${RANK_ROMAN[next]} — ${nextCost} Focus`,
+          `Deepen to Rank ${RANK_ROMAN[next]} · ${nextCost} Focus`,
           `callrank:${def.id}:${next}`,
           () => this.onCalling(def.id, true, next),
         );
@@ -3442,23 +3653,26 @@ export class Panels {
           btn.classList.add('cant');
           cant = true;
         }
-        this.artsDetail.appendChild(btn);
+        verbs.appendChild(btn);
       }
       if (held > 1) {
-        this.artsDetail.appendChild(
+        verbs.appendChild(
           bigButton(
-            `Lighten to Rank ${RANK_ROMAN[held - 1]} — ${callingCost(def.focusCost, held - 1)} Focus`,
+            `Lighten to Rank ${RANK_ROMAN[held - 1]} · ${callingCost(def.focusCost, held - 1)} Focus`,
             `callrank:${def.id}:${held - 1}`,
             () => this.onCalling(def.id, true, held - 1),
+            { minor: true },
           ),
         );
       }
-      this.artsDetail.appendChild(
-        bigButton('Set down', `calloff:${def.id}`, () => this.onCalling(def.id, false)),
+      verbs.appendChild(
+        bigButton('Set down', `calloff:${def.id}`, () => this.onCalling(def.id, false), {
+          minor: true,
+        }),
       );
     } else if (st === 'unlocked') {
       const btn = bigButton(
-        `Answer — ${def.focusCost} Focus`,
+        `Answer · ${def.focusCost} Focus`,
         `callon:${def.id}`,
         () => this.onCalling(def.id, true, 1),
       );
@@ -3466,14 +3680,35 @@ export class Panels {
         btn.classList.add('cant');
         cant = true;
       }
-      this.artsDetail.appendChild(btn);
+      verbs.appendChild(btn);
     }
     const teach = document.createElement('div');
     teach.className = 'bench-teach';
     teach.textContent = cant
       ? `Your Focus is ${used}/${budget}. Set another Calling down, or deepen a skill past 25, 50, 75, or 99.`
-      : 'Answering is always free to change. The budget is the only law; depth is yours to afford.';
-    this.artsDetail.appendChild(teach);
+      : st === 'locked'
+        ? `Climb ${callingSkill} and this seat will open on its own.`
+        : 'Answering is always free to change. The budget is the only law; depth is yours to afford.';
+    bench.appendChild(teach);
+  }
+
+  /** The glyph family a package entry belongs to, for the verse lead. */
+  private callingKindOf(fx: CallingEffect): string {
+    switch (fx.kind) {
+      case 'gear':
+        return fx.effect.kind === 'proc' ? 'proc' : 'gear';
+      case 'perPiece':
+        return 'gear';
+      case 'doubleGather':
+      case 'gatherSpeed':
+      case 'materialSave':
+      case 'craftSpeed':
+        return 'trade';
+      case 'perk':
+        return 'knack';
+      default:
+        return fx.kind; // proc | when | art
+    }
   }
 
   /**
@@ -3619,8 +3854,13 @@ export class Panels {
     name.className = 'stage-school';
     name.textContent = skillName(style);
     const lv = document.createElement('span');
-    lv.className = 'stage-lv';
-    lv.textContent = `Lv ${level}`;
+    lv.className = 'stage-gem';
+    lv.dataset.tipname = 'Skill level';
+    lv.dataset.tipsub = `${skillName(style)} stands at level ${level}.`;
+    const lvNum = document.createElement('span');
+    lvNum.className = 'stage-gem-num';
+    lvNum.textContent = String(level);
+    lv.appendChild(lvNum);
     head.append(name, lv);
     const rungs = this.visibleTechniques(style).filter((t) => !t.hidden && !t.secret);
     const climbed = rungs.filter((t) => {
@@ -4180,7 +4420,11 @@ export class Panels {
     state.className = `art-state ${st}`;
     if (st === 'equipped') {
       if (t.secret && !this.ownsArt(t.ability)) {
-        if (this.equippedArtIds().has(t.ability)) {
+        const licensor = this.licensingCalling(t.ability);
+        if (licensor) {
+          // THE MASTER'S LICENSE keeps the seat awake — say who holds it.
+          state.appendChild(glyphLine(`Riding your • seat, licensed by ${licensor.name}`, benchChip()));
+        } else if (this.equippedArtIds().has(t.ability)) {
           state.appendChild(glyphLine('Riding your • seat, lent by the weapon in your hand', benchChip()));
         } else {
           state.appendChild(glyphLine('Seated on •, asleep. Hold a weapon that teaches it.', benchChip()));

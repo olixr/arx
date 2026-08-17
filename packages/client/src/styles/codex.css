@@ -160,12 +160,20 @@
   grid-area: ground;
 }
 
+/* THE ANSWERED HALL: the callings wing is the bigger room — the
+   whole sixteen-seat road stands on the stage at once, so the panel
+   widens into a hall when the wing turns. */
+.screen-arts.wing-callings {
+  width: min(101rem, 96vw);
+  height: min(58rem, 94vh);
+}
+
 /* The callings wing folds the ground away and hands the whole body
-   to the passives: rows on the left, the bench on the right. */
+   to the road: the tree on the left, the bench on the right. */
 .wing-callings .arts-main {
   grid-template-areas: 'stage reading';
   grid-template-rows: minmax(0, 1fr);
-  grid-template-columns: minmax(0, 1fr) 25rem;
+  grid-template-columns: minmax(0, 1fr) 29rem;
 }
 
 .wing-callings #arts-ground {
@@ -210,16 +218,77 @@
   color: var(--gold-bright);
 }
 
-.stage-lv {
-  font-size: 0.78125rem;
-  font-weight: 800;
-  letter-spacing: 0.05rem;
-  padding: 0.125rem 0.5rem;
-  color: var(--parchment-dim);
+/* The skill's level worn as a faceted gem — the skills wall's own
+   trophy, small: never a bordered web chip. */
+.stage-gem {
+  flex: none;
+  width: 1.875rem;
+  height: 1.875rem;
+  margin: 0 0.375rem;
+  transform: rotate(45deg);
   background: var(--sunk);
-  border: var(--hairline) solid var(--line);
-  border-radius: var(--r-chip);
+  border: 0.125rem solid var(--skill-accent, var(--gold));
+  box-shadow:
+    inset 0 0 0 0.125rem rgba(14, 10, 5, 0.75),
+    0.125rem 0.125rem 0 rgba(12, 8, 4, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stage-gem-num {
+  transform: rotate(-45deg);
+  font-family: var(--serif);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--gold-bright);
   text-shadow: var(--punch-small);
+}
+
+/* The school's crest beside its name — the rail's face, enlarged. */
+.stage-crest {
+  flex: none;
+  width: 2.375rem;
+  height: 2.375rem;
+  display: grid;
+  place-items: center;
+  border: 0.375rem solid transparent;
+  border-image: var(--ui-socket-bed) 35 fill / 0.375rem;
+}
+
+.stage-crest img {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+/* THE LADDER PIPS: sixteen small diamonds telling the whole road's
+   state at a glance — answered lit violet, open gold, locked iron. */
+.ladder-pips {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+  padding: 0 0.375rem;
+}
+
+.ladder-pips i {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  transform: rotate(45deg);
+  background: var(--sunk);
+  box-shadow: inset 0 0 0 var(--hairline) var(--line-strong);
+}
+
+.ladder-pips i.unlocked {
+  background: color-mix(in srgb, var(--gold) 40%, var(--sunk));
+  box-shadow: inset 0 0 0 var(--hairline) var(--gold);
+}
+
+.ladder-pips i.answered {
+  background: #a48adc;
+  box-shadow:
+    inset 0 0 0 var(--hairline) #c8b4ee,
+    0 0 0.25rem rgba(164, 138, 220, 0.55);
 }
 
 .stage-count {
@@ -1136,24 +1205,6 @@ body:not(.no-ui-motion) .m-fill {
 
 /* ---- the Callings wing (the passives keep their home). ---------- */
 
-.focus-nums {
-  font-size: var(--t-body);
-  font-weight: 800;
-  letter-spacing: 0.0625rem;
-  color: var(--gold-bright);
-  text-shadow: var(--punch-small);
-}
-
-.focus-bar {
-  flex: 1;
-  height: 0.625rem;
-  min-width: 7.5rem;
-  background: var(--sunk);
-  border: var(--hairline) solid var(--line);
-  border-radius: 0.3125rem;
-  overflow: hidden;
-}
-
 .focus-fill {
   height: 100%;
   background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 65%, var(--gold-deep)), var(--gold));
@@ -1171,9 +1222,7 @@ body:not(.no-ui-motion) .m-fill {
   text-shadow: var(--punch-small);
 }
 
-/* THE OPEN HALL retired the per-skill rows and the two-column chip
-   grid (Phase 5): the ladder is a ribbon of seat plates in the arts
-   stage's vocabulary. The gem lives on. */
+/* The calling gem — the one face every calling wears, at every size. */
 
 .call-gem {
   width: 0.875rem;
@@ -1184,32 +1233,40 @@ body:not(.no-ui-motion) .m-fill {
   border: var(--hairline) solid var(--line);
 }
 
-.call-gem.lg {
-  width: 2.125rem;
-  height: 2.125rem;
-  border-width: 0.125rem;
+
+
+/* ============================================================
+   THE ANSWERED HALL — the callings wing rebuilt (2026-08-17).
+   The road (a serpentine sixteen-seat tree), the bench (seal,
+   verses, rank spine, brass), and the foot band (the Focus
+   instrument, the answered roster, THE SUM). Everything drawn
+   with the hall's own materials — no web chrome survives here.
+   ============================================================ */
+
+/* The couch reads the ladder's count too. */
+.calling-stage .stage-count {
+  font-size: 0.84375rem;
 }
 
-
-
-
-.bench-plate.call-plate {
-  display: grid;
-  place-items: center;
+/* The callings rail carries twenty-five crests: the stops go
+   crest-only (the tooltip and the stage name the skill), so the rail
+   stays one calm row of faces instead of a strip of clipped text. */
+.wing-callings .rail-stop {
+  padding: 0.3125rem 0.4375rem;
 }
 
-/* ---------------------------------------------- THE OPEN HALL (callings-v2 Ph5) */
+.wing-callings .rail-stop .rail-text {
+  display: none;
+}
 
-/* The wing toggle: two tabs at the head's edge, pad-true, the active
-   one lit in the codex gold. Sits after the in-hand chips. */
+/* ---- The wing door: two cut banner tabs, never a pill. ---------- */
+
 .wing-toggle {
   margin-left: auto;
   display: inline-flex;
-  gap: 0.125rem;
-  padding: 0.125rem;
-  background: var(--sunk);
-  border: var(--hairline) solid var(--line);
-  border-radius: var(--r-chip);
+  gap: 0.3125rem;
+  align-self: stretch;
+  align-items: stretch;
 }
 
 .stage-head .in-hand ~ .wing-toggle {
@@ -1220,30 +1277,48 @@ body:not(.no-ui-motion) .m-fill {
   position: relative;
   appearance: none;
   font-family: inherit;
-  font-size: 0.71875rem;
+  font-size: 0.875rem;
   font-weight: 800;
   letter-spacing: 0.075rem;
   text-transform: uppercase;
-  padding: 0.1875rem 0.5625rem;
+  padding: 0.375rem 1rem 0.4375rem;
   color: var(--parchment-dim);
-  background: transparent;
+  background: var(--raise);
   border: none;
-  border-radius: var(--r-chip);
   cursor: pointer;
   text-shadow: var(--punch-small);
+  clip-path: polygon(
+    0.4375rem 0,
+    calc(100% - 0.4375rem) 0,
+    100% 0.4375rem,
+    100% calc(100% - 0.4375rem),
+    calc(100% - 0.4375rem) 100%,
+    0.4375rem 100%,
+    0 calc(100% - 0.4375rem),
+    0 0.4375rem
+  );
+  box-shadow:
+    inset 0 0.125rem 0 rgba(255, 236, 190, 0.07),
+    inset 0 -0.1875rem 0 rgba(10, 7, 3, 0.4);
+}
+
+.wing-tab:hover {
+  background: var(--raise-hi);
 }
 
 .wing-tab.active {
   color: var(--gold-bright);
-  background: color-mix(in srgb, var(--gold) 18%, var(--sunk));
-  box-shadow: inset 0 0 0 var(--hairline) var(--gold);
+  background: color-mix(in srgb, var(--gold) 20%, var(--raise-hi));
+  box-shadow:
+    inset 0 0.125rem 0 rgba(255, 236, 190, 0.12),
+    inset 0 -0.25rem 0 var(--gold);
 }
 
 .wing-tab.has-pip::after {
   content: '';
   position: absolute;
-  top: -0.1875rem;
-  right: -0.1875rem;
+  top: 0.1875rem;
+  right: 0.3125rem;
   width: 0.4375rem;
   height: 0.4375rem;
   border-radius: 50%;
@@ -1251,87 +1326,634 @@ body:not(.no-ui-motion) .m-fill {
   box-shadow: 0 0 0.25rem var(--gold-hot);
 }
 
-/* The seat plate: the tech plate's body with the gem in the well. */
-.calling-plate .tech-plate-well .call-gem.lg {
-  width: 2.125rem;
-  height: 2.125rem;
+/* ---- THE ROAD: sixteen seats on a serpentine tree. -------------- */
+
+.wing-callings .calling-stage {
+  flex: 1;
+  min-height: 0;
 }
 
-/* An answered seat wears the equipped ring in the calling violet, so
-   the two wings' 'in hand' reads apart at a glance. */
-.calling-plate.equipped .tech-plate-well {
+.calling-tree {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4.25rem;
+  padding: 0.75rem 2.25rem 0.5rem 0.875rem;
+}
+
+.tree-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/* The link: forged bar between neighbor seats, at well height. */
+.tree-link {
+  flex: 1;
+  height: 0.25rem;
+  margin-top: 3.0625rem;
+  min-width: 0.625rem;
+  background: var(--line);
+  box-shadow: 0 0.125rem 0 var(--ink-line);
+}
+
+.tree-link.lit {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 55%, var(--line)), var(--gold));
+  box-shadow:
+    0 0.125rem 0 var(--ink-line),
+    0 0 0.3125rem rgba(217, 164, 65, 0.35);
+}
+
+/* The turn: the road bending down the far edge, row one into row
+   two. The stage pins its ends to the two well lines after layout;
+   the elbows reach back to the wells. */
+.tree-turn {
+  position: absolute;
+  width: 0.3125rem;
+  background: var(--line);
+  box-shadow: 0.125rem 0 0 var(--ink-line);
+}
+
+.tree-turn::before,
+.tree-turn::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  width: 1.125rem;
+  height: 0.25rem;
+  background: inherit;
+  box-shadow: 0 0.125rem 0 var(--ink-line);
+}
+
+.tree-turn::before {
+  top: 0;
+}
+
+.tree-turn::after {
+  bottom: 0;
+}
+
+.tree-turn.lit {
+  background: var(--gold);
+  box-shadow:
+    0.125rem 0 0 var(--ink-line),
+    0 0 0.3125rem rgba(217, 164, 65, 0.35);
+}
+
+/* ---- The seat plaque. ------------------------------------------- */
+
+.seat-plaque {
+  position: relative;
+  z-index: 1;
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  width: 7.25rem;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3125rem;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--parchment);
+}
+
+.plaque-well {
+  position: relative;
+  width: 6.125rem;
+  height: 6.125rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.5625rem solid transparent;
+  border-image: var(--ui-socket) 35 fill / 0.5625rem;
+}
+
+body:not(.no-ui-motion) .seat-plaque .plaque-well {
+  transition: transform 170ms cubic-bezier(0.3, 0.7, 0.35, 1.2);
+}
+
+.seat-plaque:hover .plaque-well {
+  filter: brightness(1.18);
+}
+
+.seat-plaque.selected .plaque-well {
+  transform: scale(1.12);
+  box-shadow:
+    inset 0 0 0 0.15625rem rgba(239, 227, 194, 0.9),
+    inset 0 0 12.5rem rgba(239, 227, 194, 0.08);
+}
+
+/* An answered seat floods with its own gem's light and the calling
+   violet ring — the state IS the drawing. */
+.seat-plaque.answered .plaque-well {
   box-shadow:
     inset 0 0 0 0.15625rem #a48adc,
-    inset 0 0 12.5rem rgba(164, 138, 220, 0.16);
+    inset 0 0 3.125rem color-mix(in srgb, var(--gem, #a48adc) 34%, transparent);
 }
 
-.calling-plate.equipped.selected .tech-plate-well {
-  transform: scale(1.16);
+.seat-plaque.answered.selected .plaque-well {
+  transform: scale(1.12);
   box-shadow:
     inset 0 0 0 0.15625rem #c8b4ee,
-    inset 0 0 12.5rem rgba(164, 138, 220, 0.24);
+    inset 0 0 3.125rem color-mix(in srgb, var(--gem, #a48adc) 46%, transparent);
 }
 
-.calling-plate.equipped .tech-plate-sub {
-  color: #c8b4ee;
+.seat-plaque.locked {
+  color: var(--parchment-dim);
 }
 
-/* THE RANK PIPS: four dots under the well — applied filled (violet),
-   earned outlined, the rest dim. A build read at a glance. */
+.seat-plaque.locked .call-gem.xl {
+  filter: saturate(0.15) brightness(0.45);
+}
+
+.seat-plaque.locked .plaque-well {
+  filter: brightness(0.82);
+}
+
+.call-gem.xl {
+  width: 3rem;
+  height: 3rem;
+  border-width: 0.15625rem;
+  box-shadow:
+    inset -0.25rem -0.375rem 0.5rem rgba(0, 0, 0, 0.35),
+    0 0.1875rem 0.375rem rgba(0, 0, 0, 0.45);
+}
+
+.seat-plaque.answered .call-gem.xl {
+  box-shadow:
+    inset -0.25rem -0.375rem 0.5rem rgba(0, 0, 0, 0.35),
+    0 0 0.75rem color-mix(in srgb, var(--gem, #a48adc) 65%, transparent);
+}
+
+/* The seat level, cut into a corner shield gem. */
+.seat-lv {
+  position: absolute;
+  top: -0.3125rem;
+  right: -0.3125rem;
+  z-index: 2;
+  width: 1.5rem;
+  height: 1.5rem;
+  transform: rotate(45deg);
+  background: var(--sunk);
+  border: 0.09375rem solid var(--line-strong);
+  box-shadow:
+    inset 0 0 0 0.09375rem var(--ink-line),
+    0.125rem 0.125rem 0 rgba(12, 8, 4, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.seat-plaque.locked .seat-lv {
+  border-color: var(--gold-deep);
+}
+
+.seat-lv-num {
+  transform: rotate(-45deg);
+  font-family: var(--serif);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.seat-plaque.locked .seat-lv-num {
+  color: var(--gold-bright);
+}
+
+/* THE RANK PIPS: four gem diamonds set into the plaque's foot. */
 .rank-pips {
   position: absolute;
-  bottom: -0.4375rem;
+  bottom: -0.5rem;
   left: 50%;
   transform: translateX(-50%);
   z-index: 2;
   display: inline-flex;
-  gap: 0.1875rem;
-  padding: 0.0625rem 0.25rem;
-  background: rgba(24, 14, 32, 0.92);
-  border-radius: 0.25rem;
+  gap: 0.25rem;
+  padding: 0.15625rem 0.375rem;
+  background: var(--sunk);
+  box-shadow:
+    inset 0 0 0 var(--hairline) var(--ink-line),
+    0.125rem 0.125rem 0 rgba(12, 8, 4, 0.35);
 }
 
 .rank-pips i {
-  width: 0.375rem;
-  height: 0.375rem;
-  border-radius: 50%;
-  border: var(--hairline) solid rgba(200, 180, 238, 0.35);
+  width: 0.4375rem;
+  height: 0.4375rem;
+  transform: rotate(45deg);
   background: transparent;
+  box-shadow: inset 0 0 0 var(--hairline) rgba(200, 180, 238, 0.3);
 }
 
 .rank-pips i.earned {
-  border-color: #c8b4ee;
+  box-shadow: inset 0 0 0 var(--hairline) #c8b4ee;
 }
 
 .rank-pips i.applied {
-  border-color: #c8b4ee;
   background: #c8b4ee;
-  box-shadow: 0 0 0.25rem rgba(200, 180, 238, 0.7);
+  box-shadow:
+    inset 0 0 0 var(--hairline) #c8b4ee,
+    0 0 0.25rem rgba(200, 180, 238, 0.7);
 }
 
-/* The package, read: one line per entry, quiet, in the bench's hand. */
-.bench-package {
-  margin: 0.375rem 0 0;
-  padding: 0 0 0 1rem;
+.plaque-name {
+  max-width: 100%;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  text-shadow: var(--punch-small);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+
+.seat-plaque.selected .plaque-name {
+  color: var(--gold-bright);
+}
+
+.plaque-sub {
+  font-size: 0.78125rem;
+  font-weight: 700;
+  letter-spacing: 0.0375rem;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+}
+
+.seat-plaque.answered .plaque-sub {
+  color: #c8b4ee;
+}
+
+/* ---- THE BENCH: seal, verses, spine, brass. --------------------- */
+
+.call-bench {
   display: flex;
   flex-direction: column;
-  gap: 0.1875rem;
-  font-size: 0.78125rem;
+  gap: 0.5rem;
+  min-height: 0;
+}
+
+/* The arts reading's `order` choreography reaches every descendant
+   of #arts-detail — the callings bench tells its story in source
+   order, so its children stand down from that dance (the selector
+   carries the id: it must outrank `#arts-detail .bench-desc`). */
+#arts-detail .call-bench,
+#arts-detail .call-bench > * {
+  order: 0;
+}
+
+.call-bench {
+  height: 100%;
+}
+
+/* THE TEN-FOOT READ: the hall's type sized for the couch — the
+   fiction leads larger, and the whispers rise to legible. */
+.call-bench .bench-desc {
+  font-size: 0.9375rem;
+}
+
+.call-bench .bench-teach,
+.life-focus .focus-teach,
+.life-empty {
+  font-size: 0.8125rem;
+}
+
+.call-bench .bench-line {
+  font-size: 0.84375rem;
+}
+
+.call-bench .bench-teach {
+  margin-top: auto;
+}
+
+.call-bench .bench-plate.call-plate {
+  display: grid;
+  place-items: center;
+  width: 4.75rem;
+  height: 4.75rem;
+  border: 0.5rem solid transparent;
+  border-image: var(--ui-socket) 35 fill / 0.5rem;
+  box-shadow: inset 0 0 2.25rem color-mix(in srgb, var(--gem, #a48adc) 22%, transparent);
+}
+
+.call-bench .bench-name {
+  font-family: var(--serif);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--parchment);
+  text-shadow: var(--punch);
+}
+
+/* The state seal: a cut banner in the state's own material. */
+.call-seal {
+  align-self: flex-start;
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: 0.05rem;
+  padding: 0.3125rem 1rem 0.375rem;
+  text-shadow: var(--punch-small);
+  clip-path: polygon(
+    0.4375rem 0,
+    calc(100% - 0.4375rem) 0,
+    100% 50%,
+    calc(100% - 0.4375rem) 100%,
+    0.4375rem 100%,
+    0 50%
+  );
+  box-shadow: inset 0 -0.1875rem 0 rgba(10, 7, 3, 0.35);
+}
+
+.call-seal.answered {
+  color: #f0e8ff;
+  background: linear-gradient(180deg, #7a5fae, #5c4488);
+}
+
+.call-seal.unlocked {
+  color: var(--gold-hot);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 55%, var(--raise)), color-mix(in srgb, var(--gold-deep) 70%, var(--raise)));
+}
+
+.call-seal.locked {
+  color: var(--parchment-dim);
+  background: linear-gradient(180deg, var(--raise-hi), var(--raise));
+}
+
+/* The verses: one line per package entry, led by its kind's glyph. */
+.bench-verses {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.verse {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5625rem;
+}
+
+.verse-text {
+  font-size: 0.9375rem;
+  line-height: 1.3;
   color: var(--parchment);
   text-shadow: var(--punch-small);
 }
 
-.bench-package li::marker {
-  color: #a48adc;
+.verse-glyph {
+  flex: none;
+  width: 0.8125rem;
+  height: 0.8125rem;
+  margin-top: 0.1875rem;
+  transform: rotate(45deg);
+  box-shadow:
+    inset 0 0 0 var(--hairline) var(--ink-line),
+    0.09375rem 0.09375rem 0 rgba(12, 8, 4, 0.4);
 }
 
+.verse-glyph.gear {
+  background: linear-gradient(135deg, #b8c2cc, #6f7b87);
+}
+
+.verse-glyph.proc {
+  background: linear-gradient(135deg, #ffd27a, #d9642c);
+  border-radius: 50%;
+  transform: none;
+}
+
+.verse-glyph.when {
+  background: linear-gradient(135deg, #a8c8e8, #4a6a9a);
+  border-radius: 50% 0 50% 50%;
+  transform: rotate(45deg);
+}
+
+.verse-glyph.trade {
+  background: linear-gradient(135deg, #a8d080, #5a8a3a);
+}
+
+.verse-glyph.knack {
+  background: linear-gradient(135deg, #e8c884, #a87a34);
+  border-radius: 50%;
+  transform: none;
+}
+
+.verse-glyph.art {
+  background: linear-gradient(135deg, #ffe9a8, #d9a441);
+  box-shadow:
+    inset 0 0 0 var(--hairline) var(--ink-line),
+    0 0 0.375rem rgba(217, 164, 65, 0.6);
+}
+
+/* The next depth's note: the rank numeral leading its own verse. */
 .bench-next-rank {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5625rem;
+  font-size: 0.875rem;
+  font-style: italic;
+  color: #c8b4ee;
+  text-shadow: var(--punch-small);
+}
+
+.next-rank-glyph {
+  flex: none;
+  min-width: 1.375rem;
+  height: 1.375rem;
+  display: grid;
+  place-items: center;
+  font-family: var(--serif);
+  font-size: 0.75rem;
+  font-style: normal;
+  font-weight: 700;
+  color: #c8b4ee;
+  background: var(--sunk);
+  box-shadow: inset 0 0 0 var(--hairline) #7a5fae;
+}
+
+.bench-honed {
+  color: var(--parchment-faint);
+}
+
+/* The callings spine prices each stud and marks the EARNED depth. */
+.call-spine .spine-stud.earned {
+  border-color: #a48adc;
+}
+
+.call-spine .spine-stud.earned .stud-numeral {
   color: #c8b4ee;
 }
 
-.bench-veil-list {
+.call-spine .spine-stud.attained {
+  background: color-mix(in srgb, #a48adc 38%, var(--raise));
+  border-color: #c8b4ee;
+}
+
+.call-spine .spine-stud.attained .stud-numeral {
+  color: #f0e8ff;
+}
+
+.call-spine .spine-stud.current {
+  box-shadow:
+    inset 0 0 0 var(--hairline) var(--ink-line),
+    0 0 0 0.1875rem color-mix(in srgb, #a48adc 55%, transparent),
+    0.125rem 0.125rem 0 var(--ink-line);
+}
+
+.call-spine::after {
+  background: linear-gradient(90deg, color-mix(in srgb, #a48adc 55%, var(--line)), #a48adc);
+  box-shadow: 0 0 0.3125rem rgba(164, 138, 220, 0.4);
+}
+
+.bench-verbs {
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
-  margin-top: 0.375rem;
+  gap: 0.375rem;
+  margin-top: 0.25rem;
+}
+
+.bench-verbs .act-btn.cant {
+  opacity: 0.45;
+}
+
+/* ---- THE FOOT BAND: focus, roster, the sum. --------------------- */
+
+.wing-callings #arts-loadout {
+  display: grid;
+  grid-template-columns: 17rem minmax(0, 1fr) 19rem;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.life-focus,
+.life-roster,
+.life-sum {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3125rem;
+  min-width: 0;
+}
+
+.life-focus .focus-teach {
+  margin-top: 0.0625rem;
+}
+
+.focus-nums {
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  text-shadow: var(--punch);
+  line-height: 1;
+}
+
+.focus-nums.over {
+  color: var(--red-soft);
+}
+
+/* The forged channel: an eased hole in the stock (holes ease). */
+.focus-forge {
+  height: 0.8125rem;
+  background: var(--sunk);
+  border-radius: 0.40625rem;
+  box-shadow:
+    inset 0 0 0 var(--hairline) var(--ink-line),
+    inset 0 0.1875rem 0.25rem rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.focus-forge .focus-fill {
+  border-radius: 0.40625rem 0 0 0.40625rem;
+}
+
+.life-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  align-items: flex-start;
+}
+
+.life-empty {
+  font-size: var(--t-whisper);
+  font-style: italic;
+  color: var(--parchment-dim);
+  text-shadow: var(--punch-small);
+  padding-top: 0.375rem;
+}
+
+.life-gem {
+  appearance: none;
+  border: none;
+  padding: 0.1875rem 0 0;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  width: 2.5rem;
+  font-family: inherit;
+}
+
+.life-gem .call-gem {
+  width: 1.625rem;
+  height: 1.625rem;
+  box-shadow:
+    inset -0.125rem -0.1875rem 0.25rem rgba(0, 0, 0, 0.35),
+    0 0 0 0.1875rem var(--sunk),
+    0 0 0 0.28125rem var(--ink-line),
+    0.125rem 0.1875rem 0 rgba(12, 8, 4, 0.4);
+}
+
+.life-gem:hover .call-gem {
+  filter: brightness(1.2);
+}
+
+.life-gem.selected .call-gem {
+  box-shadow: 0 0 0 0.125rem rgba(239, 227, 194, 0.85);
+}
+
+.life-rank {
+  font-family: var(--serif);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #c8b4ee;
+  text-shadow: var(--punch-small);
+  line-height: 1;
+}
+
+.sum-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3125rem;
+}
+
+.sum-chip {
+  font-size: 0.84375rem;
+  font-weight: 800;
+  letter-spacing: 0.025rem;
+  padding: 0.15625rem 0.5625rem 0.1875rem;
+  color: var(--parchment);
+  background: var(--raise);
+  text-shadow: var(--punch-small);
+  clip-path: polygon(
+    0.3125rem 0,
+    calc(100% - 0.3125rem) 0,
+    100% 50%,
+    calc(100% - 0.3125rem) 100%,
+    0.3125rem 100%,
+    0 50%
+  );
+  box-shadow: inset 0 -0.125rem 0 rgba(10, 7, 3, 0.35);
+}
+
+.sum-chip.dim {
+  color: var(--parchment-dim);
+  font-style: italic;
 }
