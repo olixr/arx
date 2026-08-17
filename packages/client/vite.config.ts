@@ -18,10 +18,10 @@ export default defineConfig({
       name: 'arx-entry-routes',
       configureServer(server) {
         server.middlewares.use((req, _res, next) => {
-          // Bare `/` and `/?stay` mirror prod's `location = /` (the
-          // landing, ?stay pinning it); any other query on `/` keeps
-          // the game shell so the dev rigs' levers (?fx, ?det…) hold.
-          if (req.url === '/' || req.url?.startsWith('/?stay')) req.url = '/landing.html';
+          // Bare `/` mirrors prod's `location = /` (the landing); any
+          // query on `/` keeps the game shell so the dev rigs' levers
+          // (?fx, ?det…) hold.
+          if (req.url === '/') req.url = '/landing.html';
           else if (req.url === '/play') req.url = '/index.html';
           else if (req.url === '/landing') req.url = '/landing.html';
           next();
@@ -29,10 +29,10 @@ export default defineConfig({
       },
       configurePreviewServer(server) {
         server.middlewares.use((req, _res, next) => {
-          // Bare `/` and `/?stay` mirror prod's `location = /` (the
-          // landing, ?stay pinning it); any other query on `/` keeps
-          // the game shell so the dev rigs' levers (?fx, ?det…) hold.
-          if (req.url === '/' || req.url?.startsWith('/?stay')) req.url = '/landing.html';
+          // Bare `/` mirrors prod's `location = /` (the landing); any
+          // query on `/` keeps the game shell so the dev rigs' levers
+          // (?fx, ?det…) hold.
+          if (req.url === '/') req.url = '/landing.html';
           else if (req.url === '/play') req.url = '/index.html';
           else if (req.url === '/landing') req.url = '/landing.html';
           next();
