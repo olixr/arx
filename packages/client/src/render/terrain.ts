@@ -1362,14 +1362,46 @@ function paintDeckSeams(
 ): void {
   const dy0 = gy - liftB;
   const tone = deckRimTone(family);
+  // TWO KINDS OF JOINT: a rhythm turn INSIDE one family is carpentry
+  // and wears the proud header beam; a FAMILY joint (a dock platform
+  // hung flush on a bridge's flank) is two structures meeting and
+  // wears THE LEDGER SEAM — a shadow gap, not furniture. The beam's
+  // lit arris at a family joint floated as a bright hairline through
+  // the night bake (the user's brown-line report): bright lines on a
+  // flush floor read as artifacts; dark seams read as depth.
   const wFam = deckFamilyOf(ground(tx - 1, ty));
-  if (wFam !== null && (wFam !== family || deckArmVertical(ground, tx - 1, ty) !== myVert)) {
-    paintHeaderBeam(ctx, gx, dy0, px, tone, true);
+  if (wFam !== null) {
+    if (wFam !== family) paintLedgerSeam(ctx, gx, dy0, px, true);
+    else if (deckArmVertical(ground, tx - 1, ty) !== myVert) {
+      paintHeaderBeam(ctx, gx, dy0, px, tone, true);
+    }
   }
   const nFam = deckFamilyOf(ground(tx, ty - 1));
-  if (nFam !== null && (nFam !== family || deckArmVertical(ground, tx, ty - 1) !== myVert)) {
-    paintHeaderBeam(ctx, gx, dy0, px, tone, false);
+  if (nFam !== null) {
+    if (nFam !== family) paintLedgerSeam(ctx, gx, dy0, px, false);
+    else if (deckArmVertical(ground, tx, ty - 1) !== myVert) {
+      paintHeaderBeam(ctx, gx, dy0, px, tone, false);
+    }
   }
+}
+
+/**
+ * THE LEDGER SEAM: the thin dark gap where one deck family's ledger
+ * meets another's rim — quiet at noon, quiet at midnight. No body,
+ * no arris, no pips: the tone families on either side already tell
+ * the story; the seam only keeps the butt from reading as a paste-up.
+ */
+function paintLedgerSeam(
+  ctx: CanvasRenderingContext2D,
+  gx: number,
+  dy0: number,
+  px: number,
+  vertical: boolean,
+): void {
+  const w = Math.max(1, px * 0.024);
+  ctx.fillStyle = 'rgba(22, 14, 7, 0.42)';
+  if (vertical) ctx.fillRect(gx - w / 2, dy0, w, px);
+  else ctx.fillRect(gx, dy0 - w / 2, px, w);
 }
 
 /**
