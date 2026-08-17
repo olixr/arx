@@ -7155,6 +7155,30 @@ export class Renderer {
   /** True while a band bake paints: the veil fields read full height
    *  and collect-side glow effects stay quiet (bakingMask). */
   private bakeVeilFull = false;
+  /**
+   * THE BANDED JOINT WEARS AN UNDERLAP (bake-only). A stretch's outer
+   * edge abuts content drawn from ANOTHER surface — the live windowed
+   * wall or gate that split the stretch, or the next chunk's own band.
+   * At settled zoom every surface shares the device lattice and the
+   * joint abuts byte-exact, but a gridPx-STALE band blits by pure
+   * scale ratio (mid-glide / dpr step / awaiting the paced re-bake)
+   * and its resampled edge lands up to ~1.5 device px off the live
+   * neighbor's snapped edge — printing a background-colored hairline
+   * down the full band height at every window transition on every
+   * zoom. So the bake extends the END members' paint a few device px
+   * PAST the shared edge (same-material flat-wall neighbors only —
+   * doors, gates, diagonals and material changes keep exact edges):
+   * the neighbor's own opaque paint covers the overrun whenever the
+   * lattice agrees, and a stale blit fills the joint with the wall's
+   * own masonry instead of grass. Live paint NEVER bleeds a joined
+   * edge — THE SHARED-EDGE LAW stands untouched. Keys are packTile of
+   * the end members; -1 outside bakes.
+   */
+  private bakeBleedW = -1;
+  private bakeBleedE = -1;
+  /** The underlap span in CSS px on the bake ctx (dprB-scaled): ~3
+   *  device px — misregistration bound (~1.5) plus resample fringe. */
+  private bakeBleedPx = 0;
   /** Bound once — planStretches calls it per member. */
   private readonly memberBandableFn = (m: RaisedMember): boolean => this.memberBandable(m);
 
@@ -7492,6 +7516,27 @@ export class Renderer {
     const keyOf = (it: DrawItem): string => `${it.sortY}|${it.strat ?? 'u'}|${it.elevated ? 1 : 0}`;
     const buckets: BandBucket[] = [];
     let casts = false;
+    // THE UNDERLAP (see bakeBleedW): the end members bleed toward a
+    // joined same-face wall OUTSIDE the stretch — the live window/hung
+    // wall that split us, or the next chunk's own band — so a
+    // gridPx-stale ratio blit can never open a background hairline at
+    // the joint. Same-face only: doors, gates, diagonals and material
+    // changes keep their exact snapped edges.
+    const m0 = list[s.i0]!;
+    const mN = list[s.i1]!;
+    const bleedKindOk = (m: RaisedMember): boolean =>
+      m.kind === RaisedKind.Wall || m.kind === RaisedKind.GarrisonWall;
+    const sameFace = (a: number | undefined, b: number): boolean =>
+      a !== undefined && Renderer.wallBleedMat(a as Tile) === Renderer.wallBleedMat(b as Tile);
+    this.bakeBleedW =
+      bleedKindOk(m0) && sameFace(game.world.groundAt(m0.tx - 1, m0.ty), m0.tile)
+        ? packTile(m0.tx, m0.ty)
+        : -1;
+    this.bakeBleedE =
+      bleedKindOk(mN) && sameFace(game.world.groundAt(mN.endX + 1, mN.ty), mN.tile)
+        ? packTile(mN.endX, mN.ty)
+        : -1;
+    this.bakeBleedPx = 3 / dprB;
     try {
       // Probe pass (live camera): discover the sort buckets in first-
       // occurrence order. Only keys are read; the items are discarded.
@@ -7559,6 +7604,9 @@ export class Renderer {
       this.ctx = savedCtx;
       this.bakeVeilFull = false;
       this.bakingMask = false;
+      this.bakeBleedW = -1;
+      this.bakeBleedE = -1;
+      this.bakeBleedPx = 0;
     }
     this.staticBakeMsLeft -= performance.now() - t0;
     return {
@@ -7572,6 +7620,24 @@ export class Renderer {
       casts,
       used: this.frameNo,
     };
+  }
+
+  /** The flat-wall FACE FAMILY a tile paints with — windows resolve to
+   *  their masonry, the two cave masses count as one. Only a same-face
+   *  neighbor may receive a band end's underlap (bakeBleedW): any
+   *  other joint (door, gate, diagonal, material change) would show
+   *  foreign paint the moment a stale blit misregisters. */
+  private static wallBleedMat(t: Tile): Tile {
+    switch (t) {
+      case Tile.WallWoodWindow:
+        return Tile.WallWood;
+      case Tile.WallStoneWindow:
+        return Tile.WallStone;
+      case Tile.CrackedCaveWall:
+        return Tile.CaveWall;
+      default:
+        return t;
+    }
   }
 
   private acquireBandCanvas(w: number, h: number): HTMLCanvasElement {
@@ -7803,8 +7869,15 @@ export class Renderer {
     // Snapping lives on THE DEVICE GRID (camera.snapPx): a CSS-round
     // under a fractional dpr parks the joint on a half device pixel
     // and the abutting fills half-cover it — the seam returns.
-    const x0 = w ? this.camera.snapPx(p.x) : p.x - 0.25;
-    const x1 = e ? this.camera.snapPx(p.x + s) : p.x + s + 0.25;
+    // Inside a band bake ONLY, a stretch-end member instead bleeds a
+    // few device px PAST its outer joined edge (THE UNDERLAP,
+    // bakeBleedW) so a stale ratio-mapped blit cannot open a
+    // background hairline against the live neighbor at the joint.
+    const keyHere = packTile(tx, ty);
+    const bleedW = this.bakeBleedW === keyHere;
+    const bleedE = this.bakeBleedE === keyHere;
+    const x0 = w ? (bleedW ? p.x - this.bakeBleedPx : this.camera.snapPx(p.x)) : p.x - 0.25;
+    const x1 = e ? (bleedE ? p.x + s + this.bakeBleedPx : this.camera.snapPx(p.x + s)) : p.x + s + 0.25;
     const y0 = n || nDoor ? this.camera.snapPx(p.y) : p.y - 0.25;
     const y1 = sw ? this.camera.snapPx(p.y + syT) : p.y + syT + 0.25;
     const sideCol = shade(mat === Tile.WallWood ? skin.log : mat === Tile.WallStone ? '#6f697c' : '#2b2536', -6);
@@ -10277,8 +10350,13 @@ export class Renderer {
     // (the wallItem seam lesson — a bleed on a joined side prints a
     // pale AA column up the face at every joint). Snapped on THE
     // DEVICE GRID, never in CSS space (fractional-dpr seam lesson).
-    const x0 = w ? this.camera.snapPx(p.x) : p.x - 0.25;
-    const x1 = e ? this.camera.snapPx(p.x + s) : p.x + s + 0.25;
+    // Band-bake stretch ends underlap their outer joined edge exactly
+    // like wallItem (THE UNDERLAP, bakeBleedW).
+    const gKey = packTile(tx, ty);
+    const gBleedW = this.bakeBleedW === gKey;
+    const gBleedE = this.bakeBleedE === gKey;
+    const x0 = w ? (gBleedW ? p.x - this.bakeBleedPx : this.camera.snapPx(p.x)) : p.x - 0.25;
+    const x1 = e ? (gBleedE ? p.x + s + this.bakeBleedPx : this.camera.snapPx(p.x + s)) : p.x + s + 0.25;
     const y0 = n ? this.camera.snapPx(p.y) : p.y - 0.25;
     const y1 = sw ? this.camera.snapPx(p.y + syT) : p.y + syT + 0.25;
     const nH = n ? this.garrisonHeightAt(game, tx, ty - 1) : whT;
