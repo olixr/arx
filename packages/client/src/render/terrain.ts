@@ -2110,7 +2110,11 @@ function drawTileDetail(
         const snowW = gAt !== undefined && gAt(tx - 1, ty) === Tile.Snow;
         const snowE = gAt !== undefined && gAt(tx + 1, ty) === Tile.Snow;
         const nearSnow = snowN || snowS || snowW || snowE;
-        const n = 3 + (hg % 3);
+        // Stubble density drifts at meadow scale — lush reaches thick
+        // with it, worn ground nearly bare (an even per-tile count
+        // reads as carpet tiling from a distance).
+        const lush = valueNoise(907, tx * 0.04, ty * 0.04);
+        const n = Math.max(0, Math.round((2 + (hg % 3)) * (0.3 + 1.2 * lush)));
         for (let k = 0; k < n; k++) {
           const hh = hashCoords(101 + k, tx, ty);
           const fx = (hh % 88) / 100;
@@ -2135,10 +2139,12 @@ function drawTileDetail(
         }
       }
       if (m === Tile.Snow) {
-        // THE SPARKLE: sun on fresh crystal — a few pinpoint glints,
-        // and the rare four-point star. With the drift pass this is
-        // the whole difference between snow and blank paper.
-        const n = 1 + (hg % 3);
+        // THE SPARKLE: sun on fresh crystal — pinpoint glints and the
+        // rare four-point star, GATHERED where the drift field crests
+        // (fresh crystal catches light on exposed crowns; packed
+        // hollows stay matte — an even sprinkle reads as a pattern).
+        const crest = valueNoise(2749, tx * 0.02, ty * 0.02);
+        const n = crest > 0.55 ? 1 + (hg % 3) : hg % 4 === 0 ? 1 : 0;
         for (let k = 0; k < n; k++) {
           const hh = hashCoords(2767 + k, tx, ty);
           const sx = gx + ((hh % 90) / 100) * px;
@@ -2147,7 +2153,7 @@ function drawTileDetail(
           const r = Math.max(1, px * 0.028);
           ctx.fillRect(sx, sy, r, r);
         }
-        if (hg % 7 === 3) {
+        if (crest > 0.55 && hg % 7 === 3) {
           const hh = hashCoords(2777, tx, ty);
           const sx = gx + (0.12 + (hh % 72) / 100) * px;
           const sy = gy + (0.12 + ((hh >> 6) % 72) / 100) * px;
@@ -2161,8 +2167,10 @@ function drawTileDetail(
           ctx.lineTo(sx, sy + arm * 0.6);
           ctx.stroke();
         }
-        // A soft blue pool where the blanket dips — sparse, wide, quiet.
-        if (hg % 5 === 2) {
+        // A soft blue pool where the blanket dips — the HOLLOWS of the
+        // same field the sparkle crests ride: light on the crowns,
+        // shadow gathering low, one relief read across the whole field.
+        if (crest < 0.5 && hg % 5 === 2) {
           const hh = hashCoords(2789, tx, ty);
           ctx.fillStyle = 'rgba(158, 174, 208, 0.14)';
           ctx.beginPath();
@@ -2224,11 +2232,28 @@ function drawTileDetail(
           ctx.ellipse(sx, sy, r * 1.3, r, ((hh >> 3) % 7) * 0.4, 0, Math.PI * 2);
           ctx.fill();
         }
-      } else if (m === Tile.Sand && hg % 3 === 0) {
+      } else if (m === Tile.Sand) {
+        // Shell-grit drifts: the tide sorts its leavings into patches,
+        // so speck density rides a slow field — banks of grit, clean
+        // sweeps between (a flat per-tile chance read as a pattern).
+        const drift = valueNoise(2761, tx * 0.05, ty * 0.05);
+        const n = drift > 0.6 ? 2 + (hg % 4) : drift > 0.45 && hg % 3 === 0 ? 1 + (hg % 2) : 0;
         ctx.fillStyle = 'rgba(150, 116, 62, 0.2)';
-        for (let k = 0; k < 3; k++) {
+        for (let k = 0; k < n; k++) {
           const hh = hashCoords(97 + k, tx, ty);
-          ctx.fillRect(gx + (hh % 80) / 100 * px, gy + ((hh >> 7) % 80) / 100 * px, px * 0.04, px * 0.04);
+          const sw = px * (0.03 + ((hh >> 3) % 3) * 0.012);
+          ctx.fillRect(gx + (hh % 80) / 100 * px, gy + ((hh >> 7) % 80) / 100 * px, sw, sw * 0.8);
+        }
+        // The odd pale shell fleck riding a grit bank.
+        if (drift > 0.6 && hg % 11 === 4) {
+          const hh = hashCoords(2771, tx, ty);
+          ctx.fillStyle = 'rgba(248, 240, 214, 0.5)';
+          ctx.fillRect(
+            gx + (0.15 + (hh % 65) / 100) * px,
+            gy + (0.15 + ((hh >> 6) % 65) / 100) * px,
+            px * 0.05,
+            px * 0.035,
+          );
         }
       } else if (
         (m === Tile.CaveFloor || m === Tile.DungeonFloor || m === Tile.CaveRubble) &&
@@ -2258,16 +2283,25 @@ function drawTileDetail(
         ctx.fill();
       }
       if (d === Detail.Pebbles) {
-        // Angular stone chips, rotated apart so they never tile.
+        // Angular stone chips. THE SCATTER IS THE HAND'S: the first
+        // cut stamped the SAME two-chip pair at fixed tile offsets
+        // (only rotation varied) — at scale every pebble patch read as
+        // the identical purple twin-dot motif (user-caught pattern).
+        // Now the hash deals everything: how many, where, how big,
+        // which grey — no two patches are sisters.
         const h = hashCoords(29, tx, ty);
-        ctx.fillStyle = '#8b8494';
-        for (const [ox, oy, pw, rot] of [
-          [0.4, 0.55, 0.16, 0.4],
-          [0.62, 0.38, 0.11, -0.5],
-        ] as const) {
+        const n = 1 + (h % 3);
+        for (let k = 0; k < n; k++) {
+          const hp = hashCoords(31 + k * 47, tx, ty);
+          const ox = 0.12 + ((hp % 76) / 100);
+          const oy = 0.12 + (((hp >> 7) % 76) / 100);
+          const pw = 0.06 + ((hp >> 3) % 5) * 0.022;
+          const rot = (((hp >> 11) % 100) / 100) * 3.1;
+          ctx.fillStyle =
+            (hp & 3) === 0 ? '#948da1' : (hp & 3) === 1 ? '#7f7889' : '#8b8494';
           ctx.save();
           ctx.translate(lx * px + px * ox, ly * px + px * oy);
-          ctx.rotate(rot + (h % 7) * 0.1);
+          ctx.rotate(rot);
           ctx.beginPath();
           chamferRect(ctx, (-pw / 2) * px, (-pw * 0.4) * px, pw * px, pw * 0.8 * px, pw * px * 0.3);
           ctx.fill();
@@ -4063,8 +4097,13 @@ function paintLayerInterior(
 
 /**
  * WIND-RIPPLED SAND: long low-contrast crescents combed by a slowly
- * turning direction field, each with a sunlit crest echo — the shore
- * reads as swept sand instead of flat paint with three specks.
+ * turning direction field, each with a sunlit crest echo. THE WIND
+ * WORKS IN TRAINS: a slow coverage field gathers the ripples into
+ * combed patches with smooth-swept reaches between — a flat per-tile
+ * chance scattered one ripple everywhere at even density, and even
+ * density IS a pattern (user-caught). Inside a train the comb tightens
+ * (angles cohere, a second parallel crest often rides beside the
+ * first); out in the reaches only the stray ripple survives.
  */
 function paintSandRipples(
   ctx: CanvasRenderingContext2D,
@@ -4080,10 +4119,17 @@ function paintSandRipples(
       const wx = baseX + lx;
       const wy = baseY + ly;
       const h = hashCoords(2731, wx, wy);
-      if (h % 100 >= 42) continue;
+      // The train field: high = combed patch, low = swept smooth.
+      const train = valueNoise(2743, wx * 0.045, wy * 0.045);
+      const chance = train > 0.62 ? 80 : train > 0.48 ? 30 : 4;
+      if (h % 100 >= chance) continue;
+      const inTrain = train > 0.62;
+      // Angles cohere inside a train (the wind combed one way there);
+      // stray ripples in the reaches wander more.
       const ang =
-        -0.35 + (valueNoise(2741, wx * 0.024, wy * 0.024) - 0.5) * 1.1;
-      const len = (0.5 + ((h >> 5) % 40) / 100) * px;
+        -0.35 +
+        (valueNoise(2741, wx * 0.024, wy * 0.024) - 0.5) * (inTrain ? 0.7 : 1.3);
+      const len = (0.4 + ((h >> 5) % 70) / 100 + (inTrain ? 0.25 : 0)) * px;
       const cxp = (lx + 0.15 + ((h >> 7) % 70) / 100) * px;
       const cyp = (ly + 0.15 + ((h >> 12) % 70) / 100) * px;
       const dx = Math.cos(ang);
@@ -4105,6 +4151,14 @@ function paintSandRipples(
       // Shade trough first, then the crest catching the western sun.
       draw(0, 0, 'rgba(158, 128, 74, 0.16)', Math.max(1, px * 0.04));
       draw(-px * 0.03, -px * 0.028, 'rgba(248, 236, 198, 0.2)', Math.max(1, px * 0.032));
+      // A parallel companion crest inside a train — ripples march in
+      // ranks, never alone.
+      if (inTrain && (h & 4) !== 0) {
+        const pox = -dy * px * 0.16;
+        const poy = dx * px * 0.16 * 0.65;
+        draw(pox, poy, 'rgba(158, 128, 74, 0.12)', Math.max(1, px * 0.036));
+        draw(pox - px * 0.03, poy - px * 0.028, 'rgba(248, 236, 198, 0.15)', Math.max(1, px * 0.03));
+      }
     }
   }
   ctx.lineCap = 'butt';
@@ -4130,8 +4184,11 @@ function paintSnowDrifts(
       const wx = baseX + lx;
       const wy = baseY + ly;
       const h = hashCoords(2753, wx, wy);
-      if (h % 100 >= 30) continue;
-      const ang = -0.3 + (valueNoise(2749, wx * 0.02, wy * 0.02) - 0.5) * 0.7;
+      // Sastrugi gather where the wind field crests — carved ridges in
+      // ranks on the exposed reaches, calm hollows nearly bare.
+      const crest = valueNoise(2749, wx * 0.02, wy * 0.02);
+      if (h % 100 >= (crest > 0.55 ? 48 : 10)) continue;
+      const ang = -0.3 + (crest - 0.5) * 0.7;
       const len = (0.8 + ((h >> 5) % 70) / 100) * px;
       const cxp = (lx + 0.1 + ((h >> 8) % 80) / 100) * px;
       const cyp = (ly + 0.1 + ((h >> 13) % 80) / 100) * px;
