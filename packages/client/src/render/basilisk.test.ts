@@ -4,7 +4,8 @@
  * three zooms); the six-legged sprawl walks the crab's alternating
  * tripod on its own foot word; the gaze line is the bestiary's
  * identity (licensed hold on both carriers, the fen gazeless); the
- * family's one tame door is the fen and the gaze obeys no leash;
+ * family tames as its own line (fen and basilisk; the elder alone
+ * obeys no leash — THE GAZE TAKES THE LEASH, 2026-08-17);
  * wild coats scatter by seed (anti-twin) while the elder keeps one
  * geology; the fen feeds the banks and the gaze line keeps the dry
  * country; and body, head, and trailer painters run NaN-free across
@@ -46,16 +47,19 @@ test('the bestiary fields the court: slow, armored, and the gaze is the law', ()
   for (const def of [fen, bas, elder]) assert.ok(!def.pounce);
 });
 
-test('THE GAZE OBEYS NO LEASH: one tame door, and it is the fen', () => {
+test('THE ELDER\'S GAZE OBEYS NO LEASH: two doors stand open, the crag stays wild', () => {
+  // AMENDED (THE GAZE TAKES THE LEASH, user mandate 2026-08-17): the
+  // family is a tamable line of its own now — the fen AND the
+  // basilisk answer a keeper, the pet gaze licensed and budget-priced
+  // in the status registers. Only the elder keeps the old decree.
   const row = tameDef('fen_basilisk');
   assert.ok(row, 'the gazeless cousin answers a keeper');
   assert.equal(row.kit?.bite?.status, 'venom', 'the family drool rides the bite');
   // Keeled scale, a light shell rung — never a rung the crab crown feels.
   assert.ok((row.kit?.armor ?? 0) > 0);
   assert.ok((row.kit?.armor ?? 0) < (tameDef('giant_crab')?.kit?.armor ?? 0));
-  // The stone-gaze line is refused by decree, forever.
-  assert.equal(tameDef('basilisk'), undefined);
-  assert.equal(tameDef('elder_basilisk'), undefined);
+  assert.ok(tameDef('basilisk'), 'the stone half answers a keeper now');
+  assert.equal(tameDef('elder_basilisk'), undefined, 'a sovereign is not a friend');
 });
 
 test('three designs, never one silhouette at three zooms', () => {

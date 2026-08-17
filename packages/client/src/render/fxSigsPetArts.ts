@@ -3082,6 +3082,492 @@ const the_venom_lattice: AbilitySig = {
   },
 };
 
+// ============================== THE STONE COURT AT HEEL
+// (THE GAZE TAKES THE LEASH): the basilisk family's five workings.
+// The grammar holds — every word is the animal's own act: the tail
+// writing its circle, the swamp coughed up, the hide quarried, the
+// marsh moving in, the look that makes country out of bodies. Stone
+// is the school's own unowned matter here (hand-thrown chips and
+// grey washes); venom and dust speak through the library.
+
+/**
+ * TAIL SWEEP — "half the animal is tail."
+ * The centerpiece is THE SWEPT QUARTER: not a ring but a heavy
+ * wedge-sector turning around the body like a clock hand — the tail
+ * writing its circle — with dust gouged off the leading edge and
+ * true pebbles thrown tangent to the swing. The lasting mark is the
+ * furrow arc the tail wrote in the dirt.
+ */
+const tail_sweep: AbilitySig = {
+  spawn(c) {
+    dust.deployments.kick!(asMatter(c), c.wx, c.wy, { scale: 0.45 });
+    const rand = srand(c.seed ^ 0x7a11);
+    const base = rand() * Math.PI * 2;
+    // Pebbles off the tip, thrown ALONG the swing (tangent), landing.
+    for (let k = 0; k < 4; k++) {
+      const a = base + k * 1.4;
+      const r = c.radius * (0.75 + rand() * 0.2);
+      c.particles.burst(c.wx + Math.cos(a) * r, c.wy + Math.sin(a) * r * 0.55, 1, ['#8a8468', '#5c5844'], {
+        speed: 0.9,
+        life: 1.6,
+        size: 0.05,
+        dir: a + Math.PI / 2,
+        spread: 0.3,
+        z: 0.25,
+        vz: 1.2 + rand() * 0.8,
+        zg: 8,
+        land: 'settle',
+        layer: 'world',
+        shadow: 0.35,
+      });
+    }
+    // The furrow the tail wrote: grains laid down the swept arc.
+    for (let k = 0; k < 5; k++) {
+      const a = base + (k / 5) * Math.PI * 1.1;
+      lay(c, c.wx + Math.cos(a) * c.radius * 0.8, c.wy + Math.sin(a) * c.radius * 0.8 * 0.55, '#57523f', {
+        life: 8,
+        size: 0.06,
+        fade: '#3a372c',
+        fadeAt: 0.55,
+      });
+    }
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const fade = t < 0.75 ? 1 : (1 - t) / 0.25;
+    const rand = srand(c.seed ^ 0x7a11);
+    const base = rand() * Math.PI * 2;
+    // The swing covers a three-quarter turn across the fx life.
+    const swing = base + cl(t / 0.7) * Math.PI * 1.5;
+    ctx.save();
+    // THE SWEPT QUARTER: the wedge from the body to the rim, thick
+    // at the rim (the tail is heaviest mid-length), trailing a
+    // quarter-turn of swept ground behind its leading edge.
+    ctx.globalAlpha = 0.5 * fade;
+    ctx.fillStyle = st.deep;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.ellipse(px, py, rPx, rPx * squash, 0, swing - 0.9, swing);
+    ctx.closePath();
+    ctx.fill();
+    // The leading edge: the tail itself as a hard bright spoke with
+    // a whip-taper (WEIGHT PASS: floors one band up on a short life).
+    ctx.globalAlpha = 0.95 * fade;
+    ctx.strokeStyle = st.spark;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(3.2, sc * 0.085);
+    ctx.beginPath();
+    ctx.moveTo(px + Math.cos(swing) * rPx * 0.25, py + Math.sin(swing) * rPx * 0.25 * squash);
+    ctx.lineTo(px + Math.cos(swing) * rPx, py + Math.sin(swing) * rPx * squash);
+    ctx.stroke();
+    // The keel chips riding the spoke: three saw teeth.
+    ctx.fillStyle = st.mid;
+    for (const f of [0.45, 0.65, 0.85] as const) {
+      const hx = px + Math.cos(swing) * rPx * f;
+      const hy = py + Math.sin(swing) * rPx * f * squash;
+      ctx.beginPath();
+      ctx.moveTo(hx - sc * 0.045, hy);
+      ctx.lineTo(hx, hy - sc * 0.09 * squash);
+      ctx.lineTo(hx + sc * 0.045, hy);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+    // Dust gouges off the leading edge as it comes around.
+    if (crossed(c, 680, 0.3) || crossed(c, 680, 0.6)) {
+      dust.deployments.gouge!(asMatter(c), c.wx + Math.cos(swing) * c.radius * 0.8, c.wy + Math.sin(swing) * c.radius * 0.8 * 0.55, { scale: 0.4, dir: swing + Math.PI / 2 });
+    }
+  },
+};
+
+/**
+ * MIRE SPIT, at heel — "the rope, arriving."
+ * The wild spit keeps its verdant flight; the LANDING is the pet
+ * word's own: THE CLINGING ROPE — the rot splats into three thick
+ * tendrils splayed from the impact, each ending in a swelling bead,
+ * unlike the adder's clean fang punctures. Slow bubbles pop in the
+ * splat while it lives; rot-flecks outlast it.
+ */
+const mire_spit: AbilitySig = {
+  spawn(c) {
+    venom.deployments.burst!(asMatter(c), c.wx, c.wy, { scale: 0.45 });
+    const rand = srand(c.seed ^ 0x3e2a);
+    const base = rand() * Math.PI * 2;
+    for (let k = 0; k < 3; k++) {
+      const a = base + (k / 3) * Math.PI * 2 + rand() * 0.4;
+      lay(c, c.wx + Math.cos(a) * 0.3, c.wy + Math.sin(a) * 0.3 * 0.55, '#5c6b3e', {
+        life: 8,
+        size: 0.06,
+        fade: '#39432a',
+        fadeAt: 0.5,
+      });
+    }
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py } = c;
+    const fade = t < 0.7 ? 1 : (1 - t) / 0.3;
+    const splay = cl(t / 0.22);
+    const rand = srand(c.seed ^ 0x3e2a);
+    const base = rand() * Math.PI * 2;
+    ctx.save();
+    ctx.lineCap = 'round';
+    // The splat heart.
+    ctx.globalAlpha = 0.6 * fade;
+    ctx.fillStyle = st.mid;
+    ctx.beginPath();
+    ctx.ellipse(px, py, sc * 0.18, sc * 0.12 * squash, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // THE CLINGING ROPE: three thick tendrils splaying out, each
+    // closing on a bead that swells as the tendril finishes.
+    for (let k = 0; k < 3; k++) {
+      const a = base + (k / 3) * Math.PI * 2 + 0.3;
+      const len = sc * (0.32 + (k % 2) * 0.1) * splay;
+      const ex = px + Math.cos(a) * len;
+      const ey = py + Math.sin(a) * len * squash;
+      ctx.globalAlpha = 0.85 * fade;
+      ctx.strokeStyle = st.deep;
+      ctx.lineWidth = Math.max(2.6, sc * 0.07 * (1 - 0.4 * splay));
+      ctx.beginPath();
+      ctx.moveTo(px + Math.cos(a) * sc * 0.1, py + Math.sin(a) * sc * 0.1 * squash);
+      ctx.quadraticCurveTo(
+        px + Math.cos(a + 0.25) * len * 0.6,
+        py + Math.sin(a + 0.25) * len * 0.6 * squash,
+        ex,
+        ey,
+      );
+      ctx.stroke();
+      // The bead at the tendril's end.
+      ctx.globalAlpha = 0.9 * fade;
+      ctx.fillStyle = st.core;
+      ctx.beginPath();
+      ctx.arc(ex, ey, Math.max(1.6, sc * 0.05) * (0.5 + 0.5 * splay), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+    // A bubble pops in the splat while it lives.
+    if (crossed(c, 780, 0.45)) {
+      venom.deployments.drip!(asMatter(c), c.wx, c.wy, { scale: 0.3 });
+    }
+  },
+};
+
+/**
+ * GRAVEN MANTLE — "the hide, quarried."
+ * A command word: the signature carries the whole read. Four facet
+ * plates rise OUT of the ground around the body on their own beats
+ * and LEAN IN to seat against the hide — the opposite motion of
+ * every wrap and shell in the school (the silk climbs, the plates
+ * arrive). The seat is a dust slam; standing grit outlasts it. The
+ * riding stonehide page then holds the aura for its own 15 seconds.
+ */
+const graven_mantle: AbilitySig = {
+  spawn(c) {
+    const rand = srand(c.seed ^ 0x6b1d);
+    for (let k = 0; k < 4; k++) {
+      const a = (k / 4) * Math.PI * 2 + 0.6 + rand() * 0.2;
+      lay(c, c.wx + Math.cos(a) * 0.5, c.wy + Math.sin(a) * 0.5 * 0.55, '#8a8474', {
+        life: 8.5,
+        size: 0.06,
+        fade: '#48443a',
+        fadeAt: 0.6,
+      });
+    }
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py } = c;
+    const fade = t < 0.8 ? 1 : (1 - t) / 0.2;
+    ctx.save();
+    // The quarry ring: where the plates tore out of the ground —
+    // four dark sockets opening as each plate leaves.
+    for (let k = 0; k < 4; k++) {
+      const open = cl((t * 850 - k * 130) / 160);
+      if (open <= 0) continue;
+      const a = (k / 4) * Math.PI * 2 + 0.6;
+      const hx = px + Math.cos(a) * sc * 0.5;
+      const hy = py + Math.sin(a) * sc * 0.5 * squash;
+      ctx.globalAlpha = 0.55 * open * fade;
+      ctx.fillStyle = st.deep;
+      ctx.beginPath();
+      ctx.ellipse(hx, hy, sc * 0.11 * open, sc * 0.07 * open * squash, a, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+    // THE SEAT: one grounding thump the moment the last plate locks —
+    // the dust answers the stone, never buries it.
+    if (crossed(c, 850, 0.85)) {
+      dust.deployments.slam!(asMatter(c), c.wx, c.wy, { scale: 0.35 });
+    }
+  },
+  air(c) {
+    const { ctx, st, t, sc, squash, px, py } = c;
+    const fade = t < 0.8 ? 1 : (1 - t) / 0.2;
+    ctx.save();
+    // THE PLATES ARRIVE: each rises from its socket and leans in to
+    // seat against the hide, brightening as it locks.
+    for (let k = 0; k < 4; k++) {
+      const go = cl((t * 850 - k * 130) / 300);
+      if (go <= 0) continue;
+      const a = (k / 4) * Math.PI * 2 + 0.6;
+      // From the socket (r 0.7, ground) to the seat (r 0.3, hide height).
+      const r = sc * (0.7 - 0.4 * go);
+      const lift = sc * (0.2 + 0.5 * Math.sin(Math.PI * Math.min(1, go)));
+      const hx = px + Math.cos(a) * r;
+      const hy = py + Math.sin(a) * r * squash - lift;
+      const locked = go >= 1;
+      const s = sc * 0.34;
+      ctx.globalAlpha = (locked ? 1 : 0.85) * fade;
+      ctx.fillStyle = locked ? st.mid : shade(st.mid, -14);
+      ctx.beginPath();
+      ctx.moveTo(hx - s, hy + s * 0.6);
+      ctx.lineTo(hx - s * 0.55, hy - s * 0.8);
+      ctx.lineTo(hx + s * 0.55, hy - s);
+      ctx.lineTo(hx + s, hy + s * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      // The cut edge in ink so the facet reads against any ground.
+      ctx.strokeStyle = st.deep;
+      ctx.lineWidth = Math.max(1.8, sc * 0.04);
+      ctx.stroke();
+      // The seam light on a locked plate, and the seat's brief flash
+      // ring so the lock reads as an event, not an arrival.
+      if (locked) {
+        ctx.strokeStyle = st.spark;
+        ctx.lineWidth = Math.max(2.0, sc * 0.045);
+        ctx.beginPath();
+        ctx.moveTo(hx - s * 0.55, hy - s * 0.8);
+        ctx.lineTo(hx + s * 0.55, hy - s);
+        ctx.stroke();
+        const flash = cl(1 - (t * 850 - (k * 130 + 300)) / 160);
+        if (flash > 0 && flash < 1) {
+          ctx.globalAlpha = 0.8 * flash * fade;
+          ctx.beginPath();
+          ctx.ellipse(hx, hy, s * (1.2 + 0.6 * (1 - flash)), s * (0.9 + 0.5 * (1 - flash)), 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.restore();
+    if (crossed(c, 850, 0.92)) c.glow(c.wx, c.wy, 0.7, 0.3);
+  },
+};
+
+/**
+ * THE DROWNING MIRE — the signature: "the fen moves in."
+ * A field the wire's ticks long. The sheet establishes with a
+ * creeping shoreline (the marsh ARRIVING, not appearing), then
+ * lives: scum lanes turning on the field's own slow clock, rot
+ * blisters swelling and popping on posSeed stations, midge motes
+ * drifting above the water. Rot stains at the rim outlast it.
+ */
+const the_drowning_mire: AbilitySig = {
+  spawn(c) {
+    venom.deployments.cloud!(asMatter(c), c.wx, c.wy, { scale: 0.45 });
+    const hash = srand(posSeed(c, 0x5f3d));
+    const base = hash() * Math.PI * 2;
+    for (let k = 0; k < 5; k++) {
+      const a = base + (k / 5) * Math.PI * 2;
+      lay(c, c.wx + Math.cos(a) * c.radius * 0.9, c.wy + Math.sin(a) * c.radius * 0.9 * 0.55, '#4a5732', {
+        life: 9,
+        size: 0.065,
+        fade: '#2c3520',
+        fadeAt: 0.6,
+      });
+    }
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const lifeMs = (c.ticks ?? 160) * 50;
+    const fade = t < 0.85 ? 1 : (1 - t) / 0.15;
+    const arrive = cl((t * lifeMs) / 800);
+    const hash = srand(posSeed(c, 0x5f3d));
+    const base = hash() * Math.PI * 2;
+    ctx.save();
+    // THE SHEET: dark water with an uneven, creeping shoreline —
+    // lobes each arriving at its own pace, walked through curve
+    // midpoints so the water's edge never shows a straight chord.
+    ctx.globalAlpha = 0.55 * fade;
+    ctx.fillStyle = st.deep;
+    const N = 24;
+    const pts: [number, number][] = [];
+    for (let k = 0; k < N; k++) {
+      const a = base + (k / N) * Math.PI * 2;
+      const wob = 0.88 + 0.12 * Math.sin(a * 3 + base * 3);
+      const r = rPx * wob * cl(arrive * 1.3 - (k % 4) * 0.08);
+      pts.push([px + Math.cos(a) * r, py + Math.sin(a) * r * squash]);
+    }
+    ctx.beginPath();
+    ctx.moveTo((pts[0]![0] + pts[N - 1]![0]) / 2, (pts[0]![1] + pts[N - 1]![1]) / 2);
+    for (let k = 0; k < N; k++) {
+      const q = pts[k]!;
+      const nx = pts[(k + 1) % N]!;
+      ctx.quadraticCurveTo(q[0], q[1], (q[0] + nx[0]) / 2, (q[1] + nx[1]) / 2);
+    }
+    ctx.closePath();
+    ctx.fill();
+    // The rot rim: the shoreline itself, brighter — the water's edge
+    // is where the marsh is busiest.
+    ctx.globalAlpha = 0.5 * fade;
+    ctx.strokeStyle = st.mid;
+    ctx.lineWidth = Math.max(2.0, sc * 0.05);
+    ctx.stroke();
+    // SCUM LANES: two slow arcs turning on the field's own clock.
+    if (arrive >= 1) {
+      const turn = (c.now / 5200) * Math.PI * 2;
+      ctx.strokeStyle = st.mid;
+      ctx.lineWidth = Math.max(1.8, sc * 0.04);
+      for (const [rf, off] of [[0.45, 0], [0.68, 2.4]] as const) {
+        ctx.globalAlpha = 0.35 * fade;
+        ctx.beginPath();
+        ctx.ellipse(px, py, rPx * rf, rPx * rf * squash, 0, turn + off, turn + off + 1.6);
+        ctx.stroke();
+      }
+      // ROT BLISTERS: three stations swelling on staggered beats,
+      // each popping at full and leaving the beat to the next.
+      for (let k = 0; k < 3; k++) {
+        const beat = (c.now / 1600 + k * 0.33) % 1;
+        const a = base + (k / 3) * Math.PI * 2 + 0.8;
+        const bx = px + Math.cos(a) * rPx * 0.5;
+        const by = py + Math.sin(a) * rPx * 0.5 * squash;
+        const swell = beat < 0.8 ? beat / 0.8 : 0;
+        if (swell > 0.1) {
+          ctx.globalAlpha = 0.75 * swell * fade;
+          ctx.strokeStyle = st.core;
+          ctx.lineWidth = Math.max(2.0, sc * 0.045);
+          ctx.beginPath();
+          ctx.ellipse(bx, by, sc * 0.13 * swell, sc * 0.085 * swell * squash, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.restore();
+    if (crossed(c, lifeMs, 0.05)) c.glow(c.wx, c.wy, c.radius * 0.7, 0.2);
+  },
+  air(c) {
+    // Midges over standing water: one mote drifts up on a lazy beat,
+    // and now and then a blister's pop sends a drip the library way.
+    const lifeMs = (c.ticks ?? 160) * 50;
+    const beat = Math.floor(c.age / 1300);
+    const beatPrev = Math.floor((c.age - c.frameDt * 1000) / 1300);
+    if (beat !== beatPrev && c.t < 0.8 && lifeMs > 2000) {
+      const hash = srand(posSeed(c, 0x5f3d) ^ beat);
+      const a = hash() * Math.PI * 2;
+      venom.deployments.drip!(asMatter(c), c.wx + Math.cos(a) * c.radius * 0.5, c.wy + Math.sin(a) * c.radius * 0.5 * 0.55, { scale: 0.28 });
+    }
+  },
+};
+
+/**
+ * THE GRAVEN GAZE — the signature: "country, where bodies stood."
+ * An arc word on the short 300 ms wire, so every stroke sits one
+ * weight band up. The centerpiece is THE CONE OF COUNTRY GOING
+ * GREY: the stare fans out hard-edged along the facing; inside it
+ * the ground greys and cracks ALONG the gaze (never stone_gaze's
+ * ring — the wild gaze falls from above, the pet gaze travels), and
+ * true chips stand up at the far rim and settle into a little
+ * standing field that outlasts the look by nine seconds.
+ */
+const the_graven_gaze: AbilitySig = {
+  spawn(c) {
+    const ex = c.wx + Math.cos(c.dir) * c.radius * 0.85;
+    const ey = c.wy + Math.sin(c.dir) * c.radius * 0.85 * 0.55;
+    dust.deployments.gouge!(asMatter(c), ex, ey, { scale: 0.4, dir: c.dir });
+    const rand = srand(c.seed ^ 0x9a2e);
+    // The standing field: three chips thrown up at the cone's end,
+    // settling upright — the country the look made.
+    for (let k = 0; k < 3; k++) {
+      const a = c.dir + (k - 1) * 0.3;
+      c.particles.burst(
+        c.wx + Math.cos(a) * c.radius * (0.7 + rand() * 0.25),
+        c.wy + Math.sin(a) * c.radius * (0.7 + rand() * 0.25) * 0.55,
+        1,
+        ['#b9d18c', '#8a9282'],
+        {
+          speed: 0.1,
+          life: 9,
+          size: 0.06,
+          z: 0.05,
+          vz: 1.4 + rand() * 0.6,
+          zg: 7,
+          land: 'settle',
+          layer: 'world',
+          shadow: 0.4,
+          fade: '#4c5142',
+          fadeAt: 0.65,
+        },
+      );
+    }
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const fade = t < 0.6 ? 1 : (1 - t) / 0.4;
+    const reach = cl(t / 0.35);
+    const half = 0.32;
+    ctx.save();
+    // THE CONE: the grey wash the stare lays down, opening to reach.
+    ctx.globalAlpha = 0.5 * fade;
+    ctx.fillStyle = st.deep;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.ellipse(px, py, rPx * reach, rPx * reach * squash, 0, c.dir - half, c.dir + half);
+    ctx.closePath();
+    ctx.fill();
+    // The cone's hard edges (WEIGHT PASS: floors one band up).
+    ctx.globalAlpha = 0.95 * fade;
+    ctx.strokeStyle = st.spark;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(3.0, sc * 0.075);
+    for (const s of [-1, 1] as const) {
+      const a = c.dir + s * half;
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(px + Math.cos(a) * rPx * reach, py + Math.sin(a) * rPx * reach * squash);
+      ctx.stroke();
+    }
+    // THE CRACKS RUN WITH THE LOOK: three seams inside the cone,
+    // radiating along the gaze with one elbow each.
+    if (reach > 0.5) {
+      ctx.strokeStyle = st.mid;
+      ctx.lineWidth = Math.max(2.4, sc * 0.055);
+      const rand = srand(c.seed ^ 0x9a2e);
+      for (let k = 0; k < 3; k++) {
+        const a = c.dir + (k - 1) * 0.18;
+        const f1 = 0.35 + rand() * 0.15;
+        const f2 = 0.75 + rand() * 0.2;
+        const ex1 = px + Math.cos(a) * rPx * f1;
+        const ey1 = py + Math.sin(a) * rPx * f1 * squash;
+        const elbow = a + (rand() - 0.5) * 0.4;
+        ctx.globalAlpha = 0.8 * fade;
+        ctx.beginPath();
+        ctx.moveTo(px + Math.cos(a) * rPx * 0.12, py + Math.sin(a) * rPx * 0.12 * squash);
+        ctx.lineTo(ex1, ey1);
+        ctx.lineTo(ex1 + Math.cos(elbow) * rPx * (f2 - f1), ey1 + Math.sin(elbow) * rPx * (f2 - f1) * squash);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  },
+  air(c) {
+    const { ctx, st, t, sc, px, py } = c;
+    // THE UNBLINKING FLASH: a pale fire line at eye height, brief
+    // and hard — the moment the lids stop.
+    const flash = t < 0.4 ? t / 0.4 : cl((0.7 - t) / 0.3);
+    if (flash <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = 0.9 * flash;
+    ctx.strokeStyle = st.spark;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(2.8, sc * 0.07);
+    const ex = px + Math.cos(c.dir) * sc * 0.3;
+    const ey = py + Math.sin(c.dir) * sc * 0.18 - sc * 0.55;
+    ctx.beginPath();
+    ctx.moveTo(ex - Math.cos(c.dir + Math.PI / 2) * sc * 0.12, ey - Math.sin(c.dir + Math.PI / 2) * sc * 0.07);
+    ctx.lineTo(ex + Math.cos(c.dir + Math.PI / 2) * sc * 0.12, ey + Math.sin(c.dir + Math.PI / 2) * sc * 0.07);
+    ctx.stroke();
+    ctx.restore();
+    if (crossed(c, 300, 0.1)) c.glow(c.wx, c.wy, 0.5, 0.35);
+  },
+};
+
 // ==================================================== THE EXPORT
 
 export const PETARTS_SIGS: Record<string, AbilitySig> = {
@@ -3122,4 +3608,9 @@ export const PETARTS_SIGS: Record<string, AbilitySig> = {
   the_long_fang,
   pale_silk,
   the_venom_lattice,
+  tail_sweep,
+  mire_spit,
+  graven_mantle,
+  the_drowning_mire,
+  the_graven_gaze,
 };

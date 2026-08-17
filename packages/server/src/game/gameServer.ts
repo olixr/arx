@@ -17334,6 +17334,15 @@ export class GameServer {
     switch (ab.shape) {
       case 'self_buff': {
         selfWords();
+        // THE GAZE TAKES THE LEASH: a companion self-word may carry a
+        // boon PAGE (graven_mantle's stonehide) — it walks the same
+        // real apply door the boss boons walk, so the page's bit
+        // rides the wire and the whole visible layer answers on the
+        // pet's own body. The SELF-PAGE LAW (boons only) is pinned in
+        // the ledger; damagePet folds the riding coat.
+        if (ab.self?.selfStatus) {
+          this.applyStatusToNpc(eid, ab.self.selfStatus, eid, 'beastcraft');
+        }
         this.broadcastFx(pos.plane, {
           t: 'fx', kind: 'command', x: pos.x, y: pos.y, x2: pos.x, y2: pos.y,
           radius: 1, id: ab.id, color: ab.color,
@@ -17674,9 +17683,17 @@ export class GameServer {
       passiveArmor += bundle.unhurtArmor.armor;
     }
     if (bundle.nearKeeper && this.petNearKeeper(pet)) passiveArmor += bundle.nearKeeper.armor;
+    // Stonehide's lane, pet edition: riding boon pages lend their
+    // coats here exactly as they do at the player and NPC doors.
+    const coatArmor = statusArmorDelta(this.statuses.get(petEid));
     const dmg = opts.pierceArmor
       ? raw
-      : mitigate(raw, 0, (stats?.armor ?? 0) + guardArmor + passiveArmor, opts.attackerLevel ?? 1);
+      : mitigate(
+          raw,
+          0,
+          (stats?.armor ?? 0) + guardArmor + passiveArmor + coatArmor,
+          opts.attackerLevel ?? 1,
+        );
     this.broadcastHit(petEid, dmg, false, 0, 0, false, false, opts.via);
     pet.lastHurtTick = this.tickCount;
     if (dmg <= 0) return; // the whiff and the clank both write nothing

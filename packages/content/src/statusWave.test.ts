@@ -40,6 +40,16 @@ const LICENSED: Record<string, string> = {
   // non-crown licenses, priced by the same HOLD BUDGET pins.
   stone_gaze: 'root',
   stone_mantle: 'stonehide',
+  // THE GAZE TAKES THE LEASH (conscious, 2026-08-17): the basilisk
+  // family opened to the tame ladder (user mandate), and its shelf
+  // carries the family identity through the SAME two doors the wild
+  // court licensed — a shorter root through the pet cast rail (the
+  // pet-side HOLD BUDGET pin in statusLedger prices it against the
+  // PetArtDef's own pacing) and the elder's mantle as a self-page
+  // boon at heel. Pets only ever fight NPCs (petLegalMark), so the
+  // player-facing FAIR HANDS ledger is untouched by either.
+  the_graven_gaze: 'root',
+  graven_mantle: 'stonehide',
 };
 
 function leaks(value: unknown): string[] {

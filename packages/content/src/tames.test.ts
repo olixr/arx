@@ -138,7 +138,29 @@ test('BRACKET: the leash holds the ladder — beastcraft caps the climb', () => 
 });
 
 test('THE SPECIES SPEAK: the whole roster stands', () => {
-  assert.equal(TAME_DEFS.length, 17, 'entry trio through the worg capstone, the turtle keep, the razorback, the tide bulwark and the fen basilisk among them');
+  assert.equal(TAME_DEFS.length, 18, 'entry trio through the worg capstone, the turtle keep, the razorback, the tide bulwark and the stone court pair among them');
+});
+
+test('THE GAZE TAKES THE LEASH: the stone court pair stands, the elder stays wild', () => {
+  // User mandate 2026-08-17: the basilisk is a tamable family of its
+  // own. The lure is the court's own coin (hunt before courtship),
+  // the hide sits between the beetle and the keep on the shell
+  // ladder, and the ragged bleed stays the wild tooth as-is.
+  const b = tameDef('basilisk');
+  assert.ok(b, 'the basilisk answers a keeper now');
+  assert.equal(b!.lure, 'petrified_eye', 'the courtship starts with a quarry');
+  assert.equal(b!.kit?.armor, 5);
+  assert.equal(b!.kit?.bite, undefined, 'the back teeth bleed on their own');
+  assert.ok(NPCS.get('basilisk')?.attackStatus, 'the wild tooth is the kit');
+  const fen = tameDef('fen_basilisk');
+  assert.ok((fen?.kit?.armor ?? 0) < b!.kit!.armor!, 'the marsh half wears lighter scale');
+  assert.ok(
+    b!.kit!.armor! > (tameDef('giant_beetle')?.kit?.armor ?? 0) &&
+      b!.kit!.armor! < (tameDef('giant_turtle')?.kit?.armor ?? 0),
+    'dracolisk hide sits between the beetle and the keep',
+  );
+  // The elder alone keeps the old decree.
+  assert.equal(tameDef('elder_basilisk'), undefined, 'a sovereign is not a friend');
 });
 
 test('kits are the species\' own teeth re-aimed, never an invented spellbook', () => {

@@ -5223,6 +5223,67 @@ const defs: AbilityDef[] = [
     pulseEveryTicks: 15,
     status: { status: 'venom', power: 1, durationTicks: 60 },
   },
+  // ---- THE STONE COURT AT HEEL (THE GAZE TAKES THE LEASH, user
+  // mandate 2026-08-17): the basilisk family's own companion words.
+  // The gaze stays the species — at heel it is shorter, narrower,
+  // and ledger-budgeted, but it is still the same unblinking look.
+  {
+    id: 'tail_sweep',
+    name: 'Tail Sweep',
+    desc: 'The great tail comes around like a felled tree changing its mind. Everything at knee height regrets standing there.',
+    color: '#6b6a52',
+    code: 'Tw',
+    cooldownTicks: 0, // pet pacing lives on the PetArtDef, not the ability
+    shape: 'nova',
+    damage: 6,
+    radius: 2.1,
+    knockback: 1.5,
+  },
+  {
+    id: 'graven_mantle',
+    name: 'Graven Mantle',
+    desc: 'The basilisk turns its gaze inward the way its elders taught. The hide answers by becoming a wall.',
+    color: '#8f8a76',
+    code: 'Gm',
+    cooldownTicks: 0, // pet pacing lives on the PetArtDef, not the ability
+    shape: 'self_buff',
+    damage: 0,
+    // THE SELF-PAGE DOOR at heel: a licensed stonehide applier
+    // (statusWave register) — the elder's mantle, learned young.
+    self: { selfStatus: { status: 'stonehide', power: 0, durationTicks: 300 }, durationTicks: 1 },
+  },
+  {
+    id: 'the_drowning_mire',
+    name: 'The Drowning Mire',
+    desc: 'The fen basilisk brings the marsh along. The ground forgets it was ever dry, and the rot remembers every ankle.',
+    color: '#5c6b3e',
+    code: 'Dm',
+    cooldownTicks: 0, // pet pacing lives on the PetArtDef, not the ability
+    shape: 'ground_field',
+    damage: 3,
+    range: 0,
+    radius: 2.2,
+    fieldTicks: 160,
+    pulseEveryTicks: 20,
+    status: { status: 'venom', power: 1, durationTicks: 60 },
+  },
+  {
+    id: 'the_graven_gaze',
+    name: 'The Graven Gaze',
+    desc: 'The pale eyes stop blinking, and whatever they rest on remembers being rock. Stone boots, and the jaws close the argument.',
+    color: '#b9d18c',
+    code: 'Gz',
+    cooldownTicks: 0, // pet pacing lives on the PetArtDef, not the ability
+    shape: 'melee_arc',
+    // The petrification GRAZES here too — the hold is the argument.
+    damage: 2,
+    range: 4,
+    arc: 0.55,
+    // THE STONE TAKES HOLD, at heel: a licensed root applier
+    // (statusWave register), shorter than the wild gaze and priced by
+    // the pet-side HOLD BUDGET pin (statusLedger).
+    status: { status: 'root', power: 0, durationTicks: 30 },
+  },
 
   // ------------------- THE SECOND BREATH — the archery breath arts
   // THE LONG ROAD's content wave: every ten-art school grows the same

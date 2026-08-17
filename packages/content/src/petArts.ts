@@ -814,6 +814,103 @@ export const PET_ART_DEFS: readonly PetArtDef[] = [
     maxRange: 4,
     tale: 'A woven floor of green threads. Every strand knows where you are.',
   },
+
+  // ------------------------------------------- THE STONE COURT
+  // (THE GAZE TAKES THE LEASH, user mandate 2026-08-17): the family
+  // shelf the fen deserved from the start — no borrowed words. The
+  // playstyle is THE HOLD AND THE HAMMER: the mark stands still, and
+  // then the slow jaws arrive. The cons are the pros' own shadow:
+  // the slowest stride on the roster, the longest rests, and a lure
+  // you must hunt the stone court itself to hold.
+  {
+    id: 'graven_scale',
+    name: 'Graven Scale',
+    kind: 'passive',
+    focus: 1,
+    passive: { armor: 2 },
+    tale: 'The hide keeps a little of the stone it makes. Blades ask twice.',
+  },
+  {
+    id: 'the_low_fire',
+    name: 'The Low Fire',
+    kind: 'passive',
+    focus: 1,
+    passive: { regenMult: 1.5, statusDurMult: 0.75 },
+    tale: 'A heart that slow is a poor host. Poisons leave early, and the flesh knits while it naps.',
+  },
+  {
+    id: 'tail_sweep',
+    name: 'Tail Sweep',
+    kind: 'active',
+    focus: 2,
+    ability: 'tail_sweep',
+    cooldownTicks: 260,
+    windupTicks: 12,
+    maxRange: 2.5,
+    tale: 'Half the animal is tail. This is the half that speaks to crowds.',
+  },
+  {
+    id: 'mire_spit',
+    name: 'Mire Spit',
+    kind: 'active',
+    focus: 2,
+    ability: 'mire_spit',
+    cooldownTicks: 220,
+    // The venom_spit dial holds here too: no minRange ever — a
+    // melee-brained body hugs its mark, so edge distance lives under
+    // every floor. maxRange 7 is the REACH, not the floor.
+    windupTicks: 10,
+    maxRange: 7,
+    tale: 'The wild word at heel: a rope of green rot, spent at a distance.',
+  },
+  {
+    id: 'swamp_blood',
+    name: 'Swamp Blood',
+    kind: 'passive',
+    focus: 2,
+    passive: { biteStatusPower: 1, statusLeech: 0.4 },
+    tale: 'The rot it lays runs deeper, and a little of it always finds its way home.',
+  },
+  {
+    id: 'the_drowning_mire',
+    name: 'The Drowning Mire',
+    kind: 'active',
+    focus: 3,
+    ability: 'the_drowning_mire',
+    cooldownTicks: 520,
+    windupTicks: 14,
+    maxRange: 3,
+    tale: 'The fen does not visit. It moves in, and it keeps every ankle it meets.',
+  },
+  {
+    id: 'the_lidless_watch',
+    name: 'The Lidless Watch',
+    kind: 'passive',
+    focus: 2,
+    passive: { vsStatus: { status: 'root', mult: 1.5 } },
+    tale: 'What stands still is already solved. The jaws arrive to close the argument.',
+  },
+  {
+    id: 'graven_mantle',
+    name: 'Graven Mantle',
+    kind: 'active',
+    focus: 2,
+    ability: 'graven_mantle',
+    cooldownTicks: 520,
+    windupTicks: 10,
+    tale: 'It wears its own petrification a while, the way its elders taught.',
+  },
+  {
+    id: 'the_graven_gaze',
+    name: 'The Graven Gaze',
+    kind: 'active',
+    focus: 3,
+    ability: 'the_graven_gaze',
+    cooldownTicks: 600,
+    windupTicks: 18,
+    maxRange: 3.5,
+    tale: 'The pale eyes stop blinking. Whatever they rest on stays for the rest.',
+  },
 ];
 
 export const PET_ARTS: ReadonlyMap<string, PetArtDef> = new Map(
@@ -941,16 +1038,27 @@ export const PET_REPERTOIRE: Readonly<Record<string, readonly string[]>> = {
     'deepening_dose',
     'the_long_fang',
   ],
-  // THE STONE COURT'S ONE DOOR: the fen basilisk shares the reptile
-  // pool (venom, cold blood, the coiled rush) and speaks the stone
-  // signature — the family's petrifying heritage, gone patient.
+  // THE STONE COURT (THE GAZE TAKES THE LEASH, 2026-08-17): the
+  // family speaks its OWN words now — the borrowed reptile shelf and
+  // the turtle's monolith are returned. The fen is the marsh half
+  // (rot, the mire, the spit); the basilisk is the stone half (the
+  // gaze, the mantle, the payoff on what stands still). Both swing
+  // the family's great tail.
   fen_basilisk: [
-    'venom_spit',
-    'coiled_strike',
-    'cold_blood',
-    'slow_and_certain',
-    'deepening_dose',
-    'the_standing_stone',
+    'graven_scale',
+    'the_low_fire',
+    'tail_sweep',
+    'mire_spit',
+    'swamp_blood',
+    'the_drowning_mire',
+  ],
+  basilisk: [
+    'graven_scale',
+    'the_low_fire',
+    'tail_sweep',
+    'the_lidless_watch',
+    'graven_mantle',
+    'the_graven_gaze',
   ],
   worg: [
     'worry_the_wound',
@@ -1023,6 +1131,7 @@ export const PET_VARIANT_PAIRS: readonly [string, string][] = [
   ['boar', 'dire_boar'],
   ['lynx_young', 'lynx'],
   ['wolf', 'worg'],
+  ['fen_basilisk', 'basilisk'],
 ];
 
 /**

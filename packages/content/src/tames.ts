@@ -201,6 +201,21 @@ export const TAME_DEFS: readonly TameDef[] = [
     kit: { armor: 3, bite: { status: 'venom', power: 1, durationTicks: 60 } },
     flavor: 'Six legs, no hurry, and a jaw that closes like a ledger. It naps in the shallows facing upstream.',
   },
+  {
+    // THE GAZE TAKES THE LEASH (user mandate 2026-08-17): the stone
+    // court's second door. The lure is the court's own coin — a
+    // basilisk eats the stone it makes, so the courtship begins with
+    // a hunt through the dry country. The hardest court on the
+    // ladder by wild level, and the family's control half at heel.
+    species: 'basilisk',
+    lure: 'petrified_eye',
+    // 30 + 10 × wild level (plan Part 5).
+    tameXp: 230,
+    // Dracolisk hide worth a mid shell rung; the ragged back-tooth
+    // bleed stays the wild's own (the wolf-and-bear precedent).
+    kit: { armor: 5 },
+    flavor: 'It eats the stone it makes, so bring it a quarry. The gaze stays its own. It simply starts resting where you point.',
+  },
 ];
 
 export const TAMES: ReadonlyMap<string, TameDef> = new Map(TAME_DEFS.map((t) => [t.species, t]));
@@ -238,10 +253,11 @@ const NEVER_TAMED = new Set([
   // A hill is not owned. The giant turtle answers a patient keeper;
   // the colossus answers to weather, and slowly.
   'colossus_turtle',
-  // THE GAZE OBEYS NO LEASH: a petrifying stare at heel is a licensed
-  // hold in a keeper's pocket — the ledger refuses it. The fen cousin
-  // (gazeless) is the family's one door.
-  'basilisk',
+  // THE ELDER'S GAZE OBEYS NO LEASH (amended 2026-08-17, THE GAZE
+  // TAKES THE LEASH): the family opened — the fen and the basilisk
+  // both answer a keeper now, the pet gaze licensed and priced by
+  // the ledger's own HOLD BUDGET. The elder alone stays wild: a
+  // horn-crowned crag is a sovereign, not a friend.
   'elder_basilisk',
 ]);
 

@@ -4855,6 +4855,107 @@ Object.assign(PLATES, {
     fill(c, st.mid, [[-0.05, -0.16], [0, -0.34], [0.05, -0.16]]);
     dot(c, st.spark, 0, -0.3, 0.03);
   },
+  // -------- THE STONE COURT AT HEEL (THE GAZE TAKES THE LEASH).
+  // Tail Sweep — the great tail mid-swing: a muscle wedge writing its
+  // arc through the plate, keel chips on the spine, earth thrown.
+  tail_sweep: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    // The sweep's motion arc, drawn first so the tail rides over it.
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.035;
+    c.beginPath();
+    c.arc(0, 0.02, 0.36, Math.PI * 0.15, Math.PI * 0.95);
+    c.stroke();
+    // The tail: heavy at the root (left), closing on a whip point.
+    poly(c, st.mid, [
+      [-0.42, -0.1], [-0.28, -0.2], [-0.06, -0.18], [0.18, -0.06],
+      [0.4, 0.16], [0.3, 0.2], [0.08, 0.06], [-0.2, 0.0], [-0.42, 0.02],
+    ], 0.04);
+    // The lit flank of the muscle.
+    fill(c, st.spark, [[-0.4, -0.09], [-0.28, -0.17], [-0.04, -0.15], [-0.1, -0.08], [-0.3, -0.06]]);
+    // The keel saw riding the spine.
+    for (const [kx, ky] of [[-0.3, -0.2], [-0.12, -0.19], [0.06, -0.12], [0.22, -0.02]] as const) {
+      fill(c, st.deep, [[kx - 0.03, ky + 0.02], [kx, ky - 0.06], [kx + 0.03, ky + 0.02]]);
+    }
+    // Earth off the tip.
+    dot(c, st.mid, 0.42, 0.28, 0.04);
+    dot(c, st.deep, 0.32, 0.34, 0.032);
+  },
+  // Graven Mantle — the low body going to stone from the spine down:
+  // facet plates locking over the hull, the eye turned inward.
+  graven_mantle: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    // The sprawled hull in profile, low to the ground line.
+    poly(c, st.deep, [
+      [-0.4, 0.06], [-0.34, -0.08], [-0.1, -0.14], [0.2, -0.12], [0.4, -0.02],
+      [0.42, 0.1], [-0.4, 0.14],
+    ], 0.035);
+    // Two sprawled legs under the hull.
+    fill(c, st.deep, [[-0.24, 0.12], [-0.18, 0.24], [-0.26, 0.24], [-0.3, 0.12]]);
+    fill(c, st.deep, [[0.16, 0.12], [0.24, 0.24], [0.16, 0.24], [0.1, 0.12]]);
+    // The mantle taking hold: three facet plates locking down the spine.
+    poly(c, st.mid, [[-0.3, -0.1], [-0.22, -0.26], [-0.1, -0.16], [-0.16, -0.06]], 0.028);
+    poly(c, st.mid, [[-0.06, -0.16], [0.04, -0.3], [0.16, -0.18], [0.06, -0.1]], 0.028);
+    poly(c, st.mid, [[0.2, -0.14], [0.3, -0.22], [0.38, -0.1], [0.28, -0.06]], 0.028);
+    // Seam light where the plates meet the hide.
+    fill(c, st.spark, [[-0.14, -0.08], [-0.06, -0.13], [0.04, -0.08], [-0.06, -0.05]]);
+    // The eye, turned inward: a closed slit, not a fire.
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(0.28, 0.0);
+    c.lineTo(0.38, 0.0);
+    c.stroke();
+  },
+  // The Drowning Mire — the marsh moved in: a dark pool wearing the
+  // fen's own waterline read (nostrils and one patient eye above it).
+  the_drowning_mire: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    // The pool: a wide dark sheet with a lighter rot rim.
+    c.fillStyle = st.deep;
+    c.beginPath();
+    c.ellipse(0, 0.1, 0.42, 0.24, 0, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.03;
+    c.beginPath();
+    c.ellipse(0, 0.1, 0.42, 0.24, 0, 0, Math.PI * 2);
+    c.stroke();
+    // The lurker's waterline: brow ridge and eye above the surface.
+    poly(c, st.mid, [[-0.2, 0.0], [-0.12, -0.1], [0.0, -0.08], [0.06, 0.0]], 0.028);
+    dot(c, st.spark, -0.08, -0.05, 0.035);
+    // Nostril domes a hand ahead of the brow.
+    dot(c, st.mid, 0.18, 0.02, 0.035);
+    dot(c, st.mid, 0.26, 0.03, 0.028);
+    // Rot blisters standing on the sheet.
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.022;
+    for (const [bx, by, br] of [[-0.28, 0.16, 0.045], [0.1, 0.22, 0.038], [0.3, 0.14, 0.03]] as const) {
+      c.beginPath();
+      c.arc(bx, by, br, 0, Math.PI * 2);
+      c.stroke();
+    }
+  },
+  // The Graven Gaze — the eye in profile and the cone of country it
+  // is turning to stone: rays out, standing stones where they land.
+  the_graven_gaze: (st) => (c) => {
+    c.translate(0.42, 0.5);
+    // The cone: two hard rays opening right, a faint core wash.
+    fill(c, st.deep, [[-0.06, -0.02], [0.5, -0.24], [0.5, 0.26]]);
+    // The rays' edges, lit.
+    fill(c, st.spark, [[-0.04, -0.03], [0.5, -0.24], [0.5, -0.18]]);
+    fill(c, st.spark, [[-0.04, 0.03], [0.5, 0.26], [0.5, 0.2]]);
+    // The eye: reptile almond in profile, slit upright, fire lit.
+    poly(c, st.mid, [[-0.34, -0.02], [-0.2, -0.12], [-0.04, -0.02], [-0.2, 0.1]], 0.035);
+    dot(c, st.spark, -0.2, -0.01, 0.06);
+    fill(c, st.deep, [[-0.21, -0.09], [-0.19, -0.09], [-0.19, 0.07], [-0.21, 0.07]]);
+    // What the cone leaves: three small standing stones in the field.
+    for (const [sx, sy, sh] of [[0.26, 0.12, 0.1], [0.36, -0.04, 0.13], [0.44, 0.18, 0.08]] as const) {
+      poly(c, st.mid, [
+        [sx - 0.035, sy], [sx - 0.02, sy - sh], [sx + 0.02, sy - sh], [sx + 0.035, sy],
+      ], 0.024);
+    }
+  },
 
   // ----------------------- THE SKRAL — the brine-folk's plates.
   // Tide Lash — the wrist-crack of thrown brine, mid-snap.

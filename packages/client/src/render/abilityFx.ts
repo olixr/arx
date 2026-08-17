@@ -892,6 +892,17 @@ export const FX_STYLES: Record<string, FxStyle> = {
   the_long_fang: VERDANT({ mid: '#6a9a42', deep: '#32491e', spark: '#d0ecb0', ring: 'teeth', debris: 'blood', decal: 'stain', motif: 'tear', punch: 0.45, wash: 0.3 }),
   pale_silk: BONE({ mid: '#f0f0e6', deep: '#787868', spark: '#ffffff', ring: 'runes', debris: 'spark', decal: undefined, motif: 'cage', punch: 0.05, wash: 0.12 }),
   the_venom_lattice: VERDANT({ mid: '#84c95e', deep: '#3c6428', spark: '#dcf8c8', ring: 'runes', debris: 'leaf', decal: 'stain', motif: 'cage', punch: 0.4, wash: 0.3 }),
+  // THE STONE COURT AT HEEL (THE GAZE TAKES THE LEASH) — the family's
+  // companion register keeps the wild court's voice: dull stone under
+  // pale gaze-fire, marsh rot for the fen half. The tail is muscle
+  // and thrown earth (no element — a body's own act); the mantle is
+  // the elder's stone turned inward at heel; the mire is standing
+  // water gone wrong; the pet gaze keeps the wild gaze's exact
+  // pale-green fire so the field reads ONE species, two masters.
+  tail_sweep: STEEL({ mid: '#8a8468', deep: '#403c2e', spark: '#d8d0ac', ring: 'teeth', debris: 'rock', decal: undefined, motif: 'wave', punch: 0.55, wash: 0.3 }),
+  graven_mantle: STEEL({ mid: '#98927c', deep: '#48443a', spark: '#dcd6b8', ring: 'halo', debris: 'rock', decal: 'cracks', punch: 0.4, wash: 0.3 }),
+  the_drowning_mire: VERDANT({ mid: '#5c6b3e', deep: '#2c3520', spark: '#a8bc74', ring: 'runes', debris: 'leaf', decal: 'stain', motif: 'vortex', punch: 0.35, wash: 0.35 }),
+  the_graven_gaze: STEEL({ mid: '#b9d18c', deep: '#4c5142', spark: '#dff0b0', glow: '150, 176, 108', ring: 'shards', debris: 'rock', decal: 'cracks', motif: 'rays', punch: 0.5, wash: 0.35 }),
 
   // ------------------ THE TWENTY (docs/polearm-plan.md) — the polearm
   // school. The ladder speaks COLD STEEL, OILED ASH AND GOLD FITTINGS:

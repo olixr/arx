@@ -104,7 +104,7 @@ test('THE SECOND BREATH SPEAKS: all sixty breath arts wear layered signatures', 
 /**
  * THE FANG FINDS ITS VOICE (docs/pet-arts-plan.md Phase 4): the
  * companion arts wave. Every ACTIVE pet art carries a bespoke
- * signature with at least two strata; the thirteen active species
+ * signature with at least two strata; the fifteen active species
  * SIGNATURES (the 3-focus crowns) carry all three — spawn, ground,
  * and air. web_snare is deliberately absent from the pet school: the
  * wild art at heel speaks its standing fxSigsFoes voice, pinned here
@@ -138,6 +138,12 @@ test('THE FANG FINDS ITS VOICE: every companion working speaks', () => {
     'coiled_strike',
     'shed_skin',
     'pale_silk',
+    // THE STONE COURT AT HEEL (THE GAZE TAKES THE LEASH): the family
+    // words. mire_spit's entry also pays the wild fen's recorded
+    // landing debt — the same species word, one voice on both rails.
+    'tail_sweep',
+    'mire_spit',
+    'graven_mantle',
   ];
   const THREE_STRATA = [
     'the_rats_hour',
@@ -153,6 +159,8 @@ test('THE FANG FINDS ITS VOICE: every companion working speaks', () => {
     'the_white_hush',
     'the_long_fang',
     'the_venom_lattice',
+    'the_drowning_mire',
+    'the_graven_gaze',
   ];
   for (const id of [...TWO_STRATA, ...THREE_STRATA]) {
     const sig = SIGNATURES[id];
@@ -169,7 +177,8 @@ test('THE FANG FINDS ITS VOICE: every companion working speaks', () => {
   }
   // The reuse pin: the weaver's snare is the wild art itself.
   assert.ok(SIGNATURES['web_snare'], 'web_snare must keep its standing voice');
-  // 38 actives stand in the registry; web_snare keeps its standing
-  // voice, so the school speaks the other 37.
-  assert.equal(TWO_STRATA.length + THREE_STRATA.length, 38 - 1);
+  // 43 actives stand in the registry (the stone court's five joined
+  // 2026-08-17); web_snare keeps its standing voice, so the school
+  // speaks the other 42.
+  assert.equal(TWO_STRATA.length + THREE_STRATA.length, 43 - 1);
 });

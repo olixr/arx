@@ -24,18 +24,19 @@ test('the repertoire clears every law it wrote for itself', () => {
   assert.deepEqual(petRepertoireErrors(), []);
 });
 
-test('the shelves are whole: seventeen species, seventy-one words', () => {
+test('the shelves are whole: eighteen species, eighty words', () => {
   // Move these numbers ON PURPOSE when the roster grows — the pin
   // exists so a lost row or an orphaned art is loud, not silent.
-  // 17: the fen basilisk joined (THE STONE COURT, 2026-08-17) on a
-  // shelf of shared words — no new art defs, so the word count holds.
-  assert.equal(Object.keys(PET_REPERTOIRE).length, 17);
-  assert.equal(PET_ART_DEFS.length, 71);
-  // Exactly one signature ART per species' shelf; the fen basilisk
-  // SPEAKS the standing stone rather than minting a new one, so the
-  // authored signature count stays sixteen.
+  // 18: the basilisk joined the fen (THE GAZE TAKES THE LEASH,
+  // 2026-08-17) and the family shelf was recut BESPOKE — the fen's
+  // borrowed reptile words and the turtle's monolith went home, and
+  // nine family words were minted (71 + 9 = 80).
+  assert.equal(Object.keys(PET_REPERTOIRE).length, 18);
+  assert.equal(PET_ART_DEFS.length, 80);
+  // Exactly one signature ART per species' shelf — the stone court
+  // now mints its own two (the mire and the gaze), so eighteen.
   const signatures = PET_ART_DEFS.filter((a) => a.focus === 3);
-  assert.equal(signatures.length, 16);
+  assert.equal(signatures.length, 18);
   // Every art is shelved somewhere; an unshelved art is a ghost.
   const shelved = new Set(Object.values(PET_REPERTOIRE).flat());
   for (const art of PET_ART_DEFS) {
@@ -71,6 +72,13 @@ test('the variant pairs share the pool and never an exclusive', () => {
       shared: ['worry_the_wound', 'pack_step', 'blooded_run'],
       lesser: ['hamstring', 'lone_vigil', 'the_first_howl'],
       greater: ['winters_jaw', 'war_pelt', 'the_cowing_snarl'],
+    },
+    // THE STONE COURT: the marsh half and the stone half of one
+    // family — both swing the great tail, neither borrows a word.
+    'fen_basilisk/basilisk': {
+      shared: ['graven_scale', 'the_low_fire', 'tail_sweep'],
+      lesser: ['mire_spit', 'swamp_blood', 'the_drowning_mire'],
+      greater: ['the_lidless_watch', 'graven_mantle', 'the_graven_gaze'],
     },
   };
   for (const [a, b] of PET_VARIANT_PAIRS) {

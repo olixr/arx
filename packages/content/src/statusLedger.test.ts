@@ -12,6 +12,7 @@ import { ABILITIES } from './abilities.js';
 import { NPCS } from './npcs.js';
 import { ITEMS } from './items.js';
 import { MOVESETS } from './movesets.js';
+import { petArtDef } from './petArts.js';
 
 /**
  * THE LEDGER HOLDS (statusBook Phase 6) — the epic's constitution.
@@ -51,6 +52,31 @@ test('THE HOLD BUDGET: no licensed control art may lock a player past a tenth of
     // before the lock does, whichever door delivers it.
     const warn = (kit.windupTicks ?? 0) + (ab.fuseTicks ?? 0);
     assert.ok(warn >= lock / 2, `${art} locks ${lock}t but warns only ${warn}t`);
+  }
+});
+
+test('THE HOLD BUDGET, pet edition: a companion hold is priced by its own art clock', () => {
+  // THE GAZE TAKES THE LEASH (2026-08-17): the first licensed hold on
+  // the pet cast rail. Its victim is always an NPC (petLegalMark), so
+  // the fair-hands stake is the FIGHT's shape, not a player's hands —
+  // but the budget binds identically: the lock stays under a tenth of
+  // the art's cycle, and the windup warns at least half the lock.
+  const LICENSED_PET_CC = ['the_graven_gaze'];
+  for (const artId of LICENSED_PET_CC) {
+    const art = petArtDef(artId)!;
+    const ab = ABILITIES.get(art.ability!)!;
+    const page = pageOf(ab.status!.status);
+    const cc = page.cc!;
+    const lock = Math.min(ab.status!.durationTicks, cc.maxTicks);
+    const duty = lock / ((art.cooldownTicks ?? 0) + cc.immunityTicks);
+    assert.ok(
+      duty <= 0.1,
+      `${artId} locks ${(duty * 100).toFixed(1)}% of its cycle — past the tenth`,
+    );
+    assert.ok(
+      (art.windupTicks ?? 0) >= lock / 2,
+      `${artId} locks ${lock}t but warns only ${art.windupTicks ?? 0}t`,
+    );
   }
 });
 
