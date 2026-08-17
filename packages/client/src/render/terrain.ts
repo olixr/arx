@@ -71,9 +71,19 @@ interface BlobLayer {
    * Region-scale two-tone variation, painted as ORGANIC sub-patches
    * through the same dual-grid contour machinery as the region itself.
    * (The old per-tile threshold printed the tone change as rectangular
-   * steps on the tile grid — the plaza patchwork artifact.)
+   * steps on the tile grid — the plaza patchwork artifact.) `freq` and
+   * `thresh` default to the meadow-scale 0.09 / 0.55.
    */
-  alt?: { color: string; salt: number };
+  alt?: { color: string; salt: number; freq?: number; thresh?: number };
+  /**
+   * A second, BROADER wash on top — weathering zones spanning many
+   * tiles. This is how large man-made sheets (plazas, dungeon halls)
+   * stay abstract-minimal and still read as worked ground: big soft
+   * tonal shapes, the meadow's own language spoken in stone — never
+   * per-stone texture (tiling was tried and rejected: without the
+   * outline shader it reads as noise against this style).
+   */
+  alt2?: { color: string; salt: number; freq?: number; thresh?: number };
   /**
    * Sun-side lit lip: a thin bright stroke inside edges whose outward
    * normal faces the western sun — the same sun-law every wall and
@@ -82,7 +92,7 @@ interface BlobLayer {
    */
   lip?: string;
   /** Material interior dressing painted inside the region contour. */
-  interior?: 'flags' | 'flagsDark' | 'sand' | 'snow';
+  interior?: 'sand' | 'snow';
   /**
    * THE LADEN EDGE (snow): no worn dirt band — a cool inner shade, a
    * bright crest, and a white thickness fascia + soft cast shadow on
@@ -145,10 +155,10 @@ const BLOB_LAYERS: BlobLayer[] = [
     match: (t) => t === Tile.StoneFloor,
     color: () => '#a09aa8',
     alt: { color: '#99939f', salt: 37 },
+    alt2: { color: '#a9a3b1', salt: 61, freq: 0.032, thresh: 0.56 },
     wobble: 0.11,
     band: 'rgba(40, 34, 56, 0.28)',
     lip: 'rgba(214, 212, 224, 0.4)',
-    interior: 'flags',
     fringe: true,
   },
   {
@@ -173,9 +183,9 @@ const BLOB_LAYERS: BlobLayer[] = [
     match: (t) => t === Tile.DungeonFloor,
     color: () => '#514b58',
     alt: { color: '#4c4653', salt: 47 },
+    alt2: { color: '#585260', salt: 63, freq: 0.032, thresh: 0.56 },
     wobble: 0.11,
     band: 'rgba(16, 12, 24, 0.32)',
-    interior: 'flagsDark',
     fringe: false,
   },
   {
@@ -3845,8 +3855,13 @@ function paintLayerSkin(
     // Region-scale two-tone drift, contoured through the same organic
     // machinery as the region itself (a distinct hash lane keeps the
     // sub-patch meander uncorrelated with the material's own edge).
+    // The broader alt2 wash paints after, overlapping — big soft
+    // weathering zones over the mid-scale patches.
     if (layer.alt) {
-      paintAltPatches(ctx, region, layer, li, at, baseX, baseY, px, toX, toY);
+      paintAltPatches(ctx, region, layer.alt, li, 64, layer.wobble, at, baseX, baseY, px, toX, toY);
+    }
+    if (layer.alt2) {
+      paintAltPatches(ctx, region, layer.alt2, li, 96, layer.wobble, at, baseX, baseY, px, toX, toY);
     }
 
     // Material interiors: the dressing that makes a plaza read as laid
@@ -3975,8 +3990,10 @@ function emitOffsetRun(
 function paintAltPatches(
   ctx: CanvasRenderingContext2D,
   region: Path2D,
-  layer: BlobLayer,
+  alt: { color: string; salt: number; freq?: number; thresh?: number },
   li: number,
+  lane: number,
+  wobble: number,
   at: (lx: number, ly: number) => number,
   baseX: number,
   baseY: number,
@@ -3984,15 +4001,16 @@ function paintAltPatches(
   toX: (wx: number) => number,
   toY: (wy: number) => number,
 ): void {
-  const alt = layer.alt!;
-  const sub = li + 64; // distinct hash lane for the sub-contour
-  const wob = Math.max(0.18, layer.wobble);
+  const sub = li + lane; // distinct hash lane for the sub-contour
+  const wob = Math.max(0.18, wobble);
+  const freq = alt.freq ?? 0.09;
+  const thresh = alt.thresh ?? 0.55;
   const memberAt = (lx: number, ly: number): boolean => {
     const lt = at(lx, ly);
     if (lt < li || lt === -1) return false;
     const wx = baseX + lx;
     const wy = baseY + ly;
-    return valueNoise(alt.salt, wx * 0.09, wy * 0.09) > 0.55;
+    return valueNoise(alt.salt, wx * freq, wy * freq) > thresh;
   };
   ctx.save();
   ctx.clip(region);
@@ -4023,122 +4041,24 @@ function paintAltPatches(
 function paintLayerInterior(
   ctx: CanvasRenderingContext2D,
   region: Path2D,
-  kind: 'flags' | 'flagsDark' | 'sand' | 'snow',
+  kind: 'sand' | 'snow',
   li: number,
   at: (lx: number, ly: number) => number,
   baseX: number,
   baseY: number,
   px: number,
-  toX: (wx: number) => number,
-  toY: (wy: number) => number,
+  _toX: (wx: number) => number,
+  _toY: (wy: number) => number,
 ): void {
   const memberAt = (lx: number, ly: number): boolean => at(lx, ly) === li;
   ctx.save();
   ctx.clip(region);
-  if (kind === 'flags' || kind === 'flagsDark') {
-    paintFlagLattice(ctx, memberAt, baseX, baseY, px, kind === 'flagsDark', toX, toY);
-  } else if (kind === 'sand') {
+  if (kind === 'sand') {
     paintSandRipples(ctx, memberAt, baseX, baseY, px);
   } else {
     paintSnowDrifts(ctx, memberAt, baseX, baseY, px);
   }
   ctx.restore();
-}
-
-/**
- * HAND-LAID FLAGS. The one ground material every town paves with was
- * the only surface in the world with no coursework — walls wear
- * masonry, roofs wear shingles, floors wore nothing (the blank-plaza
- * artifact). A world-keyed jittered lattice cuts the sheet into
- * irregular flags: dark joints (some skipped, so flags merge into
- * bigger slabs), a whisper of per-flag tone lean, and a faint lit tick
- * on sun-facing joint shoulders. All geometry is keyed on world tile
- * coordinates — chunk seams and zoom tiers lay the same floor.
- */
-function paintFlagLattice(
-  ctx: CanvasRenderingContext2D,
-  memberAt: (lx: number, ly: number) => boolean,
-  baseX: number,
-  baseY: number,
-  px: number,
-  dark: boolean,
-  toX: (wx: number) => number,
-  toY: (wy: number) => number,
-): void {
-  const corner = (jx: number, jy: number): Pt => [
-    jx + (rnd01(2711, jx, jy) - 0.5) * 0.4,
-    jy + (rnd01(2713, jx, jy) - 0.5) * 0.4,
-  ];
-  const joint = dark ? 'rgba(10, 8, 20, 0.4)' : 'rgba(36, 32, 52, 0.3)';
-  const jointW = Math.max(1, px * 0.032);
-  const litW = Math.max(1, px * 0.024);
-  for (let ly = -2; ly <= CHUNK_SIZE + 1; ly++) {
-    for (let lx = -2; lx <= CHUNK_SIZE + 1; lx++) {
-      if (!memberAt(lx, ly)) continue;
-      const wx = baseX + lx;
-      const wy = baseY + ly;
-      const h = hashCoords(2717, wx, wy);
-      const c00 = corner(wx, wy);
-      const c10 = corner(wx + 1, wy);
-      const c11 = corner(wx + 1, wy + 1);
-      const c01 = corner(wx, wy + 1);
-      // Per-flag tone lean: warm or cool by hash, a whisper only.
-      const lean = h % 5;
-      if (lean < 2) {
-        ctx.fillStyle =
-          lean === 0 ? 'rgba(255, 252, 244, 0.06)' : 'rgba(24, 20, 40, 0.07)';
-        ctx.beginPath();
-        ctx.moveTo(toX(c00[0]), toY(c00[1]));
-        ctx.lineTo(toX(c10[0]), toY(c10[1]));
-        ctx.lineTo(toX(c11[0]), toY(c11[1]));
-        ctx.lineTo(toX(c01[0]), toY(c01[1]));
-        ctx.closePath();
-        ctx.fill();
-      }
-      // Joints: each flag owns its south and east edge (the neighbor
-      // draws the others), with hash-skips so slabs merge.
-      ctx.strokeStyle = joint;
-      ctx.lineWidth = jointW;
-      const south = (h >> 3) % 9 !== 3;
-      const east = (h >> 7) % 9 !== 4;
-      if (south) {
-        ctx.beginPath();
-        ctx.moveTo(toX(c01[0]), toY(c01[1]));
-        ctx.lineTo(toX(c11[0]), toY(c11[1]));
-        ctx.stroke();
-        // The joint's sunlit south shoulder — the flag behind it
-        // catching light over the crack (masonry depth, one whisper).
-        if (!dark) {
-          ctx.strokeStyle = 'rgba(236, 236, 248, 0.14)';
-          ctx.lineWidth = litW;
-          ctx.beginPath();
-          ctx.moveTo(toX(c01[0]), toY(c01[1]) + jointW);
-          ctx.lineTo(toX(c11[0]), toY(c11[1]) + jointW);
-          ctx.stroke();
-          ctx.strokeStyle = joint;
-          ctx.lineWidth = jointW;
-        }
-      }
-      if (east) {
-        ctx.beginPath();
-        ctx.moveTo(toX(c10[0]), toY(c10[1]));
-        ctx.lineTo(toX(c11[0]), toY(c11[1]));
-        ctx.stroke();
-      }
-      // The rare chipped corner — a pale nick where a cart clipped it.
-      if (h % 23 === 7) {
-        ctx.fillStyle = dark ? 'rgba(140, 132, 156, 0.2)' : 'rgba(244, 242, 250, 0.22)';
-        const nx = toX(c00[0]);
-        const ny = toY(c00[1]);
-        ctx.beginPath();
-        ctx.moveTo(nx, ny);
-        ctx.lineTo(nx + px * 0.09, ny + px * 0.02);
-        ctx.lineTo(nx + px * 0.03, ny + px * 0.08);
-        ctx.closePath();
-        ctx.fill();
-      }
-    }
-  }
 }
 
 /**
