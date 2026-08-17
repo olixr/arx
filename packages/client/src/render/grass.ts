@@ -652,6 +652,8 @@ export class GrassSystem {
   private shadowCtx: CanvasRenderingContext2D | null = null;
   /** The shadow fill the NEXT bake will use (set via setShadow). */
   private shFill = '#000';
+  /** Effective screen alpha for the meadow's own cast composite. */
+  private shAlpha = 0.5;
   /** This frame's cached-fill translation (drawUnder → flushShadows). */
   private cacheDx = 0;
   private cacheDy = 0;
@@ -790,47 +792,34 @@ export class GrassSystem {
   /**
    * Arm (or disarm) this frame's blade shadow projection. `fill` is
    * the shade color the calm canvas will bake its casts in — pass the
-   * same color flushShadows will be given, or the cached shade lags a
-   * bake behind at a sun/moon flip.
+   * same color the composite will use, or the cached shade lags a
+   * bake behind at a sun/moon flip. `alpha` is the EFFECTIVE screen
+   * alpha the meadow's self-composite lands at (drawUnder paints its
+   * own casts under the coat — see the z-order law there), matching
+   * what the shared prepass layer would have produced.
    */
-  setShadow(kx: number, ky: number, on: boolean, fill = this.shFill): void {
+  setShadow(kx: number, ky: number, on: boolean, fill = this.shFill, alpha = this.shAlpha): void {
     this.shKx = kx;
     this.shKy = ky;
     this.shOn = on;
     this.shFill = fill;
+    this.shAlpha = alpha;
     if (!on) this.shadowPath = null;
   }
 
   /**
-   * Composite the frame's accumulated blade shadows — called by the
-   * renderer inside the ground-shadow prepass so grass shade lands on
-   * the same batched layer as every other caster. The calm meadow's
-   * casts arrive as one canvas blit (baked opaque, drawn at `alpha` —
-   * the meadow's own overlaps merged at bake); live tiles' casts fill
-   * as a path exactly as before.
+   * Composite any blade casts still pending on the shared prepass
+   * layer. Since THE CAST LIES UNDER THE COAT (see drawUnder), the
+   * meadow consumes its own shade — calm canvas and live path alike —
+   * before its blades paint, so this normally has nothing left; it
+   * stays as the safety drain for any cast gathered after the under
+   * pass, keeping the shared-layer merge law for that remainder.
    */
   flushShadows(ctx: CanvasRenderingContext2D, fill: string, alpha: number): void {
-    const c = this.underCache;
-    const cached = c !== null && c.hasShadow ? this.shadowCanvas : null;
-    if (!this.shadowPath && !cached) return;
+    if (!this.shadowPath) return;
     ctx.globalAlpha = alpha;
-    // The calm meadow's casts ride the cache, translated exactly like
-    // its blades (cacheDx/Dy were computed by this frame's drawUnder).
-    if (cached && c) {
-      const m = ctx.getTransform();
-      ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.drawImage(
-        cached,
-        Math.round(m.a * (c.canvasX0 + this.cacheDx) + m.e),
-        Math.round(m.d * (c.canvasY0 + this.cacheDy) + m.f),
-      );
-      ctx.restore();
-    }
-    if (this.shadowPath) {
-      ctx.fillStyle = fill;
-      ctx.fill(this.shadowPath);
-    }
+    ctx.fillStyle = fill;
+    ctx.fill(this.shadowPath);
     ctx.globalAlpha = 1;
     this.shadowPath = null;
   }
@@ -1199,9 +1188,10 @@ export class GrassSystem {
     this.gatherNear(tx, ty);
     this.buildRoots(st, f, s);
     for (const b of st.geom.under) this.buildBlade(b, st, wind, f, s, true);
-    // Tall thickets y-sort their mass AFTER the shadow layer has
-    // composited, so their casts are gathered here, shadow-only —
-    // the thicket's shade lands with everyone else's.
+    // Tall thickets y-sort their mass separately, so their casts are
+    // gathered here, shadow-only — the thicket's shade lands in the
+    // meadow's own under-the-coat composite (the z-order law in
+    // drawUnder), and the standing mass draws over it later.
     if (t === Tile.GrassTall) {
       for (const b of st.geom.north) this.buildBlade(b, st, wind, f, s, true, false);
       for (const b of st.geom.south) this.buildBlade(b, st, wind, f, s, true, false);
@@ -1415,22 +1405,20 @@ export class GrassSystem {
       c = this.underCache;
     }
     const cache = c!;
-    // 1. The calm meadow: one canvas blit, translated by the camera
-    // delta (both origins are pixel-snapped, so the delta is integer)
-    // and landed on whole device pixels so the coat never softens.
     this.cacheDx = o.x - cache.ox;
     this.cacheDy = o.y - cache.oy;
-    if (this.underCanvas) {
-      ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.drawImage(
-        this.underCanvas,
-        Math.round(m.a * (cache.canvasX0 + this.cacheDx) + m.e),
-        Math.round(m.d * (cache.canvasY0 + this.cacheDy) + m.f),
-      );
-      ctx.restore();
-    }
-    // 2. The living edge: excluded tiles rebuild at frame rate.
+    // THE CAST LIES UNDER THE COAT (the z-order law): a blade's
+    // shadow is ground-plane paint, and every standing blade occludes
+    // any cast behind it — so the meadow composites its OWN shade
+    // first and lays every blade over it. The old flow parked grass
+    // casts on the shared prepass layer, which composites AFTER this
+    // pass: the whole meadow's shade stamped over the blades, and the
+    // 2.5D read collapsed (user screenshot). Grass shade — short coat
+    // and thicket casts alike — rides this composite; big casters
+    // (props, trees, bodies) keep the shared layer, whose shade
+    // honestly DRAPES over the standing coat.
+    // 1. Build the living edge FIRST (paths + casts only, no paint),
+    // so live tiles' casts land under the calm blades too.
     this.ensurePaths();
     const flowerTiles: GrassTileState[] = [];
     for (const key of cache.live) {
@@ -1443,6 +1431,44 @@ export class GrassSystem {
       this.buildUnderTile(st, t, tx, ty, wts, s, flowerTiles);
     }
     this.buildFlowerTiles(flowerTiles, wts, s);
+    // 2. The whole meadow's shade — the calm canvas's baked casts
+    // (opaque at bake, one alpha here: overlaps merged) and the live
+    // tiles' cast path — lands BEFORE any blade.
+    const cached = cache.hasShadow ? this.shadowCanvas : null;
+    if (cached || this.shadowPath) {
+      ctx.globalAlpha = this.shAlpha;
+      if (cached) {
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.drawImage(
+          cached,
+          Math.round(m.a * (cache.canvasX0 + this.cacheDx) + m.e),
+          Math.round(m.d * (cache.canvasY0 + this.cacheDy) + m.f),
+        );
+        ctx.restore();
+      }
+      if (this.shadowPath) {
+        ctx.fillStyle = this.shFill;
+        ctx.fill(this.shadowPath);
+        this.shadowPath = null;
+      }
+      ctx.globalAlpha = 1;
+    }
+    // 3. The calm meadow's blades: one canvas blit, translated by the
+    // camera delta (both origins are pixel-snapped, so the delta is
+    // integer) and landed on whole device pixels so the coat never
+    // softens.
+    if (this.underCanvas) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(
+        this.underCanvas,
+        Math.round(m.a * (cache.canvasX0 + this.cacheDx) + m.e),
+        Math.round(m.d * (cache.canvasY0 + this.cacheDy) + m.f),
+      );
+      ctx.restore();
+    }
+    // 4. The living blades over everything.
     this.flush(ctx);
   }
 

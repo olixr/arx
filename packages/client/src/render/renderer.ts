@@ -4576,12 +4576,17 @@ export class Renderer {
     };
     // Arm the meadow's cast BEFORE the under pass builds blades: each
     // blade appends its sheared ground quad as it is built, and the
-    // whole meadow's shade fills into the shadow layer in one path.
+    // meadow composites its own shade UNDER its blades (THE CAST LIES
+    // UNDER THE COAT — a blade's shadow is ground-plane paint that
+    // standing blades occlude). The alpha matches what the shared
+    // prepass layer produces for thin casters, so grass shade reads
+    // one density with the world's.
     this.grass.setShadow(
       this.sky.shadowX * this.sky.shadowLen,
       this.sky.shadowY * this.sky.shadowLen * this.camera.yScale,
       this.sky.shadowAlpha >= 0.02,
       this.sky.moonlit ? SHADOW_MOON : SHADOW_SUN,
+      Math.min(1, this.sky.shadowAlpha * 0.85),
     );
     this.grass.drawUnder(this.ctx, groundLvl0, detail, grassBounds, this.liftedWTS, this.camera.scale);
 
