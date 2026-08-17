@@ -7,7 +7,36 @@ the same day.
 
 ## THE FILLED HALL — the content epoch (opened 2026-08-17)
 
-**Status: IN PROGRESS.** The platform prep shipped first (this commit); the twenty-five ladders
+**Status: SHIPPED 2026-08-17 — 400 callings live (25 ladders x 16 seats), hall audit 0 faults,
+all four suites green (shared 268 / content 592 / server 587 / client 636), tsc -b clean.**
+
+### As built — round 1 (author + fresh-eyes critic per ladder, 50 agents)
+
+Every ladder authored to the brief (docs/callings-hall-brief.md) and then critiqued cold by a
+second agent on five axes (felt / theme / voice / balance / structure) with fixes applied in place;
+every ladder closed `lawful.` under the CLI. The register holds 234 license rows; 26 master's
+licenses stand (one per ladder except vitality's Scarworn... see the map via
+`npx tsx scripts/callingAudit.ts --synergy`). The synergy web as shipped: sunder 8 layers / 28
+reads, bleed 7 / 28, chill 5 / 21, burn 5 / 14, venom 5 / 8, quicken 17 lays / 5 stateRiding
+reads, stonehide 19 / 6, mend 16 / 5, weaken 9 / 2, root 6 / 5, stagger 5 / 2, shock 3 / 5 —
+every page in the book both laid and read across ladders, no dead hinge (the critics enforced the
+echo law: stateApplied readers only against pages with player-hand layers; body reads by
+hitState/vsState answer calling-laid pages).
+
+### The wishlist verdict (round-1 harvest, judged 2026-08-17)
+
+The authors and critics filed ~40 platform wants. VERDICT: the platform does not grow mid-flight —
+every hook below is DEFERRED to a deliberate platform wave, recorded here as its bench, ranked by
+independent demand:
+- `trigger: finisher` (onehand, twohand — the string's third beat; rides ComboTrack)
+- `grant: cooldownMult` on CallingGrant (arx, combat, tailoring — a held cooldown clause)
+- `trigger: lowHpAlly` + `action: rally/taunt` (combat, defence, shield — the squad-facing verbs)
+- `condition: warded` (defence, shield — shieldHp > 0), `condition: recentKill`,
+  `condition: comboRun`, `condition: alone` (outnumbered's mirror), `condition: wearingClass`
+- `trigger: eat` / `cleansed` / `blocked-refined`, `action: surge:maxHp`, `condition: resting`
+  (vitality's sleep half), `condition: nearNode/inForest` (trade sense; needs a cheap spatial read)
+- `reveal of:'chest'` stays RESERVED (mining asked; the working that earns it still hasn't come).
+ The platform prep shipped first (this commit); the twenty-five ladders
 are authored by a dedicated workflow, one agent per skill tree, against `docs/callings-hall-brief.md`
 and the laws in `packages/content/src/callingLaws.ts`.
 
