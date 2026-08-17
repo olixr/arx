@@ -1,5 +1,5 @@
 import type { ItemRoll, RarityTier, SkillId, StatusId } from '@arx/shared';
-import { QUALITY_BASE, QUALITY_CEIL, QUALITY_FLOOR } from '@arx/shared';
+import { QUALITY_BASE, QUALITY_CEIL, QUALITY_FLOOR, STATUS_BOOK } from '@arx/shared';
 import type { CombatStyle, ArxElement } from '../items.js';
 import type { GearSlot } from './types.js';
 
@@ -82,7 +82,18 @@ export type EnchantTrigger =
   /** A harvest completed. Rolls `chance`. */
   | { on: 'gather'; chance: number }
   /** Every N tiles covered on foot. */
-  | { on: 'stride'; tiles: number };
+  | { on: 'stride'; tiles: number }
+  /**
+   * THE ANSWERED ECHO (callings-v2, Phase 2): the wearer LAID `status`
+   * on a foe — the synergy hinge, the moment one working's poison
+   * becomes another working's cue. The status match is the DOOR's
+   * (like hitState's state check: an unmatched landing means no offer
+   * and no rest), and a page a proc itself laid NEVER echoes — PROCS
+   * NEVER BEGET PROCS is structural at the door, not authoring
+   * discipline. No chance field on purpose: the rhythm of the
+   * appliers is the rhythm, and the icd is the governor.
+   */
+  | { on: 'stateApplied'; status: StatusId };
 
 /**
  * The moments a stacking working may count toward its charge.
@@ -137,7 +148,17 @@ export type ProcAction =
    * node and foe reveals ship on the roster, the cache reveal awaits
    * the working that wants it. Intent, not rot.
    */
-  | { do: 'reveal'; radius: number; of: 'node' | 'chest' | 'foe' };
+  | { do: 'reveal'; radius: number; of: 'node' | 'chest' | 'foe' }
+  /**
+   * THE SELF-BLESSING (callings-v2, Phase 2): lay a BOON page on the
+   * WEARER through the real self-status door — quicken stacks,
+   * stonehide coats, mend: the book's whole boon shelf opens to the
+   * trigger grammar. Boon-lane pages only (a hostile page here is a
+   * mismatch procMismatch refuses at load); needs no foe, so it is
+   * legal on every trigger including the gather rhythms — a harvest
+   * may bless the harvester.
+   */
+  | { do: 'boon'; status: StatusId; power: number; ticks: number };
 
 /**
  * Triggers that belong to the steel which LANDED, and so resolve from
@@ -175,6 +196,8 @@ export const TARGETED_TRIGGERS: readonly EnchantTrigger['on'][] = [
   'hitState',
   'hurt',
   'block',
+  // The foe the page just landed on arrives in hand with the echo.
+  'stateApplied',
 ];
 
 /** Actions that cannot do anything without a foe. */
@@ -204,8 +227,16 @@ export function procMismatch(p: ProcEffect): string | null {
   if (p.action.do === 'yield' && !gatherPaced) {
     return `'yield' fills a basket, so it only answers 'gather'`;
   }
-  if (gatherPaced && p.action.do !== 'yield' && p.action.do !== 'reveal') {
+  // A harvest happens away from any fight — but a blessing on the
+  // harvester needs no fight, so 'boon' joins yield and reveal as the
+  // gather-legal answers.
+  if (gatherPaced && p.action.do !== 'yield' && p.action.do !== 'reveal' && p.action.do !== 'boon') {
     return `'gather' happens away from any fight; '${p.action.do}' has nothing to work on`;
+  }
+  // THE SELF-BLESSING blesses: a hostile page through the self door
+  // would be a working that wounds its own wearer on schedule.
+  if (p.action.do === 'boon' && STATUS_BOOK[p.action.status].hostile) {
+    return `'boon' blesses the wearer; '${p.action.status}' is a wound — lay wounds with 'status'`;
   }
   return null;
 }
@@ -1440,6 +1471,8 @@ export function describeTrigger(t: EnchantTrigger): string {
       return `${pct(t.chance)} of harvests`;
     case 'stride':
       return `every ${t.tiles} tiles run`;
+    case 'stateApplied':
+      return `laying ${t.status} on a foe`;
   }
 }
 
@@ -1472,6 +1505,8 @@ export function describeAction(a: ProcAction): string {
       return `+${a.extra} to the basket`;
     case 'reveal':
       return `nearby ${a.of === 'node' ? 'ore and growth' : a.of === 'chest' ? 'caches' : 'foes'} marked within ${a.radius} tiles`;
+    case 'boon':
+      return `${a.status} on yourself for ${secs(a.ticks)}`;
   }
 }
 
@@ -1621,6 +1656,9 @@ function scaleAction(a: ProcAction, q: number): ProcAction {
       return { ...a, amount: scaleN(a.amount, q) };
     case 'surge':
       return { ...a, pct: scaleN(a.pct, q) };
+    case 'boon':
+      // The blessing's magnitude scales; its clock is choreography.
+      return { ...a, power: scaleN(a.power, q) };
     // A yield working hands over whole objects and a reveal marks whole
     // things; there is no fraction of either to scale.
     case 'cleanse':
@@ -1760,20 +1798,24 @@ export interface ProcRuntime {
   strikes: number;
   /** Tiles covered so far (stride triggers). */
   tiles: number;
-  /**
-   * lowHp only: ready to answer a crossing. Cleared when the working
-   * fires, set again when the wearer climbs back over the line, so one
-   * dive past the mark is one answer however many blows carried it.
-   */
-  armed: boolean;
 }
 
 export function mkProcRuntime(): ProcRuntime {
-  return { restUntil: 0, stacks: 0, strikes: 0, tiles: 0, armed: true };
+  return { restUntil: 0, stacks: 0, strikes: 0, tiles: 0 };
 }
 
-/** The moments that can be offered to a working through procWakes. */
-export type ProcMoment = StackSource | 'gather';
+/**
+ * The moments that can be offered to a working through procWakes.
+ * THE DOOR REPAIR (callings-v2, Phase 2): lowHp and stride are
+ * moments like any other now — their hand-rolled rest checks at the
+ * server died, and the one arbitration answers for every trigger.
+ * The lowHp CROSSING itself stays the door's (it reads the health
+ * component, like hitState's state check reads the target's list);
+ * the door offers the moment only on a true fall past the line, and
+ * re-arming is the crossing law's own construction. stateApplied is
+ * THE ANSWERED ECHO's moment, status-matched at the door.
+ */
+export type ProcMoment = StackSource | 'gather' | 'lowHp' | 'stride' | 'stateApplied';
 
 /**
  * THE ARBITRATION, kept pure so it can be reasoned about and pinned.
@@ -1794,7 +1836,9 @@ export type ProcMoment = StackSource | 'gather';
  *    every published proc rate below what its card promises.
  *
  * `roll` is injected so the law is testable without stubbing global
- * randomness.
+ * randomness. `amount` is the moment's own magnitude — tiles covered
+ * for a stride step, 1 for everything else — so a fast frame that
+ * covers three tiles banks three, not one.
  */
 export function procWakes(
   p: ProcEffect,
@@ -1802,6 +1846,7 @@ export function procWakes(
   on: ProcMoment,
   tick: number,
   roll: () => number = Math.random,
+  amount = 1,
 ): boolean {
   const t = p.trigger;
   // A stacking working listens for its OWN source moment rather than
@@ -1829,6 +1874,14 @@ export function procWakes(
       if (resting) return false;
       st.stacks = 0;
       break;
+    case 'stride':
+      // Ground banks through the rest exactly as charges do: the
+      // tally advances, the spend waits for the working to wake.
+      st.tiles += amount;
+      if (st.tiles < t.tiles) return false;
+      if (resting) return false;
+      st.tiles = 0;
+      break;
     case 'hit':
     case 'hitState':
     case 'hurt':
@@ -1836,6 +1889,8 @@ export function procWakes(
       if (resting || roll() >= t.chance) return false;
       break;
     default:
+      // kill, cast, crit, block, lowHp, stateApplied: the moment
+      // itself is the whole condition — rest is the only gate.
       if (resting) return false;
       break;
   }

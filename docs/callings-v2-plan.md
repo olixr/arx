@@ -52,6 +52,58 @@ pair tables. Core first, content later.
 
 ---
 
+## As built — Phase 2, THE WAKING HAND (2026-08-17)
+
+Engine-complete, zero authored content (the green-light's PURE
+PLATFORM stands). What shipped, where it bound:
+
+- **The proc lane**: `PlayerComp.callingProcs` rebuilt in
+  recomputeGear (addProc — the matched-set one-meter law verbatim);
+  `bodyMoment` offers both lists through THE ONE DOOR with the
+  targeted-moment and READING-EDGE preconditions INLINE (the
+  slate-test law — a helper method broke the slates on first cut and
+  died for it). hitState is body-lane legal now: a calling's edge is
+  the hand itself. sendCharges shows calling meters; setCalling and
+  the /calling lever resend the roster.
+- **THE DOOR REPAIR paid**: lowHp and stride fold into `offerProc` —
+  `ProcMoment` grew 'lowHp' | 'stride' | 'stateApplied', procWakes
+  gained the stride bank (`amount` — ground accrues through rest like
+  charges) and the dead `armed` field died. The lowHp CROSSING stays
+  door-side (it reads healths, like hitState reads the list); rest
+  law lives in the one arbitration. Slates consciously rebound
+  (offerProc/procState/chargesDirty; runProc split adds
+  runProcInner).
+- **THE ANSWERED ECHO**: `stateApplied` trigger (status-matched at
+  the door, no chance field — icd is the governor) rings from the
+  NEW `layStatusOnNpc` door. Routing is the law: the player-hand
+  sites (ability/basic statuses, coats, strike edges, buff edges,
+  house words, the /status lever) lay through it; pets, NPC
+  self-pages, reaction plagues, and proc actions call the apply door
+  directly and can never echo. `runProc` wraps its body in a
+  procDepth counter — PROCS NEVER BEGET PROCS is structural
+  belt-and-braces under the routing. applyStatusToNpc keeps its name
+  and slates, now answering an honest landed/refused verdict
+  (resist/ward/immunity = refusal; a spark spent into a reaction =
+  a landing).
+- **THE SELF-BLESSING**: `{do:'boon'}` lays a boon page on the wearer
+  through applyStatusToPlayer (count stacks, swing re-mirror, chips
+  all inherited). procMismatch laws: boon refuses hostile pages
+  ("lay wounds with 'status'"), joins yield/reveal as gather-legal —
+  a harvest may bless the harvester. Quality scaling: power scales,
+  the clock is choreography.
+- **/calling dev lever**: answer/set down ignoring unlock and budget,
+  session-only (sanitize reclaims at login); with /status routing
+  through the lay door, the rig proves the echo end to end with two
+  commands.
+- **THE REGISTER, the calling column** (callings.test.ts): every page
+  a calling lays or reads must hold a license row — empty on purpose
+  this epoch; the content epoch's synergy pair opens the ledger.
+- Gates: shared 269 / content 594 / server 573 / client 636, tsc -b
+  clean ×4. Grammar laws +7 in procs.test.ts, door pins +4 in
+  procDoors.test.ts. Owed forward: the client resolves calling-proc
+  meter names by id only for gear rosters today — the codex wing
+  (Phase 5) teaches it the calling roster.
+
 ## Part 0 — The deep review (receipts verified 2026-08-17, two sweeps)
 
 ### What stands (and is sacred)

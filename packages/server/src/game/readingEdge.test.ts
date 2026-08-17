@@ -26,6 +26,7 @@ const proto = GameServer.prototype as unknown as {
   damagePlayer: AnyFn;
   creditMark: AnyFn;
   applyStatusToNpc: AnyFn;
+  layStatusOnNpc: AnyFn;
 };
 
 const call = (fn: AnyFn, self: unknown, ...args: unknown[]): unknown =>
@@ -77,6 +78,10 @@ function seamSlate(hp = 100) {
     setNpcPose: () => {},
     updateChunkMembership: () => {},
     applyStatusToNpc: proto.applyStatusToNpc,
+    // THE WAKING HAND: a player-hand landing routes through the lay
+    // door (echo included; this slate's attacker carries no workings,
+    // so the echo is a quiet walk-through).
+    layStatusOnNpc: proto.layStatusOnNpc,
     petDefend: () => {},
     grantPetBattleXp: () => {},
     npcAtPeace: () => false,

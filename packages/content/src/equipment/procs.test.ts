@@ -5,6 +5,7 @@ import {
   describeEffect,
   isStrikeTrigger,
   mkProcRuntime,
+  procMismatch,
   procWakes,
   type EnchantTrigger,
   type ProcAction,
@@ -263,4 +264,101 @@ test('the ordinal reader does not embarrass itself', () => {
   assert.match(say(12), /every 12th landed strike/);
   assert.match(say(13), /every 13th landed strike/);
   assert.match(say(21), /every 21st landed strike/);
+});
+
+// -------------------------------- THE WAKING HAND (callings-v2, Phase 2)
+
+test('THE DOOR REPAIR: stride is a moment like any other, banked through rest', () => {
+  const p = proc({ trigger: { on: 'stride', tiles: 10 }, action: { do: 'cleanse' }, icd: 100 });
+  const st = mkProcRuntime();
+  // Ground accrues by the moment's own magnitude — a fast frame that
+  // covers three tiles banks three.
+  assert.equal(procWakes(p, st, 'stride', 0, undefined, 4), false);
+  assert.equal(st.tiles, 4);
+  assert.equal(procWakes(p, st, 'stride', 1, undefined, 6), true, 'ten tiles wake it');
+  assert.equal(st.tiles, 0, 'the spend clears the bank');
+  // While it rests, the ground still banks — and the spend waits.
+  assert.equal(procWakes(p, st, 'stride', 10, undefined, 25), false);
+  assert.equal(st.tiles, 25, 'tiles bank through the rest, never dropped');
+  assert.equal(procWakes(p, st, 'stride', 101, undefined, 1), true, 'first step after the rest answers');
+});
+
+test('THE DOOR REPAIR: lowHp walks the one arbitration (rest is the only gate)', () => {
+  // The CROSSING itself is the door's (it reads the health component);
+  // what reaches procWakes is a true fall past the line, and the one
+  // rest law answers for it like any other moment.
+  const p = proc({ trigger: { on: 'lowHp', pct: 0.3 }, action: { do: 'heal', amount: 10 }, icd: 200 });
+  const st = mkProcRuntime();
+  assert.equal(procWakes(p, st, 'lowHp', 0), true);
+  assert.equal(procWakes(p, st, 'lowHp', 100), false, 'a second dive inside the rest is refused');
+  assert.equal(procWakes(p, st, 'lowHp', 200), true);
+});
+
+test('THE ANSWERED ECHO listens only for its own moment', () => {
+  const p = proc({
+    trigger: { on: 'stateApplied', status: 'venom' },
+    action: { do: 'bolt', damage: 5 },
+    icd: 60,
+  });
+  const st = mkProcRuntime();
+  // The status match is the door's; the arbitration hears the moment.
+  assert.equal(procWakes(p, st, 'hit', 0), false);
+  assert.equal(procWakes(p, st, 'kill', 0), false);
+  assert.equal(procWakes(p, st, 'stateApplied', 0), true);
+  assert.equal(procWakes(p, st, 'stateApplied', 30), false, 'the echo rests like everything else');
+});
+
+test('THE SELF-BLESSING blesses: a hostile page through boon is refused at load', () => {
+  const blessed = proc({
+    trigger: { on: 'kill' },
+    action: { do: 'boon', status: 'quicken', power: 0, ticks: 100 },
+  });
+  assert.equal(procMismatch(blessed), null);
+  const cursed = proc({
+    trigger: { on: 'kill' },
+    action: { do: 'boon', status: 'venom', power: 3, ticks: 100 },
+  });
+  assert.match(procMismatch(cursed) ?? '', /wound/);
+});
+
+test('a harvest may bless the harvester: boon joins the gather-legal answers', () => {
+  const p = proc({
+    trigger: { on: 'stacks', per: 'gather', count: 8 },
+    action: { do: 'boon', status: 'quicken', power: 0, ticks: 200 },
+  });
+  assert.equal(procMismatch(p), null);
+  // The old law stands for everything else that needs a fight.
+  const bolt = proc({ trigger: { on: 'gather', chance: 0.5 }, action: { do: 'bolt', damage: 5 } });
+  assert.notEqual(procMismatch(bolt), null);
+});
+
+test('the echo arrives with the foe in hand: stateApplied may carry targeted actions', () => {
+  const p = proc({
+    trigger: { on: 'stateApplied', status: 'venom' },
+    action: { do: 'status', status: 'weaken', power: 10, ticks: 60 },
+  });
+  assert.equal(procMismatch(p), null);
+});
+
+test('the new grammar speaks clean card lines', () => {
+  assert.equal(
+    describeEffect(
+      proc({
+        name: 'Venom Answers',
+        trigger: { on: 'stateApplied', status: 'venom' },
+        action: { do: 'bolt', damage: 7 },
+      }),
+    ),
+    'Venom Answers: on laying venom on a foe, a mote into the foe for 7',
+  );
+  assert.equal(
+    describeEffect(
+      proc({
+        name: 'Harvest Hymn',
+        trigger: { on: 'stacks', per: 'gather', count: 8 },
+        action: { do: 'boon', status: 'quicken', power: 0, ticks: 200 },
+      }),
+    ),
+    'Harvest Hymn: on every 8 harvests, quicken on yourself for 10s',
+  );
 });

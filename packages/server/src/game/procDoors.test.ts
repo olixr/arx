@@ -34,6 +34,7 @@ const proto = GameServer.prototype as unknown as {
   stepProjectile: AnyFn;
   executeAdjust: AnyFn;
   runProc: AnyFn;
+  runProcInner: AnyFn;
   npcsWithin: AnyFn;
   forEachNpcNear: AnyFn;
 };
@@ -135,6 +136,11 @@ function lowHpSlate(hp: number) {
     healths: new Map([[1, health]]),
     positions: new Map([[1, { plane: 'surface', x: 0, y: 0, dir: 0 }]]),
     procState: proto.procState,
+    // THE DOOR REPAIR (callings-v2 Phase 2): the crossing stays the
+    // door's, but rest + firing walk through the ONE door now — the
+    // slate binds it like every other door test.
+    offerProc: proto.offerProc,
+    chargesDirty: new Set(),
     runProc: (...a: unknown[]) => {
       runs.push(a);
       return 0;
@@ -347,7 +353,10 @@ test('chain per-jump fx carry the `<action>:<procId>` id, same as the closing br
     npcsWithin: proto.npcsWithin,
     damageNpc: () => {},
     broadcastFx: (_plane: unknown, m: { id?: string; x2?: number }) => fx.push(m),
+    // THE WAKING HAND split runProc into guard + body; the slate
+    // binds both, like every other door pair.
     runProc: proto.runProc,
+    runProcInner: proto.runProcInner,
   };
   const player = { gear: { procs: [chainProc] }, procs: new Map(), buffs: [] };
   call(proto.runProc, s, 1, player, chainProc, { x: 0, y: 0, targetEid: 9 });
@@ -395,4 +404,151 @@ test('THE METER SHOWS ITS HAND: a moved meter reaches the wearer once, as (id, h
     call(proto.offerProc, s, 1, player, targetedProc, 'hurt', { x: 0, y: 0, targetEid: 9 });
   });
   assert.equal(s.chargesDirty.size, 0, 'a resting chance working moves no meter');
+});
+
+// ------------------------- THE WAKING HAND (callings-v2, Phase 2) doors
+
+const protoV2 = GameServer.prototype as unknown as {
+  bodyMoment: AnyFn;
+  offerProc: AnyFn;
+  procState: AnyFn;
+  layStatusOnNpc: AnyFn;
+  applyStatusToNpc: AnyFn;
+  strideMoment: AnyFn;
+};
+
+test('the body door offers the answered packages beside the gear: two lists, one meter law', () => {
+  const runs: unknown[][] = [];
+  const killProc = {
+    kind: 'proc' as const,
+    id: 'calling_working',
+    name: 'Calling Working',
+    trigger: { on: 'kill' as const },
+    action: { do: 'heal' as const, amount: 5 },
+    icd: 100,
+  };
+  const player = { gear: { procs: [] }, callingProcs: [killProc], procs: new Map() };
+  const s = {
+    tickCount: 10,
+    npcs: new Map(),
+    bodyMoment: protoV2.bodyMoment,
+    offerProc: protoV2.offerProc,
+    procState: protoV2.procState,
+    chargesDirty: new Set(),
+    runProc: (...a: unknown[]) => {
+      runs.push(a);
+      return 0;
+    },
+  };
+  call(protoV2.bodyMoment, s, 1, player, 'kill', { x: 0, y: 0 });
+  assert.equal(runs.length, 1, 'a calling working answers at the body door');
+  // A slate with no callingProcs at all stays legal (the slate law).
+  const bare = { gear: { procs: [killProc] }, procs: new Map() };
+  call(protoV2.bodyMoment, s, 1, bare, 'kill', { x: 0, y: 0 });
+  assert.equal(runs.length, 2, 'a bare player without the calling list still walks the door');
+});
+
+test('THE READING EDGE holds at the body door: an unmarked foe means no offer, no rest', () => {
+  const runs: unknown[][] = [];
+  const edgeProc = {
+    kind: 'proc' as const,
+    id: 'venom_reader',
+    name: 'Venom Reader',
+    trigger: { on: 'hitState' as const, status: 'venom' as const, chance: 1 },
+    action: { do: 'heal' as const, amount: 2 },
+    icd: 100,
+  };
+  const player = { gear: { procs: [] }, callingProcs: [edgeProc], procs: new Map() };
+  const s = {
+    tickCount: 10,
+    npcs: new Map([[9, { def: { radius: 0.4 } }]]),
+    statuses: new Map(),
+    bodyMoment: protoV2.bodyMoment,
+    offerProc: protoV2.offerProc,
+    procState: protoV2.procState,
+    chargesDirty: new Set(),
+    runProc: (...a: unknown[]) => {
+      runs.push(a);
+      return 0;
+    },
+  };
+  call(protoV2.bodyMoment, s, 1, player, 'hit', { x: 0, y: 0, targetEid: 9 });
+  assert.equal(runs.length, 0, 'no state, no roll, no rest');
+  assert.equal(
+    (player.procs.get('venom_reader') as { restUntil: number } | undefined)?.restUntil ?? 0,
+    0,
+  );
+  s.statuses.set(9, [{ id: 'venom', power: 2, ticksLeft: 40, sourceEid: 1 }]);
+  call(protoV2.bodyMoment, s, 1, player, 'hit', { x: 0, y: 0, targetEid: 9 });
+  assert.equal(runs.length, 1, 'the marked body wakes the reader');
+});
+
+test('THE ANSWERED ECHO: a true landing echoes, status-matched; a proc-born landing never does', () => {
+  const offers: unknown[][] = [];
+  const echoProc = {
+    kind: 'proc' as const,
+    id: 'venom_answers',
+    name: 'Venom Answers',
+    trigger: { on: 'stateApplied' as const, status: 'venom' as const },
+    action: { do: 'bolt' as const, damage: 4 },
+    icd: 100,
+  };
+  const src = { gear: { procs: [] }, callingProcs: [echoProc], procs: new Map() };
+  const s: Record<string, unknown> = {
+    tickCount: 10,
+    players: new Map([[1, src]]),
+    positions: new Map([[1, { plane: 'surface', x: 0, y: 0, dir: 0 }]]),
+    layStatusOnNpc: protoV2.layStatusOnNpc,
+    // The apply door is stubbed to a clean landing so the pin is
+    // about the ECHO alone, not the stacking models.
+    applyStatusToNpc: () => true,
+    offerProc: (...a: unknown[]) => {
+      offers.push(a);
+      return 0;
+    },
+  };
+  call(protoV2.layStatusOnNpc, s, 9, { status: 'venom', power: 2, durationTicks: 40 }, 1, 'onehand');
+  assert.equal(offers.length, 1, 'the landing echoed to the matching working');
+  // A different page laid: the venom listener is not offered.
+  call(protoV2.layStatusOnNpc, s, 9, { status: 'burn', power: 2, durationTicks: 40 }, 1, 'onehand');
+  assert.equal(offers.length, 1, 'the echo is status-matched at the door');
+  // A refusal is not a landing.
+  s.applyStatusToNpc = () => false;
+  call(protoV2.layStatusOnNpc, s, 9, { status: 'venom', power: 2, durationTicks: 40 }, 1, 'onehand');
+  assert.equal(offers.length, 1, 'a resisted page never echoes');
+  // PROCS NEVER BEGET PROCS, structural: under procDepth the echo is refused.
+  s.applyStatusToNpc = () => true;
+  s.procDepth = 1;
+  call(protoV2.layStatusOnNpc, s, 9, { status: 'venom', power: 2, durationTicks: 40 }, 1, 'onehand');
+  assert.equal(offers.length, 1, 'a proc-laid page never echoes');
+});
+
+test('stride banks by the one door: ground accrues through rest, calling boots included', () => {
+  const runs: unknown[][] = [];
+  const strideProc = {
+    kind: 'proc' as const,
+    id: 'long_road',
+    name: 'Long Road',
+    trigger: { on: 'stride' as const, tiles: 10 },
+    action: { do: 'cleanse' as const },
+    icd: 100,
+  };
+  const player = { gear: { procs: [] }, callingProcs: [strideProc], procs: new Map() };
+  const s = {
+    tickCount: 10,
+    positions: new Map([[1, { plane: 'surface', x: 0, y: 0, dir: 0 }]]),
+    strideMoment: protoV2.strideMoment,
+    offerProc: protoV2.offerProc,
+    procState: protoV2.procState,
+    chargesDirty: new Set(),
+    runProc: (...a: unknown[]) => {
+      runs.push(a);
+      return 0;
+    },
+  };
+  call(protoV2.strideMoment, s, 1, player, 6);
+  assert.equal(runs.length, 0);
+  call(protoV2.strideMoment, s, 1, player, 4);
+  assert.equal(runs.length, 1, 'ten tiles wake the boots');
+  assert.equal((player.procs.get('long_road') as { tiles: number }).tiles, 0, 'the spend clears the bank');
 });

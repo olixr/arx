@@ -236,6 +236,7 @@ import {
   type ProcAction,
   type ProcEffect,
   type ProcMoment,
+  addProc,
   mkProcRuntime,
   procWakes,
   type ProcRuntime,
@@ -263,6 +264,7 @@ import {
   SECRET_ARTS,
   callingDef,
   callingsFor,
+  CALLINGS,
   foldEffect,
   isAggregateCallingEffect,
   PERK_FOLD,
@@ -1961,6 +1963,14 @@ interface PlayerComp {
   lessonDirty: Set<string>;
   /** Answered Callings (row-presence mirror of character_callings). */
   callings: Set<string>;
+  /**
+   * THE WAKING HAND (callings-v2 Phase 2): procs the answered
+   * packages carry, rebuilt beside the perks in recomputeGear and
+   * offered at the body door beside gear.procs. Same id-keyed
+   * ProcRuntime map, so a calling's meter is the fighter's meter by
+   * the same law that binds a matched set.
+   */
+  callingProcs: ProcEffect[];
   /** One-site perk dials derived from answered Callings (recomputeGear). */
   perks: Perks;
   /** Consecutive ticks without movement, sneaking or not (Bulwark). */
@@ -4006,6 +4016,7 @@ export class GameServer {
       techniques: character.id > 0 ? await this.accounts.loadTechniques(character.id) : [null, null],
       lessonDirty: new Set(),
       callings: character.id > 0 ? new Set(await this.accounts.loadCallings(character.id)) : new Set(),
+      callingProcs: [],
       perks: defaultPerks(),
       stillTicks: 0,
       sneaking: false,
@@ -19722,13 +19733,13 @@ export class GameServer {
   private recomputeGear(eid: EntityId, player: PlayerComp): void {
     player.gear = aggregateGearStats(player.equipment);
     const perks = defaultPerks();
+    const callingProcs: ProcEffect[] = [];
     for (const id of player.callings) {
       const def = callingDef(id);
       if (!def) continue;
       // THE CALLING IS A PACKAGE (callings-v2 Phase 1): every entry
-      // folds. The reserved lanes (proc / when / art) are typed but
-      // unread until their phases open the doors — the default arm
-      // holds their seats.
+      // folds. The reserved lanes still waiting on their doors (when,
+      // art) are typed but unread — the default arm holds their seats.
       for (const fx of def.effects) {
         switch (fx.kind) {
           case 'gear':
@@ -19770,11 +19781,20 @@ export class GameServer {
           case 'craftSpeed':
             perks.craftSpeed[fx.skill] = Math.min(perks.craftSpeed[fx.skill] ?? 1, fx.mult);
             break;
+          case 'proc':
+            // THE WAKING HAND: the package's workings gather here and
+            // the body door offers them beside gear.procs. addProc
+            // keeps ONE entry per id — two answered packages naming
+            // the same working share one timer and one meter, the
+            // matched-set law verbatim.
+            addProc(callingProcs, fx.proc);
+            break;
           default:
             break;
         }
       }
     }
+    player.callingProcs = callingProcs;
     player.perks = perks;
     const health = this.healths.get(eid);
     if (health) {
@@ -19851,6 +19871,9 @@ export class GameServer {
     this.recomputeGear(eid, player);
     player.session?.sendJson({ t: 'callings', answered: [...player.callings] });
     this.sendCooldowns(player);
+    // THE WAKING HAND: an answer can change the roster of stacking
+    // meters (the equip-change law, on the character axis).
+    this.sendCharges(player);
   }
 
   /**
@@ -22520,18 +22543,60 @@ export class GameServer {
    * Resists shrug any lane off; weaknesses double it; a CC page with
    * an authored immunity window is refused while the window holds.
    */
+  /**
+   * A PLAYER'S OWN HAND laying a page — the door that rings THE
+   * ANSWERED ECHO. The apply door itself (applyStatusToNpc) answers
+   * whether the page truly LANDED (a resist, a ward, or an immunity
+   * window is a refusal; a spark spent into a reaction is a landing —
+   * the page answered, in fire instead of residence), and a true
+   * landing offers the source's stateApplied workings their moment,
+   * status-matched HERE so the arbitration stays pure. The echo fires
+   * AFTER the door returns — never mid-apply, so a woken working that
+   * lays its own pages can never alias the list being written.
+   *
+   * Who rings it is a routing law, not a flag: the player-hand sites
+   * (ability statuses, coats, strike edges, buff edges, house words)
+   * call THIS door; pets, NPC self-pages, reaction plagues, and proc
+   * actions call applyStatusToNpc directly and never echo — PROCS
+   * NEVER BEGET PROCS and THE METER IS THE FIGHTER'S OWN HAND are
+   * facts about the call graph, with the procDepth guard as the
+   * structural belt-and-braces underneath.
+   */
+  private layStatusOnNpc(
+    npcEid: EntityId,
+    apply: StatusApply,
+    sourceEid: EntityId,
+    style: SkillId,
+  ): void {
+    if (!this.applyStatusToNpc(npcEid, apply, sourceEid, style)) return;
+    if ((this.procDepth ?? 0) > 0) return;
+    const src = this.players?.get(sourceEid);
+    if (!src) return;
+    let ctx: ProcContext | undefined;
+    const offer = (p: ProcEffect): void => {
+      if (p.trigger.on !== 'stateApplied' || p.trigger.status !== apply.status) return;
+      if (!ctx) {
+        const pos = this.positions?.get(sourceEid);
+        ctx = { x: pos?.x ?? 0, y: pos?.y ?? 0, targetEid: npcEid, style };
+      }
+      this.offerProc(sourceEid, src, p, 'stateApplied', ctx);
+    };
+    for (const p of src.gear?.procs ?? []) offer(p);
+    for (const p of src.callingProcs ?? []) offer(p);
+  }
+
   private applyStatusToNpc(
     npcEid: EntityId,
     apply: StatusApply,
     sourceEid: EntityId,
     style: SkillId,
     fromPet = false,
-  ): void {
+  ): boolean {
     const npc = this.npcs.get(npcEid);
-    if (!npc) return;
+    if (!npc) return false;
     // The ward keeps venom off the blade's target entirely — no
     // status decals, no reaction fuel, nothing to detonate later.
-    if (this.actors.get(npcEid)?.actor.protection === 'invulnerable') return;
+    if (this.actors.get(npcEid)?.actor.protection === 'invulnerable') return false;
     if (npc.def.resist?.includes(apply.status)) {
       const pos = this.positions.get(npcEid);
       if (pos) {
@@ -22545,7 +22610,7 @@ export class GameServer {
           text: 'Resist',
         });
       }
-      return;
+      return false;
     }
     let power = apply.power;
     let duration = apply.durationTicks;
@@ -22570,7 +22635,7 @@ export class GameServer {
       const rec = this.ccImmunity.get(npcEid);
       const until = rec?.[page.id];
       if (until !== undefined) {
-        if (this.tickCount < until) return;
+        if (this.tickCount < until) return false;
         delete rec![page.id];
       }
     }
@@ -22603,7 +22668,7 @@ export class GameServer {
         }
       }
       this.statuses.set(npcEid, list);
-      return;
+      return true;
     }
 
     // --------------------------------------- the highest model (the mark)
@@ -22616,7 +22681,7 @@ export class GameServer {
         list.push({ id: apply.status, power, ticksLeft: duration, sourceEid });
       }
       this.statuses.set(npcEid, list);
-      return;
+      return true;
     }
 
     // ------------------------------------------------------ the count model
@@ -22673,7 +22738,7 @@ export class GameServer {
           });
         }
       }
-      return;
+      return true;
     }
 
     // ------------------------- the refresh model (sparks keep reactions)
@@ -22763,7 +22828,7 @@ export class GameServer {
         }
       }
       this.statuses.set(npcEid, list);
-      return;
+      return true;
     }
 
     const same = list.find((s) => s.id === apply.status);
@@ -22786,6 +22851,7 @@ export class GameServer {
       });
     }
     this.statuses.set(npcEid, list);
+    return true;
   }
 
   /**
@@ -23652,6 +23718,18 @@ export class GameServer {
   private chargesDirty = new Set<EntityId>();
 
   /**
+   * PROCS NEVER BEGET PROCS, made structural (callings-v2 Phase 2):
+   * nonzero while any working's action is running, however deep the
+   * damage plumbing goes. THE ANSWERED ECHO's door reads it, so a
+   * status a proc itself laid can never wake a stateApplied working —
+   * the law stops being authoring discipline and becomes a fact about
+   * the door. A counter, not a flag: proc damage that fells a foe
+   * walks the kill plumbing inside the action, and an inner flag
+   * reset would strip the outer guard.
+   */
+  private procDepth = 0;
+
+  /**
    * THE MIRRORS GO EVENT-DRIVEN (core-audit debt 12): sendRide and
    * sendPet used to rebuild their whole signature string per player
    * per tick just to discover — almost always — that nothing moved.
@@ -23686,10 +23764,14 @@ export class GameServer {
    */
   private sendCharges(player: PlayerComp): void {
     const charges: ChargeInfo[] = [];
-    for (const p of player.gear.procs) {
-      if (p.trigger.on !== 'stacks') continue;
+    const add = (p: ProcEffect): void => {
+      if (p.trigger.on !== 'stacks') return;
+      if (charges.some((c) => c.id === p.id)) return;
       charges.push({ id: p.id, have: this.procState(player, p.id).stacks, need: p.trigger.count });
-    }
+    };
+    for (const p of player.gear.procs) add(p);
+    // THE WAKING HAND: a calling's meter shows its hand the same way.
+    for (const p of player.callingProcs ?? []) add(p);
     player.session?.sendJson({ t: 'charges', charges });
   }
 
@@ -23708,21 +23790,30 @@ export class GameServer {
     p: ProcEffect,
     on: ProcMoment,
     ctx: ProcContext,
+    amount = 1,
   ): number {
     const st = this.procState(player, p.id);
     // A stacking meter that moves — a charge banked, or the spend when
     // the working answers — reaches the wearer's HUD at tick end.
     const banked = st.stacks;
-    const woke = procWakes(p, st, on, this.tickCount);
+    const woke = procWakes(p, st, on, this.tickCount, undefined, amount);
     if (st.stacks !== banked) this.chargesDirty.add(eid);
     if (!woke) return 0;
     return this.runProc(eid, player, p, ctx);
   }
 
   /**
-   * Offer a moment to every working the BODY carries (the aggregate
-   * channel) — kill, hurt, block, cast, gather, and every stacking
-   * working whatever slot it rides.
+   * Offer a moment to every working the BODY carries — the gear
+   * aggregate and, since THE WAKING HAND, the answered packages'
+   * workings beside them. Two lists, one door, one meter law. The
+   * preconditions are door law, INLINE per the slate-test law, never
+   * arbitration — procWakes stays pure:
+   *  - a targeted working cannot answer a moment with no live foe in
+   *    hand (no chance rolled, no rest stamped on a sure no-op);
+   *  - a hitState working is skipped when the struck body does not
+   *    carry its state (THE READING EDGE — the body lane hears it
+   *    now too, since a calling's edge is the hand itself and rides
+   *    aggregate-side).
    */
   private bodyMoment(
     eid: EntityId,
@@ -23731,20 +23822,24 @@ export class GameServer {
     ctx: ProcContext,
   ): number {
     let extra = 0;
-    for (const p of player.gear.procs) {
-      // A targeted working cannot answer a moment that arrives with no
-      // live foe in hand — the door refuses BEFORE arbitration, so no
-      // chance is rolled and no rest is stamped on an answer that
-      // could only ever no-op. A door-side precondition, not
-      // arbitration: procWakes stays pure and untouched.
+    const offer = (p: ProcEffect): void => {
       if (
         (TARGETED_ACTIONS as readonly string[]).includes(p.action.do) &&
         (ctx.targetEid === undefined || !this.npcs.has(ctx.targetEid))
       ) {
-        continue;
+        return;
+      }
+      if (p.trigger.on === 'hitState') {
+        const wanted = p.trigger.status;
+        const riding =
+          ctx.targetEid !== undefined &&
+          (this.statuses?.get(ctx.targetEid)?.some((s) => s.id === wanted) ?? false);
+        if (!riding) return;
       }
       extra += this.offerProc(eid, player, p, on, ctx);
-    }
+    };
+    for (const p of player.gear.procs) offer(p);
+    for (const p of player.callingProcs ?? []) offer(p);
     return extra;
   }
 
@@ -23770,7 +23865,7 @@ export class GameServer {
           const wanted = p.trigger.status;
           const riding =
             ctx.targetEid !== undefined &&
-            (this.statuses.get(ctx.targetEid)?.some((s) => s.id === wanted) ?? false);
+            (this.statuses?.get(ctx.targetEid)?.some((s) => s.id === wanted) ?? false);
           if (!riding) continue;
         }
         this.offerProc(eid, player, p, on, ctx);
@@ -23788,6 +23883,12 @@ export class GameServer {
    * working simply by lifting the wearer over the line before the
    * next fall. One dive past the mark is one answer however many
    * small hits carried it down.
+   *
+   * THE DOOR REPAIR (callings-v2 Phase 2): the crossing check stays
+   * here (it reads the health component — a door fact, like
+   * hitState's list read), but the rest law and the firing walk
+   * through offerProc with everything else. No hand-rolled icd
+   * anywhere.
    */
   private lowHpMoment(eid: EntityId, player: PlayerComp, prevHp: number): void {
     const health = this.healths.get(eid);
@@ -23795,38 +23896,54 @@ export class GameServer {
     const frac = health.hp / health.maxHp;
     const prevFrac = prevHp / health.maxHp;
     const pos = this.positions.get(eid);
-    for (const p of player.gear.procs) {
-      if (p.trigger.on !== 'lowHp') continue;
-      if (prevFrac <= p.trigger.pct || frac > p.trigger.pct) continue;
-      const st = this.procState(player, p.id);
-      if (this.tickCount < st.restUntil) continue;
-      st.restUntil = this.tickCount + p.icd;
-      this.runProc(eid, player, p, { x: pos?.x ?? 0, y: pos?.y ?? 0 });
-    }
+    const ctx: ProcContext = { x: pos?.x ?? 0, y: pos?.y ?? 0 };
+    const offer = (p: ProcEffect): void => {
+      if (p.trigger.on !== 'lowHp') return;
+      if (prevFrac <= p.trigger.pct || frac > p.trigger.pct) return;
+      this.offerProc(eid, player, p, 'lowHp', ctx);
+    };
+    for (const p of player.gear.procs) offer(p);
+    for (const p of player.callingProcs ?? []) offer(p);
   }
 
-  /** Ground covered on foot feeds every stride working. */
+  /** Ground covered on foot feeds every stride working (one door law). */
   private strideMoment(eid: EntityId, player: PlayerComp, tiles: number): void {
     if (tiles <= 0) return;
-    for (const p of player.gear.procs) {
-      if (p.trigger.on !== 'stride') continue;
-      const st = this.procState(player, p.id);
-      st.tiles += tiles;
-      if (st.tiles < p.trigger.tiles) continue;
-      if (this.tickCount < st.restUntil) continue;
-      st.tiles = 0;
-      st.restUntil = this.tickCount + p.icd;
-      const pos = this.positions.get(eid);
-      this.runProc(eid, player, p, { x: pos?.x ?? 0, y: pos?.y ?? 0 });
-    }
+    let ctx: ProcContext | undefined;
+    const offer = (p: ProcEffect): void => {
+      if (p.trigger.on !== 'stride') return;
+      if (!ctx) {
+        const pos = this.positions.get(eid);
+        ctx = { x: pos?.x ?? 0, y: pos?.y ?? 0 };
+      }
+      this.offerProc(eid, player, p, 'stride', ctx, tiles);
+    };
+    for (const p of player.gear.procs) offer(p);
+    for (const p of player.callingProcs ?? []) offer(p);
   }
 
   /**
    * A woken working does its work and says its name. The name floats
    * once and no number ever does: a proc is an event in the fight, and
    * a second damage number every other second is noise, not feedback.
+   *
+   * The wrapper holds the procDepth guard: everything an action does —
+   * status lays, damage, kills the damage causes — runs under it, so
+   * THE ANSWERED ECHO's door can refuse proc-born landings by
+   * construction.
    */
-  private runProc(
+  private runProc(eid: EntityId, player: PlayerComp, p: ProcEffect, ctx: ProcContext): number {
+    // Slate-safe bookkeeping (the slate law): a bare rig without the
+    // counter still walks the door.
+    this.procDepth = (this.procDepth ?? 0) + 1;
+    try {
+      return this.runProcInner(eid, player, p, ctx);
+    } finally {
+      this.procDepth--;
+    }
+  }
+
+  private runProcInner(
     eid: EntityId,
     player: PlayerComp,
     p: ProcEffect,
@@ -23852,6 +23969,16 @@ export class GameServer {
           eid,
           style,
         );
+        break;
+      }
+      case 'boon': {
+        // THE SELF-BLESSING: the working lays a boon page on its own
+        // wearer through the real player apply door — count stacks,
+        // swing re-mirror, chips, the whole visible layer answer as
+        // they do for any other page. Boon-lane-only is load law
+        // (procMismatch); the door needs no second check.
+        this.applyStatusToPlayer(eid, { status: a.status, power: a.power, durationTicks: a.ticks }, eid);
+        radius = 0.9;
         break;
       }
       case 'bolt': {
@@ -24241,7 +24368,15 @@ export class GameServer {
       }
     }
 
-    if (opts.status) this.applyStatusToNpc(npcEid, opts.status, attackerEid, style, opts.viaPet !== undefined);
+    if (opts.status) {
+      // A pet's landing stays the pet's hand (no echo); the player's
+      // own rings THE ANSWERED ECHO through the lay door.
+      if (opts.viaPet !== undefined) {
+        this.applyStatusToNpc(npcEid, opts.status, attackerEid, style, true);
+      } else {
+        this.layStatusOnNpc(npcEid, opts.status, attackerEid, style);
+      }
+    }
     // Poisoned-edge + Envenom law: every landed BASIC carries what
     // rides the blade and the stance — never the ability rotation.
     // The oil lives ON the weapon instance, so style gating is
@@ -24258,7 +24393,7 @@ export class GameServer {
         const coat = struck?.roll?.coat;
         if (coat && coat.until > Date.now()) {
           const status = itemDef(coat.id)?.coating?.status;
-          if (status) this.applyStatusToNpc(npcEid, status, attackerEid, style);
+          if (status) this.layStatusOnNpc(npcEid, status, attackerEid, style);
         }
         // Strike effects (native + enchant) obey the same law as coats:
         // they live on the instance that landed the blow.
@@ -24285,7 +24420,7 @@ export class GameServer {
           }
           for (const oh of strike.onHit) {
             if (Math.random() < oh.chance) {
-              this.applyStatusToNpc(
+              this.layStatusOnNpc(
                 npcEid,
                 { status: oh.status, power: oh.power, durationTicks: oh.durationTicks },
                 attackerEid,
@@ -24312,14 +24447,14 @@ export class GameServer {
           }
         }
         for (const b of attacker.buffs) {
-          if (b.onHitStatus) this.applyStatusToNpc(npcEid, b.onHitStatus, attackerEid, style);
+          if (b.onHitStatus) this.layStatusOnNpc(npcEid, b.onHitStatus, attackerEid, style);
         }
         // THE HOUSE WORD: a word's affliction rides every landed
         // basic, whichever blade landed — the stance pattern, worn
         // as armor. (Basics floor at 1, so there is no whiff here.)
         for (const oh of attacker.gear.wordOnHit) {
           if (Math.random() < oh.chance) {
-            this.applyStatusToNpc(
+            this.layStatusOnNpc(
               npcEid,
               { status: oh.status, power: oh.power, durationTicks: oh.durationTicks },
               attackerEid,
@@ -29717,6 +29852,41 @@ export class GameServer {
       );
       return;
     }
+    if (config.devCommands && text.startsWith('/calling')) {
+      // /calling <id> [off] — answer (or set down) a Calling IGNORING
+      // the unlock and the budget, session-only: nothing is persisted,
+      // and sanitizeCallings reclaims any over-held answer at the next
+      // login. The rig's hand for walking the package engine — the
+      // proc lane, the meters, the folds — without leveling a hand to
+      // its seat first. The real toggle path (setCalling) keeps the
+      // law; this lever deliberately steps past it, like /proc steps
+      // past the triggers.
+      const [, id, offRaw] = text.split(/\s+/);
+      const def = id ? callingDef(id) : undefined;
+      if (!def) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: `Callings: ${[...CALLINGS.keys()].join(', ')}`,
+        });
+        return;
+      }
+      const on = offRaw !== 'off';
+      if (on) player.callings.add(def.id);
+      else player.callings.delete(def.id);
+      this.recomputeGear(eid, player);
+      player.session?.sendJson({ t: 'callings', answered: [...player.callings] });
+      this.sendCooldowns(player);
+      this.sendCharges(player);
+      player.session?.sendJson({
+        t: 'chat',
+        channel: 'system',
+        text: on
+          ? `${def.name} answers (dev, unpersisted).`
+          : `${def.name} set down (dev).`,
+      });
+      return;
+    }
     if (config.devCommands && text.startsWith('/status')) {
       // /status <id> [power] [durTicks] — lay a status on the nearest
       // foe (or on yourself when nothing stands near).
@@ -29743,7 +29913,9 @@ export class GameServer {
       const durationTicks = Math.max(1, Number(durRaw) || 200);
       const target = this.npcsWithin(pos.plane, pos.x, pos.y, 8)[0];
       if (target !== undefined) {
-        this.applyStatusToNpc(target, { status: id, power, durationTicks }, eid, 'arx');
+        // The lay door on purpose: the rig can prove THE ANSWERED
+        // ECHO end to end with /calling + /status alone.
+        this.layStatusOnNpc(target, { status: id, power, durationTicks }, eid, 'arx');
       } else {
         this.applyStatusToPlayer(eid, { status: id, power, durationTicks }, eid);
       }

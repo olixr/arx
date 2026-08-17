@@ -120,10 +120,12 @@ test('THE FROZEN FIFTY-THREE: every shipped Calling is a one-entry package, unra
 });
 
 test('the reserved lanes stay unread: no shipped package authors proc, when, or art', () => {
-  // TYPED-UNREAD (the status-book idiom): the shapes exist so the
-  // platform is authorable end to end, and the doors open in Phase 2
-  // (proc), Phase 3 (when), and the content epoch (art). Until a
-  // door opens, an author in that lane is a bug this pin catches.
+  // The proc door is OPEN (Phase 2: the body door offers
+  // callingProcs, the echo and the self-blessing are licensed
+  // grammar) and `when` opens in Phase 3 — but AUTHORING stays with
+  // the content epoch by the green-light's own word (PURE PLATFORM).
+  // Until that epoch opens the register, an author in any of these
+  // lanes is a bug this pin catches.
   for (const [id, def] of CALLINGS) {
     for (const fx of def.effects) {
       assert.ok(
@@ -193,4 +195,30 @@ test('the honed clocks answer for Callings: entitlement by surplus, package by s
   assert.equal(honedCalling(ranked, 3), stepIII.effects);
   assert.equal(honedCalling(ranked, 4), stepIV.effects);
   assert.equal(honedCalling(ranked, 9), stepIV.effects, 'past the steps, the deepest holds');
+});
+
+test('THE REGISTER, the calling column: every page a calling touches is licensed here', () => {
+  // The status book's law extends to the character axis: a calling
+  // that LAYS a page (proc status action, boon self-action) or READS
+  // one (stateApplied, hitState) is a conscious ledger decision, made
+  // by adding the pairing to this list — never by just authoring the
+  // def. Empty on purpose this epoch (PURE PLATFORM, the green-light
+  // record); the content epoch's first synergy pair opens the ledger.
+  const LICENSED: ReadonlyArray<{ calling: string; status: string; via: string }> = [];
+  const licensed = (calling: string, status: string, via: string): boolean =>
+    LICENSED.some((r) => r.calling === calling && r.status === status && r.via === via);
+  for (const [id, def] of CALLINGS) {
+    for (const fx of def.effects) {
+      if (fx.kind !== 'proc') continue;
+      const rows: Array<[string, string]> = [];
+      const t = fx.proc.trigger;
+      const a = fx.proc.action;
+      if (t.on === 'stateApplied' || t.on === 'hitState') rows.push([t.status, `read:${t.on}`]);
+      if (a.do === 'status') rows.push([a.status, 'lay:status']);
+      if (a.do === 'boon') rows.push([a.status, 'lay:boon']);
+      for (const [status, via] of rows) {
+        assert.ok(licensed(id, status, via), `${id} touches ${status} (${via}) without a license`);
+      }
+    }
+  }
 });
