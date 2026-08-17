@@ -196,7 +196,7 @@ test('THE HUNT UNCHAINED: the LKP stays where the quarry vanished, however far t
   call(proto.npcStartSearch, s, 7, npc);
   assert.equal(npc.alertX, 80, 'the hunt anchors at the hedgerow, not at home');
   // ...and the ring of second looks hugs that ground the same way.
-  const wps = call(proto.mintHuntRing, s, npc, 0, 3) as Array<{ x: number; y: number }>;
+  const wps = call(proto.mintHuntRing, s, npc, 0, 3, 0) as Array<{ x: number; y: number }>;
   for (const wp of wps) {
     const d = Math.hypot(wp.x - 80, wp.y - 0);
     assert.ok(d <= 5, `ring point ${d} tiles from the LKP — it must hug it`);
@@ -307,10 +307,104 @@ test('THE FORWARD BIAS: the first second look leans down the escape line', () =>
     npc.alertX = 0;
     npc.alertY = 0;
     npc.huntBiasDir = 0; // the quarry fled due east
-    const wps = call(protoPursuit.mintHuntRing, s, npc, 0, 3) as Array<{ x: number; y: number }>;
+    const wps = call(protoPursuit.mintHuntRing, s, npc, 0, 3, 0) as Array<{ x: number; y: number }>;
     assert.ok(wps.length > 0);
     const first = wps[0]!;
     const ang = Math.abs(Math.atan2(first.y, first.x));
     assert.ok(ang <= 0.75, `first look at ${ang} rad — must lean down the escape bearing`);
+  }
+});
+
+// ─── THE SEARCH THAT WALKS (third pass) ────────────────────────────
+
+const protoWalk = GameServer.prototype as unknown as {
+  npcNextHuntLeg: AnyFn;
+  mintHuntRing: AnyFn;
+};
+
+/** A slate that can walk hunt legs: positions.must + the ring minter. */
+function walkSlate(): Record<string, unknown> {
+  const s = slate();
+  s.mintHuntRing = protoWalk.mintHuntRing;
+  const positions = positionsStore();
+  positions.set(7, { x: 0, y: 0, dir: 0, plane: 0 });
+  s.positions = positions;
+  return s;
+}
+
+test('THE GYRE: a ring walked dry mints a WIDER one, and the spent legs end in the LAST WATCH', () => {
+  const s = walkSlate();
+  const npc = fakeNpc({ temperament: { searchLegs: 6, variance: 0 }, quirk: 0 });
+  npc.state = 'search';
+  npc.huntUntilTick = 2000;
+  npc.huntLegsLeft = 6;
+  // First arrival at the LKP mints the tight gyre.
+  call(protoWalk.npcNextHuntLeg, s, 7, npc);
+  assert.equal(npc.huntGyre, 0);
+  const ring0 = npc.huntWps as Array<{ x: number; y: number }>;
+  assert.equal(ring0.length, 3);
+  for (const wp of ring0) {
+    assert.ok(Math.hypot(wp.x, wp.y) <= 4.6, 'gyre 0 hugs the LKP');
+  }
+  // Walk the ring dry: each finished look spends a leg...
+  call(protoWalk.npcNextHuntLeg, s, 7, npc);
+  call(protoWalk.npcNextHuntLeg, s, 7, npc);
+  call(protoWalk.npcNextHuntLeg, s, 7, npc);
+  // ...and the dry ring widens the sweep instead of ending it.
+  assert.equal(npc.huntGyre, 1, 'the sweep combs outward');
+  assert.equal(npc.huntLegsLeft, 3);
+  for (const wp of npc.huntWps as Array<{ x: number; y: number }>) {
+    const d = Math.hypot(wp.x, wp.y);
+    assert.ok(d >= 4.4 && d <= 7.6, `gyre 1 look at ${d} — must comb farther ground`);
+  }
+  // The last legs walk out, and the LAST WATCH holds to the clock —
+  // the clock is the master, never clamped down.
+  call(protoWalk.npcNextHuntLeg, s, 7, npc);
+  call(protoWalk.npcNextHuntLeg, s, 7, npc);
+  call(protoWalk.npcNextHuntLeg, s, 7, npc);
+  assert.equal(npc.huntLegsLeft, 0);
+  assert.equal(npc.huntWaitUntilTick, 2000, 'the last watch fills what remains');
+  assert.equal(npc.huntUntilTick, 2000, 'the authored window is honest lived time');
+});
+
+test('the SENTINEL (searchLegs 0): no wandering — the whole clock is a standing watch', () => {
+  const s = walkSlate();
+  const npc = fakeNpc({ temperament: { searchLegs: 0, variance: 0 }, quirk: 0 });
+  npc.state = 'search';
+  npc.huntUntilTick = 3000;
+  npc.huntLegsLeft = 0;
+  call(protoWalk.npcNextHuntLeg, s, 7, npc);
+  assert.equal((npc.huntWps as unknown[]).length, 0, 'no looks minted');
+  assert.equal(npc.huntWaitUntilTick, 3000, 'stand and scan until the clock alone shrugs');
+});
+
+test('THE PEEK: a cunning species spends its SECOND look farther down the escape line', () => {
+  const s = slate();
+  for (let i = 0; i < 12; i++) {
+    const npc = fakeNpc({ temperament: { anticipateTiles: 6, variance: 0 }, quirk: 0 });
+    npc.huntBiasDir = 0; // the quarry fled due east
+    const wps = call(protoWalk.mintHuntRing, s, npc, 0, 3, 0) as Array<{ x: number; y: number }>;
+    assert.ok(wps.length >= 2);
+    const second = wps[1]!;
+    const ang = Math.abs(Math.atan2(second.y, second.x));
+    assert.ok(ang <= 1.0, `second look at ${ang} rad — the corner-cutter chases your LINE`);
+    const d = Math.hypot(second.x, second.y);
+    assert.ok(d >= 4.4, `second peek at ${d} tiles — must reach past the first band`);
+  }
+});
+
+test('the peacetime stroll never mints a look past its leash circle', () => {
+  const s = slate();
+  for (let i = 0; i < 8; i++) {
+    const npc = fakeNpc({ leashRange: 10 });
+    npc.state = 'investigate';
+    // Wondering at home, widest gyre: the band alone would overshoot.
+    const wps = call(protoWalk.mintHuntRing, s, npc, 0, 3, 2) as Array<{ x: number; y: number }>;
+    for (const wp of wps) {
+      assert.ok(
+        Math.hypot(wp.x, wp.y) <= 9.01,
+        'an investigate look stays inside leash − 1 — wandering past it would end the errand',
+      );
+    }
   }
 });

@@ -355,3 +355,27 @@ test('temperament: the committed-pursuit dials — bold runs longer, cunning is 
   assert.ok(bold.pursuitSec > base.pursuitSec, 'the bold run the corner longer');
   assert.equal(bold.anticipateTiles, base.anticipateTiles, 'anticipation is species, not mood');
 });
+
+test('temperament: searchLegs — the hunt walks, and each species walks its own shape', async () => {
+  const { npcTemperament, quirkTemperament, TEMPERAMENT_DEFAULTS, TEMPERAMENT_BOUNDS } =
+    await import('./npcs.js');
+  // The default hunt walks four looks; the rails admit the sentinel (0).
+  assert.equal(TEMPERAMENT_DEFAULTS.searchLegs, 4);
+  assert.deepEqual(TEMPERAMENT_BOUNDS.searchLegs, [0, 12]);
+  // The wolves comb; the skeleton takes one look and stands its watch.
+  const wolf = npcTemperament(npcDef('wolf')!);
+  const dire = npcTemperament(npcDef('dire_wolf')!);
+  const bones = npcTemperament(npcDef('skeleton')!);
+  assert.ok(wolf.searchLegs >= 6, 'the wolf combs the ground');
+  assert.ok(dire.searchLegs > wolf.searchLegs, 'the dire wolf combs hardest');
+  assert.equal(bones.searchLegs, 1, 'bones do not wander');
+  // The quirk walks the bold harder — and always lands on a whole leg.
+  const base = npcTemperament(npcDef('goblin')!); // variance 0.4
+  const bold = quirkTemperament(base, 1);
+  const timid = quirkTemperament(base, -1);
+  assert.ok(bold.searchLegs > timid.searchLegs, 'bold combs, timid settles');
+  for (const q of [-1, -0.3, 0.4, 1]) {
+    const legs = quirkTemperament(base, q).searchLegs;
+    assert.equal(legs, Math.round(legs), 'legs are whole looks, never a fraction');
+  }
+});

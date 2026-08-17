@@ -1090,6 +1090,23 @@ interface NpcComp {
    * before they fan out. Cleared when the hunt ends or a fight opens.
    */
   huntBiasDir?: number;
+  /**
+   * THE GYRE (the search that walks): which widening ring of second
+   * looks this hunt is combing (0 = tight around the LKP), and how
+   * many walked looks the heart has left before the LAST WATCH — the
+   * stand-and-scan that fills whatever clock remains. Optional on
+   * purpose: absent reads as 0 and neither NpcComp literal grows.
+   */
+  huntGyre?: number;
+  huntLegsLeft?: number;
+  /**
+   * THE GLANCE: the discrete look a dwelling searcher is holding —
+   * a bearing and its hold-until tick. Saccade, not turntable: the
+   * head turns briskly TO a spot, holds it, then picks another. The
+   * first glance of a hunt leans down the escape bearing.
+   */
+  gazeDir?: number;
+  gazeUntilTick?: number;
   /** Memoized resolved heart (npcTemper) — recut when the def swaps. */
   temper?: ResolvedTemperament;
   temperFor?: NpcDef;
@@ -25144,6 +25161,13 @@ export class GameServer {
   private static readonly CHASE_STALL_TICKS = 90;
   /** Homeward ticks without progress before the leash snaps the rest (5s). */
   private static readonly RETURN_STALL_TICKS = 100;
+  /**
+   * THE QUICK FOOT: hunt-leg ticks without progress before the look
+   * is abandoned for the next (2s). A searcher shoving a wall for the
+   * homeward watchdog's full 5 s read as FROZEN — a sealed second
+   * look is worth two seconds of anyone's hunt, no more.
+   */
+  private static readonly HUNT_STALL_TICKS = 40;
   /** How long an abandoned chase sulks before scanning for aggro again (12s). */
   private static readonly NO_AGGRO_TICKS = 240;
   /** Ticks a cached walk-line verdict stays trusted (0.2s). */
@@ -26555,6 +26579,14 @@ export class GameServer {
     npc.huntIdx = 0;
     npc.huntWaitUntilTick = 0;
     npc.standTicks = 0;
+    // THE SEARCH THAT WALKS: the heart's leg budget — how many second
+    // looks this body will actually WALK (widening gyres) before the
+    // LAST WATCH fills whatever clock remains. 0 = the sentinel.
+    npc.huntGyre = 0;
+    npc.huntLegsLeft = Math.max(0, Math.round(this.npcTemper(npc).searchLegs));
+    // A fresh hunt gets a fresh first glance (down the escape line).
+    npc.gazeDir = undefined;
+    npc.gazeUntilTick = 0;
     // A quarry that VANISHED outright (stealth melt, a burst decoy, a
     // plane crossed) never ran the committed leg — the stride is
     // still live, so the projection fires here instead. After a blind
@@ -26583,6 +26615,8 @@ export class GameServer {
     npc.windupTicks = 0;
     npc.huntWps = null;
     npc.huntBiasDir = undefined;
+    npc.gazeDir = undefined;
+    npc.gazeUntilTick = undefined;
     // Below the suspicious threshold, or arrival would re-trip it.
     npc.alert = Math.min(npc.alert, ALERT_SUS - 5);
     npc.navBest = Infinity;
@@ -26594,45 +26628,110 @@ export class GameServer {
     npc.huntWaitUntilTick = this.tickCount + 30 + ((eid * 7) % 20);
     npc.navBest = Infinity;
     npc.navStuck = 0;
+    const plane = this.positions.must(eid).plane;
     if (npc.huntWps === null) {
-      // First arrival — at the LKP itself — mints the ring of second
-      // looks. A search (a KNOWN quarry) checks more ground.
-      npc.huntWps = this.mintHuntRing(npc, this.positions.must(eid).plane, npc.state === 'search' ? 3 : 2);
+      // First arrival — at the LKP itself — mints the first gyre.
+      // The LKP walk is free; only the ring's looks spend legs.
+      npc.huntGyre = 0;
+      npc.huntWps = this.mintHuntRing(npc, plane, Math.min(3, npc.huntLegsLeft ?? 0), 0);
       npc.huntIdx = 0;
     } else {
+      // A walked (or sealed-off) look is a spent leg either way —
+      // the heart's budget prices GROUND CHECKED, not luck.
       npc.huntIdx++;
+      npc.huntLegsLeft = Math.max(0, (npc.huntLegsLeft ?? 0) - 1);
     }
-    if (npc.huntWps.length === 0 || npc.huntIdx >= npc.huntWps.length) {
-      // Nothing left to check: one last look-around, then the shrug.
-      npc.huntUntilTick = Math.min(npc.huntUntilTick, npc.huntWaitUntilTick);
+    // THE GYRE: a ring walked dry with legs still in the heart mints
+    // a WIDER one — the sweep combs outward like a real searcher,
+    // near ground first, then the fan the quarry could have reached.
+    // A ring minted empty (sealed ground) retries wider too, bounded.
+    let widened = 0;
+    while (npc.huntIdx >= npc.huntWps.length && (npc.huntLegsLeft ?? 0) > 0 && widened < 2) {
+      npc.huntGyre = (npc.huntGyre ?? 0) + 1;
+      npc.huntWps = this.mintHuntRing(npc, plane, Math.min(3, npc.huntLegsLeft ?? 0), npc.huntGyre);
+      npc.huntIdx = 0;
+      widened++;
+    }
+    if (npc.huntIdx >= npc.huntWps.length) {
+      // THE LAST WATCH: the walking is done — stand where the hunt
+      // ended and SCAN (the glance law) until the clock shrugs it
+      // home. The clock is the master, never clamped down: an
+      // authored 35 s searchSec is 35 honest seconds of presence,
+      // and a searchLegs-0 sentinel spends all of it standing watch.
+      npc.huntWaitUntilTick = npc.huntUntilTick;
     }
   }
 
   /**
-   * The ring of second looks: a few reachable spots around the LKP,
-   * inside the leash circle, none inside a solid. Random by design —
-   * a search should read as guessing, not sweeping a grid.
+   * One gyre of second looks: a few reachable spots ringing the LKP,
+   * wider each gyre, none inside a solid. Random by design — a search
+   * should read as guessing, not sweeping a grid — but the guesses
+   * are SEMANTIC: the first looks lean down the escape bearing, and
+   * the fan prefers spots beside cover (where a hider would be).
    */
-  private mintHuntRing(npc: NpcComp, plane: PlaneId, count: number): Array<{ x: number; y: number }> {
+  private mintHuntRing(
+    npc: NpcComp,
+    plane: PlaneId,
+    count: number,
+    gyre: number,
+  ): Array<{ x: number; y: number }> {
     const wps: Array<{ x: number; y: number }> = [];
-    for (let attempt = 0; attempt < count * 5 && wps.length < count; attempt++) {
-      // THE FORWARD BIAS: the FIRST second look leans down the escape
-      // bearing the spent stride pointed (±~35°) — a searcher checks
-      // AHEAD before it fans out, which is exactly what a real
-      // pursuer does at a cold corner. The rest of the ring stays
-      // random by design: a search should read as guessing.
-      const a =
-        wps.length === 0 && npc.huntBiasDir !== undefined
-          ? npc.huntBiasDir + (Math.random() - 0.5) * 1.2
+    if (count <= 0) return wps;
+    const world = this.worldOf(plane);
+    // A look BESIDE cover is worth more than open ground — the crate,
+    // the hedge, the tree bole are where a hider would actually be.
+    const nearCover = (x: number, y: number): boolean => {
+      for (let i = 0; i < 4; i++) {
+        const a = (i * Math.PI) / 2;
+        if (circleHitsSolid(world, x + Math.cos(a) * 1.15, y + Math.sin(a) * 1.15, 0.3)) {
+          return true;
+        }
+      }
+      return false;
+    };
+    const band: readonly [number, number] =
+      gyre <= 0 ? [2, 4.5] : gyre === 1 ? [4.5, 7.5] : [7, 10.5];
+    // THE PEEK: the first look of the first gyre leans down the
+    // escape bearing (±~35°) — a searcher checks AHEAD before it
+    // fans out — and a CUNNING species (the corner-cutters) spends
+    // its SECOND look further down the same line at the next band's
+    // reach: they chase your LINE, not your point.
+    const peeks =
+      gyre > 0 || npc.huntBiasDir === undefined
+        ? 0
+        : this.npcTemper(npc).anticipateTiles >= 6
+          ? 2
+          : 1;
+    for (let slot = 0; wps.length < count && slot < count + 2; slot++) {
+      let pick: { x: number; y: number } | null = null;
+      const peek = wps.length < peeks;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const a = peek
+          ? (npc.huntBiasDir as number) + (Math.random() - 0.5) * (wps.length === 0 ? 1.2 : 1.6)
           : Math.random() * Math.PI * 2;
-      const r = 2.5 + Math.random() * 2;
-      // The ring belongs to the LKP wherever the hunt stands (THE
-      // HUNT UNCHAINED) — reachability and solids still gate every
-      // look, and the clock alone ends the whole errand.
-      const x = npc.alertX + Math.cos(a) * r;
-      const y = npc.alertY + Math.sin(a) * r;
-      if (circleHitsSolid(this.worldOf(plane), x, y, npc.def.radius)) continue;
-      wps.push({ x, y });
+        const [lo, hi] = peek && wps.length === 1 ? ([4.5, 7.5] as const) : band;
+        const r = lo + Math.random() * (hi - lo);
+        // The ring belongs to the LKP wherever the hunt stands (THE
+        // HUNT UNCHAINED) — reachability and solids still gate every
+        // look, and the clock alone ends the whole errand.
+        const x = npc.alertX + Math.cos(a) * r;
+        const y = npc.alertY + Math.sin(a) * r;
+        if (circleHitsSolid(world, x, y, npc.def.radius)) continue;
+        // The peacetime stroll (investigate) never mints a look past
+        // its leash circle — wandering past it would end the errand.
+        if (
+          npc.state === 'investigate' &&
+          Math.hypot(x - npc.originX, y - npc.originY) > npc.def.leashRange - 1
+        ) {
+          continue;
+        }
+        pick ??= { x, y };
+        if (peek || nearCover(x, y)) {
+          pick = { x, y };
+          break;
+        }
+      }
+      if (pick) wps.push(pick);
     }
     return wps;
   }
@@ -27678,6 +27777,12 @@ export class GameServer {
           npc.huntIdx = 0;
           npc.huntWaitUntilTick = 0;
           npc.standTicks = 0;
+          // The peacetime stroll is half the hunt: fewer looks, same
+          // walking law — a curious body still MOVES while it wonders.
+          npc.huntGyre = 0;
+          npc.huntLegsLeft = Math.max(0, Math.ceil(this.npcTemper(npc).searchLegs / 2));
+          npc.gazeDir = undefined;
+          npc.gazeUntilTick = 0;
           npc.navBest = Infinity;
           npc.navStuck = 0;
           npc.steer.side = 0;
@@ -27700,16 +27805,35 @@ export class GameServer {
         ) {
           this.npcEndHunt(npc);
         } else if (this.tickCount < npc.huntWaitUntilTick) {
-          // A leg's dwell: stand and sweep the gaze — the slow turn
-          // reads as searching AND genuinely swings the cone.
-          pos.dir += 0.05;
+          // THE GLANCE: a dwelling searcher LOOKS, it doesn't rotate.
+          // Pick a bearing, turn briskly to it, hold the look, pick
+          // another — the hunt's first glance leans down the escape
+          // bearing, later ones throw at least a quarter-turn wide so
+          // the sweep reads as searching AND the cone genuinely
+          // covers new ground (the old `dir += 0.05` turntable was
+          // the "frozen, slowly spinning" read in one line).
+          if (npc.gazeUntilTick === undefined || this.tickCount >= npc.gazeUntilTick) {
+            npc.gazeDir =
+              npc.gazeDir === undefined && npc.huntBiasDir !== undefined
+                ? npc.huntBiasDir + (Math.random() - 0.5) * 0.5
+                : pos.dir +
+                  (Math.PI / 2 + Math.random() * Math.PI) * (Math.random() < 0.5 ? 1 : -1);
+            npc.gazeUntilTick = this.tickCount + 14 + ((eid + this.tickCount) % 12);
+          }
+          let turn = (npc.gazeDir ?? pos.dir) - pos.dir;
+          while (turn > Math.PI) turn -= Math.PI * 2;
+          while (turn < -Math.PI) turn += Math.PI * 2;
+          pos.dir += Math.max(-0.22, Math.min(0.22, turn));
         } else {
           const goal =
             npc.huntWps === null
               ? { x: npc.alertX, y: npc.alertY }
               : npc.huntWps[npc.huntIdx];
           if (!goal) {
-            this.npcEndHunt(npc);
+            // No look to walk (a ring minted short mid-stride): hold
+            // THE LAST WATCH here — the dwell branch scans until the
+            // clock alone ends the hunt. Never an early shrug.
+            npc.huntWaitUntilTick = npc.huntUntilTick;
           } else {
             const gd = Math.hypot(goal.x - pos.x, goal.y - pos.y);
             const interestInView =
@@ -27759,7 +27883,9 @@ export class GameServer {
               if (prog.dist < npc.navBest - 0.15) {
                 npc.navBest = prog.dist;
                 npc.navStuck = 0;
-              } else if (++npc.navStuck >= GameServer.RETURN_STALL_TICKS) {
+              } else if (++npc.navStuck >= GameServer.HUNT_STALL_TICKS) {
+                // THE QUICK FOOT: a sealed look costs two seconds,
+                // not the homeward watchdog's five — on to the next.
                 this.npcNextHuntLeg(eid, npc);
               }
             }

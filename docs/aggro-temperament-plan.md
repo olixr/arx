@@ -218,12 +218,62 @@ leads and spends, lead-0 literal, sealed-ground fallback, the verdict's
 never-before-the-corner law, forward-bias lean; `npcAnticipatePursuit` joined
 the slate binds). Gates: content 553 · server 530 · client 617 · tsc clean.
 
+## Third pass — THE SEARCH THAT WALKS (2026-08-16, same day)
+
+The user's live read: a searcher "gets stuck and frozen — stands and slowly
+turns in circles." The audit confirmed four compounding causes: the ring was
+3 looks and the ring's exhaustion CLAMPED the hunt clock down (a 20–30 s
+search actually died in ~12, mostly dwell); the dwell was a turntable
+(`pos.dir += 0.05`, the frozen-spin read in one line); a ring minted beside
+walls came up empty (5 attempts, one fixed radius band) and left the body
+standing at the LKP; and a sealed leg fed the HOMEWARD watchdog's full 5 s of
+wall-shoving before moving on. Four cohesive units replaced them:
+
+- **THE GYRE**: the clock is the MASTER, never clamped. A ring walked dry
+  with legs still in the heart mints a WIDER one (bands 2–4.5 → 4.5–7.5 →
+  7–10.5 tiles) — the sweep combs outward like a real searcher. The walking
+  is priced by the heart's new `searchLegs` dial [0, 12] default 4 (quirk ×
+  bold, rounded — bold bodies comb harder); legs spent → THE LAST WATCH:
+  stand where the hunt ended and scan until the clock alone shrugs it home.
+  `searchLegs` 0 = the SENTINEL: walks only to the LKP and stands its whole
+  watch. Investigate (peacetime) walks half the legs, rounded up, and its
+  ring never mints a look past leash − 1 (wandering past would end the
+  errand). Empty mints retry wider, bounded at two widenings per beat.
+- **THE PEEK**: the first look of the first gyre leans down the escape
+  bearing (the forward-bias law, kept); a CUNNING species (anticipateTiles
+  ≥ 6 — the corner-cutters) spends its SECOND look farther down the same
+  line at the next band's reach: they chase your LINE, not your point. Fan
+  looks prefer spots BESIDE cover (4 cheap solid probes at 1.15 tiles): the
+  crate, the hedge, the tree bole are where a hider would be.
+- **THE GLANCE**: the dwell turntable is dead. A dwelling searcher LOOKS —
+  picks a bearing, turns briskly (≤ 0.22 rad/tick, shortest arc), holds it
+  0.7–1.3 s, picks another at least a quarter-turn away. The hunt's first
+  glance leans down the escape bearing. Saccades read as searching AND
+  genuinely swing the perception cone over new ground. New NpcComp fields
+  `gazeDir`/`gazeUntilTick` (optional — the literal-site law).
+- **THE QUICK FOOT**: hunt legs stall out at `HUNT_STALL_TICKS` 40 (2 s),
+  not the homeward 100 — a sealed look is worth two seconds of anyone's
+  hunt. `npcNextHuntLeg` prices GROUND CHECKED: a sealed leg spends too.
+
+Authored legs: wolf/worg 6, dire wolf 7, hobgoblin 6 (drilled sweep),
+brigand 5, goblin default 4 (variance 0.4 → 2–6 lived), fox 3 (brief,
+sharp), bear 3, boar 2 (two heavy looks, forgets you), skeleton 1 — one
+look, then the long sentinel stand through its whole 35 s clock. The dumb
+stand still; the cunning comb the gyres; nobody spins.
+
+Tests: content +1 (the dial, species shapes, whole-leg quirk law), server +4
+(gyre widening + last-watch clock law, the sentinel, the cunning second
+peek, the investigate leash clamp; existing mint calls carry the gyre arg).
+CMS: 'search legs' slider. Gates: shared 226 · content 570 · server 544 ·
+client 618 · tsc clean.
+
 ## Debts (deliberate)
 
 - The LIVE WALK is owed: the lure-to-town proof (wolf dragged to the Amberford
-  watch through THE WILD TAKES SIDES) AND the corner-chase read (blind run →
-  overshoot → fan-out) belong on a rig lane with the walk harness — unit
-  clocks are proven, the felt experience is not yet.
+  watch through THE WILD TAKES SIDES), the corner-chase read (blind run →
+  overshoot → fan-out), AND the walking-search read (gyres combing outward,
+  glances not spins, the skeleton's sentinel stand) belong on a rig lane with
+  the walk harness — unit clocks are proven, the felt experience is not yet.
 - No hearing/noise stimulus layer (footfall radius behind full walls) — the
   peripheral band still stands in for it.
 - Pet-side temperament (companion grit/keen) untouched — pets ride tickPet.
