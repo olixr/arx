@@ -4992,10 +4992,15 @@ export function deckFillAt(ground: GroundSampler, tx: number, ty: number): DeckF
     bridgeApronAt(ground, x, y, deckWalkIsVertical(ground, x, y)) !== 'none';
   if (ramps(tx, ty + dn) || ramps(tx + de, ty)) return null;
   const a = legs[0] === 'N' ? nT : sT;
-  const b = legs[1] === 'E' ? eT : wT;
   return {
     legs,
-    family: a === Tile.Bridge || b === Tile.Bridge ? 'bridge' : 'dock',
+    // THE FILL WEARS THE FIELD IT CONTINUES: board rhythm is read
+    // from the N/S leg (drawDeckFill's `ny`), so the family follows
+    // the SAME leg. The old any-bridge rule dressed a dock platform's
+    // corner in bridge grey with a kerb stringer wherever the other
+    // leg happened to be a bridge — twin wedges of one notch in two
+    // different lumbers (the mess at the bridge-dock junction).
+    family: a === Tile.Bridge ? 'bridge' : 'dock',
     bank: !water,
   };
 }
@@ -5180,8 +5185,14 @@ export function deckArmVertical(ground: GroundSampler, tx: number, ty: number): 
   for (let i = 1; i <= CAP && isDeckGround(ground(tx, ty - i)); i++) ry++;
   for (let i = 1; i <= CAP && isDeckGround(ground(tx, ty + i)); i++) ry++;
   if (ry !== rx) return ry > rx;
-  // A square bay ties: side with the neighbors it actually has.
-  return isDeckGround(ground(tx, ty - 1)) || isDeckGround(ground(tx, ty + 1));
+  // A TIE IS A BAY, NOT AN ARM (the dock-junction seam): only a run
+  // that is strictly longer N-S earns the brick bond. The old
+  // tie-breaker sided with any N/S neighbor, so a chunky platform's
+  // interior columns flipped vertical one by one — header beams and
+  // a rhythm change cutting across ONE continuous floor, the exact
+  // mid-deck seam the user photographed. A square bay lays the long
+  // planks like the field around it.
+  return false;
 }
 
 /** Which way a bridge tile ramps: the LAND side of an apron, or

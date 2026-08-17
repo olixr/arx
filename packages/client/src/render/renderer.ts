@@ -7133,22 +7133,10 @@ export class Renderer {
         // across its hypotenuse — the diagonal rail is a live item
         // like every straight one, so bodies sort against it.
         const f = this.deckFill(game, tx, ty);
-        if (f !== null && f.family === 'bridge') {
-          // The diagonal only carries the parapet where a parapet
-          // actually ARRIVES at one of its corners — a lone slanted
-          // handrail on a dock's chamfered prow read as scaffolding
-          // debris (railArrivesAtCorner).
-          const dm = f.legs === 'NE' || f.legs === 'SW';
-          const arrives = dm
-            ? this.railArrivesAtCorner(game, tx, ty) ||
-              this.railArrivesAtCorner(game, tx + 1, ty + 1)
-            : this.railArrivesAtCorner(game, tx + 1, ty) ||
-              this.railArrivesAtCorner(game, tx, ty + 1);
-          if (arrives) {
-            const n0 = items.length;
-            this.deckFillRailItem(tx, ty, f.legs, game, items);
-            this.stampStrat(items, n0, this.stratAt(tx, ty));
-          }
+        if (f !== null && this.fillRailBridges(game, tx, ty, f)) {
+          const n0 = items.length;
+          this.deckFillRailItem(tx, ty, f.legs, game, items);
+          this.stampStrat(items, n0, this.stratAt(tx, ty));
         }
         return;
       }
@@ -12554,6 +12542,26 @@ export class Renderer {
    * diagonal only carries the parapet where a parapet actually
    * arrives.
    */
+  /**
+   * Does a 45° fill's hypotenuse actually CARRY the parapet? Only a
+   * bridge-family water fill whose straight rails arrive at BOTH hyp
+   * corners — the diagonal is a connector, never a terminus. The old
+   * either-corner gate let one arriving rail sling a slanted board
+   * across a dock junction's notch that dead-ended mid-structure at
+   * the far corner — a floating handrail with an orphan post (the
+   * user's dock screenshot). One arriving rail now plants its end
+   * post at the corner instead (cornerHeld shares this verdict).
+   */
+  private fillRailBridges(game: ClientGame, fx: number, fy: number, f: { legs: string; family: string; bank: boolean }): boolean {
+    if (f.bank || f.family !== 'bridge') return false;
+    const dm = f.legs === 'NE' || f.legs === 'SW';
+    return dm
+      ? this.railArrivesAtCorner(game, fx, fy) &&
+          this.railArrivesAtCorner(game, fx + 1, fy + 1)
+      : this.railArrivesAtCorner(game, fx + 1, fy) &&
+          this.railArrivesAtCorner(game, fx, fy + 1);
+  }
+
   private railArrivesAtCorner(game: ClientGame, cx: number, cy: number): boolean {
     for (const [x, y, dx, dy] of [
       [cx - 1, cy, 0, -1],
@@ -12589,7 +12597,10 @@ export class Renderer {
     // a fill's hyp endpoints are its two off-corner tile corners.
     const fillHoldsCorner = (fx: number, fy: number, cx2: number, cy2: number): boolean => {
       const f = fill(fx, fy);
-      if (f === null || f.bank) return false;
+      // Only a fill whose diagonal will actually DRAW its rail may
+      // hold a corner — otherwise the straight run must plant its
+      // end post there instead of stopping flush against nothing.
+      if (f === null || !this.fillRailBridges(game, fx, fy, f)) return false;
       const dm = f.legs === 'NE' || f.legs === 'SW';
       return dm
         ? (cx2 === fx && cy2 === fy) || (cx2 === fx + 1 && cy2 === fy + 1)
