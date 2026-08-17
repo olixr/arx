@@ -714,6 +714,8 @@ const defs: NpcDef[] = [
     pack: 'goblin',
     standoff: 5.5,
     kit: [
+      // THE AUTHORED TIDE: the tyrant's page — each bellow stacks quicken.
+      { ability: 'tyrants_frenzy', cooldownTicks: 320, windupTicks: 10, hpBelow: 0.6, weight: 2 },
       // The chase beat: the ring stakes where you are GOING, and the
       // bolt follows you out of it — leaving is right, and it costs.
       { ability: 'goblin_firebolt', cooldownTicks: 100, windupTicks: 14, minRange: 1.5, maxRange: 8, weight: 2 },
@@ -990,6 +992,8 @@ const defs: NpcDef[] = [
     resist: ['bleed', 'chill'],
     weak: ['burn'],
     kit: [
+      // THE AUTHORED TIDE: the king's page — the pall that dulls your arm.
+      { ability: 'gravecold_pall', cooldownTicks: 400, windupTicks: 14, maxRange: 3.2 },
       // The two-beat: the sweep commits, and the slam lands where you
       // fled to — bank the dodge for the SECOND ring, not the first.
       { ability: 'reaping_sweep', cooldownTicks: 150, windupTicks: 10, maxRange: 2.2, weight: 2, then: 'ground_slam' },
@@ -1058,6 +1062,8 @@ const defs: NpcDef[] = [
     weak: ['burn'],
     standoff: 5.5,
     kit: [
+      // THE AUTHORED TIDE: the lord's page — break the knitting or fight him twice.
+      { ability: 'barrow_knit', cooldownTicks: 500, windupTicks: 18, hpBelow: 0.4 },
       // The stake-and-punish two-beat: the mist takes the ground you
       // hold, and the volley punishes the leaving of it.
       { ability: 'grave_mist', cooldownTicks: 230, windupTicks: 16, maxRange: 7, aim: 'lead', weight: 2, then: 'bone_volley' },
@@ -1280,6 +1286,8 @@ const defs: NpcDef[] = [
     standoff: 4,
     ranged: { range: 7, projectileSpeed: 10 },
     kit: [
+      // THE AUTHORED TIDE: the tidelord's page — the root debut (page-clamped, snapped by damage).
+      { ability: 'tide_grasp', cooldownTicks: 380, windupTicks: 16, maxRange: 6, aim: 'lead' },
       // The family word first: the undertow staked on your stride —
       // a tidelord still speaks tidecaller.
       { ability: 'riptide_ring', cooldownTicks: 260, windupTicks: 14, maxRange: 7, aim: 'lead' },
@@ -1352,6 +1360,8 @@ const defs: NpcDef[] = [
     weak: ['shock'],
     pack: 'skral',
     kit: [
+      // THE AUTHORED TIDE: the deepmaw's page — coat over coat of reef.
+      { ability: 'barnacle_plate', cooldownTicks: 450, windupTicks: 12, hpBelow: 0.6 },
       // The eel rush: flat, low, and through you — the closer.
       { ability: 'shallows_rush', cooldownTicks: 190, windupTicks: 12, minRange: 2, maxRange: 6 },
       // The rot the tide won't claim — spoken from the first breath.
@@ -2242,6 +2252,8 @@ const defs: NpcDef[] = [
     resist: ['venom'], // a carrion eater fears no spoiled meat
     weak: ['burn'],
     kit: [
+      // THE AUTHORED TIDE: the matriarch's page — the howl that unmans.
+      { ability: 'matriarchs_howl', cooldownTicks: 400, windupTicks: 14, maxRange: 4 },
       // The signature sentence: jaws through you, then the laugh —
       // and the laugh is a rally, so dodging the lunge is only half
       // the answer.
@@ -2552,6 +2564,8 @@ const defs: NpcDef[] = [
     resist: ['chill'], // winter-born: the cold is his country
     weak: ['burn'],
     kit: [
+      // THE AUTHORED TIDE: the oldfang's page — the old blood quickens the jaws.
+      { ability: 'oldfangs_blood', cooldownTicks: 340, windupTicks: 8, hpBelow: 0.5 },
       // The opener: low, under everything, for the tendon — the slow
       // that makes the whole sentence land.
       { ability: 'hamstring_bite', cooldownTicks: 160, windupTicks: 10, maxRange: 1.8, weight: 2 },
@@ -3015,6 +3029,8 @@ const defs: NpcDef[] = [
     resist: ['bleed', 'venom'],
     weak: ['shock'],
     kit: [
+      // THE AUTHORED TIDE: the golem's page — THE ONE player stagger in the game (FAIR HANDS: long windup, page immunity). 
+      { ability: 'anvil_toll', cooldownTicks: 520, windupTicks: 20, maxRange: 3 },
       // The signature two-beat: the anvil takes the ground, the bolt
       // takes the leaving — bank the dodge for the SECOND word.
       { ability: 'anvil_fall', cooldownTicks: 210, windupTicks: 22, maxRange: 3.5, weight: 2, then: 'drawn_bolt' },

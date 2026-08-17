@@ -14756,6 +14756,8 @@ export class GameServer {
       player.buffs.push(
         mkBuff({
           speedMult: b.speedMult ?? 1,
+          // THE SWING CHANNEL's consumable lane rides the same fold.
+          attackSpeedMult: b.attackSpeedMult ?? 1,
           shieldHp: Math.round((b.shieldHp ?? 0) * player.perks.shieldMult),
           gatherSpeed: b.gatherSpeed ?? 1,
           regenPer4s: b.regenPer4s ?? 0,
@@ -16349,7 +16351,10 @@ export class GameServer {
             if (d <= npc.def.attackRange + 0.85) {
               this.petStrike(eid, npc, pet, owner, pet.target);
             }
-            npc.attackCooldown = npc.def.attackCooldownTicks;
+            npc.attackCooldown = swingCooldown(
+                npc.def.attackCooldownTicks,
+                swingMult(statusSwingFactor(this.statuses?.get(eid)), []),
+              ); // THE SWING CHANNEL is true on every body (quicken bosses)
           }
           return;
         }
@@ -22288,13 +22293,26 @@ export class GameServer {
     const player = this.players.get(casterEid);
     const self = ab.self;
     if (!self) return;
+    // THE AUTHORED TIDE: a page laid on the caster's OWN body — the
+    // boss boon door (frenzy, knitting, plating) and any player art
+    // that authors it. Walks the REAL apply doors, so the bit rides
+    // the wire and the whole visible layer answers.
+    if (self.selfStatus) {
+      if (player) this.applyStatusToPlayer(casterEid, self.selfStatus, casterEid);
+      else if (this.npcs.has(casterEid)) {
+        this.applyStatusToNpc(casterEid, self.selfStatus, casterEid, 'arx');
+      }
+    }
     if (!player) {
       // THE KIT: an NPC's self rider is a curated subset — the mend
       // (healFrac scales with the body, so a level-68 reissue mends a
-      // level-68 wound; flat heal stays honest for pinned bodies).
+      // level-68 wound; flat heal stays honest for pinned bodies) —
+      // plus the selfStatus page above (the boss boon lane).
       // Stance rails (shields, lifesteal, oils) stay player rails.
       const health = this.healths.get(casterEid);
-      if (!health) return;
+      if (!health) {
+        return;
+      }
       const mend = self.healFrac
         ? Math.round(health.maxHp * self.healFrac)
         : Math.round((self.heal ?? 0) * powerMult);
@@ -24295,6 +24313,13 @@ export class GameServer {
       const kd = Math.hypot(kdx, kdy) || 1;
       kx = kdx / kd;
       ky = kdy / kd;
+    }
+    // Stonehide's coats are true on NPC bodies too: riding armorDelta
+    // pages soak flat damage here (players fold theirs into the
+    // mitigate term — each body pays through its own door).
+    if (dmg > 0) {
+      const coats = statusArmorDelta(this.statuses?.get(npcEid));
+      if (coats > 0) dmg = Math.max(1, dmg - coats);
     }
     // THE WARD SEAT: an NPC absorb pool soaks before flesh. A blow
     // fully swallowed says so in words (the warded flag), never as a
@@ -28441,7 +28466,10 @@ export class GameServer {
               }
             }
             if (npc.def.ranged && npc.attackCooldown === 0 && dist <= npc.def.attackRange + 0.3) {
-              npc.attackCooldown = npc.def.attackCooldownTicks;
+              npc.attackCooldown = swingCooldown(
+                npc.def.attackCooldownTicks,
+                swingMult(statusSwingFactor(this.statuses?.get(eid)), []),
+              ); // THE SWING CHANNEL is true on every body (quicken bosses)
               npc.windupTicks = 8;
               this.setNpcPose(eid, npc, PoseState.Attack, 10);
             }
@@ -28460,7 +28488,10 @@ export class GameServer {
               moveY = 0;
             }
             if (npc.attackCooldown === 0 && dist <= npc.def.attackRange + 0.3) {
-              npc.attackCooldown = npc.def.attackCooldownTicks;
+              npc.attackCooldown = swingCooldown(
+                npc.def.attackCooldownTicks,
+                swingMult(statusSwingFactor(this.statuses?.get(eid)), []),
+              ); // THE SWING CHANNEL is true on every body (quicken bosses)
               npc.windupTicks = 8;
               this.setNpcPose(eid, npc, PoseState.Attack, 10);
             }
@@ -28473,7 +28504,10 @@ export class GameServer {
             // spot on a map, not a thing you can hit.
             pos.dir = Math.atan2(dy, dx);
             if (npc.attackCooldown === 0) {
-              npc.attackCooldown = npc.def.attackCooldownTicks;
+              npc.attackCooldown = swingCooldown(
+                npc.def.attackCooldownTicks,
+                swingMult(statusSwingFactor(this.statuses?.get(eid)), []),
+              ); // THE SWING CHANNEL is true on every body (quicken bosses)
               // Telegraph: wind up before striking (throws wind longer).
               npc.windupTicks = npc.def.ranged ? 8 : 6;
               this.setNpcPose(eid, npc, PoseState.Attack, npc.def.ranged ? 10 : 8);

@@ -142,6 +142,13 @@ const DAGGER_FLURRY: MovesetDef = {
       sweepAll: true,
       recoveryMult: 2.0,
       windupTicks: 2,
+      // THE CONSUME VERB's roster debut (statusBook Phase 5): the
+      // plunge SPENDS a riding venom for half again — the knife's
+      // whole loop assembled: envenom the blade, stack the wound,
+      // spend it at the payoff beat. Priced on the plan's own row
+      // (conditional ≤50%, and the spend forfeits the DoT's remaining
+      // ticks — the payoff is bought, never free).
+      consumes: { status: 'venom', mult: 1.5 },
     },
   ],
 };

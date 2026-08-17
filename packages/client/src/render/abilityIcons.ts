@@ -4407,6 +4407,164 @@ Object.assign(PLATES, {
     dot(c, st.spark, 0, -0.36, 0.028);
   },
   // Marrow Chill — the crypt's cold walking out in a ring.
+  // THE AUTHORED TIDE — the eight crowns' plates, one subject each.
+  // Burning Frenzy: twin chevrons driving forward out of a flame heart.
+  tyrants_frenzy: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.fillStyle = st.deep;
+    c.beginPath();
+    c.arc(0, 0, 0.34, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.11;
+    c.lineCap = 'round';
+    c.lineJoin = 'round';
+    for (const t of [-0.16, 0.1]) {
+      c.beginPath();
+      c.moveTo(t, -0.2);
+      c.lineTo(t + 0.2, 0);
+      c.lineTo(t, 0.2);
+      c.stroke();
+    }
+  },
+  // Gravecold Pall: the drape falling over a raised arm's arc.
+  gravecold_pall: (st) => (c) => {
+    c.translate(0.5, 0.48);
+    c.fillStyle = st.mid;
+    c.beginPath();
+    c.moveTo(-0.34, -0.18);
+    c.quadraticCurveTo(0, -0.42, 0.34, -0.18);
+    c.lineTo(0.26, 0.34);
+    c.quadraticCurveTo(0, 0.22, -0.26, 0.34);
+    c.closePath();
+    c.fill();
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.09;
+    c.lineCap = 'round';
+    for (const t of [-0.1, 0.14]) {
+      c.beginPath();
+      c.moveTo(-0.16, t);
+      c.lineTo(0, t + 0.14);
+      c.lineTo(0.16, t);
+      c.stroke();
+    }
+  },
+  // Barrow Knit: the mending cross, solid, in the mound's ring.
+  barrow_knit: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.fillStyle = st.deep;
+    c.beginPath();
+    c.arc(0, 0, 0.4, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = st.core;
+    c.fillRect(-0.08, -0.28, 0.16, 0.56);
+    c.fillRect(-0.28, -0.08, 0.56, 0.16);
+  },
+  // Tide Grasp: three earthen fingers closing out of a wave.
+  tide_grasp: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    c.fillStyle = st.deep;
+    c.beginPath();
+    c.ellipse(0, 0.2, 0.38, 0.14, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = st.mid;
+    for (const [x0, top] of [
+      [-0.3, -0.12],
+      [-0.04, -0.34],
+      [0.22, -0.16],
+    ] as const) {
+      c.beginPath();
+      c.moveTo(x0, 0.2);
+      c.lineTo(x0 + 0.08, top);
+      c.lineTo(x0 + 0.18, 0.2);
+      c.closePath();
+      c.fill();
+    }
+  },
+  // Barnacle Plate: the studded coat, one solid disc wearing its reef.
+  barnacle_plate: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.fillStyle = st.mid;
+    c.beginPath();
+    c.arc(0, 0, 0.38, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = st.core;
+    for (const [bx, by, r] of [
+      [-0.14, -0.12, 0.09],
+      [0.14, -0.02, 0.07],
+      [-0.02, 0.16, 0.08],
+      [0.08, -0.22, 0.05],
+    ] as const) {
+      c.beginPath();
+      c.arc(bx, by, r, 0, Math.PI * 2);
+      c.fill();
+    }
+  },
+  // Unmanning Howl: the fang under its own echo rings.
+  matriarchs_howl: (st) => (c) => {
+    c.translate(0.5, 0.54);
+    c.fillStyle = st.core;
+    c.beginPath();
+    c.moveTo(-0.12, -0.1);
+    c.quadraticCurveTo(0, -0.02, 0.02, 0.34);
+    c.quadraticCurveTo(-0.2, 0.08, -0.12, -0.1);
+    c.closePath();
+    c.fill();
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.07;
+    c.lineCap = 'round';
+    for (const r of [0.22, 0.34]) {
+      c.beginPath();
+      c.arc(0.04, -0.08, r, -Math.PI * 0.75, -Math.PI * 0.15);
+      c.stroke();
+    }
+  },
+  // Old Blood Rising: the fang, quickened — chevron lines at its heel.
+  oldfangs_blood: (st) => (c) => {
+    c.translate(0.5, 0.5);
+    c.fillStyle = st.core;
+    c.beginPath();
+    c.moveTo(0.06, -0.3);
+    c.quadraticCurveTo(0.24, 0, 0.1, 0.34);
+    c.quadraticCurveTo(-0.08, 0.02, 0.06, -0.3);
+    c.closePath();
+    c.fill();
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.09;
+    c.lineCap = 'round';
+    c.lineJoin = 'round';
+    for (const t of [-0.3, -0.12]) {
+      c.beginPath();
+      c.moveTo(t, -0.16);
+      c.lineTo(t + 0.14, 0);
+      c.lineTo(t, 0.16);
+      c.stroke();
+    }
+  },
+  // The Anvil Tolls: the anvil mass under one ringing arc.
+  anvil_toll: (st) => (c) => {
+    c.translate(0.5, 0.56);
+    c.fillStyle = st.mid;
+    c.beginPath();
+    c.moveTo(-0.3, -0.08);
+    c.lineTo(0.3, -0.08);
+    c.lineTo(0.2, 0.06);
+    c.lineTo(0.12, 0.06);
+    c.lineTo(0.12, 0.18);
+    c.lineTo(-0.12, 0.18);
+    c.lineTo(-0.12, 0.06);
+    c.lineTo(-0.2, 0.06);
+    c.closePath();
+    c.fill();
+    c.fillStyle = st.deep;
+    c.fillRect(-0.2, 0.18, 0.4, 0.08);
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.07;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.arc(0, -0.1, 0.34, -Math.PI * 0.85, -Math.PI * 0.15);
+    c.stroke();
+  },
   marrow_chill: (st) => (c) => {
     c.translate(0.5, 0.52);
     ringDot(c, st.mid, 0, 0.02, 0.34, 0.05);

@@ -994,7 +994,9 @@ test('livestock produce/lays and consumable buffs resolve', () => {
         // THE LADEN TABLE's scarce combat dials count as doing.
         item.buff.armor ||
         item.buff.dmgMult ||
-        item.buff.critPct,
+        item.buff.critPct ||
+        // THE SWING CHANNEL's consumable lane (statusBook Phase 5).
+        item.buff.attackSpeedMult,
       `${id} buff does nothing`,
     );
     if (item.buff.channel === 'tonic') tonics++;

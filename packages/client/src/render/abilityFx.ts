@@ -689,6 +689,17 @@ export const FX_STYLES: Record<string, FxStyle> = {
   reaping_sweep: STEEL({ mid: '#c9a44a', ring: 'shards', debris: 'spark', decal: undefined, punch: 0.55, wash: 0.3 }),
   rattling_volley: BONE({ ring: 'shards', debris: 'bone', decal: undefined, punch: 0.35, wash: 0.25 }),
   gnawed_mending: VERDANT({ mid: '#7ac46a', ring: 'halo', debris: 'leaf', decal: undefined, motif: 'bloom', punch: 0.4, wash: 0.3 }),
+  // THE AUTHORED TIDE (statusBook Phase 5) — the eight crowns' pages,
+  // each face speaking its page's ink family (PALETTE-IS-IDENTITY:
+  // the ambience the state then wears is the same color story).
+  tyrants_frenzy: GOLD({ mid: '#ffd76a', ring: 'halo', motif: 'bloom', punch: 0.5, wash: 0.35 }),
+  gravecold_pall: BONE({ mid: '#8a6a9a', ring: 'halo', motif: 'echo', punch: 0.45, wash: 0.45 }),
+  barrow_knit: VERDANT({ mid: '#7ad0a0', ring: 'halo', motif: 'bloom', punch: 0.4, wash: 0.35 }),
+  tide_grasp: TIDE({ mid: '#a8814f', ring: 'frost', decal: 'stain', motif: 'cage', punch: 0.55, wash: 0.4 }),
+  barnacle_plate: STEEL({ mid: '#98a4b0', ring: 'shards', motif: 'bloom', punch: 0.45, wash: 0.3 }),
+  matriarchs_howl: SHADOW({ mid: '#8a6a9a', ring: 'halo', motif: 'echo', punch: 0.5, wash: 0.45 }),
+  oldfangs_blood: BLOOD({ mid: '#ffd76a', ring: 'halo', motif: 'bloom', punch: 0.5, wash: 0.3 }),
+  anvil_toll: STEEL({ mid: '#dcd8f0', ring: 'shards', decal: 'cracks', motif: 'echo', punch: 0.8, wash: 0.4 }),
   marrow_chill: FROST({ mid: '#b8c4d8', ring: 'frost', debris: 'ice', decal: 'rime', motif: 'echo', punch: 0.6, wash: 0.4 }),
   rending_lunge: BLOOD({ mid: '#c9a44a', ring: 'shards', debris: 'blood', decal: 'stain', punch: 0.55, wash: 0.3 }),
   // THE BROTHERHOOD (the wolf crown) — winter-iron over blood: the

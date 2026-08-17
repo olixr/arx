@@ -366,6 +366,32 @@ export const BREATH_DIALECTS: Record<string, BreathDialect> = {
   marrow_chill: {
     charge: (c, x, y) => frost.deployments.bloom!(c, x, y, { radius: 0.6, scale: 0.5, dur: 0.7 }),
   },
+  // THE AUTHORED TIDE — the eight crowns' windups, each gather telling
+  // the page that follows.
+  tyrants_frenzy: {
+    charge: (c, x, y) => fire.deployments.plume!(c, x, y - 0.3, { scale: 0.45, dur: 0.5 }),
+  },
+  gravecold_pall: {
+    charge: (c, x, y) => shadow.deployments.veil!(c, x, y, { scale: 0.5, dur: 0.7 }),
+  },
+  barrow_knit: {
+    charge: (c, x, y) => radiance.deployments.halo!(c, x, y, { scale: 0.5, dur: 0.9 }),
+  },
+  tide_grasp: {
+    charge: (c, x, y) => water.deployments.churn!(c, x, y, { radius: 0.7, scale: 0.45, dur: 0.8 }),
+  },
+  barnacle_plate: {
+    charge: (c, x, y) => dust.deployments.skirt!(c, x, y, { radius: 0.55, scale: 0.4, dur: 0.6 }),
+  },
+  matriarchs_howl: {
+    charge: (c, x, y) => shadow.deployments.bloom!(c, x, y - 0.4, { scale: 0.45, dur: 0.7 }),
+  },
+  oldfangs_blood: {
+    charge: (c, x, y) => blood.deployments.drink!(c, x, y, { scale: 0.45, dur: 0.6 }),
+  },
+  anvil_toll: {
+    charge: (c, x, y) => dust.deployments.skirt!(c, x, y, { radius: 0.7, scale: 0.5, dur: 1.0 }),
+  },
   // Raise the Fallen: the dark reaches up before the rift tears.
   raise_the_fallen: {
     charge: (c, x, y) => shadow.deployments.tendrils!(c, x, y, { scale: 0.55, dur: 0.9 }),

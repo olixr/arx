@@ -545,6 +545,16 @@ export interface AbilitySelf {
    * yet; the wave-one boons land here.
    */
   attackSpeedMult?: number;
+  /**
+   * THE AUTHORED TIDE (statusBook Phase 5): a page the caster lays
+   * on ITSELF — the boss boon door (a barrow lord knitting under
+   * mend, a deepmaw plating in stonehide, a frenzying tyrant under
+   * quicken). Walks the caster's own real apply door, so the page's
+   * bit rides the wire and the whole visible layer answers: the
+   * nameplate block, the aura, the landing. NPC-safe by design;
+   * player arts may author it too.
+   */
+  selfStatus?: StatusApply;
   /** Flat damage soaked before HP. */
   shieldHp?: number;
   /** Fraction of melee damage dealt returned as healing while active. */

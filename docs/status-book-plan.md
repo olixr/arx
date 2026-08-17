@@ -599,6 +599,61 @@ contract. All of it composes the matter library (ONE-VOICE):
 
 ### Phase 5 — THE AUTHORED TIDE (content wave)
 
+**SHIPPED 2026-08-17. As-built:**
+
+- **Engine completions first — the pages mean the same thing on every
+  body**: `AbilitySelf.selfStatus` (a caster lays a page on ITSELF
+  through its real apply door — the boss boon lane; the bit rides the
+  wire so nameplates, auras, and landings all answer); the four NPC
+  swing pay sites fold `statusSwingFactor` through the band clamp (a
+  quickened boss TRULY swings faster, pets included); damageNpc soaks
+  `statusArmorDelta` before flesh (stonehide true on NPC bodies —
+  players fold theirs into mitigate, each body through its own door);
+  `ConsumableBuff.attackSpeedMult` (the swing channel's consumable
+  lane, mapped at the one buff push).
+- **THE EIGHT CROWNS** — one page per boss, kit-delivered: the flame
+  tyrant and the oldfang stack `quicken` (each recast deepens the
+  count — the frenzy visibly ramps), the fallen king's Gravecold Pall
+  and the matriarch's Unmanning Howl lay `weaken` (12/10 under the 15
+  clamp), the barrow lord KNITS under `mend` (burst the healing or
+  fight him twice), the tidelord's Tide Grasp is the `root` debut
+  (ground telegraph 18t, page-clamped 2s, snapped by damage), the
+  deepmaw plates coat over coat in `stonehide`, and the anvil golem's
+  The Anvil Tolls is THE ONE player `stagger` in the game (20t windup
+  — the green-light's whole answer). FLOURISH CONTRACT paid in full:
+  eight FX faces (PALETTE-IS-IDENTITY with the pages' inks), eight
+  spell plates (ONE SUBJECT each), eight curated charge voices.
+- **THE CONSUME VERB's roster debut**: the dagger flurry's plunge
+  `consumes venom ×1.5` — the knife's loop assembled end to end
+  (envenom the blade, stack the wound, SPEND it at the payoff beat),
+  priced on the plan's own conditional row and self-taxed (the spend
+  forfeits the DoT's remaining ticks).
+- **Quickstep Tonic** — the swing channel's first authored user
+  anywhere: +10% swing, 75s, the exclusive tonic channel, THE HONEST
+  RING draining it in plain sight.
+- **The tripwire rewritten as designed**: statusWave.test.ts is now
+  THE REGISTER — every licensed applier named with its ONE page,
+  strangers refused, the eight crowns pinned to their kits, FAIR
+  HANDS pinned at the register (one stagger in the game, root's
+  clock ≤ its page), the quiet lanes (gear/bodies/shelf) pinned
+  quiet. The next applier is a conscious ledger decision forever.
+- **The spider verdict, recorded**: the brief's stacking-poison scene
+  is served by THE LEDGER ANSWERED (Ph3) — a spider PACK stacks
+  per-source venom on you, tiered by the Ph4 auras; a single spider
+  refreshing its own wound is the anti-spam law, not a gap. The
+  single-body count-ramp was weighed and declined (it would fork
+  venom's model per body type against the affliction constitution).
+- Validator catches paid honestly: the ground-telegraph law (tide
+  grasp fuse 18t) and the buff-does-something pin learning the new
+  channel. Gates: shared 268, content 574, client 630, server status
+  suites 34/34 green (one unrelated red = the loot session's
+  in-flight drops work, theirs by content); staged hunk-level around
+  their live gameServer/drops lanes per the seventh-bomb ceremony.
+- **Owed forward to Phase 6**: the live boss walks (each crown's page
+  photographed in its arena), the equipment lanes' wave (enchant/
+  word/temper boon actions — priced there), spider-family kit
+  pressure review.
+
 Sources everywhere, exactly as briefed:
 - **Enemies**: spider family venom goes count-model on players (the
   brief's exact scene); wolf packs' bleed per-source pressure reviewed;

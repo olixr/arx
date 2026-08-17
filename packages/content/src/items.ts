@@ -98,6 +98,13 @@ export interface ConsumableBuff {
   durationSec: number;
   /** Movement speed multiplier. */
   speedMult?: number;
+  /**
+   * THE SWING CHANNEL's consumable lane (statusBook Phase 5): swing
+   * cadence while the drink holds — folded with every other source,
+   * band-clamped at the one pay site. Scarce by the same law as the
+   * combat dials below.
+   */
+  attackSpeedMult?: number;
   /** Damage soaked before HP is touched. */
   shieldHp?: number;
   /** Gathering speed multiplier (mining, woodcutting, foraging, ...). */
@@ -684,6 +691,21 @@ const defs: ItemDef[] = [
     desc: 'Tastes like wind. Works like it too.',
     color: '#8fd0e8',
     code: 'St',
+  },
+  {
+    // THE SWING CHANNEL's roster debut (statusBook Phase 5): the first
+    // authored swing haste in the game — modest, inside the band, on
+    // the exclusive tonic channel (drinking it costs you the shelf's
+    // other draughts; the chip's HONEST RING drains it in plain sight).
+    id: 'quickstep_tonic',
+    name: 'Quickstep tonic',
+    stackable: true,
+    maxStack: 5,
+    value: 85,
+    buff: { name: 'Quickstep', channel: 'tonic', durationSec: 75, attackSpeedMult: 1.1 },
+    desc: 'The hand arrives before the thought does. Blades first, questions after.',
+    color: '#ffd76a',
+    code: 'Qt',
   },
   // ---- THE STABLE DOOR (docs/mounts-plan.md Phase 4): a saddle item
   // IS the purchase — using it brings the beast to your string and the
