@@ -12,7 +12,10 @@ import { shade } from './rig.js';
  * shared icon pipeline so every plate wears the same eight-tap outline
  * ring and hard shadow the item set does.
  *
- * TWO LAWS keep a hundred plates readable as one system:
+ * SIX LAWS keep four hundred plates readable as one system (v3 — the
+ * 2026-08 recut; the first two are the founding laws, the last four
+ * were paid for by the full-roster audit that found the set drifting
+ * into wispy scatter):
  *
  * 1. PALETTE-IS-IDENTITY — every plate pulls its colors from the
  *    ability's FX_STYLES entry (core/mid/deep/spark), so the icon on
@@ -26,6 +29,28 @@ import { shade } from './rig.js';
  *    blasts a ground ellipse under the falling subject, self-buffs
  *    rising halo arcs, summons a planted base line, beams a corridor
  *    seam, fields a pulsing patch, fans a splayed spread.
+ *
+ * 3. ONE SUBJECT — a plate is one dominant silhouette with at most two
+ *    close support marks. Never a scene of scattered specks: at 24 px
+ *    a scatter is mush, and 24 px is where the hotbar lives.
+ *
+ * 4. SOLID OVER WIRE — subjects are filled masses with facet
+ *    highlights, in the world's chunky dialect. A stroke may trim or
+ *    orbit a mass; it may not BE the subject. Where a line must exist
+ *    it is a wedge or a ribbon with real width, never a hairline.
+ *
+ * 5. THE LIT SILHOUETTE — the outer edge of the dominant mass wears
+ *    `mid` or brighter; `deep` shades interiors only. Night and shadow
+ *    subjects wear a pale rim light — darkness must read as a SHAPE
+ *    against the dark slot well, never as absence.
+ *
+ * 6. THE FITTING PASS — centering, padding, and scale belong to the
+ *    frame, not the painter (see the fitting pass below: measured ink
+ *    bbox + weighted centroid, auto-fitted to one optical grid).
+ *    Painters compose the silhouette; the system seats it. The audit
+ *    instrument (auditAbilityPlates) turns violations of laws 3–5
+ *    into numbers: coverage < 0.3, luminance < 0.22, fragments > 2,
+ *    thinness > 0.72 are the review thresholds.
  */
 
 const OUTLINE = '#241a2e';
@@ -149,31 +174,30 @@ function crescent(c: Ctx, x: number, y: number, r0: number, r1: number, a0: numb
   c.stroke();
 }
 
-/** An arrow drawn point-first: head, shaft, two fletch vanes. */
+/** An arrow drawn point-first: head, shaft, two fletch vanes. The
+ * shaft is a tapered RIBBON in `mid` (solid-over-wire law) — the old
+ * hairline-in-deep shaft made every archery plate read as nothing. */
 function arrow(c: Ctx, x: number, y: number, ang: number, len: number, st: FxStyle, headScale = 1): void {
   c.save();
   c.translate(x, y);
   c.rotate(ang);
   const h = len / 2;
-  c.strokeStyle = st.deep;
-  c.lineWidth = 0.045;
-  c.lineCap = 'round';
-  c.beginPath();
-  c.moveTo(-h, 0);
-  c.lineTo(h - 0.1 * headScale, 0);
-  c.stroke();
+  // Shaft: a tapered ribbon, fletch-end thick, head-end lean.
+  poly(c, st.mid, [
+    [-h, -0.032], [h - 0.12 * headScale, -0.02], [h - 0.12 * headScale, 0.02], [-h, 0.032],
+  ], 0.022);
   // Fletching: two swept vanes.
-  fill(c, st.mid, [[-h, -0.005], [-h + 0.12, -0.07], [-h + 0.19, -0.055], [-h + 0.1, 0.0]]);
-  fill(c, st.mid, [[-h, 0.005], [-h + 0.12, 0.07], [-h + 0.19, 0.055], [-h + 0.1, 0.0]]);
-  // The head, bright-faceted.
+  poly(c, st.mid, [[-h - 0.02, -0.01], [-h + 0.1, -0.1], [-h + 0.2, -0.08], [-h + 0.11, 0.0]], 0.02);
+  poly(c, st.mid, [[-h - 0.02, 0.01], [-h + 0.1, 0.1], [-h + 0.2, 0.08], [-h + 0.11, 0.0]], 0.02);
+  // The head, bright-faceted and broad.
   poly(c, st.spark, [
-    [h, 0], [h - 0.16 * headScale, -0.07 * headScale], [h - 0.12 * headScale, 0], [h - 0.16 * headScale, 0.07 * headScale],
-  ], 0.028);
+    [h + 0.02, 0], [h - 0.18 * headScale, -0.09 * headScale], [h - 0.13 * headScale, 0], [h - 0.18 * headScale, 0.09 * headScale],
+  ], 0.024);
   c.restore();
 }
 
 /** A jagged nova ring in the ability's OWN fx silhouette. */
-function novaRing(c: Ctx, x: number, y: number, r: number, st: FxStyle, points = 12, jag = 0.3, lw = 0.045): void {
+function novaRing(c: Ctx, x: number, y: number, r: number, st: FxStyle, points = 12, jag = 0.3, lw = 0.055): void {
   c.strokeStyle = st.mid;
   c.lineWidth = lw;
   c.lineJoin = 'round';
@@ -203,15 +227,15 @@ function chevrons(c: Ctx, x: number, y: number, ang: number, st: FxStyle, n = 2,
   c.translate(x, y);
   c.rotate(ang);
   c.strokeStyle = st.spark;
-  c.lineWidth = 0.05 * s;
+  c.lineWidth = 0.065 * s;
   c.lineCap = 'round';
   c.lineJoin = 'round';
   for (let i = 0; i < n; i++) {
-    const ox = -i * 0.14 * s;
+    const ox = -i * 0.15 * s;
     c.beginPath();
-    c.moveTo(ox - 0.09 * s, -0.11 * s);
+    c.moveTo(ox - 0.1 * s, -0.12 * s);
     c.lineTo(ox, 0);
-    c.lineTo(ox - 0.09 * s, 0.11 * s);
+    c.lineTo(ox - 0.1 * s, 0.12 * s);
     c.stroke();
   }
   c.restore();
@@ -225,18 +249,32 @@ function star4(c: Ctx, x: number, y: number, r: number, col: string, rot = 0): v
   c.fill();
 }
 
+/** One solid wedge ray — radiance with BODY. Suns, halos, and shouted
+ * sound speak through this, never through hairline spokes (a two-point
+ * poly() strokes in outline ink and reads as a dark scratch). */
+function rayWedge(c: Ctx, x: number, y: number, ang: number, r0: number, r1: number, halfW: number, col: string): void {
+  const ca = Math.cos(ang);
+  const sa = Math.sin(ang);
+  const px = -sa * halfW;
+  const py = ca * halfW;
+  fill(c, col, [
+    [x + ca * r0 + px, y + sa * r0 + py],
+    [x + ca * r1, y + sa * r1],
+    [x + ca * r0 - px, y + sa * r0 - py],
+  ]);
+}
+
 /** Rising halo arcs — the self-buff cue: power gathering on the caster. */
 function haloArcs(c: Ctx, x: number, y: number, st: FxStyle): void {
   c.strokeStyle = st.spark;
   c.lineCap = 'round';
-  for (const [r, lw, a] of [[0.3, 0.045, 0.75], [0.4, 0.038, 0.55]] as const) {
-    c.globalAlpha = a;
+  // Full-alpha arcs: translucency dies on the dark slot wells.
+  for (const [r, lw] of [[0.3, 0.055], [0.41, 0.045]] as const) {
     c.lineWidth = lw;
     c.beginPath();
     c.arc(x, y, r, Math.PI * 1.18, Math.PI * 1.82);
     c.stroke();
   }
-  c.globalAlpha = 1;
 }
 
 /** A regal five-point crown — kings and their decrees. */
@@ -275,6 +313,21 @@ function skull(c: Ctx, x: number, y: number, s: number, col: string, deep: strin
     c.lineTo(tx, 0.33);
     c.stroke();
   }
+  c.restore();
+}
+
+/** One curved canine fang, root at (x,y), biting toward +y — rotate
+ * `ang` for the up-jaw twin. Every bite in the roster speaks through
+ * this silhouette. */
+function fang(c: Ctx, x: number, y: number, s: number, ang: number, st: FxStyle): void {
+  c.save();
+  c.translate(x, y);
+  c.rotate(ang);
+  c.scale(s, s);
+  poly(c, st.mid, [
+    [-0.2, -0.02], [0.02, -0.1], [0.2, -0.02], [0.14, 0.18], [0.0, 0.5], [-0.08, 0.16],
+  ], 0.04);
+  fill(c, st.core, [[-0.12, -0.02], [0.02, -0.06], [-0.02, 0.34], [-0.05, 0.1]]);
   c.restore();
 }
 
@@ -764,12 +817,11 @@ const PLATES: Record<string, (st: FxStyle) => Painter> = {
   winters_edge: (st) => (c) => {
     c.translate(0.5, 0.5);
     blade(c, 0, 0.02, 0.85, -Math.PI / 4, st);
-    // Icicles hanging off the trailing edge.
-    for (const [x, y, s] of [[-0.13, 0.2, 0.16], [0.05, 0.05, 0.2], [0.22, -0.11, 0.15]] as const) {
-      poly(c, st.core, [[x - 0.045, y], [x + 0.045, y], [x, y + s]], 0.024);
+    // Icicles hanging off the trailing edge, wide enough to bite.
+    for (const [x, y, s] of [[-0.14, 0.21, 0.19], [0.05, 0.05, 0.23], [0.23, -0.11, 0.17]] as const) {
+      poly(c, st.core, [[x - 0.065, y], [x + 0.065, y], [x, y + s]], 0.026);
     }
-    star4(c, -0.3, -0.18, 0.06, st.spark);
-    star4(c, 0.34, 0.24, 0.05, st.spark, Math.PI / 4);
+    snowflake(c, -0.28, -0.2, 0.09, st.spark, 0.036);
   },
   // Reaper's Arc — the harvest-wide sweep: a scythe crescent with a
   // soul-wisp riding the blade.
@@ -898,16 +950,23 @@ const PLATES: Record<string, (st: FxStyle) => Painter> = {
   // script flaring off it as rays.
   spoken_light: (st) => (c) => {
     c.translate(0.5, 0.52);
+    // The word going out: six solid wedge rays fanned over the point.
     for (let k = 0; k < 6; k++) {
       const a = -Math.PI / 2 + (k - 2.5) * 0.42;
-      poly(c, st.mid, [[Math.cos(a) * 0.18, Math.sin(a) * 0.18], [Math.cos(a) * 0.42, Math.sin(a) * 0.42]], 0.028);
+      rayWedge(c, 0, -0.02, a, 0.2, 0.47, 0.05, st.mid);
     }
     blade(c, 0, 0.05, 0.82, -Math.PI / 2, st);
-    // The script: three lit ticks marching the flat.
+    // The script: three dusk ticks marching the lit flat.
+    c.strokeStyle = st.deep;
+    c.lineWidth = 0.036;
+    c.lineCap = 'round';
     for (let i = 0; i < 3; i++) {
-      poly(c, st.core, [[-0.035, -0.05 - i * 0.11], [0.035, -0.09 - i * 0.11]], 0.03);
+      c.beginPath();
+      c.moveTo(-0.035, -0.05 - i * 0.11);
+      c.lineTo(0.035, -0.09 - i * 0.11);
+      c.stroke();
     }
-    star4(c, 0, -0.4, 0.07, st.core);
+    star4(c, 0, -0.44, 0.09, st.core);
   },
   // Slagfall — the maw spits: a molten gob mid-drop over the scorched
   // patch, coals riding the splash.
@@ -937,31 +996,30 @@ const PLATES: Record<string, (st: FxStyle) => Painter> = {
   // and the wake of the bar it crossed.
   green_verse: (st) => (c) => {
     c.translate(0.5, 0.5);
-    chevrons(c, -0.26, 0.08, 0, st, 2, 0.9);
-    blade(c, 0.1, 0.02, 0.7, -Math.PI / 2.8, st);
-    // The serpent coil at the hilt.
+    blade(c, 0.06, 0.0, 0.8, -Math.PI / 2.8, st);
+    // The serpent coil wound at the hilt, thick as a rope.
     c.strokeStyle = st.spark;
-    c.lineWidth = 0.05;
+    c.lineWidth = 0.065;
     c.lineCap = 'round';
     c.beginPath();
-    c.arc(-0.12, 0.26, 0.09, Math.PI * 0.2, Math.PI * 1.4);
+    c.arc(-0.16, 0.26, 0.11, Math.PI * 0.2, Math.PI * 1.5);
     c.stroke();
-    poly(c, st.spark, [[-0.05, 0.14], [0.05, 0.1], [-0.01, 0.22]], 0.026);
-    droplet(c, 0.3, 0.24, 0.26, st);
+    droplet(c, 0.32, 0.22, 0.3, st);
   },
   // Sun Court — court convenes: the gold flare-blade upright under
   // the crown, rays holding session.
   sun_court: (st) => (c) => {
     c.translate(0.5, 0.52);
+    // The court in session: eight solid rays holding the circle.
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2 + 0.2;
-      poly(c, st.mid, [[Math.cos(a) * 0.24, Math.sin(a) * 0.24], [Math.cos(a) * 0.44, Math.sin(a) * 0.44]], 0.026);
+      rayWedge(c, 0, -0.02, a, 0.23, 0.46, 0.055, st.mid);
     }
     blade(c, 0, 0.06, 0.78, -Math.PI / 2, st);
     // The basal flares: the throne wings.
-    fill(c, st.spark, [[-0.03, 0.1], [-0.16, 0.02], [-0.05, 0.02]]);
-    fill(c, st.spark, [[0.03, 0.1], [0.16, 0.02], [0.05, 0.02]]);
-    crown(c, 0, -0.42, 0.22, st.spark, st.core);
+    fill(c, st.spark, [[-0.03, 0.1], [-0.18, 0.01], [-0.05, 0.01]]);
+    fill(c, st.spark, [[0.03, 0.1], [0.18, 0.01], [0.05, 0.01]]);
+    crown(c, 0, -0.42, 0.26, st.spark, st.core);
   },
   // Still Air — nothing moves: the crystal shard in a held breath,
   // one ring of stopped air and the frost star.
@@ -1033,26 +1091,18 @@ Object.assign(PLATES, {
   // Bone Needle — the dead lend a dart: a pale needle over crossed bone.
   bone_needle: (st) => (c) => {
     c.translate(0.5, 0.5);
-    // The lender's bone, canted behind.
+    // The lender's bone, canted big behind the work.
     c.save();
     c.rotate(0.5);
-    c.strokeStyle = st.deep;
-    c.lineWidth = 0.07;
-    c.lineCap = 'round';
-    c.beginPath();
-    c.moveTo(-0.26, 0);
-    c.lineTo(0.26, 0);
-    c.stroke();
-    for (const ex of [-0.26, 0.26]) {
-      dot(c, st.deep, ex, -0.045, 0.05);
-      dot(c, st.deep, ex, 0.045, 0.05);
+    poly(c, st.deep, [[-0.27, -0.07], [0.27, -0.07], [0.27, 0.07], [-0.27, 0.07]], 0.03);
+    for (const [ex, ey] of [[-0.29, -0.08], [-0.29, 0.08], [0.29, -0.08], [0.29, 0.08]] as const) {
+      ringDot(c, st.deep, ex, ey, 0.08, 0.03);
     }
     c.restore();
-    // The needle itself: long, tapered, bright.
-    c.rotate(-0.5);
-    poly(c, st.mid, [[-0.4, -0.035], [0.3, -0.02], [0.46, 0], [0.3, 0.02], [-0.4, 0.035]], 0.026);
-    fill(c, st.core, [[-0.38, -0.028], [0.28, -0.014], [0.4, -0.002], [-0.38, -0.006]]);
-    dot(c, st.core, -0.4, 0, 0.035);
+    // The needle itself: long, tapered, bright, threaded through.
+    poly(c, st.mid, [[-0.44, -0.055], [0.28, -0.035], [0.47, 0], [0.28, 0.035], [-0.44, 0.055]], 0.028);
+    fill(c, st.core, [[-0.42, -0.042], [0.26, -0.025], [0.4, -0.004], [-0.42, -0.004]]);
+    ringDot(c, st.core, -0.44, 0, 0.06, 0.026);
   },
   // Shadow Fang — the dark takes a step and bites: a fang lunging out
   // of a torn shadow, the drained spark going home.
@@ -1094,16 +1144,12 @@ Object.assign(PLATES, {
   // chained charge.
   spark_lash: (st) => (c) => {
     c.translate(0.5, 0.5);
-    c.strokeStyle = st.mid;
-    c.lineWidth = 0.065;
-    c.lineCap = 'round';
-    c.beginPath();
-    c.moveTo(-0.42, 0.3);
-    c.quadraticCurveTo(-0.1, 0.34, 0.1, 0.1);
-    c.stroke();
-    bolt(c, 0.24, -0.14, 0.6, st, 0.5);
-    ringDot(c, st.deep, -0.42, 0.3, 0.06, 0.026);
-    star4(c, 0.4, -0.38, 0.07, st.core);
+    // The lash: one charged ribbon snapping up out of the grip...
+    crescent(c, -0.06, -0.04, 0.24, 0.42, Math.PI * 0.32, Math.PI * 1.06, st.mid, 0.032);
+    ringDot(c, st.deep, -0.4, 0.18, 0.09, 0.03);
+    // ...and the crack itself, a full-bodied bolt at the tip.
+    bolt(c, 0.14, -0.06, 0.85, st, 0.5);
+    star4(c, 0.34, -0.42, 0.1, st.spark);
   },
   // King's Bane — regicide favors a faltering crown: the crown cleft,
   // the dagger through it.
@@ -1138,30 +1184,29 @@ Object.assign(PLATES, {
   // that cuts standing in the middle of them.
   garden_close: (st) => (c) => {
     c.translate(0.5, 0.5);
+    // The petals fold in as ONE bloom — and the petal that cuts
+    // standing up through the middle of them.
     for (let k = 0; k < 5; k++) {
       const a = (k / 5) * Math.PI * 2 - Math.PI / 2;
-      const px = Math.cos(a) * 0.32;
-      const py = Math.sin(a) * 0.32;
       c.save();
-      c.translate(px, py);
-      c.rotate(a + Math.PI / 2);
-      fill(c, st.spark, [[0, -0.09], [0.05, 0], [0, 0.09], [-0.05, 0]]);
+      c.rotate(a);
+      poly(c, st.spark, [[0.06, -0.1], [0.34, -0.09], [0.42, 0], [0.34, 0.09], [0.06, 0.1]], 0.028);
       c.restore();
     }
-    dagger(c, 0, 0.04, 0.7, -Math.PI / 2, st);
-    dot(c, st.core, 0, -0.3, 0.035);
+    dot(c, st.core, 0, 0, 0.11);
+    dagger(c, 0, 0.02, 0.9, -Math.PI / 2, st);
   },
   // Beak First — the short way to the purse: the hooked beak mid-dash
   // and the two counting glints.
   beak_first: (st) => (c) => {
     c.translate(0.5, 0.5);
-    chevrons(c, -0.28, 0.1, 0, st, 2, 0.9);
-    // The beak: a hooked black claw, brass ring at the butt.
-    fill(c, st.mid, [[-0.08, -0.02], [0.3, -0.1], [0.34, 0.12], [0.12, 0.1]]);
-    poly(c, st.core, [[0.28, -0.06], [0.33, 0.1]], 0.028);
-    ringDot(c, st.spark, -0.14, 0, 0.06, 0.035);
-    star4(c, 0.18, -0.24, 0.05, st.spark);
-    star4(c, 0.38, 0.26, 0.04, st.spark, Math.PI / 4);
+    chevrons(c, -0.4, 0.1, 0, st, 2, 1.1);
+    // The whole thief in profile: dark round head, bright eye, and
+    // THE beak — a broad brass wedge leading the dash.
+    ringDot(c, st.mid, -0.08, -0.04, 0.19, 0.034);
+    fill(c, st.deep, [[-0.2, -0.14], [0.04, -0.18], [0.08, 0.02], [-0.14, 0.1]]);
+    poly(c, st.spark, [[0.02, -0.14], [0.46, -0.02], [0.04, 0.12], [0.08, -0.02]], 0.03);
+    ringDot(c, st.core, -0.06, -0.07, 0.045, 0.026);
   },
   // Pale Lantern — the grave-light comes up: the bone needle burning
   // green at the heart, wisps making their rounds.
@@ -1183,21 +1228,11 @@ Object.assign(PLATES, {
   broadhead: (st) => (c) => {
     c.translate(0.5, 0.5);
     c.rotate(-Math.PI / 4);
-    c.strokeStyle = st.deep;
-    c.lineWidth = 0.05;
-    c.lineCap = 'round';
-    c.beginPath();
-    c.moveTo(-0.42, 0);
-    c.lineTo(0.1, 0);
-    c.stroke();
-    fill(c, st.mid, [[-0.42, -0.005], [-0.3, -0.08], [-0.22, -0.06], [-0.32, 0]]);
-    fill(c, st.mid, [[-0.42, 0.005], [-0.3, 0.08], [-0.22, 0.06], [-0.32, 0]]);
-    // The broad head itself — twice the frame a field point gets.
-    poly(c, st.spark, [[0.44, 0], [0.08, -0.2], [0.16, 0], [0.08, 0.2]], 0.032);
-    fill(c, '#ffffff', [[0.4, -0.01], [0.14, -0.15], [0.2, -0.02]]);
-    // Blood ticks in the wake.
-    dot(c, '#8a3040', -0.2, 0.16, 0.03);
-    dot(c, '#8a3040', -0.34, 0.22, 0.022);
+    // The whole argument is the head — twice the frame a field point gets.
+    arrow(c, -0.04, 0, 0, 0.88, st, 1.7);
+    fill(c, st.core, [[0.38, -0.01], [0.16, -0.12], [0.24, -0.02]]);
+    // One tick in the wake.
+    dot(c, st.deep, -0.3, 0.14, 0.035);
   },
   // Wingbeat — three arrows in one flutter, the wing's curve behind.
   wingbeat: (st) => (c) => {
@@ -1233,17 +1268,11 @@ Object.assign(PLATES, {
   windsong: (st) => (c) => {
     c.translate(0.5, 0.5);
     c.rotate(-0.2);
-    arrow(c, 0.06, 0, 0, 0.92, st, 1.1);
-    c.strokeStyle = st.core;
-    c.lineWidth = 0.035;
-    c.lineCap = 'round';
-    for (const [y, r] of [[-0.14, 0.3], [0.14, 0.26]] as const) {
-      c.beginPath();
-      c.moveTo(-0.4, y);
-      c.quadraticCurveTo(-0.4 + r, y - 0.08, -0.4 + r * 2, y);
-      c.stroke();
-    }
-    dot(c, st.spark, -0.36, -0.26, 0.028);
+    // The note loosed through everything.
+    arrow(c, 0.04, 0, 0, 0.92, st, 1.2);
+    // The stave-swash of the song — ribbons with real width.
+    crescent(c, -0.16, -0.3, 0.14, 0.21, Math.PI * 0.9, Math.PI * 1.75, st.core, 0.024);
+    crescent(c, -0.1, 0.28, 0.12, 0.19, Math.PI * 0.25, Math.PI * 1.1, st.spark, 0.024);
   },
   // Thorn Fan — a hedge of briar shafts loosed at once.
   thorn_fan: (st) => (c) => {
@@ -1287,14 +1316,11 @@ Object.assign(PLATES, {
   ghost_shaft: (st) => (c) => {
     c.translate(0.5, 0.5);
     c.rotate(-0.24);
-    c.globalAlpha = 0.28;
-    arrow(c, -0.26, 0, 0, 0.62, st);
-    c.globalAlpha = 0.55;
-    arrow(c, -0.1, 0, 0, 0.7, st);
-    c.globalAlpha = 1;
-    arrow(c, 0.12, 0, 0, 0.78, st, 1.1);
-    puff(c, -0.34, 0.16, 0.09, 'rgba(216, 212, 232, 0.55)');
-    dot(c, st.spark, -0.2, -0.18, 0.024);
+    // The echo it left in the world it skipped — dark stuff, pale-eyed.
+    puff(c, -0.3, 0.02, 0.13, st.deep);
+    dot(c, st.spark, -0.3, -0.02, 0.05);
+    // The arrow, deciding at last to exist — fully, and at the throat.
+    arrow(c, 0.04, 0, 0, 0.88, st, 1.2);
   },
   // Cinder Rain — it comes back plural: burning shafts falling into
   // the patch that keeps burning.
@@ -1347,16 +1373,14 @@ Object.assign(PLATES, {
   skyrend: (st) => (c) => {
     c.translate(0.5, 0.5);
     c.rotate(-0.16);
-    // The rent: a jagged seam clean across the frame.
+    // The rent: the horizon opened WIDE along the chosen line.
     poly(c, st.core, [
-      [-0.46, 0.02], [-0.2, -0.05], [0.0, 0.0], [0.2, -0.06], [0.46, -0.01],
-      [0.2, 0.05], [0.0, 0.01], [-0.2, 0.07],
+      [-0.46, -0.02], [-0.2, -0.09], [0.02, -0.04], [0.24, -0.1], [0.46, -0.04],
+      [0.24, 0.08], [0.02, 0.04], [-0.2, 0.1],
     ], 0.03);
-    // Storm light bleeding from the tear.
-    bolt(c, -0.12, 0.2, 0.32, st, 0.2);
-    bolt(c, 0.2, -0.22, 0.3, st, 0.4);
-    star4(c, 0.4, -0.06, 0.06, st.spark);
-    star4(c, -0.38, 0.08, 0.05, st.spark);
+    // The shaft that tore it, still going.
+    arrow(c, 0, -0.16, 0, 0.9, st, 1.2);
+    star4(c, 0.42, -0.2, 0.07, st.spark);
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
@@ -1480,11 +1504,16 @@ Object.assign(PLATES, {
   // Galvanic Arc — the stormpearl discharges down the line.
   galvanic_arc: (st) => (c) => {
     c.translate(0.5, 0.5);
-    orb(c, -0.28, 0.16, 0.15, st);
-    bolt(c, 0.0, -0.04, 0.5, st, 0.85);
-    bolt(c, 0.3, -0.24, 0.4, st, 0.6);
-    ringDot(c, st.deep, 0.38, 0.06, 0.055, 0.024);
-    ringDot(c, st.deep, 0.14, 0.3, 0.05, 0.024);
+    // The charged orb, and ONE live arc leaping off it.
+    orb(c, -0.22, 0.14, 0.19, st);
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.05;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.06, 0.02);
+    c.quadraticCurveTo(0.06, -0.16, 0.2, -0.1);
+    c.stroke();
+    bolt(c, 0.26, -0.18, 0.6, st, 0.5);
   },
   // Overgrowth — briars erupt and KEEP growing: the living field.
   overgrowth: (st) => (c) => {
@@ -1551,16 +1580,15 @@ Object.assign(PLATES, {
   // Venom Lash — both serpents spit at once: twin green darts.
   venom_lash: (st) => (c) => {
     c.translate(0.5, 0.5);
-    for (const [y, a] of [[-0.12, -0.1], [0.14, 0.1]] as const) {
-      c.save();
-      c.translate(0, y);
-      c.rotate(a);
-      poly(c, st.mid, [[-0.34, -0.05], [0.2, -0.035], [0.4, 0], [0.2, 0.035], [-0.34, 0.05]], 0.028);
-      fill(c, st.core, [[-0.32, -0.04], [0.18, -0.028], [0.32, -0.004], [-0.32, -0.008]]);
-      c.restore();
+    // Both serpents spit at once: twin darts leaving ONE throat — a
+    // solid V of venom, never scatter.
+    for (const q of [-1, 1] as const) {
+      poly(c, st.mid, [
+        [-0.44, -0.1], [-0.44, 0.1], [0.08, q * 0.2 + 0.07], [0.42, q * 0.24], [0.08, q * 0.2 - 0.07],
+      ], 0.04);
+      fill(c, st.core, [[-0.4, q * 0.02], [0.06, q * 0.16], [0.38, q * 0.23], [0.06, q * 0.24]]);
     }
-    droplet(c, -0.32, 0.32, 0.26, st);
-    dot(c, st.spark, 0.42, -0.3, 0.026);
+    droplet(c, 0.0, 0.34, 0.2, st);
   },
   // Magma Orb — liquid rock that stops for no one.
   magma_orb: (st) => (c) => {
@@ -1603,18 +1631,18 @@ Object.assign(PLATES, {
   },
   // Solar Lance — a spear of noon thrown through everything at once.
   solar_lance: (st) => (c) => {
-    c.translate(0.5, 0.5);
+    c.translate(0.42, 0.5);
     c.rotate(-0.2);
-    // The corridor seam: noon simply IS, all along the line.
-    c.globalAlpha = 0.35;
-    c.fillStyle = st.mid;
-    c.fillRect(-0.46, -0.09, 0.92, 0.18);
-    c.globalAlpha = 1;
-    // The lance itself.
-    poly(c, st.mid, [[-0.44, -0.045], [0.24, -0.045], [0.46, 0], [0.24, 0.045], [-0.44, 0.045]], 0.028);
-    fill(c, st.core, [[-0.42, -0.035], [0.22, -0.035], [0.38, -0.004], [-0.42, -0.004]]);
-    ringDot(c, st.spark, -0.3, 0, 0.09, 0.026);
-    star4(c, 0.4, -0.14, 0.07, st.spark);
+    // Noon itself at the socket...
+    ringDot(c, st.core, -0.22, 0, 0.16, 0.034);
+    // ...and the spear thrown out of it: one great wedge of light with
+    // flanking under-rays — everywhere at once, all along the line.
+    rayWedge(c, -0.22, 0, 0, 0.1, 0.84, 0.13, st.mid);
+    rayWedge(c, -0.22, 0, 0, 0.12, 0.62, 0.055, st.core);
+    rayWedge(c, -0.22, 0, -0.55, 0.15, 0.44, 0.06, st.spark);
+    rayWedge(c, -0.22, 0, 0.55, 0.15, 0.44, 0.06, st.spark);
+    rayWedge(c, -0.22, 0, Math.PI, 0.15, 0.38, 0.055, st.spark);
+    star4(c, 0.62, 0, 0.11, st.spark);
   },
   // Rune Echo — the runes light in order, then again louder.
   rune_echo: (st) => (c) => {
@@ -1643,25 +1671,15 @@ Object.assign(PLATES, {
   },
   // Marrow Pulse — the ribcage lantern tolls: bone arcs rolling out.
   marrow_pulse: (st) => (c) => {
-    c.translate(0.5, 0.52);
-    // Nested rib arcs, opening downward like a tolling bell of bone.
-    c.strokeStyle = st.mid;
-    c.lineCap = 'round';
-    for (const [r, lw] of [[0.18, 0.07], [0.3, 0.06], [0.42, 0.05]] as const) {
-      c.lineWidth = lw;
-      c.beginPath();
-      c.arc(0, -0.1, r, Math.PI * 0.15, Math.PI * 0.85);
-      c.stroke();
-    }
-    // The lantern heart swinging inside.
-    dot(c, st.spark, 0, -0.1, 0.09);
-    dot(c, st.core, -0.025, -0.13, 0.038);
-    c.strokeStyle = st.deep;
-    c.lineWidth = 0.03;
-    c.beginPath();
-    c.moveTo(0, -0.34);
-    c.lineTo(0, -0.19);
-    c.stroke();
+    c.translate(0.5, 0.42);
+    // The ribcage lantern tolls: solid bone bands rolling out, each
+    // shouldering the last, opening downward like a bell.
+    crescent(c, 0, 0, 0.3, 0.44, Math.PI * 0.18, Math.PI * 0.82, st.mid, 0.03);
+    crescent(c, 0, 0, 0.2, 0.3, Math.PI * 0.12, Math.PI * 0.88, st.core, 0.028);
+    crescent(c, 0, 0, 0.12, 0.2, Math.PI * 0.08, Math.PI * 0.92, st.spark, 0.026);
+    // The lantern heart swinging inside the cage.
+    dot(c, st.spark, 0, 0, 0.13);
+    dot(c, st.core, -0.03, -0.03, 0.05);
   },
   // Void Rift — a window to the place with no windows. It INHALES.
   void_rift: (st) => (c) => {
@@ -1698,26 +1716,20 @@ Object.assign(PLATES, {
   // Eye of the Storm — stand still; the weather does the walking.
   eye_of_the_storm: (st) => (c) => {
     c.translate(0.5, 0.5);
-    // The calm eye at center.
+    // The wall of weather: two solid storm bands folded over each
+    // other, wheeling — and the one bolt riding the rim.
+    crescent(c, 0, 0, 0.26, 0.35, -Math.PI * 0.95, Math.PI * 0.35, st.mid, 0.03);
+    crescent(c, 0, 0, 0.35, 0.44, Math.PI * 0.05, Math.PI * 1.35, st.mid, 0.03);
+    bolt(c, 0.3, -0.3, 0.3, st, 0.5);
+    // The calm eye at the center of all of it.
     c.fillStyle = st.core;
     c.strokeStyle = OUTLINE;
     c.lineWidth = 0.032;
     c.beginPath();
-    c.ellipse(0, 0, 0.16, 0.1, 0, 0, Math.PI * 2);
+    c.ellipse(0, 0, 0.19, 0.12, 0, 0, Math.PI * 2);
     c.fill();
     c.stroke();
-    dot(c, st.deep, 0, 0, 0.045);
-    // The wall of weather wheeling around it.
-    c.strokeStyle = st.mid;
-    c.lineWidth = 0.06;
-    c.lineCap = 'round';
-    for (let i = 0; i < 4; i++) {
-      const rot = (i / 4) * Math.PI * 2;
-      c.beginPath();
-      c.arc(0, 0, 0.36, rot, rot + 1.1);
-      c.stroke();
-    }
-    bolt(c, 0.3, -0.3, 0.22, st, 0.5);
+    dot(c, st.deep, 0, 0, 0.05);
   },
   // Red Eclipse — for one heartbeat the moon is close, and it drinks.
   red_eclipse: (st) => (c) => {
@@ -1737,16 +1749,20 @@ Object.assign(PLATES, {
   realm_rend: (st) => (c) => {
     c.translate(0.5, 0.5);
     c.rotate(-0.3);
-    // The seam torn clean across the world.
+    // The seam torn OPEN: a jagged lens with a dark throat and the
+    // far realm's light down its middle.
     poly(c, st.mid, [
-      [-0.48, 0.0], [-0.24, -0.07], [-0.02, -0.02], [0.22, -0.09], [0.48, 0.0],
-      [0.22, 0.07], [-0.02, 0.02], [-0.24, 0.09],
-    ], 0.03);
-    fill(c, st.core, [[-0.44, 0.0], [-0.22, -0.05], [0.0, -0.01], [0.2, -0.06], [0.4, 0.0], [0.0, 0.01], [-0.22, 0.05]]);
+      [-0.48, 0.0], [-0.26, -0.15], [-0.02, -0.09], [0.24, -0.19], [0.48, 0.0],
+      [0.24, 0.19], [-0.02, 0.09], [-0.26, 0.15],
+    ], 0.032);
+    fill(c, st.deep, [
+      [-0.4, 0.0], [-0.23, -0.11], [0.0, -0.06], [0.21, -0.14], [0.4, 0.0],
+      [0.21, 0.14], [0.0, 0.06], [-0.23, 0.11],
+    ]);
+    fill(c, st.core, [[-0.32, 0.0], [0.0, -0.04], [0.34, 0.0], [0.0, 0.04]]);
     // Realm-light stars leaking through.
-    star4(c, -0.2, -0.24, 0.07, st.spark);
-    star4(c, 0.26, 0.22, 0.06, st.spark, Math.PI / 4);
-    star4(c, 0.1, -0.3, 0.05, '#ffffff');
+    star4(c, -0.14, -0.24, 0.08, st.spark);
+    star4(c, 0.2, 0.24, 0.07, st.spark, Math.PI / 4);
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
@@ -1767,14 +1783,15 @@ Object.assign(PLATES, {
   // The Day Breaks — dawn in a straight line: the gold corridor and
   // the halo it was poured from.
   day_breaks: (st) => (c) => {
-    c.translate(0.5, 0.5);
-    c.rotate(-0.22);
-    poly(c, st.mid, [[-0.46, -0.09], [0.44, -0.09]], 0.03);
-    poly(c, st.mid, [[-0.46, 0.09], [0.44, 0.09]], 0.03);
-    fill(c, st.core, [[-0.44, -0.05], [0.42, -0.05], [0.42, 0.05], [-0.44, 0.05]]);
-    ringDot(c, st.spark, -0.34, -0.26, 0.1, 0.03);
-    star4(c, 0.3, -0.24, 0.06, st.spark);
-    star4(c, 0.05, 0.26, 0.05, st.core, Math.PI / 4);
+    c.translate(0.5, 0.54);
+    // The sun coming up THROUGH the horizon it just cut open.
+    fill(c, st.deep, [[-0.46, 0.06], [0.46, 0.06], [0.46, 0.16], [-0.46, 0.16]]);
+    crescent(c, 0, 0.06, 0.0, 0.22, Math.PI, Math.PI * 2, st.core, 0.03);
+    for (let k = 0; k < 5; k++) {
+      const a = Math.PI + (k + 0.5) * (Math.PI / 5);
+      rayWedge(c, 0, 0.06, a, 0.28, 0.46, 0.05, st.mid);
+    }
+    fill(c, st.core, [[-0.44, 0.08], [0.44, 0.08], [0.44, 0.12], [-0.44, 0.12]]);
   },
   // Moonfall — the borrowed moon arrives: the disc mid-drop, cold
   // rings already spreading on the ground it picked.
@@ -1903,11 +1920,9 @@ Object.assign(PLATES, {
   // bolt leaving it for the next head.
   crownstorm: (st) => (c) => {
     c.translate(0.5, 0.5);
-    crown(c, 0, -0.2, 0.3, st.mid, st.core);
-    bolt(c, -0.02, 0.12, 0.7, st, 0.45);
-    dot(c, st.spark, -0.26, 0.3, 0.035);
-    dot(c, st.spark, 0.28, 0.34, 0.028);
-    star4(c, 0.3, -0.34, 0.05, st.spark);
+    // The crown, and the storm it commands falling out of it.
+    crown(c, 0, -0.22, 0.4, st.mid, st.core);
+    bolt(c, -0.02, 0.14, 0.85, st, 0.45);
   },
 
   // ------------------------------------- the ten flights, bow arts
@@ -1931,58 +1946,46 @@ Object.assign(PLATES, {
   larkshot: (st) => (c) => {
     c.translate(0.5, 0.5);
     c.rotate(-0.22);
-    poly(c, st.mid, [[-0.46, -0.08], [0.4, -0.08]], 0.028);
-    poly(c, st.mid, [[-0.46, 0.08], [0.4, 0.08]], 0.028);
-    fill(c, st.core, [[-0.44, -0.045], [0.38, -0.045], [0.38, 0.045], [-0.44, 0.045]]);
-    // The lark's sun cresting at the far end.
-    dot(c, st.spark, 0.42, 0, 0.09);
-    for (let i = 0; i < 4; i++) {
-      const a = -Math.PI / 2 + (i - 1.5) * 0.5;
-      poly(c, st.spark, [
-        [0.42 + Math.cos(a) * 0.12, Math.sin(a) * 0.12],
-        [0.42 + Math.cos(a) * 0.2, Math.sin(a) * 0.2],
-      ], 0.026);
+    // Dawn up the morning line: the shaft riding the beam lane.
+    fill(c, st.mid, [[-0.46, -0.07], [0.34, -0.07], [0.34, 0.07], [-0.46, 0.07]]);
+    arrow(c, -0.02, 0, 0, 0.9, st, 1.2);
+    // The lark's sun cresting at the terminus, rays with body.
+    ringDot(c, st.spark, 0.42, 0, 0.1, 0.03);
+    for (const a of [-1.5, -0.75, 0, 0.75, 1.5] as const) {
+      rayWedge(c, 0.42, 0, a, 0.13, 0.27, 0.04, st.spark);
     }
-    star4(c, -0.34, -0.26, 0.05, st.spark);
   },
   // Glasshail — the sky answers in splinters: six shards mid-fall,
   // frost already on the ground lane.
   glasshail: (st) => (c) => {
     c.translate(0.5, 0.54);
     ground(c, 0, 0.32, st);
+    // Three BROAD glass shards falling point-first, faceted bright
+    // over mid — hail you can read across the room.
     for (let k = -1; k <= 1; k++) {
-      fill(c, st.core, [
-        [k * 0.24 - 0.03, -0.34 + Math.abs(k) * 0.08],
-        [k * 0.24 + 0.03, -0.36 + Math.abs(k) * 0.08],
-        [k * 0.24 + 0.1, -0.06 + Math.abs(k) * 0.06],
-      ]);
-      fill(c, st.mid, [
-        [k * 0.24 + 0.03, -0.36 + Math.abs(k) * 0.08],
-        [k * 0.24 + 0.09, -0.3 + Math.abs(k) * 0.08],
-        [k * 0.24 + 0.1, -0.06 + Math.abs(k) * 0.06],
-      ]);
+      const x = k * 0.26;
+      const y = Math.abs(k) * 0.08;
+      poly(c, st.mid, [
+        [x - 0.09, -0.38 + y], [x + 0.09, -0.34 + y], [x + 0.03, -0.02 + y],
+      ], 0.03);
+      fill(c, st.core, [[x - 0.06, -0.35 + y], [x + 0.02, -0.33 + y], [x + 0.02, -0.08 + y]]);
     }
-    snowflake(c, -0.32, -0.3, 0.07, st.spark, 0.03);
-    dot(c, st.spark, 0.3, 0.14, 0.028);
-    star4(c, 0.06, 0.1, 0.05, st.spark);
+    snowflake(c, -0.34, 0.08, 0.08, st.spark, 0.034);
   },
   // Stormskip — head to head like a stone across a pond: the bolt
   // skipping, rings where it touched.
   stormskip: (st) => (c) => {
     c.translate(0.5, 0.54);
-    // Skip rings on the water it made of the crowd.
-    for (const [x, r] of [[-0.26, 0.1], [0.04, 0.13], [0.32, 0.09]] as const) {
-      c.strokeStyle = st.mid;
-      c.lineWidth = 0.03;
-      c.beginPath();
-      c.ellipse(x, 0.16, r, r * 0.42, 0, 0, Math.PI * 2);
-      c.stroke();
-    }
-    // The arrow's skipping line, arcing between them.
-    crescent(c, -0.12, -0.1, 0.2, 0.14, Math.PI * 1.05, Math.PI * 1.95, st.core, 0.036);
-    crescent(c, 0.2, -0.08, 0.16, 0.12, Math.PI * 1.05, Math.PI * 1.95, st.core, 0.036);
-    fill(c, st.spark, [[0.34, -0.2], [0.42, -0.14], [0.32, -0.1]]);
-    star4(c, -0.34, -0.3, 0.05, st.spark);
+    // Two solid hops and the bolt still going — one ripple where it
+    // last touched.
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.036;
+    c.beginPath();
+    c.ellipse(-0.06, 0.18, 0.14, 0.06, 0, 0, Math.PI * 2);
+    c.stroke();
+    crescent(c, -0.2, -0.04, 0.13, 0.2, Math.PI * 1.02, Math.PI * 1.98, st.core, 0.03);
+    crescent(c, 0.16, -0.02, 0.11, 0.17, Math.PI * 1.02, Math.PI * 1.98, st.core, 0.03);
+    arrow(c, 0.32, -0.18, -0.5, 0.42, st, 1.1);
   },
   // Charfall — up an arrow, down a kiln: the burning fall, the
   // strike ring waiting.
@@ -2013,23 +2016,19 @@ Object.assign(PLATES, {
       ]);
     }
     // The watcher's eyes, amber, unblinking.
-    dot(c, st.spark, -0.05, 0.2, 0.032);
-    dot(c, st.spark, 0.05, 0.2, 0.032);
-    dot(c, st.deep, 0.3, -0.3, 0.04);
+    dot(c, st.spark, -0.06, 0.2, 0.04);
+    dot(c, st.spark, 0.06, 0.2, 0.04);
   },
   // Quarry Call — the called shot: one heavy shaft, the mark it
   // already owns ringed at the far end.
   quarry_call: (st) => (c) => {
     c.translate(0.5, 0.5);
     c.rotate(-0.18);
-    // The mark: a ringed quarry sigil.
-    ringDot(c, st.mid, 0.3, 0, 0.14, 0.036);
-    dot(c, st.core, 0.3, 0, 0.05);
+    // The mark it already owns: a broad ringed quarry sigil.
+    crescent(c, 0.22, 0, 0.15, 0.26, 0, Math.PI * 2, st.mid, 0.034);
+    dot(c, st.core, 0.22, 0, 0.09);
     // The shaft arriving, all business.
-    poly(c, st.deep, [[-0.46, 0], [0.12, 0]], 0.05);
-    fill(c, st.core, [[0.12, -0.06], [0.24, 0], [0.12, 0.06]]);
-    fill(c, st.mid, [[-0.46, -0.07], [-0.34, 0], [-0.46, 0.07]]);
-    droplet(c, 0.4, -0.3, 0.2, st);
+    arrow(c, -0.12, 0, 0, 0.72, st, 1.1);
   },
   // The Plucked Chord — three notes, taken personally: the strings,
   // and the rings each note left the room.
@@ -2110,16 +2109,14 @@ Object.assign(PLATES, {
   healing_totem: (st) => (c) => {
     c.translate(0.5, 0.52);
     ground(c, 0, 0.3, st);
-    // The carved post, banded.
-    poly(c, '#8a6534', [[-0.11, 0.28], [-0.09, -0.34], [0.09, -0.34], [0.11, 0.28]], 0.032);
-    c.fillStyle = '#a5793f';
-    c.fillRect(-0.095, -0.1, 0.19, 0.05);
-    c.fillRect(-0.1, 0.08, 0.2, 0.05);
-    // The leaf-gem set at the crown.
-    ringDot(c, st.mid, 0, -0.34, 0.11, 0.03);
-    dot(c, st.core, -0.03, -0.37, 0.04);
-    haloArcs(c, 0, -0.28, st);
-    star4(c, 0.28, -0.2, 0.05, st.spark);
+    // The carved post, broad and banded, planted for the whole camp.
+    poly(c, '#8a6534', [[-0.15, 0.28], [-0.12, -0.32], [0.12, -0.32], [0.15, 0.28]], 0.034);
+    fill(c, '#a5793f', [[-0.13, -0.08], [0.13, -0.08], [0.13, -0.01], [-0.13, -0.01]]);
+    fill(c, '#a5793f', [[-0.14, 0.12], [0.14, 0.12], [0.14, 0.19], [-0.14, 0.19]]);
+    // The leaf-gem crown, big enough to promise something.
+    ringDot(c, st.mid, 0, -0.36, 0.14, 0.034);
+    dot(c, st.core, -0.04, -0.4, 0.05);
+    haloArcs(c, 0, -0.3, st);
   },
   // Snare Trap — the waiting jaw, half-buried where grass would hide it.
   snare_trap: (st) => (c) => {
@@ -2211,20 +2208,13 @@ Object.assign(PLATES, {
   // Coil Lance — the thunderclap uncorked: a spring loosing its line.
   coil_lance: (st) => (c) => {
     c.translate(0.5, 0.5);
-    c.rotate(-0.12);
-    // The coil: tight loops at the stock end.
-    c.strokeStyle = st.mid;
-    c.lineWidth = 0.05;
-    c.lineCap = 'round';
-    for (let i = 0; i < 3; i++) {
-      c.beginPath();
-      c.arc(-0.32 + i * 0.09, 0, 0.11, Math.PI * 0.5, Math.PI * 2.2);
-      c.stroke();
-    }
-    // The loosed lance line with charge riding it.
-    poly(c, st.core, [[-0.1, -0.04], [0.28, -0.03], [0.46, 0], [0.28, 0.03], [-0.1, 0.04]], 0.026);
-    bolt(c, 0.16, -0.16, 0.26, st, 0.35);
-    star4(c, 0.42, 0.12, 0.05, st.spark);
+    // The thunderclap uncorked: the lance already at full reach...
+    pole(c, 0, 0, 0.96, st);
+    // ...the sprung coil still wrapped fat around the butt of the line.
+    crescent(c, -0.22, 0.26, 0.09, 0.17, -Math.PI * 0.8, Math.PI * 0.95, st.mid, 0.03);
+    crescent(c, -0.15, 0.17, 0.09, 0.17, -Math.PI * 0.8, Math.PI * 0.95, st.mid, 0.03);
+    crescent(c, -0.08, 0.09, 0.09, 0.17, -Math.PI * 0.8, Math.PI * 0.95, st.mid, 0.03);
+    star4(c, 0.32, -0.37, 0.12, st.core);
   },
   // Bramble Burst — point the ring at ground it likes.
   bramble_burst: (st) => (c) => {
@@ -2239,43 +2229,23 @@ Object.assign(PLATES, {
   // Arcane Seekers — three motes of asking-light choose their marks.
   arcane_seekers: (st) => (c) => {
     c.translate(0.5, 0.5);
-    // Three lazy homing curves converging on separate points.
-    c.strokeStyle = st.spark;
-    c.lineWidth = 0.032;
-    c.lineCap = 'round';
-    const seekers: Array<[number, number, number, number]> = [
-      [-0.42, 0.34, 0.28, -0.3], [-0.44, 0.05, 0.34, 0.1], [-0.34, -0.28, 0.2, 0.36],
-    ];
-    for (const [x0, y0, x1, y1] of seekers) {
-      c.beginPath();
-      c.moveTo(x0, y0);
-      c.quadraticCurveTo(x0 * 0.1, (y0 + y1) * 0.9, x1, y1);
-      c.stroke();
-    }
-    for (const [, , x1, y1] of seekers) {
-      star4(c, x1, y1, 0.09, st.mid, Math.PI / 4);
-      dot(c, st.core, x1, y1, 0.035);
-    }
-    ringDot(c, st.deep, -0.42, 0.05, 0.05, 0.024);
+    // Three motes of asking-light in one converging flight, each on a
+    // solid wedge of wake — the lead one big, already choosing.
+    rayWedge(c, 0.3, 0, Math.PI + 0.245, 0.12, 0.76, 0.1, st.deep);
+    rayWedge(c, 0.3, 0, Math.PI - 0.32, 0.12, 0.78, 0.1, st.deep);
+    star4(c, -0.34, -0.16, 0.17, st.mid, Math.PI / 4);
+    star4(c, -0.3, 0.2, 0.16, st.mid, Math.PI / 4);
+    star4(c, 0.3, 0, 0.28, st.core, Math.PI / 4);
+    dot(c, st.spark, 0.3, 0, 0.09);
   },
   // Venom Dart — one green needle with a name on it.
   venom_dart: (st) => (c) => {
     c.translate(0.5, 0.5);
-    // The homing curve it refuses to leave.
-    c.strokeStyle = st.spark;
-    c.lineWidth = 0.032;
-    c.lineCap = 'round';
-    c.beginPath();
-    c.moveTo(-0.42, 0.32);
-    c.quadraticCurveTo(0.1, 0.42, 0.3, -0.02);
-    c.stroke();
-    c.save();
-    c.translate(0.24, -0.1);
-    c.rotate(-1.1);
-    poly(c, st.mid, [[-0.26, -0.045], [0.12, -0.03], [0.3, 0], [0.12, 0.03], [-0.26, 0.045]], 0.026);
-    fill(c, st.core, [[-0.24, -0.035], [0.1, -0.02], [0.22, -0.002], [-0.24, -0.008]]);
-    c.restore();
-    droplet(c, -0.2, -0.2, 0.3, st);
+    // One green needle with a name on it — the homing curve behind it.
+    crescent(c, -0.14, 0.3, 0.24, 0.31, Math.PI * 1.05, Math.PI * 1.9, st.spark, 0.024);
+    arrow(c, 0.06, -0.08, -0.5, 0.85, st, 1.2);
+    // The dose it carries, dropping off the head.
+    droplet(c, 0.34, 0.18, 0.3, st);
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
@@ -2308,60 +2278,38 @@ Object.assign(PLATES, {
   // Whirlwind — become the blade: three cuts wheeling one center.
   whirlwind: (st) => (c) => {
     c.translate(0.5, 0.5);
+    // Three broad blades of wind on one hub — nothing but the turn.
     for (let i = 0; i < 3; i++) {
       const rot = (i / 3) * Math.PI * 2;
-      crescent(c, 0, 0, 0.26, 0.4, rot, rot + 1.6, st.mid, 0.03);
+      crescent(c, 0, 0, 0.22, 0.42, rot, rot + 1.7, st.mid, 0.032);
     }
-    for (let i = 0; i < 3; i++) {
-      const rot = (i / 3) * Math.PI * 2 + 0.25;
-      fill(c, st.core, [
-        [Math.cos(rot) * 0.38, Math.sin(rot) * 0.38],
-        [Math.cos(rot + 0.5) * 0.36, Math.sin(rot + 0.5) * 0.36],
-        [Math.cos(rot + 0.45) * 0.3, Math.sin(rot + 0.45) * 0.3],
-      ]);
-    }
-    ringDot(c, st.deep, 0, 0, 0.09, 0.03);
-    dot(c, st.spark, 0, 0, 0.04);
+    ringDot(c, st.core, 0, 0, 0.11, 0.034);
   },
   // Bloodlust — six seconds of feeding: the wound-drop burning like a
   // banner over the ring of appetite.
   bloodlust: (st) => (c) => {
     c.translate(0.5, 0.5);
-    novaRing(c, 0, 0.04, 0.36, st, 12, 0.26, 0.04);
-    droplet(c, 0, -0.02, 0.55, st);
-    flame(c, 0, -0.34, 0.34, { ...st, mid: st.spark }, 0.08);
-    haloArcs(c, 0, 0.12, st);
+    // The drop itself, huge and burning — the hunger needs no frame.
+    droplet(c, 0, 0.04, 0.85, st);
+    flame(c, 0, -0.36, 0.42, { ...st, mid: st.spark }, 0.08);
   },
   // Tumble Shot — roll one way, the arrow flies the other.
   tumble_shot: (st) => (c) => {
     c.translate(0.5, 0.52);
-    // The tumble: a curled roll-arc with motion ticks.
-    c.strokeStyle = st.deep;
-    c.lineWidth = 0.055;
-    c.lineCap = 'round';
-    c.beginPath();
-    c.arc(-0.2, 0.1, 0.2, -0.4, Math.PI * 1.3);
-    c.stroke();
-    chevrons(c, -0.42, -0.06, Math.PI * 0.75, st, 2, 0.8);
+    // The tumble: a fat curl of the roll, chevron on its heel.
+    crescent(c, -0.2, 0.14, 0.12, 0.22, -0.4, Math.PI * 1.3, st.mid, 0.028);
+    chevrons(c, -0.42, -0.08, Math.PI * 0.75, st, 1, 0.9);
     // The answering arrow, loosed opposite the roll.
-    arrow(c, 0.16, -0.1, -0.18, 0.62, st, 1.1);
+    arrow(c, 0.12, -0.12, -0.18, 0.8, st, 1.2);
   },
   // Rain of Arrows — the darkened patch of sky, delivered.
   rain_of_arrows: (st) => (c) => {
     c.translate(0.5, 0.54);
     ground(c, 0, 0.34, st);
-    puff(c, 0, -0.42, 0.15, st.deep);
-    for (const [x, y] of [[-0.22, -0.2], [0.0, -0.12], [0.22, -0.22]] as const) {
-      arrow(c, x, y, Math.PI / 2, 0.36, st);
-    }
-    c.strokeStyle = st.spark;
-    c.lineWidth = 0.026;
-    c.lineCap = 'round';
-    for (const x of [-0.32, 0.1, 0.32]) {
-      c.beginPath();
-      c.moveTo(x, -0.34);
-      c.lineTo(x - 0.02, -0.22);
-      c.stroke();
+    // Three BOLD shafts falling in step — the rain is the subject,
+    // not weather around it.
+    for (const [x, y] of [[-0.24, -0.14], [0.0, -0.06], [0.24, -0.16]] as const) {
+      arrow(c, x, y, Math.PI / 2, 0.56, st, 1.1);
     }
   },
   // Twin Strike — two heavy shafts as one: parallel and through.
@@ -2375,32 +2323,30 @@ Object.assign(PLATES, {
   // Arc Bolt — the crack that leaps from foe to foe.
   arc_bolt: (st) => (c) => {
     c.translate(0.5, 0.5);
-    bolt(c, -0.22, -0.1, 0.55, st, 0.4);
-    bolt(c, 0.14, 0.1, 0.45, st, 0.6);
-    ringDot(c, st.deep, -0.02, 0.06, 0.05, 0.024);
-    ringDot(c, st.deep, 0.36, 0.3, 0.055, 0.024);
-    star4(c, -0.38, -0.34, 0.06, st.core);
+    // ONE bolt owns the plate; the arc jumps off its tail to the
+    // second mark — that jump IS the art.
+    bolt(c, -0.08, -0.06, 0.85, st, 0.4);
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.05;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(0.1, 0.16);
+    c.quadraticCurveTo(0.3, 0.1, 0.36, 0.28);
+    c.stroke();
+    ringDot(c, st.core, 0.38, 0.32, 0.06, 0.028);
   },
   // Blink — between places: gone-mark and arrival star.
   blink: (st) => (c) => {
     c.translate(0.5, 0.5);
-    // The departure: a fading rune ring where you were.
-    c.globalAlpha = 0.45;
-    novaRing(c, -0.24, 0.12, 0.18, st, 8, 0.22, 0.036);
-    c.globalAlpha = 1;
-    // The stride of nothing between.
-    c.strokeStyle = st.spark;
-    c.lineWidth = 0.03;
-    c.lineCap = 'round';
-    c.setLineDash([0.05, 0.06]);
-    c.beginPath();
-    c.moveTo(-0.16, 0.06);
-    c.quadraticCurveTo(0.02, -0.2, 0.2, -0.1);
-    c.stroke();
-    c.setLineDash([]);
+    // Between places: the gone-mark, small and already cooling.
+    star4(c, -0.26, 0.2, 0.2, st.deep, Math.PI / 4);
+    dot(c, st.mid, -0.26, 0.2, 0.06);
+    // The stride of nothing between: one solid ribbon from was to is.
+    poly(c, st.mid, [[-0.26, 0.14], [0.06, -0.16], [0.16, -0.02], [-0.18, 0.26]], 0.036);
     // The arrival, announced.
-    star4(c, 0.24, -0.12, 0.16, st.mid, Math.PI / 4);
-    star4(c, 0.24, -0.12, 0.08, st.core);
+    star4(c, 0.12, -0.1, 0.34, st.mid, Math.PI / 4);
+    star4(c, 0.12, -0.1, 0.19, st.core);
+    dot(c, st.spark, 0.12, -0.1, 0.06);
   },
   // Meteor Shard — called down on your mark, still burning.
   meteor_shard: (st) => (c) => {
@@ -2453,21 +2399,28 @@ Object.assign(PLATES, {
   storm_of_shafts: (st) => (c) => {
     c.translate(0.5, 0.54);
     ground(c, 0, 0.36, st);
-    puff(c, -0.02, -0.44, 0.16, st.deep);
-    for (const [x, y, l] of [[-0.26, -0.18, 0.3], [-0.04, -0.26, 0.34], [0.2, -0.16, 0.3], [0.32, -0.3, 0.24]] as const) {
-      arrow(c, x, y, Math.PI / 2.15, l, st);
+    // The storm-front of shafts: four bold arrows raking down in one
+    // slanted wall, the thunderhead pale-rimmed above them.
+    c.fillStyle = st.deep;
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.ellipse(-0.02, -0.4, 0.24, 0.1, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    for (const [x, y, l] of [[-0.28, -0.1, 0.44], [-0.06, -0.16, 0.5], [0.18, -0.08, 0.44], [0.34, -0.2, 0.36]] as const) {
+      arrow(c, x, y, Math.PI / 2.15, l, st, 1.05);
     }
-    bolt(c, -0.36, -0.32, 0.2, st, 0.2);
   },
   // Maelstrom — dry land walks the drain.
   maelstrom: (st) => (c) => {
     c.translate(0.5, 0.5);
     // Spiral arms tightening to the eye.
     c.strokeStyle = st.mid;
-    c.lineWidth = 0.065;
+    c.lineWidth = 0.085;
     c.lineCap = 'round';
-    for (let i = 0; i < 4; i++) {
-      const rot = (i / 4) * Math.PI * 2;
+    for (let i = 0; i < 3; i++) {
+      const rot = (i / 3) * Math.PI * 2;
       c.beginPath();
       for (let t = 0; t <= 1; t += 0.1) {
         const a = rot + t * 2.8;
@@ -2479,13 +2432,8 @@ Object.assign(PLATES, {
       }
       c.stroke();
     }
-    // The drain's eye, dark.
-    c.fillStyle = st.deep;
-    c.beginPath();
-    c.ellipse(0, 0.02, 0.1, 0.07, 0, 0, Math.PI * 2);
-    c.fill();
-    fill(c, st.core, [[-0.42, -0.3], [-0.26, -0.38], [-0.32, -0.24]]);
-    fill(c, st.core, [[0.36, 0.26], [0.46, 0.2], [0.4, 0.32]]);
+    // The drain's eye, dark in a lit rim.
+    ringDot(c, st.deep, 0, 0.02, 0.1, 0.032);
   },
   // Rend — a shallow cut that bleeds like a deep one.
   rend: (st) => (c) => {
@@ -2537,31 +2485,13 @@ Object.assign(PLATES, {
   // Night Fangs — three thrown darks pick their own throats.
   night_fangs: (st) => (c) => {
     c.translate(0.5, 0.5);
-    for (const [x, y, a] of [[-0.2, -0.16, -0.3], [0.1, 0.0, 0.05], [-0.06, 0.26, 0.35]] as const) {
-      // Each fang: a curved dark canine mid-flight with a seeking curl.
-      c.save();
-      c.translate(x, y);
-      c.rotate(a);
-      c.fillStyle = st.mid;
-      c.strokeStyle = OUTLINE;
-      c.lineWidth = 0.03;
-      c.beginPath();
-      c.moveTo(-0.16, -0.06);
-      c.quadraticCurveTo(0.08, -0.1, 0.22, 0.0);
-      c.quadraticCurveTo(0.06, 0.02, -0.12, 0.06);
-      c.closePath();
-      c.fill();
-      c.stroke();
-      fill(c, st.core, [[-0.12, -0.045], [0.06, -0.07], [0.16, -0.01], [-0.1, -0.01]]);
-      c.strokeStyle = st.spark;
-      c.lineWidth = 0.026;
-      c.lineCap = 'round';
-      c.beginPath();
-      c.moveTo(-0.16, -0.05);
-      c.quadraticCurveTo(-0.3, -0.02, -0.34, 0.08);
-      c.stroke();
-      c.restore();
-    }
+    // Three thrown darks in ONE tight flight, tip to tail — the night
+    // teeth read as a single hunting lance, not a scatter.
+    fang(c, 0.14, -0.14, 1.0, -Math.PI * 0.75, st);
+    fang(c, -0.1, 0.1, 0.78, -Math.PI * 0.75, st);
+    fang(c, -0.3, 0.3, 0.6, -Math.PI * 0.75, st);
+    // The throw's wake: one pale sweep behind the last tooth.
+    crescent(c, -0.42, 0.42, 0.1, 0.18, -Math.PI * 0.6, Math.PI * 0.1, st.spark, 0.026);
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
@@ -2646,50 +2576,35 @@ Object.assign(PLATES, {
   // Longshot — one line, drawn to the edge of the plate.
   longshot: (st) => (c) => {
     c.translate(0.5, 0.5);
-    c.strokeStyle = st.deep;
-    c.lineWidth = 0.024;
-    c.setLineDash([0.03, 0.05]);
-    c.beginPath();
-    c.moveTo(-0.44, 0.16);
-    c.lineTo(0.44, -0.16);
-    c.stroke();
-    c.setLineDash([]);
-    arrow(c, 0, 0, -0.35, 0.92, st, 1.15);
-    star4(c, 0.42, -0.16, 0.07, st.spark);
+    c.rotate(-0.35);
+    // One line, drawn to the edge of the plate — the shot IS the plate.
+    arrow(c, 0, 0, 0, 1.0, st, 1.25);
+    // The far mark it was always going to find, and the gust it left.
+    star4(c, 0.54, 0, 0.08, st.spark);
+    chevrons(c, -0.56, 0, 0, st, 2, 0.9);
   },
   // Snare Shot — the arrow delivers the trap; the ground keeps it.
   snare_shot: (st) => (c) => {
     c.translate(0.5, 0.54);
-    c.strokeStyle = st.deep;
-    c.lineWidth = 0.026;
-    c.setLineDash([0.04, 0.05]);
-    c.beginPath();
-    c.moveTo(-0.42, -0.3);
-    c.quadraticCurveTo(-0.05, -0.5, 0.16, -0.08);
-    c.stroke();
-    c.setLineDash([]);
-    ground(c, 0.1, 0.26, st);
-    ringDot(c, st.mid, 0.1, 0.04, 0.16, 0.034);
+    ground(c, 0.06, 0.3, st);
+    // The snare sprung WIDE: a solid ring with its teeth out, and the
+    // shaft that carried it still arriving.
+    crescent(c, 0.06, 0.06, 0.14, 0.24, 0, Math.PI * 2, st.mid, 0.032);
     for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2;
-      thorn(c, 0.1 + Math.cos(a) * 0.17, 0.04 + Math.sin(a) * 0.17, a, 0.55, st.spark);
+      const a = (i / 6) * Math.PI * 2 + 0.3;
+      thorn(c, 0.06 + Math.cos(a) * 0.24, 0.06 + Math.sin(a) * 0.24, a, 0.8, st.spark);
     }
+    arrow(c, -0.22, -0.3, 0.65, 0.5, st, 1.1);
   },
   // Ricochet — the flight path changes its mind, twice.
   ricochet: (st) => (c) => {
-    c.translate(0.5, 0.5);
-    c.strokeStyle = st.mid;
-    c.lineWidth = 0.05;
-    c.lineCap = 'round';
-    c.lineJoin = 'round';
-    c.beginPath();
-    c.moveTo(-0.42, -0.26);
-    c.lineTo(-0.02, 0.08);
-    c.lineTo(0.3, -0.22);
-    c.stroke();
-    star4(c, -0.02, 0.08, 0.09, st.spark, Math.PI / 4);
-    arrow(c, 0.28, 0.02, 0.85, 0.42, st, 1);
-    star4(c, 0.32, -0.24, 0.07, st.core);
+    c.translate(0.5, 0.54);
+    // The wall that turned it: a solid post at the bend.
+    poly(c, st.deep, [[-0.34, 0.3], [-0.34, -0.02], [-0.18, -0.02], [-0.18, 0.3]], 0.03);
+    // The strike spark ON the post...
+    star4(c, -0.18, 0.02, 0.14, st.spark, Math.PI / 4);
+    // ...and the answering flight, loosed bolder than it arrived.
+    arrow(c, 0.14, -0.16, -0.55, 0.9, st, 1.3);
   },
   // Skyfall Shot — count to two; the shadow is already there.
   skyfall_shot: (st) => (c) => {
@@ -2709,15 +2624,14 @@ Object.assign(PLATES, {
   // Phantom Flight — out pale, home red.
   phantom_flight: (st) => (c) => {
     c.translate(0.5, 0.5);
-    c.strokeStyle = st.spark;
-    c.lineWidth = 0.026;
-    c.setLineDash([0.05, 0.05]);
-    c.beginPath();
-    c.ellipse(0, 0.02, 0.36, 0.2, -0.25, 0, Math.PI * 2);
-    c.stroke();
-    c.setLineDash([]);
-    arrow(c, 0.02, -0.16, -0.12, 0.5, st, 1);
-    droplet(c, -0.26, 0.26, 0.75, st);
+    // The shot that went around: one solid orbit sweep carrying the
+    // bolt home, a ghost puff where it used to be.
+    c.save();
+    c.rotate(-0.25);
+    crescent(c, 0, 0.02, 0.26, 0.34, Math.PI * 0.35, Math.PI * 1.6, st.deep, 0.026);
+    c.restore();
+    arrow(c, 0.04, -0.14, -0.18, 0.72, st, 1.15);
+    puff(c, -0.3, 0.24, 0.09, st.spark);
   },
   // Arrow Tempest — five shafts, five verdicts, one storm.
   arrow_tempest: (st) => (c) => {
@@ -2736,10 +2650,13 @@ Object.assign(PLATES, {
   // Frost Lance — one cold line; it holds.
   frost_lance: (st) => (c) => {
     c.translate(0.5, 0.5);
-    poly(c, st.mid, [[-0.42, 0.18], [0.3, -0.14], [0.44, -0.2], [0.34, -0.02], [-0.38, 0.26]], 0.032);
-    fill(c, st.core, [[-0.38, 0.18], [0.28, -0.12], [-0.36, 0.22]]);
-    snowflake(c, -0.3, -0.2, 0.11, st.spark, 0.04);
-    snowflake(c, 0.12, 0.26, 0.08, st.mid, 0.035);
+    // One cold line; it holds.
+    pole(c, 0, 0, 0.96, st);
+    // The cold holding on the line: rime flaring wide of the thrust...
+    crescent(c, 0, 0, 0.3, 0.4, -1.2, 1.2, st.mid, 0.03);
+    // ...and the frost star it leaves hanging in the air.
+    snowflake(c, -0.24, -0.22, 0.21, st.spark, 0.05);
+    star4(c, 0.32, -0.37, 0.1, st.core);
   },
   // Ward Shell — the dome takes the blow; you take the step.
   ward_shell: (st) => (c) => {
@@ -2780,23 +2697,13 @@ Object.assign(PLATES, {
   // Mirror Image — one of you is a rumor.
   mirror_image: (st) => (c) => {
     c.translate(0.5, 0.52);
-    poly(c, st.mid, [[-0.3, 0.3], [-0.3, -0.06], [-0.2, -0.22], [-0.1, -0.06], [-0.1, 0.3]], 0.034);
-    dot(c, st.core, -0.2, -0.26, 0.09);
-    c.strokeStyle = st.spark;
-    c.lineWidth = 0.026;
-    c.setLineDash([0.045, 0.045]);
-    c.beginPath();
-    c.moveTo(0.12, 0.3);
-    c.lineTo(0.12, -0.06);
-    c.lineTo(0.22, -0.22);
-    c.lineTo(0.32, -0.06);
-    c.lineTo(0.32, 0.3);
-    c.stroke();
-    c.beginPath();
-    c.arc(0.22, -0.26, 0.09, 0, Math.PI * 2);
-    c.stroke();
-    c.setLineDash([]);
-    star4(c, 0.02, -0.38, 0.08, st.spark);
+    // The one who is real: solid, planted, dark-shadowed at the hem.
+    poly(c, st.mid, [[-0.34, 0.3], [-0.34, -0.04], [-0.21, -0.22], [-0.08, -0.04], [-0.08, 0.3]], 0.034);
+    fill(c, st.deep, [[-0.34, 0.16], [-0.08, 0.16], [-0.08, 0.3], [-0.34, 0.3]]);
+    dot(c, st.core, -0.21, -0.28, 0.1);
+    // The rumor: the same body, cut whole out of pale light.
+    poly(c, st.spark, [[0.08, 0.3], [0.08, -0.04], [0.21, -0.22], [0.34, -0.04], [0.34, 0.3]], 0.034);
+    dot(c, st.core, 0.21, -0.28, 0.1);
   },
   // Daybreak — noon, delivered to the address you chose.
   daybreak: (st) => (c) => {
@@ -2825,31 +2732,41 @@ Object.assign(PLATES, {
   // Ghost Step — you pass; the wound stays.
   ghost_step: (st) => (c) => {
     c.translate(0.5, 0.5);
+    // The one who stepped out of themselves: a dusk-bodied figure
+    // with a pale rim, whole — and the step leaving it.
+    c.fillStyle = st.deep;
     c.strokeStyle = st.spark;
-    c.lineWidth = 0.028;
-    c.setLineDash([0.04, 0.05]);
+    c.lineWidth = 0.032;
+    c.lineJoin = 'round';
     c.beginPath();
-    c.moveTo(-0.28, 0.3);
-    c.lineTo(-0.28, -0.04);
-    c.lineTo(-0.18, -0.2);
-    c.lineTo(-0.08, -0.04);
-    c.lineTo(-0.08, 0.3);
+    c.moveTo(-0.2, 0.32);
+    c.lineTo(-0.2, -0.06);
+    c.lineTo(-0.02, -0.3);
+    c.lineTo(0.16, -0.06);
+    c.lineTo(0.16, 0.32);
+    c.closePath();
+    c.fill();
     c.stroke();
-    c.setLineDash([]);
-    chevrons(c, 0.1, 0.05, 0, st, 2, 0.9);
-    dagger(c, 0.3, -0.12, 0.5, 0.5, st);
-    droplet(c, 0.32, 0.24, 0.7, st);
+    dot(c, st.spark, -0.08, -0.1, 0.035);
+    dot(c, st.spark, 0.04, -0.1, 0.035);
+    chevrons(c, 0.34, 0.06, 0, st, 2, 1.0);
   },
   // Caltrops — iron teeth, sown where feet argue.
   caltrops: (st) => (c) => {
     c.translate(0.5, 0.54);
-    ground(c, 0, 0.3, st);
-    for (const [x, y, s] of [[-0.22, 0.02, 1], [0.14, -0.08, 0.85], [0.06, 0.22, 0.9]] as const) {
-      thorn(c, x, y, -Math.PI / 2, s, st.mid);
-      thorn(c, x - 0.07, y + 0.08, Math.PI * 0.8, s * 0.7, st.deep);
-      thorn(c, x + 0.07, y + 0.08, Math.PI * 0.2, s * 0.7, st.deep);
-      dot(c, st.core, x, y + 0.03, 0.028);
+    ground(c, 0, 0.32, st);
+    // ONE caltrop owns the plate: three planted legs, one spike
+    // straight up, every point a STRAIGHT tapered wedge — a curve
+    // would make it briar, and this is ironmongery.
+    for (const [ang, len] of [[-Math.PI / 2, 0.34], [Math.PI * 0.14, 0.3], [Math.PI * 0.86, 0.3], [Math.PI * 0.5, 0.22]] as const) {
+      poly(c, st.mid, [
+        [Math.cos(ang - Math.PI / 2) * 0.055, Math.sin(ang - Math.PI / 2) * 0.055],
+        [Math.cos(ang) * len, Math.sin(ang) * len],
+        [Math.cos(ang + Math.PI / 2) * 0.055, Math.sin(ang + Math.PI / 2) * 0.055],
+      ], 0.03);
     }
+    dot(c, st.core, 0, 0, 0.06);
+    star4(c, 0.02, -0.36, 0.055, st.spark);
   },
   // Fan of Knives — every direction at once.
   fan_of_knives: (st) => (c) => {
@@ -2864,19 +2781,25 @@ Object.assign(PLATES, {
   // Feint Double — the lie you leave standing.
   feint_double: (st) => (c) => {
     c.translate(0.5, 0.52);
-    poly(c, st.deep, [[-0.26, 0.3], [-0.26, -0.02], [-0.14, -0.2], [-0.02, -0.02], [-0.02, 0.3]], 0.034);
+    // The real one, solid and lit.
+    poly(c, st.mid, [[-0.3, 0.3], [-0.3, -0.02], [-0.16, -0.22], [-0.02, -0.02], [-0.02, 0.3]], 0.034);
+    fill(c, st.core, [[-0.26, 0.26], [-0.26, 0.0], [-0.16, -0.14], [-0.19, 0.26]]);
+    // The lie left standing: the same figure whole, dusk-bodied with a
+    // pale rim — a ghost is a shape, not a dotted absence.
+    c.fillStyle = st.deep;
     c.strokeStyle = st.spark;
-    c.lineWidth = 0.026;
-    c.setLineDash([0.04, 0.05]);
+    c.lineWidth = 0.028;
+    c.lineJoin = 'round';
     c.beginPath();
-    c.moveTo(0.08, 0.3);
-    c.lineTo(0.08, -0.02);
-    c.lineTo(0.2, -0.2);
-    c.lineTo(0.32, -0.02);
-    c.lineTo(0.32, 0.3);
+    c.moveTo(0.06, 0.3);
+    c.lineTo(0.06, -0.02);
+    c.lineTo(0.2, -0.22);
+    c.lineTo(0.34, -0.02);
+    c.lineTo(0.34, 0.3);
+    c.closePath();
+    c.fill();
     c.stroke();
-    c.setLineDash([]);
-    chevrons(c, -0.36, -0.32, Math.PI, st, 2, 0.7);
+    chevrons(c, -0.38, -0.3, Math.PI, st, 2, 0.8);
   },
   // Exposing Strike — the seam, made official.
   exposing_strike: (st) => (c) => {
@@ -2897,19 +2820,20 @@ Object.assign(PLATES, {
   // Thousand Cuts — stop counting.
   thousand_cuts: (st) => (c) => {
     c.translate(0.5, 0.5);
+    // Six BOLD cuts around the blade — the count is a feeling, not a
+    // census.
     c.strokeStyle = st.mid;
-    c.lineWidth = 0.04;
+    c.lineWidth = 0.055;
     c.lineCap = 'round';
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2;
-      const r0 = 0.18 + (i % 3) * 0.07;
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const r0 = 0.2 + (i % 2) * 0.07;
       c.beginPath();
       c.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
-      c.lineTo(Math.cos(a + 0.5) * (r0 + 0.14), Math.sin(a + 0.5) * (r0 + 0.14));
+      c.lineTo(Math.cos(a + 0.5) * (r0 + 0.16), Math.sin(a + 0.5) * (r0 + 0.16));
       c.stroke();
     }
-    dagger(c, 0, 0, Math.PI / 5, 0.6, st);
-    droplet(c, -0.3, -0.28, 0.6, st);
+    dagger(c, 0, 0, Math.PI / 5, 0.7, st);
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
@@ -2968,12 +2892,17 @@ Object.assign(PLATES, {
   // Riftwalker Step — through the tear, out the far side of them.
   riftwalker_step: (st) => (c) => {
     c.translate(0.5, 0.5);
-    // The rift: a tall torn slit, dark heart, bright lip.
-    poly(c, st.deep, [[-0.02, -0.36], [0.1, -0.1], [0.02, 0.34], [-0.1, 0.06]], 0.034);
-    fill(c, st.mid, [[-0.01, -0.3], [0.06, -0.08], [0.0, 0.28], [-0.06, 0.04]]);
-    chevrons(c, -0.34, 0, 0, st, 2, 1);
-    star4(c, 0.3, -0.16, 0.1, st.spark, Math.PI / 4);
-    star4(c, 0.34, 0.14, 0.06, st.core);
+    // The rift torn WIDE: bright lip around a dark throat — the tear
+    // is the subject, the step is the chevrons entering it.
+    poly(c, st.mid, [
+      [0.08, -0.42], [0.34, -0.22], [0.24, 0.0], [0.38, 0.24], [0.1, 0.4], [-0.12, 0.1], [-0.04, -0.14],
+    ], 0.036);
+    fill(c, st.deep, [
+      [0.1, -0.3], [0.26, -0.16], [0.17, 0.0], [0.27, 0.2], [0.11, 0.3], [-0.02, 0.08], [0.03, -0.1],
+    ]);
+    fill(c, st.core, [[0.1, -0.2], [0.18, -0.08], [0.12, 0.14], [0.06, 0.0]]);
+    chevrons(c, -0.28, 0, 0, st, 2, 1.2);
+    star4(c, 0.36, -0.3, 0.09, st.spark, Math.PI / 4);
   },
   // Whirling Ruin — the wheel that will not stop: two chasing arcs
   // and the calm bright hub of the held storm.
@@ -3120,24 +3049,25 @@ Object.assign(PLATES, {
   // charge held at the guard.
   live_iron: (st) => (c) => {
     c.translate(0.5, 0.5);
-    blade(c, 0, 0.04, 0.64, -Math.PI / 2, st);
-    bolt(c, -0.2, -0.14, 0.4, st, 0.5);
-    bolt(c, 0.22, 0.08, 0.34, st, -0.45);
-    star4(c, 0, -0.36, 0.08, st.core);
-    dot(c, st.spark, -0.3, 0.28, 0.03);
-    dot(c, st.spark, 0.32, -0.3, 0.03);
+    blade(c, 0, 0.04, 0.72, -Math.PI / 2, st);
+    bolt(c, -0.22, -0.1, 0.55, st, 0.5);
+    star4(c, 0.02, -0.4, 0.1, st.core);
   },
   // Gloomfall — night poured out of the edge: the dark ring landing,
   // rain of shadow falling inside it.
   gloomfall: (st) => (c) => {
     c.translate(0.5, 0.52);
-    novaRing(c, 0, 0.18, 0.34, st, 10, 0.24, 0.04);
-    poly(c, st.mid, [[-0.18, -0.34], [-0.22, -0.06]], 0.036);
-    poly(c, st.mid, [[0.0, -0.4], [-0.03, -0.1]], 0.036);
-    poly(c, st.mid, [[0.18, -0.32], [0.15, -0.04]], 0.036);
-    dot(c, st.spark, -0.21, 0.0, 0.03);
-    dot(c, st.spark, -0.02, -0.04, 0.03);
-    dot(c, st.spark, 0.15, 0.02, 0.03);
+    novaRing(c, 0, 0.16, 0.3, st, 10, 0.24, 0.05);
+    // The pour: one falling curtain of night in a lit rim, so the
+    // dark reads as a SHAPE and not an absence.
+    poly(c, st.mid, [
+      [-0.26, -0.44], [0.26, -0.44], [0.18, -0.12], [0.28, 0.16], [0.0, 0.08], [-0.28, 0.18], [-0.18, -0.12],
+    ], 0.04);
+    fill(c, st.deep, [
+      [-0.18, -0.38], [0.18, -0.38], [0.11, -0.12], [0.19, 0.08], [0.0, 0.01], [-0.19, 0.1], [-0.11, -0.12],
+    ]);
+    dot(c, st.spark, -0.08, -0.26, 0.034);
+    dot(c, st.spark, 0.09, -0.16, 0.034);
   },
   // Noonfall — noon held over the stake: the pillar of light hammering
   // the ring, the sun that will not move.
@@ -3159,11 +3089,16 @@ Object.assign(PLATES, {
   // still curling behind, a gutter of small fire already landed.
   wickfire: (st) => (c) => {
     c.translate(0.5, 0.5);
-    poly(c, st.deep, [[-0.36, 0.3], [-0.22, 0.18], [-0.12, 0.02], [-0.02, -0.08]], 0.034);
-    flame(c, 0.12, -0.14, 0.5, st, 0.14);
-    flame(c, -0.3, 0.34, 0.22, st, -0.08);
-    dot(c, st.spark, -0.14, 0.36, 0.03);
-    dot(c, st.spark, 0.34, 0.18, 0.028);
+    // The lit wick racing its own curve to the flame.
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.05;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.38, 0.34);
+    c.quadraticCurveTo(-0.16, 0.24, -0.06, 0.0);
+    c.stroke();
+    flame(c, 0.12, -0.16, 0.62, st, 0.14);
+    dot(c, st.core, -0.06, -0.02, 0.035);
   },
   // Rime River — winter poured downhill: the river band winding from
   // the hand's corner, its source flake, rime set along the banks.
@@ -3240,37 +3175,41 @@ Object.assign(PLATES, {
   // wide and leaving as one line that ends in fire.
   burning_glass: (st) => (c) => {
     c.translate(0.5, 0.5);
-    poly(c, st.spark, [[-0.42, -0.3], [-0.1, -0.06]], 0.028);
-    poly(c, st.spark, [[-0.42, -0.02], [-0.1, -0.02]], 0.028);
-    poly(c, st.spark, [[-0.42, 0.26], [-0.1, 0.02]], 0.028);
-    ringDot(c, st.mid, -0.04, -0.02, 0.15, 0.045);
-    poly(c, st.core, [[0.1, -0.02], [0.38, 0.16]], 0.05);
-    flame(c, 0.38, 0.1, 0.24, st, 0.1);
+    // Noon entering wide: three solid wedges falling on the lens...
+    rayWedge(c, -0.06, -0.02, Math.PI + 0.5, 0.13, 0.54, 0.09, st.spark);
+    rayWedge(c, -0.06, -0.02, Math.PI, 0.13, 0.52, 0.09, st.spark);
+    rayWedge(c, -0.06, -0.02, Math.PI - 0.5, 0.13, 0.54, 0.09, st.spark);
+    // ...the held lens...
+    ringDot(c, st.mid, -0.06, -0.02, 0.17, 0.045);
+    dot(c, st.core, -0.12, -0.08, 0.06);
+    // ...leaving as ONE line that ends in fire.
+    rayWedge(c, -0.06, -0.02, 0.7, 0.15, 0.5, 0.06, st.core);
+    flame(c, 0.32, 0.3, 0.5, st, 0.1);
   },
   // Moonrise — the early moon: the disc just clear of the horizon,
   // its halo, and the pale moths adrift under it.
   moonrise: (st) => (c) => {
     c.translate(0.5, 0.5);
-    poly(c, st.deep, [[-0.42, 0.26], [0.42, 0.26]], 0.036);
-    dot(c, st.core, 0, -0.08, 0.19);
-    crescent(c, 0, -0.08, 0.24, 0.28, -2.8, 0.2, st.mid, 0.03);
-    dot(c, st.mid, 0.07, -0.14, 0.035);
-    dot(c, st.mid, -0.06, -0.02, 0.026);
-    star4(c, -0.3, 0.1, 0.06, st.spark);
-    star4(c, 0.3, -0.28, 0.05, st.spark);
-    dot(c, st.spark, 0.24, 0.16, 0.024);
+    // The horizon: one solid dark band wearing a lit top edge.
+    poly(c, st.deep, [[-0.44, 0.19], [0.44, 0.19], [0.44, 0.32], [-0.44, 0.32]], 0.032);
+    fill(c, st.mid, [[-0.44, 0.19], [0.44, 0.19], [0.44, 0.235], [-0.44, 0.235]]);
+    // The disc just clear, still touching its own rising light.
+    dot(c, st.core, 0, -0.05, 0.25);
+    crescent(c, 0, -0.05, 0.24, 0.31, -Math.PI * 0.95, Math.PI * 0.05, st.mid, 0.028);
+    dot(c, st.mid, 0.09, -0.12, 0.05);
+    dot(c, st.mid, -0.07, 0.0, 0.04);
+    star4(c, -0.34, -0.3, 0.07, st.spark);
   },
   // Cometfall — the visitor: head and tapering tail crossing the
   // whole plate, the cracked ring where the last one landed.
   cometfall: (st) => (c) => {
     c.translate(0.5, 0.5);
-    fill(c, st.mid, [[-0.4, -0.38], [0.1, -0.02], [0.02, 0.08]]);
-    dot(c, st.core, 0.1, 0.02, 0.09);
-    dot(c, st.spark, -0.16, -0.2, 0.028);
-    novaRing(c, 0.16, 0.3, 0.2, st, 9, 0.22, 0.03);
-    poly(c, st.deep, [[0.02, 0.38], [0.12, 0.3]], 0.026);
-    poly(c, st.deep, [[0.3, 0.38], [0.24, 0.3]], 0.026);
-    star4(c, -0.34, 0.18, 0.05, st.spark);
+    // The visitor: its tail one solid wedge crossing the whole plate...
+    fill(c, st.mid, [[-0.46, -0.44], [0.12, -0.1], [0.3, 0.14], [0.02, 0.06], [-0.28, -0.2]]);
+    fill(c, st.spark, [[-0.42, -0.42], [0.06, -0.12], [-0.1, -0.1]]);
+    // ...the head one heavy orb, arriving at the ring it will crack.
+    orb(c, 0.16, 0.18, 0.24, st);
+    novaRing(c, 0.16, 0.18, 0.36, st, 9, 0.22, 0.05);
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
@@ -3405,11 +3344,13 @@ Object.assign(PLATES, {
   // Haft Check — the rude end of the pole: grip leading, the jolt
   // star where it lands, the blade trailing out of frame.
   haft_check: (st) => (c) => {
-    c.translate(0.46, 0.5);
-    greatblade(c, 0.1, 0.02, 0.9, st, Math.PI + 0.12);
-    chevrons(c, -0.06, -0.24, 0.2, st, 1, 0.8);
-    star4(c, -0.34, 0.06, 0.11, st.core, Math.PI / 4);
-    star4(c, -0.38, -0.12, 0.06, st.spark);
+    c.translate(0.5, 0.5);
+    // The rude end of the pole: grip leading, the jolt star where it
+    // lands, the blade trailing out of frame.
+    crescent(c, 0.12, 0, 0.3, 0.44, Math.PI * 0.78, Math.PI * 1.22, st.spark, 0.028);
+    greatblade(c, 0.14, 0, 0.95, st, 0.1);
+    star4(c, -0.34, -0.04, 0.19, st.core, Math.PI / 4);
+    star4(c, -0.44, -0.22, 0.08, st.spark);
   },
   // Iron Pendulum — two swings, no apology: mirrored crescents on
   // opposite planes around the upright blade.
@@ -3466,19 +3407,21 @@ Object.assign(PLATES, {
   // and the rockfall they bring with them.
   avalanche: (st) => (c) => {
     c.translate(0.5, 0.5);
-    chevrons(c, -0.2, -0.3, Math.PI / 2, st, 3, 1.0);
-    greatblade(c, 0.12, 0.02, 0.86, st, Math.PI / 2 - 0.5);
-    dot(c, st.mid, -0.3, 0.22, 0.05);
-    dot(c, st.deep, -0.18, 0.32, 0.04);
-    dot(c, st.spark, 0.02, 0.36, 0.03);
+    // The whole mountain of steel coming down at once.
+    chevrons(c, -0.22, -0.32, Math.PI / 2, st, 2, 1.2);
+    greatblade(c, 0.1, 0.04, 0.95, st, Math.PI / 2 - 0.5);
+    ground(c, 0.02, 0.3, st);
   },
   // Breaker Charge — through, not around: speed chevrons behind the
   // blade leveled at a shoulder's height.
   breaker_charge: (st) => (c) => {
-    c.translate(0.54, 0.5);
-    chevrons(c, -0.4, 0.0, 0, st, 2, 1.1);
-    greatblade(c, 0.1, -0.02, 0.9, st, -0.08);
-    star4(c, 0.42, -0.04, 0.08, st.core);
+    c.translate(0.5, 0.5);
+    // Through, not around: the blade leveled at a shoulder's height,
+    // the speed stacked up behind it, the wall already giving.
+    chevrons(c, -0.34, 0, 0, st, 2, 1.4);
+    greatblade(c, 0.06, 0, 0.95, st, -0.08);
+    star4(c, 0.52, -0.06, 0.14, st.core);
+    star4(c, 0.4, -0.22, 0.07, st.spark);
   },
   // Titan's Verdict — the rings do the talking: three quake rings
   // around the blade planted like a signature.
@@ -3655,11 +3598,9 @@ Object.assign(PLATES, {
   // did it, still moving; the shove reads in the chevrons behind.
   road_opens: (st) => (c) => {
     c.translate(0.5, 0.5);
-    chevrons(c, -0.3, 0.06, 0, st, 2, 0.9);
-    poly(c, st.deep, [[-0.38, -0.2], [-0.06, -0.26], [-0.06, -0.2], [-0.38, -0.14]], 0.026);
-    poly(c, st.deep, [[0.04, -0.3], [0.36, -0.36], [0.36, -0.3], [0.04, -0.24]], 0.026);
-    greatblade(c, 0.04, 0.08, 0.9, st, -0.35);
-    star4(c, 0.3, -0.1, 0.08, st.spark);
+    chevrons(c, -0.32, 0.06, 0, st, 2, 1.1);
+    greatblade(c, 0.04, 0.06, 0.95, st, -0.35);
+    star4(c, 0.32, -0.12, 0.09, st.spark);
   },
   // Marsh Light — the lantern set down where it feeds: the halo, the
   // wave blade planted through it, the wisps drifting off.
@@ -3742,11 +3683,13 @@ Object.assign(PLATES, {
   // chevron beat on either side, first and second.
   twin_cut: (st) => (c) => {
     c.translate(0.5, 0.5);
-    chevrons(c, -0.36, -0.06, 0.35, st, 1, 0.8);
-    chevrons(c, 0.34, 0.1, Math.PI - 0.35, st, 1, 0.8);
-    dagger(c, 0, 0.02, 0.82, -0.6, st);
-    dagger(c, 0, 0.02, 0.82, 0.6 + Math.PI, st);
-    star4(c, 0, 0.02, 0.09, st.spark, Math.PI / 4);
+    // The one-two written down: the crossed pair, each stroke wearing
+    // its own solid trail — first above, second answering below.
+    crescent(c, 0, 0.02, 0.3, 0.4, -Math.PI * 0.85, -Math.PI * 0.15, st.spark, 0.028);
+    crescent(c, 0, 0.02, 0.3, 0.4, Math.PI * 0.15, Math.PI * 0.85, st.mid, 0.028);
+    dagger(c, 0, 0.02, 0.88, -0.6, st);
+    dagger(c, 0, 0.02, 0.88, 0.6 + Math.PI, st);
+    star4(c, 0, 0.02, 0.12, st.spark, Math.PI / 4);
   },
   // Heron Step — through, not around: both blades laid on the stride
   // line, one going in, one coming out, the wake behind.
@@ -3763,19 +3706,12 @@ Object.assign(PLATES, {
   // Crossed Throw — the crossing point: both knives loosed point-first,
   // flight lines behind, the argument sparking where they meet.
   crossed_throw: (st) => (c) => {
-    c.translate(0.5, 0.48);
-    c.strokeStyle = st.spark;
-    c.lineWidth = 0.024;
-    c.lineCap = 'round';
-    for (const [x0, y0, x1, y1] of [[-0.42, 0.3, -0.1, 0.02], [0.42, 0.34, 0.1, 0.04]] as const) {
-      c.beginPath();
-      c.moveTo(x0, y0);
-      c.lineTo(x1, y1);
-      c.stroke();
-    }
-    dagger(c, 0.02, -0.04, 0.68, -0.72, st);
-    dagger(c, -0.02, -0.04, 0.68, -Math.PI + 0.72, st);
-    star4(c, 0, -0.1, 0.1, st.core, Math.PI / 4);
+    c.translate(0.5, 0.5);
+    // Both knives loosed point-first, drawn big enough to argue.
+    dagger(c, 0.02, -0.02, 0.9, -0.72, st);
+    dagger(c, -0.02, -0.02, 0.9, -Math.PI + 0.72, st);
+    // The argument sparking where they meet.
+    star4(c, 0, -0.06, 0.12, st.core, Math.PI / 4);
   },
   // Mirrored Hand — the second shadow: one blade and its reflection
   // across the seam, the halo of the stance above.
@@ -4041,25 +3977,12 @@ Object.assign(PLATES, {
   // its own grinding weather.
   bone_tempest: (st) => (c) => {
     c.translate(0.5, 0.5);
-    // Three wheeling bone-wave arcs.
-    c.strokeStyle = st.mid;
-    c.lineWidth = 0.055;
-    c.lineCap = 'round';
-    for (let i = 0; i < 3; i++) {
-      const rot = (i / 3) * Math.PI * 2 + 0.4;
-      c.beginPath();
-      c.arc(0, 0, 0.4, rot, rot + 1.4);
-      c.stroke();
-    }
-    // Shards riding the wind.
-    for (const [x, y, a] of [[-0.36, -0.22, 0.4], [0.38, -0.14, -0.5], [0.28, 0.32, 0.9]] as const) {
-      c.save();
-      c.translate(x, y);
-      c.rotate(a);
-      poly(c, st.core, [[-0.07, -0.025], [0.07, 0], [-0.07, 0.025]], 0.02);
-      c.restore();
-    }
-    skull(c, 0, 0.01, 0.52, st.mid, st.deep);
+    // The grinding weather: two solid bone bands, folded over each
+    // other where the wind turns.
+    crescent(c, 0, 0, 0.28, 0.36, -Math.PI * 0.85, Math.PI * 0.25, st.mid, 0.03);
+    crescent(c, 0, 0, 0.36, 0.44, -Math.PI * 0.25, Math.PI * 0.85, st.core, 0.03);
+    // The fallen champion at the still center of it.
+    skull(c, 0, 0.0, 0.64, st.mid, st.deep);
   },
   // Ground Slam — the champion brings the floor up with it. (NPC
   // special: seen in the bestiary and staging tools, never a hotbar.)
@@ -4084,35 +4007,29 @@ Object.assign(PLATES, {
   // Rallying Howl — the matriarch's head thrown back, the call rolling
   // out in rings. (NPC special: bestiary and staging tools only.)
   rallying_howl: (st) => (c) => {
-    c.translate(0.5, 0.56);
-    // The howl rings, spreading up and out from the raised muzzle.
-    c.strokeStyle = st.mid;
-    c.lineCap = 'round';
-    for (const [r, w] of [[0.22, 0.05], [0.33, 0.04], [0.44, 0.032]] as const) {
-      c.lineWidth = w;
-      c.beginPath();
-      c.arc(0.1, -0.12, r, -2.2, -0.9);
-      c.stroke();
-    }
-    // Wolf head in profile, muzzle to the sky: skull wedge, thrown-back
-    // ear, the throat line dropping to a chest hint.
+    c.translate(0.46, 0.54);
+    // The call rolling out: two wide bands off the raised muzzle.
+    crescent(c, 0.2, -0.2, 0.11, 0.19, -2.2, -0.8, st.mid, 0.03);
+    crescent(c, 0.2, -0.2, 0.27, 0.36, -2.1, -0.9, st.spark, 0.028);
+    // The matriarch, muzzle to the sky — a dark mass in a pale rim so
+    // the night coat reads as a SHAPE.
     c.fillStyle = st.deep;
     c.strokeStyle = st.core;
-    c.lineWidth = 0.028;
+    c.lineWidth = 0.04;
     c.beginPath();
-    c.moveTo(0.14, -0.22); // muzzle tip, raised
-    c.lineTo(-0.02, -0.1); // jawline down
-    c.lineTo(-0.08, 0.08); // throat
-    c.quadraticCurveTo(-0.1, 0.3, -0.3, 0.38); // chest fall-away
-    c.lineTo(-0.34, 0.12); // back of shoulder
-    c.lineTo(-0.26, -0.02); // nape
-    c.lineTo(-0.3, -0.2); // ear pinned back
-    c.lineTo(-0.16, -0.12); // skull crown
+    c.moveTo(0.24, -0.3);
+    c.lineTo(0.04, -0.06);
+    c.lineTo(-0.02, 0.38);
+    c.lineTo(-0.38, 0.38);
+    c.lineTo(-0.32, 0.0);
+    c.lineTo(-0.24, -0.12);
+    c.lineTo(-0.34, -0.3);
+    c.lineTo(-0.12, -0.16);
     c.closePath();
     c.fill();
     c.stroke();
     // The ember eye — the champion tier reads through it.
-    dot(c, '#ff9a3d', -0.15, -0.07, 0.032);
+    dot(c, '#ff9a3d', -0.12, -0.04, 0.036);
   },
   // Vixen's Scream — the matriarch's snipe muzzle to the sky under
   // one enormous standing ear, the keen rising as a single wavering
@@ -4175,50 +4092,31 @@ Object.assign(PLATES, {
   // Ravening Cackle — the packlord's muzzle thrown back, the laugh
   // breaking up in stuttered barks. (NPC special: bestiary/staging.)
   ravening_cackle: (st) => (c) => {
-    c.translate(0.5, 0.56);
-    // The cackle: broken bark-arcs, staggered ha-ha pairs — never the
-    // howl's smooth rings.
-    c.strokeStyle = st.mid;
-    c.lineCap = 'round';
-    for (const [r, a0, a1, w] of [
-      [0.2, -2.1, -1.6, 0.05],
-      [0.3, -1.5, -1.0, 0.042],
-      [0.36, -2.3, -1.9, 0.038],
-      [0.46, -1.7, -1.3, 0.032],
-    ] as const) {
-      c.lineWidth = w;
-      c.beginPath();
-      c.arc(0.1, -0.12, r, a0, a1);
-      c.stroke();
-    }
-    // Gnoll head in profile, muzzle to the sky: blunt deep jaw, the
-    // tall round ear, the crest bristling down the nape.
+    c.translate(0.46, 0.54);
+    // The cackle breaking up in staggered ha-ha barks — wide broken
+    // bands, never the howl's smooth rings.
+    crescent(c, 0.22, -0.18, 0.11, 0.19, -2.2, -1.55, st.mid, 0.03);
+    crescent(c, 0.22, -0.18, 0.11, 0.19, -1.35, -0.7, st.mid, 0.03);
+    crescent(c, 0.22, -0.18, 0.27, 0.36, -1.8, -1.0, st.spark, 0.028);
+    // The packlord, muzzle thrown back — blunt jaw, tall round ear, the
+    // crest bristling the nape; a dark mass in a pale rim.
     c.fillStyle = st.deep;
     c.strokeStyle = st.core;
-    c.lineWidth = 0.028;
+    c.lineWidth = 0.04;
     c.beginPath();
-    c.moveTo(0.16, -0.18); // blunt muzzle tip, raised
-    c.lineTo(0.06, -0.04); // deep jaw
-    c.lineTo(-0.06, 0.1); // throat
-    c.quadraticCurveTo(-0.08, 0.3, -0.28, 0.38); // chest fall-away
-    c.lineTo(-0.34, 0.1); // shoulder
-    c.lineTo(-0.24, -0.04); // nape
-    c.lineTo(-0.34, -0.16); // crest kick
-    c.lineTo(-0.24, -0.14); // crest root
-    c.lineTo(-0.26, -0.3); // tall ear back
-    c.lineTo(-0.14, -0.16); // ear front to crown
+    c.moveTo(0.26, -0.24);
+    c.lineTo(0.1, -0.02);
+    c.lineTo(0.0, 0.38);
+    c.lineTo(-0.36, 0.38);
+    c.lineTo(-0.3, 0.0);
+    c.lineTo(-0.4, -0.14);
+    c.lineTo(-0.26, -0.3);
+    c.lineTo(-0.08, -0.12);
     c.closePath();
     c.fill();
     c.stroke();
-    // The underbite tick on the raised jaw.
-    c.strokeStyle = '#efe6cf';
-    c.lineWidth = 0.024;
-    c.beginPath();
-    c.moveTo(0.09, -0.07);
-    c.lineTo(0.12, -0.12);
-    c.stroke();
     // The scavenger's eye — bone-gold, sizing you up.
-    dot(c, '#e8b64c', -0.13, -0.05, 0.032);
+    dot(c, '#e8b64c', -0.1, -0.02, 0.036);
   },
   // Hushing Screech — the elder owl full-face, wings thrown wide, one
   // shriek-spike tearing upward. (NPC special: bestiary/staging.)
@@ -4304,16 +4202,16 @@ Object.assign(PLATES, {
   cinder_ring: (st) => (c) => {
     c.translate(0.5, 0.56);
     ground(c, 0, 0.4, st);
+    // The binding ring, a true annulus UNDER the flames — ringDot is
+    // a filled disc and would pave over the whole scene.
+    crescent(c, 0, 0.0, 0.3, 0.37, 0, Math.PI * 2, st.mid, 0.026);
     for (const [x, y, s] of [
-      [-0.3, 0.02, 0.24],
-      [0.3, 0.02, 0.24],
-      [-0.16, -0.1, 0.2],
-      [0.16, -0.1, 0.2],
-      [0, 0.1, 0.22],
+      [-0.32, -0.04, 0.28],
+      [0.32, -0.04, 0.28],
+      [0, -0.14, 0.3],
     ] as const) {
       flame(c, x, y, s, st, 0.08);
     }
-    ringDot(c, st.mid, 0, -0.02, 0.36, 0.026);
   },
   // Gloom Spittle — three ropes of bile, spat wide.
   gloom_spittle: (st) => (c) => {
@@ -4456,27 +4354,15 @@ Object.assign(PLATES, {
   reaping_sweep: (st) => (c) => {
     c.translate(0.5, 0.54);
     // The crescent of the swing, edge-lit.
-    c.strokeStyle = st.mid;
-    c.lineCap = 'round';
-    c.lineWidth = 0.07;
-    c.beginPath();
-    c.arc(0, 0.06, 0.38, Math.PI * 1.15, Math.PI * 1.85);
-    c.stroke();
+    // The crescent of the swing as a solid band, edge-lit, and the
+    // blade that made it.
+    crescent(c, 0, 0.08, 0.32, 0.42, Math.PI * 1.12, Math.PI * 1.88, st.mid, 0.03);
     c.strokeStyle = st.spark;
-    c.lineWidth = 0.028;
+    c.lineWidth = 0.032;
     c.beginPath();
-    c.arc(0, 0.06, 0.44, Math.PI * 1.2, Math.PI * 1.8);
+    c.arc(0, 0.08, 0.47, Math.PI * 1.2, Math.PI * 1.8);
     c.stroke();
-    blade(c, 0.02, 0.1, 0.56, -Math.PI / 5, st);
-    // The set feet: two planted ticks under the swing.
-    c.strokeStyle = st.deep;
-    c.lineWidth = 0.05;
-    for (const x of [-0.1, 0.12] as const) {
-      c.beginPath();
-      c.moveTo(x, 0.3);
-      c.lineTo(x + 0.05, 0.4);
-      c.stroke();
-    }
+    blade(c, 0.02, 0.12, 0.62, -Math.PI / 5, st);
   },
   // Rattling Volley — a fistful of shafts, none true, all flying.
   rattling_volley: (st) => (c) => {
@@ -4533,213 +4419,144 @@ Object.assign(PLATES, {
   // Rending Lunge — through you, jaws first.
   rending_lunge: (st) => (c) => {
     c.translate(0.5, 0.5);
-    // The lunge line: a hard streak with a ragged wake.
-    c.strokeStyle = st.mid;
-    c.lineCap = 'round';
-    c.lineWidth = 0.06;
-    c.beginPath();
-    c.moveTo(-0.4, 0.22);
-    c.lineTo(0.24, -0.1);
-    c.stroke();
-    c.lineWidth = 0.03;
-    c.beginPath();
-    c.moveTo(-0.42, 0.06);
-    c.lineTo(0.0, -0.14);
-    c.stroke();
-    // The jaws at the head of it: two fang wedges, open.
-    poly(c, st.core, [[0.18, -0.06], [0.44, -0.3], [0.3, -0.02]], 0.024);
-    poly(c, st.core, [[0.16, 0.02], [0.46, 0.1], [0.26, 0.12]], 0.024);
-    // Blood off the wake.
-    droplet(c, -0.12, 0.32, 0.24, st);
-    dot(c, st.deep, 0.08, 0.24, 0.03);
+    // The run behind the bite.
+    chevrons(c, -0.42, 0, 0, st, 2, 1.1);
+    // The bite arriving: two canines closing on the impact star.
+    fang(c, 0.12, -0.36, 0.75, 0, st);
+    fang(c, 0.12, 0.36, 0.75, Math.PI, st);
+    star4(c, 0.12, 0.0, 0.1, st.spark);
   },
   // THE BROTHERHOOD (the wolf crown) — three plates, one sentence.
   // Hamstring Bite — the low cut: the standing leg nicked above the heel.
   hamstring_bite: (st) => (c) => {
     c.translate(0.5, 0.5);
-    // The leg that was planted a moment ago.
-    c.strokeStyle = st.mid;
-    c.lineCap = 'round';
-    c.lineWidth = 0.055;
-    c.beginPath();
-    c.moveTo(0.04, -0.4);
-    c.lineTo(-0.04, 0.32);
-    c.stroke();
-    // The bite: a fang wedge in LOW, under everything.
-    poly(c, st.core, [[-0.44, 0.16], [-0.1, 0.24], [-0.32, 0.4]], 0.024);
-    // The slow: cold drag chevrons where the stride used to be.
-    c.strokeStyle = st.deep;
-    c.lineWidth = 0.03;
-    for (const d of [0.12, 0.26] as const) {
-      c.beginPath();
-      c.moveTo(0.08 + d, 0.08);
-      c.lineTo(0.2 + d, 0.3);
-      c.stroke();
-    }
-    droplet(c, -0.16, 0.44, 0.18, st);
+    // The standing leg, one solid haunch dropping to the planted heel.
+    poly(c, st.mid, [[-0.08, -0.44], [0.24, -0.4], [0.12, 0.0], [0.18, 0.36], [0.3, 0.44], [-0.02, 0.44], [-0.08, 0.02]], 0.04);
+    fill(c, st.core, [[-0.04, -0.4], [0.1, -0.38], [0.02, -0.02], [-0.05, -0.02]]);
+    // The bite arriving low: one canine driven in above the heel.
+    fang(c, -0.34, 0.16, 0.85, -Math.PI / 2, st);
+    star4(c, 0.1, 0.18, 0.09, st.spark);
   },
   // Call the Brotherhood — the muzzle thrown up, and the eyes that answer.
   call_the_brotherhood: (st) => (c) => {
-    c.translate(0.5, 0.52);
-    // The call leaving the raised muzzle in nested rings.
-    c.strokeStyle = st.mid;
-    c.lineCap = 'round';
-    c.lineWidth = 0.032;
-    for (const r of [0.16, 0.27, 0.38] as const) {
-      c.beginPath();
-      c.arc(0.06, -0.08, r, -Math.PI * 0.75, -Math.PI * 0.15);
-      c.stroke();
-    }
-    // The muzzle: a wedge thrown skyward.
-    poly(c, st.core, [[-0.3, 0.3], [-0.02, -0.1], [0.1, 0.2]], 0.024);
-    // The brotherhood answers: paired eyes opening in the dark.
-    dot(c, st.spark, -0.36, -0.24, 0.032);
-    dot(c, st.spark, -0.28, -0.26, 0.032);
-    dot(c, st.spark, -0.4, 0.0, 0.032);
-    dot(c, st.spark, -0.32, -0.02, 0.032);
+    c.translate(0.46, 0.54);
+    // The muzzle thrown up: one solid head, ear back, nose on the sky.
+    poly(c, st.mid, [
+      [-0.32, 0.3], [-0.36, 0.0], [-0.24, -0.26], [-0.12, -0.12],
+      [0.2, -0.32], [0.08, -0.08], [0.1, 0.3],
+    ], 0.036);
+    fill(c, st.core, [[-0.12, -0.12], [0.2, -0.32], [0.1, -0.13], [-0.08, -0.05]]);
+    // The call going out: one doubled band of solid sound.
+    crescent(c, 0.26, -0.3, 0.1, 0.17, -Math.PI * 0.85, Math.PI * 0.1, st.core, 0.026);
+    crescent(c, 0.26, -0.3, 0.17, 0.24, -Math.PI * 0.75, 0, st.spark, 0.026);
   },
   // Throat Lunge — the flat silent return, straight through where you stand.
   throat_lunge: (st) => (c) => {
-    c.translate(0.5, 0.5);
+    c.translate(0.52, 0.5);
     // The line of the run: dead level — no arc, no warning.
-    c.strokeStyle = st.mid;
-    c.lineCap = 'round';
-    c.lineWidth = 0.06;
-    c.beginPath();
-    c.moveTo(-0.44, 0.04);
-    c.lineTo(0.3, 0.0);
-    c.stroke();
-    c.lineWidth = 0.028;
-    c.beginPath();
-    c.moveTo(-0.44, 0.16);
-    c.lineTo(-0.02, 0.12);
-    c.stroke();
-    // Jaws open at the head of the line.
-    poly(c, st.core, [[0.22, -0.04], [0.48, -0.22], [0.34, 0.0]], 0.024);
-    poly(c, st.core, [[0.2, 0.06], [0.5, 0.16], [0.3, 0.12]], 0.024);
-    droplet(c, -0.2, 0.3, 0.2, st);
+    poly(c, st.mid, [[-0.48, -0.05], [-0.04, -0.1], [-0.04, 0.1], [-0.48, 0.05]], 0.034);
+    // Jaws open at the head of the line, the dark throat between.
+    poly(c, st.mid, [[-0.08, -0.02], [-0.06, -0.24], [0.44, -0.16], [0.1, 0.0]], 0.036);
+    poly(c, st.mid, [[-0.08, 0.02], [0.1, 0.0], [0.44, 0.18], [-0.06, 0.24]], 0.036);
+    fill(c, st.core, [[-0.05, -0.2], [0.36, -0.14], [0.08, -0.04]]);
+    fill(c, st.deep, [[-0.02, -0.1], [0.18, -0.02], [0.18, 0.04], [-0.02, 0.12]]);
+    // The canines that mean it.
+    fang(c, 0.3, -0.15, 0.45, 0, st);
+    fang(c, 0.32, 0.17, 0.45, Math.PI, st);
   },
   // Shrilling Dart — the bat folded into its scream-dive.
   shrilling_dart: (st) => (c) => {
-    c.translate(0.5, 0.46);
-    // The scream: nested chevrons ahead of the dive.
-    c.strokeStyle = st.mid;
-    c.lineCap = 'round';
-    c.lineWidth = 0.032;
-    for (const r of [0.2, 0.3, 0.4] as const) {
-      c.beginPath();
-      c.arc(0.26, 0.3, r, Math.PI * 1.15, Math.PI * 1.6);
-      c.stroke();
-    }
-    // The folded bat, head down-right into the dive.
+    c.translate(0.48, 0.52);
+    // The bat SPREAD, ears up, both wings scalloped — the classic
+    // silhouette, dark in a pale rim.
     c.fillStyle = st.deep;
     c.strokeStyle = st.core;
-    c.lineWidth = 0.026;
+    c.lineWidth = 0.038;
+    c.lineJoin = 'round';
     c.beginPath();
-    c.moveTo(0.1, 0.12); // nose, leading the dive
-    c.lineTo(-0.08, -0.02); // throat
-    c.lineTo(-0.38, -0.3); // long wing swept back
-    c.lineTo(-0.16, -0.16); // wing notch
-    c.lineTo(-0.3, -0.02); // second finger
-    c.lineTo(-0.12, 0.0); // wing root
-    c.lineTo(-0.2, 0.18); // lower wing kick
+    c.moveTo(-0.07, -0.28);
+    c.lineTo(-0.02, -0.16);
+    c.lineTo(0.02, -0.16);
+    c.lineTo(0.07, -0.28);
+    c.lineTo(0.12, -0.14);
+    c.quadraticCurveTo(0.3, -0.28, 0.44, -0.14);
+    c.quadraticCurveTo(0.28, 0.0, 0.24, 0.14);
+    c.quadraticCurveTo(0.1, 0.1, 0, 0.28);
+    c.quadraticCurveTo(-0.1, 0.1, -0.24, 0.14);
+    c.quadraticCurveTo(-0.28, 0.0, -0.44, -0.14);
+    c.quadraticCurveTo(-0.3, -0.28, -0.12, -0.14);
     c.closePath();
     c.fill();
     c.stroke();
-    dot(c, st.spark, 0.02, 0.04, 0.022);
+    dot(c, st.spark, -0.04, -0.08, 0.028);
+    dot(c, st.spark, 0.04, -0.08, 0.028);
+    // The shrill going out over its head — bands with real width.
+    crescent(c, 0, -0.3, 0.14, 0.2, -Math.PI * 0.82, -Math.PI * 0.18, st.spark, 0.024);
   },
 
   // ------------- THE COURT'S HOUND — the fey wolf's three plates.
   // Faerie Ring — the circle of caps, and the one gap nobody takes.
   faerie_ring: (st) => (c) => {
-    c.translate(0.5, 0.54);
-    // The ring itself: a pale circle, broken where the story says
-    // you may still leave.
-    c.strokeStyle = st.mid;
-    c.lineCap = 'round';
-    c.lineWidth = 0.036;
-    c.beginPath();
-    c.arc(0, 0, 0.34, -Math.PI * 0.35, Math.PI * 1.15);
-    c.stroke();
-    // Five toadstools standing the rim: stalk, then cap.
-    for (const [a, r] of [[-0.15, 0.05], [0.5, 0.045], [1.15, 0.05], [1.85, 0.045], [2.5, 0.05]] as const) {
-      const x = Math.cos(a * Math.PI * 0.72) * 0.34;
-      const y = Math.sin(a * Math.PI * 0.72) * 0.34;
-      c.strokeStyle = st.core;
-      c.lineWidth = 0.026;
-      c.beginPath();
-      c.moveTo(x, y);
-      c.lineTo(x, y - 0.07);
-      c.stroke();
-      dot(c, st.spark, x, y - 0.09, r);
-    }
-    // The caught feet: two chill chevrons rooted at the center.
-    c.strokeStyle = st.deep;
-    c.lineWidth = 0.03;
-    for (const d of [-0.05, 0.07] as const) {
-      c.beginPath();
-      c.moveTo(d - 0.06, 0.1);
-      c.lineTo(d, -0.02);
-      c.lineTo(d + 0.06, 0.1);
-      c.stroke();
+    c.translate(0.5, 0.52);
+    // The ring itself: one solid pale band, broken at the top where
+    // the story says you may still leave.
+    crescent(c, 0, 0, 0.24, 0.38, -Math.PI * 0.25, Math.PI * 1.35, st.mid, 0.034);
+    // Three fat toadstools standing the band: stalk, cap, one speck.
+    for (const [x, y] of [[0.3, -0.06], [-0.3, 0.02], [0.0, 0.3]] as const) {
+      poly(c, st.core, [[x - 0.045, y + 0.04], [x + 0.045, y + 0.04], [x + 0.04, y - 0.08], [x - 0.04, y - 0.08]], 0.026);
+      poly(c, st.spark, [[x - 0.14, y - 0.06], [x - 0.06, y - 0.18], [x + 0.06, y - 0.18], [x + 0.14, y - 0.06]], 0.028);
+      dot(c, st.deep, x, y - 0.11, 0.026);
     }
   },
   // Gloaming Veil — night arriving early, all at once.
   gloaming_veil: (st) => (c) => {
-    c.translate(0.5, 0.5);
-    // The dusk: a heavy half-disc descending over the plate.
+    c.translate(0.5, 0.52);
+    // The dusk: one heavy descending mass, its rim still holding the
+    // last light so the fallen night reads as a SHAPE, not an absence.
     c.fillStyle = st.deep;
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.04;
     c.beginPath();
-    c.arc(0, -0.1, 0.4, Math.PI, 0, false);
+    c.arc(0, -0.04, 0.42, Math.PI, 0, false);
     c.closePath();
     c.fill();
-    // One early star inside the fallen dusk.
-    dot(c, st.spark, 0.14, -0.22, 0.032);
-    // The hound under it: the pricked ear pair, composed, unmoved.
+    c.stroke();
     c.fillStyle = st.mid;
+    c.beginPath();
+    c.arc(0, -0.04, 0.42, Math.PI, 0, false);
+    c.arc(0, -0.04, 0.3, 0, Math.PI, true);
+    c.fill();
+    // One early star deep inside the fallen dusk.
+    star4(c, 0.1, -0.2, 0.09, st.core);
+    // The hound under it: the pricked ear pair, composed, unmoved.
     for (const s of [-1, 1] as const) {
-      c.beginPath();
-      c.moveTo(s * 0.16 - 0.06, 0.16);
-      c.lineTo(s * 0.13, -0.06);
-      c.lineTo(s * 0.16 + 0.06, 0.16);
-      c.closePath();
-      c.fill();
-    }
-    // The cold shoving outward: three burst strokes off the rim.
-    c.strokeStyle = st.mid;
-    c.lineCap = 'round';
-    c.lineWidth = 0.032;
-    for (const a of [Math.PI * 0.8, Math.PI * 0.5, Math.PI * 0.2] as const) {
-      c.beginPath();
-      c.moveTo(Math.cos(a) * 0.3, 0.18 + Math.sin(a) * 0.1);
-      c.lineTo(Math.cos(a) * 0.46, 0.22 + Math.sin(a) * 0.18);
-      c.stroke();
+      poly(c, st.mid, [[s * 0.2 - 0.1, 0.34], [s * 0.14, -0.12], [s * 0.2 + 0.1, 0.34]], 0.034);
     }
   },
   // Glimmer Step — the hound that briefly wasn't.
   glimmer_step: (st) => (c) => {
     c.translate(0.5, 0.5);
-    // The lane: a dead-flat dashed line — the run happened, mostly
+    // The lane: two FAT fading dashes — the run happened, mostly
     // elsewhere.
     c.strokeStyle = st.mid;
     c.lineCap = 'round';
-    c.lineWidth = 0.05;
-    for (const [x0, x1] of [[-0.46, -0.3], [-0.2, -0.08], [0.04, 0.12]] as const) {
+    c.lineWidth = 0.085;
+    for (const [x0, x1] of [[-0.44, -0.28], [-0.16, -0.02]] as const) {
       c.beginPath();
-      c.moveTo(x0, 0.06);
-      c.lineTo(x1, 0.05);
+      c.moveTo(x0, 0.08);
+      c.lineTo(x1, 0.06);
       c.stroke();
     }
-    // Shed motes where the hound came apart.
-    dot(c, st.spark, -0.34, -0.08, 0.028);
-    dot(c, st.spark, -0.14, -0.14, 0.022);
-    dot(c, st.spark, 0.04, -0.08, 0.026);
-    // The arrival: the head wedge REFORMED at the line's end, jaws
-    // already open.
-    fill(c, st.core, [[0.18, -0.06], [0.48, -0.2], [0.34, 0.02]]);
-    fill(c, st.core, [[0.18, 0.1], [0.48, 0.22], [0.32, 0.12]]);
-    // One last star still closing into the body.
-    dot(c, st.spark, 0.22, 0.02, 0.02);
+    // One shed mote where the hound came apart.
+    star4(c, -0.26, -0.18, 0.07, st.spark);
+    // The arrival: the head REFORMED whole at the line's end — ear,
+    // brow, muzzle, one dark eye. Jaw shut; the shape does the work.
+    poly(c, st.mid, [
+      [-0.1, 0.16], [-0.06, -0.1], [0.02, -0.2], [0.1, -0.38], [0.22, -0.18], [0.38, -0.1],
+      [0.52, 0.02], [0.34, 0.18],
+    ], 0.034);
+    fill(c, st.core, [[0.0, -0.12], [0.09, -0.28], [0.17, -0.12], [0.07, -0.02]]);
+    dot(c, OUTLINE, 0.28, -0.02, 0.03);
   },
 
   // ----------------- THE TIDE'S RAMPART — the giant crab's plates.
@@ -4791,65 +4608,32 @@ Object.assign(PLATES, {
   // Brine Jet — the sea thrown flat and hard.
   brine_jet: (st) => (c) => {
     c.translate(0.5, 0.5);
-    // The jet: converging pressure lines driven left to right.
-    c.lineCap = 'round';
-    c.strokeStyle = st.mid;
-    c.lineWidth = 0.07;
-    c.beginPath();
-    c.moveTo(-0.42, 0.0);
-    c.lineTo(0.18, 0.0);
-    c.stroke();
-    c.strokeStyle = st.deep;
-    c.lineWidth = 0.032;
-    for (const q of [-1, 1] as const) {
-      c.beginPath();
-      c.moveTo(-0.4, q * 0.09);
-      c.quadraticCurveTo(-0.1, q * 0.07, 0.14, q * 0.02);
-      c.stroke();
+    // The jet: one hard bar of sea with real body, driven left to right.
+    poly(c, st.mid, [
+      [-0.44, -0.13], [0.1, -0.1], [0.3, -0.05], [0.3, 0.07], [0.1, 0.12], [-0.44, 0.15],
+    ], 0.04);
+    fill(c, st.core, [[-0.42, -0.11], [0.08, -0.08], [0.26, -0.04], [-0.42, -0.02]]);
+    fill(c, st.deep, [[-0.42, 0.06], [0.08, 0.04], [0.26, 0.06], [0.08, 0.1], [-0.42, 0.13]]);
+    // The burst where it lands: a solid fan of cold spray.
+    for (const a of [-0.6, 0, 0.6] as const) {
+      rayWedge(c, 0.26, 0.01, a, 0.03, 0.2, 0.05, st.core);
     }
-    // The burst where it lands: a hard fan of cold spray.
-    c.strokeStyle = st.core;
-    c.lineWidth = 0.036;
-    for (const a of [-0.55, -0.2, 0.2, 0.55] as const) {
-      c.beginPath();
-      c.moveTo(0.2, 0);
-      c.lineTo(0.2 + Math.cos(a) * 0.24, Math.sin(a) * 0.24);
-      c.stroke();
-    }
-    droplet(c, 0.34, -0.24, 0.2, st);
-    droplet(c, 0.38, 0.18, 0.16, st);
-    dot(c, st.spark, 0.22, 0.0, 0.036);
+    droplet(c, 0.36, -0.26, 0.18, st);
   },
 
   // ----------------------- THE SKRAL — the brine-folk's plates.
   // Tide Lash — the wrist-crack of thrown brine, mid-snap.
   tide_lash: (st) => (c) => {
     c.translate(0.5, 0.5);
-    c.lineCap = 'round';
-    // The lash: one living S of water, thick at the wrist, thin at
-    // the crack.
-    c.strokeStyle = st.mid;
-    c.lineWidth = 0.075;
-    c.beginPath();
-    c.moveTo(-0.4, 0.3);
-    c.quadraticCurveTo(-0.1, 0.34, 0.02, 0.06);
-    c.stroke();
-    c.lineWidth = 0.045;
-    c.beginPath();
-    c.moveTo(0.02, 0.06);
-    c.quadraticCurveTo(0.14, -0.22, 0.38, -0.26);
-    c.stroke();
+    // The lash: one living S of water with real body — heavy at the
+    // wrist, cresting at the crack.
+    crescent(c, -0.1, -0.16, 0.2, 0.38, Math.PI * 0.3, Math.PI * 0.95, st.mid, 0.04);
+    crescent(c, 0.16, 0.22, 0.2, 0.36, -Math.PI * 0.85, -Math.PI * 0.15, st.mid, 0.04);
+    // Foam riding the crest of the snap.
+    crescent(c, 0.16, 0.22, 0.29, 0.36, -Math.PI * 0.75, -Math.PI * 0.2, st.core, 0.03);
     // The crack itself: the tip's hard flick.
-    c.strokeStyle = st.core;
-    c.lineWidth = 0.032;
-    c.beginPath();
-    c.moveTo(0.38, -0.26);
-    c.lineTo(0.3, -0.38);
-    c.stroke();
-    // Spray shaken off the bend.
-    droplet(c, 0.2, -0.02, 0.16, st);
-    droplet(c, -0.06, -0.12, 0.14, st);
-    dot(c, st.spark, 0.4, -0.32, 0.034);
+    fill(c, st.core, [[0.4, 0.02], [0.48, -0.14], [0.44, 0.1]]);
+    droplet(c, -0.3, -0.32, 0.16, st);
   },
   // Riptide Ring — the staked undertow: a ring that pulls inward.
   riptide_ring: (st) => (c) => {
@@ -4882,41 +4666,26 @@ Object.assign(PLATES, {
   },
   // Shoal-Call — the croak: an open throat and the word going out.
   shoal_call: (st) => (c) => {
-    c.translate(0.42, 0.52);
-    // The gaping profile: blunt skull, underslung jaw wide open.
+    c.translate(0.44, 0.5);
+    // The gaping profile: blunt skull, underslung jaw, throat sac
+    // full — the croak loaded, pale-rimmed against the dark.
     c.fillStyle = st.deep;
     c.strokeStyle = st.core;
-    c.lineWidth = 0.028;
+    c.lineWidth = 0.04;
     c.beginPath();
     c.moveTo(-0.3, -0.2);
-    c.quadraticCurveTo(0.02, -0.32, 0.14, -0.1); // skull crown
-    c.lineTo(-0.06, -0.02); // upper lip back to the hinge
-    c.quadraticCurveTo(0.1, 0.16, 0.02, 0.26); // the dropped jaw
-    c.quadraticCurveTo(-0.24, 0.28, -0.32, 0.08); // throat sac, full
+    c.quadraticCurveTo(0.02, -0.32, 0.14, -0.1);
+    c.lineTo(-0.06, -0.02);
+    c.quadraticCurveTo(0.1, 0.16, 0.02, 0.26);
+    c.quadraticCurveTo(-0.24, 0.28, -0.32, 0.08);
     c.closePath();
     c.fill();
     c.stroke();
-    // The swollen throat's highlight — the croak loaded.
-    dot(c, st.mid, -0.2, 0.14, 0.06);
-    // The eye, pale and round.
-    dot(c, st.spark, -0.08, -0.18, 0.042);
-    // Needle teeth on the gape.
-    fill(c, st.spark, [[0.1, -0.07], [0.15, -0.02], [0.06, -0.03]]);
-    fill(c, st.spark, [[0.04, 0.2], [0.1, 0.14], [0.12, 0.22]]);
-    // The word going out: gurgle rings in stuttered pairs.
-    c.strokeStyle = st.mid;
-    c.lineWidth = 0.036;
-    for (const r of [0.2, 0.3] as const) {
-      c.beginPath();
-      c.arc(0.18, 0.05, r, -0.7, 0.7);
-      c.stroke();
-    }
-    c.strokeStyle = st.spark;
-    c.lineWidth = 0.028;
-    c.beginPath();
-    c.arc(0.18, 0.05, 0.42, -0.5, 0.5);
-    c.stroke();
-    droplet(c, 0.4, -0.3, 0.15, st);
+    dot(c, st.mid, -0.2, 0.14, 0.07);
+    dot(c, st.spark, -0.08, -0.18, 0.045);
+    // The word going out: one doubled band, rolling off the gape.
+    crescent(c, 0.14, 0.04, 0.12, 0.22, -Math.PI * 0.62, Math.PI * 0.62, st.mid, 0.028);
+    crescent(c, 0.14, 0.04, 0.22, 0.3, -Math.PI * 0.45, Math.PI * 0.45, st.spark, 0.026);
   },
   // ----------------------- THE BRINE CROWNS — the boss plates.
   // Drowning Surge — the flood standing where your next step was:
@@ -4957,40 +4726,23 @@ Object.assign(PLATES, {
   // deep tearing open behind it.
   abyssal_jet: (st) => (c) => {
     c.translate(0.5, 0.5);
-    c.lineCap = 'round';
-    // The torn deep it left: a jagged slit.
+    // The torn deep it left: a dark rent wearing a pale rim, so the
+    // trench reads as a SHAPE and not an absence.
     c.fillStyle = st.deep;
-    c.beginPath();
-    c.moveTo(-0.44, -0.1);
-    c.lineTo(-0.28, -0.04);
-    c.lineTo(-0.38, 0.02);
-    c.lineTo(-0.26, 0.1);
-    c.lineTo(-0.44, 0.08);
-    c.closePath();
-    c.fill();
-    // The jet: thick at the source, needle at the far end.
-    c.strokeStyle = st.mid;
-    c.lineWidth = 0.11;
-    c.beginPath();
-    c.moveTo(-0.3, 0);
-    c.lineTo(0.1, -0.04);
-    c.stroke();
-    c.lineWidth = 0.055;
-    c.beginPath();
-    c.moveTo(0.1, -0.04);
-    c.lineTo(0.42, -0.08);
-    c.stroke();
-    // The pressure line down its spine.
     c.strokeStyle = st.core;
-    c.lineWidth = 0.03;
+    c.lineWidth = 0.04;
+    c.lineJoin = 'round';
     c.beginPath();
-    c.moveTo(-0.26, -0.01);
-    c.lineTo(0.38, -0.07);
+    burstStarPath(c, -0.26, 0.0, 0.21, 0.12, 6, 0.3);
+    c.fill();
     c.stroke();
-    // Shiver spray off the bar.
-    droplet(c, 0.14, -0.2, 0.14, st);
-    droplet(c, 0.02, 0.14, 0.13, st);
-    dot(c, st.spark, 0.44, -0.09, 0.034);
+    // The jet: one hard bar with real body, trench-thick at the rent,
+    // needle at the far end.
+    poly(c, st.mid, [
+      [-0.26, -0.12], [0.12, -0.09], [0.44, -0.02], [0.44, 0.02], [0.12, 0.09], [-0.26, 0.12],
+    ], 0.04);
+    fill(c, st.core, [[-0.24, -0.09], [0.1, -0.07], [0.4, -0.01], [-0.24, -0.02]]);
+    droplet(c, 0.2, -0.25, 0.14, st);
   },
   // Court of Spears — harpoons standing up out of water that held
   // no one: three shafts on a risen ring.
@@ -5063,32 +4815,17 @@ Object.assign(PLATES, {
   // Shallows Rush — the eel-flat closer: a low body under its own
   // bow-wave, already through you.
   shallows_rush: (st) => (c) => {
-    c.translate(0.5, 0.54);
-    c.lineCap = 'round';
-    // The wake it left.
-    c.strokeStyle = st.deep;
-    c.lineWidth = 0.04;
-    c.beginPath();
-    c.moveTo(-0.44, 0.16);
-    c.quadraticCurveTo(-0.2, 0.22, 0.0, 0.16);
-    c.stroke();
-    // The body: one flat eel line, fin ticked.
-    c.strokeStyle = st.mid;
-    c.lineWidth = 0.095;
-    c.beginPath();
-    c.moveTo(-0.3, 0.1);
-    c.quadraticCurveTo(0.0, 0.0, 0.3, 0.02);
-    c.stroke();
-    fill(c, st.mid, [[0.26, -0.02], [0.44, 0.0], [0.3, 0.1]]);
+    c.translate(0.5, 0.52);
+    // The body: one flat eel mass, forked tail to nose, riding low.
+    poly(c, st.mid, [
+      [-0.46, -0.06], [-0.3, 0.03], [-0.46, 0.14], [-0.24, 0.12], [0.1, 0.13],
+      [0.38, 0.06], [0.44, 0.0], [0.3, -0.07], [0.0, -0.09], [-0.24, -0.02],
+    ], 0.04);
+    fill(c, st.core, [[-0.22, -0.04], [0.0, -0.07], [0.28, -0.05], [0.4, 0.0], [-0.22, 0.0]]);
+    fill(c, st.deep, [[-0.22, 0.05], [0.1, 0.08], [0.3, 0.05], [0.1, 0.03]]);
     // The bow-wave breaking ahead of the meat.
-    c.strokeStyle = st.core;
-    c.lineWidth = 0.05;
-    c.beginPath();
-    c.moveTo(0.3, -0.18);
-    c.quadraticCurveTo(0.46, -0.06, 0.38, 0.12);
-    c.stroke();
-    droplet(c, 0.2, -0.2, 0.14, st);
-    dot(c, st.spark, -0.22, 0.06, 0.034);
+    crescent(c, 0.28, 0.0, 0.09, 0.18, -Math.PI * 0.7, Math.PI * 0.35, st.core, 0.04);
+    droplet(c, 0.18, -0.26, 0.15, st);
   },
   // Gullet Snap — the weir gate closing: the unhinged jaw and the
   // guard it cracked.
@@ -5204,29 +4941,16 @@ Object.assign(PLATES, {
   // Iron Brand — the white-hot bar mid-hurl, sparks off the tail.
   iron_brand: (st) => (c) => {
     c.translate(0.5, 0.5);
-    c.lineCap = 'round';
-    // The flight it already crossed.
-    c.strokeStyle = st.deep;
-    c.lineWidth = 0.04;
-    c.beginPath();
-    c.moveTo(-0.42, 0.3);
-    c.lineTo(-0.1, 0.06);
-    c.stroke();
+    c.rotate(-0.55);
     // The bar itself: straight, squared, and furious — a smith's
-    // billet, never a fireball.
-    c.save();
-    c.rotate(-0.62);
-    c.fillStyle = st.mid;
-    c.fillRect(-0.26, -0.06, 0.52, 0.12);
-    c.fillStyle = st.core;
-    c.fillRect(-0.26, -0.06, 0.52, 0.045);
-    c.fillStyle = st.deep;
-    c.fillRect(0.2, -0.06, 0.06, 0.12);
-    c.restore();
-    // Forge sparks shed along the throw.
-    dot(c, st.spark, -0.24, 0.24, 0.036);
-    dot(c, st.spark, -0.08, -0.02, 0.03);
-    dot(c, st.spark, 0.3, -0.34, 0.034);
+    // billet mid-hurl, never a fireball.
+    poly(c, st.mid, [[-0.42, -0.11], [0.36, -0.11], [0.36, 0.11], [-0.42, 0.11]], 0.034);
+    fill(c, st.core, [[-0.4, -0.09], [0.34, -0.09], [0.34, -0.015], [-0.4, -0.015]]);
+    fill(c, st.deep, [[0.26, -0.09], [0.34, -0.09], [0.34, 0.09], [0.26, 0.09]]);
+    // The heat still climbing off the white end, sparks off the tail.
+    flame(c, -0.46, -0.16, 0.32, st, 0.1);
+    star4(c, 0.44, 0.02, 0.11, st.spark);
+    star4(c, -0.12, 0.24, 0.06, st.spark);
   },
   // Forge-Ring — the smith's circle staked on the ground, lit from
   // below by the furnace the earth remembers.
@@ -5266,43 +4990,24 @@ Object.assign(PLATES, {
   warlord_horn: (st) => (c) => {
     c.translate(0.44, 0.5);
     c.lineCap = 'round';
-    // The horn: a curved bell off a gripped mouthpiece.
-    c.strokeStyle = st.mid;
-    c.lineWidth = 0.085;
-    c.beginPath();
-    c.moveTo(-0.32, 0.26);
-    c.quadraticCurveTo(-0.12, 0.3, 0.04, 0.12);
-    c.stroke();
-    c.lineWidth = 0.12;
-    c.beginPath();
-    c.moveTo(0.04, 0.12);
-    c.quadraticCurveTo(0.16, 0.0, 0.2, -0.1);
-    c.stroke();
-    // The bell's mouth.
+    // The war horn as every hall knows it: one fat crescent, narrow
+    // at the lip, swelling to the bell.
+    crescent(c, 0.0, 0.1, 0.17, 0.38, Math.PI * 0.72, Math.PI * 1.62, st.mid, 0.034);
+    // The mouthpiece nub at the narrow end.
+    ringDot(c, st.spark, -0.23, 0.28, 0.05, 0.028);
+    // The bell's mouth at the wide end.
     c.fillStyle = st.core;
-    c.beginPath();
-    c.ellipse(0.22, -0.14, 0.085, 0.06, -0.7, 0, Math.PI * 2);
-    c.fill();
-    // The banding: the officer's trim on the tube.
-    c.strokeStyle = st.spark;
+    c.strokeStyle = OUTLINE;
     c.lineWidth = 0.028;
     c.beginPath();
-    c.moveTo(-0.06, 0.26);
-    c.lineTo(-0.02, 0.14);
+    c.ellipse(0.15, -0.19, 0.11, 0.075, 0.5, 0, Math.PI * 2);
+    c.fill();
     c.stroke();
-    // The order going out: rings rolling from the bell.
-    c.strokeStyle = st.mid;
-    c.lineWidth = 0.036;
-    for (const r of [0.16, 0.26] as const) {
-      c.beginPath();
-      c.arc(0.26, -0.16, r, -1.9, -0.3);
-      c.stroke();
-    }
-    c.strokeStyle = st.spark;
-    c.lineWidth = 0.026;
-    c.beginPath();
-    c.arc(0.26, -0.16, 0.36, -1.7, -0.5);
-    c.stroke();
+    // The officer's band across the tube.
+    poly(c, st.spark, [[-0.3, 0.02], [-0.2, -0.03], [-0.16, 0.07], [-0.26, 0.12]], 0.026);
+    // The note leaving: two solid wedges off the bell.
+    rayWedge(c, 0.2, -0.26, -0.95, 0.1, 0.36, 0.05, st.spark);
+    rayWedge(c, 0.28, -0.18, -0.35, 0.09, 0.32, 0.045, st.spark);
   },
 
   // ------------------- THE EARTH STANDS UP — the golem arts' plates.
@@ -5332,6 +5037,14 @@ Object.assign(PLATES, {
   quarry_ring: (st) => (c) => {
     c.translate(0.5, 0.56);
     ground(c, 0, 0.42, st);
+    // The pit itself, cut before the stones so it never paves them.
+    c.fillStyle = st.deep;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.ellipse(0, 0.08, 0.3, 0.13, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
     // Standing stones heaved up on the rim, mismatched on purpose.
     for (const [x, y, w, h] of [
       [-0.32, -0.02, 0.13, 0.3],
@@ -5344,7 +5057,6 @@ Object.assign(PLATES, {
       // Each slab's lit crown — the top plane the camera owns.
       fill(c, st.spark, [[x - w / 2 + 0.02, y - h], [x + w / 2 - 0.01, y - h - 0.04], [x + w / 2 - 0.03, y - h + 0.03], [x - w / 2 + 0.04, y - h + 0.05]]);
     }
-    ringDot(c, st.deep, 0, 0.02, 0.3, 0.028);
   },
   // Anvil Fall — the anvil already falling, the floor about to ring.
   anvil_fall: (st) => (c) => {
@@ -5373,19 +5085,9 @@ Object.assign(PLATES, {
       [-0.18, -0.26], [0.18, -0.3], [0.32, -0.1], [0.28, 0.12], [-0.08, 0.18], [-0.24, -0.04],
     ], 0.036);
     fill(c, st.spark, [[-0.18, -0.26], [0.18, -0.3], [0.14, -0.18], [-0.14, -0.16]]);
-    // Rivet tick-marks.
-    dot(c, st.deep, -0.06, -0.06, 0.028);
-    dot(c, st.deep, 0.12, -0.08, 0.028);
-    dot(c, st.deep, 0.04, 0.06, 0.028);
-    // The lane it is about to own.
-    chevrons(c, -0.34, 0.02, 0, st, 2, 1.1);
-    c.strokeStyle = st.deep;
-    c.lineCap = 'round';
-    c.lineWidth = 0.04;
-    c.beginPath();
-    c.moveTo(-0.4, 0.3);
-    c.lineTo(0.3, 0.26);
-    c.stroke();
+    // One rivet, one lane: the slab is the story.
+    dot(c, st.deep, 0.04, -0.04, 0.032);
+    chevrons(c, -0.36, 0.02, 0, st, 2, 1.2);
   },
   // Slag Gobbet — a fistful of melt, flying and shedding.
   slag_gobbet: (st) => (c) => {
@@ -5420,10 +5122,9 @@ Object.assign(PLATES, {
       c.fill();
     }
     // Two already speaking, one still drawing breath.
-    flame(c, -0.24, -0.02, 0.3, st, 0.06);
-    flame(c, 0.26, -0.04, 0.26, st, -0.08);
-    dot(c, st.spark, 0.02, 0.0, 0.03);
-    ringDot(c, st.mid, 0, 0.0, 0.36, 0.026);
+    flame(c, -0.24, -0.06, 0.36, st, 0.06);
+    flame(c, 0.26, -0.08, 0.32, st, -0.08);
+    dot(c, st.spark, 0.02, 0.0, 0.035);
   },
   // Crust Burst — the shell stops trying: plates blown off the heart.
   crust_burst: (st) => (c) => {
@@ -5444,26 +5145,24 @@ Object.assign(PLATES, {
   },
   // Calving Volley — three shards shorn off, flying in a fan.
   calving_volley: (st) => (c) => {
-    c.translate(0.5, 0.6);
-    for (const [ang, len] of [[-0.45, 0.6], [0, 0.68], [0.45, 0.6]] as const) {
+    c.translate(0.5, 0.62);
+    // The shorn shoulder they left behind — one dark berg-foot.
+    poly(c, st.deep, [[-0.2, 0.02], [0.2, 0.02], [0.14, 0.18], [-0.14, 0.18]], 0.03);
+    // Three shards shorn off in a fan — the middle one owns the sky.
+    for (const [ang, len, w] of [[-0.5, 0.62, 0.07], [0, 0.84, 0.1], [0.5, 0.62, 0.07]] as const) {
       const dx = Math.sin(ang);
       const dy = -Math.cos(ang);
-      // Each shard is a faceted lance: dark body, one bright facet.
       poly(c, st.mid, [
-        [dx * 0.12 - dy * 0.05, dy * 0.12 + dx * 0.05],
+        [dx * 0.06 - dy * w, dy * 0.06 + dx * w],
         [dx * len, dy * len],
-        [dx * 0.12 + dy * 0.05, dy * 0.12 - dx * 0.05],
-      ], 0.026);
+        [dx * 0.06 + dy * w, dy * 0.06 - dx * w],
+      ], 0.028);
       fill(c, st.core, [
-        [dx * 0.14 - dy * 0.02, dy * 0.14 + dx * 0.02],
-        [dx * len, dy * len],
-        [dx * 0.16, dy * 0.16],
+        [dx * 0.08 - dy * w * 0.6, dy * 0.08 + dx * w * 0.6],
+        [dx * len * 0.96, dy * len * 0.96],
+        [dx * 0.1, dy * 0.1],
       ]);
     }
-    // The shorn shoulder they left behind.
-    poly(c, st.deep, [[-0.14, 0.08], [0.14, 0.08], [0.1, 0.2], [-0.1, 0.2]], 0.028);
-    dot(c, st.spark, 0.2, -0.08, 0.024);
-    dot(c, st.spark, -0.2, -0.06, 0.02);
   },
   // Winter's Floor — the marked ground freezing shut.
   winters_floor: (st) => (c) => {
@@ -5524,30 +5223,12 @@ Object.assign(PLATES, {
   // impact stars already everywhere.
   ogre_tantrum: (st) => (c) => {
     c.translate(0.5, 0.5);
-    // Two ham fists on wide arcs.
-    poly(c, st.mid, [[-0.34, -0.14], [-0.2, -0.24], [-0.08, -0.14], [-0.14, 0.0], [-0.3, 0.0]], 0.034);
-    poly(c, st.mid, [[0.12, 0.04], [0.26, -0.06], [0.38, 0.04], [0.32, 0.18], [0.16, 0.18]], 0.034);
-    fill(c, st.spark, [[-0.34, -0.14], [-0.2, -0.24], [-0.16, -0.16], [-0.3, -0.08]]);
-    fill(c, st.spark, [[0.12, 0.04], [0.26, -0.06], [0.3, 0.02], [0.16, 0.1]]);
-    // Knuckle ticks.
-    dot(c, st.deep, -0.22, -0.06, 0.024);
-    dot(c, st.deep, 0.24, 0.1, 0.024);
-    // The swing arcs crossing — no plan, all directions.
-    c.strokeStyle = st.deep;
-    c.lineCap = 'round';
-    c.lineWidth = 0.036;
-    c.beginPath();
-    c.moveTo(-0.42, 0.16);
-    c.quadraticCurveTo(-0.3, 0.32, -0.06, 0.3);
-    c.stroke();
-    c.beginPath();
-    c.moveTo(0.42, -0.18);
-    c.quadraticCurveTo(0.3, -0.34, 0.06, -0.32);
-    c.stroke();
-    // What already got hit.
-    star4(c, -0.02, -0.02, 0.06, st.core);
-    star4(c, 0.34, -0.24, 0.045, st.spark);
-    star4(c, -0.36, 0.28, 0.045, st.spark);
+    // ONE ham fist on the diagonal — the arm reads as an arm — with
+    // the swing arc behind it and the floor already answering.
+    crescent(c, 0.06, -0.02, 0.42, 0.49, -Math.PI * 0.8, -Math.PI * 0.25, st.deep, 0.026);
+    fist(c, 0.08, -0.02, 0.8, st, 2.4);
+    star4(c, -0.28, 0.3, 0.13, st.spark);
+    star4(c, 0.08, 0.38, 0.07, st.spark, Math.PI / 4);
   },
   // Millstone Toss — the quarried wheel mid-flight, eye showing,
   // still turning. It keeps rolling.
@@ -5585,50 +5266,40 @@ Object.assign(PLATES, {
   // Gravel Rake — the fistful of road, already open, already wide.
   gravel_rake: (st) => (c) => {
     c.translate(0.5, 0.5);
-    // Three flight lanes fanning out.
-    c.strokeStyle = st.deep;
-    c.lineCap = 'round';
-    c.lineWidth = 0.032;
-    for (const [ex, ey] of [[0.36, -0.26], [0.4, 0.0], [0.34, 0.24]] as const) {
-      c.beginPath();
-      c.moveTo(-0.3, 0.06);
-      c.quadraticCurveTo(0.0, (ey - 0.06) * 0.4, ex, ey);
-      c.stroke();
-    }
-    // The stones themselves, mismatched on purpose.
-    poly(c, st.mid, [[0.28, -0.32], [0.38, -0.28], [0.36, -0.18], [0.26, -0.2]], 0.028);
-    poly(c, st.mid, [[0.32, -0.06], [0.44, -0.02], [0.4, 0.08], [0.3, 0.04]], 0.028);
-    poly(c, st.mid, [[0.24, 0.18], [0.34, 0.2], [0.32, 0.3], [0.22, 0.28]], 0.028);
-    fill(c, st.spark, [[0.28, -0.32], [0.38, -0.28], [0.32, -0.26]]);
-    fill(c, st.spark, [[0.32, -0.06], [0.44, -0.02], [0.36, 0.0]]);
-    // The hand that let go.
-    poly(c, st.deep, [[-0.42, -0.04], [-0.28, -0.12], [-0.2, 0.02], [-0.28, 0.16], [-0.42, 0.1]], 0.03);
+    // ONE big stone leading the rake, two behind it — the fan is
+    // told by the spread, not by hairline lanes.
+    chevrons(c, -0.38, 0.04, 0, st, 2, 1.1);
+    poly(c, st.mid, [[0.14, -0.18], [0.4, -0.12], [0.44, 0.08], [0.24, 0.16], [0.08, 0.0]], 0.034);
+    fill(c, st.spark, [[0.16, -0.14], [0.36, -0.09], [0.24, -0.02]]);
+    poly(c, st.mid, [[-0.14, -0.32], [0.02, -0.28], [0.0, -0.14], [-0.16, -0.18]], 0.03);
+    poly(c, st.mid, [[-0.12, 0.2], [0.04, 0.22], [0.02, 0.36], [-0.14, 0.32]], 0.03);
   },
   // Hill Bellow — the shout itself: the open maw and the rings the
   // whole valley is about to hear.
   hill_bellow: (st) => (c) => {
-    c.translate(0.42, 0.5);
+    c.translate(0.4, 0.5);
     // The maw: underbite open to full gape, two lower teeth proud.
-    poly(c, st.mid, [[-0.3, -0.18], [0.0, -0.26], [0.08, -0.06], [0.02, 0.18], [-0.26, 0.22], [-0.36, 0.0]], 0.036);
-    fill(c, st.deep, [[-0.24, -0.06], [0.0, -0.1], [0.0, 0.1], [-0.22, 0.12]]);
-    // The lower teeth standing up out of the jaw.
-    poly(c, st.spark, [[-0.2, 0.12], [-0.16, -0.02], [-0.12, 0.12]], 0.022);
-    poly(c, st.spark, [[-0.08, 0.1], [-0.04, -0.04], [0.0, 0.1]], 0.022);
-    // The voice, ringing out in widening arcs.
-    c.strokeStyle = st.core;
-    c.lineCap = 'round';
-    for (const [r, w] of [[0.2, 0.04], [0.32, 0.034], [0.44, 0.028]] as const) {
-      c.lineWidth = w;
-      c.beginPath();
-      c.arc(0.1, 0.0, r, -0.7, 0.7);
-      c.stroke();
-    }
+    poly(c, st.mid, [[-0.38, -0.24], [0.02, -0.32], [0.12, -0.06], [0.04, 0.24], [-0.32, 0.28], [-0.44, 0.0]], 0.04);
+    fill(c, st.deep, [[-0.28, -0.1], [0.0, -0.14], [0.0, 0.12], [-0.26, 0.16]]);
+    poly(c, st.spark, [[-0.22, 0.16], [-0.17, -0.02], [-0.12, 0.16]], 0.024);
+    poly(c, st.spark, [[-0.08, 0.14], [-0.03, -0.04], [0.02, 0.14]], 0.024);
+    // The voice, ringing out in widening bands the whole valley hears.
+    crescent(c, 0.12, -0.02, 0.14, 0.22, -0.75, 0.75, st.core, 0.026);
+    crescent(c, 0.12, -0.02, 0.3, 0.4, -0.6, 0.6, st.spark, 0.026);
   },
   // Shaken Stones — the hillside letting go: rocks in the air over
   // the ground that was promised to them.
   shaken_stones: (st) => (c) => {
     c.translate(0.5, 0.58);
     ground(c, 0, 0.38, st);
+    // The shadow pool the stones are falling toward — under them.
+    c.fillStyle = st.deep;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.026;
+    c.beginPath();
+    c.ellipse(0, 0.06, 0.3, 0.12, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
     // Falling stones, each with its lit crown still up.
     for (const [x, y, r] of [[-0.22, -0.34, 0.09], [0.08, -0.44, 0.07], [0.28, -0.26, 0.08]] as const) {
       poly(c, st.mid, [[x - r, y], [x - r * 0.4, y - r], [x + r * 0.7, y - r * 0.8], [x + r, y + r * 0.3], [x, y + r * 0.5]], 0.028);
@@ -5637,7 +5308,6 @@ Object.assign(PLATES, {
     // Drop chevrons between stone and shadow.
     chevrons(c, -0.2, -0.12, Math.PI / 2, st, 2, 0.8);
     chevrons(c, 0.26, -0.06, Math.PI / 2, st, 2, 0.7);
-    ringDot(c, st.deep, 0, 0.0, 0.3, 0.026);
   },
   // Haunch Gnaw — supper, mid-fight: the belt haunch with a bite
   // already gone and the bone showing through.
@@ -5674,16 +5344,12 @@ Object.assign(PLATES, {
   // open hand, the collar waiting between them, the working calm above.
   gentle_the_wild: (st) => (c) => {
     c.translate(0.5, 0.52);
-    // The bowed neck, dipping in from the right.
-    crescent(c, 0.16, -0.08, 0.3, 0.21, Math.PI * 0.55, Math.PI * 1.45, st.mid, 0.04);
+    // The beast's neck bowing in from the right — one full band of it.
+    crescent(c, 0.2, -0.02, 0.14, 0.34, Math.PI * 0.5, Math.PI * 1.5, st.mid, 0.04);
     // The offered hand, an open cup rising from the left.
-    crescent(c, -0.18, 0.1, 0.26, 0.17, -Math.PI * 0.45, Math.PI * 0.45, st.deep, 0.04);
+    crescent(c, -0.16, 0.14, 0.12, 0.3, -Math.PI * 0.42, Math.PI * 0.42, st.core, 0.04);
     // The collar between them, not yet worn.
-    ringDot(c, st.core, 0, 0.18, 0.11, 0.032);
-    // The calm of the working, holding the air still.
-    star4(c, -0.02, -0.26, 0.07, st.core);
-    dot(c, st.spark, 0.22, -0.32, 0.028);
-    dot(c, st.spark, -0.26, -0.14, 0.022);
+    ringDot(c, st.spark, 0.02, 0.16, 0.13, 0.05);
   },
 
   // ------------------- THE KEEPER'S TONGUE — the nine words' plates.
@@ -5691,11 +5357,15 @@ Object.assign(PLATES, {
   // Sower's Step — a bootprint mid-stride with seed dots trailing.
   sowers_step: (st) => (c) => {
     c.translate(0.5, 0.5);
-    poly(c, st.mid, [[-0.16, -0.2], [0.06, -0.26], [0.12, 0.02], [-0.1, 0.08]], 0.04);
-    poly(c, st.core, [[-0.06, 0.14], [0.1, 0.1], [0.14, 0.24], [-0.02, 0.28]], 0.035);
-    dot(c, st.spark, -0.26, 0.18, 0.028);
-    dot(c, st.spark, -0.32, 0.02, 0.022);
-    dot(c, st.spark, -0.2, 0.32, 0.022);
+    c.rotate(0.15);
+    // ONE whole boot print — sole and heel — with the seeds falling
+    // in its wake.
+    poly(c, st.mid, [
+      [-0.14, -0.34], [0.1, -0.36], [0.17, -0.16], [0.14, 0.0], [-0.1, 0.02], [-0.18, -0.18],
+    ], 0.036);
+    poly(c, st.core, [[-0.08, 0.12], [0.12, 0.1], [0.14, 0.28], [-0.06, 0.3]], 0.034);
+    dot(c, st.spark, -0.3, 0.14, 0.038);
+    dot(c, st.spark, -0.34, -0.04, 0.03);
   },
   // Gardener's Mend — an open palm with a sprout rising from it.
   gardeners_mend: (st) => (c) => {
@@ -5724,14 +5394,16 @@ Object.assign(PLATES, {
   },
   // Quickening Touch — a hand's finger meeting a bursting sprout.
   quickening_touch: (st) => (c) => {
-    c.translate(0.5, 0.5);
-    poly(c, st.core, [[-0.26, -0.18], [-0.04, -0.04]], 0.045);
-    poly(c, st.mid, [[0.04, 0.3], [0.04, 0.02]], 0.04);
-    crescent(c, -0.06, 0.02, 0.14, 0.1, Math.PI * 0.85, Math.PI * 1.85, st.mid, 0.032);
-    crescent(c, 0.14, 0.02, 0.14, 0.1, -Math.PI * 0.85, Math.PI * 0.15, st.mid, 0.032);
-    for (const [dx, dy] of [[0.16, -0.2], [0.02, -0.28], [0.28, -0.08]] as const) {
-      dot(c, st.spark, dx, dy, 0.026);
-    }
+    c.translate(0.5, 0.52);
+    // The finger arriving: one chunky hand-wedge meeting the green.
+    poly(c, st.core, [[-0.46, -0.4], [-0.05, -0.16], [-0.12, -0.04], [-0.48, -0.28]], 0.034);
+    // The burst at the meeting-point: the quickening itself.
+    star4(c, -0.02, -0.14, 0.19, st.spark);
+    // The sprout answering: a ribbon stem and two SOLID leaves.
+    poly(c, st.mid, [[-0.045, 0.4], [0.045, 0.4], [0.035, -0.1], [-0.035, -0.1]], 0.03);
+    poly(c, st.mid, [[-0.02, 0.12], [-0.32, 0.0], [-0.34, 0.16], [-0.08, 0.24]], 0.034);
+    poly(c, st.mid, [[0.02, 0.18], [0.32, 0.06], [0.34, 0.22], [0.08, 0.3]], 0.034);
+    fill(c, st.core, [[-0.07, 0.14], [-0.27, 0.05], [-0.11, 0.18]]);
   },
   // Soothe the Wild — the closed eye: a lid at rest, lashes down, one
   // feather settling beneath the quiet.
@@ -5759,96 +5431,93 @@ Object.assign(PLATES, {
   // mouth-point, a paw already arriving under them.
   come_to_heel: (st) => (c) => {
     c.translate(0.5, 0.5);
-    // The whistle: nested rings off-center, the call going out.
-    crescent(c, -0.14, -0.16, 0.13, 0.13, -Math.PI * 0.35, Math.PI * 0.35, st.core, 0.036);
-    crescent(c, -0.14, -0.16, 0.22, 0.22, -Math.PI * 0.3, Math.PI * 0.3, st.mid, 0.032);
-    crescent(c, -0.14, -0.16, 0.31, 0.31, -Math.PI * 0.25, Math.PI * 0.25, st.deep, 0.03);
-    // The paw, arrived: pad and three toes.
-    dot(c, st.core, 0.1, 0.2, 0.085);
-    dot(c, st.core, -0.01, 0.09, 0.037);
-    dot(c, st.core, 0.1, 0.05, 0.04);
-    dot(c, st.core, 0.21, 0.09, 0.037);
-    dot(c, st.spark, -0.3, -0.34, 0.024);
+    // The whistle: nested rings with real WIDTH, the call going out.
+    crescent(c, -0.3, -0.24, 0.07, 0.13, -Math.PI * 0.35, Math.PI * 0.35, st.core, 0.024);
+    crescent(c, -0.3, -0.24, 0.19, 0.26, -Math.PI * 0.3, Math.PI * 0.3, st.mid, 0.024);
+    // The paw, arrived big under the call: pad and three toes, each
+    // outlined so the print holds together.
+    ringDot(c, st.core, 0.12, 0.22, 0.13, 0.03);
+    ringDot(c, st.core, -0.06, 0.05, 0.06, 0.026);
+    ringDot(c, st.core, 0.12, -0.02, 0.065, 0.026);
+    ringDot(c, st.core, 0.3, 0.05, 0.06, 0.026);
   },
 
   // Point the Fang — the pointing hand become a dart, twin fangs
   // waiting where it lands.
   point_the_fang: (st) => (c) => {
     c.translate(0.5, 0.5);
-    arrow(c, -0.3, -0.22, Math.PI * 0.28, 0.34, st, 0.9);
-    // The fangs: two down-teeth, bright over deep.
-    fill(c, st.core, [
-      [0.02, 0.08],
-      [0.09, 0.32],
-      [0.16, 0.08],
-    ]);
-    fill(c, st.spark, [
-      [0.18, 0.06],
-      [0.25, 0.28],
-      [0.32, 0.06],
-    ]);
-    dot(c, st.mid, -0.24, 0.18, 0.028);
-    dot(c, st.mid, -0.12, 0.28, 0.022);
+    // The command: one hard chevron pair driving down onto the mark.
+    chevrons(c, 0.0, -0.26, Math.PI / 2, st, 2, 1.2);
+    // THE fang, whole-frame, and the first drop already fallen.
+    fang(c, -0.02, -0.14, 1.0, 0, st);
+    droplet(c, 0.28, 0.26, 0.3, st);
   },
 
   // Keeper's Balm — the thrown jar breaking into a leaf: the drop,
   // the leaf it feeds, the mending glint.
   keepers_balm: (st) => (c) => {
     c.translate(0.5, 0.5);
-    droplet(c, -0.1, -0.16, 0.2, st);
-    // The leaf drinking it in.
-    crescent(c, 0.08, 0.16, 0.24, 0.15, -Math.PI * 0.15, Math.PI * 0.85, st.mid, 0.04);
-    poly(c, st.deep, [
-      [-0.06, 0.3],
-      [0.22, 0.02],
-    ], 0.03);
-    star4(c, 0.24, -0.2, 0.075, st.core);
-    dot(c, st.spark, -0.3, 0.08, 0.024);
+    // ONE whole leaf drinking the drop in: a solid lens with its
+    // bright vein, the balm still falling toward it.
+    c.fillStyle = st.mid;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.lineJoin = 'round';
+    c.beginPath();
+    c.moveTo(-0.3, 0.34);
+    c.quadraticCurveTo(-0.34, -0.02, 0.28, -0.18);
+    c.quadraticCurveTo(0.12, 0.32, -0.3, 0.34);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.strokeStyle = st.core;
+    c.lineWidth = 0.04;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.24, 0.3);
+    c.quadraticCurveTo(-0.04, 0.1, 0.2, -0.12);
+    c.stroke();
+    droplet(c, 0.22, -0.34, 0.34, st);
   },
 
   // Strewn Bait — the laid table: grain scatter, two berries, the
   // strip of meat, one scent curl above.
   strewn_bait: (st) => (c) => {
     c.translate(0.5, 0.54);
-    ground(c, 0, 0.34, st);
-    for (const [gx, gy, gr] of [
-      [-0.2, 0.06, 0.045],
-      [-0.06, 0.12, 0.05],
-      [0.1, 0.04, 0.042],
-      [-0.13, -0.04, 0.038],
-      [0.2, 0.12, 0.045],
-    ] as const) {
-      dot(c, st.mid, gx, gy, gr);
-    }
-    dot(c, '#7a3a4a', 0.02, -0.06, 0.045);
-    dot(c, '#7a3a4a', 0.24, -0.02, 0.038);
-    // The strip of dried meat, angled across.
-    poly(c, st.deep, [
-      [-0.28, -0.12],
-      [-0.08, -0.2],
-    ], 0.06);
+    ground(c, 0, 0.38, st);
+    // The strip of dried meat, a real slab angled across the table.
+    poly(c, st.mid, [[-0.34, 0.0], [-0.06, -0.18], [0.3, -0.1], [0.34, 0.04], [0.04, 0.0], [-0.28, 0.14]], 0.036);
+    fill(c, st.core, [[-0.28, 0.0], [-0.06, -0.14], [0.24, -0.07], [-0.02, -0.04]]);
+    // Two berries set against the slab.
+    ringDot(c, '#7a3a4a', -0.14, 0.16, 0.07, 0.03);
+    ringDot(c, '#7a3a4a', 0.16, 0.12, 0.06, 0.03);
     // One scent curl rising.
-    crescent(c, 0.06, -0.3, 0.1, 0.08, Math.PI * 0.6, Math.PI * 1.6, st.spark, 0.028);
+    crescent(c, 0.08, -0.3, 0.08, 0.14, Math.PI * 0.55, Math.PI * 1.65, st.spark, 0.028);
   },
 
   // The Quiet Walk — prints through mist: three paws walking a soft
   // diagonal, the ground breathing low around them.
   the_quiet_walk: (st) => (c) => {
-    c.translate(0.5, 0.5);
-    // Low mist bands.
-    crescent(c, -0.05, 0.24, 0.3, 0.3, Math.PI * 1.05, Math.PI * 1.95, st.deep, 0.045);
-    crescent(c, 0.1, 0.32, 0.2, 0.2, Math.PI * 1.1, Math.PI * 1.9, st.mid, 0.035);
-    // The walked line: three prints, small to large, passing through.
-    for (const [pxp, pyp, s] of [
-      [-0.24, 0.14, 0.55],
-      [-0.02, -0.04, 0.75],
-      [0.2, -0.22, 1],
-    ] as const) {
-      dot(c, st.core, pxp, pyp, 0.052 * s);
-      dot(c, st.core, pxp - 0.055 * s, pyp - 0.07 * s, 0.024 * s);
-      dot(c, st.core, pxp + 0.005 * s, pyp - 0.09 * s, 0.026 * s);
-      dot(c, st.core, pxp + 0.06 * s, pyp - 0.065 * s, 0.024 * s);
+    c.translate(0.5, 0.48);
+    // The mist, one low band breathing around the line of the walk.
+    crescent(c, 0.02, 0.06, 0.28, 0.4, Math.PI * 0.06, Math.PI * 0.94, st.deep, 0.034);
+    // The step before, already going soft behind.
+    dot(c, st.deep, -0.3, 0.1, 0.075);
+    dot(c, st.deep, -0.38, -0.02, 0.034);
+    dot(c, st.deep, -0.29, -0.05, 0.036);
+    dot(c, st.deep, -0.2, -0.01, 0.034);
+    // THE quiet step: pad and four toes in soft light, unheard.
+    c.fillStyle = st.mid;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.ellipse(0.1, -0.06, 0.21, 0.165, -0.08, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    for (const [tx, ty, r] of [[-0.09, -0.27, 0.055], [0.04, -0.34, 0.06], [0.2, -0.34, 0.06], [0.32, -0.24, 0.055]] as const) {
+      ringDot(c, st.mid, tx, ty, r, 0.03);
     }
+    dot(c, st.core, 0.1, -0.06, 0.075);
   },
 
   // Blood of the Pack — one howl from two throats: facing crescents
@@ -5874,21 +5543,14 @@ Object.assign(PLATES, {
   // halo finding its feet, the heartbeat rings below.
   the_keepers_cry: (st) => (c) => {
     c.translate(0.5, 0.5);
-    // The cry: one bright ray falling in from on high.
-    poly(c, st.core, [
-      [-0.26, -0.3],
-      [0.08, 0.06],
-    ], 0.05);
-    poly(c, st.spark, [
-      [-0.3, -0.18],
-      [-0.02, 0.12],
-    ], 0.028);
-    // The risen halo.
-    crescent(c, 0.12, -0.1, 0.14, 0.09, Math.PI * 1.1, Math.PI * 1.9, st.spark, 0.032);
-    // Thump, thump: the ground answering twice.
-    crescent(c, 0.1, 0.24, 0.14, 0.09, Math.PI * 0.05, Math.PI * 0.95, st.mid, 0.036);
-    crescent(c, 0.1, 0.28, 0.24, 0.14, Math.PI * 0.1, Math.PI * 0.9, st.deep, 0.032);
-    star4(c, 0.12, -0.28, 0.06, st.core);
+    // The cry: one bright ray falling in from on high, with real body.
+    rayWedge(c, 0.1, 0.08, -Math.PI * 0.72, 0.02, 0.52, 0.11, st.core);
+    rayWedge(c, 0.1, 0.08, -Math.PI * 0.72, 0.02, 0.4, 0.05, st.spark);
+    star4(c, -0.2, -0.3, 0.08, st.core);
+    // The halo finding its feet.
+    crescent(c, 0.1, 0.0, 0.13, 0.22, Math.PI * 1.05, Math.PI * 1.95, st.spark, 0.03);
+    // Thump: the ground answering.
+    crescent(c, 0.1, 0.12, 0.2, 0.32, Math.PI * 0.1, Math.PI * 0.9, st.mid, 0.034);
   },
 
   // Voice of the Wild — the whole tongue: echo rings wearing the
@@ -5921,10 +5583,13 @@ Object.assign(PLATES, {
   // the frame, the lane's crest breaking behind the head.
   kingshot: (st) => (c) => {
     c.translate(0.5, 0.5);
-    crescent(c, 0.3, 0.0, 0.22, 0.32, -2.2, -0.9, st.mid, 0.03);
-    arrow(c, -0.02, 0.04, -0.16, 0.9, st, 1.25);
-    crown(c, -0.3, -0.16, 0.2, st.mid, st.core);
-    chevrons(c, -0.44, 0.14, 0, st, 1, 0.8);
+    c.rotate(-0.16);
+    // The whole draw in one shaft: the crowned warshot crossing the frame.
+    arrow(c, 0.02, 0.04, 0, 0.95, st, 1.3);
+    // The lane's crest breaking behind the head.
+    crescent(c, 0.3, 0.04, 0.2, 0.3, -2.3, -1.0, st.spark, 0.028);
+    // The crown riding the fletch — royal, not open to appeal.
+    crown(c, -0.34, -0.12, 0.24, st.mid, st.core);
   },
   // Stringsong — the bow as instrument: the stave's arc, the string
   // drawn true, three notes leaving on the beat.
@@ -5966,18 +5631,12 @@ Object.assign(PLATES, {
   // shaft riding the wind, the flake it carries.
   winterflight: (st) => (c) => {
     c.translate(0.5, 0.5);
-    c.strokeStyle = st.deep;
-    c.lineWidth = 0.03;
-    c.lineCap = 'round';
-    for (const y of [-0.2, 0.22]) {
-      c.beginPath();
-      c.moveTo(-0.44, y);
-      c.lineTo(0.44, y * 0.7);
-      c.stroke();
-    }
-    arrow(c, 0, 0.0, -0.06, 0.8, st, 1.1);
-    snowflake(c, -0.28, -0.3, 0.12, st.spark, 0.035);
-    dot(c, st.spark, 0.3, 0.26, 0.03);
+    c.rotate(-0.06);
+    // One shaft riding the cold corridor's wind.
+    arrow(c, 0.02, 0, 0, 0.92, st, 1.2);
+    // The flake it carries, and the gust on its heel.
+    snowflake(c, -0.26, -0.24, 0.14, st.spark, 0.045);
+    chevrons(c, -0.4, 0.18, 0, st, 2, 0.8);
   },
   // Emberhead — the fire-tipped pair: two shafts, twin flames riding
   // their heads, coals already dropping.
@@ -5994,29 +5653,33 @@ Object.assign(PLATES, {
   // shaft, the thread still trailing.
   skyloom: (st) => (c) => {
     c.translate(0.5, 0.5);
-    c.strokeStyle = st.spark;
-    c.lineWidth = 0.028;
-    c.lineCap = 'round';
-    c.beginPath();
-    c.moveTo(-0.36, 0.28);
-    c.lineTo(-0.08, -0.08);
-    c.lineTo(0.18, 0.18);
-    c.lineTo(0.4, -0.18);
-    c.stroke();
-    ringDot(c, st.mid, -0.36, 0.28, 0.07, 0.028);
-    ringDot(c, st.mid, 0.18, 0.18, 0.07, 0.028);
-    ringDot(c, st.mid, 0.4, -0.18, 0.07, 0.028);
-    arrow(c, -0.1, -0.1, -0.6, 0.4, st, 0.9);
+    // The two stitches already taken up on the line.
+    ringDot(c, st.spark, -0.2, 0.12, 0.1, 0.032);
+    ringDot(c, st.spark, 0.16, -0.08, 0.1, 0.032);
+    // The shuttle shaft, threading the sky's marks in one pass.
+    arrow(c, 0.02, 0, -0.5, 0.9, st, 1.15);
   },
   // Gloamshaft — the black line: the corridor seam, one long shaft of
   // dusk down its middle, the light going out around it.
   gloamshaft: (st) => (c) => {
     c.translate(0.5, 0.5);
-    fill(c, st.deep, [[-0.46, -0.16], [0.46, -0.1], [0.46, 0.1], [-0.46, 0.16]]);
-    arrow(c, 0, 0, 0, 0.9, st, 1.15);
-    dot(c, st.spark, -0.3, -0.3, 0.03);
-    dot(c, st.spark, 0.26, 0.3, 0.026);
-    star4(c, 0.42, 0, 0.07, st.spark);
+    // The black line itself, BIG on the diagonal — the dusk it flies
+    // through is a fat fading trail, not a corridor swallowing it.
+    c.rotate(-0.35);
+    c.strokeStyle = st.deep;
+    c.lineCap = 'round';
+    c.lineWidth = 0.09;
+    c.beginPath();
+    c.moveTo(-0.46, 0.02);
+    c.lineTo(-0.3, 0.01);
+    c.stroke();
+    c.lineWidth = 0.07;
+    c.beginPath();
+    c.moveTo(-0.6, 0.03);
+    c.lineTo(-0.54, 0.03);
+    c.stroke();
+    arrow(c, 0.04, 0, 0, 0.94, st, 1.2);
+    star4(c, 0.5, 0, 0.08, st.spark);
   },
   // Harrier — the returning wing: the circuit arc with heads flying
   // both ways round, the wake ticked behind each.
@@ -6055,19 +5718,23 @@ Object.assign(PLATES, {
   // Crowsong — the called flock: dark wings dropping into the field,
   // the singer's shaft among them.
   crowsong: (st) => (c) => {
-    c.translate(0.5, 0.54);
-    ground(c, 0, 0.32, st);
-    for (const [x, y, s] of [[-0.24, -0.3, 1], [0.06, -0.4, 0.85], [0.3, -0.24, 0.75]] as const) {
-      c.strokeStyle = st.deep;
-      c.lineWidth = 0.05 * s;
-      c.lineCap = 'round';
-      c.beginPath();
-      c.moveTo(x - 0.1 * s, y - 0.05 * s);
-      c.quadraticCurveTo(x, y + 0.06 * s, x + 0.1 * s, y - 0.05 * s);
-      c.stroke();
+    c.translate(0.5, 0.55);
+    // The flock become ONE crow: dark wings in a pale rim so the night
+    // bird reads as a SHAPE; the song leaves the beak in solid wedges.
+    c.fillStyle = st.deep;
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.04;
+    c.lineJoin = 'round';
+    c.beginPath();
+    for (const [px, py] of [[0, -0.44], [0.1, -0.24], [0.44, -0.34], [0.15, -0.04], [0.12, 0.26], [0, 0.36], [-0.12, 0.26], [-0.15, -0.04], [-0.44, -0.34], [-0.1, -0.24]] as const) {
+      c.lineTo(px, py);
     }
-    arrow(c, 0, -0.04, Math.PI / 2 - 0.15, 0.36, st);
-    dot(c, st.spark, -0.32, 0.02, 0.026);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    fill(c, st.mid, [[0.1, -0.24], [0.4, -0.32], [0.16, -0.07]]);
+    rayWedge(c, 0, -0.42, -Math.PI * 0.75, 0.05, 0.34, 0.05, st.core);
+    rayWedge(c, 0, -0.42, -Math.PI * 0.25, 0.05, 0.34, 0.05, st.spark);
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
@@ -6086,20 +5753,14 @@ Object.assign(PLATES, {
   // held line, the needle-blade drawing the fourth.
   threadwork: (st) => (c) => {
     c.translate(0.5, 0.5);
-    c.strokeStyle = st.spark;
-    c.lineWidth = 0.026;
-    c.lineCap = 'round';
-    c.beginPath();
-    c.moveTo(-0.42, 0.1);
-    c.lineTo(0.42, 0.02);
-    c.stroke();
-    for (const x of [-0.26, -0.04, 0.18]) {
-      c.beginPath();
-      c.moveTo(x - 0.05, 0.16);
-      c.lineTo(x + 0.05, -0.04);
-      c.stroke();
+    // The held seam: a fabric RIBBON, three stitches with body crossed
+    // on it, the needle-blade drawing the fourth.
+    poly(c, st.mid, [[-0.46, 0.02], [0.46, -0.06], [0.46, 0.18], [-0.46, 0.26]], 0.034);
+    fill(c, st.deep, [[-0.46, 0.26], [0.46, 0.18], [0.46, 0.12], [-0.46, 0.2]]);
+    for (const x of [-0.28, -0.02, 0.24] as const) {
+      poly(c, st.spark, [[x - 0.07, -0.12], [x + 0.11, 0.3], [x + 0.05, 0.34], [x - 0.13, -0.08]], 0.026);
     }
-    dagger(c, 0.1, -0.2, 0.66, 0.4, st);
+    dagger(c, 0.14, -0.18, 0.72, 0.5, st);
   },
   // Nightshade Kiss — the steeped dart: the bloom nobody replants,
   // the dart leaving it, one drop riding the tip.
@@ -6120,88 +5781,95 @@ Object.assign(PLATES, {
   // blade along them, the one soft cloud of silence.
   quiet_knife: (st) => (c) => {
     c.translate(0.5, 0.5);
-    c.strokeStyle = st.deep;
-    c.lineWidth = 0.028;
-    c.lineCap = 'round';
-    for (const y of [-0.16, 0.18]) {
-      c.beginPath();
-      c.moveTo(-0.44, y);
-      c.lineTo(0.44, y * 0.75);
-      c.stroke();
-    }
-    dagger(c, 0, 0.0, 0.84, -0.04, st);
-    puff(c, -0.3, -0.3, 0.1, st.mid);
+    // The hush laid down the corridor: two seam RIBBONS converging on
+    // the blade's point, the one soft cloud of silence at the hilt.
+    poly(c, st.mid, [[-0.46, -0.34], [0.46, -0.03], [0.46, 0.01], [-0.46, -0.24]], 0.028);
+    poly(c, st.mid, [[-0.46, 0.34], [0.46, 0.03], [0.46, -0.01], [-0.46, 0.24]], 0.028);
+    dagger(c, 0, 0, 0.9, -0.04, st);
+    puff(c, -0.33, -0.13, 0.11, st.mid);
   },
   // Redwork — the room blooming: the nova ring, the blade at its
   // center, petals of the craft opening around it.
   redwork: (st) => (c) => {
     c.translate(0.5, 0.5);
-    novaRing(c, 0, 0, 0.42, st, 12, 0.2, 0.036);
-    for (const a of [0.6, 1.9, 3.2, 4.4, 5.5]) {
-      dot(c, st.mid, Math.cos(a) * 0.28, Math.sin(a) * 0.28, 0.05);
+    // The room blooming: the nova ring, five SOLID petals opening
+    // through it, the blade at the heart of the craft.
+    novaRing(c, 0, 0, 0.42, st, 12, 0.18, 0.05);
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI / 2 + (i * Math.PI * 2) / 5;
+      poly(c, st.mid, [
+        [Math.cos(a - 0.55) * 0.1, Math.sin(a - 0.55) * 0.1],
+        [Math.cos(a - 0.3) * 0.3, Math.sin(a - 0.3) * 0.3],
+        [Math.cos(a) * 0.46, Math.sin(a) * 0.46],
+        [Math.cos(a + 0.3) * 0.3, Math.sin(a + 0.3) * 0.3],
+        [Math.cos(a + 0.55) * 0.1, Math.sin(a + 0.55) * 0.1],
+      ], 0.03);
     }
-    dagger(c, 0, 0.02, 0.7, -Math.PI / 2.2, st);
-    dot(c, st.spark, 0.02, -0.02, 0.035);
+    ringDot(c, st.core, 0, 0, 0.13, 0.036);
+    dagger(c, 0.02, 0.02, 0.7, -Math.PI / 2.2, st);
   },
   // Gallows Thread — the passed noose: the loop hung from its line,
   // the necks it is owed marked below.
   gallows_thread: (st) => (c) => {
-    c.translate(0.5, 0.48);
-    c.strokeStyle = st.spark;
-    c.lineWidth = 0.032;
-    c.lineCap = 'round';
-    c.beginPath();
-    c.moveTo(0, -0.44);
-    c.lineTo(0, -0.18);
-    c.stroke();
-    ringDot(c, st.mid, 0, 0.0, 0.15, 0.05);
+    c.translate(0.5, 0.5);
+    // The passed noose: the rope a RIBBON, the loop an annulus with
+    // real body, the coil knot binding line to loop.
+    poly(c, st.mid, [[-0.06, -0.46], [0.06, -0.46], [0.045, -0.08], [-0.045, -0.08]], 0.03);
+    crescent(c, 0, 0.14, 0.19, 0.31, 0, Math.PI * 2, st.mid, 0.036);
+    poly(c, st.core, [[-0.1, -0.2], [0.1, -0.2], [0.08, -0.05], [-0.08, -0.05]], 0.03);
     c.strokeStyle = st.deep;
-    c.lineWidth = 0.03;
-    c.beginPath();
-    c.moveTo(0.1, 0.1);
-    c.lineTo(0.26, 0.3);
-    c.lineTo(0.05, 0.34);
-    c.stroke();
-    dot(c, st.deep, -0.24, 0.3, 0.05);
-    dot(c, st.deep, -0.05, 0.36, 0.04);
-    dagger(c, 0.26, -0.3, 0.5, 0.5, st);
+    c.lineWidth = 0.04;
+    c.lineCap = 'round';
+    for (const y of [-0.16, -0.1] as const) {
+      c.beginPath();
+      c.moveTo(-0.08, y);
+      c.lineTo(0.08, y);
+      c.stroke();
+    }
   },
   // Widow's Draw — the dealt hand: three steeped needles fanned from
   // the palm, the drop that seals the game.
   widows_draw: (st) => (c) => {
     c.translate(0.5, 0.54);
-    for (const [a, l] of [[-0.5, 0.62], [-0.1, 0.7], [0.3, 0.62]] as const) {
-      arrow(c, Math.cos(a - Math.PI / 2) * 0.05, Math.sin(a - Math.PI / 2) * 0.05 + 0.05, a - Math.PI / 2 + Math.PI / 2 - 1.57, l * 0.62, st, 0.8);
+    // The dealt hand: three steeped needles fanned from ONE palm.
+    for (const a of [-Math.PI / 2 - 0.55, -Math.PI / 2, -Math.PI / 2 + 0.55] as const) {
+      arrow(c, Math.cos(a) * 0.34, 0.08 + Math.sin(a) * 0.34, a, 0.62, st, 0.85);
     }
-    chevrons(c, -0.02, 0.34, -Math.PI / 2, st, 1, 0.8);
-    droplet(c, 0.36, -0.22, 0.15, st);
+    // The palm below, the drop that seals the game riding it.
+    ringDot(c, st.mid, 0, 0.16, 0.15, 0.036);
+    droplet(c, 0, 0.14, 0.22, st);
   },
   // Bloodletting — the old surgery: the blade held level, the drops
   // taken in order, the bowl that keeps the count.
   bloodletting: (st) => (c) => {
-    c.translate(0.5, 0.5);
-    dagger(c, 0, -0.24, 0.8, 0.06, st);
-    for (const [x, y, r] of [[-0.1, -0.04, 0.035], [0.02, 0.08, 0.042], [0.14, -0.02, 0.03]] as const) {
-      dot(c, st.mid, x, y, r);
-    }
-    crescent(c, 0.02, 0.22, 0.16, 0.24, 0.15, Math.PI - 0.15, st.deep, 0.035);
-    dot(c, st.spark, -0.28, 0.3, 0.026);
+    c.translate(0.5, 0.48);
+    // The old surgery: the blade held level, ONE counted drop falling
+    // to the bowl that keeps the score.
+    dagger(c, 0, -0.32, 0.84, 0.06, st);
+    droplet(c, 0.02, 0.04, 0.36, st);
+    crescent(c, 0.02, 0.1, 0.16, 0.3, 0.15, Math.PI - 0.15, st.mid, 0.036);
+    fill(c, st.core, [[-0.24, 0.15], [0.28, 0.15], [0.22, 0.24], [-0.18, 0.24]]);
   },
   // Lights Out — the pinched wick: the candle just killed, the smoke
   // where light was, the dark pooling on the ground.
   lights_out: (st) => (c) => {
     c.translate(0.5, 0.54);
     ground(c, 0, 0.3, st);
-    poly(c, st.mid, [[-0.07, 0.06], [0.07, 0.06], [0.05, -0.22], [-0.05, -0.22]], 0.035);
+    // The candle just killed — a BOLD column rim-lit in the last pale,
+    // so the dark stands as a shape against the dark.
+    c.fillStyle = st.mid;
     c.strokeStyle = st.spark;
-    c.lineWidth = 0.028;
-    c.lineCap = 'round';
+    c.lineWidth = 0.036;
     c.beginPath();
-    c.moveTo(0, -0.24);
-    c.quadraticCurveTo(0.1, -0.34, 0.04, -0.44);
+    for (const [px, py] of [[-0.12, 0.16], [0.12, 0.16], [0.09, -0.26], [-0.09, -0.26]] as const) c.lineTo(px, py);
+    c.closePath();
+    c.fill();
     c.stroke();
-    puff(c, 0.1, -0.4, 0.08, st.deep);
-    dagger(c, 0.28, 0.02, 0.5, -0.9, st);
+    fill(c, st.core, [[-0.08, 0.12], [-0.02, 0.12], [-0.01, -0.24], [-0.06, -0.24]]);
+    // The smoke where light was: one pale RIBBON climbing off the wick.
+    crescent(c, -0.12, -0.34, 0.1, 0.17, -Math.PI * 0.5, Math.PI * 0.45, st.spark, 0.026);
+    crescent(c, 0.02, -0.52, 0.08, 0.14, Math.PI * 0.5, Math.PI * 1.5, st.spark, 0.024);
+    puff(c, 0.06, -0.66, 0.09, st.mid);
   },
   // The Red Hour — the hungry clock: the face, both hands near the
   // hour, the ring of seconds already cutting.
@@ -6463,12 +6131,19 @@ Object.assign(PLATES, {
   // The Long Lever — the world moved: the bar over its fulcrum, the
   // slab already tipping at the far end.
   long_lever: (st) => (c) => {
-    c.translate(0.5, 0.54);
-    poly(c, '#6a5638', [[-0.06, 0.3], [0.08, 0.3], [0.0, 0.1]], 0.034);
-    poly(c, st.mid, [[-0.44, -0.12], [0.44, 0.12], [0.44, 0.2], [-0.44, -0.04]], 0.036);
-    fill(c, st.core, [[-0.42, -0.1], [0.4, 0.13], [0.4, 0.16], [-0.42, -0.07]]);
-    poly(c, st.deep, [[0.3, -0.2], [0.44, -0.16], [0.42, 0.02], [0.28, -0.02]], 0.032);
-    chevrons(c, 0.4, -0.28, -Math.PI / 2, st, 1, 0.7);
+    c.translate(0.5, 0.52);
+    // The fulcrum, planted where it always was.
+    poly(c, '#6a5638', [[-0.14, 0.36], [0.14, 0.36], [0.0, 0.04]], 0.034);
+    // The bar over it: one long iron beam, actually working.
+    c.save();
+    c.rotate(-0.18);
+    poly(c, st.mid, [[-0.46, -0.07], [0.46, -0.07], [0.46, 0.07], [-0.46, 0.07]], 0.034);
+    fill(c, st.core, [[-0.44, -0.055], [0.44, -0.055], [0.44, -0.012], [-0.44, -0.012]]);
+    c.restore();
+    // The slab already tipping at the far end.
+    poly(c, st.deep, [[0.26, -0.36], [0.47, -0.3], [0.41, -0.06], [0.2, -0.12]], 0.032);
+    fill(c, st.mid, [[0.26, -0.36], [0.47, -0.3], [0.44, -0.2], [0.23, -0.26]]);
+    chevrons(c, 0.4, -0.44, -Math.PI / 2, st, 1, 0.7);
   },
   // Sunhammer — swung noon: the great blade mid-arc through its own
   // burst of heat.
@@ -6506,20 +6181,14 @@ Object.assign(PLATES, {
   // Two Bells — the double peal: the crossed pair, both rings still
   // in the air around them.
   two_bells: (st) => (c) => {
-    c.translate(0.5, 0.5);
-    c.strokeStyle = st.spark;
-    c.lineCap = 'round';
-    for (const [x, r] of [[-0.26, 0.3], [0.26, 0.3]] as const) {
-      c.globalAlpha = 0.7;
-      c.lineWidth = 0.03;
-      c.beginPath();
-      c.arc(x, -0.02, r, Math.PI * 1.15, Math.PI * 1.85);
-      c.stroke();
-    }
-    c.globalAlpha = 1;
-    dagger(c, 0, 0.04, 0.8, -0.55, st);
-    dagger(c, 0, 0.04, 0.8, 0.55 + Math.PI, st);
-    star4(c, 0, 0.04, 0.08, st.spark, Math.PI / 4);
+    c.translate(0.5, 0.54);
+    // The double peal: one solid ring-band over each blade, worn
+    // where the steel rings clean through it.
+    crescent(c, 0, 0, 0.27, 0.38, -Math.PI * 1.025, -Math.PI * 0.625, st.spark, 0.026);
+    crescent(c, 0, 0, 0.27, 0.38, -Math.PI * 0.375, Math.PI * 0.025, st.spark, 0.026);
+    dagger(c, 0, 0, 0.84, -0.55, st);
+    dagger(c, 0, 0, 0.84, 0.55 + Math.PI, st);
+    star4(c, 0, 0, 0.09, st.spark, Math.PI / 4);
   },
   // Ribbonwork — the crossing ribbons: the pair mid-weave, red
   // trails looping between them.
@@ -6545,16 +6214,19 @@ Object.assign(PLATES, {
   // home the long way round.
   twin_moons: (st) => (c) => {
     c.translate(0.5, 0.5);
-    c.strokeStyle = st.deep;
-    c.lineWidth = 0.03;
-    c.setLineDash([0.05, 0.05]);
-    c.beginPath();
-    c.arc(0, 0, 0.36, 0, Math.PI * 2);
-    c.stroke();
-    c.setLineDash([]);
-    crescent(c, -0.36, 0, 0.09, 0.16, 0.8, Math.PI * 2 - 0.8, st.mid, 0.03);
-    crescent(c, 0.36, 0, 0.09, 0.16, Math.PI + 0.8, Math.PI - 0.8, st.mid, 0.03);
-    star4(c, 0, 0, 0.09, st.spark, Math.PI / 4);
+    // Two LEANING moons, horns crossing the star between them — the
+    // tilt is what says "moon" instead of "letter C".
+    c.save();
+    c.translate(-0.26, -0.02);
+    c.rotate(-0.5);
+    crescent(c, 0, 0, 0.13, 0.27, 0.75, Math.PI * 2 - 0.75, st.mid, 0.03);
+    c.restore();
+    c.save();
+    c.translate(0.26, 0.06);
+    c.rotate(0.5);
+    crescent(c, 0, 0, 0.11, 0.23, Math.PI + 0.75, Math.PI - 0.75, st.spark, 0.03);
+    c.restore();
+    star4(c, 0, 0.02, 0.1, st.core, Math.PI / 4);
   },
   // Silver Reel — the cold spin: the pair wound into one circle,
   // frost coming off the rim.
@@ -6644,20 +6316,13 @@ Object.assign(PLATES, {
   // one flower they will not leave.
   hummingbird: (st) => (c) => {
     c.translate(0.5, 0.5);
-    for (const [a, al] of [[-0.9, 0.4], [-0.55, 0.65], [-0.2, 1]] as const) {
-      c.save();
-      c.globalAlpha = al;
-      dagger(c, 0.05, -0.05, 0.6, a, st);
-      c.restore();
-    }
-    for (const ax of [1.9, 2.6, 3.3]) {
-      poly(c, st.mid, [
-        [-0.24 + Math.cos(ax) * 0.08, 0.26 + Math.sin(ax) * 0.08],
-        [-0.24 + Math.cos(ax) * 0.22, 0.26 + Math.sin(ax) * 0.22 - 0.04],
-        [-0.24 + Math.cos(ax) * 0.23, 0.26 + Math.sin(ax) * 0.23 + 0.05],
-      ], 0.024);
-    }
-    dot(c, st.spark, -0.24, 0.26, 0.05);
+    // The blur: wing arcs with real width, beating too fast to see.
+    crescent(c, 0.18, -0.18, 0.18, 0.26, -Math.PI * 0.9, -Math.PI * 0.25, st.spark, 0.024);
+    crescent(c, 0.18, -0.18, 0.32, 0.4, -Math.PI * 0.82, -Math.PI * 0.33, st.mid, 0.024);
+    // The needle-beak stoop, held full and solid.
+    dagger(c, 0.04, -0.02, 0.8, 2.2, st);
+    // The one flower they will not leave.
+    ringDot(c, st.spark, -0.28, 0.34, 0.07, 0.03);
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
 
@@ -6791,23 +6456,19 @@ Object.assign(PLATES, {
   // three marks, what they pay drifting back.
   scarworn: (st) => (c) => {
     c.translate(0.5, 0.5);
-    fist(c, 0, 0.06, 0.66, st);
-    c.strokeStyle = st.deep;
-    c.lineWidth = 0.032;
-    c.lineCap = 'round';
-    for (const [x, y] of [[-0.2, -0.3], [-0.04, -0.34], [0.12, -0.3]] as const) {
-      c.beginPath();
-      c.moveTo(x - 0.05, y + 0.08);
-      c.lineTo(x + 0.05, y - 0.08);
-      c.stroke();
-    }
+    // The fist that kept every lesson — ONE old scar worn across it.
+    fist(c, 0, 0.02, 0.85, st);
     c.strokeStyle = st.spark;
-    c.lineWidth = 0.026;
+    c.lineWidth = 0.045;
+    c.lineCap = 'round';
     c.beginPath();
-    c.moveTo(0.34, 0.3);
-    c.quadraticCurveTo(0.42, 0.1, 0.34, -0.08);
+    c.moveTo(-0.14, -0.18);
+    c.lineTo(0.1, 0.1);
     c.stroke();
-    dot(c, st.spark, 0.34, -0.12, 0.03);
+    c.beginPath();
+    c.moveTo(0.08, -0.14);
+    c.lineTo(-0.1, 0.06);
+    c.stroke();
   },
   // Last Lesson — the passed lesson: three students on the wire, the
   // last one bright, the teacher's fist closing the class.
@@ -6838,11 +6499,12 @@ Object.assign(PLATES, {
   // Nip and Dart — the bite already leaving: two small tooth arcs
   // and the exit chevrons of a body that was never really there.
   nip_and_dart: (st) => (c) => {
-    c.translate(0.5, 0.5);
-    crescent(c, 0.14, -0.06, 0.13, 0.09, Math.PI * 0.1, Math.PI * 0.9, st.core, 0.032);
-    crescent(c, 0.14, 0.08, 0.13, 0.09, -Math.PI * 0.9, -Math.PI * 0.1, st.core, 0.032);
-    chevrons(c, -0.18, 0.02, Math.PI, st, 3, 0.9);
-    dot(c, st.spark, 0.3, -0.24, 0.024);
+    c.translate(0.54, 0.5);
+    // The bite: two heavy jaw arcs closing on air, teeth to teeth.
+    crescent(c, 0.06, -0.16, 0.18, 0.3, Math.PI * 0.08, Math.PI * 0.92, st.mid, 0.04);
+    crescent(c, 0.06, 0.16, 0.18, 0.3, -Math.PI * 0.92, -Math.PI * 0.08, st.core, 0.04);
+    // The exit of a body that was never really there.
+    chevrons(c, -0.28, 0.0, Math.PI, st, 2, 0.9);
   },
   // Plague Gnaw — the set teeth over the green stain they leave.
   plague_gnaw: (st) => (c) => {
@@ -6859,28 +6521,46 @@ Object.assign(PLATES, {
   // lines, the hour's swarm darting under it.
   the_rats_hour: (st) => (c) => {
     c.translate(0.5, 0.5);
-    crown(c, 0, -0.2, 0.4, st.mid, st.core);
-    poly(c, st.deep, [[-0.3, 0.08], [0.3, 0.08]], 0.028);
-    poly(c, st.deep, [[-0.28, 0.18], [0.28, 0.18]], 0.028);
-    for (const [dx, dy] of [[-0.2, 0.3], [0, 0.26], [0.2, 0.32]] as const) {
-      dot(c, st.spark, dx, dy, 0.028);
-    }
+    crown(c, 0, -0.22, 0.42, st.mid, st.core);
+    // The hour's owner, WHOLE under the crown: body, ear, eye, and
+    // the tail going the long way home.
+    poly(c, st.mid, [
+      [-0.34, 0.14], [-0.12, -0.04], [0.14, -0.08], [0.42, 0.12], [0.14, 0.22], [-0.14, 0.24],
+    ], 0.032);
+    dot(c, st.mid, 0.1, -0.12, 0.06);
+    dot(c, OUTLINE, 0.24, 0.06, 0.024);
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.045;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(-0.32, 0.18);
+    c.quadraticCurveTo(-0.48, 0.1, -0.4, -0.06);
+    c.stroke();
   },
   // Echo Shriek — the open maw point and the rings the dark answers.
   echo_shriek: (st) => (c) => {
     c.translate(0.42, 0.5);
-    fill(c, st.deep, [[-0.1, -0.1], [0.08, 0], [-0.1, 0.1]]);
-    crescent(c, 0, 0, 0.16, 0.16, -Math.PI * 0.3, Math.PI * 0.3, st.core, 0.036);
-    crescent(c, 0, 0, 0.26, 0.26, -Math.PI * 0.26, Math.PI * 0.26, st.mid, 0.032);
-    crescent(c, 0, 0, 0.36, 0.36, -Math.PI * 0.22, Math.PI * 0.22, st.spark, 0.028);
+    // The maw: dark heart in a PALE rim — the dark reads as a shape.
+    poly(c, st.mid, [[-0.2, -0.16], [0.1, 0], [-0.2, 0.16]], 0.034);
+    fill(c, st.deep, [[-0.14, -0.09], [0.02, 0], [-0.14, 0.09]]);
+    // The dark answering: annular rings with real width.
+    crescent(c, 0.02, 0, 0.13, 0.2, -Math.PI * 0.3, Math.PI * 0.3, st.core, 0.024);
+    crescent(c, 0.02, 0, 0.27, 0.34, -Math.PI * 0.25, Math.PI * 0.25, st.mid, 0.024);
+    crescent(c, 0.02, 0, 0.41, 0.47, -Math.PI * 0.2, Math.PI * 0.2, st.spark, 0.022);
   },
   // The Dark Descent — the folded wing become a falling knife.
   the_dark_descent: (st) => (c) => {
-    c.translate(0.5, 0.48);
-    fill(c, st.mid, [[0.1, -0.3], [0.24, -0.18], [0.02, 0.34], [-0.06, 0.1]]);
-    crescent(c, -0.08, -0.2, 0.2, 0.13, Math.PI * 0.9, Math.PI * 1.7, st.deep, 0.034);
-    chevrons(c, 0.22, 0.16, Math.PI / 2.2, st, 2, 0.8);
-    dot(c, st.spark, -0.24, 0.02, 0.024);
+    c.translate(0.5, 0.5);
+    // One dark blade of bird, rim-lit so night reads as a shape.
+    poly(c, st.mid, [
+      [-0.06, -0.44], [0.34, -0.28], [0.18, -0.02], [0.1, 0.44], [-0.08, 0.12], [-0.34, -0.16],
+    ], 0.042);
+    fill(c, st.deep, [
+      [-0.04, -0.36], [0.26, -0.24], [0.12, -0.02], [0.06, 0.3], [-0.05, 0.08], [-0.24, -0.13],
+    ]);
+    dot(c, st.spark, 0.04, -0.3, 0.034);
+    // The dive's speed, written beside it.
+    chevrons(c, -0.26, 0.28, Math.PI * 0.46, st, 2, 0.9);
   },
   // Set the Shell — the dome come down to earth, barred shut.
   set_the_shell: (st) => (c) => {
@@ -6896,11 +6576,14 @@ Object.assign(PLATES, {
   // the spark of the noise standing between them.
   clatter_challenge: (st) => (c) => {
     c.translate(0.5, 0.5);
-    crescent(c, -0.16, 0, 0.24, 0.16, Math.PI * 0.6, Math.PI * 1.4, st.mid, 0.04);
-    crescent(c, 0.16, 0, 0.24, 0.16, -Math.PI * 0.4, Math.PI * 0.4, st.deep, 0.04);
-    star4(c, 0, -0.02, 0.09, st.core);
-    crescent(c, 0, 0, 0.34, 0.34, -Math.PI * 0.85, -Math.PI * 0.65, st.spark, 0.026);
-    crescent(c, 0, 0, 0.34, 0.34, Math.PI * 0.65, Math.PI * 0.85, st.spark, 0.026);
+    // Shell on shell: two solid domes clapped together, the noise
+    // standing bright in the seam between them.
+    crescent(c, -0.4, 0, 0.14, 0.4, -Math.PI * 0.42, Math.PI * 0.42, st.mid, 0.036);
+    crescent(c, 0.4, 0, 0.14, 0.4, Math.PI * 0.58, Math.PI * 1.42, st.mid, 0.036);
+    crescent(c, -0.4, 0, 0.16, 0.27, -Math.PI * 0.32, Math.PI * 0.32, st.deep, 0.028);
+    crescent(c, 0.4, 0, 0.16, 0.27, Math.PI * 0.68, Math.PI * 1.32, st.deep, 0.028);
+    star4(c, 0, 0, 0.15, st.core, Math.PI / 4);
+    star4(c, 0, 0, 0.09, st.spark);
   },
   // Horn Toss — the horn under the problem, the problem airborne.
   horn_toss: (st) => (c) => {
@@ -6996,17 +6679,27 @@ Object.assign(PLATES, {
   // Hamstring — the bite placed where running lives.
   hamstring: (st) => (c) => {
     c.translate(0.5, 0.5);
-    poly(c, st.deep, [[0.04, -0.36], [-0.02, 0.02], [0.12, 0.34]], 0.05);
-    crescent(c, -0.1, 0.06, 0.15, 0.1, Math.PI * 0.4, Math.PI * 1.4, st.mid, 0.036);
-    snowflake(c, -0.24, 0.24, 0.09, st.spark, 0.036);
+    // The running leg itself, one solid haunch-to-paw mass.
+    poly(c, st.mid, [
+      [-0.34, -0.4], [0.08, -0.42], [0.22, -0.16], [0.1, 0.04], [0.2, 0.26], [0.42, 0.36],
+      [0.16, 0.42], [-0.02, 0.24], [-0.1, -0.02], [-0.3, -0.12],
+    ], 0.042);
+    fill(c, st.deep, [[-0.26, -0.34], [0.02, -0.36], [0.12, -0.16], [-0.2, -0.18]]);
+    // The bite, set into the hock — where the running lives.
+    fang(c, -0.2, 0.1, 0.55, -Math.PI / 2, st);
+    // The run, chilled at the root.
+    snowflake(c, -0.28, 0.32, 0.11, st.spark, 0.045);
   },
   // The First Howl — the muzzle lifted, the answer rising.
   the_first_howl: (st) => (c) => {
-    c.translate(0.5, 0.54);
-    fill(c, st.mid, [[-0.2, 0.14], [0.02, -0.12], [0.12, -0.02], [-0.02, 0.3], [-0.2, 0.3]]);
-    dot(c, st.deep, 0.06, -0.08, 0.028);
-    crescent(c, 0.16, -0.24, 0.14, 0.14, -Math.PI * 0.55, Math.PI * 0.1, st.core, 0.032);
-    crescent(c, 0.2, -0.28, 0.24, 0.24, -Math.PI * 0.5, Math.PI * 0.05, st.spark, 0.028);
+    c.translate(0.46, 0.54);
+    // The muzzle lifted: one solid young head thrown to the sky.
+    poly(c, st.mid, [[0.2, -0.28], [0.02, -0.06], [-0.04, 0.36], [-0.34, 0.36], [-0.3, 0.0], [-0.34, -0.26], [-0.14, -0.12]], 0.04);
+    fill(c, st.deep, [[-0.08, 0.06], [-0.12, 0.32], [-0.3, 0.32], [-0.27, 0.04]]);
+    dot(c, OUTLINE, -0.1, -0.06, 0.032);
+    // The answer rising off the muzzle tip, in bands with real width.
+    crescent(c, 0.24, -0.2, 0.1, 0.18, -Math.PI * 0.6, Math.PI * 0.05, st.core, 0.03);
+    crescent(c, 0.28, -0.24, 0.26, 0.34, -Math.PI * 0.55, 0, st.spark, 0.028);
   },
   // Winter's Jaw — the north's own bite radius.
   winters_jaw: (st) => (c) => {
@@ -7017,32 +6710,50 @@ Object.assign(PLATES, {
   },
   // The Cowing Snarl — one fang raised; the lesser hearts bow.
   the_cowing_snarl: (st) => (c) => {
-    c.translate(0.5, 0.46);
-    thorn(c, 0, -0.06, Math.PI / 2, 1.1, st.core);
-    crescent(c, 0, -0.14, 0.3, 0.2, Math.PI * 1.1, Math.PI * 1.9, st.mid, 0.04);
-    crescent(c, -0.2, 0.3, 0.1, 0.07, Math.PI * 1.1, Math.PI * 1.9, st.deep, 0.03);
-    crescent(c, 0.2, 0.32, 0.1, 0.07, Math.PI * 1.1, Math.PI * 1.9, st.deep, 0.03);
+    c.translate(0.5, 0.44);
+    // The curled lip, one heavy band — and the two fangs out of it.
+    crescent(c, 0, 0.06, 0.2, 0.36, Math.PI * 1.0, Math.PI * 2.0, st.mid, 0.036);
+    fang(c, -0.22, 0.12, 0.8, 0, st);
+    fang(c, 0.22, 0.12, 0.8, 0, st);
+    // The lesser heart bowing under the weight of it.
+    crescent(c, 0, 0.54, 0.24, 0.33, Math.PI * 1.15, Math.PI * 1.85, st.spark, 0.03);
   },
   // Raking Flurry — four opinions, delivered.
   raking_flurry: (st) => (c) => {
     c.translate(0.5, 0.5);
-    for (const [i, x] of [-0.18, -0.06, 0.06, 0.18].entries()) {
-      poly(c, i % 2 ? st.mid : st.core, [[x - 0.08, -0.3], [x + 0.08, 0.26]], 0.038);
+    // Four claw strokes with real width, tearing down together.
+    c.lineCap = 'round';
+    for (const [i, x] of [-0.21, -0.07, 0.07, 0.21].entries()) {
+      c.strokeStyle = i % 2 ? st.mid : st.core;
+      c.lineWidth = 0.075;
+      c.beginPath();
+      c.moveTo(x - 0.08, -0.32);
+      c.lineTo(x + 0.08, 0.28);
+      c.stroke();
     }
-    droplet(c, -0.28, 0.3, 0.32, st);
-    droplet(c, 0.3, 0.24, 0.28, st);
+    droplet(c, 0.34, 0.3, 0.3, st);
   },
   // The Winter Stalk — three bounds, printed in cold.
   the_winter_stalk: (st) => (c) => {
-    c.translate(0.5, 0.5);
-    for (const [i, [px, py]] of ([[-0.24, 0.26], [0, 0.02], [0.24, -0.24]] as const).entries()) {
-      const col = i === 2 ? st.core : i === 1 ? st.mid : st.deep;
-      dot(c, col, px, py + 0.05, 0.055);
-      dot(c, col, px - 0.05, py - 0.035, 0.026);
-      dot(c, col, px + 0.01, py - 0.05, 0.026);
-      dot(c, col, px + 0.06, py - 0.03, 0.026);
+    c.translate(0.5, 0.52);
+    // The bound before, already cooling behind.
+    dot(c, st.deep, -0.32, -0.24, 0.09);
+    dot(c, st.deep, -0.4, -0.36, 0.038);
+    dot(c, st.deep, -0.3, -0.4, 0.038);
+    dot(c, st.deep, -0.2, -0.36, 0.038);
+    // THE print, big as the hour: pad and four toes in cold light,
+    // the frost star set into the pad.
+    c.fillStyle = st.mid;
+    c.strokeStyle = OUTLINE;
+    c.lineWidth = 0.034;
+    c.beginPath();
+    c.ellipse(0.08, 0.18, 0.22, 0.17, -0.08, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    for (const [tx, ty, r] of [[-0.12, -0.04, 0.06], [0.02, -0.12, 0.065], [0.19, -0.12, 0.065], [0.32, -0.02, 0.06]] as const) {
+      ringDot(c, st.mid, tx, ty, r, 0.03);
     }
-    snowflake(c, 0.32, 0.24, 0.08, st.spark, 0.034);
+    snowflake(c, 0.08, 0.18, 0.11, st.deep, 0.04);
   },
   // Maul — the whole arm.
   maul: (st) => (c) => {
@@ -7063,10 +6774,13 @@ Object.assign(PLATES, {
   // Stand Tall — the whole height, announced.
   stand_tall: (st) => (c) => {
     c.translate(0.5, 0.52);
-    poly(c, st.mid, [[-0.12, 0.3], [-0.08, -0.22], [0.08, -0.22], [0.12, 0.3]], 0.05);
-    crescent(c, 0, -0.26, 0.13, 0.09, Math.PI * 1.05, Math.PI * 1.95, st.core, 0.04);
-    haloArcs(c, 0, -0.3, st);
     ground(c, 0, 0.34, st);
+    // The one who does not kneel: a broad standing form, head high,
+    // the light gathering over it.
+    poly(c, st.mid, [[-0.16, 0.3], [-0.11, -0.2], [0.11, -0.2], [0.16, 0.3]], 0.036);
+    fill(c, st.core, [[-0.1, 0.26], [-0.07, -0.16], [0.0, -0.16], [-0.03, 0.26]]);
+    ringDot(c, st.mid, 0, -0.3, 0.1, 0.034);
+    haloArcs(c, 0, -0.34, st);
   },
   // Talon Stoop — silence, with claws on the end of it.
   talon_stoop: (st) => (c) => {
@@ -7096,13 +6810,13 @@ Object.assign(PLATES, {
   },
   // The White Hush — winter, filed in under both wings.
   the_white_hush: (st) => (c) => {
-    c.translate(0.5, 0.46);
-    crescent(c, -0.16, -0.08, 0.26, 0.16, Math.PI * 0.85, Math.PI * 1.75, st.mid, 0.04);
-    crescent(c, 0.16, -0.08, 0.26, 0.16, -Math.PI * 0.75, Math.PI * 0.15, st.mid, 0.04);
-    dot(c, st.deep, 0, -0.16, 0.05);
-    for (const [dx, dy] of [[-0.24, 0.2], [0, 0.3], [0.24, 0.22], [-0.1, 0.38], [0.12, 0.4]] as const) {
-      snowflake(c, dx, dy, 0.05, st.spark, 0.028);
-    }
+    c.translate(0.5, 0.48);
+    // One soft span: both wings raised as a single hush, body between.
+    crescent(c, -0.12, 0.0, 0.16, 0.34, Math.PI * 0.85, Math.PI * 1.7, st.mid, 0.04);
+    crescent(c, 0.12, 0.0, 0.16, 0.34, -Math.PI * 0.7, Math.PI * 0.15, st.mid, 0.04);
+    ringDot(c, st.core, 0, -0.13, 0.13, 0.04);
+    // The winter it files in: ONE flake, big as the quiet.
+    snowflake(c, 0, 0.3, 0.14, st.spark, 0.045);
   },
   // Venom Spit — the bite, mailed ahead.
   venom_spit: (st) => (c) => {
@@ -7213,19 +6927,12 @@ Object.assign(PLATES, {
   hooking_reap: (st) => (c) => {
     c.translate(0.5, 0.5);
     c.rotate(POLE_LEAN * 0.7);
-    pole(c, -0.06, 0.06, 0.8, st, 0);
-    // The hook: a beak curling back off the ferrule.
-    crescent(c, 0.3, -0.02, 0.1, 0.19, Math.PI * 0.05, Math.PI * 0.95, st.mid, 0.03);
-    // The drag: the taken body's path, arriving.
-    c.strokeStyle = st.spark;
-    c.lineWidth = 0.03;
-    c.lineCap = 'round';
-    c.beginPath();
-    c.moveTo(0.46, 0.3);
-    c.quadraticCurveTo(0.3, 0.3, 0.24, 0.16);
-    c.stroke();
-    dot(c, st.deep, 0.46, 0.3, 0.05);
-    dot(c, st.spark, 0.36, -0.24, 0.026);
+    pole(c, -0.04, 0.05, 0.95, st, 0);
+    // The hook: a heavy beak curling back off the ferrule...
+    crescent(c, 0.28, -0.04, 0.1, 0.27, Math.PI * 0.02, Math.PI * 1.02, st.mid, 0.032);
+    // ...and the mark already in its curl, coming home on the drag.
+    ringDot(c, st.deep, 0.48, 0.13, 0.1, 0.03);
+    chevrons(c, 0.28, 0.32, Math.PI * 0.8, st, 2, 0.9);
   },
   // Vaulting Step — the haft planted and the body already over it: the
   // pole upright in the ground, the leap chevroned across the top.
@@ -7362,33 +7069,23 @@ Object.assign(PLATES, {
   // the same line, the two before it still hanging in the air.
   serpents_tongue: (st) => (c) => {
     c.translate(0.5, 0.5);
-    c.rotate(POLE_LEAN);
-    pole(c, -0.04, 0, 0.9, st, 0);
-    // The echo of the last two jabs, riding the same reach.
-    c.strokeStyle = st.spark;
-    c.lineWidth = 0.03;
-    c.lineCap = 'round';
-    for (const [r, a] of [[0.36, 0.55], [0.44, 0.38]] as const) {
-      c.globalAlpha = a;
-      c.beginPath();
-      c.arc(0, 0, r, -0.42, 0.42);
-      c.stroke();
-    }
-    c.globalAlpha = 1;
-    star4(c, 0.45, 0, 0.07, st.core);
-    dot(c, st.spark, 0.3, -0.2, 0.024);
+    c.rotate(POLE_LEAN * 0.6);
+    pole(c, -0.08, 0.05, 0.78, st, 0);
+    // The head arriving three times: the two before it, still riding
+    // the same line as solid wedges.
+    poly(c, st.spark, [[-0.14, 0.0], [-0.01, 0.05], [-0.14, 0.1]], 0.028);
+    poly(c, st.core, [[0.03, 0.0], [0.16, 0.05], [0.03, 0.1]], 0.028);
+    // The reach the flicker owns: one band with real width.
+    crescent(c, -0.08, 0.05, 0.38, 0.52, -0.55, 0.55, st.core, 0.03);
   },
   // Skydriver Fall — the vault turned over: the spear coming down
   // point-first onto the marked ground, the splash already leaving.
   skydriver_fall: (st) => (c) => {
     c.translate(0.5, 0.56);
     ground(c, 0, 0.3, st);
-    pole(c, 0.04, -0.16, 0.86, st, Math.PI / 2 + 0.34);
-    novaRing(c, -0.04, 0.16, 0.24, st, 9, 0.36, 0.038);
-    for (const [dx, dy] of [[-0.3, -0.06], [0.3, -0.1], [-0.14, -0.2]] as const) {
-      dot(c, st.spark, dx, dy, 0.028);
-    }
-    chevrons(c, 0.24, -0.36, Math.PI * 0.62, st, 2, 0.8);
+    pole(c, 0.04, -0.16, 0.9, st, Math.PI / 2 + 0.34);
+    novaRing(c, -0.04, 0.16, 0.26, st, 9, 0.36, 0.05);
+    chevrons(c, 0.26, -0.38, Math.PI * 0.62, st, 2, 1.1);
   },
   // Banner Advance — the line moves forward: the haft planted with the
   // company's pennon on it, the rally rising off the stance.
@@ -7405,33 +7102,22 @@ Object.assign(PLATES, {
   // body with the spear caught mid turn, grit thrown off the rim.
   moulinet_guard: (st) => (c) => {
     c.translate(0.5, 0.5);
-    c.strokeStyle = st.deep;
-    c.lineWidth = 0.036;
-    c.beginPath();
-    c.arc(0, 0, 0.36, 0, Math.PI * 2);
-    c.stroke();
-    c.strokeStyle = st.spark;
-    c.lineWidth = 0.03;
-    c.lineCap = 'round';
-    c.beginPath();
-    c.arc(0, 0, 0.36, -Math.PI * 0.9, -Math.PI * 0.15);
-    c.stroke();
-    pole(c, 0, 0, 0.78, st, POLE_LEAN);
-    for (const a of [-0.35, 1.1, 2.6]) {
-      dot(c, st.spark, Math.cos(a) * 0.46, Math.sin(a) * 0.46, 0.026);
-    }
+    // The circle track worn SOLID — a full band, its seam hidden
+    // under the head of the spear caught mid turn.
+    crescent(c, 0, 0, 0.3, 0.42, POLE_LEAN, POLE_LEAN + Math.PI * 2, st.mid, 0.034);
+    // The bright stretch where the haft just passed.
+    crescent(c, 0, 0, 0.32, 0.4, -Math.PI * 0.9, -Math.PI * 0.2, st.spark, 0.028);
+    pole(c, 0, 0, 0.8, st, POLE_LEAN);
   },
   // Stormpoint — the called strike: the point raised and answered, the
   // sky coming down the haft to meet the hand that lifted it.
   stormpoint: (st) => (c) => {
     c.translate(0.5, 0.52);
-    pole(c, -0.04, 0.02, 0.9, st, -Math.PI / 2 + 0.2);
-    bolt(c, 0.16, -0.24, 0.62, st, 0.22);
-    star4(c, 0.1, -0.4, 0.12, st.core);
-    for (const [dx, dy] of [[-0.34, -0.12], [0.36, 0.06]] as const) {
-      dot(c, st.spark, dx, dy, 0.028);
-    }
-    ground(c, -0.02, 0.24, st);
+    // The raised point, and the sky answering it.
+    ground(c, -0.02, 0.26, st);
+    pole(c, -0.04, 0.02, 0.92, st, -Math.PI / 2 + 0.2);
+    bolt(c, 0.18, -0.22, 0.7, st, 0.22);
+    star4(c, 0.08, -0.42, 0.13, st.core);
   },
   // Gatebreaker — the execute: the head driven through the barred gate,
   // the bar parting, the seam of the break running past it.
@@ -7504,23 +7190,15 @@ Object.assign(PLATES, {
   reaching_thrust: (st) => (c) => {
     c.translate(0.5, 0.5);
     c.rotate(POLE_LEAN);
-    pole(c, 0, -0.06, 1.02, st, 0);
-    // The bracket: one bar with a stop tick at each end — butt to
-    // point, the whole distance claimed.
-    c.strokeStyle = st.core;
-    c.lineWidth = 0.03;
-    c.lineCap = 'round';
-    c.beginPath();
-    c.moveTo(-0.46, 0.28);
-    c.lineTo(0.46, 0.28);
-    for (const x of [-0.46, 0.46]) {
-      c.moveTo(x, 0.19);
-      c.lineTo(x, 0.37);
-    }
-    c.stroke();
-    // The far tick doubles as the mark the point passed.
-    star4(c, 0.5, -0.06, 0.08, st.spark);
-    dot(c, st.deep, -0.46, 0.28, 0.03);
+    pole(c, 0, -0.04, 1.0, st, 0);
+    // The surveyor's bracket under the whole reach: one solid bar,
+    // stop blocks at butt and point — the distance itself, claimed.
+    poly(c, st.core, [[-0.44, 0.13], [0.44, 0.13], [0.44, 0.25], [-0.44, 0.25]], 0.028);
+    poly(c, st.core, [[-0.48, -0.02], [-0.4, -0.02], [-0.4, 0.3], [-0.48, 0.3]], 0.028);
+    poly(c, st.core, [[0.4, -0.02], [0.48, -0.02], [0.48, 0.3], [0.4, 0.3]], 0.028);
+    // The mark the point passed, burst wide of the line.
+    star4(c, 0.3, -0.26, 0.15, st.spark, Math.PI / 4);
+    star4(c, 0.52, -0.04, 0.11, st.core);
   },
   // Reaper's Turn — the glaive's wheel: the haft is the SPOKE, the
   // blade rides the rim, and the shove leaves the far side of the
@@ -7567,28 +7245,233 @@ Object.assign(PLATES, {
   couched_charge: (st) => (c) => {
     c.translate(0.5, 0.5);
     c.rotate(-0.1);
-    // The thread: the run, drawn as one line and not a road.
-    c.strokeStyle = st.mid;
-    c.lineWidth = 0.038;
-    c.lineCap = 'round';
-    c.beginPath();
-    c.moveTo(-0.46, 0.18);
-    c.lineTo(0.24, 0.1);
-    c.stroke();
-    chevrons(c, -0.3, 0.16, Math.PI, st, 2, 0.95);
-    pole(c, -0.02, -0.04, 0.86, st, 0);
-    // The shiver: three splinters thrown back off the point on arrival.
-    c.strokeStyle = st.core;
-    c.lineWidth = 0.03;
-    for (const a of [-0.5, 0, 0.5]) {
-      c.beginPath();
-      c.moveTo(0.42, -0.04);
-      c.lineTo(0.42 + Math.cos(a + Math.PI) * 0.16, -0.04 + Math.sin(a + Math.PI) * 0.16);
-      c.stroke();
-    }
-    star4(c, 0.46, -0.04, 0.09, st.spark);
+    // The knight's short run: one gold thread of road, never the lane.
+    poly(c, st.mid, [[-0.47, 0.16], [0.3, 0.07], [0.3, 0.14], [-0.47, 0.25]], 0.026);
+    chevrons(c, -0.33, -0.05, Math.PI, st, 2, 1.0);
+    // The lance held dead level on it...
+    pole(c, 0, -0.05, 0.9, st, 0);
+    // ...and the arrival splitting into splinters off the point.
+    star4(c, 0.47, -0.05, 0.15, st.core, Math.PI / 4);
+    star4(c, 0.4, -0.18, 0.08, st.spark);
   },
 } satisfies Record<string, (st: FxStyle) => Painter>);
+
+// --------------------------------------------------- the fitting pass
+
+/**
+ * THE FITTING PASS — the composition law enforced by the frame, not by
+ * convention. Four hundred hand-authored painters cannot all eyeball
+ * the same optical grid; the audit proved they don't (ink spans from
+ * 20% to 90% of the box, subjects drifting into corners). So the frame
+ * measures each plate once — ink bounding box + alpha-weighted
+ * centroid at analysis resolution — and bakes through a fit transform
+ * that puts every plate's subject on ONE optical grid: centered on the
+ * blended optical center, longest span scaled to OPTICAL_SPAN of the
+ * box. Padding, centering, and scale become properties of the SYSTEM;
+ * a painter's only job is the silhouette.
+ *
+ * The fit is measured per plate id and cached; the scale is clamped so
+ * a degenerate plate (hairline scatter) is enlarged only so far —
+ * beyond the clamp it is a bespoke-recut candidate, and the audit
+ * instrument (auditAbilityPlates) names it instead of hiding it.
+ */
+const FIT_RES = 96;
+const FIT_ALPHA = 40;
+const OPTICAL_SPAN = 0.78;
+const FIT_SCALE_MIN = 0.55;
+const FIT_SCALE_MAX = 2.4;
+/** How far the alpha-weighted centroid pulls the frame off the bbox
+ * center: enough to seat mass-heavy shapes optically, not so much that
+ * an asymmetric subject (long haft, trailing spark) overbalances. */
+const CENTROID_PULL = 0.3;
+
+interface PlateInk {
+  /** Ink bbox in unit-box coords. */
+  x0: number; y0: number; x1: number; y1: number;
+  /** Alpha-weighted centroid. */
+  cx: number; cy: number;
+  /** Ink pixels / analysis pixels (pre-fit coverage of the whole box). */
+  coverage: number;
+  /** Alpha-weighted mean relative luminance of the ink, 0..1. */
+  luminance: number;
+}
+
+function measurePlateInk(painter: Painter): PlateInk | null {
+  const cv = document.createElement('canvas');
+  cv.width = FIT_RES;
+  cv.height = FIT_RES;
+  const g = cv.getContext('2d', { willReadFrequently: true })!;
+  g.save();
+  g.scale(FIT_RES, FIT_RES);
+  painter(g);
+  g.restore();
+  const data = g.getImageData(0, 0, FIT_RES, FIT_RES).data;
+  let x0 = FIT_RES, y0 = FIT_RES, x1 = -1, y1 = -1;
+  let wsum = 0, cx = 0, cy = 0, lum = 0, inkPx = 0;
+  for (let y = 0; y < FIT_RES; y++) {
+    for (let x = 0; x < FIT_RES; x++) {
+      const i = (y * FIT_RES + x) * 4;
+      const a = data[i + 3]!;
+      if (a < FIT_ALPHA) continue;
+      inkPx++;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+      const w = a / 255;
+      wsum += w;
+      cx += (x + 0.5) * w;
+      cy += (y + 0.5) * w;
+      lum += w * (0.2126 * data[i]! + 0.7152 * data[i + 1]! + 0.0722 * data[i + 2]!) / 255;
+    }
+  }
+  if (x1 < 0 || wsum <= 0) return null;
+  return {
+    x0: x0 / FIT_RES, y0: y0 / FIT_RES,
+    x1: (x1 + 1) / FIT_RES, y1: (y1 + 1) / FIT_RES,
+    cx: cx / wsum / FIT_RES, cy: cy / wsum / FIT_RES,
+    coverage: inkPx / (FIT_RES * FIT_RES),
+    luminance: lum / wsum,
+  };
+}
+
+interface PlateFit { s: number; ox: number; oy: number }
+
+const fitCache = new Map<string, PlateFit>();
+
+function plateFit(key: string, painter: Painter): PlateFit {
+  const hit = fitCache.get(key);
+  if (hit) return hit;
+  const ink = measurePlateInk(painter);
+  let fit: PlateFit = { s: 1, ox: 0.5, oy: 0.5 };
+  if (ink) {
+    const w = ink.x1 - ink.x0;
+    const h = ink.y1 - ink.y0;
+    const span = Math.max(w, h, 0.01);
+    const s = Math.min(FIT_SCALE_MAX, Math.max(FIT_SCALE_MIN, OPTICAL_SPAN / span));
+    const bx = (ink.x0 + ink.x1) / 2;
+    const by = (ink.y0 + ink.y1) / 2;
+    fit = {
+      s,
+      ox: bx + (ink.cx - bx) * CENTROID_PULL,
+      oy: by + (ink.cy - by) * CENTROID_PULL,
+    };
+  }
+  fitCache.set(key, fit);
+  return fit;
+}
+
+/** Wrap a plate painter in its measured fit transform. */
+function fitted(key: string, painter: Painter): Painter {
+  return (c) => {
+    const f = plateFit(key, painter);
+    c.translate(0.5, 0.5);
+    c.scale(f.s, f.s);
+    c.translate(-f.ox, -f.oy);
+    painter(c);
+  };
+}
+
+// ------------------------------------------------------ the instrument
+
+export interface PlateAudit {
+  id: string;
+  /** Ink share of the optical box AFTER fitting, 0..1. */
+  coverage: number;
+  /** Alpha-weighted mean luminance of the ink, 0..1 — the dark-on-dark flag. */
+  luminance: number;
+  /** Disconnected ink islands (8-connected, small specks ignored) — the scatter flag. */
+  fragments: number;
+  /** Ink share lost to a one-pixel erode at analysis scale — the thin-line flag. */
+  thinness: number;
+  /** Fit scale that was needed — far from 1 means the raw plate missed the grid. */
+  fitScale: number;
+}
+
+/**
+ * Measure every bespoke plate through the fitting pass and report the
+ * numbers the eye argues about: coverage, luminance, fragmentation,
+ * stroke thinness. Dev-only (the gallery and the console call it); this
+ * is the ranked worklist for bespoke recuts, so a judgment is a number
+ * before it is a feeling.
+ */
+export function auditAbilityPlates(): PlateAudit[] {
+  const out: PlateAudit[] = [];
+  for (const id of Object.keys(PLATES)) {
+    const st = fxStyleFor(id, undefined);
+    const painter = fitted(`ability:${id}`, PLATES[id]!(st));
+    const cv = document.createElement('canvas');
+    cv.width = FIT_RES;
+    cv.height = FIT_RES;
+    const g = cv.getContext('2d', { willReadFrequently: true })!;
+    g.save();
+    g.scale(FIT_RES, FIT_RES);
+    painter(g);
+    g.restore();
+    const data = g.getImageData(0, 0, FIT_RES, FIT_RES).data;
+    const on = new Uint8Array(FIT_RES * FIT_RES);
+    let inkPx = 0, wsum = 0, lum = 0;
+    for (let i = 0; i < FIT_RES * FIT_RES; i++) {
+      const a = data[i * 4 + 3]!;
+      if (a < FIT_ALPHA) continue;
+      on[i] = 1;
+      inkPx++;
+      const w = a / 255;
+      wsum += w;
+      lum += w * (0.2126 * data[i * 4]! + 0.7152 * data[i * 4 + 1]! + 0.0722 * data[i * 4 + 2]!) / 255;
+    }
+    // Erode: ink that survives when all 4-neighbors are also ink.
+    let solid = 0;
+    for (let y = 1; y < FIT_RES - 1; y++) {
+      for (let x = 1; x < FIT_RES - 1; x++) {
+        const i = y * FIT_RES + x;
+        if (on[i] && on[i - 1] && on[i + 1] && on[i - FIT_RES] && on[i + FIT_RES]) solid++;
+      }
+    }
+    // Connected components over a 2x2-downsampled grid (bridges hairline
+    // gaps so a dashed stroke counts as one island, not thirty).
+    const half = FIT_RES >> 1;
+    const grid = new Uint8Array(half * half);
+    for (let y = 0; y < half; y++) {
+      for (let x = 0; x < half; x++) {
+        const i2 = y * 2 * FIT_RES + x * 2;
+        if (on[i2] || on[i2 + 1] || on[i2 + FIT_RES] || on[i2 + FIT_RES + 1]) grid[y * half + x] = 1;
+      }
+    }
+    let fragments = 0;
+    const stack: number[] = [];
+    for (let seed = 0; seed < grid.length; seed++) {
+      if (grid[seed] !== 1) continue;
+      let size = 0;
+      stack.push(seed);
+      grid[seed] = 2;
+      while (stack.length) {
+        const i = stack.pop()!;
+        size++;
+        const x = i % half, y = (i / half) | 0;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]] as const) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= half || ny >= half) continue;
+          const ni = ny * half + nx;
+          if (grid[ni] === 1) {
+            grid[ni] = 2;
+            stack.push(ni);
+          }
+        }
+      }
+      if (size >= 6) fragments++;
+    }
+    out.push({
+      id,
+      coverage: inkPx / (FIT_RES * FIT_RES * OPTICAL_SPAN * OPTICAL_SPAN),
+      luminance: wsum > 0 ? lum / wsum : 0,
+      fragments,
+      thinness: inkPx > 0 ? 1 - solid / inkPx : 1,
+      fitScale: plateFit(`ability:${id}`, PLATES[id]!(st)).s,
+    });
+  }
+  return out;
+}
 
 // ------------------------------------------------------------ lookup
 
@@ -7597,7 +7480,7 @@ export function abilityIconUrl(id: string, size = 64): string {
   const st = fxStyleFor(id, undefined);
   const make = PLATES[id];
   const painter: Painter = make
-    ? make(st)
+    ? fitted(`ability:${id}`, make(st))
     : (c) => {
         // Unknown ability: loud fallback — a rune-marked blank plate so
         // a missing mapping is caught in review, never shipped quietly.
@@ -7628,7 +7511,7 @@ export function passiveIconUrl(id: string, size = 30): string {
   const meta = PASSIVES[id as keyof typeof PASSIVES];
   const st = fxStyleFor(undefined, meta?.color);
   const make = PASSIVE_PLATES[id];
-  const painter: Painter = make ? make(st) : (c) => {
+  const painter: Painter = make ? fitted(`passive:${id}`, make(st)) : (c) => {
     c.translate(0.5, 0.5);
     ringDot(c, st.mid, 0, 0, 0.3, 0.05);
   };
