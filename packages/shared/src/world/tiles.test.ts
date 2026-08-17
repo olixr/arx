@@ -481,6 +481,10 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.GnawTrough, 'gnawtrough', 1],
     [Tile.HerbPlanter, 'herbplanter', 2],
     [Tile.ChoppingBlock, 'choppingblock', 2],
+    // THE LOG YARD: whole trunks are the street kit's heaviest timber.
+    [Tile.FelledLog, 'greatlog', 2],
+    [Tile.LogPile, 'logdeck', 3],
+    [Tile.LogPileEndOn, 'logstack', 3],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {

@@ -927,6 +927,20 @@ export enum Tile {
   // the pile alone everywhere else.
   /** The splitting block: a scarred seasoned round, the axe standing in it. */
   ChoppingBlock = 462,
+  // THE LOG YARD — the pile that came before the cord: raw felled
+  // timber at MILL scale, for the sawyers, the wainwrights, and every
+  // working wood yard the firewood pile is too small to speak for.
+  // The Woodpile is the STORE and the ChoppingBlock is the WORK;
+  // these are the SUPPLY — trunks the size of the trees the player
+  // fells, waiting on the saw. Two orientations on purpose: the deck
+  // lies long across the yard, the end-on pile aims its cut faces at
+  // the road.
+  /** One great felled trunk lying full length, branch-scarred, cut ends bright. */
+  FelledLog = 463,
+  /** The sawyer's deck: two great trunks with a third nested on top, lying long. */
+  LogPile = 464,
+  /** Great trunks stacked cut-face to the road, bodies running away north. */
+  LogPileEndOn = 465,
 }
 
 export enum Detail {
@@ -1660,6 +1674,11 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   // THE CHORE STANDS ALONE — minimap voice: bark below, bright-scarred
   // end grain above (the block reads by its worked top from the sky).
   [Tile.ChoppingBlock]: { name: 'chopping block', solid: true, color: '#6f4d26', raised: true, topColor: '#c9ab74' },
+  // THE LOG YARD — minimap voice: heavy bark masses; the end-on pile
+  // alone shows cut-face pale (its faces aim at the sky's camera too).
+  [Tile.FelledLog]: { name: 'felled log', solid: true, color: '#6f4d26', raised: true, topColor: '#8a6534' },
+  [Tile.LogPile]: { name: 'log pile', solid: true, color: '#6f4d26', raised: true, topColor: '#96713c' },
+  [Tile.LogPileEndOn]: { name: 'end-on log pile', solid: true, color: '#6f4d26', raised: true, topColor: '#c9ab74' },
 };
 
 /** The four awning silhouettes, index order FOREVER (the id math). */
@@ -2376,6 +2395,11 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.HerbPlanter, 0.3],
   // THE CHORE STANDS ALONE: a knee-high round you step around.
   [Tile.ChoppingBlock, 0.26],
+  // THE LOG YARD: mill timber is MASS — the deck keeps the widest
+  // working stance in the yard.
+  [Tile.FelledLog, 0.42],
+  [Tile.LogPile, 0.46],
+  [Tile.LogPileEndOn, 0.4],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -2701,7 +2725,12 @@ export type DestructibleKind =
   | 'herbplanter'
   // THE CHORE STANDS ALONE: the great round topples heavy, the
   // standing axe cartwheels free, chips everywhere.
-  | 'choppingblock';
+  | 'choppingblock'
+  // THE LOG YARD: whole trunks break as TRUNKS — long heavy sections
+  // that barely fly, great rounds that roll, bark sheeting off.
+  | 'greatlog'
+  | 'logdeck'
+  | 'logstack';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -2931,6 +2960,11 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.HerbPlanter, { kind: 'herbplanter', respawnSec: 300, hits: 2 }],
   // THE CHORE STANDS ALONE: a seasoned round takes two honest blows.
   [Tile.ChoppingBlock, { kind: 'choppingblock', respawnSec: 300, hits: 2 }],
+  // THE LOG YARD: whole trunks are the street kit's heaviest timber —
+  // the single log holds two, the stacked masses hold three.
+  [Tile.FelledLog, { kind: 'greatlog', respawnSec: 420, hits: 2 }],
+  [Tile.LogPile, { kind: 'logdeck', respawnSec: 420, hits: 3 }],
+  [Tile.LogPileEndOn, { kind: 'logstack', respawnSec: 420, hits: 3 }],
 ]);
 
 /** Every smashable prop tile. */

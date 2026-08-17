@@ -226,7 +226,12 @@ export type SmashKind =
   | 'herbplanter'
   // THE CHORE STANDS ALONE: the great round topples heavy, the
   // standing axe cartwheels free, chips everywhere.
-  | 'choppingblock';
+  | 'choppingblock'
+  // THE LOG YARD: whole trunks break as TRUNKS — long heavy sections
+  // that barely fly, great rounds that roll, bark sheeting off.
+  | 'greatlog'
+  | 'logdeck'
+  | 'logstack';
 
 export interface DebrisChunk {
   x: number; // world coords (tile units)
@@ -750,6 +755,9 @@ const CHIP_TONE: Record<SmashKind, string> = {
   hitchpost: '#8a6534',
   woodpile: '#8a6534',
   choppingblock: '#8a6534',
+  greatlog: '#6f4d26',
+  logdeck: '#6f4d26',
+  logstack: '#6f4d26',
   streetplanter: '#8a6534',
   stonebench: '#a39a86',
   produce: '#c05a3a',
@@ -2958,6 +2966,50 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       out.push({ len: 0.14, wid: 0.05, color: '#8a6534', stripe: '#d4b98a', pace: 0.8 });
       for (let i = 0; i < 4; i++) {
         out.push({ len: 0.055, wid: 0.018, color: pick(rand, ['#d8b878', '#e8d4a0']), pace: 1.25 });
+      }
+      break;
+    }
+    case 'greatlog': {
+      // A whole trunk doesn't fly — it BREAKS WHERE IT LIES: two
+      // long heavy sections going almost nowhere, one great round
+      // rolling free, bark sheeting off in slabs.
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.3 + rand() * 0.06, wid: 0.11, color: pick(rand, ['#6f4d26', '#5e4023']), stripe: '#96713c', pace: 0.35 });
+      }
+      out.push({ len: 0.16, wid: 0.14, color: '#6f4d26', stripe: '#d4b98a', round: true, pace: 0.7 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.12, wid: 0.03, color: '#4a3420', stripe: '#6f4d26', pace: 0.9 });
+      }
+      break;
+    }
+    case 'logdeck': {
+      // The deck's nested order lets go: the crown trunk ROLLS off
+      // its valley first and furthest, the bearers split long and
+      // low, and the cut ends go as rolling rounds.
+      out.push({ len: 0.2, wid: 0.16, color: '#6f4d26', stripe: '#96713c', round: true, pace: 1.0 });
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.28 + rand() * 0.06, wid: 0.1, color: pick(rand, ['#6f4d26', '#5e4023']), stripe: '#96713c', pace: 0.4 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.14, wid: 0.12, color: '#8a6534', stripe: '#d4b98a', round: true, pace: 0.65 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.12, wid: 0.03, color: '#4a3420', stripe: '#6f4d26', pace: 0.85 });
+      }
+      break;
+    }
+    case 'logstack': {
+      // The end-on rank rolls the way it was stacked to: great pale
+      // rounds tumbling south end over end, the long bodies behind
+      // them dropping heavy where they stood.
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.15 + rand() * 0.04, wid: 0.13, color: pick(rand, ['#6f4d26', '#8a6534']), stripe: '#d4b98a', round: true, pace: 0.75 });
+      }
+      for (let i = 0; i < 2; i++) {
+        out.push({ len: 0.3 + rand() * 0.05, wid: 0.1, color: '#5e4023', stripe: '#96713c', pace: 0.35 });
+      }
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.11, wid: 0.028, color: '#4a3420', stripe: '#6f4d26', pace: 0.9 });
       }
       break;
     }
