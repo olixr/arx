@@ -1,7 +1,69 @@
 # THE BOOK OF STATES — the composable status & buff core
 
-Proposal, 2026-08-16. Status: **GREEN-LIT 2026-08-16 (recommended answers
-taken). Phase 1 SHIPPED the same day — as-built below.**
+Proposal, 2026-08-16. Status: **EPIC COMPLETE (code layer) 2026-08-17 —
+all six phases shipped in two days (df253575 → 126712ac → b6136e9d →
+3a82422d+9058e252 → 050c9177 → Phase 6 ledger close). Live provings
+owed, consolidated in THE GOALS AUDIT below.**
+
+## THE GOALS AUDIT (epic close, 2026-08-17) — the brief, answered
+
+- **"A composable core we can tune — stat effect, stacks, max stacks,
+  duration, decay, ramp, tiers, emergent threshold effects,
+  consume-at-max for impact or release"**: every knob is a field on
+  `StatusPage`; four stacking models; stepDown decay; ramps; named
+  tier thresholds that announce; detonate-consume live (release
+  reserved with a pin). Authoring a state = a page + its art; the
+  engine has not needed an edit since Phase 1.
+- **"Buff/debuff icons following our icon law"**: twelve one-subject
+  glyph painters in the pages' own derived inks, canvas-direct +
+  DOM-bakeable. **"Clear exaggerated bespoke visuals — poison
+  dripping, burning, a priest's shield around me, layered,
+  decipherable"**: tiered auras with twelve distinct places and
+  rhythms, deep-tier drips/pools, the standing facet dome with its
+  glass death, landing words, the wound row, honest chip rings.
+- **"Attack speed bonuses"**: THE SWING CHANNEL, born reserved and
+  now authored (Quickstep, quicken, boss frenzies), band-clamped as
+  engine law, prediction-mirrored so it can never desync.
+  **"Stacking buffs, proc chances, regen, shields"**: the forge's
+  declared table + restack; the proc engine reads states
+  (`hitState`, vs clauses); mend page + regen lanes; ward pools with
+  the breaking word + the NPC ward seat.
+- **"Applied by equipment, potions, boss attacks"**: the shelf lane
+  (ConsumableBuff), the strike/aggregate gear lanes (reserved kinds
+  priced and waiting), and THE EIGHT CROWNS. **"Spider stacks poison
+  that worsens"**: the pack lane per THE LEDGER ANSWERED + tiered
+  auras; single-body ramp consciously declined (recorded verdict).
+- **"Thousands of combinations"**: pages × stacking models × the
+  forge's fold table × vs/consume clauses × procs × tempers × words
+  × the swing/armor/move/outgoing seams — every pair priced by ONE
+  ledger (`statusLedger.test.ts` + the register + the frozen pins).
+- **Balance**: two deliberate number moves in six phases (player
+  per-source afflictions, green-lit; the eight crowns' kits, priced
+  here); everything else byte-identical at each phase gate,
+  test-pinned.
+
+**THE OWED PROVINGS (one list, the epic's standing debt)**: the live
+rig walk — twelve ambience voices beside the body ruler at three
+scales (the ?fx status wing is the instrument), the eight boss walks
+(each crown's page photographed in its arena), the rogue loop and
+spider-pack scenes, the ward dome under a boss opener, and the
+40-marked-bodies 120fps receipt. The equipment lanes' authored wave
+(enchants/words/tempers speaking boon pages) is the recorded
+follow-on epic, not a debt.
+
+## Phase 6 — THE LEDGER HOLDS: as-built (2026-08-17)
+
+`content/statusLedger.test.ts` = the epic's constitution, 8
+cross-system pins reading the live pages, kits, movesets, and shelf
+together: THE HOLD BUDGET (a licensed control art locks ≤ a tenth of
+its cycle, and its FULL telegraph — windup plus fuse — warns at
+least half the lock), THE DULLED CLAMP, THE SWING ASSEMBLY (the
+worst authored haste stack folds inside the band BEFORE the clamp —
+the ledger refuses what the clamp would hide), THE MEND BOUND (a
+knitting crown gives back ≤ a quarter of itself per cast), THE
+CONSUME CEILING (≤1.5, wounds only), THE SELF-PAGE LAW (a body lays
+only boons on itself), THE COAT BOUND, and the register/book
+agreement (a licensed page can never land mute). Content 582 green.
 
 ## As built — Phase 1, THE BOOK OPENS (2026-08-16)
 
