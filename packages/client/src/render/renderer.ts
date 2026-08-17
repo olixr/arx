@@ -55297,18 +55297,20 @@ export class Renderer {
 
   /**
    * THE EYE ABOVE THE HEAD: the perception telegraph is ONE bespoke
-   * eye on a small dark badge plate — never a text glyph, so it can
-   * never rhyme with the QUEST marks (serif gold, no plate, breathing
-   * bob; this plate pops and holds still). The eye acts the state:
+   * eye wearing the world's own outline ink — never a text glyph, so
+   * it can never rhyme with the QUEST marks (serif gold glyphs with a
+   * breathing bob; this eye pops and holds still), and never a plate
+   * or box — the icon alone, rimmed in STRUCT_OUTLINE like every
+   * sprite in the world, is the whole read. The eye acts the state:
    * WARY is half-lidded (a stare at the edge of sense), LOOKING is
    * the open eye walking over, ENGAGED is the red slit-pupil lock
-   * with a flare ring on the moment of commitment, PURSUIT is the
-   * slashed ember eye (sight broken, still coming — KEEP RUNNING),
-   * HUNTING sweeps its pupil side to side (it is guessing — hide).
-   * A state that drops to calm CLOSES the eye (a grey lid slides
-   * shut and the badge sinks) so disengagement is shown, not popped
-   * out of existence. Drawn in the label pass; the eye is negative
-   * space — a bright almond on the dark plate, pupil punched through.
+   * with a flare (an expanding echo of the eye) on the moment of
+   * commitment, PURSUIT is the slashed ember eye (sight broken,
+   * still coming — KEEP RUNNING), HUNTING sweeps its pupil side to
+   * side (it is guessing — hide). A state that drops to calm CLOSES
+   * the eye (a grey lid slides shut and the eye sinks) so
+   * disengagement is shown, not popped out of existence. Drawn in
+   * the label pass; the pupil is the outline ink punching through.
    */
   private alertIconItem(
     eid: number,
@@ -55364,27 +55366,20 @@ export class Renderer {
         const c3 = c1 + 1;
         const ease = 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2);
         const pop = closing ? 1 : 0.5 + 0.5 * ease;
-        // The plate: a small dark capsule — present, quiet, and
-        // instantly "system", never "someone wrote punctuation".
-        const W = Math.max(17, sc * 0.6) * pop;
-        const H = W * 0.62;
+        // NO PLATE: the icon IS the read — a lone eye wearing the
+        // world's own outline ink (STRUCT_OUTLINE, the same dark
+        // edge every prop and body wears), so it sits IN the art
+        // instead of boxing a UI rectangle over a head. The pass-two
+        // verdict off the first cut: the capsule read as a giant
+        // lozenge floating over the world — system furniture, not a
+        // creature's attention.
+        const W = Math.max(16, sc * 0.55) * pop;
+        const ew = W / 2;
+        const eh = W * 0.28;
         const shut = closing ? Math.min(1, (t - anim.since) / 380) : 0;
         ctx.save();
         ctx.globalAlpha = closing ? 0.9 * (1 - shut * shut) : 0.96;
-        ctx.translate(cx, cy + (closing ? shut * H * 0.35 : 0));
-        ctx.fillStyle = 'rgba(19, 12, 25, 0.86)';
-        ctx.beginPath();
-        ctx.roundRect(-W / 2, -H / 2, W, H, H * 0.42);
-        ctx.fill();
-        ctx.strokeStyle = ink;
-        ctx.globalAlpha *= 0.55;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.globalAlpha /= 0.55;
-        // The almond: bright ink on the dark plate; the pupil is the
-        // plate punching back through.
-        const ew = W * 0.33;
-        const eh = H * 0.31;
+        ctx.translate(cx, cy + (closing ? shut * eh * 0.8 : 0));
         const almond = () => {
           ctx.beginPath();
           ctx.moveTo(-ew, 0);
@@ -55392,16 +55387,24 @@ export class Renderer {
           ctx.quadraticCurveTo(0, eh * 2, -ew, 0);
           ctx.closePath();
         };
+        // The outline shader's edge, hand-applied: stroked UNDER the
+        // fill (round joins) so the eye wears the same dark rim the
+        // world pass gives every silhouette — contrast on any ground.
+        almond();
+        ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = Math.max(2.5, W * 0.17);
+        ctx.stroke();
         almond();
         ctx.fillStyle = ink;
         ctx.fill();
         ctx.save();
         almond();
         ctx.clip();
-        ctx.fillStyle = 'rgba(19, 12, 25, 0.92)';
+        ctx.fillStyle = Renderer.STRUCT_OUTLINE;
         if (face === ALERT_ICON_ENGAGED && !closing) {
           // The lock: a predator's slit, contracted on you.
-          ctx.fillRect(-W * 0.032, -eh, W * 0.064, eh * 2);
+          ctx.fillRect(-W * 0.045, -eh, W * 0.09, eh * 2);
         } else {
           // The round pupil — HUNTING sweeps it side to side: the
           // searcher is GUESSING, and the player watches it guess.
@@ -55412,7 +55415,7 @@ export class Renderer {
           const sweep =
             face === ALERT_ICON_HUNTING && !closing ? Math.sin(t / 430) * ew * 0.52 : 0;
           const py = face === ALERT_ICON_WARY && !closing ? eh * 0.3 : 0;
-          const pr = H * 0.16;
+          const pr = eh * 0.52;
           ctx.beginPath();
           ctx.arc(sweep, py, pr, 0, Math.PI * 2);
           ctx.fill();
@@ -55421,7 +55424,7 @@ export class Renderer {
         // verdict); the stand-down slides it all the way shut.
         const lid = closing ? shut : face === ALERT_ICON_WARY ? 0.4 : 0;
         if (lid > 0) {
-          ctx.fillStyle = 'rgba(19, 12, 25, 0.92)';
+          ctx.fillStyle = Renderer.STRUCT_OUTLINE;
           ctx.fillRect(-ew, -eh, ew * 2, eh * 2 * lid);
         }
         ctx.restore();
@@ -55437,36 +55440,39 @@ export class Renderer {
           ctx.stroke();
         }
         if (face === ALERT_ICON_PURSUIT && !closing) {
-          // The slash: sight is BROKEN — struck through, still coming.
-          ctx.strokeStyle = 'rgba(19, 12, 25, 0.95)';
-          ctx.lineWidth = Math.max(2.5, W * 0.11);
+          // The slash: sight is BROKEN — struck through, still
+          // coming. Outline-dark under, ink over, round caps, ends
+          // carried just past the almond so the strike reads as laid
+          // OVER the eye, not painted inside it.
+          ctx.lineCap = 'round';
+          ctx.strokeStyle = Renderer.STRUCT_OUTLINE;
+          ctx.lineWidth = Math.max(3, W * 0.16);
           ctx.beginPath();
-          ctx.moveTo(-W * 0.34, -H * 0.34);
-          ctx.lineTo(W * 0.34, H * 0.34);
+          ctx.moveTo(-ew * 0.92, -eh * 1.55);
+          ctx.lineTo(ew * 0.92, eh * 1.55);
           ctx.stroke();
           ctx.strokeStyle = ink;
-          ctx.lineWidth = Math.max(1, W * 0.045);
+          ctx.lineWidth = Math.max(1.2, W * 0.06);
           ctx.beginPath();
-          ctx.moveTo(-W * 0.34, -H * 0.34);
-          ctx.lineTo(W * 0.34, H * 0.34);
+          ctx.moveTo(-ew * 0.92, -eh * 1.55);
+          ctx.lineTo(ew * 0.92, eh * 1.55);
           ctx.stroke();
         }
         if (face === ALERT_ICON_ENGAGED && !closing) {
-          // The flare: one expanding ring at the moment of the lock —
-          // the single loudest beat this UI is allowed.
+          // The flare: one expanding echo of the eye itself at the
+          // moment of the lock — the single loudest beat this UI is
+          // allowed, and it is a shape from the art, never a box.
           const fk = (t - anim.since) / 300;
           if (fk < 1) {
+            const g = 1 + fk * 0.8;
             ctx.globalAlpha = 0.7 * (1 - fk);
             ctx.strokeStyle = ink;
             ctx.lineWidth = Math.max(1, W * 0.05);
             ctx.beginPath();
-            ctx.roundRect(
-              (-W / 2) * (1 + fk * 0.7),
-              (-H / 2) * (1 + fk * 0.7),
-              W * (1 + fk * 0.7),
-              H * (1 + fk * 0.7),
-              H * 0.42 * (1 + fk * 0.7),
-            );
+            ctx.moveTo(-ew * g, 0);
+            ctx.quadraticCurveTo(0, -eh * 2 * g, ew * g, 0);
+            ctx.quadraticCurveTo(0, eh * 2 * g, -ew * g, 0);
+            ctx.closePath();
             ctx.stroke();
           }
         }

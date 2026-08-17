@@ -301,6 +301,20 @@ marks alongside for the confusion check). Tests: shared +1 (rung uniqueness,
 u8 fit), server +1 (the full ladder verdict incl. the blind-run split).
 Gates: shared 227 · content 570 · server 545 · client 618 · tsc clean.
 
+**Recut (same day): THE PLATE DIES.** Pass-two verdict off the sheet and the
+user's read: the capsule backdrop read as a giant lozenge floating over the
+world — system furniture, not a creature's attention. The eye now stands
+ALONE, rimmed in `STRUCT_OUTLINE` (#241a2e — the world's own outline-shader
+ink, hand-applied as an under-stroke with round joins) so it wears exactly
+the dark edge every prop and body wears and sits IN the art. The eye grew
+into the freed footprint (W = 0.55·scale, 16 px floor); pupil, lid, and
+slash all punch in outline ink; the PURSUIT slash carries just past the
+almond (round caps, outline under, ink core) so it reads as laid OVER the
+eye; the ENGAGED flare is an expanding echo of the almond itself — a shape
+from the art, never a box ring. Re-judged on the sheet: five faces × three
+scales × three grounds, no verdicts owed. Client-only recut; wire and
+server verdicts untouched.
+
 ## Debts (deliberate)
 
 - The LIVE WALK is owed: the lure-to-town proof (wolf dragged to the Amberford
