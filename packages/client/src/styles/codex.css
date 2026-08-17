@@ -172,14 +172,13 @@
   display: none;
 }
 
+/* THE OPEN HALL: the callings wing stages ONE skill's ladder as a
+   path ribbon (the arts stage's own body), so the schools box is the
+   stage again — no scroll column, no chip grid. */
 .wing-callings #arts-schools {
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding-right: 0.375rem;
+  min-height: 0;
 }
 
 /* ---- THE PATH: the school's arts on one sliding ribbon. --------- */
@@ -1172,84 +1171,9 @@ body:not(.no-ui-motion) .m-fill {
   text-shadow: var(--punch-small);
 }
 
-.calling-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.4375rem 0.625rem;
-  border: var(--hairline) solid var(--line);
-  border-radius: 0.375rem;
-  background: color-mix(in srgb, var(--sunk) 55%, transparent);
-}
-
-.calling-row-head {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  min-width: 7.375rem;
-}
-
-.calling-skill-name {
-  font-size: var(--t-label);
-  font-weight: 800;
-  letter-spacing: 0.0375rem;
-  text-transform: capitalize;
-  color: var(--parchment);
-  text-shadow: var(--punch-small);
-}
-
-.calling-skill-name.secret {
-  color: var(--gold-bright);
-}
-
-.calling-skill-lv {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  color: var(--parchment-dim);
-}
-
-.calling-chips {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
-  flex: 1;
-}
-
-.call-chip {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  appearance: none;
-  font-family: inherit;
-  text-align: left;
-  padding: 0.375rem 0.625rem;
-  background: var(--sunk);
-  border: var(--hairline) solid var(--line);
-  border-radius: 0.3125rem;
-  cursor: pointer;
-  color: var(--parchment);
-}
-
-.call-chip.answered {
-  background: color-mix(in srgb, var(--gold) 14%, var(--sunk));
-  border-color: var(--gold);
-}
-
-.call-chip.locked {
-  opacity: 0.55;
-}
-
-.call-chip.selected {
-  box-shadow: 0 0 0 0.125rem color-mix(in srgb, var(--gold) 45%, transparent);
-}
-
-.call-chip .new-pip {
-  position: absolute;
-  left: auto;
-  top: -0.4375rem;
-  right: -0.375rem;
-}
+/* THE OPEN HALL retired the per-skill rows and the two-column chip
+   grid (Phase 5): the ladder is a ribbon of seat plates in the arts
+   stage's vocabulary. The gem lives on. */
 
 .call-gem {
   width: 0.875rem;
@@ -1266,30 +1190,148 @@ body:not(.no-ui-motion) .m-fill {
   border-width: 0.125rem;
 }
 
-.call-name {
-  flex: 1;
-  min-width: 0;
-  font-size: 0.8125rem;
-  font-weight: 800;
-  letter-spacing: 0.01875rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: var(--punch-small);
-}
 
-.call-sub {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  color: var(--parchment-dim);
-  white-space: nowrap;
-}
 
-.call-chip.answered .call-sub {
-  color: var(--gold-bright);
-}
 
 .bench-plate.call-plate {
   display: grid;
   place-items: center;
+}
+
+/* ---------------------------------------------- THE OPEN HALL (callings-v2 Ph5) */
+
+/* The wing toggle: two tabs at the head's edge, pad-true, the active
+   one lit in the codex gold. Sits after the in-hand chips. */
+.wing-toggle {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 0.125rem;
+  padding: 0.125rem;
+  background: var(--sunk);
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--r-chip);
+}
+
+.stage-head .in-hand ~ .wing-toggle {
+  margin-left: 0.5rem;
+}
+
+.wing-tab {
+  position: relative;
+  appearance: none;
+  font-family: inherit;
+  font-size: 0.71875rem;
+  font-weight: 800;
+  letter-spacing: 0.075rem;
+  text-transform: uppercase;
+  padding: 0.1875rem 0.5625rem;
+  color: var(--parchment-dim);
+  background: transparent;
+  border: none;
+  border-radius: var(--r-chip);
+  cursor: pointer;
+  text-shadow: var(--punch-small);
+}
+
+.wing-tab.active {
+  color: var(--gold-bright);
+  background: color-mix(in srgb, var(--gold) 18%, var(--sunk));
+  box-shadow: inset 0 0 0 var(--hairline) var(--gold);
+}
+
+.wing-tab.has-pip::after {
+  content: '';
+  position: absolute;
+  top: -0.1875rem;
+  right: -0.1875rem;
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: 50%;
+  background: var(--gold-hot);
+  box-shadow: 0 0 0.25rem var(--gold-hot);
+}
+
+/* The seat plate: the tech plate's body with the gem in the well. */
+.calling-plate .tech-plate-well .call-gem.lg {
+  width: 2.125rem;
+  height: 2.125rem;
+}
+
+/* An answered seat wears the equipped ring in the calling violet, so
+   the two wings' 'in hand' reads apart at a glance. */
+.calling-plate.equipped .tech-plate-well {
+  box-shadow:
+    inset 0 0 0 0.15625rem #a48adc,
+    inset 0 0 12.5rem rgba(164, 138, 220, 0.16);
+}
+
+.calling-plate.equipped.selected .tech-plate-well {
+  transform: scale(1.16);
+  box-shadow:
+    inset 0 0 0 0.15625rem #c8b4ee,
+    inset 0 0 12.5rem rgba(164, 138, 220, 0.24);
+}
+
+.calling-plate.equipped .tech-plate-sub {
+  color: #c8b4ee;
+}
+
+/* THE RANK PIPS: four dots under the well — applied filled (violet),
+   earned outlined, the rest dim. A build read at a glance. */
+.rank-pips {
+  position: absolute;
+  bottom: -0.4375rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: inline-flex;
+  gap: 0.1875rem;
+  padding: 0.0625rem 0.25rem;
+  background: rgba(24, 14, 32, 0.92);
+  border-radius: 0.25rem;
+}
+
+.rank-pips i {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 50%;
+  border: var(--hairline) solid rgba(200, 180, 238, 0.35);
+  background: transparent;
+}
+
+.rank-pips i.earned {
+  border-color: #c8b4ee;
+}
+
+.rank-pips i.applied {
+  border-color: #c8b4ee;
+  background: #c8b4ee;
+  box-shadow: 0 0 0.25rem rgba(200, 180, 238, 0.7);
+}
+
+/* The package, read: one line per entry, quiet, in the bench's hand. */
+.bench-package {
+  margin: 0.375rem 0 0;
+  padding: 0 0 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+  font-size: 0.78125rem;
+  color: var(--parchment);
+  text-shadow: var(--punch-small);
+}
+
+.bench-package li::marker {
+  color: #a48adc;
+}
+
+.bench-next-rank {
+  color: #c8b4ee;
+}
+
+.bench-veil-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin-top: 0.375rem;
 }

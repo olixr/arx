@@ -52,6 +52,67 @@ pair tables. Core first, content later.
 
 ---
 
+## As built — Phase 5, THE OPEN HALL (2026-08-17) — LIVE-PROVEN
+
+The codex wing rebuilt for a 250-seat world, in the arts stage's own
+vocabulary. What shipped, where it bound:
+
+- **One rail, two wings.** The terminal "Callings" rail stop retired;
+  both wings ride the school rail — arts stops at the technique
+  schools, callings stops at EVERY visible skill (each owns a ladder).
+  The wing toggle (`Arts ◇ Callings`, pad-true `wing:` navkeys, NEW
+  pip on the callings tab) stands in every stage head; `setArtsWing`
+  keeps the skill on the stage when both wings own it. The rail's
+  sub-line speaks the ladder on the callings wing (`answered of
+  open`), and a skill holding an answer wears the in-hand mark.
+- **THE LADDER STAGE.** `callingStage` = stage head (skill, level,
+  `N of M answered`, the toggle) + a path ribbon of `callingPlate`s —
+  the tech plate's own body: gem well, name, sub-line (`Rank N · cost`
+  / `cost` / `Lv seat`), NEW pip, and THE RANK PIPS (four dots:
+  applied filled violet, earned outlined, rest dim). Locked seats
+  condense behind the same veil cap (`callveil:`), whose bench lists
+  the seats waiting by level and price. Wheel, chevrons, and
+  `recenterRibbon` serve both wings (the recenter learned the wing's
+  own pick + prefixes); `inspectCalling` lights the bench without
+  rebuilding the stage. ONE skill on the stage at a time — never 250
+  chips, pad nav key-true by construction.
+- **THE BENCH READS THE PACKAGE.** `describeCallingEffect` speaks one
+  plain line per entry at the rank the bench looks at (gear through
+  `describeEffect` — one truth for cards and benches; procs by
+  trigger × action; `when` as "While <condition>: <grant>"; trade
+  dials and every perk in its own units via `describePerk`), the next
+  rank's note previewed, then the Phase-4 rank ladder (Deepen /
+  Lighten / Set down).
+- **The skills-hero row** summarizes (`N of M answered · first two by
+  name, ranks noted`) and its door opens the skill's OWN ladder.
+- **THE WAKING HAND's owed line paid**: the HUD charge chip resolves
+  calling-proc meters from the calling roster (all rank steps), worn
+  as the calling's gem instead of a scroll.
+- **The dead CSS retired** (`.calling-row`, the two-column
+  `.calling-chips` grid, `.call-chip*`); the hall's vocabulary added
+  (`.wing-toggle/.wing-tab`, `.calling-plate` violet equipped ring,
+  `.rank-pips`, `.bench-package`, `.bench-veil-list`, `.chip-gem`).
+  The focus-meter teach speaks the quartile curve.
+- **LIVE-PROVEN on lane 21** (built client :5276 ↔ server :8873,
+  fresh `arx_calling_proof` db **through migration 42**, 120fps):
+  registration → `/xp mining 500000` → `sendCalling('prospector',
+  true, 3)` accepted by the REAL toggle path → the wing shows the
+  mining ladder with pips III+earned-IV, `Rank III · 3 Focus`, the
+  package line, `5 / 6` → **Deepen to Rank IV clicked from the bench**
+  → `Rank IV · 4 Focus`, `6 / 6` → an overdraft (`forgeheat`) refused
+  with the honest line ("Your Focus is spent (6/6). Forgeheat at Rank
+  I holds 2.") → the vitality ladder shows the veil cap ("2 more ·
+  past Lv 20") and its bench list → **full relog: Rank IV persisted**
+  (the migration, the upsert, the Map load, the additive `ranks`
+  wire all live) → the ceremony spoke ("Sparing Hammer may be
+  answered at Rank III now", "Your Focus deepens — 6"). Two
+  screenshots audited; teach copy + pip seat polished on the walk.
+  The when-chip and calling-proc live proofs wait on the content
+  epoch's first authored package (no shipped def authors either
+  lane — PURE PLATFORM); the engines are pinned by 15 slate laws.
+- Gates: shared 268 / content 595 / server 584 / client 636, tsc -b
+  clean ×4.
+
 ## As built — Phase 4, THE WIDER LADDER (2026-08-17)
 
 The epic's ONE number move, plus the applied-rank persistence the

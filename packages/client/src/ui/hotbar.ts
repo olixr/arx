@@ -1,5 +1,5 @@
 import { EQUIP_SLOTS, PASSIVES, isStowedSlot, type AbilitySlot } from '@arx/shared';
-import { ENCHANTS, itemDef } from '@arx/content';
+import { CALLINGS, ENCHANTS, itemDef } from '@arx/content';
 import type { ClientGame } from '../game/clientGame.js';
 import type { InputManager } from '../input/inputManager.js';
 import { itemIconUrl, sneakEyeUrl } from '../render/icons.js';
@@ -13,7 +13,10 @@ import { elementTint } from '../render/wornLight.js';
  * ONE ID = ONE TIMER = ONE METER means a proc id names one working
  * across the whole roster, so the map cannot be ambiguous.
  */
-let procHomes: Map<string, { ench: string; name: string; element: string }> | null = null;
+let procHomes: Map<
+  string,
+  { ench?: string; calling?: string; name: string; element: string; color?: string }
+> | null = null;
 function procHome(id: string) {
   if (!procHomes) {
     procHomes = new Map();
@@ -21,6 +24,24 @@ function procHome(id: string) {
       for (const fx of e.effects) {
         if (fx.kind === 'proc') {
           procHomes.set(fx.id, { ench: e.id, name: fx.name, element: fx.element ?? e.element });
+        }
+      }
+    }
+    // THE WAKING HAND (callings-v2): a calling's working shows its
+    // meter the same way — resolved from the calling roster by id,
+    // painted with the calling's gem instead of a scroll.
+    for (const def of CALLINGS.values()) {
+      const steps = [def.effects, ...(def.ranks ?? []).map((r) => r.effects)];
+      for (const effects of steps) {
+        for (const fx of effects) {
+          if (fx.kind === 'proc' && !procHomes.has(fx.proc.id)) {
+            procHomes.set(fx.proc.id, {
+              calling: def.id,
+              name: fx.proc.name,
+              element: fx.proc.element ?? 'arcane',
+              color: def.color,
+            });
+          }
         }
       }
     }
@@ -380,13 +401,21 @@ export class Hotbar {
           c.have >= c.need - 1
             ? `${home.name}: one moment from answering`
             : `${home.name}: ${c.have} of ${c.need} banked`;
-        const img = document.createElement('img');
-        img.src = itemIconUrl(`scroll_${home.ench}`, 34);
-        img.draggable = false;
         const count = document.createElement('span');
         count.className = 'buff-secs';
         count.textContent = `${c.have}/${c.need}`;
-        chip.append(img, count);
+        if (home.ench) {
+          const img = document.createElement('img');
+          img.src = itemIconUrl(`scroll_${home.ench}`, 34);
+          img.draggable = false;
+          chip.append(img, count);
+        } else {
+          // A calling's meter wears its gem (the codex's own mark).
+          const gem = document.createElement('span');
+          gem.className = 'call-gem chip-gem';
+          gem.style.setProperty('--gem', home.color ?? '#a48adc');
+          chip.append(gem, count);
+        }
         this.buffTray.appendChild(chip);
       }
     }

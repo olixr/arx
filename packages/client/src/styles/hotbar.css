@@ -439,3 +439,13 @@ body.no-ui-motion .swap-slot.trading .hotbar-icon {
   50% { filter: brightness(1.45); }
 }
 
+
+/* THE WAKING HAND: a calling's stacking meter wears the codex gem in
+   place of a scroll — the chip's own size, the calling's own color. */
+.buff-chip.charge .chip-gem {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.54), var(--gem) 45%, rgba(0, 0, 0, 0.33));
+  border: 0.0625rem solid rgba(8, 6, 3, 0.75);
+}
