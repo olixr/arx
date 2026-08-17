@@ -156,8 +156,13 @@ for (const [dlgId, lines] of byDialogue) {
   const file = join(DLG_DIR, `${dlgId}.json`);
   let content = readFileSync(file, 'utf8');
   // Idempotent: strip every voice ref we may have written before, then
-  // lay the current set down fresh after each node's "id" line.
+  // lay the current set down fresh after each node's "id" line. Two
+  // shapes exist in the wild: the importer's own (after "id", trailing
+  // comma) and hand-placed refs sitting as a node's LAST key (no trailing
+  // comma, a comma before it). Missing the second once laid a duplicate
+  // "voice" key beside every hand-placed ref — strip both.
   content = content.replace(/\n\s*"voice": "[a-z0-9_]+",/g, '');
+  content = content.replace(/,\n\s*"voice": "[a-z0-9_]+"(?=\s*\n\s*\})/g, '');
   const nodesAt = content.indexOf('"nodes"');
   let placed = 0;
   for (const line of lines) {
