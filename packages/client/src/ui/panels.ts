@@ -3239,7 +3239,7 @@ export class Panels {
     pips.dataset.tipsub = `${seats.length} Callings on this ladder; ${answered} answer to you now.`;
     const count = document.createElement('span');
     count.className = 'stage-count';
-    count.textContent = `${answered} answered`;
+    count.textContent = `${answered} of ${seats.length} answered`;
     head.append(pips, count, this.wingToggle());
     block.appendChild(head);
 
