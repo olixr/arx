@@ -8,6 +8,12 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   server: {
     port: 5260,
+    // HMR off + watcher blinded so peer saves never reload a proving
+    // pass mid-walk (the rig13 lesson).
+    hmr: false,
+    watch: {
+      ignored: ['**/*'],
+    },
     proxy: {
       '/ws': {
         target: 'ws://localhost:8860',

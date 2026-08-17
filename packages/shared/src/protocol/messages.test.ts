@@ -185,3 +185,28 @@ test('THE WORKING YARD verbs walk the whitelist whole', () => {
   assert.equal(parseC2S(JSON.stringify({ t: 'workstart', tx: 0, ty: 0, recipe: 'x', qty: 51 })), null);
   assert.equal(parseC2S(JSON.stringify({ t: 'workstart', tx: 0.5, ty: 0, recipe: 'x', qty: 1 })), null);
 });
+
+test('use carries its aims whole — stow and the off-hand pair, literal true only', () => {
+  assert.deepEqual(parseC2S(JSON.stringify({ t: 'use', slot: 3 })), { t: 'use', slot: 3 });
+  assert.deepEqual(parseC2S(JSON.stringify({ t: 'use', slot: 3, stow: true })), {
+    t: 'use',
+    slot: 3,
+    stow: true,
+  });
+  // THE DELIBERATE PAIR: the off-hand aim rides the standing verb.
+  assert.deepEqual(parseC2S(JSON.stringify({ t: 'use', slot: 3, off: true })), {
+    t: 'use',
+    slot: 3,
+    off: true,
+  });
+  assert.deepEqual(parseC2S(JSON.stringify({ t: 'use', slot: 3, stow: true, off: true })), {
+    t: 'use',
+    slot: 3,
+    stow: true,
+    off: true,
+  });
+  // Truthy is not true: a hostile aim dies silently at the door.
+  assert.deepEqual(parseC2S(JSON.stringify({ t: 'use', slot: 3, off: 1 })), { t: 'use', slot: 3 });
+  assert.deepEqual(parseC2S(JSON.stringify({ t: 'use', slot: 3, off: 'yes' })), { t: 'use', slot: 3 });
+  assert.equal(parseC2S(JSON.stringify({ t: 'use', slot: 64, off: true })), null);
+});

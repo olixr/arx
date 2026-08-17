@@ -27,6 +27,7 @@ const proto = GameServer.prototype as unknown as {
   swapWeaponSets: Fn;
   discoverDualWield: Fn;
   passiveIds: Fn;
+  speak: Fn;
 };
 
 interface FakeSlot {
@@ -85,6 +86,7 @@ function slate(player: FakePlayer, tick = 100) {
     swapWeaponSets: proto.swapWeaponSets,
     discoverDualWield: proto.discoverDualWield,
     passiveIds: proto.passiveIds,
+    speak: proto.speak,
     onEquipmentChanged: () => calls.push('equipchange'),
     cancelCasting: () => calls.push('cancelcast'),
     cancelAction: (_e: unknown, _p: unknown, reason: string) => calls.push(`cancelaction:${reason}`),
@@ -313,4 +315,110 @@ test('the swap verb owns a fresh input bit', () => {
     InputButton.Swap,
   ];
   assert.equal(new Set(all).size, all.length, 'every verb answers its own bit');
+});
+
+// ---- THE DELIBERATE PAIR: `off` aims a blade at the off hand by name
+
+test('THE DELIBERATE PAIR: off aims a second blade at the off hand and speaks the ceremony', () => {
+  const player = mkPlayer({ equipment: { weapon: { id: 'bronze_sword' } } });
+  const { self, calls } = slate(player);
+  give(player, 0, 'gladius');
+  self.useItem.call(self, 1, 0, false, true);
+  assert.equal(player.equipment.weapon?.id, 'bronze_sword', 'the main hand keeps its blade');
+  assert.equal(player.equipment.offhand?.id, 'gladius', 'the aimed blade takes the off hand');
+  assert.equal(player.skills.dualwield, 0, 'the deliberate road wakes the hidden skill too');
+  assert.ok(calls.includes('xp:dualwield'), 'the first spark of the school');
+  assert.ok(calls.includes('equipchange'), 'the standing rail ran');
+});
+
+test('the deliberate pair swaps a worn off hand back to the pack, one for one', () => {
+  const player = mkPlayer({
+    equipment: { weapon: { id: 'bronze_sword' }, offhand: { id: 'oak_kiteshield' } },
+  });
+  const { self } = slate(player);
+  give(player, 0, 'gladius');
+  self.useItem.call(self, 1, 0, false, true);
+  assert.equal(player.equipment.offhand?.id, 'gladius', 'the blade takes the socket');
+  assert.ok(
+    player.inventory.some((s) => s?.item === 'oak_kiteshield'),
+    'the shield lands in the pack, never vanishes',
+  );
+});
+
+test('below the gate the deliberate pair refuses with words, and nothing moves', () => {
+  const player = mkPlayer({
+    equipment: { weapon: { id: 'bronze_sword' } },
+    skills: { onehand: xpForLevel(3) },
+  });
+  const { self, sent } = slate(player);
+  give(player, 0, 'gladius');
+  self.useItem.call(self, 1, 0, false, true);
+  assert.equal(player.equipment.offhand, undefined, 'the off hand stays bare');
+  assert.equal(player.equipment.weapon?.id, 'bronze_sword', 'no silent fallthrough to the main hand');
+  assert.equal(player.inventory[0]?.item, 'gladius', 'the blade stays in the pack');
+  assert.ok(
+    sent.some((m) => m.t === 'notice' && String(m.text).includes('onehand')),
+    'the refusal names the bar',
+  );
+});
+
+test('a second blade wants a one-handed main: empty or two-handed hands refuse aloud', () => {
+  // Bare hands: nothing to pair with.
+  const bare = mkPlayer();
+  const s1 = slate(bare);
+  give(bare, 0, 'gladius');
+  s1.self.useItem.call(s1.self, 1, 0, false, true);
+  assert.equal(bare.equipment.offhand, undefined);
+  assert.equal(bare.inventory[0]?.item, 'gladius');
+  assert.ok(
+    s1.sent.some((m) => m.t === 'notice' && String(m.text).includes('main hand')),
+    'the refusal points at the main hand',
+  );
+
+  // A greatblade main: both fists are spoken for.
+  const heavy = mkPlayer({
+    equipment: { weapon: { id: 'iron_greatblade' } },
+    skills: { onehand: xpForLevel(12), twohand: xpForLevel(20) },
+  });
+  const s2 = slate(heavy);
+  give(heavy, 0, 'gladius');
+  s2.self.useItem.call(s2.self, 1, 0, false, true);
+  assert.equal(heavy.equipment.offhand, undefined, 'no blade beside a greatblade');
+  assert.equal(heavy.equipment.weapon?.id, 'iron_greatblade', 'the main hand stands untouched');
+});
+
+test('off refuses what no off hand can hold, with words', () => {
+  const player = mkPlayer({ skills: { defence: xpForLevel(99) } });
+  const { self, sent } = slate(player);
+  give(player, 0, 'iron_helm');
+  self.useItem.call(self, 1, 0, false, true);
+  assert.equal(player.equipment.head, undefined, 'a refused aim never falls through to its own slot');
+  assert.equal(player.inventory[0]?.item, 'iron_helm', 'the piece stays in the pack');
+  assert.ok(
+    sent.some((m) => m.t === 'chat' && String(m.text).includes('off hand')),
+    'the refusal is spoken',
+  );
+});
+
+test('off on an off-hand piece is a courtesy, not a change: the shield lands as ever', () => {
+  const player = mkPlayer();
+  const { self } = slate(player);
+  give(player, 0, 'oak_kiteshield');
+  self.useItem.call(self, 1, 0, false, true);
+  assert.equal(player.equipment.offhand?.id, 'oak_kiteshield', 'the natural road holds');
+});
+
+test('stow and off compose: the pair forms in the ready row, without the ceremony', () => {
+  const player = mkPlayer({
+    equipment: { stowWeapon: { id: 'bronze_sword' }, stowOffhand: { id: 'oak_kiteshield' } },
+  });
+  const { self } = slate(player);
+  give(player, 0, 'gladius');
+  self.useItem.call(self, 1, 0, true, true);
+  assert.equal(player.equipment.stowOffhand?.id, 'gladius', 'the aimed blade takes the ready off hand');
+  assert.ok(
+    player.inventory.some((s) => s?.item === 'oak_kiteshield'),
+    'the waiting shield returns to the pack',
+  );
+  assert.equal(player.skills.dualwield, undefined, 'packing knives is planning, not the act');
 });

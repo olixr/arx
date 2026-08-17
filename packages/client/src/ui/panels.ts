@@ -226,8 +226,12 @@ const SLOT_NAMES: Partial<Record<EquipSlot, string>> = {
   stowOffhand: 'ready off hand',
 };
 
-/** Explicit verbs the item context menu can dispatch. */
-export type SlotAction = 'use' | 'stow' | 'deposit' | 'sell' | 'drop';
+/**
+ * Explicit verbs the item context menu can dispatch. 'offhand' and
+ * 'stowOffhand' are THE DELIBERATE PAIR: a one-handed blade aimed at
+ * the off hand by name (the hands, or the ready row).
+ */
+export type SlotAction = 'use' | 'stow' | 'offhand' | 'stowOffhand' | 'deposit' | 'sell' | 'drop';
 
 /**
  * The character screen + skills hall (DOM overlay UI), plus the two
@@ -576,11 +580,19 @@ export class Panels {
       d.ghost = ghost;
     }
     d.ghost!.style.transform = `translate(${e.clientX - 26}px, ${e.clientY - 26}px)`;
-    // Highlight the slot under the pointer.
-    this.invGrid
+    // Highlight the slot under the pointer. Equipment sockets light
+    // only when the carried piece can truly land there — the hover
+    // never promises what the drop would refuse.
+    document
       .querySelectorAll('.drop-hover')
       .forEach((el) => el.classList.remove('drop-hover'));
-    this.slotUnder(e)?.classList.add('drop-hover');
+    const over = this.slotUnder(e);
+    if (over) {
+      const equip = over.dataset.equipslot as EquipSlot | undefined;
+      if (equip === undefined || this.canPlaceToEquip(d.from, equip)) {
+        over.classList.add('drop-hover');
+      }
+    }
     // Over open world the ghost arms itself: release here drops the
     // item on the ground at your feet.
     d.ghost!.classList.toggle('drop-armed', this.overWorld(e));
@@ -601,12 +613,16 @@ export class Panels {
       return;
     }
     d.ghost?.remove();
-    this.invGrid.querySelectorAll('.drag-src, .drop-hover').forEach((el) => {
+    document.querySelectorAll('.drag-src, .drop-hover').forEach((el) => {
       el.classList.remove('drag-src');
       el.classList.remove('drop-hover');
     });
     const target = this.slotUnder(e);
-    if (target) {
+    if (target?.dataset.equipslot !== undefined) {
+      // Dropped on an equipment socket: the manual equip, same law as
+      // the pad's carry-place (THE DELIBERATE PAIR included).
+      this.placeToEquip(d.from, target.dataset.equipslot as EquipSlot);
+    } else if (target) {
       const to = Number(target.dataset.invslot);
       // A drag onto a slot is deliberate — same-kind stacks pour
       // together (THE MEASURED STACK's hand-merge) instead of swapping.
@@ -619,7 +635,60 @@ export class Panels {
 
   private slotUnder(e: PointerEvent): HTMLElement | null {
     const el = document.elementFromPoint(e.clientX, e.clientY);
-    return (el?.closest('[data-invslot]') as HTMLElement | null) ?? null;
+    return (el?.closest('[data-invslot], [data-equipslot]') as HTMLElement | null) ?? null;
+  }
+
+  // ---- manual equip: pack slot onto an equipment socket -------------
+
+  /**
+   * The verb a pack slot fires when placed on an equipment socket, or
+   * null when the piece can never live there. One judgment for every
+   * surface that moves an item onto the anatomy stand — the pad's
+   * carry-place, the mouse drag, and the drop-hover's honesty all read
+   * it. A piece lands on its own socket with the plain equip; a
+   * one-handed weapon aimed at the off hand rides THE DELIBERATE PAIR
+   * (the server holds the dual-wield gates and refuses with words).
+   * The ready row obeys the same grammar a shelf lower.
+   */
+  private equipActionFor(from: number, slot: EquipSlot): SlotAction | null {
+    const s = this.lastSlots[from];
+    if (!s) return null;
+    const def = itemDef(s.item);
+    if (!def?.equipSlot) return null;
+    const rack = isStowedSlot(slot);
+    const base: EquipSlot = slot === 'stowWeapon' ? 'weapon' : slot === 'stowOffhand' ? 'offhand' : slot;
+    if (def.equipSlot === base) return rack ? 'stow' : 'use';
+    if (base === 'offhand' && def.equipSlot === 'weapon' && def.weapon?.style === 'onehand') {
+      return rack ? 'stowOffhand' : 'offhand';
+    }
+    return null;
+  }
+
+  /** True when the pack slot's piece can land on this socket. */
+  canPlaceToEquip(from: number, slot: EquipSlot): boolean {
+    return this.equipActionFor(from, slot) !== null;
+  }
+
+  /**
+   * The socket's honest verb word for a carried pack slot — what the
+   * pad's action strip may promise. Null when the piece won't fit.
+   */
+  placeToEquipLabel(from: number, slot: EquipSlot): string | null {
+    const action = this.equipActionFor(from, slot);
+    if (action === null) return null;
+    return action === 'stow' || action === 'stowOffhand' ? 'Stow' : 'Equip';
+  }
+
+  /**
+   * Place a pack slot onto an equipment socket. True when the verb
+   * fired (the server still holds every gate); false when the piece
+   * can never live there and the carry should stand.
+   */
+  placeToEquip(from: number, slot: EquipSlot): boolean {
+    const action = this.equipActionFor(from, slot);
+    if (action === null) return false;
+    this.onSlotAction(from, action);
+    return true;
   }
 
   // ---- inspect card -------------------------------------------------
@@ -781,6 +850,11 @@ export class Panels {
             act: () => this.onSlotAction(idx, 'use'),
             gated: gate !== null,
           });
+          // THE DELIBERATE PAIR: a one-handed blade offers the off
+          // hand by name — the server holds the pairing gates.
+          if (!gate && def.equipSlot === 'weapon' && def.weapon?.style === 'onehand') {
+            verbs.push({ label: 'Off hand', act: () => this.onSlotAction(idx, 'offhand') });
+          }
           // THE SECOND GRIP: the bench offers the ready row too. Short
           // word — the gate band above already tells the story.
           if (!gate && (def.equipSlot === 'weapon' || def.equipSlot === 'offhand')) {
@@ -1449,6 +1523,19 @@ export class Panels {
           act: () => this.onSlotAction(idx, 'use'),
           gated: gate !== null,
         });
+        // THE DELIBERATE PAIR: a one-handed blade offers the off hand
+        // by name — the manual road to dual wield. The verb shows for
+        // every one-hander; the server holds the pairing gates and
+        // teaches with words (the discovery stays the act itself).
+        if (def.equipSlot === 'weapon' && def.weapon?.style === 'onehand') {
+          entries.push({
+            label: gate
+              ? `Equip off hand · needs ${affixName(gate.skill)} ${gate.level}`
+              : 'Equip off hand',
+            act: () => this.onSlotAction(idx, 'offhand'),
+            gated: gate !== null,
+          });
+        }
         // THE SECOND GRIP: hand gear can wait at the ready instead —
         // same gate, same words (what waits must be yours to wield).
         if (def.equipSlot === 'weapon' || def.equipSlot === 'offhand') {

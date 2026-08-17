@@ -97,6 +97,20 @@ export interface UiNavHooks {
   /** Drop the carried pack slot onto the ground (Ⓨ while carrying). */
   onDropToWorld: (slot: number) => void;
   /**
+   * Carry-place onto an equipment socket: the manual equip (a helmet
+   * onto the head, a one-handed blade onto the off hand — THE
+   * DELIBERATE PAIR). True when the verb fired and the carry ends;
+   * false when the piece can never live there (the carry stands and
+   * the ring shakes its head). The server still holds every gate.
+   */
+  onPlaceToEquip?: (from: number, equipSlot: string) => boolean;
+  /**
+   * The action strip's honest word for placing the carried slot on
+   * this socket ('Equip' / 'Stow'), or null when it won't fit — the
+   * strip never promises what the place would refuse.
+   */
+  placeToEquipLabel?: (from: number, equipSlot: string) => string | null;
+  /**
    * Focus landed on an element — show the item inspect card for it if
    * it's an item cell. Return true when a card is showing (the small
    * tooltip stands down). Called with null when pad UI ends.
@@ -143,6 +157,8 @@ export class UiNav {
   private focusKey: string | null = null;
   /** Pack slot index currently carried (pad move mode), or null. */
   private carrying: number | null = null;
+  /** Clears the ring's refusal flash. */
+  private refuseTimer = 0;
 
   private readonly ring: HTMLElement;
   private readonly strip: HTMLElement;
@@ -453,6 +469,16 @@ export class UiNav {
   /** Pick up / place the focused pack slot (Ⓧ). */
   private handleCarry(): void {
     const el = this.focused();
+    // Carry onto the anatomy stand: the manual equip. The panel judges
+    // the fit (its own item knowledge); a piece that can never live on
+    // that socket KEEPS the carry — the ring refuses in place instead
+    // of dumping the player's held intent on the floor.
+    const equipAttr = el?.dataset.equipslot;
+    if (this.carrying !== null && equipAttr !== undefined) {
+      if (this.hooks.onPlaceToEquip?.(this.carrying, equipAttr)) this.carrying = null;
+      else this.refuseRing();
+      return;
+    }
     const slotAttr = el?.dataset.invslot;
     if (slotAttr === undefined) return;
     const idx = Number(slotAttr);
@@ -464,6 +490,18 @@ export class UiNav {
       if (idx !== this.carrying) this.hooks.onInvMove(this.carrying, idx, true);
       this.carrying = null;
     }
+  }
+
+  /**
+   * The ring's spoken no: a brief ember flash on a refused carry-place.
+   * Color only — the ring's transform is its position, never a shaker.
+   */
+  private refuseRing(): void {
+    this.ring.classList.remove('refuse');
+    void this.ring.offsetWidth; // restart the flash on back-to-back refusals
+    this.ring.classList.add('refuse');
+    window.clearTimeout(this.refuseTimer);
+    this.refuseTimer = window.setTimeout(() => this.ring.classList.remove('refuse'), 400);
   }
 
   /** Per-frame drive. Call after input.pollGamepad(). */
@@ -679,8 +717,11 @@ export class UiNav {
     // ---- actions
     if (edge(BTN.a)) {
       const el = this.focused();
-      if (this.carrying !== null && el?.dataset.invslot !== undefined) {
-        this.handleCarry(); // Ⓐ also places while carrying
+      if (
+        this.carrying !== null &&
+        (el?.dataset.invslot !== undefined || el?.dataset.equipslot !== undefined)
+      ) {
+        this.handleCarry(); // Ⓐ also places while carrying — sockets too
       } else if (el instanceof HTMLInputElement && (el.type === 'text' || el.type === 'password')) {
         // Ⓐ on a writing line: take the pen (a hardware keyboard types;
         // Ⓑ puts it down).
@@ -986,7 +1027,17 @@ export class UiNav {
     // made, or shut the room when there is no trail left.
     const back = this.retraceKey !== null && this.retraceKey !== this.focusKey ? 'Back' : 'Close';
     if (this.carrying !== null) {
-      actions.push(['a', 'Place'], ['x', 'Place'], ['y', 'Drop'], ['b', 'Cancel']);
+      // Over an equipment socket the strip speaks the socket's own
+      // verb — Equip on the hands, Stow on the ready row — and says
+      // nothing at all where the carried piece can never land.
+      const equip = el?.dataset.equipslot;
+      if (equip !== undefined) {
+        const word = this.hooks.placeToEquipLabel?.(this.carrying, equip) ?? null;
+        if (word) actions.push(['a', word], ['x', word]);
+      } else {
+        actions.push(['a', 'Place'], ['x', 'Place']);
+      }
+      actions.push(['y', 'Drop'], ['b', 'Cancel']);
     } else if (el?.dataset.invslot !== undefined) {
       const ctx = this.hooks.packActionLabel?.() ?? null;
       actions.push(['a', ctx ?? el.dataset.acta ?? 'Use']);

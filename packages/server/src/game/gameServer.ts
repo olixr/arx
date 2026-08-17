@@ -14298,7 +14298,7 @@ export class GameServer {
     }
   }
 
-  useItem(eid: EntityId, slotIndex: number, stow?: boolean): void {
+  useItem(eid: EntityId, slotIndex: number, stow?: boolean, off?: boolean): void {
     const player = this.players.get(eid);
     if (!player || slotIndex >= player.inventory.length) return;
     const slot = player.inventory[slotIndex];
@@ -14710,6 +14710,22 @@ export class GameServer {
         });
         return;
       }
+      // THE DELIBERATE PAIR: `off` aims this equip at the off hand by
+      // name. An off-hand piece already lands there, so the flag only
+      // means anything for a one-handed weapon — anything else refuses
+      // with words, never silently.
+      if (
+        off &&
+        def.equipSlot !== 'offhand' &&
+        !(def.equipSlot === 'weapon' && def.weapon?.style === 'onehand')
+      ) {
+        player.session?.sendJson({
+          t: 'chat',
+          channel: 'system',
+          text: 'That has no place in your off hand. An off-hand piece or a one-handed weapon can sit there.',
+        });
+        return;
+      }
       // The row this equip lands in: the hands, or the stowed pair.
       // Every law below speaks in row terms so both rows obey the same
       // grammar (LAW: each set obeys its own laws).
@@ -14756,12 +14772,41 @@ export class GameServer {
         const mainWeapon = main ? itemDef(main.id)?.weapon : undefined;
         const discovered = player.skills.dualwield !== undefined;
         const onehandLvl = levelForXp(player.skills.onehand ?? 0);
-        if (
-          main &&
-          mainWeapon?.style === 'onehand' &&
-          !player.equipment[rowOffhand] &&
-          (discovered || onehandLvl >= DUALWIELD_UNLOCK_ONEHAND)
-        ) {
+        const gateOpen = discovered || onehandLvl >= DUALWIELD_UNLOCK_ONEHAND;
+        // THE DELIBERATE PAIR: the blade was aimed at the off hand by
+        // name, so the off hand is where it goes or the refusal says
+        // why — never a silent fallthrough to the main hand a player
+        // did not ask for. A worn off hand swaps back to the pack
+        // (one-for-one, the freed slot takes it); the discovery still
+        // belongs to the hands alone, and this road speaks the same
+        // ceremony the quiet road does.
+        if (off) {
+          if (!gateOpen) {
+            this.speak(
+              player,
+              `Needs onehand ${DUALWIELD_UNLOCK_ONEHAND}`,
+              `Your off hand is not ready for a second blade — it learns from the main. Reach onehand ${DUALWIELD_UNLOCK_ONEHAND} first.`,
+            );
+            return;
+          }
+          if (!main || mainWeapon?.style !== 'onehand') {
+            this.speak(
+              player,
+              'Main hand first',
+              'A second blade pairs with a one-handed weapon in your main hand. Take one up first.',
+            );
+            return;
+          }
+          const worn = player.equipment[rowOffhand];
+          const taken = takeSlot(player.inventory, slotIndex, 1);
+          if (!taken) return;
+          if (worn) addItem(player.inventory, worn.id, 1, worn.roll);
+          player.equipment[rowOffhand] = { id: taken.item, roll: taken.roll };
+          if (!stow) this.discoverDualWield(eid, player);
+          this.onEquipmentChanged(eid, player);
+          return;
+        }
+        if (main && mainWeapon?.style === 'onehand' && !player.equipment[rowOffhand] && gateOpen) {
           const taken = takeSlot(player.inventory, slotIndex, 1);
           if (!taken) return;
           player.equipment[rowOffhand] = { id: taken.item, roll: taken.roll };

@@ -1,6 +1,6 @@
 import { procShape } from './render/wornLight.js';
 import { deckFillAt, fillContains } from './render/terrain.js';
-import { AWNING_HOST_TILES, AWNING_SHAPES, CHUNK_SIZE, EntityKind, FENCE_TILES, GARRISON_TILES, HEDGE_TILES, PoseState, ROCK_TILES, SWAP_BEAT_MS, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, hangHostTiles, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo, type EntityMeta } from '@arx/shared';
+import { AWNING_HOST_TILES, AWNING_SHAPES, CHUNK_SIZE, EntityKind, FENCE_TILES, GARRISON_TILES, HEDGE_TILES, PoseState, ROCK_TILES, SWAP_BEAT_MS, TICK_MS, TREE_TILES, Tile, WALL_RUN_TILES, awningInfo, awningTile, bannerPoleTile, chestInfo, dangerAt, diagWallInfo, diagWallTile, doorInfo, hangHostTiles, isFishingTile, levelForXp, skillName, tileDef, treeOfSapling, wallHungInfo, type EntityMeta, type EquipSlot } from '@arx/shared';
 import { BUILDABLES, DYE_PIGMENTS, ELEMENT_COLORS, POI_DEFS, RECIPES, SIGN_MOTIFS, TRELLIS_SPECIES, buildableForTile, buildableGround, enchantDef, isDaggerStats, itemDef, npcActor, npcDef, resonanceShift, type BuildableDef } from '@arx/content';
 import { ClientGame } from './game/clientGame.js';
 import { farmBins, farmJobs, farmKey } from './game/farmCare.js';
@@ -876,6 +876,15 @@ const panels = new Panels(
       // every gate; the stow sound is the honest local echo.
       sfx.stow();
       game.useSlot(slot, true);
+    } else if (action === 'offhand') {
+      // THE DELIBERATE PAIR: a one-handed blade aimed at the off hand
+      // by name. The server holds the dual-wield gates and teaches.
+      sfx.equipGear();
+      game.useSlot(slot, false, true);
+    } else if (action === 'stowOffhand') {
+      // The same aim, a shelf lower: the ready row's off hand.
+      sfx.stow();
+      game.useSlot(slot, true, true);
     } else {
       useSlotGuarded(slot);
     }
@@ -905,6 +914,11 @@ function dropSlot(slot: number): void {
 const nav = new UiNav(input, {
   onInvMove: (from, to, merge) => game.invMove(from, to, merge),
   onDropToWorld: (slot) => dropSlot(slot),
+  // Carry-place onto the anatomy stand: the manual equip. Panels owns
+  // the fit judgment (it knows the items); the strip borrows the same
+  // judgment for its honest verb word.
+  onPlaceToEquip: (from, slot) => panels.placeToEquip(from, slot as EquipSlot),
+  placeToEquipLabel: (from, slot) => panels.placeToEquipLabel(from, slot as EquipSlot),
   onInspect: (el): boolean => {
     // The journal's page renders on focus like every inspector pane.
     const key = el?.dataset.navkey;

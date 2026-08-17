@@ -180,6 +180,25 @@ body.pad-mode .hint-inline { display: none; }
     0 0 1rem rgba(120, 160, 230, 0.5);
 }
 
+/* The ring's spoken no: a carried piece aimed at a socket it can never
+   live on flashes ember in place. Color and glow only — the ring's
+   transform is its position and must never join an animation. */
+#ui-focus-ring.refuse {
+  animation:
+    focus-breathe 1.6s ease-in-out infinite,
+    focus-refuse 0.36s ease-out;
+}
+
+@keyframes focus-refuse {
+  0%, 100% { border-color: #a8c8f0; }
+  20%, 70% {
+    border-color: #d9694a;
+    box-shadow:
+      0 0 0 0.125rem rgba(10, 6, 16, 0.65),
+      0 0 1.125rem rgba(217, 105, 74, 0.6);
+  }
+}
+
 @keyframes focus-breathe {
   0%, 100% { box-shadow: 0 0 0 0.125rem rgba(10, 6, 16, 0.65), 0 0 0.625rem rgba(232, 182, 76, 0.28); }
   50% { box-shadow: 0 0 0 0.125rem rgba(10, 6, 16, 0.65), 0 0 1.125rem rgba(232, 182, 76, 0.5); }

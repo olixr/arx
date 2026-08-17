@@ -109,6 +109,16 @@ export interface C2SUseItem {
   t: 'use';
   slot: number;
   stow?: true;
+  /**
+   * THE DELIBERATE PAIR: aim this equip at the OFF hand by name — the
+   * carry-place on the off-hand socket and the pack's "Equip off hand"
+   * verb both speak it. Meaningful only for a one-handed weapon (an
+   * off-hand piece already lands there); the server holds every gate
+   * (dual-wield readiness, a one-handed main to pair with) and refuses
+   * with words. Composes with `stow` to aim at the ready row's off
+   * hand. Additive — an old server ignores it and equips the main hand.
+   */
+  off?: true;
 }
 
 /** Unequip a worn slot back to the inventory. */
@@ -2379,8 +2389,14 @@ export function parseC2S(raw: string): C2SMessage | null {
       if (!isFiniteNum(msg.slot) || !Number.isInteger(msg.slot)) return null;
       if (msg.slot < 0 || msg.slot >= 64) return null;
       // WHITELIST LESSON: the stow destination joins the parse or dies
-      // silently at this door. Literal `true` only — never truthy.
-      return { t: 'use', slot: msg.slot, ...(msg.stow === true ? { stow: true as const } : {}) };
+      // silently at this door. Literal `true` only — never truthy. The
+      // off-hand aim (THE DELIBERATE PAIR) obeys the same law.
+      return {
+        t: 'use',
+        slot: msg.slot,
+        ...(msg.stow === true ? { stow: true as const } : {}),
+        ...(msg.off === true ? { off: true as const } : {}),
+      };
     }
     case 'unequip': {
       if (typeof msg.slot !== 'string') return null;

@@ -206,6 +206,13 @@
 // system chat line, and every payout still read true. A missing
 // celebration is a missing nicety, not a wrong world (the arena
 // judgment, held again).
+// THE DELIBERATE PAIR — still v33, recorded on purpose: C2SUseItem
+// grows optional `off` (aim a one-handed blade at the off hand by
+// name — the carry-place on the off-hand socket and the pack's
+// "Equip off hand" verb). Additive JSON: an old server drops the
+// field at its parse door and equips the main hand as it always
+// did — a plainer answer to a deliberate ask, not a wrong world;
+// every gate stays server-side either way.
 export const PROTOCOL_VERSION = 33;
 
 /** The most souls one party can hold. */
