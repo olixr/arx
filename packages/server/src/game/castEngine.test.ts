@@ -52,7 +52,9 @@ function mkPlayer(over: Partial<FakePlayer> = {}): FakePlayer {
   return {
     techniques: ['daybreak', null],
     flags: new Map(),
-    skills: { arx: xpForLevel(60), onehand: xpForLevel(60) },
+    // Daybreak sits at arx 90: the seat must be AT its rung, or the
+    // license-era dormancy law (a rung art under level sleeps) holds it.
+    skills: { arx: xpForLevel(90), onehand: xpForLevel(60) },
     equipment: {},
     session: { sendJson: () => undefined },
     abilityCd: [0, 0, 0, 0],

@@ -276,6 +276,22 @@ export function focusBudget(skills: SkillXp): number {
 }
 
 /**
+ * THE SIXTEEN RUNGS (callings-v2, THE FILLED HALL): every skill's
+ * ladder holds exactly sixteen seats, one every five levels from 5
+ * to 80 — the technique cadence made a calling's cadence, so the
+ * first calling answers at the first rung a hand can climb and the
+ * capstone masters (Rank IV, THE SHORTENED CLIMB) by 98. Seats past
+ * 80 are off the ladder on purpose: a 90/99 seat could never hone.
+ */
+export const CALLING_SEAT_STEP = 5;
+export const CALLING_LADDER_SEATS = 16;
+export const CALLING_CAPSTONE_LEVEL = CALLING_SEAT_STEP * CALLING_LADDER_SEATS;
+export const CALLING_SEATS: readonly number[] = Array.from(
+  { length: CALLING_LADDER_SEATS },
+  (_, i) => CALLING_SEAT_STEP * (i + 1),
+);
+
+/**
  * THE SEAT BANDS: a Calling's rank-I price follows its seat on the
  * ladder — minors under 40 hold 1, majors 40..79 hold 2, capstones
  * 80+ hold 3. Content authors read the band; the contract test pins

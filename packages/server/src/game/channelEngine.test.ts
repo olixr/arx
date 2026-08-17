@@ -51,7 +51,9 @@ function mkPlayer(over: Partial<FakePlayer> = {}): FakePlayer {
   return {
     techniques: ['maelstrom', null],
     flags: new Map(),
-    skills: { arx: xpForLevel(50), onehand: xpForLevel(60) },
+    // Maelstrom sits at arx 78: the seat must be AT its rung, or the
+    // license-era dormancy law (a rung art under level sleeps) holds it.
+    skills: { arx: xpForLevel(78), onehand: xpForLevel(60) },
     equipment: {},
     session: { sendJson: () => undefined },
     abilityCd: [0, 0, 0, 0],

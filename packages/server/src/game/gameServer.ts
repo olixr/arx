@@ -1997,6 +1997,16 @@ interface PlayerComp {
    * line than they engage, so a bouncing bar cannot strobe a grant.
    */
   whenEngaged: Set<string>;
+  /**
+   * THE MASTER'S LICENSE (callings-v2, THE FILLED HALL): arts the
+   * answered packages license, ability → the deepest licensing
+   * calling's applied rank. A licensed art seats in either technique
+   * seat whatever its school level, deed, or teaching weapon says,
+   * and casts at max(its natural rank, the license rank). Rebuilt in
+   * recomputeGear; set the calling down and the seat goes DORMANT
+   * (the loan law's precedent), never emptied.
+   */
+  licensedArts: Map<string, number>;
   /** One-site perk dials derived from answered Callings (recomputeGear). */
   perks: Perks;
   /** Consecutive ticks without movement, sneaking or not (Bulwark). */
@@ -2480,6 +2490,10 @@ const STILL_ARMOR_TICKS = 12;
  * still the tick pass's explicit removal — this is the net under it.
  */
 const WHEN_REARM_TICKS = 10;
+/** The combat clock the when clause reads (the regen delay's own 8s window). */
+const WHEN_COMBAT_MS = 8000;
+/** How close a hostile must stand to count toward 'outnumbered'. */
+const WHEN_OUTNUMBERED_RADIUS = 4;
 /**
  * The hp conditions' hysteresis band (the Second Wind law, held
  * open-ended): engage exactly at the authored line, release only a
@@ -4072,6 +4086,7 @@ export class GameServer {
       callings: character.id > 0 ? await this.accounts.loadCallings(character.id) : new Map(),
       callingProcs: [],
       callingWhens: [],
+      licensedArts: new Map(),
       whenEngaged: new Set(),
       perks: defaultPerks(),
       stillTicks: 0,
@@ -15129,6 +15144,39 @@ export class GameServer {
         return this.statuses?.get(eid)?.some((s) => s.id === cond.status) ?? false;
       case 'wellFed':
         return player.buffs.some((b) => b.channel === 'food');
+      // THE FILLED HALL's widened clause — every read mirrors the dial
+      // its precedent already trusts (the sneak bit, the saddle, the
+      // hand's style, the pet row, the combat clock, the assist mark).
+      case 'day': {
+        const hours = clockHoursAtTick(this.tickCount, this.timeOfsTicks);
+        return hours >= SUNRISE && hours <= SUNSET;
+      }
+      case 'sneaking':
+        return player.hidden === true;
+      case 'mounted':
+        return !!player.mountId;
+      case 'wielding':
+        return (this.equippedWeapon(player)?.weapon.style ?? null) === cond.style;
+      case 'dualWielding':
+        return !!this.equippedWeapon(player) && !!this.offhandWeapon(player);
+      case 'petOut':
+        return player.petEid !== null && (this.healths?.get(player.petEid)?.hp ?? 0) > 0;
+      case 'inCombat':
+        return Date.now() - player.lastCombatAt < WHEN_COMBAT_MS;
+      case 'outOfCombat':
+        return Date.now() - player.lastCombatAt >= WHEN_COMBAT_MS;
+      case 'outnumbered': {
+        const pos = this.positions?.get(eid);
+        if (!pos) return false;
+        let n = 0;
+        this.forEachNpcNear(pos.plane, pos.x, pos.y, WHEN_OUTNUMBERED_RADIUS, (npcEid) => {
+          if (!this.assistMark(npcEid)) return;
+          if ((this.healths.get(npcEid)?.hp ?? 0) <= 0) return;
+          n++;
+          if (n >= cond.count) return true;
+        });
+        return n >= cond.count;
+      }
     }
   }
 
@@ -19947,15 +19995,13 @@ export class GameServer {
     const perks = defaultPerks();
     const callingProcs: ProcEffect[] = [];
     const callingWhens: PlayerComp['callingWhens'] = [];
+    const licensedArts = new Map<string, number>();
     for (const [id, appliedRank] of player.callings) {
       const def = callingDef(id);
       if (!def) continue;
       // THE CALLING IS A PACKAGE (callings-v2 Phase 1): every entry
       // folds — at the APPLIED rank's package (Phase 4: honedCalling
       // replaces the package whole per step; unranked defs hold).
-      // The one reserved lane still waiting on its door (art, the
-      // content epoch's) is typed but unread — the default arm holds
-      // its seat.
       const effects = honedCalling(def, appliedRank);
       for (let entryIndex = 0; entryIndex < effects.length; entryIndex++) {
         const fx = effects[entryIndex]!;
@@ -19967,6 +20013,7 @@ export class GameServer {
             const count = player.gear.classCounts[fx.armorClass] ?? 0;
             if (fx.speedPct) player.gear.speedMult *= 1 + (fx.speedPct * count) / 100;
             if (fx.maxHp) player.gear.maxHp += fx.maxHp * count;
+            if (fx.armor) player.gear.armor += fx.armor * count;
             break;
           }
           case 'perk':
@@ -20013,13 +20060,17 @@ export class GameServer {
             // never share a latch.
             callingWhens.push({ key: `${def.id}#${entryIndex}`, cond: fx.cond, grant: fx.grant });
             break;
-          default:
+          case 'art':
+            // THE MASTER'S LICENSE: the deepest licensing hand sets
+            // the art's license rank.
+            licensedArts.set(fx.ability, Math.max(licensedArts.get(fx.ability) ?? 0, appliedRank));
             break;
         }
       }
     }
     player.callingProcs = callingProcs;
     player.callingWhens = callingWhens;
+    player.licensedArts = licensedArts;
     player.perks = perks;
     const health = this.healths.get(eid);
     if (health) {
@@ -20870,8 +20921,16 @@ export class GameServer {
     if (!ab) return null;
     const tech = techniquePoolDef(chosen);
     if (!tech?.ranks) return ab;
-    if (tech.secret && !this.masteredArt(player, chosen)) return ab;
-    const rank = techniqueRankFor(tech, levelForXp(player.skills[tech.style] ?? 0));
+    // THE MASTER'S LICENSE deepens too: a licensed art casts at the
+    // deeper of its natural rank and the licensing calling's applied
+    // rank — the smith's understanding IS the honing.
+    const license = player.licensedArts?.get(chosen) ?? 0;
+    const natural =
+      tech.secret && !this.masteredArt(player, chosen)
+        ? 1
+        : techniqueRankFor(tech, levelForXp(player.skills[tech.style] ?? 0));
+    const rank = Math.max(1, natural, license);
+    if (rank <= 1) return ab;
     return honedAbility(ab, tech.ranks, rank);
   }
 
@@ -20908,9 +20967,17 @@ export class GameServer {
     const chosen = player.techniques[seat];
     if (!chosen) return false;
     const tech = techniquePoolDef(chosen);
-    if (!tech?.secret) return false;
-    if (this.masteredArt(player, chosen)) return false;
-    return !this.equippedArtIds(player).has(chosen);
+    if (!tech) return false;
+    // THE MASTER'S LICENSE keeps any seat awake while it holds.
+    if (player.licensedArts?.has(chosen)) return false;
+    if (tech.hidden) return !player.flags.has(artFlag(chosen));
+    if (tech.secret) {
+      if (this.masteredArt(player, chosen)) return false;
+      return !this.equippedArtIds(player).has(chosen);
+    }
+    // A rung art seated under license and then unlicensed sleeps
+    // until the hand climbs to it (or the license returns).
+    return levelForXp(player.skills[tech.style] ?? 0) < tech.unlockLevel;
   }
 
   private sendCooldowns(player: PlayerComp): void {
@@ -20977,7 +21044,11 @@ export class GameServer {
     const tech = techniquePoolDef(ability);
     if (!tech) return;
     const name = abilityDef(ability)?.name ?? ability;
-    if (tech.hidden) {
+    if (player.licensedArts?.has(ability)) {
+      // THE MASTER'S LICENSE, the fourth citizenship: an answered
+      // calling licenses the art whatever its rung, deed, or teacher
+      // says. Set the calling down and the seat sleeps (seatDormant).
+    } else if (tech.hidden) {
       // An unwritten page opens by deed, never by level.
       if (!player.flags.has(artFlag(ability))) return;
     } else if (tech.secret) {

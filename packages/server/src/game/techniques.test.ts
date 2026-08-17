@@ -169,10 +169,15 @@ test('the offhand teaches too: a dual wielder hears both blades', () => {
 });
 
 test('THE LOAN LAW at the cast gate: dormancy is exact', () => {
-  const player = mkPlayer({ techniques: ['lunge', 'heavy_slam'] });
+  const player = mkPlayer({ techniques: ['lunge', 'heavy_slam'], skills: { onehand: xpForLevel(5) } });
   const { self } = slate(player);
   assert.equal(self.seatDormant.call(self, player, 0), true, 'teacher away, the seat sleeps');
-  assert.equal(self.seatDormant.call(self, player, 1), false, 'a rung art never sleeps');
+  assert.equal(self.seatDormant.call(self, player, 1), false, 'a rung art at its rung never sleeps');
+  // THE MASTER'S LICENSE era: a rung art seated under level (only a
+  // license could have seated it) sleeps once the license is gone.
+  player.skills.onehand = xpForLevel(4);
+  assert.equal(self.seatDormant.call(self, player, 1), true, 'a rung art under its rung sleeps');
+  player.skills.onehand = xpForLevel(5);
   player.equipment.weapon = { id: 'gladius' };
   assert.equal(self.seatDormant.call(self, player, 0), false, 'teacher in hand, the seat wakes');
   player.equipment.weapon = undefined;

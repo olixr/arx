@@ -1,8 +1,62 @@
 # THE ANSWERED LIFE — Callings v2, the class system's constitution
 
-Status: **EPIC COMPLETE (core platform) 2026-08-17 — all six phases
-shipped, Ph5 live-proven; the content epoch follows.** Author: design
-review 2026-08-17; green-lit the same day.
+Status: **core platform EPIC COMPLETE 2026-08-17 (six phases, Ph5
+live-proven); THE FILLED HALL — the content epoch — opened the same
+day (section below).** Author: design review 2026-08-17; green-lit
+the same day.
+
+## THE FILLED HALL — the content epoch (opened 2026-08-17)
+
+**Status: IN PROGRESS.** The platform prep shipped first (this commit); the twenty-five ladders
+are authored by a dedicated workflow, one agent per skill tree, against `docs/callings-hall-brief.md`
+and the laws in `packages/content/src/callingLaws.ts`.
+
+The brief's word (2026-08-17): every skill carries a **minimum of sixteen** callings, unlocked
+progressively like techniques, each rankable, each dramatic; cross-craft benefits legal and wanted
+(the master smith wields steel better); synergies by layered simple mechanics; thematic per skill.
+
+### The laws this epoch added (platform prep, one commit before the ladders)
+
+- **THE SIXTEEN RUNGS** (`shared/skills.ts` `CALLING_SEATS`): exactly sixteen seats a ladder,
+  5..80 by fives — the technique cadence made a calling's cadence. The level-5 seat is a new hand's
+  first class choice; the 80 capstone masters (IV) by 98 on THE SHORTENED CLIMB. Seats past 80 are
+  off the ladder on purpose (a 90/99 seat could never hone). Priced by THE SEAT BANDS unchanged
+  (7 × 1 + 8 × 2 + 1 × 3 = 26 a ladder, 650 the hall; the 102 ceiling holds ~16%).
+- **THE NO-LOSS LAW's roll** (`callingLaws.ts` `FOUNDING_SEATS`): the fifty-three founding rows keep
+  id + skill + seat forever; their packages deepen.
+- **ONE LADDER, ONE FILE**: `packages/content/src/callings/<skill>.ts` owns `<SKILL>_CALLINGS` and
+  `<SKILL>_LICENSES`; `callings.ts` binds them (`CALLINGS`, `CALLING_LICENSES`) and re-exports the
+  vocabulary from `callingTypes.ts`. Twenty-five authors write side by side with no shared file.
+- **THE LAWS OF THE HALL, written once** (`callingLaws.ts` `callingFaults` / `ladderFaults`): the
+  suites and the authoring CLI (`packages/content/scripts/callingAudit.ts <skill> | --all |
+  --synergy`) read the SAME functions. The old per-test arithmetic (felt floors, proc budget,
+  register/book, rank depth) moved there; the ledger test keeps only the hall-wide sums (THE SWING
+  ASSEMBLY, THE ECONOMY) and binds the laws over every ladder.
+- **THE REGISTER, per ladder**: license rows widened to `read:stateRiding` and `read:vsState`
+  (the register is now the complete synergy map); every touch needs its row, every row a touch.
+- **ONE METER PER CALLING**: a calling's proc id is `calling:<id>` by law.
+- **THE SWING BUDGET**: gear `swingSpeed` is closed to callings; when-grant `attackSpeedMult ≤ 1.08`
+  (`WHEN_SWING_MAX`) — the assembly's headroom over page × shelf × art (~1.34) is ~1.12.
+- **THE MASTER'S LICENSE opened** (`{kind:'art'}`): the fourth citizenship in the technique pool.
+  `PlayerComp.licensedArts` (ability → deepest licensing applied rank) rebuilt in recomputeGear;
+  `setTechnique` seats a licensed art past rung/deed/teacher; `seatAbility` casts at
+  max(natural, license); `seatDormant` generalized (rung under level, unearned page, or unlicensed
+  secret sleeps — never empties). Client derives the same map from the answered set (THE QUIET
+  WIRE — no protocol change): the plate reads `Licensed · III`, the bench names the licensor,
+  licensed secrets/pages show on the shelf. `masterLicense.test.ts` (3 laws).
+- **THE WHEN CLAUSE widened**: `day`, `sneaking`, `mounted`, `wielding{style}`, `dualWielding`,
+  `petOut`, `inCombat` / `outOfCombat` (the 8s combat clock), `outnumbered{count}` (assist-marked
+  hostiles within 4 tiles) — each read mirrors the dial its precedent trusts.
+- **`perPiece` grew `armor`** (recomputeGear + bench line).
+
+### The workflow (the user's word: dedicated agents per skill tree)
+
+Round 1 — twenty-five authors, one per ladder, brief-bound, CLI-checked, returning a structured
+report and a **wishlist** (perks / conditions / actions they wanted and could not have).
+Between rounds — the wishlist judged; the platform grows only where a hook is worth its site.
+Round 2 — authors revise against the widened vocabulary. Round 3 — an adversarial panel per ladder
+(felt / theme / voice / balance) and a hall-wide synergy weaver; fixes; the gates; the plan and the
+memory updated; the commit.
 
 ## The green-light record (answers taken 2026-08-17)
 

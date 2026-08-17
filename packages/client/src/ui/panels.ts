@@ -82,6 +82,15 @@ import { attachAmbient } from './kit/ambient.js';
 import { provingGround, type ProvingGround } from './artDiagram.js';
 
 /** Card display colors for the three armor weight classes. */
+/** The when clause's word for each weapon style in hand. */
+const WIELD_WORD: Record<string, string> = {
+  onehand: 'a one-hand blade',
+  twohand: 'a two-hander',
+  polearm: 'a polearm',
+  archery: 'a bow',
+  arx: 'a staff',
+};
+
 const CLASS_COLORS: Record<string, string> = {
   cloth: '#c9a8e8',
   leather: '#b08a5c',
@@ -2232,6 +2241,41 @@ export class Panels {
   }
 
   /**
+   * THE MASTER'S LICENSE, derived here from the answered set exactly
+   * as recomputeGear derives it (THE QUIET WIRE: no new field —
+   * both ends read the same packages at the same applied ranks):
+   * ability → the deepest licensing calling's rank.
+   */
+  private licensedArts(): Map<string, number> {
+    const out = new Map<string, number>();
+    for (const id of this.callings) {
+      const def = callingDef(id);
+      if (!def) continue;
+      const rank = this.appliedRank(id);
+      for (const fx of honedCalling(def, rank)) {
+        if (fx.kind === 'art') out.set(fx.ability, Math.max(out.get(fx.ability) ?? 0, rank));
+      }
+    }
+    return out;
+  }
+
+  /** The calling licensing this art (the deepest, if several), for the bench's word. */
+  private licensingCalling(ability: string): CallingDef | undefined {
+    let best: CallingDef | undefined;
+    let bestRank = 0;
+    for (const id of this.callings) {
+      const def = callingDef(id);
+      if (!def) continue;
+      const rank = this.appliedRank(id);
+      if (rank > bestRank && honedCalling(def, rank).some((fx) => fx.kind === 'art' && fx.ability === ability)) {
+        best = def;
+        bestRank = rank;
+      }
+    }
+    return best;
+  }
+
+  /**
    * THE UNWRITTEN PAGE's codex law: a hidden art simply does not exist
    * here until its deed is done — no veiled plate, no rumor to
    * min-max. THE QUIET SHELF extends it to the secrets: a secret art
@@ -2241,12 +2285,18 @@ export class Panels {
    */
   private visibleTechniques(style: SkillId): TechniqueDef[] {
     const inHand = this.equippedArtIds();
+    const licensed = this.licensedArts();
     const secrets = secretArtsFor(style as TechniqueDef['style']).filter(
       (s) =>
-        this.ownsArt(s.ability) || inHand.has(s.ability) || this.seatOf(s.ability) !== null,
+        this.ownsArt(s.ability) ||
+        inHand.has(s.ability) ||
+        licensed.has(s.ability) ||
+        this.seatOf(s.ability) !== null,
     );
     return [
-      ...techniquesFor(style).filter((t) => !t.hidden || this.earnedArts.includes(t.ability)),
+      ...techniquesFor(style).filter(
+        (t) => !t.hidden || this.earnedArts.includes(t.ability) || licensed.has(t.ability),
+      ),
       ...secrets,
     ];
   }
@@ -2583,8 +2633,12 @@ export class Panels {
    * motion is correct but not yet yours.
    */
   private techRank(style: SkillId, tech: TechniqueDef): number {
-    if (tech.secret && !this.ownsArt(tech.ability)) return 1;
-    return techniqueRankFor(tech, levelForXp(this.lastSkills[style] ?? 0));
+    const license = this.licensedArts().get(tech.ability) ?? 0;
+    const natural =
+      tech.secret && !this.ownsArt(tech.ability)
+        ? 1
+        : techniqueRankFor(tech, levelForXp(this.lastSkills[style] ?? 0));
+    return Math.max(1, natural, license);
   }
 
   /** A technique's rung state against the player's skill level. */
@@ -2593,7 +2647,7 @@ export class Panels {
     tech: { ability: string; unlockLevel: number },
   ): 'equipped' | 'unlocked' | 'locked' | 'veiled' {
     const level = levelForXp(this.lastSkills[style] ?? 0);
-    if (level >= tech.unlockLevel) {
+    if (level >= tech.unlockLevel || this.licensedArts().has(tech.ability)) {
       return this.seatOf(tech.ability) !== null ? 'equipped' : 'unlocked';
     }
     const firstLocked = techniquesFor(style)
@@ -3141,6 +3195,7 @@ export class Panels {
         const parts: string[] = [];
         if (fx.speedPct) parts.push(`+${fx.speedPct}% speed`);
         if (fx.maxHp) parts.push(`+${fx.maxHp} max HP`);
+        if (fx.armor) parts.push(`+${fx.armor} armor`);
         return `${parts.join(', ')} per worn ${fx.armorClass} piece`;
       }
       case 'perk':
@@ -3180,6 +3235,24 @@ export class Panels {
         return `${c.status} rides you`;
       case 'wellFed':
         return 'well fed';
+      case 'day':
+        return 'day holds';
+      case 'sneaking':
+        return 'sneaking';
+      case 'mounted':
+        return 'in the saddle';
+      case 'wielding':
+        return `${WIELD_WORD[c.style]} is in hand`;
+      case 'dualWielding':
+        return 'a blade in each hand';
+      case 'petOut':
+        return 'your companion is out';
+      case 'inCombat':
+        return 'in the fight';
+      case 'outOfCombat':
+        return 'the fight is over';
+      case 'outnumbered':
+        return `${c.count} or more foes press you`;
     }
   }
 
@@ -3723,6 +3796,7 @@ export class Panels {
       !!tech.secret &&
       this.seatOf(tech.ability) !== null &&
       !this.ownsArt(tech.ability) &&
+      !this.licensedArts().has(tech.ability) &&
       !this.equippedArtIds().has(tech.ability)
     );
   }
@@ -3818,7 +3892,12 @@ export class Panels {
     const rank = this.techRank(style, tech);
     const seat = this.seatOf(tech.ability);
     const chip = (): HTMLElement => seatChip(this.seatAction(seat === 0 ? 0 : 1));
-    if (tech.secret && !this.ownsArt(tech.ability)) {
+    const licensedHere = this.licensedArts().has(tech.ability) && !this.ownsArt(tech.ability);
+    if (licensedHere) {
+      // THE MASTER'S LICENSE speaks its citizenship and its rank.
+      if (st === 'equipped') sub.appendChild(glyphLine(`On • · ${RANK_ROMAN[rank]} · licensed`, chip()));
+      else sub.textContent = `Licensed · ${RANK_ROMAN[rank]}`;
+    } else if (tech.secret && !this.ownsArt(tech.ability)) {
       // A lent secret speaks its citizenship, not a rank it cannot climb.
       if (st === 'equipped') {
         sub.appendChild(glyphLine(`On • · ${this.secretDormant(tech) ? 'asleep' : 'lent'}`, chip()));
@@ -4110,11 +4189,14 @@ export class Panels {
         state.appendChild(glyphLine('Riding your • seat', benchChip()));
       }
     } else {
+      const licensor = this.licensingCalling(t.ability);
       state.textContent =
         st === 'unlocked'
-          ? t.secret && !this.ownsArt(t.ability)
-            ? 'Lent while its weapon is in your hand. Fight with it and the art will stay.'
-            : 'Unlocked — ready to seat'
+          ? licensor && !this.ownsArt(t.ability)
+            ? `Licensed by ${licensor.name}. Yours while that calling stays answered.`
+            : t.secret && !this.ownsArt(t.ability)
+              ? 'Lent while its weapon is in your hand. Fight with it and the art will stay.'
+              : 'Unlocked — ready to seat'
           : st === 'locked'
             ? `Unlocks at ${styleName} level ${t.unlockLevel}`
             : `A secret of ${styleName} — still veiled`;
