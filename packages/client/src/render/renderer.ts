@@ -733,6 +733,7 @@ const LOW_STICK_TILES = new Set<number>([
   Tile.Bed,
   Tile.FlowerBox,
   Tile.HerbPlanter,
+  Tile.ChoppingBlock,
   Tile.Basin,
   Tile.Barrel,
   Tile.Crate,
@@ -18083,6 +18084,7 @@ export class Renderer {
     Tile.CrateStack,
     Tile.HitchingPost,
     Tile.Woodpile,
+    Tile.ChoppingBlock,
     Tile.StreetPlanter,
     Tile.StoneBench,
     Tile.ProduceStand,
@@ -18290,6 +18292,7 @@ export class Renderer {
     Tile.CrateStack,
     Tile.HitchingPost,
     Tile.Woodpile,
+    Tile.ChoppingBlock,
     Tile.StreetPlanter,
     Tile.StoneBench,
     Tile.ProduceStand,
@@ -35835,34 +35838,222 @@ export class Renderer {
       case Tile.Woodpile: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.18;
-        // Winter is real: split cordwood RANKED between two stakes,
-        // round end grain to the street — hex-packed the way wood
-        // actually settles, oak and the odd pale birch — with one
-        // split pulled and leaning at the west stake, the scarred
-        // block beside, and the axe STANDING in it. Mid-chore, never
-        // abandoned.
-        const rcx = p.x - s * 0.14;
-        const rankHW = s * 0.44;
+        // THE PLAIN CORD: the generalized wood pile — one hex-packed
+        // pyramid of seasoned rounds and nothing else. No stakes, no
+        // block, no tools: the chore gear moved to ChoppingBlock, so
+        // this one prop can stand behind any door in the world.
+        // The bird's eye earns its keep (the crate-lid law): every
+        // course lays its barked flank RUNNING NORTH as a
+        // foreshortened top plane — lit along the crown, shaded at
+        // the far falloff — and the course above overdraws all but
+        // the honest slivers, so the shoulders keep their full run,
+        // the valleys keep staggered seams, and the pile reads as a
+        // stacked VOLUME, never a wall of pasted circles.
+        const rcx = p.x;
+        const pitch = s * 0.152;
+        const depth = syT * 0.52;
+        const courses = [
+          { y: -0.075, n: 6 },
+          { y: -0.205, n: 5 },
+          { y: -0.335, n: 4 },
+          { y: -0.46, n: 3 },
+        ] as const;
         return {
           sortY: ty + 0.68,
-          body: stationBody(1.0, 0.95, 0.5),
-          drawShadow: () => this.castContact(p.x, baseY, s * 0.72, s * 0.075),
+          body: stationBody(0.62, 0.95, 0.42),
+          drawShadow: () => this.castContact(p.x, baseY, s * 0.56, s * 0.07),
           draw: () => {
             // Draw-time ctx capture: the outline pass swaps this.ctx
             // to its scratch — the build-time capture would paint past it.
             const ctx = this.ctx;
             ctx.fillStyle = 'rgba(12, 8, 20, 0.24)';
             ctx.beginPath();
-            ctx.ellipse(p.x + s * 0.06, baseY + s * 0.015, s * 0.82, s * 0.075, 0, 0, Math.PI * 2);
+            ctx.ellipse(rcx, baseY + s * 0.012, s * 0.6, s * 0.07, 0, 0, Math.PI * 2);
+            ctx.fill();
+            for (let ri = 0; ri < courses.length; ri++) {
+              const row = courses[ri]!;
+              const top = ri === courses.length - 1;
+              // Per-log station, shared by flank and end face so the
+              // body always lands on its own round.
+              const geo = (k: number) => {
+                const kx = rcx + (k - (row.n - 1) / 2) * pitch + (((h >>> (ri * 5 + k)) & 3) - 1.5) * s * 0.008;
+                const ky = baseY + row.y * s;
+                const rr = s * 0.082 * (0.92 + (((h >>> (ri + k * 3)) & 3) / 3) * 0.16);
+                const birch = ((h >>> (ri * 4 + k * 5 + 1)) & 7) === 0;
+                const split = !birch && ((h >>> (ri * 3 + k * 2)) & 7) < 2;
+                return { kx, ky, rr, birch, split };
+              };
+              // THE TOP PLANE first: every log's receding flank at
+              // full length — occlusion is simply the next course's
+              // own paint landing on top.
+              for (let k = 0; k < row.n; k++) {
+                const g = geo(k);
+                const w = g.rr * 1.92;
+                const len = depth * (0.9 + (((h >>> (ri * 2 + k + 3)) & 3) / 3) * 0.18);
+                // The flank rides LIGHTER than the bark ring below it
+                // — the top plane is the LIT plane (crate-lid law);
+                // paint it bark-dark and the pile reads lit from
+                // underground.
+                const bark = g.birch ? '#bdb5a4' : '#96713c';
+                // The flank itself, a hair of taper into the depth.
+                ctx.fillStyle = g.split ? '#cdb282' : shade(bark, 6);
+                ctx.beginPath();
+                ctx.moveTo(g.kx - w / 2, g.ky);
+                ctx.lineTo(g.kx - w * 0.46, g.ky - len);
+                ctx.lineTo(g.kx + w * 0.46, g.ky - len);
+                ctx.lineTo(g.kx + w / 2, g.ky);
+                ctx.closePath();
+                ctx.fill();
+                // The far falloff — the log rolls away from the sun.
+                ctx.fillStyle = g.split ? '#a8905e' : shade(bark, -14);
+                ctx.beginPath();
+                ctx.ellipse(g.kx, g.ky - len + s * 0.012, w * 0.46, s * 0.026, 0, Math.PI, Math.PI * 2);
+                ctx.fill();
+                // Seams: the dark gap a stacked rank keeps between
+                // neighbours — the read that these are MANY, not one.
+                ctx.strokeStyle = 'rgba(44, 30, 14, 0.5)';
+                ctx.lineWidth = Math.max(1, s * 0.009);
+                ctx.beginPath();
+                ctx.moveTo(g.kx - w / 2, g.ky);
+                ctx.lineTo(g.kx - w * 0.46, g.ky - len);
+                ctx.moveTo(g.kx + w / 2, g.ky);
+                ctx.lineTo(g.kx + w * 0.46, g.ky - len);
+                ctx.stroke();
+                if (g.split) {
+                  // Flat face up: grain running the length.
+                  ctx.strokeStyle = 'rgba(150, 116, 66, 0.5)';
+                  ctx.lineWidth = Math.max(1, s * 0.007);
+                  ctx.beginPath();
+                  ctx.moveTo(g.kx - w * 0.16, g.ky - s * 0.03);
+                  ctx.lineTo(g.kx - w * 0.14, g.ky - len + s * 0.05);
+                  ctx.moveTo(g.kx + w * 0.2, g.ky - s * 0.04);
+                  ctx.lineTo(g.kx + w * 0.18, g.ky - len + s * 0.06);
+                  ctx.stroke();
+                } else {
+                  // Bark crown: one lit streak down the length — the
+                  // sun finds the round's high line.
+                  ctx.strokeStyle = g.birch ? 'rgba(240, 234, 218, 0.6)' : 'rgba(232, 208, 160, 0.5)';
+                  ctx.lineWidth = Math.max(1, s * 0.016);
+                  ctx.beginPath();
+                  ctx.moveTo(g.kx - w * 0.12, g.ky - s * 0.02);
+                  ctx.lineTo(g.kx - w * 0.1, g.ky - len + s * 0.045);
+                  ctx.stroke();
+                  if (g.birch) {
+                    ctx.strokeStyle = 'rgba(60, 54, 44, 0.55)';
+                    ctx.lineWidth = Math.max(1, s * 0.008);
+                    ctx.beginPath();
+                    ctx.moveTo(g.kx + w * 0.12, g.ky - len * 0.45);
+                    ctx.lineTo(g.kx + w * 0.3, g.ky - len * 0.42);
+                    ctx.stroke();
+                  }
+                }
+              }
+              // THE END GRAIN: the front face — bark ring, pale face,
+              // an off-center growth ring, and the radial checks a
+              // seasoned round earns. The odd billet rides split,
+              // flat side up to match its pale top flank.
+              for (let k = 0; k < row.n; k++) {
+                const g = geo(k);
+                const bark = g.birch ? '#b3ac9c' : TWN_OAK_DARK;
+                const face = g.birch ? '#e4d6b2' : '#d4b98a';
+                ctx.fillStyle = bark;
+                ctx.beginPath();
+                ctx.ellipse(g.kx, g.ky, g.rr, g.rr * 0.94, 0, 0, Math.PI * 2);
+                ctx.fill();
+                if (g.birch) {
+                  // Birch wears its dark lenticel ticks.
+                  ctx.strokeStyle = 'rgba(60, 54, 44, 0.6)';
+                  ctx.lineWidth = Math.max(1, s * 0.008);
+                  ctx.beginPath();
+                  ctx.moveTo(g.kx - g.rr * 0.7, g.ky + g.rr * 0.4);
+                  ctx.lineTo(g.kx - g.rr * 0.45, g.ky + g.rr * 0.48);
+                  ctx.moveTo(g.kx + g.rr * 0.5, g.ky - g.rr * 0.55);
+                  ctx.lineTo(g.kx + g.rr * 0.72, g.ky - g.rr * 0.42);
+                  ctx.stroke();
+                }
+                ctx.fillStyle = face;
+                if (g.split) {
+                  ctx.beginPath();
+                  ctx.moveTo(g.kx - g.rr * 0.78, g.ky + g.rr * 0.04);
+                  ctx.arc(g.kx, g.ky, g.rr * 0.78, Math.PI, 0);
+                  ctx.closePath();
+                  ctx.fill();
+                  ctx.strokeStyle = 'rgba(150, 116, 66, 0.5)';
+                  ctx.lineWidth = Math.max(1, s * 0.007);
+                  ctx.beginPath();
+                  ctx.moveTo(g.kx - g.rr * 0.6, g.ky + g.rr * 0.2);
+                  ctx.lineTo(g.kx + g.rr * 0.58, g.ky + g.rr * 0.2);
+                  ctx.moveTo(g.kx - g.rr * 0.44, g.ky + g.rr * 0.42);
+                  ctx.lineTo(g.kx + g.rr * 0.4, g.ky + g.rr * 0.42);
+                  ctx.stroke();
+                } else {
+                  // A round: full pale face, one off-center ring, and
+                  // two check cracks radiating from the heart.
+                  ctx.beginPath();
+                  ctx.ellipse(g.kx, g.ky, g.rr * 0.74, g.rr * 0.68, 0, 0, Math.PI * 2);
+                  ctx.fill();
+                  ctx.strokeStyle = 'rgba(140, 108, 62, 0.6)';
+                  ctx.lineWidth = Math.max(1, s * 0.008);
+                  ctx.beginPath();
+                  ctx.ellipse(g.kx - g.rr * 0.06, g.ky + g.rr * 0.05, g.rr * 0.42, g.rr * 0.36, 0.1, 0, Math.PI * 2);
+                  ctx.stroke();
+                  ctx.strokeStyle = 'rgba(110, 84, 48, 0.55)';
+                  for (const ca of [((h >>> (k + ri)) & 7) * 0.7, 2.4 + ((h >>> (k * 2)) & 3) * 0.6] as const) {
+                    ctx.beginPath();
+                    ctx.moveTo(g.kx + Math.cos(ca) * g.rr * 0.12, g.ky + Math.sin(ca) * g.rr * 0.1);
+                    ctx.lineTo(g.kx + Math.cos(ca) * g.rr * 0.62, g.ky + Math.sin(ca) * g.rr * 0.55);
+                    ctx.stroke();
+                  }
+                }
+                // The sunlit front arris where flank meets face —
+                // only where the sky actually touches the log.
+                if (top || k === 0 || k === row.n - 1) {
+                  ctx.strokeStyle = 'rgba(232, 208, 160, 0.55)';
+                  ctx.lineWidth = Math.max(1, s * 0.012);
+                  ctx.beginPath();
+                  ctx.ellipse(g.kx, g.ky - s * 0.008, g.rr * 0.96, g.rr * 0.9, 0, Math.PI * 1.12, Math.PI * 1.88);
+                  ctx.stroke();
+                }
+              }
+            }
+          },
+        };
+      }
+
+      case Tile.ChoppingBlock: {
+        const syT = s * this.camera.yScale;
+        const baseY = p.y + syT * 0.14;
+        // THE CHORE STANDS ALONE — the working half of the old
+        // woodpile, promoted to its own ground: a wide seasoned
+        // round, bark checked down the flank, the top plane bright
+        // and scarred (the camera looks ONTO the work surface), the
+        // one deep wedge bite where every swing lands, THE AXE
+        // standing where it was left, and the fresh split at the
+        // block's foot. Mid-chore, never abandoned.
+        const bx = p.x;
+        const bR = s * 0.19;
+        const bH = s * 0.36;
+        const bTop = baseY - bH;
+        return {
+          sortY: ty + 0.68,
+          body: stationBody(0.52, 0.85, 0.35),
+          drawShadow: () => this.castContact(bx, baseY, s * 0.34, s * 0.06),
+          draw: () => {
+            // Draw-time ctx capture: the outline pass swaps this.ctx
+            // to its scratch — the build-time capture would paint past it.
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(12, 8, 20, 0.22)';
+            ctx.beginPath();
+            ctx.ellipse(bx, baseY + s * 0.01, bR * 1.7, s * 0.055, 0, 0, Math.PI * 2);
             ctx.fill();
             // Bark litter where the splitting happens: dark flecks
-            // and pale chips between rank and block.
+            // and pale chips thrown around the work.
             for (let k = 0; k < 5; k++) {
               ctx.fillStyle = ((h >>> k) & 1) === 0 ? 'rgba(74, 52, 28, 0.5)' : 'rgba(212, 185, 138, 0.7)';
               ctx.beginPath();
               ctx.ellipse(
-                p.x + s * 0.2 + ((h >>> (k + 2)) & 7) * s * 0.055,
-                baseY + s * 0.005 + ((h >>> (k + 5)) & 3) * s * 0.014,
+                bx - s * 0.34 + ((h >>> (k + 2)) & 7) * s * 0.09,
+                baseY + s * 0.012 + ((h >>> (k + 5)) & 3) * s * 0.016,
                 s * 0.018,
                 s * 0.009,
                 ((h >>> k) & 3) * 0.5,
@@ -35871,195 +36062,52 @@ export class Renderer {
               );
               ctx.fill();
             }
-            // The stakes pinning the rank's ends, driven with a hair
-            // of outward rake (the rank pushes), chamfered tops.
-            for (const m of [-1, 1] as const) {
-              const sx0 = rcx + m * (rankHW + s * 0.09);
-              const sx1 = sx0 + m * s * 0.03;
-              ctx.strokeStyle = TWN_OAK_DARK;
-              ctx.lineWidth = Math.max(1.5, s * 0.052);
-              ctx.beginPath();
-              ctx.moveTo(sx0, baseY + s * 0.01);
-              ctx.lineTo(sx1, baseY - s * 0.6);
-              ctx.stroke();
-              ctx.strokeStyle = TWN_OAK;
-              ctx.lineWidth = Math.max(1, s * 0.018);
-              ctx.beginPath();
-              ctx.moveTo(sx0 - s * 0.012, baseY - s * 0.04);
-              ctx.lineTo(sx1 - s * 0.012, baseY - s * 0.58);
-              ctx.stroke();
-              ctx.fillStyle = TWN_OAK_LIT;
-              ctx.beginPath();
-              ctx.moveTo(sx1 - s * 0.026, baseY - s * 0.59);
-              ctx.lineTo(sx1, baseY - s * 0.635);
-              ctx.lineTo(sx1 + s * 0.026, baseY - s * 0.59);
-              ctx.closePath();
-              ctx.fill();
-            }
-            // THE RANK: four courses, hex-packed — every course
-            // offset half a pitch from the one below, so the pile
-            // reads STACKED, not floated. Every piece shows its round
-            // end (the fallen drum's law, stacked forty high): bark
-            // ring, pale face, an off-center growth ring, and the
-            // radial check cracks a seasoned round earns.
-            const pitch = s * 0.152;
-            const courses = [
-              { y: -0.085, n: 6 },
-              { y: -0.225, n: 5 },
-              { y: -0.365, n: 4 },
-              { y: -0.49, n: 2 },
-            ] as const;
-            for (let ri = 0; ri < courses.length; ri++) {
-              const row = courses[ri]!;
-              for (let k = 0; k < row.n; k++) {
-                const kx = rcx + (k - (row.n - 1) / 2) * pitch + (((h >>> (ri * 5 + k)) & 3) - 1.5) * s * 0.008;
-                const ky = baseY + row.y * s + (ri === 3 && k === 1 ? s * 0.012 : 0);
-                const rr = s * 0.082 * (0.92 + (((h >>> (ri + k * 3)) & 3) / 3) * 0.16);
-                const split = ((h >>> (ri * 3 + k * 2)) & 3) !== 0;
-                const birch = ((h >>> (ri * 4 + k * 5 + 1)) & 7) === 0;
-                const bark = birch ? '#b3ac9c' : TWN_OAK_DARK;
-                const face = birch ? '#e4d6b2' : '#d4b98a';
-                // The log body sliver behind the end face — the
-                // length running away north.
-                ctx.fillStyle = shade(bark, -12);
-                ctx.beginPath();
-                ctx.ellipse(kx - s * 0.014, ky - s * 0.02, rr * 0.98, rr * 0.9, 0, 0, Math.PI * 2);
-                ctx.fill();
-                // Bark ring.
-                ctx.fillStyle = bark;
-                ctx.beginPath();
-                ctx.ellipse(kx, ky, rr, rr * 0.94, 0, 0, Math.PI * 2);
-                ctx.fill();
-                if (birch) {
-                  // Birch wears its dark lenticel ticks.
-                  ctx.strokeStyle = 'rgba(60, 54, 44, 0.6)';
-                  ctx.lineWidth = Math.max(1, s * 0.008);
-                  ctx.beginPath();
-                  ctx.moveTo(kx - rr * 0.7, ky + rr * 0.4);
-                  ctx.lineTo(kx - rr * 0.45, ky + rr * 0.48);
-                  ctx.moveTo(kx + rr * 0.5, ky - rr * 0.55);
-                  ctx.lineTo(kx + rr * 0.72, ky - rr * 0.42);
-                  ctx.stroke();
-                }
-                ctx.fillStyle = face;
-                if (split) {
-                  // A split: half-moon of pale grain, flat side up,
-                  // grain lines running with the chord.
-                  ctx.beginPath();
-                  ctx.moveTo(kx - rr * 0.78, ky + rr * 0.04);
-                  ctx.arc(kx, ky + rr * 0.0, rr * 0.78, Math.PI, 0);
-                  ctx.closePath();
-                  ctx.fill();
-                  ctx.strokeStyle = 'rgba(150, 116, 66, 0.5)';
-                  ctx.lineWidth = Math.max(1, s * 0.007);
-                  ctx.beginPath();
-                  ctx.moveTo(kx - rr * 0.6, ky + rr * 0.2);
-                  ctx.lineTo(kx + rr * 0.58, ky + rr * 0.2);
-                  ctx.moveTo(kx - rr * 0.44, ky + rr * 0.42);
-                  ctx.lineTo(kx + rr * 0.4, ky + rr * 0.42);
-                  ctx.stroke();
-                } else {
-                  // A round: full pale face, one off-center ring, and
-                  // two check cracks radiating from the heart.
-                  ctx.beginPath();
-                  ctx.ellipse(kx, ky, rr * 0.74, rr * 0.68, 0, 0, Math.PI * 2);
-                  ctx.fill();
-                  ctx.strokeStyle = 'rgba(140, 108, 62, 0.6)';
-                  ctx.lineWidth = Math.max(1, s * 0.008);
-                  ctx.beginPath();
-                  ctx.ellipse(kx - rr * 0.06, ky + rr * 0.05, rr * 0.42, rr * 0.36, 0.1, 0, Math.PI * 2);
-                  ctx.stroke();
-                  ctx.strokeStyle = 'rgba(110, 84, 48, 0.55)';
-                  for (const ca of [((h >>> (k + ri)) & 7) * 0.7, 2.4 + ((h >>> (k * 2)) & 3) * 0.6] as const) {
-                    ctx.beginPath();
-                    ctx.moveTo(kx + Math.cos(ca) * rr * 0.12, ky + Math.sin(ca) * rr * 0.1);
-                    ctx.lineTo(kx + Math.cos(ca) * rr * 0.62, ky + Math.sin(ca) * rr * 0.55);
-                    ctx.stroke();
-                  }
-                }
-                // The top course catches the light along its crown —
-                // the foreshortened hint of the logs' upper flank.
-                if (ri === courses.length - 1 || (ri === 2 && (k === 0 || k === row.n - 1))) {
-                  ctx.strokeStyle = 'rgba(232, 208, 160, 0.55)';
-                  ctx.lineWidth = Math.max(1, s * 0.012);
-                  ctx.beginPath();
-                  ctx.ellipse(kx - s * 0.012, ky - s * 0.018, rr * 0.94, rr * 0.88, 0, Math.PI * 1.15, Math.PI * 1.85);
-                  ctx.stroke();
-                }
-              }
-            }
-            // ONE SPLIT PULLED: leaning against the west stake,
-            // flat face to the sky — the next armful started.
-            {
-              const lx = rcx - rankHW - s * 0.17;
-              ctx.save();
-              ctx.translate(lx, baseY - s * 0.02);
-              ctx.rotate(-0.42);
-              ctx.fillStyle = TWN_OAK_DARK;
-              ctx.fillRect(-s * 0.045, -s * 0.3, s * 0.09, s * 0.3);
-              ctx.fillStyle = '#d4b98a';
-              ctx.fillRect(-s * 0.045, -s * 0.3, s * 0.038, s * 0.3);
-              ctx.fillStyle = '#c9ab74';
-              ctx.beginPath();
-              ctx.ellipse(0, -s * 0.3, s * 0.045, s * 0.02, 0, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.restore();
-            }
-            // THE BLOCK: a wide seasoned round, bark checked down the
-            // side, top plane bright and scarred — with the deep
-            // wedge notch where every swing lands.
-            const bx = p.x + s * 0.64;
-            const bTop = baseY - s * 0.3;
-            const bR = s * 0.15;
-            ctx.fillStyle = 'rgba(12, 8, 20, 0.2)';
-            ctx.beginPath();
-            ctx.ellipse(bx, baseY + s * 0.01, bR * 1.25, s * 0.05, 0, 0, Math.PI * 2);
-            ctx.fill();
+            // The barrel of the block: bark dark, the lit face west,
+            // bark checks down the flank.
             ctx.fillStyle = TWN_OAK_DARK;
-            ctx.fillRect(bx - bR, bTop, bR * 2, s * 0.31);
+            ctx.fillRect(bx - bR, bTop, bR * 2, bH);
             ctx.fillStyle = TWN_OAK;
-            ctx.fillRect(bx - bR, bTop, bR * 0.62, s * 0.31);
+            ctx.fillRect(bx - bR, bTop, bR * 0.62, bH);
             ctx.beginPath();
-            ctx.ellipse(bx, baseY + s * 0.005, bR, s * 0.045, 0, 0, Math.PI);
+            ctx.ellipse(bx, baseY + s * 0.005, bR, s * 0.05, 0, 0, Math.PI);
             ctx.fill();
-            // Bark checks down the flank.
             ctx.strokeStyle = 'rgba(50, 34, 18, 0.6)';
             ctx.lineWidth = Math.max(1, s * 0.01);
             for (const cx2 of [-0.5, 0.15, 0.62] as const) {
               ctx.beginPath();
-              ctx.moveTo(bx + bR * cx2, bTop + s * 0.05);
-              ctx.lineTo(bx + bR * cx2 + s * 0.008, bTop + s * 0.24);
+              ctx.moveTo(bx + bR * cx2, bTop + s * 0.06);
+              ctx.lineTo(bx + bR * cx2 + s * 0.01, bTop + s * 0.28);
               ctx.stroke();
             }
-            // The top: bright end grain, rim in bark, old scars, and
-            // the one dark wedge bite.
+            // The top: bright end grain rimmed in bark, old scars,
+            // and the one dark wedge bite.
             ctx.fillStyle = TWN_OAK_DARK;
             ctx.beginPath();
-            ctx.ellipse(bx, bTop, bR * 1.04, s * 0.062, 0, 0, Math.PI * 2);
+            ctx.ellipse(bx, bTop, bR * 1.04, s * 0.078, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.fillStyle = '#c9ab74';
             ctx.beginPath();
-            ctx.ellipse(bx, bTop, bR * 0.88, s * 0.052, 0, 0, Math.PI * 2);
+            ctx.ellipse(bx, bTop, bR * 0.88, s * 0.066, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.strokeStyle = 'rgba(140, 108, 62, 0.55)';
             ctx.lineWidth = Math.max(1, s * 0.008);
             ctx.beginPath();
-            ctx.ellipse(bx - s * 0.012, bTop + s * 0.004, bR * 0.5, s * 0.028, 0, 0, Math.PI * 2);
+            ctx.ellipse(bx - s * 0.014, bTop + s * 0.005, bR * 0.5, s * 0.035, 0, 0, Math.PI * 2);
             ctx.stroke();
             ctx.strokeStyle = 'rgba(120, 90, 50, 0.55)';
             ctx.lineWidth = Math.max(1, s * 0.01);
             for (let k = 0; k < 3; k++) {
               const a = ((h >>> (k * 2)) & 3) * 0.5 - 0.7;
               ctx.beginPath();
-              ctx.moveTo(bx - Math.cos(a) * bR * 0.66, bTop - Math.sin(a) * s * 0.032);
-              ctx.lineTo(bx + Math.cos(a) * bR * 0.66, bTop + Math.sin(a) * s * 0.032);
+              ctx.moveTo(bx - Math.cos(a) * bR * 0.66, bTop - Math.sin(a) * s * 0.04);
+              ctx.lineTo(bx + Math.cos(a) * bR * 0.66, bTop + Math.sin(a) * s * 0.04);
               ctx.stroke();
             }
             ctx.fillStyle = 'rgba(58, 40, 20, 0.7)';
             ctx.beginPath();
-            ctx.moveTo(bx - s * 0.052, bTop - s * 0.012);
-            ctx.lineTo(bx + s * 0.012, bTop + s * 0.002);
-            ctx.lineTo(bx - s * 0.02, bTop + s * 0.02);
+            ctx.moveTo(bx - s * 0.062, bTop - s * 0.014);
+            ctx.lineTo(bx + s * 0.014, bTop + s * 0.002);
+            ctx.lineTo(bx - s * 0.024, bTop + s * 0.024);
             ctx.closePath();
             ctx.fill();
             // THE AXE, standing where it was left: haft raked
@@ -36067,42 +36115,42 @@ export class Renderer {
             // notch, the bit's edge wearing the one crisp light
             // (metal earns its read with an edge).
             ctx.strokeStyle = shade(TWN_OAK, 10);
-            ctx.lineWidth = Math.max(1.5, s * 0.026);
+            ctx.lineWidth = Math.max(1.5, s * 0.028);
             ctx.beginPath();
-            ctx.moveTo(bx - s * 0.01, bTop - s * 0.03);
-            ctx.lineTo(bx + s * 0.155, bTop - s * 0.42);
+            ctx.moveTo(bx - s * 0.012, bTop - s * 0.034);
+            ctx.lineTo(bx + s * 0.168, bTop - s * 0.45);
             ctx.stroke();
             ctx.strokeStyle = TWN_OAK_LIT;
-            ctx.lineWidth = Math.max(1, s * 0.01);
+            ctx.lineWidth = Math.max(1, s * 0.011);
             ctx.beginPath();
-            ctx.moveTo(bx - s * 0.016, bTop - s * 0.034);
-            ctx.lineTo(bx + s * 0.148, bTop - s * 0.42);
+            ctx.moveTo(bx - s * 0.018, bTop - s * 0.038);
+            ctx.lineTo(bx + s * 0.16, bTop - s * 0.45);
             ctx.stroke();
             ctx.fillStyle = shade(TWN_OAK, 10);
             ctx.beginPath();
-            ctx.ellipse(bx + s * 0.162, bTop - s * 0.432, s * 0.022, s * 0.016, 1.2, 0, Math.PI * 2);
+            ctx.ellipse(bx + s * 0.176, bTop - s * 0.463, s * 0.024, s * 0.018, 1.2, 0, Math.PI * 2);
             ctx.fill();
             // The head: poll seated on the haft, cheek flaring to a
             // bearded bit buried in the block.
             ctx.fillStyle = TWN_IRON;
             ctx.beginPath();
-            ctx.moveTo(bx + s * 0.02, bTop - s * 0.115);
-            ctx.lineTo(bx + s * 0.052, bTop - s * 0.1);
-            ctx.lineTo(bx + s * 0.045, bTop - s * 0.005);
-            ctx.lineTo(bx - s * 0.055, bTop - s * 0.02);
-            ctx.quadraticCurveTo(bx - s * 0.02, bTop - s * 0.08, bx + s * 0.02, bTop - s * 0.115);
+            ctx.moveTo(bx + s * 0.024, bTop - s * 0.128);
+            ctx.lineTo(bx + s * 0.06, bTop - s * 0.11);
+            ctx.lineTo(bx + s * 0.052, bTop - s * 0.006);
+            ctx.lineTo(bx - s * 0.062, bTop - s * 0.022);
+            ctx.quadraticCurveTo(bx - s * 0.024, bTop - s * 0.09, bx + s * 0.024, bTop - s * 0.128);
             ctx.closePath();
             ctx.fill();
             ctx.strokeStyle = 'rgba(222, 226, 234, 0.85)';
-            ctx.lineWidth = Math.max(1, s * 0.012);
+            ctx.lineWidth = Math.max(1, s * 0.013);
             ctx.beginPath();
-            ctx.moveTo(bx - s * 0.053, bTop - s * 0.018);
-            ctx.lineTo(bx - s * 0.038, bTop - s * 0.09);
+            ctx.moveTo(bx - s * 0.06, bTop - s * 0.02);
+            ctx.lineTo(bx - s * 0.043, bTop - s * 0.1);
             ctx.stroke();
             // The fresh split at the block's foot, fallen where the
             // last swing threw it.
             ctx.save();
-            ctx.translate(bx - s * 0.2, baseY - s * 0.035);
+            ctx.translate(bx - s * 0.3, baseY - s * 0.03);
             ctx.rotate(0.32);
             ctx.fillStyle = TWN_OAK_DARK;
             ctx.fillRect(-s * 0.1, -s * 0.032, s * 0.2, s * 0.064);

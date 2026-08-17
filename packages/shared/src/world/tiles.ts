@@ -762,7 +762,7 @@ export enum Tile {
   CrateStack = 398,
   /** A chewed hitching rail, iron rings, one tied lead. */
   HitchingPost = 400,
-  /** Cordwood ranked between stakes; the axe stands in the block. */
+  /** A plain hex-packed pyramid of seasoned cordwood — the everywhere pile. */
   Woodpile = 401,
   /** A half-barrel planter spilling blooms over the street. */
   StreetPlanter = 402,
@@ -920,6 +920,13 @@ export enum Tile {
   // lives on the same plants the player's satchel carries.
   /** The physic tub: a sawn half-cask planted in worked herb rows. */
   HerbPlanter = 461,
+  // THE CHORE STANDS ALONE — split out of the Woodpile when the pile
+  // went generalized: the pile is now the STORE (any yard, any door),
+  // and this is the WORK — block, standing axe, the fresh split where
+  // the last swing threw it. Pair them where wood is the story; stand
+  // the pile alone everywhere else.
+  /** The splitting block: a scarred seasoned round, the axe standing in it. */
+  ChoppingBlock = 462,
 }
 
 export enum Detail {
@@ -1650,6 +1657,9 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   // THE HERBALIST'S SHELF — minimap voice: cooper's oak under working
   // green (the herb rows out-read the rim from the sky).
   [Tile.HerbPlanter]: { name: 'herb planter', solid: true, color: '#6f4d26', raised: true, topColor: '#5d7c42' },
+  // THE CHORE STANDS ALONE — minimap voice: bark below, bright-scarred
+  // end grain above (the block reads by its worked top from the sky).
+  [Tile.ChoppingBlock]: { name: 'chopping block', solid: true, color: '#6f4d26', raised: true, topColor: '#c9ab74' },
 };
 
 /** The four awning silhouettes, index order FOREVER (the id math). */
@@ -2364,6 +2374,8 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.GnawTrough, 0.36],
   // THE HERBALIST'S SHELF: waist furniture you brush past.
   [Tile.HerbPlanter, 0.3],
+  // THE CHORE STANDS ALONE: a knee-high round you step around.
+  [Tile.ChoppingBlock, 0.26],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -2686,7 +2698,10 @@ export type DestructibleKind =
   | 'gnawtrough'
   // THE HERBALIST'S SHELF: staves clap out, the wet soil goes DOWN,
   // a green shower, the snips ping bright, the tied bundle flies whole.
-  | 'herbplanter';
+  | 'herbplanter'
+  // THE CHORE STANDS ALONE: the great round topples heavy, the
+  // standing axe cartwheels free, chips everywhere.
+  | 'choppingblock';
 
 export interface DestructibleInfo {
   kind: DestructibleKind;
@@ -2914,6 +2929,8 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.GnawTrough, { kind: 'gnawtrough', respawnSec: 300, hits: 1 }],
   // THE HERBALIST'S SHELF: cooper's timber on the street clock.
   [Tile.HerbPlanter, { kind: 'herbplanter', respawnSec: 300, hits: 2 }],
+  // THE CHORE STANDS ALONE: a seasoned round takes two honest blows.
+  [Tile.ChoppingBlock, { kind: 'choppingblock', respawnSec: 300, hits: 2 }],
 ]);
 
 /** Every smashable prop tile. */

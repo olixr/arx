@@ -223,7 +223,10 @@ export type SmashKind =
   | 'gnawtrough'
   // THE HERBALIST'S SHELF: cooper's staves and wet earth, the green
   // harvest showering bright, iron snips, one bundle flying whole.
-  | 'herbplanter';
+  | 'herbplanter'
+  // THE CHORE STANDS ALONE: the great round topples heavy, the
+  // standing axe cartwheels free, chips everywhere.
+  | 'choppingblock';
 
 export interface DebrisChunk {
   x: number; // world coords (tile units)
@@ -746,6 +749,7 @@ const CHIP_TONE: Record<SmashKind, string> = {
   cratestack: '#8a6534',
   hitchpost: '#8a6534',
   woodpile: '#8a6534',
+  choppingblock: '#8a6534',
   streetplanter: '#8a6534',
   stonebench: '#a39a86',
   produce: '#c05a3a',
@@ -2078,13 +2082,12 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       break;
     }
     case 'woodpile': {
-      // The rank lets go the way a rank does: the whole face ROLLS —
+      // The pile lets go the way a pile does: the whole face ROLLS —
       // rounds and splits tumbling low and heavy, end grain over end
-      // grain, the axe cartwheeling once off the block.
-      for (let i = 0; i < 8; i++) {
+      // grain, nothing in the wreck but wood.
+      for (let i = 0; i < 10; i++) {
         out.push({ len: 0.1 + rand() * 0.05, wid: 0.08, color: pick(rand, ['#6f4d26', '#8a6534', '#d4b98a']), stripe: '#d4b98a', round: true, pace: 0.55 });
       }
-      out.push({ len: 0.16, wid: 0.035, color: '#96713c', stripe: '#c9a76a', pace: 1.15 });
       break;
     }
     case 'streetplanter': {
@@ -2943,6 +2946,19 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       }
       out.push({ len: 0.05, wid: 0.03, color: '#4c4a52', stripe: '#c9d6e4', pace: 1.6 });
       out.push({ len: 0.09, wid: 0.05, color: '#8a9058', stripe: '#a89263', round: true, pace: 1.15 });
+      break;
+    }
+    case 'choppingblock': {
+      // The block goes the way of the wood it split: the great round
+      // toppling heavy and rolling ONCE, the standing axe finally
+      // cartwheeling free, the fresh split with it, chips everywhere.
+      out.push({ len: 0.17, wid: 0.15, color: '#6f4d26', stripe: '#c9ab74', round: true, pace: 0.45 });
+      out.push({ len: 0.17, wid: 0.03, color: '#96713c', stripe: '#c9a76a', pace: 1.3 });
+      out.push({ len: 0.08, wid: 0.05, color: '#4c4a52', stripe: '#8c8798', pace: 1.15 });
+      out.push({ len: 0.14, wid: 0.05, color: '#8a6534', stripe: '#d4b98a', pace: 0.8 });
+      for (let i = 0; i < 4; i++) {
+        out.push({ len: 0.055, wid: 0.018, color: pick(rand, ['#d8b878', '#e8d4a0']), pace: 1.25 });
+      }
       break;
     }
   }

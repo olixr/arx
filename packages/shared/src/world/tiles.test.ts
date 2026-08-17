@@ -480,6 +480,7 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.BossEffigy, 'effigy', 2],
     [Tile.GnawTrough, 'gnawtrough', 1],
     [Tile.HerbPlanter, 'herbplanter', 2],
+    [Tile.ChoppingBlock, 'choppingblock', 2],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {
