@@ -116,6 +116,14 @@ import {
   destructibleInfo,
   groundAimed,
   groundAimRange,
+  travelKindOf,
+  transitTicks,
+  transitStep,
+  resolveTeleport,
+  TRAVEL_SPEEDS,
+  CHARGE_CONTACT_DIST,
+  BLINK_STRIKE_RADIUS,
+  type TravelKind,
   nearestFloorTile,
   isSignTile,
   sanitizeSignText,
@@ -1474,6 +1482,33 @@ interface PendingBlast {
   drainFrac?: number;
 }
 
+/**
+ * THE TRAVELED ROAD (THE CROSSING): one body's live crossing. The
+ * damage sweep and the arrival payload are closures captured at the
+ * cast, where every number (maxHit, style, level, the struck set)
+ * was still in hand — the engine only walks the road.
+ */
+interface Transit {
+  ab: AbilityDef;
+  kind: Exclude<TravelKind, 'blink'>;
+  /** The road's world — a body that changes planes abandons the road. */
+  plane: PlaneId;
+  dirX: number;
+  dirY: number;
+  distLeft: number;
+  totalDist: number;
+  /** Where the body faces while it travels (a retreat hop faces its foe). */
+  faceDir: number;
+  /** THE CHOSEN GROUND: the live-tracked mark of a locked charge. */
+  targetEid: EntityId | null;
+  /** NPCs and companions travel at their own body's radius. */
+  bodyRadius: number | undefined;
+  /** The corridor wound, fired per substep at the passing position. */
+  onSweep: ((x: number, y: number) => void) | null;
+  /** The arrival: crater, arrow tail, impact — paid when the road ends. */
+  onFinish: (() => void) | null;
+}
+
 /** A lingering hazard zone pulsing damage while it lives. */
 interface ActiveField {
   plane: PlaneId;
@@ -2462,6 +2497,13 @@ export class GameServer {
 
   /** Telegraphed blasts (ground AoEs) waiting to detonate. */
   private readonly pendingBlasts: PendingBlast[] = [];
+
+  /**
+   * THE TRAVELED ROAD (THE CROSSING): every body currently crossing
+   * the world on a transport art — players, NPCs, and companions in
+   * one ledger, advanced by tickTransits. One transit per body.
+   */
+  private readonly transits = new Map<EntityId, Transit>();
 
   /** Lingering hazard zones (ground_field) pulsing while they live. */
   private readonly activeFields: ActiveField[] = [];
@@ -12477,6 +12519,7 @@ export class GameServer {
     if (!player || !pos) return;
     this.cancelAction(eid, player);
     this.cancelCasting(eid, player); // a step through space breaks the breath
+    this.transits.delete(eid); // the road cannot follow through a /tp
     // Any ride out of a seat releases it — the destination is already
     // decided, so no walk-up restore.
     this.standUp(eid, player, pos, false);
@@ -16730,46 +16773,50 @@ export class GameServer {
       }
       case 'dash_strike':
       case 'leap_slam': {
+        // THE CROSSING: the companion's gap-closer rides the one
+        // transit engine now — a real crossing at the art's gait,
+        // target-locked (the fang finds the moving throat), stopping
+        // short exactly as before, the strike paid at ARRIVAL.
         if (!tpos || tpos.plane !== pos.plane) break;
-        const startX = pos.x;
-        const startY = pos.y;
         const dd = Math.hypot(tpos.x - pos.x, tpos.y - pos.y);
-        if (dd > 0.01) {
-          const reach = Math.min(ab.dashTiles ?? 3, Math.max(0, dd - 0.6));
-          const ldx = (tpos.x - pos.x) / dd;
-          const ldy = (tpos.y - pos.y) / dd;
-          for (let step = 0; step < 4; step++) {
-            const next = stepMovement(
-              pos, { mx: ldx, my: ldy }, reach, 1 / 4, this.worldOf(pos.plane), npc.def.radius,
-            );
-            pos.x = next.x;
-            pos.y = next.y;
+        const reach = Math.min(ab.dashTiles ?? 3, Math.max(0, dd - 0.6));
+        const kind: Exclude<TravelKind, 'blink'> =
+          ab.shape === 'leap_slam'
+            ? 'leap'
+            : travelKindOf(ab) === 'charge'
+              ? 'charge'
+              : 'dash';
+        const payload = (): void => {
+          const endPos = this.positions.get(eid);
+          if (!endPos) return;
+          if (ab.shape === 'dash_strike') {
+            strike(targetEid, { x: endPos.x, y: endPos.y });
+          } else {
+            const radius = ab.radius ?? 2;
+            this.forEachNpcNear(endPos.plane, endPos.x, endPos.y, radius + 1.5, (mEid, m, mpos) => {
+              if (mEid === eid) return;
+              if (Math.hypot(mpos.x - endPos.x, mpos.y - endPos.y) - m.def.radius > radius) return;
+              strike(mEid, { x: endPos.x, y: endPos.y });
+            });
+            // The landing speaks its own nova over the struck ground.
+            this.broadcastFx(endPos.plane, {
+              t: 'fx', kind: 'nova', x: endPos.x, y: endPos.y,
+              radius: ab.radius ?? 2, id: ab.id, color: ab.color,
+            });
           }
-          pos.dir = Math.atan2(ldy, ldx);
-          this.updateChunkMembership(eid);
+        };
+        if (dd <= 0.01 || reach < 0.05) {
+          // Already at the mark: the art lands where the body stands.
+          payload();
+          break;
         }
-        if (ab.shape === 'dash_strike') {
-          strike(targetEid, { x: pos.x, y: pos.y });
-        } else {
-          const radius = ab.radius ?? 2;
-          this.forEachNpcNear(pos.plane, pos.x, pos.y, radius + 1.5, (mEid, m, mpos) => {
-            if (mEid === eid) return;
-            if (Math.hypot(mpos.x - pos.x, mpos.y - pos.y) - m.def.radius > radius) return;
-            strike(mEid, { x: pos.x, y: pos.y });
-          });
-        }
-        // The corridor first (the travel every watcher reads), then a
-        // leap's landing speaks its own nova over the struck ground.
-        this.broadcastFx(pos.plane, {
-          t: 'fx', kind: 'dash', x: startX, y: startY, x2: pos.x, y2: pos.y,
-          radius: 0, id: ab.id, color: ab.color,
+        const ldx = (tpos.x - pos.x) / dd;
+        const ldy = (tpos.y - pos.y) / dd;
+        this.beginTransit(eid, ab, kind, ldx, ldy, reach, Math.atan2(ldy, ldx), {
+          targetEid: ab.shape === 'dash_strike' ? targetEid : null,
+          bodyRadius: npc.def.radius,
+          onFinish: payload,
         });
-        if (ab.shape === 'leap_slam') {
-          this.broadcastFx(pos.plane, {
-            t: 'fx', kind: 'nova', x: pos.x, y: pos.y,
-            radius: ab.radius ?? 2, id: ab.id, color: ab.color,
-          });
-        }
         break;
       }
       case 'projectile_fan': {
@@ -20588,6 +20635,13 @@ export class GameServer {
       this.cancelAction(eid, player, 'cancelled');
       return;
     }
+    // THE TRAVELED ROAD: hands mid-crossing hold nothing — a press
+    // while the road runs refuses honestly (the optimistic client
+    // pay comes back on the cooldown resend).
+    if (this.transits.has(eid)) {
+      this.sendCooldowns(player);
+      return;
+    }
     const ab = this.slotAbility(player, slot);
     if (!ab) return;
     if (player.abilityCd[slot] > 0) {
@@ -21050,6 +21104,280 @@ export class GameServer {
   }
 
   /**
+   * THE CROSSING's one wound door: the corridor sweep a traveling
+   * dash/charge pays at every passing substep, and the emergence ring
+   * a blink pays at its far door. Extracted whole from the old
+   * single-tick dash so the NPC lane (players + companions, whiff-0
+   * uniform roll, THREAT LAW mitigation) and the player lane (NPCs,
+   * crit roll, execute clause, drain) stay byte-for-byte honest.
+   */
+  private transitSweep(
+    casterEid: EntityId,
+    ab: AbilityDef,
+    plane: PlaneId,
+    x: number,
+    y: number,
+    radius: number,
+    struck: Set<EntityId>,
+    maxHit: number,
+    knockbackMult: number,
+    style: SkillId,
+    level: number,
+    fromNpc: boolean,
+  ): void {
+    if (fromNpc) {
+      for (const [pEid, p] of this.players) {
+        if (struck.has(pEid)) continue;
+        if (p.session === null && p.disconnectedAt !== null) continue;
+        const ppos = this.positions.get(pEid);
+        if (!ppos || ppos.plane !== plane) continue;
+        if (Math.hypot(ppos.x - x, ppos.y - y) > radius) continue;
+        struck.add(pEid);
+        this.damagePlayer(pEid, Math.floor(Math.random() * (maxHit + 1)), {
+          status: ab.status,
+          sourceEid: casterEid,
+          attackerLevel: level,
+        });
+      }
+      for (const [petEid] of this.pets) {
+        if (struck.has(petEid)) continue;
+        const ppos = this.positions.get(petEid);
+        if (!ppos || ppos.plane !== plane) continue;
+        if (Math.hypot(ppos.x - x, ppos.y - y) > radius) continue;
+        struck.add(petEid);
+        this.damagePet(petEid, Math.floor(Math.random() * (maxHit + 1)), {
+          status: ab.status,
+          attackerLevel: level,
+        });
+      }
+      return;
+    }
+    this.forEachNpcNear(plane, x, y, radius, (npcEid, npc, npos) => {
+      if (struck.has(npcEid)) return;
+      if (Math.hypot(npos.x - x, npos.y - y) - npc.def.radius > radius) return;
+      struck.add(npcEid);
+      const roll = rollDamage(maxHit);
+      const dmg = this.executeAdjust(npcEid, roll.dmg, ab.executeBelow);
+      this.damageNpc(npcEid, dmg, casterEid, style, {
+        crit: roll.crit,
+        knockbackMult,
+        status: ab.status,
+        vs: ab.vs,
+      });
+      this.drainHeal(casterEid, dmg, ab.drainFrac);
+    });
+  }
+
+  /**
+   * Tumble Shot's law kept through the rework: the arrow flies at
+   * what you rolled away from, FROM the landing point — honed arts
+   * may loose a small fan, spread across spreadArc exactly like
+   * projectile_fan, so the def never overpromises.
+   */
+  private fireDashTail(
+    casterEid: EntityId,
+    ab: AbilityDef,
+    aim: number,
+    pos: { x: number; y: number; plane: PlaneId },
+    maxHit: number,
+    style: SkillId,
+    level: number,
+    fromNpc: boolean,
+    element: string | undefined,
+  ): void {
+    if (!ab.projectiles || maxHit <= 0) return;
+    const count = ab.projectiles;
+    const spread = ab.spreadArc ?? 0;
+    for (let i = 0; i < count; i++) {
+      const shotAim = count > 1 ? aim - spread / 2 + (spread * i) / (count - 1) : aim;
+      const proj = this.ecs.create();
+      this.kinds.set(proj, EntityKind.Projectile);
+      this.positions.set(proj, { x: pos.x, y: pos.y, dir: shotAim, plane: pos.plane });
+      this.projectiles.set(proj, {
+        ownerEid: casterEid,
+        style: ab.element ? 'arx' : style === 'arx' ? 'arx' : 'archery',
+        maxHit,
+        dirX: Math.cos(shotAim),
+        dirY: Math.sin(shotAim),
+        speed: ab.projectileSpeed ?? 14,
+        distLeft: ab.range ?? 6,
+        status: ab.status,
+        vs: ab.vs,
+        fromNpc,
+        attackerLevel: fromNpc ? level : undefined,
+        element: ab.element ?? (style === 'arx' ? element : undefined),
+        homingTurn: ab.homing,
+        abilityId: ab.id,
+        abilityColor: ab.color,
+      });
+      this.updateChunkMembership(proj);
+    }
+  }
+
+  /**
+   * THE CHOSEN GROUND (THE CROSSING): the foe a released charge locks.
+   * The ring's point elects the nearest fightable body standing close
+   * to it — the charge then re-derives its heading toward that body's
+   * LIVE position every tick and ends at striking distance, so the
+   * warrior's charge finds the man, not the spot he stood on when the
+   * finger lifted. Assist-eligible bodies only (assistMark): a charge
+   * never locks a companion, a neutral, or the warded watch.
+   */
+  private lockChargeTarget(
+    plane: PlaneId,
+    pt: { x: number; y: number },
+  ): EntityId | null {
+    let best: EntityId | null = null;
+    let bestDist = 1.4;
+    this.forEachNpcNear(plane, pt.x, pt.y, 2.5, (npcEid, npc, npos) => {
+      if (!this.assistMark(npcEid)) return;
+      const d = Math.hypot(npos.x - pt.x, npos.y - pt.y) - npc.def.radius;
+      if (d < bestDist) {
+        bestDist = d;
+        best = npcEid;
+      }
+    });
+    return best;
+  }
+
+  /**
+   * THE TRAVELED ROAD (THE CROSSING, docs/transport-arts-plan.md): a
+   * body crossing the world over real ticks. One transit per body;
+   * while the road runs, input movement, dodges, casts, and the
+   * body's own steering (NPC/pet AI) all wait. tickTransits advances
+   * every road each tick through the same transitStep door the
+   * predictor mirrors; the sweep and the arrival payload ride as
+   * closures captured where the cast still knew its numbers.
+   */
+  private beginTransit(
+    eid: EntityId,
+    ab: AbilityDef,
+    kind: Exclude<TravelKind, 'blink'>,
+    dirX: number,
+    dirY: number,
+    dist: number,
+    faceDir: number,
+    opts: {
+      targetEid?: EntityId | null;
+      bodyRadius?: number;
+      onSweep?: ((x: number, y: number) => void) | null;
+      onFinish?: (() => void) | null;
+    } = {},
+  ): void {
+    const pos = this.positions.must(eid);
+    // Dry-run the road so the promised wake never draws past a wall —
+    // the fx endpoint is where the body will truly stop, not the wish.
+    const world = this.worldOf(pos.plane);
+    let probe = { x: pos.x, y: pos.y };
+    {
+      let left = dist;
+      while (left > 1e-6) {
+        const step = Math.min(0.4, left);
+        const next = stepMovement(probe, { mx: dirX, my: dirY }, step, 1, world, opts.bodyRadius);
+        if (Math.hypot(next.x - probe.x, next.y - probe.y) < step * 0.05) break;
+        probe = next;
+        left -= step;
+      }
+    }
+    this.transits.set(eid, {
+      ab,
+      kind,
+      plane: pos.plane,
+      dirX,
+      dirY,
+      distLeft: dist,
+      totalDist: dist,
+      faceDir,
+      targetEid: opts.targetEid ?? null,
+      bodyRadius: opts.bodyRadius,
+      onSweep: opts.onSweep ?? null,
+      onFinish: opts.onFinish ?? null,
+    });
+    pos.dir = faceDir;
+    // THE ROAD IS SEEN: one wire, grown a clock — the wake's head
+    // crosses in the same ticks the body does. A locked charge's wake
+    // runs to the mark it will chase, not the dry-run's straight line.
+    const tpos = opts.targetEid != null ? this.positions.get(opts.targetEid) : undefined;
+    this.broadcastFx(pos.plane, {
+      t: 'fx',
+      kind: 'dash',
+      x: pos.x,
+      y: pos.y,
+      x2: tpos ? tpos.x : probe.x,
+      y2: tpos ? tpos.y : probe.y,
+      radius: 0,
+      ticks: transitTicks(dist, kind),
+      id: ab.id,
+      color: ab.color,
+    });
+  }
+
+  /** Every road advances one tick; finished roads pay their arrival. */
+  private tickTransits(): void {
+    for (const [eid, t] of this.transits) {
+      const pos = this.positions.get(eid);
+      // A body that left the world (death, despawn) or the road's own
+      // plane (a stair, a rift) abandons the crossing where it stood.
+      if (!pos || pos.plane !== t.plane) {
+        this.transits.delete(eid);
+        continue;
+      }
+      const hp = this.healths.get(eid);
+      if (hp && hp.hp <= 0) {
+        this.transits.delete(eid);
+        continue;
+      }
+      // THE CHOSEN GROUND: a locked charge re-derives its heading
+      // toward the mark's live body; contact ends the road with the
+      // impact. A mark that died or crossed worlds unlocks the road —
+      // the momentum carries on along the last honest heading.
+      if (t.targetEid !== null) {
+        const tp = this.positions.get(t.targetEid);
+        const tNpc = this.npcs.get(t.targetEid);
+        const tHp = this.healths.get(t.targetEid);
+        if (tp && tp.plane === pos.plane && tNpc && (tHp?.hp ?? 0) > 0) {
+          const dx = tp.x - pos.x;
+          const dy = tp.y - pos.y;
+          const d = Math.hypot(dx, dy) - tNpc.def.radius;
+          if (d <= CHARGE_CONTACT_DIST) {
+            this.finishTransit(eid, t);
+            continue;
+          }
+          const raw = Math.hypot(dx, dy);
+          if (raw > 0.01) {
+            t.dirX = dx / raw;
+            t.dirY = dy / raw;
+            t.faceDir = Math.atan2(dy, dx);
+          }
+        } else {
+          t.targetEid = null;
+        }
+      }
+      const step = Math.min(t.distLeft, TRAVEL_SPEEDS[t.kind] * TICK_DT);
+      const res = transitStep(
+        pos,
+        t.dirX,
+        t.dirY,
+        step,
+        this.worldOf(pos.plane),
+        t.onSweep ?? undefined,
+      );
+      pos.x = res.x;
+      pos.y = res.y;
+      pos.dir = t.faceDir;
+      t.distLeft -= step;
+      this.updateChunkMembership(eid);
+      if (res.blocked || t.distLeft <= 1e-6) this.finishTransit(eid, t);
+    }
+  }
+
+  /** The arrival: the road ends and its payload (crater, tail, impact) pays. */
+  private finishTransit(eid: EntityId, t: Transit): void {
+    this.transits.delete(eid);
+    t.onFinish?.();
+  }
+
+  /**
    * The one ability interpreter: player Arts, relic actives, and NPC
    * specials all execute through here, so a new ability is pure data.
    */
@@ -21197,111 +21525,97 @@ export class GameServer {
       }
 
       case 'dash_strike': {
-        // Carve through the world, wounding everything passed. Negative
-        // dash tiles roll AWAY from the aim (the disengage tools).
+        // THE CROSSING: the single-tick carve became a ROAD. The
+        // travel kind picks the gait — a ramped dash or charge crosses
+        // over real ticks (the corridor swept as the body truly
+        // passes), while a blink LEAVES through the torn veil and
+        // wounds only at the far door. Negative dash tiles still roll
+        // AWAY from the aim (the disengage tools).
         const dashTiles = ab.dashTiles ?? 3;
         const sign = Math.sign(dashTiles) || 1;
-        const dist = Math.abs(dashTiles);
+        let dist = Math.abs(dashTiles);
+        const kind = travelKindOf(ab) ?? 'dash';
         const dirX = Math.cos(aim) * sign;
         const dirY = Math.sin(aim) * sign;
-        const startX = pos.x;
-        const startY = pos.y;
-        const struck = new Set<EntityId>();
-        const steps = Math.ceil(dist / 0.4);
-        for (let i = 0; i < steps; i++) {
-          const next = stepMovement(pos, { mx: dirX, my: dirY }, dist / steps, 1, this.worldOf(pos.plane));
-          pos.x = next.x;
-          pos.y = next.y;
-          if (maxHit <= 0) continue;
-          if (fromNpc) {
-            // THE KIT: an NPC's lunge carves through the player's
-            // side of the yard — whiff-0 uniform roll, THREAT LAW
-            // mitigation, the blow attributed to the lunger.
-            for (const [pEid, p] of this.players) {
-              if (struck.has(pEid)) continue;
-              if (p.session === null && p.disconnectedAt !== null) continue;
-              const ppos = this.positions.get(pEid);
-              if (!ppos || ppos.plane !== pos.plane) continue;
-              if (Math.hypot(ppos.x - pos.x, ppos.y - pos.y) > 0.8) continue;
-              struck.add(pEid);
-              this.damagePlayer(pEid, Math.floor(Math.random() * (maxHit + 1)), {
-                status: ab.status,
-                sourceEid: casterEid,
-                attackerLevel: level,
-              });
-            }
-            for (const [petEid] of this.pets) {
-              if (struck.has(petEid)) continue;
-              const ppos = this.positions.get(petEid);
-              if (!ppos || ppos.plane !== pos.plane) continue;
-              if (Math.hypot(ppos.x - pos.x, ppos.y - pos.y) > 0.8) continue;
-              struck.add(petEid);
-              this.damagePet(petEid, Math.floor(Math.random() * (maxHit + 1)), {
-                status: ab.status,
-                attackerLevel: level,
-              });
-            }
-            continue;
-          }
-          this.forEachNpcNear(pos.plane, pos.x, pos.y, 0.8, (npcEid, npc, npos) => {
-            if (struck.has(npcEid)) return;
-            if (Math.hypot(npos.x - pos.x, npos.y - pos.y) - npc.def.radius > 0.8) return;
-            struck.add(npcEid);
-            const roll = rollDamage(maxHit);
-            const dmg = this.executeAdjust(npcEid, roll.dmg, ab.executeBelow);
-            this.damageNpc(npcEid, dmg, casterEid, style, {
-              crit: roll.crit,
-              knockbackMult,
-              status: ab.status,
-              vs: ab.vs,
-            });
-            this.drainHeal(casterEid, dmg, ab.drainFrac);
+        // THE CHOSEN GROUND: a ring placed short travels short —
+        // the leap's own law, extended to every forward road.
+        if (targetPos && sign > 0) {
+          const want = Math.hypot(targetPos.x - pos.x, targetPos.y - pos.y);
+          if (want > 0.1) dist = Math.min(dist, want);
+        }
+
+        if (kind === 'blink') {
+          // THE TORN VEIL: no corridor, no crossing — the body is
+          // GONE, then THERE. The shared resolver never opens the
+          // veil past stone, and the void between wounds nothing.
+          const fromX = pos.x;
+          const fromY = pos.y;
+          const land = resolveTeleport(pos, dirX, dirY, dist, this.worldOf(pos.plane));
+          pos.x = land.x;
+          pos.y = land.y;
+          this.updateChunkMembership(casterEid);
+          this.broadcastFx(pos.plane, {
+            t: 'fx',
+            kind: 'warp',
+            x: fromX,
+            y: fromY,
+            x2: pos.x,
+            y2: pos.y,
+            radius: 0,
+            id: ab.id,
+            color: ab.color,
           });
-        }
-        this.updateChunkMembership(casterEid);
-        this.broadcastFx(pos.plane, {
-          t: 'fx',
-          kind: 'dash',
-          x: startX,
-          y: startY,
-          x2: pos.x,
-          y2: pos.y,
-          radius: 0,
-          id: ab.id,
-          color: ab.color,
-        });
-        // Tumble Shot: the arrow flies at what you rolled away from.
-        // Honed arts may loose a small fan — spread across spreadArc
-        // exactly like projectile_fan, so the def never overpromises.
-        if (ab.projectiles && maxHit > 0) {
-          const count = ab.projectiles;
-          const spread = ab.spreadArc ?? 0;
-          for (let i = 0; i < count; i++) {
-            const shotAim =
-              count > 1 ? aim - spread / 2 + (spread * i) / (count - 1) : aim;
-            const proj = this.ecs.create();
-            this.kinds.set(proj, EntityKind.Projectile);
-            this.positions.set(proj, { x: pos.x, y: pos.y, dir: shotAim, plane: pos.plane });
-            this.projectiles.set(proj, {
-              ownerEid: casterEid,
-              style: ab.element ? 'arx' : style === 'arx' ? 'arx' : 'archery',
-              maxHit,
-              dirX: Math.cos(shotAim),
-              dirY: Math.sin(shotAim),
-              speed: ab.projectileSpeed ?? 14,
-              distLeft: ab.range ?? 6,
-              status: ab.status,
-              vs: ab.vs,
-              fromNpc,
-              attackerLevel: fromNpc ? level : undefined,
-              element: ab.element ?? (style === 'arx' ? element : undefined),
-              homingTurn: ab.homing,
-              abilityId: ab.id,
-              abilityColor: ab.color,
-            });
-            this.updateChunkMembership(proj);
+          // The emergence is the wound: a small ring at the far door.
+          if (maxHit > 0) {
+            this.transitSweep(
+              casterEid, ab, pos.plane, pos.x, pos.y, BLINK_STRIKE_RADIUS,
+              new Set(), maxHit, knockbackMult, style, level, fromNpc,
+            );
           }
+          this.fireDashTail(casterEid, ab, aim, pos, maxHit, style, level, fromNpc, element);
+          break;
         }
+
+        const struck = new Set<EntityId>();
+        const plane = pos.plane;
+        const onSweep =
+          maxHit > 0
+            ? (x: number, y: number) =>
+                this.transitSweep(
+                  casterEid, ab, plane, x, y, 0.8,
+                  struck, maxHit, knockbackMult, style, level, fromNpc,
+                )
+            : null;
+        // THE CHOSEN GROUND: a charge released on a foe LOCKS — the
+        // road re-derives toward the mark's live body every tick and
+        // ends at striking distance with a real impact.
+        const lock =
+          kind === 'charge' && !fromNpc && sign > 0 && targetPos
+            ? this.lockChargeTarget(plane, targetPos)
+            : null;
+        const arrivalAim = aim;
+        this.beginTransit(casterEid, ab, kind, dirX, dirY, dist, aim, {
+          targetEid: lock,
+          onSweep,
+          onFinish: () => {
+            const endPos = this.positions.get(casterEid);
+            if (!endPos) return;
+            // A locked charge's contact speaks as an impact blast —
+            // the wound itself already landed through the sweep.
+            if (lock !== null) {
+              this.broadcastFx(endPos.plane, {
+                t: 'fx',
+                kind: 'blast',
+                x: endPos.x,
+                y: endPos.y,
+                radius: 1.2,
+                id: ab.id,
+                color: ab.color,
+              });
+            }
+            this.fireDashTail(casterEid, ab, arrivalAim, endPos, maxHit, style, level, fromNpc, element);
+          },
+        });
         break;
       }
 
@@ -21681,69 +21995,64 @@ export class GameServer {
       }
 
       case 'leap_slam': {
-        // Cross the gap the loud way: the landing is a real blast that
-        // shoves (or with negative knockback, DRAGS) from the crater.
-        // An aimed point (THE HELD SIGIL) sets the hop's length too —
-        // a ring placed short lands short; the art's reach still caps it.
+        // THE CROSSING: the hop is AIRBORNE now — the body crosses
+        // over real ticks and nothing under the arc is touched; the
+        // LANDING pays the whole payload: the crater blast that
+        // shoves (or with negative knockback, DRAGS) from the fall,
+        // and the recovery root the def promised. An aimed point
+        // (THE HELD SIGIL) sets the hop's length too — a ring placed
+        // short lands short; the art's reach still caps it.
         const hop = Math.abs(ab.dashTiles ?? 4);
         const dist = targetPos
           ? Math.min(hop, Math.hypot(targetPos.x - pos.x, targetPos.y - pos.y))
           : hop;
         const dirX = Math.cos(aim);
         const dirY = Math.sin(aim);
-        const startX = pos.x;
-        const startY = pos.y;
-        const steps = Math.ceil(dist / 0.4);
-        for (let i = 0; i < steps; i++) {
-          const next = stepMovement(pos, { mx: dirX, my: dirY }, dist / steps, 1, this.worldOf(pos.plane));
-          pos.x = next.x;
-          pos.y = next.y;
-        }
-        this.updateChunkMembership(casterEid);
-        this.broadcastFx(pos.plane, {
-          t: 'fx',
-          kind: 'dash',
-          x: startX,
-          y: startY,
-          x2: pos.x,
-          y2: pos.y,
-          radius: 0,
-          id: ab.id,
-          color: ab.color,
-        });
         const radius = ab.radius ?? 2;
-        this.broadcastFx(pos.plane, {
-          t: 'fx',
-          kind: 'blast',
-          x: pos.x,
-          y: pos.y,
-          radius,
-          id: ab.id,
-          color: ab.color,
-        });
-        const cx = pos.x;
-        const cy = pos.y;
-        if (fromNpc) {
-          this.blastPlayers(pos.plane, cx, cy, radius, maxHit, ab.status, level, { sourceEid: casterEid });
-        } else {
-          // Knockback re-chunks a struck body mid-walk — pay once.
-          const struck = new Set<EntityId>();
-          this.forEachNpcNear(pos.plane, cx, cy, radius, (npcEid, npc, npos) => {
-            if (struck.has(npcEid)) return;
-            if (Math.hypot(npos.x - cx, npos.y - cy) - npc.def.radius > radius) return;
-            struck.add(npcEid);
-            const roll = rollDamage(maxHit);
-            const dmg = this.executeAdjust(npcEid, roll.dmg, ab.executeBelow);
-            this.damageNpc(npcEid, dmg, casterEid, style, {
-              crit: roll.crit,
-              knockbackMult,
-              status: ab.status,
-              vs: ab.vs,
-              knockFrom: { x: cx, y: cy },
+        this.beginTransit(casterEid, ab, 'leap', dirX, dirY, dist, aim, {
+          onFinish: () => {
+            const endPos = this.positions.get(casterEid);
+            if (!endPos) return;
+            const cx = endPos.x;
+            const cy = endPos.y;
+            this.broadcastFx(endPos.plane, {
+              t: 'fx',
+              kind: 'blast',
+              x: cx,
+              y: cy,
+              radius,
+              id: ab.id,
+              color: ab.color,
             });
-            this.drainHeal(casterEid, dmg, ab.drainFrac);
-          });
-        }
+            // The landing re-roots for the promised recovery — the
+            // freeze paid at the press would have burned mid-air.
+            if (!fromNpc && (ab.castFreezeTicks ?? 0) > 0) {
+              const p = this.players.get(casterEid);
+              if (p) p.castFreezeUntilTick = this.tickCount + (ab.castFreezeTicks ?? 0);
+            }
+            if (fromNpc) {
+              this.blastPlayers(endPos.plane, cx, cy, radius, maxHit, ab.status, level, { sourceEid: casterEid });
+            } else {
+              // Knockback re-chunks a struck body mid-walk — pay once.
+              const struck = new Set<EntityId>();
+              this.forEachNpcNear(endPos.plane, cx, cy, radius, (npcEid, npc, npos) => {
+                if (struck.has(npcEid)) return;
+                if (Math.hypot(npos.x - cx, npos.y - cy) - npc.def.radius > radius) return;
+                struck.add(npcEid);
+                const roll = rollDamage(maxHit);
+                const dmg = this.executeAdjust(npcEid, roll.dmg, ab.executeBelow);
+                this.damageNpc(npcEid, dmg, casterEid, style, {
+                  crit: roll.crit,
+                  knockbackMult,
+                  status: ab.status,
+                  vs: ab.vs,
+                  knockFrom: { x: cx, y: cy },
+                });
+                this.drainHeal(casterEid, dmg, ab.drainFrac);
+              });
+            }
+          },
+        });
         break;
       }
 
@@ -23994,6 +24303,7 @@ export class GameServer {
     if (!this.ecs.isAlive(npcEid)) return;
     const pos = this.positions.get(npcEid);
     if (!pos) return;
+    this.transits.delete(npcEid); // a dead body's road ends where it fell
     // THE DREAD CROWN: last words leave the body while the watchers'
     // interest sets still hold it — spoken BEFORE the death burst.
     if (npc.def.boss?.defeatBark) {
@@ -27515,6 +27825,11 @@ export class GameServer {
         }
       }
 
+      // THE TRAVELED ROAD owns the body: a transiting NPC (or
+      // companion) neither perceives nor steers — its clocks above
+      // still ran, and tickTransits walks it after this loop.
+      if (this.transits.has(eid)) continue;
+
       // Hens lay while someone is around to hear the cluck. A skipped
       // lay (nobody near / egg pile) just re-rolls — no backlog.
       if (npc.def.lays && npc.nextLayAt > 0 && now >= npc.nextLayAt) {
@@ -30463,6 +30778,10 @@ export class GameServer {
 
     this.tickSpawns(now);
     this.tickNpcs(now);
+    // THE TRAVELED ROAD: every crossing body advances AFTER its own
+    // brain ran (casts above began roads; steering skipped transiting
+    // bodies) and BEFORE the NPC history ring records final positions.
+    this.tickTransits();
     this.tickRoutines();
     this.tickActors();
     // NPC positions are final for this tick — log the lag-comp ring.
@@ -30718,6 +31037,10 @@ export class GameServer {
       speed *= this.steadySpeedMult(player);
       if (this.isChilled(eid)) speed *= CHILL_SPEED_FACTOR;
       if (casting) speed = 0; // committed to the cast
+      // THE TRAVELED ROAD owns the body: while a transit runs, the
+      // sticks steer nothing (the predictor mirrors this window).
+      const transiting = this.transits.has(eid);
+      if (transiting) speed = 0;
       // A step off the furniture dismounts FIRST — the body walks on
       // from the spot it sat down at, never out of the solid seat tile.
       if (player.seat && (Math.abs(frame.mx) > 0.01 || Math.abs(frame.my) > 0.01)) {
@@ -30745,7 +31068,7 @@ export class GameServer {
       // The sit toggle flips on the press edge; every deliberate act
       // below (moving, dodging, swinging, casting) stands the body up.
       // From furniture (or a bed) the same press is simply "stand".
-      if (pressed & InputButton.Sit) {
+      if (pressed & InputButton.Sit && !transiting) {
         this.cancelCasting(eid, player); // rest lets the breath go
         if (player.mountId) this.dismount(eid, player);
         else if (player.sitting || player.lying) this.standUp(eid, player, pos);
@@ -30753,7 +31076,7 @@ export class GameServer {
       }
       // The whistle answers once: the same press-edge grammar as the
       // sit — riding steps down, standing calls the chosen beast.
-      if (pressed & InputButton.Mount) {
+      if (pressed & InputButton.Mount && !transiting) {
         this.cancelCasting(eid, player); // the saddle takes both hands
         this.mountToggle(eid, player, pos);
       }
@@ -30812,6 +31135,10 @@ export class GameServer {
       // honest against a client-authored seq counter.
       if (
         hasButton(frame.buttons, InputButton.Dodge) &&
+        // The road owns the legs — no dodge mid-crossing. Read LIVE,
+        // not the top-of-frame snapshot: a cast press THIS frame may
+        // have just begun the road, and the dodge runs after casts.
+        !this.transits.has(eid) &&
         frame.seq >= player.lastDodgeSeq + DODGE_COOLDOWN_SEQ &&
         this.tickCount >= player.lastDodgeTick + DODGE_COOLDOWN_SEQ &&
         Math.hypot(frame.mx, frame.my) > 0.01

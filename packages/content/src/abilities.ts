@@ -97,7 +97,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 160, // 8 s
     shape: 'dash_strike',
     damage: 8,
-    dashTiles: 3.4,
+    dashTiles: 6.8,
     status: { status: 'bleed', power: 1, durationTicks: 70 },
   },
   {
@@ -109,7 +109,8 @@ const defs: AbilityDef[] = [
     cooldownTicks: 150, // 7.5 s
     shape: 'dash_strike',
     damage: 5,
-    dashTiles: 3.0,
+    dashTiles: 6.0,
+    travel: 'blink',
   },
   {
     id: 'shockwave',
@@ -233,7 +234,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 150, // 7.5 s
     shape: 'dash_strike',
     damage: 7,
-    dashTiles: 2.8,
+    dashTiles: 5.6,
     status: { status: 'chill', power: 1, durationTicks: 80 },
   },
   {
@@ -440,7 +441,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 175, // 8.75 s
     shape: 'dash_strike',
     damage: 5,
-    dashTiles: 2.5,
+    dashTiles: 5.0,
     status: { status: 'venom', power: 1, durationTicks: 100 },
   },
   {
@@ -497,7 +498,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 110, // 5.5 s
     shape: 'dash_strike',
     damage: 5,
-    dashTiles: 2.0,
+    dashTiles: 4.0,
     status: { status: 'bleed', power: 1, durationTicks: 60 },
   },
   {
@@ -536,7 +537,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 150, // 7.5 s
     shape: 'dash_strike',
     damage: 7,
-    dashTiles: 3.6,
+    dashTiles: 7.2,
     drainFrac: 0.25, // the bite feeds the biter
   },
   {
@@ -586,7 +587,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 190, // 9.5 s
     shape: 'dash_strike',
     damage: 9,
-    dashTiles: 3.0,
+    dashTiles: 6.0,
     executeBelow: { frac: 0.3, mult: 1.5 }, // regicide favors a faltering crown
     status: { status: 'bleed', power: 1, durationTicks: 80 },
   },
@@ -599,7 +600,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 210, // 10.5 s
     shape: 'dash_strike',
     damage: 14,
-    dashTiles: 2.6,
+    dashTiles: 5.2,
     executeBelow: { frac: 0.35, mult: 1.8 }, // the finisher: wounded foes take it hard
   },
 
@@ -629,7 +630,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 120, // 6 s
     shape: 'dash_strike',
     damage: 5,
-    dashTiles: 2.2,
+    dashTiles: 4.4,
     status: { status: 'bleed', power: 1, durationTicks: 70 },
   },
   {
@@ -1477,7 +1478,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 240, // 12 s
     shape: 'dash_strike',
     damage: 4,
-    dashTiles: 3.0,
+    dashTiles: 6.0,
     status: { status: 'burn', power: 1, durationTicks: 60 },
   },
   {
@@ -1651,7 +1652,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 160, // 8 s
     shape: 'dash_strike',
     damage: 7,
-    dashTiles: -2.6, // away from the aim — the disengage tool
+    dashTiles: -5.2, // away from the aim — the disengage tool
     projectiles: 1, // ...and the arrow flies at whatever you fled
     projectileSpeed: 16,
     range: 12,
@@ -1707,7 +1708,8 @@ const defs: AbilityDef[] = [
     cooldownTicks: 200, // 10 s
     shape: 'dash_strike',
     damage: 0,
-    dashTiles: 3.8,
+    dashTiles: 7.6,
+    travel: 'blink',
   },
   {
     id: 'meteor_shard',
@@ -1733,7 +1735,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 220, // 11 s
     shape: 'leap_slam',
     damage: 11,
-    dashTiles: 4.5,
+    dashTiles: 9.0,
     radius: 2.2,
     knockback: 2.4,
   },
@@ -1840,7 +1842,8 @@ const defs: AbilityDef[] = [
     cooldownTicks: 160, // 8 s
     shape: 'dash_strike',
     damage: 8,
-    dashTiles: 3.2,
+    dashTiles: 6.4,
+    travel: 'charge',
     knockback: 2.0,
   },
   {
@@ -1907,7 +1910,7 @@ const defs: AbilityDef[] = [
     castFreezeTicks: 4,
     shape: 'leap_slam',
     damage: 12,
-    dashTiles: 4.0,
+    dashTiles: 8.0,
     radius: 2.3,
     knockback: 2.0,
     self: { shieldHp: 5, speedMult: 1.1, durationTicks: 100 },
@@ -2018,7 +2021,8 @@ const defs: AbilityDef[] = [
     castTicks: 20, // 1 s gathered, 0.8 s planted
     shape: 'dash_strike',
     damage: 12,
-    dashTiles: 3.5,
+    dashTiles: 7.0,
+    travel: 'charge',
   },
   {
     id: 'live_iron',
@@ -2418,7 +2422,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 170, // 8.5 s
     shape: 'dash_strike',
     damage: 7,
-    dashTiles: 3.4,
+    dashTiles: 6.8,
     status: { status: 'bleed', power: 1, durationTicks: 40 },
   },
   {
@@ -2525,7 +2529,8 @@ const defs: AbilityDef[] = [
     cooldownTicks: 180, // 9 s
     shape: 'dash_strike',
     damage: 8,
-    dashTiles: 3.6,
+    dashTiles: 7.2,
+    travel: 'charge',
     knockback: 2.2,
   },
   {
@@ -2706,7 +2711,7 @@ const defs: AbilityDef[] = [
     castFreezeTicks: 4,
     shape: 'leap_slam',
     damage: 14,
-    dashTiles: 5.0,
+    dashTiles: 10.0,
     radius: 2.2,
     knockback: 1.8,
   },
@@ -2747,7 +2752,8 @@ const defs: AbilityDef[] = [
     cooldownTicks: 220, // 11 s
     shape: 'dash_strike',
     damage: 13,
-    dashTiles: 4.2,
+    dashTiles: 8.4,
+    travel: 'charge',
     knockback: 2.6,
   },
   {
@@ -2966,7 +2972,7 @@ const defs: AbilityDef[] = [
     castFreezeTicks: 4,
     shape: 'leap_slam',
     damage: 14,
-    dashTiles: 6.0,
+    dashTiles: 12.0,
     radius: 2.4,
     knockback: 2.4,
   },
@@ -3102,7 +3108,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 170, // 8.5 s
     shape: 'dash_strike',
     damage: 9,
-    dashTiles: 3.4,
+    dashTiles: 6.8,
     status: { status: 'bleed', power: 1, durationTicks: 50 },
   },
   {
@@ -3168,7 +3174,7 @@ const defs: AbilityDef[] = [
     castFreezeTicks: 3,
     shape: 'leap_slam',
     damage: 12,
-    dashTiles: 4.5,
+    dashTiles: 9.0,
     radius: 1.8,
     knockback: 1.2,
   },
@@ -3243,7 +3249,8 @@ const defs: AbilityDef[] = [
     cooldownTicks: 170, // 8.5 s
     shape: 'dash_strike',
     damage: 9,
-    dashTiles: 3,
+    dashTiles: 6,
+    travel: 'charge',
     knockback: 1.5,
   },
   {
@@ -3401,7 +3408,8 @@ const defs: AbilityDef[] = [
     cooldownTicks: 190, // 9.5 s
     shape: 'dash_strike',
     damage: 8,
-    dashTiles: 4.4,
+    dashTiles: 8.8,
+    travel: 'blink',
     element: 'void',
     status: { status: 'shock', power: 1, durationTicks: 50 },
   },
@@ -3783,7 +3791,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
     shape: 'dash_strike',
     damage: 5,
-    dashTiles: 3,
+    dashTiles: 5,
     status: { status: 'bleed', power: 2, durationTicks: 70 },
   },
   // ------------------------------------------------------------------
@@ -3830,7 +3838,8 @@ const defs: AbilityDef[] = [
     cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
     shape: 'dash_strike',
     damage: 5,
-    dashTiles: 4,
+    dashTiles: 7,
+    travel: 'charge',
     status: { status: 'bleed', power: 2, durationTicks: 80 },
   },
   // ------------------------------------------------------------------
@@ -3879,7 +3888,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
     shape: 'dash_strike',
     damage: 8,
-    dashTiles: 5,
+    dashTiles: 8,
     // The court's jaws tear AND chill — the wound that keeps you
     // slow enough to be wounded again.
     status: { status: 'bleed', power: 2, durationTicks: 80 },
@@ -3893,7 +3902,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
     shape: 'dash_strike',
     damage: 1, // the wound is small — the WOUND KEEPS PAYING
-    dashTiles: 2.2,
+    dashTiles: 3.6,
     status: { status: 'bleed', power: 1, durationTicks: 50 },
   },
 
@@ -4069,7 +4078,8 @@ const defs: AbilityDef[] = [
     cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
     shape: 'dash_strike',
     damage: 7,
-    dashTiles: 4,
+    dashTiles: 6.5,
+    travel: 'charge',
     status: { status: 'chill', power: 1, durationTicks: 40 },
   },
   {
@@ -4113,7 +4123,7 @@ const defs: AbilityDef[] = [
     // Die 12 on the basic 6: the full 2.5x premium, bought with the
     // longest wind any skral draws (24t — the whole bank reads it).
     damage: 12,
-    dashTiles: 4.5,
+    dashTiles: 7,
     radius: 2.3,
     knockback: 1.8,
     status: { status: 'chill', power: 1, durationTicks: 40 },
@@ -4232,7 +4242,8 @@ const defs: AbilityDef[] = [
     cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
     shape: 'dash_strike',
     damage: 10,
-    dashTiles: 5, // the orbit-breaker — circling feet meet the shoulder
+    dashTiles: 8, // the orbit-breaker — circling feet meet the shoulder
+    travel: 'charge',
   },
   {
     id: 'slag_gobbet',
@@ -4573,7 +4584,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 0, // pet pacing lives on the PetArtDef, not the ability
     shape: 'dash_strike',
     damage: 1,
-    dashTiles: 2.2,
+    dashTiles: 4.4,
   },
   {
     id: 'plague_gnaw',
@@ -4626,7 +4637,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 0, // pet pacing lives on the PetArtDef, not the ability
     shape: 'dash_strike',
     damage: 4,
-    dashTiles: 3.2,
+    dashTiles: 6.4,
     status: { status: 'bleed', power: 1, durationTicks: 70 },
   },
 
@@ -4744,7 +4755,8 @@ const defs: AbilityDef[] = [
     cooldownTicks: 0, // pet pacing lives on the PetArtDef, not the ability
     shape: 'dash_strike',
     damage: 4,
-    dashTiles: 3.6,
+    dashTiles: 7.2,
+    travel: 'charge',
     knockback: 2.0,
   },
   {
@@ -4780,7 +4792,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 0, // pet pacing lives on the PetArtDef, not the ability
     shape: 'leap_slam',
     damage: 7,
-    dashTiles: 4.0,
+    dashTiles: 8.0,
     radius: 2.2,
     knockback: 2.2,
   },
@@ -4874,7 +4886,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 0, // pet pacing lives on the PetArtDef, not the ability
     shape: 'dash_strike',
     damage: 6,
-    dashTiles: 3.4,
+    dashTiles: 6.8,
     status: { status: 'chill', power: 1, durationTicks: 60 },
   },
 
@@ -4901,7 +4913,8 @@ const defs: AbilityDef[] = [
     cooldownTicks: 0, // pet pacing lives on the PetArtDef, not the ability
     shape: 'dash_strike',
     damage: 5,
-    dashTiles: 3.6,
+    dashTiles: 7.2,
+    travel: 'charge',
     knockback: 2.2,
   },
   {
@@ -4928,7 +4941,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 0, // pet pacing lives on the PetArtDef, not the ability
     shape: 'dash_strike',
     damage: 6,
-    dashTiles: 4.0,
+    dashTiles: 8.0,
   },
   {
     id: 'hushing_wing',
@@ -4998,7 +5011,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 0, // pet pacing lives on the PetArtDef, not the ability
     shape: 'dash_strike',
     damage: 4,
-    dashTiles: 2.6,
+    dashTiles: 5.2,
     status: { status: 'venom', power: 1, durationTicks: 60 },
   },
   {
@@ -5464,7 +5477,7 @@ const defs: AbilityDef[] = [
     castTicks: 22,
     shape: 'leap_slam',
     damage: 12,
-    dashTiles: 4,
+    dashTiles: 8,
     radius: 2.2,
     knockback: 1.6,
     status: { status: 'chill', power: 1, durationTicks: 50 },
@@ -5555,7 +5568,7 @@ const defs: AbilityDef[] = [
     castTicks: 22,
     shape: 'leap_slam',
     damage: 13,
-    dashTiles: 4.5,
+    dashTiles: 9.0,
     radius: 2.2,
     knockback: 1.5,
     status: { status: 'burn', power: 1, durationTicks: 50 },
@@ -5769,7 +5782,7 @@ const defs: AbilityDef[] = [
     castTicks: 20,
     shape: 'leap_slam',
     damage: 12,
-    dashTiles: 4,
+    dashTiles: 8,
     radius: 1.9,
     status: { status: 'chill', power: 1, durationTicks: 40 },
   },
@@ -5886,7 +5899,8 @@ const defs: AbilityDef[] = [
     castTicks: 22,
     shape: 'dash_strike',
     damage: 12,
-    dashTiles: 4.5,
+    dashTiles: 9.0,
+    travel: 'charge',
     status: { status: 'bleed', power: 1, durationTicks: 50 },
   },
   {
@@ -6019,7 +6033,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 160, // 8 s
     shape: 'dash_strike',
     damage: 5,
-    dashTiles: 3.5,
+    dashTiles: 7.0,
   },
   {
     id: 'perfect_thrust',
@@ -6098,7 +6112,8 @@ const defs: AbilityDef[] = [
     cooldownTicks: 190, // 9.5 s
     shape: 'dash_strike',
     damage: 13,
-    dashTiles: 5.0,
+    dashTiles: 10.0,
+    travel: 'charge',
     knockback: 2.6,
   },
   {
@@ -6138,7 +6153,7 @@ const defs: AbilityDef[] = [
     cooldownTicks: 200, // 10 s
     shape: 'leap_slam',
     damage: 12,
-    dashTiles: 4.0,
+    dashTiles: 8.0,
     radius: 1.6,
   },
   {
@@ -6231,7 +6246,8 @@ const defs: AbilityDef[] = [
     cooldownTicks: 220, // 11 s
     shape: 'dash_strike',
     damage: 15,
-    dashTiles: 6.0,
+    dashTiles: 12.0,
+    travel: 'charge',
     knockback: 2.8,
   },
 
@@ -6291,7 +6307,8 @@ const defs: AbilityDef[] = [
     cooldownTicks: 180, // 9 s
     shape: 'dash_strike',
     damage: 10,
-    dashTiles: 3.5,
+    dashTiles: 7.0,
+    travel: 'charge',
     knockback: 2.0,
   },
 ];
@@ -6410,7 +6427,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     unlockLevel: 15,
     ranks: [
       { note: 'The shoulder hits harder.', damage: 10 },
-      { note: 'A longer charge, sooner ready.', dashTiles: 4.2, cooldownTicks: 150 },
+      { note: 'A longer charge, sooner ready.', dashTiles: 8.4, cooldownTicks: 150 },
       { note: 'Nothing stands where you arrive.', damage: 11, knockback: 3.2 },
     ],
   },
@@ -6551,7 +6568,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     unlockLevel: 66,
     ranks: [
       { note: 'You arrive harder.', damage: 14 },
-      { note: 'The doorway opens farther off.', dashTiles: 4.5, cooldownTicks: 190 },
+      { note: 'The doorway opens farther off.', dashTiles: 9.0, cooldownTicks: 190 },
       { note: 'First light breaks from a shorter gather.', damage: 16, castTicks: 16 },
     ],
   },
@@ -6585,7 +6602,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     unlockLevel: 78,
     ranks: [
       { note: 'You land heavier.', damage: 13 },
-      { note: 'The leap carries farther; the verdict spreads wider.', dashTiles: 5.5, radius: 2.5 },
+      { note: 'The leap carries farther; the verdict spreads wider.', dashTiles: 11.0, radius: 2.5 },
       { note: 'The mountain falls oftener, and harder.', cooldownTicks: 190, knockback: 3.0 },
     ],
   },
@@ -6633,7 +6650,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     unlockLevel: 5,
     ranks: [
       { note: 'The parting arrow means it.', damage: 9 },
-      { note: 'A longer roll, ready again sooner.', cooldownTicks: 140, dashTiles: -3.2 },
+      { note: 'A longer roll, ready again sooner.', cooldownTicks: 140, dashTiles: -6.4 },
       { note: 'Two shafts, loosed mid-tumble.', projectiles: 2, spreadArc: 0.1 },
     ],
   },
@@ -6907,9 +6924,9 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     style: 'arx',
     unlockLevel: 25,
     ranks: [
-      { note: 'A longer stride between places.', dashTiles: 4.6 },
+      { note: 'A longer stride between places.', dashTiles: 9.2 },
       { note: 'The door opens oftener.', cooldownTicks: 170 },
-      { note: 'Distance stops being an argument.', dashTiles: 5.4, cooldownTicks: 150 },
+      { note: 'Distance stops being an argument.', dashTiles: 10.8, cooldownTicks: 150 },
     ],
   },
   {
@@ -7120,7 +7137,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     unlockLevel: 15,
     ranks: [
       { note: 'The passing cut means it.', damage: 9 },
-      { note: 'A longer walk, told oftener.', dashTiles: 4.2, cooldownTicks: 150 },
+      { note: 'A longer walk, told oftener.', dashTiles: 8.4, cooldownTicks: 150 },
       {
         note: 'You pass; the wound stays.',
         status: { status: 'bleed', power: 2, durationTicks: 60 },
@@ -7380,7 +7397,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     unlockLevel: 25,
     ranks: [
       { note: 'The drive hits harder.', damage: 10 },
-      { note: 'A longer road, sooner open.', dashTiles: 4.4, cooldownTicks: 170 },
+      { note: 'A longer road, sooner open.', dashTiles: 8.8, cooldownTicks: 170 },
       { note: 'They stagger cold from your road.', knockback: 3.4, status: { status: 'chill', power: 1, durationTicks: 40 } },
     ],
   },
@@ -7642,7 +7659,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     unlockLevel: 54,
     ranks: [
       { note: 'The verdict lands heavier.', damage: 17 },
-      { note: 'A longer leap, a shorter wait.', dashTiles: 6.0, cooldownTicks: 240 },
+      { note: 'A longer leap, a shorter wait.', dashTiles: 12.0, cooldownTicks: 240 },
       { note: 'The landing empties its own crater.', damage: 18, radius: 2.6, knockback: 2.2 },
     ],
   },
@@ -7702,7 +7719,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     unlockLevel: 78,
     ranks: [
       { note: 'The shoulder hits harder.', damage: 15 },
-      { note: 'A longer road, sooner open.', dashTiles: 5.0, cooldownTicks: 200 },
+      { note: 'A longer road, sooner open.', dashTiles: 10.0, cooldownTicks: 200 },
       { note: 'Through is the only direction left.', damage: 16, knockback: 3.2 },
     ],
   },
@@ -7764,7 +7781,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     unlockLevel: 15,
     ranks: [
       { note: 'The pass cuts deeper.', damage: 11 },
-      { note: 'A longer stride through them.', dashTiles: 4.2, cooldownTicks: 160 },
+      { note: 'A longer stride through them.', dashTiles: 8.4, cooldownTicks: 160 },
       { note: 'Both edges collect on the way past.', damage: 12, status: { status: 'bleed', power: 2, durationTicks: 50 } },
     ],
   },
@@ -7873,7 +7890,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     unlockLevel: 62,
     ranks: [
       { note: 'The landing bites deeper.', damage: 14 },
-      { note: 'A longer flight, a shorter wait.', dashTiles: 5.5, cooldownTicks: 210 },
+      { note: 'A longer flight, a shorter wait.', dashTiles: 11.0, cooldownTicks: 210 },
       { note: 'The landing scatters the ring they made.', damage: 16, radius: 2.1, knockback: 1.8 },
     ],
   },
@@ -7984,11 +8001,11 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     unlockLevel: 15,
     ranks: [
       { note: 'More weight behind the shoulder.', damage: 11 },
-      { note: 'A longer run at them.', damage: 12, dashTiles: 3.6 },
+      { note: 'A longer run at them.', damage: 12, dashTiles: 7.2 },
       {
         note: 'They stop being where they stood.',
         damage: 13,
-        dashTiles: 3.6,
+        dashTiles: 7.2,
         knockback: 2.0,
         status: { status: 'shock', power: 1, durationTicks: 40 },
       },
@@ -8071,7 +8088,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     unlockLevel: 50,
     ranks: [
       { note: 'The road hits harder.', damage: 14 },
-      { note: 'The fifth road runs further.', dashTiles: 5.5 },
+      { note: 'The fifth road runs further.', dashTiles: 11.0 },
       { note: 'The toll is taken quicker.', damage: 15, cooldownTicks: 200 },
     ],
   },
@@ -8220,9 +8237,9 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     style: 'polearm',
     unlockLevel: 20,
     ranks: [
-      { note: 'The vault carries farther, sooner.', dashTiles: 4.0, cooldownTicks: 150 },
+      { note: 'The vault carries farther, sooner.', dashTiles: 8.0, cooldownTicks: 150 },
       { note: 'You land meaning it.', damage: 8 },
-      { note: 'The haft barely touches the ground.', damage: 10, dashTiles: 4.5, cooldownTicks: 130 },
+      { note: 'The haft barely touches the ground.', damage: 10, dashTiles: 9.0, cooldownTicks: 130 },
     ],
   },
   {
@@ -8281,7 +8298,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     unlockLevel: 50,
     ranks: [
       { note: 'The arrival lands heavier.', damage: 15 },
-      { note: 'The road runs longer, and opens sooner.', dashTiles: 5.5, cooldownTicks: 180 },
+      { note: 'The road runs longer, and opens sooner.', dashTiles: 11.0, cooldownTicks: 180 },
       { note: 'The charge answers only to the horizon.', damage: 16, knockback: 3.0 },
     ],
   },
@@ -8381,7 +8398,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     unlockLevel: 90,
     ranks: [
       { note: 'The run lands heavier.', damage: 17 },
-      { note: 'The road runs longer and opens sooner.', dashTiles: 7.0, cooldownTicks: 200 },
+      { note: 'The road runs longer and opens sooner.', dashTiles: 14.0, cooldownTicks: 200 },
       { note: 'The crown of the school, at full gallop.', damage: 19, knockback: 3.2 },
     ],
   },
@@ -8394,7 +8411,7 @@ export const TECHNIQUES: readonly TechniqueDef[] = [
     hidden: { anchorLevel: 30 },
     ranks: [
       { note: 'You carry more of the far side back.', damage: 10 },
-      { note: 'The step lengthens; the rift stays open longer for you.', dashTiles: 5.2, cooldownTicks: 170 },
+      { note: 'The step lengthens; the rift stays open longer for you.', dashTiles: 10.4, cooldownTicks: 170 },
       {
         note: 'The static of the crossing clings to everything you pass.',
         damage: 11,

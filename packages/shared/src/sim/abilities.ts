@@ -12,6 +12,8 @@
  * The client uses the same types for hotbar icons and cooldown mirrors.
  */
 
+import { TICK_RATE } from '../constants.js';
+
 // ------------------------------------------------------------- status
 
 export type StatusId = 'burn' | 'chill' | 'shock' | 'bleed' | 'venom' | 'sunder';
@@ -369,6 +371,63 @@ export type AbilityShape =
 /** Which word a pet_command art speaks to the companion. */
 export type PetCommandKind = 'heel' | 'fang' | 'mend' | 'surge' | 'rise';
 
+// ---------------------------------------------------- travel (THE CROSSING)
+
+/**
+ * THE TRAVELED ROAD (docs/transport-arts-plan.md): how a transport
+ * art crosses the ground. The first three TRAVERSE — the body moves
+ * over real ticks at the kind's speed, wall-stopped and substepped
+ * through the one stepMovement door, watchers seeing the crossing
+ * because it truly happens. A `blink` LEAVES instead: discontinuous
+ * relocation through resolveTeleport, nothing between the doors
+ * touched, damage paid only as the arrival strike.
+ */
+export type TravelKind = 'charge' | 'dash' | 'leap' | 'blink';
+
+/**
+ * Travel speeds, tiles per second. The charge is the heavy build-up
+ * run (~2.6x a walking body — long roads read as a RUN); the dash is
+ * the blur-step; the leap crosses the air between the jump and the
+ * crater. One table, both mirrors: the server's transit and the
+ * client predictor derive every duration from these.
+ */
+export const TRAVEL_SPEEDS: Readonly<Record<Exclude<TravelKind, 'blink'>, number>> = {
+  charge: 13,
+  dash: 18,
+  leap: 14,
+};
+
+/**
+ * The travel kind an ability crosses with — authored `travel` first,
+ * else the shape's native gait. Non-transport shapes return null.
+ */
+export function travelKindOf(ab: AbilityDef): TravelKind | null {
+  if (ab.travel) return ab.travel;
+  if (ab.shape === 'dash_strike') return 'dash';
+  if (ab.shape === 'leap_slam') return 'leap';
+  return null;
+}
+
+/**
+ * Ticks a traversal of `dist` tiles takes at the kind's speed — the
+ * ONE clock both the server transit and the predictor's seq window
+ * read, floored at 2 so even the shortest hop is seen crossing.
+ * Blinks take 0: a torn veil has no road.
+ */
+export function transitTicks(dist: number, kind: TravelKind): number {
+  if (kind === 'blink') return 0;
+  return Math.max(2, Math.ceil((Math.abs(dist) / TRAVEL_SPEEDS[kind]) * TICK_RATE));
+}
+
+/**
+ * THE CHOSEN GROUND: the striking distance a target-locked charge
+ * ends at — contact, not overlap; the impact blast pays the arrival.
+ */
+export const CHARGE_CONTACT_DIST = 0.85;
+
+/** Arrival-strike radius for a blink's emergence wound, tiles. */
+export const BLINK_STRIKE_RADIUS = 1.1;
+
 /**
  * A surge window laid on the companion: its teeth and stride quicken
  * for the duration. A pet fact (PetComp carries the window) — no
@@ -537,6 +596,13 @@ export interface AbilityDef {
   element?: string;
   /** dash_strike distance, tiles. Negative = away from the aim. */
   dashTiles?: number;
+  /**
+   * THE TRAVELED ROAD: how this art crosses its dashTiles — a ramped
+   * `charge`/`dash`/`leap` traversal over real ticks, or a `blink`
+   * that leaves through the torn veil. Absent = the shape's native
+   * gait (dash_strike → dash, leap_slam → leap).
+   */
+  travel?: TravelKind;
   /** chain_zap: how many targets the arc can jump to. */
   chainTargets?: number;
   /** pulse_nova: pulse count and spacing. */
@@ -628,6 +694,13 @@ export function groundAimed(ab: AbilityDef): boolean {
     case 'ground_field':
     case 'leap_slam':
       return true;
+    // THE CHOSEN GROUND: dashes joined the ring — hold to steer the
+    // road's end, release to travel that far and no farther; a bare
+    // tap keeps the old full-length grammar along the facing. The
+    // one disengage hop (negative tiles) stays direction-aimed: its
+    // whole point is "away from HERE", not a placed landing.
+    case 'dash_strike':
+      return (ab.dashTiles ?? 3) > 0;
     case 'summon':
       return (ab.range ?? 0) > 0;
     default:
@@ -649,6 +722,8 @@ export function groundAimRange(ab: AbilityDef): number {
       return ab.range ?? 6;
     case 'leap_slam':
       return Math.abs(ab.dashTiles ?? 4);
+    case 'dash_strike':
+      return Math.abs(ab.dashTiles ?? 3);
     case 'summon':
       return ab.range ?? 0;
     default:

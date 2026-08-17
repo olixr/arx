@@ -21,6 +21,8 @@ import {
   isSpark,
   reactionDamage,
   reactionFor,
+  transitTicks,
+  travelKindOf,
 } from './abilities.js';
 import { sanitizeInputFrame } from './input.js';
 
@@ -347,7 +349,12 @@ test('THE HELD SIGIL: the point-aimed shapes and no others', () => {
   // one keeps planting at the feet.
   assert.ok(groundAimed(ab({ shape: 'summon', range: 8 })));
   assert.ok(!groundAimed(ab({ shape: 'summon' })));
-  for (const shape of ['melee_arc', 'nova', 'beam', 'dash_strike', 'tame', 'pet_command'] as const) {
+  // THE CHOSEN GROUND (THE CROSSING): forward dashes joined the ring —
+  // steer the road's end. The disengage hop (negative tiles) keeps
+  // aiming a direction: its whole point is "away from HERE".
+  assert.ok(groundAimed(ab({ shape: 'dash_strike', dashTiles: 6 })));
+  assert.ok(!groundAimed(ab({ shape: 'dash_strike', dashTiles: -5 })), 'retreat hops aim a direction');
+  for (const shape of ['melee_arc', 'nova', 'beam', 'tame', 'pet_command'] as const) {
     assert.ok(!groundAimed(ab({ shape })), `${shape} aims a direction, not a point`);
   }
 });
@@ -368,7 +375,41 @@ test('THE HELD SIGIL: one ruler for reach, mirroring the interpreter defaults', 
   assert.equal(groundAimRange(ab({})), 4, 'ground_aoe falls back to the cast door default');
   assert.equal(groundAimRange(ab({ shape: 'ground_field' })), 6);
   assert.equal(groundAimRange(ab({ shape: 'leap_slam', dashTiles: -5 })), 5, 'a pull-leap still reaches forward');
+  assert.equal(groundAimRange(ab({ shape: 'dash_strike', dashTiles: 6.5 })), 6.5, 'a dash reaches its own road');
   assert.equal(groundAimRange(ab({ shape: 'summon', range: 8 })), 8);
+});
+
+test('THE TRAVELED ROAD: travel kinds derive from shape, authored travel wins', () => {
+  const ab = (over: Partial<AbilityDef>): AbilityDef => ({
+    id: 'x',
+    name: 'X',
+    desc: '',
+    color: '#fff',
+    code: 'XX',
+    cooldownTicks: 10,
+    shape: 'dash_strike',
+    damage: 1,
+    dashTiles: 6,
+    ...over,
+  });
+  assert.equal(travelKindOf(ab({})), 'dash', 'dash_strike walks as a dash by birth');
+  assert.equal(travelKindOf(ab({ shape: 'leap_slam' })), 'leap');
+  assert.equal(travelKindOf(ab({ travel: 'charge' })), 'charge', 'the authored gait rules');
+  assert.equal(travelKindOf(ab({ travel: 'blink' })), 'blink');
+  assert.equal(travelKindOf(ab({ shape: 'melee_arc', dashTiles: undefined })), null);
+});
+
+test('THE TRAVELED ROAD: one clock — durations derive from the speed table', () => {
+  // 6.5 tiles at the charge's 13 t/s = exactly half a second = 10 ticks.
+  assert.equal(transitTicks(6.5, 'charge'), 10);
+  // The blur-step crosses the same road faster than the heavy run.
+  assert.ok(transitTicks(6.5, 'dash') < transitTicks(6.5, 'charge'));
+  // A retreat hop's negative road takes the same time as its mirror.
+  assert.equal(transitTicks(-5, 'dash'), transitTicks(5, 'dash'));
+  // Even the shortest hop is SEEN crossing.
+  assert.ok(transitTicks(0.5, 'dash') >= 2);
+  // The torn veil has no road.
+  assert.equal(transitTicks(9, 'blink'), 0);
 });
 
 test('THE HELD SIGIL: sanitize keeps the aimed point only whole and finite', () => {

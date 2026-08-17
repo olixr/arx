@@ -2303,6 +2303,15 @@ game.onFx = (fx) => {
     if (dist > 0.9) sfx.spatial(at, 'near', () => sfx.swing()); // your own cast already sang
   } else if (fx.kind === 'dash') {
     if (dist > 0.9) sfx.spatial(at, 'near', () => sfx.dash());
+  } else if (fx.kind === 'warp') {
+    // THE TORN VEIL speaks twice: the departure's soft collapse, and
+    // the emergence announcing at the far door — where the body now
+    // stands, and where a close watcher feels the air snap shut.
+    sfx.spatial(at, 'near', () => sfx.dash());
+    const arrive = { x: fx.x2 ?? fx.x, y: fx.y2 ?? fx.y };
+    sfx.spatial(arrive, 'near', () => sfx.zap());
+    const aDist = Math.hypot(arrive.x - own.x, arrive.y - own.y);
+    if (aDist < 5) renderer.shake(2.5 * (0.4 + punch));
   } else if (fx.kind === 'bolt') {
     sfx.spatial(at, 'mid', () => sfx.chainZap());
     if (dist < 7) renderer.shake(3.5 * (0.4 + punch));
@@ -3327,6 +3336,9 @@ function nearestNpcPoint(
 function aimGhostRadius(ab: { shape: string; radius?: number; summon?: { radius: number } }): number {
   if (ab.shape === 'summon') return ab.radius ?? ab.summon?.radius ?? 0.9;
   if (ab.shape === 'ground_aoe') return ab.radius ?? 1.5;
+  // THE CROSSING: a dash's ghost is a LANDING MARK, not a blast — a
+  // body-width pip where the road ends (blinks included).
+  if (ab.shape === 'dash_strike') return ab.radius ?? 0.6;
   return ab.radius ?? 2; // ground_field and the leap's landing blast
 }
 

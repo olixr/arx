@@ -1280,6 +1280,12 @@ const shadowstep: AbilitySig = {
     // The near mouth: the dark reaches up out of the floor and takes
     // the body — library tendrils crawling in, not flecks falling.
     shadow.deployments.tendrils!(m, c.wx, c.wy, { scale: 0.55 });
+    // THE TORN VEIL: a TRUE vanish now — the body is gone before the
+    // smoke settles. The departure exhales a real billow where the
+    // rogue stopped being (the poof that sells the leaving), and a
+    // thinner veil curls off the arrival as the dark lets go.
+    smoke.deployments.billow!(m, c.wx, c.wy, { scale: 0.8 });
+    smoke.deployments.veil!(m, c.wx2, c.wy2, { scale: 0.55 });
     // The far door: a standing slit of dark where the body arrives.
     shadow.deployments.door!(m, c.wx2, c.wy2, { scale: 0.7 });
     // Over the far door, the blade announces itself with one glint.

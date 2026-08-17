@@ -114,7 +114,10 @@ function aoeCredit(ab: AbilityDef): number {
 
 function utilityCredit(ab: AbilityDef): number {
   let u = 0;
-  if (ab.dashTiles) u += Math.abs(ab.dashTiles) * 0.5;
+  // THE LONG ROAD DOUBLED (THE CROSSING): every player road doubled
+  // exactly x2 and this weight halved in the same stroke — utility
+  // contributions stand byte-identical, no band moved.
+  if (ab.dashTiles) u += Math.abs(ab.dashTiles) * 0.25;
   if (ab.knockback) u += Math.abs(ab.knockback) * (ab.knockback < 0 ? 0.8 : 0.4);
   if (ab.executeBelow) u += ab.damage * (ab.executeBelow.mult - 1) * ab.executeBelow.frac;
   // Drained life is sustain — worth a little less than the damage it rode.

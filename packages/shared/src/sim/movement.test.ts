@@ -1,6 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DODGE_DIST, applyDodge, rideSpeedMult, stepMovement } from './movement.js';
+import {
+  DODGE_DIST,
+  applyDodge,
+  resolveTeleport,
+  rideSpeedMult,
+  stepMovement,
+  transitStep,
+} from './movement.js';
 import { NO_COLLISION, type CollisionSource } from '../world/collision.js';
 import { Tile, WADE_SPEED_FACTOR } from '../world/tiles.js';
 
@@ -83,6 +90,51 @@ test('dodge is deterministic and stops at walls', () => {
 test('dodge with no direction goes nowhere', () => {
   const out = applyDodge({ x: 2, y: 2 }, 0, 0, NO_COLLISION);
   assert.deepEqual(out, { x: 2, y: 2 });
+});
+
+test('THE TORN VEIL: a blink lands its full wish in the open', () => {
+  const out = resolveTeleport({ x: 10, y: 10 }, 1, 0, 8, NO_COLLISION);
+  assert.ok(Math.abs(out.x - 18) < 1e-9);
+  assert.equal(out.y, 10);
+});
+
+test('THE TORN VEIL: a wish past a wall walks back to the near side', () => {
+  // The wall stands at x∈[5,6); an 8-tile wish from x=2 wants x=10 —
+  // the veil refuses the far side (the road never crossed the stone)
+  // and the body lands as deep as it fits BEFORE the wall.
+  const out = resolveTeleport({ x: 2, y: 0.5 }, 1, 0, 8, wallAtX5);
+  assert.ok(out.x < 5, `landed before the wall, got x=${out.x.toFixed(2)}`);
+  assert.ok(out.x > 3.5, 'landed deep, not at the caster\'s feet');
+  // Deterministic — both mirrors resolve the same stone.
+  const twin = resolveTeleport({ x: 2, y: 0.5 }, 1, 0, 8, wallAtX5);
+  assert.deepEqual(out, twin);
+});
+
+test('THE TORN VEIL: nowhere to stand keeps the caster home', () => {
+  const solidWorld: CollisionSource = { isSolid: () => true };
+  const out = resolveTeleport({ x: 2, y: 2 }, 1, 0, 6, solidWorld);
+  assert.deepEqual(out, { x: 2, y: 2 });
+});
+
+test('THE TRAVELED ROAD: a transit step covers its road and reports walls', () => {
+  const open = transitStep({ x: 10, y: 10 }, 1, 0, 0.9, NO_COLLISION);
+  assert.ok(Math.abs(open.x - 10.9) < 1e-9);
+  assert.ok(!open.blocked, 'the open road is never blocked');
+  // Face-on into the wall: the step resolves almost nothing and the
+  // road reports BLOCKED so the transit ends where it stands.
+  let pos = { x: 4.0, y: 0.5, blocked: false };
+  for (let i = 0; i < 12 && !pos.blocked; i++) {
+    pos = transitStep(pos, 1, 0, 0.9, wallAtX5);
+  }
+  assert.ok(pos.blocked, 'the wall ends the road');
+  assert.ok(pos.x < 5, `stopped before the wall (x=${pos.x.toFixed(2)})`);
+});
+
+test('THE TRAVELED ROAD: substeps visit the corridor', () => {
+  const visits: number[] = [];
+  transitStep({ x: 0, y: 0 }, 1, 0, 1.0, NO_COLLISION, (x) => visits.push(x));
+  assert.ok(visits.length >= 3, 'a 1-tile step substeps at ≤0.4');
+  assert.ok(Math.abs(visits[visits.length - 1]! - 1.0) < 1e-9);
 });
 
 test('THE SADDLE OUTRANKS THE SOLES: max, never product', () => {

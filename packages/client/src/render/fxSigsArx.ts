@@ -184,20 +184,8 @@ const blink: AbilitySig = {
     const { ctx, st, t, sc, squash } = c;
     const fade = 1 - t;
     ctx.save();
-    // The unzipping path: a dotted line eaten from the departure end.
-    const f0 = Math.min(1, t * 1.15);
-    if (f0 < 1) {
-      ctx.globalAlpha = 0.5 * fade;
-      ctx.strokeStyle = st.mid;
-      ctx.lineWidth = Math.max(1.5, sc * 0.035);
-      ctx.setLineDash([sc * 0.08, sc * 0.13]);
-      ctx.lineDashOffset = -c.now / 30;
-      ctx.beginPath();
-      ctx.moveTo(c.px + (c.px2 - c.px) * f0, c.py + (c.py2 - c.py) * f0);
-      ctx.lineTo(c.px2, c.py2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
+    // THE TORN VEIL: no path between the doors — nothing crossed the
+    // ground, and drawing a lane would lie about the leaving.
     // A rune ellipse under each door: departure's shrinks away,
     // arrival's blooms underfoot.
     const dr = sc * 0.4 * Math.max(0, 1 - t / 0.45);

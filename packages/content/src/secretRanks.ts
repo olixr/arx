@@ -28,7 +28,7 @@ export const SECRET_RANKS: Record<string, Steps> = {
   ],
   lunge: [
     { note: 'The point arrives harder.', damage: 9 },
-    { note: 'The step carries you farther.', dashTiles: 3.8 },
+    { note: 'The step carries you farther.', dashTiles: 7.6 },
     { note: 'What the point opens, the road finishes.', status: { status: 'bleed', power: 2, durationTicks: 70 } },
   ],
   serpents_kiss: [
@@ -38,12 +38,12 @@ export const SECRET_RANKS: Record<string, Steps> = {
   ],
   shadowstep: [
     { note: 'The dark hits harder on arrival.', damage: 7 },
-    { note: 'The step through shadow lengthens.', dashTiles: 3.4 },
+    { note: 'The step through shadow lengthens.', dashTiles: 6.8 },
     { note: 'The knife is ready again before the light returns.', cooldownTicks: 120 },
   ],
   beak_first: [
     { note: 'The beak drives deeper.', damage: 6 },
-    { note: 'The dive comes from farther out.', dashTiles: 2.6 },
+    { note: 'The dive comes from farther out.', dashTiles: 5.2 },
     { note: 'What the rook opens keeps bleeding.', status: { status: 'bleed', power: 1, durationTicks: 110 } },
   ],
   bone_needle: [
@@ -68,7 +68,7 @@ export const SECRET_RANKS: Record<string, Steps> = {
   ],
   riptide: [
     { note: 'The tide hits heavier.', damage: 8 },
-    { note: 'The rush carries you farther.', dashTiles: 3.2 },
+    { note: 'The rush carries you farther.', dashTiles: 6.4 },
     { note: 'What the tide takes, it keeps cold.', status: { status: 'chill', power: 1, durationTicks: 100 } },
   ],
   shockwave: [
@@ -108,7 +108,7 @@ export const SECRET_RANKS: Record<string, Steps> = {
   ],
   green_verse: [
     { note: 'The verse strikes truer.', damage: 6 },
-    { note: 'The serpent line runs farther.', dashTiles: 2.9 },
+    { note: 'The serpent line runs farther.', dashTiles: 5.8 },
     { note: 'The last stanza is the slowest poison.', status: { status: 'venom', power: 1, durationTicks: 130 } },
   ],
   pale_flame: [
@@ -128,7 +128,7 @@ export const SECRET_RANKS: Record<string, Steps> = {
   ],
   shadow_fang: [
     { note: 'The fang strikes deeper.', damage: 8 },
-    { note: 'The pounce covers more dark.', dashTiles: 4.0 },
+    { note: 'The pounce covers more dark.', dashTiles: 8.0 },
     { note: 'It drinks deeper from the wound.', drainFrac: 0.35 },
   ],
   sky_splits: [
@@ -168,7 +168,7 @@ export const SECRET_RANKS: Record<string, Steps> = {
   ],
   kings_bane: [
     { note: 'The bane strikes deeper.', damage: 10 },
-    { note: 'The charge runs a stride farther.', dashTiles: 3.4 },
+    { note: 'The charge runs a stride farther.', dashTiles: 6.8 },
     { note: 'Crowned or common, the low are finished alike.', executeBelow: { frac: 0.35, mult: 1.7 } },
   ],
   kings_decree: [
@@ -178,7 +178,7 @@ export const SECRET_RANKS: Record<string, Steps> = {
   ],
   last_word: [
     { note: 'The word cuts deeper.', damage: 15 },
-    { note: 'It crosses the room to be heard.', dashTiles: 3.0 },
+    { note: 'It crosses the room to be heard.', dashTiles: 6.0 },
     { note: 'Against the failing, it is final.', executeBelow: { frac: 0.4, mult: 2.0 } },
   ],
   red_harvest: [
@@ -641,7 +641,7 @@ export const SECRET_RANKS: Record<string, Steps> = {
   ],
   couched_charge: [
     { note: 'The arrival lands heavier.', damage: 12 },
-    { note: 'The road runs longer and opens sooner.', dashTiles: 4.0, cooldownTicks: 170 },
+    { note: 'The road runs longer and opens sooner.', dashTiles: 8.0, cooldownTicks: 170 },
     { note: 'The horizon signs the charge by name.', damage: 13, knockback: 2.4 },
   ],
 };

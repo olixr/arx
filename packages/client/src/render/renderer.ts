@@ -60083,7 +60083,14 @@ export class Renderer {
       case 'bolt':
         return 340;
       case 'dash':
-        return 380;
+        // THE CROSSING: a traversal's wake lives its whole road (the
+        // wire's ticks) plus a settling tail; the old one-beat streak
+        // keeps its 380ms when no clock rides the wire.
+        return fx.ticks !== undefined ? fx.ticks * TICK_MS + 320 : 380;
+      case 'warp':
+        // THE TORN VEIL: two doors — the departure's collapse and the
+        // emergence — need the time to read as a place, not a flicker.
+        return 720;
       case 'beam':
         return 480;
       case 'nova':
@@ -61758,7 +61765,7 @@ export class Renderer {
       const from = sc * 0.55;
       const to = tlen - rPx * 0.95;
       if (to > from) {
-        if (g.shape === 'leap_slam') {
+        if (g.shape === 'leap_slam' || g.shape === 'dash_strike') {
           ctx.strokeStyle = st.mid;
           ctx.lineWidth = Math.max(1.5, sc * 0.045);
           ctx.lineCap = 'round';
@@ -62495,7 +62502,12 @@ export class Renderer {
       if (st.motif && !this.fxPureInstrument(fx.kind)) {
         let ax = fx.x;
         let ay = fx.y;
-        if ((fx.kind === 'dash' || fx.kind === 'bolt' || fx.kind === 'beam') && fx.x2 !== undefined) {
+        if (
+          (fx.kind === 'dash' || fx.kind === 'bolt' || fx.kind === 'beam' || fx.kind === 'warp') &&
+          fx.x2 !== undefined
+        ) {
+          // A warp's set-piece crowns the ARRIVAL door — the body is
+          // there; the departure keeps only the collapse.
           ax = fx.x2;
           ay = fx.y2 ?? fx.y;
         }
@@ -63004,7 +63016,12 @@ export class Renderer {
       if (st.motif && !this.fxPureInstrument(fx.kind)) {
         let ax = fx.x;
         let ay = fx.y;
-        if ((fx.kind === 'dash' || fx.kind === 'bolt' || fx.kind === 'beam') && fx.x2 !== undefined) {
+        if (
+          (fx.kind === 'dash' || fx.kind === 'bolt' || fx.kind === 'beam' || fx.kind === 'warp') &&
+          fx.x2 !== undefined
+        ) {
+          // A warp's set-piece crowns the ARRIVAL door — the body is
+          // there; the departure keeps only the collapse.
           ax = fx.x2;
           ay = fx.y2 ?? fx.y;
         }
@@ -63033,7 +63050,13 @@ export class Renderer {
     const squash = Renderer.FX_SQUASH;
     this.runFxBeats(now);
     for (let i = game.fx.length - 1; i >= 0; i--) {
-      const fx = game.fx[i]! as (typeof game.fx)[number] & { spawned?: boolean };
+      const fx = game.fx[i]! as (typeof game.fx)[number] & {
+        spawned?: boolean;
+        /** THE CROSSING: the head's arrival moment, spent once. */
+        arrived?: boolean;
+        /** Last dust-kick age (ms) along a traveling wake. */
+        puffAt?: number;
+      };
       const age = now - fx.bornAt;
       const life = this.fxLife(fx);
       if (age > life) {
@@ -63089,16 +63112,38 @@ export class Renderer {
         }
 
         case 'dash': {
-          // Afterimages: the space you crossed remembers you crossing it.
+          // THE CROSSING: the wake is TIME-SWEPT — its head crosses
+          // the road in the same ticks the body does (the wire's
+          // clock), afterimages and kicked dust trailing the head so
+          // the crossing is SEEN, never a line stamped before the
+          // body arrives. A wire with no clock stands the whole
+          // streak at once (the old one-beat grammar, kept for every
+          // legacy emitter).
           const q = this.camera.worldToScreen(fx.x2 ?? fx.x, fx.y2 ?? fx.y, this.w, this.h);
           q.y -= this.renderLift(fx.x2 ?? fx.x, fx.y2 ?? fx.y) * sc;
+          const roadMs = fx.ticks !== undefined ? fx.ticks * TICK_MS : 0;
+          const travelT = roadMs > 0 ? Math.min(1, age / roadMs) : 1;
           if (!fx.spawned) {
             fx.spawned = true;
-            this.particles.burst(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.3, 8, [st.mid, st.spark], { speed: 2.2, life: 0.35, size: 0.08, gravity: 3, up: true });
-            this.queueGlow(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.3, 1.2, st.glow, 0.35);
             // Departure kick: the ground remembers where you left.
             this.particles.burst(fx.x, fx.y, 5, ['#4a4252', '#3a3442'], {
               speed: 0.9, life: 0.8, size: 0.11, gravity: -0.4, drag: 1.8, grow: 0.25, ground: true,
+            });
+          }
+          // The arrival bursts when the HEAD arrives, not at birth.
+          if (!fx.arrived && travelT >= 1) {
+            fx.arrived = true;
+            this.particles.burst(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.3, 8, [st.mid, st.spark], { speed: 2.2, life: 0.35, size: 0.08, gravity: 3, up: true });
+            this.queueGlow(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.3, 1.2, st.glow, 0.35);
+          }
+          // Dust shed under the crossing body — gated emission at the
+          // live head, so a long charge trails a real ground wake.
+          const hwx = fx.x + ((fx.x2 ?? fx.x) - fx.x) * travelT;
+          const hwy = fx.y + ((fx.y2 ?? fx.y) - fx.y) * travelT;
+          if (travelT < 1 && age - (fx.puffAt ?? -999) > 45) {
+            fx.puffAt = age;
+            this.particles.burst(hwx, hwy, 2, [st.deep, '#4a4252'], {
+              speed: 0.7, life: 0.55, size: 0.09, gravity: -0.5, drag: 2.0, grow: 0.3, ground: true, shape: 'puff',
             });
           }
           const dx = q.x - p.x;
@@ -63108,10 +63153,16 @@ export class Renderer {
           const uy = dy / len;
           const nx = -uy;
           const ny = ux;
-          const fade = 1 - t;
+          const h = { x: p.x + dx * travelT, y: p.y + dy * travelT };
+          // The tail follows the head at a fixed reach; the settled
+          // streak fades once the road is fully crossed.
+          const fade =
+            travelT < 1 ? 1 : roadMs > 0 ? Math.max(0, 1 - (age - roadMs) / Math.max(1, life - roadMs)) : 1 - t;
+          const tailT = Math.max(0, travelT - 0.55);
+          const b = { x: p.x + dx * tailT, y: p.y + dy * tailT };
           const lift = sc * 0.42; // the streak rides at body height
           ctx.save();
-          // The tapered wake: wide at the arrival, thin at the origin.
+          // The tapered wake: wide at the head, thin at the tail.
           for (const [w0, w1, col, a] of [
             [0.05, 0.3, st.deep, 0.3],
             [0.03, 0.2, st.mid, 0.5],
@@ -63120,18 +63171,20 @@ export class Renderer {
             ctx.globalAlpha = a * fade;
             ctx.fillStyle = col;
             ctx.beginPath();
-            ctx.moveTo(p.x + nx * sc * w0, p.y + ny * sc * w0 - lift);
-            ctx.lineTo(q.x + nx * sc * w1, q.y + ny * sc * w1 - lift);
-            ctx.lineTo(q.x - nx * sc * w1, q.y - ny * sc * w1 - lift);
-            ctx.lineTo(p.x - nx * sc * w0, p.y - ny * sc * w0 - lift);
+            ctx.moveTo(b.x + nx * sc * w0, b.y + ny * sc * w0 - lift);
+            ctx.lineTo(h.x + nx * sc * w1, h.y + ny * sc * w1 - lift);
+            ctx.lineTo(h.x - nx * sc * w1, h.y - ny * sc * w1 - lift);
+            ctx.lineTo(b.x - nx * sc * w0, b.y - ny * sc * w0 - lift);
             ctx.closePath();
             ctx.fill();
           }
-          // Afterimage blocks dissolve in sequence toward the arrival.
+          // Afterimage blocks dissolve in the head's trail.
           const rand = srand(seed);
           for (let k = 0; k < 5; k++) {
-            const tk = 0.15 + k * 0.17;
-            const alpha = Math.max(0, 1 - t * 2.2 - k * 0.12);
+            const back = 0.12 + k * 0.14;
+            const tk = travelT - back;
+            if (tk <= 0) continue;
+            const alpha = fade * Math.max(0, 0.85 - k * 0.13);
             if (alpha <= 0) continue;
             ctx.globalAlpha = alpha * 0.7;
             ctx.fillStyle = k % 2 === 0 ? st.mid : st.core;
@@ -63144,15 +63197,113 @@ export class Renderer {
             ctx.fillRect(-s, -s * 0.35, s * 2, s * 0.7);
             ctx.restore();
           }
-          // Speed ticks chase the arrival point.
+          // Speed ticks chase the head.
           ctx.globalAlpha = 0.7 * fade;
           ctx.strokeStyle = st.spark;
           ctx.lineWidth = Math.max(1.5, sc * 0.04);
           for (let k = 0; k < 3; k++) {
             const off = (k - 1) * sc * 0.26;
             ctx.beginPath();
-            ctx.moveTo(q.x - ux * sc * (0.7 + k * 0.25) + nx * off, q.y - uy * sc * (0.7 + k * 0.25) + ny * off - lift);
-            ctx.lineTo(q.x - ux * sc * (0.3 + k * 0.25) + nx * off, q.y - uy * sc * (0.3 + k * 0.25) + ny * off - lift);
+            ctx.moveTo(h.x - ux * sc * (0.7 + k * 0.25) + nx * off, h.y - uy * sc * (0.7 + k * 0.25) + ny * off - lift);
+            ctx.lineTo(h.x - ux * sc * (0.3 + k * 0.25) + nx * off, h.y - uy * sc * (0.3 + k * 0.25) + ny * off - lift);
+            ctx.stroke();
+          }
+          ctx.restore();
+          break;
+        }
+
+        case 'warp': {
+          // THE TORN VEIL: two doors and NOTHING between them. The
+          // departure IMPLODES — the air rushing into a closing slit
+          // — and the arrival opens as an emergence bloom a breath
+          // later. Each art's signature layers its own matter over
+          // this (the rogue's smoke, the arcanist's torn dark, the
+          // relic's embers); the grammar here is the shared truth of
+          // leaving one place and owning another.
+          const q = this.camera.worldToScreen(fx.x2 ?? fx.x, fx.y2 ?? fx.y, this.w, this.h);
+          q.y -= this.renderLift(fx.x2 ?? fx.x, fx.y2 ?? fx.y) * sc;
+          if (!fx.spawned) {
+            fx.spawned = true;
+            // The collapse exhales where you left...
+            this.particles.burst(fx.x, fx.y - 0.35, 7, [st.deep, st.mid], {
+              speed: 1.1, life: 0.45, size: 0.1, gravity: -0.3, drag: 2.6, shape: 'puff', fade: st.deep,
+            });
+            this.queueGlow(fx.x, fx.y - 0.4, 1.0, st.glow, 0.3);
+          }
+          // ...and the far door announces when it opens.
+          if (!fx.arrived && t >= 0.2) {
+            fx.arrived = true;
+            this.particles.burst(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.45, 10, [st.core, st.spark], {
+              speed: 2.0, life: 0.5, size: 0.09, gravity: -0.6, drag: 1.4, shape: 'glint',
+            });
+            this.queueGlow(fx.x2 ?? fx.x, (fx.y2 ?? fx.y) - 0.4, 1.3, st.glow, 0.45);
+          }
+          const lift = sc * 0.55;
+          ctx.save();
+          // Departure: the collapsing slit, air streaking inward.
+          const dT = Math.min(1, t / 0.3);
+          const dh = sc * 0.95 * (1 - dT * dT);
+          if (dh > 1) {
+            ctx.globalAlpha = 0.8;
+            ctx.strokeStyle = st.mid;
+            ctx.lineWidth = Math.max(1.5, sc * 0.05);
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y - lift - dh);
+            ctx.lineTo(p.x, p.y - lift + dh);
+            ctx.stroke();
+            const rand = srand(seed);
+            ctx.globalAlpha = 0.55 * (1 - dT);
+            ctx.strokeStyle = st.core;
+            ctx.lineWidth = Math.max(1, sc * 0.03);
+            for (let k = 0; k < 5; k++) {
+              const a2 = rand() * Math.PI * 2;
+              const r0 = sc * (0.45 + rand() * 0.35) * (1 - dT * 0.6);
+              const r1 = r0 * 0.35;
+              ctx.beginPath();
+              ctx.moveTo(p.x + Math.cos(a2) * r0, p.y - lift + Math.sin(a2) * r0 * 0.8);
+              ctx.lineTo(p.x + Math.cos(a2) * r1, p.y - lift + Math.sin(a2) * r1 * 0.8);
+              ctx.stroke();
+            }
+          }
+          // The departure's ground memory: a fading stand-ring.
+          ctx.globalAlpha = 0.35 * (1 - t);
+          ctx.strokeStyle = st.deep;
+          ctx.lineWidth = Math.max(1, sc * 0.035);
+          ctx.beginPath();
+          ctx.ellipse(p.x, p.y, sc * 0.4 * (1 - t * 0.5), sc * 0.4 * squash * (1 - t * 0.5), 0, 0, Math.PI * 2);
+          ctx.stroke();
+          // Arrival: the far door opens just behind the collapse.
+          const aT = Math.max(0, Math.min(1, (t - 0.18) / 0.35));
+          if (aT > 0) {
+            const openH = sc * 1.0 * Math.sin(aT * Math.PI * 0.5);
+            const fadeA = 1 - Math.max(0, (t - 0.6) / 0.4);
+            ctx.globalAlpha = 0.85 * fadeA;
+            ctx.strokeStyle = st.core;
+            ctx.lineWidth = Math.max(1.5, sc * 0.055);
+            ctx.beginPath();
+            ctx.moveTo(q.x, q.y - lift - openH);
+            ctx.lineTo(q.x, q.y - lift + openH);
+            ctx.stroke();
+            // Emergence rays: the arrival announces OUTWARD.
+            const rand2 = srand(seed + 7);
+            ctx.globalAlpha = 0.5 * fadeA;
+            ctx.strokeStyle = st.spark;
+            ctx.lineWidth = Math.max(1, sc * 0.03);
+            for (let k = 0; k < 6; k++) {
+              const a2 = rand2() * Math.PI * 2;
+              const r0 = sc * 0.2;
+              const r1 = sc * (0.5 + rand2() * 0.4) * aT;
+              ctx.beginPath();
+              ctx.moveTo(q.x + Math.cos(a2) * r0, q.y - lift + Math.sin(a2) * r0 * 0.8);
+              ctx.lineTo(q.x + Math.cos(a2) * r1, q.y - lift + Math.sin(a2) * r1 * 0.8);
+              ctx.stroke();
+            }
+            // The landing ring blooms underfoot.
+            ctx.globalAlpha = 0.5 * fadeA;
+            ctx.strokeStyle = st.mid;
+            ctx.lineWidth = Math.max(1.5, sc * 0.04);
+            ctx.beginPath();
+            ctx.ellipse(q.x, q.y, sc * 0.45 * aT, sc * 0.45 * squash * aT, 0, 0, Math.PI * 2);
             ctx.stroke();
           }
           ctx.restore();

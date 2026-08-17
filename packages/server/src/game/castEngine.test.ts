@@ -77,6 +77,9 @@ function slate(player: FakePlayer) {
   const fxOut: Array<Record<string, unknown>> = [];
   const self = {
     tickCount: 100,
+    // THE CROSSING: the cast door refuses mid-transit hands — the
+    // slate carries an empty road ledger like every other component.
+    transits: new Map(),
     positions: { get: () => pos, must: () => pos },
     broadcastFx: (_plane: unknown, fx: Record<string, unknown>) => fxOut.push(fx),
     setPose: () => undefined,

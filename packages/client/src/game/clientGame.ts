@@ -19,6 +19,8 @@ import {
   STATUS_BIT,
   DRAW_MOVE_FACTOR,
   groundAimRange,
+  groundAimed,
+  travelKindOf,
   SNEAK_DETECTED_BIT,
   SNEAK_HIDDEN_BIT,
   TICK_MS,
@@ -146,7 +148,7 @@ export type InteractTarget =
 import { STATUS_INK } from '../render/statusFx.js';
 import { Connection } from '../net/connection.js';
 import { InterpBuffer, shortestAngle } from '../net/interpolation.js';
-import { Predictor } from '../net/prediction.js';
+import { Predictor, type CastMove } from '../net/prediction.js';
 import type { InputManager } from '../input/inputManager.js';
 
 export interface RemoteEntity {
@@ -1103,32 +1105,42 @@ export class ClientGame {
   }
 
   /**
-   * The movement impulse a cast carries, for the predictor: the
-   * dash-strike's charge, and THE LEAP PREDICTED — a leap released on
-   * an aimed ring flies the same clamped hop the server will fly
-   * (same reach ruler, same min(hop, dist) law, and applyCastDash IS
-   * the server's 0.4-substep loop), so the landing stops being a
-   * four-tile pop. An unaimed leap (touch/hotbar tap) keeps the
-   * server's aim-assist and stays unpredicted — the snap is honest
-   * there.
+   * THE CROSSING, mirrored: the movement a cast carries, for the
+   * predictor. Every transport art is predicted now — dashes and
+   * charges walk the same seq-window road the server's transit
+   * walks, blinks leave through the SAME shared teleport resolver,
+   * and a road released on an aimed ring travels exactly the
+   * clamped distance the server will (one reach ruler, one clamp
+   * law). A locked charge's live curve toward a moving mark stays
+   * server-side — the straight-line mirror is the recorded bounded
+   * drift and folds through the error offset.
    */
-  private castImpulse(
-    ab: AbilityDef,
-    frame: InputFrame,
-  ): { tiles: number; aim: number } | null {
-    if (ab.shape === 'dash_strike') return { tiles: ab.dashTiles ?? 3, aim: frame.aim };
-    if (ab.shape === 'leap_slam' && frame.tx !== undefined && frame.ty !== undefined) {
+  private castImpulse(ab: AbilityDef, frame: InputFrame): CastMove | null {
+    const kind = travelKindOf(ab);
+    if (!kind) return null;
+    const tiles = ab.dashTiles ?? (ab.shape === 'leap_slam' ? 4 : 3);
+    const sign = Math.sign(tiles) || 1;
+    let dist = Math.abs(tiles);
+    let dirX = Math.cos(frame.aim) * sign;
+    let dirY = Math.sin(frame.aim) * sign;
+    // A ring placed short travels short — the server's own clamp law,
+    // from the same predicted body position the release resolved at.
+    if (frame.tx !== undefined && frame.ty !== undefined && groundAimed(ab)) {
       const p = this.predictor.pos;
-      const reach = groundAimRange(ab);
-      let dx = frame.tx - p.x;
-      let dy = frame.ty - p.y;
-      const dist = Math.hypot(dx, dy);
-      const clamped = Math.min(dist, reach);
-      if (clamped < 0.05) return null;
-      const hop = Math.min(Math.abs(ab.dashTiles ?? 4), clamped);
-      return { tiles: hop, aim: Math.atan2(dy, dx) };
+      const dx = frame.tx - p.x;
+      const dy = frame.ty - p.y;
+      const want = Math.min(Math.hypot(dx, dy), groundAimRange(ab));
+      if (want > 0.1) {
+        dist = Math.min(dist, want);
+        const raw = Math.hypot(dx, dy);
+        if (raw > 0.05) {
+          dirX = dx / raw;
+          dirY = dy / raw;
+        }
+      }
     }
-    return null;
+    if (dist < 0.05) return null;
+    return { kind, dirX, dirY, dist };
   }
 
   /**
@@ -2216,14 +2228,25 @@ export class ClientGame {
               // frame: the root starts one wire-trip late and ends
               // equally late, a bounded skew instead of a total miss.
               const freeze = ab.castFreezeTicks ?? 0;
-              const dash =
-                ab.shape === 'dash_strike'
-                  ? { tiles: ab.dashTiles ?? 3, aim: this.aim }
+              // THE CROSSING: a charged transport art re-registers its
+              // whole road (or its blink door) on the last applied
+              // frame — the same one-wire-trip skew the root carries.
+              const kind = travelKindOf(ab);
+              const tiles = Math.abs(ab.dashTiles ?? (ab.shape === 'leap_slam' ? 4 : 3));
+              const sign = Math.sign(ab.dashTiles ?? 1) || 1;
+              const move: CastMove | null =
+                kind && tiles > 0.05
+                  ? {
+                      kind,
+                      dirX: Math.cos(this.aim) * sign,
+                      dirY: Math.sin(this.aim) * sign,
+                      dist: tiles,
+                    }
                   : null;
-              if (freeze > 0 || dash) {
+              if (freeze > 0 || move) {
                 const anchor = this.inputSeq - 1;
                 this.castFreezeUntilSeq = Math.max(this.castFreezeUntilSeq, anchor + freeze);
-                this.predictor.registerCast(anchor, freeze, dash);
+                this.predictor.registerCast(anchor, freeze, move);
               }
             }
           }

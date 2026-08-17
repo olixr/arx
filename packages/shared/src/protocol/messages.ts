@@ -1136,8 +1136,19 @@ export interface S2CFx {
     | 'vanish'
     /** A melee crescent swung at `dir`, reaching `radius` tiles. */
     | 'arc'
-    /** A dash streak from (x,y) to (x2,y2). */
+    /** A dash streak from (x,y) to (x2,y2). `ticks` (additive, THE
+     *  CROSSING) is the traversal's length — the wake's head crosses
+     *  the road in the same time the body does; absent = the old
+     *  one-beat streak. */
     | 'dash'
+    /**
+     * THE TORN VEIL (THE CROSSING, additive): a blink's two doors —
+     * departure implosion at (x,y), emergence at (x2,y2), and NO
+     * line between them: nothing crossed the ground in between. `id`
+     * keys each art's own matter (the rogue's smoke, the arcanist's
+     * torn dark, the relic's embers).
+     */
+    | 'warp'
     /** One chain-lightning hop from (x,y) to (x2,y2). */
     | 'bolt'
     /** An instant ray from (x,y) to (x2,y2). */

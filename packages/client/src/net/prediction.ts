@@ -4,14 +4,35 @@ import {
   DRAW_MOVE_FACTOR,
   InputButton,
   TICK_DT,
+  TRAVEL_SPEEDS,
   applyDodge,
   hasButton,
   isDrawSlowed,
+  resolveTeleport,
   stepMovement,
+  transitStep,
+  transitTicks,
   type CollisionSource,
   type InputFrame,
+  type TravelKind,
   type Vec2,
 } from '@arx/shared';
+
+/**
+ * THE CROSSING, mirrored: the movement a cast carries. A `blink`
+ * leaves through the shared teleport resolver on the cast frame; the
+ * traversal kinds walk a seq-window road — one transit step per
+ * frame at the kind's speed, the sticks suppressed while the road
+ * owns the body, exactly the window the server's tickTransits walks
+ * in the tick domain (the recorded bounded-drift class: both ends of
+ * the road agree, the middle folds through the error offset).
+ */
+export interface CastMove {
+  kind: TravelKind;
+  dirX: number;
+  dirY: number;
+  dist: number;
+}
 
 /**
  * Client-side prediction for the local player. Inputs are applied
@@ -51,7 +72,7 @@ export class Predictor {
    * commitment window, and dash Arts move the body on the cast frame. */
   private lastCastSeq = -999;
   private lastCastFreeze = 0;
-  private lastCastDash: { tiles: number; aim: number } | null = null;
+  private lastCastMove: (CastMove & { frames: number; stepPer: number }) | null = null;
   /** Fires when a dodge impulse applies locally (for whoosh/trail FX). */
   onDodge: ((x: number, y: number, mx: number, my: number) => void) | null = null;
   /**
@@ -96,32 +117,71 @@ export class Predictor {
     this.errY = 0;
     this.lastDodgeSeq = -999;
     this.lastCastSeq = -999;
-    this.lastCastDash = null;
+    this.lastCastMove = null;
   }
 
   /** ClientGame commits a cast on input frame `seq`. */
-  registerCast(seq: number, freezeTicks: number, dash: { tiles: number; aim: number } | null): void {
+  registerCast(seq: number, freezeTicks: number, move: CastMove | null): void {
     this.lastCastSeq = seq;
     this.lastCastFreeze = freezeTicks;
-    this.lastCastDash = dash;
+    this.lastCastMove = move
+      ? {
+          ...move,
+          frames: move.kind === 'blink' ? 0 : transitTicks(move.dist, move.kind),
+          stepPer: move.kind === 'blink' ? 0 : TRAVEL_SPEEDS[move.kind] * TICK_DT,
+        }
+      : null;
   }
 
-  private applyCastDash(pos: Vec2, dash: { tiles: number; aim: number }): Vec2 {
-    // Mirrors the server: negative tiles dash AWAY from the aim.
-    const sign = Math.sign(dash.tiles) || 1;
-    const dist = Math.abs(dash.tiles);
-    const frame = { mx: Math.cos(dash.aim) * sign, my: Math.sin(dash.aim) * sign };
-    let out = pos;
-    const steps = Math.ceil(dist / 0.4);
-    for (let i = 0; i < steps; i++) {
-      out = stepMovement(out, frame, dist / steps, 1, this.collision);
+  /**
+   * THE TRAVELED ROAD, mirrored: the frames whose legs the road owns
+   * — [cast frame, cast frame + duration). The cast frame itself
+   * still walks its normal step (the server processed that frame's
+   * stick before the press), so only the LATER window frames zero
+   * their input speed; every window frame takes its transit step.
+   */
+  private roadOwns(seq: number): boolean {
+    const mv = this.lastCastMove;
+    return (
+      mv !== null &&
+      mv.kind !== 'blink' &&
+      seq >= this.lastCastSeq &&
+      seq < this.lastCastSeq + mv.frames
+    );
+  }
+
+  /** The cast's movement on this frame: the blink door or one road step. */
+  private applyCastMove(pos: Vec2, seq: number): Vec2 {
+    const mv = this.lastCastMove;
+    if (!mv) return pos;
+    if (mv.kind === 'blink') {
+      return seq === this.lastCastSeq
+        ? resolveTeleport(pos, mv.dirX, mv.dirY, mv.dist, this.collision)
+        : pos;
     }
-    return out;
+    const i = seq - this.lastCastSeq;
+    if (i < 0 || i >= mv.frames) return pos;
+    const step = Math.min(mv.stepPer, mv.dist - i * mv.stepPer);
+    if (step <= 0) return pos;
+    const res = transitStep(pos, mv.dirX, mv.dirY, step, this.collision);
+    return { x: res.x, y: res.y };
   }
 
   /** Rooted while committed to a cast (the frames after the cast frame). */
   private rooted(seq: number): boolean {
-    return seq > this.lastCastSeq && seq <= this.lastCastSeq + this.lastCastFreeze;
+    if (seq > this.lastCastSeq && seq <= this.lastCastSeq + this.lastCastFreeze) return true;
+    // The road owns the sticks on the window frames after the cast.
+    if (this.roadOwns(seq) && seq !== this.lastCastSeq) return true;
+    // THE CROSSING: a leap's recovery root anchors at the LANDING —
+    // the server re-roots at the crater (the press-time freeze burned
+    // mid-air), so the mirror holds the same frames or the body walks
+    // out of a root the server is still enforcing.
+    const mv = this.lastCastMove;
+    if (mv && mv.kind === 'leap' && this.lastCastFreeze > 0) {
+      const endFrame = this.lastCastSeq + mv.frames - 1;
+      if (seq > endFrame && seq <= endFrame + this.lastCastFreeze) return true;
+    }
+    return false;
   }
 
   /**
@@ -142,6 +202,7 @@ export class Predictor {
     let out = stepMovement(pos, frame, this.frameSpeed(frame), TICK_DT, this.collision);
     if (
       hasButton(frame.buttons, InputButton.Dodge) &&
+      !this.roadOwns(frame.seq) && // the road owns the legs — no dodge mid-crossing
       frame.seq >= this.lastDodgeSeq + DODGE_COOLDOWN_SEQ &&
       Math.hypot(frame.mx, frame.my) > 0.01
     ) {
@@ -151,9 +212,7 @@ export class Predictor {
       }
       out = applyDodge(out, frame.mx, frame.my, this.collision);
     }
-    if (frame.seq === this.lastCastSeq && this.lastCastDash) {
-      out = this.applyCastDash(out, this.lastCastDash);
-    }
+    out = this.applyCastMove(out, frame.seq);
     return out;
   }
 
@@ -178,9 +237,7 @@ export class Predictor {
       if (frame.seq === this.lastDodgeSeq) {
         pos = applyDodge(pos, frame.mx, frame.my, this.collision);
       }
-      if (frame.seq === this.lastCastSeq && this.lastCastDash) {
-        pos = this.applyCastDash(pos, this.lastCastDash);
-      }
+      pos = this.applyCastMove(pos, frame.seq);
     }
     this.pos = pos;
 
