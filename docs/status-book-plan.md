@@ -512,6 +512,54 @@ move; wire untouched.
 
 ### Phase 4 — THE VISIBLE AFFLICTION (the master visual pass)
 
+**SHIPPED 2026-08-17 (code layer; live rig proving owed). As-built:**
+
+- **THE ESCALATION LAW in statusAmbience**: the wire's two nibbles
+  drive the weather — wound tier raises spawn rates (×1 → ×2.4
+  toward the cap), tier 3+ doubles grains (the boiling read), tier
+  4+ earns the brief's exact scenes: venom DRIPS off the body with
+  real z and bleed pools dark flecks at the feet. Six new voices,
+  each with its own PLACE and RHYTHM (anti-mush law held): root
+  grips the FEET in tumbling earth, stagger rings the HEAD in pale
+  glints (a different height, color, and clock than shock), weaken
+  sinks unlit violet off the arms, quicken streaks gold PAST the
+  sides (rate grows per stack), mend climbs a tight glinting column
+  at the spine, stonehide HANGS blue-grey facets at the skin
+  (plates hold; sunder's chips fall — the two greys can never
+  blur). All rate-gated bursts (THE BODY BUDGET).
+- **THE STANDING SHELL**: `S2CBuffs.ward` (additive — Σ live shield
+  pools, present when > 0; every grant/break/expiry path already
+  re-sends). The own body wears a quiet facet dome — ward_shell's
+  geometry as a PRESENCE: six breathing glass panes to the apex,
+  far side dimmed for the 2.5D read, an equator rim with one
+  walking glint — and when the total crosses to nothing the shell
+  dies as glass: a one-shot expanding rim flash + real falling
+  shards (latched, plays exactly once). Partial drains stay quiet
+  by design (the chip's desc holds the number).
+- **THE ICON IS THE PAINTER, FOR STATES TOO**: `render/
+  statusIcons.ts` — twelve glyph painters, ONE SUBJECT each in the
+  page's own ink (flame, flake, bolt, drop, beading bleb, cracked
+  plate, gripping spikes, rung-bell stars, sinking chevrons,
+  driving chevrons, the cross, the hex coat), direct-draw for
+  canvas HUDs + `statusIconUrl` through the shared outlined-sprite
+  pipeline for DOM surfaces. THE WOUND ROW wears them at 14 px
+  (the nameplate keeps its squares — at 3-7 px a square IS the
+  right glyph).
+- **THE HONEST RING + the stacks badge**: every buff chip sweeps a
+  conic rim ring draining against the seconds it was told at
+  receipt (no invented timers — a refresh is a new push, a new
+  truth), and a stacking boon's chip wears its xN badge. Tokens
+  only, stylesheet classes (.chip-stacks, --sweep).
+- **THE STATUS WING** joins the ?fx lab: `s` cycles a forced page
+  on the own body, `S` the stack tier — ambience, escalation, dome,
+  and glyph row photographable without a live applier.
+- Gates: shared 268, server 560, client 630, tsc ×4; staged
+  hunk-level around the loot session's live renderer work, twin-
+  verified (HEAD + mine alone compiles). **Owed**: the live rig
+  walk (all twelve voices beside the body ruler at three scales,
+  the 40-marked-bodies 120fps receipt) — the ?fx status wing is
+  the instrument for it.
+
 The showstopper phase, and the reason the page carries a visuals
 contract. All of it composes the matter library (ONE-VOICE):
 

@@ -1356,6 +1356,15 @@ export interface S2CBuffs {
    * absent = 1.
    */
   swing?: number;
+  /**
+   * THE STANDING SHELL (statusBook Phase 4): the wearer's live ward
+   * total (every riding shield pool summed), sent when > 0 so the
+   * own-body dome stands while a ward holds and shatters the moment
+   * the total crosses to nothing. Presence and break are the truths
+   * the dome needs; partial drains stay quiet (the chip's desc
+   * carries the number). Additive wire fact; absent = 0.
+   */
+  ward?: number;
 }
 
 /**

@@ -11,12 +11,26 @@
  * Every cast goes through the SAME registry the signatures will use;
  * what the lab shows is exactly what abilities inherit. The registry
  * also lands on window.dcMatter for the Playwright audit harness.
+ *
+ * THE STATUS WING (statusBook Phase 4):
+ *   s       cycle the forced status on the OWN body (off → each page)
+ *   S       cycle the forced stack tier (1..5) for the nibble reads
+ * The wing writes renderer.statusAuditBits — the ambience, tier
+ * escalation, and glyph row can be photographed without a live
+ * applier; 'off' returns the body to the wire's truth.
  */
 
 import type { Renderer } from '../render/renderer.js';
 import type { ClientGame } from '../game/clientGame.js';
 import { MATTER } from '../render/matter/index.js';
 import type { MatterCtx } from '../render/matter/index.js';
+import {
+  AFFLICTION_STACKS_SHIFT,
+  COUNT_STACKS_SHIFT,
+  STATUS_BIT,
+  STATUS_IDS,
+  STATUS_BOOK,
+} from '@arx/shared';
 
 export function startFxLab(game: ClientGame, renderer: Renderer): void {
   (window as unknown as { dcMatter: typeof MATTER }).dcMatter = MATTER;
@@ -43,14 +57,29 @@ export function startFxLab(game: ClientGame, renderer: Renderer): void {
 
   const depsOf = (i: number) => Object.keys(MATTER[ids[i]!]!.deployments);
 
+  let si = -1; // -1 = the wing is off; else an index into STATUS_IDS
+  let tier = 1;
+
+  const auditBits = (): number => {
+    if (si < 0) return 0;
+    const id = STATUS_IDS[si]!;
+    const model = STATUS_BOOK[id].stacking.model;
+    let bits = STATUS_BIT[id];
+    if (model === 'perSource') bits |= Math.min(15, tier) << AFFLICTION_STACKS_SHIFT;
+    else if (model === 'count') bits |= Math.min(15, tier) << COUNT_STACKS_SHIFT;
+    return bits;
+  };
+
   const show = () => {
     const mat = MATTER[ids[mi]!]!;
     const deps = depsOf(mi);
     const dep = deps[di]!;
+    const wing = si < 0 ? 'off' : `${STATUS_IDS[si]} x${tier}`;
     label.textContent =
       `MATTER LAB  ${mat.name} . ${dep}` +
       `  (${mi + 1}/${ids.length} · ${di + 1}/${deps.length})` +
-      `${repeat ? '  [repeat]' : ''}\n[ ] material   , . deployment   Enter cast   \\ repeat`;
+      `${repeat ? '  [repeat]' : ''}  status:${wing}` +
+      `\n[ ] material   , . deployment   Enter cast   \\ repeat   s status   S tier`;
   };
 
   const cast = () => {
@@ -75,6 +104,12 @@ export function startFxLab(game: ClientGame, renderer: Renderer): void {
       repeat = !repeat;
       if (!repeat && repeatTimer) clearTimeout(repeatTimer);
       if (repeat) cast();
+    } else if (e.key === 's') {
+      si = si + 1 >= STATUS_IDS.length ? -1 : si + 1;
+      renderer.statusAuditBits = auditBits();
+    } else if (e.key === 'S') {
+      tier = (tier % 5) + 1;
+      renderer.statusAuditBits = auditBits();
     } else return;
     di = Math.min(di, depsOf(mi).length - 1);
     show();

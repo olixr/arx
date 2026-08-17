@@ -15056,7 +15056,17 @@ export class GameServer {
       (player.gear.attackSpeedMult ?? 1) * statusSwingFactor(this.statuses?.get(player.eid)),
       player.buffs,
     );
-    player.session?.sendJson({ t: 'buffs', buffs, ...(swing !== 1 ? { swing } : {}) });
+    // THE STANDING SHELL: the live ward total rides the same push —
+    // the dome stands while it holds, shatters when it crosses to 0
+    // (every grant/break/expiry path already re-sends buffs).
+    let ward = 0;
+    for (const b of player.buffs) ward += Math.max(0, b.shieldHp);
+    player.session?.sendJson({
+      t: 'buffs',
+      buffs,
+      ...(swing !== 1 ? { swing } : {}),
+      ...(ward > 0 ? { ward } : {}),
+    });
   }
 
   /** Non-combat NPC interaction: milk the cow, one day pet the wolf. */

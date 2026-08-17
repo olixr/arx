@@ -668,6 +668,10 @@ export class ClientGame {
    * fold is the truth and this is its mirror.
    */
   swingMult = 1;
+  /** THE STANDING SHELL: the own live ward total (0 = no dome). */
+  ownWard = 0;
+  /** When the last standing ward crossed to nothing (0 = never). */
+  wardShatteredAt = 0;
   /** performance.now() when the buffs snapshot arrived (chips count down). */
   buffsAt = 0;
   /** Fires when the buff list changes (HUD refresh). */
@@ -2310,6 +2314,11 @@ export class ClientGame {
         this.buffsAt = performance.now();
         // THE SWING CHANNEL rides the buff push; absent = trained pace.
         this.swingMult = msg.swing ?? 1;
+        // THE STANDING SHELL: dome presence, and the break moment —
+        // a ward that stood and now reads 0 shatters ONCE.
+        const ward = msg.ward ?? 0;
+        if (this.ownWard > 0 && ward === 0) this.wardShatteredAt = performance.now();
+        this.ownWard = ward;
         this.onBuffs?.();
         break;
       }

@@ -62,6 +62,8 @@ export class Hotbar {
   private readonly buffTray = document.getElementById('buff-tray')!;
   private buffKey = '';
   private readonly buffSecsEls: HTMLElement[] = [];
+  /** Chip elements wearing THE HONEST RING (per-frame --sweep write). */
+  private readonly buffRingEls: HTMLElement[] = [];
   /** Stealth-state eye chip (sneaking / hidden / detected). */
   private readonly sneakChip = document.createElement('div');
   private readonly sneakEye = document.createElement('img');
@@ -300,9 +302,22 @@ export class Hotbar {
       // The eye chip is a permanent resident — survives the rebuild.
       this.buffTray.appendChild(this.sneakChip);
       this.buffSecsEls.length = 0;
+      this.buffRingEls.length = 0;
       for (const b of game.buffs) {
         const chip = document.createElement('div');
         chip.className = `buff-chip ${b.channel}`;
+        // THE HONEST RING: the chip remembers the seconds it was told
+        // at receipt; the sweep drains against that truth (a refresh
+        // is a new push, a new truth). No timer is ever invented.
+        chip.dataset.total = String(Math.max(1, b.secsLeft));
+        this.buffRingEls.push(chip);
+        // A STACK IS A THING YOU CAN SEE: the stacking boon's count.
+        if ((b.stacks ?? 1) > 1) {
+          const badge = document.createElement('span');
+          badge.className = 'chip-stacks';
+          badge.textContent = `x${b.stacks}`;
+          chip.appendChild(badge);
+        }
         const secs = document.createElement('span');
         secs.className = 'buff-secs';
         if (b.channel === 'combat') {
@@ -379,6 +394,13 @@ export class Hotbar {
         : Math.max(0, Math.round(((oil?.until ?? 0) - Date.now()) / 1000));
       const text = left >= 60 ? `${Math.floor(left / 60)}m${String(left % 60).padStart(2, '0')}` : `${left}s`;
       if (this.buffSecsEls[i]!.textContent !== text) this.buffSecsEls[i]!.textContent = text;
+      // The ring sweep: remaining over the receipt's truth, 0..1.
+      const ring = this.buffRingEls[i];
+      if (ring) {
+        const total = Number(ring.dataset.total ?? 1);
+        const pct = Math.max(0, Math.min(1, left / total));
+        ring.style.setProperty('--sweep', pct.toFixed(3));
+      }
     }
 
     // Stealth eye chip — state changes are rare; DOM writes only then.
