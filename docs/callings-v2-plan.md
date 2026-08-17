@@ -7,8 +7,13 @@ the same day.
 
 ## THE FILLED HALL — the content epoch (opened 2026-08-17)
 
-**Status: SHIPPED 2026-08-17 — 400 callings live (25 ladders x 16 seats), hall audit 0 faults,
-all four suites green (shared 268 / content 592 / server 587 / client 636), tsc -b clean.**
+**Status: SHIPPED + LIVE-PROVEN 2026-08-17 — 400 callings live (25 ladders x 16 seats), hall
+audit 0 faults, all four suites green (shared 268 / content 592 / server 587 / client 636),
+tsc -b clean. Live walk (lane 22, fresh db through v42, 121fps): the Banked Fire when-chip held
+on the HUD, the calling:drumroll 0/6 meter beside it, WHITE HEAT seated BY THE MASTER'S LICENSE
+at level 1 and kept (dormant, never emptied) when the license was withdrawn, and the codex wing
+rendering the sixteen-seat smithing ribbon with its veil cap and a bench that reads the
+when-package in plain words.**
 
 ### As built — round 1 (author + fresh-eyes critic per ladder, 50 agents)
 
