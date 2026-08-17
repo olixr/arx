@@ -6439,18 +6439,70 @@ const ITEM_ICON: Record<string, { icon: string; color: string }> = {
 
 // ---- the gatherer's roster: every tool's icon IS its world painter,
 // on the sword diagonal, head up-right where the classic axe glyph
-// carried its bit. The rod lies flatter so line and bobber stay in.
+// carried its bit. The pose is authored; the FRAME is measured — the
+// old hand-tuned offsets cropped every axe bit and pick spur for
+// months, so each tool's ink is measured once (in a 3x window, since
+// the overflow being fixed is exactly the ink that never landed on
+// the box) and seated whole: centered, uniformly padded, nothing cut.
+const TOOL_FIT_RES = 96;
+const toolFitCache = new Map<string, { s: number; cx: number; cy: number }>();
+
+function fittedToolPainter(
+  key: string,
+  painter: (c: CanvasRenderingContext2D) => void,
+  span = 0.86,
+): (c: CanvasRenderingContext2D) => void {
+  return (c) => {
+    let fit = toolFitCache.get(key);
+    if (!fit) {
+      const cv = document.createElement('canvas');
+      cv.width = TOOL_FIT_RES;
+      cv.height = TOOL_FIT_RES;
+      const g = cv.getContext('2d', { willReadFrequently: true })!;
+      g.save();
+      // The unit box maps to the middle third: ink up to a full box
+      // beyond any edge still lands on the analysis canvas.
+      g.scale(TOOL_FIT_RES / 3, TOOL_FIT_RES / 3);
+      g.translate(1, 1);
+      painter(g);
+      g.restore();
+      const data = g.getImageData(0, 0, TOOL_FIT_RES, TOOL_FIT_RES).data;
+      let x0 = TOOL_FIT_RES, y0 = TOOL_FIT_RES, x1 = -1, y1 = -1;
+      for (let y = 0; y < TOOL_FIT_RES; y++) {
+        for (let x = 0; x < TOOL_FIT_RES; x++) {
+          if (data[(y * TOOL_FIT_RES + x) * 4 + 3]! < 40) continue;
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+      }
+      const k = 3 / TOOL_FIT_RES;
+      fit = x1 < 0
+        ? { s: 1, cx: 0.5, cy: 0.5 }
+        : {
+            s: span / Math.max((x1 - x0 + 1) * k, (y1 - y0 + 1) * k, 0.01),
+            cx: ((x0 + x1 + 1) / 2) * k - 1,
+            cy: ((y0 + y1 + 1) / 2) * k - 1,
+          };
+      toolFitCache.set(key, fit);
+    }
+    c.translate(0.5, 0.5);
+    c.scale(fit.s, fit.s);
+    c.translate(-fit.cx, -fit.cy);
+    painter(c);
+  };
+}
+
 {
   for (const [id, st] of Object.entries(TOOL_STYLES)) {
     const rod = st.kind === 'rod';
     const scale = rod ? 96 : 100;
-    PAINTERS[`tool:${id}`] = (c) => {
-      c.translate(0.5, 0.5);
+    PAINTERS[`tool:${id}`] = fittedToolPainter(`tool:${id}`, (c) => {
       c.rotate(rod ? -Math.PI / 7 : -Math.PI / 4);
       c.scale(1 / 64, 1 / 64);
-      c.translate(rod ? -22 : -16, rod ? 4 : 6);
       drawTool(c, st, scale, 5234, false);
-    };
+    });
     ITEM_ICON[id] = { icon: `tool:${id}`, color: st.color };
   }
 }
