@@ -178,7 +178,7 @@ export type SmashKind =
   | 'fletcher'
   | 'cobbler'
   | 'fishslab'
-  | 'scales'
+  | 'parcels'
   | 'displaytable'
   // THE COMMONS: snuffed candles tumbling pale (a knocked flame
   // is OUT — no fire flies), horn panes and forged iron, wayside
@@ -788,7 +788,7 @@ const CHIP_TONE: Record<SmashKind, string> = {
   fletcher: '#8a6534',
   cobbler: '#8a5a36',
   fishslab: '#8a857a',
-  scales: '#6d5a34',
+  parcels: '#a08a62',
   displaytable: '#8a6534',
   // Commons wreckage: forged iron, lantern oak, wayside stone,
   // dial stone, guardian granite, festival pole, ale oak, board
@@ -2453,22 +2453,20 @@ function kitFor(kind: SmashKind, rand: () => number): ChunkSpec[] {
       }
       break;
     }
-    case 'scales': {
-      // The rig comes down RINGING: pans off their chains bright,
-      // the beam cartwheeling brass, weights landing point-down and
-      // done, the sack coughing its grain.
-      out.push({ len: 0.18, wid: 0.025, color: '#6d5a34', stripe: '#c2a45c', pace: 1.2 });
-      for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.08, wid: 0.05, color: '#6d5a34', stripe: '#c2a45c', round: true, pace: 1.1 });
+    case 'parcels': {
+      // Soft goods come apart SOFT: wrap panels flutter slow (cloth
+      // rides the air, wood never does), the twine whips off in
+      // dark snips, the tag flickers bright — and the dealt
+      // contents tumble rounder and heavier than everything else.
+      for (let i = 0; i < 3; i++) {
+        out.push({ len: 0.13, wid: 0.09, color: pick(rand, ['#c4b491', '#b5915e', '#a9a29a']), stripe: '#e3d7ba', pace: 1.5 });
       }
       for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.05, wid: 0.04, color: '#6d5a34', stripe: '#c2a45c', pace: 0.35 });
+        out.push({ len: 0.09, wid: 0.016, color: '#6f5a38', stripe: '#8a734a', pace: 1.2 });
       }
-      for (let i = 0; i < 2; i++) {
-        out.push({ len: 0.12, wid: 0.04, color: pick(rand, ['#8a6534', '#6f4d26']), stripe: '#c9a76a', pace: 0.7 });
-      }
+      out.push({ len: 0.05, wid: 0.035, color: '#efe8d4', stripe: '#f8f4e6', pace: 1.35 });
       for (let i = 0; i < 3; i++) {
-        out.push({ len: 0.04, wid: 0.035, color: '#b89a68', round: true, pace: 0.45 });
+        out.push({ len: 0.06, wid: 0.05, color: pick(rand, ['#b08a45', '#8a5a36', '#7c9a6a']), round: true, pace: 0.55 });
       }
       break;
     }

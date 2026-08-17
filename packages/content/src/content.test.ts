@@ -1580,7 +1580,7 @@ test('silverfall: the mountain capital holds its terraces, stations, and gate', 
   assert.equal(n(Tile.CandleShrine), 5, 'the kept flames miscount');
   assert.ok(n(Tile.BeachedSkiff) >= 2 && n(Tile.MooringPost) >= 2, 'the Kingshore lost its boats');
   assert.ok(n(Tile.Dock) >= 4, 'the quay planks are gone');
-  assert.ok(n(Tile.HangingScale) >= 3, 'the honest arms miscount');
+  assert.ok(n(Tile.TiedParcels) >= 3, 'the packed orders miscount');
   assert.ok(n(Tile.WaterTrough) >= 2, 'the wagon yard went dry');
   assert.ok(n(Tile.WallFountain) >= 1, 'the bath house lost its spring');
   assert.ok(n(Tile.Hedge) >= 20, 'Garland Row lost its hedge fronts');

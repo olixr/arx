@@ -738,6 +738,7 @@ const LOW_STICK_TILES = new Set<number>([
   Tile.LogPile,
   Tile.Basin,
   Tile.Barrel,
+  Tile.TiedParcels,
   Tile.Crate,
   Tile.CrateGoods,
   Tile.FishingSpot,
@@ -17391,10 +17392,10 @@ export class Renderer {
       splinters: ['#d3dfe6', '#9fb0bc', '#ded8ce'],
       chips: ['#d3dfe6', '#dfe9ee'],
     },
-    scales: {
-      dust: ['#c2a45c', '#8a8a94', '#8a6534'],
-      splinters: ['#c2a45c', '#8a8a94', '#c9a76a'],
-      chips: ['#c2a45c', '#d2dae2'],
+    parcels: {
+      dust: ['#c4b491', '#b5915e', '#a9a29a'],
+      splinters: ['#c4b491', '#6f5a38', '#e3d7ba'],
+      chips: ['#e3d7ba', '#efe8d4'],
     },
     displaytable: {
       dust: ['#8a6534', '#c9a13c', '#b39268'],
@@ -18082,6 +18083,7 @@ export class Renderer {
     Tile.TownBell,
     Tile.HandCart,
     Tile.GrainSacks,
+    Tile.TiedParcels,
     Tile.BarrelStack,
     Tile.CrateStack,
     Tile.HitchingPost,
@@ -18116,16 +18118,15 @@ export class Renderer {
     Tile.ShopShelf,
     // THE SECOND SHIFT: the wave rides the same ring — the wall
     // fountain's rope and rings, the pump's drip, the trough's
-    // drifting leaf, the kiln's crown ribbon, the slab's melt, and
-    // the scale's sway all sit under 4Hz; the six still pieces idle
-    // in STATIC_RING_TILES. Zero light entries: the kiln is FIRING
+    // drifting leaf, the kiln's crown ribbon, and the slab's melt
+    // all sit under 4Hz; the still pieces idle in
+    // STATIC_RING_TILES. Zero light entries: the kiln is FIRING
     // and still owns no lamp — its spy-hole is paint.
     Tile.WallFountain,
     Tile.WaterCask,
     Tile.WaterTrough,
     Tile.PotteryKiln,
     Tile.FishmongerSlab,
-    Tile.HangingScale,
     // THE COMMONS: the general shelf rides the same ring — the
     // candle stand's lick, the hung lantern's sway, the shrine's
     // guttering stubs, and the tap cask's drip bead all sit
@@ -18293,6 +18294,7 @@ export class Renderer {
     Tile.FounderStatue,
     Tile.HandCart,
     Tile.GrainSacks,
+    Tile.TiedParcels,
     Tile.BarrelStack,
     Tile.CrateStack,
     Tile.HitchingPost,
@@ -40471,23 +40473,27 @@ export class Renderer {
         };
       }
 
-      case Tile.HangingScale: {
+      case Tile.TiedParcels: {
         const syT = s * this.camera.yScale;
         const baseY = p.y + syT * 0.18;
-        // The merchant's beam scale: a bracket post flying brass
-        // pans on chains — one rides LOW under a sack somebody is
-        // still weighing, the other high under its ring weights.
-        // The whole rig breathes on the bracket (<4Hz sway). The
-        // dealt hash picks the heavy side and the sack's burlap.
+        // THE PACKED ORDER: wrapped goods twine-tied and stacked —
+        // commerce mid-motion, at home beside any counter, pantry,
+        // dock, or wagon bed. Two parcels squared and crossed, a
+        // dealt third piece leaning with CLEAR AIR between the
+        // masses, and a paper tag off the top knot. A parcel is a
+        // WRAP, never joinery: fold creases run corner-to-corner
+        // where a crate would rule plank lines, and the twine is
+        // the one dark line the silhouette owns.
         const m = ((h >>> 3) & 1) ? 1 : -1;
-        const postX = p.x - m * s * 0.2;
-        const armY = baseY - s * 1.42;
-        const hangX = postX + m * s * 0.4;
-        const sack = ((h >>> 5) & 1) ? TWN_BURLAP : '#a3885c';
+        const wraps: [string, string, string, string] = ['#c4b491', '#b5915e', '#a9a29a', '#a3835c'];
+        const wA = wraps[(h >>> 5) & 3] ?? wraps[0];
+        const wB = wraps[(((h >>> 5) & 3) + 1 + ((h >>> 7) & 1)) & 3] ?? wraps[1];
+        const wC = wraps[(((h >>> 5) & 3) + 3) & 3] ?? wraps[2];
+        const bundle = ((h >>> 9) & 1) === 0;
         return {
-          sortY: ty + 0.68,
-          body: stationBody(0.55, 1.75, 0.4),
-          drawShadow: () => this.castContact(p.x, baseY, s * 0.38, s * 0.055),
+          sortY: ty + 0.7,
+          body: stationBody(0.55, 0.95, 0.45),
+          drawShadow: () => this.castContact(p.x, baseY, s * 0.36, s * 0.055),
           draw: () => {
             // Draw-time ctx capture: the outline pass swaps this.ctx
             // to its scratch — the build-time capture would paint past it.
@@ -40496,162 +40502,136 @@ export class Renderer {
             ctx.beginPath();
             ctx.ellipse(p.x, baseY + s * 0.01, s * 0.36, s * 0.05, 0, 0, Math.PI * 2);
             ctx.fill();
-            // The post and its bracket arm, knee-braced.
-            ctx.fillStyle = TWN_OAK_DARK;
-            ctx.fillRect(postX - s * 0.038, armY - s * 0.02, s * 0.076, baseY - armY + s * 0.02);
-            ctx.fillStyle = TWN_OAK;
-            ctx.fillRect(postX - s * 0.038, armY - s * 0.02, s * 0.03, baseY - armY + s * 0.02);
-            ctx.fillStyle = TWN_OAK_LIT;
-            ctx.beginPath();
-            ctx.moveTo(postX - s * 0.038, armY - s * 0.02);
-            ctx.lineTo(postX - s * 0.02, armY - s * 0.045);
-            ctx.lineTo(postX + s * 0.02, armY - s * 0.045);
-            ctx.lineTo(postX + s * 0.038, armY - s * 0.02);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = TWN_OAK;
-            ctx.fillRect(Math.min(postX, hangX + m * s * 0.06), armY, Math.abs(hangX - postX) + s * 0.06, s * 0.05);
-            ctx.fillStyle = TWN_OAK_LIT;
-            ctx.fillRect(Math.min(postX, hangX + m * s * 0.06), armY, Math.abs(hangX - postX) + s * 0.06, s * 0.016);
-            ctx.strokeStyle = TWN_OAK_DARK;
-            ctx.lineWidth = Math.max(1.5, s * 0.03);
-            ctx.beginPath();
-            ctx.moveTo(postX + m * s * 0.03, armY + s * 0.3);
-            ctx.lineTo(postX + m * s * 0.3, armY + s * 0.05);
-            ctx.stroke();
-            // THE RIG sways as one body around its hook (<4Hz).
-            const sway = Math.sin(t * 1.7 + ((h >>> 6) & 7) * 0.7) * 0.045;
-            ctx.save();
-            ctx.translate(hangX, armY + s * 0.05);
-            ctx.rotate(sway);
-            // The hook and the hanger chain.
-            ctx.strokeStyle = '#8a8a94';
-            ctx.lineWidth = Math.max(1, s * 0.016);
-            ctx.beginPath();
-            ctx.arc(0, s * 0.02, s * 0.02, Math.PI * 0.2, Math.PI * 1.6);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(0, s * 0.04);
-            ctx.lineTo(0, s * 0.14);
-            ctx.stroke();
-            // THE BEAM: tilted to the dealt heavy side, brass caps.
-            const tilt = m * 0.16;
-            ctx.save();
-            ctx.translate(0, s * 0.14);
-            ctx.rotate(tilt);
-            ctx.strokeStyle = TWN_BRONZE;
-            ctx.lineWidth = Math.max(1.5, s * 0.028);
-            ctx.beginPath();
-            ctx.moveTo(-s * 0.3, 0);
-            ctx.lineTo(s * 0.3, 0);
-            ctx.stroke();
-            ctx.strokeStyle = TWN_BRONZE_LIT;
+            // ONE parcel painter, two castings: front face with its
+            // fold creases, west sun and east shade, the chamfered
+            // lit top plane, and the twine cross knotted at center.
+            const parcel = (cx: number, by: number, pw: number, ph: number, wrap: string) => {
+              const topD = syT * 0.26;
+              ctx.fillStyle = wrap;
+              ctx.fillRect(cx - pw / 2, by - ph, pw, ph);
+              // Fold creases: the wrap gathered toward the corners.
+              ctx.strokeStyle = 'rgba(60, 48, 30, 0.28)';
+              ctx.lineWidth = Math.max(1, s * 0.01);
+              for (const e of [-1, 1] as const) {
+                ctx.beginPath();
+                ctx.moveTo(cx + e * pw * 0.46, by - ph * 0.92);
+                ctx.lineTo(cx + e * pw * 0.16, by - ph * 0.4);
+                ctx.stroke();
+              }
+              ctx.fillStyle = shade(wrap, 10);
+              ctx.fillRect(cx - pw / 2, by - ph, s * 0.045, ph);
+              ctx.fillStyle = shade(wrap, -12);
+              ctx.fillRect(cx + pw / 2 - s * 0.045, by - ph, s * 0.045, ph);
+              // The lit top plane (the crate-lid law: the bird's eye
+              // is where the 2.5D earns its keep).
+              ctx.fillStyle = shade(wrap, 18);
+              ctx.beginPath();
+              chamferRect(ctx, cx - pw / 2 - s * 0.012, by - ph - topD, pw + s * 0.024, topD, s * 0.025);
+              ctx.fill();
+              // The twine cross: over the top, down the face, knot
+              // where they meet the crown.
+              ctx.strokeStyle = 'rgba(88, 70, 40, 0.85)';
+              ctx.lineWidth = Math.max(1, s * 0.014);
+              ctx.beginPath();
+              ctx.moveTo(cx, by - ph - topD + s * 0.008);
+              ctx.lineTo(cx, by - s * 0.015);
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(cx - pw / 2 - s * 0.008, by - ph - topD * 0.42);
+              ctx.lineTo(cx + pw / 2 + s * 0.008, by - ph - topD * 0.42);
+              ctx.stroke();
+              ctx.fillStyle = '#5c4a2c';
+              ctx.beginPath();
+              ctx.arc(cx, by - ph - topD * 0.42, s * 0.022, 0, Math.PI * 2);
+              ctx.fill();
+            };
+            // The bottom parcel, broad and low; the top one smaller,
+            // stepped the dealt way — the stack reads as TWO, and the
+            // step stays INSIDE the bottom parcel's shoulders (a top
+            // edge past the base edge reads mid-slide, not stacked).
+            parcel(p.x - m * s * 0.04, baseY, s * 0.54, s * 0.28, wA);
+            parcel(p.x + m * s * 0.04, baseY - s * 0.28 - syT * 0.24, s * 0.36, s * 0.22, wB);
+            // The paper tag off the top knot, swung the dealt way.
+            const tagX = p.x + m * s * 0.04 + m * s * 0.1;
+            const tagY = baseY - s * 0.5 - syT * 0.36;
+            ctx.strokeStyle = 'rgba(88, 70, 40, 0.85)';
             ctx.lineWidth = Math.max(1, s * 0.01);
             ctx.beginPath();
-            ctx.moveTo(-s * 0.29, -s * 0.008);
-            ctx.lineTo(s * 0.29, -s * 0.008);
+            ctx.moveTo(tagX - m * s * 0.1, tagY - s * 0.02);
+            ctx.quadraticCurveTo(tagX - m * s * 0.04, tagY - s * 0.005, tagX, tagY + s * 0.015);
             ctx.stroke();
-            // The needle: plumb from the pivot — the tilt SHOWS
-            // against it.
-            ctx.rotate(-tilt);
-            ctx.strokeStyle = TWN_BRONZE_LIT;
-            ctx.beginPath();
-            ctx.moveTo(0, -s * 0.005);
-            ctx.lineTo(0, s * 0.075);
-            ctx.stroke();
-            ctx.rotate(tilt);
-            // Pans on their chains: heavy side low.
-            for (const e of [-1, 1] as const) {
-              const ex = e * s * 0.29;
-              const drop = s * (e === m ? 0.34 : 0.2);
-              ctx.strokeStyle = '#8a8a94';
-              ctx.lineWidth = Math.max(1, s * 0.011);
-              for (const c of [-1, 0, 1]) {
-                ctx.beginPath();
-                ctx.moveTo(ex, 0);
-                ctx.lineTo(ex + c * s * 0.065, drop);
-                ctx.stroke();
-              }
-              ctx.fillStyle = TWN_BRONZE;
-              ctx.beginPath();
-              ctx.ellipse(ex, drop + s * 0.014, s * 0.088, s * 0.038, 0, 0, Math.PI);
-              ctx.fill();
-              ctx.fillStyle = TWN_BRONZE_LIT;
-              ctx.beginPath();
-              ctx.ellipse(ex, drop + s * 0.009, s * 0.088, s * 0.028, 0, 0, Math.PI * 2);
-              ctx.fill();
-              if (e === m) {
-                // The sack mid-weigh: soft, tied, leaning true —
-                // grown to carry the whole rig's story (pass-2).
-                ctx.fillStyle = sack;
-                ctx.beginPath();
-                ctx.moveTo(ex - s * 0.062, drop + s * 0.006);
-                ctx.quadraticCurveTo(ex - s * 0.082, drop - s * 0.11, ex - s * 0.026, drop - s * 0.142);
-                ctx.quadraticCurveTo(ex, drop - s * 0.168, ex + s * 0.028, drop - s * 0.138);
-                ctx.quadraticCurveTo(ex + s * 0.082, drop - s * 0.105, ex + s * 0.062, drop + s * 0.006);
-                ctx.closePath();
-                ctx.fill();
-                ctx.fillStyle = shade(sack, 16);
-                ctx.beginPath();
-                ctx.moveTo(ex - s * 0.045, drop);
-                ctx.quadraticCurveTo(ex - s * 0.055, drop - s * 0.08, ex - s * 0.018, drop - s * 0.108);
-                ctx.lineTo(ex - s * 0.006, drop - s * 0.1);
-                ctx.quadraticCurveTo(ex - s * 0.03, drop - s * 0.06, ex - s * 0.022, drop);
-                ctx.closePath();
-                ctx.fill();
-                ctx.strokeStyle = TWN_ROPE;
-                ctx.lineWidth = Math.max(1, s * 0.012);
-                ctx.beginPath();
-                ctx.moveTo(ex - s * 0.026, drop - s * 0.135);
-                ctx.lineTo(ex + s * 0.028, drop - s * 0.135);
-                ctx.stroke();
-              } else {
-                // Ring weights answering on the high pan.
-                for (let k = 0; k < 2; k++) {
-                  const kw = s * (0.042 - k * 0.012);
-                  const kh = s * (0.05 - k * 0.016);
-                  const ky = drop - k * s * 0.048;
-                  ctx.fillStyle = TWN_BRONZE;
-                  ctx.beginPath();
-                  ctx.moveTo(ex - kw, ky);
-                  ctx.lineTo(ex - kw * 0.72, ky - kh);
-                  ctx.lineTo(ex + kw * 0.72, ky - kh);
-                  ctx.lineTo(ex + kw, ky);
-                  ctx.closePath();
-                  ctx.fill();
-                  ctx.fillStyle = TWN_BRONZE_LIT;
-                  ctx.fillRect(ex - kw * 0.72, ky - kh, kw * 0.5, kh);
-                  ctx.strokeStyle = TWN_BRONZE_LIT;
-                  ctx.lineWidth = Math.max(1, s * 0.01);
-                  ctx.beginPath();
-                  ctx.arc(ex, ky - kh - s * 0.01, s * 0.01, 0, Math.PI * 2);
-                  ctx.stroke();
-                }
-              }
-            }
+            ctx.save();
+            ctx.translate(tagX, tagY + s * 0.02);
+            ctx.rotate(m * 0.3);
+            ctx.fillStyle = '#efe8d4';
+            ctx.fillRect(-s * 0.035, -s * 0.022, s * 0.07, s * 0.05);
+            ctx.fillStyle = 'rgba(74, 62, 44, 0.55)';
+            ctx.fillRect(-s * 0.022, -s * 0.004, s * 0.044, s * 0.008);
             ctx.restore();
-            ctx.restore();
-            // The weight block at the post foot: the rest of the
-            // set, nested and waiting.
-            const wbx = postX - m * s * 0.16;
-            ctx.fillStyle = TWN_OAK_DARK;
-            ctx.fillRect(wbx - s * 0.09, baseY - s * 0.075, s * 0.18, s * 0.075);
-            ctx.fillStyle = TWN_OAK;
-            ctx.fillRect(wbx - s * 0.09, baseY - s * 0.075, s * 0.18, s * 0.022);
-            for (let k = 0; k < 3; k++) {
-              const kw = s * (0.038 - k * 0.009);
-              const kh = s * (0.052 - k * 0.013);
-              const kx = wbx - s * 0.05 + k * s * 0.05;
-              ctx.fillStyle = TWN_BRONZE;
+            // THE LEAN, with clear air off the stack: a knotted
+            // cloth bundle or a squat packet tipped on its corner.
+            const lx = p.x - m * s * 0.34;
+            if (bundle) {
+              // The bundle: a squat dome gathered to a tied topknot.
+              ctx.fillStyle = shade(wC, -4);
               ctx.beginPath();
-              ctx.moveTo(kx - kw, baseY - s * 0.075);
-              ctx.lineTo(kx - kw * 0.72, baseY - s * 0.075 - kh);
-              ctx.lineTo(kx + kw * 0.72, baseY - s * 0.075 - kh);
-              ctx.lineTo(kx + kw, baseY - s * 0.075);
+              ctx.moveTo(lx - s * 0.13, baseY);
+              ctx.quadraticCurveTo(lx - s * 0.15, baseY - s * 0.16, lx - s * 0.045, baseY - s * 0.2);
+              ctx.lineTo(lx + s * 0.045, baseY - s * 0.2);
+              ctx.quadraticCurveTo(lx + s * 0.15, baseY - s * 0.16, lx + s * 0.13, baseY);
               ctx.closePath();
               ctx.fill();
-              ctx.fillStyle = TWN_BRONZE_LIT;
-              ctx.fillRect(kx - kw * 0.72, baseY - s * 0.075 - kh, kw * 0.5, kh);
+              ctx.fillStyle = shade(wC, 10);
+              ctx.beginPath();
+              ctx.moveTo(lx - s * 0.1, baseY - s * 0.01);
+              ctx.quadraticCurveTo(lx - s * 0.12, baseY - s * 0.15, lx - s * 0.04, baseY - s * 0.185);
+              ctx.lineTo(lx - s * 0.005, baseY - s * 0.185);
+              ctx.quadraticCurveTo(lx - s * 0.045, baseY - s * 0.12, lx - s * 0.03, baseY - s * 0.01);
+              ctx.closePath();
+              ctx.fill();
+              // Gather creases rising to the knot.
+              ctx.strokeStyle = 'rgba(60, 48, 30, 0.3)';
+              ctx.lineWidth = Math.max(1, s * 0.009);
+              for (let k = -1; k <= 1; k++) {
+                ctx.beginPath();
+                ctx.moveTo(lx + k * s * 0.07, baseY - s * 0.03);
+                ctx.lineTo(lx + k * s * 0.02, baseY - s * 0.18);
+                ctx.stroke();
+              }
+              // The tied ears above the knot.
+              ctx.fillStyle = shade(wC, 6);
+              ctx.beginPath();
+              ctx.moveTo(lx - s * 0.005, baseY - s * 0.2);
+              ctx.lineTo(lx - s * 0.05, baseY - s * 0.26);
+              ctx.lineTo(lx - s * 0.012, baseY - s * 0.215);
+              ctx.closePath();
+              ctx.fill();
+              ctx.beginPath();
+              ctx.moveTo(lx + s * 0.005, baseY - s * 0.2);
+              ctx.lineTo(lx + s * 0.045, baseY - s * 0.255);
+              ctx.lineTo(lx + s * 0.014, baseY - s * 0.213);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = '#5c4a2c';
+              ctx.beginPath();
+              ctx.arc(lx, baseY - s * 0.2, s * 0.018, 0, Math.PI * 2);
+              ctx.fill();
+            } else {
+              // The packet, tipped against its own corner.
+              ctx.save();
+              ctx.translate(lx, baseY - s * 0.02);
+              ctx.rotate(-m * 0.22);
+              ctx.fillStyle = shade(wC, -2);
+              ctx.fillRect(-s * 0.115, -s * 0.16, s * 0.23, s * 0.16);
+              ctx.fillStyle = shade(wC, 14);
+              ctx.fillRect(-s * 0.115, -s * 0.16, s * 0.23, s * 0.035);
+              ctx.strokeStyle = 'rgba(88, 70, 40, 0.85)';
+              ctx.lineWidth = Math.max(1, s * 0.012);
+              ctx.beginPath();
+              ctx.moveTo(0, -s * 0.16);
+              ctx.lineTo(0, 0);
+              ctx.stroke();
+              ctx.restore();
             }
           },
         };

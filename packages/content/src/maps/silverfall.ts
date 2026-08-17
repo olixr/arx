@@ -781,7 +781,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(55, 91, Tile.WallStoneWindow);
   b.set(54, 88, Tile.Counter).set(55, 88, Tile.Counter).set(56, 88, Tile.Counter);
   b.set(53, 90, Tile.Vault); // the tithe vault
-  b.set(57, 90, Tile.HangingScale).set(57, 89, Tile.Chair); // the scales ARE scales now
+  b.set(57, 90, Tile.TiedParcels).set(57, 89, Tile.Chair); // the tithe counted, wrapped, and ledgered
   b.set(58, 86, Tile.Cabinet);
   b.setDetail(56, 86, Detail.Doormat);
   b.setDetail(58, 85, Detail.BannerCrown);
@@ -1403,7 +1403,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(70, 155, Tile.FishmongerSlab); // pool trout and blind cave-fish
   b.set(76, 155, Tile.ProduceStand).set(79, 151, Tile.ProduceStand);
   b.set(67, 158, Tile.ButcherBlock);
-  b.set(72, 158, Tile.HangingScale); // the market's honest arm
+  b.set(72, 158, Tile.TiedParcels); // sold and tied, waiting on their buyers
   b.set(65, 162, Tile.WaterCask).set(78, 159, Tile.BasketStack);
   b.set(64, 147, bannerPoleTile(6)).set(83, 147, bannerPoleTile(6)); // ochre, the market's color
   b.set(81, 162, Tile.Bench).set(64, 157, Tile.Bench);
@@ -1727,7 +1727,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(117, 146, Tile.Workbench);
   b.set(119, 148, Tile.GrainSacks).set(119, 151, Tile.GrainSacks);
   b.set(112, 152, Tile.Counter).set(113, 152, Tile.Counter); // the flour shop
-  b.set(116, 152, Tile.HangingScale);
+  b.set(116, 152, Tile.TiedParcels);
   b.set(109, 153, Tile.Crate).set(120, 154, Tile.Barrel);
   b.setDetail(114, 155, Detail.Doormat);
   b.setDetail(111, 148, Detail.Straw).setDetail(116, 149, Detail.Straw);
@@ -1743,7 +1743,7 @@ export function buildSilverfall(): ZoneDef {
   b.set(138, 151, Tile.DoorwayStone);
   b.set(136, 147, Tile.GrainSacks).set(136, 149, Tile.GrainSacks);
   b.set(140, 147, Tile.Crate).set(140, 149, Tile.Barrel);
-  b.set(132, 154, Tile.HangingScale); // the weighbridge
+  b.set(132, 154, Tile.TiedParcels); // the granary's outbound orders
   b.set(127, 154, Tile.HandCart).set(136, 154, Tile.GrainSacks);
   b.sign(124, 159, 'THE MILLWARD', ['the granaries hold', "the road's grain"], Tile.Signpost);
   // THE CRAFT COMMONS — the trades too common for the High City,

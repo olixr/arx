@@ -107,7 +107,7 @@ export function buildUndercroft(): ZoneDef {
   // The keepers' trades arrive around their stalls: the broker's
   // weighing corner, the live catch in the spring's own cold, the
   // curio dealer's honest lies laid out flat.
-  b.set(34, 30, Tile.IngotRack).set(34, 32, Tile.HangingScale); // Varga weighs true
+  b.set(34, 30, Tile.IngotRack).set(34, 32, Tile.TiedParcels); // Varga's finished orders, wrapped and ranked
   b.set(37, 24, Tile.KeepPool); // blind cave-fish, kept fresh where the spring runs
   b.set(48, 36, Tile.DisplayTable); // Ninebrass's stories, priced by size
   // And ONE broom leans where no broom should be. The market floor

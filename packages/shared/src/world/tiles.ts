@@ -768,7 +768,7 @@ export enum Tile {
   StreetPlanter = 402,
   /** A carved civic bench, worn where people actually sit. */
   StoneBench = 403,
-  /** A street grocer's tiered display under a hanging scale. */
+  /** A street grocer's tiered display, produce ranked to the street. */
   ProduceStand = 404,
   // THE TRADES KEEP SHOP — the working-trades kit (405-416,
   // docs/trade-decor-plan.md). The town kit dressed the street;
@@ -830,8 +830,6 @@ export enum Tile {
   CobblersBench = 425,
   /** The fishmonger's tilted slab, the morning catch laid out in silver rows. */
   FishmongerSlab = 426,
-  /** A merchant's beam scale on its bracket, one pan left low mid-weigh. */
-  HangingScale = 427,
   /** The merchant's runner-clothed display table, wares dealt across the top. */
   DisplayTable = 428,
   // THE COMMONS — the general shelf every town owns (see
@@ -941,6 +939,13 @@ export enum Tile {
   LogPile = 464,
   /** Great trunks stacked cut-face to the road, bodies running away north. */
   LogPileEndOn = 465,
+  // THE PACKED ORDER — commerce mid-motion, one prop for every
+  // counter in the world. The scale-on-a-post it replaces (427,
+  // RETIRED) spoke only where weighing happened; a stack of wrapped,
+  // twine-tied orders speaks beside any counter, pantry shelf, dock
+  // plank, or wagon bed — goods SOLD and waiting for their owner.
+  /** Wrapped parcels twine-tied and stacked, a paper tag on the knot. */
+  TiedParcels = 466,
 }
 
 export enum Detail {
@@ -1630,7 +1635,6 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.FletchersBench]: { name: "fletcher's bench", solid: true, color: '#75603e', raised: true, topColor: '#c05a48' },
   [Tile.CobblersBench]: { name: "cobbler's bench", solid: true, color: '#75603e', raised: true, topColor: '#8a5a36' },
   [Tile.FishmongerSlab]: { name: "fishmonger's slab", solid: true, color: '#8a857a', raised: true, topColor: '#b8c4cc' },
-  [Tile.HangingScale]: { name: 'hanging scale', solid: true, color: '#6f5a38', raised: true, topColor: '#c2a45c' },
   [Tile.DisplayTable]: { name: 'display table', solid: true, color: '#75603e', raised: true, topColor: '#c9a13c' },
   // THE COMMONS — minimap voice: the general shelf keys warm and
   // quiet (candle wax, wicker, worn stone) so the SPECIALIST kits
@@ -1679,6 +1683,7 @@ export const TILE_DEFS: Record<Tile, TileDef> = {
   [Tile.FelledLog]: { name: 'felled log', solid: true, color: '#6f4d26', raised: true, topColor: '#8a6534' },
   [Tile.LogPile]: { name: 'log pile', solid: true, color: '#6f4d26', raised: true, topColor: '#96713c' },
   [Tile.LogPileEndOn]: { name: 'end-on log pile', solid: true, color: '#6f4d26', raised: true, topColor: '#c9ab74' },
+  [Tile.TiedParcels]: { name: 'tied parcels', solid: true, color: '#a08a62', raised: true, topColor: '#c4b491' },
 };
 
 /** The four awning silhouettes, index order FOREVER (the id math). */
@@ -2354,7 +2359,6 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.FletchersBench, 0.34],
   [Tile.CobblersBench, 0.3],
   [Tile.FishmongerSlab, 0.36],
-  [Tile.HangingScale, 0.24],
   [Tile.DisplayTable, 0.38],
   // THE COMMONS: the guardian and the skiff are the shelf's two
   // true masses; the stands and posts are poles you brush past;
@@ -2400,6 +2404,8 @@ const TILE_COLLIDER_RADIUS = new Map<Tile, number>([
   [Tile.FelledLog, 0.42],
   [Tile.LogPile, 0.46],
   [Tile.LogPileEndOn, 0.4],
+  // THE PACKED ORDER: a knee-high stack you lean over, not walk through.
+  [Tile.TiedParcels, 0.3],
 ]);
 
 /** Collider radius for a centered-mass tile, or null for full-block solids. */
@@ -2684,7 +2690,7 @@ export type DestructibleKind =
   | 'fletcher'
   | 'cobbler'
   | 'fishslab'
-  | 'scales'
+  | 'parcels'
   | 'displaytable'
   // THE COMMONS: the general shelf breaks in the town's own
   // materials — snuffed wax and iron, wayside stone,
@@ -2914,7 +2920,6 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.FletchersBench, { kind: 'fletcher', respawnSec: 300, hits: 2 }],
   [Tile.CobblersBench, { kind: 'cobbler', respawnSec: 300, hits: 1 }],
   [Tile.FishmongerSlab, { kind: 'fishslab', respawnSec: 300, hits: 2 }],
-  [Tile.HangingScale, { kind: 'scales', respawnSec: 300, hits: 1 }],
   [Tile.DisplayTable, { kind: 'displaytable', respawnSec: 300, hits: 2 }],
   // THE COMMONS: street timber pops in one or two like the rest
   // of the town's; the wayside stone (shrine, guardian)
@@ -2965,6 +2970,7 @@ const DESTRUCTIBLE_INFO = new Map<Tile, DestructibleInfo>([
   [Tile.FelledLog, { kind: 'greatlog', respawnSec: 420, hits: 2 }],
   [Tile.LogPile, { kind: 'logdeck', respawnSec: 420, hits: 3 }],
   [Tile.LogPileEndOn, { kind: 'logstack', respawnSec: 420, hits: 3 }],
+  [Tile.TiedParcels, { kind: 'parcels', respawnSec: 300, hits: 1 }],
 ]);
 
 /** Every smashable prop tile. */

@@ -443,7 +443,6 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.FletchersBench, 'fletcher', 2],
     [Tile.CobblersBench, 'cobbler', 1],
     [Tile.FishmongerSlab, 'fishslab', 2],
-    [Tile.HangingScale, 'scales', 1],
     [Tile.DisplayTable, 'displaytable', 2],
     // THE COMMONS: street timber 1-2 like the town's; the wayside
     // stone holds three-and-four on the long clock; the clinker
@@ -485,6 +484,8 @@ test('the smashable props carry a break-up kind, respawn law, and durability', (
     [Tile.FelledLog, 'greatlog', 2],
     [Tile.LogPile, 'logdeck', 3],
     [Tile.LogPileEndOn, 'logstack', 3],
+    // THE PACKED ORDER: soft goods come apart in one pull.
+    [Tile.TiedParcels, 'parcels', 1],
   ];
   assert.equal(DESTRUCTIBLE_TILES.size, expect.length);
   for (const [tile, kind, hits] of expect) {

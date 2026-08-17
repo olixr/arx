@@ -1230,7 +1230,7 @@ export function buildPinewatch(): ZoneDef {
   // The stores: Nial's two-of-everything made visible.
   b.set(42, 68, Tile.ShopShelf);
   b.set(46, 68, Tile.DisplayTable);
-  b.set(44, 67, Tile.HangingScale);
+  b.set(44, 67, Tile.TiedParcels);
   b.set(50, 67, Tile.GlazedJars); // Maren's salve, jarred and glazed
   b.set(43, 72, Tile.BasketStack);
   // The Charterhouse: two ledgers, one roof, and light that behaves.
@@ -1238,7 +1238,7 @@ export function buildPinewatch(): ZoneDef {
   b.set(86, 43, Tile.ScribesDesk); // the Charter's hand, taught at the ford
   b.set(89, 35, Tile.CandleRack);
   // The wain bays weigh what they claim to weigh.
-  b.set(92, 55, Tile.HangingScale);
+  b.set(92, 55, Tile.TiedParcels);
   b.set(98, 55, Tile.GrainSacks);
   // The Pine and Bell earns its warm room.
   b.set(79, 71, Tile.GameTable);

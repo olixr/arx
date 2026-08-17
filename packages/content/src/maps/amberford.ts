@@ -629,7 +629,7 @@ export function buildAmberford(): ZoneDef {
   for (let x = 47; x <= 55; x++) b.set(x, 62, Tile.WallWood);
   b.set(51, 62, Tile.DoorwayWood);
   for (let x = 48; x <= 52; x++) b.set(x, 60, Tile.Counter);
-  b.set(47, 58, Tile.HangingScale); // weighed honest beside the pantry stacks — the aisle round the counter stays open
+  b.set(47, 58, Tile.TiedParcels); // orders wrapped and waiting beside the pantry stacks — the aisle round the counter stays open
   b.set(47, 59, Tile.CrateGoods).set(54, 59, Tile.CrateGoods); // the pantry stacks
   b.set(55, 59, Tile.GlazedJars); // preserves — last mile's plums in this mile's jars
   b.set(55, 61, Tile.ShopShelf);
@@ -1048,7 +1048,7 @@ export function buildAmberford(): ZoneDef {
   // trade deserves, the catch weighed in the open, baskets landing
   // straight off the planks.
   b.set(76, 110, Tile.FishmongerSlab); // the morning's catch on wet straw
-  b.set(74, 110, Tile.HangingScale); // weighed while the buyer watches the river it came from
+  b.set(74, 110, Tile.TiedParcels); // the catch wrapped for the walk home, river-side
   b.set(78, 111, Tile.BasketStack); // baskets up from the jetty, one lid tipped
   b.set(82, 111, Tile.Campfire); // THE CATCH FIRE — the shore's own coals
   b.set(80, 110, Tile.Bench).set(84, 112, Tile.Bench);
