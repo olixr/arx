@@ -1826,7 +1826,7 @@ body:not(.no-ui-motion) .seat-plaque .plaque-well {
 
 .wing-callings #arts-loadout {
   display: grid;
-  grid-template-columns: 17rem minmax(0, 1fr) 19rem;
+  grid-template-columns: 16rem minmax(0, 1fr) 22rem;
   gap: 1.5rem;
   align-items: start;
 }
@@ -1928,32 +1928,130 @@ body:not(.no-ui-motion) .seat-plaque .plaque-well {
   line-height: 1;
 }
 
+/* THE SUM as instruments: each total a GAUGE — the family's glyph,
+   a serif numeral, the word in a whisper under it. Never a chip of
+   jumbled text. */
 .sum-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3125rem;
+  align-items: flex-start;
+  column-gap: 1.125rem;
+  row-gap: 0.5rem;
 }
 
-.sum-chip {
-  font-size: 0.84375rem;
+.sum-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+}
+
+.sum-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.0625rem;
+}
+
+.sum-num {
+  font-family: var(--serif);
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--gold-bright);
+  text-shadow: var(--punch);
+}
+
+.sum-word {
+  font-size: 0.6875rem;
   font-weight: 800;
-  letter-spacing: 0.025rem;
-  padding: 0.15625rem 0.5625rem 0.1875rem;
-  color: var(--parchment);
-  background: var(--raise);
+  letter-spacing: 0.05rem;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--parchment-dim);
   text-shadow: var(--punch-small);
-  clip-path: polygon(
-    0.3125rem 0,
-    calc(100% - 0.3125rem) 0,
-    100% 50%,
-    calc(100% - 0.3125rem) 100%,
-    0.3125rem 100%,
-    0 50%
-  );
-  box-shadow: inset 0 -0.125rem 0 rgba(10, 7, 3, 0.35);
+  white-space: nowrap;
 }
 
-.sum-chip.dim {
-  color: var(--parchment-dim);
-  font-style: italic;
+/* The gauge glyphs: the verse family's shapes, grown to gauge size,
+   each in its channel's own material. */
+.sum-glyph {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  transform: rotate(45deg);
+  box-shadow:
+    inset 0 0 0 var(--hairline) var(--ink-line),
+    0.125rem 0.125rem 0 rgba(12, 8, 4, 0.4);
+}
+
+.sum-glyph.armor,
+.sum-glyph.gear {
+  background: linear-gradient(135deg, #b8c2cc, #6f7b87);
+}
+
+.sum-glyph.health {
+  background: linear-gradient(135deg, #e88a7a, #a83c2e);
+}
+
+.sum-glyph.mending {
+  background: linear-gradient(135deg, #a8d080, #5a8a3a);
+  border-radius: 50% 0 50% 50%;
+}
+
+.sum-glyph.speed {
+  background: linear-gradient(135deg, #a8d8e8, #4a8aaa);
+}
+
+.sum-glyph.crit {
+  background: linear-gradient(135deg, #ffe9a8, #d9a441);
+}
+
+.sum-glyph.arts {
+  background: linear-gradient(135deg, #c8b4ee, #7a5fae);
+}
+
+.sum-glyph.thorns {
+  background: linear-gradient(135deg, #c8a06a, #8a5a2a);
+}
+
+.sum-glyph.skill {
+  background: linear-gradient(135deg, #e8c884, #a87a34);
+}
+
+.sum-glyph.edge {
+  background: linear-gradient(135deg, #d8e0e8, #8a96a4);
+  width: 0.875rem;
+  height: 1.25rem;
+  transform: rotate(45deg) skewY(-12deg);
+}
+
+.sum-glyph.proc {
+  background: linear-gradient(135deg, #ffd27a, #d9642c);
+  border-radius: 50%;
+  transform: none;
+  box-shadow:
+    inset 0 0 0 var(--hairline) var(--ink-line),
+    0 0 0.375rem rgba(217, 100, 44, 0.5);
+}
+
+.sum-glyph.when {
+  background: linear-gradient(135deg, #a8c8e8, #4a6a9a);
+  border-radius: 50% 0 50% 50%;
+}
+
+.sum-glyph.trade {
+  background: linear-gradient(135deg, #a8d080, #5a8a3a);
+}
+
+.sum-glyph.knack {
+  background: linear-gradient(135deg, #e8c884, #a87a34);
+  border-radius: 50%;
+  transform: none;
+}
+
+.sum-glyph.art {
+  background: linear-gradient(135deg, #ffe9a8, #d9a441);
+  box-shadow:
+    inset 0 0 0 var(--hairline) var(--ink-line),
+    0 0 0.5rem rgba(217, 164, 65, 0.65);
 }

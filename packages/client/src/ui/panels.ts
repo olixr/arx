@@ -2991,18 +2991,31 @@ export class Panels {
     stitle.textContent = 'The Sum';
     const chips = document.createElement('div');
     chips.className = 'sum-chips';
-    const lines = this.answeredSums(answeredDefs);
-    if (lines.length === 0) {
+    const gauges = this.answeredSums(answeredDefs);
+    if (gauges.length === 0) {
       const c = document.createElement('span');
-      c.className = 'sum-chip dim';
-      c.textContent = 'No sums yet';
+      c.className = 'life-empty';
+      c.textContent = 'Answer a Calling and its gifts total here.';
       chips.appendChild(c);
     }
-    for (const line of lines) {
-      const c = document.createElement('span');
-      c.className = 'sum-chip';
-      c.textContent = line;
-      chips.appendChild(c);
+    for (const g of gauges) {
+      const cell = document.createElement('span');
+      cell.className = 'sum-cell';
+      cell.dataset.tipname = 'The Sum';
+      cell.dataset.tipsub = `${g.num} ${g.word}, across every answered Calling.`;
+      const glyph = document.createElement('span');
+      glyph.className = `sum-glyph ${g.kind}`;
+      const col = document.createElement('span');
+      col.className = 'sum-col';
+      const num = document.createElement('span');
+      num.className = 'sum-num';
+      num.textContent = g.num;
+      const word = document.createElement('span');
+      word.className = 'sum-word';
+      word.textContent = g.word;
+      col.append(num, word);
+      cell.append(glyph, col);
+      chips.appendChild(cell);
     }
     sum.append(stitle, chips);
 
@@ -3012,9 +3025,10 @@ export class Panels {
   /**
    * The always-on aggregates of the answered set summed honestly, and
    * its verbs counted — conditional edges are never folded into flat
-   * sums (a vsState clause is a clause, not armor).
+   * sums (a vsState clause is a clause, not armor). Each total is a
+   * GAUGE: the glyph of its family, the numeral, the word.
    */
-  private answeredSums(defs: CallingDef[]): string[] {
+  private answeredSums(defs: CallingDef[]): Array<{ kind: string; num: string; word: string }> {
     const flat = { armor: 0, maxHp: 0, regen: 0, speed: 0, crit: 0, cooldown: 0, thorns: 0, skill: 0 };
     let procs = 0;
     let whens = 0;
@@ -3064,22 +3078,22 @@ export class Panels {
         }
       }
     }
-    const out: string[] = [];
-    if (flat.armor) out.push(`+${flat.armor} armor`);
-    if (flat.maxHp) out.push(`+${flat.maxHp} health`);
-    if (flat.regen) out.push(`+${flat.regen} mending`);
-    if (flat.speed) out.push(`+${flat.speed}% speed`);
-    if (flat.crit) out.push(`+${flat.crit}% crit`);
-    if (flat.cooldown) out.push(`arts ${flat.cooldown}% sooner`);
-    if (flat.thorns) out.push(`+${flat.thorns} thorns`);
-    if (flat.skill) out.push(`+${flat.skill} skill`);
-    if (edges) out.push(`${edges} edge${edges === 1 ? '' : 's'}`);
-    if (procs) out.push(`${procs} working${procs === 1 ? '' : 's'}`);
-    if (whens) out.push(`${whens} clause${whens === 1 ? '' : 's'}`);
-    if (trades) out.push(`${trades} trade gift${trades === 1 ? '' : 's'}`);
-    if (pieces) out.push(`${pieces} worn gift${pieces === 1 ? '' : 's'}`);
-    if (knacks) out.push(`${knacks} knack${knacks === 1 ? '' : 's'}`);
-    if (arts) out.push(`${arts} licensed art${arts === 1 ? '' : 's'}`);
+    const out: Array<{ kind: string; num: string; word: string }> = [];
+    if (flat.armor) out.push({ kind: 'armor', num: `+${flat.armor}`, word: 'armor' });
+    if (flat.maxHp) out.push({ kind: 'health', num: `+${flat.maxHp}`, word: 'health' });
+    if (flat.regen) out.push({ kind: 'mending', num: `+${flat.regen}`, word: 'mending' });
+    if (flat.speed) out.push({ kind: 'speed', num: `+${flat.speed}%`, word: 'speed' });
+    if (flat.crit) out.push({ kind: 'crit', num: `+${flat.crit}%`, word: 'crit' });
+    if (flat.cooldown) out.push({ kind: 'arts', num: `${flat.cooldown}%`, word: 'arts sooner' });
+    if (flat.thorns) out.push({ kind: 'thorns', num: `+${flat.thorns}`, word: 'thorns' });
+    if (flat.skill) out.push({ kind: 'skill', num: `+${flat.skill}`, word: 'skill' });
+    if (edges) out.push({ kind: 'edge', num: String(edges), word: edges === 1 ? 'edge' : 'edges' });
+    if (procs) out.push({ kind: 'proc', num: String(procs), word: procs === 1 ? 'working' : 'workings' });
+    if (whens) out.push({ kind: 'when', num: String(whens), word: whens === 1 ? 'clause' : 'clauses' });
+    if (trades) out.push({ kind: 'trade', num: String(trades), word: trades === 1 ? 'trade gift' : 'trade gifts' });
+    if (pieces) out.push({ kind: 'gear', num: String(pieces), word: pieces === 1 ? 'worn gift' : 'worn gifts' });
+    if (knacks) out.push({ kind: 'knack', num: String(knacks), word: knacks === 1 ? 'knack' : 'knacks' });
+    if (arts) out.push({ kind: 'art', num: String(arts), word: arts === 1 ? 'licensed art' : 'licensed arts' });
     return out;
   }
 
