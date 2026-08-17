@@ -265,6 +265,7 @@ import {
   callingsFor,
   foldEffect,
   isAggregateCallingEffect,
+  PERK_FOLD,
   tileForStage,
   type BuildableDef,
   type CropDef,
@@ -19724,41 +19725,54 @@ export class GameServer {
     for (const id of player.callings) {
       const def = callingDef(id);
       if (!def) continue;
-      const fx = def.effect;
-      switch (fx.kind) {
-        case 'gear':
-          if (isAggregateCallingEffect(fx)) foldEffect(player.gear, fx.effect);
-          break;
-        case 'perPiece': {
-          const count = player.gear.classCounts[fx.armorClass] ?? 0;
-          if (fx.speedPct) player.gear.speedMult *= 1 + (fx.speedPct * count) / 100;
-          if (fx.maxHp) player.gear.maxHp += fx.maxHp * count;
-          break;
-        }
-        case 'perk':
-          switch (fx.perk) {
-            case 'offhandDelayTicks':
-              perks.offhandDelayTicks = Math.min(perks.offhandDelayTicks, fx.magnitude);
-              break;
-            case 'drawMoveFactor':
-              perks.drawMoveFactor = Math.max(perks.drawMoveFactor, fx.magnitude);
-              break;
-            default:
-              perks[fx.perk] = fx.magnitude;
+      // THE CALLING IS A PACKAGE (callings-v2 Phase 1): every entry
+      // folds. The reserved lanes (proc / when / art) are typed but
+      // unread until their phases open the doors — the default arm
+      // holds their seats.
+      for (const fx of def.effects) {
+        switch (fx.kind) {
+          case 'gear':
+            if (isAggregateCallingEffect(fx)) foldEffect(player.gear, fx.effect);
+            break;
+          case 'perPiece': {
+            const count = player.gear.classCounts[fx.armorClass] ?? 0;
+            if (fx.speedPct) player.gear.speedMult *= 1 + (fx.speedPct * count) / 100;
+            if (fx.maxHp) player.gear.maxHp += fx.maxHp * count;
+            break;
           }
-          break;
-        case 'doubleGather':
-          perks.doubleGather[fx.skill] = Math.max(perks.doubleGather[fx.skill] ?? 0, fx.chance);
-          break;
-        case 'gatherSpeed':
-          perks.gatherSpeed[fx.skill] = Math.max(perks.gatherSpeed[fx.skill] ?? 1, fx.mult);
-          break;
-        case 'materialSave':
-          perks.materialSave[fx.skill] = Math.max(perks.materialSave[fx.skill] ?? 0, fx.chance);
-          break;
-        case 'craftSpeed':
-          perks.craftSpeed[fx.skill] = Math.min(perks.craftSpeed[fx.skill] ?? 1, fx.mult);
-          break;
+          case 'perk':
+            // EVERY FOLD IS DECLARED: two answered hands on one dial
+            // compose by the dial's own law, never clobber.
+            switch (PERK_FOLD[fx.perk]) {
+              case 'min':
+                perks[fx.perk] = Math.min(perks[fx.perk], fx.magnitude);
+                break;
+              case 'max':
+                perks[fx.perk] = Math.max(perks[fx.perk], fx.magnitude);
+                break;
+              case 'sum':
+                perks[fx.perk] += fx.magnitude;
+                break;
+              case 'mult':
+                perks[fx.perk] *= fx.magnitude;
+                break;
+            }
+            break;
+          case 'doubleGather':
+            perks.doubleGather[fx.skill] = Math.max(perks.doubleGather[fx.skill] ?? 0, fx.chance);
+            break;
+          case 'gatherSpeed':
+            perks.gatherSpeed[fx.skill] = Math.max(perks.gatherSpeed[fx.skill] ?? 1, fx.mult);
+            break;
+          case 'materialSave':
+            perks.materialSave[fx.skill] = Math.max(perks.materialSave[fx.skill] ?? 0, fx.chance);
+            break;
+          case 'craftSpeed':
+            perks.craftSpeed[fx.skill] = Math.min(perks.craftSpeed[fx.skill] ?? 1, fx.mult);
+            break;
+          default:
+            break;
+        }
       }
     }
     player.perks = perks;

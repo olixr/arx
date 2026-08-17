@@ -1,6 +1,38 @@
 # THE ANSWERED LIFE — Callings v2, the class system's constitution
 
-Status: PROPOSED (awaiting green-light). Author: design review 2026-08-17.
+Status: **GREEN-LIT 2026-08-17** ("Proceed with Phase 1"). Author:
+design review 2026-08-17.
+
+## The green-light record (answers taken 2026-08-17)
+
+1. **Epic green-lit; Phase 1 proceeds.**
+2. **Budget curve: quartile milestones** — `2 + 1 per skill at
+   25/50/75/99`, max 102 (the recommendation, taken).
+3. **COST RISES WITH RANK (user's call, overriding the rank-flat
+   recommendation).** Read with the brief's own words ("you being
+   able to APPLY those higher ranked callings"), the law becomes
+   **RANK IS A CHOICE YOU AFFORD**: rank ENTITLEMENT still derives
+   free from BASE surplus by the honed clocks (law 3's spirit
+   stands — depth is never bought with anything but levels), but the
+   APPLIED rank of an answered calling is chosen, capped by the
+   entitlement, and priced: `cost = bandCost + (appliedRank − 1)`
+   (starting number; the Phase 4 ledger tunes it). Consequences,
+   priced deliberately in Phase 4: applied rank is player state —
+   `character_callings` gains a `rank` column (migration 42, DEFAULT
+   1) and the calling messages gain ADDITIVE fields (`C2SCalling
+   .rank?`, `S2CCallings.ranks?: Record<id, rank>`) — legal at v34
+   under the DELIBERATE PAIR additive-JSON precedent, so THE QUIET
+   WIRE bends (one migration, zero protocol bump) rather than
+   breaks. Ranking up never silently overdrafts: the held cost only
+   moves when the PLAYER re-answers deeper. A rank-up ceremony now
+   offers a decision, not just a note.
+4. **Pure platform, ZERO content this epoch (user's call, overriding
+   the proving-set recommendation).** Phase 6 loses its exemplars:
+   the proving is the ledger's contract tests plus `/calling`
+   dev-lever walks on the live rig. Every new lane still ships
+   engine-complete and law-pinned; the content epoch authors the
+   first real packages (the master smith and the synergy pair move
+   there, as its opening bench).
 Scope: the CORE PLATFORM epoch — schema, engines, ladder, economy, codex.
 The full content wave (10 seats × 25 skills authored) is the FOLLOW-ON
 epoch, taken deliberately after this platform proves.

@@ -1,30 +1,56 @@
 /**
- * THE CALLING LAW — chosen, toggleable skill passives.
+ * THE ANSWERED LIFE — the book of Callings (callings-v2-plan.md).
  *
- * Every skill carries two Callings: one at level 20 (the skill stops
- * being a dabble) and one at 60 (the skill becomes a calling). They
- * unlock by BASE level, and answering one is a free toggle any time —
- * the constraint is never friction, it is THE FOCUS LAW's budget
- * (shared/skills.ts): answered focusCost must fit the milestone-grown
- * Focus. Worn-gear passives remain the gear axis; Callings are the
- * character axis. Both feed the same server hook sites.
+ * A Calling is the character axis of the build: answered under THE
+ * FOCUS LAW's budget (shared/skills.ts), free to toggle any time,
+ * unlocked by BASE level up its skill's ladder. What you hold
+ * answered under a budget that cannot hold everything IS your class.
  *
- * Effects come in six shapes, each with ONE resolution law:
+ * THE CALLING IS A PACKAGE: `effects` is a list, one to several
+ * licensed shapes per Calling. ONE GRAMMAR binds every shape — a
+ * Calling speaks the same vocabulary the equipment axis speaks
+ * (EnchantEffect aggregates, the proc grammar, the buff forge's
+ * folds, the status book's pages) plus the one-site perk dials:
  *  - gear:        an EnchantEffect aggregate folded into GearStats by
  *                 the same foldEffect law enchants use (recomputeGear).
  *  - perPiece:    an aggregate scaled by worn armor-class piece count,
  *                 applied after the gear fold reads classCounts.
  *  - perk:        a named dial read at exactly one server hook site —
- *                 the PERK_DIALS registry below documents each site.
- *  - doubleGather / materialSave / craftSpeed: trade dials keyed by
- *                 skill, read at the gather/craft sites.
+ *                 the PERK_DIALS registry below documents each site,
+ *                 and PERK_FOLD declares each dial's composition law.
+ *  - doubleGather / gatherSpeed / materialSave / craftSpeed: trade
+ *                 dials keyed by skill, read at the gather/craft
+ *                 sites — self-keyed by law (the trade's own thrift
+ *                 points at its own trade).
+ *  - proc:        the waking hand — trigger x action x icd through
+ *                 the fighter's one meter map (Phase 2 opens the
+ *                 door; TYPED-UNREAD until then, test-pinned).
+ *  - when:        the when clause — a conditional grant riding the
+ *                 buff forge (Phase 3 opens the door; TYPED-UNREAD).
+ *  - art:         the master's license — RESERVED for the content
+ *                 epoch (the master smith's brief lives here).
  *
- * Never fold a strike-kind enchant effect into a Calling (the
- * aggregate/strike split is test-locked in equipment.test.ts).
+ * RANK IS DEPTH; THE APPLIED RANK IS A CHOICE YOU AFFORD: rank
+ * entitlement I-IV derives from BASE surplus over the seat by the
+ * honed-art clocks (never stored, never bought); the rank a player
+ * ANSWERS at is chosen up to that entitlement and priced by the
+ * focus law (Phase 4 wires the choice; until then everything answers
+ * at rank I). A rank step REPLACES the package whole and speaks its
+ * note at the ceremony — the absolute-override law honedAbility
+ * taught.
+ *
+ * THEME IS THE ROOT, NOT THE FENCE: a Calling belongs to its skill
+ * by story, seat, and ceremony — its benefits may land anywhere
+ * (the smith's calling may sharpen her sword arm). Only the trade
+ * dials stay self-keyed.
+ *
+ * Never fold a strike-kind enchant effect into a Calling's gear
+ * entry (the aggregate/strike split is test-locked in
+ * callings.test.ts; strike identity belongs to a landed weapon).
  */
-import type { SkillId } from '@arx/shared';
+import { TECHNIQUE_MAX_RANK, techniqueRank, type SkillId, type StatusId } from '@arx/shared';
 import type { ArmorClass } from './equipment/types.js';
-import { STRIKE_EFFECT_KINDS, type EnchantEffect } from './equipment/enchants.js';
+import { STRIKE_EFFECT_KINDS, type EnchantEffect, type ProcEffect } from './equipment/enchants.js';
 
 /**
  * One-site dials. Each entry names the single server hook that reads
@@ -66,6 +92,93 @@ export type PerkId =
   | 'brushRestMult' //       interactLivestock: brush window cooldown × mult
   | 'larderSellMult'; //     larderPay: premium price × mult
 
+/**
+ * EVERY FOLD IS DECLARED (callings-v2 law 8): how two answered hands
+ * on the SAME dial compose. Before this table the perk fold was
+ * last-write-wins — survivable at two seats per skill, silent
+ * clobber at ten. The law follows the dial's units: multipliers
+ * multiply (defaults 1), adders sum (defaults 0), floors take max,
+ * tighteners take min. With no two shipped Callings sharing a dial,
+ * every fold below reads byte-identical to the old write.
+ */
+export type PerkFoldLaw = 'sum' | 'mult' | 'max' | 'min';
+
+export const PERK_FOLD: Readonly<Record<PerkId, PerkFoldLaw>> = {
+  foodHealMult: 'mult',
+  foodBuffDurMult: 'mult',
+  tonicBuffDurMult: 'mult',
+  finisherBonusMult: 'mult',
+  stillArmor: 'sum',
+  shieldMult: 'mult',
+  snapShotMult: 'mult',
+  drawMoveFactor: 'max', //   a floor: the highest floor wins
+  sneakFactorBonus: 'sum',
+  backstabBonus: 'sum',
+  offhandDelayTicks: 'min', // a tightening: the tightest echo wins
+  offhandFactorBonus: 'sum',
+  undergroundGatherMult: 'mult',
+  nightGatherMult: 'mult',
+  burnChanceMult: 'mult',
+  dotResistMult: 'mult',
+  seedRefundChance: 'sum',
+  doubleHarvestChance: 'sum',
+  doubleProduceChance: 'sum',
+  produceRestMult: 'mult',
+  buildSpeedMult: 'mult',
+  shieldArm: 'sum',
+  shieldThorns: 'sum',
+  greatReach: 'sum',
+  greatExecute: 'sum',
+  poleReach: 'sum',
+  warGripBonus: 'sum',
+  marchArmor: 'sum',
+  warSchooling: 'sum',
+  inscribeQuality: 'sum',
+  compostDiscount: 'sum',
+  brushRestMult: 'mult',
+  larderSellMult: 'mult',
+};
+
+/**
+ * THE WHEN CLAUSE's vocabulary — when a conditional grant is live.
+ * Evaluated by the engine each tick at ONE site; edges grant/expire
+ * an id-keyed calling-channel buff so the numbers ride THE BUFF
+ * FORGE's declared folds (Phase 3 opens the door). hpBelow/hpAbove
+ * carry the Second Wind hysteresis at the engine — a bouncing bar
+ * cannot strobe a grant.
+ */
+export type CallingCondition =
+  | { when: 'hpBelow'; frac: number } //  the desperation lane
+  | { when: 'hpAbove'; frac: number } //  the confidence lane
+  | { when: 'still' } //                  the planted stance (stillTicks)
+  | { when: 'moving' } //                 the march
+  | { when: 'shieldRaised' } //           the wall
+  | { when: 'underground' } //            the deep
+  | { when: 'night' } //                  dusk to sunrise
+  | { when: 'stateRiding'; status: StatusId } // a page rides YOUR body
+  | { when: 'wellFed' }; //               a food-channel buff is live
+
+/**
+ * What a live condition grants: the BuffLike face, folded by the
+ * forge's table like every other buff in the game. `quiet` grants
+ * live chipless (the momentum idiom); everything else shows its
+ * chip with THE HONEST RING while the condition holds.
+ */
+export interface CallingGrant {
+  /** The chip's honest name. */
+  name: string;
+  armor?: number;
+  speedMult?: number;
+  attackSpeedMult?: number;
+  critPct?: number;
+  dmgMult?: number;
+  regenPer4s?: number;
+  reflectFrac?: number;
+  meleeLifesteal?: number;
+  gatherSpeed?: number;
+  quiet?: boolean;
+}
+
 export type CallingEffect =
   | { kind: 'gear'; effect: EnchantEffect }
   | { kind: 'perPiece'; armorClass: ArmorClass; speedPct?: number; maxHp?: number }
@@ -73,20 +186,84 @@ export type CallingEffect =
   | { kind: 'doubleGather'; skill: SkillId; chance: number }
   | { kind: 'gatherSpeed'; skill: SkillId; mult: number }
   | { kind: 'materialSave'; skill: SkillId; chance: number }
-  | { kind: 'craftSpeed'; skill: SkillId; mult: number };
+  | { kind: 'craftSpeed'; skill: SkillId; mult: number }
+  /**
+   * THE WAKING HAND (Phase 2 opens the door): the full proc grammar,
+   * body-side. Strike-family triggers (hit/crit/cadence/hitState)
+   * are LEGAL here — a Calling's edge is the hand itself, so they
+   * resolve at the strike fall-through and THE METER IS THE
+   * FIGHTER'S by construction. TYPED-UNREAD until Phase 2,
+   * test-pinned.
+   */
+  | { kind: 'proc'; proc: ProcEffect }
+  /** THE WHEN CLAUSE (Phase 3 opens the door). TYPED-UNREAD. */
+  | { kind: 'when'; cond: CallingCondition; grant: CallingGrant }
+  /**
+   * THE MASTER'S LICENSE — while answered, one art is licensed to
+   * the codex and the cast door. RESERVED for the content epoch; no
+   * core-phase author, test-pinned.
+   */
+  | { kind: 'art'; ability: string };
+
+/**
+ * A rank step REPLACES the package whole (the absolute-override law
+ * honedAbility taught — merge semantics on arrays are where bugs
+ * live) and speaks its `note` at the ceremony, ≤90 chars.
+ */
+export interface CallingRankStep {
+  note: string;
+  effects: readonly CallingEffect[];
+}
+
+/** Rank I plus one step each for II, III, IV — the honed-art shape. */
+export type CallingRanks = readonly [CallingRankStep, CallingRankStep, CallingRankStep];
 
 export interface CallingDef {
   id: string;
   skill: SkillId;
-  /** BASE-level unlock — 20 (journeyman) or 60 (the calling proper). */
+  /** BASE-level seat on the skill's ladder. */
   unlockLevel: number;
-  /** Focus this Calling holds while answered (1 minor, 2 major). */
+  /**
+   * Focus this Calling holds while answered AT RANK I. The applied
+   * rank surcharges it (+1 per rank past I — Phase 4 wires the
+   * choice and its ledger).
+   */
   focusCost: number;
   name: string;
   /** One line for the codex — what answering it means. */
   desc: string;
   color: string;
-  effect: CallingEffect;
+  /** The rank-I package. */
+  effects: readonly CallingEffect[];
+  /** The deepened packages (II, III, IV). Absent = the package holds. */
+  ranks?: CallingRanks;
+}
+
+// ------------------------------------------------ the honed clocks
+
+/** Callings climb the honed-art ladder: I-IV, the same clocks. */
+export const CALLING_MAX_RANK = TECHNIQUE_MAX_RANK;
+
+/**
+ * RANK IS DEPTH, NEVER A PURCHASE: the rank ENTITLEMENT this base
+ * level has earned at this seat — 0 below the seat, I at it, then
+ * the honed-art surplus clocks verbatim (RANK_SURPLUS strides, THE
+ * SHORTENED CLIMB past 54). What rank a player ANSWERS at is their
+ * choice up to this, priced by the focus law (Phase 4).
+ */
+export function callingRank(def: CallingDef, baseLevel: number): number {
+  return techniqueRank(def.unlockLevel, baseLevel);
+}
+
+/**
+ * The package at an applied rank: rank I (or an unranked def) is the
+ * base package; each step past I replaces it whole. Ranks past the
+ * authored steps hold the deepest step (the honedAbility clamp).
+ */
+export function honedCalling(def: CallingDef, rank: number): readonly CallingEffect[] {
+  if (!def.ranks || rank <= 1) return def.effects;
+  const step = Math.min(rank - 1, def.ranks.length);
+  return def.ranks[step - 1]!.effects;
 }
 
 const defs: CallingDef[] = [
@@ -99,7 +276,7 @@ const defs: CallingDef[] = [
     name: 'Hearty Meals',
     desc: 'Every meal goes further. Food heals a quarter more.',
     color: '#d98a5a',
-    effect: { kind: 'perk', perk: 'foodHealMult', magnitude: 1.25 },
+    effects: [{ kind: 'perk', perk: 'foodHealMult', magnitude: 1.25 }],
   },
   {
     id: 'ironblood',
@@ -109,7 +286,7 @@ const defs: CallingDef[] = [
     name: 'Ironblood',
     desc: 'Your wounds close on their own schedule. Steady regeneration.',
     color: '#c4372a',
-    effect: { kind: 'gear', effect: { kind: 'regen', amount: 1 } },
+    effects: [{ kind: 'gear', effect: { kind: 'regen', amount: 1 } }],
   },
   // -------------------------------------------------------------- combat
   {
@@ -120,7 +297,7 @@ const defs: CallingDef[] = [
     name: 'War Footing',
     desc: 'A soldier is hardest to hurt mid stride. Armor while you move.',
     color: '#b0623c',
-    effect: { kind: 'perk', perk: 'marchArmor', magnitude: 4 },
+    effects: [{ kind: 'perk', perk: 'marchArmor', magnitude: 4 }],
   },
   {
     id: 'old_campaigner',
@@ -130,7 +307,7 @@ const defs: CallingDef[] = [
     name: 'Old Campaigner',
     desc: 'Every road taught you something. All five weapon schools fight two levels higher.',
     color: '#8f7a4a',
-    effect: { kind: 'perk', perk: 'warSchooling', magnitude: 2 },
+    effects: [{ kind: 'perk', perk: 'warSchooling', magnitude: 2 }],
   },
   // ------------------------------------------------------------- onehand
   {
@@ -141,7 +318,7 @@ const defs: CallingDef[] = [
     name: 'Follow-Through',
     desc: 'The third blow carries the first two. Finishers hit a tenth harder.',
     color: '#d9a05a',
-    effect: { kind: 'perk', perk: 'finisherBonusMult', magnitude: 1.1 },
+    effects: [{ kind: 'perk', perk: 'finisherBonusMult', magnitude: 1.1 }],
   },
   {
     id: 'warpath',
@@ -151,7 +328,7 @@ const defs: CallingDef[] = [
     name: 'Warpath',
     desc: 'Every kill feeds the next. Abilities recover on each fallen foe.',
     color: '#b8433a',
-    effect: { kind: 'gear', effect: { kind: 'onKillHaste', ticks: 10 } },
+    effects: [{ kind: 'gear', effect: { kind: 'onKillHaste', ticks: 10 } }],
   },
   // ------------------------------------------------------------- defence
   {
@@ -162,7 +339,7 @@ const defs: CallingDef[] = [
     name: 'Bulwark',
     desc: 'Hold your ground and the ground holds you. Armor while standing firm.',
     color: '#8a94a4',
-    effect: { kind: 'perk', perk: 'stillArmor', magnitude: 6 },
+    effects: [{ kind: 'perk', perk: 'stillArmor', magnitude: 6 }],
   },
   {
     id: 'stonewall',
@@ -172,7 +349,7 @@ const defs: CallingDef[] = [
     name: 'Stonewall',
     desc: 'Every shield you raise is a quarter thicker.',
     color: '#6a7484',
-    effect: { kind: 'perk', perk: 'shieldMult', magnitude: 1.25 },
+    effects: [{ kind: 'perk', perk: 'shieldMult', magnitude: 1.25 }],
   },
   // ------------------------------------------------------------- archery
   {
@@ -183,7 +360,7 @@ const defs: CallingDef[] = [
     name: "Fletcher's Eye",
     desc: 'Snap shots stop being apologies. Quick arrows bite harder.',
     color: '#8a9a5a',
-    effect: { kind: 'perk', perk: 'snapShotMult', magnitude: 1.15 },
+    effects: [{ kind: 'perk', perk: 'snapShotMult', magnitude: 1.15 }],
   },
   {
     id: 'longstride',
@@ -193,7 +370,7 @@ const defs: CallingDef[] = [
     name: 'Longstride',
     desc: 'The full draw no longer roots you. Walk your aim.',
     color: '#6b8a5a',
-    effect: { kind: 'perk', perk: 'drawMoveFactor', magnitude: 0.7 },
+    effects: [{ kind: 'perk', perk: 'drawMoveFactor', magnitude: 0.7 }],
   },
   // ----------------------------------------------------------------- arx
   {
@@ -204,7 +381,7 @@ const defs: CallingDef[] = [
     name: 'Kindled Mind',
     desc: 'The words come back to you sooner. Ability cooldowns shorten.',
     color: '#b49af0',
-    effect: { kind: 'gear', effect: { kind: 'cooldown', pct: 5 } },
+    effects: [{ kind: 'gear', effect: { kind: 'cooldown', pct: 5 } }],
   },
   {
     id: 'attuned',
@@ -214,7 +391,7 @@ const defs: CallingDef[] = [
     name: 'Attuned',
     desc: 'The current runs closer to the skin. Arx strikes harder.',
     color: '#8a6ac8',
-    effect: { kind: 'gear', effect: { kind: 'styleDmg', style: 'arx', pct: 6 } },
+    effects: [{ kind: 'gear', effect: { kind: 'styleDmg', style: 'arx', pct: 6 } }],
   },
   // --------------------------------------------------------------- sneak
   {
@@ -225,7 +402,7 @@ const defs: CallingDef[] = [
     name: 'Soft Step',
     desc: 'The floor forgets you faster. Harder to notice, sooner unseen.',
     color: '#8a7fae',
-    effect: { kind: 'perk', perk: 'sneakFactorBonus', magnitude: 0.05 },
+    effects: [{ kind: 'perk', perk: 'sneakFactorBonus', magnitude: 0.05 }],
   },
   {
     id: 'opportunist',
@@ -235,7 +412,7 @@ const defs: CallingDef[] = [
     name: 'Opportunist',
     desc: 'A turned back is a signed invitation. Backstabs cut deeper.',
     color: '#5a4a6a',
-    effect: { kind: 'perk', perk: 'backstabBonus', magnitude: 0.25 },
+    effects: [{ kind: 'perk', perk: 'backstabBonus', magnitude: 0.25 }],
   },
   // -------------------------------------------------------------- twohand
   {
@@ -246,7 +423,7 @@ const defs: CallingDef[] = [
     name: 'Farcleaver',
     desc: 'The edge arrives before the argument. Greatweapon reach grows.',
     color: '#c47a3d',
-    effect: { kind: 'perk', perk: 'greatReach', magnitude: 0.35 },
+    effects: [{ kind: 'perk', perk: 'greatReach', magnitude: 0.35 }],
   },
   {
     id: 'executioner',
@@ -256,7 +433,7 @@ const defs: CallingDef[] = [
     name: 'Executioner',
     desc: 'The nearly-felled are already spoken for. Greatblows bite deeper into them.',
     color: '#8a5a4a',
-    effect: { kind: 'perk', perk: 'greatExecute', magnitude: 0.3 },
+    effects: [{ kind: 'perk', perk: 'greatExecute', magnitude: 0.3 }],
   },
   // -------------------------------------------------------------- polearm
   {
@@ -267,7 +444,7 @@ const defs: CallingDef[] = [
     name: 'Longarm',
     desc: 'The point ends the argument a pace sooner. Polearm reach grows.',
     color: '#9a8560',
-    effect: { kind: 'perk', perk: 'poleReach', magnitude: 0.35 },
+    effects: [{ kind: 'perk', perk: 'poleReach', magnitude: 0.35 }],
   },
   {
     id: 'impaler',
@@ -277,7 +454,7 @@ const defs: CallingDef[] = [
     name: 'Impaler',
     desc: 'Both hands answer as one. The war grip drives the point deeper.',
     color: '#7a5a48',
-    effect: { kind: 'perk', perk: 'warGripBonus', magnitude: 0.1 },
+    effects: [{ kind: 'perk', perk: 'warGripBonus', magnitude: 0.1 }],
   },
   // ----------------------------------------------------------- dualwield
   {
@@ -288,7 +465,7 @@ const defs: CallingDef[] = [
     name: 'Ambidexter',
     desc: 'The off hand stops waiting its turn. The echo lands tighter.',
     color: '#b8a88a',
-    effect: { kind: 'perk', perk: 'offhandDelayTicks', magnitude: 3 },
+    effects: [{ kind: 'perk', perk: 'offhandDelayTicks', magnitude: 3 }],
   },
   {
     id: 'twin_tempo',
@@ -298,7 +475,7 @@ const defs: CallingDef[] = [
     name: 'Twin Tempo',
     desc: 'Two hands, one intention. The echo strikes harder.',
     color: '#a8927a',
-    effect: { kind: 'perk', perk: 'offhandFactorBonus', magnitude: 0.05 },
+    effects: [{ kind: 'perk', perk: 'offhandFactorBonus', magnitude: 0.05 }],
   },
   // -------------------------------------------------------------- shield
   {
@@ -309,7 +486,7 @@ const defs: CallingDef[] = [
     name: 'Shieldarm',
     desc: 'The arm and the wall stop being two things. Armor while a shield is raised.',
     color: '#8ea4b8',
-    effect: { kind: 'perk', perk: 'shieldArm', magnitude: 3 },
+    effects: [{ kind: 'perk', perk: 'shieldArm', magnitude: 3 }],
   },
   {
     id: 'ironback',
@@ -319,7 +496,7 @@ const defs: CallingDef[] = [
     name: 'Ironback',
     desc: 'The wall bites back. Blows that land on the boss cost the striker.',
     color: '#6a7484',
-    effect: { kind: 'perk', perk: 'shieldThorns', magnitude: 4 },
+    effects: [{ kind: 'perk', perk: 'shieldThorns', magnitude: 4 }],
   },
   // -------------------------------------------------------------- mining
   {
@@ -330,7 +507,7 @@ const defs: CallingDef[] = [
     name: 'Prospector',
     desc: 'You read the seam before you swing. Ore sometimes comes double.',
     color: '#8a8474',
-    effect: { kind: 'doubleGather', skill: 'mining', chance: 0.1 },
+    effects: [{ kind: 'doubleGather', skill: 'mining', chance: 0.1 }],
   },
   {
     id: 'deep_lungs',
@@ -340,7 +517,7 @@ const defs: CallingDef[] = [
     name: 'Deep Lungs',
     desc: 'The dark is your workshop. You mine faster underground.',
     color: '#5a5464',
-    effect: { kind: 'perk', perk: 'undergroundGatherMult', magnitude: 1.15 },
+    effects: [{ kind: 'perk', perk: 'undergroundGatherMult', magnitude: 1.15 }],
   },
   // --------------------------------------------------------- woodcutting
   {
@@ -351,7 +528,7 @@ const defs: CallingDef[] = [
     name: 'Timber Sense',
     desc: 'You know where the grain wants to split. Logs sometimes come double.',
     color: '#6b4a26',
-    effect: { kind: 'doubleGather', skill: 'woodcutting', chance: 0.1 },
+    effects: [{ kind: 'doubleGather', skill: 'woodcutting', chance: 0.1 }],
   },
   {
     id: 'heartwood_eye',
@@ -361,7 +538,7 @@ const defs: CallingDef[] = [
     name: 'Heartwood Eye',
     desc: 'Every tree tells you where to stand. You fell them faster.',
     color: '#7d5a36',
-    effect: { kind: 'gatherSpeed', skill: 'woodcutting', mult: 1.12 },
+    effects: [{ kind: 'gatherSpeed', skill: 'woodcutting', mult: 1.12 }],
   },
   // ------------------------------------------------------------- fishing
   {
@@ -372,7 +549,7 @@ const defs: CallingDef[] = [
     name: 'Patient Line',
     desc: 'The water rewards the unhurried. Catches sometimes come double.',
     color: '#6aa0c8',
-    effect: { kind: 'doubleGather', skill: 'fishing', chance: 0.12 },
+    effects: [{ kind: 'doubleGather', skill: 'fishing', chance: 0.12 }],
   },
   {
     id: 'night_angler',
@@ -382,7 +559,7 @@ const defs: CallingDef[] = [
     name: 'Night Angler',
     desc: 'The best water is the dark water. You fish faster after dusk.',
     color: '#3a5a78',
-    effect: { kind: 'perk', perk: 'nightGatherMult', magnitude: 1.2 },
+    effects: [{ kind: 'perk', perk: 'nightGatherMult', magnitude: 1.2 }],
   },
   // ------------------------------------------------------------ foraging
   {
@@ -393,7 +570,7 @@ const defs: CallingDef[] = [
     name: 'Gleaner',
     desc: 'Nothing worth taking escapes you. Pickings sometimes come double.',
     color: '#7ac46a',
-    effect: { kind: 'doubleGather', skill: 'foraging', chance: 0.1 },
+    effects: [{ kind: 'doubleGather', skill: 'foraging', chance: 0.1 }],
   },
   {
     id: 'verdant_eye',
@@ -403,7 +580,7 @@ const defs: CallingDef[] = [
     name: 'Verdant Eye',
     desc: 'The green sorts itself for you. You gather faster.',
     color: '#4a8a3a',
-    effect: { kind: 'gatherSpeed', skill: 'foraging', mult: 1.12 },
+    effects: [{ kind: 'gatherSpeed', skill: 'foraging', mult: 1.12 }],
   },
   // ------------------------------------------------------------- farming
   {
@@ -414,7 +591,7 @@ const defs: CallingDef[] = [
     name: 'The Composter',
     desc: 'Your heaps close early. Rot respects experience.',
     color: '#6e5433',
-    effect: { kind: 'perk', perk: 'compostDiscount', magnitude: 2 },
+    effects: [{ kind: 'perk', perk: 'compostDiscount', magnitude: 2 }],
   },
   {
     id: 'marketeer',
@@ -424,7 +601,7 @@ const defs: CallingDef[] = [
     name: 'Marketeer',
     desc: 'The larder boards know your name. Orders pay a tenth more to you.',
     color: '#e8c04c',
-    effect: { kind: 'perk', perk: 'larderSellMult', magnitude: 1.1 },
+    effects: [{ kind: 'perk', perk: 'larderSellMult', magnitude: 1.1 }],
   },
   {
     id: 'shepherds_eye',
@@ -434,7 +611,7 @@ const defs: CallingDef[] = [
     name: "Shepherd's Eye",
     desc: 'You see what each animal needs sooner. The brush window opens faster.',
     color: '#96703f',
-    effect: { kind: 'perk', perk: 'brushRestMult', magnitude: 0.75 },
+    effects: [{ kind: 'perk', perk: 'brushRestMult', magnitude: 0.75 }],
   },
   {
     id: 'green_thumb',
@@ -444,7 +621,7 @@ const defs: CallingDef[] = [
     name: 'Green Thumb',
     desc: 'Some harvests hand you next season for free. Seeds sometimes return.',
     color: '#8ac46a',
-    effect: { kind: 'perk', perk: 'seedRefundChance', magnitude: 0.1 },
+    effects: [{ kind: 'perk', perk: 'seedRefundChance', magnitude: 0.1 }],
   },
   {
     id: 'bounty',
@@ -454,7 +631,7 @@ const defs: CallingDef[] = [
     name: 'Bounty',
     desc: 'The field answers the practiced hand. Harvests sometimes come double.',
     color: '#a8b84a',
-    effect: { kind: 'perk', perk: 'doubleHarvestChance', magnitude: 0.1 },
+    effects: [{ kind: 'perk', perk: 'doubleHarvestChance', magnitude: 0.1 }],
   },
   // ------------------------------------------------------------- cooking
   {
@@ -465,7 +642,7 @@ const defs: CallingDef[] = [
     name: 'Seasoned Palate',
     desc: 'You smell the turn before it comes. Far fewer meals burn.',
     color: '#d9825a',
-    effect: { kind: 'perk', perk: 'burnChanceMult', magnitude: 0.7 },
+    effects: [{ kind: 'perk', perk: 'burnChanceMult', magnitude: 0.7 }],
   },
   {
     id: 'field_kitchen',
@@ -475,7 +652,7 @@ const defs: CallingDef[] = [
     name: 'Field Kitchen',
     desc: 'Your cooking keeps working after the plate is clean. Food buffs last longer.',
     color: '#b86a3a',
-    effect: { kind: 'perk', perk: 'foodBuffDurMult', magnitude: 1.25 },
+    effects: [{ kind: 'perk', perk: 'foodBuffDurMult', magnitude: 1.25 }],
   },
   // ------------------------------------------------------------ smithing
   {
@@ -486,7 +663,7 @@ const defs: CallingDef[] = [
     name: 'Sparing Hammer',
     desc: 'No blow wasted, no bar spent twice. Materials are sometimes saved.',
     color: '#8a94a4',
-    effect: { kind: 'materialSave', skill: 'smithing', chance: 0.08 },
+    effects: [{ kind: 'materialSave', skill: 'smithing', chance: 0.08 }],
   },
   {
     id: 'forgeheat',
@@ -496,7 +673,7 @@ const defs: CallingDef[] = [
     name: 'Forgeheat',
     desc: 'The metal answers you like an old friend. Smith as three levels wiser.',
     color: '#c46a3a',
-    effect: { kind: 'gear', effect: { kind: 'skill', skill: 'smithing', amount: 3 } },
+    effects: [{ kind: 'gear', effect: { kind: 'skill', skill: 'smithing', amount: 3 } }],
   },
   // --------------------------------------------------------- woodworking
   {
@@ -507,7 +684,7 @@ const defs: CallingDef[] = [
     name: 'Clean Grain',
     desc: 'The wood offers its spare. Materials are sometimes saved.',
     color: '#a4744b',
-    effect: { kind: 'materialSave', skill: 'woodworking', chance: 0.08 },
+    effects: [{ kind: 'materialSave', skill: 'woodworking', chance: 0.08 }],
   },
   {
     id: 'master_grain',
@@ -517,7 +694,7 @@ const defs: CallingDef[] = [
     name: 'Master Grain',
     desc: 'Your hands know the next cut before you do. You work wood faster.',
     color: '#7d5a36',
-    effect: { kind: 'craftSpeed', skill: 'woodworking', mult: 0.85 },
+    effects: [{ kind: 'craftSpeed', skill: 'woodworking', mult: 0.85 }],
   },
   // ------------------------------------------------------ leatherworking
   {
@@ -528,7 +705,7 @@ const defs: CallingDef[] = [
     name: 'Whetstone Habit',
     desc: 'A worker of edges keeps their own keen. Strikes crit more often.',
     color: '#9a6a45',
-    effect: { kind: 'gear', effect: { kind: 'crit', pct: 2 } },
+    effects: [{ kind: 'gear', effect: { kind: 'crit', pct: 2 } }],
   },
   {
     id: 'supple_fit',
@@ -538,7 +715,7 @@ const defs: CallingDef[] = [
     name: 'Supple Fit',
     desc: 'Leather you understand never binds. Each worn piece quickens you.',
     color: '#b8865a',
-    effect: { kind: 'perPiece', armorClass: 'leather', speedPct: 0.5 },
+    effects: [{ kind: 'perPiece', armorClass: 'leather', speedPct: 0.5 }],
   },
   // ----------------------------------------------------------- tailoring
   {
@@ -549,7 +726,7 @@ const defs: CallingDef[] = [
     name: 'Fine Seams',
     desc: 'Nothing frays under your needle. Materials are sometimes saved.',
     color: '#c8a8d8',
-    effect: { kind: 'materialSave', skill: 'tailoring', chance: 0.08 },
+    effects: [{ kind: 'materialSave', skill: 'tailoring', chance: 0.08 }],
   },
   {
     id: 'quilted_lining',
@@ -559,7 +736,7 @@ const defs: CallingDef[] = [
     name: 'Quilted Lining',
     desc: 'Your cloth carries hidden padding. Each worn piece toughens you.',
     color: '#a888c8',
-    effect: { kind: 'perPiece', armorClass: 'cloth', maxHp: 2 },
+    effects: [{ kind: 'perPiece', armorClass: 'cloth', maxHp: 2 }],
   },
   // -------------------------------------------------------- construction
   {
@@ -570,7 +747,7 @@ const defs: CallingDef[] = [
     name: 'Salvager',
     desc: 'You build with the offcuts too. Materials are sometimes saved.',
     color: '#a49484',
-    effect: { kind: 'materialSave', skill: 'construction', chance: 0.1 },
+    effects: [{ kind: 'materialSave', skill: 'construction', chance: 0.1 }],
   },
   {
     id: 'homesteader',
@@ -580,7 +757,7 @@ const defs: CallingDef[] = [
     name: 'Homesteader',
     desc: 'Walls rise quickly for the hand that has raised a hundred. You build faster.',
     color: '#8a7a64',
-    effect: { kind: 'perk', perk: 'buildSpeedMult', magnitude: 0.85 },
+    effects: [{ kind: 'perk', perk: 'buildSpeedMult', magnitude: 0.85 }],
   },
   // ----------------------------------------------------------- herbalism
   {
@@ -591,7 +768,7 @@ const defs: CallingDef[] = [
     name: 'Bitter Blood',
     desc: 'Years of tasting your own brews. Poison and burning grip you weakly.',
     color: '#a0c050',
-    effect: { kind: 'perk', perk: 'dotResistMult', magnitude: 0.7 },
+    effects: [{ kind: 'perk', perk: 'dotResistMult', magnitude: 0.7 }],
   },
   {
     id: 'long_brew',
@@ -601,7 +778,7 @@ const defs: CallingDef[] = [
     name: 'Long Brew',
     desc: 'Your tonics are steeped, not stirred. They last longer in the blood.',
     color: '#6a9a4a',
-    effect: { kind: 'perk', perk: 'tonicBuffDurMult', magnitude: 1.25 },
+    effects: [{ kind: 'perk', perk: 'tonicBuffDurMult', magnitude: 1.25 }],
   },
   // ---------------------------------------------------------- enchanting
   {
@@ -612,7 +789,7 @@ const defs: CallingDef[] = [
     name: 'Dust Thrift',
     desc: 'Not a mote wasted. Reagents are sometimes saved.',
     color: '#b49af0',
-    effect: { kind: 'materialSave', skill: 'enchanting', chance: 0.15 },
+    effects: [{ kind: 'materialSave', skill: 'enchanting', chance: 0.15 }],
   },
   {
     id: 'deep_sigils',
@@ -627,7 +804,7 @@ const defs: CallingDef[] = [
     // and the trade's own Calling is about the trade.
     desc: 'Your workings settle deeper into the steel. Every inscription you make runs truer.',
     color: '#8a6ac8',
-    effect: { kind: 'perk', perk: 'inscribeQuality', magnitude: 5 },
+    effects: [{ kind: 'perk', perk: 'inscribeQuality', magnitude: 5 }],
   },
   // ---------------------------------------------------------- beastcraft
   {
@@ -638,7 +815,7 @@ const defs: CallingDef[] = [
     name: 'Gentle Hand',
     desc: 'The animals give more to the hand they trust. Produce sometimes doubles.',
     color: '#c4a35a',
-    effect: { kind: 'perk', perk: 'doubleProduceChance', magnitude: 0.1 },
+    effects: [{ kind: 'perk', perk: 'doubleProduceChance', magnitude: 0.1 }],
   },
   {
     id: 'drovers_bond',
@@ -648,7 +825,7 @@ const defs: CallingDef[] = [
     name: "Drover's Bond",
     desc: 'Beasts kept by a true drover recover their gifts sooner.',
     color: '#a48a4a',
-    effect: { kind: 'perk', perk: 'produceRestMult', magnitude: 0.85 },
+    effects: [{ kind: 'perk', perk: 'produceRestMult', magnitude: 0.85 }],
   },
 ];
 
