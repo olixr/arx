@@ -127,6 +127,10 @@ export const WILD_ROSTER: readonly WildEntry[] = [
   // deadlier walls — the band rescales the body, the silhouette
   // keeps the promise.
   { npc: 'giant_crab', weight: 1.2, tiers: [3, 7], biomes: ['shore'], band: [1, 2], spread: 2 },
+  // THE STONE COURT'S FEN GATE: the fen basilisk works the wet margin
+  // the crocodile way — a log until it isn't. Banks only; the gaze
+  // line of the family stays inland where the stone is.
+  { npc: 'fen_basilisk', weight: 1, tiers: [2, 6], biomes: ['shore'], band: [1, 2], spread: 2 },
   // THE SKRAL (docs/skral-plan.md): the banks get their PEOPLE. Day
   // shoals wade the margin netting the shallows; harpooners stand off
   // the waterline in ones and twos. The day shoal answers the roe
@@ -180,6 +184,13 @@ export const WILD_ROSTER: readonly WildEntry[] = [
   // it does not sleep so much as pause, and a sighting is a landmark
   // that was not on yesterday's map.
   { npc: 'colossus_turtle', weight: 0.5, tiers: [4, 8], biomes: ['grass', 'forest'] },
+  // THE STONE COURT (the basilisks): the gaze line keeps the dry
+  // country. A basilisk stands alone — the sighting is the event,
+  // and the statues nearby were the previous sightings.
+  { npc: 'basilisk', weight: 0.7, tiers: [3, 7], biomes: ['grass', 'forest'], band: [1, 1] },
+  // The elder walks the deep rungs at any hour: a crag that noticed
+  // you. Solitary by decree — two elders would be a mountain range.
+  { npc: 'elder_basilisk', weight: 0.4, tiers: [5, 9], biomes: ['grass', 'forest'], band: [1, 1] },
   // ------------------------------------------------- the night shift
   // After dark the sounder runs behind the old razorback — the same
   // promotion the dire wolf earned: straggler to leader.

@@ -190,6 +190,17 @@ export const TAME_DEFS: readonly TameDef[] = [
     kit: { armor: 2 },
     flavor: 'Bred for a war it no longer owes. It sleeps facing the door.',
   },
+  {
+    species: 'fen_basilisk',
+    lure: 'raw_trout',
+    // 30 + 10 × wild level (plan Part 5).
+    tameXp: 160,
+    // THE STONE COURT'S ONE DOOR: the gazeless cousin answers a
+    // patient keeper — keeled scale worth a light shell rung and the
+    // family's venom in the bite. The gaze line obeys no leash.
+    kit: { armor: 3, bite: { status: 'venom', power: 1, durationTicks: 60 } },
+    flavor: 'Six legs, no hurry, and a jaw that closes like a ledger. It naps in the shallows facing upstream.',
+  },
 ];
 
 export const TAMES: ReadonlyMap<string, TameDef> = new Map(TAME_DEFS.map((t) => [t.species, t]));
@@ -227,6 +238,11 @@ const NEVER_TAMED = new Set([
   // A hill is not owned. The giant turtle answers a patient keeper;
   // the colossus answers to weather, and slowly.
   'colossus_turtle',
+  // THE GAZE OBEYS NO LEASH: a petrifying stare at heel is a licensed
+  // hold in a keeper's pocket — the ledger refuses it. The fen cousin
+  // (gazeless) is the family's one door.
+  'basilisk',
+  'elder_basilisk',
 ]);
 
 /**

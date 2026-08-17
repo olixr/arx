@@ -24,12 +24,16 @@ test('the repertoire clears every law it wrote for itself', () => {
   assert.deepEqual(petRepertoireErrors(), []);
 });
 
-test('the shelves are whole: sixteen species, seventy-one words', () => {
+test('the shelves are whole: seventeen species, seventy-one words', () => {
   // Move these numbers ON PURPOSE when the roster grows — the pin
   // exists so a lost row or an orphaned art is loud, not silent.
-  assert.equal(Object.keys(PET_REPERTOIRE).length, 16);
+  // 17: the fen basilisk joined (THE STONE COURT, 2026-08-17) on a
+  // shelf of shared words — no new art defs, so the word count holds.
+  assert.equal(Object.keys(PET_REPERTOIRE).length, 17);
   assert.equal(PET_ART_DEFS.length, 71);
-  // Exactly one signature per species = sixteen signatures stand.
+  // Exactly one signature ART per species' shelf; the fen basilisk
+  // SPEAKS the standing stone rather than minting a new one, so the
+  // authored signature count stays sixteen.
   const signatures = PET_ART_DEFS.filter((a) => a.focus === 3);
   assert.equal(signatures.length, 16);
   // Every art is shelved somewhere; an unshelved art is a ghost.

@@ -2902,6 +2902,146 @@ const breaching_crash: AbilitySig = {
   },
 };
 
+// --------------------------------------------------------- stone_gaze
+// ground_aoe, fused wire — the basilisk's petrifying stare lands.
+
+/**
+ * STONE_GAZE — "the ground remembers being rock."
+ * The seat greys over in one hard front, then a low CROWN OF CRUST
+ * locks up around the rim — five stone facets that RISE AND STAND
+ * (petrification is stillness; nothing here vaults or dances), each
+ * catching one pale-green glint of the gaze that made it. Crack
+ * lines spread from the heart across the greyed floor. On the late
+ * beat the crust crumbles to true dust and the lasting mark stays:
+ * a broken ring of stone grains and one green wink, nine seconds of
+ * proof that the landscape briefly included somebody.
+ */
+const stone_gaze: AbilitySig = {
+  spawn(c) {
+    const m = asMatter(c);
+    dust.deployments.slam!(m, c.wx, c.wy, { radius: c.radius * 0.55, scale: 0.5 });
+    // The gaze's touch: a pale-green glint cluster at the heart.
+    const rand = srand(c.seed ^ 0x5c1);
+    for (let k = 0; k < 3; k++) {
+      lay(c, c.wx + (rand() - 0.5) * 0.22, c.wy + (rand() - 0.5) * 0.18, '#dff0b0', {
+        life: 8.5 + rand(), size: 0.055, fade: '#8ba05e', fadeAt: 0.5,
+        flicker: k === 0 ? 5 : 0,
+      });
+    }
+  },
+  ground(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    ctx.save();
+    // The greying front: one hard ring racing out, then done.
+    const f = cl(t / 0.14);
+    if (f < 1) {
+      const rr = rPx * (0.2 + 0.8 * f);
+      ctx.globalAlpha = 0.85 * (1 - f * 0.45);
+      ctx.strokeStyle = st.deep;
+      ctx.lineWidth = Math.max(2.5, sc * 0.08 * (1 - f * 0.4));
+      ctx.beginPath();
+      ctx.ellipse(px, py, rr, rr * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 0.9;
+      ctx.strokeStyle = st.spark;
+      ctx.lineWidth = Math.max(1.2, sc * 0.025);
+      ctx.beginPath();
+      ctx.ellipse(px, py, rr * 1.05, rr * 1.05 * squash, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    const set = cl((t - 0.1) / 0.14);
+    const fade = 1 - cl((t - 0.8) / 0.2);
+    if (set > 0) {
+      // The greyed floor while the stone holds.
+      ctx.globalAlpha = 0.2 * set * fade;
+      ctx.fillStyle = st.mid;
+      ctx.beginPath();
+      ctx.ellipse(px, py, rPx * 0.88, rPx * 0.88 * squash, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Crack lines out of the heart — precomputed bones, grown by
+      // the set clock, never re-rolled.
+      const rand = srand(c.seed ^ 0x5c2);
+      ctx.globalAlpha = 0.6 * set * fade;
+      ctx.strokeStyle = st.deep;
+      ctx.lineWidth = Math.max(1.2, sc * 0.03);
+      for (let k = 0; k < 4; k++) {
+        const a = (k / 4) * Math.PI * 2 + rand() * 0.7;
+        const reach = rPx * (0.5 + rand() * 0.35) * set;
+        const kinkA = a + (rand() - 0.5) * 0.8;
+        const mx = px + Math.cos(a) * reach * 0.55;
+        const my = py + Math.sin(a) * reach * 0.55 * squash;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(mx, my);
+        ctx.lineTo(mx + Math.cos(kinkA) * reach * 0.45, my + Math.sin(kinkA) * reach * 0.45 * squash);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  },
+  air(c) {
+    const { ctx, st, t, sc, squash, px, py, rPx } = c;
+    const rand = srand(c.seed ^ 0x5c3);
+    const layR = srand(c.seed ^ 0x5c4);
+    ctx.save();
+    // THE CROWN OF CRUST: five stone facets around the rim. Geometry
+    // precomputed FIRST so no beat branch shifts a later facet.
+    const facets: Array<[number, number, number]> = [];
+    for (let k = 0; k < 5; k++) {
+      facets.push([
+        (k / 5) * Math.PI * 2 + rand() * 0.3,
+        sc * (0.3 + rand() * 0.14),
+        0.75 + rand() * 0.2,
+      ]);
+    }
+    const crumbleAt = 0.72;
+    for (let k = 0; k < 5; k++) {
+      const [a, h, ru] = facets[k]!;
+      const rise = cl((t - 0.08 - k * 0.04) / 0.16);
+      if (rise <= 0 || t >= crumbleAt) continue;
+      const bx = px + Math.cos(a) * rPx * ru;
+      const by = py + Math.sin(a) * rPx * ru * squash;
+      const w = sc * 0.12;
+      const hh = h * rise;
+      // Two facets a side: lit toward the heart, shadowed out — a
+      // standing crust wedge, root planted on the rim.
+      ctx.globalAlpha = 0.95;
+      ctx.fillStyle = st.deep;
+      ctx.beginPath();
+      ctx.moveTo(bx - w, by + 1);
+      ctx.lineTo(bx - w * 0.2, by - hh);
+      ctx.lineTo(bx + w * 0.15, by - hh * 0.92);
+      ctx.lineTo(bx - w * 0.1, by + 1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = st.mid;
+      ctx.beginPath();
+      ctx.moveTo(bx - w * 0.1, by + 1);
+      ctx.lineTo(bx + w * 0.15, by - hh * 0.92);
+      ctx.lineTo(bx + w, by + 1);
+      ctx.closePath();
+      ctx.fill();
+      // The gaze's glint on the live tip.
+      if (rise >= 1) {
+        const g = Math.max(1.5, sc * 0.04);
+        ctx.fillStyle = st.spark;
+        ctx.fillRect(bx - w * 0.2 - g / 2, by - hh - g, g, g);
+      }
+    }
+    ctx.restore();
+    // The crumble beat: the crust lets go as dust, the mark laid.
+    if (crossed(c, 900, crumbleAt)) {
+      dust.deployments.billow!(asMatter(c), c.wx, c.wy, { radius: c.radius * 0.6, scale: 0.4 });
+      for (let k = 0; k < 5; k++) {
+        const [a, , ru] = facets[k]!;
+        lay(c, c.wx + Math.cos(a) * c.radius * ru, c.wy + Math.sin(a) * c.radius * ru * squash,
+          '#8a8567', { life: 7.5 + layR(), size: 0.06, fade: '#54524a', fadeAt: 0.5 });
+      }
+    }
+    c.glow(c.wx, c.wy, c.radius * 0.85, 0.18 * (1 - t));
+  },
+};
+
 export const FOES_SIGS: Record<string, AbilitySig> = {
   cinder_ring,
   miasma_ring,
@@ -2924,4 +3064,5 @@ export const FOES_SIGS: Record<string, AbilitySig> = {
   gorge_spray,
   breaching_crash,
   warlord_horn,
+  stone_gaze,
 };

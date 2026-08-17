@@ -4779,6 +4779,83 @@ Object.assign(PLATES, {
     droplet(c, 0.36, -0.26, 0.18, st);
   },
 
+  // ----------------------- THE STONE COURT — the basilisks' plates.
+  // Stone Gaze — the lidless eye and the ground going to rock under
+  // its stare: the moment you were warned about.
+  stone_gaze: (st) => (c) => {
+    c.translate(0.5, 0.42);
+    // The ground ellipse the gaze falls on (aimed-blast grammar),
+    // already cracking to stone.
+    c.fillStyle = st.deep;
+    c.beginPath();
+    c.ellipse(0.02, 0.34, 0.3, 0.13, 0, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = st.mid;
+    c.lineWidth = 0.028;
+    c.beginPath();
+    c.moveTo(-0.16, 0.34);
+    c.lineTo(-0.02, 0.3);
+    c.lineTo(0.1, 0.36);
+    c.lineTo(0.22, 0.31);
+    c.stroke();
+    // The eye: one wide reptile almond, lids parted, dominating.
+    poly(c, st.mid, [
+      [-0.34, -0.02], [-0.12, -0.16], [0.14, -0.16], [0.34, -0.02], [0.14, 0.12], [-0.12, 0.12],
+    ], 0.04);
+    // The iris fire and the slit.
+    dot(c, st.spark, 0, -0.02, 0.1);
+    fill(c, st.deep, [[-0.012, -0.13], [0.012, -0.13], [0.012, 0.09], [-0.012, 0.09]]);
+    // The gaze falling: two hard rays from eye to ground.
+    fill(c, st.spark, [[-0.1, 0.1], [-0.03, 0.1], [-0.2, 0.32]]);
+    fill(c, st.spark, [[0.05, 0.1], [0.12, 0.1], [0.2, 0.32]]);
+  },
+  // Mire Spit — the rope of fen rot mid-flight off the open jaw.
+  mire_spit: (st) => (c) => {
+    c.translate(0.46, 0.5);
+    // The jaw: a low croc profile gaping right.
+    poly(c, st.deep, [
+      [-0.42, -0.06], [-0.1, -0.14], [0.1, -0.1], [-0.06, 0.0], [-0.42, 0.04],
+    ], 0.03);
+    poly(c, st.mid, [
+      [-0.42, 0.08], [-0.04, 0.06], [0.12, 0.16], [-0.1, 0.2], [-0.42, 0.18],
+    ], 0.03);
+    // The rope: one heavy arc of the swamp with real body.
+    poly(c, st.mid, [
+      [0.02, -0.02], [0.2, -0.12], [0.38, -0.08], [0.46, 0.04], [0.34, 0.02], [0.16, 0.04],
+    ], 0.04);
+    fill(c, st.core, [[0.06, -0.03], [0.22, -0.1], [0.36, -0.06], [0.2, -0.02]]);
+    // Droplets shed off the flight.
+    dot(c, st.mid, 0.3, 0.16, 0.045);
+    dot(c, st.deep, 0.42, -0.2, 0.038);
+  },
+  // Stone Mantle — the hide going to wall: stacked scute plates with
+  // the rising self-buff halo.
+  stone_mantle: (st) => (c) => {
+    c.translate(0.5, 0.52);
+    // The rising halo arcs (self-buff grammar).
+    c.strokeStyle = st.spark;
+    c.lineWidth = 0.03;
+    for (const [ry, ra] of [[0.3, 0.34], [0.42, 0.26]] as const) {
+      c.beginPath();
+      c.arc(0, -0.02, ry, Math.PI * (1 + ra), Math.PI * (2 - ra));
+      c.stroke();
+    }
+    // The mantle: three courses of overlapped stone scutes.
+    for (let row = 0; row < 3; row++) {
+      const y0 = -0.14 + row * 0.15;
+      for (let i = 0; i < 3 - (row % 2 === 1 ? 1 : 0); i++) {
+        const x0 = (row % 2 === 1 ? -0.08 : -0.16) + i * 0.16;
+        poly(c, row === 1 ? st.mid : st.deep, [
+          [x0 - 0.08, y0 + 0.06], [x0 - 0.06, y0 - 0.05], [x0, y0 - 0.08],
+          [x0 + 0.06, y0 - 0.05], [x0 + 0.08, y0 + 0.06],
+        ], 0.024);
+      }
+    }
+    // The crown spike breaking the top course.
+    fill(c, st.mid, [[-0.05, -0.16], [0, -0.34], [0.05, -0.16]]);
+    dot(c, st.spark, 0, -0.3, 0.03);
+  },
+
   // ----------------------- THE SKRAL — the brine-folk's plates.
   // Tide Lash — the wrist-crack of thrown brine, mid-snap.
   tide_lash: (st) => (c) => {

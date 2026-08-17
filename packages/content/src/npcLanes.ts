@@ -112,6 +112,10 @@ export const NPC_LANES: Record<string, NpcLanes> = {
   giant_beetle: CARAPACE,
   mudcrab: CARAPACE,
   giant_crab: CARAPACE,
+  // Dracolisk scute is grown plate: the edge skates, the crushing
+  // blow cracks it. The fen cousin's keeled leather stays fair.
+  basilisk: CARAPACE,
+  elder_basilisk: CARAPACE,
   // A hand of fat and hide shrugs the short edge; a body that big
   // cannot dodge the aimed shaft.
   ogre: GIANT,

@@ -941,6 +941,17 @@ export const PET_REPERTOIRE: Readonly<Record<string, readonly string[]>> = {
     'deepening_dose',
     'the_long_fang',
   ],
+  // THE STONE COURT'S ONE DOOR: the fen basilisk shares the reptile
+  // pool (venom, cold blood, the coiled rush) and speaks the stone
+  // signature — the family's petrifying heritage, gone patient.
+  fen_basilisk: [
+    'venom_spit',
+    'coiled_strike',
+    'cold_blood',
+    'slow_and_certain',
+    'deepening_dose',
+    'the_standing_stone',
+  ],
   worg: [
     'worry_the_wound',
     'pack_step',

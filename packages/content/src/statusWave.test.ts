@@ -32,6 +32,14 @@ const LICENSED: Record<string, string> = {
   matriarchs_howl: 'weaken',
   oldfangs_blood: 'quicken',
   anvil_toll: 'stagger',
+  // THE STONE COURT'S LEDGER ENTRY (conscious, 2026-08-17): the
+  // basilisks' whole identity IS the petrifying hold — a root laid
+  // through the tide_grasp door's exact grammar (ground_aoe, fused,
+  // ledger-budgeted on both carriers), and the elder's inward gaze
+  // through the deepmaw's selfStatus door. The wild's first
+  // non-crown licenses, priced by the same HOLD BUDGET pins.
+  stone_gaze: 'root',
+  stone_mantle: 'stonehide',
 };
 
 function leaks(value: unknown): string[] {

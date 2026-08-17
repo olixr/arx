@@ -428,6 +428,23 @@ export const BREATH_DIALECTS: Record<string, BreathDialect> = {
     charge: (c, x, y, o) =>
       water.deployments.undertow!(c, x, y, { radius: o.radius * 0.45, scale: 0.5, dur: 0.7 }),
   },
+  // THE STONE COURT (the basilisks) — the ground answers the gaze.
+  // Stone Gaze: the eyes stop blinking and the dust at the planted
+  // feet stirs in a slow skirt — the long tell the hold is priced on.
+  stone_gaze: {
+    charge: (c, x, y) => dust.deployments.skirt!(c, x, y, { radius: 0.65, scale: 0.5, dur: 1.1 }),
+  },
+  // Mire Spit: the swamp gathers in the throat — rot haze pooling
+  // around the jaw before the rope flies.
+  mire_spit: {
+    charge: (c, x, y) =>
+      venom.deployments.cloud!(c, x, y, { radius: 0.45, scale: 0.45, dur: 0.7 }),
+  },
+  // Stone Mantle: the elder turns the gaze inward — grit billows off
+  // the hide as it hardens.
+  stone_mantle: {
+    charge: (c, x, y) => dust.deployments.billow!(c, x, y, { radius: 0.6, scale: 0.5, dur: 0.8 }),
+  },
   // THE SKRAL (docs/skral-plan.md) — a wader's wind is the water it
   // stands in. Tide Lash: the lash is DRAWN — water climbs the caster's
   // arm in a thin churn before the wrist snaps.

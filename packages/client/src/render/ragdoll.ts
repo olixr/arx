@@ -85,6 +85,9 @@ import {
   paintStagBody,
   paintTurtleBody,
   drawTurtleHead,
+  basiliskLook,
+  paintBasiliskBody,
+  drawBasiliskHead,
   paintWolfBody,
   paintWorgBody,
   scaleRibbon,
@@ -2472,6 +2475,38 @@ export function drawBeastRagdoll(
     );
     ctx.fillStyle = RAT_LOOK.skin;
     ctx.fill(tail);
+  } else if (look.defId.endsWith('basilisk')) {
+    // The dragon trailer lies where it fell — a long limp run of
+    // scaled muscle, the ridge chips still marching out the dead.
+    const bl = basiliskLook(look.defId, look.seed);
+    const tx = rear.x - Math.cos(spineA) * len * (bl.elder ? 1.0 : 0.85);
+    const tipY = f.ay + g[0]!.floor * f.s + s * 0.015;
+    const trailer = taperedSpinePath(
+      rear.x,
+      rear.y,
+      (rear.x + tx) / 2,
+      Math.max(rear.y, tipY) + s * 0.04,
+      tx,
+      tipY,
+      (t) => s * bl.tailHeavy * 0.72 * (0.05 - 0.038 * t),
+    );
+    ctx.fillStyle = shade(bl.hide, -8);
+    ctx.fill(trailer);
+    ctx.fillStyle = shade(bl.horn, -6);
+    for (const t of [0.25, 0.5, 0.75]) {
+      const u = 1 - t;
+      const mxq = (rear.x + tx) / 2;
+      const myq = Math.max(rear.y, tipY) + s * 0.04;
+      const qx = u * u * rear.x + 2 * u * t * mxq + t * t * tx;
+      const qy = u * u * rear.y + 2 * u * t * myq + t * t * tipY;
+      const sw = s * bl.tailHeavy * 0.72 * (0.045 - 0.024 * t);
+      ctx.beginPath();
+      ctx.moveTo(qx - sw * 0.5, qy);
+      ctx.lineTo(qx, qy - sw * 1.3);
+      ctx.lineTo(qx + sw * 0.5, qy);
+      ctx.closePath();
+      ctx.fill();
+    }
   } else if (look.owl) {
     // The tail fan splays flat on the ground behind the rump.
     const owl = look.owl;
@@ -2699,6 +2734,24 @@ export function drawBeastRagdoll(
       bob: 0,
       roll: 0,
       topScale: 0.85,
+      botH: 0.02,
+    });
+  } else if (look.defId.endsWith('basilisk')) {
+    // A crag subsides rather than falls: the trunk keeps most of its
+    // height, the sprawl already had it halfway to the ground. The
+    // hurt-free frame keeps the plates and the saw on the dead.
+    paintBasiliskBody(ctx, spec, basiliskLook(look.defId, look.seed), {
+      bx: midX,
+      gy: midY + r * 0.4,
+      s,
+      fx: Math.cos(spineA),
+      fy: Math.sin(spineA),
+      ys: 1,
+      seed: look.seed,
+      hurt: false,
+      bob: 0,
+      roll: 0,
+      topScale: 0.62,
       botH: 0.02,
     });
   } else if (look.defId === 'giant_crab') {
@@ -3029,6 +3082,28 @@ export function drawBeastRagdoll(
       fy: Math.sin(neckA),
       ys: 1,
       dead: true,
+    });
+  } else if (look.defId.endsWith('basilisk')) {
+    // The skull slack at the end of a limp neck — the fire is OUT
+    // (the dead-eyes law; the painter's dead branch douses it).
+    const bl = basiliskLook(look.defId, look.seed);
+    ctx.strokeStyle = shade(bl.hide, -4);
+    ctx.lineWidth = Math.max(2, bl.headW * s * 0.72);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(front.x, front.y);
+    ctx.lineTo(head.x, head.y);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+    drawBasiliskHead(ctx, bl, {
+      x: head.x,
+      y: head.y,
+      s,
+      fx: Math.cos(neckA),
+      fy: Math.sin(neckA),
+      ys: 1,
+      dead: true,
+      fen: bl.fin,
     });
   } else if (look.defId === 'giant_spider' || look.defId === 'mudcrab' || look.defId === 'giant_crab' || look.defId === 'giant_beetle') {
     // No separate head — the body painter drew the whole animal.

@@ -26,6 +26,10 @@ import { MOVESETS } from './movesets.js';
 const LICENSED_CC: Array<{ art: string; boss: string }> = [
   { art: 'tide_grasp', boss: 'skral_tidelord' },
   { art: 'anvil_toll', boss: 'anvil_golem' },
+  // THE STONE COURT (2026-08-17): the petrifying gaze is a licensed
+  // hold on BOTH carriers — each pays the budget on its own kit row.
+  { art: 'stone_gaze', boss: 'basilisk' },
+  { art: 'stone_gaze', boss: 'elder_basilisk' },
 ];
 
 test('THE HOLD BUDGET: no licensed control art may lock a player past a tenth of its cycle', () => {

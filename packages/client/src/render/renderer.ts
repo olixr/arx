@@ -96,6 +96,7 @@ import {
   goblinLook,
   lynxLook,
   foxLook,
+  basiliskLook,
   WOLF_LOOK,
   DIREWOLF_LOOK,
   FEYWOLF_LOOK,
@@ -224,7 +225,7 @@ import {
 } from './reveal.js';
 import { paintPlant, plantModel, type PlantModel } from './crops.js';
 import { CapeSim, capeStyle, drawCape } from './cape.js';
-import { BobtailSim, TailSim, drawBobtail, drawFeyBrush, drawFoxBrush, drawHorseTail, drawSabercatTail, drawTail, drawTurtleTail, drawWolfBrush } from './tail.js';
+import { BobtailSim, TailSim, drawBasiliskTail, drawBobtail, drawFeyBrush, drawFoxBrush, drawHorseTail, drawSabercatTail, drawTail, drawTurtleTail, drawWolfBrush } from './tail.js';
 import { FlightRig, batLook, drawBat, drawGreatOwl, flierSpec } from './flight.js';
 import { EarSim } from './earPhysics.js';
 import { RARITY_COLORS, rarityColor } from '../ui/rarity.js';
@@ -1075,6 +1076,10 @@ interface AnimState {
   /** The turtles' armored trailer — a low-carried BobtailSim in its
    *  own slot, so the shell lane never evicts a cat's stub. */
   turtleTail?: BobtailSim;
+  /** THE DRAGON TRAILER: the basilisks' full-length TailSim — its
+   *  own slot beside the canid brush and the turtle stub, so no
+   *  lane's eviction ever drops the court's tail. */
+  basiliskTail?: TailSim;
   /** THE GUT KEEPS ITS OWN TIME: the ogre's belly-mass spring —
    *  rig-ticked inside drawHumanoid at the true torso anchor; the
    *  renderer owns only lifecycle and the re-bake cue. */
@@ -57432,6 +57437,52 @@ export class Renderer {
     } else if (anim.turtleTail) {
       anim.turtleTail = undefined;
     }
+    // THE DRAGON TRAILER (tail.ts): the basilisks drag a full-length
+    // TailSim off the stern — heavy muscle on a LOW rest carriage,
+    // the saw (or the fen's keel fin) riding the painter. Root
+    // clamped inside the hull (the vixen law) and anchored on the
+    // LUNGED position through the strike (the tail rides the pounce,
+    // at the court's own damped mass).
+    let basiliskTailSim: TailSim | null = null;
+    if (defId.endsWith('basilisk')) {
+      const bLook = basiliskLook(defId, eid);
+      if (!anim.basiliskTail) {
+        const rootOff = Math.min(spec.bodyLen - 0.04, spec.bodyLen * 0.92);
+        anim.basiliskTail = new TailSim(bLook.tailHeavy, eid, rootOff, 0.1, 0.3);
+      }
+      basiliskTailSim = anim.basiliskTail;
+      let lunge = 0;
+      if (attackT > 0) {
+        lunge =
+          (attackT < 0.7
+            ? -0.12 * (attackT / 0.7)
+            : 0.3 * Math.sin(Math.PI * Math.min(1, (attackT - 0.7) / 0.3))) * 0.45;
+      }
+      basiliskTailSim.update(
+        s.x + Math.cos(legPose.dir) * lunge,
+        s.y + Math.sin(legPose.dir) * lunge,
+        // The stern's own height, riding the (small) gait bob.
+        bLook.bodyH * 0.45 + legPose.bob * 0.35,
+        legPose.dir,
+        this.frameDt,
+        performance.now() / 1000,
+        1,
+      );
+      const st = { hide: bLook.hide, horn: bLook.horn, heavy: bLook.tailHeavy * 0.72, fin: bLook.fin };
+      const sim = basiliskTailSim;
+      paintBob = () => {
+        const pts = sim.nodes.map((nd) => {
+          const sp = this.camera.worldToScreen(nd.x, nd.y, this.w, this.h);
+          return { x: sp.x, y: sp.y - this.renderLift(nd.x, nd.y) * scale - nd.z * scale };
+        });
+        drawBasiliskTail(this.ctx, pts, st, scale, {
+          hurt,
+          back: Math.sin(legPose.dir) < -0.2,
+        });
+      };
+    } else if (anim.basiliskTail) {
+      anim.basiliskTail = undefined;
+    }
     // THE BRUSH IS A SIMULATION (tail.ts): the fox's plume rides the
     // full TailSim chain — nearly the body's own length, streaming
     // out at a lope, settling into the soft low arc at rest — and
@@ -57614,7 +57665,9 @@ export class Renderer {
       (foxEarSim !== undefined && foxEarSim.restless) ||
       // The stalks earn it too: a settling eye stalk that snaps
       // between cache frames reads as a dropped sim.
-      (crabEyeSim !== undefined && crabEyeSim.restless);
+      (crabEyeSim !== undefined && crabEyeSim.restless) ||
+      // The dragon trailer settles on its own clock.
+      (basiliskTailSim !== null && basiliskTailSim.restless);
     const olDyn = fullDyn || (locomotion && (this.frameNo + eid) % 2 === 0);
     return {
       sortY: s.y,
@@ -57692,13 +57745,24 @@ export class Renderer {
         // they buy their own room on every edge, or the body-sprite
         // cache crops the strike mid-extension (user-flagged on the
         // colossus).
-        const snapRoom = defId === 'colossus_turtle' ? 0.55 : defId === 'giant_turtle' ? 0.3 : 0;
+        const snapRoom =
+          defId === 'colossus_turtle'
+            ? 0.55
+            : defId === 'giant_turtle'
+              ? 0.3
+              : defId === 'elder_basilisk'
+                ? 0.35
+                : defId === 'basilisk'
+                  ? 0.25
+                  : defId === 'fen_basilisk'
+                    ? 0.2
+                    : 0;
         const halfW = (spec.bodyLen * 2.0 + 0.35 + snapRoom) * scale + r;
         // Tall headgear reaches past the spec envelope — the stag's
         // antlers ride a raised neck and clip at the top edge without
         // their own headroom (user-flagged walking up-screen).
         const headroom =
-          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'wolf_oldfang' ? 0.32 : defId === 'fey_wolf' ? 0.45 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : defId === 'fox' ? 0.35 : defId === 'fox_champion' ? 0.5 : defId === 'giant_turtle' ? 0.45 : defId === 'colossus_turtle' ? 0.85 : defId === 'giant_crab' ? 0.45 : 0;
+          defId === 'stag' ? 0.7 : defId === 'hind' ? 0.15 : defId === 'ram' ? 0.25 : defId === 'dire_wolf' ? 0.3 : defId === 'wolf_oldfang' ? 0.32 : defId === 'fey_wolf' ? 0.45 : defId === 'worg' ? 0.25 : defId === 'lynx' ? 0.3 : defId === 'lynx_young' ? 0.25 : defId === 'lynx_champion' ? 0.45 : defId === 'fox' ? 0.35 : defId === 'fox_champion' ? 0.5 : defId === 'giant_turtle' ? 0.45 : defId === 'colossus_turtle' ? 0.85 : defId === 'giant_crab' ? 0.45 : defId === 'elder_basilisk' ? 0.5 : defId === 'basilisk' ? 0.3 : defId === 'fen_basilisk' ? 0.15 : 0;
         const top = (spec.bodyRise + (def?.radius ?? 0.3) * 2.2 + headroom) * scale + r;
         const bottom = (spec.rig.legLen + 0.7 + snapRoom) * scale;
         return { x: p.x - halfW, y: p.y - top, w: halfW * 2, h: top + bottom };

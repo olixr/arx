@@ -724,6 +724,15 @@ export const FX_STYLES: Record<string, FxStyle> = {
   // glacier and the crypt cold alike.
   breakwater_grip: TIDE({ mid: '#6d8577', deep: '#22403a', spark: '#d8ecdf', ring: 'teeth', debris: 'ice', decal: 'stain', punch: 0.75, wash: 0.4 }),
   brine_jet: TIDE({ mid: '#7ab0b8', deep: '#28454e', ring: 'shards', debris: 'ice', decal: 'stain', motif: 'wave', punch: 0.4, wash: 0.35 }),
+  // THE STONE COURT (the basilisks) — petrification's own register:
+  // grey stone under pale-green gaze-fire. The gaze is the golems'
+  // STEEL earth lit by the eyes (cage motif — a hold you were warned
+  // about, rock debris, the cracked-ground decal); the spit is fen
+  // rot on the verdant brand; the mantle is the same stone turned
+  // inward, spikes rising off a body going to rock.
+  stone_gaze: STEEL({ mid: '#b9d18c', deep: '#4c5142', spark: '#dff0b0', glow: '150, 176, 108', ring: 'shards', debris: 'rock', decal: 'cracks', motif: 'cage', punch: 0.55, wash: 0.4 }),
+  mire_spit: VERDANT({ mid: '#7a8b4f', deep: '#39432a', ring: 'shards', debris: 'spark', decal: 'stain', motif: 'wave', punch: 0.35, wash: 0.3 }),
+  stone_mantle: STEEL({ mid: '#8f8a76', deep: '#46443a', spark: '#d8d2b4', ring: 'halo', debris: 'rock', decal: 'cracks', motif: 'spikes', punch: 0.5, wash: 0.35 }),
   // THE SKRAL (docs/skral-plan.md) — the same cold harbor family in a
   // kelp-green register: the lash is thin quick water (light punch,
   // whip spray), the riptide is the crab's TIDE turned undertow (halo

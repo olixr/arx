@@ -2443,6 +2443,125 @@ const defs: NpcDef[] = [
       },
     ],
   },
+  // ---- THE STONE COURT (the basilisks, docs-of-record: the D&D
+  // dracolisk line): six-legged dragon-blooded reptiles whose gaze
+  // is the weapon and whose bite is the verdict. Slow metabolisms,
+  // relentless intent — a basilisk never hurries, because the ground
+  // itself is on its side.
+  {
+    // THE FEN LURKER: the marsh cousin — longer, lower, quicker, and
+    // gazeless. It hunts the wet margin the old way: still as a log,
+    // then all jaw. The family's one door for keepers.
+    id: 'fen_basilisk',
+    name: 'Fen basilisk',
+    level: 13,
+    maxHp: 62,
+    damage: 5,
+    attackRange: 1.0,
+    attackCooldownTicks: 52,
+    // An ambusher's patience: it lets the bank bring dinner close.
+    aggroRange: 5,
+    // Eyes on the skull's sides — a lurker watches most of the marsh.
+    sightArc: 220,
+    leashRange: 14,
+    // The lunge the log was hiding: quick in the rush, done hurrying
+    // the moment the jaws close.
+    speed: 2.3,
+    xpReward: 150,
+    loot: ['fen_basilisk'],
+    respawnSec: 75,
+    color: '#5c6644',
+    radius: 0.45,
+    // A body that carries its whole height at the shoulder of a boot.
+    hitHeight: 0.7,
+    // The drool is the family inheritance the fen kept.
+    attackStatus: { status: 'venom', power: 1, durationTicks: 50 },
+    resist: ['venom'],
+    // Cold blood: winter's argument always wins against a reptile.
+    weak: ['chill'],
+    kit: [
+      // The swamp thrown at where you are going — the reach the
+      // sprawl doesn't have, aimed like a hunter leads a duck.
+      {
+        ability: 'mire_spit',
+        cooldownTicks: 140,
+        windupTicks: 14,
+        minRange: 2.2,
+        maxRange: 7,
+        aim: 'lead',
+      },
+    ],
+  },
+  {
+    // THE BASILISK: the stone court's standing argument. It does not
+    // chase well and does not need to — the gaze gathers where you
+    // are, and the ground stops letting you leave.
+    id: 'basilisk',
+    name: 'Basilisk',
+    level: 20,
+    // More hull than the shore's bulwark: dracolisk hide is armor
+    // that grew, and the stat line keeps the promise.
+    maxHp: 140,
+    damage: 7,
+    attackRange: 1.1,
+    // A jaw like a quarry gate: slow to open, final when it shuts.
+    attackCooldownTicks: 60,
+    aggroRange: 5,
+    sightArc: 260,
+    leashRange: 15,
+    // The sluggish metabolism of the lore: it never hurries, and it
+    // never stops coming.
+    speed: 1.8,
+    xpReward: 340,
+    loot: ['basilisk', 'heirlooms'],
+    respawnSec: 90,
+    color: '#6b6a52',
+    radius: 0.5,
+    hitHeight: 0.8,
+    // Back teeth made for cracking statues leave ragged wounds in
+    // anything still soft.
+    attackStatus: { status: 'bleed', power: 1, durationTicks: 60 },
+    resist: ['venom', 'bleed'],
+    weak: ['chill'],
+    kit: [
+      // THE GAZE: announced long (the eyes stop blinking IS the
+      // warning), the hold budgeted by the ledger — stone boots on a
+      // slow cooldown, never a chain.
+      { ability: 'stone_gaze', cooldownTicks: 300, windupTicks: 22, maxRange: 5.5, weight: 2 },
+    ],
+  },
+  {
+    // THE ELDER: a walking crag wearing its own petrification. The
+    // gaze arrives harder because the body behind it has outlasted
+    // everything that ever met it — a DESIGN, never a scale-up.
+    id: 'elder_basilisk',
+    name: 'Elder basilisk',
+    level: 27,
+    maxHp: 240,
+    damage: 10,
+    attackRange: 1.3,
+    attackCooldownTicks: 64,
+    aggroRange: 6,
+    sightArc: 260,
+    leashRange: 16,
+    // Slower than the young — and the fight still ends where it says.
+    speed: 1.7,
+    xpReward: 640,
+    loot: ['elder_basilisk', 'heirlooms'],
+    respawnSec: 150,
+    color: '#5e6157',
+    radius: 0.62,
+    hitHeight: 1.0,
+    attackStatus: { status: 'bleed', power: 2, durationTicks: 70 },
+    resist: ['venom', 'bleed'],
+    weak: ['chill'],
+    kit: [
+      { ability: 'stone_gaze', cooldownTicks: 300, windupTicks: 22, maxRange: 6, weight: 2 },
+      // The inward gaze: when the fight starts costing, the hide
+      // answers by becoming a wall.
+      { ability: 'stone_mantle', cooldownTicks: 500, windupTicks: 16, hpBelow: 0.7 },
+    ],
+  },
   {
     id: 'wolf',
     name: 'Wolf',

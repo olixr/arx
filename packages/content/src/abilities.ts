@@ -4049,6 +4049,58 @@ const defs: AbilityDef[] = [
     element: 'frost',
     status: { status: 'chill', power: 1, durationTicks: 50 },
   },
+  // ---- THE STONE COURT (the basilisks): six-legged dracolisk kin.
+  // The gaze is the species — everything else is teeth.
+  {
+    id: 'stone_gaze',
+    name: 'Stone Gaze',
+    desc: 'The pale-green eyes stop blinking, and the ground under you remembers being rock. Move, or be part of the landscape.',
+    color: '#b9d18c',
+    code: 'Sg',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'ground_aoe',
+    // The petrification GRAZES — the hold is the argument, the bite
+    // that follows is the sentence.
+    damage: 4,
+    radius: 1.4,
+    range: 6,
+    // FAIR HANDS: the gaze gathers where it will fall — the licensed
+    // hold warns longer than half its lock before it lands (ledger law).
+    fuseTicks: 16,
+    // THE STONE TAKES HOLD: a licensed root applier (statusWave
+    // register) — stone in the boots, snapped by honest damage.
+    status: { status: 'root', power: 0, durationTicks: 36 },
+  },
+  {
+    id: 'mire_spit',
+    name: 'Mire Spit',
+    desc: 'The fen basilisk coughs up the swamp itself — a rope of green rot that clings where it lands.',
+    color: '#7a8b4f',
+    code: 'Mi',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'projectile_fan',
+    damage: 6,
+    projectiles: 1,
+    projectileSpeed: 10,
+    range: 7,
+    // THE FLIGHT VOICE: fen rot flies as the verdant brand — living
+    // corruption with intent, never a wooden shaft.
+    element: 'verdant',
+    status: { status: 'venom', power: 1, durationTicks: 90 },
+  },
+  {
+    id: 'stone_mantle',
+    name: 'Stone Mantle',
+    desc: 'The elder turns its own gaze inward. The hide answers the way hides answer that look — by becoming a wall.',
+    color: '#8f8a76',
+    code: 'Sm',
+    cooldownTicks: 0, // NPC pacing lives on the NpcDef, not the ability
+    shape: 'self_buff',
+    damage: 0,
+    // THE SELF-PAGE DOOR: a licensed stonehide applier (statusWave
+    // register) — the elder armors in its own petrification.
+    self: { selfStatus: { status: 'stonehide', power: 0, durationTicks: 360 }, durationTicks: 1 },
+  },
 
   // ------------------------------------ THE SKRAL (docs/skral-plan.md):
   // the brine-folk's three words. The tidecaller speaks two — the lash

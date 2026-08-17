@@ -220,6 +220,7 @@ const FORM_BY_ID: Record<string, GroundForm> = {
   crusher_claw: 'fang',
   turtle_scute: 'shellplate', colossus_plate: 'shellplate', crab_carapace: 'shellplate',
   skral_frill: 'shellplate', forgeplate_scrap: 'shellplate', bonegrinder_girdle: 'shellplate',
+  basilisk_scale: 'shellplate', fen_basilisk_hide: 'hide', petrified_eye: 'pearl',
   feather: 'feather', owl_plume: 'feather', elder_plume: 'feather',
   venom_sac: 'sac', venom_sac_fine: 'sac', venom_sac_prime: 'sac', venom_gland: 'sac',
   truffle: 'truffle', truffle_fine: 'truffle', truffle_prime: 'truffle',

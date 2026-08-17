@@ -1499,6 +1499,41 @@ const defs: LootTableDef[] = [
       { item: 'frost_essence', chance: 0.12 },
     ],
   },
+  // ---- THE STONE COURT (the basilisks).
+  {
+    id: 'fen_basilisk',
+    desc: 'Marsh pickings: keeled hide off the lurker, and whatever the fen had already swallowed.',
+    entries: [
+      { item: 'bones' },
+      { item: 'fen_basilisk_hide', chance: 0.6 },
+      // A lurker's gullet is a fish ledger with one entry left.
+      { item: 'raw_trout', chance: 0.35 },
+      { item: 'coins', qty: [3, 12], chance: 0.4 },
+      { item: 'verdant_essence', chance: 0.1 },
+    ],
+  },
+  {
+    id: 'basilisk',
+    desc: 'The gaze line pays in horn: grey scutes off the stone court, and grit that used to be somebody\'s boots.',
+    entries: [
+      { item: 'bones' },
+      { item: 'basilisk_scale', chance: 0.7 },
+      { item: 'coins', qty: [10, 34], chance: 0.4 },
+      { item: 'verdant_essence', chance: 0.12 },
+    ],
+  },
+  {
+    id: 'elder_basilisk',
+    desc: 'The elder\'s estate: heavy scale in quantity, and — for the steady-handed — the eye itself, gone to agate.',
+    entries: [
+      { item: 'bones' },
+      { item: 'basilisk_scale', qty: [1, 2], chance: 0.8 },
+      // The collector's piece: half the elders keep it intact.
+      { item: 'petrified_eye', chance: 0.5 },
+      { item: 'coins', qty: [24, 70], chance: 0.5 },
+      { item: 'verdant_essence', chance: 0.15 },
+    ],
+  },
   {
     id: 'skral',
     desc: 'Bank pickings: the day\'s catch off its belt, and the frill if the skinning goes well.',

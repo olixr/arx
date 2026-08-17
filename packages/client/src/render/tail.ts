@@ -602,6 +602,120 @@ export function drawTurtleTail(
   ctx.stroke();
 }
 
+export interface BasiliskTailStyle {
+  hide: string;
+  horn: string;
+  /** Width multiplier — the elder drags a heavier trailer. */
+  heavy: number;
+  /** The fen cousin: a connected keel fin instead of the saw. */
+  fin?: boolean;
+}
+
+/**
+ * Paint the projected basilisk tail: a long tapering muscle trailer
+ * off the stern carrying the dorsal read all the way out — saw chips
+ * on the stone line, a connected swimmer's keel on the fen. Dials
+ * ride the style (the canid-lane law: the painter never learns a
+ * species). Plain path calls — no Path2D — so node-side painter
+ * tests can walk every coordinate.
+ */
+export function drawBasiliskTail(
+  ctx: CanvasRenderingContext2D,
+  pts: Array<{ x: number; y: number }>,
+  st: BasiliskTailStyle,
+  wk: number,
+  opts: BobtailDrawOpts,
+): void {
+  const n = pts.length;
+  if (n < 3) return;
+  const left: Array<{ x: number; y: number }> = [];
+  const right: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[Math.max(0, i - 1)]!;
+    const b = pts[Math.min(n - 1, i + 1)]!;
+    let tx = b.x - a.x;
+    let ty = b.y - a.y;
+    const tl = Math.hypot(tx, ty) || 1;
+    tx /= tl;
+    ty /= tl;
+    const t = i / (n - 1);
+    // A dragon's taper: thick muscular root closing to a whip point.
+    const w = (0.068 - 0.052 * t) * st.heavy * wk;
+    left.push({ x: pts[i]!.x + ty * w, y: pts[i]!.y - tx * w });
+    right.push({ x: pts[i]!.x - ty * w, y: pts[i]!.y + tx * w });
+  }
+
+  const silhouette = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(left[0]!.x, left[0]!.y);
+    for (let i = 1; i < n; i++) ctx.lineTo(left[i]!.x, left[i]!.y);
+    // The tip runs out to a true point — scaled hide, not fur.
+    const tipX = pts[n - 1]!.x + (pts[n - 1]!.x - pts[n - 2]!.x) * 0.5;
+    const tipY = pts[n - 1]!.y + (pts[n - 1]!.y - pts[n - 2]!.y) * 0.5;
+    ctx.lineTo(tipX, tipY);
+    for (let i = n - 1; i >= 0; i--) ctx.lineTo(right[i]!.x, right[i]!.y);
+    ctx.closePath();
+  };
+
+  ctx.lineJoin = 'round';
+  ctx.fillStyle = opts.hurt ? '#ffffff' : shade(st.hide, opts.back ? -18 : -10);
+  silhouette();
+  ctx.fill();
+  if (opts.hurt) return;
+
+  // The dorsal read rides whichever ribbon edge is screen-upper, so
+  // the ridge stays on the spine at every facing (the turtle law).
+  if (st.fin) {
+    // The keel: one connected wave sheet along the upper edge — the
+    // swimmer's argument, tallest amidships, dying at the tip.
+    ctx.fillStyle = shade(st.horn, -4);
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i < n; i++) {
+      const hi = left[i]!.y <= right[i]!.y ? left[i]! : right[i]!;
+      if (!started) {
+        ctx.moveTo(hi.x, hi.y);
+        started = true;
+      } else ctx.lineTo(hi.x, hi.y);
+    }
+    for (let i = n - 1; i >= 0; i--) {
+      const hi = left[i]!.y <= right[i]!.y ? left[i]! : right[i]!;
+      const t = i / (n - 1);
+      const fh = (0.07 - 0.055 * Math.abs(t - 0.35) * 2) * st.heavy * wk;
+      ctx.lineTo(hi.x, hi.y - Math.max(0.2, fh * 1.6));
+    }
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    // Saw chips marching out the trailer.
+    ctx.fillStyle = st.horn;
+    for (let i = 1; i < n - 1; i++) {
+      const hi = left[i]!.y <= right[i]!.y ? left[i]! : right[i]!;
+      const t = i / (n - 1);
+      const sw = (0.052 - 0.03 * t) * st.heavy * wk;
+      ctx.beginPath();
+      ctx.moveTo(hi.x - sw * 0.5, hi.y + sw * 0.2);
+      ctx.lineTo(hi.x - sw * 0.05, hi.y - sw * 1.4);
+      ctx.lineTo(hi.x + sw * 0.5, hi.y + sw * 0.2);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // Segment rings: the scaled joints, quiet.
+  ctx.strokeStyle = shade(st.hide, -22);
+  ctx.lineWidth = Math.max(1, wk * 0.013);
+  for (let i = 1; i < n - 1; i++) {
+    ctx.beginPath();
+    ctx.moveTo(left[i]!.x, left[i]!.y);
+    ctx.lineTo(right[i]!.x, right[i]!.y);
+    ctx.stroke();
+  }
+  // The quiet contour that separates the trailer from the ground.
+  silhouette();
+  ctx.stroke();
+}
+
 export interface HorseTailStyle {
   /** Pre-lifted hair tone (the portrait law: shade(mane, 18)). */
   hair: string;

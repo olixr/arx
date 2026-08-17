@@ -7140,6 +7140,31 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     // Seated breath — the resting hands are never a freeze-frame.
     mainY += Math.sin(rig.nowMs * 0.0017) * 0.008 * s * sit;
     offY += Math.sin(rig.nowMs * 0.0017 + 1.4) * 0.008 * s * sit;
+    // THE SEATED PLANT: the seat moved the FIST (to a knee, a prop
+    // behind the hip, a chair arm) but a held blade used to keep its
+    // STANDING carriage rake — from the new, low anchor that rammed
+    // the steel through the shins and the floor, and read as a sword
+    // floating beside empty hands (the user's screenshots). Seated, a
+    // blade RESTS: it rotates to point from wherever the fist settled
+    // toward the ground just outside the sitter — tip grounded beside
+    // the body, the resting warrior's plant. Screen-plane, so the
+    // fore relaxes home. The off blade plants on its own side.
+    if (isSword) {
+      const plantA = Math.atan2(
+        rig.y - mainY,
+        rig.x + (Math.sign(sideS) || 1) * 0.6 * s * wS - mainX,
+      );
+      heldAngle += angleDelta(heldAngle, plantA) * sit;
+      mainFore += (1 - mainFore) * sit;
+    }
+    if (offBlade) {
+      const plantO = Math.atan2(
+        rig.y - offY,
+        rig.x - (Math.sign(sideS) || 1) * 0.6 * s * wS - offX,
+      );
+      offBladeAngle += angleDelta(offBladeAngle, plantO) * sit;
+      offFore += (1 - offFore) * sit;
+    }
     // THE PROP LEAN belongs to the floor sit's planted arms; a chair
     // sit keeps the spine over the hips (the throne dead-upright).
     if (!chairSit) lean += -sideS * profileK * (kneeUpSit ? 0.1 : 0.2) * sit;
@@ -7765,6 +7790,31 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     offShX = oR.x;
     offShY = oR.y;
   }
+  // THE FIST IS ONE FLESH (read-only derivation, post-assembly): the
+  // arm solve clamps its chord to the anatomy (solveLimbInto's
+  // L·2·stretch), so the drawn mitt can stop SHORT of the requested
+  // hand target — and the held weapon, anchored on the raw target,
+  // floated past the hand (the walk/run "gripping the blade" and the
+  // detached-hilt reads). The weapon paints at the SAME clamped fist
+  // the arm ends on: identical formula, identical roots, so steel and
+  // mitt are one point by construction. Inside reach this is the
+  // identity — strikes and draws pass through untouched.
+  const fistClamp = (
+    rx: number,
+    ry: number,
+    tx: number,
+    ty: number,
+  ): { x: number; y: number } => {
+    const dx2 = tx - rx;
+    const dy2 = ty - ry;
+    const d2 = Math.hypot(dx2, dy2);
+    const max2 = ARM_LEN * s * 2 * 1.08;
+    if (d2 <= max2) return { x: tx, y: ty };
+    const k2 = max2 / d2;
+    return { x: rx + dx2 * k2, y: ry + dy2 * k2 };
+  };
+  const mainFistPt = fistClamp(mainShX, mainShY, mainX, mainY);
+  const offFistPt = fistClamp(offShX, offShY, offX, offY);
   if (RIG_DEBUG.on) {
     RIG_DEBUG.x = rig.x;
     RIG_DEBUG.hipY = hipY;
@@ -7877,7 +7927,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     const offWeapon =
       offSt?.kind === 'weapon' && rig.offhandItem !== undefined && !archer && seg !== 'under';
     if (offWeapon && offSt) {
-      drawHeldItem(ctx, rig.offhandItem!, offSt.color, offX, offY, offBladeAngle, s, rig, {
+      drawHeldItem(ctx, rig.offhandItem!, offSt.color, offFistPt.x, offFistPt.y, offBladeAngle, s, rig, {
         ench: rig.offhandEnch,
         flip: offFlip,
         fore: offFore,
@@ -8543,7 +8593,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
           ctx.globalAlpha = 1;
         }
       }
-      drawHeldItem(ctx, weapon.id, weapon.color, mainX, mainY, heldAngle, s, rig, {
+      drawHeldItem(ctx, weapon.id, weapon.color, mainFistPt.x, mainFistPt.y, heldAngle, s, rig, {
         grip: staffGrip,
         // THE BOW IS HELD BY THE WOOD — always. The old restSettle
         // blend slid the fist onto the string line whenever the settle
@@ -8557,7 +8607,7 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
         rodCast: fishing && rig.fishTo !== undefined,
       });
       // THE PATIENT LINE rides the rod's layer — see paintFishLine.
-      if (fishing && rig.fishTo && workRes) paintFishLine(mainX, mainY);
+      if (fishing && rig.fishTo && workRes) paintFishLine(mainFistPt.x, mainFistPt.y);
     }
   };
   /**
@@ -9335,6 +9385,19 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     paintSkralBody(ctx, skr, skFr, bodySt != null);
     paintSkralWrap(ctx, skr, skFr);
   }
+  // THE IRON HABIT: the banded cuirass, girdle, sash, and pennant
+  // overpaint the garment quad — but never real armor (the loot-story
+  // law: what a body visibly wears really drops, and nothing may
+  // cover it). The pteruges skirt paints ALWAYS: the harness law —
+  // this body is issued, never bare.
+  if (hob) {
+    paintHobgoblinBody(
+      ctx,
+      hob,
+      { s, tw, ww, th, fx, fy, profileK, backK, lead, hurt: rig.hurt, nowMs: rig.nowMs },
+      bodySt != null,
+    );
+  }
 
   // ---- THE HEAD SITS UPON THE SHOULDERS: at a settled, empty-handed
   // rest the torso frame closes here so the hanging arms can paint in
@@ -9373,19 +9436,6 @@ export function drawHumanoid(ctx: CanvasRenderingContext2D, rig: RigPose): void 
     ctx.translate(rig.x, hipY);
     if (lean !== 0) ctx.rotate(lean);
     ctx.scale(wS, hScale);
-  }
-  // THE IRON HABIT: the banded cuirass, girdle, sash, and pennant
-  // overpaint the garment quad — but never real armor (the loot-story
-  // law: what a body visibly wears really drops, and nothing may
-  // cover it). The pteruges skirt paints ALWAYS: the harness law —
-  // this body is issued, never bare.
-  if (hob) {
-    paintHobgoblinBody(
-      ctx,
-      hob,
-      { s, tw, ww, th, fx, fy, profileK, backK, lead, hurt: rig.hurt, nowMs: rig.nowMs },
-      bodySt != null,
-    );
   }
 
   // ---- head (inside the squash frame so turning carries it too).
@@ -10632,7 +10682,7 @@ export interface BeastSpec {
   hipSide: number;
   /** Upper-leg thickness (tiles). */
   legW: number;
-  foot: 'hoof' | 'paw' | 'claw' | 'bearpaw' | 'turtleclaw' | 'crabspike';
+  foot: 'hoof' | 'paw' | 'claw' | 'bearpaw' | 'turtleclaw' | 'crabspike' | 'lizardclaw';
   /**
    * Species foot-size dial: multiplies the foot painter's base width
    * (which derives from legW). Heavy-bodied walkers whose legs are
@@ -11281,6 +11331,93 @@ const BEAST_SPECS: Record<string, BeastSpec> = {
     // Long merus over a short driven dactyl — the high crab knee is a
     // SKELETON fact, front and hind alike.
     segSplit: [0.58, 0.58],
+  },
+  // THE STONE COURT (the basilisks): six-legged dracolisk kin on the
+  // crab's proven alternating tripod — a stable triangle planted at
+  // every beat — but SPRAWLED, not stilted: elbows out, belly low,
+  // the saurian march. Front and mid knees bow forward (the lizard
+  // elbow), the rear pair hocks back and DRIVES.
+  fen_basilisk: {
+    rig: {
+      legs: [
+        { fwd: 0.3, side: -0.2, group: 0 },
+        { fwd: 0.3, side: 0.2, group: 1 },
+        { fwd: 0, side: -0.24, group: 1 },
+        { fwd: 0, side: 0.24, group: 0 },
+        { fwd: -0.3, side: -0.2, group: 0 },
+        { fwd: -0.3, side: 0.2, group: 1 },
+      ],
+      legLen: 0.17,
+      // The lurker's carriage: belly a finger off the mud.
+      rise: 0.08,
+      liftAmp: 0.05,
+      runSpeed: 2.3,
+      turnRate: 7,
+    },
+    // The longest torso-to-height ratio in the court — a log until
+    // it isn't.
+    bodyLen: 0.56,
+    bodyRise: 0.14,
+    kneeFwd: [1, 1, 1, -1, -1, -1],
+    hipFwd: 0.85,
+    hipSide: 0.7,
+    legW: 0.05,
+    foot: 'lizardclaw',
+    segSplit: [0.54, 0.54],
+  },
+  basilisk: {
+    rig: {
+      legs: [
+        { fwd: 0.3, side: -0.26, group: 0 },
+        { fwd: 0.3, side: 0.26, group: 1 },
+        { fwd: 0, side: -0.3, group: 1 },
+        { fwd: 0, side: 0.3, group: 0 },
+        { fwd: -0.3, side: -0.26, group: 0 },
+        { fwd: -0.3, side: 0.26, group: 1 },
+      ],
+      legLen: 0.3,
+      // Real daylight under the trunk, but a sprawl, never stilts.
+      rise: 0.15,
+      liftAmp: 0.06,
+      // The sluggish metabolism of the lore: it never hurries.
+      runSpeed: 1.8,
+      turnRate: 5.5,
+    },
+    bodyLen: 0.52,
+    bodyRise: 0.24,
+    kneeFwd: [1, 1, 1, -1, -1, -1],
+    hipFwd: 0.85,
+    hipSide: 0.75,
+    legW: 0.09,
+    foot: 'lizardclaw',
+    // Long femur over a short driven shank — the sprawled push-up.
+    segSplit: [0.55, 0.57],
+  },
+  elder_basilisk: {
+    rig: {
+      legs: [
+        { fwd: 0.32, side: -0.28, group: 0 },
+        { fwd: 0.32, side: 0.28, group: 1 },
+        { fwd: 0, side: -0.32, group: 1 },
+        { fwd: 0, side: 0.32, group: 0 },
+        { fwd: -0.32, side: -0.28, group: 0 },
+        { fwd: -0.32, side: 0.28, group: 1 },
+      ],
+      legLen: 0.4,
+      rise: 0.2,
+      liftAmp: 0.06,
+      runSpeed: 1.7,
+      turnRate: 5,
+    },
+    bodyLen: 0.66,
+    bodyRise: 0.32,
+    kneeFwd: [1, 1, 1, -1, -1, -1],
+    hipFwd: 0.85,
+    hipSide: 0.78,
+    // Column limbs: the crag walks on tree trunks.
+    legW: 0.13,
+    foot: 'lizardclaw',
+    segSplit: [0.56, 0.56],
   },
   giant_beetle: {
     rig: {
@@ -18578,6 +18715,723 @@ export function drawTurtleHead(
   }
 }
 
+// ================================================================
+// THE STONE COURT — the basilisks (six-legged dracolisk kin).
+// Three bodies, three designs: the FEN LURKER (long, low, keel-
+// finned, gazeless), the BASILISK (the stone-hided gaze line with
+// the vertebral saw), and the ELDER (a horn-crowned walking crag in
+// cracked osteoderm plate). The family reads: sprawled hexapod
+// carriage, a head carried LOW and forward off a thick neck, the
+// yellowish underbelly of the old bestiary plates, and eyes lit
+// with pale-green fire — the gaze IS the species.
+// ================================================================
+
+export interface BasiliskLook {
+  /** Body base hide. */
+  hide: string;
+  /** The canonical yellowish underbelly + throat + jaw shovel. */
+  belly: string;
+  /** Osteoderm scute rows — a step BRIGHTER than the hide (the
+   *  turtle mail law: darker plates read as windows). */
+  plate: string;
+  /** Ridge saw, brow horns, claws — raised horn, its own material. */
+  horn: string;
+  /** Pale-green fire. */
+  eye: string;
+  /** Half-width of the hull (tiles). */
+  bodyW: number;
+  /** Back height of the block extrusion (tiles). */
+  bodyH: number;
+  /** Vertebral saw height (tiles). */
+  ridgeH: number;
+  headW: number;
+  headH: number;
+  /** Head-carry height above the ground line (tiles) — LOW: the
+   *  court carries its skull level with the back, never raised. */
+  headRise: number;
+  /** Tail sim weight dial. */
+  tailHeavy: number;
+  /** The fen cousin: keeled swimming fin instead of the saw. */
+  fin?: boolean;
+  /** The elder alone: horn crown, plate mass, lichen, barbels. */
+  elder?: boolean;
+  /** Elder lichen saddles. */
+  moss?: string;
+}
+
+/**
+ * Seeded hide clusters (the lynx law): wild basilisks scatter across
+ * four stone-country coats, the fen line across three marsh coats —
+ * hash BEFORE picking so consecutive eids never twin. The elder
+ * never rolls: a crag has exactly one geology.
+ */
+const BASILISK_CLUSTERS: readonly Omit<
+  BasiliskLook,
+  'bodyW' | 'bodyH' | 'ridgeH' | 'headW' | 'headH' | 'headRise' | 'tailHeavy'
+>[] = [
+  // Greystone: the bestiary plate — dull grey-brown, pale-green fire.
+  { hide: '#6b6a52', belly: '#c9bd8e', plate: '#7d7c62', horn: '#8a8567', eye: '#b9d18c' },
+  // Dun: dust-country brown, the yellowish belly strongest.
+  { hide: '#75684e', belly: '#d1bf8b', plate: '#87795c', horn: '#93865f', eye: '#bcd48a' },
+  // Umber: dark iron-earth, horn near-bone.
+  { hide: '#5e5747', belly: '#bcab7e', plate: '#6f6754', horn: '#8f8468', eye: '#b2cc85' },
+  // Mossback: green-grey stone that stood too long in one wood.
+  { hide: '#5c6450', belly: '#c2bb8a', plate: '#6e765e', horn: '#848b66', eye: '#c0d792' },
+];
+const FEN_CLUSTERS: readonly Omit<
+  BasiliskLook,
+  'bodyW' | 'bodyH' | 'ridgeH' | 'headW' | 'headH' | 'headRise' | 'tailHeavy'
+>[] = [
+  // Peat: the standing water's own olive-dark.
+  { hide: '#57603f', belly: '#b9b284', plate: '#68724c', horn: '#7d7a55', eye: '#a3b578' },
+  // Murk: deep bottle-green, near-black in the reeds.
+  { hide: '#4b5642', belly: '#aeab7f', plate: '#5c684e', horn: '#747a58', eye: '#9cb173' },
+  // Rustmarsh: iron-water brown along the keel and limbs.
+  { hide: '#5f5644', belly: '#bfae7f', plate: '#6f664f', horn: '#82795a', eye: '#a8b87c' },
+];
+
+const ELDER_BASILISK_LOOK: BasiliskLook = {
+  // Basalt-dark hide under pale worked plate — the crag, not a
+  // bigger basilisk (the design-not-reskin law).
+  hide: '#4f5548',
+  belly: '#b5ad83',
+  plate: '#666d58',
+  horn: '#8c8465',
+  eye: '#c6e392',
+  moss: '#78885a',
+  bodyW: 0.44,
+  bodyH: 0.46,
+  ridgeH: 0.24,
+  headW: 0.42,
+  headH: 0.26,
+  headRise: 0.28,
+  tailHeavy: 2.3,
+  elder: true,
+};
+
+/** Resolve a basilisk body's full look from its defId + spawn seed. */
+export function basiliskLook(defId: string, seed: number): BasiliskLook {
+  if (defId === 'elder_basilisk') return ELDER_BASILISK_LOOK;
+  if (defId === 'fen_basilisk') {
+    const c = FEN_CLUSTERS[((seed * 2654435761) >>> 8) % 3]!;
+    return {
+      ...c,
+      bodyW: 0.24,
+      bodyH: 0.2,
+      ridgeH: 0.09,
+      headW: 0.3,
+      headH: 0.15,
+      headRise: 0.1,
+      tailHeavy: 1.5,
+      fin: true,
+    };
+  }
+  const c = BASILISK_CLUSTERS[((seed * 2654435761) >>> 8) & 3]!;
+  return {
+    ...c,
+    bodyW: 0.32,
+    bodyH: 0.34,
+    ridgeH: 0.17,
+    headW: 0.33,
+    headH: 0.2,
+    headRise: 0.2,
+    tailHeavy: 1.8,
+  };
+}
+
+/**
+ * THE COURT'S HULL: the basilisk body is a sprawled saurian trunk —
+ * shoulder swell, a saddle over the mid-legs, the haunch swell where
+ * the drivers root, tapering into neck and tail stubs the dedicated
+ * painters continue. Painted as a block extrusion (the shared 2.5D
+ * dialect) with the family's three reads layered INSIDE the
+ * hull-clipped marks pass (the crab fixture law — nothing floats):
+ * the yellowish BELLY BAND on the down-screen flank, the OSTEODERM
+ * ROWS a step brighter than the hide, and — after the hull — the
+ * VERTEBRAL SAW riding the crown by the ridge law.
+ */
+export function paintBasiliskBody(
+  ctx: CanvasRenderingContext2D,
+  spec: BeastSpec,
+  look: BasiliskLook,
+  f: BeastBlockFrame,
+): void {
+  const hl = spec.bodyLen;
+  const hw = look.bodyW;
+  const { bx, gy, s, fx, fy, ys } = f;
+  const px = -fy;
+  const py = fx;
+  const hide = shade(look.hide, (((f.seed >>> 5) & 7) - 3) * 2);
+  const lift = f.bob * 0.35 * s;
+  const tk = f.topScale ?? 1;
+
+  // THE BELLY TUCKS LIKE A LION'S: the under-mass is a ground-frame
+  // lens with an authored ground line — the fen keel drags a finger
+  // off the mud, the elder keeps honest daylight.
+  const ax = Math.abs(fx);
+  const ay = Math.abs(fy);
+  const brx = (hl * 0.7 * ax + hw * 0.85 * ay) * s;
+  const bry = (hw * 0.4 * ax + hl * 0.26 * ay) * ys * s;
+  const bellyClear = (look.elder ? 0.07 : look.fin ? 0.015 : 0.04) * s;
+  ctx.fillStyle = f.hurt ? '#ffffff' : shade(look.hide, -22);
+  ctx.save();
+  ctx.translate(bx, gy - bellyClear - lift * 0.6 - bry);
+  ctx.beginPath();
+  facetBlob(ctx, 0, 0, brx, f.seed | 3, 8, bry / brx, 0.5);
+  ctx.fill();
+  ctx.restore();
+
+  // The footprint: long-shouldered, waist barely pinched, haunches
+  // full — a trunk built to carry six roots.
+  const foot: Array<[number, number]> = [
+    [hl * 0.98, -hw * 0.4],
+    [hl * 0.98, hw * 0.4],
+    [hl * 0.62, hw * 0.86],
+    [hl * 0.2, hw * 0.94],
+    [-hl * 0.14, hw * 0.88],
+    [-hl * 0.52, hw * 0.98],
+    [-hl * 0.9, hw * 0.6],
+    [-hl * 0.9, -hw * 0.6],
+    [-hl * 0.52, -hw * 0.98],
+    [-hl * 0.14, -hw * 0.88],
+    [hl * 0.2, -hw * 0.94],
+    [hl * 0.62, -hw * 0.86],
+  ];
+  // The topline: shoulder swell forward, saddle amidships, the
+  // haunch swell aft — never a flat prism wall (the lynx lesson at
+  // reptile scale). The fen runs flatter: a log's topline.
+  const swellK = look.fin ? 0.12 : 0.26;
+  const topH = (X: number): number => {
+    const t = X / hl;
+    const shoulder = Math.exp(-Math.pow((t - 0.42) / 0.42, 2));
+    const haunch = Math.exp(-Math.pow((t + 0.45) / 0.4, 2));
+    return Math.max(0.04, look.bodyH * (0.78 + swellK * Math.max(shoulder, haunch * 0.92) - 0.1 * Math.pow(t, 2)));
+  };
+  const botH = (X: number): number => {
+    const t = X / hl;
+    // The belly line rides clear of the ground plane between the
+    // sprawled hips, sagging lowest amidships.
+    return (look.fin ? 0.035 : 0.09) + 0.03 * Math.pow(t, 2);
+  };
+
+  paintBlockBody(ctx, f, foot, topH, botH, hide, (gx, gyy) => {
+    // ---- THE BELLY BAND: the canonical yellowish underbelly,
+    // painted along the DOWN-SCREEN flank inside the clip so it
+    // hugs the hull at every band. Pure N/S facings show back or
+    // chest — the band fades out with |py|.
+    const bandK = Math.min(1, Math.abs(py) * 1.6);
+    if (bandK > 0.05) {
+      const sgn = Math.sign(py) || 1;
+      ctx.fillStyle = shade(look.belly, -6);
+      // A soft margin, not a beach towel: the band stays low on the
+      // flank and quiet, tapering out at nose and stern.
+      ctx.globalAlpha = 0.55 * bandK;
+      ctx.beginPath();
+      const bandY = hw * 0.94 * sgn;
+      const xs = [-0.82, -0.5, -0.1, 0.3, 0.66, 0.9];
+      for (let i = 0; i < xs.length; i++) {
+        const X = xs[i]! * hl;
+        const h = botH(X) * 0.5 * s;
+        const xq = gx(X, bandY);
+        const yq = gyy(X, bandY) - h - lift * 0.6;
+        if (i === 0) ctx.moveTo(xq, yq);
+        else ctx.lineTo(xq, yq);
+      }
+      for (let i = xs.length - 1; i >= 0; i--) {
+        const X = xs[i]! * hl;
+        // The inner edge pinches to nothing at both ends — a lens of
+        // pale, widest amidships.
+        const endK = 1 - Math.pow(Math.abs(xs[i]!) / 0.92, 2);
+        const innerY = hw * (0.94 - 0.36 * endK) * sgn;
+        const h = (botH(X) + (topH(X) - botH(X)) * 0.24 * endK) * tk * s;
+        ctx.lineTo(gx(X, innerY), gyy(X, innerY) - h - lift * 0.8);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    // ---- THE OSTEODERM ROWS: two lateral files of grown plate per
+    // side riding the back's own curve — a step BRIGHTER than the
+    // hide (the mail law), trapezoid-cut (grown armor, never stamped
+    // tile), seams quiet. The fen wears none: its read is the keel.
+    if (!look.fin) {
+      const rows: Array<{ Y: number; k: number }> = look.elder
+        ? [
+            { Y: 0.34, k: 1 },
+            { Y: -0.34, k: 1 },
+            { Y: 0.66, k: 0.8 },
+            { Y: -0.66, k: 0.8 },
+          ]
+        : [
+            { Y: 0.4, k: 1 },
+            { Y: -0.4, k: 1 },
+          ];
+      const nPlates = look.elder ? 6 : 5;
+      for (let ri = 0; ri < rows.length; ri++) {
+        const row = rows[ri]!;
+        for (let i = 0; i < nPlates; i++) {
+          const jit = (((f.seed * 31 + i * 0x9e37 + Math.round(row.Y * 100)) >>> 3) & 15) / 15;
+          const jit2 = (((f.seed * 17 + i * 0x85eb + ri * 0x5f3) >>> 4) & 15) / 15;
+          // Stagger alternate plates fore-aft and let each row wander
+          // in Y — grown armor scatters, a grid is stamped tile.
+          const X =
+            (-0.62 + ((i + 0.5) / nPlates) * 1.4 + (jit - 0.5) * 0.08 + (i % 2) * 0.03) * hl;
+          const Y = row.Y * hw * (0.92 + jit2 * 0.16);
+          const h = (botH(X) + (topH(X) - botH(X)) * (0.94 - 0.1 * Math.abs(row.Y))) * tk * s;
+          const pw = hw * (look.elder ? 0.17 : 0.13) * (0.82 + jit * 0.34) * row.k * s;
+          const pl = hl * (look.elder ? 0.095 : 0.082) * (0.82 + jit2 * 0.34) * s;
+          const cxp = gx(X, Y);
+          const cyp = gyy(X, Y) - h - lift;
+          // Trapezoid seated along the body axis: fore edge full,
+          // aft edge cut (the grown-armor read), lit from the sky —
+          // with a shaded aft facet carrying the relief so the seam
+          // strokes can stay whisper-quiet.
+          const fxs = fx * pl;
+          const fys = fy * pl * ys;
+          const pxs = px * pw;
+          const pys = py * pw * ys;
+          ctx.fillStyle = shade(look.plate, 7 + Math.round(jit * 5));
+          ctx.beginPath();
+          ctx.moveTo(cxp + fxs - pxs, cyp + fys - pys);
+          ctx.lineTo(cxp + fxs + pxs, cyp + fys + pys);
+          ctx.lineTo(cxp - fxs + pxs * 0.62, cyp - fys + pys * 0.62);
+          ctx.lineTo(cxp - fxs - pxs * 0.62, cyp - fys - pys * 0.62);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = shade(look.plate, -6);
+          ctx.beginPath();
+          ctx.moveTo(cxp - fxs * 0.2 - pxs * 0.9, cyp - fys * 0.2 - pys * 0.9);
+          ctx.lineTo(cxp - fxs * 0.2 + pxs * 0.9, cyp - fys * 0.2 + pys * 0.9);
+          ctx.lineTo(cxp - fxs + pxs * 0.62, cyp - fys + pys * 0.62);
+          ctx.lineTo(cxp - fxs - pxs * 0.62, cyp - fys - pys * 0.62);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(26, 20, 36, 0.16)';
+          ctx.lineWidth = Math.max(0.6, s * 0.007);
+          ctx.stroke();
+        }
+      }
+    } else {
+      // The fen's hide read: faint diamond speckle files along the
+      // flank — wet keeled leather, not plate.
+      ctx.fillStyle = shade(look.hide, 9);
+      for (let i = 0; i < 8; i++) {
+        const jit = (((f.seed * 17 + i * 0x85eb) >>> 4) & 15) / 15;
+        const X = (-0.7 + (i + 0.5) / 8 * 1.5) * hl;
+        const Y = (i % 2 === 0 ? 0.38 : -0.38) * hw * (0.9 + jit * 0.2);
+        const h = (botH(X) + (topH(X) - botH(X)) * 0.85) * tk * s;
+        const r0 = hw * 0.07 * (0.8 + jit * 0.5) * s;
+        ctx.beginPath();
+        ctx.ellipse(gx(X, Y), gyy(X, Y) - h - lift, r0 * 1.5, r0 * 0.8, Math.atan2(fy * ys, fx), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    // ---- THE ELDER'S YEARS: crack scars and lichen saddles, cell
+    // facts off the stable seed (never a facing-sorted lottery).
+    if (look.elder && look.moss) {
+      ctx.fillStyle = look.moss;
+      ctx.globalAlpha = 0.55;
+      for (const [mx, my, mr] of [
+        [-0.42, 0.2, 0.16],
+        [0.18, -0.28, 0.13],
+        [-0.1, 0.42, 0.1],
+      ] as const) {
+        const X = mx * hl;
+        const Y = my * hw;
+        const h = (botH(X) + (topH(X) - botH(X)) * 0.9) * tk * s;
+        ctx.beginPath();
+        facetBlob(ctx, gx(X, Y), gyy(X, Y) - h - lift, mr * s, f.seed ^ 0x5f3, 6, 0.55, 0.4);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      // The crack: one old wound across the plate country.
+      ctx.strokeStyle = 'rgba(24, 20, 30, 0.4)';
+      ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.beginPath();
+      const c0x = gx(0.34 * hl, -0.5 * hw);
+      const c0y = gyy(0.34 * hl, -0.5 * hw) - (topH(0.34 * hl) * 0.9) * tk * s - lift;
+      ctx.moveTo(c0x, c0y);
+      ctx.lineTo(gx(0.18 * hl, -0.2 * hw), gyy(0.18 * hl, -0.2 * hw) - topH(0.18 * hl) * 0.95 * tk * s - lift);
+      ctx.lineTo(gx(0.3 * hl, 0.08 * hw), gyy(0.3 * hl, 0.08 * hw) - topH(0.3 * hl) * 0.97 * tk * s - lift);
+      ctx.stroke();
+    }
+  });
+
+  // ---- THE VERTEBRAL SAW / THE KEEL FIN: the crown read, painted
+  // OVER the hull. The ridge law: blades root on the 3D centerline,
+  // so the root slides up-crown by the lateral projection — dead
+  // center face-on, on the skyline side-on.
+  if (f.hurt) return;
+  const ridgeY = -py * hw * 0.66;
+  const blades = look.fin ? 9 : look.elder ? 7 : 6;
+  const items: Array<{ X: number; y0: number; x0: number; h: number; w: number }> = [];
+  for (let i = 0; i < blades; i++) {
+    const t = -0.78 + ((i + 0.5) / blades) * 1.62;
+    const X = t * hl;
+    const jit = (((f.seed * 13 + i * 0x9e37) >>> 5) & 15) / 15;
+    // Tallest amidships, stepping down to neck and stern.
+    const bandK = 1 - 0.5 * Math.pow(Math.abs(t + 0.06) / 0.84, 2);
+    const h = look.ridgeH * (0.7 + 0.3 * jit) * bandK * s;
+    const w = (look.fin ? 0.16 : look.elder ? 0.13 : 0.11) * hl * s * (0.9 + 0.2 * jit);
+    const x0 = bx + (fx * X + px * ridgeY) * s;
+    const y0 =
+      gy + (fy * X + py * ridgeY) * ys * s - topH(X) * tk * s - lift + ridgeY * s * f.roll * 0.4;
+    items.push({ X, y0, x0, h, w });
+  }
+  // Far-to-near by screen y so raked blades imbricate honestly.
+  items.sort((a, b) => a.y0 - b.y0);
+  for (const it of items) {
+    const rake = fx * it.w * (look.fin ? 0.5 : 0.72);
+    const rakeY = fy * it.w * 0.4 * ys;
+    if (look.fin) {
+      // The keel: low connected fin waves — a swimmer's tail speaking
+      // all the way up the spine, never a saw.
+      ctx.fillStyle = shade(look.horn, -4);
+      ctx.beginPath();
+      ctx.moveTo(it.x0 - it.w * 0.6, it.y0 + 0.5);
+      ctx.quadraticCurveTo(it.x0 - it.w * 0.1 - rake * 0.3, it.y0 - it.h, it.x0 + it.w * 0.5 - rake, it.y0 - it.h * 0.7 - rakeY);
+      ctx.quadraticCurveTo(it.x0 + it.w * 0.5, it.y0 - it.h * 0.2, it.x0 + it.w * 0.6, it.y0 + 0.5);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      // The saw blade: a 2-facet horn bowed aft — lit fore facet,
+      // shadowed aft, partial BROKEN INK on the shadow edge only.
+      const tipX = it.x0 - rake;
+      const tipY = it.y0 - it.h - rakeY;
+      ctx.fillStyle = shade(look.horn, 8);
+      ctx.beginPath();
+      ctx.moveTo(it.x0 + it.w * 0.55, it.y0 + 0.5);
+      ctx.quadraticCurveTo(it.x0 + it.w * 0.2 - rake * 0.4, it.y0 - it.h * 0.62, tipX, tipY);
+      ctx.lineTo(it.x0 - it.w * 0.1, it.y0 - it.h * 0.18);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(look.horn, -14);
+      ctx.beginPath();
+      ctx.moveTo(it.x0 - it.w * 0.55, it.y0 + 0.5);
+      ctx.quadraticCurveTo(it.x0 - it.w * 0.35 - rake * 0.3, it.y0 - it.h * 0.5, tipX, tipY);
+      ctx.lineTo(it.x0 - it.w * 0.1, it.y0 - it.h * 0.18);
+      ctx.closePath();
+      ctx.fill();
+      // The broken ink: one partial stroke off the tip down the
+      // shadow edge — never a closed ring (the turtle ink law).
+      ctx.strokeStyle = '#241a2e';
+      ctx.globalAlpha = 0.55;
+      ctx.lineWidth = Math.max(0.8, s * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(tipX, tipY);
+      ctx.quadraticCurveTo(
+        it.x0 - it.w * 0.35 - rake * 0.3,
+        it.y0 - it.h * 0.5,
+        it.x0 - it.w * 0.42,
+        it.y0 - it.h * 0.24,
+      );
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
+/**
+ * THE COURT'S SKULL — dragon out of crocodile: a long broad muzzle
+ * that is the skull's own flesh (MOUTH IS A CUT, never a cone), the
+ * grim saurian grin with interlocked teeth, raised nostril bumps on
+ * the snout's top plane, a heavy brow ledge — and the species read:
+ * eyes lit with pale-green fire. The basilisk wears two backswept
+ * brow horns; the elder a four-point crown and chin barbels; the fen
+ * keeps a low hunter's brow and nothing it doesn't need.
+ */
+export function drawBasiliskHead(
+  ctx: CanvasRenderingContext2D,
+  look: BasiliskLook,
+  o: {
+    x: number;
+    y: number;
+    s: number;
+    fx: number;
+    fy: number;
+    ys: number;
+    hurt?: boolean;
+    /** 0..1 jaw gape — open through the windup, clamped on the hit. */
+    gape?: number;
+    /** Corpse: fire out, jaw slack. */
+    dead?: boolean;
+    /** Which family body (horn dress + fen brow fork). */
+    fen?: boolean;
+  },
+): void {
+  const { x, y, s, fx, fy, ys } = o;
+  const px = -fy;
+  const py = fx;
+  const hw = look.headW * s;
+  const hh = look.headH * s;
+  const gape = o.dead ? 0.15 : (o.gape ?? 0);
+  const skin = o.hurt ? '#ffffff' : shade(look.hide, 6);
+  const pk = Math.abs(fx);
+
+  // The muzzle reaches long — a croc's proportion, not a turtle's.
+  const tipR = 1.28;
+  const tipX = x + fx * hw * tipR;
+  const tipY = y + fy * hw * tipR * ys + hh * 0.04;
+  const jawDrop = gape * hh * 0.72;
+  const corner = (es: number): { x: number; y: number } => ({
+    x: x + px * es * hw * 0.44 + fx * hw * 0.1,
+    y: y + (py * es * hw * 0.44 + fy * hw * 0.1) * ys + hh * 0.22,
+  });
+  const cL = corner(-1);
+  const cR = corner(1);
+
+  // The lower jaw: one wide pale shovel corner to corner, swinging
+  // down through the gape — the belly tone carried up the throat.
+  ctx.fillStyle = o.hurt ? '#ffffff' : look.belly;
+  ctx.beginPath();
+  ctx.moveTo(cL.x, cL.y);
+  ctx.lineTo(tipX - fx * hw * 0.06, tipY - fy * hw * 0.06 * ys + hh * 0.26 + jawDrop);
+  ctx.lineTo(cR.x, cR.y);
+  ctx.lineTo(x + fx * hw * 0.04, y + fy * hw * 0.04 * ys + hh * 0.4);
+  ctx.closePath();
+  ctx.fill();
+  // The gape's dark room, and the LOWER teeth rising out of it —
+  // the croc's interlock, absent on the closed mouth.
+  if (gape > 0.12 && !o.hurt) {
+    ctx.fillStyle = '#3c2a26';
+    ctx.beginPath();
+    ctx.moveTo(cL.x, cL.y);
+    ctx.lineTo(tipX - fx * hw * 0.03, tipY - fy * hw * 0.03 * ys + hh * 0.1 + jawDrop * 0.55);
+    ctx.lineTo(cR.x, cR.y);
+    ctx.lineTo(x + fx * hw * 0.1, y + fy * hw * 0.1 * ys + hh * 0.12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = o.dead ? shade(look.belly, -10) : '#e8e0c4';
+    for (const t of [0.3, 0.6, 0.85]) {
+      const jx = x + (tipX - x) * t;
+      const jy = y + (tipY - y) * t + hh * 0.2 + jawDrop * 0.7 * t;
+      ctx.beginPath();
+      ctx.moveTo(jx - hw * 0.03, jy + hh * 0.05);
+      ctx.lineTo(jx, jy - hh * 0.14);
+      ctx.lineTo(jx + hw * 0.03, jy + hh * 0.05);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // THE SKULL: heavy cranium mass with a lit crown plane.
+  ctx.fillStyle = skin;
+  ctx.beginPath();
+  facetCircle(ctx, x, y, hw * 0.58, 7, Math.atan2(fy * ys, fx));
+  ctx.fill();
+  if (!o.hurt) {
+    ctx.fillStyle = shade(look.hide, 14);
+    ctx.beginPath();
+    facetCircle(ctx, x - fx * hw * 0.04, y - fy * hw * 0.04 * ys - hh * 0.2, hw * 0.36, 6, 1.1);
+    ctx.fill();
+  }
+
+  // THE MUZZLE: one mass with the cranium, long and broad, walls
+  // pinching slightly ahead of the eyes then flaring at the nose —
+  // the croc's spatulate snout in the flat dialect.
+  ctx.fillStyle = skin;
+  ctx.beginPath();
+  ctx.moveTo(x - px * hw * 0.44 + fx * hw * 0.1, y + (-py * hw * 0.44 + fy * hw * 0.1) * ys - hh * 0.14);
+  ctx.lineTo(x - px * hw * 0.3 + fx * hw * 0.72, y + (-py * hw * 0.3 + fy * hw * 0.72) * ys - hh * 0.12);
+  ctx.lineTo(tipX - px * hw * 0.26, tipY - py * hw * 0.26 * ys - hh * 0.1);
+  ctx.lineTo(tipX, tipY + hh * 0.1);
+  ctx.lineTo(tipX + px * hw * 0.26, tipY + py * hw * 0.26 * ys - hh * 0.1);
+  ctx.lineTo(x + px * hw * 0.3 + fx * hw * 0.72, y + (py * hw * 0.3 + fy * hw * 0.72) * ys - hh * 0.12);
+  ctx.lineTo(x + px * hw * 0.44 + fx * hw * 0.1, y + (py * hw * 0.44 + fy * hw * 0.1) * ys - hh * 0.14);
+  ctx.lineTo(x + fx * hw * 0.06, y + fy * hw * 0.06 * ys + hh * 0.2);
+  ctx.closePath();
+  ctx.fill();
+  if (!o.hurt) {
+    // The muzzle's lit top plane, running snout to brow.
+    ctx.fillStyle = shade(look.hide, 12);
+    ctx.beginPath();
+    ctx.moveTo(x - px * hw * 0.24 + fx * hw * 0.2, y + (-py * hw * 0.24 + fy * hw * 0.2) * ys - hh * 0.2);
+    ctx.lineTo(tipX - px * hw * 0.13, tipY - py * hw * 0.13 * ys - hh * 0.14);
+    ctx.lineTo(tipX + px * hw * 0.13, tipY + py * hw * 0.13 * ys - hh * 0.14);
+    ctx.lineTo(x + px * hw * 0.24 + fx * hw * 0.2, y + (py * hw * 0.24 + fy * hw * 0.2) * ys - hh * 0.2);
+    ctx.closePath();
+    ctx.fill();
+
+    // THE CUT: the mouth line — a long sag from under the snout tip
+    // back to the grim corner below the eye, with the croc's
+    // interlocked TEETH ticking both ways along it. The far cheek
+    // yields at profile; the open gape replaces the closed grin.
+    if (gape < 0.3) {
+      ctx.strokeStyle = 'rgba(30, 20, 24, 0.72)';
+      ctx.lineWidth = Math.max(1, s * 0.02);
+      ctx.lineCap = 'round';
+      for (const es of [-1, 1]) {
+        if (pk > 0.6 && es * py < 0) continue;
+        const c = corner(es);
+        const m0x = tipX + px * es * hw * 0.07;
+        const m0y = tipY + py * es * hw * 0.07 * ys + hh * 0.12;
+        const midXc = (m0x + c.x) / 2 + fx * hw * 0.02;
+        const midYc = (m0y + c.y) / 2 + hh * 0.14;
+        ctx.beginPath();
+        ctx.moveTo(m0x, m0y);
+        ctx.quadraticCurveTo(midXc, midYc, c.x, c.y - hh * 0.06);
+        ctx.stroke();
+        // Interlocked teeth: uppers hang, lowers rise, alternating
+        // along the cut's own curve — the croc grin, filled wedges.
+        for (let ti = 0; ti < 4; ti++) {
+          const t = 0.18 + ti * 0.2;
+          const u = 1 - t;
+          const qx = u * u * m0x + 2 * u * t * midXc + t * t * c.x;
+          const qy = u * u * m0y + 2 * u * t * midYc + t * t * (c.y - hh * 0.06);
+          const up = ti % 2 === 0;
+          ctx.fillStyle = up ? '#e8e0c4' : shade(look.belly, 6);
+          ctx.beginPath();
+          if (up) {
+            ctx.moveTo(qx - hw * 0.028, qy - hh * 0.02);
+            ctx.lineTo(qx, qy + hh * 0.09);
+            ctx.lineTo(qx + hw * 0.028, qy - hh * 0.02);
+          } else {
+            ctx.moveTo(qx - hw * 0.026, qy + hh * 0.03);
+            ctx.lineTo(qx, qy - hh * 0.075);
+            ctx.lineTo(qx + hw * 0.026, qy + hh * 0.03);
+          }
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      ctx.lineCap = 'butt';
+    }
+
+    // Nostril bumps: RAISED domes on the snout tip's top plane (the
+    // croc periscope), each with its dark pit — front reads only.
+    if (fy > 0.02) {
+      for (const es of [-1, 1]) {
+        const nx = tipX - fx * hw * 0.08 + px * es * hw * 0.1;
+        const ny = tipY + (-fy * hw * 0.08 + py * es * hw * 0.1) * ys - hh * 0.14;
+        ctx.fillStyle = shade(look.hide, 16);
+        ctx.beginPath();
+        ctx.arc(nx, ny, Math.max(0.8, hw * 0.05), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = shade(look.hide, -26);
+        ctx.beginPath();
+        ctx.arc(nx, ny, Math.max(0.5, hw * 0.022), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // THE BROW LEDGE and the FIRE: heavy orbital shelves with the
+    // pale-green ember under each — the gaze the bestiary promises.
+    // Eye stations ride the skull ring (the sphere law): they slide
+    // with facing and the far one yields past the profile.
+    for (const es of [-1, 1]) {
+      if (pk > 0.72 && es * py < 0) continue;
+      const ex0 = x + px * es * hw * 0.4 + fx * hw * 0.34;
+      const ey0 = y + (py * es * hw * 0.4 + fy * hw * 0.34) * ys - hh * 0.3;
+      // The ledge.
+      ctx.fillStyle = shade(look.hide, -8);
+      ctx.beginPath();
+      ctx.ellipse(ex0, ey0 - hh * 0.08, hw * 0.14, hh * 0.1, Math.atan2(fy * ys, fx), 0, Math.PI * 2);
+      ctx.fill();
+      if (!o.dead) {
+        // The soft fire halo — the gaze must read at gameplay zoom.
+        ctx.fillStyle = look.eye;
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath();
+        ctx.arc(ex0, ey0, hw * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        // The ember itself.
+        ctx.beginPath();
+        ctx.arc(ex0, ey0, Math.max(1.2, hw * 0.072), 0, Math.PI * 2);
+        ctx.fill();
+        // The slit pupil, close-up only.
+        if (s > 110) {
+          ctx.strokeStyle = 'rgba(20, 24, 14, 0.85)';
+          ctx.lineWidth = Math.max(0.6, hw * 0.02);
+          ctx.beginPath();
+          ctx.moveTo(ex0, ey0 - hw * 0.05);
+          ctx.lineTo(ex0, ey0 + hw * 0.05);
+          ctx.stroke();
+        }
+      } else {
+        // Dead: the fire is out — a dull chip where it lived.
+        ctx.fillStyle = shade(look.hide, -18);
+        ctx.beginPath();
+        ctx.arc(ex0, ey0, Math.max(1, hw * 0.05), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // THE HORN DRESS: the family fork. Basilisk — two backswept brow
+    // horns; elder — the four-point crown plus chin barbels; fen —
+    // a low brow ridge line only (the lurker carries no crown).
+    if (!o.fen) {
+      const horns: Array<{ es: number; back: number; len: number }> = look.elder
+        ? [
+            { es: -1, back: 0.5, len: 0.34 },
+            { es: 1, back: 0.5, len: 0.34 },
+            { es: -1, back: 0.14, len: 0.24 },
+            { es: 1, back: 0.14, len: 0.24 },
+          ]
+        : [
+            { es: -1, back: 0.4, len: 0.26 },
+            { es: 1, back: 0.4, len: 0.26 },
+          ];
+      for (const hspec of horns) {
+        const hx = x - fx * hw * hspec.back + px * hspec.es * hw * 0.34;
+        const hy = y + (-fy * hw * hspec.back + py * hspec.es * hw * 0.34) * ys - hh * 0.42;
+        const hl2 = hw * hspec.len;
+        // Swept back and out in the BODY frame, projected.
+        const dxh = -fx * 0.8 + px * hspec.es * 0.5;
+        const dyh = (-fy * 0.8 + py * hspec.es * 0.5) * ys - 0.5;
+        const nl = Math.hypot(dxh, dyh) || 1;
+        const tx2 = hx + (dxh / nl) * hl2;
+        const ty2 = hy + (dyh / nl) * hl2;
+        ctx.fillStyle = shade(look.horn, 4);
+        ctx.beginPath();
+        ctx.moveTo(hx - px * hw * 0.05, hy - py * hw * 0.05 * ys + hh * 0.05);
+        ctx.quadraticCurveTo((hx + tx2) / 2 - hw * 0.02, (hy + ty2) / 2 - hh * 0.1, tx2, ty2);
+        ctx.lineTo(hx + px * hw * 0.05, hy + py * hw * 0.05 * ys + hh * 0.05);
+        ctx.closePath();
+        ctx.fill();
+        // Partial ink off the tip (the broken-ink law).
+        ctx.strokeStyle = '#241a2e';
+        ctx.globalAlpha = 0.5;
+        ctx.lineWidth = Math.max(0.7, s * 0.011);
+        ctx.beginPath();
+        ctx.moveTo(tx2, ty2);
+        ctx.quadraticCurveTo((hx + tx2) / 2 - hw * 0.02, (hy + ty2) / 2 - hh * 0.1, hx + (tx2 - hx) * 0.3, hy + (ty2 - hy) * 0.3);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      if (look.elder && fy > -0.2) {
+        // Chin barbels: the old fisher-dragon's whiskers, front reads.
+        ctx.strokeStyle = shade(look.belly, -14);
+        ctx.lineWidth = Math.max(0.8, s * 0.012);
+        ctx.lineCap = 'round';
+        for (const es of [-1, 1]) {
+          const bx0 = tipX + px * es * hw * 0.14 - fx * hw * 0.1;
+          const by0 = tipY + (py * es * hw * 0.14 - fy * hw * 0.1) * ys + hh * 0.24;
+          ctx.beginPath();
+          ctx.moveTo(bx0, by0);
+          ctx.quadraticCurveTo(bx0 + px * es * hw * 0.05, by0 + hh * 0.2, bx0 + px * es * hw * 0.12, by0 + hh * 0.3);
+          ctx.stroke();
+        }
+        ctx.lineCap = 'butt';
+      }
+    } else {
+      // The fen brow: one low ridge line over each orbit — a log's
+      // eyebrows, nothing the reeds would notice.
+      ctx.strokeStyle = shade(look.hide, -16);
+      ctx.lineWidth = Math.max(1, s * 0.016);
+      for (const es of [-1, 1]) {
+        if (pk > 0.72 && es * py < 0) continue;
+        const ex0 = x + px * es * hw * 0.4 + fx * hw * 0.34;
+        const ey0 = y + (py * es * hw * 0.4 + fy * hw * 0.34) * ys - hh * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(ex0 - fx * hw * 0.12 - px * es * hw * 0.04, ey0);
+        ctx.quadraticCurveTo(ex0, ey0 - hh * 0.06, ex0 + fx * hw * 0.14, ey0 + hh * 0.02);
+        ctx.stroke();
+      }
+    }
+  }
+}
+
 /**
  * THE OOZE FAMILY (docs/ooze-family-plan.md) — THE SLIME SHAPE LAW,
  * final form (user verdict 2026-08-15, round three): the family owns
@@ -21449,7 +22303,15 @@ export function drawBeast(
     // fraction of the beat, or a fortress would hop like a fox.
     // The giant crab plants like the keeps do — THE CLAMP spends the
     // strike through the crusher arm, never a hopping hull.
-    const massK = opts.defId.endsWith('_turtle') || opts.defId === 'giant_crab' ? 0.3 : 1;
+    // The basilisks half-plant: the sprawl drives a short heavy
+    // surge while the NECK spends the rest of the strike (the head
+    // branch) — a crag lunges like a landslide, not a fox.
+    const massK =
+      opts.defId.endsWith('_turtle') || opts.defId === 'giant_crab'
+        ? 0.3
+        : opts.defId.endsWith('basilisk')
+          ? 0.45
+          : 1;
     const pounce =
       (at < 0.7
         ? -0.12 * (at / 0.7) // crouch away
@@ -21490,7 +22352,19 @@ export function drawBeast(
   // stockings read under a warm body at every zoom. An ember fox on
   // def-color stockings walked on a stranger's legs.
   const foxLegL = opts.defId.startsWith('fox') ? foxLook(opts.defId, opts.seed ?? 0) : undefined;
-  const legBase = lynxLegL ? lynxLegL.coat : foxLegL ? foxLegL.coat : opts.color;
+  // The basilisks roll hide clusters too — LEGS FOLLOW THE ROLLED
+  // COAT (the lynx law): a mossback on greystone stockings walks on
+  // a stranger's legs.
+  const basiliskLegL = opts.defId.endsWith('basilisk')
+    ? basiliskLook(opts.defId, opts.seed ?? 0)
+    : undefined;
+  const legBase = lynxLegL
+    ? lynxLegL.coat
+    : foxLegL
+      ? foxLegL.coat
+      : basiliskLegL
+        ? basiliskLegL.hide
+        : opts.color;
   const legColor = opts.hurt
     ? '#ffffff'
     : foxLegL
@@ -21636,13 +22510,17 @@ export function drawBeast(
           ? leg.fwd >= 0
             ? 0.5
             : 0.34
-          : spec.foot === 'bearpaw'
+          : spec.foot === 'lizardclaw'
             ? leg.fwd >= 0
-              ? -0.14
-              : 0.1
-            : spec.foot === 'hoof'
-              ? 0.05
-              : 0.1;
+              ? 0.3
+              : 0.2
+            : spec.foot === 'bearpaw'
+              ? leg.fwd >= 0
+                ? -0.14
+                : 0.1
+              : spec.foot === 'hoof'
+                ? 0.05
+                : 0.1;
     const footA = opts.dir + sideSgn * splay;
     const ffx = Math.cos(footA);
     const ffy = Math.sin(footA) * ys;
@@ -21884,6 +22762,51 @@ export function drawBeast(
       ctx.quadraticCurveTo(0.02 * W, 0, -0.12 * W, 0.3 * W);
       ctx.stroke();
       ctx.restore();
+    } else if (spec.foot === 'lizardclaw') {
+      // THE SPRAWLED HAND: a basilisk plants a wide saurian foot —
+      // three long toes fanned on the ground bearing, each a filled
+      // tapered digit ending in a horn claw, with a low palm pad
+      // seating the fan on the ankle. Ground-frame by law (the foot
+      // knows the ground); mid-swing the digits CURL home and seen
+      // from behind the fan foreshortens to a heel under the shin.
+      const W = spec.legW * 1.2 * (spec.footScale ?? 1);
+      const skin = spec.legColor ?? opts.color;
+      ctx.save();
+      ctx.transform(ffx * s, ffy * s, fsx * s, fsy * s, ex, ey);
+      // The palm: a low pad behind the toe fan, the mass the digits
+      // grow from — a fan with no palm reads as dropped twigs.
+      ctx.fillStyle = opts.hurt ? '#ffffff' : tone(shade(skin, -10));
+      ctx.beginPath();
+      ctx.ellipse(0.1 * W, 0, 0.62 * W, 0.52 * W, 0, 0, Math.PI * 2);
+      ctx.fill();
+      const toeL = W * (2.0 - 0.8 * digitCurl) * (1 - 0.62 * away);
+      const clawL = W * 0.55 * (1 - 0.7 * away);
+      for (const tv of [-0.42, 0, 0.42] as const) {
+        // Each digit: its own bearing off the foot's, tapering from
+        // palm knuckle to tip — filled muscle, never a scratch line.
+        const ca = tv * (1 - 0.3 * digitCurl);
+        const dx = Math.cos(ca);
+        const dy = Math.sin(ca) * 0.9;
+        const tx = dx * toeL;
+        const ty = dy * toeL;
+        ctx.fillStyle = opts.hurt ? '#ffffff' : tone(shade(skin, -16));
+        ctx.beginPath();
+        ctx.moveTo(-dy * 0.24 * W, dx * 0.24 * W);
+        ctx.quadraticCurveTo(tx * 0.5 - dy * 0.2 * W, ty * 0.5 + dx * 0.2 * W, tx, ty);
+        ctx.quadraticCurveTo(tx * 0.5 + dy * 0.2 * W, ty * 0.5 - dx * 0.2 * W, dy * 0.24 * W, -dx * 0.24 * W);
+        ctx.closePath();
+        ctx.fill();
+        // The claw: one pale horn wedge riding the digit's own tip —
+        // short and worn (six feet scatter debris otherwise).
+        ctx.fillStyle = opts.hurt ? '#ffffff' : tone('#b6ad8c');
+        ctx.beginPath();
+        ctx.moveTo(tx - dy * 0.1 * W, ty + dx * 0.1 * W);
+        ctx.lineTo(tx + dx * clawL, ty + dy * clawL);
+        ctx.lineTo(tx + dy * 0.1 * W, ty - dx * 0.1 * W);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
     } else {
       // Paw chip: a ground oval set toes-forward of the ankle on the
       // facing's bearing, its leading edge split by two soft digit
@@ -21938,7 +22861,10 @@ export function drawBeast(
   // their bodies never overhang the stride.
   // The crabs join the turtles here: a carapace overhangs every foot
   // at every band, so the foot rule flickers on them the same way.
-  const shellMount = opts.defId.endsWith('_turtle') || opts.defId.endsWith('crab');
+  // The basilisks join too: a sprawled trunk wider than its stance
+  // overhangs the short legs at every band.
+  const shellMount =
+    opts.defId.endsWith('_turtle') || opts.defId.endsWith('crab') || opts.defId.endsWith('basilisk');
   for (let i = 0; i < spec.rig.legs.length; i++) {
     if (shellMount) {
       const leg = spec.rig.legs[i]!;
@@ -22000,6 +22926,9 @@ export function drawBeast(
       : opts.defId === 'colossus_turtle'
         ? COLOSSUS_LOOK
         : undefined;
+  // The stone court: rolled hide clusters, already resolved for the
+  // stocking law — the cache pays.
+  const basiliskL = basiliskLegL;
   const idle = 1 - opts.pose.poleStrength;
   const now = opts.nowMs ?? 0;
   const blockFrame = (): BeastBlockFrame => ({
@@ -22015,6 +22944,10 @@ export function drawBeast(
     roll,
   });
   const paintBody = (): void => {
+    if (basiliskL) {
+      paintBasiliskBody(ctx, spec, basiliskL, blockFrame());
+      return;
+    }
     if (lynxL) {
       paintLynxBody(ctx, spec, lynxL, blockFrame());
       return;
@@ -22461,6 +23394,111 @@ export function drawBeast(
       ctx.closePath();
       ctx.fill();
       drawSabercatHead(ctx, sabercatL, { x: chx, y: chy, s, fx, fy, ys, hurt: opts.hurt });
+      return;
+    }
+    if (basiliskL) {
+      // THE COURT'S STRIKE: half landslide, half jaw. The body
+      // surges on the damped pounce (massK 0.45) while the neck
+      // spends the rest — the windup coils the skull HOME with the
+      // gape opening (the tell every band can read), then the head
+      // drives past the shoulder line and the jaws clamp shut. One
+      // analytic curve, shared with the gape (the beat law).
+      const hl = spec.bodyLen * s;
+      const hw2 = basiliskL.headW * s;
+      const nod = opts.pose.bob * 0.35 * s;
+      let ext = 0;
+      let gape = 0;
+      if (at > 0) {
+        if (at < 0.7) {
+          const k = at / 0.7;
+          ext = -k * 0.1 * s;
+          gape = k;
+        } else {
+          const k = Math.sin(Math.PI * Math.min(1, (at - 0.7) / 0.3));
+          ext = k * (basiliskL.elder ? 0.34 : 0.26) * s;
+          gape = Math.max(0, 1 - (at - 0.7) / 0.15);
+        }
+      }
+      // THE SCAN: at rest the gaze sweeps — the skull traverses on a
+      // slow clock, the idle life of a hunter whose weapon is
+      // looking. Walking, the sweep stands down.
+      const scan = now > 0 ? Math.sin(now * 0.00035 + seed * 1.3) * idle : 0;
+      // The carriage tucks mildly at the back bands: the head drops
+      // toward the ridge shadow and reads smaller, never a balloon.
+      const tuck = Math.min(1, Math.max(0, (-fy - 0.25) / 0.5));
+      const reach = (hl * 0.95 + hw2 * 0.5) * (1 - 0.12 * tuck) + ext;
+      const carry = basiliskL.headRise * s * (1 - 0.45 * tuck);
+      const headS = s * (1 - 0.2 * tuck);
+      const chx = bx + fx * reach + px * scan * hw2 * 0.3;
+      const chy = by + fy * reach * ys + py * scan * hw2 * 0.3 * ys - carry - nod;
+      // The neck: a thick saurian wedge out of the shoulder swell,
+      // with the screen-space column core that keeps its depth at
+      // profile (the turtle's neck law — a head on a ribbon floats).
+      const rootF = hl * 0.72;
+      const nb = basiliskL.bodyH * 0.74 * s + opts.pose.bob * 0.35 * s;
+      const nwx = px * hw2 * 0.56;
+      const nwy = py * hw2 * 0.56;
+      ctx.strokeStyle = opts.hurt ? '#ffffff' : shade(basiliskL.hide, -2);
+      ctx.lineWidth = Math.max(2, hw2 * 0.8);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(bx + fx * rootF, by + fy * rootF * ys - nb * 0.76);
+      ctx.lineTo(chx - fx * hw2 * 0.1, chy + basiliskL.headH * s * 0.08);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(basiliskL.hide, -2);
+      ctx.beginPath();
+      ctx.moveTo(bx + fx * rootF + nwx, by + (fy * rootF + nwy) * ys - nb);
+      ctx.lineTo(bx + fx * rootF - nwx, by + (fy * rootF - nwy) * ys - nb);
+      ctx.lineTo(chx - px * hw2 * 0.48, chy - py * hw2 * 0.48 * ys + basiliskL.headH * s * 0.28);
+      ctx.lineTo(chx + px * hw2 * 0.48, chy + py * hw2 * 0.48 * ys + basiliskL.headH * s * 0.28);
+      ctx.closePath();
+      ctx.fill();
+      if (!opts.hurt && fy > 0.28) {
+        // The pale throat runs the belly tone up under the jaw —
+        // front reads only (the white-sleeve lesson).
+        ctx.fillStyle = basiliskL.belly;
+        ctx.beginPath();
+        ctx.moveTo(bx + fx * rootF + nwx * 0.36, by + (fy * rootF + nwy * 0.36) * ys - nb * 0.82);
+        ctx.lineTo(bx + fx * rootF - nwx * 0.36, by + (fy * rootF - nwy * 0.36) * ys - nb * 0.82);
+        ctx.lineTo(chx - px * hw2 * 0.14, chy - py * hw2 * 0.14 * ys + basiliskL.headH * s * 0.44);
+        ctx.lineTo(chx + px * hw2 * 0.14, chy + py * hw2 * 0.14 * ys + basiliskL.headH * s * 0.44);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (!opts.hurt && basiliskL.elder) {
+        // The elder's neck wears stacked hide folds — each ring
+        // rotated to the column's own screen axis (the dinner-plate
+        // lesson from the mountain turtle, honored).
+        const nA =
+          Math.atan2(chy - (by + fy * rootF * ys - nb * 0.76), chx - (bx + fx * rootF)) +
+          Math.PI / 2;
+        ctx.strokeStyle = shade(basiliskL.hide, -18);
+        ctx.globalAlpha = 0.5;
+        ctx.lineWidth = Math.max(1, s * 0.016);
+        for (const t of [0.3, 0.58]) {
+          const wf = rootF + (reach - rootF) * t;
+          const wh = nb * (1 - t) + (carry + nod - basiliskL.headH * s * 0.2) * t;
+          const wx0 = bx + fx * wf;
+          const wy0 = by + fy * wf * ys - wh;
+          const ww = hw2 * (0.56 - 0.12 * t);
+          ctx.beginPath();
+          ctx.ellipse(wx0, wy0, ww, ww * 0.42, nA, 0.1 * Math.PI, 0.9 * Math.PI);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
+      drawBasiliskHead(ctx, basiliskL, {
+        x: chx,
+        y: chy,
+        s: headS,
+        fx,
+        fy,
+        ys,
+        hurt: opts.hurt,
+        gape,
+        fen: basiliskL.fin,
+      });
       return;
     }
     if (turtleL) {
@@ -23039,6 +24077,53 @@ export function drawBeast(
 
   const paintTail = (): void => {
     if (spiderL || crabL || giantCrabL || beetleL) return;
+    if (basiliskL) {
+      // THE DRAGON TRAILER: the live game runs the full TailSim
+      // chain (muscle, low carriage) painted by drawBasiliskTail.
+      // The analytic spine below is THE ONE REST for sim-less
+      // callers (portraits, CMS, sheets): exactly where it settles.
+      if (opts.tail) {
+        opts.tail();
+        return;
+      }
+      const hl = spec.bodyLen * s;
+      const lift = opts.pose.bob * 0.35 * s;
+      const rootX = bx - fx * hl * 0.85;
+      const rootY = by - fy * hl * 0.85 * ys - basiliskL.bodyH * 0.42 * s - lift * 0.6;
+      const backA = Math.atan2(-fy * ys, -fx);
+      const tLen = s * (basiliskL.elder ? 0.9 : basiliskL.fin ? 0.78 : 0.72);
+      const sway = now > 0 ? Math.sin(now * 0.0008 + seed * 1.1) * 0.12 : 0;
+      const cxq = rootX + Math.cos(backA + sway * 0.4) * tLen * 0.5;
+      const cyq = rootY + Math.sin(backA + sway * 0.4) * tLen * 0.5 * ys + tLen * 0.24;
+      const tipx = rootX + Math.cos(backA + sway) * tLen;
+      const tipy = cyq + tLen * 0.2;
+      const wk = s * (basiliskL.elder ? 0.085 : basiliskL.fin ? 0.06 : 0.07);
+      const cone = taperedSpinePath(rootX, rootY, cxq, cyq, tipx, tipy, (t) => wk * (1 - 0.8 * t));
+      ctx.fillStyle = opts.hurt ? '#ffffff' : shade(basiliskL.hide, -6);
+      ctx.fill(cone);
+      if (!opts.hurt) {
+        // The ridge marches down the trailer — saw chips on the
+        // stone line, fin waves on the fen.
+        ctx.fillStyle = basiliskL.fin ? shade(basiliskL.horn, -4) : basiliskL.horn;
+        for (const t of [0.18, 0.42, 0.64, 0.84]) {
+          const u = 1 - t;
+          const sxp = u * u * rootX + 2 * u * t * cxq + t * t * tipx;
+          const syp = u * u * rootY + 2 * u * t * cyq + t * t * tipy;
+          const sw = wk * (1 - 0.55 * t) * (basiliskL.fin ? 1.3 : 1);
+          ctx.beginPath();
+          ctx.moveTo(sxp - sw * 0.5, syp - sw * 0.3);
+          if (basiliskL.fin) {
+            ctx.quadraticCurveTo(sxp - sw * 0.1, syp - sw * 1.6, sxp + sw * 0.45, syp - sw * 0.3);
+          } else {
+            ctx.lineTo(sxp - sw * 0.05, syp - sw * 1.5);
+            ctx.lineTo(sxp + sw * 0.5, syp - sw * 0.3);
+          }
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      return;
+    }
     if (turtleL) {
       // THE SIMULATED TAIL: the live game runs the verlet stub (a
       // heavy, low-carried BobtailSim) painted by drawTurtleTail.
