@@ -99,6 +99,22 @@ interface BlobLayer {
    * south-facing edges, so the blanket visibly SITS ON the ground.
    */
   laden?: boolean;
+  /**
+   * THE BANK HAS A BODY (the water family's edge): the land does not
+   * end at a 90° color cliff — camera-facing runs show the cut earthen
+   * bank FACE descending to the surface (tinted by the land material
+   * it cuts through), every shoreline run wears a submerged sandy bed
+   * margin fading into the shallow tone (the ground visibly slopes
+   * UNDER the water), and the sun-law shades the water where the bank
+   * stands between it and the western sun.
+   */
+  bank?: boolean;
+  /**
+   * Feathered depth shelf: the band strokes as a soft multi-step
+   * gradient instead of one hard line — open water dissolving into the
+   * deep, never a drawn ring.
+   */
+  feather?: boolean;
 }
 
 /** Painted lowest → highest; later layers' rounding overlaps earlier. */
@@ -218,16 +234,20 @@ const BLOB_LAYERS: BlobLayer[] = [
     alt: { color: '#5f96ba', salt: 45 },
     wobble: 0.14,
     band: null,
+    bank: true,
     fringe: false,
   },
   {
     // Open water. Its band is the DEPTH SHELF — the underwater shade
-    // step where the wadeable rim drops away into swimming water.
+    // step where the wadeable rim drops away into swimming water,
+    // feathered so the drop reads as dissolving depth, not a drawn
+    // ring.
     match: (t) => t === Tile.Water || isFishingTile(t),
     color: () => '#4979b8',
     alt: { color: '#4574b2', salt: 53 },
     wobble: 0.14,
     band: 'rgba(24, 44, 84, 0.3)',
+    feather: true,
     fringe: false,
   },
   {
@@ -236,6 +256,7 @@ const BLOB_LAYERS: BlobLayer[] = [
     alt: { color: '#375d97', salt: 55 },
     wobble: 0.2,
     band: 'rgba(24, 42, 80, 0.4)',
+    feather: true,
     fringe: false,
   },
 ];
@@ -3496,24 +3517,69 @@ function edgeSwell(li: number, wx: number, wy: number): number {
 }
 
 /**
+ * THE CHANNEL WARP — the water family's meander, and the death of the
+ * pinch point. Per-edge hash jitter is INDEPENDENT per bank: on a one-
+ * or two-tile river the two banks routinely bowed inward at the same
+ * spot and strangled the channel into a wasp waist (worst under
+ * bridges, where the pinch met the deck). Organic boundaries instead
+ * ride ONE smooth world-space displacement field: every point of every
+ * organic contour (shoreline, depth shelves, land layers, the live
+ * surf, the reflection clip — all through the shared edgeCross/
+ * bndCurve geometry) shifts by the SAME local vector, so opposing
+ * banks sway together and the channel keeps its breadth by
+ * construction while the whole ribbon meanders. One field for ALL
+ * layers (no per-li salt) is load-bearing twice over: the depth
+ * shelves swing with their shoreline, and the land layers' underlap
+ * contours stay covered under the water skin (a water-only warp
+ * exposed them as dark lobes along the banks).
+ */
+const WARP_AMP = 0.26;
+function warpX(wx: number, wy: number): number {
+  return (valueNoise(9161, wx * 0.05, wy * 0.05) - 0.5) * 2 * WARP_AMP;
+}
+function warpY(wx: number, wy: number): number {
+  return (valueNoise(9227, wx * 0.05, wy * 0.05) - 0.5) * 2 * WARP_AMP;
+}
+
+/**
  * Where the contour crosses a dual-cell edge, as a param 0..1 along
  * the edge. Keyed on the edge's world identity so the two cells
  * sharing the edge (and every chunk/tier/live pass) agree exactly.
  */
 function crossT(li: number, wob: number, kx: number, ky: number, vert: number): number {
   if (wob === 0) return 0.5;
-  const amp = wob * edgeSwell(li, kx + (vert === 0 ? 0.5 : 0), ky + (vert === 1 ? 0.5 : 0));
+  // Water halves its independent jitter — the channel warp carries the
+  // meander coherently, and uncorrelated crossings are what pinched
+  // narrow channels shut.
+  const amp =
+    wob *
+    edgeSwell(li, kx + (vert === 0 ? 0.5 : 0), ky + (vert === 1 ? 0.5 : 0)) *
+    (li >= WATER_LI ? 0.5 : 1);
   return 0.5 + (rnd01(7717 + li * 131 + vert * 67, kx, ky) - 0.5) * 2 * Math.min(0.42, amp);
 }
 
-/** Crossing point on one edge of dual cell (I, J). 0=T 1=R 2=B 3=L. */
+/** Crossing point on one edge of dual cell (I, J). 0=T 1=R 2=B 3=L.
+ *  Water-family crossings then ride the channel warp — a pure world
+ *  function, so the two cells sharing the edge (and every chunk, tier
+ *  and live pass) still agree on the displaced point exactly. */
 function edgeCross(li: number, wob: number, I: number, J: number, edge: number): Pt {
+  let p: Pt;
   switch (edge) {
-    case 0: return [I - 0.5 + crossT(li, wob, I - 1, J - 1, 0), J - 0.5];
-    case 1: return [I + 0.5, J - 0.5 + crossT(li, wob, I, J - 1, 1)];
-    case 2: return [I - 0.5 + crossT(li, wob, I - 1, J, 0), J + 0.5];
-    default: return [I - 0.5, J - 0.5 + crossT(li, wob, I - 1, J - 1, 1)];
+    case 0: p = [I - 0.5 + crossT(li, wob, I - 1, J - 1, 0), J - 0.5]; break;
+    case 1: p = [I + 0.5, J - 0.5 + crossT(li, wob, I, J - 1, 1)]; break;
+    case 2: p = [I - 0.5 + crossT(li, wob, I - 1, J, 0), J + 0.5]; break;
+    default: p = [I - 0.5, J - 0.5 + crossT(li, wob, I - 1, J - 1, 1)]; break;
   }
+  // EVERY organic boundary rides the ONE warp field (masonry, wob 0,
+  // stays ruler-straight). One field for all layers is load-bearing:
+  // every layer's boundary point shifts by the SAME world vector, so
+  // inter-layer alignment is preserved exactly — warping water alone
+  // exposed the land layers' underlap contours (dark fill-and-band
+  // lobes poking out from under the shoreline).
+  if (wob > 0) {
+    p = [p[0] + warpX(p[0], p[1]), p[1] + warpY(p[0], p[1])];
+  }
+  return p;
 }
 
 /** Edge pairs: 0=T·L 1=T·R 2=R·B 3=B·L 4=L·R 5=T·B. */
@@ -3536,7 +3602,11 @@ function bndCurve(
     const len = Math.hypot(dx, dy) || 1;
     // The control point rides the swell field too (sampled at the run
     // midpoint), so bows deepen exactly where the crossings roughen.
-    const amp = Math.min(0.42, wob * edgeSwell(li, cx, cy));
+    // Water runs bow HALF as hard: their long meander is the coherent
+    // channel warp — independent per-run bows are exactly the motion
+    // that pinched opposing banks together (see THE CHANNEL WARP).
+    const amp =
+      Math.min(0.42, wob * edgeSwell(li, cx, cy)) * (li >= WATER_LI ? 0.5 : 1);
     const d = (rnd01(8117 + li * 131 + pair * 29, I, J) - 0.5) * 2 * amp * len;
     cx += (-dy / len) * d;
     cy += (dx / len) * d;
@@ -3908,7 +3978,10 @@ function paintLayerSkin(
     // per run now, so width and weight breathe along the boundary
     // (swell field) and obey the sun-law: heavier in the shade, and a
     // lit lip where an edge faces the western sun.
-    if (runs.length > 0 && (layer.band !== null || layer.lip !== undefined || layer.laden)) {
+    if (
+      runs.length > 0 &&
+      (layer.band !== null || layer.lip !== undefined || layer.laden || layer.bank)
+    ) {
       ctx.save();
       ctx.clip(region);
       ctx.lineCap = 'round';
@@ -3923,12 +3996,89 @@ function paintLayerSkin(
         if (layer.band !== null) {
           const weight = (lone ? 0.55 : 1) * (0.7 + 0.6 * sw) * (1 - 0.38 * Math.max(0, sunDot));
           ctx.strokeStyle = layer.band;
-          ctx.globalAlpha = Math.min(1, 0.45 * weight);
-          ctx.lineWidth = px * 0.34 * (0.72 + 0.55 * sw);
+          if (layer.feather) {
+            // THE DEPTH DISSOLVES: the shelf between water depths is a
+            // soft three-step feather — a wide faint settling, a mid
+            // step, a narrow seat at the contour. Open water slides
+            // into the deep; nothing draws a ring on the surface.
+            ctx.globalAlpha = Math.min(1, 0.2 * weight);
+            ctx.lineWidth = px * 0.62 * (0.75 + 0.5 * sw);
+            ctx.stroke(p);
+            ctx.globalAlpha = Math.min(1, 0.3 * weight);
+            ctx.lineWidth = px * 0.36 * (0.75 + 0.5 * sw);
+            ctx.stroke(p);
+            ctx.globalAlpha = Math.min(1, 0.42 * weight);
+            ctx.lineWidth = px * 0.16 * (0.78 + 0.44 * sw);
+            ctx.stroke(p);
+          } else {
+            ctx.globalAlpha = Math.min(1, 0.45 * weight);
+            ctx.lineWidth = px * 0.34 * (0.72 + 0.55 * sw);
+            ctx.stroke(p);
+            ctx.globalAlpha = Math.min(1, weight);
+            ctx.lineWidth = px * 0.15 * (0.78 + 0.44 * sw);
+            ctx.stroke(p);
+          }
+        }
+        if (layer.bank) {
+          // THE BANK HAS A BODY. The shoreline is a cross-section, not
+          // a color cliff: (a) a submerged sandy bed margin hugs every
+          // shoreline run — the ground sloping on down under the
+          // surface, warm through knee-deep water and fading into the
+          // shallow tone; (b) camera-facing runs (land NORTH of the
+          // water) show the cut bank FACE itself descending to the
+          // waterline, tinted by the land material it cuts through,
+          // with its soft depth shade below; (c) where the bank stands
+          // between the water and the western sun, the water at its
+          // foot sits in shade. All strokes clip inside the water
+          // region — the land side stays untouched.
+          const landT = g(
+            Math.floor(mid[0] + bnd.ox * 0.75),
+            Math.floor(mid[1] + bnd.oy * 0.75),
+          );
+          const th = lone ? 0.6 : 1;
+          // (a) the drowned bed margin.
+          ctx.strokeStyle = '#c9cfa2';
+          ctx.globalAlpha = 0.22 * th;
+          ctx.lineWidth = px * 0.52 * (0.8 + 0.4 * sw);
           ctx.stroke(p);
-          ctx.globalAlpha = Math.min(1, weight);
-          ctx.lineWidth = px * 0.15 * (0.78 + 0.44 * sw);
+          ctx.strokeStyle = '#dade9f';
+          ctx.globalAlpha = 0.3 * th;
+          ctx.lineWidth = px * 0.26 * (0.8 + 0.4 * sw);
           ctx.stroke(p);
+          // (b) the visible bank face, camera-facing runs only. Both
+          // strokes ride the run path itself (the region clip keeps
+          // the inner half) — offset polylines tore visible joints
+          // between adjacent runs; on-path strokes share their
+          // endpoints exactly, so the face runs continuous.
+          if (bnd.oy < -0.35) {
+            const face =
+              landT === Tile.Sand
+                ? '#9c7f52'
+                : landT === Tile.Snow
+                  ? '#b7c4d8'
+                  : landT === Tile.StoneFloor ||
+                      landT === Tile.CaveFloor ||
+                      landT === Tile.DungeonFloor
+                    ? '#5a5464'
+                    : '#5f4a33';
+            ctx.strokeStyle = 'rgba(18, 34, 68, 0.3)';
+            ctx.globalAlpha = 1;
+            ctx.lineWidth = px * 0.44;
+            ctx.stroke(p);
+            ctx.strokeStyle = face;
+            ctx.globalAlpha = 0.92;
+            ctx.lineWidth = px * 0.19;
+            ctx.stroke(p);
+          }
+          // (c) sun-law: the bank's shadow lies on the water at its
+          // western foot.
+          if (sunDot > 0.25) {
+            ctx.strokeStyle = 'rgba(20, 38, 76, 0.24)';
+            ctx.globalAlpha = Math.min(1, (sunDot - 0.1) * 1.1) * th;
+            ctx.lineWidth = px * 0.3;
+            ctx.stroke(p);
+          }
+          ctx.globalAlpha = 1;
         }
         if (layer.laden) {
           // Cool blue settling shade instead of a dirt band — snow
@@ -4908,6 +5058,90 @@ function liveliness(wx: number, wy: number, t: number): number {
   return valueNoise(9911, wx * 0.045 + t * 0.02, wy * 0.045);
 }
 
+/**
+ * THE CURRENT KNOWS ITS COURSE — the channel field. Every water tile
+ * reads its own body of water: rays walk the water mask along the four
+ * grid axes to find the channel's long axis (the direction of greatest
+ * clearance), its breadth (the least), and whether this is moving
+ * water at all. Narrow water is a RIVER — its surface life runs along
+ * the channel, downstream; broad water is a POND — its surface is
+ * still. Axes blend through the angle-doubling trick so the flow
+ * direction turns smoothly around bends instead of snapping between
+ * the eight compass steps. Downstream sign is a fixed world
+ * convention (rivers here run broadly east-southeast): the eye needs
+ * one coherent direction per channel, and a screen never shows enough
+ * river for the convention to contradict itself.
+ */
+interface Channel {
+  /** Unit flow direction (meaningless for ponds). */
+  fx: number;
+  fy: number;
+  /** True for broad/stagnant water — no current. */
+  pond: boolean;
+}
+
+const CHAN_R = 7;
+const chanMemo = new Map<number, Channel>();
+let chanFlushAt = 0;
+
+function channelAt(ground: GroundSampler, tx: number, ty: number, now: number): Channel {
+  // Periodic full flush instead of sampler-identity keying: samplers
+  // are per-frame closures, and the channel is deterministic from the
+  // world — a stale entry after a map edit or plane switch heals
+  // within seconds.
+  if (now - chanFlushAt > 5) {
+    chanFlushAt = now;
+    chanMemo.clear();
+  }
+  const key = tx * 131071 + ty;
+  const hit = chanMemo.get(key);
+  if (hit) return hit;
+  const reach = (dx: number, dy: number): number => {
+    for (let i = 1; i <= CHAN_R; i++) {
+      if (!isWaterTile(ground(tx + dx * i, ty + dy * i))) return i - 1;
+    }
+    return CHAN_R;
+  };
+  const spanH = reach(1, 0) + reach(-1, 0);
+  const spanV = reach(0, 1) + reach(0, -1);
+  const spanD1 = reach(1, -1) + reach(-1, 1); // NE–SW
+  const spanD2 = reach(1, 1) + reach(-1, -1); // SE–NW
+  const breadth = Math.min(spanH, spanV, spanD1, spanD2) + 1;
+  const maxSpan = Math.max(spanH, spanV, spanD1, spanD2);
+  // Broad in every direction (or open lake past the ray horizon) =
+  // still water. Rivers are decisively longer than they are wide.
+  const pond = breadth >= 5 || maxSpan < breadth * 2;
+  let fxv = 1;
+  let fyv = 0;
+  if (!pond) {
+    // Blend the axes in doubled-angle space, weighted by span² so the
+    // dominant direction leads but bends turn smoothly.
+    let cx = 0;
+    let cy = 0;
+    const axes: Array<[number, number]> = [
+      [spanH * spanH, 0], // θ=0
+      [spanV * spanV, Math.PI], // θ=π/2 doubled
+      [spanD1 * spanD1, -Math.PI / 2], // θ=-π/4 doubled
+      [spanD2 * spanD2, Math.PI / 2], // θ=π/4 doubled
+    ];
+    for (const [w2, a2] of axes) {
+      cx += w2 * Math.cos(a2);
+      cy += w2 * Math.sin(a2);
+    }
+    const theta = Math.atan2(cy, cx) / 2;
+    fxv = Math.cos(theta);
+    fyv = Math.sin(theta);
+    // Downstream convention: east-southeast-ish, one sign per axis.
+    if (fxv * 1 + fyv * 0.4 < 0) {
+      fxv = -fxv;
+      fyv = -fyv;
+    }
+  }
+  const ch: Channel = { fx: fxv, fy: fyv, pond };
+  chanMemo.set(key, ch);
+  return ch;
+}
+
 /** The live-water palette, day and moonlit. */
 function waterTones(moonlit: boolean) {
   return moonlit
@@ -4971,48 +5205,128 @@ export function drawLiveGround(
             path.lineTo(p.x + s * (0.16 + ((h >>> 13) % 4) * 0.04), p.y);
           }
         }
-        // Swell bands: long, faintly bowed light strokes riding east
-        // across open water. Lift-only — one step lighter than the
-        // base, never darker (a dark band reads as a hole). Hosts need
-        // two water tiles east so a band never slides ashore.
-        if (
-          fx.full &&
-          h % 5 === 0 &&
-          !southIsDeck &&
-          !selfFill &&
-          isOpenWater(ground(tx + 1, ty)) &&
-          deckFillAt(ground, tx + 1, ty) === null &&
-          isOpenWater(ground(tx + 2, ty)) &&
-          deckFillAt(ground, tx + 2, ty) === null
-        ) {
-          const phase = (t * 0.05 + (h % 89) / 89) % 1;
-          const alpha = Math.sin(phase * Math.PI) * 0.34 * act * tones.dim;
-          const tone = tile === Tile.WaterDeep ? '#4a76ad' : '#5c8ac2';
-          const path = bk.stroke(tone, 0.055, alpha);
-          if (path) {
-            const x0 = tx + ((h >>> 4) % 40) / 100 + phase * 0.9;
-            const y0 = ty + 0.12 + ((h >>> 9) % 72) / 100;
-            const len = 0.9 + (((h >>> 6) % 50) / 50) * 0.9;
-            const bow = (((h >>> 11) % 40) / 40 - 0.5) * 0.24;
-            const a = worldToScreen(x0, y0);
-            const c = worldToScreen(x0 + len * 0.5, y0 + bow);
-            const b = worldToScreen(x0 + len, y0);
-            path.moveTo(a.x, a.y);
-            path.quadraticCurveTo(c.x, c.y, b.x, b.y);
-            // An echo band trailing half the swells: pairs and lone
-            // bands mixed break the one-stroke-per-tile rhythm.
-            if (h & 2) {
-              const e = bk.stroke(tone, 0.055, alpha * 0.55);
-              if (e) {
-                const a2 = worldToScreen(x0 + 0.18, y0 + 0.16);
-                const b2 = worldToScreen(x0 + 0.18 + len * 0.7, y0 + 0.16);
-                e.moveTo(a2.x, a2.y);
-                e.quadraticCurveTo(
-                  (a2.x + b2.x) / 2,
-                  worldToScreen(0, y0 + 0.16 + bow * 0.7).y,
-                  b2.x,
-                  b2.y,
+        // THE CURRENT AND THE CALM: what rides this surface depends on
+        // what this water IS. A river's open water carries flow
+        // streaks sliding downstream along its own channel axis (the
+        // old swell bands drifted east regardless of the river's
+        // course — a north-running river wore sideways waves); a
+        // pond's open water keeps the slow drifting swell, plus the
+        // occasional stillness ring spreading and dying.
+        if (fx.full && !southIsDeck && !selfFill) {
+          const ch = channelAt(ground, tx, ty, t);
+          const okFlow = (x: number, y: number): boolean =>
+            isWaterTile(ground(x, y)) &&
+            !isDeckGround(ground(x, y + 1)) &&
+            deckFillAt(ground, x, y) === null;
+          if (!ch.pond) {
+            const ix = Math.round(ch.fx);
+            const iy = Math.round(ch.fy);
+            if (h % 3 === 0 && okFlow(tx + ix, ty + iy) && okFlow(tx - ix, ty - iy)) {
+              // The flow streak: an elongated current line, bowed a
+              // whisper off-axis, born upstream and dying downstream.
+              const cyc = 2.2 + (((h >>> 7) % 100) / 100) * 1.8;
+              const phase = (t / cyc + (h % 97) / 97) % 1;
+              const alpha =
+                Math.sin(phase * Math.PI) * 0.38 * (0.35 + 0.65 * act) * tones.dim;
+              const tone = tile === Tile.WaterDeep ? '#4a76ad' : '#5c8ac2';
+              const path = bk.stroke(tone, 0.05, alpha);
+              if (path) {
+                const cxp = tx + 0.5 + (((h >>> 4) % 60) - 30) / 100;
+                const cyp = ty + 0.5 + (((h >>> 9) % 60) - 30) / 100;
+                const d = (phase - 0.5) * 1.2;
+                const len = 0.35 + ((h >>> 6) % 30) / 100;
+                const x0 = cxp + ch.fx * (d - len);
+                const y0 = cyp + ch.fy * (d - len);
+                const x1 = cxp + ch.fx * (d + len);
+                const y1 = cyp + ch.fy * (d + len);
+                const bow = (((h >>> 11) % 20) - 10) / 90;
+                const a = worldToScreen(x0, y0);
+                const c = worldToScreen(
+                  (x0 + x1) / 2 - ch.fy * bow,
+                  (y0 + y1) / 2 + ch.fx * bow,
                 );
+                const b = worldToScreen(x1, y1);
+                path.moveTo(a.x, a.y);
+                path.quadraticCurveTo(c.x, c.y, b.x, b.y);
+              }
+            }
+            // A lively reach tosses the odd white riffle crest — a
+            // short bright fleck riding the current.
+            if (h % 11 === 3 && act > 0.5 && okFlow(tx + ix, ty + iy)) {
+              const phase = (t * 0.45 + (h % 53) / 53) % 1;
+              const alpha = Math.sin(phase * Math.PI) * 0.5 * tones.dim;
+              const path = bk.stroke(tones.crest, 0.045, alpha);
+              if (path) {
+                const bx = tx + 0.3 + ((h >>> 5) % 40) / 100 + ch.fx * phase * 0.6;
+                const by = ty + 0.3 + ((h >>> 10) % 40) / 100 + ch.fy * phase * 0.6;
+                const a = worldToScreen(bx, by);
+                const b = worldToScreen(bx + ch.fx * 0.16, by + ch.fy * 0.16);
+                path.moveTo(a.x, a.y);
+                path.lineTo(b.x, b.y);
+              }
+            }
+          } else {
+            // Pond swell: slow, faintly bowed drift. Hosts still need
+            // two open-water tiles east so a band never slides ashore.
+            if (
+              h % 5 === 0 &&
+              isOpenWater(ground(tx + 1, ty)) &&
+              deckFillAt(ground, tx + 1, ty) === null &&
+              isOpenWater(ground(tx + 2, ty)) &&
+              deckFillAt(ground, tx + 2, ty) === null
+            ) {
+              const phase = (t * 0.05 + (h % 89) / 89) % 1;
+              const alpha = Math.sin(phase * Math.PI) * 0.34 * act * tones.dim;
+              const tone = tile === Tile.WaterDeep ? '#4a76ad' : '#5c8ac2';
+              const path = bk.stroke(tone, 0.055, alpha);
+              if (path) {
+                const x0 = tx + ((h >>> 4) % 40) / 100 + phase * 0.9;
+                const y0 = ty + 0.12 + ((h >>> 9) % 72) / 100;
+                const len = 0.9 + (((h >>> 6) % 50) / 50) * 0.9;
+                const bow = (((h >>> 11) % 40) / 40 - 0.5) * 0.24;
+                const a = worldToScreen(x0, y0);
+                const c = worldToScreen(x0 + len * 0.5, y0 + bow);
+                const b = worldToScreen(x0 + len, y0);
+                path.moveTo(a.x, a.y);
+                path.quadraticCurveTo(c.x, c.y, b.x, b.y);
+                // An echo band trailing half the swells: pairs and
+                // lone bands mixed break the one-stroke-per-tile
+                // rhythm.
+                if (h & 2) {
+                  const e = bk.stroke(tone, 0.055, alpha * 0.55);
+                  if (e) {
+                    const a2 = worldToScreen(x0 + 0.18, y0 + 0.16);
+                    const b2 = worldToScreen(x0 + 0.18 + len * 0.7, y0 + 0.16);
+                    e.moveTo(a2.x, a2.y);
+                    e.quadraticCurveTo(
+                      (a2.x + b2.x) / 2,
+                      worldToScreen(0, y0 + 0.16 + bow * 0.7).y,
+                      b2.x,
+                      b2.y,
+                    );
+                  }
+                }
+              }
+            }
+            // The stillness ring: something touched the surface — a
+            // slow circle spreads and dies. Rare, unhurried, the
+            // pond's way of breaking up a broad sheet without waves.
+            if (h % 19 === 5) {
+              const cyc = 6 + ((h >>> 5) % 50) / 10;
+              const phase = (t / cyc + (h % 89) / 89) % 1;
+              if (phase < 0.45) {
+                const k = phase / 0.45;
+                const alpha = (1 - k) * 0.3 * (0.4 + 0.6 * act) * tones.dim;
+                const path = bk.stroke(tones.glint, 0.035, alpha);
+                if (path) {
+                  const p = worldToScreen(
+                    tx + 0.2 + ((h >>> 4) % 60) / 100,
+                    ty + 0.25 + ((h >>> 9) % 55) / 100,
+                  );
+                  const r = (0.08 + k * 0.42) * s;
+                  path.moveTo(p.x + r, p.y);
+                  path.ellipse(p.x, p.y, r, r * FLAT, 0, 0, Math.PI * 2);
+                }
               }
             }
           }
@@ -5038,6 +5352,47 @@ export function drawLiveGround(
             const a1 = a0 + Math.PI;
             path.moveTo(p.x + Math.cos(a1) * r * 1.25, p.y + Math.sin(a1) * r * 1.25 * FLAT);
             path.ellipse(p.x, p.y, r * 1.25, r * 1.25 * FLAT, 0, a1, a1 + 1.5);
+          }
+        }
+        // A shallow RIVER still runs: most worldgen streams are
+        // wadeable bank to bank, and a current that stopped at the
+        // shallows line would leave them dead. Same flow streak as
+        // open water, a shade lighter and quieter.
+        if (fx.full && !southIsDeck && !selfFill && h % 4 === 1) {
+          const ch = channelAt(ground, tx, ty, t);
+          if (!ch.pond) {
+            const ix = Math.round(ch.fx);
+            const iy = Math.round(ch.fy);
+            const okFlow = (x: number, y: number): boolean =>
+              isWaterTile(ground(x, y)) &&
+              !isDeckGround(ground(x, y + 1)) &&
+              deckFillAt(ground, x, y) === null;
+            if (okFlow(tx + ix, ty + iy) && okFlow(tx - ix, ty - iy)) {
+              const cyc = 2.4 + (((h >>> 7) % 100) / 100) * 1.8;
+              const phase = (t / cyc + (h % 97) / 97) % 1;
+              const alpha =
+                Math.sin(phase * Math.PI) * 0.3 * (0.35 + 0.65 * act) * tones.dim;
+              const path = bk.stroke('#7fb0d3', 0.045, alpha);
+              if (path) {
+                const cxp = tx + 0.5 + (((h >>> 4) % 60) - 30) / 100;
+                const cyp = ty + 0.5 + (((h >>> 9) % 60) - 30) / 100;
+                const d = (phase - 0.5) * 1.2;
+                const len = 0.3 + ((h >>> 6) % 30) / 100;
+                const bow = (((h >>> 11) % 20) - 10) / 90;
+                const x0 = cxp + ch.fx * (d - len);
+                const y0 = cyp + ch.fy * (d - len);
+                const x1 = cxp + ch.fx * (d + len);
+                const y1 = cyp + ch.fy * (d + len);
+                const a = worldToScreen(x0, y0);
+                const c = worldToScreen(
+                  (x0 + x1) / 2 - ch.fy * bow,
+                  (y0 + y1) / 2 + ch.fx * bow,
+                );
+                const b = worldToScreen(x1, y1);
+                path.moveTo(a.x, a.y);
+                path.quadraticCurveTo(c.x, c.y, b.x, b.y);
+              }
+            }
           }
         }
         // A rare, quiet glint — the shallows glitter less than open

@@ -1582,8 +1582,19 @@ export class Renderer {
    *  the mirror pass clips by AFTER the water region — null when no
    *  deck is in view. */
   private waterClip: { key: string; path: Path2D | null; cover: Path2D | null } | null = null;
-  /** Per-body wading state: splash edges + wake phase. */
-  private readonly wadeStates = new Map<number | 'own', { x: number; y: number; wading: boolean }>();
+  /** Per-body wading state: splash edges + wake phase. `seenAt` marks
+   *  the last frame the body was dressed, so the under-water ring pass
+   *  never draws a stale collar; `lastRippleAt` throttles the trailing
+   *  wake rings a moving wader sheds. */
+  private readonly wadeStates = new Map<
+    number | 'own',
+    { x: number; y: number; wading: boolean; moving: boolean; seenAt: number; lastRippleAt: number }
+  >();
+  /** THE WAKE REMEMBERS: rings shed into the water — trailing ripples
+   *  behind a moving wader, the splash ring of a step in or out. Drawn
+   *  UNDER every body (right after the live water pass), expanding and
+   *  fading on their own clocks. */
+  private wakeRipples: Array<{ x: number; y: number; t0: number; big: boolean }> = [];
   private readonly outlineA = document.createElement('canvas');
   private readonly outlineB = document.createElement('canvas');
   private readonly outlineACtx = this.outlineA.getContext('2d')!;
@@ -3777,6 +3788,74 @@ export class Renderer {
   }
 
   /**
+   * THE WATER BEHIND THE BODY — drawn right after the live water pass,
+   * BEFORE any entity: (a) every shed wake ripple, expanding and
+   * fading where the wader actually walked; (b) the BACK arcs of every
+   * active wader's collar and wake rings (π..2π — the far side of each
+   * ellipse), so the rings pass visibly behind the shins while their
+   * front halves ride over them in the label pass. This split is what
+   * seats a body IN the surface instead of under a stamped decal.
+   */
+  private drawWadeUnderlays(): void {
+    const ctx = this.ctx;
+    const scale = this.camera.scale;
+    const FLAT = 0.6;
+    const now = performance.now() / 1000;
+    // (a) shed ripples.
+    if (this.wakeRipples.length > 0) {
+      ctx.save();
+      ctx.lineCap = 'round';
+      let write = 0;
+      for (const rp of this.wakeRipples) {
+        const age = now - rp.t0;
+        const life = rp.big ? 0.9 : 1.3;
+        if (age >= life) continue;
+        this.wakeRipples[write++] = rp;
+        const p = this.liftedWTS(rp.x, rp.y);
+        const k = age / life;
+        const rr = (rp.big ? 0.12 + k * 0.66 : 0.14 + k * 0.4) * scale;
+        ctx.globalAlpha = (1 - k) * (rp.big ? 0.5 : 0.26);
+        ctx.strokeStyle = rp.big ? '#eaf4fb' : '#dcebfb';
+        ctx.lineWidth = Math.max(1.5, scale * (rp.big ? 0.045 : 0.035));
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y + scale * 0.03, rr, rr * FLAT, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      this.wakeRipples.length = write;
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+    // (b) active waders' back arcs — same radii, tones and phase math
+    // as the front arcs in the label pass, so each ring closes.
+    for (const [key, st] of this.wadeStates) {
+      if (!st.wading || now - st.seenAt > 0.15) continue;
+      const p = this.liftedWTS(st.x, st.y);
+      const surfY = p.y + scale * 0.03;
+      ctx.strokeStyle = 'rgba(226, 240, 251, 0.55)';
+      ctx.lineWidth = Math.max(1.5, scale * 0.045);
+      ctx.beginPath();
+      ctx.ellipse(p.x, surfY, scale * 0.24, scale * 0.24 * FLAT, 0, Math.PI, Math.PI * 2);
+      ctx.stroke();
+      const seed = typeof key === 'number' ? (key % 7) / 7 : 0.35;
+      const n = st.moving ? 2 : 1;
+      for (let k = 0; k < n; k++) {
+        const period = st.moving ? 0.9 : 2.6;
+        const phase = (now / period + k * 0.5 + seed) % 1;
+        const a = (1 - phase) * (st.moving ? 0.4 : 0.2);
+        if (a < 0.02) continue;
+        ctx.globalAlpha = a;
+        ctx.strokeStyle = '#dcebfb';
+        ctx.lineWidth = Math.max(1.5, scale * 0.04);
+        ctx.beginPath();
+        const rr = (0.24 + phase * 0.5) * scale;
+        ctx.ellipse(p.x, surfY, rr, rr * FLAT, 0, Math.PI, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /**
    * Water dressing for one living body, the single entry point players,
    * NPCs and the own body all pass through:
    *  - standing in SHALLOWS: the body sinks to the shins behind the
@@ -3808,27 +3887,47 @@ export class Renderer {
       game.world.elevAt(tx, ty) === 0 &&
       game.world.groundAt(tx, ty) === Tile.WaterShallow;
     if (this.wadeStates.size > 512) this.wadeStates.clear(); // eid churn backstop
+    const nowSec = performance.now() / 1000;
     const st = this.wadeStates.get(key);
     const moved = st ? Math.hypot(x - st.x, y - st.y) : 0;
     if (st) {
       st.x = x;
       st.y = y;
+      st.moving = moved > 0.004;
+      st.seenAt = nowSec;
       if (st.wading !== wading) {
         st.wading = wading;
-        // The splash of stepping in (or out).
-        this.particles.burst(x, y - 0.05, 9, ['#bfe0f2', '#8fc3e0', '#eaf4fb'], {
-          speed: 1.5,
-          life: 0.4,
+        // The splash of stepping in (or out): tossed droplets plus a
+        // fast shock ring spreading from the entry point.
+        this.particles.burst(x, y - 0.05, 13, ['#bfe0f2', '#8fc3e0', '#eaf4fb'], {
+          speed: 1.7,
+          life: 0.45,
           size: 0.06,
           up: true,
           gravity: 4,
           drag: 2,
         });
+        this.wakeRipples.push({ x, y, t0: nowSec, big: true });
         this.onSplash?.(x, y, wading);
       }
+      // A moving wader sheds trailing rings that stay in the water
+      // behind them — the path written on the surface, not just a
+      // collar glued to the shins.
+      if (wading && st.moving && nowSec - st.lastRippleAt > 0.28) {
+        st.lastRippleAt = nowSec;
+        this.wakeRipples.push({ x, y, t0: nowSec, big: false });
+      }
     } else {
-      this.wadeStates.set(key, { x, y, wading });
+      this.wadeStates.set(key, {
+        x,
+        y,
+        wading,
+        moving: false,
+        seenAt: nowSec,
+        lastRippleAt: 0,
+      });
     }
+    if (this.wakeRipples.length > 160) this.wakeRipples.splice(0, this.wakeRipples.length - 160);
 
     // Stealth ghosts cast no reflection: a single-blend composite has
     // one alpha for the whole layer, and a mirror of a body the world
@@ -3901,12 +4000,16 @@ export class Renderer {
       // the world's yScale. Rounder reads top-down; flatter reads like
       // a side view. Neither is this camera.
       const FLAT = 0.6;
-      // The waterline collar where the body meets the surface, with a
-      // soft depth shade under its south rim.
+      // THE RING GOES AROUND THE BODY: only the FRONT arcs (0..π, the
+      // camera-side half of each ellipse) draw here, over the shins —
+      // the back arcs went down in the under-body pass
+      // (drawWadeUnderlays), so the water visibly passes BEHIND the
+      // wader. A full ellipse stamped over the legs was the old flat
+      // sticker.
       ctx.strokeStyle = 'rgba(226, 240, 251, 0.55)';
       ctx.lineWidth = Math.max(1.5, scale * 0.045);
       ctx.beginPath();
-      ctx.ellipse(p.x, surfY, scale * 0.24, scale * 0.24 * FLAT, 0, 0, Math.PI * 2);
+      ctx.ellipse(p.x, surfY, scale * 0.24, scale * 0.24 * FLAT, 0, 0, Math.PI);
       ctx.stroke();
       ctx.strokeStyle = 'rgba(26, 48, 96, 0.26)';
       ctx.lineWidth = Math.max(1.5, scale * 0.04);
@@ -3914,6 +4017,8 @@ export class Renderer {
       ctx.ellipse(p.x, surfY + scale * 0.03, scale * 0.28, scale * 0.28 * FLAT, 0, 0, Math.PI);
       ctx.stroke();
       // Wake rings while pushing through; a slow bob ring at rest.
+      // Front halves only — back halves ride the under pass with the
+      // same phase math, so each ring closes around the body.
       const t = performance.now() / 1000;
       const seed = typeof key === 'number' ? (key % 7) / 7 : 0.35;
       const n = moving ? 2 : 1;
@@ -3927,7 +4032,7 @@ export class Renderer {
         ctx.lineWidth = Math.max(1.5, scale * 0.04);
         ctx.beginPath();
         const rr = (0.24 + phase * 0.5) * scale;
-        ctx.ellipse(p.x, surfY, rr, rr * FLAT, 0, 0, Math.PI * 2);
+        ctx.ellipse(p.x, surfY, rr, rr * FLAT, 0, 0, Math.PI);
         ctx.stroke();
       }
       ctx.globalAlpha = 1;
@@ -4455,6 +4560,10 @@ export class Renderer {
       performance.now(),
       this.waterFx(),
     );
+
+    // Wake ripples and the back halves of every wader's rings — on the
+    // surface, under every body.
+    this.drawWadeUnderlays();
 
     // The meadow under everyone's feet: short blades, clumps, flowers.
     // Grass bounds are TIGHT — blades reach < 1 tile up, so the 5-row
