@@ -118,7 +118,8 @@ import { golemLook, type GolemLook } from './golems.js';
 import { GutSim, PendantSim, ogreLook, type OgreLook } from './ogre.js';
 import { skralLook, type SkralLook } from './skral.js';
 import { hobgoblinLook, type HobgoblinLook } from './hobgoblin.js';
-import { LegRig, type LegPose } from './legs.js';
+import { LIFT_RING, LegRig, type LegPose } from './legs.js';
+import { FOOTPRINT_TUNE, FootprintField, printInkFor, type FootWord } from './footprints.js';
 import { FINISHER_PHASES, strikePhases } from './carriage.js';
 import { GREAT_FINISHER_PHASES, GREAT_PHASES } from './wield.js';
 import { greatStyle, poleStyle } from './weapons.js';
@@ -985,6 +986,8 @@ interface AnimState {
   workDirMs?: number;
   /** Leg-rig plant counter at the last frame — footstep event diffing. */
   lastPlants?: number;
+  /** Leg-rig lift counter at the last frame — footprint stamp diffing. */
+  lastLifts?: number;
   /** Smoothed 0..1 travel activity — leg-less bodies (slimes, snakes)
    *  gate their locomotion animation on it. */
   moveK?: number;
@@ -1038,6 +1041,7 @@ interface AnimState {
   mountRigKey?: string;
   mountKnees?: number[];
   mountLastPlants?: number;
+  mountLastLifts?: number;
   mountLastX?: number;
   mountLastY?: number;
   /** The beast faces its travel — derived from motion, held at rest. */
@@ -1668,6 +1672,7 @@ export class Renderer {
     this.stuckArrows.length = 0;
     this.fallingShafts.length = 0;
     this.fxDecals.length = 0;
+    this.footprints.clear();
     this.fxBeats.length = 0;
     this.trailPrints.length = 0;
     this.particles.clear();
@@ -1988,6 +1993,16 @@ export class Renderer {
       }
     }
   }
+
+  /**
+   * THE TRACKED GROUND (footprints.ts): prints stamped where feet
+   * leave the soil — the leg rigs' lift rings feed it, the ground
+   * decides the ink, and it paints in the same stratum as the decals
+   * below. Public so the Display toggle can reach the field.
+   */
+  readonly footprints = new FootprintField();
+  /** Bound terrain-lift sampler for the footprint painter. */
+  private readonly footprintLift = (x: number, y: number): number => this.renderLift(x, y);
 
   /** Lingering ground marks left by detonations (scorch, rime, cracks…). */
   private readonly fxDecals: Array<{
@@ -4610,6 +4625,20 @@ export class Renderer {
         performance.now() / 1000,
       );
     }
+
+    // THE TRACKED GROUND: footprints lie with the spell floors — under
+    // every body, over the turf — so a quarry's trail stays readable
+    // straight through a fight, and the frame's lightmap tints each
+    // print with the soil it was pressed into.
+    this.footprints.draw(
+      this.ctx,
+      this.camera,
+      this.w,
+      this.h,
+      this.footprintLift,
+      performance.now(),
+      Renderer.FX_SQUASH,
+    );
 
     // Ground-level combat FX — decals, hazard zones, telegraphs, and
     // every ring/floor/wash a spell lays on the turf paint UNDER the
@@ -54619,6 +54648,34 @@ export class Renderer {
   }
 
   /**
+   * THE TRACKED GROUND: diff a rig's lift ring and stamp a footprint
+   * for every honest lift-off inside that update — the print lands at
+   * the exact spot the planted foot occupied, gated by the material
+   * underfoot (dirt, sand, snow… — printInkFor decides). Returns the
+   * new lift count for the caller's anim record; a first sight seeds
+   * silently (a body entering view didn't just step).
+   */
+  private stampFootprints(
+    legs: LegRig,
+    last: number | undefined,
+    word: FootWord,
+    sizeK: number,
+    faint = 1,
+  ): number {
+    const lifts = legs.lifts;
+    if (last === undefined || lifts === last || !FOOTPRINT_TUNE.enabled) return lifts;
+    const now = performance.now();
+    const n = Math.min(lifts - last, LIFT_RING);
+    for (let k = lifts - n; k < lifts; k++) {
+      const ev = legs.liftRing[k & (LIFT_RING - 1)]!;
+      const ink = printInkFor(this.fgGroundAt(Math.floor(ev.x), Math.floor(ev.y)));
+      if (!ink) continue;
+      this.footprints.stamp(ev.x, ev.y, ev.dir, ev.side, ev.speed, word, sizeK, ink, now, faint);
+    }
+    return lifts;
+  }
+
+  /**
    * A foot met the ground — kick loose a puff of whatever the ground
    * is made of. Speed decides how much earth moves: an amble stirs
    * almost nothing, a sprint tears little clouds off every plant.
@@ -55278,6 +55335,11 @@ export class Renderer {
           this.kickDust(anim.mountLegs, 1.25);
         }
       }
+      // A laden courser's hooves cut the deepest tracks on the road.
+      anim.mountLastLifts =
+        rideE > 0.5
+          ? this.stampFootprints(anim.mountLegs, anim.mountLastLifts, 'hoof', 1.45)
+          : anim.mountLegs.lifts;
     } else if (anim.mountLegs) {
       anim.mountLegs = undefined;
       anim.mountRigKey = undefined;
@@ -55330,6 +55392,18 @@ export class Renderer {
         if (e.pose !== PoseState.Sneak) this.kickDust(anim.legs);
       }
     }
+    // THE TRACKED GROUND: soles print where they lift. In the saddle
+    // the boots are in the stirrups — the hooves stamp above instead.
+    anim.lastLifts =
+      rideE === 0
+        ? this.stampFootprints(
+            anim.legs,
+            anim.lastLifts,
+            e.equip.boots ? 'boot' : 'bare',
+            stature,
+            e.pose === PoseState.Sneak ? 0.55 : 1,
+          )
+        : anim.legs.lifts;
     // THE STRIKE CLOCK: choreography lengths come from the ONE shared
     // table (STRIKE_CLOCKS) whose server pose holds provably outlive
     // these ms — the pairs used to be twinned by comment across two
@@ -58020,6 +58094,15 @@ export class Renderer {
       anim.lastPlants = anim.legs.plants;
       this.kickDust(anim.legs, Math.max(0.5, Math.min(1.3, (def?.radius ?? 0.3) / 0.3)));
     }
+    // THE TRACKED GROUND: every beast prints its own foot word — a paw
+    // ladder, cloven pairs, the basilisk's six-track claw rows — sized
+    // to the body that made them (tracking prey is reading the ground).
+    anim.lastLifts = this.stampFootprints(
+      anim.legs,
+      anim.lastLifts,
+      spec.foot,
+      Math.max(0.55, Math.min(2.2, (def?.radius ?? 0.3) / 0.3)) * (spec.footScale ?? 1),
+    );
     const feet = legPose.feet.map((f) => {
       const fp = this.camera.worldToScreen(f.x, f.y, this.w, this.h);
       fp.y -= this.renderLift(f.x, f.y) * scale;

@@ -140,6 +140,25 @@ interface StepState {
   dur: number;
 }
 
+/** One lift-off: where a planted foot left the ground (world tiles). */
+export interface LiftEvent {
+  x: number;
+  y: number;
+  /** The slewed facing at the lift — the way the foot was pointing. */
+  dir: number;
+  /** Lateral sign of the leg spec (− left / + right) — print mirror. */
+  side: number;
+  /** Body speed (tiles/sec) at the lift — the tread's vigor. */
+  speed: number;
+}
+
+/**
+ * Lift-ring size (power of two). A quadruped pair-launch plus a
+ * skipped consumer frame can bank several lift-offs before anyone
+ * reads them — the ring holds the last 8, oldest overwritten.
+ */
+export const LIFT_RING = 8;
+
 export interface LegPose {
   /** World-space feet + lift (tiles), one per configured leg. */
   feet: Array<{ x: number; y: number; lift: number }>;
@@ -186,6 +205,22 @@ export class LegRig {
   /** Body velocity at the touchdown — dust kicks back along this. */
   plantVx = 0;
   plantVy = 0;
+  /**
+   * Lift-offs since birth — the mirror of `plants`. Diff across
+   * updates to stamp footprints: a print belongs at the exact spot a
+   * planted foot LEFT, the trackable moment of a gait. The last
+   * LIFT_RING events wait in `liftRing[k & (LIFT_RING - 1)]` for
+   * k = lifts−n … lifts−1. A teleport snap never emits — a snap is
+   * not a step, and no foot ever "left" the ground there.
+   */
+  lifts = 0;
+  readonly liftRing: LiftEvent[] = Array.from({ length: LIFT_RING }, () => ({
+    x: 0,
+    y: 0,
+    dir: 0,
+    side: 1,
+    speed: 0,
+  }));
   /** Signed idle-turn accumulator; a big enough pivot owes a shuffle. */
   private lastDir: number | null = null;
   private turnDebt = 0;
@@ -461,6 +496,23 @@ export class LegRig {
             if (land > -phaseGap) {
               dur = Math.max(swing * 0.7, Math.min(swing * 1.45, land + phaseGap));
             }
+          }
+          // The foot leaves the ground HERE — the trackable moment.
+          // Record where it stood before the swing owns its position.
+          // Beyond snap range this launch is about to be sniped by the
+          // teleport guard below — a snap is not a step, no event.
+          if (behind < cfg.legLen * 2.2) {
+            const ev = this.liftRing[this.lifts & (LIFT_RING - 1)]!;
+            ev.x = f.x;
+            ev.y = f.y;
+            // STRIDES FOLLOW TRAVEL: a moving foot points its print
+            // down the line of travel (an aiming billboard body strafes
+            // over feet that still stride the path); only a standing
+            // shuffle prints the facing.
+            ev.dir = moving ? Math.atan2(dy, dx) : dir;
+            ev.side = Math.sign(leg.side) || (i & 1 ? 1 : -1);
+            ev.speed = speed;
+            this.lifts++;
           }
           // Land `lead` ahead of where the home will be when the swing
           // completes — the strike point of the stride wheel.

@@ -10,6 +10,7 @@ import { GroundAimController } from './input/groundAim.js';
 import { bindings, padGlyph, padGlyphInline, type ActionId } from './input/bindings.js';
 import { installControlsMenu } from './ui/controlsMenu.js';
 import { Renderer } from './render/renderer.js';
+import { FOOTPRINT_TUNE } from './render/footprints.js';
 import type { SmashKind } from './render/debris.js';
 import { ChatUI } from './ui/chat.js';
 import { Hotbar } from './ui/hotbar.js';
@@ -308,6 +309,9 @@ renderer.outlineOn = localStorage.getItem('arx.outline') !== 'off';
 // section for anyone chasing frames.
 renderer.reflectionsOn = localStorage.getItem('arx.reflections') !== 'off';
 renderer.waterFxFull = localStorage.getItem('arx.waterfx') !== 'basic';
+// THE TRACKED GROUND is a preference too: the whole footprint field
+// rides one switch — off empties it instantly (the perf kill switch).
+FOOTPRINT_TUNE.enabled = localStorage.getItem('arx.footprints') !== 'off';
 // SETTINGS' TAB RAIL: Sound / Display / Controls, one bench standing
 // at a time, LT/RT stepping them like every room's pager.
 {
@@ -391,6 +395,11 @@ let walkoverBox: HTMLInputElement | null = null;
   toggle('Water motion', renderer.waterFxFull, (on) => {
     renderer.waterFxFull = on;
     localStorage.setItem('arx.waterfx', on ? 'full' : 'basic');
+  });
+
+  toggle('Footprints', FOOTPRINT_TUNE.enabled, (on) => {
+    FOOTPRINT_TUNE.enabled = on;
+    localStorage.setItem('arx.footprints', on ? 'on' : 'off');
   });
 
   toggle('Interface motion', localStorage.getItem('arx.uimotion') !== 'off', (on) => {
