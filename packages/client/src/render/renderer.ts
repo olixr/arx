@@ -15,6 +15,7 @@ import {
   ALERT_ICON_WARY,
   STATUS_AMBIENCE_MASK,
   STATUS_BIT,
+  type StatusId,
   afflictionStacksOf,
   countStacksOf,
   LIGHT_BLOCKING_TILES,
@@ -200,6 +201,7 @@ import {
 } from './trophyBanner.js';
 import { speakBreath } from './breathFx.js';
 import { StatusEdges, statusLanding, STATUS_INK, STATUS_VIGNETTE_RGB } from './statusFx.js';
+import { drawStatusGlyph } from './statusIcons.js';
 import type { MatterCtx } from './matter/types.js';
 import {
   DITHER_CELL,
@@ -327,6 +329,11 @@ import { SIGNATURES, type SigCtx } from './fxSignatures.js';
  */
 const SHADOW_SUN = '#180e20';
 const SHADOW_MOON = '#0e1430';
+
+/** Wire bit → page id, for surfaces that walk bit order (wound row). */
+const BIT_TO_STATUS = new Map<number, StatusId>(
+  (Object.entries(STATUS_BIT) as Array<[StatusId, number]>).map(([id, bit]) => [bit, id]),
+);
 /** Renderer-side wind scratch (samples are consumed immediately). */
 const WIND_TMP: WindSample = { bx: 0, by: 0, s: 0, l: 0 };
 /**
@@ -4705,6 +4712,9 @@ export class Renderer {
     // era only survived on flat ground).
     this.drawAimGuide(game);
     this.drawCombatFx(game);
+    // THE STANDING SHELL: the own ward's quiet dome (and its shatter)
+    // draws with the fx overlays — the ward_shell signature's world.
+    this.drawOwnWardDome(game);
     this.drawLevelCeremony(game);
 
     // Depth & atmosphere: the exposure pass (multiply lightmap) sets
@@ -53504,7 +53514,9 @@ export class Renderer {
       for (const ev of this.statusEdges.observe(game.ownEid, game.ownStatus)) {
         statusLanding(this.matterHost(), own.x, own.y, ev);
       }
-      if (game.ownStatus) this.statusAmbience(own.x, own.y, game.ownStatus);
+      // ?fx status wing: forced audit bits ride the own body only.
+      const ownBits = game.ownStatus | this.statusAuditBits;
+      if (ownBits) this.statusAmbience(own.x, own.y, ownBits);
       // The rig only wants item IDS — strip the equip map's rolls,
       // keeping just the enchant ids (they ARE appearance). Rebuilt
       // only when the equipment object itself changes, so the worn
@@ -59147,11 +59159,126 @@ export class Renderer {
     }
   }
 
+  /** One-shot latch so a ward's shatter plays exactly once. */
+  private wardShatterPlayed = 0;
+
+  /**
+   * ?fx STATUS WING: forced status bits OR'd onto the own body's
+   * ambience for screenshot audit (fxLab drives it; 0 in real play).
+   */
+  statusAuditBits = 0;
+
+  /**
+   * THE STANDING SHELL (statusBook Phase 4): while any ward pool
+   * rides the own body, a quiet facet dome STANDS around it — the
+   * ward_shell signature's geometry (equator at the chest, six glass
+   * panes to the apex, the far side dimmed for the 2.5D read) held as
+   * a presence instead of a cast moment: low alpha, slow breathing,
+   * a rim glint walking the equator. The number lives on the chip;
+   * the dome is the FACT of the shield, visibly AROUND you at every
+   * camera facing. When the total crosses to nothing the shell dies
+   * as glass: the panes flash once and shed real falling shards.
+   */
+  private drawOwnWardDome(game: ClientGame): void {
+    if (game.ownEid === null) return;
+    const now = performance.now();
+    const shatterAge = game.wardShatteredAt > 0 ? now - game.wardShatteredAt : Infinity;
+    if (game.ownWard <= 0 && shatterAge > 450) return;
+    const own = game.predictor.renderPos();
+    const p = this.liftedWTS(own.x, own.y);
+    const sc = this.camera.scale;
+    const squash = 0.55;
+    const cx = p.x;
+    const cy = p.y - sc * 0.52; // the equator rides the chest
+    const rx = sc * 0.62;
+    const ry = rx * squash;
+    const apexY = cy - sc * 0.6;
+    const ctx = this.ctx;
+    ctx.save();
+    if (game.ownWard > 0) {
+      // The standing shell: breathing glass, never louder than a hum.
+      const breath = 0.11 + 0.05 * (0.5 + 0.5 * Math.sin(now / 640));
+      for (let i = 0; i < 6; i++) {
+        const a0 = (i / 6) * Math.PI * 2 + now / 4200;
+        const a1 = ((i + 1) / 6) * Math.PI * 2 + now / 4200;
+        // The far half sits behind the body: dimmer panes, the depth read.
+        const back = Math.sin((a0 + a1) / 2) < 0;
+        const x0 = cx + Math.cos(a0) * rx;
+        const y0 = cy + Math.sin(a0) * ry;
+        const x1 = cx + Math.cos(a1) * rx;
+        const y1 = cy + Math.sin(a1) * ry;
+        ctx.globalAlpha = breath * (back ? 0.55 : 1);
+        ctx.fillStyle = '#cfe0f0';
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.lineTo(cx, apexY);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // The equator rim, and one glint walking it.
+      ctx.globalAlpha = 0.28;
+      ctx.strokeStyle = '#e8f2fc';
+      ctx.lineWidth = Math.max(1, sc * 0.02);
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      const ga = now / 900;
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx + Math.cos(ga) * rx - 1.5, cy + Math.sin(ga) * ry - 1.5, 3, 3);
+    } else if (shatterAge <= 450) {
+      // THE BREAKING WORD, seen: the panes flash outward once...
+      const t = shatterAge / 450;
+      ctx.globalAlpha = (1 - t) * 0.5;
+      ctx.strokeStyle = '#e8f2fc';
+      ctx.lineWidth = Math.max(1, sc * 0.03) * (1 - t);
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx * (1 + t * 0.5), ry * (1 + t * 0.5), 0, 0, Math.PI * 2);
+      ctx.stroke();
+      // ...and shed real glass exactly once (the latch).
+      if (game.wardShatteredAt !== this.wardShatterPlayed) {
+        this.wardShatterPlayed = game.wardShatteredAt;
+        this.particles.burst(own.x, own.y - 0.55, 10, ['#cfe0f0', '#e8f2fc', '#9fb6cc'], {
+          speed: 1.6,
+          life: 0.6,
+          size: 0.07,
+          gravity: 4.5,
+          shape: 'shard',
+          spin: 6,
+          z: 0.5,
+        });
+      }
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
   private statusAmbience(x: number, y: number, bits: number): void {
-    // Stealth bits ride the same byte — only DoT/CC bits make weather.
+    // Stealth bits ride the same byte — only real state bits make
+    // weather. THE ESCALATION LAW (statusBook Phase 4): the wire's
+    // stack nibbles deepen the weather — the affliction nibble drives
+    // the wounds' tier, the count nibble the boons' — so a body five
+    // wounds deep LOOKS five wounds deep. Rates stay frameDt-gated
+    // bursts (THE BODY BUDGET: bodies are unbounded, emitter records
+    // are scarce), and every state keeps its own PLACE and RHYTHM
+    // (the anti-mush law): burn rises at the chest, chill falls from
+    // above, shock jitters mid, bleed drips low, venom blebs up,
+    // sunder sheds at the shoulders, root grips the FEET, stagger
+    // rings the HEAD, weaken sinks off the arms, quicken streaks
+    // past the sides, mend climbs the spine, stonehide hangs plates
+    // at the skin.
+    const auditBits = bits;
     bits &= STATUS_AMBIENCE_MASK;
     if (bits === 0) return;
     const dt = this.frameDt;
+    // Wound tier: 1 at a single wound, deepening toward the cap. The
+    // rate multiplier keeps texture honest without flooding the pool;
+    // tier 3+ adds a second grain per spawn (the boiling read).
+    const woundStacks = Math.max(1, afflictionStacksOf(auditBits));
+    const woundRate = Math.min(2.4, 1 + 0.35 * (woundStacks - 1));
+    const woundGrains = woundStacks >= 3 ? 2 : 1;
+    const boonStacks = Math.max(1, countStacksOf(auditBits));
     if (bits & STATUS_BIT.burn) {
       this.queueGlow(x, y - 0.3, 0.9, '255, 138, 60', 0.3);
       if (Math.random() < dt * 14) {
@@ -59190,10 +59317,11 @@ export class Renderer {
       }
     }
     if (bits & STATUS_BIT.bleed) {
-      if (Math.random() < dt * 9) {
+      if (Math.random() < dt * 9 * woundRate) {
         // THE LIQUID LAW: blood falls as drops, not squares — fines
-        // between the body drips keep the wound textured.
-        this.particles.burst(x + (Math.random() - 0.5) * 0.3, y - 0.35, 1, ['#c4372a', '#8e2015'], {
+        // between the body drips keep the wound textured. Deep wounds
+        // (tier 3+) shed a second drop per beat.
+        this.particles.burst(x + (Math.random() - 0.5) * 0.3, y - 0.35, woundGrains, ['#c4372a', '#8e2015'], {
           speed: 0.3,
           life: 0.45,
           size: Math.random() < 0.35 ? 0.045 : 0.075,
@@ -59201,19 +59329,42 @@ export class Renderer {
           shape: 'drop',
         });
       }
+      // Tier 4+: the wound pools — a dark fleck settling at the feet.
+      if (woundStacks >= 4 && Math.random() < dt * 2) {
+        this.particles.burst(x + (Math.random() - 0.5) * 0.4, y, 1, ['#6e1810', '#8e2015'], {
+          speed: 0.05,
+          life: 0.9,
+          size: 0.06,
+          gravity: 0,
+          layer: 'ground',
+        });
+      }
     }
     if (bits & STATUS_BIT.venom) {
       // Sickly green blebs drifting UP — the poison working out of the wound.
-      this.queueGlow(x, y - 0.3, 0.8, '160, 192, 80', 0.22);
-      if (Math.random() < dt * 10) {
-        // Liquid blebs, not squares — the poison beads as it rises.
-        this.particles.burst(x + (Math.random() - 0.5) * 0.35, y - 0.3, 1, ['#a0c050', '#6a8a2a', '#c8e04a'], {
+      this.queueGlow(x, y - 0.3, 0.8, '160, 192, 80', 0.22 + Math.min(0.12, (woundStacks - 1) * 0.04));
+      if (Math.random() < dt * 10 * woundRate) {
+        // Liquid blebs, not squares — the poison beads as it rises;
+        // a deeply envenomed body visibly BOILS (tier 3+ twin blebs).
+        this.particles.burst(x + (Math.random() - 0.5) * 0.35, y - 0.3, woundGrains, ['#a0c050', '#6a8a2a', '#c8e04a'], {
           speed: 0.35,
           life: 0.6,
           size: Math.random() < 0.35 ? 0.05 : 0.075,
           gravity: -1.2,
           shape: 'drop',
           wobble: 0.4,
+        });
+      }
+      // Tier 4+: the poison drips OFF the body and splats — the
+      // dripping read the brief named, earned at depth.
+      if (woundStacks >= 4 && Math.random() < dt * 3) {
+        this.particles.burst(x + (Math.random() - 0.5) * 0.45, y - 0.5, 1, ['#a0c050', '#c8e04a'], {
+          speed: 0.15,
+          life: 0.7,
+          size: 0.06,
+          gravity: 3.5,
+          shape: 'drop',
+          z: 0.5,
         });
       }
     }
@@ -59231,6 +59382,100 @@ export class Renderer {
           gravity: 5.0,
           shape: 'shard',
           spin: 5,
+        });
+      }
+    }
+    // -------------------- THE WIDER WOUND's voices (statusBook Ph4)
+    if (bits & STATUS_BIT.root) {
+      // The earth GRIPS: dirt curls arcing up at the FEET and pulled
+      // straight back down — the only state that lives at the ankles.
+      // Broken matter, no glow.
+      if (Math.random() < dt * 12) {
+        this.particles.burst(x + (Math.random() - 0.5) * 0.55, y - 0.02, 1, ['#a8814f', '#7a5c38', '#5c4428'], {
+          speed: 0.9,
+          life: 0.35,
+          size: Math.random() < 0.4 ? 0.045 : 0.075,
+          gravity: 6.5,
+          shape: 'shard',
+          spin: 3,
+        });
+      }
+    }
+    if (bits & STATUS_BIT.stagger) {
+      // The rung bell: pale glints ringing the HEAD, faster than
+      // shock's chest jitter and half as many — a different height, a
+      // different color family, a different clock.
+      this.queueGlow(x, y - 0.85, 0.5, '220, 216, 240', 0.2);
+      if (Math.random() < dt * 26) {
+        const a = Math.random() * Math.PI * 2;
+        this.particles.burst(x + Math.cos(a) * 0.32, y - 0.85 + Math.sin(a) * 0.1, 1, ['#dcd8f0', '#ffffff'], {
+          speed: 0.15,
+          life: 0.12,
+          size: 0.05,
+          gravity: 0,
+          shape: 'glint',
+        });
+      }
+    }
+    if (bits & STATUS_BIT.weaken) {
+      // The drained arm: dull violet wisps SINKING off the hands —
+      // wide at the sides, slow, and deliberately unlit (strength
+      // leaving, not energy arriving).
+      if (Math.random() < dt * 6) {
+        const side = Math.random() < 0.5 ? -1 : 1;
+        this.particles.burst(x + side * (0.3 + Math.random() * 0.15), y - 0.45, 1, ['#8a6a9a', '#5e4a6a'], {
+          speed: 0.12,
+          life: 0.8,
+          size: Math.random() < 0.4 ? 0.04 : 0.065,
+          gravity: 0.9,
+        });
+      }
+    }
+    if (bits & STATUS_BIT.quicken) {
+      // The quickened hand: gold speed-lines flicking PAST the body,
+      // horizontal and gone — pace made visible. Each stack adds
+      // lines; the band's cap keeps the storm honest.
+      this.queueGlow(x, y - 0.4, 0.7, '255, 215, 106', 0.14 + boonStacks * 0.02);
+      if (Math.random() < dt * (6 + boonStacks * 4)) {
+        const side = Math.random() < 0.5 ? -1 : 1;
+        this.particles.burst(x + side * 0.42, y - 0.25 - Math.random() * 0.45, 1, ['#ffd76a', '#fff2c0'], {
+          speed: 2.2,
+          life: 0.14,
+          size: 0.055,
+          gravity: 0,
+          dir: side > 0 ? 0 : Math.PI,
+          spread: 0.15,
+        });
+      }
+    }
+    if (bits & STATUS_BIT.mend) {
+      // The closing wound: soft green motes climbing a tight column
+      // at the spine — slower and narrower than venom's drunken
+      // blebs, and they glint instead of bead.
+      this.queueGlow(x, y - 0.4, 0.7, '122, 208, 160', 0.18);
+      if (Math.random() < dt * 8) {
+        this.particles.burst(x + (Math.random() - 0.5) * 0.16, y - 0.2, 1, ['#7ad0a0', '#c8f0dc'], {
+          speed: 0.4,
+          life: 0.8,
+          size: Math.random() < 0.4 ? 0.045 : 0.065,
+          gravity: -1.0,
+          shape: Math.random() < 0.35 ? 'glint' : 'square',
+        });
+      }
+    }
+    if (bits & STATUS_BIT.stonehide) {
+      // The worn coats: blue-grey facets HANGING at the skin, barely
+      // drifting — armor present, not falling (sunder's chips drop,
+      // stonehide's plates hold). More coats, more facets; no glow.
+      if (Math.random() < dt * (3 + boonStacks * 2)) {
+        const a = Math.random() * Math.PI * 2;
+        this.particles.burst(x + Math.cos(a) * 0.34, y - 0.3 - Math.random() * 0.3, 1, ['#98a4b0', '#b8c2cc', '#707c88'], {
+          speed: 0.04,
+          life: 1.1,
+          size: Math.random() < 0.3 ? 0.05 : 0.075,
+          gravity: -0.1,
+          shape: 'shard',
+          spin: 0.4,
         });
       }
     }
@@ -63938,18 +64183,19 @@ export class Renderer {
       [STATUS_BIT.mend, STATUS_INK.mend!],
     ];
     const shown = order.filter(([bit]) => (states & bit) !== 0);
-    const d = 12;
+    const d = 14;
     const gap = 5;
     // Both nibbles count on the owner's row too.
     const stacks = afflictionStacksOf(game.ownStatus) + countStacksOf(game.ownStatus);
     const stackW = stacks >= 2 ? 26 : 0;
     let sx = this.w / 2 - (shown.length * (d + gap) - gap + stackW) / 2;
     const sy = barY - d - 8;
-    for (const [, color] of shown) {
-      ctx.fillStyle = 'rgba(24, 14, 32, 0.85)';
-      ctx.fillRect(sx - 2, sy - 2, d + 4, d + 4);
-      ctx.fillStyle = color;
-      ctx.fillRect(sx, sy, d, d);
+    // THE ICON IS THE PAINTER, at owner scale: the row wears the
+    // pages' own glyphs (the nameplate keeps its squares — at 3-7 px
+    // a square IS the right glyph; 14 px earns the subject).
+    for (const [bit] of shown) {
+      const id = BIT_TO_STATUS.get(bit)!;
+      drawStatusGlyph(ctx, id, sx, sy, d);
       sx += d + gap;
     }
     if (stacks >= 2) {
