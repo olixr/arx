@@ -51967,27 +51967,41 @@ export class Renderer {
             const tcx = p.x;
             const tcy = ringTop + s * 0.012;
             const deep = ((h >>> 11) & 3) / 3; // 0 brimming .. 1 low
-            ctx.fillStyle = '#1d1824';
+            // THE SHAFT IS A WALL, NOT A VOID (user round three: the
+            // flat near-black throat read as a black hole wherever
+            // the water disc was dealt small). The descent is drawn
+            // as STEPPED WALL RINGS — the ring's own material walked
+            // darker, concentric to the anchor — down to one thin
+            // true-shadow line at the waterline. Depth still deals
+            // by scale; the eye now reads masonry sinking to water.
+            ctx.fillStyle = shade(matC, -24);
             ctx.beginPath();
             ctx.ellipse(tcx, tcy, ringR * 0.72, ery * 0.74, 0, 0, Math.PI * 2);
             ctx.fill();
-            // The far inner wall: the crescent the tilted camera is
-            // owed — lit faintly at its top where the sky reaches.
-            ctx.fillStyle = shade(matC, -22);
+            ctx.fillStyle = shade(matC, -34);
             ctx.beginPath();
-            ctx.ellipse(tcx, tcy, ringR * 0.72, ery * 0.74, 0, Math.PI, Math.PI * 2);
-            ctx.ellipse(tcx, tcy + s * 0.047, ringR * 0.62, ery * 0.6, 0, Math.PI * 2, Math.PI, true);
+            ctx.ellipse(tcx, tcy, ringR * 0.66, ery * 0.66, 0, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = 'rgba(198, 204, 216, 0.16)';
+            ctx.fillStyle = shade(matC, -44);
+            ctx.beginPath();
+            ctx.ellipse(tcx, tcy, ringR * 0.6, ery * 0.58, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // The far inner wall's top catches what sky reaches in.
+            ctx.strokeStyle = 'rgba(198, 204, 216, 0.18)';
             ctx.lineWidth = Math.max(1, s * 0.014);
             ctx.beginPath();
             ctx.ellipse(tcx, tcy + s * 0.004, ringR * 0.7, ery * 0.72, 0, Math.PI * 1.2, Math.PI * 1.8);
             ctx.stroke();
-            // THE WATER: concentric in the throat, its size the
-            // depth — dark base, a truer blue heart, the drifting
-            // sky glint, a ripple ring off the last drop.
-            const wR = ringR * (0.62 - deep * 0.12);
-            const wRy = ery * (0.54 - deep * 0.11);
+            // THE WATER: concentric in the shaft, its size the
+            // depth — one thin waterline shadow, dark base, a truer
+            // blue heart, the drifting sky glint, a ripple ring off
+            // the last drop.
+            const wR = ringR * (0.585 - deep * 0.045);
+            const wRy = ery * (0.51 - deep * 0.04);
+            ctx.fillStyle = '#16121c';
+            ctx.beginPath();
+            ctx.ellipse(tcx, tcy, wR + s * 0.022, wRy + s * 0.016, 0, 0, Math.PI * 2);
+            ctx.fill();
             ctx.fillStyle = '#22384e';
             ctx.beginPath();
             ctx.ellipse(tcx, tcy, wR, wRy, 0, 0, Math.PI * 2);
