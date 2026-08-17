@@ -787,9 +787,16 @@ export class Panels {
 
   // ---- the bench (the open case's standing inspector) ---------------
 
-  /** The bench speaks when the case is open and no station is paired. */
+  /** The bench speaks when the case is open and no station is paired.
+   * THE OPEN GROUND takes the bench's seat the same way a paired
+   * station does — while loot lies in reach, the middle tray is the
+   * ground ledger's and inspection rides the floating card. */
   private benchActive(): boolean {
-    return !this.invPanel.classList.contains('hidden') && this.stationContext() === null;
+    return (
+      !this.invPanel.classList.contains('hidden') &&
+      this.stationContext() === null &&
+      !this.invPanel.classList.contains('with-ground')
+    );
   }
 
   /**

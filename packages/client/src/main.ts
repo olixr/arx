@@ -3464,13 +3464,19 @@ function frame(now: number): void {
         if (!stood) {
           groundPane.reset();
           groundTray.classList.remove('hidden');
+          // THE GROUND TAKES THE BENCH'S SEAT (the paired-station
+          // precedent): the room keeps its width, the inspector
+          // yields, the floating card serves.
+          document.getElementById('inventory-panel')?.classList.add('with-ground');
         }
         groundPane.update(near);
       } else if (stood) {
         groundTray.classList.add('hidden');
+        document.getElementById('inventory-panel')?.classList.remove('with-ground');
       }
     } else if (!groundTray.classList.contains('hidden')) {
       groundTray.classList.add('hidden');
+      document.getElementById('inventory-panel')?.classList.remove('with-ground');
     }
     // THE CHOSEN HAND: the settings box mirrors the persisted truth.
     if (walkoverBox && walkoverBox.checked !== game.lootAuto) {

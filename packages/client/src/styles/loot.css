@@ -209,17 +209,52 @@ body:not(.no-ui-motion) .loot-sub.qty-pulse {
   background: none;
 }
 
-/* THE CHOSEN HAND chip rides the tray head before the close chip. */
+/* THE CHOSEN HAND chip rides the hint line's right end — the head
+   keeps its full title, the toggle sits under the hand's eye. */
+#loot-panel .panel-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .loot-pref-chip {
   margin-left: auto;
   white-space: nowrap;
   flex: none;
 }
 
-/* ---- THE OPEN GROUND: the inventory's fourth tray. The room keeps
-   its width; the bench yields the space (its flex basis gives). ---- */
+/* ---- THE OPEN GROUND: the inventory's middle seat. The room keeps
+   its width — the bench yields it (the paired-station precedent);
+   inspection rides the floating card while the ground stands. ---- */
+#inventory-panel.with-ground .char-bench {
+  display: none;
+}
+
 .char-ground {
-  flex: 0 0 22.5rem;
+  flex: 1 1 24rem;
+  min-width: 18rem;
+}
+
+/* The pane is narrower than the tray — its rows speak the compact
+   dialect: names may wrap to two lines, the verb slims down. */
+.char-ground .loot-name {
+  white-space: normal;
+  line-height: 1.2;
+  font-size: 0.9375rem;
+}
+
+.char-ground .loot-sub {
+  font-size: 0.75rem;
+}
+
+.char-ground .loot-row {
+  gap: 0.5rem;
+  padding: 0.5rem 0.5625rem;
+}
+
+.char-ground .loot-actions .act-btn {
+  padding: 0.5rem 0.6875rem;
+  font-size: 0.875rem;
 }
 
 .ground-body {

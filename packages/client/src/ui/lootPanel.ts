@@ -115,13 +115,14 @@ export class LootPanel {
   }
 
   /**
-   * THE CHOSEN HAND's head chip — built once, after dressPanel has
-   * assembled the head (main dresses panels before the first open).
+   * THE CHOSEN HAND's chip — built once, riding the hint line's right
+   * end so the head keeps its full title (dressPanel assembles both
+   * before the first open; main dresses panels at boot).
    */
   private ensurePrefChip(): void {
-    if (this.prefChip) return;
-    const head = this.panel.querySelector('.panel-head');
-    if (!head) return;
+    if (this.prefChip?.isConnected) return;
+    const hint = this.panel.querySelector('.panel-hint') ?? this.panel.querySelector('.panel-head');
+    if (!hint) return;
     const chip = document.createElement('button');
     chip.className = 'sort-chip loot-pref-chip';
     chip.dataset.nav = '';
@@ -133,9 +134,7 @@ export class LootPanel {
       this.game.setLootPref(!this.game.lootAuto);
       this.paintPrefChip();
     });
-    const close = head.querySelector('.panel-close');
-    if (close) head.insertBefore(chip, close);
-    else head.appendChild(chip);
+    hint.appendChild(chip);
     this.prefChip = chip;
     this.paintPrefChip();
   }
