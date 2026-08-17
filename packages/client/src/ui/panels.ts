@@ -3003,18 +3003,20 @@ export class Panels {
       cell.className = 'sum-cell';
       cell.dataset.tipname = 'The Sum';
       cell.dataset.tipsub = `${g.num} ${g.word}, across every answered Calling.`;
+      // Every glyph stands on the same fixed stage, so the bank's
+      // cells hold one rhythm whatever shape the family wears.
+      const stage = document.createElement('span');
+      stage.className = 'sum-glyph-stage';
       const glyph = document.createElement('span');
       glyph.className = `sum-glyph ${g.kind}`;
-      const col = document.createElement('span');
-      col.className = 'sum-col';
+      stage.appendChild(glyph);
       const num = document.createElement('span');
       num.className = 'sum-num';
       num.textContent = g.num;
       const word = document.createElement('span');
       word.className = 'sum-word';
       word.textContent = g.word;
-      col.append(num, word);
-      cell.append(glyph, col);
+      cell.append(stage, num, word);
       chips.appendChild(cell);
     }
     sum.append(stitle, chips);
